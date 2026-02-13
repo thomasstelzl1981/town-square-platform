@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ArrowRight, Wrench, Zap, Paintbrush, Home, Square, Flame, Package, Building2, ClipboardList } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { WidgetDeleteOverlay } from '@/components/shared/WidgetDeleteOverlay';
 import type { ServiceCaseStatus } from '@/hooks/useServiceCases';
 import { formatCurrency } from '@/lib/formatters';
 import type { ServiceCaseCategory } from '@/hooks/useServiceCases';
@@ -30,9 +31,11 @@ interface ServiceCaseCardProps {
   };
   isSelected?: boolean;
   onClick?: () => void;
+  onDelete?: (id: string) => void;
+  isDeleting?: boolean;
 }
 
-export function ServiceCaseCard({ serviceCase, isSelected, onClick }: ServiceCaseCardProps) {
+export function ServiceCaseCard({ serviceCase, isSelected, onClick, onDelete, isDeleting }: ServiceCaseCardProps) {
   const CategoryIcon = CATEGORY_ICONS[serviceCase.category] || Package;
   const costText = serviceCase.cost_estimate_min && serviceCase.cost_estimate_max
     ? `${formatCurrency(serviceCase.cost_estimate_min / 100)} – ${formatCurrency(serviceCase.cost_estimate_max / 100)}`
@@ -40,15 +43,25 @@ export function ServiceCaseCard({ serviceCase, isSelected, onClick }: ServiceCas
       ? formatCurrency(serviceCase.budget_estimate)
       : null;
 
+  const canDelete = ['draft', 'cancelled'].includes(serviceCase.status);
+
   return (
     <Card
       className={cn(
-        'glass-card shadow-card cursor-pointer transition-all hover:shadow-elevated hover:scale-[1.02] group',
+        'glass-card shadow-card cursor-pointer transition-all hover:shadow-elevated hover:scale-[1.02] group relative',
         'flex flex-row items-center gap-3 p-3 md:flex-col md:aspect-square md:p-0',
         isSelected && 'ring-2 ring-primary shadow-glow'
       )}
       onClick={onClick}
     >
+      {onDelete && (
+        <WidgetDeleteOverlay
+          title={serviceCase.title}
+          onConfirmDelete={() => onDelete(serviceCase.id)}
+          isDeleting={isDeleting}
+          disabled={!canDelete}
+        />
+      )}
       {/* Mobile: horizontal row */}
       <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0 md:hidden">
         <CategoryIcon className="h-5 w-5 text-primary" />

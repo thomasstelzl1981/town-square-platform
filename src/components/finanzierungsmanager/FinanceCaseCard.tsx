@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Landmark, ArrowRight, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { WidgetDeleteOverlay } from '@/components/shared/WidgetDeleteOverlay';
 import { getStatusLabel, getStatusBadgeVariant } from '@/types/finance';
 import type { FutureRoomCase } from '@/types/finance';
 
@@ -28,24 +29,36 @@ interface FinanceCaseCardProps {
   caseData: FutureRoomCase;
   isSelected?: boolean;
   onClick?: (requestId: string) => void;
+  onDelete?: (requestId: string) => void;
+  isDeleting?: boolean;
 }
 
-export function FinanceCaseCard({ caseData, isSelected, onClick }: FinanceCaseCardProps) {
+export function FinanceCaseCard({ caseData, isSelected, onClick, onDelete, isDeleting }: FinanceCaseCardProps) {
   const status = getRequestStatus(caseData);
   const name = getApplicantName(caseData);
   const amount = getLoanAmount(caseData);
   const publicId = caseData.finance_mandates?.public_id || caseData.id.slice(0, 8);
   const requestId = caseData.finance_mandates?.finance_request_id || caseData.id;
 
+  const canDelete = status === 'draft';
+
   return (
     <Card
       className={cn(
-        'glass-card shadow-card cursor-pointer transition-all hover:shadow-elevated hover:scale-[1.02] group',
+        'glass-card shadow-card cursor-pointer transition-all hover:shadow-elevated hover:scale-[1.02] group relative',
         'flex flex-row items-center gap-3 p-3 md:flex-col md:aspect-square md:p-0',
         isSelected && 'ring-2 ring-primary shadow-glow'
       )}
       onClick={() => onClick?.(requestId)}
     >
+      {onDelete && (
+        <WidgetDeleteOverlay
+          title={name}
+          onConfirmDelete={() => onDelete(requestId)}
+          isDeleting={isDeleting}
+          disabled={!canDelete}
+        />
+      )}
       {/* Mobile: horizontal row layout */}
       <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0 md:hidden">
         <Landmark className="h-5 w-5 text-primary" />

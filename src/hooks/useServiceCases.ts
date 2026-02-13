@@ -264,6 +264,36 @@ export function useDeleteServiceCase() {
 }
 
 /**
+ * Cancel (archive) a service case — sets status to 'cancelled'
+ */
+export function useCancelServiceCase() {
+  const { activeTenantId } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('service_cases')
+        .update({
+          status: 'cancelled' as ServiceCaseStatus,
+          completed_at: new Date().toISOString(),
+        })
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['service_cases', activeTenantId] });
+      queryClient.invalidateQueries({ queryKey: ['service_case_stats', activeTenantId] });
+      toast.success('Vorgang archiviert');
+    },
+    onError: (error) => {
+      console.error('Error cancelling service case:', error);
+      toast.error('Fehler beim Archivieren des Vorgangs');
+    },
+  });
+}
+
+/**
  * Get statistics for service cases
  */
 export function useServiceCaseStats() {
