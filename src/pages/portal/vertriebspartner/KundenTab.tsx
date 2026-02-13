@@ -176,7 +176,7 @@ const KundenTab = () => {
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             </div>
           ) : (
-            <Table>
+            <div className="overflow-x-auto"><Table>
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-[250px]">Name</TableHead>
@@ -248,7 +248,7 @@ const KundenTab = () => {
                   ))
                 )}
               </TableBody>
-            </Table>
+            </Table></div>
           )}
         </CardContent>
       </Card>

@@ -283,7 +283,7 @@ const MieteingangTab = () => {
 
       {/* Object-centric Table with Accordion */}
       <div className={DESIGN.TABLE.WRAPPER}>
-        <Table>
+        <div className="overflow-x-auto"><Table>
           <TableHeader>
             <TableRow>
               <TableHead className="w-10"></TableHead>
@@ -451,7 +451,7 @@ const MieteingangTab = () => {
               ))
             )}
           </TableBody>
-        </Table>
+        </Table></div>
       </div>
 
       <TemplateWizard

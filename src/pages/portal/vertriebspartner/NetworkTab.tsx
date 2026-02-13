@@ -147,7 +147,7 @@ const NetworkTab = () => {
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             </div>
           ) : (
-            <Table>
+            <div className="overflow-x-auto"><Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Objekt</TableHead>
@@ -206,7 +206,7 @@ const NetworkTab = () => {
                   })
                 )}
               </TableBody>
-            </Table>
+            </Table></div>
           )}
         </CardContent>
       </Card>

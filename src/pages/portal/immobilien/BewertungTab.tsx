@@ -68,7 +68,7 @@ export function BewertungTab() {
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
               </div>
             ) : properties && properties.length > 0 ? (
-              <Table>
+              <div className="overflow-x-auto"><Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Code</TableHead>
@@ -101,7 +101,7 @@ export function BewertungTab() {
                     </TableRow>
                   ))}
                 </TableBody>
-              </Table>
+              </Table></div>
             ) : (
               <div className="flex flex-col items-center py-10 text-center">
                 <TrendingUp className="h-8 w-8 text-muted-foreground/40 mb-2" />

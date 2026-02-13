@@ -154,7 +154,7 @@ export function PosteingangTab() {
 
       {/* Table */}
       <Card className="glass-card overflow-hidden">
-        <Table>
+        <div className="overflow-x-auto"><Table>
           <TableHeader>
             <TableRow className="bg-muted/40">
               <TableHead className="w-[140px]">Datum</TableHead>
@@ -224,7 +224,7 @@ export function PosteingangTab() {
               </>
             )}
           </TableBody>
-        </Table>
+        </Table></div>
 
         {/* Hint below table when empty */}
         {!isLoading && emails.length === 0 && (
