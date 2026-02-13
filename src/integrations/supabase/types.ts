@@ -13988,6 +13988,147 @@ export type Database = {
           },
         ]
       }
+      video_call_invites: {
+        Row: {
+          call_id: string
+          created_at: string
+          expires_at: string | null
+          id: string
+          invited_by_user_id: string | null
+          invitee_email: string
+          invitee_name: string | null
+          joined_at: string | null
+          opened_at: string | null
+          sent_at: string | null
+          status: string
+          token_hash: string
+        }
+        Insert: {
+          call_id: string
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          invited_by_user_id?: string | null
+          invitee_email: string
+          invitee_name?: string | null
+          joined_at?: string | null
+          opened_at?: string | null
+          sent_at?: string | null
+          status?: string
+          token_hash: string
+        }
+        Update: {
+          call_id?: string
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          invited_by_user_id?: string | null
+          invitee_email?: string
+          invitee_name?: string | null
+          joined_at?: string | null
+          opened_at?: string | null
+          sent_at?: string | null
+          status?: string
+          token_hash?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "video_call_invites_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "video_calls"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      video_call_participants: {
+        Row: {
+          call_id: string
+          display_name: string | null
+          email: string | null
+          id: string
+          joined_at: string | null
+          left_at: string | null
+          role: string
+          user_id: string | null
+        }
+        Insert: {
+          call_id: string
+          display_name?: string | null
+          email?: string | null
+          id?: string
+          joined_at?: string | null
+          left_at?: string | null
+          role?: string
+          user_id?: string | null
+        }
+        Update: {
+          call_id?: string
+          display_name?: string | null
+          email?: string | null
+          id?: string
+          joined_at?: string | null
+          left_at?: string | null
+          role?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "video_call_participants_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "video_calls"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      video_calls: {
+        Row: {
+          created_at: string
+          ends_at: string | null
+          expires_at: string | null
+          host_user_id: string
+          id: string
+          livekit_room_name: string
+          starts_at: string | null
+          status: string
+          tenant_id: string
+          title: string | null
+        }
+        Insert: {
+          created_at?: string
+          ends_at?: string | null
+          expires_at?: string | null
+          host_user_id: string
+          id?: string
+          livekit_room_name: string
+          starts_at?: string | null
+          status?: string
+          tenant_id: string
+          title?: string | null
+        }
+        Update: {
+          created_at?: string
+          ends_at?: string | null
+          expires_at?: string | null
+          host_user_id?: string
+          id?: string
+          livekit_room_name?: string
+          starts_at?: string | null
+          status?: string
+          tenant_id?: string
+          title?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "video_calls_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       whatsapp_accounts: {
         Row: {
           access_token_ref: string | null

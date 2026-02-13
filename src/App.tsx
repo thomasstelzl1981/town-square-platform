@@ -24,6 +24,8 @@ import { ThemeProvider } from "./components/ThemeProvider";
 import Auth from "./pages/Auth";
 import AuthResetPassword from "./pages/AuthResetPassword";
 import PresentationPage from "./pages/presentation/PresentationPage";
+import { lazy, Suspense } from "react";
+const VideocallJoinPage = lazy(() => import("./pages/portal/office/VideocallJoinPage"));
 
 
 // Manifest-driven router
@@ -72,6 +74,11 @@ const App = () => (
               
               {/* Special: Presentation (hidden, non-guessable URL) */}
               <Route path="/presentation-sot-k7m3x9p2" element={<PresentationPage />} />
+              
+              {/* Special: Public Videocall Join (no auth required) */}
+              <Route path="/portal/office/videocalls/join/:inviteId" element={
+                <Suspense fallback={null}><VideocallJoinPage /></Suspense>
+              } />
               
               
               {/* ALL OTHER ROUTES: Delegated to ManifestRouter */}
