@@ -23,15 +23,15 @@ export interface AreaDefinition {
 export const areaConfig: AreaDefinition[] = [
   {
     key: 'missions',
-    label: 'Missions',
-    labelShort: 'Missions',
+    label: 'Mission',
+    labelShort: 'Mission',
     icon: 'Target',
     modules: ['MOD-02', 'MOD-04', 'MOD-07', 'MOD-06', 'MOD-08'],
   },
   {
     key: 'operations',
-    label: 'Partners',
-    labelShort: 'Partners',
+    label: 'Partner',
+    labelShort: 'Partner',
     icon: 'Settings',
     modules: ['MOD-13', 'MOD-09', 'MOD-11', 'MOD-12', 'MOD-10'],
   },
@@ -44,8 +44,8 @@ export const areaConfig: AreaDefinition[] = [
   },
   {
     key: 'services',
-    label: 'Services',
-    labelShort: 'Services',
+    label: 'Service',
+    labelShort: 'Service',
     icon: 'Grid',
     modules: ['MOD-14', 'MOD-15', 'MOD-17', 'MOD-18', 'MOD-19'],
   },
