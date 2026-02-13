@@ -247,14 +247,13 @@ export const zone2Portal: ZoneDefinition = {
       display_order: 4,
       visibility: { default: true, org_types: ["client"] },
       tiles: [
-        // PRIMARY: Portfolio is the main entry point for MOD-04 (Kontexte/Vermietereinheiten integrated here)
-        { path: "portfolio", component: "PortfolioTab", title: "Portfolio", default: true },
-        { path: "sanierung", component: "SanierungTab", title: "Sanierung" },
-        { path: "bewertung", component: "BewertungTab", title: "Bewertung" },
+        // HAUS: Navigationslink zu MOD-20 (Miety) — Redirect auf /portal/miety
+        { path: "haus", component: "MietyRedirect", title: "Haus", default: true },
+        { path: "portfolio", component: "PortfolioTab", title: "Portfolio" },
         // VERWALTUNG: Konsolidierte Mietverwaltung (ehemals MOD-05 MSV)
         { path: "verwaltung", component: "VerwaltungTab", title: "Verwaltung" },
-        // HAUS: Navigationslink zu MOD-20 (Miety) — Redirect auf /portal/miety
-        { path: "haus", component: "MietyRedirect", title: "Haus" },
+        { path: "sanierung", component: "SanierungTab", title: "Sanierung" },
+        // Bewertung entfernt — jetzt als Tab in der Immobilienakte (PropertyDetailPage)
       ],
       dynamic_routes: [
         // Create flow: Modal in PortfolioTab, redirect to dossier after creation

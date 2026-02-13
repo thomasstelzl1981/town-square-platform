@@ -23,7 +23,6 @@ const CreatePropertyRedirect = lazy(() => import('./immobilien/CreatePropertyRed
 const PortfolioTab = lazy(() => import('./immobilien/PortfolioTab').then(m => ({ default: m.PortfolioTab })));
 // KontexteTab removed — context management is now integrated into PortfolioTab
 const SanierungTab = lazy(() => import('./immobilien/SanierungTab').then(m => ({ default: m.SanierungTab })));
-const BewertungTab = lazy(() => import('./immobilien/BewertungTab').then(m => ({ default: m.BewertungTab })));
 const VerwaltungTab = lazy(() => import('./immobilien/VerwaltungTab'));
 const PropertyDetailPage = lazy(() => import('./immobilien/PropertyDetailPage'));
 const RentalExposeDetail = lazy(() => import('./msv/RentalExposeDetail'));
@@ -42,7 +41,7 @@ const ImmobilienPage = () => {
         {/* REDIRECT: Context management now integrated in Portfolio */}
         <Route path="kontexte" element={<Navigate to="/portal/immobilien/portfolio" replace />} />
         <Route path="sanierung/*" element={<SanierungTab />} />
-        <Route path="bewertung" element={<BewertungTab />} />
+        {/* Bewertung entfernt — jetzt in PropertyDetailPage als Tab */}
         
         {/* VERWALTUNG: Consolidated property management (ex-MSV) */}
         <Route path="verwaltung" element={<VerwaltungTab />} />
