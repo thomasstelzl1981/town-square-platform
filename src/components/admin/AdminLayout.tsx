@@ -34,9 +34,14 @@ export function AdminLayout() {
     isLoading: orgSwitching 
   } = useOrgContext();
 
+  // P0-SESSION-FIX: Debounced redirect with 2s grace period to prevent
+  // unwanted logouts during token refresh cycles.
   useEffect(() => {
     if (!isLoading && !user && !isDevelopmentMode) {
-      navigate('/auth');
+      const timer = setTimeout(() => {
+        navigate('/auth');
+      }, 2000);
+      return () => clearTimeout(timer);
     }
   }, [user, isLoading, navigate, isDevelopmentMode]);
 

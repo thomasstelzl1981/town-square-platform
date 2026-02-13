@@ -71,6 +71,18 @@ function PortalLayoutInner() {
     });
   }, [location.pathname]);
 
+  // P0-SESSION-FIX: Debounced redirect — only navigate to /auth after a grace period
+  // to avoid redirecting during transient null states (e.g. token refresh).
+  const [shouldRedirect, setShouldRedirect] = useState(false);
+  
+  useEffect(() => {
+    if (!user && !isDevelopmentMode && !isLoading && hasInitializedRef.current) {
+      const timer = setTimeout(() => setShouldRedirect(true), 2000);
+      return () => clearTimeout(timer);
+    }
+    setShouldRedirect(false);
+  }, [user, isDevelopmentMode, isLoading]);
+
   // P0-FIX: Only show fullscreen loader on INITIAL load, never after
   if (isLoading && !hasInitializedRef.current) {
     return (
@@ -80,7 +92,7 @@ function PortalLayoutInner() {
     );
   }
 
-  if (!user && !isDevelopmentMode) {
+  if (shouldRedirect && !user && !isDevelopmentMode) {
     return <Navigate to="/auth" replace />;
   }
 
