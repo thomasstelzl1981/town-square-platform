@@ -12,7 +12,7 @@ import { demoCameras } from '../shared/demoCameras';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import {
-  Home, Plus, Building2, ArrowRight, Camera, Globe, Eye, Video,
+  Home, Plus, Building2, ArrowRight, Camera, Globe, Eye, Video, ImageOff,
 } from 'lucide-react';
 
 export default function UebersichtTile() {
@@ -24,6 +24,18 @@ export default function UebersichtTile() {
   const autoCreatedRef = useRef(false);
 
   const { data: homes = [], isLoading } = useHomesQuery();
+
+  // Fetch Google Maps API key from edge function
+  const { data: mapsApiKey } = useQuery({
+    queryKey: ['google-maps-api-key'],
+    queryFn: async () => {
+      const { data, error } = await supabase.functions.invoke('sot-google-maps-key');
+      if (error) throw error;
+      return data?.key as string || '';
+    },
+    staleTime: Infinity,
+    gcTime: Infinity,
+  });
 
   const { data: profile } = useQuery({
     queryKey: ['profile-for-miety-auto', user?.id],
@@ -171,14 +183,27 @@ export default function UebersichtTile() {
                 {/* Kachel 2: Street View */}
                 <Card className="glass-card h-[240px] sm:aspect-square sm:h-auto overflow-hidden">
                   <CardContent className="p-0 h-full relative">
-                    {(home.city || home.address) ? (
-                      <iframe title="Street View" className="w-full h-full" style={{ border: 0 }} loading="lazy"
-                        referrerPolicy="no-referrer-when-downgrade"
-                        src={`https://www.google.com/maps?q=${mapQuery}&layer=c&output=embed`} />
+                    {(home.city || home.address) && mapsApiKey ? (
+                      <>
+                        <img
+                          src={`https://maps.googleapis.com/maps/api/streetview?size=600x400&location=${mapQuery}&key=${mapsApiKey}`}
+                          alt="Street View"
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            const target = e.currentTarget;
+                            target.style.display = 'none';
+                            if (target.nextElementSibling) target.nextElementSibling.classList.remove('hidden');
+                          }}
+                        />
+                        <div className="hidden w-full h-full flex-col items-center justify-center bg-muted/30 absolute inset-0">
+                          <ImageOff className="h-12 w-12 text-muted-foreground/30 mb-3" />
+                          <p className="text-sm text-muted-foreground">Street View nicht verfügbar</p>
+                        </div>
+                      </>
                     ) : (
                       <div className="w-full h-full flex flex-col items-center justify-center bg-muted/30">
                         <Camera className="h-12 w-12 text-muted-foreground/30 mb-3" />
-                        <p className="text-sm text-muted-foreground">Foto hochladen</p>
+                        <p className="text-sm text-muted-foreground">{!mapsApiKey ? 'API-Key wird geladen...' : 'Adresse fehlt'}</p>
                       </div>
                     )}
                   </CardContent>
@@ -187,14 +212,14 @@ export default function UebersichtTile() {
                 {/* Kachel 3: Satellite */}
                 <Card className="glass-card h-[240px] sm:aspect-square sm:h-auto overflow-hidden">
                   <CardContent className="p-0 h-full">
-                    {(home.city || home.address) ? (
+                    {(home.city || home.address) && mapsApiKey ? (
                       <iframe title="Satellitenansicht" className="w-full h-full" style={{ border: 0 }} loading="lazy"
                         referrerPolicy="no-referrer-when-downgrade"
-                        src={`https://www.google.com/maps?q=${mapQuery}&t=k&z=18&output=embed`} />
+                        src={`https://www.google.com/maps/embed/v1/place?key=${mapsApiKey}&q=${mapQuery}&maptype=satellite&zoom=18`} />
                     ) : (
                       <div className="w-full h-full flex flex-col items-center justify-center bg-muted/30">
                         <Globe className="h-12 w-12 text-muted-foreground/30 mb-3" />
-                        <p className="text-sm text-muted-foreground">Satellitenansicht</p>
+                        <p className="text-sm text-muted-foreground">{!mapsApiKey ? 'API-Key wird geladen...' : 'Satellitenansicht'}</p>
                       </div>
                     )}
                   </CardContent>
