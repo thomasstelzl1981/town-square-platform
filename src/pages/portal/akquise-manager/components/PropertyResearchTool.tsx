@@ -5,7 +5,8 @@
  */
 
 import * as React from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { DESIGN } from '@/config/designManifest';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -13,9 +14,11 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { 
   Loader2, Brain, MapPin, TrendingUp, AlertTriangle, Lightbulb,
-  Building2, Train, ShoppingCart, GraduationCap, CheckCircle2, XCircle
+  Building2, Train, ShoppingCart, GraduationCap, CheckCircle2, XCircle, Shield
 } from 'lucide-react';
 import { useStandaloneAIResearch, useStandaloneGeoMap, type StandaloneResearchResult, type GeoMapResult } from '@/hooks/useAcqTools';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 export function PropertyResearchTool() {
   const [query, setQuery] = React.useState('');
@@ -39,21 +42,37 @@ export function PropertyResearchTool() {
     setGeoMapResult(result);
   };
 
+  const handleSprengnetter = async () => {
+    if (!query.trim()) return;
+    toast.info('Sprengnetter-Bewertung wird abgerufen...');
+    try {
+      const { data, error } = await supabase.functions.invoke('sot-sprengnetter-valuation', {
+        body: { address: query },
+      });
+      if (error) throw error;
+      toast.success('Sprengnetter-Bewertung erhalten');
+      // Store result alongside research data
+      setResearchResult(prev => prev ? { ...prev, sprengnetter: data } : { query, timestamp: new Date().toISOString(), sprengnetter: data } as any);
+    } catch (err: any) {
+      toast.error('Sprengnetter-Fehler: ' + (err.message || 'Unbekannt'));
+    }
+  };
+
   const isLoading = aiResearch.isPending || geoMap.isPending;
   const hasResults = researchResult || geoMapResult;
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Building2 className="h-5 w-5" />
+    <Card className={DESIGN.CARD.BASE}>
+      <CardHeader className={DESIGN.CARD.SECTION_HEADER}>
+        <CardTitle className={`${DESIGN.TYPOGRAPHY.CARD_TITLE} flex items-center gap-2`}>
+          <Building2 className="h-4 w-4 text-primary" />
           Immobilienbewertung
         </CardTitle>
-        <CardDescription>
-          Geben Sie eine Adresse oder Objektbeschreibung ein für eine KI-gestützte Standortanalyse
-        </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-6">
+      <CardContent className="p-4 space-y-4">
+        <p className={DESIGN.TYPOGRAPHY.MUTED}>
+          KI-gestützte Standortanalyse mit optionaler Sprengnetter-Bewertung
+        </p>
         {/* Search Input */}
         <div className="space-y-4">
           <div className="flex gap-3">
@@ -81,6 +100,10 @@ export function PropertyResearchTool() {
                 <MapPin className="h-4 w-4 mr-2" />
               )}
               GeoMap-Analyse
+            </Button>
+            <Button variant="outline" onClick={handleSprengnetter} disabled={isLoading || !query.trim()}>
+              <Shield className="h-4 w-4 mr-2" />
+              Sprengnetter
             </Button>
           </div>
         </div>
