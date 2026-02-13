@@ -6310,13 +6310,12 @@ export type Database = {
           cancelled_at: string | null
           content_responsibility_confirmed: boolean
           created_at: string
+          credits_charged: number
           currency: string
           id: string
           plan: string
           price_cents: number
           status: string
-          stripe_customer_id: string | null
-          stripe_subscription_id: string | null
           tenant_id: string
           updated_at: string
           website_id: string
@@ -6326,13 +6325,12 @@ export type Database = {
           cancelled_at?: string | null
           content_responsibility_confirmed?: boolean
           created_at?: string
+          credits_charged?: number
           currency?: string
           id?: string
           plan?: string
           price_cents?: number
           status?: string
-          stripe_customer_id?: string | null
-          stripe_subscription_id?: string | null
           tenant_id: string
           updated_at?: string
           website_id: string
@@ -6342,13 +6340,12 @@ export type Database = {
           cancelled_at?: string | null
           content_responsibility_confirmed?: boolean
           created_at?: string
+          credits_charged?: number
           currency?: string
           id?: string
           plan?: string
           price_cents?: number
           status?: string
-          stripe_customer_id?: string | null
-          stripe_subscription_id?: string | null
           tenant_id?: string
           updated_at?: string
           website_id?: string

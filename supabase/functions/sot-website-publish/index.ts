@@ -1,6 +1,6 @@
 /**
  * sot-website-publish — Publishes a website (creates version snapshot)
- * Validates hosting contract before allowing publish.
+ * Validates hosting contract (Credits-based, no Stripe).
  */
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -29,16 +29,23 @@ serve(async (req) => {
     const { website_id } = await req.json();
     if (!website_id) throw new Error("website_id required");
 
-    // Check hosting contract
+    // Check hosting contract — must be active with confirmed responsibility
     const { data: contract } = await supabase
       .from("hosting_contracts")
-      .select("status")
+      .select("status, content_responsibility_confirmed")
       .eq("website_id", website_id)
       .single();
 
     if (!contract || contract.status !== "active") {
       return new Response(
-        JSON.stringify({ error: "Kein aktiver Hosting-Vertrag. Bitte schließen Sie zuerst einen Vertrag ab." }),
+        JSON.stringify({ error: "Kein aktiver Hosting-Vertrag. Bitte aktivieren Sie zuerst das Hosting." }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (!contract.content_responsibility_confirmed) {
+      return new Response(
+        JSON.stringify({ error: "Bitte bestätigen Sie die Inhaltsverantwortung." }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }

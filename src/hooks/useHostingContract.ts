@@ -36,7 +36,7 @@ export function useHostingContract(websiteId: string | undefined) {
           website_id: websiteId!,
           accepted_terms_at: new Date().toISOString(),
           content_responsibility_confirmed: true,
-          status: 'pending',
+          status: 'active',
         })
         .select()
         .single();

@@ -173,3 +173,12 @@ verify_jwt = false
 
 [functions.sot-research-import-contacts]
 verify_jwt = false
+
+[functions.sot-website-ai-generate]
+verify_jwt = false
+
+[functions.sot-website-publish]
+verify_jwt = false
+
+[functions.sot-website-lead-capture]
+verify_jwt = false

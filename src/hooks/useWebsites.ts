@@ -25,7 +25,7 @@ export function useWebsites() {
   });
 
   const createWebsite = useMutation({
-    mutationFn: async (input: { name: string; slug: string; industry?: string; target_audience?: string; goal?: string }) => {
+    mutationFn: async (input: { name: string; slug: string; industry?: string; target_audience?: string; goal?: string; branding_json?: any }) => {
       const { data, error } = await supabase
         .from('tenant_websites' as any)
         .insert({

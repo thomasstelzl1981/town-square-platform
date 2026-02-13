@@ -1,5 +1,6 @@
 /**
  * MOD-21 Website Builder — Tile 4: Vertrag
+ * Credits-based contract management (no Stripe)
  */
 import { PageShell } from '@/components/shared/PageShell';
 import { useWebsites } from '@/hooks/useWebsites';
@@ -33,9 +34,8 @@ function ContractCard({ websiteId, websiteName }: { websiteId: string; websiteNa
   if (isLoading) return <p className={TYPOGRAPHY.MUTED}>Laden...</p>;
 
   const statusMap: Record<string, { label: string; color: string }> = {
-    active: { label: 'Aktiv', color: 'text-emerald-600' },
+    active: { label: 'Aktiv (Credits-basiert)', color: 'text-emerald-600' },
     pending: { label: 'Ausstehend', color: 'text-amber-600' },
-    payment_failed: { label: 'Zahlung fehlgeschlagen', color: 'text-destructive' },
     suspended: { label: 'Gesperrt', color: 'text-destructive' },
     cancelled: { label: 'Gekündigt', color: 'text-muted-foreground' },
   };
@@ -52,9 +52,15 @@ function ContractCard({ websiteId, websiteName }: { websiteId: string; websiteNa
             </span>
           </div>
           <div className="flex items-center gap-2">
-            <span className={TYPOGRAPHY.LABEL}>Plan:</span>
-            <span className="text-sm">{contract.plan} — {(contract.price_cents / 100).toFixed(2)} €/Monat</span>
+            <span className={TYPOGRAPHY.LABEL}>Abrechnung:</span>
+            <span className="text-sm">Credits-basiert (Pay-Per-Use)</span>
           </div>
+          {contract.credits_charged > 0 && (
+            <div className="flex items-center gap-2">
+              <span className={TYPOGRAPHY.LABEL}>Verbrauchte Credits:</span>
+              <span className="text-sm">{contract.credits_charged}</span>
+            </div>
+          )}
           {contract.accepted_terms_at && (
             <p className={TYPOGRAPHY.HINT}>
               Vertrag abgeschlossen am {new Date(contract.accepted_terms_at).toLocaleDateString('de-DE')}
@@ -62,7 +68,7 @@ function ContractCard({ websiteId, websiteName }: { websiteId: string; websiteNa
           )}
         </>
       ) : (
-        <p className={TYPOGRAPHY.MUTED}>Kein Hosting-Vertrag vorhanden. Veröffentlichen Sie Ihre Website, um einen Vertrag abzuschließen.</p>
+        <p className={TYPOGRAPHY.MUTED}>Kein Hosting-Vertrag vorhanden. Veröffentlichen Sie Ihre Website, um das Hosting zu aktivieren.</p>
       )}
     </div>
   );
