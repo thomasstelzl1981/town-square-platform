@@ -478,8 +478,7 @@ export const zone2Portal: ZoneDefinition = {
       display_order: 17,
       visibility: { default: false, org_types: ["partner"], requires_activation: true },
       tiles: [
-        { path: "autos", component: "CarsAutos", title: "Autos" },
-        { path: "bikes", component: "CarsBikes", title: "Bikes" },
+        { path: "fahrzeuge", component: "CarsFahrzeuge", title: "Fahrzeuge" },
         { path: "boote", component: "CarsBoote", title: "Boote" },
         { path: "privatjet", component: "CarsPrivatjet", title: "Privatjet" },
         { path: "angebote", component: "CarsAngebote", title: "Angebote" },
