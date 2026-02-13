@@ -139,63 +139,7 @@ export default function AkquiseDashboard() {
         }
       />
 
-      {/* ── Sektion A: Aktive Mandate (Widgets zuerst) ── */}
-      {activeMandates && activeMandates.length > 0 ? (
-        <WidgetGrid>
-          <WidgetCell>
-            <MandateCaseCardNew onClick={() => navigate('/portal/akquise-manager/mandate')} />
-          </WidgetCell>
-          {activeMandates.map(mandate => (
-            <WidgetCell key={mandate.id}>
-              <MandateCaseCard
-                mandate={mandate}
-                onClick={() => navigate(`/portal/akquise-manager/mandate/${mandate.id}`)}
-              />
-            </WidgetCell>
-          ))}
-        </WidgetGrid>
-      ) : (
-        <WidgetGrid>
-          <WidgetCell>
-            <MandateCaseCardNew onClick={() => navigate('/portal/akquise-manager/mandate')} />
-          </WidgetCell>
-        </WidgetGrid>
-      )}
-
-      {/* ── Sektion B: Neue Aufträge (Pending) ── */}
-      <div className="space-y-3">
-        <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-          Neue Aufträge
-        </h3>
-        {pendingMandates && pendingMandates.length > 0 ? (
-          <WidgetGrid>
-            {pendingMandates.map(mandate => (
-              <WidgetCell key={mandate.id}>
-                <MandateCaseCard
-                  mandate={mandate}
-                  onClick={() => navigate(`/portal/akquise-manager/mandate/${mandate.id}`)}
-                />
-              </WidgetCell>
-            ))}
-          </WidgetGrid>
-        ) : (
-          <WidgetGrid>
-            <WidgetCell>
-              <Card className="glass-card border-dashed border-2 h-full flex flex-col items-center justify-center opacity-50">
-                <CardContent className="p-4 flex flex-col items-center justify-center h-full text-center gap-2">
-                  <div className="w-10 h-10 rounded-xl bg-muted/50 flex items-center justify-center">
-                    <Inbox className="h-5 w-5 text-muted-foreground" />
-                  </div>
-                  <p className="text-sm font-medium text-muted-foreground">Keine neuen Aufträge</p>
-                  <p className="text-[10px] text-muted-foreground">Neue Mandate erscheinen hier nach Zuweisung</p>
-                </CardContent>
-              </Card>
-            </WidgetCell>
-          </WidgetGrid>
-        )}
-      </div>
-
-      {/* ── Visitenkarte + KPI-Ticker (unten) ── */}
+      {/* ── DASHBOARD_HEADER: Visitenkarte + KPI-Ticker (OBEN) ── */}
       <div className={DESIGN.DASHBOARD_HEADER.GRID}>
         {/* Visitenkarte */}
         <Card className={cn("overflow-hidden border-0 shadow-card", DESIGN.DASHBOARD_HEADER.CARD_HEIGHT)}>
@@ -285,6 +229,57 @@ export default function AkquiseDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* ── Sektion A: Aktive Mandate ── */}
+      {activeMandates && activeMandates.length > 0 ? (
+        <WidgetGrid>
+          <WidgetCell>
+            <MandateCaseCardNew onClick={() => navigate('/portal/akquise-manager/mandate')} />
+          </WidgetCell>
+          {activeMandates.map(mandate => (
+            <WidgetCell key={mandate.id}>
+              <MandateCaseCard
+                mandate={mandate}
+                onClick={() => navigate(`/portal/akquise-manager/mandate/${mandate.id}`)}
+              />
+            </WidgetCell>
+          ))}
+        </WidgetGrid>
+      ) : (
+        <WidgetGrid>
+          <WidgetCell>
+            <MandateCaseCardNew onClick={() => navigate('/portal/akquise-manager/mandate')} />
+          </WidgetCell>
+        </WidgetGrid>
+      )}
+
+      {/* ── Pending Mandate ── */}
+      {pendingMandates && pendingMandates.length > 0 ? (
+        <WidgetGrid>
+          {pendingMandates.map(mandate => (
+            <WidgetCell key={mandate.id}>
+              <MandateCaseCard
+                mandate={mandate}
+                onClick={() => navigate(`/portal/akquise-manager/mandate/${mandate.id}`)}
+              />
+            </WidgetCell>
+          ))}
+        </WidgetGrid>
+      ) : (
+        <WidgetGrid>
+          <WidgetCell>
+            <Card className="glass-card border-dashed border-2 h-full flex flex-col items-center justify-center opacity-50">
+              <CardContent className="p-4 flex flex-col items-center justify-center h-full text-center gap-2">
+                <div className="w-10 h-10 rounded-xl bg-muted/50 flex items-center justify-center">
+                  <Inbox className="h-5 w-5 text-muted-foreground" />
+                </div>
+                <p className="text-sm font-medium text-muted-foreground">Keine neuen Aufträge</p>
+                <p className="text-[10px] text-muted-foreground">Neue Mandate erscheinen hier nach Zuweisung</p>
+              </CardContent>
+            </Card>
+          </WidgetCell>
+        </WidgetGrid>
+      )}
 
       {/* Edit Sheet */}
       <Sheet open={editOpen} onOpenChange={setEditOpen}>

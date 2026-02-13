@@ -5,6 +5,8 @@ import { useNavigate } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
+import { WidgetGrid } from '@/components/shared/WidgetGrid';
+import { WidgetCell } from '@/components/shared/WidgetCell';
 import { FinanceCaseCard, FinanceCaseCardPlaceholder } from '@/components/finanzierungsmanager/FinanceCaseCard';
 import type { FutureRoomCase } from '@/types/finance';
 
@@ -41,18 +43,21 @@ export default function FMArchiv({ cases, isLoading }: Props) {
         description={`${archivedCases.length} abgeschlossene Finanzierungsfälle.`}
       />
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+      <WidgetGrid>
         {archivedCases.map(c => (
-          <FinanceCaseCard
-            key={c.id}
-            caseData={c}
-            onClick={(requestId) => navigate(`/portal/finanzierungsmanager/faelle/${requestId}`)}
-          />
+          <WidgetCell key={c.id}>
+            <FinanceCaseCard
+              caseData={c}
+              onClick={(requestId) => navigate(`/portal/finanzierungsmanager/faelle/${requestId}`)}
+            />
+          </WidgetCell>
         ))}
         {archivedCases.length === 0 && (
-          <FinanceCaseCardPlaceholder label="Keine abgeschlossenen Fälle" />
+          <WidgetCell>
+            <FinanceCaseCardPlaceholder label="Keine abgeschlossenen Fälle" />
+          </WidgetCell>
         )}
-      </div>
+      </WidgetGrid>
     </PageShell>
   );
 }

@@ -30,6 +30,8 @@ import { LoadingState } from '@/components/shared/LoadingState';
 import { formatCurrency } from '@/lib/formatters';
 import { ProjectDeleteDialog, type DeletionProtocol } from '@/components/projekte/ProjectDeleteDialog';
 import { ProjectCard, ProjectCardPlaceholder } from '@/components/projekte/ProjectCard';
+import { WidgetGrid } from '@/components/shared/WidgetGrid';
+import { WidgetCell } from '@/components/shared/WidgetCell';
 import { CreateProjectDialog } from '@/components/projekte/CreateProjectDialog';
 import { isDemoMode, DEMO_PROJECT, DEMO_CALC } from '@/components/projekte/demoProjectData';
 import type { ProjectPortfolioRow } from '@/types/projekte';
@@ -358,14 +360,20 @@ export default function ProjekteDashboard() {
           {isLoadingPortfolio ? (
             <LoadingState />
           ) : (
-            <div className={DESIGN.WIDGET_GRID.FULL}>
+            <WidgetGrid>
               {/* Demo project is ALWAYS shown as first tile */}
-              <ProjectCard project={DEMO_PROJECT} isDemo />
+              <WidgetCell>
+                <ProjectCard project={DEMO_PROJECT} isDemo />
+              </WidgetCell>
               {portfolioRows.map((project) => (
-                <ProjectCard key={project.id} project={project} />
+                <WidgetCell key={project.id}>
+                  <ProjectCard project={project} />
+                </WidgetCell>
               ))}
-              <ProjectCardPlaceholder onClick={() => setCreateProjectOpen(true)} />
-            </div>
+              <WidgetCell>
+                <ProjectCardPlaceholder onClick={() => setCreateProjectOpen(true)} />
+              </WidgetCell>
+            </WidgetGrid>
           )}
         </CardContent>
       </Card>
