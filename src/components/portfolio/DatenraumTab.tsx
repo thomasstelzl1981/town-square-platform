@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -188,6 +188,17 @@ export function DatenraumTab({ propertyId, tenantId, propertyCode }: DatenraumTa
     }
   }, [handleDeleteDocument]);
 
+  // Re-parent: remove the property root node and promote its children to top-level
+  const displayNodes = useMemo(() => {
+    if (nodes.length === 0) return nodes;
+    const nodeIds = new Set(nodes.map(n => n.id));
+    const rootNode = nodes.find(n => !n.parent_id || !nodeIds.has(n.parent_id));
+    if (!rootNode) return nodes;
+    return nodes
+      .filter(n => n.id !== rootNode.id)
+      .map(n => n.parent_id === rootNode.id ? { ...n, parent_id: null } : n);
+  }, [nodes]);
+
   if (nodesLoading || linksLoading || docsLoading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -198,7 +209,7 @@ export function DatenraumTab({ propertyId, tenantId, propertyCode }: DatenraumTa
 
   return (
     <StorageFileManager
-      nodes={nodes}
+      nodes={displayNodes}
       documents={documents.filter(d => {
         const link = documentLinks.find(l => l.document_id === d.id);
         return selectedNodeId ? link?.node_id === selectedNodeId : true;
