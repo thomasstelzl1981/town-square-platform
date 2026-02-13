@@ -15,17 +15,15 @@ const MandatCreateWizardManager = lazy(() => import('./akquise-manager/MandatCre
 
 export default function AkquiseManagerPage() {
   return (
-    <div className="h-full overflow-auto">
-      <Routes>
-        <Route index element={<Navigate to="dashboard" replace />} />
-        <Route path="dashboard" element={<AkquiseDashboard />} />
-        <Route path="mandate/neu" element={<MandatCreateWizardManager />} />
-        <Route path="mandate/:mandateId" element={<AkquiseMandateDetail />} />
-        <Route path="objekteingang" element={<ObjekteingangList />} />
-        <Route path="objekteingang/:offerId" element={<ObjekteingangDetail />} />
-        <Route path="tools" element={<AkquiseTools />} />
-        <Route path="*" element={<Navigate to="/portal/akquise-manager" replace />} />
-      </Routes>
-    </div>
+    <Routes>
+      <Route index element={<Navigate to="dashboard" replace />} />
+      <Route path="dashboard" element={<AkquiseDashboard />} />
+      <Route path="mandate/neu" element={<MandatCreateWizardManager />} />
+      <Route path="mandate/:mandateId" element={<AkquiseMandateDetail />} />
+      <Route path="objekteingang" element={<ObjekteingangList />} />
+      <Route path="objekteingang/:offerId" element={<ObjekteingangDetail />} />
+      <Route path="tools" element={<AkquiseTools />} />
+      <Route path="*" element={<Navigate to="/portal/akquise-manager" replace />} />
+    </Routes>
   );
 }

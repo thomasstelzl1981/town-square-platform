@@ -19,7 +19,9 @@ const ARMSTRONG_STORAGE_KEY = 'kaufy_armstrong_enabled';
 export default function Kaufy2026Layout() {
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [pinVerified, setPinVerified] = useState(() => sessionStorage.getItem('kaufy_pin_verified') === 'true');
+  // PinGate: nur aktiv wenn VITE_KAUFY_PIN_GATE=true (Default: deaktiviert für Production)
+  const pinGateEnabled = import.meta.env.VITE_KAUFY_PIN_GATE === 'true';
+  const [pinVerified, setPinVerified] = useState(() => !pinGateEnabled || sessionStorage.getItem('kaufy_pin_verified') === 'true');
   
   // Armstrong toggle — default ON, persisted in localStorage
   const [armstrongEnabled, setArmstrongEnabled] = useState(() => {

@@ -122,8 +122,8 @@
           "title": "FortbildungPage hat PageShell + ModulePageHeader direkt in der Page — doppelt mit SubTabs",
           "description": "FortbildungPage wrapped seinen Content in PageShell + ModulePageHeader, während alle anderen Module dies den Tiles selbst überlassen. Dies führt dazu, dass der Header auch bei Tab-Wechsel stehen bleibt (gewünscht?), aber es ist inkonsistent mit dem Muster der anderen 20 Module.",
           "effort": "S",
-          "status": "open",
-          "fix": "Prüfen ob dies beabsichtigt ist (persistent header) oder in Tab-Level verschieben"
+          "status": "accepted",
+          "fix": "Persistent Header ist beabsichtigt für MOD-15 — einziges Modul mit übergreifendem Header. Pattern dokumentiert als Ausnahme (2026-02-13)"
         },
         {
           "id": "AUD-011",
@@ -133,8 +133,8 @@
           "title": "ServicesPage hat unnötigen Wrapper div mit flex/overflow — andere Module haben das nicht",
           "description": "ServicesPage wrapped in <div className='flex flex-col h-full'><div className='flex-1 overflow-auto'> — kein anderes Modul nutzt dieses Pattern. Kann zu Scroll-Problemen führen.",
           "effort": "XS",
-          "status": "open",
-          "fix": "Wrapper entfernen, Routes direkt zurückgeben wie alle anderen Module"
+          "status": "done",
+          "fix": "Wrapper entfernt — Routes direkt zurückgegeben (2026-02-13)"
         },
         {
           "id": "AUD-012",
@@ -144,8 +144,8 @@
           "title": "AkquiseManagerPage hat <div className='h-full overflow-auto'> Wrapper",
           "description": "Ähnlich wie MOD-16, inkonsistent mit dem Muster der anderen Module.",
           "effort": "XS",
-          "status": "open",
-          "fix": "Wrapper entfernen, Routes direkt zurückgeben"
+          "status": "done",
+          "fix": "Wrapper entfernt — Routes direkt zurückgegeben (2026-02-13)"
         },
         {
           "id": "AUD-013",
@@ -188,8 +188,8 @@
           "title": "PerspektivenKarten Links noch auf /kaufy2026/ Prefix — partial fix",
           "description": "Die Links in PerspektivenKarten wurden teilweise auf /website/kaufy/ migriert, aber evtl. existieren weitere Legacy-Links in Sub-Seiten (Vermieter, Verkäufer, Vertrieb).",
           "effort": "S",
-          "status": "partial",
-          "fix": "Alle Zone-3 Kaufy Komponenten auf /website/kaufy/ Prefix scannen"
+          "status": "done",
+          "fix": "Legacy-Link /kaufy2026/immobilien → /website/kaufy/immobilien in Kaufy2026Home.tsx migriert (2026-02-13)"
         },
         {
           "id": "AUD-017",
@@ -199,8 +199,8 @@
           "title": "KaufyPinGate noch aktiv — Zugangscode 4409 blockiert öffentlichen Zugang",
           "description": "Die Kaufy-Website hat einen PIN-Gate, der alle Besucher blockiert. Für Production muss dieser entfernt oder per Feature-Flag gesteuert werden.",
           "effort": "XS",
-          "status": "open",
-          "fix": "PIN-Gate als ENV-gesteuertes Feature-Flag umbauen"
+          "status": "done",
+          "fix": "PinGate ist jetzt ENV-gesteuert via VITE_KAUFY_PIN_GATE=true. Default: deaktiviert (2026-02-13)"
         },
         {
           "id": "AUD-018",
@@ -210,8 +210,8 @@
           "title": "Klassische Suche (Classic Tab) nicht getestet — evtl. gleiche Dark-Mode Probleme",
           "description": "Nur der Investment-Tab wurde visuell geprüft. Der Classic-Suche Tab hat eigene Inputs die wahrscheinlich die gleichen Dark-Mode-Interferenzen zeigen.",
           "effort": "S",
-          "status": "open",
-          "fix": "Classic-Tab Inputs mit gleichen Inline-Styles versehen"
+          "status": "done",
+          "fix": "Classic-Tab Inputs mit expliziten Inline-Styles für Light-Mode versehen (2026-02-13)"
         }
       ]
     },

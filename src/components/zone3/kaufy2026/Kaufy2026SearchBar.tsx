@@ -137,27 +137,29 @@ export function Kaufy2026SearchBar({
             ) : (
               <>
                 {/* City Input */}
-                <div className="kaufy2026-inline-input">
-                  <label>Stadt / PLZ</label>
+                <div className="kaufy2026-inline-input" style={{ background: '#ffffff' }}>
+                  <label style={{ color: 'hsl(215, 16%, 47%)' }}>Stadt / PLZ</label>
                   <Input
                     type="text"
                     value={city}
                     onChange={(e) => setCity(e.target.value)}
                     className="border-0 bg-transparent p-0 h-auto font-semibold text-[15px] w-24"
                     placeholder="Berlin..."
+                    style={{ background: 'transparent', color: 'hsl(220, 20%, 10%)', colorScheme: 'light' }}
                   />
                 </div>
 
                 {/* Max Price */}
-                <div className="kaufy2026-inline-input">
-                  <label>Max. Preis</label>
+                <div className="kaufy2026-inline-input" style={{ background: '#ffffff' }}>
+                  <label style={{ color: 'hsl(215, 16%, 47%)' }}>Max. Preis</label>
                   <input
                     type="number"
                     value={maxPrice || ''}
                     onChange={(e) => setMaxPrice(e.target.value ? Number(e.target.value) : null)}
                     placeholder="∞"
+                    style={{ background: 'transparent', color: 'hsl(220, 20%, 10%)', colorScheme: 'light' }}
                   />
-                  <span>€</span>
+                  <span style={{ color: 'hsl(215, 16%, 47%)' }}>€</span>
                 </div>
               </>
             )}
