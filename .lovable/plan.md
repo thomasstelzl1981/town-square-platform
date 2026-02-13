@@ -1,52 +1,55 @@
 
-# Reparatur: Portfolio Demo-Daten und Duplikate bereinigen
 
-## Analyse-Ergebnis
+# Reparatur: Demo-Daten bei deaktiviertem Demo-Toggle ausblenden
 
-### Problem 1: Doppelte Einheiten (6 statt 3)
-Die DB enthaelt fuer jede der 3 Immobilien (Berlin, Muenchen, Hamburg) jeweils **zwei** Units:
-- Eine "MAIN"-Unit (erzeugt durch einen frueheren Insert mit zufaelliger UUID)
-- Eine "WE-xxx"-Unit (erzeugt durch die letzte Seed-Migration mit fester UUID)
+## Problem
 
-Dadurch zeigt die Tabelle 6 Zeilen statt 3. Die "MAIN"-Units haben keine Leases und keine Miete.
+Die 3 Demo-Immobilien (Berlin, Muenchen, Hamburg) sind echte DB-Eintraege mit dem gleichen `tenant_id` wie die Organisation. Es gibt kein Merkmal, um sie von "echten" Nutzerdaten zu unterscheiden. Wenn der Demo-Toggle (GP-PORTFOLIO) deaktiviert wird, zeigt das Portfolio trotzdem alle 3 Objekte — es sollte aber leer sein.
 
-### Problem 2: Demo-Akte nutzt `__demo__` IDs
-Das Demo-Widget (Vermietereinheit Berlin) oeffnet eine `UnitDossierView` mit hartcodierten `propertyId: '__demo__'`, `unitId: '__demo__'`, `tenantId: '__demo__'`. Diese IDs haben keinen Bezug zu den echten DB-Eintraegen. Wenn man auf die Demo-Akte klickt und dann z.B. zur Detailseite navigieren will, gibt es keinen Treffer.
+## Ursache
 
-### Problem 3: Ladezustand
-Die Seite laedt korrekt, aber mit einer kurzen Verzoegerung (ca. 3-5 Sekunden). Die Daten (KPIs, Charts, EUeR, Tabelle, Investmentkalkulation) werden alle korrekt angezeigt.
+Die Supabase-Query in `PortfolioTab.tsx` (Zeile 162) laedt **alle** Units/Properties fuer den `activeTenantId`. Es gibt keine Spalte `is_demo` oder aehnliches, um Demo-Daten zu filtern.
 
-## Loesung
+## Loesung: `is_demo`-Flag auf `properties`-Tabelle
 
-### Schritt 1: Doppelte MAIN-Units aus der DB entfernen (SQL-Migration)
+### Schritt 1: DB-Migration
 
-Die 3 ueberfluessigen "MAIN"-Units loeschen (zufaellige UUIDs: `3fef3f17`, `491ffdb9`, `30669ba3`). Diese haben keine Leases und sind Duplikate.
+Neue Spalte `is_demo` (boolean, default false) auf der `properties`-Tabelle:
 
 ```text
-DELETE FROM units WHERE id IN (
-  '3fef3f17-a244-4ec3-a58d-c71645d8e6a7',
-  '491ffdb9-2005-45fe-9393-52cfc0e98bf2',
-  '30669ba3-ccf2-4f0e-80f1-712a09e7472d'
+ALTER TABLE properties ADD COLUMN is_demo boolean NOT NULL DEFAULT false;
+
+UPDATE properties SET is_demo = true WHERE id IN (
+  'd0000000-0000-4000-a000-000000000001',
+  'd0000000-0000-4000-a000-000000000002',
+  'd0000000-0000-4000-a000-000000000003'
 );
 ```
 
-### Schritt 2: Demo-Akte auf echte DB-IDs umstellen
+### Schritt 2: Query-Filter in PortfolioTab.tsx
 
-In `src/pages/portal/immobilien/PortfolioTab.tsx`:
+In der Units-Query (Zeile 183-184) eine Bedingung hinzufuegen:
 
-Die `DEMO_DOSSIER_DATA`-Konstante (Zeilen 664-750) bekommt die echten IDs aus der DB:
-- `propertyId: 'd0000000-0000-4000-a000-000000000001'` (Berlin)
-- `unitId: 'd0000000-0000-4000-b000-000000000001'` (WE-B01)
-- `tenantId: 'a0000000-0000-4000-a000-000000000001'`
+- Wenn `demoEnabled` = true: keine Einschraenkung (alle laden)
+- Wenn `demoEnabled` = false: `.eq('properties.is_demo', false)` — nur echte Daten laden
 
-Ebenso wird `selectedDemoId` von `'__demo__'` auf die echte Property-ID umgestellt, damit der Klick auf das Demo-Widget die gleiche ID nutzt wie die DB-Eintraege.
+Da `demoEnabled` sich aendern kann, muss es in den `queryKey` aufgenommen werden, damit React Query bei Toggle-Wechsel neu laedt.
+
+Konkret:
+- `queryKey` aendern zu: `['portfolio-units-annual', activeTenantId, demoEnabled]`
+- In der Query: `if (!demoEnabled) query = query.eq('properties.is_demo', false);`
+- Gleiche Logik fuer die `loans`-Query (Zeile ca. 230)
+
+### Schritt 3: Demo-Widget-Sichtbarkeit
+
+Das Demo-Widget (Zeile 767) ist bereits korrekt hinter `demoEnabled` geschuetzt. Keine Aenderung noetig.
+
+### Ergebnis
+
+- Demo AN: Portfolio zeigt alle 3 Objekte + Demo-Widget + Charts + Tabelle
+- Demo AUS: Portfolio ist leer (leerer Zustand, "Noch keine Immobilien"), kein Demo-Widget
+- Sobald echte Nutzerdaten angelegt werden, erscheinen diese unabhaengig vom Demo-Toggle
 
 ### Betroffene Dateien
-1. **DB-Migration**: Loeschen der 3 doppelten MAIN-Units
-2. **`src/pages/portal/immobilien/PortfolioTab.tsx`**: Demo-IDs auf echte DB-UUIDs aendern
-
-### Ergebnis nach Reparatur
-- Tabelle zeigt **3 Einheiten** (WE-B01 Berlin, WE-M01 Muenchen, WE-H01 Hamburg)
-- KPIs zeigen korrekte Werte (3 Einheiten, 995.000 EUR Verkehrswert)
-- Demo-Widget oeffnet eine Akte mit echten DB-IDs
-- Klick auf Tabellenzeile navigiert zur Immobilienakte mit korrekter Property-ID
+1. **DB-Migration**: `ALTER TABLE properties ADD COLUMN is_demo`
+2. **`src/pages/portal/immobilien/PortfolioTab.tsx`**: Query-Filter + queryKey erweitern
