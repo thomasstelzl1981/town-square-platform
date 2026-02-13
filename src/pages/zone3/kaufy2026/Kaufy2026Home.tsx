@@ -310,7 +310,7 @@ export default function Kaufy2026Home() {
                   key={listing.listing_id}
                   listing={listing}
                   metrics={metricsCache[listing.listing_id] || null}
-                  linkPrefix="/kaufy2026/immobilien"
+                  linkPrefix="/website/kaufy/immobilien"
                   showProvision={false}
                 />
               ))}
