@@ -6,18 +6,21 @@ import { useState, useCallback } from 'react';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { ConsumerLoanWidgets } from '@/components/privatkredit/ConsumerLoanWidgets';
+import { BankExamplesCard } from '@/components/privatkredit/BankExamplesCard';
 import { EmploymentGate } from '@/components/privatkredit/EmploymentGate';
 import { LoanCalculator } from '@/components/privatkredit/LoanCalculator';
 import { ApplicationPreview } from '@/components/privatkredit/ApplicationPreview';
 import { DocumentChecklist } from '@/components/privatkredit/DocumentChecklist';
 import { SubmitSection } from '@/components/privatkredit/SubmitSection';
-import type { MockOffer } from '@/hooks/useConsumerLoan';
+import { EMPTY_FORM_DATA } from '@/hooks/useConsumerLoan';
+import type { MockOffer, ConsumerLoanFormData } from '@/hooks/useConsumerLoan';
 
 export default function PrivatkreditTab() {
   const [employmentStatus, setEmploymentStatus] = useState('employed');
   const [amount, setAmount] = useState(0);
   const [term, setTerm] = useState(0);
   const [selectedOffer, setSelectedOffer] = useState<MockOffer | null>(null);
+  const [formData, setFormData] = useState<ConsumerLoanFormData>(EMPTY_FORM_DATA);
   const [consentData, setConsentData] = useState(false);
   const [consentCredit, setConsentCredit] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -55,6 +58,9 @@ export default function PrivatkreditTab() {
       {/* Widget-Leiste: Existing cases + CTA */}
       <ConsumerLoanWidgets />
 
+      {/* Markt-Beispiele */}
+      <BankExamplesCard />
+
       {/* 1. Employment Gate */}
       <EmploymentGate value={employmentStatus} onChange={setEmploymentStatus} />
 
@@ -69,8 +75,12 @@ export default function PrivatkreditTab() {
         onSelectOffer={handleSelectOffer}
       />
 
-      {/* 3. Application Preview (from Selbstauskunft) */}
-      <ApplicationPreview disabled={isSelfEmployed} />
+      {/* 3. Editierbares Antragsformular */}
+      <ApplicationPreview
+        disabled={isSelfEmployed}
+        formData={formData}
+        onFormDataChange={setFormData}
+      />
 
       {/* 4. Document Checklist */}
       <DocumentChecklist disabled={isSelfEmployed} />

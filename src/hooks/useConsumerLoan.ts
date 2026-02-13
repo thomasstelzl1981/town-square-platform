@@ -35,6 +35,35 @@ export interface MockOffer {
   recommended: boolean;
 }
 
+export interface ConsumerLoanFormData {
+  first_name: string;
+  last_name: string;
+  birth_date: string;
+  salutation: string;
+  address_street: string;
+  address_postal_code: string;
+  address_city: string;
+  email: string;
+  phone: string;
+  nationality: string;
+  employer_name: string;
+  employed_since: string;
+  contract_type: string;
+  position: string;
+  net_income_monthly: string;
+  current_rent_monthly: string;
+  marital_status: string;
+  children_count: string;
+}
+
+export const EMPTY_FORM_DATA: ConsumerLoanFormData = {
+  first_name: '', last_name: '', birth_date: '', salutation: '',
+  address_street: '', address_postal_code: '', address_city: '',
+  email: '', phone: '', nationality: '',
+  employer_name: '', employed_since: '', contract_type: '', position: '',
+  net_income_monthly: '', current_rent_monthly: '', marital_status: '', children_count: '',
+};
+
 const QUERY_KEY = ['consumer-loan-case'];
 
 // ── Query: Load current draft case ──
@@ -112,14 +141,14 @@ export function useSubmitConsumerLoan() {
 
 // ── Mock Offer Calculator ──
 const MOCK_BANKS = [
-  { name: 'ING', minRate: 2.99, maxRate: 4.19 },
-  { name: 'DKB', minRate: 2.89, maxRate: 3.99 },
-  { name: 'Sparkasse', minRate: 3.29, maxRate: 4.49 },
-  { name: 'Deutsche Bank', minRate: 3.49, maxRate: 4.69 },
-  { name: 'Commerzbank', minRate: 3.59, maxRate: 4.79 },
-  { name: 'HypoVereinsbank', minRate: 3.39, maxRate: 4.59 },
-  { name: 'Targobank', minRate: 3.99, maxRate: 5.49 },
-  { name: 'Santander', minRate: 4.19, maxRate: 5.99 },
+  { name: 'SWK Bank', minRate: 5.49, maxRate: 6.29 },
+  { name: 'SKG Bank', minRate: 5.59, maxRate: 6.39 },
+  { name: 'DKB', minRate: 5.99, maxRate: 6.79 },
+  { name: 'ING', minRate: 6.19, maxRate: 6.99 },
+  { name: 'Targobank', minRate: 6.59, maxRate: 7.49 },
+  { name: 'Commerzbank', minRate: 7.09, maxRate: 7.99 },
+  { name: 'Postbank', minRate: 6.69, maxRate: 7.49 },
+  { name: 'Santander', minRate: 7.59, maxRate: 8.49 },
 ];
 
 export function calculateMockOffers(amount: number, termMonths: number): MockOffer[] {
