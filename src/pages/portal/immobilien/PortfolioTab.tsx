@@ -25,7 +25,7 @@ import {
 } from '@/components/shared/PropertyTable';
 import { 
   Loader2, Building2, TrendingUp, Wallet, PiggyBank, Percent, 
-  Plus, Upload, Eye, Calculator, Table2, ChevronDown, Settings2
+  Plus, Upload, Eye, Calculator, Table2, ChevronDown
 } from 'lucide-react';
 import { 
   LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, 
@@ -37,8 +37,7 @@ import {
 import { ExcelImportDialog } from '@/components/portfolio/ExcelImportDialog';
 import { CreatePropertyDialog } from '@/components/portfolio/CreatePropertyDialog';
 import { PortfolioSummaryModal } from '@/components/portfolio/PortfolioSummaryModal';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { ContextManager } from '@/components/immobilien/ContextManager';
+import { CreateContextDialog } from '@/components/shared/CreateContextDialog';
 
 interface LandlordContext {
   id: string;
@@ -100,7 +99,7 @@ export function PortfolioTab() {
   const [showAllYears, setShowAllYears] = useState(false);
   // Auto-open create dialog if ?create=1 is present
   const [showCreateDialog, setShowCreateDialog] = useState(() => searchParams.get('create') === '1');
-  const [showContextManager, setShowContextManager] = useState(false);
+  const [showCreateContextDialog, setShowCreateContextDialog] = useState(false);
   
   // FIX: Clear the create param via useEffect (not useState side-effect)
   useEffect(() => {
@@ -723,7 +722,7 @@ export function PortfolioTab() {
                   >
                     <div>
                       <WidgetHeader 
-                        icon={ctx.context_type === 'PRIVATE' ? Building2 : Building2} 
+                        icon={Building2} 
                         title={ctx.name} 
                       />
                       <div className="mt-4 space-y-2">
@@ -755,28 +754,35 @@ export function PortfolioTab() {
                 </WidgetCell>
               );
             })}
+
+            {/* Widget 3: Neue Vermietereinheit anlegen (CTA) */}
+            <WidgetCell>
+              <button
+                onClick={() => setShowCreateContextDialog(true)}
+                className={cn(
+                  "w-full h-full flex flex-col items-center justify-center gap-4 p-5 rounded-xl border border-dashed text-center transition-all",
+                  DESIGN.CARD.BASE,
+                  "hover:border-primary/50 hover:shadow-md"
+                )}
+              >
+                <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                  <Plus className="h-6 w-6 text-primary" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold">Neue Vermietereinheit</h3>
+                  <p className={cn(DESIGN.TYPOGRAPHY.LABEL, 'mt-1')}>anlegen</p>
+                </div>
+              </button>
+            </WidgetCell>
           </WidgetGrid>
-
-          {/* Action buttons below grid */}
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowContextManager(!showContextManager)}
-            >
-              <Settings2 className="h-4 w-4 mr-1.5" />
-              Verwalten
-            </Button>
-          </div>
-
-          {/* Collapsible Context Manager Panel */}
-          <Collapsible open={showContextManager} onOpenChange={setShowContextManager}>
-            <CollapsibleContent className="pt-2">
-              <ContextManager />
-            </CollapsibleContent>
-          </Collapsible>
         </div>
       )}
+
+      {/* CreateContextDialog */}
+      <CreateContextDialog 
+        open={showCreateContextDialog} 
+        onOpenChange={setShowCreateContextDialog} 
+      />
 
       {/* Updated Portfolio Header - shows selected context name */}
       <div className="flex items-center justify-between">
