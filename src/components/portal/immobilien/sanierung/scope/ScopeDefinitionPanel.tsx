@@ -1,15 +1,19 @@
+/**
+ * ScopeDefinitionPanel — Slimmed down: no own header, no back/next navigation
+ * Renders description input + AI generator (left) and cost estimate (right) in FORM_GRID,
+ * then full-width LV table and scope description below.
+ */
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { DictationButton } from '@/components/shared/DictationButton';
-import { Separator } from '@/components/ui/separator';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Bot, Upload, FileText, Sparkles,
-  ChevronLeft, ChevronRight, ChevronDown, Save, Loader2
+  ChevronDown, Save, Loader2
 } from 'lucide-react';
 import { ServiceCase, useUpdateServiceCase } from '@/hooks/useServiceCases';
 import { LineItemsEditor, LineItem } from './LineItemsEditor';
@@ -17,23 +21,20 @@ import { CostEstimateCard } from './CostEstimateCard';
 import { DMSDocumentSelector, SelectedDocument } from './DMSDocumentSelector';
 import { RoomAnalysisDisplay, RoomAnalysis } from './RoomAnalysisDisplay';
 import { toast } from 'sonner';
+import { DESIGN } from '@/config/designManifest';
 
 interface ScopeDefinitionPanelProps {
   serviceCase: ServiceCase;
-  onBack?: () => void;
-  onNext?: () => void;
 }
 
-export function ScopeDefinitionPanel({ serviceCase, onBack, onNext }: ScopeDefinitionPanelProps) {
+export function ScopeDefinitionPanel({ serviceCase }: ScopeDefinitionPanelProps) {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isGeneratingFromDescription, setIsGeneratingFromDescription] = useState(false);
   const [isEstimating, setIsEstimating] = useState(false);
   const [showMoreOptions, setShowMoreOptions] = useState(false);
   
-  // Editable user description (Block 1)
   const [userDescription, setUserDescription] = useState(serviceCase.description || '');
   
-  // Parse stored data with proper typing
   const parseLineItems = (items: unknown): LineItem[] => {
     if (!Array.isArray(items)) return [];
     return items.filter((item): item is LineItem => 
@@ -50,7 +51,6 @@ export function ScopeDefinitionPanel({ serviceCase, onBack, onNext }: ScopeDefin
     );
   };
   
-  // Scope data state
   const [lineItems, setLineItems] = useState<LineItem[]>(
     parseLineItems(serviceCase.scope_line_items)
   );
@@ -60,7 +60,6 @@ export function ScopeDefinitionPanel({ serviceCase, onBack, onNext }: ScopeDefin
   );
   const [roomAnalysis, setRoomAnalysis] = useState<RoomAnalysis | null>(null);
   
-  // Cost estimates
   const [costEstimates, setCostEstimates] = useState<{
     min: number | null;
     mid: number | null;
@@ -72,7 +71,6 @@ export function ScopeDefinitionPanel({ serviceCase, onBack, onNext }: ScopeDefin
   });
   
   const updateCase = useUpdateServiceCase();
-  
   const hasLineItems = lineItems.length > 0;
 
   // ========== Generate from description ==========
@@ -122,7 +120,6 @@ export function ScopeDefinitionPanel({ serviceCase, onBack, onNext }: ScopeDefin
         });
       }
       
-      // Save to DB
       await updateCase.mutateAsync({
         id: serviceCase.id,
         description: userDescription,
@@ -274,134 +271,91 @@ export function ScopeDefinitionPanel({ serviceCase, onBack, onNext }: ScopeDefin
       console.error('Save error:', error);
     }
   };
-  
-  // Handle finalize scope
-  const handleFinalize = async () => {
-    if (lineItems.length === 0 && !scopeDescription) {
-      toast.error('Bitte definieren Sie den Leistungsumfang');
-      return;
-    }
-    
-    try {
-      await updateCase.mutateAsync({
-        id: serviceCase.id,
-        scope_status: 'finalized',
-        status: 'scope_finalized',
-        description: userDescription,
-        scope_description: scopeDescription,
-        scope_line_items: lineItems as unknown as Record<string, unknown>[],
-        scope_attachments: selectedDocuments as unknown as Record<string, unknown>[],
-      });
-      toast.success('Leistungsumfang finalisiert');
-      onNext?.();
-    } catch (error) {
-      console.error('Finalize error:', error);
-    }
-  };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h2 className="text-lg font-semibold">Leistungsumfang definieren</h2>
-        <p className="text-sm text-muted-foreground mt-0.5">
-          {serviceCase.property?.address}{serviceCase.unit ? ` · ${serviceCase.unit.code || serviceCase.unit.unit_number}` : ''}
-        </p>
-      </div>
-      
-      {/* ========== BLOCK 1: Freitext-Eingabe (editierbar) ========== */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Was soll saniert werden?</CardTitle>
-          <CardDescription>Beschreiben Sie das Vorhaben in eigenen Worten — die KI erstellt daraus ein Leistungsverzeichnis</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex items-center justify-end">
+    <div className={DESIGN.SPACING.SECTION}>
+      {/* ── Row 1: Description + Cost Estimate (2-col) ── */}
+      <div className={DESIGN.FORM_GRID.FULL}>
+        {/* Left: Description + AI generator */}
+        <div className={DESIGN.SPACING.CARD}>
+          <div className="flex items-center justify-between">
+            <h4 className={DESIGN.TYPOGRAPHY.CARD_TITLE}>Was soll saniert werden?</h4>
             <DictationButton onTranscript={(text) => setUserDescription(prev => prev + (prev ? ' ' : '') + text)} />
           </div>
           <Textarea
             value={userDescription}
             onChange={(e) => setUserDescription(e.target.value)}
-            placeholder="z.B. Bad komplett sanieren: neue Fliesen, neue Armaturen, Dusche statt Wanne, Elektrik erneuern..."
+            placeholder="z.B. Bad komplett sanieren: neue Fliesen, neue Armaturen, Dusche statt Wanne..."
             rows={4}
           />
-          <div className="flex items-center gap-3">
-            {isGeneratingFromDescription ? (
-              <div className="flex items-center gap-3 p-4 rounded-lg bg-primary/5 border border-primary/10 w-full">
-                <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                <div>
-                  <p className="text-sm font-medium">KI erstellt Leistungsverzeichnis...</p>
-                  <p className="text-xs text-muted-foreground">Positionen, Beschreibung und Kostenschätzung werden generiert</p>
-                </div>
+          {isGeneratingFromDescription ? (
+            <div className="flex items-center gap-3 p-3 rounded-lg bg-primary/5 border border-primary/10">
+              <Loader2 className="h-4 w-4 animate-spin text-primary" />
+              <div>
+                <p className="text-sm font-medium">KI erstellt Leistungsverzeichnis...</p>
+                <p className={DESIGN.TYPOGRAPHY.HINT}>Positionen und Kostenschätzung werden generiert</p>
               </div>
-            ) : hasLineItems ? (
-              <Button variant="outline" onClick={handleGenerateFromDescription} disabled={!userDescription.trim()}>
-                <Sparkles className="mr-2 h-4 w-4" />
-                Erneut generieren
-              </Button>
-            ) : (
-              <Button size="lg" onClick={handleGenerateFromDescription} disabled={!userDescription.trim()} className="w-full sm:w-auto">
-                <Sparkles className="mr-2 h-4 w-4" />
-                Leistungsverzeichnis generieren
-              </Button>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* ========== BLOCK 2: Beschreibung für Ausschreibung (KI-generiert, editierbar) ========== */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Beschreibung für Ausschreibung</CardTitle>
-          <CardDescription>Professionelle Beschreibung — wird von der KI erstellt und kann angepasst werden</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-end mb-1">
-            <DictationButton onTranscript={(text) => setScopeDescription(prev => prev + (prev ? ' ' : '') + text)} />
-          </div>
-          <Textarea
-            value={scopeDescription}
-            onChange={(e) => setScopeDescription(e.target.value)}
-            placeholder="Wird automatisch aus dem Leistungsverzeichnis generiert..."
-            rows={6}
-          />
-          <div className="flex justify-end mt-2">
-            <Button variant="ghost" size="sm" disabled={!hasLineItems}>
-              <Sparkles className="mr-2 h-3 w-3" />
-              Aus LV generieren
+            </div>
+          ) : hasLineItems ? (
+            <Button variant="outline" size="sm" onClick={handleGenerateFromDescription} disabled={!userDescription.trim()}>
+              <Sparkles className="mr-2 h-3.5 w-3.5" />
+              Erneut generieren
             </Button>
-          </div>
-        </CardContent>
-      </Card>
+          ) : (
+            <Button onClick={handleGenerateFromDescription} disabled={!userDescription.trim()}>
+              <Sparkles className="mr-2 h-4 w-4" />
+              Leistungsverzeichnis generieren
+            </Button>
+          )}
+        </div>
 
-      {/* ========== BLOCK 3: Room Analysis (if available) ========== */}
+        {/* Right: Cost Estimate */}
+        <CostEstimateCard
+          min={costEstimates.min}
+          mid={costEstimates.mid}
+          max={costEstimates.max}
+          onEstimate={handleEstimateCosts}
+          isEstimating={isEstimating}
+          hasLineItems={hasLineItems}
+        />
+      </div>
+
+      {/* ── Room Analysis (if available) ── */}
       {roomAnalysis && <RoomAnalysisDisplay analysis={roomAnalysis} />}
       
-      {/* ========== BLOCK 3: Leistungsverzeichnis ========== */}
+      {/* ── Full-width: Leistungsverzeichnis ── */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center justify-between">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-semibold flex items-center justify-between">
             <span>Leistungsverzeichnis</span>
             {hasLineItems && <Badge variant="secondary">{lineItems.length} Positionen</Badge>}
           </CardTitle>
-          <CardDescription>Bearbeiten Sie die Positionen oder fügen Sie weitere hinzu</CardDescription>
         </CardHeader>
         <CardContent>
           <LineItemsEditor items={lineItems} onChange={setLineItems} category={serviceCase.category} />
         </CardContent>
       </Card>
-      
-      {/* ========== BLOCK 4: Kostenschätzung ========== */}
-      <CostEstimateCard
-        min={costEstimates.min}
-        mid={costEstimates.mid}
-        max={costEstimates.max}
-        onEstimate={handleEstimateCosts}
-        isEstimating={isEstimating}
-        hasLineItems={hasLineItems}
-      />
 
-      {/* ========== BLOCK 5: Weitere Optionen (DMS/Upload) — collapsible ========== */}
+      {/* ── Full-width: Beschreibung für Ausschreibung ── */}
+      <Card>
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-sm font-semibold">Beschreibung für Ausschreibung</CardTitle>
+            <DictationButton onTranscript={(text) => setScopeDescription(prev => prev + (prev ? ' ' : '') + text)} />
+          </div>
+          <CardDescription className={DESIGN.TYPOGRAPHY.HINT}>Professionelle Beschreibung — wird von der KI erstellt und kann angepasst werden</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Textarea
+            value={scopeDescription}
+            onChange={(e) => setScopeDescription(e.target.value)}
+            placeholder="Wird automatisch aus dem Leistungsverzeichnis generiert..."
+            rows={5}
+          />
+        </CardContent>
+      </Card>
+
+      {/* ── Weitere Optionen (DMS/Upload) — collapsible ── */}
       <Collapsible open={showMoreOptions} onOpenChange={setShowMoreOptions}>
         <CollapsibleTrigger asChild>
           <Button variant="ghost" size="sm" className="text-muted-foreground gap-2">
@@ -430,7 +384,7 @@ export function ScopeDefinitionPanel({ serviceCase, onBack, onNext }: ScopeDefin
                       <Sparkles className="h-5 w-5 text-primary mt-0.5" />
                       <div className="space-y-1">
                         <p className="font-medium">KI analysiert Ihre Unterlagen</p>
-                        <p className="text-sm text-muted-foreground">
+                        <p className={DESIGN.TYPOGRAPHY.MUTED}>
                           Wählen Sie Grundrisse und Fotos aus dem DMS. Die KI erkennt Räume, 
                           Ausstattung und Zustand und erstellt ein strukturiertes Leistungsverzeichnis.
                         </p>
@@ -469,7 +423,7 @@ export function ScopeDefinitionPanel({ serviceCase, onBack, onNext }: ScopeDefin
                       <FileText className="h-5 w-5 text-primary mt-0.5" />
                       <div className="space-y-1">
                         <p className="font-medium">Externes Leistungsverzeichnis</p>
-                        <p className="text-sm text-muted-foreground">
+                        <p className={DESIGN.TYPOGRAPHY.MUTED}>
                           Laden Sie ein vorhandenes LV als PDF hoch.
                         </p>
                       </div>
@@ -479,7 +433,7 @@ export function ScopeDefinitionPanel({ serviceCase, onBack, onNext }: ScopeDefin
                   <div className="border-2 border-dashed rounded-lg p-8 text-center">
                     <Upload className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
                     <p className="font-medium">PDF oder Excel hier ablegen</p>
-                    <p className="text-sm text-muted-foreground mt-1">oder klicken zum Auswählen</p>
+                    <p className={DESIGN.TYPOGRAPHY.HINT + ' mt-1'}>oder klicken zum Auswählen</p>
                     <Button variant="outline" className="mt-4">Datei auswählen</Button>
                   </div>
                 </TabsContent>
@@ -489,23 +443,12 @@ export function ScopeDefinitionPanel({ serviceCase, onBack, onNext }: ScopeDefin
         </CollapsibleContent>
       </Collapsible>
       
-      {/* ========== BLOCK 6: Aktions-Leiste ========== */}
-      <Separator />
-      <div className="flex items-center justify-between">
-        <Button variant="ghost" onClick={onBack}>
-          <ChevronLeft className="mr-2 h-4 w-4" />
-          Zurück zu Grunddaten
+      {/* ── Save Button ── */}
+      <div className="flex justify-end">
+        <Button variant="outline" onClick={handleSave} disabled={updateCase.isPending}>
+          <Save className="mr-2 h-4 w-4" />
+          Speichern
         </Button>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={handleSave} disabled={updateCase.isPending}>
-            <Save className="mr-2 h-4 w-4" />
-            Speichern
-          </Button>
-          <Button onClick={handleFinalize} disabled={updateCase.isPending}>
-            Weiter zu Dienstleister
-            <ChevronRight className="ml-2 h-4 w-4" />
-          </Button>
-        </div>
       </div>
     </div>
   );

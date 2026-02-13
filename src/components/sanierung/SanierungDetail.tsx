@@ -1,16 +1,15 @@
 /**
  * SanierungDetail — Continuous vertical Akte for a single renovation case
- * Replaces the old inline Collapsible with a full-page detail view.
+ * CI-konform: SectionCard, FORM_GRID, SPACING.SECTION
  */
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Separator } from '@/components/ui/separator';
-import { ArrowLeft, HardHat, Wrench, Zap, Paintbrush, Home, Square, Flame, Package, Building2, ClipboardList } from 'lucide-react';
+import { X, HardHat, Wrench, Zap, Paintbrush, Home, Square, Flame, Package, Building2, ClipboardList, Search, Mail, BarChart3, Save } from 'lucide-react';
 import { PageShell } from '@/components/shared/PageShell';
+import { SectionCard } from '@/components/shared/SectionCard';
 import { SanierungStepper } from './SanierungStepper';
 import { ServiceCaseStatusBadge } from '@/components/portal/immobilien/sanierung/ServiceCaseStatusBadge';
 import { ScopeDefinitionPanel } from '@/components/portal/immobilien/sanierung/scope/ScopeDefinitionPanel';
@@ -18,9 +17,7 @@ import { ProviderSearchPanel, type SelectedProvider } from '@/components/portal/
 import { TenderDraftPanel } from '@/components/portal/immobilien/sanierung/tender';
 import { OfferComparisonPanel } from '@/components/portal/immobilien/sanierung/offers';
 import { useServiceCases, type ServiceCaseCategory } from '@/hooks/useServiceCases';
-import { formatCurrency } from '@/lib/formatters';
-import { format } from 'date-fns';
-import { de } from 'date-fns/locale';
+import { DESIGN } from '@/config/designManifest';
 
 const CATEGORY_ICONS: Record<ServiceCaseCategory, React.ComponentType<{ className?: string }>> = {
   sanitaer: Wrench, elektro: Zap, maler: Paintbrush, dach: Home,
@@ -60,21 +57,21 @@ function SanierungDetailInner({ caseId, onClose, wrapInShell }: { caseId: string
 
   if (isLoading) {
     const content = (
-      <>
+      <div className={DESIGN.SPACING.SECTION}>
         <Skeleton className="h-8 w-64" />
         <Skeleton className="h-64 w-full" />
-      </>
+      </div>
     );
-    return wrapInShell ? <PageShell>{content}</PageShell> : <div className="space-y-4 pt-6">{content}</div>;
+    return wrapInShell ? <PageShell>{content}</PageShell> : <div className="pt-6">{content}</div>;
   }
 
   if (!serviceCase) {
     const content = (
-      <Card><CardContent className="p-12 text-center">
+      <div className={DESIGN.CARD.CONTENT + ' text-center py-12'}>
         <HardHat className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
         <h3 className="text-lg font-semibold">Vorgang nicht gefunden</h3>
         <Button className="mt-4" onClick={onClose}>Schließen</Button>
-      </CardContent></Card>
+      </div>
     );
     return wrapInShell ? <PageShell>{content}</PageShell> : <div className="pt-6">{content}</div>;
   }
@@ -82,18 +79,15 @@ function SanierungDetailInner({ caseId, onClose, wrapInShell }: { caseId: string
   const CategoryIcon = CATEGORY_ICONS[serviceCase.category] || Package;
 
   const detail = (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={onClose}>
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
+    <div className={DESIGN.SPACING.SECTION}>
+      {/* ── Header ── */}
+      <div className="flex items-start justify-between gap-4">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-3 flex-wrap">
-            <h1 className="text-2xl font-bold tracking-tight">{serviceCase.title}</h1>
+            <h2 className="text-lg font-bold tracking-tight">{serviceCase.title}</h2>
             <ServiceCaseStatusBadge status={serviceCase.status} />
           </div>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1 flex-wrap">
             <Badge variant="outline" className="font-mono text-xs">
               {serviceCase.tender_id || serviceCase.public_id}
             </Badge>
@@ -105,99 +99,53 @@ function SanierungDetailInner({ caseId, onClose, wrapInShell }: { caseId: string
             {serviceCase.property?.address && (
               <>
                 <span>•</span>
-                <span>{serviceCase.property.address}</span>
+                <span>{serviceCase.property.address}, {serviceCase.property.city}</span>
+              </>
+            )}
+            {serviceCase.unit && (
+              <>
+                <span>•</span>
+                <span>{serviceCase.unit.code || serviceCase.unit.unit_number}</span>
               </>
             )}
           </div>
         </div>
+        <Button variant="ghost" size="icon" onClick={onClose} className="shrink-0">
+          <X className="h-4 w-4" />
+        </Button>
       </div>
 
-      {/* Stepper */}
+      {/* ── Stepper ── */}
       <SanierungStepper currentStatus={serviceCase.status} />
 
-      {/* Kurzbeschreibung — Bank table */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Übersicht</CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          <div className="divide-y">
-            <TableRow label="Objekt" value={serviceCase.property?.address || '–'} />
-            <TableRow label="Einheit" value={serviceCase.unit ? (serviceCase.unit.code || serviceCase.unit.unit_number) : '–'} />
-            <TableRow label="Kategorie" value={CATEGORY_LABELS[serviceCase.category]} />
-            <TableRow label="Budget" value={
-              serviceCase.cost_estimate_min && serviceCase.cost_estimate_max
-                ? `${formatCurrency(serviceCase.cost_estimate_min / 100)} – ${formatCurrency(serviceCase.cost_estimate_max / 100)}`
-                : serviceCase.budget_estimate
-                  ? formatCurrency(Number(serviceCase.budget_estimate))
-                  : '–'
-            } />
-            <TableRow label="Erstellt" value={format(new Date(serviceCase.created_at), 'dd.MM.yyyy', { locale: de })} />
-          </div>
-        </CardContent>
-      </Card>
+      {/* ── Section 1: Leistungsumfang ── */}
+      <SectionCard title="Leistungsumfang" description="Beschreibung, KI-Analyse und Kostenschätzung" icon={ClipboardList}>
+        <ScopeDefinitionPanel serviceCase={serviceCase} />
+      </SectionCard>
 
-      <Separator />
+      {/* ── Section 2: Dienstleister & Ausschreibung ── */}
+      <SectionCard title="Dienstleister & Ausschreibung" description="Handwerker suchen und Anfrage versenden" icon={Search}>
+        <div className={DESIGN.FORM_GRID.FULL}>
+          <ProviderSearchPanel
+            category={serviceCase.category}
+            location={serviceCase.property?.city || serviceCase.property?.address || ''}
+            selectedProviders={selectedProviders}
+            onProvidersChange={setSelectedProviders}
+          />
+          <TenderDraftPanel
+            serviceCase={serviceCase}
+            selectedProviders={selectedProviders}
+            onSendComplete={() => {}}
+          />
+        </div>
+      </SectionCard>
 
-      {/* Section 1: Leistungsumfang */}
-      <SectionHeader number={1} title="Leistungsumfang" description="KI-Analyse, Positionen bearbeiten, Kostenschätzung" />
-      <ScopeDefinitionPanel
-        serviceCase={serviceCase}
-        onBack={onClose}
-        onNext={() => {}}
-      />
-
-      <Separator />
-
-      {/* Section 2: Dienstleister */}
-      <SectionHeader number={2} title="Dienstleister finden" description="Handwerker in der Nähe suchen und auswählen" />
-      <ProviderSearchPanel
-        category={serviceCase.category}
-        location={serviceCase.property?.city || serviceCase.property?.address || ''}
-        selectedProviders={selectedProviders}
-        onProvidersChange={setSelectedProviders}
-      />
-
-      <Separator />
-
-      {/* Section 3: Ausschreibung */}
-      <SectionHeader number={3} title="Ausschreibung versenden" description="Anfragen an ausgewählte Dienstleister senden" />
-      <TenderDraftPanel
-        serviceCase={serviceCase}
-        selectedProviders={selectedProviders}
-        onSendComplete={() => {}}
-      />
-
-      <Separator />
-
-      {/* Section 4: Angebote & Vergabe */}
-      <SectionHeader number={4} title="Angebote vergleichen & vergeben" description="Eingehende Angebote bewerten und Auftrag vergeben" />
-      <OfferComparisonPanel serviceCase={serviceCase} />
+      {/* ── Section 3: Angebote & Vergabe ── */}
+      <SectionCard title="Angebote & Vergabe" description="Eingehende Angebote bewerten und Auftrag vergeben" icon={BarChart3}>
+        <OfferComparisonPanel serviceCase={serviceCase} />
+      </SectionCard>
     </div>
   );
 
   return wrapInShell ? <PageShell>{detail}</PageShell> : <div className="pt-6">{detail}</div>;
-}
-
-function SectionHeader({ number, title, description }: { number: number; title: string; description: string }) {
-  return (
-    <div className="flex items-start gap-3 pt-2">
-      <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold text-primary flex-shrink-0">
-        {number}
-      </div>
-      <div>
-        <h2 className="text-lg font-semibold">{title}</h2>
-        <p className="text-sm text-muted-foreground">{description}</p>
-      </div>
-    </div>
-  );
-}
-
-function TableRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex flex-col gap-0.5 px-4 py-2 text-sm md:grid md:grid-cols-[180px_1fr] md:gap-0">
-      <span className="text-muted-foreground text-xs md:text-sm">{label}</span>
-      <span className="font-medium">{value}</span>
-    </div>
-  );
 }
