@@ -16,6 +16,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
+import { WidgetGrid } from '@/components/shared/WidgetGrid';
+import { WidgetCell } from '@/components/shared/WidgetCell';
 import { FinanceCaseCard, FinanceCaseCardPlaceholder } from '@/components/finanzierungsmanager/FinanceCaseCard';
 import { useFinanceRequest } from '@/hooks/useFinanceRequest';
 import { useFinanceBankContacts } from '@/hooks/useFinanceMandate';
@@ -326,22 +328,25 @@ Mit freundlichen Grüßen`;
       />
 
       {/* ── Case Widget Cards ── */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+      <WidgetGrid>
         {readyCases.map(c => {
           const reqId = c.finance_mandates?.finance_request_id || c.id;
           return (
-            <FinanceCaseCard
-              key={c.id}
-              caseData={c}
-              isSelected={selectedId === reqId}
-              onClick={() => handleCaseSelect(reqId)}
-            />
+            <WidgetCell key={c.id}>
+              <FinanceCaseCard
+                caseData={c}
+                isSelected={selectedId === reqId}
+                onClick={() => handleCaseSelect(reqId)}
+              />
+            </WidgetCell>
           );
         })}
         {readyCases.length === 0 && (
-          <FinanceCaseCardPlaceholder label="Keine Akten bereit" />
+          <WidgetCell>
+            <FinanceCaseCardPlaceholder label="Keine Akten bereit" />
+          </WidgetCell>
         )}
-      </div>
+      </WidgetGrid>
 
       {/* ── KACHEL 1: Exposé ── */}
       <Card className="glass-card overflow-hidden">

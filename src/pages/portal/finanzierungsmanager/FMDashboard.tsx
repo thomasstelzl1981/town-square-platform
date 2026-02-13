@@ -279,98 +279,7 @@ export default function FMDashboard({ cases, isLoading }: Props) {
       />
 
 
-      {/* Section A: Fälle in Bearbeitung (Widgets zuerst) */}
-      <WidgetGrid>
-        {activeCases.map(c => (
-          <WidgetCell key={c.id}>
-            <FinanceCaseCard
-              caseData={c}
-              onClick={handleCaseClick}
-            />
-          </WidgetCell>
-        ))}
-        {activeCases.length === 0 && (
-          <WidgetCell>
-            <FinanceCaseCardPlaceholder />
-          </WidgetCell>
-        )}
-      </WidgetGrid>
-
-      {/* Section B: Finanzierungsmandate */}
-      <div className="space-y-3">
-        <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-          Finanzierungsmandate
-        </h3>
-        {loadingMandates ? (
-          <div className="flex items-center justify-center p-8">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-          </div>
-        ) : pendingMandates.length === 0 ? (
-          <WidgetGrid>
-            <WidgetCell>
-              <Card className="glass-card border-dashed border-2 h-full flex flex-col items-center justify-center opacity-50">
-                <CardContent className="p-4 flex flex-col items-center justify-center h-full text-center gap-2">
-                  <div className="w-10 h-10 rounded-xl bg-muted/50 flex items-center justify-center">
-                    <Inbox className="h-5 w-5 text-muted-foreground" />
-                  </div>
-                  <p className="text-sm font-medium text-muted-foreground">Keine neuen Mandate</p>
-                  <p className="text-[10px] text-muted-foreground">Neue Mandate erscheinen hier nach Zuweisung</p>
-                </CardContent>
-              </Card>
-            </WidgetCell>
-          </WidgetGrid>
-        ) : (
-          <WidgetGrid>
-            {pendingMandates.map((m: any) => {
-              const req = m.finance_requests;
-              const ap = req?.applicant_profiles?.[0];
-              const name = ap?.first_name && ap?.last_name
-                ? `${ap.first_name} ${ap.last_name}`
-                : 'Unbekannt';
-              const loan = ap?.loan_amount_requested;
-              return (
-                <WidgetCell key={m.id}>
-                  <Card className="border-primary/20 h-full">
-                    <CardContent className="p-4 space-y-3">
-                      <div className="flex items-center justify-between">
-                        <span className="font-mono text-xs text-muted-foreground">{m.public_id || m.id.slice(0, 8)}</span>
-                        <Badge variant="outline">{m.status === 'delegated' ? 'Zugewiesen' : 'Angefragt'}</Badge>
-                      </div>
-                      <div>
-                        <p className="font-medium text-sm">{name}</p>
-                        {loan && <p className="text-xs text-muted-foreground">{eurFormat.format(loan)}</p>}
-                      </div>
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          className="flex-1"
-                          onClick={() => handleAcceptMandate(m.id)}
-                          disabled={acceptMandate.isPending}
-                        >
-                          <Check className="h-3 w-3 mr-1" />
-                          Annehmen
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="flex-1"
-                          onClick={() => handleDeclineMandate(m.id)}
-                          disabled={updateStatus.isPending}
-                        >
-                          <X className="h-3 w-3 mr-1" />
-                          Ablehnen
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </WidgetCell>
-              );
-            })}
-          </WidgetGrid>
-        )}
-      </div>
-
-      {/* Manager Visitenkarte + Zins-Ticker (unten) */}
+      {/* DASHBOARD_HEADER: Visitenkarte + Zins-Ticker (OBEN) */}
       <div className={DESIGN.DASHBOARD_HEADER.GRID}>
         {/* Visitenkarte */}
         <Card className={cn("overflow-hidden border-0 shadow-card", DESIGN.DASHBOARD_HEADER.CARD_HEIGHT)}>
@@ -446,6 +355,95 @@ export default function FMDashboard({ cases, isLoading }: Props) {
           <ZinsTickerWidget />
         </div>
       </div>
+
+      {/* Section A: Fälle in Bearbeitung */}
+      <WidgetGrid>
+        {activeCases.map(c => (
+          <WidgetCell key={c.id}>
+            <FinanceCaseCard
+              caseData={c}
+              onClick={handleCaseClick}
+            />
+          </WidgetCell>
+        ))}
+        {activeCases.length === 0 && (
+          <WidgetCell>
+            <FinanceCaseCardPlaceholder />
+          </WidgetCell>
+        )}
+      </WidgetGrid>
+
+      {/* Finanzierungsmandate */}
+      <div className="space-y-3">
+        {loadingMandates ? (
+          <div className="flex items-center justify-center p-8">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          </div>
+        ) : pendingMandates.length === 0 ? (
+          <WidgetGrid>
+            <WidgetCell>
+              <Card className="glass-card border-dashed border-2 h-full flex flex-col items-center justify-center opacity-50">
+                <CardContent className="p-4 flex flex-col items-center justify-center h-full text-center gap-2">
+                  <div className="w-10 h-10 rounded-xl bg-muted/50 flex items-center justify-center">
+                    <Inbox className="h-5 w-5 text-muted-foreground" />
+                  </div>
+                  <p className="text-sm font-medium text-muted-foreground">Keine neuen Mandate</p>
+                  <p className="text-[10px] text-muted-foreground">Neue Mandate erscheinen hier nach Zuweisung</p>
+                </CardContent>
+              </Card>
+            </WidgetCell>
+          </WidgetGrid>
+        ) : (
+          <WidgetGrid>
+            {pendingMandates.map((m: any) => {
+              const req = m.finance_requests;
+              const ap = req?.applicant_profiles?.[0];
+              const name = ap?.first_name && ap?.last_name
+                ? `${ap.first_name} ${ap.last_name}`
+                : 'Unbekannt';
+              const loan = ap?.loan_amount_requested;
+              return (
+                <WidgetCell key={m.id}>
+                  <Card className="border-primary/20 h-full">
+                    <CardContent className="p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="font-mono text-xs text-muted-foreground">{m.public_id || m.id.slice(0, 8)}</span>
+                        <Badge variant="outline">{m.status === 'delegated' ? 'Zugewiesen' : 'Angefragt'}</Badge>
+                      </div>
+                      <div>
+                        <p className="font-medium text-sm">{name}</p>
+                        {loan && <p className="text-xs text-muted-foreground">{eurFormat.format(loan)}</p>}
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          className="flex-1"
+                          onClick={() => handleAcceptMandate(m.id)}
+                          disabled={acceptMandate.isPending}
+                        >
+                          <Check className="h-3 w-3 mr-1" />
+                          Annehmen
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="flex-1"
+                          onClick={() => handleDeclineMandate(m.id)}
+                          disabled={updateStatus.isPending}
+                        >
+                          <X className="h-3 w-3 mr-1" />
+                          Ablehnen
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </WidgetCell>
+              );
+            })}
+          </WidgetGrid>
+        )}
+      </div>
+
 
       {/* Edit Sheet */}
       <Sheet open={editOpen} onOpenChange={setEditOpen}>
