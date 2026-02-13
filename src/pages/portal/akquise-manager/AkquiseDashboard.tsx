@@ -140,9 +140,9 @@ export default function AkquiseDashboard() {
       />
 
       {/* ── Visitenkarte + KPI-Ticker ── */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className={DESIGN.DASHBOARD_HEADER.GRID}>
         {/* Visitenkarte */}
-        <Card className="overflow-hidden border-0 shadow-card">
+        <Card className={cn("overflow-hidden border-0 shadow-card", DESIGN.DASHBOARD_HEADER.CARD_HEIGHT)}>
           <div className="h-2 bg-gradient-to-r from-[hsl(160,60%,40%)] to-[hsl(180,50%,45%)]" />
           <CardContent className="p-4">
             <div className="flex items-start gap-3">
@@ -195,7 +195,7 @@ export default function AkquiseDashboard() {
         </Card>
 
         {/* KPI-Widget */}
-        <Card className="overflow-hidden border-0 shadow-card">
+        <Card className={cn("overflow-hidden border-0 shadow-card", DESIGN.DASHBOARD_HEADER.CARD_HEIGHT)}>
           <div className="h-2 bg-gradient-to-r from-[hsl(35,90%,55%)] to-[hsl(25,85%,50%)]" />
           <CardContent className="p-4 space-y-3">
             <div className="flex items-center gap-2">

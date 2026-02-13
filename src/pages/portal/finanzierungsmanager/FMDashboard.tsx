@@ -131,24 +131,6 @@ function ZinsTickerWidget() {
           ))}
         </div>
 
-        {/* Market data from proxy */}
-        {markets.length > 0 && (
-          <>
-            <Separator />
-            <div className="space-y-1">
-              {markets.slice(0, 3).map((m) => (
-                <div key={m.symbol} className="flex items-center justify-between py-0.5">
-                  <span className="text-[10px] text-muted-foreground">{m.symbol}</span>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[11px] font-mono">{m.value}</span>
-                    <TrendIcon trend={m.trend} />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </>
-        )}
-
         <p className="text-[9px] text-muted-foreground text-right">Stand: {new Date().toLocaleDateString('de-DE')}</p>
       </CardContent>
     </Card>
@@ -298,9 +280,9 @@ export default function FMDashboard({ cases, isLoading }: Props) {
 
 
       {/* Manager Visitenkarte + Zins-Ticker */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className={DESIGN.DASHBOARD_HEADER.GRID}>
         {/* Visitenkarte — with accent gradient header */}
-        <Card className="overflow-hidden border-0 shadow-card">
+        <Card className={cn("overflow-hidden border-0 shadow-card", DESIGN.DASHBOARD_HEADER.CARD_HEIGHT)}>
           <div className="h-2 bg-gradient-to-r from-[hsl(220,70%,50%)] to-[hsl(250,60%,60%)]" />
           <CardContent className="p-4">
             <div className="flex items-start gap-3">
@@ -369,7 +351,9 @@ export default function FMDashboard({ cases, isLoading }: Props) {
         </Card>
 
         {/* Zins-Ticker Widget */}
-        <ZinsTickerWidget />
+        <div className={DESIGN.DASHBOARD_HEADER.CARD_HEIGHT}>
+          <ZinsTickerWidget />
+        </div>
       </div>
 
       {/* Edit Sheet */}
