@@ -42,13 +42,11 @@ MOD-04 "Immobilien" ist das **Single Source of Truth (SSOT)** für alle Objekt-,
 | `/portal/immobilien/neu` | CreatePropertyDialog (Modal) | Minimal-Wizard → Redirect zu Dossier |
 | `/portal/immobilien/:propertyId` | PropertyDetail | **Kanonisches Dossier (Immobilienakte)** |
 
-### 3.2 Sekundäre Routen (optional, aber nicht in Navigation)
+### 3.2 Sekundäre Routen (Redirects)
 
-| Route | Komponente | Beschreibung |
-|-------|------------|--------------|
-| `/portal/immobilien/kontexte` | KontexteTab | Vermieter-Kontext Verwaltung |
-| `/portal/immobilien/sanierung` | SanierungTab | Sanierung (global) |
-| `/portal/immobilien/bewertung` | BewertungTab | Bewertung (global) |
+| Route | Redirect | Beschreibung |
+|-------|----------|--------------|
+| `/portal/immobilien/kontexte` | → `/portal/immobilien/portfolio` | Vermieter-Kontext Verwaltung (integriert in Portfolio) |
 
 ### 3.3 Legacy Redirects
 
@@ -260,11 +258,11 @@ pending → needs_review → accepted → current
 |------|-------|
 | Immobilien | `/portal/immobilien` |
 | → Portfolio | `/portal/immobilien/portfolio` |
-| → Kontexte | `/portal/immobilien/kontexte` |
 | → Sanierung | `/portal/immobilien/sanierung` |
 | → Bewertung | `/portal/immobilien/bewertung` |
+| → Verwaltung | `/portal/immobilien/verwaltung` |
 
-### 9.2 Dossier Cross-Module CTAs
+> **Note:** Vermietereinheiten (Kontexte) werden im Portfolio-Tab über den "Verwalten"-Button verwaltet.
 
 | CTA | Bedingung | Ziel |
 |-----|-----------|------|

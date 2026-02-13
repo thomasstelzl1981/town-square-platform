@@ -163,7 +163,7 @@ export const moduleContents: Record<string, HowItWorksContent> = {
       'Objekte und Einheiten anlegen und pflegen',
       'Mietdaten als Bestand/Übersicht führen (Snapshot/Bestand)',
       'Exposé-Daten (Texte, Energie, Fotos, Stammdaten) aktualisieren',
-      'Vermieter-Kontexte organisieren (Portfolio-Logik)',
+      'Vermietereinheiten im Portfolio verwalten',
       'Sanierung & Maßnahmen dokumentieren',
       'Bewertung & Wertentwicklung nachvollziehen',
       'Verwaltung: Mieteingang, Vermietung und Mahnwesen',
@@ -180,7 +180,6 @@ export const moduleContents: Record<string, HowItWorksContent> = {
     ],
     cta: 'Pflegen Sie zuerst die Immobilienakte – alles Weitere baut darauf auf.',
     subTiles: [
-      { title: 'Kontexte', route: '/portal/immobilien/kontexte', icon: FolderTree },
       { title: 'Portfolio', route: '/portal/immobilien/portfolio', icon: LayoutGrid },
       { title: 'Sanierung', route: '/portal/immobilien/sanierung', icon: Hammer },
       { title: 'Bewertung', route: '/portal/immobilien/bewertung', icon: TrendingUp },

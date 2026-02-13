@@ -21,7 +21,7 @@ import { GoldenPathGuard } from '@/goldenpath/GoldenPathGuard';
 // Lazy imports for sub-tab code-splitting
 const CreatePropertyRedirect = lazy(() => import('./immobilien/CreatePropertyRedirect').then(m => ({ default: m.CreatePropertyRedirect })));
 const PortfolioTab = lazy(() => import('./immobilien/PortfolioTab').then(m => ({ default: m.PortfolioTab })));
-const KontexteTab = lazy(() => import('./immobilien/KontexteTab').then(m => ({ default: m.KontexteTab })));
+// KontexteTab removed — context management is now integrated into PortfolioTab
 const SanierungTab = lazy(() => import('./immobilien/SanierungTab').then(m => ({ default: m.SanierungTab })));
 const BewertungTab = lazy(() => import('./immobilien/BewertungTab').then(m => ({ default: m.BewertungTab })));
 const VerwaltungTab = lazy(() => import('./immobilien/VerwaltungTab'));
@@ -39,8 +39,8 @@ const ImmobilienPage = () => {
         <Route index element={<Navigate to="portfolio" replace />} />
         <Route path="portfolio" element={<PortfolioTab />} />
         
-        {/* SECONDARY: Context management */}
-        <Route path="kontexte" element={<KontexteTab />} />
+        {/* REDIRECT: Context management now integrated in Portfolio */}
+        <Route path="kontexte" element={<Navigate to="/portal/immobilien/portfolio" replace />} />
         <Route path="sanierung/*" element={<SanierungTab />} />
         <Route path="bewertung" element={<BewertungTab />} />
         
