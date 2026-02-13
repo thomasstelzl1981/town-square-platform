@@ -11,7 +11,7 @@ import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { WidgetGrid } from '@/components/shared/WidgetGrid';
 import { WidgetCell } from '@/components/shared/WidgetCell';
-import { MandateCaseCard, MandateCaseCardPlaceholder } from '@/components/akquise/MandateCaseCard';
+import { MandateCaseCard, MandateCaseCardPlaceholder, MandateCaseCardNew } from '@/components/akquise/MandateCaseCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -492,22 +492,24 @@ export default function AkquiseMandate() {
       {/* ═══ Meine Mandate ═══ */}
       <div className="space-y-3">
         <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Meine Mandate</h2>
-        {mandates && mandates.length > 0 ? (
-          <WidgetGrid>
-            {mandates.map(m => (
-              <WidgetCell key={m.id}>
-                <MandateCaseCard mandate={m} onClick={() => navigate(`/portal/akquise-manager/mandate/${m.id}`)} />
-              </WidgetCell>
-            ))}
-          </WidgetGrid>
-        ) : (
-          <WidgetGrid><WidgetCell><MandateCaseCardPlaceholder /></WidgetCell></WidgetGrid>
-        )}
+        <WidgetGrid>
+          <WidgetCell>
+            <MandateCaseCardNew onClick={() => {
+              setActiveMandateId(null);
+              window.scrollTo({ top: document.getElementById('mandate-erfassung')?.offsetTop || 600, behavior: 'smooth' });
+            }} />
+          </WidgetCell>
+          {mandates && mandates.map(m => (
+            <WidgetCell key={m.id}>
+              <MandateCaseCard mandate={m} onClick={() => navigate(`/portal/akquise-manager/mandate/${m.id}`)} />
+            </WidgetCell>
+          ))}
+        </WidgetGrid>
       </div>
 
 
       {/* ═══ KACHEL 1 + 2: KI-Erfassung + Ankaufsprofil ═══ */}
-      <div className={DESIGN.FORM_GRID.FULL}>
+      <div id="mandate-erfassung" className={DESIGN.FORM_GRID.FULL}>
         {/* ── KACHEL 1: KI-Erfassung (INPUT) ── */}
         <Card>
           <CardHeader className="pb-3">
