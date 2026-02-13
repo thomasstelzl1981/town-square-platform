@@ -1,16 +1,16 @@
 /**
  * PrivatkreditTab — Full inline flow for consumer loan (API-ready for Europace)
- * 
- * Single scrollable page: Employment Gate → Calculator → Application → Documents → Submit
+ * Redesigned: PageShell + Widget bar + glass-card sections + manifest layout
  */
 import { useState, useCallback } from 'react';
+import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
+import { ConsumerLoanWidgets } from '@/components/privatkredit/ConsumerLoanWidgets';
 import { EmploymentGate } from '@/components/privatkredit/EmploymentGate';
 import { LoanCalculator } from '@/components/privatkredit/LoanCalculator';
 import { ApplicationPreview } from '@/components/privatkredit/ApplicationPreview';
 import { DocumentChecklist } from '@/components/privatkredit/DocumentChecklist';
 import { SubmitSection } from '@/components/privatkredit/SubmitSection';
-import { Separator } from '@/components/ui/separator';
 import type { MockOffer } from '@/hooks/useConsumerLoan';
 
 export default function PrivatkreditTab() {
@@ -40,61 +40,53 @@ export default function PrivatkreditTab() {
   const handleSubmit = async () => {
     if (!canSubmit) return;
     setIsSubmitting(true);
-    // Simulate API delay
     await new Promise(r => setTimeout(r, 1500));
     setIsSubmitted(true);
     setIsSubmitting(false);
   };
 
   return (
-    <div className="space-y-2">
+    <PageShell>
       <ModulePageHeader
         title="Privatkredit"
         description="Kredit beantragen — powered by Europace"
       />
 
-      <div className="space-y-8">
-        {/* 1. Employment Gate */}
-        <EmploymentGate value={employmentStatus} onChange={setEmploymentStatus} />
+      {/* Widget-Leiste: Existing cases + CTA */}
+      <ConsumerLoanWidgets />
 
-        <Separator />
+      {/* 1. Employment Gate */}
+      <EmploymentGate value={employmentStatus} onChange={setEmploymentStatus} />
 
-        {/* 2. Loan Calculator */}
-        <LoanCalculator
-          disabled={isSelfEmployed}
-          amount={amount}
-          term={term}
-          onAmountChange={setAmount}
-          onTermChange={setTerm}
-          selectedOfferId={selectedOffer?.id ?? null}
-          onSelectOffer={handleSelectOffer}
-        />
+      {/* 2. Loan Calculator */}
+      <LoanCalculator
+        disabled={isSelfEmployed}
+        amount={amount}
+        term={term}
+        onAmountChange={setAmount}
+        onTermChange={setTerm}
+        selectedOfferId={selectedOffer?.id ?? null}
+        onSelectOffer={handleSelectOffer}
+      />
 
-        <Separator />
+      {/* 3. Application Preview (from Selbstauskunft) */}
+      <ApplicationPreview disabled={isSelfEmployed} />
 
-        {/* 3. Application Preview (from Selbstauskunft) */}
-        <ApplicationPreview disabled={isSelfEmployed} />
+      {/* 4. Document Checklist */}
+      <DocumentChecklist disabled={isSelfEmployed} />
 
-        <Separator />
-
-        {/* 4. Document Checklist */}
-        <DocumentChecklist disabled={isSelfEmployed} />
-
-        <Separator />
-
-        {/* 5. Submit Section */}
-        <SubmitSection
-          disabled={isSelfEmployed}
-          consentDataCorrect={consentData}
-          consentCreditCheck={consentCredit}
-          onConsentDataCorrect={setConsentData}
-          onConsentCreditCheck={setConsentCredit}
-          canSubmit={canSubmit}
-          isSubmitting={isSubmitting}
-          isSubmitted={isSubmitted}
-          onSubmit={handleSubmit}
-        />
-      </div>
-    </div>
+      {/* 5. Submit Section */}
+      <SubmitSection
+        disabled={isSelfEmployed}
+        consentDataCorrect={consentData}
+        consentCreditCheck={consentCredit}
+        onConsentDataCorrect={setConsentData}
+        onConsentCreditCheck={setConsentCredit}
+        canSubmit={canSubmit}
+        isSubmitting={isSubmitting}
+        isSubmitted={isSubmitted}
+        onSubmit={handleSubmit}
+      />
+    </PageShell>
   );
 }

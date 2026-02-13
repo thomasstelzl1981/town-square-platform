@@ -1,9 +1,12 @@
 /**
  * DocumentChecklist — Required documents with status + upload zone
+ * Redesigned: glass-card wrapper, LIST classes from manifest
  */
 import { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Upload, Check, Circle, FileText } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { DESIGN } from '@/config/designManifest';
 import { cn } from '@/lib/utils';
 
 interface DocItem {
@@ -25,7 +28,6 @@ export function DocumentChecklist({ disabled }: DocumentChecklistProps) {
 
   const onDrop = useCallback((accepted: File[]) => {
     if (accepted.length > 0) {
-      // Simulate marking first missing doc as uploaded
       setDocs(prev => {
         const next = [...prev];
         const idx = next.findIndex(d => !d.uploaded);
@@ -47,51 +49,56 @@ export function DocumentChecklist({ disabled }: DocumentChecklistProps) {
   const uploadedCount = docs.filter(d => d.uploaded).length;
 
   return (
-    <section className={disabled ? 'opacity-50 pointer-events-none' : ''}>
-      <h2 className="text-lg font-semibold mb-4">Erforderliche Unterlagen</h2>
-
-      <p className="text-sm text-muted-foreground mb-4">
-        Typischerweise werden 2–3 Gehaltsabrechnungen und Kontoauszüge der letzten 3 Monate benötigt.
-        Je nach Bank können Anforderungen variieren.
-      </p>
-
-      <div className="space-y-2 mb-4">
-        {docs.map(doc => (
-          <div
-            key={doc.type}
-            className={cn(
-              "flex items-center gap-3 rounded-md border px-3 py-2 text-sm",
-              doc.uploaded ? "border-emerald-500/30 bg-emerald-500/5" : "border-border"
-            )}
-          >
-            {doc.uploaded ? (
-              <Check className="h-4 w-4 text-emerald-600 shrink-0" />
-            ) : (
-              <Circle className="h-4 w-4 text-muted-foreground shrink-0" />
-            )}
-            <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
-            <span>{doc.label}</span>
-          </div>
-        ))}
+    <Card className={cn(DESIGN.CARD.BASE, disabled && 'opacity-50 pointer-events-none')}>
+      <div className={DESIGN.CARD.SECTION_HEADER}>
+        <h2 className={DESIGN.TYPOGRAPHY.CARD_TITLE}>Erforderliche Unterlagen</h2>
       </div>
-
-      <div className="text-xs text-muted-foreground mb-3">
-        {uploadedCount} von {docs.length} Dokumenten hochgeladen
-      </div>
-
-      <div
-        {...getRootProps()}
-        className={cn(
-          "border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors",
-          isDragActive ? "border-primary bg-primary/5" : "border-border hover:border-primary/40"
-        )}
-      >
-        <input {...getInputProps()} />
-        <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-        <p className="text-sm text-muted-foreground">
-          {isDragActive ? 'Dateien hier ablegen' : 'Klicken oder Dateien hierher ziehen'}
+      <CardContent className="p-4 space-y-4">
+        <p className={DESIGN.TYPOGRAPHY.MUTED}>
+          Typischerweise werden 2–3 Gehaltsabrechnungen und Kontoauszüge der letzten 3 Monate benötigt.
+          Je nach Bank können Anforderungen variieren.
         </p>
-      </div>
-    </section>
+
+        <div className={DESIGN.LIST.GAP}>
+          {docs.map(doc => (
+            <div
+              key={doc.type}
+              className={cn(
+                DESIGN.LIST.ROW,
+                doc.uploaded && 'border-emerald-500/30 bg-emerald-500/5'
+              )}
+            >
+              <div className="flex items-center gap-3">
+                {doc.uploaded ? (
+                  <Check className="h-4 w-4 text-emerald-600 shrink-0" />
+                ) : (
+                  <Circle className="h-4 w-4 text-muted-foreground shrink-0" />
+                )}
+                <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                <span className="text-sm">{doc.label}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <p className={DESIGN.TYPOGRAPHY.HINT}>
+          {uploadedCount} von {docs.length} Dokumenten hochgeladen
+        </p>
+
+        <div
+          {...getRootProps()}
+          className={cn(
+            "border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors",
+            isDragActive ? "border-primary bg-primary/5" : "border-border hover:border-primary/40"
+          )}
+        >
+          <input {...getInputProps()} />
+          <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+          <p className={DESIGN.TYPOGRAPHY.MUTED}>
+            {isDragActive ? 'Dateien hier ablegen' : 'Klicken oder Dateien hierher ziehen'}
+          </p>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
