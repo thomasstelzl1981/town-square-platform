@@ -1,80 +1,194 @@
 
-# Objektakte CI-Verfeinerung: Farben, Ausrichtung und Schnellanalyse
+# Ist-Analyse und Speicherkonzept: AkquiseManager-Datenbank
 
-## Probleme (aus Code-Analyse)
+## 1. IST-ANALYSE: Was passiert aktuell?
 
-### 1. Schnellanalyse zu schmal — muss volle Breite haben
-Die "Schnellanalyse"-Karte steckt aktuell INNERHALB der `DESIGN.FORM_GRID.FULL` (2-Spalten-Grid), also in einer Haelfte. Sie muss ueber die gesamte Breite (oberhalb des 2-Spalten-Grids) stehen, damit Bestand und Aufteiler auf gleicher Hoehe beginnen.
+### Tabellen-Landschaft
 
-### 2. Kachel-Ausrichtung: Aufteiler startet zu hoch
-Bestand hat eine "Schnellanalyse"-Karte VOR den Slidern, Aufteiler nicht. Wenn die Schnellanalyse nach oben (volle Breite) gezogen wird, starten beide Kalkulationen auf gleicher Hoehe.
+```text
+acq_mandates          → Suchauftrag eines Investors (ACQ-2026-00001)
+  └── acq_offers      → Einzelne Immobilien-Objekte (mandate_id = FK, NOT NULL!)
+       ├── acq_offer_documents   → Dateien zum Objekt (Expose etc.)
+       └── acq_analysis_runs     → KI-Analysen, GeoMap, Kalkulationen
+  └── acq_outbound_messages     → E-Mails an Makler
+  └── acq_inbound_messages      → Antworten
+  └── acq_mandate_events        → Audit-Trail
+  └── acq_offer_activities      → Aktivitaeten-Log pro Objekt
 
-### 3. Farben nicht CI-konform
-Folgende Hardcoded-Farben verletzen das Design-Manifest:
-- `text-green-600` → muss `text-status-success` bzw. `text-emerald-500` (Dark-Mode-sicher) werden
-- `text-blue-600` → muss `text-primary` werden
-- `text-amber-600` → muss `text-status-warn` werden
-- `bg-green-50/50` → muss `bg-status-success/5` oder `bg-emerald-500/5` werden (Dark-Mode!)
-- `bg-gradient-to-r from-primary/10 to-green-500/10` → muss `bg-primary/5 border-primary/20` (INFO_BANNER.PREMIUM) werden
-- `bg-primary/5 border-primary/20` (Schnellanalyse) → OK, aber muss `DESIGN.INFO_BANNER.PREMIUM` Token nutzen
-- `bg-amber-50 border-amber-200` (Hinweis-Banner in Aufteiler) → muss `DESIGN.INFO_BANNER.WARNING` werden
+Storage-Bucket: acq-documents
+```
 
-### 4. Cards ohne CI-Basis-Klasse
-Die Karten in BestandCalculation und AufteilerCalculation nutzen nacktes `<Card>` ohne `className={DESIGN.CARD.BASE}`. Dadurch fehlt `glass-card`, `rounded-xl` und `overflow-hidden`.
+### Kritisches Problem: `mandate_id NOT NULL`
 
-### 5. Typografie ad-hoc
-- `text-3xl font-bold` fuer KPI-Werte → sollte `DESIGN.TYPOGRAPHY.VALUE` oder aehnliches Token nutzen
-- `text-lg`, `text-xl font-bold` fuer Card-Ueberschriften → `DESIGN.TYPOGRAPHY.CARD_TITLE`
-- `text-xs text-muted-foreground` → `DESIGN.TYPOGRAPHY.HINT`
+`acq_offers.mandate_id` ist **NOT NULL**. Das bedeutet:
+- Jedes Objekt MUSS einem Mandat zugeordnet sein
+- Der `ExposeDragDropUploader` versucht, Objekte OHNE mandate_id einzufuegen (Zeile 114-124 — nutzt `as any` Cast, um den Constraint zu umgehen)
+- Das schlaegt in der DB fehl oder erzeugt inkonsistente Daten
+- Es gibt keine "globale Datenbank" — alles haengt am Mandat
 
-## Loesung
+### Wann wird eine ID erstellt?
 
-### Datei 1: `ObjekteingangDetail.tsx`
+```text
+Weg 1: Inbound-E-Mail (Zone 1 Acquiary)
+  → sot-acq-offer-extract Edge Function
+  → INSERT in acq_offers mit mandate_id (via Routing-Regel)
+  → ID wird per gen_random_uuid() erzeugt
 
-**ROW 4 umstrukturieren:**
-- Schnellanalyse-Karte aus den Kinder-Komponenten herausnehmen und als eigene volle Breite ueber dem 2-Spalten-Grid rendern
-- Neue gemeinsame "Schnellanalyse"-Karte mit den 4 KPIs: Gesamtinvestition, Max. Finanzierbarkeit, EK-Bedarf, Bruttorendite (aus Bestand) PLUS Gewinn, Marge, ROI (aus Aufteiler) → 7 KPIs in einer Zeile oder 2 Zeilen
-- Alternativ (einfacher): Schnellanalyse als `prop` in BestandCalculation deaktivierbar machen (`showQuickAnalysis={false}`) und eine eigene Sektion darueber rendern
+Weg 2: Manueller Upload (ExposeDragDropUploader)
+  → INSERT in acq_offers OHNE mandate_id (FEHLER!)
+  → Versucht as any-Cast → scheitert oder erzeugt Datensatz ohne Zuordnung
 
-**Gewaehlter Ansatz (minimal-invasiv):**
-- In `ObjekteingangDetail.tsx`: Eine eigene volle-Breite Schnellanalyse-Card vor dem FORM_GRID rendern mit den wichtigsten KPIs beider Szenarien
-- In `BestandCalculation.tsx`: Schnellanalyse-Card entfernen (oder ueber `hideQuickAnalysis` Prop steuern)
-- So starten beide Kalkulationen auf gleicher Hoehe
+Weg 3: Manuelles Anlegen (useCreateOffer Hook)
+  → INSERT mit mandate_id (korrekt)
+  → Nur im Kontext eines Mandats nutzbar
+```
 
-### Datei 2: `BestandCalculation.tsx`
+### Aktueller Datenbestand
 
-- Neue Prop `hideQuickAnalysis?: boolean` — wenn true, wird die Schnellanalyse-Karte nicht gerendert
-- Alle `text-green-600` → `text-emerald-500`
-- Alle `text-blue-600` → `text-primary`
-- Alle `text-amber-600` → `text-amber-500`
-- Schnellanalyse-Card: `bg-primary/5 border-primary/20` → `DESIGN.INFO_BANNER.PREMIUM`
-- Gradient-KPI-Card: `bg-gradient-to-r from-primary/10 to-green-500/10 border-primary/20` → `className={DESIGN.INFO_BANNER.PREMIUM}`
-- Alle nackten `<Card>` → `<Card className={DESIGN.CARD.BASE}>`
-- CardTitle: `text-lg` → `DESIGN.TYPOGRAPHY.CARD_TITLE`
-- KPI-Werte: `text-3xl font-bold` → `text-2xl font-bold` (DESIGN.TYPOGRAPHY.VALUE)
-- Labels: `text-xs text-muted-foreground` → `DESIGN.TYPOGRAPHY.HINT`
-- `text-sm text-muted-foreground` → `DESIGN.TYPOGRAPHY.MUTED`
-- Import DESIGN Token
+| Objekt | Quelle | Mandat | Status |
+|--------|--------|--------|--------|
+| "Faktor 14,7: Aufgeteilte Rotklinkeranlage mit 40 Einheiten" | inbound_email | ACQ-2026-00001 | new |
 
-### Datei 3: `AufteilerCalculation.tsx`
+Es existiert nur 1 Objekt und 1 Mandat. Das Objekt "Notklinkeranlage" (Rotklinkeranlage) ist vorhanden, aber der Titel ist die Expose-Ueberschrift, nicht die nackten Daten.
 
-- Gleiche Farb-Korrekturen wie Bestand
-- `text-green-600` → `text-emerald-500`
-- `text-destructive` bleibt (ist bereits ein Token)
-- `text-amber-600` → `text-amber-500`
-- Result-Card: `border-green-500 bg-green-50/50` → `border-emerald-500/50 bg-emerald-500/5` (Dark-Mode-safe)
-- Result-Card negativ: `border-destructive bg-destructive/5` → bleibt (schon korrekt)
-- Hinweis-Banner: `bg-amber-50 border-amber-200` → `DESIGN.INFO_BANNER.WARNING`
-- Alle nackten `<Card>` → `<Card className={DESIGN.CARD.BASE}>`
-- Typography-Tokens anpassen wie bei Bestand
-- Import DESIGN Token
+### Problem: Titel = Expose-Ueberschrift
 
-### Datei 4: Keine weiteren Dateien betroffen
+Aktuell wird `title` aus dem Expose uebernommen ("Faktor 14,7: Aufgeteilte Rotklinkeranlage mit 40 Einheiten"). Das ist eine Marketing-Ueberschrift, keine strukturierte Information.
 
-## Ergebnis
+Die nackten Daten (Adresse, PLZ, Stadt, Preis, WE-Zahl) sind zwar in separaten Spalten vorhanden, aber die **Listenansicht (AkquiseDatenbank.tsx)** zeigt primaer den Titel und rendert Cards statt einer Tabellenstruktur.
 
-- Schnellanalyse ueber volle Breite → Bestand und Aufteiler starten auf gleicher Hoehe
-- Alle Farben Dark-Mode-sicher ueber CI-Tokens
-- Alle Cards mit `glass-card` Basis-Klasse
-- Einheitliche Typografie ueber DESIGN-Manifest
-- Kein visueller Versatz zwischen den beiden Kalkulationsspalten
+### Storage-Pfad-Chaos
+
+Drei verschiedene Upload-Pfade fuer denselben Bucket:
+- `{tenant_id}/manual/{timestamp}_{filename}` (ExposeDragDropUploader)
+- `{tenant_id}/exposes/{timestamp}_{filename}` (useExposeUpload)
+- `{mandate_id}/{offer_id}/{filename}` (useUploadOfferDocument)
+
+Kein `data_room_folders`-Table existiert, obwohl `acq_offers.data_room_folder_id` eine FK darauf hat.
+
+---
+
+## 2. SOLL-KONZEPT: Globale Objekt-Datenbank
+
+### Kern-Idee
+
+`acq_offers` wird zur **globalen Objekt-Datenbank**. Jedes Objekt bekommt eine ID beim Eingang, unabhaengig davon, ob es einem Mandat zugeordnet ist.
+
+### Datenbank-Aenderungen
+
+**Migration 1: mandate_id nullable machen**
+```sql
+ALTER TABLE acq_offers ALTER COLUMN mandate_id DROP NOT NULL;
+```
+
+Dies erlaubt:
+- Objekte ohne Mandats-Zuordnung (globaler Pool)
+- Spaetere Zuordnung per Dropdown/Button
+- Upload-Flow ohne Mandat-Kontext
+
+**Migration 2: Fehlenden Anbieter-Feld hinzufuegen**
+```sql
+ALTER TABLE acq_offers ADD COLUMN IF NOT EXISTS provider_name TEXT;
+ALTER TABLE acq_offers ADD COLUMN IF NOT EXISTS provider_contact TEXT;
+ALTER TABLE acq_offers ADD COLUMN IF NOT EXISTS received_at TIMESTAMPTZ DEFAULT now();
+```
+
+So werden die geforderten Spalten verfuegbar:
+- `provider_name` → Anbieter des Objektes (z.B. "Dr. Hofeditz Real Estate GmbH")
+- `provider_contact` → Kontaktdaten
+- `received_at` → Wann kam das Objekt rein (getrennt von created_at)
+
+Bei vorhandenen Daten: `provider_name` kann aus `extracted_data->>'source'` befuellt werden.
+
+### Neue Listenansicht: Excel-Tabellenstruktur
+
+Die `AkquiseDatenbank.tsx` wird von Card-Liste auf eine echte Tabelle umgebaut:
+
+**Spalten (Excel-kompatibel):**
+
+| Spalte | DB-Feld | Beschreibung |
+|--------|---------|--------------|
+| # | lfd. Nr. | Laufende Nummer |
+| Eingangsdatum | received_at / created_at | Wann kam es rein |
+| PLZ | postal_code | Postleitzahl |
+| Stadt | city | Ort |
+| Strasse | address | Strassenadresse |
+| Anbieter | provider_name | Wer hat es geschickt |
+| Quelle | source_type | E-Mail / Upload / Portal |
+| Preis | price_asking | Kaufpreis formatiert |
+| WE | units_count | Anzahl Wohneinheiten |
+| Flaeche | area_sqm | Quadratmeter |
+| Faktor | yield_indicated → calc | Kaufpreisfaktor |
+| Status | status | Badge |
+| Mandat | mandate.code | Zugeordnetes Mandat |
+
+Kein Titel aus dem Expose. Die Zeile ist klickbar und oeffnet ein **Detail-Popup (Sheet/Dialog)** mit der Mini-Immobilienakte.
+
+### Detail-Popup: Mini-Immobilienakte
+
+Wenn man auf eine Zeile klickt, oeffnet sich ein Sheet (Seitenleiste) oder Dialog mit:
+- Alle extrahierten Daten aus `extracted_data` JSON
+- Expose-Vorschau (Link zum Dokument in acq-documents)
+- Kurz-KPIs: Preis, Faktor, NOI, Flaeche
+- Mandat-Zuordnung (Dropdown zum Aendern)
+- Status-Aenderung
+- Button "Zur Objektakte" (Vollansicht ObjekteingangDetail)
+- Aktivitaeten-Log (letzte 5 Eintraege)
+
+### Storage-Konzept: Standardisierter Pfad
+
+Alle Dateien im Bucket `acq-documents` folgen einem einheitlichen Schema:
+
+```text
+acq-documents/
+  └── {tenant_id}/
+       └── {offer_id}/
+            ├── expose_original.pdf
+            ├── analyse_geomap.json
+            └── sonstige_dokumente...
+```
+
+- Kein mandate_id im Pfad (Objekt kann Mandat wechseln)
+- offer_id ist stabil und eindeutig
+- Alte Pfade ({tenant_id}/manual/...) werden per Backfill-Migration korrigiert
+
+---
+
+## 3. TECHNISCHE UMSETZUNG
+
+### Schritt 1: DB-Migration
+- `mandate_id` → nullable
+- Neue Spalten: `provider_name`, `provider_contact`, `received_at`
+- Backfill: `provider_name` aus `extracted_data->>'source'` befuellen
+
+### Schritt 2: AkquiseDatenbank.tsx komplett umbauen
+- Card-Liste → CI-konforme TABLE-Struktur (wie ObjekteingangList, aber ohne Mandate-Widgets)
+- Spalten wie oben definiert
+- Sortierbar nach jeder Spalte (Klick auf Header)
+- Excel-Export-Button (xlsx-Bibliothek ist bereits installiert)
+- Zeilen-Klick oeffnet Detail-Sheet
+
+### Schritt 3: Neues AcqOfferDetailSheet.tsx
+- Seitenleiste (Radix Sheet) mit Mini-Immobilienakte
+- Zeigt extracted_data, Dokumente, KPIs, Status, Mandat-Zuordnung
+- Link "Zur vollen Objektakte" → ObjekteingangDetail
+
+### Schritt 4: Hooks anpassen
+- `useCreateOffer`: mandate_id optional machen
+- `ExposeDragDropUploader`: Korrekten Insert ohne mandate_id (jetzt erlaubt)
+- Neuer Hook `useAssignOfferToMandate` fuer nachtraegliche Zuordnung
+
+### Schritt 5: Storage-Pfad standardisieren
+- Neue Uploads nutzen `{tenant_id}/{offer_id}/{filename}`
+- Bestehende Daten (1 Objekt, keine Dokumente) brauchen keinen Backfill
+
+---
+
+## 4. ERGEBNIS
+
+- Globale Objekt-Datenbank ohne Mandats-Zwang
+- Excel-taugliche Tabellenansicht mit nackten Daten (keine Expose-Ueberschriften)
+- Klickbare Zeilen mit Mini-Akte als Popup
+- Anbieter, Eingangsdatum und Quelle als Kern-Spalten
+- Standardisierter Storage-Pfad pro Objekt
+- Mandats-Zuordnung nachtraeglich moeglich
