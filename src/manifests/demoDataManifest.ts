@@ -91,7 +91,7 @@ export const DEMO_DATA_MANIFEST: readonly DemoDataEntry[] = [
     consumers: [
       { file: 'src/pages/portal/immobilien/VerwaltungTab.tsx', zone: 2, mergeStrategy: 'inject', description: 'Demo-Guard für MFH Düsseldorf' },
     ],
-    status: 'planned',
+    status: 'done',
   },
   {
     processId: 'GP-SANIERUNG',
@@ -105,7 +105,7 @@ export const DEMO_DATA_MANIFEST: readonly DemoDataEntry[] = [
     consumers: [
       { file: 'src/pages/portal/immobilien/SanierungTab.tsx', zone: 2, mergeStrategy: 'inject', description: 'Demo-Guard für EFH Berlin' },
     ],
-    status: 'planned',
+    status: 'done',
   },
 
   // ─── MOD-07: Finanzierung ───────────────────────────────
@@ -122,7 +122,7 @@ export const DEMO_DATA_MANIFEST: readonly DemoDataEntry[] = [
       { file: 'src/components/finanzierung/FinanceRequestWidgets.tsx', zone: 2, mergeStrategy: 'prepend', description: 'Demo-Finanzierungsanfrage im Grid' },
       { file: 'src/pages/portal/finanzierungsmanager/FMDashboard.tsx', zone: 1, mergeStrategy: 'prepend', description: 'Demo-Fall im FM-Cockpit' },
     ],
-    status: 'planned',
+    status: 'done',
   },
   {
     processId: 'GP-PRIVATKREDIT',
@@ -136,7 +136,7 @@ export const DEMO_DATA_MANIFEST: readonly DemoDataEntry[] = [
     consumers: [
       { file: 'src/components/privatkredit/ConsumerLoanWidgets.tsx', zone: 2, mergeStrategy: 'inject', description: 'Demo-Guard für Autofinanzierung' },
     ],
-    status: 'planned',
+    status: 'done',
   },
 
   // ─── MOD-08: Investment-Suche ───────────────────────────
@@ -153,7 +153,7 @@ export const DEMO_DATA_MANIFEST: readonly DemoDataEntry[] = [
       { file: 'src/pages/portal/investments/MandatTab.tsx', zone: 2, mergeStrategy: 'prepend', description: 'Demo-Suchmandat im Grid' },
       { file: 'src/pages/portal/akquise-manager/AkquiseMandate.tsx', zone: 1, mergeStrategy: 'prepend', description: 'Demo-Mandat im AM-Cockpit' },
     ],
-    status: 'planned',
+    status: 'done',
   },
   {
     processId: 'GP-SIMULATION',
@@ -167,7 +167,7 @@ export const DEMO_DATA_MANIFEST: readonly DemoDataEntry[] = [
     consumers: [
       { file: 'src/pages/portal/investments/SimulationTab.tsx', zone: 2, mergeStrategy: 'inject', description: 'Demo-Guard für Portfolio-Simulation' },
     ],
-    status: 'planned',
+    status: 'done',
   },
 
   // ─── MOD-11: Finanzierungsmanager ───────────────────────
@@ -183,7 +183,7 @@ export const DEMO_DATA_MANIFEST: readonly DemoDataEntry[] = [
     consumers: [
       { file: 'src/pages/portal/finanzierungsmanager/FMDashboard.tsx', zone: 2, mergeStrategy: 'inject', description: 'Demo-Akte Max Muster im FM-Dashboard' },
     ],
-    status: 'planned',
+    status: 'done',
   },
 
   // ─── MOD-12: Akquise Manager ────────────────────────────
@@ -199,7 +199,7 @@ export const DEMO_DATA_MANIFEST: readonly DemoDataEntry[] = [
     consumers: [
       { file: 'src/pages/portal/akquise-manager/AkquiseMandate.tsx', zone: 2, mergeStrategy: 'inject', description: 'Demo-Akte MFH Rheinland im AM-Dashboard' },
     ],
-    status: 'planned',
+    status: 'done',
   },
 
   // ─── MOD-13: Projekte ───────────────────────────────────
@@ -218,7 +218,7 @@ export const DEMO_DATA_MANIFEST: readonly DemoDataEntry[] = [
       { file: 'src/pages/zone3/kaufy2026/Kaufy2026Home.tsx', zone: 3, mergeStrategy: 'prepend', description: 'Demo-Projekt auf Kaufy' },
       { file: 'src/pages/portal/vertriebspartner/KatalogTab.tsx', zone: 2, mergeStrategy: 'prepend', description: 'Demo-Projekt im Katalog' },
     ],
-    status: 'planned',
+    status: 'done',
   },
 
   // ─── MOD-14: Communication Pro ──────────────────────────
@@ -234,7 +234,7 @@ export const DEMO_DATA_MANIFEST: readonly DemoDataEntry[] = [
     consumers: [
       { file: 'src/pages/portal/communication-pro/SerienEmailsPage.tsx', zone: 2, mergeStrategy: 'inject', description: 'Demo-Guard für Willkommens-Sequenz' },
     ],
-    status: 'planned',
+    status: 'done',
   },
   {
     processId: 'GP-RECHERCHE',
@@ -264,7 +264,7 @@ export const DEMO_DATA_MANIFEST: readonly DemoDataEntry[] = [
     consumers: [
       { file: 'src/components/portal/cars/CarsFahrzeuge.tsx', zone: 2, mergeStrategy: 'inject', description: 'Demo-Guard für BMW M4' },
     ],
-    status: 'planned',
+    status: 'done',
   },
 
   // ─── MOD-19: Photovoltaik ──────────────────────────────
@@ -280,7 +280,7 @@ export const DEMO_DATA_MANIFEST: readonly DemoDataEntry[] = [
     consumers: [
       { file: 'src/pages/portal/photovoltaik/AnlagenTab.tsx', zone: 2, mergeStrategy: 'inject', description: 'Demo-Guard für SMA 9.8 kWp' },
     ],
-    status: 'planned',
+    status: 'done',
   },
 
   // ─── MOD-21: Website Builder ────────────────────────────
