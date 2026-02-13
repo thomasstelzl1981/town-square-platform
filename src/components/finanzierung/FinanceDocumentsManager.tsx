@@ -11,6 +11,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Loader2 } from 'lucide-react';
 import { StorageFileManager } from '@/components/dms/StorageFileManager';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
+import { PageShell } from '@/components/shared/PageShell';
 import { toast } from 'sonner';
 import { useUniversalUpload } from '@/hooks/useUniversalUpload';
 
@@ -353,7 +354,7 @@ export function FinanceDocumentsManager() {
   }
 
   return (
-    <div className="space-y-4">
+    <PageShell>
       <ModulePageHeader title="Dokumente" description="Bonitäts- und Objektunterlagen" />
 
       {/* StorageFileManager — same look as DMS/MOD-11 */}
@@ -376,7 +377,7 @@ export function FinanceDocumentsManager() {
         selectedNodeId={selectedNodeId}
         onSelectNode={setSelectedNodeId}
       />
-    </div>
+    </PageShell>
   );
 }
 
