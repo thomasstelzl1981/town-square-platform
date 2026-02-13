@@ -73,7 +73,7 @@ export function Kaufy2026SearchBar({
   };
 
   return (
-    <div className="kaufy2026-search-card" style={{ position: 'relative', bottom: 'auto', left: 'auto', transform: 'none', width: '100%' }}>
+    <div className="kaufy2026-search-card" style={{ position: 'relative', bottom: 'auto', left: 'auto', transform: 'none', width: '100%', background: 'hsl(210, 30%, 97%)' }}>
       <Collapsible open={expanded} onOpenChange={setExpanded}>
          <form onSubmit={handleSubmit}>
           {/* Mode Toggle Tabs */}
@@ -109,27 +109,29 @@ export function Kaufy2026SearchBar({
             {mode === 'investment' ? (
               <>
                 {/* zvE Inline Input */}
-                <div className="kaufy2026-inline-input">
-                  <label>Einkommen (zvE)</label>
+                <div className="kaufy2026-inline-input" style={{ background: '#ffffff' }}>
+                  <label style={{ color: 'hsl(215, 16%, 47%)' }}>Einkommen (zvE)</label>
                   <input
                     type="number"
                     value={zvE}
                     onChange={(e) => setZvE(Number(e.target.value))}
                     placeholder="60.000"
+                    style={{ background: 'transparent', color: 'hsl(220, 20%, 10%)', colorScheme: 'light' }}
                   />
-                  <span>€</span>
+                  <span style={{ color: 'hsl(215, 16%, 47%)' }}>€</span>
                 </div>
 
                 {/* Equity Inline Input */}
-                <div className="kaufy2026-inline-input">
-                  <label>Eigenkapital</label>
+                <div className="kaufy2026-inline-input" style={{ background: '#ffffff' }}>
+                  <label style={{ color: 'hsl(215, 16%, 47%)' }}>Eigenkapital</label>
                   <input
                     type="number"
                     value={equity}
                     onChange={(e) => setEquity(Number(e.target.value))}
                     placeholder="50.000"
+                    style={{ background: 'transparent', color: 'hsl(220, 20%, 10%)', colorScheme: 'light' }}
                   />
-                  <span>€</span>
+                  <span style={{ color: 'hsl(215, 16%, 47%)' }}>€</span>
                 </div>
               </>
             ) : (
