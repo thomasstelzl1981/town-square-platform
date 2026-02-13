@@ -668,9 +668,9 @@ export function PortfolioTab() {
     status: 'VERMIETET',
     asofDate: '2026-02-01',
     dataQuality: 'OK',
-    propertyId: '__demo__',
-    unitId: '__demo__',
-    tenantId: '__demo__',
+    propertyId: 'd0000000-0000-4000-a000-000000000001',
+    unitId: 'd0000000-0000-4000-b000-000000000001',
+    tenantId: 'a0000000-0000-4000-a000-000000000001',
     publicId: 'DEMO-B01',
     propertyType: 'MFH',
     category: 'einzelobjekt',
@@ -767,12 +767,12 @@ export function PortfolioTab() {
           {demoEnabled && (
             <WidgetCell>
               <button
-                onClick={() => setSelectedDemoId(selectedDemoId === '__demo__' ? null : '__demo__')}
+                onClick={() => setSelectedDemoId(selectedDemoId === 'd0000000-0000-4000-a000-000000000001' ? null : 'd0000000-0000-4000-a000-000000000001')}
                 className={cn(
                   "w-full h-full flex flex-col justify-between p-5 rounded-xl border text-left transition-all",
                   DESIGN.DEMO_WIDGET.CARD,
                   DESIGN.DEMO_WIDGET.HOVER,
-                  selectedDemoId === '__demo__'
+                   selectedDemoId === 'd0000000-0000-4000-a000-000000000001'
                     ? "ring-2 ring-emerald-500 border-emerald-400 shadow-sm"
                     : ""
                 )}
@@ -918,7 +918,7 @@ export function PortfolioTab() {
         </div>
 
       {/* Demo Inline-Detail — Vollständige Immobilienakte */}
-      {selectedDemoId === '__demo__' && (
+      {selectedDemoId === 'd0000000-0000-4000-a000-000000000001' && (
         <div className="pt-2">
           <div className="flex justify-end mb-2">
             <button onClick={() => setSelectedDemoId(null)} className="text-muted-foreground hover:text-foreground text-sm">✕ Schließen</button>
