@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { PageShell } from '@/components/shared/PageShell';
-import { useAcqMandatesActive } from '@/hooks/useAcqMandate';
+import { useAcqMandatesForManager } from '@/hooks/useAcqMandate';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { formatDistanceToNow } from 'date-fns';
@@ -41,32 +41,9 @@ const FILTER_CHIPS = [
 
 export function ObjekteingangList() {
   const navigate = useNavigate();
-  const { data: mandatesForManager = [], isLoading: loadingMandates } = useAcqMandatesActive();
+  const { data: mandates = [], isLoading: loadingMandates } = useAcqMandatesForManager();
   const [statusFilter, setStatusFilter] = React.useState<string>('all');
   const [searchTerm, setSearchTerm] = React.useState('');
-
-  const { data: demoMandates = [] } = useQuery({
-    queryKey: ['acq-mandates-demo'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('acq_mandates')
-        .select('*')
-        .eq('tenant_id', 'a0000000-0000-4000-a000-000000000001')
-        .eq('status', 'active')
-        .order('created_at', { ascending: false });
-      if (error) throw error;
-      return data;
-    },
-  });
-
-  const mandates = React.useMemo(() => {
-    const seen = new Set<string>();
-    const combined = [];
-    for (const m of [...mandatesForManager, ...demoMandates]) {
-      if (!seen.has(m.id)) { seen.add(m.id); combined.push(m); }
-    }
-    return combined;
-  }, [mandatesForManager, demoMandates]);
 
   const mandateIds = mandates.map(m => m.id);
   

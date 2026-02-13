@@ -17,7 +17,7 @@ import {
   useAcqMandatesPending, 
   useAcqMandatesActive, 
 } from '@/hooks/useAcqMandate';
-import { MandateCaseCard, MandateCaseCardPlaceholder } from '@/components/akquise/MandateCaseCard';
+import { MandateCaseCard, MandateCaseCardPlaceholder, MandateCaseCardNew } from '@/components/akquise/MandateCaseCard';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -274,6 +274,9 @@ export default function AkquiseDashboard() {
         </h3>
         {activeMandates && activeMandates.length > 0 ? (
           <WidgetGrid>
+            <WidgetCell>
+              <MandateCaseCardNew onClick={() => navigate('/portal/akquise-manager/mandate')} />
+            </WidgetCell>
             {activeMandates.map(mandate => (
               <WidgetCell key={mandate.id}>
                 <MandateCaseCard
@@ -286,15 +289,7 @@ export default function AkquiseDashboard() {
         ) : (
           <WidgetGrid>
             <WidgetCell>
-              <Card className="glass-card border-dashed border-2 h-full flex flex-col items-center justify-center opacity-50">
-                <CardContent className="p-4 flex flex-col items-center justify-center h-full text-center gap-2">
-                  <div className="w-10 h-10 rounded-xl bg-muted/50 flex items-center justify-center">
-                    <Briefcase className="h-5 w-5 text-muted-foreground" />
-                  </div>
-                  <p className="text-sm font-medium text-muted-foreground">Keine aktiven Mandate</p>
-                  <p className="text-[10px] text-muted-foreground">Erstellen Sie ein Mandat oder warten Sie auf Zuweisungen</p>
-                </CardContent>
-              </Card>
+              <MandateCaseCardNew onClick={() => navigate('/portal/akquise-manager/mandate')} />
             </WidgetCell>
           </WidgetGrid>
         )}
