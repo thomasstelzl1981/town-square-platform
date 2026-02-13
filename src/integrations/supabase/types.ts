@@ -3649,6 +3649,122 @@ export type Database = {
           },
         ]
       }
+      commpro_phone_assistants: {
+        Row: {
+          behavior_prompt: string
+          binding_status: string
+          created_at: string
+          display_name: string
+          documentation: Json
+          first_message: string
+          forwarding_number_e164: string | null
+          id: string
+          is_enabled: boolean
+          rules: Json
+          updated_at: string
+          user_id: string
+          voice_preset_key: string
+          voice_provider: string | null
+          voice_settings: Json
+        }
+        Insert: {
+          behavior_prompt?: string
+          binding_status?: string
+          created_at?: string
+          display_name?: string
+          documentation?: Json
+          first_message?: string
+          forwarding_number_e164?: string | null
+          id?: string
+          is_enabled?: boolean
+          rules?: Json
+          updated_at?: string
+          user_id: string
+          voice_preset_key?: string
+          voice_provider?: string | null
+          voice_settings?: Json
+        }
+        Update: {
+          behavior_prompt?: string
+          binding_status?: string
+          created_at?: string
+          display_name?: string
+          documentation?: Json
+          first_message?: string
+          forwarding_number_e164?: string | null
+          id?: string
+          is_enabled?: boolean
+          rules?: Json
+          updated_at?: string
+          user_id?: string
+          voice_preset_key?: string
+          voice_provider?: string | null
+          voice_settings?: Json
+        }
+        Relationships: []
+      }
+      commpro_phone_call_sessions: {
+        Row: {
+          action_items: Json
+          assistant_id: string
+          created_at: string
+          direction: string
+          duration_sec: number | null
+          ended_at: string | null
+          from_number_e164: string
+          id: string
+          match: Json
+          started_at: string
+          status: string
+          summary_text: string | null
+          to_number_e164: string | null
+          transcript_text: string | null
+          user_id: string
+        }
+        Insert: {
+          action_items?: Json
+          assistant_id: string
+          created_at?: string
+          direction?: string
+          duration_sec?: number | null
+          ended_at?: string | null
+          from_number_e164: string
+          id?: string
+          match?: Json
+          started_at?: string
+          status?: string
+          summary_text?: string | null
+          to_number_e164?: string | null
+          transcript_text?: string | null
+          user_id: string
+        }
+        Update: {
+          action_items?: Json
+          assistant_id?: string
+          created_at?: string
+          direction?: string
+          duration_sec?: number | null
+          ended_at?: string | null
+          from_number_e164?: string
+          id?: string
+          match?: Json
+          started_at?: string
+          status?: string
+          summary_text?: string | null
+          to_number_e164?: string | null
+          transcript_text?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commpro_phone_call_sessions_assistant_id_fkey"
+            columns: ["assistant_id"]
+            isOneToOne: false
+            referencedRelation: "commpro_phone_assistants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       consent_templates: {
         Row: {
           body_de: string
