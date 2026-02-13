@@ -154,12 +154,12 @@ export function PortfolioTab() {
 
   // Fetch UNITS with properties, leases (multi!), and financing from LOANS (SSOT)
   const { data: unitsWithProperties, isLoading: unitsLoading } = useQuery({
-    queryKey: ['portfolio-units-annual', activeTenantId],
+    queryKey: ['portfolio-units-annual', activeTenantId, demoEnabled],
     queryFn: async () => {
       if (!activeTenantId) return [];
       
       // Get units with property data - USE activeTenantId for consistent tenant scoping
-      const { data: units, error: unitsError } = await supabase
+      let unitsQuery = supabase
         .from('units')
         .select(`
           id,
@@ -177,11 +177,19 @@ export function PortfolioTab() {
             postal_code,
             market_value,
             annual_income,
-            status
+            status,
+            is_demo
           )
         `)
         .eq('tenant_id', activeTenantId)
         .eq('properties.status', 'active');
+      
+      // Filter out demo properties when demo toggle is off
+      if (!demoEnabled) {
+        unitsQuery = unitsQuery.eq('properties.is_demo', false);
+      }
+      
+      const { data: units, error: unitsError } = await unitsQuery;
 
       if (unitsError) {
         console.error('Portfolio units query error:', unitsError);
@@ -210,10 +218,17 @@ export function PortfolioTab() {
       let loans: LoanData[] = [];
       try {
         // P0-FIX: Removed .eq('is_active', true) — loans table has no such column
-        const { data: loansResult, error: loansError } = await (supabase as any)
+        let loansQuery = (supabase as any)
           .from('loans')
           .select('id, property_id, outstanding_balance_eur, annuity_monthly_eur, interest_rate_percent')
           .eq('tenant_id', activeTenantId);
+        
+        // Filter out demo property loans when demo toggle is off
+        if (!demoEnabled) {
+          loansQuery = loansQuery.not('property_id', 'in', '(d0000000-0000-4000-a000-000000000001,d0000000-0000-4000-a000-000000000002,d0000000-0000-4000-a000-000000000003)');
+        }
+        
+        const { data: loansResult, error: loansError } = await loansQuery;
         
         if (loansError) {
           console.warn('Loans query error (non-fatal):', loansError);
