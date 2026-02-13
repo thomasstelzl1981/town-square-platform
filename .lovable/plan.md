@@ -1,51 +1,41 @@
 
-# FM-Dashboard Manifest-Konformitaet + Akquise-Dashboard Angleichung
+# AkquiseDashboard an FMDashboard angleichen
 
-## Befund
+## Befunde aus dem Screenshot-Vergleich
 
-**Der Finanzierungsmanager (FMDashboard.tsx) verstoesst gegen das Design-Manifest:**
+Die beiden Dashboards haben folgende Unterschiede, wobei der **Finanzierungsmanager (FM) fuehrend** ist:
 
-1. **Zeile 433**: `sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6` — bis zu 6 Spalten statt max. 4
-2. **Zeile 464**: `grid-cols-1 md:grid-cols-2 lg:grid-cols-3` — ad-hoc Grid statt WidgetGrid
-3. Keine `WidgetGrid` / `WidgetCell` Komponenten verwendet
-4. Keine `aspect-square` Widgets
+### 1. Visitenkarte: Fehlender Edit-Button
+- **FM**: Hat einen Pencil-Button oben rechts in der Visitenkarte, der ein Profil-Edit-Sheet oeffnet
+- **AM**: Kein Edit-Button vorhanden
 
-**Der Akquise-Manager (AkquiseDashboard.tsx) ist korrekt** — nutzt WidgetGrid + WidgetCell. Allerdings fehlen die beiden Kacheln (Visitenkarte + Zins-Ticker), die im FM vorhanden sind.
+### 2. Visitenkarte: Kein Edit-Sheet
+- **FM**: Hat ein komplettes `Sheet` mit Kontaktdaten-Formular (Vorname, Nachname, E-Mail, Telefon, Adresse, Firma, Website) und §34i-Pflichtangaben
+- **AM**: Kein Edit-Mechanismus vorhanden — muss analog implementiert werden (ohne §34i, aber mit Akquise-spezifischen Feldern)
+
+### 3. Kachel-Hoehe ungleich
+- Die linke Visitenkarte und die rechte KPI-Kachel haben im AM unterschiedliche Hoehen, weil kein gemeinsamer Hoehen-Constraint gesetzt ist
+- **FM**: Beide Kacheln fuellen sich gegenseitig durch gleichen Content-Umfang
+- **Fix**: Sicherstellen, dass beide Kacheln die gleiche Mindesthoehe haben
+
+### 4. Sektions-Header inkonsistent
+- **FM**: Nutzt `h3` mit `text-sm font-semibold uppercase tracking-wider text-muted-foreground`
+- **AM**: Nutzt `h2` mit identischen Klassen — muss auf `h3` geaendert werden fuer Konsistenz
+
+### 5. Spacing-Unterschied
+- **AM** hat `mt-8` auf der zweiten Sektion ("Neue Auftraege"), FM hat keinen manuellen Margin
+- **Fix**: `mt-8` entfernen, da PageShell bereits konsistentes Spacing liefert
 
 ## Aenderungen
 
-### 1. FMDashboard.tsx — Manifest-konform machen
+### Datei: `src/pages/portal/akquise-manager/AkquiseDashboard.tsx`
 
-**Sektion A: Faelle in Bearbeitung**
-- Ersetze ad-hoc Grid (Zeile 433) durch `WidgetGrid` + `WidgetCell`
-- Jede `FinanceCaseCard` kommt in eine `WidgetCell` (max 4 Spalten, aspect-square)
-- Placeholder ebenfalls in `WidgetCell`
+1. **Edit-Button** in die Visitenkarte einfuegen (Pencil-Icon oben rechts, wie FM Zeile 320)
+2. **Edit-Sheet** implementieren — analog zum FM-Sheet, aber ohne §34i-Felder. Felder: Vorname, Nachname, E-Mail, Mobil, Festnetz, Strasse, Hausnummer, PLZ, Ort, Firma, Website, plus optionale Akquise-spezifische Felder (z.B. Spezialisierung)
+3. **EditRow-Komponente** importieren oder inline definieren (wie FM Zeile 74-83)
+4. **Sektions-Header** von `h2` auf `h3` aendern (Zeilen 139 + 172)
+5. **`mt-8`** am zweiten Abschnitt entfernen (Zeile 171)
+6. **Kachel-Hoehe** angleichen: Sicherstellen, dass Visitenkarte und KPI-Widget gleich hoch werden (z.B. durch identischen Content-Umfang oder `min-h` Constraint)
 
-**Sektion B: Finanzierungsmandate**
-- Ersetze ad-hoc Grid (Zeile 464) durch `WidgetGrid` + `WidgetCell`
-- Mandate-Cards in WidgetCell wrappen
-- Leerer Zustand ebenfalls in WidgetCell (wie beim Akquise-Dashboard)
-
-**Visitenkarte + Zins-Ticker** (Zeile 299, grid-cols-2): Diese zwei Content-Kacheln stehen ausserhalb des Widget-Grids als 2-Spalten-Layout — das bleibt, da es dem `FORM_GRID` Muster entspricht (2 Spalten fuer Detail-Ansichten).
-
-### 2. AkquiseDashboard.tsx — Zwei Kacheln ergaenzen
-
-Analog zum FM-Dashboard werden unterhalb des Headers zwei nebeneinander stehende Kacheln eingefuegt:
-
-**Kachel 1: Akquise-Manager Visitenkarte**
-- Gleiche Struktur wie FM-Visitenkarte (Name, Email, Telefon, Adresse)
-- Statt §34i-Daten: Akquise-spezifische Angaben (z.B. Spezialisierung, aktive Mandate Badge)
-- Gradient-Header in Akquise-Markenfarbe
-- Edit-Button oeffnet Profil-Sheet
-
-**Kachel 2: Markt-Ticker oder KPI-Widget**
-- Aehnlich dem Zins-Ticker, aber mit Akquise-relevanten Kennzahlen
-- Z.B.: Aktive Mandate, Objekte in Pipeline, Kontakte, Erfolgsquote
-- Alternativ: Marktdaten (Immobilienpreise, Renditen)
-
-**Layout**: `FORM_GRID` (grid-cols-1 md:grid-cols-2) — identisch zum FM-Dashboard.
-
-### Dateien
-
-1. **EDIT:** `src/pages/portal/finanzierungsmanager/FMDashboard.tsx` — WidgetGrid/WidgetCell einsetzen, ad-hoc Grids entfernen
-2. **EDIT:** `src/pages/portal/akquise-manager/AkquiseDashboard.tsx` — Visitenkarte + KPI-Widget einfuegen
+### Keine weiteren Dateien betroffen
+Die EditRow-Komponente wird direkt im AkquiseDashboard definiert (wie auch im FM), da sie spezifisch fuer das Dashboard-Edit-Sheet ist.
