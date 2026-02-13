@@ -2,6 +2,7 @@
  * Sales Desk — Zone-1 Admin Desk for Sales Operations
  * Projects: Only deactivation (Kill-Switch), no approval gate.
  */
+import { useMemo } from 'react';
 import { Routes, Route, Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -12,12 +13,20 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ShoppingBag, Inbox, Users2, FileText, ArrowRight, Ban, CheckCircle2, Globe, Users, Building2, ExternalLink, Power, Home } from 'lucide-react';
 import { EmptyState } from '@/components/shared';
 import { useSalesDeskListings, useToggleListingBlock, useUpdateListingDistribution } from '@/hooks/useSalesDeskListings';
+import { useDemoListings, isDemoListingId } from '@/hooks/useDemoListings';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
+const DEMO_BADGE = (
+  <Badge className="bg-emerald-500/15 text-emerald-600 border-emerald-500/30 text-[10px] px-1.5 py-0">
+    DEMO
+  </Badge>
+);
+
 // Immobilien-Vertriebsaufträge Card (individual property sales mandates)
 function ImmobilienVertriebsauftraegeCard() {
+  const { mandateListings: demoMandates } = useDemoListings();
   const { data: mandateListings, isLoading } = useQuery({
     queryKey: ['sales-desk-immobilien-mandate'],
     queryFn: async () => {
@@ -31,6 +40,9 @@ function ImmobilienVertriebsauftraegeCard() {
       return data ?? [];
     },
   });
+
+  // Merge demo mandates
+  const allMandates = [...(demoMandates as any[]), ...(mandateListings || [])];
 
   const formatDate = (d: string) => new Date(d).toLocaleDateString('de-DE');
 
@@ -48,7 +60,7 @@ function ImmobilienVertriebsauftraegeCard() {
     );
   }
 
-  if (!mandateListings || mandateListings.length === 0) {
+  if (allMandates.length === 0) {
     return (
       <Card>
         <CardHeader>
@@ -73,7 +85,7 @@ function ImmobilienVertriebsauftraegeCard() {
           Aktive Vertriebsaufträge (Immobilien)
         </CardTitle>
         <CardDescription>
-          {mandateListings.length} Einzelimmobilie{mandateListings.length !== 1 ? 'n' : ''} mit aktivem Verkaufsmandat
+          {allMandates.length} Einzelimmobilie{allMandates.length !== 1 ? 'n' : ''} mit aktivem Verkaufsmandat
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -88,10 +100,13 @@ function ImmobilienVertriebsauftraegeCard() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {mandateListings.map((listing: any) => (
+            {allMandates.map((listing: any) => (
               <TableRow key={listing.id}>
                 <TableCell>
-                  <div className="font-medium">{listing.properties?.address || '–'}</div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">{listing.properties?.address || '–'}</span>
+                    {listing.isDemo && DEMO_BADGE}
+                  </div>
                   <div className="text-xs text-muted-foreground">{listing.properties?.city || '–'}</div>
                 </TableCell>
                 <TableCell className="text-sm">{listing.tenant?.name || '–'}</TableCell>
@@ -364,9 +379,13 @@ function SalesDeskDashboard() {
 
 // Sub-pages
 function VeroeffentlichungenTab() {
-  const { data: listings, isLoading } = useSalesDeskListings();
+  const { data: dbListings, isLoading } = useSalesDeskListings();
+  const { salesDeskListings: demoListings } = useDemoListings();
   const toggleBlock = useToggleListingBlock();
   const updateDistribution = useUpdateListingDistribution();
+
+  // Merge demo listings at the top
+  const listings = useMemo(() => [...demoListings, ...(dbListings || [])], [demoListings, dbListings]);
 
   const formatCurrency = (val: number | null) =>
     val ? new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(val) : '—';
@@ -380,7 +399,7 @@ function VeroeffentlichungenTab() {
     );
   }
 
-  if (!listings || listings.length === 0) {
+  if (listings.length === 0) {
     return (
       <div className="space-y-4">
         <h2 className="text-xl font-semibold uppercase">Veröffentlichungen</h2>
@@ -424,7 +443,10 @@ function VeroeffentlichungenTab() {
                     <div className="flex items-center gap-2">
                       <Building2 className="h-4 w-4 text-muted-foreground" />
                       <div>
-                        <div className="font-medium">{listing.property?.code || '—'}</div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-medium">{listing.property?.code || '—'}</span>
+                          {isDemoListingId(listing.id) && DEMO_BADGE}
+                        </div>
                         <div className="text-xs text-muted-foreground">
                           {listing.property?.city}
                         </div>
@@ -442,15 +464,16 @@ function VeroeffentlichungenTab() {
                     <div className="flex items-center justify-center gap-2">
                       <Switch
                         checked={hasPartner && !listing.is_blocked}
-                        disabled={listing.is_blocked || updateDistribution.isPending}
-                        onCheckedChange={(checked) => 
+                        disabled={listing.is_blocked || updateDistribution.isPending || isDemoListingId(listing.id)}
+                        onCheckedChange={(checked) => {
+                          if (isDemoListingId(listing.id)) return;
                           updateDistribution.mutate({ 
                             listingId: listing.id, 
                             tenantId: listing.tenant?.id || '',
                             channel: 'partner_network', 
                             enabled: checked 
-                          })
-                        }
+                          });
+                        }}
                       />
                       {hasPartner && <Users className="h-4 w-4 text-primary" />}
                     </div>
@@ -459,15 +482,16 @@ function VeroeffentlichungenTab() {
                     <div className="flex items-center justify-center gap-2">
                       <Switch
                         checked={hasKaufy && !listing.is_blocked}
-                        disabled={listing.is_blocked || !hasPartner || updateDistribution.isPending}
-                        onCheckedChange={(checked) => 
+                        disabled={listing.is_blocked || !hasPartner || updateDistribution.isPending || isDemoListingId(listing.id)}
+                        onCheckedChange={(checked) => {
+                          if (isDemoListingId(listing.id)) return;
                           updateDistribution.mutate({ 
                             listingId: listing.id, 
                             tenantId: listing.tenant?.id || '',
                             channel: 'kaufy', 
                             enabled: checked 
-                          })
-                        }
+                          });
+                        }}
                       />
                       {hasKaufy && <Globe className="h-4 w-4 text-primary" />}
                     </div>
@@ -486,8 +510,11 @@ function VeroeffentlichungenTab() {
                     <Button
                       variant={listing.is_blocked ? 'destructive' : 'ghost'}
                       size="sm"
-                      onClick={() => toggleBlock.mutate({ listingId: listing.id, blocked: !listing.is_blocked })}
-                      disabled={toggleBlock.isPending}
+                      onClick={() => {
+                        if (isDemoListingId(listing.id)) return;
+                        toggleBlock.mutate({ listingId: listing.id, blocked: !listing.is_blocked });
+                      }}
+                      disabled={toggleBlock.isPending || isDemoListingId(listing.id)}
                     >
                       {listing.is_blocked ? <Ban className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}
                     </Button>

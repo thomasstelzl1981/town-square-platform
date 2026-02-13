@@ -10,7 +10,9 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { getCachedSignedUrl } from '@/lib/imageCache';
 import { Loader2, Building2 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { InvestmentResultTile } from '@/components/investment/InvestmentResultTile';
+import { useDemoListings, isDemoListingId } from '@/hooks/useDemoListings';
 import { useInvestmentEngine, defaultInput, type CalculationInput } from '@/hooks/useInvestmentEngine';
 import { 
   Kaufy2026Hero, 
@@ -46,6 +48,9 @@ interface InvestmentMetrics {
 }
 
 export default function Kaufy2026Home() {
+  // Demo listings
+  const { kaufyListings: demoListings } = useDemoListings();
+  
   // URL-based state for search parameters
   const [urlParams, setUrlParams] = useSearchParams();
 
@@ -202,10 +207,17 @@ export default function Kaufy2026Home() {
         unit_count: 1,
         monthly_rent_total: item.properties?.annual_income ? item.properties.annual_income / 12 : 0,
         hero_image_path: imageMap.get(item.properties?.id) || null,
+        isDemo: false,
       })) as PublicListing[];
     },
     enabled: hasSearched,
   });
+
+  // Merge demo listings with DB listings
+  const allListings = useMemo(() => {
+    const dbListings = listings || [];
+    return [...demoListings.map(d => ({ ...d, isDemo: true } as any)), ...dbListings];
+  }, [demoListings, listings]);
 
   // Investment search handler
   const handleInvestmentSearch = useCallback(async (params: SearchParams) => {
@@ -280,14 +292,35 @@ export default function Kaufy2026Home() {
         isLoading={isSearching || isLoadingListings}
       />
 
+      {/* Demo Listings — always visible when demo mode is on */}
+      {!hasSearched && demoListings.length > 0 && (
+        <section className="py-12 px-6 lg:px-10">
+          <h2 className="text-2xl font-bold text-[hsl(220,20%,10%)] mb-6 flex items-center gap-2">
+            Aktuelle Kapitalanlagen
+            <Badge className="bg-emerald-500/15 text-emerald-600 border-emerald-500/30 text-xs">DEMO</Badge>
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {demoListings.map((listing) => (
+              <InvestmentResultTile
+                key={listing.listing_id}
+                listing={listing as any}
+                metrics={null}
+                linkPrefix="/website/kaufy/immobilien"
+                showProvision={false}
+              />
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* Results Section */}
       {hasSearched && (
         <section className="py-12 px-6 lg:px-10">
           <h2 className="text-2xl font-bold text-[hsl(220,20%,10%)] mb-6">
             Passende Kapitalanlage-Objekte
-            {listings.length > 0 && (
+            {allListings.length > 0 && (
               <span className="text-base font-normal text-[hsl(215,16%,47%)] ml-2">
-                ({listings.length} Ergebnisse)
+                ({allListings.length} Ergebnisse)
               </span>
             )}
           </h2>
@@ -296,7 +329,7 @@ export default function Kaufy2026Home() {
             <div className="flex items-center justify-center py-12">
               <Loader2 className="w-8 h-8 animate-spin text-[hsl(210,80%,55%)]" />
             </div>
-          ) : listings.length === 0 ? (
+          ) : allListings.length === 0 ? (
             <div className="text-center py-12 bg-[hsl(210,30%,97%)] rounded-2xl">
               <Building2 className="w-12 h-12 mx-auto text-[hsl(215,16%,47%)] mb-4" />
               <p className="text-[hsl(215,16%,47%)]">
@@ -305,7 +338,7 @@ export default function Kaufy2026Home() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {listings.map((listing) => (
+              {allListings.map((listing: any) => (
                 <InvestmentResultTile
                   key={listing.listing_id}
                   listing={listing}
