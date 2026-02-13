@@ -268,6 +268,8 @@ const adminComponentMap: Record<string, React.ComponentType> = {
   SocialMediaAbrechnung: React.lazy(() => import('@/pages/admin/social-media/SocialMediaAbrechnung')),
   // Landing Pages
   AdminLandingPages: React.lazy(() => import('@/pages/admin/AdminLandingPages')),
+  // Fortbildung Management
+  AdminFortbildung: React.lazy(() => import('@/pages/admin/AdminFortbildung')),
 };
 
 // Zone 1 Desk Components with internal routing (FutureRoom uses explicit nested routes)
