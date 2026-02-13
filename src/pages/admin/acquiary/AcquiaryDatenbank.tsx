@@ -15,6 +15,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { ObjectSearchPanel, DEFAULT_FILTERS, type ObjectFilters } from '@/components/akquise/ObjectSearchPanel';
 import type { AcqOfferStatus } from '@/hooks/useAcqOffers';
+import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 
 const STATUS_CONFIG: Record<AcqOfferStatus, { label: string; variant: 'default' | 'secondary' | 'outline' | 'destructive' }> = {
   new: { label: 'Eingegangen', variant: 'default' },
@@ -111,7 +112,11 @@ export default function AcquiaryDatenbank() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
+      <ModulePageHeader
+        title="DATENBANK"
+        description="Alle Objekte aller Mandate und Akquise-Manager"
+      />
       {/* KPI Cards */}
       <div className="grid gap-4 md:grid-cols-4">
         <Card><CardContent className="p-4"><div className="text-2xl font-bold">{stats.total}</div><div className="text-sm text-muted-foreground">Gesamt</div></CardContent></Card>

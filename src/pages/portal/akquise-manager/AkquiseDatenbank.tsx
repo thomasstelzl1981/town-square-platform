@@ -15,6 +15,8 @@ import { formatDistanceToNow } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { ObjectSearchPanel, DEFAULT_FILTERS, type ObjectFilters } from '@/components/akquise/ObjectSearchPanel';
 import type { AcqOfferStatus } from '@/hooks/useAcqOffers';
+import { PageShell } from '@/components/shared/PageShell';
+import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 
 const STATUS_CONFIG: Record<AcqOfferStatus, { label: string; variant: 'default' | 'secondary' | 'outline' | 'destructive' }> = {
   new: { label: 'Eingegangen', variant: 'default' },
@@ -101,11 +103,11 @@ export default function AkquiseDatenbank() {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Objekt-Datenbank</h1>
-        <p className="text-muted-foreground">Alle eingegangenen Immobilienangebote durchsuchen</p>
-      </div>
+    <PageShell>
+      <ModulePageHeader
+        title="DATENBANK"
+        description="Alle eingegangenen Immobilienangebote durchsuchen"
+      />
 
       <ObjectSearchPanel
         filters={filters}
@@ -172,6 +174,6 @@ export default function AkquiseDatenbank() {
           })}
         </div>
       )}
-    </div>
+    </PageShell>
   );
 }
