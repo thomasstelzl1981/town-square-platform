@@ -11,9 +11,8 @@ import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { PageShell } from '@/components/shared/PageShell';
 import { WidgetGrid } from '@/components/shared/WidgetGrid';
 import { WidgetCell } from '@/components/shared/WidgetCell';
-import { WidgetHeader } from '@/components/shared/WidgetHeader';
-import { ServiceCaseCard, ServiceCaseCardPlaceholder } from '@/components/sanierung/ServiceCaseCard';
-import { ServiceCaseCreateDialog } from '@/components/portal/immobilien/sanierung/ServiceCaseCreateDialog';
+import { ServiceCaseCard } from '@/components/sanierung/ServiceCaseCard';
+import { ServiceCaseCreateInline } from '@/components/portal/immobilien/sanierung/ServiceCaseCreateInline';
 import { SanierungDetail } from '@/components/sanierung/SanierungDetail';
 import { SanierungVergabe } from '@/components/sanierung/SanierungVergabe';
 import { useServiceCases } from '@/hooks/useServiceCases';
@@ -21,7 +20,7 @@ import { useServiceCases } from '@/hooks/useServiceCases';
 // Dashboard view with widget tiles
 function SanierungDashboard() {
   const navigate = useNavigate();
-  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [showCreateForm, setShowCreateForm] = useState(false);
   const { data: cases, isLoading } = useServiceCases();
 
   const activeCases = cases?.filter(c => !['completed', 'cancelled'].includes(c.status)) || [];
@@ -42,7 +41,7 @@ function SanierungDashboard() {
           <WidgetCell>
             <Card
               className="h-full cursor-pointer border-dashed hover:border-primary/50 transition-colors flex flex-col"
-              onClick={() => setCreateDialogOpen(true)}
+              onClick={() => setShowCreateForm(true)}
             >
               <CardContent className="flex flex-col items-center justify-center flex-1 gap-3 p-6">
                 <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center">
@@ -65,13 +64,15 @@ function SanierungDashboard() {
         </WidgetGrid>
       )}
 
-      <ServiceCaseCreateDialog
-        open={createDialogOpen}
-        onOpenChange={setCreateDialogOpen}
-        onSuccess={(caseId) => {
-          navigate(`/portal/immobilien/sanierung/${caseId}`);
-        }}
-      />
+      {showCreateForm && (
+        <ServiceCaseCreateInline
+          onCancel={() => setShowCreateForm(false)}
+          onSuccess={(caseId) => {
+            setShowCreateForm(false);
+            navigate(`/portal/immobilien/sanierung/${caseId}`);
+          }}
+        />
+      )}
     </PageShell>
   );
 }
