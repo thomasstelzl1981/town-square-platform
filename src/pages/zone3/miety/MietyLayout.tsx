@@ -1,5 +1,6 @@
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { MessageCircle, Home } from 'lucide-react';
+import { useDocumentMeta } from '@/hooks/useDocumentMeta';
 import '@/styles/zone3-theme.css';
 
 const navItems = [
@@ -13,6 +14,12 @@ const navItems = [
 
 export default function MietyLayout() {
   const location = useLocation();
+
+  useDocumentMeta({
+    title: 'Miety — Das digitale Mieterportal',
+    description: 'Miety vereinfacht Ihre Mietverwaltung: Digitale Nebenkostenabrechnung, Schadenmeldungen, Dokumentenverwaltung und direkter Draht zum Vermieter.',
+    ogType: 'website',
+  });
 
   return (
     <div className="theme-miety zone3-page">
