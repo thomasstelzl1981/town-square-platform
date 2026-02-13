@@ -1,116 +1,141 @@
 
 
-# Konsolidierungsplan: Manager-Module Standardisierung
+# Akquise-Mandat: 4-Kachel-Workflow + Separater Workbench-Reiter
 
 ## Uebersicht
 
-Dieser Plan vereint alle offenen Aenderungen in einem Durchgang: Dashboard-Header-Standard, Mandatsseite-Angleichung, Analyse-Sektion-Neuaufbau und Design-Manifest-Erweiterung.
+Der Workflow wird auf **zwei separate Ansichten** aufgeteilt:
+
+1. **Mandate-Seite** (`AkquiseMandate.tsx`): Erfassung, Profil, Kontaktrecherche, E-Mail-Versand (4-Kachel-Grid + Zwischen-Sektionen)
+2. **Mandat-Workbench** (`AkquiseMandateDetail.tsx`): Objekteingang, Analyse, Delivery — mit Mandat-Widgets oben zum Wechseln
 
 ---
 
-## Teil 1: Design Manifest erweitern
+## Ansicht 1: Mandate-Seite (AkquiseMandate.tsx) — Kompletter Umbau
 
-**Datei: `src/config/designManifest.ts`**
+### Kunden-Zeile (oberhalb Kachel 1+2)
 
-Neue Sektion `DASHBOARD_HEADER` einfuegen:
+Eingabefeld fuer Kundenname (Vorname/Nachname) ODER "Aus Kontaktbuch waehlen"-Button. Gewaehlter/eingegebener Name fliesst in die KI-Extraction und das Ankaufsprofil ein.
+
+### Kachel 1+2: 2-Spalten-Grid (DESIGN.FORM_GRID.FULL)
+
+**Kachel 1 (links) — KI-Erfassung (INPUT):**
+- Freitext-Textarea (bleibt wie bisher)
+- Optionale Steuerfelder darunter: Preisspanne, Region, Asset-Fokus, Zielrendite, Ausschluesse
+- Diese Felder sind Steuerparameter, die die KI beruecksichtigt
+- Button "Ankaufsprofil generieren"
+
+**Kachel 2 (rechts) — Ankaufsprofil (OUTPUT):**
+- **Kompletter Umbau**: Aktuell ist hier ein Eingabeformular — wird ersetzt durch ein **Anzeige-Dokument**
+- Vor Generierung: Grauer Platzhalter ("Profil wird nach KI-Analyse hier angezeigt")
+- Nach Generierung: Strukturierte Darstellung als Read-Only-Dokument:
+  - Firmenname/Kontakt
+  - Suchgebiet
+  - Asset-Fokus
+  - Investitionsrahmen (Preisspanne)
+  - Renditeerwartung
+  - Ausschlusskriterien
+  - Freitext-Zusammenfassung (dieses Feld bleibt **editierbar** als Textarea)
+- Alle Eingabefelder, Checkboxen und Formular-Elemente werden aus dieser Kachel **entfernt** — die Daten kommen ausschliesslich aus der KI-Extraction (Kachel 1) + Kunden-Zeile
+
+### PDF-Vorschau-Sektion (Vollbreite, zwischen Kachel-Paar 1 und Kachel-Paar 2)
+
+- Vollbreiten-Card mit DIN-A4-Vorschau des Ankaufsprofils im hochwertigen CI-Design
+- Nutzt `jsPDF` (bereits installiert) fuer PDF-Generierung
+- Buttons: "Als PDF exportieren" und "Drucken"
+- Zeigt das Profil als gestaltetes Dokument (Logo, Firmendaten, strukturierte Tabelle)
+
+### "Ankaufsprofil anlegen" Button
+
+- Erstellt das Mandat in der Datenbank (Mandat-ID: ACQ-XXXX)
+- Erstellt den Datenraum
+- Aktiviert die unteren Sektionen (Kachel 3+4)
+- Speichert das PDF
+
+### Kachel 3+4: 2-Spalten-Grid (DESIGN.FORM_GRID.FULL)
+
+Beide Kacheln sind initial ausgegraut (opacity-40, pointer-events-none) bis ein Mandat erstellt wurde.
+
+**Kachel 3 (links) — Kontaktrecherche:**
+- Die bestehende `SourcingTab`-Logik wird inline integriert (kompaktere Darstellung)
+- Kompakte Kontaktliste mit Checkboxen zum Auswaehlen
+- Buttons: Apollo, Apify/Portal-Scraper, Manuell (oeffnen weiterhin ihre Dialoge)
+- Die separaten Stats-Cards (4 Stueck) werden entfernt — Zaehler stattdessen als kleine Badges im Card-Header
+- Ausgewaehlte Kontakte (checked) werden automatisch als Empfaenger in Kachel 4 uebernommen
+
+**Kachel 4 (rechts) — E-Mail-Fenster (INLINE, kein Dialog):**
+- Die bestehende `OutreachTab`-Logik wird inline integriert
+- Statt Dialog: Ein echtes E-Mail-Compose-Fenster direkt in der Kachel:
+  - **An:** Chips/Badges der in Kachel 3 ausgewaehlten Kontakte
+  - **Betreff:** Input, vorbefuellt mit Mandatscode
+  - **Body:** Textarea, editierbar, vorbefuellt mit Anschreiben-Template
+  - **Anhang:** Automatisch das Ankaufsprofil-PDF (Anzeige als Chip mit Dateiname)
+  - **[Senden]** Button — nutzt bestehende `useSendOutreach` / `sot-acq-outbound` Edge Function
+- Darunter: Kompakte Liste der zuletzt gesendeten E-Mails mit Status-Badges
+
+### Dokumentations-Sektion (Vollbreite, unter Kachel 3+4)
+
+- Vollbreiten-Card mit der kompletten E-Mail-Versandhistorie
+- Nutzt die bestehende `useAcqOutboundMessages`-Query
+- Tabelle mit Spalten: Empfaenger, Betreff, Gesendet am, Status (Badge)
+
+---
+
+## Ansicht 2: Mandat-Workbench (AkquiseMandateDetail.tsx) — Anpassung
+
+Diese Seite existiert bereits unter `/portal/akquise-manager/mandate/:mandateId`. Die aktuelle Seite hat bereits Sektionen 1-7 alle auf einer Seite. **Aenderungen:**
+
+### Oben: Mandat-Widgets zum Switchen
+
+- `WidgetGrid` mit `MandateCaseCard`-Widgets aller aktiven Mandate
+- Klick auf eine Karte laedt das entsprechende Mandat in die Detail-Ansicht
+- Aktives Mandat ist visuell hervorgehoben (Border-Highlight)
+
+### Sektionen (nur 5-7, da 1-4 auf der Mandate-Seite leben)
+
+**Sektion 5 — Objekteingang:**
+- Bleibt wie bisher (`InboundTab`)
+
+**Sektion 6 — Analyse & Kalkulation (Bestand + Aufteiler nebeneinander):**
+- Bereits umgebaut: `AnalysisTab` zeigt `BestandCalculation` und `AufteilerCalculation` im `DESIGN.FORM_GRID.FULL` nebeneinander
+- GeoMap und KI-Analyse als Full-Width-Cards darunter
+
+**Sektion 7 — Delivery:**
+- Bleibt wie bisher (`DeliveryTab`)
+
+---
+
+## Datenfluss
 
 ```text
-DASHBOARD_HEADER = {
-  GRID: 'grid grid-cols-1 md:grid-cols-2 gap-4',
-  CARD_HEIGHT: 'min-h-[280px]',
-  GRADIENT_BAR: 'h-2',
-  TICKER_ROWS: 4,
-}
+Ansicht 1: Mandate-Seite
+=========================
+Kunden-Zeile (Name / Kontaktbuch)
+    |
+    v
+Kachel 1 (Freitext + Steuerfelder)
+    |  KI-Extraction (sot-acq-profile-extract)
+    v
+Kachel 2 (Ankaufsprofil — Ausgabe, editierbar)
+    |  jsPDF
+    v
+PDF-Vorschau (DIN A4, CI-konform)
+    |  "Ankaufsprofil anlegen" → Mandat-ID + Datenraum
+    v
+Kachel 3 (Kontaktrecherche) → Kachel 4 (E-Mail-Compose + PDF-Anhang)
+    |
+    v
+Dokumentation (E-Mail-Versand-Liste)
+
+=== Navigation zum Mandat ===
+
+Ansicht 2: Mandat-Workbench (/mandate/:mandateId)
+==================================================
+Mandat-Widgets (Switcher)
+    |
+    v
+5. Objekteingang → 6. Analyse (Bestand | Aufteiler) → 7. Delivery
 ```
-
-Im `DESIGN`-Export-Objekt ergaenzen.
-
----
-
-## Teil 2: FM-Dashboard manifest-konform machen
-
-**Datei: `src/pages/portal/finanzierungsmanager/FMDashboard.tsx`**
-
-1. Ad-hoc Grid der Header-Kacheln durch `DESIGN.DASHBOARD_HEADER.GRID` ersetzen
-2. Beiden Kacheln (Visitenkarte + ZinsTickerWidget) die Klasse `DESIGN.DASHBOARD_HEADER.CARD_HEIGHT` hinzufuegen
-3. ZinsTickerWidget: NUR die 4 Baufinanzierungs-Zinsen (10J, 15J, 20J, Variabel) — den `{markets.length > 0 && ...}` Block mit MSCI, Gold, BTC komplett entfernen
-
----
-
-## Teil 3: AM-Dashboard angleichen
-
-**Datei: `src/pages/portal/akquise-manager/AkquiseDashboard.tsx`**
-
-1. Ad-hoc Grid durch `DESIGN.DASHBOARD_HEADER.GRID` ersetzen
-2. Beiden Kacheln `DESIGN.DASHBOARD_HEADER.CARD_HEIGHT` hinzufuegen
-3. KPI-Widget auf exakt 4 Zeilen beschraenken: Aktive Mandate, Neue Auftraege, Kontakte gesamt, Objekte in Pipeline — keine Marktdaten
-
----
-
-## Teil 4: Mandatsseite an FM-Finanzierungsakte angleichen
-
-**Datei: `src/pages/portal/akquise-manager/AkquiseMandate.tsx`**
-
-### 4a. Split-View Toggle
-- Toggle-Button im ModulePageHeader (LayoutList / LayoutPanelLeft Icons)
-- Split-View: `PageShell fullWidth={true}` (max-w-full)
-- Normal: ohne fullWidth (max-w-7xl)
-
-### 4b. Oberer Bereich — 2-Spalten-Layout
-Layout mit `DESIGN.FORM_GRID.FULL`:
-
-```text
-+----------------------+----------------------+
-| KI-gestuetzte        | Ankaufsprofil-       |
-| Erfassung            | Dokument             |
-| (Textarea + Button)  | (editierbar,         |
-|                      |  Tabular-Form)       |
-+----------------------+----------------------+
-```
-
-- LINKS: Card mit Freitext-Textarea und "Generieren"-Button
-- RECHTS: Card mit generiertem/editierbarem Ankaufsprofil (Kontakt, Region, Asset-Fokus, Preis, Rendite, Ausschluesse) in kompakter Tabular-Form
-- "Mandat erstellen" Button unter dem Ankaufsprofil
-
-### 4c. Unterer Bereich — Sektionen 3-7
-Bleiben durchlaufend, ausgegraut ohne aktives Mandat. Im Split-View volle Breite.
-
----
-
-## Teil 5: Analyse-Sektion — Bestand + Aufteiler nebeneinander
-
-**Datei: `src/pages/portal/akquise-manager/components/AnalysisTab.tsx`**
-
-### 5a. Tabs-Struktur aufloesen
-Die 4-Tab-Struktur (Bestandsrechner | Aufteiler | GeoMap | KI-Analyse) wird entfernt.
-
-### 5b. Neues Layout
-
-```text
-+=============================================+
-| Sektion: Analyse & Kalkulation              |
-+---------------------------------------------+
-| Objekt-Auswahl / KPI-Leiste                 |
-+---------------------------------------------+
-| Quick Actions: GeoMap | KI | Expose Upload  |
-+----------------------+----------------------+
-| BestandCalculation   | AufteilerCalculation |
-| (komplett mit        | (komplett mit        |
-|  Slidern, Charts,    |  Slidern, Charts,    |
-|  30J-Projektion)     |  Sensitivitaet)      |
-+----------------------+----------------------+
-| GeoMap-Ergebnisse (full-width)              |
-+---------------------------------------------+
-| KI-Analyse-Ergebnisse (full-width)          |
-+=============================================+
-```
-
-### 5c. Technische Details
-- `BestandCalculation` und `AufteilerCalculation` importieren (existieren bereits vollstaendig)
-- 2-Spalten-Layout mit `DESIGN.FORM_GRID.FULL`
-- Beide Komponenten erhalten `offerId` und `initialData` (Preis/Miete aus dem Offer)
-- Bisherige Inline-Formulare und deren States (`bestandParams`, `aufteilerParams`, Handler) entfernen
-- GeoMap und KI-Analyse als separate Full-Width-Cards darunter
 
 ---
 
@@ -118,9 +143,17 @@ Die 4-Tab-Struktur (Bestandsrechner | Aufteiler | GeoMap | KI-Analyse) wird entf
 
 | Datei | Aenderung |
 |-------|-----------|
-| `src/config/designManifest.ts` | Neue `DASHBOARD_HEADER` Sektion |
-| `src/pages/portal/finanzierungsmanager/FMDashboard.tsx` | Manifest-Klassen, Marktdaten entfernen |
-| `src/pages/portal/akquise-manager/AkquiseDashboard.tsx` | Manifest-Klassen, KPI auf 4 Zeilen |
-| `src/pages/portal/akquise-manager/AkquiseMandate.tsx` | Split-View, 2-Spalten Erfassung+Profil |
-| `src/pages/portal/akquise-manager/components/AnalysisTab.tsx` | Tabs aufloesen, Bestand+Aufteiler nebeneinander |
+| `AkquiseMandate.tsx` | Kompletter Umbau: Kunden-Zeile, 4-Kachel-Grid, PDF-Vorschau, Doku-Sektion. Sektionen 5-7 entfernen. |
+| `AkquiseMandateDetail.tsx` | Mandat-Widgets oben zum Switchen. Sektionen 1-4 entfernen, nur 5-7 behalten. |
+| `SourcingTab.tsx` | Sub-Komponenten und Dialoge bleiben — Kachel 3 nutzt die Logik inline |
+| `OutreachTab.tsx` | Hooks und Templates bleiben — Kachel 4 nutzt die Logik inline |
+| `AnalysisTab.tsx` | Keine Aenderung (bereits umgebaut: Bestand+Aufteiler nebeneinander) |
+
+---
+
+## Offene Punkte (bewusst offen gelassen)
+
+- **Kontaktbuch in Zone 1**: Wird als separates Feature geplant. Kachel 3 nutzt vorerst `acq_contact_staging` und Apollo/Apify.
+- **Recherche-Engine (Apollo/Apify-Strategie)**: Bleibt wie implementiert, wird spaeter optimiert.
+- **PDF CI-Design**: Grundlage wird mit jsPDF gelegt; finales Corporate Design wird iterativ verfeinert.
 
