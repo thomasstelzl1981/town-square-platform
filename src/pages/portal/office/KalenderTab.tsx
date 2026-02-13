@@ -35,7 +35,8 @@ import {
   User,
   Building,
   Loader2,
-  RefreshCw
+  RefreshCw,
+  Video
 } from 'lucide-react';
 
 interface CalendarEvent {
@@ -51,6 +52,7 @@ interface CalendarEvent {
   google_event_id?: string | null;
   microsoft_event_id?: string | null;
   synced_from?: string | null;
+  video_call_id?: string | null;
 }
 
 export function KalenderTab() {
@@ -59,6 +61,8 @@ export function KalenderTab() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [withVideocall, setWithVideocall] = useState(false);
+  const [vcInviteEmail, setVcInviteEmail] = useState('');
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -99,6 +103,22 @@ export function KalenderTab() {
         throw new Error('Kein aktiver Mandant');
       }
 
+      let videoCallId: string | null = null;
+
+      // If videocall toggle is on, create call + send invite
+      if (withVideocall && vcInviteEmail) {
+        const res = await supabase.functions.invoke('sot-videocall-create', {
+          body: { title: data.title || 'Videocall' },
+        });
+        if (res.error) throw res.error;
+        videoCallId = res.data.callId;
+
+        const inviteRes = await supabase.functions.invoke('sot-videocall-invite-send', {
+          body: { callId: videoCallId, inviteeEmail: vcInviteEmail },
+        });
+        if (inviteRes.error) throw inviteRes.error;
+      }
+
       const { error } = await supabase.from('calendar_events').insert({
         tenant_id: profile.active_tenant_id,
         created_by: profile.id,
@@ -108,12 +128,13 @@ export function KalenderTab() {
         end_at: data.end_at || null,
         all_day: data.all_day,
         location: data.location || null,
-      });
+        ...(videoCallId ? { video_call_id: videoCallId } : {}),
+      } as any);
 
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success('Termin erstellt');
+      toast.success(withVideocall ? 'Termin mit Videocall-Einladung erstellt' : 'Termin erstellt');
       queryClient.invalidateQueries({ queryKey: ['calendar-events'] });
       setCreateDialogOpen(false);
       resetForm();
@@ -132,6 +153,8 @@ export function KalenderTab() {
       all_day: false,
       location: '',
     });
+    setWithVideocall(false);
+    setVcInviteEmail('');
   };
 
   const getEventsForDay = (day: Date) => {
@@ -412,6 +435,32 @@ export function KalenderTab() {
                         placeholder="Optionale Notizen zum Termin..."
                       />
                     </div>
+                    {/* Videocall Toggle */}
+                    <div className="space-y-3 rounded-lg border p-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Video className="h-4 w-4 text-primary" />
+                          <Label htmlFor="with-videocall" className="text-sm font-medium">Mit Videocall-Einladung</Label>
+                        </div>
+                        <Switch
+                          id="with-videocall"
+                          checked={withVideocall}
+                          onCheckedChange={setWithVideocall}
+                        />
+                      </div>
+                      {withVideocall && (
+                        <div className="space-y-2">
+                          <Label htmlFor="vc-email" className="text-xs">E-Mail des Teilnehmers *</Label>
+                          <Input
+                            id="vc-email"
+                            type="email"
+                            placeholder="email@beispiel.de"
+                            value={vcInviteEmail}
+                            onChange={(e) => setVcInviteEmail(e.target.value)}
+                          />
+                        </div>
+                      )}
+                    </div>
                   </div>
                   <DialogFooter>
                     <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>
@@ -533,12 +582,33 @@ export function KalenderTab() {
                       className="p-3 rounded-lg border hover:bg-muted/50 transition-colors cursor-pointer"
                     >
                       <div className="flex items-start justify-between">
-                        <h4 className="font-medium">{event.title}</h4>
-                        {event.all_day && (
-                          <Badge variant="secondary" className="text-xs">
-                            Ganztägig
-                          </Badge>
-                        )}
+                        <div className="flex items-center gap-2">
+                          {(event as any).video_call_id && (
+                            <Video className="h-4 w-4 text-primary shrink-0" />
+                          )}
+                          <h4 className="font-medium">{event.title}</h4>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {(event as any).video_call_id && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-6 text-xs gap-1"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                window.location.href = `/portal/office/videocalls/${(event as any).video_call_id}`;
+                              }}
+                            >
+                              <Video className="h-3 w-3" />
+                              Beitreten
+                            </Button>
+                          )}
+                          {event.all_day && (
+                            <Badge variant="secondary" className="text-xs">
+                              Ganztägig
+                            </Badge>
+                          )}
+                        </div>
                       </div>
                       {!event.all_day && (
                         <div className="flex items-center gap-1 text-sm text-muted-foreground mt-1">

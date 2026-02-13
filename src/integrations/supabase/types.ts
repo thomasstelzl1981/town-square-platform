@@ -2650,6 +2650,7 @@ export type Database = {
           tenant_id: string
           title: string
           updated_at: string | null
+          video_call_id: string | null
         }
         Insert: {
           all_day?: boolean | null
@@ -2671,6 +2672,7 @@ export type Database = {
           tenant_id: string
           title: string
           updated_at?: string | null
+          video_call_id?: string | null
         }
         Update: {
           all_day?: boolean | null
@@ -2692,6 +2694,7 @@ export type Database = {
           tenant_id?: string
           title?: string
           updated_at?: string | null
+          video_call_id?: string | null
         }
         Relationships: [
           {
@@ -2720,6 +2723,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "calendar_events_video_call_id_fkey"
+            columns: ["video_call_id"]
+            isOneToOne: false
+            referencedRelation: "video_calls"
             referencedColumns: ["id"]
           },
         ]
