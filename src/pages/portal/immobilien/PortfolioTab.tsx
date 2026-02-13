@@ -24,7 +24,7 @@ import {
   type PropertyTableColumn 
 } from '@/components/shared/PropertyTable';
 import { 
-  Loader2, Building2, TrendingUp, Wallet, PiggyBank, Percent, 
+  Loader2, Building2, TrendingUp, Wallet, PiggyBank, 
   Plus, Upload, Eye, Calculator, Table2, ChevronDown
 } from 'lucide-react';
 import { 
@@ -812,11 +812,6 @@ export function PortfolioTab() {
           title="Nettovermögen"
           value={hasData && totals?.netWealth ? formatCurrency(totals.netWealth) : '–'}
           icon={PiggyBank}
-        />
-        <StatCard
-          title="Ø Rendite"
-          value={hasData && totals?.avgYield ? `${totals.avgYield.toFixed(1)}%` : '–'}
-          icon={Percent}
         />
       </div>
 
