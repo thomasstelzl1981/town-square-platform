@@ -121,32 +121,33 @@ export function ExposeTab({ property, financing, unit, dossierData }: ExposeTabP
       <ExposeImageGallery propertyId={property.id} />
 
       {/* Beschreibung + Google Maps Embed */}
+      {/* Beschreibung + Karte & Street View (rechte Spalte gestapelt) */}
       <div className="grid gap-6 md:grid-cols-2">
-        <ExposeDescriptionDisplay description={property.description} />
-        <PropertyMap
-          address={property.address}
-          city={property.city}
-          postalCode={property.postal_code}
-          country={property.country}
-          height="280px"
-        />
-      </div>
-
-      {/* Street View + Lage & Mikrolage (NEU) */}
-      <div className="grid gap-6 md:grid-cols-2">
-        <StreetViewCard address={property.address} city={property.city} postalCode={property.postal_code} />
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Lage & Mikrolage</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {property.location_notes ? (
-              <p className="text-sm whitespace-pre-wrap">{property.location_notes}</p>
-            ) : (
-              <p className="text-sm text-muted-foreground">Keine Lagedetails hinterlegt</p>
-            )}
-          </CardContent>
-        </Card>
+        <div className="space-y-6">
+          <ExposeDescriptionDisplay description={property.description} />
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Lage & Mikrolage</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {property.location_notes ? (
+                <p className="text-sm whitespace-pre-wrap">{property.location_notes}</p>
+              ) : (
+                <p className="text-sm text-muted-foreground">Keine Lagedetails hinterlegt</p>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+        <div className="space-y-6">
+          <PropertyMap
+            address={property.address}
+            city={property.city}
+            postalCode={property.postal_code}
+            country={property.country}
+            height="280px"
+          />
+          <StreetViewCard address={property.address} city={property.city} postalCode={property.postal_code} />
+        </div>
       </div>
 
       {/* Baujahr & Zustand + Miete */}
