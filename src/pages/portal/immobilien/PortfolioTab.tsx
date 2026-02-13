@@ -355,28 +355,10 @@ export function PortfolioTab() {
     return unitsWithProperties.filter(u => assignedPropertyIds.includes(u.property_id));
   }, [unitsWithProperties, selectedContextId, contextAssignments, contexts]);
 
-  // DEMO_TOTALS constant for fallback when no real data
-  const DEMO_TOTALS = {
-    unitCount: 3,
-    propertyCount: 1,
-    totalArea: 202,
-    totalValue: 850000,
-    totalIncome: 10200,
-    totalDebt: 520000,
-    totalAnnuity: 24960,
-    netWealth: 330000,
-    avgYield: 3.95,
-    avgInterestRate: 2.8,
-  };
-
   // Calculate aggregations with ANNUAL values (using loans SSOT)
   const totals = useMemo(() => {
     const unitsToUse = selectedContextId ? filteredUnits : (unitsWithProperties || []);
-    if (!unitsToUse || unitsToUse.length === 0) {
-      // Demo fallback
-      if (demoEnabled) return DEMO_TOTALS;
-      return null;
-    }
+    if (!unitsToUse || unitsToUse.length === 0) return null;
 
     // Get unique properties
     const uniquePropertyIds = [...new Set(unitsToUse.map(u => u.property_id))];
@@ -419,7 +401,7 @@ export function PortfolioTab() {
       avgYield, 
       avgInterestRate 
     };
-  }, [unitsWithProperties, filteredUnits, selectedContextId, loansData, demoEnabled]);
+  }, [unitsWithProperties, filteredUnits, selectedContextId, loansData]);
 
   // Tilgungsverlauf Chart Data (30 Jahre Projektion) — korrigiert mit objektwert/vermoegen
   const amortizationData = useMemo(() => {
@@ -499,14 +481,12 @@ export function PortfolioTab() {
     if (!totals) return [];
     
     const annualIncome = totals.totalIncome;
-    // SSOT: Calculate interest from loans data, or use demo fallback
-    const annualInterest = (loansData && loansData.length > 0)
-      ? loansData.reduce((sum, l) => {
-          const balance = l.outstanding_balance_eur || 0;
-          const rate = (l.interest_rate_percent || 0) / 100;
-          return sum + (balance * rate);
-        }, 0)
-      : totals.totalDebt * (totals.avgInterestRate / 100);
+    // SSOT: Calculate interest from loans data
+    const annualInterest = loansData?.reduce((sum, l) => {
+      const balance = l.outstanding_balance_eur || 0;
+      const rate = (l.interest_rate_percent || 0) / 100;
+      return sum + (balance * rate);
+    }, 0) || 0;
     const nonRecoverableNk = totals.totalValue * 0.005;
     const annualAmort = totals.totalAnnuity - annualInterest;
     const surplus = annualIncome - annualInterest - nonRecoverableNk;
@@ -536,15 +516,7 @@ export function PortfolioTab() {
     }
   };
 
-  // Demo fallback units when no real data exists
-  const DEMO_DISPLAY_UNITS: UnitWithProperty[] = demoEnabled && !(unitsWithProperties?.length) ? [
-    { id: '__demo_u1__', unit_number: 'WE-B01', area_sqm: 85, property_id: '__demo__', property_code: 'BER-01', property_type: 'MFH', address: 'Schadowstr. 12', city: 'Berlin', postal_code: '10117', market_value: 850000, annual_net_cold_rent: 10200, annuity_pa: 24960, interest_pa: 14560, amortization_pa: 10400, financing_balance: 520000, tenant_name: 'Müller, K.', leases_count: 1 },
-    { id: '__demo_u2__', unit_number: 'WE-B02', area_sqm: 62, property_id: '__demo__', property_code: 'BER-01', property_type: 'MFH', address: 'Schadowstr. 12', city: 'Berlin', postal_code: '10117', market_value: null, annual_net_cold_rent: 7200, annuity_pa: 0, interest_pa: 0, amortization_pa: 0, financing_balance: null, tenant_name: 'Schmidt, A.', leases_count: 1 },
-    { id: '__demo_u3__', unit_number: 'WE-B03', area_sqm: 55, property_id: '__demo__', property_code: 'BER-01', property_type: 'MFH', address: 'Schadowstr. 12', city: 'Berlin', postal_code: '10117', market_value: null, annual_net_cold_rent: 6000, annuity_pa: 0, interest_pa: 0, amortization_pa: 0, financing_balance: null, tenant_name: null, leases_count: 0 },
-  ] : [];
-
-  const realUnits = selectedContextId ? filteredUnits : (unitsWithProperties || []);
-  const displayUnits = realUnits.length > 0 ? realUnits : DEMO_DISPLAY_UNITS;
+  const displayUnits = selectedContextId ? filteredUnits : (unitsWithProperties || []);
   const hasData = displayUnits.length > 0;
 
   // Table columns with ANNUAL values (p.a.)
@@ -1063,13 +1035,11 @@ export function PortfolioTab() {
               (() => {
                 // Monatliche Werte berechnen
                 const monthlyRent = totals.totalIncome / 12;
-                const annualInterest = (loansData && loansData.length > 0)
-                  ? loansData.reduce((sum, l) => {
-                      const balance = l.outstanding_balance_eur || 0;
-                      const rate = (l.interest_rate_percent || 0) / 100;
-                      return sum + (balance * rate);
-                    }, 0)
-                  : totals.totalDebt * (totals.avgInterestRate / 100);
+                const annualInterest = loansData?.reduce((sum, l) => {
+                  const balance = l.outstanding_balance_eur || 0;
+                  const rate = (l.interest_rate_percent || 0) / 100;
+                  return sum + (balance * rate);
+                }, 0) || 0;
                 const monthlyInterest = annualInterest / 12;
                 const monthlyAmortization = (totals.totalAnnuity - annualInterest) / 12;
                 const monthlyNK = (totals.totalValue * 0.005) / 12; // 0.5% nicht umlagefähig p.a.
