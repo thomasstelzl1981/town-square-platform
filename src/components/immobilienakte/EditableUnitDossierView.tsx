@@ -4,7 +4,6 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Card, CardContent } from '@/components/ui/card';
 import { Save, Loader2, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { DossierHeader } from './DossierHeader';
-import { InvestmentKPIBlock } from './InvestmentKPIBlock';
 import { DocumentChecklist } from './DocumentChecklist';
 import {
   EditableIdentityBlock,
@@ -85,12 +84,10 @@ export function EditableUnitDossierView({ data }: EditableUnitDossierViewProps) 
   }
 
   return (
-    <div className="space-y-6 relative pb-20">
+    <div className="space-y-4 relative pb-20">
       {/* Header */}
       <DossierHeader
         unitCode={formData.unitCode}
-        address={formData.address}
-        locationLabel={formData.locationLabel}
         status={formData.status}
         asofDate={formData.asofDate}
         dataQuality={formData.dataQuality}
@@ -115,8 +112,8 @@ export function EditableUnitDossierView({ data }: EditableUnitDossierViewProps) 
         </Alert>
       )}
 
-      {/* ROW 1: 3 compact tiles — Identity | Building | KPIs */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {/* ROW 1: 2 compact tiles — Identity (with address) | Building */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <EditableIdentityBlock
           unitCode={formData.unitCode}
           propertyType={formData.propertyType}
@@ -126,6 +123,11 @@ export function EditableUnitDossierView({ data }: EditableUnitDossierViewProps) 
           reportingRegime={formData.reportingRegime}
           buildYear={formData.buildYear}
           wegFlag={formData.wegFlag}
+          street={formData.street}
+          houseNumber={formData.houseNumber}
+          postalCode={formData.postalCode}
+          city={formData.city}
+          unitNumber={formData.unitNumber}
           onFieldChange={handleFieldChange}
         />
 
@@ -145,20 +147,9 @@ export function EditableUnitDossierView({ data }: EditableUnitDossierViewProps) 
           featuresTags={formData.featuresTags}
           onFieldChange={handleFieldChange}
         />
-
-        <InvestmentKPIBlock
-          purchasePriceEur={formData.purchasePriceEur}
-          purchaseCostsEur={formData.purchaseCostsEur}
-          valuationEur={formData.valuationEur}
-          netColdRentPaEur={formData.netColdRentPaEur}
-          nonAllocCostsPaEur={formData.nonAllocCostsPaEur}
-          cashflowPreTaxMonthlyEur={formData.cashflowPreTaxMonthlyEur}
-          grossYieldPercent={formData.grossYieldPercent}
-          netYieldPercent={formData.netYieldPercent}
-        />
       </div>
 
-      {/* ROW 2: Full-width — Address & Description */}
+      {/* ROW 2: Full-width — Lage & Objektbeschreibung */}
       <EditableAddressBlock
         street={formData.street}
         houseNumber={formData.houseNumber}
@@ -166,8 +157,6 @@ export function EditableUnitDossierView({ data }: EditableUnitDossierViewProps) 
         city={formData.city}
         locationLabel={formData.locationLabel}
         description={formData.description}
-        latitude={formData.latitude}
-        longitude={formData.longitude}
         propertyType={formData.propertyType}
         buildYear={formData.buildYear}
         totalAreaSqm={formData.areaLivingSqm}
@@ -242,7 +231,6 @@ export function EditableUnitDossierView({ data }: EditableUnitDossierViewProps) 
         <div className="lg:col-span-2">
           <DocumentChecklist documents={formData.documents} />
         </div>
-        {/* Multi-Lease Info if applicable */}
         {(formData as any).leasesCount > 1 && (
           <Card className="border-blue-200 bg-blue-50/50">
             <CardContent className="p-4">
