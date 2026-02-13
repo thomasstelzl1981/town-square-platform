@@ -292,3 +292,29 @@ export function useUpdateRequestStatus() {
     },
   });
 }
+
+/**
+ * Cancel (archive) a finance request — sets status to 'cancelled'
+ */
+export function useCancelFinanceRequest() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (requestId: string) => {
+      const { error } = await supabase
+        .from('finance_requests')
+        .update({ status: 'cancelled' })
+        .eq('id', requestId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['finance-request'] });
+      queryClient.invalidateQueries({ queryKey: ['finance-requests'] });
+      queryClient.invalidateQueries({ queryKey: ['future-room-cases'] });
+      toast.success('Finanzierungsantrag archiviert');
+    },
+    onError: (error) => {
+      toast.error('Fehler: ' + (error as Error).message);
+    },
+  });
+}

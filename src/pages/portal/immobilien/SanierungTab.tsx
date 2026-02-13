@@ -12,7 +12,7 @@ import { WidgetGrid } from '@/components/shared/WidgetGrid';
 import { WidgetCell } from '@/components/shared/WidgetCell';
 import { ServiceCaseCard } from '@/components/sanierung/ServiceCaseCard';
 import { SanierungDetailInline } from '@/components/sanierung/SanierungDetail';
-import { useServiceCases, useCreateServiceCase } from '@/hooks/useServiceCases';
+import { useServiceCases, useCreateServiceCase, useCancelServiceCase } from '@/hooks/useServiceCases';
 import { PropertySelectDialog } from '@/components/portal/immobilien/sanierung/PropertySelectDialog';
 
 export function SanierungTab() {
@@ -20,6 +20,7 @@ export function SanierungTab() {
   const [showPropertySelect, setShowPropertySelect] = useState(false);
   const { data: cases, isLoading } = useServiceCases();
   const createMutation = useCreateServiceCase();
+  const cancelMutation = useCancelServiceCase();
 
   const activeCases = cases?.filter(c => !['completed', 'cancelled'].includes(c.status)) || [];
 
@@ -72,6 +73,8 @@ export function SanierungTab() {
               serviceCase={sc}
               isSelected={selectedCaseId === sc.id}
               onClick={() => setSelectedCaseId(sc.id)}
+              onDelete={(id) => cancelMutation.mutate(id)}
+              isDeleting={cancelMutation.isPending}
             />
           ))}
         </WidgetGrid>

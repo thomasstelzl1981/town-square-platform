@@ -15,7 +15,8 @@ import { cn } from '@/lib/utils';
 import { DESIGN } from '@/config/designManifest';
 import { 
   useAcqMandatesPending, 
-  useAcqMandatesActive, 
+  useAcqMandatesActive,
+  useCancelAcqMandate,
 } from '@/hooks/useAcqMandate';
 import { MandateCaseCard, MandateCaseCardPlaceholder, MandateCaseCardNew } from '@/components/akquise/MandateCaseCard';
 import { useAuth } from '@/contexts/AuthContext';
@@ -55,6 +56,7 @@ export default function AkquiseDashboard() {
   const { user, profile } = useAuth();
   const { data: pendingMandates, isLoading: loadingPending } = useAcqMandatesPending();
   const { data: activeMandates, isLoading: loadingActive } = useAcqMandatesActive();
+  const cancelMandate = useCancelAcqMandate();
 
   const [editOpen, setEditOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -241,6 +243,8 @@ export default function AkquiseDashboard() {
               <MandateCaseCard
                 mandate={mandate}
                 onClick={() => navigate(`/portal/akquise-manager/mandate/${mandate.id}`)}
+                onDelete={(id) => cancelMandate.mutate(id)}
+                isDeleting={cancelMandate.isPending}
               />
             </WidgetCell>
           ))}
@@ -261,6 +265,8 @@ export default function AkquiseDashboard() {
               <MandateCaseCard
                 mandate={mandate}
                 onClick={() => navigate(`/portal/akquise-manager/mandate/${mandate.id}`)}
+                onDelete={(id) => cancelMandate.mutate(id)}
+                isDeleting={cancelMandate.isPending}
               />
             </WidgetCell>
           ))}

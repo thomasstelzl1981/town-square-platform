@@ -19,6 +19,7 @@ import { FinanceCaseCard, FinanceCaseCardPlaceholder } from '@/components/finanz
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useAcceptMandate, useUpdateMandateStatus, useFinanceMandates } from '@/hooks/useFinanceMandate';
+import { useCancelFinanceRequest } from '@/hooks/useFinanceRequest';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFinanceData } from '@/hooks/useFinanceData';
 import { supabase } from '@/integrations/supabase/client';
@@ -142,6 +143,7 @@ export default function FMDashboard({ cases, isLoading }: Props) {
   const { user, profile } = useAuth();
   const acceptMandate = useAcceptMandate();
   const updateStatus = useUpdateMandateStatus();
+  const cancelRequest = useCancelFinanceRequest();
   const [editOpen, setEditOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -363,6 +365,8 @@ export default function FMDashboard({ cases, isLoading }: Props) {
             <FinanceCaseCard
               caseData={c}
               onClick={handleCaseClick}
+              onDelete={(reqId) => cancelRequest.mutate(reqId)}
+              isDeleting={cancelRequest.isPending}
             />
           </WidgetCell>
         ))}

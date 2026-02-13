@@ -572,3 +572,30 @@ export function useAkquiseManagers() {
     },
   });
 }
+
+/**
+ * Cancel (archive) a mandate — sets status to 'cancelled'
+ */
+export function useCancelAcqMandate() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (mandateId: string) => {
+      const { error } = await supabase
+        .from('acq_mandates')
+        .update({
+          status: 'cancelled' as AcqMandateStatus,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', mandateId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['acq-mandates'] });
+      toast.success('Mandat archiviert');
+    },
+    onError: (error) => {
+      toast.error('Fehler: ' + (error as Error).message);
+    },
+  });
+}
