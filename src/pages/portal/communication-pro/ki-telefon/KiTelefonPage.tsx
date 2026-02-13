@@ -1,38 +1,64 @@
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
-import { Card, CardContent } from '@/components/ui/card';
-import { Phone, Sparkles, Clock } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { usePhoneAssistant } from '@/hooks/usePhoneAssistant';
+import { StatusForwardingCard } from '@/components/communication-pro/phone-assistant/StatusForwardingCard';
+import { VoiceSettingsCard } from '@/components/communication-pro/phone-assistant/VoiceSettingsCard';
+import { ContentCard } from '@/components/communication-pro/phone-assistant/ContentCard';
+import { RulesCard } from '@/components/communication-pro/phone-assistant/RulesCard';
+import { DocumentationCard } from '@/components/communication-pro/phone-assistant/DocumentationCard';
+import { TestPreviewCard } from '@/components/communication-pro/phone-assistant/TestPreviewCard';
+import { CallLogSection } from '@/components/communication-pro/phone-assistant/CallLogSection';
 
 export default function KiTelefonPage() {
+  const {
+    config,
+    isLoading,
+    saveStatus,
+    updateConfig,
+    calls,
+    callsLoading,
+    createTestEvent,
+    deleteTestEvents,
+  } = usePhoneAssistant();
+
+  if (isLoading || !config) {
+    return (
+      <PageShell>
+        <div className="flex items-center justify-center py-20 text-muted-foreground text-sm">Laden…</div>
+      </PageShell>
+    );
+  }
+
+  const hasTestData = calls.some(c => c.status === 'test');
+
   return (
     <PageShell>
       <ModulePageHeader
-        title="KI-Telefonassistent"
-        description="Ihr intelligenter Telefonassistent — automatisierte Anrufbearbeitung für Ihre Kommunikation."
+        title="Telefonassistent"
+        description="Konfiguriere Begrüßung, Stimme und Dokumentation. Rufweiterleitung wird extern beim Mobilfunkanbieter eingerichtet."
+        actions={
+          saveStatus !== 'idle' ? (
+            <Badge variant={saveStatus === 'saving' ? 'outline' : 'default'} className="text-xs">
+              {saveStatus === 'saving' ? 'Speichert…' : '✓ Gespeichert'}
+            </Badge>
+          ) : undefined
+        }
       />
 
-      <Card className="glass-card">
-        <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-          <div className="rounded-full bg-primary/10 p-6 mb-6">
-            <Phone className="h-12 w-12 text-primary" />
-          </div>
-          <h3 className="text-xl font-semibold mb-2">Kommt bald</h3>
-          <p className="text-muted-foreground max-w-md mb-6">
-            Der KI-Telefonassistent übernimmt eingehende Anrufe, beantwortet häufige Fragen 
-            und leitet wichtige Anliegen an Sie weiter — rund um die Uhr.
-          </p>
-          <div className="flex flex-wrap justify-center gap-4">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Sparkles className="h-4 w-4 text-primary" />
-              KI-gestützte Anrufannahme
-            </div>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Clock className="h-4 w-4 text-primary" />
-              24/7 erreichbar
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="space-y-4 md:space-y-6">
+        <StatusForwardingCard config={config} onUpdate={updateConfig} />
+        <VoiceSettingsCard config={config} onUpdate={updateConfig} />
+        <ContentCard config={config} onUpdate={updateConfig} />
+        <RulesCard config={config} onUpdate={updateConfig} />
+        <DocumentationCard config={config} onUpdate={updateConfig} />
+        <TestPreviewCard
+          createTestEvent={createTestEvent}
+          deleteTestEvents={deleteTestEvents}
+          hasTestData={hasTestData}
+        />
+        <CallLogSection calls={calls} isLoading={callsLoading} createTestEvent={createTestEvent} />
+      </div>
     </PageShell>
   );
 }
