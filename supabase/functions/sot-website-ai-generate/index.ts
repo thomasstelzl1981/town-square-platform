@@ -1,6 +1,7 @@
 /**
  * sot-website-ai-generate — Armstrong "Website Designer" mode
  * Generates complete website structure with AI-powered content
+ * Supports template_id parameter for design presets
  */
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -8,6 +9,14 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
+const TEMPLATE_TONES: Record<string, string> = {
+  modern: "Modern, clean, professionell. Kurze Sätze. Selbstbewusst und klar.",
+  classic: "Klassisch, seriös, vertrauensvoll. Formelle Ansprache. Tradition und Qualität betonen.",
+  minimal: "Minimalistisch, auf den Punkt. Wenige Worte, maximale Wirkung.",
+  elegant: "Elegant, luxuriös, exklusiv. Emotionale Sprache. Wertigkeit und Prestige vermitteln.",
+  fresh: "Frisch, jung, dynamisch. Lockere Sprache. Begeisterung und Energie ausstrahlen.",
 };
 
 serve(async (req) => {
@@ -26,7 +35,7 @@ serve(async (req) => {
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) throw new Error("Not authenticated");
 
-    const { website_id, name, industry, target_audience, goal } = await req.json();
+    const { website_id, name, industry, target_audience, goal, template_id } = await req.json();
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
@@ -36,12 +45,16 @@ serve(async (req) => {
       );
     }
 
+    const tone = TEMPLATE_TONES[template_id || "modern"] || TEMPLATE_TONES.modern;
+
     const prompt = `Du bist ein Senior UI/UX Designer und Marketing-Spezialist. Erstelle eine komplette Website-Struktur für:
 
 Firmenname: ${name}
 Branche: ${industry || 'Nicht angegeben'}
 Zielgruppe: ${target_audience || 'Allgemein'}
 Ziel: ${goal || 'branding'}
+
+Stil/Tonalität: ${tone}
 
 Erstelle ein JSON-Array mit genau 6 Sections in dieser Reihenfolge:
 1. hero - Hauptbanner mit Headline, Subline, CTA
@@ -63,9 +76,9 @@ Für "services": { title, items: [{ icon (emoji), title, description }] }
 Für "contact": { title, subtitle }
 Für "footer": { company_name }
 
-Texte sollen professionell, überzeugend und SEO-optimiert sein. Deutsche Sprache.`;
+Texte sollen professionell, überzeugend und SEO-optimiert sein. Deutsche Sprache. Passe den Schreibstil an die Tonalität an.`;
 
-    console.log("Generating website structure via AI...");
+    console.log(`Generating website structure via AI (template: ${template_id || 'modern'})...`);
 
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -92,8 +105,7 @@ Texte sollen professionell, überzeugend und SEO-optimiert sein. Deutsche Sprach
 
     const aiData = await aiResponse.json();
     const rawContent = aiData.choices?.[0]?.message?.content || "[]";
-    
-    // Parse JSON (handle markdown code blocks)
+
     let sections;
     try {
       const cleaned = rawContent.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
@@ -114,7 +126,6 @@ Texte sollen professionell, überzeugend und SEO-optimiert sein. Deutsche Sprach
       .single();
 
     if (!page) {
-      // Get tenant_id from website
       const { data: website } = await supabase
         .from("tenant_websites")
         .select("tenant_id")
