@@ -489,9 +489,8 @@ export default function AkquiseMandate() {
         }
       />
 
-      {/* ═══ Meine Mandate ═══ */}
-      <div className="space-y-3">
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Meine Mandate</h2>
+      {/* ═══ Mandate Widget Grid ═══ */}
+      <div>
         <WidgetGrid>
           <WidgetCell>
             <MandateCaseCardNew onClick={() => {
@@ -556,11 +555,11 @@ export default function AkquiseMandate() {
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs">Asset-Fokus</Label>
-                <div className="flex flex-wrap gap-1.5">
+                <div className="grid grid-cols-3 gap-1.5">
                   {ASSET_FOCUS_OPTIONS.map(opt => (
-                    <label key={opt.value} className="flex items-center gap-1 px-2 py-1 rounded border border-border hover:bg-accent/50 cursor-pointer text-xs">
-                      <Checkbox checked={steerAssetFocus.includes(opt.value)} onCheckedChange={() => toggleAssetFocus(opt.value)} className="h-3 w-3" />
-                      <span>{opt.label}</span>
+                    <label key={opt.value} className="flex items-center gap-1.5 px-2 py-1.5 rounded border border-border hover:bg-accent/50 cursor-pointer text-xs">
+                      <Checkbox checked={steerAssetFocus.includes(opt.value)} onCheckedChange={() => toggleAssetFocus(opt.value)} className="h-3 w-3 shrink-0" />
+                      <span className="truncate">{opt.label}</span>
                     </label>
                   ))}
                 </div>
