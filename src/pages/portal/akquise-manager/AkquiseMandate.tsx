@@ -692,7 +692,7 @@ export default function AkquiseMandate() {
       {/* ═══ KACHEL 3 + 4: Kontaktrecherche + E-Mail-Versand ═══ */}
       <div className={`${DESIGN.FORM_GRID.FULL} ${!mandateCreated ? 'opacity-40 pointer-events-none' : ''}`}>
         {/* ── KACHEL 3: Kontaktrecherche ── */}
-        <Card>
+        <Card className="min-h-[500px]">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center gap-2 text-sm">
@@ -767,7 +767,7 @@ export default function AkquiseMandate() {
         </Card>
 
         {/* ── KACHEL 4: E-Mail-Fenster ── */}
-        <Card>
+        <Card className="min-h-[500px]">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-sm">
               <Mail className="h-4 w-4" />
