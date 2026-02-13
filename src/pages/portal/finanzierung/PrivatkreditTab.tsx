@@ -16,6 +16,7 @@ import { EMPTY_FORM_DATA } from '@/hooks/useConsumerLoan';
 import type { MockOffer, ConsumerLoanFormData } from '@/hooks/useConsumerLoan';
 
 export default function PrivatkreditTab() {
+  const [activeCaseId, setActiveCaseId] = useState<string | undefined>();
   const [employmentStatus, setEmploymentStatus] = useState('employed');
   const [amount, setAmount] = useState(0);
   const [term, setTerm] = useState(0);
@@ -25,6 +26,14 @@ export default function PrivatkreditTab() {
   const [consentCredit, setConsentCredit] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+
+  const handleSelectCase = useCallback((id: string) => {
+    setActiveCaseId(id);
+    if (id === '__demo__') {
+      setAmount(25000);
+      setTerm(60);
+    }
+  }, []);
 
   const isSelfEmployed = employmentStatus === 'self_employed';
 
@@ -56,7 +65,7 @@ export default function PrivatkreditTab() {
       />
 
       {/* Widget-Leiste: Existing cases + CTA */}
-      <ConsumerLoanWidgets />
+      <ConsumerLoanWidgets activeCaseId={activeCaseId} onSelectCase={handleSelectCase} />
 
       {/* Markt-Beispiele */}
       <BankExamplesCard />

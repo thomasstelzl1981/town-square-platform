@@ -85,34 +85,33 @@ export function FinanceRequestWidgets({ activeRequestId }: FinanceRequestWidgets
   return (
     <WidgetGrid variant="widget">
       {/* Demo-Widget an Position 0 */}
-      {showDemo && (
-        <WidgetCell>
-          <Card
-            className={cn(
-              `h-full cursor-pointer transition-all`,
-              DESIGN.DEMO_WIDGET.CARD,
-              DESIGN.DEMO_WIDGET.HOVER,
-              activeRequestId === '__demo__' ? 'ring-2 ring-emerald-500' : ''
-            )}
-            onClick={() => navigate('/portal/finanzierung/anfrage/__demo__')}
-          >
-            <div className="flex flex-col h-full p-4 justify-between">
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <Home className="h-5 w-5 text-primary" />
-                  <Badge className={cn(DESIGN.DEMO_WIDGET.BADGE, "text-[10px]")}>
-                    {GP_FINANZIERUNG.demoWidget.badgeLabel}
-                  </Badge>
-                </div>
-                <h3 className="font-semibold text-sm">{GP_FINANZIERUNG.demoWidget.title}</h3>
-                <p className="text-xs text-muted-foreground mt-1">Schadowstr. 42, Düsseldorf</p>
-                <p className="text-xs text-muted-foreground">320.000 €</p>
+      <WidgetCell>
+        <Card
+          className={cn(
+            'h-full transition-all',
+            showDemo
+              ? [DESIGN.DEMO_WIDGET.CARD, DESIGN.DEMO_WIDGET.HOVER, 'cursor-pointer']
+              : 'opacity-50 grayscale cursor-default',
+            activeRequestId === '__demo__' && showDemo ? 'ring-2 ring-primary' : ''
+          )}
+          onClick={() => showDemo && navigate('/portal/finanzierung/anfrage/__demo__')}
+        >
+          <div className="flex flex-col h-full p-4 justify-between">
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <Home className="h-5 w-5 text-primary" />
+                <Badge className={cn(DESIGN.DEMO_WIDGET.BADGE, "text-[10px]")}>
+                  {GP_FINANZIERUNG.demoWidget.badgeLabel}
+                </Badge>
               </div>
-              <p className="text-[10px] text-muted-foreground mt-2">{GP_FINANZIERUNG.demoWidget.subtitle}</p>
+              <h3 className="font-semibold text-sm">{GP_FINANZIERUNG.demoWidget.title}</h3>
+              <p className="text-xs text-muted-foreground mt-1">Schadowstr. 42, Düsseldorf</p>
+              <p className="text-xs text-muted-foreground">320.000 €</p>
             </div>
-          </Card>
-        </WidgetCell>
-      )}
+            <p className="text-[10px] text-muted-foreground mt-2">{GP_FINANZIERUNG.demoWidget.subtitle}</p>
+          </div>
+        </Card>
+      </WidgetCell>
 
       {/* Existing requests */}
       {requests.map((req) => {
