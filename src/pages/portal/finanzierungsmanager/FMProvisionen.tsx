@@ -171,7 +171,7 @@ export default function FMProvisionen() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
+          <div className="overflow-x-auto"><Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Fall-ID</TableHead>
@@ -211,7 +211,7 @@ export default function FMProvisionen() {
                 })
               )}
             </TableBody>
-          </Table>
+          </Table></div>
         </CardContent>
       </Card>
     </PageShell>

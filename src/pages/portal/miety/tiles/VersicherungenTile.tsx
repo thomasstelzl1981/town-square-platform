@@ -61,7 +61,7 @@ export default function VersicherungenTile() {
         return (
           <div key={category} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* IST Card */}
-            <Card className={`${contract ? 'glass-card' : 'border-dashed hover:border-primary/30 transition-colors'} aspect-square`}>
+            <Card className={`${contract ? 'glass-card' : 'border-dashed hover:border-primary/30 transition-colors'} h-[260px] sm:h-auto sm:aspect-square`}>
               <CardContent className="p-5 flex flex-col justify-between h-full">
                 <div className="flex items-start gap-3">
                   <div className={`p-2 rounded-lg ${contract ? 'bg-primary/10' : 'bg-muted'}`}>
@@ -98,7 +98,7 @@ export default function VersicherungenTile() {
             </Card>
 
             {/* SOLL Card — Neo Digital */}
-            <Card className="glass-card border-blue-500/20 overflow-hidden aspect-square">
+            <Card className="glass-card border-blue-500/20 overflow-hidden h-[260px] sm:h-auto sm:aspect-square">
               <div className="h-1.5 bg-gradient-to-r from-blue-400 to-indigo-600" />
               <CardContent className="p-5 flex flex-col justify-between h-full">
                 <div className="flex items-start gap-3">

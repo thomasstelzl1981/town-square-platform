@@ -163,7 +163,7 @@ export default function VertriebTab() {
               <p className="text-xs mt-1">Reservierungen erscheinen hier, sobald Einheiten reserviert werden.</p>
             </div>
           ) : (
-            <Table>
+            <div className="overflow-x-auto"><Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Einheit</TableHead>
@@ -199,7 +199,7 @@ export default function VertriebTab() {
                   </TableRow>
                 ))}
               </TableBody>
-            </Table>
+            </Table></div>
           )}
         </CardContent>
       </Card>
@@ -214,7 +214,7 @@ export default function VertriebTab() {
               <p>Partner-Zuordnungen werden nach der ersten Reservierung angezeigt.</p>
             </div>
           ) : (
-            <Table>
+            <div className="overflow-x-auto"><Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Partner</TableHead>
@@ -237,7 +237,7 @@ export default function VertriebTab() {
                   </TableRow>
                 ))}
               </TableBody>
-            </Table>
+            </Table></div>
           )}
         </CardContent>
       </Card>
