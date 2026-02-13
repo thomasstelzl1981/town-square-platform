@@ -57,7 +57,7 @@ export const areaConfig: AreaDefinition[] = [
  */
 export const moduleLabelOverrides: Record<string, string> = {
   'MOD-03': 'Dokumente',           // DMS → Dokumente
-  'MOD-05': 'KI-Telefon-Assistent', // MSV → KI-Telefon-Assistent (repurposed)
+  'MOD-05': 'Modul 05',             // Platzhalter für weitere Funktion
   'MOD-14': 'Kommunikation Pro',   // Communication Pro → Kommunikation Pro
   'MOD-17': 'Fahrzeuge',           // Car-Management → Fahrzeuge
   'MOD-08': 'Immo Suche',         // Investment-Suche → Immo Suche

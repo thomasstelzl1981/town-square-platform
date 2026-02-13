@@ -265,9 +265,9 @@ export const zone2Portal: ZoneDefinition = {
       ],
     },
     "MOD-05": {
-      name: "Platzhalter",
+      name: "Modul 05",
       base: "msv",
-      icon: "Phone",
+      icon: "Box",
       display_order: 5,
       visibility: { default: true, org_types: ["client"] },
       tiles: [
@@ -358,7 +358,7 @@ export const zone2Portal: ZoneDefinition = {
       ],
     },
     "MOD-10": {
-      name: "Provisionen",
+      name: "Abrechnung",
       base: "leads",
       icon: "CreditCard",
       display_order: 10,
