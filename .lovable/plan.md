@@ -1,146 +1,99 @@
 
-
-# CarsAutos Umbau: Editierbare Fahrzeugakte, Datenraum, Vimcar-Fahrtenbuch
+# Armstrong-Bereich von MOD-14 nach Stammdaten/Abrechnung verschieben
 
 ## Zusammenfassung
 
-Die aktuelle CarsAutos-Komponente zeigt hartcodierte Demo-Daten in read-only Feldern. Der Umbau macht alle Felder editierbar (inline-editing mit DB-Persistenz), fuegt einen echten StorageFileManager-Datenraum hinzu und baut das Fahrtenbuch als eigene Sektion im Vimcar-Stil auf (Tabelle mit Fahrten aus `cars_trips`, manuell + API-ready). Zusaetzlich wird die Vimcar-API als Zone-1-Provider vorbereitet.
+Der "Agenten"-Tab aus MOD-14 (Communication Pro) wird entfernt und stattdessen als "Armstrong"-Sektion in die bestehende Abrechnung (MOD-01 Stammdaten) integriert. Der Aktions-Katalog mit Credit-Preisen wird dort als Spiegelung der Zone-1-Armstrong-Billing angezeigt.
 
 ---
 
-## Aenderung 1: Editierbare Inline-Felder (AkteField wird Formular)
+## Aenderung 1: "Agenten"-Tile aus MOD-14 entfernen
 
-**Datei:** `src/components/portal/cars/CarsAutos.tsx`
+**Datei:** `src/manifests/routesManifest.ts`
 
-Die bestehende `AkteField`-Komponente zeigt nur Text an. Sie wird durch eine editierbare Variante ersetzt:
+- Zeile 442 entfernen: `{ path: "agenten", component: "CommProAgenten", title: "Agenten" }`
+- MOD-14 behaelt: Serien-E-Mails, Recherche, Social, KI-Telefonassistent
 
-- Jedes Feld erhaelt einen `isEditing`-State (Klick auf Wert -> Input-Feld)
-- Bei Blur/Enter wird der neue Wert per `supabase.from('cars_vehicles').update(...)` gespeichert
-- Alle Felder der Akte nutzen die echten DB-Spalten aus `cars_vehicles` (vin, color, fuel_type, power_kw, first_registration_date, engine_ccm, seats, doors, body_type, weight_kg, co2_g_km, holder_name, holder_address, primary_driver_name, etc.)
-- Die Versicherungs-Sektion liest aus `cars_insurances` und ist ebenfalls editierbar
-- Demo-Daten werden realistischer: BMW M4 Competition G82 (510 PS, Benzin, Isle of Man Gruen), Mercedes GLE 450 (367 PS, Mild-Hybrid, Obsidianschwarz), Porsche 911 Carrera S 992 (450 PS, Benzin, Kreide)
-- Fahrzeugbilder werden modell-spezifisch angepasst (passende Unsplash-Bilder fuer M4, GLE, 911)
+**Datei:** `src/pages/portal/CommunicationProPage.tsx`
 
----
-
-## Aenderung 2: StorageFileManager als Datenraum
-
-**Datei:** `src/components/portal/cars/CarsAutos.tsx`
-
-Unterhalb der Akte-Sektionen wird ein echter `StorageFileManager` eingebaut (gleicher Pattern wie `DatenraumTab` aus MOD-04):
-
-- Liest `storage_nodes` + `documents` + `document_links` fuer das jeweilige Fahrzeug (`object_type: 'vehicle'`, `object_id: vehicle.id`)
-- Upload via `useUniversalUpload` mit `moduleCode: 'MOD_17'`
-- Download via `sot-dms-download-url` Edge Function
-- Ordner erstellen, loeschen, Dateien loeschen — alles wie im DMS
-- Die Fahrzeugbilder werden als initiale Demo-Dokumente im Tree angezeigt (Hinweis-Text, da ohne echte Storage-Dateien)
+- Lazy-Import von `AgentenPage` entfernen
+- Route `path="agenten"` entfernen
 
 ---
 
-## Aenderung 3: Fahrtenbuch-Sektion im Vimcar-Stil
+## Aenderung 2: AbrechnungTab um Armstrong-Sektion erweitern
 
-**Datei:** `src/components/portal/cars/CarsAutos.tsx` (Fahrtenbuch-Sektion)
+**Datei:** `src/pages/portal/stammdaten/AbrechnungTab.tsx`
 
-Die bisherige statische Fahrtenbuch-Anzeige (4 hartcodierte Felder) wird durch eine vollstaendige Tabelle ersetzt:
+Unterhalb der bestehenden Sektionen "Aktueller Plan" und "Rechnungen" wird eine neue Sektion "Armstrong" eingefuegt:
 
-- Liest aus `cars_trips` (vehicle_id = selektiertes Fahrzeug)
-- Tabellen-Spalten: Datum, Start, Ziel, km, Zweck (Geschaeftlich/Privat), Kunde
-- Neue Fahrt manuell erfassen: Inline-Zeile am Ende der Tabelle (+ Button)
-- Fahrten editierbar (Klick auf Zelle -> Input)
-- Vimcar-Badge: "Vimcar-Anbindung verfuegbar" mit Status-Indicator (nicht verbunden / verbunden)
-- Wenn `cars_logbook_connections` fuer das Fahrzeug existiert: Sync-Status anzeigen (last_sync_at, Fehler)
-- Monats-Zusammenfassung: Gesamt-km, Geschaeftlich-%, Privat-%
+### Sektion 3: Armstrong Credits & Aktions-Katalog
+- **KPI-Kacheln**: Credits verbraucht, Gesamtkosten, Transaktionen, Durchschnitt pro Aktion (aus `armstrong_billing_events`)
+- **Aktions-Katalog-Grid**: Alle Aktionen aus `armstrongManifest.ts` als Widget-Cards mit:
+  - Aktionsname (title_de)
+  - Action-Code
+  - Execution-Mode (Sofort / Mit Bestätigung / Nur lesen)
+  - Zonen-Badges (Portal, Website)
+  - Cost-Model-Badge (free / metered / premium)
+  - Status (Aktiv / Inaktiv)
+- **Filter**: Suchfeld + Zone-Filter + Status-Filter (gleicher Pattern wie der bisherige AktionsKatalog)
+- **Kosten-Uebersicht**: Top-5-Aktionen nach Verbrauch (aus `armstrong_billing_events`, wie KostenDashboard)
 
-Demo-Fahrten (wenn DB leer):
-- 12.02.2026: Muenchen -> Stuttgart, 234 km, Geschaeftlich, Kunde: Huber GmbH
-- 10.02.2026: Muenchen -> Nuernberg, 167 km, Geschaeftlich, Kunde: Meyer AG
-- 08.02.2026: Muenchen -> Starnberg, 42 km, Privat
-- 05.02.2026: Muenchen -> Augsburg, 68 km, Geschaeftlich, Kunde: Schmidt & Partner
-- 03.02.2026: Muenchen -> Garmisch, 89 km, Privat
+Die bestehenden Subkomponenten `AktionsKatalog` und `KostenDashboard` aus `src/pages/portal/communication-pro/agenten/` werden direkt wiederverwendet (Import-Pfad aendern).
 
 ---
 
-## Aenderung 4: Vimcar API-Provider in Zone 1
+## Aenderung 3: Keine neuen Dateien noetig
 
-**Neue Datei:** `src/config/apiProviders.ts`
+Die Komponenten `AktionsKatalog.tsx` und `KostenDashboard.tsx` bleiben an ihrem Platz in `src/pages/portal/communication-pro/agenten/` und werden von der AbrechnungTab importiert. Die `AusfuehrungsLog` und `Wissensbasis` werden NICHT in die Abrechnung uebernommen — diese gehoeren in den operativen Armstrong-Bereich (Zone 1) und nicht in die User-Abrechnung.
 
-Eine Konfigurationsdatei fuer externe API-Provider wird angelegt (Zone-1-Muster):
+---
+
+## Technisches Detail
+
+### AbrechnungTab Layout (nach Umbau)
 
 ```text
-VIMCAR = {
-  id: 'vimcar',
-  name: 'Vimcar Fleet',
-  baseUrl: 'https://api.vimcar.com/v1',
-  authType: 'api_key',
-  endpoints: {
-    trips: '/trips',
-    vehicles: '/vehicles',
-    sync: '/sync',
-  },
-  status: 'planned', // nicht verbunden
-  description: 'Automatisches Fahrtenbuch & Fuhrpark-Management'
-}
++--------------------------------------------------+
+| Abrechnung                                       |
+| Ihr Plan, Credits und Rechnungen                 |
++--------------------------------------------------+
+| [Card] Aktueller Plan                            |
+|   Plan-Name | Status | Credits                   |
++--------------------------------------------------+
+| [Card] Rechnungen                                |
+|   DataTable: Nr, Datum, Betrag, Status, PDF      |
++--------------------------------------------------+
+| [Separator + Header]                             |
+| Armstrong — KI-Aktionen & Credits                |
++--------------------------------------------------+
+| [KPI-Grid] Credits | Kosten | Transaktionen | Ø |
++--------------------------------------------------+
+| [Card] Aktions-Katalog                           |
+|   Filter: Suche | Zone | Status                  |
+|   Widget-Grid mit Action-Cards                   |
+|   (Code, Titel, Mode, Zonen, Cost-Model)         |
++--------------------------------------------------+
+| [Card] Top 5 Aktionen (nach Kosten)              |
++--------------------------------------------------+
 ```
 
-Dies dient als Referenz fuer die zukuenftige Integration. Die `cars_logbook_connections`-Tabelle hat bereits ein `provider`-Enum (`car_logbook_provider`) das 'vimcar' enthaelt.
+### Verschaltung mit Zone 1
+
+Die Zone-1-Seite `ArmstrongBilling` (`src/pages/admin/armstrong/ArmstrongBilling.tsx`) zeigt die plattformweite Sicht auf alle Tenants. Die Zone-2-Abrechnung zeigt die tenant-spezifische Sicht. Beide lesen aus denselben Tabellen:
+- `armstrong_billing_events` (Verbrauch)
+- `armstrongManifest.ts` (Aktions-Definitionen)
+
+Der Unterschied: Zone 2 filtert nach `tenant_id` / `org_id` des eingeloggten Users, Zone 1 zeigt alle.
 
 ---
 
-## Aenderung 5: Realistische Fahrzeugbilder
-
-Anpassung der `VEHICLE_IMAGES`-Map fuer modell-spezifische Bilder:
-
-| Fahrzeug | Bild |
-|----------|------|
-| BMW M4 Competition | Unsplash BMW M4 gruen/sportlich |
-| Mercedes GLE 450 | Unsplash Mercedes SUV dunkel |
-| Porsche 911 Carrera S | Unsplash Porsche 911 weiss/hell |
-
----
-
-## Technische Details
-
-### Editierbare Akte — Ablauf
-
-```text
-Klick auf Wert
-  -> State: editingField = 'license_plate'
-  -> Input wird angezeigt (vorausgefuellt)
-  -> Blur oder Enter:
-     -> supabase.from('cars_vehicles').update({ license_plate: newValue }).eq('id', vehicleId)
-     -> queryClient.invalidateQueries(['cars_vehicles'])
-     -> Toast: "Kennzeichen aktualisiert"
-```
-
-### Datenraum — Architektur (identisch zu DatenraumTab/MOD-04)
-
-```text
-StorageFileManager
-  <- storage_nodes (tenant_id + object_type='vehicle' + object_id=vehicleId)
-  <- documents (via document_links)
-  <- useUniversalUpload (moduleCode='MOD_17', entityId=vehicleId)
-  <- sot-dms-download-url (Edge Function fuer Downloads)
-```
-
-### Fahrtenbuch — Vimcar-ready
-
-```text
-cars_trips Tabelle (bereits vorhanden):
-  - vehicle_id, start_at, end_at, start_address, end_address
-  - distance_km, classification (business/private), purpose, customer_name
-  - source (manual/vimcar/other), connection_id (FK auf cars_logbook_connections)
-
-cars_logbook_connections (bereits vorhanden):
-  - vehicle_id, provider (vimcar), status (pending/active/error)
-  - api_credentials_encrypted, last_sync_at, sync_error_message
-```
-
-### Dateien-Uebersicht
+## Dateien-Uebersicht
 
 | Aktion | Datei |
 |--------|-------|
-| UMBAU | `src/components/portal/cars/CarsAutos.tsx` — Editierbare Felder, Datenraum, Fahrtenbuch |
-| NEU | `src/config/apiProviders.ts` — Zone-1 API-Provider-Registry (Vimcar) |
+| EDIT | `src/manifests/routesManifest.ts` — "agenten" Tile aus MOD-14 entfernen |
+| EDIT | `src/pages/portal/CommunicationProPage.tsx` — Agenten-Route entfernen |
+| EDIT | `src/pages/portal/stammdaten/AbrechnungTab.tsx` — Armstrong-Sektion hinzufuegen |
 
-Keine Datenbank-Migration noetig — alle Tabellen (`cars_vehicles`, `cars_insurances`, `cars_trips`, `cars_logbook_connections`, `storage_nodes`, `documents`, `document_links`) existieren bereits.
-
+Keine Datenbank-Aenderungen noetig. Alle Tabellen existieren bereits.
