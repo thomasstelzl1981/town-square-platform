@@ -11,6 +11,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent } from '@/components/ui/card';
 import { AlertCircle, Loader2 } from 'lucide-react';
 import { SelbstauskunftFormV2 } from '@/components/finanzierung/SelbstauskunftFormV2';
+import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { toast } from 'sonner';
 import type { ApplicantProfile } from '@/types/finance';
 
@@ -178,6 +179,8 @@ export default function SelbstauskunftTab() {
           </CardContent>
         </Card>
       )}
+
+      <ModulePageHeader title="Private Selbstauskunft" description="Ihre permanente Bonitätsauskunft" />
 
       {(profile || devMode) && (
         <SelbstauskunftFormV2

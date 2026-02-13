@@ -8,12 +8,9 @@ import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
-import { Badge } from '@/components/ui/badge';
-import { Loader2, FolderOpen } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { StorageFileManager } from '@/components/dms/StorageFileManager';
-import { DocumentReminderToggle } from './DocumentReminderToggle';
+import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { toast } from 'sonner';
 import { useUniversalUpload } from '@/hooks/useUniversalUpload';
 
@@ -357,39 +354,7 @@ export function FinanceDocumentsManager() {
 
   return (
     <div className="space-y-4">
-      {/* Status Header */}
-      <Card className="border-border/50 bg-card/50">
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <FolderOpen className="h-5 w-5 text-primary" />
-              Dokumentenstatus
-            </CardTitle>
-            <DocumentReminderToggle requestId={activeRequest?.id} />
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            <div className="flex items-center justify-between text-sm">
-              <span className="font-medium">Gesamtfortschritt</span>
-              <span className="text-muted-foreground">
-                {totalUploaded} von {totalRequired} Pflichtdokumenten
-              </span>
-            </div>
-            <Progress value={completionPercent} className="h-2" />
-            <div className="flex gap-2 pt-2">
-              <Badge variant={uploadedApplicantCount === requiredApplicant.length ? 'default' : 'outline'}>
-                Bonität: {uploadedApplicantCount}/{requiredApplicant.length}
-              </Badge>
-              {activeRequest && (
-                <Badge variant={uploadedRequestCount === requiredRequest.length ? 'default' : 'outline'}>
-                  Objekt: {uploadedRequestCount}/{requiredRequest.length}
-                </Badge>
-              )}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <ModulePageHeader title="Dokumente" description="Bonitäts- und Objektunterlagen" />
 
       {/* StorageFileManager — same look as DMS/MOD-11 */}
       <StorageFileManager
