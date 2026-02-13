@@ -347,31 +347,27 @@ export const zone2Portal: ZoneDefinition = {
         { path: "beratung", component: "BeratungTab", title: "Beratung" },
         { path: "kunden", component: "KundenTab", title: "Kunden" },
         { path: "network", component: "NetworkTab", title: "Netzwerk" },
+        { path: "leads", component: "LeadsTab", title: "Leads" },
       ],
       dynamic_routes: [
         { path: "katalog/:publicId", component: "KatalogDetailPage", title: "Katalog-Detail", dynamic: true },
         { path: "beratung/objekt/:publicId", component: "PartnerExposePage", title: "Partner-Exposé", dynamic: true },
-      ],
-    },
-    "MOD-10": {
-      name: "Leads",
-      base: "leads",
-      icon: "Target",
-      display_order: 10,
-      visibility: { default: false, org_types: ["partner"], requires_activation: true },
-      tiles: [
-        { path: "inbox", component: "InboxTab", title: "Inbox" },
-        { path: "meine", component: "MeineTab", title: "Meine Leads" },
-        { path: "pipeline", component: "PipelineTab", title: "Pipeline" },
-        { path: "werbung", component: "WerbungTab", title: "Werbung" },
         { path: "selfie-ads", component: "SelfieAdsStudio", title: "Selfie Ads Studio" },
-      ],
-      dynamic_routes: [
         { path: "selfie-ads-planen", component: "SelfieAdsPlanen", title: "Kampagne planen" },
         { path: "selfie-ads-summary", component: "SelfieAdsSummary", title: "Kampagne Zusammenfassung" },
         { path: "selfie-ads-kampagnen", component: "SelfieAdsKampagnen", title: "Kampagnen" },
         { path: "selfie-ads-performance", component: "SelfieAdsPerformance", title: "Performance" },
         { path: "selfie-ads-abrechnung", component: "SelfieAdsAbrechnung", title: "Abrechnung" },
+      ],
+    },
+    "MOD-10": {
+      name: "Provisionen",
+      base: "leads",
+      icon: "CreditCard",
+      display_order: 10,
+      visibility: { default: false, org_types: ["partner"], requires_activation: true },
+      tiles: [
+        { path: "uebersicht", component: "ProvisionenUebersicht", title: "Übersicht" },
       ],
     },
     // =========================================================================

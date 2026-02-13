@@ -19,7 +19,7 @@ export default function SelfieAdsKampagnen() {
         title="Meine Kampagnen"
         description="Beauftragte Kaufy Selfie Ads Mandate"
         actions={
-          <Button onClick={() => navigate('/portal/leads/selfie-ads-planen')} className="gap-2">
+          <Button onClick={() => navigate('/portal/vertriebspartner/selfie-ads-planen')} className="gap-2">
             <Plus className="h-4 w-4" /> Neue Kampagne
           </Button>
         }
@@ -33,7 +33,7 @@ export default function SelfieAdsKampagnen() {
             description="Planen und beauftragen Sie Ihre erste Selfie Ads Kampagne, um hier den Status und die Ergebnisse zu verfolgen."
             action={{
               label: 'Erste Kampagne planen',
-              onClick: () => navigate('/portal/leads/selfie-ads-planen'),
+              onClick: () => navigate('/portal/vertriebspartner/selfie-ads-planen'),
             }}
           />
         </CardContent>
