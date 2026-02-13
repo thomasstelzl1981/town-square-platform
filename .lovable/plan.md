@@ -1,86 +1,33 @@
 
+# Designanpassungen: Kunden-Eingabe in Kachel 2 + Bereinigung
 
-# Ankaufsprofil: Hochwertige CI-Vorschau als eigene Kachel
+## Was sich aendert
 
-## Klarstellung
+### 1. Kunden-Zeile entfernen (Zeilen 508-525)
+Die separate Eingabezeile "Kunde / Mandant" mit dem Kontaktbuch-Button oberhalb der Kacheln wird komplett entfernt. Sie sieht nicht gut aus und passt nicht ins CI.
 
-Die drei Elemente im oberen Bereich sind:
+### 2. Separators (Trennstriche) entfernen (Zeilen 508, 690)
+Die `<Separator />`-Elemente zwischen den Sektionen werden entfernt — sie sind nicht im CI verankert.
 
-1. **Kachel 1 (oben links)** — KI-Erfassung (Input): Freitext + Steuerfelder. Bleibt wie bisher.
-2. **Kachel 2 (oben rechts)** — KI-Entwurf (editierbarer Draft): Das von der KI generierte Ankaufsprofil als Arbeitsdokument. Strukturierte Daten + editierbare Freitext-Zusammenfassung. Bleibt wie bisher.
-3. **NEUE Vollbreiten-Kachel (Mitte)** — CI-Vorschau: Zeigt das fertige Ankaufsprofil exakt so, wie es als PDF versendet wird. DIN-A4-Proportionen, Logo, professionelle Typografie, Corporate Identity. Read-only, Live-Aktualisierung aus Kachel 2.
+### 3. Mandanten-Eingabefeld in Kachel 2 (Ankaufsprofil)
+In der Kachel "Ankaufsprofil" (oben rechts) wird ein grosses Textarea-Eingabefeld eingefuegt — gleiche Groesse wie das Freitext-Feld in Kachel 1 (6 Zeilen). Dort kann der User im Freitext den Mandanten beschreiben (Name, Firma, Daten) oder ueber einen kleinen Button "Kontaktbuch" einen bestehenden Kontakt suchen und uebernehmen.
 
-```text
-Kunde: [Name/Vorname] oder [Kontaktbuch]
+Dieses Feld ist **immer sichtbar** (auch vor der KI-Generierung) und ersetzt die bisherige Kunden-Zeile. Es dient als primaere Mandanten-Erfassung.
 
-+---------------------------+---------------------------+
-| 1. KI-ERFASSUNG (Input)  | 2. KI-ENTWURF (editierbar)|
-|                           |                           |
-| Freitext-Textarea         | Strukturierte Daten       |
-| + Steuerfelder            | + editierbarer Freitext   |
-| [Profil generieren]       | (Arbeitsdokument)         |
-+---------------------------+---------------------------+
+### 4. Layout-Anpassung Kachel 2
+Die Kachel 2 zeigt nun immer:
+- Oben: Mandanten-Textarea (6 Zeilen) + Kontaktbuch-Button
+- Darunter: Entweder Platzhalter (vor KI-Generierung) oder die strukturierten Profildaten + editierbare Zusammenfassung + "Ankaufsprofil uebernehmen" Button
 
-+-------------------------------------------------------+
-|         CI-VORSCHAU — Ankaufsprofil (Vollbreite)      |
-|                                                       |
-|  +--------------------------------------------------+ |
-|  | [Logo oben rechts]                                | |
-|  |                                                   | |
-|  | ANKAUFSPROFIL                                     | |
-|  | Erstellt am 13. Februar 2026                      | |
-|  | _________________________________________________ | |
-|  | Mandant: Max Mustermann                           | |
-|  |                                                   | |
-|  | Suchgebiet:         Rhein-Main                    | |
-|  | Asset-Fokus:        MFH, Gewerbe                  | |
-|  | Investitionsrahmen: 2-5 Mio EUR                   | |
-|  | Zielrendite:        5,0%                          | |
-|  | Ausschluesse:       kein Denkmalschutz             | |
-|  | _________________________________________________ | |
-|  | Freitext-Zusammenfassung aus Kachel 2...          | |
-|  +--------------------------------------------------+ |
-|                                                       |
-|  [PDF exportieren]  [Drucken]                         |
-+-------------------------------------------------------+
+## Technische Details
 
-[Ankaufsprofil anlegen] --> Mandat-ID + Datenraum
+### Datei: `src/pages/portal/akquise-manager/AkquiseMandate.tsx`
 
-+---------------------------+---------------------------+
-| 3. KONTAKTRECHERCHE       | 4. E-MAIL-VERSAND         |
-+---------------------------+---------------------------+
-```
+| Bereich | Aenderung |
+|---------|-----------|
+| Zeilen 508 | `<Separator />` entfernen |
+| Zeilen 510-525 | Kunden-Zeile komplett entfernen |
+| Zeile 690 | `<Separator />` entfernen |
+| Zeilen 593-639 (Kachel 2) | Mandanten-Textarea (rows=6) mit Kontaktbuch-Button oben einfuegen, `clientName` State wird weiterhin genutzt |
 
-## Technische Umsetzung
-
-### Neue Datei: `src/components/akquise/AcqProfilePreview.tsx`
-
-Eine eigenstaendige Vorschau-Komponente nach dem Muster der bestehenden `LetterPreview`-Komponente:
-
-- **DIN-A4-Proportionen**: `aspect-ratio: 210/297`, weisser Hintergrund, Schatten, zentriert
-- **CI-Elemente**: Armstrong-Logo (`armstrong_logo_light.jpg`) oben rechts, DIN-Font-Stack
-- **Inhalt**: Titel "ANKAUFSPROFIL", Datum, Mandantenname, tabellarische Profildaten (Suchgebiet, Asset-Fokus, Investitionsrahmen, Rendite, Ausschluesse), Freitext-Zusammenfassung
-- **Props**: `clientName`, `profileData` (ExtractedProfile), `profileTextLong`, `logoUrl?`
-- **Read-only**: Keine Eingabefelder — reine Anzeige, aktualisiert sich live wenn Kachel 2 editiert wird
-
-### Aenderung: `src/pages/portal/akquise-manager/AkquiseMandate.tsx`
-
-**Was sich aendert:**
-
-Die bestehende PDF-Vorschau-Sektion (Zeilen 532-580) wird ersetzt durch die neue `AcqProfilePreview`-Komponente in einer vollbreiten Card. Die Card bekommt Export-Buttons im Header.
-
-**Was gleich bleibt:**
-
-- Kachel 1 (KI-Erfassung): Unveraendert
-- Kachel 2 (Ankaufsprofil-Entwurf): Unveraendert — bleibt editierbares Arbeitsdokument
-- Kachel 3+4 (Kontakte + E-Mail): Unveraendert
-- Alle Hooks, State, Handler: Unveraendert
-- `generatePdf()`: Wird angepasst, damit das exportierte PDF dasselbe Layout wie die Vorschau nutzt (Logo, Schriftgroessen, Abstaende)
-
-### Zusammenfassung
-
-| Datei | Aenderung |
-|-------|-----------|
-| `src/components/akquise/AcqProfilePreview.tsx` | **Neue Datei**: DIN-A4-Vorschau im CI-Design (nach LetterPreview-Muster) |
-| `src/pages/portal/akquise-manager/AkquiseMandate.tsx` | Zeilen 532-580: Einfache Vorschau durch `AcqProfilePreview` ersetzen |
-
+Der `clientName` State wird jetzt aus dem Textarea befuellt. Der Kontaktbuch-Button (`BookOpen`-Icon) bleibt funktional und oeffnet den bestehenden `ContactBookDialog`.
