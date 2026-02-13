@@ -1,77 +1,101 @@
 
 
-# Feature-Roadmap: Was ist das und wie erstellen wir sie?
+# MOD-12 Akquise-Manager: Logische Struktur nach FM-Vorbild
 
-## Was ist eine Feature-Roadmap?
+## Problem
 
-Eine Feature-Roadmap ist dein strategischer Fahrplan fuer die Weiterentwicklung des Systems. Waehrend die bisherigen Backlogs (backlog.json, mobile-backlog.json) sich auf **Bereinigung und technische Schulden** konzentriert haben — also darauf, das Bestehende sauber zu machen — beschreibt die Feature-Roadmap **was als Naechstes gebaut wird**.
+Aktuell fuehren "Dashboard" und "Mandate" im Seitenmenue auf dieselbe Ansicht, weil es keine Route fuer `/mandate` gibt -- der Catch-All leitet auf das Dashboard zurueck. Ausserdem ist der "Neues Mandat"-Wizard nur ein Stub-Platzhalter.
 
-Stell es dir so vor:
-- **Backlog** = Aufraeumen, Reparieren, Optimieren (erledigt!)
-- **Feature-Roadmap** = Neue Funktionen, echte Business-Logik, Live-Daten
+## Loesung: Klare Trennung nach FM-Muster
 
-## Ausgangslage
+Wie beim Finanzierungsmanager (MOD-11) bekommt jede Kachel eine eigene Aufgabe:
 
-Nach 3 Sprints ist das System sauber: 0 offene Cleanup-Issues. Im backlog.json stehen bereits 7 "roadmap_carried_forward" Items, die den Kern der Roadmap bilden. Zusaetzlich gibt es 2 offene Issues (AUD-014, AUD-015), die Stub-Module betreffen.
+```text
+Dashboard               Mandate
++---------------------+ +---------------------+
+| Aktive Mandate      | | Meine Mandate       |
+| [Widget] [Widget]   | | [Widget] [Widget]   |
++---------------------+ +---------------------+
+| Neue Auftraege      | | Neues Mandat        |
+| [Widget] oder       | | =================== |
+| "Keine neuen        | | Kontakt-First       |
+|  Auftraege"         | | Workflow inline      |
++---------------------+ | (kein Modal/Popup)  |
+                        +---------------------+
+```
 
-## Was die Roadmap enthalten wird
+## Aenderungen im Detail
 
-### Datei: `src/docs/feature-roadmap.json`
+### 1. Neue Datei: AkquiseMandate.tsx (Mandate-Ansicht)
 
-Eine neue, strukturierte JSON-Datei mit folgenden Bereichen:
+Neue Seite unter `/portal/akquise-manager/mandate` mit zwei Sektionen:
 
-### Kategorie 1: Stub-Module live schalten
-Module, die aktuell nur Platzhalter-Seiten zeigen und echte Implementierung brauchen:
+**Sektion A: Meine Mandate**
+- Alle Mandate des Managers (aktiv, pausiert, abgeschlossen) als MandateCaseCard-Widgets im WidgetGrid
+- Wenn leer: Platzhalter-Widget "Keine Mandate vorhanden"
+- Klick auf ein Widget oeffnet die bestehende Detail-Ansicht (`mandate/:mandateId`)
 
-| ID | Modul | Beschreibung | Aufwand |
-|----|-------|-------------|---------|
-| FEAT-001 | MOD-10 Leads | 4 Stubs (Inbox, Pipeline, Werbung, Meine Leads) mit echten Workflows ersetzen | L |
-| FEAT-002 | MOD-18 Finanzanalyse | 4 Stubs (Dashboard, Reports, Szenarien, Einstellungen) implementieren | L |
+**Sektion B: Neues Mandat erstellen**
+- Direkt darunter als inline Workflow auf der Seite (kein Modal, kein Popup -- Memory-Vorgabe "Desktop-only Creation")
+- Kontakt-First Formular mit den Feldern aus `CreateAcqMandateData`:
+  - Kontaktname (client_display_name)
+  - Suchgebiet (search_area -- Freitext Region)
+  - Asset-Fokus (Mehrfachauswahl aus ASSET_FOCUS_OPTIONS)
+  - Preisspanne (price_min / price_max)
+  - Zielrendite (yield_target)
+  - Ausschluesse / Notizen
+- "Mandat erstellen"-Button am Ende des Formulars
+- Nutzt den bestehenden `useCreateAcqMandate` Hook
+- Erst nach Klick auf "Mandat erstellen" wird die DB-ID vergeben und das Mandat erscheint oben als Widget
 
-### Kategorie 2: Datenbank-Persistenz
-Features, die aktuell nur im Frontend simuliert werden und DB-Anbindung brauchen:
+### 2. Dashboard ueberarbeiten: AkquiseDashboard.tsx
 
-| ID | Modul | Beschreibung | Aufwand |
-|----|-------|-------------|---------|
-| FEAT-003 | MOD-08 Investments | Favoriten in DB persistieren (investment_favorites Tabelle) | M |
-| FEAT-004 | MOD-03 DMS | Storage-Usage Edge Function fuer echte Speicherplatz-Anzeige | M |
+**Sektion A: Aktive Mandate** (bleibt wie bisher)
+- Aktive Mandate als MandateCaseCard-Widgets
+- Wenn leer: Platzhalter-Widget "Keine aktiven Mandate"
 
-### Kategorie 3: Workflows und Wizards
-Komplexe Business-Logik, die noch fehlt:
+**Sektion B: Neue Auftraege** (NEU -- ersetzt den InfoBanner)
+- Pending-Mandate (assigned, noch nicht angenommen) als eigene Sektion mit Ueberschrift "Neue Auftraege"
+- Wenn keine pending: Platzhalter-Widget "Keine neuen Auftraege"
+- Der bisherige InfoBanner mit "X Mandate warten" wird entfernt und durch diese Sektion ersetzt
 
-| ID | Modul | Beschreibung | Aufwand |
-|----|-------|-------------|---------|
-| FEAT-005 | MOD-12 Akquise | MandatCreateWizard fuer Akquise-Manager implementieren | M |
-| FEAT-006 | MOD-12 Akquise | Absage-E-Mail tatsaechlich versenden (Edge Function) | M |
+**Header-Action aendern**: "Neues Mandat"-Button navigiert jetzt zu `/portal/akquise-manager/mandate` (statt `/mandate/neu`)
 
-### Kategorie 4: Dokumentation und Architektur
-Systemweite Verbesserungen:
+### 3. Router anpassen: AkquiseManagerPage.tsx
 
-| ID | Modul | Beschreibung | Aufwand |
-|----|-------|-------------|---------|
-| FEAT-007 | GLOBAL | Modul-Specs fuer 15 Module ohne detaillierte Spezifikation erstellen | L |
-| FEAT-008 | GLOBAL | Bundle-Analyse: ManifestRouter 80+ lazy() Imports optimieren | M |
+- Neue Route hinzufuegen: `<Route path="mandate" element={<AkquiseMandate />} />`
+- Die bestehende Route `mandate/neu` bleibt vorerst als Redirect auf `/mandate` (Rueckwaertskompatibilitaet)
+- Reihenfolge: `mandate` VOR `mandate/:mandateId` und `mandate/neu`
 
-### Kategorie 5: Integrations-Stubs
-Externe Dienste, die vorbereitet aber noch nicht angebunden sind:
+### 4. Stub MandatCreateWizardManager.tsx entfernen
 
-| ID | Modul | Beschreibung | Aufwand |
-|----|-------|-------------|---------|
-| FEAT-009 | MOD-14 Social | HeyGen Video-Integration (aktuell Stub-Job) | M |
-| FEAT-010 | MOD-10 SelfieAds | Mandat-Checkout / Bezahl-Flow (aktuell Toast-Stub) | M |
+Wird nicht mehr benoetigt -- der Workflow lebt jetzt inline auf der Mandate-Seite. Die Datei wird durch einen Redirect ersetzt oder entfernt.
 
-### Priorisierung
+## Technische Details
 
-Die Roadmap wird in 3 Phasen gegliedert:
-- **Phase A (Fundament):** DB-Persistenz + fehlende Specs (FEAT-003, 004, 007)
-- **Phase B (Core Features):** Stub-Module live + Wizards (FEAT-001, 002, 005, 006)
-- **Phase C (Integrations):** Externe Dienste + Optimierung (FEAT-008, 009, 010)
+### Datenbankzugriff
+- Kein DB-Schema-Aenderung noetig
+- Nutzt bestehende Hooks: `useAcqMandatesForManager()` (alle Mandate des Managers), `useAcqMandatesPending()`, `useAcqMandatesActive()`, `useCreateAcqMandate()`
 
-## Technische Umsetzung
+### Bestehende Komponenten wiederverwendet
+- `MandateCaseCard` + `MandateCaseCardPlaceholder` fuer die Widget-Darstellung
+- `WidgetGrid` / `WidgetCell` fuer das Layout
+- `PageShell`, `ModulePageHeader` fuer die Seitenstruktur
+- `ASSET_FOCUS_OPTIONS` aus `@/types/acquisition` fuer die Auswahl
 
-1. Neue Datei `src/docs/feature-roadmap.json` im gleichen Format wie die Backlogs erstellen
-2. Die 7 bestehenden ROAD-Items aus backlog.json als Basis uebernehmen
-3. Zusaetzliche Items aus dem Code-Scan (Stubs, TODOs) ergaenzen
-4. Backlog.json um einen Verweis auf die Roadmap ergaenzen
-5. Status-Tracking: Jedes Item bekommt `status: "planned"` und wird bei Umsetzung auf `"in_progress"` / `"done"` gesetzt
+### Mandate-Erstellung (Workflow)
+
+```text
+Formular ausfuellen -> "Mandat erstellen" klicken
+  -> useCreateAcqMandate() aufrufen (status: "draft")
+  -> DB-Trigger vergibt Public ID (ACQ-XXXX)
+  -> Widget erscheint oben in "Meine Mandate"
+  -> Optional: Weiterleiten zur Detail-Ansicht
+```
+
+### Dateien die geaendert/erstellt werden
+1. **NEU:** `src/pages/portal/akquise-manager/AkquiseMandate.tsx`
+2. **EDIT:** `src/pages/portal/AkquiseManagerPage.tsx` (Route hinzufuegen)
+3. **EDIT:** `src/pages/portal/akquise-manager/AkquiseDashboard.tsx` (2-Sektionen-Layout)
+4. **EDIT:** `src/pages/portal/akquise-manager/MandatCreateWizardManager.tsx` (Redirect auf /mandate)
 
