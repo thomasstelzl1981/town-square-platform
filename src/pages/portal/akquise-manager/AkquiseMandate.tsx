@@ -505,24 +505,6 @@ export default function AkquiseMandate() {
         )}
       </div>
 
-      <Separator />
-
-      {/* ═══ KUNDEN-ZEILE ═══ */}
-      <div className="flex items-end gap-4">
-        <div className="flex-1 space-y-1">
-          <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Kunde / Mandant</Label>
-          <Input
-            placeholder="Name, Vorname oder Firma"
-            value={clientName}
-            onChange={e => setClientName(e.target.value)}
-            className="text-base font-medium"
-          />
-        </div>
-        <Button variant="outline" size="sm" onClick={() => setShowContactBookDialog(true)}>
-          <BookOpen className="h-4 w-4 mr-2" />
-          Kontaktbuch
-        </Button>
-      </div>
 
       {/* ═══ KACHEL 1 + 2: KI-Erfassung + Ankaufsprofil ═══ */}
       <div className={DESIGN.FORM_GRID.FULL}>
@@ -598,10 +580,28 @@ export default function AkquiseMandate() {
               Ankaufsprofil
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
+            {/* Mandanten-Eingabe (immer sichtbar) */}
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs text-muted-foreground uppercase tracking-wider">Mandant / Kunde</Label>
+                <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={() => setShowContactBookDialog(true)}>
+                  <BookOpen className="h-3.5 w-3.5 mr-1" />
+                  Kontaktbuch
+                </Button>
+              </div>
+              <Textarea
+                placeholder="Name, Firma, Kontaktdaten des Mandanten eingeben oder aus dem Kontaktbuch übernehmen…"
+                value={clientName}
+                onChange={e => setClientName(e.target.value)}
+                rows={6}
+                className="text-sm"
+              />
+            </div>
+
             {!profileGenerated ? (
-              <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground">
-                <FileText className="h-12 w-12 mb-4 opacity-30" />
+              <div className="flex flex-col items-center justify-center py-8 text-center text-muted-foreground">
+                <FileText className="h-10 w-10 mb-3 opacity-30" />
                 <p className="text-sm font-medium">Profil wird nach KI-Analyse hier angezeigt</p>
                 <p className="text-xs mt-1">Geben Sie links einen Freitext ein und klicken Sie "Generieren"</p>
               </div>
@@ -609,7 +609,6 @@ export default function AkquiseMandate() {
               <div className="space-y-4">
                 {/* Structured read-only data */}
                 <div className="divide-y rounded-lg border">
-                  <ProfileRow label="Kunde" value={clientName || '–'} />
                   <ProfileRow label="Suchgebiet" value={profileData?.region || '–'} />
                   <ProfileRow label="Asset-Fokus" value={profileData?.asset_focus?.join(', ') || '–'} />
                   <ProfileRow label="Investitionsrahmen" value={formatPriceRange(profileData?.price_min, profileData?.price_max)} />
@@ -687,7 +686,6 @@ export default function AkquiseMandate() {
         </div>
       )}
 
-      <Separator />
 
       {/* ═══ KACHEL 3 + 4: Kontaktrecherche + E-Mail-Versand ═══ */}
       <div className={`${DESIGN.FORM_GRID.FULL} ${!mandateCreated ? 'opacity-40 pointer-events-none' : ''}`}>
