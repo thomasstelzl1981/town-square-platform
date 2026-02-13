@@ -12,8 +12,8 @@ export default function ProvisionenUebersicht() {
   return (
     <PageShell>
       <ModulePageHeader 
-        title="Provisionen" 
-        description="Provisionsabrechnungen und Zahlungsübersicht" 
+        title="Abrechnung" 
+        description="Abrechnungen und Zahlungsübersicht" 
       />
 
       <Card className="border-dashed">
