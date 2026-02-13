@@ -8,7 +8,7 @@
     "methodology": "7 Schritte: 1) Manifest, 2) Guard-Hook, 3) Z2-only Module, 4) GP-PROJEKT, 5) GP-FINANZIERUNG, 6) GP-SUCHMANDAT, 7) Registry",
     "design_principle": "Rein clientseitig/synthetisch — keine DB-Einträge, kein Seeding. Toggle ON = Daten sichtbar, Toggle OFF = Daten verschwinden.",
     "current_step": "all",
-    "status": "IN_PROGRESS"
+    "status": "COMPLETED"
   },
   "step_1": {
     "title": "Demo-Daten-Manifest erstellen",
