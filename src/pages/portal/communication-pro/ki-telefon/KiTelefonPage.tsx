@@ -1,19 +1,14 @@
-/**
- * KI-Telefon-Assistent — Placeholder Overview
- * 
- * MOD-05 repurposed: Future home of AI phone assistant functionality.
- */
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { Card, CardContent } from '@/components/ui/card';
 import { Phone, Sparkles, Clock } from 'lucide-react';
 
-export default function KiTelefonUebersicht() {
+export default function KiTelefonPage() {
   return (
     <PageShell>
       <ModulePageHeader
-        title="Platzhalter"
-        description="Dieses Modul ist derzeit als Platzhalter reserviert."
+        title="KI-Telefonassistent"
+        description="Ihr intelligenter Telefonassistent — automatisierte Anrufbearbeitung für Ihre Kommunikation."
       />
 
       <Card className="glass-card">
@@ -23,7 +18,7 @@ export default function KiTelefonUebersicht() {
           </div>
           <h3 className="text-xl font-semibold mb-2">Kommt bald</h3>
           <p className="text-muted-foreground max-w-md mb-6">
-            Der KI-Telefon-Assistent übernimmt eingehende Anrufe, beantwortet häufige Fragen 
+            Der KI-Telefonassistent übernimmt eingehende Anrufe, beantwortet häufige Fragen 
             und leitet wichtige Anliegen an Sie weiter — rund um die Uhr.
           </p>
           <div className="flex flex-wrap justify-center gap-4">

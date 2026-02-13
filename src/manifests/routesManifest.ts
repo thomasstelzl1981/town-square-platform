@@ -266,7 +266,7 @@ export const zone2Portal: ZoneDefinition = {
       ],
     },
     "MOD-05": {
-      name: "KI-Telefon-Assistent",
+      name: "Platzhalter",
       base: "msv",
       icon: "Phone",
       display_order: 5,
@@ -441,6 +441,7 @@ export const zone2Portal: ZoneDefinition = {
         { path: "recherche", component: "CommProRecherche", title: "Recherche" },
         { path: "social", component: "CommProSocial", title: "Social" },
         { path: "agenten", component: "CommProAgenten", title: "Agenten" },
+        { path: "ki-telefon", component: "CommProKiTelefon", title: "KI-Telefonassistent" },
       ],
     },
     "MOD-15": {
