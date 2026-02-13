@@ -1,80 +1,88 @@
 
-# Konsolidierung: Vermietereinheit in Portfolio integrieren
 
-## Analyse-Ergebnis
+# Portfolio-Redesign: 3-Widget-Ansicht statt Kontext-Leiste
 
-**PortfolioTab** hat bereits eine horizontale Kontext-Auswahl-Leiste (Zeilen 628-681) mit Kacheln fuer "Alle" und jeden Kontext. Diese Kacheln sind aber reine Filter-Buttons ohne CRUD-Funktionalitaet.
+## Problem
 
-**KontexteTab** (923 Zeilen) bietet die vollstaendige Verwaltung:
-- Kontext-Karten mit Anzeige (Steuer, Eigentuemer, Adresse, GF)
-- Inline-Bearbeitung (Formular direkt in der Karte)
-- Neuanlage (CreateContextDialog)
-- Objekt-Zuordnung (PropertyContextAssigner)
+Die aktuelle Portfolio-Seite hat eine redundante Struktur:
+- Oben: Kleine Kontext-Auswahl-Kacheln ("Alle", "Familie Mustermann", Firma, "Verwalten")
+- Darunter: KPI-Zeile (5 StatCards)
+- Darunter: Charts und Tabelle
 
-## Konsolidierungsstrategie
+Die kleinen Kacheln oben und die Widgets unten sind doppelt. Der User moechte stattdessen **3 grosse Widgets** im WidgetGrid sehen, die als Schritte fungieren.
 
-Die bestehende Kontext-Auswahl-Leiste im Portfolio wird erweitert um einen "Verwalten"-Button. Dieser oeffnet ein Collapsible/Accordion-Panel direkt unter der Leiste, das die vollen KontexteTab-Karten mit Bearbeitungs- und Zuordnungsfunktion zeigt. Die separate Route `/portal/immobilien/kontexte` wird als Redirect auf `/portal/immobilien/portfolio` erhalten.
+## Neues Layout
+
+```text
++--------------------------------------------------+
+| PageShell: PORTFOLIO                             |
++--------------------------------------------------+
+|                                                  |
+|  +-----------+  +-----------+  +-----------+     |
+|  |  WIDGET 1 |  |  WIDGET 2 |  |  WIDGET 3 |     |
+|  |           |  |           |  |           |     |
+|  |   Alle    |  |  Familie  |  |  Firma    |     |
+|  | Immobilien|  | Mustermann|  |  GmbH     |     |
+|  |           |  |           |  |           |     |
+|  | 5 Objekte |  | 3 Objekte |  | 2 Objekte |     |
+|  | KPIs      |  | KPIs      |  | KPIs      |     |
+|  +-----------+  +-----------+  +-----------+     |
+|                                                  |
+|  [+ Vermietereinheit]  [Verwalten]               |
+|                                                  |
+|  --- Ab hier: Detail fuer gewaehlten Kontext --- |
+|  KPI-Zeile (5 Cards)                             |
+|  Charts (Vermoegen + EUeR)                       |
+|  Tabelle (Immobilienportfolio)                    |
+|  Investment-Kalkulation                           |
++--------------------------------------------------+
+```
+
+## Design-Konzept
+
+Jedes der 3 Widgets ist eine grosse Kachel im `WidgetGrid` (max 4 Spalten, `aspect-square` Desktop, `h-[260px]` Mobile):
+
+- **Widget 1 "Alle Immobilien"**: Zeigt Gesamtportfolio-KPIs (Objekte, Verkehrswert, Rendite). Klick = kein Kontext-Filter (alle Daten).
+- **Widget 2 "Familie Mustermann"** (oder andere private Kontexte): Zeigt kontext-spezifische KPIs. Klick = filtert auf diesen Kontext.
+- **Widget 3 "Firma XY GmbH"** (geschaeftliche Kontexte): Analog zu Widget 2.
+
+Bei Klick auf ein Widget wird dieses visuell hervorgehoben (ring-2, border-primary) und die darunter liegenden KPIs, Charts und Tabelle aktualisieren sich auf den gewaehlten Kontext — genau wie bisher, aber ohne die kleinen redundanten Kacheln.
 
 ## Betroffene Dateien
 
-### Code-Dateien
-
 | Datei | Aenderung |
 |---|---|
-| `src/pages/portal/immobilien/PortfolioTab.tsx` | Kontext-Verwaltung (CRUD) aus KontexteTab integrieren: "Verwalten"-Button in der Kontext-Leiste, Collapsible-Bereich mit den Kontext-Karten (View + Edit + Create + Assign) |
-| `src/pages/portal/immobilien/KontexteTab.tsx` | Logik in wiederverwendbare Komponente extrahieren (`ContextManager`) und in PortfolioTab einbetten. Datei bleibt als Redirect-Wrapper |
-| `src/pages/portal/ImmobilienPage.tsx` | Route `kontexte` aendern zu Redirect auf `portfolio` |
-| `src/pages/portal/immobilien/index.ts` | KontexteTab Export entfernen oder auf Redirect anpassen |
+| `src/pages/portal/immobilien/PortfolioTab.tsx` | Kompletter Umbau der Kontext-Auswahl: Kleine Kacheln (Zeilen 631-709) ersetzen durch WidgetGrid mit 3 grossen WidgetCells. KPI-Zeile (Zeilen 718-745) bleibt, wandert unter die Widget-Auswahl. "Verwalten"-Button wird als kleine Aktion unter den Widgets platziert |
 
-### Manifest & Config
+## Keine weiteren Dateien betroffen
 
-| Datei | Aenderung |
-|---|---|
-| `src/manifests/routesManifest.ts` | MOD-04 tiles: "kontexte" Eintrag entfernen → 4 tiles (portfolio, sanierung, bewertung, verwaltung). Kommentar Zeile 9 anpassen: "4 tiles" statt "5 tiles" |
-| `src/manifests/areaConfig.ts` | Keine Aenderung (referenziert Module, nicht einzelne Tiles) |
+- Keine Manifest-Aenderung (Tiles/Routen bleiben gleich)
+- Keine DB-Migration (tile_catalog unveraendert)
+- Keine Spec/Audit-Aenderung (rein visuelles Redesign innerhalb PortfolioTab)
+- ContextManager-Collapsible bleibt funktional
 
-### Datenbank
+## Technische Umsetzung
 
-```sql
--- MOD-04: Vermietereinheit Sub-Tile entfernen
-UPDATE tile_catalog SET sub_tiles = '[
-  {"title":"Portfolio","route":"/portal/immobilien/portfolio"},
-  {"title":"Sanierung","route":"/portal/immobilien/sanierung"},
-  {"title":"Bewertung","route":"/portal/immobilien/bewertung"},
-  {"title":"Verwaltung","route":"/portal/immobilien/verwaltung"}
-]'::jsonb WHERE tile_code = 'MOD-04';
-```
+### Widget-Karten Inhalt
 
-### HowItWorks & Presentation
+Jede Widget-Karte zeigt:
+- **Header**: Icon-Box + Kontext-Name (via WidgetHeader)
+- **Badge**: "Privat" oder "Geschaeftlich"
+- **Mini-KPIs**: Objekte, Verkehrswert, Rendite (3 kompakte Zeilen)
+- **Visueller Zustand**: Ausgewaehlte Karte hat `ring-2 ring-primary border-primary`
 
-| Datei | Aenderung |
-|---|---|
-| `src/components/portal/HowItWorks/moduleContents.ts` | MOD-04 subTiles: "Kontexte" Eintrag entfernen. whatYouDo: "Vermieter-Kontexte organisieren" umformulieren zu "Vermietereinheiten im Portfolio verwalten" |
+### Dynamisches Grid
 
-### Audit & Spec-Dateien
+- 1 Kontext = 1 Widget (Spalte)
+- "Alle" ist immer Widget 1
+- Kontexte werden dynamisch aus der DB geladen (wie bisher)
+- Bei mehr als 3 Kontexten: 4. Spalte nutzen (max 4 im Grid)
+- "Verwalten" und "+ Neue Einheit" als Buttons unterhalb des Grids
 
-| Datei | Aenderung |
-|---|---|
-| `artifacts/audit/zone2_modules.json` | MOD-04: tiles auf `["portfolio", "sanierung", "bewertung", "verwaltung"]`, tile_count auf 4, exception entfernen |
-| `spec/current/02_modules/mod-04_immobilien.md` | Sekundaere Route `/portal/immobilien/kontexte` als Redirect dokumentieren. Nav-Tiles aktualisieren (Kontexte entfernen). Dossier-Beschreibung: "Kontexte werden im Portfolio verwaltet" |
-| `spec/current/00_frozen/AUDIT_PASS_2026-02-02.txt` | MOD-04 Zeile: "kontexte" aus Tile-Auflistung entfernen |
-| `spec/current/00_frozen/AUDIT_MARKER_2026-02-02_v2.md` | MOD-04 Zeile anpassen |
-| `spec/current/00_frozen/DEVELOPMENT_GOVERNANCE.md` | MOD-04 Beschreibung: "Kontexte" durch "Sanierung, Bewertung" ersetzen |
-| `docs/modules/MOD-04_IMMOBILIEN.md` | Menuepunkt "Stammdaten / Kontexte" entfernen, Route-Tabelle aktualisieren, Screen-Spec 6.1 als "integriert in Portfolio" markieren |
+### Imports
 
-## Umsetzungsreihenfolge
+Nutzt bestehende Shared-Komponenten:
+- `WidgetGrid` (variant="widget")
+- `WidgetCell`
+- `WidgetHeader`
 
-1. **Komponente extrahieren**: Kontext-CRUD-Logik aus KontexteTab in eine wiederverwendbare `ContextManager`-Komponente extrahieren (Karten-Ansicht, Edit-Modus, Create-Dialog, Zuordnung)
-2. **PortfolioTab erweitern**: "Verwalten"-Button neben der Kontext-Leiste. Klick oeffnet/schliesst ein Collapsible-Panel mit den `ContextManager`-Karten direkt unter der Auswahl-Leiste
-3. **KontexteTab auf Redirect reduzieren**: Route `/portal/immobilien/kontexte` leitet auf `/portal/immobilien/portfolio` um
-4. **Manifest aktualisieren**: routesManifest.ts — "kontexte" Tile entfernen
-5. **DB-Migration**: tile_catalog MOD-04 sub_tiles aktualisieren
-6. **moduleContents.ts**: Kontexte-SubTile entfernen
-7. **Audit-Artefakte + Specs**: Dokumentation synchronisieren
-
-## Was bleibt erhalten
-
-- **Volle CRUD-Funktionalitaet** fuer Vermietereinheiten — nur der Zugang aendert sich (kein eigener Menuepunkt mehr, sondern im Portfolio eingebettet)
-- **Route `/portal/immobilien/kontexte`** bleibt als Redirect erreichbar (Backward-Compatibility)
-- **Alle DB-Tabellen** (`landlord_contexts`, `context_property_assignment`, `context_members`) bleiben unveraendert
-- **Kontext-Filter** in der Portfolio-Tabelle funktioniert wie bisher
