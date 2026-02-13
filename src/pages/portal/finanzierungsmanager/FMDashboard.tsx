@@ -101,9 +101,9 @@ function ZinsTickerWidget() {
   };
 
   return (
-    <Card className="overflow-hidden border-0 shadow-card">
+    <Card className="overflow-hidden border-0 shadow-card h-full flex flex-col">
       <div className="h-2 bg-gradient-to-r from-[hsl(35,90%,55%)] to-[hsl(25,85%,50%)]" />
-      <CardContent className="p-4 space-y-3">
+      <CardContent className="p-4 flex-1 flex flex-col justify-between">
         <div className="flex items-center gap-2">
           <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-[hsl(35,90%,55%)] to-[hsl(25,85%,50%)] flex items-center justify-center">
             <BarChart3 className="h-4 w-4 text-white" />
@@ -114,7 +114,7 @@ function ZinsTickerWidget() {
           </div>
         </div>
 
-        <div className="space-y-1">
+        <div className="space-y-1 flex-1 flex flex-col justify-center">
           {mortgageRates.map((r) => (
             <div key={r.label} className="flex items-center justify-between py-1 border-b border-border/50 last:border-0">
               <span className="text-[11px] text-muted-foreground">{r.label}</span>
