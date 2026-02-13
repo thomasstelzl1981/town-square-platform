@@ -47,6 +47,9 @@ const ImmobilienPage = () => {
         {/* VERWALTUNG: Consolidated property management (ex-MSV) */}
         <Route path="verwaltung" element={<VerwaltungTab />} />
         
+        {/* HAUS: Redirect to MOD-20 (Miety) */}
+        <Route path="haus" element={<Navigate to="/portal/miety" replace />} />
+        
         {/* RENTAL: Expose detail (moved from MSV) */}
         <Route path="vermietung/:id" element={<RentalExposeDetail />} />
         
