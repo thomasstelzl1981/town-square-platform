@@ -37,6 +37,7 @@ import { isDemoMode, DEMO_PROJECT, DEMO_CALC } from '@/components/projekte/demoP
 import type { ProjectPortfolioRow } from '@/types/projekte';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
+import { useDemoToggles } from '@/hooks/useDemoToggles';
 
 interface ExtractedProjectData {
   projectName: string;
@@ -55,6 +56,8 @@ type IntakeStep = 'upload' | 'review' | 'creating';
 export default function ProjekteDashboard() {
   const navigate = useNavigate();
   const { profile } = useAuth();
+  const { isEnabled } = useDemoToggles();
+  const demoEnabled = isEnabled('GP-PROJEKT');
   const tenantId = profile?.active_tenant_id;
   const { portfolioRows, isLoadingPortfolio, deleteProject } = useDevProjects();
   
@@ -361,10 +364,12 @@ export default function ProjekteDashboard() {
             <LoadingState />
           ) : (
             <WidgetGrid>
-              {/* Demo project is ALWAYS shown as first tile */}
-              <WidgetCell>
-                <ProjectCard project={DEMO_PROJECT} isDemo />
-              </WidgetCell>
+              {/* Demo project — controlled by useDemoToggles */}
+              {demoEnabled && (
+                <WidgetCell>
+                  <ProjectCard project={DEMO_PROJECT} isDemo />
+                </WidgetCell>
+              )}
               {portfolioRows.map((project) => (
                 <WidgetCell key={project.id}>
                   <ProjectCard project={project} />
