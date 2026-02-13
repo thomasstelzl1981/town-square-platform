@@ -1,121 +1,118 @@
 
 
-# MOD-12 Mandate-Seite: Vollstaendiger Workflow nach FM-Vorbild
+# Fix: Gesamter Workflow von oben bis unten sichtbar
 
 ## Problem
 
-Die aktuelle Mandate-Seite zeigt nur ein simples Formular (Name, Region, Asset-Fokus, Preis). Der eigentliche Akquise-Workflow (KI-Erfassung, Ankaufsprofil, Kontaktrecherche, E-Mail-Versand, Objekteingang) ist versteckt in der Detail-Ansicht (`AkquiseMandateDetail.tsx`) und erst nach manueller Mandats-Erstellung sichtbar. Das widerspricht dem FM-Muster, wo der gesamte Flow von oben nach unten auf einer Seite durchlaufen wird.
+Die aktuelle `AkquiseMandate.tsx` versteckt alle Workflow-Sektionen hinter einem `phase`-State. Nur EINE Phase ist jeweils sichtbar:
+- `phase === 'capture'` zeigt NUR die Freitext-Erfassung
+- `phase === 'profile'` zeigt NUR das Ankaufsprofil-Formular
+- `phase === 'active'` zeigt NUR die operativen Tabs (Sourcing, Outreach etc.)
 
-## Loesung: Mandate-Seite als durchlaufender Workflow
+Das widerspricht dem FM-Muster: **Alles muss gleichzeitig sichtbar sein**, von oben nach unten auf einer durchlaufenden Seite.
 
-Die Mandate-Seite wird — wie die Finanzierungsakte im FM — zu einer langen, kontinuierlichen Seite umgebaut. Der Nutzer arbeitet sich von oben nach unten durch alle Phasen. Das Mandat wird erst an einem logischen Punkt (nach der Profil-Generierung) tatsaechlich in der Datenbank angelegt und erhaelt dann seine ID.
+## Loesung
+
+Die gesamte Seite zeigt IMMER alle 7 Sektionen untereinander. Sektionen, die noch nicht aktiv sind (weil kein Mandat erstellt wurde), werden ausgegraut/deaktiviert dargestellt — aber trotzdem sichtbar, damit der Nutzer den kompletten Workflow ueberblicken kann.
 
 ```text
-/portal/akquise-manager/mandate
+/portal/akquise-manager/mandate (IMMER ALLES SICHTBAR)
 +=========================================+
-| Sektion A: Meine Mandate (Widgets)      |
-| [ACQ-0012] [ACQ-0013] oder Placeholder  |
+| Meine Mandate (Widgets/Placeholder)     |
 +-----------------------------------------+
-|                                         |
-| NEUES MANDAT — Workflow                 |
-|                                         |
 | 1. KI-gestuetzte Erfassung              |
-|    [Freitext-Textarea]                  |
-|    "Was sucht Ihr Mandant?"             |
-|    → KI analysiert und extrahiert       |
-|                                         |
-| 2. Ankaufsprofil generieren             |
-|    [Generiertes Profil anzeigen]        |
-|    Asset-Fokus, Region, Preis, Rendite  |
-|    Editierbar — Feinjustierung          |
-|                                         |
-|    >>> MANDAT ERSTELLEN BUTTON <<<      |
-|    (Hier wird die ID vergeben)          |
-|                                         |
-| — Ab hier: mandateId vorhanden —        |
-|                                         |
-| 3. Kontaktrecherche (SourcingTab)       |
-|    Apollo, Apify, Firecrawl, Manuell    |
-|                                         |
-| 4. E-Mail-Versand (OutreachTab)         |
-|    Queue, Templates, Massenversand      |
-|                                         |
-| 5. Objekteingang (InboundTab)           |
-|    Eingegangene Angebote                |
-|                                         |
-| 6. Analyse & Kalkulation (AnalysisTab)  |
-|    Bestand/Aufteiler                    |
-|                                         |
-| 7. Delivery (DeliveryTab)               |
-|    Praesentation an Mandanten           |
+|    [Freitext-Textarea]      ← aktiv     |
++-----------------------------------------+
+| 2. Ankaufsprofil                        |
+|    [Formular]        ← nach Extraktion  |
+|    >>> MANDAT ERSTELLEN <<<             |
++-----------------------------------------+
+| 3. Kontaktrecherche          ← grau     |
+|    (wird aktiv nach Mandats-Erstellung) |
++-----------------------------------------+
+| 4. E-Mail-Versand            ← grau     |
++-----------------------------------------+
+| 5. Objekteingang             ← grau     |
++-----------------------------------------+
+| 6. Analyse & Kalkulation     ← grau     |
++-----------------------------------------+
+| 7. Delivery                  ← grau     |
 +=========================================+
 ```
 
-## Aenderungen im Detail
+## Technische Aenderungen
 
-### 1. AkquiseMandate.tsx — Kompletter Umbau
+### Datei: `src/pages/portal/akquise-manager/AkquiseMandate.tsx` — Rewrite
 
-**Sektion A: Meine Mandate** (bleibt wie bisher)
-- WidgetGrid mit MandateCaseCards
-- Klick oeffnet Detail-Ansicht
-- Placeholder wenn leer
+**Kernidee**: `phase`-State steuert nicht mehr die Sichtbarkeit, sondern nur ob eine Sektion interaktiv oder deaktiviert ist.
 
-**Sektion B: Neues Mandat — Durchlaufender Workflow**
+1. **Alle Sektionen werden immer gerendert** — keine bedingten `{phase === 'xyz' && ...}` Bloecke mehr
+2. **Sektionen 1-2** (Erfassung + Profil): Immer sichtbar. Profil-Formular wird initial leer angezeigt (mit Hinweis "wird durch KI vorausgefuellt oder manuell befuellt")
+3. **Sektionen 3-7** (Sourcing bis Delivery): Immer sichtbar, aber mit `opacity-50 pointer-events-none`-Overlay wenn kein `activeMandateId` vorhanden. Ein Hinweistext "Erstellen Sie zuerst ein Mandat" wird angezeigt
+4. Jede Sektion bekommt ihren `AcqSectionHeader` mit fortlaufender Nummer und `Separator` dazwischen
+5. Der Phase-State bleibt intern erhalten fuer die Logik (z.B. ob KI-Extraktion schon gelaufen ist), steuert aber nicht mehr die Sichtbarkeit
 
-**Phase 1 — KI-gestuetzte Erfassung:**
-- Grosse Textarea: "Beschreiben Sie, was Ihr Mandant sucht"
-- Beispiel-Platzhalter: "Family Office sucht MFH in Rhein-Main, 2-5 Mio, min. 4% Rendite, kein Denkmalschutz"
-- Button "Ankaufsprofil generieren" → ruft KI auf (Armstrong/Gemini)
-- Die KI extrahiert strukturierte Daten: Kontaktname, Region, Asset-Fokus, Preisspanne, Rendite, Ausschluesse
+### Aufbau der durchlaufenden Seite
 
-**Phase 2 — Ankaufsprofil aufbereiten:**
-- Generiertes Profil als editierbare Card anzeigen (vorausgefuellt aus KI-Ergebnis)
-- Felder: Kontaktname, Region, Asset-Fokus (Checkboxen), Preis min/max, Zielrendite, Ausschluesse, Notizen
-- Der Nutzer kann korrigieren und ergaenzen
-- **"Mandat erstellen"**-Button am Ende dieser Sektion
-- Erst hier: `useCreateAcqMandate()` wird aufgerufen, DB-ID + Public-ID (ACQ-XXXX) vergeben
-- Das Widget erscheint sofort oben in Sektion A
+```text
+<PageShell>
+  <ModulePageHeader />
+  
+  // Sektion A: Meine Mandate (WidgetGrid)
+  
+  <Separator />
+  
+  // Sektion 1: KI-gestuetzte Erfassung
+  <AcqSectionHeader number={1} title="KI-gestuetzte Erfassung" />
+  <Textarea + Button "Ankaufsprofil generieren" />
+  
+  <Separator />
+  
+  // Sektion 2: Ankaufsprofil aufbereiten
+  <AcqSectionHeader number={2} title="Ankaufsprofil" />
+  <Formular: Name, Region, Asset-Fokus, Preis, Rendite, Ausschluesse>
+  <Button "Mandat erstellen" />
+  
+  <Separator />
+  
+  // Sektion 3-7: Operative Workflow-Sektionen
+  // Jeweils mit deaktiviertem Overlay wenn !activeMandateId
+  
+  <AcqSectionHeader number={3} title="Kontaktrecherche" />
+  <SourcingTab /> oder Platzhalter
+  
+  <AcqSectionHeader number={4} title="E-Mail-Versand" />
+  <OutreachTab /> oder Platzhalter
+  
+  <AcqSectionHeader number={5} title="Objekteingang" />
+  <InboundTab /> oder Platzhalter
+  
+  <AcqSectionHeader number={6} title="Analyse & Kalkulation" />
+  <AnalysisTab /> oder Platzhalter
+  
+  <AcqSectionHeader number={7} title="Delivery" />
+  <DeliveryTab /> oder Platzhalter
+</PageShell>
+```
 
-**Phase 3-7 — Operative Workflow-Sektionen (nach Mandats-Erstellung):**
-- Werden erst sichtbar/aktiv, nachdem das Mandat erstellt wurde
-- Nutzen die bestehenden Komponenten mit der neuen mandateId:
-  - Schritt 3: `<SourcingTab mandateId={id} />`
-  - Schritt 4: `<OutreachTab mandateId={id} />`
-  - Schritt 5: `<InboundTab mandateId={id} />`
-  - Schritt 6: `<AnalysisTab mandateId={id} />`
-  - Schritt 7: `<DeliveryTab mandateId={id} />`
-- Getrennt durch `<Separator />` und nummerierte `SectionHeader` (wie in MandateDetail)
+### Deaktivierte Sektionen (3-7 ohne Mandat)
 
-### 2. Mandate-Switcher im Workflow
+Fuer Sektionen ohne `activeMandateId` wird ein Wrapper-Div verwendet:
 
-Wenn ein Mandat erstellt wurde, erscheint oben ein Dropdown/Select um zwischen Mandaten zu wechseln. Beim Wechsel laden die Workflow-Sektionen die Daten des gewaehlten Mandats. So kann der Manager auf einer Seite bleiben und zwischen seinen Mandaten navigieren — wie beim Objekteingang, wo man alle Eingaenge sieht oder nach Mandat filtern kann.
+```tsx
+<div className={!activeMandateId ? 'opacity-40 pointer-events-none' : ''}>
+  <SourcingTab mandateId={activeMandateId!} ... />
+</div>
+{!activeMandateId && (
+  <p className="text-sm text-muted-foreground italic">
+    Erstellen Sie zuerst ein Mandat (Schritt 2), um diesen Bereich zu nutzen.
+  </p>
+)}
+```
 
-### 3. AkquiseMandateDetail.tsx — Vereinfachung
+### Dateien
 
-Die Detail-Seite bleibt als Fallback bestehen (fuer direkte Links, Dashboard-Klicks), aber der primaere Arbeitsplatz wird die Mandate-Seite. Langfristig koennte die Detail-Seite auf `/mandate?id=XYZ` redirecten.
+1. **REWRITE:** `src/pages/portal/akquise-manager/AkquiseMandate.tsx` — Phase-Conditional durch Always-Visible ersetzen
 
-## Technische Details
-
-### KI-Freitext-Analyse
-- Neuer Edge Function Call oder Armstrong-Action
-- Input: Freitext-Beschreibung
-- Output: Strukturiertes JSON (client_name, region, asset_focus[], price_min, price_max, yield_target, exclusions)
-- Fallback: Wenn KI nicht verfuegbar, bleibt das manuelle Formular aktiv
-
-### State-Management
-- `activeMandate` State: null (neues Mandat) oder bestehende mandateId
-- Phase-Tracking: `workflowPhase: 'capture' | 'profile' | 'active'`
-- Nach Erstellung: workflowPhase wechselt zu 'active', alle Tabs werden sichtbar
-
-### Bestehende Komponenten wiederverwendet
-- `SourcingTab`, `OutreachTab`, `InboundTab`, `AnalysisTab`, `DeliveryTab` — unveraendert
-- `SectionHeader` — aus MandateDetail extrahieren in shared Component
-- `MandateCaseCard` — fuer die Widget-Darstellung oben
-- `AkquiseStepper` — optional als Fortschrittsanzeige
-
-### Dateien die geaendert/erstellt werden
-1. **REWRITE:** `src/pages/portal/akquise-manager/AkquiseMandate.tsx` (kompletter Workflow)
-2. **NEU:** Shared `SectionHeader` Komponente (aus MandateDetail extrahiert)
-3. **MINIMAL EDIT:** `AkquiseMandateDetail.tsx` (SectionHeader-Import anpassen)
-4. **Optional:** Edge Function fuer KI-Freitext-Analyse des Ankaufsprofils
+Keine weiteren Dateien betroffen. Die bestehenden Tab-Komponenten (SourcingTab, OutreachTab etc.) und der AcqSectionHeader bleiben unveraendert.
 
