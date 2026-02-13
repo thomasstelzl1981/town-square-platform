@@ -7,10 +7,13 @@ import { Button } from '@/components/ui/button';
 import { DataTable, StatusBadge, EmptyState } from '@/components/shared';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
-import { Loader2, CreditCard, FileText, TrendingUp, Download } from 'lucide-react';
+import { Loader2, CreditCard, FileText, TrendingUp, Download, Bot } from 'lucide-react';
 import { DESIGN } from '@/config/designManifest';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
+import { Separator } from '@/components/ui/separator';
+import { AktionsKatalog } from '@/pages/portal/communication-pro/agenten/AktionsKatalog';
+import { KostenDashboard } from '@/pages/portal/communication-pro/agenten/KostenDashboard';
 
 export function AbrechnungTab() {
   const { activeTenantId } = useAuth();
@@ -198,6 +201,24 @@ export function AbrechnungTab() {
           )}
         </CardContent>
       </Card>
+
+      {/* Armstrong Section */}
+      <Separator className="my-6" />
+      
+      <div className="space-y-4">
+        <div className="flex items-center gap-3">
+          <Bot className="h-6 w-6 text-primary" />
+          <div>
+            <h2 className="text-lg font-semibold">Armstrong — KI-Aktionen & Credits</h2>
+            <p className="text-sm text-muted-foreground">
+              Übersicht aller verfügbaren KI-Aktionen und Ihres Credit-Verbrauchs.
+            </p>
+          </div>
+        </div>
+
+        <KostenDashboard />
+        <AktionsKatalog />
+      </div>
     </PageShell>
   );
 }

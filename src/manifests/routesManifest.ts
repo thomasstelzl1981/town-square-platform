@@ -439,7 +439,6 @@ export const zone2Portal: ZoneDefinition = {
         { path: "serien-emails", component: "CommProSerienEmails", title: "Serien-E-Mails" },
         { path: "recherche", component: "CommProRecherche", title: "Recherche" },
         { path: "social", component: "CommProSocial", title: "Social" },
-        { path: "agenten", component: "CommProAgenten", title: "Agenten" },
         { path: "ki-telefon", component: "CommProKiTelefon", title: "KI-Telefonassistent" },
       ],
     },
