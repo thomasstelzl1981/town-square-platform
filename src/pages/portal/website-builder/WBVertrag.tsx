@@ -1,5 +1,5 @@
 /**
- * MOD-21 Website Builder — Tile 4: Vertrag
+ * MOD-21 Website Builder — Tile 4: Vertrag + Versionshistorie
  * Credits-based contract management (no Stripe)
  */
 import { PageShell } from '@/components/shared/PageShell';
@@ -7,6 +7,7 @@ import { useWebsites } from '@/hooks/useWebsites';
 import { useHostingContract } from '@/hooks/useHostingContract';
 import { TYPOGRAPHY, CARD, SPACING } from '@/config/designManifest';
 import { cn } from '@/lib/utils';
+import VersionHistory from './VersionHistory';
 
 export default function WBVertrag() {
   const { data: websites } = useWebsites();
@@ -17,7 +18,10 @@ export default function WBVertrag() {
       <h2 className={TYPOGRAPHY.PAGE_TITLE}>Hosting-Vertrag</h2>
       <div className={SPACING.SECTION}>
         {firstWebsite ? (
-          <ContractCard websiteId={firstWebsite.id} websiteName={firstWebsite.name} />
+          <div className="space-y-6">
+            <ContractCard websiteId={firstWebsite.id} websiteName={firstWebsite.name} />
+            <VersionHistory websiteId={firstWebsite.id} websiteSlug={(firstWebsite as any).slug} />
+          </div>
         ) : (
           <div className={cn(CARD.CONTENT, 'text-center py-12')}>
             <p className={TYPOGRAPHY.MUTED}>Erstellen Sie zuerst eine Website, um einen Hosting-Vertrag abzuschließen.</p>
