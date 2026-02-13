@@ -1,25 +1,27 @@
 {
   "meta": {
-    "version": "1.0",
+    "version": "2.0",
     "title": "Feature-Roadmap — System of a Town Platform",
-    "description": "Strategischer Fahrplan für neue Features, Business-Logik und Live-Daten-Integration. Nachfolger der Cleanup-Backlogs (backlog.json, mobile-backlog.json).",
+    "description": "Strategischer Fahrplan für neue Features, Business-Logik und Live-Daten-Integration. Aktualisiert nach Backlog v5 Abschluss (7 Sprints, 9 Module frozen).",
     "created": "2026-02-13",
-    "last_updated": "2026-02-13",
-    "source": "backlog.json roadmap_carried_forward + Code-Scan (Stubs, TODOs)",
-    "total_items": 10,
+    "last_updated": "2026-02-13T19:00:00Z",
+    "frozen_modules": ["MOD-00", "MOD-02", "MOD-03", "MOD-04", "MOD-07", "MOD-11", "MOD-12", "MOD-13", "MOD-17"],
+    "open_modules": ["MOD-01", "MOD-05", "MOD-06", "MOD-08", "MOD-09", "MOD-10", "MOD-14", "MOD-15", "MOD-16", "MOD-18", "MOD-19", "MOD-20"],
+    "total_items": 14,
     "phases": 3,
     "status_legend": {
       "planned": "Noch nicht begonnen",
       "in_progress": "Aktuell in Bearbeitung",
       "done": "Abgeschlossen und verifiziert",
-      "blocked": "Wartend auf externe Abhängigkeit"
+      "blocked": "Wartend auf externe Abhängigkeit",
+      "obsolete": "Durch Architekturänderung hinfällig"
     }
   },
   "phases": [
     {
       "id": "PHASE-A",
-      "title": "Fundament — DB-Persistenz & Dokumentation",
-      "description": "Grundlagen schaffen: Frontend-Simulationen durch echte DB-Anbindung ersetzen und fehlende Modul-Spezifikationen nachdokumentieren.",
+      "title": "Fundament — DB-Persistenz & offene Module aktivieren",
+      "description": "Frontend-Simulationen durch echte DB-Anbindung ersetzen. Stub-Module mit Basislogik aktivieren.",
       "priority": "Zuerst",
       "items": [
         {
@@ -27,10 +29,9 @@
           "category": "db-persistenz",
           "module": "MOD-08",
           "title": "Investment-Favoriten in DB persistieren",
-          "description": "Aktuell werden Favoriten nur im Frontend-State gehalten. Eine investment_favorites Tabelle mit user_id, listing_id, created_at erstellen und die bestehende Favoriten-Logik auf Supabase umstellen.",
+          "description": "Aktuell werden Favoriten nur im Frontend-State gehalten. Eine investment_favorites Tabelle mit user_id, listing_id, created_at erstellen.",
           "effort": "M",
           "status": "planned",
-          "origin": "ROAD-003 (backlog.json)",
           "acceptance_criteria": [
             "investment_favorites Tabelle mit RLS-Policies existiert",
             "Favoriten überleben Browser-Refresh und Session-Wechsel",
@@ -42,10 +43,9 @@
           "category": "db-persistenz",
           "module": "MOD-03",
           "title": "DMS Storage-Usage Edge Function",
-          "description": "Echte Speicherplatz-Anzeige im DMS statt simulierter Werte. Edge Function berechnet die tatsächliche Bucket-Größe pro Tenant.",
+          "description": "Echte Speicherplatz-Anzeige im DMS statt simulierter Werte.",
           "effort": "M",
           "status": "planned",
-          "origin": "ROAD-004 (backlog.json)",
           "acceptance_criteria": [
             "Edge Function sot-dms-storage-usage liefert Bytes pro Tenant",
             "DMS-Dashboard zeigt echte Werte (GB used / GB total)",
@@ -53,102 +53,117 @@
           ]
         },
         {
-          "id": "FEAT-007",
-          "category": "dokumentation",
-          "module": "GLOBAL",
-          "title": "Modul-Specs für 15 Module erstellen",
-          "description": "15 von 21 Modulen haben keine detaillierte Spezifikation. Specs im Memory-Format erstellen mit: Zweck, Tiles, Workflows, DB-Tabellen, Edge Functions, Abhängigkeiten.",
+          "id": "FEAT-011",
+          "category": "stub-module",
+          "module": "MOD-18",
+          "title": "Finanzanalyse: 4 ModuleTilePage-Stubs durch echte UI ersetzen",
+          "description": "Dashboard, Reports, Szenarien und Einstellungen sind leere ModuleTilePage-Stubs. Implementierung mit echten Daten aus MOD-04 (Immobilien), MOD-07 (Finanzierung), MOD-17 (Fahrzeuge).",
           "effort": "L",
           "status": "planned",
-          "origin": "ROAD-002 (backlog.json)",
+          "stub_files": [
+            "src/pages/portal/finanzanalyse/DashboardTile.tsx",
+            "src/pages/portal/finanzanalyse/ReportsTile.tsx",
+            "src/pages/portal/finanzanalyse/SzenarienTile.tsx",
+            "src/pages/portal/finanzanalyse/EinstellungenTile.tsx"
+          ],
           "acceptance_criteria": [
-            "Jedes der 15 Module hat ein Memory-Dokument",
-            "Jede Spec enthält mindestens: Zweck, Tile-Struktur, DB-Tabellen, offene TODOs",
-            "Cross-Referenzen zwischen abhängigen Modulen sind dokumentiert"
+            "Dashboard zeigt aggregierte KPIs aus Immobilien, Finanzierungen, Fahrzeugen",
+            "Reports können als PDF exportiert werden",
+            "Szenarien-Vergleich funktioniert mit mindestens 2 Szenarien",
+            "Einstellungen persistieren in DB"
+          ]
+        },
+        {
+          "id": "FEAT-012",
+          "category": "stub-module",
+          "module": "MOD-10",
+          "title": "Provisionen-Modul: Dashboard mit Provisions-KPIs",
+          "description": "MOD-10 wurde von 'Leads' zu 'Provisionen' umstrukturiert. Das einzelne Tile 'Übersicht' benötigt ein echtes Dashboard mit Umsatz-KPIs, offenen und abgerechneten Provisionen.",
+          "effort": "M",
+          "status": "planned",
+          "acceptance_criteria": [
+            "Provisions-Dashboard zeigt echte Umsatzdaten",
+            "Offene vs. abgerechnete Provisionen sind getrennt dargestellt",
+            "Zeitraum-Filter funktioniert"
+          ]
+        },
+        {
+          "id": "FEAT-013",
+          "category": "modul-aktivierung",
+          "module": "MOD-01",
+          "title": "Stammdaten: Firma-Tab mit Org-Daten befüllen",
+          "description": "Firma-Tab zeigt aktuell statische Daten. Echte Anbindung an organizations-Tabelle mit Edit-Funktionalität.",
+          "effort": "S",
+          "status": "planned",
+          "acceptance_criteria": [
+            "Firma-Daten werden aus organizations-Tabelle geladen",
+            "Inline-Editing speichert Änderungen persistent",
+            "USt-ID und Handelsregister-Felder vorhanden"
           ]
         }
       ]
     },
     {
       "id": "PHASE-B",
-      "title": "Core Features — Stub-Module & Wizards",
-      "description": "Platzhalter-Module durch echte Business-Logik ersetzen und fehlende Workflows implementieren.",
+      "title": "Core Features — Workflows & Business-Logik",
+      "description": "Echte Geschäftslogik in offene Module einbauen. Fehlende Workflows implementieren.",
       "priority": "Nach Phase A",
       "items": [
-        {
-          "id": "FEAT-001",
-          "category": "stub-module",
-          "module": "MOD-10",
-          "title": "Leads-Modul: 4 Stubs durch echte Workflows ersetzen",
-          "description": "LeadsInbox, MeineLeads, LeadsPipeline und LeadsWerbung sind aktuell ModuleTilePage-Stubs. Implementierung: Inbox mit Lead-Liste aus DB, Pipeline als Kanban-Board, Meine Leads als persönliche Arbeitsliste, Werbung als Kampagnen-Übersicht.",
-          "effort": "L",
-          "status": "planned",
-          "origin": "ROAD-001 / AUD-014 (backlog.json)",
-          "acceptance_criteria": [
-            "Alle 4 Tiles zeigen echte Daten aus der leads-Tabelle",
-            "Lead-Übernahme aus Inbox funktioniert",
-            "Pipeline zeigt Status-Progression",
-            "Werbung verlinkt korrekt zu SelfieAds"
-          ],
-          "stub_files": [
-            "src/pages/portal/leads/LeadsInbox.tsx",
-            "src/pages/portal/leads/MeineLeads.tsx",
-            "src/pages/portal/leads/LeadsPipeline.tsx",
-            "src/pages/portal/leads/LeadsWerbung.tsx"
-          ]
-        },
-        {
-          "id": "FEAT-002",
-          "category": "stub-module",
-          "module": "MOD-18",
-          "title": "Finanzanalyse: 4 Stubs implementieren",
-          "description": "DashboardTile, ReportsTile, SzenarienTile und EinstellungenTile sind leere Stubs. Implementierung: Dashboard mit Portfolio-KPIs, Reports mit Export-Funktion, Szenarien mit Was-wäre-wenn-Rechner, Einstellungen für Analyse-Parameter.",
-          "effort": "L",
-          "status": "planned",
-          "origin": "ROAD-006 / AUD-015 (backlog.json)",
-          "acceptance_criteria": [
-            "Dashboard zeigt aggregierte Finanzdaten",
-            "Reports können als PDF exportiert werden",
-            "Szenarien-Vergleich funktioniert mit mindestens 2 Szenarien",
-            "Einstellungen persistieren in DB"
-          ],
-          "stub_files": [
-            "src/pages/portal/finanzanalyse/DashboardTile.tsx",
-            "src/pages/portal/finanzanalyse/ReportsTile.tsx",
-            "src/pages/portal/finanzanalyse/SzenarienTile.tsx",
-            "src/pages/portal/finanzanalyse/EinstellungenTile.tsx"
-          ]
-        },
-        {
-          "id": "FEAT-005",
-          "category": "workflows",
-          "module": "MOD-12",
-          "title": "MandatCreateWizard für Akquise-Manager",
-          "description": "Desktop-only Wizard zur Mandatsanlage direkt im Akquise-Manager. Muss dem Contact-First Pattern folgen: Erst Kontakt anlegen/auswählen, dann Mandat-Parameter definieren.",
-          "effort": "M",
-          "status": "planned",
-          "origin": "ROAD-005 (backlog.json)",
-          "acceptance_criteria": [
-            "Wizard ist Desktop-only (kein Modal)",
-            "Contact-First: Kontaktauswahl/-anlage als erster Schritt",
-            "Mandat wird in acq_mandates persistiert",
-            "TermsGate für externe Mandate integriert"
-          ]
-        },
         {
           "id": "FEAT-006",
           "category": "workflows",
           "module": "MOD-12",
           "title": "Absage-E-Mail tatsächlich versenden",
-          "description": "Aktuell zeigt die Absage-Funktion nur einen Toast. Eine Edge Function soll die E-Mail via Resend tatsächlich versenden und in acq_outbound_messages protokollieren.",
+          "description": "Aktuell zeigt die Absage-Funktion nur einen Toast. Edge Function soll E-Mail via Resend versenden.",
           "effort": "M",
           "status": "planned",
-          "origin": "Code-Scan (Toast-Stub in Akquise-Manager)",
+          "note": "MOD-12 ist frozen — erfordert temporären Unfreeze für diese spezifische Änderung",
           "acceptance_criteria": [
             "Edge Function sot-acq-send-rejection versendet E-Mail",
             "E-Mail wird in acq_outbound_messages gespeichert",
-            "Template aus acq_email_templates verwendet",
-            "Fehler werden dem User angezeigt"
+            "Template aus acq_email_templates verwendet"
+          ]
+        },
+        {
+          "id": "FEAT-014",
+          "category": "workflows",
+          "module": "MOD-09",
+          "title": "Leadeingang: Echte Lead-Liste und Übernahme-Workflow",
+          "description": "Der Leads-Tab in MOD-09 benötigt eine echte Lead-Liste aus der DB mit Übernahme, Zuordnung und Status-Tracking.",
+          "effort": "L",
+          "status": "planned",
+          "acceptance_criteria": [
+            "Leads aus leads-Tabelle werden angezeigt",
+            "Lead-Übernahme ändert Status und assigned_to",
+            "Filter nach Quelle (SelfieAds, Organic, Referral)"
+          ]
+        },
+        {
+          "id": "FEAT-015",
+          "category": "workflows",
+          "module": "MOD-06",
+          "title": "Verkauf: Vorgänge-Tab mit Pipeline-Logik",
+          "description": "MOD-06 Verkauf benötigt eine echte Pipeline-Ansicht für Verkaufsvorgänge mit Status-Progression.",
+          "effort": "L",
+          "status": "planned",
+          "acceptance_criteria": [
+            "Verkaufsvorgänge aus DB mit Status-Anzeige",
+            "Drag-and-Drop Status-Änderung oder Stepper",
+            "Verknüpfung zu Listing und Käufer-Kontakt"
+          ]
+        },
+        {
+          "id": "FEAT-016",
+          "category": "modul-aktivierung",
+          "module": "MOD-19",
+          "title": "Photovoltaik: Angebots-Konfigurator",
+          "description": "MOD-19 benötigt einen interaktiven PV-Konfigurator als Golden Path Flow.",
+          "effort": "L",
+          "status": "planned",
+          "acceptance_criteria": [
+            "Dachfläche und Ausrichtung erfassbar",
+            "Ertragsschätzung wird berechnet",
+            "Angebot kann als PDF exportiert werden"
           ]
         }
       ]
@@ -156,75 +171,115 @@
     {
       "id": "PHASE-C",
       "title": "Integrations & Optimierung",
-      "description": "Externe Dienste anbinden und systemweite Performance-Optimierungen durchführen.",
+      "description": "Externe Dienste anbinden und systemweite Optimierungen.",
       "priority": "Nach Phase B",
       "items": [
-        {
-          "id": "FEAT-008",
-          "category": "architektur",
-          "module": "GLOBAL",
-          "title": "Bundle-Analyse: ManifestRouter optimieren",
-          "description": "ManifestRouter hat 80+ lazy() Imports. Analyse ob Code-Splitting-Grenzen effektiv sind und ob Chunks zusammengefasst oder weiter aufgeteilt werden sollten.",
-          "effort": "M",
-          "status": "done",
-          "origin": "ROAD-007 / AUD-050 (backlog.json)",
-          "acceptance_criteria": [
-            "Bundle-Analyse Report erstellt (Chunk-Größen, Ladezeiten)",
-            "Top-5 größte Chunks identifiziert",
-            "Optimierungs-Empfehlungen dokumentiert",
-            "Mindestens 1 Optimierung umgesetzt"
-          ]
-        },
         {
           "id": "FEAT-009",
           "category": "integration",
           "module": "MOD-14",
           "title": "HeyGen Video-Integration",
-          "description": "MOD-14 Social hat einen Stub-Job für HeyGen Video-Generierung. Echte API-Anbindung implementieren für automatisierte Video-Erstellung.",
+          "description": "MOD-14 Social hat einen Stub-Job für HeyGen Video-Generierung. Echte API-Anbindung implementieren.",
           "effort": "M",
           "status": "planned",
-          "origin": "Code-Scan (Stub-Job in MOD-14)",
           "acceptance_criteria": [
             "HeyGen API Key konfiguriert",
             "Video-Generierung wird angestoßen und Status getrackt",
-            "Fertiges Video wird in Storage gespeichert",
-            "User erhält Benachrichtigung bei Fertigstellung"
+            "Fertiges Video wird in Storage gespeichert"
           ]
         },
         {
           "id": "FEAT-010",
           "category": "integration",
-          "module": "MOD-10",
+          "module": "MOD-09",
           "title": "SelfieAds Mandat-Checkout / Bezahl-Flow",
-          "description": "Der Checkout-Button im SelfieAds Studio zeigt aktuell nur einen Toast. Echter Bezahl-Flow mit Mandats-Erstellung und Prepayment implementieren.",
+          "description": "Der Checkout-Button im SelfieAds Studio zeigt nur einen Toast. Echter Bezahl-Flow mit Mandats-Erstellung.",
           "effort": "M",
           "status": "planned",
-          "origin": "Code-Scan (Toast-Stub in SelfieAds)",
           "acceptance_criteria": [
             "Checkout-Flow mit Zusammenfassung und Bestätigung",
             "Mandat wird erstellt und an Zone 1 übermittelt",
-            "Bezahl-Status wird getrackt",
             "Kampagne startet nach Zahlungseingang"
+          ]
+        },
+        {
+          "id": "FEAT-017",
+          "category": "integration",
+          "module": "MOD-05",
+          "title": "KI-Telefonassistent: Platzhalter durch Konzept ersetzen",
+          "description": "MOD-05 ist ein reiner Platzhalter. Mindestens eine Konzeptseite mit Funktionsbeschreibung und Warteliste erstellen.",
+          "effort": "S",
+          "status": "planned",
+          "acceptance_criteria": [
+            "Konzeptseite mit Feature-Beschreibung",
+            "Warteliste/Interest-Formular",
+            "Integration-Hinweis auf Communication Pro (MOD-14)"
+          ]
+        },
+        {
+          "id": "FEAT-018",
+          "category": "optimierung",
+          "module": "MOD-15",
+          "title": "Fortbildung: Katalog mit echten Affiliate-Links",
+          "description": "Katalog-Einträge aus Zone-1-Admin mit echten Amazon/Udemy/YouTube-Links versehen und dynamisch laden.",
+          "effort": "S",
+          "status": "planned",
+          "acceptance_criteria": [
+            "Katalog lädt Einträge aus education_items Tabelle",
+            "Affiliate-Links öffnen korrekt im neuen Tab",
+            "Kategorien-Filter funktioniert"
           ]
         }
       ]
     }
   ],
+  "retired": [
+    {
+      "id": "FEAT-001",
+      "original_title": "Leads-Modul: 4 Stubs durch echte Workflows ersetzen",
+      "reason": "OBSOLETE — MOD-10 wurde zu 'Provisionen' umstrukturiert. Lead-Funktionalität ist jetzt in MOD-09. Ersetzt durch FEAT-012 und FEAT-014.",
+      "retired_at": "2026-02-13"
+    },
+    {
+      "id": "FEAT-002",
+      "original_title": "Finanzanalyse: 4 Stubs implementieren",
+      "reason": "REPLACED — Durch FEAT-011 mit aktualisierter Beschreibung ersetzt.",
+      "retired_at": "2026-02-13"
+    },
+    {
+      "id": "FEAT-005",
+      "original_title": "MandatCreateWizard für Akquise-Manager",
+      "reason": "OBSOLETE — MOD-12 nutzt jetzt die 2-Stufen-Architektur (KI-Erfassung statt Wizard). Modul ist frozen.",
+      "retired_at": "2026-02-13"
+    },
+    {
+      "id": "FEAT-007",
+      "original_title": "Modul-Specs für 15 Module erstellen",
+      "reason": "DONE — 13 Specs in Sprint S5 erstellt. Gesamt 22 Spec-Dateien in spec/current/02_modules/.",
+      "retired_at": "2026-02-13"
+    },
+    {
+      "id": "FEAT-008",
+      "original_title": "Bundle-Analyse: ManifestRouter optimieren",
+      "reason": "DONE — Bereits abgeschlossen.",
+      "retired_at": "2026-02-13"
+    }
+  ],
   "summary": {
     "phase_a": {
-      "items": 3,
-      "effort_total": "M + M + L",
-      "focus": "DB-Persistenz, Dokumentation"
+      "items": 5,
+      "focus": "DB-Persistenz, Stub-Ablösung (MOD-18, MOD-10, MOD-01)",
+      "effort": "S + M + M + M + L"
     },
     "phase_b": {
       "items": 4,
-      "effort_total": "L + L + M + M",
-      "focus": "Stub-Ablösung, Workflow-Implementierung"
+      "focus": "Echte Workflows (MOD-06, MOD-09, MOD-12 Unfreeze, MOD-19)",
+      "effort": "M + L + L + L"
     },
     "phase_c": {
-      "items": 3,
-      "effort_total": "M + M + M",
-      "focus": "Externe Integrations, Performance"
+      "items": 4,
+      "focus": "Externe Integrationen (HeyGen, SelfieAds, Fortbildung), MOD-05 Konzept",
+      "effort": "S + S + M + M"
     }
   }
 }
