@@ -13,7 +13,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { TableCell, TableRow } from '@/components/ui/table';
-import { ArrowLeft, FileText, User, Building2, Search, Save, Banknote, ShoppingBag, X, CheckCircle2, Loader2, LayoutList, LayoutPanelLeft } from 'lucide-react';
+import { ArrowLeft, FileText, User, Building2, Search, Save, Banknote, ShoppingBag, X, CheckCircle2, Loader2, LayoutList, LayoutPanelLeft, Plus } from 'lucide-react';
+import { WidgetGrid } from '@/components/shared/WidgetGrid';
+import { WidgetCell } from '@/components/shared/WidgetCell';
+import { useFutureRoomCases } from '@/hooks/useFinanceMandate';
+import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import FinanceOfferCard from '@/components/finanzierung/FinanceOfferCard';
 import AmortizationScheduleCard from '@/components/finanzierung/AmortizationScheduleCard';
 import { toast } from 'sonner';
@@ -30,6 +35,7 @@ import FinanceObjectCard, { type ObjectFormData, type FinanceObjectCardHandle } 
 import FinanceRequestCard, { type FinanceRequestCardHandle } from '@/components/finanzierung/FinanceRequestCard';
 import PropertyAssetsCard, { type PropertyAsset, createEmptyProperty } from '@/components/finanzierung/PropertyAssetsCard';
 import GenerateCaseCard from '@/components/finanzierung/GenerateCaseCard';
+import { FinanceConsentBlock } from '@/components/finanzierung/FinanceConsentBlock';
 import MagicIntakeCard, { type MagicIntakeResult } from '@/components/finanzierung/MagicIntakeCard';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -60,8 +66,15 @@ function mapPropertyType(pt: string | null): string {
 
 export default function FMFinanzierungsakte() {
   const navigate = useNavigate();
+  const { data: existingCases } = useFutureRoomCases();
   const [purpose, setPurpose] = useState('kauf');
   const [objectAddress, setObjectAddress] = useState('');
+
+  // Consent state for Phase 4
+  const [consentData, setConsentData] = useState(false);
+  const [consentCommission, setConsentCommission] = useState(false);
+  const [consentDsgvo, setConsentDsgvo] = useState(false);
+  const allConsentsGiven = consentData && consentCommission && consentDsgvo;
   const [objectType, setObjectType] = useState('');
   const [loanAmount, setLoanAmount] = useState('');
   const [purchasePrice, setPurchasePrice] = useState('');
@@ -200,6 +213,35 @@ export default function FMFinanzierungsakte() {
 
   return (
     <PageShell fullWidth={splitView}>
+      {/* Widget-Leiste: bestehende Akten + CTA */}
+      {existingCases && existingCases.length > 0 && (
+        <WidgetGrid>
+          {existingCases.map((c: any) => {
+            const req = c.finance_mandates?.finance_requests?.[0];
+            const applicant = req?.applicant_profiles?.[0];
+            const label = applicant ? `${applicant.first_name || ''} ${applicant.last_name || ''}`.trim() : (req?.public_id || c.id.slice(0, 8));
+            return (
+              <WidgetCell key={c.id}>
+                <Card
+                  className="glass-card cursor-pointer transition-all h-full flex flex-col items-center justify-center text-center p-4 gap-2 hover:ring-1 hover:ring-primary/40"
+                  onClick={() => navigate(`/portal/finanzierungsmanager/fall/${c.id}`)}
+                >
+                  <FileText className="h-6 w-6 text-primary" />
+                  <span className="text-sm font-semibold truncate max-w-full">{label}</span>
+                  <Badge variant="secondary" className="text-[10px]">{c.status}</Badge>
+                </Card>
+              </WidgetCell>
+            );
+          })}
+          <WidgetCell>
+            <Card className="glass-card cursor-pointer transition-all h-full flex flex-col items-center justify-center text-center p-4 gap-2 border-dashed ring-2 ring-primary/30">
+              <Plus className="h-6 w-6 text-primary" />
+              <span className="text-sm font-medium text-muted-foreground">Aktuelle Akte</span>
+            </Card>
+          </WidgetCell>
+        </WidgetGrid>
+      )}
+
       {/* Header */}
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate(-1)}>
@@ -330,12 +372,18 @@ export default function FMFinanzierungsakte() {
             <HouseholdCalculationCard formData={formData} coFormData={coFormData} calcData={calcData} usage={eckdatenUsage} rentalIncome={eckdatenRentalIncome} livingArea={Number(externalObjectData?.livingArea) || 0} propertyAssets={propertyAssets} />
 
             {!magicIntakeResult && (
-              <div ref={generateCaseRef}>
-                <GenerateCaseCard formData={formData} coFormData={coFormData} propertyAssets={propertyAssets}
-                  objectData={{ address: externalObjectData?.city ?? undefined, type: externalObjectData?.objectType, livingArea: externalObjectData?.livingArea, yearBuilt: externalObjectData?.yearBuilt, purchasePrice: externalPurchasePrice ? Number(externalPurchasePrice) : undefined }}
-                  financeData={{ loanAmount: calculatorBedarf || undefined, equityAmount: undefined, purpose: eckdatenUsage || 'kauf' }}
+              <>
+                <FinanceConsentBlock
+                  consentData={consentData} consentCommission={consentCommission} consentDsgvo={consentDsgvo}
+                  onConsentDataChange={setConsentData} onConsentCommissionChange={setConsentCommission} onConsentDsgvoChange={setConsentDsgvo}
                 />
-              </div>
+                <div ref={generateCaseRef}>
+                  <GenerateCaseCard formData={formData} coFormData={coFormData} propertyAssets={propertyAssets}
+                    objectData={{ address: externalObjectData?.city ?? undefined, type: externalObjectData?.objectType, livingArea: externalObjectData?.livingArea, yearBuilt: externalObjectData?.yearBuilt, purchasePrice: externalPurchasePrice ? Number(externalPurchasePrice) : undefined }}
+                    financeData={{ loanAmount: calculatorBedarf || undefined, equityAmount: undefined, purpose: eckdatenUsage || 'kauf' }}
+                  />
+                </div>
+              </>
             )}
           </div>
 
@@ -540,12 +588,18 @@ export default function FMFinanzierungsakte() {
           <HouseholdCalculationCard formData={formData} coFormData={coFormData} calcData={calcData} usage={eckdatenUsage} rentalIncome={eckdatenRentalIncome} livingArea={Number(externalObjectData?.livingArea) || 0} propertyAssets={propertyAssets} />
 
           {!magicIntakeResult && (
-            <div ref={generateCaseRef}>
-              <GenerateCaseCard formData={formData} coFormData={coFormData} propertyAssets={propertyAssets}
-                objectData={{ address: externalObjectData?.city ? `${externalObjectData.city}` : undefined, type: externalObjectData?.objectType, livingArea: externalObjectData?.livingArea, yearBuilt: externalObjectData?.yearBuilt, purchasePrice: externalPurchasePrice ? Number(externalPurchasePrice) : undefined }}
-                financeData={{ loanAmount: calculatorBedarf || undefined, equityAmount: undefined, purpose: eckdatenUsage || 'kauf' }}
+            <>
+              <FinanceConsentBlock
+                consentData={consentData} consentCommission={consentCommission} consentDsgvo={consentDsgvo}
+                onConsentDataChange={setConsentData} onConsentCommissionChange={setConsentCommission} onConsentDsgvoChange={setConsentDsgvo}
               />
-            </div>
+              <div ref={generateCaseRef}>
+                <GenerateCaseCard formData={formData} coFormData={coFormData} propertyAssets={propertyAssets}
+                  objectData={{ address: externalObjectData?.city ? `${externalObjectData.city}` : undefined, type: externalObjectData?.objectType, livingArea: externalObjectData?.livingArea, yearBuilt: externalObjectData?.yearBuilt, purchasePrice: externalPurchasePrice ? Number(externalPurchasePrice) : undefined }}
+                  financeData={{ loanAmount: calculatorBedarf || undefined, equityAmount: undefined, purpose: eckdatenUsage || 'kauf' }}
+                />
+              </div>
+            </>
           )}
         </>
       )}
