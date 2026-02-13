@@ -110,7 +110,7 @@ export function MietyCreateHomeForm({ onCancel, homeId, initialData }: MietyCrea
       if (isEditMode && onCancel) {
         onCancel();
       } else {
-        navigate(`/portal/miety/zuhause/${data.id}`);
+        navigate(`/portal/immobilien/zuhause/zuhause/${data.id}`);
       }
     },
     onError: (err: any) => toast.error(err.message),

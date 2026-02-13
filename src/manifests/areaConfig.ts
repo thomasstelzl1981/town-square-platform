@@ -62,7 +62,7 @@ export const moduleLabelOverrides: Record<string, string> = {
   'MOD-17': 'Fahrzeuge',           // Car-Management → Fahrzeuge
   'MOD-08': 'Immo Suche',         // Investment-Suche → Immo Suche
   'MOD-18': 'Finanzmanager',      // Finanzanalyse → Finanzmanager
-  'MOD-20': 'Haus',               // Miety → Haus (display only)
+  'MOD-20': 'ZUHAUSE',            // Miety → ZUHAUSE (display only)
 };
 
 /**

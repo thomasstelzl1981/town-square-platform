@@ -63,7 +63,7 @@ export default function MietyHomeDossier() {
   });
 
   if (isLoading) return <LoadingState />;
-  if (!home) return <Navigate to="/portal/miety/uebersicht" replace />;
+  if (!home) return <Navigate to="/portal/immobilien/zuhause/uebersicht" replace />;
 
   return (
     <PageShell>

@@ -77,7 +77,7 @@ export default function VersicherungenTile() {
                           <p className="text-sm font-medium mt-1">{Number(contract.monthly_cost).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}/Monat</p>
                         )}
                         <Button size="sm" variant="ghost" className="text-xs mt-2 -ml-2"
-                          onClick={() => navigate(`/portal/miety/zuhause/${contract.home_id}`)}>Details →</Button>
+                          onClick={() => navigate(`/portal/immobilien/zuhause/zuhause/${contract.home_id}`)}>Details →</Button>
                         <div className="mt-2 pt-2 border-t border-border/50">
                           <Button size="sm" variant="ghost" className="text-xs -ml-2 text-muted-foreground">
                             <FolderOpen className="h-3 w-3 mr-1" />Unterlagen herunterladen
