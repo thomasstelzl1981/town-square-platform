@@ -178,6 +178,11 @@ export const zone1Admin: ZoneDefinition = {
     { path: "landing-pages", component: "AdminLandingPages", title: "Landing Pages" },
     // Fortbildung Management
     { path: "fortbildung", component: "AdminFortbildung", title: "Fortbildung" },
+    // Website Hosting (MOD-21 Zone 1)
+    { path: "website-hosting", component: "WebHostingDashboard", title: "Website Hosting" },
+    { path: "website-hosting/domains", component: "WebHostingDomains", title: "Domains" },
+    { path: "website-hosting/abuse", component: "WebHostingAbuse", title: "Abuse" },
+    { path: "website-hosting/templates", component: "WebHostingTemplates", title: "Templates" },
   ],
 };
 
@@ -532,6 +537,22 @@ export const zone2Portal: ZoneDefinition = {
         { path: "zuhause/:homeId", component: "MietyHomeDossier", title: "Zuhause-Akte", dynamic: true },
       ],
     },
+    "MOD-21": {
+      name: "Website Builder",
+      base: "website-builder",
+      icon: "Globe",
+      display_order: 21,
+      visibility: { default: true, org_types: ["client", "partner"] },
+      tiles: [
+        { path: "websites", component: "WBWebsites", title: "Websites", default: true },
+        { path: "design", component: "WBDesign", title: "Design" },
+        { path: "seo", component: "WBSeo", title: "SEO" },
+        { path: "vertrag", component: "WBVertrag", title: "Vertrag" },
+      ],
+      dynamic_routes: [
+        { path: ":websiteId/editor", component: "WBEditor", title: "Editor", dynamic: true },
+      ],
+    },
   },
 };
 
@@ -607,6 +628,13 @@ export const zone3Websites: Record<string, WebsiteDefinition> = {
     layout: "ProjektLandingLayout",
     routes: [
       { path: ":slug", component: "ProjektLandingPage", title: "Projekt-Website", dynamic: true },
+    ],
+  },
+  sites: {
+    base: "/website/sites",
+    layout: "TenantSiteLayout",
+    routes: [
+      { path: ":slug", component: "TenantSiteRenderer", title: "Website", dynamic: true },
     ],
   },
 };
