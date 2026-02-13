@@ -96,7 +96,7 @@ export function Kaufy2026Hero({
         zIndex: 10,
         maxWidth: 900,
         width: '85%',
-        margin: '-80px auto 0',
+        margin: '-60px auto 0',
       }}>
         <Kaufy2026SearchBar
           onInvestmentSearch={onInvestmentSearch}
