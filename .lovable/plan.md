@@ -1,33 +1,60 @@
 
-# Designanpassungen: Kunden-Eingabe in Kachel 2 + Bereinigung
+# Daten-Architektur bereinigen: Demo-Mandat + Leere Mandatsakte
 
-## Was sich aendert
+## Ist-Zustand (Analyse)
 
-### 1. Kunden-Zeile entfernen (Zeilen 508-525)
-Die separate Eingabezeile "Kunde / Mandant" mit dem Kontaktbuch-Button oberhalb der Kacheln wird komplett entfernt. Sie sieht nicht gut aus und passt nicht ins CI.
+Das Demo-Mandat "Familie Investorius (Demo)" (`ACQ-2026-00001`) liegt bereits korrekt in der Datenbank — es ist kein hardcodierter Wert im Code. Es hat ein verknuepftes Objekt ("Rotklinkeranlage") im Objekteingang.
 
-### 2. Separators (Trennstriche) entfernen (Zeilen 508, 690)
-Die `<Separator />`-Elemente zwischen den Sektionen werden entfernt — sie sind nicht im CI verankert.
+**Probleme identifiziert:**
 
-### 3. Mandanten-Eingabefeld in Kachel 2 (Ankaufsprofil)
-In der Kachel "Ankaufsprofil" (oben rechts) wird ein grosses Textarea-Eingabefeld eingefuegt — gleiche Groesse wie das Freitext-Feld in Kachel 1 (6 Zeilen). Dort kann der User im Freitext den Mandanten beschreiben (Name, Firma, Daten) oder ueber einen kleinen Button "Kontaktbuch" einen bestehenden Kontakt suchen und uebernehmen.
+1. **ObjekteingangList**: Eine separate Spezial-Query (Zeilen 48-60) holt Mandate per `tenant_id` zusaetzlich zur normalen Manager-Query und merged sie. Das fuehrt zu doppelten/falschen Anzeigen und der falschen Beschriftung.
 
-Dieses Feld ist **immer sichtbar** (auch vor der KI-Generierung) und ersetzt die bisherige Kunden-Zeile. Es dient als primaere Mandanten-Erfassung.
+2. **AkquiseMandate (Mandate-Seite)**: Die Widget-Leiste oben zeigt nur existierende Mandate. Es fehlt eine **Platzhalter-Kachel "Neues Mandat"** links, die immer sichtbar ist und zur leeren Erfassungs-Ansicht fuehrt.
 
-### 4. Layout-Anpassung Kachel 2
-Die Kachel 2 zeigt nun immer:
-- Oben: Mandanten-Textarea (6 Zeilen) + Kontaktbuch-Button
-- Darunter: Entweder Platzhalter (vor KI-Generierung) oder die strukturierten Profildaten + editierbare Zusammenfassung + "Ankaufsprofil uebernehmen" Button
+3. **AkquiseDashboard**: Gleiches Thema — die "Neues Mandat"-Kachel fehlt im Widget-Grid.
 
-## Technische Details
+## Aenderungen
 
-### Datei: `src/pages/portal/akquise-manager/AkquiseMandate.tsx`
+### 1. `ObjekteingangList.tsx` — Spezial-Query entfernen
 
-| Bereich | Aenderung |
-|---------|-----------|
-| Zeilen 508 | `<Separator />` entfernen |
-| Zeilen 510-525 | Kunden-Zeile komplett entfernen |
-| Zeile 690 | `<Separator />` entfernen |
-| Zeilen 593-639 (Kachel 2) | Mandanten-Textarea (rows=6) mit Kontaktbuch-Button oben einfuegen, `clientName` State wird weiterhin genutzt |
+Die redundante Demo-Query (Zeilen 48-69) wird entfernt. Stattdessen wird nur die Standard-Query `useAcqMandatesActive()` plus `useAcqMandatesForManager()` verwendet, die alle Mandate des Managers korrekt laedt — inkl. des Demo-Mandats, da es dem User als Manager zugewiesen ist.
 
-Der `clientName` State wird jetzt aus dem Textarea befuellt. Der Kontaktbuch-Button (`BookOpen`-Icon) bleibt funktional und oeffnet den bestehenden `ContactBookDialog`.
+| Entfernt | Ersetzt durch |
+|----------|--------------|
+| `useQuery(['acq-mandates-demo'])` mit hardcoded `tenant_id` | Standard `useAcqMandatesForManager()` (laedt alle Mandate des Users) |
+| `useMemo` Merge-Logik | Direkte Verwendung der Hook-Daten |
+
+### 2. `AkquiseMandate.tsx` — "Neues Mandat"-Kachel im Widget-Grid
+
+In der Mandate-Uebersicht oben (Zeilen 492-506) wird links **immer eine Platzhalter-Kachel** "Neues Mandat" angezeigt. Klick darauf scrollt zur leeren Erfassungs-Ansicht (oder setzt den State zurueck).
+
+```text
++------------------+------------------+------------------+
+| + NEUES MANDAT   | ACQ-2026-00001   | (weitere...)     |
+| (Platzhalter)    | Fam. Investorius |                  |
++------------------+------------------+------------------+
+```
+
+- Die Kachel nutzt das bestehende `MandateCaseCardPlaceholder`-Design, aber mit anklickbarem Verhalten
+- Klick setzt `activeMandateId = null` und scrollt/fokussiert die Erfassungskacheln
+
+### 3. `AkquiseDashboard.tsx` — "Neues Mandat"-Kachel
+
+Im Dashboard-Grid unter "Aktive Mandate" wird ebenfalls immer eine "Neues Mandat"-Platzhalter-Kachel angezeigt (als erste Kachel), die zur Mandate-Erstellungsseite navigiert.
+
+### 4. `MandateCaseCard.tsx` — Neue Variante `MandateCaseCardNew`
+
+Neue exportierte Komponente: Eine klickbare "Plus"-Kachel mit Icon und Text "Neues Mandat", die das gleiche aspect-square Design nutzt wie bestehende Mandate-Karten. Wird in Dashboard, Mandate-Seite und ggf. MandateDetail verwendet.
+
+## Zusammenfassung
+
+| Datei | Aenderung |
+|-------|-----------|
+| `ObjekteingangList.tsx` | Demo-Spezial-Query + Merge entfernen, nur `useAcqMandatesForManager()` nutzen |
+| `MandateCaseCard.tsx` | Neue Komponente `MandateCaseCardNew` (Plus-Kachel) |
+| `AkquiseMandate.tsx` | "Neues Mandat"-Kachel immer links im Grid anzeigen |
+| `AkquiseDashboard.tsx` | "Neues Mandat"-Kachel im Aktive-Mandate-Grid |
+
+## Daten-Sicherheit
+
+Das Demo-Mandat `ACQ-2026-00001` bleibt unangetastet in der Datenbank. Es wird weiterhin korrekt angezeigt, da es dem eingeloggten User als Manager zugewiesen ist. Keine Migration, kein Seed-Script noetig.
