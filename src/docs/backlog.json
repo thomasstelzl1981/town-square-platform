@@ -3,18 +3,18 @@
     "version": "5.0",
     "focus": "Post-Development Audit & Sync — tile_catalog, Specs, Golden Paths, Component Maps, Contracts",
     "created_at": "2026-02-13",
-    "updated_at": "2026-02-13T16:24:00Z",
+    "updated_at": "2026-02-13T17:00:00Z",
     "predecessor": "backlog v4.0 (52 Issues, 5 Phases — abgeschlossen)",
     "audit_scope": "21 Module (MOD-00 bis MOD-20), tile_catalog SSOT, areaConfig, Component Maps, 13 fehlende Specs, API Contracts",
     "methodology": "Sprint-basiert. Nach jedem Sprint: backlog.json lesen, aktualisieren, naechsten Sprint vorbereiten.",
-    "current_sprint": "S2"
+    "current_sprint": "S3"
   },
   "metrics": {
     "total_tasks": 33,
     "p0_tasks": 16,
     "p1_tasks": 7,
     "p2_tasks": 10,
-    "completed": 14,
+    "completed": 16,
     "modules_with_tile_drift": 0,
     "modules_clean": 21,
     "specs_missing": 13,
@@ -167,13 +167,15 @@
       "id": "S2",
       "name": "areaConfig & Label Audit",
       "priority": "P1",
-      "status": "pending",
+      "status": "done",
+      "completed_at": "2026-02-13T17:00:00Z",
+      "notes": "19 Module korrekt zugeordnet, 2 begruendete Ausnahmen (MOD-00, MOD-20). Labels validiert, MOD-05 redundanten Override entfernt.",
       "description": "Alle 21 Module korrekt in Areas gruppiert. Labels und Overrides aktuell.",
       "tasks": [
         {
           "id": "S2-01",
           "title": "areaConfig Modul-Zuordnung validieren",
-          "status": "pending",
+          "status": "done",
           "type": "code_audit",
           "current_state": {
             "missions": ["MOD-02", "MOD-04", "MOD-07", "MOD-06", "MOD-08"],
@@ -186,7 +188,7 @@
         {
           "id": "S2-02",
           "title": "moduleLabelOverrides aktualisieren",
-          "status": "pending",
+          "status": "done",
           "type": "code_fix",
           "current_overrides": {
             "MOD-03": "Dokumente",
