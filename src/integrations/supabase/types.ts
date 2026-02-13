@@ -8089,12 +8089,17 @@ export type Database = {
           id: string
           imap_host: string | null
           imap_port: number | null
+          last_calendar_sync_at: string | null
+          last_contacts_sync_at: string | null
           last_sync_at: string | null
           provider: string
           refresh_token: string | null
           smtp_host: string | null
           smtp_port: number | null
+          sync_calendar: boolean
+          sync_contacts: boolean
           sync_error: string | null
+          sync_mail: boolean
           sync_status: string | null
           tenant_id: string
           token_expires_at: string | null
@@ -8110,12 +8115,17 @@ export type Database = {
           id?: string
           imap_host?: string | null
           imap_port?: number | null
+          last_calendar_sync_at?: string | null
+          last_contacts_sync_at?: string | null
           last_sync_at?: string | null
           provider: string
           refresh_token?: string | null
           smtp_host?: string | null
           smtp_port?: number | null
+          sync_calendar?: boolean
+          sync_contacts?: boolean
           sync_error?: string | null
+          sync_mail?: boolean
           sync_status?: string | null
           tenant_id: string
           token_expires_at?: string | null
@@ -8131,12 +8141,17 @@ export type Database = {
           id?: string
           imap_host?: string | null
           imap_port?: number | null
+          last_calendar_sync_at?: string | null
+          last_contacts_sync_at?: string | null
           last_sync_at?: string | null
           provider?: string
           refresh_token?: string | null
           smtp_host?: string | null
           smtp_port?: number | null
+          sync_calendar?: boolean
+          sync_contacts?: boolean
           sync_error?: string | null
+          sync_mail?: boolean
           sync_status?: string | null
           tenant_id?: string
           token_expires_at?: string | null

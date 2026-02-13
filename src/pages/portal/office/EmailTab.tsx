@@ -20,6 +20,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { ComposeEmailDialog } from '@/components/portal/office/ComposeEmailDialog';
+import { AccountIntegrationDialog } from '@/components/portal/office/AccountIntegrationDialog';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { 
@@ -724,13 +725,9 @@ export function EmailTab() {
     <PageShell>
       <ModulePageHeader title="E-Mail" description="Ihr KI-gestützter E-Mail-Client" />
       {/* Connection Dialog */}
-      <ConnectionDialog
+      <AccountIntegrationDialog
         open={showConnectionDialog}
         onOpenChange={setShowConnectionDialog}
-        onGoogleConnect={handleGoogleConnect}
-        onMicrosoftConnect={handleMicrosoftConnect}
-        onImapConnect={handleImapConnect}
-        isConnecting={isConnecting}
       />
 
       {/* Compose Email Dialog */}

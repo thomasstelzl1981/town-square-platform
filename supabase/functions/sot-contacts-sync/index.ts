@@ -97,6 +97,8 @@ serve(async (req) => {
       contacts = await fetchGoogleContacts(account, limit);
     } else if (account.provider === 'microsoft') {
       contacts = await fetchMicrosoftContacts(account, limit);
+    } else if (account.provider === 'icloud_carddav') {
+      contacts = await fetchICloudContacts(account, supabase);
     } else {
       return new Response(
         JSON.stringify({ error: 'Contacts sync not supported for this provider' }),
@@ -106,7 +108,7 @@ serve(async (req) => {
 
     // Upsert contacts
     let synced = 0;
-    const externalIdField = account.provider === 'google' ? 'google_contact_id' : 'microsoft_contact_id';
+    const externalIdField = account.provider === 'google' ? 'google_contact_id' : account.provider === 'microsoft' ? 'microsoft_contact_id' : 'google_contact_id';
 
     for (const contact of contacts) {
       // Check if contact already exists
@@ -240,4 +242,92 @@ async function fetchMicrosoftContacts(account: any, limit: number): Promise<any[
     phone: contact.mobilePhone || contact.businessPhones?.[0],
     company: contact.companyName,
   })).filter((c: any) => c.first_name || c.last_name || c.email);
+}
+
+// Fetch contacts from iCloud via CardDAV
+async function fetchICloudContacts(account: any, supabaseClient: any): Promise<any[]> {
+  // Get password from vault
+  let password = '';
+  if (account.credentials_vault_key) {
+    const { data: vaultData } = await supabaseClient.rpc('vault_read_secret', {
+      secret_key: account.credentials_vault_key,
+    });
+    if (vaultData?.[0]?.decrypted_secret) {
+      password = vaultData[0].decrypted_secret;
+    }
+  }
+  
+  if (!password) {
+    throw new Error('No iCloud credentials available');
+  }
+
+  const credentials = btoa(`${account.email_address}:${password}`);
+  
+  // CardDAV PROPFIND to discover address book
+  const propfindBody = `<?xml version="1.0" encoding="UTF-8"?>
+<d:propfind xmlns:d="DAV:" xmlns:card="urn:ietf:params:xml:ns:carddav">
+  <d:prop>
+    <d:getetag/>
+    <card:address-data/>
+  </d:prop>
+</d:propfind>`;
+
+  const response = await fetch('https://contacts.icloud.com/card/default/', {
+    method: 'REPORT',
+    headers: {
+      'Authorization': `Basic ${credentials}`,
+      'Content-Type': 'application/xml; charset=utf-8',
+      'Depth': '1',
+    },
+    body: propfindBody,
+  });
+
+  if (!response.ok) {
+    if (response.status === 401) {
+      throw new Error('iCloud authentication failed. Check your App-specific password.');
+    }
+    throw new Error(`iCloud CardDAV error: ${response.status}`);
+  }
+
+  const xmlText = await response.text();
+  
+  // Parse vCards from the response
+  const vcardMatches = xmlText.match(/BEGIN:VCARD[\s\S]*?END:VCARD/g) || [];
+  
+  return vcardMatches.map((vcard: string) => {
+    const getField = (field: string): string => {
+      const match = vcard.match(new RegExp(`${field}[^:]*:(.+)`, 'i'));
+      return match ? match[1].trim() : '';
+    };
+    
+    // Parse N field: LastName;FirstName;...
+    const nField = getField('N');
+    const nameParts = nField.split(';');
+    const lastName = nameParts[0] || '';
+    const firstName = nameParts[1] || '';
+    
+    // Parse UID
+    const uid = getField('UID');
+    
+    // Parse EMAIL
+    const emailMatch = vcard.match(/EMAIL[^:]*:(.+)/i);
+    const email = emailMatch ? emailMatch[1].trim() : undefined;
+    
+    // Parse TEL
+    const telMatch = vcard.match(/TEL[^:]*:(.+)/i);
+    const phone = telMatch ? telMatch[1].trim() : undefined;
+    
+    // Parse ORG
+    const orgMatch = vcard.match(/ORG[^:]*:(.+)/i);
+    const company = orgMatch ? orgMatch[1].trim().split(';')[0] : undefined;
+    
+    return {
+      external_id: uid || `icloud-${firstName}-${lastName}`,
+      first_name: firstName,
+      last_name: lastName,
+      email,
+      phone,
+      company,
+    };
+  }).filter((c: any) => c.first_name || c.last_name || c.email);
 }
