@@ -4,6 +4,7 @@
  */
 import { lazy } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
+import { GoldenPathGuard } from '@/goldenpath/GoldenPathGuard';
 
 const ProjekteDashboard = lazy(() => import('./projekte/ProjekteDashboard'));
 const PortfolioTab = lazy(() => import('./projekte/PortfolioTab'));
@@ -28,10 +29,18 @@ export default function ProjektePage() {
       <Route path="kontexte" element={<KontexteTab />} />
       
       {/* Project Detail (Projektakte) */}
-      <Route path=":projectId" element={<ProjectDetailPage />} />
+      <Route path=":projectId" element={
+        <GoldenPathGuard moduleCode="MOD-13" entityIdParam="projectId">
+          <ProjectDetailPage />
+        </GoldenPathGuard>
+      } />
       
       {/* Unit Detail (Einheiten-Akte) */}
-      <Route path=":projectId/einheit/:unitId" element={<UnitDetailPage />} />
+      <Route path=":projectId/einheit/:unitId" element={
+        <GoldenPathGuard moduleCode="MOD-13" entityIdParam="projectId">
+          <UnitDetailPage />
+        </GoldenPathGuard>
+      } />
       
       {/* Legacy redirects */}
       <Route path="portfolio" element={<Navigate to="/portal/projekte/projekte" replace />} />

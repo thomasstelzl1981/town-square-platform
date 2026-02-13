@@ -5,6 +5,7 @@
 
 import { lazy } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
+import { GoldenPathGuard } from '@/goldenpath/GoldenPathGuard';
 import { ObjekteingangList } from './akquise-manager/ObjekteingangList';
 import { ObjekteingangDetail } from './akquise-manager/ObjekteingangDetail';
 
@@ -19,9 +20,17 @@ export default function AkquiseManagerPage() {
       <Route index element={<Navigate to="dashboard" replace />} />
       <Route path="dashboard" element={<AkquiseDashboard />} />
       <Route path="mandate/neu" element={<MandatCreateWizardManager />} />
-      <Route path="mandate/:mandateId" element={<AkquiseMandateDetail />} />
+      <Route path="mandate/:mandateId" element={
+        <GoldenPathGuard moduleCode="MOD-12" entityIdParam="mandateId">
+          <AkquiseMandateDetail />
+        </GoldenPathGuard>
+      } />
       <Route path="objekteingang" element={<ObjekteingangList />} />
-      <Route path="objekteingang/:offerId" element={<ObjekteingangDetail />} />
+      <Route path="objekteingang/:offerId" element={
+        <GoldenPathGuard moduleCode="MOD-12" entityIdParam="offerId">
+          <ObjekteingangDetail />
+        </GoldenPathGuard>
+      } />
       <Route path="tools" element={<AkquiseTools />} />
       <Route path="*" element={<Navigate to="/portal/akquise-manager" replace />} />
     </Routes>
