@@ -1,109 +1,104 @@
 
-# Golden Path Interaction Standard — Systemweite Prozess-Registry
 
-## Design-Grundlage
+# Reparaturplan: Portfolio Demo-Akte, Alt-Daten-Bereinigung & Demo-Widget-Styling
 
-Alle Prozess-Seiten werden gemäß dem **Design Manifest V4.0** (`src/config/designManifest.ts`) umgesetzt:
+## Problemanalyse
 
-- **Layout**: `PageShell` → `ModulePageHeader` (TYPOGRAPHY.PAGE_TITLE) → `WidgetGrid` (WIDGET_GRID.FULL) → Inline-Detail-Flow
-- **Widget-Zellen**: `WidgetCell` (WIDGET_CELL.DIMENSIONS: h-[260px] / md:aspect-square)
-- **Cards**: CARD.BASE + CARD.INTERACTIVE für klickbare Widgets
-- **KPI-Zeilen**: KPI_GRID.FULL für kompakte Kennzahlen
-- **Formulare**: FORM_GRID.FULL für Detail-Sektionen
-- **Typografie**: TYPOGRAPHY.* — keine ad-hoc Tailwind-Klassen
-- **Spacing**: SPACING.SECTION zwischen Sektionen, SPACING.CARD innerhalb
-- **Banner**: INFO_BANNER.HINT für Demo-Hinweise
-- **Max 4 Spalten** auf Desktop — keine Ausnahme
+### 1. Demo-Akte fehlt
+Das Demo-Widget "Vermietereinheit Berlin" zeigt beim Klick nur ein einfaches Inline-Detail mit 4 StatCards und einer Mini-Tabelle (3 Zeilen). Es fehlt die vollstaendige **Immobilienakte** (UnitDossierView) mit allen Bloecken (Identity, CoreData, Tenancy, NK/WEG, Finanzierung, Legal, Investment KPIs, Dokumente). Stattdessen navigiert der Klick auf eine echte Unit zur echten `PropertyDetailPage`, die Daten aus der DB laedt.
+
+### 2. Alt-Daten in der Datenbank
+Folgende Seed-Daten existieren und sollen entfernt werden:
+- **Property "Leipzig"**: `id=00000000-0000-4000-a000-000000000001`, code `DEMO-001`, Blochmannstrasse Leipzig
+- **Landlord Context "Familie Mustermann"**: `id=00000000-0000-4000-a000-000000000110`, context_type PRIVATE
+
+### 3. Demo-Widgets ohne visuelle Unterscheidung
+Alle Demo-Widgets nutzen aktuell nur ein kleines "Demo"-Badge, sind aber optisch identisch zu echten Widgets.
 
 ---
 
-## Ziel-Layout (alle Prozess-Module identisch)
+## Loesung
 
+### Phase 1: Demo-Immobilienakte mit hartcodierten Daten (PortfolioTab.tsx)
+
+Das Inline-Detail fuer `selectedDemoId === '__demo__'` wird ersetzt durch eine vollstaendige `UnitDossierView` mit hartcodierten Demo-Daten:
+
+**Datei:** `src/pages/portal/immobilien/PortfolioTab.tsx`
+
+- Import `UnitDossierView` aus `@/components/immobilienakte`
+- Erstelle ein `DEMO_DOSSIER_DATA` Objekt vom Typ `UnitDossierData` mit realistischen, fiktiven Berliner Daten:
+  - Unit "WE-B01", Schadowstr. 12, 10117 Berlin
+  - 3 Einheiten, Baujahr 1912, Zentralheizung/Gas
+  - Mieter "Schmidt", 850 EUR kalt, 1.150 EUR warm
+  - WEG mit MEA 125/1000, Hausgeld 380 EUR
+  - Finanzierung: Sparkasse Berlin, 520.000 EUR Restschuld, 2,8%
+  - Investment KPIs: Kaufpreis 750k, Verkehrswert 850k, 3,95% Bruttorendite
+  - Dokumente: 8 Positionen (mix aus complete/missing/review)
+- Rendere `<UnitDossierView data={DEMO_DOSSIER_DATA} />` anstelle der aktuellen StatCards + Mini-Tabelle
+
+### Phase 2: Glasig-gruenes Demo-Widget-Styling
+
+**Datei:** `src/pages/portal/immobilien/PortfolioTab.tsx` (und analog in allen anderen Modulen mit Demo-Widgets)
+
+CSS-Klassen fuer Demo-Widgets:
 ```text
-┌──────────────────────────────────────────────────────┐
-│  MODULNAME (TYPOGRAPHY.PAGE_TITLE)                   │
-│  Beschreibung (TYPOGRAPHY.MUTED)                     │
-├──────────────────────────────────────────────────────┤
-│                                                      │
-│  WidgetGrid (WIDGET_GRID.FULL, max 4 cols)           │
-│  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌────────┐ │
-│  │  DEMO   │  │  Fall 1 │  │  Fall 2 │  │  +Neu  │ │
-│  │(pos 0)  │  │         │  │         │  │  CTA   │ │
-│  │WidgetCell│  │WidgetCell│  │WidgetCell│  │WidgetCell│
-│  └─────────┘  └─────────┘  └─────────┘  └────────┘ │
-│                                                      │
-│  ─── Inline-Detail (SPACING.SECTION) ───             │
-│  Sektion 1 (CARD.CONTENT / FORM_GRID)                │
-│  Sektion 2                                           │
-│  Sektion N                                           │
-│  (alles scrollbar, kein Tab-Wechsel)                 │
-└──────────────────────────────────────────────────────┘
+bg-emerald-50/40 border-emerald-200/60 dark:bg-emerald-950/20 dark:border-emerald-800/40
+```
+Plus ein gruener Shimmer/Gradient am oberen Rand:
+```text
+before:absolute before:inset-x-0 before:top-0 before:h-1 before:bg-gradient-to-r before:from-emerald-300/60 before:via-emerald-400/40 before:to-emerald-300/60 before:rounded-t-xl
 ```
 
----
+Betroffene Dateien (alle Demo-Widgets):
+- `src/pages/portal/immobilien/PortfolioTab.tsx`
+- `src/pages/portal/immobilien/SanierungTab.tsx`
+- `src/components/finanzierung/FinanceRequestWidgets.tsx`
+- `src/components/privatkredit/ConsumerLoanWidgets.tsx`
+- `src/pages/portal/investments/SimulationTab.tsx`
+- `src/pages/portal/investments/MandatTab.tsx`
+- `src/pages/portal/finanzierungsmanager/FMDashboard.tsx`
+- `src/pages/portal/akquise-manager/AkquiseMandate.tsx`
+- `src/pages/portal/projekte/ProjekteDashboard.tsx`
+- `src/pages/portal/photovoltaik/AnlagenTab.tsx`
+- `src/pages/portal/communication-pro/SerienEmailsPage.tsx`
+- `src/components/portal/cars/CarsFahrzeuge.tsx`
 
-## Prozess-Registry (15 Prozesse)
+Optionale Zentralisierung: Eine Shared-Konstante `DEMO_WIDGET_CLASSES` im `designManifest.ts` anlegen, damit alle Module einheitlich stylen.
 
-| # | Prozess-ID | Modul | Seite | Prozessname | MP | Compliance | Phase |
-|---|-----------|-------|-------|-------------|:--:|------------|-------|
-| 1 | GP-PORTFOLIO | MOD-04 | PortfolioTab | Immobilien-Portfolio | 1 | Demo fehlt | 2A |
-| 2 | GP-VERWALTUNG | MOD-04 | VerwaltungTab | Mietverwaltung | 1 | Demo fehlt | 2A |
-| 3 | GP-SANIERUNG | MOD-04 | SanierungTab | Sanierungsauftrag | 1 | Demo fehlt | 2A |
-| 4 | GP-FINANZIERUNG | MOD-07 | AnfrageTab | Finanzierungsanfrage | 2 | Demo fehlt | 2A |
-| 5 | GP-PRIVATKREDIT | MOD-07 | PrivatkreditTab | Privatkreditantrag | 1 | Demo fehlt | 2A |
-| 6 | GP-SUCHMANDAT | MOD-08 | MandatTab | Investment-Suchmandat | 1 | Umbau nötig | 2C |
-| 7 | GP-SIMULATION | MOD-08 | SimulationTab | Investment-Simulation | 1 | Demo fehlt | 2A |
-| 8 | GP-FM-FALL | MOD-11 | FMDashboard | Finanzierungsfall | 2 | Demo fehlt | 2B |
-| 9 | GP-AKQUISE-MANDAT | MOD-12 | AkquiseMandate | Akquisemandat | 2 | Demo fehlt | 2B |
-| 10 | GP-PROJEKT | MOD-13 | ProjekteDashboard | Projektanlage | 1 | Demo vorhanden | 2B |
-| 11 | GP-SERIEN-EMAIL | MOD-14 | SerienEmailsPage | Serien-E-Mail-Kampagne | 1 | Umbau nötig | 2C |
-| 12 | GP-RECHERCHE | MOD-14 | ResearchTab | Rechercheauftrag | 1 | ✅ KONFORM | — |
-| 13 | GP-FAHRZEUG | MOD-17 | CarsFahrzeuge | Fahrzeugverwaltung | 1 | Demo fehlt | 2A |
-| 14 | GP-PV-ANLAGE | MOD-19 | AnlagenTab | PV-Anlagenanlage | 1 | Umbau nötig | 2C |
-| 15 | GP-WEBSITE | MOD-21 | WBDashboard | Website-Auftrag | 1 | ✅ KONFORM | — |
+### Phase 3: Alt-Daten loeschen (DB-Migration)
 
-**MP** = Menüpunkte (1 = alles in einem Tab, 2 = über zwei Tabs)
+**SQL-Migration** (nach Fertigstellung von Phase 1+2):
 
----
+```text
+-- Reihenfolge beachten wegen Foreign Keys:
+1. DELETE FROM document_links WHERE property_id = '00000000-...-000000000001'
+2. DELETE FROM leases WHERE property_id (via unit)
+3. DELETE FROM loans WHERE property_id = '...'
+4. DELETE FROM units WHERE property_id = '...'
+5. DELETE FROM context_property_assignment WHERE property_id = '...' OR context_id = '...-110'
+6. DELETE FROM properties WHERE id = '00000000-...-000000000001'
+7. DELETE FROM landlord_contexts WHERE id = '00000000-...-000000000110'
+```
 
-## Demo-Daten-Konzept
-
-### Prinzipien (gemäß Design Manifest)
-
-1. Demo-Widget ist **IMMER Position 0** im WidgetGrid
-2. ID ist **IMMER `__demo__`** (String, keine UUID)
-3. Status-Badge: `bg-primary/10 text-primary` mit Label "Demo"
-4. Alle Felder sind editierbar (User experimentiert)
-5. Bei Schließen/Wechsel: **Reset auf hartcodierten Standard**
-6. Rein clientseitig — **kein DB-Speichern**
-7. Toggle über `useDemoToggles` Hook (localStorage)
-
-### Steuerung
-
-Neuer Stammdaten-Tab **"Demo-Daten"** in MOD-01 mit:
-- Globaler Toggle (alle an/aus)
-- Individueller Toggle pro Prozess
-- Compliance-Badge pro Prozess
-- Persistenz via localStorage (`gp_demo_toggles`)
+Vor der Migration wird geprueft, ob weitere abhaengige Tabellen referenziert werden (property_accounting, property_valuations, etc.).
 
 ---
 
-## Implementierungsphasen
+## Technische Details
 
-### Phase 1: Infrastruktur (aktueller Schritt)
-- `src/manifests/goldenPathProcesses.ts` — SSOT für alle 15 Prozesse
-- `src/hooks/useDemoToggles.ts` — localStorage Toggle-Hook
-- `src/pages/portal/stammdaten/DemoDatenTab.tsx` — Management-UI
-- Routing in StammdatenPage + routesManifest
+### Neue Konstanten
+- `DEMO_DOSSIER_DATA: UnitDossierData` — hartcodierte Demo-Akte fuer Berlin
+- `DESIGN.DEMO_WIDGET` — zentrales Styling-Token in designManifest.ts
 
-### Phase 2A: Demo-Widgets nachrüsten (bereits konformes Layout)
-GP-PORTFOLIO, GP-VERWALTUNG, GP-SANIERUNG, GP-FINANZIERUNG, GP-PRIVATKREDIT, GP-SIMULATION, GP-FAHRZEUG
+### Geaenderte Dateien
+1. `src/config/designManifest.ts` — neuer DEMO_WIDGET Token
+2. `src/pages/portal/immobilien/PortfolioTab.tsx` — Demo-Akte + Styling
+3. 11 weitere Modul-Dateien — Demo-Widget-Styling anpassen
+4. 1 DB-Migration — Alt-Daten loeschen
 
-### Phase 2B: Widget-Anpassung + Demo
-GP-FM-FALL, GP-AKQUISE-MANDAT, GP-PROJEKT
+### Reihenfolge
+1. Design-Manifest erweitern (DEMO_WIDGET Token)
+2. Portfolio Demo-Akte implementieren + gruenes Styling
+3. Gruenes Styling auf alle 12 Module ausrollen
+4. DB-Migration: Leipzig-Property + Familie Mustermann loeschen
 
-### Phase 2C: Komplett-Umbau auf WidgetGrid
-GP-SUCHMANDAT, GP-SERIEN-EMAIL, GP-PV-ANLAGE
-
-### Phase 3: Validator-Integration
-DEV-Modus-Check für Compliance aller registrierten Prozesse
