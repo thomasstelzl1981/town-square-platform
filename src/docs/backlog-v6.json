@@ -8,8 +8,8 @@
     "methodology": "2 Phasen. Phase 1: Fundament + KI-Generierung. Phase 2: Armstrong-Actions + Editor-Vollausbau + Audit-UI. Nach jedem Sprint: backlog lesen, aktualisieren, naechsten Sprint starten.",
     "billing_model": "Credits (Pay-Per-Use via Armstrong-Actions). Kein Stripe. Payment-Modul kommt spaeter.",
     "stripe_integration": "ENTFERNT — wird durch zentrales Payment-Modul ersetzt",
-    "current_sprint": "P1-COMPLETE",
-    "status": "PHASE_1_DONE"
+    "current_sprint": "P2-COMPLETE",
+    "status": "PHASE_2_DONE"
   },
   "ist_stand": {
     "summary": "DB-Schema (5 Tabellen + RLS + Realtime) vorhanden. 8 Shared-Renderer fertig. 4 Edge Functions Code vorhanden aber NICHT deployt (fehlen in config.toml). Zone 2 UI (5 Tiles + Editor) grundlegend vorhanden. Zone 3 Renderer fertig. Editor hat nur 4/8 Section-Typen editierbar. Kein DnD. Stripe-Webhook vorhanden (muss geloescht werden). Kein Design-Template-System. Keine Armstrong-Actions fuer MOD-21.",
