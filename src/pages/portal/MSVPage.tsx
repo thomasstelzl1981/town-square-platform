@@ -1,19 +1,19 @@
 /**
- * MSV Page (MOD-05) - Repurposed as KI-Telefon-Assistent
+ * MSV Page (MOD-05) — Mietsonderverwaltung
  * 
- * Former MSV functionality has been consolidated into MOD-04 Immobilien > Verwaltung tab.
- * This module now serves as the future home of the AI Phone Assistant.
+ * Linearer Kontroll-Flow: Mietkontrolle, Mahnwesen, BWA/Buchwert.
+ * Eine Seite, scrollbar — gemäß Golden Path Interaction Standard.
  */
 import { lazy } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 
-const KiTelefonUebersicht = lazy(() => import('./msv/KiTelefonUebersicht'));
+const MSVDashboard = lazy(() => import('./msv/MSVDashboard'));
 
 const MSVPage = () => {
   return (
     <Routes>
       <Route index element={<Navigate to="uebersicht" replace />} />
-      <Route path="uebersicht" element={<KiTelefonUebersicht />} />
+      <Route path="uebersicht" element={<MSVDashboard />} />
       
       {/* Legacy redirects: old MSV routes → Immobilien/Verwaltung */}
       <Route path="objekte" element={<Navigate to="/portal/immobilien/verwaltung" replace />} />

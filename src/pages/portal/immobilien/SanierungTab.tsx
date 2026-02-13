@@ -129,7 +129,7 @@ export function SanierungTab() {
         isCreating={createMutation.isPending}
       />
 
-      {/* Demo Inline-Detail */}
+      {/* Demo Inline-Detail — Vollständige Sanierungsakte */}
       {selectedCaseId === '__demo__' && (
         <div className="pt-6 space-y-4">
           <div className="flex items-start justify-between gap-4">
@@ -140,49 +140,83 @@ export function SanierungTab() {
                 <Badge variant="secondary">in_progress</Badge>
               </div>
               <p className="text-sm text-muted-foreground mt-1">
-                Prenzlauer Allee 88, 10405 Berlin · Kategorie: Sonstige · Budget: 45.000 €
+                Prenzlauer Allee 88, 10405 Berlin · Kategorie: Energetisch · Budget: 45.000 €
               </p>
             </div>
-            <button
-              onClick={() => setSelectedCaseId(null)}
-              className="text-muted-foreground hover:text-foreground p-1"
-            >
-              ✕
-            </button>
+            <button onClick={() => setSelectedCaseId(null)} className="text-muted-foreground hover:text-foreground p-1">✕</button>
           </div>
-          <div className="glass-card rounded-xl p-4 space-y-3">
-            <h3 className="text-sm font-semibold">Leistungsverzeichnis (5 Positionen)</h3>
-            <div className="space-y-2 text-sm">
-              {[
-                { pos: 1, title: 'Fassadendämmung WDVS 14cm', cost: '12.500 €' },
-                { pos: 2, title: 'Fensteraustausch 3-fach Verglasung (8 Stk)', cost: '9.600 €' },
-                { pos: 3, title: 'Dachneueindeckung inkl. Dämmung', cost: '14.200 €' },
-                { pos: 4, title: 'Heizungserneuerung Wärmepumpe', cost: '6.800 €' },
-                { pos: 5, title: 'Elektroinstallation Modernisierung', cost: '1.900 €' },
-              ].map(p => (
-                <div key={p.pos} className="flex items-center justify-between py-1.5 px-3 rounded-lg bg-muted/30">
-                  <span className="text-muted-foreground w-6">{p.pos}.</span>
-                  <span className="flex-1">{p.title}</span>
-                  <span className="font-medium">{p.cost}</span>
+
+          {/* Stepper-Badges */}
+          <div className="flex flex-wrap gap-2">
+            {[
+              { label: 'Leistungsumfang', active: true, done: true },
+              { label: 'Dienstleistersuche', active: true, done: true },
+              { label: 'Ausschreibung', active: true, done: false },
+              { label: 'Angebote', active: false, done: false },
+              { label: 'Vergabe', active: false, done: false },
+            ].map((s, i) => (
+              <Badge key={i} variant={s.done ? 'default' : s.active ? 'secondary' : 'outline'} className="text-xs">
+                {i + 1}. {s.label} {s.done && '✓'}
+              </Badge>
+            ))}
+          </div>
+
+          {/* 2-Spalten FORM_GRID */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+            {/* Links: Leistungsumfang */}
+            <Card className="glass-card overflow-hidden">
+              <div className="px-4 py-2.5 border-b border-border/30 bg-muted/20">
+                <h3 className="text-sm font-semibold">Leistungsverzeichnis (KI-generiert)</h3>
+              </div>
+              <CardContent className="p-4 space-y-2">
+                {[
+                  { pos: 1, title: 'Fassadendämmung WDVS 14cm', cost: '12.500 €' },
+                  { pos: 2, title: 'Fensteraustausch 3-fach (8 Stk)', cost: '9.600 €' },
+                  { pos: 3, title: 'Dachneueindeckung inkl. Dämmung', cost: '14.200 €' },
+                  { pos: 4, title: 'Heizung Wärmepumpe', cost: '6.800 €' },
+                  { pos: 5, title: 'Elektroinstallation Modern.', cost: '1.900 €' },
+                ].map(p => (
+                  <div key={p.pos} className="flex items-center justify-between py-1.5 px-3 rounded-lg bg-muted/30 text-sm">
+                    <span className="text-muted-foreground w-6">{p.pos}.</span>
+                    <span className="flex-1">{p.title}</span>
+                    <span className="font-medium">{p.cost}</span>
+                  </div>
+                ))}
+                <div className="flex justify-end pt-2 border-t border-border/30">
+                  <span className="font-bold text-sm">Gesamt: 45.000 €</span>
                 </div>
-              ))}
-            </div>
-            <div className="flex justify-end pt-2 border-t border-border/30">
-              <span className="font-bold">Gesamt: 45.000 €</span>
-            </div>
-          </div>
-          <div className="glass-card rounded-xl p-4 space-y-2">
-            <h3 className="text-sm font-semibold">Angebote (2 eingegangen)</h3>
-            <div className="text-sm text-muted-foreground">
-              <div className="flex justify-between py-1.5">
-                <span>Meister Bau GmbH</span>
-                <span className="font-medium text-foreground">42.300 €</span>
+              </CardContent>
+            </Card>
+
+            {/* Rechts: Dienstleister + Angebote */}
+            <Card className="glass-card overflow-hidden">
+              <div className="px-4 py-2.5 border-b border-border/30 bg-muted/20">
+                <h3 className="text-sm font-semibold">Dienstleister & Angebote</h3>
               </div>
-              <div className="flex justify-between py-1.5">
-                <span>Renovierungsprofi Berlin</span>
-                <span className="font-medium text-foreground">47.800 €</span>
-              </div>
-            </div>
+              <CardContent className="p-4 space-y-4">
+                <div className="space-y-2">
+                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Ausschreibung versendet an</p>
+                  {[
+                    { name: 'Meister Bau GmbH', status: 'Angebot erhalten', amount: '42.300 €', color: 'text-primary' },
+                    { name: 'Renovierungsprofi Berlin', status: 'Angebot erhalten', amount: '47.800 €', color: 'text-muted-foreground' },
+                    { name: 'Energiesanierung Nord', status: 'Ausstehend', amount: '–', color: 'text-muted-foreground' },
+                  ].map((d, i) => (
+                    <div key={i} className="flex items-center justify-between py-2 px-3 rounded-lg bg-muted/30 text-sm">
+                      <div>
+                        <p className="font-medium">{d.name}</p>
+                        <p className="text-xs text-muted-foreground">{d.status}</p>
+                      </div>
+                      <span className={`font-semibold ${d.color}`}>{d.amount}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="pt-2 border-t border-border/30">
+                  <p className="text-xs text-muted-foreground">
+                    Bestes Angebot: <span className="font-semibold text-primary">Meister Bau GmbH — 42.300 €</span> (6% unter Budget)
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
       )}
