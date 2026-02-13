@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Loader2, Plus, Check, X, Inbox, User, Phone, Mail, MapPin, Globe, Shield, Pencil, Building2, Landmark, ExternalLink, TrendingUp, TrendingDown, Minus, BarChart3 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DESIGN } from '@/config/designManifest';
-import { BrandWidgets } from '@/components/dashboard/BrandWidgets';
+
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { FinanceCaseCard, FinanceCaseCardPlaceholder } from '@/components/finanzierungsmanager/FinanceCaseCard';
@@ -294,8 +294,6 @@ export default function FMDashboard({ cases, isLoading }: Props) {
         }
       />
 
-      {/* Brand Widgets: Kaufy, FutureRoom, SoT */}
-      <BrandWidgets />
 
       {/* Manager Visitenkarte + Zins-Ticker */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
