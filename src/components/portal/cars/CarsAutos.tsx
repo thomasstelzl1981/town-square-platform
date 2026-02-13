@@ -25,6 +25,8 @@ import { VehicleCreateDialog } from './VehicleCreateDialog';
 import { cn } from '@/lib/utils';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
+import { WidgetGrid } from '@/components/shared/WidgetGrid';
+import { WidgetCell } from '@/components/shared/WidgetCell';
 
 type VehicleStatus = 'active' | 'inactive' | 'sold' | 'returned';
 
@@ -154,51 +156,52 @@ export default function CarsAutos() {
       </div>
 
       {/* Vehicle Widget Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+      <WidgetGrid>
         {filteredVehicles.map((vehicle: any) => {
           const huStatus = getHuStatus(vehicle.hu_valid_until);
           const isSelected = selectedVehicleId === vehicle.id;
           return (
-            <Card
-              key={vehicle.id}
-              className={cn(
-                "glass-card overflow-hidden cursor-pointer group transition-all",
-                isSelected ? "border-primary ring-2 ring-primary/20" : "border-primary/10 hover:border-primary/30"
-              )}
-              onClick={() => setSelectedVehicleId(isSelected ? null : vehicle.id)}
-            >
-              <div className="relative h-36 bg-muted/30 overflow-hidden">
-                <img src={getImage(vehicle)} alt={`${vehicle.make} ${vehicle.model}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-                <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-transparent" />
-                <div className="absolute top-2 left-3">
-                  <Badge variant="outline" className={cn("text-[9px]", statusColors[vehicle.status as VehicleStatus])}>{statusLabels[vehicle.status as VehicleStatus]}</Badge>
-                </div>
-                <div className="absolute bottom-2 left-3">
-                  <div className="bg-background/90 backdrop-blur-sm rounded-md px-3 py-1 border border-border/50">
-                    <span className="font-mono font-bold text-sm tracking-wider">{vehicle.license_plate}</span>
+            <WidgetCell key={vehicle.id}>
+              <Card
+                className={cn(
+                  "glass-card overflow-hidden cursor-pointer group transition-all h-full",
+                  isSelected ? "border-primary ring-2 ring-primary/20" : "border-primary/10 hover:border-primary/30"
+                )}
+                onClick={() => setSelectedVehicleId(isSelected ? null : vehicle.id)}
+              >
+                <div className="relative h-[55%] bg-muted/30 overflow-hidden">
+                  <img src={getImage(vehicle)} alt={`${vehicle.make} ${vehicle.model}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-transparent" />
+                  <div className="absolute top-2 left-3">
+                    <Badge variant="outline" className={cn("text-[9px]", statusColors[vehicle.status as VehicleStatus])}>{statusLabels[vehicle.status as VehicleStatus]}</Badge>
                   </div>
-                </div>
-                {isSelected && (
-                  <div className="absolute top-2 right-2">
-                    <div className="h-6 w-6 rounded-full bg-primary flex items-center justify-center">
-                      <ChevronDown className="h-3.5 w-3.5 text-primary-foreground" />
+                  <div className="absolute bottom-2 left-3">
+                    <div className="bg-background/90 backdrop-blur-sm rounded-md px-3 py-1 border border-border/50">
+                      <span className="font-mono font-bold text-sm tracking-wider">{vehicle.license_plate}</span>
                     </div>
                   </div>
-                )}
-              </div>
-              <CardContent className="p-3 space-y-2">
-                <h3 className="font-semibold text-sm">{vehicle.make} {vehicle.model}</h3>
-                <div className="grid grid-cols-2 gap-1.5">
-                  <MiniInfo icon={User} label="Halter" value={vehicle.holder_name || '—'} />
-                  <MiniInfo icon={Gauge} label="KM" value={vehicle.current_mileage_km?.toLocaleString('de-DE') || '—'} />
-                  <MiniInfo icon={Calendar} label="HU" value={huStatus.text} urgent={huStatus.urgency === 'expired'} />
-                  <MiniInfo icon={Shield} label="Vers." value="Aktiv" />
+                  {isSelected && (
+                    <div className="absolute top-2 right-2">
+                      <div className="h-6 w-6 rounded-full bg-primary flex items-center justify-center">
+                        <ChevronDown className="h-3.5 w-3.5 text-primary-foreground" />
+                      </div>
+                    </div>
+                  )}
                 </div>
-              </CardContent>
-            </Card>
+                <CardContent className="p-3 space-y-2 h-[45%] flex flex-col justify-between">
+                  <h3 className="font-semibold text-sm">{vehicle.make} {vehicle.model}</h3>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <MiniInfo icon={User} label="Halter" value={vehicle.holder_name || '—'} />
+                    <MiniInfo icon={Gauge} label="KM" value={vehicle.current_mileage_km?.toLocaleString('de-DE') || '—'} />
+                    <MiniInfo icon={Calendar} label="HU" value={huStatus.text} urgent={huStatus.urgency === 'expired'} />
+                    <MiniInfo icon={Shield} label="Vers." value="Aktiv" />
+                  </div>
+                </CardContent>
+              </Card>
+            </WidgetCell>
           );
         })}
-      </div>
+      </WidgetGrid>
 
       {/* Inline Fahrzeugakte */}
       {selectedVehicle && (

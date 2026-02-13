@@ -10,6 +10,8 @@ import { Bike, Plus, ChevronDown, X, FileText, ShieldCheck, BookOpen, FolderOpen
 import { cn } from '@/lib/utils';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
+import { WidgetGrid } from '@/components/shared/WidgetGrid';
+import { WidgetCell } from '@/components/shared/WidgetCell';
 
 interface BikeDemo {
   id: string;
@@ -54,41 +56,42 @@ export default function CarsBikes() {
         actions={<Button><Plus className="h-4 w-4 mr-2" /> Bike hinzufügen</Button>}
       />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+      <WidgetGrid>
         {DEMO_BIKES.map((bike) => {
           const isSelected = selectedId === bike.id;
           return (
-            <Card
-              key={bike.id}
-              className={cn(
-                "glass-card overflow-hidden cursor-pointer group transition-all",
-                isSelected ? "border-primary ring-2 ring-primary/20" : "border-primary/10 hover:border-primary/30"
-              )}
-              onClick={() => setSelectedId(isSelected ? null : bike.id)}
-            >
-              <div className="relative h-36 bg-muted/30 overflow-hidden">
-                <img src={bike.image} alt={`${bike.make} ${bike.model}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-                <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-transparent" />
-                <div className="absolute top-2 left-3">
-                  <Badge variant="outline" className="text-[9px] bg-status-success/10 text-status-success border-status-success/20">Aktiv</Badge>
-                </div>
-                <div className="absolute bottom-2 left-3">
-                  <div className="bg-background/90 backdrop-blur-sm rounded-md px-3 py-1 border border-border/50">
-                    <span className="font-mono font-bold text-sm tracking-wider">{bike.license_plate}</span>
+            <WidgetCell key={bike.id}>
+              <Card
+                className={cn(
+                  "glass-card overflow-hidden cursor-pointer group transition-all h-full",
+                  isSelected ? "border-primary ring-2 ring-primary/20" : "border-primary/10 hover:border-primary/30"
+                )}
+                onClick={() => setSelectedId(isSelected ? null : bike.id)}
+              >
+                <div className="relative h-[55%] bg-muted/30 overflow-hidden">
+                  <img src={bike.image} alt={`${bike.make} ${bike.model}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-transparent" />
+                  <div className="absolute top-2 left-3">
+                    <Badge variant="outline" className="text-[9px] bg-status-success/10 text-status-success border-status-success/20">Aktiv</Badge>
+                  </div>
+                  <div className="absolute bottom-2 left-3">
+                    <div className="bg-background/90 backdrop-blur-sm rounded-md px-3 py-1 border border-border/50">
+                      <span className="font-mono font-bold text-sm tracking-wider">{bike.license_plate}</span>
+                    </div>
                   </div>
                 </div>
-              </div>
-              <CardContent className="p-3 space-y-2">
-                <h3 className="font-semibold text-sm">{bike.make} {bike.model}</h3>
-                <div className="grid grid-cols-2 gap-1.5">
-                  <InfoMini icon={Gauge} label="KM" value={bike.mileage} />
-                  <InfoMini icon={Calendar} label="HU" value={bike.hu} />
-                </div>
-              </CardContent>
-            </Card>
+                <CardContent className="p-3 space-y-2 h-[45%] flex flex-col justify-between">
+                  <h3 className="font-semibold text-sm">{bike.make} {bike.model}</h3>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <InfoMini icon={Gauge} label="KM" value={bike.mileage} />
+                    <InfoMini icon={Calendar} label="HU" value={bike.hu} />
+                  </div>
+                </CardContent>
+              </Card>
+            </WidgetCell>
           );
         })}
-      </div>
+      </WidgetGrid>
 
       {selected && (
         <Card className="glass-card border-primary/20 animate-in slide-in-from-top-2 duration-300">
