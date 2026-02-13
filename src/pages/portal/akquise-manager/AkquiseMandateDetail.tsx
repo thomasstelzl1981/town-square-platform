@@ -10,23 +10,10 @@ import { FileText, Loader2, CheckCircle2, ArrowLeft, Search, Mail, Inbox, Brain,
 import { useAcqMandate, useAcceptAcqMandate } from '@/hooks/useAcqMandate';
 import { MANDATE_STATUS_CONFIG, canViewClientInfo } from '@/types/acquisition';
 import { AkquiseStepper } from '@/components/akquise/AkquiseStepper';
+import { AcqSectionHeader as SectionHeader } from '@/components/akquise/AcqSectionHeader';
 import { 
   SourcingTab, OutreachTab, InboundTab, AnalysisTab, DeliveryTab 
 } from './components';
-
-function SectionHeader({ number, title, description, icon }: { number: number; title: string; description: string; icon?: React.ReactNode }) {
-  return (
-    <div className="flex items-start gap-3 pt-2">
-      <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold text-primary flex-shrink-0">
-        {number}
-      </div>
-      <div>
-        <h2 className="text-lg font-semibold">{title}</h2>
-        <p className="text-sm text-muted-foreground">{description}</p>
-      </div>
-    </div>
-  );
-}
 
 function TableRow({ label, value }: { label: string; value: string }) {
   return (

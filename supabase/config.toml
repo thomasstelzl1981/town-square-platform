@@ -146,3 +146,6 @@ verify_jwt = false
 
 [functions.sot-mail-fetch-body]
 verify_jwt = false
+
+[functions.sot-acq-profile-extract]
+verify_jwt = false
