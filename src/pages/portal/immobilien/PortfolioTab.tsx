@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
+// Force rebuild — chunk cache fix
 import { useDemoToggles } from '@/hooks/useDemoToggles';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate, useSearchParams } from 'react-router-dom';
