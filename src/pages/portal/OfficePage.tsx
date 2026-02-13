@@ -37,11 +37,17 @@ function MobileGuard({ children, allowedOnMobile = false }: {
   return <>{children}</>;
 }
 
+// AUD-006 Fix: Mobile defaults to 'brief', Desktop to 'email'
+function MobileAwareRedirect() {
+  const isMobile = useIsMobile();
+  return <Navigate to={isMobile ? "brief" : "email"} replace />;
+}
+
 const OfficePage = () => {
   return (
     <Suspense fallback={null}>
       <Routes>
-        <Route index element={<Navigate to="email" replace />} />
+        <Route index element={<MobileAwareRedirect />} />
         {/* Desktop-only tabs: E-Mail, Kontakte, Kalender */}
         <Route path="email" element={
           <MobileGuard allowedOnMobile={false}>
