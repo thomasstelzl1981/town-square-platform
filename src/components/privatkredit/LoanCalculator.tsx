@@ -54,7 +54,7 @@ export function LoanCalculator({
                 min={1000}
                 max={100000}
                 step={500}
-                placeholder="z.B. 15.000"
+                placeholder="10.000"
                 value={amount || ''}
                 onChange={e => onAmountChange(Number(e.target.value))}
               />
@@ -67,7 +67,7 @@ export function LoanCalculator({
                 min={6}
                 max={120}
                 step={6}
-                placeholder="z.B. 48"
+                placeholder="48"
                 value={term || ''}
                 onChange={e => onTermChange(Number(e.target.value))}
               />

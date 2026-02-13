@@ -1,33 +1,86 @@
 /**
- * ApplicationPreview — Read-only display of Selbstauskunft data
- * Redesigned: glass-card wrapper, FORM_GRID layout, manifest typography
+ * ApplicationPreview — Editable inline application form for consumer loan
+ * Data can be pre-filled from Selbstauskunft but remains fully editable
  */
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
-import { ExternalLink } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Download } from 'lucide-react';
 import { DESIGN } from '@/config/designManifest';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
+import type { ConsumerLoanFormData } from '@/hooks/useConsumerLoan';
 
-interface ApplicationPreviewProps {
+interface ApplicationFormProps {
   disabled?: boolean;
+  formData: ConsumerLoanFormData;
+  onFormDataChange: (data: ConsumerLoanFormData) => void;
 }
 
-function Field({ label, value }: { label: string; value: string | number | null | undefined }) {
-  return (
-    <div>
-      <p className={DESIGN.TYPOGRAPHY.LABEL}>{label}</p>
-      <p className="text-sm font-medium">{value ?? '—'}</p>
-    </div>
-  );
-}
+const PLACEHOLDERS: Record<keyof ConsumerLoanFormData, string> = {
+  first_name: 'Max',
+  last_name: 'Mustermann',
+  birth_date: '15.03.1985',
+  salutation: 'Herr',
+  address_street: 'Musterstr. 12',
+  address_postal_code: '10115',
+  address_city: 'Berlin',
+  email: 'max@beispiel.de',
+  phone: '0170 1234567',
+  nationality: 'Deutsch',
+  employer_name: 'Musterfirma GmbH',
+  employed_since: '01.01.2020',
+  contract_type: 'Unbefristet',
+  position: 'Sachbearbeiter',
+  net_income_monthly: '2.800',
+  current_rent_monthly: '850',
+  marital_status: 'Ledig',
+  children_count: '0',
+};
 
-export function ApplicationPreview({ disabled }: ApplicationPreviewProps) {
-  const navigate = useNavigate();
+const LABELS: Record<keyof ConsumerLoanFormData, string> = {
+  first_name: 'Vorname',
+  last_name: 'Nachname',
+  birth_date: 'Geburtsdatum',
+  salutation: 'Anrede',
+  address_street: 'Straße',
+  address_postal_code: 'PLZ',
+  address_city: 'Stadt',
+  email: 'E-Mail',
+  phone: 'Telefon',
+  nationality: 'Nationalität',
+  employer_name: 'Arbeitgeber',
+  employed_since: 'Beschäftigt seit',
+  contract_type: 'Vertragsart',
+  position: 'Position',
+  net_income_monthly: 'Netto-Einkommen (€)',
+  current_rent_monthly: 'Aktuelle Miete (€)',
+  marital_status: 'Familienstand',
+  children_count: 'Kinder',
+};
 
-  const { data: profile } = useQuery({
+type SectionKey = keyof ConsumerLoanFormData;
+
+const SECTIONS: { title: string; fields: SectionKey[] }[] = [
+  {
+    title: 'Persönliche Daten',
+    fields: ['salutation', 'first_name', 'last_name', 'birth_date', 'address_street', 'address_postal_code', 'address_city', 'email', 'phone', 'nationality'],
+  },
+  {
+    title: 'Beschäftigung',
+    fields: ['employer_name', 'employed_since', 'contract_type', 'position', 'net_income_monthly'],
+  },
+  {
+    title: 'Haushalt',
+    fields: ['current_rent_monthly', 'marital_status', 'children_count'],
+  },
+];
+
+export function ApplicationPreview({ disabled, formData, onFormDataChange }: ApplicationFormProps) {
+  const { data: profile, isLoading } = useQuery({
     queryKey: ['applicant-profile-preview'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -42,73 +95,75 @@ export function ApplicationPreview({ disabled }: ApplicationPreviewProps) {
     },
   });
 
+  const handleLoadFromProfile = () => {
+    if (!profile) {
+      toast.error('Keine Selbstauskunft gefunden.');
+      return;
+    }
+    onFormDataChange({
+      first_name: profile.first_name ?? '',
+      last_name: profile.last_name ?? '',
+      birth_date: profile.birth_date ?? '',
+      salutation: profile.salutation ?? '',
+      address_street: profile.address_street ?? '',
+      address_postal_code: profile.address_postal_code ?? '',
+      address_city: profile.address_city ?? '',
+      email: profile.email ?? '',
+      phone: profile.phone ?? '',
+      nationality: profile.nationality ?? '',
+      employer_name: profile.employer_name ?? '',
+      employed_since: profile.employed_since ?? '',
+      contract_type: profile.contract_type ?? '',
+      position: profile.position ?? '',
+      net_income_monthly: profile.net_income_monthly?.toString() ?? '',
+      current_rent_monthly: profile.current_rent_monthly?.toString() ?? '',
+      marital_status: profile.marital_status ?? '',
+      children_count: profile.children_count?.toString() ?? '',
+    });
+    toast.success('Daten aus Selbstauskunft übernommen');
+  };
+
+  const updateField = (key: keyof ConsumerLoanFormData, value: string) => {
+    onFormDataChange({ ...formData, [key]: value });
+  };
+
   return (
     <Card className={cn(DESIGN.CARD.BASE, disabled && 'opacity-50 pointer-events-none')}>
       <div className={DESIGN.CARD.SECTION_HEADER}>
         <div className="flex items-center justify-between">
-          <h2 className={DESIGN.TYPOGRAPHY.CARD_TITLE}>Ihr Antrag (automatisch ausgefüllt)</h2>
+          <h2 className={DESIGN.TYPOGRAPHY.CARD_TITLE}>Antragsdaten</h2>
           <Button
-            variant="ghost"
+            variant="outline"
             size="sm"
             className="gap-2 text-xs"
-            onClick={() => navigate('/portal/finanzierung/selbstauskunft')}
+            onClick={handleLoadFromProfile}
+            disabled={isLoading}
           >
-            Selbstauskunft bearbeiten
-            <ExternalLink className="h-3 w-3" />
+            <Download className="h-3 w-3" />
+            Daten aus Selbstauskunft laden
           </Button>
         </div>
       </div>
       <CardContent className="p-4">
-        {!profile ? (
-          <p className={DESIGN.TYPOGRAPHY.MUTED}>
-            Keine Selbstauskunft gefunden. Bitte füllen Sie zunächst Ihre Selbstauskunft aus.
-          </p>
-        ) : (
-          <div className={DESIGN.SPACING.SECTION}>
-            {/* A) Persönliche Daten */}
-            <div className="space-y-2">
-              <h3 className={DESIGN.TYPOGRAPHY.SECTION_TITLE}>Persönliche Daten</h3>
+        <div className={DESIGN.SPACING.SECTION}>
+          {SECTIONS.map(section => (
+            <div key={section.title} className="space-y-3">
+              <h3 className={DESIGN.TYPOGRAPHY.SECTION_TITLE}>{section.title}</h3>
               <div className={cn(DESIGN.FORM_GRID.FULL, 'md:grid-cols-4')}>
-                <Field label="Vorname" value={profile.first_name} />
-                <Field label="Nachname" value={profile.last_name} />
-                <Field label="Geburtsdatum" value={profile.birth_date} />
-                <Field label="Anrede" value={profile.salutation} />
-                <Field label="Straße" value={profile.address_street} />
-                <Field label="PLZ" value={profile.address_postal_code} />
-                <Field label="Stadt" value={profile.address_city} />
-                <Field label="E-Mail" value={profile.email} />
-                <Field label="Telefon" value={profile.phone} />
-                <Field label="Nationalität" value={profile.nationality} />
+                {section.fields.map(field => (
+                  <div key={field} className="space-y-1">
+                    <Label className={DESIGN.TYPOGRAPHY.LABEL}>{LABELS[field]}</Label>
+                    <Input
+                      value={formData[field]}
+                      placeholder={PLACEHOLDERS[field]}
+                      onChange={e => updateField(field, e.target.value)}
+                    />
+                  </div>
+                ))}
               </div>
             </div>
-
-            {/* B) Beschäftigung */}
-            <div className="space-y-2">
-              <h3 className={DESIGN.TYPOGRAPHY.SECTION_TITLE}>Beschäftigung</h3>
-              <div className={cn(DESIGN.FORM_GRID.FULL, 'md:grid-cols-4')}>
-                <Field label="Arbeitgeber" value={profile.employer_name} />
-                <Field label="Beschäftigt seit" value={profile.employed_since} />
-                <Field label="Vertragsart" value={profile.contract_type} />
-                <Field label="Probezeit bis" value={profile.probation_until} />
-                <Field label="Position" value={profile.position} />
-                <Field label="Netto-Einkommen" value={profile.net_income_monthly ? `${profile.net_income_monthly} €` : null} />
-              </div>
-            </div>
-
-            {/* C) Haushalt */}
-            <div className="space-y-2">
-              <h3 className={DESIGN.TYPOGRAPHY.SECTION_TITLE}>Haushalt</h3>
-              <div className={cn(DESIGN.FORM_GRID.FULL, 'md:grid-cols-4')}>
-                <Field label="Aktuelle Miete" value={profile.current_rent_monthly ? `${profile.current_rent_monthly} €` : null} />
-                <Field label="Wohnstatus" value={profile.rental_status} />
-                <Field label="Familienstand" value={profile.marital_status} />
-                <Field label="Kinder" value={profile.children_count} />
-                <Field label="Sonstige Kosten" value={profile.other_fixed_costs_monthly ? `${profile.other_fixed_costs_monthly} €` : null} />
-                <Field label="Lebenshaltung" value={profile.living_expenses_monthly ? `${profile.living_expenses_monthly} €` : null} />
-              </div>
-            </div>
-          </div>
-        )}
+          ))}
+        </div>
       </CardContent>
     </Card>
   );
