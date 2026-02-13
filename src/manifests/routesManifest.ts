@@ -6,7 +6,7 @@
  * 
  * RULES:
  * 1. No route exists unless declared here
- * 2. 4-Tile-Pattern is mandatory for all modules (except MOD-04: 5 tiles + verwaltung, MOD-05: 1 tile placeholder, MOD-20 Miety: 5 tiles)
+ * 2. 4-Tile-Pattern is mandatory for all modules (except MOD-04: 4 tiles, MOD-05: 1 tile placeholder, MOD-20 Miety: 6 tiles)
  * 3. Changes require explicit approval
  */
 
@@ -247,10 +247,8 @@ export const zone2Portal: ZoneDefinition = {
       display_order: 4,
       visibility: { default: true, org_types: ["client"] },
       tiles: [
-        // PRIMARY: Portfolio is the main entry point for MOD-04
+        // PRIMARY: Portfolio is the main entry point for MOD-04 (Kontexte/Vermietereinheiten integrated here)
         { path: "portfolio", component: "PortfolioTab", title: "Portfolio", default: true },
-        // SECONDARY: Context management
-        { path: "kontexte", component: "KontexteTab", title: "Vermietereinheit" },
         { path: "sanierung", component: "SanierungTab", title: "Sanierung" },
         { path: "bewertung", component: "BewertungTab", title: "Bewertung" },
         // VERWALTUNG: Konsolidierte Mietverwaltung (ehemals MOD-05 MSV)

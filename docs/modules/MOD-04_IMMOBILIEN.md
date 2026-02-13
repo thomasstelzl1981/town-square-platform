@@ -55,12 +55,12 @@ MOD-04 ist die **einzige Quelle der Wahrheit** für:
 
 | # | Menüpunkt | Route | Beschreibung |
 |---|-----------|-------|--------------|
-| 1 | **Stammdaten / Kontexte** | `/portal/immobilien/kontexte` | Vermieter-Entity-Verwaltung |
-| 2 | **Portfolio / Objekte** | `/portal/immobilien` | Dashboard + Immobilienliste |
-| 3 | **Sanierung** | `/portal/immobilien/sanierung` | Globaler Einstieg + objektbezogen |
-| 4 | **Bewertung** | `/portal/immobilien/bewertung` | Globaler Einstieg + objektbezogen |
+| 1 | **Portfolio / Objekte** | `/portal/immobilien/portfolio` | Dashboard + Immobilienliste + Vermietereinheiten (Verwalten) |
+| 2 | **Sanierung** | `/portal/immobilien/sanierung` | Globaler Einstieg + objektbezogen |
+| 3 | **Bewertung** | `/portal/immobilien/bewertung` | Globaler Einstieg + objektbezogen |
+| 4 | **Verwaltung** | `/portal/immobilien/verwaltung` | Konsolidierte Mietverwaltung (ex-MSV) |
 
----
+> **Konsolidiert:** Vermietereinheiten (Kontexte) sind im Portfolio-Tab über "Verwalten"-Button integriert. Route `/portal/immobilien/kontexte` leitet auf Portfolio um.
 
 ## 4. Route-Struktur (BINDING)
 
@@ -125,27 +125,25 @@ MOD-04 ist die **einzige Quelle der Wahrheit** für:
 
 ## 6. Screen Specifications
 
-### 6.1 Stammdaten / Vermieter-Kontexte
+### 6.1 Vermieter-Kontexte (integriert in Portfolio)
 
-**Route:** `/portal/immobilien/kontexte`
+**Route:** `/portal/immobilien/portfolio` → "Verwalten"-Button
 
-**Zweck:** Verwaltung der Vermieter-/Entity-Kontexte, die Sichtbarkeit, Aggregation und Reporting-Regime steuern.
+**Zweck:** Verwaltung der Vermieter-/Entity-Kontexte, die Sichtbarkeit, Aggregation und Reporting-Regime steuern. Integriert als Collapsible-Panel im Portfolio-Tab.
 
-**UI (MVP):**
+**UI:**
 
-- **Kontext-Liste (Cards):**
-  - Name, Type (PRIVATE/BUSINESS), Regime (V+V oder SuSa/BWA)
-  - #Objekte, Aggregations-KPIs (optional)
-
-- **Kontext-Detail:**
-  - Stammdaten (Name, Typ, Regime — Step1 read-only nach Anlage)
-  - Objektzuordnung: Liste/Picker mit Multi-Select
-  - Sichtbarkeit: welche Objekte sind in diesem Kontext sichtbar
+- **Kontext-Auswahl-Leiste** (horizontal, oben im Portfolio): Schnellfilter + "Verwalten"-Button
+- **Collapsible Panel:** Öffnet Kontext-Karten mit:
+  - Name, Type (PRIVATE/BUSINESS), Steuerdetails
+  - Eigentümer (bei PRIVATE), GF (bei BUSINESS)
+  - Bearbeiten + Objekt-Zuordnung
+  - Neuanlage über "+"-Karte
 
 **Regeln:**
 - `PRIVATE` → VV Default
 - `BUSINESS` → FIBU Default
-- Regime ist nach Anlage read-only
+- Route `/portal/immobilien/kontexte` → Redirect auf Portfolio
 
 ### 6.2 Portfolio Dashboard
 

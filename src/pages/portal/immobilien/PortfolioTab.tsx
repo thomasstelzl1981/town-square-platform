@@ -22,7 +22,7 @@ import {
 } from '@/components/shared/PropertyTable';
 import { 
   Loader2, Building2, TrendingUp, Wallet, PiggyBank, Percent, 
-  Plus, Upload, Eye, Calculator, Table2, ChevronDown
+  Plus, Upload, Eye, Calculator, Table2, ChevronDown, Settings2
 } from 'lucide-react';
 import { 
   LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, 
@@ -34,6 +34,8 @@ import {
 import { ExcelImportDialog } from '@/components/portfolio/ExcelImportDialog';
 import { CreatePropertyDialog } from '@/components/portfolio/CreatePropertyDialog';
 import { PortfolioSummaryModal } from '@/components/portfolio/PortfolioSummaryModal';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { ContextManager } from '@/components/immobilien/ContextManager';
 
 interface LandlordContext {
   id: string;
@@ -95,6 +97,7 @@ export function PortfolioTab() {
   const [showAllYears, setShowAllYears] = useState(false);
   // Auto-open create dialog if ?create=1 is present
   const [showCreateDialog, setShowCreateDialog] = useState(() => searchParams.get('create') === '1');
+  const [showContextManager, setShowContextManager] = useState(false);
   
   // FIX: Clear the create param via useEffect (not useState side-effect)
   useEffect(() => {
@@ -676,8 +679,32 @@ export function PortfolioTab() {
                 </button>
               );
             })}
-
+            {/* Verwalten Button */}
+            <button
+              onClick={() => setShowContextManager(!showContextManager)}
+              className={cn(
+                "flex flex-col gap-1.5 p-4 rounded-xl border min-w-[150px] text-left transition-all shrink-0",
+                showContextManager
+                  ? "border-primary bg-primary/5 ring-2 ring-primary shadow-sm"
+                  : "border-dashed border-border bg-card hover:border-primary/50 hover:bg-muted/30"
+              )}
+            >
+              <div className="flex items-center gap-2">
+                <Settings2 className="h-4 w-4 text-muted-foreground" />
+                <span className="font-medium">Verwalten</span>
+              </div>
+              <span className="text-xs text-muted-foreground">
+                Einheiten bearbeiten
+              </span>
+            </button>
           </div>
+
+          {/* Collapsible Context Manager Panel */}
+          <Collapsible open={showContextManager} onOpenChange={setShowContextManager}>
+            <CollapsibleContent className="pt-2">
+              <ContextManager />
+            </CollapsibleContent>
+          </Collapsible>
         </div>
       )}
 

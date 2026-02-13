@@ -77,7 +77,7 @@ Bei jeder Feature-Implementierung:
 | MOD-01 | Stammdaten | `/portal/stammdaten` | Profil, Firma, Abrechnung, Sicherheit |
 | MOD-02 | KI Office | `/portal/office` | E-Mail, Brief, Kontakte, Kalender |
 | MOD-03 | DMS | `/portal/dms` | Storage, Posteingang, Sortieren, Einstellungen |
-| MOD-04 | Immobilien | `/portal/immobilien` | Kontexte, Portfolio, Sanierung, Bewertung |
+| MOD-04 | Immobilien | `/portal/immobilien` | Portfolio, Sanierung, Bewertung, Verwaltung |
 | MOD-05 | MSV | `/portal/msv` | Objekte, Mieteingang, Vermietung, Einstellungen |
 | MOD-06 | Verkauf | `/portal/verkauf` | Listings, Aktivität, Transaktionen, Einstellungen |
 | MOD-07 | Finanzierung | `/portal/finanzierung` | Vorgänge, Readiness, Export, Partner |

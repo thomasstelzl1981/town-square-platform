@@ -86,7 +86,7 @@ These routes are accessible but NOT shown in sidebar navigation:
 | MOD-01 | profil | firma | abrechnung | sicherheit | - | - |
 | MOD-02 | email | brief | kontakte | kalender | - | - |
 | MOD-03 | storage | posteingang | sortieren | einstellungen | - | - |
-| MOD-04 | kontexte | portfolio | sanierung | bewertung | - | - |
+| MOD-04 | portfolio | sanierung | bewertung | verwaltung | - | - |
 | MOD-05 | objekte | mieteingang | vermietung | einstellungen | - | - |
 | MOD-06 | objekte | vorgaenge | reporting | einstellungen | - | - |
 | MOD-07 | selbstauskunft | dokumente | anfrage | status | - | - |

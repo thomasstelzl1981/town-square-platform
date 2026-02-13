@@ -89,7 +89,7 @@ ZONE 2 MODULES INVENTORY
 | MOD-01 | Stammdaten           | stammdaten         | profil, firma, abrechnung, sicherheit    | OK     |
 | MOD-02 | KI Office            | office             | email, brief, kontakte, kalender         | OK     |
 | MOD-03 | DMS                  | dms                | storage, posteingang, sortieren, einst.  | OK     |
-| MOD-04 | Immobilien           | immobilien         | kontexte, portfolio, sanierung, bewert.  | OK     |
+| MOD-04 | Immobilien           | immobilien         | portfolio, sanierung, bewertung, verw.   | OK     |
 | MOD-05 | MSV                  | msv                | objekte, mieteingang, vermietung, einst. | OK     |
 | MOD-06 | Verkauf              | verkauf            | objekte, vorgaenge, reporting, einst.    | OK     |
 | MOD-07 | Finanzierung         | finanzierung       | selbstauskunft, dokumente, anfrage, stat.| OK     |
