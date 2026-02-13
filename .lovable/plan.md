@@ -1,99 +1,90 @@
 
-# Armstrong-Bereich von MOD-14 nach Stammdaten/Abrechnung verschieben
+# Redirect-Fix: "Haus" wird "ZUHAUSE" — Einstieg in Immobilien korrigieren
 
-## Zusammenfassung
+## Problem
 
-Der "Agenten"-Tab aus MOD-14 (Communication Pro) wird entfernt und stattdessen als "Armstrong"-Sektion in die bestehende Abrechnung (MOD-01 Stammdaten) integriert. Der Aktions-Katalog mit Credit-Preisen wird dort als Spiegelung der Zone-1-Armstrong-Billing angezeigt.
+Wenn man im Seitenmenü auf "Haus" (Sub-Tile von MOD-04 Immobilien) klickt, navigiert der Browser zu `/portal/immobilien/haus`, was sofort nach `/portal/miety` weiterleitet. Das verlässt MOD-04 komplett und springt zu MOD-20 — die Navigation kollabiert, die Sidebar wechselt den aktiven Bereich, und es entsteht ein visueller Sprung.
+
+Zusätzlich ist "Haus" als `default: true` markiert, aber der `index`-Route in ImmobilienPage leitet auf `portfolio` weiter — ein Widerspruch.
+
+## Lösung
+
+MOD-20 (Miety/Zuhause) wird direkt **innerhalb** von MOD-04 gerendert — kein Redirect mehr. Der "Haus"-Tab wird in "ZUHAUSE" umbenannt und bleibt der Einstiegspunkt von Immobilien.
 
 ---
 
-## Aenderung 1: "Agenten"-Tile aus MOD-14 entfernen
+## Änderung 1: Manifest — Tile umbenennen, Default beibehalten
 
 **Datei:** `src/manifests/routesManifest.ts`
 
-- Zeile 442 entfernen: `{ path: "agenten", component: "CommProAgenten", title: "Agenten" }`
-- MOD-14 behaelt: Serien-E-Mails, Recherche, Social, KI-Telefonassistent
+- Zeile 251: `title: "Haus"` wird zu `title: "ZUHAUSE"`, `path: "haus"` wird zu `path: "zuhause"`
+- `default: true` bleibt — damit ist ZUHAUSE der Einstieg bei Klick auf "Immobilien"
 
-**Datei:** `src/pages/portal/CommunicationProPage.tsx`
+**Datei:** `src/manifests/areaConfig.ts`
 
-- Lazy-Import von `AgentenPage` entfernen
-- Route `path="agenten"` entfernen
-
----
-
-## Aenderung 2: AbrechnungTab um Armstrong-Sektion erweitern
-
-**Datei:** `src/pages/portal/stammdaten/AbrechnungTab.tsx`
-
-Unterhalb der bestehenden Sektionen "Aktueller Plan" und "Rechnungen" wird eine neue Sektion "Armstrong" eingefuegt:
-
-### Sektion 3: Armstrong Credits & Aktions-Katalog
-- **KPI-Kacheln**: Credits verbraucht, Gesamtkosten, Transaktionen, Durchschnitt pro Aktion (aus `armstrong_billing_events`)
-- **Aktions-Katalog-Grid**: Alle Aktionen aus `armstrongManifest.ts` als Widget-Cards mit:
-  - Aktionsname (title_de)
-  - Action-Code
-  - Execution-Mode (Sofort / Mit Bestätigung / Nur lesen)
-  - Zonen-Badges (Portal, Website)
-  - Cost-Model-Badge (free / metered / premium)
-  - Status (Aktiv / Inaktiv)
-- **Filter**: Suchfeld + Zone-Filter + Status-Filter (gleicher Pattern wie der bisherige AktionsKatalog)
-- **Kosten-Uebersicht**: Top-5-Aktionen nach Verbrauch (aus `armstrong_billing_events`, wie KostenDashboard)
-
-Die bestehenden Subkomponenten `AktionsKatalog` und `KostenDashboard` aus `src/pages/portal/communication-pro/agenten/` werden direkt wiederverwendet (Import-Pfad aendern).
+- Zeile 65: `'MOD-20': 'Haus'` wird zu `'MOD-20': 'ZUHAUSE'`
 
 ---
 
-## Aenderung 3: Keine neuen Dateien noetig
+## Änderung 2: ImmobilienPage — Miety inline rendern statt Redirect
 
-Die Komponenten `AktionsKatalog.tsx` und `KostenDashboard.tsx` bleiben an ihrem Platz in `src/pages/portal/communication-pro/agenten/` und werden von der AbrechnungTab importiert. Die `AusfuehrungsLog` und `Wissensbasis` werden NICHT in die Abrechnung uebernommen — diese gehoeren in den operativen Armstrong-Bereich (Zone 1) und nicht in die User-Abrechnung.
+**Datei:** `src/pages/portal/ImmobilienPage.tsx`
 
----
-
-## Technisches Detail
-
-### AbrechnungTab Layout (nach Umbau)
+- `index`-Route: Redirect von `portfolio` auf `zuhause` ändern
+- Route `path="haus"` mit `<Navigate to="/portal/miety">` entfernen
+- Neue Route `path="zuhause/*"` hinzufügen, die `MietyPortalPage` inline rendert (lazy-loaded)
+- Redirect von `path="haus"` auf `zuhause` (Legacy-Kompatibilität)
 
 ```text
-+--------------------------------------------------+
-| Abrechnung                                       |
-| Ihr Plan, Credits und Rechnungen                 |
-+--------------------------------------------------+
-| [Card] Aktueller Plan                            |
-|   Plan-Name | Status | Credits                   |
-+--------------------------------------------------+
-| [Card] Rechnungen                                |
-|   DataTable: Nr, Datum, Betrag, Status, PDF      |
-+--------------------------------------------------+
-| [Separator + Header]                             |
-| Armstrong — KI-Aktionen & Credits                |
-+--------------------------------------------------+
-| [KPI-Grid] Credits | Kosten | Transaktionen | Ø |
-+--------------------------------------------------+
-| [Card] Aktions-Katalog                           |
-|   Filter: Suche | Zone | Status                  |
-|   Widget-Grid mit Action-Cards                   |
-|   (Code, Titel, Mode, Zonen, Cost-Model)         |
-+--------------------------------------------------+
-| [Card] Top 5 Aktionen (nach Kosten)              |
-+--------------------------------------------------+
+Routes (nach Umbau):
+  index         -> Navigate to "zuhause"
+  "zuhause/*"   -> MietyPortalPage (inline, kein Redirect)
+  "haus"        -> Navigate to "zuhause" (Legacy)
+  "portfolio"   -> PortfolioTab
+  "verwaltung"  -> VerwaltungTab
+  "sanierung/*" -> SanierungTab
+  ...rest
 ```
-
-### Verschaltung mit Zone 1
-
-Die Zone-1-Seite `ArmstrongBilling` (`src/pages/admin/armstrong/ArmstrongBilling.tsx`) zeigt die plattformweite Sicht auf alle Tenants. Die Zone-2-Abrechnung zeigt die tenant-spezifische Sicht. Beide lesen aus denselben Tabellen:
-- `armstrong_billing_events` (Verbrauch)
-- `armstrongManifest.ts` (Aktions-Definitionen)
-
-Der Unterschied: Zone 2 filtert nach `tenant_id` / `org_id` des eingeloggten Users, Zone 1 zeigt alle.
 
 ---
 
-## Dateien-Uebersicht
+## Änderung 3: Interne Miety-Links anpassen
+
+Alle Navigationen innerhalb der Miety-Tiles (`/portal/miety/...`) müssen auf `/portal/immobilien/zuhause/...` umgestellt werden, damit die Navigation im MOD-04-Kontext bleibt:
+
+**Dateien mit Änderungen (navigate/Link-Pfade):**
+- `src/pages/portal/miety/tiles/UebersichtTile.tsx` — `/portal/miety/zuhause/:homeId` wird `/portal/immobilien/zuhause/zuhause/:homeId`
+- `src/pages/portal/miety/tiles/VersorgungTile.tsx` — gleiche Anpassung
+- `src/pages/portal/miety/tiles/VersicherungenTile.tsx` — gleiche Anpassung
+- `src/pages/portal/miety/components/MietyCreateHomeForm.tsx` — gleiche Anpassung
+- `src/pages/portal/miety/components/MietyDossierHeader.tsx` — Zurück-Link
+- `src/pages/portal/miety/MietyHomeDossier.tsx` — Fallback-Redirect
+- `src/pages/portal/MietyPortalPage.tsx` — Fallback-Redirect bei `zaehlerstaende`
+
+---
+
+## Änderung 4: ManifestRouter — MOD-20 Route beibehalten als Redirect
+
+**Datei:** `src/router/ManifestRouter.tsx`
+
+- `miety: MietyPortalPage` bleibt im `portalModulePageMap` für den Fall, dass jemand direkt `/portal/miety` aufruft
+- Optional: Legacy-Redirect von `/portal/miety/*` auf `/portal/immobilien/zuhause/*` hinzufügen
+
+---
+
+## Dateien-Übersicht
 
 | Aktion | Datei |
 |--------|-------|
-| EDIT | `src/manifests/routesManifest.ts` — "agenten" Tile aus MOD-14 entfernen |
-| EDIT | `src/pages/portal/CommunicationProPage.tsx` — Agenten-Route entfernen |
-| EDIT | `src/pages/portal/stammdaten/AbrechnungTab.tsx` — Armstrong-Sektion hinzufuegen |
+| EDIT | `src/manifests/routesManifest.ts` — "haus" -> "zuhause", Titel -> "ZUHAUSE" |
+| EDIT | `src/manifests/areaConfig.ts` — Label-Override "Haus" -> "ZUHAUSE" |
+| EDIT | `src/pages/portal/ImmobilienPage.tsx` — Index-Redirect auf "zuhause", MietyPortalPage inline |
+| EDIT | `src/pages/portal/miety/tiles/UebersichtTile.tsx` — Pfad-Anpassung |
+| EDIT | `src/pages/portal/miety/tiles/VersorgungTile.tsx` — Pfad-Anpassung |
+| EDIT | `src/pages/portal/miety/tiles/VersicherungenTile.tsx` — Pfad-Anpassung |
+| EDIT | `src/pages/portal/miety/components/MietyCreateHomeForm.tsx` — Pfad-Anpassung |
+| EDIT | `src/pages/portal/miety/components/MietyDossierHeader.tsx` — Pfad-Anpassung |
+| EDIT | `src/pages/portal/miety/MietyHomeDossier.tsx` — Pfad-Anpassung |
+| EDIT | `src/pages/portal/MietyPortalPage.tsx` — Fallback-Pfad-Anpassung |
 
-Keine Datenbank-Aenderungen noetig. Alle Tabellen existieren bereits.
+Keine Datenbank-Änderungen nötig.
