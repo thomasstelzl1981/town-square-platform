@@ -1,72 +1,120 @@
 
-
-# Aenderungen an der Immobilienakte: Street View im Expose + Auto-Sortierkachel
+# Erweiterter Plan: Demo-Daten durch den gesamten Golden Path MOD-04 — inkl. Zone 1 und Zone 3
 
 ## Uebersicht
 
-Drei zusammenhaengende Aenderungen:
-
-1. **Street View im Expose-Tab** einbauen (oberhalb von Grundbuch und Energie)
-2. **Layout-Anpassung**: Grundbuch und Energie nach unten verschieben
-3. **Auto-Sortierkachel** im DMS bei Anlage einer neuen Immobilie erstellen
+Der bisherige Plan deckt nur Zone 2 (Portal) ab. Diese Erweiterung stellt sicher, dass Demo-Daten auch in **Zone 1 (Admin/Sales Desk)** und **Zone 3 (Kaufy Website)** sichtbar werden, wenn der Demo-Modus aktiv ist — und vollstaendig verschwinden, wenn er deaktiviert wird.
 
 ---
 
-## Aenderung 1: Street View im Expose-Tab
-
-**Datei**: `src/components/portfolio/ExposeTab.tsx`
-
-Zwischen dem 2-Spalten-Block "Beschreibung + Karte" (Zeile 121-130) und dem naechsten Grid (Zeile 132) wird eine neue **Street-View-Kachel** eingefuegt.
-
-- Nutzt die gleiche Technik wie in `UebersichtTile.tsx`: Google Street View Static API via `sot-google-maps-key` Edge Function
-- Volle Breite, Hoehe passend zur daneben stehenden Kachel (ca. 280px)
-- Error-Fallback: Platzhalter-Icon wenn Street View nicht verfuegbar
-- Der API-Key wird per `useQuery` + `supabase.functions.invoke('sot-google-maps-key')` geladen (gleicher Pattern wie Miety)
-
-**Neues Layout des Expose-Tab (von oben nach unten):**
+## Betroffene Stellen im Golden Path (11 Phasen)
 
 ```text
-1. Headline (editierbar)
-2. Header-Card (Adresse, Code)
-3. Bildergalerie
-4. Beschreibung | Google Maps Embed   (2 Spalten)
-5. Street View | Lage & Mikrolage     (2 Spalten, NEU)
-6. Baujahr & Zustand | Miete          (2 Spalten)
-7. Finanzierung | Grundbuch           (2 Spalten, nach unten gerutscht)
-8. Energie & Heizung                  (1 Spalte, nach unten gerutscht)
+Phase 1-3: Portfolio Dashboard (Zone 2)     ── bereits geplant
+Phase 4:   Verkaufsauftrag (Zone 2)         ── bereits geplant
+Phase 5:   Stammdaten/Vertraege (Zone 2)    ── bereits geplant
+Phase 6:   Sales Desk (Zone 1)              ── NEU
+Phase 7:   MOD-09 Katalog (Zone 2)          ── bereits geplant
+Phase 8:   MOD-08 Investment-Suche (Zone 2) ── bereits geplant
+Phase 9:   Kaufy Website (Zone 3)           ── NEU
+Phase 10:  Kaufy Expose-Detail (Zone 3)     ── NEU
+Phase 11:  Deaktivierung (Zone 2)           ── bereits geplant
 ```
 
-Die Kacheln "Grundbuch" und "Energie & Heizung" werden also einfach weiter unten im Grid platziert. Die Hoehe der Street-View-Kachel orientiert sich an der benachbarten Kachel (gleiche Card-Hoehe).
+---
 
-## Aenderung 2: Auto-Sortierkachel bei Immobilien-Erstellung
+## Bestehender Plan (Zone 2) — unveraendert
 
-**Datei**: `src/pages/portal/immobilien/CreatePropertyRedirect.tsx`
+| # | Datei | Aenderung |
+|---|-------|-----------|
+| 1 | `src/config/tenantConstants.ts` | `DEMO_PROPERTY_IDS` Array mit den 3 IDs |
+| 2 | `src/hooks/useDemoListings.ts` | Neuer Hook: liefert synthetische Listing/Publication-Daten |
+| 3 | `src/pages/portal/immobilien/PortfolioTab.tsx` | Demo-Properties filtern wenn Toggle aus |
+| 4 | `src/pages/portal/immobilien/PropertyDetailPage.tsx` | Demo-Guard + Badge |
+| 5 | `src/components/portfolio/VerkaufsauftragTab.tsx` | `isDemo`-Prop, UI-only Switches |
 
-Beim Erstellen einer neuen Immobilie wird automatisch ein `inbox_sort_container` in der DB angelegt:
+---
 
-- **Name**: Adresse der Immobilie (z.B. "Musterstr. 12, Berlin")
-- **Regeln**: Automatisch eine Regel mit `field: 'subject'`, `operator: 'contains'`, `keywords_json` gefuellt mit Adressbestandteilen (Strasse, PLZ, Stadt)
-- **Aktivierung**: `is_enabled: true` (wird aber nur wirksam, wenn `ai_extraction_enabled` auf der Organisation aktiv ist)
+## Erweiterung: Zone 1 — Sales Desk
 
-**DB-Migration**: Neue optionale Spalte `property_id` (UUID, nullable, FK auf `properties`) auf `inbox_sort_containers`, um die Kachel mit der Immobilie zu verknuepfen. Das ermoeglicht:
-- Eindeutige Zuordnung Kachel ↔ Immobilie
-- Beim Loeschen einer Immobilie kann die Sortierkachel identifiziert werden
-- In der Sortieren-Ansicht wird die verknuepfte Immobilie als Badge angezeigt
+### Phase 6: `src/pages/admin/desks/SalesDesk.tsx`
+
+**Problem:** Der Sales Desk laedt Listings direkt aus der DB via `useSalesDeskListings`. Ohne echte DB-Eintraege in `listings` und `listing_publications` erscheinen keine Demo-Objekte.
+
+**Loesung:**
+- Der Hook `useSalesDeskListings` wird um einen optionalen Demo-Merge erweitert
+- Wenn `GP-PORTFOLIO` aktiv ist, werden 3 synthetische `SalesDeskListing`-Objekte (Berlin, Muenchen, Hamburg) in das Ergebnis eingefuegt
+- Diese synthetischen Eintraege zeigen den Status "active" mit Publications auf den Kanaelen `partner_network` und `kaufy`
+- Die Kill-Switch und Distribution-Toggles sind fuer Demo-Eintraege visuell funktional (UI-only, keine DB-Mutation)
+- Ein smaragdgruenes "DEMO"-Badge kennzeichnet die Eintraege
+
+| Datei | Aenderung |
+|-------|-----------|
+| `src/hooks/useSalesDeskListings.ts` | Demo-Listings mergen wenn Toggle aktiv (ca. 30 Zeilen) |
+| `src/pages/admin/desks/SalesDesk.tsx` | Demo-Badge + Mutation-Guard fuer Demo-IDs (ca. 15 Zeilen) |
+
+### Zusaetzlich: `ImmobilienVertriebsauftraegeCard`
+
+Die Karte in der SalesDesk-Dashboard-Ansicht (`ImmobilienVertriebsauftraegeCard`) laedt Mandate direkt aus `sales_desk_mandates`. Hier wird analog ein Demo-Eintrag fuer das "Berlin Altbau" Objekt injiziert, wenn der Toggle aktiv ist.
+
+---
+
+## Erweiterung: Zone 3 — Kaufy Website
+
+### Phase 9-10: `src/pages/zone3/kaufy2026/Kaufy2026Home.tsx`
+
+**Problem:** Die Kaufy-Seite laedt Listings ueber `listing_publications` (channel=kaufy, status=active) aus der DB. Ohne echte Eintraege sind keine Demo-Objekte sichtbar.
+
+**Loesung:**
+- Der Listing-Fetch in `Kaufy2026Home.tsx` wird um einen Demo-Merge erweitert
+- Wenn `GP-PORTFOLIO` aktiv ist, werden 3 synthetische Kaufy-Listings (mit Property-Daten, Preis, Flaeche) in die Ergebnisliste eingefuegt
+- Die Demo-Listings erscheinen mit dem gleichen smaragdgruenen Badge
+- Bei Klick auf ein Demo-Listing oeffnet sich die Expose-Detailseite mit synthetischen Daten (Bilder aus dem Storage, Investment-Engine-Berechnung mit Demo-Parametern)
+
+| Datei | Aenderung |
+|-------|-----------|
+| `src/pages/zone3/kaufy2026/Kaufy2026Home.tsx` | Demo-Listings in Suchergebnisse mergen (ca. 40 Zeilen) |
+| `src/pages/zone3/kaufy2026/Kaufy2026ExposeDetail.tsx` | Demo-Property-Daten laden wenn ID in `DEMO_PROPERTY_IDS` (ca. 25 Zeilen) |
+
+### MOD-09 Katalog (Zone 2, aber Downstream)
+
+| Datei | Aenderung |
+|-------|-----------|
+| `src/pages/portal/vertriebspartner/KatalogTab.tsx` | Demo-Listings in Katalog mergen (ca. 30 Zeilen) |
+| `src/pages/portal/vertriebspartner/KatalogDetailPage.tsx` | Demo-Property-Fallback fuer Detail-Ansicht (ca. 20 Zeilen) |
+
+---
+
+## Zentraler Demo-Listings Hook (erweitert)
+
+Der geplante `useDemoListings.ts` Hook wird so erweitert, dass er verschiedene "Shapes" fuer die unterschiedlichen Konsumenten liefert:
 
 ```text
-ALTER TABLE inbox_sort_containers
-  ADD COLUMN property_id uuid REFERENCES properties(id) ON DELETE SET NULL;
+useDemoListings()
+  ├── .salesDeskListings    → SalesDeskListing[]  (Zone 1)
+  ├── .kaufyListings        → KaufyListing[]      (Zone 3)
+  ├── .partnerKatalog       → KatalogListing[]     (MOD-09)
+  └── .portalListings       → PortalListing[]      (MOD-08)
 ```
 
-## Aenderung 3: Sortier-Workflow (Posteingang → Sortieren → Storage)
+Alle Shapes verwenden dieselben Basis-Daten (3 Properties), gemappt auf das jeweilige Interface. Der Toggle-Check (`isEnabled('GP-PORTFOLIO')`) ist zentral im Hook — Konsumenten pruefen nur `if (demoListings.length > 0)`.
 
-Das bestehende System funktioniert bereits so, dass bei aktivierter Datenauslesung (`ai_extraction_enabled`) die eingehende Post analysiert und mit den Sortierregeln abgeglichen wird. Die Zuordnung erscheint als Vorschlag im Posteingang.
+---
 
-**Keine Code-Aenderung noetig** fuer den manuellen Bestaetigungsschritt — der Posteingang zeigt bereits Vorschlaege, die manuell bestaetigt werden muessen, bevor Dokumente in den Storage der Immobilie verschoben werden. Das ist das bestehende Verhalten.
+## Zusammenfassung aller betroffenen Dateien
 
-## Betroffene Dateien
+| # | Zone | Datei | Art |
+|---|------|-------|-----|
+| 1 | Shared | `src/config/tenantConstants.ts` | DEMO_PROPERTY_IDS hinzufuegen |
+| 2 | Shared | `src/hooks/useDemoListings.ts` | Neuer Hook (ca. 150 Zeilen) |
+| 3 | Z2 | `src/pages/portal/immobilien/PortfolioTab.tsx` | Filter |
+| 4 | Z2 | `src/pages/portal/immobilien/PropertyDetailPage.tsx` | Guard + Badge |
+| 5 | Z2 | `src/components/portfolio/VerkaufsauftragTab.tsx` | isDemo-Prop |
+| 6 | **Z1** | `src/hooks/useSalesDeskListings.ts` | Demo-Merge |
+| 7 | **Z1** | `src/pages/admin/desks/SalesDesk.tsx` | Badge + Guard |
+| 8 | **Z3** | `src/pages/zone3/kaufy2026/Kaufy2026Home.tsx` | Demo-Merge |
+| 9 | **Z3** | Kaufy Expose-Detail | Demo-Fallback |
+| 10 | Z2 | `src/pages/portal/vertriebspartner/KatalogTab.tsx` | Demo-Merge |
+| 11 | Z2 | `src/pages/portal/vertriebspartner/KatalogDetailPage.tsx` | Demo-Fallback |
 
-1. **DB-Migration**: `ALTER TABLE inbox_sort_containers ADD COLUMN property_id`
-2. **`src/components/portfolio/ExposeTab.tsx`**: Street View einfuegen, Grundbuch/Energie nach unten
-3. **`src/pages/portal/immobilien/CreatePropertyRedirect.tsx`**: Auto-Erstellung der Sortierkachel nach Property-Insert
-
+**Keine DB-Aenderungen erforderlich** — alles rein clientseitig/synthetisch.
