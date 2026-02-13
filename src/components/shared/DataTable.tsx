@@ -11,6 +11,8 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight, Search, ArrowUpDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { MOBILE } from '@/config/designManifest';
 
 export interface Column<T> {
   key: keyof T | string;
@@ -43,6 +45,7 @@ export function DataTable<T extends object>({
   isLoading = false,
   className,
 }: DataTableProps<T>) {
+  const isMobile = useIsMobile();
   const [search, setSearch] = React.useState('');
   const [page, setPage] = React.useState(0);
   const [sortKey, setSortKey] = React.useState<string | null>(null);
@@ -103,6 +106,52 @@ export function DataTable<T extends object>({
     return row[key as keyof T];
   };
 
+  // ─── Mobile Card-Stack Rendering ────────────────────────
+  const renderMobileCards = () => {
+    if (isLoading) {
+      return (
+        <div className="flex items-center justify-center py-12">
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+        </div>
+      );
+    }
+
+    if (paginated.length === 0) {
+      return (
+        <div className="py-12 text-center text-muted-foreground text-sm">
+          {emptyMessage}
+        </div>
+      );
+    }
+
+    return (
+      <div className={MOBILE.CARD_STACK}>
+        {paginated.map((row, idx) => (
+          <div
+            key={idx}
+            className={cn(
+              MOBILE.CARD_ITEM,
+              onRowClick && 'cursor-pointer active:scale-[0.98] transition-transform'
+            )}
+            onClick={() => onRowClick?.(row)}
+          >
+            {columns.map(col => {
+              const value = getValue(row, String(col.key));
+              return (
+                <div key={String(col.key)} className="flex items-baseline justify-between gap-2">
+                  <span className={MOBILE.CARD_LABEL}>{col.header}</span>
+                  <span className={cn(MOBILE.CARD_VALUE, 'text-right truncate max-w-[60%]')}>
+                    {col.render ? col.render(value, row) : String(value ?? '—')}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   return (
     <div className={cn('space-y-4', className)}>
       {searchKey && (
@@ -120,62 +169,65 @@ export function DataTable<T extends object>({
         </div>
       )}
 
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              {columns.map(col => (
-                <TableHead
-                  key={String(col.key)}
-                  className={cn(col.className, col.sortable && 'cursor-pointer select-none')}
-                  onClick={() => col.sortable && handleSort(String(col.key))}
-                >
-                  <div className="flex items-center gap-1">
-                    {col.header}
-                    {col.sortable && (
-                      <ArrowUpDown className="h-3 w-3 text-muted-foreground" />
-                    )}
-                  </div>
-                </TableHead>
-              ))}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
+      {/* Mobile: Card-Stack | Desktop: Table */}
+      {isMobile ? renderMobileCards() : (
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={columns.length} className="h-24 text-center">
-                  <div className="flex items-center justify-center">
-                    <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-                  </div>
-                </TableCell>
+                {columns.map(col => (
+                  <TableHead
+                    key={String(col.key)}
+                    className={cn(col.className, col.sortable && 'cursor-pointer select-none')}
+                    onClick={() => col.sortable && handleSort(String(col.key))}
+                  >
+                    <div className="flex items-center gap-1">
+                      {col.header}
+                      {col.sortable && (
+                        <ArrowUpDown className="h-3 w-3 text-muted-foreground" />
+                      )}
+                    </div>
+                  </TableHead>
+                ))}
               </TableRow>
-            ) : paginated.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={columns.length} className="h-24 text-center text-muted-foreground">
-                  {emptyMessage}
-                </TableCell>
-              </TableRow>
-            ) : (
-              paginated.map((row, idx) => (
-                <TableRow
-                  key={idx}
-                  className={cn(onRowClick && 'cursor-pointer hover:bg-muted/50')}
-                  onClick={() => onRowClick?.(row)}
-                >
-                  {columns.map(col => {
-                    const value = getValue(row, String(col.key));
-                    return (
-                      <TableCell key={String(col.key)} className={col.className}>
-                        {col.render ? col.render(value, row) : String(value ?? '')}
-                      </TableCell>
-                    );
-                  })}
+            </TableHeader>
+            <TableBody>
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={columns.length} className="h-24 text-center">
+                    <div className="flex items-center justify-center">
+                      <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                    </div>
+                  </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+              ) : paginated.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={columns.length} className="h-24 text-center text-muted-foreground">
+                    {emptyMessage}
+                  </TableCell>
+                </TableRow>
+              ) : (
+                paginated.map((row, idx) => (
+                  <TableRow
+                    key={idx}
+                    className={cn(onRowClick && 'cursor-pointer hover:bg-muted/50')}
+                    onClick={() => onRowClick?.(row)}
+                  >
+                    {columns.map(col => {
+                      const value = getValue(row, String(col.key));
+                      return (
+                        <TableCell key={String(col.key)} className={col.className}>
+                          {col.render ? col.render(value, row) : String(value ?? '')}
+                        </TableCell>
+                      );
+                    })}
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      )}
 
       {totalPages > 1 && (
         <div className="flex items-center justify-between">

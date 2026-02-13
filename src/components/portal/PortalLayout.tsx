@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { Outlet, Navigate, useLocation } from 'react-router-dom';
 
 // Preload core modules for instant navigation
@@ -23,6 +23,7 @@ import { PortalLayoutProvider, usePortalLayout } from '@/hooks/usePortalLayout';
 import { getModulesSorted } from '@/manifests/routesManifest';
 import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { MOBILE } from '@/config/designManifest';
 
 /**
  * Zone 2: User Portal Layout
@@ -96,6 +97,9 @@ function PortalLayoutInner() {
     );
   }
 
+  // Detect if we're on the dashboard (root /portal) for scroll-snap
+  const isDashboard = location.pathname === '/portal' || location.pathname === '/portal/';
+
   // Mobile Layout - Identisch zu Desktop: Outlet für konsistentes Routing
   if (isMobile) {
     return (
@@ -103,8 +107,11 @@ function PortalLayoutInner() {
         {/* System Bar */}
         <SystemBar />
         
-        {/* Content Area - Always use Outlet for consistent routing (Dashboard or Module) */}
-        <main className="flex-1 overflow-y-auto pb-28 relative">
+        {/* Content Area - Scroll-snap only on Dashboard */}
+        <main className={cn(
+          'flex-1 overflow-y-auto pb-28 relative',
+          isDashboard && MOBILE.SNAP_CONTAINER
+        )}>
           
           {/* Mobile SubTabs: Tile-Navigation when inside a module */}
           {activeModule && !location.pathname.startsWith('/portal/area/') && (

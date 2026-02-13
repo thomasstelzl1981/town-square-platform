@@ -3,6 +3,7 @@
  * 
  * Uses @dnd-kit/sortable for smooth drag animations.
  * Drag functionality is DISABLED on mobile for better UX.
+ * Mobile uses snap-start for Instagram-style scroll-snap feed.
  */
 
 import { ReactNode } from 'react';
@@ -10,6 +11,7 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { MOBILE } from '@/config/designManifest';
 
 interface SortableWidgetProps {
   id: string;
@@ -30,9 +32,9 @@ export function SortableWidget({ id, children, className }: SortableWidgetProps)
     isDragging,
   } = useSortable({ id, disabled: isMobile });
 
-  // On mobile: Render simple div without DnD attributes
+  // On mobile: Render with snap classes for Instagram-style feed
   if (isMobile) {
-    return <div className={cn('w-full snap-start', className)}>{children}</div>;
+    return <div className={cn('w-full', MOBILE.SNAP_ITEM, className)}>{children}</div>;
   }
 
   const style = {

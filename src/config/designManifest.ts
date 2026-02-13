@@ -189,6 +189,22 @@ export const SPACING = {
   AFTER_KPI: 'mt-4 md:mt-6',
 } as const;
 
+// ─── MOBILE (NEU V4.1) ───────────────────────────────────
+/** Mobile-spezifische Standards für Instagram-Style Feed */
+export const MOBILE = {
+  /** Scroll-Snap Container (nur Dashboard) */
+  SNAP_CONTAINER: 'snap-y snap-mandatory',
+  /** Scroll-Snap Item */
+  SNAP_ITEM: 'snap-start snap-always',
+  /** Card-Stack Fallback für Tabellen */
+  CARD_STACK: 'space-y-3',
+  /** Einzelne Card im Stack */
+  CARD_ITEM: 'glass-card rounded-xl p-4 space-y-2',
+  /** Label:Value Paar in Card */
+  CARD_LABEL: 'text-xs text-muted-foreground',
+  CARD_VALUE: 'text-sm font-medium',
+} as const;
+
 // ─── EXPORT ALS EINHEITLICHES OBJEKT ──────────────────────
 export const DESIGN = {
   CONTAINER,
@@ -205,4 +221,5 @@ export const DESIGN = {
   TYPOGRAPHY,
   LIST,
   SPACING,
+  MOBILE,
 } as const;
