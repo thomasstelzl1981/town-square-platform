@@ -16,10 +16,7 @@ import {
 } from 'lucide-react';
 
 // Eufy product images
-import eufySolocamS340 from '@/assets/miety/eufy-solocam-s340.jpg';
-import eufyFloodlightE340 from '@/assets/miety/eufy-floodlight-e340.jpg';
-import eufyIndoorS350 from '@/assets/miety/eufy-indoor-s350.jpg';
-import eufyHomebaseS380 from '@/assets/miety/eufy-homebase-s380.jpg';
+import { useNavigate } from 'react-router-dom';
 
 // =============================================================================
 // EufyConnectCard — functional eufy account connection
@@ -163,16 +160,10 @@ function EufyConnectCard() {
 // SmartHomeTile
 // =============================================================================
 export default function SmartHomeTile() {
+  const navigate = useNavigate();
   const [cameraToggles, setCameraToggles] = useState<Record<string, boolean>>({
     'cam-1': true, 'cam-2': true, 'cam-3': false,
   });
-
-  const eufyProducts = [
-    { id: 'solocam-s340', name: 'eufy SoloCam S340', price: 'ab 159,99 EUR', image: eufySolocamS340, badges: ['3K', 'Solar', 'WLAN', '360°'], url: 'https://www.eufy.com/de/products/solocam-s340' },
-    { id: 'floodlight-e340', name: 'eufy Floodlight Cam E340', price: 'ab 179,99 EUR', image: eufyFloodlightE340, badges: ['3K', 'Flutlicht', 'WLAN', '360°'], url: 'https://www.eufy.com/de/products/floodlight-cam-e340' },
-    { id: 'indoor-s350', name: 'eufy Indoor Cam S350', price: 'ab 59,99 EUR', image: eufyIndoorS350, badges: ['4K', 'Pan&Tilt', 'WLAN', 'Dual-Cam'], url: 'https://www.eufy.com/de/products/indoor-cam-s350' },
-    { id: 'homebase-s380', name: 'eufy HomeBase S380', price: 'ab 149,99 EUR', image: eufyHomebaseS380, badges: ['WiFi', '16TB', 'Lokal-KI'], url: 'https://www.eufy.com/de/products/homebase-s380' },
-  ];
 
   return (
     <PageShell>
@@ -207,7 +198,7 @@ export default function SmartHomeTile() {
         </CardContent>
       </Card>
 
-      {/* Starter Set Banner */}
+      {/* Widget-Link: Amazon Business */}
       <Card className="glass-card border-primary/20 bg-gradient-to-r from-primary/5 to-primary/10">
         <CardContent className="p-5">
           <div className="flex items-center gap-4">
@@ -215,41 +206,15 @@ export default function SmartHomeTile() {
               <ShoppingCart className="h-6 w-6 text-primary" />
             </div>
             <div className="flex-1">
-              <p className="font-semibold text-sm">Starter Set — eufy Security</p>
-              <p className="text-xs text-muted-foreground">2 Kameras + HomeBase — alles was Sie brauchen</p>
-              <p className="text-lg font-bold mt-1">Komplett ab 469,97 EUR</p>
+              <p className="font-semibold text-sm">eufy Geräte bei Amazon Business finden</p>
+              <p className="text-xs text-muted-foreground">Kameras, HomeBase und Zubehör direkt über Amazon Business bestellen</p>
             </div>
-            <Button size="sm">Starter Set kaufen</Button>
+            <Button size="sm" onClick={() => navigate('/portal/services/amazon')}>
+              Bei Amazon Business suchen
+            </Button>
           </div>
         </CardContent>
       </Card>
-
-      {/* Product Grid */}
-      <div className={DESIGN.FORM_GRID.FULL}>
-        {eufyProducts.map((product) => (
-          <Card key={product.id} className="glass-card overflow-hidden">
-            <CardContent className="p-0">
-              <div className="aspect-square bg-muted/20 flex items-center justify-center p-6">
-                <img src={product.image} alt={product.name} className="max-h-full max-w-full object-contain" />
-              </div>
-              <div className="p-4">
-                <p className="font-medium text-sm">{product.name}</p>
-                <p className="text-sm font-semibold mt-1">{product.price}</p>
-                <div className="flex flex-wrap gap-1 mt-2">
-                  {product.badges.map(b => (
-                    <Badge key={b} variant="outline" className="text-[10px]">{b}</Badge>
-                  ))}
-                </div>
-                <div className="flex gap-2 mt-3">
-                  <Button size="sm" variant="outline" className="text-xs flex-1" onClick={() => window.open(product.url, '_blank')}>
-                    <ExternalLink className="h-3 w-3 mr-1" />Bei eufy kaufen
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
 
       {/* eufy Konto verbinden */}
       <EufyConnectCard />
