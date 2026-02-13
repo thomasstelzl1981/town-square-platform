@@ -10,7 +10,7 @@
     { "code": "MOD-05", "name": "KI-Telefon-Assistent", "base": "msv", "tiles": ["uebersicht"], "tile_count": 1, "exception": "1 tile: placeholder for future AI phone assistant" },
     { "code": "MOD-06", "name": "Verkauf", "base": "verkauf", "tiles": ["objekte", "vorgaenge", "reporting", "einstellungen"], "tile_count": 4 },
     { "code": "MOD-07", "name": "Finanzierung", "base": "finanzierung", "tiles": ["selbstauskunft", "dokumente", "anfrage", "status"], "tile_count": 4 },
-    { "code": "MOD-08", "name": "Investment-Suche", "base": "investments", "tiles": ["suche", "favoriten", "mandat", "simulation"], "tile_count": 4 },
+    { "code": "MOD-08", "name": "Immo Suche", "base": "investments", "tiles": ["suche", "favoriten", "mandat", "simulation"], "tile_count": 4 },
     { "code": "MOD-09", "name": "Vertriebspartner", "base": "vertriebspartner", "tiles": ["katalog", "beratung", "kunden", "network", "leads"], "tile_count": 5, "exception": "5 tiles: includes Leads tab" },
     { "code": "MOD-10", "name": "Provisionen", "base": "leads", "tiles": ["uebersicht"], "tile_count": 1 },
     { "code": "MOD-11", "name": "Finanzierungsmanager", "base": "finanzierungsmanager", "tiles": ["how-it-works", "selbstauskunft", "einreichen", "status"], "tile_count": 4 },
