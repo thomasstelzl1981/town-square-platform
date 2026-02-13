@@ -340,6 +340,10 @@ export const zone2Portal: ZoneDefinition = {
         { path: "kunden", component: "KundenTab", title: "Kunden" },
         { path: "network", component: "NetworkTab", title: "Netzwerk" },
       ],
+      dynamic_routes: [
+        { path: "katalog/:publicId", component: "KatalogDetailPage", title: "Katalog-Detail", dynamic: true },
+        { path: "beratung/objekt/:publicId", component: "PartnerExposePage", title: "Partner-Exposé", dynamic: true },
+      ],
     },
     "MOD-10": {
       name: "Leads",
@@ -353,6 +357,13 @@ export const zone2Portal: ZoneDefinition = {
         { path: "pipeline", component: "PipelineTab", title: "Pipeline" },
         { path: "werbung", component: "WerbungTab", title: "Werbung" },
         { path: "selfie-ads", component: "SelfieAdsStudio", title: "Selfie Ads Studio" },
+      ],
+      dynamic_routes: [
+        { path: "selfie-ads-planen", component: "SelfieAdsPlanen", title: "Kampagne planen" },
+        { path: "selfie-ads-summary", component: "SelfieAdsSummary", title: "Kampagne Zusammenfassung" },
+        { path: "selfie-ads-kampagnen", component: "SelfieAdsKampagnen", title: "Kampagnen" },
+        { path: "selfie-ads-performance", component: "SelfieAdsPerformance", title: "Performance" },
+        { path: "selfie-ads-abrechnung", component: "SelfieAdsAbrechnung", title: "Abrechnung" },
       ],
     },
     // =========================================================================
@@ -466,6 +477,9 @@ export const zone2Portal: ZoneDefinition = {
         { path: "versicherungen", component: "CarsVersicherungen", title: "Versicherungen" },
         { path: "fahrtenbuch", component: "CarsFahrtenbuch", title: "Fahrtenbuch" },
         { path: "angebote", component: "CarsAngebote", title: "Angebote" },
+      ],
+      dynamic_routes: [
+        { path: ":id", component: "VehicleDetailPage", title: "Fahrzeugakte", dynamic: true },
       ],
     },
     "MOD-18": {
