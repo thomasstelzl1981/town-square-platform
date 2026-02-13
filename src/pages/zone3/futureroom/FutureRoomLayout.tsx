@@ -11,6 +11,7 @@ import {
   Menu, X, ChevronRight, Shield, Sparkles, LogIn, LogOut, FolderOpen
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { useDocumentMeta } from '@/hooks/useDocumentMeta';
 import '@/styles/futureroom-premium.css';
 
 export default function FutureRoomLayout() {
@@ -40,6 +41,12 @@ export default function FutureRoomLayout() {
     await supabase.auth.signOut();
     navigate('/website/futureroom');
   };
+
+  useDocumentMeta({
+    title: 'FutureRoom — Digitale Immobilienfinanzierung',
+    description: 'KI-gestützte Finanzierungsorchestrierung: Vom Bonitätscheck bis zur Auszahlung. Über 400 Bankpartner, digitaler Datenraum und persönliche Betreuung.',
+    ogType: 'website',
+  });
 
   const navItems = [
     { label: 'Start', href: '/website/futureroom', icon: Home, show: true },

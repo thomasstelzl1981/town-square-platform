@@ -5,6 +5,7 @@
 import * as React from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { Menu, X, ChevronRight, Shield, Sparkles, Lock } from 'lucide-react';
+import { useDocumentMeta } from '@/hooks/useDocumentMeta';
 import '@/styles/acquiary-premium.css';
 
 const navItems = [
@@ -23,6 +24,12 @@ export default function AcquiaryLayout() {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  useDocumentMeta({
+    title: 'ACQUIARY — Digitale Akquise für Immobilieninvestments',
+    description: 'Diskrete, KI-gestützte Akquise-Plattform für institutionelle Immobilienankäufe. Methodik, Netzwerk und Deal-Sourcing auf höchstem Niveau.',
+    ogType: 'website',
+  });
 
   return (
     <div className="acquiary-page">

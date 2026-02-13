@@ -13,6 +13,7 @@ import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { KaufyArmstrongWidget } from '@/components/zone3/kaufy2026/KaufyArmstrongWidget';
 import { KaufyPinGate } from '@/components/zone3/kaufy2026/KaufyPinGate';
+import { useDocumentMeta } from '@/hooks/useDocumentMeta';
 
 const ARMSTRONG_STORAGE_KEY = 'kaufy_armstrong_enabled';
 
@@ -32,6 +33,12 @@ export default function Kaufy2026Layout() {
   useEffect(() => {
     localStorage.setItem(ARMSTRONG_STORAGE_KEY, String(armstrongEnabled));
   }, [armstrongEnabled]);
+
+  useDocumentMeta({
+    title: 'KAUFY — KI-Plattform für Kapitalanlageimmobilien',
+    description: 'Finden, finanzieren und verwalten Sie Kapitalanlageimmobilien mit KI-gestützter Analyse. Investment-Rechner, Marktdaten und persönliche Beratung.',
+    ogType: 'website',
+  });
 
   if (!pinVerified) {
     return <KaufyPinGate onVerified={() => setPinVerified(true)} />;
