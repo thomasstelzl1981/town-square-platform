@@ -1,300 +1,225 @@
 /**
- * CarsAngebote — Widget-based vehicle offers with BMW examples
+ * CarsAngebote — Miete24 Auto-Abos + BMW/MINI Fokusmodelle (Helming & Sohn)
+ * Real data scraped from miete24.com and helming-sohn.de
  */
-
-import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ExternalLink, Car, Truck, Star, ShoppingCart, Sparkles } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
+import { ExternalLink, Car, Star, ShoppingCart, Zap } from 'lucide-react';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 
-type OfferType = 'leasing' | 'rental';
-
-interface Offer {
+// ── Miete24 Auto-Abo offers (real data from miete24.com) ──────────────────────
+interface Miete24Offer {
   id: string;
-  offer_type: OfferType;
-  provider: string;
   title: string;
-  description: string | null;
-  vehicle_make: string | null;
-  vehicle_model: string | null;
-  price_monthly_cents: number | null;
-  price_daily_cents: number | null;
-  term_months: number | null;
-  km_per_year: number | null;
-  down_payment_cents: number | null;
-  image_url: string | null;
-  link_url: string;
-  is_featured: boolean;
+  image: string;
+  priceMonthly: string;
+  fuel: string;
+  transmission: string;
+  link: string;
 }
 
-/** @demo-data BMW demo offers. Registered in demoDataRegistry.ts */
-const DEMO_LEASING_OFFERS: Offer[] = [
-  {
-    id: 'demo-1',
-    offer_type: 'leasing',
-    provider: 'BMW Financial Services',
-    title: 'BMW 320i Limousine',
-    description: 'Sport Line, Navi, LED, Klimaautomatik, PDC',
-    vehicle_make: 'BMW',
-    vehicle_model: '320i Limousine',
-    price_monthly_cents: 39900,
-    price_daily_cents: null,
-    term_months: 48,
-    km_per_year: 15000,
-    down_payment_cents: 500000,
-    image_url: 'https://images.unsplash.com/photo-1555215695-3004980ad54e?w=400&h=220&fit=crop',
-    link_url: 'https://www.bmw.de/leasing',
-    is_featured: true,
-  },
-  {
-    id: 'demo-2',
-    offer_type: 'leasing',
-    provider: 'BMW Financial Services',
-    title: 'BMW X3 xDrive20d',
-    description: 'xLine, Panoramadach, Harman Kardon, Head-Up',
-    vehicle_make: 'BMW',
-    vehicle_model: 'X3 xDrive20d',
-    price_monthly_cents: 52900,
-    price_daily_cents: null,
-    term_months: 36,
-    km_per_year: 20000,
-    down_payment_cents: 750000,
-    image_url: 'https://images.unsplash.com/photo-1617814076367-b759c7d7e738?w=400&h=220&fit=crop',
-    link_url: 'https://www.bmw.de/leasing',
-    is_featured: false,
-  },
-  {
-    id: 'demo-3',
-    offer_type: 'leasing',
-    provider: 'BMW Financial Services',
-    title: 'BMW iX1 xDrive30',
-    description: 'Elektro, 313 PS, Curved Display, Driving Assistant',
-    vehicle_make: 'BMW',
-    vehicle_model: 'iX1 xDrive30',
-    price_monthly_cents: 45900,
-    price_daily_cents: null,
-    term_months: 48,
-    km_per_year: 15000,
-    down_payment_cents: 600000,
-    image_url: 'https://images.unsplash.com/photo-1619767886558-efdc259cde1a?w=400&h=220&fit=crop',
-    link_url: 'https://www.bmw.de/leasing',
-    is_featured: true,
-  },
-  {
-    id: 'demo-4',
-    offer_type: 'leasing',
-    provider: 'Sixt Leasing',
-    title: 'BMW 520d Touring',
-    description: 'Business, AHK, Standheizung, Laserlicht',
-    vehicle_make: 'BMW',
-    vehicle_model: '520d Touring',
-    price_monthly_cents: 61900,
-    price_daily_cents: null,
-    term_months: 36,
-    km_per_year: 25000,
-    down_payment_cents: 0,
-    image_url: 'https://images.unsplash.com/photo-1580274455191-1c62238fa333?w=400&h=220&fit=crop',
-    link_url: 'https://www.sixt-leasing.de',
-    is_featured: false,
-  },
+const MIETE24_OFFERS: Miete24Offer[] = [
+  { id: 'm1', title: 'MG MG3 1.5 85kW Benzin', image: 'https://www.miete24.com/media/images/thumb/Nk7UWC.png', priceMonthly: '149', fuel: 'Benzin', transmission: 'Manuell', link: 'https://www.miete24.com/mg-mg3-1-5-85kw-frontantrieb-manuell-ice-benzin-grau' },
+  { id: 'm2', title: 'Dacia Duster Hybrid 140', image: 'https://www.miete24.com/media/images/thumb/LWXAcJ.png', priceMonthly: '179', fuel: 'Hybrid', transmission: 'Automatik', link: 'https://www.miete24.com/dacia-duster-mild-hybrid-140-benzin-bronze' },
+  { id: 'm3', title: 'Opel Corsa 1.2 Turbo 74kW', image: 'https://www.miete24.com/media/images/thumb/71Ofm8.png', priceMonthly: '179', fuel: 'Benzin', transmission: 'Manuell', link: 'https://www.miete24.com/opel-corsa-1-2-direct-injection-turbo-74kw-benzin-grau' },
+  { id: 'm4', title: 'MG MG3 1.5 85kW Blau', image: 'https://www.miete24.com/media/images/thumb/lBb0bP.png', priceMonthly: '169', fuel: 'Benzin', transmission: 'Manuell', link: 'https://www.miete24.com/mg-mg3-1-5-85kw-benzin-blau' },
+  { id: 'm5', title: 'MG MG3 1.5 85kW Rot', image: 'https://www.miete24.com/media/images/thumb/MPie0W.png', priceMonthly: '169', fuel: 'Benzin', transmission: 'Manuell', link: 'https://www.miete24.com/mg-mg3-1-5-85kw-benzin-rot' },
+  { id: 'm6', title: 'MG MG3 1.5 85kW Schwarz', image: 'https://www.miete24.com/media/images/thumb/DHZXGw.png', priceMonthly: '169', fuel: 'Benzin', transmission: 'Manuell', link: 'https://www.miete24.com/mg-mg3-1-5-85kw-benzin-schwarz' },
 ];
 
-const DEMO_RENTAL_OFFERS: Offer[] = [
+// ── BMW/MINI Fokusmodelle (real data from helming-sohn.de) ────────────────────
+interface FokusModell {
+  id: string;
+  title: string;
+  code: string;
+  image: string;
+  priceMonthly: string;
+  upe: string;
+  term: string;
+  kmPerYear: string;
+  power: string;
+  fuel: string;
+  sonderzahlung?: string;
+  configLink: string;
+  brand: 'BMW' | 'MINI';
+}
+
+const FOKUS_MODELLE: FokusModell[] = [
   {
-    id: 'demo-r1',
-    offer_type: 'rental',
-    provider: 'SIXT',
-    title: 'BMW 3er oder ähnlich',
-    description: 'Premiumklasse, Automatik, Navi',
-    vehicle_make: 'BMW',
-    vehicle_model: '3er',
-    price_monthly_cents: null,
-    price_daily_cents: 8900,
-    term_months: null,
-    km_per_year: null,
-    down_payment_cents: null,
-    image_url: 'https://images.unsplash.com/photo-1555215695-3004980ad54e?w=400&h=220&fit=crop',
-    link_url: 'https://www.sixt.de',
-    is_featured: true,
+    id: 'f1', title: 'BMW M135 xDrive', code: 'F70', brand: 'BMW',
+    image: 'https://helming-sohn.de/wp-content/uploads/2025/12/Bildschirmfoto-2025-12-17-um-12.36.07.png',
+    priceMonthly: '269', upe: '54.700', term: '18 Monate', kmPerYear: '10.000 km', power: '221 kW (300 PS)', fuel: 'Benzin',
+    configLink: 'https://configure.bmw.de/de_DE/configure/F70/21GE/',
   },
   {
-    id: 'demo-r2',
-    offer_type: 'rental',
-    provider: 'Europcar',
-    title: 'BMW X1 oder ähnlich',
-    description: 'SUV Kompakt, Automatik',
-    vehicle_make: 'BMW',
-    vehicle_model: 'X1',
-    price_monthly_cents: null,
-    price_daily_cents: 7500,
-    term_months: null,
-    km_per_year: null,
-    down_payment_cents: null,
-    image_url: 'https://images.unsplash.com/photo-1617814076367-b759c7d7e738?w=400&h=220&fit=crop',
-    link_url: 'https://www.europcar.de',
-    is_featured: false,
+    id: 'f2', title: 'BMW 330i xDrive Touring', code: 'G21', brand: 'BMW',
+    image: 'https://helming-sohn.de/wp-content/uploads/2025/12/Bildschirmfoto-2025-12-17-um-12.36.23.png',
+    priceMonthly: '299', upe: '58.400', term: '18 Monate', kmPerYear: '10.000 km', power: '180 kW (245 PS)', fuel: 'Benzin',
+    configLink: 'https://configure.bmw.de/de_DE/configure/G21/71FY/',
+  },
+  {
+    id: 'f3', title: 'BMW 540d xDrive Touring', code: 'G61', brand: 'BMW',
+    image: 'https://helming-sohn.de/wp-content/uploads/2025/12/Bildschirmfoto-2025-12-17-um-12.36.32.png',
+    priceMonthly: '449', upe: '69.200', term: '18 Monate', kmPerYear: '10.000 km', power: '223 kW (303 PS)', fuel: 'Diesel',
+    configLink: 'https://configure.bmw.de/de_DE/configure/G61/31GW/',
+  },
+  {
+    id: 'f4', title: 'MINI Cooper E Blackyard', code: 'F65', brand: 'MINI',
+    image: 'https://helming-sohn.de/wp-content/uploads/2026/01/Cooper_E_Blackyard.png',
+    priceMonthly: '151', upe: '—', term: '36 Monate', kmPerYear: '5.000 km', power: '135 kW (184 PS)', fuel: 'Elektro',
+    sonderzahlung: '798,32', configLink: 'https://configure.mini.de/de_DE/configure/J01/11GC/',
+  },
+  {
+    id: 'f5', title: 'MINI Aceman E Blackyard', code: 'J05', brand: 'MINI',
+    image: 'https://helming-sohn.de/wp-content/uploads/2026/01/Aceman_E_Blackyard.png',
+    priceMonthly: '176', upe: '—', term: '36 Monate', kmPerYear: '5.000 km', power: '135 kW (184 PS)', fuel: 'Elektro',
+    sonderzahlung: '798,32', configLink: 'https://configure.mini.de/de_DE/configure/J05/31GC/',
+  },
+  {
+    id: 'f6', title: 'MINI Aceman E', code: 'J05', brand: 'MINI',
+    image: 'https://helming-sohn.de/wp-content/uploads/2026/01/MINI_Fokus_Q1.jpeg',
+    priceMonthly: '188', upe: '26.008', term: '36 Monate', kmPerYear: '5.000 km', power: '135 kW (184 PS)', fuel: 'Elektro',
+    configLink: 'https://configure.mini.de/de_DE/configure/J05/31GC/',
+  },
+  {
+    id: 'f7', title: 'MINI Countryman E Blackyard', code: 'U25', brand: 'MINI',
+    image: 'https://helming-sohn.de/wp-content/uploads/2026/01/Countryman_E_Blackyard.png',
+    priceMonthly: '196', upe: '—', term: '42 Monate', kmPerYear: '5.000 km', power: '150 kW (204 PS)', fuel: 'Elektro',
+    sonderzahlung: '857,14', configLink: 'https://configure.mini.de/de_DE/configure/U25E/41GA/',
   },
 ];
 
 export default function CarsAngebote() {
-  const [activeTab, setActiveTab] = useState<'leasing' | 'rental'>('leasing');
-
-  const { data: dbOffers, isLoading } = useQuery({
-    queryKey: ['cars_offers'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('cars_offers')
-        .select('*')
-        .eq('active', true)
-        .order('is_featured', { ascending: false })
-        .order('sort_order', { ascending: true });
-      if (error) throw error;
-      return (data || []) as Offer[];
-    },
-  });
-
-  // Use DB offers if available, otherwise show demo data
-  const leasingOffers = dbOffers?.filter(o => o.offer_type === 'leasing').length
-    ? dbOffers.filter(o => o.offer_type === 'leasing')
-    : DEMO_LEASING_OFFERS;
-  
-  const rentalOffers = dbOffers?.filter(o => o.offer_type === 'rental').length
-    ? dbOffers.filter(o => o.offer_type === 'rental')
-    : DEMO_RENTAL_OFFERS;
-
-  const formatCurrency = (cents: number | null) => {
-    if (cents === null) return '—';
-    return (cents / 100).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' });
-  };
-
-  const formatKm = (km: number | null) => {
-    if (km === null) return '—';
-    return km.toLocaleString('de-DE') + ' km/Jahr';
-  };
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-      </div>
-    );
-  }
-
-  const renderOfferWidget = (offer: Offer) => (
-    <Card key={offer.id} className={cn(
-      "glass-card overflow-hidden group hover:border-primary/30 transition-all",
-      offer.is_featured ? "border-primary/20" : "border-primary/10"
-    )}>
-      {/* Image */}
-      {offer.image_url && (
-        <div className="relative h-36 overflow-hidden">
-          <img
-            src={offer.image_url}
-            alt={offer.title}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-transparent" />
-          {offer.is_featured && (
-            <div className="absolute top-2 left-2">
-              <Badge className="text-[9px] gap-1 bg-primary text-primary-foreground">
-                <Star className="h-2.5 w-2.5" />
-                Empfohlen
-              </Badge>
-            </div>
-          )}
-          <div className="absolute bottom-2 left-3">
-            <Badge variant="outline" className="text-[9px] bg-background/80 backdrop-blur-sm">
-              {offer.provider}
-            </Badge>
-          </div>
-        </div>
-      )}
-
-      <CardContent className="p-4 space-y-3">
-        <div>
-          <h3 className="font-semibold text-sm">{offer.title}</h3>
-          {offer.description && (
-            <p className="text-[10px] text-muted-foreground mt-0.5">{offer.description}</p>
-          )}
-        </div>
-
-        {offer.offer_type === 'leasing' ? (
-          <div className="grid grid-cols-3 gap-2">
-            <div>
-              <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Laufzeit</p>
-              <p className="text-xs font-medium">{offer.term_months} Mo.</p>
-            </div>
-            <div>
-              <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Kilometer</p>
-              <p className="text-xs font-medium">{formatKm(offer.km_per_year)}</p>
-            </div>
-            <div>
-              <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Anzahlung</p>
-              <p className="text-xs font-medium">{formatCurrency(offer.down_payment_cents)}</p>
-            </div>
-          </div>
-        ) : (
-          <div>
-            <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Tagespreis</p>
-            <p className="text-lg font-bold">{formatCurrency(offer.price_daily_cents)}</p>
-          </div>
-        )}
-
-        <div className="flex items-center justify-between pt-2 border-t border-border/30">
-          {offer.offer_type === 'leasing' && (
-            <div>
-              <span className="text-lg font-bold">{formatCurrency(offer.price_monthly_cents)}</span>
-              <span className="text-[10px] text-muted-foreground">/Mo.</span>
-            </div>
-          )}
-          <Button size="sm" className="gap-1 text-xs ml-auto" asChild>
-            <a href={offer.link_url} target="_blank" rel="noopener noreferrer">
-              Zum Angebot
-              <ExternalLink className="h-3 w-3" />
-            </a>
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
-  );
-
   return (
     <PageShell>
       <ModulePageHeader
         title="Angebote"
-        description="Leasing-Deals und Mietangebote entdecken"
+        description="Auto-Abos und Großkunden-Sonderleasing"
       />
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'leasing' | 'rental')}>
-        <TabsList>
-          <TabsTrigger value="leasing" className="gap-2">
-            <Car className="h-4 w-4" />
-            Leasing-Deals
-          </TabsTrigger>
-          <TabsTrigger value="rental" className="gap-2">
-            <Truck className="h-4 w-4" />
-            Automiete
-          </TabsTrigger>
-        </TabsList>
 
-        <TabsContent value="leasing" className="mt-4">
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {leasingOffers.map(renderOfferWidget)}
+      {/* ── SECTION 1: Miete24 ──────────────────────────────────────────── */}
+      <Card className="glass-card border-primary/10 overflow-hidden">
+        <div className="relative h-32 bg-gradient-to-r from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-900 flex items-center justify-between px-8">
+          <div>
+            <h2 className="text-2xl font-bold tracking-tight">miete24</h2>
+            <p className="text-sm text-muted-foreground mt-1">Auto Abo Vergleich — die besten & günstigsten Angebote</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Versicherung, KFZ-Steuer, Wartung & TÜV inklusive</p>
           </div>
-        </TabsContent>
+          <Button variant="outline" size="sm" asChild>
+            <a href="https://www.miete24.com/auto-abos" target="_blank" rel="noopener noreferrer">
+              <ExternalLink className="h-3.5 w-3.5 mr-1" /> miete24.com
+            </a>
+          </Button>
+        </div>
+      </Card>
 
-        <TabsContent value="rental" className="mt-4">
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {rentalOffers.map(renderOfferWidget)}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        {MIETE24_OFFERS.map((offer) => (
+          <Card key={offer.id} className="glass-card border-primary/10 hover:border-primary/30 transition-all group overflow-hidden">
+            <div className="relative h-36 bg-muted/20 flex items-center justify-center overflow-hidden p-4">
+              <img src={offer.image} alt={offer.title} className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-300" />
+            </div>
+            <CardContent className="p-4 space-y-3">
+              <h3 className="font-semibold text-sm">{offer.title}</h3>
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="text-[9px]">{offer.fuel}</Badge>
+                <Badge variant="outline" className="text-[9px]">{offer.transmission}</Badge>
+              </div>
+              <div className="flex items-center justify-between pt-2 border-t border-border/30">
+                <div>
+                  <span className="text-[9px] text-muted-foreground">ab </span>
+                  <span className="text-lg font-bold">{offer.priceMonthly} €</span>
+                  <span className="text-[10px] text-muted-foreground"> /Monat inkl. MwSt.</span>
+                </div>
+                <Button size="sm" className="gap-1 text-xs" asChild>
+                  <a href={offer.link} target="_blank" rel="noopener noreferrer">
+                    <ShoppingCart className="h-3 w-3" /> Zum Abo
+                  </a>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      <Separator className="my-2" />
+
+      {/* ── SECTION 2: BMW & MINI Fokusmodelle ─────────────────────────── */}
+      <Card className="glass-card border-primary/10 overflow-hidden">
+        <div className="relative h-32 bg-gradient-to-r from-blue-900/80 to-stone-900/80 flex items-center justify-between px-8">
+          <div>
+            <Badge className="mb-1 bg-amber-500/20 text-amber-300 border-amber-500/30">Nur für Partner</Badge>
+            <h2 className="text-2xl font-bold text-white">BMW & MINI Fokusmodelle</h2>
+            <p className="text-sm text-white/70 mt-1">Großkunden-Sonderleasing · Gültig 01.01.2026 – 31.03.2026</p>
           </div>
-        </TabsContent>
-      </Tabs>
+          <Button variant="outline" className="bg-white/10 border-white/30 text-white hover:bg-white/20" size="sm" asChild>
+            <a href="https://helming-sohn.de/kundengruppen/grosskunden-fokusmodelle/" target="_blank" rel="noopener noreferrer">
+              <ExternalLink className="h-3.5 w-3.5 mr-1" /> Helming & Sohn
+            </a>
+          </Button>
+        </div>
+      </Card>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        {FOKUS_MODELLE.map((model) => (
+          <Card key={model.id} className="glass-card border-primary/10 hover:border-primary/30 transition-all group overflow-hidden">
+            <div className="relative h-40 bg-muted/20 flex items-center justify-center overflow-hidden p-4">
+              <img src={model.image} alt={model.title} className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-300" />
+              <Badge variant="outline" className="absolute top-2 left-3 text-[9px] bg-background/80 backdrop-blur-sm">
+                {model.brand}
+              </Badge>
+              {model.fuel === 'Elektro' && (
+                <Badge className="absolute top-2 right-3 text-[9px] gap-0.5 bg-green-500/20 text-green-600 border-green-500/30">
+                  <Zap className="h-2.5 w-2.5" /> Elektro
+                </Badge>
+              )}
+            </div>
+            <CardContent className="p-4 space-y-3">
+              <div>
+                <h3 className="font-semibold text-sm">{model.title}</h3>
+                <p className="text-[10px] text-muted-foreground">{model.code} · {model.power}</p>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <p className="text-[9px] text-muted-foreground uppercase">Laufzeit</p>
+                  <p className="text-xs font-medium">{model.term}</p>
+                </div>
+                <div>
+                  <p className="text-[9px] text-muted-foreground uppercase">KM/Jahr</p>
+                  <p className="text-xs font-medium">{model.kmPerYear}</p>
+                </div>
+                <div>
+                  <p className="text-[9px] text-muted-foreground uppercase">UPE netto</p>
+                  <p className="text-xs font-medium">{model.upe !== '—' ? `${model.upe} €` : '—'}</p>
+                </div>
+              </div>
+              {model.sonderzahlung && (
+                <p className="text-[9px] text-muted-foreground">Sonderzahlung: {model.sonderzahlung} €</p>
+              )}
+              <div className="flex items-center justify-between pt-2 border-t border-border/30">
+                <div>
+                  <span className="text-[9px] text-muted-foreground">ab </span>
+                  <span className="text-lg font-bold">{model.priceMonthly},– €</span>
+                  <span className="text-[10px] text-muted-foreground"> /Monat zzgl. MwSt.</span>
+                </div>
+                <Button size="sm" variant="outline" className="gap-1 text-xs" asChild>
+                  <a href={model.configLink} target="_blank" rel="noopener noreferrer">
+                    <Car className="h-3 w-3" /> Konfigurator
+                  </a>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      <p className="text-[10px] text-muted-foreground max-w-3xl">
+        ¹ Unverbindliche Leasingbeispiele. Alle Preise zzgl. MwSt. Kosten für Überführung und Zulassung nicht enthalten. 
+        Vollkaskoversicherung erforderlich. Weitere Laufzeiten und Laufleistungen möglich. Stand 01/2026. Helming & Sohn GmbH.
+      </p>
     </PageShell>
   );
 }

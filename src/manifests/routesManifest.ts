@@ -476,13 +476,11 @@ export const zone2Portal: ZoneDefinition = {
       display_order: 17,
       visibility: { default: false, org_types: ["partner"], requires_activation: true },
       tiles: [
-        { path: "fahrzeuge", component: "CarsFahrzeuge", title: "Fahrzeuge" },
-        { path: "versicherungen", component: "CarsVersicherungen", title: "Versicherungen" },
-        { path: "fahrtenbuch", component: "CarsFahrtenbuch", title: "Fahrtenbuch" },
+        { path: "autos", component: "CarsAutos", title: "Autos" },
+        { path: "bikes", component: "CarsBikes", title: "Bikes" },
+        { path: "boote", component: "CarsBoote", title: "Boote" },
+        { path: "privatjet", component: "CarsPrivatjet", title: "Privatjet" },
         { path: "angebote", component: "CarsAngebote", title: "Angebote" },
-      ],
-      dynamic_routes: [
-        { path: ":id", component: "VehicleDetailPage", title: "Fahrzeugakte", dynamic: true },
       ],
     },
     "MOD-18": {

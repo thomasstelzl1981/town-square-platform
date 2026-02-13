@@ -1,16 +1,30 @@
 
-# MOD-17 (Fahrzeuge) von Service nach Base verschieben
+# MOD-17 Fahrzeuge — Umbau abgeschlossen
 
-## Aenderung
+## Neue Menüstruktur (5 Tiles)
 
-Eine einzige Datei muss angepasst werden: `src/manifests/areaConfig.ts`
+| # | Path | Titel | Inhalt |
+|---|------|-------|--------|
+| 1 | autos | Autos | Widget-Grid + Inline-Fahrzeugakte |
+| 2 | bikes | Bikes | Motorrad-Widgets + Inline-Akte |
+| 3 | boote | Boote | Haller Experiences Ibiza Charter |
+| 4 | privatjet | Privatjet | NetJets Flotte |
+| 5 | angebote | Angebote | Miete24 + BMW/MINI Fokusmodelle |
 
-- **Services-Array** (Zeile 50): `MOD-17` entfernen
-  - Vorher: `['MOD-14', 'MOD-15', 'MOD-05', 'MOD-16', 'MOD-17']`
-  - Nachher: `['MOD-14', 'MOD-15', 'MOD-05', 'MOD-16']`
+## Reihenfolge in Base
 
-- **Base-Array** (Zeile 43): `MOD-17` hinzufuegen
-  - Vorher: `['MOD-03', 'MOD-18', 'MOD-19', 'MOD-01']`
-  - Nachher: `['MOD-03', 'MOD-18', 'MOD-19', 'MOD-01', 'MOD-17']`
+`['MOD-03', 'MOD-18', 'MOD-17', 'MOD-19', 'MOD-01']`
 
-Keine weiteren Dateien betroffen. Die Routen, Labels und alle anderen Referenzen bleiben unveraendert, da `areaConfig` rein praesentationsbezogen ist.
+MOD-17 nach Finanzmanager, vor Photovoltaik.
+
+## Geänderte Dateien
+
+- `src/manifests/areaConfig.ts` — Reihenfolge
+- `src/manifests/routesManifest.ts` — Tiles
+- `src/pages/portal/CarsPage.tsx` — Routing
+- `src/components/portal/cars/CarsAutos.tsx` — NEU
+- `src/components/portal/cars/CarsBikes.tsx` — NEU
+- `src/components/portal/cars/CarsBoote.tsx` — NEU
+- `src/components/portal/cars/CarsPrivatjet.tsx` — NEU
+- `src/components/portal/cars/CarsAngebote.tsx` — Komplett umgebaut
+- `src/components/portal/cars/index.ts` — Aktualisiert

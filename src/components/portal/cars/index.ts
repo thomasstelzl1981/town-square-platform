@@ -1,6 +1,7 @@
-export { default as CarsFahrzeuge } from './CarsFahrzeuge';
-export { default as CarsVersicherungen } from './CarsVersicherungen';
-export { default as CarsFahrtenbuch } from './CarsFahrtenbuch';
+export { default as CarsAutos } from './CarsAutos';
+export { default as CarsBikes } from './CarsBikes';
+export { default as CarsBoote } from './CarsBoote';
+export { default as CarsPrivatjet } from './CarsPrivatjet';
 export { default as CarsAngebote } from './CarsAngebote';
 export { VehicleCreateDialog } from './VehicleCreateDialog';
 export { default as VehicleDetailPage } from './VehicleDetailPage';
