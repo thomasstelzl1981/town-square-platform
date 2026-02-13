@@ -226,44 +226,6 @@ export const GOLDEN_PATH_PROCESSES: GoldenPathProcess[] = [
     ],
     phase: 'done',
   },
-  {
-    id: 'GP-PRIVATKREDIT',
-    moduleCode: 'MOD-07',
-    moduleName: 'Finanzierung',
-    tilePath: '/portal/finanzierung/privatkredit',
-    processName: 'Privatkreditantrag',
-    description: 'Privatkredit beantragen mit automatischem Angebotsvergleich.',
-    menuPoints: 1,
-    menuPointPaths: ['/portal/finanzierung/privatkredit'],
-    compliance: {
-      modulePageHeader: true,
-      widgetGrid: true,
-      widgetCell: true,
-      demoWidget: true,
-      inlineFlow: true,
-      noSubNavigation: true,
-    },
-    demoWidget: {
-      id: '__demo__',
-      title: 'Demo: Autofinanzierung',
-      subtitle: 'Beispiel-Privatkredit mit Angebotsvergleich',
-      status: 'demo',
-      badgeLabel: 'Demo',
-      data: {
-        amount: 25000,
-        termMonths: 60,
-        effectiveRate: 4.9,
-        bank: 'SWK-Bank',
-        monthlyRate: 470,
-      },
-      resetOnClose: true,
-    },
-    sections: [
-      { id: 'request', title: 'Kreditanfrage', component: 'ConsumerLoanRequest', readOnlyInDemo: false },
-      { id: 'offers', title: 'Angebote', component: 'ConsumerLoanOffers', readOnlyInDemo: true },
-    ],
-    phase: 'done',
-  },
 
   // ─── MOD-08: Investment-Suche ───────────────────────────
   {

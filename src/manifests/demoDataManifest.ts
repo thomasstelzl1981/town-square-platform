@@ -124,20 +124,6 @@ export const DEMO_DATA_MANIFEST: readonly DemoDataEntry[] = [
     ],
     status: 'done',
   },
-  {
-    processId: 'GP-PRIVATKREDIT',
-    moduleCode: 'MOD-07',
-    toggleKey: 'GP-PRIVATKREDIT',
-    dataHookFile: 'src/hooks/useDemoLocalEntity.ts',
-    dataHookExport: 'useDemoLocalEntity',
-    entities: ['consumer_loan_request', 'loan_offers'],
-    zones: [2],
-    scope: 'z2_only',
-    consumers: [
-      { file: 'src/components/privatkredit/ConsumerLoanWidgets.tsx', zone: 2, mergeStrategy: 'inject', description: 'Demo-Guard für Autofinanzierung' },
-    ],
-    status: 'done',
-  },
 
   // ─── MOD-08: Investment-Suche ───────────────────────────
   {

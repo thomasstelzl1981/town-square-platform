@@ -27,14 +27,6 @@ export default function PrivatkreditTab() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
 
-  const handleSelectCase = useCallback((id: string) => {
-    setActiveCaseId(id);
-    if (id === '__demo__') {
-      setAmount(25000);
-      setTerm(60);
-    }
-  }, []);
-
   const isSelfEmployed = employmentStatus === 'self_employed';
 
   const handleSelectOffer = useCallback((offer: MockOffer) => {
@@ -65,7 +57,7 @@ export default function PrivatkreditTab() {
       />
 
       {/* Widget-Leiste: Existing cases + CTA */}
-      <ConsumerLoanWidgets activeCaseId={activeCaseId} onSelectCase={handleSelectCase} />
+      <ConsumerLoanWidgets activeCaseId={activeCaseId} onSelectCase={setActiveCaseId} />
 
       {/* Markt-Beispiele */}
       <BankExamplesCard />
