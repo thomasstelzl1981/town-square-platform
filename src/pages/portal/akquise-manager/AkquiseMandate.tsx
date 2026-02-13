@@ -3,6 +3,7 @@
  * 
  * ALLE 7 Sektionen sind IMMER sichtbar (durchlaufende Seite).
  * Sektionen 3-7 werden ausgegraut wenn kein Mandat erstellt wurde.
+ * Split-View Toggle für volle Bildschirmbreite.
  */
 
 import { useState } from 'react';
@@ -13,16 +14,17 @@ import { WidgetGrid } from '@/components/shared/WidgetGrid';
 import { WidgetCell } from '@/components/shared/WidgetCell';
 import { MandateCaseCard, MandateCaseCardPlaceholder } from '@/components/akquise/MandateCaseCard';
 import { AcqSectionHeader } from '@/components/akquise/AcqSectionHeader';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
-import { Loader2, Send, Sparkles, Search, Mail, Inbox, Brain, Package } from 'lucide-react';
+import { Loader2, Send, Sparkles, Search, Mail, Inbox, Brain, Package, LayoutList, LayoutPanelLeft } from 'lucide-react';
 import { useAcqMandatesForManager, useCreateAcqMandate } from '@/hooks/useAcqMandate';
 import { ASSET_FOCUS_OPTIONS, type CreateAcqMandateData } from '@/types/acquisition';
+import { DESIGN } from '@/config/designManifest';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import {
@@ -46,6 +48,9 @@ export default function AkquiseMandate() {
   const navigate = useNavigate();
   const { data: mandates, isLoading } = useAcqMandatesForManager();
   const createMandate = useCreateAcqMandate();
+
+  // Split-View state
+  const [isSplitView, setIsSplitView] = useState(false);
 
   // Active mandate (null = neues Mandat wird erstellt)
   const [activeMandateId, setActiveMandateId] = useState<string | null>(null);
@@ -148,10 +153,20 @@ export default function AkquiseMandate() {
   }
 
   return (
-    <PageShell>
+    <PageShell fullWidth={isSplitView}>
       <ModulePageHeader
         title="MANDATE"
         description="Ihre Akquise-Mandate verwalten"
+        actions={
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setIsSplitView(v => !v)}
+            title={isSplitView ? 'Normale Ansicht' : 'Split-Ansicht'}
+          >
+            {isSplitView ? <LayoutList className="h-4 w-4" /> : <LayoutPanelLeft className="h-4 w-4" />}
+          </Button>
+        }
       />
 
       {/* ══════════════════════════════════════════════════════════════════
@@ -184,145 +199,137 @@ export default function AkquiseMandate() {
       <Separator />
 
       {/* ══════════════════════════════════════════════════════════════════
-          SEKTION 1: KI-gestützte Erfassung (IMMER SICHTBAR)
+          SEKTIONEN 1+2: KI-Erfassung + Ankaufsprofil (2-Spalten-Layout)
           ══════════════════════════════════════════════════════════════════ */}
-      <AcqSectionHeader
-        number={1}
-        title="KI-gestützte Erfassung"
-        description="Beschreiben Sie in eigenen Worten, was Ihr Mandant sucht. Die KI erstellt ein strukturiertes Ankaufsprofil."
-        icon={<Sparkles className="h-5 w-5" />}
-      />
-      <div className="space-y-4">
-        <Textarea
-          placeholder="z.B. Family Office sucht Mehrfamilienhäuser in der Rhein-Main-Region, Investitionsvolumen 2 bis 5 Millionen Euro, mindestens 4% Rendite, kein Denkmalschutz, keine Erbbaurechte."
-          value={freeText}
-          onChange={e => setFreeText(e.target.value)}
-          rows={5}
-          className="text-base"
-        />
-        <div className="flex justify-end">
-          <Button
-            onClick={handleExtract}
-            disabled={!freeText.trim() || isExtracting}
-          >
-            {isExtracting ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Sparkles className="mr-2 h-4 w-4" />
-            )}
-            Ankaufsprofil generieren
-          </Button>
-        </div>
-      </div>
-
-      <Separator />
-
-      {/* ══════════════════════════════════════════════════════════════════
-          SEKTION 2: Ankaufsprofil aufbereiten (IMMER SICHTBAR)
-          ══════════════════════════════════════════════════════════════════ */}
-      <AcqSectionHeader
-        number={2}
-        title="Ankaufsprofil aufbereiten"
-        description="Prüfen und ergänzen Sie die Daten. Wird durch KI vorausgefüllt oder manuell befüllt."
-      />
-      <div className="space-y-6">
-        {/* KI-generiertes Profil */}
-        {profileTextLong && (
-          <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 space-y-2">
-            <Label className="text-xs uppercase tracking-wider text-primary font-semibold">KI-generiertes Ankaufsprofil</Label>
+      <div className={DESIGN.FORM_GRID.FULL}>
+        {/* ── LINKS: KI-gestützte Erfassung ── */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <Sparkles className="h-4 w-4" />
+              KI-gestützte Erfassung
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
             <Textarea
-              value={profileTextLong}
-              onChange={e => setProfileTextLong(e.target.value)}
-              rows={4}
-              className="bg-background"
+              placeholder="z.B. Family Office sucht Mehrfamilienhäuser in der Rhein-Main-Region, Investitionsvolumen 2 bis 5 Millionen Euro, mindestens 4% Rendite, kein Denkmalschutz, keine Erbbaurechte."
+              value={freeText}
+              onChange={e => setFreeText(e.target.value)}
+              rows={8}
+              className="text-sm"
             />
-          </div>
-        )}
+            <Button
+              className="w-full"
+              onClick={handleExtract}
+              disabled={!freeText.trim() || isExtracting}
+            >
+              {isExtracting ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Sparkles className="mr-2 h-4 w-4" />
+              )}
+              Ankaufsprofil generieren
+            </Button>
+          </CardContent>
+        </Card>
 
-        {/* Kontaktname */}
-        <div className="space-y-2">
-          <Label htmlFor="clientName">Kontaktname / Mandant *</Label>
-          <Input
-            id="clientName"
-            placeholder="z.B. Müller Family Office"
-            value={clientName}
-            onChange={e => setClientName(e.target.value)}
-          />
-        </div>
-
-        {/* Suchgebiet */}
-        <div className="space-y-2">
-          <Label htmlFor="region">Suchgebiet / Region</Label>
-          <Input
-            id="region"
-            placeholder="z.B. Rhein-Main, Berlin, NRW"
-            value={region}
-            onChange={e => setRegion(e.target.value)}
-          />
-        </div>
-
-        {/* Asset-Fokus */}
-        <div className="space-y-2">
-          <Label>Asset-Fokus</Label>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-            {ASSET_FOCUS_OPTIONS.map(opt => (
-              <label
-                key={opt.value}
-                className="flex items-center gap-2 p-2 rounded-md border border-border hover:bg-accent/50 cursor-pointer transition-colors text-sm"
-              >
-                <Checkbox
-                  checked={assetFocus.includes(opt.value)}
-                  onCheckedChange={() => toggleAssetFocus(opt.value)}
+        {/* ── RECHTS: Ankaufsprofil-Dokument ── */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm">Ankaufsprofil</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {/* KI-generiertes Profil */}
+            {profileTextLong && (
+              <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 space-y-1">
+                <Label className="text-[10px] uppercase tracking-wider text-primary font-semibold">KI-Zusammenfassung</Label>
+                <Textarea
+                  value={profileTextLong}
+                  onChange={e => setProfileTextLong(e.target.value)}
+                  rows={3}
+                  className="bg-background text-sm"
                 />
-                <span>{opt.label}</span>
-              </label>
-            ))}
-          </div>
-        </div>
-
-        {/* Preisspanne + Rendite */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="priceMin">Preis ab (€)</Label>
-            <Input id="priceMin" type="number" placeholder="500.000" value={priceMin} onChange={e => setPriceMin(e.target.value)} />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="priceMax">Preis bis (€)</Label>
-            <Input id="priceMax" type="number" placeholder="5.000.000" value={priceMax} onChange={e => setPriceMax(e.target.value)} />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="yieldTarget">Zielrendite (%)</Label>
-            <Input id="yieldTarget" type="number" step="0.1" placeholder="5.0" value={yieldTarget} onChange={e => setYieldTarget(e.target.value)} />
-          </div>
-        </div>
-
-        {/* Ausschlüsse */}
-        <div className="space-y-2">
-          <Label htmlFor="exclusions">Ausschlüsse</Label>
-          <Textarea id="exclusions" placeholder="z.B. keine Erbbau-Grundstücke, kein Denkmalschutz" value={exclusions} onChange={e => setExclusions(e.target.value)} rows={2} />
-        </div>
-
-        {/* Notizen */}
-        <div className="space-y-2">
-          <Label htmlFor="notes">Notizen</Label>
-          <Textarea id="notes" placeholder="Weitere Hinweise zum Suchprofil" value={notes} onChange={e => setNotes(e.target.value)} rows={3} />
-        </div>
-
-        {/* Mandat erstellen Button */}
-        <div className="flex justify-end pt-4 border-t border-border">
-          <Button
-            size="lg"
-            onClick={handleCreate}
-            disabled={!clientName.trim() || createMandate.isPending}
-          >
-            {createMandate.isPending ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Send className="mr-2 h-4 w-4" />
+              </div>
             )}
-            Mandat erstellen
-          </Button>
-        </div>
+
+            {/* Tabular Form style */}
+            <div className={DESIGN.TABULAR_FORM.TABLE_BORDER}>
+              <div className={DESIGN.TABULAR_FORM.SECTION_ROW}>Stammdaten</div>
+              <div className={DESIGN.TABULAR_FORM.ROW_BORDER + ' flex'}>
+                <div className={DESIGN.TABULAR_FORM.LABEL_CELL}>Kontaktname *</div>
+                <div className={DESIGN.TABULAR_FORM.VALUE_CELL + ' flex-1'}>
+                  <Input className={DESIGN.TABULAR_FORM.INPUT} placeholder="z.B. Müller Family Office" value={clientName} onChange={e => setClientName(e.target.value)} />
+                </div>
+              </div>
+              <div className={DESIGN.TABULAR_FORM.ROW_BORDER + ' flex'}>
+                <div className={DESIGN.TABULAR_FORM.LABEL_CELL}>Suchgebiet</div>
+                <div className={DESIGN.TABULAR_FORM.VALUE_CELL + ' flex-1'}>
+                  <Input className={DESIGN.TABULAR_FORM.INPUT} placeholder="z.B. Rhein-Main, Berlin" value={region} onChange={e => setRegion(e.target.value)} />
+                </div>
+              </div>
+
+              <div className={DESIGN.TABULAR_FORM.SECTION_ROW}>Investitionskriterien</div>
+              <div className={DESIGN.TABULAR_FORM.ROW_BORDER + ' flex'}>
+                <div className={DESIGN.TABULAR_FORM.LABEL_CELL}>Preis ab (€)</div>
+                <div className={DESIGN.TABULAR_FORM.VALUE_CELL + ' flex-1'}>
+                  <Input className={DESIGN.TABULAR_FORM.INPUT} type="number" placeholder="500.000" value={priceMin} onChange={e => setPriceMin(e.target.value)} />
+                </div>
+              </div>
+              <div className={DESIGN.TABULAR_FORM.ROW_BORDER + ' flex'}>
+                <div className={DESIGN.TABULAR_FORM.LABEL_CELL}>Preis bis (€)</div>
+                <div className={DESIGN.TABULAR_FORM.VALUE_CELL + ' flex-1'}>
+                  <Input className={DESIGN.TABULAR_FORM.INPUT} type="number" placeholder="5.000.000" value={priceMax} onChange={e => setPriceMax(e.target.value)} />
+                </div>
+              </div>
+              <div className={DESIGN.TABULAR_FORM.ROW_BORDER + ' flex'}>
+                <div className={DESIGN.TABULAR_FORM.LABEL_CELL}>Zielrendite (%)</div>
+                <div className={DESIGN.TABULAR_FORM.VALUE_CELL + ' flex-1'}>
+                  <Input className={DESIGN.TABULAR_FORM.INPUT} type="number" step="0.1" placeholder="5.0" value={yieldTarget} onChange={e => setYieldTarget(e.target.value)} />
+                </div>
+              </div>
+              <div className={DESIGN.TABULAR_FORM.ROW_BORDER + ' flex'}>
+                <div className={DESIGN.TABULAR_FORM.LABEL_CELL}>Ausschlüsse</div>
+                <div className={DESIGN.TABULAR_FORM.VALUE_CELL + ' flex-1'}>
+                  <Input className={DESIGN.TABULAR_FORM.INPUT} placeholder="z.B. kein Denkmalschutz" value={exclusions} onChange={e => setExclusions(e.target.value)} />
+                </div>
+              </div>
+            </div>
+
+            {/* Asset-Fokus */}
+            <div className="space-y-1.5">
+              <Label className="text-xs">Asset-Fokus</Label>
+              <div className="grid grid-cols-2 gap-1.5">
+                {ASSET_FOCUS_OPTIONS.map(opt => (
+                  <label key={opt.value} className="flex items-center gap-1.5 p-1.5 rounded border border-border hover:bg-accent/50 cursor-pointer text-xs">
+                    <Checkbox checked={assetFocus.includes(opt.value)} onCheckedChange={() => toggleAssetFocus(opt.value)} />
+                    <span>{opt.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* Notizen */}
+            <div className="space-y-1">
+              <Label className="text-xs">Notizen</Label>
+              <Textarea placeholder="Weitere Hinweise" value={notes} onChange={e => setNotes(e.target.value)} rows={2} className="text-sm" />
+            </div>
+
+            {/* Mandat erstellen Button */}
+            <Button
+              className="w-full"
+              size="lg"
+              onClick={handleCreate}
+              disabled={!clientName.trim() || createMandate.isPending}
+            >
+              {createMandate.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="mr-2 h-4 w-4" />
+              )}
+              Mandat erstellen
+            </Button>
+          </CardContent>
+        </Card>
       </div>
 
       <Separator />

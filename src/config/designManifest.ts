@@ -205,6 +205,19 @@ export const MOBILE = {
   CARD_VALUE: 'text-sm font-medium',
 } as const;
 
+// ─── DASHBOARD HEADER (NEU V4.2) ──────────────────────────
+/** Standard für Manager-Dashboards: Visitenkarte + Kontext-Widget nebeneinander */
+export const DASHBOARD_HEADER = {
+  /** 2-Spalten-Grid für Visitenkarte + Ticker/KPI */
+  GRID: 'grid grid-cols-1 md:grid-cols-2 gap-4',
+  /** Beide Kacheln identische Mindesthöhe */
+  CARD_HEIGHT: 'min-h-[280px]',
+  /** Gradient-Streifen oben */
+  GRADIENT_BAR: 'h-2',
+  /** Exakt 4 Zeilen im Ticker/KPI-Widget */
+  TICKER_ROWS: 4,
+} as const;
+
 // ─── EXPORT ALS EINHEITLICHES OBJEKT ──────────────────────
 export const DESIGN = {
   CONTAINER,
@@ -222,4 +235,5 @@ export const DESIGN = {
   LIST,
   SPACING,
   MOBILE,
+  DASHBOARD_HEADER,
 } as const;
