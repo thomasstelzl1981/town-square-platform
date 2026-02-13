@@ -1,39 +1,52 @@
 
-# Sanierung Dashboard: Button durch CTA-Widget ersetzen
+# Sanierung: Inline-Formular statt Pop-up
 
-## Aenderung
+## Konzept
 
-Datei: `src/pages/portal/immobilien/SanierungTab.tsx`
+Klick auf das CTA-Widget "Neue Sanierung starten" oeffnet kein Dialog-Popup mehr, sondern blendet unterhalb des Widget-Grids ein Inline-Formular ein. Der Vorgang wird erst beim Klick auf "Weiter" tatsaechlich in der Datenbank angelegt.
 
-### Was wird entfernt
-- Der `actions`-Prop im `ModulePageHeader` (Zeilen 33-38) — der "Sanierung starten"-Button rechts oben verschwindet
-- Der Empty-State-Block (Zeilen 46-61) — die grosse zentrierte Karte mit dem HardHat-Icon wird nicht mehr benoetigt, da das CTA-Widget immer sichtbar ist
+## Aenderungen
 
-### Was wird hinzugefuegt
-- Ein festes **CTA-Widget** im `WidgetGrid`, das als **erstes Widget** (links) angezeigt wird — vor den bestehenden ServiceCaseCards
-- Das Widget nutzt `WidgetCell` + `WidgetHeader` (Icon: `Plus`, Title: "Neue Sanierung starten")
-- Klick oeffnet den bestehenden `ServiceCaseCreateDialog`
-- Gleiche Groesse und Stil wie die ServiceCaseCards (aspect-square, Card-Design)
+### 1. `src/pages/portal/immobilien/SanierungTab.tsx`
+- State `createDialogOpen` wird zu `showCreateForm` (boolean)
+- Klick auf CTA-Widget setzt `showCreateForm = true`
+- Unterhalb des `WidgetGrid` wird bei `showCreateForm === true` eine neue Inline-Komponente `ServiceCaseCreateInline` gerendert
+- `ServiceCaseCreateDialog`-Import und -Aufruf werden entfernt
 
-### Neues Layout
+### 2. Neue Datei: `src/components/portal/immobilien/sanierung/ServiceCaseCreateInline.tsx`
+- Enthaelt die gleiche Logik wie der bisherige Dialog (Property-Select, Unit-Select, Beschreibung, Dictation-Button, KI-Hinweis)
+- Aber als `Card` statt als `Dialog` gerendert — volle Breite, unterhalb des Grids
+- Props: `onCancel` (klappt zu), `onSuccess` (navigiert zum Case)
+- Beim Oeffnen werden die Queries fuer Properties/Units aktiviert (wie bisher mit `enabled`)
+- "Abbrechen"-Button klappt das Formular wieder zu
+- "Weiter"-Button erstellt den Vorgang (wie bisher `handleSubmit`)
+
+### 3. `ServiceCaseCreateDialog.tsx`
+- Bleibt vorerst bestehen (wird evtl. noch anderswo verwendet), aber wird aus SanierungTab nicht mehr importiert
+
+## Layout nach Klick
 
 ```text
-+-----------+  +-----------+  +-----------+
-|  CTA      |  |  Case 1   |  |  Case 2   |
-|           |  |           |  |           |
-|    +      |  | Badezimmer|  |  Dach     |
-|   Neue    |  | Sanierung |  | Sanierung |
-| Sanierung |  |           |  |           |
-|  starten  |  | Status... |  | Status... |
-+-----------+  +-----------+  +-----------+
++--- Widget Grid (4 Spalten) --------------------------------+
+| [+ Neue Sanierung]  [Case 1]  [Case 2]  [Case 3]          |
++------------------------------------------------------------+
+
++--- Inline-Formular (volle Breite, Card) -------------------+
+| Sanierung erfassen                                          |
+|                                                             |
+| Objekt:      [Dropdown _______________]                     |
+| Einheit:     [Dropdown _______________]                     |
+| Beschreibung: [Textarea ______________]          [Mikrofon] |
+|                                                             |
+| Sparkles  KI erstellt Leistungsverzeichnis...               |
+|                                                             |
+|                          [Abbrechen]  [Weiter ->]           |
++------------------------------------------------------------+
 ```
 
-### Imports
-- Hinzufuegen: `WidgetGrid`, `WidgetCell`, `WidgetHeader` aus shared-Komponenten
-- Entfernen: `Button`-Import (nicht mehr benoetigt), Empty-State-spezifische Elemente
+## Technische Details
 
-### Logik
-- Das WidgetGrid wird **immer** gerendert (kein Empty-State-Branch mehr)
-- Erstes Element im Grid: CTA-Widget
-- Danach: bestehende `ServiceCaseCard`-Map ueber `activeCases`
-- Loading-State bleibt mit Skeletons
+- Die neue Inline-Komponente uebernimmt 1:1 die Formularlogik aus `ServiceCaseCreateDialog` (Queries, States, handleSubmit)
+- Statt `Dialog`/`DialogContent` wird `Card`/`CardContent`/`CardHeader`/`CardFooter` verwendet
+- Die `enabled`-Bedingung der Queries nutzt einen `visible`-Prop statt `open`
+- Animation: `animate-in` oder einfaches Einblenden via bedingtes Rendering
