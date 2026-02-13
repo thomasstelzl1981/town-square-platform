@@ -1,29 +1,55 @@
 
-# Street View & Satellit reparieren — API-Key nutzen
+# Reparatur: Portfolio Demo-Daten fuer Charts, EUeR und Tabelle
 
-## Problem
-Kachel 2 und 3 verwenden inoffizielle Google-Maps-URLs, die den konfigurierten API-Key ignorieren. Die Adresse ("Sauerlacher Strasse 30, 82041 Oberhaching") ist korrekt in der DB vorhanden und wird auch korrekt zusammengebaut (`buildMapQuery`).
+## Ursache
 
-## Loesung
+Die DB-Migration hat die Leipzig-Property geloescht. Danach ist `properties` leer. Alle visuellen Sektionen (Vermoegenschart, EUeR, Investmentkalkulation, Immobilientabelle) pruefen `hasData` (`displayUnits.length > 0`), was jetzt immer `false` ist. Nur das Demo-Widget und die UnitDossierView (Klick auf Demo-Widget) funktionieren noch, weil sie hartcodierte Daten nutzen.
 
-### Aenderung in einer Datei: `src/pages/portal/miety/tiles/UebersichtTile.tsx`
+## Loesung: Demo-Fallback-Daten fuer alle Sektionen
 
-**1. API-Key laden (neuer useQuery-Hook):**
-- Ruft die bestehende Edge Function `sot-google-maps-key` auf
-- Cached den Key fuer die Session
-- Zeigt Ladeindikator waehrend Key geladen wird
+Wenn keine echten DB-Daten vorhanden sind UND das Demo-Feature aktiviert ist (`demoEnabled`), werden hartcodierte Demo-Werte in die bestehenden Variablen injiziert. Dadurch sehen alle Sektionen — Charts, EUeR, Tabelle — sofort realistische Daten.
 
-**2. Kachel 2 — Street View (Zeilen 171-185):**
-- Ersetze den iframe durch ein `<img>`-Tag mit der offiziellen **Street View Static API**:
-  `https://maps.googleapis.com/maps/api/streetview?size=600x400&location=ADRESSE&key=API_KEY`
-- Die Adresse wird direkt als Text uebergeben (kein Geocoding noetig, Google loest das intern auf)
-- Fallback-Anzeige wenn kein Street-View-Bild verfuegbar
+### Aenderung in einer Datei: `src/pages/portal/immobilien/PortfolioTab.tsx`
 
-**3. Kachel 3 — Satellitenansicht (Zeilen 187-201):**
-- Ersetze die inoffizielle URL durch die offizielle **Google Maps Embed API**:
-  `https://www.google.com/maps/embed/v1/place?key=API_KEY&q=ADRESSE&maptype=satellite&zoom=18`
+**1. Demo-Totals Konstante** (nach DEMO_DOSSIER_DATA, ca. Zeile 751):
 
-### Voraussetzungen (Google Cloud Console)
-- "Street View Static API" muss aktiviert sein
-- "Maps Embed API" muss aktiviert sein
-- Beide sind standardmaessig bei "uneingeschraenkter" API enthalten
+Neue Konstante `DEMO_TOTALS` mit den Aggregatwerten passend zur Demo-Akte Berlin:
+- 3 Einheiten, 1 Objekt, 202 m2 Flaeche
+- Verkehrswert 850.000, Restschuld 520.000
+- Jahresmiete 10.200, Annuitaet 24.960 (2.080 x 12)
+- Zinssatz 2.8%, Rendite 3.95%
+
+**2. Demo-DisplayUnits** (ca. Zeile 519):
+
+Wenn `displayUnits` leer ist und `demoEnabled`, wird ein Array mit 3 Demo-Einheiten (WE-B01, WE-B02, WE-B03) als Fallback gesetzt. Diese Einheiten erscheinen in der Immobilientabelle.
+
+**3. Demo-Injection in totals/amortizationData/projectionData/eurChartData**:
+
+Alle `useMemo`-Berechnungen bekommen eine Fallback-Logik:
+- `totals`: Wenn keine echten Daten, nutze `DEMO_TOTALS`
+- `amortizationData`: Berechnet 30-Jahres-Projektion aus DEMO_TOTALS
+- `projectionData`: Berechnet Investmentkalkulation aus DEMO_TOTALS
+- `eurChartData`: Berechnet EUeR aus DEMO_TOTALS
+
+**4. hasData-Logik anpassen** (Zeile 520):
+
+```text
+const hasData = displayUnits.length > 0 || (demoEnabled && !unitsWithProperties?.length);
+```
+
+So werden Charts, EUeR und Tabelle auch im reinen Demo-Modus angezeigt.
+
+### Ergebnis
+
+Ohne echte DB-Daten zeigt das Portfolio-Dashboard:
+- 4 KPI-StatCards mit Demo-Werten
+- Vermoegensentwicklung-Chart (30 Jahre) mit Objektwert, Restschuld, Netto-Vermoegen
+- Monatliche EUeR mit Einnahmen/Ausgaben
+- Immobilientabelle mit 3 Demo-Einheiten (Berlin)
+- Investmentkalkulation (10/30 Jahre)
+
+Sobald echte Daten in der DB vorhanden sind, werden diese automatisch bevorzugt.
+
+### Betroffene Dateien
+
+Nur eine Datei: `src/pages/portal/immobilien/PortfolioTab.tsx`
