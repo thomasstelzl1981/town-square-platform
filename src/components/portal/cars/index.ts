@@ -1,5 +1,4 @@
-export { default as CarsAutos } from './CarsAutos';
-export { default as CarsBikes } from './CarsBikes';
+export { default as CarsFahrzeuge } from './CarsFahrzeuge';
 export { default as CarsBoote } from './CarsBoote';
 export { default as CarsPrivatjet } from './CarsPrivatjet';
 export { default as CarsAngebote } from './CarsAngebote';
