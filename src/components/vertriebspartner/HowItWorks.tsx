@@ -17,7 +17,6 @@ const steps = {
     { icon: Heart, title: 'Deal starten', description: 'Speichern Sie die Beratung oder starten Sie einen Deal.' },
   ],
   kunden: [
-    { icon: Filter, title: 'Kunden anlegen', description: 'Erfassen Sie neue Kunden mit Investment-Profil.' },
     { icon: Calculator, title: 'Beratungen dokumentieren', description: 'Verknüpfen Sie Objekte und Simulationen.' },
     { icon: Heart, title: 'Status pflegen', description: 'Behalten Sie den Überblick über alle Projekte.' },
   ],
