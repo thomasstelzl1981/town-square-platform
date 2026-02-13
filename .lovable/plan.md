@@ -1,41 +1,126 @@
 
-# AkquiseDashboard an FMDashboard angleichen
 
-## Befunde aus dem Screenshot-Vergleich
+# Konsolidierungsplan: Manager-Module Standardisierung
 
-Die beiden Dashboards haben folgende Unterschiede, wobei der **Finanzierungsmanager (FM) fuehrend** ist:
+## Uebersicht
 
-### 1. Visitenkarte: Fehlender Edit-Button
-- **FM**: Hat einen Pencil-Button oben rechts in der Visitenkarte, der ein Profil-Edit-Sheet oeffnet
-- **AM**: Kein Edit-Button vorhanden
+Dieser Plan vereint alle offenen Aenderungen in einem Durchgang: Dashboard-Header-Standard, Mandatsseite-Angleichung, Analyse-Sektion-Neuaufbau und Design-Manifest-Erweiterung.
 
-### 2. Visitenkarte: Kein Edit-Sheet
-- **FM**: Hat ein komplettes `Sheet` mit Kontaktdaten-Formular (Vorname, Nachname, E-Mail, Telefon, Adresse, Firma, Website) und §34i-Pflichtangaben
-- **AM**: Kein Edit-Mechanismus vorhanden — muss analog implementiert werden (ohne §34i, aber mit Akquise-spezifischen Feldern)
+---
 
-### 3. Kachel-Hoehe ungleich
-- Die linke Visitenkarte und die rechte KPI-Kachel haben im AM unterschiedliche Hoehen, weil kein gemeinsamer Hoehen-Constraint gesetzt ist
-- **FM**: Beide Kacheln fuellen sich gegenseitig durch gleichen Content-Umfang
-- **Fix**: Sicherstellen, dass beide Kacheln die gleiche Mindesthoehe haben
+## Teil 1: Design Manifest erweitern
 
-### 4. Sektions-Header inkonsistent
-- **FM**: Nutzt `h3` mit `text-sm font-semibold uppercase tracking-wider text-muted-foreground`
-- **AM**: Nutzt `h2` mit identischen Klassen — muss auf `h3` geaendert werden fuer Konsistenz
+**Datei: `src/config/designManifest.ts`**
 
-### 5. Spacing-Unterschied
-- **AM** hat `mt-8` auf der zweiten Sektion ("Neue Auftraege"), FM hat keinen manuellen Margin
-- **Fix**: `mt-8` entfernen, da PageShell bereits konsistentes Spacing liefert
+Neue Sektion `DASHBOARD_HEADER` einfuegen:
 
-## Aenderungen
+```text
+DASHBOARD_HEADER = {
+  GRID: 'grid grid-cols-1 md:grid-cols-2 gap-4',
+  CARD_HEIGHT: 'min-h-[280px]',
+  GRADIENT_BAR: 'h-2',
+  TICKER_ROWS: 4,
+}
+```
 
-### Datei: `src/pages/portal/akquise-manager/AkquiseDashboard.tsx`
+Im `DESIGN`-Export-Objekt ergaenzen.
 
-1. **Edit-Button** in die Visitenkarte einfuegen (Pencil-Icon oben rechts, wie FM Zeile 320)
-2. **Edit-Sheet** implementieren — analog zum FM-Sheet, aber ohne §34i-Felder. Felder: Vorname, Nachname, E-Mail, Mobil, Festnetz, Strasse, Hausnummer, PLZ, Ort, Firma, Website, plus optionale Akquise-spezifische Felder (z.B. Spezialisierung)
-3. **EditRow-Komponente** importieren oder inline definieren (wie FM Zeile 74-83)
-4. **Sektions-Header** von `h2` auf `h3` aendern (Zeilen 139 + 172)
-5. **`mt-8`** am zweiten Abschnitt entfernen (Zeile 171)
-6. **Kachel-Hoehe** angleichen: Sicherstellen, dass Visitenkarte und KPI-Widget gleich hoch werden (z.B. durch identischen Content-Umfang oder `min-h` Constraint)
+---
 
-### Keine weiteren Dateien betroffen
-Die EditRow-Komponente wird direkt im AkquiseDashboard definiert (wie auch im FM), da sie spezifisch fuer das Dashboard-Edit-Sheet ist.
+## Teil 2: FM-Dashboard manifest-konform machen
+
+**Datei: `src/pages/portal/finanzierungsmanager/FMDashboard.tsx`**
+
+1. Ad-hoc Grid der Header-Kacheln durch `DESIGN.DASHBOARD_HEADER.GRID` ersetzen
+2. Beiden Kacheln (Visitenkarte + ZinsTickerWidget) die Klasse `DESIGN.DASHBOARD_HEADER.CARD_HEIGHT` hinzufuegen
+3. ZinsTickerWidget: NUR die 4 Baufinanzierungs-Zinsen (10J, 15J, 20J, Variabel) — den `{markets.length > 0 && ...}` Block mit MSCI, Gold, BTC komplett entfernen
+
+---
+
+## Teil 3: AM-Dashboard angleichen
+
+**Datei: `src/pages/portal/akquise-manager/AkquiseDashboard.tsx`**
+
+1. Ad-hoc Grid durch `DESIGN.DASHBOARD_HEADER.GRID` ersetzen
+2. Beiden Kacheln `DESIGN.DASHBOARD_HEADER.CARD_HEIGHT` hinzufuegen
+3. KPI-Widget auf exakt 4 Zeilen beschraenken: Aktive Mandate, Neue Auftraege, Kontakte gesamt, Objekte in Pipeline — keine Marktdaten
+
+---
+
+## Teil 4: Mandatsseite an FM-Finanzierungsakte angleichen
+
+**Datei: `src/pages/portal/akquise-manager/AkquiseMandate.tsx`**
+
+### 4a. Split-View Toggle
+- Toggle-Button im ModulePageHeader (LayoutList / LayoutPanelLeft Icons)
+- Split-View: `PageShell fullWidth={true}` (max-w-full)
+- Normal: ohne fullWidth (max-w-7xl)
+
+### 4b. Oberer Bereich — 2-Spalten-Layout
+Layout mit `DESIGN.FORM_GRID.FULL`:
+
+```text
++----------------------+----------------------+
+| KI-gestuetzte        | Ankaufsprofil-       |
+| Erfassung            | Dokument             |
+| (Textarea + Button)  | (editierbar,         |
+|                      |  Tabular-Form)       |
++----------------------+----------------------+
+```
+
+- LINKS: Card mit Freitext-Textarea und "Generieren"-Button
+- RECHTS: Card mit generiertem/editierbarem Ankaufsprofil (Kontakt, Region, Asset-Fokus, Preis, Rendite, Ausschluesse) in kompakter Tabular-Form
+- "Mandat erstellen" Button unter dem Ankaufsprofil
+
+### 4c. Unterer Bereich — Sektionen 3-7
+Bleiben durchlaufend, ausgegraut ohne aktives Mandat. Im Split-View volle Breite.
+
+---
+
+## Teil 5: Analyse-Sektion — Bestand + Aufteiler nebeneinander
+
+**Datei: `src/pages/portal/akquise-manager/components/AnalysisTab.tsx`**
+
+### 5a. Tabs-Struktur aufloesen
+Die 4-Tab-Struktur (Bestandsrechner | Aufteiler | GeoMap | KI-Analyse) wird entfernt.
+
+### 5b. Neues Layout
+
+```text
++=============================================+
+| Sektion: Analyse & Kalkulation              |
++---------------------------------------------+
+| Objekt-Auswahl / KPI-Leiste                 |
++---------------------------------------------+
+| Quick Actions: GeoMap | KI | Expose Upload  |
++----------------------+----------------------+
+| BestandCalculation   | AufteilerCalculation |
+| (komplett mit        | (komplett mit        |
+|  Slidern, Charts,    |  Slidern, Charts,    |
+|  30J-Projektion)     |  Sensitivitaet)      |
++----------------------+----------------------+
+| GeoMap-Ergebnisse (full-width)              |
++---------------------------------------------+
+| KI-Analyse-Ergebnisse (full-width)          |
++=============================================+
+```
+
+### 5c. Technische Details
+- `BestandCalculation` und `AufteilerCalculation` importieren (existieren bereits vollstaendig)
+- 2-Spalten-Layout mit `DESIGN.FORM_GRID.FULL`
+- Beide Komponenten erhalten `offerId` und `initialData` (Preis/Miete aus dem Offer)
+- Bisherige Inline-Formulare und deren States (`bestandParams`, `aufteilerParams`, Handler) entfernen
+- GeoMap und KI-Analyse als separate Full-Width-Cards darunter
+
+---
+
+## Zusammenfassung der Dateien
+
+| Datei | Aenderung |
+|-------|-----------|
+| `src/config/designManifest.ts` | Neue `DASHBOARD_HEADER` Sektion |
+| `src/pages/portal/finanzierungsmanager/FMDashboard.tsx` | Manifest-Klassen, Marktdaten entfernen |
+| `src/pages/portal/akquise-manager/AkquiseDashboard.tsx` | Manifest-Klassen, KPI auf 4 Zeilen |
+| `src/pages/portal/akquise-manager/AkquiseMandate.tsx` | Split-View, 2-Spalten Erfassung+Profil |
+| `src/pages/portal/akquise-manager/components/AnalysisTab.tsx` | Tabs aufloesen, Bestand+Aufteiler nebeneinander |
+
