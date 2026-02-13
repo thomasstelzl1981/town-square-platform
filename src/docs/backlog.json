@@ -303,8 +303,8 @@
           "title": "finanzierungsmanager/index.ts exportiert ungenutzte Komponenten",
           "description": "index.ts exportiert FMFaelle, FMKommunikation, FMStatus — keine davon wird importiert. Toter Export-Code.",
           "effort": "XS",
-          "status": "open",
-          "fix": "index.ts bereinigen, nur aktive Exporte belassen"
+          "status": "done",
+          "fix": "Bereits in Phase 1 bereinigt — FMFaelle/FMStatus/FMKommunikation gelöscht (2026-02-13)"
         },
         {
           "id": "AUD-031",
@@ -314,8 +314,8 @@
           "title": "Suspense-Pattern inkonsistent: 11 Module mit <Suspense>, 10 ohne",
           "description": "StammdatenPage, OfficePage, DMSPage, ImmobilienPage, FinanzierungPage, InvestmentsPage, CommunicationProPage, FortbildungPage, PhotovoltaikPage, MietyPortalPage, FinanzanalysePage haben eigene Suspense. MSVPage, VerkaufPage, VertriebspartnerPage, LeadsPage, CarsPage, AkquiseManagerPage, ProjektePage, ServicesPage haben keine.",
           "effort": "S",
-          "status": "open",
-          "fix": "Einheitliches Pattern: Entweder ALLE mit Suspense fallback={null} oder KEINER (ManifestRouter reicht)"
+          "status": "accepted",
+          "fix": "ManifestRouter Suspense reicht als Fallback. Innere Suspense ist optional und harmlos — kein Breaking Issue. Als Pattern-Varianz akzeptiert (2026-02-13)"
         },
         {
           "id": "AUD-032",
@@ -325,8 +325,8 @@
           "title": "SelfieAds-Routen nutzen Flat-Pfade statt verschachtelter Struktur",
           "description": "selfie-ads-planen, selfie-ads-summary etc. sind Flat-Routes statt selfie-ads/planen. Inkonsistent mit dem Rest der Plattform, der verschachtelte Pfade nutzt.",
           "effort": "S",
-          "status": "open",
-          "fix": "Auf verschachtelte Pfade migrieren: selfie-ads/planen, selfie-ads/summary etc."
+          "status": "deferred",
+          "fix": "Flat-Pfade funktionieren korrekt. Migration auf verschachtelte Pfade wäre Breaking Change für Bookmarks. Auf V2-Refactoring verschoben."
         },
         {
           "id": "AUD-033",
@@ -336,8 +336,8 @@
           "title": "VertriebspartnerPage hat Dynamic-Routes (katalog/:publicId, beratung/objekt/:publicId) nicht im Manifest deklariert",
           "description": "Diese 2 dynamischen Routen existieren im Code aber nicht in routesManifest.ts dynamic_routes.",
           "effort": "XS",
-          "status": "open",
-          "fix": "dynamic_routes in routesManifest.ts für MOD-09 ergänzen"
+          "status": "done",
+          "fix": "dynamic_routes für katalog/:publicId und beratung/objekt/:publicId in routesManifest.ts ergänzt (2026-02-13)"
         },
         {
           "id": "AUD-034",
@@ -347,8 +347,8 @@
           "title": "SelfieAds 6 Sub-Routes nicht im Manifest deklariert",
           "description": "selfie-ads-planen, selfie-ads-summary, selfie-ads-kampagnen, selfie-ads-performance, selfie-ads-abrechnung existieren im Code aber nicht im Manifest.",
           "effort": "XS",
-          "status": "open",
-          "fix": "dynamic_routes im Manifest für MOD-10 ergänzen"
+          "status": "done",
+          "fix": "5 SelfieAds dynamic_routes in routesManifest.ts für MOD-10 ergänzt (2026-02-13)"
         },
         {
           "id": "AUD-035",
@@ -358,8 +358,8 @@
           "title": "CarsPage hat Dynamic-Route ':id' für VehicleDetailPage nicht im Manifest",
           "description": "Die Route existiert im Code aber nicht in routesManifest.ts.",
           "effort": "XS",
-          "status": "open",
-          "fix": "dynamic_routes für MOD-17 im Manifest ergänzen"
+          "status": "done",
+          "fix": "dynamic_routes für :id (VehicleDetailPage) in routesManifest.ts für MOD-17 ergänzt (2026-02-13)"
         },
         {
           "id": "AUD-036",
@@ -369,8 +369,8 @@
           "title": "ProjektePage hat versteckte 'kontexte' Route nicht im Manifest",
           "description": "Der Route-Pfad 'kontexte' existiert in ProjektePage.tsx aber nicht in routesManifest tiles oder dynamic_routes.",
           "effort": "XS",
-          "status": "open",
-          "fix": "Entweder als hidden tile oder dynamic_route im Manifest ergänzen"
+          "status": "accepted",
+          "fix": "kontexte ist ein hidden route (nicht in Tiles, aber gültig als interner Verwaltungspfad). Pattern ist dokumentiert und intentional (2026-02-13)"
         },
         {
           "id": "AUD-037",
@@ -380,8 +380,8 @@
           "title": "ManifestRouter importiert FinanceDesk aber es wird auf FutureRoom redirected",
           "description": "FinanceDesk ist in adminDeskMap registriert, aber die Route finance-desk ist als Legacy-Redirect definiert. Toter Import.",
           "effort": "XS",
-          "status": "open",
-          "fix": "FinanceDesk Import und adminDeskMap Eintrag entfernen"
+          "status": "reassessed",
+          "fix": "FinanceDesk ist in adminDeskMap registriert und wird als Desk-Route genutzt — KEIN Dead Code. Befund war fehlerhaft (2026-02-13)"
         },
         {
           "id": "AUD-038",
@@ -391,8 +391,8 @@
           "title": "MasterContacts importiert in ManifestRouter aber nicht im adminComponentMap registriert",
           "description": "Import existiert (Zeile 63) aber wird nirgends verwendet.",
           "effort": "XS",
-          "status": "open",
-          "fix": "Import entfernen"
+          "status": "reassessed",
+          "fix": "MasterContacts IST in adminComponentMap registriert (Zeile 219). Wird dynamisch via Zone 1 Manifest-Routing aufgelöst — KEIN Dead Code (2026-02-13)"
         },
         {
           "id": "AUD-039",
@@ -402,8 +402,8 @@
           "title": "AuditLog importiert aber nicht in adminComponentMap verwendet (AuditHub ersetzt)",
           "description": "AuditLog wurde durch AuditHub ersetzt, Import ist veraltet.",
           "effort": "XS",
-          "status": "open",
-          "fix": "Import entfernen"
+          "status": "reassessed",
+          "fix": "AuditLog IST in adminComponentMap registriert (Zeile 231). Wird parallel zu AuditHub genutzt — KEIN Dead Code (2026-02-13)"
         }
       ]
     },
