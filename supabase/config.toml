@@ -149,3 +149,15 @@ verify_jwt = false
 
 [functions.sot-acq-profile-extract]
 verify_jwt = false
+
+[functions.sot-videocall-create]
+verify_jwt = false
+
+[functions.sot-videocall-invite-send]
+verify_jwt = false
+
+[functions.sot-videocall-invite-validate]
+verify_jwt = false
+
+[functions.sot-videocall-end]
+verify_jwt = false

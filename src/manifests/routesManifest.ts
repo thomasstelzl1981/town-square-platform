@@ -221,6 +221,10 @@ export const zone2Portal: ZoneDefinition = {
         { path: "kalender", component: "KalenderTab", title: "Kalender" },
         { path: "widgets", component: "WidgetsTab", title: "Widgets" },
         { path: "whatsapp", component: "WhatsAppTab", title: "WhatsApp" },
+        { path: "videocalls", component: "VideocallsTab", title: "Videocalls" },
+      ],
+      dynamic_routes: [
+        { path: "videocalls/:callId", component: "VideocallRoom", title: "Videocall", dynamic: true },
       ],
     },
     "MOD-03": {

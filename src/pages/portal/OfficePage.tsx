@@ -17,6 +17,8 @@ const KontakteTab = lazy(() => import('./office/KontakteTab').then(m => ({ defau
 const KalenderTab = lazy(() => import('./office/KalenderTab').then(m => ({ default: m.KalenderTab })));
 const WidgetsTab = lazy(() => import('./office/WidgetsTab').then(m => ({ default: m.WidgetsTab })));
 const WhatsAppTab = lazy(() => import('./office/WhatsAppTab').then(m => ({ default: m.WhatsAppTab })));
+const VideocallsTab = lazy(() => import('./office/VideocallsTab').then(m => ({ default: m.VideocallsTab })));
+const VideocallRoom = lazy(() => import('./office/VideocallRoom').then(m => ({ default: m.VideocallRoom })));
 
 // Mobile guard wrapper - redirects desktop-only tabs to Brief on mobile
 function MobileGuard({ children, allowedOnMobile = false }: { 
@@ -68,6 +70,8 @@ const OfficePage = () => {
         <Route path="brief" element={<BriefTab />} />
         <Route path="widgets" element={<WidgetsTab />} />
         <Route path="whatsapp" element={<WhatsAppTab />} />
+        <Route path="videocalls" element={<VideocallsTab />} />
+        <Route path="videocalls/:callId" element={<VideocallRoom />} />
         <Route path="*" element={<Navigate to="/portal/office" replace />} />
       </Routes>
     </Suspense>
