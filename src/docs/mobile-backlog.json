@@ -1,0 +1,97 @@
+{
+  "meta": {
+    "version": "1.0",
+    "focus": "Mobile UX Optimierung — Instagram-Standard, Scroll-Snap, Table-to-Card",
+    "created": "2026-02-13",
+    "parent_issue": "AUD-013",
+    "design_decisions": {
+      "scroll_snap": "Nur auf Dashboard (alle Widgets 260px), NICHT in Modulseiten mit gemischtem Content",
+      "widget_cell": "Bestehende Dashboard-Inline-Klassen belassen, WidgetCell für neue Module erzwingen",
+      "table_to_card": "Globale Lösung über mobile Card-Fallback in DataTable-Komponente"
+    }
+  },
+  "phases": [
+    {
+      "id": "MOB-INFRA",
+      "title": "Infrastruktur-Implementierung",
+      "priority": "P0",
+      "issues": [
+        {
+          "id": "MOB-001",
+          "severity": "high",
+          "title": "PortalLayout: Scroll-Snap Container auf Dashboard-Route",
+          "description": "Mobile main-Element bekommt snap-y snap-mandatory, aber NUR wenn die aktuelle Route /portal (Dashboard) ist. Modulseiten behalten normales Scrolling.",
+          "effort": "XS",
+          "status": "done",
+          "fix": "PortalLayout.tsx: isDashboard Check + MOBILE.SNAP_CONTAINER Klasse auf Dashboard-Route (2026-02-13)"
+        },
+        {
+          "id": "MOB-002",
+          "severity": "high",
+          "title": "SortableWidget: snap-start snap-always für Mobile",
+          "description": "SortableWidget Mobile-Branch (isMobile) bekommt snap-start snap-always Klassen für konsistentes Einrasten.",
+          "effort": "XS",
+          "status": "done",
+          "fix": "SortableWidget.tsx: MOBILE.SNAP_ITEM Klassen auf Mobile-Branch (2026-02-13)"
+        },
+        {
+          "id": "MOB-003",
+          "severity": "high",
+          "title": "DataTable: Mobile Card-Fallback Rendering",
+          "description": "DataTable zeigt auf Mobile (<768px) statt der HTML-Tabelle einen vertikalen Card-Stack. Jede Zeile wird als kompakte Card mit Label:Value-Paaren gerendert.",
+          "effort": "M",
+          "status": "done",
+          "fix": "DataTable.tsx: useIsMobile() Check mit renderMobileCards() Fallback, MOBILE.CARD_ITEM Styling (2026-02-13)"
+        },
+        {
+          "id": "MOB-004",
+          "severity": "medium",
+          "title": "Design-Manifest: MOBILE-Sektion ergänzen",
+          "description": "Neue MOBILE-Konstanten im Manifest: SCROLL_SNAP Container/Item Klassen, CARD_STACK für Table-Transformation.",
+          "effort": "XS",
+          "status": "done",
+          "fix": "designManifest.ts: MOBILE Sektion mit SNAP_CONTAINER, SNAP_ITEM, CARD_STACK, CARD_ITEM, CARD_LABEL, CARD_VALUE (2026-02-13)"
+        }
+      ]
+    },
+    {
+      "id": "MOB-AUDIT",
+      "title": "Modul-für-Modul Browser-Audit (375px)",
+      "priority": "P1",
+      "issues": [
+        {
+          "id": "MOB-010",
+          "severity": "high",
+          "title": "Batch A: MOD-00 (Dashboard), MOD-01, MOD-02, MOD-03, MOD-04",
+          "description": "Widget-Höhen, Spacing, Navigation, Scroll-Snap auf Dashboard prüfen",
+          "effort": "M",
+          "status": "open"
+        },
+        {
+          "id": "MOB-011",
+          "severity": "high",
+          "title": "Batch B: MOD-05, MOD-06, MOD-07, MOD-08, MOD-09, MOD-10",
+          "description": "Card-Stack Transformation, Formular-Inputs, SubTabs Sichtbarkeit prüfen",
+          "effort": "M",
+          "status": "open"
+        },
+        {
+          "id": "MOB-012",
+          "severity": "high",
+          "title": "Batch C: MOD-11, MOD-12, MOD-13, MOD-14, MOD-15, MOD-16",
+          "description": "Golden Path Mobile, Split-View Verhalten, Manager-Module Flow prüfen",
+          "effort": "M",
+          "status": "open"
+        },
+        {
+          "id": "MOB-013",
+          "severity": "high",
+          "title": "Batch D: MOD-17, MOD-18, MOD-19, MOD-20 + Zone 3 (5 Websites)",
+          "description": "Restliche Module + Kaufy/FutureRoom/SoT/Acquiary/Miety Mobile-Rendering prüfen",
+          "effort": "M",
+          "status": "open"
+        }
+      ]
+    }
+  ]
+}
