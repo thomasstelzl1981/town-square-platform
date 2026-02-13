@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Building2, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
+import { DESIGN } from '@/config/designManifest';
 import type { ProjectPortfolioRow } from '@/types/projekte';
 
 interface ProjectCardProps {
@@ -66,7 +67,8 @@ export function ProjectCard({ project, isSelected, isDemo, onClick }: ProjectCar
         'glass-card shadow-card cursor-pointer transition-all hover:shadow-elevated hover:scale-[1.02] group flex flex-col',
         !isDemo && 'aspect-square',
         isSelected && 'ring-2 ring-primary shadow-glow',
-        isDemo && 'opacity-50 pointer-events-none select-none'
+        isDemo && DESIGN.DEMO_WIDGET.CARD,
+        isDemo && DESIGN.DEMO_WIDGET.HOVER,
       )}
       onClick={handleClick}
     >

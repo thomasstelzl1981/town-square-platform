@@ -365,11 +365,11 @@ export default function FMDashboard({ cases, isLoading }: Props) {
       <WidgetGrid>
         {demoEnabled && (
           <WidgetCell>
-            <Card className="glass-card border-primary/20 h-full cursor-pointer hover:border-primary/40 transition-colors" onClick={() => navigate('faelle/__demo__')}>
+            <Card className={cn("h-full cursor-pointer transition-colors", DESIGN.DEMO_WIDGET.CARD, DESIGN.DEMO_WIDGET.HOVER)} onClick={() => navigate('faelle/__demo__')}>
               <CardContent className="p-4 h-full flex flex-col justify-between">
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <Badge className="bg-primary/10 text-primary text-[10px]">Demo</Badge>
+                    <Badge className={cn(DESIGN.DEMO_WIDGET.BADGE, "text-[10px]")}>Demo</Badge>
                     <Badge variant="outline" className="text-[10px]">In Prüfung</Badge>
                   </div>
                   <h3 className="font-semibold text-sm">Max Muster</h3>

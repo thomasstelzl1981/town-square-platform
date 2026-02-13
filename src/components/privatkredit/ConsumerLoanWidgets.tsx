@@ -4,6 +4,8 @@
  * 
  * GOLDEN PATH KONFORM: Demo-Widget an Position 0, useDemoToggles
  */
+import { cn } from '@/lib/utils';
+import { DESIGN } from '@/config/designManifest';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -108,16 +110,19 @@ export function ConsumerLoanWidgets({ activeCaseId, onSelectCase }: ConsumerLoan
       {showDemo && (
         <WidgetCell>
           <Card
-            className={`h-full cursor-pointer transition-all hover:shadow-lg ${
-              activeCaseId === '__demo__' ? 'ring-2 ring-primary' : ''
-            }`}
+            className={cn(
+              `h-full cursor-pointer transition-all`,
+              DESIGN.DEMO_WIDGET.CARD,
+              DESIGN.DEMO_WIDGET.HOVER,
+              activeCaseId === '__demo__' ? 'ring-2 ring-emerald-500' : ''
+            )}
             onClick={() => onSelectCase?.('__demo__')}
           >
             <div className="flex flex-col h-full p-4 justify-between">
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <CreditCard className="h-5 w-5 text-primary" />
-                  <Badge className="bg-primary/10 text-primary border-0 text-[10px]">
+                  <Badge className={cn(DESIGN.DEMO_WIDGET.BADGE, "text-[10px]")}>
                     {GP_PRIVATKREDIT.demoWidget.badgeLabel}
                   </Badge>
                 </div>

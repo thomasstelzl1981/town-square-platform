@@ -4,6 +4,8 @@
  * Golden Path compliant: WidgetGrid + Demo-Widget + Inline-Flow
  */
 import * as React from 'react';
+import { DESIGN } from '@/config/designManifest';
+import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -67,11 +69,11 @@ export default function MandatTab() {
         {/* Demo Widget */}
         {demoEnabled && (
           <WidgetCell>
-            <Card className="glass-card border-primary/20 h-full cursor-pointer hover:border-primary/40 transition-colors">
+            <Card className={cn("h-full cursor-pointer transition-colors", DESIGN.DEMO_WIDGET.CARD, DESIGN.DEMO_WIDGET.HOVER)}>
               <CardContent className="p-4 h-full flex flex-col justify-between">
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <Badge className="bg-primary/10 text-primary text-[10px]">Demo</Badge>
+                    <Badge className={cn(DESIGN.DEMO_WIDGET.BADGE, "text-[10px]")}>Demo</Badge>
                     <Badge variant="outline" className="text-[10px]">Aktiv</Badge>
                   </div>
                   <h3 className="font-semibold text-sm">MFH NRW ab 1 Mio</h3>
