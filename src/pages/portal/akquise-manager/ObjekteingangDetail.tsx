@@ -246,15 +246,19 @@ export function ObjekteingangDetail() {
         </div>
       </div>
 
-      {/* ROW 4: Kalkulation — Bestand + Aufteiler NEBENEINANDER */}
-      <div>
-        <h2 className={cn(DESIGN.TYPOGRAPHY.SECTION_TITLE, 'mb-3')}>Kalkulation</h2>
+      {/* ROW 4: Schnellanalyse (volle Breite) + Kalkulation Side-by-Side */}
+      <div className="space-y-4">
+        <h2 className={cn(DESIGN.TYPOGRAPHY.SECTION_TITLE, 'mb-1')}>Kalkulation</h2>
+        
+        {/* Schnellanalyse — volle Breite über beiden Spalten */}
+        <QuickAnalysisBanner offer={offer} />
+
         <div className={DESIGN.FORM_GRID.FULL}>
           <div className="space-y-2">
             <h3 className={cn(DESIGN.TYPOGRAPHY.CARD_TITLE, 'flex items-center gap-2')}>
               <span className="text-base">🏠</span> Bestand (Hold)
             </h3>
-            <BestandCalculation offerId={offer.id} initialData={{ purchasePrice: offer.price_asking || 0, monthlyRent: offer.noi_indicated ? offer.noi_indicated / 12 : 0, units: offer.units_count || 1, areaSqm: offer.area_sqm || 0 }} />
+            <BestandCalculation offerId={offer.id} hideQuickAnalysis initialData={{ purchasePrice: offer.price_asking || 0, monthlyRent: offer.noi_indicated ? offer.noi_indicated / 12 : 0, units: offer.units_count || 1, areaSqm: offer.area_sqm || 0 }} />
           </div>
           <div className="space-y-2">
             <h3 className={cn(DESIGN.TYPOGRAPHY.CARD_TITLE, 'flex items-center gap-2')}>
@@ -320,6 +324,74 @@ function DataRow({ label, value }: { label: string; value?: string | null }) {
       <span className="text-muted-foreground">{label}</span>
       <span className="font-medium">{value || '–'}</span>
     </div>
+  );
+}
+
+/* ─── Quick Analysis Banner (volle Breite) ─────────────── */
+function QuickAnalysisBanner({ offer }: { offer: NonNullable<ReturnType<typeof useAcqOffer>['data']> }) {
+  const formatCurrency = (val: number) =>
+    new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(val);
+
+  const purchasePrice = offer.price_asking || 0;
+  const yearlyRent = offer.noi_indicated || 0;
+  const monthlyRent = yearlyRent / 12;
+
+  // Bestand KPIs
+  const ancillaryCosts = purchasePrice * 0.1;
+  const totalInvestment = purchasePrice + ancillaryCosts;
+  const equity = totalInvestment * 0.2;
+  const maxFinancing = (yearlyRent * 0.8 / 5) * 100;
+  const grossYield = purchasePrice > 0 ? (yearlyRent / purchasePrice) * 100 : 0;
+
+  // Aufteiler KPIs (default 4% target yield, 8% commission, 24 months)
+  const salesPriceGross = yearlyRent > 0 ? yearlyRent / 0.04 : 0;
+  const salesCommission = salesPriceGross * 0.08;
+  const salesPriceNet = salesPriceGross - salesCommission;
+  const loanAmount = totalInvestment * 0.7;
+  const interestCosts = loanAmount * 0.05 * 2;
+  const rentIncome = yearlyRent * 2;
+  const netCosts = totalInvestment + interestCosts - rentIncome;
+  const profit = salesPriceNet - netCosts;
+  const profitMargin = salesPriceNet > 0 ? (profit / salesPriceNet) * 100 : 0;
+
+  return (
+    <Card className={cn(DESIGN.CARD.BASE, DESIGN.INFO_BANNER.PREMIUM)}>
+      <CardHeader className="pb-2 px-4 pt-3">
+        <CardTitle className={DESIGN.TYPOGRAPHY.CARD_TITLE}>Schnellanalyse</CardTitle>
+      </CardHeader>
+      <CardContent className="px-4 pb-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
+          <div>
+            <div className={DESIGN.TYPOGRAPHY.HINT}>Gesamtinvestition</div>
+            <div className={DESIGN.TYPOGRAPHY.VALUE + ' text-lg'}>{formatCurrency(totalInvestment)}</div>
+          </div>
+          <div>
+            <div className={DESIGN.TYPOGRAPHY.HINT}>Max. Finanzierbarkeit</div>
+            <div className={DESIGN.TYPOGRAPHY.VALUE + ' text-lg'}>{formatCurrency(maxFinancing)}</div>
+          </div>
+          <div>
+            <div className={DESIGN.TYPOGRAPHY.HINT}>EK-Bedarf</div>
+            <div className={DESIGN.TYPOGRAPHY.VALUE + ' text-lg'}>{formatCurrency(equity)}</div>
+          </div>
+          <div>
+            <div className={DESIGN.TYPOGRAPHY.HINT}>Bruttorendite</div>
+            <div className={DESIGN.TYPOGRAPHY.VALUE + ' text-lg'}>{grossYield.toFixed(2)}%</div>
+          </div>
+          <div>
+            <div className={DESIGN.TYPOGRAPHY.HINT}>Gewinn (Flip)</div>
+            <div className={cn(DESIGN.TYPOGRAPHY.VALUE, 'text-lg', profit >= 0 ? 'text-emerald-500' : 'text-destructive')}>{formatCurrency(profit)}</div>
+          </div>
+          <div>
+            <div className={DESIGN.TYPOGRAPHY.HINT}>Marge (Flip)</div>
+            <div className={cn(DESIGN.TYPOGRAPHY.VALUE, 'text-lg', profitMargin >= 0 ? 'text-emerald-500' : 'text-destructive')}>{profitMargin.toFixed(1)}%</div>
+          </div>
+          <div>
+            <div className={DESIGN.TYPOGRAPHY.HINT}>Faktor (Flip)</div>
+            <div className={cn(DESIGN.TYPOGRAPHY.VALUE, 'text-lg text-primary')}>{yearlyRent > 0 ? (salesPriceGross / yearlyRent).toFixed(1) + 'x' : '–'}</div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
