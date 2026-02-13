@@ -7,7 +7,7 @@
     "predecessor": "backlog v4.0 (52 Issues, 5 Phases — abgeschlossen)",
     "audit_scope": "21 Module (MOD-00 bis MOD-20), tile_catalog SSOT, areaConfig, Component Maps, 13 fehlende Specs, API Contracts",
     "methodology": "Sprint-basiert. Nach jedem Sprint: backlog.json lesen, aktualisieren, naechsten Sprint vorbereiten.",
-    "current_sprint": "S6"
+    "current_sprint": "S7"
   },
   "metrics": {
     "total_tasks": 33,
@@ -303,11 +303,13 @@
       "id": "S6",
       "name": "API-Contracts & Edge Functions Sync",
       "priority": "P2",
-      "status": "pending",
+      "status": "done",
+      "completed_at": "2026-02-13T18:15:00Z",
+      "notes": "21/21 Contracts haben korrespondierende Edge Functions. 69 weitere Functions sind operative/interne Hilfsfunktionen ohne Contract-Pflicht (ZBC-R10 gilt nur fuer Cross-Zone-Uebergaenge). Keine Luecken gefunden.",
       "description": "21 Contract-Dateien gegen deployte Edge Functions abgleichen.",
       "tasks": [
-        { "id": "S6-01", "title": "Contract-Dateien gegen supabase/functions/ pruefen", "status": "pending" },
-        { "id": "S6-02", "title": "Fehlende/veraltete Contracts identifizieren", "status": "pending" }
+        { "id": "S6-01", "title": "Contract-Dateien gegen supabase/functions/ pruefen", "status": "done", "result": "PASS — 21/21 Contracts gemappt. 90 Edge Functions total, 21 contract-relevant, 69 operativ/intern." },
+        { "id": "S6-02", "title": "Fehlende/veraltete Contracts identifizieren", "status": "done", "result": "PASS — Keine fehlenden oder veralteten Contracts gefunden." }
       ]
     },
     {
