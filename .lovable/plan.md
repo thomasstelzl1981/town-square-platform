@@ -1,25 +1,26 @@
 
-# MOD-02 (KI-Office) in die Missions-Area verschieben
+
+# Operations-Area: Module neu sortieren
 
 ## Aenderung
 
-Nur eine Datei betroffen: `src/manifests/areaConfig.ts`
+Nur eine Datei: `src/manifests/areaConfig.ts`, Zeile 36.
 
-### 1. MOD-02 aus Base entfernen (Zeile 43)
-Vorher: `modules: ['MOD-05', 'MOD-02', 'MOD-03', 'MOD-16', 'MOD-01']`
-Nachher: `modules: ['MOD-05', 'MOD-03', 'MOD-16', 'MOD-01']`
+### Aktuelle Reihenfolge
+`['MOD-09', 'MOD-13', 'MOD-10', 'MOD-11', 'MOD-12']`
+(Vertriebspartner, Projekte, Provisionen, Finanzierungsmanager, AkquiseManager)
 
-### 2. MOD-02 in Missions einfuegen — als erstes Element (Zeile 29)
-Vorher: `modules: ['MOD-04', 'MOD-07', 'MOD-06', 'MOD-08']`
-Nachher: `modules: ['MOD-02', 'MOD-04', 'MOD-07', 'MOD-06', 'MOD-08']`
+### Neue Reihenfolge
+`['MOD-13', 'MOD-09', 'MOD-11', 'MOD-12', 'MOD-10']`
 
-### Ergebnis Level 2 (Missions-Area)
+| Nr. | Modul | Code |
+|-----|-------|------|
+| 1 | Projekte | MOD-13 |
+| 2 | Vertriebspartner | MOD-09 |
+| 3 | Finanzierungsmanager | MOD-11 |
+| 4 | AkquiseManager | MOD-12 |
+| 5 | Provisionen | MOD-10 |
 
-```text
-KI-Office | Immobilien | Finanzierung | Verkauf | Immo Suche
-```
+### Keine weiteren Aenderungen
+Routen, Komponenten und Datenbank bleiben unveraendert — nur die Anzeigereihenfolge in der Navigation aendert sich.
 
-### Keine weiteren Aenderungen noetig
-- Routen bleiben unveraendert (`/portal/ki-office/*`)
-- Komponenten bleiben unveraendert
-- `deriveAreaFromPath` erkennt MOD-02 automatisch als "missions"
