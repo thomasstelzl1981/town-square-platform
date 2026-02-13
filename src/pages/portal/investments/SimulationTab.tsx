@@ -28,11 +28,17 @@ import {
 import { ChartCard } from '@/components/ui/chart-card';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
+import { WidgetGrid } from '@/components/shared/WidgetGrid';
+import { WidgetCell } from '@/components/shared/WidgetCell';
 import {
   Building2, TrendingUp, Wallet, PiggyBank, Plus, Minus,
-  Calculator, ChevronDown, ChevronUp, Loader2, FileText
+  Calculator, ChevronDown, ChevronUp, Loader2, FileText, BarChart3
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useDemoToggles } from '@/hooks/useDemoToggles';
+import { GOLDEN_PATH_PROCESSES } from '@/manifests/goldenPathProcesses';
+
+const GP_SIMULATION = GOLDEN_PATH_PROCESSES.find(p => p.id === 'GP-SIMULATION')!;
 import {
   ComposedChart, Area, Line, XAxis, YAxis, Tooltip,
   ResponsiveContainer, CartesianGrid, Legend
@@ -148,9 +154,39 @@ export default function SimulationTab() {
     );
   }
 
+  const { isEnabled } = useDemoToggles();
+  const showDemo = isEnabled('GP-SIMULATION');
+
   return (
     <PageShell>
       <ModulePageHeader title="INVESTMENT-SIMULATION" description="Berechnen Sie die Auswirkung eines Neukaufs auf Ihr Gesamtportfolio" />
+
+      {/* Demo + CTA Widget-Leiste */}
+      <WidgetGrid>
+        {showDemo && (
+          <WidgetCell>
+            <Card className="h-full cursor-pointer transition-all hover:shadow-lg">
+              <CardContent className="flex flex-col h-full justify-between p-4">
+                <div className="flex items-start justify-between">
+                  <Badge className="bg-primary/10 text-primary border-0 text-[10px]">
+                    {GP_SIMULATION.demoWidget.badgeLabel}
+                  </Badge>
+                </div>
+                <div className="flex-1 flex flex-col items-center justify-center text-center gap-1 py-2">
+                  <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center mb-1">
+                    <BarChart3 className="h-5 w-5 text-primary" />
+                  </div>
+                  <p className="font-semibold text-sm leading-tight">{GP_SIMULATION.demoWidget.title}</p>
+                  <p className="text-[11px] text-muted-foreground">{GP_SIMULATION.demoWidget.subtitle}</p>
+                </div>
+                <div className="text-[10px] text-muted-foreground text-center">
+                  3 Objekte · 950.000 € · 200.000 € EK
+                </div>
+              </CardContent>
+            </Card>
+          </WidgetCell>
+        )}
+      </WidgetGrid>
 
       {/* Current Portfolio Section */}
       <Card>

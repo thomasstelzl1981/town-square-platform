@@ -2,6 +2,8 @@
  * MOD-07: Finance Request Widget-Leiste
  * Shows all finance requests as horizontal widget tiles + CTA for new request.
  * Follows Manager-Module pattern (persistent widget bar at top).
+ * 
+ * GOLDEN PATH KONFORM: Demo-Widget an Position 0, useDemoToggles
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -12,9 +14,13 @@ import { WidgetGrid } from '@/components/shared/WidgetGrid';
 import { WidgetCell } from '@/components/shared/WidgetCell';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Plus, FileText, Loader2 } from 'lucide-react';
+import { Plus, FileText, Loader2, Home } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import { useDemoToggles } from '@/hooks/useDemoToggles';
+import { GOLDEN_PATH_PROCESSES } from '@/manifests/goldenPathProcesses';
+
+const GP_FINANZIERUNG = GOLDEN_PATH_PROCESSES.find(p => p.id === 'GP-FINANZIERUNG')!;
 import { de } from 'date-fns/locale';
 import { getStatusLabel, getStatusBadgeVariant } from '@/types/finance';
 
@@ -71,8 +77,38 @@ export function FinanceRequestWidgets({ activeRequestId }: FinanceRequestWidgets
   const formatCurrency = (val: number | null) =>
     val ? new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(val) : null;
 
+  const { isEnabled } = useDemoToggles();
+  const showDemo = isEnabled('GP-FINANZIERUNG');
+
   return (
     <WidgetGrid variant="widget">
+      {/* Demo-Widget an Position 0 */}
+      {showDemo && (
+        <WidgetCell>
+          <Card
+            className={`h-full cursor-pointer transition-all hover:shadow-lg ${
+              activeRequestId === '__demo__' ? 'ring-2 ring-primary' : ''
+            }`}
+            onClick={() => navigate('/portal/finanzierung/anfrage/__demo__')}
+          >
+            <div className="flex flex-col h-full p-4 justify-between">
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <Home className="h-5 w-5 text-primary" />
+                  <Badge className="bg-primary/10 text-primary border-0 text-[10px]">
+                    {GP_FINANZIERUNG.demoWidget.badgeLabel}
+                  </Badge>
+                </div>
+                <h3 className="font-semibold text-sm">{GP_FINANZIERUNG.demoWidget.title}</h3>
+                <p className="text-xs text-muted-foreground mt-1">Schadowstr. 42, Düsseldorf</p>
+                <p className="text-xs text-muted-foreground">320.000 €</p>
+              </div>
+              <p className="text-[10px] text-muted-foreground mt-2">{GP_FINANZIERUNG.demoWidget.subtitle}</p>
+            </div>
+          </Card>
+        </WidgetCell>
+      )}
+
       {/* Existing requests */}
       {requests.map((req) => {
         const isActive = req.id === activeRequestId;

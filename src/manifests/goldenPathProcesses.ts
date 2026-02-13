@@ -200,7 +200,7 @@ export const GOLDEN_PATH_PROCESSES: GoldenPathProcess[] = [
       modulePageHeader: true,
       widgetGrid: true,
       widgetCell: true,
-      demoWidget: false,
+      demoWidget: true,
       inlineFlow: true,
       noSubNavigation: true,
     },
@@ -224,7 +224,7 @@ export const GOLDEN_PATH_PROCESSES: GoldenPathProcess[] = [
       { id: 'calculation', title: 'Kalkulation', component: 'FinanceCalculation', readOnlyInDemo: false },
       { id: 'documents', title: 'Dokumente', component: 'FinanceDocuments', readOnlyInDemo: true },
     ],
-    phase: '2A',
+    phase: 'done',
   },
   {
     id: 'GP-PRIVATKREDIT',
@@ -239,7 +239,7 @@ export const GOLDEN_PATH_PROCESSES: GoldenPathProcess[] = [
       modulePageHeader: true,
       widgetGrid: true,
       widgetCell: true,
-      demoWidget: false,
+      demoWidget: true,
       inlineFlow: true,
       noSubNavigation: true,
     },
@@ -262,7 +262,7 @@ export const GOLDEN_PATH_PROCESSES: GoldenPathProcess[] = [
       { id: 'request', title: 'Kreditanfrage', component: 'ConsumerLoanRequest', readOnlyInDemo: false },
       { id: 'offers', title: 'Angebote', component: 'ConsumerLoanOffers', readOnlyInDemo: true },
     ],
-    phase: '2A',
+    phase: 'done',
   },
 
   // ─── MOD-08: Investment-Suche ───────────────────────────
@@ -317,7 +317,7 @@ export const GOLDEN_PATH_PROCESSES: GoldenPathProcess[] = [
       modulePageHeader: true,
       widgetGrid: false,
       widgetCell: false,
-      demoWidget: false,
+      demoWidget: true,
       inlineFlow: true,
       noSubNavigation: true,
     },
@@ -339,7 +339,7 @@ export const GOLDEN_PATH_PROCESSES: GoldenPathProcess[] = [
       { id: 'engine', title: 'Investment Engine', component: 'SimulationEngine', readOnlyInDemo: false },
       { id: 'results', title: '40-Jahres-Projektion', component: 'SimulationResults', readOnlyInDemo: false },
     ],
-    phase: '2A',
+    phase: 'done',
   },
 
   // ─── MOD-11: Finanzierungsmanager ───────────────────────
@@ -554,7 +554,7 @@ export const GOLDEN_PATH_PROCESSES: GoldenPathProcess[] = [
       modulePageHeader: true,
       widgetGrid: true,
       widgetCell: true,
-      demoWidget: false,
+      demoWidget: true,
       inlineFlow: true,
       noSubNavigation: true,
     },
@@ -577,7 +577,7 @@ export const GOLDEN_PATH_PROCESSES: GoldenPathProcess[] = [
       { id: 'details', title: 'Fahrzeugdaten', component: 'CarDetails', readOnlyInDemo: false },
       { id: 'leasing', title: 'Leasing & Kosten', component: 'CarLeasing', readOnlyInDemo: false },
     ],
-    phase: '2A',
+    phase: 'done',
   },
 
   // ─── MOD-19: Photovoltaik ──────────────────────────────
