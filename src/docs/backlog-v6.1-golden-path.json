@@ -7,8 +7,8 @@
     "predecessor": "backlog v6.0 (Website Builder), Phase 1 (Manifest + Toggle-System) abgeschlossen",
     "methodology": "4 Sub-Phasen (2A→2D). Pro Prozess: Demo-Widget einfügen, useDemoToggles integrieren, ggf. Layout auf WidgetGrid umbauen. Nach jedem Schritt: goldenPathProcesses.ts updaten.",
     "design_manifest": "V4.0 — WIDGET_GRID.FULL, WIDGET_CELL.DIMENSIONS, TYPOGRAPHY.PAGE_TITLE, SPACING.SECTION",
-    "current_phase": "2A",
-    "status": "IN_PROGRESS"
+    "current_phase": "done",
+    "status": "COMPLETED"
   },
   "referenz_implementierungen": [
     "src/pages/portal/communication-pro/ResearchTab.tsx (GP-RECHERCHE, phase: done)",

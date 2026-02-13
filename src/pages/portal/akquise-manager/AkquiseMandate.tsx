@@ -58,6 +58,7 @@ import jsPDF from 'jspdf';
 import { AcqProfilePreview } from '@/components/akquise/AcqProfilePreview';
 import { ContactBookDialog } from '@/components/akquise/ContactBookDialog';
 import logoLight from '@/assets/logos/armstrong_logo_light.png';
+import { useDemoToggles } from '@/hooks/useDemoToggles';
 
 // ── Types ──
 interface ExtractedProfile {
@@ -104,6 +105,8 @@ export default function AkquiseMandate() {
   const navigate = useNavigate();
   const { data: mandates, isLoading } = useAcqMandatesForManager();
   const createMandate = useCreateAcqMandate();
+  const { isEnabled } = useDemoToggles();
+  const demoEnabled = isEnabled('GP-AKQUISE-MANDAT');
 
   const [isSplitView, setIsSplitView] = useState(false);
 
@@ -498,6 +501,28 @@ export default function AkquiseMandate() {
       {/* ═══ Mandate Widget Grid ═══ */}
       <div>
         <WidgetGrid>
+          {/* Demo Widget */}
+          {demoEnabled && (
+            <WidgetCell>
+              <Card className="glass-card border-primary/20 h-full cursor-pointer hover:border-primary/40 transition-colors">
+                <CardContent className="p-4 h-full flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <Badge className="bg-primary/10 text-primary text-[10px]">Demo</Badge>
+                      <Badge variant="outline" className="text-[10px]">Aktiv</Badge>
+                    </div>
+                    <h3 className="font-semibold text-sm">MFH-Akquise Rheinland</h3>
+                    <p className="text-xs text-muted-foreground mt-0.5">Investoren GbR Rhein</p>
+                  </div>
+                  <div className="mt-3 space-y-1">
+                    <div className="flex justify-between text-xs"><span className="text-muted-foreground">Asset</span><span className="font-medium">MFH ab 10 WE</span></div>
+                    <div className="flex justify-between text-xs"><span className="text-muted-foreground">Region</span><span className="font-medium">Köln/Düsseldorf</span></div>
+                    <div className="flex justify-between text-xs"><span className="text-muted-foreground">Budget</span><span className="font-mono">bis 5 Mio €</span></div>
+                  </div>
+                </CardContent>
+              </Card>
+            </WidgetCell>
+          )}
           <WidgetCell>
             <MandateCaseCardNew onClick={() => {
               setActiveMandateId(null);

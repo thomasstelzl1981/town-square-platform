@@ -1,226 +1,130 @@
 /**
- * PV Anlagen Tab — Portfolio list + Showcase Empty State
+ * PV Anlagen Tab — Golden Path compliant with WidgetGrid + Demo-Widget
  */
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { DESIGN } from '@/config/designManifest';
 import { usePvPlants } from '@/hooks/usePvPlants';
 import { usePvMonitoring } from '@/hooks/usePvMonitoring';
-import { usePvDMS } from '@/hooks/usePvDMS';
-import { useAuth } from '@/contexts/AuthContext';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from '@/components/ui/table';
-import {
-  Sun, Plus, Eye, Zap, MapPin, Activity, Settings, FileText,
-  Gauge, FolderOpen, ClipboardCheck, Sparkles,
-} from 'lucide-react';
-import { toast } from 'sonner';
+import { Sun, Plus, Zap, Activity } from 'lucide-react';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
+import { WidgetGrid } from '@/components/shared/WidgetGrid';
+import { WidgetCell } from '@/components/shared/WidgetCell';
+import { useDemoToggles } from '@/hooks/useDemoToggles';
+import { LoadingState } from '@/components/shared/LoadingState';
 
 export default function AnlagenTab() {
   const navigate = useNavigate();
-  const { plants, isLoading, createPlant, tenantId } = usePvPlants();
+  const { plants, isLoading } = usePvPlants();
   const { liveData } = usePvMonitoring(plants);
-  const { createDMSTree } = usePvDMS();
-  const { profile } = useAuth();
-  const hasPlants = plants.length > 0;
+  const { isEnabled } = useDemoToggles();
+  const demoEnabled = isEnabled('GP-PV-ANLAGE');
 
-  const handleSeedDemo = async () => {
-    if (!tenantId || !profile?.id) return;
-    try {
-      const demos = [
-        { name: 'Thomas – EFH SMA 9,8 kWp', city: 'Berlin', kwp: 9.8, wr_manufacturer: 'SMA', provider: 'demo' },
-        { name: 'Gewerbehalle Solar-Log 49,5 kWp', city: 'München', kwp: 49.5, wr_manufacturer: 'Solar-Log', provider: 'demo' },
-      ];
-      for (const d of demos) {
-        const plant = await createPlant.mutateAsync(d);
-        await createDMSTree.mutateAsync({ plantId: plant.id, plantName: plant.name });
-      }
-      toast.success('2 Demo-Anlagen angelegt');
-    } catch (e) {
-      // error handled in hook
-    }
-  };
-
-  // Showcase preview data
-  const previewRows = [
-    { name: 'Thomas – EFH SMA 9,8 kWp', city: 'Berlin', kwp: 9.8, wr: 'SMA', status: 'active', power: '4.230 W', energy: '18,4 kWh', sync: 'vor 5 Sek' },
-    { name: 'Gewerbehalle Solar-Log 49,5 kWp', city: 'München', kwp: 49.5, wr: 'Solar-Log', status: 'active', power: '21.780 W', energy: '94,2 kWh', sync: 'vor 8 Sek' },
-  ];
-
-  const aktePreviewSections = [
-    { icon: MapPin, label: 'Standort' },
-    { icon: ClipboardCheck, label: 'MaStR / BNetzA' },
-    { icon: Zap, label: 'Netzbetreiber' },
-    { icon: Gauge, label: 'Zähler' },
-    { icon: Settings, label: 'Technik' },
-    { icon: Activity, label: 'Monitoring' },
-    { icon: FolderOpen, label: 'Dokumente' },
-  ];
+  if (isLoading) {
+    return <PageShell><LoadingState /></PageShell>;
+  }
 
   return (
     <PageShell>
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight uppercase">ANLAGEN</h1>
-          <p className="text-muted-foreground mt-1">
-            {hasPlants ? `${plants.length} PV-Anlage${plants.length > 1 ? 'n' : ''}` : 'Ihr PV-Portfolio'}
-          </p>
-        </div>
-        <div className="flex gap-2">
-          {!hasPlants && (
-            <Button variant="outline" onClick={handleSeedDemo} disabled={createPlant.isPending}>
-              <Sparkles className="h-4 w-4 mr-2" />
-              Demo-Anlagen erzeugen
-            </Button>
-          )}
-          <Button onClick={() => navigate('/portal/photovoltaik/neu')}>
-            <Plus className="h-4 w-4 mr-2" />
-            Neue Anlage
-          </Button>
-        </div>
-      </div>
+      <ModulePageHeader
+        title="ANLAGEN"
+        description={`${plants.length > 0 ? `${plants.length} PV-Anlage${plants.length > 1 ? 'n' : ''}` : 'Ihr PV-Portfolio'}`}
+      />
 
-      {isLoading ? (
-        <div className="space-y-3">
-          <Skeleton className="h-12 w-full" />
-          <Skeleton className="h-12 w-full" />
-        </div>
-      ) : hasPlants ? (
-        /* Real data table */
-        <Card className="glass-card">
-          <CardContent className="p-0 overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead className="hidden md:table-cell">Ort</TableHead>
-                  <TableHead className="hidden sm:table-cell">kWp</TableHead>
-                  <TableHead className="hidden lg:table-cell">WR</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Leistung</TableHead>
-                  <TableHead className="hidden md:table-cell text-right">Ertrag heute</TableHead>
-                  <TableHead></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {plants.map((plant) => {
-                  const live = liveData.get(plant.id);
-                  return (
-                    <TableRow key={plant.id} className="cursor-pointer" onClick={() => navigate(`/portal/photovoltaik/${plant.id}`)}>
-                      <TableCell className="font-medium">{plant.name}</TableCell>
-                      <TableCell className="hidden md:table-cell text-muted-foreground">{plant.city || '–'}</TableCell>
-                      <TableCell className="hidden sm:table-cell">{plant.kwp ?? '–'}</TableCell>
-                      <TableCell className="hidden lg:table-cell text-muted-foreground">{plant.wr_manufacturer || '–'}</TableCell>
-                      <TableCell>
-                        <Badge variant={plant.status === 'active' ? 'default' : 'secondary'}>
-                          {plant.status === 'active' ? 'Aktiv' : 'Inaktiv'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right font-mono">
-                        {live ? `${live.currentPowerW.toLocaleString('de-DE')} W` : '–'}
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell text-right font-mono">
-                        {live ? `${live.energyTodayKwh.toLocaleString('de-DE')} kWh` : '–'}
-                      </TableCell>
-                      <TableCell>
-                        <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); navigate(`/portal/photovoltaik/${plant.id}`); }}>
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      ) : (
-        /* Showcase Empty State */
-        <div className="space-y-6">
-          {/* Preview table */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <Sun className="h-4 w-4" />
-                Vorschau: So sieht Ihr PV-Portfolio aus
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0 opacity-50 pointer-events-none">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead className="hidden md:table-cell">Ort</TableHead>
-                    <TableHead className="hidden sm:table-cell">kWp</TableHead>
-                    <TableHead className="hidden lg:table-cell">WR</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Leistung</TableHead>
-                    <TableHead className="hidden md:table-cell text-right">Ertrag heute</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {previewRows.map((row, i) => (
-                    <TableRow key={i}>
-                      <TableCell className="font-medium">{row.name}</TableCell>
-                      <TableCell className="hidden md:table-cell text-muted-foreground">{row.city}</TableCell>
-                      <TableCell className="hidden sm:table-cell">{row.kwp}</TableCell>
-                      <TableCell className="hidden lg:table-cell text-muted-foreground">{row.wr}</TableCell>
-                      <TableCell><Badge variant="default">Aktiv</Badge></TableCell>
-                      <TableCell className="text-right font-mono">{row.power}</TableCell>
-                      <TableCell className="hidden md:table-cell text-right font-mono">{row.energy}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-
-          {/* Akte preview */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <FileText className="h-4 w-4" />
-                So sieht eine PV-Akte aus
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="opacity-50 pointer-events-none">
-              <div className={DESIGN.KPI_GRID.FULL}>
-                {aktePreviewSections.map((s) => (
-                  <div key={s.label} className="flex items-center gap-2 rounded-lg border p-3">
-                    <s.icon className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm">{s.label}</span>
+      <WidgetGrid>
+        {/* Demo Widget */}
+        {demoEnabled && (
+          <WidgetCell>
+            <Card className="glass-card border-primary/20 h-full cursor-pointer hover:border-primary/40 transition-colors">
+              <CardContent className="p-4 h-full flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <Badge className="bg-primary/10 text-primary text-[10px]">Demo</Badge>
+                    <Badge variant="default" className="text-[10px]">Aktiv</Badge>
                   </div>
-                ))}
+                  <h3 className="font-semibold text-sm">EFH SMA 9,8 kWp</h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">Berlin · SMA Sunny Tripower</p>
+                </div>
+                <div className="mt-3 space-y-1">
+                  <div className="flex justify-between text-xs">
+                    <span className="text-muted-foreground flex items-center gap-1"><Zap className="h-3 w-3" /> Leistung</span>
+                    <span className="font-mono font-semibold">4.230 W</span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-muted-foreground flex items-center gap-1"><Activity className="h-3 w-3" /> Heute</span>
+                    <span className="font-mono">18,4 kWh</span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-muted-foreground">Jahresertrag</span>
+                    <span className="font-mono">9.500 kWh</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </WidgetCell>
+        )}
+
+        {/* Real Plants */}
+        {plants.map((plant) => {
+          const live = liveData.get(plant.id);
+          return (
+            <WidgetCell key={plant.id}>
+              <Card
+                className="h-full cursor-pointer transition-colors hover:border-primary/30"
+                onClick={() => navigate(`/portal/photovoltaik/${plant.id}`)}
+              >
+                <CardContent className="p-4 h-full flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <Sun className="h-4 w-4 text-amber-500" />
+                      <Badge variant={plant.status === 'active' ? 'default' : 'secondary'} className="text-[10px]">
+                        {plant.status === 'active' ? 'Aktiv' : 'Inaktiv'}
+                      </Badge>
+                    </div>
+                    <h3 className="font-semibold text-sm">{plant.name}</h3>
+                    <p className="text-xs text-muted-foreground mt-0.5">{plant.city || '–'} · {plant.wr_manufacturer || '–'}</p>
+                  </div>
+                  <div className="mt-3 space-y-1">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-muted-foreground">kWp</span>
+                      <span className="font-mono font-semibold">{plant.kwp ?? '–'}</span>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-muted-foreground">Leistung</span>
+                      <span className="font-mono">{live ? `${live.currentPowerW.toLocaleString('de-DE')} W` : '–'}</span>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-muted-foreground">Heute</span>
+                      <span className="font-mono">{live ? `${live.energyTodayKwh.toLocaleString('de-DE')} kWh` : '–'}</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </WidgetCell>
+          );
+        })}
+
+        {/* CTA Widget */}
+        <WidgetCell>
+          <Card
+            className="glass-card border-dashed border-2 h-full flex flex-col items-center justify-center cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-all"
+            onClick={() => navigate('/portal/photovoltaik/neu')}
+          >
+            <CardContent className="p-4 flex flex-col items-center justify-center h-full text-center gap-3">
+              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                <Plus className="h-6 w-6 text-primary" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-foreground">Neue Anlage</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">PV-Anlage hinzufügen</p>
               </div>
             </CardContent>
           </Card>
-
-          {/* CTA */}
-          <div className="flex flex-col items-center gap-3 py-6">
-            <Sun className="h-12 w-12 text-primary/30" />
-            <p className="text-muted-foreground text-center max-w-md">
-              Legen Sie Ihre erste PV-Anlage an und verwalten Sie Monitoring, Dokumente und Stammdaten an einem Ort.
-            </p>
-            <div className="flex gap-2">
-              <Button onClick={() => navigate('/portal/photovoltaik/neu')}>
-                <Plus className="h-4 w-4 mr-2" />
-                Erste Anlage anlegen
-              </Button>
-              <Button onClick={() => navigate('/portal/photovoltaik/neu')}>
-                <Plus className="h-4 w-4 mr-2" />
-                Erste Anlage anlegen
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+        </WidgetCell>
+      </WidgetGrid>
     </PageShell>
   );
 }

@@ -16,6 +16,7 @@ import { WidgetCell } from '@/components/shared/WidgetCell';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { FinanceCaseCard, FinanceCaseCardPlaceholder } from '@/components/finanzierungsmanager/FinanceCaseCard';
+import { useDemoToggles } from '@/hooks/useDemoToggles';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useAcceptMandate, useUpdateMandateStatus, useFinanceMandates } from '@/hooks/useFinanceMandate';
@@ -141,6 +142,8 @@ function ZinsTickerWidget() {
 export default function FMDashboard({ cases, isLoading }: Props) {
   const navigate = useNavigate();
   const { user, profile } = useAuth();
+  const { isEnabled } = useDemoToggles();
+  const demoEnabled = isEnabled('GP-FM-FALL');
   const acceptMandate = useAcceptMandate();
   const updateStatus = useUpdateMandateStatus();
   const cancelRequest = useCancelFinanceRequest();
@@ -360,6 +363,26 @@ export default function FMDashboard({ cases, isLoading }: Props) {
 
       {/* Section A: Fälle in Bearbeitung */}
       <WidgetGrid>
+        {demoEnabled && (
+          <WidgetCell>
+            <Card className="glass-card border-primary/20 h-full cursor-pointer hover:border-primary/40 transition-colors" onClick={() => navigate('faelle/__demo__')}>
+              <CardContent className="p-4 h-full flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <Badge className="bg-primary/10 text-primary text-[10px]">Demo</Badge>
+                    <Badge variant="outline" className="text-[10px]">In Prüfung</Badge>
+                  </div>
+                  <h3 className="font-semibold text-sm">Max Muster</h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">Friedrichstr. 100, Berlin</p>
+                </div>
+                <div className="mt-3 space-y-1">
+                  <div className="flex justify-between text-xs"><span className="text-muted-foreground">Volumen</span><span className="font-mono font-semibold">{eurFormat.format(450000)}</span></div>
+                  <div className="flex justify-between text-xs"><span className="text-muted-foreground">Rate</span><span className="font-mono">{eurFormat.format(1580)}/Monat</span></div>
+                </div>
+              </CardContent>
+            </Card>
+          </WidgetCell>
+        )}
         {activeCases.map(c => (
           <WidgetCell key={c.id}>
             <FinanceCaseCard

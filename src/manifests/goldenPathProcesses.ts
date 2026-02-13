@@ -84,7 +84,7 @@ export const GOLDEN_PATH_PROCESSES: GoldenPathProcess[] = [
       modulePageHeader: true,
       widgetGrid: true,
       widgetCell: true,
-      demoWidget: false,
+      demoWidget: true,
       inlineFlow: true,
       noSubNavigation: true,
     },
@@ -107,7 +107,7 @@ export const GOLDEN_PATH_PROCESSES: GoldenPathProcess[] = [
       { id: 'kpi', title: 'Portfoliokennzahlen', component: 'PortfolioKPIs', readOnlyInDemo: true },
       { id: 'units', title: 'Einheiten', component: 'PortfolioUnits', readOnlyInDemo: true },
     ],
-    phase: '2A',
+    phase: 'done',
   },
   {
     id: 'GP-VERWALTUNG',
@@ -277,10 +277,10 @@ export const GOLDEN_PATH_PROCESSES: GoldenPathProcess[] = [
     menuPointPaths: ['/portal/investments/mandat'],
     compliance: {
       modulePageHeader: true,
-      widgetGrid: false,
-      widgetCell: false,
-      demoWidget: false,
-      inlineFlow: false,
+      widgetGrid: true,
+      widgetCell: true,
+      demoWidget: true,
+      inlineFlow: true,
       noSubNavigation: true,
     },
     demoWidget: {
@@ -302,7 +302,7 @@ export const GOLDEN_PATH_PROCESSES: GoldenPathProcess[] = [
       { id: 'profile', title: 'Suchprofil', component: 'MandatProfile', readOnlyInDemo: false },
       { id: 'results', title: 'Ergebnisse', component: 'MandatResults', readOnlyInDemo: true },
     ],
-    phase: '2C',
+    phase: 'done',
   },
   {
     id: 'GP-SIMULATION',
@@ -356,8 +356,8 @@ export const GOLDEN_PATH_PROCESSES: GoldenPathProcess[] = [
       modulePageHeader: true,
       widgetGrid: true,
       widgetCell: true,
-      demoWidget: false,
-      inlineFlow: false,
+      demoWidget: true,
+      inlineFlow: true,
       noSubNavigation: true,
     },
     demoWidget: {
@@ -379,7 +379,7 @@ export const GOLDEN_PATH_PROCESSES: GoldenPathProcess[] = [
       { id: 'documents', title: 'Dokumente', component: 'FMCaseDocuments', readOnlyInDemo: true },
       { id: 'bank', title: 'Bankzuweisung', component: 'FMCaseBank', readOnlyInDemo: true },
     ],
-    phase: '2B',
+    phase: 'done',
   },
 
   // ─── MOD-12: Akquise Manager ────────────────────────────
@@ -396,7 +396,7 @@ export const GOLDEN_PATH_PROCESSES: GoldenPathProcess[] = [
       modulePageHeader: true,
       widgetGrid: true,
       widgetCell: true,
-      demoWidget: false,
+      demoWidget: true,
       inlineFlow: true,
       noSubNavigation: true,
     },
@@ -420,7 +420,7 @@ export const GOLDEN_PATH_PROCESSES: GoldenPathProcess[] = [
       { id: 'pipeline', title: 'Objekt-Pipeline', component: 'AkquisePipeline', readOnlyInDemo: true },
       { id: 'outreach', title: 'Kontaktierung', component: 'AkquiseOutreach', readOnlyInDemo: true },
     ],
-    phase: '2B',
+    phase: 'done',
   },
 
   // ─── MOD-13: Projekte ───────────────────────────────────
@@ -436,9 +436,9 @@ export const GOLDEN_PATH_PROCESSES: GoldenPathProcess[] = [
     compliance: {
       modulePageHeader: true,
       widgetGrid: true,
-      widgetCell: false,
+      widgetCell: true,
       demoWidget: true,
-      inlineFlow: false,
+      inlineFlow: true,
       noSubNavigation: true,
     },
     demoWidget: {
@@ -461,7 +461,7 @@ export const GOLDEN_PATH_PROCESSES: GoldenPathProcess[] = [
       { id: 'units', title: 'Einheiten', component: 'ProjectUnits', readOnlyInDemo: true },
       { id: 'publications', title: 'Veröffentlichungen', component: 'ProjectPublications', readOnlyInDemo: true },
     ],
-    phase: '2B',
+    phase: 'done',
   },
 
   // ─── MOD-14: Communication Pro ──────────────────────────
@@ -475,11 +475,11 @@ export const GOLDEN_PATH_PROCESSES: GoldenPathProcess[] = [
     menuPoints: 1,
     menuPointPaths: ['/portal/communication-pro/serien-emails'],
     compliance: {
-      modulePageHeader: false,
-      widgetGrid: false,
-      widgetCell: false,
-      demoWidget: false,
-      inlineFlow: false,
+      modulePageHeader: true,
+      widgetGrid: true,
+      widgetCell: true,
+      demoWidget: true,
+      inlineFlow: true,
       noSubNavigation: true,
     },
     demoWidget: {
@@ -501,7 +501,7 @@ export const GOLDEN_PATH_PROCESSES: GoldenPathProcess[] = [
       { id: 'sequence', title: 'Sequenz-Editor', component: 'SequenceEditor', readOnlyInDemo: false },
       { id: 'stats', title: 'Statistiken', component: 'SequenceStats', readOnlyInDemo: true },
     ],
-    phase: '2C',
+    phase: 'done',
   },
   {
     id: 'GP-RECHERCHE',
@@ -592,10 +592,10 @@ export const GOLDEN_PATH_PROCESSES: GoldenPathProcess[] = [
     menuPointPaths: ['/portal/photovoltaik/anlagen'],
     compliance: {
       modulePageHeader: true,
-      widgetGrid: false,
-      widgetCell: false,
-      demoWidget: false,
-      inlineFlow: false,
+      widgetGrid: true,
+      widgetCell: true,
+      demoWidget: true,
+      inlineFlow: true,
       noSubNavigation: true,
     },
     demoWidget: {
@@ -616,7 +616,7 @@ export const GOLDEN_PATH_PROCESSES: GoldenPathProcess[] = [
       { id: 'system', title: 'Anlagendaten', component: 'PVSystemData', readOnlyInDemo: false },
       { id: 'yield', title: 'Ertragsmonitoring', component: 'PVYieldMonitor', readOnlyInDemo: true },
     ],
-    phase: '2C',
+    phase: 'done',
   },
 
   // ─── MOD-21: Website Builder ────────────────────────────

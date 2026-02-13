@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useDemoToggles } from '@/hooks/useDemoToggles';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -91,6 +92,8 @@ interface LeaseData {
 }
 
 export function PortfolioTab() {
+  const { isEnabled } = useDemoToggles();
+  const demoEnabled = isEnabled('GP-PORTFOLIO');
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { activeOrganization, activeTenantId } = useAuth();
@@ -667,6 +670,44 @@ export function PortfolioTab() {
       {contexts.length > 0 && (
         <div className="space-y-4">
           <WidgetGrid variant="widget">
+            {/* Demo Widget */}
+            {demoEnabled && (
+              <WidgetCell>
+                <button className={cn(
+                  "w-full h-full flex flex-col justify-between p-5 rounded-xl border text-left transition-all",
+                  DESIGN.CARD.BASE,
+                  "border-primary/20 hover:border-primary/40"
+                )}>
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <Badge className="bg-primary/10 text-primary text-[10px]">Demo</Badge>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Building2 className="h-4 w-4 text-primary" />
+                      <span className="font-semibold text-sm">Vermietereinheit Berlin</span>
+                    </div>
+                  </div>
+                  <div className="mt-4 space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className={DESIGN.TYPOGRAPHY.LABEL}>Einheiten</span>
+                      <span className="text-sm font-semibold">3</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className={DESIGN.TYPOGRAPHY.LABEL}>Verkehrswert</span>
+                      <span className="text-sm font-semibold">{formatCurrency(850000)}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className={DESIGN.TYPOGRAPHY.LABEL}>Restschuld</span>
+                      <span className="text-sm font-semibold">{formatCurrency(520000)}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className={DESIGN.TYPOGRAPHY.LABEL}>Nettovermögen</span>
+                      <span className="text-sm font-semibold text-primary">{formatCurrency(330000)}</span>
+                    </div>
+                  </div>
+                </button>
+              </WidgetCell>
+            )}
             {/* Widget 1: Alle Immobilien */}
             <WidgetCell>
               <button
