@@ -30,8 +30,8 @@ export const areaConfig: AreaDefinition[] = [
   },
   {
     key: 'operations',
-    label: 'Operations',
-    labelShort: 'Ops',
+    label: 'Partners',
+    labelShort: 'Partners',
     icon: 'Settings',
     modules: ['MOD-13', 'MOD-09', 'MOD-11', 'MOD-12', 'MOD-10'],
   },
