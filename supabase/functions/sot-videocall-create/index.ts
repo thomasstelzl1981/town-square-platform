@@ -81,8 +81,8 @@ serve(async (req) => {
 
     // Get tenant
     const { data: membership } = await supabase
-      .from('organization_members')
-      .select('organization_id')
+      .from('memberships')
+      .select('tenant_id')
       .eq('user_id', user.id)
       .limit(1)
       .single();
@@ -97,7 +97,7 @@ serve(async (req) => {
     const { data: call, error: insertError } = await supabase
       .from('video_calls')
       .insert({
-        tenant_id: membership.organization_id,
+        tenant_id: membership.tenant_id,
         host_user_id: user.id,
         title,
         status: 'active',
