@@ -10,16 +10,17 @@ import { ObjekteingangList } from './akquise-manager/ObjekteingangList';
 import { ObjekteingangDetail } from './akquise-manager/ObjekteingangDetail';
 
 const AkquiseDashboard = lazy(() => import('./akquise-manager/AkquiseDashboard'));
+const AkquiseMandate = lazy(() => import('./akquise-manager/AkquiseMandate'));
 const AkquiseMandateDetail = lazy(() => import('./akquise-manager/AkquiseMandateDetail'));
 const AkquiseTools = lazy(() => import('./akquise-manager/AkquiseTools'));
-const MandatCreateWizardManager = lazy(() => import('./akquise-manager/MandatCreateWizardManager'));
 
 export default function AkquiseManagerPage() {
   return (
     <Routes>
       <Route index element={<Navigate to="dashboard" replace />} />
       <Route path="dashboard" element={<AkquiseDashboard />} />
-      <Route path="mandate/neu" element={<MandatCreateWizardManager />} />
+      <Route path="mandate" element={<AkquiseMandate />} />
+      <Route path="mandate/neu" element={<Navigate to="/portal/akquise-manager/mandate" replace />} />
       <Route path="mandate/:mandateId" element={
         <GoldenPathGuard moduleCode="MOD-12" entityIdParam="mandateId">
           <AkquiseMandateDetail />
