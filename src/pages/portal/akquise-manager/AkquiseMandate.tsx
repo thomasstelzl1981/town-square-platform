@@ -56,6 +56,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { de } from 'date-fns/locale';
 import jsPDF from 'jspdf';
 import { AcqProfilePreview } from '@/components/akquise/AcqProfilePreview';
+import { ContactBookDialog } from '@/components/akquise/ContactBookDialog';
 import logoLight from '@/assets/logos/armstrong_logo_light.png';
 
 // ── Types ──
@@ -72,13 +73,14 @@ interface ExtractedProfile {
 }
 
 // ── Source & Status configs ──
-const SOURCE_CONFIG = {
+const SOURCE_CONFIG: Record<string, { label: string; icon: typeof UserPlus; color: string }> = {
   manual: { label: 'Manuell', icon: UserPlus, color: 'bg-gray-100 text-gray-700' },
   apollo: { label: 'Apollo', icon: Database, color: 'bg-blue-100 text-blue-700' },
   apify: { label: 'Apify', icon: Globe, color: 'bg-purple-100 text-purple-700' },
   firecrawl: { label: 'Firecrawl', icon: Search, color: 'bg-orange-100 text-orange-700' },
   geomap: { label: 'GeoMap', icon: MapPin, color: 'bg-green-100 text-green-700' },
-} as const;
+  kontaktbuch: { label: 'Kontaktbuch', icon: BookOpen, color: 'bg-emerald-100 text-emerald-700' },
+};
 
 const MSG_STATUS_CONFIG: Record<string, { label: string; icon: typeof Clock; color: string }> = {
   queued: { label: 'Warteschlange', icon: Clock, color: 'bg-gray-100 text-gray-700' },
@@ -129,11 +131,16 @@ export default function AkquiseMandate() {
   const [profileData, setProfileData] = useState<ExtractedProfile | null>(null);
   const [profileTextLong, setProfileTextLong] = useState('');
 
+  // ─── CI-Vorschau (separate Preview-States) ───
+  const [previewData, setPreviewData] = useState<ExtractedProfile | null>(null);
+  const [previewTextLong, setPreviewTextLong] = useState('');
+
   // ─── Kachel 3: Kontaktrecherche ───
   const [selectedContactIds, setSelectedContactIds] = useState<Set<string>>(new Set());
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showApolloDialog, setShowApolloDialog] = useState(false);
   const [showApifyDialog, setShowApifyDialog] = useState(false);
+  const [showContactBookDialog, setShowContactBookDialog] = useState(false);
   const [apolloLoading, setApolloLoading] = useState(false);
   const [apifyLoading, setApifyLoading] = useState(false);
   const [manualForm, setManualForm] = useState({ company_name: '', first_name: '', last_name: '', email: '', phone: '', website_url: '', role_guess: '', service_area: '' });
@@ -374,6 +381,96 @@ export default function AkquiseMandate() {
     }
   };
 
+  // ── "Ankaufsprofil übernehmen" — Orchestration ──
+  const handleApplyProfile = async () => {
+    if (!profileData) return;
+
+    // 1. CI-Vorschau befüllen
+    setPreviewData({ ...profileData });
+    setPreviewTextLong(profileTextLong);
+
+    // 2. E-Mail-Entwurf generieren
+    const region = profileData.region || 'Deutschland';
+    const assets = profileData.asset_focus?.join(', ') || 'Immobilien';
+    const priceRange = formatPriceRange(profileData.price_min, profileData.price_max);
+    const yieldStr = profileData.yield_target ? `${profileData.yield_target}%` : '–';
+    
+    setEmailSubject(`Ankaufsprofil — ${clientName || 'Investor'} — ${region}`);
+    setEmailBody(
+      `Sehr geehrte Damen und Herren,\n\nim Auftrag unseres Mandanten suchen wir Immobilien mit folgendem Profil:\n\n` +
+      `Suchgebiet: ${region}\n` +
+      `Asset-Fokus: ${assets}\n` +
+      `Investitionsrahmen: ${priceRange}\n` +
+      `Zielrendite: ${yieldStr}\n\n` +
+      `Anbei finden Sie das vollständige Ankaufsprofil als PDF.\n\n` +
+      `Wir freuen uns auf Ihre Angebote.\n\n` +
+      `Mit freundlichen Grüßen`
+    );
+
+    // 3. Auto-Kontaktrecherche starten (Apollo)
+    if (activeMandateId) {
+      try {
+        const searchLocations = profileData.region ? profileData.region.split(',').map(s => s.trim()) : [];
+        const { data, error } = await supabase.functions.invoke('sot-apollo-search', {
+          body: {
+            mandateId: activeMandateId,
+            jobTitles: ['Makler', 'Immobilienmakler', 'Geschäftsführer'],
+            locations: searchLocations,
+            industries: ['Real Estate'],
+            limit: 25,
+          },
+        });
+        if (!error && data?.contacts?.length) {
+          await bulkCreate.mutateAsync({
+            mandateId: activeMandateId,
+            contacts: data.contacts.map((c: any) => ({
+              source: 'apollo' as const,
+              source_id: c.id,
+              company_name: c.company,
+              first_name: c.firstName,
+              last_name: c.lastName,
+              email: c.email,
+              phone: c.phone,
+              role_guess: c.title,
+              service_area: c.location,
+              quality_score: c.score || 50,
+            })),
+          });
+          toast.success(`Ankaufsprofil übernommen — E-Mail vorbereitet, ${data.contacts.length} Kontakte gefunden`);
+        } else {
+          toast.success('Ankaufsprofil übernommen — E-Mail vorbereitet');
+        }
+      } catch {
+        toast.success('Ankaufsprofil übernommen — E-Mail vorbereitet, Recherche fehlgeschlagen');
+      }
+    } else {
+      toast.success('Ankaufsprofil in Vorschau übernommen — E-Mail vorbereitet');
+    }
+  };
+
+  // ── Contact Book Import ──
+  const handleContactBookImport = async (importedContacts: { first_name: string; last_name: string; email: string; company_name: string; service_area: string }[]) => {
+    if (!activeMandateId || importedContacts.length === 0) return;
+    try {
+      await bulkCreate.mutateAsync({
+        mandateId: activeMandateId,
+        contacts: importedContacts.map(c => ({
+          source: 'kontaktbuch' as const,
+          company_name: c.company_name,
+          first_name: c.first_name,
+          last_name: c.last_name,
+          email: c.email,
+          service_area: c.service_area,
+          quality_score: 80,
+        })),
+      });
+      setShowContactBookDialog(false);
+      toast.success(`${importedContacts.length} Kontakte aus dem Kontaktbuch übernommen`);
+    } catch {
+      toast.error('Import fehlgeschlagen');
+    }
+  };
+
   if (isLoading) {
     return <PageShell><div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div></PageShell>;
   }
@@ -421,7 +518,7 @@ export default function AkquiseMandate() {
             className="text-base font-medium"
           />
         </div>
-        <Button variant="outline" size="sm" disabled>
+        <Button variant="outline" size="sm" onClick={() => setShowContactBookDialog(true)}>
           <BookOpen className="h-4 w-4 mr-2" />
           Kontaktbuch
         </Button>
@@ -530,42 +627,46 @@ export default function AkquiseMandate() {
                     className="text-sm"
                   />
                 </div>
+
+                {/* Apply button */}
+                <Button className="w-full" variant="default" onClick={handleApplyProfile}>
+                  <CheckCircle2 className="mr-2 h-4 w-4" />
+                  Ankaufsprofil übernehmen
+                </Button>
               </div>
             )}
           </CardContent>
         </Card>
       </div>
 
-      {/* ═══ CI-VORSCHAU — Vollbreite Kachel ═══ */}
-      {profileGenerated && (
-        <Card>
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2 text-sm">
-                <FileText className="h-4 w-4" />
-                CI-Vorschau — Ankaufsprofil
-              </CardTitle>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={generatePdf}>
-                  <Download className="h-4 w-4 mr-2" />
-                  PDF exportieren
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => window.print()}>
-                  <Printer className="h-4 w-4 mr-2" />
-                  Drucken
-                </Button>
-              </div>
+      {/* ═══ CI-VORSCHAU — Vollbreite Kachel (immer sichtbar) ═══ */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <FileText className="h-4 w-4" />
+              CI-Vorschau — Ankaufsprofil
+            </CardTitle>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={generatePdf} disabled={!previewData}>
+                <Download className="h-4 w-4 mr-2" />
+                PDF exportieren
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => window.print()} disabled={!previewData}>
+                <Printer className="h-4 w-4 mr-2" />
+                Drucken
+              </Button>
             </div>
-          </CardHeader>
-          <CardContent>
-            <AcqProfilePreview
-              clientName={clientName}
-              profileData={profileData}
-              profileTextLong={profileTextLong}
-            />
-          </CardContent>
-        </Card>
-      )}
+          </div>
+        </CardHeader>
+        <CardContent>
+          <AcqProfilePreview
+            clientName={clientName}
+            profileData={previewData}
+            profileTextLong={previewTextLong}
+          />
+        </CardContent>
+      </Card>
 
       {/* ═══ ANKAUFSPROFIL ANLEGEN BUTTON ═══ */}
       {profileGenerated && !mandateCreated && (
@@ -612,6 +713,9 @@ export default function AkquiseMandate() {
                 </Button>
                 <Button variant="ghost" size="sm" onClick={() => setShowAddDialog(true)} title="Manuell">
                   <UserPlus className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => setShowContactBookDialog(true)} title="Kontaktbuch">
+                  <BookOpen className="h-4 w-4" />
                 </Button>
               </div>
             </div>
@@ -902,6 +1006,14 @@ export default function AkquiseMandate() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* ═══ Kontaktbuch Dialog ═══ */}
+      <ContactBookDialog
+        open={showContactBookDialog}
+        onOpenChange={setShowContactBookDialog}
+        onImport={handleContactBookImport}
+        isImporting={bulkCreate.isPending}
+      />
     </PageShell>
   );
 }
