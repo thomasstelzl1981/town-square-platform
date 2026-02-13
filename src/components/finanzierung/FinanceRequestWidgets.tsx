@@ -5,7 +5,9 @@
  * 
  * GOLDEN PATH KONFORM: Demo-Widget an Position 0, useDemoToggles
  */
-
+ 
+import { cn } from '@/lib/utils';
+import { DESIGN } from '@/config/designManifest';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -86,16 +88,19 @@ export function FinanceRequestWidgets({ activeRequestId }: FinanceRequestWidgets
       {showDemo && (
         <WidgetCell>
           <Card
-            className={`h-full cursor-pointer transition-all hover:shadow-lg ${
-              activeRequestId === '__demo__' ? 'ring-2 ring-primary' : ''
-            }`}
+            className={cn(
+              `h-full cursor-pointer transition-all`,
+              DESIGN.DEMO_WIDGET.CARD,
+              DESIGN.DEMO_WIDGET.HOVER,
+              activeRequestId === '__demo__' ? 'ring-2 ring-emerald-500' : ''
+            )}
             onClick={() => navigate('/portal/finanzierung/anfrage/__demo__')}
           >
             <div className="flex flex-col h-full p-4 justify-between">
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <Home className="h-5 w-5 text-primary" />
-                  <Badge className="bg-primary/10 text-primary border-0 text-[10px]">
+                  <Badge className={cn(DESIGN.DEMO_WIDGET.BADGE, "text-[10px]")}>
                     {GP_FINANZIERUNG.demoWidget.badgeLabel}
                   </Badge>
                 </div>

@@ -5,6 +5,8 @@
  * GOLDEN PATH KONFORM: Demo-Widget an Position 0, useDemoToggles
  */
 import { useState } from 'react';
+import { DESIGN } from '@/config/designManifest';
+import { cn } from '@/lib/utils';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -64,14 +66,17 @@ export function SanierungTab() {
           {showDemo && (
             <WidgetCell>
               <Card
-                className={`h-full cursor-pointer transition-all hover:shadow-lg group flex flex-col ${
-                  selectedCaseId === '__demo__' ? 'ring-2 ring-primary shadow-glow' : ''
-                }`}
+                className={cn(
+                  `h-full cursor-pointer transition-all group flex flex-col`,
+                  DESIGN.DEMO_WIDGET.CARD,
+                  DESIGN.DEMO_WIDGET.HOVER,
+                  selectedCaseId === '__demo__' ? 'ring-2 ring-emerald-500 shadow-glow' : ''
+                )}
                 onClick={() => setSelectedCaseId('__demo__')}
               >
                 <CardContent className="flex flex-col h-full justify-between p-4">
                   <div className="flex items-start justify-between">
-                    <Badge className="bg-primary/10 text-primary border-0 text-[10px] font-medium">
+                    <Badge className={cn(DESIGN.DEMO_WIDGET.BADGE, "text-[10px] font-medium")}>
                       {GP_SANIERUNG.demoWidget.badgeLabel}
                     </Badge>
                   </div>

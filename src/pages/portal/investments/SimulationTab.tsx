@@ -35,6 +35,7 @@ import {
   Calculator, ChevronDown, ChevronUp, Loader2, FileText, BarChart3
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { DESIGN } from '@/config/designManifest';
 import { useDemoToggles } from '@/hooks/useDemoToggles';
 import { GOLDEN_PATH_PROCESSES } from '@/manifests/goldenPathProcesses';
 
@@ -165,10 +166,10 @@ export default function SimulationTab() {
       <WidgetGrid>
         {showDemo && (
           <WidgetCell>
-            <Card className="h-full cursor-pointer transition-all hover:shadow-lg">
+            <Card className={cn("h-full cursor-pointer transition-all", DESIGN.DEMO_WIDGET.CARD, DESIGN.DEMO_WIDGET.HOVER)}>
               <CardContent className="flex flex-col h-full justify-between p-4">
                 <div className="flex items-start justify-between">
-                  <Badge className="bg-primary/10 text-primary border-0 text-[10px]">
+                  <Badge className={cn(DESIGN.DEMO_WIDGET.BADGE, "text-[10px]")}>
                     {GP_SIMULATION.demoWidget.badgeLabel}
                   </Badge>
                 </div>

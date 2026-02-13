@@ -31,6 +31,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useAcqMandatesForManager, useCreateAcqMandate } from '@/hooks/useAcqMandate';
 import { ASSET_FOCUS_OPTIONS, type CreateAcqMandateData } from '@/types/acquisition';
 import { DESIGN } from '@/config/designManifest';
+import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { 
@@ -504,11 +505,11 @@ export default function AkquiseMandate() {
           {/* Demo Widget */}
           {demoEnabled && (
             <WidgetCell>
-              <Card className="glass-card border-primary/20 h-full cursor-pointer hover:border-primary/40 transition-colors">
+              <Card className={cn("h-full cursor-pointer transition-colors", DESIGN.DEMO_WIDGET.CARD, DESIGN.DEMO_WIDGET.HOVER)}>
                 <CardContent className="p-4 h-full flex flex-col justify-between">
                   <div>
                     <div className="flex items-center justify-between mb-2">
-                      <Badge className="bg-primary/10 text-primary text-[10px]">Demo</Badge>
+                      <Badge className={cn(DESIGN.DEMO_WIDGET.BADGE, "text-[10px]")}>Demo</Badge>
                       <Badge variant="outline" className="text-[10px]">Aktiv</Badge>
                     </div>
                     <h3 className="font-semibold text-sm">MFH-Akquise Rheinland</h3>

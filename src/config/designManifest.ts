@@ -218,6 +218,17 @@ export const DASHBOARD_HEADER = {
   TICKER_ROWS: 4,
 } as const;
 
+// ─── DEMO WIDGET (NEU V4.3) ───────────────────────────────
+/** Glasig-grünes Styling für alle Demo-Widgets zur visuellen Unterscheidung */
+export const DEMO_WIDGET = {
+  /** Card-Klassen für Demo-Widgets */
+  CARD: 'bg-emerald-50/40 border-emerald-200/60 dark:bg-emerald-950/20 dark:border-emerald-800/40 relative overflow-hidden before:absolute before:inset-x-0 before:top-0 before:h-1 before:bg-gradient-to-r before:from-emerald-300/60 before:via-emerald-400/40 before:to-emerald-300/60 before:rounded-t-xl',
+  /** Hover-Effekt für Demo-Widgets */
+  HOVER: 'hover:border-emerald-300/80 dark:hover:border-emerald-700/60',
+  /** Badge-Klassen für Demo-Label */
+  BADGE: 'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-300 dark:border-emerald-700/40',
+} as const;
+
 // ─── EXPORT ALS EINHEITLICHES OBJEKT ──────────────────────
 export const DESIGN = {
   CONTAINER,
@@ -236,4 +247,5 @@ export const DESIGN = {
   SPACING,
   MOBILE,
   DASHBOARD_HEADER,
+  DEMO_WIDGET,
 } as const;

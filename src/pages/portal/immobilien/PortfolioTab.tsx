@@ -6,6 +6,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import { DESIGN } from '@/config/designManifest';
+import { UnitDossierView } from '@/components/immobilienakte';
+import type { UnitDossierData } from '@/types/immobilienakte';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { WidgetGrid } from '@/components/shared/WidgetGrid';
 import { WidgetCell } from '@/components/shared/WidgetCell';
@@ -657,6 +659,95 @@ export function PortfolioTab() {
 
   const [selectedDemoId, setSelectedDemoId] = useState<string | null>(null);
 
+  // Hardcoded Demo Dossier Data for UnitDossierView
+  const DEMO_DOSSIER_DATA: UnitDossierData = {
+    unitCode: 'WE-B01',
+    address: 'Schadowstr. 12, 10117 Berlin',
+    locationLabel: 'Berlin-Mitte',
+    status: 'VERMIETET',
+    asofDate: '2026-02-01',
+    dataQuality: 'OK',
+    propertyId: '__demo__',
+    unitId: '__demo__',
+    tenantId: '__demo__',
+    publicId: 'DEMO-B01',
+    propertyType: 'MFH',
+    category: 'einzelobjekt',
+    propertyStatus: 'aktiv',
+    saleEnabled: false,
+    rentalManaged: true,
+    reportingRegime: 'VuV',
+    street: 'Schadowstr.',
+    houseNumber: '12',
+    postalCode: '10117',
+    city: 'Berlin',
+    buildYear: 1912,
+    usageType: 'wohnen',
+    areaLivingSqm: 202,
+    roomsCount: 7,
+    bathroomsCount: 3,
+    heatingType: 'zentralheizung',
+    energySource: 'gas',
+    energyCertValue: 128,
+    energyCertValidUntil: '2030-06-15',
+    featuresTags: ['Altbau', 'Stuck', 'Dielen', 'Balkon', 'Aufzug'],
+    wegFlag: true,
+    meaOrTeNo: '125/1000',
+    meaShare: 125,
+    meaTotal: 1000,
+    tenancyStatus: 'ACTIVE',
+    leaseType: 'unbefristet',
+    startDate: '2021-03-01',
+    rentColdEur: 850,
+    nkAdvanceEur: 180,
+    heatingAdvanceEur: 120,
+    rentWarmEur: 1150,
+    paymentDueDay: 3,
+    depositAmountEur: 2550,
+    depositStatus: 'PAID',
+    rentModel: 'INDEX',
+    nextRentAdjustmentDate: '2027-03-01',
+    periodCurrent: '2025',
+    allocationKeyDefault: 'MEA',
+    lastSettlementDate: '2025-06-30',
+    lastSettlementBalanceEur: -145,
+    hausgeldMonthlyEur: 380,
+    allocatablePaEur: 2800,
+    nonAllocatablePaEur: 1760,
+    topCostBlocks: { 'Heizung': 1200, 'Wasser': 480, 'Müll': 360, 'Versicherung': 520, 'Verwalter': 600 },
+    bankName: 'Sparkasse Berlin',
+    loanNumber: 'SPK-2021-44821',
+    outstandingBalanceEur: 520000,
+    outstandingBalanceAsof: '2026-01-31',
+    interestRatePercent: 2.8,
+    fixedInterestEndDate: '2031-02-28',
+    annuityMonthlyEur: 2080,
+    specialRepaymentRight: { enabled: true, amountEur: 26000 },
+    contactPerson: { name: 'Hr. Breitner', phone: '+49 30 1234-5678', email: 'breitner@spk-berlin.de' },
+    purchasePriceEur: 750000,
+    purchaseCostsEur: 82500,
+    valuationEur: 850000,
+    netColdRentPaEur: 10200,
+    nonAllocCostsPaEur: 1760,
+    cashflowPreTaxMonthlyEur: -1378,
+    grossYieldPercent: 3.95,
+    netYieldPercent: 3.27,
+    landRegisterShort: 'AG Mitte, Blatt 4821',
+    managerContact: { name: 'WEG Hausverwaltung Berlin GmbH', phone: '+49 30 9988-7766' },
+    afaMethod: 'linear',
+    coaVersion: 'SKR04',
+    documents: [
+      { docType: 'kaufvertrag', label: 'Kaufvertrag', status: 'complete' },
+      { docType: 'grundbuch', label: 'Grundbuchauszug', status: 'complete' },
+      { docType: 'teilungserklaerung', label: 'Teilungserklärung', status: 'complete' },
+      { docType: 'mietvertrag', label: 'Mietvertrag', status: 'complete' },
+      { docType: 'energieausweis', label: 'Energieausweis', status: 'review' },
+      { docType: 'wohngeldabrechnung', label: 'Wohngeldabrechnung 2024', status: 'complete' },
+      { docType: 'darlehensvertrag', label: 'Darlehensvertrag', status: 'missing' },
+      { docType: 'versicherung', label: 'Gebäudeversicherung', status: 'review' },
+    ],
+  };
+
   if (unitsLoading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -678,18 +769,19 @@ export function PortfolioTab() {
                 onClick={() => setSelectedDemoId(selectedDemoId === '__demo__' ? null : '__demo__')}
                 className={cn(
                   "w-full h-full flex flex-col justify-between p-5 rounded-xl border text-left transition-all",
-                  DESIGN.CARD.BASE,
+                  DESIGN.DEMO_WIDGET.CARD,
+                  DESIGN.DEMO_WIDGET.HOVER,
                   selectedDemoId === '__demo__'
-                    ? "ring-2 ring-primary border-primary shadow-sm"
-                    : "border-primary/20 hover:border-primary/40"
+                    ? "ring-2 ring-emerald-500 border-emerald-400 shadow-sm"
+                    : ""
                 )}
               >
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <Badge className="bg-primary/10 text-primary text-[10px]">Demo</Badge>
+                    <Badge className={cn(DESIGN.DEMO_WIDGET.BADGE, "text-[10px]")}>Demo</Badge>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Building2 className="h-4 w-4 text-primary" />
+                    <Building2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                     <span className="font-semibold text-sm">Vermietereinheit Berlin</span>
                   </div>
                 </div>
@@ -708,7 +800,7 @@ export function PortfolioTab() {
                   </div>
                   <div className="flex justify-between items-center">
                     <span className={DESIGN.TYPOGRAPHY.LABEL}>Nettovermögen</span>
-                    <span className="text-sm font-semibold text-primary">{formatCurrency(330000)}</span>
+                    <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">{formatCurrency(330000)}</span>
                   </div>
                 </div>
               </button>
@@ -824,55 +916,14 @@ export function PortfolioTab() {
           </WidgetGrid>
         </div>
 
-      {/* Demo Inline-Detail */}
+      {/* Demo Inline-Detail — Vollständige Immobilienakte */}
       {selectedDemoId === '__demo__' && (
-        <Card className={DESIGN.CARD.CONTENT}>
-          <div className="flex items-start justify-between mb-4">
-            <div>
-              <div className="flex items-center gap-3">
-                <h2 className="text-lg font-bold tracking-tight">Demo: Vermietereinheit Berlin</h2>
-                <Badge className="bg-primary/10 text-primary border-0">Demo</Badge>
-              </div>
-              <p className="text-sm text-muted-foreground mt-1">
-                Beispiel-Portfolio mit 3 Einheiten — Alle Daten sind Demo-Daten
-              </p>
-            </div>
-            <button onClick={() => setSelectedDemoId(null)} className="text-muted-foreground hover:text-foreground p-1">✕</button>
+        <div className="pt-2">
+          <div className="flex justify-end mb-2">
+            <button onClick={() => setSelectedDemoId(null)} className="text-muted-foreground hover:text-foreground text-sm">✕ Schließen</button>
           </div>
-          <div className={DESIGN.KPI_GRID.FULL}>
-            <StatCard title="Einheiten" value="3" icon={Building2} />
-            <StatCard title="Verkehrswert" value={formatCurrency(850000)} icon={TrendingUp} />
-            <StatCard title="Restschuld" value={formatCurrency(520000)} icon={Wallet} />
-            <StatCard title="Nettovermögen" value={formatCurrency(330000)} icon={PiggyBank} />
-          </div>
-          <div className="mt-4 space-y-2">
-            <h3 className="text-sm font-semibold">Einheiten-Übersicht</h3>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Einheit</TableHead>
-                  <TableHead>Typ</TableHead>
-                  <TableHead>Fläche</TableHead>
-                  <TableHead className="text-right">Miete p.a.</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {[
-                  { nr: 'WE-01', typ: 'Wohnung', area: '72 m²', rent: '9.600 €' },
-                  { nr: 'WE-02', typ: 'Wohnung', area: '85 m²', rent: '12.000 €' },
-                  { nr: 'WE-03', typ: 'Gewerbe', area: '45 m²', rent: '12.000 €' },
-                ].map(u => (
-                  <TableRow key={u.nr}>
-                    <TableCell className="font-medium">{u.nr}</TableCell>
-                    <TableCell><Badge variant="outline">{u.typ}</Badge></TableCell>
-                    <TableCell>{u.area}</TableCell>
-                    <TableCell className="text-right font-semibold">{u.rent}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        </Card>
+          <UnitDossierView data={DEMO_DOSSIER_DATA} />
+        </div>
       )}
 
       {/* CreateContextDialog */}
