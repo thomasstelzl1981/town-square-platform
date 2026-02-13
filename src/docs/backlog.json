@@ -246,26 +246,31 @@
       "id": "S4",
       "name": "Component-Map & Router Regression",
       "priority": "P1",
-      "status": "pending",
+      "status": "done",
+      "completed_at": "2026-02-13T17:35:00Z",
+      "notes": "portalModulePageMap: 21/21 PASS. portalDynamicComponentMap: Legacy-Artefakt, nicht aktiv im Router (Module handeln dynamic_routes intern). adminComponentMap: Alle Standard-Routes gemappt, Desk-Routes via adminDeskMap/explizite Nested Routes. Kein Fix noetig.",
       "description": "Jeder component-String im Manifest muss einen lazy-Import in der Component-Map haben.",
       "tasks": [
         {
           "id": "S4-01",
           "title": "portalModulePageMap — alle tiles[].component Strings pruefen",
-          "status": "pending",
-          "type": "code_audit"
+          "status": "done",
+          "type": "code_audit",
+          "result": "PASS — 21/21 Module base-Keys gemappt"
         },
         {
           "id": "S4-02",
           "title": "portalDynamicComponentMap — alle dynamic_routes[].component pruefen",
-          "status": "pending",
-          "type": "code_audit"
+          "status": "done",
+          "type": "code_audit",
+          "result": "LEGACY — Map existiert mit 7 Eintraegen, wird aber im Router nicht aktiv verwendet. Alle Module handeln dynamic_routes intern via ModulePage/*. Kein Bug."
         },
         {
           "id": "S4-03",
           "title": "adminComponentMap — Zone-1 route.component Strings pruefen",
-          "status": "pending",
-          "type": "code_audit"
+          "status": "done",
+          "type": "code_audit",
+          "result": "PASS — Alle Standard-Admin-Routes gemappt. Desk-Routes (FutureRoom, SalesDesk, Acquiary, Agents) korrekt via adminDeskMap/explizite Routes gehandhabt."
         }
       ]
     },
