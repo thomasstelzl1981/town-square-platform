@@ -70,7 +70,7 @@ export function EditableWEGBlock({
         {/* MEA */}
         <div className="grid grid-cols-3 gap-3">
           <div className="space-y-1">
-            <Label className="text-[11px] text-muted-foreground">MEA Anteil</Label>
+            <Label className="text-xs text-muted-foreground">MEA Anteil</Label>
             <Input 
               type="number"
               step="0.0001"
@@ -81,7 +81,7 @@ export function EditableWEGBlock({
             />
           </div>
           <div className="space-y-1">
-            <Label className="text-[11px] text-muted-foreground">MEA Gesamt</Label>
+            <Label className="text-xs text-muted-foreground">MEA Gesamt</Label>
             <Input 
               type="number"
               step="0.01"
@@ -92,7 +92,7 @@ export function EditableWEGBlock({
             />
           </div>
           <div className="space-y-1">
-            <Label className="text-[11px] text-muted-foreground">Hausgeld mtl. (€)</Label>
+            <Label className="text-xs text-muted-foreground">Hausgeld mtl. (€)</Label>
             <Input 
               type="number"
               step="0.01"
@@ -106,7 +106,7 @@ export function EditableWEGBlock({
         {/* Allocation */}
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1">
-            <Label className="text-[11px] text-muted-foreground">Standard-Umlageschlüssel</Label>
+            <Label className="text-xs text-muted-foreground">Standard-Umlageschlüssel</Label>
             <Select value={allocationKeyDefault} onValueChange={(v) => onFieldChange('allocationKeyDefault', v as AllocationKey)}>
               <SelectTrigger className="h-7 text-xs">
                 <SelectValue />
@@ -119,7 +119,7 @@ export function EditableWEGBlock({
             </Select>
           </div>
           <div className="space-y-1">
-            <Label className="text-[11px] text-muted-foreground">Aktuelle Periode</Label>
+            <Label className="text-xs text-muted-foreground">Aktuelle Periode</Label>
             <Input 
               value={periodCurrent || ''} 
               disabled
@@ -133,11 +133,11 @@ export function EditableWEGBlock({
         <div className="pt-1 border-t">
           <div className="flex items-center gap-2 mb-2 text-muted-foreground">
             <Calculator className="h-3.5 w-3.5" />
-            <span className="text-[11px] font-medium">Letzte Abrechnung</span>
+            <span className="text-xs font-medium">Letzte Abrechnung</span>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
-              <Label className="text-[11px] text-muted-foreground">Abrechnungsdatum</Label>
+              <Label className="text-xs text-muted-foreground">Abrechnungsdatum</Label>
               <Input 
                 type="date"
                 value={lastSettlementDate || ''} 
@@ -146,7 +146,7 @@ export function EditableWEGBlock({
               />
             </div>
             <div className="space-y-1">
-              <Label className="text-[11px] text-muted-foreground">Saldo (€)</Label>
+              <Label className="text-xs text-muted-foreground">Saldo (€)</Label>
               <Input 
                 type="number"
                 step="0.01"
@@ -159,7 +159,7 @@ export function EditableWEGBlock({
           </div>
           <div className="grid grid-cols-2 gap-3 mt-2">
             <div className="space-y-1">
-              <Label className="text-[11px] text-muted-foreground">Umlagefähig p.a. (€)</Label>
+              <Label className="text-xs text-muted-foreground">Umlagefähig p.a. (€)</Label>
               <Input 
                 type="number"
                 step="0.01"
@@ -169,7 +169,7 @@ export function EditableWEGBlock({
               />
             </div>
             <div className="space-y-1">
-              <Label className="text-[11px] text-muted-foreground">Nicht umlagefähig p.a. (€)</Label>
+              <Label className="text-xs text-muted-foreground">Nicht umlagefähig p.a. (€)</Label>
               <Input 
                 type="number"
                 step="0.01"

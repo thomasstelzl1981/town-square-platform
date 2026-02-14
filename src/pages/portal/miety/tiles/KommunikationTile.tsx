@@ -61,19 +61,19 @@ export default function KommunikationTile() {
               <h3 className="font-semibold text-sm">Ihr Vermieter</h3>
               <p className="text-xs text-muted-foreground">Kontaktdaten Ihrer Hausverwaltung</p>
             </div>
-            <Badge variant="outline" className="ml-auto text-[10px] text-green-600 border-green-300">Verbunden</Badge>
+            <Badge variant="outline" className="ml-auto text-xs text-green-600 border-green-300">Verbunden</Badge>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="space-y-1">
-              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Name</p>
+              <p className="text-xs uppercase tracking-wider text-muted-foreground font-medium">Name</p>
               <p className="text-sm font-medium">Müller Hausverwaltung GmbH</p>
             </div>
             <div className="space-y-1">
-              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">E-Mail</p>
+              <p className="text-xs uppercase tracking-wider text-muted-foreground font-medium">E-Mail</p>
               <p className="text-sm font-medium">info@mueller-hv.de</p>
             </div>
             <div className="space-y-1">
-              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Telefon</p>
+              <p className="text-xs uppercase tracking-wider text-muted-foreground font-medium">Telefon</p>
               <p className="text-sm font-medium">+49 30 1234567</p>
             </div>
           </div>

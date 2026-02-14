@@ -148,7 +148,7 @@ export function ResearchResultsTable({ orderId }: Props) {
                 </td>
                 <td className="p-2 text-muted-foreground hidden md:table-cell text-xs">{r.phone || '—'}</td>
                 <td className="p-2 hidden lg:table-cell">
-                  <Badge variant="outline" className="text-[10px]">{r.source_provider}</Badge>
+                  <Badge variant="outline" className="text-xs">{r.source_provider}</Badge>
                 </td>
                 <td className="p-2 text-center">
                   <ConfidenceBadge score={r.confidence_score} />
@@ -178,5 +178,5 @@ function StatusBadge({ status }: { status: string }) {
     imported: { label: '✓ Import', variant: 'default' },
   };
   const c = config[status] || config.candidate;
-  return <Badge variant={c.variant} className="text-[10px]">{c.label}</Badge>;
+  return <Badge variant={c.variant} className="text-xs">{c.label}</Badge>;
 }

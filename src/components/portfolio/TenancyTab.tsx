@@ -370,7 +370,7 @@ export function TenancyTab({ propertyId, tenantId, unitId }: TenancyTabProps) {
           {/* Row 1: Vertragsart + Mietmodell */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
-              <Label className="text-[11px] text-muted-foreground">Vertragsart</Label>
+              <Label className="text-xs text-muted-foreground">Vertragsart</Label>
               <Select
                 value={getField(lease, 'lease_type') || 'unbefristet'}
                 onValueChange={(v) => updateLeaseField(lease.id, 'lease_type', v)}
@@ -382,7 +382,7 @@ export function TenancyTab({ propertyId, tenantId, unitId }: TenancyTabProps) {
               </Select>
             </div>
             <div className="space-y-1">
-              <Label className="text-[11px] text-muted-foreground">Mietmodell</Label>
+              <Label className="text-xs text-muted-foreground">Mietmodell</Label>
               <Select
                 value={getField(lease, 'rent_model') || 'FIX'}
                 onValueChange={(v) => updateLeaseField(lease.id, 'rent_model', v)}
@@ -398,15 +398,15 @@ export function TenancyTab({ propertyId, tenantId, unitId }: TenancyTabProps) {
           {/* Row 2: Miete */}
           <div className="grid grid-cols-3 gap-3 pt-1 border-t">
             <div className="space-y-1">
-              <Label className="text-[11px] text-muted-foreground">Kaltmiete (€)</Label>
+              <Label className="text-xs text-muted-foreground">Kaltmiete (€)</Label>
               <Input type="number" step="0.01" value={cold} onChange={(e) => updateLeaseField(lease.id, 'rent_cold_eur', e.target.value)} className="h-7 text-xs" />
             </div>
             <div className="space-y-1">
-              <Label className="text-[11px] text-muted-foreground">NK-Vorausz. (€)</Label>
+              <Label className="text-xs text-muted-foreground">NK-Vorausz. (€)</Label>
               <Input type="number" step="0.01" value={nk} onChange={(e) => updateLeaseField(lease.id, 'nk_advance_eur', e.target.value)} className="h-7 text-xs" />
             </div>
             <div className="space-y-1">
-              <Label className="text-[11px] text-muted-foreground">Heizk.-VZ (€)</Label>
+              <Label className="text-xs text-muted-foreground">Heizk.-VZ (€)</Label>
               <Input type="number" step="0.01" value={heating} onChange={(e) => updateLeaseField(lease.id, 'heating_advance_eur', e.target.value)} className="h-7 text-xs" />
             </div>
           </div>
@@ -420,11 +420,11 @@ export function TenancyTab({ propertyId, tenantId, unitId }: TenancyTabProps) {
           {/* Row 3: Laufzeit */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
-              <Label className="text-[11px] text-muted-foreground">Mietbeginn</Label>
+              <Label className="text-xs text-muted-foreground">Mietbeginn</Label>
               <Input type="date" value={getField(lease, 'start_date')} onChange={(e) => updateLeaseField(lease.id, 'start_date', e.target.value)} className="h-7 text-xs" />
             </div>
             <div className="space-y-1">
-              <Label className="text-[11px] text-muted-foreground">Mietende</Label>
+              <Label className="text-xs text-muted-foreground">Mietende</Label>
               <Input type="date" value={getField(lease, 'end_date')} onChange={(e) => updateLeaseField(lease.id, 'end_date', e.target.value)} className="h-7 text-xs" />
             </div>
           </div>
@@ -432,11 +432,11 @@ export function TenancyTab({ propertyId, tenantId, unitId }: TenancyTabProps) {
           {/* Row 4: Kaution + Zahlung */}
           <div className="grid grid-cols-3 gap-3 pt-1 border-t">
             <div className="space-y-1">
-              <Label className="text-[11px] text-muted-foreground">Kaution (€)</Label>
+              <Label className="text-xs text-muted-foreground">Kaution (€)</Label>
               <Input type="number" step="0.01" value={getField(lease, 'deposit_amount_eur')} onChange={(e) => updateLeaseField(lease.id, 'deposit_amount_eur', e.target.value)} className="h-7 text-xs" />
             </div>
             <div className="space-y-1">
-              <Label className="text-[11px] text-muted-foreground">Kaution-Status</Label>
+              <Label className="text-xs text-muted-foreground">Kaution-Status</Label>
               <Select value={getField(lease, 'deposit_status') || 'OPEN'} onValueChange={(v) => updateLeaseField(lease.id, 'deposit_status', v)}>
                 <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -445,14 +445,14 @@ export function TenancyTab({ propertyId, tenantId, unitId }: TenancyTabProps) {
               </Select>
             </div>
             <div className="space-y-1">
-              <Label className="text-[11px] text-muted-foreground">Zahlungstag</Label>
+              <Label className="text-xs text-muted-foreground">Zahlungstag</Label>
               <Input type="number" min={1} max={31} value={getField(lease, 'payment_due_day')} onChange={(e) => updateLeaseField(lease.id, 'payment_due_day', e.target.value)} className="h-7 text-xs" />
             </div>
           </div>
 
           {/* Row 5: Nächste Anpassung */}
           <div className="space-y-1">
-            <Label className="text-[11px] text-muted-foreground">Nächste Mietanpassung</Label>
+            <Label className="text-xs text-muted-foreground">Nächste Mietanpassung</Label>
             <Input type="date" value={getField(lease, 'next_rent_adjustment_date')} onChange={(e) => updateLeaseField(lease.id, 'next_rent_adjustment_date', e.target.value)} className="h-7 text-xs" />
           </div>
 

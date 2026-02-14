@@ -151,7 +151,7 @@ export function StickyCalculatorPanel({
           <Calculator className="h-4 w-4 text-primary" />
           Kalkulator
           {isDemo && (
-            <Badge variant="outline" className="text-[10px] ml-auto">Demo</Badge>
+            <Badge variant="outline" className="text-xs ml-auto">Demo</Badge>
           )}
         </CardTitle>
       </CardHeader>
@@ -309,7 +309,7 @@ export function StickyCalculatorPanel({
           </div>
           <div className="flex justify-center gap-3 mt-1">
             {legendItems.map((d) => (
-              <div key={d.name} className="flex items-center gap-1 text-[9px] text-muted-foreground">
+              <div key={d.name} className="flex items-center gap-1 text-xs text-muted-foreground">
                 <div className="w-2 h-2 rounded-full" style={{ backgroundColor: d.color }} />
                 {d.name}
               </div>

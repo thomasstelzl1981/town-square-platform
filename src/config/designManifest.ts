@@ -83,7 +83,7 @@ export const TABLE = {
   /** Äußerer Rahmen für alle Datentabellen */
   WRAPPER: 'glass-card rounded-xl overflow-hidden',
   /** Header-Zelle */
-  HEADER_CELL: 'text-xs font-medium text-muted-foreground uppercase tracking-wide px-4 py-3',
+  HEADER_CELL: 'text-sm font-medium text-muted-foreground uppercase tracking-wide px-4 py-3',
   /** Body-Zelle */
   BODY_CELL: 'px-4 py-3 text-sm',
   /** Zeilen-Hover */
@@ -98,13 +98,13 @@ export const TABLE = {
 /** Bank-Stil: 3-Spalten-Tabelle (Label | AS1 | AS2) — Gold-Standard aus Selbstauskunft */
 export const TABULAR_FORM = {
   /** Label-Spalte (links) */
-  LABEL_CELL: 'w-[180px] border-r border-border/30 py-1.5 px-3 text-xs text-muted-foreground font-medium whitespace-nowrap',
+  LABEL_CELL: 'w-[180px] border-r border-border/30 py-1.5 px-3 text-sm text-muted-foreground font-medium whitespace-nowrap',
   /** Wert-Zelle */
   VALUE_CELL: 'py-1.5 px-3 border-r border-border/30',
   /** Kompakter Inline-Input */
   INPUT: 'h-7 border-0 bg-transparent shadow-none focus-visible:ring-1 text-sm px-1',
   /** Section-Header-Zeile */
-  SECTION_ROW: 'bg-muted/40 text-xs font-semibold uppercase tracking-wide py-1.5 px-3',
+  SECTION_ROW: 'bg-muted/40 text-sm font-semibold uppercase tracking-wide py-1.5 px-3',
   /** Tabellen-Rahmen */
   TABLE_BORDER: 'border border-border/30 rounded-lg overflow-hidden',
   /** Zeilen-Trenner */
@@ -200,7 +200,7 @@ export const MOBILE = {
   /** Einzelne Card im Stack */
   CARD_ITEM: 'glass-card rounded-xl p-4 space-y-2',
   /** Label:Value Paar in Card */
-  CARD_LABEL: 'text-xs text-muted-foreground',
+  CARD_LABEL: 'text-sm text-muted-foreground',
   CARD_VALUE: 'text-sm font-medium',
 } as const;
 

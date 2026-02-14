@@ -160,7 +160,7 @@ export function UnitPreislisteTable({ units, projectId, isDemo, onUnitPriceChang
                   )}
                   onClick={() => handleRowClick(u.id, idx)}
                 >
-                  <td className="px-3 py-2 font-mono text-[11px] text-primary">{u.public_id}</td>
+                  <td className="px-3 py-2 font-mono text-xs text-primary">{u.public_id}</td>
                   <td className="px-3 py-2 font-medium">{u.unit_number}</td>
                   <td className="px-3 py-2 text-center">{u.rooms}-Zi</td>
                   <td className="px-3 py-2 text-center">{u.floor}. OG</td>
@@ -194,7 +194,7 @@ export function UnitPreislisteTable({ units, projectId, isDemo, onUnitPriceChang
                       onValueChange={(v) => onStatusChange?.(u.id, v)}
                     >
                       <SelectTrigger className={cn(
-                        'h-6 w-[90px] text-[10px] font-medium border-0 mx-auto',
+                        'h-6 w-[90px] text-xs font-medium border-0 mx-auto',
                         status.className
                       )}>
                         <SelectValue />

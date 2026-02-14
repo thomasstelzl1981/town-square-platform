@@ -246,7 +246,7 @@ export function ProviderSearchPanel({
           <h4 className={DESIGN.TYPOGRAPHY.CARD_TITLE + ' flex items-center gap-2'}>
             <Users className="h-3.5 w-3.5" />
             Ausgewählt
-            <Badge variant="secondary" className="text-[10px]">{selectedProviders.length}</Badge>
+            <Badge variant="secondary" className="text-xs">{selectedProviders.length}</Badge>
           </h4>
           <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setShowManual(!showManual)}>
             <Plus className="h-3 w-3 mr-1" />

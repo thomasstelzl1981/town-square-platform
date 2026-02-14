@@ -45,7 +45,7 @@ export function ResearchOrderWidget({ order, isActive, onClick }: Props) {
         <h4 className="text-sm font-semibold text-foreground truncate flex-1 mr-2">
           {order.title || 'Ohne Titel'}
         </h4>
-        <Badge variant={status.variant} className="text-[10px] shrink-0">
+        <Badge variant={status.variant} className="text-xs shrink-0">
           {status.label}
         </Badge>
       </div>

@@ -65,11 +65,11 @@ export function MandateCaseCard({ mandate, offerCount, isSelected, onClick, onDe
           <p className="font-semibold text-sm leading-tight truncate">
             {mandate.split_terms_confirmed_at && mandate.client_display_name ? mandate.client_display_name : mandate.code}
           </p>
-          <Badge variant={statusConfig.variant as 'default' | 'secondary' | 'outline'} className="text-[10px] font-medium flex-shrink-0">
+          <Badge variant={statusConfig.variant as 'default' | 'secondary' | 'outline'} className="text-xs font-medium flex-shrink-0">
             {statusConfig.label}
           </Badge>
         </div>
-        <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <span className="font-mono">{mandate.code}</span>
           {offerCount !== undefined && offerCount > 0 && <span>· {offerCount} Objekte</span>}
         </div>
@@ -79,10 +79,10 @@ export function MandateCaseCard({ mandate, offerCount, isSelected, onClick, onDe
       {/* Desktop: square layout */}
       <CardContent className="hidden md:flex p-4 flex-col h-full justify-between">
         <div className="flex items-start justify-between">
-          <Badge variant={statusConfig.variant as 'default' | 'secondary' | 'outline'} className="text-[10px] font-medium">
+          <Badge variant={statusConfig.variant as 'default' | 'secondary' | 'outline'} className="text-xs font-medium">
             {statusConfig.label}
           </Badge>
-          <span className="text-[10px] font-mono text-muted-foreground">{mandate.code}</span>
+          <span className="text-xs font-mono text-muted-foreground">{mandate.code}</span>
         </div>
         <div className="flex-1 flex flex-col items-center justify-center text-center gap-1 py-2">
           <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center mb-1">
@@ -94,13 +94,13 @@ export function MandateCaseCard({ mandate, offerCount, isSelected, onClick, onDe
             <p className="font-semibold text-sm leading-tight">{mandate.code}</p>
           )}
           {mandate.asset_focus && mandate.asset_focus.length > 0 && (
-            <p className="text-[11px] text-muted-foreground line-clamp-1">{mandate.asset_focus.join(', ')}</p>
+            <p className="text-xs text-muted-foreground line-clamp-1">{mandate.asset_focus.join(', ')}</p>
           )}
           {priceRange && (
-            <p className="text-[10px] text-muted-foreground">{priceRange}</p>
+            <p className="text-xs text-muted-foreground">{priceRange}</p>
           )}
         </div>
-        <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
           {offerCount !== undefined && offerCount > 0 ? (
             <span>{offerCount} Objekte</span>
           ) : (
@@ -137,7 +137,7 @@ export function MandateCaseCardNew({ onClick }: { onClick?: () => void }) {
           <Plus className="h-5 w-5 text-primary" />
         </div>
         <p className="text-sm font-medium text-muted-foreground">Neues Mandat</p>
-        <p className="text-[10px] text-muted-foreground">Mandat erstellen</p>
+        <p className="text-xs text-muted-foreground">Mandat erstellen</p>
       </CardContent>
     </Card>
   );
@@ -151,7 +151,7 @@ export function MandateCaseCardPlaceholder() {
           <Briefcase className="h-5 w-5 text-muted-foreground" />
         </div>
         <p className="text-sm font-medium text-muted-foreground">Keine Mandate</p>
-        <p className="text-[10px] text-muted-foreground">Mandate werden über Zone 1 zugewiesen</p>
+        <p className="text-xs text-muted-foreground">Mandate werden über Zone 1 zugewiesen</p>
       </CardContent>
     </Card>
   );

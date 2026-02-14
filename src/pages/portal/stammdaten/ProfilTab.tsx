@@ -583,14 +583,14 @@ function WhatsAppWidget({ userId, isDevelopmentMode }: { userId?: string; isDeve
           </FormSection>
           <div className="flex items-start gap-2 p-2.5 rounded-lg bg-primary/5 border border-primary/10">
             <Bot className="h-3.5 w-3.5 text-primary mt-0.5 flex-shrink-0" />
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               Armstrong reagiert <strong>nur</strong> auf diese Nummer.
             </p>
           </div>
           <div className="flex items-center justify-between pt-2 border-t border-border/30">
             <div>
               <Label className="text-xs font-medium">Auto-Reply</Label>
-              <p className="text-[11px] text-muted-foreground">Automatische Antwort</p>
+              <p className="text-xs text-muted-foreground">Automatische Antwort</p>
             </div>
             <Switch checked={autoReplyEnabled} onCheckedChange={setAutoReplyEnabled} />
           </div>

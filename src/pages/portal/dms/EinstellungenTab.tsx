@@ -293,7 +293,7 @@ export function EinstellungenTab() {
               })}
             </div>
 
-            <p className="text-[11px] text-muted-foreground">Abrechnung monatlich in Credits</p>
+            <p className="text-xs text-muted-foreground">Abrechnung monatlich in Credits</p>
           </CardContent>
         </Card>
 

@@ -39,7 +39,7 @@ export function FortbildungItemCard({ item }: FortbildungItemCardProps) {
           />
           <div className="absolute inset-0 bg-gradient-to-t from-background/60 via-transparent to-transparent" />
           <div className="absolute top-2 right-2">
-            <Badge variant="outline" className="text-[10px] shrink-0 capitalize bg-background/80 backdrop-blur-sm">
+            <Badge variant="outline" className="text-xs shrink-0 capitalize bg-background/80 backdrop-blur-sm">
               {item.provider}
             </Badge>
           </div>
@@ -49,7 +49,7 @@ export function FortbildungItemCard({ item }: FortbildungItemCardProps) {
           <div className="rounded-lg bg-primary/10 p-2.5 shrink-0">
             <Icon className="h-5 w-5 text-primary" />
           </div>
-          <Badge variant="outline" className="text-[10px] shrink-0 capitalize">
+          <Badge variant="outline" className="text-xs shrink-0 capitalize">
             {item.provider}
           </Badge>
         </div>
@@ -70,13 +70,13 @@ export function FortbildungItemCard({ item }: FortbildungItemCardProps) {
         {/* Meta row */}
         <div className="flex items-center gap-2 flex-wrap">
           {item.rating_text && (
-            <Badge variant="secondary" className="text-[10px] gap-1">
+            <Badge variant="secondary" className="text-xs gap-1">
               <Star className="h-3 w-3" />
               {item.rating_text}
             </Badge>
           )}
           {item.duration_text && (
-            <Badge variant="secondary" className="text-[10px] gap-1">
+            <Badge variant="secondary" className="text-xs gap-1">
               <Clock className="h-3 w-3" />
               {item.duration_text}
             </Badge>
