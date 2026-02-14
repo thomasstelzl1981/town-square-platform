@@ -1,0 +1,280 @@
+[
+  {
+    "id": "SIA2-001",
+    "severity": "P2",
+    "type": "drift",
+    "zone": "Z2",
+    "module": "MOD-10",
+    "area": "manifest",
+    "title": "MOD-10 naming drift: Abrechnung vs leads base path",
+    "description": "Module is named 'Abrechnung' but uses base path 'leads'. This creates confusion between the module name and its URL.",
+    "repro": {
+      "start_url": "/portal/leads/uebersicht",
+      "steps": ["Navigate to MOD-10 via sidebar"],
+      "preconditions": ["role=partner"]
+    },
+    "expected": "Base path matches module name: /portal/abrechnung/*",
+    "actual": "Base path is /portal/leads/* while module name is 'Abrechnung'",
+    "evidence": {
+      "screenshots": [],
+      "logs": [],
+      "db_tables": [],
+      "events": []
+    },
+    "suspected_root_cause": "Legacy naming from when module was 'Leads/Provisionen', renamed without path update",
+    "repo_refs": {
+      "files": ["src/manifests/routesManifest.ts"],
+      "manifest_entries": ["routesManifest.ts:MOD-10 base='leads'"],
+      "contract_refs": [],
+      "golden_path_refs": []
+    },
+    "fix_plan": {
+      "approach": "minimal",
+      "steps": [
+        "Change MOD-10 base from 'leads' to 'abrechnung' in routesManifest.ts",
+        "Rename LeadsPage.tsx to AbrechnungPage.tsx",
+        "Update portalModulePageMap key from 'leads' to 'abrechnung'",
+        "Add legacy redirect /portal/leads/* → /portal/abrechnung/*"
+      ],
+      "risk": "medium",
+      "verification": ["Navigate to /portal/abrechnung/uebersicht", "Navigate to /portal/leads (should redirect)"]
+    },
+    "status": "new"
+  },
+  {
+    "id": "SIA2-002",
+    "severity": "P3",
+    "type": "drift",
+    "zone": "Z2",
+    "module": "admin",
+    "area": "manifest",
+    "title": "Dead 'msv' key in portalModulePageMap",
+    "description": "portalModulePageMap contains 'msv: MSVPage' entry but no manifest module has base 'msv'. Dead code.",
+    "repro": {
+      "start_url": "/portal",
+      "steps": ["N/A — dead code, never triggered"],
+      "preconditions": []
+    },
+    "expected": "No dead entries in component maps",
+    "actual": "msv key exists in map but is never looked up",
+    "evidence": {
+      "screenshots": [],
+      "logs": [],
+      "db_tables": [],
+      "events": []
+    },
+    "suspected_root_cause": "MSV module removed from manifest but map entry not cleaned up",
+    "repo_refs": {
+      "files": ["src/router/ManifestRouter.tsx"],
+      "manifest_entries": ["ManifestRouter.tsx:portalModulePageMap:msv"],
+      "contract_refs": [],
+      "golden_path_refs": []
+    },
+    "fix_plan": {
+      "approach": "minimal",
+      "steps": [
+        "Remove 'msv: MSVPage' from portalModulePageMap",
+        "Remove MSVPage import from ManifestRouter.tsx",
+        "Optionally delete src/pages/portal/MSVPage.tsx"
+      ],
+      "risk": "low",
+      "verification": ["Build succeeds", "No console warnings"]
+    },
+    "status": "new"
+  },
+  {
+    "id": "SIA2-003",
+    "severity": "P3",
+    "type": "content",
+    "zone": "cross-zone",
+    "module": "MOD-10",
+    "area": "other",
+    "title": "Spec file naming drift: mod-10_provisionen.md",
+    "description": "Spec file is named mod-10_provisionen.md but module was renamed to Abrechnung.",
+    "repro": {
+      "start_url": "N/A",
+      "steps": ["Check spec/current/02_modules/"],
+      "preconditions": []
+    },
+    "expected": "mod-10_abrechnung.md",
+    "actual": "mod-10_provisionen.md",
+    "evidence": {
+      "screenshots": [],
+      "logs": [],
+      "db_tables": [],
+      "events": []
+    },
+    "suspected_root_cause": "Module renamed without updating spec file",
+    "repo_refs": {
+      "files": ["spec/current/02_modules/mod-10_provisionen.md"],
+      "manifest_entries": [],
+      "contract_refs": [],
+      "golden_path_refs": []
+    },
+    "fix_plan": {
+      "approach": "minimal",
+      "steps": ["Rename file to mod-10_abrechnung.md", "Update content header"],
+      "risk": "low",
+      "verification": ["File exists with correct name"]
+    },
+    "status": "new"
+  },
+  {
+    "id": "SIA2-004",
+    "severity": "P3",
+    "type": "drift",
+    "zone": "Z1",
+    "module": "admin",
+    "area": "other",
+    "title": "5 orphan legacy files in admin/ki-office",
+    "description": "AdminKiOfficeEmail/Kontakte/Recherche/Sequenzen/Templates.tsx are superseded by AdminEmailAgent/Kontaktbuch/Recherche.tsx but not deleted.",
+    "repro": {
+      "start_url": "N/A",
+      "steps": ["List src/pages/admin/ki-office/"],
+      "preconditions": []
+    },
+    "expected": "Only 3 active files: AdminRecherche, AdminKontaktbuch, AdminEmailAgent",
+    "actual": "8 files including 5 legacy orphans",
+    "evidence": {
+      "screenshots": [],
+      "logs": [],
+      "db_tables": [],
+      "events": []
+    },
+    "suspected_root_cause": "KI Office consolidation left old files",
+    "repo_refs": {
+      "files": [
+        "src/pages/admin/ki-office/AdminKiOfficeEmail.tsx",
+        "src/pages/admin/ki-office/AdminKiOfficeKontakte.tsx",
+        "src/pages/admin/ki-office/AdminKiOfficeRecherche.tsx",
+        "src/pages/admin/ki-office/AdminKiOfficeSequenzen.tsx",
+        "src/pages/admin/ki-office/AdminKiOfficeTemplates.tsx"
+      ],
+      "manifest_entries": [],
+      "contract_refs": [],
+      "golden_path_refs": []
+    },
+    "fix_plan": {
+      "approach": "minimal",
+      "steps": ["Delete all 5 AdminKiOffice*.tsx files"],
+      "risk": "low",
+      "verification": ["Build succeeds", "No broken imports"]
+    },
+    "status": "new"
+  },
+  {
+    "id": "SIA2-005",
+    "severity": "P3",
+    "type": "drift",
+    "zone": "Z3",
+    "module": "website",
+    "area": "other",
+    "title": "Orphan FutureRoomAuthGuard.tsx in zone3",
+    "description": "FutureRoomAuthGuard.tsx is superseded by FutureRoomAkteGuarded.tsx (per ManifestRouter comment L159).",
+    "repro": {
+      "start_url": "N/A",
+      "steps": ["Check src/pages/zone3/futureroom/"],
+      "preconditions": []
+    },
+    "expected": "No orphan auth guard file",
+    "actual": "FutureRoomAuthGuard.tsx still present",
+    "evidence": {
+      "screenshots": [],
+      "logs": [],
+      "db_tables": [],
+      "events": []
+    },
+    "suspected_root_cause": "Auth guard refactored to AkteGuarded pattern, old file not removed",
+    "repo_refs": {
+      "files": ["src/pages/zone3/futureroom/FutureRoomAuthGuard.tsx"],
+      "manifest_entries": [],
+      "contract_refs": [],
+      "golden_path_refs": []
+    },
+    "fix_plan": {
+      "approach": "minimal",
+      "steps": ["Verify FutureRoomAkteGuarded doesn't import FutureRoomAuthGuard", "If not referenced: delete"],
+      "risk": "low",
+      "verification": ["Build succeeds"]
+    },
+    "status": "new"
+  },
+  {
+    "id": "SIA2-006",
+    "severity": "P3",
+    "type": "content",
+    "zone": "cross-zone",
+    "module": "admin",
+    "area": "other",
+    "title": "Missing spec directories: 03_actions, 04_workflows, 05_diagrams",
+    "description": "spec/current/ is missing three expected subdirectories. Content is distributed across manifests and module specs.",
+    "repro": {
+      "start_url": "N/A",
+      "steps": ["List spec/current/"],
+      "preconditions": []
+    },
+    "expected": "Directories 03-05 exist with consolidated content",
+    "actual": "Only 00, 01, 02, 06, 07, 08 exist",
+    "evidence": {
+      "screenshots": [],
+      "logs": [],
+      "db_tables": [],
+      "events": []
+    },
+    "suspected_root_cause": "Documentation structure evolved; these dirs were never created",
+    "repo_refs": {
+      "files": [],
+      "manifest_entries": [],
+      "contract_refs": [],
+      "golden_path_refs": []
+    },
+    "fix_plan": {
+      "approach": "minimal",
+      "steps": ["Create 03_actions/ with Armstrong action summary", "Create 04_workflows/ with Golden Path overview", "Create 05_diagrams/ with architecture diagrams"],
+      "risk": "low",
+      "verification": ["Directories exist with index files"]
+    },
+    "status": "new"
+  },
+  {
+    "id": "SIA2-007",
+    "severity": "P3",
+    "type": "drift",
+    "zone": "Z2",
+    "module": "MOD-04",
+    "area": "manifest",
+    "title": "MSVPage.tsx orphan redirect in portal root",
+    "description": "MSVPage.tsx exists as a legacy redirect to /portal/immobilien/verwaltung. Referenced in portalModulePageMap but never triggered by manifest.",
+    "repro": {
+      "start_url": "N/A",
+      "steps": ["File exists but unreachable via manifest routing"],
+      "preconditions": []
+    },
+    "expected": "No orphan redirect pages",
+    "actual": "MSVPage.tsx present with dead map reference",
+    "evidence": {
+      "screenshots": [],
+      "logs": [],
+      "db_tables": [],
+      "events": []
+    },
+    "suspected_root_cause": "MSV module removed from manifest but page file kept as safety redirect",
+    "repo_refs": {
+      "files": ["src/pages/portal/MSVPage.tsx", "src/router/ManifestRouter.tsx"],
+      "manifest_entries": ["ManifestRouter.tsx:portalModulePageMap:msv"],
+      "contract_refs": [],
+      "golden_path_refs": []
+    },
+    "fix_plan": {
+      "approach": "minimal",
+      "steps": [
+        "Remove msv entry from portalModulePageMap",
+        "Remove MSVPage import from ManifestRouter.tsx",
+        "Delete src/pages/portal/MSVPage.tsx"
+      ],
+      "risk": "low",
+      "verification": ["Build succeeds"]
+    },
+    "status": "new"
+  }
+]
