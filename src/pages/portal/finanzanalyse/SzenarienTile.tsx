@@ -1,138 +1,205 @@
 /**
- * MOD-18 Finanzanalyse — Szenarien
- * Was-wäre-wenn-Analysen mit Schiebereglern
+ * MOD-18 Finanzanalyse — Seite C: Verträge & Fixkosten
+ * Fixkosten Summary, Abos (read-only), Versicherungen (read-only), Kandidaten, Duplikate
  */
-import { useState, useMemo } from 'react';
+import { useMemo } from 'react';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Slider } from '@/components/ui/slider';
-import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { GitBranch, TrendingUp, TrendingDown, Equal } from 'lucide-react';
+import { useFinanzanalyseData } from '@/hooks/useFinanzanalyseData';
+import { useNavigate } from 'react-router-dom';
+import {
+  Receipt, FileText, Shield, AlertTriangle,
+  ExternalLink, Repeat, Copy, ArrowRight
+} from 'lucide-react';
 
-function formatCurrency(value: number) {
-  return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(value);
-}
-
-function formatPercent(value: number) {
-  return `${value.toFixed(1)} %`;
+function fmt(v: number) {
+  return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(v);
 }
 
 export default function SzenarienTile() {
-  // Scenario parameters
-  const [propertyValue, setPropertyValue] = useState(500000);
-  const [interestRate, setInterestRate] = useState(3.5);
-  const [repaymentRate, setRepaymentRate] = useState(2.0);
-  const [rentIncrease, setRentIncrease] = useState(2.0);
-  const [vacancy, setVacancy] = useState(3.0);
-  const [appreciation, setAppreciation] = useState(1.5);
+  const { transactions, kpis, isLoading } = useFinanzanalyseData();
+  const navigate = useNavigate();
 
-  // Calculations
-  const scenario = useMemo(() => {
-    const loanAmount = propertyValue * 0.8;
-    const monthlyRate = loanAmount * (interestRate + repaymentRate) / 100 / 12;
-    const annualRent = propertyValue * 0.04 * (1 - vacancy / 100);
-    const netCashflow = annualRent - monthlyRate * 12;
-    const valueIn10y = propertyValue * Math.pow(1 + appreciation / 100, 10);
-    const equityIn10y = valueIn10y - loanAmount * 0.6; // rough remaining debt after 10y
-    const totalReturn = equityIn10y - propertyValue * 0.2; // vs initial equity
-    const roi = (totalReturn / (propertyValue * 0.2)) * 100;
+  // C1: Wiederkehrende Zahlungen erkennen (einfache Heuristik: gleicher Merchant, ≥3x in 12M)
+  const recurring = useMemo(() => {
+    const merchantCount = new Map<string, { count: number; totalAbs: number; amounts: number[] }>();
+    for (const tx of transactions) {
+      if ((tx.amount_eur || 0) >= 0) continue; // nur Ausgaben
+      const m = tx.counterparty || 'Unbekannt';
+      const entry = merchantCount.get(m) || { count: 0, totalAbs: 0, amounts: [] };
+      entry.count += 1;
+      entry.totalAbs += Math.abs(tx.amount_eur || 0);
+      entry.amounts.push(Math.abs(tx.amount_eur || 0));
+      merchantCount.set(m, entry);
+    }
+    return Array.from(merchantCount.entries())
+      .filter(([, v]) => v.count >= 3)
+      .map(([merchant, v]) => ({
+        merchant,
+        count: v.count,
+        avgAmount: v.totalAbs / v.count,
+        total: v.totalAbs,
+        isSubscription: v.amounts.every(a => Math.abs(a - v.amounts[0]) < 1), // gleicher Betrag = Abo
+      }))
+      .sort((a, b) => b.total - a.total);
+  }, [transactions]);
 
-    return {
-      loanAmount,
-      monthlyRate,
-      annualRent,
-      netCashflow,
-      valueIn10y,
-      equityIn10y,
-      totalReturn,
-      roi,
-    };
-  }, [propertyValue, interestRate, repaymentRate, rentIncrease, vacancy, appreciation]);
+  const subscriptions = recurring.filter(r => r.isSubscription);
+  const otherRecurring = recurring.filter(r => !r.isSubscription);
+  const totalFixMonthly = subscriptions.reduce((s, r) => s + r.avgAmount, 0);
 
-  const sliders = [
-    { label: 'Objektwert', value: propertyValue, set: (v: number[]) => setPropertyValue(v[0]), min: 100000, max: 2000000, step: 50000, format: formatCurrency },
-    { label: 'Sollzins', value: interestRate, set: (v: number[]) => setInterestRate(v[0]), min: 1, max: 8, step: 0.1, format: formatPercent },
-    { label: 'Tilgung', value: repaymentRate, set: (v: number[]) => setRepaymentRate(v[0]), min: 1, max: 5, step: 0.1, format: formatPercent },
-    { label: 'Mietsteigerung p.a.', value: rentIncrease, set: (v: number[]) => setRentIncrease(v[0]), min: 0, max: 5, step: 0.5, format: formatPercent },
-    { label: 'Leerstand', value: vacancy, set: (v: number[]) => setVacancy(v[0]), min: 0, max: 15, step: 0.5, format: formatPercent },
-    { label: 'Wertsteigerung p.a.', value: appreciation, set: (v: number[]) => setAppreciation(v[0]), min: -2, max: 5, step: 0.1, format: formatPercent },
-  ];
-
-  const results = [
-    { label: 'Darlehen (80% LTV)', value: formatCurrency(scenario.loanAmount) },
-    { label: 'Monatliche Rate', value: formatCurrency(scenario.monthlyRate) },
-    { label: 'Jahres-Nettomiete', value: formatCurrency(scenario.annualRent) },
-    { label: 'Jährlicher Cashflow', value: formatCurrency(scenario.netCashflow), highlight: scenario.netCashflow >= 0 ? 'positive' : 'negative' },
-    { label: 'Objektwert in 10 Jahren', value: formatCurrency(scenario.valueIn10y) },
-    { label: 'Eigenkapital in 10 Jahren', value: formatCurrency(scenario.equityIn10y) },
-    { label: 'Gesamtrendite auf EK', value: formatPercent(scenario.roi), highlight: scenario.roi >= 0 ? 'positive' : 'negative' },
-  ];
+  // C5: Duplikate (ähnliche Merchants mit ähnlichen Beträgen)
+  const duplicates = useMemo(() => {
+    const found: { a: string; b: string; hint: string }[] = [];
+    for (let i = 0; i < subscriptions.length; i++) {
+      for (let j = i + 1; j < subscriptions.length; j++) {
+        const a = subscriptions[i];
+        const b = subscriptions[j];
+        // Ähnlicher Betrag + ähnlicher Name
+        if (Math.abs(a.avgAmount - b.avgAmount) < 5 && a.merchant.substring(0, 4).toLowerCase() === b.merchant.substring(0, 4).toLowerCase()) {
+          found.push({ a: a.merchant, b: b.merchant, hint: 'Ähnlicher Name & Betrag' });
+        }
+      }
+    }
+    return found;
+  }, [subscriptions]);
 
   return (
     <PageShell>
-      <ModulePageHeader title="Szenarien" description="Was-wäre-wenn-Analysen für Investmentimmobilien" />
+      <ModulePageHeader title="Verträge & Fixkosten" description="Abos, Versicherungen und wiederkehrende Zahlungen" />
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Parameters */}
+      {/* C1: Fixkosten Summary */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="glass-card">
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <GitBranch className="h-5 w-5" />
-              Parameter
-            </CardTitle>
-            <CardDescription>Passen Sie die Werte an, um verschiedene Szenarien zu simulieren</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {sliders.map((s) => (
-              <div key={s.label} className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label className="text-sm">{s.label}</Label>
-                  <span className="text-sm font-mono font-medium">{s.format(s.value)}</span>
-                </div>
-                <Slider
-                  value={[s.value]}
-                  onValueChange={s.set}
-                  min={s.min}
-                  max={s.max}
-                  step={s.step}
-                />
-              </div>
-            ))}
+          <CardContent className="p-4 text-center">
+            <Receipt className="h-6 w-6 mx-auto mb-2 text-primary" />
+            <p className="text-2xl font-bold">{fmt(totalFixMonthly)}</p>
+            <p className="text-xs text-muted-foreground">Fixkosten / Monat</p>
           </CardContent>
         </Card>
-
-        {/* Results */}
         <Card className="glass-card">
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <TrendingUp className="h-5 w-5" />
-              Ergebnis
-            </CardTitle>
-            <CardDescription>Prognose basierend auf Ihren Parametern</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {results.map((r, i) => (
-              <div key={r.label}>
-                <div className="flex items-center justify-between py-2">
-                  <span className="text-sm text-muted-foreground">{r.label}</span>
-                  <span className={`text-sm font-mono font-medium ${
-                    r.highlight === 'positive' ? 'text-green-600' : 
-                    r.highlight === 'negative' ? 'text-red-600' : ''
-                  }`}>
-                    {r.highlight === 'positive' && <TrendingUp className="h-3 w-3 inline mr-1" />}
-                    {r.highlight === 'negative' && <TrendingDown className="h-3 w-3 inline mr-1" />}
-                    {r.value}
-                  </span>
-                </div>
-                {i < results.length - 1 && <Separator />}
-              </div>
-            ))}
+          <CardContent className="p-4 text-center">
+            <Repeat className="h-6 w-6 mx-auto mb-2 text-primary" />
+            <p className="text-2xl font-bold">{subscriptions.length}</p>
+            <p className="text-xs text-muted-foreground">Abonnements erkannt</p>
+          </CardContent>
+        </Card>
+        <Card className="glass-card">
+          <CardContent className="p-4 text-center">
+            <Shield className="h-6 w-6 mx-auto mb-2 text-primary" />
+            <p className="text-2xl font-bold">{kpis.insuranceCount}</p>
+            <p className="text-xs text-muted-foreground">Versicherungen</p>
           </CardContent>
         </Card>
       </div>
+
+      {/* C2: Abonnements */}
+      <Card className="mt-6">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Repeat className="h-5 w-5" />
+              Erkannte Abonnements
+            </CardTitle>
+            <Button variant="outline" size="sm" onClick={() => navigate('/portal/finanzierung')}>
+              <ExternalLink className="h-4 w-4 mr-2" />
+              Im Finanzmanager öffnen
+            </Button>
+          </div>
+          <CardDescription>Automatisch erkannt aus wiederkehrenden Zahlungen mit gleichem Betrag</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {subscriptions.length > 0 ? (
+            <div className="space-y-3">
+              {subscriptions.map((sub) => (
+                <div key={sub.merchant} className="flex items-center justify-between py-2 border-b last:border-0">
+                  <div>
+                    <p className="text-sm font-medium">{sub.merchant}</p>
+                    <p className="text-xs text-muted-foreground">{sub.count}x in 12 Monaten</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-mono text-sm font-medium">{fmt(sub.avgAmount)}/Monat</p>
+                    <p className="text-xs text-muted-foreground">{fmt(sub.total)} gesamt</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground text-center py-6">
+              Keine regelmäßigen Abonnements erkannt. Verbinden Sie Ihre Konten für eine automatische Erkennung.
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* C3: Weitere wiederkehrende Zahlungen */}
+      {otherRecurring.length > 0 && (
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              Weitere wiederkehrende Zahlungen
+            </CardTitle>
+            <CardDescription>Regelmäßige Empfänger mit variierenden Beträgen</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {otherRecurring.slice(0, 10).map((r) => (
+                <div key={r.merchant} className="flex items-center justify-between py-2 border-b last:border-0">
+                  <div>
+                    <p className="text-sm font-medium">{r.merchant}</p>
+                    <p className="text-xs text-muted-foreground">{r.count}x | ∅ {fmt(r.avgAmount)}</p>
+                  </div>
+                  <span className="font-mono text-sm">{fmt(r.total)}</span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* C5: Duplikate */}
+      {duplicates.length > 0 && (
+        <Card className="mt-6 border-destructive/30">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2 text-destructive">
+              <Copy className="h-5 w-5" />
+              Mögliche Duplikate
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {duplicates.map((d, i) => (
+              <div key={i} className="flex items-center gap-3 p-3 rounded-lg border border-destructive/20">
+                <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
+                <div>
+                  <p className="text-sm"><span className="font-medium">{d.a}</span> <ArrowRight className="h-3 w-3 inline" /> <span className="font-medium">{d.b}</span></p>
+                  <p className="text-xs text-muted-foreground">{d.hint}</p>
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Empty State */}
+      {transactions.length === 0 && (
+        <Card className="border-dashed mt-6">
+          <CardContent className="py-12 text-center">
+            <Receipt className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
+            <p className="text-lg font-medium">Noch keine Vertragsdaten</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              Verbinden Sie Ihre Konten, um Abos und Fixkosten automatisch zu erkennen.
+            </p>
+            <Button variant="outline" className="mt-4" onClick={() => navigate('/portal/finanzierung')}>
+              Finanzmanager öffnen
+            </Button>
+          </CardContent>
+        </Card>
+      )}
     </PageShell>
   );
 }

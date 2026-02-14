@@ -497,10 +497,10 @@ export const zone2Portal: ZoneDefinition = {
       display_order: 18,
       visibility: { default: true, org_types: ["client"] },
       tiles: [
-        { path: "dashboard", component: "FinanzanalyseDashboard", title: "Dashboard" },
-        { path: "reports", component: "FinanzanalyseReports", title: "Reports" },
-        { path: "szenarien", component: "FinanzanalyseSzenarien", title: "Szenarien" },
-        { path: "settings", component: "FinanzanalyseSettings", title: "Einstellungen" },
+        { path: "dashboard", component: "FinanzanalyseDashboard", title: "Übersicht" },
+        { path: "reports", component: "FinanzanalyseReports", title: "Cashflow & Budget" },
+        { path: "szenarien", component: "FinanzanalyseSzenarien", title: "Verträge & Fixkosten" },
+        { path: "settings", component: "FinanzanalyseSettings", title: "Risiko & Absicherung" },
       ],
     },
     "MOD-19": {
