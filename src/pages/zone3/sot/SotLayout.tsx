@@ -23,9 +23,7 @@ export default function SotLayout() {
 
   return (
     <SotLoginTransition>
-      <div className={`${themeClass} h-screen flex flex-col overflow-hidden`}
-        style={{ background: 'hsl(var(--z3-background))' }}
-      >
+      <div className={`${themeClass} h-screen flex flex-col overflow-hidden bg-atmosphere`}>
         {/* SystemBar — Portal-Clone */}
         <SotSystemBar isDark={isDark} onToggleTheme={toggleTheme} />
 
