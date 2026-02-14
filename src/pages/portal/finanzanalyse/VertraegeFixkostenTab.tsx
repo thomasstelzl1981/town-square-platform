@@ -1,14 +1,12 @@
 /**
- * MOD-18 Finanzanalyse — Seite C: Verträge & Fixkosten
- * Fixkosten Summary, Abos (read-only), Versicherungen (read-only), Kandidaten, Duplikate
+ * MOD-18 Finanzanalyse — Tab 3: Verträge & Fixkosten
+ * Fixkosten Summary, Abos (read-only), Versicherungen (read-only)
  */
 import { useMemo } from 'react';
 import { PageShell } from '@/components/shared/PageShell';
-import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
 import { useFinanzanalyseData } from '@/hooks/useFinanzanalyseData';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -20,15 +18,14 @@ function fmt(v: number) {
   return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(v);
 }
 
-export default function SzenarienTile() {
+export default function VertraegeFixkostenTab() {
   const { transactions, kpis, isLoading } = useFinanzanalyseData();
   const navigate = useNavigate();
 
-  // C1: Wiederkehrende Zahlungen erkennen (einfache Heuristik: gleicher Merchant, ≥3x in 12M)
   const recurring = useMemo(() => {
     const merchantCount = new Map<string, { count: number; totalAbs: number; amounts: number[] }>();
     for (const tx of transactions) {
-      if ((tx.amount_eur || 0) >= 0) continue; // nur Ausgaben
+      if ((tx.amount_eur || 0) >= 0) continue;
       const m = tx.counterparty || 'Unbekannt';
       const entry = merchantCount.get(m) || { count: 0, totalAbs: 0, amounts: [] };
       entry.count += 1;
@@ -43,7 +40,7 @@ export default function SzenarienTile() {
         count: v.count,
         avgAmount: v.totalAbs / v.count,
         total: v.totalAbs,
-        isSubscription: v.amounts.every(a => Math.abs(a - v.amounts[0]) < 1), // gleicher Betrag = Abo
+        isSubscription: v.amounts.every(a => Math.abs(a - v.amounts[0]) < 1),
       }))
       .sort((a, b) => b.total - a.total);
   }, [transactions]);
@@ -52,14 +49,12 @@ export default function SzenarienTile() {
   const otherRecurring = recurring.filter(r => !r.isSubscription);
   const totalFixMonthly = subscriptions.reduce((s, r) => s + r.avgAmount, 0);
 
-  // C5: Duplikate (ähnliche Merchants mit ähnlichen Beträgen)
   const duplicates = useMemo(() => {
     const found: { a: string; b: string; hint: string }[] = [];
     for (let i = 0; i < subscriptions.length; i++) {
       for (let j = i + 1; j < subscriptions.length; j++) {
         const a = subscriptions[i];
         const b = subscriptions[j];
-        // Ähnlicher Betrag + ähnlicher Name
         if (Math.abs(a.avgAmount - b.avgAmount) < 5 && a.merchant.substring(0, 4).toLowerCase() === b.merchant.substring(0, 4).toLowerCase()) {
           found.push({ a: a.merchant, b: b.merchant, hint: 'Ähnlicher Name & Betrag' });
         }
@@ -68,11 +63,28 @@ export default function SzenarienTile() {
     return found;
   }, [subscriptions]);
 
+  if (transactions.length === 0) {
+    return (
+      <PageShell>
+        <Card className="border-dashed">
+          <CardContent className="py-12 text-center">
+            <Receipt className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
+            <p className="text-lg font-medium">Noch keine Vertragsdaten</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              Verbinden Sie Ihre Konten, um Abos und Fixkosten automatisch zu erkennen.
+            </p>
+            <Button variant="outline" className="mt-4" onClick={() => navigate('/portal/finanzierungsmanager')}>
+              Finanzmanager öffnen
+            </Button>
+          </CardContent>
+        </Card>
+      </PageShell>
+    );
+  }
+
   return (
     <PageShell>
-      <ModulePageHeader title="Verträge & Fixkosten" description="Abos, Versicherungen und wiederkehrende Zahlungen" />
-
-      {/* C1: Fixkosten Summary */}
+      {/* KPI Row */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="glass-card">
           <CardContent className="p-4 text-center">
@@ -97,7 +109,7 @@ export default function SzenarienTile() {
         </Card>
       </div>
 
-      {/* C2: Abonnements */}
+      {/* Abonnements */}
       <Card className="mt-6">
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -105,7 +117,7 @@ export default function SzenarienTile() {
               <Repeat className="h-5 w-5" />
               Erkannte Abonnements
             </CardTitle>
-            <Button variant="outline" size="sm" onClick={() => navigate('/portal/finanzierung')}>
+            <Button variant="outline" size="sm" onClick={() => navigate('/portal/finanzierungsmanager')}>
               <ExternalLink className="h-4 w-4 mr-2" />
               Im Finanzmanager öffnen
             </Button>
@@ -130,13 +142,13 @@ export default function SzenarienTile() {
             </div>
           ) : (
             <p className="text-sm text-muted-foreground text-center py-6">
-              Keine regelmäßigen Abonnements erkannt. Verbinden Sie Ihre Konten für eine automatische Erkennung.
+              Keine regelmäßigen Abonnements erkannt.
             </p>
           )}
         </CardContent>
       </Card>
 
-      {/* C3: Weitere wiederkehrende Zahlungen */}
+      {/* Weitere wiederkehrende Zahlungen */}
       {otherRecurring.length > 0 && (
         <Card className="mt-6">
           <CardHeader>
@@ -144,7 +156,6 @@ export default function SzenarienTile() {
               <FileText className="h-5 w-5" />
               Weitere wiederkehrende Zahlungen
             </CardTitle>
-            <CardDescription>Regelmäßige Empfänger mit variierenden Beträgen</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
@@ -162,7 +173,7 @@ export default function SzenarienTile() {
         </Card>
       )}
 
-      {/* C5: Duplikate */}
+      {/* Duplikate */}
       {duplicates.length > 0 && (
         <Card className="mt-6 border-destructive/30">
           <CardHeader>
@@ -181,22 +192,6 @@ export default function SzenarienTile() {
                 </div>
               </div>
             ))}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Empty State */}
-      {transactions.length === 0 && (
-        <Card className="border-dashed mt-6">
-          <CardContent className="py-12 text-center">
-            <Receipt className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
-            <p className="text-lg font-medium">Noch keine Vertragsdaten</p>
-            <p className="text-sm text-muted-foreground mt-1">
-              Verbinden Sie Ihre Konten, um Abos und Fixkosten automatisch zu erkennen.
-            </p>
-            <Button variant="outline" className="mt-4" onClick={() => navigate('/portal/finanzierung')}>
-              Finanzmanager öffnen
-            </Button>
           </CardContent>
         </Card>
       )}

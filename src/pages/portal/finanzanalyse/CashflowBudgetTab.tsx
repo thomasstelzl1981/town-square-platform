@@ -1,34 +1,34 @@
 /**
- * MOD-18 Finanzanalyse — Seite B: Cashflow & Budget
+ * MOD-18 Finanzanalyse — Tab 2: Cashflow & Budget
  * 12M Timeline, Budget-Editor, Abweichungen, Kategorie-Explorer
  */
 import { useState } from 'react';
 import { PageShell } from '@/components/shared/PageShell';
-import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import { useFinanzanalyseData, CATEGORIES } from '@/hooks/useFinanzanalyseData';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, ReferenceLine
 } from 'recharts';
 import {
-  TrendingUp, TrendingDown, Target, AlertTriangle, Save
+  TrendingUp, TrendingDown, Target, AlertTriangle, Save, BarChart3
 } from 'lucide-react';
 
 function fmt(v: number) {
   return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(v);
 }
 
-export default function ReportsTile() {
-  const { monthlyFlows, categoryBreakdown, budgets, upsertBudget, isLoading } = useFinanzanalyseData();
+export default function CashflowBudgetTab() {
+  const { monthlyFlows, categoryBreakdown, budgets, upsertBudget, transactions, isLoading } = useFinanzanalyseData();
+  const navigate = useNavigate();
   const [editingBudgets, setEditingBudgets] = useState<Record<string, string>>({});
 
   const chartData = monthlyFlows.map(m => ({
-    month: m.month.substring(5), // MM
+    month: m.month.substring(5),
     Einnahmen: Math.round(m.income),
     Ausgaben: Math.round(m.expenses),
     Netto: Math.round(m.net),
@@ -45,16 +45,32 @@ export default function ReportsTile() {
     });
   };
 
-  // Abweichungen: Kategorien über Budget
   const overBudget = Array.from(categoryBreakdown.entries())
     .filter(([, v]) => v.budget > 0 && (v.total / 12) > v.budget)
     .map(([cat, v]) => ({ category: cat, monthly: v.total / 12, budget: v.budget, over: (v.total / 12) - v.budget }));
 
+  if (transactions.length === 0) {
+    return (
+      <PageShell>
+        <Card className="border-dashed">
+          <CardContent className="py-12 text-center">
+            <BarChart3 className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
+            <p className="text-lg font-medium">Noch keine Kontodaten vorhanden</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              Verbinden Sie Ihre Konten im Finanzmanager, um Cashflow & Budget zu analysieren.
+            </p>
+            <Button variant="outline" className="mt-4" onClick={() => navigate('/portal/finanzierungsmanager')}>
+              Konten verbinden →
+            </Button>
+          </CardContent>
+        </Card>
+      </PageShell>
+    );
+  }
+
   return (
     <PageShell>
-      <ModulePageHeader title="Cashflow & Budget" description="Einnahmen, Ausgaben und Budget-Kontrolle" />
-
-      {/* B1: Cashflow Timeline */}
+      {/* Cashflow Timeline */}
       <Card>
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
@@ -82,7 +98,7 @@ export default function ReportsTile() {
         </CardContent>
       </Card>
 
-      {/* B2: Budget Settings */}
+      {/* Budget Settings */}
       <Card className="mt-6">
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
@@ -127,7 +143,7 @@ export default function ReportsTile() {
         </CardContent>
       </Card>
 
-      {/* B3: Abweichungen */}
+      {/* Abweichungen */}
       {overBudget.length > 0 && (
         <Card className="mt-6 border-destructive/30">
           <CardHeader>
@@ -150,7 +166,7 @@ export default function ReportsTile() {
         </Card>
       )}
 
-      {/* B4: Kategorie-Explorer */}
+      {/* Kategorie-Explorer */}
       <Card className="mt-6">
         <CardHeader>
           <CardTitle className="text-lg">Kategorie-Explorer</CardTitle>
