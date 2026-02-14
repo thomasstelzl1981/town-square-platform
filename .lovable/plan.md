@@ -1,27 +1,28 @@
 
-# Upload-E-Mail in Outbound-Kennung zusammenfuehren
+
+# WhatsApp-Widget von Profil nach Abrechnung verschieben
 
 ## Aenderung
 
-Die separate Kachel "Upload-E-Mail" (UploadEmailWidget) wird entfernt. Ihr Inhalt — die Inbound-Mailbox-Adresse mit Kopier-Button — wird als neuer Abschnitt unten in die bestehende "Outbound-Kennung"-Kachel (OutboundIdentityWidget) integriert.
+Die WhatsApp Business Kachel (Owner-Control Nummer, Auto-Reply, Verbindungsstatus) wird aus dem Profil-Tab entfernt und in den Abrechnung-Tab verschoben — direkt in den Armstrong-Bereich, wo sie thematisch hingehoert.
 
 ## Umsetzung
 
-### Datei 1: `src/components/portal/OutboundIdentityWidget.tsx`
+### Datei 1: `src/pages/portal/stammdaten/ProfilTab.tsx`
 
-- Neuer Abschnitt nach dem Info-Block (Zeile 267), vor dem Save-Button:
-  - Trennlinie (`border-t`)
-  - Label "Upload-E-Mail" mit Beschreibung "PDFs per Mail ins DMS senden"
-  - Mailbox-Adresse als `code`-Block + Kopieren-Button (1:1 aus UploadEmailWidget uebernommen)
-- Die Mailbox-Query (`sot-inbound-receive?action=mailbox`) wird direkt in die Komponente aufgenommen
-- Import von `Copy` Icon hinzufuegen
+- Zeilen 420-426 entfernen: Die beiden `WhatsAppWidget`-Renderings (`isRecordOpen` und `!isRecordOpen` Varianten)
+- Zeilen 466-582 entfernen: Die gesamte `WhatsAppWidget`-Funktion
+- Nicht mehr benoetigte Imports aufraeumen (`MessageSquare`, `Bot` aus WhatsApp-Kontext, `Switch`, `Textarea`, `Badge`, `Label` — sofern nicht anderweitig benutzt)
 
-### Datei 2: `src/pages/portal/stammdaten/ProfilTab.tsx`
+### Datei 2: `src/pages/portal/stammdaten/AbrechnungTab.tsx`
 
-- Zeile 420-421 entfernen: `{!isRecordOpen && <UploadEmailWidget />}`
-- Die gesamte `UploadEmailWidget`-Funktion (Zeilen 466-508) entfernen
-- Nicht mehr benoetigte Imports aufraeumen (`Copy` wird nur noch im OutboundIdentityWidget gebraucht)
+- Die `WhatsAppWidget`-Funktion (ca. 115 Zeilen) hierher verschieben — als eigenstaendige Komponente innerhalb der Datei
+- Platzierung: Im Armstrong-Bereich (nach Zeile 220, vor `</div>` des Armstrong-Blocks), als neue Card zwischen `KostenDashboard` und `AktionsKatalog`
+- Noetige Imports ergaenzen: `useAuth` (fuer `userId`), `useMutation`, `useQueryClient`, `Switch`, `Textarea`, `Badge`, `Label`, `MessageSquare`, `Save`, `toast` aus sonner, sowie die `FormSection`/`FormInput`/`ProfileWidget`-Komponenten (oder direkt als Card umbauen)
+- Da der AbrechnungTab keine `ProfileWidget`-Wrapper nutzt, wird das WhatsApp-Widget als regulaere `Card` dargestellt (konsistent mit dem restlichen Tab-Design)
 
 ### Ergebnis
 
-Statt zwei separater Kacheln gibt es nur noch eine "Outbound-Kennung"-Kachel, die sowohl die ausgehende Absenderkennung (Brand, E-Mail, Anzeigename) als auch die eingehende Upload-Adresse zeigt. Die WhatsApp-Kachel rueckt entsprechend nach oben.
+- **Profil-Tab**: Zeigt nur noch persoenliche Daten, RecordCard (Briefkopf) und Outbound-Kennung — schlanker und fokussierter
+- **Abrechnung-Tab**: Zeigt Plan, Rechnungen und den gesamten Armstrong-Block inklusive WhatsApp-Steuerung — alles KI-bezogene an einem Ort
+
