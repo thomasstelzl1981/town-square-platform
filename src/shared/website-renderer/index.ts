@@ -7,4 +7,5 @@ export { SectionTestimonials } from './SectionTestimonials';
 export { SectionGallery } from './SectionGallery';
 export { SectionContact } from './SectionContact';
 export { SectionFooter } from './SectionFooter';
+export { EditableText, EditableImage } from './EditableHelpers';
 export * from './types';

@@ -1,6 +1,7 @@
 /**
  * SectionRenderer — Maps section_type to the correct renderer component.
  * Used by both Zone 2 (live preview) and Zone 3 (public delivery).
+ * Supports optional `editable` mode for inline editing.
  */
 import type { WebsiteSection, WebsiteBranding, SectionType } from './types';
 import { SectionHero } from './SectionHero';
@@ -30,9 +31,13 @@ interface Props {
   leadCaptureUrl?: string;
   websiteId?: string;
   tenantId?: string;
+  /** Enable inline editing */
+  editable?: boolean;
+  /** Called when a section's content changes (sectionId, field, value) */
+  onSectionContentChange?: (sectionId: string, field: string, value: any) => void;
 }
 
-export function SectionRenderer({ sections, branding, leadCaptureUrl, websiteId, tenantId }: Props) {
+export function SectionRenderer({ sections, branding, leadCaptureUrl, websiteId, tenantId, editable, onSectionContentChange }: Props) {
   const visibleSections = sections
     .filter(s => s.is_visible)
     .sort((a, b) => a.sort_order - b.sort_order);
@@ -51,6 +56,8 @@ export function SectionRenderer({ sections, branding, leadCaptureUrl, websiteId,
             leadCaptureUrl={section.section_type === 'contact' ? leadCaptureUrl : undefined}
             websiteId={websiteId}
             tenantId={tenantId}
+            editable={editable}
+            onContentChange={editable ? (field: string, value: any) => onSectionContentChange?.(section.id, field, value) : undefined}
           />
         );
       })}

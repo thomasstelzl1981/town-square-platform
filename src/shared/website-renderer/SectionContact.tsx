@@ -1,21 +1,24 @@
 import { useState } from 'react';
 import type { SectionContent, SectionDesign } from './types';
+import { EditableText } from './EditableHelpers';
 
 interface Props {
   content: SectionContent;
   design: SectionDesign;
   branding?: { primary_color?: string };
-  /** Edge function URL for lead capture (Zone 3 only) */
   leadCaptureUrl?: string;
   websiteId?: string;
   tenantId?: string;
+  editable?: boolean;
+  onContentChange?: (field: string, value: any) => void;
 }
 
-export function SectionContact({ content, design, branding, leadCaptureUrl, websiteId, tenantId }: Props) {
+export function SectionContact({ content, design, branding, leadCaptureUrl, websiteId, tenantId, editable, onContentChange }: Props) {
   const title = (content.title as string) || 'Kontakt';
   const subtitle = (content.subtitle as string) || 'Wir freuen uns auf Ihre Nachricht';
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const up = (f: string, v: any) => onContentChange?.(f, v);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -46,8 +49,16 @@ export function SectionContact({ content, design, branding, leadCaptureUrl, webs
   return (
     <section id="contact" className="py-16 px-6" style={{ backgroundColor: design.backgroundColor || 'hsl(var(--muted) / 0.3)' }}>
       <div className="max-w-xl mx-auto">
-        <h2 className="text-3xl font-bold text-center mb-2">{title}</h2>
-        <p className="text-center text-muted-foreground mb-8">{subtitle}</p>
+        {editable ? (
+          <EditableText value={title} onChange={v => up('title', v)} tag="h2" className="text-3xl font-bold text-center mb-2" />
+        ) : (
+          <h2 className="text-3xl font-bold text-center mb-2">{title}</h2>
+        )}
+        {editable ? (
+          <EditableText value={subtitle} onChange={v => up('subtitle', v)} tag="p" className="text-center text-muted-foreground mb-8" />
+        ) : (
+          <p className="text-center text-muted-foreground mb-8">{subtitle}</p>
+        )}
         {submitted ? (
           <div className="text-center p-8 bg-background rounded-xl border border-border/30">
             <p className="text-lg font-semibold mb-2">Vielen Dank!</p>
@@ -65,8 +76,7 @@ export function SectionContact({ content, design, branding, leadCaptureUrl, webs
               className="w-full px-4 py-3 rounded-lg border border-border/50 bg-background text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/30" />
             <button type="submit" disabled={loading}
               className="w-full py-3 rounded-lg font-semibold text-white transition-opacity disabled:opacity-50"
-              style={{ backgroundColor: branding?.primary_color || 'hsl(var(--primary))' }}
-            >
+              style={{ backgroundColor: branding?.primary_color || 'hsl(var(--primary))' }}>
               {loading ? 'Wird gesendet...' : 'Nachricht senden'}
             </button>
           </form>
