@@ -94,7 +94,7 @@ export default function CarsBoote() {
   return (
     <PageShell>
       <ModulePageHeader
-        title="Boote & Yachten"
+        title="BOOTE"
         description="Premium Charter — Ibiza · Haller Experiences"
       />
 

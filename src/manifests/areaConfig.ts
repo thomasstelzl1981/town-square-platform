@@ -62,7 +62,7 @@ export const areaConfig: AreaDefinition[] = [
  */
 export const moduleLabelOverrides: Record<string, string> = {
   'MOD-03': 'Dokumente',           // DMS → Dokumente
-  'MOD-05': 'Website Builder',    // Ehemals MOD-21, jetzt unter MOD-05
+  'MOD-05': 'Pets',               // Haustier-Modul
   'MOD-14': 'Kommunikation Pro',   // Communication Pro → Kommunikation Pro
   'MOD-17': 'Fahrzeuge',           // Car-Management → Fahrzeuge
   'MOD-08': 'Immo Suche',         // Investment-Suche → Immo Suche

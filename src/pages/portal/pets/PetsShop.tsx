@@ -3,14 +3,13 @@
  * Shop-Integration (Futter, Zubehör) + Buchungssystem
  */
 import { ShoppingCart } from 'lucide-react';
+import { PageShell } from '@/components/shared/PageShell';
+import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 
 export default function PetsShop() {
   return (
-    <div className="space-y-6 p-6">
-      <div className="flex items-center gap-3">
-        <ShoppingCart className="h-6 w-6 text-primary" />
-        <h2 className="text-xl font-semibold">Shop</h2>
-      </div>
+    <PageShell>
+      <ModulePageHeader title="SHOP" description="Futter, Zubehör bestellen und Services buchen" />
       <div className="rounded-lg border border-dashed border-muted-foreground/30 p-12 text-center">
         <ShoppingCart className="mx-auto h-12 w-12 text-muted-foreground/40" />
         <h3 className="mt-4 text-lg font-medium text-muted-foreground">Pet Shop & Buchungen</h3>
@@ -18,6 +17,6 @@ export default function PetsShop() {
           Futter, Zubehör bestellen und Services buchen.
         </p>
       </div>
-    </div>
+    </PageShell>
   );
 }
