@@ -41,7 +41,6 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   'TileCatalog': Grid3X3,
   'Integrations': Plug,
   'Oversight': Eye,
-  'AuditLog': FileText,
   'AuditHub': FileText,
   'Agreements': FileCheck,
   'Inbox': Inbox,

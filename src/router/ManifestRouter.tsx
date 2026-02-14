@@ -66,7 +66,6 @@ const TileCatalog = React.lazy(() => import('@/pages/admin/TileCatalog'));
 const Integrations = React.lazy(() => import('@/pages/admin/Integrations'));
 // CommunicationHub removed (orphaned, demo-only)
 const Oversight = React.lazy(() => import('@/pages/admin/Oversight'));
-const AuditLog = React.lazy(() => import('@/pages/admin/AuditLog'));
 const AuditHub = React.lazy(() => import('@/pages/admin/audit/AuditHub'));
 // KI Office — Consolidated 3 pages
 const AdminRecherche = React.lazy(() => import('@/pages/admin/ki-office/AdminRecherche'));
@@ -226,7 +225,6 @@ const adminComponentMap: Record<string, React.ComponentType> = {
   Integrations,
   // CommunicationHub removed
   Oversight,
-  AuditLog,
   AuditHub,
   // KI Office — Consolidated 3 pages
   AdminRecherche,
