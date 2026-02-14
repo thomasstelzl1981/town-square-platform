@@ -110,7 +110,6 @@ const StammdatenPage = React.lazy(() => import('@/pages/portal/StammdatenPage'))
 const OfficePage = React.lazy(() => import('@/pages/portal/OfficePage'));
 const DMSPage = React.lazy(() => import('@/pages/portal/DMSPage'));
 const ImmobilienPage = React.lazy(() => import('@/pages/portal/ImmobilienPage'));
-const MSVPage = React.lazy(() => import('@/pages/portal/MSVPage'));
 const VerkaufPage = React.lazy(() => import('@/pages/portal/VerkaufPage'));
 const FinanzierungPage = React.lazy(() => import('@/pages/portal/FinanzierungPage'));
 const FinanzierungsmanagerPage = React.lazy(() => import('@/pages/portal/FinanzierungsmanagerPage'));
@@ -296,7 +295,6 @@ const portalModulePageMap: Record<string, React.LazyExoticComponent<React.Compon
   office: OfficePage,
   dms: DMSPage,
   immobilien: ImmobilienPage,
-  msv: MSVPage,
   verkauf: VerkaufPage,
   finanzierung: FinanzierungPage,
   finanzierungsmanager: FinanzierungsmanagerPage,
