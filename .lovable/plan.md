@@ -1,163 +1,193 @@
 
 
-# MOD-11 Finanzierungsmanager — Komplett-Redesign
+# RecordCard — Erweiterter Plan mit Storage-Detail
 
-## Soll-Ist-Analyse
+## Was HEUTE existiert (IST)
 
-### IST-Zustand
+### Storage-Nodes (`storage_nodes` Tabelle)
 
-| Aspekt | Aktuell | Problem |
-|--------|---------|---------|
-| Menuepunkte | Dashboard, Finanzierungsakte, Einreichung, Provisionen, Archiv (5 Tiles) | Falsche Struktur, keine Versicherungen/Abos/Investment/Vorsorge |
-| Personen-Block | Nicht vorhanden im Dashboard | Fehlt komplett |
-| Konten-Block | Nicht vorhanden | Fehlt komplett |
-| Versicherungen | Nur in MOD-20 (miety_contracts) | Kein zentraler SSOT in MOD-11 |
-| Abonnements | subscriptions-Tabelle existiert (Stripe) | Keine Abo-Erkennung/SSOT fuer Nutzer-Abos |
-| Investment | Nicht in MOD-11 | Upvest-Integration fehlt |
-| Vorsorge | pension_records existiert | Kein eigener Menuepunkt |
-| Scan/Erkennung | Nicht vorhanden | Kein 12M-Scan |
+Jeder DMS-Ordner/Datei ist ein `storage_node`. Die Tabelle hat **spezifische FK-Spalten** fuer verschiedene Entitaeten:
 
-### Vorhandene DB-Tabellen (wiederverwendbar)
+| Spalte | Verknuepfung |
+|--------|-------------|
+| `property_id` | Immobilie |
+| `pv_plant_id` | PV-Anlage |
+| `dev_project_id` | Entwicklungsprojekt |
+| `unit_id` | Einheit |
 
-- `household_persons` — vorhanden, SSOT fuer Personen
-- `pension_records` — vorhanden, SSOT fuer DRV
-- `msv_bank_accounts` — vorhanden (IBAN, Bankname, Status, FinAPI-Ref)
-- `bank_transactions` — vorhanden (12M Umsaetze, Buchungsdatum, Betrag, Gegenpartei)
-- `miety_contracts` — vorhanden (Vertraege mit JSONB details, aber an home_id gebunden)
-- `subscriptions` — vorhanden (Stripe-Subscriptions, NICHT Nutzer-Abos)
+Es gibt KEINE generische `entity_id` Spalte.
 
-### Fehlende DB-Tabellen (neu anzulegen)
+### Sortierkacheln (`inbox_sort_containers` Tabelle)
 
-- `insurance_contracts` — Zentrale Versicherungs-SSOT
-- `insurance_contract_links` — Referenzen zu Fahrzeugen/Immobilien/PV
-- `vorsorge_contracts` — Vorsorgevertraege SSOT
-- `user_subscriptions` — Nutzer-Abonnements SSOT (getrennt von Stripe)
-- `scan_runs` — Scan-Durchlaeufe
-- `contract_candidates` — Erkannte Vertragskandidaten aus Scan
-- `bank_account_meta` — Editierbare Meta-Daten pro Konto (Custom Name, Kategorie, Zuordnung)
+| Spalte | Typ |
+|--------|-----|
+| `id` | UUID (PK) |
+| `tenant_id` | FK organizations |
+| `name` | Text |
+| `is_enabled` | Boolean |
+| `property_id` | FK properties (NUR Immobilien!) |
 
----
+Es gibt KEINE generische Entitaets-Verknuepfung — nur `property_id`.
 
-## SOLL-Zustand: 5-Punkt-Menustruktur
-
-### Routes-Manifest Aenderung
+### Bestehendes Pattern (CreatePropertyDialog)
 
 ```
-tiles: [
-  { path: "dashboard",        title: "Uebersicht",          default: true },
-  { path: "investment",       title: "Investment"            },
-  { path: "sachversicherungen", title: "Sachversicherungen"  },
-  { path: "vorsorge",         title: "Vorsorgevertraege"     },
-  { path: "abonnements",      title: "Abonnements"           },
-]
+1. Property INSERT → property.id entsteht
+2. inbox_sort_containers INSERT (property_id = property.id, name = Adresse)
+3. inbox_sort_rules INSERT (keywords aus Adresse)
 ```
 
-Bisherige Tiles (Finanzierungsakte, Einreichung, Provisionen, Archiv) werden als `dynamic_routes` beibehalten, aber aus den sichtbaren Tiles entfernt.
+---
+
+## Was NEU kommen muss
+
+### Problem
+
+Die RecordCard soll fuer ALLE Entitaetstypen (Personen, Versicherungen, Fahrzeuge, Vorsorge, Abos) einen eigenen Datenraum + Sortierkachel anlegen. Aber `storage_nodes` und `inbox_sort_containers` kennen nur spezifische FK-Spalten — keine generische Verknuepfung.
+
+### Loesung: Generische Spalten hinzufuegen
+
+**Migration 1: `storage_nodes` erweitern**
+
+```sql
+ALTER TABLE storage_nodes
+  ADD COLUMN entity_type TEXT,     -- z.B. 'person', 'insurance', 'vehicle', 'vorsorge', 'subscription'
+  ADD COLUMN entity_id   UUID;     -- ID der verknuepften Akte
+
+CREATE INDEX idx_storage_nodes_entity
+  ON storage_nodes (tenant_id, entity_type, entity_id);
+```
+
+Die bestehenden FK-Spalten (`property_id`, `pv_plant_id` etc.) bleiben erhalten — kein Breaking Change. Die neuen Spalten werden fuer ALLE kuenftigen Akten-Typen verwendet.
+
+**Migration 2: `inbox_sort_containers` erweitern**
+
+```sql
+ALTER TABLE inbox_sort_containers
+  ADD COLUMN entity_type TEXT,     -- z.B. 'person', 'insurance', 'vehicle'
+  ADD COLUMN entity_id   UUID;     -- ID der verknuepften Akte
+
+CREATE INDEX idx_sort_containers_entity
+  ON inbox_sort_containers (tenant_id, entity_type, entity_id);
+```
+
+`property_id` bleibt erhalten (Abwaertskompatibilitaet). Neue Akten nutzen `entity_type` + `entity_id`.
 
 ---
 
-## Umsetzung pro Menuepunkt
+## Exakter Ablauf bei Neuanlage einer Akte
 
-### MENU (1) UEBERSICHT — `FMUebersichtTab.tsx`
+Am Beispiel: **Neue Person anlegen** in Stammdaten
 
-Ersetzt das bisherige `FMDashboard.tsx`. Strikte Block-Reihenfolge:
+### Schritt 1: Akte anlegen
 
-**Block A — Personen im Haushalt (GANZ OBEN)**
-- Wiederverwendung der `household_persons` + `pension_records` Tabellen
-- Gleiche Accordion-UI wie in MOD-18 UebersichtTab (Personen-Kacheln, editierbar, DRV-Subsektion)
-- Auto-Seed Person #1 aus Profil-Stammdaten
-- Button: "+ Person hinzufuegen"
+```
+INSERT INTO household_persons (tenant_id, first_name, last_name, role, ...)
+→ person.id = "abc-123" (neue UUID)
+```
 
-**Block B — Konten (nach Personen)**
-- Query: `msv_bank_accounts` + `bank_account_meta` (neu)
-- Pro Konto ein Widget (collapsed/expanded)
-- Collapsed: Custom Name, Bankname, Kontotyp, Kategorie, IBAN maskiert, Status, letzte Sync
-- Expanded: Meta editierbar (Custom Name, Kategorie, Org-Zuordnung) + Kontodaten read-only + Umsaetze (12M aus bank_transactions)
+### Schritt 2: DMS-Ordner (storage_node) anlegen
 
-**Block C — 12M Scan Button**
-- Button: "Umsaetze (12 Monate) auslesen & Vertraege erkennen"
-- Erstellt `scan_runs` Eintrag, erzeugt `contract_candidates`
-- Kandidaten-Liste mit Actions: Als Abonnement/Versicherung/Vorsorge uebernehmen, Ignorieren, Zusammenfuehren
+```
+INSERT INTO storage_nodes (
+  tenant_id:     org.id,
+  name:          "Max Mustermann",
+  node_type:     "folder",
+  module_code:   "MOD_01",        -- Stammdaten
+  entity_type:   "person",
+  entity_id:     "abc-123",       -- person.id
+  parent_id:     MOD_01_ROOT_ID,  -- Root-Ordner des Moduls
+  auto_created:  true
+)
+→ folder.id = "def-456" (neue UUID fuer den Ordner)
+```
 
-### MENU (2) INVESTMENT — `FMInvestmentTab.tsx`
+**Ergebnis im DMS-Baum:**
+```
+MOD_01 (Stammdaten)
+  └── Max Mustermann/          ← neu, automatisch
+       ├── (leer, bereit fuer Uploads)
+```
 
-Komplett neu. Upvest-Integration (read-only):
-- Zustandsanzeige: nicht verbunden / verbunden / Fehler / Onboarding noetig
-- Widgets: Depot-Uebersicht, Positionen (ISIN/Name/Stuecke/Wert), Transaktionen, Reports/Statements
-- Empty State bei fehlender Verbindung
+### Schritt 3: Sortierkachel anlegen
 
-### MENU (3) SACHVERSICHERUNGEN — `FMSachversicherungenTab.tsx`
+```
+INSERT INTO inbox_sort_containers (
+  tenant_id:    org.id,
+  name:         "Max Mustermann",
+  is_enabled:   true,
+  entity_type:  "person",
+  entity_id:    "abc-123"       -- person.id
+)
+→ container.id = "ghi-789"
+```
 
-Komplett neu. Zentrale Versicherungs-SSOT:
-- Neue Tabelle `insurance_contracts` mit Universal-Feldern (Kategorie, Versicherer, Policen-Nr, VN, Beginn, Ablauf, Beitrag, Intervall, Status) + JSONB `details` fuer kategorie-spezifische Felder
-- Neue Tabelle `insurance_contract_links` (Referenz zu Fahrzeug/Immobilie/PV)
-- UI: Liste bestehender Vertraege als Accordion-Widgets + "+ Versicherung" Button
-- Schritt 1 beim Anlegen: Kategorie waehlen (Dropdown)
-- Danach: Universal + kategorie-spezifische Pflichtfelder
-- Kategorien: Haftpflicht, Hausrat, Wohngebaeude, Rechtsschutz, KFZ, Unfall, Berufsunfaehigkeit
+### Schritt 4: Sortierregeln anlegen
 
-### MENU (4) VORSORGEVERTRAEGE — `FMVorsorgeTab.tsx`
+```
+INSERT INTO inbox_sort_rules (
+  container_id:  "ghi-789",
+  field:         "subject",
+  operator:      "contains",
+  keywords_json: ["Max", "Mustermann"]
+)
+```
 
-Komplett neu:
-- Neue Tabelle `vorsorge_contracts` (Anbieter, Vertragsnummer, Person-Zuordnung, Beginn, Beitrag, Intervall, Status, Dokumentlinks)
-- UI: Liste + "+ Vorsorgevertrag" Button
-- DRV-Werte werden aus Personen-Block referenziert (read-only Anzeige)
+**Ergebnis unter Dokumente > Sortieren:**
+```
+[✓] Max Mustermann          ← neue Kachel
+     Regel: Betreff enthält "Max", "Mustermann"
+```
 
-### MENU (5) ABONNEMENTS — `FMAbonnementsTab.tsx`
+### Schritt 5: Drag-and-Drop Upload auf die Card
 
-Komplett neu:
-- Neue Tabelle `user_subscriptions` (Custom Name, Merchant, Kategorie-Enum, Frequenz, Betrag, Payment-Source, Status, Auto-Renew, Confidence)
-- Kategorie-Enum: streaming_video, streaming_music, cloud_storage, software_saas, news_media, ecommerce_membership, telecom_mobile, internet, utilities_energy, mobility, fitness, other
-- UI: Liste + "+ Abonnement" Button
-- Seed-Merchants vorgeschlagen bei Neuanlage
+Wenn eine Datei auf die geschlossene RecordCard gezogen wird:
 
----
-
-## Datenbank-Migrationen
-
-### Migration 1: Neue Tabellen
-
-| Tabelle | Zweck |
-|---------|-------|
-| `insurance_contracts` | Zentrale Versicherungs-SSOT (tenant_id, user_id, category, insurer, policy_no, policyholder, start_date, end_date, premium, interval, status, details JSONB) |
-| `insurance_contract_links` | Referenzen (contract_id FK, entity_type, entity_id) |
-| `vorsorge_contracts` | Vorsorgevertraege (tenant_id, user_id, person_id FK, provider, contract_no, start_date, premium, interval, status) |
-| `user_subscriptions` | Nutzer-Abos (tenant_id, user_id, custom_name, merchant, category_enum, frequency, amount, payment_source, status, auto_renew, confidence) |
-| `bank_account_meta` | Editierbare Konto-Meta (account_id FK, custom_name, category, org_unit) |
-| `scan_runs` | Scan-Durchlaeufe (tenant_id, user_id, started_at, status, account_ids) |
-| `contract_candidates` | Erkannte Kandidaten (scan_run_id FK, tenant_id, merchant, amount_range, frequency, category_suggestion, confidence, status) |
-
-RLS auf allen Tabellen via `tenant_id = get_user_tenant_id()`.
-
----
-
-## Datei-Matrix
-
-| Aktion | Datei |
-|--------|-------|
-| MIGRATION | 7 neue Tabellen + RLS + Indexes |
-| EDIT | `src/manifests/routesManifest.ts` (MOD-11 Tiles umstrukturieren) |
-| EDIT | `src/pages/portal/FinanzierungsmanagerPage.tsx` (neue Routes + Lazy-Imports) |
-| NEU | `src/pages/portal/finanzierungsmanager/FMUebersichtTab.tsx` |
-| NEU | `src/pages/portal/finanzierungsmanager/FMInvestmentTab.tsx` |
-| NEU | `src/pages/portal/finanzierungsmanager/FMSachversicherungenTab.tsx` |
-| NEU | `src/pages/portal/finanzierungsmanager/FMVorsorgeTab.tsx` |
-| NEU | `src/pages/portal/finanzierungsmanager/FMAbonnementsTab.tsx` |
-| NEU | `src/hooks/useFinanzmanagerData.ts` (Queries + Mutations fuer alle neuen Tabellen) |
-| BEHALTEN | `FMDashboard.tsx` wird zu `FMUebersichtTab.tsx` umgebaut (Visitenkarte + Zins-Ticker bleiben als Widgets) |
-| BEHALTEN | `FMFinanzierungsakte.tsx`, `FMFallDetail.tsx`, `FMEinreichung*.tsx`, `FMProvisionen.tsx`, `FMArchiv.tsx` bleiben als dynamic_routes erreichbar |
+```
+1. Upload nach: tenant-documents/{tenantId}/MOD_01/abc-123/Dateiname.pdf
+2. INSERT INTO storage_nodes (
+     tenant_id, name, node_type: "file",
+     module_code: "MOD_01",
+     entity_type: "person",
+     entity_id: "abc-123",
+     parent_id: "def-456",       -- der Personen-Ordner
+     file_path: "{tenantId}/MOD_01/abc-123/Dateiname.pdf",
+     mime_type: "application/pdf"
+   )
+```
 
 ---
 
-## Was sich NICHT aendert
+## Ablauf-Diagramm fuer alle Entitaetstypen
 
-- Finanzierungsakte-Workflow (Neuanlage, Magic Intake, Kaufy) bleibt als dynamic_route erhalten
-- Provisionen bleiben erreichbar (dynamic_route)
-- Archiv bleibt erreichbar (dynamic_route)
-- `household_persons` + `pension_records` Tabellen bleiben unveraendert (SSOT geteilt mit MOD-18)
-- CI/Widget-Design bleibt identisch (Cards, PageShell, ModulePageHeader, Accordion)
+| Entitaetstyp | Tabelle | module_code | entity_type | Storage-Pfad |
+|-------------|---------|-------------|-------------|-------------|
+| Person | `household_persons` | MOD_01 | `person` | `{t}/MOD_01/{person_id}/` |
+| Versicherung | `insurance_contracts` | MOD_11 | `insurance` | `{t}/MOD_11/{contract_id}/` |
+| Vorsorge | `vorsorge_contracts` | MOD_11 | `vorsorge` | `{t}/MOD_11/{contract_id}/` |
+| Abonnement | `user_subscriptions` | MOD_11 | `subscription` | `{t}/MOD_11/{sub_id}/` |
+| Fahrzeug | `vehicles` | MOD_17 | `vehicle` | `{t}/MOD_17/{vehicle_id}/` |
+| PV-Anlage | `pv_plants` | MOD_19 | `pv_plant` | `{t}/MOD_19/{plant_id}/` |
 
-## Hinweis zur Komplexitaet
+---
 
-Dieser Umbau umfasst 7 neue DB-Tabellen, 5 neue Tab-Komponenten, 1 neuen zentralen Hook und Manifest-Aenderungen. Die Umsetzung sollte in mehreren Schritten erfolgen, um die Stabilitaet zu gewaehrleisten.
+## Umsetzungsschritte (Phase 1: Stammdaten)
+
+| Schritt | Beschreibung |
+|---------|-------------|
+| 1 | **DB-Migration**: `storage_nodes` + `inbox_sort_containers` um `entity_type` / `entity_id` erweitern (2 ALTER TABLE + 2 Indexes) |
+| 2 | **`designManifest.ts`** um `RECORD_CARD` Tokens erweitern (quadratisch, aspect-square) |
+| 3 | **`recordCardManifest.ts`** erstellen (Entitaets-Definitionen mit module_code Mapping) |
+| 4 | **`useRecordCardDMS.ts`** Hook erstellen: Logik fuer automatische Ordner-Erstellung + Sortierkachel-Erstellung + Drag-and-Drop Upload |
+| 5 | **`RecordCardGallery.tsx`** erstellen (4-Foto Grid) |
+| 6 | **`RecordCard.tsx`** erstellen (Closed=quadratisch + FileDropZone, Open=volle Breite + alle Felder + Datenraum-Liste) |
+| 7 | **`ProfilTab.tsx`** refaktorieren: 6 ProfileWidgets durch 1 RecordCard type=person ersetzen |
+| 8 | Testen auf `/portal/stammdaten/profil` |
+
+### Was sich NICHT aendert
+
+- Bestehende `property_id` / `pv_plant_id` FK-Spalten bleiben erhalten
+- Bestehende Immobilien-Sortierkacheln funktionieren weiter (property_id bleibt)
+- Kein Routing-Change
+- CRUD-Logik fuer Profildaten bleibt im bestehenden Query/Mutation
 
