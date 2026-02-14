@@ -89,7 +89,11 @@ function calcBookValue(row: BookValueRow, stichtag: Date): { kumulierteAfa: numb
 
 const formatCurr = (v: number) => v > 0 ? `${v.toLocaleString('de-DE')} €` : '–';
 
-export function BWAControllingSection() {
+interface BWAControllingSectionProps {
+  propertyId?: string | null;
+}
+
+export function BWAControllingSection({ propertyId }: BWAControllingSectionProps) {
   const [stichtag, setStichtag] = useState(`${new Date().getFullYear()}-01-01`);
   const [rows, setRows] = useState<BookValueRow[]>(DEMO_BOOK_VALUES);
   const [bwaEntries, setBwaEntries] = useState<Record<string, number>>({});

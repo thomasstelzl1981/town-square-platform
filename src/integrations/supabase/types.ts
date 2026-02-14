@@ -1399,6 +1399,114 @@ export type Database = {
         }
         Relationships: []
       }
+      analytics_budget_settings: {
+        Row: {
+          category: string
+          created_at: string
+          id: string
+          monthly_target: number
+          tenant_id: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          id?: string
+          monthly_target?: number
+          tenant_id: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          id?: string
+          monthly_target?: number
+          tenant_id?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "analytics_budget_settings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      analytics_category_overrides: {
+        Row: {
+          category: string
+          confirmed: boolean | null
+          created_at: string
+          id: string
+          merchant_pattern: string
+          tenant_id: string
+        }
+        Insert: {
+          category: string
+          confirmed?: boolean | null
+          created_at?: string
+          id?: string
+          merchant_pattern: string
+          tenant_id: string
+        }
+        Update: {
+          category?: string
+          confirmed?: boolean | null
+          created_at?: string
+          id?: string
+          merchant_pattern?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "analytics_category_overrides_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      analytics_notes: {
+        Row: {
+          created_at: string
+          id: string
+          note: string
+          tenant_id: string
+          user_id: string | null
+          widget_key: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          note: string
+          tenant_id: string
+          user_id?: string | null
+          widget_key: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          note?: string
+          tenant_id?: string
+          user_id?: string | null
+          widget_key?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "analytics_notes_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       applicant_liabilities: {
         Row: {
           applicant_profile_id: string
@@ -9050,6 +9158,7 @@ export type Database = {
         Row: {
           account_name: string
           bank_name: string | null
+          bic: string | null
           created_at: string
           finapi_account_id: string | null
           iban: string
@@ -9062,6 +9171,7 @@ export type Database = {
         Insert: {
           account_name: string
           bank_name?: string | null
+          bic?: string | null
           created_at?: string
           finapi_account_id?: string | null
           iban: string
@@ -9074,6 +9184,7 @@ export type Database = {
         Update: {
           account_name?: string
           bank_name?: string | null
+          bic?: string | null
           created_at?: string
           finapi_account_id?: string | null
           iban?: string

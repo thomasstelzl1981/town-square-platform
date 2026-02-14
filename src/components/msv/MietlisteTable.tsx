@@ -122,9 +122,13 @@ function generateMonthHistory(warmmiete: number, status: string) {
   return months;
 }
 
-export function MietlisteTable() {
+interface MietlisteTableProps {
+  propertyId?: string | null;
+}
+
+export function MietlisteTable({ propertyId }: MietlisteTableProps) {
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
-  const units = DEMO_UNITS; // TODO: Replace with real data from MOD-04
+  const units = DEMO_UNITS; // TODO: Replace with real data via useMSVData
 
   const formatCurrency = (v: number) => v > 0 ? `${v.toLocaleString('de-DE')} €` : '–';
 
