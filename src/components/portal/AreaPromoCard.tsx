@@ -22,10 +22,10 @@ export function AreaPromoCard({ promo }: AreaPromoCardProps) {
   if (promo.imageUrl) {
     return (
       <Card 
-        className={`glass-card overflow-hidden border-primary/20 hover:border-primary/30 transition-colors h-full flex flex-col min-h-[180px] ${isClickable ? 'cursor-pointer active:scale-[0.98]' : ''}`}
+        className={`glass-card overflow-hidden border-primary/20 hover:border-primary/30 transition-colors flex flex-col h-[200px] ${isClickable ? 'cursor-pointer active:scale-[0.98]' : ''}`}
         onClick={isClickable ? handleClick : undefined}
       >
-        <div className="relative h-40 overflow-hidden">
+        <div className="relative h-28 overflow-hidden">
           <img src={promo.imageUrl} alt={promo.headline} className="w-full h-full object-cover" loading="lazy" />
           {promo.badge && (
             <Badge variant="secondary" className="absolute top-3 right-3 uppercase text-xs tracking-wider shadow-lg">
@@ -43,7 +43,7 @@ export function AreaPromoCard({ promo }: AreaPromoCardProps) {
 
   return (
     <Card 
-      className={`glass-card bg-gradient-to-br from-primary/5 via-transparent to-background border-primary/20 hover:border-primary/30 transition-colors h-full flex flex-col min-h-[180px] ${isClickable ? 'cursor-pointer active:scale-[0.98]' : ''}`}
+      className={`glass-card bg-gradient-to-br from-primary/5 via-transparent to-background border-primary/20 hover:border-primary/30 transition-colors flex flex-col h-[200px] ${isClickable ? 'cursor-pointer active:scale-[0.98]' : ''}`}
       onClick={isClickable ? handleClick : undefined}
     >
       <CardContent className="flex flex-col flex-1 p-6">
