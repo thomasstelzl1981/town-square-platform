@@ -1,127 +1,223 @@
 
-# Umbau: Posteingang-Modell und Vertragsabschluss-Standard
+# Landing Page Builder Standardisierung und MOD-05 Umbau zu Pets
 
 ## Zusammenfassung
 
-Das bisherige Modell (Admin routet Post manuell via Zone 1 an Tenants) wird ersetzt durch ein Self-Service-Modell: Tenants schliessen einen Vertrag ab, erhalten danach eine Inbound-E-Mail-Adresse, und eingehende PDFs werden automatisch verarbeitet. Das Admin-Inbox-Modul in Zone 1 entfaellt komplett.
-
-Zusaetzlich wird ein systemweiter Vertragsabschluss-Standard als Spec-Datei dokumentiert.
+Der eigenstaendige Website Builder (MOD-05) wird entfernt. Stattdessen erhaelt jedes Manager-Modul (ausser MOD-10) einen eigenen "Landing Page"-Tab. MOD-10 wird von "Leadmanager" zu "Pets" umgebaut. Der bestehende Landing Page Builder aus MOD-13 dient als Referenz-Implementierung und wird als wiederverwendbare Komponente verallgemeinert.
 
 ---
 
-## Teil 1: Admin Inbox entfernen (Zone 1)
+## Analyse: Zwei Builder im Vergleich
 
-### Betroffene Dateien
+### Website Builder (MOD-05) — wird entfernt
 
-| Datei | Aenderung |
-|-------|-----------|
-| `src/manifests/routesManifest.ts` | Route `inbox` entfernen |
-| `src/components/admin/AdminSidebar.tsx` | `Inbox` aus ICON_MAP und Navigation entfernen |
-| `src/router/ManifestRouter.tsx` | Lazy-Import und `adminComponentMap`-Eintrag fuer `Inbox` entfernen |
-| `src/lib/postRouting.ts` | Datei entfernen (Zone-1-Routing-Engine nicht mehr benoetigt) |
+- **Umfang**: 897 Zeilen Dashboard + 483 Zeilen Editor
+- **Features**: Template-Galerie (5 Designs), KI-Inhaltsgenerierung, Firmendaten/Impressum, Bild-Upload, DnD-Section-Editor, Split-View-Editor, SEO, Hosting-Vertrag, Versions-History
+- **Datenmodell**: `tenant_websites` + `sot_website_sections` + `hosting_contracts`
+- **Section-Types**: 15 Typen (hero, features, about, services, testimonials, gallery, contact, footer, booking, pricing, team, calculator, catalog, unit_list, application)
 
-Die Datei `src/pages/admin/Inbox.tsx` bleibt vorerst im Repo (toter Code), kann aber spaeter aufgeraeumt werden. Die DB-Tabellen (`inbound_items`, `inbound_routing_rules`) bleiben bestehen fuer eventuelle spaetere Nutzung.
+### Landing Page Builder (MOD-13) — wird zur Basis
 
----
+- **Umfang**: 145 Zeilen Tab + 262 Zeilen Builder + 154 Zeilen Preview + Website-Renderer
+- **Features**: Projekt-Switcher (Widget-Grid), URL-Dialog, KI-Generierung (Lagebeschreibung, Anbieter-Profil), Browser-Frame-Preview, Publish-Flow
+- **Datenmodell**: `landing_pages` Tabelle
+- **Fokus**: Projektspezifisch mit Investment-Rechner, Einheiten-Tabelle, Anbieter-Info
 
-## Teil 2: Zone 2 Posteingang umbauen (Vertrags-Gate)
+### Entscheidung
 
-### Neues Verhalten der PosteingangTab
+Der Landing Page Builder aus MOD-13 ist der bessere Ausgangspunkt, weil er:
+1. Bereits projekt-/kontextgebunden arbeitet (nicht generisch)
+2. Einen klaren 2-State-Flow hat (Kein LP → Builder, LP existiert → Preview)
+3. KI-Generierung mit echten Entitaetsdaten verbindet
+4. Leichtgewichtiger und fokussierter ist
 
-**Ohne aktiven Postservice-Vertrag:**
-- Keine E-Mail-Adresse sichtbar
-- Informationsbereich mit:
-  - Erklaerung, was der digitale Postservice bietet
-  - Hinweis auf externe Post-Scan-Dienste (z.B. CAYA, Dropscan)
-  - Hinweis auf manuellen PDF-Upload als Alternative
-  - CTA-Button "Postservice aktivieren" der zur Einstellungen-Seite navigiert oder direkt den TermsGate-Dialog oeffnet
-
-**Mit aktivem Postservice-Vertrag (Status `active`):**
-- Generierte Inbound-E-Mail-Adresse wird angezeigt
-- E-Mail-Tabelle wie bisher
-- Hinweis auf Credit-Kosten pro verarbeitetem Dokument
-
-### Aenderungen an PosteingangTab.tsx
-
-- Neue Query: `postservice_mandates` mit `status = 'active'` fuer den aktuellen Tenant pruefen
-- Wenn kein aktiver Vertrag: Info-Screen rendern (kein Mailbox-Fetch, keine E-Mail-Tabelle)
-- Wenn aktiver Vertrag: Bestehende Funktionalitaet (Mailbox + Tabelle)
+Die wertvollen Features des Website Builders (Section-Editor, Design-Templates, DnD) werden als optionale Erweiterung in der SPEC dokumentiert, aber nicht sofort migriert.
 
 ---
 
-## Teil 3: TermsGate in den Postservice-Vertragsabschluss integrieren
+## Neue SPEC-Datei: Landing Page Builder Standard
 
-### Aenderungen an EinstellungenTab.tsx
+### Neue Datei: `spec/current/02_modules/LANDING_PAGE_BUILDER_STANDARD.md`
 
-Der bestehende "Nachsendeauftrag einrichten"-Button wird durch einen TermsGate-Flow ersetzt:
-
-1. Nutzer klickt "Postservice aktivieren"
-2. Dialog oeffnet sich mit TermsGatePanel:
-   - Template: `POSTSERVICE_ACTIVATION_V1`
-   - Vertragsbedingungen: Monatliche Credits, Kosten pro Brief, Mindestlaufzeit
-   - Keine Provision (grossCommission = 0), stattdessen Servicegebuehr
-3. Nach Akzeptanz:
-   - `postservice_mandates`-Eintrag wird erstellt (Status: `active` statt `requested`)
-   - Inbound-E-Mail-Adresse wird generiert
-   - Vertragsdokument wird im DMS abgelegt (automatisch via TermsGatePanel)
-
-### Neue Contract-Template
-
-Neuer Eintrag in der Contract-Template-Logik fuer `POSTSERVICE_ACTIVATION_V1` mit Postservice-spezifischen Bedingungen (Laufzeit, Credits, Kuendigungsfrist).
-
----
-
-## Teil 4: Vertragsabschluss-Standard (Neue Spec-Datei)
-
-### Neue Datei: `spec/current/06_api_contracts/CONTRACT_TERMS_GATE_STANDARD.md`
-
-Dokumentiert den systemweiten Standard fuer alle Vertragsabschluesse:
+Definiert den systemweiten Standard fuer Landing Pages in Manager-Modulen:
 
 **Inhalt:**
-1. **Ablauf**: Immer ueber TermsGatePanel-Komponente (Dialog/Inline)
-2. **Vertragserstellung**: Contract-Template wird gerendert, Nutzer akzeptiert mit Checkbox
-3. **Persistenz**: 
-   - `user_consents` Tabelle: Consent-Eintrag mit Template-Code und Zeitstempel
-   - DMS-Ablage: PDF des Vertrags wird in Zone 2 beim Tenant gespeichert
-   - Zone 1 Kopie: Vertrag wird zusaetzlich im Admin-DMS referenziert (via `document_links`)
-4. **Provisionserfassung**: Bei provisionsrelevanten Vertraegen wird ein `commissions`-Eintrag erstellt
-5. **Aktuelle Anwendungsfaelle**:
-   - `PARTNER_RELEASE_V1` (MOD-04/09 Vertriebsauftrag)
-   - `FIN_MANDATE_ACCEPTANCE_V1` (MOD-11 Finanzierung)
-   - `ACQ_MANDATE_ACCEPTANCE_V1` (MOD-12 Akquise)
-   - `POSTSERVICE_ACTIVATION_V1` (MOD-03 Postservice) — NEU
-6. **Ablage-Standard**: Jeder Vertrag wird unter `{tenant_id}/MOD_03/contracts/` im Storage abgelegt. Beide Parteien (Tenant + Plattform) erhalten eine Referenz.
+1. **Architektur**: Wiederverwendbare Komponenten-Bibliothek unter `src/components/shared/landing-page/`
+2. **2-State-Pattern**: Zustand A (kein LP) zeigt Builder mit KI-Generierung, Zustand B (LP existiert) zeigt Browser-Frame-Preview
+3. **Profil-Integration**: Jedes Manager-Modul liefert seinen Kontext (Entitaet, Branche, Zielgruppe) an den Builder
+4. **Datenmodell**: Alle Landing Pages nutzen die bestehende `landing_pages` Tabelle mit `entity_type` + `entity_id` Zuordnung
+5. **Section-Types pro Profil**: Aus `websiteProfileManifest.ts` werden die erlaubten Sektionen geladen
+6. **Design-Templates**: Die 5 bestehenden Templates bleiben als visuelle Basis
+7. **Abrechnung**: Generierung via Armstrong-Credits
+8. **Verfuegbarkeit**: MOD-09, MOD-11, MOD-12, MOD-13 (NICHT MOD-10/Pets)
 
 ---
 
-## Teil 5: Contract-Template fuer Postservice
+## MOD-05: Website Builder → Pets
 
-### Neue Template-Registrierung in `src/lib/contractGenerator.ts`
+### Aenderungen am Routen-Manifest
 
-Neues Template `POSTSERVICE_ACTIVATION_V1` mit:
-- Titel: "Vereinbarung ueber den digitalen Postservice"
-- Inhalt: Leistungsbeschreibung, Kostenmodell (Credits), Laufzeit, Kuendigungsklausel, Datenschutzhinweis
-- Variables: `{recipient_name}`, `{address}`, `{date}`, `{monthly_credits}`, `{cost_per_letter}`
+**Datei**: `src/manifests/routesManifest.ts`
+
+MOD-05 wird umbenannt und neu definiert:
+
+```text
+"MOD-05": {
+  name: "Pets",
+  base: "pets",
+  icon: "PawPrint",
+  display_order: 5,
+  visibility: { default: false, org_types: ["client"], requires_activation: true },
+  tiles: [
+    { path: "meine-tiere", component: "PetsMeineTiere", title: "Meine Tiere", default: true },
+    { path: "caring", component: "PetsCaring", title: "Caring" },
+    { path: "shop", component: "PetsShop", title: "Shop" },
+    { path: "fotoalbum", component: "PetsFotoalbum", title: "Fotoalbum" },
+  ],
+  dynamic_routes: [
+    { path: ":petId", component: "PetDetailPage", title: "Tierakte", dynamic: true },
+  ],
+}
+```
+
+### Neue Tab-Dateien (Platzhalter)
+
+| Datei | Beschreibung |
+|-------|--------------|
+| `src/pages/portal/pets/PetsMeineTiere.tsx` | Tier-Liste mit RecordCard-Pattern (wie Stammdaten/Personen) |
+| `src/pages/portal/pets/PetsCaring.tsx` | Pflege-Kalender, Tierarzt-Termine, Medikamente |
+| `src/pages/portal/pets/PetsShop.tsx` | Shop-Integration (Futter, Zubehoer) |
+| `src/pages/portal/pets/PetsFotoalbum.tsx` | Foto-Galerie pro Tier |
+| `src/pages/portal/pets/PetDetailPage.tsx` | RecordCard-Akte fuer ein einzelnes Tier |
+| `src/pages/portal/PetsPage.tsx` | Modul-Router (ersetzt WebsiteBuilderPage.tsx) |
+
+### Zone 1: Petmanager Desk (Platzhalter)
+
+**Datei**: `src/manifests/routesManifest.ts` (Zone 1)
+- Neue Route: `{ path: "petmanager", component: "PetmanagerDashboard", title: "Petmanager" }`
+
+**Neue Datei**: `src/pages/admin/desks/PetmanagerDesk.tsx`
+- Platzhalter-Dashboard analog zu LeadDesk/ProjektDesk
+
+### Operative Desk Manifest aktualisieren
+
+**Datei**: `src/manifests/operativeDeskManifest.ts`
+- MOD-10 Lead Desk `websiteProfileId` entfernen (kein LP fuer Leads/Pets)
+- Neuen Desk `petmanager` hinzufuegen fuer MOD-05
+
+### Website Profile Manifest aktualisieren
+
+**Datei**: `src/manifests/websiteProfileManifest.ts`
+- Profil `lead_agency` (MOD-10) entfernen
+- Neues Profil `pet_services` (MOD-05) hinzufuegen mit `shopEnabled: true` und `bookingEnabled: true`
 
 ---
 
-## Zusammenfassung betroffene Dateien
+## Landing Page Tab in Manager-Module integrieren
+
+### MOD-09 (Vertriebsmanager)
+
+**Datei**: `src/manifests/routesManifest.ts`
+- Neuer Tile: `{ path: "landing-page", component: "VMPartnerLandingPage", title: "Landing Page" }`
+
+**Neue Datei**: `src/pages/portal/vertriebspartner/VMPartnerLandingPage.tsx`
+- Nutzt `websiteProfileManifest` Profil `sales_partner`
+- Kontextdaten: Partner-Name, Katalog-Objekte, Beratungsangebote
+
+### MOD-11 (Finanzierungsmanager)
+
+**Datei**: `src/manifests/routesManifest.ts`
+- Neuer Tile: `{ path: "landing-page", component: "FMLandingPage", title: "Landing Page" }`
+
+**Neue Datei**: `src/pages/portal/finanzierungsmanager/FMLandingPage.tsx`
+- Nutzt Profil `finance_broker`
+- Kontextdaten: Berater-Profil, Leistungen, Rechner-Widget
+
+### MOD-12 (Akquisemanager)
+
+**Datei**: `src/manifests/routesManifest.ts`
+- Neuer Tile: `{ path: "landing-page", component: "AkquiseLandingPage", title: "Landing Page" }`
+
+**Neue Datei**: `src/pages/portal/akquise-manager/AkquiseLandingPage.tsx`
+- Nutzt Profil `acquisition_agent`
+- Kontextdaten: Mandate, Netzwerk, Objekt-Einreichung
+
+### MOD-13 (Projektmanager)
+
+Bleibt wie bisher — `LandingPageTab` ist bereits integriert und dient als Referenz.
+
+---
+
+## Aufraeumen: Website Builder entfernen
+
+### Dateien die entfernt werden
+
+| Datei | Grund |
+|-------|-------|
+| `src/pages/portal/WebsiteBuilderPage.tsx` | Modul-Router fuer MOD-05 alt |
+| `src/pages/portal/website-builder/WBDashboard.tsx` | Durch LP-Tabs in Modulen ersetzt |
+| `src/pages/portal/website-builder/WBEditor.tsx` | Durch LP-Tabs in Modulen ersetzt |
+| `src/pages/portal/website-builder/WBDesign.tsx` | Nicht mehr benoetigt |
+| `src/pages/portal/website-builder/WBSeo.tsx` | Nicht mehr benoetigt |
+| `src/pages/portal/website-builder/WBVertrag.tsx` | Nicht mehr benoetigt |
+| `src/pages/portal/website-builder/ProcessStepper.tsx` | Nicht mehr benoetigt |
+| `src/pages/portal/website-builder/VersionHistory.tsx` | Nicht mehr benoetigt |
+| `src/pages/portal/website-builder/DemoSections.ts` | Nicht mehr benoetigt |
+| `src/pages/portal/website-builder/WebsiteThumbnail.tsx` | Nicht mehr benoetigt |
+
+### Dateien die BLEIBEN
+
+| Datei | Grund |
+|-------|-------|
+| `src/shared/website-renderer/*` | Wird weiterhin fuer Zone 3 Websites und LP-Preview genutzt |
+| `src/shared/website-renderer/designTemplates.ts` | Design-Templates bleiben als Basis |
+| `src/shared/website-renderer/types.ts` | Section-Types bleiben |
+| `src/hooks/useWebsites.ts` | Kann fuer bestehende tenant_websites weiterverwendet werden |
+| `src/hooks/useSections.ts` | Kann fuer Section-Editing weiterverwendet werden |
+| `src/components/projekte/landing-page/*` | MOD-13 Referenz-Implementierung bleibt |
+
+### Weitere Anpassungen
 
 | Datei | Aenderung |
 |-------|-----------|
-| `src/manifests/routesManifest.ts` | Route `inbox` entfernen |
-| `src/components/admin/AdminSidebar.tsx` | Inbox-Eintrag entfernen |
-| `src/router/ManifestRouter.tsx` | Inbox-Mapping entfernen |
-| `src/lib/postRouting.ts` | Datei entfernen |
-| `src/pages/portal/dms/PosteingangTab.tsx` | Vertrags-Gate einbauen (Info-Screen vs. Inbox) |
-| `src/pages/portal/dms/EinstellungenTab.tsx` | TermsGatePanel fuer Postservice-Aktivierung |
-| `src/lib/contractGenerator.ts` | Template `POSTSERVICE_ACTIVATION_V1` hinzufuegen |
-| `spec/current/06_api_contracts/CONTRACT_TERMS_GATE_STANDARD.md` | NEU — Systemweiter Vertragsabschluss-Standard |
+| `src/router/ManifestRouter.tsx` | `website-builder` Mapping entfernen, `pets` Mapping hinzufuegen, `PetmanagerDashboard` hinzufuegen |
+| `src/components/admin/AdminSidebar.tsx` | `petmanager` in ICON_MAP und Desk-Kategorie aufnehmen |
+| `src/manifests/armstrongManifest.ts` | UI-Entrypoints von `/portal/website-builder` auf modul-spezifische Pfade aendern |
+| `src/manifests/goldenPathProcesses.ts` | MOD-05 Prozess von Website Builder auf Pets aktualisieren |
+| `src/manifests/demoDataManifest.ts` | MOD-05 Demo-Daten-Referenz aktualisieren |
+| `src/pages/admin/desks/index.ts` | Export fuer PetmanagerDesk hinzufuegen |
+
+---
+
+## Zusammenfassung: Neue Datei-Liste
+
+| Datei | Status |
+|-------|--------|
+| `spec/current/02_modules/LANDING_PAGE_BUILDER_STANDARD.md` | NEU |
+| `src/pages/portal/PetsPage.tsx` | NEU |
+| `src/pages/portal/pets/PetsMeineTiere.tsx` | NEU (Platzhalter) |
+| `src/pages/portal/pets/PetsCaring.tsx` | NEU (Platzhalter) |
+| `src/pages/portal/pets/PetsShop.tsx` | NEU (Platzhalter) |
+| `src/pages/portal/pets/PetsFotoalbum.tsx` | NEU (Platzhalter) |
+| `src/pages/portal/pets/PetDetailPage.tsx` | NEU (Platzhalter) |
+| `src/pages/admin/desks/PetmanagerDesk.tsx` | NEU (Platzhalter) |
+| `src/pages/portal/vertriebspartner/VMPartnerLandingPage.tsx` | NEU |
+| `src/pages/portal/finanzierungsmanager/FMLandingPage.tsx` | NEU |
+| `src/pages/portal/akquise-manager/AkquiseLandingPage.tsx` | NEU |
+| `src/manifests/routesManifest.ts` | Geaendert (MOD-05 → Pets, LP-Tiles, Petmanager) |
+| `src/manifests/operativeDeskManifest.ts` | Geaendert |
+| `src/manifests/websiteProfileManifest.ts` | Geaendert |
+| `src/router/ManifestRouter.tsx` | Geaendert |
+| `src/components/admin/AdminSidebar.tsx` | Geaendert |
+| `src/manifests/armstrongManifest.ts` | Geaendert |
+| `src/manifests/goldenPathProcesses.ts` | Geaendert |
+| `src/pages/portal/WebsiteBuilderPage.tsx` | ENTFERNT |
+| `src/pages/portal/website-builder/*` (10 Dateien) | ENTFERNT |
 
 ### Was sich NICHT aendert
 
-- Datenbank-Tabellen (`inbound_emails`, `inbound_items`, `postservice_mandates`) — bleiben
-- Zone 2 SortierenTab — bleibt (funktioniert weiterhin nach Aktivierung)
-- Zone 2 EinstellungenTab Speicher/OCR-Kacheln — bleiben unveraendert
-- TermsGatePanel-Komponente — wird wiederverwendet, nicht veraendert
-- Bestehende TermsGate-Flows (MOD-04, MOD-11, MOD-12) — keine Aenderung
+- Datenbank-Tabellen — keine Aenderungen
+- Zone 3 hardcoded Websites (Kaufy, Miety, etc.) — bleiben
+- MOD-13 LandingPageTab und Komponenten — bleiben als Referenz
+- Shared Website Renderer — bleibt
+- Design-Templates — bleiben
