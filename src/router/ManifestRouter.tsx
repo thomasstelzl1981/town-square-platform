@@ -74,9 +74,7 @@ const AdminEmailAgent = React.lazy(() => import('@/pages/admin/ki-office/AdminEm
 
 const Agreements = React.lazy(() => import('@/pages/admin/Agreements'));
 const Inbox = React.lazy(() => import('@/pages/admin/Inbox'));
-const LeadPool = React.lazy(() => import('@/pages/admin/LeadPool'));
 const PartnerVerification = React.lazy(() => import('@/pages/admin/PartnerVerification'));
-const CommissionApproval = React.lazy(() => import('@/pages/admin/CommissionApproval'));
 const MasterTemplates = React.lazy(() => import('@/pages/admin/MasterTemplates'));
 const MasterTemplatesImmobilienakte = React.lazy(() => import('@/pages/admin/MasterTemplatesImmobilienakte'));
 const MasterTemplatesSelbstauskunft = React.lazy(() => import('@/pages/admin/MasterTemplatesSelbstauskunft'));
@@ -240,9 +238,7 @@ const adminComponentMap: Record<string, React.ComponentType> = {
   
   Agreements,
   Inbox,
-  LeadPool,
   PartnerVerification,
-  CommissionApproval,
   RolesManagement,
   AdminFutureRoomLayout,
   FutureRoomBanks: React.lazy(() => import('@/pages/admin/futureroom/FutureRoomBanks')),
@@ -259,8 +255,7 @@ const adminComponentMap: Record<string, React.ComponentType> = {
   ArmstrongTestHarness,
   ArmstrongIntegrations,
   // Social Media removed (100% demo data, no DB)
-  // Landing Pages
-  AdminLandingPages: React.lazy(() => import('@/pages/admin/AdminLandingPages')),
+  // Landing Pages — consolidated into WebHostingDashboard
   // Fortbildung Management
   AdminFortbildung: React.lazy(() => import('@/pages/admin/AdminFortbildung')),
   // Website Hosting (MOD-05 Zone 1)

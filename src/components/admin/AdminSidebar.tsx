@@ -44,9 +44,7 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   'AuditHub': FileText,
   'Agreements': FileCheck,
   'Inbox': Inbox,
-  'LeadPool': Target,
   'PartnerVerification': ClipboardCheck,
-  'CommissionApproval': CreditCard,
   'Support': LifeBuoy,
   // FutureRoom
   'FutureRoom': Landmark,
@@ -85,8 +83,6 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   'ArmstrongTestHarness': FlaskConical,
   // Feature Activation
   'RolesManagement': Shield,
-  // Landing Pages
-  'AdminLandingPages': Globe,
   // Masterdata Hub
   'MasterTemplates': FileText,
   // Website Hosting
@@ -154,8 +150,7 @@ function getGroupKey(path: string, component: string): string {
   }
   // Operative Desks (Desks + LeadPool + Provisionen + Landing Pages)
   if (path.startsWith('sales-desk') || path.startsWith('finance-desk') || 
-      path.startsWith('acquiary') || path === 'leadpool' || path === 'commissions' ||
-      path === 'landing-pages' || path === 'lead-desk' || path === 'projekt-desk' ||
+      path.startsWith('acquiary') || path === 'lead-desk' || path === 'projekt-desk' ||
       path === 'website-hosting') {
     return 'desks';
   }
