@@ -103,7 +103,7 @@ export const DEMO_DATA_MANIFEST: readonly DemoDataEntry[] = [
     zones: [2],
     scope: 'z2_only',
     consumers: [
-      { file: 'src/pages/portal/immobilien/SanierungTab.tsx', zone: 2, mergeStrategy: 'inject', description: 'Demo-Guard für EFH Berlin' },
+      { file: 'src/pages/portal/immobilien/SanierungTab.tsx', zone: 2, mergeStrategy: 'inject', description: 'Demo: Kernsanierung BER-01 Schadowstr.' },
     ],
     status: 'done',
   },
