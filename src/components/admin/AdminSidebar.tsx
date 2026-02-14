@@ -7,8 +7,7 @@ import {
   Building2, Users, Link2, LifeBuoy, LayoutDashboard, LogOut, ChevronDown,
   Contact, Grid3X3, Plug, Mail, Eye, FileText, CreditCard, FileCheck,
   Inbox, Settings2, Landmark, Briefcase, ShoppingBag, Target, Bot,
-  UserCog, ClipboardCheck, Users2, Sparkles, BookOpen, Scale, FlaskConical, Shield,
-  Megaphone, Share2, Globe
+  UserCog, ClipboardCheck, Users2, Sparkles, BookOpen, Scale, FlaskConical, Shield, Globe
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useAuth } from '@/contexts/AuthContext';
@@ -87,17 +86,14 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   'ArmstrongTestHarness': FlaskConical,
   // Feature Activation
   'RolesManagement': Shield,
-  // Social Media
-  'SocialMediaDashboard': Megaphone,
-  'SocialMediaKampagnen': Share2,
-  'SocialMediaCreator': Sparkles,
-  'SocialMediaVertrieb': Briefcase,
-  'SocialMediaVertriebDetail': Briefcase,
-  'SocialMediaLeads': Target,
-  'SocialMediaTemplates': FileText,
-  'SocialMediaAbrechnung': CreditCard,
   // Landing Pages
   'AdminLandingPages': Globe,
+  // Masterdata Hub
+  'MasterTemplates': FileText,
+  // Website Hosting
+  'WebHostingDashboard': Globe,
+  // Fortbildung
+  'AdminFortbildung': BookOpen,
 };
 
 // Group configuration for grouping routes
@@ -110,14 +106,13 @@ const GROUP_CONFIG: Record<string, GroupConfig> = {
   'foundation': { label: 'Tenants & Access', priority: 1 },
   'masterdata': { label: 'Masterdata', priority: 2 },
   'ki-office': { label: 'KI Office', priority: 3 },
-  'social-media': { label: 'Social Media', priority: 4 },
-  'armstrong': { label: 'Armstrong Zone 1', priority: 5 },
-  'activation': { label: 'Feature Activation', priority: 6 },
-  'backbone': { label: 'Backbone', priority: 7 },
-  'desks': { label: 'Operative Desks', priority: 8 },
-  'agents': { label: 'AI Agents', priority: 9 },
-  'system': { label: 'System', priority: 10 },
-  'platformAdmin': { label: 'Platform Admin', priority: 11 },
+  'armstrong': { label: 'Armstrong Zone 1', priority: 4 },
+  'activation': { label: 'Feature Activation', priority: 5 },
+  'backbone': { label: 'Backbone', priority: 6 },
+  'desks': { label: 'Operative Desks', priority: 7 },
+  'agents': { label: 'AI Agents', priority: 8 },
+  'system': { label: 'System', priority: 9 },
+  'platformAdmin': { label: 'Platform Admin', priority: 10 },
 };
 
 // Route to group mapping via prefix
@@ -125,21 +120,23 @@ function getGroupKey(path: string, component: string): string {
   if (path === '' || path === 'organizations' || path === 'users' || path === 'delegations') {
     return 'foundation';
   }
-  // Masterdata
-  if (path.startsWith('masterdata/')) {
+  // Masterdata — nur Hub zeigen, Sub-Seiten via Hub erreichbar
+  if (path === 'masterdata') {
     return 'masterdata';
+  }
+  if (path.startsWith('masterdata/')) {
+    return 'masterdata'; // grouped but filtered out in shouldShowInNav
   }
   // KI Office (all sub-pages)
   if (path === 'ki-office/recherche' || path === 'ki-office/kontakte' || path === 'ki-office/email') {
     return 'ki-office';
   }
-  // Armstrong Zone 1
-  if (path.startsWith('armstrong')) {
+  // Armstrong Zone 1 — nur Dashboard zeigen
+  if (path === 'armstrong') {
     return 'armstrong';
   }
-  // Social Media
-  if (path.startsWith('social-media')) {
-    return 'social-media';
+  if (path.startsWith('armstrong/')) {
+    return 'armstrong'; // grouped but filtered out in shouldShowInNav
   }
   // Feature Activation (inkl. Partner-Verifizierung und Rollen)
   if (path === 'tiles' || path === 'partner-verification' || path === 'roles') {
@@ -162,8 +159,9 @@ function getGroupKey(path: string, component: string): string {
   if (path.startsWith('agents')) {
     return 'agents';
   }
-  // System (bereinigt - nur Read-only Monitoring)
-  if (path === 'integrations' || path === 'oversight' || path === 'audit') {
+  // System (bereinigt - nur Read-only Monitoring + Hosting + Fortbildung)
+  if (path === 'integrations' || path === 'oversight' || path === 'audit' || 
+      path === 'website-hosting' || path === 'fortbildung') {
     return 'system';
   }
   if (path === 'support') {
@@ -185,15 +183,12 @@ function shouldShowInNav(path: string): boolean {
   if (path === 'ki-office/recherche' || path === 'ki-office/kontakte' || path === 'ki-office/email') {
     return true;
   }
-  // Armstrong Zone 1 - show all 7 menu items
-  if (path === 'armstrong' || 
-      path === 'armstrong/actions' || 
-      path === 'armstrong/logs' || 
-      path === 'armstrong/knowledge' ||
-      path === 'armstrong/billing' ||
-      path === 'armstrong/policies' ||
-      path === 'armstrong/test') {
+  // Armstrong Zone 1 — nur Dashboard in Sidebar
+  if (path === 'armstrong') {
     return true;
+  }
+  if (path.startsWith('armstrong/')) {
+    return false; // Sub-Seiten via Armstrong Dashboard erreichbar
   }
   // Skip sub-routes of desks (they will be accessible from their parent page)
   if (path.includes('/') && (
@@ -204,24 +199,16 @@ function shouldShowInNav(path: string): boolean {
   )) {
     return false;
   }
-  // Social Media - show dashboard + all sub-items
-  if (path === 'social-media' || 
-      path === 'social-media/kampagnen' || path === 'social-media/creator' ||
-      path === 'social-media/vertrieb' || path === 'social-media/leads' ||
-      path === 'social-media/templates' || path === 'social-media/abrechnung') {
-    return true;
-  }
-  // Social Media detail routes - hide
-  if (path.startsWith('social-media/vertrieb/')) {
-    return false;
-  }
   // FutureRoom sub-items are accessed via internal tabs, NOT sidebar
   if (path.startsWith('futureroom/')) {
     return false;
   }
-  // Masterdata sub-items should be shown (they're standalone pages)
-  if (path.startsWith('masterdata/')) {
+  // Masterdata — nur Hub zeigen, Sub-Seiten via Hub erreichbar
+  if (path === 'masterdata') {
     return true;
+  }
+  if (path.startsWith('masterdata/')) {
+    return false;
   }
   return true;
 }

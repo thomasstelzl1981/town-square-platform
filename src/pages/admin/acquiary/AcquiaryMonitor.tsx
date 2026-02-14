@@ -1,12 +1,21 @@
 /**
- * AcquiaryMonitor — Combined Audit + Monitoring for Zone 1
- * Merges the former AcquiaryAudit and AcquiaryMonitoring into one view
+ * AcquiaryMonitor — Combined Audit + KPI Monitoring for Zone 1
  */
 import * as React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Activity, ClipboardList } from 'lucide-react';
-import { AcquiaryMonitoring } from './AcquiaryMonitoring';
 import AcquiaryAudit from './AcquiaryAudit';
+import { Card, CardContent } from '@/components/ui/card';
+
+function MonitoringKPIs() {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Offene Mandate</p><p className="text-2xl font-bold mt-1">—</p></CardContent></Card>
+      <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Ø Bearbeitungszeit</p><p className="text-2xl font-bold mt-1">—</p></CardContent></Card>
+      <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Erfolgsquote</p><p className="text-2xl font-bold mt-1">—</p></CardContent></Card>
+    </div>
+  );
+}
 
 export default function AcquiaryMonitor() {
   return (
@@ -20,7 +29,7 @@ export default function AcquiaryMonitor() {
         </TabsTrigger>
       </TabsList>
       <TabsContent value="monitoring">
-        <AcquiaryMonitoring />
+        <MonitoringKPIs />
       </TabsContent>
       <TabsContent value="audit">
         <AcquiaryAudit />
