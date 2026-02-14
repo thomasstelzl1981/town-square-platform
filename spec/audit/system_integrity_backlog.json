@@ -1,0 +1,206 @@
+[
+  {
+    "id": "SIA-0001",
+    "severity": "P2",
+    "dimension": "routing",
+    "zone": "Z2",
+    "module": "MOD-04",
+    "title": "Orphan directory src/pages/portfolio/ not imported anywhere",
+    "description": "src/pages/portfolio/ contains PropertyDetail.tsx and PropertyList.tsx but neither file is imported by any component or router. These are legacy files from before the immobilien consolidation.",
+    "root_cause": "Legacy code from pre-MOD-04 refactoring was not deleted. Current PropertyDetailPage lives at src/pages/portal/immobilien/PropertyDetailPage.tsx.",
+    "repo_refs": ["src/pages/portfolio/PropertyDetail.tsx", "src/pages/portfolio/PropertyList.tsx"],
+    "fix_plan": {
+      "steps": ["Delete src/pages/portfolio/ directory"],
+      "risk": "low",
+      "verification": ["Grep for 'pages/portfolio' — should return 0 results", "Build succeeds"]
+    },
+    "status": "new"
+  },
+  {
+    "id": "SIA-0002",
+    "severity": "P2",
+    "dimension": "spec",
+    "zone": "cross-zone",
+    "module": "admin",
+    "title": "Empty spec directories: 03_actions, 04_workflows, 05_diagrams",
+    "description": "spec/current/03_actions/, 04_workflows/, and 05_diagrams/ are empty. The spec structure references these but no content exists.",
+    "root_cause": "Spec structure was scaffolded but these sections were never populated. Actions are covered by armstrongManifest, workflows by goldenPaths, diagrams inline in docs.",
+    "repo_refs": ["spec/current/03_actions/", "spec/current/04_workflows/", "spec/current/05_diagrams/"],
+    "fix_plan": {
+      "steps": ["Either populate with current references or remove empty dirs and update spec index"],
+      "risk": "low",
+      "verification": ["Spec directory listing is clean"]
+    },
+    "status": "new"
+  },
+  {
+    "id": "SIA-0003",
+    "severity": "P2",
+    "dimension": "engine",
+    "zone": "Z2",
+    "module": "MOD-04",
+    "title": "GoldenPathGuard only on MOD-04 :id route — other GP-registered modules lack guards",
+    "description": "Only MOD-04's dynamic route has goldenPath config in routesManifest (line 255). MOD-07 anfrage/:requestId, MOD-12, MOD-13, MOD-17, MOD-19 dynamic routes do NOT have goldenPath config despite being engine-registered. The devValidator warns about this at startup.",
+    "root_cause": "goldenPath config was only added to MOD-04 as initial implementation. Other modules were registered in the engine but their manifest entries lack the goldenPath property.",
+    "repo_refs": ["src/manifests/routesManifest.ts", "src/goldenpath/devValidator.ts"],
+    "fix_plan": {
+      "steps": ["Add goldenPath: { moduleCode: 'MOD-XX', entityIdParam: 'xxx' } to dynamic_routes for MOD-07, MOD-12, MOD-13, MOD-19 in routesManifest.ts", "Verify devValidator warnings disappear"],
+      "risk": "low",
+      "verification": ["DEV console shows no GoldenPath guard warnings"]
+    },
+    "status": "new"
+  },
+  {
+    "id": "SIA-0004",
+    "severity": "P3",
+    "dimension": "role",
+    "zone": "Z2",
+    "module": "MOD-20",
+    "title": "MOD-20 absent from areaConfig — standalone /portal/miety routes bypass area system",
+    "description": "MOD-20 is defined in routesManifest but not listed in any area in areaConfig.ts. It renders inline within MOD-04 as ZUHAUSE tile. Direct navigation to /portal/miety/* works but is not represented in the area navigation.",
+    "root_cause": "Intentional architectural decision (inline rendering within MOD-04) but undocumented.",
+    "repo_refs": ["src/manifests/areaConfig.ts", "src/manifests/routesManifest.ts:MOD-20"],
+    "fix_plan": {
+      "steps": ["Add documentation comment in areaConfig.ts explaining MOD-20 exclusion", "Optionally add MOD-20 to 'base' area for discoverability"],
+      "risk": "low",
+      "verification": ["Area nav includes or explicitly excludes MOD-20"]
+    },
+    "status": "new"
+  },
+  {
+    "id": "SIA-0005",
+    "severity": "P2",
+    "dimension": "build",
+    "zone": "cross-zone",
+    "module": "admin",
+    "title": "2 SECURITY DEFINER views flagged by linter",
+    "description": "Linter reports 2 ERROR-level warnings for SECURITY DEFINER views. v_public_listings uses security_invoker=off (intentional for public access). The second view needs identification.",
+    "root_cause": "v_public_listings intentionally bypasses RLS for unauthenticated Kaufy visitors. Second view may be v_public_knowledge.",
+    "repo_refs": [],
+    "fix_plan": {
+      "steps": ["Identify both SECURITY DEFINER views", "Document v_public_listings as intentional", "Evaluate v_public_knowledge — if public-facing, document; otherwise convert to SECURITY INVOKER"],
+      "risk": "low",
+      "verification": ["Linter findings documented with justification"]
+    },
+    "status": "new"
+  },
+  {
+    "id": "SIA-0006",
+    "severity": "P2",
+    "dimension": "build",
+    "zone": "cross-zone",
+    "module": "admin",
+    "title": "Auth OTP long expiry and leaked password protection disabled",
+    "description": "Linter warns: OTP expiry exceeds recommended threshold. Leaked password protection is disabled. Both are pre-production security hardening items.",
+    "root_cause": "Default auth configuration not hardened for production.",
+    "repo_refs": [],
+    "fix_plan": {
+      "steps": ["Reduce OTP expiry to recommended threshold via auth config", "Enable leaked password protection"],
+      "risk": "low",
+      "verification": ["Re-run linter — warnings resolved"]
+    },
+    "status": "new"
+  },
+  {
+    "id": "SIA-0007",
+    "severity": "P3",
+    "dimension": "build",
+    "zone": "cross-zone",
+    "module": "admin",
+    "title": "Extension installed in public schema",
+    "description": "Linter warns about an extension in the public schema. Extensions should be in a dedicated schema (e.g., 'extensions') to avoid namespace pollution.",
+    "root_cause": "Extension was installed with default schema during early development.",
+    "repo_refs": [],
+    "fix_plan": {
+      "steps": ["Identify which extension is in public", "Migrate to extensions schema if safe"],
+      "risk": "medium",
+      "verification": ["Re-run linter — warning resolved"]
+    },
+    "status": "new"
+  },
+  {
+    "id": "SIA-0008",
+    "severity": "P3",
+    "dimension": "data",
+    "zone": "Z2",
+    "module": "MOD-04",
+    "title": "v_public_listings filters only channel='kaufy' — partner_network listings invisible",
+    "description": "The v_public_listings view has WHERE lp.channel = 'kaufy'. The 6 listing_publications include 3 'kaufy' and 3 'partner_network' entries, but only kaufy entries are visible through the view. MOD-09 BeratungTab may need a separate view or query.",
+    "root_cause": "View was designed specifically for the Kaufy public website. Partner network listings need a separate access path.",
+    "repo_refs": ["supabase/migrations/"],
+    "fix_plan": {
+      "steps": ["Verify MOD-09 queries listings directly rather than via v_public_listings", "If MOD-09 uses the view, either remove channel filter or create v_partner_listings"],
+      "risk": "low",
+      "verification": ["MOD-09 BeratungTab shows partner_network listings"]
+    },
+    "status": "new"
+  },
+  {
+    "id": "SIA-0009",
+    "severity": "P3",
+    "dimension": "edge",
+    "zone": "cross-zone",
+    "module": "admin",
+    "title": "95 edge functions — potential orphan scan needed",
+    "description": "95 edge functions exist in supabase/functions/. Only 12 are mapped in architectureValidator as cross-zone. Remaining 83 may include orphans from deleted features (e.g., social media module removed). Full usage audit recommended.",
+    "root_cause": "Functions accumulated over development without cleanup pass.",
+    "repo_refs": ["supabase/functions/", "src/validation/architectureValidator.ts"],
+    "fix_plan": {
+      "steps": ["Grep codebase for each edge function name to verify usage", "List unused functions", "Delete orphans after confirmation"],
+      "risk": "medium",
+      "verification": ["Each remaining function has at least one invocation in codebase"]
+    },
+    "status": "new"
+  },
+  {
+    "id": "SIA-0010",
+    "severity": "P3",
+    "dimension": "demo",
+    "zone": "Z2",
+    "module": "MOD-04",
+    "title": "Demo toggle is localStorage-based, not tenant-scoped",
+    "description": "useDemoToggles persists to localStorage key 'gp_demo_toggles'. This means demo state is per-browser, not per-tenant. If a user logs into a different tenant in the same browser, demo toggles carry over.",
+    "root_cause": "Intentional simplicity for MVP — localStorage is simplest persistence. Tenant-scoping would require DB or tenant-prefixed keys.",
+    "repo_refs": ["src/hooks/useDemoToggles.ts"],
+    "fix_plan": {
+      "steps": ["Prefix localStorage key with tenant_id: `gp_demo_toggles_${tenantId}`", "Or accept as P3 known limitation"],
+      "risk": "low",
+      "verification": ["Toggle state is isolated per tenant"]
+    },
+    "status": "new"
+  },
+  {
+    "id": "SIA-0011",
+    "severity": "P3",
+    "dimension": "contract",
+    "zone": "cross-zone",
+    "module": "admin",
+    "title": "10 contracts documented but only 7 have implemented edge functions",
+    "description": "21 contracts in spec/current/06_api_contracts/. 12 cross-zone edge functions registered in architectureValidator. Remaining contracts (e.g., CONTRACT_LISTING_DISTRIBUTE, CONTRACT_DATA_ROOM_ACCESS, CONTRACT_ONBOARDING) are implemented via DB triggers or table operations rather than edge functions. This is architecturally valid but should be explicitly documented.",
+    "root_cause": "Some contracts are implemented at DB level (triggers, status enums) rather than edge function level.",
+    "repo_refs": ["spec/current/06_api_contracts/INDEX.md"],
+    "fix_plan": {
+      "steps": ["Update INDEX.md to mark implementation type: 'edge_function', 'db_trigger', 'table_operation' for each contract"],
+      "risk": "low",
+      "verification": ["INDEX.md shows implementation type for all 21 contracts"]
+    },
+    "status": "new"
+  },
+  {
+    "id": "SIA-0012",
+    "severity": "P3",
+    "dimension": "spec",
+    "zone": "cross-zone",
+    "module": "admin",
+    "title": "Spec mod-05 still references MSV contract, not Website Builder",
+    "description": "spec/current/02_modules/mod-05_msv_contract.md still references MSV (Mietverwaltung) but MOD-05 is now Website Builder. MSV was moved into MOD-04 Verwaltung tile.",
+    "root_cause": "Module renumbering: MOD-05 was MSV, now Website Builder. Spec file not renamed.",
+    "repo_refs": ["spec/current/02_modules/mod-05_msv_contract.md"],
+    "fix_plan": {
+      "steps": ["Rename to mod-05_website-builder.md", "Update content to reflect Website Builder", "Create mod-04_verwaltung_msv.md if MSV spec is still needed"],
+      "risk": "low",
+      "verification": ["Spec file names match current module assignments"]
+    },
+    "status": "new"
+  }
+]
