@@ -361,7 +361,7 @@ export const zone2Portal: ZoneDefinition = {
       ],
     },
     "MOD-10": {
-      name: "Leadmanager",
+      name: "Lead Manager",
       base: "leads",
       icon: "CreditCard",
       display_order: 10,
