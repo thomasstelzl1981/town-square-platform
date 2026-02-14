@@ -261,7 +261,7 @@ export default function SelfieAdsPlanen() {
                 >
                   <Badge
                     variant={isGenerated ? 'default' : isSelected ? 'secondary' : 'outline'}
-                    className="absolute top-2 right-2 text-[10px]"
+                    className="absolute top-2 right-2 text-xs"
                   >
                     {isGenerated ? '✓ Generiert' : isSelected ? 'Gewählt' : 'Leer'}
                   </Badge>
@@ -273,8 +273,8 @@ export default function SelfieAdsPlanen() {
                     )}
                   </div>
                   <p className="text-xs font-medium">{t.key}: {t.name}</p>
-                  <p className="text-[10px] text-muted-foreground">{t.format}</p>
-                  <p className="text-[10px] text-muted-foreground/70 mt-1">{t.description}</p>
+                  <p className="text-xs text-muted-foreground">{t.format}</p>
+                  <p className="text-xs text-muted-foreground/70 mt-1">{t.description}</p>
                 </div>
               );
             })}
@@ -328,7 +328,7 @@ export default function SelfieAdsPlanen() {
                 value={form.personalization.claim}
                 onChange={e => updatePersonalization('claim', e.target.value)}
               />
-              <p className="text-[10px] text-muted-foreground">{form.personalization.claim.length}/80 Zeichen</p>
+              <p className="text-xs text-muted-foreground">{form.personalization.claim.length}/80 Zeichen</p>
             </div>
           </div>
         </CardContent>
@@ -372,14 +372,14 @@ export default function SelfieAdsPlanen() {
                   <div key={slotKey} className="p-4 rounded-lg bg-muted/30 border border-border/50 space-y-3">
                     <div className="flex items-center justify-between">
                       <p className="text-sm font-medium">{slotKey}: {tmpl.name}</p>
-                      <Badge variant="default" className="text-[10px]">✓ Generiert</Badge>
+                      <Badge variant="default" className="text-xs">✓ Generiert</Badge>
                     </div>
                     {/* 4-Slide Thumbnails */}
                     <div className="flex gap-2">
                       {creative.slides.map((slideLabel, idx) => (
                         <div key={idx} className="h-20 flex-1 rounded-md bg-gradient-to-br from-muted/80 to-muted/40 border border-border/50 flex flex-col items-center justify-center p-1">
-                          <span className="text-[9px] text-muted-foreground font-medium">Slide {idx + 1}</span>
-                          <span className="text-[8px] text-muted-foreground/70 text-center mt-0.5 leading-tight">{slideLabel}</span>
+                          <span className="text-xs text-muted-foreground font-medium">Slide {idx + 1}</span>
+                          <span className="text-xs text-muted-foreground/70 text-center mt-0.5 leading-tight">{slideLabel}</span>
                         </div>
                       ))}
                     </div>

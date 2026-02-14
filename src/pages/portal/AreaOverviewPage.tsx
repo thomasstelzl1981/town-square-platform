@@ -71,11 +71,7 @@ export default function AreaOverviewPage() {
         }>
           {area.label}
         </h1>
-        {!isMobile && (
-          <p className="text-muted-foreground">
-            {areaDescriptions[area.key]}
-          </p>
-        )}
+        {/* Description removed — self-explanatory via menu */}
       </div>
 
       {/* Grid: 1 Promo + 5 Modules = 6 cards */}

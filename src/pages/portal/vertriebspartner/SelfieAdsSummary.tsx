@@ -149,7 +149,7 @@ export default function SelfieAdsSummary() {
                   <div className="flex items-center gap-3">
                     <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0" />
                     <span className="text-sm font-medium">{slotKey}: {TEMPLATE_NAMES[slotKey] || slotKey}</span>
-                    <Badge variant="default" className="ml-auto text-[10px]">Generiert</Badge>
+                    <Badge variant="default" className="ml-auto text-xs">Generiert</Badge>
                   </div>
                   {creative && (
                     <div className="ml-7 space-y-1">

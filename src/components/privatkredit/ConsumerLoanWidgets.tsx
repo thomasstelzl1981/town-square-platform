@@ -121,7 +121,7 @@ export function ConsumerLoanWidgets({ activeCaseId, onSelectCase }: ConsumerLoan
                     </p>
                   )}
                 </div>
-                <p className="text-[10px] text-muted-foreground mt-2">
+                <p className="text-xs text-muted-foreground mt-2">
                   {format(new Date(c.created_at), 'dd.MM.yyyy', { locale: de })}
                 </p>
               </div>

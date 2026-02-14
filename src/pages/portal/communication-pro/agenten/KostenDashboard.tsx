@@ -63,21 +63,21 @@ export function KostenDashboard() {
           <CardContent className="p-3 text-center">
             <DollarSign className="h-5 w-5 mx-auto text-primary mb-1" />
             <p className="text-xl font-bold">{(stats.totalCents / 100).toFixed(2)} €</p>
-            <p className="text-[10px] text-muted-foreground">Gesamtkosten</p>
+            <p className="text-xs text-muted-foreground">Gesamtkosten</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-3 text-center">
             <CreditCard className="h-5 w-5 mx-auto text-primary mb-1" />
             <p className="text-xl font-bold">{stats.totalCredits}</p>
-            <p className="text-[10px] text-muted-foreground">Credits verbraucht</p>
+            <p className="text-xs text-muted-foreground">Credits verbraucht</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-3 text-center">
             <Zap className="h-5 w-5 mx-auto text-primary mb-1" />
             <p className="text-xl font-bold">{stats.totalEvents}</p>
-            <p className="text-[10px] text-muted-foreground">Transaktionen</p>
+            <p className="text-xs text-muted-foreground">Transaktionen</p>
           </CardContent>
         </Card>
         <Card>
@@ -86,7 +86,7 @@ export function KostenDashboard() {
             <p className="text-xl font-bold">
               {stats.totalEvents > 0 ? (stats.totalCents / stats.totalEvents / 100).toFixed(2) : '0.00'} €
             </p>
-            <p className="text-[10px] text-muted-foreground">Ø pro Aktion</p>
+            <p className="text-xs text-muted-foreground">Ø pro Aktion</p>
           </CardContent>
         </Card>
       </div>
@@ -103,7 +103,7 @@ export function KostenDashboard() {
                 <div key={code} className="flex items-center justify-between border-b border-border/50 pb-1.5 last:border-0">
                   <div>
                     <code className="text-xs font-mono">{code}</code>
-                    <p className="text-[10px] text-muted-foreground">{data.count} Aufrufe</p>
+                    <p className="text-xs text-muted-foreground">{data.count} Aufrufe</p>
                   </div>
                   <span className="text-sm font-medium">{(data.cost / 100).toFixed(2)} €</span>
                 </div>

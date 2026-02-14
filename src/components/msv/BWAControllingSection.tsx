@@ -241,7 +241,7 @@ export function BWAControllingSection({ propertyId }: BWAControllingSectionProps
                     <TableCell className="font-medium text-xs">{r.objektId}</TableCell>
                     <TableCell className="text-xs">{r.unitId}</TableCell>
                     <TableCell className="text-xs">{r.adresse}</TableCell>
-                    <TableCell><Badge variant="outline" className="text-[10px]">{r.nutzungsart}</Badge></TableCell>
+                    <TableCell><Badge variant="outline" className="text-xs">{r.nutzungsart}</Badge></TableCell>
                     <TableCell className="text-right text-xs">{formatCurr(r.akGrund)}</TableCell>
                     <TableCell className="text-right text-xs">{formatCurr(r.akGebaeude)}</TableCell>
                     <TableCell className="text-right text-xs">{formatCurr(r.akNebenkosten)}</TableCell>
@@ -257,7 +257,7 @@ export function BWAControllingSection({ propertyId }: BWAControllingSectionProps
                     <TableCell>
                       {r.estimateStatus === 'estimated' ? (
                         <div className="flex items-center gap-1">
-                          <Badge className="bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 border-0 text-[10px]">
+                          <Badge className="bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 border-0 text-xs">
                             <Sparkles className="h-2.5 w-2.5 mr-0.5" /> KI-Schätzung
                           </Badge>
                           <Button size="sm" variant="ghost" className="h-6 text-xs px-2" onClick={() => confirmEstimate(r.id)}>
@@ -265,7 +265,7 @@ export function BWAControllingSection({ propertyId }: BWAControllingSectionProps
                           </Button>
                         </div>
                       ) : (
-                        <Badge className="bg-green-500/10 text-green-700 dark:text-green-400 border-0 text-[10px]">
+                        <Badge className="bg-green-500/10 text-green-700 dark:text-green-400 border-0 text-xs">
                           <CheckCircle className="h-2.5 w-2.5 mr-0.5" /> Bestätigt
                         </Badge>
                       )}
@@ -300,7 +300,7 @@ export function BWAControllingSection({ propertyId }: BWAControllingSectionProps
                   <TableCell>
                     <div>
                       <p className="text-sm font-medium">{kat.name}</p>
-                      <p className="text-[10px] text-muted-foreground">{kat.beschreibung}</p>
+                      <p className="text-xs text-muted-foreground">{kat.beschreibung}</p>
                     </div>
                   </TableCell>
                   <TableCell className="text-xs text-muted-foreground">

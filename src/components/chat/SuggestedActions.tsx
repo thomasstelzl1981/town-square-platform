@@ -90,7 +90,7 @@ const ActionChip: React.FC<ActionChipProps> = ({ action, onSelect }) => {
         <div className="flex items-center gap-1.5 mt-0.5">
           {/* Risk indicator */}
           <span className={cn(
-            "inline-flex items-center h-4 px-1.5 rounded text-[10px] font-medium",
+            "inline-flex items-center h-4 px-1.5 rounded text-xs font-medium",
             riskColors[action.risk_level]
           )}>
             {action.risk_level === 'high' && <Shield className="h-2.5 w-2.5 mr-0.5" />}
@@ -99,7 +99,7 @@ const ActionChip: React.FC<ActionChipProps> = ({ action, onSelect }) => {
           
           {/* Cost indicator */}
           {action.cost_model !== 'free' && (
-            <span className="inline-flex items-center gap-0.5 text-[10px] text-muted-foreground">
+            <span className="inline-flex items-center gap-0.5 text-xs text-muted-foreground">
               {costIcons[action.cost_model]}
               {action.credits_estimate && `${action.credits_estimate} Cr`}
             </span>
@@ -107,7 +107,7 @@ const ActionChip: React.FC<ActionChipProps> = ({ action, onSelect }) => {
           
           {/* Confirmation indicator */}
           {needsConfirmation && (
-            <span className="text-[10px] text-muted-foreground">
+            <span className="text-xs text-muted-foreground">
               • Bestätigung
             </span>
           )}
@@ -115,7 +115,7 @@ const ActionChip: React.FC<ActionChipProps> = ({ action, onSelect }) => {
         
         {/* Why hint */}
         {action.why && (
-          <span className="text-[10px] text-muted-foreground mt-1 line-clamp-1">
+          <span className="text-xs text-muted-foreground mt-1 line-clamp-1">
             {action.why}
           </span>
         )}

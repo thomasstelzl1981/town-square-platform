@@ -97,7 +97,7 @@ export default function DocumentReadinessIndicator({
                     <span className="flex-1 truncate text-muted-foreground">{folder.name}</span>
                     {!compact && (
                       <span className={cn(
-                        'text-[10px] font-mono',
+                        'text-xs font-mono',
                         status === 'green' ? 'text-emerald-600' : status === 'yellow' ? 'text-yellow-600' : 'text-red-500'
                       )}>
                         {count}/{folder.required}
@@ -113,7 +113,7 @@ export default function DocumentReadinessIndicator({
 
       {/* Progress bar */}
       <div className="space-y-1.5 pt-1">
-        <div className="flex items-center justify-between text-[11px]">
+        <div className="flex items-center justify-between text-xs">
           <span className="text-muted-foreground">Fortschritt</span>
           <span className="font-medium">{completedCount}/{visibleFolders.length} Ordner ({progressPercent}%)</span>
         </div>

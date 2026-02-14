@@ -96,14 +96,14 @@ export default function FutureRoomLayout() {
             <Inbox className="h-4 w-4" />
             Inbox
             {newMandates > 0 && (
-              <Badge variant="secondary" className="ml-1 text-[10px] px-1">{newMandates}</Badge>
+              <Badge variant="secondary" className="ml-1 text-xs px-1">{newMandates}</Badge>
             )}
           </TabsTrigger>
           <TabsTrigger value="website-leads" className="gap-1.5 text-xs">
             <Globe className="h-4 w-4" />
             Web-Leads
             {(webLeads ?? 0) > 0 && (
-              <Badge variant="destructive" className="ml-1 text-[10px] px-1">{webLeads}</Badge>
+              <Badge variant="destructive" className="ml-1 text-xs px-1">{webLeads}</Badge>
             )}
           </TabsTrigger>
           <TabsTrigger value="zuweisung" className="gap-1.5 text-xs">
@@ -117,7 +117,7 @@ export default function FutureRoomLayout() {
           <TabsTrigger value="bankkontakte" className="gap-1.5 text-xs">
             <Building2 className="h-4 w-4" />
             Banken
-            <Badge variant="outline" className="ml-1 text-[10px] px-1">{banks?.length || 0}</Badge>
+            <Badge variant="outline" className="ml-1 text-xs px-1">{banks?.length || 0}</Badge>
           </TabsTrigger>
           <TabsTrigger value="contracts" className="gap-1.5 text-xs">
             <FileText className="h-4 w-4" />
