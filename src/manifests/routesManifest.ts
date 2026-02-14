@@ -144,12 +144,16 @@ export const zone1Admin: ZoneDefinition = {
     { path: "acquiary/inbox", component: "AcquiaryInbox", title: "Inbox" },
     { path: "acquiary/assignments", component: "AcquiaryAssignments", title: "Zuweisungen" },
     { path: "acquiary/audit", component: "AcquiaryAudit", title: "Audit" },
-    // Sales Desk
+    // Sales Desk (MOD-09 Vertriebsmanager)
     { path: "sales-desk", component: "SalesDeskDashboard", title: "Sales Desk" },
     { path: "sales-desk/veroeffentlichungen", component: "SalesDeskPublishing", title: "Veröffentlichungen" },
     { path: "sales-desk/inbox", component: "SalesDeskInbox", title: "Inbox" },
     { path: "sales-desk/partner", component: "SalesDeskPartner", title: "Partner" },
     { path: "sales-desk/audit", component: "SalesDeskAudit", title: "Audit" },
+    // Lead Desk (MOD-10 Leadmanager) — konsolidiert LeadPool + Provisionen
+    { path: "lead-desk", component: "LeadDeskDashboard", title: "Lead Desk" },
+    // Projekt Desk (MOD-13 Projektmanager) — Projekt-Intake + Landing Pages
+    { path: "projekt-desk", component: "ProjektDeskDashboard", title: "Projekt Desk" },
     // Finance Desk removed — legacy route handled via redirects in legacyRedirects[]
     // =========================================================================
     // ARMSTRONG CONSOLE — KI-Assistent Governance (Config only, no chat)

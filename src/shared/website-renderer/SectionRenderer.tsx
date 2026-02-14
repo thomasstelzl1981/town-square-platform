@@ -13,6 +13,15 @@ import { SectionGallery } from './SectionGallery';
 import { SectionContact } from './SectionContact';
 import { SectionFooter } from './SectionFooter';
 
+/** Placeholder renderer for new section types (booking, pricing, team, etc.) */
+const SectionPlaceholder: React.FC<{ content: any; design: any }> = ({ content }) => (
+  <section className="py-16 px-4 text-center bg-muted/30">
+    <p className="text-muted-foreground text-sm">
+      {content?.title || 'Sektion'} — Vorschau in Kürze verfügbar
+    </p>
+  </section>
+);
+
 const RENDERERS: Record<SectionType, React.ComponentType<any>> = {
   hero: SectionHero,
   features: SectionFeatures,
@@ -22,6 +31,14 @@ const RENDERERS: Record<SectionType, React.ComponentType<any>> = {
   gallery: SectionGallery,
   contact: SectionContact,
   footer: SectionFooter,
+  // New profile-specific sections (placeholder renderers)
+  booking: SectionPlaceholder,
+  pricing: SectionPlaceholder,
+  team: SectionPlaceholder,
+  calculator: SectionPlaceholder,
+  catalog: SectionPlaceholder,
+  unit_list: SectionPlaceholder,
+  application: SectionPlaceholder,
 };
 
 interface Props {
