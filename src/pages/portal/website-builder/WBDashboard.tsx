@@ -83,38 +83,7 @@ export default function WBDashboard() {
     <PageShell>
       <ModulePageHeader title="Website Builder" description="Erstellen, gestalten und veröffentlichen Sie Ihre Unternehmenswebsite — alles an einem Ort." />
 
-      {/* ─── Template Gallery ─── */}
-      <div className={cn(SPACING.SECTION)}>
-        <h2 className={TYPOGRAPHY.SECTION_TITLE}>Design-Vorlage wählen</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-          {DESIGN_TEMPLATES.map(t => (
-            <button
-              key={t.id}
-              type="button"
-              onClick={() => handleSelectTemplate(t.id)}
-              className={cn(
-                'group relative rounded-xl text-left transition-all border-2 overflow-hidden',
-                form.template_id === t.id && showCreate ? 'border-primary ring-2 ring-primary/20' : 'border-border/30 hover:border-primary/40 hover:shadow-md',
-              )}
-            >
-              <div className="h-24 sm:h-28" style={{ background: t.preview_gradient }}>
-                <div className="h-full w-full flex flex-col items-center justify-center opacity-30">
-                  <div className="w-3/4 h-3 bg-white/60 rounded mb-1.5" />
-                  <div className="w-1/2 h-2 bg-white/40 rounded mb-3" />
-                  <div className="w-1/3 h-5 bg-white/50 rounded" />
-                </div>
-              </div>
-              <div className="p-3">
-                <p className="text-sm font-semibold">{t.name}</p>
-                <p className="text-[10px] text-muted-foreground mt-0.5">{t.description}</p>
-              </div>
-              <div className="absolute inset-0 flex items-center justify-center bg-primary/80 text-primary-foreground opacity-0 group-hover:opacity-100 transition-opacity">
-                <span className="text-sm font-semibold">Mit Template starten</span>
-              </div>
-            </button>
-          ))}
-        </div>
-      </div>
+      {/* Template gallery removed — template selection now only in inline detail */}
 
       {/* ─── Create Form ─── */}
       {showCreate && (
@@ -138,7 +107,7 @@ export default function WBDashboard() {
 
       {/* ─── My Websites Grid ─── */}
       <div className={cn(SPACING.SECTION)}>
-        <h2 className={TYPOGRAPHY.SECTION_TITLE}>Meine Websites</h2>
+        
         <WidgetGrid>
           {/* Demo tile */}
           <WidgetCell>
