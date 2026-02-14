@@ -189,27 +189,33 @@ export const moduleContents: Record<string, HowItWorksContent> = {
 
   'MOD-05': {
     moduleCode: 'MOD-05',
-    title: 'KI-Telefon-Assistent',
-    oneLiner: 'Ihr intelligenter Telefonassistent — automatisierte Anrufbearbeitung rund um die Uhr.',
+    title: 'Website Builder',
+    oneLiner: 'Erstellen, gestalten und veröffentlichen Sie Ihre Unternehmenswebsite — KI-gestützt.',
     benefits: [
-      'Eingehende Anrufe werden automatisch beantwortet und kategorisiert.',
-      'Wichtige Anliegen werden priorisiert an Sie weitergeleitet.',
-      'Rund um die Uhr erreichbar — auch außerhalb der Geschäftszeiten.',
+      'KI generiert Texte basierend auf Ihrem Firmenprofil und der Branche.',
+      'Fünf Design-Templates für unterschiedliche Stile: Modern, Klassisch, Minimalistisch, Elegant, Frisch.',
+      'Hosting und Veröffentlichung über Credits — pay-per-use, keine Abo-Gebühren.',
     ],
     whatYouDo: [
-      'Telefonassistenten konfigurieren',
-      'Anrufprotokolle und Zusammenfassungen einsehen',
-      'Weiterleitungsregeln festlegen',
+      'Website erstellen und Design-Template wählen',
+      'KI-Texte generieren und Sections anpassen',
+      'SEO-Einstellungen konfigurieren',
+      'Hosting-Vertrag abschließen',
+      'Website veröffentlichen und verwalten',
     ],
     flows: [
       {
-        title: 'Assistent einrichten',
-        steps: ['Übersicht öffnen', 'Begrüßung konfigurieren', 'Weiterleitungsregeln setzen', 'Aktivieren'],
+        title: 'Website erstellen',
+        steps: ['Firmenname & Branche eingeben', 'Design-Template wählen', 'KI generiert Sections', 'Inhalte im Editor anpassen'],
+      },
+      {
+        title: 'Website veröffentlichen',
+        steps: ['SEO konfigurieren', 'Hosting-Vertrag abschließen', 'Veröffentlichen', 'Versionshistorie verwalten'],
       },
     ],
-    cta: 'Konfigurieren Sie Ihren KI-Telefonassistenten — Coming Soon.',
+    cta: 'Erstellen Sie Ihre erste Website — in wenigen Minuten online.',
     subTiles: [
-      { title: 'Übersicht', route: '/portal/msv/uebersicht', icon: Building2 },
+      { title: 'Dashboard', route: '/portal/website-builder', icon: Globe },
     ],
   },
 

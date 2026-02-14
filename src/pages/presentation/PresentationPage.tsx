@@ -64,11 +64,11 @@ const modules = [
   },
   { 
     id: "MOD-05", 
-    name: "MSV", 
-    icon: Key, 
-    status: "concept",
-    db: "partial", ui: "pending", logic: "pending", 
-    description: "Miet-Sonderverwaltung"
+    name: "Website Builder", 
+    icon: Globe, 
+    status: "spec_ready",
+    db: "complete", ui: "complete", logic: "complete", 
+    description: "KI-Website-Baukasten"
   },
   { 
     id: "MOD-06", 

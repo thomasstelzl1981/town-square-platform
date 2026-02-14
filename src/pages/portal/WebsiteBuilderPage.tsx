@@ -1,5 +1,5 @@
 /**
- * MOD-21 Website Builder — Portal Module Page
+ * MOD-05 Website Builder — Portal Module Page (ehemals MOD-21)
  * Routes: index → scrollable dashboard, :websiteId/editor → WBEditor
  */
 import { Routes, Route, Navigate } from 'react-router-dom';

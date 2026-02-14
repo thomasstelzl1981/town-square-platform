@@ -1,5 +1,5 @@
 /**
- * MOD-21 Website Builder — Shared Types
+ * MOD-05 Website Builder — Shared Types (ehemals MOD-21)
  * Used by Zone 2 (Preview) and Zone 3 (Public Renderer)
  */
 

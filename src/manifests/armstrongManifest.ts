@@ -96,7 +96,7 @@ export const TOP_30_MVP_ACTION_CODES = [
   'ARM.MOD13.CREATE_DEV_PROJECT',
   'ARM.MOD13.EXPLAIN_MODULE',
   
-  // Pack J: Website Builder (2)
+  // Pack J: Website Builder (2) — now MOD-05
   'ARM.MOD21.GENERATE_WEBSITE',
   'ARM.MOD21.PUBLISH',
 ] as const;
@@ -1416,14 +1416,14 @@ export const armstrongActions: ArmstrongActionV2[] = [
   },
 
   // ===========================================================================
-  // MOD-21: WEBSITE BUILDER ACTIONS
+  // MOD-05: WEBSITE BUILDER ACTIONS (ehemals MOD-21)
   // ===========================================================================
   {
     action_code: 'ARM.MOD21.GENERATE_WEBSITE',
     title_de: 'Website generieren',
     description_de: 'Erstellt eine komplette Website-Struktur mit KI-generierten Texten basierend auf Firmenprofil und Design-Template',
     zones: ['Z2'],
-    module: 'MOD-21',
+    module: 'MOD-05',
     risk_level: 'medium',
     execution_mode: 'execute_with_confirmation',
     requires_consent_code: null,
@@ -1448,7 +1448,7 @@ export const armstrongActions: ArmstrongActionV2[] = [
     title_de: 'Section-Inhalt ändern',
     description_de: 'Ändert den Inhalt einer Website-Section per KI basierend auf Freitext-Anweisung',
     zones: ['Z2'],
-    module: 'MOD-21',
+    module: 'MOD-05',
     risk_level: 'low',
     execution_mode: 'execute_with_confirmation',
     requires_consent_code: null,
@@ -1471,7 +1471,7 @@ export const armstrongActions: ArmstrongActionV2[] = [
     title_de: 'Section hinzufügen',
     description_de: 'Fügt eine neue Section zur Website hinzu mit KI-generierten Inhalten',
     zones: ['Z2'],
-    module: 'MOD-21',
+    module: 'MOD-05',
     risk_level: 'low',
     execution_mode: 'execute_with_confirmation',
     requires_consent_code: null,
@@ -1494,7 +1494,7 @@ export const armstrongActions: ArmstrongActionV2[] = [
     title_de: 'Section entfernen',
     description_de: 'Entfernt eine Section von der Website',
     zones: ['Z2'],
-    module: 'MOD-21',
+    module: 'MOD-05',
     risk_level: 'low',
     execution_mode: 'execute_with_confirmation',
     requires_consent_code: null,
@@ -1516,7 +1516,7 @@ export const armstrongActions: ArmstrongActionV2[] = [
     title_de: 'Design-Template wechseln',
     description_de: 'Wechselt das Design-Template der Website (Farben, Schriftart, Layout-Stil)',
     zones: ['Z2'],
-    module: 'MOD-21',
+    module: 'MOD-05',
     risk_level: 'low',
     execution_mode: 'execute',
     requires_consent_code: null,
@@ -1538,7 +1538,7 @@ export const armstrongActions: ArmstrongActionV2[] = [
     title_de: 'Website veröffentlichen',
     description_de: 'Erstellt einen Publish-Snapshot und macht die Website öffentlich erreichbar',
     zones: ['Z2'],
-    module: 'MOD-21',
+    module: 'MOD-05',
     risk_level: 'medium',
     execution_mode: 'execute_with_confirmation',
     requires_consent_code: null,
@@ -1563,7 +1563,7 @@ export const armstrongActions: ArmstrongActionV2[] = [
     title_de: 'Website-Vorschau',
     description_de: 'Zeigt eine Vorschau der aktuellen Website-Entwurfsversion',
     zones: ['Z2'],
-    module: 'MOD-21',
+    module: 'MOD-05',
     risk_level: 'low',
     execution_mode: 'readonly',
     requires_consent_code: null,

@@ -581,10 +581,10 @@ export const GOLDEN_PATH_PROCESSES: GoldenPathProcess[] = [
     phase: 'done',
   },
 
-  // ─── MOD-21: Website Builder ────────────────────────────
+  // ─── MOD-05: Website Builder (ehemals MOD-21) ───────────────
   {
     id: 'GP-WEBSITE',
-    moduleCode: 'MOD-21',
+    moduleCode: 'MOD-05',
     moduleName: 'Website Builder',
     tilePath: '/portal/website-builder',
     processName: 'Website-Auftrag',

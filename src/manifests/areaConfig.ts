@@ -47,7 +47,7 @@ export const areaConfig: AreaDefinition[] = [
     label: 'Service',
     labelShort: 'Service',
     icon: 'Grid',
-    modules: ['MOD-14', 'MOD-15', 'MOD-05', 'MOD-16', 'MOD-21'],
+    modules: ['MOD-14', 'MOD-15', 'MOD-05', 'MOD-16'],
   },
 ];
 
@@ -57,7 +57,7 @@ export const areaConfig: AreaDefinition[] = [
  */
 export const moduleLabelOverrides: Record<string, string> = {
   'MOD-03': 'Dokumente',           // DMS → Dokumente
-  // MOD-05: No override needed — matches manifest name "Modul 05"
+  'MOD-05': 'Website Builder',    // Ehemals MOD-21, jetzt unter MOD-05
   'MOD-14': 'Kommunikation Pro',   // Communication Pro → Kommunikation Pro
   'MOD-17': 'Fahrzeuge',           // Car-Management → Fahrzeuge
   'MOD-08': 'Immo Suche',         // Investment-Suche → Immo Suche

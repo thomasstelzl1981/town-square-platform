@@ -1,31 +1,13 @@
 /**
- * MSV Page (MOD-05) — Mietsonderverwaltung
+ * MSV Page — Legacy Redirect
  * 
- * Linearer Kontroll-Flow: Mietkontrolle, Mahnwesen, BWA/Buchwert.
- * Eine Seite, scrollbar — gemäß Golden Path Interaction Standard.
+ * MOD-05 ist jetzt der Website Builder.
+ * Alle alten MSV-Routen leiten zu MOD-04 Verwaltung weiter.
  */
-import { lazy } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
-
-const MSVDashboard = lazy(() => import('./msv/MSVDashboard'));
+import { Navigate } from 'react-router-dom';
 
 const MSVPage = () => {
-  return (
-    <Routes>
-      <Route index element={<Navigate to="uebersicht" replace />} />
-      <Route path="uebersicht" element={<MSVDashboard />} />
-      
-      {/* Legacy redirects: old MSV routes → Immobilien/Verwaltung */}
-      <Route path="objekte" element={<Navigate to="/portal/immobilien/verwaltung" replace />} />
-      <Route path="mieteingang" element={<Navigate to="/portal/immobilien/verwaltung" replace />} />
-      <Route path="vermietung" element={<Navigate to="/portal/immobilien/verwaltung" replace />} />
-      <Route path="einstellungen" element={<Navigate to="/portal/immobilien/verwaltung" replace />} />
-      <Route path="vermietung/:id" element={<Navigate to="/portal/immobilien/verwaltung" replace />} />
-      
-      {/* Fallback */}
-      <Route path="*" element={<Navigate to="/portal/msv" replace />} />
-    </Routes>
-  );
+  return <Navigate to="/portal/immobilien/verwaltung" replace />;
 };
 
 export default MSVPage;

@@ -117,6 +117,25 @@
 
 ---
 
+## PHASE 4: MOD-05/MOD-21 Konsolidierung 🟢
+
+**Durchgeführt am 14.02.2026:** Website Builder von MOD-21 nach MOD-05 migriert.
+
+| Schritt | Beschreibung | Status |
+|---------|-------------|--------|
+| 4-1 | DB tile_catalog MOD-05 → Website Builder | 🟢 |
+| 4-2 | routesManifest: MOD-05 Block → Website Builder, MOD-21 gelöscht | 🟢 |
+| 4-3 | areaConfig: MOD-21 aus Services entfernt, Label-Override für MOD-05 | 🟢 |
+| 4-4 | armstrongManifest: 7 Actions module: MOD-21 → MOD-05 | 🟢 |
+| 4-5 | rolesMatrix: MOD-05 Name → Website Builder | 🟢 |
+| 4-6 | moduleContents, sotWebsiteModules, goldenPathProcesses, demoDataManifest | 🟢 |
+| 4-7 | JSDoc-Kommentare in 7 WB-Dateien: MOD-21 → MOD-05 | 🟢 |
+| 4-8 | MSVPage → reiner Redirect, KiTelefonUebersicht + index.ts gelöscht | 🟢 |
+| 4-9 | Spec-Dokument mod-05_msv_contract.md aktualisiert | 🟢 |
+| 4-10 | audit-tracker.md und backlog aktualisiert | 🟢 |
+
+---
+
 ## Textvorlagen (Referenz)
 
 ### ZAHLUNGSERINNERUNG (Stufe 1)

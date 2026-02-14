@@ -1,5 +1,5 @@
 /**
- * MOD-21 Website Builder — Tile 3: SEO
+ * MOD-05 Website Builder — Tile 3: SEO (ehemals MOD-21)
  * Meta-data editor with character counters
  */
 import { useState, useEffect } from 'react';
