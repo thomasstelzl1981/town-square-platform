@@ -10,8 +10,7 @@
  */
 
 import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Radio, Play, Square, Volume2, VolumeX, ChevronLeft, ChevronRight, AlertTriangle, RefreshCw, Loader2 } from 'lucide-react';
+import { Radio, Play, Square, Volume2, VolumeX, ChevronLeft, ChevronRight, AlertTriangle, Loader2 } from 'lucide-react';
 import { useRadioStations, useRadioPlayer } from '@/hooks/useRadio';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Slider } from '@/components/ui/slider';
@@ -55,13 +54,10 @@ export function RadioWidget() {
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <Radio className="h-4 w-4 text-cyan-500" />
-            <span className="text-xs font-medium">Radio</span>
+            <span className="text-sm font-medium">Radio</span>
           </div>
           {isPlaying && (
-            <div className="flex items-center gap-1">
-              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-              <span className="text-[10px] text-green-500">Live</span>
-            </div>
+            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
           )}
         </div>
 
@@ -75,16 +71,7 @@ export function RadioWidget() {
           ) : error ? (
             <div className="text-center">
               <AlertTriangle className="h-6 w-6 text-amber-500 mx-auto mb-2" />
-              <p className="text-xs text-muted-foreground">Sender nicht verfügbar</p>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="mt-2"
-                onClick={() => refetch()}
-              >
-                <RefreshCw className="h-3 w-3 mr-1" />
-                Erneut versuchen
-              </Button>
+              <p className="text-sm text-muted-foreground">Sender nicht verfügbar</p>
             </div>
           ) : currentStationFromList ? (
             <>
@@ -118,7 +105,7 @@ export function RadioWidget() {
                 >
                   <ChevronLeft className="h-4 w-4 text-muted-foreground" />
                 </button>
-                <p className="text-xs font-medium truncate flex-1 min-w-0">
+                <p className="text-sm font-medium truncate flex-1 min-w-0">
                   {currentStationFromList.name}
                 </p>
                 <button
@@ -130,11 +117,7 @@ export function RadioWidget() {
                 </button>
               </div>
 
-              {/* Country/Tags */}
-              <p className="text-[10px] text-muted-foreground mb-3 truncate w-full">
-                {currentStationFromList.country}
-                {currentStationFromList.tags && ` • ${currentStationFromList.tags.split(',')[0]}`}
-              </p>
+              <div className="mb-3" />
 
               {/* Play/Stop Button - Small round glass button */}
               <button
@@ -183,18 +166,12 @@ export function RadioWidget() {
 
               {/* Error Message */}
               {playError && (
-                <p className="text-[10px] text-destructive mt-2">{playError}</p>
+                <p className="text-xs text-destructive mt-2">{playError}</p>
               )}
             </>
           ) : null}
         </div>
 
-        {/* Footer */}
-        <div className="mt-2 text-center">
-          <p className="text-[10px] text-muted-foreground/60">
-            Kein Autoplay
-          </p>
-        </div>
       </CardContent>
     </Card>
   );

@@ -6,8 +6,7 @@
  */
 
 import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Rocket, ExternalLink, RefreshCw, AlertTriangle, Image as ImageIcon } from 'lucide-react';
+import { Rocket, ExternalLink, AlertTriangle, Image as ImageIcon } from 'lucide-react';
 import { useSpaceAPOD } from '@/hooks/useSpaceAPOD';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -36,17 +35,8 @@ export function SpaceWidget() {
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <Rocket className="h-4 w-4 text-indigo-400" />
-            <span className="text-xs font-medium">Space</span>
+            <span className="text-sm font-medium">Space</span>
           </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-6 w-6"
-            onClick={() => refetch()}
-            disabled={isRefetching}
-          >
-            <RefreshCw className={`h-3 w-3 text-muted-foreground ${isRefetching ? 'animate-spin' : ''}`} />
-          </Button>
         </div>
 
         {/* Content */}
@@ -60,16 +50,7 @@ export function SpaceWidget() {
           ) : error ? (
             <div className="text-center">
               <AlertTriangle className="h-6 w-6 text-amber-500 mx-auto mb-2" />
-              <p className="text-xs text-muted-foreground">NASA-Daten nicht verfügbar</p>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="mt-2"
-                onClick={() => refetch()}
-              >
-                <RefreshCw className="h-3 w-3 mr-1" />
-                Erneut versuchen
-              </Button>
+              <p className="text-sm text-muted-foreground">NASA-Daten nicht verfügbar</p>
             </div>
           ) : apod ? (
             <>
@@ -101,38 +82,18 @@ export function SpaceWidget() {
               )}
 
               {/* Title */}
-              <p className="text-xs font-medium mb-1 line-clamp-1">
+              <p className="text-sm font-medium mb-1 line-clamp-1">
                 {apod.title}
               </p>
 
               {/* Explanation (truncated) */}
-              <p className="text-[10px] text-muted-foreground line-clamp-2 leading-relaxed">
+              <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
                 {apod.explanation}
               </p>
-
-              {/* Link to NASA */}
-              {apod.url && !apod.fallback && (
-                <a
-                  href={apod.hdurl || apod.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-2 inline-flex items-center gap-1 text-[10px] text-indigo-400 hover:text-indigo-300 transition-colors"
-                >
-                  HD ansehen
-                  <ExternalLink className="h-3 w-3" />
-                </a>
-              )}
             </>
           ) : null}
         </div>
 
-        {/* Footer */}
-        <div className="mt-2 text-center">
-          <p className="text-[10px] text-muted-foreground">
-            {apod?.date ? `NASA APOD • ${apod.date}` : 'NASA APOD'}
-            {apod?.copyright && ` • © ${apod.copyright}`}
-          </p>
-        </div>
       </CardContent>
     </Card>
   );

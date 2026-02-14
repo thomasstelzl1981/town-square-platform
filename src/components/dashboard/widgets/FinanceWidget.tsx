@@ -18,12 +18,9 @@ export function FinanceWidget() {
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <TrendingUp className="h-4 w-4 text-amber-500" />
-            <span className="text-xs font-medium">Märkte</span>
+            <span className="text-sm font-medium">Märkte</span>
           </div>
-          <div className="flex items-center gap-1.5">
-            <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
-            <span className="text-[10px] text-muted-foreground">Live</span>
-          </div>
+          <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
         </div>
 
         {/* Ticker List */}
@@ -45,14 +42,14 @@ export function FinanceWidget() {
                       index < markets.length - 1 && 'border-b border-border/10'
                     )}
                   >
-                    <span className="text-[11px] font-medium text-foreground/80 min-w-[72px]">
+                    <span className="text-sm font-medium text-foreground/80 min-w-[72px]">
                       {market.symbol}
                     </span>
-                    <span className="text-[11px] font-mono text-foreground flex-1 text-right mr-3">
+                    <span className="text-sm font-mono text-foreground flex-1 text-right mr-3">
                       {market.value}
                     </span>
                     <div className={cn(
-                      'flex items-center gap-0.5 text-[10px] font-medium min-w-[52px] justify-end',
+                      'flex items-center gap-0.5 text-xs font-medium min-w-[52px] justify-end',
                       market.trend === 'up' && 'text-green-500',
                       market.trend === 'down' && 'text-red-500',
                       market.trend === 'neutral' && 'text-muted-foreground'

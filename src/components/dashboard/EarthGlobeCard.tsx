@@ -7,8 +7,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Globe, Loader2, ZoomIn, ZoomOut } from "lucide-react";
+import { Globe, Loader2 } from "lucide-react";
 import { CSSGlobeFallback } from "@/components/dashboard/earth-globe/CSSGlobeFallback";
 
 interface EarthGlobeCardProps {
@@ -160,28 +159,13 @@ export function EarthGlobeCard({ latitude, longitude, city }: EarthGlobeCardProp
         </div>
 
         <div className="space-y-1">
-          <div className="flex flex-col gap-0.5 text-[10px] font-mono text-white/70 drop-shadow-md">
+          <div className="flex flex-col gap-0.5 text-xs font-mono text-white/70 drop-shadow-md">
             <span>LAT: {formatCoord(latitude, "lat")}</span>
             <span>LNG: {formatCoord(longitude, "lng")}</span>
           </div>
         </div>
       </CardContent>
 
-      {/* Zoom button */}
-      {latitude !== null && longitude !== null && !isLoading && !hasError && (
-        <Button
-          variant="ghost"
-          size="icon"
-          className="absolute bottom-3 right-3 z-30 h-8 w-8 rounded-full bg-white/20 backdrop-blur-md border border-white/30 shadow-lg hover:bg-white/30 transition-all pointer-events-auto"
-          onClick={isZoomedIn ? handleZoomOut : handleZoomIn}
-        >
-          {isZoomedIn ? (
-            <ZoomOut className="h-4 w-4 text-white drop-shadow-md" />
-          ) : (
-            <ZoomIn className="h-4 w-4 text-white drop-shadow-md" />
-          )}
-        </Button>
-      )}
     </Card>
   );
 }

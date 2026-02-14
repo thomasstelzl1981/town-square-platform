@@ -4,7 +4,7 @@
  */
 
 import { Card, CardContent } from '@/components/ui/card';
-import { ExternalLink, ShoppingBag, Landmark, Building2, Search } from 'lucide-react';
+import { ShoppingBag, Landmark, Building2, Search } from 'lucide-react';
 
 interface BrandConfig {
   name: string;
@@ -82,17 +82,13 @@ export function BrandLinkWidget({ code }: BrandLinkWidgetProps) {
             <h3 className="text-lg font-bold tracking-tight">
               {config.nameElement || config.name}
             </h3>
-            <p className="text-[10px] text-white/70 uppercase tracking-wider mt-0.5">
+            <p className="text-xs text-white/70 uppercase tracking-wider mt-0.5">
               {config.tagline}
             </p>
           </div>
-          <p className="text-[11px] text-white/80 leading-relaxed line-clamp-2 max-w-[180px]">
+          <p className="text-sm text-white/80 leading-relaxed line-clamp-2 max-w-[180px]">
             {config.description}
           </p>
-          <div className="flex items-center gap-1 text-[11px] text-white/60 group-hover:text-white/90 transition-colors mt-auto">
-            <ExternalLink className="h-3 w-3" />
-            <span>Website öffnen</span>
-          </div>
         </a>
       </CardContent>
     </Card>

@@ -35,17 +35,17 @@ export function PVLiveWidget() {
           <div>
             <Zap className="h-4 w-4 mx-auto text-yellow-600 mb-1" />
             <p className="text-lg font-bold font-mono">{totalPowerW >= 1000 ? `${(totalPowerW / 1000).toFixed(1)}` : totalPowerW}</p>
-            <p className="text-[10px] text-muted-foreground">{totalPowerW >= 1000 ? 'kW' : 'W'}</p>
+            <p className="text-xs text-muted-foreground">{totalPowerW >= 1000 ? 'kW' : 'W'}</p>
           </div>
           <div>
             <TrendingUp className="h-4 w-4 mx-auto text-green-600 mb-1" />
             <p className="text-lg font-bold font-mono">{totalEnergyTodayKwh.toFixed(1)}</p>
-            <p className="text-[10px] text-muted-foreground">kWh heute</p>
+            <p className="text-xs text-muted-foreground">kWh heute</p>
           </div>
           <div>
             <WifiOff className="h-4 w-4 mx-auto text-muted-foreground mb-1" />
             <p className="text-lg font-bold font-mono">{offlineCount}</p>
-            <p className="text-[10px] text-muted-foreground">Offline</p>
+            <p className="text-xs text-muted-foreground">Offline</p>
           </div>
         </div>
         {top3.length > 0 && (
@@ -53,7 +53,7 @@ export function PVLiveWidget() {
             {top3.map((d) => {
               const plant = plants.find((p) => p.id === d.plantId);
               return (
-                <div key={d.plantId} className="flex justify-between text-xs">
+                <div key={d.plantId} className="flex justify-between text-sm">
                   <span className="text-muted-foreground truncate max-w-[60%]">{plant?.name || '—'}</span>
                   <span className="font-mono">{d.currentPowerW.toLocaleString('de-DE')} W</span>
                 </div>
