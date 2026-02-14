@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { Outlet, Navigate, useLocation } from 'react-router-dom';
 
 // Preload core modules for instant navigation
@@ -15,15 +15,14 @@ import { useAuth } from '@/contexts/AuthContext';
 import { SystemBar } from './SystemBar';
 import { TopNavigation } from './TopNavigation';
 import { ArmstrongContainer } from './ArmstrongContainer';
-import { MobileBottomNav } from './MobileBottomNav';
-import { ArmstrongInputBar } from './ArmstrongInputBar';
-import { ArmstrongSheet } from './ArmstrongSheet';
+import { MobileModuleBar } from './MobileModuleBar';
+import { MobileHomeChatView } from './MobileHomeChatView';
 import { SubTabs } from './SubTabs';
 import { PortalLayoutProvider, usePortalLayout } from '@/hooks/usePortalLayout';
 import { getModulesSorted } from '@/manifests/routesManifest';
 import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { MOBILE } from '@/config/designManifest';
+
 
 /**
  * Zone 2: User Portal Layout
@@ -33,19 +32,17 @@ import { MOBILE } from '@/config/designManifest';
  * - TopNavigation: 3-level navigation (Area > Module > Tile)
  * - ArmstrongContainer: Collapsed bottom-right or expanded right stripe
  * 
- * Mobile:
+ * Mobile (Immo-Wallet):
  * - SystemBar: Simplified top bar
- * - MobileBottomNav: Fixed bottom with area switcher
- * - ArmstrongInputBar: Persistent entry above bottom nav
- * - ArmstrongSheet: Bottom sheet for chat
+ * - Home: Full-screen Armstrong Chat with area buttons above input
+ * - Modules: Content + compact MobileModuleBar at bottom
  */
 
 function PortalLayoutInner() {
   const { user, isLoading, activeOrganization, isDevelopmentMode } = useAuth();
   const { isMobile } = usePortalLayout();
   const location = useLocation();
-  
-  const [armstrongSheetOpen, setArmstrongSheetOpen] = useState(false);
+  // Armstrong sheet state removed — mobile uses full-screen chat now
   
   // P0-FIX: Track if we've ever finished initial loading
   const hasInitializedRef = useRef(false);
@@ -115,37 +112,31 @@ function PortalLayoutInner() {
   // Mobile Layout - Identisch zu Desktop: Outlet für konsistentes Routing
   if (isMobile) {
     return (
-      <div className="h-screen bg-atmosphere flex flex-col overflow-hidden">
+      <div className="h-screen bg-atmosphere flex flex-col overflow-hidden overflow-x-hidden">
         {/* System Bar */}
         <SystemBar />
         
-        {/* Content Area - Scroll-snap only on Dashboard */}
-        <main className={cn(
-          'flex-1 overflow-y-auto pb-28 relative',
-          isDashboard && MOBILE.SNAP_CONTAINER
-        )}>
-          
-          {/* Mobile SubTabs: Tile-Navigation when inside a module */}
-          {activeModule && !location.pathname.startsWith('/portal/area/') && (
-            <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-sm border-b">
-              <SubTabs module={activeModule.module} moduleBase={activeModule.module.base} />
-            </div>
-          )}
-          
-          <Outlet />
-        </main>
-        
-        {/* Bottom Navigation - Above Armstrong bar */}
-        <MobileBottomNav />
-        
-        {/* Armstrong Input Bar - At very bottom */}
-        <ArmstrongInputBar onOpenSheet={() => setArmstrongSheetOpen(true)} />
-        
-        {/* Armstrong Sheet */}
-        <ArmstrongSheet 
-          open={armstrongSheetOpen} 
-          onOpenChange={setArmstrongSheetOpen} 
-        />
+        {isDashboard ? (
+          /* HOME: Full-screen Armstrong Chat */
+          <MobileHomeChatView />
+        ) : (
+          /* MODULE VIEW: Content + compact bottom bar */
+          <>
+            <main className="flex-1 overflow-y-auto overflow-x-hidden relative">
+              {/* Mobile SubTabs: Tile-Navigation when inside a module */}
+              {activeModule && !location.pathname.startsWith('/portal/area/') && (
+                <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-sm border-b">
+                  <SubTabs module={activeModule.module} moduleBase={activeModule.module.base} />
+                </div>
+              )}
+              
+              <Outlet />
+            </main>
+            
+            {/* Compact bottom bar — iOS tab-bar style */}
+            <MobileModuleBar />
+          </>
+        )}
       </div>
     );
   }
