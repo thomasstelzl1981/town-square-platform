@@ -12,7 +12,7 @@ const PortfolioTab = lazy(() => import('./immobilien/PortfolioTab').then(m => ({
 const SanierungTab = lazy(() => import('./immobilien/SanierungTab').then(m => ({ default: m.SanierungTab })));
 const VerwaltungTab = lazy(() => import('./immobilien/VerwaltungTab'));
 const PropertyDetailPage = lazy(() => import('./immobilien/PropertyDetailPage'));
-const RentalExposeDetail = lazy(() => import('./msv/RentalExposeDetail'));
+const RentalExposeDetail = lazy(() => import('./immobilien/RentalExposeDetail'));
 const MietyPortalPage = lazy(() => import('./MietyPortalPage'));
 const MietyHomeDossier = lazy(() => import('./miety/MietyHomeDossier'));
 

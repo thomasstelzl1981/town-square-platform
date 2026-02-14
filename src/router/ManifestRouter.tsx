@@ -100,7 +100,7 @@ import PortalDashboard from '@/pages/portal/PortalDashboard';
 
 // Zone 2: Dynamic Route Components
 const PropertyDetailPage = React.lazy(() => import('@/pages/portal/immobilien/PropertyDetailPage'));
-const RentalExposeDetail = React.lazy(() => import('@/pages/portal/msv/RentalExposeDetail'));
+const RentalExposeDetail = React.lazy(() => import('@/pages/portal/immobilien/RentalExposeDetail'));
 const ExposeDetail = React.lazy(() => import('@/pages/portal/verkauf/ExposeDetail'));
 const AnfrageDetailPage = React.lazy(() => import('@/pages/portal/finanzierung/AnfrageDetailPage'));
 const FMFallDetail = React.lazy(() => import('@/pages/portal/finanzierungsmanager/FMFallDetail'));
