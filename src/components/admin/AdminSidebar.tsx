@@ -93,6 +93,9 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   'WebHostingDashboard': Globe,
   // Fortbildung
   'AdminFortbildung': BookOpen,
+  // New Desks
+  'LeadDeskDashboard': Target,
+  'ProjektDeskDashboard': Building2,
 };
 
 // Group configuration for grouping routes
@@ -152,15 +155,16 @@ function getGroupKey(path: string, component: string): string {
   // Operative Desks (Desks + LeadPool + Provisionen + Landing Pages)
   if (path.startsWith('sales-desk') || path.startsWith('finance-desk') || 
       path.startsWith('acquiary') || path === 'leadpool' || path === 'commissions' ||
-      path === 'landing-pages') {
+      path === 'landing-pages' || path === 'lead-desk' || path === 'projekt-desk' ||
+      path === 'website-hosting') {
     return 'desks';
   }
   if (path.startsWith('agents')) {
     return 'agents';
   }
-  // System (bereinigt - nur Read-only Monitoring + Hosting + Fortbildung)
+  // System (bereinigt - nur Read-only Monitoring + Fortbildung)
   if (path === 'integrations' || path === 'oversight' || path === 'audit' || 
-      path === 'website-hosting' || path === 'fortbildung') {
+      path === 'fortbildung') {
     return 'system';
   }
   if (path === 'support') {
@@ -175,7 +179,8 @@ function shouldShowInNav(path: string): boolean {
   if (path.includes(':')) return false;
   // Show main desk entries
   if (path === 'sales-desk' || path === 'finance-desk' || path === 'acquiary' || 
-      path === 'agents' || path === 'futureroom') {
+      path === 'agents' || path === 'futureroom' || path === 'lead-desk' || 
+      path === 'projekt-desk' || path === 'website-hosting') {
     return true;
   }
   // KI Office items — consolidated 3

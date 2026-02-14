@@ -51,6 +51,7 @@ export interface WebsiteSnapshot {
 }
 
 export const SECTION_TYPES = [
+  // Universal sections (available for all profiles)
   'hero',
   'features',
   'about',
@@ -59,6 +60,14 @@ export const SECTION_TYPES = [
   'gallery',
   'contact',
   'footer',
+  'booking',
+  'pricing',
+  'team',
+  // Profile-specific sections
+  'calculator',
+  'catalog',
+  'unit_list',
+  'application',
 ] as const;
 
 export type SectionType = typeof SECTION_TYPES[number];
@@ -72,4 +81,11 @@ export const SECTION_TYPE_LABELS: Record<SectionType, string> = {
   gallery: 'Galerie',
   contact: 'Kontaktformular',
   footer: 'Footer',
+  booking: 'Online-Buchung',
+  pricing: 'Preisliste',
+  team: 'Team',
+  calculator: 'Rechner-Widget',
+  catalog: 'Katalog',
+  unit_list: 'Einheiten-Liste',
+  application: 'Antragsformular',
 };

@@ -90,6 +90,8 @@ const SalesDesk = React.lazy(() => import('@/pages/admin/desks').then(m => ({ de
 const FinanceDesk = React.lazy(() => import('@/pages/admin/desks').then(m => ({ default: m.FinanceDesk })));
 const Acquiary = React.lazy(() => import('@/pages/admin/desks').then(m => ({ default: m.Acquiary })));
 const Agents = React.lazy(() => import('@/pages/admin/desks').then(m => ({ default: m.Agents })));
+const LeadDeskComponent = React.lazy(() => import('@/pages/admin/desks').then(m => ({ default: m.LeadDesk })));
+const ProjektDeskComponent = React.lazy(() => import('@/pages/admin/desks').then(m => ({ default: m.ProjektDesk })));
 
 // Zone 2: User Portal Layout & Dashboard
 import { PortalLayout } from '@/components/portal/PortalLayout';
@@ -263,6 +265,9 @@ const adminComponentMap: Record<string, React.ComponentType> = {
   AdminFortbildung: React.lazy(() => import('@/pages/admin/AdminFortbildung')),
   // Website Hosting (MOD-05 Zone 1)
   WebHostingDashboard: React.lazy(() => import('@/pages/admin/website-hosting/WebHostingDashboard')),
+  // New Desks
+  LeadDeskDashboard: LeadDeskComponent,
+  ProjektDeskDashboard: ProjektDeskComponent,
   // WebHosting sub-routes removed (all pointed to same component)
 };
 
