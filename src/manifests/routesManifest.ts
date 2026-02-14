@@ -126,15 +126,7 @@ export const zone1Admin: ZoneDefinition = {
     { path: "futureroom/vorlagen", component: "FutureRoomTemplates", title: "Vorlagen" },
     { path: "futureroom/website-leads", component: "FutureRoomWebLeads", title: "Website-Leads" },
     { path: "futureroom/contracts", component: "FutureRoomContracts", title: "Contracts" },
-    // Social Media (Kaufy Publishing + Partner-Mandatsverwaltung)
-    { path: "social-media", component: "SocialMediaDashboard", title: "Social Media" },
-    { path: "social-media/kampagnen", component: "SocialMediaKampagnen", title: "Kampagnen" },
-    { path: "social-media/creator", component: "SocialMediaCreator", title: "Creator" },
-    { path: "social-media/vertrieb", component: "SocialMediaVertrieb", title: "Social Vertrieb" },
-    { path: "social-media/vertrieb/:id", component: "SocialMediaVertriebDetail", title: "Mandat Detail", dynamic: true },
-    { path: "social-media/leads", component: "SocialMediaLeads", title: "Leads & Routing" },
-    { path: "social-media/templates", component: "SocialMediaTemplates", title: "Templates & CI" },
-    { path: "social-media/abrechnung", component: "SocialMediaAbrechnung", title: "Abrechnung" },
+    // Social Media — ENTFERNT (war 100% Demo-Daten, keine DB-Anbindung)
     // Agents
     { path: "agents", component: "AgentsDashboard", title: "Agents" },
     { path: "agents/catalog", component: "AgentsCatalog", title: "Agenten-Katalog" },
@@ -174,11 +166,8 @@ export const zone1Admin: ZoneDefinition = {
     { path: "landing-pages", component: "AdminLandingPages", title: "Landing Pages" },
     // Fortbildung Management
     { path: "fortbildung", component: "AdminFortbildung", title: "Fortbildung" },
-    // Website Hosting (MOD-05 Zone 1)
+    // Website Hosting (MOD-05 Zone 1) — konsolidiert auf 1 Route
     { path: "website-hosting", component: "WebHostingDashboard", title: "Website Hosting" },
-    { path: "website-hosting/domains", component: "WebHostingDomains", title: "Domains" },
-    { path: "website-hosting/abuse", component: "WebHostingAbuse", title: "Abuse" },
-    { path: "website-hosting/templates", component: "WebHostingTemplates", title: "Templates" },
   ],
 };
 

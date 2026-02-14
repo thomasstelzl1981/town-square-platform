@@ -17,7 +17,7 @@ import * as React from 'react';
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Inbox, Link2, FileText, ClipboardList, AlertTriangle, Activity, Loader2, Package } from 'lucide-react';
+import { Inbox, FileText, AlertTriangle, Activity, Loader2, Package, Users } from 'lucide-react';
 import { useAcqMandatesInbox, useAcqMandates } from '@/hooks/useAcqMandate';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -27,10 +27,10 @@ import { DESIGN } from '@/config/designManifest';
 const AcquiaryInbox = React.lazy(() => import('./acquiary/AcquiaryInbox'));
 const AcquiaryAssignments = React.lazy(() => import('./acquiary/AcquiaryAssignments'));
 const AcquiaryMandates = React.lazy(() => import('./acquiary/AcquiaryMandates'));
-const AcquiaryObjekteingang = React.lazy(() => import('./acquiary/AcquiaryObjekteingang'));
-const AcquiaryAudit = React.lazy(() => import('./acquiary/AcquiaryAudit'));
+const AcquiaryDatenbank = React.lazy(() => import('./acquiary/AcquiaryDatenbank'));
+const AcquiaryKontakte = React.lazy(() => import('./acquiary/AcquiaryKontakte'));
 const AcquiaryNeedsRouting = React.lazy(() => import('./acquiary/AcquiaryNeedsRouting'));
-const AcquiaryMonitoring = React.lazy(() => import('./acquiary/AcquiaryMonitoring'));
+const AcquiaryMonitor = React.lazy(() => import('./acquiary/AcquiaryMonitor'));
 
 const LoadingFallback = () => (
   <div className="flex items-center justify-center p-12">
@@ -63,39 +63,23 @@ export default function AcquiaryPage() {
   // Determine active tab from route
   const getActiveTab = () => {
     const path = location.pathname;
-    if (path.includes('/assignments')) return 'assignments';
+    if (path.includes('/kontakte')) return 'kontakte';
+    if (path.includes('/datenbank')) return 'datenbank';
     if (path.includes('/mandates')) return 'mandates';
-    if (path.includes('/objekteingang')) return 'objekteingang';
-    if (path.includes('/audit')) return 'audit';
     if (path.includes('/needs-routing')) return 'needs-routing';
-    if (path.includes('/monitoring')) return 'monitoring';
+    if (path.includes('/monitor')) return 'monitor';
     if (path.includes('/inbox')) return 'inbox';
     return 'inbox';
   };
 
   const handleTabChange = (value: string) => {
     switch (value) {
-      case 'inbox':
-        navigate('/admin/acquiary/inbox');
-        break;
-      case 'assignments':
-        navigate('/admin/acquiary/assignments');
-        break;
-      case 'mandates':
-        navigate('/admin/acquiary/mandates');
-        break;
-      case 'objekteingang':
-        navigate('/admin/acquiary/objekteingang');
-        break;
-      case 'audit':
-        navigate('/admin/acquiary/audit');
-        break;
-      case 'needs-routing':
-        navigate('/admin/acquiary/needs-routing');
-        break;
-      case 'monitoring':
-        navigate('/admin/acquiary/monitoring');
-        break;
+      case 'inbox': navigate('/admin/acquiary/inbox'); break;
+      case 'kontakte': navigate('/admin/acquiary/kontakte'); break;
+      case 'datenbank': navigate('/admin/acquiary/datenbank'); break;
+      case 'mandates': navigate('/admin/acquiary/mandates'); break;
+      case 'needs-routing': navigate('/admin/acquiary/needs-routing'); break;
+      case 'monitor': navigate('/admin/acquiary/monitor'); break;
     }
   };
 
@@ -128,9 +112,9 @@ export default function AcquiaryPage() {
         </div>
       </div>
 
-      {/* Navigation Tabs — 7 Items */}
+      {/* Navigation Tabs — 6 Items */}
       <Tabs value={getActiveTab()} onValueChange={handleTabChange}>
-        <TabsList className="grid w-full grid-cols-7">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="inbox" className="gap-2">
             <Inbox className="h-4 w-4" />
             Inbox
@@ -138,28 +122,21 @@ export default function AcquiaryPage() {
               <Badge variant="secondary" className="ml-1">{newMandates}</Badge>
             )}
           </TabsTrigger>
-          <TabsTrigger value="assignments" className="gap-2">
-            <Link2 className="h-4 w-4" />
-            Zuweisung
-            {assignedNotAccepted > 0 && (
-              <Badge variant="outline" className="ml-1">{assignedNotAccepted}</Badge>
+          <TabsTrigger value="kontakte" className="gap-2">
+            <Users className="h-4 w-4" />
+            Kontakte
+          </TabsTrigger>
+          <TabsTrigger value="datenbank" className="gap-2">
+            <Package className="h-4 w-4" />
+            Datenbank
+            {offerCount > 0 && (
+              <Badge variant="secondary" className="ml-1">{offerCount}</Badge>
             )}
           </TabsTrigger>
           <TabsTrigger value="mandates" className="gap-2">
             <FileText className="h-4 w-4" />
             Mandate
             <Badge variant="outline" className="ml-1">{allMandates?.length || 0}</Badge>
-          </TabsTrigger>
-          <TabsTrigger value="objekteingang" className="gap-2">
-            <Package className="h-4 w-4" />
-            Objekteingang
-            {offerCount > 0 && (
-              <Badge variant="secondary" className="ml-1">{offerCount}</Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="audit" className="gap-2">
-            <ClipboardList className="h-4 w-4" />
-            Audit
           </TabsTrigger>
           <TabsTrigger value="needs-routing" className="gap-2">
             <AlertTriangle className="h-4 w-4" />
@@ -168,7 +145,7 @@ export default function AcquiaryPage() {
               <Badge variant="destructive" className="ml-1">{needsRoutingCount}</Badge>
             )}
           </TabsTrigger>
-          <TabsTrigger value="monitoring" className="gap-2">
+          <TabsTrigger value="monitor" className="gap-2">
             <Activity className="h-4 w-4" />
             Monitor
           </TabsTrigger>
@@ -180,12 +157,11 @@ export default function AcquiaryPage() {
         <Routes>
           <Route index element={<Navigate to="inbox" replace />} />
           <Route path="inbox" element={<AcquiaryInbox />} />
-          <Route path="assignments" element={<AcquiaryAssignments />} />
+          <Route path="kontakte" element={<AcquiaryKontakte />} />
+          <Route path="datenbank" element={<AcquiaryDatenbank />} />
           <Route path="mandates" element={<AcquiaryMandates />} />
-          <Route path="objekteingang" element={<AcquiaryObjekteingang />} />
-          <Route path="audit" element={<AcquiaryAudit />} />
           <Route path="needs-routing" element={<AcquiaryNeedsRouting />} />
-          <Route path="monitoring" element={<AcquiaryMonitoring />} />
+          <Route path="monitor" element={<AcquiaryMonitor />} />
           <Route path="*" element={<Navigate to="inbox" replace />} />
         </Routes>
       </React.Suspense>

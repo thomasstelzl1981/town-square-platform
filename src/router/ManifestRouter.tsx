@@ -60,11 +60,11 @@ const OrganizationDetail = React.lazy(() => import('@/pages/admin/OrganizationDe
 const Users = React.lazy(() => import('@/pages/admin/Users'));
 const Delegations = React.lazy(() => import('@/pages/admin/Delegations'));
 const Support = React.lazy(() => import('@/pages/admin/Support'));
-const MasterContacts = React.lazy(() => import('@/pages/admin/MasterContacts'));
+// MasterContacts removed (orphaned)
 const RolesManagement = React.lazy(() => import('@/pages/admin/RolesManagement'));
 const TileCatalog = React.lazy(() => import('@/pages/admin/TileCatalog'));
 const Integrations = React.lazy(() => import('@/pages/admin/Integrations'));
-const CommunicationHub = React.lazy(() => import('@/pages/admin/CommunicationHub'));
+// CommunicationHub removed (orphaned, demo-only)
 const Oversight = React.lazy(() => import('@/pages/admin/Oversight'));
 const AuditLog = React.lazy(() => import('@/pages/admin/AuditLog'));
 const AuditHub = React.lazy(() => import('@/pages/admin/audit/AuditHub'));
@@ -214,7 +214,7 @@ const adminComponentMap: Record<string, React.ComponentType> = {
   OrganizationDetail,
   Users,
   Delegations,
-  MasterContacts,
+  // MasterContacts removed
   MasterTemplates,
   MasterTemplatesImmobilienakte,
   MasterTemplatesSelbstauskunft,
@@ -224,7 +224,7 @@ const adminComponentMap: Record<string, React.ComponentType> = {
   MasterTemplatesFinanzierungsakte,
   TileCatalog,
   Integrations,
-  CommunicationHub,
+  // CommunicationHub removed
   Oversight,
   AuditLog,
   AuditHub,
@@ -253,24 +253,14 @@ const adminComponentMap: Record<string, React.ComponentType> = {
   ArmstrongPolicies,
   ArmstrongTestHarness,
   ArmstrongIntegrations,
-  // Social Media (Zone 1)
-  SocialMediaDashboard: React.lazy(() => import('@/pages/admin/social-media/SocialMediaDashboard')),
-  SocialMediaKampagnen: React.lazy(() => import('@/pages/admin/social-media/SocialMediaKampagnen')),
-  SocialMediaCreator: React.lazy(() => import('@/pages/admin/social-media/SocialMediaCreator')),
-  SocialMediaVertrieb: React.lazy(() => import('@/pages/admin/social-media/SocialMediaVertrieb')),
-  SocialMediaVertriebDetail: React.lazy(() => import('@/pages/admin/social-media/SocialMediaVertriebDetail')),
-  SocialMediaLeads: React.lazy(() => import('@/pages/admin/social-media/SocialMediaLeads')),
-  SocialMediaTemplates: React.lazy(() => import('@/pages/admin/social-media/SocialMediaTemplates')),
-  SocialMediaAbrechnung: React.lazy(() => import('@/pages/admin/social-media/SocialMediaAbrechnung')),
+  // Social Media removed (100% demo data, no DB)
   // Landing Pages
   AdminLandingPages: React.lazy(() => import('@/pages/admin/AdminLandingPages')),
   // Fortbildung Management
   AdminFortbildung: React.lazy(() => import('@/pages/admin/AdminFortbildung')),
   // Website Hosting (MOD-05 Zone 1)
   WebHostingDashboard: React.lazy(() => import('@/pages/admin/website-hosting/WebHostingDashboard')),
-  WebHostingDomains: React.lazy(() => import('@/pages/admin/website-hosting/WebHostingDashboard')),
-  WebHostingAbuse: React.lazy(() => import('@/pages/admin/website-hosting/WebHostingDashboard')),
-  WebHostingTemplates: React.lazy(() => import('@/pages/admin/website-hosting/WebHostingDashboard')),
+  // WebHosting sub-routes removed (all pointed to same component)
 };
 
 // Zone 1 Desk Components with internal routing (FutureRoom uses explicit nested routes)
