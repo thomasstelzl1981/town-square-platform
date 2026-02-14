@@ -1,28 +1,93 @@
 
 
-# WhatsApp-Widget von Profil nach Abrechnung verschieben
+# Sortierkacheln fuer alle Demo-Akten anlegen und Klick-Flow implementieren
 
-## Aenderung
+## Analyse-Ergebnis
 
-Die WhatsApp Business Kachel (Owner-Control Nummer, Auto-Reply, Verbindungsstatus) wird aus dem Profil-Tab entfernt und in den Abrechnung-Tab verschoben — direkt in den Armstrong-Bereich, wo sie thematisch hingehoert.
+### Vorhandene Entitaeten im Demo-Tenant
 
-## Umsetzung
+| Typ | Anzahl | Details | Sortierkachel vorhanden? |
+|-----|--------|---------|--------------------------|
+| Properties | 3 | BER-01 (Berlin), MUC-01 (Muenchen), HH-01 (Hamburg) | Nein |
+| Fahrzeuge | 2 | Porsche 911 (B-P911), BMW M5 (M-M5005) | Nein |
+| PV-Anlagen | 0 | Keine in der Datenbank | — |
+| Personen (household) | 0 | Keine in der Datenbank | — |
+| Versicherungen | 0 | Nur KFZ-Versicherungen (an Fahrzeuge gebunden) | — |
+| Vorsorge/Hosting/Miety | 0 | Keine Datensaetze | — |
 
-### Datei 1: `src/pages/portal/stammdaten/ProfilTab.tsx`
+**Bestehende Sortierkacheln:** Nur 1 — "Rechnungen" (Seed-Default)
 
-- Zeilen 420-426 entfernen: Die beiden `WhatsAppWidget`-Renderings (`isRecordOpen` und `!isRecordOpen` Varianten)
-- Zeilen 466-582 entfernen: Die gesamte `WhatsAppWidget`-Funktion
-- Nicht mehr benoetigte Imports aufraeumen (`MessageSquare`, `Bot` aus WhatsApp-Kontext, `Switch`, `Textarea`, `Badge`, `Label` — sofern nicht anderweitig benutzt)
+### Wichtige Erkenntnis
 
-### Datei 2: `src/pages/portal/stammdaten/AbrechnungTab.tsx`
+PV-Anlagen und Personen existieren aktuell **nicht** in der Datenbank. Falls du diese bereits angelegt hattest, waren sie moeglicherweise client-seitige Demo-Daten oder wurden bei einem Reset entfernt. Fuer Sortierkacheln brauchen wir reale DB-Eintraege. Der Plan konzentriert sich daher auf die **5 vorhandenen Entitaeten** (3 Properties + 2 Fahrzeuge) und den allgemeinen "Rechnungen"-Container.
 
-- Die `WhatsAppWidget`-Funktion (ca. 115 Zeilen) hierher verschieben — als eigenstaendige Komponente innerhalb der Datei
-- Platzierung: Im Armstrong-Bereich (nach Zeile 220, vor `</div>` des Armstrong-Blocks), als neue Card zwischen `KostenDashboard` und `AktionsKatalog`
-- Noetige Imports ergaenzen: `useAuth` (fuer `userId`), `useMutation`, `useQueryClient`, `Switch`, `Textarea`, `Badge`, `Label`, `MessageSquare`, `Save`, `toast` aus sonner, sowie die `FormSection`/`FormInput`/`ProfileWidget`-Komponenten (oder direkt als Card umbauen)
-- Da der AbrechnungTab keine `ProfileWidget`-Wrapper nutzt, wird das WhatsApp-Widget als regulaere `Card` dargestellt (konsistent mit dem restlichen Tab-Design)
+---
 
-### Ergebnis
+## Teil 1: SPEC-Datei aktualisieren
 
-- **Profil-Tab**: Zeigt nur noch persoenliche Daten, RecordCard (Briefkopf) und Outbound-Kennung — schlanker und fokussierter
-- **Abrechnung-Tab**: Zeigt Plan, Rechnungen und den gesamten Armstrong-Block inklusive WhatsApp-Steuerung — alles KI-bezogene an einem Ort
+### `spec/current/06_api_contracts/CONTRACT_EMAIL_INBOUND.md`
+
+- Routing-Logik vereinfachen: **Eine Inbound-Adresse pro Account**
+- Aktenspezifische Routing-Tokens entfernen
+- Klarstellen: Zuordnung erfolgt ueber Sortierregeln im Posteingang
+- Match-Confidence anpassen (kein "exact" via Routing-Token mehr)
+
+---
+
+## Teil 2: SQL-Migration — 5 Sortierkacheln anlegen
+
+Fuer den Demo-Tenant `a0000000-0000-4000-a000-000000000001`:
+
+| Kachel-Name | Entity-Typ | Keywords |
+|-------------|-----------|----------|
+| Schadowstr., Berlin | property | Schadowstr, Berlin, BER-01 |
+| Leopoldstr., Muenchen | property | Leopoldstr, Muenchen, MUC-01 |
+| Osterstr., Hamburg | property | Osterstr, Hamburg, HH-01 |
+| Porsche 911 (B-P911) | vehicle | Porsche, 911, B-P911 |
+| BMW M5 (M-M5005) | vehicle | BMW, M5, M-M5005 |
+
+Jede Kachel bekommt:
+- `entity_type` + `entity_id` (Verknuepfung zur Akte)
+- `property_id` (bei Properties)
+- `is_enabled = true`
+- Eine Sortierregel mit `field: 'subject'`, `operator: 'contains'`
+
+---
+
+## Teil 3: Sortierkachel-Klick-Flow (SortierenTab.tsx)
+
+### Neuer Flow
+
+Aktuell oeffnet ein Klick auf die Kachel nur den Bearbeiten-Dialog. Neues Verhalten:
+
+1. **Klick auf Kachel-Body** → Oeffnet eine **Detail-Ansicht** (Sheet/Dialog)
+2. Die Detail-Ansicht zeigt:
+   - Name + Status der Kachel
+   - Aktive Sortierregeln (Keywords als Badges)
+   - Liste der zugeordneten Dokumente (aktuell leer — Platzhalter mit "Noch keine Dokumente zugeordnet")
+   - Button **"Im Datenraum oeffnen"** → Navigiert zum DMS-Storage mit Filter auf die verknuepfte Entitaet
+3. **Bearbeiten** bleibt ueber den Pencil-Button erreichbar (unveraendert)
+
+### Technische Umsetzung in `SortierenTab.tsx`
+
+- Neuer State: `selectedContainer: SortContainer | null`
+- Klick auf Card (nicht auf Action-Buttons) setzt `selectedContainer`
+- Neuer Dialog/Sheet: "Kachel-Details" mit Dokument-Liste und Navigation
+- "Im Datenraum oeffnen" nutzt `entity_type` + `entity_id` zur Navigation
+
+---
+
+## Betroffene Dateien
+
+| Datei | Aenderung |
+|-------|-----------|
+| `spec/current/06_api_contracts/CONTRACT_EMAIL_INBOUND.md` | Routing-Logik: 1 Adresse pro Account |
+| `src/pages/portal/dms/SortierenTab.tsx` | Detail-Ansicht bei Klick, Dokument-Liste, "Datenraum oeffnen" |
+| SQL-Migration | 5 Sortierkacheln + Regeln fuer Demo-Akten |
+
+### Was sich NICHT aendert
+- `useRecordCardDMS.ts` — erstellt weiterhin Sortierkacheln bei Neuanlage (korrekt)
+- `CreatePropertyDialog.tsx` — hat eigene Sort-Container-Erstellung (korrekt)
+- `PosteingangTab.tsx` — keine Aenderung
+- `OutboundIdentityWidget.tsx` — Upload-E-Mail bleibt die einzige Inbound-Adresse
 
