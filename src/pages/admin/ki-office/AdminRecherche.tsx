@@ -2,7 +2,7 @@
  * AdminRecherche — SOAT Search Engine with Widget-Grid + Inline Case
  * Golden Path Standard: CTA-Widget → Draft → Inline-Flow (kein Dialog)
  */
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -12,6 +12,14 @@ import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import {
   Select,
   SelectContent,
@@ -29,8 +37,10 @@ import {
   type SoatSearchOrder,
   type SoatSearchResult,
 } from '@/hooks/useSoatSearchEngine';
+import { useResearchImport } from '@/hooks/useResearchImport';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import * as XLSX from 'xlsx';
 import {
   Plus,
   Search,
@@ -49,6 +59,12 @@ import {
   AlertTriangle,
   Zap,
   Save,
+  FileSpreadsheet,
+  Upload,
+  X,
+  ShieldCheck,
+  ShieldAlert,
+  MinusCircle,
 } from 'lucide-react';
 
 const STATUS_MAP: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
@@ -79,12 +95,19 @@ const VALIDATION_STATES: Record<string, { label: string; color: string }> = {
   suppressed: { label: 'Unterdrückt', color: 'bg-muted text-muted-foreground' },
 };
 
+type DupeCheckResult = {
+  resultId: string;
+  status: 'new' | 'duplicate' | 'no_email';
+  existingContactId?: string;
+};
+
 export default function AdminRecherche() {
   const { data: orders = [], isLoading } = useSoatOrders();
   const createOrder = useCreateSoatOrder();
   const startOrder = useStartSoatOrder();
   const cancelOrder = useCancelSoatOrder();
   const updateResult = useUpdateSoatResult();
+  const researchImport = useResearchImport();
 
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [filter, setFilter] = useState<string>('all');
@@ -95,6 +118,13 @@ export default function AdminRecherche() {
   const [draftIntent, setDraftIntent] = useState('');
   const [draftTarget, setDraftTarget] = useState('25');
 
+  // Import preview state
+  const [showImportPreview, setShowImportPreview] = useState(false);
+  const [dupeChecks, setDupeChecks] = useState<DupeCheckResult[]>([]);
+  const [dupePolicy, setDupePolicy] = useState<'skip' | 'update'>('skip');
+  const [isCheckingDupes, setIsCheckingDupes] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+
   const selectedOrder = orders.find(o => o.id === selectedOrderId) || null;
   const { data: results = [] } = useSoatResults(selectedOrderId);
 
@@ -104,6 +134,14 @@ export default function AdminRecherche() {
 
   const counters = selectedOrder?.counters_json || {};
 
+  // Import preview stats
+  const importStats = useMemo(() => {
+    const newCount = dupeChecks.filter(d => d.status === 'new').length;
+    const dupeCount = dupeChecks.filter(d => d.status === 'duplicate').length;
+    const noEmailCount = dupeChecks.filter(d => d.status === 'no_email').length;
+    return { newCount, dupeCount, noEmailCount };
+  }, [dupeChecks]);
+
   /** CTA-Widget: Sofort Draft erstellen, inline öffnen */
   const handleCreateDraft = async () => {
     try {
@@ -112,7 +150,6 @@ export default function AdminRecherche() {
         intent: '',
         target_count: 25,
       });
-      // Inline-Felder mit Defaults füllen
       setDraftTitle(order.title || 'Neuer Rechercheauftrag');
       setDraftIntent(order.intent || '');
       setDraftTarget(String(order.target_count || 25));
@@ -130,7 +167,6 @@ export default function AdminRecherche() {
       return;
     }
     try {
-      // Update draft fields first
       const { error: updateError } = await supabase
         .from('soat_search_orders')
         .update({
@@ -141,7 +177,6 @@ export default function AdminRecherche() {
         .eq('id', selectedOrderId);
       if (updateError) throw updateError;
 
-      // Then start
       await startOrder.mutateAsync(selectedOrderId);
       toast.success('Recherche gestartet');
     } catch (e: any) {
@@ -159,32 +194,95 @@ export default function AdminRecherche() {
     updateResult.mutate({ id: result.id, orderId: result.order_id, validation_state: state });
   };
 
-  const handleBulkImport = async () => {
-    if (selectedResults.size === 0) { toast.error('Keine Ergebnisse ausgewählt'); return; }
-    const toImport = results.filter(r => selectedResults.has(r.id) && r.email);
-    let imported = 0;
-    for (const r of toImport) {
-      try {
-        const { error } = await supabase.from('contacts').insert({
-          first_name: r.contact_person_name?.split(' ')[0] || 'Unbekannt',
-          last_name: r.contact_person_name?.split(' ').slice(1).join(' ') || r.company_name || 'Unbekannt',
-          email: r.email,
-          phone: r.phone,
-          company: r.company_name,
-          city: r.city,
-          category: r.category || 'Sonstige',
-          scope: 'zone1_admin',
-          tenant_id: null,
-          permission_status: 'unknown',
-        } as any);
-        if (!error) {
-          imported++;
-          updateResult.mutate({ id: r.id, orderId: r.order_id, validation_state: 'imported' });
-        }
-      } catch { /* skip dupes */ }
+  /** Excel Export */
+  const handleExport = () => {
+    if (filteredResults.length === 0) {
+      toast.error('Keine Ergebnisse zum Exportieren');
+      return;
     }
-    toast.success(`${imported} Kontakte importiert`);
-    setSelectedResults(new Set());
+    const rows = filteredResults.map(r => ({
+      Firma: r.company_name || '',
+      Kategorie: r.category || '',
+      Kontaktperson: r.contact_person_name || '',
+      Rolle: r.contact_person_role || '',
+      'E-Mail': r.email || '',
+      Telefon: r.phone || '',
+      Stadt: r.city || '',
+      PLZ: r.postal_code || '',
+      Website: r.website_url || '',
+      'Score (%)': r.confidence_score || 0,
+      Status: VALIDATION_STATES[r.validation_state]?.label || r.validation_state,
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Ergebnisse');
+    XLSX.writeFile(wb, `recherche_${selectedOrder?.title || 'export'}.xlsx`);
+    toast.success(`${rows.length} Ergebnisse exportiert`);
+  };
+
+  /** Deduplizierungs-Check vor Import */
+  const handleOpenImportPreview = async () => {
+    if (selectedResults.size === 0) {
+      toast.error('Keine Ergebnisse ausgewählt');
+      return;
+    }
+    setIsCheckingDupes(true);
+    setShowImportPreview(true);
+
+    const selected = results.filter(r => selectedResults.has(r.id));
+    const checks: DupeCheckResult[] = [];
+
+    for (const r of selected) {
+      if (!r.email) {
+        checks.push({ resultId: r.id, status: 'no_email' });
+        continue;
+      }
+      // Check for existing contact by email
+      const { data } = await supabase
+        .from('contacts')
+        .select('id')
+        .eq('email', r.email)
+        .limit(1);
+
+      if (data && data.length > 0) {
+        checks.push({ resultId: r.id, status: 'duplicate', existingContactId: data[0].id });
+      } else {
+        checks.push({ resultId: r.id, status: 'new' });
+      }
+    }
+
+    setDupeChecks(checks);
+    setIsCheckingDupes(false);
+  };
+
+  /** Import via Edge Function mit duplicate_policy */
+  const handleExecuteImport = async () => {
+    if (!selectedOrderId) return;
+    const importableIds = dupeChecks
+      .filter(d => d.status === 'new' || (d.status === 'duplicate' && dupePolicy === 'update'))
+      .map(d => d.resultId);
+
+    if (importableIds.length === 0) {
+      toast.error('Keine importierbaren Kontakte');
+      return;
+    }
+
+    setIsImporting(true);
+    try {
+      const data = await researchImport.mutateAsync({
+        orderId: selectedOrderId,
+        resultIds: importableIds,
+        duplicatePolicy: dupePolicy,
+      });
+      toast.success(`${data.imported_count} importiert, ${data.skipped_count} übersprungen`);
+      setShowImportPreview(false);
+      setSelectedResults(new Set());
+      setDupeChecks([]);
+    } catch (e: any) {
+      toast.error(e.message || 'Import fehlgeschlagen');
+    } finally {
+      setIsImporting(false);
+    }
   };
 
   const toggleResult = (id: string) => {
@@ -193,7 +291,14 @@ export default function AdminRecherche() {
     setSelectedResults(s);
   };
 
-  /** Wenn ein bestehender Order ausgewählt wird, Draft-Felder befüllen */
+  const toggleAll = () => {
+    if (selectedResults.size === filteredResults.length) {
+      setSelectedResults(new Set());
+    } else {
+      setSelectedResults(new Set(filteredResults.map(r => r.id)));
+    }
+  };
+
   const handleSelectOrder = (orderId: string) => {
     const order = orders.find(o => o.id === orderId);
     if (order) {
@@ -202,6 +307,8 @@ export default function AdminRecherche() {
       setDraftTarget(String(order.target_count || 25));
     }
     setSelectedOrderId(orderId);
+    setShowImportPreview(false);
+    setSelectedResults(new Set());
   };
 
   if (isLoading) {
@@ -212,7 +319,7 @@ export default function AdminRecherche() {
     <div className="space-y-6 p-6">
       {/* Widget Grid — Orders */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-        {/* CTA-Widget: Sofort Draft erstellen */}
+        {/* CTA-Widget */}
         <Card
           className="cursor-pointer border-dashed hover:border-primary/50 transition-colors"
           onClick={handleCreateDraft}
@@ -266,11 +373,10 @@ export default function AdminRecherche() {
       {/* Inline Case — Selected Order */}
       {selectedOrder && (
         <div className="space-y-4">
-          {/* Section 1: Draft-Definitionsbereich (editierbar) oder Read-Only-Header */}
+          {/* Section 1: Draft or Read-Only Header */}
           <Card>
             <CardContent className="p-4">
               {selectedOrder.status === 'draft' ? (
-                /* Draft: Editierbare Felder inline */
                 <div className="space-y-4">
                   <h2 className="text-lg font-semibold">Auftrag definieren</h2>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -316,7 +422,6 @@ export default function AdminRecherche() {
                   </div>
                 </div>
               ) : (
-                /* Nicht-Draft: Read-Only Header mit Aktionen */
                 <div className="flex items-center justify-between gap-4">
                   <div className="flex-1 space-y-1">
                     <h2 className="text-lg font-semibold">{selectedOrder.title || 'Ohne Titel'}</h2>
@@ -365,7 +470,7 @@ export default function AdminRecherche() {
           {/* Section 3: Results Table */}
           <Card>
             <CardContent className="p-4 space-y-3">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between flex-wrap gap-2">
                 <div className="flex items-center gap-3">
                   <h3 className="font-medium">Ergebnisse ({results.length})</h3>
                   <Select value={filter} onValueChange={setFilter}>
@@ -381,12 +486,18 @@ export default function AdminRecherche() {
                     </SelectContent>
                   </Select>
                 </div>
-                {selectedResults.size > 0 && (
-                  <Button size="sm" onClick={handleBulkImport}>
-                    <Download className="h-4 w-4 mr-2" />
-                    {selectedResults.size} ins Kontaktbuch
+                <div className="flex items-center gap-2">
+                  <Button size="sm" variant="outline" onClick={handleExport} disabled={filteredResults.length === 0}>
+                    <FileSpreadsheet className="h-4 w-4 mr-2" />
+                    Export
                   </Button>
-                )}
+                  {selectedResults.size > 0 && (
+                    <Button size="sm" onClick={handleOpenImportPreview}>
+                      <Upload className="h-4 w-4 mr-2" />
+                      {selectedResults.size} importieren…
+                    </Button>
+                  )}
+                </div>
               </div>
 
               {filteredResults.length === 0 ? (
@@ -396,62 +507,214 @@ export default function AdminRecherche() {
                 </div>
               ) : (
                 <ScrollArea className="max-h-[500px]">
-                  <div className="space-y-2">
-                    {filteredResults.map((r) => {
-                      const vs = VALIDATION_STATES[r.validation_state] || VALIDATION_STATES.candidate;
-                      return (
-                        <div
-                          key={r.id}
-                          className={`flex items-start gap-3 p-3 border rounded-lg transition-colors ${
-                            selectedResults.has(r.id) ? 'border-primary bg-primary/5' : 'hover:border-border/80'
-                          }`}
-                        >
-                          <Checkbox
-                            checked={selectedResults.has(r.id)}
-                            onCheckedChange={() => toggleResult(r.id)}
-                            className="mt-1"
-                          />
-                          <div className="flex-1 min-w-0 space-y-1">
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium truncate">{r.company_name || 'Unbekannt'}</span>
-                              {r.category && <Badge variant="outline" className="text-xs">{r.category}</Badge>}
-                              <Badge variant="outline" className={`text-xs ${vs.color}`}>{vs.label}</Badge>
-                            </div>
-                            <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                              {r.contact_person_name && <span className="flex items-center gap-1"><User className="h-3 w-3" />{r.contact_person_name}</span>}
-                              {r.email && <span className="flex items-center gap-1"><Mail className="h-3 w-3" />{r.email}</span>}
-                              {r.phone && <span className="flex items-center gap-1"><Phone className="h-3 w-3" />{r.phone}</span>}
-                              {r.city && <span>{r.city}</span>}
-                              {r.website_url && <span className="flex items-center gap-1"><Globe className="h-3 w-3" />Web</span>}
-                            </div>
-                          </div>
-                          <div className="flex gap-1 shrink-0">
-                            {r.validation_state === 'candidate' && (
-                              <>
-                                <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => handleValidate(r, 'validated')}>
-                                  <CheckCircle2 className="h-3 w-3 mr-1" />OK
-                                </Button>
-                                <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => handleValidate(r, 'rejected')}>
-                                  <XCircle className="h-3 w-3 mr-1" />Nein
-                                </Button>
-                              </>
-                            )}
-                          </div>
-                          <div className="text-xs text-muted-foreground w-8 text-right shrink-0">
-                            {r.confidence_score}%
-                          </div>
-                        </div>
-                      );
-                    })}
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-10">
+                            <Checkbox
+                              checked={selectedResults.size === filteredResults.length && filteredResults.length > 0}
+                              onCheckedChange={toggleAll}
+                            />
+                          </TableHead>
+                          <TableHead className="min-w-[160px]">Firma</TableHead>
+                          <TableHead className="min-w-[100px]">Kategorie</TableHead>
+                          <TableHead className="min-w-[140px]">Kontaktperson</TableHead>
+                          <TableHead className="min-w-[110px]">Rolle</TableHead>
+                          <TableHead className="min-w-[180px]">E-Mail</TableHead>
+                          <TableHead className="min-w-[120px]">Telefon</TableHead>
+                          <TableHead className="min-w-[90px]">Stadt</TableHead>
+                          <TableHead className="min-w-[60px]">PLZ</TableHead>
+                          <TableHead className="w-10">Web</TableHead>
+                          <TableHead className="w-14 text-right">Score</TableHead>
+                          <TableHead className="min-w-[90px]">Status</TableHead>
+                          <TableHead className="w-24">Aktionen</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredResults.map((r) => {
+                          const vs = VALIDATION_STATES[r.validation_state] || VALIDATION_STATES.candidate;
+                          return (
+                            <TableRow key={r.id} className={selectedResults.has(r.id) ? 'bg-primary/5' : ''}>
+                              <TableCell>
+                                <Checkbox
+                                  checked={selectedResults.has(r.id)}
+                                  onCheckedChange={() => toggleResult(r.id)}
+                                />
+                              </TableCell>
+                              <TableCell className="font-medium">{r.company_name || '—'}</TableCell>
+                              <TableCell><span className="text-xs">{r.category || '—'}</span></TableCell>
+                              <TableCell>
+                                {r.contact_person_name ? (
+                                  <span className="flex items-center gap-1 text-sm"><User className="h-3 w-3 text-muted-foreground shrink-0" />{r.contact_person_name}</span>
+                                ) : '—'}
+                              </TableCell>
+                              <TableCell><span className="text-xs text-muted-foreground">{r.contact_person_role || '—'}</span></TableCell>
+                              <TableCell>
+                                {r.email ? (
+                                  <span className="flex items-center gap-1 text-sm"><Mail className="h-3 w-3 text-muted-foreground shrink-0" /><span className="truncate max-w-[150px]">{r.email}</span></span>
+                                ) : <span className="text-muted-foreground text-xs">—</span>}
+                              </TableCell>
+                              <TableCell>
+                                {r.phone ? (
+                                  <span className="flex items-center gap-1 text-sm"><Phone className="h-3 w-3 text-muted-foreground shrink-0" />{r.phone}</span>
+                                ) : '—'}
+                              </TableCell>
+                              <TableCell><span className="text-sm">{r.city || '—'}</span></TableCell>
+                              <TableCell><span className="text-xs">{r.postal_code || '—'}</span></TableCell>
+                              <TableCell>
+                                {r.website_url ? (
+                                  <a href={r.website_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:text-primary/80">
+                                    <Globe className="h-4 w-4" />
+                                  </a>
+                                ) : '—'}
+                              </TableCell>
+                              <TableCell className="text-right font-mono text-sm">{r.confidence_score || 0}%</TableCell>
+                              <TableCell>
+                                <Badge variant="outline" className={`text-xs ${vs.color}`}>{vs.label}</Badge>
+                              </TableCell>
+                              <TableCell>
+                                {r.validation_state === 'candidate' && (
+                                  <div className="flex gap-1">
+                                    <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => handleValidate(r, 'validated')} title="OK">
+                                      <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
+                                    </Button>
+                                    <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => handleValidate(r, 'rejected')} title="Ablehnen">
+                                      <XCircle className="h-3.5 w-3.5 text-red-500" />
+                                    </Button>
+                                  </div>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
                   </div>
                 </ScrollArea>
               )}
             </CardContent>
           </Card>
+
+          {/* Section 4: Import Preview with Dedup */}
+          {showImportPreview && (
+            <Card className="border-primary/30">
+              <CardContent className="p-4 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-medium flex items-center gap-2">
+                    <Upload className="h-4 w-4" />
+                    Import-Vorschau
+                  </h3>
+                  <Button variant="ghost" size="sm" onClick={() => { setShowImportPreview(false); setDupeChecks([]); }}>
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+
+                {isCheckingDupes ? (
+                  <div className="flex items-center justify-center py-6 gap-2 text-muted-foreground">
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                    <span>Duplikat-Prüfung läuft…</span>
+                  </div>
+                ) : (
+                  <>
+                    {/* Summary Badges */}
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <Badge variant="outline" className="text-xs bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300">
+                        <ShieldCheck className="h-3 w-3 mr-1" />
+                        {importStats.newCount} neue Kontakte
+                      </Badge>
+                      <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
+                        <ShieldAlert className="h-3 w-3 mr-1" />
+                        {importStats.dupeCount} bereits vorhanden
+                      </Badge>
+                      <Badge variant="outline" className="text-xs bg-muted text-muted-foreground">
+                        <MinusCircle className="h-3 w-3 mr-1" />
+                        {importStats.noEmailCount} ohne E-Mail
+                      </Badge>
+                    </div>
+
+                    {/* Dedup Detail Table */}
+                    <ScrollArea className="max-h-[250px]">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="min-w-[160px]">Firma</TableHead>
+                            <TableHead className="min-w-[140px]">Kontakt</TableHead>
+                            <TableHead className="min-w-[180px]">E-Mail</TableHead>
+                            <TableHead className="min-w-[100px]">Prüfung</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {dupeChecks.map((check) => {
+                            const r = results.find(res => res.id === check.resultId);
+                            if (!r) return null;
+                            return (
+                              <TableRow key={check.resultId}>
+                                <TableCell className="text-sm">{r.company_name || '—'}</TableCell>
+                                <TableCell className="text-sm">{r.contact_person_name || '—'}</TableCell>
+                                <TableCell className="text-sm">{r.email || '—'}</TableCell>
+                                <TableCell>
+                                  {check.status === 'new' && (
+                                    <Badge variant="outline" className="text-xs bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300">NEU</Badge>
+                                  )}
+                                  {check.status === 'duplicate' && (
+                                    <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">DUPLIKAT</Badge>
+                                  )}
+                                  {check.status === 'no_email' && (
+                                    <Badge variant="outline" className="text-xs bg-muted text-muted-foreground">KEINE EMAIL</Badge>
+                                  )}
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    </ScrollArea>
+
+                    {/* Dupe Policy + Action */}
+                    <div className="flex items-center justify-between flex-wrap gap-3 pt-2 border-t">
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm text-muted-foreground">Duplikate:</span>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant={dupePolicy === 'skip' ? 'default' : 'outline'}
+                            className="h-7 text-xs"
+                            onClick={() => setDupePolicy('skip')}
+                          >
+                            Überspringen
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant={dupePolicy === 'update' ? 'default' : 'outline'}
+                            className="h-7 text-xs"
+                            onClick={() => setDupePolicy('update')}
+                          >
+                            Aktualisieren
+                          </Button>
+                        </div>
+                      </div>
+                      <Button
+                        onClick={handleExecuteImport}
+                        disabled={isImporting || (importStats.newCount === 0 && (importStats.dupeCount === 0 || dupePolicy === 'skip'))}
+                      >
+                        {isImporting ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <Download className="h-4 w-4 mr-2" />
+                        )}
+                        Jetzt importieren ({dupePolicy === 'update' ? importStats.newCount + importStats.dupeCount : importStats.newCount})
+                      </Button>
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          )}
         </div>
       )}
 
-      {/* Empty state when no order selected */}
+      {/* Empty state */}
       {!selectedOrder && orders.length > 0 && (
         <div className="text-center py-12 text-muted-foreground">
           <Zap className="h-12 w-12 mx-auto mb-4 opacity-30" />
