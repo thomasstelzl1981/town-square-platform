@@ -1,0 +1,94 @@
+[
+  {
+    "id": "SIA3-001",
+    "severity": "P3",
+    "type": "cleanup",
+    "zone": "Z2",
+    "area": "router",
+    "title": "Dead msv key in portalModulePageMap",
+    "description": "portalModulePageMap contains 'msv: MSVPage' but no manifest module has base='msv'. MSVPage is a redirect stub to /portal/immobilien/verwaltung. Dead code.",
+    "evidence": [
+      {
+        "command": "lov-search-files: MSVPage in src/router",
+        "output_excerpt": "ManifestRouter.tsx:113 — const MSVPage = React.lazy(() => import('@/pages/portal/MSVPage'));\nManifestRouter.tsx:299 — msv: MSVPage,",
+        "files": ["src/router/ManifestRouter.tsx:113", "src/router/ManifestRouter.tsx:299", "src/pages/portal/MSVPage.tsx"]
+      }
+    ],
+    "impact": "No runtime impact — key is never matched since no module has base='msv'. Pure dead code.",
+    "suspected_root_cause": "MSV module was consolidated into MOD-04 Verwaltung; map entry was not cleaned up.",
+    "fix_plan": {
+      "steps": [
+        "Remove 'msv: MSVPage' from portalModulePageMap in ManifestRouter.tsx",
+        "Remove MSVPage lazy import from ManifestRouter.tsx",
+        "Delete src/pages/portal/MSVPage.tsx"
+      ],
+      "files_to_edit": ["src/router/ManifestRouter.tsx", "src/pages/portal/MSVPage.tsx"],
+      "verification": ["Grep for 'msv' in ManifestRouter.tsx — should return 0 hits", "App builds without error"],
+      "risk": "low"
+    },
+    "status": "new"
+  },
+  {
+    "id": "SIA3-002",
+    "severity": "P3",
+    "type": "drift",
+    "zone": "Z2",
+    "area": "spec",
+    "title": "MOD-10 naming inconsistency: Abrechnung vs Provisionen vs /leads",
+    "description": "Manifest defines MOD-10 name as 'Abrechnung', spec file is 'mod-10_provisionen.md' with title 'Provisionen', and the route base is '/leads'. Three different names for one module.",
+    "evidence": [
+      {
+        "command": "lov-view routesManifest.ts:355-363",
+        "output_excerpt": "MOD-10: { name: 'Abrechnung', base: 'leads', ... tiles: [{ path: 'uebersicht', component: 'ProvisionenUebersicht' }] }",
+        "files": ["src/manifests/routesManifest.ts:355-363"]
+      },
+      {
+        "command": "lov-view spec/current/02_modules/mod-10_provisionen.md",
+        "output_excerpt": "MOD-10 — PROVISIONEN (Commission Management) ... Route-Prefix: /portal/leads",
+        "files": ["spec/current/02_modules/mod-10_provisionen.md:1-8"]
+      }
+    ],
+    "impact": "Confusing for developers. No runtime impact. R2 frozen rule mandates route stays '/leads'.",
+    "suspected_root_cause": "Module was renamed from Leads to Provisionen to Abrechnung across sprints; spec and route not synchronized.",
+    "fix_plan": {
+      "steps": [
+        "Decide canonical name (product decision): 'Abrechnung' (current manifest) recommended",
+        "Rename spec file to mod-10_abrechnung.md and update title",
+        "Update component name ProvisionenUebersicht to AbrechnungUebersicht (optional)"
+      ],
+      "files_to_edit": ["spec/current/02_modules/mod-10_provisionen.md"],
+      "verification": ["Grep MOD-10 across manifest, spec, and component names — all should use same term"],
+      "risk": "low"
+    },
+    "status": "new"
+  },
+  {
+    "id": "SIA3-003",
+    "severity": "P3",
+    "type": "docgap",
+    "zone": "repo",
+    "area": "spec",
+    "title": "Missing optional spec directories (03_actions, 04_workflows, 05_diagrams)",
+    "description": "spec/current/ lacks 03_actions, 04_workflows, and 05_diagrams directories. These are documented as optional in audit policy but referenced in prior audit reports.",
+    "evidence": [
+      {
+        "command": "lov-list-dir spec/current",
+        "output_excerpt": "00_frozen/ 01_platform/ 02_modules/ 06_api_contracts/ 07_storage_boundary/ 08_data_provenance/ 02_zones.md",
+        "files": ["spec/current/"]
+      }
+    ],
+    "impact": "Documentation gap only. Armstrong actions are in armstrongManifest.ts, Golden Paths in src/manifests/goldenPaths/. No implementation risk.",
+    "suspected_root_cause": "Directories were planned but never created; implementation moved to TypeScript manifests instead.",
+    "fix_plan": {
+      "steps": [
+        "Create spec/current/03_actions/ with index referencing armstrongManifest.ts",
+        "Create spec/current/04_workflows/ with index referencing goldenPaths/",
+        "Create spec/current/05_diagrams/ with placeholder"
+      ],
+      "files_to_edit": [],
+      "verification": ["ls spec/current — should show 03/04/05 dirs"],
+      "risk": "low"
+    },
+    "status": "new"
+  }
+]
