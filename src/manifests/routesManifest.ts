@@ -497,7 +497,7 @@ export const zone2Portal: ZoneDefinition = {
       visibility: { default: true, org_types: ["client"] },
       tiles: [
         { path: "anlagen", component: "PVAnlagen", title: "Anlagen", default: true },
-        { path: "monitoring", component: "PVMonitoring", title: "Monitoring" },
+        { path: "enpal", component: "PVEnpal", title: "Enpal" },
         { path: "dokumente", component: "PVDokumente", title: "Dokumente" },
         { path: "einstellungen", component: "PVEinstellungen", title: "Einstellungen" },
       ],
