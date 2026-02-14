@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Sparkles, Play, Loader2, Globe, Database, Search, Brain, ListChecks, FileText, UserPlus } from 'lucide-react';
+import { Sparkles, Play, Loader2, Globe, Database, Search, Brain, ListChecks, FileText, UserPlus, CreditCard } from 'lucide-react';
 import { toast } from 'sonner';
 import { type ResearchOrder, useUpdateResearchOrder, useStartResearchOrder } from '@/hooks/useResearchOrders';
 import { useResearchAI } from '@/hooks/useResearchAI';
@@ -35,6 +35,7 @@ export function ResearchOrderInlineFlow({ order }: Props) {
   const [maxResults, setMaxResults] = useState(String(order.max_results || 25));
   const [costCap, setCostCap] = useState(String(order.cost_cap || 5));
   const [consent, setConsent] = useState(order.consent_confirmed);
+  const [creditConsent, setCreditConsent] = useState(false);
   const [providerPlan, setProviderPlan] = useState<any>(order.provider_plan_json || { firecrawl: true });
 
   const saveDraft = async () => {
@@ -53,6 +54,7 @@ export function ResearchOrderInlineFlow({ order }: Props) {
 
   const handleStart = async () => {
     if (!consent) return toast.error('Bitte bestätige den geschäftlichen Zweck');
+    if (!creditConsent) return toast.error('Bitte bestätige die Credit-Abbuchung');
     if (!intentText.trim()) return toast.error('Bitte Suchintent eingeben');
 
     await saveDraft();
@@ -151,11 +153,11 @@ export function ResearchOrderInlineFlow({ order }: Props) {
         </div>
       </Card>
 
-      {/* Section 2 — Trefferlimit & Kosten */}
+      {/* Section 2 — Trefferlimit & Credits */}
       <Card className="glass-card p-4 md:p-6">
         <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
           <ListChecks className="h-4 w-4" />
-          2. Trefferlimit & Kosten
+          2. Trefferlimit & Credits
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
@@ -173,22 +175,42 @@ export function ResearchOrderInlineFlow({ order }: Props) {
             </Select>
           </div>
           <div>
-            <Label className="text-xs">Kosten-Obergrenze (€)</Label>
-            <Input
-              type="number"
-              value={costCap}
-              onChange={e => setCostCap(e.target.value)}
-              disabled={!isDraft}
-              className="mt-1"
-              min={1}
-              step={1}
-            />
+            <Label className="text-xs">Credits benötigt</Label>
+            <div className="mt-1 h-10 flex items-center px-3 rounded-md border bg-muted/30 text-sm font-medium">
+              {maxResults} Credits (= {(parseInt(maxResults) * 0.50).toFixed(2).replace('.', ',')} €)
+            </div>
           </div>
         </div>
+
+        {/* Billing-Slot (UI-Platzhalter) */}
+        {isDraft && (
+          <div className="mt-4 space-y-3">
+            <div className="p-3 bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-800/40 rounded-lg text-xs space-y-1">
+              <p className="font-medium text-amber-800 dark:text-amber-300 flex items-center gap-1.5">
+                <CreditCard className="h-3.5 w-3.5" />
+                Die Recherche ist kostenpflichtig.
+              </p>
+              <p className="text-amber-700 dark:text-amber-400">
+                1 Credit pro Kontakt wird bei Start abgebucht. Guthaben: 100 Credits
+              </p>
+            </div>
+            <div className="flex items-start gap-2">
+              <Checkbox
+                id="credit-consent"
+                checked={creditConsent}
+                onCheckedChange={v => setCreditConsent(!!v)}
+              />
+              <label htmlFor="credit-consent" className="text-xs text-muted-foreground leading-tight cursor-pointer">
+                Ich bestätige die Credit-Abbuchung von bis zu {maxResults} Credits für diese Recherche.
+              </label>
+            </div>
+          </div>
+        )}
+
         {!isDraft && (
           <div className="mt-3 flex items-center gap-4 text-xs text-muted-foreground">
             <span>Treffer: {order.results_count} / {order.max_results}</span>
-            <span>Kosten: €{Number(order.cost_spent).toFixed(2)} / €{Number(order.cost_cap).toFixed(2)}</span>
+            <span>Credits: {order.results_count} verbraucht</span>
           </div>
         )}
       </Card>
@@ -306,7 +328,7 @@ export function ResearchOrderInlineFlow({ order }: Props) {
               <Button
                 size="sm"
                 onClick={handleStart}
-                disabled={!consent || !intentText.trim() || startOrder.isPending}
+                disabled={!consent || !creditConsent || !intentText.trim() || startOrder.isPending}
               >
                 {startOrder.isPending ? (
                   <Loader2 className="h-4 w-4 mr-1 animate-spin" />
