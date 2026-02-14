@@ -6,16 +6,13 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
 import { FormSection, FormInput, FormRow } from '@/components/shared';
 import { RecordCard } from '@/components/shared/RecordCard';
 import { DESIGN, RECORD_CARD } from '@/config/designManifest';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { FileUploader } from '@/components/shared/FileUploader';
-import { Loader2, Save, User, Phone, MapPin, FileText, PenLine, Sparkles, Building2, MessageSquare, Bot, Mail, Copy } from 'lucide-react';
+import { Loader2, Save, User, Phone, MapPin, FileText, PenLine, Sparkles, Building2, Mail } from 'lucide-react';
 import { toast } from 'sonner';
 import { OutboundIdentityWidget } from '@/components/portal/OutboundIdentityWidget';
 import { cn } from '@/lib/utils';
@@ -417,13 +414,6 @@ export function ProfilTab() {
         {/* ── Outbound-Kennung (rechte Spalte wenn RecordCard geschlossen) ── */}
         {!isRecordOpen && <OutboundIdentityWidget />}
 
-        {/* ── WhatsApp Business ── */}
-        {isRecordOpen && (
-          <div className="md:col-span-2">
-            <WhatsAppWidget userId={user?.id} isDevelopmentMode={isDevelopmentMode} />
-          </div>
-        )}
-        {!isRecordOpen && <WhatsAppWidget userId={user?.id} isDevelopmentMode={isDevelopmentMode} />}
       </div>
 
       {/* ── Sticky Save Button ── */}
@@ -460,123 +450,3 @@ export function ProfilTab() {
   );
 }
 
-// =============================================================================
-// WhatsApp Widget
-// =============================================================================
-function WhatsAppWidget({ userId, isDevelopmentMode }: { userId?: string; isDevelopmentMode: boolean }) {
-  const queryClient = useQueryClient();
-
-  const { data: waSettings } = useQuery({
-    queryKey: ['whatsapp-user-settings', userId],
-    queryFn: async () => {
-      if (!userId) return null;
-      const { data, error } = await supabase.from('whatsapp_user_settings').select('*').eq('user_id', userId).maybeSingle();
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!userId,
-  });
-
-  const { data: waAccount } = useQuery({
-    queryKey: ['whatsapp-account'],
-    queryFn: async () => {
-      const { data, error } = await supabase.from('whatsapp_accounts').select('system_phone_e164, status').maybeSingle();
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!userId,
-  });
-
-  const [ownerControlE164, setOwnerControlE164] = React.useState('');
-  const [autoReplyEnabled, setAutoReplyEnabled] = React.useState(false);
-  const [autoReplyText, setAutoReplyText] = React.useState('Vielen Dank für Ihre Nachricht. Wir melden uns in Kürze.');
-
-  React.useEffect(() => {
-    if (waSettings) {
-      setOwnerControlE164(waSettings.owner_control_e164 || '');
-      setAutoReplyEnabled(waSettings.auto_reply_enabled || false);
-      setAutoReplyText(waSettings.auto_reply_text || 'Vielen Dank für Ihre Nachricht. Wir melden uns in Kürze.');
-    }
-  }, [waSettings]);
-
-  const saveWaSettings = useMutation({
-    mutationFn: async () => {
-      if (!userId) throw new Error('Not authenticated');
-      const { data: tenantId } = await supabase.rpc('get_user_tenant_id');
-      if (!tenantId) throw new Error('No organization found');
-      const { error } = await supabase.from('whatsapp_user_settings').upsert({
-        tenant_id: tenantId, user_id: userId,
-        owner_control_e164: ownerControlE164 || null,
-        auto_reply_enabled: autoReplyEnabled, auto_reply_text: autoReplyText,
-      }, { onConflict: 'tenant_id,user_id' });
-      if (error) throw error;
-    },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['whatsapp-user-settings'] }); toast.success('WhatsApp gespeichert'); },
-    onError: (error) => { toast.error('Fehler: ' + (error as Error).message); },
-  });
-
-  const statusColor = waAccount?.status === 'connected' ? 'text-green-600' :
-    waAccount?.status === 'error' ? 'text-destructive' : 'text-yellow-600';
-  const statusLabel = waAccount?.status === 'connected' ? 'Verbunden' :
-    waAccount?.status === 'error' ? 'Fehler' : 'Ausstehend';
-
-  return (
-    <ProfileWidget icon={MessageSquare} title="WhatsApp Business" description="Verbindung und Armstrong-Steuerung"
-      className="lg:col-span-2">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Left: Connection */}
-        <div className="space-y-3">
-          {waAccount ? (
-            <>
-              <div className="flex items-center gap-2">
-                <Badge variant="outline" className={statusColor}>● {statusLabel}</Badge>
-              </div>
-              <FormSection>
-                <FormInput label="Systemnummer" name="system_phone" value={waAccount.system_phone_e164} disabled
-                  hint="WhatsApp Business Nummer" />
-              </FormSection>
-            </>
-          ) : (
-            <div className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
-              <MessageSquare className="h-8 w-8 mx-auto mb-2 opacity-40" />
-              <p>Noch nicht konfiguriert</p>
-            </div>
-          )}
-        </div>
-
-        {/* Right: Settings */}
-        <div className="space-y-3">
-          <FormSection>
-            <FormInput label="Owner-Control Nummer" name="owner_control_e164" type="tel"
-              value={ownerControlE164} onChange={e => setOwnerControlE164(e.target.value)}
-              placeholder="+49 170 1234567" hint="Für Armstrong-Befehle via WhatsApp" />
-          </FormSection>
-          <div className="flex items-start gap-2 p-2.5 rounded-lg bg-primary/5 border border-primary/10">
-            <Bot className="h-3.5 w-3.5 text-primary mt-0.5 flex-shrink-0" />
-            <p className="text-xs text-muted-foreground">
-              Armstrong reagiert <strong>nur</strong> auf diese Nummer.
-            </p>
-          </div>
-          <div className="flex items-center justify-between pt-2 border-t border-border/30">
-            <div>
-              <Label className="text-xs font-medium">Auto-Reply</Label>
-              <p className="text-xs text-muted-foreground">Automatische Antwort</p>
-            </div>
-            <Switch checked={autoReplyEnabled} onCheckedChange={setAutoReplyEnabled} />
-          </div>
-          {autoReplyEnabled && (
-            <Textarea value={autoReplyText} onChange={e => setAutoReplyText(e.target.value)}
-              placeholder="Vielen Dank..." rows={2} className="text-xs" />
-          )}
-          <div className="flex justify-end">
-            <Button type="button" variant="outline" size="sm" onClick={() => saveWaSettings.mutate()}
-              disabled={saveWaSettings.isPending} className="gap-1.5">
-              {saveWaSettings.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
-              Speichern
-            </Button>
-          </div>
-        </div>
-      </div>
-    </ProfileWidget>
-  );
-}
