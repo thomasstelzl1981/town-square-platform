@@ -344,11 +344,11 @@ export const GOLDEN_PATH_PROCESSES: GoldenPathProcess[] = [
     phase: 'done',
   },
 
-  // ─── MOD-12: Akquise Manager ────────────────────────────
+  // ─── MOD-12: Akquisemanager ─────────────────────────────
   {
     id: 'GP-AKQUISE-MANDAT',
     moduleCode: 'MOD-12',
-    moduleName: 'Akquise Manager',
+    moduleName: 'Akquisemanager',
     tilePath: '/portal/akquise-manager',
     processName: 'Akquisemandat',
     description: 'Suchmandante von Investoren als Akquisemanager bearbeiten.',
@@ -385,11 +385,11 @@ export const GOLDEN_PATH_PROCESSES: GoldenPathProcess[] = [
     phase: 'done',
   },
 
-  // ─── MOD-13: Projekte ───────────────────────────────────
+  // ─── MOD-13: Projektmanager ─────────────────────────────
   {
     id: 'GP-PROJEKT',
     moduleCode: 'MOD-13',
-    moduleName: 'Projekte',
+    moduleName: 'Projektmanager',
     tilePath: '/portal/projekte',
     processName: 'Projektanlage',
     description: 'Bauprojekte anlegen, Einheiten verwalten und im Vertrieb veröffentlichen.',

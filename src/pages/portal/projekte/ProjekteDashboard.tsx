@@ -164,7 +164,7 @@ export default function ProjekteDashboard() {
 
   return (
     <PageShell>
-      <ModulePageHeader title="PROJEKTE" />
+      <ModulePageHeader title="PROJEKTMANAGER" />
 
       {/* ═══ W1: So funktioniert's ═══ */}
       <Card className="glass-card shadow-card overflow-hidden">

@@ -131,7 +131,7 @@ export default function AkquiseDashboard() {
   return (
     <PageShell>
       <ModulePageHeader 
-        title="AKQUISE-MANAGER" 
+        title="AKQUISEMANAGER" 
         description="Ihre Akquise-Mandate im Überblick"
         actions={
           <Button onClick={() => navigate('/portal/akquise-manager/mandate')} size="sm">

@@ -76,7 +76,7 @@ export default function ProvisionenUebersicht() {
   return (
     <PageShell>
       <ModulePageHeader 
-        title="Provisionen" 
+        title="LEADMANAGER" 
         description="Abrechnungen und Zahlungsübersicht" 
       />
 
