@@ -237,10 +237,12 @@ export default function WBDashboard() {
                 <DesignSection website={activeWebsite} isDemo={isDemo} />
               </div>
 
-              {/* Full-size Live Preview */}
+              {/* Full-size Editable Live Preview */}
               <div className={cn(CARD.CONTENT, 'space-y-3')}>
                 <div className="flex items-center justify-between">
-                  <h3 className={TYPOGRAPHY.CARD_TITLE}>Live-Vorschau</h3>
+                  <h3 className={TYPOGRAPHY.CARD_TITLE}>
+                    {isDemo ? 'Live-Vorschau' : '✏️ Live-Vorschau — Klicken Sie auf Text oder Bilder zum Bearbeiten'}
+                  </h3>
                   {!isDemo && (
                     <Button size="sm" variant="outline" onClick={() => window.open(`/portal/website-builder/${activeWebsite.id}/editor`, '_self')}>
                       <Sparkles className="h-4 w-4 mr-1" /> Split-View Editor
@@ -251,7 +253,7 @@ export default function WBDashboard() {
                   {isDemo ? (
                     <SectionRenderer sections={DEMO_SECTIONS} branding={DEMO_BRANDING} />
                   ) : (
-                    <RealSectionPreview websiteId={activeWebsite.id} branding={activeWebsite.branding_json} />
+                    <EditablePreview websiteId={activeWebsite.id} branding={activeWebsite.branding_json} />
                   )}
                 </div>
               </div>
@@ -773,6 +775,38 @@ function RealSectionPreview({ websiteId, branding }: { websiteId: string; brandi
     return <div className="flex items-center justify-center h-[300px] text-muted-foreground"><p className="text-sm">Noch keine Sections. Nutzen Sie die KI-Generierung oder den Section-Editor.</p></div>;
   }
   return <SectionRenderer sections={mapped} branding={branding} />;
+}
+
+/** Editable preview — inline editing directly in the rendered website */
+function EditablePreview({ websiteId, branding }: { websiteId: string; branding: any }) {
+  const qc = useQueryClient();
+  const { data: page } = useWebsitePage(websiteId);
+  const { data: sections, updateSection } = useSections(page?.id);
+  const mapped = (sections || []).map((s: any) => ({
+    id: s.id, section_type: s.section_type, sort_order: s.sort_order,
+    content_json: s.content_json || {}, design_json: s.design_json || {}, is_visible: s.is_visible ?? true,
+  }));
+
+  const handleContentChange = (sectionId: string, field: string, value: any) => {
+    const section = sections?.find((s: any) => s.id === sectionId);
+    if (!section) return;
+    // For nested fields like 'items', replace entirely; for simple fields, merge
+    const newContent = { ...section.content_json, [field]: value };
+    updateSection.mutate({ id: sectionId, content_json: newContent });
+  };
+
+  if (mapped.length === 0) {
+    return <div className="flex items-center justify-center h-[300px] text-muted-foreground"><p className="text-sm">Noch keine Sections. Nutzen Sie die KI-Generierung oder den Section-Editor.</p></div>;
+  }
+
+  return (
+    <SectionRenderer
+      sections={mapped}
+      branding={branding}
+      editable
+      onSectionContentChange={handleContentChange}
+    />
+  );
 }
 
 function DesignSection({ website, isDemo }: { website: any; isDemo: boolean }) {
