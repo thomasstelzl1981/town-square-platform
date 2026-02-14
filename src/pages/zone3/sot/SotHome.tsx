@@ -1,11 +1,23 @@
 /**
- * SoT Home — Marketplace (Investment Engine + Werbeinhalt + Demo Login)
+ * SoT Home — Portal-Clone Startseite
+ * SubBar + Welcome on Board + Widget-Kacheln + Investment Engine (3-col breit)
  */
 import { Link } from 'react-router-dom';
-import { ArrowRight, Check, Search, Upload, Calculator } from 'lucide-react';
-import { useSotScrollAnimation } from '@/hooks/useSotScrollAnimation';
-import { SotDemoLogin } from '@/components/zone3/sot/SotDemoLogin';
-import { useSotTransition } from '@/components/zone3/sot/SotLoginTransition';
+import { Search, Upload, Calculator, Building2, Briefcase, Zap, Users, ArrowRight } from 'lucide-react';
+import { WidgetGrid } from '@/components/shared/WidgetGrid';
+import { WidgetCell } from '@/components/shared/WidgetCell';
+import { Card } from '@/components/ui/card';
+import { CONTAINER, HEADER } from '@/config/designManifest';
+import { cn } from '@/lib/utils';
+
+const subBarItems = [
+  { label: 'Real Estate', href: '/website/sot/real-estate' },
+  { label: 'Capital', href: '/website/sot/capital' },
+  { label: 'Projects', href: '/website/sot/projects' },
+  { label: 'Mgmt', href: '/website/sot/mgmt' },
+  { label: 'Energy', href: '/website/sot/energy' },
+  { label: 'Career', href: '/website/sot/career' },
+];
 
 const threeWays = [
   {
@@ -31,117 +43,77 @@ const threeWays = [
   },
 ];
 
-const trustBadges = [
-  'DSGVO-konform',
-  'Deutsche Server',
-  'Verschlüsselte Daten',
-  'KI-gestützt',
-];
-
 export default function SotHome() {
-  const { ref: waysRef, isVisible: waysVisible } = useSotScrollAnimation();
-  const { triggerTransition } = useSotTransition();
-
   return (
-    <div className="space-y-16 lg:space-y-24">
-      {/* Hero */}
-      <section className="pt-8 lg:pt-16 text-center">
-        <span className="sot-label" style={{ color: 'hsl(var(--z3-accent))' }}>
-          Marketplace
-        </span>
-        <h1 className="sot-display mt-4">Investments finden.</h1>
-        <p className="sot-subheadline mt-4 max-w-2xl mx-auto">
-          Die Plattform für Kapitalanlage, Projekte und Finanzierung.
-        </p>
+    <div className="flex flex-col h-full">
+      {/* SubBar — Pill Tabs */}
+      <div className="flex items-center justify-center gap-1 px-4 py-1 overflow-x-auto scrollbar-none bg-background/50">
+        {subBarItems.map((item) => (
+          <Link
+            key={item.label}
+            to={item.href}
+            className="px-3 py-1.5 rounded-xl text-sm uppercase tracking-wide whitespace-nowrap nav-tab-glass text-muted-foreground hover:text-foreground"
+          >
+            {item.label}
+          </Link>
+        ))}
+      </div>
 
-        {/* Investment Engine Placeholder */}
-        <div className="mt-10 max-w-3xl mx-auto">
-          <div className="sot-glass-card p-6 lg:p-8 rounded-3xl">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-              {['Ort', 'Budget', 'Rendite', 'Objektart'].map((field) => (
-                <div key={field} className="text-left">
-                  <label className="text-xs font-medium mb-1.5 block" style={{ color: 'hsl(var(--z3-muted-foreground))' }}>
-                    {field}
-                  </label>
-                  <div 
-                    className="h-10 rounded-lg px-3 flex items-center text-sm"
-                    style={{ 
-                      backgroundColor: 'hsl(var(--z3-background)/0.5)',
-                      border: '1px solid hsl(var(--z3-border)/0.5)',
-                      color: 'hsl(var(--z3-muted-foreground))'
-                    }}
-                  >
-                    Alle
-                  </div>
+      {/* Scrollable Content */}
+      <div className={cn('flex-1 overflow-y-auto', CONTAINER.PADDING)}>
+        <div className={cn(CONTAINER.MAX_WIDTH, 'mx-auto', CONTAINER.SPACING)}>
+          {/* Welcome Headline */}
+          <h1 className={HEADER.PAGE_TITLE}>Welcome on Board</h1>
+
+          {/* Investment Engine — spans 3 widget columns */}
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 md:gap-6">
+            <div className="lg:col-span-3">
+              <Card className="glass-card border-primary/20 p-6 h-full">
+                <h2 className="text-base font-semibold mb-4">Investment Engine</h2>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                  {['Ort', 'Budget', 'Rendite', 'Objektart'].map((field) => (
+                    <div key={field} className="text-left">
+                      <label className="text-sm text-muted-foreground mb-1.5 block">
+                        {field}
+                      </label>
+                      <div className="h-10 rounded-lg px-3 flex items-center text-sm bg-muted/30 border border-border/50 text-muted-foreground">
+                        Alle
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
+                <button className="w-full h-10 rounded-xl bg-primary text-primary-foreground font-medium flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors">
+                  <Search className="w-4 h-4" />
+                  Investments durchsuchen
+                </button>
+              </Card>
             </div>
-            <button className="sot-btn-primary w-full justify-center">
-              <Search className="w-4 h-4" />
-              Investments durchsuchen
-            </button>
           </div>
-        </div>
-      </section>
 
-      {/* Drei Wege */}
-      <section>
-        <div className="text-center mb-10">
-          <span className="sot-label" style={{ color: 'hsl(var(--z3-accent))' }}>
-            Drei Wege
-          </span>
-          <h2 className="sot-headline mt-4">So starten Sie.</h2>
+          {/* Widget Tiles — square, blue border, dashboard style */}
+          <WidgetGrid variant="widget">
+            {threeWays.map((item) => (
+              <WidgetCell key={item.title}>
+                <Link to={item.href} className="block h-full">
+                  <Card className="glass-card border-primary/30 hover:border-primary/60 transition-all h-full p-6 flex flex-col justify-between group cursor-pointer">
+                    <div>
+                      <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 mb-4">
+                        <item.icon className="w-5 h-5 text-primary" />
+                      </div>
+                      <h3 className="text-base font-semibold">{item.title}</h3>
+                      <p className="text-sm text-muted-foreground mt-2">{item.description}</p>
+                    </div>
+                    <span className="text-sm font-semibold text-primary inline-flex items-center gap-1.5 group-hover:gap-2.5 transition-all mt-4">
+                      {item.cta}
+                      <ArrowRight className="w-4 h-4" />
+                    </span>
+                  </Card>
+                </Link>
+              </WidgetCell>
+            ))}
+          </WidgetGrid>
         </div>
-
-        <div 
-          ref={waysRef}
-          className="grid sm:grid-cols-3 gap-4 lg:gap-6"
-        >
-          {threeWays.map((item, index) => (
-            <Link
-              key={item.title}
-              to={item.href}
-              className={`sot-glass-card p-6 sot-fade-in group ${waysVisible ? 'visible' : ''}`}
-              style={{ transitionDelay: `${index * 100}ms` }}
-            >
-              <div 
-                className="w-12 h-12 rounded-xl mb-4 flex items-center justify-center"
-                style={{ backgroundColor: 'hsl(var(--z3-accent)/0.1)' }}
-              >
-                <item.icon className="w-6 h-6" style={{ color: 'hsl(var(--z3-accent))' }} />
-              </div>
-              <h3 className="font-bold mb-2">{item.title}</h3>
-              <p className="text-sm mb-4" style={{ color: 'hsl(var(--z3-muted-foreground))' }}>
-                {item.description}
-              </p>
-              <span className="text-sm font-semibold inline-flex items-center gap-1.5 group-hover:gap-2.5 transition-all" style={{ color: 'hsl(var(--z3-accent))' }}>
-                {item.cta}
-                <ArrowRight className="w-4 h-4" />
-              </span>
-            </Link>
-          ))}
-        </div>
-      </section>
-
-      {/* Demo Login — "Testen Sie unser System" */}
-      <section>
-        <SotDemoLogin onLoginSuccess={triggerTransition} />
-      </section>
-
-      {/* Trust */}
-      <section 
-        className="py-8 rounded-2xl"
-        style={{ backgroundColor: 'hsl(var(--z3-card)/0.5)' }}
-      >
-        <div className="flex flex-wrap items-center justify-center gap-6 lg:gap-12">
-          {trustBadges.map((badge) => (
-            <div key={badge} className="flex items-center gap-2">
-              <Check className="w-4 h-4" style={{ color: 'hsl(var(--z3-accent))' }} />
-              <span className="text-sm font-medium">{badge}</span>
-            </div>
-          ))}
-        </div>
-      </section>
+      </div>
     </div>
   );
 }
