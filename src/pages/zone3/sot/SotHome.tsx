@@ -1,333 +1,142 @@
 /**
- * SoT Home — Private Finanz- & Immobilien-Management-Plattform
- * KI-gestütztes Vermögensmanagement
+ * SoT Home — Marketplace (Investment Engine + Suchergebnisse)
+ * H1: "Investments finden." — Die Startseite IST der Marketplace.
  */
 import { Link } from 'react-router-dom';
-import { ArrowRight, Check, Building2, Sparkles, FolderOpen, AlertCircle, Clock, FileQuestion, Calculator, Users, TrendingUp, Wallet, Shield } from 'lucide-react';
-import { SotHeroSection, SotStats, SotModuleShowcase, SotCTA } from '@/components/zone3/sot';
+import { ArrowRight, Check, Search, Upload, Calculator } from 'lucide-react';
 import { useSotScrollAnimation } from '@/hooks/useSotScrollAnimation';
-import { getFeaturedModules, getModuleCount } from '@/data/sotWebsiteModules';
 
-const painPoints = [
+const threeWays = [
   {
-    icon: Clock,
-    problem: 'Stunden für Papierkram',
-    solution: 'KI-Assistent erledigt Korrespondenz in Sekunden.',
+    icon: Search,
+    title: 'Investment finden',
+    description: 'Durchsuchen Sie den Marktplatz nach renditestarken Kapitalanlagen.',
+    cta: 'Suche starten',
+    href: '/website/sot/capital',
   },
   {
-    icon: FileQuestion,
-    problem: 'Dokumente nicht auffindbar',
-    solution: 'Volltextsuche und intelligente Kategorisierung.',
+    icon: Upload,
+    title: 'Objekt einreichen',
+    description: 'Laden Sie Ihr Exposé hoch und starten Sie den Vertrieb.',
+    cta: 'Einreichen',
+    href: '/website/sot/projects',
   },
   {
-    icon: TrendingUp,
-    problem: 'Kein Vermögensüberblick',
-    solution: 'Alle Assets, Finanzen und Projekte an einem Ort.',
-  },
-  {
-    icon: Users,
-    problem: 'Kontakte überall verstreut',
-    solution: 'Ein System — synchronisiert mit Gmail & Outlook.',
+    icon: Calculator,
+    title: 'Finanzierung starten',
+    description: 'Berechnen Sie Ihre Finanzierung und stellen Sie direkt eine Anfrage.',
+    cta: 'Berechnen',
+    href: '/website/sot/capital',
   },
 ];
 
-const platformHighlights = [
-  {
-    icon: Sparkles,
-    title: 'KI-Assistenz',
-    description: 'Armstrong schreibt Briefe, beantwortet Fragen und erledigt Recherchen.',
-  },
-  {
-    icon: Building2,
-    title: 'Immobilien-Management',
-    description: 'Portfolio, Mietverwaltung, Projekte — alles digital dokumentiert.',
-  },
-  {
-    icon: Wallet,
-    title: 'Finanzübersicht',
-    description: 'Finanzierung, Buchhaltung, Cashflow — Ihr Vermögen im Blick.',
-  },
-  {
-    icon: Shield,
-    title: 'DSGVO-konform',
-    description: 'Deutsche Server, verschlüsselte Daten, regelmäßige Backups.',
-  },
-];
-
-const trustedFeatures = [
+const trustBadges = [
   'DSGVO-konform',
   'Deutsche Server',
   'Verschlüsselte Daten',
-  'Regelmäßige Backups',
+  'KI-gestützt',
 ];
 
 export default function SotHome() {
-  const { ref: problemsRef, isVisible: problemsVisible } = useSotScrollAnimation();
-  const { ref: highlightsRef, isVisible: highlightsVisible } = useSotScrollAnimation();
-  const { ref: featuredRef, isVisible: featuredVisible } = useSotScrollAnimation();
-  const moduleCount = getModuleCount();
+  const { ref: waysRef, isVisible: waysVisible } = useSotScrollAnimation();
 
   return (
-    <div>
-      {/* Hero Section */}
-      <SotHeroSection
-        title="Vermögen managen. Mit KI-Unterstützung."
-        subtitle="Die private Finanz- und Immobilien-Plattform für Selbstständige, Vermieter und Unternehmer. Dokumente, Objekte, Finanzen — alles an einem Ort. Mit Armstrong, Ihrem persönlichen KI-Assistenten."
-        showDemo={true}
-      />
+    <div className="space-y-16 lg:space-y-24">
+      {/* Hero */}
+      <section className="pt-8 lg:pt-16 text-center">
+        <span className="sot-label" style={{ color: 'hsl(var(--z3-accent))' }}>
+          Marketplace
+        </span>
+        <h1 className="sot-display mt-4">Investments finden.</h1>
+        <p className="sot-subheadline mt-4 max-w-2xl mx-auto">
+          Die Plattform für Kapitalanlage, Projekte und Finanzierung.
+        </p>
 
-      {/* Stats Section */}
-      <SotStats />
-
-      {/* Platform Highlights */}
-      <section className="py-20 lg:py-28">
-        <div className="zone3-container">
-          <div className="text-center mb-12 lg:mb-16">
-            <span className="sot-label" style={{ color: 'hsl(var(--z3-accent))' }}>
-              Was ist System of a Town?
-            </span>
-            <h2 className="sot-headline mt-4">Mehr als eine Immobiliensoftware.</h2>
-            <p className="sot-subheadline mt-4 max-w-3xl mx-auto">
-              Eine vollständige Plattform für Ihr privates Vermögensmanagement — mit KI-Office, 
-              Dokumenten-Management, Immobilienverwaltung und Finanzübersicht.
-            </p>
-          </div>
-
+        {/* Investment Engine Placeholder — will be connected in Phase 2 */}
+        <div className="mt-10 max-w-3xl mx-auto">
           <div 
-            ref={highlightsRef}
-            className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6"
+            className="sot-glass-card p-6 lg:p-8 rounded-3xl"
           >
-            {platformHighlights.map((item, index) => (
-              <div
-                key={item.title}
-                className={`sot-glass-card p-6 text-center sot-fade-in ${highlightsVisible ? 'visible' : ''}`}
-                style={{ transitionDelay: `${index * 100}ms` }}
-              >
-                <div 
-                  className="w-14 h-14 rounded-2xl mx-auto mb-4 flex items-center justify-center"
-                  style={{ backgroundColor: 'hsl(var(--z3-accent) / 0.1)' }}
-                >
-                  <item.icon className="w-7 h-7" style={{ color: 'hsl(var(--z3-accent))' }} />
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+              {['Ort', 'Budget', 'Rendite', 'Objektart'].map((field) => (
+                <div key={field} className="text-left">
+                  <label className="text-xs font-medium mb-1.5 block" style={{ color: 'hsl(var(--z3-muted-foreground))' }}>
+                    {field}
+                  </label>
+                  <div 
+                    className="h-10 rounded-lg px-3 flex items-center text-sm"
+                    style={{ 
+                      backgroundColor: 'hsl(var(--z3-background)/0.5)',
+                      border: '1px solid hsl(var(--z3-border)/0.5)',
+                      color: 'hsl(var(--z3-muted-foreground))'
+                    }}
+                  >
+                    Alle
+                  </div>
                 </div>
-                <h3 className="font-bold mb-2">{item.title}</h3>
-                <p className="text-sm" style={{ color: 'hsl(var(--z3-muted-foreground))' }}>
-                  {item.description}
-                </p>
-              </div>
-            ))}
+              ))}
+            </div>
+            <button className="sot-btn-primary w-full justify-center">
+              <Search className="w-4 h-4" />
+              Investments durchsuchen
+            </button>
           </div>
         </div>
       </section>
 
-      {/* Divider */}
-      <div className="zone3-container">
-        <div className="sot-divider" />
-      </div>
-
-      {/* Problem → Solution Section */}
-      <section className="py-20 lg:py-28">
-        <div className="zone3-container">
-          <div className="text-center mb-12 lg:mb-16">
-            <span className="sot-label" style={{ color: 'hsl(var(--z3-accent))' }}>
-              Das kennen Sie
-            </span>
-            <h2 className="sot-headline mt-4">Probleme, die wir lösen.</h2>
-            <p className="sot-subheadline mt-4 max-w-2xl mx-auto">
-              Zeitfresser, die jeder kennt. Wir haben sie automatisiert.
-            </p>
-          </div>
-
-          <div 
-            ref={problemsRef}
-            className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6"
-          >
-            {painPoints.map((item, index) => (
-              <div
-                key={item.problem}
-                className={`sot-glass-card p-6 sot-fade-in ${problemsVisible ? 'visible' : ''}`}
-                style={{ transitionDelay: `${index * 100}ms` }}
-              >
-                <div 
-                  className="w-12 h-12 rounded-xl mb-4 flex items-center justify-center"
-                  style={{ backgroundColor: 'hsl(var(--z3-accent) / 0.1)' }}
-                >
-                  <item.icon className="w-6 h-6" style={{ color: 'hsl(var(--z3-accent))' }} />
-                </div>
-                
-                <div className="flex items-center gap-2 mb-2">
-                  <AlertCircle className="w-4 h-4 flex-shrink-0" style={{ color: 'hsl(0 70% 60%)' }} />
-                  <span className="text-sm font-medium line-through" style={{ color: 'hsl(0 70% 60%)' }}>{item.problem}</span>
-                </div>
-                
-                <p className="text-sm" style={{ color: 'hsl(var(--z3-foreground))' }}>
-                  <Check className="w-4 h-4 inline mr-1.5" style={{ color: 'hsl(var(--z3-accent))' }} />
-                  {item.solution}
-                </p>
-              </div>
-            ))}
-          </div>
+      {/* Drei Wege */}
+      <section>
+        <div className="text-center mb-10">
+          <span className="sot-label" style={{ color: 'hsl(var(--z3-accent))' }}>
+            Drei Wege
+          </span>
+          <h2 className="sot-headline mt-4">So starten Sie.</h2>
         </div>
-      </section>
 
-      {/* Divider */}
-      <div className="zone3-container">
-        <div className="sot-divider" />
-      </div>
-
-      {/* Armstrong Highlight */}
-      <section className="py-20 lg:py-28">
-        <div className="zone3-container">
-          <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
-            <div>
-              <span className="sot-label mb-4 inline-block" style={{ color: 'hsl(var(--z3-accent))' }}>
-                Ihr KI-Assistent
-              </span>
-              <h2 className="sot-headline mb-6">
-                Lernen Sie Armstrong kennen.
-              </h2>
-              <p className="text-base lg:text-lg mb-8" style={{ color: 'hsl(var(--z3-muted-foreground))' }}>
-                Armstrong schreibt Ihre Korrespondenz, beantwortet Fragen zu Finanzen und Recht, 
-                recherchiert Marktdaten und erstellt professionelle Dokumente. Angetrieben von 
-                den besten KI-Modellen der Welt.
+        <div 
+          ref={waysRef}
+          className="grid sm:grid-cols-3 gap-4 lg:gap-6"
+        >
+          {threeWays.map((item, index) => (
+            <Link
+              key={item.title}
+              to={item.href}
+              className={`sot-glass-card p-6 sot-fade-in group ${waysVisible ? 'visible' : ''}`}
+              style={{ transitionDelay: `${index * 100}ms` }}
+            >
+              <div 
+                className="w-12 h-12 rounded-xl mb-4 flex items-center justify-center"
+                style={{ backgroundColor: 'hsl(var(--z3-accent)/0.1)' }}
+              >
+                <item.icon className="w-6 h-6" style={{ color: 'hsl(var(--z3-accent))' }} />
+              </div>
+              <h3 className="font-bold mb-2">{item.title}</h3>
+              <p className="text-sm mb-4" style={{ color: 'hsl(var(--z3-muted-foreground))' }}>
+                {item.description}
               </p>
-              
-              <ul className="space-y-3 lg:space-y-4 mb-8">
-                {[
-                  'E-Mails und Briefe in Sekunden generieren',
-                  'Dokumente analysieren und zusammenfassen',
-                  'Recherche mit aktuellen Daten',
-                  'Berechnungen für Rendite, Finanzierung, AfA',
-                ].map((feature) => (
-                  <li key={feature} className="flex items-center gap-3">
-                    <div 
-                      className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0"
-                      style={{ backgroundColor: 'hsl(var(--z3-accent) / 0.1)' }}
-                    >
-                      <Check className="w-3.5 h-3.5" style={{ color: 'hsl(var(--z3-accent))' }} />
-                    </div>
-                    <span className="text-sm lg:text-base">{feature}</span>
-                  </li>
-                ))}
-              </ul>
-              
-              <Link to="/website/sot/module" className="sot-btn-primary">
-                Alle Funktionen entdecken
+              <span className="text-sm font-semibold inline-flex items-center gap-1.5 group-hover:gap-2.5 transition-all" style={{ color: 'hsl(var(--z3-accent))' }}>
+                {item.cta}
                 <ArrowRight className="w-4 h-4" />
-              </Link>
-            </div>
-            
-            {/* Armstrong Visual */}
-            <div className="relative">
-              <div 
-                className="sot-glass-card p-6 lg:p-8 rounded-3xl"
-                style={{ 
-                  background: 'linear-gradient(135deg, hsl(var(--z3-card)) 0%, hsl(var(--z3-secondary)) 100%)',
-                }}
-              >
-                <div className="flex items-start gap-4 mb-6">
-                  <div 
-                    className="w-12 h-12 lg:w-14 lg:h-14 rounded-2xl flex items-center justify-center flex-shrink-0"
-                    style={{ backgroundColor: 'hsl(var(--z3-accent) / 0.15)' }}
-                  >
-                    <Sparkles className="w-6 h-6 lg:w-7 lg:h-7" style={{ color: 'hsl(var(--z3-accent))' }} />
-                  </div>
-                  <div>
-                    <h4 className="font-bold mb-1">Armstrong</h4>
-                    <p className="text-sm" style={{ color: 'hsl(var(--z3-muted-foreground))' }}>
-                      KI-Assistent
-                    </p>
-                  </div>
-                </div>
-                
-                <div className="space-y-4">
-                  <div 
-                    className="p-4 rounded-xl"
-                    style={{ backgroundColor: 'hsl(var(--z3-background) / 0.5)' }}
-                  >
-                    <p className="text-sm font-medium mb-2">Sie:</p>
-                    <p className="text-sm" style={{ color: 'hsl(var(--z3-muted-foreground))' }}>
-                      "Erstelle mir einen Überblick über meine Mieteinnahmen und offenen Positionen."
-                    </p>
-                  </div>
-                  
-                  <div 
-                    className="p-4 rounded-xl"
-                    style={{ backgroundColor: 'hsl(var(--z3-accent) / 0.1)' }}
-                  >
-                    <p className="text-sm font-medium mb-2" style={{ color: 'hsl(var(--z3-accent))' }}>Armstrong:</p>
-                    <p className="text-sm" style={{ color: 'hsl(var(--z3-muted-foreground))' }}>
-                      "Basierend auf Ihren 3 Objekten mit 8 Einheiten: Aktuelle Monatsmiete 6.240€, davon 5.890€ eingegangen. Offene Position: Müller (2. OG links), Rückstand seit 14 Tagen..."
-                    </p>
-                    <div className="flex flex-wrap gap-2 mt-3">
-                      <span className="text-xs px-2 py-1 rounded-full bg-white/10">Details anzeigen</span>
-                      <span className="text-xs px-2 py-1 rounded-full bg-white/10">Mahnung erstellen</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-              {/* Decorative elements */}
-              <div 
-                className="absolute -top-4 -right-4 w-24 h-24 rounded-full blur-3xl opacity-30"
-                style={{ backgroundColor: 'hsl(var(--z3-accent))' }}
-              />
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Divider */}
-      <div className="zone3-container">
-        <div className="sot-divider" />
-      </div>
-
-      {/* Featured Modules */}
-      <section className="py-20 lg:py-28">
-        <div className="zone3-container">
-          <div className="text-center mb-12 lg:mb-16">
-            <span className="sot-label" style={{ color: 'hsl(var(--z3-accent))' }}>
-              Die Highlights
-            </span>
-            <h2 className="sot-headline mt-4">Beliebte Module</h2>
-            <p className="sot-subheadline mt-4 max-w-2xl mx-auto">
-              Von KI-Office bis Finanzierung — unsere meistgenutzten Funktionen.
-            </p>
-          </div>
-
-          <div ref={featuredRef}>
-            <SotModuleShowcase highlightOnly showCategories={false} />
-          </div>
-
-          <div className="text-center mt-10 lg:mt-12">
-            <Link to="/website/sot/module" className="sot-btn-secondary">
-              Alle {moduleCount} Module entdecken
-              <ArrowRight className="w-4 h-4" />
+              </span>
             </Link>
-          </div>
+          ))}
         </div>
       </section>
 
-      {/* Trust Section */}
-      <section className="py-12 lg:py-16" style={{ backgroundColor: 'hsl(var(--z3-card))' }}>
-        <div className="zone3-container">
-          <div className="flex flex-wrap items-center justify-center gap-6 lg:gap-16">
-            {trustedFeatures.map((feature) => (
-              <div key={feature} className="flex items-center gap-2">
-                <Check className="w-5 h-5" style={{ color: 'hsl(var(--z3-accent))' }} />
-                <span className="text-sm font-medium">{feature}</span>
-              </div>
-            ))}
-          </div>
+      {/* Trust */}
+      <section 
+        className="py-8 rounded-2xl"
+        style={{ backgroundColor: 'hsl(var(--z3-card)/0.5)' }}
+      >
+        <div className="flex flex-wrap items-center justify-center gap-6 lg:gap-12">
+          {trustBadges.map((badge) => (
+            <div key={badge} className="flex items-center gap-2">
+              <Check className="w-4 h-4" style={{ color: 'hsl(var(--z3-accent))' }} />
+              <span className="text-sm font-medium">{badge}</span>
+            </div>
+          ))}
         </div>
       </section>
-
-      {/* CTA Section */}
-      <SotCTA
-        variant="gradient"
-        title="Bereit für mehr Überblick?"
-        subtitle="Kostenfrei nutzen. Nur für KI-Aktionen zahlen — transparent und fair."
-        secondaryCta={{ label: 'Demo ansehen', to: '/sot/demo' }}
-      />
     </div>
   );
 }

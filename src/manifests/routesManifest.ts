@@ -574,14 +574,21 @@ export const zone3Websites: Record<string, WebsiteDefinition> = {
     base: "/website/sot",
     layout: "SotLayout",
     routes: [
-      { path: "", component: "SotHome", title: "System of a Town" },
+      { path: "", component: "SotHome", title: "System of a Town — Marketplace" },
+      { path: "real-estate", component: "SotRealEstate", title: "Real Estate" },
+      { path: "capital", component: "SotCapital", title: "Capital" },
+      { path: "projects", component: "SotProjects", title: "Projects" },
+      { path: "management", component: "SotManagement", title: "Management" },
+      { path: "energy", component: "SotEnergy", title: "Energy" },
+      { path: "karriere", component: "SotKarriere", title: "Karriere" },
+      // Legacy routes kept for backward compatibility
       { path: "produkt", component: "SotProdukt", title: "Produkt" },
       { path: "module", component: "SotModule", title: "Module" },
       { path: "module/:moduleId", component: "SotModuleDetail", title: "Modul-Details", dynamic: true },
-      { path: "use-cases", component: "SotUseCases", title: "Use Cases" },
       { path: "preise", component: "SotPreise", title: "Preise" },
       { path: "demo", component: "SotDemo", title: "Demo" },
       { path: "faq", component: "SotFAQ", title: "FAQ" },
+      { path: "use-cases", component: "SotUseCases", title: "Use Cases" },
     ],
   },
   acquiary: {
