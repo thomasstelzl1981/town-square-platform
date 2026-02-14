@@ -47,7 +47,7 @@ export default function SotHome() {
   return (
     <div className="flex flex-col h-full">
       {/* SubBar — Pill Tabs */}
-      <div className="flex items-center justify-center gap-1 px-4 py-1 overflow-x-auto scrollbar-none bg-background/50">
+      <div className="flex items-center justify-center gap-1 px-4 py-1 overflow-x-auto scrollbar-none bg-background/50 border-y border-border/30">
         {subBarItems.map((item) => (
           <Link
             key={item.label}
@@ -63,31 +63,29 @@ export default function SotHome() {
       <div className={cn('flex-1 overflow-y-auto', CONTAINER.PADDING)}>
         <div className={cn(CONTAINER.MAX_WIDTH, 'mx-auto flex flex-col items-center', CONTAINER.SPACING)}>
           {/* Welcome Headline */}
-          <h1 className={cn(HEADER.PAGE_TITLE, 'text-center')}>Welcome on Board</h1>
+          <h1 className={cn(HEADER.PAGE_TITLE, 'text-center w-full')}>Welcome on Board</h1>
 
-          {/* Investment Engine — spans 3 widget columns */}
-          <div className="w-full grid grid-cols-1 lg:grid-cols-4 gap-4 md:gap-6">
-            <div className="lg:col-span-3">
-              <Card className="glass-card border-primary/20 p-6 h-full">
-                <h2 className="text-base font-semibold mb-4">Investment Engine</h2>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                  {['Ort', 'Budget', 'Rendite', 'Objektart'].map((field) => (
-                    <div key={field} className="text-left">
-                      <label className="text-sm text-muted-foreground mb-1.5 block">
-                        {field}
-                      </label>
-                      <div className="h-10 rounded-lg px-3 flex items-center text-sm bg-muted/30 border border-border/50 text-muted-foreground">
-                        Alle
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <button className="w-full h-10 rounded-xl bg-primary text-primary-foreground font-medium flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors">
-                  <Search className="w-4 h-4" />
-                  Investments durchsuchen
-                </button>
-              </Card>
-            </div>
+          {/* Investment Engine — compact inline search */}
+          <div className="w-full flex justify-center">
+            <Card className="glass-card border-primary/20 px-4 py-3 inline-flex items-center gap-3">
+              <span className="text-sm font-semibold text-muted-foreground whitespace-nowrap">Investment Engine</span>
+              <input
+                type="number"
+                placeholder="Budget ab €"
+                className="h-10 w-36 rounded-lg px-3 text-sm bg-muted/30 border border-border/50 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
+              />
+              <input
+                type="number"
+                placeholder="Rendite ab %"
+                className="h-10 w-36 rounded-lg px-3 text-sm bg-muted/30 border border-border/50 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
+              />
+              <button
+                className="h-10 w-10 rounded-xl flex items-center justify-center nav-tab-glass border border-primary/20 hover:border-primary/50 transition-all"
+                title="Investments durchsuchen"
+              >
+                <Search className="w-4 h-4 text-primary" />
+              </button>
+            </Card>
           </div>
 
           {/* Widget Tiles — square, blue border, dashboard style */}

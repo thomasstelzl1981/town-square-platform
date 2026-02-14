@@ -27,16 +27,13 @@ export default function SotLayout() {
         {/* SystemBar — Portal-Clone */}
         <SotSystemBar isDark={isDark} onToggleTheme={toggleTheme} />
 
-        {/* Main Content + Armstrong Stripe (right) */}
-        <div className="flex-1 flex overflow-hidden">
-          {/* Main Content */}
-          <main className="flex-1 overflow-y-auto relative">
-            <Outlet />
-          </main>
+        {/* Main Content — full width, Armstrong is fixed */}
+        <main className="flex-1 overflow-y-auto relative">
+          <Outlet />
+        </main>
 
-          {/* Armstrong Stripe — right side, like Portal */}
-          <SotArmstrongStripe />
-        </div>
+        {/* Armstrong Stripe — fixed right side, doesn't affect content centering */}
+        <SotArmstrongStripe />
 
         {/* Mobile Bottom Nav */}
         <div className="lg:hidden">
