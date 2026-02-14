@@ -1,9 +1,10 @@
 /**
  * SoT Home — Portal-Clone Startseite
- * SubBar + Welcome on Board + Widget-Kacheln + Investment Engine (3-col breit)
+ * SubBar + Investment Engine + Widget-Kacheln
  */
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, Upload, Calculator, SlidersHorizontal, ArrowRight } from 'lucide-react';
+import { Search, Upload, Calculator, SlidersHorizontal, ArrowRight, ChevronDown, ChevronUp } from 'lucide-react';
 import { WidgetGrid } from '@/components/shared/WidgetGrid';
 import { WidgetCell } from '@/components/shared/WidgetCell';
 import { Card } from '@/components/ui/card';
@@ -44,6 +45,8 @@ const threeWays = [
 ];
 
 export default function SotHome() {
+  const [showAdvanced, setShowAdvanced] = useState(false);
+
   return (
     <div className="flex flex-col h-full">
       {/* SubBar — Pill Tabs */}
@@ -67,29 +70,70 @@ export default function SotHome() {
 
           {/* Investment Engine — EK + zvE inputs */}
           <div className="w-full flex justify-center">
-            <Card className="glass-card border-primary/20 px-3 py-3 inline-flex items-center gap-2">
-              <button
-                className="h-10 w-10 rounded-xl flex items-center justify-center nav-tab-glass border border-primary/20 hover:border-primary/50 transition-all shrink-0"
-                title="Erweiterte Suche"
-              >
-                <SlidersHorizontal className="w-4 h-4 text-primary" />
-              </button>
-              <input
-                type="number"
-                placeholder="Eigenkapital €"
-                className="h-10 w-40 rounded-lg px-3 text-sm bg-muted/30 border border-border/50 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
-              />
-              <input
-                type="number"
-                placeholder="zvE €"
-                className="h-10 w-40 rounded-lg px-3 text-sm bg-muted/30 border border-border/50 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
-              />
-              <button
-                className="h-10 w-10 rounded-xl flex items-center justify-center nav-tab-glass border border-primary/20 hover:border-primary/50 transition-all shrink-0"
-                title="Investments durchsuchen"
-              >
-                <Search className="w-4 h-4 text-primary" />
-              </button>
+            <Card className="glass-card border-primary/20 px-4 py-4 w-full max-w-2xl">
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setShowAdvanced(!showAdvanced)}
+                  className="h-10 w-10 rounded-xl flex items-center justify-center nav-tab-glass border border-primary/20 hover:border-primary/50 transition-all shrink-0"
+                  title="Erweiterte Parameter"
+                >
+                  <SlidersHorizontal className="w-4 h-4 text-primary" />
+                </button>
+                <input
+                  type="number"
+                  placeholder="Eigenkapital"
+                  className="h-10 flex-1 rounded-lg px-3 text-sm bg-muted/30 border border-border/50 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
+                />
+                <input
+                  type="number"
+                  placeholder="zu versteuerndes Einkommen"
+                  className="h-10 flex-1 rounded-lg px-3 text-sm bg-muted/30 border border-border/50 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
+                />
+                <button
+                  className="h-10 w-10 rounded-xl flex items-center justify-center nav-tab-glass border border-primary/20 hover:border-primary/50 transition-all shrink-0"
+                  title="Investments durchsuchen"
+                >
+                  <Search className="w-4 h-4 text-primary" />
+                </button>
+              </div>
+
+              {/* Advanced parameters */}
+              {showAdvanced && (
+                <div className="mt-3 pt-3 border-t border-border/30 grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs text-muted-foreground">Kaufpreis €</label>
+                    <input type="number" placeholder="250.000" className="h-9 rounded-lg px-3 text-sm bg-muted/30 border border-border/50 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/40" />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs text-muted-foreground">Monatsmiete €</label>
+                    <input type="number" placeholder="800" className="h-9 rounded-lg px-3 text-sm bg-muted/30 border border-border/50 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/40" />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs text-muted-foreground">Laufzeit (Jahre)</label>
+                    <input type="number" placeholder="10" className="h-9 rounded-lg px-3 text-sm bg-muted/30 border border-border/50 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/40" />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs text-muted-foreground">Tilgungsrate %</label>
+                    <input type="number" placeholder="2" className="h-9 rounded-lg px-3 text-sm bg-muted/30 border border-border/50 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/40" />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs text-muted-foreground">Gebäudeanteil %</label>
+                    <input type="number" placeholder="80" className="h-9 rounded-lg px-3 text-sm bg-muted/30 border border-border/50 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/40" />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs text-muted-foreground">Verwaltung €/Monat</label>
+                    <input type="number" placeholder="25" className="h-9 rounded-lg px-3 text-sm bg-muted/30 border border-border/50 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/40" />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs text-muted-foreground">Wertzuwachs %/Jahr</label>
+                    <input type="number" placeholder="1.5" className="h-9 rounded-lg px-3 text-sm bg-muted/30 border border-border/50 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/40" />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs text-muted-foreground">Mietsteigerung %/Jahr</label>
+                    <input type="number" placeholder="1.5" className="h-9 rounded-lg px-3 text-sm bg-muted/30 border border-border/50 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/40" />
+                  </div>
+                </div>
+              )}
             </Card>
           </div>
 
