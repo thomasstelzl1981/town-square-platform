@@ -111,14 +111,9 @@ export function useStartResearchOrder() {
         .eq('id', orderId);
       if (updateError) throw updateError;
 
-      // Trigger the research engine as orchestrator
-      const { data: { session } } = await supabase.auth.getSession();
-      const response = await supabase.functions.invoke('sot-research-engine', {
-        body: { 
-          intent: 'find_contacts',
-          query: 'Recherche',
-          context: { module: 'recherche', reference_id: orderId },
-        },
+      // Trigger the order-specific runner (orchestrates Firecrawl, Apollo, Epify)
+      const response = await supabase.functions.invoke('sot-research-run-order', {
+        body: { order_id: orderId },
       });
 
       if (response.error) throw new Error(response.error.message);
