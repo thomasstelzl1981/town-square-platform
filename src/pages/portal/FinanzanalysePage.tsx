@@ -1,9 +1,8 @@
 /**
- * Finanzanalyse Page (MOD-18) — 4 Tabs, SubTabNav sichtbar
+ * Finanzanalyse Page (MOD-18) — 4 Tabs, Navigation via TopNavigation SubTabs
  */
 import { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { SubTabNav } from '@/components/shared/SubTabNav';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const UebersichtTab = lazy(() => import('./finanzanalyse/UebersichtTab'));
@@ -11,17 +10,9 @@ const CashflowBudgetTab = lazy(() => import('./finanzanalyse/CashflowBudgetTab')
 const VertraegeFixkostenTab = lazy(() => import('./finanzanalyse/VertraegeFixkostenTab'));
 const RisikoAbsicherungTab = lazy(() => import('./finanzanalyse/RisikoAbsicherungTab'));
 
-const TABS = [
-  { title: 'Übersicht', route: '/portal/finanzanalyse/dashboard' },
-  { title: 'Cashflow & Budget', route: '/portal/finanzanalyse/reports' },
-  { title: 'Verträge & Fixkosten', route: '/portal/finanzanalyse/szenarien' },
-  { title: 'Risiko & Absicherung', route: '/portal/finanzanalyse/settings' },
-];
-
 export default function FinanzanalysePage() {
   return (
     <div className="space-y-6">
-      <SubTabNav tabs={TABS} />
       <Suspense fallback={<Skeleton className="h-64" />}>
         <Routes>
           <Route index element={<Navigate to="dashboard" replace />} />
