@@ -107,7 +107,6 @@ export const zone1Admin: ZoneDefinition = {
     { path: "audit", component: "AuditHub", title: "Audit Hub" },
     
     { path: "agreements", component: "Agreements", title: "Vereinbarungen" },
-    { path: "inbox", component: "Inbox", title: "Posteingang" },
     { path: "partner-verification", component: "PartnerVerification", title: "Partner-Verifizierung" },
     { path: "roles", component: "RolesManagement", title: "Rollen & Berechtigungen" },
     { path: "support", component: "Support", title: "Support" },

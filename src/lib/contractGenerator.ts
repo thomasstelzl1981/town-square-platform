@@ -83,6 +83,81 @@ export function calculatePlatformFee(grossCommission: number, sharePct: number =
 }
 
 /**
+ * Store a contract for service activation (no commission).
+ * Used for: Postservice, Storage upgrades, etc.
+ */
+export async function storeServiceContract(params: {
+  tenantId: string;
+  userId: string;
+  contract: GeneratedContract;
+  referenceId: string;
+  referenceType: string;
+}): Promise<{ documentId: string; consentId: string }> {
+  const { tenantId, userId, contract, referenceId, referenceType } = params;
+
+  // 1. Store contract as DMS document
+  const contractBlob = new Blob([contract.content], { type: 'text/plain' });
+  const fileName = `${contract.templateCode}_${referenceId}_${Date.now()}.txt`;
+  const storagePath = `${tenantId}/MOD_03/contracts/${fileName}`;
+
+  let documentId: string | undefined;
+  const { error: uploadError } = await supabase.storage
+    .from('tenant-documents')
+    .upload(storagePath, contractBlob);
+
+  if (!uploadError) {
+    const { data: doc, error: docError } = await supabase
+      .from('documents')
+      .insert({
+        tenant_id: tenantId,
+        name: `${contract.title} - ${new Date().toLocaleDateString('de-DE')}`,
+        file_path: storagePath,
+        mime_type: 'text/plain',
+        size_bytes: contractBlob.size,
+        uploaded_by: userId,
+        public_id: `CONTRACT-${Date.now()}`,
+        doc_type: 'contract',
+        source: 'system',
+        scope: 'tenant',
+      })
+      .select('id')
+      .single();
+
+    if (!docError && doc) {
+      documentId = doc.id;
+    }
+  }
+
+  // 2. Create user consent
+  const { data: consent, error: consentError } = await supabase
+    .from('user_consents')
+    .insert({
+      user_id: userId,
+      tenant_id: tenantId,
+      template_id: contract.templateId,
+      template_version: contract.templateVersion,
+      status: 'accepted' as const,
+      consented_at: new Date().toISOString(),
+      metadata: {
+        reference_id: referenceId,
+        reference_type: referenceType,
+        contract_document_id: documentId,
+      },
+    } as any)
+    .select('id')
+    .single();
+
+  if (consentError || !consent) {
+    throw new Error(`Failed to create consent: ${consentError?.message}`);
+  }
+
+  return {
+    documentId: documentId || '',
+    consentId: consent.id,
+  };
+}
+
+/**
  * Store a generated contract in the DMS and create consent + commission records.
  * Returns IDs for all created records.
  */

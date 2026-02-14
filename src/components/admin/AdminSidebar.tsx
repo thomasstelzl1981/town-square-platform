@@ -43,7 +43,6 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   'Oversight': Eye,
   'AuditHub': FileText,
   'Agreements': FileCheck,
-  'Inbox': Inbox,
   'PartnerVerification': ClipboardCheck,
   'Support': LifeBuoy,
   // FutureRoom
@@ -145,7 +144,7 @@ function getGroupKey(path: string, component: string): string {
     return 'desks';
   }
   // Backbone
-  if (path === 'agreements' || path === 'inbox') {
+  if (path === 'agreements') {
     return 'backbone';
   }
   // Operative Desks (Desks + LeadPool + Provisionen + Landing Pages)

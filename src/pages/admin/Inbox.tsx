@@ -63,7 +63,10 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { toast } from 'sonner';
-import { matchRoutingRule, routeToZone2, SYSTEM_INBOX_EMAIL } from '@/lib/postRouting';
+// postRouting removed — Admin Inbox is deprecated (dead code, kept for reference)
+const SYSTEM_INBOX_EMAIL = 'posteingang@inbound.systemofatown.com';
+const matchRoutingRule = (_tid: string, _rules: any[]) => null as any;
+const routeToZone2 = async (_id: string, _tid: string, _mid?: string | null) => ({ success: false, error: 'Deprecated' });
 
 interface InboundItem {
   id: string;

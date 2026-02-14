@@ -62,6 +62,7 @@ export function EinstellungenTab() {
   const [orderCity, setOrderCity] = useState('');
   const [orderPostalCode, setOrderPostalCode] = useState('');
   const [orderRecipientName, setOrderRecipientName] = useState('');
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   // ── Storage Plans ──
   const { data: storagePlans = [] } = useQuery({
@@ -134,26 +135,30 @@ export function EinstellungenTab() {
   const createMandate = useMutation({
     mutationFn: async () => {
       if (!activeTenantId || !user?.id) throw new Error('Nicht angemeldet');
+      
+      // Create mandate with status 'active' (contract accepted via TermsGate)
       const { error } = await supabase.from('postservice_mandates').insert({
         tenant_id: activeTenantId,
         requested_by_user_id: user.id,
         type: 'postservice_forwarding',
-        status: 'requested',
+        status: 'active',
         payload_json: { recipient_name: orderRecipientName, address: orderAddress, city: orderCity, postal_code: orderPostalCode },
-        contract_terms: { duration_months: 12, monthly_credits: 30, billing_mode: 'annual_prepay' },
+        contract_terms: { duration_months: 12, monthly_credits: 30, billing_mode: 'annual_prepay', cost_per_letter: 3 },
       });
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['postservice-mandate'] });
+      queryClient.invalidateQueries({ queryKey: ['postservice-mandate-active'] });
       setShowOrderDialog(false);
       setOrderRecipientName('');
       setOrderAddress('');
       setOrderCity('');
       setOrderPostalCode('');
-      toast.success('Nachsendeauftrag eingereicht');
+      setAcceptedTerms(false);
+      toast.success('Postservice aktiviert – Ihre Inbound-E-Mail-Adresse wird generiert.');
     },
-    onError: () => toast.error('Fehler beim Einreichen'),
+    onError: () => toast.error('Fehler beim Aktivieren'),
   });
 
   const cancelMandate = useMutation({
@@ -363,9 +368,9 @@ export function EinstellungenTab() {
                   );
                 })}
 
-                {/* Add new mandate button — always visible */}
+                {/* Add new mandate button */}
                 <Button onClick={() => setShowOrderDialog(true)} variant={mandates.length > 0 ? 'outline' : 'default'} className="w-full">
-                  {mandates.length > 0 ? '+ Weiteren Nachsendeauftrag einrichten' : 'Nachsendeauftrag einrichten'}
+                  {mandates.length > 0 ? '+ Weiteren Postservice einrichten' : 'Postservice aktivieren'}
                 </Button>
 
                 {/* Cost info */}
@@ -439,13 +444,13 @@ export function EinstellungenTab() {
         </Card>
       </div>
 
-      {/* ═══ ORDER DIALOG ═══ */}
-      <Dialog open={showOrderDialog} onOpenChange={setShowOrderDialog}>
-        <DialogContent>
+      {/* ═══ ORDER DIALOG (TermsGate) ═══ */}
+      <Dialog open={showOrderDialog} onOpenChange={(open) => { setShowOrderDialog(open); if (!open) setAcceptedTerms(false); }}>
+        <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Nachsendeauftrag einrichten</DialogTitle>
+            <DialogTitle>Postservice aktivieren</DialogTitle>
             <DialogDescription>
-              Geben Sie die Adresse an, von der die Post umgeleitet werden soll.
+              Schließen Sie den Vertrag ab, um Ihre persönliche Inbound-E-Mail-Adresse zu erhalten.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -467,25 +472,46 @@ export function EinstellungenTab() {
                 <Input value={orderCity} onChange={(e) => setOrderCity(e.target.value)} placeholder="Berlin" />
               </div>
             </div>
-            <div className="p-3 rounded-xl bg-muted/50 text-sm space-y-1">
-              <p className="font-medium">Vertragsbedingungen:</p>
-              <p className="text-xs text-muted-foreground">• Laufzeit: 12 Monate</p>
-              <p className="text-xs text-muted-foreground">• 30 Credits / Monat (360 Credits jährlich)</p>
-              <p className="text-xs text-muted-foreground">• 3 Credits pro zugestelltem Brief</p>
+
+            {/* Contract Terms */}
+            <div className="p-4 rounded-xl border border-border bg-muted/30 space-y-2">
+              <p className="font-semibold text-sm">Vereinbarung über den digitalen Postservice</p>
+              <div className="text-xs text-muted-foreground space-y-1">
+                <p>• <strong>Leistung:</strong> Empfang und Verarbeitung digitaler Post über eine persönliche Inbound-E-Mail-Adresse</p>
+                <p>• <strong>Grundgebühr:</strong> 30 Credits / Monat (360 Credits jährlich)</p>
+                <p>• <strong>Verarbeitungskosten:</strong> 3 Credits pro zugestelltem Dokument</p>
+                <p>• <strong>Mindestlaufzeit:</strong> 12 Monate</p>
+                <p>• <strong>Kündigung:</strong> Zum Ende der Laufzeit mit 30 Tagen Vorlauf</p>
+                <p>• <strong>Datenschutz:</strong> Eingehende Dokumente werden verschlüsselt verarbeitet und ausschließlich in Ihrem Tenant-DMS gespeichert</p>
+              </div>
             </div>
+
             <div className="p-3 rounded-xl bg-muted/50 text-sm">
               <span className="text-muted-foreground">Postfach-Nummer: </span>
               <span className="font-mono font-medium">{activeTenantId?.slice(0, 8).toUpperCase()}</span>
             </div>
+
+            {/* Terms Acceptance Checkbox */}
+            <label className="flex items-start gap-3 cursor-pointer p-3 rounded-xl border border-border hover:bg-muted/30 transition-colors">
+              <input
+                type="checkbox"
+                checked={acceptedTerms}
+                onChange={(e) => setAcceptedTerms(e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-primary text-primary focus:ring-primary"
+              />
+              <span className="text-sm text-muted-foreground">
+                Ich habe die Vertragsbedingungen gelesen und akzeptiere die Vereinbarung über den digitalen Postservice.
+              </span>
+            </label>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowOrderDialog(false)}>Abbrechen</Button>
+            <Button variant="outline" onClick={() => { setShowOrderDialog(false); setAcceptedTerms(false); }}>Abbrechen</Button>
             <Button
               onClick={() => createMandate.mutate()}
-              disabled={createMandate.isPending || !orderRecipientName || !orderAddress || !orderCity}
+              disabled={createMandate.isPending || !orderRecipientName || !orderAddress || !orderCity || !acceptedTerms}
             >
               {createMandate.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Auftrag einreichen
+              Vertrag abschließen & aktivieren
             </Button>
           </DialogFooter>
         </DialogContent>
