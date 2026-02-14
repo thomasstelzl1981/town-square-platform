@@ -63,7 +63,7 @@ export default function AreaOverviewPage() {
 
   return (
     <div className={isMobile ? "px-4 py-4" : "container max-w-7xl mx-auto px-4 py-6"}>
-      {/* Header — kompakter auf Mobile */}
+      {/* Header */}
       <div className={isMobile ? "mb-4" : "mb-8"}>
         <h1 className={isMobile 
           ? "text-lg font-bold tracking-tight uppercase mb-1" 
@@ -71,11 +71,12 @@ export default function AreaOverviewPage() {
         }>
           {area.label}
         </h1>
-        {/* Description removed — self-explanatory via menu */}
+        <p className="text-base text-muted-foreground">
+          {areaDescriptions[area.key]}
+        </p>
       </div>
 
-      {/* Grid: 1 Promo + 5 Modules = 6 cards */}
-      {/* Responsive: 1 col mobile, 2 cols tablet, 3 cols desktop */}
+      {/* Grid: fixed-height cards, uniform 3-col layout */}
       <div className="grid gap-3 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
         {/* Promo Card (always first) */}
         {promo && <AreaPromoCard promo={promo} />}
