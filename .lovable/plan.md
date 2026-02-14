@@ -1,154 +1,114 @@
 
 
-# Widget-Typografie Redesign — Groessere Schrift, weniger Clutter
+# Systemweite Lesbarkeits-Offensive — Kontrast, Clutter, Konsistenz
 
-## Problem
+## Kernproblem
 
-Alle Widgets verwenden durchgehend winzige Schriftgroessen (`text-[10px]`, `text-[11px]`, `text-[9px]`, `text-xs`) und enthalten kleine Buttons mit Zusatzinformationen (Refresh-Buttons, "Live"-Badges, "via ZenQuotes", "Kein Autoplay", Kosten-Badges etc.), die das Interface unruhig machen.
+Drei zusammenhaengende Ursachen fuer schlechte Lesbarkeit:
 
-## Loesung
-
-Schriftgroessen hochsetzen, alle kleinen Info-Buttons und Footer-Texte entfernen.
-
----
-
-## Aenderungen pro Widget
-
-### 1. FinanceWidget.tsx
-| Element | Vorher | Nachher |
-|---|---|---|
-| Header-Titel "Maerkte" | `text-xs` | `text-sm` |
-| "Live" Label | `text-[10px]` + gruener Punkt | **Nur gruener Punkt**, Text entfernt |
-| Symbol-Spalte | `text-[11px]` | `text-sm` |
-| Wert-Spalte | `text-[11px]` | `text-sm` |
-| Change-Anzeige | `text-[10px]` | `text-xs` |
-
-### 2. NewsWidget.tsx
-| Element | Vorher | Nachher |
-|---|---|---|
-| Header-Titel "Nachrichten" | `text-xs` | `text-sm` |
-| Headline-Text | `text-[11px]` | `text-sm` |
-| Source/Time Zeile | `text-[10px]` + ExternalLink-Icon | **Entfernt** |
-
-### 3. SpaceWidget.tsx
-| Element | Vorher | Nachher |
-|---|---|---|
-| Header-Titel "Space" | `text-xs` | `text-sm` |
-| **Refresh-Button** (Header rechts) | vorhanden | **Entfernt** |
-| Titel des Bildes | `text-xs` | `text-sm` |
-| Erklaerungstext | `text-[10px]` | `text-xs` |
-| "HD ansehen" Link | `text-[10px]` | **Entfernt** |
-| Footer "NASA APOD • Datum" | `text-[10px]` | **Entfernt** |
-| **Retry-Button** (bei Error) | Button mit Text | Nur Icon-Klick auf Karte |
-
-### 4. QuoteWidget.tsx
-| Element | Vorher | Nachher |
-|---|---|---|
-| Header-Titel "Zitat des Tages" | `text-xs` | `text-sm` |
-| **Refresh-Button** (Header rechts) | vorhanden | **Entfernt** |
-| Zitat-Text | `text-sm` | `text-base` |
-| Autor | `text-xs` | `text-sm` |
-| Footer "via ZenQuotes" / "Offline-Zitat" | `text-[10px]` | **Entfernt** |
-| **Retry-Button** (bei Error) | Button mit Text | Nur Icon |
-
-### 5. RadioWidget.tsx
-| Element | Vorher | Nachher |
-|---|---|---|
-| Header-Titel "Radio" | `text-xs` | `text-sm` |
-| "Live" Label | `text-[10px]` | **Nur gruener Punkt**, Text entfernt |
-| Sendername | `text-xs` | `text-sm` |
-| Land/Tags | `text-[10px]` | **Entfernt** |
-| Footer "Kein Autoplay" | `text-[10px]` | **Entfernt** |
-| **Retry-Button** (bei Error) | Button mit Text | Nur Icon |
-
-### 6. PVLiveWidget.tsx
-| Element | Vorher | Nachher |
-|---|---|---|
-| Einheiten-Labels ("kW", "kWh heute", "Offline") | `text-[10px]` | `text-xs` |
-| Anlagenliste | `text-xs` + `text-muted-foreground` | `text-sm` |
-
-### 7. BrandLinkWidget.tsx
-| Element | Vorher | Nachher |
-|---|---|---|
-| Tagline | `text-[10px]` | `text-xs` |
-| Beschreibung | `text-[11px]` | `text-sm` |
-| Footer "Website oeffnen" + ExternalLink | `text-[11px]` | **Entfernt** |
-
-### 8. ArmstrongGreetingCard.tsx
-| Element | Vorher | Nachher |
-|---|---|---|
-| "Armstrong" Titel | `text-sm` | `text-base` |
-| **"KI" Badge** | vorhanden | **Entfernt** |
-| Nachrichtentext | `text-xs` | `text-sm` |
-| Event-Chips | `text-[10px]` | `text-xs` |
-| Event-Zeitangabe | `text-[10px]` Uhrzeiten | **Entfernt** (nur Titel bleibt) |
-| "+2" Zaehler | `text-[10px]` | `text-xs` |
-
-### 9. WeatherCard.tsx
-| Element | Vorher | Nachher |
-|---|---|---|
-| Stadt-Name | `text-[10px]` | `text-xs` |
-| Wetter-Beschreibung | `text-xs` | `text-sm` |
-| Wind/Luftfeuchtigkeit | `text-xs` | `text-sm` |
-| "5-Tage Vorschau" Label | `text-[10px]` | **Entfernt** (Vorschau erklaert sich selbst) |
-| Tagesname | `text-[9px]` | `text-xs` |
-| Temperatur | `text-[9px]` | `text-xs` |
-
-### 10. EarthGlobeCard.tsx
-| Element | Vorher | Nachher |
-|---|---|---|
-| Koordinaten LAT/LNG | `text-[10px]` | `text-xs` |
-| **Zoom-Button** | vorhanden | **Entfernt** |
-| Lade-Text "Lade 3D-Globus..." | `text-xs` | bleibt |
-
-### 11. TaskWidget.tsx
-| Element | Vorher | Nachher |
-|---|---|---|
-| Typ-Label | `text-[10px]` | `text-xs` |
-| **Risk-Badge** (Header rechts) | `text-[9px]` Badge | **Entfernt** |
-| Titel | `text-sm` | `text-base` |
-| Beschreibung | `text-xs` | `text-sm` |
-| Zeitangabe | `text-[10px]` | **Entfernt** |
-| **Kosten-Badge** | `text-[9px]` Badge | **Entfernt** |
-
-### 12. WidgetHeader.tsx (Shared)
-| Element | Vorher | Nachher |
-|---|---|---|
-| Titel | `text-base` | bleibt `text-base` (bereits angepasst) |
+1. **Zu schwacher Kontrast**: `--muted-foreground` steht auf `215 20% 65%` (Dark Mode) — das ergibt ein blasses Grau, das auf dunklem Hintergrund schwer lesbar ist. SpaceX verwendet deutlich hellere Sekundaertexte.
+2. **111 Dateien umgehen die globale Schriftskala**: Hardcodierte `text-[10px]`, `text-[11px]`, `text-[9px]` werden vom Tailwind-Override nicht erfasst.
+3. **Redundante Inhalte**: Area-Uebersichtsseiten listen Module mit Beschreibungen, Benefits und Bereichen auf — alles bereits im Menue sichtbar.
 
 ---
 
-## Zusammenfassung der Entfernungen
+## Massnahme 1: Kontrast-Upgrade (CSS-Token)
 
-Folgende Elemente werden komplett entfernt:
+**Datei**: `src/index.css`
 
-- **Refresh-Buttons** in Space und Quote Widgets
-- **"KI" Badge** in Armstrong
-- **Risk-Badge und Kosten-Badge** in TaskWidget
-- **Footer-Texte**: "via ZenQuotes", "NASA APOD • Datum", "Kein Autoplay", "Website oeffnen"
-- **"HD ansehen" Link** im Space Widget
-- **Source/Time Zeile** in News Widget
-- **Land/Tags** im Radio Widget
-- **"5-Tage Vorschau" Label** im Weather Widget
-- **Zoom-Button** im Globe Widget
-- **"Live" Textlabel** (gruener Punkt bleibt)
-- **Zeitangabe "vor X Minuten"** in TaskWidget
+| Token | Vorher (Dark) | Nachher (Dark) | Effekt |
+|---|---|---|---|
+| `--muted-foreground` | `215 20% 65%` | `215 20% 75%` | +10% Helligkeit, deutlich lesbarer |
+| `--text-secondary` | `215 20% 65%` | `215 20% 75%` | Gleicher Lift |
+| `--text-dimmed` | `215 15% 45%` | `215 15% 55%` | Auch unterste Stufe heben |
 
-## Betroffene Dateien (12 Dateien)
+Das entspricht dem SpaceX-Ansatz: Sekundaertext ist sichtbar, nicht versteckt.
 
-Alle unter `src/components/dashboard/`:
-1. `widgets/FinanceWidget.tsx`
-2. `widgets/NewsWidget.tsx`
-3. `widgets/SpaceWidget.tsx`
-4. `widgets/QuoteWidget.tsx`
-5. `widgets/RadioWidget.tsx`
-6. `widgets/PVLiveWidget.tsx`
-7. `widgets/BrandLinkWidget.tsx`
-8. `WeatherCard.tsx`
-9. `ArmstrongGreetingCard.tsx`
-10. `TaskWidget.tsx`
-11. `EarthGlobeCard.tsx`
-12. `../shared/WidgetHeader.tsx` (Kontrolle, ob bereits ok)
+---
 
-Keine Logik-Aenderungen, keine DB-Aenderungen. Rein visuelle Bereinigung.
+## Massnahme 2: Hardcodierte Pixel-Schriftgroessen eliminieren
+
+**Umfang**: 111 Dateien mit insgesamt ca. 2041 Vorkommen
+
+**Systematische Ersetzung**:
+
+| Vorher | Nachher | Begruendung |
+|---|---|---|
+| `text-[9px]` | `text-xs` (= 13.5px) | Mindestgroesse fuer Lesbarkeit |
+| `text-[10px]` | `text-xs` (= 13.5px) | Unter 13px nicht ganztags lesbar |
+| `text-[11px]` | `text-xs` (= 13.5px) | Konsistenz mit Skala |
+
+Dieses Batch-Update betrifft Badges, Labels, Footer-Texte, Timestamps und Metadaten in allen Modulen.
+
+**Wichtig**: Dies wird als systematischer Durchlauf ueber alle 111 Dateien ausgefuehrt. Die Logik bleibt ueberall unveraendert — nur die CSS-Klasse wird getauscht.
+
+---
+
+## Massnahme 3: Area-Uebersichtsseiten radikal vereinfachen
+
+**Problem**: Die Karten auf `/portal/area/operations` (und allen anderen Areas) zeigen:
+- MOD-Nummer Badge
+- Titel + Beschreibung
+- 3 Benefit-Zeilen mit Icons
+- "Bereiche:"-Label mit Sub-Tile-Chips
+- "Modul oeffnen"-Button
+
+Das ist zu viel. Der User sieht die Module bereits im Menue. Die Karten sollen nur schnellen Zugang bieten.
+
+**Neues Design fuer AreaModuleCard**:
+
+- MOD-Badge: **entfernt**
+- Beschreibung (oneLiner): **entfernt**
+- Benefits-Liste: **entfernt**
+- "Bereiche:"-Label: **entfernt**
+- Sub-Tile-Chips: **bleiben** (groesser, `text-sm`)
+- "Modul oeffnen"-Button: **entfernt** — gesamte Karte wird klickbar
+- Titel: **vergroessert** auf `text-xl font-semibold`
+
+Ergebnis: Saubere, klickbare Karten mit nur Titel + Bereichs-Chips.
+
+**Datei**: `src/components/portal/AreaModuleCard.tsx`
+
+**AreaOverviewPage** (`src/pages/portal/AreaOverviewPage.tsx`):
+- Beschreibungszeile unter "MANAGER" / "CLIENT" etc.: **entfernt** (selbsterklaerend durch Menue)
+
+**AreaPromoCard** (`src/components/portal/AreaPromoCard.tsx`):
+- Bleibt, aber "Details ansehen"-Button wird entfernt — gesamte Karte klickbar
+
+---
+
+## Massnahme 4: Design-Manifest-Tokens auffrischen
+
+**Datei**: `src/config/designManifest.ts`
+
+| Token | Vorher | Nachher |
+|---|---|---|
+| `TABLE.HEADER_CELL` | `text-xs font-medium text-muted-foreground` | `text-sm font-medium text-muted-foreground` |
+| `TABULAR_FORM.LABEL_CELL` | `text-xs text-muted-foreground` | `text-sm text-muted-foreground` |
+| `TABULAR_FORM.SECTION_ROW` | `text-xs font-semibold` | `text-sm font-semibold` |
+| `MOBILE.CARD_LABEL` | `text-xs text-muted-foreground` | `text-sm text-muted-foreground` |
+
+---
+
+## Zusammenfassung der Dateien
+
+| Aenderung | Dateien | Art |
+|---|---|---|
+| CSS-Kontrast-Tokens | 1 (`index.css`) | Token-Wert |
+| Hardcodierte Pixel ersetzen | ~111 Dateien | Klassen-Tausch |
+| AreaModuleCard vereinfachen | 1 | Redesign |
+| AreaOverviewPage entschlacken | 1 | Text entfernen |
+| AreaPromoCard vereinfachen | 1 | Button entfernen |
+| designManifest.ts Tokens | 1 | Token-Update |
+
+Keine Logik-Aenderungen, keine DB-Aenderungen. Rein visuell und typografisch.
+
+---
+
+## Umsetzungsreihenfolge
+
+1. CSS-Tokens anpassen (sofortige Wirkung auf alle `text-muted-foreground`-Stellen)
+2. designManifest.ts Tokens hochsetzen
+3. AreaModuleCard + AreaOverviewPage + AreaPromoCard vereinfachen
+4. Systematischer Durchlauf: alle `text-[9px]`, `text-[10px]`, `text-[11px]` durch `text-xs` ersetzen
 
