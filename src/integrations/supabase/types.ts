@@ -7011,6 +7011,8 @@ export type Database = {
       inbox_sort_containers: {
         Row: {
           created_at: string
+          entity_id: string | null
+          entity_type: string | null
           id: string
           is_enabled: boolean
           name: string
@@ -7020,6 +7022,8 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
           id?: string
           is_enabled?: boolean
           name: string
@@ -7029,6 +7033,8 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
           id?: string
           is_enabled?: boolean
           name?: string
@@ -14496,6 +14502,8 @@ export type Database = {
           dev_project_id: string | null
           dev_project_unit_id: string | null
           doc_type_hint: string | null
+          entity_id: string | null
+          entity_type: string | null
           id: string
           module_code: string | null
           name: string
@@ -14516,6 +14524,8 @@ export type Database = {
           dev_project_id?: string | null
           dev_project_unit_id?: string | null
           doc_type_hint?: string | null
+          entity_id?: string | null
+          entity_type?: string | null
           id?: string
           module_code?: string | null
           name: string
@@ -14536,6 +14546,8 @@ export type Database = {
           dev_project_id?: string | null
           dev_project_unit_id?: string | null
           doc_type_hint?: string | null
+          entity_id?: string | null
+          entity_type?: string | null
           id?: string
           module_code?: string | null
           name?: string
