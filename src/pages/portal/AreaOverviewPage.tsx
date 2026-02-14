@@ -21,7 +21,7 @@ import { AreaModuleCard } from '@/components/portal/AreaModuleCard';
 const areaDescriptions: Record<AreaKey, string> = {
   base: 'Stammdaten, KI Office, Dokumente und Services-Grundlagen',
   missions: 'Immobilien, Mietverwaltung, Verkauf, Finanzierung und Investment',
-  operations: 'Akquise, Finanzierungsmanager, Projekte, Partner und Leads',
+  operations: 'Projektmanager, Vertriebspartner, Finanzierungsmanager, Akquise Manager und Lead Manager',
   services: 'Kommunikation, Fortbildung, Fahrzeuge, Analyse und Photovoltaik',
 };
 

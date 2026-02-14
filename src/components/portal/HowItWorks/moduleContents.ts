@@ -364,7 +364,7 @@ export const moduleContents: Record<string, HowItWorksContent> = {
 
   'MOD-10': {
     moduleCode: 'MOD-10',
-    title: 'Leads',
+    title: 'Lead Manager',
     oneLiner: 'Aus Interesse wird Abschluss: Leads aufnehmen, qualifizieren, durch die Pipeline führen.',
     benefits: [
       'Leads gehen nicht verloren – Inbox + klare Zuständigkeit.',
@@ -440,7 +440,7 @@ export const moduleContents: Record<string, HowItWorksContent> = {
   // =========================================================================
   'MOD-12': {
     moduleCode: 'MOD-12',
-    title: 'Akquise-Manager',
+    title: 'Akquise Manager',
     oneLiner: 'Vom Exposé zur Entscheidung: strukturiert, nachvollziehbar, schneller.',
     benefits: [
       'Alle eingegangenen Angebote zentral in einer Inbox.',
@@ -475,7 +475,7 @@ export const moduleContents: Record<string, HowItWorksContent> = {
 
   'MOD-13': {
     moduleCode: 'MOD-13',
-    title: 'Projekte',
+    title: 'Projektmanager',
     oneLiner: 'Bauträger- und Aufteiler-Projekte: Exposé hochladen – KI erstellt Projekt automatisch.',
     benefits: [
       'Magic Intake: Exposé + Wohnungsliste hochladen → Projekt wird automatisch erstellt.',
