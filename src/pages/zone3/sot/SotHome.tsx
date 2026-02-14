@@ -3,7 +3,7 @@
  * SubBar + Welcome on Board + Widget-Kacheln + Investment Engine (3-col breit)
  */
 import { Link } from 'react-router-dom';
-import { Search, Upload, Calculator, Building2, Briefcase, Zap, Users, ArrowRight } from 'lucide-react';
+import { Search, Upload, Calculator, SlidersHorizontal, ArrowRight } from 'lucide-react';
 import { WidgetGrid } from '@/components/shared/WidgetGrid';
 import { WidgetCell } from '@/components/shared/WidgetCell';
 import { Card } from '@/components/ui/card';
@@ -47,7 +47,7 @@ export default function SotHome() {
   return (
     <div className="flex flex-col h-full">
       {/* SubBar — Pill Tabs */}
-      <div className="flex items-center justify-center gap-1 px-4 py-1 overflow-x-auto scrollbar-none bg-background/50 border-y border-border/30">
+      <div className="flex items-center justify-center gap-1 px-4 py-1 overflow-x-auto scrollbar-none bg-background/50 border-y border-border/50">
         {subBarItems.map((item) => (
           <Link
             key={item.label}
@@ -59,28 +59,33 @@ export default function SotHome() {
         ))}
       </div>
 
-      {/* Scrollable Content */}
-      <div className={cn('flex-1 overflow-y-auto', CONTAINER.PADDING)}>
-        <div className={cn(CONTAINER.MAX_WIDTH, 'mx-auto flex flex-col items-center', CONTAINER.SPACING)}>
-          {/* Welcome Headline */}
-          <h1 className={cn(HEADER.PAGE_TITLE, 'text-center w-full')}>Welcome on Board</h1>
+      {/* Centered Content */}
+      <div className={cn('flex-1 overflow-y-auto flex items-center justify-center', CONTAINER.PADDING)}>
+        <div className={cn(CONTAINER.MAX_WIDTH, 'mx-auto flex flex-col items-center gap-8')}>
+          {/* Headline */}
+          <h1 className={cn(HEADER.PAGE_TITLE, 'text-center w-full')}>Investment Engine</h1>
 
-          {/* Investment Engine — compact inline search */}
+          {/* Investment Engine — EK + zvE inputs */}
           <div className="w-full flex justify-center">
-            <Card className="glass-card border-primary/20 px-4 py-3 inline-flex items-center gap-3">
-              <span className="text-sm font-semibold text-muted-foreground whitespace-nowrap">Investment Engine</span>
+            <Card className="glass-card border-primary/20 px-3 py-3 inline-flex items-center gap-2">
+              <button
+                className="h-10 w-10 rounded-xl flex items-center justify-center nav-tab-glass border border-primary/20 hover:border-primary/50 transition-all shrink-0"
+                title="Erweiterte Suche"
+              >
+                <SlidersHorizontal className="w-4 h-4 text-primary" />
+              </button>
               <input
                 type="number"
-                placeholder="Budget ab €"
-                className="h-10 w-36 rounded-lg px-3 text-sm bg-muted/30 border border-border/50 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
+                placeholder="Eigenkapital €"
+                className="h-10 w-40 rounded-lg px-3 text-sm bg-muted/30 border border-border/50 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
               />
               <input
                 type="number"
-                placeholder="Rendite ab %"
-                className="h-10 w-36 rounded-lg px-3 text-sm bg-muted/30 border border-border/50 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
+                placeholder="zvE €"
+                className="h-10 w-40 rounded-lg px-3 text-sm bg-muted/30 border border-border/50 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
               />
               <button
-                className="h-10 w-10 rounded-xl flex items-center justify-center nav-tab-glass border border-primary/20 hover:border-primary/50 transition-all"
+                className="h-10 w-10 rounded-xl flex items-center justify-center nav-tab-glass border border-primary/20 hover:border-primary/50 transition-all shrink-0"
                 title="Investments durchsuchen"
               >
                 <Search className="w-4 h-4 text-primary" />

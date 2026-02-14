@@ -14,7 +14,7 @@ export function SotArmstrongStripe() {
     return (
       <>
         <aside
-          className="hidden lg:flex fixed right-0 top-12 bottom-0 flex-col items-center justify-center shrink-0 border-l border-border/30 bg-card/50 backdrop-blur-xl z-30 cursor-pointer"
+          className="hidden lg:flex fixed right-0 top-[88px] bottom-0 flex-col items-center justify-center shrink-0 border-l border-border/30 bg-card/50 backdrop-blur-xl z-30 cursor-pointer"
           style={{ width: '45px' }}
           onClick={() => setIsMinimized(false)}
           title="Armstrong öffnen"
@@ -35,7 +35,7 @@ export function SotArmstrongStripe() {
     <>
       {/* Right stripe — desktop only, fixed */}
       <aside
-        className="hidden lg:flex fixed right-0 top-12 bottom-0 flex-col shrink-0 border-l border-border/30 bg-card/50 backdrop-blur-xl z-30"
+        className="hidden lg:flex fixed right-0 top-[88px] bottom-0 flex-col shrink-0 border-l border-border/30 bg-card/50 backdrop-blur-xl z-30"
         style={{ width: '200px' }}
       >
         {/* Header */}
