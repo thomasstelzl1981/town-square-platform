@@ -1,147 +1,65 @@
 
-# Website Builder Redesign — Von "leer" zu "sofort nutzbar"
+
+# Typografie-Bereinigung — Graue Unterschriften entfernen, Hauptbeschriftungen vergroessern
 
 ## Problem
 
-Die aktuelle Dashboard-Seite zeigt beim Aufruf nur eine Demo-Kachel ("Muster GmbH") und ein "+"-Feld. Es fehlt jede visuelle Orientierung:
-- Kein Screenshot oder Live-Preview der Demo-Website
-- Kein gefuehrter Prozess (was sind die Schritte?)
-- Die 5 Design-Templates werden erst sichtbar, wenn man "+Neue Website" klickt
-- Der eigentliche Editor (Split-View mit Drag-and-Drop Sections + Live-Preview) ist hinter zwei Klicks versteckt
-- Die Demo-Ansicht zeigt nur Formularfelder, nicht die fertige Website
+Ueberall in der Plattform gibt es dreifach beschriftete Elemente. Beispiel aus dem Projekte-Dashboard:
+- "SCHRITT 1" (grau, klein)
+- "Hochladen" (mittel)
+- "Exposé + Preisliste" (grau, klein)
 
-## Loesung: Dashboard als visuelles Prozess-Tool
+Drei Zeilen, wo eine genuegt. Das gleiche Muster wiederholt sich in Widgets, Karten, Formularen und Headern. Die kleinen grauen Untertitel (text-xs text-muted-foreground) liefern keinen Mehrwert und machen das Interface unruhig.
 
-Das Dashboard wird so umgebaut, dass man **sofort** versteht, was der Website Builder kann, und **sofort** loslegen kann.
+## Loesung: Zweistufiger Ansatz
 
-### Neues Layout (Top-to-Bottom)
+### Schritt 1: Design-Manifest-Tokens vergroessern (Zentrale Aenderung)
 
-```text
-┌──────────────────────────────────────────────┐
-│  ModulePageHeader: "Website Builder"         │
-│  "Erstellen Sie Ihre Unternehmenswebsite"    │
-├──────────────────────────────────────────────┤
-│  TEMPLATE-GALERIE (5 Karten mit Vorschau)    │
-│  ┌────────┐ ┌────────┐ ┌────────┐ ...       │
-│  │ Modern │ │Klassik │ │Minimal │            │
-│  │[Vorsch]│ │[Vorsch]│ │[Vorsch]│            │
-│  │"Waehle"│ │        │ │        │            │
-│  └────────┘ └────────┘ └────────┘            │
-├──────────────────────────────────────────────┤
-│  MEINE WEBSITES (WidgetGrid)                 │
-│  ┌──────────┐ ┌──────────┐ ┌─────────┐      │
-│  │ Demo     │ │ Meine    │ │ + Neue  │      │
-│  │ [thumb]  │ │ [thumb]  │ │ Website │      │
-│  │ "Modern" │ │ "Entwurf"│ │         │      │
-│  └──────────┘ └──────────┘ └─────────┘      │
-├──────────────────────────────────────────────┤
-│  INLINE-DETAIL (bei Klick auf Kachel)        │
-│  3-Schritte Prozessleiste:                   │
-│  [1. Design] → [2. Inhalte] → [3. Online]   │
-│  + Eingebettete Live-Preview der Website     │
-└──────────────────────────────────────────────┘
-```
+In `src/config/designManifest.ts` werden die TYPOGRAPHY-Tokens angepasst:
+
+| Token | Vorher | Nachher |
+|---|---|---|
+| PAGE_TITLE | text-xl md:text-2xl | text-2xl md:text-3xl |
+| SECTION_TITLE | text-sm font-semibold uppercase | text-base font-semibold uppercase |
+| CARD_TITLE | text-sm font-semibold | text-base font-semibold |
+| LABEL | text-xs text-muted-foreground | text-sm text-muted-foreground |
+| BODY | text-sm | text-base |
+| MUTED | text-sm text-muted-foreground | text-sm text-muted-foreground (bleibt) |
+| HINT | text-xs text-muted-foreground | **entfernt** (wird zu MUTED) |
+| HEADER.WIDGET_TITLE | text-sm font-semibold | text-base font-semibold |
+| HEADER.SECTION_TITLE | text-sm font-semibold | text-base font-semibold |
+| HEADER.DESCRIPTION | text-muted-foreground mt-1 text-sm | **entfernt** |
+
+Das wirkt sich automatisch auf alle Komponenten aus, die diese Tokens verwenden (KPICard, SectionCard, WidgetHeader, InfoBanner, etc.).
+
+### Schritt 2: Graue Subtexte aus Shared-Komponenten entfernen
+
+| Komponente | Aenderung |
+|---|---|
+| `ModulePageHeader.tsx` | `description`-Zeile (text-sm text-muted-foreground) entfernen |
+| `WidgetHeader.tsx` | `description`-Prop und Rendering entfernen |
+| `KPICard.tsx` | `subtitle`-Prop Rendering entfernen |
+| `ModuleTilePage.tsx` | description-Zeilen unter Titeln entfernen |
+
+### Schritt 3: Seitenspezifische Bereinigungen
+
+Die haeufigsten Stellen mit redundanten Subtexten:
+
+| Datei | Was entfernt wird |
+|---|---|
+| `ProjekteDashboard.tsx` | Die "SCHRITT X" Labels und die `desc`-Zeilen ("Exposé + Preisliste" etc.) — die Titel "Hochladen", "KI-Analyse" etc. genuegen allein |
+| `WBDashboard.tsx` | Redundante Prozess-Beschreibungen |
+| `ProcessStepper.tsx` | `description`-Prop aus den Steps |
+
+### Schritt 4: Alle verbleibenden `description`-Props bereinigen
+
+In den Seiten, die `ModulePageHeader` mit `description` aufrufen, wird der `description`-Prop entfernt. Der Titel allein ist aussagekraeftig genug.
 
 ---
 
-## Detailplan
+## Auswirkung
 
-### 1. Template-Galerie als Einstieg
-
-Oben auf dem Dashboard erscheint eine **visuelle Template-Galerie** mit den 5 bestehenden Templates. Jede Karte zeigt:
-- Den Farbverlauf (preview_gradient) als grosses visuelles Element
-- Template-Name und Kurzbeschreibung
-- Eine stilisierte Mini-Vorschau (Hero + 2 Sections als Silhouette)
-- Button "Mit diesem Template starten" → oeffnet direkt das Erstellungsformular mit vorausgewaehltem Template
-
-### 2. Website-Kacheln mit Thumbnail-Preview
-
-Die bestehenden WidgetCells fuer Demo und echte Websites werden erweitert:
-- Statt nur Text zeigen sie eine **Mini-Vorschau** der Website (die SectionRenderer-Komponente existiert bereits — sie wird in einem kleinen Container mit `transform: scale()` eingebettet)
-- Status-Badge (Demo/Entwurf/Online) bleibt
-- Klick oeffnet den Inline-Detail-Bereich darunter
-
-### 3. Inline-Detail mit Prozessleiste
-
-Wenn eine Website ausgewaehlt wird, erscheint darunter ein **3-Schritte-Prozess**:
-
-**Schritt 1: Design und Grunddaten**
-- Template-Auswahl (bereits implementiert)
-- Primaerfarbe, Schriftart, Logo (bereits implementiert)
-- Firmenname, Branche, Zielgruppe (bereits implementiert)
-
-**Schritt 2: Inhalte bearbeiten**
-- **Direkt eingebetteter Section-Editor** (aktuell nur im separaten Editor erreichbar)
-- KI-Generierung Button prominent platziert ("Website mit KI fuellen")
-- Sections hinzufuegen/sortieren/bearbeiten
-- **Live-Preview** daneben (Split-View wie im bestehenden Editor)
-
-**Schritt 3: Veroeffentlichen**
-- SEO-Einstellungen (bereits implementiert)
-- Hosting-Vertrag (bereits implementiert)
-- Veroeffentlichen-Button
-- Versionshistorie
-
-Die Navigation zwischen den Schritten erfolgt ueber eine **horizontale Prozessleiste** (kein Tab-System, sondern ein visueller Fortschritts-Indikator).
-
-### 4. Demo-Website mit echten Inhalten
-
-Die Demo-Kachel "Muster GmbH" wird so erweitert, dass sie **echte Demo-Sections** zeigt:
-- Hero mit Beispiel-Headline und Hintergrundbild
-- Features mit 3 Beispiel-Eintraegen
-- About-Section mit Beispieltext
-- Contact-Section
-- Footer
-
-Diese Demo-Sections werden als statische Daten im Frontend gehalten (wie die bestehende DEMO_WEBSITE Konstante) und via SectionRenderer dargestellt.
-
----
-
-## Technische Umsetzung
-
-### Dateien die geaendert werden:
-
-| Datei | Aenderung |
-|---|---|
-| `WBDashboard.tsx` | Komplett-Redesign: Template-Galerie, Thumbnail-Preview, 3-Schritte-Prozess |
-| `WBEditor.tsx` | Wird als **eingebettete Komponente** refactored, damit der Editor auch inline im Dashboard nutzbar ist (nicht nur als separate Route) |
-
-### Dateien die neu erstellt werden:
-
-| Datei | Zweck |
-|---|---|
-| `WebsiteThumbnail.tsx` | Wiederverwendbare Mini-Preview-Komponente (SectionRenderer in skaliertem Container) |
-| `ProcessStepper.tsx` | Horizontale 3-Schritte-Prozessleiste (Design → Inhalte → Online) |
-| `DemoSections.ts` | Statische Demo-Section-Daten fuer die Muster GmbH Vorschau |
-
-### Bestehende Komponenten die wiederverwendet werden:
-
-- `SectionRenderer` — Rendert Sections als Live-Preview
-- `DesignSection` / `SeoSection` / `ContractSection` — Bleiben als Inline-Formulare
-- `SortableSectionCard` + `ItemsArrayEditor` — Werden in den Inline-Editor integriert
-- `DESIGN_TEMPLATES` — Werden fuer die Template-Galerie genutzt
-
-### Keine DB-Aenderungen noetig
-
-Alle Tabellen (`tenant_websites`, `website_pages`, `website_sections`, `hosting_contracts`) existieren bereits und sind funktional. Die Aenderungen sind rein UI/UX.
-
----
-
-## Was sich verbessert
-
-| Vorher | Nachher |
-|---|---|
-| Leere Seite mit einer Demo-Kachel | Visuelle Template-Galerie als Einstieg |
-| Demo zeigt nur Formularfelder | Demo zeigt fertige Website-Vorschau |
-| Editor hinter 2 Klicks versteckt | Editor inline im Dashboard integriert |
-| Kein erkennbarer Prozess | 3-Schritte-Prozessleiste (Design → Inhalte → Online) |
-| Keine Template-Vorschau | 5 Templates mit Farbverlauf und Beschreibung prominent sichtbar |
-| Website-Kacheln nur Text | Website-Kacheln mit Mini-Preview |
-
-## Implementierungsreihenfolge
-
-1. `DemoSections.ts` erstellen (statische Daten)
-2. `WebsiteThumbnail.tsx` erstellen (skalierte Mini-Preview)
-3. `ProcessStepper.tsx` erstellen (3-Schritte-Leiste)
-4. `WBDashboard.tsx` redesignen (Template-Galerie + Thumbnails + Prozess-Integration)
-5. Editor-Logik aus `WBEditor.tsx` als einbettbare Komponente extrahieren
+- **Zentrale Tokens** (Manifest): Werden automatisch in ~30+ Komponenten wirksam
+- **Shared-Komponenten**: 4 Dateien anpassen
+- **Seitenspezifisch**: ~5-8 Dateien (vor allem Dashboard-Seiten)
+- **Kein Risiko**: Keine Logik-Aenderungen, nur CSS-Klassen und entfernte JSX-Zeilen
