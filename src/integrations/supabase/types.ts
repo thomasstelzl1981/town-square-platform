@@ -4202,13 +4202,17 @@ export type Database = {
           company: string | null
           created_at: string
           deleted_at: string | null
+          do_not_contact: boolean | null
           email: string | null
           first_name: string
           google_contact_id: string | null
           id: string
+          last_contacted_at: string | null
           last_name: string
+          legal_basis: string | null
           microsoft_contact_id: string | null
           notes: string | null
+          permission_status: string | null
           phone: string | null
           phone_mobile: string | null
           postal_code: string | null
@@ -4219,6 +4223,7 @@ export type Database = {
           synced_at: string | null
           synced_from: string | null
           tenant_id: string
+          unsubscribe_token: string | null
           updated_at: string
         }
         Insert: {
@@ -4227,13 +4232,17 @@ export type Database = {
           company?: string | null
           created_at?: string
           deleted_at?: string | null
+          do_not_contact?: boolean | null
           email?: string | null
           first_name: string
           google_contact_id?: string | null
           id?: string
+          last_contacted_at?: string | null
           last_name: string
+          legal_basis?: string | null
           microsoft_contact_id?: string | null
           notes?: string | null
+          permission_status?: string | null
           phone?: string | null
           phone_mobile?: string | null
           postal_code?: string | null
@@ -4244,6 +4253,7 @@ export type Database = {
           synced_at?: string | null
           synced_from?: string | null
           tenant_id: string
+          unsubscribe_token?: string | null
           updated_at?: string
         }
         Update: {
@@ -4252,13 +4262,17 @@ export type Database = {
           company?: string | null
           created_at?: string
           deleted_at?: string | null
+          do_not_contact?: boolean | null
           email?: string | null
           first_name?: string
           google_contact_id?: string | null
           id?: string
+          last_contacted_at?: string | null
           last_name?: string
+          legal_basis?: string | null
           microsoft_contact_id?: string | null
           notes?: string | null
+          permission_status?: string | null
           phone?: string | null
           phone_mobile?: string | null
           postal_code?: string | null
@@ -4269,6 +4283,7 @@ export type Database = {
           synced_at?: string | null
           synced_from?: string | null
           tenant_id?: string
+          unsubscribe_token?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -13096,6 +13111,137 @@ export type Database = {
             columns: ["unit_id"]
             isOneToOne: false
             referencedRelation: "units"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      soat_search_orders: {
+        Row: {
+          counters_json: Json | null
+          created_at: string
+          created_by: string | null
+          error_message: string | null
+          finished_at: string | null
+          id: string
+          intent: string | null
+          last_heartbeat_at: string | null
+          phase: string | null
+          progress_percent: number | null
+          provider_plan_json: Json | null
+          started_at: string | null
+          status: string
+          target_count: number | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          counters_json?: Json | null
+          created_at?: string
+          created_by?: string | null
+          error_message?: string | null
+          finished_at?: string | null
+          id?: string
+          intent?: string | null
+          last_heartbeat_at?: string | null
+          phase?: string | null
+          progress_percent?: number | null
+          provider_plan_json?: Json | null
+          started_at?: string | null
+          status?: string
+          target_count?: number | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          counters_json?: Json | null
+          created_at?: string
+          created_by?: string | null
+          error_message?: string | null
+          finished_at?: string | null
+          id?: string
+          intent?: string | null
+          last_heartbeat_at?: string | null
+          phase?: string | null
+          progress_percent?: number | null
+          provider_plan_json?: Json | null
+          started_at?: string | null
+          status?: string
+          target_count?: number | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      soat_search_results: {
+        Row: {
+          address_line: string | null
+          category: string | null
+          city: string | null
+          company_name: string | null
+          confidence_score: number | null
+          contact_person_name: string | null
+          contact_person_role: string | null
+          country: string | null
+          created_at: string
+          email: string | null
+          entity_type: string | null
+          id: string
+          order_id: string
+          phone: string | null
+          postal_code: string | null
+          source_refs_json: Json | null
+          suppression_reason: string | null
+          validation_state: string | null
+          website_url: string | null
+        }
+        Insert: {
+          address_line?: string | null
+          category?: string | null
+          city?: string | null
+          company_name?: string | null
+          confidence_score?: number | null
+          contact_person_name?: string | null
+          contact_person_role?: string | null
+          country?: string | null
+          created_at?: string
+          email?: string | null
+          entity_type?: string | null
+          id?: string
+          order_id: string
+          phone?: string | null
+          postal_code?: string | null
+          source_refs_json?: Json | null
+          suppression_reason?: string | null
+          validation_state?: string | null
+          website_url?: string | null
+        }
+        Update: {
+          address_line?: string | null
+          category?: string | null
+          city?: string | null
+          company_name?: string | null
+          confidence_score?: number | null
+          contact_person_name?: string | null
+          contact_person_role?: string | null
+          country?: string | null
+          created_at?: string
+          email?: string | null
+          entity_type?: string | null
+          id?: string
+          order_id?: string
+          phone?: string | null
+          postal_code?: string | null
+          source_refs_json?: Json | null
+          suppression_reason?: string | null
+          validation_state?: string | null
+          website_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "soat_search_results_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "soat_search_orders"
             referencedColumns: ["id"]
           },
         ]

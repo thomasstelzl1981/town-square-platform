@@ -97,16 +97,12 @@ export const zone1Admin: ZoneDefinition = {
     { path: "masterdata/fahrzeugakte", component: "MasterTemplatesFahrzeugakte", title: "Fahrzeugakte Vorlage" },
     { path: "masterdata/photovoltaikakte", component: "MasterTemplatesPhotovoltaikakte", title: "Photovoltaikakte Vorlage" },
     { path: "masterdata/finanzierungsakte", component: "MasterTemplatesFinanzierungsakte", title: "Finanzierungsakte Vorlage" },
-    // KI Office (Marketing Automation Suite)
-    { path: "ki-office", component: "AdminKiOfficeDashboard", title: "KI-Office" },
-    { path: "ki-office-email", component: "AdminKiOfficeEmail", title: "E-Mail" },
-    { path: "ki-office-sequenzen", component: "AdminKiOfficeSequenzen", title: "Sequenzen" },
-    { path: "ki-office-templates", component: "AdminKiOfficeTemplates", title: "Templates" },
-    { path: "ki-office-kontakte", component: "AdminKiOfficeKontakte", title: "Kontakte" },
-    { path: "ki-office-recherche", component: "AdminKiOfficeRecherche", title: "Recherche" },
+    // KI Office — Konsolidiert: 3 Menüpunkte
+    { path: "ki-office/recherche", component: "AdminRecherche", title: "Recherche" },
+    { path: "ki-office/kontakte", component: "AdminKontaktbuch", title: "Kontaktbuch" },
+    { path: "ki-office/email", component: "AdminEmailAgent", title: "E-Mail Agent" },
     { path: "tiles", component: "TileCatalog", title: "Tile-Katalog" },
     { path: "integrations", component: "Integrations", title: "Integrationen" },
-    { path: "communication", component: "CommunicationHub", title: "Kommunikation" },
     { path: "oversight", component: "Oversight", title: "Oversight" },
     { path: "audit", component: "AuditHub", title: "Audit Hub" },
     
