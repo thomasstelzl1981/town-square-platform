@@ -449,3 +449,51 @@
 .zone3-page * {
   transition: background-color 0.2s ease, border-color 0.2s ease;
 }
+
+/* ===========================================================================
+   LOGIN TRANSITION — Tiles fly out
+   =========================================================================== */
+
+.sot-transition-wrapper[data-transitioning] .sot-header-area {
+  animation: sot-fly-up 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.sot-transition-wrapper[data-transitioning] .sot-sidebar-area {
+  animation: sot-fly-right 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.sot-transition-wrapper[data-transitioning] .sot-armstrong-area {
+  animation: sot-fly-left 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.sot-transition-wrapper[data-transitioning] .sot-main-area {
+  animation: sot-scale-out 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.sot-transition-wrapper[data-transitioning] .sot-footer-area {
+  animation: sot-fly-down 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.sot-transition-wrapper[data-transitioning] .sot-mobile-nav-area {
+  animation: sot-fly-down 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes sot-fly-up {
+  to { transform: translateY(-120%); opacity: 0; }
+}
+
+@keyframes sot-fly-down {
+  to { transform: translateY(120%); opacity: 0; }
+}
+
+@keyframes sot-fly-left {
+  to { transform: translateX(-120%); opacity: 0; }
+}
+
+@keyframes sot-fly-right {
+  to { transform: translateX(120%); opacity: 0; }
+}
+
+@keyframes sot-scale-out {
+  to { transform: scale(0.95); opacity: 0; }
+}
