@@ -61,8 +61,10 @@ export default function FutureRoomLayout() {
   };
 
   const handleTabChange = (value: string) => {
-    // Always use lowercase absolute paths
-    navigate(`/admin/futureroom/${value}`);
+    // Wrap in startTransition to avoid suspending during synchronous input
+    React.startTransition(() => {
+      navigate(`/admin/futureroom/${value}`);
+    });
   };
 
   return (
