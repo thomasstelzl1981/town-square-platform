@@ -1,66 +1,63 @@
 
-# SubTab-Leisten und Seiten-Header Audit + Reparatur
 
-## Analyse: Was stimmt nicht?
+# Recherche-Ergebnisse: Professionelle Tabellenansicht + Import-Flow
 
-Ich habe die gesamte Kette geprueft: **Level-2-Modul-Tab** (moduleLabelOverrides) → **Level-3-SubTab** (routesManifest tiles.title) → **Seiten-Header** (ModulePageHeader title im Page-Component).
+## Problem
 
-### Fehler 1: MOD-05 falsch als "Website Builder" gelabelt
+1. **Zu wenig sichtbare Datenpunkte**: Die Ergebnisse werden als kompakte Karten angezeigt, nicht als strukturierte Tabelle. Wichtige Felder (Adresse, PLZ, Kategorie, Rolle, Website-URL, Quelle) sind versteckt oder fehlen.
+2. **Kein Export**: Es gibt keinen Excel/CSV-Export der Ergebnisse.
+3. **Import ohne Feedback**: Der Bulk-Import ins Kontaktbuch zeigt nicht an, welche Kontakte bereits existieren (Duplikate) und welche neu angelegt werden.
 
-In `areaConfig.ts` steht:
+## Loesung
+
+### 1. Ergebnis-Tabelle statt Karten-Liste
+
+Die ScrollArea mit Karten (Zeilen 398-447) wird durch eine echte HTML-Tabelle ersetzt:
+
+| Spalte | Datenfeld | Breite |
+|--------|-----------|--------|
+| Checkbox | (Auswahl) | 40px |
+| Firma | company_name | flex |
+| Kategorie | category | 100px |
+| Kontaktperson | contact_person_name | 150px |
+| Rolle | contact_person_role | 120px |
+| E-Mail | email | 180px |
+| Telefon | phone | 130px |
+| Stadt | city | 100px |
+| PLZ | postal_code | 70px |
+| Website | website_url | 80px (Link-Icon) |
+| Score | confidence_score | 60px |
+| Status | validation_state | 90px |
+| Aktionen | OK/Nein-Buttons | 100px |
+
+Die Tabelle wird horizontal scrollbar in einer ScrollArea dargestellt, damit alle Datenpunkte sichtbar sind.
+
+### 2. Excel-Export
+
+Ein neuer "Export"-Button neben dem Filter generiert eine XLSX-Datei (mit der bereits installierten `xlsx`-Bibliothek) mit allen sichtbaren Ergebnissen und saemtlichen Datenpunkten.
+
+### 3. Import-Flow mit Deduplizierungs-Vorschau
+
+Statt direkt zu importieren, zeigt der Import-Button eine Vorschau-Sektion unterhalb der Tabelle:
+
+```text
++------------------------------------------------------------------------+
+| Import-Vorschau                                              [X Schliessen] |
+|------------------------------------------------------------------------|
+| 12 ausgewaehlt: 8 neue Kontakte | 3 bereits vorhanden | 1 ohne E-Mail |
+|------------------------------------------------------------------------|
+| [v] Makler Hamburg GmbH    | NEU        | mueller@example.de          |
+| [v] Immo Partner AG        | DUPLIKAT   | info@immo.de (existiert)    |
+| [ ] Test Firma              | KEIN EMAIL | —                           |
+|------------------------------------------------------------------------|
+| Duplikate: [ ] Ueberspringen  [x] Aktualisieren                       |
+|                                          [Jetzt importieren (8 neue)]  |
++------------------------------------------------------------------------+
 ```
-'MOD-05': 'Website Builder'
-```
 
-MOD-05 ist aber das **Pets**-Modul (base: "pets", tiles: Meine Tiere, Caring, Shop, Fotoalbum). Hier wurde der Label-Override falsch gesetzt.
+Der Import nutzt die bestehende Edge Function `sot-research-import-contacts` mit dem `duplicate_policy`-Parameter statt der aktuellen einfachen `contacts.insert`-Logik (Zeilen 162-188), die keine Duplikat-Pruefung hat.
 
-### Fehler 2: Pets-Seiten haben keine ModulePageHeader
-
-Die 4 Pets-Tabs (`PetsMeineTiere.tsx`, `PetsCaring.tsx`, `PetsShop.tsx`, `PetsFotoalbum.tsx`) nutzen **keine** `PageShell` + `ModulePageHeader`-Kombination. Stattdessen verwenden sie manuelle `<h2>`-Tags. Das widerspricht dem systemweiten Standard, den alle anderen Module einhalten.
-
-### Fehler 3: Fehlende Konsistenz zwischen SubTab-Titel und Seiten-Header
-
-Hier die vollstaendige Audit-Tabelle fuer Module mit Label-Overrides:
-
-| Modul | Override-Label (Level 2) | SubTab-Titel (Level 3) | Page-Header (ModulePageHeader title) | Status |
-|-------|--------------------------|------------------------|--------------------------------------|--------|
-| MOD-03 "Dokumente" | Dokumente | Storage, Posteingang, Sortieren, Einstellungen | "Dateien", "Posteingang", "Sortieren", "Einstellungen" | SubTab sagt "Storage", Header sagt "Dateien" — inkonsistent |
-| MOD-05 "Pets" | **Website Builder** (FALSCH!) | Meine Tiere, Caring, Shop, Fotoalbum | Manuelle h2-Tags, kein ModulePageHeader | 2 Fehler |
-| MOD-17 "Fahrzeuge" | Fahrzeuge | Fahrzeuge, Boote, Privatjet, Angebote | "Fahrzeuge", "Boote & Yachten", "Privatjet", "Angebote" | OK (Boote vs "Boote & Yachten" = leichte Abweichung) |
-| MOD-08 "Immo Suche" | Immo Suche | Suche, Favoriten, Mandat, Simulation | "OBJEKTSUCHE", ?, ?, "INVESTMENT-SIMULATION" | Page-Header passt nicht zu SubTab-Titeln |
-| MOD-18 "Finanzen" | Finanzen | Uebersicht, Cashflow & Budget, Vertraege & Fixkosten, Risiko & Absicherung | Nicht geprueft (lazy-loaded) | Zu pruefen |
-| MOD-19 "Photovoltaik" | (kein Override) | Anlagen, Enpal, Dokumente, Einstellungen | "ANLAGEN", "Einstellungen" | OK |
-
----
-
-## Umsetzung
-
-### 1. `areaConfig.ts` — MOD-05 Label-Override korrigieren
-
-- `'MOD-05': 'Website Builder'` entfernen oder durch `'MOD-05': 'Pets'` ersetzen (damit der Manifest-Name "Pets" erhalten bleibt)
-
-### 2. `routesManifest.ts` — SubTab-Titel korrigieren (MOD-03)
-
-- MOD-03 tile "Storage" umbenennen zu "Dateien" (damit SubTab = Page-Header)
-
-### 3. Pets-Seiten auf Standard umbauen (4 Dateien)
-
-Alle 4 Pets-Tabs bekommen `PageShell` + `ModulePageHeader` statt manueller h2-Tags:
-
-| Datei | Aenderung |
-|-------|-----------|
-| `PetsMeineTiere.tsx` | `<PageShell><ModulePageHeader title="MEINE TIERE" description="..." />` |
-| `PetsCaring.tsx` | `<PageShell><ModulePageHeader title="CARING" description="..." />` |
-| `PetsShop.tsx` | `<PageShell><ModulePageHeader title="SHOP" description="..." />` |
-| `PetsFotoalbum.tsx` | `<PageShell><ModulePageHeader title="FOTOALBUM" description="..." />` |
-
-### 4. MOD-08 Page-Header angleichen
-
-Die Seiten nutzen Titel wie "OBJEKTSUCHE" und "INVESTMENT-SIMULATION", aber die SubTabs heissen "Suche" und "Simulation". Entweder SubTabs anpassen oder Page-Header — ich schlage vor, die Page-Header an die SubTab-Titel anzugleichen fuer Konsistenz.
-
-### 5. MOD-17 Kleinigkeit: "Boote" SubTab vs "Boote & Yachten" Page-Header
-
-SubTab sagt "Boote", Page sagt "Boote & Yachten" — einer der beiden sollte angepasst werden.
+**Vor dem Import**: Ein Vorab-Check fragt die `contacts`-Tabelle nach E-Mail-Matches ab, um die Vorschau zu fuellen.
 
 ---
 
@@ -68,12 +65,10 @@ SubTab sagt "Boote", Page sagt "Boote & Yachten" — einer der beiden sollte ang
 
 | Datei | Aenderung |
 |-------|-----------|
-| `src/manifests/areaConfig.ts` | MOD-05 Override entfernen/korrigieren |
-| `src/manifests/routesManifest.ts` | MOD-03 tile title "Storage" → "Dateien" |
-| `src/pages/portal/pets/PetsMeineTiere.tsx` | PageShell + ModulePageHeader einbauen |
-| `src/pages/portal/pets/PetsCaring.tsx` | PageShell + ModulePageHeader einbauen |
-| `src/pages/portal/pets/PetsShop.tsx` | PageShell + ModulePageHeader einbauen |
-| `src/pages/portal/pets/PetsFotoalbum.tsx` | PageShell + ModulePageHeader einbauen |
-| `src/pages/portal/investments/SucheTab.tsx` | Header "OBJEKTSUCHE" → "SUCHE" |
-| `src/pages/portal/investments/SimulationTab.tsx` | Header "INVESTMENT-SIMULATION" → "SIMULATION" |
-| `src/components/portal/cars/CarsBoote.tsx` | Header "Boote & Yachten" → "BOOTE" (oder SubTab anpassen) |
+| `src/pages/admin/ki-office/AdminRecherche.tsx` | Karten-Liste durch Tabelle ersetzen, Export-Button, Import-Vorschau mit Dedupe-Check |
+
+## Was sich NICHT aendert
+
+- `useSoatSearchEngine.ts` (Hook bleibt gleich)
+- `sot-research-import-contacts` Edge Function (wird jetzt tatsaechlich genutzt statt der manuellen Insert-Logik)
+- Widget-Grid und Draft-Flow (bereits korrekt)
