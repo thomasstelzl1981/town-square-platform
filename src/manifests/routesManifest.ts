@@ -302,7 +302,7 @@ export const zone2Portal: ZoneDefinition = {
         { path: "privatkredit", component: "PrivatkreditTab", title: "Privatkredit" },
       ],
       dynamic_routes: [
-        { path: "anfrage/:requestId", component: "AnfrageDetailPage", title: "Anfrage-Details", dynamic: true },
+        { path: "anfrage/:requestId", component: "AnfrageDetailPage", title: "Anfrage-Details", dynamic: true, goldenPath: { moduleCode: 'MOD-07', entityIdParam: 'requestId' } },
       ],
     },
     // =========================================================================
@@ -403,8 +403,8 @@ export const zone2Portal: ZoneDefinition = {
       ],
       dynamic_routes: [
         { path: "mandate/neu", component: "MandatCreateWizardManager", title: "Neues Mandat" },
-        { path: "mandate/:mandateId", component: "AkquiseMandateDetail", title: "Mandat-Workbench", dynamic: true },
-        { path: "objekteingang/:offerId", component: "ObjekteingangDetail", title: "Objekteingang Detail", dynamic: true },
+        { path: "mandate/:mandateId", component: "AkquiseMandateDetail", title: "Mandat-Workbench", dynamic: true, goldenPath: { moduleCode: 'MOD-12', entityIdParam: 'mandateId' } },
+        { path: "objekteingang/:offerId", component: "ObjekteingangDetail", title: "Objekteingang Detail", dynamic: true, goldenPath: { moduleCode: 'MOD-12', entityIdParam: 'offerId' } },
       ],
     },
     "MOD-13": {
@@ -420,7 +420,7 @@ export const zone2Portal: ZoneDefinition = {
         { path: "landing-page", component: "LandingPageTab", title: "Landing Page" },
       ],
       dynamic_routes: [
-        { path: ":projectId", component: "ProjectDetailPage", title: "Projektakte", dynamic: true },
+        { path: ":projectId", component: "ProjectDetailPage", title: "Projektakte", dynamic: true, goldenPath: { moduleCode: 'MOD-13', entityIdParam: 'projectId' } },
         { path: ":projectId/einheit/:unitId", component: "UnitDetailPage", title: "Einheitenakte", dynamic: true },
       ],
     },
@@ -503,7 +503,7 @@ export const zone2Portal: ZoneDefinition = {
       ],
       dynamic_routes: [
         { path: "neu", component: "PVCreateWizard", title: "Neue PV-Anlage" },
-        { path: ":pvPlantId", component: "PVPlantDetail", title: "PV-Akte", dynamic: true },
+        { path: ":pvPlantId", component: "PVPlantDetail", title: "PV-Akte", dynamic: true, goldenPath: { moduleCode: 'MOD-19', entityIdParam: 'pvPlantId' } },
       ],
     },
     "MOD-20": {
