@@ -61,12 +61,12 @@ export default function SotHome() {
 
       {/* Scrollable Content */}
       <div className={cn('flex-1 overflow-y-auto', CONTAINER.PADDING)}>
-        <div className={cn(CONTAINER.MAX_WIDTH, 'mx-auto', CONTAINER.SPACING)}>
+        <div className={cn(CONTAINER.MAX_WIDTH, 'mx-auto flex flex-col items-center', CONTAINER.SPACING)}>
           {/* Welcome Headline */}
-          <h1 className={HEADER.PAGE_TITLE}>Welcome on Board</h1>
+          <h1 className={cn(HEADER.PAGE_TITLE, 'text-center')}>Welcome on Board</h1>
 
           {/* Investment Engine — spans 3 widget columns */}
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 md:gap-6">
+          <div className="w-full grid grid-cols-1 lg:grid-cols-4 gap-4 md:gap-6">
             <div className="lg:col-span-3">
               <Card className="glass-card border-primary/20 p-6 h-full">
                 <h2 className="text-base font-semibold mb-4">Investment Engine</h2>
@@ -91,7 +91,7 @@ export default function SotHome() {
           </div>
 
           {/* Widget Tiles — square, blue border, dashboard style */}
-          <WidgetGrid variant="widget">
+          <WidgetGrid variant="widget" className="w-full">
             {threeWays.map((item) => (
               <WidgetCell key={item.title}>
                 <Link to={item.href} className="block h-full">
