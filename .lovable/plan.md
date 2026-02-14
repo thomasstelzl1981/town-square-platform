@@ -1,52 +1,61 @@
 
 
-## SoT Homepage -- Vergleich und Anpassungen
+## SoT Homepage -- Erweiterte Anpassungen
 
-### 1. Duenne Linien ueber und unter den Menuepunkten
+### Uebersicht der Aenderungen
 
-Im Portal hat die `TopNavigation` ein `border-b` auf dem aeusseren `nav`-Element und ein `border-b` auf dem inneren AreaTabs-Container. Die SoT SubBar hat aktuell keine Rahmenlinien.
+Die Startseite wird visuell ueberarbeitet: Die Ueberschrift wird zu "Investment Engine", der gesamte Content wird vertikal zentriert (nicht nur oben angedockt), die Investment-Engine-Eingabe bekommt die richtigen Felder (Eigenkapital + zvE), und der Armstrong Stripe wird korrekt positioniert.
 
-**Aenderung in `SotHome.tsx`:**
-- SubBar-Container bekommt `border-y border-border/30` fuer duenne Linien oben und unten, identisch zum Portal-Stil.
+---
 
-### 2. Armstrong Stripe -- Breite und Hoehe anpassen
+### 1. Ueberschrift aendern (`SotHome.tsx`)
 
-Aktuell ist der Stripe nur 45px (idle) / 58px (hover) breit -- das entspricht ca. 1cm auf dem Bildschirm. Im Portal-Screenshot ist der expanded Armstrong deutlich breiter (304px) mit Header "ARMSTRONG", Minimize/Close Buttons und Datei-Drop-Zone.
+- "Welcome on Board" wird ersetzt durch **"Investment Engine"**
+- Bleibt `text-center` mit `HEADER.PAGE_TITLE` Styling
 
-**Aenderung in `SotArmstrongStripe.tsx`:**
-- Breite erhoehen auf ca. 200px (idle), passend zum Portal-Referenz-Screenshot
-- Hoehe: Der Stripe soll nicht die volle Hoehe einnehmen, sondern nur den Content-Bereich (unter der SystemBar). Das ist bereits korrekt durch das Flex-Layout, aber der innere Content wird auf `justify-center` umgestellt statt `justify-end`, damit der Armstrong-Content vertikal zentriert sitzt statt ganz unten
-- Oben den "ARMSTRONG" Schriftzug horizontal anzeigen (wie im Portal) plus Minimize/Close Buttons
-- "Dateien hierher ziehen" Platzhalter in der Mitte
+### 2. Content vertikal und horizontal zentrieren (`SotHome.tsx`)
 
-### 3. Zentrierung von Headline und Kacheln
+- Der aeussere Scroll-Container bekommt `flex items-center justify-center min-h-full` statt nur `flex-1 overflow-y-auto`
+- Dadurch sitzt der gesamte Block (Ueberschrift + Eingabe + Kacheln) **mittig im Viewport** -- vertikal und horizontal
+- Mehr Abstand zwischen Ueberschrift und Eingabezeile: `space-y-6 md:space-y-8` statt dem Standard-Spacing
 
-Das Problem: Der Armstrong Stripe ist ein Flex-Sibling von `main` im Layout. Dadurch wird der sichtbare Bereich nach links verschoben.
+### 3. Investment Engine Eingabe ueberarbeiten (`SotHome.tsx`)
 
-**Aenderung in `SotLayout.tsx`:**
-- Die `main` bekommt `flex items-center justify-center` oder der innere Content wird relativ zum Viewport zentriert
-- Alternativ: Armstrong Stripe wird `position: fixed` auf der rechten Seite, sodass er den Content-Flow nicht beeinflusst. Der Main-Content zentriert sich dann unabhaengig ueber die volle Breite.
+Die aktuelle Eingabe hat falsche Felder ("Budget ab", "Rendite ab"). Korrektur:
 
-**Empfohlene Loesung:** Armstrong als `fixed right-0` positionieren, damit Kacheln und Headline immer perfekt mittig im Viewport sitzen, unabhaengig von der Stripe-Breite.
+- **Linker Glass-Button**: Sliders-Icon (`SlidersHorizontal` aus lucide), oeffnet spaeter erweiterte Parameter
+- **Input 1**: `type="number"`, Placeholder "Eigenkapital €" (das ist `equity` im useInvestmentEngine)
+- **Input 2**: `type="number"`, Placeholder "zvE €" (zu versteuerndes Einkommen = `taxableIncome`)
+- **Rechter Glass-Button**: Search-Icon, gleicher `nav-tab-glass` Stil
+- Das Label "Investment Engine" in der Card entfaellt (steht ja schon als Ueberschrift darueber)
+- Beide Buttons: `h-10 w-10 rounded-xl nav-tab-glass border border-primary/20`
 
-### 4. Investment Engine vereinfachen
+### 4. SubBar-Linien sichtbarer machen (`SotHome.tsx`)
 
-Statt 4 Eingabefelder (Ort, Budget, Rendite, Objektart) + blauer Button wird die Eingabe reduziert auf:
-- 2 Zahlen-Inputs (z.B. "Budget" und "Rendite" oder "Min" und "Max")
-- Rechts daneben ein runder/quadratischer Glass-Suchbutton (nav-tab-glass Stil mit Search-Icon)
-- Der breite blaue "Investments durchsuchen" Button entfaellt komplett
-- Die gesamte Eingabezeile wird kompakt in einer Zeile dargestellt
+- `border-border/30` wird zu `border-border/50` fuer bessere Sichtbarkeit der horizontalen Trennlinien
 
-**Aenderung in `SotHome.tsx`:**
-- Investment Engine Card: Nur noch eine horizontale Zeile mit 2 Input-Feldern + Glass-Button
-- Inputs: `type="number"`, Placeholder z.B. "Budget ab" und "Rendite ab"
-- Suchbutton: Runder Glass-Button mit Search-Icon, kein solider blauer Hintergrund
+### 5. Armstrong Stripe Position und Breite (`SotArmstrongStripe.tsx`)
+
+Aktuell `top-12` (48px = SystemBar). Der Stripe muss unterhalb der SubBar beginnen:
+
+- **Expanded State**: `top-12` aendern zu `top-[88px]` (48px SystemBar + 40px SubBar), Breite bleibt 200px
+- **Minimized State**: Gleiche Top-Position, Breite bleibt 45px
+- Der Stripe ist bereits `fixed right-0`, beeinflusst also den Content-Flow nicht -- die Kacheln bleiben mittig unabhaengig vom Stripe
+- Der Main-Content in `SotHome.tsx` bekommt KEIN padding-right -- der Content zentriert sich ueber die volle Viewport-Breite, der Stripe ueberlappt bei Bedarf leicht
+
+### 6. Kacheln bleiben unveraendert
+
+- WidgetGrid mit 3 Kacheln (Investment finden, Objekt einreichen, Finanzierung starten) bleibt wie bisher
+- `w-full` auf dem Grid sorgt dafuer, dass sie innerhalb des zentrierten Containers korrekt sitzen
+
+---
 
 ### Zusammenfassung der Dateiaenderungen
 
-| Datei | Aenderung |
+| Datei | Aenderungen |
 |---|---|
-| `SotHome.tsx` | SubBar `border-y`, Investment Engine auf 2 Inputs + Glass-Button vereinfachen |
-| `SotArmstrongStripe.tsx` | Breite auf ~200px, "ARMSTRONG" Header oben, "Dateien hierher ziehen" Platzhalter, vertikale Zentrierung |
-| `SotLayout.tsx` | Armstrong Stripe auf `fixed right-0` umstellen, damit Content unabhaengig zentriert bleibt |
+| `SotHome.tsx` | Ueberschrift "Investment Engine", vertikale Zentrierung (`min-h-full flex items-center justify-center`), SubBar-Border auf `/50`, Investment-Eingabe: EK + zvE + links SlidersHorizontal-Button + rechts Search-Button, Label entfernt, mehr Spacing |
+| `SotArmstrongStripe.tsx` | `top-[88px]` statt `top-12` fuer beide States (expanded + minimized), damit Stripe unter SubBar beginnt |
+
+Keine Aenderungen an `SotLayout.tsx` noetig -- der Stripe ist bereits fixed positioniert.
 
