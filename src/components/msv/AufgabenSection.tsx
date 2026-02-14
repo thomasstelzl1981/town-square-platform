@@ -61,7 +61,11 @@ function createDraft(stufe: number, mieter: string) {
   });
 }
 
-export function AufgabenSection() {
+interface AufgabenSectionProps {
+  propertyId?: string | null;
+}
+
+export function AufgabenSection({ propertyId }: AufgabenSectionProps) {
   const [faelligkeitstag, setFaelligkeitstag] = useState(5);
   const [gracePeriod, setGracePeriod] = useState(2);
   const [showSettings, setShowSettings] = useState(false);

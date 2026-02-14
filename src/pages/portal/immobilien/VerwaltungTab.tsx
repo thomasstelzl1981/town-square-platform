@@ -1,176 +1,147 @@
 /**
- * VerwaltungTab — Golden Path konform (ehem. Tabs → WidgetGrid + Inline-Flow)
+ * VerwaltungTab — MOD-04 Verwaltung (ehem. MSV)
  * 
- * GOLDEN PATH STANDARD:
- * - ModulePageHeader → WidgetGrid (Demo + CTA + aktive Objekte) → Inline-Sektionen
- * - Kein Tab-Wechsel, vertikaler Scroll-Flow
+ * Linearer Scroll-Flow:
+ * 1. ModulePageHeader
+ * 2. WidgetGrid (Objekt-Widgets + Demo + CTA)
+ * 3. Kachel 1: Mietliste
+ * 4. Kachel 2: Aufgaben (Säumig + Mieterhöhung)
+ * 5. Kachel 3: BWA/Buchwert/Controlling
  */
 import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Building2, Euro, Users } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Building2, Home, AlertCircle, Plus } from 'lucide-react';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { WidgetGrid } from '@/components/shared/WidgetGrid';
 import { WidgetCell } from '@/components/shared/WidgetCell';
-import { SectionCard } from '@/components/shared/SectionCard';
-import { useDemoToggles } from '@/hooks/useDemoToggles';
-import { GOLDEN_PATH_PROCESSES } from '@/manifests/goldenPathProcesses';
+import { DESIGN } from '@/config/designManifest';
+import { cn } from '@/lib/utils';
+import { useMSVData } from '@/hooks/useMSVData';
+import { MietlisteTable } from '@/components/msv/MietlisteTable';
+import { AufgabenSection } from '@/components/msv/AufgabenSection';
+import { BWAControllingSection } from '@/components/msv/BWAControllingSection';
 
-// Re-use existing MSV tab components as sections
-import ObjekteTab from '@/pages/portal/msv/ObjekteTab';
-import MieteingangTab from '@/pages/portal/msv/MieteingangTab';
-import VermietungTab from '@/pages/portal/msv/VermietungTab';
+const AMPEL_COLORS = {
+  paid: 'bg-green-500',
+  partial: 'bg-yellow-500',
+  overdue: 'bg-destructive',
+};
 
-const GP_VERWALTUNG = GOLDEN_PATH_PROCESSES.find(p => p.id === 'GP-VERWALTUNG')!;
+const AMPEL_LABELS = {
+  paid: 'Alle bezahlt',
+  partial: 'Teilweise offen',
+  overdue: 'Überfällig',
+};
 
 export function VerwaltungTab() {
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const { isEnabled } = useDemoToggles();
-  const showDemo = isEnabled('GP-VERWALTUNG');
+  const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(null);
+  const { properties, isLoading } = useMSVData();
+
+  const hasObjects = properties.length > 0;
 
   return (
     <PageShell>
       <ModulePageHeader
         title="Verwaltung"
-        description="Mietverwaltung — Objekte, Mieteingang und Vermietung in einem Überblick."
+        description="Mietkontrolle, Mahnwesen und BWA/Buchwert — alles auf einer Seite."
       />
 
-      <WidgetGrid>
-        {/* Demo-Widget an Position 0 */}
-        {showDemo && (
-          <WidgetCell>
-            <Card
-              className={`h-full cursor-pointer transition-all hover:shadow-lg group flex flex-col ${
-                selectedId === '__demo__' ? 'ring-2 ring-primary shadow-glow' : ''
-              }`}
-              onClick={() => setSelectedId('__demo__')}
+      {/* Objekt-Widgets */}
+      <WidgetGrid variant="widget">
+        {properties.map(prop => (
+          <WidgetCell key={prop.id}>
+            <button
+              onClick={() => setSelectedPropertyId(selectedPropertyId === prop.id ? null : prop.id)}
+              className={cn(
+                "w-full h-full flex flex-col justify-between p-5 rounded-xl border text-left transition-all",
+                DESIGN.CARD.BASE,
+                selectedPropertyId === prop.id
+                  ? "ring-2 ring-primary border-primary shadow-sm"
+                  : "border-border/50 hover:border-primary/40"
+              )}
             >
-              <CardContent className="flex flex-col h-full justify-between p-4">
-                <div className="flex items-start justify-between">
-                  <Badge className="bg-primary/10 text-primary border-0 text-[10px] font-medium">
-                    {GP_VERWALTUNG.demoWidget.badgeLabel}
-                  </Badge>
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  {prop.isDemo && <Badge className="bg-primary/10 text-primary text-[10px]">Demo</Badge>}
+                  {!prop.isDemo && <span />}
+                  <div className={`h-3 w-3 rounded-full ${AMPEL_COLORS[prop.zahlstatus]}`} title={AMPEL_LABELS[prop.zahlstatus]} />
                 </div>
-                <div className="flex-1 flex flex-col items-center justify-center text-center gap-1 py-2">
-                  <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center mb-1">
-                    <Building2 className="h-5 w-5 text-primary" />
-                  </div>
-                  <p className="font-semibold text-sm leading-tight">{GP_VERWALTUNG.demoWidget.title}</p>
-                  <p className="text-[11px] text-muted-foreground">{GP_VERWALTUNG.demoWidget.subtitle}</p>
+                <div className="flex items-center gap-2">
+                  <Building2 className="h-4 w-4 text-primary" />
+                  <span className="font-semibold text-sm">{prop.name}</span>
                 </div>
-                <div className="text-[10px] text-muted-foreground text-center">
-                  6 Einheiten · 83% Auslastung · 4.200 €/Monat
-                </div>
-              </CardContent>
-            </Card>
-          </WidgetCell>
-        )}
-
-        {/* CTA-Widget */}
-        <WidgetCell>
-          <Card
-            className="h-full cursor-pointer border-dashed hover:border-primary/50 transition-colors flex flex-col"
-            onClick={() => setSelectedId('new')}
-          >
-            <CardContent className="flex flex-col items-center justify-center flex-1 gap-3 p-6">
-              <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                <Plus className="h-6 w-6 text-primary" />
+                <p className="text-xs text-muted-foreground mt-1">{prop.address}, {prop.city}</p>
               </div>
-              <p className="text-sm font-semibold text-center">Neues Mietobjekt</p>
-              <p className="text-xs text-muted-foreground text-center">
-                Objekt anlegen und Mieter verwalten
-              </p>
-            </CardContent>
-          </Card>
+              <div className="mt-3 space-y-1.5">
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-muted-foreground">Units</span>
+                  <span className="font-semibold">{prop.unitCount}</span>
+                </div>
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-muted-foreground">Aktive Leases</span>
+                  <span className="font-semibold">{prop.activeLeaseCount}</span>
+                </div>
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-muted-foreground">Zahlstatus</span>
+                  <Badge className={cn(
+                    "border-0 text-[10px]",
+                    prop.zahlstatus === 'paid' && "bg-green-500/10 text-green-700 dark:text-green-400",
+                    prop.zahlstatus === 'partial' && "bg-yellow-500/10 text-yellow-700 dark:text-yellow-400",
+                    prop.zahlstatus === 'overdue' && "bg-destructive/10 text-destructive",
+                  )}>{AMPEL_LABELS[prop.zahlstatus]}</Badge>
+                </div>
+              </div>
+            </button>
+          </WidgetCell>
+        ))}
+
+        {/* CTA Widget */}
+        <WidgetCell>
+          <button
+            onClick={() => window.location.href = '/portal/immobilien/portfolio'}
+            className={cn(
+              "w-full h-full flex flex-col items-center justify-center gap-4 p-5 rounded-xl border border-dashed text-center transition-all",
+              DESIGN.CARD.BASE,
+              "hover:border-primary/50 hover:shadow-md"
+            )}
+          >
+            <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center">
+              <Plus className="h-6 w-6 text-primary" />
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold">MSV-Objekt hinzufügen</h3>
+              <p className={cn(DESIGN.TYPOGRAPHY.LABEL, 'mt-1')}>Vermietung im Portfolio aktivieren</p>
+            </div>
+          </button>
         </WidgetCell>
       </WidgetGrid>
 
-      {/* Demo Inline-Detail */}
-      {selectedId === '__demo__' && (
-        <div className="pt-6 space-y-4">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-3">
-                <h2 className="text-lg font-bold tracking-tight">Demo: MFH Düsseldorf</h2>
-                <Badge className="bg-primary/10 text-primary border-0">Demo</Badge>
-              </div>
-              <p className="text-sm text-muted-foreground mt-1">
-                Königsallee 42, 40212 Düsseldorf · 6 Einheiten · 83% Auslastung
-              </p>
-            </div>
-            <button
-              onClick={() => setSelectedId(null)}
-              className="text-muted-foreground hover:text-foreground p-1"
-            >
-              ✕
-            </button>
-          </div>
-
-          {/* Mieterübersicht */}
-          <div className="glass-card rounded-xl p-4 space-y-3">
-            <h3 className="text-sm font-semibold flex items-center gap-2">
-              <Users className="h-4 w-4 text-primary" />
-              Mieterübersicht
-            </h3>
-            <div className="space-y-2 text-sm">
-              {[
-                { unit: 'WE 01', tenant: 'Fam. Schmidt', rent: '720 €', status: 'aktiv' },
-                { unit: 'WE 02', tenant: 'Hr. Müller', rent: '680 €', status: 'aktiv' },
-                { unit: 'WE 03', tenant: 'Fr. Weber', rent: '750 €', status: 'aktiv' },
-                { unit: 'WE 04', tenant: '— Leerstand —', rent: '—', status: 'leer' },
-                { unit: 'WE 05', tenant: 'Fam. Fischer', rent: '820 €', status: 'aktiv' },
-                { unit: 'WE 06', tenant: 'Hr. Wagner', rent: '1.230 €', status: 'aktiv' },
-              ].map(m => (
-                <div key={m.unit} className="flex items-center justify-between py-1.5 px-3 rounded-lg bg-muted/30">
-                  <span className="font-mono text-xs w-14">{m.unit}</span>
-                  <span className="flex-1">{m.tenant}</span>
-                  <span className="font-medium w-20 text-right">{m.rent}</span>
-                  <Badge variant={m.status === 'aktiv' ? 'secondary' : 'outline'} className="ml-2 text-[10px]">
-                    {m.status}
-                  </Badge>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Mieteingang */}
-          <div className="glass-card rounded-xl p-4 space-y-3">
-            <h3 className="text-sm font-semibold flex items-center gap-2">
-              <Euro className="h-4 w-4 text-primary" />
-              Mieteingang (letzter Monat)
-            </h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {[
-                { label: 'Soll', value: '4.200 €' },
-                { label: 'Ist', value: '3.480 €' },
-                { label: 'Quote', value: '83%' },
-                { label: 'Offen', value: '720 €' },
-              ].map(k => (
-                <div key={k.label} className="glass-card rounded-lg p-3 text-center">
-                  <p className="text-xs text-muted-foreground">{k.label}</p>
-                  <p className="text-lg font-bold">{k.value}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+      {/* Empty State */}
+      {!hasObjects && !isLoading && (
+        <Card className={DESIGN.CARD.SECTION}>
+          <CardContent className="p-6 text-center">
+            <AlertCircle className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
+            <p className="text-sm text-muted-foreground">
+              Keine MSV-Objekte aktiv. Aktiviere Vermietung in der Immobilienakte → Flag rental_managed.
+            </p>
+            <Button variant="link" className="mt-2" onClick={() => window.location.href = '/portal/immobilien/portfolio'}>
+              Zum Portfolio →
+            </Button>
+          </CardContent>
+        </Card>
       )}
 
-      {/* Vertikale Sektionen (echte Daten) — immer sichtbar */}
-      <div className="space-y-4 md:space-y-6 pt-4">
-        <SectionCard title="Objekte & Einheiten" description="Alle Mietobjekte und ihre Einheiten" icon={Building2}>
-          <ObjekteTab />
-        </SectionCard>
+      {/* Kachel 1: Mietliste */}
+      <MietlisteTable propertyId={selectedPropertyId} />
 
-        <SectionCard title="Mieteingang" description="Zahlungseingänge und offene Posten" icon={Euro}>
-          <MieteingangTab />
-        </SectionCard>
+      {/* Kachel 2: Aufgaben */}
+      <AufgabenSection propertyId={selectedPropertyId} />
 
-        <SectionCard title="Vermietung" description="Inserate und Interessenten verwalten" icon={Users}>
-          <VermietungTab />
-        </SectionCard>
-      </div>
+      {/* Kachel 3: BWA/Buchwert — Full Width */}
+      <BWAControllingSection propertyId={selectedPropertyId} />
     </PageShell>
   );
 }
