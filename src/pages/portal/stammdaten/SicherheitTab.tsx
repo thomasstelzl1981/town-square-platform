@@ -1,61 +1,26 @@
 import * as React from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { FormSection, DataTable, StatusBadge } from '@/components/shared';
+import { DataTable, StatusBadge } from '@/components/shared';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
-import { Shield, Key, Monitor, LogOut, Loader2, Eye, EyeOff } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { WIDGET_CELL } from '@/config/designManifest';
+import { Shield, Monitor, LogOut, Mail, Clock } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 
 export function SicherheitTab() {
   const { user } = useAuth();
-  const [currentPassword, setCurrentPassword] = React.useState('');
-  const [newPassword, setNewPassword] = React.useState('');
-  const [confirmPassword, setConfirmPassword] = React.useState('');
-  const [showPassword, setShowPassword] = React.useState(false);
-  const [isChangingPassword, setIsChangingPassword] = React.useState(false);
-  const [passwordError, setPasswordError] = React.useState('');
+  const [isOpen, setIsOpen] = React.useState(false);
 
-  const handlePasswordChange = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setPasswordError('');
+  const loginEmail = user?.email || '—';
+  const lastSignIn = user?.last_sign_in_at
+    ? format(new Date(user.last_sign_in_at), "dd.MM.yyyy 'um' HH:mm", { locale: de })
+    : '—';
 
-    if (newPassword.length < 8) {
-      setPasswordError('Passwort muss mindestens 8 Zeichen lang sein');
-      return;
-    }
-
-    if (newPassword !== confirmPassword) {
-      setPasswordError('Passwörter stimmen nicht überein');
-      return;
-    }
-
-    setIsChangingPassword(true);
-    try {
-      const { error } = await supabase.auth.updateUser({
-        password: newPassword,
-      });
-
-      if (error) throw error;
-
-      toast.success('Passwort erfolgreich geändert');
-      setCurrentPassword('');
-      setNewPassword('');
-      setConfirmPassword('');
-    } catch (error) {
-      toast.error('Fehler: ' + (error as Error).message);
-    } finally {
-      setIsChangingPassword(false);
-    }
-  };
-
-  // Mock session data (Supabase doesn't expose all sessions easily)
+  // Mock sessions
   const sessions = [
     {
       id: '1',
@@ -66,7 +31,6 @@ export function SicherheitTab() {
     },
   ];
 
-  // Recent security events (would come from audit_events in production)
   const securityEvents = [
     {
       id: '1',
@@ -77,143 +41,156 @@ export function SicherheitTab() {
     },
   ];
 
+  const handleSignOutOthers = async () => {
+    // Supabase scope: 'others' signs out all other sessions
+    await supabase.auth.signOut({ scope: 'others' });
+  };
+
+  if (!isOpen) {
+    // ─── CLOSED STATE: Square Widget ───
+    return (
+      <PageShell>
+        <ModulePageHeader title="Sicherheit" description="Portalzugang und Sitzungen verwalten" />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+          <Card
+            className={`${WIDGET_CELL.DIMENSIONS} cursor-pointer transition-all hover:shadow-lg overflow-hidden`}
+            onClick={() => setIsOpen(true)}
+          >
+            <CardContent className="flex flex-col items-center justify-center h-full p-6 text-center gap-3">
+              <StatusBadge status="Aktiv" variant="success" />
+              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10">
+                <Shield className="h-8 w-8 text-primary" />
+              </div>
+              <div>
+                <p className="font-semibold text-lg">Portalzugang</p>
+                <p className="text-sm text-muted-foreground flex items-center justify-center gap-1 mt-1">
+                  <Mail className="h-3.5 w-3.5" />
+                  {loginEmail}
+                </p>
+              </div>
+              <div className="text-xs text-muted-foreground flex items-center gap-1 mt-auto">
+                <Clock className="h-3 w-3" />
+                Letzte Anmeldung: {lastSignIn}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </PageShell>
+    );
+  }
+
+  // ─── OPEN STATE: Full-width Dossier ───
   return (
     <PageShell>
-      <ModulePageHeader title="Sicherheit" description="Passwort, Sitzungen und Sicherheits-Log" />
-      {/* Password Change */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Key className="h-5 w-5" />
-            Passwort ändern
-          </CardTitle>
-          <CardDescription>
-            Aktualisieren Sie Ihr Passwort regelmäßig für mehr Sicherheit.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handlePasswordChange} className="space-y-4 max-w-md">
-            <FormSection>
-              <div className="space-y-2">
-                <Label htmlFor="new-password">Neues Passwort</Label>
-                <div className="relative">
-                  <Input
-                    id="new-password"
-                    type={showPassword ? 'text' : 'password'}
-                    value={newPassword}
-                    onChange={e => setNewPassword(e.target.value)}
-                    placeholder="Mindestens 8 Zeichen"
-                    className="pr-10"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
+      <ModulePageHeader title="Sicherheit" description="Portalzugang und Sitzungen verwalten" />
+      <div className="space-y-4 md:space-y-6">
+        {/* Header with close */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
+                  <Shield className="h-6 w-6 text-primary" />
+                </div>
+                <div>
+                  <CardTitle>Portalzugang</CardTitle>
+                  <CardDescription>Login-Methode: 6-stelliger PIN per E-Mail</CardDescription>
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="confirm-password">Passwort bestätigen</Label>
-                <Input
-                  id="confirm-password"
-                  type={showPassword ? 'text' : 'password'}
-                  value={confirmPassword}
-                  onChange={e => setConfirmPassword(e.target.value)}
-                  placeholder="Passwort wiederholen"
-                />
+              <Button variant="outline" size="sm" onClick={() => setIsOpen(false)}>
+                Schließen
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <p className="text-sm text-muted-foreground">Login-E-Mail</p>
+                <p className="font-medium">{loginEmail}</p>
               </div>
-              {passwordError && (
-                <p className="text-sm text-destructive">{passwordError}</p>
-              )}
-            </FormSection>
-            <Button type="submit" disabled={isChangingPassword || !newPassword || !confirmPassword}>
-              {isChangingPassword ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Key className="mr-2 h-4 w-4" />
-              )}
-              Passwort ändern
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+              <div>
+                <p className="text-sm text-muted-foreground">Letzte Anmeldung</p>
+                <p className="font-medium">{lastSignIn}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
-      {/* Active Sessions */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Monitor className="h-5 w-5" />
-            Aktive Sitzungen
-          </CardTitle>
-          <CardDescription>
-            Verwalten Sie Ihre aktiven Anmeldungen auf verschiedenen Geräten.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <DataTable
-            data={sessions}
-            columns={[
-              { key: 'device', header: 'Gerät' },
-              { key: 'ip', header: 'IP-Adresse' },
-              {
-                key: 'lastActive',
-                header: 'Zuletzt aktiv',
-                render: (value) => format(new Date(value as string), "dd.MM.yyyy 'um' HH:mm", { locale: de }),
-              },
-              {
-                key: 'isCurrent',
-                header: 'Status',
-                render: (value) => value ? (
-                  <StatusBadge status="Aktuelle Sitzung" variant="success" />
-                ) : (
-                  <Button variant="ghost" size="sm">
-                    <LogOut className="h-4 w-4 mr-1" />
-                    Beenden
-                  </Button>
-                ),
-              },
-            ]}
-            emptyMessage="Keine aktiven Sitzungen"
-          />
-        </CardContent>
-      </Card>
+        {/* Active Sessions */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <Monitor className="h-5 w-5" />
+                Aktive Sitzungen
+              </CardTitle>
+              <Button variant="outline" size="sm" onClick={handleSignOutOthers}>
+                <LogOut className="h-4 w-4 mr-1" />
+                Andere Sitzungen beenden
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <DataTable
+              data={sessions}
+              columns={[
+                { key: 'device', header: 'Gerät' },
+                { key: 'ip', header: 'IP-Adresse' },
+                {
+                  key: 'lastActive',
+                  header: 'Zuletzt aktiv',
+                  render: (value) => format(new Date(value as string), "dd.MM.yyyy 'um' HH:mm", { locale: de }),
+                },
+                {
+                  key: 'isCurrent',
+                  header: 'Status',
+                  render: (value) => value ? (
+                    <StatusBadge status="Aktuelle Sitzung" variant="success" />
+                  ) : (
+                    <Button variant="ghost" size="sm">
+                      <LogOut className="h-4 w-4 mr-1" />
+                      Beenden
+                    </Button>
+                  ),
+                },
+              ]}
+              emptyMessage="Keine aktiven Sitzungen"
+            />
+          </CardContent>
+        </Card>
 
-      {/* Security Log */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Shield className="h-5 w-5" />
-            Sicherheits-Log
-          </CardTitle>
-          <CardDescription>
-            Übersicht der letzten sicherheitsrelevanten Aktivitäten.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <DataTable
-            data={securityEvents}
-            columns={[
-              { key: 'event', header: 'Ereignis' },
-              {
-                key: 'timestamp',
-                header: 'Zeitpunkt',
-                render: (value) => format(new Date(value as string), "dd.MM.yyyy 'um' HH:mm", { locale: de }),
-              },
-              { key: 'ip', header: 'IP-Adresse' },
-              {
-                key: 'status',
-                header: 'Status',
-                render: (value) => (
-                  <StatusBadge status={value as string} variant={value === 'success' ? 'success' : 'error'} />
-                ),
-              },
-            ]}
-            emptyMessage="Keine Sicherheitsereignisse"
-          />
-        </CardContent>
-      </Card>
+        {/* Security Log */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Shield className="h-5 w-5" />
+              Sicherheits-Log
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <DataTable
+              data={securityEvents}
+              columns={[
+                { key: 'event', header: 'Ereignis' },
+                {
+                  key: 'timestamp',
+                  header: 'Zeitpunkt',
+                  render: (value) => format(new Date(value as string), "dd.MM.yyyy 'um' HH:mm", { locale: de }),
+                },
+                { key: 'ip', header: 'IP-Adresse' },
+                {
+                  key: 'status',
+                  header: 'Status',
+                  render: (value) => (
+                    <StatusBadge status={value as string} variant={value === 'success' ? 'success' : 'error'} />
+                  ),
+                },
+              ]}
+              emptyMessage="Keine Sicherheitsereignisse"
+            />
+          </CardContent>
+        </Card>
+      </div>
     </PageShell>
   );
 }
