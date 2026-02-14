@@ -1,74 +1,88 @@
 
+# Zone 2 Recherche-Modul: Kompletter Umbau mit Demo-Daten und Billing-Slot
 
-# Recherche-Ergebnisse: Professionelle Tabellenansicht + Import-Flow
+## Ausgangslage
 
-## Problem
+Das bestehende Zone 2 Recherche-Modul (`ResearchTab.tsx`) ist rudimentaer: Es zeigt ein einfaches Demo-Widget mit Zusammenfassungstext, nutzt aber **nicht** die vollstaendige Tabellen-Struktur und den Import-Flow aus Zone 1 (`AdminRecherche.tsx`). Ausserdem fehlt:
 
-1. **Zu wenig sichtbare Datenpunkte**: Die Ergebnisse werden als kompakte Karten angezeigt, nicht als strukturierte Tabelle. Wichtige Felder (Adresse, PLZ, Kategorie, Rolle, Website-URL, Quelle) sind versteckt oder fehlen.
-2. **Kein Export**: Es gibt keinen Excel/CSV-Export der Ergebnisse.
-3. **Import ohne Feedback**: Der Bulk-Import ins Kontaktbuch zeigt nicht an, welche Kontakte bereits existieren (Duplikate) und welche neu angelegt werden.
+1. **DEMO_WIDGET Styling** (emerald-gruenes Design gemaess `designManifest.ts`)
+2. **Demo-Daten mit Ergebnis-Tabelle** (Beispielkontakte als statische Daten, damit der Prozess sichtbar wird)
+3. **Billing-Slot** im Flow (Credit-Bestaetigung vor Recherche-Start)
+4. **WidgetGrid/WidgetCell** korrekt mit `useDemoToggles` (wie bei AkquiseMandate, SerienEmails etc.)
 
-## Loesung
+## Was wird gebaut
 
-### 1. Ergebnis-Tabelle statt Karten-Liste
+### 1. Demo-Daten mit vollstaendiger Ergebnis-Tabelle
 
-Die ScrollArea mit Karten (Zeilen 398-447) wird durch eine echte HTML-Tabelle ersetzt:
+Statische Demo-Ergebnisse (ca. 8 Kontakte) werden direkt im Code definiert, analog zu den Demo-Daten in anderen Modulen. Diese zeigen:
 
-| Spalte | Datenfeld | Breite |
-|--------|-----------|--------|
-| Checkbox | (Auswahl) | 40px |
-| Firma | company_name | flex |
-| Kategorie | category | 100px |
-| Kontaktperson | contact_person_name | 150px |
-| Rolle | contact_person_role | 120px |
-| E-Mail | email | 180px |
-| Telefon | phone | 130px |
-| Stadt | city | 100px |
-| PLZ | postal_code | 70px |
-| Website | website_url | 80px (Link-Icon) |
-| Score | confidence_score | 60px |
-| Status | validation_state | 90px |
-| Aktionen | OK/Nein-Buttons | 100px |
+| Firma | Kategorie | Kontaktperson | Rolle | E-Mail | Telefon | Stadt | PLZ | Web | Score | Status |
+|-------|-----------|---------------|-------|--------|---------|-------|-----|-----|-------|--------|
+| Hausverwaltung Meier GmbH | Hausverwaltung | Thomas Meier | Geschaeftsfuehrer | t.meier@hv-meier.de | 0211-... | Duesseldorf | 40210 | hv-meier.de | 92 | Validiert |
+| ... (7 weitere) | | | | | | | | | | |
 
-Die Tabelle wird horizontal scrollbar in einer ScrollArea dargestellt, damit alle Datenpunkte sichtbar sind.
+Die Demo-Inline-Ansicht zeigt:
+- Auftrags-Zusammenfassung (Intent, Region, Branche, Kosten)
+- **Vollstaendige Ergebnis-Tabelle** (13 Spalten, identisch zur Zone 1 Tabelle)
+- Import-Vorschau mit Duplikat-Badges (NEU / DUPLIKAT)
+- Export-Button (deaktiviert im Demo-Modus)
 
-### 2. Excel-Export
+### 2. Demo-Widget mit korrektem CI (DESIGN.DEMO_WIDGET)
 
-Ein neuer "Export"-Button neben dem Filter generiert eine XLSX-Datei (mit der bereits installierten `xlsx`-Bibliothek) mit allen sichtbaren Ergebnissen und saemtlichen Datenpunkten.
-
-### 3. Import-Flow mit Deduplizierungs-Vorschau
-
-Statt direkt zu importieren, zeigt der Import-Button eine Vorschau-Sektion unterhalb der Tabelle:
+Das Demo-Widget wird umgebaut auf das systemweite Pattern:
 
 ```text
-+------------------------------------------------------------------------+
-| Import-Vorschau                                              [X Schliessen] |
-|------------------------------------------------------------------------|
-| 12 ausgewaehlt: 8 neue Kontakte | 3 bereits vorhanden | 1 ohne E-Mail |
-|------------------------------------------------------------------------|
-| [v] Makler Hamburg GmbH    | NEU        | mueller@example.de          |
-| [v] Immo Partner AG        | DUPLIKAT   | info@immo.de (existiert)    |
-| [ ] Test Firma              | KEIN EMAIL | —                           |
-|------------------------------------------------------------------------|
-| Duplikate: [ ] Ueberspringen  [x] Aktualisieren                       |
-|                                          [Jetzt importieren (8 neue)]  |
-+------------------------------------------------------------------------+
++------------------------------------------+
+| [Demo Badge]              [Fertig Badge] |
+| Hausverwaltungen NRW                     |
+| 37 qualifizierte Kontakte gefunden       |
+|                                          |
+| Intent:  Geschaeftsfuehrer HV > 500 WE   |
+| Region:  NRW                             |
+| Treffer: 37 / 50                         |
++------------------------------------------+
+  (emerald-gruener Shimmer-Gradient oben)
 ```
 
-Der Import nutzt die bestehende Edge Function `sot-research-import-contacts` mit dem `duplicate_policy`-Parameter statt der aktuellen einfachen `contacts.insert`-Logik (Zeilen 162-188), die keine Duplikat-Pruefung hat.
+Klassen: `DESIGN.DEMO_WIDGET.CARD`, `DESIGN.DEMO_WIDGET.HOVER`, `DESIGN.DEMO_WIDGET.BADGE`
 
-**Vor dem Import**: Ein Vorab-Check fragt die `contacts`-Tabelle nach E-Mail-Matches ab, um die Vorschau zu fuellen.
+### 3. Billing-Slot im Erstellungs-Flow
 
----
+Im `ResearchOrderInlineFlow.tsx` wird **Sektion 2 ("Trefferlimit & Kosten")** um einen Billing-Hinweis erweitert:
+
+```text
++--------------------------------------------------+
+| 2. Trefferlimit & Credits                        |
+|--------------------------------------------------|
+| Maximale Treffer: [25 v]                         |
+| Credits benoetigt: 25 Credits (= 12,50 EUR)     |
+|                                                  |
+| [!] Die Recherche ist kostenpflichtig.           |
+|     1 Credit pro Kontakt wird bei Start          |
+|     abgebucht. Guthaben: 100 Credits             |
+|                                                  |
+| [ ] Ich bestaetige die Credit-Abbuchung          |
++--------------------------------------------------+
+```
+
+Der Credit-Flow wird als **UI-Platzhalter** implementiert (Checkbox + Info-Banner). Die tatsaechliche Abbuchungslogik wird spaeter beim Billing-System angebunden. Der Start-Button in Sektion 5 wird nur aktiv, wenn **beide** Checkboxen (DSGVO + Credits) bestaetigt sind.
+
+### 4. useDemoToggles Integration
+
+- Toggle-Key: `GP-RECHERCHE` (bereits in `goldenPathProcesses.ts` registriert)
+- Demo-Widget nur sichtbar wenn `isEnabled('GP-RECHERCHE')` = true
 
 ## Betroffene Dateien
 
 | Datei | Aenderung |
 |-------|-----------|
-| `src/pages/admin/ki-office/AdminRecherche.tsx` | Karten-Liste durch Tabelle ersetzen, Export-Button, Import-Vorschau mit Dedupe-Check |
+| `src/pages/portal/communication-pro/recherche/ResearchTab.tsx` | Komplett-Umbau: DEMO_WIDGET Styling, useDemoToggles, statische Demo-Ergebnistabelle inline, CTA-Widget angepasst |
+| `src/pages/portal/communication-pro/recherche/ResearchOrderInlineFlow.tsx` | Sektion 2 um Credit-Billing-Slot erweitern (UI-Platzhalter), Start-Button Logik anpassen |
 
 ## Was sich NICHT aendert
 
-- `useSoatSearchEngine.ts` (Hook bleibt gleich)
-- `sot-research-import-contacts` Edge Function (wird jetzt tatsaechlich genutzt statt der manuellen Insert-Logik)
-- Widget-Grid und Draft-Flow (bereits korrekt)
+- `ResearchOrderWidget.tsx` (bleibt fuer echte Orders)
+- `ResearchResultsTable.tsx` (bleibt fuer echte Orders)
+- Zone 1 AdminRecherche (unveraendert wie besprochen)
+- Hooks (`useResearchOrders`, `useResearchResults`, `useResearchImport`)
+- Datenbank / Edge Functions
