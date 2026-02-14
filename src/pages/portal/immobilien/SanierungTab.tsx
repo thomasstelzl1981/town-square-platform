@@ -10,19 +10,40 @@ import { cn } from '@/lib/utils';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Plus, HardHat } from 'lucide-react';
+import { Plus, HardHat, ClipboardList, Search, BarChart3, X } from 'lucide-react';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { PageShell } from '@/components/shared/PageShell';
 import { WidgetGrid } from '@/components/shared/WidgetGrid';
 import { WidgetCell } from '@/components/shared/WidgetCell';
+import { SectionCard } from '@/components/shared/SectionCard';
 import { ServiceCaseCard } from '@/components/sanierung/ServiceCaseCard';
 import { SanierungDetailInline } from '@/components/sanierung/SanierungDetail';
+import { SanierungStepper } from '@/components/sanierung/SanierungStepper';
 import { useServiceCases, useCreateServiceCase, useCancelServiceCase } from '@/hooks/useServiceCases';
 import { PropertySelectDialog } from '@/components/portal/immobilien/sanierung/PropertySelectDialog';
 import { useDemoToggles } from '@/hooks/useDemoToggles';
 import { GOLDEN_PATH_PROCESSES } from '@/manifests/goldenPathProcesses';
+import { Button } from '@/components/ui/button';
 
 const GP_SANIERUNG = GOLDEN_PATH_PROCESSES.find(p => p.id === 'GP-SANIERUNG')!;
+
+// ── Demo scope items for Kernsanierung BER-01 ──
+const DEMO_SCOPE_ITEMS = [
+  { pos: 1, title: 'Bodenbelag Wohnräume (Eiche Landhausdiele, 65 m²)', cost: 5850 },
+  { pos: 2, title: 'Bodenbelag Nassräume (Feinsteinzeug 60×60, 20 m²)', cost: 2400 },
+  { pos: 3, title: 'Badsanierung komplett (Dusche, WC, Waschtisch, Armaturen)', cost: 8500 },
+  { pos: 4, title: 'Gäste-WC Sanierung (WC, Handwaschbecken, Spiegel)', cost: 3200 },
+  { pos: 5, title: 'Malerarbeiten Wände und Decken (85 m² Wohnfläche)', cost: 2550 },
+];
+const DEMO_TOTAL = DEMO_SCOPE_ITEMS.reduce((s, i) => s + i.cost, 0);
+
+const DEMO_PROVIDERS = [
+  { name: 'Berliner Badsanierung GmbH', status: 'Angebot erhalten' as const, amount: 21800, sent: true, best: true },
+  { name: 'Boden- und Fliesenwerk Mitte', status: 'Angebot erhalten' as const, amount: 23900, sent: true, best: false },
+  { name: 'Sanierung Plus Berlin', status: 'Ausstehend' as const, amount: null, sent: true, best: false },
+];
+
+const fmt = (v: number) => v.toLocaleString('de-DE') + ' €';
 
 export function SanierungTab() {
   const [selectedCaseId, setSelectedCaseId] = useState<string | null>(null);
@@ -88,7 +109,7 @@ export function SanierungTab() {
                     <p className="text-[11px] text-muted-foreground">{GP_SANIERUNG.demoWidget.subtitle}</p>
                   </div>
                   <div className="text-[10px] text-muted-foreground text-center">
-                    Budget: 22.500 € · 5 Positionen
+                    Budget: {fmt(DEMO_TOTAL)} · {DEMO_SCOPE_ITEMS.length} Positionen
                   </div>
                 </CardContent>
               </Card>
@@ -134,94 +155,141 @@ export function SanierungTab() {
         isCreating={createMutation.isPending}
       />
 
-      {/* Demo Inline-Detail — Vollständige Sanierungsakte */}
+      {/* ══ Demo Inline-Detail — Vollständige Sanierungsakte (vertikaler Flow) ══ */}
       {selectedCaseId === '__demo__' && (
-        <div className="pt-6 space-y-4">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-3">
-                <h2 className="text-lg font-bold tracking-tight">Kernsanierung WE-B01 — Schadowstr., Berlin</h2>
-                <Badge className="bg-primary/10 text-primary border-0">Demo</Badge>
-                <Badge variant="secondary">in_progress</Badge>
+        <div className="pt-6">
+          <div className={DESIGN.SPACING.SECTION}>
+            {/* ── Header ── */}
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-3 flex-wrap">
+                  <h2 className="text-lg font-bold tracking-tight">Kernsanierung WE-B01 — Schadowstr., Berlin</h2>
+                  <Badge className="bg-primary/10 text-primary border-0">Demo</Badge>
+                  <Badge variant="secondary">in_progress</Badge>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1 flex-wrap">
+                  <Badge variant="outline" className="font-mono text-xs">SAN-DEMO-001</Badge>
+                  <span>•</span>
+                  <Badge variant="secondary" className="text-xs">
+                    <HardHat className="h-3 w-3 mr-1" />
+                    Kernsanierung
+                  </Badge>
+                  <span>•</span>
+                  <span>Schadowstr., 10117 Berlin</span>
+                  <span>•</span>
+                  <span>ETW, 85 m²</span>
+                </div>
               </div>
-              <p className="text-sm text-muted-foreground mt-1">
-                Schadowstr., 10117 Berlin · ETW, 85 m² · Kategorie: Kernsanierung · Budget: 22.500 €
-              </p>
+              <Button variant="ghost" size="icon" onClick={() => setSelectedCaseId(null)}>
+                <X className="h-4 w-4" />
+              </Button>
             </div>
-            <button onClick={() => setSelectedCaseId(null)} className="text-muted-foreground hover:text-foreground p-1">✕</button>
-          </div>
 
-          {/* Stepper-Badges */}
-          <div className="flex flex-wrap gap-2">
-            {[
-              { label: 'Leistungsumfang', active: true, done: true },
-              { label: 'Dienstleistersuche', active: true, done: true },
-              { label: 'Ausschreibung', active: true, done: true },
-              { label: 'Angebote', active: true, done: false },
-              { label: 'Vergabe', active: false, done: false },
-            ].map((s, i) => (
-              <Badge key={i} variant={s.done ? 'default' : s.active ? 'secondary' : 'outline'} className="text-xs">
-                {i + 1}. {s.label} {s.done && '✓'}
-              </Badge>
-            ))}
-          </div>
+            {/* ── Stepper ── */}
+            <SanierungStepper currentStatus="offers_received" />
 
-          {/* 2-Spalten FORM_GRID */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-            {/* Links: Leistungsumfang */}
-            <Card className="glass-card overflow-hidden">
-              <div className="px-4 py-2.5 border-b border-border/30 bg-muted/20">
-                <h3 className="text-sm font-semibold">Leistungsverzeichnis (KI-generiert)</h3>
-              </div>
-              <CardContent className="p-4 space-y-2">
-                {[
-                  { pos: 1, title: 'Bodenbelag Wohnräume (Eiche Landhausdiele, 65 m²)', cost: '5.850 €' },
-                  { pos: 2, title: 'Bodenbelag Nassräume (Feinsteinzeug 60×60, 20 m²)', cost: '2.400 €' },
-                  { pos: 3, title: 'Badsanierung komplett (Dusche, WC, Waschtisch, Armaturen)', cost: '8.500 €' },
-                  { pos: 4, title: 'Gäste-WC Sanierung (WC, Handwaschbecken, Spiegel)', cost: '3.200 €' },
-                  { pos: 5, title: 'Malerarbeiten Wände und Decken (85 m² Wohnfläche)', cost: '2.550 €' },
-                ].map(p => (
-                  <div key={p.pos} className="flex items-center justify-between py-1.5 px-3 rounded-lg bg-muted/30 text-sm">
-                    <span className="text-muted-foreground w-6">{p.pos}.</span>
-                    <span className="flex-1">{p.title}</span>
-                    <span className="font-medium">{p.cost}</span>
+            {/* ── Section 1: Leistungsumfang ── */}
+            <SectionCard title="Leistungsumfang" description="KI-generiertes Leistungsverzeichnis — Kernsanierung, mittlerer Standard" icon={ClipboardList}>
+              <div className="space-y-2">
+                {DEMO_SCOPE_ITEMS.map(item => (
+                  <div key={item.pos} className="flex items-center justify-between py-2 px-3 rounded-lg bg-muted/30 text-sm">
+                    <span className="text-muted-foreground w-8 shrink-0">{item.pos}.</span>
+                    <span className="flex-1">{item.title}</span>
+                    <span className="font-medium tabular-nums">{fmt(item.cost)}</span>
                   </div>
                 ))}
-                <div className="flex justify-end pt-2 border-t border-border/30">
-                  <span className="font-bold text-sm">Gesamt: 22.500 €</span>
+                <div className="flex justify-between items-center pt-3 border-t border-border/40 px-3">
+                  <span className="text-sm text-muted-foreground">{DEMO_SCOPE_ITEMS.length} Positionen</span>
+                  <span className="font-bold text-sm">Gesamt: {fmt(DEMO_TOTAL)}</span>
                 </div>
-              </CardContent>
-            </Card>
-
-            {/* Rechts: Dienstleister + Angebote */}
-            <Card className="glass-card overflow-hidden">
-              <div className="px-4 py-2.5 border-b border-border/30 bg-muted/20">
-                <h3 className="text-sm font-semibold">Dienstleister & Angebote</h3>
               </div>
-              <CardContent className="p-4 space-y-4">
-                <div className="space-y-2">
-                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Ausschreibung versendet an</p>
-                  {[
-                    { name: 'Berliner Badsanierung GmbH', status: 'Angebot erhalten', amount: '21.800 €', color: 'text-primary' },
-                    { name: 'Boden- und Fliesenwerk Mitte', status: 'Angebot erhalten', amount: '23.900 €', color: 'text-muted-foreground' },
-                    { name: 'Sanierung Plus Berlin', status: 'Ausstehend', amount: '–', color: 'text-muted-foreground' },
-                  ].map((d, i) => (
-                    <div key={i} className="flex items-center justify-between py-2 px-3 rounded-lg bg-muted/30 text-sm">
+            </SectionCard>
+
+            {/* ── Section 2: Dienstleister & Ausschreibung ── */}
+            <SectionCard title="Dienstleister & Ausschreibung" description="3 Handwerksbetriebe angefragt — 2 Angebote eingegangen" icon={Search}>
+              <div className={DESIGN.FORM_GRID.FULL}>
+                {/* Links: Dienstleisterliste */}
+                <div className="space-y-3">
+                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Angeschriebene Dienstleister</p>
+                  {DEMO_PROVIDERS.map((p, i) => (
+                    <div key={i} className="flex items-center justify-between py-2.5 px-3 rounded-lg bg-muted/30 text-sm">
                       <div>
-                        <p className="font-medium">{d.name}</p>
-                        <p className="text-xs text-muted-foreground">{d.status}</p>
+                        <p className="font-medium">{p.name}</p>
+                        <p className="text-xs text-muted-foreground">{p.status}</p>
                       </div>
-                      <span className={`font-semibold ${d.color}`}>{d.amount}</span>
+                      <span className={cn('font-semibold tabular-nums', p.best ? 'text-primary' : 'text-muted-foreground')}>
+                        {p.amount ? fmt(p.amount) : '–'}
+                      </span>
                     </div>
                   ))}
                 </div>
-                <div className="pt-2 border-t border-border/30">
-                  <p className="text-xs text-muted-foreground">
-                    Bestes Angebot: <span className="font-semibold text-primary">Berliner Badsanierung GmbH — 21.800 €</span> (3 % unter Budget)
-                  </p>
+                {/* Rechts: Ausschreibungsvorschau */}
+                <div className="space-y-3">
+                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Ausschreibungsvorschau</p>
+                  <div className="rounded-lg bg-muted/20 border border-border/30 p-4 text-sm space-y-2">
+                    <p className="font-medium">Betreff: Ausschreibung Kernsanierung — Schadowstr., Berlin</p>
+                    <p className="text-muted-foreground text-xs leading-relaxed">
+                      Sehr geehrte Damen und Herren, wir bitten um ein Angebot für die Kernsanierung einer
+                      85 m² ETW in der Schadowstr., 10117 Berlin. Umfang: Neue Böden (Eiche Landhausdiele +
+                      Feinsteinzeug), komplette Badsanierung, Gäste-WC sowie Malerarbeiten. Mittlerer Standard.
+                      Bitte beziehen Sie sich bei Rückantwort auf die Kennung <span className="font-mono text-primary">SAN-DEMO-001</span>.
+                    </p>
+                    <div className="flex items-center gap-2 pt-2">
+                      <Badge variant="outline" className="text-[10px]">PDF-Anlage: Leistungsverzeichnis</Badge>
+                      <Badge variant="outline" className="text-[10px]">Grundriss</Badge>
+                    </div>
+                  </div>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </SectionCard>
+
+            {/* ── Section 3: Angebote & Vergabe ── */}
+            <SectionCard title="Angebote & Vergabe" description="Eingehende Angebote vergleichen und Auftrag vergeben" icon={BarChart3}>
+              <div className="space-y-4">
+                {/* Vergleichstabelle */}
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border/40">
+                        <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground">Position</th>
+                        <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground">Budget</th>
+                        <th className="text-right py-2 px-3 text-xs font-medium text-primary">Berliner Badsanierung</th>
+                        <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground">Boden- & Fliesenwerk</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {[
+                        { title: 'Böden Wohnräume', budget: 5850, a: 5600, b: 6200 },
+                        { title: 'Böden Nassräume', budget: 2400, a: 2300, b: 2500 },
+                        { title: 'Badsanierung', budget: 8500, a: 8200, b: 9100 },
+                        { title: 'Gäste-WC', budget: 3200, a: 3100, b: 3400 },
+                        { title: 'Malerarbeiten', budget: 2550, a: 2600, b: 2700 },
+                      ].map((row, i) => (
+                        <tr key={i} className="border-b border-border/20">
+                          <td className="py-2 px-3">{row.title}</td>
+                          <td className="py-2 px-3 text-right tabular-nums text-muted-foreground">{fmt(row.budget)}</td>
+                          <td className="py-2 px-3 text-right tabular-nums font-medium text-primary">{fmt(row.a)}</td>
+                          <td className="py-2 px-3 text-right tabular-nums">{fmt(row.b)}</td>
+                        </tr>
+                      ))}
+                      <tr className="font-bold">
+                        <td className="py-2 px-3">Gesamt</td>
+                        <td className="py-2 px-3 text-right tabular-nums">{fmt(DEMO_TOTAL)}</td>
+                        <td className="py-2 px-3 text-right tabular-nums text-primary">{fmt(21800)}</td>
+                        <td className="py-2 px-3 text-right tabular-nums">{fmt(23900)}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <div className="flex items-center justify-between px-3 py-3 rounded-lg bg-primary/5 border border-primary/20">
+                  <div>
+                    <p className="text-sm font-semibold">Empfehlung: Berliner Badsanierung GmbH</p>
+                    <p className="text-xs text-muted-foreground">Günstigstes Angebot — 3 % unter Budget ({fmt(21800)})</p>
+                  </div>
+                  <Badge className="bg-primary text-primary-foreground">Bestes Angebot</Badge>
+                </div>
+              </div>
+            </SectionCard>
           </div>
         </div>
       )}
