@@ -68,12 +68,10 @@ const CommunicationHub = React.lazy(() => import('@/pages/admin/CommunicationHub
 const Oversight = React.lazy(() => import('@/pages/admin/Oversight'));
 const AuditLog = React.lazy(() => import('@/pages/admin/AuditLog'));
 const AuditHub = React.lazy(() => import('@/pages/admin/audit/AuditHub'));
-const AdminKiOfficeEmail = React.lazy(() => import('@/pages/admin/ki-office/AdminKiOfficeEmail'));
-const AdminKiOfficeKontakte = React.lazy(() => import('@/pages/admin/ki-office/AdminKiOfficeKontakte'));
-const AdminKiOfficeDashboard = React.lazy(() => import('@/pages/admin/ki-office/AdminKiOfficeDashboard'));
-const AdminKiOfficeSequenzen = React.lazy(() => import('@/pages/admin/ki-office/AdminKiOfficeSequenzen'));
-const AdminKiOfficeTemplates = React.lazy(() => import('@/pages/admin/ki-office/AdminKiOfficeTemplates'));
-const AdminKiOfficeRecherche = React.lazy(() => import('@/pages/admin/ki-office/AdminKiOfficeRecherche'));
+// KI Office — Consolidated 3 pages
+const AdminRecherche = React.lazy(() => import('@/pages/admin/ki-office/AdminRecherche'));
+const AdminKontaktbuch = React.lazy(() => import('@/pages/admin/ki-office/AdminKontaktbuch'));
+const AdminEmailAgent = React.lazy(() => import('@/pages/admin/ki-office/AdminEmailAgent'));
 
 const Agreements = React.lazy(() => import('@/pages/admin/Agreements'));
 const Inbox = React.lazy(() => import('@/pages/admin/Inbox'));
@@ -230,12 +228,10 @@ const adminComponentMap: Record<string, React.ComponentType> = {
   Oversight,
   AuditLog,
   AuditHub,
-  AdminKiOfficeEmail,
-  AdminKiOfficeKontakte,
-  AdminKiOfficeDashboard,
-  AdminKiOfficeSequenzen,
-  AdminKiOfficeTemplates,
-  AdminKiOfficeRecherche,
+  // KI Office — Consolidated 3 pages
+  AdminRecherche,
+  AdminKontaktbuch,
+  AdminEmailAgent,
   
   Agreements,
   Inbox,
