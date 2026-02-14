@@ -1,102 +1,94 @@
 
-# Systemweiter UI-Audit und Investment-Engine-Reparatur
+# System of a Town — Neue Hauptwebsite (Markenkonsolidierung)
 
-## Analyse: 6 Kernprobleme identifiziert
+## Strategische Zusammenfassung
 
-### Problem 1: PropertyCurrencyCell zeigt Centbetraege (,00 EUR) und Euro auf zweiter Zeile
-**Ursache**: `PropertyCurrencyCell` in `src/components/shared/PropertyTable.tsx` formatiert mit `minimumFractionDigits: 2` und haengt ` EUR` an. Bei schmalen Spalten bricht das EUR-Zeichen in eine zweite Zeile um.
-**Loesung**: Umstellen auf `maximumFractionDigits: 0` (keine Cents) und Nutzung von `Intl.NumberFormat` mit `style: 'currency'` statt manueller EUR-Konkatenation. So wird das EUR-Zeichen als geschuetztes Leerzeichen gerendert und bricht nicht um.
+Kaufy und Miety werden als eigenständige Marken aufgelöst. Die neue Hauptwebsite **System of a Town** übernimmt die gesamte öffentliche Präsenz — mit dem Marketplace als Herzstück. FutureRoom bleibt unangetastet.
 
-**Datei**: `src/components/shared/PropertyTable.tsx` (Zeilen 244-268)
-```typescript
-// VORHER:
-const formatted = value.toLocaleString('de-DE', { 
-  minimumFractionDigits: 2, maximumFractionDigits: 2 
-}) + ' €';
+## Architektur-Entscheidung
 
-// NACHHER:
-const formatted = new Intl.NumberFormat('de-DE', { 
-  style: 'currency', currency: 'EUR', 
-  maximumFractionDigits: 0 
-}).format(value);
+Wir bauen die neue Seite parallel und verbinden sie schrittweise:
+- Die bestehende SoT-Website (`/website/sot`) wird zur neuen Hauptwebsite umgebaut
+- Kaufy-Funktionalität (Investment Engine, Exposé, Armstrong) wird technisch wiederverwendet
+- Keine Golden-Path-Logik wird verändert
+
+## Layout-Spezifikation
+
+```
++------------------------------------------------------------------+
+| HEADER: Logo | (minimal Nav) | Theme Toggle | Login | Starten    |
++------------------------------------------------------------------+
+| ARMSTRONG      |                        |  WIDGET SIDEBAR        |
+| (transparenter |   MAIN CONTENT         |  (Dashboard-sized      |
+|  Stripe, links)|   (Marketplace etc.)   |   aspect-square        |
+|  nur Chat-     |                        |   Widgets, 1 Spalte)   |
+|  Eingabe       |                        |                        |
+|  sichtbar)     |                        |                        |
++------------------------------------------------------------------+
+| FOOTER                                                            |
++------------------------------------------------------------------+
 ```
 
-### Problem 2: InvestmentResultTile - Schriftgroessen zu klein, Doppelzeilen
-**Ursache**: Die T-Konto-Sektion nutzt `text-[10px]` und `text-xs`. EUR-Werte brechen bei schmalen Kacheln um.
-**Loesung**: Schriftgroessen erhoehen (Ueberschriften `text-xs`, Werte `text-sm`), Preiszeile von `text-lg` auf `text-xl`, Typ-Label von `text-xs` auf `text-sm`.
+### Armstrong (linker Stripe)
+- Nahezu transparent (glass, opacity ~0.05)
+- Nur Chat-Eingabefeld sichtbar (unten)
+- Bei Interaktion/Begrüssung wird Inhalt sichtbar
+- Breite: ~60px collapsed, ~280px bei Interaktion
+- Kein festes Panel — eher ein "Hauch" am linken Rand
 
-**Datei**: `src/components/investment/InvestmentResultTile.tsx`
-- Zeile 144: `text-lg` auf `text-xl` (Kaufpreis)
-- Zeile 147: `text-sm` bleibt (Ort)
-- Zeile 153-154: `text-sm`/`text-xs` auf `text-base`/`text-sm`
-- Zeile 163: `text-[10px]` auf `text-xs` (EINNAHMEN/AUSGABEN Header)
-- Zeile 166: `text-xs` auf `text-sm` (alle Wertzeilen)
-- Zeile 195: `text-[10px]` auf `text-xs`
+### Widget-Sidebar (rechts)
+- **Verwendet exakt die Dashboard-Widget-Größe**: `h-[260px] md:h-auto md:aspect-square` (aus WIDGET_CELL)
+- **1 Spalte**, vertikal gestapelt
+- Jedes Widget ist eine Glass-Card im aspect-square Format (~280px)
+- Bei Klick navigiert der Main Content zur jeweiligen Kategorie
+- Aktives Widget wird visuell hervorgehoben
 
-### Problem 3: Centbetraege in 11+ weiteren Dateien
-**Ursache**: Viele Komponenten nutzen lokale `formatCurrency`-Funktionen mit `minimumFractionDigits: 2`.
-**Loesung**: Alle lokalen Formatter durch Import von `formatCurrency` aus `src/lib/formatters.ts` ersetzen (dort bereits `maximumFractionDigits: 0`). Betroffene Dateien:
+### Widgets (7 Stück):
+| Widget | Route | Icon |
+|--------|-------|------|
+| Real Estate | /website/sot/real-estate | Building2 |
+| Capital | /website/sot/capital | TrendingUp |
+| Projects | /website/sot/projects | FolderKanban |
+| Management | /website/sot/management | Settings |
+| Energy | /website/sot/energy | Zap |
+| Career | /website/sot/karriere | Users |
+| Login | /auth | LogIn |
 
-| Datei | Aktuell |
-|---|---|
-| `src/components/immobilienakte/InvestmentKPIBlock.tsx` | `minimumFractionDigits: 2` |
-| `src/components/immobilienakte/FinancingBlock.tsx` | `minimumFractionDigits: 2` |
-| `src/components/immobilienakte/TenancyBlock.tsx` | `minimumFractionDigits: 2` |
-| `src/components/immobilienakte/NKWEGBlock.tsx` | `minimumFractionDigits: 2` |
-| `src/components/immobilienakte/editable/TenancySummaryBlock.tsx` | `minimumFractionDigits: 2` |
-| `src/components/immobilienakte/editable/EditableTenancyBlock.tsx` | `minimumFractionDigits: 2` |
-| `src/components/finanzierung/FinanceApplicationPreview.tsx` | hat Cents |
-| `src/components/portfolio/TenancyTab.tsx` | `minimumFractionDigits: 2` |
+### Mobile
+- Armstrong-Stripe verschwindet
+- Widgets werden horizontal scrollbar über dem Content
 
-Ausnahme: In den Finanzierungs-Rechnern (KDF, Amortisation, FinanceOfferCard) bleiben 2 Dezimalstellen erhalten, da dort Zinssaetze und exakte Annuitaeten dargestellt werden.
+## Seitenstruktur
 
-### Problem 4: Investment-Engine rechnet nicht mit echten Immobilienakten-Daten
-**Ursache**: Die Demo-Immobilien in `useDemoListings.ts` haben plausible, aber willkuerliche Werte (z.B. BER-01: 850.000 EUR Kaufpreis, 3.500 EUR Miete). Diese stimmen nicht mit den tatsaechlich in der Datenbank angelegten Demo-Immobilien ueberein.
-
-Die Investment-Engine berechnet korrekt - das Problem liegt in den Eingabedaten:
-- BER-01: Kaufpreis 850.000 EUR mit nur 50.000 EUR EK ergibt Darlehen ~800.000 EUR, was monatliche Zinsen von ~2.333 EUR und Tilgung ~1.333 EUR erklaert. Das sind die Werte aus dem Screenshot.
-- Die Werte in `useDemoListings.ts` muessen mit den echten DB-Immobilienakten abgeglichen werden.
-
-**Loesung**: Die drei Demo-Properties in `useDemoListings.ts` auf realistische ETW-Werte anpassen:
 ```
-BER-01: Kaufpreis 220.000, Miete 840/Mo, 85 m2, 1 WE (ETW)
-MUC-01: Kaufpreis 350.000, Miete 1.250/Mo, 72 m2, 1 WE (ETW)  
-HH-01: Kaufpreis 195.000, Miete 580/Mo, 45 m2, 1 WE (ETW)
+/website/sot/                    -> Home = Marketplace
+/website/sot/real-estate         -> Immobilien verwalten
+/website/sot/capital             -> Kapital strukturieren
+/website/sot/projects            -> Projekt einreichen
+/website/sot/energy              -> Energie optimieren
+/website/sot/management          -> KI-gestützte Verwaltung
+/website/sot/karriere            -> Partner werden
+/website/sot/immobilien/:publicId -> Exposé-Detailseite
 ```
-(Abgleich mit Portfolio-Screenshot: BER-01 Verkehrswert 320k/Miete 10.200 p.a., MUC-01 480k/15.000 p.a., HH-01 195k/6.960 p.a.)
 
-Exakter Abgleich mit DB-Werten (aus Screenshot sichtbar):
-- BER-01: Miete p.a. 10.200 EUR = 850/Mo, Verkehrswert 320.000
-- MUC-01: Miete p.a. 15.000 EUR = 1.250/Mo, Verkehrswert 480.000
-- HH-01: Miete p.a. 6.960 EUR = 580/Mo, Verkehrswert 195.000
+## Phasen
 
-Kaufpreise = Verkehrswerte fuer Demo: 320.000, 480.000, 195.000.
+### Phase 1 (AKTUELL): Layout + Routing + Home + Widgets
+- SotLayout: 3-Spalten-Grid (Armstrong | Main | Widgets)
+- SotWidgetSidebar: 7 Dashboard-sized Widgets
+- SotHome: Hero + Investment Engine + Suchergebnisse
+- SotHeader: Minimale Nav (nur Logo + Auth)
+- Routing: Neue Routen im Manifest
 
-### Problem 5: Portfolio-Summenzeile hat Doppelzeilen und kleine Schrift
-**Ursache**: In der Summenzeile (Zeilen 1128-1148) werden Labels als `text-xs text-muted-foreground` ueber den Werten gerendert. Bei schmalen Viewports brechen die formatierten Betraege um.
-**Loesung**: Labels und Werte in eine Zeile konsolidieren. `text-xs` Labels entfernen (Zero-Clutter-Policy), nur Werte mit einheitlicher `text-sm font-semibold` zeigen.
+### Phase 2: Unterseiten
+- SotRealEstate, SotCapital, SotProjects, SotEnergy, SotManagement, SotKarriere
 
-### Problem 6: 1000er-Punkt fehlt teilweise
-**Ursache**: `Intl.NumberFormat('de-DE')` liefert korrekte 1000er-Punkte. Das Problem tritt nur in Komponenten auf, die manuelle String-Konkatenation verwenden oder `toFixed()` nutzen.
-**Loesung**: Wird durch Problem 3 (zentrale Formatter-Nutzung) automatisch behoben.
+### Phase 3: Exposé + Armstrong-Adaption + Legacy-Redirects
 
----
-
-## Aenderungsplan (Dateien)
-
-| Nr | Datei | Aenderung |
-|----|-------|-----------|
-| 1 | `src/components/shared/PropertyTable.tsx` | PropertyCurrencyCell: Cents entfernen, Intl.NumberFormat nutzen |
-| 2 | `src/components/investment/InvestmentResultTile.tsx` | Schriftgroessen erhoehen (text-xs auf text-sm, etc.) |
-| 3 | `src/hooks/useDemoListings.ts` | Kaufpreise/Mieten an DB-Immobilienakten anpassen |
-| 4 | `src/components/immobilienakte/InvestmentKPIBlock.tsx` | formatCurrency aus lib/formatters importieren |
-| 5 | `src/components/immobilienakte/FinancingBlock.tsx` | formatCurrency aus lib/formatters importieren |
-| 6 | `src/components/immobilienakte/TenancyBlock.tsx` | formatCurrency aus lib/formatters importieren |
-| 7 | `src/components/immobilienakte/NKWEGBlock.tsx` | formatCurrency aus lib/formatters importieren |
-| 8 | `src/components/immobilienakte/editable/TenancySummaryBlock.tsx` | formatCurrency aus lib/formatters importieren |
-| 9 | `src/components/immobilienakte/editable/EditableTenancyBlock.tsx` | formatCurrency aus lib/formatters importieren |
-| 10 | `src/components/portfolio/TenancyTab.tsx` | formatCurrency aus lib/formatters importieren |
-| 11 | `src/components/finanzierung/FinanceApplicationPreview.tsx` | Cents entfernen |
-| 12 | `src/pages/portal/immobilien/PortfolioTab.tsx` | Summenzeile vereinfachen, Doppelzeilen eliminieren |
-
-Keine DB-Aenderungen erforderlich. Rein Frontend/UI.
+## Was NICHT verändert wird
+- FutureRoom Website
+- Golden Path Engine, Zone 1 Backbone
+- Investment Engine Hook
+- InvestmentResultTile
+- Zone 2 Module
+- Datenbank-Schema

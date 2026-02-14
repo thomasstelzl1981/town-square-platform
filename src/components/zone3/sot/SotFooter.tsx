@@ -5,17 +5,17 @@ import { Link } from 'react-router-dom';
 import { Building2, Github, Linkedin, Twitter } from 'lucide-react';
 
 const footerLinks = {
-  produkt: [
-    { label: 'Überblick', href: '/website/sot/produkt' },
-    { label: 'Module', href: '/website/sot/module' },
-    { label: 'Anwendungsfälle', href: '/website/sot/use-cases' },
-    { label: 'Demo', href: '/website/sot/demo' },
+  plattform: [
+    { label: 'Real Estate', href: '/website/sot/real-estate' },
+    { label: 'Capital', href: '/website/sot/capital' },
+    { label: 'Projects', href: '/website/sot/projects' },
+    { label: 'Management', href: '/website/sot/management' },
+    { label: 'Energy', href: '/website/sot/energy' },
   ],
   ressourcen: [
+    { label: 'Karriere', href: '/website/sot/karriere' },
     { label: 'Preise', href: '/website/sot/preise' },
     { label: 'FAQ', href: '/website/sot/faq' },
-    { label: 'Blog', href: '/website/sot/blog' },
-    { label: 'Changelog', href: '/website/sot/changelog' },
   ],
   rechtliches: [
     { label: 'Impressum', href: '/website/sot/impressum' },
@@ -41,7 +41,7 @@ export function SotFooter() {
               <span className="font-bold">System of a Town</span>
             </Link>
             <p className="text-sm mb-6" style={{ color: 'hsl(var(--z3-muted-foreground))' }}>
-              Die KI-Software für moderne Immobilienverwaltung.
+              Die Plattform für Kapitalanlage, Projekte und Finanzierung.
             </p>
             {/* Social Links */}
             <div className="flex gap-3">
@@ -71,9 +71,9 @@ export function SotFooter() {
           
           {/* Links */}
           <div>
-            <h4 className="font-semibold mb-4">Produkt</h4>
+            <h4 className="font-semibold mb-4">Plattform</h4>
             <ul className="space-y-2.5">
-              {footerLinks.produkt.map((link) => (
+              {footerLinks.plattform.map((link) => (
                 <li key={link.href}>
                   <Link 
                     to={link.href} 
