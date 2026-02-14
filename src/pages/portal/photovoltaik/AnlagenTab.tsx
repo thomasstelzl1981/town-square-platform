@@ -55,6 +55,7 @@ const DEMO_PLANT: PvPlant = {
   consumption_meter_operator: 'Stromnetz Berlin',
   consumption_start_reading: 14520,
   provider: 'demo',
+  active_connector: 'demo_timo_leif',
   last_sync_at: new Date().toISOString(),
   data_quality: 'complete',
   dms_root_node_id: '680b808e-7aaa-47f3-a92d-2ddf44e26bca',

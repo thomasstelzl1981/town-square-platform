@@ -188,3 +188,6 @@ verify_jwt = false
 
 [functions.sot-research-engine]
 verify_jwt = false
+
+[functions.pv-connector-bridge]
+verify_jwt = false
