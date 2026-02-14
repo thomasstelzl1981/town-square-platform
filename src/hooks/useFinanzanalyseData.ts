@@ -2,6 +2,7 @@
  * MOD-18 Finanzanalyse — Zentraler Daten-Hook
  * Liest read-only aus MOD-11 SSOT-Tabellen (bank_transactions, fm_*)
  * und eigene Analyse-Tabellen (analytics_*)
+ * + CRUD für household_persons + pension_records
  */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -22,7 +23,7 @@ export interface FinanzKPI {
 }
 
 export interface MonthlyFlow {
-  month: string; // YYYY-MM
+  month: string;
   income: number;
   expenses: number;
   net: number;
@@ -37,7 +38,7 @@ export interface BudgetSetting {
 const CATEGORIES = ['Wohnen', 'Mobilität', 'Lebensmittel', 'Freizeit', 'Abos', 'Versicherungen', 'Telekom', 'Sonstiges'] as const;
 export { CATEGORIES };
 
-// ─── Kategorisierung (einfache Heuristik) ────────────────────
+// ─── Kategorisierung ────────────────────────────────────────
 function categorizeTransaction(purpose: string, merchant: string): string {
   const text = `${purpose} ${merchant}`.toLowerCase();
   if (text.match(/miete|wohnung|immobilien|hausgeld/)) return 'Wohnen';
@@ -105,13 +106,42 @@ export function useFinanzanalyseData() {
     enabled: !!activeTenantId,
   });
 
+  // 4) Household Persons
+  const personsQuery = useQuery({
+    queryKey: ['fa-persons', activeTenantId],
+    queryFn: async () => {
+      if (!activeTenantId) return [];
+      const { data } = await supabase
+        .from('household_persons')
+        .select('*')
+        .eq('tenant_id', activeTenantId)
+        .order('sort_order', { ascending: true });
+      return data || [];
+    },
+    enabled: !!activeTenantId,
+  });
+
+  // 5) Pension Records
+  const pensionQuery = useQuery({
+    queryKey: ['fa-pensions', activeTenantId],
+    queryFn: async () => {
+      if (!activeTenantId) return [];
+      const { data } = await supabase
+        .from('pension_records')
+        .select('*')
+        .eq('tenant_id', activeTenantId);
+      return data || [];
+    },
+    enabled: !!activeTenantId,
+  });
+
   // ─── Aggregations ──────────────────────────────────────────
   const transactions = transactionsQuery.data || [];
   const overrides = overridesQuery.data || [];
 
   const categorizedTransactions = useMemo(() => {
     return transactions.map(tx => {
-      const override = overrides.find(o => 
+      const override = overrides.find(o =>
         (tx.counterparty || '').toLowerCase().includes(o.merchant_pattern.toLowerCase())
       );
       const category = override?.category || categorizeTransaction(tx.purpose_text || '', tx.counterparty || '');
@@ -155,7 +185,7 @@ export function useFinanzanalyseData() {
       totalIncome,
       totalExpenses,
       netCashflow: totalIncome - totalExpenses,
-      fixedCosts: 0, // Will be enriched when fm_subscriptions exist
+      fixedCosts: 0,
       subscriptionCount: 0,
       insuranceCount: 0,
       insuranceMonthlyCost: 0,
@@ -212,6 +242,80 @@ export function useFinanzanalyseData() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['fa-budgets'] }),
   });
 
+  // ─── Person CRUD ───────────────────────────────────────────
+  const createPerson = useMutation({
+    mutationFn: async (person: {
+      role: string;
+      salutation?: string;
+      first_name: string;
+      last_name: string;
+      birth_date?: string;
+      email?: string;
+      phone?: string;
+    }) => {
+      if (!activeTenantId || !user?.id) throw new Error('No tenant/user');
+      const { error } = await supabase.from('household_persons').insert({
+        tenant_id: activeTenantId,
+        user_id: user.id,
+        ...person,
+        birth_date: person.birth_date || null,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['fa-persons'] }),
+  });
+
+  const updatePerson = useMutation({
+    mutationFn: async (person: Record<string, any>) => {
+      const { id, created_at, updated_at, ...rest } = person;
+      const { error } = await supabase.from('household_persons').update(rest).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['fa-persons'] }),
+  });
+
+  const deletePerson = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('household_persons').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['fa-persons'] }),
+  });
+
+  // ─── Pension Upsert ────────────────────────────────────────
+  const upsertPension = useMutation({
+    mutationFn: async (data: {
+      personId: string;
+      info_date?: string | null;
+      current_pension?: number | null;
+      projected_pension?: number | null;
+      disability_pension?: number | null;
+    }) => {
+      if (!activeTenantId) throw new Error('No tenant');
+      const existing = (pensionQuery.data || []).find(p => p.person_id === data.personId);
+      if (existing) {
+        const { error } = await supabase.from('pension_records').update({
+          info_date: data.info_date,
+          current_pension: data.current_pension,
+          projected_pension: data.projected_pension,
+          disability_pension: data.disability_pension,
+        }).eq('id', existing.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from('pension_records').insert({
+          person_id: data.personId,
+          tenant_id: activeTenantId,
+          info_date: data.info_date,
+          current_pension: data.current_pension,
+          projected_pension: data.projected_pension,
+          disability_pension: data.disability_pension,
+        });
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['fa-pensions'] }),
+  });
+
   // ─── Setup Health Check ────────────────────────────────────
   const setupStatus = useMemo(() => ({
     hasTransactions: transactions.length > 0,
@@ -227,6 +331,9 @@ export function useFinanzanalyseData() {
     // Raw
     transactions: categorizedTransactions,
     budgets: budgetQuery.data || [],
+    // Persons
+    persons: personsQuery.data || [],
+    pensionRecords: pensionQuery.data || [],
     // Aggregated
     kpis,
     monthlyFlows,
@@ -234,7 +341,11 @@ export function useFinanzanalyseData() {
     setupStatus,
     // Mutations
     upsertBudget,
+    createPerson,
+    updatePerson,
+    deletePerson,
+    upsertPension,
     // Loading
-    isLoading: transactionsQuery.isLoading || budgetQuery.isLoading,
+    isLoading: transactionsQuery.isLoading || budgetQuery.isLoading || personsQuery.isLoading,
   };
 }

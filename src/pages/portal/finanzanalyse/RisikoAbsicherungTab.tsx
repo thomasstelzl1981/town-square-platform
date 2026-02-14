@@ -1,53 +1,45 @@
 /**
- * MOD-18 Finanzanalyse — Seite D: Risiko & Absicherung + Investment Stub
- * Versicherungskostenquote, Coverage Snapshot, DRV Quick-View, Investment-Stub
+ * MOD-18 Finanzanalyse — Tab 4: Risiko & Absicherung
+ * Versicherungskostenquote, Coverage Snapshot, Vorsorge-Teaser
+ * KEIN Investment-Stub
  */
 import { PageShell } from '@/components/shared/PageShell';
-import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
 import { useFinanzanalyseData } from '@/hooks/useFinanzanalyseData';
 import { useNavigate } from 'react-router-dom';
 import {
   Shield, ShieldCheck, ShieldX, ShieldAlert,
-  HeartPulse, Banknote, TrendingUp, Lock,
-  ExternalLink, Users, PiggyBank
+  HeartPulse, Banknote, ExternalLink, Users, PiggyBank
 } from 'lucide-react';
 
 function fmt(v: number) {
   return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(v);
 }
 
-// Standard-Versicherungskategorien für Coverage Check
 const INSURANCE_TYPES = [
   { key: 'haftpflicht', label: 'Privathaftpflicht', essential: true },
   { key: 'hausrat', label: 'Hausratversicherung', essential: true },
   { key: 'wohngebaeude', label: 'Wohngebäudeversicherung', essential: false },
-  { key: 'berufsunfaehigkeit', label: 'Berufsunfähigkeit', essential: true },
   { key: 'kranken', label: 'Krankenversicherung', essential: true },
-  { key: 'rechtsschutz', label: 'Rechtsschutzversicherung', essential: false },
   { key: 'kfz', label: 'KFZ-Versicherung', essential: false },
+  { key: 'berufsunfaehigkeit', label: 'Berufsunfähigkeit', essential: true },
+  { key: 'rechtsschutz', label: 'Rechtsschutzversicherung', essential: false },
   { key: 'unfall', label: 'Unfallversicherung', essential: false },
 ];
 
-export default function EinstellungenTile() {
-  const { kpis, isLoading } = useFinanzanalyseData();
+export default function RisikoAbsicherungTab() {
+  const { kpis } = useFinanzanalyseData();
   const navigate = useNavigate();
 
-  // D1: Versicherungskostenquote
   const insuranceRatio = kpis.totalExpenses > 0 ? (kpis.insuranceMonthlyCost / (kpis.totalExpenses / 12)) * 100 : 0;
-
-  // D2: Coverage — derzeit Platzhalter (echte Daten kommen aus fm_insurance_contracts)
-  const coveredTypes: string[] = []; // Wird befüllt wenn fm_insurance_contracts existiert
+  const coveredTypes: string[] = [];
   const essentialMissing = INSURANCE_TYPES.filter(t => t.essential && !coveredTypes.includes(t.key));
 
   return (
     <PageShell>
-      <ModulePageHeader title="Risiko & Absicherung" description="Versicherungscheck und Vorsorge-Überblick" />
-
-      {/* D1: Versicherungskostenquote */}
+      {/* KPI Row */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="glass-card">
           <CardContent className="p-4 text-center">
@@ -72,7 +64,7 @@ export default function EinstellungenTile() {
         </Card>
       </div>
 
-      {/* D2: Coverage Snapshot */}
+      {/* Versicherungs-Check */}
       <Card className="mt-6">
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
@@ -101,7 +93,7 @@ export default function EinstellungenTile() {
                     </div>
                   </div>
                   <Badge variant={isCovered ? 'default' : type.essential ? 'destructive' : 'secondary'}>
-                    {isCovered ? 'Aktiv' : 'Nicht erkannt'}
+                    {isCovered ? 'Erkannt' : 'Nicht erkannt'}
                   </Badge>
                 </div>
               );
@@ -117,14 +109,14 @@ export default function EinstellungenTile() {
               </p>
             </div>
           )}
-          <Button variant="outline" size="sm" className="mt-4" onClick={() => navigate('/portal/finanzierung')}>
+          <Button variant="outline" size="sm" className="mt-4" onClick={() => navigate('/portal/finanzierungsmanager')}>
             <ExternalLink className="h-4 w-4 mr-2" />
             Versicherungen im Finanzmanager verwalten
           </Button>
         </CardContent>
       </Card>
 
-      {/* D3: Personen & Vorsorge (DRV) Quick-View */}
+      {/* Vorsorge & Rente Teaser */}
       <Card className="mt-6">
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
@@ -137,36 +129,11 @@ export default function EinstellungenTile() {
           <div className="py-8 text-center">
             <PiggyBank className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
             <p className="text-sm text-muted-foreground">
-              Noch keine Vorsorgedaten hinterlegt.
+              Hinterlegen Sie Ihre DRV-Renteninformation unter „Übersicht → Personen" für eine Vorsorge-Prognose.
             </p>
-            <p className="text-xs text-muted-foreground mt-1">
-              Importieren Sie Ihre DRV-Daten im Finanzmanager für eine Altersvorsorge-Prognose.
-            </p>
-            <Button variant="outline" size="sm" className="mt-3" onClick={() => navigate('/portal/finanzierung')}>
+            <Button variant="outline" size="sm" className="mt-3" onClick={() => navigate('/portal/finanzierungsmanager')}>
               Finanzmanager öffnen
             </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* E-Stub: Investment Analyse */}
-      <Card className="mt-6 border-dashed">
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
-            <TrendingUp className="h-5 w-5" />
-            Investment-Analyse
-            <Badge variant="secondary">Bald verfügbar</Badge>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="py-6 text-center">
-            <Lock className="h-8 w-8 text-muted-foreground/30 mx-auto mb-3" />
-            <p className="text-sm text-muted-foreground">
-              Die Investment-Analyse wird in einer zukünftigen Version verfügbar sein.
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">
-              Verbinden Sie Ihr Depot im Finanzmanager, um sich für den Beta-Zugang vorzumerken.
-            </p>
           </div>
         </CardContent>
       </Card>

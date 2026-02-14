@@ -6490,6 +6490,89 @@ export type Database = {
           },
         ]
       }
+      household_persons: {
+        Row: {
+          birth_date: string | null
+          city: string | null
+          created_at: string
+          email: string | null
+          employer_name: string | null
+          employment_status: string | null
+          first_name: string
+          house_number: string | null
+          id: string
+          is_primary: boolean
+          last_name: string
+          marital_status: string | null
+          net_income_range: string | null
+          phone: string | null
+          role: string
+          salutation: string | null
+          sort_order: number
+          street: string | null
+          tenant_id: string
+          updated_at: string
+          user_id: string
+          zip: string | null
+        }
+        Insert: {
+          birth_date?: string | null
+          city?: string | null
+          created_at?: string
+          email?: string | null
+          employer_name?: string | null
+          employment_status?: string | null
+          first_name?: string
+          house_number?: string | null
+          id?: string
+          is_primary?: boolean
+          last_name?: string
+          marital_status?: string | null
+          net_income_range?: string | null
+          phone?: string | null
+          role?: string
+          salutation?: string | null
+          sort_order?: number
+          street?: string | null
+          tenant_id: string
+          updated_at?: string
+          user_id: string
+          zip?: string | null
+        }
+        Update: {
+          birth_date?: string | null
+          city?: string | null
+          created_at?: string
+          email?: string | null
+          employer_name?: string | null
+          employment_status?: string | null
+          first_name?: string
+          house_number?: string | null
+          id?: string
+          is_primary?: boolean
+          last_name?: string
+          marital_status?: string | null
+          net_income_range?: string | null
+          phone?: string | null
+          role?: string
+          salutation?: string | null
+          sort_order?: number
+          street?: string | null
+          tenant_id?: string
+          updated_at?: string
+          user_id?: string
+          zip?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "household_persons_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inbound_attachments: {
         Row: {
           created_at: string
@@ -10193,6 +10276,57 @@ export type Database = {
           {
             foreignKeyName: "partner_verifications_partner_org_id_fkey"
             columns: ["partner_org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pension_records: {
+        Row: {
+          created_at: string
+          current_pension: number | null
+          disability_pension: number | null
+          id: string
+          info_date: string | null
+          person_id: string
+          projected_pension: number | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          current_pension?: number | null
+          disability_pension?: number | null
+          id?: string
+          info_date?: string | null
+          person_id: string
+          projected_pension?: number | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          current_pension?: number | null
+          disability_pension?: number | null
+          id?: string
+          info_date?: string | null
+          person_id?: string
+          projected_pension?: number | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pension_records_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "household_persons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pension_records_tenant_id_fkey"
+            columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
