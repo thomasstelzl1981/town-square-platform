@@ -7,7 +7,7 @@ import {
   Building2, Users, Link2, LifeBuoy, LayoutDashboard, LogOut, ChevronDown,
   Contact, Grid3X3, Plug, Mail, Eye, FileText, CreditCard, FileCheck,
   Inbox, Settings2, Landmark, Briefcase, ShoppingBag, Target, Bot,
-  UserCog, ClipboardCheck, Users2, Sparkles, BookOpen, Scale, FlaskConical, Shield, Globe
+  UserCog, ClipboardCheck, Users2, Sparkles, BookOpen, Scale, FlaskConical, Shield, Globe, PawPrint
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useAuth } from '@/contexts/AuthContext';
@@ -91,6 +91,7 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   // New Desks
   'LeadDeskDashboard': Target,
   'ProjektDeskDashboard': Building2,
+  'PetmanagerDashboard': PawPrint,
 };
 
 // Group configuration for grouping routes
@@ -150,7 +151,7 @@ function getGroupKey(path: string, component: string): string {
   // Operative Desks (Desks + LeadPool + Provisionen + Landing Pages)
   if (path.startsWith('sales-desk') || path.startsWith('finance-desk') || 
       path.startsWith('acquiary') || path === 'lead-desk' || path === 'projekt-desk' ||
-      path === 'website-hosting') {
+      path === 'petmanager' || path === 'website-hosting') {
     return 'desks';
   }
   if (path.startsWith('agents')) {
@@ -174,7 +175,7 @@ function shouldShowInNav(path: string): boolean {
   // Show main desk entries
   if (path === 'sales-desk' || path === 'finance-desk' || path === 'acquiary' || 
       path === 'agents' || path === 'futureroom' || path === 'lead-desk' || 
-      path === 'projekt-desk' || path === 'website-hosting') {
+      path === 'projekt-desk' || path === 'petmanager' || path === 'website-hosting') {
     return true;
   }
   // KI Office items — consolidated 3

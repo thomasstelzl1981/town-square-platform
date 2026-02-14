@@ -269,20 +269,20 @@ export const DEMO_DATA_MANIFEST: readonly DemoDataEntry[] = [
     status: 'done',
   },
 
-  // ─── MOD-05: Website Builder (ehemals MOD-21) ───────────────────
+  // ─── MOD-05: Pets ───────────────────
   {
-    processId: 'GP-WEBSITE',
+    processId: 'GP-PETS',
     moduleCode: 'MOD-05',
-    toggleKey: 'GP-WEBSITE',
+    toggleKey: 'GP-PETS',
     dataHookFile: 'src/hooks/useDemoLocalEntity.ts',
     dataHookExport: 'useDemoLocalEntity',
-    entities: ['website_order', 'design_config', 'seo_config'],
+    entities: ['pet', 'pet_caring', 'pet_booking'],
     zones: [2],
     scope: 'z2_only',
     consumers: [
-      { file: 'src/pages/portal/WebsiteBuilderPage.tsx', zone: 2, mergeStrategy: 'inject', description: 'Demo-Guard für Muster GmbH' },
+      { file: 'src/pages/portal/pets/PetsMeineTiere.tsx', zone: 2, mergeStrategy: 'inject', description: 'Demo-Guard für Luna (Golden Retriever)' },
     ],
-    status: 'done',
+    status: 'planned',
   },
 ] as const;
 
