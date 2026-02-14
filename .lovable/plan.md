@@ -1,43 +1,29 @@
 
 
-## SoT Armstrong Stripe und SubBar -- Korrekturen
+## SoT Homepage — Kompletter Neuaufbau mit Scroll-Snap
 
-### Probleme
+### Architektur
 
-1. **Stripe zu schmal**: Aktuell 200px, soll ca. 50% breiter = **300px**
-2. **Stripe rastet nicht unter SubBar ein**: `top-[88px]` stimmt nicht exakt mit dem SubBar-Ende ueberein. Die SystemBar ist `h-12` (48px), die SubBar hat `py-1` (8px oben/unten) + Inhalt. Der korrekte Wert muss dynamisch passen.
-3. **"Dateien hierher ziehen" entfernen**: Die Drop-Zone in der Mitte wird komplett entfernt.
-4. **Chat-Eingabe unten fehlt**: Statt nur dem Sparkles-Button soll unten ein richtiges Chat-Eingabefeld mit Send-Button stehen (wie im Portal).
+1. **Scroll-Snap Sektionen**: `scroll-snap-type: y mandatory` auf `main`, 5 viewport-fuellende Sektionen mit `scroll-snap-align: start`
+2. **Symmetrisches Layout**: Unsichtbarer linker Spacer (300px) = rechter Armstrong Stripe (300px) → Content exakt mittig
+3. **Mobile**: Inputs gestapelt, Kacheln vertikal, Armstrong als FAB + Fullscreen-Chat
 
-### Aenderungen
+### 5 Sektionen
 
-**Datei: `src/components/zone3/sot/SotArmstrongStripe.tsx`**
-
-| Was | Vorher | Nachher |
+| # | Name | Inhalt |
 |---|---|---|
-| Breite (expanded) | 200px | 300px |
-| Breite (minimized) | 45px | 45px (bleibt) |
-| Top-Position | `top-[88px]` | Wird praezise berechnet: Die SubBar sitzt innerhalb von `main`, nicht im root Layout. Der Stripe muss sich an der gleichen Hoehe ausrichten wie der SubBar-Unterstrich. Loesung: `top-12` (48px = SystemBar-Hoehe), denn die SubBar gehoert zum Page-Content innerhalb von `main`. Der Stripe beginnt direkt unter der SystemBar, genauso wie `main`. |
-| Mittlerer Content | "Dateien hierher ziehen" Drop-Zone | Komplett entfernt, `flex-1` bleibt leer |
-| Unterer Bereich | Sparkles-Button + "Fragen" Label | Chat-Eingabefeld: `input` mit Placeholder "Armstrong fragen..." + Send-Button (ArrowUp Icon), beim Klick oeffnet sich der Chat-Panel |
+| 1 | Investment Engine | Headline + EK/zvE Inputs + 8 Advanced-Parameter |
+| 2 | Drei Wege | 3 grosse Kacheln (Suche, Upload, Calc) |
+| 3 | Plattform-Vorteile | 2x2 Feature-Grid (KI, Steuer, Markt, E2E) |
+| 4 | Social Proof | 3 KPI-Zahlen mit Count-up Animation |
+| 5 | CTA | E-Mail-Eingabe + Demo/Kontakt Links |
 
-Zur Top-Position-Klaerung: Die SubBar ist Teil von `SotHome.tsx` (innerhalb von `<Outlet />`), nicht Teil des root Layouts. Der Armstrong Stripe ist im root Layout und muss auf gleicher Hoehe wie `main` beginnen = direkt unter der SystemBar = `top-12`. Die SubBar-Linien werden innerhalb des Main-Contents gerendert, und der Stripe sitzt auf gleicher Hoehe daneben -- dadurch rastet er visuell unter den SubBar-Linien ein, weil die SubBar selbst die erste Zeile im Main-Content ist.
+### Dateien
 
-**Datei: `src/pages/zone3/sot/SotHome.tsx`**
-
-Keine Aenderungen noetig. SubBar mit `border-y border-border/50` bleibt wie ist.
-
-### Technische Details Armstrong Stripe (neu)
-
-```
-aside (expanded, fixed):
-  - width: 300px
-  - top-12 (48px), right-0, bottom-0
-  - Header: "Armstrong" + Minimize/Close Buttons (bleibt)
-  - Mitte: leer (flex-1, keine Drop-Zone)
-  - Unten: Chat-Eingabezeile
-    - input: "Armstrong fragen..." Placeholder
-    - button: ArrowUp-Icon, onClick -> setIsChatOpen(true)
-    - border-t border-border/30, px-3 py-3
-```
-
+| Datei | Aktion |
+|---|---|
+| `src/pages/zone3/sot/SotLayout.tsx` | Flex-Container mit linkem Spacer (300px), `main` scroll-snap |
+| `src/pages/zone3/sot/SotHome.tsx` | Komplett neu: 5 Snap-Sektionen |
+| `src/styles/sot-premium.css` | Scroll-Snap CSS-Klassen |
+| `src/components/zone3/sot/SotArmstrongStripe.tsx` | Bleibt (300px, top-12, inline Chat) |
+| `src/components/zone3/sot/SotWidgetSidebar.tsx` | Mobile: Armstrong FAB hinzufuegen |
