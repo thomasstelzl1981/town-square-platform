@@ -1,190 +1,176 @@
 
-# SOT Web Research Engine — Zentrale Recherche-Infrastruktur
+# Migrationsplan: MOD-05 wird Website Builder, MOD-21 verschwindet
 
 ## Ausgangslage
 
-Aktuell existieren **10+ separate Edge Functions** fuer Recherche, verstreut und ohne einheitliche Schnittstelle:
+| Aspekt | IST-Zustand | SOLL-Zustand |
+|--------|-------------|--------------|
+| MOD-05 | "KI-Telefon-Assistent" Platzhalter unter `/portal/msv` | **Website Builder** unter `/portal/website-builder` |
+| MOD-21 | Website Builder unter `/portal/website-builder` | **Geloescht** — Code lebt weiter unter MOD-05 |
+| `/portal/msv` | Redirect-Wrapper + Platzhalter-Seite | Redirect zu `/portal/immobilien/verwaltung` (Legacy) |
 
-| Funktion | Zweck | Provider |
-|----------|-------|----------|
-| sot-places-search | Google Places Suche | Google Maps API (konfiguriert) |
-| sot-extract-email | Email aus Website extrahieren | Eigener HTML-Scraper |
-| sot-research-firecrawl-extract | Web-Suche + Kontaktextraktion | Firecrawl (NICHT konfiguriert) |
-| sot-apify-portal-job | Portal-Scraping | Apify (NICHT konfiguriert) |
-| sot-apollo-search | Kontaktdatenbank-Suche | Apollo (NICHT konfiguriert) |
-| sot-research-run-order | Orchestrator | Intern |
-| sot-research-free | Stub (Mock-Daten) | - |
-| sot-contact-enrichment | KI-Kontaktextraktion | Lovable AI (konfiguriert) |
-| sot-acq-ai-research | Immobilien-Analyse | Lovable AI (konfiguriert) |
-| sot-acq-standalone-research | Standalone-Analyse | OpenRouter (nicht konfiguriert) |
+**Kernprinzip:** Der gesamte Website-Builder-Code bleibt funktional identisch. Es aendert sich nur der Modulcode (MOD-21 wird MOD-05) und die alte MSV-Platzhalter-Infrastruktur wird entfernt.
 
-## Verfuegbare Provider (Ist-Zustand Secrets)
+---
 
-| Provider | Secret | Status |
-|----------|--------|--------|
-| Lovable AI | LOVABLE_API_KEY | Konfiguriert |
-| Google Maps/Places | GOOGLE_MAPS_API_KEY | Konfiguriert |
-| Firecrawl | FIRECRAWL_API_KEY | FEHLT — muss angelegt werden |
-| Apify | APIFY_API_KEY | FEHLT — muss angelegt werden |
-
-## Loesung: Einheitliche `sot-research-engine`
-
-Eine **einzelne Edge Function** als zentrale Recherche-Engine mit Provider-Orchestrierung.
-
-### Architektur
+## Betroffene Schichten (5)
 
 ```text
-+------------------------------------------------------------------+
-|                    sot-research-engine                            |
-|                                                                  |
-|  Eingang: { intent, query, location, providers[], output_format }|
-|                                                                  |
-|  +------------------+  +------------------+  +----------------+  |
-|  | Provider:        |  | Provider:        |  | Provider:      |  |
-|  | google_places    |  | firecrawl        |  | apify          |  |
-|  | (Firmensuche,    |  | (Web-Scrape,     |  | (Google Maps   |  |
-|  |  Bewertungen)    |  |  Email-Extract)  |  |  Scraper Actor)|  |
-|  +--------+---------+  +--------+---------+  +-------+--------+  |
-|           |                      |                    |           |
-|           +----------+-----------+--------------------+           |
-|                      v                                           |
-|            +-------------------+                                 |
-|            | Lovable AI        |                                 |
-|            | (Zusammenfuehren, |                                 |
-|            |  Scoring,         |                                 |
-|            |  Strukturieren)   |                                 |
-|            +-------------------+                                 |
-|                      |                                           |
-|                      v                                           |
-|  Unified Result: { contacts[], sources[], confidence, cost }     |
-+------------------------------------------------------------------+
++---------------------------+
+| 1. Datenbank (tile_catalog)|  UPDATE tile_code MOD-05
++---------------------------+
+| 2. Manifeste (3 Dateien)  |  routesManifest, areaConfig, armstrongManifest
++---------------------------+
+| 3. Konstanten/Registries  |  rolesMatrix, moduleContents, sotWebsiteModules,
+|                           |  goldenPathProcesses, demoDataManifest, bwaKontenplan
++---------------------------+
+| 4. Seiten-Dateien         |  MSVPage, msv/*.tsx (Loeschkandidaten)
++---------------------------+
+| 5. Kommentare/Docs        |  JSDoc-Header in WB*.tsx, spec/mod-05
++---------------------------+
 ```
 
-### Ablauf pro Recherche-Auftrag
+---
 
-1. **Intent parsen** — Lovable AI klassifiziert den Suchauftrag (Handwerker / Makler / Unternehmen / Kontaktperson)
-2. **Provider-Plan erstellen** — je nach Intent und verfuegbaren API-Keys die optimale Kombination waehlen
-3. **Parallel ausfuehren:**
-   - Google Places: Firmennamen, Adressen, Telefon, Website, Bewertungen
-   - Firecrawl: Websites scrapen fuer E-Mail, Impressum, Team-Seiten
-   - Apify (Google Maps Scraper Actor): Erweiterte Geschaeftsdaten inkl. E-Mail
-4. **KI-Zusammenfuehrung** — Lovable AI merged die Ergebnisse, dedupliziert, scored nach Relevanz
-5. **Ergebnis zurueckgeben** — einheitliches Format fuer alle Consumer
+## Schritt-fuer-Schritt Plan
 
-### API-Schnittstelle
+### Schritt 1: DB-Migration — tile_catalog
 
-```text
-POST sot-research-engine
+MOD-05 Eintrag in `tile_catalog` aktualisieren:
+- `title`: "Website Builder"
+- `description`: "KI-gestuetzter Website-Baukasten"
+- `icon_key`: "globe"
+- `main_tile_route`: "/portal/website-builder"
+- `sub_tiles`: [] (keine Sub-Tiles, hat dynamic_routes)
+- `display_order`: 5 (bleibt)
+- `flowchart_mermaid`: Neues Website-Builder Flowchart
+- `internal_apis`: Website-Builder Edge Functions
+- `external_api_refs`: []
 
-Body:
-{
-  "intent": "find_contractors" | "find_brokers" | "find_companies" | "find_contacts" | "analyze_market",
-  "query": "Sanitaer Handwerker",
-  "location": "Berlin",
-  "radius_km": 25,
-  "filters": {
-    "must_have_email": true,
-    "min_rating": 3.5,
-    "industry": "Sanitaer"
-  },
-  "providers": ["google_places", "firecrawl", "apify"],  // optional, sonst auto
-  "max_results": 20,
-  "context": {
-    "module": "sanierung" | "akquise" | "recherche" | "marketing",
-    "reference_id": "optional-mandate-or-order-id"
-  }
-}
+Kein MOD-21 Eintrag existiert in der DB — nichts zu loeschen.
 
-Response:
-{
-  "success": true,
-  "results": [
-    {
-      "name": "Berliner Badsanierung GmbH",
-      "email": "info@berliner-badsanierung.de",
-      "phone": "+49 30 12345678",
-      "website": "https://berliner-badsanierung.de",
-      "address": "Musterstr. 1, 10115 Berlin",
-      "rating": 4.7,
-      "reviews_count": 89,
-      "confidence": 92,
-      "sources": ["google_places", "firecrawl"],
-      "source_refs": { ... }
-    }
-  ],
-  "meta": {
-    "providers_used": ["google_places", "firecrawl"],
-    "total_found": 15,
-    "cost_eur": 0.12,
-    "duration_ms": 3400
-  }
-}
-```
+### Schritt 2: routesManifest.ts
 
-### Consumer-Module (wer die Engine nutzt)
+**A) MOD-05 Block ersetzen:**
+- Bisherig: `"MOD-05": { name: "Modul 05", base: "msv", icon: "Box", tiles: [KiTelefonUebersicht] }`
+- Neu: `"MOD-05": { name: "Website Builder", base: "website-builder", icon: "Globe", display_order: 5, tiles: [], dynamic_routes: [{ path: ":websiteId/editor", ... }] }`
 
-| Modul | Intent | Besonderheit |
-|-------|--------|-------------|
-| MOD-05 Sanierung | find_contractors | must_have_email=true, Branche als Filter |
-| MOD-12 AkquiseManager | find_brokers, find_companies | Apollo-Fallback, contact_staging Insert |
-| MOD-14 RechercheModul | find_contacts, find_companies | Voller Provider-Mix, research_orders Tracking |
-| Zone 1 Marketing | analyze_market, find_companies | Zukuenftig, gleiche Engine |
-| Armstrong | web_research | Allgemeine Recherche via Engine |
+**B) MOD-21 Block loeschen** (Zeilen 541-551)
 
-## Umsetzungsschritte
+**C) Kommentar Zeile 9 aktualisieren** (MOD-05 ist kein 1-Tile-Placeholder mehr)
 
-### Phase 1: Secrets + Engine (dieses Ticket)
+**D) Kommentar Zeile 261 aktualisieren** ("ehemals MOD-05 MSV" bleibt korrekt)
 
-1. **FIRECRAWL_API_KEY Secret anlegen** — Connector aktivieren
-2. **APIFY_API_KEY Secret anlegen** — Secret hinzufuegen
-3. **Neue Edge Function `sot-research-engine`** erstellen mit:
-   - Provider-Registry (google_places, firecrawl, apify)
-   - Graceful Fallback: wenn ein Provider-Key fehlt, wird er uebersprungen
-   - Parallele Ausfuehrung aller verfuegbaren Provider
-   - Lovable AI fuer Merge + Scoring
-   - Einheitliches Response-Format
-4. **Frontend-Hook `useResearchEngine.ts`** — universeller Hook fuer alle Module
+### Schritt 3: areaConfig.ts
 
-### Phase 2: Consumer umstellen
+- Services-Array: `['MOD-14', 'MOD-15', 'MOD-05', 'MOD-16']` — MOD-21 entfernen (MOD-05 bleibt an seiner Position)
+- Neuen `moduleLabelOverrides` Eintrag: `'MOD-05': 'Website Builder'`
 
-5. **Sanierung ProviderSearchPanel** — von `sot-places-search` + `sot-extract-email` auf `sot-research-engine` mit `intent: find_contractors` umstellen
-6. **AkquiseManager SourcingTab** — von `sot-apollo-search` + `sot-apify-portal-job` auf Engine umstellen
-7. **RechercheModul** — `sot-research-run-order` als Wrapper um Engine refactoren
-8. **Armstrong WEB_RESEARCH** — Action an Engine anbinden
+### Schritt 4: armstrongManifest.ts
 
-### Phase 3: Alte Functions aufloesen
+- Alle 7 Armstrong-Actions: `module: 'MOD-21'` aendern zu `module: 'MOD-05'`
+- Kommentar-Header: "MOD-21: WEBSITE BUILDER" zu "MOD-05: WEBSITE BUILDER"
 
-9. Einzelne Provider-Functions (`sot-places-search`, `sot-extract-email`, `sot-apollo-search`) als deprecated markieren, sobald alle Consumer umgestellt sind
+### Schritt 5: rolesMatrix.ts
+
+- `BASE_TILES` Array: MOD-05 bleibt bereits enthalten — keine Aenderung noetig
+- `MODULES` Array: MOD-05 Eintrag umbenennen: `name: 'Website Builder'`, `description: 'KI-Website-Baukasten'`
+- `ROLE_MODULE_MAP`: MOD-05 Eintrag bleibt — keine Aenderung noetig
+
+### Schritt 6: Weitere Registries aktualisieren
+
+| Datei | Aenderung |
+|-------|-----------|
+| `src/components/portal/HowItWorks/moduleContents.ts` | MOD-05 Eintrag: Titel, Beschreibung, SubTiles auf Website Builder umschreiben |
+| `src/data/sotWebsiteModules.ts` | MOD-05 Eintrag: code bleibt, name/tagline auf Website Builder |
+| `src/manifests/goldenPathProcesses.ts` | GP-WEBSITE: `moduleCode: 'MOD-21'` zu `'MOD-05'` |
+| `src/manifests/demoDataManifest.ts` | GP-WEBSITE: `moduleCode: 'MOD-21'` zu `'MOD-05'` |
+| `src/manifests/bwaKontenplan.ts` | JSDoc-Kommentar: "MOD-05 MSV" zu "MOD-04 Verwaltung" (BWA gehoert jetzt zu MOD-04) |
+| `src/components/portal/ModuleDashboard.tsx` | Kommentar "MOD-05 MSV" aktualisieren |
+| `src/pages/presentation/PresentationPage.tsx` | MOD-05 Eintrag: Name "Website Builder" statt "MSV" |
+| `src/docs/audit-tracker.md` | MOD-05 Zeile aktualisieren |
+
+### Schritt 7: Website-Builder JSDoc-Kommentare
+
+Alle `MOD-21` Referenzen in den Website-Builder-Dateien auf `MOD-05` aendern:
+- `src/pages/portal/WebsiteBuilderPage.tsx` (Header-Kommentar)
+- `src/pages/portal/website-builder/WBDashboard.tsx`
+- `src/pages/portal/website-builder/WBEditor.tsx`
+- `src/pages/portal/website-builder/WBSeo.tsx`
+- `src/pages/portal/website-builder/WBDesign.tsx`
+- `src/shared/website-renderer/designTemplates.ts`
+- `src/shared/website-renderer/types.ts`
+- `src/router/ManifestRouter.tsx` (Kommentar Zeile 273)
+
+### Schritt 8: Alte MSV-Seiten bereinigen
+
+**Loeschen** (nicht mehr referenziert nach Schritt 2):
+- `src/pages/portal/msv/KiTelefonUebersicht.tsx` — Platzhalter-Seite, wird nirgends mehr geroutet
+- `src/pages/portal/msv/index.ts` — Re-Exports der alten Tabs (ObjekteTab etc. werden direkt in VerwaltungTab importiert)
+
+**Behalten** (werden noch referenziert):
+- `src/pages/portal/MSVPage.tsx` — Wird zu reinem Redirect auf `/portal/immobilien/verwaltung`
+- `src/pages/portal/msv/MSVDashboard.tsx` — Wird von MSVPage importiert
+- `src/pages/portal/msv/ObjekteTab.tsx` etc. — Falls noch in VerwaltungTab referenziert
+
+**Vereinfachen:**
+- `MSVPage.tsx`: Alle Routes auf einen einzigen Redirect zu `/portal/immobilien/verwaltung` reduzieren
+- `MSVDashboard.tsx`: Durch einfachen Navigate-Redirect ersetzen
+
+### Schritt 9: Spec-Dokument
+
+- `spec/current/02_modules/mod-05_msv_contract.md` — Inhalt ersetzen durch Website-Builder-Contract oder als "DEPRECATED — moved to MOD-04 Verwaltung" markieren
+
+### Schritt 10: Backlog aktualisieren
+
+- `src/docs/backlog-consolidated-v8.md` um diesen Migrationsschritt ergaenzen
+- Memory-Eintraege aktualisieren (MOD-21 Referenz in mod-21-website-builder-spec)
+
+---
+
+## Was sich NICHT aendert
+
+- Die Route `/portal/website-builder` bleibt identisch (base-Pfad im Manifest)
+- Alle Website-Builder-Komponenten (WBDashboard, WBEditor, WBSeo, WBDesign) bleiben in `src/pages/portal/website-builder/`
+- Edge Functions (sot-website-ai-generate, sot-website-publish, sot-website-update-section) bleiben unveraendert
+- DB-Tabellen (sot_websites, sot_website_sections, etc.) bleiben unveraendert
+- Die `msv_*` Tabellen (msv_rent_payments, msv_book_values etc.) bleiben unveraendert — sie gehoeren jetzt zu MOD-04 Verwaltung
+
+---
+
+## Risikobewertung
+
+| Risiko | Bewertung | Mitigation |
+|--------|-----------|------------|
+| Routing-Bruch | Niedrig | Route `/portal/website-builder` bleibt gleich, nur Modulcode aendert sich |
+| RBAC-Bruch | Niedrig | MOD-05 ist bereits in BASE_TILES und ROLE_MODULE_MAP |
+| DMS-Ordner | Keins | MOD_05 Ordner existiert bereits pro Tenant, wird jetzt fuer Website-Builder genutzt |
+| Dangling Imports | Niedrig | KiTelefonUebersicht wird nur vom alten MOD-05 Manifest referenziert |
+
+---
 
 ## Technische Details
 
-### Betroffene Dateien (Phase 1)
+### Dateien mit Aenderungen (gesamt: ca. 20)
 
-| Datei | Aktion |
-|-------|--------|
-| supabase/functions/sot-research-engine/index.ts | NEU — Zentrale Engine |
-| src/hooks/useResearchEngine.ts | NEU — Frontend-Hook |
-
-### Provider-Implementierung in der Engine
-
-**Google Places** (bereits funktionsfaehig):
-- Places API Text Search fuer Firmendaten
-- Liefert: Name, Adresse, Telefon, Website, Rating
-
-**Firecrawl** (nach Secret-Anlage):
-- Scrape der Websites aus Google Places fuer E-Mail-Extraktion
-- Search API fuer zusaetzliche Web-Treffer
-- Liefert: E-Mail, Impressum-Daten, Team-Infos
-
-**Apify** (nach Secret-Anlage):
-- Google Maps Scraper Actor fuer erweiterte Geschaeftsdaten
-- Liefert: E-Mail (oft direkt), Oeffnungszeiten, Kategorien
-
-**Lovable AI** (bereits konfiguriert):
-- Intent-Klassifikation
-- Ergebnis-Merge und Deduplizierung
-- Confidence-Scoring
-- Zusammenfassung und Strukturierung
-
-### Keine DB-Aenderungen noetig
-Die Engine gibt Ergebnisse direkt zurueck. Die Consumer-Module entscheiden selbst, ob und wo sie speichern (contact_staging, research_order_results, etc.).
+| Datei | Art | Aufwand |
+|-------|-----|---------|
+| DB tile_catalog | UPDATE | Klein |
+| src/manifests/routesManifest.ts | EDIT | Mittel |
+| src/manifests/areaConfig.ts | EDIT | Klein |
+| src/manifests/armstrongManifest.ts | EDIT | Klein (7x String-Replace) |
+| src/constants/rolesMatrix.ts | EDIT | Klein |
+| src/components/portal/HowItWorks/moduleContents.ts | EDIT | Klein |
+| src/data/sotWebsiteModules.ts | EDIT | Klein |
+| src/manifests/goldenPathProcesses.ts | EDIT | Klein |
+| src/manifests/demoDataManifest.ts | EDIT | Klein |
+| src/manifests/bwaKontenplan.ts | EDIT | Klein (Kommentar) |
+| src/components/portal/ModuleDashboard.tsx | EDIT | Klein (Kommentar) |
+| src/pages/presentation/PresentationPage.tsx | EDIT | Klein |
+| 7x Website-Builder .tsx/.ts Dateien | EDIT | Klein (JSDoc-Kommentare) |
+| src/pages/portal/MSVPage.tsx | EDIT | Klein (Vereinfachung) |
+| src/pages/portal/msv/KiTelefonUebersicht.tsx | LOESCHEN | — |
+| src/pages/portal/msv/index.ts | LOESCHEN | — |
+| spec/current/02_modules/mod-05_msv_contract.md | EDIT | Klein |
+| src/docs/backlog-consolidated-v8.md | EDIT | Klein |
+| src/docs/audit-tracker.md | EDIT | Klein |
