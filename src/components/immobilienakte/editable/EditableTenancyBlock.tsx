@@ -163,7 +163,7 @@ export function EditableTenancyBlock({
           </div>
           <div className="mt-2 p-2 bg-muted rounded text-sm flex justify-between">
             <span className="font-medium">Warmmiete</span>
-            <span className="text-primary font-medium">{rentWarmEur.toLocaleString('de-DE', { minimumFractionDigits: 2 })} €</span>
+            <span className="text-primary font-medium">{new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(rentWarmEur)}</span>
           </div>
         </div>
 

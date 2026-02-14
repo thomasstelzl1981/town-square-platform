@@ -9,7 +9,7 @@ import type { ApplicantFormData } from './ApplicantPersonFields';
 import type { PropertyAsset } from './PropertyAssetsCard';
 
 const eurFmt = (v: number | null | undefined) =>
-  v != null ? new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(v) : '—';
+  v != null ? new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(v) : '—';
 
 interface Props {
   publicId: string;

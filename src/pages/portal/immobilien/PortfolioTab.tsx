@@ -1127,20 +1127,20 @@ export function PortfolioTab() {
                 </div>
                 <div className="flex items-center gap-6 text-sm">
                   <div className="text-right">
-                    <p className="text-xs text-muted-foreground">Miete p.a.</p>
                     <p className="font-semibold">{formatCurrency(totals.totalIncome)}</p>
+                    <p className="text-xs text-muted-foreground">Miete p.a.</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-xs text-muted-foreground">Verkehrswert</p>
                     <p className="font-semibold">{formatCurrency(totals.totalValue)}</p>
+                    <p className="text-xs text-muted-foreground">Verkehrswert</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-xs text-muted-foreground">Restschuld</p>
                     <p className="font-semibold text-destructive">{formatCurrency(totals.totalDebt)}</p>
+                    <p className="text-xs text-muted-foreground">Restschuld</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-xs text-muted-foreground">Annuität p.a.</p>
                     <p className="font-semibold">{formatCurrency(totals.totalAnnuity)}</p>
+                    <p className="text-xs text-muted-foreground">Annuität p.a.</p>
                   </div>
                   <Badge variant="outline" className="ml-2">
                     Details →

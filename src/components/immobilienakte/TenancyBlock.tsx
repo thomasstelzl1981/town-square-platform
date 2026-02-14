@@ -1,4 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { formatCurrency as fmtCurrency } from '@/lib/formatters';
 import { Badge } from '@/components/ui/badge';
 import { Users, Calendar, Euro, Wallet } from 'lucide-react';
 
@@ -44,7 +45,7 @@ export function TenancyBlock({
   };
 
   const formatCurrency = (value?: number) => 
-    value !== undefined ? `${value.toLocaleString('de-DE', { minimumFractionDigits: 2 })} €` : '–';
+    value !== undefined ? fmtCurrency(value) : '–';
 
   return (
     <Card>

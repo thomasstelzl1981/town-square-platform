@@ -252,10 +252,11 @@ export function PropertyCurrencyCell({
     return <span className="text-muted-foreground">–</span>;
   }
   
-  const formatted = value.toLocaleString('de-DE', { 
-    minimumFractionDigits: 2, 
-    maximumFractionDigits: 2 
-  }) + ' €';
+  const formatted = new Intl.NumberFormat('de-DE', { 
+    style: 'currency', 
+    currency: 'EUR', 
+    maximumFractionDigits: 0 
+  }).format(value);
   
   return (
     <span className={cn(

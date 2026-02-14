@@ -165,7 +165,7 @@ export function TenancyTab({ propertyId, tenantId, unitId }: TenancyTabProps) {
   const isDirty = Object.keys(edits).length > 0;
 
   const formatCurrency = (value: number) =>
-    new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(value);
+    new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(value);
 
   const formatDate = (dateStr: string | null) => {
     if (!dateStr) return '–';
@@ -414,7 +414,7 @@ export function TenancyTab({ propertyId, tenantId, unitId }: TenancyTabProps) {
           {/* Warmmiete computed */}
           <div className="flex justify-between items-center text-xs bg-muted/50 rounded px-3 py-1.5">
             <span className="text-muted-foreground">Warmmiete</span>
-            <span className="font-semibold">{warmRent.toLocaleString('de-DE', { minimumFractionDigits: 2 })} €</span>
+            <span className="font-semibold">{new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(warmRent)}</span>
           </div>
 
           {/* Row 3: Laufzeit */}
