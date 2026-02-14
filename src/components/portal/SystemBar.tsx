@@ -157,7 +157,7 @@ export function SystemBar() {
           className="text-foreground font-sans font-semibold tracking-[0.2em] text-sm select-none"
           style={{ fontSize: '14px' }}
         >
-          ARMSTRONG
+          SYSTEM OF A TOWN
         </span>
 
         {/* RIGHT — 3 Glass Buttons */}

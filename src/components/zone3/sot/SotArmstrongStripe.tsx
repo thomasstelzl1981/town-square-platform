@@ -15,7 +15,7 @@ export function SotArmstrongStripe() {
       {/* Transparent left stripe — desktop only */}
       <aside 
         className="hidden lg:flex flex-col justify-end"
-        style={{ width: isHovered ? '72px' : '56px', transition: 'width 0.3s ease' }}
+        style={{ width: isHovered ? '58px' : '45px', transition: 'width 0.3s ease' }}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
