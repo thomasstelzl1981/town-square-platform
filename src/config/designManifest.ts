@@ -54,11 +54,10 @@ export const FORM_GRID = {
 
 // ─── HEADER HIERARCHIE ────────────────────────────────────
 export const HEADER = {
-  PAGE_TITLE: 'text-xl md:text-2xl font-bold tracking-tight uppercase',
-  WIDGET_TITLE: 'text-sm font-semibold',
+  PAGE_TITLE: 'text-2xl md:text-3xl font-bold tracking-tight uppercase',
+  WIDGET_TITLE: 'text-base font-semibold',
   WIDGET_ICON_BOX: 'h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0',
-  SECTION_TITLE: 'text-sm font-semibold',
-  DESCRIPTION: 'text-muted-foreground mt-1 text-sm',
+  SECTION_TITLE: 'text-base font-semibold',
 } as const;
 
 // ─── CARD (erweitert V4.0) ────────────────────────────────
@@ -148,21 +147,21 @@ export const INFO_BANNER = {
 // ─── TYPOGRAPHY (NEU V4.0) ────────────────────────────────
 export const TYPOGRAPHY = {
   /** Seiten-Titel (ModulePageHeader) */
-  PAGE_TITLE: 'text-xl md:text-2xl font-bold tracking-tight uppercase',
+  PAGE_TITLE: 'text-2xl md:text-3xl font-bold tracking-tight uppercase',
   /** Sektions-Titel (PREMIUM-STATUS, AUTOMATISIERUNG) */
-  SECTION_TITLE: 'text-sm font-semibold uppercase tracking-wide',
+  SECTION_TITLE: 'text-base font-semibold uppercase tracking-wide',
   /** Widget-/Card-Titel */
-  CARD_TITLE: 'text-sm font-semibold',
+  CARD_TITLE: 'text-base font-semibold',
   /** KPI-Labels, Formular-Labels */
-  LABEL: 'text-xs text-muted-foreground',
+  LABEL: 'text-sm text-muted-foreground',
   /** KPI-Werte */
   VALUE: 'text-2xl font-bold',
   /** Standardtext */
-  BODY: 'text-sm',
+  BODY: 'text-base',
   /** Gedämpfter Standardtext */
   MUTED: 'text-sm text-muted-foreground',
-  /** Hinweistexte */
-  HINT: 'text-xs text-muted-foreground',
+  /** Hinweistexte (alias für MUTED) */
+  HINT: 'text-sm text-muted-foreground',
 } as const;
 
 // ─── LIST (NEU V4.0) ──────────────────────────────────────

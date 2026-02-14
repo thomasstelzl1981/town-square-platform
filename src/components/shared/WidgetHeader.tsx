@@ -22,10 +22,7 @@ export function WidgetHeader({ icon: Icon, title, description, action, className
           <Icon className="h-4 w-4 text-primary" />
         </div>
         <div>
-          <h3 className="text-sm font-semibold">{title}</h3>
-          {description && (
-            <p className="text-xs text-muted-foreground">{description}</p>
-          )}
+          <h3 className="text-base font-semibold">{title}</h3>
         </div>
       </div>
       {action}

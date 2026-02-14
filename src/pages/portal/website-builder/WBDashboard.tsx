@@ -81,7 +81,7 @@ export default function WBDashboard() {
 
   return (
     <PageShell>
-      <ModulePageHeader title="Website Builder" description="Erstellen, gestalten und veröffentlichen Sie Ihre Unternehmenswebsite — alles an einem Ort." />
+      <ModulePageHeader title="Website Builder" />
 
       {/* Template gallery removed — template selection now only in inline detail */}
 

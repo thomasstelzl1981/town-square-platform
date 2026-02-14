@@ -80,8 +80,7 @@ export function ModuleTilePage({
       <PageShell>
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight uppercase">{title}</h1>
-            {description && <p className="text-muted-foreground mt-1">{description}</p>}
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight uppercase">{title}</h1>
           </div>
         </div>
         <LoadingState variant="card" rows={3} />
@@ -95,8 +94,7 @@ export function ModuleTilePage({
       <PageShell>
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight uppercase">{title}</h1>
-            {description && <p className="text-muted-foreground mt-1">{description}</p>}
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight uppercase">{title}</h1>
           </div>
         </div>
         <Card>
@@ -121,10 +119,9 @@ export function ModuleTilePage({
             )}
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-2xl font-bold tracking-tight uppercase">{title}</h1>
+                <h1 className="text-2xl md:text-3xl font-bold tracking-tight uppercase">{title}</h1>
                 {badge && <Badge variant={badgeVariant}>{badge}</Badge>}
               </div>
-              {description && <p className="text-muted-foreground mt-1">{description}</p>}
             </div>
           </div>
         </div>
@@ -189,10 +186,9 @@ export function ModuleTilePage({
           )}
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-bold tracking-tight uppercase">{title}</h1>
+              <h1 className="text-2xl md:text-3xl font-bold tracking-tight uppercase">{title}</h1>
               {badge && <Badge variant={badgeVariant}>{badge}</Badge>}
             </div>
-            {description && <p className="text-muted-foreground mt-1">{description}</p>}
           </div>
         </div>
         
