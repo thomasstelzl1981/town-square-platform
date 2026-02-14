@@ -99,6 +99,11 @@ export default {
         "glow": "var(--shadow-glow)",
       },
       fontSize: {
+        // Systemweite Skalierung: +1.5px pro Stufe
+        "xs": ["0.84375rem", { lineHeight: "1.25rem" }],    // 13.5px (default 12px)
+        "sm": ["0.96875rem", { lineHeight: "1.375rem" }],    // 15.5px (default 14px)
+        "base": ["1.09375rem", { lineHeight: "1.625rem" }],  // 17.5px (default 16px)
+        "lg": ["1.1875rem", { lineHeight: "1.75rem" }],      // 19px (default 18px)
         // KPI typography
         "kpi": ["1.75rem", { lineHeight: "2rem", fontWeight: "600" }],
         "kpi-lg": ["2rem", { lineHeight: "2.25rem", fontWeight: "700" }],
