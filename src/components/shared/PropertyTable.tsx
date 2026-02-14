@@ -220,7 +220,7 @@ export function PropertyTable<T extends Record<string, any>>({
 // Utility components for consistent cell rendering
 export function PropertyCodeCell({ code, fallback }: { code: string | null; fallback?: string }) {
   return (
-    <span className="font-mono text-xs">
+    <span className="font-mono text-sm">
       {code || fallback || '–'}
     </span>
   );
