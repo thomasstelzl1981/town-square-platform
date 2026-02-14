@@ -99,7 +99,7 @@ const ACTION_CONFIGS: Record<ActionKey, ActionConfig> = {
   LEAD_ASSIGN: {
     toastMessage: 'Lead zugewiesen',
     toastDescription: 'Der Lead wurde dem Partner zugewiesen.',
-    redirectTo: '/admin/leadpool',
+    redirectTo: '/admin/lead-desk',
   },
   LISTING_PUBLISH: {
     toastMessage: 'Listing veröffentlicht',

@@ -108,10 +108,8 @@ export const zone1Admin: ZoneDefinition = {
     
     { path: "agreements", component: "Agreements", title: "Vereinbarungen" },
     { path: "inbox", component: "Inbox", title: "Posteingang" },
-    { path: "leadpool", component: "LeadPool", title: "Lead Pool" },
     { path: "partner-verification", component: "PartnerVerification", title: "Partner-Verifizierung" },
     { path: "roles", component: "RolesManagement", title: "Rollen & Berechtigungen" },
-    { path: "commissions", component: "CommissionApproval", title: "Provisionen" },
     { path: "support", component: "Support", title: "Support" },
     // =========================================================================
     // FUTUREROOM — GOVERNANCE + INTAKE (5 Sub-Items per Spec)
@@ -166,8 +164,7 @@ export const zone1Admin: ZoneDefinition = {
     { path: "armstrong/policies", component: "ArmstrongPolicies", title: "Policies" },
     { path: "armstrong/test", component: "ArmstrongTestHarness", title: "Test Harness" },
     { path: "armstrong/integrations", component: "ArmstrongIntegrations", title: "Widget-Integrationen" },
-    // Landing Pages
-    { path: "landing-pages", component: "AdminLandingPages", title: "Landing Pages" },
+    // Landing Pages — consolidated into website-hosting
     // Fortbildung Management
     { path: "fortbildung", component: "AdminFortbildung", title: "Fortbildung" },
     // Website Hosting (MOD-05 Zone 1) — konsolidiert auf 1 Route
