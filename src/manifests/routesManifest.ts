@@ -465,7 +465,7 @@ export const zone2Portal: ZoneDefinition = {
       ],
     },
     "MOD-16": {
-      name: "Shops",
+      name: "Shop",
       base: "services",
       icon: "ShoppingCart",
       display_order: 16,
