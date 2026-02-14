@@ -1,17 +1,23 @@
 /**
- * MOD-11 Finanzierungsmanager — Finance Manager Workbench (Zone 2)
+ * MOD-11 Finanzierungsmanager — 5-Punkt-Menü (Zone 2)
  * 
- * 4 Tiles: Dashboard, Finanzierungsakte, Einreichung, Fälle (Archiv)
+ * Tiles: Übersicht, Investment, Sachversicherungen, Vorsorgeverträge, Abonnements
+ * Dynamic: Finanzierungsakte, Einreichung, Provisionen, Archiv, Falldetail
  */
 import * as React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { ShieldAlert } from 'lucide-react';
-import { useFutureRoomCases } from '@/hooks/useFinanceMandate';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent } from '@/components/ui/card';
 
-// Lazy load sub-pages
-const FMDashboard = React.lazy(() => import('./finanzierungsmanager/FMDashboard'));
+// Lazy load sub-pages — 5 Tiles
+const FMUebersichtTab = React.lazy(() => import('./finanzierungsmanager/FMUebersichtTab'));
+const FMInvestmentTab = React.lazy(() => import('./finanzierungsmanager/FMInvestmentTab'));
+const FMSachversicherungenTab = React.lazy(() => import('./finanzierungsmanager/FMSachversicherungenTab'));
+const FMVorsorgeTab = React.lazy(() => import('./finanzierungsmanager/FMVorsorgeTab'));
+const FMAbonnementsTab = React.lazy(() => import('./finanzierungsmanager/FMAbonnementsTab'));
+
+// Dynamic routes (legacy workflows)
 const FMFinanzierungsakte = React.lazy(() => import('./finanzierungsmanager/FMFinanzierungsakte'));
 const FMFallDetail = React.lazy(() => import('./finanzierungsmanager/FMFallDetail'));
 const FMEinreichung = React.lazy(() => import('./finanzierungsmanager/FMEinreichung'));
@@ -20,7 +26,6 @@ const FMProvisionen = React.lazy(() => import('./finanzierungsmanager/FMProvisio
 const FMArchiv = React.lazy(() => import('./finanzierungsmanager/FMArchiv'));
 
 export default function FinanzierungsmanagerPage() {
-  const { data: cases, isLoading } = useFutureRoomCases();
   const { memberships, isPlatformAdmin } = useAuth();
 
   const canAccess = isPlatformAdmin || memberships.some(m => m.role === 'finance_manager');
@@ -44,13 +49,19 @@ export default function FinanzierungsmanagerPage() {
   return (
     <Routes>
       <Route index element={<Navigate to="dashboard" replace />} />
-      <Route path="dashboard" element={<FMDashboard cases={cases || []} isLoading={isLoading} />} />
+      {/* 5-Punkt-Menü */}
+      <Route path="dashboard" element={<FMUebersichtTab />} />
+      <Route path="investment" element={<FMInvestmentTab />} />
+      <Route path="sachversicherungen" element={<FMSachversicherungenTab />} />
+      <Route path="vorsorge" element={<FMVorsorgeTab />} />
+      <Route path="abonnements" element={<FMAbonnementsTab />} />
+      {/* Dynamic routes (legacy) */}
       <Route path="finanzierungsakte" element={<FMFinanzierungsakte />} />
       <Route path="faelle/:requestId" element={<FMFallDetail />} />
-      <Route path="provisionen" element={<FMProvisionen />} />
-      <Route path="einreichung" element={<FMEinreichung cases={cases || []} isLoading={isLoading} />} />
+      <Route path="einreichung" element={<FMEinreichung cases={[]} isLoading={false} />} />
       <Route path="einreichung/:requestId" element={<FMEinreichungDetail />} />
-      <Route path="archiv" element={<FMArchiv cases={cases || []} isLoading={isLoading} />} />
+      <Route path="provisionen" element={<FMProvisionen />} />
+      <Route path="archiv" element={<FMArchiv cases={[]} isLoading={false} />} />
       <Route path="*" element={<Navigate to="dashboard" replace />} />
     </Routes>
   );
