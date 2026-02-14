@@ -7,7 +7,7 @@
  * - Label
  */
 
-import { User, Shield, Car, Heart, CreditCard, Landmark } from 'lucide-react';
+import { User, Shield, Car, Heart, CreditCard, Landmark, Sun } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 export interface RecordCardTypeConfig {
@@ -36,6 +36,12 @@ export const RECORD_CARD_TYPES: Record<string, RecordCardTypeConfig> = {
     moduleCode: 'MOD_17',
     icon: Car,
     keywordFields: ['license_plate', 'brand', 'model'],
+  },
+  pv_plant: {
+    label: 'PV-Anlage',
+    moduleCode: 'MOD_19',
+    icon: Sun,
+    keywordFields: ['name', 'mastr_plant_id'],
   },
   vorsorge: {
     label: 'Vorsorge',

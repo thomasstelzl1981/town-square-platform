@@ -1,23 +1,28 @@
 /**
  * PV Plant Dossier — Full vertical scrollable Akte
  * All sections visible at once: KPIs, Monitoring, Standort, MaStR, Netz, Zähler, Technik, Dokumente
- * No tabs, no popups — one continuous flow.
+ * No tabs, no popups — one continuous flow. All fields editable with central save.
  */
-import { useMemo } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import { DESIGN } from '@/config/designManifest';
 import { PvPlant, usePvPlants } from '@/hooks/usePvPlants';
 import { usePvMonitoring } from '@/hooks/usePvMonitoring';
 import { generate24hCurve } from '@/components/photovoltaik/DemoLiveGenerator';
 import { PV_REQUIRED_DOCS } from '@/hooks/usePvDMS';
+import { EntityStorageTree } from '@/components/shared/EntityStorageTree';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import {
   Sun, MapPin, Shield, Zap, Gauge, Settings, Activity,
-  FolderOpen, Building2, Folder, Circle, BatteryCharging, TrendingUp, WifiOff,
+  FolderOpen, Building2, Circle, BatteryCharging, TrendingUp,
+  Save, Loader2,
 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { toast } from 'sonner';
 
 function SectionCard({ icon: Icon, title, children }: { icon: React.ElementType; title: string; children: React.ReactNode }) {
   return (
@@ -56,20 +61,55 @@ function InfoRow({ label, value, editable, onChange }: {
   );
 }
 
-const PV_DMS_FOLDERS = [
-  '01_Stammdaten', '02_MaStR_BNetzA', '03_Netzbetreiber', '04_Zaehler',
-  '05_Wechselrichter_und_Speicher', '06_Versicherung', '07_Steuer_USt_BWA', '08_Wartung_Service',
-];
-
 interface Props {
   plant: PvPlant;
   isDemo?: boolean;
 }
 
 export default function PVPlantDossier({ plant, isDemo }: Props) {
+  const { activeTenantId } = useAuth();
   const { liveData } = usePvMonitoring(plant ? [plant] : []);
   const live = liveData.get(plant.id);
   const curve = useMemo(() => generate24hCurve(plant.kwp ?? 10), [plant.kwp]);
+
+  // Editable form state
+  const [formData, setFormData] = useState<Record<string, string>>({});
+  const [isSaving, setIsSaving] = useState(false);
+  const hasChanges = Object.keys(formData).length > 0;
+
+  const updateField = useCallback((key: string, val: string) => {
+    setFormData(prev => ({ ...prev, [key]: val }));
+  }, []);
+
+  const getVal = (key: string, original: any) => {
+    return key in formData ? formData[key] : original;
+  };
+
+  const handleSave = async () => {
+    if (isDemo) { toast.success('Gespeichert (Demo-Modus)'); setFormData({}); return; }
+    setIsSaving(true);
+    try {
+      const updates: Record<string, any> = {};
+      for (const [key, val] of Object.entries(formData)) {
+        // Convert numeric fields
+        if (['kwp', 'battery_kwh', 'feed_in_start_reading', 'consumption_start_reading'].includes(key)) {
+          updates[key] = val ? parseFloat(val) : null;
+        } else if (['mastr_account_present', 'has_battery'].includes(key)) {
+          updates[key] = val === 'Ja' || val === 'true';
+        } else {
+          updates[key] = val || null;
+        }
+      }
+      const { error } = await supabase.from('pv_plants').update(updates).eq('id', plant.id);
+      if (error) throw error;
+      toast.success('Änderungen gespeichert');
+      setFormData({});
+    } catch (e: any) {
+      toast.error(e.message || 'Fehler beim Speichern');
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -140,25 +180,25 @@ export default function PVPlantDossier({ plant, isDemo }: Props) {
 
       {/* ─── C) Standort ─── */}
       <SectionCard icon={MapPin} title="Standort">
-        <InfoRow label="Straße" value={plant.street ? `${plant.street} ${plant.house_number || ''}`.trim() : null} />
-        <InfoRow label="PLZ" value={plant.postal_code} />
-        <InfoRow label="Ort" value={plant.city} />
-        <InfoRow label="Notizen" value={plant.location_notes} />
+        <InfoRow label="Straße" value={getVal('street', plant.street ? `${plant.street} ${plant.house_number || ''}`.trim() : null)} editable onChange={v => updateField('street', v)} />
+        <InfoRow label="PLZ" value={getVal('postal_code', plant.postal_code)} editable onChange={v => updateField('postal_code', v)} />
+        <InfoRow label="Ort" value={getVal('city', plant.city)} editable onChange={v => updateField('city', v)} />
+        <InfoRow label="Notizen" value={getVal('location_notes', plant.location_notes)} editable onChange={v => updateField('location_notes', v)} />
       </SectionCard>
 
       {/* ─── D) MaStR / BNetzA ─── */}
       <SectionCard icon={Shield} title="Bundesnetzagentur / MaStR">
-        <InfoRow label="MaStR Zugang vorhanden" value={plant.mastr_account_present} />
-        <InfoRow label="MaStR Anlagen-ID" value={plant.mastr_plant_id} />
-        <InfoRow label="MaStR Einheit-ID" value={plant.mastr_unit_id} />
-        <InfoRow label="Registrierungsstatus" value={plant.mastr_status} />
+        <InfoRow label="MaStR Zugang vorhanden" value={getVal('mastr_account_present', plant.mastr_account_present)} editable onChange={v => updateField('mastr_account_present', v)} />
+        <InfoRow label="MaStR Anlagen-ID" value={getVal('mastr_plant_id', plant.mastr_plant_id)} editable onChange={v => updateField('mastr_plant_id', v)} />
+        <InfoRow label="MaStR Einheit-ID" value={getVal('mastr_unit_id', plant.mastr_unit_id)} editable onChange={v => updateField('mastr_unit_id', v)} />
+        <InfoRow label="Registrierungsstatus" value={getVal('mastr_status', plant.mastr_status)} editable onChange={v => updateField('mastr_status', v)} />
       </SectionCard>
 
       {/* ─── E) Netzbetreiber ─── */}
       <SectionCard icon={Building2} title="Energieversorger / Netzbetreiber">
-        <InfoRow label="Netzbetreiber" value={plant.grid_operator} />
-        <InfoRow label="Stromlieferant" value={plant.energy_supplier} />
-        <InfoRow label="Kundennummer" value={plant.customer_reference} />
+        <InfoRow label="Netzbetreiber" value={getVal('grid_operator', plant.grid_operator)} editable onChange={v => updateField('grid_operator', v)} />
+        <InfoRow label="Stromlieferant" value={getVal('energy_supplier', plant.energy_supplier)} editable onChange={v => updateField('energy_supplier', v)} />
+        <InfoRow label="Kundennummer" value={getVal('customer_reference', plant.customer_reference)} editable onChange={v => updateField('customer_reference', v)} />
       </SectionCard>
 
       {/* ─── F) Zähler ─── */}
@@ -166,40 +206,42 @@ export default function PVPlantDossier({ plant, isDemo }: Props) {
         <div className="grid gap-4 md:grid-cols-2">
           <div>
             <p className="text-sm font-semibold mb-2">Einspeisezähler</p>
-            <InfoRow label="Zählernummer" value={plant.feed_in_meter_no} />
-            <InfoRow label="Messstellenbetreiber" value={plant.feed_in_meter_operator} />
-            <InfoRow label="Startstand" value={plant.feed_in_start_reading} />
+            <InfoRow label="Zählernummer" value={getVal('feed_in_meter_no', plant.feed_in_meter_no)} editable onChange={v => updateField('feed_in_meter_no', v)} />
+            <InfoRow label="Messstellenbetreiber" value={getVal('feed_in_meter_operator', plant.feed_in_meter_operator)} editable onChange={v => updateField('feed_in_meter_operator', v)} />
+            <InfoRow label="Startstand" value={getVal('feed_in_start_reading', plant.feed_in_start_reading)} editable onChange={v => updateField('feed_in_start_reading', v)} />
           </div>
           <div>
             <p className="text-sm font-semibold mb-2">Bezugszähler</p>
-            <InfoRow label="Zählernummer" value={plant.consumption_meter_no} />
-            <InfoRow label="Messstellenbetreiber" value={plant.consumption_meter_operator} />
-            <InfoRow label="Startstand" value={plant.consumption_start_reading} />
+            <InfoRow label="Zählernummer" value={getVal('consumption_meter_no', plant.consumption_meter_no)} editable onChange={v => updateField('consumption_meter_no', v)} />
+            <InfoRow label="Messstellenbetreiber" value={getVal('consumption_meter_operator', plant.consumption_meter_operator)} editable onChange={v => updateField('consumption_meter_operator', v)} />
+            <InfoRow label="Startstand" value={getVal('consumption_start_reading', plant.consumption_start_reading)} editable onChange={v => updateField('consumption_start_reading', v)} />
           </div>
         </div>
       </SectionCard>
 
       {/* ─── G) Technik ─── */}
       <SectionCard icon={Settings} title="Technik">
-        <InfoRow label="PV-Leistung" value={plant.kwp ? `${plant.kwp} kWp` : null} />
-        <InfoRow label="WR-Hersteller" value={plant.wr_manufacturer} />
-        <InfoRow label="WR-Modell" value={plant.wr_model} />
-        <InfoRow label="Speicher vorhanden" value={plant.has_battery} />
-        <InfoRow label="Speicher-Kapazität" value={plant.battery_kwh ? `${plant.battery_kwh} kWh` : null} />
-        <InfoRow label="Inbetriebnahme" value={plant.commissioning_date} />
-        <InfoRow label="Provider" value={plant.provider} />
+        <InfoRow label="PV-Leistung" value={getVal('kwp', plant.kwp ? `${plant.kwp}` : null)} editable onChange={v => updateField('kwp', v)} />
+        <InfoRow label="WR-Hersteller" value={getVal('wr_manufacturer', plant.wr_manufacturer)} editable onChange={v => updateField('wr_manufacturer', v)} />
+        <InfoRow label="WR-Modell" value={getVal('wr_model', plant.wr_model)} editable onChange={v => updateField('wr_model', v)} />
+        <InfoRow label="Speicher vorhanden" value={getVal('has_battery', plant.has_battery)} editable onChange={v => updateField('has_battery', v)} />
+        <InfoRow label="Speicher-Kapazität" value={getVal('battery_kwh', plant.battery_kwh ? `${plant.battery_kwh}` : null)} editable onChange={v => updateField('battery_kwh', v)} />
+        <InfoRow label="Inbetriebnahme" value={getVal('commissioning_date', plant.commissioning_date)} editable onChange={v => updateField('commissioning_date', v)} />
+        <InfoRow label="Provider" value={getVal('provider', plant.provider)} editable onChange={v => updateField('provider', v)} />
       </SectionCard>
 
-      {/* ─── H) Dokumente ─── */}
+      {/* ─── H) Dokumente — EntityStorageTree ─── */}
       <SectionCard icon={FolderOpen} title="Dokumente">
-        <div className={DESIGN.KPI_GRID.FULL}>
-          {PV_DMS_FOLDERS.map((f) => (
-            <div key={f} className="flex items-center gap-2 rounded-lg border p-2.5 text-sm hover:bg-muted/50 cursor-pointer">
-              <Folder className="h-4 w-4 text-primary/70 shrink-0" />
-              <span className="truncate">{f}</span>
-            </div>
-          ))}
-        </div>
+        {activeTenantId ? (
+          <EntityStorageTree
+            tenantId={activeTenantId}
+            entityType="pv_plant"
+            entityId={plant.id}
+            moduleCode="MOD_19"
+          />
+        ) : (
+          <p className="text-sm text-muted-foreground">Kein Tenant aktiv</p>
+        )}
         <div className="mt-4">
           <p className="text-sm font-semibold mb-2">Pflichtdokumente</p>
           <div className="space-y-1.5">
@@ -215,6 +257,16 @@ export default function PVPlantDossier({ plant, isDemo }: Props) {
           </div>
         </div>
       </SectionCard>
+
+      {/* ─── Save Button ─── */}
+      {hasChanges && (
+        <div className="flex justify-end pt-2">
+          <Button onClick={handleSave} disabled={isSaving} className="gap-2">
+            {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            Änderungen speichern
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
