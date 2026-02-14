@@ -2616,6 +2616,50 @@ export type Database = {
           },
         ]
       }
+      bank_account_meta: {
+        Row: {
+          account_id: string
+          category: Database["public"]["Enums"]["bank_account_category"] | null
+          created_at: string
+          custom_name: string | null
+          id: string
+          org_unit: string | null
+          tenant_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          account_id: string
+          category?: Database["public"]["Enums"]["bank_account_category"] | null
+          created_at?: string
+          custom_name?: string | null
+          id?: string
+          org_unit?: string | null
+          tenant_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          account_id?: string
+          category?: Database["public"]["Enums"]["bank_account_category"] | null
+          created_at?: string
+          custom_name?: string | null
+          id?: string
+          org_unit?: string | null
+          tenant_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bank_account_meta_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: true
+            referencedRelation: "msv_bank_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bank_transactions: {
         Row: {
           account_ref: string
@@ -4435,6 +4479,62 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contract_candidates: {
+        Row: {
+          accepted_entity_id: string | null
+          amount_max: number | null
+          amount_min: number | null
+          category_suggestion: string | null
+          confidence: number | null
+          created_at: string
+          frequency: string | null
+          id: string
+          merchant: string | null
+          reasoning: string | null
+          scan_run_id: string
+          status: Database["public"]["Enums"]["candidate_status"] | null
+          tenant_id: string
+        }
+        Insert: {
+          accepted_entity_id?: string | null
+          amount_max?: number | null
+          amount_min?: number | null
+          category_suggestion?: string | null
+          confidence?: number | null
+          created_at?: string
+          frequency?: string | null
+          id?: string
+          merchant?: string | null
+          reasoning?: string | null
+          scan_run_id: string
+          status?: Database["public"]["Enums"]["candidate_status"] | null
+          tenant_id: string
+        }
+        Update: {
+          accepted_entity_id?: string | null
+          amount_max?: number | null
+          amount_min?: number | null
+          category_suggestion?: string | null
+          confidence?: number | null
+          created_at?: string
+          frequency?: string | null
+          id?: string
+          merchant?: string | null
+          reasoning?: string | null
+          scan_run_id?: string
+          status?: Database["public"]["Enums"]["candidate_status"] | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contract_candidates_scan_run_id_fkey"
+            columns: ["scan_run_id"]
+            isOneToOne: false
+            referencedRelation: "scan_runs"
             referencedColumns: ["id"]
           },
         ]
@@ -6997,6 +7097,107 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      insurance_contract_links: {
+        Row: {
+          contract_id: string
+          created_at: string
+          entity_id: string
+          entity_type: string
+          id: string
+          tenant_id: string
+        }
+        Insert: {
+          contract_id: string
+          created_at?: string
+          entity_id: string
+          entity_type: string
+          id?: string
+          tenant_id: string
+        }
+        Update: {
+          contract_id?: string
+          created_at?: string
+          entity_id?: string
+          entity_type?: string
+          id?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "insurance_contract_links_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "insurance_contracts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      insurance_contracts: {
+        Row: {
+          cancellation_deadline: string | null
+          category: Database["public"]["Enums"]["insurance_category"]
+          created_at: string
+          details: Json | null
+          end_date: string | null
+          id: string
+          insurer: string | null
+          notes: string | null
+          payment_interval:
+            | Database["public"]["Enums"]["payment_interval"]
+            | null
+          policy_no: string | null
+          policyholder: string | null
+          premium: number | null
+          start_date: string | null
+          status: Database["public"]["Enums"]["insurance_status"] | null
+          tenant_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          cancellation_deadline?: string | null
+          category: Database["public"]["Enums"]["insurance_category"]
+          created_at?: string
+          details?: Json | null
+          end_date?: string | null
+          id?: string
+          insurer?: string | null
+          notes?: string | null
+          payment_interval?:
+            | Database["public"]["Enums"]["payment_interval"]
+            | null
+          policy_no?: string | null
+          policyholder?: string | null
+          premium?: number | null
+          start_date?: string | null
+          status?: Database["public"]["Enums"]["insurance_status"] | null
+          tenant_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          cancellation_deadline?: string | null
+          category?: Database["public"]["Enums"]["insurance_category"]
+          created_at?: string
+          details?: Json | null
+          end_date?: string | null
+          id?: string
+          insurer?: string | null
+          notes?: string | null
+          payment_interval?:
+            | Database["public"]["Enums"]["payment_interval"]
+            | null
+          policy_no?: string | null
+          policyholder?: string | null
+          premium?: number | null
+          start_date?: string | null
+          status?: Database["public"]["Enums"]["insurance_status"] | null
+          tenant_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       integration_registry: {
         Row: {
@@ -12471,6 +12672,45 @@ export type Database = {
           },
         ]
       }
+      scan_runs: {
+        Row: {
+          account_ids: string[] | null
+          completed_at: string | null
+          created_at: string
+          error_message: string | null
+          id: string
+          results_summary: Json | null
+          started_at: string
+          status: Database["public"]["Enums"]["scan_status"] | null
+          tenant_id: string
+          user_id: string
+        }
+        Insert: {
+          account_ids?: string[] | null
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          results_summary?: Json | null
+          started_at?: string
+          status?: Database["public"]["Enums"]["scan_status"] | null
+          tenant_id: string
+          user_id: string
+        }
+        Update: {
+          account_ids?: string[] | null
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          results_summary?: Json | null
+          started_at?: string
+          status?: Database["public"]["Enums"]["scan_status"] | null
+          tenant_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       scraper_jobs: {
         Row: {
           completed_at: string | null
@@ -15233,6 +15473,72 @@ export type Database = {
         }
         Relationships: []
       }
+      user_subscriptions: {
+        Row: {
+          amount: number | null
+          amount_max: number | null
+          auto_renew: boolean | null
+          category: Database["public"]["Enums"]["subscription_category"] | null
+          confidence: number | null
+          created_at: string
+          custom_name: string | null
+          estimated_renewal: string | null
+          estimated_start: string | null
+          frequency: string | null
+          id: string
+          last_payment_date: string | null
+          merchant: string | null
+          notes: string | null
+          payment_source_account_id: string | null
+          status: string | null
+          tenant_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount?: number | null
+          amount_max?: number | null
+          auto_renew?: boolean | null
+          category?: Database["public"]["Enums"]["subscription_category"] | null
+          confidence?: number | null
+          created_at?: string
+          custom_name?: string | null
+          estimated_renewal?: string | null
+          estimated_start?: string | null
+          frequency?: string | null
+          id?: string
+          last_payment_date?: string | null
+          merchant?: string | null
+          notes?: string | null
+          payment_source_account_id?: string | null
+          status?: string | null
+          tenant_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number | null
+          amount_max?: number | null
+          auto_renew?: boolean | null
+          category?: Database["public"]["Enums"]["subscription_category"] | null
+          confidence?: number | null
+          created_at?: string
+          custom_name?: string | null
+          estimated_renewal?: string | null
+          estimated_start?: string | null
+          frequency?: string | null
+          id?: string
+          last_payment_date?: string | null
+          merchant?: string | null
+          notes?: string | null
+          payment_source_account_id?: string | null
+          status?: string | null
+          tenant_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       valuation_credits: {
         Row: {
           created_at: string
@@ -15418,6 +15724,71 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vorsorge_contracts: {
+        Row: {
+          contract_no: string | null
+          contract_type: string | null
+          created_at: string
+          id: string
+          notes: string | null
+          payment_interval:
+            | Database["public"]["Enums"]["payment_interval"]
+            | null
+          person_id: string | null
+          premium: number | null
+          provider: string | null
+          start_date: string | null
+          status: string | null
+          tenant_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          contract_no?: string | null
+          contract_type?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          payment_interval?:
+            | Database["public"]["Enums"]["payment_interval"]
+            | null
+          person_id?: string | null
+          premium?: number | null
+          provider?: string | null
+          start_date?: string | null
+          status?: string | null
+          tenant_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          contract_no?: string | null
+          contract_type?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          payment_interval?:
+            | Database["public"]["Enums"]["payment_interval"]
+            | null
+          person_id?: string | null
+          premium?: number | null
+          provider?: string | null
+          start_date?: string | null
+          status?: string | null
+          tenant_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vorsorge_contracts_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "household_persons"
             referencedColumns: ["id"]
           },
         ]
@@ -16167,6 +16538,19 @@ export type Database = {
         | "sales_partner"
         | "super_user"
         | "client_user"
+      bank_account_category:
+        | "privat"
+        | "vermietung"
+        | "tagesgeld"
+        | "pv"
+        | "sonstiges"
+      candidate_status:
+        | "pending"
+        | "accepted_subscription"
+        | "accepted_insurance"
+        | "accepted_vorsorge"
+        | "ignored"
+        | "merged"
       car_claim_status:
         | "draft"
         | "open"
@@ -16262,6 +16646,16 @@ export type Database = {
         | "scheduled"
         | "won"
         | "lost"
+      insurance_category:
+        | "haftpflicht"
+        | "hausrat"
+        | "wohngebaeude"
+        | "rechtsschutz"
+        | "kfz"
+        | "unfall"
+        | "berufsunfaehigkeit"
+        | "sonstige"
+      insurance_status: "aktiv" | "gekuendigt" | "ruhend" | "auslaufend"
       integration_status: "active" | "inactive" | "deprecated" | "pending_setup"
       integration_type: "integration" | "connector" | "edge_function" | "secret"
       invoice_status: "draft" | "pending" | "paid" | "overdue" | "cancelled"
@@ -16297,6 +16691,12 @@ export type Database = {
         | "approved"
         | "rejected"
         | "expired"
+      payment_interval:
+        | "monatlich"
+        | "vierteljaehrlich"
+        | "halbjaehrlich"
+        | "jaehrlich"
+        | "einmalig"
       pipeline_stage:
         | "lead"
         | "qualified"
@@ -16325,6 +16725,20 @@ export type Database = {
         | "bnl_received"
         | "completed"
         | "cancelled"
+      scan_status: "pending" | "running" | "completed" | "failed"
+      subscription_category:
+        | "streaming_video"
+        | "streaming_music"
+        | "cloud_storage"
+        | "software_saas"
+        | "news_media"
+        | "ecommerce_membership"
+        | "telecom_mobile"
+        | "internet"
+        | "utilities_energy"
+        | "mobility"
+        | "fitness"
+        | "other"
       subscription_status: "active" | "cancelled" | "past_due" | "trialing"
       tenant_mode: "reference" | "sandbox" | "demo" | "production"
     }
@@ -16532,6 +16946,21 @@ export const Constants = {
         "super_user",
         "client_user",
       ],
+      bank_account_category: [
+        "privat",
+        "vermietung",
+        "tagesgeld",
+        "pv",
+        "sonstiges",
+      ],
+      candidate_status: [
+        "pending",
+        "accepted_subscription",
+        "accepted_insurance",
+        "accepted_vorsorge",
+        "ignored",
+        "merged",
+      ],
       car_claim_status: [
         "draft",
         "open",
@@ -16638,6 +17067,17 @@ export const Constants = {
         "won",
         "lost",
       ],
+      insurance_category: [
+        "haftpflicht",
+        "hausrat",
+        "wohngebaeude",
+        "rechtsschutz",
+        "kfz",
+        "unfall",
+        "berufsunfaehigkeit",
+        "sonstige",
+      ],
+      insurance_status: ["aktiv", "gekuendigt", "ruhend", "auslaufend"],
       integration_status: ["active", "inactive", "deprecated", "pending_setup"],
       integration_type: ["integration", "connector", "edge_function", "secret"],
       invoice_status: ["draft", "pending", "paid", "overdue", "cancelled"],
@@ -16677,6 +17117,13 @@ export const Constants = {
         "rejected",
         "expired",
       ],
+      payment_interval: [
+        "monatlich",
+        "vierteljaehrlich",
+        "halbjaehrlich",
+        "jaehrlich",
+        "einmalig",
+      ],
       pipeline_stage: [
         "lead",
         "qualified",
@@ -16708,6 +17155,21 @@ export const Constants = {
         "bnl_received",
         "completed",
         "cancelled",
+      ],
+      scan_status: ["pending", "running", "completed", "failed"],
+      subscription_category: [
+        "streaming_video",
+        "streaming_music",
+        "cloud_storage",
+        "software_saas",
+        "news_media",
+        "ecommerce_membership",
+        "telecom_mobile",
+        "internet",
+        "utilities_energy",
+        "mobility",
+        "fitness",
+        "other",
       ],
       subscription_status: ["active", "cancelled", "past_due", "trialing"],
       tenant_mode: ["reference", "sandbox", "demo", "production"],
