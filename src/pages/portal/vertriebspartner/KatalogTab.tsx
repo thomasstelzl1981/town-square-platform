@@ -13,8 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { 
-  MapPin, Building2, Eye, Heart, Handshake, Globe, Users, 
-  Filter, X, Search, SlidersHorizontal, ChevronDown, ChevronUp
+  X, Search, SlidersHorizontal, ChevronDown, ChevronUp
 } from 'lucide-react';
 import { 
   PropertyTable, 
@@ -37,8 +36,6 @@ import {
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import { useNavigate } from 'react-router-dom';
-import { usePartnerSelections, useToggleExclusion } from '@/hooks/usePartnerListingSelections';
-import { cn } from '@/lib/utils';
 
 interface PartnerListing {
   id: string;
@@ -79,11 +76,7 @@ const KatalogTab = () => {
   // Demo listings
   const { partnerKatalog: demoPartnerListings } = useDemoListings();
 
-  // Exclusions (ausgeblendete Objekte)
-  // NEUE LOGIK: Alle Objekte sind standardmäßig sichtbar, ♥ blendet aus
-  const { data: selections = [] } = usePartnerSelections();
-  const toggleExclusion = useToggleExclusion();
-  const excludedIds = new Set(selections.filter(s => s.is_active).map(s => s.listing_id));
+  // Exclusions removed — entire row is clickable
 
   // Fetch partner-released listings
   const { data: listings = [], isLoading } = useQuery({
@@ -215,15 +208,12 @@ const KatalogTab = () => {
       minWidth: '220px',
       render: (_: any, row: any) => (
         <div className="flex items-center gap-2">
-          {excludedIds.has(row.id) && (
-            <Heart className="h-4 w-4 fill-muted-foreground text-muted-foreground flex-shrink-0 line-through" />
-          )}
           <PropertyAddressCell 
             address={row.title} 
             subtitle={`${row.property_address}, ${row.property_city}`} 
           />
           {row.isDemo && (
-            <Badge className="bg-emerald-500/15 text-emerald-600 border-emerald-500/30 text-[10px] px-1.5 py-0">
+            <Badge className="bg-emerald-500/15 text-emerald-600 border-emerald-500/30 text-xs px-1.5 py-0">
               DEMO
             </Badge>
           )}
@@ -235,9 +225,7 @@ const KatalogTab = () => {
       header: 'Typ',
       minWidth: '100px',
       render: (val) => val ? (
-        <Badge variant="outline" className="text-xs capitalize">
-          {String(val).replace('_', ' ')}
-        </Badge>
+        <span className="text-sm capitalize">{String(val).replace('_', ' ')}</span>
       ) : <span className="text-muted-foreground">—</span>
     },
     {
@@ -282,78 +270,15 @@ const KatalogTab = () => {
         </Badge>
       )
     },
-    {
-      key: 'kaufy_active',
-      header: 'Kanäle',
-      minWidth: '80px',
-      align: 'center',
-      render: (_, row) => (
-        <div className="flex gap-1 justify-center">
-          {row.kaufy_active && (
-            <Badge variant="outline" className="text-xs">
-              <Globe className="h-3 w-3 mr-1" />K
-            </Badge>
-          )}
-          <Badge variant="outline" className="text-xs">
-            <Users className="h-3 w-3 mr-1" />P
-          </Badge>
-        </div>
-      )
-    }
   ];
-
-  const renderRowActions = (row: PartnerListing) => {
-    const isExcluded = excludedIds.has(row.id);
-    
-    return (
-      <div className="flex gap-1">
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          className="h-8 w-8"
-          title="Details"
-          onClick={(e) => {
-            e.stopPropagation();
-            // Fallback to id if public_id is not set
-            const identifier = row.public_id || row.id;
-            navigate(`/portal/vertriebspartner/katalog/${identifier}`);
-          }}
-        >
-          <Eye className="h-4 w-4" />
-        </Button>
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          className={cn("h-8 w-8", isExcluded && "text-muted-foreground")}
-          title={isExcluded ? "Wieder einblenden" : "Ausblenden"}
-          onClick={(e) => {
-            e.stopPropagation();
-            toggleExclusion.mutate({ listingId: row.id, isCurrentlyExcluded: isExcluded });
-          }}
-        >
-          <Heart className={cn("h-4 w-4", isExcluded && "fill-current opacity-50")} />
-        </Button>
-        <Button 
-          variant="outline" 
-          size="sm"
-          className="h-8 text-xs gap-1"
-          title="Deal starten"
-        >
-          <Handshake className="h-3 w-3" />
-          Deal
-        </Button>
-      </div>
-    );
-  };
 
   return (
     <PageShell>
-      <ModulePageHeader title="Objektkatalog" description="Freigegebene Objekte für Ihren Vertrieb" />
+      <ModulePageHeader title="Objektkatalog" />
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm text-muted-foreground">
-            {filteredListings.length} von {allListings.length} Objekt{allListings.length !== 1 ? 'en' : ''} 
-            {excludedIds.size > 0 && ` • ${excludedIds.size} ausgeblendet`}
+            {filteredListings.length} von {allListings.length} Objekt{allListings.length !== 1 ? 'en' : ''}
           </p>
         </div>
         <div className="flex gap-2">
@@ -491,13 +416,7 @@ const KatalogTab = () => {
 
       {/* Listings Table */}
       <Card className="glass-card">
-        <CardHeader>
-          <CardTitle className="text-lg">Objektkatalog</CardTitle>
-          <CardDescription>
-            Alle freigegebenen Objekte — Klicken Sie ♥ um ein Objekt aus Ihrer Beratung auszublenden
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
           <PropertyTable
             data={filteredListings}
             onRowClick={(row) => {
@@ -506,7 +425,6 @@ const KatalogTab = () => {
             }}
             columns={columns}
             isLoading={isLoading}
-            rowActions={renderRowActions}
             emptyState={{
               message: hasActiveFilters 
                 ? 'Keine Objekte entsprechen Ihren Filterkriterien.'
