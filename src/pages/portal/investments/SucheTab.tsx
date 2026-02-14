@@ -338,7 +338,7 @@ export default function SucheTab() {
 
   return (
     <PageShell>
-      <ModulePageHeader title="OBJEKTSUCHE" description="Finden Sie passende Kapitalanlage-Objekte für Ihre Situation" />
+      <ModulePageHeader title="SUCHE" description="Finden Sie passende Kapitalanlage-Objekte für Ihre Situation" />
 
       {/* Search Mode Toggle */}
       <Card>

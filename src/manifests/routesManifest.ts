@@ -229,7 +229,7 @@ export const zone2Portal: ZoneDefinition = {
       display_order: 3,
       visibility: { default: true, org_types: ["client", "partner"] },
       tiles: [
-        { path: "storage", component: "StorageTab", title: "Storage" },
+        { path: "storage", component: "StorageTab", title: "Dateien" },
         { path: "posteingang", component: "PosteingangTab", title: "Posteingang" },
         { path: "sortieren", component: "SortierenTab", title: "Sortieren" },
         { path: "einstellungen", component: "EinstellungenTab", title: "Einstellungen" },
