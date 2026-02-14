@@ -261,6 +261,7 @@ const adminComponentMap: Record<string, React.ComponentType> = {
   // New Desks
   LeadDeskDashboard: LeadDeskComponent,
   ProjektDeskDashboard: ProjektDeskComponent,
+  PetmanagerDashboard: React.lazy(() => import('@/pages/admin/desks/PetmanagerDesk')),
   // WebHosting sub-routes removed (all pointed to same component)
 };
 
@@ -308,7 +309,7 @@ const portalModulePageMap: Record<string, React.LazyExoticComponent<React.Compon
   finanzanalyse: FinanzanalysePage,
   photovoltaik: PhotovoltaikPage,
   miety: MietyPortalPage,
-  'website-builder': React.lazy(() => import('@/pages/portal/WebsiteBuilderPage')),
+  pets: React.lazy(() => import('@/pages/portal/PetsPage')),
 };
 
 // =============================================================================

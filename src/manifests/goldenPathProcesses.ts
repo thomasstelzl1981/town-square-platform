@@ -581,16 +581,16 @@ export const GOLDEN_PATH_PROCESSES: GoldenPathProcess[] = [
     phase: 'done',
   },
 
-  // ─── MOD-05: Website Builder (ehemals MOD-21) ───────────────
+  // ─── MOD-05: Pets ───────────────
   {
-    id: 'GP-WEBSITE',
+    id: 'GP-PETS',
     moduleCode: 'MOD-05',
-    moduleName: 'Website Builder',
-    tilePath: '/portal/website-builder',
-    processName: 'Website-Auftrag',
-    description: 'Website erstellen, Design konfigurieren, SEO optimieren und veröffentlichen.',
+    moduleName: 'Pets',
+    tilePath: '/portal/pets/meine-tiere',
+    processName: 'Tierverwaltung',
+    description: 'Haustiere anlegen, Pflege verwalten und Services buchen.',
     menuPoints: 1,
-    menuPointPaths: ['/portal/website-builder'],
+    menuPointPaths: ['/portal/pets/meine-tiere'],
     compliance: {
       modulePageHeader: true,
       widgetGrid: true,
@@ -601,24 +601,23 @@ export const GOLDEN_PATH_PROCESSES: GoldenPathProcess[] = [
     },
     demoWidget: {
       id: '__demo__',
-      title: 'Demo: Muster GmbH',
-      subtitle: 'So sieht ein fertiger Website-Auftrag aus',
+      title: 'Demo: Luna (Golden Retriever)',
+      subtitle: 'Beispiel-Tierakte mit Pflege-Kalender',
       status: 'demo',
       badgeLabel: 'Demo',
       data: {
-        slug: 'muster-gmbh',
-        template: 'Modern',
-        seoScore: 92,
+        name: 'Luna',
+        species: 'Hund',
+        breed: 'Golden Retriever',
+        age: 3,
       },
       resetOnClose: true,
     },
     sections: [
-      { id: 'design', title: 'Design & Branding', component: 'WBDesignSection', readOnlyInDemo: false },
-      { id: 'seo', title: 'SEO', component: 'WBSeoSection', readOnlyInDemo: false },
-      { id: 'editor', title: 'Seiteneditor', component: 'WBEditorSection', readOnlyInDemo: false },
-      { id: 'contract', title: 'Vertrag & Versionen', component: 'WBContractSection', readOnlyInDemo: true },
+      { id: 'profile', title: 'Tierprofil', component: 'PetProfile', readOnlyInDemo: false },
+      { id: 'caring', title: 'Pflege & Termine', component: 'PetCaring', readOnlyInDemo: true },
     ],
-    phase: 'done',
+    phase: '1',
   },
 ];
 

@@ -51,7 +51,7 @@ export const OPERATIVE_DESKS: OperativeDeskDefinition[] = [
     displayName: 'Lead Desk',
     managerModuleCode: 'MOD-10',
     managerModuleName: 'Leadmanager',
-    websiteProfileId: 'lead_agency',
+    websiteProfileId: '', // Kein Landing Page für MOD-10
     route: 'lead-desk',
     icon: 'Target',
     responsibilities: [
@@ -59,6 +59,21 @@ export const OPERATIVE_DESKS: OperativeDeskDefinition[] = [
       'Kampagnen-Monitoring',
       'Lead-Qualifizierung',
       'Provisions-Abrechnung',
+    ],
+  },
+  {
+    deskId: 'petmanager',
+    displayName: 'Petmanager',
+    managerModuleCode: 'MOD-05',
+    managerModuleName: 'Pets',
+    websiteProfileId: 'pet_services',
+    route: 'petmanager',
+    icon: 'PawPrint',
+    responsibilities: [
+      'Tier-Registrierung',
+      'Service-Governance',
+      'Shop-Management',
+      'Content-Moderation',
     ],
   },
   {

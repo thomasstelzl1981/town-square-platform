@@ -6,7 +6,7 @@
  * 
  * RULES:
  * 1. No route exists unless declared here
- * 2. 4-Tile-Pattern is mandatory for all modules (except MOD-04: 4 tiles, MOD-05: Website Builder (0 tiles, dynamic routes), MOD-20 Miety: 6 tiles)
+ * 2. 4-Tile-Pattern is mandatory for all modules (except MOD-04: 4 tiles, MOD-05: Pets (4 tiles), MOD-20 Miety: 6 tiles)
  * 3. Changes require explicit approval
  */
 
@@ -151,6 +151,8 @@ export const zone1Admin: ZoneDefinition = {
     { path: "lead-desk", component: "LeadDeskDashboard", title: "Lead Desk" },
     // Projekt Desk (MOD-13 Projektmanager) — Projekt-Intake + Landing Pages
     { path: "projekt-desk", component: "ProjektDeskDashboard", title: "Projekt Desk" },
+    // Petmanager (MOD-05) — Haustier-Governance
+    { path: "petmanager", component: "PetmanagerDashboard", title: "Petmanager" },
     // Finance Desk removed — legacy route handled via redirects in legacyRedirects[]
     // =========================================================================
     // ARMSTRONG CONSOLE — KI-Assistent Governance (Config only, no chat)
@@ -166,7 +168,7 @@ export const zone1Admin: ZoneDefinition = {
     // Landing Pages — consolidated into website-hosting
     // Fortbildung Management
     { path: "fortbildung", component: "AdminFortbildung", title: "Fortbildung" },
-    // Website Hosting (MOD-05 Zone 1) — konsolidiert auf 1 Route
+    // Website Hosting (Landing Pages Zone 1) — konsolidiert auf 1 Route
     { path: "website-hosting", component: "WebHostingDashboard", title: "Website Hosting" },
   ],
 };
@@ -258,14 +260,19 @@ export const zone2Portal: ZoneDefinition = {
       ],
     },
     "MOD-05": {
-      name: "Website Builder",
-      base: "website-builder",
-      icon: "Globe",
+      name: "Pets",
+      base: "pets",
+      icon: "PawPrint",
       display_order: 5,
-      visibility: { default: true, org_types: ["client", "partner"] },
-      tiles: [],
+      visibility: { default: false, org_types: ["client"], requires_activation: true },
+      tiles: [
+        { path: "meine-tiere", component: "PetsMeineTiere", title: "Meine Tiere", default: true },
+        { path: "caring", component: "PetsCaring", title: "Caring" },
+        { path: "shop", component: "PetsShop", title: "Shop" },
+        { path: "fotoalbum", component: "PetsFotoalbum", title: "Fotoalbum" },
+      ],
       dynamic_routes: [
-        { path: ":websiteId/editor", component: "WBEditor", title: "Editor", dynamic: true },
+        { path: ":petId", component: "PetDetailPage", title: "Tierakte", dynamic: true },
       ],
     },
     "MOD-06": {
@@ -340,6 +347,7 @@ export const zone2Portal: ZoneDefinition = {
         { path: "kunden", component: "KundenTab", title: "Kunden" },
         { path: "network", component: "NetworkTab", title: "Netzwerk" },
         { path: "leads", component: "LeadsTab", title: "Leadeingang" },
+        { path: "landing-page", component: "VMPartnerLandingPage", title: "Landing Page" },
       ],
       dynamic_routes: [
         { path: "katalog/:publicId", component: "KatalogDetailPage", title: "Katalog-Detail", dynamic: true },
@@ -379,6 +387,7 @@ export const zone2Portal: ZoneDefinition = {
         { path: "sachversicherungen", component: "FMSachversicherungenTab", title: "Sachversicherungen" },
         { path: "vorsorge", component: "FMVorsorgeTab", title: "Vorsorgeverträge" },
         { path: "abonnements", component: "FMAbonnementsTab", title: "Abonnements" },
+        { path: "landing-page", component: "FMLandingPage", title: "Landing Page" },
       ],
       dynamic_routes: [
         { path: "finanzierungsakte", component: "FMFinanzierungsakte", title: "Finanzierungsakte" },
@@ -404,6 +413,7 @@ export const zone2Portal: ZoneDefinition = {
         { path: "objekteingang", component: "AkquiseObjekteingang", title: "Objekteingang" },
         { path: "datenbank", component: "AkquiseDatenbank", title: "Datenbank" },
         { path: "tools", component: "AkquiseTools", title: "Tools" },
+        { path: "landing-page", component: "AkquiseLandingPage", title: "Landing Page" },
       ],
       dynamic_routes: [
         { path: "mandate/neu", component: "MandatCreateWizardManager", title: "Neues Mandat" },
