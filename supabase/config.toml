@@ -185,3 +185,6 @@ verify_jwt = false
 
 [functions.sot-website-update-section]
 verify_jwt = false
+
+[functions.sot-research-engine]
+verify_jwt = false
