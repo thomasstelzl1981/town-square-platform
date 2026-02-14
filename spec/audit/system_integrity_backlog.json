@@ -117,16 +117,18 @@
     "dimension": "build",
     "zone": "cross-zone",
     "module": "admin",
-    "title": "Extension installed in public schema",
-    "description": "Linter warns about extension in public schema.",
+    "title": "Extension pg_trgm installed in public schema",
+    "description": "pg_trgm was installed in public schema instead of extensions schema. Dependent index idx_organizations_path required recreation.",
     "root_cause": "Extension installed with default schema during early development.",
     "repo_refs": [],
     "fix_plan": {
-      "steps": ["Identify extension and migrate to extensions schema"],
+      "steps": ["Drop dependent index", "Move pg_trgm to extensions schema", "Recreate index with extensions.gist_trgm_ops"],
       "risk": "medium",
-      "verification": ["Re-run linter"]
+      "verification": ["Re-run linter — no extension-in-public warning"]
     },
-    "status": "new"
+    "status": "done",
+    "resolved_at": "2026-02-14",
+    "resolution": "Migrated pg_trgm from public to extensions schema. Recreated idx_organizations_path with extensions.gist_trgm_ops."
   },
   {
     "id": "SIA-0008",
@@ -143,7 +145,9 @@
       "risk": "low",
       "verification": ["MOD-09 BeratungTab shows partner listings"]
     },
-    "status": "new"
+    "status": "done",
+    "resolved_at": "2026-02-14",
+    "resolution": "Confirmed: MOD-09 KatalogTab and BeratungTab query listing_publications directly with channel='partner_network', bypassing v_public_listings entirely. No fix needed."
   },
   {
     "id": "SIA-0009",
@@ -151,16 +155,18 @@
     "dimension": "edge",
     "zone": "cross-zone",
     "module": "admin",
-    "title": "95 edge functions — potential orphan scan needed",
-    "description": "Only 12 of 95 edge functions are mapped in architectureValidator. Remaining may include orphans.",
+    "title": "95 edge functions — orphan scan completed",
+    "description": "Full codebase scan identified 5 orphan candidates out of 95 edge functions. All other functions have valid invocations from src/, are webhook endpoints, cron jobs, or are internally chained.",
     "root_cause": "Functions accumulated without cleanup pass.",
-    "repo_refs": ["supabase/functions/"],
+    "repo_refs": ["supabase/functions/sot-social-autoresponder/", "supabase/functions/sot-research-run-order/", "supabase/functions/sot-research-free/", "supabase/functions/sot-research-firecrawl-extract/", "supabase/functions/sot-dms-upload-url/"],
     "fix_plan": {
-      "steps": ["Grep codebase for each function name", "Delete orphans"],
+      "steps": ["Review 5 orphan candidates with product team", "Delete confirmed orphans", "sot-social-autoresponder: zero references anywhere", "sot-research-run-order + sot-research-firecrawl-extract: chained but orphan chain (no caller)", "sot-research-free: standalone, no caller", "sot-dms-upload-url: referenced in docs only, may have been replaced by direct storage uploads"],
       "risk": "medium",
-      "verification": ["Each function has at least one invocation"]
+      "verification": ["Each remaining function has at least one invocation"]
     },
-    "status": "new"
+    "status": "done",
+    "resolved_at": "2026-02-14",
+    "resolution": "Scan completed. 5 orphan candidates documented. Deletion deferred pending product review to avoid breaking external integrations."
   },
   {
     "id": "SIA-0010",
@@ -187,16 +193,18 @@
     "dimension": "contract",
     "zone": "cross-zone",
     "module": "admin",
-    "title": "10 contracts documented but only 7 have implemented edge functions",
-    "description": "Some contracts implemented via DB triggers/status enums rather than edge functions. Architecturally valid but undocumented.",
+    "title": "Contract INDEX.md missing implementation type column",
+    "description": "INDEX.md listed contracts without marking whether implementation is via edge function, DB trigger, DB status-enum, or DB table/RLS.",
     "root_cause": "Implementation type not marked in contract index.",
     "repo_refs": ["spec/current/06_api_contracts/INDEX.md"],
     "fix_plan": {
-      "steps": ["Update INDEX.md to mark implementation type for each contract"],
+      "steps": ["Add 'Impl.-Typ' column to INDEX.md contract table"],
       "risk": "low",
       "verification": ["INDEX.md shows implementation type for all contracts"]
     },
-    "status": "new"
+    "status": "done",
+    "resolved_at": "2026-02-14",
+    "resolution": "Added Impl.-Typ column with values: Edge Function, Edge Function (Webhook), Edge Function (Cron), DB Status-Enum, DB Trigger, DB Table/RLS, DB Table/Trigger"
   },
   {
     "id": "SIA-0012",
