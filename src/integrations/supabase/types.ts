@@ -15921,8 +15921,6 @@ export type Database = {
         }[]
       }
       seed_golden_path_data: { Args: { p_tenant_id?: string }; Returns: Json }
-      show_limit: { Args: never; Returns: number }
-      show_trgm: { Args: { "": string }; Returns: string[] }
     }
     Enums: {
       acq_analysis_status: "pending" | "running" | "completed" | "failed"
