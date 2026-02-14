@@ -53,7 +53,7 @@ export function TenancySummaryBlock({
           <div className="space-y-1">
             <Label className="text-xs text-muted-foreground">Gesamtmiete (warm)</Label>
             <p className="text-lg font-semibold text-primary">
-              {totalRentWarmEur.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
+              {new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(totalRentWarmEur)}
             </p>
           </div>
         </div>

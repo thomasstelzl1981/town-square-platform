@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { TrendingUp, PiggyBank, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { formatCurrency, formatPercent } from '@/lib/formatters';
 
 interface InvestmentKPIBlockProps {
   purchasePriceEur?: number;
@@ -22,11 +23,8 @@ export function InvestmentKPIBlock({
   grossYieldPercent,
   netYieldPercent,
 }: InvestmentKPIBlockProps) {
-  const formatCurrency = (value?: number) => 
-    value !== undefined ? `${value.toLocaleString('de-DE', { minimumFractionDigits: 2 })} €` : '–';
-
-  const formatPercent = (value?: number) =>
-    value !== undefined ? `${value.toFixed(2)} %` : '–';
+  const fmtCur = (value?: number) => value !== undefined ? formatCurrency(value) : '–';
+  const fmtPct = (value?: number) => value !== undefined ? formatPercent(value, 2) : '–';
 
   return (
     <Card>
@@ -40,21 +38,21 @@ export function InvestmentKPIBlock({
         {purchasePriceEur !== undefined && (
           <div className="flex justify-between">
             <span className="text-muted-foreground">Kaufpreis</span>
-            <span className="font-medium">{formatCurrency(purchasePriceEur)}</span>
+            <span className="font-medium">{fmtCur(purchasePriceEur)}</span>
           </div>
         )}
         
         {purchaseCostsEur !== undefined && (
           <div className="flex justify-between text-xs">
             <span className="text-muted-foreground">+ Erwerbsnebenkosten</span>
-            <span>{formatCurrency(purchaseCostsEur)}</span>
+            <span>{fmtCur(purchaseCostsEur)}</span>
           </div>
         )}
 
         {valuationEur !== undefined && (
           <div className="flex justify-between pt-2 border-t">
             <span className="text-muted-foreground">Bewertung</span>
-            <span>{formatCurrency(valuationEur)}</span>
+            <span>{fmtCur(valuationEur)}</span>
           </div>
         )}
 
@@ -62,12 +60,12 @@ export function InvestmentKPIBlock({
           <div className="pt-2 border-t">
             <div className="flex justify-between">
               <span className="text-muted-foreground">Jahreskaltmiete netto</span>
-              <span>{formatCurrency(netColdRentPaEur)}</span>
+              <span>{fmtCur(netColdRentPaEur)}</span>
             </div>
             {grossYieldPercent !== undefined && (
               <div className="flex justify-between text-xs mt-1">
                 <span className="text-muted-foreground">Brutto-Rendite</span>
-                <span className="text-green-600">{formatPercent(grossYieldPercent)}</span>
+                <span className="text-green-600">{fmtPct(grossYieldPercent)}</span>
               </div>
             )}
           </div>
@@ -76,7 +74,7 @@ export function InvestmentKPIBlock({
         {nonAllocCostsPaEur !== undefined && (
           <div className="flex justify-between text-xs">
             <span className="text-muted-foreground">– Nicht umlegbare Kosten p.a.</span>
-            <span className="text-red-500">{formatCurrency(nonAllocCostsPaEur)}</span>
+            <span className="text-red-500">{fmtCur(nonAllocCostsPaEur)}</span>
           </div>
         )}
 
@@ -93,13 +91,13 @@ export function InvestmentKPIBlock({
                 ) : (
                   <ArrowDownRight className="h-3.5 w-3.5" />
                 )}
-                {formatCurrency(Math.abs(cashflowPreTaxMonthlyEur))}
+                {fmtCur(Math.abs(cashflowPreTaxMonthlyEur))}
               </span>
             </div>
             {netYieldPercent !== undefined && (
               <div className="flex justify-between text-xs mt-1">
                 <span className="text-muted-foreground">Netto-Rendite</span>
-                <span>{formatPercent(netYieldPercent)}</span>
+                <span>{fmtPct(netYieldPercent)}</span>
               </div>
             )}
           </div>

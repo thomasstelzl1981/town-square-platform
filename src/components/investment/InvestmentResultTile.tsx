@@ -141,7 +141,7 @@ export function InvestmentResultTile({
         <div className="px-4 py-3 border-b bg-card">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0 flex-1">
-              <p className="text-lg font-bold text-primary truncate">
+              <p className="text-xl font-bold text-primary truncate">
                 {formatCurrency(listing.asking_price)}
               </p>
               <p className="text-sm text-muted-foreground flex items-center gap-1 truncate">
@@ -150,8 +150,8 @@ export function InvestmentResultTile({
               </p>
             </div>
             <div className="text-right shrink-0">
-              <p className="text-sm font-medium">{listing.total_area_sqm} m²</p>
-              <p className="text-xs text-muted-foreground">{propertyTypeLabel}</p>
+              <p className="text-base font-medium">{listing.total_area_sqm} m²</p>
+              <p className="text-sm text-muted-foreground">{propertyTypeLabel}</p>
             </div>
           </div>
         </div>
@@ -160,10 +160,10 @@ export function InvestmentResultTile({
         <div className="grid grid-cols-2 divide-x">
           {/* Einnahmen (links, grün) */}
           <div className="p-3 bg-green-50/50 dark:bg-green-950/20">
-            <p className="text-[10px] font-semibold text-green-700 dark:text-green-400 uppercase tracking-wide mb-2">
+            <p className="text-xs font-semibold text-green-700 dark:text-green-400 uppercase tracking-wide mb-2">
               Einnahmen
             </p>
-            <div className="space-y-1 text-xs">
+            <div className="space-y-1 text-sm">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">+ Miete</span>
                 <span className="font-medium text-green-600">
@@ -189,10 +189,10 @@ export function InvestmentResultTile({
 
           {/* Ausgaben (rechts, rot) */}
           <div className="p-3 bg-red-50/50 dark:bg-red-950/20">
-            <p className="text-[10px] font-semibold text-red-700 dark:text-red-400 uppercase tracking-wide mb-2">
+            <p className="text-xs font-semibold text-red-700 dark:text-red-400 uppercase tracking-wide mb-2">
               Ausgaben
             </p>
-            <div className="space-y-1 text-xs">
+            <div className="space-y-1 text-sm">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">− Zinsen</span>
                 <span className="font-medium text-red-600">

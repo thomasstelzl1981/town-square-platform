@@ -1,4 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { formatCurrency as fmtCurrency } from '@/lib/formatters';
 import { Receipt, Building } from 'lucide-react';
 
 interface NKWEGBlockProps {
@@ -23,7 +24,7 @@ export function NKWEGBlock({
   topCostBlocks,
 }: NKWEGBlockProps) {
   const formatCurrency = (value?: number) => 
-    value !== undefined ? `${value.toLocaleString('de-DE', { minimumFractionDigits: 2 })} €` : '–';
+    value !== undefined ? fmtCurrency(value) : '–';
 
   const allocationKeyLabels: Record<string, string> = {
     SQM: 'qm',

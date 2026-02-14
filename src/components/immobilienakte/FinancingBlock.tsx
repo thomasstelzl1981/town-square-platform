@@ -1,4 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { formatCurrency as fmtCurrency } from '@/lib/formatters';
 import { Landmark, Percent, Calendar, Phone } from 'lucide-react';
 
 interface FinancingBlockProps {
@@ -25,7 +26,7 @@ export function FinancingBlock({
   contactPerson,
 }: FinancingBlockProps) {
   const formatCurrency = (value?: number) => 
-    value !== undefined ? `${value.toLocaleString('de-DE', { minimumFractionDigits: 2 })} €` : '–';
+    value !== undefined ? fmtCurrency(value) : '–';
 
   if (!bankName && !loanNumber) {
     return (
