@@ -1,120 +1,172 @@
 
 
-# Portalzugang mit 6-stelligem PIN-Code (Bank-Feeling)
+# Akten-Verfeinerung: Storage-Tree + Editierbarkeit (ohne Immobilienakte)
 
-## Analyse
+## Drei Kategorien — klar definiert
 
-### IST-Zustand
+### Kategorie 1: Immobilienakte (MOD-04) — WIRD NICHT BERUEHRT
 
-- Login erfolgt ueber klassisches E-Mail + Passwort (`Auth.tsx`, `AuthContext.signIn`)
-- `SicherheitTab` existiert unter `/portal/stammdaten/sicherheit` mit Passwort-Aenderung, Sessions-Tabelle und Security-Log
-- Die Sicherheits-Kachel ist im Manifest registriert aber nur ueber direkte Navigation erreichbar
-- Es gibt KEINE OTP/PIN-basierte Authentifizierung im System
+Die Immobilienakte wird aus einer Objektliste heraus geoeffnet und fuehrt auf eine eigene Seite (`EditableUnitDossierView`). Sie hat ein voellig anderes Navigationskonzept (Listen-Klick → Seitenwechsel) und ist bereits voll editierbar mit Speichern-Button. **Kein Handlungsbedarf. Keinerlei Aenderungen.**
 
-### Technische Moeglichkeit: Supabase Email OTP
+### Kategorie 2: Stammdaten (RecordCard) — NUR STORAGE-TREE ERGAENZEN
 
-Supabase unterstuetzt nativ **Email OTP** (6-stelliger Code per E-Mail):
+Die Personenakte in Stammdaten nutzt die grosse quadratische `RecordCard` (aspect-square, halbe Seitenbreite). Beim Klick oeffnet sie sich auf volle Breite mit allen Feldern sichtbar und editierbar. **Das bleibt exakt so.** 
 
-```typescript
-// Schritt 1: Code senden
-await supabase.auth.signInWithOtp({
-  email: 'user@example.de',
-  options: { shouldCreateUser: false }
-});
+Einzige Aenderung: Der Datenraum-Bereich zeigt aktuell nur eine flache Dateiliste. Stattdessen soll hier der **echte Storage-Tree in Spaltenansicht** (wie im DMS) eingebettet werden, mit Drag-and-Drop Upload.
 
-// Schritt 2: Code verifizieren
-await supabase.auth.verifyOtp({
-  email: 'user@example.de',
-  token: '123456',
-  type: 'email'
-});
-```
+### Kategorie 3: Modul-Akten (Fahrzeuge, PV-Anlagen etc.) — STORAGE-TREE + EDITIERBARKEIT
 
-- Kein Passwort noetig
-- 6-stelliger numerischer Code
-- Standardmaessig 60 Sekunden Cooldown, 1 Stunde Gueltigkeit
-- Passt perfekt zum gewuenschten "Bank-PIN-Feeling"
+Diese Akten nutzen kleine WidgetCell-Kacheln im WidgetGrid. Ein Klick auf eine Kachel oeffnet die Akte inline unter dem Grid. **Dieses Layout-Pattern bleibt bestehen.** 
+
+Aenderungen betreffen NUR den Inhalt der geoeffneten Akte:
+- Alle Felder muessen direkt editierbar sein (kein Read-Only)
+- Ein Storage-Tree (Spaltenansicht) muss integriert werden
+- Popup-Dialoge muessen durch Inline-Erfassung ersetzt werden
 
 ---
 
-## SOLL-Zustand
+## Detaillierte Aenderungen
 
-### 1. Login-Umstellung: E-Mail + 6-stelliger PIN
+### Aenderung 1: Wiederverwendbare Storage-Tree-Komponente
 
-Die `/auth`-Seite wird auf einen 2-Schritt-Flow umgestellt:
+**Neue Datei:** `src/components/shared/EntityStorageTree.tsx`
 
-**Schritt 1: E-Mail eingeben**
-- Nutzer gibt E-Mail ein
-- System sendet 6-stelligen Code per E-Mail
-- `shouldCreateUser: false` — nur bestehende Nutzer koennen sich anmelden
+Eine schlanke Wrapper-Komponente um die bestehende `ColumnView` (aus `src/components/dms/views/ColumnView.tsx`), die fuer jede Akte den passenden DMS-Ordner findet und anzeigt.
 
-**Schritt 2: PIN eingeben (Bank-Feeling)**
-- 6 einzelne Eingabefelder (`InputOTP`-Komponente ist bereits installiert)
-- Automatische Verifizierung nach Eingabe der 6. Ziffer
-- Bei Erfolg: Redirect zum Portal
-
-Das Passwort-Formular in der Auth-Seite wird komplett entfernt.
-
-### 2. SicherheitTab als RecordCard-Widget
-
-Die `SicherheitTab` wird zur **Zugangs-Verwaltungskachel** umgebaut:
-
-**Geschlossene Kachel (quadratisch, halbe Breite):**
-```
-+----------------------------+
-|  [Badge: Aktiv]   [Shield] |
-|                            |
-|       [Shield-Icon]        |
-|        60x60               |
-|                            |
-|    Portalzugang            |
-|    max@example.de          |
-|                            |
-|  Letzte Anmeldung:         |
-|  14.02.2026, 15:30         |
-|                            |
-+----------------------------+
-```
-
-**Geoeffnete Kachel (volle Breite):**
-- Login-E-Mail (read-only, da Identitaet)
-- Letzte Anmeldung (Datum + Geraet)
-- Aktive Sitzungen (Tabelle)
-- Sicherheits-Log (letzte Events)
-- Button: "Alle anderen Sitzungen beenden"
-- Kein Passwort-Bereich mehr (da OTP-only)
-
-### 3. AuthContext-Erweiterung
-
-Neue Methoden im `AuthContext`:
-
+**Props:**
 ```typescript
-signInWithOtp: (email: string) => Promise<{ error: Error | null }>;
-verifyOtp: (email: string, token: string) => Promise<{ error: Error | null }>;
+interface EntityStorageTreeProps {
+  tenantId: string;
+  entityType: string;      // z.B. 'person', 'vehicle', 'pv_plant'
+  entityId: string;         // UUID der Akte
+  moduleCode: string;       // z.B. 'MOD_01', 'MOD_17', 'MOD_19'
+}
 ```
 
-Die alten `signIn` und `signUp` Methoden bleiben vorerst erhalten (Abwaertskompatibilitaet fuer Admin-Bereich), werden aber auf der User-Auth-Seite nicht mehr verwendet.
+**Logik:**
+1. Query: `storage_nodes` WHERE `entity_type = X` AND `entity_id = Y` → findet den Root-Ordner der Akte
+2. Query: Alle Kind-Nodes unter diesem Root-Ordner + zugehoerige Dokumente
+3. Rendering: Die bestehende `ColumnView` mit denselben Props wie im DMS (MOD-03)
+4. Drag-and-Drop Upload: `FileDropZone` umschliesst den Tree, Uploads landen unter dem Akte-Root-Ordner
+
+**Fallback:** Wenn noch kein Storage-Ordner existiert (Altdaten vor der Migration), wird ein leerer Datenraum mit Upload-Moeglichkeit angezeigt und bei erstem Upload automatisch der Ordner + Sortierkachel angelegt (via `useRecordCardDMS`).
+
+### Aenderung 2: RecordCard Datenraum upgraden (Stammdaten)
+
+**Datei:** `src/components/shared/RecordCard.tsx`
+
+Die flache Dateiliste (Zeilen 184-212) wird durch `EntityStorageTree` ersetzt:
+
+**Vorher (flache Liste):**
+```
+Datenraum (3 Dateien)
+  📄 Personalausweis.pdf
+  📄 Steuerbescheid.pdf
+  📄 Meldebescheinigung.pdf
+```
+
+**Nachher (Spaltenansicht mit Ordner-Baum):**
+```
+Datenraum
+┌──────────────┬──────────────────────────────┐
+│ Max Muster…  │ 📄 Personalausweis.pdf       │
+│  📁 Steuer   │ 📄 Steuerbescheid_2025.pdf   │
+│  📁 Vertraege│ 📄 Meldebescheinigung.pdf    │
+│  📁 Sonstiges│                              │
+│              │  [Dateien hierher ziehen]     │
+└──────────────┴──────────────────────────────┘
+```
+
+Die `RecordCardProps` werden angepasst:
+- `files` und `onFileDrop` Props bleiben fuer den **Closed-State** (FileDropZone auf der Kachel)
+- Im **Open-State** wird stattdessen `EntityStorageTree` gerendert, sofern `tenantId` und `entityId` vorhanden sind
+
+### Aenderung 3: Fahrzeugakte — Editierbarkeit + Storage-Tree + Popup-Entfernung
+
+**Datei:** `src/components/portal/cars/CarsFahrzeuge.tsx`
+
+Die WidgetCell-Kacheln im Grid und das Inline-Oeffnen bleiben **exakt so wie jetzt**. Nur der Inhalt der geoeffneten Akte aendert sich:
+
+**3a) Versicherungs-Sektion editierbar machen**
+
+Aktuell zeigt `InsuranceSection` (Zeile 395-408) nur statische Felder. Aenderung: Auf das gleiche `EditableAkteSection`-Pattern umstellen wie bei Basisdaten. Felder: Versicherer, Policen-Nr, Deckungsart, Jahresbeitrag, SF-Klasse etc. — alle inline editierbar.
+
+**3b) Popup-Dialoge entfernen**
+
+- `VehicleCreateDialog` entfernen → Stattdessen wird im WidgetGrid ein CTA-Widget ("+ Fahrzeug") eingebaut, das eine leere Akte direkt inline oeffnet (wie bei PV-Anlagen: Inline-Formular)
+- `InsuranceCreateDialog` entfernen → Versicherungsdaten werden direkt in der Akte inline erfasst
+- `ClaimCreateDialog` entfernen → Schaeden werden direkt in der Akte inline erfasst
+
+**3c) Statischen Datenraum durch Storage-Tree ersetzen**
+
+Die `VehicleDatenraum` Funktion (Zeilen 442-452) mit ihren 4 statischen Platzhalter-Kacheln wird durch `EntityStorageTree` ersetzt:
+
+**Vorher:**
+```
+Datenraum
+┌────────────┬────────────┬────────────┬────────────┐
+│ Fahrzeug-  │ Fahrzeug-  │ TÜV-       │ Kauf-      │
+│ schein     │ brief      │ Bericht    │ vertrag    │
+└────────────┴────────────┴────────────┴────────────┘
+```
+
+**Nachher:**
+```
+Datenraum
+┌──────────────┬──────────────────────────────┐
+│ BMW M4 Co…   │ 📄 Fahrzeugschein.pdf        │
+│  📁 Versich. │ 📄 Fahrzeugbrief_Kopie.pdf   │
+│  📁 TÜV      │ 📄 Kaufvertrag_2023.pdf      │
+│  📁 Service  │                              │
+│              │  [Dateien hierher ziehen]     │
+└──────────────┴──────────────────────────────┘
+```
+
+**3d) DMS-Ordner automatisch bei Neuanlage**
+
+Wenn ein neues Fahrzeug inline angelegt wird, erstellt `useRecordCardDMS` automatisch:
+- Storage-Node (Ordner) unter MOD_17
+- Sortierkachel in inbox_sort_containers (Keywords: Kennzeichen, Marke, Modell)
+
+### Aenderung 4: PV-Anlagen-Dossier — Editierbarkeit + Storage-Tree
+
+**Datei:** `src/pages/portal/photovoltaik/PVPlantDossier.tsx`
+
+Das WidgetGrid + Inline-Oeffnung bleibt **exakt so wie jetzt**. Nur der Inhalt des geoeffneten Dossiers aendert sich:
+
+**4a) Alle InfoRow-Felder editierbar machen**
+
+Aktuell wird `InfoRow` ueberall mit `editable` nicht gesetzt (also read-only). Aenderung:
+- Alle `InfoRow`-Aufrufe erhalten `editable={true}` und einen `onChange`-Handler
+- Ein zentraler State (`formData`) sammelt die Aenderungen
+- Ein Speichern-Button am Ende der Akte persistiert die Aenderungen via `supabase.from('pv_plants').update(...)`
+- Die Sektion-Cards (Standort, MaStR, Netzbetreiber, Zaehler, Technik) bekommen alle die gleiche Editierlogik
+
+**4b) Statische Dokumenten-Kacheln durch Storage-Tree ersetzen**
+
+Die Sektion "Dokumente" (Zeilen 193-217) mit 8 statischen Ordner-Kacheln und der Pflichtdokumente-Checklist wird durch `EntityStorageTree` ersetzt. Die Pflichtdokumente-Checklist bleibt als zusaetzliches Element unterhalb des Trees bestehen.
 
 ---
 
-## Umsetzungsschritte
+## Zusammenfassung der betroffenen Dateien
 
-| Schritt | Beschreibung |
-|---------|-------------|
-| 1 | **`AuthContext.tsx`** erweitern: `signInWithOtp()` und `verifyOtp()` Methoden hinzufuegen |
-| 2 | **`Auth.tsx`** umbauen: 2-Schritt-Flow (E-Mail-Eingabe, dann 6-stellige PIN-Eingabe mit `InputOTP`) |
-| 3 | **`SicherheitTab.tsx`** komplett umbauen: Passwort-Formular entfernen, RecordCard-Widget fuer Portalzugang (quadratisch geschlossen, volle Breite geoeffnet), Login-E-Mail read-only, Sessions + Security-Log |
-| 4 | **Auth-Einstellungen**: E-Mail OTP aktivieren (ist standardmaessig aktiv bei Supabase) |
+| Datei | Aenderung |
+|-------|-----------|
+| `src/components/shared/EntityStorageTree.tsx` | NEU — Wiederverwendbare Storage-Tree-Komponente |
+| `src/components/shared/RecordCard.tsx` | Datenraum-Sektion: Flache Liste → EntityStorageTree |
+| `src/components/portal/cars/CarsFahrzeuge.tsx` | Versicherung editierbar, VehicleDatenraum → EntityStorageTree, Inline-Neuanlage statt Popup |
+| `src/components/portal/cars/VehicleCreateDialog.tsx` | ENTFERNEN (wird durch Inline-Erfassung ersetzt) |
+| `src/components/portal/cars/InsuranceCreateDialog.tsx` | ENTFERNEN (inline in Akte) |
+| `src/components/portal/cars/ClaimCreateDialog.tsx` | ENTFERNEN (inline in Akte) |
+| `src/components/portal/cars/index.ts` | Exports bereinigen |
+| `src/pages/portal/photovoltaik/PVPlantDossier.tsx` | Alle InfoRow editable + Speichern-Button + EntityStorageTree |
 
 ### Was sich NICHT aendert
 
-- Registrierung bleibt bestehen (neuer Nutzer wird weiterhin ueber Signup angelegt — danach Login nur noch via OTP)
-- Admin-Bereich kann weiterhin Passwort-Login nutzen (Fallback)
-- `onAuthStateChange` Listener und Session-Handling bleiben identisch
-- Routing bleibt unveraendert
-- Alle anderen Stammdaten-Tabs bleiben unberuehrt
-
-### Hinweis
-
-Der 6-stellige Code wird per E-Mail zugestellt (nicht per SMS). Das ist kostenlos und erfordert keine zusaetzliche Infrastruktur. Die `InputOTP`-Komponente (`input-otp` Package) ist bereits im Projekt installiert und einsatzbereit.
+- Immobilienakte (MOD-04) — keinerlei Aenderung
+- Stammdaten RecordCard Layout (grosses quadratisches Widget) — bleibt
+- Fahrzeuge/PV Widget-Grid + kleine Kacheln + Inline-Oeffnung — Layout bleibt
+- Routing — keine Aenderungen
+- Datenbank-Schema — keine neuen Tabellen (entity_type/entity_id Spalten existieren bereits)
+- Miety (MOD-20) — wird in diesem Schritt nicht angefasst
 
