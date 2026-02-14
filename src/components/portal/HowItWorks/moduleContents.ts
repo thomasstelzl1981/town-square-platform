@@ -189,33 +189,32 @@ export const moduleContents: Record<string, HowItWorksContent> = {
 
   'MOD-05': {
     moduleCode: 'MOD-05',
-    title: 'Website Builder',
-    oneLiner: 'Erstellen, gestalten und veröffentlichen Sie Ihre Unternehmenswebsite — KI-gestützt.',
+    title: 'Haustiere',
+    oneLiner: 'Verwalten Sie Ihre Haustiere — Tierakten, Pflege, Fotoalbum und Shop.',
     benefits: [
-      'KI generiert Texte basierend auf Ihrem Firmenprofil und der Branche.',
-      'Fünf Design-Templates für unterschiedliche Stile: Modern, Klassisch, Minimalistisch, Elegant, Frisch.',
-      'Hosting und Veröffentlichung über Credits — pay-per-use, keine Abo-Gebühren.',
+      'Digitale Tierakte mit Impfungen, Behandlungen und Dokumenten.',
+      'Pflegepläne und Erinnerungen für Fütterung, Tierarzt und Pflege.',
+      'Fotoalbum und integrierter Shop für Tierbedarf.',
     ],
     whatYouDo: [
-      'Website erstellen und Design-Template wählen',
-      'KI-Texte generieren und Sections anpassen',
-      'SEO-Einstellungen konfigurieren',
-      'Hosting-Vertrag abschließen',
-      'Website veröffentlichen und verwalten',
+      'Haustiere anlegen und Tierakten pflegen',
+      'Pflegepläne und Erinnerungen einrichten',
+      'Fotos im Album verwalten',
+      'Tierbedarf im integrierten Shop bestellen',
     ],
     flows: [
       {
-        title: 'Website erstellen',
-        steps: ['Firmenname & Branche eingeben', 'Design-Template wählen', 'KI generiert Sections', 'Inhalte im Editor anpassen'],
+        title: 'Haustier anlegen',
+        steps: ['Name & Tierart eingeben', 'Geburtsdatum & Rasse erfassen', 'Tierarzt-Daten hinterlegen', 'Impfpass digitalisieren'],
       },
       {
-        title: 'Website veröffentlichen',
-        steps: ['SEO konfigurieren', 'Hosting-Vertrag abschließen', 'Veröffentlichen', 'Versionshistorie verwalten'],
+        title: 'Pflege organisieren',
+        steps: ['Pflegeplan erstellen', 'Erinnerungen aktivieren', 'Tierarztbesuche dokumentieren', 'Fotos hochladen'],
       },
     ],
-    cta: 'Erstellen Sie Ihre erste Website — in wenigen Minuten online.',
+    cta: 'Legen Sie Ihr erstes Haustier an — alles an einem Ort.',
     subTiles: [
-      { title: 'Dashboard', route: '/portal/website-builder', icon: Globe },
+      { title: 'Meine Tiere', route: '/portal/pets/meine-tiere', icon: Globe },
     ],
   },
 
@@ -579,7 +578,7 @@ export const moduleContents: Record<string, HowItWorksContent> = {
 
   'MOD-16': {
     moduleCode: 'MOD-16',
-    title: 'Shops',
+    title: 'Shop',
     oneLiner: 'Bürobedarf, IT-Geräte und mehr – direkt bestellen oder mieten über integrierte Shops.',
     benefits: [
       'Zugang zu Amazon Business, OTTO Office und Miete24 aus einer Oberfläche.',
