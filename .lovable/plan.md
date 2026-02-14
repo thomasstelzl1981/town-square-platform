@@ -1,176 +1,176 @@
 
-# Migrationsplan: MOD-05 wird Website Builder, MOD-21 verschwindet
+# Konsolidierung Zone 1 KI-Office: 3-Menuepunkte-Architektur
 
-## Ausgangslage
+## Problem
 
-| Aspekt | IST-Zustand | SOLL-Zustand |
-|--------|-------------|--------------|
-| MOD-05 | "KI-Telefon-Assistent" Platzhalter unter `/portal/msv` | **Website Builder** unter `/portal/website-builder` |
-| MOD-21 | Website Builder unter `/portal/website-builder` | **Geloescht** — Code lebt weiter unter MOD-05 |
-| `/portal/msv` | Redirect-Wrapper + Platzhalter-Seite | Redirect zu `/portal/immobilien/verwaltung` (Legacy) |
+Aktuell existieren **7 separate Menuepunkte** unter "KI Office" in Zone 1:
+1. KI-Office (Dashboard)
+2. E-Mail (3-Panel Thread-Client)
+3. Sequenzen (Drip-Kampagnen)
+4. Templates (E-Mail-Vorlagen)
+5. Kontakte (CRM)
+6. Recherche (Apollo/Firecrawl Lead-Suche)
+7. Communication (Hub)
 
-**Kernprinzip:** Der gesamte Website-Builder-Code bleibt funktional identisch. Es aendert sich nur der Modulcode (MOD-21 wird MOD-05) und die alte MSV-Platzhalter-Infrastruktur wird entfernt.
+Diese sind funktional fragmentiert und teilweise redundant. Der Nutzer sieht 7 Menuepunkte fuer im Kern 2 Prozesse: **Kontakte finden** und **E-Mails senden**.
 
----
-
-## Betroffene Schichten (5)
+## Neue Architektur: 3 Menuepunkte
 
 ```text
-+---------------------------+
-| 1. Datenbank (tile_catalog)|  UPDATE tile_code MOD-05
-+---------------------------+
-| 2. Manifeste (3 Dateien)  |  routesManifest, areaConfig, armstrongManifest
-+---------------------------+
-| 3. Konstanten/Registries  |  rolesMatrix, moduleContents, sotWebsiteModules,
-|                           |  goldenPathProcesses, demoDataManifest, bwaKontenplan
-+---------------------------+
-| 4. Seiten-Dateien         |  MSVPage, msv/*.tsx (Loeschkandidaten)
-+---------------------------+
-| 5. Kommentare/Docs        |  JSDoc-Header in WB*.tsx, spec/mod-05
-+---------------------------+
+KI Office (Zone 1)
+├── 1. Recherche      → Kontakte finden + validieren
+├── 2. Kontaktbuch    → Zentrale Kontaktdatenbank (CRM)
+└── 3. E-Mail Agent   → Kampagnen erstellen, Templates, Versand, Outbox
 ```
+
+### Was passiert mit den bisherigen 7 Seiten?
+
+| Bisherige Seite | Neues Zuhause | Aenderung |
+|---|---|---|
+| Dashboard | **Entfaellt** | KPIs werden in die 3 Seiten integriert (je Seite eigene Metriken) |
+| Recherche | **Recherche** (bleibt, wird aufgewertet) | SOAT-Engine mit Phasen-Tracking, Live-Fortschritt |
+| Kontakte | **Kontaktbuch** (bleibt, wird erweitert) | Compliance-Felder (permission, legal_basis, unsubscribe) hinzufuegen |
+| E-Mail | **E-Mail Agent** (wird Kern) | Thread-Ansicht bleibt als "Posteingang"-Tab |
+| Sequenzen | **E-Mail Agent** | Wird Tab "Kampagnen" innerhalb E-Mail Agent |
+| Templates | **E-Mail Agent** | Wird Tab "Templates" innerhalb E-Mail Agent |
+| Communication | **Entfaellt** | War Redirect/Platzhalter, nicht mehr noetig |
 
 ---
 
-## Schritt-fuer-Schritt Plan
+## Detailplan
 
-### Schritt 1: DB-Migration — tile_catalog
+### Schritt 1: Routing konsolidieren
 
-MOD-05 Eintrag in `tile_catalog` aktualisieren:
-- `title`: "Website Builder"
-- `description`: "KI-gestuetzter Website-Baukasten"
-- `icon_key`: "globe"
-- `main_tile_route`: "/portal/website-builder"
-- `sub_tiles`: [] (keine Sub-Tiles, hat dynamic_routes)
-- `display_order`: 5 (bleibt)
-- `flowchart_mermaid`: Neues Website-Builder Flowchart
-- `internal_apis`: Website-Builder Edge Functions
-- `external_api_refs`: []
+**routesManifest.ts** — 7 Routes werden zu 3:
 
-Kein MOD-21 Eintrag existiert in der DB — nichts zu loeschen.
+```text
+Vorher:
+  ki-office           → Dashboard
+  ki-office-email     → E-Mail
+  ki-office-sequenzen → Sequenzen
+  ki-office-templates → Templates
+  ki-office-kontakte  → Kontakte
+  ki-office-recherche → Recherche
+  communication       → Hub
 
-### Schritt 2: routesManifest.ts
+Nachher:
+  ki-office/recherche  → Recherche (SOAT Search Engine)
+  ki-office/kontakte   → Kontaktbuch
+  ki-office/email      → E-Mail Agent (3 Tabs: Posteingang, Kampagnen, Templates)
+```
 
-**A) MOD-05 Block ersetzen:**
-- Bisherig: `"MOD-05": { name: "Modul 05", base: "msv", icon: "Box", tiles: [KiTelefonUebersicht] }`
-- Neu: `"MOD-05": { name: "Website Builder", base: "website-builder", icon: "Globe", display_order: 5, tiles: [], dynamic_routes: [{ path: ":websiteId/editor", ... }] }`
+Default-Route `/admin/ki-office` redirected auf `/admin/ki-office/recherche`.
 
-**B) MOD-21 Block loeschen** (Zeilen 541-551)
+### Schritt 2: E-Mail Agent — 3-Tab-Konsolidierung
 
-**C) Kommentar Zeile 9 aktualisieren** (MOD-05 ist kein 1-Tile-Placeholder mehr)
+Die neue Seite `AdminEmailAgent.tsx` vereint drei bisherige Seiten als Tabs:
 
-**D) Kommentar Zeile 261 aktualisieren** ("ehemals MOD-05 MSV" bleibt korrekt)
+**Tab 1: Posteingang** (bisheriges AdminKiOfficeEmail)
+- 3-Panel Layout (Threads | Konversation | Kontakt-Panel)
+- KI-Antwort-Assistent bleibt
 
-### Schritt 3: areaConfig.ts
+**Tab 2: Kampagnen** (bisheriges AdminKiOfficeSequenzen)
+- Sequenz-Builder mit Steps
+- Enrollment-Verwaltung
+- Versandplanung + Kalender
+- Compliance-Guards (nur Versand an Kontakte mit permission)
 
-- Services-Array: `['MOD-14', 'MOD-15', 'MOD-05', 'MOD-16']` — MOD-21 entfernen (MOD-05 bleibt an seiner Position)
-- Neuen `moduleLabelOverrides` Eintrag: `'MOD-05': 'Website Builder'`
+**Tab 3: Templates** (bisheriges AdminKiOfficeTemplates)
+- Template-CRUD
+- Platzhalter-System
+- Compliance-Footer (Pflichtfeld)
+- Vorschau
 
-### Schritt 4: armstrongManifest.ts
+### Schritt 3: Kontaktbuch erweitern
 
-- Alle 7 Armstrong-Actions: `module: 'MOD-21'` aendern zu `module: 'MOD-05'`
-- Kommentar-Header: "MOD-21: WEBSITE BUILDER" zu "MOD-05: WEBSITE BUILDER"
+Die bestehende `AdminKiOfficeKontakte.tsx` wird zu `AdminKontaktbuch.tsx`:
 
-### Schritt 5: rolesMatrix.ts
+- Bestehende CRUD-Funktionen bleiben
+- **Neue Compliance-Spalten** auf `contacts` Tabelle:
+  - `permission_status` (unknown / opt_in / legitimate_interest / no_contact / unsubscribed)
+  - `legal_basis` (Text)
+  - `unsubscribe_token` (Text)
+  - `do_not_contact` (Boolean)
+  - `last_contacted_at` (Timestamp)
+- Filter nach Permission-Status
+- Bulk-Import CTA (aus Recherche)
+- Tags + Segmente bleiben
 
-- `BASE_TILES` Array: MOD-05 bleibt bereits enthalten — keine Aenderung noetig
-- `MODULES` Array: MOD-05 Eintrag umbenennen: `name: 'Website Builder'`, `description: 'KI-Website-Baukasten'`
-- `ROLE_MODULE_MAP`: MOD-05 Eintrag bleibt — keine Aenderung noetig
+### Schritt 4: Recherche aufwerten (SOAT Engine)
 
-### Schritt 6: Weitere Registries aktualisieren
+Die bestehende `AdminKiOfficeRecherche.tsx` wird zu `AdminRecherche.tsx`:
 
-| Datei | Aenderung |
-|-------|-----------|
-| `src/components/portal/HowItWorks/moduleContents.ts` | MOD-05 Eintrag: Titel, Beschreibung, SubTiles auf Website Builder umschreiben |
-| `src/data/sotWebsiteModules.ts` | MOD-05 Eintrag: code bleibt, name/tagline auf Website Builder |
-| `src/manifests/goldenPathProcesses.ts` | GP-WEBSITE: `moduleCode: 'MOD-21'` zu `'MOD-05'` |
-| `src/manifests/demoDataManifest.ts` | GP-WEBSITE: `moduleCode: 'MOD-21'` zu `'MOD-05'` |
-| `src/manifests/bwaKontenplan.ts` | JSDoc-Kommentar: "MOD-05 MSV" zu "MOD-04 Verwaltung" (BWA gehoert jetzt zu MOD-04) |
-| `src/components/portal/ModuleDashboard.tsx` | Kommentar "MOD-05 MSV" aktualisieren |
-| `src/pages/presentation/PresentationPage.tsx` | MOD-05 Eintrag: Name "Website Builder" statt "MSV" |
-| `src/docs/audit-tracker.md` | MOD-05 Zeile aktualisieren |
+- **Widget-Grid** oben (Auftraege als Kacheln)
+- **Inline-Case** darunter (ausgewaehlter Auftrag)
+- Live-Fortschrittsbalken mit Phasen (Strategy → Discovery → Crawl → Extract → Validate)
+- Ergebnis-Tabelle mit Inline-Actions (validieren, suppress, importieren)
+- Bulk-Import ins Kontaktbuch
+- **Neue DB-Tabellen**: `soat_search_orders`, `soat_search_results`
 
-### Schritt 7: Website-Builder JSDoc-Kommentare
+### Schritt 5: Sidebar + Navigation
 
-Alle `MOD-21` Referenzen in den Website-Builder-Dateien auf `MOD-05` aendern:
-- `src/pages/portal/WebsiteBuilderPage.tsx` (Header-Kommentar)
-- `src/pages/portal/website-builder/WBDashboard.tsx`
-- `src/pages/portal/website-builder/WBEditor.tsx`
-- `src/pages/portal/website-builder/WBSeo.tsx`
-- `src/pages/portal/website-builder/WBDesign.tsx`
-- `src/shared/website-renderer/designTemplates.ts`
-- `src/shared/website-renderer/types.ts`
-- `src/router/ManifestRouter.tsx` (Kommentar Zeile 273)
+**AdminSidebar.tsx** — Gruppe "KI Office" zeigt nur 3 Items:
+- Recherche
+- Kontaktbuch
+- E-Mail Agent
 
-### Schritt 8: Alte MSV-Seiten bereinigen
+### Schritt 6: DB-Migration
 
-**Loeschen** (nicht mehr referenziert nach Schritt 2):
-- `src/pages/portal/msv/KiTelefonUebersicht.tsx` — Platzhalter-Seite, wird nirgends mehr geroutet
-- `src/pages/portal/msv/index.ts` — Re-Exports der alten Tabs (ObjekteTab etc. werden direkt in VerwaltungTab importiert)
+**Neue Tabellen:**
+- `soat_search_orders` (Auftraege mit Phasen-Tracking)
+- `soat_search_results` (Treffer/Kandidaten)
 
-**Behalten** (werden noch referenziert):
-- `src/pages/portal/MSVPage.tsx` — Wird zu reinem Redirect auf `/portal/immobilien/verwaltung`
-- `src/pages/portal/msv/MSVDashboard.tsx` — Wird von MSVPage importiert
-- `src/pages/portal/msv/ObjekteTab.tsx` etc. — Falls noch in VerwaltungTab referenziert
+**Erweiterte Tabellen:**
+- `contacts` + Compliance-Spalten (permission_status, legal_basis, unsubscribe_token, do_not_contact, last_contacted_at)
 
-**Vereinfachen:**
-- `MSVPage.tsx`: Alle Routes auf einen einzigen Redirect zu `/portal/immobilien/verwaltung` reduzieren
-- `MSVDashboard.tsx`: Durch einfachen Navigate-Redirect ersetzen
+**Bestehende Tabellen bleiben:**
+- `admin_email_sequences`, `admin_email_sequence_steps`, `admin_email_templates` (werden vom E-Mail Agent Tab genutzt)
+- `admin_email_threads`, `admin_inbound_emails`, `admin_outbound_emails` (werden vom Posteingang Tab genutzt)
+- `admin_research_jobs` (Legacy, wird durch soat_search_orders ersetzt)
+- `contacts` (bleibt Kern-Tabelle)
 
-### Schritt 9: Spec-Dokument
+### Schritt 7: Dateien loeschen / umbenennen
 
-- `spec/current/02_modules/mod-05_msv_contract.md` — Inhalt ersetzen durch Website-Builder-Contract oder als "DEPRECATED — moved to MOD-04 Verwaltung" markieren
+| Aktion | Datei |
+|---|---|
+| LOESCHEN | `AdminKiOfficeDashboard.tsx` (Dashboard entfaellt) |
+| UMBENENNEN | `AdminKiOfficeRecherche.tsx` → `AdminRecherche.tsx` (aufgewertet) |
+| UMBENENNEN | `AdminKiOfficeKontakte.tsx` → `AdminKontaktbuch.tsx` (erweitert) |
+| NEU | `AdminEmailAgent.tsx` (vereint Email + Sequenzen + Templates als Tabs) |
+| LOESCHEN | `AdminKiOfficeEmail.tsx` (Code wandert in EmailAgent Tab 1) |
+| LOESCHEN | `AdminKiOfficeSequenzen.tsx` (Code wandert in EmailAgent Tab 2) |
+| LOESCHEN | `AdminKiOfficeTemplates.tsx` (Code wandert in EmailAgent Tab 3) |
 
-### Schritt 10: Backlog aktualisieren
-
-- `src/docs/backlog-consolidated-v8.md` um diesen Migrationsschritt ergaenzen
-- Memory-Eintraege aktualisieren (MOD-21 Referenz in mod-21-website-builder-spec)
+Die Komponenten unter `src/components/admin/ki-office/` (ThreadList, ConversationView, ContactPanel, AIReplyAssistant) bleiben erhalten — sie werden vom E-Mail Agent Posteingang-Tab importiert.
 
 ---
 
 ## Was sich NICHT aendert
 
-- Die Route `/portal/website-builder` bleibt identisch (base-Pfad im Manifest)
-- Alle Website-Builder-Komponenten (WBDashboard, WBEditor, WBSeo, WBDesign) bleiben in `src/pages/portal/website-builder/`
-- Edge Functions (sot-website-ai-generate, sot-website-publish, sot-website-update-section) bleiben unveraendert
-- DB-Tabellen (sot_websites, sot_website_sections, etc.) bleiben unveraendert
-- Die `msv_*` Tabellen (msv_rent_payments, msv_book_values etc.) bleiben unveraendert — sie gehoeren jetzt zu MOD-04 Verwaltung
+- Edge Functions (`sot-research-engine`, `sot-research-firecrawl-extract`, `sot-admin-mail-send`) bleiben
+- Hooks (`useAdminResearch`, `useAdminSequences`, `useAdminTemplates`, `useAdminEmailThreads`) bleiben (werden nur von neuen Seiten importiert)
+- DB-Tabellen fuer E-Mail-System bleiben identisch
+- Bestehende Kontakte-Daten bleiben erhalten
 
----
+## Implementierungsreihenfolge
 
-## Risikobewertung
+1. DB-Migration (Compliance-Spalten + SOAT-Tabellen)
+2. Routing konsolidieren (3 Routes statt 7)
+3. E-Mail Agent bauen (3-Tab Seite)
+4. Kontaktbuch erweitern (Compliance-UI)
+5. Recherche aufwerten (Widget-Grid + Progress)
+6. Sidebar anpassen
+7. Alte Dateien loeschen
+8. ManifestRouter Imports bereinigen
 
-| Risiko | Bewertung | Mitigation |
-|--------|-----------|------------|
-| Routing-Bruch | Niedrig | Route `/portal/website-builder` bleibt gleich, nur Modulcode aendert sich |
-| RBAC-Bruch | Niedrig | MOD-05 ist bereits in BASE_TILES und ROLE_MODULE_MAP |
-| DMS-Ordner | Keins | MOD_05 Ordner existiert bereits pro Tenant, wird jetzt fuer Website-Builder genutzt |
-| Dangling Imports | Niedrig | KiTelefonUebersicht wird nur vom alten MOD-05 Manifest referenziert |
+## Technische Zusammenfassung
 
----
-
-## Technische Details
-
-### Dateien mit Aenderungen (gesamt: ca. 20)
-
-| Datei | Art | Aufwand |
-|-------|-----|---------|
-| DB tile_catalog | UPDATE | Klein |
-| src/manifests/routesManifest.ts | EDIT | Mittel |
-| src/manifests/areaConfig.ts | EDIT | Klein |
-| src/manifests/armstrongManifest.ts | EDIT | Klein (7x String-Replace) |
-| src/constants/rolesMatrix.ts | EDIT | Klein |
-| src/components/portal/HowItWorks/moduleContents.ts | EDIT | Klein |
-| src/data/sotWebsiteModules.ts | EDIT | Klein |
-| src/manifests/goldenPathProcesses.ts | EDIT | Klein |
-| src/manifests/demoDataManifest.ts | EDIT | Klein |
-| src/manifests/bwaKontenplan.ts | EDIT | Klein (Kommentar) |
-| src/components/portal/ModuleDashboard.tsx | EDIT | Klein (Kommentar) |
-| src/pages/presentation/PresentationPage.tsx | EDIT | Klein |
-| 7x Website-Builder .tsx/.ts Dateien | EDIT | Klein (JSDoc-Kommentare) |
-| src/pages/portal/MSVPage.tsx | EDIT | Klein (Vereinfachung) |
-| src/pages/portal/msv/KiTelefonUebersicht.tsx | LOESCHEN | — |
-| src/pages/portal/msv/index.ts | LOESCHEN | — |
-| spec/current/02_modules/mod-05_msv_contract.md | EDIT | Klein |
-| src/docs/backlog-consolidated-v8.md | EDIT | Klein |
-| src/docs/audit-tracker.md | EDIT | Klein |
+| Kategorie | Anzahl |
+|---|---|
+| Neue DB-Spalten (contacts) | 5 |
+| Neue DB-Tabellen | 2 |
+| Neue UI-Seiten | 1 (EmailAgent) |
+| Umbenannte UI-Seiten | 2 |
+| Geloeschte UI-Seiten | 4 |
+| Routing-Aenderungen | 2 Dateien |
+| Sidebar-Aenderung | 1 Datei |
