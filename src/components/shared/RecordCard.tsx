@@ -10,6 +10,7 @@ import { RECORD_CARD } from '@/config/designManifest';
 import { RECORD_CARD_TYPES, type RecordCardEntityType } from '@/config/recordCardManifest';
 import { FileDropZone } from '@/components/dms/FileDropZone';
 import { RecordCardGallery } from './RecordCardGallery';
+import { EntityStorageTree } from './EntityStorageTree';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -40,9 +41,11 @@ interface RecordCardProps {
   /** Photo gallery */
   photos?: string[];
   onPhotosChange?: (photos: string[]) => void;
-  /** Data room files */
+  /** Data room files (legacy flat list — used when no tenantId) */
   files?: RecordCardFile[];
   onFileDrop?: (files: File[]) => void;
+  /** Entity storage tree (preferred over flat files) */
+  tenantId?: string;
   /** Actions */
   onSave?: () => void;
   onDelete?: () => void;
@@ -65,6 +68,7 @@ export function RecordCard({
   onPhotosChange,
   files = [],
   onFileDrop,
+  tenantId,
   onSave,
   onDelete,
   saving,
@@ -181,8 +185,18 @@ export function RecordCard({
         {children}
       </div>
 
-      {/* Data room */}
-      {(files.length > 0 || onFileDrop) && (
+      {/* Data room — EntityStorageTree when tenantId available, else flat list */}
+      {tenantId && config ? (
+        <div className="mt-6">
+          <p className={RECORD_CARD.SECTION_TITLE}>Datenraum</p>
+          <EntityStorageTree
+            tenantId={tenantId}
+            entityType={entityType}
+            entityId={id}
+            moduleCode={config.moduleCode}
+          />
+        </div>
+      ) : (files.length > 0 || onFileDrop) ? (
         <div className="mt-6">
           <p className={RECORD_CARD.SECTION_TITLE}>
             Datenraum ({files.length} {files.length === 1 ? 'Datei' : 'Dateien'})
@@ -209,7 +223,7 @@ export function RecordCard({
             </div>
           </FileDropZone>
         </div>
-      )}
+      ) : null}
 
       {/* Actions */}
       {(onSave || onDelete) && (

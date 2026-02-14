@@ -1,5 +1,6 @@
 /**
  * CarsFahrzeuge — Merged Autos + Bikes: editable vehicle records with DMS & Vimcar logbook
+ * All editing is inline — no popup dialogs.
  */
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -9,17 +10,18 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import { EntityStorageTree } from '@/components/shared/EntityStorageTree';
 
 import { toast } from 'sonner';
 import {
   Plus, Search, Car, Bike, Gauge, Calendar, User, Shield,
   ChevronDown, FileText, ShieldCheck, AlertTriangle, BookOpen, FolderOpen, X,
-  Check, Pencil, Wifi, WifiOff
+  Check, Pencil, Wifi, Save, Loader2
 } from 'lucide-react';
 import { format, differenceInDays } from 'date-fns';
 import { de } from 'date-fns/locale';
-import { VehicleCreateDialog } from './VehicleCreateDialog';
 import { cn } from '@/lib/utils';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
@@ -112,6 +114,17 @@ const DEMO_INSURANCES: Record<string, Record<string, string>> = {
   'bike-3': { insurer: 'HDI', policy_number: 'HDI-2024-33456', coverage_type: 'Teilkasko', annual_premium: '450,00 €', sf_class_liability: 'SF 10', sf_class_comprehensive: '—', deductible_partial: '150 €', deductible_comprehensive: '—' },
 };
 
+const INSURANCE_FIELD_LABELS: Record<string, string> = {
+  insurer: 'Versicherer',
+  policy_number: 'Policen-Nr.',
+  coverage_type: 'Deckungsart',
+  annual_premium: 'Jahresbeitrag',
+  sf_class_liability: 'SF-Klasse KH',
+  sf_class_comprehensive: 'SF-Klasse VK',
+  deductible_partial: 'SB Teilkasko',
+  deductible_comprehensive: 'SB Vollkasko',
+};
+
 const DEMO_TRIPS = [
   { id: 't1', date: '12.02.2026', start: 'München', end: 'Stuttgart', km: 234, purpose: 'Geschäftlich' as const, customer: 'Huber GmbH' },
   { id: 't2', date: '10.02.2026', start: 'München', end: 'Nürnberg', km: 167, purpose: 'Geschäftlich' as const, customer: 'Meyer AG' },
@@ -125,8 +138,10 @@ const isBike = (v: any) => v.vehicle_type === 'bike' || v.body_type === 'Motorra
 export default function CarsFahrzeuge() {
   const { activeTenantId } = useAuth();
   const [search, setSearch] = useState('');
-  const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(null);
+  const [isCreatingNew, setIsCreatingNew] = useState(false);
+  const [newVehicleData, setNewVehicleData] = useState<Record<string, string>>({});
+  const [isSavingNew, setIsSavingNew] = useState(false);
 
   const { data: dbVehicles, refetch } = useQuery({
     queryKey: ['cars_vehicles', activeTenantId],
@@ -170,13 +185,55 @@ export default function CarsFahrzeuge() {
 
   const selectedVehicle = vehicles.find((v: any) => v.id === selectedVehicleId) as any;
 
+  const handleCreateInline = () => {
+    setSelectedVehicleId(null);
+    setIsCreatingNew(true);
+    setNewVehicleData({});
+  };
+
+  const handleSaveNewVehicle = async () => {
+    if (!activeTenantId) return;
+    if (!newVehicleData.license_plate?.trim()) {
+      toast.error('Kennzeichen ist erforderlich');
+      return;
+    }
+    setIsSavingNew(true);
+    try {
+      const { error } = await supabase.from('cars_vehicles').insert({
+        tenant_id: activeTenantId,
+        license_plate: newVehicleData.license_plate.toUpperCase().trim(),
+        make: newVehicleData.make || null,
+        model: newVehicleData.model || null,
+        first_registration_date: newVehicleData.first_registration_date || null,
+        holder_name: newVehicleData.holder_name || null,
+        current_mileage_km: newVehicleData.current_mileage_km ? parseInt(newVehicleData.current_mileage_km) : null,
+        hu_valid_until: newVehicleData.hu_valid_until || null,
+        hsn: newVehicleData.hsn || null,
+        tsn: newVehicleData.tsn || null,
+      });
+      if (error) throw error;
+      toast.success('Fahrzeug angelegt');
+      setIsCreatingNew(false);
+      setNewVehicleData({});
+      refetch();
+    } catch (error: any) {
+      if (error.code === '23505') {
+        toast.error('Kennzeichen bereits vorhanden');
+      } else {
+        toast.error(error.message || 'Fehler beim Anlegen');
+      }
+    } finally {
+      setIsSavingNew(false);
+    }
+  };
+
   return (
     <PageShell>
       <ModulePageHeader
         title="Fahrzeuge"
         description="Autos & Motorräder verwalten — Klicken Sie auf ein Fahrzeug für die vollständige Akte"
         actions={
-          <Button onClick={() => setCreateDialogOpen(true)}>
+          <Button onClick={handleCreateInline}>
             <Plus className="h-4 w-4 mr-2" /> Fahrzeug hinzufügen
           </Button>
         }
@@ -198,7 +255,7 @@ export default function CarsFahrzeuge() {
                   "glass-card overflow-hidden cursor-pointer group transition-all h-full",
                   isSelected ? "border-primary ring-2 ring-primary/20" : "border-primary/10 hover:border-primary/30"
                 )}
-                onClick={() => setSelectedVehicleId(isSelected ? null : vehicle.id)}
+                onClick={() => { setIsCreatingNew(false); setSelectedVehicleId(isSelected ? null : vehicle.id); }}
               >
                 <div className="relative h-[55%] bg-muted/30 overflow-hidden">
                   <img src={getImage(vehicle)} alt={`${vehicle.make} ${vehicle.model}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
@@ -238,6 +295,55 @@ export default function CarsFahrzeuge() {
           );
         })}
       </WidgetGrid>
+
+      {/* Inline Neuanlage */}
+      {isCreatingNew && (
+        <Card className="glass-card border-primary/20 animate-in slide-in-from-top-2 duration-300">
+          <CardContent className="p-6 space-y-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Car className="h-5 w-5 text-primary" />
+                <h2 className="text-lg font-bold">Neues Fahrzeug anlegen</h2>
+              </div>
+              <Button variant="ghost" size="icon" onClick={() => setIsCreatingNew(false)}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <Separator />
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {[
+                { key: 'license_plate', label: 'Kennzeichen *', placeholder: 'B-XY 1234' },
+                { key: 'make', label: 'Hersteller', placeholder: 'BMW' },
+                { key: 'model', label: 'Modell', placeholder: 'M4 Competition' },
+                { key: 'first_registration_date', label: 'Erstzulassung', placeholder: '', type: 'date' },
+                { key: 'holder_name', label: 'Halter', placeholder: 'Max Mustermann' },
+                { key: 'current_mileage_km', label: 'KM-Stand', placeholder: '45000', type: 'number' },
+                { key: 'hu_valid_until', label: 'HU gültig bis', placeholder: '', type: 'date' },
+                { key: 'hsn', label: 'HSN', placeholder: '0603' },
+                { key: 'tsn', label: 'TSN', placeholder: 'BNH' },
+              ].map(f => (
+                <div key={f.key} className="space-y-1">
+                  <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">{f.label}</Label>
+                  <Input
+                    type={f.type || 'text'}
+                    placeholder={f.placeholder}
+                    value={newVehicleData[f.key] || ''}
+                    onChange={e => setNewVehicleData(prev => ({ ...prev, [f.key]: e.target.value }))}
+                    className="h-8 text-sm"
+                  />
+                </div>
+              ))}
+            </div>
+            <div className="flex justify-end gap-2 pt-2 border-t border-border/30">
+              <Button variant="outline" size="sm" onClick={() => setIsCreatingNew(false)}>Abbrechen</Button>
+              <Button size="sm" onClick={handleSaveNewVehicle} disabled={isSavingNew} className="gap-2">
+                {isSavingNew ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                Fahrzeug anlegen
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Inline Fahrzeugakte */}
       {selectedVehicle && (
@@ -289,7 +395,18 @@ export default function CarsFahrzeuge() {
 
             <Separator />
 
-            <InsuranceSection vehicleId={selectedVehicle.id} demoData={DEMO_INSURANCES[selectedVehicle.id]} />
+            <EditableAkteSection
+              icon={ShieldCheck}
+              title="Versicherung"
+              vehicleId={selectedVehicle.id}
+              isDemo={isDemo}
+              fields={Object.entries(DEMO_INSURANCES[selectedVehicle.id] || {}).map(([key, value]) => ({
+                key,
+                label: INSURANCE_FIELD_LABELS[key] || key.replace(/_/g, ' '),
+                value: value,
+              }))}
+              onSaved={() => refetch()}
+            />
 
             <Separator />
 
@@ -304,13 +421,20 @@ export default function CarsFahrzeuge() {
             <Separator />
 
             <AkteSection icon={FolderOpen} title="Datenraum">
-              <VehicleDatenraum />
+              {activeTenantId ? (
+                <EntityStorageTree
+                  tenantId={activeTenantId}
+                  entityType="vehicle"
+                  entityId={selectedVehicle.id}
+                  moduleCode="MOD_17"
+                />
+              ) : (
+                <p className="text-sm text-muted-foreground">Kein Tenant aktiv</p>
+              )}
             </AkteSection>
           </CardContent>
         </Card>
       )}
-
-      <VehicleCreateDialog open={createDialogOpen} onOpenChange={setCreateDialogOpen} onSuccess={() => { refetch(); setCreateDialogOpen(false); }} />
     </PageShell>
   );
 }
@@ -392,22 +516,6 @@ function EditableAkteSection({ icon: Icon, title, vehicleId, isDemo, fields, onS
   );
 }
 
-function InsuranceSection({ vehicleId, demoData }: { vehicleId: string; demoData?: Record<string, string> }) {
-  const data = demoData || { insurer: '—', policy_number: '—', coverage_type: '—', annual_premium: '—' };
-  return (
-    <AkteSection icon={ShieldCheck} title="Versicherung">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {Object.entries(data).map(([key, value]) => (
-          <div key={key}>
-            <dt className="text-[10px] text-muted-foreground uppercase tracking-wider">{key.replace(/_/g, ' ')}</dt>
-            <dd className="text-sm font-medium">{value}</dd>
-          </div>
-        ))}
-      </div>
-    </AkteSection>
-  );
-}
-
 function VimcarLogbook() {
   return (
     <AkteSection icon={BookOpen} title="Fahrtenbuch">
@@ -436,18 +544,5 @@ function VimcarLogbook() {
         ))}
       </div>
     </AkteSection>
-  );
-}
-
-function VehicleDatenraum() {
-  return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-      {['Fahrzeugschein', 'Fahrzeugbrief', 'TÜV-Bericht', 'Kaufvertrag'].map((d) => (
-        <div key={d} className="flex items-center gap-2 p-2 rounded-lg border border-border/50 bg-muted/20">
-          <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
-          <span className="text-xs truncate">{d}</span>
-        </div>
-      ))}
-    </div>
   );
 }
