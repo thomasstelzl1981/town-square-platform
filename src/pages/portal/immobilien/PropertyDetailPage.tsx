@@ -276,7 +276,8 @@ export default function PropertyDetailPage() {
         .select('*')
         .eq('property_id', id)
         .eq('tenant_id', activeTenantId)
-        .eq('unit_number', 'MAIN')
+        .order('created_at', { ascending: true })
+        .limit(1)
         .maybeSingle();
 
       setUnit(unitData);
