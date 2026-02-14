@@ -11,11 +11,12 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Table, TableHeader, TableHead, TableRow, TableCell, TableBody } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Mail, Copy, FileText, Download, AlertCircle, CheckCircle, Clock, Loader2, Inbox, Eye } from 'lucide-react';
+import { Mail, Copy, FileText, Download, AlertCircle, CheckCircle, Clock, Loader2, Inbox, Eye, Upload, ExternalLink, Info } from 'lucide-react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { resolveStorageSignedUrl } from '@/lib/storage-url';
+import { useNavigate } from 'react-router-dom';
 
 interface InboundEmail {
   id: string;
@@ -41,17 +42,37 @@ interface InboundAttachment {
 }
 
 export function PosteingangTab() {
-  const { user } = useAuth();
+  const { user, activeTenantId } = useAuth();
+  const navigate = useNavigate();
   const [selectedEmail, setSelectedEmail] = useState<InboundEmail | null>(null);
 
-  // Fetch mailbox address
+  // Check for active postservice mandate
+  const { data: activeMandate, isLoading: mandateLoading } = useQuery({
+    queryKey: ['postservice-mandate-active', activeTenantId],
+    queryFn: async () => {
+      if (!activeTenantId) return null;
+      const { data, error } = await supabase
+        .from('postservice_mandates')
+        .select('*')
+        .eq('tenant_id', activeTenantId)
+        .eq('status', 'active')
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!activeTenantId,
+  });
+
+  const hasActiveContract = !!activeMandate;
+
+  // Only fetch mailbox + emails if contract is active
   const { data: mailboxAddress } = useQuery({
     queryKey: ['inbound-mailbox'],
     queryFn: async () => {
       const session = await supabase.auth.getSession();
       const token = session.data.session?.access_token;
       if (!token) return null;
-
       const res = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sot-inbound-receive?action=mailbox`,
         {
@@ -65,10 +86,9 @@ export function PosteingangTab() {
       const result = await res.json();
       return result.address as string;
     },
-    enabled: !!user,
+    enabled: !!user && hasActiveContract,
   });
 
-  // Fetch inbound emails
   const { data: emails = [], isLoading } = useQuery({
     queryKey: ['inbound-emails'],
     queryFn: async () => {
@@ -80,10 +100,9 @@ export function PosteingangTab() {
       if (error) throw error;
       return (data || []) as InboundEmail[];
     },
-    enabled: !!user,
+    enabled: !!user && hasActiveContract,
   });
 
-  // Fetch attachments for selected email
   const { data: attachments = [], isLoading: attachmentsLoading } = useQuery({
     queryKey: ['inbound-attachments', selectedEmail?.id],
     queryFn: async () => {
@@ -145,9 +164,107 @@ export function PosteingangTab() {
     }
   };
 
-
   const SKELETON_ROWS = 10;
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  // GATE: No active contract → Info screen
+  // ═══════════════════════════════════════════════════════════════════════════
+  if (mandateLoading) {
+    return (
+      <PageShell>
+        <ModulePageHeader title="Posteingang" description="Digitaler Postservice" />
+        <div className="flex items-center justify-center py-16">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      </PageShell>
+    );
+  }
+
+  if (!hasActiveContract) {
+    return (
+      <PageShell>
+        <ModulePageHeader title="Posteingang" description="Digitaler Postservice für eingehende Dokumente" />
+
+        <Card className="glass-card max-w-2xl mx-auto">
+          <CardHeader className="text-center pb-2">
+            <div className="mx-auto p-4 rounded-2xl bg-primary/10 w-fit mb-3">
+              <Mail className="h-8 w-8 text-primary" />
+            </div>
+            <CardTitle className="text-xl">Digitaler Postservice</CardTitle>
+            <CardDescription className="text-base mt-1">
+              Empfangen Sie Ihre Post digital – automatisch ausgelesen, sortiert und archiviert.
+            </CardDescription>
+          </CardHeader>
+
+          <CardContent className="space-y-6">
+            {/* How it works */}
+            <div className="space-y-3">
+              <h4 className="font-semibold text-sm text-foreground">So funktioniert es</h4>
+              <div className="grid gap-3">
+                {[
+                  { step: '1', text: 'Postservice aktivieren und Vertrag abschließen' },
+                  { step: '2', text: 'Persönliche Inbound-E-Mail-Adresse erhalten' },
+                  { step: '3', text: 'PDFs per E-Mail senden oder Post-Scan-Dienst einrichten' },
+                  { step: '4', text: 'Dokumente werden automatisch ausgelesen und vorsortiert' },
+                ].map((item) => (
+                  <div key={item.step} className="flex items-start gap-3">
+                    <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
+                      {item.step}
+                    </div>
+                    <span className="text-sm text-muted-foreground">{item.text}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* External services hint */}
+            <div className="p-4 rounded-xl bg-muted/50 space-y-2">
+              <div className="flex items-center gap-2">
+                <Info className="h-4 w-4 text-muted-foreground shrink-0" />
+                <span className="text-sm font-medium text-foreground">Externe Post-Scan-Dienste</span>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Sie können Dienste wie <strong>CAYA</strong>, <strong>Dropscan</strong> oder <strong>E-Post</strong> nutzen, 
+                um physische Post digitalisieren zu lassen. Die gescannten PDFs leiten Sie dann an Ihre 
+                persönliche Inbound-Adresse weiter.
+              </p>
+            </div>
+
+            {/* Manual upload hint */}
+            <div className="p-4 rounded-xl bg-muted/50 space-y-2">
+              <div className="flex items-center gap-2">
+                <Upload className="h-4 w-4 text-muted-foreground shrink-0" />
+                <span className="text-sm font-medium text-foreground">Manueller PDF-Upload</span>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Alternativ können Sie PDFs auch direkt über den <strong>Storage-Tab</strong> hochladen 
+                und manuell in die richtige Ordnerstruktur einsortieren.
+              </p>
+            </div>
+
+            {/* CTA */}
+            <Button
+              className="w-full"
+              size="lg"
+              onClick={() => navigate('/portal/dms/einstellungen')}
+            >
+              <Mail className="h-4 w-4 mr-2" />
+              Postservice aktivieren
+            </Button>
+
+            {/* Pricing hint */}
+            <p className="text-xs text-center text-muted-foreground">
+              Ab 30 Credits/Monat · 3 Credits pro verarbeitetem Dokument
+            </p>
+          </CardContent>
+        </Card>
+      </PageShell>
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // ACTIVE CONTRACT: Show full inbox
+  // ═══════════════════════════════════════════════════════════════════════════
   return (
     <PageShell>
       <ModulePageHeader title="Posteingang" description="Hier gehen E-Mails und Dokumente aus Ihrem digitalen Postservice ein." />
@@ -167,7 +284,6 @@ export function PosteingangTab() {
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              // Loading skeleton rows
               Array.from({ length: SKELETON_ROWS }).map((_, i) => (
                 <TableRow key={`skeleton-${i}`}>
                   <TableCell><Skeleton className="h-4 w-24" /></TableCell>
@@ -209,7 +325,6 @@ export function PosteingangTab() {
                 </TableRow>
               ))
             ) : (
-              // Empty state: 10 placeholder rows with subtle dashes
               <>
                 {Array.from({ length: SKELETON_ROWS }).map((_, i) => (
                   <TableRow key={`empty-${i}`} className="hover:bg-transparent">
@@ -226,7 +341,6 @@ export function PosteingangTab() {
           </TableBody>
         </Table></div>
 
-        {/* Hint below table when empty */}
         {!isLoading && emails.length === 0 && (
           <div className="border-t px-4 py-4 text-center">
             <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
@@ -242,7 +356,7 @@ export function PosteingangTab() {
         )}
       </Card>
 
-      {/* Upload Email Card — below the table */}
+      {/* Upload Email Card */}
       <Card className="glass-card overflow-hidden">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
@@ -266,16 +380,14 @@ export function PosteingangTab() {
             <code className="flex-1 px-3 py-2.5 bg-muted rounded-lg font-mono text-sm border">
               {mailboxAddress || 'Wird geladen...'}
             </code>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={copyAddress}
-              disabled={!mailboxAddress}
-            >
+            <Button variant="outline" size="sm" onClick={copyAddress} disabled={!mailboxAddress}>
               <Copy className="h-4 w-4 mr-1" />
               Kopieren
             </Button>
           </div>
+          <p className="text-xs text-muted-foreground mt-2">
+            Pro verarbeitetem Dokument wird 1 Credit berechnet.
+          </p>
         </CardContent>
       </Card>
 

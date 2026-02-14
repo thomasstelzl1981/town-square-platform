@@ -73,7 +73,6 @@ const AdminKontaktbuch = React.lazy(() => import('@/pages/admin/ki-office/AdminK
 const AdminEmailAgent = React.lazy(() => import('@/pages/admin/ki-office/AdminEmailAgent'));
 
 const Agreements = React.lazy(() => import('@/pages/admin/Agreements'));
-const Inbox = React.lazy(() => import('@/pages/admin/Inbox'));
 const PartnerVerification = React.lazy(() => import('@/pages/admin/PartnerVerification'));
 const MasterTemplates = React.lazy(() => import('@/pages/admin/MasterTemplates'));
 const MasterTemplatesImmobilienakte = React.lazy(() => import('@/pages/admin/MasterTemplatesImmobilienakte'));
@@ -237,7 +236,6 @@ const adminComponentMap: Record<string, React.ComponentType> = {
   AdminEmailAgent,
   
   Agreements,
-  Inbox,
   PartnerVerification,
   RolesManagement,
   AdminFutureRoomLayout,
