@@ -1,12 +1,13 @@
 /**
  * PV Plant Dossier — Full vertical scrollable Akte
- * All sections visible at once: KPIs, Monitoring, Standort, MaStR, Netz, Zähler, Technik, Dokumente
+ * All sections visible at once: KPIs, Monitoring, Connector, Standort, MaStR, Netz, Zähler, Technik, Dokumente
  * No tabs, no popups — one continuous flow. All fields editable with central save.
  */
 import { useMemo, useState, useCallback } from 'react';
 import { DESIGN } from '@/config/designManifest';
 import { PvPlant, usePvPlants } from '@/hooks/usePvPlants';
 import { usePvMonitoring } from '@/hooks/usePvMonitoring';
+import { usePvConnectors, usePvMeasurements } from '@/hooks/usePvConnectors';
 import { generate24hCurve } from '@/components/photovoltaik/DemoLiveGenerator';
 import { PV_REQUIRED_DOCS } from '@/hooks/usePvDMS';
 import { EntityStorageTree } from '@/components/shared/EntityStorageTree';
@@ -16,10 +17,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Sun, MapPin, Shield, Zap, Gauge, Settings, Activity,
   FolderOpen, Building2, Circle, BatteryCharging, TrendingUp,
-  Save, Loader2,
+  Save, Loader2, Plug, Copy, CheckCircle, AlertCircle, WifiOff,
 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { toast } from 'sonner';
@@ -72,6 +74,34 @@ export default function PVPlantDossier({ plant, isDemo }: Props) {
   const live = liveData.get(plant.id);
   const curve = useMemo(() => generate24hCurve(plant.kwp ?? 10), [plant.kwp]);
 
+  // Connector state
+  const { connectors, upsertConnector } = usePvConnectors(plant.id);
+  const { latestMeasurement, measurements24h } = usePvMeasurements(plant.id);
+  const [connectorType, setConnectorType] = useState<string>(plant.active_connector || 'demo_timo_leif');
+  const [connectorConfig, setConnectorConfig] = useState<Record<string, string>>({
+    inverter_ip: '', inverter_port: '502', unit_id: '3', poll_interval_sec: '10', host: '',
+  });
+
+  // Load existing connector config
+  const activeConnector = connectors.find(c => c.provider === connectorType);
+  const connectorStatus = activeConnector?.status || 'not_configured';
+
+  // Use real measurements if available, else demo
+  const hasRealData = !!latestMeasurement && latestMeasurement.source !== 'demo';
+  const displayPower = hasRealData ? (latestMeasurement?.current_power_w ?? 0) : (live?.currentPowerW ?? 0);
+  const displayEnergyToday = hasRealData ? (latestMeasurement?.energy_today_kwh ?? 0) : (live?.energyTodayKwh ?? 0);
+
+  // Chart data: real measurements or demo curve
+  const chartData = useMemo(() => {
+    if (measurements24h.length > 5) {
+      return measurements24h.map(m => ({
+        hour: new Date(m.ts).getHours() + new Date(m.ts).getMinutes() / 60,
+        power_w: m.current_power_w ?? 0,
+      }));
+    }
+    return curve;
+  }, [measurements24h, curve]);
+
   // Editable form state
   const [formData, setFormData] = useState<Record<string, string>>({});
   const [isSaving, setIsSaving] = useState(false);
@@ -121,11 +151,12 @@ export default function PVPlantDossier({ plant, isDemo }: Props) {
         </CardContent></Card>
         <Card><CardContent className="p-3 text-center">
           <p className="text-xs text-muted-foreground">Aktuelle Leistung</p>
-          <p className="text-kpi font-mono">{live?.currentPowerW.toLocaleString('de-DE') ?? (isDemo ? '4.230' : '—')} <span className="text-xs font-normal">W</span></p>
+          <p className="text-kpi font-mono">{displayPower.toLocaleString('de-DE')} <span className="text-xs font-normal">W</span></p>
+          {hasRealData && <Badge variant="outline" className="text-[10px] mt-1">Live</Badge>}
         </CardContent></Card>
         <Card><CardContent className="p-3 text-center">
           <p className="text-xs text-muted-foreground">Ertrag heute</p>
-          <p className="text-kpi font-mono">{live?.energyTodayKwh.toLocaleString('de-DE') ?? (isDemo ? '18,4' : '—')} <span className="text-xs font-normal">kWh</span></p>
+          <p className="text-kpi font-mono">{displayEnergyToday.toLocaleString('de-DE', { maximumFractionDigits: 1 })} <span className="text-xs font-normal">kWh</span></p>
         </CardContent></Card>
         <Card><CardContent className="p-3 text-center">
           <p className="text-xs text-muted-foreground">Status</p>
@@ -162,7 +193,7 @@ export default function PVPlantDossier({ plant, isDemo }: Props) {
         </div>
         <div className="h-52">
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={curve}>
+            <AreaChart data={chartData}>
               <defs>
                 <linearGradient id={`grad-dossier-${plant.id}`} x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
@@ -175,6 +206,183 @@ export default function PVPlantDossier({ plant, isDemo }: Props) {
               <Area type="monotone" dataKey="power_w" stroke="hsl(var(--primary))" fill={`url(#grad-dossier-${plant.id})`} strokeWidth={2} />
             </AreaChart>
           </ResponsiveContainer>
+        </div>
+      </SectionCard>
+
+      {/* ─── B2) Connector / Fernüberwachung ─── */}
+      <SectionCard icon={Plug} title="Connector / Fernüberwachung">
+        <div className="space-y-4">
+          {/* Connector Type Selection */}
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-muted-foreground whitespace-nowrap">Typ:</span>
+            <Select value={connectorType} onValueChange={setConnectorType}>
+              <SelectTrigger className="w-[200px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="sma_webconnect">SMA WebConnect</SelectItem>
+                <SelectItem value="solarlog_http">Solar-Log HTTP</SelectItem>
+                <SelectItem value="demo_timo_leif">Demo (Timo Leif)</SelectItem>
+              </SelectContent>
+            </Select>
+            {/* Status Badge */}
+            <Badge
+              variant={connectorStatus === 'connected' ? 'default' : connectorStatus === 'error' ? 'destructive' : 'secondary'}
+              className="gap-1"
+            >
+              {connectorStatus === 'connected' && <CheckCircle className="h-3 w-3" />}
+              {connectorStatus === 'error' && <AlertCircle className="h-3 w-3" />}
+              {connectorStatus === 'offline' && <WifiOff className="h-3 w-3" />}
+              {connectorStatus === 'connected' ? 'Verbunden' :
+               connectorStatus === 'configured' ? 'Konfiguriert' :
+               connectorStatus === 'error' ? 'Fehler' :
+               connectorStatus === 'offline' ? 'Offline' : 'Nicht konfiguriert'}
+            </Badge>
+          </div>
+
+          {/* SMA WebConnect Config */}
+          {connectorType === 'sma_webconnect' && (
+            <div className="space-y-3 border border-border rounded-lg p-4">
+              <p className="text-sm font-semibold">SMA WebConnect (Sunny Tripower)</p>
+              <div className="grid gap-3 md:grid-cols-2">
+                <div>
+                  <label className="text-xs text-muted-foreground">Wechselrichter-IP</label>
+                  <Input
+                    placeholder="192.168.178.xxx"
+                    value={connectorConfig.inverter_ip}
+                    onChange={e => setConnectorConfig(p => ({ ...p, inverter_ip: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground">Passwort</label>
+                  <Input
+                    type="password"
+                    placeholder="WebConnect-Passwort"
+                    value={connectorConfig.password || ''}
+                    onChange={e => setConnectorConfig(p => ({ ...p, password: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground">Polling-Intervall (Sek.)</label>
+                  <Input
+                    type="number"
+                    value={connectorConfig.poll_interval_sec}
+                    onChange={e => setConnectorConfig(p => ({ ...p, poll_interval_sec: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground">Unit-ID</label>
+                  <Input
+                    type="number"
+                    value={connectorConfig.unit_id}
+                    onChange={e => setConnectorConfig(p => ({ ...p, unit_id: e.target.value }))}
+                  />
+                </div>
+              </div>
+              <div className="flex gap-2 mt-2">
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    upsertConnector.mutate({
+                      provider: 'sma_webconnect',
+                      config_json: connectorConfig,
+                    });
+                  }}
+                  disabled={!connectorConfig.inverter_ip}
+                >
+                  Konfiguration speichern
+                </Button>
+              </div>
+
+              {/* Bridge Instructions */}
+              {activeConnector && (
+                <div className="mt-4 p-3 bg-muted/50 rounded-lg border border-border">
+                  <p className="text-xs font-semibold mb-2">Bridge-Script starten:</p>
+                  <code className="text-xs block bg-background p-2 rounded font-mono break-all">
+                    python tools/sma_bridge.py --ip {connectorConfig.inverter_ip || 'IP'} --password PASSWORT --plant-id {plant.id} --tenant-id {plant.tenant_id} --connector-id {activeConnector.id} --supabase-key DEIN_KEY
+                  </code>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="mt-2 gap-1 text-xs"
+                    onClick={() => {
+                      navigator.clipboard.writeText(
+                        `python tools/sma_bridge.py --ip ${connectorConfig.inverter_ip || 'IP'} --password PASSWORT --plant-id ${plant.id} --tenant-id ${plant.tenant_id} --connector-id ${activeConnector.id} --supabase-key DEIN_KEY --interval ${connectorConfig.poll_interval_sec || '10'}`
+                      );
+                      toast.success('Befehl kopiert');
+                    }}
+                  >
+                    <Copy className="h-3 w-3" /> Befehl kopieren
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Solar-Log Config */}
+          {connectorType === 'solarlog_http' && (
+            <div className="space-y-3 border border-border rounded-lg p-4">
+              <p className="text-sm font-semibold">Solar-Log HTTP</p>
+              <div className="grid gap-3 md:grid-cols-2">
+                <div>
+                  <label className="text-xs text-muted-foreground">Host / IP</label>
+                  <Input
+                    placeholder="192.168.178.xxx"
+                    value={connectorConfig.host}
+                    onChange={e => setConnectorConfig(p => ({ ...p, host: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground">Polling-Intervall (Sek.)</label>
+                  <Input
+                    type="number"
+                    value={connectorConfig.poll_interval_sec}
+                    onChange={e => setConnectorConfig(p => ({ ...p, poll_interval_sec: e.target.value }))}
+                  />
+                </div>
+              </div>
+              <Button
+                size="sm"
+                onClick={() => {
+                  upsertConnector.mutate({
+                    provider: 'solarlog_http',
+                    config_json: connectorConfig,
+                  });
+                }}
+                disabled={!connectorConfig.host}
+              >
+                Konfiguration speichern
+              </Button>
+            </div>
+          )}
+
+          {/* Demo Mode */}
+          {connectorType === 'demo_timo_leif' && (
+            <div className="p-3 bg-muted/30 rounded-lg border border-border">
+              <p className="text-sm text-muted-foreground">
+                Demo-Modus aktiv — synthetische Daten werden basierend auf der kWp-Leistung und Tageszeit generiert.
+              </p>
+            </div>
+          )}
+
+          {/* Last Sync Info */}
+          {activeConnector?.last_sync_at && (
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Activity className="h-3 w-3" />
+              Letztes Update: {new Date(activeConnector.last_sync_at).toLocaleString('de-DE')}
+            </div>
+          )}
+          {activeConnector?.last_error && (
+            <div className="text-xs text-destructive flex items-center gap-1">
+              <AlertCircle className="h-3 w-3" />
+              {activeConnector.last_error}
+            </div>
+          )}
+          {hasRealData && (
+            <Badge variant="outline" className="text-xs">
+              Live-Daten aktiv (Quelle: {latestMeasurement?.source})
+            </Badge>
+          )}
         </div>
       </SectionCard>
 

@@ -11551,6 +11551,7 @@ export type Database = {
       }
       pv_plants: {
         Row: {
+          active_connector: string | null
           battery_kwh: number | null
           city: string | null
           commissioning_date: string | null
@@ -11590,6 +11591,7 @@ export type Database = {
           wr_model: string | null
         }
         Insert: {
+          active_connector?: string | null
           battery_kwh?: number | null
           city?: string | null
           commissioning_date?: string | null
@@ -11629,6 +11631,7 @@ export type Database = {
           wr_model?: string | null
         }
         Update: {
+          active_connector?: string | null
           battery_kwh?: number | null
           city?: string | null
           commissioning_date?: string | null

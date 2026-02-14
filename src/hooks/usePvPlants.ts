@@ -37,6 +37,7 @@ export interface PvPlant {
   consumption_meter_operator: string | null;
   consumption_start_reading: number | null;
   provider: string;
+  active_connector: string | null;
   last_sync_at: string | null;
   data_quality: string | null;
   dms_root_node_id: string | null;
