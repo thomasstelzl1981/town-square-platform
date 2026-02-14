@@ -27,7 +27,7 @@ import { toast } from 'sonner';
 
 // Demo plant data for the pre-filled Akte
 const DEMO_PLANT: PvPlant = {
-  id: 'demo-plant-001',
+  id: '00000000-0000-4000-a000-000000000901',
   name: 'EFH SMA 9,8 kWp',
   status: 'active',
   street: 'Schadowstr.',
@@ -44,7 +44,7 @@ const DEMO_PLANT: PvPlant = {
   mastr_account_present: true,
   mastr_plant_id: 'SEE912345678',
   mastr_unit_id: 'SEE987654321',
-  mastr_status: 'In Betrieb',
+  mastr_status: 'confirmed',
   grid_operator: 'Stromnetz Berlin GmbH',
   energy_supplier: 'Vattenfall',
   customer_reference: 'VTF-2024-88321',
@@ -57,8 +57,8 @@ const DEMO_PLANT: PvPlant = {
   provider: 'demo',
   last_sync_at: new Date().toISOString(),
   data_quality: 'complete',
-  dms_root_node_id: null,
-  tenant_id: '',
+  dms_root_node_id: '680b808e-7aaa-47f3-a92d-2ddf44e26bca',
+  tenant_id: 'a0000000-0000-4000-a000-000000000001',
   owner_user_id: null,
   owner_org_id: null,
   created_at: '2024-06-15T10:00:00Z',
