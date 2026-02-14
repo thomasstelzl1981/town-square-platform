@@ -426,7 +426,7 @@ export function WeatherCard({ latitude, longitude, city }: WeatherCardProps) {
       <CardContent className={cn("relative z-10 p-4 h-full flex flex-col", textClass)}>
         {/* Header with location */}
         {city && (
-          <div className="text-[10px] uppercase tracking-wider opacity-90 mb-2 font-medium drop-shadow-sm">
+          <div className="text-xs uppercase tracking-wider opacity-90 mb-2 font-medium drop-shadow-sm">
             {city}
           </div>
         )}
@@ -438,7 +438,7 @@ export function WeatherCard({ latitude, longitude, city }: WeatherCardProps) {
               <span className="text-3xl font-bold">{weather.current.temperature}</span>
               <span className="text-lg opacity-90">°C</span>
             </div>
-            <p className="text-xs opacity-90 mt-0.5 drop-shadow-sm font-medium">
+            <p className="text-sm opacity-90 mt-0.5 drop-shadow-sm font-medium">
               {currentInfo.description}
             </p>
           </div>
@@ -446,12 +446,12 @@ export function WeatherCard({ latitude, longitude, city }: WeatherCardProps) {
         </div>
 
         {/* Details Row */}
-        <div className="flex gap-4 mb-3">
-          <div className="flex items-center gap-1.5 text-xs opacity-90 drop-shadow-sm">
+          <div className="flex gap-4 mb-3">
+          <div className="flex items-center gap-1.5 text-sm opacity-90 drop-shadow-sm">
             <Wind className="h-3.5 w-3.5" />
             <span className="font-medium">{weather.current.windSpeed} km/h</span>
           </div>
-          <div className="flex items-center gap-1.5 text-xs opacity-90 drop-shadow-sm">
+          <div className="flex items-center gap-1.5 text-sm opacity-90 drop-shadow-sm">
             <Droplets className="h-3.5 w-3.5" />
             <span className="font-medium">{weather.current.humidity}%</span>
           </div>
@@ -459,9 +459,6 @@ export function WeatherCard({ latitude, longitude, city }: WeatherCardProps) {
 
         {/* 5-Day Forecast */}
         <div className="mt-auto">
-          <div className="text-[10px] uppercase tracking-wider opacity-80 mb-2 font-medium drop-shadow-sm">
-            5-Tage Vorschau
-          </div>
           <div className="grid grid-cols-5 gap-1">
             {weather.daily.slice(0, 5).map((day, index) => {
               const dayInfo = getWeatherInfo(day.weatherCode);
@@ -479,11 +476,11 @@ export function WeatherCard({ latitude, longitude, city }: WeatherCardProps) {
                     index === 0 ? 'bg-white/25 backdrop-blur-sm' : 'bg-white/10'
                   )}
                 >
-                  <span className="text-[9px] opacity-90 mb-0.5 font-medium">
+                  <span className="text-xs opacity-90 mb-0.5 font-medium">
                     {dayName}
                   </span>
                   <DayIcon className="h-3.5 w-3.5 mb-0.5 opacity-95" />
-                  <div className="flex flex-col items-center text-[9px]">
+                  <div className="flex flex-col items-center text-xs">
                     <span className="font-semibold">{day.tempMax}°</span>
                     <span className="opacity-80">{day.tempMin}°</span>
                   </div>

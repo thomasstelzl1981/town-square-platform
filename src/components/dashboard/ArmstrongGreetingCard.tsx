@@ -5,9 +5,7 @@
 
 import { useEffect, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Calendar, ArrowRight, Clock, Sparkles } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { Calendar, Sparkles } from 'lucide-react';
 import { usePortalLayout } from '@/hooks/usePortalLayout';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { getWeatherTextForGreeting } from '@/lib/weatherCodes';
@@ -139,8 +137,7 @@ export function ArmstrongGreetingCard({
         <CardContent className="p-4 h-full flex flex-col justify-center">
           <div className="flex items-center gap-3 mb-3">
             <Sparkles className="h-5 w-5 text-primary animate-pulse" />
-            <span className="font-semibold text-sm text-foreground">Armstrong</span>
-            <Badge variant="secondary" className="text-[9px] h-4 px-1.5">KI</Badge>
+            <span className="font-semibold text-base text-foreground">Armstrong</span>
           </div>
           <div className="space-y-2">
             <div className="h-3 bg-muted/50 rounded animate-pulse w-3/4" />
@@ -169,13 +166,12 @@ export function ArmstrongGreetingCard({
         {/* Header - No avatar, just text */}
         <div className="flex items-center gap-2 mb-2">
           <Sparkles className="h-4 w-4 text-primary" />
-          <span className="font-semibold text-sm text-foreground">Armstrong</span>
-          <Badge variant="secondary" className="text-[9px] h-4 px-1.5">KI</Badge>
+          <span className="font-semibold text-base text-foreground">Armstrong</span>
         </div>
 
         {/* Message Content */}
         <div className="flex-1 min-h-0 overflow-hidden">
-          <div className="text-xs text-foreground/90 whitespace-pre-line leading-relaxed line-clamp-6">
+          <div className="text-sm text-foreground/90 whitespace-pre-line leading-relaxed line-clamp-6">
             {displayedText}
             {isTyping && (
               <span className="inline-block w-1.5 h-3 bg-primary ml-0.5 animate-pulse" />
@@ -190,20 +186,13 @@ export function ArmstrongGreetingCard({
             {todayEvents.slice(0, 2).map((event) => (
               <div 
                 key={event.id}
-                className="flex items-center gap-1.5 text-[10px] bg-muted/40 rounded-full px-2 py-1 flex-shrink-0"
+                className="flex items-center gap-1.5 text-xs bg-muted/40 rounded-full px-2 py-1 flex-shrink-0"
               >
-                <Clock className="h-2.5 w-2.5 text-muted-foreground" />
-                <span className="font-mono text-muted-foreground">
-                  {new Date(event.start_at).toLocaleTimeString('de-DE', { 
-                    hour: '2-digit', 
-                    minute: '2-digit' 
-                  })}
-                </span>
-                <span className="truncate max-w-[60px]">{event.title}</span>
+                <span className="truncate max-w-[80px]">{event.title}</span>
               </div>
             ))}
             {todayEvents.length > 2 && (
-              <span className="text-[10px] text-muted-foreground flex-shrink-0">
+              <span className="text-xs text-muted-foreground flex-shrink-0">
                 +{todayEvents.length - 2}
               </span>
             )}

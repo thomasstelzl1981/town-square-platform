@@ -4,7 +4,7 @@
  */
 
 import { Card, CardContent } from '@/components/ui/card';
-import { Newspaper, ExternalLink } from 'lucide-react';
+import { Newspaper } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useNewsData } from '@/hooks/useNewsData';
 
@@ -18,7 +18,7 @@ export function NewsWidget() {
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <Newspaper className="h-4 w-4 text-purple-500" />
-            <span className="text-xs font-medium">Nachrichten</span>
+            <span className="text-sm font-medium">Nachrichten</span>
           </div>
         </div>
 
@@ -43,17 +43,9 @@ export function NewsWidget() {
                     index < Math.min(headlines.length, 5) - 1 && 'border-b border-border/10'
                   )}
                 >
-                  <p className="text-[11px] font-medium line-clamp-2 leading-snug mb-1 group-hover:text-primary transition-colors">
+                  <p className="text-sm font-medium line-clamp-2 leading-snug group-hover:text-primary transition-colors">
                     {headline.title}
                   </p>
-                  <div className="flex items-center gap-1">
-                    <span className="text-[10px] text-muted-foreground">{headline.source}</span>
-                    <span className="text-[10px] text-muted-foreground">·</span>
-                    <span className="text-[10px] text-muted-foreground">{headline.time}</span>
-                    {headline.link && (
-                      <ExternalLink className="h-2.5 w-2.5 text-muted-foreground/50 ml-auto" />
-                    )}
-                  </div>
                 </a>
               ))}
         </div>
