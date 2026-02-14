@@ -1,181 +1,109 @@
 
-# Neuordnung: Manager-Module, Operative Desks und Website-Strategie
+# Konsolidierung: Doppelte Module unter Operative Desks
 
-## Ausgangslage (IST)
+## Problem-Analyse
 
-### Manager-Module (Zone 2)
+Aktuell erscheinen in der Sidebar unter "Operative Desks" folgende doppelte/ueberfluessige Eintraege:
 
-| Code | Name | Hat Desk in Z1? | Hat Website-Templates? |
-|------|------|-----------------|----------------------|
-| MOD-09 | Vertriebsmanager | Teilweise (Sales Desk) | Nein |
-| MOD-10 | Leadmanager | Nein | Nein |
-| MOD-11 | Finanzierungsmanager | Ja (FutureRoom) | Nein (hardcoded FutureRoom-Website) |
-| MOD-12 | Akquisemanager | Ja (Acquiary) | Nein (hardcoded Acquiary-Website) |
-| MOD-13 | Projektmanager | Teilweise (Sales Desk) | Nein (hardcoded Projekt-Landing) |
+### 1. Lead Pool + Provisionen → Lead Desk
 
-### Probleme
+| Menüpunkt | Route | Funktion | Status |
+|-----------|-------|----------|--------|
+| **Lead Pool** | `/admin/leadpool` | Vollstaendige Lead-Verwaltung (560 Zeilen): DB-Abfragen auf `leads` + `lead_assignments`, Lead-Erstellung, Partner-Zuweisung, KPI-Stats | Funktional, aber veraltet |
+| **Provisionen** | `/admin/commissions` | Provisions-Freigabe-Tabelle | Funktional, soll in Lead Desk |
+| **Lead Desk** | `/admin/lead-desk` | Neuer Platzhalter (nur statische KPI-Karten, keine DB-Anbindung) | Platzhalter |
 
-1. **Keine 1:1-Zuordnung** zwischen Manager-Modulen und Operative Desks
-2. **Sales Desk** mischt Verantwortlichkeiten von MOD-09 und MOD-13
-3. **Website-Templates** sind generisch (5 Design-Templates in `designTemplates.ts`) ohne branchenspezifische Sektionen
-4. **Website Hosting** liegt unter "System" statt bei den Operative Desks
-5. **Hardcoded Zone-3-Websites** (Kaufy, FutureRoom, Acquiary) existieren parallel zum Website Builder ohne Verbindung
+**Loesung**: Die gesamte Logik aus `LeadPool.tsx` (Lead-Tabelle, Zuweisungen, Dialoge) und `CommissionApproval.tsx` (Provisionen) wird in `LeadDesk.tsx` als Tab-Struktur integriert. Die alten Routen `leadpool` und `commissions` werden entfernt.
 
----
+### 2. Landing Pages + Website Hosting
 
-## SOLL-Zustand: 1:1 Manager → Desk → Website-Profil
+| Menüpunkt | Route | Datenquelle | Funktion |
+|-----------|-------|-------------|----------|
+| **Landing Pages** | `/admin/landing-pages` | `landing_pages` Tabelle | Projekt-Websites (MOD-13): Slug-basierte Seiten mit Vorschau-Countdown, Sperr-Funktion |
+| **Website Hosting** | `/admin/website-hosting` | `hosting_contracts` Tabelle | Tenant-Websites (MOD-05): Hosting-Vertraege, Suspendierung, Credit-Monitoring |
 
-### Neue Operative-Desk-Struktur (Zone 1)
-
-| Manager-Modul | Operative Desk (Z1) | Aufgabe |
-|---------------|---------------------|---------|
-| MOD-09 Vertriebsmanager | **Sales Desk** (bleibt) | Partner-Distribution, Listing-Governance, Lead-Routing |
-| MOD-10 Leadmanager | **Lead Desk** (NEU) | Lead-Pool-Governance, Kampagnen-Monitoring, Abrechnung |
-| MOD-11 Finanzierungsmanager | **FutureRoom** (bleibt) | Finanzierungsantraege, Bank-Routing, Zuweisung |
-| MOD-12 Akquisemanager | **Acquiary** (bleibt) | Mandat-Governance, Objekt-Routing, Kontakt-Staging |
-| MOD-13 Projektmanager | **Projekt Desk** (NEU) | Projekt-Intake, Listing-Aktivierung, Landing-Page-Governance |
-
-Aenderungen gegenueber heute:
-- **Lead Desk**: Entsteht aus dem bestehenden `leadpool`-Route + `commissions`-Route, die heute lose unter "Operative Desks" haengen
-- **Projekt Desk**: Entsteht aus Teilen des Sales Desk (Projekt-spezifisch) + `landing-pages`
-- **Sales Desk**: Wird auf reine Partner/Vertriebs-Distribution fokussiert (MOD-09)
-
-### Neue Website-Profil-Manifest-Datei
-
-**Neue Datei:** `src/manifests/websiteProfileManifest.ts`
-
-Diese Datei definiert fuer jedes Manager-Modul ein Website-Profil mit branchenspezifischen Templates, Sektionstypen und Beispiel-Inhalten:
-
-```text
-interface WebsiteProfile {
-  moduleCode: string;           // z.B. 'MOD-11'
-  profileId: string;            // z.B. 'finance_broker'
-  displayName: string;          // z.B. 'Finanzierungsberater'
-  description: string;          // Kurzbeschreibung
-  defaultTemplate: string;      // Referenz auf designTemplates.ts
-  availableSections: string[];  // Erlaubte Section-Types
-  requiredSections: string[];   // Pflicht-Sektionen
-  sampleContent: Record<string, unknown>; // Beispiel-Inhalte fuer KI-Generierung
-  bookingEnabled: boolean;      // Buchungssystem verfuegbar?
-  shopEnabled: boolean;         // Shop-Integration verfuegbar?
-}
-```
-
-**Vordefinierte Profile (5 Manager-Module):**
-
-| Profil-ID | Manager-Modul | Branchen-Beispiele | Besondere Sektionen |
-|-----------|---------------|-------------------|---------------------|
-| `sales_partner` | MOD-09 | Immobilienmakler, Vertriebspartner | Objekt-Katalog, Beratungstermin-Buchung |
-| `lead_agency` | MOD-10 | Marketing-Agentur, Leadgenerator | Kampagnen-Showcase, Kontaktformular |
-| `finance_broker` | MOD-11 | Finanzierungsberater, Versicherungsmakler | Rechner-Widget, Antragsstrecke |
-| `acquisition_agent` | MOD-12 | Akquise-Dienstleister, Ankaufsberater | Objekt-Einreichung, Netzwerk-Seite |
-| `project_developer` | MOD-13 | Bautraeger, Projektentwickler | Projekt-Galerie, Einheiten-Liste, Preisliste |
-
-### Erweiterung der Design-Templates
-
-Die bestehenden 5 Design-Templates (`modern`, `classic`, `minimal`, `elegant`, `fresh`) bleiben als visuelle Grundlage. Neu wird die **Kombination** aus Design-Template + Website-Profil:
-
-```text
-Website = Design-Template (Optik) + Website-Profil (Inhalt/Struktur)
-```
-
-Die `SECTION_TYPES` in `src/shared/website-renderer/types.ts` werden um profilspezifische Typen erweitert:
-
-| Neue Section-Types | Beschreibung | Verfuegbar fuer |
-|-------------------|--------------|-----------------|
-| `booking` | Online-Terminbuchung | Alle Profile |
-| `pricing` | Preisliste/Pakete | Alle Profile |
-| `team` | Team-Vorstellung | Alle Profile |
-| `calculator` | Rechner-Widget | finance_broker |
-| `catalog` | Objekt-/Produkt-Katalog | sales_partner, project_developer |
-| `unit_list` | Einheiten-Tabelle | project_developer |
-| `application` | Bewerbungs-/Antragsformular | finance_broker, acquisition_agent |
+**Loesung**: Beide verwalten "veroeffentlichte Web-Inhalte" aus Admin-Sicht. Konsolidierung in **Website Hosting** mit zwei Tabs: "Hosting-Vertraege" (bisheriges WebHosting) und "Projekt-Websites" (bisherige Landing Pages). Die Route `landing-pages` wird entfernt.
 
 ---
 
 ## Umsetzungsplan
 
-### Schritt 1: Website-Profil-Manifest erstellen
+### Schritt 1: Lead Desk mit Tab-Struktur aufbauen
 
-**Neue Datei:** `src/manifests/websiteProfileManifest.ts`
-- 5 Profile (je eins pro Manager-Modul)
-- Referenzen auf bestehende Design-Templates
-- Section-Type-Definitionen pro Profil
-- Sample-Content-Objekte fuer KI-Generierung
+**Datei**: `src/pages/admin/desks/LeadDesk.tsx`
 
-### Schritt 2: Section-Types erweitern
+Den bisherigen Platzhalter ersetzen durch eine vollwertige 3-Tab-Ansicht:
 
-**Datei:** `src/shared/website-renderer/types.ts`
-- `SECTION_TYPES` Array um neue Typen erweitern (`booking`, `pricing`, `team`, `calculator`, `catalog`, `unit_list`, `application`)
-- `SECTION_TYPE_LABELS` entsprechend ergaenzen
+- **Tab "Lead Pool"**: Gesamte Logik aus `src/pages/admin/LeadPool.tsx` uebernehmen (Lead-Tabelle, Erstell-Dialog, Zuweisungs-Dialog, KPI-Stats)
+- **Tab "Zuweisungen"**: Zuweisungs-Tabelle (bisher zweiter Tab innerhalb LeadPool)
+- **Tab "Provisionen"**: Inhalte aus `src/pages/admin/CommissionApproval.tsx` uebernehmen
 
-### Schritt 3: Operative-Desk-Struktur in Zone 1 bereinigen
+Die KPI-Leiste oben bleibt erhalten, wird aber mit echten DB-Daten gespeist.
 
-**Datei:** `src/manifests/routesManifest.ts` (Zone 1 Routes)
-- Lead Desk Route hinzufuegen (`lead-desk`) — fasst `leadpool` + `commissions` zusammen
-- Projekt Desk Route hinzufuegen (`projekt-desk`) — fasst `landing-pages` + Projekt-Governance zusammen
-- `website-hosting` von "System" nach "Operative Desks" verschieben (logisch via AdminSidebar-Kategorisierung)
+### Schritt 2: Website Hosting mit Landing Pages zusammenfuehren
 
-**Datei:** `src/components/admin/AdminSidebar.tsx`
-- `getRouteCategory()`: `lead-desk` und `projekt-desk` unter `desks` einordnen
-- `website-hosting` von `system` nach `desks` verschieben
-- `shouldShowInNav()`: Neue Desk-Eintraege aufnehmen
+**Datei**: `src/pages/admin/website-hosting/WebHostingDashboard.tsx`
 
-**Neue Dateien:**
-- `src/pages/admin/desks/LeadDesk.tsx` — Lead-Governance-Dashboard
-- `src/pages/admin/desks/ProjektDesk.tsx` — Projekt-Governance-Dashboard
+Zwei Tabs hinzufuegen:
 
-**Datei:** `src/pages/admin/desks/index.ts`
-- Neue Exports: `LeadDesk`, `ProjektDesk`
+- **Tab "Hosting-Vertraege"**: Bestehende Funktionalitaet (hosting_contracts)
+- **Tab "Projekt-Websites"**: Logik aus `src/pages/admin/AdminLandingPages.tsx` uebernehmen (landing_pages Tabelle, Status, Countdown, Lock/Unlock)
 
-**Datei:** `src/router/ManifestRouter.tsx`
-- Neue Component-Mappings fuer `LeadDeskDashboard`, `ProjektDeskDashboard`
+### Schritt 3: Veraltete Routen und Sidebar-Eintraege entfernen
 
-### Schritt 4: Desk-Manifest erstellen
+**Datei**: `src/manifests/routesManifest.ts`
+- Route `leadpool` entfernen (Zeile 111)
+- Route `commissions` entfernen (Zeile 114)
+- Route `landing-pages` entfernen (Zeile 170)
 
-**Neue Datei:** `src/manifests/operativeDeskManifest.ts`
+**Datei**: `src/components/admin/AdminSidebar.tsx`
+- `LeadPool` und `CommissionApproval` aus ICON_MAP entfernen
+- `leadpool`, `commissions`, `landing-pages` aus `getGroupKey()` und `shouldShowInNav()` entfernen
 
-Zentrales Mapping zwischen Manager-Modul, Operative Desk und Website-Profil:
+**Datei**: `src/router/ManifestRouter.tsx`
+- Lazy-Imports fuer `LeadPool`, `CommissionApproval`, `AdminLandingPages` entfernen
+- Eintraege aus `adminComponentMap` entfernen
 
-```text
-interface OperativeDeskDefinition {
-  deskId: string;              // z.B. 'sales-desk'
-  displayName: string;         // z.B. 'Sales Desk'
-  managerModuleCode: string;   // z.B. 'MOD-09'
-  websiteProfileId: string;    // z.B. 'sales_partner'
-  route: string;               // z.B. 'sales-desk'
-  icon: string;                // Lucide Icon Name
-  responsibilities: string[];  // Governance-Aufgaben
-}
-```
+### Schritt 4: Redirect fuer alte URLs (optional)
 
-### Schritt 5: Website Builder mit Profil-Auswahl verbinden
-
-**Datei:** `src/pages/portal/website-builder/WBDashboard.tsx`
-- Beim Erstellen einer Website wird das Website-Profil anhand des aktiven Manager-Moduls des Tenants vorgeschlagen
-- Template-Galerie zeigt nur die fuer das Profil erlaubten Sektionen
-- Sample-Content wird profilspezifisch aus dem Manifest geladen
+**Datei**: `src/hooks/useActionHandoff.ts`
+- Redirect von `/admin/leadpool` auf `/admin/lead-desk` aendern (Zeile 102)
 
 ---
 
-## Zusammenfassung betroffene Dateien
+## Ergebnis: Bereinigte Sidebar "Operative Desks"
+
+Vorher (7 Eintraege):
+- Sales Desk
+- Lead Pool (redundant)
+- Provisionen (redundant)
+- Lead Desk
+- FutureRoom
+- Acquiary
+- Projekt Desk
+- Landing Pages (redundant)
+- Website Hosting
+
+Nachher (6 Eintraege):
+- Sales Desk
+- **Lead Desk** (konsolidiert: Lead Pool + Provisionen)
+- FutureRoom
+- Acquiary
+- Projekt Desk
+- **Website Hosting** (konsolidiert: Hosting + Landing Pages)
+
+## Betroffene Dateien
 
 | Datei | Aenderung |
 |-------|-----------|
-| `src/manifests/websiteProfileManifest.ts` | NEU — Website-Profile pro Manager-Modul |
-| `src/manifests/operativeDeskManifest.ts` | NEU — Desk ↔ Manager ↔ Profil Mapping |
-| `src/shared/website-renderer/types.ts` | Erweitert — Neue Section-Types |
-| `src/manifests/routesManifest.ts` | Zone 1 Routes: Lead Desk + Projekt Desk |
-| `src/components/admin/AdminSidebar.tsx` | Kategorisierung: neue Desks + Hosting-Umzug |
-| `src/pages/admin/desks/LeadDesk.tsx` | NEU — Lead-Governance-Dashboard |
-| `src/pages/admin/desks/ProjektDesk.tsx` | NEU — Projekt-Governance-Dashboard |
-| `src/pages/admin/desks/index.ts` | Erweitert — neue Exports |
-| `src/router/ManifestRouter.tsx` | Erweitert — neue Component-Mappings |
+| `src/pages/admin/desks/LeadDesk.tsx` | Neuschreiben: 3-Tab-Struktur mit DB-Anbindung |
+| `src/pages/admin/website-hosting/WebHostingDashboard.tsx` | Erweitern: Tab "Projekt-Websites" hinzufuegen |
+| `src/manifests/routesManifest.ts` | 3 Routen entfernen |
+| `src/components/admin/AdminSidebar.tsx` | Bereinigung ICON_MAP + Routing-Logik |
+| `src/router/ManifestRouter.tsx` | 3 Component-Mappings entfernen |
+| `src/hooks/useActionHandoff.ts` | Redirect-Pfad aktualisieren |
 
 ### Was sich NICHT aendert
-
-- Bestehende Desks (Sales Desk, Acquiary, FutureRoom) — bleiben, nur Scope wird praezisiert
-- Design-Templates (`designTemplates.ts`) — bleiben als visuelle Basis
-- Zone 3 hardcoded Websites — bleiben (Kaufy, Miety, FutureRoom, SoT, Acquiary)
-- Routen der Manager-Module (Zone 2) — keine Aenderung
-- Datenbank-Schema — keine neuen Tabellen in diesem Schritt
+- Datenbank-Tabellen (`leads`, `lead_assignments`, `landing_pages`, `hosting_contracts`) — bleiben unveraendert
+- Zone 2 Module (MOD-09, MOD-10, MOD-13) — keine Aenderung
+- Bestehende Hooks (`useLandingPage.ts`) — werden weiterverwendet
