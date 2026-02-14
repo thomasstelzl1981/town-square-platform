@@ -176,7 +176,7 @@ export function ArmstrongContainer() {
       <div 
         ref={containerRef}
         className={cn(
-          "w-[380px] h-full flex flex-col shrink-0",
+          "w-[304px] h-full flex flex-col shrink-0",
           "bg-white/60 dark:bg-card/40 backdrop-blur-xl",
           "border-l border-border/30",
           "transition-all duration-300",
