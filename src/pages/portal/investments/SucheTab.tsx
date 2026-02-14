@@ -253,19 +253,23 @@ export default function SucheTab() {
 
   // Calculate metrics for investment search - FIX: use fresh data from refetch
   const handleInvestmentSearch = useCallback(async () => {
-    // First fetch listings
+    // First fetch listings from DB
     const { data: freshListings } = await refetch();
-    const listingsToProcess = (freshListings || []).slice(0, 20);
     
-    if (listingsToProcess.length === 0) {
+    // Merge demo listings with DB listings for calculation
+    const dbIds = new Set((freshListings || []).map((l: PublicListing) => l.listing_id));
+    const demosToInclude = demoListings.filter(d => !dbIds.has(d.listing_id));
+    const allListingsToProcess = [...demosToInclude, ...(freshListings || [])].slice(0, 30);
+    
+    if (allListingsToProcess.length === 0) {
       setHasSearched(true);
       return;
     }
 
-    // Calculate metrics for ALL listings in parallel BEFORE setting hasSearched
+    // Calculate metrics for ALL listings (DB + demo) in parallel
     const newCache: Record<string, any> = {};
     
-    await Promise.all(listingsToProcess.map(async (listing: PublicListing) => {
+    await Promise.all(allListingsToProcess.map(async (listing: PublicListing) => {
       const loanAmount = listing.asking_price - equity;
       const monthlyRent = listing.monthly_rent_total || (listing.asking_price * 0.04 / 12);
       
@@ -292,10 +296,9 @@ export default function SucheTab() {
       }
     }));
 
-    // Update cache first, THEN set hasSearched
     setMetricsCache(newCache);
     setHasSearched(true);
-  }, [equity, zve, maritalStatus, hasChurchTax, calculate, refetch]);
+  }, [equity, zve, maritalStatus, hasChurchTax, calculate, refetch, demoListings]);
 
   const handleClassicSearch = useCallback(() => {
     setHasSearched(true);
