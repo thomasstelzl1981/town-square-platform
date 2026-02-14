@@ -19,6 +19,11 @@ export interface AreaDefinition {
 
 /**
  * Area configuration defining the 4 navigation zones
+ * 
+ * NOTE: MOD-20 (Miety / ZUHAUSE) is intentionally excluded from area navigation.
+ * It renders inline within MOD-04 Immobilien as the "ZUHAUSE" default tile.
+ * Direct navigation to /portal/miety/* is supported but not surfaced in area nav.
+ * See routesManifest.ts MOD-20 for route definitions.
  */
 export const areaConfig: AreaDefinition[] = [
   {
