@@ -552,18 +552,23 @@ export function PortfolioTab() {
     { 
       key: 'property_type', 
       header: 'Art',
-      render: (value) => <Badge variant="outline" className="text-xs">{value}</Badge>
+      render: (value) => <Badge variant="outline" className="text-sm">{value}</Badge>
     },
     { 
       key: 'address', 
       header: 'Objekt', 
-      minWidth: '200px',
-      render: (_, row) => <PropertyAddressCell address={row.address} subtitle={row.city} />
+      minWidth: '180px',
+      render: (value) => value || '–'
+    },
+    { 
+      key: 'city', 
+      header: 'Ort',
+      render: (value) => value || '–'
     },
     { 
       key: 'unit_number', 
       header: 'Einheit',
-      render: (value) => <span className="text-xs text-muted-foreground">{value || 'MAIN'}</span>
+      render: (value) => <span className="text-sm text-muted-foreground">{value || 'MAIN'}</span>
     },
     { 
       key: 'area_sqm', 
@@ -613,12 +618,7 @@ export function PortfolioTab() {
       align: 'right',
       render: (value) => <PropertyCurrencyCell value={value} variant="muted" />
     },
-    { 
-      key: 'amortization_pa', 
-      header: 'Tilgung p.a.', 
-      align: 'right',
-      render: (value) => <PropertyCurrencyCell value={value} variant="muted" />
-    },
+  
   ];
 
   // Count properties per context for display - MOVED BEFORE EARLY RETURN
