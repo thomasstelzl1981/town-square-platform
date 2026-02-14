@@ -3,8 +3,8 @@
  * Widget sidebar replaces traditional nav items.
  */
 import { Link } from 'react-router-dom';
-import { Building2, Sun, Moon, Menu, X } from 'lucide-react';
-import { useState } from 'react';
+import { Building2, Sun, Moon } from 'lucide-react';
+
 
 interface SotHeaderProps {
   isDark: boolean;
@@ -38,13 +38,6 @@ export function SotHeader({ isDark, onToggleTheme }: SotHeaderProps) {
             >
               {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
             </button>
-
-            <Link to="/auth?mode=login" className="sot-btn-ghost hidden sm:block">
-              Anmelden
-            </Link>
-            <Link to="/auth?mode=register&source=sot" className="sot-btn-primary text-sm">
-              Starten
-            </Link>
           </div>
         </nav>
       </div>

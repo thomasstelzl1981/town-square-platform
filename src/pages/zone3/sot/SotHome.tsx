@@ -1,10 +1,11 @@
 /**
- * SoT Home — Marketplace (Investment Engine + Suchergebnisse)
- * H1: "Investments finden." — Die Startseite IST der Marketplace.
+ * SoT Home — Marketplace (Investment Engine + Werbeinhalt + Demo Login)
  */
 import { Link } from 'react-router-dom';
 import { ArrowRight, Check, Search, Upload, Calculator } from 'lucide-react';
 import { useSotScrollAnimation } from '@/hooks/useSotScrollAnimation';
+import { SotDemoLogin } from '@/components/zone3/sot/SotDemoLogin';
+import { useSotTransition } from '@/components/zone3/sot/SotLoginTransition';
 
 const threeWays = [
   {
@@ -39,6 +40,7 @@ const trustBadges = [
 
 export default function SotHome() {
   const { ref: waysRef, isVisible: waysVisible } = useSotScrollAnimation();
+  const { triggerTransition } = useSotTransition();
 
   return (
     <div className="space-y-16 lg:space-y-24">
@@ -52,11 +54,9 @@ export default function SotHome() {
           Die Plattform für Kapitalanlage, Projekte und Finanzierung.
         </p>
 
-        {/* Investment Engine Placeholder — will be connected in Phase 2 */}
+        {/* Investment Engine Placeholder */}
         <div className="mt-10 max-w-3xl mx-auto">
-          <div 
-            className="sot-glass-card p-6 lg:p-8 rounded-3xl"
-          >
+          <div className="sot-glass-card p-6 lg:p-8 rounded-3xl">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
               {['Ort', 'Budget', 'Rendite', 'Objektart'].map((field) => (
                 <div key={field} className="text-left">
@@ -121,6 +121,11 @@ export default function SotHome() {
             </Link>
           ))}
         </div>
+      </section>
+
+      {/* Demo Login — "Testen Sie unser System" */}
+      <section>
+        <SotDemoLogin onLoginSuccess={triggerTransition} />
       </section>
 
       {/* Trust */}

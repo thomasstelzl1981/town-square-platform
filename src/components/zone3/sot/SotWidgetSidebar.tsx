@@ -1,11 +1,10 @@
 /**
  * SoT Widget Sidebar — Dashboard-sized navigation widgets (right column)
- * Uses the same aspect-square sizing as the portal dashboard widgets.
+ * Mobile: Instagram-style glass bottom nav with 6 round buttons.
  */
 import { Link, useLocation } from 'react-router-dom';
-import { Building2, TrendingUp, FolderKanban, Settings, Zap, Users, LogIn } from 'lucide-react';
+import { Building2, TrendingUp, FolderKanban, Settings, Zap, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { WIDGET_CELL } from '@/config/designManifest';
 
 const sidebarWidgets = [
   { 
@@ -31,7 +30,7 @@ const sidebarWidgets = [
   },
   { 
     id: 'management', 
-    label: 'Management', 
+    label: 'Mgmt', 
     sublabel: 'KI-Office & DMS',
     icon: Settings, 
     href: '/website/sot/management',
@@ -50,20 +49,13 @@ const sidebarWidgets = [
     icon: Users, 
     href: '/website/sot/karriere',
   },
-  { 
-    id: 'login', 
-    label: 'Login', 
-    sublabel: 'Portal-Zugang',
-    icon: LogIn, 
-    href: '/auth?mode=login',
-  },
 ];
 
-export function SotWidgetSidebar() {
+export function SotWidgetSidebar({ className }: { className?: string }) {
   const location = useLocation();
 
   return (
-    <aside className="hidden lg:flex flex-col gap-3 w-[280px] min-w-[280px]">
+    <aside className={cn('hidden lg:flex flex-col gap-3 w-[280px] min-w-[280px]', className)}>
       {sidebarWidgets.map((widget) => {
         const isActive = location.pathname === widget.href || 
           (widget.href !== '/website/sot' && location.pathname.startsWith(widget.href));
@@ -104,36 +96,52 @@ export function SotWidgetSidebar() {
   );
 }
 
-/** Mobile: horizontal scrollable widget row */
-export function SotWidgetBarMobile() {
+/** Mobile: Instagram-style fixed glass bottom nav */
+export function SotWidgetBarMobile({ className }: { className?: string }) {
   const location = useLocation();
 
   return (
-    <div className="lg:hidden overflow-x-auto pb-3 -mx-4 px-4">
-      <div className="flex gap-3 min-w-max">
-        {sidebarWidgets.map((widget) => {
-          const isActive = location.pathname === widget.href;
-          const Icon = widget.icon;
+    <nav className={cn(
+      'lg:hidden fixed bottom-4 left-1/2 -translate-x-1/2 z-50',
+      'flex items-center gap-3 px-4 py-2.5 rounded-full',
+      'backdrop-blur-xl border',
+      className
+    )}
+    style={{
+      background: 'hsl(var(--z3-card)/0.7)',
+      borderColor: 'hsl(var(--z3-border)/0.3)',
+      boxShadow: '0 8px 32px -8px hsl(var(--z3-background)/0.5)',
+    }}
+    >
+      {sidebarWidgets.map((widget) => {
+        const isActive = location.pathname === widget.href;
+        const Icon = widget.icon;
 
-          return (
-            <Link
-              key={widget.id}
-              to={widget.href}
-              className={cn(
-                'sot-glass-card px-4 py-3 flex items-center gap-2.5 whitespace-nowrap',
-                'transition-all duration-200',
-                isActive && 'border-[hsl(var(--z3-accent))]'
-              )}
-            >
-              <Icon 
-                className="w-4 h-4" 
-                style={{ color: 'hsl(var(--z3-accent))' }} 
-              />
-              <span className="text-sm font-medium">{widget.label}</span>
-            </Link>
-          );
-        })}
-      </div>
-    </div>
+        return (
+          <Link
+            key={widget.id}
+            to={widget.href}
+            className={cn(
+              'w-12 h-12 rounded-full flex items-center justify-center',
+              'transition-all duration-200',
+              isActive
+                ? 'shadow-lg scale-110'
+                : 'hover:scale-105'
+            )}
+            style={{
+              background: isActive 
+                ? 'hsl(var(--z3-accent))' 
+                : 'hsl(var(--z3-accent)/0.08)',
+              color: isActive 
+                ? 'hsl(var(--z3-background))' 
+                : 'hsl(var(--z3-accent))',
+            }}
+            title={widget.label}
+          >
+            <Icon className="w-5 h-5" />
+          </Link>
+        );
+      })}
+    </nav>
   );
 }
