@@ -5,6 +5,7 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useDemoListings } from '@/hooks/useDemoListings';
 import { getCachedSignedUrl } from '@/lib/imageCache';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PageShell } from '@/components/shared/PageShell';
@@ -78,6 +79,7 @@ export default function SucheTab() {
   const { calculate, isLoading: isCalculating } = useInvestmentEngine();
   const { data: favorites = [] } = useInvestmentFavorites();
   const toggleFavorite = useToggleInvestmentFavorite();
+  const { kaufyListings: demoListings } = useDemoListings();
 
   // Fetch public listings with title images
   const { data: listings = [], isLoading: isLoadingListings, refetch } = useQuery({
@@ -231,16 +233,23 @@ export default function SucheTab() {
     enabled: hasSearched || searchMode === 'classic',
   });
 
+  // Merge demo listings with DB listings
+  const mergedListings = useMemo(() => {
+    const dbIds = new Set(listings.map(l => l.listing_id));
+    const demos = demoListings.filter(d => !dbIds.has(d.listing_id));
+    return [...demos, ...listings];
+  }, [listings, demoListings]);
+
   // Filter by yield (client-side)
   const filteredListings = useMemo(() => {
-    if (!yieldMin) return listings;
-    return listings.filter(l => {
+    if (!yieldMin) return mergedListings;
+    return mergedListings.filter(l => {
       const grossYield = l.asking_price > 0 
         ? (l.monthly_rent_total * 12) / l.asking_price * 100
         : 0;
       return grossYield >= yieldMin;
     });
-  }, [listings, yieldMin]);
+  }, [mergedListings, yieldMin]);
 
   // Calculate metrics for investment search - FIX: use fresh data from refetch
   const handleInvestmentSearch = useCallback(async () => {

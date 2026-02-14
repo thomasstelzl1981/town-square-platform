@@ -9,6 +9,7 @@
  */
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { useDemoListings } from '@/hooks/useDemoListings';
 import {
   ArrowLeft,
   Heart,
@@ -60,6 +61,7 @@ export default function InvestmentExposePage() {
   const { publicId } = useParams<{ publicId: string }>();
   const [isFavorite, setIsFavorite] = useState(false);
   const { calculate, result: calcResult, isLoading: isCalculating } = useInvestmentEngine();
+  const { kaufyListings: demoListings, demoProperties } = useDemoListings();
 
   // Interactive parameters state
   const [params, setParams] = useState<CalculationInput>({
@@ -68,11 +70,37 @@ export default function InvestmentExposePage() {
     monthlyRent: 800,
   });
 
-  // Fetch listing data - support both public_id and direct listing_id (UUID)
+  // Fetch listing data - support demo, public_id, and direct listing_id (UUID)
   const { data: listing, isLoading } = useQuery({
-    queryKey: ['investment-listing', publicId],
+    queryKey: ['investment-listing', publicId, demoListings.length],
     queryFn: async () => {
       if (!publicId) return null;
+
+      // Check if this is a demo listing (case-insensitive due to PathNormalizer)
+      const pubIdUpper = publicId.toUpperCase();
+      const demoListing = demoListings.find(d => d.public_id.toUpperCase() === pubIdUpper);
+      if (demoListing) {
+        return {
+          id: demoListing.listing_id,
+          public_id: demoListing.public_id,
+          property_id: demoListing.listing_id,
+          title: demoListing.title,
+          description: '',
+          asking_price: demoListing.asking_price,
+          property_type: demoListing.property_type,
+          address: demoListing.address,
+          address_house_no: null,
+          city: demoListing.city,
+          postal_code: demoListing.postal_code || '',
+          total_area_sqm: demoListing.total_area_sqm || 0,
+          year_built: 0,
+          renovation_year: null,
+          energy_source: null,
+          heating_type: null,
+          monthly_rent: demoListing.monthly_rent_total,
+          units_count: demoListing.unit_count,
+        } satisfies ListingData;
+      }
 
       // Try public_id first
       let { data, error } = await supabase
