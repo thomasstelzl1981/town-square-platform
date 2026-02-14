@@ -457,7 +457,7 @@ export function ManifestRouter() {
         {/* FUTUREROOM — Explicit Nested Routes (not desk pattern) */}
         {/* This prevents the flash→redirect→404 issue with mixed-case URLs */}
         {/* ============================================================== */}
-        <Route path="futureroom" element={<AdminFutureRoomLayout />}>
+        <Route path="futureroom" element={<React.Suspense fallback={<LoadingFallback />}><AdminFutureRoomLayout /></React.Suspense>}>
           <Route index element={<Navigate to="inbox" replace />} />
           <Route path="inbox" element={
             <React.Suspense fallback={<LoadingFallback />}>
