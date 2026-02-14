@@ -228,6 +228,31 @@ export const DEMO_WIDGET = {
   BADGE: 'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-300 dark:border-emerald-700/40',
 } as const;
 
+// ─── RECORD CARD (NEU V4.4) ──────────────────────────────
+/** Universelle Akten-Komponente: Geschlossen = quadratisch, Offen = volle Breite */
+export const RECORD_CARD = {
+  /** 2-Spalten-Grid für halbe Breite pro Card */
+  GRID: 'grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6',
+  /** Geschlossene Card: QUADRATISCH wie alle Widgets */
+  CLOSED: 'glass-card rounded-xl cursor-pointer transition-all hover:shadow-lg h-[260px] md:h-auto md:aspect-square overflow-hidden',
+  /** Geöffnete Akte: volle Breite, keine feste Höhe */
+  OPEN: 'glass-card rounded-xl p-6 md:col-span-2',
+  /** Thumbnail im Closed State */
+  THUMBNAIL: 'h-14 w-14 rounded-full object-cover shrink-0',
+  THUMBNAIL_FALLBACK: 'h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center',
+  /** Galerie im Open State */
+  GALLERY: 'grid grid-cols-4 gap-2',
+  GALLERY_IMG: 'aspect-square rounded-lg object-cover cursor-pointer hover:ring-2 ring-primary/40',
+  /** Sektions-Header */
+  SECTION_TITLE: 'text-xs font-semibold uppercase tracking-wide text-muted-foreground border-b border-border/30 pb-1 mb-3',
+  /** Felder-Grid */
+  FIELD_GRID: 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3',
+  /** Datenraum-Sektion */
+  DATAROOM: 'border border-dashed border-border/50 rounded-lg p-4 min-h-[80px]',
+  /** Actions */
+  ACTIONS: 'flex gap-2 pt-4 border-t border-border/30 mt-4 justify-end',
+} as const;
+
 // ─── EXPORT ALS EINHEITLICHES OBJEKT ──────────────────────
 export const DESIGN = {
   CONTAINER,
@@ -247,4 +272,5 @@ export const DESIGN = {
   MOBILE,
   DASHBOARD_HEADER,
   DEMO_WIDGET,
+  RECORD_CARD,
 } as const;

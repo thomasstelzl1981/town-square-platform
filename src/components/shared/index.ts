@@ -39,3 +39,5 @@ export { WidgetHeader } from './WidgetHeader';
 export { WidgetGrid } from './WidgetGrid';
 export { WidgetCell } from './WidgetCell';
 export { ListRow } from './ListRow';
+export { RecordCard } from './RecordCard';
+export { RecordCardGallery } from './RecordCardGallery';

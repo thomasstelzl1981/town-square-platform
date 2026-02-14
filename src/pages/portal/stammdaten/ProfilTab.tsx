@@ -10,7 +10,8 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { FormSection, FormInput, FormRow } from '@/components/shared';
-import { DESIGN } from '@/config/designManifest';
+import { RecordCard } from '@/components/shared/RecordCard';
+import { DESIGN, RECORD_CARD } from '@/config/designManifest';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { FileUploader } from '@/components/shared/FileUploader';
@@ -78,6 +79,7 @@ export function ProfilTab() {
   const { user, isDevelopmentMode, refreshAuth } = useAuth();
   const queryClient = useQueryClient();
   const [hasChanges, setHasChanges] = React.useState(false);
+  const [isRecordOpen, setIsRecordOpen] = React.useState(false);
   const [formData, setFormData] = React.useState<ProfileFormData>({
     display_name: '', first_name: '', last_name: '', email: '', avatar_url: null,
     street: '', house_number: '', postal_code: '', city: '', country: 'DE',
@@ -88,7 +90,6 @@ export function ProfilTab() {
     letterhead_bank_name: '', letterhead_iban: '', letterhead_bic: '', letterhead_website: '',
   });
 
-  // Track original data for dirty detection
   const originalDataRef = React.useRef<ProfileFormData | null>(null);
 
   const updateField = (field: keyof ProfileFormData, value: string | null) => {
@@ -264,158 +265,174 @@ export function ProfilTab() {
     );
   }
 
-  const initials = formData.display_name
-    ?.split(' ')
-    .map(n => n[0])
-    .join('')
-    .toUpperCase() || 'U';
+  const fullName = [formData.first_name, formData.last_name].filter(Boolean).join(' ') || formData.display_name || 'Profil';
 
   return (
     <PageShell>
     <form onSubmit={handleSubmit} className="space-y-6 pb-20">
       <ModulePageHeader title="Stammdaten" description="Ihr persönliches Profil und Kontaktdaten" />
-      <div className={DESIGN.FORM_GRID.FULL}>
-        {/* ── Persönliche Daten ── */}
-        <ProfileWidget icon={User} title="Persönliche Daten" description="Profilbild, Name und E-Mail">
-          <div className="flex items-start gap-4 mb-4">
-            <Avatar className="h-16 w-16 ring-2 ring-primary/10">
-              <AvatarImage src={formData.avatar_url || undefined} alt={formData.display_name} />
-              <AvatarFallback className="text-lg bg-primary/5">{initials}</AvatarFallback>
-            </Avatar>
-            <div className="flex-1">
-              <FileUploader
-                onFilesSelected={handleAvatarUpload}
-                accept="image/*"
-                label="Foto ändern"
-                hint="JPG, PNG (max. 2MB)"
-                maxSize={2 * 1024 * 1024}
-              />
+
+      <div className={RECORD_CARD.GRID}>
+        {/* ── RecordCard: Persönliche Daten (Quadratisch / Vollansicht) ── */}
+        <RecordCard
+          id={user?.id || 'dev-user'}
+          entityType="person"
+          isOpen={isRecordOpen}
+          onToggle={() => setIsRecordOpen(!isRecordOpen)}
+          thumbnailUrl={formData.avatar_url || undefined}
+          title={fullName}
+          subtitle="Hauptperson"
+          summary={[
+            ...(formData.email ? [{ label: 'E-Mail', value: formData.email }] : []),
+            ...(formData.phone_mobile ? [{ label: 'Mobil', value: formData.phone_mobile }] : []),
+            ...(formData.city ? [{ label: 'Stadt', value: formData.city }] : []),
+          ]}
+          onSave={() => updateProfile.mutate(formData)}
+          saving={updateProfile.isPending}
+        >
+          {/* ── BASISDATEN ── */}
+          <div>
+            <p className={RECORD_CARD.SECTION_TITLE}>Persönliche Daten</p>
+            <div className="flex items-start gap-4 mb-4">
+              <Avatar className="h-16 w-16 ring-2 ring-primary/10">
+                <AvatarImage src={formData.avatar_url || undefined} alt={formData.display_name} />
+                <AvatarFallback className="text-lg bg-primary/5">
+                  {fullName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'U'}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1">
+                <FileUploader
+                  onFilesSelected={handleAvatarUpload}
+                  accept="image/*"
+                  label="Foto ändern"
+                  hint="JPG, PNG (max. 2MB)"
+                  maxSize={2 * 1024 * 1024}
+                />
+              </div>
             </div>
-          </div>
-          <FormSection>
-            <FormRow>
+            <div className={RECORD_CARD.FIELD_GRID}>
               <FormInput label="Vorname" name="first_name" value={formData.first_name}
                 onChange={e => updateField('first_name', e.target.value)} placeholder="Max" />
               <FormInput label="Nachname" name="last_name" value={formData.last_name}
                 onChange={e => updateField('last_name', e.target.value)} placeholder="Mustermann" />
-            </FormRow>
-            <FormRow>
               <FormInput label="Anzeigename" name="display_name" value={formData.display_name}
                 onChange={e => updateField('display_name', e.target.value)} placeholder="Max Mustermann" required />
               <FormInput label="E-Mail" name="email" type="email" value={formData.email}
                 disabled hint="Login-Identität — nicht änderbar" />
-            </FormRow>
-          </FormSection>
-        </ProfileWidget>
+            </div>
+          </div>
 
-        {/* ── Adresse ── */}
-        <ProfileWidget icon={MapPin} title="Adresse" description="Postanschrift für Korrespondenz">
-          <FormSection>
-            <FormRow>
+          {/* ── ADRESSE ── */}
+          <div>
+            <p className={RECORD_CARD.SECTION_TITLE}>Adresse</p>
+            <div className={RECORD_CARD.FIELD_GRID}>
               <FormInput label="Straße" name="street" value={formData.street}
-                onChange={e => updateField('street', e.target.value)} placeholder="Musterstraße" className="flex-[3]" />
+                onChange={e => updateField('street', e.target.value)} placeholder="Musterstraße" />
               <FormInput label="Nr." name="house_number" value={formData.house_number}
-                onChange={e => updateField('house_number', e.target.value)} placeholder="1" className="flex-1" />
-            </FormRow>
-            <FormRow>
+                onChange={e => updateField('house_number', e.target.value)} placeholder="1" />
               <FormInput label="PLZ" name="postal_code" value={formData.postal_code}
-                onChange={e => updateField('postal_code', e.target.value)} placeholder="80331" className="flex-1" />
+                onChange={e => updateField('postal_code', e.target.value)} placeholder="80331" />
               <FormInput label="Stadt" name="city" value={formData.city}
-                onChange={e => updateField('city', e.target.value)} placeholder="München" className="flex-[2]" />
+                onChange={e => updateField('city', e.target.value)} placeholder="München" />
               <FormInput label="Land" name="country" value={formData.country}
-                onChange={e => updateField('country', e.target.value)} placeholder="DE" className="flex-1" />
-            </FormRow>
-          </FormSection>
-        </ProfileWidget>
+                onChange={e => updateField('country', e.target.value)} placeholder="DE" />
+            </div>
+          </div>
 
-        {/* ── Kontaktdaten ── */}
-        <ProfileWidget icon={Phone} title="Kontaktdaten" description="Telefonnummern">
-          <FormSection>
-            <FormRow>
+          {/* ── KONTAKTDATEN ── */}
+          <div>
+            <p className={RECORD_CARD.SECTION_TITLE}>Kontaktdaten</p>
+            <div className={RECORD_CARD.FIELD_GRID}>
               <FormInput label="Festnetz" name="phone_landline" type="tel" value={formData.phone_landline}
                 onChange={e => updateField('phone_landline', e.target.value)} placeholder="+49 89 12345678" />
               <FormInput label="Mobil" name="phone_mobile" type="tel" value={formData.phone_mobile}
                 onChange={e => updateField('phone_mobile', e.target.value)} placeholder="+49 170 1234567" />
-            </FormRow>
-            <FormInput label="WhatsApp" name="phone_whatsapp" type="tel" value={formData.phone_whatsapp}
-              onChange={e => updateField('phone_whatsapp', e.target.value)} placeholder="+49 170 1234567" />
-          </FormSection>
-        </ProfileWidget>
-
-        {/* ── Steuerliche Daten ── */}
-        <ProfileWidget icon={FileText} title="Steuerliche Daten" description="Steuernummern für Dokumente">
-          <FormSection>
-            <FormInput label="Steuernummer" name="tax_number" value={formData.tax_number}
-              onChange={e => updateField('tax_number', e.target.value)} placeholder="123/456/78901"
-              hint="Finanzamt-Steuernummer" />
-            <FormInput label="Steuer-ID" name="tax_id" value={formData.tax_id}
-              onChange={e => updateField('tax_id', e.target.value)} placeholder="DE123456789"
-              hint="Persönliche Steuer-Identifikationsnummer" />
-          </FormSection>
-        </ProfileWidget>
-
-        {/* ── E-Mail-Signatur ── */}
-        <ProfileWidget icon={PenLine} title="E-Mail-Signatur" description="Automatisch an E-Mails angehängt">
-          <Textarea
-            value={formData.email_signature}
-            onChange={e => updateField('email_signature', e.target.value)}
-            placeholder={"Mit freundlichen Grüßen\n\nMax Mustermann\nTel: +49 170 1234567"}
-            rows={5}
-            className="font-mono text-xs mb-3"
-          />
-          <Button type="button" variant="outline" size="sm" onClick={generateSignatureSuggestion} className="gap-2">
-            <Sparkles className="h-3.5 w-3.5" />
-            Vorschlag generieren
-          </Button>
-        </ProfileWidget>
-
-        {/* ── Outbound-Kennung ── */}
-        <OutboundIdentityWidget />
-
-        {/* ── Briefkopf ── */}
-        <ProfileWidget icon={Building2} title="Briefkopf-Daten" description="Logo, Firma und Bankverbindung">
-          <div className="flex items-start gap-4 mb-4">
-            <img src={formData.letterhead_logo_url || defaultLetterheadLogo} alt="Logo"
-              className="h-12 w-auto object-contain border rounded-lg p-1 bg-background" />
-            <div className="flex-1">
-              <FileUploader onFilesSelected={handleLogoUpload} accept="image/*"
-                label="Logo hochladen" hint="PNG transparent empfohlen" maxSize={2 * 1024 * 1024} />
+              <FormInput label="WhatsApp" name="phone_whatsapp" type="tel" value={formData.phone_whatsapp}
+                onChange={e => updateField('phone_whatsapp', e.target.value)} placeholder="+49 170 1234567" />
             </div>
           </div>
-          <FormSection>
-            <FormRow>
+
+          {/* ── STEUERLICHE DATEN ── */}
+          <div>
+            <p className={RECORD_CARD.SECTION_TITLE}>Steuerliche Daten</p>
+            <div className={RECORD_CARD.FIELD_GRID}>
+              <FormInput label="Steuernummer" name="tax_number" value={formData.tax_number}
+                onChange={e => updateField('tax_number', e.target.value)} placeholder="123/456/78901"
+                hint="Finanzamt-Steuernummer" />
+              <FormInput label="Steuer-ID" name="tax_id" value={formData.tax_id}
+                onChange={e => updateField('tax_id', e.target.value)} placeholder="DE123456789"
+                hint="Persönliche Steuer-Identifikationsnummer" />
+            </div>
+          </div>
+
+          {/* ── E-MAIL-SIGNATUR ── */}
+          <div>
+            <p className={RECORD_CARD.SECTION_TITLE}>E-Mail-Signatur</p>
+            <Textarea
+              value={formData.email_signature}
+              onChange={e => updateField('email_signature', e.target.value)}
+              placeholder={"Mit freundlichen Grüßen\n\nMax Mustermann\nTel: +49 170 1234567"}
+              rows={5}
+              className="font-mono text-xs mb-3"
+            />
+            <Button type="button" variant="outline" size="sm" onClick={generateSignatureSuggestion} className="gap-2">
+              <Sparkles className="h-3.5 w-3.5" />
+              Vorschlag generieren
+            </Button>
+          </div>
+
+          {/* ── BRIEFKOPF ── */}
+          <div>
+            <p className={RECORD_CARD.SECTION_TITLE}>Briefkopf-Daten</p>
+            <div className="flex items-start gap-4 mb-4">
+              <img src={formData.letterhead_logo_url || defaultLetterheadLogo} alt="Logo"
+                className="h-12 w-auto object-contain border rounded-lg p-1 bg-background" />
+              <div className="flex-1">
+                <FileUploader onFilesSelected={handleLogoUpload} accept="image/*"
+                  label="Logo hochladen" hint="PNG transparent empfohlen" maxSize={2 * 1024 * 1024} />
+              </div>
+            </div>
+            <div className={RECORD_CARD.FIELD_GRID}>
               <FormInput label="Firmenzusatz" name="letterhead_company_line" value={formData.letterhead_company_line}
                 onChange={e => updateField('letterhead_company_line', e.target.value)} placeholder="Mustermann GmbH" />
               <FormInput label="Zusatzzeile" name="letterhead_extra_line" value={formData.letterhead_extra_line}
                 onChange={e => updateField('letterhead_extra_line', e.target.value)} placeholder="HRB 12345" />
-            </FormRow>
-            <FormInput label="Webseite" name="letterhead_website" type="url" value={formData.letterhead_website}
-              onChange={e => updateField('letterhead_website', e.target.value)} placeholder="https://www.example.de" />
+              <FormInput label="Webseite" name="letterhead_website" type="url" value={formData.letterhead_website}
+                onChange={e => updateField('letterhead_website', e.target.value)} placeholder="https://www.example.de" />
+            </div>
             <div className="border-t border-border/30 pt-3 mt-3">
               <p className="text-xs font-medium text-muted-foreground mb-2">Bankverbindung</p>
-              <FormRow>
+              <div className={RECORD_CARD.FIELD_GRID}>
                 <FormInput label="Bank" name="letterhead_bank_name" value={formData.letterhead_bank_name}
                   onChange={e => updateField('letterhead_bank_name', e.target.value)} placeholder="Deutsche Bank" />
                 <FormInput label="IBAN" name="letterhead_iban" value={formData.letterhead_iban}
                   onChange={e => updateField('letterhead_iban', e.target.value)} placeholder="DE89 3704 0044 ..." />
                 <FormInput label="BIC" name="letterhead_bic" value={formData.letterhead_bic}
                   onChange={e => updateField('letterhead_bic', e.target.value)} placeholder="COBADEFFXXX" />
-              </FormRow>
+              </div>
             </div>
-          </FormSection>
-        </ProfileWidget>
+          </div>
+        </RecordCard>
+
+        {/* ── Outbound-Kennung (rechte Spalte wenn RecordCard geschlossen) ── */}
+        {!isRecordOpen && <OutboundIdentityWidget />}
 
         {/* ── Upload-E-Mail ── */}
-        <UploadEmailWidget />
+        {!isRecordOpen && <UploadEmailWidget />}
 
         {/* ── WhatsApp Business ── */}
-        <WhatsAppWidget userId={user?.id} isDevelopmentMode={isDevelopmentMode} />
+        {isRecordOpen && (
+          <div className="md:col-span-2">
+            <WhatsAppWidget userId={user?.id} isDevelopmentMode={isDevelopmentMode} />
+          </div>
+        )}
+        {!isRecordOpen && <WhatsAppWidget userId={user?.id} isDevelopmentMode={isDevelopmentMode} />}
       </div>
 
       {/* ── Sticky Save Button ── */}
       <div className={cn(
         "fixed bottom-0 left-0 right-0 z-40 border-t bg-background/80 backdrop-blur-xl transition-all duration-300",
-        hasChanges ? "translate-y-0 opacity-100" : "translate-y-full opacity-0 pointer-events-none"
+        hasChanges && !isRecordOpen ? "translate-y-0 opacity-100" : "translate-y-full opacity-0 pointer-events-none"
       )}>
         <div className="flex items-center justify-between max-w-5xl mx-auto px-6 py-3">
           <p className="text-sm text-muted-foreground">
