@@ -1,65 +1,44 @@
 
-# Reparaturplan: Sanierung Demo-Daten an echtes MOD-04 Objekt koppeln
+# Reparaturplan: Sanierung Demo — Vollstaendiger Flow
 
-## Ist-Zustand
+## Problem
 
-Das Demo-Widget und die Inline-Akte zeigen ein frei erfundenes "EFH Berlin, Prenzlauer Allee 88" mit energetischer Sanierung (Fassade, Fenster, Dach, Waermepumpe). Dieses Objekt existiert nicht in der Datenbank.
+Die Demo-Ansicht zeigt nur 3 statische SectionCards mit Tabellen. Der echte Flow (`SanierungDetailInner`) hat wesentlich mehr Inhalt:
 
-## Soll-Zustand
+1. **Leistungsumfang** mit KI-Beschreibungsfeld, Kostenschaetzung (Min/Mid/Max), Line-Items-Editor und Ausschreibungsbeschreibung
+2. **Dienstleister & Ausschreibung** mit Suchfeld, Ergebnisliste, ausgewaehlten Anbietern UND Ausschreibungs-E-Mail-Entwurf
+3. **Angebote & Vergabe** mit Vergleichstabelle und Empfehlung
 
-Die Demo-Sanierung referenziert das echte MOD-04-Demo-Objekt **BER-01** (Schadowstr., 10117 Berlin, ETW, 85 m², WE-B01) und zeigt eine **Kernsanierung der Wohnung** mit neuen Boeden und neuen Baedern im mittleren Standard.
+## Loesung
 
-## Aenderungen
+Den Demo-Block in `SanierungTab.tsx` so umbauen, dass er die **gleiche visuelle Struktur** wie `SanierungDetailInner` zeigt — nur mit statischen, vorausgefuellten Demo-Daten statt interaktiver Panels.
 
-### 1. goldenPathProcesses.ts — Widget-Metadaten aktualisieren
+### Aufbau (von oben nach unten, scrollbar)
 
-Die `demoWidget`-Felder fuer `GP-SANIERUNG` anpassen:
-- **title**: "Demo: Kernsanierung BER-01" (statt "Sanierung EFH Berlin")
-- **subtitle**: "Schadowstr., Berlin — Boeden und Baeder, mittlerer Standard"
-- **badgeLabel**: bleibt "DEMO"
+**1. Header** (bleibt wie jetzt)
+- "Kernsanierung WE-B01 — Schadowstr., Berlin"
+- Badges: Demo, offers_received
 
-### 2. SanierungTab.tsx — Inline-Detail komplett ueberarbeiten
+**2. Stepper** (bleibt wie jetzt)
+- Status: `offers_received` (Schritte 1-3 erledigt, Schritt 4 aktiv)
 
-Die hartkodierten Demo-Daten (Zeilen 138-227) ersetzen durch realistische Kernsanierung fuer BER-01:
+**3. Section: Leistungsumfang** — erweitert um:
+- **Links (FORM_GRID):** Vorausgefuelltes Beschreibungsfeld (read-only Textarea) mit dem Text "Kernsanierung der 85 m² ETW: Neue Boeden in allen Raeumen, komplette Badsanierung und Gaeste-WC, Malerarbeiten..."
+- **Rechts:** Kostenschaetzungs-Card (Min: 18.500 EUR / Mid: 22.500 EUR / Max: 27.000 EUR) — gleiche Card-Struktur wie `CostEstimateCard`
+- **Darunter full-width:** Line-Items-Tabelle (5 Positionen wie bisher, aber im gleichen Layout wie `LineItemsEditor`)
+- **Darunter full-width:** Ausschreibungsbeschreibung (read-only Textarea mit professionellem Text)
 
-**Header:**
-- Titel: "Kernsanierung WE-B01 — Schadowstr., Berlin"
-- Adresse: Schadowstr., 10117 Berlin, ETW, 85 m²
-- Kategorie: Kernsanierung (statt "Energetisch")
+**4. Section: Dienstleister & Ausschreibung** — erweitert um:
+- **Links:** Suchfeld (deaktiviert, vorausgefuellt "Handwerker Sanierung"), Location "Berlin", dann 3 Suchergebnisse mit Ratings/Telefon/E-Mail (wie `ProviderSearchPanel`), darunter "Ausgewaehlt (3)" Liste
+- **Rechts:** E-Mail-Entwurf mit Betreff, Anrede, Ausschreibungstext, Tender-ID Referenz, PDF-Anlagen-Badges (wie `TenderDraftPanel`)
 
-**Leistungsverzeichnis (linke Spalte) — 5 Positionen, mittlerer Standard:**
+**5. Section: Angebote & Vergabe** (bleibt wie jetzt)
+- Vergleichstabelle + Empfehlung
 
-| Pos | Leistung | Kosten |
-|-----|----------|--------|
-| 1 | Bodenbelag Wohnraeume (Eiche Landhausdiele, 65 m²) | 5.850 EUR |
-| 2 | Bodenbelag Nassraeume (Feinsteinzeug 60x60, 20 m²) | 2.400 EUR |
-| 3 | Badsanierung komplett (Dusche, WC, Waschtisch, Armaturen) | 8.500 EUR |
-| 4 | Gaeste-WC Sanierung (WC, Handwaschbecken, Spiegel) | 3.200 EUR |
-| 5 | Malerarbeiten Waende und Decken (85 m² Wohnflaeche) | 2.550 EUR |
-| | **Gesamt** | **22.500 EUR** |
-
-**Dienstleister und Angebote (rechte Spalte):**
-
-| Firma | Status | Betrag |
-|-------|--------|--------|
-| Berliner Badsanierung GmbH | Angebot erhalten | 21.800 EUR |
-| Boden- und Fliesenwerk Mitte | Angebot erhalten | 23.900 EUR |
-| Sanierung Plus Berlin | Ausstehend | – |
-
-Bestes Angebot: Berliner Badsanierung GmbH — 21.800 EUR (3% unter Budget)
-
-**Widget-Footer:** Budget: 22.500 EUR, 5 Positionen
-
-### 3. demoDataManifest.ts — Beschreibung anpassen
-
-Consumer-Description aendern von "Demo-Guard fuer EFH Berlin" auf "Demo: Kernsanierung BER-01 Schadowstr."
-
----
-
-## Betroffene Dateien
+### Betroffene Dateien
 
 | Datei | Aenderung |
 |-------|-----------|
-| `src/manifests/goldenPathProcesses.ts` | Widget title/subtitle |
-| `src/pages/portal/immobilien/SanierungTab.tsx` | Komplettes Inline-Detail (Zeilen 66-227) |
-| `src/manifests/demoDataManifest.ts` | Consumer-Description |
+| `src/pages/portal/immobilien/SanierungTab.tsx` | Demo-Block (Zeilen 159-294) komplett ersetzen mit erweitertem Layout |
+
+### Keine neuen Dateien oder Komponenten noetig — alles wird mit bestehenden UI-Primitiven (Card, Badge, Input, Textarea, SectionCard) nachgebaut, nur read-only und vorausgefuellt.
