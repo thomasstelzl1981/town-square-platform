@@ -417,7 +417,7 @@ const zone3ComponentMaps: Record<string, Record<string, React.ComponentType>> = 
   sot: sotComponentMap,
   acquiary: acquiaryComponentMap,
   projekt: { ProjektLandingPage },
-  sites: { TenantSiteRenderer: React.lazy(() => import('@/pages/website/TenantSiteRenderer')) },
+  sites: { TenantSiteRenderer: React.lazy(() => import('@/pages/zone3/sites/TenantSiteRenderer')) },
 };
 
 // =============================================================================

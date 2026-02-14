@@ -153,7 +153,7 @@ export const MODULES_CATALOG: ModuleDefinition[] = [
   { code: 'MOD-17', name: 'Car-Management', zone: 'Zone 2', description: 'Fahrzeuge, Fahrtenbuch' },
   { code: 'MOD-18', name: 'Finanzanalyse', zone: 'Zone 2', description: 'Investment-Analyse' },
   { code: 'MOD-19', name: 'Photovoltaik', zone: 'Zone 2', description: 'PV-Anlagen-Verwaltung' },
-  { code: 'MOD-20', name: 'Miety', zone: 'Zone 2', description: 'Mieter-Portal' },
+  { code: 'MOD-20', name: 'ZUHAUSE', zone: 'Zone 2', description: 'Mieter-Portal' },
 ];
 
 // =============================================================================

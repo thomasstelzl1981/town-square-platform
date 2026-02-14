@@ -15762,6 +15762,7 @@ export type Database = {
       }
       v_public_listings: {
         Row: {
+          annual_income: number | null
           asking_price: number | null
           channel: Database["public"]["Enums"]["publication_channel"] | null
           city: string | null

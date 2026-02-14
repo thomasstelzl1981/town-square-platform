@@ -194,6 +194,21 @@ export default function Kaufy2026Home() {
         }
       }
 
+      // Query unit counts per property (same pattern as SucheTab)
+      const unitCountMap = new Map<string, number>();
+      if (propertyIds.length > 0) {
+        const { data: unitRows } = await supabase
+          .from('units')
+          .select('property_id')
+          .in('property_id', propertyIds);
+
+        if (unitRows) {
+          for (const row of unitRows) {
+            unitCountMap.set(row.property_id, (unitCountMap.get(row.property_id) || 0) + 1);
+          }
+        }
+      }
+
       return (data || []).map((item: any) => ({
         listing_id: item.id,
         public_id: item.public_id,
@@ -204,7 +219,7 @@ export default function Kaufy2026Home() {
         city: item.properties?.city || '',
         postal_code: item.properties?.postal_code,
         total_area_sqm: item.properties?.total_area_sqm,
-        unit_count: 1,
+        unit_count: unitCountMap.get(item.properties?.id) || 1,
         monthly_rent_total: item.properties?.annual_income ? item.properties.annual_income / 12 : 0,
         hero_image_path: imageMap.get(item.properties?.id) || null,
         isDemo: false,
