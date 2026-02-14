@@ -269,10 +269,10 @@ export const DEMO_DATA_MANIFEST: readonly DemoDataEntry[] = [
     status: 'done',
   },
 
-  // ─── MOD-21: Website Builder ────────────────────────────
+  // ─── MOD-05: Website Builder (ehemals MOD-21) ───────────────────
   {
     processId: 'GP-WEBSITE',
-    moduleCode: 'MOD-21',
+    moduleCode: 'MOD-05',
     toggleKey: 'GP-WEBSITE',
     dataHookFile: 'src/hooks/useDemoLocalEntity.ts',
     dataHookExport: 'useDemoLocalEntity',

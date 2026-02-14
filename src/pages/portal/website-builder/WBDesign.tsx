@@ -1,5 +1,5 @@
 /**
- * MOD-21 Website Builder — Tile 2: Design (Branding)
+ * MOD-05 Website Builder — Tile 2: Design (Branding) (ehemals MOD-21)
  * Template switcher + manual branding fields
  */
 import { useState, useEffect } from 'react';

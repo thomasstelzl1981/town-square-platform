@@ -270,7 +270,7 @@ const adminComponentMap: Record<string, React.ComponentType> = {
   AdminLandingPages: React.lazy(() => import('@/pages/admin/AdminLandingPages')),
   // Fortbildung Management
   AdminFortbildung: React.lazy(() => import('@/pages/admin/AdminFortbildung')),
-  // Website Hosting (MOD-21 Zone 1)
+  // Website Hosting (MOD-05 Zone 1)
   WebHostingDashboard: React.lazy(() => import('@/pages/admin/website-hosting/WebHostingDashboard')),
   WebHostingDomains: React.lazy(() => import('@/pages/admin/website-hosting/WebHostingDashboard')),
   WebHostingAbuse: React.lazy(() => import('@/pages/admin/website-hosting/WebHostingDashboard')),

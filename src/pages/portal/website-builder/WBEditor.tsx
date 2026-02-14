@@ -1,5 +1,5 @@
 /**
- * MOD-21 Website Builder — Inline Editor
+ * MOD-05 Website Builder — Inline Editor (ehemals MOD-21)
  * Split-view: Editor (left) + Live Preview (right)
  * Full field editing for all 8 section types, DnD reorder, Credits-based contract
  */

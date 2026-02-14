@@ -6,7 +6,7 @@
  * 
  * RULES:
  * 1. No route exists unless declared here
- * 2. 4-Tile-Pattern is mandatory for all modules (except MOD-04: 4 tiles, MOD-05: 1 tile placeholder, MOD-20 Miety: 6 tiles)
+ * 2. 4-Tile-Pattern is mandatory for all modules (except MOD-04: 4 tiles, MOD-05: Website Builder (0 tiles, dynamic routes), MOD-20 Miety: 6 tiles)
  * 3. Changes require explicit approval
  */
 
@@ -178,7 +178,7 @@ export const zone1Admin: ZoneDefinition = {
     { path: "landing-pages", component: "AdminLandingPages", title: "Landing Pages" },
     // Fortbildung Management
     { path: "fortbildung", component: "AdminFortbildung", title: "Fortbildung" },
-    // Website Hosting (MOD-21 Zone 1)
+    // Website Hosting (MOD-05 Zone 1)
     { path: "website-hosting", component: "WebHostingDashboard", title: "Website Hosting" },
     { path: "website-hosting/domains", component: "WebHostingDomains", title: "Domains" },
     { path: "website-hosting/abuse", component: "WebHostingAbuse", title: "Abuse" },
@@ -273,13 +273,14 @@ export const zone2Portal: ZoneDefinition = {
       ],
     },
     "MOD-05": {
-      name: "Modul 05",
-      base: "msv",
-      icon: "Box",
+      name: "Website Builder",
+      base: "website-builder",
+      icon: "Globe",
       display_order: 5,
-      visibility: { default: true, org_types: ["client"] },
-      tiles: [
-        { path: "uebersicht", component: "KiTelefonUebersicht", title: "Übersicht", default: true },
+      visibility: { default: true, org_types: ["client", "partner"] },
+      tiles: [],
+      dynamic_routes: [
+        { path: ":websiteId/editor", component: "WBEditor", title: "Editor", dynamic: true },
       ],
     },
     "MOD-06": {
@@ -538,17 +539,7 @@ export const zone2Portal: ZoneDefinition = {
         { path: "zuhause/:homeId", component: "MietyHomeDossier", title: "Zuhause-Akte", dynamic: true },
       ],
     },
-    "MOD-21": {
-      name: "Website Builder",
-      base: "website-builder",
-      icon: "Globe",
-      display_order: 21,
-      visibility: { default: true, org_types: ["client", "partner"] },
-      tiles: [],
-      dynamic_routes: [
-        { path: ":websiteId/editor", component: "WBEditor", title: "Editor", dynamic: true },
-      ],
-    },
+    // MOD-21 entfernt — Website Builder ist jetzt MOD-05
   },
 };
 

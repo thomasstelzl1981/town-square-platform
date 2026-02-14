@@ -54,11 +54,9 @@ const subTileIconMap: Record<string, LucideIcon> = {
   'sanierung': Wrench,
   'bewertung': TrendingUp,
   
-  // MOD-05 MSV
+  // MOD-05 Website Builder
   'dashboard': LayoutDashboard,
   'listen': List,
-  'mieteingang': Banknote,
-  'vermietung': Home,
   
   // MOD-06 Verkauf
   'objekte': Tag,

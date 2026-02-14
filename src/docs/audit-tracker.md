@@ -75,7 +75,7 @@ gantt
 | MOD-01 Stammdaten | 4 Tiles | ✅ (in Tabs) | — | ✅ Sauber |
 | MOD-02 KI-Office | 6 Tiles+MobileGuard | ✅ (in Tabs) | — | ✅ Sauber |
 | MOD-03 DMS | 4 Tiles | ✅ (in Tabs) | — | ✅ Sauber |
-| MOD-05 MSV | 4 Tiles+Detail | ✅ (in Tabs) | ✅ All | ✅ Sauber |
+| MOD-05 Website Builder | 0 Tiles (dynamic) | ✅ (WBDashboard) | ✅ All | ✅ Migriert (ehem. MOD-21) |
 | MOD-06 Verkauf | 5 Tiles+Exposé | ✅ (in Tabs) | ✅ All | ✅ Sauber |
 | MOD-09 Vertriebspartner | 4 Tiles+Details | ✅ (in Tabs) | ✅ All | ✅ Sauber |
 | MOD-10 Leads | 4 Tiles+SelfieAds | ✅ (ModuleTilePage) | ✅ SelfieAds | ✅ Sauber |

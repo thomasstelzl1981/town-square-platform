@@ -1,5 +1,5 @@
 /**
- * MOD-21 Website Builder — Single scrollable dashboard (Golden Path Standard)
+ * MOD-05 Website Builder — Single scrollable dashboard (Golden Path Standard)
  * WidgetGrid (Demo + Real Websites + CTA) + Inline-Flow sections
  */
 import { useState, useEffect } from 'react';

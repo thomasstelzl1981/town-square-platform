@@ -138,7 +138,7 @@ export const MODULES_CATALOG: ModuleDefinition[] = [
   { code: 'MOD-02', name: 'KI Office', zone: 'Zone 2', description: 'E-Mail, Brief, Kontakte, Kalender' },
   { code: 'MOD-03', name: 'DMS', zone: 'Zone 2', description: 'Dokumentenmanagement' },
   { code: 'MOD-04', name: 'Immobilien', zone: 'Zone 2', description: 'Portfolio, Kontexte, Bewertung' },
-  { code: 'MOD-05', name: 'MSV', zone: 'Zone 2', description: 'Mietverwaltung' },
+  { code: 'MOD-05', name: 'Website Builder', zone: 'Zone 2', description: 'KI-Website-Baukasten' },
   { code: 'MOD-06', name: 'Verkauf', zone: 'Zone 2', description: 'Objekte, Anfragen, Vorgänge' },
   { code: 'MOD-07', name: 'Finanzierung', zone: 'Zone 2', description: 'Selbstauskunft, Dokumente, Anfrage' },
   { code: 'MOD-08', name: 'Investment-Suche', zone: 'Zone 2', description: 'Suche, Favoriten, Mandate' },

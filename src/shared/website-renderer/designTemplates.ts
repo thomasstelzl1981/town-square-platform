@@ -1,5 +1,5 @@
 /**
- * MOD-21 Website Builder — 5 Design Templates
+ * MOD-05 Website Builder — 5 Design Templates (ehemals MOD-21)
  * Standardized presets for website generation and branding
  */
 import type { WebsiteBranding } from './types';
