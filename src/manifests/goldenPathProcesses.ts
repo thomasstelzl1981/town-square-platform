@@ -165,13 +165,13 @@ export const GOLDEN_PATH_PROCESSES: GoldenPathProcess[] = [
     },
     demoWidget: {
       id: '__demo__',
-      title: 'Demo: Sanierung EFH Berlin',
-      subtitle: 'Beispiel-Sanierung mit Leistungsverzeichnis und Kosten',
+      title: 'Demo: Kernsanierung BER-01',
+      subtitle: 'Schadowstr., Berlin — Böden und Bäder, mittlerer Standard',
       status: 'demo',
       badgeLabel: 'Demo',
       data: {
-        propertyAddress: 'Prenzlauer Allee 88, 10405 Berlin',
-        totalBudget: 45000,
+        propertyAddress: 'Schadowstr., 10117 Berlin',
+        totalBudget: 22500,
         positionsCount: 5,
         offersReceived: 2,
         status: 'in_progress',

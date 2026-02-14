@@ -88,7 +88,7 @@ export function SanierungTab() {
                     <p className="text-[11px] text-muted-foreground">{GP_SANIERUNG.demoWidget.subtitle}</p>
                   </div>
                   <div className="text-[10px] text-muted-foreground text-center">
-                    Budget: 45.000 € · 5 Positionen
+                    Budget: 22.500 € · 5 Positionen
                   </div>
                 </CardContent>
               </Card>
@@ -140,12 +140,12 @@ export function SanierungTab() {
           <div className="flex items-start justify-between gap-4">
             <div>
               <div className="flex items-center gap-3">
-                <h2 className="text-lg font-bold tracking-tight">Demo: Sanierung EFH Berlin</h2>
+                <h2 className="text-lg font-bold tracking-tight">Kernsanierung WE-B01 — Schadowstr., Berlin</h2>
                 <Badge className="bg-primary/10 text-primary border-0">Demo</Badge>
                 <Badge variant="secondary">in_progress</Badge>
               </div>
               <p className="text-sm text-muted-foreground mt-1">
-                Prenzlauer Allee 88, 10405 Berlin · Kategorie: Energetisch · Budget: 45.000 €
+                Schadowstr., 10117 Berlin · ETW, 85 m² · Kategorie: Kernsanierung · Budget: 22.500 €
               </p>
             </div>
             <button onClick={() => setSelectedCaseId(null)} className="text-muted-foreground hover:text-foreground p-1">✕</button>
@@ -156,8 +156,8 @@ export function SanierungTab() {
             {[
               { label: 'Leistungsumfang', active: true, done: true },
               { label: 'Dienstleistersuche', active: true, done: true },
-              { label: 'Ausschreibung', active: true, done: false },
-              { label: 'Angebote', active: false, done: false },
+              { label: 'Ausschreibung', active: true, done: true },
+              { label: 'Angebote', active: true, done: false },
               { label: 'Vergabe', active: false, done: false },
             ].map((s, i) => (
               <Badge key={i} variant={s.done ? 'default' : s.active ? 'secondary' : 'outline'} className="text-xs">
@@ -175,11 +175,11 @@ export function SanierungTab() {
               </div>
               <CardContent className="p-4 space-y-2">
                 {[
-                  { pos: 1, title: 'Fassadendämmung WDVS 14cm', cost: '12.500 €' },
-                  { pos: 2, title: 'Fensteraustausch 3-fach (8 Stk)', cost: '9.600 €' },
-                  { pos: 3, title: 'Dachneueindeckung inkl. Dämmung', cost: '14.200 €' },
-                  { pos: 4, title: 'Heizung Wärmepumpe', cost: '6.800 €' },
-                  { pos: 5, title: 'Elektroinstallation Modern.', cost: '1.900 €' },
+                  { pos: 1, title: 'Bodenbelag Wohnräume (Eiche Landhausdiele, 65 m²)', cost: '5.850 €' },
+                  { pos: 2, title: 'Bodenbelag Nassräume (Feinsteinzeug 60×60, 20 m²)', cost: '2.400 €' },
+                  { pos: 3, title: 'Badsanierung komplett (Dusche, WC, Waschtisch, Armaturen)', cost: '8.500 €' },
+                  { pos: 4, title: 'Gäste-WC Sanierung (WC, Handwaschbecken, Spiegel)', cost: '3.200 €' },
+                  { pos: 5, title: 'Malerarbeiten Wände und Decken (85 m² Wohnfläche)', cost: '2.550 €' },
                 ].map(p => (
                   <div key={p.pos} className="flex items-center justify-between py-1.5 px-3 rounded-lg bg-muted/30 text-sm">
                     <span className="text-muted-foreground w-6">{p.pos}.</span>
@@ -188,7 +188,7 @@ export function SanierungTab() {
                   </div>
                 ))}
                 <div className="flex justify-end pt-2 border-t border-border/30">
-                  <span className="font-bold text-sm">Gesamt: 45.000 €</span>
+                  <span className="font-bold text-sm">Gesamt: 22.500 €</span>
                 </div>
               </CardContent>
             </Card>
@@ -202,9 +202,9 @@ export function SanierungTab() {
                 <div className="space-y-2">
                   <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Ausschreibung versendet an</p>
                   {[
-                    { name: 'Meister Bau GmbH', status: 'Angebot erhalten', amount: '42.300 €', color: 'text-primary' },
-                    { name: 'Renovierungsprofi Berlin', status: 'Angebot erhalten', amount: '47.800 €', color: 'text-muted-foreground' },
-                    { name: 'Energiesanierung Nord', status: 'Ausstehend', amount: '–', color: 'text-muted-foreground' },
+                    { name: 'Berliner Badsanierung GmbH', status: 'Angebot erhalten', amount: '21.800 €', color: 'text-primary' },
+                    { name: 'Boden- und Fliesenwerk Mitte', status: 'Angebot erhalten', amount: '23.900 €', color: 'text-muted-foreground' },
+                    { name: 'Sanierung Plus Berlin', status: 'Ausstehend', amount: '–', color: 'text-muted-foreground' },
                   ].map((d, i) => (
                     <div key={i} className="flex items-center justify-between py-2 px-3 rounded-lg bg-muted/30 text-sm">
                       <div>
@@ -217,7 +217,7 @@ export function SanierungTab() {
                 </div>
                 <div className="pt-2 border-t border-border/30">
                   <p className="text-xs text-muted-foreground">
-                    Bestes Angebot: <span className="font-semibold text-primary">Meister Bau GmbH — 42.300 €</span> (6% unter Budget)
+                    Bestes Angebot: <span className="font-semibold text-primary">Berliner Badsanierung GmbH — 21.800 €</span> (3 % unter Budget)
                   </p>
                 </div>
               </CardContent>
