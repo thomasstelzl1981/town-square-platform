@@ -439,6 +439,36 @@
 }
 
 /* ===========================================================================
+   SCROLL-SNAP SECTIONS
+   =========================================================================== */
+
+.sot-scroll-snap-container {
+  scroll-snap-type: y mandatory;
+  scroll-behavior: smooth;
+}
+
+.sot-snap-section {
+  scroll-snap-align: start;
+  min-height: calc(100vh - 48px); /* viewport minus SystemBar h-12 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  flex-direction: column;
+}
+
+/* On mobile, allow natural scroll instead of strict snap */
+@media (max-width: 640px) {
+  .sot-scroll-snap-container {
+    scroll-snap-type: y proximity;
+  }
+  .sot-snap-section {
+    min-height: auto;
+    padding: 3rem 0;
+  }
+}
+
+/* ===========================================================================
    DARK/LIGHT MODE TRANSITIONS
    =========================================================================== */
 

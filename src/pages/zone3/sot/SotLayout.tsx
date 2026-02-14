@@ -1,6 +1,6 @@
 /**
- * SoT Layout — Portal-Clone: SystemBar | Main Content + Armstrong Stripe (right)
- * Matches the Zone 2 portal design exactly: h-screen, no footer, no widget sidebar.
+ * SoT Layout — Symmetrisches Portal-Design mit Scroll-Snap
+ * Left Spacer (300px) | Main Content (scroll-snap) | Armstrong Stripe (300px, fixed)
  */
 import { Outlet } from 'react-router-dom';
 import { SotWidgetBarMobile } from '@/components/zone3/sot/SotWidgetSidebar';
@@ -24,15 +24,21 @@ export default function SotLayout() {
   return (
     <SotLoginTransition>
       <div className={`${themeClass} h-screen flex flex-col overflow-hidden bg-atmosphere`}>
-        {/* SystemBar — Portal-Clone */}
+        {/* SystemBar */}
         <SotSystemBar isDark={isDark} onToggleTheme={toggleTheme} />
 
-        {/* Main Content — full width, Armstrong is fixed */}
-        <main className="flex-1 overflow-y-auto relative">
-          <Outlet />
-        </main>
+        {/* Content Area: Spacer | Main | (Armstrong is fixed) */}
+        <div className="flex-1 flex overflow-hidden">
+          {/* Left Spacer — invisible, matches Armstrong width for perfect centering */}
+          <div className="hidden lg:block w-[300px] shrink-0" />
 
-        {/* Armstrong Stripe — fixed right side, doesn't affect content centering */}
+          {/* Main Content with scroll-snap */}
+          <main className="flex-1 overflow-y-auto sot-scroll-snap-container">
+            <Outlet />
+          </main>
+        </div>
+
+        {/* Armstrong Stripe — fixed right side, 300px */}
         <SotArmstrongStripe />
 
         {/* Mobile Bottom Nav */}
