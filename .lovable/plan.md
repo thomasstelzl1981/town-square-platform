@@ -1,109 +1,127 @@
 
-# Konsolidierung: Doppelte Module unter Operative Desks
+# Umbau: Posteingang-Modell und Vertragsabschluss-Standard
 
-## Problem-Analyse
+## Zusammenfassung
 
-Aktuell erscheinen in der Sidebar unter "Operative Desks" folgende doppelte/ueberfluessige Eintraege:
+Das bisherige Modell (Admin routet Post manuell via Zone 1 an Tenants) wird ersetzt durch ein Self-Service-Modell: Tenants schliessen einen Vertrag ab, erhalten danach eine Inbound-E-Mail-Adresse, und eingehende PDFs werden automatisch verarbeitet. Das Admin-Inbox-Modul in Zone 1 entfaellt komplett.
 
-### 1. Lead Pool + Provisionen → Lead Desk
-
-| Menüpunkt | Route | Funktion | Status |
-|-----------|-------|----------|--------|
-| **Lead Pool** | `/admin/leadpool` | Vollstaendige Lead-Verwaltung (560 Zeilen): DB-Abfragen auf `leads` + `lead_assignments`, Lead-Erstellung, Partner-Zuweisung, KPI-Stats | Funktional, aber veraltet |
-| **Provisionen** | `/admin/commissions` | Provisions-Freigabe-Tabelle | Funktional, soll in Lead Desk |
-| **Lead Desk** | `/admin/lead-desk` | Neuer Platzhalter (nur statische KPI-Karten, keine DB-Anbindung) | Platzhalter |
-
-**Loesung**: Die gesamte Logik aus `LeadPool.tsx` (Lead-Tabelle, Zuweisungen, Dialoge) und `CommissionApproval.tsx` (Provisionen) wird in `LeadDesk.tsx` als Tab-Struktur integriert. Die alten Routen `leadpool` und `commissions` werden entfernt.
-
-### 2. Landing Pages + Website Hosting
-
-| Menüpunkt | Route | Datenquelle | Funktion |
-|-----------|-------|-------------|----------|
-| **Landing Pages** | `/admin/landing-pages` | `landing_pages` Tabelle | Projekt-Websites (MOD-13): Slug-basierte Seiten mit Vorschau-Countdown, Sperr-Funktion |
-| **Website Hosting** | `/admin/website-hosting` | `hosting_contracts` Tabelle | Tenant-Websites (MOD-05): Hosting-Vertraege, Suspendierung, Credit-Monitoring |
-
-**Loesung**: Beide verwalten "veroeffentlichte Web-Inhalte" aus Admin-Sicht. Konsolidierung in **Website Hosting** mit zwei Tabs: "Hosting-Vertraege" (bisheriges WebHosting) und "Projekt-Websites" (bisherige Landing Pages). Die Route `landing-pages` wird entfernt.
+Zusaetzlich wird ein systemweiter Vertragsabschluss-Standard als Spec-Datei dokumentiert.
 
 ---
 
-## Umsetzungsplan
+## Teil 1: Admin Inbox entfernen (Zone 1)
 
-### Schritt 1: Lead Desk mit Tab-Struktur aufbauen
-
-**Datei**: `src/pages/admin/desks/LeadDesk.tsx`
-
-Den bisherigen Platzhalter ersetzen durch eine vollwertige 3-Tab-Ansicht:
-
-- **Tab "Lead Pool"**: Gesamte Logik aus `src/pages/admin/LeadPool.tsx` uebernehmen (Lead-Tabelle, Erstell-Dialog, Zuweisungs-Dialog, KPI-Stats)
-- **Tab "Zuweisungen"**: Zuweisungs-Tabelle (bisher zweiter Tab innerhalb LeadPool)
-- **Tab "Provisionen"**: Inhalte aus `src/pages/admin/CommissionApproval.tsx` uebernehmen
-
-Die KPI-Leiste oben bleibt erhalten, wird aber mit echten DB-Daten gespeist.
-
-### Schritt 2: Website Hosting mit Landing Pages zusammenfuehren
-
-**Datei**: `src/pages/admin/website-hosting/WebHostingDashboard.tsx`
-
-Zwei Tabs hinzufuegen:
-
-- **Tab "Hosting-Vertraege"**: Bestehende Funktionalitaet (hosting_contracts)
-- **Tab "Projekt-Websites"**: Logik aus `src/pages/admin/AdminLandingPages.tsx` uebernehmen (landing_pages Tabelle, Status, Countdown, Lock/Unlock)
-
-### Schritt 3: Veraltete Routen und Sidebar-Eintraege entfernen
-
-**Datei**: `src/manifests/routesManifest.ts`
-- Route `leadpool` entfernen (Zeile 111)
-- Route `commissions` entfernen (Zeile 114)
-- Route `landing-pages` entfernen (Zeile 170)
-
-**Datei**: `src/components/admin/AdminSidebar.tsx`
-- `LeadPool` und `CommissionApproval` aus ICON_MAP entfernen
-- `leadpool`, `commissions`, `landing-pages` aus `getGroupKey()` und `shouldShowInNav()` entfernen
-
-**Datei**: `src/router/ManifestRouter.tsx`
-- Lazy-Imports fuer `LeadPool`, `CommissionApproval`, `AdminLandingPages` entfernen
-- Eintraege aus `adminComponentMap` entfernen
-
-### Schritt 4: Redirect fuer alte URLs (optional)
-
-**Datei**: `src/hooks/useActionHandoff.ts`
-- Redirect von `/admin/leadpool` auf `/admin/lead-desk` aendern (Zeile 102)
-
----
-
-## Ergebnis: Bereinigte Sidebar "Operative Desks"
-
-Vorher (7 Eintraege):
-- Sales Desk
-- Lead Pool (redundant)
-- Provisionen (redundant)
-- Lead Desk
-- FutureRoom
-- Acquiary
-- Projekt Desk
-- Landing Pages (redundant)
-- Website Hosting
-
-Nachher (6 Eintraege):
-- Sales Desk
-- **Lead Desk** (konsolidiert: Lead Pool + Provisionen)
-- FutureRoom
-- Acquiary
-- Projekt Desk
-- **Website Hosting** (konsolidiert: Hosting + Landing Pages)
-
-## Betroffene Dateien
+### Betroffene Dateien
 
 | Datei | Aenderung |
 |-------|-----------|
-| `src/pages/admin/desks/LeadDesk.tsx` | Neuschreiben: 3-Tab-Struktur mit DB-Anbindung |
-| `src/pages/admin/website-hosting/WebHostingDashboard.tsx` | Erweitern: Tab "Projekt-Websites" hinzufuegen |
-| `src/manifests/routesManifest.ts` | 3 Routen entfernen |
-| `src/components/admin/AdminSidebar.tsx` | Bereinigung ICON_MAP + Routing-Logik |
-| `src/router/ManifestRouter.tsx` | 3 Component-Mappings entfernen |
-| `src/hooks/useActionHandoff.ts` | Redirect-Pfad aktualisieren |
+| `src/manifests/routesManifest.ts` | Route `inbox` entfernen |
+| `src/components/admin/AdminSidebar.tsx` | `Inbox` aus ICON_MAP und Navigation entfernen |
+| `src/router/ManifestRouter.tsx` | Lazy-Import und `adminComponentMap`-Eintrag fuer `Inbox` entfernen |
+| `src/lib/postRouting.ts` | Datei entfernen (Zone-1-Routing-Engine nicht mehr benoetigt) |
+
+Die Datei `src/pages/admin/Inbox.tsx` bleibt vorerst im Repo (toter Code), kann aber spaeter aufgeraeumt werden. Die DB-Tabellen (`inbound_items`, `inbound_routing_rules`) bleiben bestehen fuer eventuelle spaetere Nutzung.
+
+---
+
+## Teil 2: Zone 2 Posteingang umbauen (Vertrags-Gate)
+
+### Neues Verhalten der PosteingangTab
+
+**Ohne aktiven Postservice-Vertrag:**
+- Keine E-Mail-Adresse sichtbar
+- Informationsbereich mit:
+  - Erklaerung, was der digitale Postservice bietet
+  - Hinweis auf externe Post-Scan-Dienste (z.B. CAYA, Dropscan)
+  - Hinweis auf manuellen PDF-Upload als Alternative
+  - CTA-Button "Postservice aktivieren" der zur Einstellungen-Seite navigiert oder direkt den TermsGate-Dialog oeffnet
+
+**Mit aktivem Postservice-Vertrag (Status `active`):**
+- Generierte Inbound-E-Mail-Adresse wird angezeigt
+- E-Mail-Tabelle wie bisher
+- Hinweis auf Credit-Kosten pro verarbeitetem Dokument
+
+### Aenderungen an PosteingangTab.tsx
+
+- Neue Query: `postservice_mandates` mit `status = 'active'` fuer den aktuellen Tenant pruefen
+- Wenn kein aktiver Vertrag: Info-Screen rendern (kein Mailbox-Fetch, keine E-Mail-Tabelle)
+- Wenn aktiver Vertrag: Bestehende Funktionalitaet (Mailbox + Tabelle)
+
+---
+
+## Teil 3: TermsGate in den Postservice-Vertragsabschluss integrieren
+
+### Aenderungen an EinstellungenTab.tsx
+
+Der bestehende "Nachsendeauftrag einrichten"-Button wird durch einen TermsGate-Flow ersetzt:
+
+1. Nutzer klickt "Postservice aktivieren"
+2. Dialog oeffnet sich mit TermsGatePanel:
+   - Template: `POSTSERVICE_ACTIVATION_V1`
+   - Vertragsbedingungen: Monatliche Credits, Kosten pro Brief, Mindestlaufzeit
+   - Keine Provision (grossCommission = 0), stattdessen Servicegebuehr
+3. Nach Akzeptanz:
+   - `postservice_mandates`-Eintrag wird erstellt (Status: `active` statt `requested`)
+   - Inbound-E-Mail-Adresse wird generiert
+   - Vertragsdokument wird im DMS abgelegt (automatisch via TermsGatePanel)
+
+### Neue Contract-Template
+
+Neuer Eintrag in der Contract-Template-Logik fuer `POSTSERVICE_ACTIVATION_V1` mit Postservice-spezifischen Bedingungen (Laufzeit, Credits, Kuendigungsfrist).
+
+---
+
+## Teil 4: Vertragsabschluss-Standard (Neue Spec-Datei)
+
+### Neue Datei: `spec/current/06_api_contracts/CONTRACT_TERMS_GATE_STANDARD.md`
+
+Dokumentiert den systemweiten Standard fuer alle Vertragsabschluesse:
+
+**Inhalt:**
+1. **Ablauf**: Immer ueber TermsGatePanel-Komponente (Dialog/Inline)
+2. **Vertragserstellung**: Contract-Template wird gerendert, Nutzer akzeptiert mit Checkbox
+3. **Persistenz**: 
+   - `user_consents` Tabelle: Consent-Eintrag mit Template-Code und Zeitstempel
+   - DMS-Ablage: PDF des Vertrags wird in Zone 2 beim Tenant gespeichert
+   - Zone 1 Kopie: Vertrag wird zusaetzlich im Admin-DMS referenziert (via `document_links`)
+4. **Provisionserfassung**: Bei provisionsrelevanten Vertraegen wird ein `commissions`-Eintrag erstellt
+5. **Aktuelle Anwendungsfaelle**:
+   - `PARTNER_RELEASE_V1` (MOD-04/09 Vertriebsauftrag)
+   - `FIN_MANDATE_ACCEPTANCE_V1` (MOD-11 Finanzierung)
+   - `ACQ_MANDATE_ACCEPTANCE_V1` (MOD-12 Akquise)
+   - `POSTSERVICE_ACTIVATION_V1` (MOD-03 Postservice) — NEU
+6. **Ablage-Standard**: Jeder Vertrag wird unter `{tenant_id}/MOD_03/contracts/` im Storage abgelegt. Beide Parteien (Tenant + Plattform) erhalten eine Referenz.
+
+---
+
+## Teil 5: Contract-Template fuer Postservice
+
+### Neue Template-Registrierung in `src/lib/contractGenerator.ts`
+
+Neues Template `POSTSERVICE_ACTIVATION_V1` mit:
+- Titel: "Vereinbarung ueber den digitalen Postservice"
+- Inhalt: Leistungsbeschreibung, Kostenmodell (Credits), Laufzeit, Kuendigungsklausel, Datenschutzhinweis
+- Variables: `{recipient_name}`, `{address}`, `{date}`, `{monthly_credits}`, `{cost_per_letter}`
+
+---
+
+## Zusammenfassung betroffene Dateien
+
+| Datei | Aenderung |
+|-------|-----------|
+| `src/manifests/routesManifest.ts` | Route `inbox` entfernen |
+| `src/components/admin/AdminSidebar.tsx` | Inbox-Eintrag entfernen |
+| `src/router/ManifestRouter.tsx` | Inbox-Mapping entfernen |
+| `src/lib/postRouting.ts` | Datei entfernen |
+| `src/pages/portal/dms/PosteingangTab.tsx` | Vertrags-Gate einbauen (Info-Screen vs. Inbox) |
+| `src/pages/portal/dms/EinstellungenTab.tsx` | TermsGatePanel fuer Postservice-Aktivierung |
+| `src/lib/contractGenerator.ts` | Template `POSTSERVICE_ACTIVATION_V1` hinzufuegen |
+| `spec/current/06_api_contracts/CONTRACT_TERMS_GATE_STANDARD.md` | NEU — Systemweiter Vertragsabschluss-Standard |
 
 ### Was sich NICHT aendert
-- Datenbank-Tabellen (`leads`, `lead_assignments`, `landing_pages`, `hosting_contracts`) — bleiben unveraendert
-- Zone 2 Module (MOD-09, MOD-10, MOD-13) — keine Aenderung
-- Bestehende Hooks (`useLandingPage.ts`) — werden weiterverwendet
+
+- Datenbank-Tabellen (`inbound_emails`, `inbound_items`, `postservice_mandates`) — bleiben
+- Zone 2 SortierenTab — bleibt (funktioniert weiterhin nach Aktivierung)
+- Zone 2 EinstellungenTab Speicher/OCR-Kacheln — bleiben unveraendert
+- TermsGatePanel-Komponente — wird wiederverwendet, nicht veraendert
+- Bestehende TermsGate-Flows (MOD-04, MOD-11, MOD-12) — keine Aenderung
