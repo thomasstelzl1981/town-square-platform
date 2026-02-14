@@ -12,7 +12,7 @@
 ### 1-1: Backlog-Datei erstellen 🟢
 - Datei: `src/docs/backlog-consolidated-v8.md`
 
-### 1-2: DB-Migration — Templates seeden + BIC 🟡
+### 1-2: DB-Migration — Templates seeden + BIC 🟢
 - `ALTER TABLE msv_bank_accounts ADD COLUMN IF NOT EXISTS bic text;`
 - INSERT 5 Textvorlagen in `msv_templates`:
   - ZAHLUNGSERINNERUNG (Stufe 1)
@@ -21,49 +21,49 @@
   - MIETERHOEHUNG
   - KONTAKT_RUECKFRAGE
 
-### 1-3: Hook useMSVData 🔴
+### 1-3: Hook useMSVData 🟢
 - Datei: `src/hooks/useMSVData.ts`
 - Liest: Properties (rental_managed), Units, Leases, Contacts
 - Liest: msv_rent_payments, msv_book_values, msv_bwa_entries
 - Berechnet: Zahlstatus-Ampel, säumige Fälle, Mieterhöhungs-Kandidaten, Monatshistorie
 - Demo-Fallback bei GP-VERWALTUNG Toggle
 
-### 1-4: VerwaltungTab komplett umbauen 🔴
+### 1-4: VerwaltungTab komplett umbauen 🟢
 - Datei: `src/pages/portal/immobilien/VerwaltungTab.tsx`
 - Ersetzt alte SectionCards (ObjekteTab/MieteingangTab/VermietungTab) durch:
   - WidgetGrid mit echten Properties + Demo-Widget
   - selectedPropertyId filtert 3 Kacheln
   - MietlisteTable, AufgabenSection, BWAControllingSection direkt eingebunden
 
-### 1-5: Kachel 1 — MietlisteTable DB-Anbindung 🔴
+### 1-5: Kachel 1 — MietlisteTable DB-Anbindung 🟢
 - Datei: `src/components/msv/MietlisteTable.tsx`
 - Props: propertyId für Filterung
-- DB statt DEMO_UNITS
+- DB statt DEMO_UNITS via useMSVData
 - PaymentBookingDialog integriert → schreibt msv_rent_payments
 - Expand-Panel mit echter Monatshistorie
 - Premium-Lock für Automatisierung
 
-### 1-6: Kachel 2 — AufgabenSection Mahnstufen 🔴
+### 1-6: Kachel 2 — AufgabenSection Mahnstufen 🟢
 - Datei: `src/components/msv/AufgabenSection.tsx`
 - Props: propertyId
-- Säumige Fälle aus DB (Fälligkeit + Grace)
-- Mahnstufen-Buttons erzeugen letter_drafts
-- Mieterhöhung: 36-Monate-Prüfung
+- Säumige Fälle aus DB via useMSVData (Fälligkeit + Grace)
+- Mahnstufen-Buttons erzeugen letter_drafts aus msv_templates
+- Mieterhöhung: 36-Monate-Prüfung mit Draft-Erzeugung
 
-### 1-7: Kachel 3 — BWAControllingSection DB-Persistenz 🔴
+### 1-7: Kachel 3 — BWAControllingSection DB-Persistenz 🟢
 - Datei: `src/components/msv/BWAControllingSection.tsx`
 - Props: propertyId
 - Liest/schreibt msv_book_values + msv_bwa_entries
 - AfA-Recalc, KI-Schätzung Bestätigung, Stichtag-Workflow
 
-### 1-8: Template-Integration MOD-02 🔴
-- TemplateWizard Platzhalter-Auto-Fill
+### 1-8: Template-Integration MOD-02 🟢
+- TemplateWizard Platzhalter-Auto-Fill (in AufgabenSection integriert)
 - Draft-Erzeugung in letter_drafts
 - Disclaimer-Footer
 
-### 1-9: Legacy Redirects aufräumen 🔴
+### 1-9: Legacy Redirects aufräumen 🟢
 - MSVPage.tsx bleibt als Redirect
-- Alte Tab-Imports aus VerwaltungTab entfernen
+- Alte Tab-Imports aus VerwaltungTab entfernt
 
 ---
 
