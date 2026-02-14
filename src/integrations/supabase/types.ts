@@ -11350,6 +11350,41 @@ export type Database = {
           },
         ]
       }
+      rate_limit_counters: {
+        Row: {
+          counter_key: string
+          created_at: string
+          function_name: string
+          id: string
+          tenant_id: string
+          user_id: string | null
+        }
+        Insert: {
+          counter_key: string
+          created_at?: string
+          function_name: string
+          id?: string
+          tenant_id: string
+          user_id?: string | null
+        }
+        Update: {
+          counter_key?: string
+          created_at?: string
+          function_name?: string
+          id?: string
+          tenant_id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rate_limit_counters_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       rent_payments: {
         Row: {
           amount: number
@@ -15789,6 +15824,7 @@ export type Database = {
         }[]
       }
       cleanup_golden_path_data: { Args: never; Returns: Json }
+      cleanup_rate_limit_counters: { Args: never; Returns: undefined }
       delete_test_batch: {
         Args: { p_batch_id: string }
         Returns: {
@@ -15890,6 +15926,10 @@ export type Database = {
         Returns: string
       }
       my_scope_org_ids: { Args: { active_org_id: string }; Returns: string[] }
+      purge_expired_ledger_entries: {
+        Args: { p_retention_days?: number }
+        Returns: Json
+      }
       reset_sandbox_tenant: { Args: { p_tenant_id: string }; Returns: Json }
       rpc_armstrong_log_action_run: {
         Args: {
