@@ -1,8 +1,8 @@
-# MOD-10 — PROVISIONEN (Commission Management)
+# MOD-10 — ABRECHNUNG (Commission Management)
 
-> **Version**: 1.0.0  
+> **Version**: 1.1.0  
 > **Status**: ACTIVE  
-> **Datum**: 2026-02-13  
+> **Datum**: 2026-02-14  
 > **Zone**: 2 (User Portal)  
 > **Route-Prefix**: `/portal/leads`  
 > **SSOT-Rolle**: Source of Truth für Provisionsabrechnungen und Umsatzverfolgung
@@ -11,7 +11,7 @@
 
 ## 1. Executive Summary
 
-MOD-10 "Provisionen" (ehemals "Leads") dient als zentrale Abrechnungsstelle für
+MOD-10 "Abrechnung" (ehemals "Leads", dann "Provisionen") dient als zentrale Abrechnungsstelle für
 Partner-Provisionen. Die Lead-Generierung und -Verwaltung wurde in MOD-09 konsolidiert;
 MOD-10 fokussiert ausschließlich auf Provisionsübersichten, Abrechnungen und Auszahlungen.
 
@@ -23,7 +23,7 @@ MOD-10 fokussiert ausschließlich auf Provisionsübersichten, Abrechnungen und A
 |----|-------|
 | **R1** | Provisionsdaten sind Read-Only für Partner (Zone-1 berechnet) |
 | **R2** | Route bleibt `/portal/leads` (Legacy-Kompatibilität) |
-| **R3** | Display-Name ist "Provisionen" (Manifest-Override) |
+| **R3** | Display-Name im Manifest ist "Abrechnung" |
 
 ---
 
@@ -40,8 +40,8 @@ MOD-10 fokussiert ausschließlich auf Provisionsübersichten, Abrechnungen und A
 ```yaml
 MOD-10:
   code: "MOD-10"
-  title: "Provisionen"
-  icon: "Receipt"
+  title: "Abrechnung"
+  icon: "CreditCard"
   main_route: "/portal/leads"
   display_order: 10
   sub_tiles: [uebersicht]
@@ -53,4 +53,5 @@ MOD-10:
 
 | Version | Datum | Änderung |
 |---------|-------|----------|
+| 1.1.0 | 2026-02-14 | Naming alignment: Titel → "Abrechnung" (SIA3-002) |
 | 1.0.0 | 2026-02-13 | Initial Release (Sprint S5) |
