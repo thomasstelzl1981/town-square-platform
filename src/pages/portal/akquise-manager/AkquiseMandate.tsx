@@ -340,15 +340,22 @@ export default function AkquiseMandate() {
     if (!activeMandateId) return;
     setApolloLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('sot-apollo-search', {
-        body: { mandateId: activeMandateId, jobTitles: apolloForm.jobTitles.split(',').map(s => s.trim()), locations: apolloForm.locations.split(',').map(s => s.trim()).filter(Boolean), industries: apolloForm.industries.split(',').map(s => s.trim()), limit: apolloForm.limit },
+      const { data, error } = await supabase.functions.invoke('sot-research-engine', {
+        body: {
+          intent: 'find_brokers',
+          query: apolloForm.jobTitles,
+          location: apolloForm.locations,
+          max_results: apolloForm.limit,
+          filters: { must_have_email: true, industry: apolloForm.industries },
+          context: { module: 'akquise', reference_id: activeMandateId },
+        },
       });
       if (error) throw error;
-      if (data?.contacts?.length) {
-        await bulkCreate.mutateAsync({ mandateId: activeMandateId, contacts: data.contacts.map((c: any) => ({ source: 'apollo' as const, source_id: c.id, company_name: c.company, first_name: c.firstName, last_name: c.lastName, email: c.email, phone: c.phone, role_guess: c.title, service_area: c.location, quality_score: c.score || 50 })) });
+      if (data?.results?.length) {
+        await bulkCreate.mutateAsync({ mandateId: activeMandateId, contacts: data.results.map((c: any) => ({ source: 'apollo' as const, source_id: `engine_${Date.now()}_${Math.random()}`, company_name: c.name, first_name: '', last_name: '', email: c.email, phone: c.phone, role_guess: '', service_area: c.address, quality_score: c.confidence || 50 })) });
       }
       setShowApolloDialog(false);
-    } catch (err) { toast.error('Apollo-Suche fehlgeschlagen'); } 
+    } catch (err) { toast.error('Kontaktrecherche fehlgeschlagen'); } 
     finally { setApolloLoading(false); }
   };
 
@@ -356,11 +363,19 @@ export default function AkquiseMandate() {
     if (!activeMandateId) return;
     setApifyLoading(true);
     try {
-      const { error } = await supabase.functions.invoke('sot-apify-portal-job', { body: { mandateId: activeMandateId, portalUrl: apifyForm.portalUrl, searchType: apifyForm.searchType, limit: apifyForm.limit } });
+      const { data, error } = await supabase.functions.invoke('sot-research-engine', {
+        body: {
+          intent: 'search_portals',
+          query: apifyForm.portalUrl || 'Immobilien',
+          max_results: apifyForm.limit,
+          portal_config: { search_type: apifyForm.searchType },
+          context: { module: 'akquise', reference_id: activeMandateId },
+        },
+      });
       if (error) throw error;
-      toast.success('Apify-Job gestartet');
+      toast.success(`Portal-Recherche: ${data?.results?.length || 0} Ergebnisse`);
       setShowApifyDialog(false);
-    } catch (err) { toast.error('Apify-Job fehlgeschlagen'); }
+    } catch (err) { toast.error('Portal-Recherche fehlgeschlagen'); }
     finally { setApifyLoading(false); }
   };
 
@@ -417,36 +432,37 @@ export default function AkquiseMandate() {
       `Mit freundlichen Grüßen`
     );
 
-    // 3. Auto-Kontaktrecherche starten (Apollo)
+    // 3. Auto-Kontaktrecherche starten (Research Engine)
     if (activeMandateId) {
       try {
-        const searchLocations = profileData.region ? profileData.region.split(',').map(s => s.trim()) : [];
-        const { data, error } = await supabase.functions.invoke('sot-apollo-search', {
+        const searchLocation = profileData.region || 'Deutschland';
+        const { data, error } = await supabase.functions.invoke('sot-research-engine', {
           body: {
-            mandateId: activeMandateId,
-            jobTitles: ['Makler', 'Immobilienmakler', 'Geschäftsführer'],
-            locations: searchLocations,
-            industries: ['Real Estate'],
-            limit: 25,
+            intent: 'find_brokers',
+            query: 'Immobilienmakler Geschäftsführer',
+            location: searchLocation,
+            max_results: 25,
+            filters: { must_have_email: true, industry: 'Real Estate' },
+            context: { module: 'akquise', reference_id: activeMandateId },
           },
         });
-        if (!error && data?.contacts?.length) {
+        if (!error && data?.results?.length) {
           await bulkCreate.mutateAsync({
             mandateId: activeMandateId,
-            contacts: data.contacts.map((c: any) => ({
+            contacts: data.results.map((c: any) => ({
               source: 'apollo' as const,
-              source_id: c.id,
-              company_name: c.company,
-              first_name: c.firstName,
-              last_name: c.lastName,
+              source_id: `engine_${Date.now()}_${Math.random()}`,
+              company_name: c.name,
+              first_name: '',
+              last_name: '',
               email: c.email,
               phone: c.phone,
-              role_guess: c.title,
-              service_area: c.location,
-              quality_score: c.score || 50,
+              role_guess: '',
+              service_area: c.address,
+              quality_score: c.confidence || 50,
             })),
           });
-          toast.success(`Ankaufsprofil übernommen — E-Mail vorbereitet, ${data.contacts.length} Kontakte gefunden`);
+          toast.success(`Ankaufsprofil übernommen — E-Mail vorbereitet, ${data.results.length} Kontakte gefunden`);
         } else {
           toast.success('Ankaufsprofil übernommen — E-Mail vorbereitet');
         }

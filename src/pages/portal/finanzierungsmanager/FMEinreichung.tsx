@@ -129,11 +129,27 @@ export default function FMEinreichung({ cases, isLoading }: Props) {
     setAiLoading(true);
     setAiError(null);
     try {
-      const { data, error } = await supabase.functions.invoke('sot-places-search', {
-        body: { query: `Bank ${locationHint}`, radius: 50000 },
+      const { data, error } = await supabase.functions.invoke('sot-research-engine', {
+        body: {
+          intent: 'find_companies',
+          query: `Bank ${locationHint}`,
+          location: locationHint,
+          max_results: 20,
+          context: { module: 'finanzierung' },
+        },
       });
       if (error) throw error;
-      setAiResults((data?.results as PlaceResult[]) || []);
+      // Map engine results to PlaceResult format
+      const mapped = (data?.results || []).map((r: any, idx: number) => ({
+        place_id: `engine_${idx}`,
+        name: r.name,
+        formatted_address: r.address || '',
+        phone_number: r.phone,
+        website: r.website,
+        rating: r.rating,
+        user_ratings_total: r.reviews_count,
+      }));
+      setAiResults(mapped as PlaceResult[]);
     } catch (err: any) {
       console.error('KI-Bankensuche Fehler:', err);
       setAiError('Bankensuche fehlgeschlagen');

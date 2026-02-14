@@ -153,20 +153,42 @@ export interface AufteilerCalcResult {
 export function usePortalSearch() {
   return useMutation({
     mutationFn: async (params: PortalSearchParams) => {
-      const { data, error } = await supabase.functions.invoke('sot-apify-portal-job', {
+      const { data, error } = await supabase.functions.invoke('sot-research-engine', {
         body: {
-          portal: params.portal,
-          searchType: params.searchType,
-          query: params.query,
-          region: params.region,
-          priceMin: params.priceMin,
-          priceMax: params.priceMax,
-          objectTypes: params.objectTypes,
+          intent: 'search_portals',
+          query: params.query || 'Immobilien',
+          location: params.region,
+          max_results: 50,
+          portal_config: {
+            portal: params.portal,
+            search_type: params.searchType,
+            price_min: params.priceMin,
+            price_max: params.priceMax,
+            object_types: params.objectTypes,
+          },
+          context: { module: 'akquise' },
         },
       });
 
       if (error) throw error;
-      return data as { results: PortalSearchResult[]; count: number };
+      
+      // Map engine results to PortalSearchResult format
+      const results: PortalSearchResult[] = (data?.results || []).map((r: any, idx: number) => ({
+        id: `engine_${idx}_${Date.now()}`,
+        title: r.name,
+        price: r.source_refs?.price_raw ? parseInt(r.source_refs.price_raw) : undefined,
+        address: r.address || undefined,
+        city: undefined,
+        url: r.website || '',
+        portal: params.portal,
+        scraped_at: new Date().toISOString(),
+        broker_name: r.source_refs?.broker_name || undefined,
+        broker_company: r.name,
+        broker_phone: r.phone || undefined,
+        broker_email: r.email || undefined,
+      }));
+
+      return { results, count: results.length };
     },
     onSuccess: (data) => {
       toast.success(`${data.count} Ergebnisse gefunden`);

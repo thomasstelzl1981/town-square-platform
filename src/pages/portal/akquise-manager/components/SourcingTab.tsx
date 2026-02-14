@@ -106,39 +106,40 @@ export function SourcingTab({ mandateId, mandateCode }: SourcingTabProps) {
   const handleApolloSearch = async () => {
     setApolloLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('sot-apollo-search', {
+      const { data, error } = await supabase.functions.invoke('sot-research-engine', {
         body: {
-          mandateId,
-          jobTitles: apolloForm.jobTitles.split(',').map(s => s.trim()),
-          locations: apolloForm.locations.split(',').map(s => s.trim()).filter(Boolean),
-          industries: apolloForm.industries.split(',').map(s => s.trim()),
-          limit: apolloForm.limit,
+          intent: 'find_brokers',
+          query: apolloForm.jobTitles,
+          location: apolloForm.locations,
+          max_results: apolloForm.limit,
+          filters: { must_have_email: true, industry: apolloForm.industries },
+          context: { module: 'akquise', reference_id: mandateId },
         },
       });
       
       if (error) throw error;
       
-      if (data?.contacts?.length) {
+      if (data?.results?.length) {
         await bulkCreate.mutateAsync({
           mandateId,
-          contacts: data.contacts.map((c: any) => ({
+          contacts: data.results.map((c: any) => ({
             source: 'apollo' as const,
-            source_id: c.id,
-            company_name: c.company,
-            first_name: c.firstName,
-            last_name: c.lastName,
+            source_id: `engine_${Date.now()}_${Math.random()}`,
+            company_name: c.name,
+            first_name: '',
+            last_name: '',
             email: c.email,
             phone: c.phone,
-            role_guess: c.title,
-            service_area: c.location,
-            quality_score: c.score || 50,
+            role_guess: '',
+            service_area: c.address,
+            quality_score: c.confidence || 50,
           })),
         });
       }
       
       setShowApolloDialog(false);
     } catch (err) {
-      toast.error('Apollo-Suche fehlgeschlagen: ' + (err as Error).message);
+      toast.error('Kontaktrecherche fehlgeschlagen: ' + (err as Error).message);
     } finally {
       setApolloLoading(false);
     }
@@ -147,20 +148,21 @@ export function SourcingTab({ mandateId, mandateCode }: SourcingTabProps) {
   const handleApifySearch = async () => {
     setApifyLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('sot-apify-portal-job', {
+      const { data, error } = await supabase.functions.invoke('sot-research-engine', {
         body: {
-          mandateId,
-          portalUrl: apifyForm.portalUrl,
-          searchType: apifyForm.searchType,
-          limit: apifyForm.limit,
+          intent: 'search_portals',
+          query: apifyForm.portalUrl || 'Immobilien',
+          max_results: apifyForm.limit,
+          portal_config: { search_type: apifyForm.searchType },
+          context: { module: 'akquise', reference_id: mandateId },
         },
       });
       
       if (error) throw error;
-      toast.success('Apify-Job gestartet. Ergebnisse erscheinen in Kürze.');
+      toast.success(`Portal-Recherche: ${data?.results?.length || 0} Ergebnisse`);
       setShowApifyDialog(false);
     } catch (err) {
-      toast.error('Apify-Job fehlgeschlagen: ' + (err as Error).message);
+      toast.error('Portal-Recherche fehlgeschlagen: ' + (err as Error).message);
     } finally {
       setApifyLoading(false);
     }
