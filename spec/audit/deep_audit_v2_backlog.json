@@ -1,0 +1,261 @@
+[
+  {
+    "id": "BL-000001",
+    "severity": "P2",
+    "type": "drift",
+    "zone": "Z2",
+    "module": "MOD-04",
+    "area": "immobilien",
+    "title": "Orphan directory src/pages/portal/msv/ — 6 legacy files",
+    "description": "src/pages/portal/msv/ contains 6 files (MSVDashboard, MieteingangTab, ObjekteTab, VermietungTab, EinstellungenTab, RentalExposeDetail) from pre-consolidation MSV module. MSV was consolidated into MOD-04 Verwaltung. These files are not imported anywhere.",
+    "repro": {
+      "start_url": "/portal/immobilien/verwaltung",
+      "steps": ["Grep for 'from.*pages/portal/msv' — returns 0 results"],
+      "preconditions": ["N/A"]
+    },
+    "expected": "Directory should not exist",
+    "actual": "6 orphan files present",
+    "evidence": {
+      "screenshots": [],
+      "logs": [],
+      "db_tables": [],
+      "events": []
+    },
+    "suspected_root_cause": "Legacy MSV module files were not deleted during MOD-04 Verwaltung consolidation",
+    "repo_refs": {
+      "files": ["src/pages/portal/msv/MSVDashboard.tsx", "src/pages/portal/msv/MieteingangTab.tsx", "src/pages/portal/msv/ObjekteTab.tsx", "src/pages/portal/msv/VermietungTab.tsx", "src/pages/portal/msv/EinstellungenTab.tsx", "src/pages/portal/msv/RentalExposeDetail.tsx"],
+      "manifest_entries": [],
+      "contract_refs": [],
+      "golden_path_refs": []
+    },
+    "fix_plan": {
+      "approach": "minimal",
+      "steps": ["Delete src/pages/portal/msv/ directory", "Delete src/pages/portal/MSVPage.tsx (redirect no longer needed)"],
+      "risk": "low",
+      "verification": ["Grep for 'pages/portal/msv' returns 0", "Build succeeds", "VerwaltungTab still renders correctly"]
+    },
+    "status": "new"
+  },
+  {
+    "id": "BL-000002",
+    "severity": "P2",
+    "type": "security",
+    "zone": "cross-zone",
+    "module": "admin",
+    "area": "other",
+    "title": "2 SECURITY DEFINER views flagged by linter",
+    "description": "v_public_listings and one other view use SECURITY DEFINER. v_public_listings is intentional for unauthenticated Kaufy visitors. Requires Cloud configuration to resolve or document as accepted risk.",
+    "repro": {
+      "start_url": "N/A",
+      "steps": ["Run database linter"],
+      "preconditions": ["N/A"]
+    },
+    "expected": "All views use SECURITY INVOKER or are documented exceptions",
+    "actual": "2 SECURITY DEFINER views flagged",
+    "evidence": {
+      "screenshots": [],
+      "logs": ["Linter ERROR: Security Definer View (x2)"],
+      "db_tables": ["v_public_listings"],
+      "events": []
+    },
+    "suspected_root_cause": "Views created for public unauthenticated access require SECURITY DEFINER by design",
+    "repo_refs": {
+      "files": [],
+      "manifest_entries": [],
+      "contract_refs": [],
+      "golden_path_refs": []
+    },
+    "fix_plan": {
+      "approach": "minimal",
+      "steps": ["Identify second view", "Document both as intentional exceptions or convert to SECURITY INVOKER where possible"],
+      "risk": "low",
+      "verification": ["Re-run linter"]
+    },
+    "status": "acknowledged"
+  },
+  {
+    "id": "BL-000003",
+    "severity": "P2",
+    "type": "security",
+    "zone": "cross-zone",
+    "module": "admin",
+    "area": "other",
+    "title": "Auth OTP long expiry + leaked password protection disabled",
+    "description": "Database linter warns about OTP expiry exceeding recommended threshold and leaked password protection being disabled.",
+    "repro": {
+      "start_url": "N/A",
+      "steps": ["Run database linter"],
+      "preconditions": ["N/A"]
+    },
+    "expected": "OTP within threshold, leaked password protection enabled",
+    "actual": "Both warnings active",
+    "evidence": {
+      "screenshots": [],
+      "logs": ["WARN: Auth OTP long expiry", "WARN: Leaked Password Protection Disabled"],
+      "db_tables": [],
+      "events": []
+    },
+    "suspected_root_cause": "Default auth configuration not hardened post-setup",
+    "repo_refs": {
+      "files": [],
+      "manifest_entries": [],
+      "contract_refs": [],
+      "golden_path_refs": []
+    },
+    "fix_plan": {
+      "approach": "minimal",
+      "steps": ["Configure via Lovable Cloud auth settings"],
+      "risk": "low",
+      "verification": ["Re-run linter — warnings resolved"]
+    },
+    "status": "acknowledged"
+  },
+  {
+    "id": "BL-000004",
+    "severity": "P3",
+    "type": "drift",
+    "zone": "Z2",
+    "module": "MOD-10",
+    "area": "manifest",
+    "title": "MOD-10 base path 'leads' inconsistent with module name 'Abrechnung'",
+    "description": "MOD-10 (Abrechnung/Provisionen) has base path 'leads' which is a historical artifact from when the module was a leads module. The URL /portal/leads doesn't match the module's current purpose.",
+    "repro": {
+      "start_url": "/portal/leads/uebersicht",
+      "steps": ["Navigate to MOD-10 — URL says 'leads' but content is 'Abrechnung'"],
+      "preconditions": ["role=partner with activation"]
+    },
+    "expected": "Base path should be 'abrechnung' or 'provisionen'",
+    "actual": "Base path is 'leads'",
+    "evidence": {
+      "screenshots": [],
+      "logs": [],
+      "db_tables": [],
+      "events": []
+    },
+    "suspected_root_cause": "Module was originally a leads module, base path was never updated during rename",
+    "repo_refs": {
+      "files": ["src/manifests/routesManifest.ts"],
+      "manifest_entries": ["routesManifest.ts:MOD-10.base"],
+      "contract_refs": [],
+      "golden_path_refs": []
+    },
+    "fix_plan": {
+      "approach": "minimal",
+      "steps": ["Rename base to 'abrechnung'", "Add legacy redirect /portal/leads → /portal/abrechnung", "Update any direct path references"],
+      "risk": "medium",
+      "verification": ["Navigation works", "Legacy redirect works", "No broken links"]
+    },
+    "status": "new"
+  },
+  {
+    "id": "BL-000005",
+    "severity": "P3",
+    "type": "content",
+    "zone": "Z2",
+    "module": "MOD-04",
+    "area": "immobilien",
+    "title": "TODO comment in MSVDashboard.tsx line 59",
+    "description": "src/pages/portal/msv/MSVDashboard.tsx:59 contains 'TODO: Replace with real rental_managed properties from MOD-04'. This file is an orphan (BL-000001) so the TODO is moot.",
+    "repro": {
+      "start_url": "N/A",
+      "steps": ["Search for TODO in portal pages"],
+      "preconditions": ["N/A"]
+    },
+    "expected": "No TODO comments in production code",
+    "actual": "1 TODO found (in orphan file)",
+    "evidence": {
+      "screenshots": [],
+      "logs": [],
+      "db_tables": [],
+      "events": []
+    },
+    "suspected_root_cause": "Orphan file from pre-consolidation MSV module",
+    "repo_refs": {
+      "files": ["src/pages/portal/msv/MSVDashboard.tsx"],
+      "manifest_entries": [],
+      "contract_refs": [],
+      "golden_path_refs": []
+    },
+    "fix_plan": {
+      "approach": "minimal",
+      "steps": ["Resolved by BL-000001 (delete orphan directory)"],
+      "risk": "low",
+      "verification": ["File no longer exists"]
+    },
+    "status": "new"
+  },
+  {
+    "id": "BL-000006",
+    "severity": "P3",
+    "type": "drift",
+    "zone": "cross-zone",
+    "module": "admin",
+    "area": "other",
+    "title": "5 orphan edge functions pending product review",
+    "description": "sot-social-autoresponder (0 references), sot-research-run-order + sot-research-firecrawl-extract (orphan chain), sot-research-free (standalone), sot-dms-upload-url (docs-only). None invoked from frontend code.",
+    "repro": {
+      "start_url": "N/A",
+      "steps": ["Grep codebase for each function name"],
+      "preconditions": ["N/A"]
+    },
+    "expected": "Every edge function has at least one invocation",
+    "actual": "5 functions with no frontend invocation",
+    "evidence": {
+      "screenshots": [],
+      "logs": [],
+      "db_tables": [],
+      "events": []
+    },
+    "suspected_root_cause": "Functions accumulated during development without cleanup pass",
+    "repo_refs": {
+      "files": ["supabase/functions/sot-social-autoresponder/", "supabase/functions/sot-research-run-order/", "supabase/functions/sot-research-free/", "supabase/functions/sot-research-firecrawl-extract/", "supabase/functions/sot-dms-upload-url/"],
+      "manifest_entries": [],
+      "contract_refs": [],
+      "golden_path_refs": []
+    },
+    "fix_plan": {
+      "approach": "minimal",
+      "steps": ["Review with product team", "Confirm no external callers (webhooks, crons)", "Delete confirmed orphans"],
+      "risk": "medium",
+      "verification": ["Build succeeds", "No broken functionality"]
+    },
+    "status": "new"
+  },
+  {
+    "id": "BL-000007",
+    "severity": "P3",
+    "type": "drift",
+    "zone": "Z2",
+    "module": "MOD-04",
+    "area": "immobilien",
+    "title": "MSVPage.tsx redirect component no longer needed",
+    "description": "src/pages/portal/MSVPage.tsx is a redirect to /portal/immobilien/verwaltung. Since MSV is not in the routesManifest as a standalone module, this redirect is never reached via manifest-driven routing.",
+    "repro": {
+      "start_url": "N/A",
+      "steps": ["Check if any route maps to MSVPage"],
+      "preconditions": ["N/A"]
+    },
+    "expected": "No orphan redirect components",
+    "actual": "MSVPage.tsx exists as unused redirect",
+    "evidence": {
+      "screenshots": [],
+      "logs": [],
+      "db_tables": [],
+      "events": []
+    },
+    "suspected_root_cause": "Legacy redirect from when MSV was a standalone module",
+    "repo_refs": {
+      "files": ["src/pages/portal/MSVPage.tsx"],
+      "manifest_entries": [],
+      "contract_refs": [],
+      "golden_path_refs": []
+    },
+    "fix_plan": {
+      "approach": "minimal",
+      "steps": ["Delete src/pages/portal/MSVPage.tsx"],
+      "risk": "low",
+      "verification": ["Build succeeds", "No import references"]
+    },
+    "status": "new"
+  }
+]
