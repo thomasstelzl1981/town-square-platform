@@ -1,8 +1,8 @@
 /**
  * AufgabenSection — Kachel 2: Säumig + Mahnen + Mieterhöhung
  * 
- * IMMER sichtbar — auch ohne säumige Fälle (Empty State Cards).
- * Mahnstufen 0-3, konfigurierbare Fälligkeit/Grace, Draft-Erzeugung.
+ * Nutzt useMSVData für echte DB-Anbindung + Demo-Fallback.
+ * Mahnstufen-Buttons erzeugen letter_drafts aus msv_templates.
  */
 import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -10,43 +10,13 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { AlertTriangle, Calendar, Mail, FileText, Settings, Bell } from 'lucide-react';
+import { AlertTriangle, Calendar, Mail, FileText, Settings } from 'lucide-react';
 import { PremiumLockBanner } from './PremiumLockBanner';
 import { DESIGN } from '@/config/designManifest';
 import { toast } from 'sonner';
-
-// Demo säumige Fälle
-const DEMO_OVERDUE = [
-  {
-    id: '__demo_overdue_1__',
-    unitId: 'WE-002',
-    adresse: 'Königsallee 42, Düsseldorf',
-    mieter: 'Anna Schmidt',
-    offenerBetrag: 480,
-    ueberfaelligSeit: '2026-02-07',
-    letzteZahlung: { datum: '2026-02-05', betrag: 500 },
-    mahnstufe: 0,
-    notiz: '',
-  },
-];
-
-// Demo Mieterhöhung
-const DEMO_RENT_INCREASE = [
-  {
-    id: '__demo_ri_1__',
-    unitId: 'WE-001',
-    mieter: 'Thomas Müller',
-    letzteErhoehung: '2023-01-01',
-    pruefbarSeit: '2026-01-01',
-  },
-  {
-    id: '__demo_ri_2__',
-    unitId: 'WE-004',
-    mieter: 'Datum fehlt',
-    letzteErhoehung: null,
-    pruefbarSeit: null,
-  },
-];
+import { useMSVData } from '@/hooks/useMSVData';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 const MAHNSTUFEN_LABELS = [
   'Beobachtung',
@@ -55,11 +25,11 @@ const MAHNSTUFEN_LABELS = [
   'Letzte Mahnung',
 ];
 
-function createDraft(stufe: number, mieter: string) {
-  toast.success(`Draft erstellt: ${MAHNSTUFEN_LABELS[stufe]} an ${mieter}`, {
-    description: 'Der Entwurf wurde in der Kommunikation (MOD-02) angelegt.',
-  });
-}
+const TEMPLATE_CODES: Record<number, string> = {
+  1: 'ZAHLUNGSERINNERUNG',
+  2: 'MAHNUNG',
+  3: 'LETZTE_MAHNUNG',
+};
 
 interface AufgabenSectionProps {
   propertyId?: string | null;
@@ -69,9 +39,151 @@ export function AufgabenSection({ propertyId }: AufgabenSectionProps) {
   const [faelligkeitstag, setFaelligkeitstag] = useState(5);
   const [gracePeriod, setGracePeriod] = useState(2);
   const [showSettings, setShowSettings] = useState(false);
+  const [creatingDraft, setCreatingDraft] = useState<string | null>(null);
+  const { getOverdueCases, getRentIncreaseCases, refetch } = useMSVData();
+  const { activeTenantId, profile } = useAuth();
 
-  const overdueCases = DEMO_OVERDUE;
-  const rentIncreaseCases = DEMO_RENT_INCREASE;
+  const overdueCases = getOverdueCases(propertyId ?? null);
+  const rentIncreaseCases = getRentIncreaseCases(propertyId ?? null);
+
+  const createDraft = async (stufe: number, caseData: typeof overdueCases[0]) => {
+    if (caseData.id.startsWith('__demo_')) {
+      toast.success(`Demo: ${MAHNSTUFEN_LABELS[stufe]} an ${caseData.mieter}`, {
+        description: 'Im Demo-Modus werden keine echten Entwürfe erstellt.',
+      });
+      return;
+    }
+
+    const templateCode = TEMPLATE_CODES[stufe];
+    if (!templateCode || !activeTenantId) return;
+
+    setCreatingDraft(caseData.id);
+    try {
+      // Load template
+      const { data: template } = await supabase
+        .from('msv_templates')
+        .select('*')
+        .eq('template_code', templateCode)
+        .eq('is_active', true)
+        .single();
+
+      if (!template) {
+        toast.error('Vorlage nicht gefunden');
+        return;
+      }
+
+      // Replace placeholders
+      let content = template.content || '';
+      const now = new Date();
+      const frist = new Date();
+      frist.setDate(frist.getDate() + 7);
+
+      const replacements: Record<string, string> = {
+        '{ANREDE}': '', // from contact
+        '{NACHNAME}': caseData.mieter.split(' ').pop() || '',
+        '{MONAT_JAHR}': `${now.toLocaleString('de-DE', { month: 'long' })} ${now.getFullYear()}`,
+        '{UNIT_ID}': caseData.unitId,
+        '{ADRESSE_KURZ}': caseData.adresse,
+        '{OFFENER_BETRAG}': `${caseData.offenerBetrag.toLocaleString('de-DE')} €`,
+        '{FRISTDATUM}': frist.toLocaleDateString('de-DE'),
+        '{FAELLIGKEITSDATUM}': caseData.ueberfaelligSeit,
+        '{ABSENDER_NAME}': profile?.display_name || `${profile?.first_name || ''} ${profile?.last_name || ''}`.trim() || '',
+        '{ABSENDER_FUNKTION}': 'Hausverwaltung',
+        '{ABSENDER_KONTAKT}': '',
+        '{VERWENDUNGSZWECK}': `Miete ${now.toLocaleString('de-DE', { month: 'long' })} ${now.getFullYear()} ${caseData.unitId}`,
+      };
+
+      for (const [key, value] of Object.entries(replacements)) {
+        content = content.split(key).join(value);
+      }
+
+      // Create letter_draft
+      const { error } = await supabase.from('letter_drafts').insert({
+        tenant_id: activeTenantId,
+        template_code: templateCode,
+        subject: `${MAHNSTUFEN_LABELS[stufe]} — ${caseData.unitId}`,
+        body: content,
+        status: 'draft',
+        recipient_name: caseData.mieter,
+        metadata: {
+          source: 'msv',
+          stufe,
+          unit_id: caseData.unitId,
+          property_id: caseData.propertyId,
+        },
+      });
+
+      if (error) throw error;
+
+      // Update dunning stage on payment if applicable
+      if (caseData.leaseId) {
+        const currentMonth = now.getMonth() + 1;
+        const currentYear = now.getFullYear();
+        await supabase
+          .from('msv_rent_payments')
+          .update({
+            dunning_stage: stufe,
+            dunning_last_sent_at: now.toISOString(),
+          })
+          .eq('unit_id', caseData.id)
+          .eq('period_month', currentMonth)
+          .eq('period_year', currentYear);
+      }
+
+      toast.success(`${MAHNSTUFEN_LABELS[stufe]} erstellt`, {
+        description: 'Entwurf in KI-Office (MOD-02) angelegt.',
+      });
+      refetch();
+    } catch (err: any) {
+      toast.error(`Fehler: ${err.message}`);
+    } finally {
+      setCreatingDraft(null);
+    }
+  };
+
+  const createRentIncreaseDraft = async (caseData: typeof rentIncreaseCases[0]) => {
+    if (caseData.id.startsWith('__demo_')) {
+      toast.success('Demo: Mieterhöhungsschreiben erstellt');
+      return;
+    }
+
+    if (!activeTenantId) return;
+
+    try {
+      const { data: template } = await supabase
+        .from('msv_templates')
+        .select('*')
+        .eq('template_code', 'MIETERHOEHUNG')
+        .eq('is_active', true)
+        .single();
+
+      if (!template) {
+        toast.error('Vorlage MIETERHOEHUNG nicht gefunden');
+        return;
+      }
+
+      let content = template.content || '';
+      content = content.split('{NACHNAME}').join(caseData.mieter.split(' ').pop() || '');
+      content = content.split('{UNIT_ID}').join(caseData.unitId);
+      content = content.split('{DATUM_LETZTE_MIETERHOEHUNG}').join(caseData.letzteErhoehung || 'unbekannt');
+      content = content.split('{ABSENDER_NAME}').join(profile?.display_name || `${profile?.first_name || ''} ${profile?.last_name || ''}`.trim() || '');
+
+      const { error } = await supabase.from('letter_drafts').insert({
+        tenant_id: activeTenantId,
+        template_code: 'MIETERHOEHUNG',
+        subject: `Mieterhöhung — ${caseData.unitId}`,
+        body: content,
+        status: 'draft',
+        recipient_name: caseData.mieter,
+        metadata: { source: 'msv', unit_id: caseData.unitId },
+      });
+
+      if (error) throw error;
+      toast.success('Mieterhöhungsschreiben erstellt');
+    } catch (err: any) {
+      toast.error(`Fehler: ${err.message}`);
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -107,8 +219,9 @@ export function AufgabenSection({ propertyId }: AufgabenSectionProps) {
         {overdueCases.length === 0 ? (
           <Card className={DESIGN.CARD.SECTION}>
             <CardContent className="p-6 text-center">
-              <p className="text-sm text-muted-foreground">Keine säumigen Mietverhältnisse</p>
-              <Button variant="link" size="sm" className="mt-1">Filter ansehen</Button>
+              <p className="text-sm text-muted-foreground">
+                {propertyId ? 'Keine säumigen Mietverhältnisse' : 'Bitte ein Objekt oben auswählen.'}
+              </p>
             </CardContent>
           </Card>
         ) : (
@@ -136,24 +249,24 @@ export function AufgabenSection({ propertyId }: AufgabenSectionProps) {
                     </div>
                     <div>
                       <span className="text-xs text-muted-foreground">Überfällig seit</span>
-                      <p className="text-sm">{c.ueberfaelligSeit}</p>
+                      <p className="text-sm">{c.ueberfaelligSeit || '–'}</p>
                     </div>
                     <div>
                       <span className="text-xs text-muted-foreground">Letzte Zahlung</span>
-                      <p className="text-sm">{c.letzteZahlung.datum} — {c.letzteZahlung.betrag} €</p>
+                      <p className="text-sm">{c.letzteZahlung.datum || '–'} — {c.letzteZahlung.betrag > 0 ? `${c.letzteZahlung.betrag} €` : '–'}</p>
                     </div>
                   </div>
 
                   <Textarea placeholder="Notiz…" className="text-xs h-16" defaultValue={c.notiz} />
 
                   <div className="flex flex-wrap gap-2">
-                    <Button size="sm" variant="outline" onClick={() => createDraft(1, c.mieter)}>
+                    <Button size="sm" variant="outline" disabled={creatingDraft === c.id} onClick={() => createDraft(1, c)}>
                       <Mail className="h-3 w-3 mr-1" /> Erinnerung (Stufe 1)
                     </Button>
-                    <Button size="sm" variant="outline" onClick={() => createDraft(2, c.mieter)}>
+                    <Button size="sm" variant="outline" disabled={creatingDraft === c.id} onClick={() => createDraft(2, c)}>
                       <FileText className="h-3 w-3 mr-1" /> Mahnung (Stufe 2)
                     </Button>
-                    <Button size="sm" variant="destructive" onClick={() => createDraft(3, c.mieter)}>
+                    <Button size="sm" variant="destructive" disabled={creatingDraft === c.id} onClick={() => createDraft(3, c)}>
                       <AlertTriangle className="h-3 w-3 mr-1" /> Letzte Mahnung (Stufe 3)
                     </Button>
                   </div>
@@ -174,7 +287,9 @@ export function AufgabenSection({ propertyId }: AufgabenSectionProps) {
         {rentIncreaseCases.length === 0 ? (
           <Card className={DESIGN.CARD.SECTION}>
             <CardContent className="p-6 text-center">
-              <p className="text-sm text-muted-foreground">Keine Mieterhöhungen fällig</p>
+              <p className="text-sm text-muted-foreground">
+                {propertyId ? 'Keine Mieterhöhungen fällig' : 'Bitte ein Objekt oben auswählen.'}
+              </p>
             </CardContent>
           </Card>
         ) : (
@@ -196,7 +311,7 @@ export function AufgabenSection({ propertyId }: AufgabenSectionProps) {
                   ) : (
                     <p className="text-xs text-muted-foreground">Bitte Datum der letzten Mieterhöhung erfassen.</p>
                   )}
-                  <Button size="sm" variant="outline" onClick={() => toast.success('Mieterhöhungsschreiben erstellt')}>
+                  <Button size="sm" variant="outline" onClick={() => createRentIncreaseDraft(c)}>
                     <FileText className="h-3 w-3 mr-1" /> {c.letzteErhoehung ? 'Schreiben erzeugen' : 'Datum setzen'}
                   </Button>
                 </CardContent>

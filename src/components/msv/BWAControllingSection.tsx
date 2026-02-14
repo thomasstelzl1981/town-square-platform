@@ -1,21 +1,23 @@
 /**
  * BWAControllingSection — Kachel 3: BWA / Buchwert / Controlling
  * 
- * Full-width, Querformat-Look. Inline-editierbare Immobilienliste + BWA-Schema.
- * IMMER sichtbar — auch ohne Daten (Excel-Template).
+ * Full-width, Querformat-Look. Nutzt useMSVData für echte DB-Anbindung.
+ * Inline-editierbare Immobilienliste + BWA-Schema mit DB-Persistenz.
  */
-import { useState, useMemo } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
+import { useState, useMemo, useEffect } from 'react';
+import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { CheckCircle, AlertTriangle, Calculator, Sparkles } from 'lucide-react';
 import { PremiumLockBanner } from './PremiumLockBanner';
 import { BWA_KATEGORIEN } from '@/manifests/bwaKontenplan';
 import { DESIGN } from '@/config/designManifest';
 import { toast } from 'sonner';
+import { useMSVData } from '@/hooks/useMSVData';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface BookValueRow {
   id: string;
@@ -35,46 +37,21 @@ interface BookValueRow {
   zins: number;
   estimateStatus: 'estimated' | 'confirmed';
   dirty: boolean;
+  isDemo?: boolean;
 }
 
 const DEMO_BOOK_VALUES: BookValueRow[] = [
   {
-    id: '__bv_1__',
-    objektId: 'OBJ-001',
-    unitId: 'WE-001',
-    adresse: 'Königsallee 42, Düsseldorf',
-    nutzungsart: 'Wohnraum',
-    akGrund: 120000,
-    akGebaeude: 280000,
-    akNebenkosten: 15000,
-    afaSatz: 2,
-    afaBeginn: '2018-01-01',
-    kumulierteAfa: 44800,
-    buchwert: 370200,
-    darlehenId: 'DAR-001',
-    restschuld: 195000,
-    zins: 1.8,
-    estimateStatus: 'confirmed',
-    dirty: false,
+    id: '__bv_1__', objektId: 'OBJ-001', unitId: 'WE-001', adresse: 'Königsallee 42, Düsseldorf',
+    nutzungsart: 'Wohnraum', akGrund: 120000, akGebaeude: 280000, akNebenkosten: 15000,
+    afaSatz: 2, afaBeginn: '2018-01-01', kumulierteAfa: 44800, buchwert: 370200,
+    darlehenId: 'DAR-001', restschuld: 195000, zins: 1.8, estimateStatus: 'confirmed', dirty: false, isDemo: true,
   },
   {
-    id: '__bv_2__',
-    objektId: 'OBJ-001',
-    unitId: 'WE-002',
-    adresse: 'Königsallee 42, Düsseldorf',
-    nutzungsart: 'Wohnraum',
-    akGrund: 100000,
-    akGebaeude: 220000,
-    akNebenkosten: 12000,
-    afaSatz: 2,
-    afaBeginn: '2020-06-01',
-    kumulierteAfa: 24640,
-    buchwert: 307360,
-    darlehenId: 'DAR-002',
-    restschuld: 180000,
-    zins: 2.1,
-    estimateStatus: 'estimated',
-    dirty: false,
+    id: '__bv_2__', objektId: 'OBJ-001', unitId: 'WE-002', adresse: 'Königsallee 42, Düsseldorf',
+    nutzungsart: 'Wohnraum', akGrund: 100000, akGebaeude: 220000, akNebenkosten: 12000,
+    afaSatz: 2, afaBeginn: '2020-06-01', kumulierteAfa: 24640, buchwert: 307360,
+    darlehenId: 'DAR-002', restschuld: 180000, zins: 2.1, estimateStatus: 'estimated', dirty: false, isDemo: true,
   },
 ];
 
@@ -95,8 +72,57 @@ interface BWAControllingSectionProps {
 
 export function BWAControllingSection({ propertyId }: BWAControllingSectionProps) {
   const [stichtag, setStichtag] = useState(`${new Date().getFullYear()}-01-01`);
-  const [rows, setRows] = useState<BookValueRow[]>(DEMO_BOOK_VALUES);
+  const [rows, setRows] = useState<BookValueRow[]>([]);
   const [bwaEntries, setBwaEntries] = useState<Record<string, number>>({});
+  const { bookValues, bwaEntries: dbBwaEntries, showDemo } = useMSVData();
+  const { activeTenantId } = useAuth();
+
+  // Map DB book values to rows, with demo fallback
+  useEffect(() => {
+    if (propertyId === '__demo_obj_1__' || (showDemo && !propertyId)) {
+      setRows(DEMO_BOOK_VALUES);
+      return;
+    }
+
+    const filtered = bookValues.filter(bv => !propertyId || bv.property_id === propertyId);
+    if (filtered.length === 0 && showDemo) {
+      setRows(DEMO_BOOK_VALUES);
+      return;
+    }
+
+    const mapped: BookValueRow[] = filtered.map(bv => ({
+      id: bv.id,
+      objektId: bv.property_id || '',
+      unitId: bv.unit_id || '',
+      adresse: '',
+      nutzungsart: (bv as any).usage_type || 'Wohnraum',
+      akGrund: (bv as any).ak_grund || 0,
+      akGebaeude: (bv as any).ak_gebaeude || 0,
+      akNebenkosten: (bv as any).ak_nebenkosten || 0,
+      afaSatz: (bv as any).afa_satz || 2,
+      afaBeginn: (bv as any).afa_beginn || '2020-01-01',
+      kumulierteAfa: (bv as any).kumulierte_afa || 0,
+      buchwert: (bv as any).buchwert || 0,
+      darlehenId: (bv as any).darlehen_id || '',
+      restschuld: (bv as any).restschuld || 0,
+      zins: (bv as any).zins || 0,
+      estimateStatus: bv.book_value_status === 'estimated' ? 'estimated' : 'confirmed',
+      dirty: false,
+    }));
+    setRows(mapped);
+  }, [bookValues, propertyId, showDemo]);
+
+  // Load BWA entries from DB
+  useEffect(() => {
+    const filtered = dbBwaEntries.filter(e => !propertyId || e.property_id === propertyId);
+    const entries: Record<string, number> = {};
+    filtered.forEach(e => {
+      if (e.bwa_category) {
+        entries[e.bwa_category] = (entries[e.bwa_category] || 0) + (e.amount || 0);
+      }
+    });
+    setBwaEntries(entries);
+  }, [dbBwaEntries, propertyId]);
 
   const stichtagDate = useMemo(() => new Date(stichtag), [stichtag]);
 
@@ -117,9 +143,41 @@ export function BWAControllingSection({ propertyId }: BWAControllingSectionProps
     toast.success(`Stichtag ${stichtag} bestätigt.`);
   };
 
-  const confirmEstimate = (id: string) => {
+  const confirmEstimate = async (id: string) => {
+    if (id.startsWith('__')) {
+      setRows(prev => prev.map(r => r.id === id ? { ...r, estimateStatus: 'confirmed' as const } : r));
+      toast.success('Demo: Buchwert bestätigt.');
+      return;
+    }
+
+    const { error } = await supabase
+      .from('msv_book_values')
+      .update({ book_value_status: 'confirmed' })
+      .eq('id', id);
+
+    if (error) {
+      toast.error(`Fehler: ${error.message}`);
+      return;
+    }
+
     setRows(prev => prev.map(r => r.id === id ? { ...r, estimateStatus: 'confirmed' as const } : r));
     toast.success('Buchwert bestätigt.');
+  };
+
+  const saveBwaEntry = async (categoryId: string, amount: number) => {
+    if (!activeTenantId || !propertyId || propertyId.startsWith('__')) return;
+
+    const now = new Date();
+    const { error } = await supabase.from('msv_bwa_entries').upsert({
+      tenant_id: activeTenantId,
+      property_id: propertyId,
+      bwa_category: categoryId,
+      amount,
+      period_month: now.getMonth() + 1,
+      period_year: now.getFullYear(),
+    }, { onConflict: 'tenant_id,property_id,bwa_category,period_month,period_year' });
+
+    if (error) toast.error(`BWA Fehler: ${error.message}`);
   };
 
   return (
@@ -174,7 +232,7 @@ export function BWAControllingSection({ propertyId }: BWAControllingSectionProps
               {recalculatedRows.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={15} className="text-center py-8 text-muted-foreground">
-                    Buchwerte können manuell gepflegt oder geschätzt werden.
+                    {propertyId ? 'Keine Buchwerte für dieses Objekt.' : 'Bitte ein Objekt oben auswählen.'}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -254,7 +312,11 @@ export function BWAControllingSection({ propertyId }: BWAControllingSectionProps
                       className="h-7 w-28 text-xs text-right ml-auto"
                       placeholder="0,00"
                       value={bwaEntries[kat.id] || ''}
-                      onChange={e => setBwaEntries(prev => ({ ...prev, [kat.id]: Number(e.target.value) }))}
+                      onChange={e => {
+                        const val = Number(e.target.value);
+                        setBwaEntries(prev => ({ ...prev, [kat.id]: val }));
+                        saveBwaEntry(kat.id, val);
+                      }}
                     />
                   </TableCell>
                 </TableRow>

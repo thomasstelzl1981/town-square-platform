@@ -2,77 +2,25 @@
  * MietlisteTable — Kachel 1: Tabellarische Wohnungsübersicht
  * 
  * 14 Spalten, sticky links, Expand-Panel pro Zeile.
- * IMMER sichtbar — auch ohne Daten (Empty State mit Skeleton).
+ * Nutzt useMSVData für echte DB-Anbindung + Demo-Fallback.
  */
 import { useState } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ChevronDown, ChevronRight, Plus } from 'lucide-react';
+import { ChevronDown, ChevronRight, Plus, Euro } from 'lucide-react';
 import { PremiumLockBanner } from './PremiumLockBanner';
+import { PaymentBookingDialog } from './PaymentBookingDialog';
 import { DESIGN } from '@/config/designManifest';
-
-// Demo-Daten für leere Zustände
-const DEMO_UNITS = [
-  {
-    id: '__demo_1__',
-    unitId: 'WE-001',
-    ort: 'Düsseldorf',
-    strasse: 'Königsallee',
-    hausnummer: '42',
-    teNr: 'TE-1.OG-L',
-    anrede: 'Herr',
-    vorname: 'Thomas',
-    name: 'Müller',
-    email: 't.mueller@email.de',
-    mobil: '0171 1234567',
-    warmmiete: 1250,
-    letzterEingangDatum: '2026-02-03',
-    letzterEingangBetrag: 1250,
-    status: 'paid' as const,
-  },
-  {
-    id: '__demo_2__',
-    unitId: 'WE-002',
-    ort: 'Düsseldorf',
-    strasse: 'Königsallee',
-    hausnummer: '42',
-    teNr: 'TE-2.OG-R',
-    anrede: 'Frau',
-    vorname: 'Anna',
-    name: 'Schmidt',
-    email: 'a.schmidt@email.de',
-    mobil: '0172 9876543',
-    warmmiete: 980,
-    letzterEingangDatum: '2026-02-05',
-    letzterEingangBetrag: 500,
-    status: 'partial' as const,
-  },
-  {
-    id: '__demo_3__',
-    unitId: 'WE-003',
-    ort: 'Düsseldorf',
-    strasse: 'Königsallee',
-    hausnummer: '42',
-    teNr: 'TE-EG-L',
-    anrede: '',
-    vorname: '',
-    name: '',
-    email: '',
-    mobil: '',
-    warmmiete: 0,
-    letzterEingangDatum: '',
-    letzterEingangBetrag: 0,
-    status: 'vacant' as const,
-  },
-];
+import { useMSVData } from '@/hooks/useMSVData';
 
 const STATUS_COLORS: Record<string, string> = {
   paid: 'bg-green-500/10 text-green-700 dark:text-green-400',
   partial: 'bg-yellow-500/10 text-yellow-700 dark:text-yellow-400',
   overdue: 'bg-destructive/10 text-destructive',
+  open: 'bg-destructive/10 text-destructive',
   vacant: 'bg-muted text-muted-foreground',
 };
 
@@ -80,47 +28,9 @@ const STATUS_LABELS: Record<string, string> = {
   paid: 'Bezahlt',
   partial: 'Teilweise',
   overdue: 'Überfällig',
+  open: 'Offen',
   vacant: 'Leerstehend',
 };
-
-function generateMonthHistory(warmmiete: number, status: string) {
-  const months = [];
-  const now = new Date();
-  const startYear = now.getFullYear() - 1;
-  
-  for (let y = startYear; y <= now.getFullYear(); y++) {
-    const maxMonth = y === now.getFullYear() ? now.getMonth() + 1 : 12;
-    const startMonth = y === startYear ? 1 : 1;
-    for (let m = startMonth; m <= maxMonth; m++) {
-      const isCurrentMonth = y === now.getFullYear() && m === now.getMonth() + 1;
-      const soll = warmmiete;
-      let ist = soll;
-      let mStatus = 'paid';
-      
-      if (isCurrentMonth && status === 'partial') {
-        ist = Math.round(soll * 0.5);
-        mStatus = 'partial';
-      } else if (isCurrentMonth && status === 'overdue') {
-        ist = 0;
-        mStatus = 'overdue';
-      } else if (status === 'vacant') {
-        ist = 0;
-        mStatus = 'vacant';
-      }
-      
-      months.push({
-        label: `${y}-${String(m).padStart(2, '0')}`,
-        soll,
-        ist,
-        datum: ist > 0 ? `${y}-${String(m).padStart(2, '0')}-03` : '',
-        differenz: soll - ist,
-        status: mStatus,
-        notiz: '',
-      });
-    }
-  }
-  return months;
-}
 
 interface MietlisteTableProps {
   propertyId?: string | null;
@@ -128,8 +38,10 @@ interface MietlisteTableProps {
 
 export function MietlisteTable({ propertyId }: MietlisteTableProps) {
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
-  const units = DEMO_UNITS; // TODO: Replace with real data via useMSVData
+  const [bookingUnit, setBookingUnit] = useState<{ id: string; leaseId: string; warmmiete: number; name: string } | null>(null);
+  const { getUnitsForProperty, getMonthHistory, refetch } = useMSVData();
 
+  const units = getUnitsForProperty(propertyId ?? null);
   const formatCurrency = (v: number) => v > 0 ? `${v.toLocaleString('de-DE')} €` : '–';
 
   return (
@@ -158,16 +70,21 @@ export function MietlisteTable({ propertyId }: MietlisteTableProps) {
                 <TableHead>Letzter Eingang</TableHead>
                 <TableHead className="text-right">Betrag</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead className="w-10"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {units.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={15} className="text-center py-8">
-                    <p className="text-muted-foreground">Noch keine Mietverhältnisse.</p>
-                    <Button variant="link" className="mt-2" onClick={() => window.location.href = '/portal/immobilien/portfolio'}>
-                      <Plus className="h-4 w-4 mr-1" /> Lease anlegen in MOD-04
-                    </Button>
+                  <TableCell colSpan={16} className="text-center py-8">
+                    <p className="text-muted-foreground">
+                      {propertyId ? 'Keine Mietverhältnisse für dieses Objekt.' : 'Bitte ein Objekt oben auswählen.'}
+                    </p>
+                    {propertyId && (
+                      <Button variant="link" className="mt-2" onClick={() => window.location.href = '/portal/immobilien/portfolio'}>
+                        <Plus className="h-4 w-4 mr-1" /> Lease anlegen
+                      </Button>
+                    )}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -191,14 +108,35 @@ export function MietlisteTable({ propertyId }: MietlisteTableProps) {
                       <TableCell className="text-xs">{u.letzterEingangDatum || '–'}</TableCell>
                       <TableCell className="text-right">{formatCurrency(u.letzterEingangBetrag)}</TableCell>
                       <TableCell>
-                        <Badge className={`${STATUS_COLORS[u.status]} border-0 text-xs`}>
-                          {STATUS_LABELS[u.status]}
+                        <Badge className={`${STATUS_COLORS[u.status] || ''} border-0 text-xs`}>
+                          {STATUS_LABELS[u.status] || u.status}
                         </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {u.leaseId && u.status !== 'vacant' && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 w-7 p-0"
+                            title="Zahlung erfassen"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setBookingUnit({
+                                id: u.id,
+                                leaseId: u.leaseId!,
+                                warmmiete: u.warmmiete,
+                                name: `${u.vorname} ${u.name}`.trim(),
+                              });
+                            }}
+                          >
+                            <Euro className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
                       </TableCell>
                     </TableRow>
                     {expandedRow === u.id && (
                       <TableRow key={`${u.id}-expand`}>
-                        <TableCell colSpan={15} className="bg-muted/20 p-4">
+                        <TableCell colSpan={16} className="bg-muted/20 p-4">
                           <div className="space-y-2">
                             <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                               Miete & Mieteingänge rückwirkend
@@ -217,7 +155,7 @@ export function MietlisteTable({ propertyId }: MietlisteTableProps) {
                                   </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                  {generateMonthHistory(u.warmmiete, u.status).map(m => (
+                                  {getMonthHistory(u.id, u.warmmiete).map(m => (
                                     <TableRow key={m.label}>
                                       <TableCell className="text-xs font-medium">{m.label}</TableCell>
                                       <TableCell className="text-right text-xs">{formatCurrency(m.soll)}</TableCell>
@@ -262,6 +200,20 @@ export function MietlisteTable({ propertyId }: MietlisteTableProps) {
           description="Premium: automatische Extraktion von Zahlungsdaten aus PDF-Kontoauszügen und Post."
         />
       </div>
+
+      {/* Payment Booking Dialog */}
+      {bookingUnit && (
+        <PaymentBookingDialog
+          open={!!bookingUnit}
+          onOpenChange={(open) => { if (!open) setBookingUnit(null); }}
+          leaseId={bookingUnit.leaseId}
+          unitId={bookingUnit.id}
+          propertyId={propertyId ?? ''}
+          sollmiete={bookingUnit.warmmiete}
+          mieterName={bookingUnit.name}
+          onSuccess={() => { setBookingUnit(null); refetch(); }}
+        />
+      )}
     </div>
   );
 }
