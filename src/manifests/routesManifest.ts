@@ -329,7 +329,7 @@ export const zone2Portal: ZoneDefinition = {
       ],
     },
     "MOD-09": {
-      name: "Vertriebspartner",
+      name: "Vertriebsmanager",
       base: "vertriebspartner",
       icon: "Handshake",
       display_order: 9,
@@ -353,7 +353,7 @@ export const zone2Portal: ZoneDefinition = {
       ],
     },
     "MOD-10": {
-      name: "Abrechnung",
+      name: "Leadmanager",
       base: "leads",
       icon: "CreditCard",
       display_order: 10,
@@ -393,7 +393,7 @@ export const zone2Portal: ZoneDefinition = {
     // NEW MODULES (MOD-12 to MOD-20)
     // =========================================================================
     "MOD-12": {
-      name: "Akquise-Manager",
+      name: "Akquisemanager",
       base: "akquise-manager",
       icon: "Briefcase",
       display_order: 12,
@@ -412,7 +412,7 @@ export const zone2Portal: ZoneDefinition = {
       ],
     },
     "MOD-13": {
-      name: "Projekte",
+      name: "Projektmanager",
       base: "projekte",
       icon: "FolderKanban",
       display_order: 13,

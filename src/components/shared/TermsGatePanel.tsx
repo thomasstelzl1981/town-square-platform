@@ -44,15 +44,15 @@ export interface TermsGatePanelProps {
 const ROLE_LABELS: Record<string, string> = {
   owner: 'Eigentümer',
   finance_manager: 'Finance Manager',
-  akquise_manager: 'Akquise-Manager',
-  vertriebspartner: 'Vertriebspartner',
+  akquise_manager: 'Akquisemanager',
+  vertriebspartner: 'Vertriebsmanager',
 };
 
 const ROLE_PAYMENT_TEXT: Record<string, string> = {
   owner: 'Als Eigentümer zahlen Sie eine Plattformgebühr von 30% der Käufer-Provision bei erfolgreichem Verkauf.',
   finance_manager: 'Sie zahlen als Finance Manager eine Plattformgebühr von 30% Ihrer Bearbeitungsprovision.',
-  akquise_manager: 'Sie zahlen als Akquise-Manager eine Plattformgebühr von 30% Ihrer Akquise-Provision.',
-  vertriebspartner: 'Sie zahlen als Partner eine Plattformgebühr von 30% bei erfolgreicher Konversion.',
+  akquise_manager: 'Sie zahlen als Akquisemanager eine Plattformgebühr von 30% Ihrer Akquise-Provision.',
+  vertriebspartner: 'Sie zahlen als Vertriebsmanager eine Plattformgebühr von 30% bei erfolgreicher Konversion.',
 };
 
 export function TermsGatePanel({
