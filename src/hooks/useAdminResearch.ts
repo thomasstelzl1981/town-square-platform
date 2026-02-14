@@ -66,7 +66,7 @@ export function useAdminResearch() {
       const { data: job, error: jobError } = await supabase
         .from('admin_research_jobs')
         .insert({
-          job_type: 'apollo_search',
+          job_type: 'research_engine',
           query_params: params as Json,
           status: 'running',
         })
@@ -75,19 +75,36 @@ export function useAdminResearch() {
 
       if (jobError) throw jobError;
 
-      // Call Apollo search edge function
+      // Call research engine
       try {
-        const { data, error } = await supabase.functions.invoke('sot-apollo-search', {
+        const { data, error } = await supabase.functions.invoke('sot-research-engine', {
           body: {
-            ...params,
-            job_id: job.id,
+            intent: 'find_contacts',
+            query: [...(params.titles || []), ...(params.keywords || [])].join(', ') || 'Kontakte',
+            location: params.regions?.join(', '),
+            max_results: 25,
+            filters: { must_have_email: true, industry: params.industries?.join(', ') },
+            context: { module: 'recherche' },
           },
         });
 
         if (error) throw error;
 
-        // Update job with results
-        const results = data?.contacts || [];
+        // Map engine results to ApolloContact format
+        const results = (data?.results || []).map((r: any, idx: number) => ({
+          id: `engine_${job.id}_${idx}`,
+          first_name: '',
+          last_name: r.name,
+          email: r.email,
+          phone: r.phone,
+          title: '',
+          company: r.name,
+          company_website: r.website,
+          linkedin_url: null,
+          city: r.address,
+          country: 'DE',
+        }));
+
         await supabase
           .from('admin_research_jobs')
           .update({
@@ -100,7 +117,6 @@ export function useAdminResearch() {
 
         return { job_id: job.id, contacts: results };
       } catch (error) {
-        // Update job with error
         await supabase
           .from('admin_research_jobs')
           .update({

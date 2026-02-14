@@ -23,13 +23,24 @@ export interface ResearchFilters {
   industry?: string;
 }
 
+export interface PortalConfig {
+  portal?: "immoscout24" | "immowelt" | "ebay_kleinanzeigen";
+  search_type?: "listings" | "brokers";
+  price_min?: number;
+  price_max?: number;
+  object_types?: string[];
+}
+
+export type ResearchIntent =
+  | "find_contractors"
+  | "find_brokers"
+  | "find_companies"
+  | "find_contacts"
+  | "analyze_market"
+  | "search_portals";
+
 export interface ResearchRequest {
-  intent:
-    | "find_contractors"
-    | "find_brokers"
-    | "find_companies"
-    | "find_contacts"
-    | "analyze_market";
+  intent: ResearchIntent;
   query: string;
   location?: string;
   radius_km?: number;
@@ -37,9 +48,10 @@ export interface ResearchRequest {
   providers?: ("google_places" | "firecrawl" | "apify")[];
   max_results?: number;
   context?: {
-    module?: "sanierung" | "akquise" | "recherche" | "marketing";
+    module?: "sanierung" | "akquise" | "recherche" | "marketing" | "finanzierung";
     reference_id?: string;
   };
+  portal_config?: PortalConfig;
 }
 
 export interface ResearchMeta {

@@ -23,6 +23,14 @@ interface ResearchRequest {
     module?: string;
     reference_id?: string;
   };
+  // Portal-specific params (intent: search_portals)
+  portal_config?: {
+    portal?: string; // immoscout24, immowelt, ebay_kleinanzeigen
+    search_type?: string; // listings, brokers
+    price_min?: number;
+    price_max?: number;
+    object_types?: string[];
+  };
 }
 
 interface ContactResult {
@@ -146,6 +154,109 @@ async function searchApify(
   }
 }
 
+// ── Apify Portal Scraper (ImmoScout24, Immowelt, etc.) ─────────────
+
+async function searchApifyPortals(
+  query: string,
+  location: string | undefined,
+  apiToken: string,
+  maxResults: number,
+  portalConfig?: ResearchRequest["portal_config"]
+): Promise<ContactResult[]> {
+  const portal = portalConfig?.portal || "immoscout24";
+  const searchType = portalConfig?.search_type || "listings";
+
+  // Use a general web scraper actor for portal scraping
+  const runUrl = `https://api.apify.com/v2/acts/apify~web-scraper/run-sync-get-dataset-items?token=${apiToken}&timeout=55`;
+
+  // Build the portal search URL
+  let startUrl = "";
+  const searchQuery = query ? encodeURIComponent(query) : "";
+  const locationQuery = location ? encodeURIComponent(location) : "";
+
+  if (portal === "immoscout24") {
+    if (searchType === "brokers") {
+      startUrl = `https://www.immobilienscout24.de/immobilienmakler/${locationQuery || "deutschland"}.html`;
+    } else {
+      startUrl = `https://www.immobilienscout24.de/Suche/de/${locationQuery || "deutschland"}/wohnung-kaufen?enteredFrom=result_list`;
+    }
+  } else if (portal === "immowelt") {
+    startUrl = `https://www.immowelt.de/liste/${locationQuery || "deutschland"}/wohnungen/kaufen`;
+  } else {
+    startUrl = `https://www.kleinanzeigen.de/s-immobilien/${locationQuery || ""}/${searchQuery || "immobilien"}/k0c195`;
+  }
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 55000);
+
+  try {
+    const resp = await fetch(runUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      signal: controller.signal,
+      body: JSON.stringify({
+        startUrls: [{ url: startUrl }],
+        pageFunction: `async function pageFunction(context) {
+          const { $, request } = context;
+          const results = [];
+          $('[data-item],.result-list-entry,.aditem').each((i, el) => {
+            const $el = $(el);
+            results.push({
+              title: $el.find('h2, .result-title, [data-go-to-expose-id]').first().text().trim(),
+              price: $el.find('[data-is-price], .result-price, .aditem-main--middle--price').first().text().trim(),
+              address: $el.find('.result-address, .result-list-entry__address').first().text().trim(),
+              url: $el.find('a[href*="/expose"], a[href*="/anzeige"]').first().attr('href'),
+              broker: $el.find('.result-list-entry__brand-name, .broker-name').first().text().trim(),
+              phone: $el.find('[data-phone], .phone-number').first().text().trim(),
+              email: $el.find('a[href^="mailto:"]').first().attr('href')?.replace('mailto:', ''),
+            });
+          });
+          return results.slice(0, ${maxResults});
+        }`,
+        maxPagesPerCrawl: 1,
+        proxyConfiguration: { useApifyProxy: true },
+      }),
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!resp.ok) {
+      console.error("Apify portal error:", resp.status, await resp.text());
+      return [];
+    }
+
+    const rawItems: any[] = await resp.json();
+    // Flatten nested arrays from page function
+    const items = rawItems.flat().filter(Boolean);
+
+    return items.map((item: any, idx: number) => ({
+      name: item.title || item.broker || `Ergebnis ${idx + 1}`,
+      email: item.email || null,
+      phone: item.phone || null,
+      website: item.url
+        ? item.url.startsWith("http")
+          ? item.url
+          : `https://www.immobilienscout24.de${item.url}`
+        : null,
+      address: item.address || null,
+      rating: null,
+      reviews_count: null,
+      confidence: item.email ? 75 : 50,
+      sources: ["apify_portal"],
+      source_refs: {
+        portal,
+        search_type: searchType,
+        price_raw: item.price || null,
+        broker_name: item.broker || null,
+      },
+    }));
+  } catch (err) {
+    clearTimeout(timeoutId);
+    console.error("Apify portal timeout or error:", err);
+    return [];
+  }
+}
+
 async function scrapeEmailsFirecrawl(
   websites: string[],
   apiKey: string
@@ -174,11 +285,9 @@ async function scrapeEmailsFirecrawl(
       const data = await resp.json();
       const markdown = data.data?.markdown || data.markdown || "";
 
-      // Extract emails from content
       const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
       const found = markdown.match(emailRegex);
       if (found && found.length > 0) {
-        // Filter out common non-contact emails
         const validEmail = found.find(
           (e: string) =>
             !e.includes("example.com") &&
@@ -297,7 +406,6 @@ Antworte NUR mit dem JSON-Array der zusammengeführten Kontakte.`;
 
     if (!resp.ok) {
       console.error("AI merge error:", resp.status, await resp.text());
-      // Fallback: simple dedup by name
       return deduplicateFallback(results, filters);
     }
 
@@ -336,7 +444,6 @@ function deduplicateFallback(
     const key = r.name.toLowerCase().trim();
     const existing = seen.get(key);
     if (existing) {
-      // Merge
       existing.email = existing.email || r.email;
       existing.phone = existing.phone || r.phone;
       existing.website = existing.website || r.website;
@@ -387,6 +494,7 @@ serve(async (req) => {
       providers: requestedProviders,
       max_results = 20,
       context,
+      portal_config,
     } = body;
 
     if (!query) {
@@ -410,10 +518,20 @@ serve(async (req) => {
     if (FIRECRAWL_API_KEY) availableProviders.push("firecrawl");
     if (APIFY_API_TOKEN) availableProviders.push("apify");
 
+    // For portal search, only use apify
+    const isPortalSearch = intent === "search_portals";
+
     // Determine which providers to use
-    const activeProviders = requestedProviders
-      ? requestedProviders.filter((p) => availableProviders.includes(p))
-      : availableProviders;
+    let activeProviders: string[];
+    if (isPortalSearch) {
+      activeProviders = APIFY_API_TOKEN ? ["apify"] : [];
+    } else if (requestedProviders) {
+      activeProviders = requestedProviders.filter((p) =>
+        availableProviders.includes(p)
+      );
+    } else {
+      activeProviders = availableProviders;
+    }
 
     console.log(
       `Research Engine: intent=${intent}, query="${query}", location="${location}", providers=[${activeProviders.join(",")}]`
@@ -423,9 +541,10 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({
           success: false,
-          error:
-            "No research providers available. Please configure at least one API key.",
-          available_providers: [],
+          error: isPortalSearch
+            ? "Apify API Token nicht konfiguriert. Portal-Suche benötigt Apify."
+            : "No research providers available. Please configure at least one API key.",
+          available_providers: availableProviders,
         }),
         {
           status: 503,
@@ -438,18 +557,33 @@ serve(async (req) => {
     const providerPromises: Promise<ContactResult[]>[] = [];
     const providersUsed: string[] = [];
 
-    if (activeProviders.includes("google_places") && GOOGLE_MAPS_API_KEY) {
-      providersUsed.push("google_places");
+    if (isPortalSearch && APIFY_API_TOKEN) {
+      // Portal search mode — use dedicated portal scraper
+      providersUsed.push("apify_portal");
       providerPromises.push(
-        searchGooglePlaces(query, location, GOOGLE_MAPS_API_KEY, max_results)
+        searchApifyPortals(
+          query,
+          location,
+          APIFY_API_TOKEN,
+          max_results,
+          portal_config
+        )
       );
-    }
+    } else {
+      // Standard contact/company search
+      if (activeProviders.includes("google_places") && GOOGLE_MAPS_API_KEY) {
+        providersUsed.push("google_places");
+        providerPromises.push(
+          searchGooglePlaces(query, location, GOOGLE_MAPS_API_KEY, max_results)
+        );
+      }
 
-    if (activeProviders.includes("apify") && APIFY_API_TOKEN) {
-      providersUsed.push("apify");
-      providerPromises.push(
-        searchApify(query, location, APIFY_API_TOKEN, max_results)
-      );
+      if (activeProviders.includes("apify") && APIFY_API_TOKEN) {
+        providersUsed.push("apify");
+        providerPromises.push(
+          searchApify(query, location, APIFY_API_TOKEN, max_results)
+        );
+      }
     }
 
     const providerResults = await Promise.all(providerPromises);
@@ -460,7 +594,11 @@ serve(async (req) => {
     );
 
     // ── Phase 2: Firecrawl email enrichment ────────────────────────
-    if (activeProviders.includes("firecrawl") && FIRECRAWL_API_KEY) {
+    if (
+      !isPortalSearch &&
+      activeProviders.includes("firecrawl") &&
+      FIRECRAWL_API_KEY
+    ) {
       providersUsed.push("firecrawl");
       const websitesToScrape = allResults
         .filter((r) => r.website && !r.email)
@@ -476,7 +614,6 @@ serve(async (req) => {
           FIRECRAWL_API_KEY
         );
 
-        // Enrich results with found emails
         for (const result of allResults) {
           if (!result.email && result.website && emailMap.has(result.website)) {
             result.email = emailMap.get(result.website)!;

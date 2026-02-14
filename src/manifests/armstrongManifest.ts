@@ -480,7 +480,7 @@ export const armstrongActions: ArmstrongActionV2[] = [
     cost_model: 'free',
     cost_unit: null,
     cost_hint_cents: null,
-    api_contract: { type: 'edge_function', endpoint: 'sot-research-free' },
+    api_contract: { type: 'edge_function', endpoint: 'sot-research-engine' },
     ui_entrypoints: ['/portal/communication-pro/recherche'],
     audit_event_type: 'ARM_RESEARCH_FREE',
     status: 'active',

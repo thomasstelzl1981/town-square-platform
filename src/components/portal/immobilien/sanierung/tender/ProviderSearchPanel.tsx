@@ -1,5 +1,5 @@
 /**
- * ProviderSearchPanel — Consolidated: Search + Manual + Selected in one component
+ * ProviderSearchPanel — Uses sot-research-engine for contractor search
  */
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
@@ -10,9 +10,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { 
   Search, MapPin, Phone, Globe, Star, Plus, X, Loader2, Building2, Users, Mail, AlertCircle
 } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { DESIGN } from '@/config/designManifest';
+import { useResearchEngine, type ResearchContact } from '@/hooks/useResearchEngine';
 
 // ============================================================================
 // Types
@@ -72,63 +72,47 @@ export function ProviderSearchPanel({
 
   const [searchQuery, setSearchQuery] = useState(() => getCategorySearchTerm(category));
   const [searchResults, setSearchResults] = useState<PlaceResult[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
   const hasAutoSearched = useRef(false);
   const [showManual, setShowManual] = useState(false);
   const [manualProvider, setManualProvider] = useState<Partial<SelectedProvider>>({});
   const [manualEmails, setManualEmails] = useState<Record<string, string>>({});
 
-  const extractEmail = useCallback(async (placeId: string, websiteUrl: string) => {
-    try {
-      const { data, error } = await supabase.functions.invoke('sot-extract-email', {
-        body: { url: websiteUrl }
-      });
-      if (error) throw error;
-      setSearchResults(prev => prev.map(r =>
-        r.place_id === placeId
-          ? { ...r, email: data?.bestEmail || undefined, emailLoading: false }
-          : r
-      ));
-    } catch (err) {
-      console.error(`Email extraction failed for ${websiteUrl}:`, err);
-      setSearchResults(prev => prev.map(r =>
-        r.place_id === placeId ? { ...r, emailLoading: false } : r
-      ));
-    }
-  }, []);
-
-  const enrichWithEmails = useCallback((results: PlaceResult[]) => {
-    const enriched = results.map(r => ({ ...r, emailLoading: !!r.website }));
-    setSearchResults(enriched);
-    enriched.forEach(r => { if (r.website) extractEmail(r.place_id, r.website); });
-  }, [extractEmail]);
+  const { search, isSearching } = useResearchEngine();
 
   const handleSearch = useCallback(async () => {
     if (!location) { toast.error('Bitte geben Sie einen Standort an'); return; }
-    setIsSearching(true);
-    try {
-      const query = searchQuery 
-        ? `${searchQuery} ${location}` 
-        : `${getCategorySearchTerm(category)} ${location}`;
-      const { data, error } = await supabase.functions.invoke('sot-places-search', {
-        body: { query, location }
-      });
-      if (error) throw error;
-      if (data?.results) {
-        if (data.results.length === 0) {
-          setSearchResults([]);
-          toast.info('Keine Ergebnisse gefunden.');
-        } else {
-          enrichWithEmails(data.results);
-        }
+    
+    const query = searchQuery 
+      ? searchQuery
+      : getCategorySearchTerm(category);
+
+    const response = await search({
+      intent: 'find_contractors',
+      query,
+      location,
+      max_results: 20,
+      filters: { industry: category },
+      context: { module: 'sanierung' },
+    });
+
+    if (response?.results) {
+      const mapped: PlaceResult[] = response.results.map((r: ResearchContact, idx: number) => ({
+        place_id: `engine_${idx}_${Date.now()}`,
+        name: r.name,
+        formatted_address: r.address || '',
+        phone_number: r.phone || undefined,
+        website: r.website || undefined,
+        rating: r.rating || undefined,
+        user_ratings_total: r.reviews_count || undefined,
+        email: r.email || undefined,
+        emailLoading: false,
+      }));
+      setSearchResults(mapped);
+      if (mapped.length === 0) {
+        toast.info('Keine Ergebnisse gefunden.');
       }
-    } catch (error) {
-      console.error('Search error:', error);
-      toast.error('Fehler bei der Suche.');
-    } finally {
-      setIsSearching(false);
     }
-  }, [searchQuery, category, location, enrichWithEmails, getCategorySearchTerm]);
+  }, [searchQuery, category, location, getCategorySearchTerm, search]);
 
   useEffect(() => {
     if (location && !hasAutoSearched.current) {
@@ -231,15 +215,13 @@ export function ProviderSearchPanel({
                       {place.phone_number && <span className="flex items-center gap-1"><Phone className="h-3 w-3" />{place.phone_number}</span>}
                       {place.rating && <span className="flex items-center gap-1"><Star className="h-3 w-3 text-yellow-500" />{place.rating}</span>}
                       {place.website && <span className="flex items-center gap-1"><Globe className="h-3 w-3" />Web</span>}
-                      {place.emailLoading ? (
-                        <span className="flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin" />E-Mail…</span>
-                      ) : place.email ? (
+                      {place.email ? (
                         <span className="flex items-center gap-1 text-foreground font-medium"><Mail className="h-3 w-3" />{place.email}</span>
                       ) : null}
                     </div>
                   </div>
                 </div>
-                {!place.emailLoading && !place.email && (
+                {!place.email && (
                   <div className="mt-1.5 ml-7 flex items-center gap-2">
                     <AlertCircle className="h-3 w-3 text-amber-500 shrink-0" />
                     <Input
