@@ -16,6 +16,15 @@ import { useMemo } from 'react';
 import { useDemoToggles } from '@/hooks/useDemoToggles';
 import { DEMO_PROPERTY_IDS, DEMO_PROJECT_IDS, DEV_TENANT_UUID } from '@/config/tenantConstants';
 import type { SalesDeskListing } from '@/hooks/useSalesDeskListings';
+import demoBerlinImg from '@/assets/demo/demo-berlin.jpg';
+import demoMunichImg from '@/assets/demo/demo-munich.jpg';
+import demoHamburgImg from '@/assets/demo/demo-hamburg.jpg';
+
+const DEMO_IMAGES: Record<string, string> = {
+  'BER-01': demoBerlinImg,
+  'MUC-01': demoMunichImg,
+  'HH-01': demoHamburgImg,
+};
 
 // ============================================================================
 // Base demo property data
@@ -157,7 +166,7 @@ function toKaufyListing(p: DemoPropertyBase): DemoKaufyListing {
     total_area_sqm: p.totalAreaSqm,
     unit_count: p.unitCount,
     monthly_rent_total: p.monthlyRent,
-    hero_image_path: null,
+    hero_image_path: DEMO_IMAGES[p.code] || null,
     isDemo: true,
   };
 }
