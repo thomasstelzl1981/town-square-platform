@@ -22,6 +22,7 @@ const GLASS_BUTTON = cn(
   'shadow-[inset_0_1px_0_hsla(0,0%,100%,0.15)]',
   'hover:bg-white/45 dark:hover:bg-white/15',
   'flex items-center justify-center transition-all',
+  'text-foreground',
 );
 
 /** Inline analog clock SVG */
@@ -88,32 +89,22 @@ export function SotSystemBar({ isDark, onToggleTheme }: SotSystemBarProps) {
   }, []);
 
   return (
-    <header 
-      className="sticky top-0 z-50 w-full border-b backdrop-blur-lg"
-      style={{
-        background: 'hsl(var(--z3-card) / 0.7)',
-        borderColor: 'hsl(var(--z3-border) / 0.3)',
-        color: 'hsl(var(--z3-foreground))',
-      }}
-    >
+    <header className="sticky top-0 z-50 w-full border-b bg-card/70 backdrop-blur-lg supports-[backdrop-filter]:bg-card/60 border-border/30">
       <div className="flex h-12 items-center justify-between px-4">
         {/* LEFT — 3 Glass Buttons */}
         <div className="flex items-center gap-2">
           {/* 1. Home */}
-          <Link to="/website/sot" className={GLASS_BUTTON} title="Startseite"
-            style={{ color: 'hsl(var(--z3-foreground))' }}>
+          <Link to="/website/sot" className={GLASS_BUTTON} title="Startseite">
             <Home className="h-4.5 w-4.5" />
           </Link>
 
           {/* 2. Theme Toggle */}
-          <button onClick={onToggleTheme} className={GLASS_BUTTON} title="Theme wechseln"
-            style={{ color: 'hsl(var(--z3-foreground))' }}>
+          <button onClick={onToggleTheme} className={GLASS_BUTTON} title="Theme wechseln">
             {isDark ? <Sun className="h-4.5 w-4.5" /> : <Moon className="h-4.5 w-4.5" />}
           </button>
 
           {/* 3. Temperature */}
-          <button className={GLASS_BUTTON} title="Außentemperatur"
-            style={{ color: 'hsl(var(--z3-foreground))' }}>
+          <button className={GLASS_BUTTON} title="Außentemperatur">
             <span className="text-xs font-medium leading-none">
               {temperature !== null ? `${temperature}°` : '—°'}
             </span>
@@ -122,8 +113,8 @@ export function SotSystemBar({ isDark, onToggleTheme }: SotSystemBarProps) {
 
         {/* CENTER — SYSTEM OF A TOWN Wordmark */}
         <span
-          className="font-sans font-semibold tracking-[0.2em] text-sm select-none"
-          style={{ fontSize: '14px', color: 'hsl(var(--z3-foreground))' }}
+          className="text-foreground font-sans font-semibold tracking-[0.2em] text-sm select-none"
+          style={{ fontSize: '14px' }}
         >
           SYSTEM OF A TOWN
         </span>
@@ -131,19 +122,17 @@ export function SotSystemBar({ isDark, onToggleTheme }: SotSystemBarProps) {
         {/* RIGHT — 3 Glass Buttons */}
         <div className="flex items-center gap-2">
           {/* 1. Analog Clock */}
-          <div className={GLASS_BUTTON} style={{ color: 'hsl(var(--z3-foreground))' }}>
+          <div className={GLASS_BUTTON}>
             <AnalogClock time={currentTime} />
           </div>
 
           {/* 2. Armstrong (placeholder — no portal context) */}
-          <button className={GLASS_BUTTON} title="Armstrong"
-            style={{ color: 'hsl(var(--z3-foreground))' }}>
+          <button className={GLASS_BUTTON} title="Armstrong">
             <Rocket className="h-4.5 w-4.5" />
           </button>
 
           {/* 3. Profile (generic — no auth on website) */}
-          <button className={GLASS_BUTTON} title="Profil"
-            style={{ color: 'hsl(var(--z3-foreground))' }}>
+          <button className={GLASS_BUTTON} title="Profil">
             <User className="h-4.5 w-4.5" />
           </button>
         </div>
