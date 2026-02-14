@@ -1,5 +1,6 @@
 /**
  * AdminRecherche — SOAT Search Engine with Widget-Grid + Inline Case
+ * Golden Path Standard: CTA-Widget → Draft → Inline-Flow (kein Dialog)
  */
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -10,6 +11,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
   SelectContent,
@@ -17,13 +19,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog';
 import {
   useSoatOrders,
   useSoatResults,
@@ -53,6 +48,7 @@ import {
   Download,
   AlertTriangle,
   Zap,
+  Save,
 } from 'lucide-react';
 
 const STATUS_MAP: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
@@ -91,12 +87,13 @@ export default function AdminRecherche() {
   const updateResult = useUpdateSoatResult();
 
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
-  const [createOpen, setCreateOpen] = useState(false);
-  const [newTitle, setNewTitle] = useState('');
-  const [newIntent, setNewIntent] = useState('');
-  const [newTarget, setNewTarget] = useState('25');
   const [filter, setFilter] = useState<string>('all');
   const [selectedResults, setSelectedResults] = useState<Set<string>>(new Set());
+
+  // Inline draft editing state
+  const [draftTitle, setDraftTitle] = useState('');
+  const [draftIntent, setDraftIntent] = useState('');
+  const [draftTarget, setDraftTarget] = useState('25');
 
   const selectedOrder = orders.find(o => o.id === selectedOrderId) || null;
   const { data: results = [] } = useSoatResults(selectedOrderId);
@@ -107,27 +104,44 @@ export default function AdminRecherche() {
 
   const counters = selectedOrder?.counters_json || {};
 
-  const handleCreate = async () => {
-    if (!newTitle.trim()) { toast.error('Titel erforderlich'); return; }
+  /** CTA-Widget: Sofort Draft erstellen, inline öffnen */
+  const handleCreateDraft = async () => {
     try {
       const order = await createOrder.mutateAsync({
-        title: newTitle,
-        intent: newIntent,
-        target_count: parseInt(newTarget) || 25,
+        title: 'Neuer Rechercheauftrag',
+        intent: '',
+        target_count: 25,
       });
+      // Inline-Felder mit Defaults füllen
+      setDraftTitle(order.title || 'Neuer Rechercheauftrag');
+      setDraftIntent(order.intent || '');
+      setDraftTarget(String(order.target_count || 25));
       setSelectedOrderId(order.id);
-      setCreateOpen(false);
-      setNewTitle('');
-      setNewIntent('');
-      toast.success('Auftrag erstellt');
+      toast.success('Auftrag erstellt — bitte definieren');
     } catch (e: any) {
       toast.error(e.message);
     }
   };
 
-  const handleStart = async () => {
-    if (!selectedOrderId) return;
+  /** Draft-Felder speichern und Recherche starten */
+  const handleSaveAndStart = async () => {
+    if (!selectedOrderId || !draftTitle.trim()) {
+      toast.error('Titel erforderlich');
+      return;
+    }
     try {
+      // Update draft fields first
+      const { error: updateError } = await supabase
+        .from('soat_search_orders')
+        .update({
+          title: draftTitle.trim(),
+          intent: draftIntent.trim(),
+          target_count: parseInt(draftTarget) || 25,
+        } as any)
+        .eq('id', selectedOrderId);
+      if (updateError) throw updateError;
+
+      // Then start
       await startOrder.mutateAsync(selectedOrderId);
       toast.success('Recherche gestartet');
     } catch (e: any) {
@@ -179,6 +193,17 @@ export default function AdminRecherche() {
     setSelectedResults(s);
   };
 
+  /** Wenn ein bestehender Order ausgewählt wird, Draft-Felder befüllen */
+  const handleSelectOrder = (orderId: string) => {
+    const order = orders.find(o => o.id === orderId);
+    if (order) {
+      setDraftTitle(order.title || '');
+      setDraftIntent(order.intent || '');
+      setDraftTarget(String(order.target_count || 25));
+    }
+    setSelectedOrderId(orderId);
+  };
+
   if (isLoading) {
     return <div className="flex items-center justify-center p-12"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>;
   }
@@ -187,13 +212,17 @@ export default function AdminRecherche() {
     <div className="space-y-6 p-6">
       {/* Widget Grid — Orders */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-        {/* Create Widget */}
+        {/* CTA-Widget: Sofort Draft erstellen */}
         <Card
           className="cursor-pointer border-dashed hover:border-primary/50 transition-colors"
-          onClick={() => setCreateOpen(true)}
+          onClick={handleCreateDraft}
         >
           <CardContent className="flex flex-col items-center justify-center p-6 min-h-[120px]">
-            <Plus className="h-8 w-8 text-muted-foreground mb-2" />
+            {createOrder.isPending ? (
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mb-2" />
+            ) : (
+              <Plus className="h-8 w-8 text-muted-foreground mb-2" />
+            )}
             <span className="text-sm font-medium">Neuer Auftrag</span>
           </CardContent>
         </Card>
@@ -207,7 +236,7 @@ export default function AdminRecherche() {
             <Card
               key={order.id}
               className={`cursor-pointer transition-all ${isSelected ? 'ring-2 ring-primary' : 'hover:border-primary/50'}`}
-              onClick={() => setSelectedOrderId(order.id)}
+              onClick={() => handleSelectOrder(order.id)}
             >
               <CardContent className="p-4 space-y-2 min-h-[120px]">
                 <div className="flex items-center justify-between">
@@ -237,35 +266,78 @@ export default function AdminRecherche() {
       {/* Inline Case — Selected Order */}
       {selectedOrder && (
         <div className="space-y-4">
-          {/* Section 1: Define + Start */}
+          {/* Section 1: Draft-Definitionsbereich (editierbar) oder Read-Only-Header */}
           <Card>
             <CardContent className="p-4">
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex-1 space-y-1">
-                  <h2 className="text-lg font-semibold">{selectedOrder.title || 'Ohne Titel'}</h2>
-                  {selectedOrder.intent && <p className="text-sm text-muted-foreground">{selectedOrder.intent}</p>}
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                    <span>Ziel: {selectedOrder.target_count} Kontakte</span>
-                    <Badge variant="outline" className={STATUS_MAP[selectedOrder.status]?.color}>
-                      {STATUS_MAP[selectedOrder.status]?.label}
-                    </Badge>
+              {selectedOrder.status === 'draft' ? (
+                /* Draft: Editierbare Felder inline */
+                <div className="space-y-4">
+                  <h2 className="text-lg font-semibold">Auftrag definieren</h2>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Titel *</Label>
+                      <Input
+                        value={draftTitle}
+                        onChange={(e) => setDraftTitle(e.target.value)}
+                        placeholder="z.B. Makler Hamburg"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Zielanzahl</Label>
+                      <Select value={draftTarget} onValueChange={setDraftTarget}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="10">10 Kontakte</SelectItem>
+                          <SelectItem value="25">25 Kontakte</SelectItem>
+                          <SelectItem value="50">50 Kontakte</SelectItem>
+                          <SelectItem value="100">100 Kontakte</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Was suchen Sie?</Label>
+                    <Textarea
+                      value={draftIntent}
+                      onChange={(e) => setDraftIntent(e.target.value)}
+                      placeholder="z.B. Immobilienmakler in Hamburg mit Fokus Gewerbe, idealerweise mit Erfahrung im Bereich Anlageimmobilien"
+                      className="min-h-[80px]"
+                    />
+                  </div>
+                  <div className="flex justify-end">
+                    <Button onClick={handleSaveAndStart} disabled={startOrder.isPending || !draftTitle.trim()}>
+                      {startOrder.isPending ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <Play className="h-4 w-4 mr-2" />
+                      )}
+                      Recherche starten
+                    </Button>
                   </div>
                 </div>
-                <div className="flex gap-2 shrink-0">
-                  {selectedOrder.status === 'draft' && (
-                    <Button onClick={handleStart} disabled={startOrder.isPending}>
-                      {startOrder.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Play className="h-4 w-4 mr-2" />}
-                      Starten
-                    </Button>
-                  )}
-                  {(selectedOrder.status === 'running' || selectedOrder.status === 'queued') && (
-                    <Button variant="destructive" onClick={handleCancel}>
-                      <Square className="h-4 w-4 mr-2" />
-                      Abbrechen
-                    </Button>
-                  )}
+              ) : (
+                /* Nicht-Draft: Read-Only Header mit Aktionen */
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex-1 space-y-1">
+                    <h2 className="text-lg font-semibold">{selectedOrder.title || 'Ohne Titel'}</h2>
+                    {selectedOrder.intent && <p className="text-sm text-muted-foreground">{selectedOrder.intent}</p>}
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                      <span>Ziel: {selectedOrder.target_count} Kontakte</span>
+                      <Badge variant="outline" className={STATUS_MAP[selectedOrder.status]?.color}>
+                        {STATUS_MAP[selectedOrder.status]?.label}
+                      </Badge>
+                    </div>
+                  </div>
+                  <div className="flex gap-2 shrink-0">
+                    {(selectedOrder.status === 'running' || selectedOrder.status === 'queued') && (
+                      <Button variant="destructive" onClick={handleCancel}>
+                        <Square className="h-4 w-4 mr-2" />
+                        Abbrechen
+                      </Button>
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
             </CardContent>
           </Card>
 
@@ -386,44 +458,6 @@ export default function AdminRecherche() {
           <p>Wählen Sie einen Auftrag oder erstellen Sie einen neuen</p>
         </div>
       )}
-
-      {/* Create Dialog */}
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Neuer Recherche-Auftrag</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="space-y-2">
-              <Label>Titel *</Label>
-              <Input value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="z.B. Makler Hamburg" />
-            </div>
-            <div className="space-y-2">
-              <Label>Was suchen Sie?</Label>
-              <Input value={newIntent} onChange={(e) => setNewIntent(e.target.value)} placeholder="z.B. Immobilienmakler in Hamburg mit Fokus Gewerbe" />
-            </div>
-            <div className="space-y-2">
-              <Label>Zielanzahl</Label>
-              <Select value={newTarget} onValueChange={setNewTarget}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="10">10 Kontakte</SelectItem>
-                  <SelectItem value="25">25 Kontakte</SelectItem>
-                  <SelectItem value="50">50 Kontakte</SelectItem>
-                  <SelectItem value="100">100 Kontakte</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setCreateOpen(false)}>Abbrechen</Button>
-            <Button onClick={handleCreate} disabled={createOrder.isPending}>
-              {createOrder.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Erstellen
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
