@@ -3,7 +3,7 @@
  * ~200px wide, fixed position so main content centers independently.
  */
 import { useState } from 'react';
-import { Sparkles, Minus, X, Upload } from 'lucide-react';
+import { Minus, X, ArrowUp } from 'lucide-react';
 import { SotArmstrongChat } from './SotArmstrongChat';
 
 export function SotArmstrongStripe() {
@@ -14,7 +14,7 @@ export function SotArmstrongStripe() {
     return (
       <>
         <aside
-          className="hidden lg:flex fixed right-0 top-[88px] bottom-0 flex-col items-center justify-center shrink-0 border-l border-border/30 bg-card/50 backdrop-blur-xl z-30 cursor-pointer"
+          className="hidden lg:flex fixed right-0 top-12 bottom-0 flex-col items-center justify-center shrink-0 border-l border-border/30 bg-card/50 backdrop-blur-xl z-30 cursor-pointer"
           style={{ width: '45px' }}
           onClick={() => setIsMinimized(false)}
           title="Armstrong öffnen"
@@ -35,8 +35,8 @@ export function SotArmstrongStripe() {
     <>
       {/* Right stripe — desktop only, fixed */}
       <aside
-        className="hidden lg:flex fixed right-0 top-[88px] bottom-0 flex-col shrink-0 border-l border-border/30 bg-card/50 backdrop-blur-xl z-30"
-        style={{ width: '200px' }}
+        className="hidden lg:flex fixed right-0 top-12 bottom-0 flex-col shrink-0 border-l border-border/30 bg-card/50 backdrop-blur-xl z-30"
+        style={{ width: '300px' }}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-3 py-2 border-b border-border/30">
@@ -61,26 +61,29 @@ export function SotArmstrongStripe() {
           </div>
         </div>
 
-        {/* Center content — file drop zone */}
-        <div className="flex-1 flex flex-col items-center justify-center px-4 gap-4">
-          <div className="w-full border border-dashed border-border/40 rounded-xl p-6 flex flex-col items-center gap-3 text-center">
-            <Upload className="w-5 h-5 text-muted-foreground/50" />
-            <span className="text-xs text-muted-foreground/60">
-              Dateien hierher ziehen
-            </span>
-          </div>
-        </div>
+        {/* Empty center */}
+        <div className="flex-1" />
 
-        {/* Chat trigger at bottom */}
-        <div className="pb-4 pt-2 flex flex-col items-center gap-2 border-t border-border/30">
-          <button
-            onClick={() => setIsChatOpen(true)}
-            className="w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 bg-primary/10 border border-primary/20"
-            title="Armstrong fragen"
-          >
-            <Sparkles className="w-4 h-4 text-primary" />
-          </button>
-          <span className="text-[10px] text-muted-foreground/60">Fragen</span>
+        {/* Chat input at bottom */}
+        <div className="px-3 py-3 border-t border-border/30">
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              placeholder="Armstrong fragen..."
+              className="flex-1 h-9 rounded-lg px-3 text-sm bg-muted/30 border border-border/50 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') setIsChatOpen(true);
+              }}
+              onFocus={() => setIsChatOpen(true)}
+            />
+            <button
+              onClick={() => setIsChatOpen(true)}
+              className="h-9 w-9 rounded-lg flex items-center justify-center shrink-0 nav-tab-glass border border-primary/20 hover:border-primary/50 transition-all"
+              title="Senden"
+            >
+              <ArrowUp className="w-4 h-4 text-primary" />
+            </button>
+          </div>
         </div>
       </aside>
 
