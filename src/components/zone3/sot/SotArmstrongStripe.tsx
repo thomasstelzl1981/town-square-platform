@@ -14,7 +14,7 @@ export function SotArmstrongStripe() {
     <>
       {/* Right stripe — desktop only */}
       <aside
-        className="hidden lg:flex flex-col justify-end shrink-0 border-l border-border/30 bg-white/60 dark:bg-card/40 backdrop-blur-xl"
+        className="hidden lg:flex flex-col justify-end shrink-0 border-l border-border/30 bg-card/50 backdrop-blur-xl"
         style={{
           width: isHovered ? '58px' : '45px',
           transition: 'width 0.3s ease',
