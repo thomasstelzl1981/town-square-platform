@@ -1,10 +1,10 @@
 /**
- * MOD-05 Website Builder — Single scrollable dashboard (Golden Path Standard)
- * WidgetGrid (Demo + Real Websites + CTA) + Inline-Flow sections
+ * MOD-05 Website Builder — Redesigned Dashboard
+ * Template gallery + Website tiles with thumbnails + Inline 3-step process
  */
 import { useState, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Plus, Globe, ExternalLink, Check, Palette, Search, Eye } from 'lucide-react';
+import { Plus, Globe, ExternalLink, Check, Palette, Search, Eye, Sparkles, Send } from 'lucide-react';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { WidgetGrid } from '@/components/shared/WidgetGrid';
@@ -16,11 +16,16 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useWebsites } from '@/hooks/useWebsites';
 import { useHostingContract } from '@/hooks/useHostingContract';
+import { useWebsitePage, useSections } from '@/hooks/useSections';
+import { SectionRenderer } from '@/shared/website-renderer';
 import { DESIGN_TEMPLATES, DEFAULT_TEMPLATE_ID, getTemplate } from '@/shared/website-renderer/designTemplates';
-import { CARD, TYPOGRAPHY, SPACING } from '@/config/designManifest';
+import { CARD, TYPOGRAPHY, SPACING, DEMO_WIDGET, INFO_BANNER } from '@/config/designManifest';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { DEMO_SECTIONS, DEMO_BRANDING } from './DemoSections';
+import { WebsiteThumbnail } from './WebsiteThumbnail';
+import { ProcessStepper, type StepId } from './ProcessStepper';
 import VersionHistory from './VersionHistory';
 
 const DEMO_WEBSITE = {
@@ -40,6 +45,7 @@ export default function WBDashboard() {
   const qc = useQueryClient();
   const [activeId, setActiveId] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
+  const [currentStep, setCurrentStep] = useState<StepId>('design');
   const [form, setForm] = useState({ name: '', slug: '', industry: '', target_audience: '', goal: 'branding', template_id: DEFAULT_TEMPLATE_ID });
 
   const isDemo = activeId === '__demo__';
@@ -50,8 +56,13 @@ export default function WBDashboard() {
     const template = DESIGN_TEMPLATES.find(t => t.id === form.template_id) || DESIGN_TEMPLATES[0];
     createWebsite.mutate(
       { ...form, slug: form.slug.toLowerCase().replace(/[^a-z0-9-]/g, '-'), branding_json: { ...template.branding, template_id: form.template_id } },
-      { onSuccess: (data: any) => { setShowCreate(false); setForm({ name: '', slug: '', industry: '', target_audience: '', goal: 'branding', template_id: DEFAULT_TEMPLATE_ID }); setActiveId(data.id); } },
+      { onSuccess: (data: any) => { setShowCreate(false); setForm({ name: '', slug: '', industry: '', target_audience: '', goal: 'branding', template_id: DEFAULT_TEMPLATE_ID }); setActiveId(data.id); setCurrentStep('design'); } },
     );
+  };
+
+  const handleSelectTemplate = (templateId: string) => {
+    setForm(f => ({ ...f, template_id: templateId }));
+    setShowCreate(true);
   };
 
   const statusBadge = (status: string) => {
@@ -60,59 +71,51 @@ export default function WBDashboard() {
     return <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium', map[status] || map.draft)}>{labels[status] || status}</span>;
   };
 
+  const completedSteps: StepId[] = [];
+  if (activeWebsite && activeWebsite.branding_json?.template_id) completedSteps.push('design');
+
   return (
     <PageShell>
       <ModulePageHeader title="Website Builder" description="Erstellen, gestalten und veröffentlichen Sie Ihre Unternehmenswebsite — alles an einem Ort." />
 
-      <WidgetGrid>
-        <WidgetCell>
-          <div className={cn(CARD.CONTENT, CARD.INTERACTIVE, 'h-full flex flex-col justify-between', activeId === '__demo__' && 'ring-2 ring-primary')} onClick={() => setActiveId(activeId === '__demo__' ? null : '__demo__')}>
-            <div>
-              <div className="flex items-center justify-between mb-2"><p className={TYPOGRAPHY.CARD_TITLE}>Muster GmbH</p>{statusBadge('demo')}</div>
-              <p className={TYPOGRAPHY.HINT}>/muster-gmbh</p>
-              <p className="text-[10px] text-muted-foreground mt-2">So sieht ein fertiger Website-Auftrag aus</p>
-            </div>
-            <div className="flex items-center gap-1 mt-3 text-xs text-primary"><Eye className="h-3 w-3" /> Demo ansehen</div>
-          </div>
-        </WidgetCell>
-
-        {(websites || []).map((w: any) => (
-          <WidgetCell key={w.id}>
-            <div className={cn(CARD.CONTENT, CARD.INTERACTIVE, 'h-full flex flex-col justify-between', activeId === w.id && 'ring-2 ring-primary')} onClick={() => setActiveId(activeId === w.id ? null : w.id)}>
-              <div>
-                <div className="flex items-center justify-between mb-2"><p className={TYPOGRAPHY.CARD_TITLE}>{w.name}</p>{statusBadge(w.status)}</div>
-                <p className={TYPOGRAPHY.HINT}>/{w.slug}</p>
+      {/* ─── Template Gallery ─── */}
+      <div className={cn(SPACING.SECTION)}>
+        <h2 className={TYPOGRAPHY.SECTION_TITLE}>Design-Vorlage wählen</h2>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+          {DESIGN_TEMPLATES.map(t => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => handleSelectTemplate(t.id)}
+              className={cn(
+                'group relative rounded-xl text-left transition-all border-2 overflow-hidden',
+                form.template_id === t.id && showCreate ? 'border-primary ring-2 ring-primary/20' : 'border-border/30 hover:border-primary/40 hover:shadow-md',
+              )}
+            >
+              <div className="h-24 sm:h-28" style={{ background: t.preview_gradient }}>
+                {/* Silhouette overlay */}
+                <div className="h-full w-full flex flex-col items-center justify-center opacity-30">
+                  <div className="w-3/4 h-3 bg-white/60 rounded mb-1.5" />
+                  <div className="w-1/2 h-2 bg-white/40 rounded mb-3" />
+                  <div className="w-1/3 h-5 bg-white/50 rounded" />
+                </div>
               </div>
-              {w.status === 'published' && <a href={`/website/sites/${w.slug}`} target="_blank" rel="noopener" className="text-xs text-primary flex items-center gap-1 mt-3" onClick={e => e.stopPropagation()}><ExternalLink className="h-3 w-3" /> Ansehen</a>}
-            </div>
-          </WidgetCell>
-        ))}
+              <div className="p-3">
+                <p className="text-sm font-semibold">{t.name}</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">{t.description}</p>
+              </div>
+              <div className="absolute inset-0 flex items-center justify-center bg-primary/80 text-primary-foreground opacity-0 group-hover:opacity-100 transition-opacity">
+                <span className="text-sm font-semibold">Mit Template starten</span>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
 
-        <WidgetCell>
-          <div className={cn(CARD.CONTENT, CARD.INTERACTIVE, 'h-full flex flex-col items-center justify-center border-dashed border-2 border-border/40')} onClick={() => { setShowCreate(!showCreate); setActiveId(null); }}>
-            <Plus className="h-8 w-8 text-muted-foreground mb-2" />
-            <span className="text-sm font-medium text-muted-foreground">Neue Website</span>
-          </div>
-        </WidgetCell>
-      </WidgetGrid>
-
+      {/* ─── Create Form (slides open when template selected) ─── */}
       {showCreate && (
-        <div className={cn(CARD.CONTENT, 'space-y-4')}>
-          <h3 className={TYPOGRAPHY.CARD_TITLE}>Neue Website erstellen</h3>
-          <div>
-            <Label className="mb-2 block">Design-Template wählen</Label>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-              {DESIGN_TEMPLATES.map(t => (
-                <button key={t.id} type="button" onClick={() => setForm(f => ({ ...f, template_id: t.id }))}
-                  className={cn('relative rounded-lg p-3 text-left transition-all border-2', form.template_id === t.id ? 'border-primary ring-2 ring-primary/20' : 'border-border/30 hover:border-border/60')}>
-                  <div className="h-12 rounded-md mb-2" style={{ background: t.preview_gradient }} />
-                  <p className="text-sm font-medium">{t.name}</p>
-                  <p className="text-[10px] text-muted-foreground">{t.description}</p>
-                  {form.template_id === t.id && <div className="absolute top-2 right-2 h-5 w-5 rounded-full bg-primary flex items-center justify-center"><Check className="h-3 w-3 text-primary-foreground" /></div>}
-                </button>
-              ))}
-            </div>
-          </div>
+        <div className={cn(CARD.CONTENT, 'space-y-4 border border-primary/20')}>
+          <h3 className={TYPOGRAPHY.CARD_TITLE}>Neue Website erstellen — {DESIGN_TEMPLATES.find(t => t.id === form.template_id)?.name || 'Modern'}</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div><Label>Firmenname *</Label><Input placeholder="Meine Firma GmbH" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value, slug: e.target.value.toLowerCase().replace(/[^a-z0-9]/g, '-') }))} /></div>
             <div><Label>URL-Slug *</Label><Input placeholder="meine-firma" value={form.slug} onChange={e => setForm(f => ({ ...f, slug: e.target.value }))} /><p className={cn(TYPOGRAPHY.HINT, 'mt-1')}>/website/sites/{form.slug || '...'}</p></div>
@@ -121,30 +124,205 @@ export default function WBDashboard() {
             <div><Label>Ziel</Label><Select value={form.goal} onValueChange={v => setForm(f => ({ ...f, goal: v }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="branding">Branding</SelectItem><SelectItem value="leads">Lead-Generierung</SelectItem><SelectItem value="sales">Verkauf</SelectItem></SelectContent></Select></div>
           </div>
           <div className="flex gap-2">
-            <Button onClick={handleCreate} disabled={!form.name || !form.slug || createWebsite.isPending}>Website erstellen</Button>
+            <Button onClick={handleCreate} disabled={!form.name || !form.slug || createWebsite.isPending}>
+              <Sparkles className="h-4 w-4 mr-1" />
+              Website erstellen
+            </Button>
             <Button variant="ghost" onClick={() => setShowCreate(false)}>Abbrechen</Button>
           </div>
         </div>
       )}
 
+      {/* ─── My Websites Grid ─── */}
+      <div className={cn(SPACING.SECTION)}>
+        <h2 className={TYPOGRAPHY.SECTION_TITLE}>Meine Websites</h2>
+        <WidgetGrid>
+          {/* Demo tile */}
+          <WidgetCell>
+            <div
+              className={cn(
+                CARD.BASE, CARD.INTERACTIVE, 'h-full flex flex-col overflow-hidden',
+                activeId === '__demo__' && 'ring-2 ring-primary',
+                DEMO_WIDGET.CARD, DEMO_WIDGET.HOVER,
+              )}
+              onClick={() => { setActiveId(activeId === '__demo__' ? null : '__demo__'); setCurrentStep('design'); }}
+            >
+              {/* Thumbnail */}
+              <div className="h-[60%] overflow-hidden bg-muted/20">
+                <WebsiteThumbnail sections={DEMO_SECTIONS} branding={DEMO_BRANDING} />
+              </div>
+              <div className="p-3 flex flex-col flex-1 justify-between">
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <p className={TYPOGRAPHY.CARD_TITLE}>Muster GmbH</p>
+                    {statusBadge('demo')}
+                  </div>
+                  <p className={TYPOGRAPHY.HINT}>So sieht ein fertiger Auftrag aus</p>
+                </div>
+                <div className="flex items-center gap-1 mt-2 text-xs text-primary"><Eye className="h-3 w-3" /> Demo ansehen</div>
+              </div>
+            </div>
+          </WidgetCell>
+
+          {/* Real websites */}
+          {(websites || []).map((w: any) => (
+            <WidgetCell key={w.id}>
+              <div
+                className={cn(CARD.BASE, CARD.INTERACTIVE, 'h-full flex flex-col overflow-hidden', activeId === w.id && 'ring-2 ring-primary')}
+                onClick={() => { setActiveId(activeId === w.id ? null : w.id); setCurrentStep('design'); }}
+              >
+                <div className="h-[60%] overflow-hidden bg-muted/20">
+                  <div className="h-full w-full flex items-center justify-center text-muted-foreground">
+                    <Globe className="h-8 w-8 opacity-20" />
+                  </div>
+                </div>
+                <div className="p-3 flex flex-col flex-1 justify-between">
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <p className={TYPOGRAPHY.CARD_TITLE}>{w.name}</p>
+                      {statusBadge(w.status)}
+                    </div>
+                    <p className={TYPOGRAPHY.HINT}>/{w.slug}</p>
+                  </div>
+                  {w.status === 'published' && (
+                    <a href={`/website/sites/${w.slug}`} target="_blank" rel="noopener" className="text-xs text-primary flex items-center gap-1 mt-2" onClick={e => e.stopPropagation()}>
+                      <ExternalLink className="h-3 w-3" /> Ansehen
+                    </a>
+                  )}
+                </div>
+              </div>
+            </WidgetCell>
+          ))}
+
+          {/* CTA tile */}
+          <WidgetCell>
+            <div
+              className={cn(CARD.CONTENT, CARD.INTERACTIVE, 'h-full flex flex-col items-center justify-center border-dashed border-2 border-border/40')}
+              onClick={() => { setShowCreate(!showCreate); setActiveId(null); }}
+            >
+              <Plus className="h-8 w-8 text-muted-foreground mb-2" />
+              <span className="text-sm font-medium text-muted-foreground">Neue Website</span>
+            </div>
+          </WidgetCell>
+        </WidgetGrid>
+      </div>
+
+      {/* ─── Inline Detail with Process Stepper ─── */}
       {activeWebsite && (
         <div className={cn(SPACING.SECTION)}>
-          <DesignSection website={activeWebsite} isDemo={isDemo} />
-          <SeoSection website={activeWebsite} isDemo={isDemo} />
-          {!isDemo && (
-            <div className={cn(CARD.CONTENT, 'space-y-3')}>
-              <div className="flex items-center gap-2"><Globe className="h-5 w-5 text-primary" /><h3 className={TYPOGRAPHY.CARD_TITLE}>Section-Editor</h3></div>
-              <p className={TYPOGRAPHY.MUTED}>Bearbeiten Sie die Inhalte im visuellen Editor mit Live-Vorschau.</p>
-              <Button size="sm" onClick={() => window.open(`/portal/website-builder/${activeWebsite.id}/editor`, '_self')}>Editor öffnen</Button>
+          <ProcessStepper currentStep={currentStep} onStepClick={setCurrentStep} completedSteps={completedSteps} />
+
+          {/* Demo Preview Banner */}
+          {isDemo && currentStep === 'design' && (
+            <div className={cn(INFO_BANNER.BASE, INFO_BANNER.HINT, 'space-y-3')}>
+              <p className={TYPOGRAPHY.MUTED}>
+                Dies ist eine Demo-Website mit Beispieldaten. Klicken Sie oben auf ein Template, um Ihre eigene Website zu erstellen.
+              </p>
             </div>
           )}
-          <ContractSection website={activeWebsite} isDemo={isDemo} />
+
+          {/* Step 1: Design */}
+          {currentStep === 'design' && (
+            <div className={cn(SPACING.SECTION)}>
+              <DesignSection website={activeWebsite} isDemo={isDemo} />
+              {/* Live Preview */}
+              <div className={cn(CARD.CONTENT, 'space-y-3')}>
+                <h3 className={TYPOGRAPHY.CARD_TITLE}>Live-Vorschau</h3>
+                <div className="border border-border/30 rounded-lg overflow-hidden bg-white dark:bg-zinc-900 max-h-[500px] overflow-y-auto">
+                  {isDemo ? (
+                    <SectionRendererWrapper sections={DEMO_SECTIONS} branding={DEMO_BRANDING} />
+                  ) : (
+                    <SectionRendererWrapper websiteId={activeWebsite.id} branding={activeWebsite.branding_json} />
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Step 2: Content */}
+          {currentStep === 'content' && (
+            <div className={cn(SPACING.SECTION)}>
+              {isDemo ? (
+                <div className={cn(CARD.CONTENT, 'space-y-3')}>
+                  <h3 className={TYPOGRAPHY.CARD_TITLE}>Inhalte (Demo)</h3>
+                  <p className={TYPOGRAPHY.MUTED}>Die Demo-Website zeigt Beispiel-Sections. Erstellen Sie Ihre eigene Website, um Inhalte zu bearbeiten.</p>
+                  <div className="border border-border/30 rounded-lg overflow-hidden bg-white dark:bg-zinc-900 max-h-[600px] overflow-y-auto">
+                    <SectionRendererWrapper sections={DEMO_SECTIONS} branding={DEMO_BRANDING} />
+                  </div>
+                </div>
+              ) : (
+                <div className={cn(CARD.CONTENT, 'space-y-3')}>
+                  <div className="flex items-center justify-between">
+                    <h3 className={TYPOGRAPHY.CARD_TITLE}>Section-Editor</h3>
+                    <div className="flex gap-2">
+                      <Button size="sm" variant="outline" onClick={() => window.open(`/portal/website-builder/${activeWebsite.id}/editor`, '_self')}>
+                        <Sparkles className="h-4 w-4 mr-1" /> Visuellen Editor öffnen
+                      </Button>
+                    </div>
+                  </div>
+                  <p className={TYPOGRAPHY.MUTED}>
+                    Bearbeiten Sie die Inhalte Ihrer Website im visuellen Split-View-Editor mit Live-Vorschau und KI-Generierung.
+                  </p>
+                  <div className="border border-border/30 rounded-lg overflow-hidden bg-white dark:bg-zinc-900 max-h-[500px] overflow-y-auto">
+                    <SectionRendererWrapper websiteId={activeWebsite.id} branding={activeWebsite.branding_json} />
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Step 3: Publish */}
+          {currentStep === 'publish' && (
+            <div className={cn(SPACING.SECTION)}>
+              <SeoSection website={activeWebsite} isDemo={isDemo} />
+              <ContractSection website={activeWebsite} isDemo={isDemo} />
+            </div>
+          )}
         </div>
       )}
     </PageShell>
   );
 }
 
+/* ─── SectionRenderer Wrapper (loads sections from DB or uses static) ─── */
+function SectionRendererWrapper({ sections: staticSections, websiteId, branding }: {
+  sections?: any[];
+  websiteId?: string;
+  branding?: any;
+}) {
+  if (staticSections) {
+    return <SectionRenderer sections={staticSections} branding={branding} />;
+  }
+
+  // For real websites, load from hooks
+  return <RealSectionPreview websiteId={websiteId!} branding={branding} />;
+}
+
+function RealSectionPreview({ websiteId, branding }: { websiteId: string; branding: any }) {
+  const { data: page } = useWebsitePage(websiteId);
+  const { data: sections } = useSections(page?.id);
+
+  const mapped = (sections || []).map((s: any) => ({
+    id: s.id,
+    section_type: s.section_type,
+    sort_order: s.sort_order,
+    content_json: s.content_json || {},
+    design_json: s.design_json || {},
+    is_visible: s.is_visible ?? true,
+  }));
+
+  if (mapped.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-[300px] text-muted-foreground">
+        <p className="text-sm">Noch keine Sections. Öffnen Sie den Editor, um Inhalte hinzuzufügen.</p>
+      </div>
+    );
+  }
+
+  return <SectionRenderer sections={mapped} branding={branding} />;
+}
+
+/* ─── Design Section ─── */
 function DesignSection({ website, isDemo }: { website: any; isDemo: boolean }) {
   const qc = useQueryClient();
   const [branding, setBranding] = useState<any>(website.branding_json || {});
@@ -155,8 +333,12 @@ function DesignSection({ website, isDemo }: { website: any; isDemo: boolean }) {
   const saveBranding = async (b: any) => {
     if (isDemo) return;
     setSaving(true);
-    try { const { error } = await supabase.from('tenant_websites' as any).update({ branding_json: b }).eq('id', website.id); if (error) throw error; qc.invalidateQueries({ queryKey: ['tenant_websites'] }); toast.success('Design gespeichert'); }
-    catch (e: any) { toast.error(e.message); } finally { setSaving(false); }
+    try {
+      const { error } = await supabase.from('tenant_websites' as any).update({ branding_json: b }).eq('id', website.id);
+      if (error) throw error;
+      qc.invalidateQueries({ queryKey: ['tenant_websites'] });
+      toast.success('Design gespeichert');
+    } catch (e: any) { toast.error(e.message); } finally { setSaving(false); }
   };
 
   return (
@@ -184,6 +366,7 @@ function DesignSection({ website, isDemo }: { website: any; isDemo: boolean }) {
   );
 }
 
+/* ─── SEO Section ─── */
 function SeoSection({ website, isDemo }: { website: any; isDemo: boolean }) {
   const qc = useQueryClient();
   const [seo, setSeo] = useState<any>(website.seo_json || {});
@@ -216,6 +399,7 @@ function SeoSection({ website, isDemo }: { website: any; isDemo: boolean }) {
   );
 }
 
+/* ─── Contract Section ─── */
 function ContractSection({ website, isDemo }: { website: any; isDemo: boolean }) {
   const { data: contract, isLoading } = useHostingContract(isDemo ? undefined : website.id);
   const statusMap: Record<string, { label: string; color: string }> = { active: { label: 'Aktiv (Credits-basiert)', color: 'text-emerald-600' }, pending: { label: 'Ausstehend', color: 'text-amber-600' }, suspended: { label: 'Gesperrt', color: 'text-destructive' }, cancelled: { label: 'Gekündigt', color: 'text-muted-foreground' } };
@@ -223,7 +407,7 @@ function ContractSection({ website, isDemo }: { website: any; isDemo: boolean })
   return (
     <div className="space-y-4">
       <div className={cn(CARD.CONTENT, 'space-y-3')}>
-        <h3 className={TYPOGRAPHY.CARD_TITLE}>Hosting-Vertrag</h3>
+        <div className="flex items-center gap-2"><Globe className="h-5 w-5 text-primary" /><h3 className={TYPOGRAPHY.CARD_TITLE}>Hosting-Vertrag</h3></div>
         {isDemo ? (
           <>
             <div className="flex items-center gap-2"><span className={TYPOGRAPHY.LABEL}>Status:</span><span className="text-sm font-medium text-emerald-600">Aktiv (Demo)</span></div>
@@ -237,7 +421,14 @@ function ContractSection({ website, isDemo }: { website: any; isDemo: boolean })
             {contract.credits_charged > 0 && <div className="flex items-center gap-2"><span className={TYPOGRAPHY.LABEL}>Credits:</span><span className="text-sm">{contract.credits_charged}</span></div>}
             {contract.accepted_terms_at && <p className={TYPOGRAPHY.HINT}>Vertrag: {new Date(contract.accepted_terms_at).toLocaleDateString('de-DE')}</p>}
           </>
-        ) : <p className={TYPOGRAPHY.MUTED}>Kein Hosting-Vertrag vorhanden.</p>}
+        ) : (
+          <>
+            <p className={TYPOGRAPHY.MUTED}>Kein Hosting-Vertrag vorhanden.</p>
+            <Button size="sm" onClick={() => window.open(`/portal/website-builder/${website.id}/editor`, '_self')}>
+              <Send className="h-4 w-4 mr-1" /> Im Editor aktivieren
+            </Button>
+          </>
+        )}
       </div>
       {!isDemo && <VersionHistory websiteId={website.id} websiteSlug={website.slug} />}
       {isDemo && (
