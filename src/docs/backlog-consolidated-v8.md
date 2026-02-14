@@ -69,49 +69,51 @@
 
 ## PHASE 2: MOD-18 Finanzanalyse (/portal/finanzanalyse/)
 
-### 2-1: DB-Migration — Analyse-Tabellen 🔴
-- analytics_budget_settings
-- analytics_category_overrides
-- analytics_notes
+### 2-1: DB-Migration — Analyse-Tabellen 🟢
+- analytics_budget_settings ✅
+- analytics_category_overrides ✅
+- analytics_notes ✅
 
-### 2-2: Routing-Umbau 🔴
-- routesManifest.ts Tiles aktualisieren:
-  - dashboard → "Übersicht"
-  - reports → "Cashflow & Budget"
-  - szenarien → "Verträge & Fixkosten"
-  - settings → "Risiko & Absicherung"
+### 2-2: Routing-Umbau 🟢
+- routesManifest.ts Tiles aktualisiert:
+  - dashboard → "Übersicht" ✅
+  - reports → "Cashflow & Budget" ✅
+  - szenarien → "Verträge & Fixkosten" ✅
+  - settings → "Risiko & Absicherung" ✅
 
-### 2-3: Hook useFinanzanalyseData 🔴
-- Datei: `src/hooks/useFinanzanalyseData.ts`
-- Liest bank_transactions, fm_bank_accounts, fm_subscriptions, fm_insurance_contracts
-- Aggregiert KPIs, Fixkosten, Top Merchants
+### 2-3: Hook useFinanzanalyseData 🟢
+- Datei: `src/hooks/useFinanzanalyseData.ts` ✅
+- Liest bank_transactions, analytics_budget_settings, analytics_category_overrides
+- Aggregiert KPIs, Fixkosten, Top Merchants, Monatsflows
 
-### 2-4: Seite A — Übersicht (DashboardTile) 🔴
-- Health-Check, KPI-Row, Insights, Top Merchants, Empty States
+### 2-4: Seite A — Übersicht (DashboardTile) 🟢
+- Health-Check, KPI-Row (6 Widgets), Insights Accordion, Top Merchants, Empty States ✅
 
-### 2-5: Seite B — Cashflow & Budget (ReportsTile) 🔴
-- 12M Timeline, Budget Settings, Abweichungen, Kategorie-Explorer
+### 2-5: Seite B — Cashflow & Budget (ReportsTile) 🟢
+- Recharts 12M Timeline, Budget-Editor pro Kategorie, Abweichungs-Alerts, Kategorie-Explorer ✅
 
-### 2-6: Seite C — Verträge & Fixkosten (SzenarienTile) 🔴
-- Fixkosten Summary, Abos, Versicherungen, Kandidaten, Duplikate
+### 2-6: Seite C — Verträge & Fixkosten (SzenarienTile) 🟢
+- Fixkosten Summary, Abo-Erkennung (Heuristik), Wiederkehrende Zahlungen, Duplikate-Check ✅
 
-### 2-7: Seite D — Risiko & Absicherung (EinstellungenTile) 🔴
-- Versicherungskostenquote, Coverage, DRV Quick-View, Investment-Stub
+### 2-7: Seite D — Risiko & Absicherung (EinstellungenTile) 🟢
+- Versicherungskostenquote, Coverage Snapshot (8 Typen), DRV-Stub, Investment-Stub ✅
 
 ---
 
-## PHASE 3: Golden Path Demo-Angleichung (8 Prozesse) 🔴
+## PHASE 3: Golden Path Demo-Angleichung (8 Prozesse) 🟢
 
-| Prozess | Modul | Status |
-|---------|-------|--------|
-| GP-SUCHMANDAT | MOD-08 | 🔴 |
-| GP-SIMULATION | MOD-08 | 🔴 |
-| GP-SERIEN-EMAIL | MOD-14 | 🔴 |
-| GP-FAHRZEUG | MOD-17 | 🔴 |
-| GP-PV-ANLAGE | MOD-19 | 🔴 |
-| GP-FM-FALL | MOD-11 | 🔴 |
-| GP-RECHERCHE | MOD-14 | 🔴 |
-| GP-PROJEKT | MOD-13 | 🔴 |
+**Audit-Ergebnis:** Alle 8 Prozesse sind bereits Golden Path Standard V1.0 konform.
+
+| Prozess | Modul | Status | Befund |
+|---------|-------|--------|--------|
+| GP-SUCHMANDAT | MOD-08 | 🟢 | Demo-Widget Pos 0 ✅, WidgetGrid ✅, Inline-Navigation zu Detail ✅ |
+| GP-SIMULATION | MOD-08 | 🟢 | Demo-Widget Pos 0 ✅, WidgetGrid ✅, Portfolio-Simulation inline ✅ |
+| GP-SERIEN-EMAIL | MOD-14 | 🟢 | Demo-Widget Pos 0 ✅, WidgetGrid ✅, CampaignWizard inline ✅ |
+| GP-FAHRZEUG | MOD-17 | 🟢 | Demo-Daten (6 Fahrzeuge) ✅, WidgetGrid ✅, Inline-Fahrzeugakte ✅ |
+| GP-PV-ANLAGE | MOD-19 | 🟢 | Demo-Widget Pos 0 ✅, WidgetGrid ✅, CTA-Widget ✅ |
+| GP-FM-FALL | MOD-11 | 🟢 | Demo-Widget Pos 0 ✅, WidgetGrid ✅, DASHBOARD_HEADER ✅ |
+| GP-RECHERCHE | MOD-14 | 🟢 | Demo-Order inline ✅, WidgetGrid ✅, ResearchOrderInlineFlow ✅ |
+| GP-PROJEKT | MOD-13 | 🟢 | Demo-Projekt (DEMO_PROJECT) ✅, WidgetGrid ✅, ProjectCard ✅ |
 
 ---
 
