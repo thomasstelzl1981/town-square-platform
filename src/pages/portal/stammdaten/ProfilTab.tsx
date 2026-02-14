@@ -417,9 +417,6 @@ export function ProfilTab() {
         {/* ── Outbound-Kennung (rechte Spalte wenn RecordCard geschlossen) ── */}
         {!isRecordOpen && <OutboundIdentityWidget />}
 
-        {/* ── Upload-E-Mail ── */}
-        {!isRecordOpen && <UploadEmailWidget />}
-
         {/* ── WhatsApp Business ── */}
         {isRecordOpen && (
           <div className="md:col-span-2">
@@ -460,50 +457,6 @@ export function ProfilTab() {
       </div>
     </form>
     </PageShell>
-  );
-}
-
-// =============================================================================
-// Upload Email Widget
-// =============================================================================
-function UploadEmailWidget() {
-  const { user } = useAuth();
-  const { data: mailboxAddress } = useQuery({
-    queryKey: ['inbound-mailbox-profil'],
-    queryFn: async () => {
-      const session = await supabase.auth.getSession();
-      const token = session.data.session?.access_token;
-      if (!token) return null;
-      const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sot-inbound-receive?action=mailbox`,
-        { headers: { Authorization: `Bearer ${token}`, apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY } }
-      );
-      if (!res.ok) return null;
-      const result = await res.json();
-      return result.address as string;
-    },
-    enabled: !!user,
-  });
-
-  const copyAddress = () => {
-    if (mailboxAddress) {
-      navigator.clipboard.writeText(mailboxAddress);
-      toast.success('E-Mail-Adresse kopiert');
-    }
-  };
-
-  return (
-    <ProfileWidget icon={Mail} title="Upload-E-Mail" description="PDFs per Mail ins DMS senden">
-      <div className="flex items-center gap-3">
-        <code className="flex-1 px-3 py-2 bg-muted/50 rounded-lg font-mono text-xs truncate">
-          {mailboxAddress || 'Wird geladen...'}
-        </code>
-        <Button type="button" variant="outline" size="sm" onClick={copyAddress} disabled={!mailboxAddress} className="gap-1.5">
-          <Copy className="h-3.5 w-3.5" />
-          Kopieren
-        </Button>
-      </div>
-    </ProfileWidget>
   );
 }
 

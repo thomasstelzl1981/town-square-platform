@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Save, Mail, Info } from 'lucide-react';
+import { Loader2, Save, Mail, Info, Copy, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import {
@@ -23,6 +23,52 @@ import {
   getBrandByKey,
   type OutboundBrand,
 } from '@/config/outboundBrands';
+
+function UploadEmailSection() {
+  const { user } = useAuth();
+  const { data: mailboxAddress } = useQuery({
+    queryKey: ['inbound-mailbox-profil'],
+    queryFn: async () => {
+      const session = await supabase.auth.getSession();
+      const token = session.data.session?.access_token;
+      if (!token) return null;
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sot-inbound-receive?action=mailbox`,
+        { headers: { Authorization: `Bearer ${token}`, apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY } }
+      );
+      if (!res.ok) return null;
+      const result = await res.json();
+      return result.address as string;
+    },
+    enabled: !!user,
+  });
+
+  const copyAddress = () => {
+    if (mailboxAddress) {
+      navigator.clipboard.writeText(mailboxAddress);
+      toast.success('E-Mail-Adresse kopiert');
+    }
+  };
+
+  return (
+    <div className="border-t border-border/30 pt-4 space-y-1.5">
+      <div className="flex items-center gap-2 mb-2">
+        <Upload className="h-3.5 w-3.5 text-muted-foreground" />
+        <Label className="text-xs font-medium">Upload-E-Mail</Label>
+        <span className="text-[11px] text-muted-foreground">— PDFs per Mail ins DMS senden</span>
+      </div>
+      <div className="flex items-center gap-2">
+        <code className="flex-1 px-3 py-2 bg-muted/50 rounded-lg font-mono text-xs truncate">
+          {mailboxAddress || 'Wird geladen...'}
+        </code>
+        <Button type="button" variant="outline" size="sm" onClick={copyAddress} disabled={!mailboxAddress} className="gap-1.5">
+          <Copy className="h-3.5 w-3.5" />
+          Kopieren
+        </Button>
+      </div>
+    </div>
+  );
+}
 
 interface OutboundIdentity {
   id: string;
@@ -265,6 +311,9 @@ export function OutboundIdentityWidget() {
               persönliches Postfach.
             </p>
           </div>
+
+          {/* Upload-E-Mail Section */}
+          <UploadEmailSection />
 
           {/* Save */}
           {hasChanges && (
