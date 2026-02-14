@@ -1,80 +1,47 @@
 
-# PV-Anlage als echte DB-Akte anlegen und DMS-Verknuepfungen reparieren
+# Zone 1 Recherche: Pop-Up entfernen, Widget-Standard umsetzen
 
-## Problem-Analyse
+## Problem
 
-### 1. PV-Anlage existiert nur client-seitig
-Die Demo-PV-Anlage "EFH SMA 9,8 kWp" ist eine hartcodierte Konstante in `AnlagenTab.tsx` (`id: 'demo-plant-001'`). Sie wurde nie in die `pv_plants`-Tabelle eingefuegt. Damit hat sie:
-- Keinen DMS-Ordner unter MOD_19
-- Keine Sortierkachel
-- Keine Sortierregeln
-- Keine echte Akte
+In `src/pages/admin/ki-office/AdminRecherche.tsx` oeffnet der "Neuer Auftrag"-Button einen **Dialog (Pop-Up)** mit Titel, Intent und Zielanzahl. Das widerspricht dem Golden Path Standard: Neue Vorgaenge werden ueber ein CTA-Widget im Grid initiiert und oeffnen den Flow **inline unterhalb** des Grids.
 
-### 2. DMS-Ordner haben keine Entity-Verknuepfung
-Alle `storage_nodes` fuer Properties (MOD_04) und Fahrzeuge (MOD_17) haben `entity_type = NULL` und `entity_id = NULL`. Das bedeutet: Der Button "Im Datenraum oeffnen" in der Sortierkachel-Detailansicht kann den richtigen Ordner nicht finden.
+## Loesung
 
-### 3. Sortierkacheln fuer Properties/Fahrzeuge sind korrekt
-Die 5 Sortierkacheln (3 Properties + 2 Fahrzeuge) und ihre Regeln wurden korrekt angelegt. Was fehlt: die PV-Anlage.
+### Was sich aendert
 
----
+1. **Dialog komplett entfernen** (Zeilen 390-426): Kein Pop-Up mehr fuer "Neuer Auftrag"
+2. **CTA-Widget erstellt sofort einen Draft**: Klick auf "Neuer Auftrag" ruft `createOrder.mutateAsync()` auf und setzt die neue Order als `selectedOrderId` — der Inline-Flow oeffnet sich automatisch darunter
+3. **Inline-Flow erweitern**: Der bestehende Inline-Case-Block (ab Zeile 238) bekommt fuer Draft-Orders editierbare Felder (Titel, Intent, Zielanzahl), die bisher nur im Dialog waren. So sieht der User den gesamten Flow auf einen Blick.
 
-## Umsetzung
+### Ablauf nach Umbau
 
-### SQL-Migration (3 Schritte)
+```text
++-------------------+-------------------+-------------------+-------------------+
+| + Neuer Auftrag   | Makler Hamburg    | Hausverwaltungen  | ...               |
+| (CTA-Widget)      | [Entwurf]         | [Fertig]          |                   |
++-------------------+-------------------+-------------------+-------------------+
 
-**Schritt 1: PV-Anlage als echten DB-Eintrag anlegen**
+Klick auf CTA → Draft wird erstellt → Widget erscheint im Grid → Inline-Flow oeffnet sich:
 
-| Feld | Wert |
-|------|------|
-| id | `00000000-0000-4000-a000-000000000901` |
-| name | EFH SMA 9,8 kWp |
-| tenant_id | `a0000000-0000-4000-a000-000000000001` |
-| kwp | 9.8 |
-| status | active |
-| city | Berlin |
-| street | Musterstr. |
-| commissioning_date | 2023-06-15 |
-| has_battery | true |
-| battery_kwh | 10.0 |
-| public_id | SOT-PV-SMA98 |
++------------------------------------------------------------------------+
+| Auftrag definieren                                                      |
+| Titel: [________________]  Was suchen Sie? [________________________]  |
+| Zielanzahl: [25 Kontakte ▼]                                           |
+|                                                    [Recherche starten] |
++------------------------------------------------------------------------+
+| Ergebnisse (0)                                                          |
+| Starten Sie den Auftrag, um Ergebnisse zu erhalten                     |
++------------------------------------------------------------------------+
+```
 
-Dazu: DMS-Unterordner unter dem MOD_19-Root (`bae9c64f-...`) mit den 8 Standard-PV-Unterordnern (01_Stammdaten bis 08_Wartung_Service).
-
-**Schritt 2: Sortierkachel fuer PV-Anlage erstellen**
-
-| Kachel-Name | Entity-Typ | Keywords |
-|-------------|-----------|----------|
-| EFH SMA 9,8 kWp | pv_plant | SMA, Photovoltaik, SOT-PV-SMA98, 9,8 kWp |
-
-**Schritt 3: Entity-Verknuepfungen in storage_nodes reparieren**
-
-Update aller bestehenden DMS-Ordner mit korrekten `entity_type` und `entity_id`:
-
-| DMS-Ordner | entity_type | entity_id |
-|------------|-------------|-----------|
-| BER-01 - Schadowstr. | property | d0000000-...001 |
-| MUC-01 - Leopoldstr. | property | d0000000-...002 |
-| HH-01 - Osterstr. | property | d0000000-...003 |
-| B-P911 (Ordner) | vehicle | 00000000-...301 |
-| M-M5005 (Ordner) | vehicle | 00000000-...302 |
-
----
-
-### Frontend: `AnlagenTab.tsx` anpassen
-
-Die hartcodierte `DEMO_PLANT`-Konstante wird durch eine DB-Query ersetzt (oder die Konstante bekommt die echte UUID `00000000-0000-4000-a000-000000000901`), damit das Dossier auf den echten DB-Eintrag verweist. So funktionieren DMS-Uploads, Monitoring und Sortierkacheln einheitlich.
-
----
-
-## Betroffene Dateien
+### Betroffene Datei
 
 | Datei | Aenderung |
 |-------|-----------|
-| SQL-Migration | PV-Anlage + DMS-Ordner + Sortierkachel + Entity-Updates |
-| `src/pages/portal/photovoltaik/AnlagenTab.tsx` | DEMO_PLANT-ID auf echte DB-UUID aendern |
+| `src/pages/admin/ki-office/AdminRecherche.tsx` | Dialog entfernen, CTA-Widget direkt `createOrder` aufrufen, Inline-Flow um editierbare Draft-Felder (Titel, Intent, Zielanzahl) erweitern |
 
-## Was sich NICHT aendert
-- `SortierenTab.tsx` — wurde bereits im letzten Schritt erweitert
-- `useRecordCardDMS.ts` — bleibt korrekt
-- `CONTRACT_EMAIL_INBOUND.md` — wurde bereits aktualisiert
-- Die 5 bestehenden Sortierkacheln — bleiben unveraendert
+### Was sich NICHT aendert
+- Widget-Grid-Layout (bleibt `grid-cols-2 md:grid-cols-3 lg:grid-cols-4`)
+- Ergebnis-Tabelle und Bulk-Import-Logik
+- Status-Badges und Phase-Tracking
+- `useSoatSearchEngine` Hook
