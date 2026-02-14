@@ -16,9 +16,12 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import {
+  Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription,
+} from '@/components/ui/sheet';
+import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import { Cpu, Plus, Pencil, Copy, Trash2, X, AlertTriangle, Loader2, LayoutGrid } from 'lucide-react';
+import { Cpu, Plus, Pencil, Copy, Trash2, X, AlertTriangle, Loader2, LayoutGrid, FolderOpen, FileText, ExternalLink } from 'lucide-react';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { DESIGN } from '@/config/designManifest';
@@ -39,6 +42,9 @@ interface SortContainer {
   is_enabled: boolean;
   created_at: string;
   updated_at: string;
+  entity_type?: string | null;
+  entity_id?: string | null;
+  property_id?: string | null;
   inbox_sort_rules: SortRule[];
 }
 
@@ -46,6 +52,14 @@ const FIELD_LABELS: Record<string, string> = {
   subject: 'Betreff',
   from: 'Absender',
   to: 'Empfänger',
+};
+
+const ENTITY_LABELS: Record<string, string> = {
+  property: 'Immobilie',
+  vehicle: 'Fahrzeug',
+  person: 'Person',
+  pv_system: 'PV-Anlage',
+  insurance: 'Versicherung',
 };
 
 export function SortierenTab() {
@@ -57,6 +71,7 @@ export function SortierenTab() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingContainer, setEditingContainer] = useState<SortContainer | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [selectedContainer, setSelectedContainer] = useState<SortContainer | null>(null);
 
   // Form state
   const [formName, setFormName] = useState('');
@@ -303,7 +318,7 @@ export function SortierenTab() {
       {/* Grid */}
       <div className={DESIGN.WIDGET_GRID.FULL}>
         {containers.map((c) => (
-          <Card key={c.id} className="glass-card flex flex-col overflow-hidden">
+          <Card key={c.id} className="glass-card flex flex-col overflow-hidden cursor-pointer hover:ring-1 hover:ring-primary/30 transition-all" onClick={() => setSelectedContainer(c)}>
             <CardContent className="p-5 flex-1 flex flex-col gap-3">
               {/* Name */}
               <div className="flex items-start justify-between gap-2">
@@ -311,7 +326,12 @@ export function SortierenTab() {
                   <div className="p-2 rounded-xl bg-primary/10">
                     <LayoutGrid className="h-4 w-4 text-primary" />
                   </div>
-                  <h3 className="font-semibold text-foreground">{c.name}</h3>
+                  <div>
+                    <h3 className="font-semibold text-foreground">{c.name}</h3>
+                    {c.entity_type && (
+                      <span className="text-xs text-muted-foreground">{ENTITY_LABELS[c.entity_type] || c.entity_type}</span>
+                    )}
+                  </div>
                 </div>
                 <Badge variant="outline" className={aiEnabled && c.is_enabled
                   ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20'
@@ -341,13 +361,13 @@ export function SortierenTab() {
 
               {/* Actions */}
               <div className="flex gap-1.5 pt-2 border-t border-border/50">
-                <Button variant="ghost" size="sm" onClick={() => openEdit(c)} className="flex-1 gap-1.5 text-xs">
+                <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); openEdit(c); }} className="flex-1 gap-1.5 text-xs">
                   <Pencil className="h-3.5 w-3.5" /> Bearbeiten
                 </Button>
-                <Button variant="ghost" size="sm" onClick={() => duplicateMutation.mutate(c)} className="gap-1.5 text-xs" disabled={duplicateMutation.isPending}>
+                <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); duplicateMutation.mutate(c); }} className="gap-1.5 text-xs" disabled={duplicateMutation.isPending}>
                   <Copy className="h-3.5 w-3.5" />
                 </Button>
-                <Button variant="ghost" size="sm" onClick={() => setDeleteId(c.id)} className="gap-1.5 text-xs text-destructive hover:text-destructive">
+                <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); setDeleteId(c.id); }} className="gap-1.5 text-xs text-destructive hover:text-destructive">
                   <Trash2 className="h-3.5 w-3.5" />
                 </Button>
               </div>
@@ -479,6 +499,105 @@ export function SortierenTab() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* ── Detail Sheet ── */}
+      <Sheet open={!!selectedContainer} onOpenChange={(o) => !o && setSelectedContainer(null)}>
+        <SheetContent className="sm:max-w-lg">
+          {selectedContainer && (
+            <>
+              <SheetHeader>
+                <SheetTitle className="flex items-center gap-2">
+                  <LayoutGrid className="h-5 w-5 text-primary" />
+                  {selectedContainer.name}
+                </SheetTitle>
+                <SheetDescription>
+                  {selectedContainer.entity_type
+                    ? `${ENTITY_LABELS[selectedContainer.entity_type] || selectedContainer.entity_type} · Sortierkachel`
+                    : 'Sortierkachel'}
+                </SheetDescription>
+              </SheetHeader>
+
+              <div className="mt-6 space-y-6">
+                {/* Status */}
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className={aiEnabled && selectedContainer.is_enabled
+                    ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20'
+                    : 'border-border text-muted-foreground'
+                  }>
+                    {aiEnabled && selectedContainer.is_enabled ? 'Aktiv' : 'Inaktiv'}
+                  </Badge>
+                </div>
+
+                {/* Sortierregeln */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Sortierregeln</Label>
+                  {selectedContainer.inbox_sort_rules.length > 0 ? (
+                    <div className="space-y-2">
+                      {selectedContainer.inbox_sort_rules.map((r, i) => {
+                        const keywords = Array.isArray(r.keywords_json) ? r.keywords_json : [];
+                        return (
+                          <div key={i} className="p-3 rounded-xl border border-border/50 space-y-2">
+                            <span className="text-xs text-muted-foreground font-medium">
+                              {FIELD_LABELS[r.field] || r.field} enthält:
+                            </span>
+                            <div className="flex flex-wrap gap-1.5">
+                              {keywords.map((kw, ki) => (
+                                <Badge key={ki} variant="secondary" className="text-xs">{kw}</Badge>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">Keine Regeln definiert</p>
+                  )}
+                </div>
+
+                {/* Zugeordnete Dokumente (Platzhalter) */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Zugeordnete Dokumente</Label>
+                  <div className="flex flex-col items-center justify-center gap-2 p-8 rounded-xl border border-dashed border-border/60 text-muted-foreground">
+                    <FileText className="h-8 w-8 opacity-40" />
+                    <p className="text-sm text-center">Noch keine Dokumente zugeordnet</p>
+                    <p className="text-xs text-center opacity-70">Eingehende E-Mails und Scans werden hier angezeigt, sobald sie per Keyword-Match dieser Kachel zugeordnet wurden.</p>
+                  </div>
+                </div>
+
+                {/* Navigation zum Datenraum */}
+                {selectedContainer.entity_type && selectedContainer.entity_id && (
+                  <Button
+                    variant="outline"
+                    className="w-full gap-2"
+                    onClick={() => {
+                      navigate('/portal/dms/storage');
+                      setSelectedContainer(null);
+                    }}
+                  >
+                    <FolderOpen className="h-4 w-4" />
+                    Im Datenraum öffnen
+                    <ExternalLink className="h-3.5 w-3.5 ml-auto opacity-50" />
+                  </Button>
+                )}
+
+                {/* Bearbeiten */}
+                <Button
+                  variant="ghost"
+                  className="w-full gap-2"
+                  onClick={() => {
+                    const c = selectedContainer;
+                    setSelectedContainer(null);
+                    openEdit(c);
+                  }}
+                >
+                  <Pencil className="h-4 w-4" />
+                  Regeln bearbeiten
+                </Button>
+              </div>
+            </>
+          )}
+        </SheetContent>
+      </Sheet>
     </PageShell>
   );
 }
