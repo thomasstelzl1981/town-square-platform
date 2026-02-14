@@ -164,25 +164,23 @@ export default function ProjekteDashboard() {
 
   return (
     <PageShell>
-      <ModulePageHeader title="PROJEKTE" description="Bauträger- und Aufteiler-Projekte verwalten" />
+      <ModulePageHeader title="PROJEKTE" />
 
       {/* ═══ W1: So funktioniert's ═══ */}
       <Card className="glass-card shadow-card overflow-hidden">
         <CardContent className="p-0">
           <div className="grid grid-cols-4">
             {[
-              { step: 1, icon: Upload, title: 'Hochladen', desc: 'Exposé + Preisliste' },
-              { step: 2, icon: Sparkles, title: 'KI-Analyse', desc: 'Automatische Aufbereitung' },
-              { step: 3, icon: CheckCircle2, title: 'Prüfen & Freigeben', desc: 'Provision bestätigen' },
-              { step: 4, icon: TrendingUp, title: 'Vertrieb & Leads', desc: 'Kampagnen starten' },
-            ].map(({ step, icon: Icon, title, desc }, idx) => (
+              { step: 1, icon: Upload, title: 'Hochladen' },
+              { step: 2, icon: Sparkles, title: 'KI-Analyse' },
+              { step: 3, icon: CheckCircle2, title: 'Prüfen & Freigeben' },
+              { step: 4, icon: TrendingUp, title: 'Vertrieb & Leads' },
+            ].map(({ step, icon: Icon, title }, idx) => (
               <div key={step} className={cn("relative flex flex-col items-center text-center p-5 transition-colors", idx < 3 && "border-r border-border/50")}>
                 <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mb-3">
                   <Icon className="h-5 w-5 text-primary" />
                 </div>
-                <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">Schritt {step}</div>
-                <div className="text-sm font-semibold text-foreground">{title}</div>
-                <div className="text-xs text-muted-foreground mt-0.5">{desc}</div>
+                <div className="text-base font-semibold text-foreground">{title}</div>
                 {idx < 3 && <ArrowRight className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 h-4 w-4 text-muted-foreground/50 z-10 hidden md:block" />}
               </div>
             ))}

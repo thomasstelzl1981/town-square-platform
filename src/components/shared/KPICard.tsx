@@ -32,11 +32,6 @@ export function KPICard({ label, value, icon: Icon, subtitle, subtitleClassName,
           <div>
             <p className={DESIGN.TYPOGRAPHY.LABEL}>{label}</p>
             <p className={cn(DESIGN.TYPOGRAPHY.VALUE, 'mt-1')}>{value}</p>
-            {subtitle && (
-              <p className={cn(DESIGN.TYPOGRAPHY.HINT, 'mt-0.5', subtitleClassName)}>
-                {subtitle}
-              </p>
-            )}
           </div>
           <div className={DESIGN.HEADER.WIDGET_ICON_BOX}>
             <Icon className="h-4 w-4 text-primary" />
