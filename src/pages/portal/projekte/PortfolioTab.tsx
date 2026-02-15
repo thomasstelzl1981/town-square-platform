@@ -6,6 +6,8 @@
 import { useState, useMemo, useCallback } from 'react';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
+import { WidgetGrid } from '@/components/shared/WidgetGrid';
+import { WidgetCell } from '@/components/shared/WidgetCell';
 import { DESIGN } from '@/config/designManifest';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useDevProjects } from '@/hooks/useDevProjects';
@@ -198,22 +200,25 @@ export default function PortfolioTab() {
       <ModulePageHeader title="PROJEKT-PORTFOLIO" description="Übersicht aller Bauträger- und Aufteiler-Projekte" />
 
       {/* Project Switcher — Horizontal Tile Row (Demo always first) */}
-      <div className={DESIGN.WIDGET_GRID.FULL}>
-        <ProjectCard
-          project={DEMO_PROJECT}
-          isDemo
-          isSelected={isSelectedDemo}
-          onClick={() => setSelectedProjectId(DEMO_PROJECT_ID)}
-        />
-        {portfolioRows.map((p) => (
+      <WidgetGrid>
+        <WidgetCell>
           <ProjectCard
-            key={p.id}
-            project={p}
-            isSelected={p.id === selectedProjectId}
-            onClick={(id) => setSelectedProjectId(id)}
+            project={DEMO_PROJECT}
+            isDemo
+            isSelected={isSelectedDemo}
+            onClick={() => setSelectedProjectId(DEMO_PROJECT_ID)}
           />
+        </WidgetCell>
+        {portfolioRows.map((p) => (
+          <WidgetCell key={p.id}>
+            <ProjectCard
+              project={p}
+              isSelected={p.id === selectedProjectId}
+              onClick={(id) => setSelectedProjectId(id)}
+            />
+          </WidgetCell>
         ))}
-      </div>
+      </WidgetGrid>
 
       {/* Globalobjekt-Beschreibung (volle Breite) */}
       <ProjectOverviewCard

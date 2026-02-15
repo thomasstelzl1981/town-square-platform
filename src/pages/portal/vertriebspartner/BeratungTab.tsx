@@ -84,8 +84,12 @@ const transformToPublicListing = (listing: RawListing): PublicListing => ({
 });
 
 const BeratungTab = () => {
-  // Demo listings for immediate visibility
-  const { kaufyListings: demoListings } = useDemoListings();
+  // Demo listings for immediate visibility (filter out project demos)
+  const { kaufyListings: allDemoListings } = useDemoListings();
+  const demoListings = useMemo(() => 
+    allDemoListings.filter(d => d.property_type !== 'new_construction'),
+    [allDemoListings]
+  );
 
   // Search parameters
   const [searchParams, setSearchParams] = useState<PartnerSearchParams>({
