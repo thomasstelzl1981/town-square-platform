@@ -14,8 +14,9 @@ import { EntityStorageTree } from './EntityStorageTree';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ChevronRight, X, Save, Loader2, FileText } from 'lucide-react';
+import { ChevronRight, X, Save, Loader2, FileText, Camera } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { useCallback } from 'react';
 
 interface RecordCardFile {
   name: string;
@@ -46,6 +47,8 @@ interface RecordCardProps {
   onFileDrop?: (files: File[]) => void;
   /** Entity storage tree (preferred over flat files) */
   tenantId?: string;
+  /** Photo drag-and-drop on closed tile */
+  onPhotoDrop?: (file: File) => void;
   /** Actions */
   onSave?: () => void;
   onDelete?: () => void;
@@ -69,6 +72,7 @@ export function RecordCard({
   files = [],
   onFileDrop,
   tenantId,
+  onPhotoDrop,
   onSave,
   onDelete,
   saving,
@@ -113,28 +117,52 @@ export function RecordCard({
         )}
 
         {hasDetailedSummary ? (
-          /* ── Detailed contact layout: photo left, data right ── */
-          <div className="p-4 pt-10">
-            <div className="flex gap-4 mb-3">
-              <Avatar className="h-16 w-16 rounded-xl shrink-0">
-                <AvatarImage src={thumbnailUrl} alt={title} />
-                <AvatarFallback className="bg-primary/10 text-primary text-lg font-semibold rounded-xl">
-                  {initials}
-                </AvatarFallback>
-              </Avatar>
-              <div className="min-w-0 flex-1">
-                <p className="text-base font-semibold leading-tight truncate">{title}</p>
-                {subtitle && (
-                  <p className="text-xs text-muted-foreground mt-0.5 truncate">{subtitle}</p>
+          /* ── Detailed: photo tile left, name + data right ── */
+          <div className="p-5 pt-10 text-left">
+            <div className="flex gap-4 mb-4">
+              {/* Photo tile with drag-and-drop */}
+              <div
+                className={cn(
+                  'h-20 w-20 rounded-xl shrink-0 overflow-hidden',
+                  thumbnailUrl
+                    ? ''
+                    : 'border-2 border-dashed border-muted-foreground/30 flex flex-col items-center justify-center gap-1 bg-muted/30',
                 )}
+                onDragOver={onPhotoDrop ? (e) => { e.preventDefault(); e.stopPropagation(); } : undefined}
+                onDrop={onPhotoDrop ? (e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  const file = e.dataTransfer.files?.[0];
+                  if (file && file.type.startsWith('image/')) onPhotoDrop(file);
+                } : undefined}
+              >
+                {thumbnailUrl ? (
+                  <img src={thumbnailUrl} alt={title} className="h-full w-full object-cover" />
+                ) : (
+                  <>
+                    <Camera className="h-5 w-5 text-muted-foreground/50" />
+                    <span className="text-[10px] text-muted-foreground/50">Foto</span>
+                  </>
+                )}
+              </div>
+
+              {/* Name + first summary item (e.g. Geb.) */}
+              <div className="min-w-0 flex-1 flex flex-col justify-center">
+                <p className="text-lg font-semibold leading-tight truncate">{title}</p>
+                {summary.slice(0, 1).map((s, i) => (
+                  <p key={i} className="text-sm text-muted-foreground mt-0.5 truncate">
+                    <span className="opacity-60">{s.label}:</span> {s.value}
+                  </p>
+                ))}
               </div>
             </div>
 
-            <div className="space-y-0.5">
-              {summary.map((s, i) => (
-                <p key={i} className="text-xs text-muted-foreground truncate">
-                  <span className="opacity-60 inline-block w-14 shrink-0">{s.label}:</span>{' '}
-                  <span className="text-foreground/80">{s.value}</span>
+            {/* Remaining contact data */}
+            <div className="space-y-1">
+              {summary.slice(1).map((s, i) => (
+                <p key={i} className="text-sm text-muted-foreground truncate">
+                  <span className="opacity-60 inline-block w-16 shrink-0">{s.label}:</span>{' '}
+                  <span className="text-foreground/90">{s.value}</span>
                 </p>
               ))}
             </div>
