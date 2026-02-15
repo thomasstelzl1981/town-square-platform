@@ -1,123 +1,72 @@
 
-# Engine-Audit Zone 2: Wo fehlen Engines?
+# Engines 2-5 implementieren
 
-## Status Quo — Vorhandene Engines
+Aufbauend auf der bereits fertigen Akquise-Kalkulations-Engine werden nun die vier verbleibenden Engines erstellt.
 
-| Engine | Ort | Zweck |
-|--------|-----|-------|
-| Golden Path Engine | `src/goldenpath/engine.ts` | Workflow-Orchestrierung, Step-Evaluation, Routing-Guards |
-| Investment Engine | `useInvestmentEngine.ts` + Edge Function | 40-Jahres-Cashflow, Steuer, Finanzierung |
-| NK-Abrechnung Engine | `src/engines/nkAbrechnung/` | Nebenkostenabrechnung mit Umlageschluessel |
-| Research Engine | `useResearchEngine.ts` + Edge Function | Kontaktrecherche-Orchestrierung |
+## Neue Dateien (8 Dateien)
 
-## Identifizierte Luecken — Wo Engines fehlen
+### Engine 2: Finanzierung (`src/engines/finanzierung/`)
 
-### 1. Akquise-Kalkulations-Engine (MOD-12) — HOHE PRIORITAET
+**spec.ts** — Typen und Konstanten:
+- `HaushaltsrechnungInput` (income, expenses arrays)
+- `HaushaltsrechnungResult` (surplus, DSR)
+- `BonitaetInput` / `BonitaetResult` (LTV, DSCR, Tragfaehigkeit)
+- `AnnuityParams` / `AnnuityResult` (Zins, Tilgung, Monatsrate, Restschuld)
+- `SnapshotInput` / `SnapshotResult`
+- `FINANZIERUNG_DEFAULTS` (Standard-Zinsbindung, Tilgung, LTV-Grenzen)
 
-**Problem:** Die Bestandskalkulation und Aufteilerkalkulation leben als `useMemo`-Bloecke direkt in den Komponenten (`BestandCalculation.tsx`, `AufteilerCalculation.tsx`, `QuickCalcTool.tsx`, `StandaloneCalculatorPanel.tsx`). Dieselbe Logik existiert in 4 verschiedenen Dateien — hohe Drift-Gefahr.
+**engine.ts** — Reine Funktionen:
+- `calcHaushaltsrechnung(input)` — Einnahmen minus Ausgaben, DSR-Quote
+- `calcBonitaet(input)` — LTV, DSCR, max. Darlehensbetrag, Ampel-Bewertung
+- `calcAnnuity(params)` — Monatsrate, Restschuld nach Zinsbindung (extrahiert aus FinanceCalculatorCard)
+- `calcConsumerLoanOffers(amount, termMonths)` — Mock-Offer-Berechnung (extrahiert aus useConsumerLoan)
+- `createApplicantSnapshot(profile)` — Deterministische Snapshot-Erzeugung (extrahiert aus useSubmitFinanceRequest)
 
-**Engine-Scope:**
-- `calcBestand(params)` — Kaufpreis, Mietrendite, NK, Finanzierung, Cashflow
-- `calcAufteiler(params)` — Aufteilung, Zielrendite, Verkaufserloes, Gewinnspanne
-- Reine Funktionen, kein DB-Zugriff
+### Engine 3: Provision (`src/engines/provision/`)
 
-**Datei:** `src/engines/akquiseCalc/engine.ts`
+**spec.ts** — Typen und Konstanten:
+- `CommissionInput` (dealValue, rates, splits)
+- `CommissionResult` (brutto, netto, splits pro Partei)
+- `TippgeberInput` / `TippgeberResult`
+- `PROVISION_DEFAULTS` (Standard-Saetze)
 
----
+**engine.ts** — Reine Funktionen:
+- `calcCommission(input)` — Provisionsverteilung (Innen/Aussen)
+- `calcPartnerShare(deal, contract)` — Partneranteil
+- `calcTippgeberFee(deal, agreement)` — Tippgeber-Verguetung (25% SoT-Anteil etc.)
 
-### 2. Finanzierungs-Engine (MOD-07/MOD-11) — HOHE PRIORITAET
+### Engine 4: Bewirtschaftung (`src/engines/bewirtschaftung/`)
 
-**Problem:** Die Kernlogik (Snapshot-Erstellung, Haushaltsrechnung, Bonitaetspruefung, Europace-Mapping) ist ueber `useFinanceData`, `useFinanceSubmission`, `useConsumerLoan` und die Europace-Adapter verteilt. Es gibt keine zentrale Berechnungsschicht.
+**spec.ts** — Typen und Konstanten:
+- `BWAInput` (Mieteinnahmen, Kosten, Perioden)
+- `BWAResult` (Ueberschuss, Rendite, Cashflow)
+- `InstandhaltungInput` / `InstandhaltungResult`
+- `LeerstandInput` / `LeerstandResult`
+- `BEWIRTSCHAFTUNG_DEFAULTS`
 
-**Engine-Scope:**
-- `calcHaushaltsrechnung(income, expenses)` — Einnahmen/Ausgaben-Saldo
-- `calcBonitaet(profile, request)` — Tragfaehigkeitspruefung (DSR, LTV)
-- `createSnapshot(selfDisclosure)` — Deterministische Snapshot-Erzeugung
-- `mapToEuropace(case)` — Europace-API-Payload-Mapping (Vorbereitung)
-
-**Datei:** `src/engines/finanzierung/engine.ts`
-
----
-
-### 3. Provisions-Engine (MOD-04 Verkauf / MOD-09 Partner) — MITTLERE PRIORITAET
-
-**Problem:** Provisionsberechnungen (Innenprovision, Aussenprovision, Tippgeber) werden inline in `VorgaengeTab.tsx` und `NetworkTab.tsx` berechnet. Bei mehreren Akteuren (Verkaeufer, Partner, Tippgeber) entsteht Inkonsistenz-Risiko.
-
-**Engine-Scope:**
-- `calcCommission(dealValue, rates, splits)` — Provisionsverteilung
-- `calcPartnerShare(deal, partnerContract)` — Partneranteil
-- `calcTippgeberFee(deal, agreement)` — Tippgeber-Verguetung
-
-**Datei:** `src/engines/provision/engine.ts`
-
----
-
-### 4. Vermietungs-/BWA-Engine (MOD-04/MOD-20) — MITTLERE PRIORITAET
-
-**Problem:** MOD-04 hat einen "BWA"-Tab ohne konsolidierte Berechnungslogik. Die NK-Engine deckt nur die Abrechnung ab, nicht die laufende Bewirtschaftung (Mieteinnahmen, Leerstand, Instandhaltungsruecklage, EUeR).
-
-**Engine-Scope:**
-- `calcBWA(property, period)` — Betriebswirtschaftliche Auswertung pro Objekt
+**engine.ts** — Reine Funktionen:
+- `calcBWA(input)` — Betriebswirtschaftliche Auswertung
+- `calcInstandhaltungsruecklage(input)` — Peters'sche Formel
 - `calcLeerstandsquote(units, leases)` — Leerstandsberechnung
-- `calcInstandhaltungsruecklage(property, rules)` — Peters'sche Formel
-- `calcMietspiegelVergleich(unit, region)` — Mietpotenzial
+- `calcMietpotenzial(currentRent, marketRent)` — Mietanpassungspotenzial
 
-**Datei:** `src/engines/bewirtschaftung/engine.ts`
+### Engine 5: ProjektCalc (`src/engines/projektCalc/`)
 
----
+**spec.ts** — Typen und Konstanten:
+- `ProjektKalkInput` (units, costs, financing)
+- `ProjektKalkResult` (Gesamtkosten, Erloes, Marge)
+- `UnitPricingInput` / `UnitPricingResult`
+- `VertriebsStatusInput` / `VertriebsStatusResult`
 
-### 5. Projekt-Kalkulations-Engine (MOD-13) — NIEDRIGERE PRIORITAET
-
-**Problem:** Die Projektkalkulation (Baukosten, Verkaufserloes, Marge) lebt inline in `ProjectDetailPage.tsx`. Fuer den Landing Page Builder und die Investment Engine muessen dieselben Zahlen konsistent sein.
-
-**Engine-Scope:**
-- `calcProjektKalkulation(units, costs, financing)` — Gesamtkalkulation
+**engine.ts** — Reine Funktionen:
+- `calcProjektKalkulation(input)` — Gesamtkalkulation
 - `calcUnitPricing(unit, strategy)` — Einzelpreis-Berechnung
-- `calcVertriebsStatus(units, reservations)` — Verkaufsfortschritt
+- `calcVertriebsStatus(units, reservations)` — Verkaufsfortschritt in Prozent
 
-**Datei:** `src/engines/projektCalc/engine.ts`
+## Index-Datei
 
----
+**src/engines/index.ts** — Re-Exportiert alle Engines fuer einfachen Import.
 
-## Architektur-Empfehlung
+## Keine DB-Aenderungen
 
-Alle neuen Engines folgen dem gleichen Muster wie die NK-Abrechnung Engine:
-
-```text
-src/engines/
-  nkAbrechnung/          (existiert)
-    engine.ts
-    spec.ts
-    allocationLogic.ts
-  akquiseCalc/           (NEU)
-    engine.ts
-    spec.ts
-  finanzierung/          (NEU)
-    engine.ts
-    spec.ts
-  provision/             (NEU)
-    engine.ts
-    spec.ts
-  bewirtschaftung/       (NEU)
-    engine.ts
-    spec.ts
-  projektCalc/           (NEU)
-    engine.ts
-    spec.ts
-```
-
-**Prinzipien:**
-- `engine.ts` = Reine Funktionen, kein DB-Zugriff, testbar
-- `spec.ts` = Typen, Konstanten, Kategorien (SSOT)
-- Hooks (`useXxxEngine`) rufen die Engine-Funktionen und mappen DB-Daten
-- Edge Functions nutzen dieselbe Logik serverseitig (z.B. PDF-Export)
-
-## Empfohlene Reihenfolge
-
-| Prioritaet | Engine | Grund |
-|------------|--------|-------|
-| 1 | Akquise-Kalkulation | 4-fache Code-Duplikation, hoechstes Drift-Risiko |
-| 2 | Finanzierung | Kerngeschaeft, Europace-Anbindung steht bevor |
-| 3 | Provision | Cross-Modul (MOD-04, MOD-09, MOD-15), Konsistenz kritisch |
-| 4 | Bewirtschaftung/BWA | BWA-Tab ist aktuell leer, Engine als Fundament |
-| 5 | Projekt-Kalkulation | Abhaengig von Investment Engine, geringeres Risiko |
+Alle Engines sind reine Funktionen ohne Seiteneffekte. Die Anbindung an bestehende Komponenten (Refactoring der Inline-Logik) erfolgt in einem separaten Schritt.
