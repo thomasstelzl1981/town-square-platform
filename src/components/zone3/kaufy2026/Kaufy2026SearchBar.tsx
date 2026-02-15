@@ -73,7 +73,7 @@ export function Kaufy2026SearchBar({
   };
 
   return (
-    <div className="kaufy2026-search-card" style={{ position: 'relative', bottom: 'auto', left: 'auto', transform: 'none', width: '100%', background: 'hsl(210, 30%, 97%)' }}>
+    <div style={{ position: 'relative', width: '100%', background: 'hsl(210, 20%, 94%)', borderRadius: 16, padding: '16px 24px', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.15)' }}>
       <Collapsible open={expanded} onOpenChange={setExpanded}>
          <form onSubmit={handleSubmit}>
           {/* Mode Toggle Tabs */}
@@ -109,7 +109,7 @@ export function Kaufy2026SearchBar({
             {mode === 'investment' ? (
               <>
                 {/* zvE Inline Input */}
-                <div className="kaufy2026-inline-input" style={{ background: '#ffffff' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#ffffff', borderRadius: 8, padding: '8px 12px', flex: 1, minWidth: 0, border: '1px solid hsl(210, 20%, 88%)' }}>
                   <label style={{ color: 'hsl(215, 16%, 47%)' }}>Einkommen (zvE)</label>
                   <input
                     type="number"
@@ -122,7 +122,7 @@ export function Kaufy2026SearchBar({
                 </div>
 
                 {/* Equity Inline Input */}
-                <div className="kaufy2026-inline-input" style={{ background: '#ffffff' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#ffffff', borderRadius: 8, padding: '8px 12px', flex: 1, minWidth: 0, border: '1px solid hsl(210, 20%, 88%)' }}>
                   <label style={{ color: 'hsl(215, 16%, 47%)' }}>Eigenkapital</label>
                   <input
                     type="number"
@@ -137,7 +137,7 @@ export function Kaufy2026SearchBar({
             ) : (
               <>
                 {/* City Input */}
-                <div className="kaufy2026-inline-input" style={{ background: '#ffffff' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#ffffff', borderRadius: 8, padding: '8px 12px', flex: 1, minWidth: 0, border: '1px solid hsl(210, 20%, 88%)' }}>
                   <label style={{ color: 'hsl(215, 16%, 47%)' }}>Stadt / PLZ</label>
                   <Input
                     type="text"
@@ -150,7 +150,7 @@ export function Kaufy2026SearchBar({
                 </div>
 
                 {/* Max Price */}
-                <div className="kaufy2026-inline-input" style={{ background: '#ffffff' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#ffffff', borderRadius: 8, padding: '8px 12px', flex: 1, minWidth: 0, border: '1px solid hsl(210, 20%, 88%)' }}>
                   <label style={{ color: 'hsl(215, 16%, 47%)' }}>Max. Preis</label>
                   <input
                     type="number"
