@@ -1,36 +1,19 @@
 
-# Demo-Daten Navigation + Sicherheitshaertung
+# Tenant Isolation + Sicherheitshaertung
 
 ## Was wird gemacht
 
-1. **Demo-Daten Sub-Tile in Navigation hinzufuegen** -- SQL-Migration, die den fehlenden Eintrag "Demo-Daten" als fuenften Sub-Tile zu MOD-01 in der `tile_catalog`-Tabelle hinzufuegt. Danach erscheint der Tab in der Seitennavigation.
+1. ~~**Demo-Daten Sub-Tile in Navigation hinzufuegen**~~ ✅ Erledigt
+2. ~~**Leaked-Password-Protection aktivieren**~~ ✅ Erledigt
+3. **OTP-Expiry wird NICHT geaendert** -- Wie gewuenscht
+4. ~~**Tenant Isolation Phase 1: Vollstaendige Haertung**~~ ✅ Erledigt
 
-2. **Leaked-Password-Protection aktivieren** -- Auth-Konfiguration anpassen, damit kompromittierte Passwoerter bei der Registrierung und Passwortaenderung abgelehnt werden.
+## Phase 1 — Erledigt (2026-02-15)
 
-3. **OTP-Expiry wird NICHT geaendert** -- Wie gewuenscht bleibt die aktuelle Ablaufzeit bestehen, um haeufiges Re-Login waehrend der Entwicklung zu vermeiden.
+- 18 dev_mode-Policies entfernt (kein unauthentifizierter Zugriff mehr)
+- 180 RESTRICTIVE tenant_id-Policies erstellt (alle Tabellen mit tenant_id)
+- Backlog-Datei: `spec/audit/tenant_isolation_backlog.json`
 
-## Was sich NICHT aendert
+## Offene Phasen
 
-- Kein Code-Aenderung noetig (Route, Komponente, Toggle-Logik existieren bereits)
-- Demo-Modus bleibt default AN fuer neue User
-- Build-Warnungen (CSS-Gradient-Interpolation) sind kosmetisch und blockieren den Build nicht
-
-## Technische Details
-
-### SQL-Migration
-
-```text
-UPDATE tile_catalog
-SET sub_tiles = '[
-  {"title":"Profil","route":"/portal/stammdaten/profil"},
-  {"title":"Verträge","route":"/portal/stammdaten/vertraege"},
-  {"title":"Abrechnung","route":"/portal/stammdaten/abrechnung"},
-  {"title":"Sicherheit","route":"/portal/stammdaten/sicherheit"},
-  {"title":"Demo-Daten","route":"/portal/stammdaten/demo-daten"}
-]'::jsonb
-WHERE tile_code = 'MOD-01';
-```
-
-### Auth-Konfiguration
-
-Aktivierung der Leaked-Password-Protection ueber die Auth-Config-API.
+Siehe `spec/audit/tenant_isolation_backlog.json` fuer Phase 2 (Modul-Verfeinerung) und Phase 3 (Pre-Go-Live).
