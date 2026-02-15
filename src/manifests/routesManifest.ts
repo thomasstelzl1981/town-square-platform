@@ -503,6 +503,7 @@ export const zone2Portal: ZoneDefinition = {
         { path: "sachversicherungen", component: "FinanzenSachversicherungen", title: "Sachversicherungen" },
         { path: "vorsorge", component: "FinanzenVorsorge", title: "Vorsorgeverträge" },
         { path: "abonnements", component: "FinanzenAbonnements", title: "Abonnements" },
+        { path: "vorsorgedokumente", component: "FinanzenVorsorgedokumente", title: "Vorsorge & Testament" },
       ],
     },
     "MOD-19": {

@@ -8304,6 +8304,73 @@ export type Database = {
           },
         ]
       }
+      legal_documents: {
+        Row: {
+          completed_at: string | null
+          created_at: string | null
+          document_type: string
+          form_data: Json | null
+          id: string
+          is_completed: boolean | null
+          notes: string | null
+          person_id: string | null
+          storage_node_id: string | null
+          tenant_id: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string | null
+          document_type: string
+          form_data?: Json | null
+          id?: string
+          is_completed?: boolean | null
+          notes?: string | null
+          person_id?: string | null
+          storage_node_id?: string | null
+          tenant_id: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string | null
+          document_type?: string
+          form_data?: Json | null
+          id?: string
+          is_completed?: boolean | null
+          notes?: string | null
+          person_id?: string | null
+          storage_node_id?: string | null
+          tenant_id?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "legal_documents_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "household_persons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "legal_documents_storage_node_id_fkey"
+            columns: ["storage_node_id"]
+            isOneToOne: false
+            referencedRelation: "storage_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "legal_documents_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       letter_drafts: {
         Row: {
           body: string | null
