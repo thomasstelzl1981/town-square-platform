@@ -25,7 +25,8 @@ import {
   Save, Loader2, Plug, Copy, CheckCircle, AlertCircle, WifiOff,
   Leaf, BarChart3,
 } from 'lucide-react';
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, Line, ComposedChart } from 'recharts';
+import { Slider } from '@/components/ui/slider';
 import { toast } from 'sonner';
 
 function SectionCard({ icon: Icon, title, children }: { icon: React.ElementType; title: string; children: React.ReactNode }) {
@@ -78,29 +79,39 @@ export default function PVPlantDossier({ plant, isDemo }: Props) {
   const seasonalParams = getSeasonalParams(currentMonth);
   const curve = useMemo(() => generate24hCurve(plant.kwp ?? 10), [plant.kwp]);
 
-  // Solar insights state
-  const [solarInsights, setSolarInsights] = useState<Record<string, any> | null>(null);
-  const [solarLoading, setSolarLoading] = useState(false);
-  const [solarError, setSolarError] = useState<string | null>(null);
+  // PVGIS state
+  const [pvgisData, setPvgisData] = useState<{ monthly: any[]; totals: any; optimal_angle: number | null } | null>(null);
+  const [pvgisLoading, setPvgisLoading] = useState(false);
+  const [pvgisError, setPvgisError] = useState<string | null>(null);
+  const [pvAngle, setPvAngle] = useState(35);
+  const [pvAspect, setPvAspect] = useState(0);
+  const [pvLoss, setPvLoss] = useState(14);
+  const [pvTech, setPvTech] = useState('crystSi');
 
-  const fetchSolarInsights = useCallback(async () => {
+  const fetchPvgis = useCallback(async () => {
     const address = [plant.street, plant.house_number, plant.postal_code, plant.city].filter(Boolean).join(' ');
-    if (!address) { toast.error('Keine Adresse hinterlegt'); return; }
-    setSolarLoading(true);
-    setSolarError(null);
+    setPvgisLoading(true);
+    setPvgisError(null);
     try {
-      const res = await supabase.functions.invoke('sot-solar-insights', {
-        body: { address },
+      const res = await supabase.functions.invoke('pvgis-proxy', {
+        body: {
+          address: address || undefined,
+          peakpower: plant.kwp ?? 10,
+          loss: pvLoss,
+          angle: pvAngle,
+          aspect: pvAspect,
+          pvtechchoice: pvTech,
+        },
       });
       if (res.error) throw new Error(res.error.message);
       if (res.data?.error) throw new Error(res.data.detail || res.data.error);
-      setSolarInsights(res.data);
+      setPvgisData(res.data);
     } catch (e: any) {
-      setSolarError(e.message);
+      setPvgisError(e.message);
     } finally {
-      setSolarLoading(false);
+      setPvgisLoading(false);
     }
-  }, [plant.street, plant.house_number, plant.postal_code, plant.city]);
+  }, [plant.street, plant.house_number, plant.postal_code, plant.city, plant.kwp, pvAngle, pvAspect, pvLoss, pvTech]);
 
   // Connector state
   const { connectors, upsertConnector } = usePvConnectors(plant.id);
@@ -439,64 +450,88 @@ export default function PVPlantDossier({ plant, isDemo }: Props) {
         <InfoRow label="Saisonale Sonnenstunden/Tag" value={`${seasonalParams.sunHoursPerDay} h (${new Date().toLocaleDateString('de-DE', { month: 'long' })})`} />
       </SectionCard>
 
-      {/* ─── C2) Solarpotenzial (Google Solar API) ─── */}
-      <SectionCard icon={BarChart3} title="Solarpotenzial">
-        <div className="space-y-3">
-          <div className="flex items-center gap-3">
-            <Button
-              size="sm"
-              variant="outline"
-              className="gap-2"
-              onClick={fetchSolarInsights}
-              disabled={solarLoading}
-            >
-              {solarLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sun className="h-4 w-4" />}
-              Solarpotenzial abrufen
-            </Button>
-            <span className="text-xs text-muted-foreground">Nutzt die Adresse der Anlage für standortbezogene Analyse</span>
+      {/* ─── C2) Anlagen-Ausrichtung & Soll-Ertrag (PVGIS) ─── */}
+      <SectionCard icon={BarChart3} title="Anlagen-Ausrichtung & Soll-Ertrag">
+        <div className="space-y-4">
+          {/* Configuration sliders */}
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <label className="text-xs text-muted-foreground">Neigung: {pvAngle}°</label>
+              <Slider min={0} max={90} step={1} value={[pvAngle]} onValueChange={([v]) => setPvAngle(v)} />
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs text-muted-foreground">
+                Ausrichtung: {pvAspect}° {pvAspect === 0 ? '(Süd)' : pvAspect > 0 ? `(${pvAspect}° West)` : `(${Math.abs(pvAspect)}° Ost)`}
+              </label>
+              <Slider min={-180} max={180} step={1} value={[pvAspect]} onValueChange={([v]) => setPvAspect(v)} />
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs text-muted-foreground">Systemverluste: {pvLoss}%</label>
+              <Slider min={0} max={50} step={1} value={[pvLoss]} onValueChange={([v]) => setPvLoss(v)} />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">PV-Technologie</label>
+              <Select value={pvTech} onValueChange={setPvTech}>
+                <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="crystSi">Kristallines Silizium</SelectItem>
+                  <SelectItem value="CIS">CIS</SelectItem>
+                  <SelectItem value="CdTe">CdTe</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
-          {solarError && (
+          <Button size="sm" className="gap-2" onClick={fetchPvgis} disabled={pvgisLoading}>
+            {pvgisLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sun className="h-4 w-4" />}
+            Soll-Ertrag berechnen
+          </Button>
+
+          {pvgisError && (
             <div className="p-3 rounded-lg border border-destructive/30 bg-destructive/5 text-sm text-destructive">
               <p className="font-medium">Fehler:</p>
-              <p>{solarError}</p>
-              <p className="text-xs mt-1 text-muted-foreground">Hinweis: Die Google Solar API muss im Cloud-Projekt aktiviert sein.</p>
+              <p>{pvgisError}</p>
             </div>
           )}
 
-          {solarInsights && (
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 mt-2">
-              <Card><CardContent className="p-3 text-center">
-                <p className="text-xs text-muted-foreground">Max. Sonnenstunden/Jahr</p>
-                <p className="text-lg font-mono font-semibold">{solarInsights.maxSunshineHoursPerYear?.toLocaleString('de-DE') ?? '—'} <span className="text-xs font-normal">h</span></p>
-              </CardContent></Card>
-              <Card><CardContent className="p-3 text-center">
-                <p className="text-xs text-muted-foreground">Geschätzte Jahresleistung</p>
-                <p className="text-lg font-mono font-semibold">{solarInsights.yearlyEnergyDcKwh?.toLocaleString('de-DE', { maximumFractionDigits: 0 }) ?? '—'} <span className="text-xs font-normal">kWh</span></p>
-              </CardContent></Card>
-              <Card><CardContent className="p-3 text-center">
-                <p className="text-xs text-muted-foreground">Max. Panelfläche</p>
-                <p className="text-lg font-mono font-semibold">{solarInsights.maxArrayAreaMeters2?.toLocaleString('de-DE', { maximumFractionDigits: 1 }) ?? '—'} <span className="text-xs font-normal">m²</span></p>
-              </CardContent></Card>
-              <Card><CardContent className="p-3 text-center">
-                <p className="text-xs text-muted-foreground">Max. Panels</p>
-                <p className="text-lg font-mono font-semibold">{solarInsights.maxArrayPanelsCount ?? '—'}</p>
-              </CardContent></Card>
-              <Card><CardContent className="p-3 text-center">
-                <p className="text-xs text-muted-foreground flex items-center justify-center gap-1"><Leaf className="h-3 w-3" /> CO₂-Offset</p>
-                <p className="text-lg font-mono font-semibold">{solarInsights.carbonOffsetFactorKgPerMwh?.toLocaleString('de-DE') ?? '—'} <span className="text-xs font-normal">kg/MWh</span></p>
-              </CardContent></Card>
-              <Card><CardContent className="p-3 text-center">
-                <p className="text-xs text-muted-foreground">Dachsegmente</p>
-                <p className="text-lg font-mono font-semibold">{solarInsights.roofSegments ?? '—'}</p>
-              </CardContent></Card>
+          {pvgisData && (
+            <div className="space-y-4">
+              {/* KPI row */}
+              <div className="grid gap-3 sm:grid-cols-3">
+                <Card><CardContent className="p-3 text-center">
+                  <p className="text-xs text-muted-foreground">Jahresertrag</p>
+                  <p className="text-lg font-mono font-semibold">{pvgisData.totals.E_y?.toLocaleString('de-DE', { maximumFractionDigits: 0 })} <span className="text-xs font-normal">kWh</span></p>
+                </CardContent></Card>
+                <Card><CardContent className="p-3 text-center">
+                  <p className="text-xs text-muted-foreground">Spez. Ertrag</p>
+                  <p className="text-lg font-mono font-semibold">{(pvgisData.totals.E_y / (plant.kwp ?? 10)).toLocaleString('de-DE', { maximumFractionDigits: 0 })} <span className="text-xs font-normal">kWh/kWp</span></p>
+                </CardContent></Card>
+                {pvgisData.optimal_angle != null && (
+                  <Card><CardContent className="p-3 text-center">
+                    <p className="text-xs text-muted-foreground">Optimaler Winkel</p>
+                    <p className="text-lg font-mono font-semibold">{pvgisData.optimal_angle}°</p>
+                  </CardContent></Card>
+                )}
+              </div>
+
+              {/* Monthly bar chart */}
+              <div className="h-56">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={pvgisData.monthly.map((m: any) => ({ name: ['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'][m.month - 1], kWh: Math.round(m.E_m) }))}>
+                    <XAxis dataKey="name" fontSize={11} />
+                    <YAxis fontSize={11} tickFormatter={(v) => `${v}`} />
+                    <Tooltip formatter={(v: number) => [`${v.toLocaleString('de-DE')} kWh`, 'Soll-Ertrag']} />
+                    <Bar dataKey="kWh" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
             </div>
           )}
 
-          {!solarInsights && !solarError && (
+          {!pvgisData && !pvgisError && (
             <p className="text-xs text-muted-foreground">
-              Klicke auf „Solarpotenzial abrufen", um standortbezogene Daten von Google Solar zu laden.
-              Fallback: saisonale Demo-Daten werden automatisch verwendet.
+              Stelle Neigung & Ausrichtung deiner Anlage ein und klicke „Soll-Ertrag berechnen" — 
+              die EU-PVGIS-Datenbank liefert kostenlos standortbezogene Monatserträge (Datenquelle: EU-Satellit SARAH3).
             </p>
           )}
         </div>
