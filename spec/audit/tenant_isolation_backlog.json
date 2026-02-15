@@ -1,0 +1,145 @@
+{
+  "schema_version": "1.0.0",
+  "title": "Tenant Isolation Härtung — Closed Beta",
+  "created_at": "2026-02-15",
+  "updated_at": "2026-02-15",
+
+  "phase_1": {
+    "title": "Sofort-Härtung (heute)",
+    "status": "done",
+    "description": "dev_mode-Policies entfernen + RESTRICTIVE tenant_id-Isolation für alle 180 Tabellen",
+    "items": [
+      {
+        "id": "TI-001",
+        "action": "DROP 18 dev_mode Policies",
+        "status": "done",
+        "tables": [
+          "applicant_profiles (select + insert)",
+          "contacts (select)",
+          "context_members (select)",
+          "document_links (select)",
+          "documents (select)",
+          "finance_requests (select)",
+          "landlord_contexts (select)",
+          "leases (select)",
+          "loans (select)",
+          "organizations (select)",
+          "properties (select + insert)",
+          "property_financing (select)",
+          "storage_nodes (select + insert)",
+          "units (select + insert)"
+        ],
+        "risk": "low — entfernt nur unauthentifizierten Zugriff",
+        "migration": "20260215_tenant_isolation_phase1"
+      },
+      {
+        "id": "TI-002",
+        "action": "RESTRICTIVE Policy für alle 180 tenant_id-Tabellen",
+        "status": "done",
+        "pattern": "USING (tenant_id = public.get_user_tenant_id() OR public.is_platform_admin(auth.uid()))",
+        "risk": "low — RESTRICTIVE ist additiv, kann nur einschränken",
+        "migration": "20260215_tenant_isolation_phase1"
+      }
+    ]
+  },
+
+  "phase_2": {
+    "title": "Modul-Verfeinerung (iterativ)",
+    "status": "planned",
+    "description": "Bei Modul-Überarbeitung: permissive Policies auf get_user_tenant_id() standardisieren",
+    "items": [
+      {
+        "id": "TI-010",
+        "action": "Akquise-Modul Policies standardisieren",
+        "status": "planned",
+        "tables": ["acq_mandates", "acq_offers", "acq_inbound_messages", "acq_outbound_messages", "acq_offer_activities", "acq_offer_documents", "acq_mandate_events", "contact_staging"]
+      },
+      {
+        "id": "TI-011",
+        "action": "Finanzierungs-Modul Policies standardisieren",
+        "status": "planned",
+        "tables": ["finance_requests", "finance_cases", "finance_documents", "finance_mandates", "finance_packages", "finance_submission_logs", "applicant_profiles", "applicant_liabilities", "applicant_property_assets"]
+      },
+      {
+        "id": "TI-012",
+        "action": "Portfolio-Modul Policies standardisieren",
+        "status": "planned",
+        "tables": ["properties", "units", "leases", "loans", "property_financing", "property_features", "property_valuations", "property_accounting", "meters", "rent_payments"]
+      },
+      {
+        "id": "TI-013",
+        "action": "DMS-Modul Policies standardisieren",
+        "status": "planned",
+        "tables": ["documents", "document_links", "document_chunks", "document_checklist_items", "document_reminders", "storage_nodes", "extractions"]
+      },
+      {
+        "id": "TI-014",
+        "action": "Social/Marketing-Modul Policies standardisieren",
+        "status": "planned",
+        "tables": ["social_assets", "social_campaigns", "social_creatives", "social_drafts", "social_inbound_items", "social_leads", "social_mandates", "social_metrics", "social_templates", "social_topics"]
+      },
+      {
+        "id": "TI-015",
+        "action": "Verwaltung-Modul Policies standardisieren",
+        "status": "planned",
+        "tables": ["nk_cost_items", "nk_periods", "nk_tenant_settlements", "rent_reminders", "postings", "invoices"]
+      },
+      {
+        "id": "TI-016",
+        "action": "Service-Cases Policies standardisieren",
+        "status": "planned",
+        "tables": ["service_cases", "service_case_inbound", "service_case_offers", "service_case_outbound", "service_case_providers"]
+      },
+      {
+        "id": "TI-017",
+        "action": "Cars-Modul Policies standardisieren",
+        "status": "planned",
+        "tables": ["cars_vehicles", "cars_claims", "cars_financing", "cars_insurances", "cars_logbook_connections", "cars_offers", "cars_trips"]
+      },
+      {
+        "id": "TI-018",
+        "action": "WhatsApp-Modul Policies standardisieren",
+        "status": "planned",
+        "tables": ["whatsapp_accounts", "whatsapp_attachments", "whatsapp_conversations", "whatsapp_messages", "whatsapp_user_settings"]
+      },
+      {
+        "id": "TI-019",
+        "action": "Website-Builder Policies standardisieren",
+        "status": "planned",
+        "tables": ["tenant_websites", "website_pages", "website_sections", "website_versions"]
+      },
+      {
+        "id": "TI-020",
+        "action": "Versicherung/Vorsorge Policies standardisieren",
+        "status": "planned",
+        "tables": ["insurance_contracts", "insurance_contract_links", "vorsorge_contracts", "pension_records", "legal_documents"]
+      }
+    ]
+  },
+
+  "phase_3": {
+    "title": "Pre-Go-Live Härtung",
+    "status": "planned",
+    "description": "Katalog-Tabellen auf authenticated-only umstellen, PII-Audit",
+    "items": [
+      {
+        "id": "TI-030",
+        "action": "Katalog-Tabellen auf authenticated-only",
+        "status": "planned",
+        "tables": ["tile_catalog", "dp_catalog", "doc_type_catalog", "consent_templates", "agreement_templates"]
+      },
+      {
+        "id": "TI-031",
+        "action": "PII-Spalten Audit und ggf. Views erstellen",
+        "status": "planned",
+        "description": "Prüfung ob sensible Spalten (E-Mail, Telefon, IBAN) über SELECT-Policies eingeschränkt werden müssen"
+      },
+      {
+        "id": "TI-032",
+        "action": "Cross-Tenant Leak Test",
+        "status": "planned",
+        "description": "Automatisierter Test mit zwei Test-Tenants zur Verifizierung der Isolation"
+      }
+    ]
+  }
+}
