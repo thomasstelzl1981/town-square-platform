@@ -1,129 +1,127 @@
 
 
-# Vorsorge und Testament — Neues Sektions-Layout
+# Reparaturplan: Investment-Suche (MOD-08, MOD-09, Zone 3)
 
-## Zusammenfassung
+## Analyse: Soll-Flow vs. Ist-Zustand
 
-Die bisherige Widget-basierte Seite (2 Kacheln mit Dialog-Popups) wird durch ein **sektionsbasiertes Inline-Layout** ersetzt. Der gesamte Inhalt ist direkt auf der Seite sichtbar — keine Dialoge mehr.
+### Soll-Flow (alle 3 Search Engines identisch)
+
+```text
+1. User oeffnet die Seite
+2. Sieht NUR das Eingabeformular (zVE, EK, Familienstand, Kirchensteuer)
+3. Drueckt "Ergebnisse anzeigen"
+4. Investment Engine berechnet fuer JEDES Objekt die Belastung
+5. Ergebnisse erscheinen MIT Bildern und MIT Berechnungsergebnissen
+   (Miete, Zinsen, Tilgung, Steuerersparnis, Monatsbelastung)
+```
+
+### Ist-Zustand (kaputt)
+
+| Problem | MOD-08 | MOD-09 | Zone 3 |
+|---------|--------|--------|--------|
+| Ergebnisse vor Klick sichtbar | Ja (kaputt) | Ja (kaputt) | Nein (korrekt als Demo-Preview) |
+| Bilder bei Demo-Objekten | Nein | Ja | Ja |
+| Berechnungsergebnisse | Nur "---" | Nur "---" | Funktioniert |
+| Familienstand/Kirchensteuer lesbar | Versteckt hinter Collapsible | Versteckt hinter Collapsible | Im Suchfeld integriert |
+| Phantom-Objekte | Nein | Moeglich | Nein |
 
 ---
 
-## Neues Seitenlayout
+## Ursachen-Analyse
+
+### Problem 1: Ergebnisse erscheinen sofort ohne Berechnung
+In der letzten Aenderung wurde der `hasSearched`-Gate in MOD-08 entfernt. Jetzt zeigen die Demo-Listings sofort, aber OHNE Metrics (alles "---"). In MOD-09 ist dasselbe Problem: Die `visibleListings`-Grid wird immer gerendert (Zeile 276), nicht hinter `hasSearched` geschuetzt.
+
+**Loesung**: `hasSearched`-Gate wiederherstellen. Vor dem Druecken des Buttons zeigt MOD-08 nur das Suchformular und einen Hinweistext. Nach dem Druecken erscheinen die Ergebnisse MIT berechneten Metrics.
+
+### Problem 2: Keine Bilder in MOD-08
+Die Demo-Listings in `useDemoListings` haben `hero_image_path` mit importierten Bildern (demo-berlin.jpg etc.). ABER: Es existieren auch echte DB-Listings mit identischem Titel+Stadt. Die Dedup-Logik (Zeile 243-246 in SucheTab) bevorzugt DB-Eintraege -- und diese haben KEINE Bilder, weil `document_links` leer ist.
+
+**Loesung**: Bei der Deduplizierung muessen die Demo-Bilder auf die DB-Listings uebertragen werden, ODER die Demo-Listings muessen Vorrang haben, wenn sie ein Bild mitbringen.
+
+### Problem 3: Keine Berechnungsergebnisse
+Die `handleInvestmentSearch`-Funktion berechnet Metrics und speichert sie unter `listing_id` als Key im Cache. Wenn Demo-Listings mit ID `demo-listing-xxx` berechnet werden, aber nach der Dedup die DB-Listings mit ID `e0000000-xxx` angezeigt werden, passen die Cache-Keys nicht zusammen. Ergebnis: alle Kacheln zeigen "---".
+
+**Loesung**: Die Berechnung muss mit den FINALEN (nach Dedup) Listing-IDs arbeiten, nicht mit den Roh-IDs.
+
+### Problem 4: Familienstand/Kirchensteuer nicht lesbar
+Beide Felder sind hinter "Mehr Optionen" (Collapsible) versteckt. Da Familienstand und Kirchensteuer zur Kernberechnung gehoeren, sollten sie direkt sichtbar sein.
+
+**Loesung**: Familienstand und Kirchensteuer werden in die Hauptzeile des Formulars verschoben (4-Spalten-Grid statt 3). "Mehr Optionen" wird entfernt.
+
+### Problem 5: Phantom-Objekte in MOD-09
+Die 3 DB-Listings (Berlin, Muenchen, Hamburg) existieren sowohl als Demo-Daten als auch als echte DB-Eintraege. Wenn die Dedup nicht korrekt greift (z.B. wegen Titelunterschieden), erscheinen Duplikate. Zusaetzlich: MOD-09 `BeratungTab` zeigt Demo-Listings auch OHNE dass `handleSearch` gedrueckt wurde.
+
+**Loesung**: `hasSearched`-Gate auch in MOD-09 wiederherstellen. Demo-Listings nur nach Suche anzeigen, und korrekt mit DB-Listings deduplizieren.
+
+---
+
+## Reparaturplan
+
+### Aenderung 1: MOD-08 SucheTab — hasSearched-Gate + Dedup-Fix
+
+**Datei**: `src/pages/portal/investments/SucheTab.tsx`
+
+- `hasSearched`-Gate wiederherstellen: Ergebnisse erst nach Button-Klick zeigen
+- Vor der Suche: Nur Formular + Hinweisbox ("Geben Sie Ihre Daten ein...")
+- Dedup-Logik anpassen: Wenn ein Demo-Listing ein Bild hat und das DB-Listing keines, das Demo-Bild auf das DB-Listing uebertragen
+- Metrics-Cache mit den finalen (nach Dedup) Listing-IDs aufbauen
+- Familienstand + Kirchensteuer aus dem Collapsible herausnehmen und direkt ins Hauptformular setzen (4er-Grid)
 
 ```text
+Neues Layout:
 +----------------------------------------------------------+
-| ModulePageHeader: Vorsorge & Testament                   |
+| SUCHE                                                     |
 +----------------------------------------------------------+
-|                                                          |
-| SEKTION 1: Patientenverfügung & Vorsorgevollmacht        |
-| ─────────────────────────────────────────────────         |
-|                                                          |
-| WidgetGrid (Personen aus household_persons):              |
-| +----------------+ +----------------+ +----------------+ |
-| | Max Mustermann | | Anna Muster    | | Kind Muster    | |
-| | (Hauptperson)  | |                | |                | |
-| | [ausgewählt]   | |                | |                | |
-| +----------------+ +----------------+ +----------------+ |
-|                                                          |
-| Inline-Bereich (immer offen):                            |
-| ┌──────────────────────────────────────────────────────┐ |
-| │ Formular: Teil A (Patientenverfügung)                │ |
-| │ - Name, Geburtsdatum, Adresse (vorbefüllt)          │ |
-| │ - Situationen (Checkboxen)                           │ |
-| │ - Lebensverlängernde Maßnahmen                       │ |
-| │ - Konkrete Maßnahmen                                 │ |
-| │ - Organspende                                        │ |
-| │ - Persönliche Werte                                  │ |
-| │                                                      │ |
-| │ Formular: Teil B (Vorsorgevollmacht)                 │ |
-| │ - Bevollmächtigte Person                             │ |
-| │ - Umfang der Vollmacht                               │ |
-| │ - Einschränkungen                                    │ |
-| │                                                      │ |
-| │ [PDF herunterladen]  [Drucken]  [Scan hochladen]     │ |
-| └──────────────────────────────────────────────────────┘ |
-|                                                          |
-| SEKTION 2: Testament                                     |
-| ─────────────────────────────────────────────────         |
-|                                                          |
-| WidgetGrid (4 Vorlagen):                                 |
-| +----------------+ +----------------+                    |
-| | Vorlage 1/4    | | Vorlage 2/4    |                    |
-| | Alleinerbe     | | Mehrere Erben  |                    |
-| | [ausgewählt]   | |                |                    |
-| +----------------+ +----------------+                    |
-| +----------------+ +----------------+                    |
-| | Vorlage 3/4    | | Vorlage 4/4    |                    |
-| | Vor-/Nacherb-  | | Berliner       |                    |
-| | schaft         | | Testament      |                    |
-| +----------------+ +----------------+                    |
-|                                                          |
-| Inline-Bereich (immer offen, zeigt gewählte Vorlage):    |
-| ┌──────────────────────────────────────────────────────┐ |
-| │ Vorlagentext der gewählten Variante                  │ |
-| │ (Voller juristischer Text mit Platzhaltern           │ |
-| │  zum Abschreiben per Hand)                           │ |
-| │                                                      │ |
-| │ Hinweis-Box: "Nur handschriftlich gültig!"           │ |
-| │                                                      │ |
-| │ [PDF anzeigen]  [Drucken]  [Scan hochladen]          │ |
-| └──────────────────────────────────────────────────────┘ |
+| [zVE: 60.000 €] [EK: 50.000 €] [Ledig v] [KiSt: Nein v]|
+|                                                           |
+|              [ Ergebnisse anzeigen ]                      |
++----------------------------------------------------------+
+|                                                           |
+| (Vor Suche: Hinweisbox mit Icon)                         |
+| "Geben Sie Ihr zVE und Eigenkapital ein, um passende     |
+|  Objekte mit individueller Belastungsberechnung zu finden"|
+|                                                           |
+| (Nach Suche: Grid mit berechneten Ergebnissen)            |
+| +----------+ +----------+ +----------+ +----------+      |
+| | [BILD]   | | [BILD]   | | [BILD]   | | [BILD]   |     |
+| | 280.000€ | | 420.000€ | | 175.000€ | |          |     |
+| | Berlin   | | Muenchen | | Hamburg  | |          |     |
+| | +24€/Mo  | | -180€/Mo | | +65€/Mo  | |          |     |
+| +----------+ +----------+ +----------+ +----------+      |
 +----------------------------------------------------------+
 ```
 
----
+### Aenderung 2: MOD-09 BeratungTab — hasSearched-Gate + Demo-Berechnung
 
-## Aenderung 1: VorsorgedokumenteTab.tsx — Komplett-Umbau
+**Datei**: `src/pages/portal/vertriebspartner/BeratungTab.tsx`
 
-**Bisheriges Verhalten entfernen:**
-- 2 WidgetCells mit onClick -> Dialog entfernen
-- LegalDocumentDialog-Aufrufe entfernen
+- `hasSearched`-Gate wiederherstellen: Grid erst nach Suche zeigen
+- Demo-Listings in die `handleSearch`-Berechnung einbeziehen (wie in MOD-08)
+- Vor der Suche: PartnerSearchForm + Hinweistext
+- Such-Button in `PartnerSearchForm` zentrieren
 
-**Neues Layout:**
+### Aenderung 3: PartnerSearchForm — Familienstand/Kirchensteuer sichtbar machen
 
-### Sektion 1 — Patientenverfuegung
-- Sektionsüberschrift: `h2` mit "Patientenverfügung & Vorsorgevollmacht"
-- `WidgetGrid` mit einer `WidgetCell` pro Person aus `household_persons`
-  - Jede Kachel zeigt: Vorname + Nachname, Rolle (z.B. "Hauptperson"), Avatar
-  - Ausgewählte Person bekommt `ring-2 ring-primary`
-  - Status-Badge (Emerald/Rot) je nachdem ob `legal_documents` für diese Person existiert
-- Darunter **immer offen** (kein Dialog): Das komplette Formular aus `LegalDocumentDialog` (renderEdit + renderPreview Logik), aber inline statt im Dialog
-  - Felder `name`, `geburtsdatum`, `adresse` werden aus der gewählten `household_person` vorbefüllt
-  - Personenwechsel: Formulardaten werden auf die neue Person aktualisiert, gespeicherte Daten aus `legal_documents` geladen
-  - Am Ende: Buttons "PDF herunterladen", "Drucken", "Scan hochladen" (Upload-Bereich direkt darunter, kein separater Step)
+**Datei**: `src/components/vertriebspartner/PartnerSearchForm.tsx`
 
-### Sektion 2 — Testament
-- Sektionsüberschrift: `h2` mit "Testament"
-- `WidgetGrid` mit 4 `WidgetCells`:
-  1. **Alleinerbe** — Einzeltestament mit Ersatzerbe
-  2. **Mehrere Erben** — Einzeltestament mit Quoten
-  3. **Vor-/Nacherbschaft** — Vor- und Nacherbschaft
-  4. **Berliner Testament** — Ehegatten/Lebenspartner
-- Ausgewählte Vorlage bekommt `ring-2 ring-primary`
-- Darunter **immer offen**: Der volle Vorlagentext der gewählten Variante
-  - Juristische Paragraphen mit Platzhaltern (___) zum Abschreiben
-  - Roter Hinweiskasten: "Nur handschriftlich wirksam!"
-  - Buttons: "PDF anzeigen", "Drucken", "Scan hochladen"
+- Collapsible "Mehr Optionen" entfernen
+- Alle 4 Felder (zVE, EK, Familienstand, Kirchensteuer) in ein 4-Spalten-Grid
+- Such-Button zentriert darunter
 
----
+### Aenderung 4: MOD-08 SucheTab Investment-Form — Gleiche Aenderung
 
-## Aenderung 2: Testament-Vorlagentexte als Inline-Anzeige
+**Datei**: `src/pages/portal/investments/SucheTab.tsx`
 
-Die 4 Testament-Vorlagen aus `generateTestamentVorlagenPdf()` werden zusätzlich als **lesbarer HTML-Text** auf der Seite dargestellt (nicht nur als PDF-Download). Dafür wird eine neue Komponente `TestamentVorlageInline` erstellt, die den juristischen Text der gewählten Vorlage als strukturierten Text rendert (Paragraphen, Platzhalterzeilen).
+- Collapsible "Mehr Optionen" im Investment-Modus entfernen
+- 4-Spalten-Grid: zVE, EK, Familienstand, Kirchensteuer
+- Such-Button zentriert
 
-Die Texte werden aus einer Konstanten-Datei bezogen (extrahiert aus dem bestehenden PDF-Generator), damit sie sowohl in der Inline-Ansicht als auch im PDF identisch sind.
+### Aenderung 5: Klassische Suche Button zentrieren
 
----
+**Datei**: `src/pages/portal/investments/SucheTab.tsx`
 
-## Aenderung 3: Patientenverfuegung Inline-Formular
-
-Die Formularlogik aus `LegalDocumentDialog` (renderEdit) wird in eine neue Komponente `PatientenverfuegungInlineForm` extrahiert. Diese:
-- Empfängt `personId` und `tenantId` als Props
-- Lädt bestehende `legal_documents`-Daten für die Person
-- Vorbefüllt Name/Geburtsdatum/Adresse aus `household_persons`
-- Zeigt das vollständige Formular (Teil A + Teil B) direkt inline
-- Hat am Ende drei Aktionsbuttons (PDF, Drucken, Upload)
-- Auto-Save bei Personwechsel
+- Button bei der klassischen Suche ebenfalls zentriert (`flex justify-center`)
 
 ---
 
@@ -131,51 +129,9 @@ Die Formularlogik aus `LegalDocumentDialog` (renderEdit) wird in eine neue Kompo
 
 | Datei | Aenderung |
 |-------|-----------|
-| `src/pages/portal/finanzanalyse/VorsorgedokumenteTab.tsx` | Komplett-Umbau: 2 Sektionen mit Widgets + Inline-Detail |
-| `src/components/legal/PatientenverfuegungInlineForm.tsx` | **NEU** — Formular extrahiert aus LegalDocumentDialog |
-| `src/components/legal/TestamentVorlageInline.tsx` | **NEU** — Inline-Textanzeige der 4 Testament-Vorlagen |
-| `src/components/legal/testamentVorlagenTexte.ts` | **NEU** — Konstanten mit den 4 Vorlagentexten |
-| `src/components/legal/LegalDocumentDialog.tsx` | Bleibt bestehen (wird aber nicht mehr von VorsorgedokumenteTab verwendet) |
+| `src/pages/portal/investments/SucheTab.tsx` | hasSearched-Gate, Dedup-Fix, Bild-Uebernahme, 4-Spalten-Form, Button zentriert |
+| `src/pages/portal/vertriebspartner/BeratungTab.tsx` | hasSearched-Gate, Demo-Berechnung einbeziehen |
+| `src/components/vertriebspartner/PartnerSearchForm.tsx` | Collapsible entfernen, 4-Spalten-Grid, Button zentriert |
 
-**Keine DB-Migration noetig** — `legal_documents` und `household_persons` existieren bereits.
-
----
-
-## Technische Details
-
-### Personen-Widget (Sektion 1)
-
-```text
-Query: supabase.from('household_persons')
-  .select('*')
-  .eq('tenant_id', activeTenantId)
-  .order('sort_order')
-
-State: selectedPersonId (default: Hauptperson / is_primary=true)
-
-Vorbefüllung:
-  form.pv.name = person.first_name + ' ' + person.last_name
-  form.pv.geburtsdatum = person.birth_date
-  form.pv.adresse = person.street + ' ' + person.house_number + ', ' + person.zip + ' ' + person.city
-```
-
-### Testament-Vorlagen-Widgets (Sektion 2)
-
-```text
-State: selectedVariante: 1 | 2 | 3 | 4 (default: 1)
-
-Jede Vorlage hat:
-  - title: "Alleinerbe" | "Mehrere Erben" | "Vor-/Nacherbschaft" | "Berliner Testament"
-  - subtitle: Kurzbeschreibung
-  - content: Paragraphen-Array mit Titel + Text + Platzhaltern
-
-PDF-Generation: Die bestehende generateTestamentVorlagenPdf() wird weiterhin
-für den PDF-Download genutzt. Die Inline-Anzeige nutzt eigene Textdaten.
-```
-
-### Datenpersistenz
-
-- Patientenverfügung: Speichert in `legal_documents` mit `document_type = 'patientenverfuegung'` + `user_id` der gewählten Person
-- Testament: `document_type = 'testament'` — Scan-Upload wie bisher
-- Beim Personenwechsel werden bestehende Formulardaten aus `legal_documents` geladen
+**Keine DB-Migration noetig.**
 
