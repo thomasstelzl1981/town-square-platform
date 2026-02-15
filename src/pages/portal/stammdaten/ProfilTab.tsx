@@ -280,11 +280,11 @@ export function ProfilTab() {
           title={fullName}
           subtitle="Hauptperson"
           summary={[
-            ...(formData.street ? [{ label: 'Straße', value: `${formData.street} ${formData.house_number || ''}`.trim() }] : []),
-            ...(formData.postal_code ? [{ label: 'PLZ/Ort', value: `${formData.postal_code} ${formData.city || ''}`.trim() }] : []),
-            ...(formData.phone_landline ? [{ label: 'Tel.', value: formData.phone_landline }] : []),
-            ...(formData.phone_mobile ? [{ label: 'Mobil', value: formData.phone_mobile }] : []),
-            ...(formData.email ? [{ label: 'E-Mail', value: formData.email }] : []),
+            ...(formData.street ? [{ label: '', value: `${formData.street} ${formData.house_number || ''}`.trim() }] : []),
+            ...(formData.postal_code ? [{ label: '', value: `${formData.postal_code} ${formData.city || ''}`.trim() }] : []),
+            ...(formData.phone_landline ? [{ label: '', value: formData.phone_landline }] : []),
+            ...(formData.phone_mobile ? [{ label: '', value: formData.phone_mobile }] : []),
+            ...(formData.email ? [{ label: '', value: formData.email }] : []),
           ]}
           onSave={() => updateProfile.mutate(formData)}
           saving={updateProfile.isPending}

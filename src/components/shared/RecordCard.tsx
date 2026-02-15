@@ -117,54 +117,44 @@ export function RecordCard({
         )}
 
         {hasDetailedSummary ? (
-          /* ── Detailed: photo tile left, name + data right ── */
+          /* ── Detailed: large photo + indented data ── */
           <div className="p-5 pt-10 text-left">
-            <div className="flex gap-4 mb-4">
-              {/* Photo tile with drag-and-drop */}
-              <div
-                className={cn(
-                  'h-20 w-20 rounded-xl shrink-0 overflow-hidden',
-                  thumbnailUrl
-                    ? ''
-                    : 'border-2 border-dashed border-muted-foreground/30 flex flex-col items-center justify-center gap-1 bg-muted/30',
-                )}
-                onDragOver={onPhotoDrop ? (e) => { e.preventDefault(); e.stopPropagation(); } : undefined}
-                onDrop={onPhotoDrop ? (e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  const file = e.dataTransfer.files?.[0];
-                  if (file && file.type.startsWith('image/')) onPhotoDrop(file);
-                } : undefined}
-              >
-                {thumbnailUrl ? (
-                  <img src={thumbnailUrl} alt={title} className="h-full w-full object-cover" />
-                ) : (
-                  <>
-                    <Camera className="h-5 w-5 text-muted-foreground/50" />
-                    <span className="text-[10px] text-muted-foreground/50">Foto</span>
-                  </>
-                )}
-              </div>
+            {/* Photo tile — 50% width, portrait aspect */}
+            <div
+              className={cn(
+                'w-1/2 aspect-[4/5] rounded-xl overflow-hidden mb-4',
+                thumbnailUrl
+                  ? ''
+                  : 'border-2 border-dashed border-muted-foreground/30 flex flex-col items-center justify-center gap-2 bg-muted/20',
+              )}
+              onDragOver={onPhotoDrop ? (e) => { e.preventDefault(); e.stopPropagation(); } : undefined}
+              onDrop={onPhotoDrop ? (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const file = e.dataTransfer.files?.[0];
+                if (file && file.type.startsWith('image/')) onPhotoDrop(file);
+              } : undefined}
+            >
+              {thumbnailUrl ? (
+                <img src={thumbnailUrl} alt={title} className="h-full w-full object-cover" />
+              ) : (
+                <>
+                  <Camera className="h-8 w-8 text-muted-foreground/40" />
+                  <span className="text-xs text-muted-foreground/40">Foto hierher ziehen</span>
+                </>
+              )}
+            </div>
 
-              {/* Name + first summary item (e.g. Geb.) */}
-              <div className="min-w-0 flex-1 flex flex-col justify-center">
-                <p className="text-lg font-semibold leading-tight truncate">{title}</p>
-                {summary.slice(0, 1).map((s, i) => (
-                  <p key={i} className="text-sm text-muted-foreground mt-0.5 truncate">
-                    <span className="opacity-60">{s.label}:</span> {s.value}
+            {/* Name + data, indented at 20% */}
+            <div className="pl-[20%]">
+              <p className="text-xl font-bold leading-tight truncate">{title}</p>
+              <div className="mt-2 space-y-0.5">
+                {summary.map((s, i) => (
+                  <p key={i} className="text-sm text-muted-foreground/80 truncate">
+                    {s.value}
                   </p>
                 ))}
               </div>
-            </div>
-
-            {/* Remaining contact data */}
-            <div className="space-y-1">
-              {summary.slice(1).map((s, i) => (
-                <p key={i} className="text-sm text-muted-foreground truncate">
-                  <span className="opacity-60 inline-block w-16 shrink-0">{s.label}:</span>{' '}
-                  <span className="text-foreground/90">{s.value}</span>
-                </p>
-              ))}
             </div>
           </div>
         ) : (
