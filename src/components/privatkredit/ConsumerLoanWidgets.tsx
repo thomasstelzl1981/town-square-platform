@@ -2,6 +2,8 @@
  * ConsumerLoanWidgets — Widget bar for existing consumer loan cases + CTA
  * Kein Demo-Toggle nötig: Seite ist standardmäßig mit Beispieldaten befüllt.
  */
+import { getActiveWidgetGlow } from '@/config/designManifest';
+import { cn } from '@/lib/utils';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -101,7 +103,7 @@ export function ConsumerLoanWidgets({ activeCaseId, onSelectCase }: ConsumerLoan
         return (
           <WidgetCell key={c.id}>
             <Card
-              className={`h-full cursor-pointer transition-all hover:shadow-md ${isActive ? 'ring-2 ring-primary' : ''}`}
+              className={cn(`h-full cursor-pointer transition-all hover:shadow-md`, getActiveWidgetGlow('orange'), isActive ? 'ring-2 ring-primary' : '')}
               onClick={() => onSelectCase?.(c.id)}
             >
               <div className="flex flex-col h-full p-4 justify-between">

@@ -15,7 +15,7 @@ import { WidgetCell } from '@/components/shared/WidgetCell';
 import { ResearchOrderWidget, ResearchOrderCreateWidget } from './ResearchOrderWidget';
 import { ResearchOrderInlineFlow } from './ResearchOrderInlineFlow';
 import { ResearchDemoSimulation } from './ResearchDemoSimulation';
-import { DESIGN } from '@/config/designManifest';
+import { DESIGN, getActiveWidgetGlow } from '@/config/designManifest';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';

@@ -253,6 +253,56 @@ export const RECORD_CARD = {
   ACTIONS: 'flex gap-2 pt-4 border-t border-border/30 mt-4 justify-end',
 } as const;
 
+// ─── ACTIVE WIDGET GLOW (NEU V4.5) ───────────────────────
+/** Farbiger Glow für aktive Widgets — jedes Modul wählt eine Farbe */
+export type ActiveWidgetVariant = 'primary' | 'amber' | 'cyan' | 'violet' | 'rose' | 'orange' | 'teal';
+
+const ACTIVE_WIDGET_VARIANTS: Record<ActiveWidgetVariant, { border: string; shadow: string; shimmer: string }> = {
+  primary: {
+    border: 'border-primary/30',
+    shadow: 'shadow-[0_0_15px_-3px] shadow-primary/15',
+    shimmer: 'before:absolute before:inset-x-0 before:top-0 before:h-1 before:bg-gradient-to-r before:from-primary/40 before:via-primary/60 before:to-primary/40 before:rounded-t-xl',
+  },
+  amber: {
+    border: 'border-amber-400/30',
+    shadow: 'shadow-[0_0_15px_-3px] shadow-amber-400/15',
+    shimmer: 'before:absolute before:inset-x-0 before:top-0 before:h-1 before:bg-gradient-to-r before:from-amber-400/40 before:via-amber-400/60 before:to-amber-400/40 before:rounded-t-xl',
+  },
+  cyan: {
+    border: 'border-cyan-400/30',
+    shadow: 'shadow-[0_0_15px_-3px] shadow-cyan-400/15',
+    shimmer: 'before:absolute before:inset-x-0 before:top-0 before:h-1 before:bg-gradient-to-r before:from-cyan-400/40 before:via-cyan-400/60 before:to-cyan-400/40 before:rounded-t-xl',
+  },
+  violet: {
+    border: 'border-violet-400/30',
+    shadow: 'shadow-[0_0_15px_-3px] shadow-violet-400/15',
+    shimmer: 'before:absolute before:inset-x-0 before:top-0 before:h-1 before:bg-gradient-to-r before:from-violet-400/40 before:via-violet-400/60 before:to-violet-400/40 before:rounded-t-xl',
+  },
+  rose: {
+    border: 'border-rose-400/30',
+    shadow: 'shadow-[0_0_15px_-3px] shadow-rose-400/15',
+    shimmer: 'before:absolute before:inset-x-0 before:top-0 before:h-1 before:bg-gradient-to-r before:from-rose-400/40 before:via-rose-400/60 before:to-rose-400/40 before:rounded-t-xl',
+  },
+  orange: {
+    border: 'border-orange-400/30',
+    shadow: 'shadow-[0_0_15px_-3px] shadow-orange-400/15',
+    shimmer: 'before:absolute before:inset-x-0 before:top-0 before:h-1 before:bg-gradient-to-r before:from-orange-400/40 before:via-orange-400/60 before:to-orange-400/40 before:rounded-t-xl',
+  },
+  teal: {
+    border: 'border-teal-400/30',
+    shadow: 'shadow-[0_0_15px_-3px] shadow-teal-400/15',
+    shimmer: 'before:absolute before:inset-x-0 before:top-0 before:h-1 before:bg-gradient-to-r before:from-teal-400/40 before:via-teal-400/60 before:to-teal-400/40 before:rounded-t-xl',
+  },
+} as const;
+
+/** Returns the full className chain for an active widget glow */
+export function getActiveWidgetGlow(variant: ActiveWidgetVariant): string {
+  const v = ACTIVE_WIDGET_VARIANTS[variant];
+  return `relative overflow-hidden ${v.border} ${v.shadow} ${v.shimmer}`;
+}
+
+export const ACTIVE_WIDGET = ACTIVE_WIDGET_VARIANTS;
+
 // ─── EXPORT ALS EINHEITLICHES OBJEKT ──────────────────────
 export const DESIGN = {
   CONTAINER,
@@ -273,4 +323,5 @@ export const DESIGN = {
   DASHBOARD_HEADER,
   DEMO_WIDGET,
   RECORD_CARD,
+  ACTIVE_WIDGET,
 } as const;

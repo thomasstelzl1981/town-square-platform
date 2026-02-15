@@ -6,7 +6,7 @@
  */
 
 import { useState, useCallback } from 'react';
-import { DESIGN } from '@/config/designManifest';
+import { DESIGN, getActiveWidgetGlow } from '@/config/designManifest';
 import { useNavigate } from 'react-router-dom';
 import { useDropzone } from 'react-dropzone';
 import { TrendingUp as TrendingUpIcon, Globe } from 'lucide-react';

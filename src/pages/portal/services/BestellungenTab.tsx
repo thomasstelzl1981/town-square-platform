@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { DESIGN } from '@/config/designManifest';
+import { DESIGN, getActiveWidgetGlow } from '@/config/designManifest';
+import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
@@ -26,7 +27,7 @@ interface Order {
 function OrderWidget({ order, isActive, onClick }: { order: Order; isActive: boolean; onClick: () => void }) {
   return (
     <Card
-      className={`glass-card cursor-pointer transition-all h-full flex flex-col items-center justify-center text-center p-4 gap-2 ${isActive ? 'ring-2 ring-primary' : 'hover:ring-1 hover:ring-primary/40'}`}
+      className={cn(`glass-card cursor-pointer transition-all h-full flex flex-col items-center justify-center text-center p-4 gap-2`, getActiveWidgetGlow('teal'), isActive ? 'ring-2 ring-primary' : 'hover:ring-1 hover:ring-primary/40')}
       onClick={onClick}
     >
       <FileText className="h-6 w-6 text-primary" />

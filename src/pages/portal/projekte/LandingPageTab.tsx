@@ -6,7 +6,7 @@
  * Neu: Öffnet Builder für echte Projekte
  */
 import { useState } from 'react';
-import { DESIGN } from '@/config/designManifest';
+import { DESIGN, getActiveWidgetGlow } from '@/config/designManifest';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { WidgetGrid } from '@/components/shared/WidgetGrid';
@@ -186,6 +186,7 @@ export default function LandingPageTab() {
             <Card
               className={cn(
                 'h-full cursor-pointer transition-all hover:shadow-lg group flex flex-col',
+                getActiveWidgetGlow('amber'),
                 p.id === selectedId && 'ring-2 ring-primary shadow-glow',
               )}
               onClick={() => setSelectedId(p.id)}

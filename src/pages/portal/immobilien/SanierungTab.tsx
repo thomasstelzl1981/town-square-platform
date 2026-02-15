@@ -5,7 +5,7 @@
  * GOLDEN PATH KONFORM: Demo-Widget an Position 0, useDemoToggles
  */
 import { useState } from 'react';
-import { DESIGN } from '@/config/designManifest';
+import { DESIGN, getActiveWidgetGlow } from '@/config/designManifest';
 import { cn } from '@/lib/utils';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';

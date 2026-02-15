@@ -4,7 +4,7 @@
  * Golden Path compliant: WidgetGrid + Demo-Widget + Inline-Flow
  */
 import * as React from 'react';
-import { DESIGN } from '@/config/designManifest';
+import { DESIGN, getActiveWidgetGlow } from '@/config/designManifest';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
@@ -105,7 +105,7 @@ export default function MandatTab() {
           return (
             <WidgetCell key={mandate.id}>
               <Card
-                className={`h-full cursor-pointer transition-colors hover:border-primary/30 ${isDraft ? 'border-orange-200' : ''}`}
+                className={cn("h-full cursor-pointer transition-colors hover:border-primary/30", getActiveWidgetGlow('amber'), isDraft ? 'border-orange-200' : '')}
                 onClick={() => navigate(`/portal/investments/mandat/${mandate.id}`)}
               >
                 <CardContent className="p-4 h-full flex flex-col justify-between">
