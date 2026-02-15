@@ -1,18 +1,18 @@
 /**
- * MediaWidgetGrid — 4er-Grid mit Verkaufs-Media-Widgets
+ * MediaWidgetGrid — 4er-Grid mit Media-Widgets
  * 
- * Wird in MOD-08 (Suche) und MOD-09 (Beratung) identisch eingesetzt.
- * Klick auf ein Widget öffnet die zugehörige Fullscreen-Präsentation.
+ * variant="beratung" (default): Kunden-Präsentationen (MOD-08/09 Beratung)
+ * variant="schulung": Berater-Ausbildung (MOD-09 Katalog)
  */
 import { useState } from 'react';
-import { Presentation, Play, Monitor } from 'lucide-react';
+import { Presentation, Play, Monitor, BookOpen, GraduationCap, MessageSquare, Laptop } from 'lucide-react';
 import { WidgetGrid } from './WidgetGrid';
 import { WidgetCell } from './WidgetCell';
 import { MediaWidget } from './MediaWidget';
 import { SlideshowViewer } from './slideshow/SlideshowViewer';
 import { TITLE_TO_KEY, type PresentationKey } from './slideshow/slideData';
 
-const MEDIA_ITEMS = [
+const BERATUNG_ITEMS = [
   {
     title: 'Verkaufspräsentation',
     subtitle: 'Unsere Investment-Strategie im Überblick',
@@ -39,8 +39,40 @@ const MEDIA_ITEMS = [
   },
 ] as const;
 
-export function MediaWidgetGrid() {
+const SCHULUNG_ITEMS = [
+  {
+    title: 'Verkaufsleitfaden',
+    subtitle: 'Gesprächsführung, Einwandbehandlung & Abschluss',
+    icon: BookOpen,
+    type: 'presentation' as const,
+  },
+  {
+    title: 'Fachwissen Kapitalanlage',
+    subtitle: 'AfA, Hebelwirkung, Finanzierung & Steuer',
+    icon: GraduationCap,
+    type: 'presentation' as const,
+  },
+  {
+    title: 'Gesprächsleitfaden',
+    subtitle: 'Bedarfsanalyse, Fragetechniken & Abläufe',
+    icon: MessageSquare,
+    type: 'presentation' as const,
+  },
+  {
+    title: 'Plattform-Schulung',
+    subtitle: 'Investment Engine, Marktplatz, DMS & Beratung',
+    icon: Laptop,
+    type: 'presentation' as const,
+  },
+] as const;
+
+interface MediaWidgetGridProps {
+  variant?: 'beratung' | 'schulung';
+}
+
+export function MediaWidgetGrid({ variant = 'beratung' }: MediaWidgetGridProps) {
   const [activePresentation, setActivePresentation] = useState<PresentationKey | null>(null);
+  const items = variant === 'schulung' ? SCHULUNG_ITEMS : BERATUNG_ITEMS;
 
   const handleClick = (title: string) => {
     const key = TITLE_TO_KEY[title];
@@ -50,7 +82,7 @@ export function MediaWidgetGrid() {
   return (
     <>
       <WidgetGrid variant="widget">
-        {MEDIA_ITEMS.map((item) => (
+        {items.map((item) => (
           <WidgetCell key={item.title}>
             <MediaWidget
               title={item.title}
