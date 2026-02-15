@@ -11439,6 +11439,7 @@ export type Database = {
           multi_unit_enabled: boolean | null
           notary_date: string | null
           owner_context_id: string | null
+          ownership_share_percent: number | null
           parcel_number: string | null
           postal_code: string | null
           property_type: string
@@ -11451,6 +11452,7 @@ export type Database = {
           reporting_regime: string | null
           sale_enabled: boolean | null
           status: string
+          tax_reference_number: string | null
           te_number: string | null
           tenant_id: string
           total_area_sqm: number | null
@@ -11496,6 +11498,7 @@ export type Database = {
           multi_unit_enabled?: boolean | null
           notary_date?: string | null
           owner_context_id?: string | null
+          ownership_share_percent?: number | null
           parcel_number?: string | null
           postal_code?: string | null
           property_type?: string
@@ -11508,6 +11511,7 @@ export type Database = {
           reporting_regime?: string | null
           sale_enabled?: boolean | null
           status?: string
+          tax_reference_number?: string | null
           te_number?: string | null
           tenant_id: string
           total_area_sqm?: number | null
@@ -11553,6 +11557,7 @@ export type Database = {
           multi_unit_enabled?: boolean | null
           notary_date?: string | null
           owner_context_id?: string | null
+          ownership_share_percent?: number | null
           parcel_number?: string | null
           postal_code?: string | null
           property_type?: string
@@ -11565,6 +11570,7 @@ export type Database = {
           reporting_regime?: string | null
           sale_enabled?: boolean | null
           status?: string
+          tax_reference_number?: string | null
           te_number?: string | null
           tenant_id?: string
           total_area_sqm?: number | null
@@ -16344,6 +16350,108 @@ export type Database = {
             columns: ["person_id"]
             isOneToOne: false
             referencedRelation: "household_persons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vv_annual_data: {
+        Row: {
+          confirmed: boolean | null
+          cost_bank_fees: number | null
+          cost_disagio: number | null
+          cost_financing_fees: number | null
+          cost_insurance_non_recoverable: number | null
+          cost_legal_advisory: number | null
+          cost_maintenance: number | null
+          cost_management_fee: number | null
+          cost_other: number | null
+          cost_travel: number | null
+          created_at: string | null
+          heritage_afa_amount: number | null
+          id: string
+          income_insurance_payout: number | null
+          income_other: number | null
+          locked_at: string | null
+          notes: string | null
+          property_id: string
+          relative_rental: boolean | null
+          special_afa_amount: number | null
+          status: string | null
+          tax_year: number
+          tenant_id: string
+          updated_at: string | null
+          vacancy_days: number | null
+          vacancy_intent_confirmed: boolean | null
+        }
+        Insert: {
+          confirmed?: boolean | null
+          cost_bank_fees?: number | null
+          cost_disagio?: number | null
+          cost_financing_fees?: number | null
+          cost_insurance_non_recoverable?: number | null
+          cost_legal_advisory?: number | null
+          cost_maintenance?: number | null
+          cost_management_fee?: number | null
+          cost_other?: number | null
+          cost_travel?: number | null
+          created_at?: string | null
+          heritage_afa_amount?: number | null
+          id?: string
+          income_insurance_payout?: number | null
+          income_other?: number | null
+          locked_at?: string | null
+          notes?: string | null
+          property_id: string
+          relative_rental?: boolean | null
+          special_afa_amount?: number | null
+          status?: string | null
+          tax_year: number
+          tenant_id: string
+          updated_at?: string | null
+          vacancy_days?: number | null
+          vacancy_intent_confirmed?: boolean | null
+        }
+        Update: {
+          confirmed?: boolean | null
+          cost_bank_fees?: number | null
+          cost_disagio?: number | null
+          cost_financing_fees?: number | null
+          cost_insurance_non_recoverable?: number | null
+          cost_legal_advisory?: number | null
+          cost_maintenance?: number | null
+          cost_management_fee?: number | null
+          cost_other?: number | null
+          cost_travel?: number | null
+          created_at?: string | null
+          heritage_afa_amount?: number | null
+          id?: string
+          income_insurance_payout?: number | null
+          income_other?: number | null
+          locked_at?: string | null
+          notes?: string | null
+          property_id?: string
+          relative_rental?: boolean | null
+          special_afa_amount?: number | null
+          status?: string | null
+          tax_year?: number
+          tenant_id?: string
+          updated_at?: string | null
+          vacancy_days?: number | null
+          vacancy_intent_confirmed?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vv_annual_data_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vv_annual_data_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
