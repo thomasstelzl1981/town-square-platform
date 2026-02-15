@@ -20,10 +20,11 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, Loader2, AlertTriangle, FileText, Building2, Calculator, LayoutList, LayoutPanelLeft, TrendingUp } from 'lucide-react';
+import { ArrowLeft, Loader2, AlertTriangle, FileText, Building2, Calculator, LayoutList, LayoutPanelLeft, TrendingUp, Banknote } from 'lucide-react';
 import { ExposeTab } from '@/components/portfolio/ExposeTab';
 import { VerkaufsauftragTab } from '@/components/portfolio/VerkaufsauftragTab';
 import { TenancyTab } from '@/components/portfolio/TenancyTab';
+import { GeldeingangTab } from '@/components/portfolio/GeldeingangTab';
 import { DatenraumTab } from '@/components/portfolio/DatenraumTab';
 import { EditableUnitDossierView } from '@/components/immobilienakte';
 import { InventoryInvestmentSimulation } from '@/components/immobilienakte/InventoryInvestmentSimulation';
@@ -441,6 +442,10 @@ export default function PropertyDetailPage() {
                 Bewertung
               </TabsTrigger>
               <TabsTrigger value="tenancy">Mietverhältnis</TabsTrigger>
+              <TabsTrigger value="geldeingang" className="flex items-center gap-1">
+                <Banknote className="h-4 w-4" />
+                Geldeingang
+              </TabsTrigger>
               <TabsTrigger value="datenraum">Datenraum</TabsTrigger>
             </TabsList>
 
@@ -485,6 +490,14 @@ export default function PropertyDetailPage() {
 
             <TabsContent value="tenancy">
               <TenancyTab 
+                propertyId={property.id}
+                tenantId={property.tenant_id}
+                unitId={unit?.id || ''}
+              />
+            </TabsContent>
+
+            <TabsContent value="geldeingang">
+              <GeldeingangTab
                 propertyId={property.id}
                 tenantId={property.tenant_id}
                 unitId={unit?.id || ''}

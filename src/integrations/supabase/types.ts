@@ -8178,6 +8178,7 @@ export type Database = {
       }
       leases: {
         Row: {
+          auto_match_enabled: boolean | null
           created_at: string
           deposit_amount: number | null
           deposit_amount_eur: number | null
@@ -8189,6 +8190,7 @@ export type Database = {
           last_rent_adjustment_date: string | null
           last_rent_increase_at: string | null
           lease_type: string | null
+          linked_bank_account_id: string | null
           monthly_rent: number
           next_rent_adjustment_earliest_date: string | null
           nk_advance_eur: number | null
@@ -8210,6 +8212,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          auto_match_enabled?: boolean | null
           created_at?: string
           deposit_amount?: number | null
           deposit_amount_eur?: number | null
@@ -8221,6 +8224,7 @@ export type Database = {
           last_rent_adjustment_date?: string | null
           last_rent_increase_at?: string | null
           lease_type?: string | null
+          linked_bank_account_id?: string | null
           monthly_rent: number
           next_rent_adjustment_earliest_date?: string | null
           nk_advance_eur?: number | null
@@ -8242,6 +8246,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          auto_match_enabled?: boolean | null
           created_at?: string
           deposit_amount?: number | null
           deposit_amount_eur?: number | null
@@ -8253,6 +8258,7 @@ export type Database = {
           last_rent_adjustment_date?: string | null
           last_rent_increase_at?: string | null
           lease_type?: string | null
+          linked_bank_account_id?: string | null
           monthly_rent?: number
           next_rent_adjustment_earliest_date?: string | null
           nk_advance_eur?: number | null
@@ -8280,6 +8286,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "contacts"
             referencedColumns: ["tenant_id", "id"]
+          },
+          {
+            foreignKeyName: "leases_linked_bank_account_id_fkey"
+            columns: ["linked_bank_account_id"]
+            isOneToOne: false
+            referencedRelation: "msv_bank_accounts"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "leases_renter_org_id_fkey"
