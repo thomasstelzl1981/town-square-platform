@@ -15,8 +15,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Banknote, Plus, Info, CreditCard } from 'lucide-react';
+import { Loader2, Banknote, Plus, Info, CreditCard, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
+import { DesktopOnly } from '@/components/shared/DesktopOnly';
 import { format, subMonths, startOfMonth, endOfMonth } from 'date-fns';
 import { de } from 'date-fns/locale';
 
@@ -87,6 +88,27 @@ export function GeldeingangTab({ propertyId, tenantId, unitId }: GeldeingangTabP
   const [paymentAmount, setPaymentAmount] = useState('');
   const [paymentDate, setPaymentDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [paymentNote, setPaymentNote] = useState('');
+  const [arrearsChecking, setArrearsChecking] = useState(false);
+
+  const handleArrearsCheck = async () => {
+    setArrearsChecking(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('sot-rent-arrears-check');
+      if (error) throw error;
+      const result = data as { checked?: number; created?: number };
+      if (result.created && result.created > 0) {
+        toast.success(`${result.created} Mietrückstand${result.created > 1 ? 'e' : ''} erkannt — Task-Widget erstellt`);
+      } else {
+        toast.info(`${result.checked || 0} Mietverhältnisse geprüft — keine Rückstände`);
+      }
+      queryClient.invalidateQueries({ queryKey: ['geldeingang-payments'] });
+    } catch (err) {
+      console.error('Arrears check failed:', err);
+      toast.error('Mieteingang-Prüfung fehlgeschlagen');
+    } finally {
+      setArrearsChecking(false);
+    }
+  };
 
   // Fetch active leases for this unit
   const { data: leases = [], isLoading: leasesLoading } = useQuery({
@@ -246,6 +268,25 @@ export function GeldeingangTab({ propertyId, tenantId, unitId }: GeldeingangTabP
 
   return (
     <div className="space-y-6">
+      {/* Arrears check button */}
+      <div className="flex justify-end">
+        <DesktopOnly>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleArrearsCheck}
+            disabled={arrearsChecking}
+            className="gap-1.5"
+          >
+            {arrearsChecking ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <ShieldCheck className="h-3.5 w-3.5" />
+            )}
+            Mieteingang prüfen
+          </Button>
+        </DesktopOnly>
+      </div>
       {leases.map(lease => {
         const warmmiete = getWarmmiete(lease);
         const contactName = getContactName(lease.tenant_contact_id);
