@@ -1,26 +1,46 @@
 /**
  * MOD-18 Finanzen — Tab 6: Vorsorge & Testament
- * Zwei quadratische Widgets: Patientenverfügung + Berliner Testament
- * Status: Smaragdgrün = hinterlegt, Rot = fehlt
+ * Sektions-Layout: Personen-Widgets (PV) + 4 Vorlagen-Widgets (Testament)
  */
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { WidgetGrid } from '@/components/shared/WidgetGrid';
 import { WidgetCell } from '@/components/shared/WidgetCell';
-import { CARD, TYPOGRAPHY } from '@/config/designManifest';
+import { CARD, TYPOGRAPHY, HEADER } from '@/config/designManifest';
 import { Badge } from '@/components/ui/badge';
-import { LegalDocumentDialog } from '@/components/legal/LegalDocumentDialog';
+import { PatientenverfuegungInlineForm } from '@/components/legal/PatientenverfuegungInlineForm';
+import { TestamentVorlageInline } from '@/components/legal/TestamentVorlageInline';
+import { TESTAMENT_VORLAGEN } from '@/components/legal/testamentVorlagenTexte';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { CheckCircle2 } from 'lucide-react';
+import { CheckCircle2, User, FileText, ScrollText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function VorsorgedokumenteTab() {
   const { user, activeTenantId } = useAuth();
   const queryClient = useQueryClient();
-  const [dialogOpen, setDialogOpen] = useState<'patientenverfuegung' | 'testament' | null>(null);
+  const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
+  const [selectedVariante, setSelectedVariante] = useState(1);
+
+  // Fetch household persons
+  const { data: persons } = useQuery({
+    queryKey: ['household_persons', activeTenantId],
+    queryFn: async () => {
+      if (!activeTenantId) return [];
+      const { data } = await supabase
+        .from('household_persons')
+        .select('*')
+        .eq('tenant_id', activeTenantId)
+        .order('sort_order');
+      return data || [];
+    },
+    enabled: !!activeTenantId,
+  });
+
+  // Auto-select primary person
+  const effectivePersonId = selectedPersonId || persons?.find(p => p.is_primary)?.id || persons?.[0]?.id || null;
 
   // Fetch legal documents status
   const { data: legalDocs } = useQuery({
@@ -36,14 +56,31 @@ export default function VorsorgedokumenteTab() {
     enabled: !!activeTenantId,
   });
 
-  const pvCompleted = legalDocs?.some(d => d.document_type === 'patientenverfuegung' && d.is_completed);
-  const testamentCompleted = legalDocs?.some(d => d.document_type === 'testament' && d.is_completed);
+  const selectedPerson = useMemo(
+    () => persons?.find(p => p.id === effectivePersonId),
+    [persons, effectivePersonId]
+  );
 
-  const pvFormData = legalDocs?.find(d => d.document_type === 'patientenverfuegung')?.form_data;
+  const personAddress = useMemo(() => {
+    if (!selectedPerson) return '';
+    const parts = [
+      selectedPerson.street,
+      selectedPerson.house_number,
+    ].filter(Boolean).join(' ');
+    const cityParts = [selectedPerson.zip, selectedPerson.city].filter(Boolean).join(' ');
+    return [parts, cityParts].filter(Boolean).join(', ');
+  }, [selectedPerson]);
+
+  const selectedVorlage = TESTAMENT_VORLAGEN.find(v => v.id === selectedVariante)!;
 
   const handleCompleted = () => {
     queryClient.invalidateQueries({ queryKey: ['legal-documents', activeTenantId] });
   };
+
+  const isPvCompleted = (personId: string) =>
+    legalDocs?.some(d => d.document_type === 'patientenverfuegung' && d.user_id === personId && d.is_completed);
+
+  const testamentCompleted = legalDocs?.some(d => d.document_type === 'testament' && d.is_completed);
 
   return (
     <PageShell>
@@ -52,117 +89,136 @@ export default function VorsorgedokumenteTab() {
         description="Patientenverfügung, Vorsorgevollmacht und Testament — Ihre wichtigsten Vorsorgedokumente"
       />
 
-      <WidgetGrid>
-        {/* Widget 1: Patientenverfügung + Vorsorgevollmacht */}
-        <WidgetCell>
-          <div
-            onClick={() => setDialogOpen('patientenverfuegung')}
-            className={cn(
-              CARD.BASE,
-              CARD.INTERACTIVE,
-              'h-full flex flex-col justify-between p-5 ring-2',
-              pvCompleted
-                ? 'ring-emerald-500 dark:ring-emerald-400'
-                : 'ring-red-500 dark:ring-red-400'
-            )}
-          >
-            <div className="space-y-3">
-              {pvCompleted && (
-                <div className="flex justify-end">
-                  <Badge className="text-xs bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/30">
-                    <CheckCircle2 className="h-3 w-3 mr-1" /> Hinterlegt
-                  </Badge>
-                </div>
-              )}
-
-              <div>
-                <h3 className={TYPOGRAPHY.CARD_TITLE}>
-                  Patientenverfügung & Vorsorgevollmacht
-                </h3>
-              </div>
-
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                Eine Patientenverfügung legt fest, welche medizinischen Maßnahmen 
-                Sie wünschen oder ablehnen, wenn Sie sich nicht mehr äußern können. 
-                Die Vorsorgevollmacht bestimmt, wer in Ihrem Namen Entscheidungen 
-                trifft — von Gesundheitsfragen bis zur Vermögensverwaltung.
-              </p>
-            </div>
-
-            <p className="text-[11px] text-muted-foreground/70 mt-2">
-              Klicken zum Erstellen und Ausdrucken →
-            </p>
+      {/* ═══════════════════════════════════════════ */}
+      {/* SEKTION 1: Patientenverfügung & Vorsorgevollmacht */}
+      {/* ═══════════════════════════════════════════ */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-3">
+          <div className={HEADER.WIDGET_ICON_BOX}>
+            <ScrollText className="h-5 w-5 text-primary" />
           </div>
-        </WidgetCell>
+          <h2 className={TYPOGRAPHY.SECTION_TITLE}>Patientenverfügung & Vorsorgevollmacht</h2>
+        </div>
 
-        {/* Widget 2: Testament */}
-        <WidgetCell>
-          <div
-            onClick={() => setDialogOpen('testament')}
-            className={cn(
-              CARD.BASE,
-              CARD.INTERACTIVE,
-              'h-full flex flex-col justify-between p-5 ring-2',
-              testamentCompleted
-                ? 'ring-emerald-500 dark:ring-emerald-400'
-                : 'ring-red-500 dark:ring-red-400'
-            )}
-          >
-            <div className="space-y-3">
-              {testamentCompleted && (
-                <div className="flex justify-end">
-                  <Badge className="text-xs bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/30">
-                    <CheckCircle2 className="h-3 w-3 mr-1" /> Hinterlegt
-                  </Badge>
+        {/* Personen-Widgets */}
+        <WidgetGrid>
+          {persons?.map(person => {
+            const isSelected = person.id === effectivePersonId;
+            const completed = isPvCompleted(person.id);
+            return (
+              <WidgetCell key={person.id}>
+                <div
+                  onClick={() => setSelectedPersonId(person.id)}
+                  className={cn(
+                    CARD.BASE,
+                    CARD.INTERACTIVE,
+                    'h-full flex flex-col justify-between p-5 ring-2',
+                    isSelected
+                      ? 'ring-primary'
+                      : completed
+                        ? 'ring-emerald-500/50 dark:ring-emerald-400/50'
+                        : 'ring-border/30'
+                  )}
+                >
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className={HEADER.WIDGET_ICON_BOX}>
+                        <User className="h-5 w-5 text-primary" />
+                      </div>
+                      {completed && (
+                        <Badge className="text-xs bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/30">
+                          <CheckCircle2 className="h-3 w-3 mr-1" /> Hinterlegt
+                        </Badge>
+                      )}
+                    </div>
+                    <h3 className={TYPOGRAPHY.CARD_TITLE}>
+                      {person.first_name} {person.last_name}
+                    </h3>
+                    <p className="text-xs text-muted-foreground capitalize">{person.role}</p>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground/70 mt-2">
+                    {isSelected ? 'Ausgewählt — Formular unten' : 'Klicken zum Auswählen'}
+                  </p>
                 </div>
-              )}
+              </WidgetCell>
+            );
+          })}
+        </WidgetGrid>
 
-              <div>
-                <h3 className={TYPOGRAPHY.CARD_TITLE}>
-                  Testament
-                </h3>
-              </div>
+        {/* Inline-Formular (immer offen) */}
+        {effectivePersonId && selectedPerson && activeTenantId && (
+          <PatientenverfuegungInlineForm
+            personId={effectivePersonId}
+            personName={`${selectedPerson.first_name} ${selectedPerson.last_name}`}
+            personBirthDate={selectedPerson.birth_date}
+            personAddress={personAddress}
+            tenantId={activeTenantId}
+            onCompleted={handleCompleted}
+          />
+        )}
+      </div>
 
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                Ein Testament ist entscheidend, um Streitigkeiten innerhalb der 
-                Familie zu vermeiden. Die PDF-Schreibvorlage enthält vier Varianten: 
-                Alleinerbe, Mehrere Erben, Vor-/Nacherbschaft und Berliner Testament. 
-                <strong className="text-foreground/80"> Wichtig:</strong> Ein Testament ist nur als 
-                vollständig handschriftliches Original mit eigenhändiger Unterschrift wirksam — 
-                kein Ausdruck, keine digitale Signatur.
-              </p>
-            </div>
-
-            <p className="text-[11px] text-muted-foreground/70 mt-2">
-              Klicken für Schreibvorlage (PDF) →
-            </p>
+      {/* ═══════════════════════════════════════════ */}
+      {/* SEKTION 2: Testament */}
+      {/* ═══════════════════════════════════════════ */}
+      <div className="space-y-4 mt-12">
+        <div className="flex items-center gap-3">
+          <div className={HEADER.WIDGET_ICON_BOX}>
+            <FileText className="h-5 w-5 text-primary" />
           </div>
-        </WidgetCell>
-      </WidgetGrid>
+          <div className="flex items-center gap-3">
+            <h2 className={TYPOGRAPHY.SECTION_TITLE}>Testament</h2>
+            {testamentCompleted && (
+              <Badge className="text-xs bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/30">
+                <CheckCircle2 className="h-3 w-3 mr-1" /> Scan hinterlegt
+              </Badge>
+            )}
+          </div>
+        </div>
 
-      {/* Dialog: Patientenverfügung */}
-      {dialogOpen === 'patientenverfuegung' && activeTenantId && (
-        <LegalDocumentDialog
-          open={true}
-          onOpenChange={open => { if (!open) setDialogOpen(null); }}
-          documentType="patientenverfuegung"
-          tenantId={activeTenantId}
-          existingFormData={pvFormData as any}
-          onCompleted={handleCompleted}
-        />
-      )}
+        {/* 4 Vorlagen-Widgets */}
+        <WidgetGrid>
+          {TESTAMENT_VORLAGEN.map(vorlage => {
+            const isSelected = vorlage.id === selectedVariante;
+            return (
+              <WidgetCell key={vorlage.id}>
+                <div
+                  onClick={() => setSelectedVariante(vorlage.id)}
+                  className={cn(
+                    CARD.BASE,
+                    CARD.INTERACTIVE,
+                    'h-full flex flex-col justify-between p-5 ring-2',
+                    isSelected ? 'ring-primary' : 'ring-border/30'
+                  )}
+                >
+                  <div className="space-y-2">
+                    <div className={HEADER.WIDGET_ICON_BOX}>
+                      <FileText className="h-5 w-5 text-primary" />
+                    </div>
+                    <h3 className={TYPOGRAPHY.CARD_TITLE}>
+                      Vorlage {vorlage.id}/4
+                    </h3>
+                    <p className="text-sm font-medium">{vorlage.title}</p>
+                    <p className="text-xs text-muted-foreground">{vorlage.subtitle}</p>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground/70 mt-2">
+                    {isSelected ? 'Ausgewählt — Text unten' : 'Klicken zum Anzeigen'}
+                  </p>
+                </div>
+              </WidgetCell>
+            );
+          })}
+        </WidgetGrid>
 
-      {/* Dialog: Testament — Platzhalter bis Text geliefert wird */}
-      {dialogOpen === 'testament' && activeTenantId && (
-        <LegalDocumentDialog
-          open={true}
-          onOpenChange={open => { if (!open) setDialogOpen(null); }}
-          documentType="testament"
-          tenantId={activeTenantId}
-          existingFormData={null}
-          onCompleted={handleCompleted}
-        />
-      )}
+        {/* Inline-Vorlagentext (immer offen) */}
+        {activeTenantId && (
+          <TestamentVorlageInline
+            vorlage={selectedVorlage}
+            tenantId={activeTenantId}
+            onCompleted={handleCompleted}
+          />
+        )}
+      </div>
     </PageShell>
   );
 }
