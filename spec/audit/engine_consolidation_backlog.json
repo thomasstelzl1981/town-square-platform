@@ -38,7 +38,7 @@
         {
           "id": "ENG-02-A",
           "priority": "high",
-          "status": "todo",
+          "status": "done",
           "title": "FutureRoomBonitat: Haushaltsrechnung auf calcHaushaltsrechnung() umstellen",
           "file": "src/pages/zone3/futureroom/FutureRoomBonitat.tsx",
           "lines": "120-128",
@@ -83,7 +83,7 @@
         {
           "id": "ENG-03-A",
           "priority": "high",
-          "status": "todo",
+          "status": "done",
           "title": "NetworkTab: Inline-Provisions-Aggregation auf calcCommission() umstellen",
           "file": "src/pages/portal/vertriebspartner/NetworkTab.tsx",
           "lines": "93-95",
@@ -92,7 +92,7 @@
         {
           "id": "ENG-03-B",
           "priority": "high",
-          "status": "todo",
+          "status": "done",
           "title": "ProvisionenUebersicht: Provisions-Aggregation zentralisieren",
           "file": "src/pages/portal/leads/ProvisionenUebersicht.tsx",
           "lines": "46-48",
@@ -174,7 +174,7 @@
         {
           "id": "ENG-05-A",
           "priority": "high",
-          "status": "todo",
+          "status": "done",
           "title": "ProjectDetailPage: Inline-Kalkulation durch calcProjektKalkulation() ersetzen",
           "file": "src/pages/portal/projekte/ProjectDetailPage.tsx",
           "lines": "88-92",
@@ -238,8 +238,9 @@
     "total_engines": 5,
     "done": 1,
     "engine_ready": 4,
-    "open_refactoring_items": 17,
-    "high_priority": 5,
+    "open_refactoring_items": 12,
+    "high_priority_done": 5,
+    "high_priority_remaining": 0,
     "medium_priority": 8,
     "low_priority": 4,
     "cross_cutting": 3

@@ -4,6 +4,7 @@
  */
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { aggregateCommissions } from '@/engines/provision/engine';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -40,19 +41,18 @@ export default function ProvisionenUebersicht() {
         .eq('tenant_id', activeTenantId)
         .order('created_at', { ascending: false });
 
-      const completed = transactions?.filter(t => t.status === 'completed') || [];
-      const pending = transactions?.filter(t => t.status !== 'completed' && t.status !== 'cancelled') || [];
-
-      const totalEarned = completed.reduce((sum, t) => sum + (t.commission_amount || 0), 0);
-      const totalPending = pending.reduce((sum, t) => sum + (t.commission_amount || 0), 0);
+      const commAgg = aggregateCommissions(
+        (transactions || []).map(t => ({ amount: t.commission_amount || 0, status: t.status })),
+        ['completed'],
+      );
       const totalVolume = (transactions || []).reduce((sum, t) => sum + (t.final_price || 0), 0);
 
       return {
-        totalEarned,
-        totalPending,
+        totalEarned: commAgg.paid,
+        totalPending: commAgg.pending,
         totalVolume,
-        completedCount: completed.length,
-        pendingCount: pending.length,
+        completedCount: commAgg.paidCount,
+        pendingCount: commAgg.pendingCount,
         transactions: transactions || [],
       };
     },

@@ -2,6 +2,7 @@
  * MOD-13 PROJEKTE - Type Definitions
  * Developer/Aufteiler Project Management System
  */
+import { calcAufteilerQuick } from '@/engines/akquiseCalc/engine';
 
 // ============================================================================
 // Developer Contexts (Verkäufer-Gesellschaften)
@@ -386,62 +387,42 @@ export function calculateProjectKPIs(
 }
 
 // ============================================================================
-// Aufteiler Calculation Engine (from MOD-12)
+// Aufteiler Calculation — Delegated to Engine (SSOT: src/engines/akquiseCalc/)
 // ============================================================================
 
 export function calculateAufteiler(inputs: CalculationInputs): CalculationOutputs {
-  const {
-    purchase_price,
-    ancillary_cost_percent,
-    renovation_total,
-    sales_commission_percent,
-    holding_period_months,
-    total_sale_proceeds,
-    financing_rate_percent = 4,
-    financing_ltv_percent = 70,
-    units_count,
-  } = inputs;
+  const result = calcAufteilerQuick({
+    purchasePrice: inputs.purchase_price,
+    unitsCount: inputs.units_count,
+    avgUnitSalePrice: inputs.units_count > 0 ? inputs.total_sale_proceeds / inputs.units_count : 0,
+    renovationCostPerUnit: inputs.units_count > 0 ? inputs.renovation_total / inputs.units_count : 0,
+    salesCommissionPercent: inputs.sales_commission_percent,
+    holdingPeriodMonths: inputs.holding_period_months,
+    ancillaryCostPercent: inputs.ancillary_cost_percent,
+  });
 
-  // Calculate total investment
-  const ancillary_costs = purchase_price * (ancillary_cost_percent / 100);
-  const total_investment = purchase_price + ancillary_costs + renovation_total;
-
-  // Calculate financing costs
-  const loan_amount = purchase_price * (financing_ltv_percent / 100);
-  const financing_cost = loan_amount * (financing_rate_percent / 100) * (holding_period_months / 12);
-
-  // Calculate sales commission
-  const commission = total_sale_proceeds * (sales_commission_percent / 100);
-
-  // Calculate profits
-  const gross_profit = total_sale_proceeds - total_investment - commission;
-  const net_profit = gross_profit - financing_cost;
-
-  // Calculate margins and returns
-  const profit_margin_percent = total_investment > 0 
-    ? (gross_profit / total_investment) * 100 
-    : 0;
-  
-  const annualized_return = total_investment > 0 && holding_period_months > 0
-    ? (profit_margin_percent / holding_period_months) * 12
-    : 0;
-
-  const profit_per_unit = units_count > 0 ? gross_profit / units_count : 0;
-
-  // Break-even: how many units need to sell to cover investment
-  const avg_unit_price = units_count > 0 ? total_sale_proceeds / units_count : 0;
-  const break_even_units = avg_unit_price > 0 
-    ? Math.ceil(total_investment / (avg_unit_price * (1 - sales_commission_percent / 100)))
-    : units_count;
+  // Map engine result back to legacy CalculationOutputs shape
+  const ancillary_costs = inputs.purchase_price * (inputs.ancillary_cost_percent / 100);
+  const total_investment = inputs.purchase_price + ancillary_costs + inputs.renovation_total;
+  const financing_rate = inputs.financing_rate_percent ?? 4;
+  const financing_ltv = inputs.financing_ltv_percent ?? 70;
+  const loan_amount = inputs.purchase_price * (financing_ltv / 100);
+  const financing_cost = loan_amount * (financing_rate / 100) * (inputs.holding_period_months / 12);
+  const net_profit = result.grossProfit - financing_cost;
 
   return {
     total_investment: Math.round(total_investment),
-    total_sale_proceeds: Math.round(total_sale_proceeds),
-    gross_profit: Math.round(gross_profit),
+    total_sale_proceeds: Math.round(result.totalSaleProceeds),
+    gross_profit: result.grossProfit,
     net_profit: Math.round(net_profit),
-    profit_margin_percent: Math.round(profit_margin_percent * 100) / 100,
-    annualized_return: Math.round(annualized_return * 100) / 100,
-    profit_per_unit: Math.round(profit_per_unit),
-    break_even_units,
+    profit_margin_percent: result.profitMarginPercent,
+    annualized_return: result.annualizedReturn,
+    profit_per_unit: result.profitPerUnit,
+    break_even_units: Math.ceil(
+      total_investment / (
+        (inputs.units_count > 0 ? inputs.total_sale_proceeds / inputs.units_count : 1) *
+        (1 - inputs.sales_commission_percent / 100)
+      )
+    ),
   };
 }

@@ -57,3 +57,49 @@ export function calcTippgeberFee(input: TippgeberInput): TippgeberResult {
     remaining: input.commissionNetto - tippgeberFee,
   };
 }
+
+// ─── Aggregation Helper ─────────────────────────────────────────
+
+export interface CommissionLineItem {
+  amount: number;
+  status: string;
+}
+
+export interface CommissionAggregation {
+  total: number;
+  paid: number;
+  pending: number;
+  paidCount: number;
+  pendingCount: number;
+}
+
+/**
+ * Aggregates commission line items by status.
+ * Replaces inline .reduce() blocks across NetworkTab, ProvisionenUebersicht, CommissionApproval.
+ */
+export function aggregateCommissions(
+  items: CommissionLineItem[],
+  paidStatuses: string[] = ['paid', 'completed'],
+  cancelledStatuses: string[] = ['cancelled'],
+): CommissionAggregation {
+  let total = 0;
+  let paid = 0;
+  let pending = 0;
+  let paidCount = 0;
+  let pendingCount = 0;
+
+  for (const item of items) {
+    const amount = item.amount || 0;
+    if (cancelledStatuses.includes(item.status)) continue;
+    total += amount;
+    if (paidStatuses.includes(item.status)) {
+      paid += amount;
+      paidCount++;
+    } else {
+      pending += amount;
+      pendingCount++;
+    }
+  }
+
+  return { total, paid, pending, paidCount, pendingCount };
+}
