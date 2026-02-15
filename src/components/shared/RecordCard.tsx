@@ -90,7 +90,7 @@ export function RecordCard({
 
   // ── CLOSED STATE ──
   if (!isOpen) {
-    const hasDetailedSummary = summary.length > 4;
+    const hasDetailedSummary = summary.length > 2;
 
     const card = (
       <div
