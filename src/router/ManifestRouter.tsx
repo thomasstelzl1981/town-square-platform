@@ -84,7 +84,7 @@ const MasterTemplatesFinanzierungsakte = React.lazy(() => import('@/pages/admin/
 const AdminFutureRoomLayout = React.lazy(() => import('@/pages/admin/futureroom/FutureRoomLayout'));
 const AdminStubPage = React.lazy(() => import('@/pages/admin/stub').then(m => ({ default: m.AdminStubPage })));
 const SalesDesk = React.lazy(() => import('@/pages/admin/desks').then(m => ({ default: m.SalesDesk })));
-const FinanceDesk = React.lazy(() => import('@/pages/admin/desks').then(m => ({ default: m.FinanceDesk })));
+// FinanceDesk removed — consolidated into FutureRoom (ERA-001). Legacy redirect handles /admin/finance-desk.
 const Acquiary = React.lazy(() => import('@/pages/admin/desks').then(m => ({ default: m.Acquiary })));
 const Agents = React.lazy(() => import('@/pages/admin/desks').then(m => ({ default: m.Agents })));
 const LeadDeskComponent = React.lazy(() => import('@/pages/admin/desks').then(m => ({ default: m.LeadDesk })));
@@ -268,7 +268,7 @@ const adminComponentMap: Record<string, React.ComponentType> = {
 // Zone 1 Desk Components with internal routing (FutureRoom uses explicit nested routes)
 const adminDeskMap: Record<string, React.ComponentType> = {
   'sales-desk': SalesDesk,
-  'finance-desk': FinanceDesk,
+  // finance-desk: removed — consolidated into FutureRoom (ERA-001), legacy redirect active
   acquiary: Acquiary,
   agents: Agents,
 };

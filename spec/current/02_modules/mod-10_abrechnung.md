@@ -1,10 +1,10 @@
 # MOD-10 — ABRECHNUNG (Commission Management)
 
-> **Version**: 1.1.0  
+> **Version**: 1.2.0  
 > **Status**: ACTIVE  
-> **Datum**: 2026-02-14  
+> **Datum**: 2026-02-15  
 > **Zone**: 2 (User Portal)  
-> **Route-Prefix**: `/portal/leads`  
+> **Route-Prefix**: `/portal/leads` (Legacy-Kompatibilität, Display-Name: "Abrechnung")  
 > **SSOT-Rolle**: Source of Truth für Provisionsabrechnungen und Umsatzverfolgung
 
 ---
@@ -53,5 +53,6 @@ MOD-10:
 
 | Version | Datum | Änderung |
 |---------|-------|----------|
+| 1.2.0 | 2026-02-15 | Clarified naming: Display "Abrechnung", Route "/portal/leads" (ERA-003) |
 | 1.1.0 | 2026-02-14 | Naming alignment: Titel → "Abrechnung" (SIA3-002) |
 | 1.0.0 | 2026-02-13 | Initial Release (Sprint S5) |
