@@ -1,112 +1,95 @@
 
 
-# Einheitliche Mobile Bottom Bar: Persistente Armstrong-Eingabe + Upload
+# Mobile-Ansicht: Keine Neuanlage-Widgets, nur funktionale Buttons
 
 ## Problem
 
-Aktuell gibt es zwei komplett unterschiedliche Bottom-Bereiche auf Mobile:
+Auf Mobile werden aktuell dieselben Widgets und Dialoge wie auf Desktop angezeigt:
+- "Neues Fahrzeug anlegen"-Formulare
+- "Objekt hinzufuegen"-Buttons
+- Leere Zustaende mit "Erstellen Sie..."-Aufforderungen
+- CreatePropertyDialog, CreateProjectDialog, CreateReservationDialog etc.
 
-1. **Home/Chat** (`MobileHomeChatView`): 4 Area-Glasbuttons + Eingabefeld mit Voice + Send
-2. **Modul-Ansichten** (`MobileModuleBar`): 5 Icon-Buttons (Chat + 4 Areas) ohne Eingabefeld
+Das ist auf einem kleinen Bildschirm unpraktisch. Neuanlagen sollen nur via Armstrong-Actions oder Desktop/PWA-Browser moeglich sein.
 
-Das fuehrt zu einem visuellen Bruch: Die Buttons aendern sich (4 vs. 5), das Eingabefeld verschwindet, und die gesamte Optik springt.
+## Loesung: Zentraler `DesktopOnly`-Wrapper + `useIsMobile`-Guards
 
-## Loesung: Eine einheitliche `MobileBottomBar`
+Statt 27+ Module einzeln umzubauen, wird ein wiederverwendbarer Ansatz verfolgt:
 
-Eine einzelne Komponente, die **ueberall** gleich aussieht:
+### Schritt 1: Shared Wrapper-Komponente `DesktopOnly`
 
-```text
-+--------------------------------------------------+
-|  [Base] [Missions] [Operations] [Services]       |  <-- 4 Glass-Buttons (immer gleich)
-+--------------------------------------------------+
-|  [Mic] [+] [Nachricht eingeben...] [Send]        |  <-- Input Bar (immer sichtbar)
-+--------------------------------------------------+
-```
-
-### Verhalten
-
-- **Auf Home**: Nachrichten erscheinen direkt im Chat darueber
-- **In Modulen**: Nachricht wird gesendet, dann automatischer Wechsel zurueck zum Chat (`/portal`)
-- **Area-Buttons**: Immer 4 Stueck (Base, Missions, Operations, Services) — kein separater "Chat"-Button noetig, da die Input Bar selbst der Rueckweg ist
-- **Upload-Button [+]**: Oeffnet ein Menue mit: "Datei anfuegen", "Foto aus Mediathek", "Fotografieren"
-
-### Upload-Menue (wie Lovable Mobile)
-
-Der `[+]` Button oeffnet ein kompaktes Popover/Sheet:
+Eine kleine Utility-Komponente, die ihre Kinder auf Mobile ausblendet:
 
 ```text
-+---------------------------+
-|  Datei anfuegen           |
-|  Foto aus Mediathek       |
-|  Fotografieren            |
-+---------------------------+
+src/components/shared/DesktopOnly.tsx
+
+export function DesktopOnly({ children }) {
+  const isMobile = useIsMobile();
+  if (isMobile) return null;
+  return <>{children}</>;
+}
 ```
 
-- Nutzt `<input type="file">` fuer Dateien
-- Nutzt `<input type="file" accept="image/*" capture="environment">` fuer Kamera
-- Angehaengte Dateien werden als Vorschau-Chips ueber der Input Bar angezeigt
-- Dateien gehen mit der naechsten Nachricht an Armstrong
+Damit koennen Neuanlage-Buttons und -Formulare in den Modulen einfach umschlossen werden:
 
-## Technische Umsetzung
+```text
+<DesktopOnly>
+  <Button onClick={() => setIsCreatingNew(true)}>Neues Fahrzeug anlegen</Button>
+</DesktopOnly>
+```
+
+### Schritt 2: Betroffene Module identifiziert
+
+Die folgenden Bereiche enthalten Neuanlage-UI, die auf Mobile ausgeblendet wird:
+
+| Modul/Datei | Element | Aktion |
+|-------------|---------|--------|
+| `CarsFahrzeuge.tsx` | "Neues Fahrzeug anlegen" Button + Inline-Formular | `DesktopOnly` |
+| `FinanceRequestWidgets.tsx` | "Neue Anfrage" Widget-Kachel (leer) | `DesktopOnly` |
+| `CreatePropertyDialog.tsx` (Trigger) | "Neue Immobilie" Button in Portfolio | `DesktopOnly` |
+| `CreateProjectDialog.tsx` (Trigger) | "Neues Projekt" Button | `DesktopOnly` |
+| `CreateReservationDialog.tsx` (Trigger) | "Neue Reservierung" Button | `DesktopOnly` |
+| `AnalysisTab.tsx` (Akquise) | "Objekt hinzufuegen" Button + leerer Zustand | `DesktopOnly` fuer Button, angepasster Leertext |
+| `SimulationTab.tsx` | "Neues Objekt hinzufuegen" Karte | `DesktopOnly` |
+| `AbonnementsTab.tsx` | "Abonnement hinzufuegen" Karte | `DesktopOnly` |
+| `KalenderTab.tsx` | "Neuer Termin" Button + Dialog | `DesktopOnly` |
+| `InspirationPage.tsx` | "Quelle hinzufuegen" Button | `DesktopOnly` |
+| `KnowledgePage.tsx` | "Hinzufuegen" Button | `DesktopOnly` |
+
+### Schritt 3: Leere Zustaende auf Mobile anpassen
+
+Wenn ein Modul keine Daten hat, zeigt der leere Zustand auf Mobile statt "Erstellen Sie..." den Hinweis:
+
+```text
+"Nutzen Sie Armstrong oder die Desktop-Version, um neue Eintraege anzulegen."
+```
+
+Dies wird als optionale `mobileEmptyText`-Prop in betroffenen Leerzustand-Karten umgesetzt.
+
+### Schritt 4: WidgetGrid — Leere Neuanlage-Kacheln auf Mobile ausblenden
+
+Einige Module haben eine dedizierte "Plus-Kachel" am Ende des Grids (z.B. Abonnements, Simulation). Diese werden mit `DesktopOnly` umschlossen.
+
+## Technische Details
 
 ### Dateien
 
 | Datei | Aktion | Beschreibung |
 |-------|--------|-------------|
-| `src/components/portal/MobileBottomBar.tsx` | CREATE | Neue einheitliche Komponente (ersetzt MobileModuleBar + Input aus MobileHomeChatView) |
-| `src/components/portal/MobileAttachMenu.tsx` | CREATE | Upload-Popover mit 3 Optionen |
-| `src/components/portal/MobileHomeChatView.tsx` | EDIT | Area-Buttons und Input Bar entfernen, nur Chat-Messages behalten |
-| `src/components/portal/PortalLayout.tsx` | EDIT | `MobileBottomBar` einmal am Ende rendern (statt MobileModuleBar nur in Modulen) |
-| `src/components/portal/MobileModuleBar.tsx` | ENTFAELLT | Wird durch MobileBottomBar ersetzt |
+| `src/components/shared/DesktopOnly.tsx` | CREATE | Utility-Wrapper (3 Zeilen) |
+| `src/components/portal/cars/CarsFahrzeuge.tsx` | EDIT | Button + Inline-Formular mit `DesktopOnly` umschliessen |
+| `src/components/finanzierung/FinanceRequestWidgets.tsx` | EDIT | Leere Anfrage-Kachel ausblenden |
+| `src/pages/portal/investments/SimulationTab.tsx` | EDIT | "Neues Objekt" Karte ausblenden |
+| `src/pages/portal/finanzanalyse/AbonnementsTab.tsx` | EDIT | "Abo hinzufuegen" Karte ausblenden |
+| `src/pages/portal/office/KalenderTab.tsx` | EDIT | "Neuer Termin" Button ausblenden |
+| `src/pages/portal/akquise-manager/components/AnalysisTab.tsx` | EDIT | Button + Leerzustand anpassen |
+| `src/pages/portal/communication-pro/social/InspirationPage.tsx` | EDIT | Button ausblenden |
+| `src/pages/portal/communication-pro/social/KnowledgePage.tsx` | EDIT | Button ausblenden |
+| Portfolio/Projekte-Seiten (Trigger-Buttons) | EDIT | Buttons mit `DesktopOnly` wrappen |
 
-### Aenderungen im Detail
+### Kein Breaking Change
 
-**1. `MobileBottomBar.tsx` (NEU)**
-- Nimmt die 4 Area-Glasbuttons aus `MobileHomeChatView` (Zeilen 161-182)
-- Nimmt die Input Bar aus `MobileHomeChatView` (Zeilen 184-227)
-- Fuegt einen `[+]` Upload-Button links neben dem Mic-Button ein
-- Erhaelt `onSendFromModule`-Prop: wenn nicht auf `/portal`, nach Send zu `/portal` navigieren
-- Voice-Integration bleibt identisch
-
-**2. `MobileAttachMenu.tsx` (NEU)**
-- Wird durch den `[+]` Button getriggert
-- 3 Optionen: Datei, Mediathek-Foto, Kamera
-- Gibt ausgewaehlte Files via Callback zurueck
-- Datei-Vorschau als kleine Chips ueber der Input Bar
-
-**3. `MobileHomeChatView.tsx` (EDIT)**
-- Zeilen 148-227 entfernen (Clear-Button, Area-Buttons, Input Bar)
-- Nur noch Chat-Messages + Loading-State behalten
-- Clear-Button kann in die `MobileBottomBar` oder als Overlay bleiben
-
-**4. `PortalLayout.tsx` (EDIT)**
-- Zeile 138 (`<MobileModuleBar />`) entfernen
-- `<MobileBottomBar />` einmal am Ende der mobilen Layout-Struktur rendern, AUSSERHALB des `isDashboard`-Conditionals
-- Damit ist die Bar ueberall sichtbar
-
-### Layout-Struktur (nachher)
-
-```text
-<div className="h-screen flex flex-col">
-  <SystemBar />
-  
-  {isDashboard ? (
-    <MobileHomeChatView />      // Nur Chat-Messages, kein Input
-  ) : (
-    <main>
-      <SubTabs />
-      <Outlet />
-    </main>
-  )}
-  
-  <MobileBottomBar />           // IMMER sichtbar: Buttons + Input + Upload
-</div>
-```
-
-## Kein Breaking Change
-
-- Armstrong Advisor Hook wird weiter verwendet (gleiche send/voice Logik)
-- Area-Navigation-Logik bleibt identisch
-- Desktop-Layout ist nicht betroffen
-- Alte `MobileBottomNav.tsx` und `ArmstrongInputBar.tsx` bleiben unangetastet (werden ohnehin nicht mehr importiert)
-
+- Desktop bleibt vollstaendig unveraendert
+- `DesktopOnly` ist rein visuell (rendert `null` auf Mobile)
+- Keine Aenderung an Hooks, Datenstrukturen oder Armstrong-Actions
+- Alle Neuanlagen bleiben ueber Armstrong-Actions auf Mobile erreichbar
