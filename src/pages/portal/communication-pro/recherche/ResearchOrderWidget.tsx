@@ -1,6 +1,7 @@
 /**
  * ResearchOrderWidget — Widget-Card für ein Research Order im WidgetGrid
  */
+import { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Plus, Trash2 } from 'lucide-react';
@@ -15,7 +16,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 
 const STATUS_CONFIG: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
@@ -37,39 +37,54 @@ interface Props {
 
 export function ResearchOrderWidget({ order, isActive, onClick, onDelete }: Props) {
   const status = STATUS_CONFIG[order.status] || STATUS_CONFIG.draft;
+  const [open, setOpen] = useState(false);
 
   return (
     <Card
       className={cn(
-        'glass-card p-4 cursor-pointer transition-all hover:ring-2 hover:ring-primary/40 relative group',
+        'glass-card p-4 cursor-pointer transition-all hover:ring-2 hover:ring-primary/40 relative group h-full flex flex-col',
         isActive && 'ring-2 ring-primary shadow-lg'
       )}
       onClick={onClick}
     >
       {/* Delete button */}
       {onDelete && (
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <button
-              onClick={e => e.stopPropagation()}
-              className="absolute top-2 right-2 h-6 w-6 rounded-full bg-destructive/10 text-destructive flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive/20 z-10"
-            >
-              <Trash2 className="h-3 w-3" />
-            </button>
-          </AlertDialogTrigger>
-          <AlertDialogContent onClick={e => e.stopPropagation()}>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Auftrag löschen?</AlertDialogTitle>
-              <AlertDialogDescription>
-                Der Rechercheauftrag „{order.title || 'Ohne Titel'}" wird unwiderruflich gelöscht.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Abbrechen</AlertDialogCancel>
-              <AlertDialogAction onClick={() => onDelete(order.id)}>Löschen</AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        <>
+          <button
+            type="button"
+            onClick={e => {
+              e.stopPropagation();
+              setOpen(true);
+            }}
+            className="absolute top-2 right-2 z-10 p-1.5 rounded-lg bg-destructive/10 text-destructive hover:bg-destructive/20 opacity-0 group-hover:opacity-100 transition-opacity focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-destructive/50"
+            aria-label={`${order.title || 'Auftrag'} löschen`}
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+
+          <AlertDialog open={open} onOpenChange={setOpen}>
+            <AlertDialogContent onClick={e => e.stopPropagation()}>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Auftrag löschen?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Der Rechercheauftrag „{order.title || 'Ohne Titel'}" wird unwiderruflich gelöscht.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                <AlertDialogAction
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  onClick={() => {
+                    onDelete(order.id);
+                    setOpen(false);
+                  }}
+                >
+                  Löschen
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </>
       )}
 
       <div className="flex items-start justify-between mb-2">
@@ -81,11 +96,11 @@ export function ResearchOrderWidget({ order, isActive, onClick, onDelete }: Prop
         </Badge>
       </div>
 
-      <p className="text-xs text-muted-foreground line-clamp-2 mb-3">
+      <p className="text-xs text-muted-foreground line-clamp-2 mb-3 flex-1">
         {order.intent_text || 'Noch nicht konfiguriert'}
       </p>
 
-      <div className="flex items-center justify-between text-xs text-muted-foreground">
+      <div className="flex items-center justify-between text-xs text-muted-foreground mt-auto">
         <span>max {order.max_results}</span>
         {order.results_count > 0 && (
           <span className="font-medium text-foreground">
@@ -104,7 +119,7 @@ interface CreateProps {
 export function ResearchOrderCreateWidget({ onClick }: CreateProps) {
   return (
     <Card
-      className="glass-card p-4 cursor-pointer transition-all hover:ring-2 hover:ring-primary/40 flex flex-col items-center justify-center min-h-[120px] border-dashed"
+      className="glass-card p-4 cursor-pointer transition-all hover:ring-2 hover:ring-primary/40 flex flex-col items-center justify-center h-full border-dashed"
       onClick={onClick}
     >
       <Plus className="h-8 w-8 text-muted-foreground mb-2" />
