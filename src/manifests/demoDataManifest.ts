@@ -269,6 +269,22 @@ export const DEMO_DATA_MANIFEST: readonly DemoDataEntry[] = [
     status: 'done',
   },
 
+  // ─── MOD-18: Finanzen ────────────────────────────────────
+  {
+    processId: 'GP-KONTEN',
+    moduleCode: 'MOD-18',
+    toggleKey: 'GP-KONTEN',
+    dataHookFile: 'src/constants/demoKontoData.ts',
+    dataHookExport: 'DEMO_KONTO',
+    entities: ['bank_account', 'transactions'],
+    zones: [2],
+    scope: 'z2_only',
+    consumers: [
+      { file: 'src/pages/portal/finanzanalyse/UebersichtTab.tsx', zone: 2, mergeStrategy: 'prepend', description: 'Demo-Girokonto im Konten-Grid' },
+    ],
+    status: 'done',
+  },
+
   // ─── MOD-05: Pets ───────────────────
   {
     processId: 'GP-PETS',

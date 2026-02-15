@@ -274,27 +274,18 @@ export default function FMUebersichtTab() {
         )}
       </div>
 
-      {/* BLOCK B — Konten */}
+      {/* BLOCK B — Konten (verwaltet in Finanzanalyse) */}
       <div className="space-y-3">
         <h2 className={DESIGN.TYPOGRAPHY.SECTION_TITLE}>Konten</h2>
-
-        {loadingAccounts ? (
-          <div className="space-y-2">
-            <Skeleton className="h-16 w-full" />
-          </div>
-        ) : bankAccounts.length === 0 ? (
-          <Card className="border-dashed">
-            <CardContent className="p-8 text-center text-muted-foreground">
-              Keine Bankkonten verbunden. Verbinde deine Konten über FinAPI.
-            </CardContent>
-          </Card>
-        ) : (
-          <Accordion type="multiple" className="space-y-2">
-            {bankAccounts.map((acc: any) => (
-              <BankAccountWidget key={acc.id} account={acc} />
-            ))}
-          </Accordion>
-        )}
+        <Card className="border-dashed">
+          <CardContent className="p-6 text-center text-muted-foreground">
+            <CreditCard className="h-8 w-8 mx-auto mb-2 text-muted-foreground/30" />
+            <p className="text-sm font-medium">Konten werden in der Finanzanalyse verwaltet</p>
+            <Button variant="outline" size="sm" className="mt-3" onClick={() => window.location.href = '/portal/finanzanalyse/dashboard'}>
+              Zur Finanzanalyse →
+            </Button>
+          </CardContent>
+        </Card>
       </div>
 
       {/* BLOCK C — 12M Scan */}
