@@ -22,15 +22,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible';
 import { InvestmentResultTile } from '@/components/investment/InvestmentResultTile';
 import { 
-  Search, Calculator, ChevronDown, Loader2, Building2, 
-  TrendingUp, Filter, LayoutGrid, List 
+  Search, Calculator, Loader2, Building2, 
+  TrendingUp, LayoutGrid, List 
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useInvestmentEngine, type CalculationInput, defaultInput } from '@/hooks/useInvestmentEngine';
@@ -239,10 +234,21 @@ export default function SucheTab() {
   });
 
   // Merge demo listings with DB listings (deduplicated by title+city)
+  // When DB listing has no image but demo has one, transfer the demo image
   const mergedListings = useMemo(() => {
-    const dbKeys = new Set(listings.map(l => `${l.title}|${l.city}`));
+    const demoByKey = new Map(demoListings.map(d => [`${d.title}|${d.city}`, d]));
+    const dbKeys = new Set<string>();
+    const enrichedDb = listings.map(l => {
+      const key = `${l.title}|${l.city}`;
+      dbKeys.add(key);
+      const demoMatch = demoByKey.get(key);
+      if (demoMatch && !l.hero_image_path && demoMatch.hero_image_path) {
+        return { ...l, hero_image_path: demoMatch.hero_image_path };
+      }
+      return l;
+    });
     const demos = demoListings.filter(d => !dbKeys.has(`${d.title}|${d.city}`));
-    return [...demos, ...listings];
+    return [...demos, ...enrichedDb];
   }, [listings, demoListings]);
 
   // Filter by yield (client-side)
@@ -365,8 +371,8 @@ export default function SucheTab() {
         <CardContent className="space-y-4">
           {searchMode === 'investment' ? (
             <>
-              {/* Investment Search Form */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Investment Search Form — 4-column, no collapsible */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div className="space-y-2">
                   <Label>zu versteuerndes Einkommen (zVE)</Label>
                   <div className="relative">
@@ -393,51 +399,32 @@ export default function SucheTab() {
                   </div>
                 </div>
 
-                <div className="flex items-end">
-                  <Collapsible open={showAdvanced} onOpenChange={setShowAdvanced} className="w-full">
-                    <CollapsibleTrigger asChild>
-                      <Button variant="outline" className="w-full gap-2">
-                        <Filter className="w-4 h-4" />
-                        Mehr Optionen
-                        <ChevronDown className={cn("w-4 h-4 transition-transform", showAdvanced && "rotate-180")} />
-                      </Button>
-                    </CollapsibleTrigger>
-                  </Collapsible>
+                <div className="space-y-2">
+                  <Label>Familienstand</Label>
+                  <Select value={maritalStatus} onValueChange={(v) => setMaritalStatus(v as 'single' | 'married')}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="single">Ledig</SelectItem>
+                      <SelectItem value="married">Verheiratet</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Kirchensteuer</Label>
+                  <Select value={hasChurchTax ? 'yes' : 'no'} onValueChange={(v) => setHasChurchTax(v === 'yes')}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="no">Nein</SelectItem>
+                      <SelectItem value="yes">Ja</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
-
-              {/* Advanced Options */}
-              <Collapsible open={showAdvanced} onOpenChange={setShowAdvanced}>
-                <CollapsibleContent className="space-y-4 pt-4 border-t">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="space-y-2">
-                      <Label>Familienstand</Label>
-                      <Select value={maritalStatus} onValueChange={(v) => setMaritalStatus(v as 'single' | 'married')}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="single">Ledig</SelectItem>
-                          <SelectItem value="married">Verheiratet</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Kirchensteuer</Label>
-                      <Select value={hasChurchTax ? 'yes' : 'no'} onValueChange={(v) => setHasChurchTax(v === 'yes')}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="no">Nein</SelectItem>
-                          <SelectItem value="yes">Ja</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                </CollapsibleContent>
-              </Collapsible>
 
               <div className="flex justify-center w-full">
                 <Button 
@@ -505,14 +492,15 @@ export default function SucheTab() {
                 </div>
               </div>
 
-              <Button 
-                onClick={handleClassicSearch} 
-                disabled={isLoadingListings}
-                className="w-full md:w-auto"
-              >
-                {isLoadingListings && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                Suchen
-              </Button>
+              <div className="flex justify-center w-full">
+                <Button 
+                  onClick={handleClassicSearch} 
+                  disabled={isLoadingListings}
+                >
+                  {isLoadingListings && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                  Suchen
+                </Button>
+              </div>
             </>
           )}
         </CardContent>
@@ -554,8 +542,8 @@ export default function SucheTab() {
           </div>
         )}
 
-        {/* Listings Grid/List */}
-        {filteredListings.length === 0 ? (
+        {/* Listings Grid/List — only after search */}
+        {!hasSearched ? (
           <Card>
             <CardContent className="py-12 text-center">
               <TrendingUp className="w-12 h-12 mx-auto mb-4 text-primary opacity-70" />
@@ -563,6 +551,16 @@ export default function SucheTab() {
               <p className="text-muted-foreground max-w-md mx-auto">
                 Geben Sie Ihr zu versteuerndes Einkommen und Eigenkapital ein, um passende Objekte mit 
                 individueller Belastungsberechnung zu finden.
+              </p>
+            </CardContent>
+          </Card>
+        ) : filteredListings.length === 0 ? (
+          <Card>
+            <CardContent className="py-12 text-center">
+              <Building2 className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+              <h3 className="text-lg font-semibold mb-2">Keine Ergebnisse</h3>
+              <p className="text-muted-foreground max-w-md mx-auto">
+                Für Ihre Suchkriterien wurden keine passenden Objekte gefunden.
               </p>
             </CardContent>
           </Card>

@@ -10,6 +10,7 @@ import { useState, useCallback, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
 import { Building2 } from 'lucide-react';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
@@ -184,11 +185,29 @@ const BeratungTab = () => {
     },
   });
 
-  // Calculate metrics for all listings (like MOD-08)
+  // Calculate metrics for all listings (DB + demo, like MOD-08)
   const handleSearch = useCallback(async () => {
     // First fetch fresh listings
     const { data: freshListings } = await refetch();
-    const listingsToProcess = freshListings || [];
+    
+    // Merge DB + demo listings (deduplicated) for calculation
+    const demoAsRaw: RawListing[] = demoListings.map(d => ({
+      id: d.listing_id,
+      public_id: d.public_id,
+      title: d.title,
+      asking_price: d.asking_price,
+      commission_rate: null,
+      property_address: d.address,
+      property_city: d.city,
+      property_type: d.property_type,
+      total_area_sqm: d.total_area_sqm,
+      annual_rent: d.monthly_rent_total * 12,
+      hero_image_path: d.hero_image_path || null,
+      property_id: d.listing_id,
+      unit_count: d.unit_count,
+    }));
+    const merged = deduplicateByField(demoAsRaw, freshListings || [], (item) => `${item.title}|${item.property_city}`);
+    const listingsToProcess = merged.filter(l => !excludedIds.has(l.id));
     
     if (listingsToProcess.length === 0) {
       setHasSearched(true);
@@ -214,7 +233,6 @@ const BeratungTab = () => {
 
       const result = await calculate(input);
       if (result) {
-        // Metrics-Struktur wie MOD-08
         newCache[listing.id] = {
           monthlyBurden: result.summary.monthlyBurden,
           roiAfterTax: result.summary.roiAfterTax,
@@ -229,7 +247,7 @@ const BeratungTab = () => {
     // Update cache first, THEN set hasSearched
     setMetricsCache(newCache);
     setHasSearched(true);
-  }, [searchParams, calculate, refetch]);
+  }, [searchParams, calculate, refetch, demoListings, excludedIds]);
 
   // Merge DB listings with demo listings (deduplicated), then filter excluded
   const visibleListings = useMemo(() => {
@@ -272,27 +290,39 @@ const BeratungTab = () => {
         isLoading={isLoading}
       />
 
-      {/* Property Grid - always visible (demo listings show immediately) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {visibleListings.length === 0 ? (
-          <div className="col-span-full text-center py-12 border-2 border-dashed rounded-lg">
-            <Building2 className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-            <p className="text-muted-foreground">
-              Keine Objekte im Partner-Netzwerk verfügbar
+      {/* Property Grid - only after search */}
+      {!hasSearched ? (
+        <Card className="border-2 border-dashed">
+          <CardContent className="py-12 text-center">
+            <Building2 className="w-12 h-12 mx-auto mb-4 text-primary opacity-70" />
+            <h3 className="text-lg font-semibold mb-2">Kundenberatung starten</h3>
+            <p className="text-muted-foreground max-w-md mx-auto">
+              Geben Sie das zu versteuernde Einkommen und Eigenkapital Ihres Kunden ein, um passende Objekte mit individueller Belastungsberechnung zu finden.
             </p>
-          </div>
-        ) : (
-          visibleListings.map((listing) => (
-            <InvestmentResultTile
-              key={listing.id}
-              listing={transformToPublicListing(listing)}
-              metrics={metricsCache[listing.id] || null}
-              showProvision={false}
-              linkPrefix="/portal/vertriebspartner/beratung/objekt"
-            />
-          ))
-        )}
-      </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {visibleListings.length === 0 ? (
+            <div className="col-span-full text-center py-12 border-2 border-dashed rounded-lg">
+              <Building2 className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+              <p className="text-muted-foreground">
+                Keine Objekte im Partner-Netzwerk verfügbar
+              </p>
+            </div>
+          ) : (
+            visibleListings.map((listing) => (
+              <InvestmentResultTile
+                key={listing.id}
+                listing={transformToPublicListing(listing)}
+                metrics={metricsCache[listing.id] || null}
+                showProvision={false}
+                linkPrefix="/portal/vertriebspartner/beratung/objekt"
+              />
+            ))
+          )}
+        </div>
+      )}
     </PageShell>
   );
 };
