@@ -530,3 +530,406 @@ export function getDefaultPvVvForm(): LegalDocumentFormData {
     },
   };
 }
+
+// ═══════════════════════════════════════════════════════════════
+// TESTAMENT-SCHREIBVORLAGEN (PDF mit allen 4 Varianten)
+// ═══════════════════════════════════════════════════════════════
+
+function addSectionTitle(doc: jsPDF, title: string, y: number): number {
+  doc.setFont('times', 'bold');
+  doc.setFontSize(18);
+  doc.text(title, PAGE_WIDTH / 2, y, { align: 'center' });
+  y += 4;
+  doc.setLineWidth(0.5);
+  doc.line(MARGIN_LEFT, y, PAGE_WIDTH - MARGIN_RIGHT, y);
+  return y + 12;
+}
+
+function addParagraph(doc: jsPDF, title: string, y: number): number {
+  doc.setFont('times', 'bold');
+  doc.setFontSize(12);
+  doc.text(title, MARGIN_LEFT, y);
+  return y + LINE_HEIGHT + 2;
+}
+
+function addBody(doc: jsPDF, text: string, y: number): number {
+  doc.setFont('times', 'normal');
+  doc.setFontSize(10);
+  return addWrappedText(doc, text, MARGIN_LEFT, y, CONTENT_WIDTH, 5);
+}
+
+function addPlaceholderLine(doc: jsPDF, label: string, y: number): number {
+  doc.setFont('times', 'normal');
+  doc.setFontSize(10);
+  doc.text(`${label}: ______________________________________`, MARGIN_LEFT, y);
+  return y + LINE_HEIGHT + 2;
+}
+
+function addSignatureBlock(doc: jsPDF, y: number, label: string = 'Eigenhändige Unterschrift'): number {
+  doc.setFont('times', 'normal');
+  doc.setFontSize(11);
+  doc.text('Ort, Datum: __________________, den ______________', MARGIN_LEFT, y);
+  y += 14;
+  doc.text(`${label}:`, MARGIN_LEFT, y);
+  y += 2;
+  doc.text('__________________________', MARGIN_LEFT, y);
+  return y + LINE_HEIGHT;
+}
+
+function addTestamentFooter(doc: jsPDF, pageNum: number) {
+  doc.setFontSize(8);
+  doc.setFont('times', 'italic');
+  doc.setTextColor(120);
+  doc.text('SCHREIBVORLAGE — Nur wirksam als vollständig eigenhändig handschriftlich verfasstes und unterschriebenes Dokument.', PAGE_WIDTH / 2, 285, { align: 'center' });
+  doc.text(`Seite ${pageNum}`, PAGE_WIDTH / 2, 290, { align: 'center' });
+  doc.setTextColor(0);
+}
+
+function pageBreakIfNeeded(doc: jsPDF, y: number, pageNum: { v: number }, threshold = 240): number {
+  if (y > threshold) {
+    addTestamentFooter(doc, pageNum.v);
+    doc.addPage();
+    pageNum.v++;
+    return 25;
+  }
+  return y;
+}
+
+export function generateTestamentVorlagenPdf(): jsPDF {
+  const doc = new jsPDF('p', 'mm', 'a4');
+  const pg = { v: 1 };
+  let y = 25;
+
+  // ═══════════════════════════════════════════
+  // DECKBLATT — Allgemeine Hinweise
+  // ═══════════════════════════════════════════
+  doc.setFont('times', 'bold');
+  doc.setFontSize(20);
+  doc.text('TESTAMENT-VORLAGEN', PAGE_WIDTH / 2, y, { align: 'center' });
+  y += 6;
+  doc.setFontSize(12);
+  doc.text('Schreibvorlagen für eigenhändige Testamente', PAGE_WIDTH / 2, y, { align: 'center' });
+  y += 4;
+  doc.setLineWidth(0.8);
+  doc.line(MARGIN_LEFT, y, PAGE_WIDTH - MARGIN_RIGHT, y);
+  y += 12;
+
+  // Hinweis 1: Wirksamkeit
+  y = addParagraph(doc, '1) WIRKSAMKEIT / FORM', y);
+  const wirksamkeit = [
+    '• Diese Vorlage ist nur eine SCHREIBVORLAGE.',
+    '• Ein eigenhändiges Testament ist nur wirksam, wenn der gesamte Text vollständig eigenhändig (handschriftlich) geschrieben und eigenhändig unterschrieben wird.',
+    '• Ein Ausdruck (auch mit Unterschrift) oder eine digitale Signatur macht ein eigenhändiges Testament NICHT wirksam.',
+  ];
+  for (const t of wirksamkeit) {
+    y = addBody(doc, t, y);
+    y += 3;
+  }
+  y += 4;
+
+  // Hinweis 2: Handhabung
+  y = addParagraph(doc, '2) EMPFOHLENE HANDHABUNG (praxisbewährt)', y);
+  const handhabung = [
+    '• Nutzen Sie die Vorlage zum Entwurf und schreiben Sie den Text in Ruhe 1–3-mal als Entwurf per Hand, bis alles korrekt ist (Namen, Daten, Quoten, Ersatzregelung).',
+    '• Fertigen Sie anschließend genau EIN endgültiges handschriftliches Original an, mit Ort, Datum und vollständiger Unterschrift (Vor- und Nachname).',
+    '• Bewahren Sie das handschriftliche Original sicher auf. Zusätzlich können Sie Kopien/Scans zur Information für Vertrauenspersonen anfertigen. Kopien ersetzen das Original nicht.',
+  ];
+  for (const t of handhabung) {
+    y = addBody(doc, t, y);
+    y += 3;
+  }
+  y += 4;
+
+  // Hinweis 3: Auffindbarkeit
+  y = pageBreakIfNeeded(doc, y, pg);
+  y = addParagraph(doc, '3) AUFFINDBARKEIT IM ERBFALL / AMTLICHE VERWAHRUNG', y);
+  const auffindbarkeit = [
+    '• Privat aufbewahrte Testamente werden NICHT im Zentralen Testamentsregister registriert.',
+    '• Damit ein eigenhändiges Testament im Erbfall sicher gefunden wird, kann es in die besondere amtliche Verwahrung beim Nachlassgericht (Amtsgericht) gegeben werden. Dann wird es durch das verwahrende Gericht im Zentralen Testamentsregister erfasst.',
+    '• Notariell beurkundete Testamente/Erbverträge werden durch die Notarin/den Notar registriert.',
+    '• Im Zentralen Testamentsregister wird NICHT der Inhalt gespeichert, sondern nur, wo die Urkunde verwahrt wird.',
+  ];
+  for (const t of auffindbarkeit) {
+    y = addBody(doc, t, y);
+    y += 3;
+  }
+  y += 4;
+
+  // Hinweis 4: Widerruf
+  y = pageBreakIfNeeded(doc, y, pg);
+  y = addParagraph(doc, '4) WIDERRUF / AKTUALITÄT', y);
+  y = addBody(doc, '• Neue Testamente sollten klar regeln, ob frühere Verfügungen widerrufen werden.', y);
+  y += 3;
+  y = addBody(doc, '• Bei größeren Vermögen, Immobilien, Patchwork-Familien oder Auslandsbezug wird notarielle/anwaltliche Beratung dringend empfohlen.', y);
+  y += 6;
+
+  addTestamentFooter(doc, pg.v);
+
+  // ═══════════════════════════════════════════
+  // VORLAGE 1/4 — EINZELTESTAMENT: ALLEINERBE
+  // ═══════════════════════════════════════════
+  doc.addPage(); pg.v++; y = 25;
+  y = addSectionTitle(doc, 'VORLAGE 1/4 — EINZELTESTAMENT', y);
+  doc.setFont('times', 'normal');
+  doc.setFontSize(11);
+  doc.text('Alleinerbeneinsetzung (mit Ersatzerbe)', PAGE_WIDTH / 2, y - 4, { align: 'center' });
+  y += 6;
+
+  y = addBody(doc, 'Ich,', y); y += 2;
+  y = addPlaceholderLine(doc, 'Name (vollständig)', y);
+  y = addPlaceholderLine(doc, 'geboren am', y);
+  y = addPlaceholderLine(doc, 'wohnhaft', y);
+  y += 2;
+  y = addBody(doc, 'errichte hiermit mein Testament und bestimme für den Fall meines Todes:', y);
+  y += 8;
+
+  y = addParagraph(doc, '§ 1 Widerruf', y);
+  y = addBody(doc, 'Ich widerrufe alle früher von mir errichteten Testamente und sonstigen letztwilligen Verfügungen.', y);
+  y += 8;
+
+  y = addParagraph(doc, '§ 2 Alleinerbe', y);
+  y = addBody(doc, 'Zu meinem alleinigen und unbeschränkten Erben setze ich ein:', y);
+  y += 3;
+  y = addPlaceholderLine(doc, 'Name (vollständig)', y);
+  y = addPlaceholderLine(doc, 'geboren am', y);
+  y = addPlaceholderLine(doc, 'wohnhaft', y);
+  y += 6;
+
+  y = addParagraph(doc, '§ 3 Ausschluss sonstiger Erben', y);
+  y = addBody(doc, 'Alle Personen, die nach der gesetzlichen Erbfolge als Erben in Betracht kämen und die ich vorstehend nicht als Erben eingesetzt habe, schließe ich hiermit ausdrücklich von der Erbfolge aus.', y);
+  y += 8;
+
+  y = pageBreakIfNeeded(doc, y, pg);
+  y = addParagraph(doc, '§ 4 Ersatzerbe', y);
+  y = addBody(doc, 'Sollte der vorgenannte Erbe vor mir versterben oder die Erbschaft ausschlagen, so setze ich als Ersatzerben ein:', y);
+  y += 3;
+  y = addPlaceholderLine(doc, 'Name (vollständig)', y);
+  y = addPlaceholderLine(doc, 'geboren am', y);
+  y = addPlaceholderLine(doc, 'wohnhaft', y);
+  y += 6;
+
+  y = addParagraph(doc, '§ 5 Schlussbestimmung', y);
+  y = addBody(doc, 'Dieses Testament gilt für mein gesamtes gegenwärtiges und zukünftiges Vermögen, gleich welcher Art und an welchem Ort es sich befindet.', y);
+  y += 12;
+
+  y = addSignatureBlock(doc, y);
+  addTestamentFooter(doc, pg.v);
+
+  // ═══════════════════════════════════════════
+  // VORLAGE 2/4 — MEHRERE ERBEN
+  // ═══════════════════════════════════════════
+  doc.addPage(); pg.v++; y = 25;
+  y = addSectionTitle(doc, 'VORLAGE 2/4 — EINZELTESTAMENT', y);
+  doc.setFont('times', 'normal');
+  doc.setFontSize(11);
+  doc.text('Mehrere Erben nach Quoten', PAGE_WIDTH / 2, y - 4, { align: 'center' });
+  y += 6;
+
+  y = addBody(doc, 'Ich,', y); y += 2;
+  y = addPlaceholderLine(doc, 'Name (vollständig)', y);
+  y = addPlaceholderLine(doc, 'geboren am', y);
+  y = addPlaceholderLine(doc, 'wohnhaft', y);
+  y += 2;
+  y = addBody(doc, 'errichte hiermit mein Testament und bestimme für den Fall meines Todes:', y);
+  y += 8;
+
+  y = addParagraph(doc, '§ 1 Widerruf', y);
+  y = addBody(doc, 'Ich widerrufe alle früher von mir errichteten Testamente und sonstigen letztwilligen Verfügungen.', y);
+  y += 8;
+
+  y = addParagraph(doc, '§ 2 Erbeinsetzung (Erben nach Bruchteilen)', y);
+  y = addBody(doc, 'Zu meinen Erben setze ich ein:', y);
+  y += 4;
+  y = addBody(doc, '1) ______________________________________ zu einem Anteil von ______', y); y += 4;
+  y = addBody(doc, '2) ______________________________________ zu einem Anteil von ______', y); y += 4;
+  y = addBody(doc, '3) ______________________________________ zu einem Anteil von ______', y); y += 4;
+  doc.setFont('times', 'italic');
+  doc.setFontSize(9);
+  y = addWrappedText(doc, '(weitere Erben nach Bedarf ergänzen)', MARGIN_LEFT + 3, y, CONTENT_WIDTH, 5);
+  y += 8;
+
+  y = pageBreakIfNeeded(doc, y, pg);
+  y = addParagraph(doc, '§ 3 Ersatz- und Anwachsungsregelung', y);
+  y = addBody(doc, '(1) Sollte einer der eingesetzten Erben vor mir versterben oder die Erbschaft ausschlagen, treten dessen Abkömmlinge nach den gesetzlichen Vorschriften an dessen Stelle.', y);
+  y += 4;
+  y = addBody(doc, '(2) Sind keine Abkömmlinge vorhanden, wächst der freiwerdende Erbteil den übrigen Erben im Verhältnis ihrer Erbquoten an.', y);
+  y += 8;
+
+  y = addParagraph(doc, '§ 4 Teilungsanordnung (optional)', y);
+  doc.setFont('times', 'italic');
+  doc.setFontSize(9);
+  y = addWrappedText(doc, 'Nur ausfüllen, wenn gewollt — z.B.: „Die Immobilie [Bezeichnung/Adresse] soll im Innenverhältnis auf [Name] fallen; Ausgleichung erfolgt durch …"', MARGIN_LEFT, y, CONTENT_WIDTH, 5);
+  y += 3;
+  doc.setFont('times', 'normal');
+  doc.setFontSize(10);
+  doc.text('________________________________________________________________________', MARGIN_LEFT, y);
+  y += 4;
+  doc.text('________________________________________________________________________', MARGIN_LEFT, y);
+  y += 8;
+
+  y = addParagraph(doc, '§ 5 Schlussbestimmung', y);
+  y = addBody(doc, 'Dieses Testament gilt für mein gesamtes gegenwärtiges und zukünftiges Vermögen.', y);
+  y += 12;
+
+  y = addSignatureBlock(doc, y);
+  addTestamentFooter(doc, pg.v);
+
+  // ═══════════════════════════════════════════
+  // VORLAGE 3/4 — VOR- UND NACHERBSCHAFT
+  // ═══════════════════════════════════════════
+  doc.addPage(); pg.v++; y = 25;
+  y = addSectionTitle(doc, 'VORLAGE 3/4 — EINZELTESTAMENT', y);
+  doc.setFont('times', 'normal');
+  doc.setFontSize(11);
+  doc.text('Vor- und Nacherbschaft', PAGE_WIDTH / 2, y - 4, { align: 'center' });
+  y += 6;
+
+  y = addBody(doc, 'Ich,', y); y += 2;
+  y = addPlaceholderLine(doc, 'Name (vollständig)', y);
+  y = addPlaceholderLine(doc, 'geboren am', y);
+  y = addPlaceholderLine(doc, 'wohnhaft', y);
+  y += 2;
+  y = addBody(doc, 'errichte hiermit mein Testament und bestimme für den Fall meines Todes:', y);
+  y += 8;
+
+  y = addParagraph(doc, '§ 1 Widerruf', y);
+  y = addBody(doc, 'Ich widerrufe alle früher von mir errichteten Testamente und sonstigen letztwilligen Verfügungen.', y);
+  y += 8;
+
+  y = addParagraph(doc, '§ 2 Vorerbe', y);
+  y = addBody(doc, 'Ich setze als Vorerben ein:', y); y += 3;
+  y = addPlaceholderLine(doc, 'Name (vollständig)', y);
+  y = addPlaceholderLine(doc, 'geboren am', y);
+  y = addPlaceholderLine(doc, 'wohnhaft', y);
+  y += 6;
+
+  y = addParagraph(doc, '§ 3 Nacherbe', y);
+  y = addBody(doc, 'Als Nacherben bestimme ich:', y); y += 3;
+  y = addPlaceholderLine(doc, 'Name (vollständig)', y);
+  y = addPlaceholderLine(doc, 'geboren am', y);
+  y = addPlaceholderLine(doc, 'wohnhaft', y);
+  y += 3;
+  y = addBody(doc, 'Die Nacherbfolge soll eintreten mit dem Tod des Vorerben.', y);
+  y += 8;
+
+  y = pageBreakIfNeeded(doc, y, pg);
+  y = addParagraph(doc, '§ 4 Anordnung zur Verfügungsmacht', y);
+  y = addBody(doc, 'Der Vorerbe ist nicht berechtigt, Nachlassgegenstände unentgeltlich zu übertragen oder durch Schenkung zu mindern. (Soweit gesetzlich zulässig.)', y);
+  y += 8;
+
+  y = addParagraph(doc, '§ 5 Schlussbestimmung', y);
+  y = addBody(doc, 'Dieses Testament gilt für mein gesamtes gegenwärtiges und zukünftiges Vermögen.', y);
+  y += 12;
+
+  y = addSignatureBlock(doc, y);
+  addTestamentFooter(doc, pg.v);
+
+  // ═══════════════════════════════════════════
+  // VORLAGE 4/4 — BERLINER TESTAMENT
+  // ═══════════════════════════════════════════
+  doc.addPage(); pg.v++; y = 25;
+  y = addSectionTitle(doc, 'VORLAGE 4/4 — BERLINER TESTAMENT', y);
+  doc.setFont('times', 'normal');
+  doc.setFontSize(11);
+  doc.text('Gegenseitige Alleinerbeneinsetzung + Schlusserben', PAGE_WIDTH / 2, y - 4, { align: 'center' });
+  y += 4;
+
+  // Spezieller Formhinweis
+  doc.setFont('times', 'bold');
+  doc.setFontSize(10);
+  doc.setTextColor(180, 0, 0);
+  y = addWrappedText(doc, 'WICHTIG: Dieses gemeinschaftliche Testament ist nur wirksam, wenn der gesamte Text von einem Ehegatten/Lebenspartner eigenhändig handschriftlich geschrieben wird. Beide Ehegatten/Lebenspartner müssen eigenhändig unterschreiben.', MARGIN_LEFT, y, CONTENT_WIDTH, 5);
+  doc.setTextColor(0);
+  y += 8;
+
+  y = addBody(doc, 'Wir, die Eheleute / eingetragenen Lebenspartner', y); y += 4;
+  y = addPlaceholderLine(doc, 'Partner 1 — Name (vollständig)', y);
+  y = addPlaceholderLine(doc, 'geboren am', y);
+  y = addPlaceholderLine(doc, 'wohnhaft', y);
+  y += 2;
+  y = addBody(doc, 'und', y); y += 4;
+  y = addPlaceholderLine(doc, 'Partner 2 — Name (vollständig)', y);
+  y = addPlaceholderLine(doc, 'geboren am', y);
+  y = addPlaceholderLine(doc, 'wohnhaft', y);
+  y += 2;
+  y = addBody(doc, 'errichten hiermit folgendes gemeinschaftliches Testament:', y);
+  y += 8;
+
+  y = addParagraph(doc, '§ 1 Widerruf', y);
+  y = addBody(doc, 'Wir widerrufen alle früher von uns errichteten Testamente und sonstigen letztwilligen Verfügungen.', y);
+  y += 8;
+
+  y = pageBreakIfNeeded(doc, y, pg);
+  y = addParagraph(doc, '§ 2 Gegenseitige Alleinerbeneinsetzung', y);
+  y = addBody(doc, 'Wir setzen uns hiermit gegenseitig zu alleinigen Erben des zuerst von uns Versterbenden ein.', y);
+  y += 8;
+
+  y = addParagraph(doc, '§ 3 Schlusserben', y);
+  y = addBody(doc, 'Schlusserben des Letztversterbenden von uns sind unsere Abkömmlinge:', y);
+  y += 4;
+  y = addBody(doc, '1) ______________________________________, geboren am ______________', y); y += 4;
+  y = addBody(doc, '2) ______________________________________, geboren am ______________', y); y += 4;
+  doc.setFont('times', 'italic');
+  doc.setFontSize(9);
+  y = addWrappedText(doc, '(weitere nach Bedarf ergänzen)', MARGIN_LEFT + 3, y, CONTENT_WIDTH, 5);
+  y += 3;
+  y = addBody(doc, 'zu gleichen Teilen.', y); y += 3;
+  y = addBody(doc, 'Verstirbt ein Abkömmling vor dem Letztversterbenden, treten dessen Abkömmlinge nach den gesetzlichen Vorschriften an seine Stelle.', y);
+  y += 8;
+
+  y = pageBreakIfNeeded(doc, y, pg);
+  y = addParagraph(doc, '§ 4 Pflichtteilsstrafklausel', y);
+  y = addBody(doc, 'Verlangt ein Abkömmling nach dem Tod des Erstversterbenden den Pflichtteil oder macht Pflichtteils- bzw. Pflichtteilsergänzungsansprüche geltend, so soll dieser Abkömmling auch nach dem Tod des Letztversterbenden lediglich den Pflichtteil erhalten.', y);
+  y += 8;
+
+  y = addParagraph(doc, '§ 5 Wechselbezüglichkeit und Bindungswirkung', y);
+  y = addBody(doc, 'Die vorstehenden Verfügungen sind wechselbezüglich. Nach dem Tod des Erstversterbenden ist der Überlebende an die wechselbezüglichen Verfügungen gebunden, soweit gesetzlich vorgesehen.', y);
+  y += 8;
+
+  y = addParagraph(doc, '§ 6 Schlussbestimmung', y);
+  y = addBody(doc, 'Dieses Testament gilt für unser gesamtes Vermögen.', y);
+  y += 12;
+
+  // Zwei Unterschriften
+  y = pageBreakIfNeeded(doc, y, pg);
+  doc.setFont('times', 'normal');
+  doc.setFontSize(11);
+  doc.text('Ort, Datum: __________________, den ______________', MARGIN_LEFT, y);
+  y += 14;
+  doc.text('(Unterschrift Partner 1)', MARGIN_LEFT, y);
+  y += 2;
+  doc.text('__________________________', MARGIN_LEFT, y);
+  y += 12;
+  doc.text('(Unterschrift Partner 2 — Zustimmungsvermerk empfohlen)', MARGIN_LEFT, y);
+  y += 6;
+  doc.setFont('times', 'italic');
+  doc.setFontSize(10);
+  doc.text('„Ich schließe mich den vorstehenden Verfügungen an."', MARGIN_LEFT, y);
+  y += 6;
+  doc.setFont('times', 'normal');
+  doc.setFontSize(11);
+  doc.text('__________________________', MARGIN_LEFT, y);
+
+  addTestamentFooter(doc, pg.v);
+
+  // ═══════════════════════════════════════════
+  // SCHLUSSSEITE — Hinweis zur Hinterlegung
+  // ═══════════════════════════════════════════
+  doc.addPage(); pg.v++; y = 25;
+  y = addSectionTitle(doc, 'HINWEIS ZUR HINTERLEGUNG', y);
+
+  const schluss = [
+    '• Das Zentrale Testamentsregister (ZTR) wird seit 2012 von der Bundesnotarkammer im gesetzlichen Auftrag geführt und stellt sicher, dass amtlich verwahrte oder notarielle Testamente im Sterbefall gefunden werden.',
+    '• Privat aufbewahrte Testamente können nicht registriert werden.',
+    '• Eigenhändige Testamente können registriert werden, wenn sie in die besondere amtliche Verwahrung beim Nachlassgericht (Amtsgericht) gegeben werden; die Registrierung nimmt das Gericht vor.',
+    '• Alternativ kann ein Testament notariell beurkundet werden; der Notar veranlasst die Registrierung.',
+  ];
+  for (const t of schluss) {
+    y = addBody(doc, t, y);
+    y += 5;
+  }
+
+  addTestamentFooter(doc, pg.v);
+
+  return doc;
+}

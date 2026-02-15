@@ -1,8 +1,7 @@
 /**
- * LegalDocumentDialog — 3-Schritt-Prozess:
- * 1. Vorlage bearbeiten (editierbares Formular)
- * 2. Druckvorschau (PDF generieren + drucken)
- * 3. Scan hochladen (unterschriebenes Original)
+ * LegalDocumentDialog — Zwei Modi:
+ * - patientenverfuegung: 3-Schritt (Formular → Vorschau → Upload)
+ * - testament: 2-Schritt (Hinweise+Download → Upload)
  */
 import { useState, useCallback } from 'react';
 import type { Json } from '@/integrations/supabase/types';
@@ -14,13 +13,14 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { FileDropZone } from '@/components/dms/FileDropZone';
 import { Badge } from '@/components/ui/badge';
-import { generatePatientenverfuegungPdf, getDefaultPvVvForm, type LegalDocumentFormData } from '@/lib/generateLegalDocumentPdf';
+import { generatePatientenverfuegungPdf, generateTestamentVorlagenPdf, getDefaultPvVvForm, type LegalDocumentFormData } from '@/lib/generateLegalDocumentPdf';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { ArrowLeft, ArrowRight, Printer, Upload, CheckCircle2, FileText, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Printer, Upload, CheckCircle2, FileText, AlertTriangle, Download, Info } from 'lucide-react';
 
-type Step = 'edit' | 'preview' | 'upload';
+type PvStep = 'edit' | 'preview' | 'upload';
+type TestamentStep = 'info' | 'upload';
 
 interface LegalDocumentDialogProps {
   open: boolean;
@@ -34,9 +34,12 @@ interface LegalDocumentDialogProps {
 export function LegalDocumentDialog({
   open, onOpenChange, documentType, tenantId, existingFormData, onCompleted,
 }: LegalDocumentDialogProps) {
-  const { user, activeTenantId: authTenantId } = useAuth();
+  const { user } = useAuth();
   const userId = user?.id;
-  const [step, setStep] = useState<Step>('edit');
+  const isTestament = documentType === 'testament';
+
+  const [pvStep, setPvStep] = useState<PvStep>('edit');
+  const [testamentStep, setTestamentStep] = useState<TestamentStep>('info');
   const [form, setForm] = useState<LegalDocumentFormData>(existingFormData || getDefaultPvVvForm());
   const [uploading, setUploading] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
@@ -49,6 +52,7 @@ export function LegalDocumentDialog({
     setForm(prev => ({ ...prev, vv: { ...prev.vv, [field]: value } }));
   }, []);
 
+  // PV handlers
   const handlePrint = useCallback(() => {
     const doc = generatePatientenverfuegungPdf(form);
     doc.autoPrint();
@@ -57,11 +61,18 @@ export function LegalDocumentDialog({
     window.open(url);
   }, [form]);
 
-  const handleDownload = useCallback(() => {
+  const handleDownloadPv = useCallback(() => {
     const doc = generatePatientenverfuegungPdf(form);
-    doc.save(`${documentType === 'patientenverfuegung' ? 'Patientenverfuegung_Vorsorgevollmacht' : 'Berliner_Testament'}.pdf`);
-  }, [form, documentType]);
+    doc.save('Patientenverfuegung_Vorsorgevollmacht.pdf');
+  }, [form]);
 
+  // Testament handler
+  const handleDownloadTestament = useCallback(() => {
+    const doc = generateTestamentVorlagenPdf();
+    doc.save('Testament_Schreibvorlagen.pdf');
+  }, []);
+
+  // Upload handler (shared)
   const handleUploadScan = useCallback(async (files: File[]) => {
     if (!userId || !tenantId || files.length === 0) return;
     setUploading(true);
@@ -74,18 +85,16 @@ export function LegalDocumentDialog({
         .upload(filePath, file);
       
       if (uploadError) {
-        // If bucket doesn't exist, save without storage — just mark completed
         console.warn('Upload failed (bucket may not exist), marking as completed anyway:', uploadError);
       }
 
-      // Save / update legal_documents record
       const record = {
         tenant_id: tenantId,
         user_id: userId,
         document_type: documentType,
         is_completed: true,
         completed_at: new Date().toISOString(),
-        form_data: JSON.parse(JSON.stringify(form)) as Json,
+        form_data: (isTestament ? {} : JSON.parse(JSON.stringify(form))) as Json,
       };
 
       const { data: existing } = await supabase
@@ -111,7 +120,7 @@ export function LegalDocumentDialog({
     } finally {
       setUploading(false);
     }
-  }, [userId, tenantId, documentType, form, onCompleted, onOpenChange]);
+  }, [userId, tenantId, documentType, form, isTestament, onCompleted, onOpenChange]);
 
   const handleSaveFormData = useCallback(async () => {
     if (!userId || !tenantId) return;
@@ -140,7 +149,111 @@ export function LegalDocumentDialog({
     }
   }, [userId, tenantId, documentType, form]);
 
-  // Render step content
+  // ═══════════════════════════════════════════
+  // SHARED: Upload step renderer
+  // ═══════════════════════════════════════════
+  const renderUpload = () => (
+    <div className="space-y-4">
+      <div className="text-sm text-muted-foreground">
+        Bitte laden Sie den <strong>unterschriebenen Scan</strong> hier hoch:
+      </div>
+      
+      <FileDropZone onDrop={handleUploadScan} disabled={uploading}>
+        <div className="border-2 border-dashed border-border/50 rounded-xl p-8 text-center hover:border-primary/30 transition-colors cursor-pointer">
+          <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-3" />
+          <p className="text-sm font-medium">PDF oder Bild hierher ziehen</p>
+          <p className="text-xs text-muted-foreground mt-1">oder klicken zum Auswählen</p>
+        </div>
+      </FileDropZone>
+
+      <div className="flex items-start gap-2">
+        <Checkbox checked={confirmed} onCheckedChange={v => setConfirmed(!!v)} />
+        <span className="text-sm">
+          {isTestament
+            ? 'Ich bestätige, dass das handschriftliche Original sicher aufbewahrt ist.'
+            : 'Ich bestätige, dass das Original sicher aufbewahrt ist und eine Ausfertigung der bevollmächtigten Person übergeben wurde.'}
+        </span>
+      </div>
+
+      {uploading && (
+        <div className="text-sm text-muted-foreground animate-pulse">Wird hochgeladen...</div>
+      )}
+    </div>
+  );
+
+  // ═══════════════════════════════════════════
+  // TESTAMENT: Info + Download step
+  // ═══════════════════════════════════════════
+  const renderTestamentInfo = () => (
+    <div className="space-y-5 max-h-[60vh] overflow-y-auto pr-2">
+      {/* Formhinweis */}
+      <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4">
+        <div className="flex gap-3">
+          <AlertTriangle className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
+          <div className="text-sm space-y-1">
+            <p className="font-semibold text-red-700 dark:text-red-400">Wichtig: Eigenhändige Form erforderlich</p>
+            <ul className="list-disc pl-4 space-y-1 text-muted-foreground">
+              <li>Ein eigenhändiges Testament ist <strong>nur wirksam</strong>, wenn der gesamte Text <strong>vollständig handschriftlich</strong> geschrieben und eigenhändig unterschrieben wird.</li>
+              <li>Ein Ausdruck (auch mit Unterschrift) oder eine digitale Signatur macht ein Testament <strong>NICHT wirksam</strong>.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      {/* Empfohlene Handhabung */}
+      <div className="bg-muted/30 border border-border/30 rounded-xl p-4">
+        <div className="flex gap-3">
+          <Info className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+          <div className="text-sm space-y-2">
+            <p className="font-semibold">Empfohlene Handhabung</p>
+            <ol className="list-decimal pl-4 space-y-1 text-muted-foreground">
+              <li>Laden Sie die <strong>PDF-Schreibvorlage</strong> herunter (enthält 4 verschiedene Testament-Varianten).</li>
+              <li>Wählen Sie die passende Vorlage und <strong>schreiben Sie den Text 1–3-mal als Entwurf per Hand</strong>, bis alles korrekt ist.</li>
+              <li>Fertigen Sie <strong>genau EIN endgültiges handschriftliches Original</strong> an, mit Ort, Datum und vollständiger Unterschrift.</li>
+              <li>Bewahren Sie das Original <strong>sicher auf</strong> (Tresor, Notar, amtliche Verwahrung beim Nachlassgericht).</li>
+              <li>Laden Sie hier einen <strong>Scan als Referenzkopie</strong> hoch — dieser ersetzt nicht das Original.</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+
+      {/* Enthaltene Vorlagen */}
+      <div className="bg-muted/30 border border-border/30 rounded-xl p-4">
+        <p className="text-sm font-semibold mb-2">Die PDF enthält folgende Vorlagen:</p>
+        <ul className="text-sm text-muted-foreground space-y-1">
+          <li>📄 <strong>Vorlage 1/4:</strong> Einzeltestament — Alleinerbe (mit Ersatzerbe)</li>
+          <li>📄 <strong>Vorlage 2/4:</strong> Einzeltestament — Mehrere Erben (Quoten)</li>
+          <li>📄 <strong>Vorlage 3/4:</strong> Vor- und Nacherbschaft</li>
+          <li>📄 <strong>Vorlage 4/4:</strong> Berliner Testament (Ehegatten/Lebenspartner)</li>
+        </ul>
+      </div>
+
+      {/* Hinterlegungshinweis */}
+      <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4">
+        <div className="flex gap-3">
+          <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+          <div className="text-sm space-y-1">
+            <p className="font-semibold text-amber-700 dark:text-amber-400">Auffindbarkeit im Erbfall</p>
+            <ul className="list-disc pl-4 space-y-1 text-muted-foreground">
+              <li>Privat aufbewahrte Testamente werden <strong>nicht</strong> im Zentralen Testamentsregister registriert.</li>
+              <li>Für die Registrierung kann das Testament in die <strong>amtliche Verwahrung beim Nachlassgericht</strong> gegeben werden.</li>
+              <li>Bei größeren Vermögen, Immobilien oder Patchwork-Familien wird <strong>notarielle/anwaltliche Beratung</strong> empfohlen.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      {/* Download-Button */}
+      <Button onClick={handleDownloadTestament} size="lg" className="w-full gap-2">
+        <Download className="h-5 w-5" />
+        PDF-Schreibvorlage herunterladen (4 Varianten)
+      </Button>
+    </div>
+  );
+
+  // ═══════════════════════════════════════════
+  // PATIENTENVERFÜGUNG: Edit step
+  // ═══════════════════════════════════════════
   const renderEdit = () => (
     <div className="space-y-6 max-h-[60vh] overflow-y-auto pr-2">
       {/* TEIL A: Patientenverfügung */}
@@ -395,7 +508,7 @@ export function LegalDocumentDialog({
           <Printer className="h-4 w-4" />
           Drucken
         </Button>
-        <Button onClick={handleDownload} variant="outline" className="flex-1 gap-2">
+        <Button onClick={handleDownloadPv} variant="outline" className="flex-1 gap-2">
           <FileText className="h-4 w-4" />
           PDF herunterladen
         </Button>
@@ -403,37 +516,60 @@ export function LegalDocumentDialog({
     </div>
   );
 
-  const renderUpload = () => (
-    <div className="space-y-4">
-      <div className="text-sm text-muted-foreground">
-        Bitte laden Sie den <strong>unterschriebenen Scan</strong> hier hoch:
-      </div>
-      
-      <FileDropZone onDrop={handleUploadScan} disabled={uploading}>
-        <div className="border-2 border-dashed border-border/50 rounded-xl p-8 text-center hover:border-primary/30 transition-colors cursor-pointer">
-          <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-3" />
-          <p className="text-sm font-medium">PDF oder Bild hierher ziehen</p>
-          <p className="text-xs text-muted-foreground mt-1">oder klicken zum Auswählen</p>
-        </div>
-      </FileDropZone>
+  // ═══════════════════════════════════════════
+  // RENDER
+  // ═══════════════════════════════════════════
+  if (isTestament) {
+    const testamentStepLabels: Record<TestamentStep, string> = {
+      info: 'Hinweise & Download',
+      upload: 'Scan hochladen',
+    };
 
-      <div className="flex items-start gap-2">
-        <Checkbox
-          checked={confirmed}
-          onCheckedChange={v => setConfirmed(!!v)}
-        />
-        <span className="text-sm">
-          Ich bestätige, dass das Original sicher aufbewahrt ist und eine Ausfertigung der bevollmächtigten Person übergeben wurde.
-        </span>
-      </div>
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-2xl max-h-[90vh]">
+          <DialogHeader>
+            <DialogTitle>Testament — Schreibvorlagen</DialogTitle>
+            <DialogDescription>
+              <div className="flex items-center gap-2 mt-2">
+                {(['info', 'upload'] as TestamentStep[]).map((s, i) => (
+                  <div key={s} className="flex items-center gap-1">
+                    <Badge
+                      variant={testamentStep === s ? 'default' : 'outline'}
+                      className={testamentStep === s ? '' : 'opacity-50'}
+                    >
+                      {i + 1}. {testamentStepLabels[s]}
+                    </Badge>
+                    {i < 1 && <ArrowRight className="h-3 w-3 text-muted-foreground" />}
+                  </div>
+                ))}
+              </div>
+            </DialogDescription>
+          </DialogHeader>
 
-      {uploading && (
-        <div className="text-sm text-muted-foreground animate-pulse">Wird hochgeladen...</div>
-      )}
-    </div>
-  );
+          {testamentStep === 'info' && renderTestamentInfo()}
+          {testamentStep === 'upload' && renderUpload()}
 
-  const stepLabels: Record<Step, string> = {
+          <div className="flex justify-between pt-4 border-t border-border/30">
+            {testamentStep === 'upload' ? (
+              <Button variant="outline" onClick={() => setTestamentStep('info')} className="gap-2">
+                <ArrowLeft className="h-4 w-4" /> Zurück
+              </Button>
+            ) : <div />}
+
+            {testamentStep === 'info' && (
+              <Button onClick={() => setTestamentStep('upload')} className="gap-2">
+                Scan hochladen <ArrowRight className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  // PATIENTENVERFÜGUNG (3-Schritt)
+  const pvStepLabels: Record<PvStep, string> = {
     edit: 'Vorlage bearbeiten',
     preview: 'Druckvorschau',
     upload: 'Scan hochladen',
@@ -446,13 +582,13 @@ export function LegalDocumentDialog({
           <DialogTitle>Patientenverfügung & Vorsorgevollmacht</DialogTitle>
           <DialogDescription>
             <div className="flex items-center gap-2 mt-2">
-              {(['edit', 'preview', 'upload'] as Step[]).map((s, i) => (
+              {(['edit', 'preview', 'upload'] as PvStep[]).map((s, i) => (
                 <div key={s} className="flex items-center gap-1">
                   <Badge
-                    variant={step === s ? 'default' : 'outline'}
-                    className={step === s ? '' : 'opacity-50'}
+                    variant={pvStep === s ? 'default' : 'outline'}
+                    className={pvStep === s ? '' : 'opacity-50'}
                   >
-                    {i + 1}. {stepLabels[s]}
+                    {i + 1}. {pvStepLabels[s]}
                   </Badge>
                   {i < 2 && <ArrowRight className="h-3 w-3 text-muted-foreground" />}
                 </div>
@@ -461,27 +597,27 @@ export function LegalDocumentDialog({
           </DialogDescription>
         </DialogHeader>
 
-        {step === 'edit' && renderEdit()}
-        {step === 'preview' && renderPreview()}
-        {step === 'upload' && renderUpload()}
+        {pvStep === 'edit' && renderEdit()}
+        {pvStep === 'preview' && renderPreview()}
+        {pvStep === 'upload' && renderUpload()}
 
         <div className="flex justify-between pt-4 border-t border-border/30">
-          {step !== 'edit' ? (
+          {pvStep !== 'edit' ? (
             <Button variant="outline" onClick={() => {
-              if (step === 'preview') setStep('edit');
-              if (step === 'upload') setStep('preview');
+              if (pvStep === 'preview') setPvStep('edit');
+              if (pvStep === 'upload') setPvStep('preview');
             }} className="gap-2">
               <ArrowLeft className="h-4 w-4" /> Zurück
             </Button>
           ) : <div />}
 
-          {step === 'edit' && (
-            <Button onClick={() => { handleSaveFormData(); setStep('preview'); }} className="gap-2">
+          {pvStep === 'edit' && (
+            <Button onClick={() => { handleSaveFormData(); setPvStep('preview'); }} className="gap-2">
               Vorschau <ArrowRight className="h-4 w-4" />
             </Button>
           )}
-          {step === 'preview' && (
-            <Button onClick={() => setStep('upload')} className="gap-2">
+          {pvStep === 'preview' && (
+            <Button onClick={() => setPvStep('upload')} className="gap-2">
               Weiter zum Upload <ArrowRight className="h-4 w-4" />
             </Button>
           )}
