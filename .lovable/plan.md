@@ -1,186 +1,159 @@
 
+# MOD-18 Finanzen (Base) — Kompletter Neubau nach 5-Punkte-Menue
 
-# MOD-11 Finanzmanager — Kompletter Neubau mit RecordCard-System
+## Ausgangslage
 
-## Ueberblick
+**MOD-18 "Finanzen"** befindet sich im Base-Bereich (`/portal/finanzanalyse`) und hat aktuell 4 Tabs:
+1. Uebersicht (Personen + KPIs + Setup)
+2. Cashflow & Budget (Charts + Budget-Editor)
+3. Vertraege & Fixkosten (Recurring Detection)
+4. Risiko & Absicherung (Versicherungs-Check)
 
-Alle 5 Tabs werden von Grund auf neu gebaut. Die bestehenden Accordion-basierten Tabs werden durch das etablierte **RecordCard-Pattern** ersetzt (wie in `ProfilTab.tsx` vorgemacht). Jeder Datensatz wird als quadratisches Widget dargestellt (geschlossen) und oeffnet sich als volle Breite (geoeffnet) mit allen Feldern, Datenraum und Actions — ohne Tabs, Wizards oder Accordions.
+Diese 4 Tabs werden **komplett ersetzt** durch die vom Prompt vorgegebene 5-Punkte-Struktur. Das RecordCard-System (wie in ProfilTab/Stammdaten) wird als UI-Standard verwendet.
 
-Die Hooks (`useFinanzmanagerData.ts`) und DB-Tabellen bleiben erhalten — nur die UI wird komplett erneuert.
+## Neue 5-Punkte-Menustruktur
 
-## Visuelle Referenz: Upvest-Inspiration
+| Nr | Tile-Name | Route-Path | Inhalt |
+|----|-----------|------------|--------|
+| 1 | UEBERSICHT | dashboard | Personen (RecordCard) + Konten (RecordCard) + 12M Scan |
+| 2 | INVESTMENT | investment | Upvest-Integration (read-only, Empty State) |
+| 3 | SACHVERSICHERUNGEN | sachversicherungen | Versicherungs-SSOT (RecordCard + kategoriespezifische Felder) |
+| 4 | VORSORGEVERTRAEGE | vorsorge | Vorsorge-CRUD (RecordCard + Person-Zuordnung) |
+| 5 | ABONNEMENTS | abonnements | Abo-SSOT (RecordCard + Seed Merchants) |
 
-Die Upvest-Screenshots zeigen ein cleanes Card-Design mit:
-- Dunkle Header-Cards mit klarer Informationshierarchie
-- Strukturierte Datenfelder (Label links, Wert rechts) mit feinen Trennlinien
-- Stepper/Progress-Indikatoren rechts neben den Cards
-- Klare CTAs am unteren Rand
+## Aenderungen im Detail
 
-Dieses Gefuehl wird uebertragen auf das bestehende `glass-card` Design-System mit `RECORD_CARD`-Konstanten.
+### 1. `routesManifest.ts` — Tiles von 4 auf 5 aendern
 
-## Layout-Prinzip (alle Tabs gleich)
-
-```text
-+--------------------------------------------+
-| PageShell + ModulePageHeader               |
-+--------------------------------------------+
-| RECORD_CARD.GRID (2 Spalten)               |
-|                                            |
-| +------------------+  +------------------+ |
-| | [RecordCard]     |  | [RecordCard]     | |
-| | glass-card       |  | glass-card       | |
-| | aspect-square    |  | aspect-square    | |
-| | Avatar/Icon      |  | Avatar/Icon      | |
-| | Titel            |  | Titel            | |
-| | Summary-Zeilen   |  | Summary-Zeilen   | |
-| | Badges           |  | Badges           | |
-| |        [>]       |  |        [>]       | |
-| +------------------+  +------------------+ |
-| +------------------+                       |
-| | [+ Hinzufuegen]  |                       |
-| | CTA-Widget       |                       |
-| +------------------+                       |
-|                                            |
-| --- Bei Klick: RecordCard OPEN ---         |
-| +----------------------------------------+ |
-| | [X]  Titel — Subtitle                  | |
-| |                                        | |
-| | SECTION_TITLE: Basisdaten              | |
-| | FIELD_GRID: 3 Spalten                  | |
-| | [Label: Wert] [Label: Wert] [...]      | |
-| |                                        | |
-| | SECTION_TITLE: Spezifisch              | |
-| | FIELD_GRID: Dynamische Felder          | |
-| |                                        | |
-| | SECTION_TITLE: Datenraum               | |
-| | [EntityStorageTree]                    | |
-| |                                        | |
-| |           [Loeschen]  [Speichern]      | |
-| +----------------------------------------+ |
-+--------------------------------------------+
+Aktuelle Tiles:
+```
+{ path: "dashboard", title: "Uebersicht" }
+{ path: "reports", title: "Cashflow & Budget" }
+{ path: "szenarien", title: "Vertraege & Fixkosten" }
+{ path: "settings", title: "Risiko & Absicherung" }
 ```
 
-## Datei-fuer-Datei Aenderungen
+Neue Tiles:
+```
+{ path: "dashboard", title: "Uebersicht", default: true }
+{ path: "investment", title: "Investment" }
+{ path: "sachversicherungen", title: "Sachversicherungen" }
+{ path: "vorsorge", title: "Vorsorgevertraege" }
+{ path: "abonnements", title: "Abonnements" }
+```
 
-### 1. `FMUebersichtTab.tsx` — Komplett-Neubau
+### 2. `FinanzanalysePage.tsx` — Router anpassen
 
-**Block A — Personen im Haushalt:**
-- Jede Person als `RecordCard` mit `entityType="person"`
-- Geschlossen: Avatar-Initialen, Name, Rolle-Badge, Geburtsdatum, E-Mail
-- Geoeffnet:
-  - Sektion "Persoenliche Daten": Rolle (Select), Anrede, Vorname, Nachname, Geb., E-Mail, Mobil
-  - Sektion "Adresse": Strasse, HNr, PLZ, Ort (optional)
-  - Sektion "DRV Renteninformation": Datum der Info, Regelaltersrente, kuenftige Rente, Erwerbsminderungsrente (alle editierbar)
-  - EntityStorageTree fuer Datenraum
-  - Speichern/Loeschen-Buttons
-- CTA-Widget `+ Person hinzufuegen` im RECORD_CARD.GRID
+Alte Routes (reports, szenarien, settings) entfernen. Neue Routes fuer die 5 Tiles registrieren. Lazy Imports anpassen.
 
-**Block B — Konten:**
-- Eigener Sektions-Header "Konten"
-- Jedes Konto als `RecordCard` mit `entityType="bank_account"`
-- Geschlossen: Custom Name oder "Bankname IBAN****1234", Kontotyp-Badge, Status-Badge (OK/Fehler)
-- Geoeffnet:
-  - Sektion "Meta" (EDITIERBAR): Custom Name (Input), Kategorie (Select: Privat/Vermietung/Tagesgeld/PV/Sonstige), Org-Zuordnung
-  - Sektion "Kontodaten" (READ-ONLY): Bank, IBAN maskiert, BIC, Inhaber, Saldo, Provider=FinAPI
-  - Sektion "Umsaetze 12M" (READ-ONLY): Tabelle mit Buchungsdatum, Betrag, Verwendungszweck, Gegenpartei
-  - Speichern-Button (nur fuer Meta)
+### 3. `UebersichtTab.tsx` — Komplett-Neubau
+
+**Block A — Personen im Haushalt (RecordCard):**
+- Jede Person als `RecordCard` im `RECORD_CARD.GRID`
+- Geschlossen: Avatar-Initialen, Name, Rolle-Badge, Geburtsdatum
+- Geoeffnet: Alle Felder (Rolle, Anrede, Vorname, Nachname, Geb., E-Mail, Mobil, Adresse) als editierbare Inputs im `RECORD_CARD.FIELD_GRID`
+- DRV-Subsektion: Renteninformationen (Datum, Regelaltersrente, kuenftige Rente, Erwerbsminderung)
+- CTA-Widget `+ Person hinzufuegen`
+
+**Block B — Konten (RecordCard):**
+- Eigener Sektions-Header
+- Jedes Konto als `RecordCard`
+- Geschlossen: Custom Name oder "Bankname IBAN****1234", Kontotyp-Badge, Status-Badge
+- Geoeffnet: Meta (editierbar), Kontodaten (read-only), Umsaetze 12M (read-only Tabelle)
 
 **Block C — 12M Scan:**
-- Prominente glass-card mit ScanSearch-Icon
-- Button "Umsaetze (12 Monate) auslesen & Vertraege erkennen"
-- Output-Bereich: Contract Candidates als Liste mit Action-Buttons
+- Glass-card mit Button "Umsaetze auslesen & Vertraege erkennen"
+- Output: Contract Candidates als Liste mit Action-Buttons (Als Abo/Versicherung/Vorsorge uebernehmen)
 
-### 2. `FMInvestmentTab.tsx` — Visuelles Upgrade (Upvest-inspiriert)
+### 4. Neue Datei: `InvestmentTab.tsx`
 
-**Zustand: Nicht verbunden** (aktueller Default):
-- Zentrierter Empty State in glass-card
-- Grosses Icon, Titel "Depot nicht verbunden"
-- Beschreibung + deaktivierter "Upvest verbinden (demnaechst)"-Button
-- Upvest-inspirierter Stepper rechts (3 Punkte: Personal Info, Appropriateness Check, T&Cs) als visueller Hinweis auf den Onboarding-Prozess
+- Zustand "nicht verbunden" (Default): Zentrierter Empty State, Upvest-Logo, "Depot nicht verbunden", deaktivierter Button
+- Zustand "verbunden" (vorbereitet): 4 Cards (Depot-Uebersicht, Positionen, Transaktionen, Reports/DMS-Links)
+- Visueller Stepper (3 Schritte: Personal Info, Appropriateness Check, T&Cs) als Hinweis
 
-**Zustand: Verbunden** (vorbereitet):
-- 4 Cards im RECORD_CARD.GRID:
-  - Depot-Uebersicht: Portfolio-Wert in gross (gruen wie bei Upvest), Cash-Position, Verbunden-Badge
-  - Positionen: Tabelle ISIN/Name/Stuecke/Wert (read-only)
-  - Transaktionen: Liste (read-only)
-  - Reports: DMS-Links + Download-Button (wie Upvest "DOWNLOAD REPORT")
+### 5. Neue Datei: `SachversicherungenTab.tsx`
 
-### 3. `FMSachversicherungenTab.tsx` — Komplett-Neubau mit RecordCard
-
-- Jede Versicherung als `RecordCard` mit `entityType="insurance"`
-- Geschlossen: Shield-Icon, "Versicherer — Kategorie", Beitrag, Status-Badge (Aktiv/Gekuendigt)
+- Jede Versicherung als `RecordCard`
+- Geschlossen: Shield-Icon, "Versicherer — Kategorie", Beitrag, Status-Badge
 - Geoeffnet:
-  - Sektion "Vertragsdaten":
-    - Kategorie (Select: Haftpflicht/Hausrat/Wohngebaeude/Rechtsschutz/KFZ/Unfall/BU/Sonstige)
-    - Versicherer, Policen-Nr., VN, Beginn, Ablauf/Kuendigungsfrist, Beitrag, Intervall, Status
-  - Sektion "Kategorie-spezifisch" (dynamisch eingeblendet nach Kategorie-Wahl):
+  - Universal-Felder: Kategorie, Versicherer, Policen-Nr., VN, Beginn, Ablauf, Beitrag+Intervall, Status
+  - Kategorie-spezifisch (dynamisch nach Kategorie-Wahl):
     - Haftpflicht: Deckungssumme, SB, mitversicherte Personen
-    - Hausrat: Versicherungssumme, Wohnflaeche, Elementar (Toggle)
-    - Wohngebaeude: Objekt-Referenz (Select), Wohnflaeche, Elementar (Toggle)
-    - Rechtsschutz: Bereiche (Checkboxen: Privat/Beruf/Verkehr/Miete), SB
-    - KFZ: Fahrzeug-Referenz (Select), Teilkasko/Vollkasko, SB
-    - Unfall: Grunddaten + Beitrag
-    - BU: Grunddaten + Beitrag
-  - Sektion "Datenraum": EntityStorageTree
-  - Actions: Loeschen + Speichern
-- CTA-Widget `+ Versicherung` mit Kategorie-Dropdown als erster Schritt
+    - Hausrat: Versicherungssumme, Wohnflaeche, Elementar Toggle
+    - Wohngebaeude: Objekt-Referenz, Wohnflaeche, Elementar Toggle
+    - Rechtsschutz: Bereiche (Checkboxen), SB
+    - KFZ: Fahrzeug-Referenz, TK/VK, SB
+    - Unfall/BU: Grunddaten + Beitrag
+  - EntityStorageTree (Datenraum)
+- CTA-Widget `+ Versicherung`
 
-### 4. `FMVorsorgeTab.tsx` — Komplett-Neubau mit RecordCard
+### 6. Neue Datei: `VorsorgeTab.tsx`
 
-- Jeder Vertrag als `RecordCard` mit `entityType="vorsorge"`
-- Geschlossen: HeartPulse-Icon, Anbieter, Vertragsart-Badge (bAV/Riester/Ruerup/...), Beitrag
-- Geoeffnet:
-  - Sektion "Vertragsdaten": Anbieter, Vertragsnummer, Vertragsart (Select), Person-Zuordnung (Select aus household_persons), Beginn, Beitrag, Intervall, Status, Notizen
-  - DRV-Referenz: Info-Banner "DRV-Renteninformationen werden unter Uebersicht > Personen gepflegt"
-  - Sektion "Datenraum": EntityStorageTree
-  - Actions: Loeschen + Speichern
+- Jeder Vertrag als `RecordCard`
+- Geschlossen: HeartPulse-Icon, Anbieter, Vertragsart-Badge, Beitrag
+- Geoeffnet: Anbieter, Vertragsnummer, Vertragsart (bAV/Riester/Ruerup/Versorgungswerk/Privat/Sonstige), Person-Zuordnung (Dropdown aus household_persons), Beginn, Beitrag+Intervall, Status, Notizen
+- DRV-Referenz: Info-Banner "DRV-Renteninformationen werden unter Uebersicht > Personen gepflegt"
+- EntityStorageTree
 - CTA-Widget `+ Vorsorgevertrag`
 
-### 5. `FMAbonnementsTab.tsx` — Komplett-Neubau mit RecordCard
+### 7. Neue Datei: `AbonnementsTab.tsx`
 
-- Monatliche Gesamtkosten im Header (wie bisher, aber prominenter)
-- Jedes Abo als `RecordCard` mit `entityType="subscription"`
-- Geschlossen: Repeat-Icon, Custom Name/Merchant, Kategorie-Badge, Betrag/Frequenz
-- Geoeffnet:
-  - Sektion "Abo-Details": Custom Name, Merchant, Kategorie (12er-Enum), Frequenz, Betrag, Payment Source, Start/Renewal, Letzte Zahlung, Status, Auto-Renew (Toggle), Confidence
-  - Sektion "Datenraum": EntityStorageTree
-  - Actions: Loeschen + Speichern
+- Monatliche Gesamtkosten im Header
+- Jedes Abo als `RecordCard`
+- Geschlossen: Repeat-Icon, Name/Merchant, Kategorie-Badge, Betrag/Frequenz
+- Geoeffnet: Custom Name, Merchant, Kategorie (12er-Enum), Frequenz, Betrag, Payment Source, Start/Renewal, Letzte Zahlung, Status, Auto-Renew Toggle, Confidence
 - CTA-Widget `+ Abonnement` mit Seed-Merchant Quick-Select Chips (Netflix, Amazon Prime, Spotify, etc.)
+- EntityStorageTree
 
-### 6. `useFinanzmanagerData.ts` — Minimale Ergaenzung
+### 8. Alte Dateien loeschen
 
-- `useUserSubscriptionMutations`: Doppelte `if (error)` Zeile entfernen (Zeile 190)
-- Update-Mutation ist bereits vorhanden — keine Aenderung noetig
+- `CashflowBudgetTab.tsx` — entfaellt (Analyse-Funktionen werden spaeter wieder eingefuehrt)
+- `VertraegeFixkostenTab.tsx` — entfaellt
+- `RisikoAbsicherungTab.tsx` — entfaellt
 
-### 7. `FinanzierungsmanagerPage.tsx` — Keine Aenderung
+### 9. `useFinanzanalyseData.ts` — Erweitern
 
-Router-Struktur, Dynamic Routes und Zugriffskontrolle bleiben unveraendert.
+Der Hook bleibt bestehen (Personen + Pension CRUD funktioniert). Neue Queries/Mutations fuer:
+- `insurance_contracts` (CRUD fuer Sachversicherungen)
+- `vorsorge_contracts` (CRUD fuer Vorsorgevertraege)
+- `user_subscriptions` (CRUD fuer Abonnements)
+- `bank_account_meta` (Update Custom Name, Kategorie)
+
+Diese Tabellen existieren bereits in der DB (aus MOD-11 SSOT). Der Hook liest und schreibt direkt darauf.
+
+### 10. `recordCardManifest.ts` — Pruefen
+
+Entity Types `person`, `insurance`, `vorsorge`, `subscription`, `bank_account` muessen registriert sein. Fehlende ergaenzen.
 
 ## Betroffene Dateien
 
 | Datei | Aenderung |
 |-------|-----------|
-| `src/pages/portal/finanzierungsmanager/FMUebersichtTab.tsx` | Komplett-Neubau: RecordCard fuer Personen + Konten + Scan |
-| `src/pages/portal/finanzierungsmanager/FMInvestmentTab.tsx` | Visuelles Upgrade: glass-card, Upvest-Stepper, Depot-Cards |
-| `src/pages/portal/finanzierungsmanager/FMSachversicherungenTab.tsx` | Komplett-Neubau: RecordCard + kategoriespezifische Felder |
-| `src/pages/portal/finanzierungsmanager/FMVorsorgeTab.tsx` | Komplett-Neubau: RecordCard + Person-Zuordnung + DRV-Referenz |
-| `src/pages/portal/finanzierungsmanager/FMAbonnementsTab.tsx` | Komplett-Neubau: RecordCard + Seed Merchants + Gesamtkosten |
-| `src/hooks/useFinanzmanagerData.ts` | Bugfix: Doppelte Error-Zeile entfernen |
-
-## Nicht betroffen
-
-- `FinanzierungsmanagerPage.tsx` (Router bleibt)
-- `routesManifest.ts` (Tiles/Menue bleiben)
-- DB-Tabellen (vorhanden und funktional)
-- `recordCardManifest.ts` (entityTypes bereits registriert)
-- `useFinanzmanagerData.ts` Hooks (CRUD funktioniert, wird weiterverwendet)
+| `src/manifests/routesManifest.ts` | MOD-18 Tiles: 4 -> 5, neue Pfade/Titel |
+| `src/pages/portal/FinanzanalysePage.tsx` | Router: 5 neue Routes, alte entfernen |
+| `src/pages/portal/finanzanalyse/UebersichtTab.tsx` | Komplett-Neubau mit RecordCard |
+| `src/pages/portal/finanzanalyse/InvestmentTab.tsx` | NEU: Upvest Empty State + vorbereitet |
+| `src/pages/portal/finanzanalyse/SachversicherungenTab.tsx` | NEU: Versicherungs-SSOT mit RecordCard |
+| `src/pages/portal/finanzanalyse/VorsorgeTab.tsx` | NEU: Vorsorge-CRUD mit RecordCard |
+| `src/pages/portal/finanzanalyse/AbonnementsTab.tsx` | NEU: Abo-SSOT mit RecordCard + Seeds |
+| `src/pages/portal/finanzanalyse/CashflowBudgetTab.tsx` | LOESCHEN |
+| `src/pages/portal/finanzanalyse/VertraegeFixkostenTab.tsx` | LOESCHEN |
+| `src/pages/portal/finanzanalyse/RisikoAbsicherungTab.tsx` | LOESCHEN |
+| `src/hooks/useFinanzanalyseData.ts` | Erweitern: Insurance/Vorsorge/Subscription/BankMeta CRUD |
+| `src/config/recordCardManifest.ts` | Ggf. fehlende entityTypes ergaenzen |
 
 ## Umsetzungsreihenfolge
 
-Aufgrund der Groesse wird empfohlen, die Tabs einzeln umzubauen:
+Aufgrund der Groesse empfehle ich, die Tabs einzeln zu bauen:
 
-1. **FMUebersichtTab** (wichtigster Tab, Personen + Konten)
-2. **FMSachversicherungenTab** (komplexester Tab wegen Kategorie-Felder)
-3. **FMVorsorgeTab** + **FMAbonnementsTab** (gleiche Struktur, parallel moeglich)
-4. **FMInvestmentTab** (visuelles Upgrade, kein CRUD)
+1. **Manifest + Router + UebersichtTab** (Grundgeruest, Personen + Konten)
+2. **SachversicherungenTab** (komplexester Tab wegen Kategorie-Felder)
+3. **VorsorgeTab + AbonnementsTab** (gleiche Struktur, parallel)
+4. **InvestmentTab** (visuelles Upgrade, kein CRUD)
 
+## SSOT-Regeln (unveraendert)
+
+- Versicherungen: SSOT in MOD-18 Finanzen (zentral)
+- Abonnements: SSOT in MOD-18 Finanzen (zentral)
+- Andere Module (Fahrzeuge/Zuhause/PV): Duerfen nur referenzieren/deep-linken
+- DRV-Rente: Gepflegt unter Uebersicht > Personen, in Vorsorge nur referenziert
