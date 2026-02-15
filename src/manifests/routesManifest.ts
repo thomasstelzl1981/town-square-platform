@@ -150,7 +150,8 @@ export const zone1Admin: ZoneDefinition = {
     { path: "projekt-desk/landing-pages", component: "ProjektDeskLandingPages", title: "Landing Pages" },
     // Petmanager (MOD-05) — Haustier-Governance
     { path: "petmanager", component: "PetmanagerDashboard", title: "Petmanager" },
-    // Finance Desk removed — legacy route handled via redirects in legacyRedirects[]
+    // Finance Desk (MOD-18) — Private Finanzberatung Lead-Management
+    { path: "finance-desk", component: "FinanceDeskDashboard", title: "Finance Desk" },
     // =========================================================================
     // ARMSTRONG CONSOLE — KI-Assistent Governance (Config only, no chat)
     // =========================================================================
@@ -650,9 +651,7 @@ export const legacyRoutes: LegacyRoute[] = [
   { path: "/portal/finance/*", redirect_to: "/portal/finanzierung", reason: "Legacy english route" },
   { path: "/portal/financing", redirect_to: "/portal/finanzierung", reason: "Legacy english route" },
   { path: "/portal/financing/*", redirect_to: "/portal/finanzierung", reason: "Legacy english route" },
-  // Legacy Admin Finance Desk → FutureRoom
-  { path: "/admin/finance-desk", redirect_to: "/admin/futureroom", reason: "Consolidated into FutureRoom" },
-  { path: "/admin/finance-desk/*", redirect_to: "/admin/futureroom", reason: "Consolidated into FutureRoom" },
+  // Finance Desk is now active again — no legacy redirect needed
   // Legacy MOD-11 Routes
   { path: "/portal/finanzierungsmanager/how-it-works", redirect_to: "/portal/finanzierungsmanager/dashboard", reason: "MOD-11 restructure" },
   { path: "/portal/finanzierungsmanager/selbstauskunft", redirect_to: "/portal/finanzierungsmanager/faelle", reason: "MOD-11 restructure" },

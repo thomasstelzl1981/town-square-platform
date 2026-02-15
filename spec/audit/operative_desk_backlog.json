@@ -79,14 +79,14 @@
     },
     {
       "id": "OPDESK-008",
-      "desk": "Finance Desk (Legacy)",
+      "desk": "Finance Desk",
       "file": "src/pages/admin/desks/FinanceDesk.tsx",
-      "route": "N/A (Redirect zu FutureRoom)",
-      "mod_ref": "MOD-11",
-      "pattern": "Redirect-Banner",
-      "maturity": "DEPRECATED",
-      "shell_migrated": false,
-      "note": "Redirect zu FutureRoom — Löschung wenn Legacy-Links bereinigt"
+      "route": "/admin/finance-desk",
+      "mod_ref": "MOD-18",
+      "pattern": "OperativeDeskShell (Beratungs-Lead-Management)",
+      "maturity": "FUNKTIONAL",
+      "shell_migrated": true,
+      "note": "Private Finanzberatung — Lead-Zuweisung an Manager-Accounts"
     }
   ],
 
@@ -133,11 +133,12 @@
     "phase_4": {
       "title": "Cleanup & Polish",
       "priority": "LOW",
-      "status": "OPEN",
+      "status": "DONE",
       "tasks": [
+        "✅ Finance Desk als Beratungs-Desk (MOD-18) reaktiviert — OperativeDeskShell + Lead-Flow",
+        "✅ Legacy-Redirect /admin/finance-desk entfernt, Route wiederhergestellt",
         "FutureRoom → Optional auf OperativeDeskShell migrieren",
-        "Website Hosting → Optional auf OperativeDeskShell migrieren",
-        "Finance Desk (Legacy) Redirect bereinigen/löschen"
+        "Website Hosting → Optional auf OperativeDeskShell migrieren"
       ]
     }
   },
