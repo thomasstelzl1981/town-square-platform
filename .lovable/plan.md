@@ -1,79 +1,83 @@
 
 
-# MOD-11 Finanzierungsmanager — Tile-Restore
+# Auto-Befuellung der Hauptperson bei Account-Eroeffnung
 
 ## Problem
 
-Die Manifest-Konfiguration von MOD-11 wurde versehentlich geaendert: Die operativen Workflow-Tiles (Dashboard, Finanzierungsakte, Einreichung, Provisionen, Archiv) wurden in `dynamic_routes` verschoben und durch persoenliche Finanzmanagement-Tiles (Uebersicht/Investment/Sachversicherungen/Vorsorge/Abonnements) ersetzt. Diese gehoeren zu MOD-18 (Finanzen), nicht zu MOD-11.
+Wenn ein neuer Nutzer sich registriert, wird zwar ein Profil (`profiles`) und eine Organisation erstellt, aber **keine Hauptperson** in `household_persons` angelegt. Das bedeutet, dass sowohl in MOD-18 (Finanzen) als auch in MOD-07/MOD-11 (Finanzierung/Selbstauskunft) die Personen-Liste beim ersten Besuch leer ist.
 
-Alle Code-Dateien sind vollstaendig erhalten — es muss nur die Manifest-Konfiguration und der Router zurueckgesetzt werden.
+## Loesung
+
+Den bestehenden Signup-Trigger `handle_new_user()` um einen INSERT in `household_persons` erweitern. So ist bei jedem neuen Account sofort Person #1 (Hauptperson / Accountinhaber) vorhanden — vorbefuellt mit Name und E-Mail aus der Registrierung.
 
 ## Aenderungen
 
-### 1. `src/manifests/routesManifest.ts` — MOD-11 Tiles zuruecksetzen
+### 1. Datenbank-Migration: `handle_new_user()` erweitern
 
-Aktuelle (falsche) Tiles:
-```
-tiles: [
-  { path: "dashboard", component: "FMUebersichtTab", title: "Uebersicht", default: true },
-  { path: "investment", component: "FMInvestmentTab", title: "Investment" },
-  { path: "sachversicherungen", component: "FMSachversicherungenTab", title: "Sachversicherungen" },
-  { path: "vorsorge", component: "FMVorsorgeTab", title: "Vorsorgevertraege" },
-  { path: "abonnements", component: "FMAbonnementsTab", title: "Abonnements" },
-  { path: "landing-page", component: "FMLandingPage", title: "Landing Page" },
-]
-```
+Nach dem bestehenden `INSERT INTO public.memberships` wird ein neuer Block eingefuegt:
 
-Korrekte (alte) Tiles:
-```
-tiles: [
-  { path: "dashboard", component: "FMDashboard", title: "Dashboard", default: true },
-  { path: "finanzierungsakte", component: "FMFinanzierungsakte", title: "Finanzierungsakte" },
-  { path: "einreichung", component: "FMEinreichung", title: "Einreichung" },
-  { path: "provisionen", component: "FMProvisionen", title: "Provisionen" },
-  { path: "archiv", component: "FMArchiv", title: "Archiv" },
-  { path: "landing-page", component: "FMLandingPage", title: "Landing Page" },
-]
+```sql
+-- Create primary household person (Hauptperson) from signup data
+INSERT INTO public.household_persons (
+  tenant_id, user_id, role, is_primary, sort_order,
+  first_name, last_name, email
+) VALUES (
+  new_org_id,
+  NEW.id,
+  'hauptperson',
+  true,
+  0,
+  COALESCE(NEW.raw_user_meta_data->>'first_name', split_part(NEW.email, '@', 1)),
+  COALESCE(NEW.raw_user_meta_data->>'last_name', ''),
+  NEW.email
+);
 ```
 
-Die persoenlichen Finanz-Tiles (FMUebersichtTab, FMInvestmentTab, etc.) werden in `dynamic_routes` verschoben, damit sie weiterhin erreichbar bleiben, aber nicht mehr als Hauptnavigation erscheinen.
+Das nutzt `first_name` / `last_name` aus den Signup-Metadaten (falls vorhanden), ansonsten den E-Mail-Prefix als Vorname. Die Person ist sofort als `is_primary = true` und `role = 'hauptperson'` markiert.
 
-### 2. `src/pages/portal/FinanzierungsmanagerPage.tsx` — Router anpassen
+### 2. Frontend: Hauptperson nicht loeschbar (bereits implementiert)
 
-Die Route-Reihenfolge muss die operativen Seiten als Haupt-Tiles widerspiegeln:
-- `dashboard` zeigt wieder `FMDashboard` (mit Cases, Mandaten, Visitenkarte, Zins-Ticker)
-- `finanzierungsakte` zeigt `FMFinanzierungsakte` (Magic Intake, Split-View, Kaufy-Suche)
-- `einreichung` zeigt `FMEinreichung` (Mail Manager, Europace, Bank-Submission)
-- `provisionen` zeigt `FMProvisionen` (Tippgeber-Vereinbarung, Provisionshistorie)
-- `archiv` zeigt `FMArchiv` (abgeschlossene Faelle)
+In `UebersichtTab.tsx` (Zeile 175) ist bereits die Logik vorhanden:
 
-Die persoenlichen Finanz-Tabs (uebersicht, investment, sachversicherungen, vorsorge, abonnements) bleiben als untergeordnete Routes erreichbar.
+```tsx
+onDelete={!person.is_primary ? () => handleDelete(person.id) : undefined}
+```
 
-### 3. Keine Datei-Loeschungen
+Die Hauptperson kann also nicht geloescht werden — nur editiert. Das passt zur Anforderung.
 
-Alle Dateien bleiben erhalten:
-- FMDashboard.tsx (531 Zeilen, operativer Dashboard mit Cases + Visitenkarte)
-- FMFinanzierungsakte.tsx (619 Zeilen, Magic Intake + Split-View + Kaufy)
-- FMEinreichung.tsx (851 Zeilen, Mail Manager + Europace + Bank-Submission)
-- FMProvisionen.tsx (219 Zeilen, Tippgeber-Vereinbarung + Provisionshistorie)
-- FMArchiv.tsx (63 Zeilen, abgeschlossene Faelle)
-- FMLandingPage.tsx (24 Zeilen, Landing Page Builder Stub)
-- FMUebersichtTab.tsx, FMInvestmentTab.tsx, etc. (bleiben als dynamic_routes)
+### 3. Frontend: Alle Felder bleiben editierbar (bereits implementiert)
+
+Sowohl in MOD-18 (UebersichtTab) als auch in MOD-11 (FMUebersichtTab) sind alle Felder der Hauptperson als normale Input-Felder implementiert — vollstaendig aenderbar und speicherbar. Keine Aenderung noetig.
+
+### 4. Bestehende Accounts: Backfill-Migration
+
+Fuer bereits existierende Nutzer, die noch keine Hauptperson haben, wird ein einmaliger Backfill ausgefuehrt:
+
+```sql
+INSERT INTO public.household_persons (tenant_id, user_id, role, is_primary, sort_order, first_name, email)
+SELECT 
+  p.active_tenant_id,
+  p.id,
+  'hauptperson',
+  true,
+  0,
+  COALESCE(p.display_name, split_part(p.email, '@', 1)),
+  p.email
+FROM public.profiles p
+WHERE p.active_tenant_id IS NOT NULL
+  AND NOT EXISTS (
+    SELECT 1 FROM public.household_persons hp 
+    WHERE hp.tenant_id = p.active_tenant_id AND hp.is_primary = true
+  );
+```
 
 ## Betroffene Dateien
 
 | Datei | Aenderung |
 |-------|-----------|
-| `src/manifests/routesManifest.ts` | MOD-11 tiles: 6 operative Tiles wiederherstellen |
-| `src/pages/portal/FinanzierungsmanagerPage.tsx` | Router: dashboard → FMDashboard, Tile-Routes anpassen |
+| Neue SQL-Migration | `handle_new_user()` erweitern + Backfill |
 
-## Ergebnis
+## Kein Frontend-Code noetig
 
-Nach dem Restore zeigt MOD-11 wieder die 6 operativen Tiles:
-1. **Dashboard** — Faelle in Bearbeitung, Finanzierungsmandate, Visitenkarte, Zins-Ticker
-2. **Finanzierungsakte** — Neue Akte anlegen (Magic Intake, Kaufy-Suche, Split-View)
-3. **Einreichung** — Mail Manager, Europace-Anbindung, Bank-Submission
-4. **Provisionen** — Tippgeber-Vereinbarung (25% SoT), Provisionshistorie
-5. **Archiv** — Abgeschlossene/eingereichte Faelle
-6. **Landing Page** — Finanzberater-Landing Page Builder
+Die UI in beiden Modulen (MOD-18 und MOD-11) liest bereits aus `household_persons` und zeigt die Hauptperson als erste RecordCard an. Durch den Trigger ist diese ab sofort bei Account-Eroeffnung vorbefuellt. Alle Felder bleiben editierbar und speicherbar.
 
