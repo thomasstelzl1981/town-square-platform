@@ -18,6 +18,7 @@ import type { ReactNode } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { LucideIcon } from 'lucide-react';
+import { ZoneFlowIndicator, type ZoneFlowConfig } from './ZoneFlowIndicator';
 
 // ─── KPI Definition ──────────────────────────────────────────────────────────
 export interface DeskKPI {
@@ -37,31 +38,41 @@ interface OperativeDeskShellProps {
   subtitle: string;
   /** Manager-Module code, e.g. "MOD-13" */
   moduleCode: string;
+  /** Optional zone flow visualization */
+  zoneFlow?: ZoneFlowConfig;
   /** Optional KPI cards (max 4 recommended) */
   kpis?: DeskKPI[];
   /** Tab bar or custom navigation (rendered between KPIs and content) */
   navigation?: ReactNode;
   /** Main content */
   children: ReactNode;
+  /** Optional action buttons for the header */
+  headerActions?: ReactNode;
 }
 
 export function OperativeDeskShell({
   title,
   subtitle,
   moduleCode,
+  zoneFlow,
   kpis,
   navigation,
   children,
+  headerActions,
 }: OperativeDeskShellProps) {
   return (
     <div className="space-y-6">
       {/* HEADER */}
       <div className="flex items-center justify-between">
-        <div>
+        <div className="space-y-1">
           <h1 className="text-2xl font-bold uppercase">{title}</h1>
           <p className="text-muted-foreground text-sm">{subtitle}</p>
+          {zoneFlow && <ZoneFlowIndicator flow={zoneFlow} />}
         </div>
-        <Badge variant="outline" className="text-xs">{moduleCode}</Badge>
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="text-xs">{moduleCode}</Badge>
+          {headerActions}
+        </div>
       </div>
 
       {/* KPI ROW */}

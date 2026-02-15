@@ -28,6 +28,8 @@ import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { PdfExportFooter } from '@/components/pdf';
 import { useToast } from '@/hooks/use-toast';
+import { OperativeDeskShell } from '@/components/admin/desks/OperativeDeskShell';
+import type { DeskKPI } from '@/components/admin/desks/OperativeDeskShell';
 
 interface Lead {
   id: string;
@@ -257,43 +259,27 @@ export default function LeadDesk() {
   const formatCurrency = (amount: number) =>
     new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(amount);
 
-  return (
-    <div className="space-y-6" ref={contentRef}>
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Lead Desk</h1>
-          <p className="text-muted-foreground text-sm">Lead-Pool-Governance · Zuweisungen · Provisionen</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Badge variant="outline">MOD-10</Badge>
-          <Button onClick={() => setCreateDialogOpen(true)} className="gap-2">
-            <Plus className="h-4 w-4" />Lead anlegen
-          </Button>
-        </div>
-      </div>
+  const kpis: DeskKPI[] = [
+    { label: 'Pool Gesamt', value: leadStats.totalPool, icon: Target, color: 'text-primary' },
+    { label: 'Offen', value: leadStats.pending, icon: Users },
+    { label: 'Konvertiert', value: leadStats.converted, icon: CheckCircle, color: 'text-primary' },
+    { label: 'Prov. ausstehend', value: commissionStats.pending, icon: CreditCard, color: 'text-amber-500', subtitle: formatCurrency(commissionStats.totalPending) },
+  ];
 
-      {/* KPI Row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Pool Gesamt</CardTitle></CardHeader>
-          <CardContent><div className="flex items-center gap-2"><Target className="h-4 w-4 text-primary" /><span className="text-2xl font-bold">{leadStats.totalPool}</span></div></CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Offen</CardTitle></CardHeader>
-          <CardContent><div className="flex items-center gap-2"><Users className="h-4 w-4 text-muted-foreground" /><span className="text-2xl font-bold">{leadStats.pending}</span></div></CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Konvertiert</CardTitle></CardHeader>
-          <CardContent><div className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-primary" /><span className="text-2xl font-bold">{leadStats.converted}</span></div></CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Prov. ausstehend</CardTitle></CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-2"><CreditCard className="h-4 w-4 text-amber-500" /><span className="text-2xl font-bold">{commissionStats.pending}</span></div>
-            <p className="text-xs text-muted-foreground mt-1">{formatCurrency(commissionStats.totalPending)}</p>
-          </CardContent>
-        </Card>
-      </div>
+  return (
+    <OperativeDeskShell
+      title="Lead Desk"
+      subtitle="Lead-Pool-Governance · Zuweisungen · Provisionen"
+      moduleCode="MOD-10"
+      kpis={kpis}
+      zoneFlow={{ z3Surface: 'Kaufy / SoT Website', z1Desk: 'Lead Desk', z2Manager: 'MOD-10 Leadmanager' }}
+      headerActions={
+        <Button onClick={() => setCreateDialogOpen(true)} className="gap-2">
+          <Plus className="h-4 w-4" />Lead anlegen
+        </Button>
+      }
+    >
+    <div className="space-y-6" ref={contentRef}>
 
       {/* Tabs */}
       <Tabs defaultValue="pool">
@@ -561,5 +547,6 @@ export default function LeadDesk() {
 
       <PdfExportFooter contentRef={contentRef} documentTitle="Lead Desk" subtitle={`${leadStats.totalPool} Leads · ${commissionStats.pending} Provisionen ausstehend`} moduleName="Zone 1 Admin" />
     </div>
+    </OperativeDeskShell>
   );
 }

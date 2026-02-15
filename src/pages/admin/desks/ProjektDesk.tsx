@@ -417,6 +417,7 @@ export default function ProjektDesk() {
       moduleCode="MOD-13"
       kpis={kpis}
       navigation={navigation}
+      zoneFlow={{ z3Surface: 'Projekt Landing Pages', z1Desk: 'Projekt Desk', z2Manager: 'MOD-13 Projektmanager' }}
     >
       <Suspense fallback={<Loading />}>
         <Routes>
