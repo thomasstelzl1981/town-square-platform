@@ -16,7 +16,7 @@ import { WidgetGrid } from '@/components/shared/WidgetGrid';
 import { WidgetCell } from '@/components/shared/WidgetCell';
 import { DESIGN } from '@/config/designManifest';
 import { cn } from '@/lib/utils';
-import { useMSVData } from '@/hooks/useMSVData';
+import { useVerwaltungData } from '@/hooks/useVerwaltungData';
 
 const AMPEL_COLORS = {
   paid: 'bg-green-500',
@@ -32,7 +32,7 @@ const AMPEL_LABELS = {
 
 export function VerwaltungTab() {
   const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(null);
-  const { properties, isLoading } = useMSVData();
+  const { properties, isLoading } = useVerwaltungData();
 
   const hasObjects = properties.length > 0;
 

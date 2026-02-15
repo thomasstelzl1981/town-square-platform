@@ -1,7 +1,8 @@
 /**
- * Immobilien Page (MOD-04) - SSOT for Properties, Units, Leases, Verwaltung
+ * Immobilien Page (MOD-04) — SSOT for Properties, Units, Leases
  * 
- * ZUHAUSE (MOD-20 Miety) is rendered inline as default entry point.
+ * Sub-routes: Zuhause (MOD-20), Portfolio, Verwaltung/BWA, Sanierung, Vermietung.
+ * ZUHAUSE is rendered inline as default entry point.
  */
 import { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
