@@ -7,6 +7,8 @@
 import { useState } from 'react';
 import { PageShell } from '@/components/shared/PageShell';
 import { RecordCard } from '@/components/shared/RecordCard';
+import { WidgetGrid } from '@/components/shared/WidgetGrid';
+import { WidgetCell } from '@/components/shared/WidgetCell';
 import { RECORD_CARD, DEMO_WIDGET } from '@/config/designManifest';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { FormInput } from '@/components/shared';
@@ -87,88 +89,93 @@ function KontenBlock() {
         </h3>
       </div>
 
-      <div className={RECORD_CARD.GRID}>
+      <WidgetGrid>
         {/* Demo Widget Position 0 */}
         {showDemo && (
-          <div
-            className={cn(
-              RECORD_CARD.CLOSED,
-              DEMO_WIDGET.CARD,
-              DEMO_WIDGET.HOVER,
-              openKontoId === DEMO_KONTO.id && 'ring-2 ring-emerald-400/50',
-            )}
-            onClick={() => setOpenKontoId(openKontoId === DEMO_KONTO.id ? null : DEMO_KONTO.id)}
-            role="button"
-            tabIndex={0}
-          >
-            <div className="p-5 flex flex-col justify-between h-full">
-              <div>
-                <Badge className={DEMO_WIDGET.BADGE + ' mb-2'}>Demo</Badge>
-                <h4 className="font-semibold text-sm">Demo: Girokonto Sparkasse</h4>
-                <p className="text-xs text-muted-foreground mt-1">{DEMO_KONTO_IBAN_MASKED}</p>
-                <Badge variant="outline" className="mt-2 text-[10px]">Vermietung</Badge>
-              </div>
-              <div className="text-right">
-                <p className="text-lg font-bold text-emerald-600">{new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(DEMO_KONTO.balance)}</p>
+          <WidgetCell>
+            <div
+              className={cn(
+                'h-full w-full rounded-xl cursor-pointer transition-all',
+                DEMO_WIDGET.CARD,
+                DEMO_WIDGET.HOVER,
+                openKontoId === DEMO_KONTO.id && 'ring-2 ring-emerald-400/50',
+              )}
+              onClick={() => setOpenKontoId(openKontoId === DEMO_KONTO.id ? null : DEMO_KONTO.id)}
+              role="button"
+              tabIndex={0}
+            >
+              <div className="p-5 flex flex-col justify-between h-full">
+                <div>
+                  <Badge className={DEMO_WIDGET.BADGE + ' mb-2'}>Demo</Badge>
+                  <h4 className="font-semibold text-sm">Demo: Girokonto Sparkasse</h4>
+                  <p className="text-xs text-muted-foreground mt-1">{DEMO_KONTO_IBAN_MASKED}</p>
+                  <Badge variant="outline" className="mt-2 text-[10px]">Vermietung</Badge>
+                </div>
+                <div className="text-right">
+                  <p className="text-lg font-bold text-emerald-600">{new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(DEMO_KONTO.balance)}</p>
+                </div>
               </div>
             </div>
-          </div>
+          </WidgetCell>
         )}
 
         {/* Echte Konten */}
         {bankAccounts.map((acc: any) => (
-          <div
-            key={acc.id}
-            className={cn(
-              RECORD_CARD.CLOSED,
-              openKontoId === acc.id && 'ring-2 ring-primary/50',
-            )}
-            onClick={() => setOpenKontoId(openKontoId === acc.id ? null : acc.id)}
-            role="button"
-            tabIndex={0}
-          >
-            <div className="p-5 flex flex-col justify-between h-full">
-              <div>
-                <h4 className="font-semibold text-sm">{acc.account_name || acc.bank_name || 'Konto'}</h4>
-                <p className="text-xs text-muted-foreground mt-1">{maskIban(acc.iban || '')}</p>
-                <Badge variant="outline" className="mt-2 text-[10px]">{acc.account_type || 'Giro'}</Badge>
-              </div>
-              <div className="flex items-center gap-2">
-                <CreditCard className="h-4 w-4 text-muted-foreground" />
-                <Badge variant={acc.status === 'active' ? 'default' : 'secondary'} className="text-[10px]">
-                  {acc.status === 'active' ? 'Verbunden' : 'Inaktiv'}
-                </Badge>
+          <WidgetCell key={acc.id}>
+            <div
+              className={cn(
+                'h-full w-full glass-card rounded-xl cursor-pointer transition-all hover:shadow-lg',
+                openKontoId === acc.id && 'ring-2 ring-primary/50',
+              )}
+              onClick={() => setOpenKontoId(openKontoId === acc.id ? null : acc.id)}
+              role="button"
+              tabIndex={0}
+            >
+              <div className="p-5 flex flex-col justify-between h-full">
+                <div>
+                  <h4 className="font-semibold text-sm">{acc.account_name || acc.bank_name || 'Konto'}</h4>
+                  <p className="text-xs text-muted-foreground mt-1">{maskIban(acc.iban || '')}</p>
+                  <Badge variant="outline" className="mt-2 text-[10px]">{acc.account_type || 'Giro'}</Badge>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CreditCard className="h-4 w-4 text-muted-foreground" />
+                  <Badge variant={acc.status === 'active' ? 'default' : 'secondary'} className="text-[10px]">
+                    {acc.status === 'active' ? 'Verbunden' : 'Inaktiv'}
+                  </Badge>
+                </div>
               </div>
             </div>
-          </div>
+          </WidgetCell>
         ))}
 
         {/* CTA Widget */}
-        <div
-          className={RECORD_CARD.CLOSED + ' border-dashed border-primary/30 flex items-center justify-center'}
-          role="button"
-          tabIndex={0}
-        >
-          <div className="flex flex-col items-center gap-2 text-muted-foreground">
-            <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-              <Plus className="h-6 w-6 text-primary" />
+        <WidgetCell>
+          <div
+            className="h-full w-full rounded-xl border-2 border-dashed border-primary/30 flex items-center justify-center cursor-pointer hover:border-primary/50 transition-colors"
+            role="button"
+            tabIndex={0}
+          >
+            <div className="flex flex-col items-center gap-2 text-muted-foreground">
+              <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
+                <Plus className="h-6 w-6 text-primary" />
+              </div>
+              <p className="text-sm font-medium">Konto hinzufügen</p>
             </div>
-            <p className="text-sm font-medium">Konto hinzufügen</p>
           </div>
-        </div>
+        </WidgetCell>
+      </WidgetGrid>
 
-        {/* Inline Kontoakte */}
-        {openKontoId === DEMO_KONTO.id && (
-          <KontoAkteInline isDemo onClose={() => setOpenKontoId(null)} />
-        )}
-        {openKontoId && openKontoId !== DEMO_KONTO.id && (
-          <KontoAkteInline
-            isDemo={false}
-            account={bankAccounts.find((a: any) => a.id === openKontoId)}
-            onClose={() => setOpenKontoId(null)}
-          />
-        )}
-      </div>
+      {/* Inline Kontoakte — outside grid, full width */}
+      {openKontoId === DEMO_KONTO.id && (
+        <KontoAkteInline isDemo onClose={() => setOpenKontoId(null)} />
+      )}
+      {openKontoId && openKontoId !== DEMO_KONTO.id && (
+        <KontoAkteInline
+          isDemo={false}
+          account={bankAccounts.find((a: any) => a.id === openKontoId)}
+          onClose={() => setOpenKontoId(null)}
+        />
+      )}
 
       {/* ═══ BLOCK C: 12M Scan ═══ */}
       <Card className="glass-card mt-4">
