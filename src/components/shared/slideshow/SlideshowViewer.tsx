@@ -18,6 +18,25 @@ export function SlideshowViewer({ presentationKey, onClose }: SlideshowViewerPro
   const prev = useCallback(() => setCurrent((c) => Math.max(0, c - 1)), []);
   const next = useCallback(() => setCurrent((c) => Math.min(slides.length - 1, c + 1)), [slides.length]);
 
+  // Dispatch Armstrong coach events
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('armstrong:presentation_opened', {
+      detail: { presentationKey },
+    }));
+    return () => {
+      window.dispatchEvent(new CustomEvent('armstrong:presentation_closed', {
+        detail: { presentationKey },
+      }));
+    };
+  }, [presentationKey]);
+
+  // Dispatch slide change events
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('armstrong:presentation_slide_changed', {
+      detail: { presentationKey, slideIndex: current },
+    }));
+  }, [current, presentationKey]);
+
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();

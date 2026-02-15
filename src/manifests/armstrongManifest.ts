@@ -1657,6 +1657,104 @@ export const armstrongActions: ArmstrongActionV2[] = [
     audit_event_type: 'ARM_DOSSIER_VIEW_RESEARCH',
     status: 'active' as ActionStatus,
   },
+
+  // ===========================================================================
+  // INVESTMENT COACH — LIFECYCLE ACTIONS (5)
+  // ===========================================================================
+  ...([
+    ['ARM.INV.COACH.AUTO_START', 'Coach Auto-Start', 'Startet den Investment Coach bei Engine/Slideshow'],
+    ['ARM.INV.COACH.DISMISS', 'Coach ausblenden', 'Blendet den Coach für 24h aus'],
+    ['ARM.INV.COACH.RESUME', 'Coach fortsetzen', 'Reaktiviert den Coach nach Dismiss'],
+    ['ARM.INV.COACH.PAUSE_FOR_USER', 'Coach pausieren', 'Pausiert die Narration bei User-Frage'],
+    ['ARM.INV.COACH.TO_SIMULATION', 'Zur Simulation', 'Leitet zur Investment-Simulation'],
+  ] as const).map(([code, title, desc]) => ({
+    action_code: code,
+    title_de: title,
+    description_de: desc,
+    zones: ['Z2', 'Z3'] as ArmstrongZone[],
+    module: 'MOD-08',
+    risk_level: 'low' as RiskLevel,
+    execution_mode: 'readonly' as ExecutionMode,
+    requires_consent_code: null,
+    roles_allowed: [] as string[],
+    data_scopes_read: ['knowledge_base'],
+    data_scopes_write: [] as string[],
+    side_effects: [] as string[],
+    version: '1.0.0',
+    cost_model: 'free' as CostModel,
+    cost_unit: null,
+    cost_hint_cents: null,
+    api_contract: { type: 'internal' as const, endpoint: null },
+    ui_entrypoints: ['/portal/investments', '/portal/vertriebspartner', '/kaufy', '/sot'],
+    audit_event_type: `ARM_COACH_LIFECYCLE`,
+    status: 'active' as ActionStatus,
+  })),
+
+  // ===========================================================================
+  // INVESTMENT COACH — SLIDE COACHING ACTIONS (28)
+  // ===========================================================================
+  ...([
+    ...Array.from({ length: 8 }, (_, i) => [`ARM.INV.COACH.VERKAUF.S${i+1}`, `Verkauf Slide ${i+1}`, `Coaching Verkaufspräsentation Slide ${i+1}`] as const),
+    ...Array.from({ length: 7 }, (_, i) => [`ARM.INV.COACH.RENDITE.S${i+1}`, `Rendite Slide ${i+1}`, `Coaching Rendite Slide ${i+1}`] as const),
+    ...Array.from({ length: 6 }, (_, i) => [`ARM.INV.COACH.STEUER.S${i+1}`, `Steuer Slide ${i+1}`, `Coaching Steuervorteil Slide ${i+1}`] as const),
+    ...Array.from({ length: 7 }, (_, i) => [`ARM.INV.COACH.SOFT.S${i+1}`, `Software Slide ${i+1}`, `Coaching Verwaltung Slide ${i+1}`] as const),
+  ]).map(([code, title, desc]) => ({
+    action_code: code,
+    title_de: title,
+    description_de: desc,
+    zones: ['Z2', 'Z3'] as ArmstrongZone[],
+    module: 'MOD-08',
+    risk_level: 'low' as RiskLevel,
+    execution_mode: 'readonly' as ExecutionMode,
+    requires_consent_code: null,
+    roles_allowed: [] as string[],
+    data_scopes_read: ['knowledge_base'],
+    data_scopes_write: [] as string[],
+    side_effects: [] as string[],
+    version: '1.0.0',
+    cost_model: 'free' as CostModel,
+    cost_unit: null,
+    cost_hint_cents: null,
+    api_contract: { type: 'internal' as const, endpoint: null },
+    ui_entrypoints: ['/portal/investments', '/portal/vertriebspartner', '/kaufy', '/sot'],
+    audit_event_type: 'ARM_COACH_SLIDE',
+    status: 'active' as ActionStatus,
+  })),
+
+  // ===========================================================================
+  // INVESTMENT COACH — ENGINE ON-PAGE ACTIONS (8)
+  // ===========================================================================
+  ...([
+    ['ARM.INV.COACH.ENGINE.INTRO', 'Engine Einführung', 'Führungsangebot für die Investment Engine'],
+    ['ARM.INV.COACH.ENGINE.FRAME_START', 'Rahmen starten', 'EK und Puffer erfragen'],
+    ['ARM.INV.COACH.ENGINE.FRAME_NEXT', 'Rahmen weiter', 'Netto und Ziel erfragen'],
+    ['ARM.INV.COACH.ENGINE.PATH_CHOICE', 'Weg wählen', 'Marktplatz vs Mandat erklären'],
+    ['ARM.INV.COACH.ENGINE.MSV_EXPLAIN', 'MSV erklären', 'Mietsonderverwaltung kurz erklären'],
+    ['ARM.INV.COACH.ENGINE.TO_SIMULATION', 'Simulation starten', 'Zur Simulation leiten'],
+    ['ARM.INV.COACH.ENGINE.OBJECTION_DEBT', 'Einwand Schulden', 'Einwandbehandlung Schulden-Bedenken'],
+    ['ARM.INV.COACH.ENGINE.OBJECTION_RISK', 'Einwand Risiko', 'Einwandbehandlung Risiko-Bedenken'],
+  ] as const).map(([code, title, desc]) => ({
+    action_code: code,
+    title_de: title,
+    description_de: desc,
+    zones: ['Z2', 'Z3'] as ArmstrongZone[],
+    module: 'MOD-08',
+    risk_level: 'low' as RiskLevel,
+    execution_mode: 'readonly' as ExecutionMode,
+    requires_consent_code: null,
+    roles_allowed: [] as string[],
+    data_scopes_read: ['knowledge_base'],
+    data_scopes_write: [] as string[],
+    side_effects: [] as string[],
+    version: '1.0.0',
+    cost_model: 'free' as CostModel,
+    cost_unit: null,
+    cost_hint_cents: null,
+    api_contract: { type: 'internal' as const, endpoint: null },
+    ui_entrypoints: ['/portal/investments', '/portal/vertriebspartner', '/kaufy', '/sot'],
+    audit_event_type: 'ARM_COACH_ENGINE',
+    status: 'active' as ActionStatus,
+  })),
 ];
 
 // =============================================================================
