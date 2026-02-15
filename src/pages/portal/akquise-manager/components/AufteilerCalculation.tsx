@@ -12,6 +12,8 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Calculator, TrendingUp, Loader2, RefreshCcw, ArrowRight, Euro } from 'lucide-react';
 import { useRunCalcAufteiler } from '@/hooks/useAcqOffers';
+import { calcAufteilerFull } from '@/engines/akquiseCalc/engine';
+import type { AufteilerFullParams } from '@/engines/akquiseCalc/spec';
 import { DESIGN } from '@/config/designManifest';
 import { cn } from '@/lib/utils';
 import {
@@ -30,22 +32,12 @@ interface AufteilerCalculationProps {
   temporary?: boolean;
 }
 
-interface CalcParams {
-  purchasePrice: number;
-  yearlyRent: number;
-  targetYield: number;
-  salesCommission: number;
-  holdingPeriodMonths: number;
-  ancillaryCostPercent: number;
-  interestRate: number;
-  equityPercent: number;
-  projectCosts: number;
-}
+// Types now come from engine spec
 
 export function AufteilerCalculation({ offerId, initialData, temporary = false }: AufteilerCalculationProps) {
   const runCalc = useRunCalcAufteiler();
   
-  const [params, setParams] = React.useState<CalcParams>({
+  const [params, setParams] = React.useState<AufteilerFullParams>({
     purchasePrice: initialData.purchasePrice,
     yearlyRent: initialData.yearlyRent,
     targetYield: 4.0,
@@ -57,49 +49,8 @@ export function AufteilerCalculation({ offerId, initialData, temporary = false }
     projectCosts: 0,
   });
 
-  const calculation = React.useMemo(() => {
-    const {
-      purchasePrice, yearlyRent, targetYield, salesCommission,
-      holdingPeriodMonths, ancillaryCostPercent, interestRate,
-      equityPercent, projectCosts
-    } = params;
-
-    const ancillaryCosts = purchasePrice * (ancillaryCostPercent / 100);
-    const totalAcquisitionCosts = purchasePrice + ancillaryCosts + projectCosts;
-    const loanAmount = totalAcquisitionCosts * (1 - equityPercent / 100);
-    const equity = totalAcquisitionCosts * (equityPercent / 100);
-    const interestCosts = loanAmount * (interestRate / 100) * (holdingPeriodMonths / 12);
-    const rentIncome = yearlyRent * (holdingPeriodMonths / 12);
-    const netCosts = totalAcquisitionCosts + interestCosts - rentIncome;
-
-    const salesPriceGross = yearlyRent / (targetYield / 100);
-    const factor = salesPriceGross / yearlyRent;
-    const salesCommissionAmount = salesPriceGross * (salesCommission / 100);
-    const salesPriceNet = salesPriceGross - salesCommissionAmount;
-
-    const profit = salesPriceNet - netCosts;
-    const profitMargin = salesPriceNet > 0 ? (profit / salesPriceNet) * 100 : 0;
-    const roiOnEquity = equity > 0 ? (profit / equity) * 100 : 0;
-
-    const sensitivityData = [
-      { yield: targetYield - 0.5, label: `${(targetYield - 0.5).toFixed(1)}%` },
-      { yield: targetYield, label: `${targetYield.toFixed(1)}%` },
-      { yield: targetYield + 0.5, label: `${(targetYield + 0.5).toFixed(1)}%` },
-    ].map(item => {
-      const price = yearlyRent / (item.yield / 100);
-      const comm = price * (salesCommission / 100);
-      const net = price - comm;
-      const prof = net - netCosts;
-      return { ...item, salesPrice: price, profit: prof };
-    });
-
-    return {
-      ancillaryCosts, totalAcquisitionCosts, loanAmount, equity,
-      interestCosts, rentIncome, netCosts,
-      salesPriceGross, factor, salesCommissionAmount, salesPriceNet,
-      profit, profitMargin, roiOnEquity, sensitivityData,
-    };
-  }, [params]);
+  // Calculate via engine
+  const calculation = React.useMemo(() => calcAufteilerFull(params), [params]);
 
   const formatCurrency = (val: number) => 
     new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(val);

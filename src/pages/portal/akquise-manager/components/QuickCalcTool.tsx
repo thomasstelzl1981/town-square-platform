@@ -11,7 +11,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Calculator, Building2, Scissors, TrendingUp, Wallet, Percent, PiggyBank } from 'lucide-react';
-import { calculateBestandKPIs, calculateAufteilerKPIs, type BestandCalcResult, type AufteilerCalcResult } from '@/hooks/useAcqTools';
+import { calcBestandQuick, calcAufteilerQuick } from '@/engines/akquiseCalc/engine';
+import type { BestandQuickResult, AufteilerQuickResult } from '@/engines/akquiseCalc/spec';
 import { formatCurrency } from '@/lib/formatters';
 
 export function QuickCalcTool() {
@@ -27,7 +28,7 @@ export function QuickCalcTool() {
     managementCostPercent: 25,
     ancillaryCostPercent: 10,
   });
-  const [bestandResult, setBestandResult] = React.useState<BestandCalcResult | null>(null);
+  const [bestandResult, setBestandResult] = React.useState<BestandQuickResult | null>(null);
 
   // Aufteiler state
   const [aufteilerInputs, setAufteilerInputs] = React.useState({
@@ -39,15 +40,15 @@ export function QuickCalcTool() {
     holdingPeriodMonths: 24,
     ancillaryCostPercent: 10,
   });
-  const [aufteilerResult, setAufteilerResult] = React.useState<AufteilerCalcResult | null>(null);
+  const [aufteilerResult, setAufteilerResult] = React.useState<AufteilerQuickResult | null>(null);
 
   const handleBestandCalc = () => {
-    const result = calculateBestandKPIs(bestandInputs);
+    const result = calcBestandQuick(bestandInputs);
     setBestandResult(result);
   };
 
   const handleAufteilerCalc = () => {
-    const result = calculateAufteilerKPIs(aufteilerInputs);
+    const result = calcAufteilerQuick(aufteilerInputs);
     setAufteilerResult(result);
   };
 

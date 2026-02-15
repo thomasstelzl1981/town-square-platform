@@ -21,13 +21,16 @@ import {
   Tooltip, ResponsiveContainer, Cell
 } from 'recharts';
 import type { DevProject, DevProjectUnit } from '@/types/projekte';
+import { calcAufteilerProject } from '@/engines/akquiseCalc/engine';
+import type { AufteilerProjectParams } from '@/engines/akquiseCalc/spec';
 
 interface ProjectAufteilerCalculationProps {
   project: DevProject;
   units: DevProjectUnit[];
 }
 
-interface CalcParams {
+// CalcParams type now uses engine types — keep local interface for slider state only
+interface CalcSliderParams {
   purchasePrice: number;
   renovationBudget: number;
   targetYield: number;
@@ -49,7 +52,7 @@ export function ProjectAufteilerCalculation({ project, units }: ProjectAufteiler
   // Start-Setup: If no purchase_price, use sum of unit list prices / 1.25 (25% margin target)
   const defaultPurchasePrice = project.purchase_price || Math.round(totalListPrice / 1.25 * 0.72); // rough estimate
 
-  const [params, setParams] = React.useState<CalcParams>({
+  const [params, setParams] = React.useState<CalcSliderParams>({
     purchasePrice: project.purchase_price || defaultPurchasePrice,
     renovationBudget: project.renovation_budget || 0,
     targetYield: 4.0,
@@ -60,60 +63,13 @@ export function ProjectAufteilerCalculation({ project, units }: ProjectAufteiler
     equityPercent: 30,
   });
 
-  // Live calculation
-  const calc = React.useMemo(() => {
-    const {
-      purchasePrice, renovationBudget, targetYield, salesCommission,
-      holdingPeriodMonths, ancillaryCostPercent, interestRate, equityPercent
-    } = params;
-
-    // --- KOSTEN ---
-    const ancillaryCosts = purchasePrice * (ancillaryCostPercent / 100);
-    const totalAcquisitionCosts = purchasePrice + ancillaryCosts + renovationBudget;
-
-    const loanAmount = totalAcquisitionCosts * (1 - equityPercent / 100);
-    const equity = totalAcquisitionCosts * (equityPercent / 100);
-    const interestCosts = loanAmount * (interestRate / 100) * (holdingPeriodMonths / 12);
-
-    const rentIncome = totalYearlyRent * (holdingPeriodMonths / 12);
-    const netCosts = totalAcquisitionCosts + interestCosts - rentIncome;
-
-    // --- ERLÖSE ---
-    // If units have list prices, use sum; otherwise derive from yield
-    const salesPriceGross = totalListPrice > 0
-      ? totalListPrice
-      : (totalYearlyRent > 0 ? totalYearlyRent / (targetYield / 100) : 0);
-    const salesCommissionAmount = salesPriceGross * (salesCommission / 100);
-    const salesPriceNet = salesPriceGross - salesCommissionAmount;
-
-    // --- ERGEBNIS ---
-    const profit = salesPriceNet - netCosts;
-    const profitMargin = netCosts > 0 ? (profit / netCosts) * 100 : 0;
-    const roiOnEquity = equity > 0 ? (profit / equity) * 100 : 0;
-    const profitPerUnit = units.length > 0 ? profit / units.length : 0;
-    const avgUnitPrice = units.length > 0 ? salesPriceGross / units.length : 0;
-    const breakEvenUnits = avgUnitPrice > 0
-      ? Math.ceil(netCosts / (avgUnitPrice * (1 - salesCommission / 100)))
-      : units.length;
-
-    // --- SENSITIVITÄT ---
-    const sensitivityData = [-0.5, 0, 0.5].map(delta => {
-      const y = targetYield + delta;
-      const sp = totalYearlyRent > 0 ? totalYearlyRent / (y / 100) : salesPriceGross;
-      const comm = sp * (salesCommission / 100);
-      const net = sp - comm;
-      const prof = net - netCosts;
-      return { yield: y, label: `${y.toFixed(1)}%`, salesPrice: sp, profit: prof };
-    });
-
-    return {
-      ancillaryCosts, totalAcquisitionCosts, loanAmount, equity,
-      interestCosts, rentIncome, netCosts,
-      salesPriceGross, salesCommissionAmount, salesPriceNet,
-      profit, profitMargin, roiOnEquity, profitPerUnit, breakEvenUnits,
-      sensitivityData,
-    };
-  }, [params, totalListPrice, totalYearlyRent, units.length]);
+  // Live calculation via engine
+  const calc = React.useMemo(() => calcAufteilerProject({
+    ...params,
+    totalListPrice,
+    totalYearlyRent,
+    unitsCount: units.length,
+  }), [params, totalListPrice, totalYearlyRent, units.length]);
 
   const fmt = (val: number) =>
     new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(val);
