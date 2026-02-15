@@ -41,11 +41,11 @@ function ImmobilienVertriebsauftraegeCard() {
     },
   });
 
-  // Merge demo mandates (deduplicated)
+  // Merge demo mandates (deduplicated by address+city)
   const allMandates = deduplicateByField(
     demoMandates as any[],
     mandateListings || [],
-    (item: any) => item.id
+    (item: any) => `${item.properties?.address}|${item.properties?.city}`
   );
 
   const formatDate = (d: string) => new Date(d).toLocaleDateString('de-DE');
@@ -388,11 +388,11 @@ function VeroeffentlichungenTab() {
   const toggleBlock = useToggleListingBlock();
   const updateDistribution = useUpdateListingDistribution();
 
-  // Merge demo listings (deduplicated)
+  // Merge demo listings (deduplicated by title)
   const listings = useMemo(() => deduplicateByField(
     demoListings,
     dbListings || [],
-    (item: any) => item.id
+    (item: any) => item.title
   ), [demoListings, dbListings]);
 
   const formatCurrency = (val: number | null) =>

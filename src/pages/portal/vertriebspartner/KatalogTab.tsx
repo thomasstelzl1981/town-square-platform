@@ -145,7 +145,7 @@ const KatalogTab = () => {
   const allListings = useMemo(() => deduplicateByField(
     demoPartnerListings as any[],
     listings,
-    (item: any) => item.public_id || item.id
+    (item: any) => `${item.title}|${item.property_city}`
   ), [demoPartnerListings, listings]);
   
   const uniqueCities = useMemo(() => {
