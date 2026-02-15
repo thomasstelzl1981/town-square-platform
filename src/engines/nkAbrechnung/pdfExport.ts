@@ -22,6 +22,7 @@ const KEY_LABELS: Record<string, string> = {
   consumption: 'Verbrauch',
   unit_count: 'Einheiten',
   custom: 'Individuell',
+  direct: 'Direkt',
 };
 
 export function generateNKPdf(matrix: NKSettlementMatrix): jsPDF {

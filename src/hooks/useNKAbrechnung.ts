@@ -288,7 +288,7 @@ export function useNKAbrechnung(
         await (supabase as any)
           .from('nk_cost_items')
           .update({
-            amount_total_house: grundsteuerTotal,
+            amount_total_house: grundsteuerAnteil,
             amount_unit: grundsteuerAnteil,
           })
           .eq('id', gs.id);
@@ -300,9 +300,9 @@ export function useNKAbrechnung(
             tenant_id: tenantId,
             category_code: 'grundsteuer',
             label_display: 'Grundsteuer',
-            amount_total_house: grundsteuerTotal,
+            amount_total_house: grundsteuerAnteil,
             amount_unit: grundsteuerAnteil,
-            key_type: 'mea',
+            key_type: 'direct',
             is_apportionable: true,
             sort_order: 0,
           });
