@@ -16,6 +16,7 @@ import { moduleContents } from '@/components/portal/HowItWorks/moduleContents';
 import { areaPromoContent } from '@/config/areaPromoContent';
 import { AreaPromoCard } from '@/components/portal/AreaPromoCard';
 import { AreaModuleCard } from '@/components/portal/AreaModuleCard';
+import { filterModulesForMobile, MOBILE_UI_FLAGS } from '@/config/mobileConfig';
 
 // Area descriptions for header
 const areaDescriptions: Record<AreaKey, string> = {
@@ -27,6 +28,7 @@ const areaDescriptions: Record<AreaKey, string> = {
 
 export default function AreaOverviewPage() {
   const { areaKey } = useParams<{ areaKey: string }>();
+  const isMobile = useIsMobile();
   
   // Validate area key
   const validAreaKey = areaKey as AreaKey;
@@ -34,11 +36,15 @@ export default function AreaOverviewPage() {
   
   // Note: Area state sync now handled by deriveAreaFromPath in usePortalLayout
   
-  // Build module data
+  // Build module data — filter hidden modules on mobile
   const moduleData = useMemo(() => {
     if (!area) return [];
     
-    return area.modules.map(code => {
+    const visibleModules = isMobile 
+      ? filterModulesForMobile(area.modules) 
+      : area.modules;
+    
+    return visibleModules.map(code => {
       const content = moduleContents[code];
       const moduleConfig = zone2Portal.modules?.[code];
       const defaultRoute = moduleConfig ? `/portal/${moduleConfig.base}` : '/portal';
@@ -49,7 +55,7 @@ export default function AreaOverviewPage() {
         defaultRoute,
       };
     }).filter(m => m.content); // Only include modules with content
-  }, [area]);
+  }, [area, isMobile]);
   
   // Get promo content
   const promo = validAreaKey ? areaPromoContent[validAreaKey] : null;
@@ -58,8 +64,6 @@ export default function AreaOverviewPage() {
   if (!area) {
     return <Navigate to="/portal" replace />;
   }
-
-  const isMobile = useIsMobile();
 
   return (
     <div className={isMobile ? "px-4 py-4" : "container max-w-7xl mx-auto px-4 py-6"}>
@@ -78,8 +82,8 @@ export default function AreaOverviewPage() {
 
       {/* Grid: fixed-height cards, uniform 3-col layout */}
       <div className="grid gap-3 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-        {/* Promo Card (always first) */}
-        {promo && <AreaPromoCard promo={promo} />}
+        {/* Promo Card — hidden on mobile (MUX-002) */}
+        {!isMobile && promo && <AreaPromoCard promo={promo} />}
         
         {/* Module Cards */}
         {moduleData.map(({ code, content, defaultRoute }) => (
