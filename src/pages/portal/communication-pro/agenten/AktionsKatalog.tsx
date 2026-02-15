@@ -37,7 +37,10 @@ export function AktionsKatalog() {
         action.title_de.toLowerCase().includes(search.toLowerCase()) ||
         action.description_de.toLowerCase().includes(search.toLowerCase());
       
-      const matchesZone = zoneFilter === 'all' || action.zones.includes(zoneFilter as any);
+      const matchesZone = zoneFilter === 'all' ||
+        (zoneFilter === 'Z2_only' && action.zones.length === 1 && action.zones[0] === 'Z2') ||
+        (zoneFilter === 'Z3_only' && action.zones.length === 1 && action.zones[0] === 'Z3') ||
+        (zoneFilter === 'Z2_Z3' && action.zones.includes('Z2') && action.zones.includes('Z3'));
       const matchesStatus = statusFilter === 'all' || action.effective_status === statusFilter;
       
       return matchesSearch && matchesZone && matchesStatus;
@@ -46,6 +49,13 @@ export function AktionsKatalog() {
 
   const totalActions = stats.total;
   const activeActions = stats.active;
+
+  const zoneStats = useMemo(() => {
+    const z2Only = actions.filter(a => a.zones.length === 1 && a.zones[0] === 'Z2').length;
+    const z3Only = actions.filter(a => a.zones.length === 1 && a.zones[0] === 'Z3').length;
+    const both = actions.filter(a => a.zones.includes('Z2') && a.zones.includes('Z3')).length;
+    return { z2Only, z3Only, both };
+  }, [actions]);
 
   return (
     <div className="space-y-4">
@@ -77,6 +87,13 @@ export function AktionsKatalog() {
         </Card>
       </div>
 
+      {/* Zone Distribution */}
+      <div className="flex gap-2 flex-wrap text-xs">
+        <Badge variant="outline" className="border-primary/50 text-primary gap-1">🔵 Nur Portal: {zoneStats.z2Only}</Badge>
+        <Badge variant="outline" className="border-emerald-500/50 text-emerald-600 dark:text-emerald-400 gap-1">🟢 Nur Website: {zoneStats.z3Only}</Badge>
+        <Badge variant="outline" className="gap-1">🔵🟢 Beide: {zoneStats.both}</Badge>
+      </div>
+
       {/* Filter Bar */}
       <div className="flex gap-2 flex-wrap">
         <div className="relative flex-1 min-w-[200px]">
@@ -89,13 +106,14 @@ export function AktionsKatalog() {
           />
         </div>
         <Select value={zoneFilter} onValueChange={setZoneFilter}>
-          <SelectTrigger className="w-[120px] h-8 text-sm">
+          <SelectTrigger className="w-[160px] h-8 text-sm">
             <SelectValue placeholder="Zone" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Alle Zonen</SelectItem>
-            <SelectItem value="Z2">Portal (Z2)</SelectItem>
-            <SelectItem value="Z3">Website (Z3)</SelectItem>
+            <SelectItem value="Z2_only">Nur Portal (Z2)</SelectItem>
+            <SelectItem value="Z3_only">Nur Website (Z3)</SelectItem>
+            <SelectItem value="Z2_Z3">Portal + Website</SelectItem>
           </SelectContent>
         </Select>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -145,8 +163,8 @@ export function AktionsKatalog() {
                     {mode.label}
                   </Badge>
                   {action.zones.map(z => (
-                    <Badge key={z} variant="outline" className="text-[10px]">
-                      {ZONE_LABELS[z] || z}
+                    <Badge key={z} variant="outline" className={`text-[10px] ${z === 'Z2' ? 'border-primary/50 text-primary' : z === 'Z3' ? 'border-emerald-500/50 text-emerald-600 dark:text-emerald-400' : ''}`}>
+                      {z === 'Z2' ? '🔵 Portal' : z === 'Z3' ? '🟢 Website' : ZONE_LABELS[z] || z}
                     </Badge>
                   ))}
                   {action.module && (
