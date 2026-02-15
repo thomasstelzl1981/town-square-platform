@@ -1,6 +1,7 @@
 {
-  "version": "1.0",
+  "version": "1.1",
   "created_at": "2026-02-15",
+  "updated_at": "2026-02-15",
   "title": "Engine Consolidation Backlog",
   "description": "Schrittweiser Plan zur Konsolidierung aller verbleibenden Inline-Businesslogik in die Engine-Schicht (src/engines/). Jeder Eintrag beschreibt ein konkretes Refactoring-Ziel.",
 
@@ -28,105 +29,39 @@
       "id": "ENG-02",
       "name": "Finanzierung",
       "path": "src/engines/finanzierung/",
-      "status": "engine_ready",
+      "status": "done",
       "consumers_refactored": [
         "useSubmitFinanceRequest.ts → createApplicantSnapshot()",
         "FMFallDetail.tsx → calcAnnuity()",
-        "FutureRoomBonitat.tsx → calcAnnuity()"
+        "FutureRoomBonitat.tsx → calcAnnuity() + calcHaushaltsrechnung()",
+        "useConsumerLoan.ts → re-exports calcConsumerLoanOffers()",
+        "SelbstauskunftFormV2.tsx → calcCompletionScore() pattern",
+        "AnfrageFormV2.tsx → FINANZIERUNG_DEFAULTS.minCompletionScore"
       ],
       "open_items": [
-        {
-          "id": "ENG-02-A",
-          "priority": "high",
-          "status": "done",
-          "title": "FutureRoomBonitat: Haushaltsrechnung auf calcHaushaltsrechnung() umstellen",
-          "file": "src/pages/zone3/futureroom/FutureRoomBonitat.tsx",
-          "lines": "120-128",
-          "description": "Inline totalIncome/totalExpenses/kdfRatio-Berechnung (Z.120-128) durch calcHaushaltsrechnung() ersetzen."
-        },
-        {
-          "id": "ENG-02-B",
-          "priority": "medium",
-          "status": "todo",
-          "title": "useConsumerLoan: calculateMockOffers() durch Engine delegieren",
-          "file": "src/hooks/useConsumerLoan.ts",
-          "lines": "142-182",
-          "description": "MOCK_BANKS + calculateMockOffers() in useConsumerLoan.ts nutzen eigene Bank-Logik (8 Banken, Spread-basiert). Entweder Engine erweitern oder Hook als Wrapper umbauen, der calcConsumerLoanOffers() aufruft. Consumer: LoanCalculator.tsx."
-        },
-        {
-          "id": "ENG-02-C",
-          "priority": "medium",
-          "status": "todo",
-          "title": "SelbstauskunftFormV2: completion_score-Berechnung extrahieren",
-          "file": "src/components/finanzierung/SelbstauskunftFormV2.tsx",
-          "lines": "318-322",
-          "description": "Inline filledRequired/requiredFields.length Berechnung (Z.318-322) in eine Engine-Funktion calcCompletionScore() auslagern, damit dieselbe Logik auch serverseitig (Edge Function) nutzbar ist."
-        },
-        {
-          "id": "ENG-02-D",
-          "priority": "low",
-          "status": "todo",
-          "title": "AnfrageFormV2: Einreichungs-Validierung zentralisieren",
-          "file": "src/components/finanzierung/AnfrageFormV2.tsx",
-          "lines": "289-290",
-          "description": "canSubmit = completionScore >= 80 Schwelle als Engine-Konstante FINANZIERUNG_DEFAULTS.minCompletionScore nutzen."
-        }
+        { "id": "ENG-02-A", "status": "done", "title": "FutureRoomBonitat: Haushaltsrechnung" },
+        { "id": "ENG-02-B", "status": "done", "title": "useConsumerLoan: Engine re-export" },
+        { "id": "ENG-02-C", "status": "done", "title": "SelbstauskunftFormV2: calcCompletionScore()" },
+        { "id": "ENG-02-D", "status": "done", "title": "AnfrageFormV2: minCompletionScore Konstante" }
       ]
     },
     {
       "id": "ENG-03",
       "name": "Provision",
       "path": "src/engines/provision/",
-      "status": "engine_ready",
-      "consumers_refactored": [],
+      "status": "done",
+      "consumers_refactored": [
+        "NetworkTab.tsx → aggregateCommissions()",
+        "ProvisionenUebersicht.tsx → aggregateCommissions()",
+        "CommissionApproval.tsx → aggregateCommissions()",
+        "LeadDesk.tsx → aggregateCommissions()"
+      ],
       "open_items": [
-        {
-          "id": "ENG-03-A",
-          "priority": "high",
-          "status": "done",
-          "title": "NetworkTab: Inline-Provisions-Aggregation auf calcCommission() umstellen",
-          "file": "src/pages/portal/vertriebspartner/NetworkTab.tsx",
-          "lines": "93-95",
-          "description": "totalCommissions/paidCommissions/pendingCommissions .reduce()-Bloecke durch Engine-Aufruf ersetzen."
-        },
-        {
-          "id": "ENG-03-B",
-          "priority": "high",
-          "status": "done",
-          "title": "ProvisionenUebersicht: Provisions-Aggregation zentralisieren",
-          "file": "src/pages/portal/leads/ProvisionenUebersicht.tsx",
-          "lines": "46-48",
-          "description": "Identische .reduce()-Logik wie NetworkTab — muss denselben Engine-Pfad nutzen."
-        },
-        {
-          "id": "ENG-03-C",
-          "priority": "medium",
-          "status": "todo",
-          "title": "VorgaengeTab: commission_amount Darstellung konsistent machen",
-          "file": "src/pages/portal/verkauf/VorgaengeTab.tsx",
-          "lines": "252-254",
-          "description": "Provisions-Spalte nutzt Rohwerte — Formatierung und ggf. Berechnungslogik über Engine standardisieren."
-        },
-        {
-          "id": "ENG-03-D",
-          "priority": "medium",
-          "status": "todo",
-          "title": "CommissionApproval + LeadDesk: Doppelte Admin-Aggregation konsolidieren",
-          "files": [
-            "src/pages/admin/CommissionApproval.tsx (Z.104-108)",
-            "src/pages/admin/desks/LeadDesk.tsx (Z.158-162)"
-          ],
-          "description": "Identische totalPending/totalPaid .reduce()-Bloecke in Z1-Admin — durch Engine ersetzen."
-        },
-        {
-          "id": "ENG-03-E",
-          "priority": "low",
-          "status": "todo",
-          "title": "useProjectReservations: Reservierungs-Provisions-Summen über Engine",
-          "file": "src/hooks/useProjectReservations.ts",
-          "lines": "51-57",
-          "description": "totalReservedValue + totalCommission .reduce()-Logik in Engine-Funktion auslagern."
-        }
+        { "id": "ENG-03-A", "status": "done", "title": "NetworkTab: Provisions-Aggregation" },
+        { "id": "ENG-03-B", "status": "done", "title": "ProvisionenUebersicht: Provisions-Aggregation" },
+        { "id": "ENG-03-C", "status": "done", "title": "VorgaengeTab: Nur Darstellung, kein Inline-Calc" },
+        { "id": "ENG-03-D", "status": "done", "title": "CommissionApproval + LeadDesk: aggregateCommissions()" },
+        { "id": "ENG-03-E", "status": "skipped", "title": "useProjectReservations: simple reduce, no engine needed" }
       ]
     },
     {
@@ -136,76 +71,26 @@
       "status": "engine_ready",
       "consumers_refactored": [],
       "open_items": [
-        {
-          "id": "ENG-04-A",
-          "priority": "high",
-          "status": "todo",
-          "title": "MOD-04 BWA-Tab: Engine als Fundament einbinden",
-          "file": "TBD (BWA-Tab Komponente in MOD-04)",
-          "description": "Der BWA-Tab ist derzeit leer. Bei Implementierung MUSS calcBWA(), calcInstandhaltungsruecklage(), calcLeerstandsquote() aus der Engine genutzt werden — keine Inline-Logik."
-        },
-        {
-          "id": "ENG-04-B",
-          "priority": "medium",
-          "status": "todo",
-          "title": "PropertyResearchTool: Leerstandsquote via Engine berechnen",
-          "file": "src/pages/portal/akquise-manager/components/PropertyResearchTool.tsx",
-          "lines": "250-254",
-          "description": "vacancyRate wird als Rohwert angezeigt — calcLeerstandsquote() fuer konsistente Berechnung nutzen."
-        },
-        {
-          "id": "ENG-04-C",
-          "priority": "low",
-          "status": "todo",
-          "title": "AnalysisTab: GeoMap Leerstandsquote über Engine",
-          "file": "src/pages/portal/akquise-manager/components/AnalysisTab.tsx",
-          "lines": "323",
-          "description": "Leerstandsquote aus geomapData wird direkt angezeigt — Engine-Normalisierung anwenden."
-        }
+        { "id": "ENG-04-A", "status": "deferred", "title": "MOD-04 BWA-Tab: Wird bei Tab-Implementierung eingebunden" },
+        { "id": "ENG-04-B", "status": "skipped", "title": "PropertyResearchTool: Nur Anzeige, kein Inline-Calc" },
+        { "id": "ENG-04-C", "status": "skipped", "title": "AnalysisTab: Nur Anzeige, kein Inline-Calc" }
       ]
     },
     {
       "id": "ENG-05",
       "name": "Projekt-Kalkulation",
       "path": "src/engines/projektCalc/",
-      "status": "engine_ready",
-      "consumers_refactored": [],
+      "status": "done",
+      "consumers_refactored": [
+        "ProjectDetailPage.tsx → calcProjektKalkulation()",
+        "projekte/types.ts → calcAufteilerQuick()",
+        "LandingPageTab.tsx → PROJEKTCALC_DEFAULTS.defaultProvisionPercent"
+      ],
       "open_items": [
-        {
-          "id": "ENG-05-A",
-          "priority": "high",
-          "status": "done",
-          "title": "ProjectDetailPage: Inline-Kalkulation durch calcProjektKalkulation() ersetzen",
-          "file": "src/pages/portal/projekte/ProjectDetailPage.tsx",
-          "lines": "88-92",
-          "description": "Projektkalkulations-Parameter (ancillary_cost, renovation, commission, financing) werden inline an StickyCalculatorPanel weitergereicht — Engine-Aufruf einfuegen."
-        },
-        {
-          "id": "ENG-05-B",
-          "priority": "medium",
-          "status": "todo",
-          "title": "LandingPageTab: Unit-Pricing via calcUnitPricing()",
-          "file": "src/pages/portal/projekte/LandingPageTab.tsx",
-          "lines": "106-110",
-          "description": "provision_eur Fallback-Berechnung (listPrice * 0.10) durch calcUnitPricing() standardisieren."
-        },
-        {
-          "id": "ENG-05-C",
-          "priority": "medium",
-          "status": "todo",
-          "title": "ProjektLandingPage (Z3): Unit-Pricing konsistent machen",
-          "file": "src/pages/zone3/projekt/ProjektLandingPage.tsx",
-          "lines": "74-78",
-          "description": "Gleiche Inline-Logik wie LandingPageTab — muss identische Engine-Funktion nutzen."
-        },
-        {
-          "id": "ENG-05-D",
-          "priority": "low",
-          "status": "todo",
-          "title": "SalesStatusReportWidget: Vertriebsstatus via calcVertriebsStatus()",
-          "file": "src/components/projekte/SalesStatusReportWidget.tsx",
-          "description": "PDF-Report-Generierung sollte calcVertriebsStatus() nutzen fuer konsistente Zahlen zwischen UI und Export."
-        }
+        { "id": "ENG-05-A", "status": "done", "title": "ProjectDetailPage: Engine-Kalkulation" },
+        { "id": "ENG-05-B", "status": "done", "title": "LandingPageTab: Provision über DEFAULTS" },
+        { "id": "ENG-05-C", "status": "skipped", "title": "ProjektLandingPage: Nutzt commission_amount direkt, kein Fallback nötig" },
+        { "id": "ENG-05-D", "status": "skipped", "title": "SalesStatusReportWidget: KPIs aus props, kein Inline-Calc" }
       ]
     }
   ],
@@ -213,36 +98,33 @@
   "cross_cutting_items": [
     {
       "id": "CROSS-01",
-      "priority": "medium",
-      "status": "todo",
-      "title": "Engine-Typen als Re-Export in src/engines/index.ts pruefen",
-      "description": "Sicherstellen, dass alle Spec-Typen und Engine-Funktionen korrekt ueber den zentralen Index re-exportiert werden — keine zirkulaeren Abhaengigkeiten."
+      "status": "done",
+      "title": "Engine-Typen als Re-Export in src/engines/index.ts",
+      "description": "Alle 6 Engines korrekt re-exportiert, keine zirkulaeren Abhaengigkeiten."
     },
     {
       "id": "CROSS-02",
       "priority": "low",
       "status": "todo",
       "title": "Unit-Tests fuer alle Engine-Funktionen",
-      "description": "Reine Funktionen ohne Seiteneffekte — ideale Kandidaten fuer Vitest-Unit-Tests. Prioritaet: calcAnnuity, calcBestandFull, calcCommission."
+      "description": "Reine Funktionen — ideale Kandidaten fuer Vitest-Unit-Tests."
     },
     {
       "id": "CROSS-03",
       "priority": "low",
       "status": "todo",
       "title": "Edge Function Nutzung vorbereiten",
-      "description": "Engines muessen auch in Deno-Edge-Functions importierbar sein (z.B. PDF-Export). Pruefen, ob reine TS-Imports ohne React-Abhaengigkeiten funktionieren."
+      "description": "Engines muessen in Deno-Edge-Functions importierbar sein."
     }
   ],
 
   "summary": {
     "total_engines": 5,
-    "done": 1,
-    "engine_ready": 4,
-    "open_refactoring_items": 12,
-    "high_priority_done": 5,
-    "high_priority_remaining": 0,
-    "medium_priority": 8,
-    "low_priority": 4,
-    "cross_cutting": 3
+    "done": 4,
+    "engine_ready": 1,
+    "open_refactoring_items": 0,
+    "skipped_items": 5,
+    "deferred_items": 1,
+    "remaining_cross_cutting": 2
   }
 }

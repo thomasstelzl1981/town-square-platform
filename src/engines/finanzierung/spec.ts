@@ -106,6 +106,21 @@ export interface ApplicantSnapshotResult {
 
 // ─── Defaults ────────────────────────────────────────────────────
 
+// ─── Completion Score ────────────────────────────────────────────
+
+export interface CompletionScoreInput {
+  formData: Record<string, unknown>;
+  requiredFields: string[];
+}
+
+export interface CompletionScoreResult {
+  filledCount: number;
+  totalRequired: number;
+  percent: number;
+}
+
+// ─── Defaults ────────────────────────────────────────────────────
+
 export const FINANZIERUNG_DEFAULTS = {
   fixedRatePeriodYears: 10,
   repaymentRatePercent: 2,
@@ -115,5 +130,7 @@ export const FINANZIERUNG_DEFAULTS = {
   dscrMinGreen: 1.2,
   dscrMinYellow: 1.0,
   dsrMaxViable: 0.4,
+  /** Mindest-Completion-Score fuer Einreichung */
+  minCompletionScore: 80,
   mockBanks: ['Sparkasse', 'Deutsche Bank', 'ING', 'Commerzbank', 'KfW'] as const,
 } as const;

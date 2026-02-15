@@ -316,10 +316,10 @@ export function SelbstauskunftFormV2({ profile, coApplicantProfile, onCoApplican
   // Completion
   const requiredFields = ['first_name', 'last_name', 'birth_date', 'address_street', 'address_postal_code', 'address_city', 'email', 'phone', 'employment_type', 'net_income_monthly', 'iban'];
   const filledRequired = requiredFields.filter(f => {
-    const val = formData[f as keyof typeof formData];
+    const val = (formData as unknown as Record<string, unknown>)[f];
     return val !== null && val !== undefined && val !== '';
   }).length;
-  const completionPercent = Math.round((filledRequired / requiredFields.length) * 100);
+  const completionPercent = requiredFields.length > 0 ? Math.round((filledRequired / requiredFields.length) * 100) : 0;
 
   // Check if co-applicant has any data
   const hasCoData = coApplicantProfile || Object.entries(coFormData).some(([k, v]) => {

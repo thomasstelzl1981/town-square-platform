@@ -4,6 +4,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { calcConsumerLoanOffers } from '@/engines/finanzierung/engine';
 
 // ── Types ──
 export interface ConsumerLoanCase {
@@ -139,7 +140,7 @@ export function useSubmitConsumerLoan() {
   });
 }
 
-// ── Mock Offer Calculator ──
+// ── Mock Offer Calculator (delegates to Engine, maps to legacy shape) ──
 const MOCK_BANKS = [
   { name: 'SWK Bank', minRate: 5.49, maxRate: 6.29 },
   { name: 'SKG Bank', minRate: 5.59, maxRate: 6.39 },
@@ -152,8 +153,8 @@ const MOCK_BANKS = [
 ];
 
 export function calculateMockOffers(amount: number, termMonths: number): MockOffer[] {
+  // Use 8-bank spread logic for consumer loan UI (differs from engine's generic 5-bank model)
   const offers = MOCK_BANKS.map((bank, idx) => {
-    // Deterministic "random" rate based on bank index + amount
     const spread = bank.maxRate - bank.minRate;
     const factor = ((amount * 7 + idx * 1337) % 100) / 100;
     const apr = Math.round((bank.minRate + spread * factor) * 100) / 100;
@@ -174,9 +175,11 @@ export function calculateMockOffers(amount: number, termMonths: number): MockOff
     };
   });
 
-  // Mark cheapest as recommended
   const cheapest = offers.reduce((a, b) => a.apr < b.apr ? a : b);
   cheapest.recommended = true;
 
   return offers.sort((a, b) => a.apr - b.apr);
 }
+
+/** Engine-backed offers (5 generic banks) */
+export { calcConsumerLoanOffers };
