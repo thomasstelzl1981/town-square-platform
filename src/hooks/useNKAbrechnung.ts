@@ -40,6 +40,14 @@ export interface CostItemEditable {
   sortOrder: number;
 }
 
+export interface RentPaymentRow {
+  dueDate: string;
+  paidDate: string | null;
+  expectedAmount: number;
+  amount: number;
+  status: string;
+}
+
 export function useNKAbrechnung(
   propertyId: string,
   tenantId: string,
@@ -58,6 +66,8 @@ export function useNKAbrechnung(
   const [isCalculating, setIsCalculating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [nkPeriodId, setNkPeriodId] = useState<string | null>(null);
+  const [rentPayments, setRentPayments] = useState<RentPaymentRow[]>([]);
+  const [isLoadingPayments, setIsLoadingPayments] = useState(false);
 
   // Readiness Check + Daten laden bei Jahr-Aenderung
   useEffect(() => {
@@ -352,6 +362,39 @@ export function useNKAbrechnung(
     }
   }, [settlement, year]);
 
+  // Kontenauslesung: tatsächliche Zahlungseingänge laden
+  const fetchRentPayments = useCallback(async () => {
+    if (!leaseInfo?.id) return;
+    setIsLoadingPayments(true);
+    try {
+      const yearStart = `${year}-01-01`;
+      const yearEnd = `${year}-12-31`;
+      const { data, error } = await supabase
+        .from('rent_payments')
+        .select('due_date, paid_date, expected_amount, amount, status')
+        .eq('lease_id', leaseInfo.id)
+        .gte('due_date', yearStart)
+        .lte('due_date', yearEnd)
+        .order('due_date', { ascending: true });
+
+      if (error) throw error;
+      setRentPayments(
+        (data || []).map((r: any) => ({
+          dueDate: r.due_date,
+          paidDate: r.paid_date,
+          expectedAmount: Number(r.expected_amount) || 0,
+          amount: Number(r.amount) || 0,
+          status: r.status || 'open',
+        }))
+      );
+    } catch (err: any) {
+      console.error('fetchRentPayments failed:', err);
+      toast({ title: 'Fehler', description: 'Zahlungsdaten konnten nicht geladen werden.', variant: 'destructive' });
+    } finally {
+      setIsLoadingPayments(false);
+    }
+  }, [leaseInfo?.id, year]);
+
   return {
     readiness,
     settlement,
@@ -363,6 +406,9 @@ export function useNKAbrechnung(
     isLoadingData,
     isCalculating,
     isSaving,
+    rentPayments,
+    isLoadingPayments,
+    fetchRentPayments,
     calculate,
     exportPdf,
     updateCostItem,
