@@ -1,71 +1,112 @@
 
 
-# Reparaturplan: MediaWidget fuellt WidgetCell nicht aus
+# Fullscreen Slide Presentation Viewer
 
-## Fehleranalyse
+## Ziel
 
-Die CI-Architektur ist korrekt:
-- `WidgetGrid` (4 Spalten) und `WidgetCell` (`h-[260px] md:h-auto md:aspect-square`) sind korrekt eingesetzt
-- Das Problem liegt in `MediaWidget.tsx`: Der `<button>` hat kein `h-full w-full` und fuellt daher die quadratische WidgetCell NICHT aus
+Beim Klick auf die Media-Widgets in MOD-08 (Suche) und MOD-09 (Beratung) oeffnet sich ein rahmenloses Fullscreen-Overlay mit einer Slideshow. Jedes der 4 Widgets startet seine eigene Praesentation mit vordefinierten Slides im CI-Design.
+
+## Architektur
 
 ```text
-IST-ZUSTAND:
-+------------------+
-| WidgetCell       |
-| (aspect-square)  |
-|  +--------+      |
-|  |MediaWid|      |  <-- Button nur so gross wie Content
-|  |  Icon  |      |
-|  |  Text  |      |
-|  +--------+      |
-|                  |
-+------------------+
-
-SOLL-ZUSTAND:
-+------------------+
-|  MediaWidget     |
-|  h-full w-full   |
-|                  |
-|     Icon         |  <-- Button fuellt gesamte Zelle
-|     Titel        |
-|     Subtitle     |
-|     Badge        |
-|                  |
-+------------------+
+MediaWidget (Klick)
+      |
+      v
+SlideshowViewer (Fullscreen-Overlay)
+      |
+      +-- Slide 1..N (1920x1080 skaliert)
+      |
+      +-- Navigation (Pfeiltasten / Klick / Swipe)
+      |
+      +-- ESC / X zum Schliessen
 ```
 
-## Fix
+## Slide-Rendering (1920x1080 Skalierung)
 
-### Datei: `src/components/shared/MediaWidget.tsx`
+Alle Slides werden intern bei 1920x1080px gerendert und per CSS-Transform auf die aktuelle Viewport-Groesse skaliert. Dadurch sehen sie auf jedem Bildschirm identisch aus — wie eine echte Praesentation.
 
-Eine Zeile ergaenzen — `h-full w-full` zum Button hinzufuegen:
-
-Zeile 26, aendern von:
-```
-'relative flex flex-col items-center justify-center gap-3 rounded-xl border p-4 text-center',
-```
-zu:
-```
-'relative h-full w-full flex flex-col items-center justify-center gap-3 rounded-xl border p-4 text-center',
+```text
+Container (100vw x 100vh, schwarz)
+  |
+  Slide-Wrapper (1920x1080, zentriert)
+    transform: scale(min(vw/1920, vh/1080))
+    transform-origin: center center
 ```
 
-Das ist der gesamte Fix. Die WidgetCell gibt die quadratische Form vor, der MediaWidget-Button fuellt sie jetzt komplett aus.
+## Slide-Inhalte (4 Praesentationen)
 
-## Begriffsklaerung fuer zukuenftige Kommunikation
+### Praesentation 1: Verkaufspraesentation (5 Slides)
+1. Titelfolie: "System of a Town — Investment-Strategie" mit Logo und Untertitel
+2. Das Problem: Warum klassische Geldanlage nicht reicht (3 Pain Points)
+3. Die Loesung: Investment Engine — EK + zVE = optimiertes Ergebnis
+4. So funktioniert's: 3-Schritte-Flow (Eingabe, Simulation, Beratung)
+5. CTA: "Starten Sie jetzt Ihre Simulation"
 
-| Begriff | Bedeutung |
-|---------|-----------|
-| **WidgetCell** | Der CI-Wrapper aus dem Design Manifest — erzwingt `aspect-square` auf Desktop, `h-[260px]` auf Mobile |
-| **WidgetGrid** | Das 4-Spalten-Grid (`grid-cols-1 md:grid-cols-2 lg:grid-cols-4`) |
-| **"CI-Kachel"** oder **"Widget"** | Jede Komponente innerhalb einer WidgetCell — MUSS `h-full w-full` haben |
+### Praesentation 2: Rendite erklaert (4 Slides)
+1. Titelfolie: "Rendite mit Immobilien"
+2. Vergleich: Tagesgeld vs. Immobilie (Balkendiagramm-Darstellung)
+3. Hebel-Effekt: Fremdkapital als Rendite-Turbo
+4. Zusammenfassung mit Beispielrechnung
 
-Wenn Sie in Zukunft "quadratische CI-Kachel" oder einfach "Widget im WidgetGrid" sagen, ist klar: WidgetGrid + WidgetCell + Inhalt mit `h-full w-full`.
+### Praesentation 3: Steuervorteil (4 Slides)
+1. Titelfolie: "Steueroptimierung mit Immobilien"
+2. AfA und Werbungskosten erklaert
+3. Vorher/Nachher: Steuerlast mit und ohne Immobilie
+4. CTA: "Berechnen Sie Ihren persoenlichen Vorteil"
 
-## Betroffene Dateien
+### Praesentation 4: Verwaltung / Software (4 Slides)
+1. Titelfolie: "Ihre Immobilien — digital verwaltet"
+2. Feature-Ueberblick: Portfolio, DMS, Mieter, Buchhaltung
+3. Screenshot-Mockup: Dashboard-Ansicht
+4. CTA: "Jetzt kostenlos testen"
+
+## Slide-Design (CI-konform)
+
+Jede Slide nutzt das SoT-CI:
+- Dunkler Hintergrund (bg-background/bg-surface-2) mit Primary-Akzenten
+- Grosse Typografie (text-4xl bis text-7xl im 1920x1080 Raum)
+- Primary-Glow-Elemente und Gradient-Akzente
+- Minimalistische Icons aus Lucide
+- Kein Branding-Ueberfluss, Clean-Look
+
+## Fullscreen-Viewer Features
+
+- **Oeffnung**: Overlay ueber dem Portal (fixed inset-0, z-50, schwarzer Hintergrund)
+- **Navigation**: Links/Rechts-Pfeile am Rand, Tastatur (Pfeiltasten, Space, ESC)
+- **Slide-Indikator**: Kleine Dots am unteren Rand (aktueller Slide hervorgehoben)
+- **Schliessen**: ESC-Taste oder X-Button oben rechts
+- **Keine Browser-Fullscreen-API**: Das Overlay selbst ist der "Fullscreen" — kein requestFullscreen(), da das im iframe-Kontext problematisch ist
+
+## Technische Umsetzung
+
+### Neue Dateien
+
+| Datei | Beschreibung |
+|-------|-------------|
+| `src/components/shared/slideshow/SlideshowViewer.tsx` | Fullscreen-Overlay mit Navigation, Skalierung, Keyboard-Events |
+| `src/components/shared/slideshow/ScaledSlide.tsx` | 1920x1080 Wrapper mit auto-scale |
+| `src/components/shared/slideshow/slides/VerkaufspraesSlides.tsx` | 5 Slides fuer Verkaufspraesentation |
+| `src/components/shared/slideshow/slides/RenditeSlides.tsx` | 4 Slides fuer Rendite-Erklaerung |
+| `src/components/shared/slideshow/slides/SteuervorteilSlides.tsx` | 4 Slides fuer Steuervorteil |
+| `src/components/shared/slideshow/slides/VerwaltungSlides.tsx` | 4 Slides fuer Software/Verwaltung |
+| `src/components/shared/slideshow/slideData.ts` | Mapping: Widget-Type zu Slide-Set |
+
+### Geaenderte Dateien
 
 | Datei | Aenderung |
 |-------|-----------|
-| `src/components/shared/MediaWidget.tsx` | `h-full w-full` zum Button hinzufuegen |
+| `src/components/shared/MediaWidgetGrid.tsx` | State fuer aktive Praesentation, SlideshowViewer einbinden |
+| `src/components/shared/MediaWidget.tsx` | Keine Aenderung noetig (onClick wird bereits durchgereicht) |
 
-Keine weiteren Dateien betroffen. Keine DB-Migration noetig.
+### Ablauf
+
+1. User klickt auf ein MediaWidget (z.B. "Verkaufspraesentation")
+2. `MediaWidgetGrid` setzt `activePresentation = 'verkaufspraesentation'`
+3. `SlideshowViewer` oeffnet sich als fixed Overlay mit den zugehoerigen Slides
+4. User navigiert mit Pfeiltasten oder Klick
+5. ESC oder X schliesst den Viewer, `activePresentation = null`
+
+## Keine DB-Migration noetig
+
+Alle Slide-Inhalte sind fest im Code hinterlegt. Keine Datenbank-Aenderungen erforderlich.
 
