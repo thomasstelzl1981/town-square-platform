@@ -14,7 +14,7 @@ import { LegalDocumentDialog } from '@/components/legal/LegalDocumentDialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ShieldCheck, FileSignature, CheckCircle2, AlertCircle } from 'lucide-react';
+import { ShieldCheck, FileSignature, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function VorsorgedokumenteTab() {
@@ -70,20 +70,15 @@ export default function VorsorgedokumenteTab() {
               <div className="flex items-center justify-between">
                 <div className={cn(
                   'h-12 w-12 rounded-xl flex items-center justify-center',
-                  pvCompleted ? 'bg-emerald-500/10' : 'bg-red-500/10'
+                  pvCompleted ? 'bg-emerald-500/10' : 'bg-muted/50'
                 )}>
-                  <ShieldCheck className={cn('h-6 w-6', pvCompleted ? 'text-emerald-600' : 'text-red-500')} />
+                  <ShieldCheck className={cn('h-6 w-6', pvCompleted ? 'text-emerald-600' : 'text-muted-foreground')} />
                 </div>
-                <Badge variant={pvCompleted ? 'default' : 'destructive'} className={cn(
-                  'text-xs',
-                  pvCompleted && 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/30'
-                )}>
-                  {pvCompleted ? (
-                    <><CheckCircle2 className="h-3 w-3 mr-1" /> Hinterlegt</>
-                  ) : (
-                    <><AlertCircle className="h-3 w-3 mr-1" /> Fehlt</>
-                  )}
-                </Badge>
+                {pvCompleted && (
+                  <Badge className="text-xs bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/30">
+                    <CheckCircle2 className="h-3 w-3 mr-1" /> Hinterlegt
+                  </Badge>
+                )}
               </div>
 
               <div>
@@ -123,20 +118,15 @@ export default function VorsorgedokumenteTab() {
               <div className="flex items-center justify-between">
                 <div className={cn(
                   'h-12 w-12 rounded-xl flex items-center justify-center',
-                  testamentCompleted ? 'bg-emerald-500/10' : 'bg-red-500/10'
+                  testamentCompleted ? 'bg-emerald-500/10' : 'bg-muted/50'
                 )}>
-                  <FileSignature className={cn('h-6 w-6', testamentCompleted ? 'text-emerald-600' : 'text-red-500')} />
+                  <FileSignature className={cn('h-6 w-6', testamentCompleted ? 'text-emerald-600' : 'text-muted-foreground')} />
                 </div>
-                <Badge variant={testamentCompleted ? 'default' : 'destructive'} className={cn(
-                  'text-xs',
-                  testamentCompleted && 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/30'
-                )}>
-                  {testamentCompleted ? (
-                    <><CheckCircle2 className="h-3 w-3 mr-1" /> Hinterlegt</>
-                  ) : (
-                    <><AlertCircle className="h-3 w-3 mr-1" /> Fehlt</>
-                  )}
-                </Badge>
+                {testamentCompleted && (
+                  <Badge className="text-xs bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/30">
+                    <CheckCircle2 className="h-3 w-3 mr-1" /> Hinterlegt
+                  </Badge>
+                )}
               </div>
 
               <div>
