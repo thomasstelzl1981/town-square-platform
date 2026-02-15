@@ -1,101 +1,232 @@
 
-# PVGIS Soll-Kurve: Anlagen-Ausrichtung + Ertragsvergleich
 
-## Ueberblick
+# SPEC: Meeting Recorder Widget (WF-MEET-01)
 
-Die EU-PVGIS-API (kostenlos, kein API-Key) ersetzt die Google Solar API als primaere Datenquelle fuer standortbezogene Soll-Daten. Der Nutzer kann Neigungswinkel und Ausrichtung seiner Anlage eingeben und erhaelt eine exakte Soll-Kurve, gegen die die tatsaechliche (oder Demo-) Produktion verglichen wird.
+## Zusammenfassung
 
-**Wichtig:** PVGIS blockiert Browser-Anfragen (CORS). Daher laeuft der Abruf ueber eine Backend-Funktion als Proxy.
+Ein permanentes System-Widget im Dashboard, das physische Tisch-Meetings live transkribiert (ohne Audio-Speicherung), nach Beendigung per KI zusammenfasst und als Aufgaben-Widget auf das Dashboard legt. Das Ergebnis kann per E-Mail versendet oder im Kontakt-Konversationsverlauf archiviert werden.
 
-## Was aendert sich?
+---
 
-### 1. Neue Backend-Funktion: PVGIS-Proxy
+## Widget-Verhalten (Zustaende)
 
-**Datei: `supabase/functions/pvgis-proxy/index.ts`**
+```text
++-------+     Klick      +----------+     Mikrofon     +-----------+
+| idle  | ------------->  | consent  | --------------> | recording |
++-------+                 +----------+                  +-----------+
+                                                            |
+                                              Stop / 90min Auto-Stop
+                                                            |
+                                                     +------------+
+                                                     | countdown  |  (3 Min Timer)
+                                                     +------------+
+                                                      /          \
+                                            Weitermachen        Stopp
+                                                /                  \
+                                        +-----------+        +------------+
+                                        | recording |        | processing |
+                                        +-----------+        +------------+
+                                                                   |
+                                                              KI-Summary
+                                                                   |
+                                                              +---------+
+                                                              |  ready  |
+                                                              +---------+
+                                                                   |
+                                                          Task-Widget erstellt
+```
 
-Ruft die PVGIS-API `PVcalc` auf und gibt die monatlichen Soll-Ertraege zurueck.
+### Zustandslogik
 
-- Eingabe: `{ lat, lon, peakpower, loss, angle, aspect }`
-- PVGIS-URL: `https://re.jrc.ec.europa.eu/api/v5_3/PVcalc?lat=...&lon=...&peakpower=...&loss=...&angle=...&aspect=...&outputformat=json`
-- Rueckgabe: Monatliche Soll-Ertraege (kWh), Jahresertrag, optimaler Winkel
+- **idle**: Kachel zeigt "Meeting Recorder" + CTA "Meeting starten"
+- **consent**: Datenschutz-Hinweis: "Es wird kein Audio gespeichert, nur Text. Alle Teilnehmer muessen einverstanden sein." Checkbox + Bestaetigen
+- **recording**: Unsichtbare Transkription im Hintergrund. Kachel zeigt Puls-Animation + Laufzeit-Timer. Kein sichtbarer Transkript-Ticker (laeuft unsichtbar)
+- **countdown**: Nach Stop oder nach 90 Minuten erscheint ein 3-Minuten-Countdown mit zwei Buttons: "Weitermachen" (zurueck zu recording) oder "Endgueltig stoppen" (weiter zu processing)
+- **processing**: Spinner + "Zusammenfassung wird erstellt..."
+- **ready**: Hinweis "Protokoll erstellt" + neues Task-Widget erscheint im Dashboard-Grid
 
-Kein API-Key noetig. Rate-Limit: 30 Anfragen/Sekunde (mehr als ausreichend).
+### 90-Minuten-Limit
 
-### 2. Bestehende "Solarpotenzial"-Sektion wird ersetzt
+- Nach 90 Minuten wird automatisch der Countdown-Zustand ausgeloest (nicht sofortiger Stopp)
+- Der Countdown laeuft 3 Minuten. Danach wird automatisch gestoppt
 
-Die aktuelle Google-Solar-Sektion im Dossier (Zeile 442-503) wird durch eine neue **"Anlagen-Ausrichtung und Soll-Ertrag"**-Sektion ersetzt:
+---
 
-**Eingabefelder:**
-| Feld | Bereich | Default | Erklaerung |
-|------|---------|---------|------------|
-| Neigung (angle) | 0-90 Grad | 35 | Dachneigung der Module |
-| Ausrichtung (aspect) | -180 bis 180 | 0 (Sued) | 0=Sued, 90=West, -90=Ost |
-| Systemverluste (loss) | 0-50% | 14 | Kabel, WR, Verschmutzung etc. |
-| PV-Technologie | Dropdown | crystSi | crystSi, CIS, CdTe |
+## Datenmodell (3 neue Tabellen)
 
-**Button:** "Soll-Ertrag berechnen" — ruft die Backend-Funktion auf
+### `meeting_sessions`
 
-**Ergebnis-Anzeige:**
-- 12-Monats-Balkendiagramm: Soll-Ertrag pro Monat (kWh)
-- Jahresertrag gesamt (kWh/Jahr)
-- Spezifischer Ertrag (kWh/kWp)
-- Optimaler Neigungswinkel (falls von PVGIS berechnet)
+| Spalte | Typ | Default | Beschreibung |
+|--------|-----|---------|-------------|
+| id | uuid | gen_random_uuid() | PK |
+| tenant_id | uuid | FK tenants | Mandant |
+| user_id | uuid | auth.uid() | Ersteller |
+| title | text | 'Meeting' | Titel (editierbar) |
+| started_at | timestamptz | | Startzeit |
+| ended_at | timestamptz | | Endzeit |
+| consent_confirmed | boolean | false | Einwilligung |
+| status | text | 'idle' | idle, recording, processing, ready, sent, archived |
+| stt_engine_used | text | | elevenlabs, browser, hybrid |
+| total_duration_sec | integer | | Gesamtdauer in Sekunden |
+| created_at | timestamptz | now() | |
 
-### 3. Soll-Kurve im Monitoring-Chart
+RLS: tenant_id = auth.jwt()->tenant_id, user_id = auth.uid()
+Realtime: JA
 
-Die Tageskurve im "Live-Monitoring" bekommt eine zweite Linie: die **Soll-Kurve** (gestrichelt, heller). So sieht man auf einen Blick, ob die Anlage ueber oder unter Plan liegt.
+### `meeting_transcript_chunks`
 
-Dafuer wird der saisonale Demo-Generator mit den PVGIS-Monatsdaten kalibriert: Wenn PVGIS-Daten vorliegen, wird der monatliche Soll-Ertrag als Referenz verwendet statt der fest codierten Sonnenstunden-Tabelle.
+| Spalte | Typ | Beschreibung |
+|--------|-----|-------------|
+| id | uuid | PK |
+| session_id | uuid FK | Gehoert zu Session |
+| seq | integer | Reihenfolge |
+| text | text | Transkript-Text |
+| engine_source | text | elevenlabs oder browser |
+| created_at | timestamptz | |
 
-### 4. Google Solar API bleibt optional
+RLS: via session_id -> meeting_sessions.tenant_id
+Realtime: NEIN (nur intern genutzt)
 
-Die bestehende `sot-solar-insights` Edge Function bleibt erhalten, wird aber aus dem Dossier entfernt. Sie kann spaeter fuer erweiterte Dachanalysen (Panels, Flaeche, CO2) wieder eingebunden werden.
+### `meeting_outputs`
+
+| Spalte | Typ | Beschreibung |
+|--------|-----|-------------|
+| id | uuid | PK |
+| session_id | uuid FK | Gehoert zu Session |
+| summary_md | text | Zusammenfassung (Markdown) |
+| action_items_json | jsonb | Aufgabenliste |
+| decisions_json | jsonb | Entscheidungen |
+| open_questions_json | jsonb | Offene Punkte |
+| created_at | timestamptz | |
+
+RLS: via session_id -> meeting_sessions.tenant_id
+
+---
+
+## Ergebnis-Workflow: Task-Widget + Drawer
+
+### Nach Abschluss der KI-Zusammenfassung:
+
+1. System erstellt einen Eintrag in `task_widgets` mit type `meeting_protocol`, verknuepft ueber `parameters.session_id`
+2. Widget erscheint via Realtime im Dashboard-Grid (existierender useTaskWidgets-Mechanismus)
+3. Klick auf das Widget oeffnet einen **Drawer** mit:
+   - Zusammenfassung (Markdown)
+   - Aufgabenliste
+   - Entscheidungen
+   - Offene Punkte
+4. Im Drawer: zwei Aktionen:
+   - **"Transkript speichern"**: Archiviert die Session (status -> archived)
+   - **"Per E-Mail senden"**: Oeffnet Empfaenger-Auswahl
+
+### Empfaenger-Auswahl:
+
+- Kontakt-Autocomplete aus `contacts`-Tabelle (Suche nach Name, E-Mail)
+- ODER freie E-Mail-Eingabe
+- CC/BCC optional
+- Button: "Senden"
+
+### Bei Versand an Kontakt aus Kontaktbuch:
+
+- E-Mail wird ueber bestehende Resend-Integration gesendet
+- Zusaetzlich: Eintrag in `contact_conversations` (neue Tabelle oder bestehende `acq_outbound_messages` erweitern)
+- Thread-Eintrag: type = "meeting_summary", verknuepft mit session_id
+- Sichtbar im Kontaktprofil unter Kommunikationsverlauf
+
+---
+
+## STT-Strategie (unveraendert)
+
+Nutzt den bestehenden `ElevenLabsScribeConnection` aus `useArmstrongVoice.ts`:
+- **Primary**: ElevenLabs Scribe v2 Realtime (WebSocket, VAD, de)
+- **Fallback**: Browser SpeechRecognition API (de-DE)
+- Automatische Umschaltung bei Fehler
+- `engine_source` pro Chunk gespeichert
+- `stt_engine_used` auf Session-Ebene (elevenlabs | browser | hybrid)
+
+Fuer lange Sessions (bis 90 Min): ElevenLabs-Token muss ggf. erneuert werden (Token-Lifetime ~15 Min). Der Hook wird erweitert um automatische Token-Renewal.
+
+---
+
+## Backend-Funktionen (2 neue Edge Functions)
+
+### `sot-meeting-summarize`
+
+- Input: `{ session_id }`
+- Laedt alle Transcript-Chunks der Session
+- Sendet an Lovable AI (google/gemini-2.5-flash) mit strukturiertem Prompt
+- Extrahiert: summary_md, action_items_json, decisions_json, open_questions_json
+- Speichert in `meeting_outputs`
+- Erstellt Task-Widget in `task_widgets` (type: meeting_protocol)
+- Aktualisiert Session-Status auf `ready`
+
+### `sot-meeting-send`
+
+- Input: `{ session_id, recipients: [{ type: 'contact' | 'email', id?, email? }] }`
+- Rendert Summary als E-Mail (Resend)
+- Wenn contact_id: erstellt Eintrag im Kommunikationsverlauf
+- Aktualisiert Session-Status auf `sent`
+
+---
+
+## Armstrong-Integration
+
+### Neue Action im Manifest
+
+```text
+ARM.MOD00.START_MEETING_RECORDER
+- execution_mode: execute
+- cost_model: metered (1 Credit pro Meeting)
+- Triggert den Meeting-Flow
+```
+
+### Armstrong-Verhalten
+
+Armstrong begleitet den Flow nicht als Voice-Overlay, sondern das Widget selbst steuert den gesamten Prozess. Armstrong kann auf Nachfrage ("Starte ein Meeting") das Widget aktivieren.
+
+---
+
+## Widget-Typ Erweiterung
+
+### `src/types/widget.ts`
+
+- Neuer SystemWidgetType: `system_meeting_recorder`
+- Neuer TaskWidgetType: `meeting_protocol` (fuer das Ergebnis-Widget)
+- Neues WIDGET_CONFIG fuer beide
+
+### `src/hooks/useWidgetPreferences.ts`
+
+- Neuer Code: `SYS.MEET.RECORDER` in der Widget-Praeferenz-Liste
+
+---
 
 ## Betroffene Dateien
 
 | Datei | Aenderung |
 |-------|-----------|
-| `supabase/functions/pvgis-proxy/index.ts` | **Neu** — Backend-Proxy fuer PVGIS API |
-| `supabase/config.toml` | Neue Funktion registrieren |
-| `src/pages/portal/photovoltaik/PVPlantDossier.tsx` | "Solarpotenzial" ersetzen durch "Anlagen-Ausrichtung + Soll-Ertrag", Soll-Linie im Chart |
-| `src/components/photovoltaik/DemoLiveGenerator.ts` | Keine Aenderung (saisonale Logik bleibt als Fallback) |
+| `spec/current/04_workflows/WF-MEET-01.md` | **Neu** — SPEC-Datei |
+| `src/types/widget.ts` | `system_meeting_recorder` + `meeting_protocol` Typen |
+| `src/components/dashboard/MeetingRecorderWidget.tsx` | **Neu** — System-Widget mit State-Machine |
+| `src/components/dashboard/MeetingCountdownOverlay.tsx` | **Neu** — 3-Min-Countdown UI |
+| `src/components/dashboard/MeetingResultDrawer.tsx` | **Neu** — Ergebnis-Drawer |
+| `src/hooks/useMeetingRecorder.ts` | **Neu** — Session-Lifecycle + STT-Steuerung |
+| `src/pages/portal/PortalDashboard.tsx` | Widget-Rendering + Code-Mapping |
+| `src/manifests/armstrongManifest.ts` | Neue Action `ARM.MOD00.START_MEETING_RECORDER` |
+| `supabase/functions/sot-meeting-summarize/index.ts` | **Neu** — KI-Zusammenfassung |
+| `supabase/functions/sot-meeting-send/index.ts` | **Neu** — E-Mail + Kontakt-Konversation |
+| `supabase/config.toml` | 2 neue Functions |
+| Migration SQL | 3 neue Tabellen + RLS + Realtime |
 
-## Technische Details
+---
 
-### PVGIS API Response (PVcalc, JSON)
+## Reihenfolge der Implementierung
 
-```text
-{
-  "inputs": { "location": { "latitude": 51.5, "longitude": 7.0 }, ... },
-  "outputs": {
-    "monthly": {
-      "fixed": [
-        { "month": 1, "E_d": 1.23, "E_m": 38.1, "H(i)_d": 1.5, "H(i)_m": 46.5, "SD_m": 5.2 },
-        ...
-      ]
-    },
-    "totals": {
-      "fixed": { "E_d": 3.05, "E_m": 92.8, "E_y": 1113.5, "H(i)_d": 3.6, ... }
-    }
-  }
-}
-```
+1. SPEC-Datei erstellen (`spec/current/04_workflows/WF-MEET-01.md`)
+2. Datenbank-Migration (3 Tabellen + RLS)
+3. Widget-Typen erweitern (`widget.ts`)
+4. `useMeetingRecorder` Hook
+5. `MeetingRecorderWidget` + `MeetingCountdownOverlay`
+6. `MeetingResultDrawer`
+7. Dashboard-Integration (`PortalDashboard.tsx`)
+8. Edge Functions (`sot-meeting-summarize`, `sot-meeting-send`)
+9. Armstrong Action im Manifest
 
-- `E_m` = Monatlicher Ertrag in kWh
-- `E_y` = Jahresertrag in kWh
-- `E_d` = Durchschnittlicher Tagesertrag in kWh
-
-### Geocoding fuer Koordinaten
-
-Die Anlage hat Adressfelder (street, postal_code, city). Fuer PVGIS brauchen wir lat/lon. Dafuer nutzen wir die bestehende Google Geocoding API (gleicher Key wie bisher) innerhalb der Edge Function. Falls kein Google-Key vorhanden, kann der Nutzer lat/lon manuell eingeben.
-
-### Warum PVGIS statt Google Solar?
-
-| Kriterium | PVGIS | Google Solar |
-|-----------|-------|-------------|
-| Kosten | Kostenlos | Kostenlos (aber API-Aktivierung noetig) |
-| API-Key | Keiner noetig | Google Maps Key + Solar API aktivieren |
-| Anpassbar | Neigung, Ausrichtung, Verluste, Technologie | Nur Standort |
-| Datenquelle | EU-Satellit (SARAH3), 15+ Jahre | Google Imagery |
-| Soll-Kurve | Monatlich + stundlich moeglich | Nur jaehrlich |
-| Verfuegbarkeit | Europa, Afrika, Asien, Amerika | Begrenzt auf Gebiete mit Imagery |
