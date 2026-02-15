@@ -95,12 +95,38 @@ export default function SelbstauskunftTab() {
       if (error) throw error;
 
       if (!data) {
+        // Fetch profile data for prefilling
+        const { data: { user } } = await supabase.auth.getUser();
+        let prefill: Record<string, any> = {};
+        if (user) {
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('first_name, last_name, email, street, house_number, postal_code, city, phone_landline, phone_mobile')
+            .eq('id', user.id)
+            .single();
+          if (profileData) {
+            prefill = {
+              first_name: profileData.first_name,
+              last_name: profileData.last_name,
+              email: profileData.email,
+              address_street: profileData.street
+                ? `${profileData.street} ${profileData.house_number || ''}`.trim()
+                : null,
+              address_postal_code: profileData.postal_code,
+              address_city: profileData.city,
+              phone: profileData.phone_landline,
+              phone_mobile: profileData.phone_mobile,
+            };
+          }
+        }
+
         const { data: newProfile, error: createError } = await supabase
           .from('applicant_profiles')
           .insert({
             tenant_id: activeOrganization.id,
             profile_type: 'private',
             party_role: 'primary',
+            ...prefill,
           })
           .select()
           .single();

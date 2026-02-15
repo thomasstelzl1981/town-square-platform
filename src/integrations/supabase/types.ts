@@ -6712,6 +6712,7 @@ export type Database = {
       }
       household_persons: {
         Row: {
+          avatar_url: string | null
           birth_date: string | null
           city: string | null
           created_at: string
@@ -6726,6 +6727,7 @@ export type Database = {
           marital_status: string | null
           net_income_range: string | null
           phone: string | null
+          phone_landline: string | null
           role: string
           salutation: string | null
           sort_order: number
@@ -6736,6 +6738,7 @@ export type Database = {
           zip: string | null
         }
         Insert: {
+          avatar_url?: string | null
           birth_date?: string | null
           city?: string | null
           created_at?: string
@@ -6750,6 +6753,7 @@ export type Database = {
           marital_status?: string | null
           net_income_range?: string | null
           phone?: string | null
+          phone_landline?: string | null
           role?: string
           salutation?: string | null
           sort_order?: number
@@ -6760,6 +6764,7 @@ export type Database = {
           zip?: string | null
         }
         Update: {
+          avatar_url?: string | null
           birth_date?: string | null
           city?: string | null
           created_at?: string
@@ -6774,6 +6779,7 @@ export type Database = {
           marital_status?: string | null
           net_income_range?: string | null
           phone?: string | null
+          phone_landline?: string | null
           role?: string
           salutation?: string | null
           sort_order?: number

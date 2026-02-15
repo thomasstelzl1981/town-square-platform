@@ -84,60 +84,93 @@ export function RecordCard({
     .toUpperCase()
     .slice(0, 2);
 
-  // ── CLOSED STATE (quadratisch) ──
+  // ── CLOSED STATE ──
   if (!isOpen) {
+    const hasDetailedSummary = summary.length > 4;
+
     const card = (
       <div
-        className={cn(RECORD_CARD.CLOSED, className)}
+        className={cn(
+          hasDetailedSummary
+            ? 'glass-card rounded-xl cursor-pointer transition-all hover:shadow-lg overflow-hidden relative'
+            : RECORD_CARD.CLOSED,
+          className,
+        )}
         onClick={onToggle}
         role="button"
         tabIndex={0}
         onKeyDown={e => e.key === 'Enter' && onToggle()}
       >
-        <div className="flex flex-col items-center justify-center h-full p-4 gap-3">
-          {/* Badges top */}
-          {badges.length > 0 && (
-            <div className="flex gap-1 absolute top-3 left-3">
-              {badges.map((b, i) => (
-                <Badge key={i} variant={b.variant || 'secondary'} className="text-[10px]">
-                  {b.label}
-                </Badge>
-              ))}
-            </div>
-          )}
-
-          {/* Avatar */}
-          <Avatar className={RECORD_CARD.THUMBNAIL}>
-            <AvatarImage src={thumbnailUrl} alt={title} />
-            <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
-              {initials}
-            </AvatarFallback>
-          </Avatar>
-
-          {/* Title + Subtitle */}
-          <div className="text-center">
-            <p className="text-sm font-semibold leading-tight">{title}</p>
-            {subtitle && (
-              <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>
-            )}
-          </div>
-
-          {/* Summary fields */}
-          <div className="space-y-0.5 text-center">
-            {summary.slice(0, 4).map((s, i) => (
-              <p key={i} className="text-xs text-muted-foreground">
-                <span className="opacity-60">{s.label}:</span> {s.value}
-              </p>
+        {/* Badges top */}
+        {badges.length > 0 && (
+          <div className="flex gap-1 absolute top-3 left-3 z-10">
+            {badges.map((b, i) => (
+              <Badge key={i} variant={b.variant || 'secondary'} className="text-[10px]">
+                {b.label}
+              </Badge>
             ))}
           </div>
+        )}
 
-          {/* Open indicator */}
-          <ChevronRight className="h-4 w-4 text-muted-foreground/50 absolute bottom-3 right-3" />
-        </div>
+        {hasDetailedSummary ? (
+          /* ── Detailed contact layout: photo left, data right ── */
+          <div className="p-4 pt-10">
+            <div className="flex gap-4 mb-3">
+              <Avatar className="h-16 w-16 rounded-xl shrink-0">
+                <AvatarImage src={thumbnailUrl} alt={title} />
+                <AvatarFallback className="bg-primary/10 text-primary text-lg font-semibold rounded-xl">
+                  {initials}
+                </AvatarFallback>
+              </Avatar>
+              <div className="min-w-0 flex-1">
+                <p className="text-base font-semibold leading-tight truncate">{title}</p>
+                {subtitle && (
+                  <p className="text-xs text-muted-foreground mt-0.5 truncate">{subtitle}</p>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-0.5">
+              {summary.map((s, i) => (
+                <p key={i} className="text-xs text-muted-foreground truncate">
+                  <span className="opacity-60 inline-block w-14 shrink-0">{s.label}:</span>{' '}
+                  <span className="text-foreground/80">{s.value}</span>
+                </p>
+              ))}
+            </div>
+          </div>
+        ) : (
+          /* ── Classic square layout ── */
+          <div className="flex flex-col items-center justify-center h-full p-4 gap-3">
+            <Avatar className={RECORD_CARD.THUMBNAIL}>
+              <AvatarImage src={thumbnailUrl} alt={title} />
+              <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
+                {initials}
+              </AvatarFallback>
+            </Avatar>
+
+            <div className="text-center">
+              <p className="text-sm font-semibold leading-tight">{title}</p>
+              {subtitle && (
+                <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>
+              )}
+            </div>
+
+            <div className="space-y-0.5 text-center">
+              {summary.slice(0, 4).map((s, i) => (
+                <p key={i} className="text-xs text-muted-foreground">
+                  <span className="opacity-60">{s.label}:</span> {s.value}
+                </p>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Open indicator */}
+        <ChevronRight className="h-4 w-4 text-muted-foreground/50 absolute bottom-3 right-3" />
       </div>
     );
 
-    // Wrap with FileDropZone if handler provided
     if (onFileDrop) {
       return (
         <FileDropZone onDrop={onFileDrop}>
