@@ -25,8 +25,8 @@ export function LandingPageAnbieterTab({ isDemo }: LandingPageAnbieterTabProps) 
       <Card>
         <CardContent className="p-8">
           <div className="flex items-start gap-6">
-            <div className="p-4 rounded-2xl bg-primary/10 flex-shrink-0">
-              <Building2 className="h-10 w-10 text-primary" />
+            <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+              <Building2 className="h-5 w-5 text-primary" />
             </div>
             <div className="flex-1 space-y-3">
               <div>
