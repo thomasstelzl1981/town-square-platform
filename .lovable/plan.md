@@ -1,114 +1,90 @@
 
 
-# RecordCard Akte: Ueberarbeitung Open-State + Person-DMS-Tree
+# Testament-Widget: PDF-Schreibvorlage zum Download + Scan-Upload
 
 ## Zusammenfassung
 
-Drei Aenderungen:
-1. **"Person hinzufuegen" und "Neue Person"-Formular entfernen** aus der Akte (Open-State) — Personen werden nur noch am Dashboard (Grid) hinzugefuegt
-2. **Familienstand/Gueterstand** als neues Feld in der geoeffneten Akte abfragen (`marital_status` existiert bereits in `household_persons`)
-3. **Personen-DMS-Tree automatisch erstellen** mit vordefinierten Unterordnern fuer persoenliche Dokumente
+Das Testament-Widget bekommt einen **anderen Workflow** als die Patientenverfuegung. Statt eines interaktiven Formulars wird beim Klick eine **PDF-Schreibvorlage** mit allen 4 Testament-Varianten heruntergeladen. Der Nutzer schreibt das Testament von Hand ab, unterschreibt es und laedt den Scan hoch. Die Karte selbst enthaelt ausfuehrliche Hinweise zur Handhabung.
 
 ---
 
-## Aenderung 1: CTA-Widget und Formular bleiben am Dashboard
+## Ablauf
 
-Das "Person hinzufuegen"-Widget (Zeilen 258-273) und das "Neue Person"-Formular (Zeilen 275-323) in `UebersichtTab.tsx` bleiben **unveraendert am Dashboard-Grid** — dort gehoeren sie hin. Es gibt aktuell keinen separaten "Person hinzufuegen"-Button innerhalb der geoeffneten Akte, also ist hier nichts zu entfernen.
-
-**Keine Code-Aenderung noetig.**
-
----
-
-## Aenderung 2: Familienstand in der geoeffneten Akte
-
-Das Feld `marital_status` existiert bereits in der Tabelle `household_persons`. Es wird lediglich in der UI der geoeffneten Akte als Select-Feld ergaenzt.
-
-### `UebersichtTab.tsx` — Im Open-State "Persoenliche Daten"-Sektion
-
-Neues Select-Feld nach "Geburtsdatum" einfuegen:
-
-```typescript
-// Optionen
-const MARITAL_OPTIONS = [
-  { value: 'ledig', label: 'Ledig' },
-  { value: 'verheiratet', label: 'Verheiratet' },
-  { value: 'geschieden', label: 'Geschieden' },
-  { value: 'verwitwet', label: 'Verwitwet' },
-  { value: 'eingetragene_lebenspartnerschaft', label: 'Eingetr. Lebenspartnerschaft' },
-];
-
-// Im FIELD_GRID nach Geburtsdatum:
-<div>
-  <Label className="text-xs">Familienstand</Label>
-  <Select
-    value={form.marital_status || ''}
-    onValueChange={v => updateField(person.id, 'marital_status', v)}
-  >
-    <SelectTrigger><SelectValue placeholder="Bitte waehlen" /></SelectTrigger>
-    <SelectContent>
-      {MARITAL_OPTIONS.map(o => (
-        <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-      ))}
-    </SelectContent>
-  </Select>
-</div>
+```text
++---------------------------+
+| Testament-Widget          |
+| (mit ausfuehrlichem       |
+|  Erklaertext + Hinweise)  |
+|                           |
+| Klicken → PDF Download    |
++---------------------------+
+        |
+        v
+  PDF mit 4 Vorlagen
+  wird heruntergeladen
+        |
+        v
+  Nutzer schreibt von
+  Hand ab + unterschreibt
+        |
+        v
++---------------------------+
+| Upload-Dialog oeffnet     |
+| sich nach Download        |
+| → Scan hochladen          |
+| → Status wird gruen       |
++---------------------------+
 ```
 
 ---
 
-## Aenderung 3: Automatischer Personen-DMS-Tree
+## Aenderung 1: Testament-Widget Kartentext erweitern
 
-### 3a. Neuer Hook: `usePersonDMS.ts`
+Die bestehende Karte in `VorsorgedokumenteTab.tsx` bekommt:
 
-Analog zu `usePvDMS.ts` — erstellt bei Personenanlage automatisch eine Ordnerstruktur:
+- **Ausfuehrlicherer Erklaertext** auf der Karte selbst (warum ein Testament wichtig ist, dass es handschriftlich sein muss, Hinweise zur amtlichen Verwahrung)
+- **CTA-Text** aendern zu "Klicken zum Herunterladen der Schreibvorlage"
+- Beim Klick: Statt `LegalDocumentDialog` mit Formular wird ein **vereinfachter Dialog** geoeffnet
 
-```typescript
-const PERSON_DMS_FOLDERS = [
-  '01_Personalausweis',
-  '02_Reisepass',
-  '03_Geburtsurkunde',
-  '04_Ehevertrag',
-  '05_Testament',
-  '06_Patientenverfuegung',
-  '07_Vorsorgevollmacht',
-  '08_Sonstiges',
-];
-```
+---
 
-Der Hook erstellt:
-1. Einen Root-Ordner (`entity_type: 'person'`, `entity_id: person.id`, `module_code: 'MOD_18'`)
-2. Alle 8 Unterordner als Kinder des Root-Ordners
+## Aenderung 2: Testament-Dialog (vereinfacht, 2 Schritte)
 
-### 3b. Aufruf bei Personenanlage
+Statt des 3-Schritt-Formularprozesses der Patientenverfuegung:
 
-In `UebersichtTab.tsx` wird nach erfolgreichem `createPerson.mutate()` automatisch `createPersonDMSTree` aufgerufen:
+**Schritt 1: Hinweise + PDF-Download**
+- Alle wichtigen Hinweise aus dem gelieferten Text (Wirksamkeit, Handhabung, Hinterlegung, Widerruf)
+- Button "PDF-Schreibvorlage herunterladen" → generiert PDF mit allen 4 Vorlagen
+- "Weiter"-Button zum Upload-Schritt
 
-```typescript
-const { createPersonDMSTree } = usePersonDMS();
+**Schritt 2: Scan hochladen**
+- FileDropZone fuer den unterschriebenen Scan
+- Bestaetigung "Original sicher aufbewahrt"
+- Setzt `is_completed = true` in `legal_documents`
 
-// In handleAddPerson:
-createPerson.mutate(newForm, {
-  onSuccess: (newPerson) => {
-    createPersonDMSTree.mutateAsync({
-      personId: newPerson.id,
-      personName: `${newForm.first_name} ${newForm.last_name}`.trim(),
-    });
-    // ...
-  },
-});
-```
+---
 
-### 3c. Auch fuer bestehende Personen nachholen
+## Aenderung 3: Neue PDF-Funktion `generateTestamentVorlagenPdf`
 
-Wenn eine bestehende Person geoeffnet wird und noch keinen DMS-Ordner hat, wird der Tree automatisch erstellt (Lazy Creation in `EntityStorageTree` — dieses Verhalten existiert bereits fuer den Upload-Fall, muss aber auch fuer die initiale Anzeige greifen).
+In `generateLegalDocumentPdf.ts` wird eine neue Funktion ergaenzt, die alle 4 Vorlagen als Schreibvorlagen im Notarvertrag-Stil generiert:
 
-### 3d. Anzeige im Datenraum-Bereich der geoeffneten Akte
+1. **Deckblatt**: Allgemeine Hinweise (Wirksamkeit, Handhabung, Hinterlegung ZTR, Widerruf)
+2. **Vorlage 1/4**: Einzeltestament — Alleinerbe (mit Ersatzerbe)
+3. **Vorlage 2/4**: Einzeltestament — Mehrere Erben (Quoten, Anwachsung)
+4. **Vorlage 3/4**: Vor- und Nacherbschaft
+5. **Vorlage 4/4**: Berliner Testament (gegenseitige Alleinerbeneinsetzung)
+6. **Schlussseite**: Zusatzhinweis zur Hinterlegung / ZTR
 
-Die bestehende `EntityStorageTree`-Komponente wird bereits im Open-State gerendert (Zeilen 240-249 in `RecordCard.tsx`). Sie nutzt `entity_type='person'` und `entity_id=person.id` — **das funktioniert bereits**. Sobald die Ordner existieren, werden sie in der Spaltenansicht (ColumnView) angezeigt, gemaess dem `DESIGN.STORAGE`-Standard.
+Jede Vorlage enthaelt Platzhalter-Unterstriche (`______`) fuer Namen, Daten, Adressen — der Nutzer schreibt den gesamten Text von Hand ab.
 
-### 3e. recordCardManifest aktualisieren
+---
 
-`person`-Entity nutzt aktuell `moduleCode: 'MOD_01'`. Fuer den Finanzanalyse-Kontext (MOD-18) muss geprueft werden, ob der moduleCode korrekt ist. Da Personen moduluebergreifend genutzt werden, bleibt `MOD_01` als Standard. Die `EntityStorageTree`-Komponente filtert nach `entity_type + entity_id`, nicht nach moduleCode, also funktioniert es unabhaengig.
+## Aenderung 4: LegalDocumentDialog fuer Testament-Modus anpassen
+
+Die bestehende `LegalDocumentDialog`-Komponente wird um eine Fallunterscheidung erweitert:
+
+- `documentType === 'patientenverfuegung'` → bestehender 3-Schritt-Prozess (Formular → Vorschau → Upload)
+- `documentType === 'testament'` → neuer 2-Schritt-Prozess (Hinweise+Download → Upload)
 
 ---
 
@@ -116,9 +92,9 @@ Die bestehende `EntityStorageTree`-Komponente wird bereits im Open-State gerende
 
 | Datei | Aenderung |
 |-------|-----------|
-| `src/hooks/usePersonDMS.ts` | **Neu** — Hook mit `PERSON_DMS_FOLDERS` und `createPersonDMSTree` |
-| `src/pages/portal/finanzanalyse/UebersichtTab.tsx` | Familienstand-Select hinzufuegen, DMS-Tree-Erstellung bei Personenanlage |
-| `src/hooks/useFinanzanalyseData.ts` | Evtl. `createPerson` Rueckgabewert anpassen (Person-ID zurueckgeben) |
+| `src/pages/portal/finanzanalyse/VorsorgedokumenteTab.tsx` | Kartentext erweitern, CTA aendern |
+| `src/components/legal/LegalDocumentDialog.tsx` | Testament-Modus mit 2-Schritt-Prozess (Hinweise+Download → Upload) |
+| `src/lib/generateLegalDocumentPdf.ts` | Neue Funktion `generateTestamentVorlagenPdf` mit allen 4 Vorlagen + Hinweisseiten |
 
-**Keine DB-Migration noetig** — `marital_status` existiert bereits in `household_persons`.
+**Keine DB-Migration noetig** — die bestehende `legal_documents`-Tabelle deckt den Testament-Typ bereits ab.
 
