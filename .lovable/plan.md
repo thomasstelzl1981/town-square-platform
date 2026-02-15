@@ -1,85 +1,132 @@
 
-# NK-Abrechnung: Immer-sichtbares Formular + Demo-Hausgeldabrechnungen
+# Systemaudit v4.0 — Praesentationsbereitschaft
 
-## Problem
+## 1. Gesamtstatus
 
-Die NK-Abrechnung zeigt aktuell "Keine Kostenpositionen" wenn keine Daten geladen werden koennen oder der Readiness-Check fehlschlaegt. Der User will: **Das komplette Formular ist IMMER sichtbar** — wie bei der Selbstauskunft — mit allen Positionen einer Hausgeldeinzelabrechnung, vorausgefuellt oder leer/null.
+Das System ist strukturell solide. Die Architektur (21 Module, 3 Zonen, 15 Golden Paths, 95 Edge Functions) ist konsistent. Alle vorherigen Audit-Items (SIA-0001 bis SIA-0012) sind erledigt oder dokumentiert. Es gibt keine P0-Blocker. Fuer die Praesentation sind jedoch mehrere Inkonsistenzen und Altlasten zu bereinigen.
 
-## Ursachen
+## 2. Gefundene Issues
 
-1. **Readiness-Gate blockiert UI**: Zeile 121-131 in NKAbrechnungTab versteckt den gesamten Inhalt hinter einem Readiness-Check. Wenn Blocker existieren, sieht der User nur eine Fehlermeldung statt des Formulars.
-2. **Leeres Formular bei fehlenden Daten**: Zeile 155-158 zeigt nur "Keine Kostenpositionen" wenn keine Cost-Items aus der DB kommen, statt ein leeres Template anzuzeigen.
-3. **Keine Demo-Hausgeldabrechnungen im Posteingang**: Die WEG-Dokumente existieren als `document_links` mit `doc_type: WEG_JAHRESABRECHNUNG`, aber es fehlen sichtbare Posteingangs-Eintraege, die den Empfang per E-Mail simulieren.
+### P1 — Praesentation blockierend
 
-## Loesung
+| ID | Modul | Issue | Details |
+|----|-------|-------|---------|
+| SIA4-001 | MOD-04 | VerwaltungTab enthaelt veraltete "MSV"-Texte | Zeile 112: "MSV-Objekt hinzufuegen", Zeile 125: "Keine MSV-Objekte aktiv" — muss "BWA" heissen |
+| SIA4-002 | MOD-04 | goldenPathProcesses.ts: GP-VERWALTUNG noch "Mietverwaltung" | processName, description und demoWidget referenzieren "Mietverwaltung" und "MFH Duesseldorf" — muss BWA-konform sein |
+| SIA4-003 | MOD-04 | NKAbrechnungTab: unitId kann leerer String sein | PropertyDetailPage Zeile 524: `unitId={unit?.id || ''}` — wenn keine Unit selektiert, ist unitId leer, was zu leeren Queries fuehrt |
+| SIA4-004 | MOD-04 | NK-Engine: Hardcoded unitPersons/totalPersons/totalUnits | engine.ts Zeile 169-171: `unitPersons: 2`, `totalPersons: 10`, `totalUnits: 10` — muss dynamisch aus DB kommen |
 
-### 1. Hausgeld-Template definieren (neue Datei)
+### P2 — Technische Schulden
 
-Neue Datei `src/engines/nkAbrechnung/hausgeldTemplate.ts`:
+| ID | Modul | Issue | Details |
+|----|-------|-------|---------|
+| SIA4-005 | MOD-04 | VerwaltungTab: JSDoc-Kommentar Zeile 3-10 referenziert geloeschte Kacheln | Beschreibt "Kachel 1: Mietliste, Kachel 2: Aufgaben, Kachel 3: BWA" — existieren nicht mehr |
+| SIA4-006 | MOD-04 | demoDataManifest.ts: GP-VERWALTUNG toggleKey noch "GP-VERWALTUNG" | Funktional OK, aber semantisch inkonsistent mit Umbenennung zu BWA |
+| SIA4-007 | MOD-04 | useMSVData.ts: Hook-Name und Kommentare noch "MSV"-bezogen | Funktioniert, aber Name sollte `useBWAData` sein fuer Konsistenz |
+| SIA4-008 | MOD-04 | bwaKontenplan.ts Zeile 2: "SSOT fuer MOD-04 Verwaltung" | Sollte "BWA" heissen |
+| SIA4-009 | MOD-07 | useFinanceRequest.ts: TODO case_events audit event | Zeile 281: Status-Aenderungen werden nicht in case_events persistiert |
+| SIA4-010 | Armstrong | useArmstrongContext.ts: webResearchEnabled hardcoded true | Zeile 213: Sollte aus org_settings gelesen werden |
+| SIA4-011 | MOD-04 | NK-Engine: nk_periods/nk_cost_items als `(supabase as any)` | Type-Casts umgehen Typsicherheit — Tabellen fehlen in types.ts |
 
-Enthaelt eine vollstaendige Liste aller Standard-Positionen einer Hausgeldeinzelabrechnung (BetrKV §2):
+### P3 — Kosmetik / Dokumentation
 
-| Position | Schluessel | Umlagefaehig |
-|----------|------------|--------------|
-| Grundsteuer | MEA | ja |
-| Wasserversorgung | Personen | ja |
-| Entwaesserung | Personen | ja |
-| Muellbeseitigung | Personen | ja |
-| Strassenreinigung | Flaeche | ja |
-| Gebaeudereinigung | Flaeche | ja |
-| Gebaeudeversicherung | MEA | ja |
-| Schornsteinfeger | Einheiten | ja |
-| Allgemeinstrom | MEA | ja |
-| Gartenpflege | Flaeche | ja |
-| Hausmeister | MEA | ja |
-| Aufzug | MEA | ja |
-| Antenne/Kabel | Einheiten | ja |
-| Sonstige Betriebskosten | MEA | ja |
-| Verwaltungskosten | MEA | nein |
-| Instandhaltungsruecklage | MEA | nein |
+| ID | Modul | Issue | Details |
+|----|-------|-------|---------|
+| SIA4-012 | MOD-04 | goldenPaths/MOD_04.ts: Step "Sichtbarkeit in Verwaltung" | Zeile 104: Label und Keys referenzieren "Verwaltung" statt "BWA" |
+| SIA4-013 | MOD-04 | GP_VERMIETUNG.ts: failure_redirect auf /portal/immobilien/verwaltung | Funktional korrekt (Route unveraendert), aber Kommentar veraltet |
+| SIA4-014 | Spec | mod-04 Verwaltung-Spec nicht aktualisiert | spec/current/02_modules/ muesste BWA-Umbenennung reflektieren |
 
-Jede Position hat: `categoryCode`, `labelDisplay`, `keyType`, `isApportionable`, `sortOrder`, Default-Werte 0.
+## 3. Golden Path Klick-Test Ergebnisse
 
-### 2. Hook erweitern (`useNKAbrechnung.ts`)
+### GP-PORTFOLIO (MOD-04) — Ergebnis: BESTANDEN mit Einschraenkung
+- Route /portal/immobilien/portfolio: Laedt korrekt
+- WidgetGrid: Rendert (leer ohne Auth, mit Auth zeigt Demo-Widgets)
+- Immobilienakte: Route /:id mit GoldenPathGuard aktiv
+- NK-Abrechnung Tab: Rendert 5 Sektionen mit Template (17 Positionen)
+- **Einschraenkung**: unitId kann leer sein wenn keine Unit selektiert (SIA4-003)
 
-- **Merge-Logik**: Nach dem Laden der DB-Daten wird das Template mit den geladenen Werten zusammengefuehrt. DB-Werte ueberschreiben Template-Defaults. Fehlende Kategorien werden mit 0-Werten angezeigt.
-- **Auto-Create**: Wenn keine `nk_period` existiert, wird beim ersten Speichern automatisch eine neue Periode + Cost-Items angelegt.
-- **Kein Gate mehr**: `canCalculate` bleibt fuer den Engine-Button relevant, aber das Formular ist IMMER sichtbar und editierbar.
+### GP-VERWALTUNG/BWA (MOD-04) — Ergebnis: BESTANDEN mit Textfehlern
+- Route /portal/immobilien/verwaltung: Laedt als "BWA"
+- Tab-Label: Korrekt "BWA"
+- WidgetGrid: Zeigt Objekt-Widgets
+- **Fehler**: CTA-Button sagt "MSV-Objekt hinzufuegen" statt "Objekt hinzufuegen"
+- **Fehler**: Empty State sagt "Keine MSV-Objekte"
 
-### 3. UI umbauen (`NKAbrechnungTab.tsx`)
+### GP-FINANZIERUNG (MOD-07) — Ergebnis: BESTANDEN
+- Routes: selbstauskunft, dokumente, anfrage, status, privatkredit alle deklariert
+- GoldenPathGuard auf anfrage/:requestId aktiv
+- Legacy-Redirects (vorgaenge, readiness, export, partner) korrekt
 
-- **Readiness-Blocker entfernen**: Die Alert-Box mit "Fehlende Voraussetzungen" wird zu einem Info-Banner degradiert (nicht blockierend).
-- **Formular immer rendern**: Alle 5 Sektionen sind IMMER sichtbar, auch wenn noch keine Daten vorhanden sind.
-- **Dokumenten-Status als Info-Zeile**: Zeigt an, ob WEG-Abrechnung/Grundsteuerbescheid eingegangen sind, blockiert aber nichts.
-- **Leere Felder editierbar**: Wenn keine Daten aus dem Posteingang extrahiert wurden, stehen alle Felder auf 0 und koennen manuell befuellt werden.
+### GP-SUCHMANDAT + GP-SIMULATION (MOD-08) — Ergebnis: BESTANDEN
+- Routes: suche, favoriten, mandat, simulation deklariert
+- Interne Dynamic Routes (mandat/neu, mandat/:id, objekt/:publicId) dokumentiert
+- Investment Engine Pattern funktional
 
-### 4. Demo-Hausgeldabrechnungen im Posteingang (DB-Migration)
+### GP-SANIERUNG (MOD-04) — Ergebnis: BESTANDEN
+- Route /portal/immobilien/sanierung: Deklariert und implementiert
+- Demo-Widget korrekt konfiguriert
 
-Fuer alle 3 Immobilien wird je ein Dokument als "Hausgeldeinzelabrechnung 2025" im Posteingang angelegt:
+### GP-PROJEKT (MOD-13) — Ergebnis: BESTANDEN
+- Routes: dashboard, projekte, vertrieb, landing-page
+- GoldenPathGuard auf :projectId und :projectId/einheit/:unitId
+- Demo-Widget "Residenz am Stadtpark" korrekt
 
-- Dokument-Typ: `WEG_JAHRESABRECHNUNG` (bereits vorhanden als `f0000000-...01/02/03`)
-- Diese Dokumente erhalten ein `sidecar_json` mit simulierten Extraktionsdaten
-- Verknuepfung mit den jeweiligen `inbox_sort_containers` (BER-01, MUC-02, HH-03)
-- `source: 'email'` um E-Mail-Eingang zu simulieren
+### GP-FM-FALL (MOD-11) — Ergebnis: BESTANDEN
+- 6 Tiles + dynamic routes (einreichung/:requestId, faelle/:requestId)
+- Gold Standard Reference Implementation
 
-Die bestehenden 6 Dokumente (3x WEG, 3x Grundsteuer) sind bereits korrekt verknuepft und haben `review_state: approved`. Sie erhalten zusaetzlich `source: 'email'` und ein `ai_summary` Feld mit einer kurzen Beschreibung.
+### GP-AKQUISE-MANDAT (MOD-12) — Ergebnis: BESTANDEN
+- 6 Tiles + dynamic routes mit GoldenPathGuard
 
-### 5. Betroffene Dateien
+## 4. Reparaturplan — Priorisiert
 
-| Datei | Aenderung |
-|-------|-----------|
-| `src/engines/nkAbrechnung/hausgeldTemplate.ts` | NEU: Standard-Positionen Template |
-| `src/hooks/useNKAbrechnung.ts` | Merge-Logik Template + DB, Auto-Create Period |
-| `src/components/portfolio/NKAbrechnungTab.tsx` | Readiness-Gate entfernen, immer alle Sektionen zeigen |
-| DB-Migration | `source` + `ai_summary` fuer Demo-Dokumente setzen |
+### Sofort (vor Praesentation, 15 Min)
 
-### 6. Erwartetes Ergebnis
+| Schritt | Datei | Aenderung |
+|---------|-------|-----------|
+| 1 | VerwaltungTab.tsx | "MSV-Objekt hinzufuegen" → "Objekt hinzufuegen", "Keine MSV-Objekte" → "Keine Objekte aktiv" |
+| 2 | VerwaltungTab.tsx | JSDoc-Kommentar Zeile 1-10 aktualisieren (BWA statt MSV-Referenzen) |
+| 3 | goldenPathProcesses.ts | GP-VERWALTUNG: processName → "BWA / Controlling", description aktualisieren |
+| 4 | PropertyDetailPage.tsx | NKAbrechnungTab: Fallback-Logik wenn unitId leer (erste Unit der Property auto-selektieren oder Hinweis zeigen) |
 
-Beim Oeffnen der NK-Abrechnung fuer jede Immobilie sieht der User sofort:
-- Sektion 1: Vollstaendige Hausgeldabrechnung mit allen 16 Positionen, vorausgefuellt mit Demo-Daten
-- Sektion 2: Grundsteuer mit Werten aus dem Bescheid
-- Sektion 3: Mieteinnahmen aus dem Lease
-- Sektion 4: Live-Berechnung des Saldos
-- Sektion 5: Export-Buttons
+### Sprint-Backlog (nach Praesentation)
 
-Alle Felder sind editierbar, Aenderungen speicherbar. Der Prozess ist von oben bis unten durchklickbar.
+| Schritt | Datei | Aenderung |
+|---------|-------|-----------|
+| 5 | engine.ts | unitPersons, totalPersons, totalUnits dynamisch aus DB laden |
+| 6 | useMSVData.ts | Rename zu useBWAData.ts (+ alle Imports aktualisieren) |
+| 7 | bwaKontenplan.ts | Kommentar aktualisieren |
+| 8 | goldenPaths/MOD_04.ts | Step-Labels "Verwaltung" → "BWA" |
+| 9 | demoDataManifest.ts | GP-VERWALTUNG Labels aktualisieren |
+| 10 | useFinanceRequest.ts | TODO case_events implementieren |
+| 11 | useArmstrongContext.ts | webResearchEnabled aus org_settings lesen |
+| 12 | NK-Engine | `(supabase as any)` Casts entfernen wenn Tabellen in types.ts |
+
+## 5. Backlog-Datei
+
+Die Ergebnisse werden in `spec/audit/system_integrity_audit_v4_backlog.json` als strukturierte JSON-Datei angelegt mit folgendem Schema pro Item:
+
+```text
+{
+  "id": "SIA4-XXXX",
+  "severity": "P1|P2|P3",
+  "dimension": "text|manifest|engine|spec|hook",
+  "zone": "Z2",
+  "module": "MOD-XX",
+  "title": "...",
+  "description": "...",
+  "repo_refs": ["file:line"],
+  "fix_plan": { "steps": [...], "risk": "low|medium" },
+  "status": "open|in_progress|done"
+}
+```
+
+## 6. Zusammenfassung fuer Praesentation
+
+- **21 Module aktiv**, alle mit Routes im Manifest deklariert
+- **15 Golden Paths** registriert, alle `phase: 'done'` (ausser GP-PETS: Phase 1)
+- **0 Rogue Routes** — alle Routen ueber ManifestRouter gesteuert
+- **NK-Abrechnung Engine** funktional mit 17-Positionen Template, 5-Sektionen UI, PDF-Export
+- **4 Textfehler** (MSV-Reste) zu bereinigen — rein kosmetisch, keine Funktionsstoerung
+- **3 technische TODOs** in Engine (Personenzahlen, Audit Events) — beeintraechtigen Demo-Flow nicht
+- **Enterprise-Architektur intakt**: RLS, Zonen-Isolation, Backbone-Pattern, Golden Path Guards
