@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { aggregateCommissions } from '@/engines/provision/engine';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -93,18 +94,19 @@ export default function CommissionApproval() {
           : undefined,
       }));
 
-      setCommissions(enriched);
-
-      const pendingCommissions = commissionsData.filter(c => c.status === 'pending');
-      const paidCommissions = commissionsData.filter(c => c.status === 'paid');
+      const agg = aggregateCommissions(
+        commissionsData.map(c => ({ amount: Number(c.amount), status: c.status })),
+        ['paid'],
+        ['cancelled'],
+      );
 
       setStats({
-        pending: pendingCommissions.length,
+        pending: commissionsData.filter(c => c.status === 'pending').length,
         approved: commissionsData.filter(c => c.status === 'approved').length,
         invoiced: commissionsData.filter(c => c.status === 'invoiced').length,
-        paid: paidCommissions.length,
-        totalPending: pendingCommissions.reduce((sum, c) => sum + Number(c.amount), 0),
-        totalPaid: paidCommissions.reduce((sum, c) => sum + Number(c.amount), 0),
+        paid: agg.paidCount,
+        totalPending: agg.pending,
+        totalPaid: agg.paid,
       });
     } catch (error) {
       console.error('Error fetching commission data:', error);

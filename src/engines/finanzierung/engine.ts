@@ -16,6 +16,8 @@ import type {
   ConsumerLoanOffer,
   ApplicantSnapshotInput,
   ApplicantSnapshotResult,
+  CompletionScoreInput,
+  CompletionScoreResult,
 } from './spec';
 import { FINANZIERUNG_DEFAULTS } from './spec';
 
@@ -152,5 +154,21 @@ export function createApplicantSnapshot(input: ApplicantSnapshotInput): Applican
   return {
     snapshot: { ...input.profile },
     snapshotAt: new Date().toISOString(),
+  };
+}
+
+// ─── Completion Score ────────────────────────────────────────────
+
+export function calcCompletionScore(input: CompletionScoreInput): CompletionScoreResult {
+  const filledCount = input.requiredFields.filter(f => {
+    const val = input.formData[f];
+    return val !== null && val !== undefined && val !== '';
+  }).length;
+  return {
+    filledCount,
+    totalRequired: input.requiredFields.length,
+    percent: input.requiredFields.length > 0
+      ? Math.round((filledCount / input.requiredFields.length) * 100)
+      : 0,
   };
 }

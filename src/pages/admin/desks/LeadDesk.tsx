@@ -4,6 +4,7 @@
  */
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { aggregateCommissions } from '@/engines/provision/engine';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -150,15 +151,18 @@ export default function LeadDesk() {
         converted: leadsData.filter(l => l.status === 'converted').length,
       });
 
-      const pendingC = commissionsData.filter(c => c.status === 'pending');
-      const paidC = commissionsData.filter(c => c.status === 'paid');
+      const commAgg = aggregateCommissions(
+        commissionsData.map(c => ({ amount: Number(c.amount), status: c.status })),
+        ['paid'],
+        ['cancelled'],
+      );
       setCommissionStats({
-        pending: pendingC.length,
+        pending: commissionsData.filter(c => c.status === 'pending').length,
         approved: commissionsData.filter(c => c.status === 'approved').length,
         invoiced: commissionsData.filter(c => c.status === 'invoiced').length,
-        paid: paidC.length,
-        totalPending: pendingC.reduce((sum, c) => sum + Number(c.amount), 0),
-        totalPaid: paidC.reduce((sum, c) => sum + Number(c.amount), 0),
+        paid: commAgg.paidCount,
+        totalPending: commAgg.pending,
+        totalPaid: commAgg.paid,
       });
     } catch (error) {
       console.error('Error fetching lead desk data:', error);

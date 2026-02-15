@@ -70,4 +70,6 @@ export const PROJEKTCALC_DEFAULTS = {
   defaultPricePerSqm: 4500,
   floorPremiumPercent: 2,
   marginTargetPercent: 15,
+  /** Standard-Provision in % vom Kaufpreis */
+  defaultProvisionPercent: 10,
 } as const;

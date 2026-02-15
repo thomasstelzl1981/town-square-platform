@@ -6,6 +6,7 @@
  * Neu: Öffnet Builder für echte Projekte
  */
 import { useState } from 'react';
+import { PROJEKTCALC_DEFAULTS } from '@/engines/projektCalc/spec';
 import { DESIGN, getActiveWidgetGlow } from '@/config/designManifest';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
@@ -105,7 +106,7 @@ export default function LandingPageTab() {
           non_recoverable_costs: rentNk,
           yield_percent: listPrice > 0 ? (annualNetRent / listPrice) * 100 : 0,
           price_per_sqm: areaSqm > 0 ? Math.round(listPrice / areaSqm) : 0,
-          provision_eur: u.commission_amount ?? Math.round(listPrice * 0.10),
+          provision_eur: u.commission_amount ?? Math.round(listPrice * (PROJEKTCALC_DEFAULTS.defaultProvisionPercent / 100)),
           parking_price: 0,
           status: (u.status === 'verkauft' ? 'sold' : u.status === 'reserviert' ? 'reserved' : 'available') as DemoUnit['status'],
         };

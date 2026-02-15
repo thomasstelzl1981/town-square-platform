@@ -12,6 +12,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import { FINANZIERUNG_DEFAULTS } from '@/engines/finanzierung/spec';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -287,7 +288,7 @@ export default function AnfrageFormV2({ requestId, onSubmitSuccess }: AnfrageFor
   });
 
   const completionScore = completionData?.score ?? 0;
-  const canSubmit = completionScore >= 80;
+  const canSubmit = completionScore >= FINANZIERUNG_DEFAULTS.minCompletionScore;
 
   // Fetch request data
   const { data: request, isLoading } = useQuery({
