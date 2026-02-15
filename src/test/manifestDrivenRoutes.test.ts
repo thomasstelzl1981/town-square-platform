@@ -46,10 +46,9 @@ describe('Zone 1: Admin Routes', () => {
   it('should have new Zone 1 desks', () => {
     const adminPaths = zone1Admin.routes?.map(r => r.path) || [];
     
-    // Agents
-    expect(adminPaths).toContain('agents');
-    expect(adminPaths).toContain('agents/catalog');
+    // Agents — ENTFERNT
     
+
     // Acquiary
     expect(adminPaths).toContain('acquiary');
     

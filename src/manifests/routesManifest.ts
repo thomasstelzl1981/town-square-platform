@@ -123,13 +123,7 @@ export const zone1Admin: ZoneDefinition = {
     { path: "futureroom/vorlagen", component: "FutureRoomTemplates", title: "Vorlagen" },
     { path: "futureroom/website-leads", component: "FutureRoomWebLeads", title: "Website-Leads" },
     { path: "futureroom/contracts", component: "FutureRoomContracts", title: "Contracts" },
-    // Social Media — ENTFERNT (war 100% Demo-Daten, keine DB-Anbindung)
-    // Agents
-    { path: "agents", component: "AgentsDashboard", title: "Agents" },
-    { path: "agents/catalog", component: "AgentsCatalog", title: "Agenten-Katalog" },
-    { path: "agents/instances", component: "AgentsInstances", title: "Agenten-Instanzen" },
-    { path: "agents/runs", component: "AgentsRuns", title: "Agent Runs" },
-    { path: "agents/policies", component: "AgentsPolicies", title: "Policies" },
+    // Agents — ENTFERNT (kein eigenständiges Desk, Armstrong übernimmt KI-Governance)
     // Acquiary (Akquise Governance) — 6-Tab Structure
     { path: "acquiary", component: "AcquiaryDashboard", title: "Acquiary" },
     { path: "acquiary/kontakte", component: "AcquiaryKontakte", title: "Kontakte" },
@@ -149,8 +143,11 @@ export const zone1Admin: ZoneDefinition = {
     { path: "sales-desk/audit", component: "SalesDeskAudit", title: "Audit" },
     // Lead Desk (MOD-10 Leadmanager) — konsolidiert LeadPool + Provisionen
     { path: "lead-desk", component: "LeadDeskDashboard", title: "Lead Desk" },
-    // Projekt Desk (MOD-13 Projektmanager) — Projekt-Intake + Landing Pages
+    // Projekt Desk (MOD-13 Projektmanager) — 4-Tab Structure
     { path: "projekt-desk", component: "ProjektDeskDashboard", title: "Projekt Desk" },
+    { path: "projekt-desk/projekte", component: "ProjektDeskProjekte", title: "Projekte" },
+    { path: "projekt-desk/listings", component: "ProjektDeskListings", title: "Listings" },
+    { path: "projekt-desk/landing-pages", component: "ProjektDeskLandingPages", title: "Landing Pages" },
     // Petmanager (MOD-05) — Haustier-Governance
     { path: "petmanager", component: "PetmanagerDashboard", title: "Petmanager" },
     // Finance Desk removed — legacy route handled via redirects in legacyRedirects[]

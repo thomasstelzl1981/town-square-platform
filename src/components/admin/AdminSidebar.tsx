@@ -49,12 +49,7 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   'FutureRoom': Landmark,
   'FutureRoomBanks': Landmark,
   'FutureRoomManagers': UserCog,
-  // Agents
-  'AgentsDashboard': Bot,
-  'AgentsCatalog': Bot,
-  'AgentsInstances': Bot,
-  'AgentsRuns': Bot,
-  'AgentsPolicies': Bot,
+  // Agents — ENTFERNT
   // Acquiary
   'AcquiaryDashboard': Briefcase,
   'AcquiaryZuordnung': Briefcase,
@@ -108,7 +103,7 @@ const GROUP_CONFIG: Record<string, GroupConfig> = {
   'activation': { label: 'Feature Activation', priority: 5 },
   'backbone': { label: 'Backbone', priority: 6 },
   'desks': { label: 'Operative Desks', priority: 7 },
-  'agents': { label: 'AI Agents', priority: 8 },
+  // agents group removed
   'system': { label: 'System', priority: 9 },
   'platformAdmin': { label: 'Platform Admin', priority: 10 },
 };
@@ -154,9 +149,6 @@ function getGroupKey(path: string, component: string): string {
       path === 'petmanager' || path === 'website-hosting') {
     return 'desks';
   }
-  if (path.startsWith('agents')) {
-    return 'agents';
-  }
   // System (bereinigt - nur Read-only Monitoring + Fortbildung)
   if (path === 'integrations' || path === 'oversight' || path === 'audit' || 
       path === 'fortbildung') {
@@ -174,7 +166,7 @@ function shouldShowInNav(path: string): boolean {
   if (path.includes(':')) return false;
   // Show main desk entries
   if (path === 'sales-desk' || path === 'finance-desk' || path === 'acquiary' || 
-      path === 'agents' || path === 'futureroom' || path === 'lead-desk' || 
+      path === 'futureroom' || path === 'lead-desk' || 
       path === 'projekt-desk' || path === 'petmanager' || path === 'website-hosting') {
     return true;
   }
@@ -193,8 +185,7 @@ function shouldShowInNav(path: string): boolean {
   if (path.includes('/') && (
     path.startsWith('sales-desk/') ||
     path.startsWith('finance-desk/') ||
-    path.startsWith('acquiary/') ||
-    path.startsWith('agents/')
+    path.startsWith('acquiary/')
   )) {
     return false;
   }
