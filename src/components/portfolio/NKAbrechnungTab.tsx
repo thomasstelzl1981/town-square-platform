@@ -17,8 +17,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import {
   Loader2, CheckCircle2, AlertTriangle, FileDown, FolderOpen,
-  Calculator, Send, Save, FileText, Home, User, Calendar, Info, Banknote
+  Calculator, Send, Save, FileText, Home, User, Calendar, Info, Banknote, Lock
 } from 'lucide-react';
 import { useNKAbrechnung } from '@/hooks/useNKAbrechnung';
 import { StatusBadge } from '@/components/shared/StatusBadge';
@@ -57,9 +61,14 @@ export function NKAbrechnungTab({ propertyId, tenantId, unitId }: NKAbrechnungTa
     isLoadingData,
     isCalculating,
     isSaving,
+    isSavingPayments,
     rentPayments,
     isLoadingPayments,
+    paymentsLocked,
     fetchRentPayments,
+    updateRentPayment,
+    saveRentPayments,
+    lockPayments,
     calculate,
     exportPdf,
     updateCostItem,
@@ -424,7 +433,7 @@ export function NKAbrechnungTab({ propertyId, tenantId, unitId }: NKAbrechnungTa
 
               <Separator />
 
-              {/* Kontenauslesung Button */}
+               {/* Kontenauslesung Button */}
               <div className="flex items-center gap-3">
                 <Button
                   variant="outline"
@@ -444,59 +453,123 @@ export function NKAbrechnungTab({ propertyId, tenantId, unitId }: NKAbrechnungTa
                     {rentPayments.length} Zahlungseingänge geladen
                   </span>
                 )}
+                {paymentsLocked && (
+                  <Badge className="bg-emerald-600 text-white border-0">
+                    <Lock className="h-3 w-3 mr-1" />
+                    Festgeschrieben
+                  </Badge>
+                )}
               </div>
 
-              {/* Einzelzahlungstabelle */}
+              {/* Einzelzahlungstabelle — editierbar */}
               {rentPayments.length > 0 && (
-                <div className="border rounded-md overflow-hidden">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b bg-muted/50">
-                        <th className="text-left py-2 px-3 font-medium text-xs">Monat</th>
-                        <th className="text-right py-2 px-3 font-medium text-xs">Soll</th>
-                        <th className="text-right py-2 px-3 font-medium text-xs">Ist</th>
-                        <th className="text-left py-2 px-3 font-medium text-xs">Eingangsdatum</th>
-                        <th className="text-left py-2 px-3 font-medium text-xs">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {rentPayments.map((p, idx) => (
-                        <tr key={idx} className="border-b last:border-0">
-                          <td className="py-1.5 px-3">
-                            {new Date(p.dueDate).toLocaleDateString('de-DE', { month: 'long', year: 'numeric' })}
-                          </td>
-                          <td className="py-1.5 px-3 text-right font-mono">{EUR(p.expectedAmount)}</td>
-                          <td className="py-1.5 px-3 text-right font-mono">{EUR(p.amount)}</td>
-                          <td className="py-1.5 px-3 text-muted-foreground">
-                            {p.paidDate ? new Date(p.paidDate).toLocaleDateString('de-DE') : '—'}
-                          </td>
-                          <td className="py-1.5 px-3">
-                            <StatusBadge status={
-                              p.status === 'paid' ? 'Bezahlt' :
-                              p.status === 'partial' ? 'Teilweise' :
-                              p.status === 'overdue' ? 'Überfällig' : 'Offen'
-                            } variant={
-                              p.status === 'paid' ? 'success' :
-                              p.status === 'partial' ? 'warning' :
-                              p.status === 'overdue' ? 'error' : 'muted'
-                            } />
-                          </td>
+                <div className="space-y-3">
+                  <div className="border rounded-md overflow-hidden">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b bg-muted/50">
+                          <th className="text-left py-2 px-3 font-medium text-xs">Monat</th>
+                          <th className="text-right py-2 px-3 font-medium text-xs">Soll</th>
+                          <th className="text-right py-2 px-3 font-medium text-xs">Ist</th>
+                          <th className="text-left py-2 px-3 font-medium text-xs">Eingangsdatum</th>
+                          <th className="text-left py-2 px-3 font-medium text-xs">Status</th>
                         </tr>
-                      ))}
-                    </tbody>
-                    <tfoot>
-                      <tr className="bg-muted/30 border-t">
-                        <td className="py-2 px-3 font-semibold">Summe</td>
-                        <td className="py-2 px-3 text-right font-mono font-semibold">
-                          {EUR(rentPayments.reduce((s, p) => s + p.expectedAmount, 0))}
-                        </td>
-                        <td className="py-2 px-3 text-right font-mono font-semibold">
-                          {EUR(rentPayments.reduce((s, p) => s + p.amount, 0))}
-                        </td>
-                        <td colSpan={2} />
-                      </tr>
-                    </tfoot>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {rentPayments.map((p, idx) => (
+                          <tr key={p.id} className="border-b last:border-0">
+                            <td className="py-1.5 px-3">
+                              {new Date(p.dueDate).toLocaleDateString('de-DE', { month: 'long', year: 'numeric' })}
+                            </td>
+                            <td className="py-1.5 px-3 text-right font-mono">{EUR(p.expectedAmount)}</td>
+                            <td className="py-1.5 px-3 text-right">
+                              {paymentsLocked ? (
+                                <span className="font-mono">{EUR(p.amount)}</span>
+                              ) : (
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  value={p.amount}
+                                  onChange={(e) => updateRentPayment(idx, 'amount', Number(e.target.value))}
+                                  className="h-7 w-28 text-right font-mono text-xs ml-auto"
+                                />
+                              )}
+                            </td>
+                            <td className="py-1.5 px-3">
+                              {paymentsLocked ? (
+                                <span className="text-muted-foreground">
+                                  {p.paidDate ? new Date(p.paidDate).toLocaleDateString('de-DE') : '—'}
+                                </span>
+                              ) : (
+                                <Input
+                                  type="date"
+                                  value={p.paidDate || ''}
+                                  onChange={(e) => updateRentPayment(idx, 'paidDate', e.target.value || null)}
+                                  className="h-7 w-36 text-xs"
+                                />
+                              )}
+                            </td>
+                            <td className="py-1.5 px-3">
+                              <StatusBadge status={
+                                p.status === 'paid' ? 'Bezahlt' :
+                                p.status === 'partial' ? 'Teilweise' :
+                                p.status === 'overdue' ? 'Überfällig' : 'Offen'
+                              } variant={
+                                p.status === 'paid' ? 'success' :
+                                p.status === 'partial' ? 'warning' :
+                                p.status === 'overdue' ? 'error' : 'muted'
+                              } />
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot>
+                        <tr className="bg-muted/30 border-t">
+                          <td className="py-2 px-3 font-semibold">Summe</td>
+                          <td className="py-2 px-3 text-right font-mono font-semibold">
+                            {EUR(rentPayments.reduce((s, p) => s + p.expectedAmount, 0))}
+                          </td>
+                          <td className="py-2 px-3 text-right font-mono font-semibold">
+                            {EUR(rentPayments.reduce((s, p) => s + p.amount, 0))}
+                          </td>
+                          <td colSpan={2} />
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+
+                  {/* Speichern + Festschreiben Buttons */}
+                  {!paymentsLocked && (
+                    <div className="flex items-center gap-2 justify-end">
+                      <Button size="sm" onClick={saveRentPayments} disabled={isSavingPayments}>
+                        {isSavingPayments ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Save className="h-4 w-4 mr-1" />}
+                        Zahlungen speichern
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button size="sm" variant="outline">
+                            <Lock className="h-4 w-4 mr-1" />
+                            Festschreiben
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Zahlungen festschreiben?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Nach der Festschreibung können die Zahlungseingänge für {selectedYear} nicht mehr bearbeitet werden. 
+                              Bitte stellen Sie sicher, dass alle Beträge und Eingangsdaten korrekt sind.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                            <AlertDialogAction onClick={lockPayments}>
+                              Endgültig festschreiben
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

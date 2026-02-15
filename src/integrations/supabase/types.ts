@@ -10366,6 +10366,7 @@ export type Database = {
           created_at: string | null
           id: string
           non_allocatable_eur: number | null
+          payments_locked: boolean
           period_end: string
           period_start: string
           property_id: string
@@ -10382,6 +10383,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           non_allocatable_eur?: number | null
+          payments_locked?: boolean
           period_end: string
           period_start: string
           property_id: string
@@ -10398,6 +10400,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           non_allocatable_eur?: number | null
+          payments_locked?: boolean
           period_end?: string
           period_start?: string
           property_id?: string
