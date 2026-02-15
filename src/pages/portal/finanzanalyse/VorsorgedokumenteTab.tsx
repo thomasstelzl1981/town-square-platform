@@ -106,7 +106,7 @@ export default function VorsorgedokumenteTab() {
           </div>
         </WidgetCell>
 
-        {/* Widget 2: Berliner Testament */}
+        {/* Widget 2: Testament */}
         <WidgetCell>
           <div
             onClick={() => setDialogOpen('testament')}
@@ -141,20 +141,22 @@ export default function VorsorgedokumenteTab() {
 
               <div>
                 <h3 className={TYPOGRAPHY.CARD_TITLE}>
-                  Berliner Testament
+                  Testament
                 </h3>
               </div>
 
               <p className="text-xs text-muted-foreground leading-relaxed">
                 Ein Testament ist entscheidend, um Streitigkeiten innerhalb der 
-                Familie zu vermeiden und klare Regelungen für die Angehörigen zu 
-                schaffen. Das Berliner Testament sichert den überlebenden Ehegatten 
-                ab und regelt die Erbfolge einvernehmlich.
+                Familie zu vermeiden. Die PDF-Schreibvorlage enthält vier Varianten: 
+                Alleinerbe, Mehrere Erben, Vor-/Nacherbschaft und Berliner Testament. 
+                <strong className="text-foreground/80"> Wichtig:</strong> Ein Testament ist nur als 
+                vollständig handschriftliches Original mit eigenhändiger Unterschrift wirksam — 
+                kein Ausdruck, keine digitale Signatur.
               </p>
             </div>
 
             <p className="text-[11px] text-muted-foreground/70 mt-2">
-              Klicken zum Erstellen und Ausdrucken →
+              Klicken für Schreibvorlage (PDF) →
             </p>
           </div>
         </WidgetCell>
