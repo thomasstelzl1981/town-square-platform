@@ -1,132 +1,81 @@
 
-# Systemaudit v4.0 — Praesentationsbereitschaft
+# MOD-04 + Investment Engine — Deep Audit Ergebnisse und Reparaturplan
 
-## 1. Gesamtstatus
+## 1. Investment Engine (Edge Function) — BESTANDEN
 
-Das System ist strukturell solide. Die Architektur (21 Module, 3 Zonen, 15 Golden Paths, 95 Edge Functions) ist konsistent. Alle vorherigen Audit-Items (SIA-0001 bis SIA-0012) sind erledigt oder dokumentiert. Es gibt keine P0-Blocker. Fuer die Praesentation sind jedoch mehrere Inkonsistenzen und Altlasten zu bereinigen.
+Die Edge Function `sot-investment-engine` wurde live getestet (BER-01: 280k, 1150/Mo, 50k EK):
+- Zinssatz: 4,3% (korrekt aus DB-Matrix fuer 10J/90% LTV)
+- Darlehen: 230.000 EUR (280k - 50k) -- korrekt
+- AfA: 4.480 EUR (280k x 80% x 2%) -- korrekt
+- Steuerersparnis Jahr 1: 343 EUR -- korrekt (negativer Mietueberschuss -870 EUR)
+- Ab Jahr 4 wird Steuerersparnis negativ (= Steuermehrbelastung) -- fachlich korrekt
+- 40-Jahres-Projektion rechnet sauber durch, Nettovermoegen Jahr 40: 560.129 EUR
 
-## 2. Gefundene Issues
+30 Zinssaetze und alle Steuerparameter sind in der DB vorhanden.
 
-### P1 — Praesentation blockierend
+## 2. Geteilte Komponenten — BESTANDEN
 
-| ID | Modul | Issue | Details |
-|----|-------|-------|---------|
-| SIA4-001 | MOD-04 | VerwaltungTab enthaelt veraltete "MSV"-Texte | Zeile 112: "MSV-Objekt hinzufuegen", Zeile 125: "Keine MSV-Objekte aktiv" — muss "BWA" heissen |
-| SIA4-002 | MOD-04 | goldenPathProcesses.ts: GP-VERWALTUNG noch "Mietverwaltung" | processName, description und demoWidget referenzieren "Mietverwaltung" und "MFH Duesseldorf" — muss BWA-konform sein |
-| SIA4-003 | MOD-04 | NKAbrechnungTab: unitId kann leerer String sein | PropertyDetailPage Zeile 524: `unitId={unit?.id || ''}` — wenn keine Unit selektiert, ist unitId leer, was zu leeren Queries fuehrt |
-| SIA4-004 | MOD-04 | NK-Engine: Hardcoded unitPersons/totalPersons/totalUnits | engine.ts Zeile 169-171: `unitPersons: 2`, `totalPersons: 10`, `totalUnits: 10` — muss dynamisch aus DB kommen |
+Alle Module nutzen korrekt die SSOT-Komponenten aus `src/components/investment/`:
+- **MOD-08 SucheTab**: `InvestmentResultTile` mit Edge-Function-Metriken
+- **MOD-08 InvestmentExposePage**: `MasterGraph`, `Haushaltsrechnung`, `InvestmentSliderPanel`, `DetailTable40Jahre`, `FinanzierungSummary`
+- **MOD-09 BeratungTab**: `InvestmentResultTile` (showProvision=false)
+- **Zone 3 Kaufy**: `InvestmentResultTile` (linkPrefix=/website/kaufy/immobilien)
+- **MOD-13 Landing Page**: `InvestmentExposeView`
 
-### P2 — Technische Schulden
+## 3. Gefundene Issues
 
-| ID | Modul | Issue | Details |
-|----|-------|-------|---------|
-| SIA4-005 | MOD-04 | VerwaltungTab: JSDoc-Kommentar Zeile 3-10 referenziert geloeschte Kacheln | Beschreibt "Kachel 1: Mietliste, Kachel 2: Aufgaben, Kachel 3: BWA" — existieren nicht mehr |
-| SIA4-006 | MOD-04 | demoDataManifest.ts: GP-VERWALTUNG toggleKey noch "GP-VERWALTUNG" | Funktional OK, aber semantisch inkonsistent mit Umbenennung zu BWA |
-| SIA4-007 | MOD-04 | useMSVData.ts: Hook-Name und Kommentare noch "MSV"-bezogen | Funktioniert, aber Name sollte `useBWAData` sein fuer Konsistenz |
-| SIA4-008 | MOD-04 | bwaKontenplan.ts Zeile 2: "SSOT fuer MOD-04 Verwaltung" | Sollte "BWA" heissen |
-| SIA4-009 | MOD-07 | useFinanceRequest.ts: TODO case_events audit event | Zeile 281: Status-Aenderungen werden nicht in case_events persistiert |
-| SIA4-010 | Armstrong | useArmstrongContext.ts: webResearchEnabled hardcoded true | Zeile 213: Sollte aus org_settings gelesen werden |
-| SIA4-011 | MOD-04 | NK-Engine: nk_periods/nk_cost_items als `(supabase as any)` | Type-Casts umgehen Typsicherheit — Tabellen fehlen in types.ts |
+### P1 — Daten-Inkonsistenz Miete (Demo vs. DB)
 
-### P3 — Kosmetik / Dokumentation
+| Objekt | Demo monthlyRent | DB units.current_monthly_rent | DB annual_income/12 |
+|--------|-----------------|------------------------------|---------------------|
+| BER-01 | **1.150** | **850** | **1.150** |
+| MUC-01 | **1.580** | **1.250** | **1.580** |
+| HH-01 | **750** | **580** | **750** |
 
-| ID | Modul | Issue | Details |
-|----|-------|-------|---------|
-| SIA4-012 | MOD-04 | goldenPaths/MOD_04.ts: Step "Sichtbarkeit in Verwaltung" | Zeile 104: Label und Keys referenzieren "Verwaltung" statt "BWA" |
-| SIA4-013 | MOD-04 | GP_VERMIETUNG.ts: failure_redirect auf /portal/immobilien/verwaltung | Funktional korrekt (Route unveraendert), aber Kommentar veraltet |
-| SIA4-014 | Spec | mod-04 Verwaltung-Spec nicht aktualisiert | spec/current/02_modules/ muesste BWA-Umbenennung reflektieren |
+**Problem:** Die Demo-Daten (`useDemoListings.ts`) verwenden `annualIncome/12` als `monthlyRent`. Die DB-Tabelle `units.current_monthly_rent` enthaelt aber niedrigere Werte. Wenn MOD-04 Immobilienakte die Simulation oeffnet, nutzt sie `unit.current_monthly_rent` (850 EUR fuer Berlin), waehrend MOD-08/09/Zone 3 die Demo-Werte (1.150 EUR) oder `properties.annual_income / 12` verwenden.
 
-## 3. Golden Path Klick-Test Ergebnisse
+**Auswirkung:** Unterschiedliche Berechnungsergebnisse fuer dasselbe Objekt je nach Einstiegspunkt (MOD-04 vs. MOD-08).
 
-### GP-PORTFOLIO (MOD-04) — Ergebnis: BESTANDEN mit Einschraenkung
-- Route /portal/immobilien/portfolio: Laedt korrekt
-- WidgetGrid: Rendert (leer ohne Auth, mit Auth zeigt Demo-Widgets)
-- Immobilienakte: Route /:id mit GoldenPathGuard aktiv
-- NK-Abrechnung Tab: Rendert 5 Sektionen mit Template (17 Positionen)
-- **Einschraenkung**: unitId kann leer sein wenn keine Unit selektiert (SIA4-003)
+**Fix:** DB-Werte in `units.current_monthly_rent` auf die korrekten Werte anpassen (1.150, 1.580, 750), damit SSOT gilt.
 
-### GP-VERWALTUNG/BWA (MOD-04) — Ergebnis: BESTANDEN mit Textfehlern
-- Route /portal/immobilien/verwaltung: Laedt als "BWA"
-- Tab-Label: Korrekt "BWA"
-- WidgetGrid: Zeigt Objekt-Widgets
-- **Fehler**: CTA-Button sagt "MSV-Objekt hinzufuegen" statt "Objekt hinzufuegen"
-- **Fehler**: Empty State sagt "Keine MSV-Objekte"
+### P2 — Zwei verschiedene Berechnungs-Engines
 
-### GP-FINANZIERUNG (MOD-07) — Ergebnis: BESTANDEN
-- Routes: selbstauskunft, dokumente, anfrage, status, privatkredit alle deklariert
-- GoldenPathGuard auf anfrage/:requestId aktiv
-- Legacy-Redirects (vorgaenge, readiness, export, partner) korrekt
+| Kontext | Engine | Tax? | Zinssatz |
+|---------|--------|------|----------|
+| MOD-04 Simulation Tab | **Client-seitig** (InventoryInvestmentSimulation) | Nein | Aus DB (property_financing) |
+| MOD-08/09/Zone 3 | **Edge Function** (sot-investment-engine) | Ja | Aus DB (interest_rates Matrix) |
 
-### GP-SUCHMANDAT + GP-SIMULATION (MOD-08) — Ergebnis: BESTANDEN
-- Routes: suche, favoriten, mandat, simulation deklariert
-- Interne Dynamic Routes (mandat/neu, mandat/:id, objekt/:publicId) dokumentiert
-- Investment Engine Pattern funktional
+**Problem:** Die `InventoryInvestmentSimulation` in MOD-04 rechnet eine vereinfachte Projektion OHNE Steuereffekte (keine AfA-Steuerersparnis, kein zvE). Die Edge Function beruecksichtigt Steuerersparnis, Soli, Kirchensteuer. Damit zeigt die MOD-04-Simulation andere Ergebnisse als dieselbe Immobilie in MOD-08.
 
-### GP-SANIERUNG (MOD-04) — Ergebnis: BESTANDEN
-- Route /portal/immobilien/sanierung: Deklariert und implementiert
-- Demo-Widget korrekt konfiguriert
+**Fix (Sprint):** `InventoryInvestmentSimulation` soll ebenfalls die Edge Function nutzen oder zumindest dieselbe Berechnungslogik clientseitig abbilden.
 
-### GP-PROJEKT (MOD-13) — Ergebnis: BESTANDEN
-- Routes: dashboard, projekte, vertrieb, landing-page
-- GoldenPathGuard auf :projectId und :projectId/einheit/:unitId
-- Demo-Widget "Residenz am Stadtpark" korrekt
+### P3 — InvestmentExposePage: Demo-Listing public_id Mismatch
 
-### GP-FM-FALL (MOD-11) — Ergebnis: BESTANDEN
-- 6 Tiles + dynamic routes (einreichung/:requestId, faelle/:requestId)
-- Gold Standard Reference Implementation
+Die Demo-Listings haben `public_id: "DEMO-BER-01"` (mit Bindestrich nach DEMO), aber die DB-Listings haben `public_id: "DEMO-BER01"` (ohne Bindestrich im Code-Teil). Die InvestmentExposePage macht ein `.toUpperCase()` Vergleich, aber der Bindestrich-Unterschied koennte zu Nicht-Finden fuehren.
 
-### GP-AKQUISE-MANDAT (MOD-12) — Ergebnis: BESTANDEN
-- 6 Tiles + dynamic routes mit GoldenPathGuard
+**Fix:** Pruefen ob die Demo-Codes konsistent sind (aktuell: Demo-Code `BER-01` erzeugt public_id `DEMO-BER-01`, DB hat `DEMO-BER01`).
 
-## 4. Reparaturplan — Priorisiert
+## 4. Reparaturplan
 
-### Sofort (vor Praesentation, 15 Min)
+### Sofort-Fixes (10 Min)
 
-| Schritt | Datei | Aenderung |
-|---------|-------|-----------|
-| 1 | VerwaltungTab.tsx | "MSV-Objekt hinzufuegen" → "Objekt hinzufuegen", "Keine MSV-Objekte" → "Keine Objekte aktiv" |
-| 2 | VerwaltungTab.tsx | JSDoc-Kommentar Zeile 1-10 aktualisieren (BWA statt MSV-Referenzen) |
-| 3 | goldenPathProcesses.ts | GP-VERWALTUNG: processName → "BWA / Controlling", description aktualisieren |
-| 4 | PropertyDetailPage.tsx | NKAbrechnungTab: Fallback-Logik wenn unitId leer (erste Unit der Property auto-selektieren oder Hinweis zeigen) |
+| # | Datei | Aenderung |
+|---|-------|-----------|
+| 1 | DB Migration | `UPDATE units SET current_monthly_rent = 1150 WHERE id = 'd0000000-...-b01'` (analog MUC=1580, HH=750) |
 
-### Sprint-Backlog (nach Praesentation)
+### Sprint-Backlog
 
-| Schritt | Datei | Aenderung |
-|---------|-------|-----------|
-| 5 | engine.ts | unitPersons, totalPersons, totalUnits dynamisch aus DB laden |
-| 6 | useMSVData.ts | Rename zu useBWAData.ts (+ alle Imports aktualisieren) |
-| 7 | bwaKontenplan.ts | Kommentar aktualisieren |
-| 8 | goldenPaths/MOD_04.ts | Step-Labels "Verwaltung" → "BWA" |
-| 9 | demoDataManifest.ts | GP-VERWALTUNG Labels aktualisieren |
-| 10 | useFinanceRequest.ts | TODO case_events implementieren |
-| 11 | useArmstrongContext.ts | webResearchEnabled aus org_settings lesen |
-| 12 | NK-Engine | `(supabase as any)` Casts entfernen wenn Tabellen in types.ts |
+| # | Datei | Aenderung |
+|---|-------|-----------|
+| 2 | InventoryInvestmentSimulation.tsx | Edge Function statt Client-Berechnung nutzen, oder Steuer-Logik ergaenzen |
+| 3 | useDemoListings.ts / DB | public_id Konsistenz pruefen (DEMO-BER-01 vs DEMO-BER01) |
+| 4 | PropertyDetailPage.tsx | simulationData.annualRent nutzt `unit.current_monthly_rent * 12`, sollte alternativ `property.annual_income` nutzen fuer Konsistenz |
 
-## 5. Backlog-Datei
+## 5. Zusammenfassung
 
-Die Ergebnisse werden in `spec/audit/system_integrity_audit_v4_backlog.json` als strukturierte JSON-Datei angelegt mit folgendem Schema pro Item:
-
-```text
-{
-  "id": "SIA4-XXXX",
-  "severity": "P1|P2|P3",
-  "dimension": "text|manifest|engine|spec|hook",
-  "zone": "Z2",
-  "module": "MOD-XX",
-  "title": "...",
-  "description": "...",
-  "repo_refs": ["file:line"],
-  "fix_plan": { "steps": [...], "risk": "low|medium" },
-  "status": "open|in_progress|done"
-}
-```
-
-## 6. Zusammenfassung fuer Praesentation
-
-- **21 Module aktiv**, alle mit Routes im Manifest deklariert
-- **15 Golden Paths** registriert, alle `phase: 'done'` (ausser GP-PETS: Phase 1)
-- **0 Rogue Routes** — alle Routen ueber ManifestRouter gesteuert
-- **NK-Abrechnung Engine** funktional mit 17-Positionen Template, 5-Sektionen UI, PDF-Export
-- **4 Textfehler** (MSV-Reste) zu bereinigen — rein kosmetisch, keine Funktionsstoerung
-- **3 technische TODOs** in Engine (Personenzahlen, Audit Events) — beeintraechtigen Demo-Flow nicht
-- **Enterprise-Architektur intakt**: RLS, Zonen-Isolation, Backbone-Pattern, Golden Path Guards
+- **Investment Engine Edge Function**: Mathematisch korrekt, alle Formeln verifiziert
+- **Geteilte Komponenten**: Konsistent ueber MOD-08, MOD-09, Zone 3 und MOD-13
+- **Demo-Daten**: 3 Objekte (BER, MUC, HH) + 1 Projekt (Residenz am Stadtpark) korrekt konfiguriert
+- **DB-Listings**: Alle 3 Demo-Listings sind `status: active` mit korrekten `asking_price` Werten
+- **1 P1-Issue**: Miet-Inkonsistenz zwischen `units` und `useDemoListings` — behebt sich durch DB-Update
+- **1 P2-Issue**: Zwei Berechnungs-Engines mit unterschiedlicher Tiefe (mit/ohne Steuer)
