@@ -1,75 +1,92 @@
 
+# Media-Widgets fuer MOD-08 (Suche) und MOD-09 (Beratung)
 
-# Reparaturplan: MOD-13 Demo-Widget zu klein
+## Ziel
 
-## Fehleranalyse
-
-**Root Cause** — Eine einzige Zeile in `ProjectCard.tsx`, Zeile 68:
-
-```
-!isDemo && 'aspect-square'
-```
-
-Diese Bedingung bedeutet: **Nur wenn NICHT Demo, dann quadratisch**. Das Demo-Widget bekommt daher KEIN `aspect-square` und schrumpft auf seine Content-Hoehe — es wird KLEINER als die anderen Widgets.
-
-Der `ProjectCardPlaceholder` daneben hat `aspect-square` fest eingebaut (Zeile 122), deshalb hat er die korrekte Groesse. Das Demo-Widget daneben ist zu klein, weil es nur so hoch wird wie sein Inhalt (Status-Badge + Icon + Text + Progressbar).
+Direkt unter der Headline (ModulePageHeader) beider Seiten werden 4 quadratische Widgets im CI-Standard platziert. Diese dienen als hochwertige Einstiegspunkte zu Verkaufsmaterialien:
 
 ```text
-IST-ZUSTAND:
-+------------------+  +------------------+
-|  [Demo-Widget]   |  | [Neues Projekt]  |
-|  Residenz am     |  |                  |
-|  Stadtpark       |  |  Demo-Projekt    |
-|  (zu klein!)     |  |                  |
-+------------------+  |  (korrekt,       |
-                      |   aspect-square) |
-                      +------------------+
-
-SOLL-ZUSTAND:
-+------------------+  +------------------+
-|  [Demo-Widget]   |  | [Neues Projekt]  |
-|                  |  |                  |
-|  Residenz am     |  |  Demo-Projekt    |
-|  Stadtpark       |  |                  |
-|                  |  |                  |
-|  (aspect-square) |  |  (aspect-square) |
-+------------------+  +------------------+
++------------------------------------------+
+| SUCHE / KUNDENBERATUNG (Header)          |
++------------------------------------------+
+| [Verkaufs-   | [Verkaufs-  | [Verkaufs-  | [Image-     |
+|  praesent.]  |  video 1]   |  video 2]   |  video]     |
+|  Praesent.   |  Rendite    |  Steuer-    |  Verwaltung |
+|  Icon + Glow |  Icon+Glow  |  vorteil    |  Software   |
+|              |             |  Icon+Glow  |  Icon+Glow  |
++--------------+-------------+-------------+-------------+
+| [Search Mode Toggle + Form]              |
+| [Ergebnisse...]                          |
++------------------------------------------+
 ```
 
-## Fix
+## Widget-Inhalte (4 Stueck)
 
-### Datei: `src/components/projekte/ProjectCard.tsx`
+| # | Typ | Titel | Untertitel | Icon |
+|---|-----|-------|------------|------|
+| 1 | Praesentation | Verkaufspraesentation | Unsere Investment-Strategie im Ueberblick | Presentation (lucide) |
+| 2 | Video | Rendite erklaert | So funktioniert Ihre Kapitalanlage | Play (lucide) |
+| 3 | Video | Steuervorteil | Steueroptimierung mit Immobilien | Play (lucide) |
+| 4 | Video | Verwaltung | Unsere Software im Einsatz | Monitor (lucide) |
 
-**Zeile 68 aendern:**
+## Glow-Effekt
 
-Alt:
-```typescript
-!isDemo && 'aspect-square',
+Die Widgets erhalten einen dezenten Glow-Effekt im CI-Stil — aehnlich dem Demo-Widget-Shimmer, aber in der primaeren Markenfarbe (primary/blue statt emerald). Umsetzung:
+
+```text
+- Hintergrund: bg-primary/5 mit border-primary/30
+- Oberer Shimmer-Streifen: Gradient von primary/40 via primary/60 nach primary/40
+- Hover: shadow-primary/20 shadow-lg Transition
+- Icon-Box: bg-primary/10 mit primary-Icon
 ```
 
-Neu:
-```typescript
-'aspect-square',
+## Technische Umsetzung
+
+### Neue Datei: `src/components/shared/MediaWidget.tsx`
+
+Eine wiederverwendbare Komponente, die in beiden Modulen genutzt wird:
+
+- Props: `title`, `subtitle`, `icon`, `type` ('presentation' | 'video'), `onClick?`
+- Styling: `aspect-square` (CI-konform), Glow-Klassen, glasiger Hintergrund
+- Das Widget ist vorerst ein visueller Platzhalter (klickbar, aber ohne hinterlegte Medien) — die tatsaechlichen Dateien (PDF, Video-URLs) koennen spaeter hinterlegt werden
+
+### Neue Datei: `src/components/shared/MediaWidgetGrid.tsx`
+
+Ein vorkonfiguriertes 4-Widget-Grid mit den 4 definierten Medien-Widgets. Nutzt `WidgetGrid` (variant='widget') und `WidgetCell` fuer CI-konforme Anordnung.
+
+### Aenderung: `src/pages/portal/investments/SucheTab.tsx`
+
+Nach `ModulePageHeader` und VOR der Search-Card wird `<MediaWidgetGrid />` eingefuegt:
+
+```text
+<PageShell>
+  <ModulePageHeader title="SUCHE" ... />
+  <MediaWidgetGrid />          {/* NEU */}
+  <Card> {/* Search Mode Toggle */} </Card>
+  ...
+</PageShell>
 ```
 
-Das ist alles. `aspect-square` gilt dann fuer ALLE ProjectCards — normale UND Demo. Das Demo-Widget behaelt sein gruenes `DEMO_WIDGET.CARD` Styling (Zeile 70) und bekommt zusaetzlich die korrekte quadratische Form.
+### Aenderung: `src/pages/portal/vertriebspartner/BeratungTab.tsx`
 
-**Eine Zeile, ein Fix, kein Seiteneffekt.**
+Gleiche Platzierung — nach `ModulePageHeader`, vor der Search-Card:
 
-### Zusaetzlich: Dashboard-Reihenfolge (Problem 1 aus dem vorherigen Plan)
-
-Die Widgets und KPIs auf `/portal/projekte/dashboard` muessen nach oben verschoben werden (unter den Header, vor den Magic Intake). Das wird in `ProjekteDashboard.tsx` durch Umordnung der JSX-Sektionen geloest:
-
-1. ModulePageHeader
-2. KPI-Stats
-3. WidgetGrid (Meine Projekte)
-4. "So funktioniert's" Steps
-5. Magic Intake Upload-Zone
+```text
+<PageShell>
+  <ModulePageHeader title="KUNDENBERATUNG" ... />
+  <MediaWidgetGrid />          {/* NEU */}
+  <Card> {/* Search Mode Toggle */} </Card>
+  ...
+</PageShell>
+```
 
 ## Betroffene Dateien
 
 | Datei | Aenderung |
 |-------|-----------|
-| `src/components/projekte/ProjectCard.tsx` | Zeile 68: `aspect-square` fuer alle Karten |
-| `src/pages/portal/projekte/ProjekteDashboard.tsx` | Sektionsreihenfolge: KPIs + Widgets nach oben |
+| `src/components/shared/MediaWidget.tsx` | NEU — Einzelnes Media-Widget mit Glow |
+| `src/components/shared/MediaWidgetGrid.tsx` | NEU — 4er-Grid mit allen Media-Widgets |
+| `src/pages/portal/investments/SucheTab.tsx` | Import + Einfuegen von MediaWidgetGrid |
+| `src/pages/portal/vertriebspartner/BeratungTab.tsx` | Import + Einfuegen von MediaWidgetGrid |
 
+**Keine DB-Migration noetig.**
