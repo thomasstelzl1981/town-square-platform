@@ -20,7 +20,6 @@ import { supabase } from '@/integrations/supabase/client';
 interface CalculateInput {
   propertyId: string;
   unitId: string;
-  leaseId: string;
   tenantId: string;
   year: number;
 }
@@ -51,12 +50,13 @@ export async function calculateSettlement(
   const periodStart = `${input.year}-01-01`;
   const periodEnd = `${input.year}-12-31`;
 
-  // 1. Lease laden
+  // 1. Lease laden (ueber unit_id + tenant_id)
   const { data: lease } = await supabase
     .from('leases')
     .select('*')
-    .eq('id', input.leaseId)
+    .eq('unit_id', input.unitId)
     .eq('tenant_id', input.tenantId)
+    .limit(1)
     .single() as { data: LeaseData | null; error: any };
 
   if (!lease) throw new Error('Mietvertrag nicht gefunden');
@@ -168,7 +168,7 @@ export async function calculateSettlement(
         totalMea,
         unitPersons: 2, // TODO: aus Lease/Unit holen
         totalPersons: 10, // TODO: Gesamtpersonen aus Property
-        totalUnits: 1, // TODO: Gesamteinheiten
+        totalUnits: 10, // Standardwert fuer unit_count-Schluessel
       },
       periodInfo
     );
@@ -214,7 +214,7 @@ export async function calculateSettlement(
       propertyName: `${property.address}, ${property.city}`,
       unitId: input.unitId,
       unitLabel: `${unit.unit_number}, ${unitAreaSqm} m²`,
-      leaseId: input.leaseId,
+      leaseId: lease.id,
       tenantName,
       periodStart,
       periodEnd,

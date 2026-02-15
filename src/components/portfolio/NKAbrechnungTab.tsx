@@ -1,16 +1,25 @@
 /**
- * NKAbrechnungTab — Neuer Tab in der Immobilienakte
+ * NKAbrechnungTab — 5-Sektionen Inline-Flow
  * 
- * Inline-Flow: Datenkontrolle → Kostenmatrix → Export
+ * Sektion 1: Eingehende WEG-Abrechnung (editierbar)
+ * Sektion 2: Grundsteuerbescheid (editierbar)
+ * Sektion 3: Mieteinnahmen & Vorauszahlungen (read-only)
+ * Sektion 4: Berechnung & Saldo
+ * Sektion 5: Export & Versand
  */
 
 import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, CheckCircle2, AlertTriangle, Circle, FileDown, FolderOpen, Calculator } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
+import {
+  Loader2, CheckCircle2, AlertTriangle, FileDown, FolderOpen,
+  Calculator, Send, Save, FileText, Home, User, Calendar
+} from 'lucide-react';
 import { useNKAbrechnung } from '@/hooks/useNKAbrechnung';
 import { NKReadinessStatus } from '@/engines/nkAbrechnung/spec';
 
@@ -21,59 +30,73 @@ interface NKAbrechnungTabProps {
 }
 
 const currentYear = new Date().getFullYear();
-const yearOptions = Array.from({ length: 3 }, (_, i) => currentYear - 1 - i);
+const yearOptions = [currentYear, currentYear - 1, currentYear - 2];
+
+const EUR = (v: number) =>
+  new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(v);
+
+const KEY_LABELS: Record<string, string> = {
+  area_sqm: 'Fläche (m²)',
+  mea: 'MEA',
+  persons: 'Personen',
+  consumption: 'Verbrauch',
+  unit_count: 'Einheiten',
+  custom: 'Individuell',
+};
 
 export function NKAbrechnungTab({ propertyId, tenantId, unitId }: NKAbrechnungTabProps) {
-  const [selectedYear, setSelectedYear] = useState(String(currentYear - 1));
+  const [selectedYear, setSelectedYear] = useState(String(currentYear));
   const {
     readiness,
     settlement,
+    leaseInfo,
+    costItems,
+    grundsteuerTotal,
+    grundsteuerAnteil,
     isLoadingReadiness,
+    isLoadingData,
     isCalculating,
+    isSaving,
     calculate,
     exportPdf,
+    updateCostItem,
+    saveCostItems,
+    saveGrundsteuer,
+    setGrundsteuerTotal,
+    setGrundsteuerAnteil,
   } = useNKAbrechnung(propertyId, tenantId, unitId, Number(selectedYear));
 
-  const StatusIcon = ({ status }: { status: string }) => {
-    switch (status) {
-      case 'accepted':
-        return <CheckCircle2 className="h-4 w-4 text-emerald-500" />;
-      case 'needs_review':
-        return <AlertTriangle className="h-4 w-4 text-amber-500" />;
-      case 'pending':
-        return <Circle className="h-4 w-4 text-muted-foreground" />;
-      default:
-        return <Circle className="h-4 w-4 text-muted-foreground/40" />;
-    }
-  };
+  const wegItems = costItems.filter(i => i.categoryCode !== 'grundsteuer');
+  const apportionableItems = wegItems.filter(i => i.isApportionable);
+  const nonApportionableItems = wegItems.filter(i => !i.isApportionable);
 
-  const StatusBadge = ({ status, required }: { status: string; required: boolean }) => {
-    if (status === 'accepted') return <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-600 text-xs">akzeptiert</Badge>;
-    if (status === 'needs_review') return <Badge variant="secondary" className="bg-amber-500/10 text-amber-600 text-xs">prüfen</Badge>;
-    if (status === 'missing' && !required) return <Badge variant="outline" className="text-xs text-muted-foreground">optional</Badge>;
-    if (status === 'missing') return <Badge variant="destructive" className="text-xs">fehlt</Badge>;
-    return <Badge variant="outline" className="text-xs">ausstehend</Badge>;
-  };
+  const sumApportionable = apportionableItems.reduce((s, i) => s + i.amountUnit, 0);
+  const sumNonApportionable = nonApportionableItems.reduce((s, i) => s + i.amountUnit, 0);
 
-  const EUR = (v: number) =>
-    new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(v);
+  // Vorauszahlungen berechnen (12 Monate oder anteilig)
+  const months = 12; // TODO: anteilig bei unterjaehrig
+  const totalNKVZ = (leaseInfo?.nkAdvanceEur || 0) * months;
+  const totalHeizVZ = (leaseInfo?.heatingAdvanceEur || 0) * months;
+  const totalVZ = totalNKVZ + totalHeizVZ;
 
-  const KEY_LABELS: Record<string, string> = {
-    area_sqm: 'Fläche (m²)',
-    mea: 'MEA',
-    persons: 'Personen',
-    consumption: 'Verbrauch',
-    unit_count: 'Einheiten',
-    custom: 'Individuell',
+  const totalCostsTenant = sumApportionable + grundsteuerAnteil;
+  const saldo = totalCostsTenant - totalVZ;
+
+  const readinessIcon = (status: string) => {
+    if (status === 'accepted') return <CheckCircle2 className="h-4 w-4 text-primary" />;
+    if (status === 'needs_review') return <AlertTriangle className="h-4 w-4 text-accent-foreground" />;
+    return <AlertTriangle className="h-4 w-4 text-destructive" />;
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header + Jahr-Auswahl */}
+    <div className="space-y-6 max-w-4xl">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-lg font-semibold">Nebenkostenabrechnung</h2>
-          <p className="text-sm text-muted-foreground">Dokumentenbasierte NK-Abrechnung für Mieter</p>
+          <p className="text-sm text-muted-foreground">
+            Inline-Prozess: WEG-Abrechnung → Grundsteuer → Mieteinnahmen → Berechnung → Export
+          </p>
         </div>
         <Select value={selectedYear} onValueChange={setSelectedYear}>
           <SelectTrigger className="w-[120px]">
@@ -81,189 +104,433 @@ export function NKAbrechnungTab({ propertyId, tenantId, unitId }: NKAbrechnungTa
           </SelectTrigger>
           <SelectContent>
             {yearOptions.map((y) => (
-              <SelectItem key={y} value={String(y)}>
-                {y}
-              </SelectItem>
+              <SelectItem key={y} value={String(y)}>{y}</SelectItem>
             ))}
           </SelectContent>
         </Select>
       </div>
 
-      {/* STEP 1: Datenkontrolle */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
-            Step 1 — Datenkontrolle
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isLoadingReadiness ? (
-            <div className="flex items-center gap-2 py-4">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              <span className="text-sm text-muted-foreground">Dokumente werden geprüft...</span>
-            </div>
-          ) : readiness ? (
-            <div className="space-y-2">
-              {readiness.documents.map((doc) => (
-                <div key={doc.docType} className="flex items-center justify-between py-1.5 border-b last:border-0">
-                  <div className="flex items-center gap-2">
-                    <StatusIcon status={doc.status} />
-                    <span className="text-sm">{doc.label}</span>
-                  </div>
-                  <StatusBadge status={doc.status} required={doc.required} />
+      {/* Loading State */}
+      {(isLoadingReadiness || isLoadingData) && (
+        <div className="flex items-center gap-2 py-8 justify-center">
+          <Loader2 className="h-5 w-5 animate-spin text-primary" />
+          <span className="text-sm text-muted-foreground">Daten werden geladen...</span>
+        </div>
+      )}
+
+      {!isLoadingReadiness && !isLoadingData && (
+        <>
+          {/* Readiness Blockers */}
+          {readiness && readiness.blockers.length > 0 && (
+            <Alert variant="destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>
+                <strong>Fehlende Voraussetzungen:</strong> {readiness.blockers.join(' · ')}
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {/* ═══ SEKTION 1: EINGEHENDE WEG-ABRECHNUNG ═══ */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center justify-center w-7 h-7 rounded-full bg-primary/10 text-primary text-sm font-bold">1</div>
+                <div>
+                  <CardTitle className="text-base">Eingehende WEG-Abrechnung</CardTitle>
+                  <CardDescription>Daten aus dem Posteingang / Dokument-Extraktion</CardDescription>
                 </div>
-              ))}
-
-              {readiness.blockers.length > 0 && (
-                <Alert className="mt-3">
-                  <AlertTriangle className="h-4 w-4" />
-                  <AlertDescription className="text-xs">
-                    {readiness.blockers.join(' · ')}
-                  </AlertDescription>
-                </Alert>
-              )}
-
-              {readiness.canCalculate && (
-                <div className="pt-2">
-                  <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-600">
-                    ✓ Bereit zur Berechnung ({readiness.leaseCount} Mietvertrag/verträge)
+              </div>
+              {readiness?.documents.find(d => d.docType === 'WEG_JAHRESABRECHNUNG') && (
+                <div className="flex items-center gap-2 mt-2">
+                  <FileText className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm">WEG-Jahresabrechnung {selectedYear}</span>
+                  {readinessIcon(readiness.documents.find(d => d.docType === 'WEG_JAHRESABRECHNUNG')!.status)}
+                  <Badge variant="secondary" className="text-xs">
+                    {readiness.documents.find(d => d.docType === 'WEG_JAHRESABRECHNUNG')!.status === 'accepted' ? 'akzeptiert' : 'ausstehend'}
                   </Badge>
                 </div>
               )}
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground py-2">Keine Daten verfügbar.</p>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* STEP 2: Kostenmatrix */}
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
-              Step 2 — Kostenmatrix
-            </CardTitle>
-            <Button
-              size="sm"
-              onClick={calculate}
-              disabled={!readiness?.canCalculate || isCalculating}
-            >
-              {isCalculating ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-1" />
+            </CardHeader>
+            <CardContent>
+              {wegItems.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-4 text-center">
+                  Keine Kostenpositionen für {selectedYear} vorhanden.
+                </p>
               ) : (
-                <Calculator className="h-4 w-4 mr-1" />
-              )}
-              Berechnung starten
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {settlement ? (
-            <div className="space-y-4">
-              {/* Header-Info */}
-              <div className="text-xs text-muted-foreground space-y-0.5">
-                <p>Mieter: <span className="font-medium text-foreground">{settlement.header.tenantName}</span></p>
-                <p>Zeitraum: {settlement.header.daysRatio} Tage ({settlement.header.periodStart} – {settlement.header.periodEnd})</p>
-              </div>
+                <div className="space-y-4">
+                  {/* Umlagefähige Kosten */}
+                  <div>
+                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                      Umlagefähige Kosten
+                    </h4>
+                    <div className="border rounded-md overflow-hidden">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b bg-muted/50">
+                            <th className="text-left py-2 px-3 font-medium text-xs w-[35%]">Kostenart</th>
+                            <th className="text-left py-2 px-3 font-medium text-xs w-[20%]">Schlüssel</th>
+                            <th className="text-right py-2 px-3 font-medium text-xs w-[22%]">Haus gesamt</th>
+                            <th className="text-right py-2 px-3 font-medium text-xs w-[23%]">Ihr Anteil</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {apportionableItems.map((item) => (
+                            <tr key={item.id} className="border-b last:border-0">
+                              <td className="py-1.5 px-3">{item.labelDisplay}</td>
+                              <td className="py-1.5 px-3 text-muted-foreground text-xs">
+                                {KEY_LABELS[item.keyType] || item.keyType}
+                              </td>
+                              <td className="py-1.5 px-3 text-right">
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  value={item.amountTotalHouse}
+                                  onChange={(e) => updateCostItem(item.id, 'amountTotalHouse', Number(e.target.value))}
+                                  className="h-7 w-28 text-right font-mono text-xs ml-auto"
+                                />
+                              </td>
+                              <td className="py-1.5 px-3 text-right">
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  value={item.amountUnit}
+                                  onChange={(e) => updateCostItem(item.id, 'amountUnit', Number(e.target.value))}
+                                  className="h-7 w-28 text-right font-mono text-xs ml-auto"
+                                />
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        <tfoot>
+                          <tr className="bg-muted/30 border-t">
+                            <td colSpan={3} className="py-2 px-3 font-medium text-sm">Summe umlagefähig</td>
+                            <td className="py-2 px-3 text-right font-mono font-semibold">{EUR(sumApportionable)}</td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  </div>
 
-              {/* Matrix-Tabelle */}
+                  {/* Nicht umlagefähige Kosten */}
+                  {nonApportionableItems.length > 0 && (
+                    <div>
+                      <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                        Nicht umlagefähige Kosten (zur Information)
+                      </h4>
+                      <div className="border rounded-md overflow-hidden">
+                        <table className="w-full text-sm">
+                          <tbody>
+                            {nonApportionableItems.map((item) => (
+                              <tr key={item.id} className="border-b last:border-0 bg-muted/20">
+                                <td className="py-1.5 px-3 w-[35%] text-muted-foreground">{item.labelDisplay}</td>
+                                <td className="py-1.5 px-3 w-[20%] text-muted-foreground text-xs">
+                                  {KEY_LABELS[item.keyType] || item.keyType}
+                                </td>
+                                <td className="py-1.5 px-3 text-right w-[22%] font-mono text-muted-foreground">
+                                  {EUR(item.amountTotalHouse)}
+                                </td>
+                                <td className="py-1.5 px-3 text-right w-[23%] font-mono text-muted-foreground">
+                                  {EUR(item.amountUnit)}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                          <tfoot>
+                            <tr className="bg-muted/30 border-t">
+                              <td colSpan={3} className="py-2 px-3 font-medium text-sm text-muted-foreground">
+                                Summe nicht umlagefähig
+                              </td>
+                              <td className="py-2 px-3 text-right font-mono text-muted-foreground">
+                                {EUR(sumNonApportionable)}
+                              </td>
+                            </tr>
+                          </tfoot>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex justify-end">
+                    <Button size="sm" onClick={saveCostItems} disabled={isSaving}>
+                      {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Save className="h-4 w-4 mr-1" />}
+                      Speichern
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* ═══ SEKTION 2: GRUNDSTEUERBESCHEID ═══ */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center justify-center w-7 h-7 rounded-full bg-primary/10 text-primary text-sm font-bold">2</div>
+                <div>
+                  <CardTitle className="text-base">Grundsteuerbescheid</CardTitle>
+                  <CardDescription>Direktzahlung des Eigentümers — vollständig umlagefähig</CardDescription>
+                </div>
+              </div>
+              {readiness?.documents.find(d => d.docType === 'GRUNDSTEUER_BESCHEID') && (
+                <div className="flex items-center gap-2 mt-2">
+                  <FileText className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm">Grundsteuerbescheid</span>
+                  {readinessIcon(readiness.documents.find(d => d.docType === 'GRUNDSTEUER_BESCHEID')!.status)}
+                  <Badge variant="secondary" className="text-xs">
+                    {readiness.documents.find(d => d.docType === 'GRUNDSTEUER_BESCHEID')!.status === 'accepted' ? 'akzeptiert' : 'ausstehend'}
+                  </Badge>
+                </div>
+              )}
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">Jährlicher Betrag (Haus gesamt)</label>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={grundsteuerTotal}
+                      onChange={(e) => setGrundsteuerTotal(Number(e.target.value))}
+                      className="h-9 font-mono"
+                    />
+                    <span className="text-sm text-muted-foreground">EUR</span>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">Verteilerschlüssel</label>
+                  <div className="flex items-center h-9 mt-1 px-3 rounded-md border bg-muted/40 text-sm">
+                    MEA
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">Ihr Anteil (berechnet)</label>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={grundsteuerAnteil}
+                      onChange={(e) => setGrundsteuerAnteil(Number(e.target.value))}
+                      className="h-9 font-mono"
+                    />
+                    <span className="text-sm text-muted-foreground">EUR</span>
+                  </div>
+                </div>
+              </div>
+              <div className="flex justify-end mt-4">
+                <Button size="sm" onClick={saveGrundsteuer} disabled={isSaving}>
+                  {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Save className="h-4 w-4 mr-1" />}
+                  Speichern
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* ═══ SEKTION 3: MIETEINNAHMEN & VORAUSZAHLUNGEN ═══ */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center justify-center w-7 h-7 rounded-full bg-primary/10 text-primary text-sm font-bold">3</div>
+                <div>
+                  <CardTitle className="text-base">Mieteinnahmen & Vorauszahlungen</CardTitle>
+                  <CardDescription>Kumuliert aus Mietvertrag / Geldeingang</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {leaseInfo ? (
+                <div className="space-y-4">
+                  {/* Mietvertragsdaten */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    <div className="flex items-start gap-2">
+                      <User className="h-4 w-4 text-muted-foreground mt-0.5" />
+                      <div>
+                        <p className="text-xs text-muted-foreground">Mieter</p>
+                        <p className="text-sm font-medium">{leaseInfo.tenantName}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <Calendar className="h-4 w-4 text-muted-foreground mt-0.5" />
+                      <div>
+                        <p className="text-xs text-muted-foreground">Mietvertrag seit</p>
+                        <p className="text-sm font-medium">
+                          {new Date(leaseInfo.startDate).toLocaleDateString('de-DE')}
+                          {!leaseInfo.endDate && ' (laufend)'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <Home className="h-4 w-4 text-muted-foreground mt-0.5" />
+                      <div>
+                        <p className="text-xs text-muted-foreground">Kaltmiete</p>
+                        <p className="text-sm font-medium">{EUR(leaseInfo.rentColdEur)} / Monat</p>
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Warmmiete</p>
+                      <p className="text-sm font-medium">
+                        {EUR(leaseInfo.rentColdEur + leaseInfo.nkAdvanceEur + leaseInfo.heatingAdvanceEur)} / Monat
+                      </p>
+                    </div>
+                  </div>
+
+                  <Separator />
+
+                  {/* Vorauszahlungen-Tabelle */}
+                  <div className="border rounded-md overflow-hidden">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b bg-muted/50">
+                          <th className="text-left py-2 px-3 font-medium text-xs">Position</th>
+                          <th className="text-right py-2 px-3 font-medium text-xs">Monatlich</th>
+                          <th className="text-center py-2 px-3 font-medium text-xs">Monate</th>
+                          <th className="text-right py-2 px-3 font-medium text-xs">Jahressumme</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr className="border-b">
+                          <td className="py-1.5 px-3">NK-Vorauszahlung</td>
+                          <td className="py-1.5 px-3 text-right font-mono">{EUR(leaseInfo.nkAdvanceEur)}</td>
+                          <td className="py-1.5 px-3 text-center text-muted-foreground">× {months}</td>
+                          <td className="py-1.5 px-3 text-right font-mono font-medium">{EUR(totalNKVZ)}</td>
+                        </tr>
+                        <tr className="border-b">
+                          <td className="py-1.5 px-3">Heizkosten-Vorauszahlung</td>
+                          <td className="py-1.5 px-3 text-right font-mono">{EUR(leaseInfo.heatingAdvanceEur)}</td>
+                          <td className="py-1.5 px-3 text-center text-muted-foreground">× {months}</td>
+                          <td className="py-1.5 px-3 text-right font-mono font-medium">{EUR(totalHeizVZ)}</td>
+                        </tr>
+                      </tbody>
+                      <tfoot>
+                        <tr className="bg-muted/30 border-t">
+                          <td colSpan={3} className="py-2 px-3 font-semibold">Gesamt Vorauszahlungen {selectedYear}</td>
+                          <td className="py-2 px-3 text-right font-mono font-bold">{EUR(totalVZ)}</td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground py-4 text-center">
+                  Kein Mietvertrag für diese Einheit gefunden.
+                </p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* ═══ SEKTION 4: BERECHNUNG & SALDO ═══ */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center justify-center w-7 h-7 rounded-full bg-primary/10 text-primary text-sm font-bold">4</div>
+                <div>
+                  <CardTitle className="text-base">Berechnung & Saldo</CardTitle>
+                  <CardDescription>Zusammenführung aller Positionen</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
               <div className="border rounded-md overflow-hidden">
                 <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b bg-muted/50">
-                      <th className="text-left py-2 px-3 font-medium text-xs">Kostenart</th>
-                      <th className="text-left py-2 px-3 font-medium text-xs">Schlüssel</th>
-                      <th className="text-right py-2 px-3 font-medium text-xs">Haus gesamt</th>
-                      <th className="text-right py-2 px-3 font-medium text-xs">Ihr Anteil</th>
-                    </tr>
-                  </thead>
                   <tbody>
-                    {settlement.rows
-                      .filter((r) => r.isApportionable)
-                      .map((row, i) => (
-                        <tr key={i} className="border-b last:border-0">
-                          <td className="py-1.5 px-3">{row.label}</td>
-                          <td className="py-1.5 px-3 text-muted-foreground">{KEY_LABELS[row.keyType] || row.keyType}</td>
-                          <td className="py-1.5 px-3 text-right font-mono">{EUR(row.totalHouse)}</td>
-                          <td className="py-1.5 px-3 text-right font-mono">{EUR(row.shareUnit)}</td>
-                        </tr>
-                      ))}
+                    <tr className="border-b">
+                      <td className="py-2 px-3">Umlagefähige Kosten (WEG)</td>
+                      <td className="py-2 px-3 text-right font-mono">{EUR(sumApportionable)}</td>
+                    </tr>
+                    <tr className="border-b">
+                      <td className="py-2 px-3">+ Grundsteuer (Direktzahlung)</td>
+                      <td className="py-2 px-3 text-right font-mono">{EUR(grundsteuerAnteil)}</td>
+                    </tr>
+                    <tr className="border-b bg-muted/30">
+                      <td className="py-2 px-3 font-semibold">Gesamtkosten Mieter</td>
+                      <td className="py-2 px-3 text-right font-mono font-semibold">{EUR(totalCostsTenant)}</td>
+                    </tr>
+                    <tr className="border-b">
+                      <td className="py-2 px-3 text-muted-foreground">./. NK-Vorauszahlungen</td>
+                      <td className="py-2 px-3 text-right font-mono text-muted-foreground">- {EUR(totalNKVZ)}</td>
+                    </tr>
+                    <tr className="border-b">
+                      <td className="py-2 px-3 text-muted-foreground">./. Heizkosten-Vorauszahlungen</td>
+                      <td className="py-2 px-3 text-right font-mono text-muted-foreground">- {EUR(totalHeizVZ)}</td>
+                    </tr>
                   </tbody>
                   <tfoot>
-                    <tr className="border-t bg-muted/30">
-                      <td colSpan={3} className="py-1.5 px-3 font-medium">Summe umlagefähig</td>
-                      <td className="py-1.5 px-3 text-right font-mono font-medium">{EUR(settlement.summary.totalApportionable)}</td>
-                    </tr>
-                    <tr>
-                      <td colSpan={3} className="py-1.5 px-3 text-muted-foreground">Vorauszahlungen NK</td>
-                      <td className="py-1.5 px-3 text-right font-mono">{EUR(settlement.summary.prepaidNK)}</td>
-                    </tr>
-                    <tr>
-                      <td colSpan={3} className="py-1.5 px-3 text-muted-foreground">Vorauszahlungen Heizung</td>
-                      <td className="py-1.5 px-3 text-right font-mono">{EUR(settlement.summary.prepaidHeating)}</td>
-                    </tr>
                     <tr className="border-t-2 bg-muted/50">
-                      <td colSpan={3} className="py-2 px-3 font-semibold">
-                        {settlement.summary.balance >= 0 ? 'Nachzahlung' : 'Guthaben'}
+                      <td className="py-3 px-3 font-bold text-base">
+                        {saldo >= 0 ? '⚠ Nachzahlung Mieter' : '✓ Guthaben Mieter'}
                       </td>
-                      <td className={`py-2 px-3 text-right font-mono font-semibold ${
-                        settlement.summary.balance < 0 ? 'text-emerald-600' : 'text-destructive'
+                      <td className={`py-3 px-3 text-right font-mono font-bold text-base ${
+                        saldo < 0 ? 'text-emerald-600' : 'text-destructive'
                       }`}>
-                        {EUR(Math.abs(settlement.summary.balance))}
+                        {saldo < 0 ? '- ' : ''}{EUR(Math.abs(saldo))}
                       </td>
                     </tr>
                   </tfoot>
                 </table>
               </div>
 
-              {/* Warnungen */}
-              {settlement.validation.warnings.length > 0 && (
-                <Alert>
-                  <AlertTriangle className="h-4 w-4" />
-                  <AlertDescription className="text-xs">
-                    {settlement.validation.warnings.join(' · ')}
-                  </AlertDescription>
-                </Alert>
-              )}
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground py-4 text-center">
-              Starten Sie die Berechnung, um die Kostenmatrix zu sehen.
-            </p>
-          )}
-        </CardContent>
-      </Card>
+              <div className="flex justify-center mt-4">
+                <Button onClick={calculate} disabled={!readiness?.canCalculate || isCalculating} size="lg">
+                  {isCalculating ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <Calculator className="h-4 w-4 mr-2" />
+                  )}
+                  Berechnung starten (Engine)
+                </Button>
+              </div>
 
-      {/* STEP 3: Export */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
-            Step 3 — Export
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={exportPdf}
-              disabled={!settlement}
-            >
-              <FileDown className="h-4 w-4 mr-1" />
-              PDF erzeugen
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={!settlement}
-            >
-              <FolderOpen className="h-4 w-4 mr-1" />
-              Im DMS ablegen
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+              {/* Engine-Result anzeigen falls vorhanden */}
+              {settlement && (
+                <div className="mt-4 p-3 rounded-md bg-muted/30 border">
+                  <p className="text-xs text-muted-foreground mb-1">Engine-Ergebnis (validiert)</p>
+                  <div className="flex items-center gap-4 text-sm">
+                    <span>Umlagefähig: <strong>{EUR(settlement.summary.totalApportionable)}</strong></span>
+                    <span>Vorauszahlungen: <strong>{EUR(settlement.summary.totalPrepaid)}</strong></span>
+                    <span className={settlement.summary.balance < 0 ? 'text-emerald-600 font-bold' : 'text-destructive font-bold'}>
+                      {settlement.summary.balance >= 0 ? 'Nachzahlung' : 'Guthaben'}: {EUR(Math.abs(settlement.summary.balance))}
+                    </span>
+                  </div>
+                  {settlement.validation.warnings.length > 0 && (
+                    <p className="text-xs text-amber-600 mt-1">
+                      ⚠ {settlement.validation.warnings.join(' · ')}
+                    </p>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* ═══ SEKTION 5: EXPORT & VERSAND ═══ */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center justify-center w-7 h-7 rounded-full bg-primary/10 text-primary text-sm font-bold">5</div>
+                <div>
+                  <CardTitle className="text-base">Export & Versand</CardTitle>
+                  <CardDescription>PDF erzeugen, ablegen und versenden</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-wrap gap-3">
+                <Button variant="outline" onClick={exportPdf} disabled={!settlement}>
+                  <FileDown className="h-4 w-4 mr-2" />
+                  PDF erzeugen
+                </Button>
+                <Button variant="outline" disabled={!settlement}>
+                  <FolderOpen className="h-4 w-4 mr-2" />
+                  Im DMS ablegen
+                </Button>
+                <Button variant="outline" disabled={!settlement}>
+                  <Send className="h-4 w-4 mr-2" />
+                  An Briefgenerator
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </>
+      )}
     </div>
   );
 }

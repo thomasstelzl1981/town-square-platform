@@ -81,12 +81,22 @@ export async function checkReadiness(
     }
   }
 
-  // 3. Lease-Daten pruefen
-  const { data: leases } = await (supabase as any)
-    .from('leases')
-    .select('id, rent_cold_eur, nk_advance_eur')
-    .eq('tenant_id', tenantId)
-    .eq('property_id', propertyId);
+  // 3. Lease-Daten pruefen (ueber Units joinen)
+  const { data: units } = await (supabase as any)
+    .from('units')
+    .select('id')
+    .eq('property_id', propertyId)
+    .eq('tenant_id', tenantId);
+
+  const unitIds = (units || []).map((u: any) => u.id);
+
+  const { data: leases } = unitIds.length > 0
+    ? await (supabase as any)
+        .from('leases')
+        .select('id, rent_cold_eur, nk_advance_eur')
+        .eq('tenant_id', tenantId)
+        .in('unit_id', unitIds)
+    : { data: [] };
 
   const activeLeases = leases?.filter((l: any) => l.rent_cold_eur > 0) || [];
 
