@@ -113,6 +113,15 @@ export const KB_CATEGORIES: Record<KBCategory, CategoryDefinition> = {
     subcategories: ['marktanalyse', 'standort', 'trends', 'regulierung'],
     requires_disclaimer: true,
   },
+  photovoltaik: {
+    code: 'photovoltaik',
+    label_de: 'Photovoltaik',
+    description_de: 'Solarenergie, PV-Anlagen, Monitoring und Energiemanagement',
+    icon: 'Sun',
+    color: 'bg-yellow-500',
+    subcategories: ['anlagen', 'monitoring', 'foerderung', 'wirtschaftlichkeit', 'einspeiseverguetung'],
+    requires_disclaimer: false,
+  },
 };
 
 // =============================================================================
