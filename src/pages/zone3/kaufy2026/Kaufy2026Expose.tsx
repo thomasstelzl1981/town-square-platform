@@ -27,6 +27,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { useInvestmentEngine, defaultInput, CalculationInput } from '@/hooks/useInvestmentEngine';
+import { useDemoListings } from '@/hooks/useDemoListings';
 import {
   MasterGraph,
   Haushaltsrechnung,
@@ -59,6 +60,7 @@ interface ListingData {
   heating_type?: string | null;
   monthly_rent: number;
   units_count: number;
+  hero_image_url?: string | null;
 }
 
 export default function Kaufy2026Expose() {
@@ -68,6 +70,7 @@ export default function Kaufy2026Expose() {
   const [isFavorite, setIsFavorite] = useState(false);
   const [showFinanceRequest, setShowFinanceRequest] = useState(false);
   const { calculate, result: calcResult, isLoading: isCalculating } = useInvestmentEngine();
+  const { kaufyListings: demoListings } = useDemoListings();
 
   // PHASE 2: Read search params from URL (persisted from Kaufy2026Home)
   const initialParams = useMemo(() => {
@@ -91,9 +94,37 @@ export default function Kaufy2026Expose() {
 
   // Fetch listing data - PHASE 3: Use sale_price_fixed if available
   const { data: listing, isLoading } = useQuery({
-    queryKey: ['kaufy2026-listing', publicId],
+    queryKey: ['kaufy2026-listing', publicId, demoListings.length],
     queryFn: async () => {
       if (!publicId) return null;
+
+      // Check demo listings first
+      const pubIdUpper = publicId.toUpperCase();
+      const demoListing = demoListings.find(d => d.public_id.toUpperCase() === pubIdUpper);
+      if (demoListing) {
+        return {
+          id: demoListing.listing_id,
+          public_id: demoListing.public_id,
+          property_id: demoListing.listing_id,
+          title: demoListing.title,
+          description: '',
+          asking_price: demoListing.asking_price,
+          sale_price_fixed: null,
+          property_type: demoListing.property_type,
+          address: demoListing.address,
+          address_house_no: null,
+          city: demoListing.city,
+          postal_code: demoListing.postal_code || '',
+          total_area_sqm: demoListing.total_area_sqm || 0,
+          year_built: 0,
+          renovation_year: null,
+          energy_source: null,
+          heating_type: null,
+          monthly_rent: demoListing.monthly_rent_total,
+          units_count: demoListing.unit_count,
+          hero_image_url: demoListing.hero_image_path || null,
+        } satisfies ListingData;
+      }
 
       let { data, error } = await supabase
         .from('listings')
@@ -298,7 +329,7 @@ export default function Kaufy2026Expose() {
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Left Column */}
           <div className="lg:col-span-2 space-y-8">
-            <ExposeImageGallery propertyId={listing.property_id} aspectRatio="video" />
+            <ExposeImageGallery propertyId={listing.property_id} heroImageUrl={listing.hero_image_url} aspectRatio="video" />
 
             {/* Property Details */}
             <div>
