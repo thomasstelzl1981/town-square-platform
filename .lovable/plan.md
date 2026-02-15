@@ -1,71 +1,135 @@
 
-# Dashboard-Refactoring, Task-Widget-Loeschung und PV-Widget-Aktivierung
+# Mobile CI/UX Redesign -- Erweiterter Plan mit Immo-Suche und Backlog
 
-## 1. Dashboard-Layout einschraenken (PortalDashboard.tsx)
+## Ubersicht
 
-**Problem:** Der aeussere Container nutzt keine max-width Begrenzung (`max-w-7xl`), obwohl das Design-Manifest dies vorschreibt.
+Dieser Plan erweitert die bestehende Mobile-Analyse um eine prominente Immobilien-Suchfunktion und erstellt eine strukturierte Backlog-Datei zur systematischen Umsetzung aller Optimierungen.
 
-**Loesung:**
-- Die Zeile `<div className="px-2 py-3 md:p-6 lg:p-8">` wird ersetzt durch `<div className="max-w-7xl mx-auto px-2 py-3 md:p-6 lg:p-8">`
-- Dadurch wird die Breite auf das Manifest-konforme Maximum (`max-w-7xl` = 1280px) begrenzt
+---
 
-## 2. Armstrong-Ueberschrift und Trennung System-/Aufgaben-Widgets
+## 1. Immo-Suche: Mobile-First Redesign (NEU)
 
-**Problem:** Systemwidgets und Aufgabenwidgets werden aktuell in einem einzigen Grid vermischt — ohne visuelle Trennung.
+### IST-Zustand
+Die Investment-Suche (MOD-08 SucheTab) nutzt ein Desktop-optimiertes 4-Spalten-Grid mit umfangreichen Suchformularen. Die `InvestmentResultTile` hat ein T-Konto-Layout (Einnahmen/Ausgaben) das auf Mobile zu klein wird. Es gibt keine mobile Erkennung (`useIsMobile`) in den Investment-Komponenten.
 
-**Loesung:**
-- `visibleWidgetIds` wird in zwei Arrays aufgeteilt: `systemWidgetIds` (Armstrong + SYS.*) und `taskWidgetIds`
-- Nach dem System-Grid wird eine Ueberschrift eingefuegt: `ARMSTRONG` (text-lg tracking-widest, text-muted-foreground)
-- Darunter folgt ein zweites `DashboardGrid` fuer Task-Widgets
-- Wenn keine Task-Widgets vorhanden sind, wird ein dezenter Platzhalter angezeigt ("Keine aktiven Aufgaben — Armstrong erstellt hier automatisch Widgets")
+### SOLL-Zustand: Prominente Mobile-Suche
 
-## 3. Demo-Daten im KI-Office loeschen (WidgetsTab.tsx)
+**A) Suchformular -- Mobile-Optimierung:**
+- Zwei grosse Eingabefelder (Eigenkapital + zVE) untereinander statt nebeneinander
+- Grosser, prominenter "Suchen"-Button (full-width, Primary)
+- "Klassische Suche" als Sekundar-Toggle darunter
+- Erweiterte Filter als Collapsible (default zugeklappt)
 
-**Problem:** `DEMO_COMPLETED_WIDGETS` ist ein hartcodiertes Array mit 3 Demo-Eintraegen, die den Aufgaben-Tab fuellen.
+**B) InvestmentResultTile -- Mobile-Variante:**
+- Auf Mobile: 1-Spalten-Layout (volle Breite, keine Grid-Spalten)
+- Grosseres Bild (aspect-[4/3] statt [16/9]) fur bessere visuelle Wirkung
+- T-Konto bleibt erhalten (2-Spalten-Vergleich funktioniert auch mobil)
+- Monatsbelastung-Footer wird visuell vergroessert (text-lg statt text-base)
+- Swipe-Geste: Optional horizontal swipebar zwischen Ergebnissen
 
-**Loesung:**
-- `DEMO_COMPLETED_WIDGETS` wird geloescht
-- `TaskWidgetsContent` wird auf echte DB-Daten umgestellt: ein neuer `useCompletedTaskWidgets`-Hook laedt abgeschlossene/abgebrochene Widgets aus `task_widgets`
-- Wenn leer: leerer Zustand ("Keine erledigten Widgets")
+**C) Suchergebnis-Darstellung:**
+- Ergebnis-Counter prominent oben ("12 Objekte gefunden")
+- Sortier-Dropdown (Preis, Rendite, Monatsbelastung) direkt sichtbar
+- Endlos-Scroll statt Pagination fur App-Feeling
+- Pull-to-Refresh fur Aktualisierung
 
-## 4. Loeschfunktion fuer Aufgaben-Widgets
+### Betroffene Dateien:
+- `src/pages/portal/investments/SucheTab.tsx` -- Mobile-responsive Suchformular
+- `src/components/investment/InvestmentResultTile.tsx` -- Mobile-Variante mit grosserem Bild
+- `src/pages/portal/investments/InvestmentExposePage.tsx` -- Mobile Expose-Ansicht
 
-**Problem:** Task-Widgets koennen aktuell nur bestaetigt oder abgebrochen werden, aber nicht geloescht (hard delete).
+---
 
-**Loesung:**
-- In `useTaskWidgets.ts`: Neue Funktion `handleDelete` hinzufuegen, die den Datensatz per `supabase.from('task_widgets').delete().eq('id', widgetId)` entfernt
-- In `TaskWidget.tsx`: Ein drittes Icon (Trash2) wird als kleine Schaltflaeche oben rechts platziert, die per AlertDialog eine Bestaetigung einholt
-- In der `WidgetsTab` (erledigte Widgets) ebenfalls eine Loeschoption pro Zeile hinzufuegen
+## 2. Werbe-Widgets und KI Office ausblenden
 
-## 5. PV-Widget: Analyse und Toggle-Aktivierung
+- `AreaPromoCard` auf Mobile per `useIsMobile()` ausblenden
+- MOD-02 (KI Office) aus der mobilen Navigation entfernen via `MOBILE_HIDDEN_MODULES` Config
+- Weitere Desktop-Only Module (MOD-09, MOD-10, MOD-11, MOD-12, MOD-14) auf Mobile ausblenden
 
-**Kernproblem identifiziert:** 
-Das `PVLiveWidget` rendert `return null` wenn `plants.length === 0`. Das bedeutet: Selbst wenn der Nutzer das Widget in den Systemwidgets aktiviert, bleibt die Kachel unsichtbar, weil noch keine PV-Anlage in der DB existiert. Das Widget ist also technisch korrekt verlinkt (`SYS.PV.LIVE` → `system_pv_live` → `PVLiveWidget`), aber die Logik blendet es aus.
+---
 
-**Loesung — Zweistufiger Ansatz:**
+## 3. Chart-Mobiloptimierung
 
-### 5a. PVLiveWidget: Leerzustand statt `return null`
-- Wenn `plants.length === 0`: Anstatt `null` eine leere Kachel rendern mit Sun-Icon, "PV Live" Titel und CTA "Anlage anlegen" (Link zu `/portal/photovoltaik/neu`)
-- Dadurch wird das Widget sichtbar, sobald es in den Systemwidgets aktiviert ist
+- Neuer `MobileChartWrapper` der grosse Recharts-Charts auf Mobile durch kompakte KPI-Karten ersetzt
+- Betroffene Komponenten: AufteilerCalculation, BestandCalculation
 
-### 5b. PV-Akte: Toggle fuer Widget-Aktivierung (pro Anlage)
-- Im `PVPlantDossier` wird eine neue Sektion "Dashboard-Widget" eingefuegt (nach dem Monitoring-Bereich)
-- Ein Switch/Toggle: "Widget auf Dashboard anzeigen"
-- Toggle-Logik:
-  - ON: Aktiviert `SYS.PV.LIVE` in den Widget-Preferences des Users (via `useWidgetPreferences().toggleWidget`)
-  - OFF: Deaktiviert das Widget
-- Fuer Nutzer mit mehreren Anlagen: Das PVLiveWidget aggregiert bereits ueber alle aktiven Anlagen (`usePvMonitoring(plants)` → `totalPowerW`, `totalEnergyTodayKwh`), daher reicht ein einzelnes Dashboard-Widget. Der Toggle in der Akte steuert global die Sichtbarkeit
+---
 
-## Technische Uebersicht
+## 4. PWA-Setup
 
-| Datei | Aenderung |
-|---|---|
-| `src/pages/portal/PortalDashboard.tsx` | max-w-7xl Container, Armstrong-Sektion, getrennte Grids |
-| `src/hooks/useTaskWidgets.ts` | `handleDelete` Funktion hinzufuegen |
-| `src/components/dashboard/TaskWidget.tsx` | Trash2-Button mit AlertDialog |
-| `src/pages/portal/office/WidgetsTab.tsx` | Demo-Daten entfernen, DB-Hook, Loeschen pro Widget |
-| `src/hooks/useCompletedTaskWidgets.ts` | Neuer Hook fuer erledigte Task-Widgets |
-| `src/components/dashboard/widgets/PVLiveWidget.tsx` | Leerzustand statt `return null` |
-| `src/pages/portal/photovoltaik/PVPlantDossier.tsx` | Toggle "Widget auf Dashboard anzeigen" |
+- `vite-plugin-pwa` installieren und konfigurieren
+- Web-Manifest mit App-Name, Icons, Theme-Color
+- Service Worker mit `navigateFallbackDenylist: [/^\/~oauth/]`
+- Install-Prompt-Seite unter `/install`
+- Mobile Meta-Tags in `index.html`
 
-Keine Datenbank-Aenderungen erforderlich — alle Tabellen (`task_widgets`, `pv_plants`, `widget_preferences`) existieren bereits.
+---
+
+## 5. Scroll-Stabilitat und App-Feeling
+
+- `overflow-x: hidden` auf allen Mobile-Containern
+- `overscroll-behavior-y: contain` gegen Bounce-Effekte
+- `-webkit-overflow-scrolling: touch` fur nativen Scroll
+- Touch-optimierte Tap-Targets (min. 44px)
+
+---
+
+## 6. Backlog-Datei
+
+Es wird eine neue Datei `spec/audit/mobile_ux_backlog.json` erstellt mit folgendem Aufbau:
+
+```text
+Schema: MOBILE-UX-V1.0
+Phasen:
+
+PHASE 1 - Quick Wins (Prio HIGH)
+  MUX-001: mobileConfig.ts erstellen (MOBILE_HIDDEN_MODULES)
+  MUX-002: AreaPromoCard auf Mobile ausblenden
+  MUX-003: MOD-02 und Partner-Module auf Mobile ausblenden
+
+PHASE 2 - Immo-Suche Mobile-First (Prio HIGH)
+  MUX-010: SucheTab mobile-responsive Suchformular
+  MUX-011: InvestmentResultTile Mobile-Variante (grosseres Bild, 1-Spalte)
+  MUX-012: Ergebnis-Sortierung und Counter auf Mobile
+  MUX-013: InvestmentExposePage mobile Anpassung
+  MUX-014: Pull-to-Refresh und Endlos-Scroll
+
+PHASE 3 - Grafiken und Charts (Prio MEDIUM)
+  MUX-020: MobileChartWrapper Komponente erstellen
+  MUX-021: AufteilerCalculation mobil optimieren
+  MUX-022: BestandCalculation mobil optimieren
+
+PHASE 4 - PWA (Prio MEDIUM)
+  MUX-030: vite-plugin-pwa installieren und konfigurieren
+  MUX-031: Web-Manifest und Icons
+  MUX-032: Install-Prompt-Seite (/install)
+  MUX-033: Mobile Meta-Tags in index.html
+
+PHASE 5 - App-Feeling und Stabilitat (Prio HIGH)
+  MUX-040: overflow-x hidden auf Mobile-Containern
+  MUX-041: Touch-optimierte Tap-Targets (44px min)
+  MUX-042: Scroll-Bounce deaktivieren
+  MUX-043: PortalLayout Mobile-Stabilitat
+```
+
+---
+
+## Technische Details
+
+### Neue Dateien:
+1. `spec/audit/mobile_ux_backlog.json` -- Backlog fur alle Mobile-Optimierungen
+2. `src/config/mobileConfig.ts` -- Zentrale Mobile-Governance (Hidden Modules, Feature-Flags)
+3. `src/components/shared/MobileChartWrapper.tsx` -- Chart-Adapter fur Mobile
+4. `src/pages/Install.tsx` -- PWA Install-Prompt
+
+### Geanderte Dateien:
+1. `src/pages/portal/investments/SucheTab.tsx` -- Mobile-responsive Suchformular mit `useIsMobile()`
+2. `src/components/investment/InvestmentResultTile.tsx` -- Mobile-Variante (grosseres Bild, groessere Typo)
+3. `src/pages/portal/AreaOverviewPage.tsx` -- Promo-Filter + Modul-Filter
+4. `vite.config.ts` -- PWA-Plugin
+5. `index.html` -- PWA Meta-Tags
+6. `src/index.css` -- Mobile Scroll-Stabilitat
+7. Chart-Komponenten (AufteilerCalculation, BestandCalculation) -- MobileChartWrapper
+
+### Reihenfolge:
+Phase 1 und 5 zuerst (Stabilitat + Quick Wins), dann Phase 2 (Immo-Suche als Kern-Feature), dann Phase 3 und 4 parallel.
