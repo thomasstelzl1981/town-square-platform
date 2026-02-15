@@ -31,6 +31,7 @@ import { cn } from '@/lib/utils';
 import { MediaWidgetGrid } from '@/components/shared/MediaWidgetGrid';
 import { useInvestmentEngine, type CalculationInput, defaultInput } from '@/hooks/useInvestmentEngine';
 import { useInvestmentFavorites, useToggleInvestmentFavorite, type SearchParams } from '@/hooks/useInvestmentFavorites';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface PublicListing {
   listing_id: string;
@@ -51,6 +52,7 @@ type SearchMode = 'investment' | 'classic';
 type ViewMode = 'grid' | 'list';
 
 export default function SucheTab() {
+  const isMobile = useIsMobile();
   // Search mode
   const [searchMode, setSearchMode] = useState<SearchMode>('investment');
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
@@ -350,33 +352,36 @@ export default function SucheTab() {
 
   return (
     <PageShell>
-      <ModulePageHeader title="SUCHE" description="Finden Sie passende Kapitalanlage-Objekte für Ihre Situation" />
+      <ModulePageHeader title="SUCHE" description={isMobile ? "Kapitalanlage finden" : "Finden Sie passende Kapitalanlage-Objekte für Ihre Situation"} />
 
-      {/* Media Widgets */}
-      <MediaWidgetGrid />
+      {/* Media Widgets — hidden on mobile */}
+      {!isMobile && <MediaWidgetGrid />}
 
       {/* Search Mode Toggle */}
       <Card>
-        <CardHeader className="pb-3">
+        <CardHeader className={isMobile ? "pb-2 px-3 pt-3" : "pb-3"}>
           <Tabs value={searchMode} onValueChange={(v) => setSearchMode(v as SearchMode)}>
-            <TabsList className="grid w-full max-w-md grid-cols-2">
+            <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="investment" className="gap-2">
                 <Calculator className="w-4 h-4" />
-                Investment-Suche
+                {isMobile ? 'Investment' : 'Investment-Suche'}
               </TabsTrigger>
               <TabsTrigger value="classic" className="gap-2">
                 <Search className="w-4 h-4" />
-                Klassische Suche
+                {isMobile ? 'Klassisch' : 'Klassische Suche'}
               </TabsTrigger>
             </TabsList>
           </Tabs>
         </CardHeader>
 
-        <CardContent className="space-y-4">
+        <CardContent className={isMobile ? "space-y-3 px-3 pb-3" : "space-y-4"}>
           {searchMode === 'investment' ? (
             <>
-              {/* Investment Search Form — 4-column, no collapsible */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              {/* Investment Search Form — stacked on mobile, 4-col on desktop */}
+              <div className={cn(
+                "grid gap-4",
+                isMobile ? "grid-cols-1" : "grid-cols-1 md:grid-cols-4"
+              )}>
                 <div className="space-y-2">
                   <Label>zu versteuerndes Einkommen (zVE)</Label>
                   <div className="relative">
@@ -403,47 +408,79 @@ export default function SucheTab() {
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label>Familienstand</Label>
-                  <Select value={maritalStatus} onValueChange={(v) => setMaritalStatus(v as 'single' | 'married')}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="single">Ledig</SelectItem>
-                      <SelectItem value="married">Verheiratet</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Kirchensteuer</Label>
-                  <Select value={hasChurchTax ? 'yes' : 'no'} onValueChange={(v) => setHasChurchTax(v === 'yes')}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="no">Nein</SelectItem>
-                      <SelectItem value="yes">Ja</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                {/* On mobile: Familienstand & Kirchensteuer side by side */}
+                {isMobile ? (
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <Label>Familienstand</Label>
+                      <Select value={maritalStatus} onValueChange={(v) => setMaritalStatus(v as 'single' | 'married')}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="single">Ledig</SelectItem>
+                          <SelectItem value="married">Verheiratet</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Kirchensteuer</Label>
+                      <Select value={hasChurchTax ? 'yes' : 'no'} onValueChange={(v) => setHasChurchTax(v === 'yes')}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="no">Nein</SelectItem>
+                          <SelectItem value="yes">Ja</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="space-y-2">
+                      <Label>Familienstand</Label>
+                      <Select value={maritalStatus} onValueChange={(v) => setMaritalStatus(v as 'single' | 'married')}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="single">Ledig</SelectItem>
+                          <SelectItem value="married">Verheiratet</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Kirchensteuer</Label>
+                      <Select value={hasChurchTax ? 'yes' : 'no'} onValueChange={(v) => setHasChurchTax(v === 'yes')}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="no">Nein</SelectItem>
+                          <SelectItem value="yes">Ja</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </>
+                )}
               </div>
 
-              <div className="flex justify-center w-full">
-                <Button 
-                  onClick={handleInvestmentSearch} 
-                  disabled={isLoadingListings || isCalculating}
-                >
-                  {(isLoadingListings || isCalculating) && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                  Ergebnisse anzeigen
-                </Button>
-              </div>
+              {/* Prominent search button — full-width on mobile */}
+              <Button 
+                onClick={handleInvestmentSearch} 
+                disabled={isLoadingListings || isCalculating}
+                className={isMobile ? "w-full h-12 text-base" : ""}
+                size={isMobile ? "lg" : "default"}
+              >
+                {(isLoadingListings || isCalculating) && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                Ergebnisse anzeigen
+              </Button>
             </>
           ) : (
             <>
-              {/* Classic Search Form */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              {/* Classic Search Form — stacked on mobile */}
+              <div className={cn("grid gap-4", isMobile ? "grid-cols-1" : "grid-cols-1 md:grid-cols-4")}>
                 <div className="space-y-2">
                   <Label>Stadt</Label>
                   <Input
@@ -467,44 +504,78 @@ export default function SucheTab() {
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label>Min. Fläche</Label>
-                  <div className="relative">
-                    <Input
-                      type="number"
-                      placeholder="Keine"
-                      value={areaMin || ''}
-                      onChange={(e) => setAreaMin(e.target.value ? Number(e.target.value) : null)}
-                      className="pr-10"
-                    />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">m²</span>
+                {/* On mobile: Fläche & Rendite side by side */}
+                {isMobile ? (
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <Label>Min. Fläche</Label>
+                      <div className="relative">
+                        <Input
+                          type="number"
+                          placeholder="Keine"
+                          value={areaMin || ''}
+                          onChange={(e) => setAreaMin(e.target.value ? Number(e.target.value) : null)}
+                          className="pr-10"
+                        />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">m²</span>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Min. Rendite</Label>
+                      <div className="relative">
+                        <Input
+                          type="number"
+                          placeholder="Keine"
+                          value={yieldMin || ''}
+                          onChange={(e) => setYieldMin(e.target.value ? Number(e.target.value) : null)}
+                          className="pr-8"
+                        />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">%</span>
+                      </div>
+                    </div>
                   </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Min. Rendite</Label>
-                  <div className="relative">
-                    <Input
-                      type="number"
-                      placeholder="Keine"
-                      value={yieldMin || ''}
-                      onChange={(e) => setYieldMin(e.target.value ? Number(e.target.value) : null)}
-                      className="pr-8"
-                    />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">%</span>
-                  </div>
-                </div>
+                ) : (
+                  <>
+                    <div className="space-y-2">
+                      <Label>Min. Fläche</Label>
+                      <div className="relative">
+                        <Input
+                          type="number"
+                          placeholder="Keine"
+                          value={areaMin || ''}
+                          onChange={(e) => setAreaMin(e.target.value ? Number(e.target.value) : null)}
+                          className="pr-10"
+                        />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">m²</span>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Min. Rendite</Label>
+                      <div className="relative">
+                        <Input
+                          type="number"
+                          placeholder="Keine"
+                          value={yieldMin || ''}
+                          onChange={(e) => setYieldMin(e.target.value ? Number(e.target.value) : null)}
+                          className="pr-8"
+                        />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">%</span>
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
 
-              <div className="flex justify-center w-full">
-                <Button 
-                  onClick={handleClassicSearch} 
-                  disabled={isLoadingListings}
-                >
-                  {isLoadingListings && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                  Suchen
-                </Button>
-              </div>
+              {/* Prominent search button — full-width on mobile */}
+              <Button 
+                onClick={handleClassicSearch} 
+                disabled={isLoadingListings}
+                className={isMobile ? "w-full h-12 text-base" : ""}
+                size={isMobile ? "lg" : "default"}
+              >
+                {isLoadingListings && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                Suchen
+              </Button>
             </>
           )}
         </CardContent>
@@ -515,34 +586,37 @@ export default function SucheTab() {
       <div className="space-y-4">
         {/* Results Header */}
         {hasSearched && (
-          <div className="flex items-center justify-between">
+          <div className={cn("flex items-center justify-between", isMobile && "flex-col gap-2 items-start")}>
             <div className="flex items-center gap-3">
-              <Badge variant="secondary" className="text-sm">
+              <Badge variant="secondary" className={isMobile ? "text-base px-3 py-1" : "text-sm"}>
                 {filteredListings.length} Objekte
               </Badge>
-              {searchMode === 'investment' && (
+              {searchMode === 'investment' && !isMobile && (
                 <span className="text-sm text-muted-foreground">
                   berechnet für {formatCurrency(zve)} zVE · {formatCurrency(equity)} EK
                 </span>
               )}
             </div>
 
-            <div className="flex items-center gap-2">
-              <Button
-                variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
-                size="icon"
-                onClick={() => setViewMode('grid')}
-              >
-                <LayoutGrid className="w-4 h-4" />
-              </Button>
-              <Button
-                variant={viewMode === 'list' ? 'secondary' : 'ghost'}
-                size="icon"
-                onClick={() => setViewMode('list')}
-              >
-                <List className="w-4 h-4" />
-              </Button>
-            </div>
+            {/* View mode toggle — hidden on mobile (always single column) */}
+            {!isMobile && (
+              <div className="flex items-center gap-2">
+                <Button
+                  variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
+                  size="icon"
+                  onClick={() => setViewMode('grid')}
+                >
+                  <LayoutGrid className="w-4 h-4" />
+                </Button>
+                <Button
+                  variant={viewMode === 'list' ? 'secondary' : 'ghost'}
+                  size="icon"
+                  onClick={() => setViewMode('list')}
+                >
+                  <List className="w-4 h-4" />
+                </Button>
+              </div>
+            )}
           </div>
         )}
 
@@ -570,9 +644,11 @@ export default function SucheTab() {
           </Card>
         ) : (
           <div className={cn(
-            viewMode === 'grid' 
-              ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4'
-              : 'flex flex-col gap-4'
+            isMobile 
+              ? 'flex flex-col gap-4'
+              : viewMode === 'grid' 
+                ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4'
+                : 'flex flex-col gap-4'
           )}>
             {filteredListings.map((listing) => (
               <InvestmentResultTile

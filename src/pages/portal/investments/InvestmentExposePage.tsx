@@ -9,6 +9,7 @@
  */
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { useDemoListings } from '@/hooks/useDemoListings';
 import {
   ArrowLeft,
@@ -24,6 +25,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
+import { cn } from '@/lib/utils';
 import { useInvestmentEngine, defaultInput, CalculationInput } from '@/hooks/useInvestmentEngine';
 import {
   MasterGraph,
@@ -60,6 +62,7 @@ interface ListingData {
 
 export default function InvestmentExposePage() {
   const { publicId } = useParams<{ publicId: string }>();
+  const isMobile = useIsMobile();
   const [isFavorite, setIsFavorite] = useState(false);
   const { calculate, result: calcResult, isLoading: isCalculating } = useInvestmentEngine();
   const { kaufyListings: demoListings, demoProperties } = useDemoListings();
@@ -267,35 +270,37 @@ export default function InvestmentExposePage() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header Navigation - Fixed height for sticky calc */}
-      <div className="border-b bg-card sticky top-0 z-10">
-        <div className="px-6 py-4 flex items-center justify-between">
+      {/* Header Navigation */}
+      <div className={cn("border-b bg-card sticky top-0 z-10", isMobile && "px-3")}>
+        <div className={cn("flex items-center justify-between", isMobile ? "py-3" : "px-6 py-4")}>
           <Link 
             to="/portal/investments/suche" 
             className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
-            Zurück zur Suche
+            {isMobile ? 'Zurück' : 'Zurück zur Suche'}
           </Link>
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" onClick={toggleFavorite}>
-              <Heart className={`w-4 h-4 mr-2 ${isFavorite ? 'fill-red-500 text-red-500' : ''}`} />
-              {isFavorite ? 'Gespeichert' : 'Merken'}
+              <Heart className={`w-4 h-4 ${isMobile ? '' : 'mr-2'} ${isFavorite ? 'fill-red-500 text-red-500' : ''}`} />
+              {!isMobile && (isFavorite ? 'Gespeichert' : 'Merken')}
             </Button>
-            <Button variant="outline" size="sm">
-              <Share2 className="w-4 h-4 mr-2" />
-              Teilen
-            </Button>
+            {!isMobile && (
+              <Button variant="outline" size="sm">
+                <Share2 className="w-4 h-4 mr-2" />
+                Teilen
+              </Button>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Main Content - Use relative positioning for sticky context */}
-      <div className="relative p-6">
-        <div className="grid lg:grid-cols-3 gap-8">
+      {/* Main Content */}
+      <div className={cn("relative", isMobile ? "p-3" : "p-6")}>
+        <div className={cn(isMobile ? "space-y-6" : "grid lg:grid-cols-3 gap-8")}>
           {/* Left Column - Property Info & Calculations */}
-          <div className="lg:col-span-2 space-y-8">
-            {/* Image Gallery - Shared Component (uses property_id, not listing.id!) */}
+          <div className={cn(!isMobile && "lg:col-span-2", "space-y-6")}>
+            {/* Image Gallery */}
             <ExposeImageGallery 
               propertyId={listing.property_id}
               heroImageUrl={listing.hero_image_url}
@@ -304,22 +309,22 @@ export default function InvestmentExposePage() {
 
             {/* Property Details */}
             <div>
-              <div className="flex items-start justify-between mb-4">
+              <div className={cn("mb-4", isMobile ? "space-y-2" : "flex items-start justify-between")}>
                 <div>
                   <Badge className="mb-2">{propertyTypeLabel}</Badge>
-                  <h1 className="text-2xl font-bold">{listing.title}</h1>
+                  <h1 className={cn("font-bold", isMobile ? "text-xl" : "text-2xl")}>{listing.title}</h1>
                   <p className="flex items-center gap-1 mt-2 text-muted-foreground">
                     <MapPin className="w-4 h-4" />
                     {addressLine}
                   </p>
                 </div>
-                <p className="text-3xl font-bold text-primary">
+                <p className={cn("font-bold text-primary", isMobile ? "text-2xl" : "text-3xl")}>
                   {formatCurrency(listing.asking_price)}
                 </p>
               </div>
 
-              {/* Key Facts */}
-              <div className="grid grid-cols-2 md:grid-cols-6 gap-4 p-4 rounded-xl bg-muted/50">
+              {/* Key Facts — 3-col grid on mobile */}
+              <div className={cn("gap-4 p-4 rounded-xl bg-muted/50 grid", isMobile ? "grid-cols-3" : "grid-cols-2 md:grid-cols-6")}>
                 <div>
                   <p className="text-sm text-muted-foreground">Wohnfläche</p>
                   <p className="font-semibold flex items-center gap-1">
@@ -412,20 +417,32 @@ export default function InvestmentExposePage() {
             </div>
           </div>
 
-          {/* Right Column - Interactive Calculator (STICKY) */}
-          <div className="hidden lg:block lg:col-span-1">
-            <div className="sticky top-20 space-y-6">
-              <div className="max-h-[calc(100vh-6rem)] overflow-y-auto pr-1">
-                <InvestmentSliderPanel
-                  value={params}
-                  onChange={setParams}
-                  layout="vertical"
-                  showAdvanced={true}
-                  purchasePrice={listing.asking_price}
-                />
+          {/* Right Column - Interactive Calculator (STICKY on desktop, inline on mobile) */}
+          {isMobile ? (
+            <div className="space-y-6">
+              <InvestmentSliderPanel
+                value={params}
+                onChange={setParams}
+                layout="vertical"
+                showAdvanced={false}
+                purchasePrice={listing.asking_price}
+              />
+            </div>
+          ) : (
+            <div className="hidden lg:block lg:col-span-1">
+              <div className="sticky top-20 space-y-6">
+                <div className="max-h-[calc(100vh-6rem)] overflow-y-auto pr-1">
+                  <InvestmentSliderPanel
+                    value={params}
+                    onChange={setParams}
+                    layout="vertical"
+                    showAdvanced={true}
+                    purchasePrice={listing.asking_price}
+                  />
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>
