@@ -20,9 +20,6 @@ import { WidgetCell } from '@/components/shared/WidgetCell';
 import { DESIGN } from '@/config/designManifest';
 import { cn } from '@/lib/utils';
 import { useMSVData } from '@/hooks/useMSVData';
-import { MietlisteTable } from '@/components/msv/MietlisteTable';
-import { AufgabenSection } from '@/components/msv/AufgabenSection';
-import { BWAControllingSection } from '@/components/msv/BWAControllingSection';
 
 const AMPEL_COLORS = {
   paid: 'bg-green-500',
@@ -45,8 +42,8 @@ export function VerwaltungTab() {
   return (
     <PageShell>
       <ModulePageHeader
-        title="Verwaltung"
-        description="Mietkontrolle, Mahnwesen und BWA/Buchwert — alles auf einer Seite."
+        title="BWA"
+        description="Betriebswirtschaftliche Auswertung — Objektauswahl und Controlling."
       />
 
       {/* Objekt-Widgets */}
@@ -134,14 +131,6 @@ export function VerwaltungTab() {
         </Card>
       )}
 
-      {/* Kachel 1: Mietliste */}
-      <MietlisteTable propertyId={selectedPropertyId} />
-
-      {/* Kachel 2: Aufgaben */}
-      <AufgabenSection propertyId={selectedPropertyId} />
-
-      {/* Kachel 3: BWA/Buchwert — Full Width */}
-      <BWAControllingSection propertyId={selectedPropertyId} />
     </PageShell>
   );
 }
