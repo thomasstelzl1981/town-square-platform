@@ -2,8 +2,8 @@
  * Readiness Check — Prueft ob alle Voraussetzungen fuer eine NK-Abrechnung erfuellt sind.
  * 
  * Pflichtdokumente:
- * 1. WEG-Jahresabrechnung (accepted/current)
- * 2. Grundsteuerbescheid (accepted/current) — Grundsteuer ist IMMER Direktzahlung
+ * 1. WEG-Jahresabrechnung (linked + review_state approved)
+ * 2. Grundsteuerbescheid (linked + review_state approved) — Grundsteuer ist IMMER Direktzahlung
  * 
  * Optional:
  * 3. Wirtschaftsplan (nice-to-have, Plausibilisierung)
@@ -20,6 +20,7 @@ const REQUIRED_DOC_TYPES = [
 
 /**
  * Prueft die Readiness einer Property fuer ein bestimmtes Abrechnungsjahr.
+ * Nutzt einen JOIN über document_links → documents, um nach doc_type zu filtern.
  */
 export async function checkReadiness(
   propertyId: string,
@@ -29,16 +30,20 @@ export async function checkReadiness(
   const blockers: string[] = [];
   const documents: NKDocRequirement[] = [];
 
-  // 1. Dokumente pruefen via document_links
-  for (const req of REQUIRED_DOC_TYPES) {
-    const { data: links } = await (supabase as any)
-      .from('document_links')
-      .select('id, link_status, document_id')
-      .eq('object_type', 'property')
-      .eq('object_id', propertyId)
-      .eq('tenant_id', tenantId);
+  // 1. Alle document_links für diese Property laden, mit JOIN auf documents
+  const { data: allLinks } = await (supabase as any)
+    .from('document_links')
+    .select('id, link_status, document_id, documents!inner(id, doc_type, review_state, created_at)')
+    .eq('object_type', 'property')
+    .eq('object_id', propertyId)
+    .eq('tenant_id', tenantId)
+    .eq('link_status', 'linked');
 
-    const matchingLink = links?.[0];
+  // 2. Für jeden benötigten Dokumenttyp prüfen
+  for (const req of REQUIRED_DOC_TYPES) {
+    const matchingLink = allLinks?.find(
+      (link: any) => link.documents?.doc_type === req.docType
+    );
 
     if (!matchingLink) {
       documents.push({
@@ -53,11 +58,11 @@ export async function checkReadiness(
         blockers.push(`${req.label} fehlt`);
       }
     } else {
-      const linkStatus = matchingLink.link_status;
+      const reviewState = matchingLink.documents?.review_state;
       const docStatus: NKDocRequirement['status'] =
-        linkStatus === 'accepted' || linkStatus === 'current'
+        reviewState === 'approved'
           ? 'accepted'
-          : linkStatus === 'needs_review'
+          : reviewState === 'needs_review'
           ? 'needs_review'
           : 'pending';
 
@@ -76,7 +81,7 @@ export async function checkReadiness(
     }
   }
 
-  // 2. Lease-Daten pruefen
+  // 3. Lease-Daten pruefen
   const { data: leases } = await (supabase as any)
     .from('leases')
     .select('id, rent_cold_eur, nk_advance_eur')
