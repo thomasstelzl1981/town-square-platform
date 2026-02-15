@@ -20,7 +20,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, Loader2, AlertTriangle, FileText, Building2, Calculator, LayoutList, LayoutPanelLeft, TrendingUp, Banknote } from 'lucide-react';
+import { ArrowLeft, Loader2, AlertTriangle, FileText, Building2, Calculator, LayoutList, LayoutPanelLeft, TrendingUp, Banknote, Receipt } from 'lucide-react';
 import { ExposeTab } from '@/components/portfolio/ExposeTab';
 import { VerkaufsauftragTab } from '@/components/portfolio/VerkaufsauftragTab';
 import { TenancyTab } from '@/components/portfolio/TenancyTab';
@@ -29,6 +29,7 @@ import { DatenraumTab } from '@/components/portfolio/DatenraumTab';
 import { EditableUnitDossierView } from '@/components/immobilienakte';
 import { InventoryInvestmentSimulation } from '@/components/immobilienakte/InventoryInvestmentSimulation';
 import { PdfExportFooter, usePdfContentRef } from '@/components/pdf';
+import { NKAbrechnungTab } from '@/components/portfolio/NKAbrechnungTab';
 import { PageShell } from '@/components/shared/PageShell';
 
 interface Property {
@@ -446,6 +447,10 @@ export default function PropertyDetailPage() {
                 <Banknote className="h-4 w-4" />
                 Geldeingang
               </TabsTrigger>
+              <TabsTrigger value="nkabrechnung" className="flex items-center gap-1">
+                <Receipt className="h-4 w-4" />
+                NK-Abrechnung
+              </TabsTrigger>
               <TabsTrigger value="datenraum">Datenraum</TabsTrigger>
             </TabsList>
 
@@ -509,6 +514,14 @@ export default function PropertyDetailPage() {
                 propertyId={property.id}
                 tenantId={property.tenant_id}
                 propertyCode={property.code || undefined}
+              />
+            </TabsContent>
+
+            <TabsContent value="nkabrechnung">
+              <NKAbrechnungTab
+                propertyId={property.id}
+                tenantId={property.tenant_id}
+                unitId={unit?.id || ''}
               />
             </TabsContent>
           </Tabs>
