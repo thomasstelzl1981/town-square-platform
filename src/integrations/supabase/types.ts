@@ -4139,6 +4139,64 @@ export type Database = {
           },
         ]
       }
+      contact_conversations: {
+        Row: {
+          body_md: string | null
+          contact_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          linked_session_id: string | null
+          subject: string | null
+          tenant_id: string
+          type: string
+        }
+        Insert: {
+          body_md?: string | null
+          contact_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          linked_session_id?: string | null
+          subject?: string | null
+          tenant_id: string
+          type?: string
+        }
+        Update: {
+          body_md?: string | null
+          contact_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          linked_session_id?: string | null
+          subject?: string | null
+          tenant_id?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_conversations_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contact_conversations_linked_session_id_fkey"
+            columns: ["linked_session_id"]
+            isOneToOne: false
+            referencedRelation: "meeting_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contact_conversations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contact_staging: {
         Row: {
           approved_at: string | null
@@ -9107,6 +9165,129 @@ export type Database = {
             columns: ["account_id"]
             isOneToOne: false
             referencedRelation: "mail_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meeting_outputs: {
+        Row: {
+          action_items_json: Json | null
+          created_at: string
+          decisions_json: Json | null
+          id: string
+          open_questions_json: Json | null
+          session_id: string
+          summary_md: string | null
+        }
+        Insert: {
+          action_items_json?: Json | null
+          created_at?: string
+          decisions_json?: Json | null
+          id?: string
+          open_questions_json?: Json | null
+          session_id: string
+          summary_md?: string | null
+        }
+        Update: {
+          action_items_json?: Json | null
+          created_at?: string
+          decisions_json?: Json | null
+          id?: string
+          open_questions_json?: Json | null
+          session_id?: string
+          summary_md?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meeting_outputs_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "meeting_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meeting_sessions: {
+        Row: {
+          consent_confirmed: boolean
+          created_at: string
+          ended_at: string | null
+          id: string
+          started_at: string | null
+          status: string
+          stt_engine_used: string | null
+          tenant_id: string
+          title: string
+          total_duration_sec: number | null
+          user_id: string
+        }
+        Insert: {
+          consent_confirmed?: boolean
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          started_at?: string | null
+          status?: string
+          stt_engine_used?: string | null
+          tenant_id: string
+          title?: string
+          total_duration_sec?: number | null
+          user_id: string
+        }
+        Update: {
+          consent_confirmed?: boolean
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          started_at?: string | null
+          status?: string
+          stt_engine_used?: string | null
+          tenant_id?: string
+          title?: string
+          total_duration_sec?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meeting_sessions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meeting_transcript_chunks: {
+        Row: {
+          created_at: string
+          engine_source: string
+          id: string
+          seq: number
+          session_id: string
+          text: string
+        }
+        Insert: {
+          created_at?: string
+          engine_source?: string
+          id?: string
+          seq?: number
+          session_id: string
+          text?: string
+        }
+        Update: {
+          created_at?: string
+          engine_source?: string
+          id?: string
+          seq?: number
+          session_id?: string
+          text?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meeting_transcript_chunks_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "meeting_sessions"
             referencedColumns: ["id"]
           },
         ]

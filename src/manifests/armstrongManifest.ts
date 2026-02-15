@@ -1511,6 +1511,32 @@ export const armstrongActions: ArmstrongActionV2[] = [
     audit_event_type: 'ARM_PV_EXPLAIN_MONITORING',
     status: 'active',
   },
+
+  // ===========================================================================
+  // MOD-00: MEETING RECORDER
+  // ===========================================================================
+  {
+    action_code: 'ARM.MOD00.START_MEETING_RECORDER',
+    title_de: 'Meeting-Aufnahme starten',
+    description_de: 'Startet die Live-Transkription einer physischen Besprechung. Kein Audio wird gespeichert — nur Text.',
+    module: 'MOD-00',
+    zones: ['Z2'] as ArmstrongZone[],
+    execution_mode: 'execute' as ExecutionMode,
+    risk_level: 'low' as RiskLevel,
+    requires_consent_code: null,
+    roles_allowed: [],
+    data_scopes_read: [],
+    data_scopes_write: ['meeting_sessions', 'meeting_transcript_chunks', 'task_widgets'],
+    side_effects: ['meeting_recording_started'],
+    version: '1.0.0',
+    cost_model: 'metered' as CostModel,
+    cost_unit: 'per_meeting' as CostUnit,
+    cost_hint_cents: 50,
+    api_contract: { type: 'internal', endpoint: null, tool_name: 'start_meeting_recorder' },
+    ui_entrypoints: ['/portal/dashboard'],
+    audit_event_type: 'ARM_MEETING_RECORDER_START',
+    status: 'active' as ActionStatus,
+  },
 ];
 
 // =============================================================================

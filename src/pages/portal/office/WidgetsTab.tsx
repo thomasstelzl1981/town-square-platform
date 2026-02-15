@@ -29,6 +29,7 @@ import {
   StickyNote,
   FolderKanban,
   Lightbulb,
+  FileText,
   Layers,
   RefreshCw,
   CheckCircle,
@@ -57,6 +58,7 @@ const WIDGET_ICONS: Record<TaskWidgetType, typeof Mail> = {
   note: StickyNote,
   project: FolderKanban,
   idea: Lightbulb,
+  meeting_protocol: FileText,
 };
 
 // Demo data - will be replaced with React Query hook

@@ -20,6 +20,7 @@ import {
   StickyNote,
   FolderKanban,
   Lightbulb,
+  FileText,
   Send,
   Check, 
   X, 
@@ -39,6 +40,7 @@ const WIDGET_ICONS: Record<TaskWidgetType, typeof Mail> = {
   note: StickyNote,
   project: FolderKanban,
   idea: Lightbulb,
+  meeting_protocol: FileText,
 };
 
 
