@@ -1,165 +1,131 @@
 
 
-# Neuer Tab "NK-Abrechnung" in der Immobilienakte + Engine-SPEC-Korrektur
+# Demo-Daten fuer NK-Abrechnung Engine + Kontobewegungen
 
-## Korrektur: Grundsteuer-Modell
+## Ueberblick
 
-Die bisherige SPEC hatte zwei Modi (`included_in_weg` / `direct_payment`). Nach Klarstellung gilt:
-
-**Grundsteuer wird IMMER direkt vom Eigentuemer bezahlt** (nicht ueber Hausgeld). Sie ist umlagefaehig und muss in der NK-Abrechnung als separate Position hinzugefuegt werden. Quelle dafuer ist der jaehrliche Grundsteuerbescheid (Dokument im DMS). Der `tax_mode`-Parameter entfaellt — Grundsteuer ist immer `direct_payment`.
-
-Das bedeutet fuer die Engine:
-- Grundsteuer ist NICHT im Hausgeld enthalten
-- Der Grundsteuerbescheid ist ein **Pflichtdokument** fuer die NK-Abrechnung
-- Die Grundsteuer wird als eigene umlagefaehige Position zur Matrix hinzugefuegt
+Auf Basis der fertiggestellten Engine-SPEC werden jetzt die Demo-Daten angelegt, die den End-to-End-Flow ermoeglichen: Dokument im DMS → Readiness-Check gruen → Berechnung → PDF-Export.
 
 ---
 
-## Architektur-Entscheidung: Wo lebt die NK-Abrechnung?
+## Teil 1: Demo NK-Perioden und Cost Items (DB-Seed)
 
-**Neuer Tab in der Immobilienakte** (`PropertyDetailPage`), nicht in der Verwaltung.
+Fuer jede der 3 Demo-Properties wird eine `nk_periods`-Zeile fuer 2025 angelegt, plus je 8-10 `nk_cost_items` (extrahierte Positionen aus der WEG-Abrechnung + Grundsteuerbescheid).
 
-Begruendung: Die NK-Abrechnung ist objekt- und einheitsbezogen. Die Immobilienakte (`/portal/immobilien/:id`) hat bereits alle relevanten Daten (Property, Unit, Lease, Dokumente) im Kontext. Ein neuer Tab "NK-Abrechnung" reiht sich logisch neben "Geldeingang" und "Mietverhaeltnis" ein.
+### nk_periods (3 Eintraege)
+
+| property_id | period_start | period_end | status | allocation_key_default |
+|-------------|-------------|------------|--------|----------------------|
+| BER-01 | 2025-01-01 | 2025-12-31 | confirmed | mea |
+| MUC-01 | 2025-01-01 | 2025-12-31 | confirmed | mea |
+| HH-01 | 2025-01-01 | 2025-12-31 | confirmed | mea |
+
+### nk_cost_items pro Property (Beispiel BER-01, 85 m2)
+
+| category_code | label_display | amount_total_house | amount_unit | key_type | is_apportionable |
+|--------------|---------------|-------------------|-------------|----------|-----------------|
+| grundsteuer | Grundsteuer | 2.400 | 205,20 | mea | true |
+| wasser | Wasserversorgung | 3.200 | 360,00 | persons | true |
+| abwasser | Entwaesserung | 1.800 | 202,50 | persons | true |
+| muell | Muellbeseitigung | 1.600 | 180,00 | persons | true |
+| strassenreinigung | Strassenreinigung | 950 | 85,00 | area_sqm | true |
+| gebaeudereinigung | Gebaeudereinigung | 2.400 | 204,00 | area_sqm | true |
+| sachversicherung | Gebaeudeversicherung | 3.000 | 255,00 | mea | true |
+| schornsteinfeger | Schornsteinfeger | 1.100 | 95,00 | unit_count | true |
+| beleuchtung | Allgemeinstrom | 1.200 | 102,00 | mea | true |
+| verwaltung | Verwaltungskosten | 3.600 | 306,00 | mea | false |
+| ruecklage | Instandhaltungsruecklage | 4.800 | 408,00 | mea | false |
+
+Analoge Positionen fuer MUC-01 (72 m2) und HH-01 (45 m2) mit proportional angepassten Betraegen.
+
+### Erwartete Ergebnisse pro Mieter
+
+| Wohnung | Summe umlagefaehig | NK-VZ (12x) | Heiz-VZ (12x) | Gesamt VZ | Saldo |
+|---------|-------------------|-------------|---------------|-----------|-------|
+| BER-01 | ~1.688,70 | 2.160 | 1.440 | 3.600 | ~-1.911 (Guthaben) |
+| MUC-01 | ~1.430,00 | 2.640 | 1.320 | 3.960 | ~-2.530 (Guthaben) |
+| HH-01 | ~893,00 | 1.440 | 600 | 2.040 | ~-1.147 (Guthaben) |
 
 ---
 
-## Was wird programmiert
+## Teil 2: Demo-Dokumente im DMS
 
-### 1. Engine-SPEC-Datei (Ja, eine echte Datei)
+Fuer den Readiness-Check muessen zugeordnete Dokumente existieren:
 
-**Datei: `src/engines/nkAbrechnung/spec.ts`**
+### documents (6 Eintraege)
 
-Typdefinitionen und Enums als TypeScript-Code (nicht Markdown), damit sie direkt importierbar sind:
+| doc_type | Beschreibung | extraction_status | review_state |
+|----------|-------------|-------------------|-------------|
+| WEG_JAHRESABRECHNUNG | WEG-Abrechnung BER-01 2025 | completed | approved |
+| WEG_JAHRESABRECHNUNG | WEG-Abrechnung MUC-01 2025 | completed | approved |
+| WEG_JAHRESABRECHNUNG | WEG-Abrechnung HH-01 2025 | completed | approved |
+| GRUNDSTEUER_BESCHEID | Grundsteuerbescheid BER-01 | completed | approved |
+| GRUNDSTEUER_BESCHEID | Grundsteuerbescheid MUC-01 | completed | approved |
+| GRUNDSTEUER_BESCHEID | Grundsteuerbescheid HH-01 | completed | approved |
 
-- `NKCostCategory` Enum (18 umlagefaehige + 4 nicht umlagefaehige Kategorien)
-- `AllocationKeyType` Enum (area_sqm, mea, persons, consumption, unit_count, custom)
-- `NKCostItem` Interface (extrahierte Kostenposition)
-- `NKSettlementMatrix` Interface (berechnete Abrechnung pro Lease)
-- `NKReadinessStatus` Enum (MISSING_DOCS, NEEDS_REVIEW, READY, DRAFT, CONFIRMED, EXPORTED)
-- `NKDocRequirement` Interface (welche Dokumente benoetigt werden)
-- Mapping-Regeln: Keywords zu category_code (deterministische Zuordnung)
+### document_links (6 Eintraege)
 
-### 2. DB-Migration
+Jedes Dokument wird mit `object_type='property'` und `link_status='accepted'` der entsprechenden Property zugeordnet.
 
-**Neue Tabellen:**
+---
 
-| Tabelle | Zweck |
-|---------|-------|
-| `nk_cost_items` | Extrahierte Einzelpositionen aus WEG-Abrechnung + Grundsteuerbescheid |
-| `nk_tenant_settlements` | Berechnete Mieter-NK-Abrechnung (Matrix + Status + PDF-Pfad) |
+## Teil 3: Readiness-Check Anpassung
 
-**Aenderung an `properties`:**
-- Spalte `tax_mode` entfaellt (Grundsteuer ist immer separat)
-- Keine Aenderung noetig
+Der aktuelle `readinessCheck.ts` hat ein Problem: Er filtert nicht nach `doc_type` bei der document_links-Abfrage. Er findet zwar Links zur Property, aber prueft nicht ob es WEG_JAHRESABRECHNUNG oder GRUNDSTEUER_BESCHEID ist.
 
-Beide Tabellen mit RLS-Policies (tenant_id-basiert, analog nk_periods).
+**Fix**: Die Query muss ueber einen JOIN auf `documents.doc_type` filtern, nicht nur auf `document_links.object_id`.
 
-### 3. Berechnungs-Engine
+---
 
-**Dateien in `src/engines/nkAbrechnung/`:**
+## Teil 4: Demo-Kontobewegungen (demoKontoData.ts)
 
-| Datei | Inhalt |
-|-------|--------|
-| `spec.ts` | TypeScript Typen, Enums, Interfaces (SSOT) |
-| `costCategoryMapping.ts` | Keyword-Regex-Mapping: label_raw aus Dokument wird category_code zugeordnet |
-| `allocationLogic.ts` | Verteilerschluessel-Berechnung (Anteil = Gesamt x Einheit-Basis / Haus-Basis), Unterjaehrigkeit |
-| `readinessCheck.ts` | Prueft ob alle Pflichtdokumente (WEG-Abrechnung + Grundsteuerbescheid) vorhanden und accepted sind |
-| `engine.ts` | Orchestrierung: Liest nk_cost_items + Lease-Daten, berechnet Matrix, schreibt nk_tenant_settlements |
-| `pdfExport.ts` | jsPDF-Generator fuer formell wirksame Abrechnung |
+Komplette Ueberarbeitung mit `buildDemoTransactions()` Generator:
 
-### 4. Neuer Tab in PropertyDetailPage
+### Monatliches Muster (Jan 2025 – Feb 2026 = 14 Monate)
 
-**Datei: `src/components/portfolio/NKAbrechnungTab.tsx`**
+Pro Monat 6 Buchungen:
+- 3x Mieteingang (Warmmiete): +1.150 / +1.580 / +750
+- 3x Hausgeld-Lastschrift: -380 / -450 / -250
 
-Inline-Flow (kein Wizard), linear auf einer Seite:
+### Quartalsweise Grundsteuer (Feb, Mai, Aug, Nov)
 
-```text
-┌─────────────────────────────────────────────────────┐
-│  NK-Abrechnung                        [Jahr: 2025]  │
-├─────────────────────────────────────────────────────┤
-│                                                     │
-│  STEP 1: Datenkontrolle                             │
-│  ┌───────────────────────────────────────────────┐  │
-│  │ Mietvertrag          ✅ Bergmann, 850+180+120 │  │
-│  │ WEG-Jahresabrechnung ✅ accepted (12.01.2026) │  │
-│  │ Grundsteuerbescheid  ⚠️ needs_review          │  │
-│  │ Wirtschaftsplan      ⬜ optional               │  │
-│  └───────────────────────────────────────────────┘  │
-│                                                     │
-│  STEP 2: Kostenmatrix (nach Berechnung)             │
-│  ┌───────────────────────────────────────────────┐  │
-│  │ Kostenart      │ Schluessel │ Haus    │ Anteil│  │
-│  │ Grundsteuer    │ MEA        │ 2.400   │ 205   │  │
-│  │ Wasser         │ Personen   │ 3.200   │ 360   │  │
-│  │ ...            │            │         │       │  │
-│  │────────────────│────────────│─────────│───────│  │
-│  │ Summe umlagef. │            │         │ 1.801 │  │
-│  │ Vorauszahlung  │            │         │ 3.600 │  │
-│  │ GUTHABEN       │            │         │-1.799 │  │
-│  └───────────────────────────────────────────────┘  │
-│                                                     │
-│  STEP 3: Export                                     │
-│  [PDF erzeugen]  [Im DMS ablegen]                   │
-│                                                     │
-└─────────────────────────────────────────────────────┘
-```
+- BER-01: -130 (= 520/4)
+- MUC-01: -160 (= 640/4)
+- HH-01: -80 (= 320/4)
 
-### 5. Integration in PropertyDetailPage
+### Sonderbuchungen
 
-**Datei: `src/pages/portal/immobilien/PropertyDetailPage.tsx`**
+- Nov 2025: Heizungsreparatur BER-01: -450 (Sondereigentum)
 
-- Neuer `TabsTrigger` mit Label "NK-Abrechnung" und Receipt-Icon
-- Neuer `TabsContent` mit der `NKAbrechnungTab`-Komponente
-- Props: propertyId, tenantId, unitId (wie bei GeldeingangTab)
+### Gesamt: ~97 Transaktionen
 
-### 6. Armstrong Knowledge Base
+Saldo kumulativ ab Startsaldo 5.200,00 EUR berechnet, absteigend sortiert fuer Anzeige.
 
-**Datei: `src/constants/armstrongNKKnowledge.ts`**
+---
 
-7 KB-Eintraege als Seed-Daten (Glossar, Kostenarten, Mapping-Regeln, formelle Anforderungen, Fehlermuster), die spaeter in `armstrong_knowledge_items` eingefuegt werden.
+## Teil 5: Armstrong KB Update (optional)
 
-### 7. React Hook
+Die 7 Eintraege in `armstrongNKKnowledge.ts` sind bereits angelegt. Falls Sie eigene Texte liefern, werden diese ersetzt. Andernfalls werden die bestehenden Eintraege als DB-Seed in `armstrong_knowledge_items` eingefuegt.
 
-**Datei: `src/hooks/useNKAbrechnung.ts`**
+---
 
-Orchestriert den gesamten Flow:
-- `readiness`: Prueft Dokument-Verfuegbarkeit
-- `calculate()`: Fuehrt Engine aus, erzeugt Settlement
-- `settlements`: Geladene Abrechnungen
-- `exportPdf()`: Erzeugt PDF
+## Dateien
+
+| Datei | Aenderung |
+|-------|-----------|
+| `src/engines/nkAbrechnung/readinessCheck.ts` | Fix: doc_type-Filter beim Readiness-Check |
+| `src/constants/demoKontoData.ts` | Komplett neu: buildDemoTransactions() mit 97 Buchungen |
+| DB-Migration | Seed: nk_periods (3), nk_cost_items (~33), documents (6), document_links (6) |
+| `src/constants/armstrongNKKnowledge.ts` | Optional: Ihre Texte einsetzen |
 
 ---
 
 ## Implementierungsreihenfolge
 
-| Schritt | Deliverable |
-|---------|------------|
-| 1 | `src/engines/nkAbrechnung/spec.ts` — TypeScript-Typen und Enums |
-| 2 | DB-Migration: `nk_cost_items` + `nk_tenant_settlements` |
-| 3 | `costCategoryMapping.ts` + `allocationLogic.ts` |
-| 4 | `readinessCheck.ts` + `engine.ts` |
-| 5 | `NKAbrechnungTab.tsx` (UI-Komponente) |
-| 6 | Integration in `PropertyDetailPage.tsx` (neuer Tab) |
-| 7 | `useNKAbrechnung.ts` (Hook) |
-| 8 | `pdfExport.ts` (jsPDF) |
-| 9 | `armstrongNKKnowledge.ts` (KB Seed) |
-
----
-
-## Betroffene Dateien (Zusammenfassung)
-
-| Datei | Aenderung |
-|-------|-----------|
-| `src/engines/nkAbrechnung/spec.ts` | **NEU** — Engine-SPEC als TypeScript |
-| `src/engines/nkAbrechnung/costCategoryMapping.ts` | **NEU** — Kostenarten-Mapping |
-| `src/engines/nkAbrechnung/allocationLogic.ts` | **NEU** — Verteilerschluessel |
-| `src/engines/nkAbrechnung/readinessCheck.ts` | **NEU** — Readiness-Check |
-| `src/engines/nkAbrechnung/engine.ts` | **NEU** — Berechnungslogik |
-| `src/engines/nkAbrechnung/pdfExport.ts` | **NEU** — PDF-Generator |
-| `src/engines/nkAbrechnung/index.ts` | **NEU** — Re-Exports |
-| `src/components/portfolio/NKAbrechnungTab.tsx` | **NEU** — UI Tab-Komponente |
-| `src/hooks/useNKAbrechnung.ts` | **NEU** — React Hook |
-| `src/constants/armstrongNKKnowledge.ts` | **NEU** — KB Seed |
-| `src/pages/portal/immobilien/PropertyDetailPage.tsx` | **AENDERUNG** — Neuer Tab hinzugefuegt |
-| DB-Migration | **NEU** — 2 Tabellen + RLS |
+| Schritt | Was |
+|---------|-----|
+| 1 | DB-Migration: Demo-Seed (nk_periods, nk_cost_items, documents, document_links) |
+| 2 | Fix readinessCheck.ts (doc_type-Filter) |
+| 3 | buildDemoTransactions() in demoKontoData.ts |
+| 4 | Funktionstest: NK-Abrechnung Tab auf BER-01 oeffnen, Readiness gruen, Berechnung starten |
 
