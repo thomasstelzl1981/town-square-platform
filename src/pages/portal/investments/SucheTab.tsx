@@ -79,7 +79,12 @@ export default function SucheTab() {
   const { calculate, isLoading: isCalculating } = useInvestmentEngine();
   const { data: favorites = [] } = useInvestmentFavorites();
   const toggleFavorite = useToggleInvestmentFavorite();
-  const { kaufyListings: demoListings } = useDemoListings();
+  const { kaufyListings: allDemoListings } = useDemoListings();
+  // Filter out project demo listings (new_construction) — only real portfolio demos
+  const demoListings = useMemo(() => 
+    allDemoListings.filter(d => d.property_type !== 'new_construction'), 
+    [allDemoListings]
+  );
 
   // Fetch public listings with title images
   const { data: listings = [], isLoading: isLoadingListings, refetch } = useQuery({
@@ -230,7 +235,7 @@ export default function SucheTab() {
         hero_image_path: imageMap.get(item.properties?.id) || null,
       })) as PublicListing[];
     },
-    enabled: hasSearched || searchMode === 'classic',
+    enabled: true,
   });
 
   // Merge demo listings with DB listings (deduplicated by title+city)
@@ -434,14 +439,15 @@ export default function SucheTab() {
                 </CollapsibleContent>
               </Collapsible>
 
-              <Button 
-                onClick={handleInvestmentSearch} 
-                disabled={isLoadingListings || isCalculating}
-                className="w-full md:w-auto"
-              >
-                {(isLoadingListings || isCalculating) && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                Ergebnisse anzeigen
-              </Button>
+              <div className="flex justify-center w-full">
+                <Button 
+                  onClick={handleInvestmentSearch} 
+                  disabled={isLoadingListings || isCalculating}
+                >
+                  {(isLoadingListings || isCalculating) && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                  Ergebnisse anzeigen
+                </Button>
+              </div>
             </>
           ) : (
             <>
@@ -513,9 +519,10 @@ export default function SucheTab() {
       </Card>
 
       {/* Results */}
-      {hasSearched && (
-        <div className="space-y-4">
-          {/* Results Header */}
+      {/* Results - always visible (demo listings show immediately) */}
+      <div className="space-y-4">
+        {/* Results Header */}
+        {hasSearched && (
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <Badge variant="secondary" className="text-sm">
@@ -545,54 +552,39 @@ export default function SucheTab() {
               </Button>
             </div>
           </div>
+        )}
 
-          {/* Listings Grid/List */}
-          {isLoadingListings ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
-            </div>
-          ) : filteredListings.length === 0 ? (
-            <Card>
-              <CardContent className="py-12 text-center">
-                <Building2 className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-                <p className="text-muted-foreground">Keine Objekte gefunden</p>
-                <p className="text-sm text-muted-foreground">Passen Sie Ihre Suchkriterien an</p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className={cn(
-              viewMode === 'grid' 
-                ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4'
-                : 'flex flex-col gap-4'
-            )}>
-              {filteredListings.map((listing) => (
-                <InvestmentResultTile
-                  key={listing.listing_id}
-                  listing={listing}
-                  metrics={searchMode === 'investment' ? metricsCache[listing.listing_id] : null}
-                  isFavorite={isFavorite(listing.listing_id)}
-                  onToggleFavorite={() => handleToggleFavorite(listing)}
-                  linkPrefix="/portal/investments/objekt"
-                />
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Initial State */}
-      {!hasSearched && (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <TrendingUp className="w-12 h-12 mx-auto mb-4 text-primary opacity-70" />
-            <h3 className="text-lg font-semibold mb-2">Finden Sie Ihre nächste Kapitalanlage</h3>
-            <p className="text-muted-foreground max-w-md mx-auto">
-              Geben Sie Ihr zu versteuerndes Einkommen und Eigenkapital ein, um passende Objekte mit 
-              individueller Belastungsberechnung zu finden.
-            </p>
-          </CardContent>
-        </Card>
-      )}
+        {/* Listings Grid/List */}
+        {filteredListings.length === 0 ? (
+          <Card>
+            <CardContent className="py-12 text-center">
+              <TrendingUp className="w-12 h-12 mx-auto mb-4 text-primary opacity-70" />
+              <h3 className="text-lg font-semibold mb-2">Finden Sie Ihre nächste Kapitalanlage</h3>
+              <p className="text-muted-foreground max-w-md mx-auto">
+                Geben Sie Ihr zu versteuerndes Einkommen und Eigenkapital ein, um passende Objekte mit 
+                individueller Belastungsberechnung zu finden.
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className={cn(
+            viewMode === 'grid' 
+              ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4'
+              : 'flex flex-col gap-4'
+          )}>
+            {filteredListings.map((listing) => (
+              <InvestmentResultTile
+                key={listing.listing_id}
+                listing={listing}
+                metrics={searchMode === 'investment' ? metricsCache[listing.listing_id] : null}
+                isFavorite={isFavorite(listing.listing_id)}
+                onToggleFavorite={() => handleToggleFavorite(listing)}
+                linkPrefix="/portal/investments/objekt"
+              />
+            ))}
+          </div>
+        )}
+      </div>
     </PageShell>
   );
 }

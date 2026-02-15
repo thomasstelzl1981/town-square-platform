@@ -345,41 +345,35 @@ export default function ProjekteDashboard() {
       </div>
 
       {/* ═══ W3b: Meine Projekte — Square Cards ═══ */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle>Meine Projekte</CardTitle>
-            <CardDescription>{portfolioRows.length === 0 ? 'Noch keine Projekte vorhanden' : `${portfolioRows.length} Projekte im Portfolio`}</CardDescription>
-          </div>
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold">Meine Projekte</h2>
           {portfolioRows.length > 0 && (
             <Button variant="outline" onClick={() => navigate('/portal/projekte/projekte')}>
               Alle anzeigen <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           )}
-        </CardHeader>
-        <CardContent>
-          {isLoadingPortfolio ? (
-            <LoadingState />
-          ) : (
-            <WidgetGrid>
-              {/* Demo project — controlled by useDemoToggles */}
-              {demoEnabled && (
-                <WidgetCell>
-                  <ProjectCard project={DEMO_PROJECT} isDemo />
-                </WidgetCell>
-              )}
-              {portfolioRows.map((project) => (
-                <WidgetCell key={project.id}>
-                  <ProjectCard project={project} />
-                </WidgetCell>
-              ))}
+        </div>
+        {isLoadingPortfolio ? (
+          <LoadingState />
+        ) : (
+          <WidgetGrid>
+            {demoEnabled && (
               <WidgetCell>
-                <ProjectCardPlaceholder onClick={() => setCreateProjectOpen(true)} />
+                <ProjectCard project={DEMO_PROJECT} isDemo />
               </WidgetCell>
-            </WidgetGrid>
-          )}
-        </CardContent>
-      </Card>
+            )}
+            {portfolioRows.map((project) => (
+              <WidgetCell key={project.id}>
+                <ProjectCard project={project} />
+              </WidgetCell>
+            ))}
+            <WidgetCell>
+              <ProjectCardPlaceholder onClick={() => setCreateProjectOpen(true)} />
+            </WidgetCell>
+          </WidgetGrid>
+        )}
+      </div>
 
       {/* Dialogs */}
       <CreateProjectDialog
