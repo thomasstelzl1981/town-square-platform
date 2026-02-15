@@ -81,23 +81,14 @@ export async function checkReadiness(
     }
   }
 
-  // 3. Lease-Daten pruefen (über units → leases joinen, da leases kein property_id hat)
-  const { data: unitIds } = await supabase
-    .from('units')
-    .select('id')
-    .eq('property_id', propertyId)
-    .eq('tenant_id', tenantId);
+  // 3. Lease-Daten pruefen
+  const { data: leases } = await (supabase as any)
+    .from('leases')
+    .select('id, rent_cold_eur, nk_advance_eur')
+    .eq('tenant_id', tenantId)
+    .eq('property_id', propertyId);
 
-  const unitIdList = (unitIds || []).map((u: any) => u.id);
-  let activeLeases: any[] = [];
-  if (unitIdList.length > 0) {
-    const { data: leases } = await supabase
-      .from('leases')
-      .select('id, rent_cold_eur, nk_advance_eur')
-      .eq('tenant_id', tenantId)
-      .in('unit_id', unitIdList);
-    activeLeases = (leases || []).filter((l: any) => l.rent_cold_eur > 0);
-  }
+  const activeLeases = leases?.filter((l: any) => l.rent_cold_eur > 0) || [];
 
   if (activeLeases.length === 0) {
     blockers.push('Kein aktiver Mietvertrag vorhanden');

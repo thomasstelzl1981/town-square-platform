@@ -51,20 +51,13 @@ export async function calculateSettlement(
   const periodStart = `${input.year}-01-01`;
   const periodEnd = `${input.year}-12-31`;
 
-  // 1. Lease laden (über unit_id, da leaseId ggf. leer)
-  let leaseQuery = supabase
+  // 1. Lease laden
+  const { data: lease } = await supabase
     .from('leases')
     .select('*')
-    .eq('tenant_id', input.tenantId);
-
-  if (input.leaseId) {
-    leaseQuery = leaseQuery.eq('id', input.leaseId);
-  } else {
-    leaseQuery = leaseQuery.eq('unit_id', input.unitId);
-  }
-
-  const { data: leaseRows } = await leaseQuery as { data: LeaseData[] | null; error: any };
-  const lease = leaseRows?.[0];
+    .eq('id', input.leaseId)
+    .eq('tenant_id', input.tenantId)
+    .single() as { data: LeaseData | null; error: any };
 
   if (!lease) throw new Error('Mietvertrag nicht gefunden');
 
@@ -221,7 +214,7 @@ export async function calculateSettlement(
       propertyName: `${property.address}, ${property.city}`,
       unitId: input.unitId,
       unitLabel: `${unit.unit_number}, ${unitAreaSqm} m²`,
-      leaseId: lease.id,
+      leaseId: input.leaseId,
       tenantName,
       periodStart,
       periodEnd,

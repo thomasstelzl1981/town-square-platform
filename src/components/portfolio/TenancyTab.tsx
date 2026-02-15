@@ -19,8 +19,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
-import { Loader2, AlertTriangle, UserPlus, Mail, CheckCircle, XCircle, Clock, History, Euro, Plus, FileText, TrendingUp, ChevronDown, Save, Receipt } from 'lucide-react';
-import { NKAbrechnungTab } from './NKAbrechnungTab';
+import { Loader2, AlertTriangle, UserPlus, Mail, CheckCircle, XCircle, Clock, History, Euro, Plus, FileText, TrendingUp, ChevronDown, Save } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -646,18 +645,7 @@ export function TenancyTab({ propertyId, tenantId, unitId }: TenancyTabProps) {
         </Collapsible>
       )}
 
-      {/* ─── NK-ABRECHNUNG (Sub-Sektion) ─── */}
-      <div className="pt-6 border-t">
-        <div className="flex items-center gap-2 mb-4">
-          <Receipt className="h-4 w-4 text-muted-foreground" />
-          <h3 className="text-sm font-semibold">Nebenkostenabrechnung</h3>
-        </div>
-        <NKAbrechnungTab
-          propertyId={propertyId}
-          tenantId={tenantId}
-          unitId={unitId}
-        />
-      </div>
+      {/* Sticky Save Bar (only when dirty) */}
       {isDirty && (
         <div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur border-t p-3 z-50">
           <div className="container mx-auto flex items-center justify-between max-w-7xl">
