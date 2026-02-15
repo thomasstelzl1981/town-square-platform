@@ -581,6 +581,45 @@ export const GOLDEN_PATH_PROCESSES: GoldenPathProcess[] = [
     phase: 'done',
   },
 
+  // ─── MOD-18: Finanzen ────────────────────────────────────
+  {
+    id: 'GP-KONTEN',
+    moduleCode: 'MOD-18',
+    moduleName: 'Finanzen',
+    tilePath: '/portal/finanzanalyse/dashboard',
+    processName: 'Kontoverwaltung',
+    description: 'Bankkonten anlegen, kategorisieren und Kontobewegungen einsehen.',
+    menuPoints: 1,
+    menuPointPaths: ['/portal/finanzanalyse/dashboard'],
+    compliance: {
+      modulePageHeader: true,
+      widgetGrid: true,
+      widgetCell: true,
+      demoWidget: true,
+      inlineFlow: true,
+      noSubNavigation: true,
+    },
+    demoWidget: {
+      id: '__demo__',
+      title: 'Demo: Girokonto Sparkasse',
+      subtitle: 'IBAN DE89 3704 ••••, Kategorie: Vermietung',
+      status: 'demo',
+      badgeLabel: 'Demo',
+      data: {
+        bank: 'Sparkasse',
+        iban: 'DE89370400440532013000',
+        category: 'vermietung',
+        balance: 12450.80,
+      },
+      resetOnClose: true,
+    },
+    sections: [
+      { id: 'details', title: 'Kontodaten', component: 'KontoAkteInline', readOnlyInDemo: false },
+      { id: 'transactions', title: 'Kontobewegungen', component: 'KontoTransactions', readOnlyInDemo: true },
+    ],
+    phase: 'done',
+  },
+
   // ─── MOD-05: Pets ───────────────
   {
     id: 'GP-PETS',

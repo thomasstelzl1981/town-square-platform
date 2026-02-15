@@ -7,7 +7,7 @@
 import { useState } from 'react';
 import { PageShell } from '@/components/shared/PageShell';
 import { RecordCard } from '@/components/shared/RecordCard';
-import { RECORD_CARD } from '@/config/designManifest';
+import { RECORD_CARD, DEMO_WIDGET } from '@/config/designManifest';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { FormInput } from '@/components/shared';
 import { Button } from '@/components/ui/button';
@@ -20,11 +20,17 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useFinanzanalyseData } from '@/hooks/useFinanzanalyseData';
 import { usePersonDMS } from '@/hooks/usePersonDMS';
 import { useAuth } from '@/contexts/AuthContext';
+import { useDemoToggles } from '@/hooks/useDemoToggles';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { KontoAkteInline } from '@/components/finanzanalyse/KontoAkteInline';
+import { DEMO_KONTO, DEMO_KONTO_IBAN_MASKED } from '@/constants/demoKontoData';
 import {
   Users, UserPlus, Landmark, ScanSearch, Plus,
-  Calendar, Mail, Phone, MapPin
+  Calendar, Mail, Phone, MapPin, CreditCard
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 const MARITAL_OPTIONS = [
   { value: 'ledig', label: 'Ledig' },
@@ -51,6 +57,142 @@ const ROLE_LABELS: Record<string, string> = {
   kind: 'Kind',
   weitere: 'Weitere',
 };
+
+// ─── Konten Block (Widget-Grid mit Demo + echte Konten) ───
+function KontenBlock() {
+  const { activeTenantId } = useAuth();
+  const { isEnabled } = useDemoToggles();
+  const [openKontoId, setOpenKontoId] = useState<string | null>(null);
+
+  const { data: bankAccounts = [], isLoading: loadingAccounts } = useQuery({
+    queryKey: ['msv_bank_accounts', activeTenantId],
+    queryFn: async () => {
+      if (!activeTenantId) return [];
+      const { data } = await supabase.from('msv_bank_accounts').select('*').eq('tenant_id', activeTenantId);
+      return data || [];
+    },
+    enabled: !!activeTenantId,
+  });
+
+  const showDemo = isEnabled('GP-KONTEN');
+
+  const maskIban = (iban: string) => iban ? `${iban.slice(0, 9)} ••••` : '—';
+
+  return (
+    <>
+      {/* ═══ BLOCK B: Konten ═══ */}
+      <div className="flex items-center justify-between mt-8">
+        <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-2">
+          <Landmark className="h-4 w-4" /> Konten
+        </h3>
+      </div>
+
+      <div className={RECORD_CARD.GRID}>
+        {/* Demo Widget Position 0 */}
+        {showDemo && (
+          <div
+            className={cn(
+              RECORD_CARD.CLOSED,
+              DEMO_WIDGET.CARD,
+              DEMO_WIDGET.HOVER,
+              openKontoId === DEMO_KONTO.id && 'ring-2 ring-emerald-400/50',
+            )}
+            onClick={() => setOpenKontoId(openKontoId === DEMO_KONTO.id ? null : DEMO_KONTO.id)}
+            role="button"
+            tabIndex={0}
+          >
+            <div className="p-5 flex flex-col justify-between h-full">
+              <div>
+                <Badge className={DEMO_WIDGET.BADGE + ' mb-2'}>Demo</Badge>
+                <h4 className="font-semibold text-sm">Demo: Girokonto Sparkasse</h4>
+                <p className="text-xs text-muted-foreground mt-1">{DEMO_KONTO_IBAN_MASKED}</p>
+                <Badge variant="outline" className="mt-2 text-[10px]">Vermietung</Badge>
+              </div>
+              <div className="text-right">
+                <p className="text-lg font-bold text-emerald-600">{new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(DEMO_KONTO.balance)}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Echte Konten */}
+        {bankAccounts.map((acc: any) => (
+          <div
+            key={acc.id}
+            className={cn(
+              RECORD_CARD.CLOSED,
+              openKontoId === acc.id && 'ring-2 ring-primary/50',
+            )}
+            onClick={() => setOpenKontoId(openKontoId === acc.id ? null : acc.id)}
+            role="button"
+            tabIndex={0}
+          >
+            <div className="p-5 flex flex-col justify-between h-full">
+              <div>
+                <h4 className="font-semibold text-sm">{acc.account_name || acc.bank_name || 'Konto'}</h4>
+                <p className="text-xs text-muted-foreground mt-1">{maskIban(acc.iban || '')}</p>
+                <Badge variant="outline" className="mt-2 text-[10px]">{acc.account_type || 'Giro'}</Badge>
+              </div>
+              <div className="flex items-center gap-2">
+                <CreditCard className="h-4 w-4 text-muted-foreground" />
+                <Badge variant={acc.status === 'active' ? 'default' : 'secondary'} className="text-[10px]">
+                  {acc.status === 'active' ? 'Verbunden' : 'Inaktiv'}
+                </Badge>
+              </div>
+            </div>
+          </div>
+        ))}
+
+        {/* CTA Widget */}
+        <div
+          className={RECORD_CARD.CLOSED + ' border-dashed border-primary/30 flex items-center justify-center'}
+          role="button"
+          tabIndex={0}
+        >
+          <div className="flex flex-col items-center gap-2 text-muted-foreground">
+            <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
+              <Plus className="h-6 w-6 text-primary" />
+            </div>
+            <p className="text-sm font-medium">Konto hinzufügen</p>
+          </div>
+        </div>
+
+        {/* Inline Kontoakte */}
+        {openKontoId === DEMO_KONTO.id && (
+          <KontoAkteInline isDemo onClose={() => setOpenKontoId(null)} />
+        )}
+        {openKontoId && openKontoId !== DEMO_KONTO.id && (
+          <KontoAkteInline
+            isDemo={false}
+            account={bankAccounts.find((a: any) => a.id === openKontoId)}
+            onClose={() => setOpenKontoId(null)}
+          />
+        )}
+      </div>
+
+      {/* ═══ BLOCK C: 12M Scan ═══ */}
+      <Card className="glass-card mt-4">
+        <CardContent className="py-6">
+          <div className="flex items-center gap-4">
+            <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+              <ScanSearch className="h-6 w-6 text-primary" />
+            </div>
+            <div className="flex-1">
+              <p className="font-semibold">Umsätze auslesen & Verträge erkennen</p>
+              <p className="text-sm text-muted-foreground">
+                Scannt die letzten 12 Monate Ihrer Kontoumsätze und identifiziert wiederkehrende Zahlungen als potenzielle Abonnements, Versicherungen oder Vorsorgeverträge.
+              </p>
+            </div>
+            <Button variant="outline" disabled>
+              <ScanSearch className="h-4 w-4 mr-2" />
+              Scan starten
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </>
+  );
+}
 
 export default function UebersichtTab() {
   const { activeTenantId } = useAuth();
@@ -359,46 +501,7 @@ export default function UebersichtTab() {
         )}
       </div>
 
-      {/* ═══ BLOCK B: Konten ═══ */}
-      <div className="flex items-center justify-between mt-8">
-        <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-2">
-          <Landmark className="h-4 w-4" /> Konten
-        </h3>
-      </div>
-
-      <Card className="glass-card border-dashed">
-        <CardContent className="py-8 text-center">
-          <Landmark className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
-          <p className="text-sm font-medium">Bankkonten werden über FinAPI angebunden</p>
-          <p className="text-xs text-muted-foreground mt-1">
-            Verbinden Sie Ihre Konten im Finanzmanager, um Kontodaten hier anzuzeigen.
-          </p>
-          <Button variant="outline" size="sm" className="mt-4" onClick={() => window.location.href = '/portal/finanzierungsmanager'}>
-            Konten im Finanzmanager verbinden →
-          </Button>
-        </CardContent>
-      </Card>
-
-      {/* ═══ BLOCK C: 12M Scan ═══ */}
-      <Card className="glass-card">
-        <CardContent className="py-6">
-          <div className="flex items-center gap-4">
-            <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-              <ScanSearch className="h-6 w-6 text-primary" />
-            </div>
-            <div className="flex-1">
-              <p className="font-semibold">Umsätze auslesen & Verträge erkennen</p>
-              <p className="text-sm text-muted-foreground">
-                Scannt die letzten 12 Monate Ihrer Kontoumsätze und identifiziert wiederkehrende Zahlungen als potenzielle Abonnements, Versicherungen oder Vorsorgeverträge.
-              </p>
-            </div>
-            <Button variant="outline" disabled>
-              <ScanSearch className="h-4 w-4 mr-2" />
-              Scan starten
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      <KontenBlock />
     </PageShell>
   );
 }
