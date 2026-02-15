@@ -17,6 +17,7 @@ import { useDemoListings, isDemoListingId, deduplicateByField } from '@/hooks/us
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { OperativeDeskShell } from '@/components/admin/desks/OperativeDeskShell';
 
 const DEMO_BADGE = (
   <Badge className="bg-emerald-500/15 text-emerald-600 border-emerald-500/30 text-xs px-1.5 py-0">
@@ -197,52 +198,19 @@ function SalesDeskDashboard() {
   };
 
   return (
+    <OperativeDeskShell
+      title="Sales Desk"
+      subtitle="Zentrale Übersicht für Verkaufsoperationen und Partner-Freigaben"
+      moduleCode="MOD-09"
+      zoneFlow={{ z3Surface: 'Kaufy Marketplace', z1Desk: 'Sales Desk', z2Manager: 'MOD-09 Vertriebsmanager' }}
+      kpis={[
+        { label: 'Neue Listings', value: pendingCount, icon: ShoppingBag, subtitle: 'Ausstehende Freigaben' },
+        { label: 'Aktive Listings', value: activeCount, icon: CheckCircle2, color: 'text-primary', subtitle: 'Veröffentlicht' },
+        { label: 'Blockiert', value: blockedCount, icon: Ban, color: 'text-destructive', subtitle: 'Durch Admin gesperrt' },
+        { label: 'Aktive Projekte', value: projectRequests?.length || 0, icon: Building2, subtitle: 'MOD-13 Vertriebsaufträge' },
+      ]}
+    >
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold uppercase">Sales Desk</h1>
-        <p className="text-muted-foreground">
-          Zentrale Übersicht für Verkaufsoperationen und Partner-Freigaben
-        </p>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Neue Listings</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{pendingCount}</div>
-            <p className="text-xs text-muted-foreground">Ausstehende Freigaben</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Aktive Listings</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{activeCount}</div>
-            <p className="text-xs text-muted-foreground">Veröffentlicht</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Blockiert</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{blockedCount}</div>
-            <p className="text-xs text-muted-foreground">Durch Admin gesperrt</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Aktive Projekte</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{projectRequests?.length || 0}</div>
-            <p className="text-xs text-muted-foreground">MOD-13 Vertriebsaufträge</p>
-          </CardContent>
-        </Card>
-      </div>
 
       {/* Active Immobilien-Vertriebsaufträge (individual property mandates) */}
       <ImmobilienVertriebsauftraegeCard />
@@ -378,6 +346,7 @@ function SalesDeskDashboard() {
         </Card>
       </div>
     </div>
+    </OperativeDeskShell>
   );
 }
 
