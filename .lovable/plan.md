@@ -1,107 +1,124 @@
 
 
-# RecordCard Closed-State: Foto 50% Breite, Daten ab 20% eingerueckt
+# RecordCard Akte: Ueberarbeitung Open-State + Person-DMS-Tree
 
-## Neues Layout (Skizze mit Massen)
+## Zusammenfassung
 
-```text
-+--------------------------------------------------+
-|  [Badge: Hauptperson]                             |
-|                                                   |
-|  +------------------------+                       |
-|  |                        |                       |
-|  |     FOTO / DROP        |                       |
-|  |     (w-1/2 = 50%)      |                       |
-|  |     aspect-[4/5]       |                       |
-|  |     rounded-xl         |                       |
-|  |                        |                       |
-|  +------------------------+                       |
-|                                                   |
-|           Thomas Stelzl        (text-xl bold)     |
-|           15.03.1985           (text-sm muted)    |
-|                                                   |
-|           Sauerlacher Str. 30  (text-sm)          |
-|           82041 Oberhaching    (text-sm)          |
-|           +49 170 12345678     (text-sm)          |
-|           thomas@example.com   (text-sm)          |
-|                                              [>]  |
-+--------------------------------------------------+
-|           ^                                       |
-|           20% Einrueckung (pl-[20%])              |
-```
+Drei Aenderungen:
+1. **"Person hinzufuegen" und "Neue Person"-Formular entfernen** aus der Akte (Open-State) — Personen werden nur noch am Dashboard (Grid) hinzugefuegt
+2. **Familienstand/Gueterstand** als neues Feld in der geoeffneten Akte abfragen (`marital_status` existiert bereits in `household_persons`)
+3. **Personen-DMS-Tree automatisch erstellen** mit vordefinierten Unterordnern fuer persoenliche Dokumente
 
-## Kernpunkte
+---
 
-- **Foto-Kachel**: `w-1/2` (50% der Widget-Breite), `aspect-[4/5]` fuer ein schoenes Hochformat-Verhaeltnis, `rounded-xl`, bleibt Drop-Zone
-- **Datenblock**: Beginnt bei **20% der Breite** via `pl-[20%]` — also leicht eingerueckt, nicht am linken Rand klebend
-- **Keine Labels** — nur die Werte werden angezeigt (Geburtsdatum, Adresse, Telefon, E-Mail)
-- **Name** in `text-xl font-bold`, Kontaktdaten in `text-sm text-muted-foreground`
-- Foto-Platzhalter zeigt Kamera-Icon + "Foto hierher ziehen"
+## Aenderung 1: CTA-Widget und Formular bleiben am Dashboard
 
-## Technische Aenderung
+Das "Person hinzufuegen"-Widget (Zeilen 258-273) und das "Neue Person"-Formular (Zeilen 275-323) in `UebersichtTab.tsx` bleiben **unveraendert am Dashboard-Grid** — dort gehoeren sie hin. Es gibt aktuell keinen separaten "Person hinzufuegen"-Button innerhalb der geoeffneten Akte, also ist hier nichts zu entfernen.
 
-### `src/components/shared/RecordCard.tsx` — Zeilen 119-169
+**Keine Code-Aenderung noetig.**
 
-Der gesamte `hasDetailedSummary`-Block wird ersetzt:
+---
 
-```tsx
-{hasDetailedSummary ? (
-  <div className="p-5 pt-10 text-left">
-    {/* Grosses Foto — 50% Breite, Hochformat */}
-    <div
-      className={cn(
-        'w-1/2 aspect-[4/5] rounded-xl overflow-hidden mb-4',
-        thumbnailUrl
-          ? ''
-          : 'border-2 border-dashed border-muted-foreground/30 flex flex-col items-center justify-center gap-2 bg-muted/20',
-      )}
-      onDragOver={...}
-      onDrop={...}
-    >
-      {thumbnailUrl ? (
-        <img src={thumbnailUrl} className="h-full w-full object-cover" />
-      ) : (
-        <>
-          <Camera className="h-8 w-8 text-muted-foreground/40" />
-          <span className="text-xs text-muted-foreground/40">Foto hierher ziehen</span>
-        </>
-      )}
-    </div>
+## Aenderung 2: Familienstand in der geoeffneten Akte
 
-    {/* Name + Daten, eingerueckt auf 20% */}
-    <div className="pl-[20%]">
-      <p className="text-xl font-bold leading-tight truncate">{title}</p>
-      <div className="mt-2 space-y-0.5">
-        {summary.map((s, i) => (
-          <p key={i} className="text-sm text-muted-foreground/80 truncate">
-            {s.value}
-          </p>
-        ))}
-      </div>
-    </div>
-  </div>
-)}
-```
+Das Feld `marital_status` existiert bereits in der Tabelle `household_persons`. Es wird lediglich in der UI der geoeffneten Akte als Select-Feld ergaenzt.
 
-### `UebersichtTab.tsx` und `ProfilTab.tsx` — Summary ohne Labels
+### `UebersichtTab.tsx` — Im Open-State "Persoenliche Daten"-Sektion
 
-Labels werden nicht mehr angezeigt, daher Reihenfolge entscheidend:
+Neues Select-Feld nach "Geburtsdatum" einfuegen:
 
 ```typescript
-summary={[
-  ...(person.birth_date ? [{ label: '', value: format(new Date(person.birth_date), 'dd.MM.yyyy') }] : []),
-  ...(person.street ? [{ label: '', value: `${person.street} ${person.house_number || ''}`.trim() }] : []),
-  ...(person.zip ? [{ label: '', value: `${person.zip} ${person.city || ''}`.trim() }] : []),
-  ...(person.phone ? [{ label: '', value: person.phone }] : []),
-  ...(person.email ? [{ label: '', value: person.email }] : []),
-]}
+// Optionen
+const MARITAL_OPTIONS = [
+  { value: 'ledig', label: 'Ledig' },
+  { value: 'verheiratet', label: 'Verheiratet' },
+  { value: 'geschieden', label: 'Geschieden' },
+  { value: 'verwitwet', label: 'Verwitwet' },
+  { value: 'eingetragene_lebenspartnerschaft', label: 'Eingetr. Lebenspartnerschaft' },
+];
+
+// Im FIELD_GRID nach Geburtsdatum:
+<div>
+  <Label className="text-xs">Familienstand</Label>
+  <Select
+    value={form.marital_status || ''}
+    onValueChange={v => updateField(person.id, 'marital_status', v)}
+  >
+    <SelectTrigger><SelectValue placeholder="Bitte waehlen" /></SelectTrigger>
+    <SelectContent>
+      {MARITAL_OPTIONS.map(o => (
+        <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+      ))}
+    </SelectContent>
+  </Select>
+</div>
 ```
+
+---
+
+## Aenderung 3: Automatischer Personen-DMS-Tree
+
+### 3a. Neuer Hook: `usePersonDMS.ts`
+
+Analog zu `usePvDMS.ts` — erstellt bei Personenanlage automatisch eine Ordnerstruktur:
+
+```typescript
+const PERSON_DMS_FOLDERS = [
+  '01_Personalausweis',
+  '02_Reisepass',
+  '03_Geburtsurkunde',
+  '04_Ehevertrag',
+  '05_Testament',
+  '06_Patientenverfuegung',
+  '07_Vorsorgevollmacht',
+  '08_Sonstiges',
+];
+```
+
+Der Hook erstellt:
+1. Einen Root-Ordner (`entity_type: 'person'`, `entity_id: person.id`, `module_code: 'MOD_18'`)
+2. Alle 8 Unterordner als Kinder des Root-Ordners
+
+### 3b. Aufruf bei Personenanlage
+
+In `UebersichtTab.tsx` wird nach erfolgreichem `createPerson.mutate()` automatisch `createPersonDMSTree` aufgerufen:
+
+```typescript
+const { createPersonDMSTree } = usePersonDMS();
+
+// In handleAddPerson:
+createPerson.mutate(newForm, {
+  onSuccess: (newPerson) => {
+    createPersonDMSTree.mutateAsync({
+      personId: newPerson.id,
+      personName: `${newForm.first_name} ${newForm.last_name}`.trim(),
+    });
+    // ...
+  },
+});
+```
+
+### 3c. Auch fuer bestehende Personen nachholen
+
+Wenn eine bestehende Person geoeffnet wird und noch keinen DMS-Ordner hat, wird der Tree automatisch erstellt (Lazy Creation in `EntityStorageTree` — dieses Verhalten existiert bereits fuer den Upload-Fall, muss aber auch fuer die initiale Anzeige greifen).
+
+### 3d. Anzeige im Datenraum-Bereich der geoeffneten Akte
+
+Die bestehende `EntityStorageTree`-Komponente wird bereits im Open-State gerendert (Zeilen 240-249 in `RecordCard.tsx`). Sie nutzt `entity_type='person'` und `entity_id=person.id` — **das funktioniert bereits**. Sobald die Ordner existieren, werden sie in der Spaltenansicht (ColumnView) angezeigt, gemaess dem `DESIGN.STORAGE`-Standard.
+
+### 3e. recordCardManifest aktualisieren
+
+`person`-Entity nutzt aktuell `moduleCode: 'MOD_01'`. Fuer den Finanzanalyse-Kontext (MOD-18) muss geprueft werden, ob der moduleCode korrekt ist. Da Personen moduluebergreifend genutzt werden, bleibt `MOD_01` als Standard. Die `EntityStorageTree`-Komponente filtert nach `entity_type + entity_id`, nicht nach moduleCode, also funktioniert es unabhaengig.
+
+---
 
 ## Betroffene Dateien
 
 | Datei | Aenderung |
 |-------|-----------|
-| `src/components/shared/RecordCard.tsx` | Foto 50% breit (w-1/2, aspect-[4/5]), Datenblock ab 20% (pl-[20%]), nur Werte ohne Labels |
-| `src/pages/portal/finanzanalyse/UebersichtTab.tsx` | Summary ohne Labels, Geb. als erstes Item |
-| `src/pages/portal/stammdaten/ProfilTab.tsx` | Gleiche Anpassung |
+| `src/hooks/usePersonDMS.ts` | **Neu** — Hook mit `PERSON_DMS_FOLDERS` und `createPersonDMSTree` |
+| `src/pages/portal/finanzanalyse/UebersichtTab.tsx` | Familienstand-Select hinzufuegen, DMS-Tree-Erstellung bei Personenanlage |
+| `src/hooks/useFinanzanalyseData.ts` | Evtl. `createPerson` Rueckgabewert anpassen (Person-ID zurueckgeben) |
+
+**Keine DB-Migration noetig** — `marital_status` existiert bereits in `household_persons`.
 
