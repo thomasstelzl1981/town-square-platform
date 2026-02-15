@@ -336,7 +336,7 @@ export const zone2Portal: ZoneDefinition = {
       ],
     },
     "MOD-09": {
-      name: "Vertriebsmanager",
+      name: "Immomanager",
       base: "vertriebspartner",
       icon: "Handshake",
       display_order: 9,

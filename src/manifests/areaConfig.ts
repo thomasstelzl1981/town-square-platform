@@ -66,6 +66,7 @@ export const moduleLabelOverrides: Record<string, string> = {
   'MOD-14': 'Kommunikation Pro',   // Communication Pro → Kommunikation Pro
   'MOD-17': 'Fahrzeuge',           // Car-Management → Fahrzeuge
   'MOD-08': 'Immo Suche',         // Investment-Suche → Immo Suche
+  'MOD-09': 'Immomanager',        // Vertriebspartner → Immomanager
   'MOD-18': 'Finanzen',            // Finanzanalyse → Finanzen
   'MOD-20': 'ZUHAUSE',            // Miety → ZUHAUSE (display only)
 };
