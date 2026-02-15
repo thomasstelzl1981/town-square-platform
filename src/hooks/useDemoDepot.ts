@@ -6,7 +6,11 @@ import { useState, useCallback } from 'react';
 
 export type DepotStatus = 'none' | 'pending' | 'active';
 
-const LS_KEY = 'depot_onboarding_status';
+const LS_KEY_PREFIX = 'depot_status_';
+
+function lsKey(personId?: string) {
+  return personId ? `${LS_KEY_PREFIX}${personId}` : 'depot_onboarding_status';
+}
 
 export interface DemoPosition {
   name: string;
@@ -57,24 +61,38 @@ export const DEMO_TAX_REPORT = {
 
 /** Generate 12-month performance data */
 export function generatePerformanceData() {
-  const base = 25000;
   const months = ['Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez', 'Jan', 'Feb'];
   const values = [25000, 25400, 24800, 26100, 26800, 27200, 26500, 27800, 28300, 28900, 29100, 29431];
   return months.map((m, i) => ({ month: m, value: values[i] }));
 }
 
-export function useDemoDepot() {
+/**
+ * @param personId — optional person-scoped depot status.
+ *   Demo: primary person gets 'active', others get 'none'.
+ * @param isPrimary — hint: is this the primary household person?
+ */
+export function useDemoDepot(personId?: string, isPrimary?: boolean) {
+  const key = lsKey(personId);
+
   const [status, setStatusState] = useState<DepotStatus>(() => {
-    return (localStorage.getItem(LS_KEY) as DepotStatus) || 'none';
+    const stored = localStorage.getItem(key) as DepotStatus | null;
+    if (stored) return stored;
+    // Default: primary person has active depot, others none
+    return isPrimary ? 'active' : 'none';
   });
 
   const setStatus = useCallback((s: DepotStatus) => {
-    localStorage.setItem(LS_KEY, s);
+    localStorage.setItem(key, s);
     setStatusState(s);
-  }, []);
+  }, [key]);
 
   const resetDepot = useCallback(() => {
-    localStorage.removeItem(LS_KEY);
+    // Clear all depot keys
+    Object.keys(localStorage).forEach(k => {
+      if (k.startsWith(LS_KEY_PREFIX) || k === 'depot_onboarding_status') {
+        localStorage.removeItem(k);
+      }
+    });
     setStatusState('none');
   }, []);
 
