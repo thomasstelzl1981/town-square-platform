@@ -36,11 +36,9 @@ export function ManagerVisitenkarte({
     .filter(Boolean)
     .join(', ');
 
-  const gradientClass = `from-[${gradientFrom}] to-[${gradientTo}]`;
-
   return (
     <Card className={cn("overflow-hidden border-0 shadow-card", DESIGN.DASHBOARD_HEADER.CARD_HEIGHT)}>
-      <div className={`h-2 bg-gradient-to-r ${gradientClass}`} style={{
+      <div className="h-2" style={{
         background: `linear-gradient(to right, ${gradientFrom}, ${gradientTo})`
       }} />
       <CardContent className="p-4">
