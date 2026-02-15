@@ -2,13 +2,15 @@
  * MediaWidgetGrid — 4er-Grid mit Verkaufs-Media-Widgets
  * 
  * Wird in MOD-08 (Suche) und MOD-09 (Beratung) identisch eingesetzt.
- * Nutzt WidgetGrid + WidgetCell für CI-konforme Anordnung.
+ * Klick auf ein Widget öffnet die zugehörige Fullscreen-Präsentation.
  */
+import { useState } from 'react';
 import { Presentation, Play, Monitor } from 'lucide-react';
 import { WidgetGrid } from './WidgetGrid';
 import { WidgetCell } from './WidgetCell';
 import { MediaWidget } from './MediaWidget';
-import { toast } from 'sonner';
+import { SlideshowViewer } from './slideshow/SlideshowViewer';
+import { TITLE_TO_KEY, type PresentationKey } from './slideshow/slideData';
 
 const MEDIA_ITEMS = [
   {
@@ -38,23 +40,35 @@ const MEDIA_ITEMS = [
 ] as const;
 
 export function MediaWidgetGrid() {
+  const [activePresentation, setActivePresentation] = useState<PresentationKey | null>(null);
+
   const handleClick = (title: string) => {
-    toast.info(`${title} — wird in Kürze verfügbar sein`);
+    const key = TITLE_TO_KEY[title];
+    if (key) setActivePresentation(key);
   };
 
   return (
-    <WidgetGrid variant="widget">
-      {MEDIA_ITEMS.map((item) => (
-        <WidgetCell key={item.title}>
-          <MediaWidget
-            title={item.title}
-            subtitle={item.subtitle}
-            icon={item.icon}
-            type={item.type}
-            onClick={() => handleClick(item.title)}
-          />
-        </WidgetCell>
-      ))}
-    </WidgetGrid>
+    <>
+      <WidgetGrid variant="widget">
+        {MEDIA_ITEMS.map((item) => (
+          <WidgetCell key={item.title}>
+            <MediaWidget
+              title={item.title}
+              subtitle={item.subtitle}
+              icon={item.icon}
+              type={item.type}
+              onClick={() => handleClick(item.title)}
+            />
+          </WidgetCell>
+        ))}
+      </WidgetGrid>
+
+      {activePresentation && (
+        <SlideshowViewer
+          presentationKey={activePresentation}
+          onClose={() => setActivePresentation(null)}
+        />
+      )}
+    </>
   );
 }
