@@ -7,6 +7,7 @@ import { useState, useMemo } from 'react';
 import { Newspaper } from 'lucide-react';
 import { DESIGN } from '@/config/designManifest';
 import { ManagerVisitenkarte } from '@/components/shared/ManagerVisitenkarte';
+import { MediaWidgetGrid } from '@/components/shared/MediaWidgetGrid';
 import { MarketReportWidget } from '@/components/shared/MarketReportWidget';
 import { useQuery } from '@tanstack/react-query';
 import { useDemoListings, isDemoListingId, deduplicateByField } from '@/hooks/useDemoListings';
@@ -305,6 +306,9 @@ const KatalogTab = () => {
           functionName="sot-market-pulse-report"
         />
       </div>
+
+      {/* ═══ SCHULUNGS-WIDGETS: Berater-Ausbildung ═══ */}
+      <MediaWidgetGrid variant="schulung" />
 
       <div className="flex items-center justify-between">
         <div>
