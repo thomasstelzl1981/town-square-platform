@@ -1,118 +1,95 @@
 
 
-# Demo-Recherche: Interaktiver Flow mit Eingabemaske und Kontaktbuch-Abgleich
+# Recherche-Modul: Armstrong-Anbindung, Scroll-Fix und Flow-Pruefung
 
-## Uebersicht
+## 1. Scroll-Problem: Seite zu kurz
 
-Die Demo wird von einer sofort loslaufenden Simulation zu einem **beeindruckenden, mehrstufigen Flow** umgebaut. Der Nutzer klickt auf die gruene Kachel und sieht zunaechst die Eingabemaske. Dort wird automatisch "Immobilienmakler" eingetippt, der Standort wird ermittelt, und erst dann startet die animierte Suche. Die Ergebnisse werden vollstaendig (nicht scrollbar) angezeigt, mit Kontaktbuch-Abgleich und prominentem Uebernahme-CTA.
+Aktuell hat die `ResearchTab`-Seite (`max-w-5xl mx-auto space-y-6`) keine Mindesthoehe. Wenn der Demo-Flow oder ein echtes Inline-Detail sich entfaltet, kann die Seite nicht weit genug gescrollt werden, weil der aeussere Container die Hoehe begrenzt.
 
-## Die 5 Phasen des neuen Demo-Flows
-
-```text
-Phase 1: Eingabemaske (0-3s)
-  +-------------------------------------------+
-  | 1. Auftrag definieren                     |
-  |   Suchintent: [Immobilienmakl|]  <-- Typing-Animation
-  |   Region:     [Muenchen]       <-- Auto-filled
-  |   Branche:    [Immobilien]     <-- Auto-filled
-  +-------------------------------------------+
-
-Phase 2: Consent-Bestaetigung (3-4.5s)
-  +-------------------------------------------+
-  | Credits: 25 Credits = 12,50 EUR           |
-  | [x] Consent (animiert angehakt)           |
-  | [x] Credit-Abbuchung bestaetigt           |
-  | [Button: Recherche starten] <-- pulsiert  |
-  +-------------------------------------------+
-
-Phase 3: Suche laeuft (4.5-14s)
-  +-------------------------------------------+
-  | [Fortschrittsring 67%]  25 / 25           |
-  | Web-Analyse:       12 Seiten...           |
-  | Datenanreicherung: Anreichern...          |
-  | Qualitaetsbewertung: Bewertung...         |
-  | --- Kontakt-Feed (einzeln einblendend) -- |
-  +-------------------------------------------+
-
-Phase 4: Ergebnis-Tabelle (ab 14s)
-  +-------------------------------------------+
-  | Ergebnisse (8 von 25)                     |
-  | Firma | Kontakt | Score | Kontaktbuch     |
-  | Meier | Thomas  | 92   | [x] NEU         |
-  | WEG   | Michael | 85   | [ ] VORHANDEN   |
-  | ...komplett sichtbar, kein Scroll...      |
-  +-------------------------------------------+
-
-Phase 5: Uebernahme-CTA (ab 14s, prominent)
-  +-------------------------------------------+
-  | [Icon] Kontakte ins Kontaktbuch           |
-  | 6 neue Kontakte / 2 bereits vorhanden     |
-  | [Ausgewaehlte uebernehmen] [Excel-Export] |
-  +-------------------------------------------+
-```
-
-## Aenderung 1: ResearchDemoSimulation.tsx — Komplett-Umbau
-
-Statt sofort `ResearchLiveProgress` zu zeigen, durchlaeuft die Demo 5 Phasen:
-
-**Phase 1 — Eingabemaske (0-3s):**
-- Zeigt die gleiche Eingabeform wie `ResearchOrderInlineFlow` Section 1
-- "Immobilienmakler" wird Buchstabe fuer Buchstabe in das Suchintent-Feld getippt (Typing-Animation, ca. 80ms pro Zeichen)
-- Region wird automatisch auf den erkannten Standort gesetzt (Fallback: "Muenchen")
-- Branche wird auf "Immobilien" gesetzt
-- Alle Felder sind `disabled` (read-only Demo), aber die Typing-Animation zeigt den Cursor
-
-**Phase 2 — Consent (3-4.5s):**
-- Trefferlimit-Card erscheint: "25 Treffer = 12,50 EUR"
-- Consent-Checkboxen werden nacheinander animiert angehakt (je 500ms Verzoegerung)
-- Der "Recherche starten"-Button pulsiert kurz und wird dann "gedrueckt" (visueller Klick-Effekt)
-
-**Phase 3 — Suche (4.5-14s):**
-- Wie bisher: `ResearchLiveProgress` mit Ring, Provider-Status, Kontakt-Feed
-- Kontakte erscheinen einzeln mit Animation
-- Kein scrollbarer Container — alles waechst nach unten
-
-**Phase 4 — Ergebnistabelle (ab 14s):**
-- `ResearchDemoResultsTable` wird angezeigt — komplett sichtbar, kein interner Scroll
-- Jede Zeile hat eine Kontaktbuch-Spalte:
-  - "NEU" (gruen) + Checkbox angehakt = bereit zur Uebernahme
-  - "VORHANDEN" (gelb/orange) + Checkbox NICHT angehakt + Tooltip "Bereits im Kontaktbuch"
-  - 2 von 8 Ergebnissen sind als "VORHANDEN" markiert (WEG-Profis, Bergisch Immo)
-
-**Phase 5 — CTA-Banner (ab 14s):**
-- Prominentes Banner: "6 neue Kontakte zur Uebernahme / 2 bereits im Kontaktbuch"
-- Grosser Button: "Ausgewaehlte ins Kontaktbuch uebernehmen"
-- Sekundaerer Button: "Excel-Export"
-
-## Aenderung 2: ResearchDemoResultsTable.tsx — Kontaktbuch-Abgleich
-
-- Header-Text: "8 von 25 angezeigt" (statt "8 von 37")
-- Neue Spalte "Kontaktbuch" statt "Import":
-  - `duplikat: true` Zeilen bekommen Badge "VORHANDEN" (amber/orange) + unchecked Checkbox + kleiner Hinweis "Kontakt bereits vorhanden — kann enriched werden"
-  - `duplikat: false` Zeilen bekommen Badge "NEU" (emerald) + checked Checkbox
-- Checkboxen sind interaktiv (Demo-only State), damit der Nutzer den Abgleich sieht
-- Kein `overflow-x-auto` mit internem Scroll — die Tabelle wird komplett dargestellt
-
-## Aenderung 3: ResearchDemoSimulation.tsx — Timing-Konstanten
-
-- `TYPING_SPEED`: 80ms pro Buchstabe
-- `TYPING_TEXT`: "Immobilienmakler in Muenchen" (28 Zeichen x 80ms = ~2.2s)
-- `CONSENT_DELAY`: 3000ms nach Start
-- `SEARCH_START`: 4500ms nach Start
-- `SEARCH_DURATION`: 9500ms (4.5s-14s)
-- `RESULTS_SHOW`: 14000ms nach Start
-- Gesamtdauer: ~14s bis zur vollstaendigen Anzeige
-
-## Aenderung 4: ResearchLiveProgress.tsx — Kein interner Scroll
-
-- Sicherstellen, dass kein `max-h` oder `overflow-y-auto` im Kontakt-Feed vorhanden ist (wurde schon entfernt, Kontrolle)
-- Kontakt-Feed waechst unbegrenzt nach unten
-
-## Betroffene Dateien
+**Loesung:** In `ResearchTab.tsx` dem aeusseren Container eine `min-h-[120vh]` oder `pb-40` (padding-bottom) hinzufuegen, damit nach dem letzten Element genuegend Platz bleibt und der Nutzer komfortabel scrollen kann.
 
 | Datei | Aenderung |
 |-------|-----------|
-| `ResearchDemoSimulation.tsx` | Komplett-Umbau: 5-Phasen-Flow mit Typing-Animation, Consent, Suche, Ergebnisse, CTA |
-| `ResearchDemoResultsTable.tsx` | Kontaktbuch-Spalte mit NEU/VORHANDEN-Status, Checkboxen, "8 von 25", kein Scroll |
-| `ResearchLiveProgress.tsx` | Kontrolle: kein interner Scroll (bereits bereinigt) |
+| `ResearchTab.tsx` | `pb-40` am aeusseren Container hinzufuegen |
+
+---
+
+## 2. Reale Auftraege: Flow-Sichtbarkeit pruefen
+
+Der `ResearchOrderInlineFlow` zeigt bereits alle Sektionen (Eingabe, Credits, KI, Consent, Ergebnisse). Hier ist keine groessere Aenderung noetig — der Flow ist sichtbar sobald man eine Kachel aktiviert.
+
+---
+
+## 3. Armstrong-Anbindung: Recherche Pro als Action registrieren
+
+### Problem
+Armstrong kennt in seinem Advisor (`sot-armstrong-advisor/index.ts`) aktuell nur `MVP_MODULES = ["MOD-00", "MOD-04", "MOD-07", "MOD-08", "MOD-13"]`. MOD-14 fehlt komplett. Die vier MOD-14-Actions (`RESEARCH_FREE`, `RESEARCH_PRO`, `IMPORT_CANDIDATES`, `DEDUPE_SUGGEST`) sind zwar im Manifest definiert, aber Armstrong kann sie weder erkennen noch ausfuehren.
+
+### Loesung: Neue Armstrong-Action fuer Recherche-Auftraege
+
+Statt MOD-14 komplett als MVP-Modul freizuschalten (was alle Communication-Pro-Features betreffen wuerde), fuegen wir eine **gezielte Recherche-Action** hinzu:
+
+**A) Neue Action im Manifest (`armstrongManifest.ts`):**
+
+```
+ARM.MOD14.CREATE_RESEARCH_ORDER
+- title_de: "Rechercheauftrag erstellen und ausfuehren"
+- execution_mode: execute_with_confirmation (wegen Credits)
+- cost_model: metered
+- cost_unit: per_contact
+- side_effects: [credits_consumed, external_api_call]
+- api_contract: { type: 'edge_function', endpoint: 'sot-research-run-order' }
+```
+
+**B) Armstrong Advisor erweitern (`sot-armstrong-advisor/index.ts`):**
+
+1. `ARM.MOD14.CREATE_RESEARCH_ORDER` zu `MVP_EXECUTABLE_ACTIONS` hinzufuegen
+2. Eine Action-Definition fuer den Advisor hinzufuegen (analog zu `GLOBAL_ACTIONS`)
+3. Intent-Erkennung erweitern: Wenn der Nutzer "recherchiere Immobilienmakler in Muenchen" sagt, soll Armstrong:
+   - Den Intent als `ACTION` klassifizieren
+   - Die Action `ARM.MOD14.CREATE_RESEARCH_ORDER` vorschlagen
+   - Parameter extrahieren: `intent_text`, `region`, `branche`, `max_results`
+   - Credit-Kosten anzeigen und Bestaetigung anfordern
+   - Bei Bestaetigung: `research_orders`-Eintrag erstellen und `sot-research-run-order` aufrufen
+   - Bei Abschluss: Task-Widget am Dashboard erstellen (ueber `ARM.MOD00.CREATE_TASK` mit Link)
+
+**C) Ablauf wenn Armstrong die Recherche ausfuehrt:**
+
+```text
+Nutzer: "Armstrong, recherchiere Immobilienmakler in Muenchen"
+    |
+    v
+Armstrong: Intent = ACTION, Action = ARM.MOD14.CREATE_RESEARCH_ORDER
+    |
+    v
+Armstrong zeigt ActionCard:
+  "Rechercheauftrag: Immobilienmakler in Muenchen"
+  "25 Kontakte x 0,50 EUR = 12,50 EUR"
+  [Ausfuehren] [Abbrechen]
+    |
+    v (Nutzer bestaetigt)
+Armstrong:
+  1. Erstellt research_order (status: draft -> queued)
+  2. Ruft sot-research-run-order auf
+  3. Wartet auf Abschluss (polling oder callback)
+  4. Erstellt Dashboard-Widget (task_widgets) mit Link
+  5. Antwortet: "Recherche abgeschlossen: 18 Kontakte gefunden.
+     Ich habe ein Widget auf deinem Dashboard erstellt."
+```
+
+**D) Dashboard-Widget nach Abschluss:**
+
+Armstrong erstellt ueber `ARM.MOD00.CREATE_TASK` ein Widget:
+- Titel: "Recherche: Immobilienmakler Muenchen"
+- Beschreibung: "18 Kontakte gefunden — 14 neu, 4 bereits im Kontaktbuch"
+- Link: `/portal/communication-pro/recherche` (mit order_id Query-Param)
+- Status: done
+
+### Betroffene Dateien
+
+| Datei | Aenderung |
+|-------|-----------|
+| `ResearchTab.tsx` | `pb-40` fuer Scroll-Padding |
+| `src/manifests/armstrongManifest.ts` | Neue Action `ARM.MOD14.CREATE_RESEARCH_ORDER` |
+| `supabase/functions/sot-armstrong-advisor/index.ts` | MOD-14 Action in `MVP_EXECUTABLE_ACTIONS`, Action-Definition, Intent-Handling fuer Recherche-Auftraege mit Credit-Bestaetigung und Widget-Erstellung |
 
