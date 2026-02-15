@@ -7,19 +7,20 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
-import { Loader2, Shield, ArrowLeft, Mail } from 'lucide-react';
+import { Loader2, Shield, ArrowLeft, Mail, Lock } from 'lucide-react';
 import { z } from 'zod';
 
 const emailSchema = z.string().email('Ungültige E-Mail-Adresse');
 
-type Step = 'email' | 'pin';
+type Step = 'login' | 'email' | 'pin';
 
 export default function Auth() {
   const navigate = useNavigate();
-  const { user, isLoading, signInWithOtp, verifyOtp } = useAuth();
+  const { user, isLoading, signIn, signInWithOtp, verifyOtp } = useAuth();
 
-  const [step, setStep] = useState<Step>('email');
+  const [step, setStep] = useState<Step>('login');
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [pin, setPin] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -31,13 +32,40 @@ export default function Auth() {
     }
   }, [user, isLoading, navigate]);
 
-  // Cooldown timer
   useEffect(() => {
     if (cooldown <= 0) return;
     const t = setTimeout(() => setCooldown(c => c - 1), 1000);
     return () => clearTimeout(t);
   }, [cooldown]);
 
+  // Password login
+  const handlePasswordLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+
+    const normalizedEmail = email.trim().toLowerCase();
+    try {
+      emailSchema.parse(normalizedEmail);
+    } catch {
+      setError('Bitte gib eine gültige E-Mail-Adresse ein.');
+      return;
+    }
+
+    if (!password) {
+      setError('Bitte gib dein Passwort ein.');
+      return;
+    }
+
+    setSubmitting(true);
+    const { error } = await signIn(normalizedEmail, password);
+    setSubmitting(false);
+
+    if (error) {
+      setError('Ungültige Anmeldedaten. Bitte versuche es erneut.');
+    }
+  };
+
+  // OTP: send code
   const handleSendCode = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -62,6 +90,7 @@ export default function Auth() {
     }
   };
 
+  // OTP: verify pin
   const handleVerifyPin = async (value: string) => {
     if (value.length !== 6) return;
     setPin(value);
@@ -76,7 +105,6 @@ export default function Auth() {
       setError('Ungültiger Code. Bitte versuche es erneut.');
       setPin('');
     }
-    // On success, onAuthStateChange handles redirect
   };
 
   const handleResend = async () => {
@@ -99,6 +127,12 @@ export default function Auth() {
     );
   }
 
+  const descriptions: Record<Step, string> = {
+    login: 'Melde dich mit deiner E-Mail und deinem Passwort an.',
+    email: 'Gib deine E-Mail-Adresse ein, um einen Zugangscode zu erhalten.',
+    pin: 'Gib den 6-stelligen Code ein, den wir an deine E-Mail gesendet haben.',
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-muted/30 p-4">
       <Card className="w-full max-w-md">
@@ -107,14 +141,73 @@ export default function Auth() {
             <Shield className="h-7 w-7 text-primary-foreground" />
           </div>
           <CardTitle className="text-2xl">Portalzugang</CardTitle>
-          <CardDescription>
-            {step === 'email'
-              ? 'Gib deine E-Mail-Adresse ein, um einen Zugangscode zu erhalten.'
-              : 'Gib den 6-stelligen Code ein, den wir an deine E-Mail gesendet haben.'}
-          </CardDescription>
+          <CardDescription>{descriptions[step]}</CardDescription>
         </CardHeader>
         <CardContent>
-          {step === 'email' ? (
+          {/* Step: Password Login */}
+          {step === 'login' && (
+            <form onSubmit={handlePasswordLogin} className="space-y-4">
+              {error && (
+                <Alert variant="destructive">
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
+              <div className="space-y-2">
+                <Label htmlFor="login-email">E-Mail</Label>
+                <Input
+                  id="login-email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="max@example.de"
+                  required
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  inputMode="email"
+                  autoFocus
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="login-password">Passwort</Label>
+                <Input
+                  id="login-password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  required
+                />
+              </div>
+              <Button type="submit" className="w-full" disabled={submitting}>
+                {submitting ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Lock className="mr-2 h-4 w-4" />
+                )}
+                Anmelden
+              </Button>
+              <div className="text-center pt-2">
+                <Button
+                  type="button"
+                  variant="link"
+                  size="sm"
+                  className="text-muted-foreground"
+                  onClick={() => {
+                    setStep('email');
+                    setError(null);
+                    setPassword('');
+                  }}
+                >
+                  <Mail className="mr-1 h-3 w-3" />
+                  Stattdessen Code per E-Mail erhalten
+                </Button>
+              </div>
+            </form>
+          )}
+
+          {/* Step: OTP Email */}
+          {step === 'email' && (
             <form onSubmit={handleSendCode} className="space-y-4">
               {error && (
                 <Alert variant="destructive">
@@ -145,29 +238,39 @@ export default function Auth() {
                 )}
                 Zugangscode senden
               </Button>
+              <div className="text-center pt-2">
+                <Button
+                  type="button"
+                  variant="link"
+                  size="sm"
+                  className="text-muted-foreground"
+                  onClick={() => {
+                    setStep('login');
+                    setError(null);
+                  }}
+                >
+                  <ArrowLeft className="mr-1 h-3 w-3" />
+                  Mit Passwort anmelden
+                </Button>
+              </div>
             </form>
-          ) : (
+          )}
+
+          {/* Step: OTP Pin */}
+          {step === 'pin' && (
             <div className="space-y-6">
               {error && (
                 <Alert variant="destructive">
                   <AlertDescription>{error}</AlertDescription>
                 </Alert>
               )}
-
               <div className="flex flex-col items-center gap-2">
                 <p className="text-sm text-muted-foreground">
                   Code gesendet an <span className="font-medium text-foreground">{email}</span>
                 </p>
               </div>
-
-              {/* PIN Input — Bank-Feeling */}
               <div className="flex justify-center">
-                <InputOTP
-                  maxLength={6}
-                  value={pin}
-                  onChange={handleVerifyPin}
-                  disabled={submitting}
-                >
+                <InputOTP maxLength={6} value={pin} onChange={handleVerifyPin} disabled={submitting}>
                   <InputOTPGroup>
                     <InputOTPSlot index={0} />
                     <InputOTPSlot index={1} />
@@ -181,36 +284,23 @@ export default function Auth() {
                   </InputOTPGroup>
                 </InputOTP>
               </div>
-
               {submitting && (
                 <div className="flex justify-center">
                   <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                 </div>
               )}
-
               <div className="flex flex-col items-center gap-3">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleResend}
-                  disabled={cooldown > 0}
-                  className="text-muted-foreground"
-                >
+                <Button variant="ghost" size="sm" onClick={handleResend} disabled={cooldown > 0} className="text-muted-foreground">
                   {cooldown > 0 ? `Neuer Code in ${cooldown}s` : 'Code erneut senden'}
                 </Button>
-
                 <Button
                   variant="link"
                   size="sm"
-                  onClick={() => {
-                    setStep('email');
-                    setPin('');
-                    setError(null);
-                  }}
+                  onClick={() => { setStep('login'); setPin(''); setError(null); }}
                   className="text-muted-foreground"
                 >
                   <ArrowLeft className="mr-1 h-3 w-3" />
-                  Andere E-Mail verwenden
+                  Zurück zur Anmeldung
                 </Button>
               </div>
             </div>
