@@ -3,9 +3,20 @@
  */
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Search, Globe, Database, Cpu, Plus } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { ResearchOrder } from '@/hooks/useResearchOrders';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 const STATUS_CONFIG: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
   draft: { label: 'Entwurf', variant: 'outline' },
@@ -17,30 +28,50 @@ const STATUS_CONFIG: Record<string, { label: string; variant: 'default' | 'secon
   cancelled: { label: 'Abgebrochen', variant: 'outline' },
 };
 
-const PROVIDER_ICONS: Record<string, typeof Globe> = {
-  firecrawl: Globe,
-  epify: Database,
-  apollo: Search,
-};
-
 interface Props {
   order: ResearchOrder;
   isActive: boolean;
   onClick: () => void;
+  onDelete?: (id: string) => void;
 }
 
-export function ResearchOrderWidget({ order, isActive, onClick }: Props) {
+export function ResearchOrderWidget({ order, isActive, onClick, onDelete }: Props) {
   const status = STATUS_CONFIG[order.status] || STATUS_CONFIG.draft;
-  const providers = order.provider_plan_json || {};
 
   return (
     <Card
       className={cn(
-        'glass-card p-4 cursor-pointer transition-all hover:ring-2 hover:ring-primary/40',
+        'glass-card p-4 cursor-pointer transition-all hover:ring-2 hover:ring-primary/40 relative group',
         isActive && 'ring-2 ring-primary shadow-lg'
       )}
       onClick={onClick}
     >
+      {/* Delete button */}
+      {onDelete && (
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <button
+              onClick={e => e.stopPropagation()}
+              className="absolute top-2 right-2 h-6 w-6 rounded-full bg-destructive/10 text-destructive flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive/20 z-10"
+            >
+              <Trash2 className="h-3 w-3" />
+            </button>
+          </AlertDialogTrigger>
+          <AlertDialogContent onClick={e => e.stopPropagation()}>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Auftrag löschen?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Der Rechercheauftrag „{order.title || 'Ohne Titel'}" wird unwiderruflich gelöscht.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+              <AlertDialogAction onClick={() => onDelete(order.id)}>Löschen</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
+
       <div className="flex items-start justify-between mb-2">
         <h4 className="text-sm font-semibold text-foreground truncate flex-1 mr-2">
           {order.title || 'Ohne Titel'}
@@ -51,25 +82,16 @@ export function ResearchOrderWidget({ order, isActive, onClick }: Props) {
       </div>
 
       <p className="text-xs text-muted-foreground line-clamp-2 mb-3">
-        {order.intent_text || 'Kein Suchintent definiert'}
+        {order.intent_text || 'Noch nicht konfiguriert'}
       </p>
 
       <div className="flex items-center justify-between text-xs text-muted-foreground">
-        <div className="flex items-center gap-1">
-          {Object.entries(PROVIDER_ICONS).map(([key, Icon]) => (
-            providers[key] !== false && (
-              <Icon key={key} className="h-3 w-3 text-muted-foreground/60" />
-            )
-          ))}
-        </div>
-        <div className="flex items-center gap-2">
-          <span>max {order.max_results}</span>
-          {order.results_count > 0 && (
-            <span className="font-medium text-foreground">
-              {order.results_count} Treffer
-            </span>
-          )}
-        </div>
+        <span>max {order.max_results}</span>
+        {order.results_count > 0 && (
+          <span className="font-medium text-foreground">
+            {order.results_count} Treffer
+          </span>
+        )}
       </div>
     </Card>
   );

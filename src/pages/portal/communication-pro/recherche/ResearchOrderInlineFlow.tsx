@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Sparkles, Play, Loader2, Globe, Database, Search, Brain, ListChecks, FileText, UserPlus, CreditCard } from 'lucide-react';
+import { Sparkles, Play, Loader2, Search, Brain, ListChecks, FileText, UserPlus, CreditCard, BookOpen, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import { type ResearchOrder, useUpdateResearchOrder, useStartResearchOrder } from '@/hooks/useResearchOrders';
 import { useResearchAI } from '@/hooks/useResearchAI';
@@ -170,8 +170,6 @@ export function ResearchOrderInlineFlow({ order }: Props) {
               <SelectContent>
                 <SelectItem value="10">10 Treffer</SelectItem>
                 <SelectItem value="25">25 Treffer</SelectItem>
-                <SelectItem value="50">50 Treffer</SelectItem>
-                <SelectItem value="100">100 Treffer</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -216,49 +214,11 @@ export function ResearchOrderInlineFlow({ order }: Props) {
         )}
       </Card>
 
-      {/* Section 3 — Provider & Quellen */}
-      <Card className="glass-card p-4 md:p-6">
-        <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
-          <Globe className="h-4 w-4" />
-          3. Provider & Quellen
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <ProviderToggle
-            icon={<Globe className="h-5 w-5" />}
-            label="Firecrawl"
-            description="Web Crawl & Extraction"
-            enabled={providerPlan.firecrawl !== false}
-            onChange={v => setProviderPlan({ ...providerPlan, firecrawl: v })}
-            disabled={!isDraft}
-          />
-          <ProviderToggle
-            icon={<Database className="h-5 w-5" />}
-            label="Epify"
-            description="Enrichment & Lookup"
-            enabled={providerPlan.epify === true}
-            onChange={v => setProviderPlan({ ...providerPlan, epify: v })}
-            disabled={!isDraft}
-            locked
-            lockedHint="API-Key noch nicht hinterlegt"
-          />
-          <ProviderToggle
-            icon={<Search className="h-5 w-5" />}
-            label="Apollo"
-            description="People Search"
-            enabled={providerPlan.apollo === true}
-            onChange={v => setProviderPlan({ ...providerPlan, apollo: v })}
-            disabled={!isDraft}
-            locked
-            lockedHint="API-Key noch nicht hinterlegt"
-          />
-        </div>
-      </Card>
-
-      {/* Section 4 — KI-Assistent */}
+      {/* Section 3 — KI-Assistent */}
       <Card className="glass-card p-4 md:p-6">
         <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
           <Brain className="h-4 w-4" />
-          4. KI-Assistent
+          3. KI-Assistent
         </h3>
         <div className="flex flex-wrap gap-2">
           <Button
@@ -304,12 +264,12 @@ export function ResearchOrderInlineFlow({ order }: Props) {
         </div>
       </Card>
 
-      {/* Section 5 — Consent & Start */}
+      {/* Section 4 — Consent & Start */}
       {isDraft && (
         <Card className="glass-card p-4 md:p-6">
           <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
             <Play className="h-4 w-4" />
-            5. Consent & Start
+            4. Consent & Start
           </h3>
           <div className="space-y-4">
             <div className="flex items-start gap-2">
@@ -348,12 +308,12 @@ export function ResearchOrderInlineFlow({ order }: Props) {
         <RunningProgress order={order} />
       )}
 
-      {/* Section 6 — Ergebnisse */}
+      {/* Section 5 — Ergebnisse */}
       {hasResults && (
         <Card className="glass-card p-4 md:p-6">
           <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
             <ListChecks className="h-4 w-4" />
-            6. Ergebnisse ({order.results_count} Treffer)
+            5. Ergebnisse ({order.results_count} Treffer)
           </h3>
 
           {/* AI Summary */}
@@ -363,13 +323,28 @@ export function ResearchOrderInlineFlow({ order }: Props) {
             </div>
           )}
 
-          {/* GP Validator: Prompt to import if done but no imports */}
+          {/* CTA Banner: Kontakte übernehmen */}
           {order.status === 'done' && order.results_count > 0 && (
-            <div className="mb-4 p-3 bg-primary/5 border border-primary/20 rounded-lg text-xs flex items-center gap-2">
-              <UserPlus className="h-4 w-4 text-primary shrink-0" />
-              <span>
-                <strong>Kontakte übernehmen:</strong> Wähle Treffer aus und klicke "Ins Kontaktbuch", um sie als Kontakte zu speichern.
-              </span>
+            <div className="mb-4 p-4 rounded-xl bg-primary/10 border border-primary/30">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center">
+                  <BookOpen className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-foreground">Kontakte ins Kontaktbuch übernehmen</p>
+                  <p className="text-xs text-muted-foreground">{order.results_count} Treffer stehen zur Übernahme bereit</p>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Button size="sm" className="gap-1.5">
+                  <UserPlus className="h-4 w-4" />
+                  Ausgewählte ins Kontaktbuch
+                </Button>
+                <Button size="sm" variant="outline" className="gap-1.5">
+                  <Download className="h-4 w-4" />
+                  Excel-Export
+                </Button>
+              </div>
             </div>
           )}
 
@@ -377,43 +352,6 @@ export function ResearchOrderInlineFlow({ order }: Props) {
         </Card>
       )}
     </div>
-  );
-}
-
-function ProviderToggle({
-  icon,
-  label,
-  description,
-  enabled,
-  onChange,
-  disabled,
-  locked,
-  lockedHint,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  description: string;
-  enabled: boolean;
-  onChange: (v: boolean) => void;
-  disabled: boolean;
-  locked?: boolean;
-  lockedHint?: string;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={() => !locked && !disabled && onChange(!enabled)}
-      className={`relative p-3 rounded-lg border text-left transition-all ${
-        locked ? 'opacity-50 cursor-not-allowed' : disabled ? 'opacity-70' : 'cursor-pointer hover:bg-muted/50'
-      } ${enabled && !locked ? 'border-primary bg-primary/5' : 'border-border'}`}
-    >
-      <div className="flex items-center gap-2 mb-1">
-        {icon}
-        <span className="text-sm font-medium">{label}</span>
-        {enabled && !locked && <Badge variant="default" className="text-[10px] ml-auto">Aktiv</Badge>}
-      </div>
-      <p className="text-xs text-muted-foreground">{locked ? lockedHint : description}</p>
-    </button>
   );
 }
 
@@ -435,27 +373,27 @@ function RunningProgress({ order }: { order: ResearchOrder }) {
 
   const providers: ProviderStatus[] = [
     {
-      id: 'firecrawl',
-      label: 'Firecrawl',
+      id: 'web',
+      label: 'Web-Analyse',
       icon: 'globe',
-      status: providerPlan.firecrawl !== false ? (order.results_count > 0 ? `${order.results_count} gefunden` : 'Crawling…') : 'Inaktiv',
-      isActive: providerPlan.firecrawl !== false,
+      status: order.results_count > 0 ? `${order.results_count} gefunden` : 'Crawling…',
+      isActive: true,
       isDone: progress >= 100,
     },
     {
-      id: 'epify',
-      label: 'Epify',
+      id: 'enrichment',
+      label: 'Datenanreicherung',
       icon: 'database',
-      status: providerPlan.epify ? 'Anreichern…' : 'Inaktiv',
-      isActive: !!providerPlan.epify,
+      status: 'Anreichern…',
+      isActive: true,
       isDone: false,
     },
     {
-      id: 'apollo',
-      label: 'Apollo',
+      id: 'scoring',
+      label: 'Qualitätsbewertung',
       icon: 'search',
-      status: providerPlan.apollo ? 'Suche…' : 'Inaktiv',
-      isActive: !!providerPlan.apollo,
+      status: 'Bewertung…',
+      isActive: true,
       isDone: false,
     },
   ];

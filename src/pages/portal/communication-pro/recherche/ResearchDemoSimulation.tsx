@@ -19,7 +19,7 @@ const DEMO_CONTACTS: LiveContact[] = [
   { id: '8', firma: 'Capital Wohnen Verwaltung AG', kontakt: 'Sandra Lange', rolle: 'Vorstand', email: 's.lange@capital-wohnen.de', stadt: 'Bonn', score: 70 },
 ];
 
-const MAX_CONTACTS = 37;
+const MAX_CONTACTS = 25;
 
 export function ResearchDemoSimulation() {
   const [elapsedMs, setElapsedMs] = useState(0);
@@ -62,26 +62,26 @@ export function ResearchDemoSimulation() {
 
   const providers: ProviderStatus[] = [
     {
-      id: 'firecrawl',
-      label: 'Firecrawl',
+      id: 'web',
+      label: 'Web-Analyse',
       icon: 'globe',
-      status: phase === 'init' ? 'Warte…' : phase === 'done' ? '24 Seiten analysiert' : elapsedMs > 4000 ? `${Math.min(Math.floor((elapsedMs - 2000) / 400), 24)} Seiten…` : 'Crawling…',
+      status: phase === 'init' ? 'Warte…' : phase === 'done' ? '24 Seiten analysiert' : elapsedMs > 4000 ? `${Math.min(Math.floor((elapsedMs - 2000) / 400), 24)} Seiten…` : 'Analyse…',
       isActive: phase === 'running',
       isDone: isComplete,
     },
     {
       id: 'enrichment',
-      label: 'Enrichment',
+      label: 'Datenanreicherung',
       icon: 'database',
-      status: phase === 'init' ? 'Warte…' : phase === 'done' ? '37 angereichert' : elapsedMs > 5000 ? 'Anreichern…' : 'Warte…',
+      status: phase === 'init' ? 'Warte…' : phase === 'done' ? '25 angereichert' : elapsedMs > 5000 ? 'Anreichern…' : 'Warte…',
       isActive: phase === 'running' && elapsedMs > 5000,
       isDone: isComplete,
     },
     {
       id: 'scoring',
-      label: 'KI-Scoring',
+      label: 'Qualitätsbewertung',
       icon: 'search',
-      status: phase === 'init' ? 'Warte…' : phase === 'done' ? '37 bewertet' : elapsedMs > 7000 ? 'Scoring…' : 'Warte…',
+      status: phase === 'init' ? 'Warte…' : phase === 'done' ? '25 bewertet' : elapsedMs > 7000 ? 'Bewertung…' : 'Warte…',
       isActive: phase === 'running' && elapsedMs > 7000,
       isDone: isComplete,
     },

@@ -6,7 +6,7 @@
 import { useState, useCallback } from 'react';
 import { Loader2, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
-import { useResearchOrders, useCreateResearchOrder, type ResearchOrder } from '@/hooks/useResearchOrders';
+import { useResearchOrders, useCreateResearchOrder, useDeleteResearchOrder, type ResearchOrder } from '@/hooks/useResearchOrders';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDemoToggles } from '@/hooks/useDemoToggles';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
@@ -23,6 +23,7 @@ import { Card, CardContent } from '@/components/ui/card';
 export function ResearchTab() {
   const { data: orders = [], isLoading } = useResearchOrders();
   const createOrder = useCreateResearchOrder();
+  const deleteOrder = useDeleteResearchOrder();
   const { user, activeTenantId } = useAuth();
   const { isEnabled } = useDemoToggles();
   const [activeOrderId, setActiveOrderId] = useState<string | null>(null);
@@ -46,6 +47,16 @@ export function ResearchTab() {
       toast.error(`Fehler beim Erstellen: ${e.message}`);
     }
   }, [user, activeTenantId, createOrder]);
+
+  const handleDelete = useCallback(async (id: string) => {
+    try {
+      await deleteOrder.mutateAsync(id);
+      if (activeOrderId === id) setActiveOrderId(null);
+      toast.success('Auftrag gelöscht');
+    } catch (e: any) {
+      toast.error(`Löschen fehlgeschlagen: ${e.message}`);
+    }
+  }, [deleteOrder, activeOrderId]);
 
   if (isLoading) {
     return (
@@ -87,7 +98,7 @@ export function ResearchTab() {
                   </div>
                   <h4 className="text-sm font-semibold text-foreground mb-1">Hausverwaltungen NRW</h4>
                   <p className="text-xs text-muted-foreground line-clamp-2 mb-3">
-                    37 qualifizierte Kontakte gefunden
+                    25 qualifizierte Kontakte gefunden
                   </p>
                 </div>
                 <div className="space-y-1 text-xs text-muted-foreground">
@@ -101,7 +112,7 @@ export function ResearchTab() {
                   </div>
                   <div className="flex justify-between">
                     <span>Treffer:</span>
-                    <span className="text-foreground font-medium">37 / 50</span>
+                    <span className="text-foreground font-medium">25 / 25</span>
                   </div>
                 </div>
               </CardContent>
@@ -121,6 +132,7 @@ export function ResearchTab() {
               order={order}
               isActive={order.id === activeOrderId}
               onClick={() => setActiveOrderId(activeOrderId === order.id ? null : order.id)}
+              onDelete={handleDelete}
             />
           </WidgetCell>
         ))}

@@ -173,7 +173,7 @@ export function ResearchLiveProgress({
               <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                 Gefundene Kontakte
               </h4>
-              <div className="space-y-1 max-h-[300px] overflow-y-auto pr-1">
+              <div className="space-y-1">
                 {contacts.map((c, i) => (
                   <div
                     key={c.id}
