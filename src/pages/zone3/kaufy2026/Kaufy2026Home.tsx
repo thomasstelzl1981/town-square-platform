@@ -317,23 +317,15 @@ export default function Kaufy2026Home() {
         isLoading={isSearching || isLoadingListings}
       />
 
-      {/* Demo Listings — always visible when demo mode is on */}
-      {!hasSearched && demoListings.length > 0 && (
+      {/* Search-first: No results shown before search */}
+      {!hasSearched && (
         <section className="py-12 px-6 lg:px-10">
-          <h2 className="text-2xl font-bold text-[hsl(220,20%,10%)] mb-6 flex items-center gap-2">
-            Aktuelle Kapitalanlagen
-            <Badge className="bg-emerald-500/15 text-emerald-600 border-emerald-500/30 text-xs">DEMO</Badge>
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {demoListings.map((listing) => (
-              <InvestmentResultTile
-                key={listing.listing_id}
-                listing={listing as any}
-                metrics={null}
-                linkPrefix="/website/kaufy/immobilien"
-                showProvision={false}
-              />
-            ))}
+          <div className="text-center py-12 bg-[hsl(210,30%,97%)] rounded-2xl">
+            <Building2 className="w-12 h-12 mx-auto text-[hsl(215,16%,47%)] mb-4" />
+            <h3 className="text-lg font-semibold text-[hsl(220,20%,10%)] mb-2">Investment-Suche starten</h3>
+            <p className="text-[hsl(215,16%,47%)] max-w-md mx-auto">
+              Geben Sie Ihr zu versteuerndes Einkommen und Eigenkapital ein, um passende Kapitalanlage-Objekte mit individueller Belastungsberechnung zu finden.
+            </p>
           </div>
         </section>
       )}

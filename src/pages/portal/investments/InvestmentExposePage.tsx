@@ -55,6 +55,7 @@ interface ListingData {
   heating_type?: string | null;
   monthly_rent: number;
   units_count: number;
+  hero_image_url?: string | null;
 }
 
 export default function InvestmentExposePage() {
@@ -99,6 +100,7 @@ export default function InvestmentExposePage() {
           heating_type: null,
           monthly_rent: demoListing.monthly_rent_total,
           units_count: demoListing.unit_count,
+          hero_image_url: demoListing.hero_image_path || null,
         } satisfies ListingData;
       }
 
@@ -296,6 +298,7 @@ export default function InvestmentExposePage() {
             {/* Image Gallery - Shared Component (uses property_id, not listing.id!) */}
             <ExposeImageGallery 
               propertyId={listing.property_id}
+              heroImageUrl={listing.hero_image_url}
               aspectRatio="video"
             />
 

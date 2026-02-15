@@ -24,6 +24,8 @@ interface ListingImage {
 interface ExposeImageGalleryProps {
   propertyId: string;
   listingId?: string;
+  /** Fallback hero image URL for demo listings without DB images */
+  heroImageUrl?: string | null;
   className?: string;
   aspectRatio?: 'video' | 'square' | '4/3';
 }
@@ -31,6 +33,7 @@ interface ExposeImageGalleryProps {
 export function ExposeImageGallery({
   propertyId,
   listingId,
+  heroImageUrl,
   className,
   aspectRatio = 'video',
 }: ExposeImageGalleryProps) {
@@ -137,6 +140,14 @@ export function ExposeImageGallery({
   }
 
   if (images.length === 0) {
+    // Use heroImageUrl fallback if provided (demo listings)
+    if (heroImageUrl) {
+      return (
+        <div className={cn(aspectClasses[aspectRatio], 'rounded-xl overflow-hidden bg-muted', className)}>
+          <img src={heroImageUrl} alt="Objektbild" className="w-full h-full object-cover" loading="lazy" />
+        </div>
+      );
+    }
     return (
       <div
         className={cn(

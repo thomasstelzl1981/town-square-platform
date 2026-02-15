@@ -284,6 +284,9 @@ const BeratungTab = () => {
       });
     }
 
+    // Search-first: no results before search
+    if (!hasSearched) return [];
+
     return merged;
   }, [getMergedListings, searchMode, hasSearched, cityFilter, priceMax, areaMin, yieldMin]);
 
