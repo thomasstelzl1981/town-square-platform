@@ -33,36 +33,36 @@
       "id": "PHASE-2",
       "title": "Immo-Suche Mobile-First",
       "priority": "HIGH",
-      "status": "todo",
+      "status": "done",
       "items": [
         {
           "id": "MUX-010",
           "title": "SucheTab mobile-responsive Suchformular (stacked inputs, full-width button)",
-          "status": "todo",
+          "status": "done",
           "files": ["src/pages/portal/investments/SucheTab.tsx"]
         },
         {
           "id": "MUX-011",
           "title": "InvestmentResultTile Mobile-Variante (größeres Bild, 1-Spalte)",
-          "status": "todo",
+          "status": "done",
           "files": ["src/components/investment/InvestmentResultTile.tsx"]
         },
         {
           "id": "MUX-012",
           "title": "Ergebnis-Sortierung und Counter auf Mobile",
-          "status": "todo",
+          "status": "done",
           "files": ["src/pages/portal/investments/SucheTab.tsx"]
         },
         {
           "id": "MUX-013",
           "title": "InvestmentExposePage mobile Anpassung",
-          "status": "todo",
+          "status": "done",
           "files": ["src/pages/portal/investments/InvestmentExposePage.tsx"]
         },
         {
           "id": "MUX-014",
           "title": "Pull-to-Refresh und Endlos-Scroll für Suchergebnisse",
-          "status": "todo",
+          "status": "deferred",
           "files": ["src/pages/portal/investments/SucheTab.tsx"]
         }
       ]

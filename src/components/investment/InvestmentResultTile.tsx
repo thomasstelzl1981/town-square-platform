@@ -22,6 +22,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Heart, MapPin, Building2, TrendingUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface PublicListing {
   listing_id: string;
@@ -65,6 +66,7 @@ export function InvestmentResultTile({
   showProvision = false,
   linkPrefix = '/portal/investments/objekt'
 }: InvestmentResultTileProps) {
+  const isMobile = useIsMobile();
   // PHASE 2: Preserve search params in link
   const [urlParams] = useSearchParams();
   const linkUrl = `${linkPrefix}/${listing.public_id || listing.listing_id}${urlParams.toString() ? `?${urlParams.toString()}` : ''}`;
@@ -101,8 +103,8 @@ export function InvestmentResultTile({
   return (
     <Link to={linkUrl}>
       <Card className="overflow-hidden hover:shadow-lg transition-shadow group cursor-pointer">
-        {/* Bild OBEN (ca. 40% Höhe) */}
-        <div className="aspect-[16/9] bg-muted flex items-center justify-center relative overflow-hidden">
+        {/* Bild OBEN — larger aspect ratio on mobile for better visual impact */}
+        <div className={cn("bg-muted flex items-center justify-center relative overflow-hidden", isMobile ? "aspect-[4/3]" : "aspect-[16/9]")}>
           {listing.hero_image_path ? (
             <img 
               src={listing.hero_image_path} 
@@ -222,9 +224,10 @@ export function InvestmentResultTile({
             ? "bg-green-100 dark:bg-green-900/30" 
             : "bg-muted/50"
         )}>
-          <span className="text-sm font-semibold">Monatsbelastung</span>
+          <span className={cn("text-sm font-semibold", isMobile && "text-base")}>Monatsbelastung</span>
           <span className={cn(
-            "text-base font-bold",
+            "font-bold",
+            isMobile ? "text-lg" : "text-base",
             isPositiveCashflow ? "text-green-600" : "text-foreground"
           )}>
             {metrics ? (
