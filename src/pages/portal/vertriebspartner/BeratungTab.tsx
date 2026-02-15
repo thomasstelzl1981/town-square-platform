@@ -16,9 +16,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Building2, Calculator, Search, Loader2 } from 'lucide-react';
+import { Building2, Calculator, Search, Loader2, Newspaper } from 'lucide-react';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
+import { DESIGN } from '@/config/designManifest';
+import { ManagerVisitenkarte } from '@/components/shared/ManagerVisitenkarte';
+import { MarketReportWidget } from '@/components/shared/MarketReportWidget';
 import { formatCurrency } from '@/lib/formatters';
 
 import { PartnerSearchForm, type PartnerSearchParams } from '@/components/vertriebspartner';
@@ -293,6 +296,27 @@ const BeratungTab = () => {
         description="Finden Sie das perfekte Investment für Ihren Kunden"
         actions={hasSearched ? <Badge variant="secondary">{visibleListings.length} Objekt{visibleListings.length !== 1 ? 'e' : ''}</Badge> : undefined}
       />
+
+      {/* ═══ DASHBOARD_HEADER: Visitenkarte + Marktlage ═══ */}
+      <div className={DESIGN.DASHBOARD_HEADER.GRID}>
+        <ManagerVisitenkarte
+          role="Immomanager / Vertriebspartner"
+          gradientFrom="hsl(160,60%,40%)"
+          gradientTo="hsl(180,50%,45%)"
+          badgeText="Kundenberatung"
+        />
+        <MarketReportWidget
+          icon={Newspaper}
+          title="Marktlage"
+          subtitle="Wohnimmobilien — Preise & Trends"
+          buttonLabel="Marktbericht anzeigen"
+          gradientFrom="hsl(160,60%,40%)"
+          gradientTo="hsl(180,50%,45%)"
+          sheetTitle="Immobilienmarkt-Report"
+          sheetDescription="KI-gestützter Bericht zur aktuellen Marktlage"
+          functionName="sot-market-pulse-report"
+        />
+      </div>
 
       {/* Media Widgets */}
       <MediaWidgetGrid />

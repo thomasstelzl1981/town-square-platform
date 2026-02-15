@@ -1,8 +1,13 @@
 /**
  * KatalogTab — MOD-09 Vertriebspartner Objektkatalog
  * Mit erweiterten Filtern: Lage, Typ, Preis, Provision, Rendite
+ * + DASHBOARD_HEADER: Visitenkarte + Marktlage-Widget
  */
 import { useState, useMemo } from 'react';
+import { Newspaper } from 'lucide-react';
+import { DESIGN } from '@/config/designManifest';
+import { ManagerVisitenkarte } from '@/components/shared/ManagerVisitenkarte';
+import { MarketReportWidget } from '@/components/shared/MarketReportWidget';
 import { useQuery } from '@tanstack/react-query';
 import { useDemoListings, isDemoListingId, deduplicateByField } from '@/hooks/useDemoListings';
 import { supabase } from '@/integrations/supabase/client';
@@ -279,6 +284,28 @@ const KatalogTab = () => {
   return (
     <PageShell>
       <ModulePageHeader title="Objektkatalog" />
+
+      {/* ═══ DASHBOARD_HEADER: Visitenkarte + Marktlage ═══ */}
+      <div className={DESIGN.DASHBOARD_HEADER.GRID}>
+        <ManagerVisitenkarte
+          role="Immomanager / Vertriebspartner"
+          gradientFrom="hsl(160,60%,40%)"
+          gradientTo="hsl(180,50%,45%)"
+          badgeText={`${allListings.length} Objekte im Katalog`}
+        />
+        <MarketReportWidget
+          icon={Newspaper}
+          title="Marktlage"
+          subtitle="Wohnimmobilien — Preise & Trends"
+          buttonLabel="Marktbericht anzeigen"
+          gradientFrom="hsl(160,60%,40%)"
+          gradientTo="hsl(180,50%,45%)"
+          sheetTitle="Immobilienmarkt-Report"
+          sheetDescription="KI-gestützter Bericht zur aktuellen Marktlage"
+          functionName="sot-market-pulse-report"
+        />
+      </div>
+
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm text-muted-foreground">

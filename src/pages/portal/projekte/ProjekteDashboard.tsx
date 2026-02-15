@@ -9,6 +9,9 @@ import { useState, useCallback } from 'react';
 import { DESIGN } from '@/config/designManifest';
 import { useNavigate } from 'react-router-dom';
 import { useDropzone } from 'react-dropzone';
+import { TrendingUp as TrendingUpIcon, Globe } from 'lucide-react';
+import { ManagerVisitenkarte } from '@/components/shared/ManagerVisitenkarte';
+import { MarketReportWidget } from '@/components/shared/MarketReportWidget';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -166,48 +169,25 @@ export default function ProjekteDashboard() {
     <PageShell>
       <ModulePageHeader title="PROJEKTMANAGER" />
 
-      {/* ═══ KPI Stats — direkt unter Header ═══ */}
-      <div className={cn(DESIGN.KPI_GRID.FULL, isDemo && "opacity-50")}>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Projekte</CardTitle>
-            <FolderKanban className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalProjects}</div>
-            <p className="text-xs text-muted-foreground">{stats.activeProjects} aktiv im Vertrieb {isDemo && '(Musterdaten)'}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Einheiten</CardTitle>
-            <Building2 className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalUnits}</div>
-            <p className="text-xs text-muted-foreground">{stats.soldUnits} verkauft</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Abverkaufsquote</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalUnits > 0 ? Math.round((stats.soldUnits / stats.totalUnits) * 100) : 0}%</div>
-            <p className="text-xs text-muted-foreground">Gesamt-Portfolio</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Umsatz IST</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(stats.totalRevenue)}</div>
-            <p className="text-xs text-muted-foreground">Aus Verkäufen</p>
-          </CardContent>
-        </Card>
+      {/* ═══ DASHBOARD_HEADER: Visitenkarte + KI-Marktanalyse ═══ */}
+      <div className={DESIGN.DASHBOARD_HEADER.GRID}>
+        <ManagerVisitenkarte
+          role="Projektmanager"
+          gradientFrom="hsl(25,85%,50%)"
+          gradientTo="hsl(15,80%,45%)"
+          badgeText={`${stats.activeProjects} aktive Projekte`}
+        />
+        <MarketReportWidget
+          icon={TrendingUpIcon}
+          title="Marktanalyse"
+          subtitle="KI-gestützter Wettbewerbsbericht"
+          buttonLabel="Analyse starten"
+          gradientFrom="hsl(25,85%,50%)"
+          gradientTo="hsl(15,80%,45%)"
+          sheetTitle="KI-Marktanalyse"
+          sheetDescription="Strukturierter Wettbewerbsbericht zu Ihren Projekten"
+          functionName="sot-project-market-report"
+        />
       </div>
 
       {/* ═══ Meine Projekte — Widget-Grid direkt nach KPIs ═══ */}
@@ -374,6 +354,50 @@ export default function ProjekteDashboard() {
           )}
         </CardContent>
       </Card>
+
+      {/* ═══ KPI-Kacheln — ganz unten ═══ */}
+      <div className={cn(DESIGN.KPI_GRID.FULL, isDemo && "opacity-50")}>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Projekte</CardTitle>
+            <FolderKanban className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.totalProjects}</div>
+            <p className="text-xs text-muted-foreground">{stats.activeProjects} aktiv im Vertrieb {isDemo && '(Musterdaten)'}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Einheiten</CardTitle>
+            <Building2 className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.totalUnits}</div>
+            <p className="text-xs text-muted-foreground">{stats.soldUnits} verkauft</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Abverkaufsquote</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.totalUnits > 0 ? Math.round((stats.soldUnits / stats.totalUnits) * 100) : 0}%</div>
+            <p className="text-xs text-muted-foreground">Gesamt-Portfolio</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Umsatz IST</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{formatCurrency(stats.totalRevenue)}</div>
+            <p className="text-xs text-muted-foreground">Aus Verkäufen</p>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Dialogs */}
       <CreateProjectDialog
