@@ -1,84 +1,107 @@
 
 
-# Zone 1 System-Bereinigung: Duplikate entfernen + Credit-Monitoring sichtbar machen
+# PV-Widget reparieren: RLS-Policies + Demo-Daten-Abgleich
 
 ## Analyse-Ergebnis
 
-### Problem 1: Doppelte Menuepunkte (Projekte, Listings, Landing Pages)
+### Kernproblem: RLS blockiert den Zugriff auf `pv_plants`
 
-Die Sub-Routen `projekt-desk/projekte`, `projekt-desk/listings`, `projekt-desk/landing-pages` erscheinen faelschlicherweise in der "System"-Gruppe. Ursache: `shouldShowInNav()` filtert Sub-Routen fuer `sales-desk/`, `finance-desk/`, `acquiary/` und `futureroom/` — aber **nicht** fuer `projekt-desk/`. Die Sub-Routen fallen in den Default-Case und landen in "System".
+Die Netzwerk-Logs zeigen: `GET /pv_plants?tenant_id=eq.a0000000-...` gibt `[]` zurueck, obwohl ein Datensatz existiert. Die Ursache ist ein fehlerhaftes RLS-Policy-Muster:
 
-**Fix:** Eine Zeile in `shouldShowInNav()` hinzufuegen:
+Die PERMISSIVE SELECT Policy verwendet `my_scope_org_ids(auth.uid())`. Diese Funktion erwartet eine **Organisations-ID** als Parameter, bekommt aber die **User-UUID**. Dadurch gibt sie nur `[d028bc99-...]` (die User-ID) zurueck — nicht die Tenant-ID `a0000000-...`. Da die Plant `tenant_id = a0000000-...` hat, scheitert der Zugriff.
 
-```text
-path.startsWith('projekt-desk/')  // NEU — filtert Sub-Routen
-```
+Zum Vergleich: Die `properties`-Tabelle nutzt korrekt die `memberships`-Tabelle fuer RLS und funktioniert einwandfrei.
 
-### Problem 2: Credit-Monitoring fehlt in der Sidebar
+**Betroffene Tabellen mit dem gleichen fehlerhaften Muster:**
+- `pv_plants` (4 PERMISSIVE Policies: SELECT, INSERT, UPDATE, DELETE)
+- `pv_connectors` (1 ALL Policy)
+- `pv_measurements` (1 ALL Policy)
 
-Die Seiten existieren bereits:
-- `armstrong/billing` (ArmstrongBilling) — Technische Verbrauchserfassung pro KI-Aktion
-- `armstrong/costs` (PlatformCostMonitor) — Plattform-Kostenmonitor
+### Zweitproblem: DB-Daten stimmen nicht mit Demo-Daten ueberein
 
-Beide sind aktuell als `armstrong/`-Sub-Routen klassifiziert und werden durch die Regel `if (path.startsWith('armstrong/')) return false` aus der Navigation ausgeblendet. Sie sind nur ueber das Armstrong-Dashboard intern erreichbar.
+| Feld | Datenbank | DEMO_PLANT (Frontend) |
+|------|-----------|----------------------|
+| name | "EFH SMA 9,8 kWp" | "EFH Oberhaching 32,4 kWp" |
+| kwp | 9.80 | 32.4 |
+| city | Berlin | Deisenhofen |
+| street | Schadowstr. | Sauerlacher Str. |
 
-**Fix:** Eine Ausnahme fuer `armstrong/billing` und `armstrong/costs` in `shouldShowInNav()` hinzufuegen, damit sie als eigenstaendige Menuepunkte in der "Armstrong"-Gruppe der Sidebar erscheinen.
-
-### Klarstellung: Kein Mieteingangs-Monitoring in Zone 1
-
-Mieteingangs-Daten (`rent_payments`) sind private Mieterdaten und bleiben ausschliesslich in Zone 2 (MOD-04 Immobilien, GeldeingangTab). Es wird **keine** Zahlungsmonitoring-Seite in Zone 1 erstellt. Der im vorherigen Plan erwaehnte "Zahlungsmonitoring"-Punkt wird gestrichen.
+Das Dashboard-Widget `PVLiveWidget` liest aus der DB via `usePvPlants()`. Selbst wenn RLS gefixt wird, stimmen die Daten nicht mit der Demo-Akte ueberein.
 
 ## Technische Umsetzung
 
-### Datei: `src/components/admin/AdminSidebar.tsx`
+### Schritt 1: SQL Migration — RLS Policies reparieren
 
-**Aenderung 1 — Zeilen 184-191:** `projekt-desk/` zu den gefilterten Desk-Sub-Routen hinzufuegen:
+Alle fehlerhaften `my_scope_org_ids(auth.uid())`-Policies durch das korrekte `memberships`-Pattern ersetzen:
 
-```text
-if (path.includes('/') && (
-  path.startsWith('sales-desk/') ||
-  path.startsWith('finance-desk/') ||
-  path.startsWith('acquiary/') ||
-  path.startsWith('projekt-desk/')     // NEU
-)) {
-  return false;
-}
-```
-
-**Aenderung 2 — Zeilen 177-183:** Armstrong-Sub-Routen-Filter erweitern, damit Billing und Costs sichtbar werden:
+**pv_plants (4 Policies ersetzen):**
 
 ```text
-if (path === 'armstrong') {
-  return true;
-}
-if (path === 'armstrong/billing' || path === 'armstrong/costs') {
-  return true;  // Credit-Monitoring in Sidebar sichtbar
-}
-if (path.startsWith('armstrong/')) {
-  return false;
-}
+-- SELECT
+DROP POLICY "Tenant members can view pv_plants" ON pv_plants;
+CREATE POLICY "Tenant members can view pv_plants" ON pv_plants
+  FOR SELECT USING (
+    EXISTS (SELECT 1 FROM memberships m 
+            WHERE m.user_id = auth.uid() 
+            AND m.tenant_id = pv_plants.tenant_id)
+  );
+
+-- INSERT, UPDATE, DELETE analog
 ```
 
-### Keine weiteren Dateien betroffen
+**pv_connectors + pv_measurements (je 1 ALL Policy ersetzen):**
 
-- Keine neue Seite noetig (ArmstrongBilling und PlatformCostMonitor existieren bereits)
-- Keine Route-Aenderung noetig (Routes sind im Manifest bereits definiert)
-- Icon-Mapping fuer `ArmstrongBilling` (`CreditCard`) und `PlatformCostMonitor` existiert bereits
+```text
+-- Gleicher Fix: my_scope_org_ids -> memberships-Join
+DROP POLICY "Access pv_connectors via plant tenant" ON pv_connectors;
+CREATE POLICY "Access pv_connectors via plant tenant" ON pv_connectors
+  FOR ALL USING (
+    EXISTS (SELECT 1 FROM memberships m 
+            WHERE m.user_id = auth.uid() 
+            AND m.tenant_id = pv_connectors.tenant_id)
+  );
+```
 
-### Ergebnis nach Bereinigung
+### Schritt 2: SQL Migration — Demo-Plant-Daten aktualisieren
 
-**System-Gruppe (vorher):**
-- Integrationen, Oversight, Audit Hub, Fortbildung
-- Projekte (FALSCH), Listings (FALSCH), Landing Pages (FALSCH)
+Den bestehenden DB-Eintrag (`00000000-0000-4000-a000-000000000901`) auf die korrekten Oberhaching-Demodaten updaten:
 
-**System-Gruppe (nachher):**
-- Integrationen, Oversight, Audit Hub, Fortbildung
+```text
+UPDATE pv_plants SET
+  name = 'EFH Oberhaching 32,4 kWp',
+  kwp = 32.4,
+  city = 'Deisenhofen',
+  street = 'Sauerlacher Str.',
+  house_number = '30',
+  postal_code = '82041',
+  commissioning_date = '2019-04-28',
+  wr_manufacturer = 'SMA Solar Technology AG',
+  wr_model = 'Sunny Tripower 15000 TL (2x)',
+  has_battery = false,
+  mastr_account_present = true,
+  mastr_plant_id = 'SEE912345678',
+  mastr_unit_id = 'SEE987654321',
+  mastr_status = 'confirmed',
+  grid_operator = 'Bayernwerk Netz GmbH',
+  active_connector = 'demo_timo_leif',
+  provider = 'demo'
+WHERE id = '00000000-0000-4000-a000-000000000901';
+```
 
-**Armstrong-Gruppe (nachher — neu sichtbar):**
-- Armstrong (Dashboard)
-- Billing (Credit-Verbrauch pro Aktion)
-- Plattform-Kostenmonitor (Gesamtkosten-Uebersicht)
+### Schritt 3: Keine Code-Aenderung noetig
+
+- `PVLiveWidget` liest korrekt aus `usePvPlants()` — sobald RLS gefixt ist, bekommt es die Plant
+- `DashboardWidgetToggle` im Dossier funktioniert bereits (togglet `SYS.PV.LIVE` korrekt in `widget_preferences`)
+- `AnlagenTab` zeigt die Demo-Plant korrekt an, das Dossier oeffnet sich inline
+- Die Sparkline-Kurve und KPIs werden aus `usePvMonitoring` korrekt berechnet
+
+### Ergebnis nach dem Fix
+
+1. **Dashboard-Widget "PV Live"**: Zeigt die Oberhaching-Anlage mit Live-Sparkline, aktueller Leistung und Tagesertrag
+2. **Toggle im Dossier**: Aktiviert/deaktiviert das Dashboard-Widget (funktioniert bereits, nur die Daten fehlten)
+3. **Anlagen-Tab**: DB-Plant und Demo-Plant zeigen konsistente Daten
 
 | Datei | Aktion | Beschreibung |
 |-------|--------|-------------|
-| `src/components/admin/AdminSidebar.tsx` | EDIT | `shouldShowInNav`: projekt-desk/ filtern + armstrong/billing und armstrong/costs sichtbar machen |
+| SQL Migration | CREATE | RLS fix (6 Policies) + Demo-Plant-Daten Update |
+
