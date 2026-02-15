@@ -41,6 +41,7 @@ export interface CostItemEditable {
 }
 
 export interface RentPaymentRow {
+  id: string;
   dueDate: string;
   paidDate: string | null;
   expectedAmount: number;
@@ -68,6 +69,8 @@ export function useNKAbrechnung(
   const [nkPeriodId, setNkPeriodId] = useState<string | null>(null);
   const [rentPayments, setRentPayments] = useState<RentPaymentRow[]>([]);
   const [isLoadingPayments, setIsLoadingPayments] = useState(false);
+  const [paymentsLocked, setPaymentsLocked] = useState(false);
+  const [isSavingPayments, setIsSavingPayments] = useState(false);
 
   // Readiness Check + Daten laden bei Jahr-Aenderung
   useEffect(() => {
@@ -371,7 +374,7 @@ export function useNKAbrechnung(
       const yearEnd = `${year}-12-31`;
       const { data, error } = await supabase
         .from('rent_payments')
-        .select('due_date, paid_date, expected_amount, amount, status')
+        .select('id, due_date, paid_date, expected_amount, amount, status')
         .eq('lease_id', leaseInfo.id)
         .gte('due_date', yearStart)
         .lte('due_date', yearEnd)
@@ -380,6 +383,7 @@ export function useNKAbrechnung(
       if (error) throw error;
       setRentPayments(
         (data || []).map((r: any) => ({
+          id: r.id,
           dueDate: r.due_date,
           paidDate: r.paid_date,
           expectedAmount: Number(r.expected_amount) || 0,
@@ -387,13 +391,70 @@ export function useNKAbrechnung(
           status: r.status || 'open',
         }))
       );
+
+      // payments_locked aus nk_periods laden
+      if (nkPeriodId) {
+        const { data: period } = await (supabase as any)
+          .from('nk_periods')
+          .select('payments_locked')
+          .eq('id', nkPeriodId)
+          .maybeSingle();
+        setPaymentsLocked(!!period?.payments_locked);
+      }
     } catch (err: any) {
       console.error('fetchRentPayments failed:', err);
       toast({ title: 'Fehler', description: 'Zahlungsdaten konnten nicht geladen werden.', variant: 'destructive' });
     } finally {
       setIsLoadingPayments(false);
     }
-  }, [leaseInfo?.id, year]);
+  }, [leaseInfo?.id, year, nkPeriodId]);
+
+  // Lokale Änderung an Zahlungsdaten
+  const updateRentPayment = useCallback((index: number, field: 'amount' | 'paidDate', value: number | string | null) => {
+    setRentPayments(prev => prev.map((p, i) =>
+      i === index ? { ...p, [field]: value } : p
+    ));
+  }, []);
+
+  // Zahlungen in DB speichern
+  const saveRentPayments = useCallback(async () => {
+    setIsSavingPayments(true);
+    try {
+      for (const p of rentPayments) {
+        await supabase
+          .from('rent_payments')
+          .update({
+            amount: p.amount,
+            paid_date: p.paidDate,
+            status: p.amount > 0 && p.paidDate ? 'paid' : p.amount > 0 ? 'partial' : 'pending',
+          })
+          .eq('id', p.id);
+      }
+      toast({ title: 'Gespeichert', description: 'Zahlungseingänge wurden aktualisiert.' });
+    } catch (err: any) {
+      toast({ title: 'Fehler beim Speichern', description: err.message, variant: 'destructive' });
+    } finally {
+      setIsSavingPayments(false);
+    }
+  }, [rentPayments]);
+
+  // Zahlungen festschreiben (sperren)
+  const lockPayments = useCallback(async () => {
+    if (!nkPeriodId) {
+      toast({ title: 'Fehler', description: 'Keine NK-Periode vorhanden. Bitte zuerst Kostenpositionen speichern.', variant: 'destructive' });
+      return;
+    }
+    try {
+      await (supabase as any)
+        .from('nk_periods')
+        .update({ payments_locked: true })
+        .eq('id', nkPeriodId);
+      setPaymentsLocked(true);
+      toast({ title: 'Festgeschrieben', description: 'Zahlungseingänge wurden gesperrt und können nicht mehr bearbeitet werden.' });
+    } catch (err: any) {
+      toast({ title: 'Fehler', description: err.message, variant: 'destructive' });
+    }
+  }, [nkPeriodId]);
 
   return {
     readiness,
@@ -406,9 +467,14 @@ export function useNKAbrechnung(
     isLoadingData,
     isCalculating,
     isSaving,
+    isSavingPayments,
     rentPayments,
     isLoadingPayments,
+    paymentsLocked,
     fetchRentPayments,
+    updateRentPayment,
+    saveRentPayments,
+    lockPayments,
     calculate,
     exportPdf,
     updateCostItem,
