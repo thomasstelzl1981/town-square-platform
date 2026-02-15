@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 // Force rebuild — chunk cache fix
+import { DEMO_PROPERTY_IDS } from '@/config/tenantConstants';
 import { useDemoToggles } from '@/hooks/useDemoToggles';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -699,7 +700,12 @@ export function PortfolioTab() {
           {/* Demo Widget — Position 0, klickbar zum Togglen */}
           <WidgetCell>
             <button
-              onClick={() => toggle('GP-PORTFOLIO')}
+              onClick={() => {
+                if (!demoEnabled) {
+                  toggle('GP-PORTFOLIO');
+                }
+                navigate(`/portal/immobilien/${DEMO_PROPERTY_IDS[0]}`);
+              }}
               className={cn(
                 "w-full h-full flex flex-col justify-between p-5 rounded-xl border text-left transition-all",
                 DESIGN.DEMO_WIDGET.CARD,
