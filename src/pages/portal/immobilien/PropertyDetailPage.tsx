@@ -518,11 +518,20 @@ export default function PropertyDetailPage() {
             </TabsContent>
 
             <TabsContent value="nkabrechnung">
-              <NKAbrechnungTab
-                propertyId={property.id}
-                tenantId={property.tenant_id}
-                unitId={unit?.id || ''}
-              />
+              {unit?.id ? (
+                <NKAbrechnungTab
+                  propertyId={property.id}
+                  tenantId={property.tenant_id}
+                  unitId={unit.id}
+                />
+              ) : (
+                <Alert>
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription>
+                    Keine Einheit für diese Immobilie vorhanden. Bitte legen Sie zuerst eine Einheit an.
+                  </AlertDescription>
+                </Alert>
+              )}
             </TabsContent>
           </Tabs>
         )}

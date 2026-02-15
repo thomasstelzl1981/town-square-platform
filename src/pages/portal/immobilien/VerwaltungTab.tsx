@@ -1,12 +1,9 @@
 /**
- * VerwaltungTab — MOD-04 Verwaltung (ehem. MSV)
+ * VerwaltungTab — MOD-04 BWA / Controlling
  * 
  * Linearer Scroll-Flow:
  * 1. ModulePageHeader
- * 2. WidgetGrid (Objekt-Widgets + Demo + CTA)
- * 3. Kachel 1: Mietliste
- * 4. Kachel 2: Aufgaben (Säumig + Mieterhöhung)
- * 5. Kachel 3: BWA/Buchwert/Controlling
+ * 2. WidgetGrid (Objekt-Widgets + CTA)
  */
 import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -109,8 +106,8 @@ export function VerwaltungTab() {
               <Plus className="h-6 w-6 text-primary" />
             </div>
             <div>
-              <h3 className="text-sm font-semibold">MSV-Objekt hinzufügen</h3>
-              <p className={cn(DESIGN.TYPOGRAPHY.LABEL, 'mt-1')}>Vermietung im Portfolio aktivieren</p>
+              <h3 className="text-sm font-semibold">Objekt hinzufügen</h3>
+              <p className={cn(DESIGN.TYPOGRAPHY.LABEL, 'mt-1')}>BWA im Portfolio aktivieren</p>
             </div>
           </button>
         </WidgetCell>
@@ -122,7 +119,7 @@ export function VerwaltungTab() {
           <CardContent className="p-6 text-center">
             <AlertCircle className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
             <p className="text-sm text-muted-foreground">
-              Keine MSV-Objekte aktiv. Aktiviere Vermietung in der Immobilienakte → Flag rental_managed.
+              Keine Objekte aktiv. Aktivieren Sie die Verwaltung in der Immobilienakte.
             </p>
             <Button variant="link" className="mt-2" onClick={() => window.location.href = '/portal/immobilien/portfolio'}>
               Zum Portfolio →

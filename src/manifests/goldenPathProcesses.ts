@@ -114,8 +114,8 @@ export const GOLDEN_PATH_PROCESSES: GoldenPathProcess[] = [
     moduleCode: 'MOD-04',
     moduleName: 'Immobilien',
     tilePath: '/portal/immobilien/verwaltung',
-    processName: 'Mietverwaltung',
-    description: 'Mietobjekte, Mieter und Nebenkostenabrechnungen verwalten.',
+    processName: 'BWA / Controlling',
+    description: 'Betriebswirtschaftliche Auswertung, Buchwerte und Nebenkostenabrechnungen.',
     menuPoints: 1,
     menuPointPaths: ['/portal/immobilien/verwaltung'],
     compliance: {
@@ -129,7 +129,7 @@ export const GOLDEN_PATH_PROCESSES: GoldenPathProcess[] = [
     demoWidget: {
       id: '__demo__',
       title: 'Demo: MFH Düsseldorf',
-      subtitle: 'Mietverwaltung mit 6 Einheiten',
+      subtitle: 'BWA mit 6 Einheiten',
       status: 'demo',
       badgeLabel: 'Demo',
       data: {
