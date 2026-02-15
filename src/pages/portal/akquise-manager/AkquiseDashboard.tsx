@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Briefcase, Loader2, Plus, Inbox, User, Phone, Mail, MapPin, Pencil, Target, TrendingUp, BarChart3, Users, Building2, Globe } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { DESIGN } from '@/config/designManifest';
+import { DESIGN, getActiveWidgetGlow } from '@/config/designManifest';
 import { 
   useAcqMandatesPending, 
   useAcqMandatesActive,

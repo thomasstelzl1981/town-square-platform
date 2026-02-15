@@ -7,7 +7,7 @@
  */
  
 import { cn } from '@/lib/utils';
-import { DESIGN } from '@/config/designManifest';
+import { DESIGN, getActiveWidgetGlow } from '@/config/designManifest';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -119,9 +119,11 @@ export function FinanceRequestWidgets({ activeRequestId }: FinanceRequestWidgets
         return (
           <WidgetCell key={req.id}>
             <Card
-              className={`h-full cursor-pointer transition-all hover:shadow-md ${
+              className={cn(
+                `h-full cursor-pointer transition-all hover:shadow-md`,
+                getActiveWidgetGlow('primary'),
                 isActive ? 'ring-2 ring-primary' : ''
-              }`}
+              )}
               onClick={() => navigate(`/portal/finanzierung/anfrage/${req.id}`)}
             >
               <div className="flex flex-col h-full p-4 justify-between">

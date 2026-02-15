@@ -5,7 +5,7 @@
  */
 
 import { useState } from 'react';
-import { DESIGN } from '@/config/designManifest';
+import { DESIGN, getActiveWidgetGlow } from '@/config/designManifest';
 import { cn } from '@/lib/utils';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -204,7 +204,7 @@ export function SerienEmailsPage() {
             const StIcon = st.icon;
             return (
               <WidgetCell key={campaign.id}>
-                <Card className="h-full hover:border-primary/30 transition-colors">
+                <Card className={cn("h-full hover:border-primary/30 transition-colors", getActiveWidgetGlow('violet'))}>
                   <CardContent className="p-4 h-full flex flex-col justify-between">
                     <div>
                       <div className="flex items-center justify-between mb-2">

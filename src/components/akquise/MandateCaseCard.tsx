@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Briefcase, ArrowRight, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { getActiveWidgetGlow } from '@/config/designManifest';
 import { MANDATE_STATUS_CONFIG } from '@/types/acquisition';
 import { WidgetDeleteOverlay } from '@/components/shared/WidgetDeleteOverlay';
 
@@ -44,6 +45,7 @@ export function MandateCaseCard({ mandate, offerCount, isSelected, onClick, onDe
       className={cn(
         'glass-card shadow-card cursor-pointer transition-all hover:shadow-elevated hover:scale-[1.02] group relative',
         'flex flex-row items-center gap-3 p-3 md:flex-col md:aspect-square md:p-0',
+        getActiveWidgetGlow('cyan'),
         isSelected && 'ring-2 ring-primary shadow-glow'
       )}
       onClick={onClick}

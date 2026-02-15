@@ -24,6 +24,7 @@ import {
 import { format, differenceInDays } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { getActiveWidgetGlow } from '@/config/designManifest';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { WidgetGrid } from '@/components/shared/WidgetGrid';
@@ -259,9 +260,10 @@ export default function CarsFahrzeuge() {
           const isSelected = selectedVehicleId === vehicle.id;
           return (
             <WidgetCell key={vehicle.id}>
-              <Card
+               <Card
                 className={cn(
                   "glass-card overflow-hidden cursor-pointer group transition-all h-full",
+                  getActiveWidgetGlow('teal'),
                   isSelected ? "border-primary ring-2 ring-primary/20" : "border-primary/10 hover:border-primary/30"
                 )}
                 onClick={() => { setIsCreatingNew(false); setSelectedVehicleId(isSelected ? null : vehicle.id); }}

@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ArrowRight, Wrench, Zap, Paintbrush, Home, Square, Flame, Package, Building2, ClipboardList } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { getActiveWidgetGlow } from '@/config/designManifest';
 import { WidgetDeleteOverlay } from '@/components/shared/WidgetDeleteOverlay';
 import type { ServiceCaseStatus } from '@/hooks/useServiceCases';
 import { formatCurrency } from '@/lib/formatters';
@@ -50,6 +51,7 @@ export function ServiceCaseCard({ serviceCase, isSelected, onClick, onDelete, is
       className={cn(
         'glass-card shadow-card cursor-pointer transition-all hover:shadow-elevated hover:scale-[1.02] group relative',
         'flex flex-row items-center gap-3 p-3 md:flex-col md:aspect-square md:p-0',
+        getActiveWidgetGlow('orange'),
         isSelected && 'ring-2 ring-primary shadow-glow'
       )}
       onClick={onClick}

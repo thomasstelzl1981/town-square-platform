@@ -8,7 +8,7 @@ import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { WidgetGrid } from '@/components/shared/WidgetGrid';
 import { WidgetCell } from '@/components/shared/WidgetCell';
-import { DESIGN } from '@/config/designManifest';
+import { DESIGN, getActiveWidgetGlow } from '@/config/designManifest';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useDevProjects } from '@/hooks/useDevProjects';
 import { useQuery } from '@tanstack/react-query';

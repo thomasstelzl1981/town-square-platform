@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Plus, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { getActiveWidgetGlow } from '@/config/designManifest';
 import type { ResearchOrder } from '@/hooks/useResearchOrders';
 import {
   AlertDialog,
@@ -40,6 +41,7 @@ export function ResearchOrderWidget({ order, isActive, onClick, onDelete }: Prop
     <Card
       className={cn(
         'glass-card p-4 cursor-pointer transition-all hover:ring-2 hover:ring-primary/40 relative group h-full flex flex-col',
+        getActiveWidgetGlow('violet'),
         isActive && 'ring-2 ring-primary shadow-lg'
       )}
       onClick={onClick}

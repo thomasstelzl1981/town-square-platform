@@ -3,6 +3,8 @@
  * Shows widget bar for case selection + detail view for selected case.
  * Follows Manager-Module pattern with persistent widget bar at top.
  */
+import { getActiveWidgetGlow } from '@/config/designManifest';
+import { cn } from '@/lib/utils';
 
 import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -257,9 +259,11 @@ export default function StatusTab() {
           return (
             <WidgetCell key={req.id}>
               <Card
-                className={`h-full cursor-pointer transition-all hover:shadow-md ${
+                className={cn(
+                  `h-full cursor-pointer transition-all hover:shadow-md`,
+                  getActiveWidgetGlow('primary'),
                   isActive ? 'ring-2 ring-primary' : ''
-                }`}
+                )}
                 onClick={() => setSelectedRequestId(req.id)}
               >
                 <div className="flex flex-col h-full p-4 justify-between">

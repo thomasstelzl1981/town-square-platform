@@ -20,7 +20,7 @@ import { useAcqMandate, useAcceptAcqMandate, useAcqMandatesForManager } from '@/
 import { MANDATE_STATUS_CONFIG, canViewClientInfo } from '@/types/acquisition';
 import { AkquiseStepper } from '@/components/akquise/AkquiseStepper';
 import { AcqSectionHeader as SectionHeader } from '@/components/akquise/AcqSectionHeader';
-import { DESIGN } from '@/config/designManifest';
+import { DESIGN, getActiveWidgetGlow } from '@/config/designManifest';
 import { InboundTab, AnalysisTab, DeliveryTab } from './components';
 
 function TableRow({ label, value }: { label: string; value: string }) {
