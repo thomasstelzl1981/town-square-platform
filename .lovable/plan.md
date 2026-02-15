@@ -1,150 +1,46 @@
 
 
-# NK-Abrechnung: Vollstaendiger Inline-Prozess mit editierbaren Datenfeldern
+# Verwaltung → BWA umbenennen und Inhalt bereinigen
 
-## Diagnose: Warum aktuell nichts funktioniert
+## Was passiert
 
-Alle Demo-Daten sind korrekt in der Datenbank vorhanden (3 NK-Perioden, 33 Cost-Items, 6 Dokumente mit Links, 3 Leases). Zwei Code-Bugs blockieren den Flow:
+Der Tab "Verwaltung" unter `/portal/immobilien/verwaltung` wird in "BWA" umbenannt. Der gesamte bisherige Inhalt (Mietliste, Aufgaben/Mahnwesen, BWA-Controlling) wird entfernt. Erhalten bleibt nur die obere CI-Struktur: ModulePageHeader + WidgetGrid mit den Vermieter-Einheiten (Property-Widgets) zur Objektauswahl.
 
-1. **`engine.ts` Zeile 58**: Sucht Lease per `.eq('id', input.leaseId)`, aber `leaseId` ist ein leerer String — findet nichts.
-2. **`readinessCheck.ts` Zeile 85**: Fragt `leases.property_id` ab, aber diese Spalte existiert nicht. Leases haengen ueber `unit_id` an Units, die wiederum `property_id` haben.
+## Analyse: Was kann geloescht werden?
 
-## Loesung: 3 Code-Fixes + komplett neues UI
+Die drei Unter-Komponenten werden **ausschliesslich** in VerwaltungTab genutzt:
+- `MietlisteTable` — nur in VerwaltungTab importiert
+- `AufgabenSection` — nur in VerwaltungTab importiert
+- `BWAControllingSection` — nur in VerwaltungTab importiert
 
-### Fix 1: `src/engines/nkAbrechnung/engine.ts`
+Diese koennen komplett entfernt werden, ohne andere Module zu beeinflussen.
 
-Zeile 55-60 aendern: Statt `.eq('id', input.leaseId)` wird der Lease ueber `unit_id` + `tenant_id` geladen:
-```typescript
-const { data: lease } = await supabase
-  .from('leases')
-  .select('*')
-  .eq('unit_id', input.unitId)
-  .eq('tenant_id', input.tenantId)
-  .limit(1)
-  .single();
-```
+**Erhalten bleibt:**
+- `useMSVData` Hook (liefert die Property-Widgets fuer die Objektauswahl)
+- WidgetGrid mit den Vermieter-Einheiten + CTA-Widget
+- Empty State fuer den Fall ohne Objekte
 
-Zusaetzlich: `totalUnits` dynamisch berechnen (Anzahl Units der Property fuer unit_count-Schluessel).
+## Aenderungen
 
-### Fix 2: `src/engines/nkAbrechnung/readinessCheck.ts`
+### 1. `src/manifests/routesManifest.ts`
+- Zeile 249: `title: "Verwaltung"` aendern zu `title: "BWA"`
 
-Zeile 85-89: Lease-Query ueber Units joinen statt direkt auf `property_id`:
-```typescript
-const { data: units } = await supabase
-  .from('units')
-  .select('id')
-  .eq('property_id', propertyId)
-  .eq('tenant_id', tenantId);
+### 2. `src/pages/portal/immobilien/VerwaltungTab.tsx`
+- ModulePageHeader: Titel "Verwaltung" → "BWA", Beschreibung anpassen
+- Imports entfernen: `MietlisteTable`, `AufgabenSection`, `BWAControllingSection`
+- JSX entfernen: Die drei Kacheln unterhalb des WidgetGrids und des Empty States
+- Erhalten: PageShell, ModulePageHeader, WidgetGrid (Property-Widgets + CTA), Empty State
 
-const unitIds = (units || []).map(u => u.id);
-const { data: leases } = await supabase
-  .from('leases')
-  .select('id, rent_cold_eur, nk_advance_eur')
-  .eq('tenant_id', tenantId)
-  .in('unit_id', unitIds);
-```
+### 3. Dateien loeschen (optional, empfohlen)
+- `src/components/msv/MietlisteTable.tsx`
+- `src/components/msv/AufgabenSection.tsx`
+- `src/components/msv/BWAControllingSection.tsx`
+- `src/components/msv/PaymentBookingDialog.tsx` (nur von MietlisteTable genutzt)
 
-### Fix 3: `src/hooks/useNKAbrechnung.ts`
+### 4. Route und ImmobilienPage
+- Die Route `/portal/immobilien/verwaltung` bleibt bestehen (gleiche URL, nur neuer Titel)
+- Kein Redirect noetig, da GP_VERMIETUNG auf diese Route verweist
 
-Zeile 57: `leaseId: ''` entfernen — die Engine findet den Lease jetzt selbst.
+## Ergebnis
 
-### Neues UI: `src/components/portfolio/NKAbrechnungTab.tsx`
-
-Komplett neuer Inline-Flow von oben nach unten, mit editierbaren Feldern und strukturierter Darstellung des gesamten Prozesses:
-
-```text
-NK-Abrechnung                                    [Jahr: 2025 v]
-================================================================
-
-SEKTION 1 — EINGEHENDE WEG-ABRECHNUNG
-(Daten aus dem Posteingang / Dokument-Extraktion)
-┌──────────────────────────────────────────────────────────────┐
-│  Dokument: WEG-Jahresabrechnung 2025         Status: ✅     │
-│  Abrechnungszeitraum: 01.01.2025 - 31.12.2025              │
-│                                                              │
-│  Kostenart              │ Schluessel │ Haus ges. │ Ihr Anteil│
-│  ─────────────────────────────────────────────────────────── │
-│  Wasserversorgung       │ Personen   │  3.200,00 │   360,00 │ ← editierbar
-│  Entwaesserung          │ Personen   │  1.800,00 │   202,50 │
-│  Muellbeseitigung       │ Personen   │  1.600,00 │   180,00 │
-│  Strassenreinigung      │ Flaeche    │    950,00 │    85,00 │
-│  Gebaeudereinigung      │ Flaeche    │  2.400,00 │   204,00 │
-│  Gebaeudeversicherung   │ MEA        │  3.000,00 │   255,00 │
-│  Schornsteinfeger       │ Einheiten  │  1.100,00 │    95,00 │
-│  Allgemeinstrom         │ MEA        │  1.200,00 │   102,00 │
-│  ────────────────────────────────────────────────────────── │
-│  Verwaltungskosten      │ MEA        │  3.600,00 │   306,00 │ nicht umlagef.
-│  Instandhaltungsrueckl. │ MEA        │  4.800,00 │   408,00 │ nicht umlagef.
-│  ════════════════════════════════════════════════════════════│
-│  Summe umlagefaehig (ohne Grundsteuer):          1.483,50   │
-│  Summe nicht umlagefaehig:                         714,00   │
-│                                            [Speichern]      │
-└──────────────────────────────────────────────────────────────┘
-
-SEKTION 2 — GRUNDSTEUERBESCHEID
-┌──────────────────────────────────────────────────────────────┐
-│  Dokument: Grundsteuerbescheid               Status: ✅     │
-│                                                              │
-│  Jaehrlicher Betrag (Haus gesamt):  [  2.400,00 ] EUR       │ ← editierbar
-│  Verteilerschluessel:               [  MEA      ]           │
-│  Ihr Anteil (berechnet):              205,20 EUR             │
-│                                            [Speichern]      │
-└──────────────────────────────────────────────────────────────┘
-
-SEKTION 3 — MIETEINNAHMEN UND VORAUSZAHLUNGEN
-(Kumuliert aus Mietvertrag / Geldeingang)
-┌──────────────────────────────────────────────────────────────┐
-│  Mieter: Bergmann, Thomas                                    │
-│  Mietvertrag: seit 01.03.2021 (laufend)                     │
-│  Kaltmiete: 850,00 EUR/Monat                                │
-│                                                              │
-│  NK-Vorauszahlung:     180,00 EUR/Monat  x 12 = 2.160,00   │
-│  Heizkosten-VZ:        120,00 EUR/Monat  x 12 = 1.440,00   │
-│  ────────────────────────────────────────────────────────── │
-│  Gesamt Vorauszahlungen 2025:              3.600,00 EUR     │
-└──────────────────────────────────────────────────────────────┘
-
-SEKTION 4 — BERECHNUNG UND SALDO
-┌──────────────────────────────────────────────────────────────┐
-│  Umlagefaehige Kosten (WEG):               1.483,50 EUR     │
-│  + Grundsteuer (Direktzahlung):              205,20 EUR     │
-│  ════════════════════════════════════════════════════════════│
-│  Gesamtkosten Mieter:                      1.688,70 EUR     │
-│                                                              │
-│  ./. NK-Vorauszahlungen:                   2.160,00 EUR     │
-│  ./. Heizkosten-VZ:                        1.440,00 EUR     │
-│  ════════════════════════════════════════════════════════════│
-│  GUTHABEN MIETER:                         -1.911,30 EUR     │
-│                                                              │
-│            [Berechnung starten]                              │
-└──────────────────────────────────────────────────────────────┘
-
-SEKTION 5 — EXPORT UND VERSAND
-┌──────────────────────────────────────────────────────────────┐
-│  [PDF erzeugen]   [Im DMS ablegen]   [An Briefgenerator]    │
-└──────────────────────────────────────────────────────────────┘
-```
-
-Jede Sektion ist eine eigene Card-Komponente. Die Datenfelder in Sektion 1 und 2 sind editierbar (Input-Felder), damit der Nutzer Werte korrigieren kann, bevor er die Berechnung startet. Sektion 3 zeigt die kumulierten Mietdaten read-only aus dem Lease. Sektion 4 fuehrt alles zusammen.
-
-## Technische Details
-
-### Betroffene Dateien
-
-| Datei | Aenderung |
-|-------|-----------|
-| `src/engines/nkAbrechnung/engine.ts` | Fix: Lease ueber unit_id laden statt leerer leaseId |
-| `src/engines/nkAbrechnung/readinessCheck.ts` | Fix: Lease-Query ueber Units joinen |
-| `src/hooks/useNKAbrechnung.ts` | Fix: leaseId entfernen, Lease-Daten + Cost-Items laden |
-| `src/components/portfolio/NKAbrechnungTab.tsx` | Komplett neu: 5-Sektionen Inline-Flow mit editierbaren Feldern |
-
-### Implementierungsreihenfolge
-
-| Schritt | Was |
-|---------|-----|
-| 1 | Fix engine.ts (Lease-Lookup ueber unit_id) |
-| 2 | Fix readinessCheck.ts (Units-Subquery) |
-| 3 | Erweitere useNKAbrechnung Hook (Lease-Daten + Cost-Items als State) |
-| 4 | Neues NKAbrechnungTab.tsx mit 5 Sektionen, editierbaren Feldern, Speichern-Buttons |
-| 5 | Funktionstest auf BER-01 |
-
+Nach dem Umbau zeigt der Tab "BWA" nur noch die Objektauswahl-Widgets. Neue Funktionen koennen dann Schritt fuer Schritt ergaenzt werden.
