@@ -28,6 +28,7 @@ import {
   TrendingUp, LayoutGrid, List 
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { MediaWidgetGrid } from '@/components/shared/MediaWidgetGrid';
 import { useInvestmentEngine, type CalculationInput, defaultInput } from '@/hooks/useInvestmentEngine';
 import { useInvestmentFavorites, useToggleInvestmentFavorite, type SearchParams } from '@/hooks/useInvestmentFavorites';
 
@@ -350,6 +351,9 @@ export default function SucheTab() {
   return (
     <PageShell>
       <ModulePageHeader title="SUCHE" description="Finden Sie passende Kapitalanlage-Objekte für Ihre Situation" />
+
+      {/* Media Widgets */}
+      <MediaWidgetGrid />
 
       {/* Search Mode Toggle */}
       <Card>

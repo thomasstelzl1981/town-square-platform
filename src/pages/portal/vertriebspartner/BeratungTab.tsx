@@ -27,6 +27,7 @@ import { useInvestmentEngine, type CalculationInput, defaultInput } from '@/hook
 import { usePartnerSelections } from '@/hooks/usePartnerListingSelections';
 import { fetchPropertyImages } from '@/lib/fetchPropertyImages';
 import { useDemoListings, deduplicateByField } from '@/hooks/useDemoListings';
+import { MediaWidgetGrid } from '@/components/shared/MediaWidgetGrid';
 
 // Interface for fetched listings
 interface RawListing {
@@ -292,6 +293,9 @@ const BeratungTab = () => {
         description="Finden Sie das perfekte Investment für Ihren Kunden"
         actions={hasSearched ? <Badge variant="secondary">{visibleListings.length} Objekt{visibleListings.length !== 1 ? 'e' : ''}</Badge> : undefined}
       />
+
+      {/* Media Widgets */}
+      <MediaWidgetGrid />
 
       {/* Search Mode Toggle + Form */}
       <Card>
