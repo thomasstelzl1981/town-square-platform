@@ -296,20 +296,36 @@ export default function PVPlantDossier({ plant, isDemo }: Props) {
 
               {/* Bridge Instructions */}
               {activeConnector && (
-                <div className="mt-4 p-3 bg-muted/50 rounded-lg border border-border">
-                  <p className="text-xs font-semibold mb-2">Bridge-Script starten:</p>
-                  <code className="text-xs block bg-background p-2 rounded font-mono break-all">
-                    python tools/sma_bridge.py --ip {connectorConfig.inverter_ip || 'IP'} --password PASSWORT --plant-id {plant.id} --tenant-id {plant.tenant_id} --connector-id {activeConnector.id} --supabase-key DEIN_KEY
-                  </code>
+                <div className="mt-4 p-3 bg-muted/50 rounded-lg border border-border space-y-3">
+                  <p className="text-xs font-semibold">🔌 Bridge-Script — Lokale Verbindung zum Wechselrichter</p>
+                  <p className="text-xs text-muted-foreground">
+                    Dein Wechselrichter ist nur in deinem WLAN erreichbar. Das Bridge-Script läuft auf deinem Computer
+                    (gleiches WLAN) und leitet die Daten an die Cloud weiter. Führe diesen Befehl einmalig auf deinem Computer aus:
+                  </p>
+                  <div className="space-y-1">
+                    <p className="text-[10px] text-muted-foreground">1. Einmalig installieren (falls noch nicht geschehen):</p>
+                    <code className="text-xs block bg-background p-2 rounded font-mono">pip install requests</code>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-[10px] text-muted-foreground">2. Bridge starten (ersetze nur DEIN_PASSWORT):</p>
+                    <code className="text-xs block bg-background p-2 rounded font-mono break-all">
+                      python tools/sma_bridge.py \{'\n'}
+                      {'  '}--ip {connectorConfig.inverter_ip || '192.168.178.99'} \{'\n'}
+                      {'  '}--password DEIN_PASSWORT \{'\n'}
+                      {'  '}--plant-id {plant.id} \{'\n'}
+                      {'  '}--tenant-id {plant.tenant_id} \{'\n'}
+                      {'  '}--connector-id {activeConnector.id} \{'\n'}
+                      {'  '}--interval {connectorConfig.poll_interval_sec || '10'}
+                    </code>
+                  </div>
                   <Button
                     size="sm"
-                    variant="ghost"
-                    className="mt-2 gap-1 text-xs"
+                    variant="outline"
+                    className="gap-1 text-xs"
                     onClick={() => {
-                      navigator.clipboard.writeText(
-                        `python tools/sma_bridge.py --ip ${connectorConfig.inverter_ip || 'IP'} --password PASSWORT --plant-id ${plant.id} --tenant-id ${plant.tenant_id} --connector-id ${activeConnector.id} --supabase-key DEIN_KEY --interval ${connectorConfig.poll_interval_sec || '10'}`
-                      );
-                      toast.success('Befehl kopiert');
+                      const cmd = `python tools/sma_bridge.py --ip ${connectorConfig.inverter_ip || '192.168.178.99'} --password DEIN_PASSWORT --plant-id ${plant.id} --tenant-id ${plant.tenant_id} --connector-id ${activeConnector.id} --interval ${connectorConfig.poll_interval_sec || '10'}`;
+                      navigator.clipboard.writeText(cmd);
+                      toast.success('Befehl kopiert — ersetze DEIN_PASSWORT mit deinem SMA-Passwort');
                     }}
                   >
                     <Copy className="h-3 w-3" /> Befehl kopieren
