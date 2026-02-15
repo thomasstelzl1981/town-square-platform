@@ -8,3 +8,4 @@ export * from './allocationLogic';
 export * from './readinessCheck';
 export * from './engine';
 export * from './pdfExport';
+export * from './hausgeldTemplate';
