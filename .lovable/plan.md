@@ -1,143 +1,143 @@
 
 
-# CI-Ergaenzung: Visitenkarte + KI-Widgets fuer ProjektManager und Immomanager
+# CI-Erweiterung: Aktive Widgets mit farbigem Glow
 
-## Ist-Zustand
+## Analyse: Wo werden WidgetGrids in Zone 2 verwendet?
 
-Der **Finanzierungsmanager** und **AkquiseManager** haben bereits das `DASHBOARD_HEADER`-Pattern: eine Visitenkarte (links) und ein Kontext-Widget (rechts) in einem 2-Spalten-Grid gemaess `DESIGN.DASHBOARD_HEADER.GRID`. Beim ProjektManager (`ProjekteDashboard.tsx`) und Immomanager (MOD-09, z.B. `KatalogTab.tsx` und `BeratungTab.tsx`) fehlt dieses Pattern komplett.
+Insgesamt nutzen **25+ Dateien** in Zone 2 das `WidgetGrid` + `WidgetCell` Pattern. Hier die vollstaendige Uebersicht:
 
-## Ziel
+| Modul | Datei(en) | Widget-Typen |
+|-------|-----------|-------------|
+| MOD-04 Portfolio | `PortfolioTab.tsx` | Kontext-Widgets (Vermietereinheiten), CTA "Neue Einheit" |
+| MOD-04 Sanierung | `SanierungTab.tsx` | Demo, Sanierungs-Cases, CTA |
+| MOD-07 Privatkredit | `ConsumerLoanWidgets.tsx` | Demo, Antraege, CTA |
+| MOD-08 Suche/Katalog | `KatalogTab.tsx` | Media-Widgets (Praesentationen) |
+| MOD-08 Simulation | `SimulationTab.tsx` | Demo |
+| MOD-08 Mandat | `MandatTab.tsx` | Demo, Mandate, CTA |
+| MOD-09 Beratung | `BeratungTab.tsx` | Media-Widgets (Praesentationen) |
+| MOD-10 Finanzierung | `FinanceRequestWidgets.tsx`, `StatusTab.tsx` | Demo, Antraege, CTA |
+| MOD-11 FM | `FMDashboard.tsx`, `FMFinanzierungsakte.tsx` | Demo, Faelle, CTA, Mandate |
+| MOD-12 AM | `AkquiseDashboard.tsx`, `ObjekteingangList.tsx`, `AkquiseMandateDetail.tsx` | Mandate, CTA, Objekteingang |
+| MOD-13 Projekte | `ProjekteDashboard.tsx`, `LandingPageTab.tsx` | Demo, Projekte, CTA |
+| MOD-14 CommunicationPro | `SerienEmailsPage.tsx`, `ResearchTab.tsx` | Demo, Orders, CTA |
+| MOD-15 Services | `BestellungenTab.tsx` | Orders, CTA |
+| Leads | `LeadsDashboard.tsx` | Lead-Cards |
+| Cars/Fuhrpark | `CarsAutos.tsx`, `CarsFahrzeuge.tsx` | Fahrzeug-Widgets |
 
-1. **ProjektManager (MOD-13)**: Visitenkarte + KI-Marktanalyse-Widget oben, KPI-Kacheln nach ganz unten verschieben
-2. **Immomanager (MOD-09)**: Visitenkarte + Immobilienmarkt-Report-Widget oben (auf allen Tabs sichtbar)
+## Aktueller Zustand
 
----
+- **Demo-Widgets**: Haben bereits einen eigenen Glow (smaragdgruen, via `DEMO_WIDGET.CARD`)
+- **CTA-Widgets** ("Neu anlegen"): Nutzen `border-dashed` — kein Glow (korrekt, bleiben so)
+- **Leere/Platzhalter-Widgets**: `border-dashed opacity-50` — kein Glow (korrekt)
+- **Aktive Widgets** (mit Inhalt/Funktion): Haben aktuell **keinen Glow** — nur `glass-card` + `hover:shadow-lg`
+- **Media-Widgets**: Haben bereits einen Primary-Glow (`hover:shadow-primary/20`)
 
-## Teil 1: ProjektManager — Visitenkarte + KI-Marktanalyse
+## Loesung: `ACTIVE_WIDGET` Token im Design Manifest
 
-### Visitenkarte (links)
-Identisches Design wie FM/AM: Avatar, Name, Rolle "Projektmanager", E-Mail, Telefon, Adresse, Badge "X aktive Projekte". Gradient: Orange-Rot (`from-[hsl(25,85%,50%)] to-[hsl(15,80%,45%)]`).
+### Prinzip
 
-### KI-Marktanalyse-Widget (rechts)
-- **Geschlossener Zustand**: Card mit Icon (TrendingUp/Globe), Titel "Marktanalyse", Untertitel "KI-gestuetzter Wettbewerbsbericht", Button "Analyse starten"
-- **Bei Klick**: Oeffnet ein Sheet/Dialog mit einem strukturierten KI-Bericht
-- **Ablauf**: 
-  1. Edge Function `sot-project-market-report` wird aufgerufen
-  2. Sammelt Projektdaten des Users (Standorte, Preise, Einheiten)
-  3. Nutzt die bestehende Research-Engine-Infrastruktur (Apify fuer Portal-Daten, Firecrawl fuer Web-Extraktion)
-  4. Lovable AI (`google/gemini-3-flash-preview`) fasst alles zu einem strukturierten Marktbericht zusammen:
-     - Marktueberblick pro Standort
-     - Konkurrenzanalyse (aehnliche Projekte auf Portalen)
-     - Preisvergleich
-     - Empfehlungen
-  5. Bericht wird als Markdown gestreamt und im Sheet gerendert
+Ein neues `ACTIVE_WIDGET` Design-Token im `designManifest.ts` definiert verschiedene Glow-Farben. Jedes Modul waehlt eine Farbe, sodass innerhalb einer Ansicht **keine Farbe doppelt** vorkommt.
 
-### KPI-Kacheln
-Die bestehenden 4 KPI-Cards (Projekte, Einheiten, Abverkaufsquote, Umsatz IST) werden von oben nach **ganz unten** verschoben — unterhalb des Magic Intake.
+### Farbpalette (8 Glow-Varianten)
 
-### Layout-Reihenfolge (neu)
 ```text
-1. ModulePageHeader "PROJEKTMANAGER"
-2. DASHBOARD_HEADER (Visitenkarte + Marktanalyse-Widget)
-3. Meine Projekte (WidgetGrid)
-4. So funktioniert's (4-Schritte)
-5. Magic Intake
-6. KPI-Kacheln mit Verkaufsstaenden (ganz unten)
+Farbe         | Verwendung (Beispiel)
+------------- | ---------------------
+primary/blue  | Finanzierung, FM-Faelle
+emerald       | (reserviert fuer Demo-Widgets — nicht verwenden)
+amber         | Projekte, Portfolio-Kontexte
+cyan          | AkquiseManager-Mandate
+violet        | CommunicationPro, Serien-E-Mails
+rose          | Leads
+orange        | Sanierung, Privatkredit
+teal          | Services, Bestellungen
 ```
 
----
+### Technisches Design-Token
 
-## Teil 2: Immomanager (MOD-09) — Visitenkarte + Marktlage-Widget
+Neuer Export in `designManifest.ts`:
 
-### Problem
-MOD-09 hat kein Dashboard — der User landet direkt auf Tabs (Katalog, Beratung, etc.). Die Visitenkarte muss daher auf Tab-Ebene eingefuegt werden, idealerweise als gemeinsame Komponente die auf Katalog und Beratung erscheint.
+```text
+ACTIVE_WIDGET = {
+  // Varianten — jede erzeugt einen subtilen Glow via border + shadow + top-shimmer
+  primary:  border-primary/30 shadow-[0_0_15px_-3px] shadow-primary/15 + shimmer-stripe
+  amber:    border-amber-400/30 shadow-amber-400/15 + shimmer
+  cyan:     border-cyan-400/30 shadow-cyan-400/15 + shimmer
+  violet:   border-violet-400/30 shadow-violet-400/15 + shimmer
+  rose:     border-rose-400/30 shadow-rose-400/15 + shimmer
+  orange:   border-orange-400/30 shadow-orange-400/15 + shimmer
+  teal:     border-teal-400/30 shadow-teal-400/15 + shimmer
+}
+```
 
-### Visitenkarte (links)
-Avatar, Name, Rolle "Immomanager / Vertriebspartner", E-Mail, Telefon, Badge "X Objekte im Katalog". Gradient: Gruen-Teal (`from-[hsl(160,60%,40%)] to-[hsl(180,50%,45%)]`) — identisch zum AkquiseManager-Farbschema, da beide in der Vertriebs-Zone sind.
+Jede Variante besteht aus:
+1. **Border-Tint**: `border-{color}/30` (subtil sichtbar)
+2. **Box-Shadow-Glow**: `shadow-[0_0_15px_-3px] shadow-{color}/15` (weiches Leuchten)
+3. **Shimmer-Stripe** am oberen Rand: `before:bg-gradient-to-r from-{color}/40 via-{color}/60 to-{color}/40`
 
-### Immobilienmarkt-Report-Widget (rechts)
-- **Geschlossener Zustand**: Card mit Icon (Newspaper/Globe), Titel "Marktlage", Untertitel "Wohnimmobilien — Preise & Trends", Datum des letzten Berichts
-- **Bei Klick**: Oeffnet ein Sheet mit KI-generiertem Marktbericht
-- **Ablauf**:
-  1. Edge Function `sot-market-pulse-report` wird aufgerufen
-  2. Nutzt Lovable AI mit Web-Search-Kontext (via Perplexity oder eingebettete Suchergebnisse) fuer aktuelle Marktdaten
-  3. Generiert einen strukturierten Bericht:
-     - Aktuelle Preisentwicklung Wohnimmobilien Deutschland
-     - Regionale Trends
-     - Zinsentwicklung und Auswirkung
-     - Prognose / Einschaetzung
-  4. Bericht wird als Markdown gestreamt und gerendert
+### Helper-Funktion
 
----
+Eine Funktion `getActiveWidgetGlow(variant)` gibt die vollstaendige Klassenkette zurueck, damit man in den Modulen einfach schreiben kann:
 
-## Teil 3: Edge Functions
+```text
+<Card className={cn("h-full cursor-pointer", getActiveWidgetGlow('amber'))}>
+```
 
-### `sot-project-market-report` (neu)
-- Liest Projekte des Users aus der DB
-- Sammelt Standort-/Preisdaten
-- Optional: Ruft `sot-apify-portal-job` auf fuer Konkurrenzlistings
-- Sendet alles an Lovable AI (`google/gemini-3-flash-preview`) mit strukturiertem System-Prompt
-- Streamt die Antwort zurueck (SSE)
+## Aenderungen pro Modul
 
-### `sot-market-pulse-report` (neu)
-- Kein Projekt-Kontext noetig, allgemeiner Marktbericht
-- Nutzt Lovable AI mit einem Prompt der aktuelle Marktdaten zum Wohnimmobilienmarkt zusammenfasst
-- Optional: Perplexity-Connector fuer aktuelle Web-Recherche
-- Streamt die Antwort zurueck (SSE)
+| Modul | Glow-Farbe | Betroffene Widgets |
+|-------|-----------|-------------------|
+| MOD-04 Portfolio (`PortfolioTab.tsx`) | amber | Kontext-Widgets (Vermietereinheiten) |
+| MOD-04 Sanierung (`SanierungTab.tsx`) | orange | Sanierungs-Cases |
+| MOD-07 Privatkredit (`ConsumerLoanWidgets.tsx`) | orange | Kredit-Antraege |
+| MOD-08 Mandat (`MandatTab.tsx`) | amber | Mandate |
+| MOD-10 Finanzierung (`FinanceRequestWidgets.tsx`) | primary | Finanzierungsantraege |
+| MOD-11 FM (`FMDashboard.tsx`) | primary | Aktive Faelle + Mandate |
+| MOD-12 AM (`AkquiseDashboard.tsx`) | cyan | Aktive + Pending Mandate |
+| MOD-12 AM (`ObjekteingangList.tsx`) | cyan | Mandate-Widgets |
+| MOD-13 Projekte (`ProjekteDashboard.tsx`) | amber | Projekt-Widgets |
+| MOD-13 Projekte (`LandingPageTab.tsx`) | amber | Landing-Page-Widgets |
+| MOD-14 Serien-E-Mails (`SerienEmailsPage.tsx`) | violet | Kampagnen-Widgets |
+| MOD-14 Recherche (`ResearchTab.tsx`) | violet | Research-Orders |
+| MOD-15 Services (`BestellungenTab.tsx`) | teal | Bestell-Widgets |
+| Leads | rose | Lead-Cards |
+| Cars (`CarsAutos.tsx`, `CarsFahrzeuge.tsx`) | teal | Fahrzeug-Widgets |
 
----
+### Was KEINEN Glow bekommt
 
-## Teil 4: Shared Components
-
-### `ManagerVisitenkarte` (neue shared Komponente)
-Extrahiert das Visitenkarten-Pattern aus FM/AM in eine wiederverwendbare Komponente:
-- Props: `role`, `gradientColors`, `badgeText`, `onEdit`
-- Nutzt `useAuth()` fuer Profildaten
-
-### `MarketReportSheet` (neue shared Komponente)
-Sheet-Overlay fuer KI-Berichte:
-- Streaming-Markdown-Anzeige
-- Lade-Animation waehrend Generierung
-- "Erneut generieren"-Button
-- Responsive, scrollbar
-
----
+- **Demo-Widgets**: Behalten ihren eigenen `DEMO_WIDGET.CARD` Emerald-Glow
+- **CTA-Widgets** (border-dashed, "Neu anlegen"): Kein Glow — bleiben dezent
+- **Leere Platzhalter** (opacity-50, border-dashed): Kein Glow
+- **Bereits aktiv selektierte Widgets** (`ring-2 ring-primary`): Behalten ihren Selektions-Ring
 
 ## Dateien
-
-### Neue Dateien
-
-| Datei | Beschreibung |
-|-------|-------------|
-| `src/components/shared/ManagerVisitenkarte.tsx` | Wiederverwendbare Visitenkarte fuer alle Manager-Module |
-| `src/components/shared/MarketReportSheet.tsx` | Sheet fuer KI-generierte Marktberichte (Streaming-Markdown) |
-| `src/components/shared/MarketReportWidget.tsx` | Geschlossene Widget-Card mit Klick-Handler |
-| `supabase/functions/sot-project-market-report/index.ts` | KI-Marktanalyse fuer Projektmanager |
-| `supabase/functions/sot-market-pulse-report/index.ts` | Allgemeiner Immobilienmarkt-Report |
 
 ### Geaenderte Dateien
 
 | Datei | Aenderung |
 |-------|-----------|
-| `src/pages/portal/projekte/ProjekteDashboard.tsx` | DASHBOARD_HEADER mit Visitenkarte + Marktanalyse-Widget einfuegen, KPIs nach unten verschieben |
-| `src/pages/portal/vertriebspartner/KatalogTab.tsx` | DASHBOARD_HEADER mit Visitenkarte + Marktlage-Widget einfuegen |
-| `src/pages/portal/vertriebspartner/BeratungTab.tsx` | DASHBOARD_HEADER mit Visitenkarte + Marktlage-Widget einfuegen |
-| `supabase/config.toml` | Nicht manuell — wird automatisch aktualisiert |
+| `src/config/designManifest.ts` | Neues `ACTIVE_WIDGET` Token mit 7 Farbvarianten + Helper-Funktion |
+| `src/pages/portal/projekte/ProjekteDashboard.tsx` | Amber-Glow auf Projekt-Widgets |
+| `src/pages/portal/projekte/LandingPageTab.tsx` | Amber-Glow auf Landing-Page-Widgets |
+| `src/pages/portal/projekte/PortfolioTab.tsx` | Amber-Glow auf Kontext-Widgets |
+| `src/pages/portal/immobilien/SanierungTab.tsx` | Orange-Glow auf Sanierungs-Cases |
+| `src/pages/portal/finanzierung/StatusTab.tsx` | Primary-Glow auf Antraege |
+| `src/components/finanzierung/FinanceRequestWidgets.tsx` | Primary-Glow auf Antraege |
+| `src/pages/portal/finanzierungsmanager/FMDashboard.tsx` | Primary-Glow auf Faelle |
+| `src/pages/portal/finanzierungsmanager/FMFinanzierungsakte.tsx` | Primary-Glow auf Faelle |
+| `src/pages/portal/akquise-manager/AkquiseDashboard.tsx` | Cyan-Glow auf Mandate |
+| `src/pages/portal/akquise-manager/ObjekteingangList.tsx` | Cyan-Glow auf Mandate |
+| `src/pages/portal/akquise-manager/AkquiseMandateDetail.tsx` | Cyan-Glow auf Mandate |
+| `src/pages/portal/investments/MandatTab.tsx` | Amber-Glow auf Mandate |
+| `src/pages/portal/communication-pro/SerienEmailsPage.tsx` | Violet-Glow auf Kampagnen |
+| `src/pages/portal/communication-pro/recherche/ResearchTab.tsx` | Violet-Glow auf Orders |
+| `src/pages/portal/communication-pro/recherche/ResearchOrderWidget.tsx` | Violet-Glow auf Order-Cards |
+| `src/pages/portal/services/BestellungenTab.tsx` | Teal-Glow auf Bestellungen |
+| `src/components/privatkredit/ConsumerLoanWidgets.tsx` | Orange-Glow auf Antraege |
+| `src/components/portal/cars/CarsAutos.tsx` | Teal-Glow auf Fahrzeuge |
+| `src/components/portal/cars/CarsFahrzeuge.tsx` | Teal-Glow auf Fahrzeuge |
 
 ### Keine DB-Migration noetig
 
-Die Berichte werden on-the-fly generiert und nicht persistiert (optional spaeter cachebar).
-
----
-
-## KPI-Kacheln Funktion (ProjektManager, ganz unten)
-
-Die 4 bestehenden KPI-Cards zeigen bereits live Daten. Sie werden lediglich repositioniert:
-
-| Kachel | Wert | Quelle |
-|--------|------|--------|
-| Projekte | Anzahl total | `portfolioRows.length` |
-| Einheiten | Gesamt-Units | Summe `total_units_count` |
-| Abverkaufsquote | Sold/Total in % | Berechnet |
-| Umsatz IST | EUR aus Verkaeufen | Summe `sale_revenue_actual` |
+Rein visuelle Aenderung — ausschliesslich CSS-Klassen.
 
