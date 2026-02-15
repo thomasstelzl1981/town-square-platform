@@ -25,6 +25,7 @@ import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
+import { DesktopOnly } from '@/components/shared/DesktopOnly';
 import { 
   ChevronLeft, 
   ChevronRight, 
@@ -208,66 +209,68 @@ export function KalenderTab() {
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
-          <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-            <DialogTrigger asChild>
-              <Button size="sm" onClick={handleOpenCreate}>
-                <Plus className="h-4 w-4" />
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-[95vw]">
-              <DialogHeader>
-                <DialogTitle>Neuer Termin</DialogTitle>
-              </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="space-y-2">
-                  <Label htmlFor="m-title">Titel *</Label>
-                  <Input
-                    id="m-title"
-                    value={formData.title}
-                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                    placeholder="z.B. Besichtigung"
-                  />
-                </div>
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="m-all_day">Ganztägig</Label>
-                  <Switch
-                    id="m-all_day"
-                    checked={formData.all_day}
-                    onCheckedChange={(checked) => setFormData({ ...formData, all_day: checked })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="m-start_at">Start *</Label>
-                  <Input
-                    id="m-start_at"
-                    type={formData.all_day ? 'date' : 'datetime-local'}
-                    value={formData.start_at}
-                    onChange={(e) => setFormData({ ...formData, start_at: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="m-location">Ort</Label>
-                  <Input
-                    id="m-location"
-                    value={formData.location}
-                    onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                  />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>
-                  Abbrechen
+          <DesktopOnly>
+            <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+              <DialogTrigger asChild>
+                <Button size="sm" onClick={handleOpenCreate}>
+                  <Plus className="h-4 w-4" />
                 </Button>
-                <Button 
-                  onClick={() => createMutation.mutate(formData)}
-                  disabled={!formData.title || !formData.start_at || createMutation.isPending}
-                >
-                  {createMutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                  Erstellen
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+              </DialogTrigger>
+              <DialogContent className="max-w-[95vw]">
+                <DialogHeader>
+                  <DialogTitle>Neuer Termin</DialogTitle>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="m-title">Titel *</Label>
+                    <Input
+                      id="m-title"
+                      value={formData.title}
+                      onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                      placeholder="z.B. Besichtigung"
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="m-all_day">Ganztägig</Label>
+                    <Switch
+                      id="m-all_day"
+                      checked={formData.all_day}
+                      onCheckedChange={(checked) => setFormData({ ...formData, all_day: checked })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="m-start_at">Start *</Label>
+                    <Input
+                      id="m-start_at"
+                      type={formData.all_day ? 'date' : 'datetime-local'}
+                      value={formData.start_at}
+                      onChange={(e) => setFormData({ ...formData, start_at: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="m-location">Ort</Label>
+                    <Input
+                      id="m-location"
+                      value={formData.location}
+                      onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                    />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>
+                    Abbrechen
+                  </Button>
+                  <Button 
+                    onClick={() => createMutation.mutate(formData)}
+                    disabled={!formData.title || !formData.start_at || createMutation.isPending}
+                  >
+                    {createMutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                    Erstellen
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </DesktopOnly>
         </div>
 
         {/* Mobile: Schnellzugriff Heute */}

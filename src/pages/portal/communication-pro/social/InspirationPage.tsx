@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
 import { Lightbulb, Plus, Trash2, Loader2, Sparkles, ExternalLink, ChevronDown, PenTool, Linkedin, Instagram, Facebook, Youtube } from 'lucide-react';
+import { DesktopOnly } from '@/components/shared/DesktopOnly';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -169,46 +170,48 @@ export function InspirationPage() {
         {sources.length > 0 && <Badge variant="outline">{sources.length}/10</Badge>}
       </div>
 
-      {/* Add source */}
-      {sources.length < 10 && (
-        <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-          <DialogTrigger asChild>
-            <Button className="gap-2">
-              <Plus className="h-4 w-4" /> Quelle hinzufügen
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader><DialogTitle>Inspirationsquelle hinzufügen</DialogTitle></DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <Label>Plattform</Label>
-                <Select value={newSource.platform} onValueChange={(v) => setNewSource((p) => ({ ...p, platform: v }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="linkedin">LinkedIn</SelectItem>
-                    <SelectItem value="instagram">Instagram</SelectItem>
-                    <SelectItem value="facebook">Facebook</SelectItem>
-                    <SelectItem value="twitter">X / Twitter</SelectItem>
-                    <SelectItem value="youtube">YouTube</SelectItem>
-                    <SelectItem value="tiktok">TikTok</SelectItem>
-                  </SelectContent>
-                </Select>
+      {/* Add source — Desktop only */}
+      <DesktopOnly>
+        {sources.length < 10 && (
+          <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+            <DialogTrigger asChild>
+              <Button className="gap-2">
+                <Plus className="h-4 w-4" /> Quelle hinzufügen
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader><DialogTitle>Inspirationsquelle hinzufügen</DialogTitle></DialogHeader>
+              <div className="space-y-4">
+                <div>
+                  <Label>Plattform</Label>
+                  <Select value={newSource.platform} onValueChange={(v) => setNewSource((p) => ({ ...p, platform: v }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="linkedin">LinkedIn</SelectItem>
+                      <SelectItem value="instagram">Instagram</SelectItem>
+                      <SelectItem value="facebook">Facebook</SelectItem>
+                      <SelectItem value="twitter">X / Twitter</SelectItem>
+                      <SelectItem value="youtube">YouTube</SelectItem>
+                      <SelectItem value="tiktok">TikTok</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Name / Handle</Label>
+                  <Input placeholder="z.B. @garyvee" value={newSource.display_name} onChange={(e) => setNewSource((p) => ({ ...p, display_name: e.target.value }))} />
+                </div>
+                <div>
+                  <Label>Profil-URL (optional)</Label>
+                  <Input placeholder="https://..." value={newSource.profile_url} onChange={(e) => setNewSource((p) => ({ ...p, profile_url: e.target.value }))} />
+                </div>
               </div>
-              <div>
-                <Label>Name / Handle</Label>
-                <Input placeholder="z.B. @garyvee" value={newSource.display_name} onChange={(e) => setNewSource((p) => ({ ...p, display_name: e.target.value }))} />
-              </div>
-              <div>
-                <Label>Profil-URL (optional)</Label>
-                <Input placeholder="https://..." value={newSource.profile_url} onChange={(e) => setNewSource((p) => ({ ...p, profile_url: e.target.value }))} />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button onClick={() => addSourceMutation.mutate()} disabled={!newSource.display_name.trim()}>Hinzufügen</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      )}
+              <DialogFooter>
+                <Button onClick={() => addSourceMutation.mutate()} disabled={!newSource.display_name.trim()}>Hinzufügen</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        )}
+      </DesktopOnly>
 
       {/* Sources list */}
       {sources.length > 0 ? (

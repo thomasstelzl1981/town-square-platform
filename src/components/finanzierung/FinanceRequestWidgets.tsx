@@ -17,6 +17,7 @@ import { WidgetCell } from '@/components/shared/WidgetCell';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Plus, FileText, Loader2, Home } from 'lucide-react';
+import { DesktopOnly } from '@/components/shared/DesktopOnly';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { useDemoToggles } from '@/hooks/useDemoToggles';
@@ -157,28 +158,30 @@ export function FinanceRequestWidgets({ activeRequestId }: FinanceRequestWidgets
         );
       })}
 
-      {/* CTA: New Request */}
-      <WidgetCell>
-        <Card
-          className="h-full cursor-pointer transition-all hover:shadow-md border-dashed border-2 border-muted-foreground/20 hover:border-primary/40"
-          onClick={() => createMutation.mutate()}
-        >
-          <div className="flex flex-col items-center justify-center h-full p-4 gap-3">
-            {createMutation.isPending ? (
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-            ) : (
-              <>
-                <div className="rounded-full bg-primary/10 p-3">
-                  <Plus className="h-6 w-6 text-primary" />
-                </div>
-                <span className="text-sm font-medium text-muted-foreground">
-                  Neue Anfrage
-                </span>
-              </>
-            )}
-          </div>
-        </Card>
-      </WidgetCell>
+      {/* CTA: New Request — Desktop only */}
+      <DesktopOnly>
+        <WidgetCell>
+          <Card
+            className="h-full cursor-pointer transition-all hover:shadow-md border-dashed border-2 border-muted-foreground/20 hover:border-primary/40"
+            onClick={() => createMutation.mutate()}
+          >
+            <div className="flex flex-col items-center justify-center h-full p-4 gap-3">
+              {createMutation.isPending ? (
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              ) : (
+                <>
+                  <div className="rounded-full bg-primary/10 p-3">
+                    <Plus className="h-6 w-6 text-primary" />
+                  </div>
+                  <span className="text-sm font-medium text-muted-foreground">
+                    Neue Anfrage
+                  </span>
+                </>
+              )}
+            </div>
+          </Card>
+        </WidgetCell>
+      </DesktopOnly>
 
       {/* Loading state */}
       {isLoading && requests.length === 0 && (

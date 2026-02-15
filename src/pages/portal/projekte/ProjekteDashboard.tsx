@@ -41,6 +41,7 @@ import type { ProjectPortfolioRow } from '@/types/projekte';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { useDemoToggles } from '@/hooks/useDemoToggles';
+import { DesktopOnly } from '@/components/shared/DesktopOnly';
 
 interface ExtractedProjectData {
   projectName: string;
@@ -215,9 +216,11 @@ export default function ProjekteDashboard() {
                 <ProjectCard project={project} />
               </WidgetCell>
             ))}
-            <WidgetCell>
-              <ProjectCardPlaceholder onClick={() => setCreateProjectOpen(true)} />
-            </WidgetCell>
+            <DesktopOnly>
+              <WidgetCell>
+                <ProjectCardPlaceholder onClick={() => setCreateProjectOpen(true)} />
+              </WidgetCell>
+            </DesktopOnly>
           </WidgetGrid>
         )}
       </div>
@@ -254,10 +257,12 @@ export default function ProjekteDashboard() {
               <CardTitle className="text-lg">Magic Intake</CardTitle>
               <CardDescription>Laden Sie Exposé und/oder Wohnungsliste hoch — die KI erstellt Ihr Projekt automatisch.</CardDescription>
             </div>
-            <Button variant="outline" size="sm" onClick={() => setCreateProjectOpen(true)} className="gap-2">
-              <Plus className="h-4 w-4" />
-              Manuell anlegen
-            </Button>
+            <DesktopOnly>
+              <Button variant="outline" size="sm" onClick={() => setCreateProjectOpen(true)} className="gap-2">
+                <Plus className="h-4 w-4" />
+                Manuell anlegen
+              </Button>
+            </DesktopOnly>
           </div>
         </CardHeader>
         <CardContent className="space-y-4 relative">
