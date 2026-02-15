@@ -1,33 +1,79 @@
 
-# Stammdaten-Profil: Gleiches Kachel-Design wie Finanzanalyse
+# RecordCard Closed-State: Neues Layout ohne Anrede + Foto-Platzhalter mit Drag-and-Drop
 
-## Problem
+## Aenderungen
 
-Die RecordCard im Stammdaten-Profil (`ProfilTab.tsx`, Zeile 282-286) uebergibt nur 3 Summary-Felder (E-Mail, Mobil, Stadt). Dadurch greift das alte quadratische Layout statt des neuen Detail-Layouts (Foto links, Daten rechts), das in der Finanzanalyse bereits aktiv ist.
+### 1. Anrede entfernen
 
-## Aenderung
+Aus `UebersichtTab.tsx` (Zeile 170) und `ProfilTab.tsx` die Anrede-Zeile aus dem `summary`-Array streichen. Sie gehoert nicht unter den Namen.
 
-### `src/pages/portal/stammdaten/ProfilTab.tsx` — Summary erweitern
+### 2. RecordCard.tsx — Closed-State komplett umbauen (Zeilen 115-141)
 
-Die `summary`-Props der RecordCard (Zeile 282-286) werden um alle 11 Felder erweitert, damit das `hasDetailedSummary`-Layout (>4 Eintraege) automatisch greift:
+Das `hasDetailedSummary`-Layout wird ersetzt durch:
+
+```text
++--------------------------------------------------+
+|  [Badge: Hauptperson]                             |
+|                                                   |
+|  +--------+   Thomas Stelzl                       |
+|  |  FOTO  |   Geb.: 15.03.1985                    |
+|  |  80x80 |                                       |
+|  | Drop   |   Sauerlacher Strasse 30              |
+|  | hier   |   82041 Oberhaching                   |
+|  +--------+                                       |
+|               Tel:  +49 89 123456                  |
+|               Mob:  +49 170 123456                 |
+|               thomas.stelzl@example.de             |
+|                                              [>]  |
++--------------------------------------------------+
+```
+
+Kernpunkte:
+- **Foto-Kachel 80x80px** als `rounded-xl` Platzhalter mit Kamera-Icon und Text "Foto" wenn kein Bild vorhanden
+- Platzhalter reagiert auf **Drag-and-Drop** (Bild-Datei) via `onPhotoDrop` Callback — neues optionales Prop
+- Wenn Bild vorhanden: Bild anzeigen statt Platzhalter
+- **Kein Anrede-Feld** im geschlossenen Zustand
+- **Name in `text-lg font-semibold`**, Datenzeilen in `text-sm`
+- **Linksbuendig**, Labels mit fester Breite `w-16`
+- Kein `aspect-square` bei detailliertem Layout
+
+### 3. Neues Prop: `onPhotoDrop`
+
+```typescript
+interface RecordCardProps {
+  // ... bestehende Props
+  onPhotoDrop?: (file: File) => void;  // NEU
+}
+```
+
+Im geschlossenen Zustand wird die Foto-Kachel als Drop-Zone gerendert:
+- `onDragOver` / `onDrop` Events auf dem 80x80 Container
+- Akzeptiert nur Bild-Dateien (`image/*`)
+- Ruft `onPhotoDrop(file)` auf — der Parent (UebersichtTab/ProfilTab) kuemmert sich um Upload + URL-Update
+
+### 4. Summary-Reihenfolge in UebersichtTab.tsx und ProfilTab.tsx
+
+Ohne Anrede, Geburtsdatum als erstes Item (steht neben dem Foto):
 
 ```typescript
 summary={[
-  ...(formData.first_name ? [{ label: 'Anrede', value: formData.display_name || '' }] : []),
-  ...(formData.street ? [{ label: 'Straße', value: `${formData.street} ${formData.house_number || ''}`.trim() }] : []),
-  ...(formData.postal_code ? [{ label: 'PLZ/Ort', value: `${formData.postal_code} ${formData.city || ''}`.trim() }] : []),
-  ...(formData.phone_landline ? [{ label: 'Tel.', value: formData.phone_landline }] : []),
-  ...(formData.phone_mobile ? [{ label: 'Mobil', value: formData.phone_mobile }] : []),
-  ...(formData.email ? [{ label: 'E-Mail', value: formData.email }] : []),
+  // Neben dem Foto (erstes Item)
+  ...(person.birth_date ? [{ label: 'Geb.', value: new Date(person.birth_date).toLocaleDateString('de-DE') }] : []),
+  // Darunter
+  ...(person.street ? [{ label: 'Straße', value: `${person.street} ${person.house_number || ''}`.trim() }] : []),
+  ...(person.zip ? [{ label: 'PLZ/Ort', value: `${person.zip} ${person.city || ''}`.trim() }] : []),
+  ...((person as any).phone_landline ? [{ label: 'Tel.', value: (person as any).phone_landline }] : []),
+  ...(person.phone ? [{ label: 'Mobil', value: person.phone }] : []),
+  ...(person.email ? [{ label: 'E-Mail', value: person.email }] : []),
 ]}
 ```
 
-Das sind dieselben Felder wie in `UebersichtTab.tsx` (Zeile 169-177), angepasst an die `formData`-Feldnamen aus dem Profil. Sobald mehr als 4 Eintraege vorhanden sind, rendert RecordCard automatisch das neue Layout mit Foto links und Kontaktdaten rechts.
+ProfilTab analog mit `formData`-Feldern + Geburtsdatum (falls im Profil vorhanden).
 
 ## Betroffene Dateien
 
 | Datei | Aenderung |
 |-------|-----------|
-| `src/pages/portal/stammdaten/ProfilTab.tsx` | Summary-Array von 3 auf 6+ Felder erweitern |
-
-Kein weiterer Code noetig — das Layout in `RecordCard.tsx` ist bereits implementiert und reagiert dynamisch auf die Anzahl der Summary-Eintraege.
+| `src/components/shared/RecordCard.tsx` | Closed-State neu: 80px Foto-Platzhalter mit Drop, text-lg/text-sm, linksbuendig, neues `onPhotoDrop` Prop |
+| `src/pages/portal/finanzanalyse/UebersichtTab.tsx` | Anrede raus, Geb. als erstes Summary-Item |
+| `src/pages/portal/stammdaten/ProfilTab.tsx` | Anrede raus, Geb. ergaenzen, gleiche Reihenfolge |
