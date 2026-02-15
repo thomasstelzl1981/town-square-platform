@@ -233,10 +233,10 @@ export default function SucheTab() {
     enabled: hasSearched || searchMode === 'classic',
   });
 
-  // Merge demo listings with DB listings
+  // Merge demo listings with DB listings (deduplicated by title+city)
   const mergedListings = useMemo(() => {
-    const dbIds = new Set(listings.map(l => l.listing_id));
-    const demos = demoListings.filter(d => !dbIds.has(d.listing_id));
+    const dbKeys = new Set(listings.map(l => `${l.title}|${l.city}`));
+    const demos = demoListings.filter(d => !dbKeys.has(`${d.title}|${d.city}`));
     return [...demos, ...listings];
   }, [listings, demoListings]);
 
@@ -256,9 +256,9 @@ export default function SucheTab() {
     // First fetch listings from DB
     const { data: freshListings } = await refetch();
     
-    // Merge demo listings with DB listings for calculation
-    const dbIds = new Set((freshListings || []).map((l: PublicListing) => l.listing_id));
-    const demosToInclude = demoListings.filter(d => !dbIds.has(d.listing_id));
+    // Merge demo listings with DB listings for calculation (deduplicated)
+    const dbKeys = new Set((freshListings || []).map((l: PublicListing) => `${l.title}|${l.city}`));
+    const demosToInclude = demoListings.filter(d => !dbKeys.has(`${d.title}|${d.city}`));
     const allListingsToProcess = [...demosToInclude, ...(freshListings || [])].slice(0, 30);
     
     if (allListingsToProcess.length === 0) {

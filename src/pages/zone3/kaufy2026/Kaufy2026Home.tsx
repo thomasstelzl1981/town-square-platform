@@ -228,15 +228,11 @@ export default function Kaufy2026Home() {
     enabled: hasSearched,
   });
 
-  // Merge demo listings with DB listings (deduplicated by property ID)
+  // Merge demo listings with DB listings (deduplicated by title+city)
   const allListings = useMemo(() => {
     const dbListings = listings || [];
-    // DB listings take priority — filter out demo entries whose property is already in DB
-    const dbPropertyIds = new Set(dbListings.map((l: any) => l.listing_id));
-    const dbPublicIds = new Set(dbListings.map((l: any) => l.public_id));
-    const uniqueDemos = demoListings.filter(d => 
-      !dbPropertyIds.has(d.listing_id) && !dbPublicIds.has(d.public_id)
-    );
+    const dbKeys = new Set(dbListings.map((l: any) => `${l.title}|${l.city}`));
+    const uniqueDemos = demoListings.filter(d => !dbKeys.has(`${d.title}|${d.city}`));
     return [...uniqueDemos.map(d => ({ ...d, isDemo: true } as any)), ...dbListings];
   }, [demoListings, listings]);
 

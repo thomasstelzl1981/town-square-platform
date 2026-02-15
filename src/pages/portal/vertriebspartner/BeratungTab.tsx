@@ -246,7 +246,7 @@ const BeratungTab = () => {
       unit_count: d.unit_count,
     }));
     
-    const merged = deduplicateByField(demoAsRaw, rawListings, (item) => item.public_id || item.id);
+    const merged = deduplicateByField(demoAsRaw, rawListings, (item) => `${item.title}|${item.property_city}`);
     return merged.filter(l => !excludedIds.has(l.id));
   }, [rawListings, demoListings, excludedIds]);
 
