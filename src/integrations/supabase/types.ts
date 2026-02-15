@@ -10271,6 +10271,94 @@ export type Database = {
           },
         ]
       }
+      nk_cost_items: {
+        Row: {
+          amount_total_house: number | null
+          amount_unit: number | null
+          category_code: string
+          created_at: string
+          id: string
+          is_apportionable: boolean
+          key_basis_total: number | null
+          key_basis_unit: number | null
+          key_type: string | null
+          label_display: string | null
+          label_raw: string | null
+          mapping_confidence: number | null
+          mapping_source: string | null
+          nk_period_id: string
+          reason_code: string | null
+          sort_order: number | null
+          source_document_id: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          amount_total_house?: number | null
+          amount_unit?: number | null
+          category_code: string
+          created_at?: string
+          id?: string
+          is_apportionable?: boolean
+          key_basis_total?: number | null
+          key_basis_unit?: number | null
+          key_type?: string | null
+          label_display?: string | null
+          label_raw?: string | null
+          mapping_confidence?: number | null
+          mapping_source?: string | null
+          nk_period_id: string
+          reason_code?: string | null
+          sort_order?: number | null
+          source_document_id?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          amount_total_house?: number | null
+          amount_unit?: number | null
+          category_code?: string
+          created_at?: string
+          id?: string
+          is_apportionable?: boolean
+          key_basis_total?: number | null
+          key_basis_unit?: number | null
+          key_type?: string | null
+          label_display?: string | null
+          label_raw?: string | null
+          mapping_confidence?: number | null
+          mapping_source?: string | null
+          nk_period_id?: string
+          reason_code?: string | null
+          sort_order?: number | null
+          source_document_id?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nk_cost_items_nk_period_id_fkey"
+            columns: ["nk_period_id"]
+            isOneToOne: false
+            referencedRelation: "nk_periods"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nk_cost_items_source_document_id_fkey"
+            columns: ["source_document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nk_cost_items_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       nk_periods: {
         Row: {
           allocatable_eur: number | null
@@ -10333,6 +10421,126 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      nk_tenant_settlements: {
+        Row: {
+          balance: number | null
+          calculated_at: string | null
+          calculation_json: Json | null
+          confirmed_at: string | null
+          confirmed_by: string | null
+          created_at: string
+          exported_pdf_path: string | null
+          id: string
+          lease_days_in_period: number | null
+          lease_id: string
+          nk_period_id: string | null
+          period_end: string
+          period_start: string
+          property_id: string
+          renter_contact_id: string | null
+          status: string
+          tenant_id: string
+          total_apportionable: number | null
+          total_days_in_period: number | null
+          total_heating: number | null
+          total_prepaid_heating: number | null
+          total_prepaid_nk: number | null
+          unit_id: string
+          updated_at: string
+          validation_warnings: Json | null
+        }
+        Insert: {
+          balance?: number | null
+          calculated_at?: string | null
+          calculation_json?: Json | null
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          created_at?: string
+          exported_pdf_path?: string | null
+          id?: string
+          lease_days_in_period?: number | null
+          lease_id: string
+          nk_period_id?: string | null
+          period_end: string
+          period_start: string
+          property_id: string
+          renter_contact_id?: string | null
+          status?: string
+          tenant_id: string
+          total_apportionable?: number | null
+          total_days_in_period?: number | null
+          total_heating?: number | null
+          total_prepaid_heating?: number | null
+          total_prepaid_nk?: number | null
+          unit_id: string
+          updated_at?: string
+          validation_warnings?: Json | null
+        }
+        Update: {
+          balance?: number | null
+          calculated_at?: string | null
+          calculation_json?: Json | null
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          created_at?: string
+          exported_pdf_path?: string | null
+          id?: string
+          lease_days_in_period?: number | null
+          lease_id?: string
+          nk_period_id?: string | null
+          period_end?: string
+          period_start?: string
+          property_id?: string
+          renter_contact_id?: string | null
+          status?: string
+          tenant_id?: string
+          total_apportionable?: number | null
+          total_days_in_period?: number | null
+          total_heating?: number | null
+          total_prepaid_heating?: number | null
+          total_prepaid_nk?: number | null
+          unit_id?: string
+          updated_at?: string
+          validation_warnings?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nk_tenant_settlements_nk_period_id_fkey"
+            columns: ["nk_period_id"]
+            isOneToOne: false
+            referencedRelation: "nk_periods"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nk_tenant_settlements_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nk_tenant_settlements_renter_contact_id_fkey"
+            columns: ["renter_contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nk_tenant_settlements_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nk_tenant_settlements_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "units"
             referencedColumns: ["id"]
           },
         ]
