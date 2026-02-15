@@ -1,50 +1,72 @@
 
 
-# PV-Integration: Vollstaendiges Formular + Connector ohne Kommandozeile
+# Demo-Daten saisonal verbessern + Google Solar API anbinden
 
-## Problem 1: Connector-Sektion nicht sichtbar
+## Ueberblick
 
-Die Connector-Sektion ("Connector / Fernueberwachung") ist bereits im Dossier vorhanden (Zeile 212-387 in PVPlantDossier.tsx). Sie wird aber erst sichtbar, wenn du auf eine Anlage oder die Demo-Kachel klickst und dann nach unten scrollst. Das ist korrekt so — aber offenbar war nicht klar, dass man scrollen muss.
+Der Demo-Generator wird so erweitert, dass er **Jahreszeit, Taglaenge und optional Standortdaten** beruecksichtigt. Zusaetzlich wird eine Edge Function erstellt, die die **Google Solar API** abfragt, um echte standortbezogene Solarpotenzial-Daten fuer eine Adresse zu liefern.
 
-## Problem 2: "Neue Anlage erstellen" zeigt nicht alle Felder
+## 1. Saisonaler Demo-Generator
 
-Das Erstellformular zeigt aktuell nur 9 Felder (Name, Strasse, Ort, PLZ, kWp, Inbetriebnahme, Provider, WR-Hersteller, WR-Modell). Es fehlen alle anderen Felder aus dem Dossier (MaStR, Netzbetreiber, Zaehler, Batterie, etc.).
+**Datei: `src/components/photovoltaik/DemoLiveGenerator.ts`**
 
-**Loesung:** Das Erstellformular wird auf alle Felder erweitert, gruppiert in Sektionen wie im Dossier:
-- Stammdaten (Name, Strasse, PLZ, Ort)
-- Technik (kWp, WR-Hersteller, WR-Modell, Batterie, Inbetriebnahme)
-- Connector (IP-Adresse, Passwort, Intervall — direkt beim Erstellen)
-- MaStR (Anlagen-ID, Einheit-ID, Status)
-- Netzbetreiber (Netzbetreiber, Stromlieferant, Kundennummer)
-- Zaehler (Einspeise- und Bezugszaehler)
+Alle Funktionen erhalten einen optionalen Parameter `month` (default: aktueller Monat). Die folgenden saisonalen Faktoren werden eingebaut:
 
-## Problem 3: Bridge-Script / Kommandozeile ist nicht nutzbar
+| Monat | Sonnenaufgang | Sonnenuntergang | Peak-Faktor | Sonnenstunden/Tag |
+|-------|--------------|-----------------|-------------|-------------------|
+| Dez/Jan | 08:00 | 16:00 | 0.25 | 1.0 |
+| Feb | 07:30 | 17:00 | 0.35 | 1.5 |
+| Maerz | 06:30 | 18:30 | 0.55 | 2.5 |
+| Apr/Mai | 06:00 | 20:00 | 0.75 | 3.5 |
+| Jun/Jul | 05:15 | 21:30 | 1.0 | 4.8 |
+| Aug | 05:45 | 20:45 | 0.90 | 4.2 |
+| Sep | 06:30 | 19:30 | 0.65 | 3.0 |
+| Okt | 07:00 | 18:00 | 0.45 | 2.0 |
+| Nov | 07:30 | 16:30 | 0.30 | 1.2 |
 
-Das Python-Script erfordert Kommandozeilen-Kenntnisse und manuelle UUID-Eingabe. Das ist fuer einen normalen Nutzer nicht praktikabel.
+Aenderungen:
+- `generateDemoPower()`: Sonnenauf-/untergang und Peak-Leistung variieren nach Monat
+- `generateDemoPowerDeterministic()`: gleiche saisonale Logik
+- `generate24hCurve()`: beruecksichtigt aktuellen Monat
+- `generateDemoEnergyMonth()`: nutzt monatsspezifische Sonnenstunden statt fixe 3.2h
+- Neue Hilfsfunktion `getSeasonalParams(month)` liefert alle Parameter
 
-**Loesung:** Die Connector-Sektion im Dossier bekommt einen "Verbindung pruefen"-Button, der die Edge Function `pv-connector-bridge` aufruft. Da die Edge Function nicht direkt auf 192.168.x.x zugreifen kann, wird der Flow so umgebaut:
+**Ergebnis:** Im Februar (jetzt) zeigt die Demo-Kurve einen kurzen, flachen Bogen (ca. 07:30-17:00), im Sommer einen langen, hohen Bogen (05:15-21:30).
 
-1. **IP + Passwort im UI eingeben** (192.168.178.99 + dein SMA-Passwort)
-2. **"Konfiguration speichern"** — speichert die Daten in `pv_connectors.config_json`
-3. **Bridge-Anleitung vereinfacht** — der Befehl wird komplett vorausgefuellt (IP, Plant-ID, Tenant-ID, Connector-ID sind bekannt). Du musst nur noch das Passwort und den API-Key einsetzen. Der Befehl wird mit einem Klick kopiert.
-4. **Alternativ: Demo-Fallback** — wenn kein Bridge laeuft, zeigt die UI weiterhin synthetische Demo-Daten
+## 2. Google Solar API — Edge Function
 
-### Warum kein reiner UI-Button?
+Der `GOOGLE_MAPS_API_KEY` ist bereits konfiguriert. Die Google Solar API (`solar.googleapis.com`) nutzt denselben Key — vorausgesetzt, die Solar API ist im Google Cloud Projekt aktiviert.
 
-Der SMA Wechselrichter ist nur in deinem lokalen WLAN erreichbar (192.168.178.99). Unsere Cloud-Server koennen diese Adresse nicht erreichen. Das Bridge-Script laeuft auf deinem Computer, der im selben WLAN ist wie der Wechselrichter, und leitet die Daten an unsere Cloud weiter. Das ist die einzige technisch moegliche Loesung fuer lokale Geraete.
+**Neue Datei: `supabase/functions/sot-solar-insights/index.ts`**
 
-## Technische Aenderungen
+Endpunkt: `POST { latitude, longitude }` oder `POST { address }`
 
-### Datei: `src/pages/portal/photovoltaik/AnlagenTab.tsx`
-- Erstellformular erweitern: alle Felder aus dem Dossier in Sektionen gruppiert
-- Connector-Typ und IP direkt im Erstellformular einstellbar
-- Automatische Connector-Erstellung beim Speichern (wenn IP eingegeben)
+Ablauf:
+1. Falls nur Adresse: Geocoding ueber Google Geocoding API (gleicher Key)
+2. Request an `https://solar.googleapis.com/v1/buildingInsights:findClosest`
+3. Rueckgabe: `maxSunshineHoursPerYear`, `maxArrayPanelsCount`, `maxArrayAreaMeters2`, `yearlyEnergyDcKwh`, `carbonOffsetFactorKgPerMwh`
 
-### Datei: `src/pages/portal/photovoltaik/PVPlantDossier.tsx`
-- Connector-Sektion: Bridge-Befehl vollstaendig vorausgefuellt (nur Passwort fehlt)
-- IP-Feld vorbelegt mit gespeichertem Wert aus config_json
-- Klarere Anleitung in der UI: "Fuehre diesen Befehl auf deinem Computer aus (gleiches WLAN wie der Wechselrichter)"
+**Fallback:** Falls die Solar API nicht aktiviert ist oder keine Daten liefert (z.B. laendliche Gebiete), wird ein Fehler mit Hinweis zurueckgegeben, und die UI nutzt weiterhin den saisonalen Demo-Generator.
 
-### Datei: `tools/sma_bridge.py`
-- Keine Aenderung noetig — das Script ist bereits fertig
+## 3. UI-Integration im Dossier
+
+**Datei: `src/pages/portal/photovoltaik/PVPlantDossier.tsx`**
+
+- Neuer Button "Solarpotenzial abrufen" in der Technik-Sektion
+- Nutzt die Adresse der Anlage (street, postal_code, city) fuer den API-Call
+- Zeigt Ergebnis in einer Info-Box: geschaetzte Jahresleistung, optimale Panelflaeche, CO2-Einsparung
+- Wenn Daten vorhanden: Demo-Generator kann die Google-Sonnenstunden als Kalibrierung nutzen
+
+## 4. Betroffene Dateien
+
+| Datei | Aenderung |
+|-------|-----------|
+| `src/components/photovoltaik/DemoLiveGenerator.ts` | Saisonale Parameter, variable Taglaenge |
+| `supabase/functions/sot-solar-insights/index.ts` | Neue Edge Function fuer Google Solar API |
+| `src/pages/portal/photovoltaik/PVPlantDossier.tsx` | Button "Solarpotenzial abrufen" + Ergebnis-Anzeige |
+| `src/hooks/usePvMonitoring.ts` | Keine Aenderung noetig (nutzt automatisch den verbesserten Generator) |
+
+## 5. Hinweis zur Google Solar API
+
+Die Solar API muss im Google Cloud Projekt aktiviert sein (unter "APIs & Services"). Der vorhandene `GOOGLE_MAPS_API_KEY` wird mitverwendet. Falls die API nicht aktiviert ist, wird die Edge Function einen klaren Fehler zurueckgeben — der saisonale Demo-Fallback funktioniert unabhaengig davon.
 
