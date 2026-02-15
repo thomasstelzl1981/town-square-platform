@@ -163,6 +163,7 @@ export const zone1Admin: ZoneDefinition = {
     { path: "armstrong/policies", component: "ArmstrongPolicies", title: "Policies" },
     { path: "armstrong/test", component: "ArmstrongTestHarness", title: "Test Harness" },
     { path: "armstrong/integrations", component: "ArmstrongIntegrations", title: "Widget-Integrationen" },
+    { path: "armstrong/costs", component: "PlatformCostMonitor", title: "Plattform-Kostenmonitor" },
     // Landing Pages — consolidated into website-hosting
     // Fortbildung Management
     { path: "fortbildung", component: "AdminFortbildung", title: "Fortbildung" },
