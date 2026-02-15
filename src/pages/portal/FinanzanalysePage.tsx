@@ -1,14 +1,15 @@
 /**
- * Finanzanalyse Page (MOD-18) — 4 Tabs, Navigation via TopNavigation SubTabs
+ * Finanzen Page (MOD-18) — 5 Tabs, Navigation via TopNavigation SubTabs
  */
 import { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const UebersichtTab = lazy(() => import('./finanzanalyse/UebersichtTab'));
-const CashflowBudgetTab = lazy(() => import('./finanzanalyse/CashflowBudgetTab'));
-const VertraegeFixkostenTab = lazy(() => import('./finanzanalyse/VertraegeFixkostenTab'));
-const RisikoAbsicherungTab = lazy(() => import('./finanzanalyse/RisikoAbsicherungTab'));
+const InvestmentTab = lazy(() => import('./finanzanalyse/InvestmentTab'));
+const SachversicherungenTab = lazy(() => import('./finanzanalyse/SachversicherungenTab'));
+const VorsorgeTab = lazy(() => import('./finanzanalyse/VorsorgeTab'));
+const AbonnementsTab = lazy(() => import('./finanzanalyse/AbonnementsTab'));
 
 export default function FinanzanalysePage() {
   return (
@@ -17,9 +18,10 @@ export default function FinanzanalysePage() {
         <Routes>
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<UebersichtTab />} />
-          <Route path="reports" element={<CashflowBudgetTab />} />
-          <Route path="szenarien" element={<VertraegeFixkostenTab />} />
-          <Route path="settings" element={<RisikoAbsicherungTab />} />
+          <Route path="investment" element={<InvestmentTab />} />
+          <Route path="sachversicherungen" element={<SachversicherungenTab />} />
+          <Route path="vorsorge" element={<VorsorgeTab />} />
+          <Route path="abonnements" element={<AbonnementsTab />} />
           <Route path="*" element={<Navigate to="/portal/finanzanalyse" replace />} />
         </Routes>
       </Suspense>

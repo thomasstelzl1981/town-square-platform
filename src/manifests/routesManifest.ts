@@ -491,16 +491,17 @@ export const zone2Portal: ZoneDefinition = {
       ],
     },
     "MOD-18": {
-      name: "Finanzanalyse",
+      name: "Finanzen",
       base: "finanzanalyse",
       icon: "LineChart",
       display_order: 18,
       visibility: { default: true, org_types: ["client"] },
       tiles: [
-        { path: "dashboard", component: "FinanzanalyseDashboard", title: "Übersicht" },
-        { path: "reports", component: "FinanzanalyseReports", title: "Cashflow & Budget" },
-        { path: "szenarien", component: "FinanzanalyseSzenarien", title: "Verträge & Fixkosten" },
-        { path: "settings", component: "FinanzanalyseSettings", title: "Risiko & Absicherung" },
+        { path: "dashboard", component: "FinanzenUebersicht", title: "Übersicht", default: true },
+        { path: "investment", component: "FinanzenInvestment", title: "Investment" },
+        { path: "sachversicherungen", component: "FinanzenSachversicherungen", title: "Sachversicherungen" },
+        { path: "vorsorge", component: "FinanzenVorsorge", title: "Vorsorgeverträge" },
+        { path: "abonnements", component: "FinanzenAbonnements", title: "Abonnements" },
       ],
     },
     "MOD-19": {
