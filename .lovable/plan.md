@@ -1,146 +1,105 @@
 
+# Abgleich Armstrong Actions: Manifest vs. Zone 2 vs. Zone 1
 
-# Bereinigung und Vervollstaendigung: Integration Registry + API-Dokumentation
+## Analyse-Ergebnis
 
-## Ist-Zustand -- Analyse-Ergebnis
+### Drei Darstellungen derselben Daten
 
-### 3 Schichten der Integrations-Dokumentation (Problem)
+Das System zeigt die Armstrong-Actions an drei Stellen:
 
-Aktuell existieren Integrationen in drei getrennten, inkonsistenten Quellen:
+1. **Manifest (SSOT)**: `src/manifests/armstrongManifest.ts` -- definiert aktuell ca. 80+ Actions (davon 41 Coach-Actions fuer MOD-08 Slideshows/Engine)
+2. **Zone 1 Admin-Konsole**: `src/pages/admin/armstrong/ArmstrongActions.tsx` -- liest Manifest UND DB-Overrides, zeigt `effective_status`
+3. **Zone 2 Stammdaten/Abrechnung**: `src/pages/portal/communication-pro/agenten/AktionsKatalog.tsx` -- liest NUR das statische Manifest, KEINE DB-Overrides
 
-1. **`integration_registry` (DB)** -- 38 Eintraege, teilweise veraltet
-2. **`apiProviders.ts` (Code)** -- Nur 1 Eintrag (Vimcar), wird nirgends importiert
-3. **Backend Secrets (Edge Functions)** -- 13 konfigurierte Secrets, teilweise nicht in der Registry
+### Gefundene Diskrepanzen
 
-### Diskrepanzen im Detail
+**Problem 1: Zone 2 ignoriert Admin-Overrides (KRITISCH)**
 
-**In Backend-Secrets vorhanden, aber NICHT in `integration_registry`:**
+Die `AktionsKatalog`-Komponente in Zone 2 (eingebettet in Stammdaten > Abrechnung) importiert `armstrongActions` direkt aus dem Manifest und zeigt den statischen `status`. Wenn ein Admin in Zone 1 eine Action per Override auf "disabled" oder "restricted" setzt, sieht der User in Zone 2 weiterhin "Aktiv". Das ist ein Governance-Bruch.
 
-| Secret | Genutzt in | Registry-Eintrag |
-|--------|-----------|-------------------|
-| ELEVENLABS_API_KEY | `elevenlabs-tts/`, `elevenlabs-scribe-token/` | FEHLT |
-| LIVEKIT_API_KEY + SECRET + URL | `sot-videocall-create/`, `sot-videocall-invite-validate/` | FEHLT |
-| PERPLEXITY_API_KEY | `sot-dossier-auto-research/` | FEHLT |
-| OPENAI_API_KEY | (Reserve/Legacy) | FEHLT |
+| Darstellung | Datenquelle | Override-Sichtbarkeit |
+|-------------|-------------|----------------------|
+| Zone 1 (Admin) | Manifest + DB-Overrides via `useArmstrongActions` Hook | Ja -- zeigt "Override"-Badge |
+| Zone 2 (User) | Nur statisches Manifest (`armstrongActions`) | Nein -- zeigt immer Manifest-Status |
 
-**In `integration_registry` als "active", aber Status stimmt nicht:**
+**Problem 2: Fehlende Filter in Zone 2**
 
-| Code | Name | Problem |
-|------|------|---------|
-| NASA_APOD | NASA APOD | Status `pending_setup`, nutzt aber DEMO_KEY -- funktioniert |
-| ZENQUOTES | ZenQuotes API | Status `pending_setup`, braucht keinen Key -- funktioniert |
-| FINNHUB | Finnhub Markets | Status `pending_setup`, kein Secret konfiguriert, kein Edge Function |
-| OPEN_METEO | Open-Meteo | Status `active`, korrekt (kein Key noetig) |
+Zone 1 bietet Filter fuer Modul, Zone, Risiko und Status. Zone 2 hat nur Zone und Status -- es fehlen Modul- und Risiko-Filter. Fuer den End-User sind diese zwar weniger kritisch, aber fuer Konsistenz waere ein Modul-Filter sinnvoll.
 
-**In `integration_registry` eingetragen, aber NICHT benoetigt / fraglich:**
+**Problem 3: ArmstrongIntegrations.tsx nicht exportiert**
 
-| Code | Name | Bewertung |
-|------|------|-----------|
-| ARLO_SMARTHOME | Arlo Smart Home | Kein Modul, kein Code, kein Plan -- ENTFERNEN |
-| IPFI | IPFI Recherche | Unklarer Stub, kein Code -- ENTFERNEN |
-| RADIO_BROWSER | Radio Browser API | Kein Code, kein Modul -- ENTFERNEN |
-| CAYA | Caya DMS | Kein Code, kein konkreter Plan -- ENTFERNEN |
-| UNSTRUCTURED | Unstructured.io | Kein Code, intern durch Lovable AI ersetzt -- ENTFERNEN |
-| PROCESS_INBOUND | Process Inbound | Status `inactive`, Legacy -- ENTFERNEN |
-| SEND_EMAIL | Send Email | Status `inactive`, ersetzt durch `sot-system-mail-send` -- ENTFERNEN |
+Die Datei `src/pages/admin/armstrong/ArmstrongIntegrations.tsx` existiert, wird aber nicht in `index.ts` exportiert. Das bedeutet, sie ist eine tote Datei und ueber das Routing nicht erreichbar.
 
-**`apiProviders.ts` -- tote Datei:**
+**Problem 4: Keine Detail-Ansicht in Zone 2**
 
-| Problem | Detail |
-|---------|--------|
-| Wird nirgends importiert | 0 Referenzen ausser in der Datei selbst |
-| Nur 1 Eintrag (Vimcar) | Vimcar ist nicht in der DB-Registry |
-| Duplikat-Konzept | Die DB-Registry ist die SSOT |
+Zone 1 hat einen Detail-Dialog (Klick auf Eye-Icon) mit allen Metadaten (Scopes, API-Contract, Side Effects etc.). Zone 2 zeigt nur die Kartenansicht ohne Detail-Drill-Down.
 
-### Vollstaendige Soll-Uebersicht nach Bereinigung
+### Was KONSISTENT ist (kein Handlungsbedarf)
 
-**Kategorie 1: AKTIV (Secret vorhanden + Code funktioniert)**
-
-| Code | Name | Secret | Edge Functions | Modul |
-|------|------|--------|----------------|-------|
-| RESEND | Resend Email | RESEND_API_KEY | 16 Functions | System-weit |
-| GOOGLE_MAPS | Google Maps | GOOGLE_MAPS_API_KEY | sot-google-maps-key | MOD-03/04/06 |
-| GOOGLE_PLACES | Google Places | (via GOOGLE_MAPS_API_KEY) | sot-places-search, sot-research-engine | MOD-04/12/14 |
-| LOVABLE_AI | Lovable AI | LOVABLE_API_KEY | Diverse (Armstrong, Expose, Brief) | System-weit |
-| ELEVENLABS | ElevenLabs | ELEVENLABS_API_KEY | elevenlabs-tts, elevenlabs-scribe-token | Armstrong Voice |
-| LIVEKIT | LiveKit Video | LIVEKIT_API_KEY/SECRET/URL | sot-videocall-create/end/invite | Video-Calls |
-| PERPLEXITY | Perplexity AI | PERPLEXITY_API_KEY | sot-dossier-auto-research | Dossier/Research |
-| APIFY | Apify Scraper | APIFY_API_TOKEN | sot-research-engine, sot-apify-portal-job | MOD-12/14 |
-| FIRECRAWL | Firecrawl | FIRECRAWL_API_KEY | sot-research-engine, sot-research-firecrawl-extract | MOD-12/14 |
-| OPEN_METEO | Open-Meteo | (kein Key noetig) | (Client-seitig) | Dashboard Widget |
-| NASA_APOD | NASA APOD | (DEMO_KEY reicht) | sot-nasa-apod | Dashboard Widget |
-| ZENQUOTES | ZenQuotes | (kein Key noetig) | sot-zenquotes-proxy | Dashboard Widget |
-| CRON | Cron System | CRON_SECRET | sot-ledger-retention u.a. | System-intern |
-
-**Kategorie 2: GEPLANT (Modul existiert, API-Vertrag fehlt noch)**
-
-| Code | Name | Modul | Prioritaet |
-|------|------|-------|------------|
-| STRIPE | Stripe Payments | Social/Listings (MOD-13/06) | Hoch |
-| EUROPACE | Europace Baufi | Finanzierungsmanager (MOD-11) | Hoch |
-| FUTURE_ROOM | Future Room | Finanzierung (MOD-07) | Mittel |
-| scout24 | ImmoScout24 | Inserate (MOD-06) | Mittel |
-| meta_ads | Meta Ads | Social (MOD-13) | Mittel |
-| SPRENGNETTER | Sprengnetter | Bewertung (MOD-03) | Mittel |
-| FINAPI | FinAPI | MSV Premium (MOD-05) | Niedrig |
-| GMAIL_OAUTH | Gmail OAuth | Kommunikation (MOD-09) | Mittel |
-| MICROSOFT_OAUTH | Outlook OAuth | Kommunikation (MOD-09) | Mittel |
-| BRIEFDIENST | Briefdienst | Briefgenerator (MOD-02) | Niedrig |
-| SIMPLEFAX | SimpleFax | Kommunikation | Niedrig |
-| APOLLO | Apollo.io | Akquise (MOD-12) | Niedrig |
-| HECTOR | Hector Kfz | Car-Management (MOD-17) | Niedrig |
-| NEO_DIGITAL | Neo Digital | Mieter-Versicherung | Niedrig |
-
-**Kategorie 3: ENTFERNEN (kein Code, kein Modul, kein Plan)**
-
-| Code | Name | Grund |
-|------|------|-------|
-| ARLO_SMARTHOME | Arlo Smart Home | Kein Modul, kein Code |
-| IPFI | IPFI Recherche | Unklarer Stub |
-| RADIO_BROWSER | Radio Browser | Kein Code |
-| CAYA | Caya DMS | Kein Code |
-| UNSTRUCTURED | Unstructured.io | Ersetzt durch Lovable AI |
-| PROCESS_INBOUND | Process Inbound | Legacy, inactive |
-| SEND_EMAIL | Send Email | Legacy, inactive |
-
-**Kategorie 4: OPTIONAL (Nice-to-have, Phase 2+)**
-
-| Code | Name | Modul |
-|------|------|-------|
-| FINNHUB | Finnhub Markets | Dashboard Widget |
-| AMAZON_PAAPI | Amazon PAAPI | Buecher (MOD-15) |
-| EVENTBRITE_API | Eventbrite | Vortraege (MOD-15) |
-| YOUTUBE_DATA_API | YouTube API | Vortraege (MOD-15) |
-| IMPACT_AFFILIATE | Impact Affiliate | MOD-15 |
-| UDEMY_AFFILIATE | Udemy Affiliate | MOD-15 |
-| RABOT_ENERGY | Rabot Energy | PV/Energie |
-| EUFY_CONNECT | Eufy Connect | Smart Home (Stub) |
+- Beide Ansichten lesen aus demselben Manifest (SSOT-Prinzip intakt)
+- Die `KostenDashboard`-Komponente in Zone 2 liest korrekt aus `armstrong_billing_events` (DB)
+- Zone 1 hat korrekte Override-Logik mit `useArmstrongActions` Hook
+- Die WhatsApp-Armstrong-Card in Zone 2 ist korrekt im Abrechnung-Tab positioniert
 
 ## Umsetzungsplan
 
-### Schritt 1: Tote Datei entfernen ✅ ERLEDIGT (2026-02-15)
+### Schritt 1: Zone 2 AktionsKatalog auf useArmstrongActions umstellen
 
-`src/config/apiProviders.ts` geloescht.
+Die `AktionsKatalog`-Komponente (`src/pages/portal/communication-pro/agenten/AktionsKatalog.tsx`) wird von statischem Manifest-Import auf den `useArmstrongActions`-Hook umgestellt. Damit sieht der User den `effective_status` inklusive Admin-Overrides.
 
-### Schritt 2: SQL-Migration fuer Registry-Bereinigung ✅ ERLEDIGT (2026-02-15)
+Aenderungen:
+- Import von `useArmstrongActions` statt direktem `armstrongActions`-Import
+- Status-Badge zeigt `effective_status` statt `status`
+- Deaktivierte Actions werden visuell gedimmt dargestellt
+- Optional: "Eingeschraenkt"-Badge bei restricted Actions
 
-- 7 Legacy-Eintraege entfernt (ARLO_SMARTHOME, IPFI, RADIO_BROWSER, CAYA, UNSTRUCTURED, PROCESS_INBOUND, SEND_EMAIL)
-- 6 Eintraege nachgetragen (ELEVENLABS, LIVEKIT, PERPLEXITY, OPENAI, CRON_SYSTEM, VIMCAR)
-- 4 Status-Korrekturen (NASA_APOD, ZENQUOTES, apify, FIRECRAWL -> active)
+### Schritt 2: ArmstrongIntegrations in index.ts exportieren
 
-### Schritt 3: Audit-Datei ✅ ERLEDIGT (2026-02-15)
+Die fehlende Export-Zeile in `src/pages/admin/armstrong/index.ts` wird ergaenzt:
 
-`spec/audit/integration_registry_audit.json` erstellt mit vollstaendigem Ergebnis.
+```text
+export { default as ArmstrongIntegrations } from './ArmstrongIntegrations';
+```
 
-### Schritt 4: Vimcar-Eintrag ✅ ERLEDIGT (2026-02-15)
+Falls die Routing-Konfiguration diese Seite noch nicht verlinkt, wird sie als verfuegbar registriert.
 
-Als `pending_setup` in die DB-Registry aufgenommen (MOD-17 Car-Management).
+### Schritt 3: Modul-Filter in Zone 2 ergaenzen (optional)
 
-## Ergebnis nach Bereinigung ✅ ABGESCHLOSSEN
+Ein Modul-Filter-Dropdown wird zur Zone 2 AktionsKatalog hinzugefuegt, damit User nach Modulen filtern koennen. Dies ist eine UX-Verbesserung, keine kritische Governance-Massnahme.
 
-- **1 Single Source of Truth**: Nur noch `integration_registry` (DB)
-- **Tote Datei entfernt**: `apiProviders.ts`
-- **7 Legacy-Eintraege geloescht**
-- **6 Integrationen nachgetragen** (ElevenLabs, LiveKit, Perplexity, OpenAI, Cron, Vimcar)
-- **Status-Korrekturen** fuer NASA, ZenQuotes, Apify, Firecrawl
-- **Audit-Datei** fuer laufende Nachverfolgung
+## Technische Details
+
+### Schritt 1 -- Konkrete Code-Aenderung
+
+In `AktionsKatalog.tsx`:
+
+Vorher:
+```text
+import { armstrongActions } from '@/manifests/armstrongManifest';
+// ...
+const filtered = armstrongActions.filter(...)
+```
+
+Nachher:
+```text
+import { useArmstrongActions } from '@/hooks/useArmstrongActions';
+// ...
+const { actions, isLoading } = useArmstrongActions();
+const filtered = actions.filter(...)
+// Status-Badge nutzt action.effective_status statt action.status
+```
+
+### Schritt 2 -- Export ergaenzen
+
+Eine Zeile in `index.ts` hinzufuegen.
+
+### Kein SQL noetig
+
+Alle Aenderungen sind rein client-seitig. Die DB-Struktur (armstrong_action_overrides) existiert bereits und wird korrekt befuellt.
+
+## Ergebnis nach Umsetzung
+
+- Zone 2 User sehen den tatsaechlichen, governance-konformen Status jeder Action
+- Admin-Overrides greifen sofort in Zone 1 UND Zone 2
+- Tote Datei (ArmstrongIntegrations) wird erreichbar
+- Konsistente Darstellung ueber alle Zonen
