@@ -31,6 +31,7 @@ import { QuoteWidget } from '@/components/dashboard/widgets/QuoteWidget';
 import { RadioWidget } from '@/components/dashboard/widgets/RadioWidget';
 import { PVLiveWidget } from '@/components/dashboard/widgets/PVLiveWidget';
 import { BrandLinkWidget } from '@/components/dashboard/widgets/BrandLinkWidget';
+import { MeetingRecorderWidget } from '@/components/dashboard/MeetingRecorderWidget';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Settings2, Inbox } from 'lucide-react';
@@ -53,6 +54,7 @@ const WIDGET_CODE_TO_ID: Record<string, string> = {
   'SYS.BRAND.FUTUREROOM': 'system_brand_futureroom',
   'SYS.BRAND.SOT': 'system_brand_sot',
   'SYS.BRAND.ACQUIARY': 'system_brand_acquiary',
+  'SYS.MEET.RECORDER': 'system_meeting_recorder',
 };
 
 export default function PortalDashboard() {
@@ -128,6 +130,7 @@ export default function PortalDashboard() {
     if (widgetId === 'system_quote') return <QuoteWidget />;
     if (widgetId === 'system_radio') return <RadioWidget />;
     if (widgetId === 'system_pv_live') return <PVLiveWidget />;
+    if (widgetId === 'system_meeting_recorder') return <MeetingRecorderWidget />;
     if (widgetId === 'system_brand_kaufy') return <BrandLinkWidget code="SYS.BRAND.KAUFY" />;
     if (widgetId === 'system_brand_futureroom') return <BrandLinkWidget code="SYS.BRAND.FUTUREROOM" />;
     if (widgetId === 'system_brand_sot') return <BrandLinkWidget code="SYS.BRAND.SOT" />;

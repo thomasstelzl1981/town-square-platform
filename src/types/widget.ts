@@ -11,7 +11,8 @@
 export type SystemWidgetType = 
   | 'system_armstrong' 
   | 'system_weather' 
-  | 'system_globe';
+  | 'system_globe'
+  | 'system_meeting_recorder';
 
 export type TaskWidgetType = 
   | 'letter' 
@@ -21,7 +22,8 @@ export type TaskWidgetType =
   | 'research' 
   | 'note' 
   | 'project' 
-  | 'idea';
+  | 'idea'
+  | 'meeting_protocol';
 
 export type WidgetType = SystemWidgetType | TaskWidgetType;
 
@@ -100,6 +102,13 @@ export const WIDGET_CONFIGS: Record<WidgetType, WidgetConfig> = {
     gradient: 'from-green-500/10 to-green-600/5', 
     deletable: false 
   },
+  system_meeting_recorder: { 
+    type: 'system_meeting_recorder',
+    icon: 'Mic', 
+    label_de: 'Meeting Recorder', 
+    gradient: 'from-red-500/10 to-orange-600/5', 
+    deletable: false 
+  },
   
   // Task Widgets (deletable)
   letter: { 
@@ -156,6 +165,13 @@ export const WIDGET_CONFIGS: Record<WidgetType, WidgetConfig> = {
     icon: 'Lightbulb', 
     label_de: 'Idee', 
     gradient: 'from-pink-500/10 to-rose-600/5', 
+    deletable: true 
+  },
+  meeting_protocol: { 
+    type: 'meeting_protocol',
+    icon: 'FileText', 
+    label_de: 'Meeting-Protokoll', 
+    gradient: 'from-red-500/10 to-orange-600/5', 
     deletable: true 
   },
 };

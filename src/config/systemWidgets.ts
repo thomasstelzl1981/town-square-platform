@@ -185,6 +185,20 @@ export const SYSTEM_WIDGETS: SystemWidgetDefinition[] = [
     privacy_note: 'Zeigt PV-Anlagendaten aus Ihrem Konto',
     default_enabled: false,
   },
+  {
+    code: 'SYS.MEET.RECORDER',
+    name_de: 'Meeting Recorder',
+    description_de: 'Physische Besprechungen live transkribieren und automatisch zusammenfassen lassen.',
+    icon: 'Mic',
+    gradient: 'from-red-500/10 to-orange-600/5',
+    data_source: 'ElevenLabs STT + Lovable AI',
+    cache_interval_min: 0,
+    cost_model: 'metered',
+    status: 'live',
+    has_autoplay: false,
+    privacy_note: 'Nutzt Ihr Mikrofon. Es wird kein Audio gespeichert, nur Text.',
+    default_enabled: true,
+  },
 ];
 
 // Helper to get widget by code
