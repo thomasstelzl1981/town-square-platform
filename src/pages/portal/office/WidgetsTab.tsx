@@ -4,8 +4,6 @@
  * Two tabs:
  * 1. Systemwidgets - Configure dashboard system widgets
  * 2. Aufgabenwidgets - Archive of completed Armstrong widgets
- * 
- * NOTE: Recherche wurde nach MOD-14 Communication Pro verschoben
  */
 
 import { useState } from 'react';
@@ -20,6 +18,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { 
   Mail, 
   MailOpen,
@@ -31,22 +40,23 @@ import {
   Lightbulb,
   FileText,
   Layers,
-  RefreshCw,
   CheckCircle,
   XCircle,
   Inbox,
   Settings2,
+  Trash2,
+  Loader2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { toast } from 'sonner';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
-import type { Widget, TaskWidgetType, WidgetStatus } from '@/types/widget';
+import type { TaskWidgetType } from '@/types/widget';
 import { WIDGET_CONFIGS } from '@/types/widget';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { SystemWidgetsTab } from './SystemWidgetsTab';
+import { useCompletedTaskWidgets } from '@/hooks/useCompletedTaskWidgets';
 
 // Icon mapping
 const WIDGET_ICONS: Record<TaskWidgetType, typeof Mail> = {
@@ -61,45 +71,9 @@ const WIDGET_ICONS: Record<TaskWidgetType, typeof Mail> = {
   meeting_protocol: FileText,
 };
 
-// Demo data - will be replaced with React Query hook
-const DEMO_COMPLETED_WIDGETS: Widget[] = [
-  {
-    id: 'completed-1',
-    type: 'letter',
-    title: 'Brief an Max Müller',
-    description: 'Mieterhöhung zum 01.04.2026',
-    status: 'completed',
-    risk_level: 'medium',
-    cost_model: 'free',
-    created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-    completed_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-  },
-  {
-    id: 'completed-2',
-    type: 'reminder',
-    title: 'Vertrag prüfen',
-    description: 'Mietvertrag Hauptstr. 5',
-    status: 'completed',
-    risk_level: 'low',
-    cost_model: 'free',
-    created_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-    completed_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-  },
-  {
-    id: 'cancelled-1',
-    type: 'idea',
-    title: 'Balkonsanierung',
-    description: 'Konzept erstellen',
-    status: 'cancelled',
-    risk_level: 'low',
-    cost_model: 'free',
-    created_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-  },
-];
-
 function TaskWidgetsContent() {
   const isMobile = useIsMobile();
-  const [widgets] = useState<Widget[]>(DEMO_COMPLETED_WIDGETS);
+  const { widgets, isLoading, handleDelete } = useCompletedTaskWidgets();
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
 
@@ -108,10 +82,6 @@ function TaskWidgetsContent() {
     if (statusFilter !== 'all' && widget.status !== statusFilter) return false;
     return true;
   });
-
-  const handleRepeat = (_widgetId: string) => {
-    toast.info('Widget wird wiederholt');
-  };
 
   return (
     <div className={isMobile ? "p-4" : "p-4 md:p-6 lg:p-8"}>
@@ -163,7 +133,11 @@ function TaskWidgetsContent() {
       </div>
 
       {/* Widget List */}
-      {filteredWidgets.length === 0 ? (
+      {isLoading ? (
+        <div className="flex justify-center py-12">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      ) : filteredWidgets.length === 0 ? (
         <Card className="glass-card border-dashed border-muted-foreground/20">
           <CardContent className="py-12 flex flex-col items-center justify-center text-center">
             <Inbox className="h-10 w-10 text-muted-foreground/50 mb-3" />
@@ -237,15 +211,35 @@ function TaskWidgetsContent() {
                       {isCompleted ? 'Erledigt' : 'Abgebr.'}
                     </Badge>
                     
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => handleRepeat(widget.id)}
-                      className="h-7 w-7 p-0"
-                      title="Wiederholen"
-                    >
-                      <RefreshCw className="h-3.5 w-3.5" />
-                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                          title="Löschen"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Widget löschen?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            „{widget.title}" wird unwiderruflich gelöscht.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => handleDelete(widget.id)}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          >
+                            Löschen
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </div>
                 </CardContent>
               </Card>

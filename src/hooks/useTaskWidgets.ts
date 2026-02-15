@@ -144,6 +144,22 @@ export function useTaskWidgets() {
     }
   }, []);
 
+  // Delete a widget (hard delete)
+  const handleDelete = useCallback(async (widgetId: string) => {
+    const { error } = await supabase
+      .from('task_widgets')
+      .delete()
+      .eq('id', widgetId);
+
+    if (error) {
+      toast.error('Fehler beim Löschen');
+      console.error('[useTaskWidgets] Delete error:', error);
+    } else {
+      setWidgets(prev => prev.filter(w => w.id !== widgetId));
+      toast.success('Widget gelöscht');
+    }
+  }, []);
+
   // Only pending widgets for display
   const pendingWidgets = widgets.filter(w => w.status === 'pending');
 
@@ -153,5 +169,6 @@ export function useTaskWidgets() {
     executingId,
     handleConfirm,
     handleCancel,
+    handleDelete,
   };
 }
