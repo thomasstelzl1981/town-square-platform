@@ -145,9 +145,9 @@ export function RecordCard({
               )}
             </div>
 
-            {/* Name + data, indented at 20% */}
-            <div className="pl-[20%]">
-              <p className="text-xl font-bold leading-tight truncate">{title}</p>
+            {/* Name + data, left-aligned */}
+            <div>
+              <p className="text-xl font-bold leading-tight">{title}</p>
               <div className="mt-2 space-y-0.5">
                 {summary.map((s, i) => (
                   <p key={i} className="text-sm text-muted-foreground/80 truncate">
