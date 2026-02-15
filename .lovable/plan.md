@@ -1,131 +1,150 @@
 
 
-# Demo-Daten fuer NK-Abrechnung Engine + Kontobewegungen
+# NK-Abrechnung: Vollstaendiger Inline-Prozess mit editierbaren Datenfeldern
 
-## Ueberblick
+## Diagnose: Warum aktuell nichts funktioniert
 
-Auf Basis der fertiggestellten Engine-SPEC werden jetzt die Demo-Daten angelegt, die den End-to-End-Flow ermoeglichen: Dokument im DMS → Readiness-Check gruen → Berechnung → PDF-Export.
+Alle Demo-Daten sind korrekt in der Datenbank vorhanden (3 NK-Perioden, 33 Cost-Items, 6 Dokumente mit Links, 3 Leases). Zwei Code-Bugs blockieren den Flow:
 
----
+1. **`engine.ts` Zeile 58**: Sucht Lease per `.eq('id', input.leaseId)`, aber `leaseId` ist ein leerer String — findet nichts.
+2. **`readinessCheck.ts` Zeile 85**: Fragt `leases.property_id` ab, aber diese Spalte existiert nicht. Leases haengen ueber `unit_id` an Units, die wiederum `property_id` haben.
 
-## Teil 1: Demo NK-Perioden und Cost Items (DB-Seed)
+## Loesung: 3 Code-Fixes + komplett neues UI
 
-Fuer jede der 3 Demo-Properties wird eine `nk_periods`-Zeile fuer 2025 angelegt, plus je 8-10 `nk_cost_items` (extrahierte Positionen aus der WEG-Abrechnung + Grundsteuerbescheid).
+### Fix 1: `src/engines/nkAbrechnung/engine.ts`
 
-### nk_periods (3 Eintraege)
+Zeile 55-60 aendern: Statt `.eq('id', input.leaseId)` wird der Lease ueber `unit_id` + `tenant_id` geladen:
+```typescript
+const { data: lease } = await supabase
+  .from('leases')
+  .select('*')
+  .eq('unit_id', input.unitId)
+  .eq('tenant_id', input.tenantId)
+  .limit(1)
+  .single();
+```
 
-| property_id | period_start | period_end | status | allocation_key_default |
-|-------------|-------------|------------|--------|----------------------|
-| BER-01 | 2025-01-01 | 2025-12-31 | confirmed | mea |
-| MUC-01 | 2025-01-01 | 2025-12-31 | confirmed | mea |
-| HH-01 | 2025-01-01 | 2025-12-31 | confirmed | mea |
+Zusaetzlich: `totalUnits` dynamisch berechnen (Anzahl Units der Property fuer unit_count-Schluessel).
 
-### nk_cost_items pro Property (Beispiel BER-01, 85 m2)
+### Fix 2: `src/engines/nkAbrechnung/readinessCheck.ts`
 
-| category_code | label_display | amount_total_house | amount_unit | key_type | is_apportionable |
-|--------------|---------------|-------------------|-------------|----------|-----------------|
-| grundsteuer | Grundsteuer | 2.400 | 205,20 | mea | true |
-| wasser | Wasserversorgung | 3.200 | 360,00 | persons | true |
-| abwasser | Entwaesserung | 1.800 | 202,50 | persons | true |
-| muell | Muellbeseitigung | 1.600 | 180,00 | persons | true |
-| strassenreinigung | Strassenreinigung | 950 | 85,00 | area_sqm | true |
-| gebaeudereinigung | Gebaeudereinigung | 2.400 | 204,00 | area_sqm | true |
-| sachversicherung | Gebaeudeversicherung | 3.000 | 255,00 | mea | true |
-| schornsteinfeger | Schornsteinfeger | 1.100 | 95,00 | unit_count | true |
-| beleuchtung | Allgemeinstrom | 1.200 | 102,00 | mea | true |
-| verwaltung | Verwaltungskosten | 3.600 | 306,00 | mea | false |
-| ruecklage | Instandhaltungsruecklage | 4.800 | 408,00 | mea | false |
+Zeile 85-89: Lease-Query ueber Units joinen statt direkt auf `property_id`:
+```typescript
+const { data: units } = await supabase
+  .from('units')
+  .select('id')
+  .eq('property_id', propertyId)
+  .eq('tenant_id', tenantId);
 
-Analoge Positionen fuer MUC-01 (72 m2) und HH-01 (45 m2) mit proportional angepassten Betraegen.
+const unitIds = (units || []).map(u => u.id);
+const { data: leases } = await supabase
+  .from('leases')
+  .select('id, rent_cold_eur, nk_advance_eur')
+  .eq('tenant_id', tenantId)
+  .in('unit_id', unitIds);
+```
 
-### Erwartete Ergebnisse pro Mieter
+### Fix 3: `src/hooks/useNKAbrechnung.ts`
 
-| Wohnung | Summe umlagefaehig | NK-VZ (12x) | Heiz-VZ (12x) | Gesamt VZ | Saldo |
-|---------|-------------------|-------------|---------------|-----------|-------|
-| BER-01 | ~1.688,70 | 2.160 | 1.440 | 3.600 | ~-1.911 (Guthaben) |
-| MUC-01 | ~1.430,00 | 2.640 | 1.320 | 3.960 | ~-2.530 (Guthaben) |
-| HH-01 | ~893,00 | 1.440 | 600 | 2.040 | ~-1.147 (Guthaben) |
+Zeile 57: `leaseId: ''` entfernen — die Engine findet den Lease jetzt selbst.
 
----
+### Neues UI: `src/components/portfolio/NKAbrechnungTab.tsx`
 
-## Teil 2: Demo-Dokumente im DMS
+Komplett neuer Inline-Flow von oben nach unten, mit editierbaren Feldern und strukturierter Darstellung des gesamten Prozesses:
 
-Fuer den Readiness-Check muessen zugeordnete Dokumente existieren:
+```text
+NK-Abrechnung                                    [Jahr: 2025 v]
+================================================================
 
-### documents (6 Eintraege)
+SEKTION 1 — EINGEHENDE WEG-ABRECHNUNG
+(Daten aus dem Posteingang / Dokument-Extraktion)
+┌──────────────────────────────────────────────────────────────┐
+│  Dokument: WEG-Jahresabrechnung 2025         Status: ✅     │
+│  Abrechnungszeitraum: 01.01.2025 - 31.12.2025              │
+│                                                              │
+│  Kostenart              │ Schluessel │ Haus ges. │ Ihr Anteil│
+│  ─────────────────────────────────────────────────────────── │
+│  Wasserversorgung       │ Personen   │  3.200,00 │   360,00 │ ← editierbar
+│  Entwaesserung          │ Personen   │  1.800,00 │   202,50 │
+│  Muellbeseitigung       │ Personen   │  1.600,00 │   180,00 │
+│  Strassenreinigung      │ Flaeche    │    950,00 │    85,00 │
+│  Gebaeudereinigung      │ Flaeche    │  2.400,00 │   204,00 │
+│  Gebaeudeversicherung   │ MEA        │  3.000,00 │   255,00 │
+│  Schornsteinfeger       │ Einheiten  │  1.100,00 │    95,00 │
+│  Allgemeinstrom         │ MEA        │  1.200,00 │   102,00 │
+│  ────────────────────────────────────────────────────────── │
+│  Verwaltungskosten      │ MEA        │  3.600,00 │   306,00 │ nicht umlagef.
+│  Instandhaltungsrueckl. │ MEA        │  4.800,00 │   408,00 │ nicht umlagef.
+│  ════════════════════════════════════════════════════════════│
+│  Summe umlagefaehig (ohne Grundsteuer):          1.483,50   │
+│  Summe nicht umlagefaehig:                         714,00   │
+│                                            [Speichern]      │
+└──────────────────────────────────────────────────────────────┘
 
-| doc_type | Beschreibung | extraction_status | review_state |
-|----------|-------------|-------------------|-------------|
-| WEG_JAHRESABRECHNUNG | WEG-Abrechnung BER-01 2025 | completed | approved |
-| WEG_JAHRESABRECHNUNG | WEG-Abrechnung MUC-01 2025 | completed | approved |
-| WEG_JAHRESABRECHNUNG | WEG-Abrechnung HH-01 2025 | completed | approved |
-| GRUNDSTEUER_BESCHEID | Grundsteuerbescheid BER-01 | completed | approved |
-| GRUNDSTEUER_BESCHEID | Grundsteuerbescheid MUC-01 | completed | approved |
-| GRUNDSTEUER_BESCHEID | Grundsteuerbescheid HH-01 | completed | approved |
+SEKTION 2 — GRUNDSTEUERBESCHEID
+┌──────────────────────────────────────────────────────────────┐
+│  Dokument: Grundsteuerbescheid               Status: ✅     │
+│                                                              │
+│  Jaehrlicher Betrag (Haus gesamt):  [  2.400,00 ] EUR       │ ← editierbar
+│  Verteilerschluessel:               [  MEA      ]           │
+│  Ihr Anteil (berechnet):              205,20 EUR             │
+│                                            [Speichern]      │
+└──────────────────────────────────────────────────────────────┘
 
-### document_links (6 Eintraege)
+SEKTION 3 — MIETEINNAHMEN UND VORAUSZAHLUNGEN
+(Kumuliert aus Mietvertrag / Geldeingang)
+┌──────────────────────────────────────────────────────────────┐
+│  Mieter: Bergmann, Thomas                                    │
+│  Mietvertrag: seit 01.03.2021 (laufend)                     │
+│  Kaltmiete: 850,00 EUR/Monat                                │
+│                                                              │
+│  NK-Vorauszahlung:     180,00 EUR/Monat  x 12 = 2.160,00   │
+│  Heizkosten-VZ:        120,00 EUR/Monat  x 12 = 1.440,00   │
+│  ────────────────────────────────────────────────────────── │
+│  Gesamt Vorauszahlungen 2025:              3.600,00 EUR     │
+└──────────────────────────────────────────────────────────────┘
 
-Jedes Dokument wird mit `object_type='property'` und `link_status='accepted'` der entsprechenden Property zugeordnet.
+SEKTION 4 — BERECHNUNG UND SALDO
+┌──────────────────────────────────────────────────────────────┐
+│  Umlagefaehige Kosten (WEG):               1.483,50 EUR     │
+│  + Grundsteuer (Direktzahlung):              205,20 EUR     │
+│  ════════════════════════════════════════════════════════════│
+│  Gesamtkosten Mieter:                      1.688,70 EUR     │
+│                                                              │
+│  ./. NK-Vorauszahlungen:                   2.160,00 EUR     │
+│  ./. Heizkosten-VZ:                        1.440,00 EUR     │
+│  ════════════════════════════════════════════════════════════│
+│  GUTHABEN MIETER:                         -1.911,30 EUR     │
+│                                                              │
+│            [Berechnung starten]                              │
+└──────────────────────────────────────────────────────────────┘
 
----
+SEKTION 5 — EXPORT UND VERSAND
+┌──────────────────────────────────────────────────────────────┐
+│  [PDF erzeugen]   [Im DMS ablegen]   [An Briefgenerator]    │
+└──────────────────────────────────────────────────────────────┘
+```
 
-## Teil 3: Readiness-Check Anpassung
+Jede Sektion ist eine eigene Card-Komponente. Die Datenfelder in Sektion 1 und 2 sind editierbar (Input-Felder), damit der Nutzer Werte korrigieren kann, bevor er die Berechnung startet. Sektion 3 zeigt die kumulierten Mietdaten read-only aus dem Lease. Sektion 4 fuehrt alles zusammen.
 
-Der aktuelle `readinessCheck.ts` hat ein Problem: Er filtert nicht nach `doc_type` bei der document_links-Abfrage. Er findet zwar Links zur Property, aber prueft nicht ob es WEG_JAHRESABRECHNUNG oder GRUNDSTEUER_BESCHEID ist.
+## Technische Details
 
-**Fix**: Die Query muss ueber einen JOIN auf `documents.doc_type` filtern, nicht nur auf `document_links.object_id`.
-
----
-
-## Teil 4: Demo-Kontobewegungen (demoKontoData.ts)
-
-Komplette Ueberarbeitung mit `buildDemoTransactions()` Generator:
-
-### Monatliches Muster (Jan 2025 – Feb 2026 = 14 Monate)
-
-Pro Monat 6 Buchungen:
-- 3x Mieteingang (Warmmiete): +1.150 / +1.580 / +750
-- 3x Hausgeld-Lastschrift: -380 / -450 / -250
-
-### Quartalsweise Grundsteuer (Feb, Mai, Aug, Nov)
-
-- BER-01: -130 (= 520/4)
-- MUC-01: -160 (= 640/4)
-- HH-01: -80 (= 320/4)
-
-### Sonderbuchungen
-
-- Nov 2025: Heizungsreparatur BER-01: -450 (Sondereigentum)
-
-### Gesamt: ~97 Transaktionen
-
-Saldo kumulativ ab Startsaldo 5.200,00 EUR berechnet, absteigend sortiert fuer Anzeige.
-
----
-
-## Teil 5: Armstrong KB Update (optional)
-
-Die 7 Eintraege in `armstrongNKKnowledge.ts` sind bereits angelegt. Falls Sie eigene Texte liefern, werden diese ersetzt. Andernfalls werden die bestehenden Eintraege als DB-Seed in `armstrong_knowledge_items` eingefuegt.
-
----
-
-## Dateien
+### Betroffene Dateien
 
 | Datei | Aenderung |
 |-------|-----------|
-| `src/engines/nkAbrechnung/readinessCheck.ts` | Fix: doc_type-Filter beim Readiness-Check |
-| `src/constants/demoKontoData.ts` | Komplett neu: buildDemoTransactions() mit 97 Buchungen |
-| DB-Migration | Seed: nk_periods (3), nk_cost_items (~33), documents (6), document_links (6) |
-| `src/constants/armstrongNKKnowledge.ts` | Optional: Ihre Texte einsetzen |
+| `src/engines/nkAbrechnung/engine.ts` | Fix: Lease ueber unit_id laden statt leerer leaseId |
+| `src/engines/nkAbrechnung/readinessCheck.ts` | Fix: Lease-Query ueber Units joinen |
+| `src/hooks/useNKAbrechnung.ts` | Fix: leaseId entfernen, Lease-Daten + Cost-Items laden |
+| `src/components/portfolio/NKAbrechnungTab.tsx` | Komplett neu: 5-Sektionen Inline-Flow mit editierbaren Feldern |
 
----
-
-## Implementierungsreihenfolge
+### Implementierungsreihenfolge
 
 | Schritt | Was |
 |---------|-----|
-| 1 | DB-Migration: Demo-Seed (nk_periods, nk_cost_items, documents, document_links) |
-| 2 | Fix readinessCheck.ts (doc_type-Filter) |
-| 3 | buildDemoTransactions() in demoKontoData.ts |
-| 4 | Funktionstest: NK-Abrechnung Tab auf BER-01 oeffnen, Readiness gruen, Berechnung starten |
+| 1 | Fix engine.ts (Lease-Lookup ueber unit_id) |
+| 2 | Fix readinessCheck.ts (Units-Subquery) |
+| 3 | Erweitere useNKAbrechnung Hook (Lease-Daten + Cost-Items als State) |
+| 4 | Neues NKAbrechnungTab.tsx mit 5 Sektionen, editierbaren Feldern, Speichern-Buttons |
+| 5 | Funktionstest auf BER-01 |
 
