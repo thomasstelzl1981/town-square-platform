@@ -13,7 +13,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ShoppingBag, Inbox, Users2, FileText, ArrowRight, Ban, CheckCircle2, Globe, Users, Building2, ExternalLink, Power, Home } from 'lucide-react';
 import { EmptyState } from '@/components/shared';
 import { useSalesDeskListings, useToggleListingBlock, useUpdateListingDistribution } from '@/hooks/useSalesDeskListings';
-import { useDemoListings, isDemoListingId } from '@/hooks/useDemoListings';
+import { useDemoListings, isDemoListingId, deduplicateByField } from '@/hooks/useDemoListings';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -41,8 +41,12 @@ function ImmobilienVertriebsauftraegeCard() {
     },
   });
 
-  // Merge demo mandates
-  const allMandates = [...(demoMandates as any[]), ...(mandateListings || [])];
+  // Merge demo mandates (deduplicated)
+  const allMandates = deduplicateByField(
+    demoMandates as any[],
+    mandateListings || [],
+    (item: any) => item.id
+  );
 
   const formatDate = (d: string) => new Date(d).toLocaleDateString('de-DE');
 
@@ -384,8 +388,12 @@ function VeroeffentlichungenTab() {
   const toggleBlock = useToggleListingBlock();
   const updateDistribution = useUpdateListingDistribution();
 
-  // Merge demo listings at the top
-  const listings = useMemo(() => [...demoListings, ...(dbListings || [])], [demoListings, dbListings]);
+  // Merge demo listings (deduplicated)
+  const listings = useMemo(() => deduplicateByField(
+    demoListings,
+    dbListings || [],
+    (item: any) => item.id
+  ), [demoListings, dbListings]);
 
   const formatCurrency = (val: number | null) =>
     val ? new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(val) : '—';

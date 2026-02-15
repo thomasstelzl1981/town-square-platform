@@ -80,33 +80,8 @@ export interface MSVRentIncreaseCase {
   leaseId: string;
 }
 
-// Demo constants
-const DEMO_PROPERTY: MSVProperty = {
-  id: '__demo_obj_1__',
-  name: 'MFH Düsseldorf',
-  address: 'Königsallee 42',
-  city: 'Düsseldorf',
-  houseNo: '42',
-  unitCount: 6,
-  activeLeaseCount: 5,
-  zahlstatus: 'partial',
-  isDemo: true,
-};
-
-const DEMO_UNITS: MSVUnit[] = [
-  { id: '__demo_1__', unitId: 'WE-001', ort: 'Düsseldorf', strasse: 'Königsallee', hausnummer: '42', teNr: 'TE-1.OG-L', anrede: 'Herr', vorname: 'Thomas', name: 'Müller', email: 't.mueller@email.de', mobil: '0171 1234567', warmmiete: 1250, letzterEingangDatum: '2026-02-03', letzterEingangBetrag: 1250, status: 'paid', leaseId: null, propertyId: '__demo_obj_1__', contactId: null, lastRentIncreaseAt: '2023-01-01', paymentDueDay: 3 },
-  { id: '__demo_2__', unitId: 'WE-002', ort: 'Düsseldorf', strasse: 'Königsallee', hausnummer: '42', teNr: 'TE-2.OG-R', anrede: 'Frau', vorname: 'Anna', name: 'Schmidt', email: 'a.schmidt@email.de', mobil: '0172 9876543', warmmiete: 980, letzterEingangDatum: '2026-02-05', letzterEingangBetrag: 500, status: 'partial', leaseId: null, propertyId: '__demo_obj_1__', contactId: null, lastRentIncreaseAt: null, paymentDueDay: 3 },
-  { id: '__demo_3__', unitId: 'WE-003', ort: 'Düsseldorf', strasse: 'Königsallee', hausnummer: '42', teNr: 'TE-EG-L', anrede: '', vorname: '', name: '', email: '', mobil: '', warmmiete: 0, letzterEingangDatum: '', letzterEingangBetrag: 0, status: 'vacant', leaseId: null, propertyId: '__demo_obj_1__', contactId: null, lastRentIncreaseAt: null, paymentDueDay: null },
-];
-
-const DEMO_OVERDUE: MSVOverdueCase[] = [
-  { id: '__demo_overdue_1__', unitId: 'WE-002', adresse: 'Königsallee 42, Düsseldorf', mieter: 'Anna Schmidt', offenerBetrag: 480, ueberfaelligSeit: '2026-02-07', letzteZahlung: { datum: '2026-02-05', betrag: 500 }, mahnstufe: 0, notiz: '', leaseId: null, contactId: null, propertyId: '__demo_obj_1__' },
-];
-
-const DEMO_RENT_INCREASE: MSVRentIncreaseCase[] = [
-  { id: '__demo_ri_1__', unitId: 'WE-001', mieter: 'Thomas Müller', letzteErhoehung: '2023-01-01', pruefbarSeit: '2026-01-01', leaseId: '' },
-  { id: '__demo_ri_2__', unitId: 'WE-004', mieter: 'Datum fehlt', letzteErhoehung: null, pruefbarSeit: null, leaseId: '' },
-];
+// Demo constants removed — MFH Düsseldorf was a phantom property with no DB counterpart.
+// Real demo properties (BER-01, MUC-01, HH-01) are fetched from the DB with is_demo=true.
 
 export function useMSVData() {
   const { activeTenantId } = useAuth();
@@ -176,15 +151,12 @@ export function useMSVData() {
     };
   });
 
-  // Add demo property if toggle active
-  if (showDemo) {
-    msvProperties.unshift(DEMO_PROPERTY);
-  }
+  // No longer injecting phantom demo property — real demo properties come from DB with is_demo=true
 
   // Build MSVUnit list for a selected property
   function getUnitsForProperty(propertyId: string | null): MSVUnit[] {
     if (!propertyId) return [];
-    if (propertyId === '__demo_obj_1__') return DEMO_UNITS;
+    if (propertyId === '__demo_obj_1__') return [];
 
     const propUnits = (data?.units || []).filter(u => u.property_id === propertyId);
     const prop = (data?.properties || []).find(p => p.id === propertyId);
@@ -235,7 +207,7 @@ export function useMSVData() {
   // Build month history for a unit
   function getMonthHistory(unitId: string, warmmiete: number): MSVMonthEntry[] {
     if (unitId.startsWith('__demo_')) {
-      return generateDemoMonthHistory(warmmiete, DEMO_UNITS.find(u => u.id === unitId)?.status || 'vacant');
+      return [];
     }
 
     const months: MSVMonthEntry[] = [];
@@ -266,7 +238,7 @@ export function useMSVData() {
   // Get overdue cases for a property
   function getOverdueCases(propertyId: string | null): MSVOverdueCase[] {
     if (!propertyId) return [];
-    if (propertyId === '__demo_obj_1__') return DEMO_OVERDUE;
+    if (propertyId === '__demo_obj_1__') return [];
 
     const units = getUnitsForProperty(propertyId);
     return units
@@ -293,7 +265,7 @@ export function useMSVData() {
   // Get rent increase candidates
   function getRentIncreaseCases(propertyId: string | null): MSVRentIncreaseCase[] {
     if (!propertyId) return [];
-    if (propertyId === '__demo_obj_1__') return DEMO_RENT_INCREASE;
+    if (propertyId === '__demo_obj_1__') return [];
 
     const units = getUnitsForProperty(propertyId);
     const threeYearsAgo = new Date();
@@ -332,35 +304,4 @@ export function useMSVData() {
     bwaEntries: data?.bwaEntries || [],
     showDemo,
   };
-}
-
-function generateDemoMonthHistory(warmmiete: number, status: string): MSVMonthEntry[] {
-  const months: MSVMonthEntry[] = [];
-  const now = new Date();
-  const startYear = now.getFullYear() - 1;
-
-  for (let y = startYear; y <= now.getFullYear(); y++) {
-    const maxMonth = y === now.getFullYear() ? now.getMonth() + 1 : 12;
-    for (let m = 1; m <= maxMonth; m++) {
-      const isCurrentMonth = y === now.getFullYear() && m === now.getMonth() + 1;
-      const soll = warmmiete;
-      let ist = soll;
-      let mStatus = 'paid';
-
-      if (isCurrentMonth && status === 'partial') { ist = Math.round(soll * 0.5); mStatus = 'partial'; }
-      else if (isCurrentMonth && status === 'overdue') { ist = 0; mStatus = 'overdue'; }
-      else if (status === 'vacant') { ist = 0; mStatus = 'vacant'; }
-
-      months.push({
-        label: `${y}-${String(m).padStart(2, '0')}`,
-        soll, ist,
-        datum: ist > 0 ? `${y}-${String(m).padStart(2, '0')}-03` : '',
-        differenz: soll - ist,
-        status: mStatus,
-        notiz: '',
-        paymentId: null,
-      });
-    }
-  }
-  return months;
 }

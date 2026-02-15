@@ -4,7 +4,7 @@
  */
 import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useDemoListings, isDemoListingId } from '@/hooks/useDemoListings';
+import { useDemoListings, isDemoListingId, deduplicateByField } from '@/hooks/useDemoListings';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -142,7 +142,11 @@ const KatalogTab = () => {
   });
 
   // Get unique cities for filter (including demo)
-  const allListings = useMemo(() => [...(demoPartnerListings as any[]), ...listings], [demoPartnerListings, listings]);
+  const allListings = useMemo(() => deduplicateByField(
+    demoPartnerListings as any[],
+    listings,
+    (item: any) => item.public_id || item.id
+  ), [demoPartnerListings, listings]);
   
   const uniqueCities = useMemo(() => {
     const cities = [...new Set(allListings.map((l: any) => l.property_city).filter(Boolean))];
