@@ -26,12 +26,13 @@ import type {
   RiskLevel,
   CostModel,
   CostUnit,
+  CostCategory,
   ActionStatus,
   validateAllActions,
 } from '@/types/armstrong';
 
 // Re-export types for backwards compatibility
-export type { ArmstrongActionV2, ArmstrongZone, ExecutionMode, RiskLevel, CostModel };
+export type { ArmstrongActionV2, ArmstrongZone, ExecutionMode, RiskLevel, CostModel, CostCategory };
 
 // Legacy type alias for gradual migration
 export type ArmstrongAction = ArmstrongActionV2;
@@ -3601,4 +3602,28 @@ export function getHighRiskActions(): ArmstrongActionV2[] {
  */
 export function getRequiresConfirmation(action: ArmstrongActionV2): boolean {
   return action.execution_mode === 'execute_with_confirmation';
+}
+
+/**
+ * Derives cost_category from action properties if not explicitly set.
+ * Used by Platform Cost Monitor for grouping.
+ */
+export function deriveCostCategory(action: ArmstrongActionV2): CostCategory {
+  // If explicitly set, use it
+  if (action.cost_category) return action.cost_category;
+  
+  // Free actions
+  if (action.cost_model === 'free') return 'free';
+  
+  // Communication: sends external emails, fax, letters
+  if (action.side_effects.some(e => e.includes('sends_external_communication'))) return 'communication';
+  
+  // External API: web research, external API calls without LLM
+  if (action.side_effects.includes('external_api_call') && !action.cost_unit?.includes('token')) return 'api_external';
+  
+  // LLM: token-based or general metered AI processing
+  if (action.cost_unit === 'per_token' || action.cost_unit === 'per_page') return 'llm';
+  
+  // Default metered = LLM (most metered actions use AI)
+  return 'llm';
 }

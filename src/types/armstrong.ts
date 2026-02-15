@@ -31,6 +31,7 @@ export type ArmstrongZone = 'Z2' | 'Z3';
 export type RiskLevel = 'low' | 'medium' | 'high';
 export type CostModel = 'free' | 'metered' | 'premium';
 export type CostUnit = 'per_call' | 'per_token' | 'per_page' | null;
+export type CostCategory = 'llm' | 'api_external' | 'communication' | 'infrastructure' | 'free';
 export type ActionStatus = 'draft' | 'active' | 'deprecated';
 
 export interface ApiContract {
@@ -82,6 +83,7 @@ export interface ArmstrongActionV2 {
   cost_unit: CostUnit;
   cost_hint_cents: number | null;
   credits_estimate?: number; // Credits (1 Credit = 0.50 EUR)
+  cost_category?: CostCategory; // Platform cost classification
   
   // Technical implementation
   api_contract: ApiContract;

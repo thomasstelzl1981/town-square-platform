@@ -16825,6 +16825,25 @@ export type Database = {
         }
         Relationships: []
       }
+      v_platform_cost_summary: {
+        Row: {
+          action_code: string | null
+          avg_cost_cents: number | null
+          avg_duration_ms: number | null
+          avg_tokens: number | null
+          completed_runs: number | null
+          failed_runs: number | null
+          first_run_at: string | null
+          last_run_at: string | null
+          margin_cents: number | null
+          theoretical_revenue_cents: number | null
+          total_cost_cents: number | null
+          total_credits_charged: number | null
+          total_runs: number | null
+          total_tokens: number | null
+        }
+        Relationships: []
+      }
       v_public_knowledge: {
         Row: {
           category: string | null
