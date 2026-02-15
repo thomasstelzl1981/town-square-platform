@@ -4,7 +4,7 @@
 import { TabularFormWrapper, TabularFormRow, TabularFormSection } from '@/components/shared/TabularFormRow';
 import { Button } from '@/components/ui/button';
 import { FileText, Download } from 'lucide-react';
-import { usePdfContentRef } from '@/components/pdf';
+
 import type { VVContextSummary } from '@/engines/vvSteuer/spec';
 import { cn } from '@/lib/utils';
 
