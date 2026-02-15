@@ -118,61 +118,29 @@ Aktuell existieren Integrationen in drei getrennten, inkonsistenten Quellen:
 
 ## Umsetzungsplan
 
-### Schritt 1: Tote Datei entfernen
+### Schritt 1: Tote Datei entfernen ✅ ERLEDIGT (2026-02-15)
 
-`src/config/apiProviders.ts` loeschen -- wird nirgends importiert, ist ein Duplikat-Konzept zur DB-Registry.
+`src/config/apiProviders.ts` geloescht.
 
-### Schritt 2: SQL-Migration fuer Registry-Bereinigung
+### Schritt 2: SQL-Migration fuer Registry-Bereinigung ✅ ERLEDIGT (2026-02-15)
 
-```text
--- 1. Nicht benoetigte Eintraege entfernen
-DELETE FROM integration_registry WHERE code IN (
-  'ARLO_SMARTHOME', 'IPFI', 'RADIO_BROWSER', 'CAYA', 
-  'UNSTRUCTURED', 'PROCESS_INBOUND', 'SEND_EMAIL'
-);
+- 7 Legacy-Eintraege entfernt (ARLO_SMARTHOME, IPFI, RADIO_BROWSER, CAYA, UNSTRUCTURED, PROCESS_INBOUND, SEND_EMAIL)
+- 6 Eintraege nachgetragen (ELEVENLABS, LIVEKIT, PERPLEXITY, OPENAI, CRON_SYSTEM, VIMCAR)
+- 4 Status-Korrekturen (NASA_APOD, ZENQUOTES, apify, FIRECRAWL -> active)
 
--- 2. Fehlende aktive Integrationen nachtragen
-INSERT INTO integration_registry (code, name, type, status, description, auth_type, base_url, guardrails)
-VALUES
-  ('ELEVENLABS', 'ElevenLabs', 'integration', 'active', 
-   'KI-Sprachsynthese und Echtzeit-Transkription fuer Armstrong Voice', 'api_key',
-   'https://api.elevenlabs.io/v1', 'rate-limit-respect'),
-  ('LIVEKIT', 'LiveKit Video', 'integration', 'active',
-   'WebRTC Video-Calls fuer Beratungsgespraeche', 'api_key',
-   'https://livekit.io', NULL),
-  ('PERPLEXITY', 'Perplexity AI', 'integration', 'active',
-   'KI-gestuetzte Web-Recherche fuer Dossier Auto-Research', 'api_key',
-   'https://api.perplexity.ai', 'cost-per-query'),
-  ('OPENAI', 'OpenAI', 'integration', 'active',
-   'Reserve-KI-Provider (Legacy, primaer Lovable AI)', 'api_key',
-   'https://api.openai.com/v1', NULL),
-  ('CRON_SYSTEM', 'Cron System', 'internal', 'active',
-   'Internes Cron-Secret fuer automatisierte Jobs', 'api_key',
-   NULL, NULL)
-ON CONFLICT (code) DO NOTHING;
+### Schritt 3: Audit-Datei ✅ ERLEDIGT (2026-02-15)
 
--- 3. Status-Korrekturen
-UPDATE integration_registry SET status = 'active' WHERE code = 'NASA_APOD';
-UPDATE integration_registry SET status = 'active' WHERE code = 'ZENQUOTES';
-UPDATE integration_registry SET status = 'active' WHERE code = 'apify';
-UPDATE integration_registry SET status = 'active' WHERE code = 'FIRECRAWL';
-UPDATE integration_registry SET status = 'active' WHERE code = 'FINNHUB' 
-  AND EXISTS (SELECT 1); -- bleibt pending, kein Secret
-```
+`spec/audit/integration_registry_audit.json` erstellt mit vollstaendigem Ergebnis.
 
-### Schritt 3: Backlog-Datei erstellen
+### Schritt 4: Vimcar-Eintrag ✅ ERLEDIGT (2026-02-15)
 
-Eine neue Datei `spec/audit/integration_registry_audit.json` mit dem vollstaendigen Audit-Ergebnis und den offenen Aktionen (geplante Integrationen, MOD-15-Abhaengigkeiten etc.).
+Als `pending_setup` in die DB-Registry aufgenommen (MOD-17 Car-Management).
 
-### Schritt 4: Vimcar-Eintrag in DB uebertragen
-
-Falls Vimcar relevant bleibt (MOD-17 Car-Management), wird es als `pending_setup` in die DB-Registry aufgenommen. Andernfalls wird es mit der toten Datei entfernt.
-
-## Ergebnis nach Bereinigung
+## Ergebnis nach Bereinigung ✅ ABGESCHLOSSEN
 
 - **1 Single Source of Truth**: Nur noch `integration_registry` (DB)
 - **Tote Datei entfernt**: `apiProviders.ts`
 - **7 Legacy-Eintraege geloescht**
-- **5 aktive Integrationen nachgetragen** (ElevenLabs, LiveKit, Perplexity, OpenAI, Cron)
+- **6 Integrationen nachgetragen** (ElevenLabs, LiveKit, Perplexity, OpenAI, Cron, Vimcar)
 - **Status-Korrekturen** fuer NASA, ZenQuotes, Apify, Firecrawl
 - **Audit-Datei** fuer laufende Nachverfolgung
