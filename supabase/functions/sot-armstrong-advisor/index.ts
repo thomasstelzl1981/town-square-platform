@@ -119,7 +119,7 @@ interface UserContext {
 // MVP MODULE ALLOWLIST & GLOBAL ASSIST CONFIG
 // =============================================================================
 
-const MVP_MODULES = ["MOD-00", "MOD-04", "MOD-07", "MOD-08", "MOD-13", "MOD-14"];
+const MVP_MODULES = ["MOD-00", "MOD-04", "MOD-07", "MOD-08", "MOD-09", "MOD-13", "MOD-14"];
 
 // Global Assist Mode: Armstrong can help with general tasks even outside MVP modules
 // These intents are allowed in ALL modules (explain, draft, research)
@@ -512,6 +512,12 @@ function classifyIntent(message: string, actionRequest: ActionRequest | undefine
   }
   
   const lowerMsg = message.toLowerCase();
+  
+  // Coach intent keywords
+  const coachKeywords = ["coach", "begleite", "führe mich", "erkläer mir", "slideshow", "präsentation", "slide"];
+  if (coachKeywords.some(kw => lowerMsg.includes(kw))) {
+    return "EXPLAIN";
+  }
   
   const draftKeywords = ["schreibe", "erstelle", "verfasse", "entwurf", "email", "brief", "nachricht"];
   if (draftKeywords.some(kw => lowerMsg.includes(kw))) {
