@@ -111,9 +111,10 @@ export function usePvPlants() {
       if (error) throw error;
       return data as PvPlant;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
       toast.success('PV-Anlage angelegt');
+      return data;
     },
     onError: (err: Error) => {
       toast.error('Fehler: ' + err.message);

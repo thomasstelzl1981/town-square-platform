@@ -5762,6 +5762,68 @@ export type Database = {
           },
         ]
       }
+      dossier_research_jobs: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          entity_id: string
+          entity_type: string
+          error_message: string | null
+          id: string
+          perplexity_model: string | null
+          result_json: Json | null
+          result_storage_path: string | null
+          search_query: string
+          started_at: string | null
+          status: string
+          tenant_id: string
+          tokens_used: number | null
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          entity_id: string
+          entity_type: string
+          error_message?: string | null
+          id?: string
+          perplexity_model?: string | null
+          result_json?: Json | null
+          result_storage_path?: string | null
+          search_query: string
+          started_at?: string | null
+          status?: string
+          tenant_id: string
+          tokens_used?: number | null
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          entity_id?: string
+          entity_type?: string
+          error_message?: string | null
+          id?: string
+          perplexity_model?: string | null
+          result_json?: Json | null
+          result_storage_path?: string | null
+          search_query?: string
+          started_at?: string | null
+          status?: string
+          tenant_id?: string
+          tokens_used?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dossier_research_jobs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dp_catalog: {
         Row: {
           aliases: string[] | null

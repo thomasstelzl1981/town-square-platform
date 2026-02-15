@@ -2,6 +2,7 @@
  * CarsAutos — Editable vehicle records with DMS Datenraum & Vimcar-style logbook
  */
 import { useState, useCallback, useMemo } from 'react';
+import { useDossierAutoResearch } from '@/hooks/useDossierAutoResearch';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -92,6 +93,7 @@ const DEMO_TRIPS = [
 
 export default function CarsAutos() {
   const { activeTenantId, activeOrganization } = useAuth();
+  const { triggerResearch } = useDossierAutoResearch();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -279,7 +281,14 @@ export default function CarsAutos() {
         </Card>
       )}
 
-      <VehicleCreateDialog open={createDialogOpen} onOpenChange={setCreateDialogOpen} onSuccess={() => { refetch(); setCreateDialogOpen(false); }} />
+      <VehicleCreateDialog
+        open={createDialogOpen}
+        onOpenChange={setCreateDialogOpen}
+        onSuccess={() => { refetch(); setCreateDialogOpen(false); }}
+        onVehicleCreated={(vehicleId, searchQuery) => {
+          triggerResearch({ entityType: 'vehicle', entityId: vehicleId, searchQuery });
+        }}
+      />
     </PageShell>
   );
 }
