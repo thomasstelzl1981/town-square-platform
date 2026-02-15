@@ -1,51 +1,64 @@
 
 
-# Kontenauslesung: Jan/Feb 2025 Seed + Editierbarkeit + Sperrfunktion
+# Heizkosten-Vorauszahlung entfernen aus NK-Abrechnung
 
-## Ist-Zustand
+## Problem
 
-Die Seed-Daten fuer `rent_payments` laufen aktuell von **Maerz 2025 bis Februar 2026** (12 Eintraege pro Lease). Bei Auswahl von Jahr 2025 fehlen daher Januar und Februar — es werden nur 10 Zeilen angezeigt.
+Die Nebenkostenabrechnung fuehrt eine separate "Heizkosten-Vorauszahlung" (`heatingAdvanceEur`) auf. Diese ist in der Praxis redundant, da die Heizkosten bereits in der NK-Vorauszahlung bzw. im Hausgeld enthalten sind. Die separate Zeile verfaelscht das Berechnungsergebnis, weil Vorauszahlungen doppelt abgezogen werden.
+
+## Betroffene Stellen
+
+1. **`src/components/portfolio/NKAbrechnungTab.tsx`** — UI-Darstellung
+   - Zeile 91: `totalHeizVZ` wird berechnet (= `heatingAdvanceEur * 12`)
+   - Zeile 92: `totalVZ = totalNKVZ + totalHeizVZ` — hier wird der Saldo verfaelscht
+   - Zeile 393: Warmmiete-Anzeige addiert `heatingAdvanceEur` dazu
+   - Zeile 418-423: Separate Tabellenzeile "Heizkosten-Vorauszahlung" in Sektion 3
+   - Zeile 615-618: Separate Abzugszeile "Heizkosten-Vorauszahlungen" in Sektion 4 (Saldo)
+
+2. **`src/engines/nkAbrechnung/engine.ts`** — Engine-Berechnung
+   - Zeile 191-195: `calculateProratedPrepayments` bekommt `heating_advance_eur` uebergeben
+   - Zeile 197: `totalPrepaid = prepaidNK + prepaidHeating`
+   - Zeile 206: `prepaidHeating` im Summary
+
+3. **`src/engines/nkAbrechnung/allocationLogic.ts`** — Hilfsfunktion
+   - `calculateProratedPrepayments` akzeptiert `monthlyHeating` Parameter
+
+4. **`src/engines/nkAbrechnung/spec.ts`** — Typ-Definition
+   - `NKSettlementSummary` hat `prepaidHeating` und `totalHeating` Felder
+
+5. **`src/engines/nkAbrechnung/pdfExport.ts`** — PDF-Ausgabe
+   - Zeile 133-134: "Heizkosten-Vorauszahlungen" im PDF
 
 ## Umsetzung
 
-### Schritt 1: SQL Migration
+### Datei 1: `src/components/portfolio/NKAbrechnungTab.tsx`
 
-**a) Fehlende Seed-Daten ergaenzen (Jan + Feb 2025 pro Lease):**
+- `totalHeizVZ` Variable entfernen
+- `totalVZ = totalNKVZ` (ohne Heizkosten-Anteil)
+- Warmmiete-Anzeige: nur `rentColdEur + nkAdvanceEur` (ohne `heatingAdvanceEur`)
+- Tabellenzeile "Heizkosten-Vorauszahlung" in Sektion 3 entfernen
+- Abzugszeile "Heizkosten-Vorauszahlungen" in Sektion 4 entfernen
 
-6 neue `rent_payments`-Eintraege mit deterministischen IDs:
+### Datei 2: `src/engines/nkAbrechnung/engine.ts`
 
-| Lease | due_date | expected_amount | amount | status |
-|-------|----------|-----------------|--------|--------|
-| ...0001 (Berlin) | 2025-01-01 | 1150 | 1150 | paid |
-| ...0001 (Berlin) | 2025-02-01 | 1150 | 1150 | paid |
-| ...0002 (Muenchen) | 2025-01-01 | 1580 | 1580 | paid |
-| ...0002 (Muenchen) | 2025-02-01 | 1580 | 1580 | paid |
-| ...0003 (Hamburg) | 2025-01-01 | 750 | 750 | paid |
-| ...0003 (Hamburg) | 2025-02-01 | 750 | 750 | paid |
+- `heating_advance_eur` auf `0` setzen beim Aufruf von `calculateProratedPrepayments`
+- Alternativ: `prepaidHeating` einfach auf 0 setzen im Summary
+- `totalPrepaid = prepaidNK` (ohne Heizkosten)
 
-**b) Neue Spalte `payments_locked` (boolean, default false) auf `nk_periods`** fuer die Sperrfunktion.
+### Datei 3: `src/engines/nkAbrechnung/pdfExport.ts`
 
-### Schritt 2: `src/hooks/useNKAbrechnung.ts`
+- Zeile "Heizkosten-Vorauszahlungen" aus PDF entfernen
 
-- `RentPaymentRow` um `id` Feld erweitern
-- `fetchRentPayments`: `id` mitlesen aus DB
-- Neuer State: `paymentsLocked` (boolean)
-- `fetchRentPayments` laedt zusaetzlich `payments_locked` aus `nk_periods`
-- Neue Funktion `updateRentPayment(index, field, value)` — lokale Aenderung an `amount` oder `paidDate`
-- Neue Funktion `saveRentPayments()` — UPDATE per `id` in die DB
-- Neue Funktion `lockPayments()` — setzt `nk_periods.payments_locked = true`
-- Alles im Return-Objekt exponiert
+### Datei 4: `src/engines/nkAbrechnung/spec.ts`
 
-### Schritt 3: `src/components/portfolio/NKAbrechnungTab.tsx`
+- `prepaidHeating` bleibt im Interface (Wert wird einfach 0 sein), um keine Breaking Changes in anderen Stellen auszuloesen
 
-- Ist-Spalte und Eingangsdatum-Spalte: editierbare Input-Felder (wenn nicht gesperrt)
-- Button "Zahlungen speichern" unterhalb der Tabelle
-- Button "Festschreiben" mit Bestaetigungsdialog (AlertDialog)
-- Nach Festschreibung: alle Felder read-only, gruenes Badge "Festgeschrieben"
+## Hinweis zum Build-Fehler
+
+Der angezeigte Build-Fehler ist kein echter Kompilierungsfehler, sondern eine Vite-Warnung ueber gemischte Imports (`client.ts` dynamisch + statisch importiert). Diese Warnung ist harmlos und bestand bereits vorher.
 
 | Datei | Aktion | Beschreibung |
 |-------|--------|-------------|
-| SQL Migration | CREATE | 6 fehlende rent_payments (Jan+Feb 2025) + payments_locked Spalte auf nk_periods |
-| `src/hooks/useNKAbrechnung.ts` | EDIT | id in RentPaymentRow, updateRentPayment, saveRentPayments, lockPayments |
-| `src/components/portfolio/NKAbrechnungTab.tsx` | EDIT | Editierbare Felder + Speichern/Festschreiben Buttons |
-
+| `src/components/portfolio/NKAbrechnungTab.tsx` | EDIT | Heizkosten-VZ Zeilen und Berechnung entfernen |
+| `src/engines/nkAbrechnung/engine.ts` | EDIT | `heating_advance_eur` auf 0, prepaidHeating neutralisieren |
+| `src/engines/nkAbrechnung/pdfExport.ts` | EDIT | Heizkosten-Zeile aus PDF entfernen |
