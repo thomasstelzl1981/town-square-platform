@@ -16,7 +16,7 @@ import { SystemBar } from './SystemBar';
 import { TopNavigation } from './TopNavigation';
 import { ArmstrongContainer } from './ArmstrongContainer';
 import { DesktopInstallBanner } from '@/components/shared/DesktopInstallBanner';
-import { MobileModuleBar } from './MobileModuleBar';
+import { MobileBottomBar } from './MobileBottomBar';
 import { MobileHomeChatView } from './MobileHomeChatView';
 import { SubTabs } from './SubTabs';
 import { PortalLayoutProvider, usePortalLayout } from '@/hooks/usePortalLayout';
@@ -117,27 +117,25 @@ function PortalLayoutInner() {
         {/* System Bar */}
         <SystemBar />
         
-        {isDashboard ? (
+      {isDashboard ? (
           /* HOME: Full-screen Armstrong Chat */
           <MobileHomeChatView />
         ) : (
-          /* MODULE VIEW: Content + compact bottom bar */
-          <>
-            <main className="flex-1 overflow-y-auto overflow-x-hidden relative">
-              {/* Mobile SubTabs: Tile-Navigation when inside a module */}
-              {activeModule && !location.pathname.startsWith('/portal/area/') && (
-                <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-sm border-b">
-                  <SubTabs module={activeModule.module} moduleBase={activeModule.module.base} />
-                </div>
-              )}
-              
-              <Outlet />
-            </main>
+          /* MODULE VIEW: Content area */
+          <main className="flex-1 overflow-y-auto overflow-x-hidden relative">
+            {/* Mobile SubTabs: Tile-Navigation when inside a module */}
+            {activeModule && !location.pathname.startsWith('/portal/area/') && (
+              <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-sm border-b">
+                <SubTabs module={activeModule.module} moduleBase={activeModule.module.base} />
+              </div>
+            )}
             
-            {/* Compact bottom bar — iOS tab-bar style */}
-            <MobileModuleBar />
-          </>
+            <Outlet />
+          </main>
         )}
+        
+        {/* Unified bottom bar — always visible on mobile */}
+        <MobileBottomBar />
       </div>
     );
   }
