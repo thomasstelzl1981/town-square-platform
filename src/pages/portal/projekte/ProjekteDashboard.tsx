@@ -154,7 +154,7 @@ export default function ProjekteDashboard() {
   const isDemo = isDemoMode(portfolioRows);
 
   const stats = {
-    totalProjects: portfolioRows.length + 1, // +1 for demo
+    totalProjects: portfolioRows.length + 1,
     activeProjects: portfolioRows.filter(p => p.status === 'in_distribution' || p.status === 'active').length + 1,
     totalUnits: portfolioRows.reduce((sum, p) => sum + p.total_units_count, 0) + DEMO_PROJECT.total_units_count,
     soldUnits: portfolioRows.reduce((sum, p) => sum + p.units_sold, 0),
@@ -166,7 +166,82 @@ export default function ProjekteDashboard() {
     <PageShell>
       <ModulePageHeader title="PROJEKTMANAGER" />
 
-      {/* ═══ W1: So funktioniert's ═══ */}
+      {/* ═══ KPI Stats — direkt unter Header ═══ */}
+      <div className={cn(DESIGN.KPI_GRID.FULL, isDemo && "opacity-50")}>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Projekte</CardTitle>
+            <FolderKanban className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.totalProjects}</div>
+            <p className="text-xs text-muted-foreground">{stats.activeProjects} aktiv im Vertrieb {isDemo && '(Musterdaten)'}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Einheiten</CardTitle>
+            <Building2 className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.totalUnits}</div>
+            <p className="text-xs text-muted-foreground">{stats.soldUnits} verkauft</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Abverkaufsquote</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.totalUnits > 0 ? Math.round((stats.soldUnits / stats.totalUnits) * 100) : 0}%</div>
+            <p className="text-xs text-muted-foreground">Gesamt-Portfolio</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Umsatz IST</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{formatCurrency(stats.totalRevenue)}</div>
+            <p className="text-xs text-muted-foreground">Aus Verkäufen</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* ═══ Meine Projekte — Widget-Grid direkt nach KPIs ═══ */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold">Meine Projekte</h2>
+          {portfolioRows.length > 0 && (
+            <Button variant="outline" onClick={() => navigate('/portal/projekte/projekte')}>
+              Alle anzeigen <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          )}
+        </div>
+        {isLoadingPortfolio ? (
+          <LoadingState />
+        ) : (
+          <WidgetGrid>
+            {demoEnabled && (
+              <WidgetCell>
+                <ProjectCard project={DEMO_PROJECT} isDemo />
+              </WidgetCell>
+            )}
+            {portfolioRows.map((project) => (
+              <WidgetCell key={project.id}>
+                <ProjectCard project={project} />
+              </WidgetCell>
+            ))}
+            <WidgetCell>
+              <ProjectCardPlaceholder onClick={() => setCreateProjectOpen(true)} />
+            </WidgetCell>
+          </WidgetGrid>
+        )}
+      </div>
+
+      {/* ═══ So funktioniert's ═══ */}
       <Card className="glass-card shadow-card overflow-hidden">
         <CardContent className="p-0">
           <div className="grid grid-cols-4">
@@ -188,7 +263,7 @@ export default function ProjekteDashboard() {
         </CardContent>
       </Card>
 
-      {/* ═══ W2: Projekt starten (Magic Intake) ═══ */}
+      {/* ═══ Magic Intake ═══ */}
       <Card className="border-primary/30 glass-card shadow-elevated relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/3 pointer-events-none" />
         <CardHeader className="relative">
@@ -299,81 +374,6 @@ export default function ProjekteDashboard() {
           )}
         </CardContent>
       </Card>
-
-      {/* ═══ W3: Stats Cards — ALWAYS visible ═══ */}
-      <div className={cn(DESIGN.KPI_GRID.FULL, isDemo && "opacity-50")}>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Projekte</CardTitle>
-            <FolderKanban className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalProjects}</div>
-            <p className="text-xs text-muted-foreground">{stats.activeProjects} aktiv im Vertrieb {isDemo && '(Musterdaten)'}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Einheiten</CardTitle>
-            <Building2 className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalUnits}</div>
-            <p className="text-xs text-muted-foreground">{stats.soldUnits} verkauft</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Abverkaufsquote</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalUnits > 0 ? Math.round((stats.soldUnits / stats.totalUnits) * 100) : 0}%</div>
-            <p className="text-xs text-muted-foreground">Gesamt-Portfolio</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Umsatz IST</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(stats.totalRevenue)}</div>
-            <p className="text-xs text-muted-foreground">Aus Verkäufen</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* ═══ W3b: Meine Projekte — Square Cards ═══ */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Meine Projekte</h2>
-          {portfolioRows.length > 0 && (
-            <Button variant="outline" onClick={() => navigate('/portal/projekte/projekte')}>
-              Alle anzeigen <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
-          )}
-        </div>
-        {isLoadingPortfolio ? (
-          <LoadingState />
-        ) : (
-          <WidgetGrid>
-            {demoEnabled && (
-              <WidgetCell>
-                <ProjectCard project={DEMO_PROJECT} isDemo />
-              </WidgetCell>
-            )}
-            {portfolioRows.map((project) => (
-              <WidgetCell key={project.id}>
-                <ProjectCard project={project} />
-              </WidgetCell>
-            ))}
-            <WidgetCell>
-              <ProjectCardPlaceholder onClick={() => setCreateProjectOpen(true)} />
-            </WidgetCell>
-          </WidgetGrid>
-        )}
-      </div>
 
       {/* Dialogs */}
       <CreateProjectDialog
