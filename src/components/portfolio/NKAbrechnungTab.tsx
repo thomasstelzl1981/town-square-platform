@@ -88,8 +88,7 @@ export function NKAbrechnungTab({ propertyId, tenantId, unitId }: NKAbrechnungTa
   // Vorauszahlungen berechnen (12 Monate oder anteilig)
   const months = 12; // TODO: anteilig bei unterjaehrig
   const totalNKVZ = (leaseInfo?.nkAdvanceEur || 0) * months;
-  const totalHeizVZ = (leaseInfo?.heatingAdvanceEur || 0) * months;
-  const totalVZ = totalNKVZ + totalHeizVZ;
+  const totalVZ = totalNKVZ;
 
   const totalCostsTenant = sumApportionable + grundsteuerAnteil;
   const saldo = totalCostsTenant - totalVZ;
@@ -390,7 +389,7 @@ export function NKAbrechnungTab({ propertyId, tenantId, unitId }: NKAbrechnungTa
                 <div>
                   <p className="text-xs text-muted-foreground">Warmmiete</p>
                   <p className="text-sm font-medium">
-                    {EUR(leaseInfo.rentColdEur + leaseInfo.nkAdvanceEur + leaseInfo.heatingAdvanceEur)} / Monat
+                    {EUR(leaseInfo.rentColdEur + leaseInfo.nkAdvanceEur)} / Monat
                   </p>
                 </div>
               </div>
@@ -414,12 +413,6 @@ export function NKAbrechnungTab({ propertyId, tenantId, unitId }: NKAbrechnungTa
                       <td className="py-1.5 px-3 text-right font-mono">{EUR(leaseInfo.nkAdvanceEur)}</td>
                       <td className="py-1.5 px-3 text-center text-muted-foreground">× {months}</td>
                       <td className="py-1.5 px-3 text-right font-mono font-medium">{EUR(totalNKVZ)}</td>
-                    </tr>
-                    <tr className="border-b">
-                      <td className="py-1.5 px-3">Heizkosten-Vorauszahlung</td>
-                      <td className="py-1.5 px-3 text-right font-mono">{EUR(leaseInfo.heatingAdvanceEur)}</td>
-                      <td className="py-1.5 px-3 text-center text-muted-foreground">× {months}</td>
-                      <td className="py-1.5 px-3 text-right font-mono font-medium">{EUR(totalHeizVZ)}</td>
                     </tr>
                   </tbody>
                   <tfoot>
@@ -611,10 +604,6 @@ export function NKAbrechnungTab({ propertyId, tenantId, unitId }: NKAbrechnungTa
                 <tr className="border-b">
                   <td className="py-2 px-3 text-muted-foreground">./. NK-Vorauszahlungen</td>
                   <td className="py-2 px-3 text-right font-mono text-muted-foreground">- {EUR(totalNKVZ)}</td>
-                </tr>
-                <tr className="border-b">
-                  <td className="py-2 px-3 text-muted-foreground">./. Heizkosten-Vorauszahlungen</td>
-                  <td className="py-2 px-3 text-right font-mono text-muted-foreground">- {EUR(totalHeizVZ)}</td>
                 </tr>
               </tbody>
               <tfoot>
