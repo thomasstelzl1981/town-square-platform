@@ -1,29 +1,27 @@
 /**
  * FMUebersichtTab — MOD-11 Menu (1) ÜBERSICHT
- * Block A: Personen im Haushalt (Accordion, editierbar, DRV)
- * Block B: Konten (FinAPI read-only + editierbare Meta)
+ * Block A: Personen im Haushalt (RecordCard)
+ * Block B: Konten (RecordCard)
  * Block C: 12M Scan Button
  */
 import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
+import { RecordCard } from '@/components/shared/RecordCard';
+import { FormInput } from '@/components/shared';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Plus, User, CreditCard, ScanSearch, Loader2, Trash2 } from 'lucide-react';
+import { Plus, User, CreditCard, ScanSearch } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { DESIGN } from '@/config/designManifest';
+import { DESIGN, RECORD_CARD } from '@/config/designManifest';
 
-// ─── Personen Hook (shared with MOD-18) ───────────────────
+// ─── Hooks ────────────────────────────────────────────────
 function useHouseholdPersons() {
   const { activeTenantId } = useAuth();
   return useQuery({
@@ -50,149 +48,150 @@ function usePensionRecords() {
   });
 }
 
-// ─── Person Card ──────────────────────────────────────────
-function PersonCard({ person, pensionRecords, onUpdate, onDelete }: {
+const ROLES = [
+  { value: 'hauptperson', label: 'Hauptperson' },
+  { value: 'partner', label: 'Partner' },
+  { value: 'kind', label: 'Kind' },
+  { value: 'weitere', label: 'Weitere' },
+];
+
+// ─── Person RecordCard ────────────────────────────────────
+function PersonRecordCard({ person, pensionRecords, onUpdate, onDelete }: {
   person: any;
   pensionRecords: any[];
   onUpdate: (p: any) => void;
   onDelete: (id: string) => void;
 }) {
-  const [editing, setEditing] = useState(false);
+  const { activeTenantId } = useAuth();
+  const [isOpen, setIsOpen] = useState(false);
   const [form, setForm] = useState(person);
+  const set = (k: string, v: any) => setForm((prev: any) => ({ ...prev, [k]: v }));
+
   const personPensions = pensionRecords.filter(p => p.person_id === person.id);
-
-  const handleSave = () => {
-    onUpdate(form);
-    setEditing(false);
-  };
-
-  const roleLabel = { hauptperson: 'Hauptperson', partner: 'Partner', kind: 'Kind', weitere: 'Weitere' }[person.role as string] || person.role;
+  const roleLabel = ROLES.find(r => r.value === person.role)?.label || person.role || '';
+  const fullName = [person.first_name, person.last_name].filter(Boolean).join(' ') || 'Neue Person';
 
   return (
-    <AccordionItem value={person.id} className="border rounded-lg px-4">
-      <AccordionTrigger className="hover:no-underline">
-        <div className="flex items-center gap-3">
-          <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-            <User className="h-4 w-4 text-primary" />
+    <RecordCard
+      id={person.id}
+      entityType="person"
+      isOpen={isOpen}
+      onToggle={() => setIsOpen(!isOpen)}
+      title={fullName}
+      subtitle={roleLabel}
+      summary={[
+        ...(person.birth_date ? [{ label: 'Geb.', value: person.birth_date }] : []),
+        ...(person.email ? [{ label: 'E-Mail', value: person.email }] : []),
+        ...(person.phone ? [{ label: 'Mobil', value: person.phone }] : []),
+      ]}
+      badges={[
+        { label: roleLabel, variant: 'outline' as const },
+      ]}
+      tenantId={activeTenantId || undefined}
+      onSave={() => onUpdate(form)}
+      onDelete={() => onDelete(person.id)}
+      saving={false}
+    >
+      {/* Persönliche Daten */}
+      <div>
+        <p className={RECORD_CARD.SECTION_TITLE}>Persönliche Daten</p>
+        <div className={RECORD_CARD.FIELD_GRID}>
+          <div>
+            <label className={DESIGN.TYPOGRAPHY.LABEL}>Rolle</label>
+            <select className="w-full h-9 rounded-md border px-3 text-sm bg-background" value={form.role || ''} onChange={e => set('role', e.target.value)}>
+              {ROLES.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+            </select>
           </div>
-          <div className="text-left">
-            <span className="font-semibold text-sm">
-              {person.first_name} {person.last_name}
-            </span>
-            <Badge variant="outline" className="ml-2 text-[10px]">{roleLabel}</Badge>
-          </div>
+          <FormInput label="Anrede" name="salutation" value={form.salutation || ''} onChange={e => set('salutation', e.target.value)} />
+          <FormInput label="Vorname" name="first_name" value={form.first_name || ''} onChange={e => set('first_name', e.target.value)} />
+          <FormInput label="Nachname" name="last_name" value={form.last_name || ''} onChange={e => set('last_name', e.target.value)} />
+          <FormInput label="Geburtsdatum" name="birth_date" type="date" value={form.birth_date || ''} onChange={e => set('birth_date', e.target.value)} />
+          <FormInput label="E-Mail" name="email" type="email" value={form.email || ''} onChange={e => set('email', e.target.value)} />
+          <FormInput label="Mobil" name="phone" type="tel" value={form.phone || ''} onChange={e => set('phone', e.target.value)} />
         </div>
-      </AccordionTrigger>
-      <AccordionContent>
-        <div className="space-y-3 pt-2">
-          {editing ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div><Label className={DESIGN.TYPOGRAPHY.LABEL}>Rolle</Label>
-                <select className="w-full h-9 rounded-md border px-3 text-sm bg-background" value={form.role || ''} onChange={e => setForm({ ...form, role: e.target.value })}>
-                  <option value="hauptperson">Hauptperson</option>
-                  <option value="partner">Partner</option>
-                  <option value="kind">Kind</option>
-                  <option value="weitere">Weitere</option>
-                </select>
-              </div>
-              <div><Label className={DESIGN.TYPOGRAPHY.LABEL}>Anrede</Label><Input value={form.salutation || ''} onChange={e => setForm({ ...form, salutation: e.target.value })} /></div>
-              <div><Label className={DESIGN.TYPOGRAPHY.LABEL}>Vorname</Label><Input value={form.first_name || ''} onChange={e => setForm({ ...form, first_name: e.target.value })} /></div>
-              <div><Label className={DESIGN.TYPOGRAPHY.LABEL}>Nachname</Label><Input value={form.last_name || ''} onChange={e => setForm({ ...form, last_name: e.target.value })} /></div>
-              <div><Label className={DESIGN.TYPOGRAPHY.LABEL}>Geburtsdatum</Label><Input type="date" value={form.birth_date || ''} onChange={e => setForm({ ...form, birth_date: e.target.value })} /></div>
-              <div><Label className={DESIGN.TYPOGRAPHY.LABEL}>E-Mail</Label><Input value={form.email || ''} onChange={e => setForm({ ...form, email: e.target.value })} /></div>
-              <div><Label className={DESIGN.TYPOGRAPHY.LABEL}>Mobil</Label><Input value={form.phone || ''} onChange={e => setForm({ ...form, phone: e.target.value })} /></div>
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm">
-              {person.birth_date && <div><span className="text-muted-foreground">Geb.:</span> {person.birth_date}</div>}
-              {person.email && <div><span className="text-muted-foreground">E-Mail:</span> {person.email}</div>}
-              {person.phone && <div><span className="text-muted-foreground">Mobil:</span> {person.phone}</div>}
-            </div>
-          )}
+      </div>
 
-          {/* DRV Renteninformation */}
-          {personPensions.length > 0 && (
-            <>
-              <Separator />
-              <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">DRV Renteninformation</h4>
-              {personPensions.map((pr: any) => (
-                <div key={pr.id} className="grid grid-cols-2 gap-2 text-sm bg-muted/20 rounded-lg p-3">
-                  <div><span className="text-muted-foreground">Datum:</span> {pr.info_date || '—'}</div>
-                  <div><span className="text-muted-foreground">Regelaltersrente:</span> {pr.regular_pension ? `${pr.regular_pension} €` : '—'}</div>
-                  <div><span className="text-muted-foreground">Künftige Rente:</span> {pr.future_pension_no_adj ? `${pr.future_pension_no_adj} €` : '—'}</div>
-                  <div><span className="text-muted-foreground">Erwerbsminderung:</span> {pr.disability_pension ? `${pr.disability_pension} €` : '—'}</div>
-                </div>
-              ))}
-            </>
-          )}
-
-          <div className="flex gap-2 pt-2">
-            {editing ? (
-              <>
-                <Button size="sm" onClick={handleSave}>Speichern</Button>
-                <Button size="sm" variant="outline" onClick={() => { setEditing(false); setForm(person); }}>Abbrechen</Button>
-              </>
-            ) : (
-              <>
-                <Button size="sm" variant="outline" onClick={() => setEditing(true)}>Bearbeiten</Button>
-                <Button size="sm" variant="ghost" className="text-destructive" onClick={() => onDelete(person.id)}>
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
-              </>
-            )}
-          </div>
+      {/* Adresse */}
+      <div>
+        <p className={RECORD_CARD.SECTION_TITLE}>Adresse</p>
+        <div className={RECORD_CARD.FIELD_GRID}>
+          <FormInput label="Straße" name="street" value={form.street || ''} onChange={e => set('street', e.target.value)} />
+          <FormInput label="PLZ" name="postal_code" value={form.postal_code || ''} onChange={e => set('postal_code', e.target.value)} />
+          <FormInput label="Ort" name="city" value={form.city || ''} onChange={e => set('city', e.target.value)} />
         </div>
-      </AccordionContent>
-    </AccordionItem>
+      </div>
+
+      {/* DRV Renteninformation */}
+      {personPensions.length > 0 && (
+        <div>
+          <p className={RECORD_CARD.SECTION_TITLE}>DRV Renteninformation</p>
+          {personPensions.map((pr: any) => (
+            <div key={pr.id} className={cn(RECORD_CARD.FIELD_GRID, 'bg-muted/20 rounded-lg p-4')}>
+              <FormInput label="Datum der Info" name="info_date" type="date" value={pr.info_date || ''} disabled />
+              <FormInput label="Regelaltersrente (€)" name="regular_pension" type="number" value={pr.regular_pension || ''} disabled />
+              <FormInput label="Künftige Rente (€)" name="future_pension_no_adj" type="number" value={pr.future_pension_no_adj || ''} disabled />
+              <FormInput label="Erwerbsminderung (€)" name="disability_pension" type="number" value={pr.disability_pension || ''} disabled />
+            </div>
+          ))}
+        </div>
+      )}
+    </RecordCard>
   );
 }
 
-// ─── Bank Account Widget ──────────────────────────────────
-function BankAccountWidget({ account }: { account: any }) {
+// ─── Bank Account RecordCard ──────────────────────────────
+function BankAccountRecordCard({ account }: { account: any }) {
+  const [isOpen, setIsOpen] = useState(false);
   const maskedIban = account.iban ? `****${account.iban.slice(-4)}` : '—';
+  const displayName = account.custom_name || `${account.bank_name || 'Konto'} • ${maskedIban}`;
 
   return (
-    <AccordionItem value={account.id} className="border rounded-lg px-4">
-      <AccordionTrigger className="hover:no-underline">
-        <div className="flex items-center gap-3 w-full">
-          <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-            <CreditCard className="h-4 w-4 text-primary" />
-          </div>
-          <div className="flex-1 text-left">
-            <span className="font-semibold text-sm">{account.bank_name || 'Konto'} • {maskedIban}</span>
-            <div className="flex gap-2 mt-0.5">
-              <Badge variant="outline" className="text-[10px]">{account.account_type || 'Giro'}</Badge>
-              <Badge variant={account.status === 'active' ? 'default' : 'secondary'} className="text-[10px]">
-                {account.status === 'active' ? 'OK' : account.status || 'Unbekannt'}
-              </Badge>
-            </div>
-          </div>
+    <RecordCard
+      id={account.id}
+      entityType="bank_account"
+      isOpen={isOpen}
+      onToggle={() => setIsOpen(!isOpen)}
+      title={displayName}
+      subtitle={account.account_type || 'Giro'}
+      summary={[
+        { label: 'Bank', value: account.bank_name || '—' },
+        { label: 'IBAN', value: maskedIban },
+        ...(account.balance != null ? [{ label: 'Saldo', value: `${account.balance} €` }] : []),
+      ]}
+      badges={[
+        { label: account.account_type || 'Giro', variant: 'outline' as const },
+        { label: account.status === 'active' ? 'OK' : account.status || 'Unbekannt', variant: account.status === 'active' ? 'default' as const : 'secondary' as const },
+      ]}
+    >
+      {/* Kontodaten (READ-ONLY) */}
+      <div>
+        <p className={RECORD_CARD.SECTION_TITLE}>Kontodaten</p>
+        <div className={RECORD_CARD.FIELD_GRID}>
+          <FormInput label="Bankname" name="bank_name" value={account.bank_name || ''} disabled />
+          <FormInput label="IBAN" name="iban" value={maskedIban} disabled />
+          <FormInput label="BIC" name="bic" value={account.bic || ''} disabled />
+          <FormInput label="Inhaber" name="account_holder" value={account.account_holder || ''} disabled />
+          <FormInput label="Provider" name="provider" value="FinAPI" disabled />
         </div>
-      </AccordionTrigger>
-      <AccordionContent>
-        <div className="space-y-3 pt-2">
-          <div className="grid grid-cols-2 gap-2 text-sm">
-            <div><span className="text-muted-foreground">Bank:</span> {account.bank_name || '—'}</div>
-            <div><span className="text-muted-foreground">IBAN:</span> {maskedIban}</div>
-            <div><span className="text-muted-foreground">BIC:</span> {account.bic || '—'}</div>
-            <div><span className="text-muted-foreground">Inhaber:</span> {account.account_holder || '—'}</div>
-          </div>
-          <Separator />
-          <p className="text-xs text-muted-foreground">Umsätze (12 Monate) — Daten werden über FinAPI geladen.</p>
-        </div>
-      </AccordionContent>
-    </AccordionItem>
+      </div>
+
+      {/* Umsätze Placeholder */}
+      <div>
+        <p className={RECORD_CARD.SECTION_TITLE}>Umsätze (12 Monate)</p>
+        <p className={DESIGN.TYPOGRAPHY.MUTED}>Umsatzdaten werden über FinAPI geladen.</p>
+      </div>
+    </RecordCard>
   );
 }
 
 // ─── Main Component ───────────────────────────────────────
 export default function FMUebersichtTab() {
-  const { activeTenantId, user, profile } = useAuth();
+  const { activeTenantId, user } = useAuth();
   const qc = useQueryClient();
   const { data: persons = [], isLoading: loadingPersons } = useHouseholdPersons();
   const { data: pensionRecords = [] } = usePensionRecords();
+  const [showNewPerson, setShowNewPerson] = useState(false);
 
-  // Bank accounts
   const { data: bankAccounts = [], isLoading: loadingAccounts } = useQuery({
     queryKey: ['msv_bank_accounts', activeTenantId],
     queryFn: async () => {
@@ -239,30 +238,19 @@ export default function FMUebersichtTab() {
     <PageShell>
       <ModulePageHeader title="ÜBERSICHT" />
 
-      {/* BLOCK A — Personen im Haushalt */}
+      {/* ═══ BLOCK A — Personen im Haushalt ═══ */}
       <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className={DESIGN.TYPOGRAPHY.SECTION_TITLE}>Personen im Haushalt</h2>
-          <Button size="sm" variant="outline" onClick={() => addPerson.mutate()} disabled={addPerson.isPending}>
-            <Plus className="h-4 w-4 mr-1" /> Person hinzufügen
-          </Button>
-        </div>
+        <h2 className={DESIGN.TYPOGRAPHY.SECTION_TITLE}>Personen im Haushalt</h2>
 
         {loadingPersons ? (
-          <div className="space-y-2">
-            <Skeleton className="h-16 w-full" />
-            <Skeleton className="h-16 w-full" />
+          <div className={RECORD_CARD.GRID}>
+            <Skeleton className="h-[260px] rounded-xl" />
+            <Skeleton className="h-[260px] rounded-xl" />
           </div>
-        ) : persons.length === 0 ? (
-          <Card className="border-dashed">
-            <CardContent className="p-8 text-center text-muted-foreground">
-              Noch keine Personen im Haushalt. Füge die erste Person hinzu.
-            </CardContent>
-          </Card>
         ) : (
-          <Accordion type="multiple" className="space-y-2">
+          <div className={RECORD_CARD.GRID}>
             {persons.map((p: any) => (
-              <PersonCard
+              <PersonRecordCard
                 key={p.id}
                 person={p}
                 pensionRecords={pensionRecords}
@@ -270,45 +258,64 @@ export default function FMUebersichtTab() {
                 onDelete={(id) => deletePerson.mutate(id)}
               />
             ))}
-          </Accordion>
+
+            {/* CTA Widget: + Person */}
+            <div
+              className={cn(RECORD_CARD.CLOSED, 'border-dashed border-2 border-primary/20')}
+              onClick={() => addPerson.mutate()}
+              role="button"
+              tabIndex={0}
+              onKeyDown={e => e.key === 'Enter' && addPerson.mutate()}
+            >
+              <div className="flex flex-col items-center justify-center h-full gap-3 text-muted-foreground">
+                <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
+                  <Plus className="h-6 w-6 text-primary" />
+                </div>
+                <span className="text-sm font-medium">Person hinzufügen</span>
+              </div>
+            </div>
+          </div>
         )}
       </div>
 
-      {/* BLOCK B — Konten */}
+      {/* ═══ BLOCK B — Konten ═══ */}
       <div className="space-y-3">
         <h2 className={DESIGN.TYPOGRAPHY.SECTION_TITLE}>Konten</h2>
 
         {loadingAccounts ? (
-          <div className="space-y-2">
-            <Skeleton className="h-16 w-full" />
+          <div className={RECORD_CARD.GRID}>
+            <Skeleton className="h-[260px] rounded-xl" />
           </div>
         ) : bankAccounts.length === 0 ? (
-          <Card className="border-dashed">
+          <Card className="glass-card border-dashed">
             <CardContent className="p-8 text-center text-muted-foreground">
+              <CreditCard className="h-8 w-8 mx-auto mb-3 opacity-40" />
               Keine Bankkonten verbunden. Verbinde deine Konten über FinAPI.
             </CardContent>
           </Card>
         ) : (
-          <Accordion type="multiple" className="space-y-2">
+          <div className={RECORD_CARD.GRID}>
             {bankAccounts.map((acc: any) => (
-              <BankAccountWidget key={acc.id} account={acc} />
+              <BankAccountRecordCard key={acc.id} account={acc} />
             ))}
-          </Accordion>
+          </div>
         )}
       </div>
 
-      {/* BLOCK C — 12M Scan */}
-      <Card>
+      {/* ═══ BLOCK C — 12M Scan ═══ */}
+      <Card className="glass-card overflow-hidden">
         <CardContent className="p-6 flex flex-col md:flex-row items-center gap-4">
-          <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-            <ScanSearch className="h-6 w-6 text-primary" />
+          <div className={DESIGN.HEADER.WIDGET_ICON_BOX}>
+            <ScanSearch className="h-5 w-5 text-primary" />
           </div>
           <div className="flex-1 text-center md:text-left">
-            <h3 className="font-semibold">Umsätze (12 Monate) auslesen & Verträge erkennen</h3>
-            <p className="text-sm text-muted-foreground">Analysiert Ihre Kontoumsätze und erkennt automatisch Abonnements, Versicherungen und Vorsorgeverträge.</p>
+            <h3 className={DESIGN.TYPOGRAPHY.CARD_TITLE}>Umsätze (12 Monate) auslesen & Verträge erkennen</h3>
+            <p className={DESIGN.TYPOGRAPHY.MUTED}>
+              Analysiert Ihre Kontoumsätze und erkennt automatisch Abonnements, Versicherungen und Vorsorgeverträge.
+            </p>
           </div>
-          <Button disabled={bankAccounts.length === 0}>
-            <ScanSearch className="h-4 w-4 mr-2" />
+          <Button disabled={bankAccounts.length === 0} className="gap-2">
+            <ScanSearch className="h-4 w-4" />
             Scan starten
           </Button>
         </CardContent>
