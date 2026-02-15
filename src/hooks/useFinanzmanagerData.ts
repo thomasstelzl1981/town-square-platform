@@ -187,6 +187,7 @@ export function useUserSubscriptionMutations() {
       };
       const { error } = await supabase.from('user_subscriptions').insert(row);
       if (error) throw error;
+      if (error) throw error;
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: key }); toast.success('Abonnement angelegt'); },
     onError: () => toast.error('Fehler beim Anlegen'),
