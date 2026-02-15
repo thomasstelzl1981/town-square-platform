@@ -9,18 +9,20 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Mic, MicOff, Square, Loader2, FileText, Play } from 'lucide-react';
+import { Mic, Square, Loader2, FileText, Circle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useMeetingRecorder } from '@/hooks/useMeetingRecorder';
 import { MeetingCountdownOverlay } from './MeetingCountdownOverlay';
 import { MeetingResultDrawer } from './MeetingResultDrawer';
+
+const MAX_DURATION_SEC = 90 * 60;
 
 function formatDuration(sec: number): string {
   const h = Math.floor(sec / 3600);
   const m = Math.floor((sec % 3600) / 60);
   const s = sec % 60;
   if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-  return `${m}:${String(s).padStart(2, '0')}`;
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
 export function MeetingRecorderWidget() {
@@ -40,19 +42,23 @@ export function MeetingRecorderWidget() {
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   const { status } = session;
+  const progressPct = Math.min((session.durationSec / MAX_DURATION_SEC) * 100, 100);
+  const isWarning = session.durationSec >= 80 * 60;
 
   return (
     <>
-      <Card className="glass-card border-primary/20 aspect-square relative overflow-hidden">
-        {/* Gradient */}
-        <div className="absolute inset-0 opacity-30 pointer-events-none bg-gradient-to-br from-red-500/10 to-orange-600/5" />
+      <Card className="border-rose-500/25 aspect-square relative overflow-hidden backdrop-blur-sm bg-card/80">
+        {/* Warm glassy gradient background */}
+        <div className="absolute inset-0 pointer-events-none bg-gradient-to-br from-rose-500/15 via-red-500/10 to-amber-500/8" />
+        {/* Radial center glow */}
+        <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(circle at 50% 50%, hsla(0,70%,60%,0.08) 0%, transparent 70%)' }} />
 
-        {/* Recording pulse */}
+        {/* Recording pulse indicator */}
         {status === 'recording' && (
           <div className="absolute top-3 right-3 z-20">
             <span className="relative flex h-3 w-3">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
-              <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500" />
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-rose-500" />
             </span>
           </div>
         )}
@@ -60,8 +66,8 @@ export function MeetingRecorderWidget() {
         <CardContent className="p-4 h-full flex flex-col relative z-10">
           {/* Header */}
           <div className="flex items-center gap-2 mb-2">
-            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-red-500/20 to-orange-500/10 flex items-center justify-center">
-              <Mic className="h-4 w-4 text-red-500" />
+            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-rose-500/20 to-amber-500/10 flex items-center justify-center">
+              <Mic className="h-4 w-4 text-rose-500" />
             </div>
             <span className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
               Meeting Recorder
@@ -71,17 +77,15 @@ export function MeetingRecorderWidget() {
           {/* IDLE */}
           {status === 'idle' && (
             <div className="flex-1 flex flex-col items-center justify-center gap-3">
-              <p className="text-sm text-muted-foreground text-center">
-                Physische Besprechungen live transkribieren
-              </p>
-              <Button
+              <button
                 onClick={requestConsent}
-                size="sm"
-                className="gap-2"
+                className="h-12 w-12 rounded-full bg-rose-500/10 border border-rose-500/30 backdrop-blur-sm flex items-center justify-center text-rose-500 hover:bg-rose-500/20 active:scale-95 transition-all duration-200 shadow-[inset_0_1px_0_hsla(0,0%,100%,0.15),0_1px_3px_hsla(0,0%,0%,0.06)]"
               >
-                <Play className="h-4 w-4" />
-                Meeting starten
-              </Button>
+                <Circle className="h-5 w-5 fill-current" />
+              </button>
+              <p className="text-xs text-muted-foreground text-center">
+                Aufnahme starten
+              </p>
             </div>
           )}
 
@@ -135,10 +139,10 @@ export function MeetingRecorderWidget() {
           {/* RECORDING */}
           {status === 'recording' && (
             <div className="flex-1 flex flex-col items-center justify-center gap-3">
-              <p className="text-base font-medium text-foreground">
+              <p className="text-sm font-medium text-foreground truncate max-w-full">
                 {session.title}
               </p>
-              <p className="text-2xl font-mono text-foreground tabular-nums">
+              <p className="text-3xl font-mono text-foreground tabular-nums tracking-tight">
                 {formatDuration(session.durationSec)}
               </p>
               {session.sttEngine && (
@@ -151,15 +155,12 @@ export function MeetingRecorderWidget() {
                   {session.sttEngine === 'elevenlabs' ? 'ElevenLabs' : 'Browser'}
                 </span>
               )}
-              <Button
-                variant="destructive"
-                size="sm"
+              <button
                 onClick={triggerCountdown}
-                className="gap-2"
+                className="h-12 w-12 rounded-full bg-rose-500/15 border border-rose-500/40 backdrop-blur-sm flex items-center justify-center text-rose-500 hover:bg-rose-500/25 active:scale-95 transition-all duration-200 animate-pulse"
               >
-                <Square className="h-3 w-3" />
-                Stop
-              </Button>
+                <Square className="h-4 w-4 fill-current" />
+              </button>
             </div>
           )}
 
@@ -175,7 +176,7 @@ export function MeetingRecorderWidget() {
           {/* PROCESSING */}
           {status === 'processing' && (
             <div className="flex-1 flex flex-col items-center justify-center gap-3">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <Loader2 className="h-8 w-8 animate-spin text-rose-500" />
               <p className="text-sm text-muted-foreground text-center">
                 Zusammenfassung wird erstellt…
               </p>
@@ -185,7 +186,7 @@ export function MeetingRecorderWidget() {
           {/* READY */}
           {status === 'ready' && (
             <div className="flex-1 flex flex-col items-center justify-center gap-3">
-              <FileText className="h-8 w-8 text-primary" />
+              <FileText className="h-8 w-8 text-rose-500" />
               <p className="text-sm font-medium text-foreground text-center">
                 Protokoll erstellt
               </p>
@@ -193,19 +194,27 @@ export function MeetingRecorderWidget() {
                 Ein Aufgaben-Widget wurde auf dem Dashboard abgelegt.
               </p>
               <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setDrawerOpen(true)}
-                >
+                <Button variant="outline" size="sm" onClick={() => setDrawerOpen(true)}>
                   Öffnen
                 </Button>
-                <Button
-                  size="sm"
-                  onClick={reset}
-                >
+                <Button size="sm" onClick={reset}>
                   Neues Meeting
                 </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Progress bar – only during recording */}
+          {status === 'recording' && (
+            <div className="mt-auto pt-2">
+              <div className="h-[3px] w-full rounded-full bg-rose-500/10 overflow-hidden">
+                <div
+                  className={cn(
+                    "h-full rounded-full transition-all duration-1000 ease-linear",
+                    isWarning ? "bg-amber-500" : "bg-rose-500"
+                  )}
+                  style={{ width: `${progressPct}%` }}
+                />
               </div>
             </div>
           )}
