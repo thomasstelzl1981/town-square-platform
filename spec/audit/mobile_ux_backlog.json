@@ -71,25 +71,57 @@
       "id": "PHASE-3",
       "title": "Grafiken und Charts mobiloptimieren",
       "priority": "MEDIUM",
-      "status": "todo",
+      "status": "done",
       "items": [
         {
           "id": "MUX-020",
           "title": "MobileChartWrapper Komponente erstellen",
-          "status": "todo",
+          "status": "done",
           "files": ["src/components/shared/MobileChartWrapper.tsx"]
         },
         {
           "id": "MUX-021",
           "title": "AufteilerCalculation mobil optimieren",
-          "status": "todo",
+          "status": "done",
           "files": ["src/pages/portal/akquise-manager/components/AufteilerCalculation.tsx"]
         },
         {
           "id": "MUX-022",
           "title": "BestandCalculation mobil optimieren",
-          "status": "todo",
+          "status": "done",
           "files": ["src/pages/portal/akquise-manager/components/BestandCalculation.tsx"]
+        }
+      ]
+    },
+    {
+      "id": "PHASE-4",
+      "title": "PWA-Setup",
+      "priority": "MEDIUM",
+      "status": "done",
+      "items": [
+        {
+          "id": "MUX-030",
+          "title": "vite-plugin-pwa installieren und konfigurieren",
+          "status": "done",
+          "files": ["vite.config.ts"]
+        },
+        {
+          "id": "MUX-031",
+          "title": "Web-Manifest und PWA-Icons erstellen",
+          "status": "done",
+          "files": ["public/icons/icon-192.png", "public/icons/icon-512.png"]
+        },
+        {
+          "id": "MUX-032",
+          "title": "Install-Prompt-Seite (/install)",
+          "status": "done",
+          "files": ["src/pages/Install.tsx"]
+        },
+        {
+          "id": "MUX-033",
+          "title": "Mobile Meta-Tags in index.html",
+          "status": "done",
+          "files": ["index.html"]
         }
       ]
     },
