@@ -23,7 +23,7 @@ export function MediaWidget({ title, subtitle, icon: Icon, type, onClick, classN
       onClick={onClick}
       className={cn(
         // Base
-        'relative flex flex-col items-center justify-center gap-3 rounded-xl border p-4 text-center',
+        'relative h-full w-full flex flex-col items-center justify-center gap-3 rounded-xl border p-4 text-center',
         'overflow-hidden transition-all duration-300',
         // Glow styling (primary)
         'bg-primary/5 border-primary/30',
