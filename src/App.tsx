@@ -26,6 +26,7 @@ import AuthResetPassword from "./pages/AuthResetPassword";
 import PresentationPage from "./pages/presentation/PresentationPage";
 import { lazy, Suspense } from "react";
 const VideocallJoinPage = lazy(() => import("./pages/portal/office/VideocallJoinPage"));
+const InstallPage = lazy(() => import("./pages/Install"));
 
 
 // Manifest-driven router
@@ -80,6 +81,10 @@ const App = () => (
                 <Suspense fallback={null}><VideocallJoinPage /></Suspense>
               } />
               
+              {/* PWA Install Prompt */}
+              <Route path="/install" element={
+                <Suspense fallback={null}><InstallPage /></Suspense>
+              } />
               
               {/* ALL OTHER ROUTES: Delegated to ManifestRouter */}
               <Route path="/*" element={<ManifestRouter />} />

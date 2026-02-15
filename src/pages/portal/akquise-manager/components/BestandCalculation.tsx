@@ -19,6 +19,8 @@ import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, 
   Tooltip, Legend, ResponsiveContainer, ComposedChart, Line
 } from 'recharts';
+import { MobileChartWrapper } from '@/components/shared/MobileChartWrapper';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface BestandCalculationProps {
   offerId?: string;
@@ -36,7 +38,7 @@ interface BestandCalculationProps {
 
 export function BestandCalculation({ offerId, initialData, temporary = false, hideQuickAnalysis = false }: BestandCalculationProps) {
   const runCalc = useRunCalcBestand();
-  
+  const isMobile = useIsMobile();
   const [params, setParams] = React.useState<BestandFullParams>({
     purchasePrice: initialData.purchasePrice,
     monthlyRent: initialData.monthlyRent,
@@ -70,7 +72,7 @@ export function BestandCalculation({ offerId, initialData, temporary = false, hi
             <CardTitle className={DESIGN.TYPOGRAPHY.CARD_TITLE}>Schnellanalyse</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-4 gap-4">
+            <div className={cn('grid gap-4', isMobile ? 'grid-cols-2' : 'grid-cols-4')}>
               <div>
                 <div className={DESIGN.TYPOGRAPHY.HINT}>Gesamtinvestition</div>
                 <div className={DESIGN.TYPOGRAPHY.VALUE + ' text-xl'}>{formatCurrency(calculation.totalInvestment)}</div>
@@ -101,7 +103,7 @@ export function BestandCalculation({ offerId, initialData, temporary = false, hi
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="grid md:grid-cols-2 gap-6">
+          <div className={cn('grid gap-6', isMobile ? 'grid-cols-1' : 'md:grid-cols-2')}>
             <div className="space-y-2">
               <div className="flex justify-between">
                 <Label>Eigenkapital</Label>
@@ -154,7 +156,7 @@ export function BestandCalculation({ offerId, initialData, temporary = false, hi
           <CardTitle className={DESIGN.TYPOGRAPHY.CARD_TITLE}>Finanzierungsübersicht</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-5 gap-4 text-center">
+          <div className={cn('grid gap-4 text-center', isMobile ? 'grid-cols-2' : 'grid-cols-5')}>
             <div>
               <div className={DESIGN.TYPOGRAPHY.HINT}>Gesamtinvest.</div>
               <div className="font-bold">{formatCurrency(calculation.totalInvestment)}</div>
@@ -185,21 +187,30 @@ export function BestandCalculation({ offerId, initialData, temporary = false, hi
           <CardTitle className={DESIGN.TYPOGRAPHY.CARD_TITLE}>Tilgungsplan (30 Jahre)</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={calculation.yearlyData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="year" />
-                <YAxis yAxisId="left" tickFormatter={(v) => `${(v/1000).toFixed(0)}k`} />
-                <YAxis yAxisId="right" orientation="right" tickFormatter={(v) => `${(v/1000).toFixed(0)}k`} />
-                <Tooltip formatter={(value: number) => formatCurrency(value)} labelFormatter={(label) => `Jahr ${label}`} />
-                <Legend />
-                <Bar yAxisId="left" dataKey="interest" stackId="a" fill="hsl(var(--destructive))" name="Zinsen" />
-                <Bar yAxisId="left" dataKey="repayment" stackId="a" fill="hsl(var(--primary))" name="Tilgung" />
-                <Line yAxisId="right" type="monotone" dataKey="remainingDebt" stroke="hsl(var(--muted-foreground))" strokeWidth={2} name="Restschuld" dot={false} />
-              </ComposedChart>
-            </ResponsiveContainer>
-          </div>
+          <MobileChartWrapper
+            title="Tilgungsplan"
+            mobileKPIs={[
+              { label: 'Volltilgung', value: `${calculation.fullRepaymentYear} J.`, color: 'text-primary' },
+              { label: 'Zinsen ges.', value: formatCurrency(calculation.totalInterest), color: 'text-destructive' },
+              { label: 'Tilgung ges.', value: formatCurrency(calculation.totalRepayment), color: 'text-primary' },
+            ]}
+          >
+            <div className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={calculation.yearlyData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="year" />
+                  <YAxis yAxisId="left" tickFormatter={(v) => `${(v/1000).toFixed(0)}k`} />
+                  <YAxis yAxisId="right" orientation="right" tickFormatter={(v) => `${(v/1000).toFixed(0)}k`} />
+                  <Tooltip formatter={(value: number) => formatCurrency(value)} labelFormatter={(label) => `Jahr ${label}`} />
+                  <Legend />
+                  <Bar yAxisId="left" dataKey="interest" stackId="a" fill="hsl(var(--destructive))" name="Zinsen" />
+                  <Bar yAxisId="left" dataKey="repayment" stackId="a" fill="hsl(var(--primary))" name="Tilgung" />
+                  <Line yAxisId="right" type="monotone" dataKey="remainingDebt" stroke="hsl(var(--muted-foreground))" strokeWidth={2} name="Restschuld" dot={false} />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
+          </MobileChartWrapper>
         </CardContent>
       </Card>
 
@@ -212,20 +223,29 @@ export function BestandCalculation({ offerId, initialData, temporary = false, hi
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={calculation.yearlyData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="year" />
-                <YAxis tickFormatter={(v) => `${(v/1000000).toFixed(1)}M`} />
-                <Tooltip formatter={(value: number) => formatCurrency(value)} labelFormatter={(label) => `Jahr ${label}`} />
-                <Legend />
-                <Area type="monotone" dataKey="propertyValue" fill="hsl(var(--primary))" fillOpacity={0.3} stroke="hsl(var(--primary))" name="Objektwert" />
-                <Area type="monotone" dataKey="remainingDebt" fill="hsl(var(--destructive))" fillOpacity={0.3} stroke="hsl(var(--destructive))" name="Restschuld" />
-                <Area type="monotone" dataKey="equity" fill="hsl(var(--chart-2))" fillOpacity={0.5} stroke="hsl(var(--chart-2))" name="Netto-Vermögen" />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
+          <MobileChartWrapper
+            title="Vermögensentwicklung"
+            mobileKPIs={[
+              { label: 'Vermögen 10J', value: formatCurrency(calculation.wealth10), color: 'text-emerald-500' },
+              { label: 'Vermögen 20J', value: formatCurrency(calculation.wealth20), color: 'text-emerald-500' },
+              { label: 'Wert 40J', value: formatCurrency(calculation.value40), color: 'text-primary' },
+            ]}
+          >
+            <div className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={calculation.yearlyData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="year" />
+                  <YAxis tickFormatter={(v) => `${(v/1000000).toFixed(1)}M`} />
+                  <Tooltip formatter={(value: number) => formatCurrency(value)} labelFormatter={(label) => `Jahr ${label}`} />
+                  <Legend />
+                  <Area type="monotone" dataKey="propertyValue" fill="hsl(var(--primary))" fillOpacity={0.3} stroke="hsl(var(--primary))" name="Objektwert" />
+                  <Area type="monotone" dataKey="remainingDebt" fill="hsl(var(--destructive))" fillOpacity={0.3} stroke="hsl(var(--destructive))" name="Restschuld" />
+                  <Area type="monotone" dataKey="equity" fill="hsl(var(--chart-2))" fillOpacity={0.5} stroke="hsl(var(--chart-2))" name="Netto-Vermögen" />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </MobileChartWrapper>
         </CardContent>
       </Card>
 

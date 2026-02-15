@@ -20,6 +20,8 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, 
   Tooltip, Legend, ResponsiveContainer, Cell
 } from 'recharts';
+import { MobileChartWrapper } from '@/components/shared/MobileChartWrapper';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface AufteilerCalculationProps {
   offerId?: string;
@@ -36,7 +38,7 @@ interface AufteilerCalculationProps {
 
 export function AufteilerCalculation({ offerId, initialData, temporary = false }: AufteilerCalculationProps) {
   const runCalc = useRunCalcAufteiler();
-  
+  const isMobile = useIsMobile();
   const [params, setParams] = React.useState<AufteilerFullParams>({
     purchasePrice: initialData.purchasePrice,
     yearlyRent: initialData.yearlyRent,
@@ -71,7 +73,7 @@ export function AufteilerCalculation({ offerId, initialData, temporary = false }
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="grid md:grid-cols-3 gap-6">
+          <div className={cn('grid gap-6', isMobile ? 'grid-cols-1' : 'md:grid-cols-3')}>
             <div className="space-y-2">
               <div className="flex justify-between">
                 <Label>Zielrendite Endkunde</Label>
@@ -98,7 +100,7 @@ export function AufteilerCalculation({ offerId, initialData, temporary = false }
 
           <Separator />
 
-          <div className="grid md:grid-cols-4 gap-4">
+          <div className={cn('grid gap-4', isMobile ? 'grid-cols-2' : 'md:grid-cols-4')}>
             <div className="space-y-1">
               <Label className={DESIGN.TYPOGRAPHY.HINT}>Erwerbsnebenkosten (%)</Label>
               <Input type="number" value={params.ancillaryCostPercent} onChange={(e) => setParams(p => ({ ...p, ancillaryCostPercent: parseFloat(e.target.value) || 0 }))} />
@@ -233,31 +235,42 @@ export function AufteilerCalculation({ offerId, initialData, temporary = false }
           <CardDescription className={DESIGN.TYPOGRAPHY.HINT}>Auswirkung der Zielrendite auf den Gewinn</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={calculation.sensitivityData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="label" />
-                <YAxis tickFormatter={(v) => `${(v/1000).toFixed(0)}k`} />
-                <Tooltip formatter={(value: number) => formatCurrency(value)} />
-                <Bar dataKey="profit" name="Gewinn">
-                  {calculation.sensitivityData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.profit >= 0 ? 'hsl(var(--chart-2))' : 'hsl(var(--destructive))'} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="mt-4 grid grid-cols-3 gap-4 text-sm text-center">
-            {calculation.sensitivityData.map((item, idx) => (
-              <div key={idx} className="p-2 rounded bg-muted/50">
-                <div className="text-muted-foreground">Bei {item.label} Rendite</div>
-                <div className={cn('font-semibold', item.profit >= 0 ? 'text-emerald-500' : 'text-destructive')}>
-                  {formatCurrency(item.profit)}
+          <MobileChartWrapper
+            title="Sensitivität"
+            mobileKPIs={calculation.sensitivityData.map((item) => ({
+              label: `${item.label} Rendite`,
+              value: formatCurrency(item.profit),
+              color: item.profit >= 0 ? 'text-emerald-500' : 'text-destructive',
+            }))}
+          >
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={calculation.sensitivityData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="label" />
+                  <YAxis tickFormatter={(v) => `${(v/1000).toFixed(0)}k`} />
+                  <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                  <Bar dataKey="profit" name="Gewinn">
+                    {calculation.sensitivityData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.profit >= 0 ? 'hsl(var(--chart-2))' : 'hsl(var(--destructive))'} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </MobileChartWrapper>
+          {!isMobile && (
+            <div className="mt-4 grid grid-cols-3 gap-4 text-sm text-center">
+              {calculation.sensitivityData.map((item, idx) => (
+                <div key={idx} className="p-2 rounded bg-muted/50">
+                  <div className="text-muted-foreground">Bei {item.label} Rendite</div>
+                  <div className={cn('font-semibold', item.profit >= 0 ? 'text-emerald-500' : 'text-destructive')}>
+                    {formatCurrency(item.profit)}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
 
