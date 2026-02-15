@@ -10,3 +10,4 @@ export { default as ArmstrongKnowledge } from './ArmstrongKnowledge';
 export { default as ArmstrongBilling } from './ArmstrongBilling';
 export { default as ArmstrongPolicies } from './ArmstrongPolicies';
 export { default as ArmstrongTestHarness } from './ArmstrongTestHarness';
+export { default as ArmstrongIntegrations } from './ArmstrongIntegrations';

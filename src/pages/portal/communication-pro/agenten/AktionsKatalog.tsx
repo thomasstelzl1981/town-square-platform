@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Search, Zap, Shield, Eye, AlertTriangle } from 'lucide-react';
-import { armstrongActions } from '@/manifests/armstrongManifest';
+import { useArmstrongActions } from '@/hooks/useArmstrongActions';
 
 const EXECUTION_MODE_LABELS: Record<string, { label: string; variant: 'default' | 'secondary' | 'outline' | 'destructive'; icon: typeof Zap }> = {
   execute: { label: 'Sofort', variant: 'default', icon: Zap },
@@ -25,26 +25,27 @@ const ZONE_LABELS: Record<string, string> = {
 };
 
 export function AktionsKatalog() {
+  const { actions, stats, isLoading } = useArmstrongActions();
   const [search, setSearch] = useState('');
   const [zoneFilter, setZoneFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
 
   const filtered = useMemo(() => {
-    return armstrongActions.filter(action => {
+    return actions.filter(action => {
       const matchesSearch = !search || 
         action.action_code.toLowerCase().includes(search.toLowerCase()) ||
         action.title_de.toLowerCase().includes(search.toLowerCase()) ||
         action.description_de.toLowerCase().includes(search.toLowerCase());
       
       const matchesZone = zoneFilter === 'all' || action.zones.includes(zoneFilter as any);
-      const matchesStatus = statusFilter === 'all' || action.status === statusFilter;
+      const matchesStatus = statusFilter === 'all' || action.effective_status === statusFilter;
       
       return matchesSearch && matchesZone && matchesStatus;
     });
-  }, [search, zoneFilter, statusFilter]);
+  }, [actions, search, zoneFilter, statusFilter]);
 
-  const totalActions = armstrongActions.length;
-  const activeActions = armstrongActions.filter(a => a.status === 'active').length;
+  const totalActions = stats.total;
+  const activeActions = stats.active;
 
   return (
     <div className="space-y-4">
@@ -64,8 +65,14 @@ export function AktionsKatalog() {
         </Card>
         <Card>
           <CardContent className="p-3 text-center">
-            <p className="text-2xl font-bold text-muted-foreground">{totalActions - activeActions}</p>
-            <p className="text-xs text-muted-foreground">Inaktiv</p>
+            <p className="text-2xl font-bold text-amber-500">{stats.restricted}</p>
+            <p className="text-xs text-muted-foreground">Eingeschränkt</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-3 text-center">
+            <p className="text-2xl font-bold text-muted-foreground">{stats.disabled}</p>
+            <p className="text-xs text-muted-foreground">Deaktiviert</p>
           </CardContent>
         </Card>
       </div>
@@ -98,7 +105,8 @@ export function AktionsKatalog() {
           <SelectContent>
             <SelectItem value="all">Alle</SelectItem>
             <SelectItem value="active">Aktiv</SelectItem>
-            <SelectItem value="disabled">Inaktiv</SelectItem>
+            <SelectItem value="restricted">Eingeschränkt</SelectItem>
+            <SelectItem value="disabled">Deaktiviert</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -110,14 +118,17 @@ export function AktionsKatalog() {
           const ModeIcon = mode.icon;
           
           return (
-            <Card key={action.action_code} className="hover:border-primary/30 transition-colors">
+            <Card key={action.action_code} className={`hover:border-primary/30 transition-colors ${action.effective_status === 'disabled' ? 'opacity-50' : ''}`}>
               <CardHeader className="p-3 pb-1">
                 <div className="flex items-start justify-between gap-2">
                   <CardTitle className="text-sm font-medium leading-tight">
                     {action.title_de}
                   </CardTitle>
-                  <Badge variant={action.status === 'active' ? 'default' : 'secondary'} className="text-[10px] shrink-0">
-                    {action.status === 'active' ? 'Aktiv' : 'Inaktiv'}
+                  <Badge 
+                    variant={action.effective_status === 'active' ? 'default' : action.effective_status === 'restricted' ? 'secondary' : 'outline'} 
+                    className="text-[10px] shrink-0"
+                  >
+                    {action.effective_status === 'active' ? 'Aktiv' : action.effective_status === 'restricted' ? 'Eingeschränkt' : 'Deaktiviert'}
                   </Badge>
                 </div>
                 <code className="text-[10px] text-muted-foreground font-mono">
