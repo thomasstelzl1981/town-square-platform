@@ -1,7 +1,7 @@
 /**
  * useNKAbrechnung — React Hook fuer NK-Abrechnungs-Workflow
  * 
- * Orchestriert: Readiness-Check → Daten laden → Berechnung → PDF-Export
+ * Orchestriert: Readiness-Check → Daten laden → Template-Merge → Berechnung → PDF-Export
  */
 
 import { useState, useEffect, useCallback } from 'react';
@@ -9,8 +9,9 @@ import { useToast } from '@/hooks/use-toast';
 import { checkReadiness } from '@/engines/nkAbrechnung/readinessCheck';
 import { calculateSettlement } from '@/engines/nkAbrechnung/engine';
 import { generateNKPdf } from '@/engines/nkAbrechnung/pdfExport';
+import { mergeWithTemplate } from '@/engines/nkAbrechnung/hausgeldTemplate';
 import { supabase } from '@/integrations/supabase/client';
-import type { NKReadinessResult, NKSettlementMatrix, NKCostCategory, AllocationKeyType } from '@/engines/nkAbrechnung/spec';
+import type { NKReadinessResult, NKSettlementMatrix } from '@/engines/nkAbrechnung/spec';
 
 export interface LeaseInfo {
   id: string;
@@ -51,6 +52,7 @@ export function useNKAbrechnung(
   const [isLoadingData, setIsLoadingData] = useState(false);
   const [isCalculating, setIsCalculating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [nkPeriodId, setNkPeriodId] = useState<string | null>(null);
 
   // Readiness Check + Daten laden bei Jahr-Aenderung
   useEffect(() => {
@@ -63,11 +65,6 @@ export function useNKAbrechnung(
       .then(setReadiness)
       .catch((err) => {
         console.error('Readiness check failed:', err);
-        toast({
-          title: 'Fehler bei Dokumentenprüfung',
-          description: err.message,
-          variant: 'destructive',
-        });
       })
       .finally(() => setIsLoadingReadiness(false));
 
@@ -125,7 +122,10 @@ export function useNKAbrechnung(
         .lte('period_start', periodEnd)
         .maybeSingle();
 
+      let dbItems: CostItemEditable[] = [];
+
       if (period?.id) {
+        setNkPeriodId(period.id);
         const { data: items } = await (supabase as any)
           .from('nk_cost_items')
           .select('id, category_code, label_display, amount_total_house, amount_unit, key_type, is_apportionable, sort_order')
@@ -133,7 +133,7 @@ export function useNKAbrechnung(
           .eq('tenant_id', tenantId)
           .order('sort_order', { ascending: true });
 
-        const mapped: CostItemEditable[] = (items || []).map((item: any) => ({
+        dbItems = (items || []).map((item: any) => ({
           id: item.id,
           categoryCode: item.category_code,
           labelDisplay: item.label_display,
@@ -143,18 +143,28 @@ export function useNKAbrechnung(
           isApportionable: item.is_apportionable,
           sortOrder: item.sort_order,
         }));
+      } else {
+        setNkPeriodId(null);
+      }
 
-        setCostItems(mapped);
+      // Merge mit Template — immer vollständiges Formular zeigen
+      const merged = mergeWithTemplate(dbItems);
+      setCostItems(merged);
 
-        // Grundsteuer separat extrahieren
-        const gs = mapped.find(i => i.categoryCode === 'grundsteuer');
-        if (gs) {
-          setGrundsteuerTotal(gs.amountTotalHouse);
-          setGrundsteuerAnteil(gs.amountUnit);
-        }
+      // Grundsteuer separat extrahieren
+      const gs = dbItems.find(i => i.categoryCode === 'grundsteuer');
+      if (gs) {
+        setGrundsteuerTotal(gs.amountTotalHouse);
+        setGrundsteuerAnteil(gs.amountUnit);
+      } else {
+        setGrundsteuerTotal(0);
+        setGrundsteuerAnteil(0);
       }
     } catch (err: any) {
       console.error('Data loading failed:', err);
+      // Bei Fehler trotzdem Template anzeigen
+      const merged = mergeWithTemplate([]);
+      setCostItems(merged);
     } finally {
       setIsLoadingData(false);
     }
@@ -167,33 +177,96 @@ export function useNKAbrechnung(
     ));
   }, []);
 
-  // Cost Items in DB speichern
+  // Cost Items in DB speichern (mit Auto-Create für neue Perioden)
   const saveCostItems = useCallback(async () => {
     setIsSaving(true);
     try {
-      for (const item of costItems) {
-        await (supabase as any)
-          .from('nk_cost_items')
-          .update({
-            amount_total_house: item.amountTotalHouse,
-            amount_unit: item.amountUnit,
+      let periodId = nkPeriodId;
+
+      // Auto-Create: Wenn keine Periode existiert, neue anlegen
+      if (!periodId) {
+        const { data: newPeriod, error: periodError } = await (supabase as any)
+          .from('nk_periods')
+          .insert({
+            property_id: propertyId,
+            tenant_id: tenantId,
+            period_start: `${year}-01-01`,
+            period_end: `${year}-12-31`,
+            status: 'draft',
           })
-          .eq('id', item.id);
+          .select('id')
+          .single();
+
+        if (periodError) throw periodError;
+        periodId = newPeriod.id;
+        setNkPeriodId(periodId);
       }
+
+      // Bestehende DB-Items updaten, Template-Items neu anlegen
+      for (const item of costItems) {
+        if (item.id.startsWith('tmpl_')) {
+          // Neues Item anlegen
+          await (supabase as any)
+            .from('nk_cost_items')
+            .insert({
+              nk_period_id: periodId,
+              tenant_id: tenantId,
+              category_code: item.categoryCode,
+              label_display: item.labelDisplay,
+              amount_total_house: item.amountTotalHouse,
+              amount_unit: item.amountUnit,
+              key_type: item.keyType,
+              is_apportionable: item.isApportionable,
+              sort_order: item.sortOrder,
+            });
+        } else {
+          // Bestehendes Item updaten
+          await (supabase as any)
+            .from('nk_cost_items')
+            .update({
+              amount_total_house: item.amountTotalHouse,
+              amount_unit: item.amountUnit,
+            })
+            .eq('id', item.id);
+        }
+      }
+
       toast({ title: 'Gespeichert', description: 'Kostenpositionen wurden aktualisiert.' });
+      // Daten neu laden um DB-IDs zu erhalten
+      await loadData();
     } catch (err: any) {
       toast({ title: 'Fehler beim Speichern', description: err.message, variant: 'destructive' });
     } finally {
       setIsSaving(false);
     }
-  }, [costItems]);
+  }, [costItems, nkPeriodId, propertyId, tenantId, year, loadData]);
 
   // Grundsteuer speichern
   const saveGrundsteuer = useCallback(async () => {
     setIsSaving(true);
     try {
+      let periodId = nkPeriodId;
+
+      if (!periodId) {
+        const { data: newPeriod, error: periodError } = await (supabase as any)
+          .from('nk_periods')
+          .insert({
+            property_id: propertyId,
+            tenant_id: tenantId,
+            period_start: `${year}-01-01`,
+            period_end: `${year}-12-31`,
+            status: 'draft',
+          })
+          .select('id')
+          .single();
+
+        if (periodError) throw periodError;
+        periodId = newPeriod.id;
+        setNkPeriodId(periodId);
+      }
+
       const gs = costItems.find(i => i.categoryCode === 'grundsteuer');
-      if (gs) {
+      if (gs && !gs.id.startsWith('tmpl_')) {
         await (supabase as any)
           .from('nk_cost_items')
           .update({
@@ -201,26 +274,32 @@ export function useNKAbrechnung(
             amount_unit: grundsteuerAnteil,
           })
           .eq('id', gs.id);
-        
-        // Lokalen State auch updaten
-        setCostItems(prev => prev.map(item =>
-          item.categoryCode === 'grundsteuer'
-            ? { ...item, amountTotalHouse: grundsteuerTotal, amountUnit: grundsteuerAnteil }
-            : item
-        ));
-        toast({ title: 'Gespeichert', description: 'Grundsteuer wurde aktualisiert.' });
+      } else {
+        await (supabase as any)
+          .from('nk_cost_items')
+          .insert({
+            nk_period_id: periodId,
+            tenant_id: tenantId,
+            category_code: 'grundsteuer',
+            label_display: 'Grundsteuer',
+            amount_total_house: grundsteuerTotal,
+            amount_unit: grundsteuerAnteil,
+            key_type: 'mea',
+            is_apportionable: true,
+            sort_order: 0,
+          });
       }
+
+      toast({ title: 'Gespeichert', description: 'Grundsteuer wurde aktualisiert.' });
     } catch (err: any) {
       toast({ title: 'Fehler beim Speichern', description: err.message, variant: 'destructive' });
     } finally {
       setIsSaving(false);
     }
-  }, [costItems, grundsteuerTotal, grundsteuerAnteil]);
+  }, [costItems, grundsteuerTotal, grundsteuerAnteil, nkPeriodId, propertyId, tenantId, year]);
 
   // Berechnung starten
   const calculate = useCallback(async () => {
-    if (!readiness?.canCalculate) return;
-
     setIsCalculating(true);
     try {
       const result = await calculateSettlement({
@@ -245,7 +324,7 @@ export function useNKAbrechnung(
     } finally {
       setIsCalculating(false);
     }
-  }, [readiness, propertyId, unitId, tenantId, year]);
+  }, [propertyId, unitId, tenantId, year]);
 
   // PDF Export
   const exportPdf = useCallback(() => {
