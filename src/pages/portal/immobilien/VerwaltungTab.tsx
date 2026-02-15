@@ -39,8 +39,8 @@ export function VerwaltungTab() {
   return (
     <PageShell>
       <ModulePageHeader
-        title="BWA"
-        description="Betriebswirtschaftliche Auswertung — Objektauswahl und Controlling."
+        title="V + V"
+        description="Vermietung + Verwaltung — Vermietereinheiten im Überblick."
       />
 
       {/* Objekt-Widgets */}
@@ -92,25 +92,6 @@ export function VerwaltungTab() {
           </WidgetCell>
         ))}
 
-        {/* CTA Widget */}
-        <WidgetCell>
-          <button
-            onClick={() => window.location.href = '/portal/immobilien/portfolio'}
-            className={cn(
-              "w-full h-full flex flex-col items-center justify-center gap-4 p-5 rounded-xl border border-dashed text-center transition-all",
-              DESIGN.CARD.BASE,
-              "hover:border-primary/50 hover:shadow-md"
-            )}
-          >
-            <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center">
-              <Plus className="h-6 w-6 text-primary" />
-            </div>
-            <div>
-              <h3 className="text-sm font-semibold">Objekt hinzufügen</h3>
-              <p className={cn(DESIGN.TYPOGRAPHY.LABEL, 'mt-1')}>BWA im Portfolio aktivieren</p>
-            </div>
-          </button>
-        </WidgetCell>
       </WidgetGrid>
 
       {/* Empty State */}
@@ -119,7 +100,7 @@ export function VerwaltungTab() {
           <CardContent className="p-6 text-center">
             <AlertCircle className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
             <p className="text-sm text-muted-foreground">
-              Keine Objekte aktiv. Aktivieren Sie die Verwaltung in der Immobilienakte.
+              Keine Vermietereinheiten vorhanden. Legen Sie neue Einheiten im Portfolio an.
             </p>
             <Button variant="link" className="mt-2" onClick={() => window.location.href = '/portal/immobilien/portfolio'}>
               Zum Portfolio →
