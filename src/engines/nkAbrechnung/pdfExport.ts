@@ -127,13 +127,7 @@ export function generateNKPdf(matrix: NKSettlementMatrix): jsPDF {
   y += 6;
 
   doc.setFont(undefined!, 'normal');
-  doc.text('NK-Vorauszahlungen:', margin, y);
-  doc.text(EUR(matrix.summary.prepaidNK), summaryX, y);
-  y += 5;
-  doc.text('Heizkosten-Vorauszahlungen:', margin, y);
-  doc.text(EUR(matrix.summary.prepaidHeating), summaryX, y);
-  y += 5;
-  doc.text('Gesamt Vorauszahlungen:', margin, y);
+  doc.text('Vorauszahlungen:', margin, y);
   doc.text(EUR(matrix.summary.totalPrepaid), summaryX, y);
   y += 8;
 
