@@ -136,28 +136,38 @@ export function KontoAkteInline({ isDemo, account, onClose }: KontoAkteInlinePro
           <p className={RECORD_CARD.SECTION_TITLE}>Kontobewegungen</p>
           {transactions.length > 0 ? (
             <div className="rounded-lg border overflow-hidden">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="bg-muted/50 border-b">
-                    <th className="text-left px-4 py-2 font-medium text-muted-foreground">Datum</th>
-                    <th className="text-left px-4 py-2 font-medium text-muted-foreground">Buchungstext</th>
-                    <th className="text-right px-4 py-2 font-medium text-muted-foreground">Betrag</th>
-                    <th className="text-right px-4 py-2 font-medium text-muted-foreground">Saldo</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {transactions.map((t, i) => (
-                    <tr key={i} className="border-b last:border-0 hover:bg-muted/20">
-                      <td className="px-4 py-2 text-muted-foreground">{fmtDate(t.date)}</td>
-                      <td className="px-4 py-2">{t.text}</td>
-                      <td className={cn('px-4 py-2 text-right font-medium', t.amount >= 0 ? 'text-emerald-600' : 'text-destructive')}>
-                        {t.amount >= 0 ? '+' : ''}{fmt(t.amount)}
-                      </td>
-                      <td className="px-4 py-2 text-right text-muted-foreground">{fmt(t.saldo)}</td>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-muted/50 border-b">
+                      <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Datum</th>
+                      <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Valuta</th>
+                      <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Art</th>
+                      <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Auftraggeber / Empfänger</th>
+                      <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">IBAN</th>
+                      <th className="text-left px-3 py-2 font-medium text-muted-foreground">Verwendungszweck</th>
+                      <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Betrag</th>
+                      <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Saldo</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {transactions.map((t, i) => (
+                      <tr key={i} className="border-b last:border-0 hover:bg-muted/20">
+                        <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">{fmtDate(t.date)}</td>
+                        <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">{fmtDate(t.valuta_date)}</td>
+                        <td className="px-3 py-2 whitespace-nowrap">{t.booking_type}</td>
+                        <td className="px-3 py-2 whitespace-nowrap">{t.counterpart_name}</td>
+                        <td className="px-3 py-2 text-muted-foreground font-mono text-xs whitespace-nowrap">{t.counterpart_iban}</td>
+                        <td className="px-3 py-2 text-muted-foreground text-xs">{t.purpose}</td>
+                        <td className={cn('px-3 py-2 text-right font-medium whitespace-nowrap', t.amount >= 0 ? 'text-emerald-600' : 'text-destructive')}>
+                          {t.amount >= 0 ? '+' : ''}{fmt(t.amount)}
+                        </td>
+                        <td className="px-3 py-2 text-right text-muted-foreground whitespace-nowrap">{fmt(t.saldo)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           ) : (
             <div className="text-center py-8 text-muted-foreground text-sm border border-dashed rounded-lg">
