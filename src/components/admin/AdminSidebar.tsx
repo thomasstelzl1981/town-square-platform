@@ -174,18 +174,22 @@ function shouldShowInNav(path: string): boolean {
   if (path === 'ki-office/recherche' || path === 'ki-office/kontakte' || path === 'ki-office/email') {
     return true;
   }
-  // Armstrong Zone 1 — nur Dashboard in Sidebar
+  // Armstrong Zone 1 — Dashboard + Credit-Monitoring in Sidebar
   if (path === 'armstrong') {
     return true;
   }
+  if (path === 'armstrong/billing' || path === 'armstrong/costs') {
+    return true; // Credit-Monitoring in Sidebar sichtbar
+  }
   if (path.startsWith('armstrong/')) {
-    return false; // Sub-Seiten via Armstrong Dashboard erreichbar
+    return false; // Andere Sub-Seiten via Armstrong Dashboard erreichbar
   }
   // Skip sub-routes of desks (they will be accessible from their parent page)
   if (path.includes('/') && (
     path.startsWith('sales-desk/') ||
     path.startsWith('finance-desk/') ||
-    path.startsWith('acquiary/')
+    path.startsWith('acquiary/') ||
+    path.startsWith('projekt-desk/')
   )) {
     return false;
   }
