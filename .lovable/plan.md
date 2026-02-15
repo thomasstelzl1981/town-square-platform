@@ -1,87 +1,79 @@
 
+# Demodaten-Bereinigung: Duplikate und Halluzinationen beseitigen
 
-# Recherche-Modul Zone 2 — CI-Redesign und Live-Fortschrittsanzeige
+## Problem-Analyse
 
-## Probleme (Ist-Zustand)
+### Problem 1: Doppelte Eintraege in Katalog und Suche
+Die Demo-Immobilien (BER-01, MUC-01, HH-01) existieren **doppelt**:
+- Als Client-seitige Demo-Daten im Hook `useDemoListings.ts` (4 Eintraege: 3 Wohnungen + Residenz am Stadtpark)
+- Als echte Datenbank-Eintraege in `properties`, `listings` und `listing_publications`
 
-1. **3 zusaetzliche Widgets sichtbar**: Die WidgetGrid zeigt Demo-Widget + echte Orders + CTA nebeneinander — entspricht nicht dem Golden Path Standard (nur Demo + CTA bei leerem Zustand).
-2. **Demo-Version laesst sich nicht oeffnen**: Der Demo-Click setzt `activeOrderId = '__demo__'`, aber die Demo-Inline-Ansicht zeigt nur eine statische Tabelle ohne den beeindruckenden Flow.
-3. **Neuer Auftrag zeigt nur Teildarstellung**: Der 6-Section InlineFlow ist zu formular-lastig und zeigt beim Running-State nur einen Spinner + Text.
-4. **Kein visueller "Wow"-Effekt**: Es fehlt eine animierte Fortschrittsanzeige, die zeigt, dass aktiv Kontakte generiert werden.
+Beide werden zusammengefuehrt und angezeigt — daher sieht man z.B. im Katalog 7 statt 4 Eintraege.
 
-## Loesung
+**Betroffene Module:**
+- MOD-09 Katalog (`KatalogTab.tsx` Zeile 145: `[...demoPartnerListings, ...listings]`)
+- MOD-08 Suche (`SucheTab.tsx`: `demoListings` + DB-Ergebnisse)
+- MOD-08 Kaufy Zone 3 (`Kaufy2026Home.tsx`)
+- Zone 1 Sales Desk (`SalesDesk.tsx`)
 
-### 1. WidgetGrid bereinigen — Golden Path CI
+### Problem 2: "MFH Duesseldorf" — Phantom-Immobilie in Verwaltung
+In `useMSVData.ts` ist ein hardcodiertes Demo-Objekt "MFH Duesseldorf, Koenigsallee 42" definiert (Zeile 84-94), das in keiner Datenbank existiert. Es wird bei aktivem Toggle immer eingefuegt.
 
-- Demo-Widget bleibt an Position 0 (DEMO_WIDGET CI mit smaragdgruenem Shimmer)
-- CTA-Widget ("Neuer Rechercheauftrag") an Position 1
-- Echte Orders dahinter, aber nur als kompakte Kacheln
-- Keine ueberfluessigen Widgets
+### Problem 3: Beratung zeigt keine Ergebnisse
+Die Beratung (`BeratungTab.tsx`) zeigt standardmaessig nichts, weil `hasSearched` auf `false` startet. Der User muss erst "Ergebnisse anzeigen" klicken. Es werden aber **keine Demo-Daten** eingeblendet (im Gegensatz zum Katalog). Wenn gesucht wird, sollten die DB-Listings korrekt erscheinen.
 
-### 2. Demo-Flow: Beeindruckende animierte Recherche-Simulation
+## Loesung: Deduplizierung und Bereinigung
 
-Wenn der User auf das Demo-Widget klickt, oeffnet sich unterhalb des Grids ein **animierter Live-Flow**, der eine Recherche simuliert:
+### Strategie
+Da die 3 Kern-Immobilien (BER-01, MUC-01, HH-01) bereits als echte DB-Eintraege existieren (`is_demo=true`), muss der Client-seitige Demo-Layer diese **nicht nochmals** hinzufuegen, wenn die DB sie bereits liefert. Die Loesung: **DB-Ergebnisse pruefen und nur fehlende Demo-Eintraege ergaenzen** (Deduplizierung).
 
-- **Phase 1 — Initialisierung** (2s): Glasige Karte mit pulsierendem Radar-Icon, Text "Recherche wird vorbereitet..."
-- **Phase 2 — Suche laeuft** (8s): 
-  - Kreisfoermiger Fortschritts-Ring (wie ein Radar-Sweep) mit Prozentanzeige
-  - Darunter ein horizontaler Fortschrittsbalken (0% bis 100%)
-  - Timer der mitlaeuft (vergangene Zeit)
-  - Provider-Status-Zeilen (Firecrawl: "Crawling...", dann "12 Seiten analysiert")
-  - Kontakte erscheinen animiert einer nach dem anderen in einer Liste (fade-in + slide-up)
-  - Jeder neue Kontakt hat eine kurze Einblend-Animation
-  - Counter: "7 / 37 Kontakte gefunden" steigt live an
-- **Phase 3 — Abgeschlossen** (nach 10s): 
-  - Fortschrittsring faerbt sich gruen, Haekchen erscheint
-  - Vollstaendige Ergebnistabelle wird eingeblendet
-  - CTA-Buttons: "Excel-Export" und "Ins Kontaktbuch"
+### Aenderung 1: `KatalogTab.tsx` — Deduplizierung
+In Zeile 145 wird aktuell blind zusammengefuehrt:
+```
+const allListings = [...demoPartnerListings, ...listings]
+```
+Neu: Nur Demo-Eintraege einmischen, deren `public_id` nicht bereits in den DB-Ergebnissen enthalten ist.
 
-### 3. Echte Running-State-Ansicht (fuer reale Auftraege)
+### Aenderung 2: `SucheTab.tsx` (MOD-08) — Deduplizierung
+Gleiche Logik: Demo-Kaufy-Listings nur einmischen, wenn die DB sie nicht bereits liefert.
 
-Der bisherige Spinner wird durch dieselbe Fortschrittsanzeige ersetzt:
-- Kreisfoermiger Progress-Ring mit Prozent (`results_count / max_results * 100`)
-- Horizontaler Balken
-- Live-Counter: Treffer, Credits verbraucht, vergangene Zeit
-- Kontakte erscheinen via Realtime-Subscription animiert
+### Aenderung 3: `Kaufy2026Home.tsx` (Zone 3) — Deduplizierung
+Gleiche Dedup-Logik anwenden.
 
-### 4. Neue Komponente: `ResearchLiveProgress.tsx`
+### Aenderung 4: `SalesDesk.tsx` (Zone 1) — Deduplizierung
+Gleiche Dedup-Logik fuer `salesDeskListings` und `mandateListings`.
 
-Zentrale Komponente fuer den beeindruckenden Fortschritts-Flow:
-- Wiederverwendbar fuer Demo-Simulation und echten Running-State
-- Kreisfoermiger SVG-Fortschrittsring (animiert)
-- Provider-Status-Zeilen mit Pulse-Animation
-- Kontakt-Liste mit gestaffelter Einblend-Animation
-- Glasiges, dunkles Card-Design passend zum CI
+### Aenderung 5: `useMSVData.ts` — MFH Duesseldorf entfernen
+Das hardcodierte Demo-Objekt "MFH Duesseldorf" hat keinen Gegenpart in der Datenbank. Es wird entfernt. Die 3 echten Demo-Properties (BER-01, MUC-01, HH-01) erscheinen korrekt aus der DB, wenn sie `rental_managed=true` haben. Alternativ: Nur das `isDemo`-Badge von den DB-Properties beibehalten, den hardcodierten Duesseldorf-Eintrag aber streichen.
 
-## Technische Aenderungen
+### Aenderung 6: `BeratungTab.tsx` — Demo-Listings einblenden
+Die Beratung zeigt aktuell nur DB-Ergebnisse nach Klick auf "Suche". Demo-Partner-Listings (ohne Provision) sollen **sofort sichtbar** sein, wie im Katalog — aber dedupliziert.
 
-### Neue Datei: `src/pages/portal/communication-pro/recherche/ResearchLiveProgress.tsx`
-- SVG-basierter kreisfoermiger Fortschrittsring (stroke-dasharray Animation)
-- Horizontaler Progress-Bar darunter
-- Timer-Anzeige (elapsed time)
-- Provider-Status-Grid (Icon + Label + Status-Text + Pulse-Dot)
-- Kontakt-Feed: Liste mit staggered fade-in (CSS transition + delay)
-- Props: `progress` (0-100), `contactsFound`, `maxContacts`, `providerStatus`, `contacts[]`, `isComplete`
+## Betroffene Dateien
 
-### Neue Datei: `src/pages/portal/communication-pro/recherche/ResearchDemoSimulation.tsx`
-- Verwendet `ResearchLiveProgress` mit einem `useEffect`-Timer
-- Simuliert alle 300ms einen neuen Kontakt aus `DEMO_RESULTS`
-- Durchlaeuft Phase 1 -> 2 -> 3 automatisch
-- Am Ende zeigt es die vollstaendige Demo-Tabelle
+| Datei | Aenderung |
+|-------|-----------|
+| `src/pages/portal/vertriebspartner/KatalogTab.tsx` | Dedup: DB-IDs pruefen vor Demo-Merge |
+| `src/pages/portal/investments/SucheTab.tsx` | Dedup: DB-IDs pruefen vor Demo-Merge |
+| `src/pages/zone3/kaufy2026/Kaufy2026Home.tsx` | Dedup: DB-IDs pruefen vor Demo-Merge |
+| `src/pages/admin/desks/SalesDesk.tsx` | Dedup: DB-IDs pruefen vor Demo-Merge |
+| `src/hooks/useMSVData.ts` | MFH Duesseldorf hardcoded Demo entfernen |
+| `src/pages/portal/vertriebspartner/BeratungTab.tsx` | Demo-Listings als Sofort-Ansicht integrieren |
 
-### Geaendert: `ResearchTab.tsx`
-- WidgetGrid: Nur Demo-Widget (Pos 0) + CTA (Pos 1) + echte Orders
-- Demo-Click oeffnet `ResearchDemoSimulation` statt der statischen Tabelle
-- Running-Orders zeigen `ResearchLiveProgress` statt Spinner
-- Beibehaltung von ModulePageHeader, Golden Path Standard
+## Technischer Ansatz: Dedup-Helper
 
-### Geaendert: `ResearchOrderInlineFlow.tsx`
-- Running-State (Section zwischen Consent und Ergebnisse) nutzt `ResearchLiveProgress`
-- Kontakte werden via `useResearchResults` live geladen und animiert angezeigt
-- Kein isolierter Spinner mehr
+Ein wiederverwendbarer Helper in `useDemoListings.ts`:
 
-### Unveraendert
-- `useResearchOrders.ts` — Logik bleibt
-- `ResearchResultsTable.tsx` — wird weiterhin fuer fertige Ergebnisse verwendet
-- `ResearchOrderWidget.tsx` — Kachel-Design bleibt
+```typescript
+export function deduplicateByField<T>(
+  demoItems: T[], 
+  dbItems: T[], 
+  keyFn: (item: T) => string
+): T[] {
+  const dbKeys = new Set(dbItems.map(keyFn));
+  const uniqueDemo = demoItems.filter(d => !dbKeys.has(keyFn(d)));
+  return [...uniqueDemo, ...dbItems];
+}
+```
 
+Dieser wird in allen betroffenen Modulen anstelle des blinden Spread-Operators verwendet.
