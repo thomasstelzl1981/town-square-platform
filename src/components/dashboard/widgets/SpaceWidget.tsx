@@ -56,14 +56,22 @@ export function SpaceWidget() {
             <>
               {/* Image or Fallback */}
               {apod.url && apod.media_type === 'image' ? (
-                <div className="relative w-full h-24 mb-2 rounded-lg overflow-hidden bg-black/20">
+                <a
+                  href={apod.hdurl || apod.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="relative w-full h-24 mb-2 rounded-lg overflow-hidden bg-black/20 block group cursor-pointer"
+                >
                   <img
                     src={apod.url}
                     alt={apod.title}
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     loading="lazy"
                   />
-                </div>
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                    <ExternalLink className="h-5 w-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </div>
+                </a>
               ) : apod.media_type === 'video' ? (
                 <div className="w-full h-24 mb-2 rounded-lg bg-black/20 flex items-center justify-center">
                   <a
