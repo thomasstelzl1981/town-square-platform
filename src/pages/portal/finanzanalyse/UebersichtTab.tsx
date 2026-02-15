@@ -1,33 +1,40 @@
 /**
- * MOD-18 Finanzanalyse — Tab 1: Übersicht
- * Block A: Personen im Haushalt (OBEN)
- * Block B: KPI Row
- * Block C: Top Treiber
- * Block D: Setup / Konten (UNTEN)
+ * MOD-18 Finanzen — Tab 1: ÜBERSICHT
+ * Block A: Personen im Haushalt (RecordCard)
+ * Block B: Konten (RecordCard) 
+ * Block C: 12M Scan Button
  */
 import { useState } from 'react';
 import { PageShell } from '@/components/shared/PageShell';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { RecordCard } from '@/components/shared/RecordCard';
+import { RECORD_CARD } from '@/config/designManifest';
+import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
+import { FormInput } from '@/components/shared';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Progress } from '@/components/ui/progress';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useFinanzanalyseData } from '@/hooks/useFinanzanalyseData';
-import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import {
-  Users, UserPlus, TrendingUp, TrendingDown, Wallet, Receipt,
-  CheckCircle2, Circle, BarChart3, ShoppingBag, PieChart, ArrowUpRight,
-  Pencil, Trash2, Save, X
+  Users, UserPlus, Landmark, ScanSearch, Plus,
+  Calendar, Mail, Phone, MapPin
 } from 'lucide-react';
 
 function fmt(v: number) {
   return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(v);
 }
+
+const ROLE_OPTIONS = [
+  { value: 'hauptperson', label: 'Hauptperson' },
+  { value: 'partner', label: 'Partner/in' },
+  { value: 'kind', label: 'Kind' },
+  { value: 'weitere', label: 'Weitere' },
+];
 
 const ROLE_LABELS: Record<string, string> = {
   hauptperson: 'Hauptperson',
@@ -37,204 +44,153 @@ const ROLE_LABELS: Record<string, string> = {
 };
 
 export default function UebersichtTab() {
+  const { activeTenantId } = useAuth();
   const {
-    kpis, setupStatus, isLoading,
-    persons, pensionRecords,
+    isLoading, persons, pensionRecords,
     createPerson, updatePerson, deletePerson, upsertPension,
   } = useFinanzanalyseData();
-  const navigate = useNavigate();
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState<Record<string, any>>({});
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [newPerson, setNewPerson] = useState({
-    role: 'partner' as string,
-    salutation: '',
-    first_name: '',
-    last_name: '',
-    birth_date: '',
-    email: '',
-    phone: '',
+
+  const [openCardId, setOpenCardId] = useState<string | null>(null);
+  const [editForms, setEditForms] = useState<Record<string, Record<string, any>>>({});
+  const [pensionForms, setPensionForms] = useState<Record<string, Record<string, any>>>({});
+  const [showNewPerson, setShowNewPerson] = useState(false);
+  const [newForm, setNewForm] = useState({
+    role: 'partner', salutation: '', first_name: '', last_name: '',
+    birth_date: '', email: '', phone: '', street: '', house_number: '', zip: '', city: '',
   });
+  const [savingId, setSavingId] = useState<string | null>(null);
 
   if (isLoading) {
-    return (
-      <PageShell>
-        <div className="space-y-4">
-          {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-28" />)}
-        </div>
-      </PageShell>
-    );
+    return <PageShell><Skeleton className="h-64" /></PageShell>;
   }
 
-  const handleStartEdit = (person: any) => {
-    setEditingId(person.id);
-    setEditForm({ ...person });
+  const toggleCard = (id: string) => {
+    if (openCardId === id) {
+      setOpenCardId(null);
+    } else {
+      const person = persons.find(p => p.id === id);
+      if (person) {
+        setEditForms(prev => ({ ...prev, [id]: { ...person } }));
+        const pension = pensionRecords.find(p => p.person_id === id);
+        setPensionForms(prev => ({
+          ...prev,
+          [id]: pension ? {
+            info_date: pension.info_date || '',
+            current_pension: pension.current_pension || '',
+            projected_pension: pension.projected_pension || '',
+            disability_pension: pension.disability_pension || '',
+          } : { info_date: '', current_pension: '', projected_pension: '', disability_pension: '' },
+        }));
+      }
+      setOpenCardId(id);
+      setShowNewPerson(false);
+    }
   };
 
-  const handleSaveEdit = () => {
-    if (!editingId) return;
-    updatePerson.mutate(editForm, {
+  const updateField = (personId: string, field: string, value: any) => {
+    setEditForms(prev => ({ ...prev, [personId]: { ...prev[personId], [field]: value } }));
+  };
+
+  const updatePensionField = (personId: string, field: string, value: any) => {
+    setPensionForms(prev => ({ ...prev, [personId]: { ...prev[personId], [field]: value } }));
+  };
+
+  const handleSave = (personId: string) => {
+    setSavingId(personId);
+    const form = editForms[personId];
+    updatePerson.mutate(form, {
       onSuccess: () => {
-        toast.success('Person aktualisiert');
-        setEditingId(null);
-        setEditForm({});
+        const pForm = pensionForms[personId];
+        if (pForm && (pForm.info_date || pForm.current_pension || pForm.projected_pension || pForm.disability_pension)) {
+          upsertPension.mutate({
+            personId,
+            info_date: pForm.info_date || null,
+            current_pension: pForm.current_pension ? Number(pForm.current_pension) : null,
+            projected_pension: pForm.projected_pension ? Number(pForm.projected_pension) : null,
+            disability_pension: pForm.disability_pension ? Number(pForm.disability_pension) : null,
+          });
+        }
+        toast.success('Person gespeichert');
+        setSavingId(null);
+      },
+      onError: () => setSavingId(null),
+    });
+  };
+
+  const handleDelete = (personId: string) => {
+    deletePerson.mutate(personId, {
+      onSuccess: () => {
+        toast.success('Person entfernt');
+        setOpenCardId(null);
       },
     });
   };
 
   const handleAddPerson = () => {
-    createPerson.mutate(newPerson, {
+    createPerson.mutate(newForm, {
       onSuccess: () => {
         toast.success('Person hinzugefügt');
-        setShowAddForm(false);
-        setNewPerson({ role: 'partner', salutation: '', first_name: '', last_name: '', birth_date: '', email: '', phone: '' });
+        setShowNewPerson(false);
+        setNewForm({ role: 'partner', salutation: '', first_name: '', last_name: '', birth_date: '', email: '', phone: '', street: '', house_number: '', zip: '', city: '' });
       },
     });
   };
 
-  const handleDeletePerson = (id: string) => {
-    deletePerson.mutate(id, {
-      onSuccess: () => toast.success('Person entfernt'),
-    });
-  };
-
-  const handleSavePension = (personId: string, data: any) => {
-    upsertPension.mutate({ personId, ...data }, {
-      onSuccess: () => toast.success('Renteninformation gespeichert'),
-    });
-  };
-
-  // ─── KPI Cards ─────────────────────────────────────
-  const kpiCards = [
-    { label: 'Einnahmen (12M)', value: kpis.totalIncome > 0 ? fmt(kpis.totalIncome) : '—', icon: TrendingUp, color: 'text-primary' },
-    { label: 'Ausgaben (12M)', value: kpis.totalExpenses > 0 ? fmt(kpis.totalExpenses) : '—', icon: TrendingDown, color: 'text-destructive' },
-    { label: 'Netto-Cashflow', value: kpis.totalIncome > 0 || kpis.totalExpenses > 0 ? fmt(kpis.netCashflow) : '—', icon: Wallet, color: kpis.netCashflow >= 0 ? 'text-primary' : 'text-destructive' },
-    { label: 'Fixkosten/Monat', value: kpis.fixedCosts > 0 ? fmt(kpis.fixedCosts) : '—', icon: Receipt, color: 'text-muted-foreground' },
-  ];
-
   return (
     <PageShell>
-      {/* ═══ BLOCK A: Personen im Haushalt (GANZ OBEN) ═══ */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Users className="h-5 w-5" />
-              Personen im Haushalt
-            </CardTitle>
-            <Button variant="outline" size="sm" onClick={() => setShowAddForm(true)}>
-              <UserPlus className="h-4 w-4 mr-2" />
-              Person hinzufügen
-            </Button>
-          </div>
-          <CardDescription>Ihre Haushaltsstruktur als Grundlage für die Finanzanalyse</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {persons.length === 0 && !showAddForm ? (
-            <div className="py-8 text-center">
-              <Users className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
-              <p className="text-sm text-muted-foreground">Noch keine Personen hinterlegt.</p>
-              <Button variant="outline" size="sm" className="mt-3" onClick={() => setShowAddForm(true)}>
-                Stammdaten prüfen
-              </Button>
-            </div>
-          ) : (
-            <Accordion type="multiple" className="space-y-2">
-              {persons.map((person) => {
-                const pension = pensionRecords.find(p => p.person_id === person.id);
-                const isEditing = editingId === person.id;
+      <ModulePageHeader title="Finanzen" description="Ihre finanzielle Gesamtübersicht — Personen, Konten und Vertragsanalyse" />
 
-                return (
-                  <AccordionItem key={person.id} value={person.id} className="border rounded-lg px-4">
-                    <AccordionTrigger className="hover:no-underline">
-                      <div className="flex items-center gap-3 w-full mr-4">
-                        <Badge variant="outline">{ROLE_LABELS[person.role] || person.role}</Badge>
-                        <span className="font-medium text-sm">
-                          {person.first_name} {person.last_name}
-                        </span>
-                        {person.birth_date && (
-                          <span className="text-xs text-muted-foreground">
-                            * {new Date(person.birth_date).toLocaleDateString('de-DE')}
-                          </span>
-                        )}
-                        {person.is_primary && <Badge variant="secondary" className="text-xs">Hauptperson</Badge>}
-                      </div>
-                    </AccordionTrigger>
-                    <AccordionContent>
-                      {isEditing ? (
-                        <PersonEditForm
-                          data={editForm}
-                          onChange={setEditForm}
-                          onSave={handleSaveEdit}
-                          onCancel={() => { setEditingId(null); setEditForm({}); }}
-                        />
-                      ) : (
-                        <div className="space-y-4">
-                          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
-                            <FieldDisplay label="Anrede" value={person.salutation} />
-                            <FieldDisplay label="Vorname" value={person.first_name} />
-                            <FieldDisplay label="Nachname" value={person.last_name} />
-                            <FieldDisplay label="Geburtsdatum" value={person.birth_date ? new Date(person.birth_date).toLocaleDateString('de-DE') : '–'} />
-                            <FieldDisplay label="E-Mail" value={person.email} />
-                            <FieldDisplay label="Mobil" value={person.phone} />
-                            {person.street && <FieldDisplay label="Adresse" value={`${person.street} ${person.house_number || ''}, ${person.zip || ''} ${person.city || ''}`} />}
-                            {person.marital_status && <FieldDisplay label="Familienstand" value={person.marital_status} />}
-                            {person.employment_status && <FieldDisplay label="Beschäftigung" value={person.employment_status} />}
-                            {person.employer_name && <FieldDisplay label="Arbeitgeber" value={person.employer_name} />}
-                            {person.net_income_range && <FieldDisplay label="Netto (Bandbreite)" value={person.net_income_range} />}
-                          </div>
+      {/* ═══ BLOCK A: Personen im Haushalt ═══ */}
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-2">
+          <Users className="h-4 w-4" /> Personen im Haushalt
+        </h3>
+      </div>
 
-                          {/* DRV / Renteninformation */}
-                          <div className="border-t pt-4">
-                            <p className="text-sm font-medium mb-3">DRV / Renteninformation</p>
-                            <PensionSection
-                              pension={pension}
-                              personId={person.id}
-                              onSave={handleSavePension}
-                            />
-                          </div>
+      <div className={RECORD_CARD.GRID}>
+        {persons.map((person) => {
+          const pension = pensionRecords.find(p => p.person_id === person.id);
+          const form = editForms[person.id] || person;
+          const pForm = pensionForms[person.id] || {};
 
-                          <div className="flex gap-2 pt-2">
-                            <Button variant="outline" size="sm" onClick={() => handleStartEdit(person)}>
-                              <Pencil className="h-4 w-4 mr-2" />
-                              Bearbeiten
-                            </Button>
-                            {!person.is_primary && (
-                              <Button variant="ghost" size="sm" className="text-destructive" onClick={() => handleDeletePerson(person.id)}>
-                                <Trash2 className="h-4 w-4 mr-2" />
-                                Entfernen
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </AccordionContent>
-                  </AccordionItem>
-                );
-              })}
-            </Accordion>
-          )}
-
-          {/* Add Person Form */}
-          {showAddForm && (
-            <Card className="mt-4 border-dashed border-primary/30">
-              <CardContent className="pt-6">
-                <p className="text-sm font-medium mb-4">Neue Person hinzufügen</p>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          return (
+            <RecordCard
+              key={person.id}
+              id={person.id}
+              entityType="person"
+              isOpen={openCardId === person.id}
+              onToggle={() => toggleCard(person.id)}
+              title={`${person.first_name || ''} ${person.last_name || ''}`.trim() || 'Neue Person'}
+              subtitle={person.email || undefined}
+              badges={[
+                { label: ROLE_LABELS[person.role] || person.role, variant: person.is_primary ? 'default' : 'secondary' },
+              ]}
+              summary={[
+                ...(person.birth_date ? [{ label: 'Geb.', value: new Date(person.birth_date).toLocaleDateString('de-DE') }] : []),
+                ...(person.phone ? [{ label: 'Mobil', value: person.phone }] : []),
+                ...(pension?.current_pension ? [{ label: 'Rente', value: fmt(pension.current_pension) }] : []),
+              ]}
+              tenantId={activeTenantId || undefined}
+              onSave={() => handleSave(person.id)}
+              onDelete={!person.is_primary ? () => handleDelete(person.id) : undefined}
+              saving={savingId === person.id}
+            >
+              {/* Persönliche Daten */}
+              <div>
+                <p className={RECORD_CARD.SECTION_TITLE}>Persönliche Daten</p>
+                <div className={RECORD_CARD.FIELD_GRID}>
                   <div>
                     <Label className="text-xs">Rolle</Label>
-                    <Select value={newPerson.role} onValueChange={v => setNewPerson(p => ({ ...p, role: v }))}>
+                    <Select value={form.role || 'weitere'} onValueChange={v => updateField(person.id, 'role', v)}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="partner">Partner/in</SelectItem>
-                        <SelectItem value="kind">Kind</SelectItem>
-                        <SelectItem value="weitere">Weitere</SelectItem>
+                        {ROLE_OPTIONS.map(r => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
                   <div>
                     <Label className="text-xs">Anrede</Label>
-                    <Select value={newPerson.salutation} onValueChange={v => setNewPerson(p => ({ ...p, salutation: v }))}>
+                    <Select value={form.salutation || ''} onValueChange={v => updateField(person.id, 'salutation', v)}>
                       <SelectTrigger><SelectValue placeholder="Bitte wählen" /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="Herr">Herr</SelectItem>
@@ -243,327 +199,164 @@ export default function UebersichtTab() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div>
-                    <Label className="text-xs">Vorname</Label>
-                    <Input value={newPerson.first_name} onChange={e => setNewPerson(p => ({ ...p, first_name: e.target.value }))} />
-                  </div>
-                  <div>
-                    <Label className="text-xs">Nachname</Label>
-                    <Input value={newPerson.last_name} onChange={e => setNewPerson(p => ({ ...p, last_name: e.target.value }))} />
-                  </div>
-                  <div>
-                    <Label className="text-xs">Geburtsdatum</Label>
-                    <Input type="date" value={newPerson.birth_date} onChange={e => setNewPerson(p => ({ ...p, birth_date: e.target.value }))} />
-                  </div>
-                  <div>
-                    <Label className="text-xs">E-Mail</Label>
-                    <Input type="email" value={newPerson.email} onChange={e => setNewPerson(p => ({ ...p, email: e.target.value }))} />
-                  </div>
-                  <div>
-                    <Label className="text-xs">Mobil</Label>
-                    <Input value={newPerson.phone} onChange={e => setNewPerson(p => ({ ...p, phone: e.target.value }))} />
-                  </div>
+                  <FormInput label="Vorname" name="first_name" value={form.first_name || ''}
+                    onChange={e => updateField(person.id, 'first_name', e.target.value)} />
+                  <FormInput label="Nachname" name="last_name" value={form.last_name || ''}
+                    onChange={e => updateField(person.id, 'last_name', e.target.value)} />
+                  <FormInput label="Geburtsdatum" name="birth_date" type="date" value={form.birth_date || ''}
+                    onChange={e => updateField(person.id, 'birth_date', e.target.value)} />
+                  <FormInput label="E-Mail" name="email" type="email" value={form.email || ''}
+                    onChange={e => updateField(person.id, 'email', e.target.value)} />
+                  <FormInput label="Mobil" name="phone" type="tel" value={form.phone || ''}
+                    onChange={e => updateField(person.id, 'phone', e.target.value)} />
                 </div>
-                <div className="flex gap-2 mt-4">
-                  <Button size="sm" onClick={handleAddPerson}>
-                    <Save className="h-4 w-4 mr-2" />
-                    Speichern
-                  </Button>
-                  <Button variant="ghost" size="sm" onClick={() => setShowAddForm(false)}>
-                    <X className="h-4 w-4 mr-2" />
-                    Abbrechen
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* ═══ BLOCK B: Kurz-Überblick (KPI Row) ═══ */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
-        {kpiCards.map((kpi) => (
-          <Card key={kpi.label} className="glass-card">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between mb-2">
-                <kpi.icon className={`h-5 w-5 ${kpi.color}`} />
-                {kpi.color === 'text-primary' && kpi.value !== '—' && <ArrowUpRight className="h-4 w-4 text-primary" />}
               </div>
-              <p className="text-2xl font-bold">{kpi.value}</p>
-              <p className="text-xs text-muted-foreground">{kpi.label}</p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-      {!setupStatus.hasTransactions && (
-        <p className="text-xs text-muted-foreground text-center mt-2">Noch keine Kontodaten verbunden</p>
-      )}
 
-      {/* ═══ BLOCK C: Top Treiber (nur bei Daten) ═══ */}
-      {kpis.topCategories.length > 0 && (
-        <Card className="mt-6">
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <PieChart className="h-5 w-5" />
-              Ausgaben nach Kategorie
-            </CardTitle>
-            <CardDescription>Top 5 Kategorien der letzten 12 Monate</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Accordion type="multiple">
-              {kpis.topCategories.map((cat) => (
-                <AccordionItem key={cat.category} value={cat.category}>
-                  <AccordionTrigger className="text-sm">
-                    <div className="flex items-center gap-3 w-full mr-4">
-                      <Badge variant="outline" className="min-w-[80px] justify-center">{cat.category}</Badge>
-                      <div className="flex-1">
-                        <Progress value={kpis.topCategories[0] ? (cat.total / kpis.topCategories[0].total) * 100 : 0} className="h-2" />
-                      </div>
-                      <span className="font-mono text-sm font-medium">{fmt(cat.total)}</span>
-                    </div>
-                  </AccordionTrigger>
-                  <AccordionContent>
-                    <p className="text-sm text-muted-foreground">
-                      Durchschnittlich {fmt(cat.total / 12)} pro Monat in dieser Kategorie.
-                    </p>
-                  </AccordionContent>
-                </AccordionItem>
-              ))}
-            </Accordion>
-          </CardContent>
-        </Card>
-      )}
-
-      {kpis.topMerchants.length > 0 && (
-        <Card className="mt-6">
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <ShoppingBag className="h-5 w-5" />
-              Top Empfänger
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {kpis.topMerchants.slice(0, 5).map((m) => (
-                <div key={m.merchant} className="flex items-center justify-between py-2 border-b last:border-0">
-                  <div>
-                    <p className="text-sm font-medium">{m.merchant}</p>
-                    <p className="text-xs text-muted-foreground">{m.count} Transaktionen</p>
-                  </div>
-                  <span className="font-mono text-sm">{fmt(m.total)}</span>
+              {/* Adresse */}
+              <div>
+                <p className={RECORD_CARD.SECTION_TITLE}>Adresse</p>
+                <div className={RECORD_CARD.FIELD_GRID}>
+                  <FormInput label="Straße" name="street" value={form.street || ''}
+                    onChange={e => updateField(person.id, 'street', e.target.value)} />
+                  <FormInput label="Hausnummer" name="house_number" value={form.house_number || ''}
+                    onChange={e => updateField(person.id, 'house_number', e.target.value)} />
+                  <FormInput label="PLZ" name="zip" value={form.zip || ''}
+                    onChange={e => updateField(person.id, 'zip', e.target.value)} />
+                  <FormInput label="Ort" name="city" value={form.city || ''}
+                    onChange={e => updateField(person.id, 'city', e.target.value)} />
                 </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+              </div>
 
-      {/* ═══ BLOCK D: Setup / Konten (GANZ UNTEN) ═══ */}
-      <Card className="mt-6 border-dashed border-muted-foreground/20">
-        <CardContent className="py-6">
-          <div className="flex items-center gap-3 mb-4">
-            <BarChart3 className="h-5 w-5 text-muted-foreground" />
-            <div>
-              <p className="font-medium">Setup-Status</p>
-              <p className="text-sm text-muted-foreground">Verbinden Sie Datenquellen für vollständige Analysen</p>
+              {/* DRV Renteninformation */}
+              <div>
+                <p className={RECORD_CARD.SECTION_TITLE}>DRV Renteninformation</p>
+                <div className={RECORD_CARD.FIELD_GRID}>
+                  <FormInput label="Datum der Renteninformation" name="info_date" type="date"
+                    value={pForm.info_date || ''}
+                    onChange={e => updatePensionField(person.id, 'info_date', e.target.value)} />
+                  <FormInput label="Bisher erreichte Regelaltersrente (€)" name="current_pension" type="number"
+                    value={pForm.current_pension || ''}
+                    onChange={e => updatePensionField(person.id, 'current_pension', e.target.value)} />
+                  <FormInput label="Künftige Rente ohne Anpassung (€)" name="projected_pension" type="number"
+                    value={pForm.projected_pension || ''}
+                    onChange={e => updatePensionField(person.id, 'projected_pension', e.target.value)} />
+                  <FormInput label="Volle Erwerbsminderungsrente (€)" name="disability_pension" type="number"
+                    value={pForm.disability_pension || ''}
+                    onChange={e => updatePensionField(person.id, 'disability_pension', e.target.value)} />
+                </div>
+              </div>
+            </RecordCard>
+          );
+        })}
+
+        {/* CTA Widget: + Person hinzufügen */}
+        {!showNewPerson && (
+          <div
+            className={RECORD_CARD.CLOSED + ' border-dashed border-primary/30 flex items-center justify-center'}
+            onClick={() => { setShowNewPerson(true); setOpenCardId(null); }}
+            role="button"
+            tabIndex={0}
+          >
+            <div className="flex flex-col items-center gap-2 text-muted-foreground">
+              <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
+                <UserPlus className="h-6 w-6 text-primary" />
+              </div>
+              <p className="text-sm font-medium">Person hinzufügen</p>
             </div>
           </div>
-          <Progress value={setupStatus.completionPercent} className="h-2 mb-4" />
-          <div className="space-y-2">
-            <CheckItem done={setupStatus.hasTransactions} label="Kontoumsätze vorhanden" />
-            <CheckItem done={setupStatus.hasBudgets} label="Budget-Ziele definiert" />
+        )}
+
+        {/* New Person Form (open state) */}
+        {showNewPerson && (
+          <div className={RECORD_CARD.OPEN}>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-lg font-semibold">Neue Person</h2>
+              <Button variant="ghost" size="sm" onClick={() => setShowNewPerson(false)}>Abbrechen</Button>
+            </div>
+            <div>
+              <p className={RECORD_CARD.SECTION_TITLE}>Persönliche Daten</p>
+              <div className={RECORD_CARD.FIELD_GRID}>
+                <div>
+                  <Label className="text-xs">Rolle</Label>
+                  <Select value={newForm.role} onValueChange={v => setNewForm(p => ({ ...p, role: v }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {ROLE_OPTIONS.filter(r => r.value !== 'hauptperson').map(r => (
+                        <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-xs">Anrede</Label>
+                  <Select value={newForm.salutation} onValueChange={v => setNewForm(p => ({ ...p, salutation: v }))}>
+                    <SelectTrigger><SelectValue placeholder="Bitte wählen" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Herr">Herr</SelectItem>
+                      <SelectItem value="Frau">Frau</SelectItem>
+                      <SelectItem value="Divers">Divers</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <FormInput label="Vorname" name="new_first" value={newForm.first_name}
+                  onChange={e => setNewForm(p => ({ ...p, first_name: e.target.value }))} />
+                <FormInput label="Nachname" name="new_last" value={newForm.last_name}
+                  onChange={e => setNewForm(p => ({ ...p, last_name: e.target.value }))} />
+                <FormInput label="Geburtsdatum" name="new_birth" type="date" value={newForm.birth_date}
+                  onChange={e => setNewForm(p => ({ ...p, birth_date: e.target.value }))} />
+                <FormInput label="E-Mail" name="new_email" type="email" value={newForm.email}
+                  onChange={e => setNewForm(p => ({ ...p, email: e.target.value }))} />
+                <FormInput label="Mobil" name="new_phone" type="tel" value={newForm.phone}
+                  onChange={e => setNewForm(p => ({ ...p, phone: e.target.value }))} />
+              </div>
+            </div>
+            <div className={RECORD_CARD.ACTIONS}>
+              <Button size="sm" onClick={handleAddPerson}>Speichern</Button>
+            </div>
           </div>
-          <Button variant="outline" size="sm" className="mt-4" onClick={() => navigate('/portal/finanzierungsmanager')}>
+        )}
+      </div>
+
+      {/* ═══ BLOCK B: Konten ═══ */}
+      <div className="flex items-center justify-between mt-8">
+        <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-2">
+          <Landmark className="h-4 w-4" /> Konten
+        </h3>
+      </div>
+
+      <Card className="glass-card border-dashed">
+        <CardContent className="py-8 text-center">
+          <Landmark className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
+          <p className="text-sm font-medium">Bankkonten werden über FinAPI angebunden</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Verbinden Sie Ihre Konten im Finanzmanager, um Kontodaten hier anzuzeigen.
+          </p>
+          <Button variant="outline" size="sm" className="mt-4" onClick={() => window.location.href = '/portal/finanzierungsmanager'}>
             Konten im Finanzmanager verbinden →
           </Button>
         </CardContent>
       </Card>
+
+      {/* ═══ BLOCK C: 12M Scan ═══ */}
+      <Card className="glass-card">
+        <CardContent className="py-6">
+          <div className="flex items-center gap-4">
+            <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+              <ScanSearch className="h-6 w-6 text-primary" />
+            </div>
+            <div className="flex-1">
+              <p className="font-semibold">Umsätze auslesen & Verträge erkennen</p>
+              <p className="text-sm text-muted-foreground">
+                Scannt die letzten 12 Monate Ihrer Kontoumsätze und identifiziert wiederkehrende Zahlungen als potenzielle Abonnements, Versicherungen oder Vorsorgeverträge.
+              </p>
+            </div>
+            <Button variant="outline" disabled>
+              <ScanSearch className="h-4 w-4 mr-2" />
+              Scan starten
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </PageShell>
-  );
-}
-
-// ─── Sub-Components ──────────────────────────────────────
-
-function FieldDisplay({ label, value }: { label: string; value?: string | null }) {
-  return (
-    <div>
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="text-sm">{value || '–'}</p>
-    </div>
-  );
-}
-
-function CheckItem({ done, label }: { done: boolean; label: string }) {
-  return (
-    <div className="flex items-center gap-2 text-sm">
-      {done ? <CheckCircle2 className="h-4 w-4 text-primary" /> : <Circle className="h-4 w-4 text-muted-foreground" />}
-      <span className={done ? 'text-foreground' : 'text-muted-foreground'}>{label}</span>
-    </div>
-  );
-}
-
-function PersonEditForm({ data, onChange, onSave, onCancel }: {
-  data: Record<string, any>;
-  onChange: (d: Record<string, any>) => void;
-  onSave: () => void;
-  onCancel: () => void;
-}) {
-  const set = (key: string, val: string) => onChange({ ...data, [key]: val });
-
-  return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div>
-          <Label className="text-xs">Rolle</Label>
-          <Select value={data.role} onValueChange={v => set('role', v)}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="hauptperson">Hauptperson</SelectItem>
-              <SelectItem value="partner">Partner/in</SelectItem>
-              <SelectItem value="kind">Kind</SelectItem>
-              <SelectItem value="weitere">Weitere</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
-          <Label className="text-xs">Anrede</Label>
-          <Select value={data.salutation || ''} onValueChange={v => set('salutation', v)}>
-            <SelectTrigger><SelectValue placeholder="Bitte wählen" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Herr">Herr</SelectItem>
-              <SelectItem value="Frau">Frau</SelectItem>
-              <SelectItem value="Divers">Divers</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
-          <Label className="text-xs">Vorname</Label>
-          <Input value={data.first_name || ''} onChange={e => set('first_name', e.target.value)} />
-        </div>
-        <div>
-          <Label className="text-xs">Nachname</Label>
-          <Input value={data.last_name || ''} onChange={e => set('last_name', e.target.value)} />
-        </div>
-        <div>
-          <Label className="text-xs">Geburtsdatum</Label>
-          <Input type="date" value={data.birth_date || ''} onChange={e => set('birth_date', e.target.value)} />
-        </div>
-        <div>
-          <Label className="text-xs">E-Mail</Label>
-          <Input type="email" value={data.email || ''} onChange={e => set('email', e.target.value)} />
-        </div>
-        <div>
-          <Label className="text-xs">Mobil</Label>
-          <Input value={data.phone || ''} onChange={e => set('phone', e.target.value)} />
-        </div>
-        <div>
-          <Label className="text-xs">Familienstand</Label>
-          <Input value={data.marital_status || ''} onChange={e => set('marital_status', e.target.value)} />
-        </div>
-        <div>
-          <Label className="text-xs">Beschäftigungsstatus</Label>
-          <Input value={data.employment_status || ''} onChange={e => set('employment_status', e.target.value)} />
-        </div>
-        <div>
-          <Label className="text-xs">Arbeitgeber</Label>
-          <Input value={data.employer_name || ''} onChange={e => set('employer_name', e.target.value)} />
-        </div>
-        <div>
-          <Label className="text-xs">Netto (Bandbreite)</Label>
-          <Input value={data.net_income_range || ''} onChange={e => set('net_income_range', e.target.value)} />
-        </div>
-      </div>
-      <div className="flex gap-2">
-        <Button size="sm" onClick={onSave}>
-          <Save className="h-4 w-4 mr-2" />
-          Speichern
-        </Button>
-        <Button variant="ghost" size="sm" onClick={onCancel}>
-          <X className="h-4 w-4 mr-2" />
-          Abbrechen
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-function PensionSection({ pension, personId, onSave }: {
-  pension?: any;
-  personId: string;
-  onSave: (personId: string, data: any) => void;
-}) {
-  const [editing, setEditing] = useState(false);
-  const [form, setForm] = useState({
-    info_date: pension?.info_date || '',
-    current_pension: pension?.current_pension?.toString() || '',
-    projected_pension: pension?.projected_pension?.toString() || '',
-    disability_pension: pension?.disability_pension?.toString() || '',
-  });
-
-  if (!editing && !pension) {
-    return (
-      <div className="text-center py-4">
-        <p className="text-xs text-muted-foreground">Keine Renteninformation hinterlegt</p>
-        <Button variant="outline" size="sm" className="mt-2" onClick={() => setEditing(true)}>
-          Renteninformation erfassen
-        </Button>
-      </div>
-    );
-  }
-
-  if (!editing) {
-    return (
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-        <FieldDisplay label="Datum der Info" value={pension?.info_date ? new Date(pension.info_date).toLocaleDateString('de-DE') : '–'} />
-        <FieldDisplay label="Erreichte Regelaltersrente" value={pension?.current_pension ? fmt(Number(pension.current_pension)) : '–'} />
-        <FieldDisplay label="Künftige Rente (ohne Anpassung)" value={pension?.projected_pension ? fmt(Number(pension.projected_pension)) : '–'} />
-        <FieldDisplay label="Volle Erwerbsminderungsrente" value={pension?.disability_pension ? fmt(Number(pension.disability_pension)) : '–'} />
-        <div className="col-span-full">
-          <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
-            <Pencil className="h-4 w-4 mr-2" />
-            Bearbeiten
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <div>
-        <Label className="text-xs">Datum der Renteninformation</Label>
-        <Input type="date" value={form.info_date} onChange={e => setForm(f => ({ ...f, info_date: e.target.value }))} />
-      </div>
-      <div>
-        <Label className="text-xs">Bisher erreichte Regelaltersrente (€)</Label>
-        <Input type="number" value={form.current_pension} onChange={e => setForm(f => ({ ...f, current_pension: e.target.value }))} />
-      </div>
-      <div>
-        <Label className="text-xs">Künftige Rente ohne Anpassung (€)</Label>
-        <Input type="number" value={form.projected_pension} onChange={e => setForm(f => ({ ...f, projected_pension: e.target.value }))} />
-      </div>
-      <div>
-        <Label className="text-xs">Volle Erwerbsminderungsrente (€)</Label>
-        <Input type="number" value={form.disability_pension} onChange={e => setForm(f => ({ ...f, disability_pension: e.target.value }))} />
-      </div>
-      <div className="col-span-full flex gap-2">
-        <Button size="sm" onClick={() => {
-          onSave(personId, {
-            info_date: form.info_date || null,
-            current_pension: form.current_pension ? parseFloat(form.current_pension) : null,
-            projected_pension: form.projected_pension ? parseFloat(form.projected_pension) : null,
-            disability_pension: form.disability_pension ? parseFloat(form.disability_pension) : null,
-          });
-          setEditing(false);
-        }}>
-          <Save className="h-4 w-4 mr-2" />
-          Speichern
-        </Button>
-        <Button variant="ghost" size="sm" onClick={() => setEditing(false)}>
-          <X className="h-4 w-4 mr-2" />
-          Abbrechen
-        </Button>
-      </div>
-    </div>
   );
 }
