@@ -1,171 +1,206 @@
 
 
-# Armstrong Zone 2: Fehlende Buero-Manager Actions
+# Armstrong Zone 2 — Vollstaendiger Scan: Fehlende Actions & Knowledge Gaps
 
-## Status Quo
+## 1. Status Quo: Action-Inventar
 
-Armstrong hat aktuell **ca. 55 Z2-Actions** (ohne Coach-Slides). Diese decken Erklaerungen, Kalkulationen, DMS und einige Schreibvorgaenge ab. Allerdings fehlen zentrale **operative Buero-Taetigkeiten**, die ein Buero-Manager taeglich ausfuehrt.
+Armstrong hat aktuell **ca. 120 Z2-Actions** (inkl. Coach-Slides/Engine). Die Module-Abdeckung:
 
-## Identifizierte Luecken nach Kategorie
+| Modul | Actions vorhanden | Status |
+|-------|-------------------|--------|
+| MOD-00 Dashboard | 9 (Widgets, Briefing, Report, Meeting) | Gut |
+| MOD-02 KI-Office | 13 (Letter, WA, Email, Calendar, Contacts) | Gut |
+| MOD-03 DMS | 5 (Search, Link, Extract, Upload, Confidence) | Gut |
+| MOD-04 Immobilien | 12 (CRUD, KPI, NK, Lease, Tenant, Expose) | Gut |
+| MOD-07 Finanzierung | 7 (Selbstauskunft, Checklist, Export, Readiness, Credit, Bank) | Gut |
+| MOD-08 Investment | 4 + 41 Coach (Analyze, Simulate, Mandate, Research) | Gut |
+| MOD-12 Akquise | 3 (Draft, Analyze, Mandate) | Basis |
+| MOD-13 Projekte | 2 (Create, Explain) | Basis |
+| MOD-14 Recherche | 5 (Free, Pro, Import, Dedupe, Order) | Gut |
+| MOD-16 Sanierung | 3 (Tender, Compare, Commission) | Basis |
+| MOD-17 Cars | 1 (Dossier Research) | Minimal |
+| MOD-18 Finanzen | 1 (Insurance Research) | Minimal |
+| MOD-19 Photovoltaik | 4 (Explain Connect, Monitoring, PV Research, View) | Gut |
+| KB | 3 (Memo, Suggest, Sales Script) | Gut |
+| Landing Page | 2 (Generate, Publish) | Gut |
+| **MOD-05 Pets** | **0** | **Fehlt** |
+| **MOD-06 Verkauf** | **0** | **Fehlt** |
+| **MOD-09 Vertriebspartner** | **0** | **Fehlt** |
+| **MOD-10 Leadmanager** | **0** | **Fehlt** |
+| **MOD-11 Finanzierungsmanager** | **0** | **Fehlt** |
 
-### 1. E-Mail & Kommunikation (MOD-02)
+## 2. Fehlende Actions nach Modul
 
-Armstrong kann Briefe senden und WhatsApp beantworten, aber:
+### 2.1 MOD-06 Verkauf (0 Actions -- KRITISCH)
 
-| Fehlende Action | Beschreibung | Execution Mode | Widget? |
-|----------------|-------------|----------------|---------|
-| ARM.MOD02.SEND_EMAIL | E-Mail ueber Outbound Identity versenden | execute_with_confirmation | Ja -- Widget zur Freigabe |
-| ARM.MOD02.DRAFT_EMAIL | E-Mail-Entwurf erstellen (ohne Versand) | draft_only | Nein |
-| ARM.MOD02.REPLY_EMAIL | Antwort auf eine empfangene E-Mail verfassen und senden | execute_with_confirmation | Ja -- Widget zur Freigabe |
-| ARM.MOD02.SEND_BULK_EMAIL | Serien-E-Mail an Kontaktgruppe senden (DSGVO-konform) | execute_with_confirmation | Ja -- Widget mit Empfaengerliste |
+| Action Code | Titel | Mode | Widget? |
+|-------------|-------|------|---------|
+| ARM.MOD06.EXPLAIN_MODULE | Verkaufsmodul erklaeren | readonly | Nein |
+| ARM.MOD06.GENERATE_EXPOSE | Expose generieren | execute_with_confirmation | Ja |
+| ARM.MOD06.PUBLISH_LISTING | Inserat veroeffentlichen | execute_with_confirmation | Ja |
+| ARM.MOD06.UNPUBLISH_LISTING | Inserat deaktivieren | execute_with_confirmation | Nein |
+| ARM.MOD06.ANALYZE_MARKET_PRICE | Marktpreis analysieren | readonly | Nein |
 
-### 2. Kalender & Terminverwaltung (MOD-02)
+### 2.2 MOD-09 Vertriebspartner (0 Actions -- KRITISCH)
 
-Aktuell hat Armstrong KEINE Kalender-Actions:
+| Action Code | Titel | Mode | Widget? |
+|-------------|-------|------|---------|
+| ARM.MOD09.EXPLAIN_MODULE | Vertriebspartner-Modul erklaeren | readonly | Nein |
+| ARM.MOD09.CREATE_PARTNER_PROFILE | Partnerprofil anlegen | execute_with_confirmation | Nein |
+| ARM.MOD09.VIEW_OBJECT_CATALOG | Objektkatalog einsehen | readonly | Nein |
+| ARM.MOD09.RUN_PARTNER_SIMULATION | Investment-Simulation fuer Kunden | readonly | Nein |
+| ARM.MOD09.DRAFT_PARTNER_OFFER | Angebot fuer Kunden erstellen | draft_only | Nein |
 
-| Fehlende Action | Beschreibung | Execution Mode | Widget? |
-|----------------|-------------|----------------|---------|
-| ARM.MOD02.CREATE_APPOINTMENT | Termin im Kalender anlegen | execute_with_confirmation | Ja -- Widget mit Termindetails |
-| ARM.MOD02.RESCHEDULE_APPOINTMENT | Bestehenden Termin verschieben | execute_with_confirmation | Ja -- Widget zur Bestaetigung |
-| ARM.MOD02.CANCEL_APPOINTMENT | Termin absagen (mit optionaler Benachrichtigung) | execute_with_confirmation | Ja -- Widget mit Absagegrund |
-| ARM.MOD02.SCHEDULE_VIDEOCALL | Videocall planen und Einladung versenden | execute_with_confirmation | Ja -- Widget mit Einladungslink |
-| ARM.MOD02.DAILY_BRIEFING | Tagesuebersicht: Termine, offene Tasks, Faelligkeiten | readonly | Nein |
+### 2.3 MOD-10 Leadmanager (0 Actions -- KRITISCH)
 
-### 3. Kontaktverwaltung (MOD-02)
+| Action Code | Titel | Mode | Widget? |
+|-------------|-------|------|---------|
+| ARM.MOD10.EXPLAIN_MODULE | Leadmanager erklaeren | readonly | Nein |
+| ARM.MOD10.VIEW_LEAD_PIPELINE | Lead-Pipeline anzeigen | readonly | Nein |
+| ARM.MOD10.QUALIFY_LEAD | Lead qualifizieren | execute | Nein |
+| ARM.MOD10.ASSIGN_LEAD | Lead zuweisen | execute_with_confirmation | Ja |
+| ARM.MOD10.CREATE_DEAL | Deal aus Lead erstellen | execute_with_confirmation | Nein |
 
-Armstrong kann Kontakte recherchieren (MOD-14), aber nicht operativ verwalten:
+### 2.4 MOD-11 Finanzierungsmanager (0 Actions -- KRITISCH)
 
-| Fehlende Action | Beschreibung | Execution Mode | Widget? |
-|----------------|-------------|----------------|---------|
-| ARM.MOD02.CREATE_CONTACT | Neuen Kontakt im Kontaktbuch anlegen | execute_with_confirmation | Nein (interner Write) |
-| ARM.MOD02.SEARCH_CONTACT | Kontakt im Kontaktbuch suchen | readonly | Nein |
-| ARM.MOD02.ADD_CONTACT_NOTE | Notiz zu einem Kontakt hinzufuegen | execute | Nein (interner Write) |
-| ARM.MOD02.LOG_INTERACTION | Gespraech/Interaktion bei einem Kontakt protokollieren | execute | Nein (interner Write) |
+| Action Code | Titel | Mode | Widget? |
+|-------------|-------|------|---------|
+| ARM.MOD11.EXPLAIN_MODULE | Finanzierungsmanager erklaeren | readonly | Nein |
+| ARM.MOD11.CREATE_CASE | Finanzierungsfall anlegen | execute_with_confirmation | Nein |
+| ARM.MOD11.MAGIC_INTAKE | Magic Intake starten | execute_with_confirmation | Ja |
+| ARM.MOD11.PREPARE_SUBMISSION | Einreichung vorbereiten | execute_with_confirmation | Ja |
+| ARM.MOD11.TRACK_PROVISION | Provision tracken | readonly | Nein |
 
-### 4. Immobilienverwaltung (MOD-04)
+### 2.5 MOD-05 Pets (0 Actions -- NIEDRIG)
 
-Armstrong kann Immobilien und Einheiten anlegen, aber die operative Verwaltung fehlt:
+| Action Code | Titel | Mode | Widget? |
+|-------------|-------|------|---------|
+| ARM.MOD05.EXPLAIN_MODULE | Pets-Modul erklaeren | readonly | Nein |
+| ARM.MOD05.CREATE_PET | Tier anlegen | execute_with_confirmation | Nein |
+| ARM.MOD05.SCHEDULE_VET | Tierarzttermin planen | execute_with_confirmation | Ja |
 
-| Fehlende Action | Beschreibung | Execution Mode | Widget? |
-|----------------|-------------|----------------|---------|
-| ARM.MOD04.CREATE_LEASE | Mietvertrag anlegen | execute_with_confirmation | Nein (interner Write) |
-| ARM.MOD04.CREATE_TENANT | Mieter anlegen und mit Einheit verknuepfen | execute_with_confirmation | Nein (interner Write) |
-| ARM.MOD04.DRAFT_RENT_ADJUSTMENT | Mieterhoehungsschreiben vorbereiten (Mietspiegelbasiert) | draft_only | Nein |
-| ARM.MOD04.DRAFT_RENT_REMINDER | Mahnschreiben bei Mietrueckstand vorbereiten | draft_only + execute_with_confirmation | Ja -- Widget zur Brief-Freigabe |
-| ARM.MOD04.RUN_NK_ABRECHNUNG | Nebenkostenabrechnung berechnen und als Entwurf erstellen | execute_with_confirmation | Ja -- Widget zur Freigabe |
-| ARM.MOD04.DRAFT_TENANT_LETTER | Allgemeines Mieterschreiben vorbereiten (Betriebskosten, Hausverwaltung etc.) | draft_only | Nein |
+### 2.6 Erweiterungen bestehender Module
 
-### 5. Finanzierung (MOD-07/11)
+#### MOD-17 Cars (nur 1 Action)
 
-| Fehlende Action | Beschreibung | Execution Mode | Widget? |
-|----------------|-------------|----------------|---------|
-| ARM.MOD07.CREATE_FINANCE_REQUEST | Finanzierungsanfrage aus Selbstauskunft + Objekt erstellen | execute_with_confirmation | Ja -- Widget zur Freigabe |
-| ARM.MOD07.CHECK_CREDITWORTHINESS | Bonitaetspruefung anhand Haushaltsueberschuss | readonly (Engine) | Nein |
-| ARM.MOD07.SUBMIT_TO_BANK | Finanzierungspaket an Bankpartner uebermitteln | execute_with_confirmation | Ja -- Widget zur Freigabe |
+| Action Code | Titel | Mode | Widget? |
+|-------------|-------|------|---------|
+| ARM.MOD17.EXPLAIN_MODULE | Fahrzeugmodul erklaeren | readonly | Nein |
+| ARM.MOD17.CREATE_VEHICLE | Fahrzeug anlegen | execute_with_confirmation | Nein |
+| ARM.MOD17.SCHEDULE_SERVICE | Wartungstermin planen | execute_with_confirmation | Ja |
 
-### 6. Tagesgeschaeft & Produktivitaet (MOD-00)
+#### MOD-18 Finanzen (nur 1 Action)
 
-| Fehlende Action | Beschreibung | Execution Mode | Widget? |
-|----------------|-------------|----------------|---------|
-| ARM.MOD00.DAILY_BRIEFING | Morgen-Briefing: Termine, Faelligkeiten, offene Widgets, neue E-Mails | readonly | Nein |
-| ARM.MOD00.WEEKLY_SUMMARY | Wochenrueckblick: Erledigte Tasks, KPIs, naechste Woche | readonly | Nein |
-| ARM.MOD00.PRIORITIZE_INBOX | Posteingang priorisieren und sortieren (KI-gestuetzt) | readonly | Nein |
-| ARM.MOD00.GENERATE_REPORT | Bericht zu einem Thema erstellen (Portfolio, Finanzen, Vermietung) | execute_with_confirmation | Ja -- Widget mit Report-Link |
+| Action Code | Titel | Mode | Widget? |
+|-------------|-------|------|---------|
+| ARM.MOD18.EXPLAIN_MODULE | Finanzmodul erklaeren | readonly | Nein |
+| ARM.MOD18.EXPLAIN_INSURANCE | Versicherung erklaeren | readonly | Nein |
+| ARM.MOD18.SUBSCRIPTION_OVERVIEW | Abo-Uebersicht erstellen | readonly | Nein |
 
-### 7. Vertrieb & Akquise (MOD-12)
+#### MOD-13 Projekte (nur 2 Actions)
 
-| Fehlende Action | Beschreibung | Execution Mode | Widget? |
-|----------------|-------------|----------------|---------|
-| ARM.MOD12.DRAFT_ACQ_EMAIL | Akquise-Anschreiben fuer Mandat erstellen | draft_only | Nein |
-| ARM.MOD12.ANALYZE_OFFER | Eingehendes Angebot bewerten (Bestand/Aufteiler) | readonly | Nein |
-| ARM.MOD12.CREATE_MANDATE | Akquise-Mandat anlegen | execute_with_confirmation | Nein (interner Write) |
+| Action Code | Titel | Mode | Widget? |
+|-------------|-------|------|---------|
+| ARM.MOD13.CALCULATE_AUFTEILER | Aufteiler-Kalkulation | readonly | Nein |
+| ARM.MOD13.GENERATE_SALES_REPORT | Verkaufsstandsbericht | execute_with_confirmation | Ja |
+| ARM.MOD13.DRAFT_RESERVATION | Reservierung vorbereiten | draft_only | Nein |
 
-### 8. Sanierung (MOD-16)
+## 3. Knowledge Base — Gap-Analyse
 
-| Fehlende Action | Beschreibung | Execution Mode | Widget? |
-|----------------|-------------|----------------|---------|
-| ARM.MOD16.DRAFT_TENDER | Ausschreibung fuer Handwerkerleistung vorbereiten | draft_only | Nein |
-| ARM.MOD16.COMPARE_OFFERS | Handwerkerangebote vergleichen und Empfehlung geben | readonly | Nein |
-| ARM.MOD16.COMMISSION_CONTRACTOR | Handwerker beauftragen (E-Mail-Versand) | execute_with_confirmation | Ja -- Widget zur Freigabe |
+### 3.1 Aktueller KB-Bestand (62 Items, 7 Kategorien)
 
-## Zusammenfassung: 30 neue Actions
+| Kategorie | Items | Abdeckung |
+|-----------|-------|-----------|
+| system | 10 | Grundlegend |
+| real_estate | 12 | Gut |
+| tax_legal | 4 | **Duenn** |
+| finance | 8 | Gut |
+| sales | 20 | Sehr gut |
+| templates | 2 | **Duenn** |
+| research | 0 | Leer (dynamisch) |
+| photovoltaik | 6 | Gut |
 
-| Kategorie | Neue Actions | Davon mit Widget |
-|-----------|-------------|-----------------|
-| E-Mail & Kommunikation | 4 | 3 |
-| Kalender & Termine | 5 | 3 |
-| Kontaktverwaltung | 4 | 0 |
-| Immobilienverwaltung | 6 | 2 |
-| Finanzierung | 3 | 2 |
-| Tagesgeschaeft | 4 | 1 |
-| Vertrieb & Akquise | 3 | 0 |
-| Sanierung | 3 | 1 |
-| **Gesamt** | **32** | **12** |
+### 3.2 Fehlende KB-Artikel (KRITISCH)
 
-## Widget-Governance-Regel
+#### Kategorie: system (fehlen ca. 15 Items)
 
-Jede Action, die eine der folgenden Bedingungen erfuellt, MUSS ein Task-Widget auf dem Dashboard erzeugen:
+Armstrong kann Module erklaeren, hat aber keine KB-Artikel fuer:
 
-1. **Externe Kommunikation**: E-Mail senden, Brief senden, WhatsApp senden
-2. **Kreditzahlung**: Metered Actions ueber 2 Credits
-3. **Datenaenderung an Dritten**: Mietanpassung, Kuendigung, Bankeinreichung
-4. **Oeffentliche Sichtbarkeit**: Landing Page publizieren, Inserat veroeffentlichen
+- **KB.SYS.MOD05** — Pets-Modul: Was kann es?
+- **KB.SYS.MOD06** — Verkaufsmodul: Golden Path Verkauf
+- **KB.SYS.MOD09** — Vertriebspartner: Onboarding & Objektkatalog
+- **KB.SYS.MOD10** — Leadmanager: Pipeline & Zuweisung
+- **KB.SYS.MOD11** — Finanzierungsmanager: Fall-Flow & Magic Intake
+- **KB.SYS.MOD12** — Akquisemanager: Mandat & Inbound-Flow
+- **KB.SYS.MOD13** — Projekte: Aufteiler & Reservierung
+- **KB.SYS.MOD16** — Sanierung: 8-Schritte-Golden-Path
+- **KB.SYS.MOD17** — Cars: Fahrzeugverwaltung
+- **KB.SYS.MOD18** — Finanzen: Privatfinanzen & Versicherungen
+- **KB.SYS.DASHBOARD** — Dashboard-Widgets & Briefing
+- **KB.SYS.DMS** — Dokumentenmanagement & Sortierregeln
+- **KB.SYS.ROLLEN** — Rollensystem (6 Rollen + org_admin)
+- **KB.SYS.BILLING** — Credit-System (1 Credit = 0.50 EUR)
+- **KB.SYS.ZONE_ARCHITECTURE** — Zone 1/2/3 Erklaerung
 
-Interne Schreibvorgaenge (Kontakt anlegen, Notiz speichern, Mietvertrag anlegen) sind **kein** Widget-Pflichtfall, da sie keine externen Konsequenzen haben.
+#### Kategorie: tax_legal (fehlen ca. 4 Items)
 
-## Umsetzungsplan
+- **KB.TAX.AFA** — AfA-Modelle (linear, degressiv, Sonder-AfA)
+- **KB.TAX.GRUNDERWERBSTEUER** — Bundesland-Saetze
+- **KB.TAX.SPEKULATIONSFRIST** — 10-Jahres-Regel
+- **KB.TAX.WERBUNGSKOSTEN** — Was ist absetzbar?
 
-### Phase 1: Kern-Buero-Actions (Prioritaet HOCH)
+#### Kategorie: templates (fehlen ca. 5 Items)
 
-Die 12 wichtigsten Actions fuer den taeglichen Buero-Betrieb:
+- **KB.TPL.MIETVERTRAG** — Mietvertrag-Checkliste
+- **KB.TPL.UEBERGABEPROTOKOLL** — Wohnungsuebergabe
+- **KB.TPL.NEBENKOSTENBRIEF** — NK-Abrechnung Begleitschreiben
+- **KB.TPL.KUENDIGUNGSBRIEF** — Kuendigungsschreiben Mieter
+- **KB.TPL.FINANZIERUNGSDOCS** — Dokumenten-Checkliste Bank
 
-1. ARM.MOD02.SEND_EMAIL
-2. ARM.MOD02.DRAFT_EMAIL
-3. ARM.MOD02.REPLY_EMAIL
-4. ARM.MOD02.CREATE_APPOINTMENT
-5. ARM.MOD02.SCHEDULE_VIDEOCALL
-6. ARM.MOD02.CREATE_CONTACT
-7. ARM.MOD02.SEARCH_CONTACT
-8. ARM.MOD00.DAILY_BRIEFING
-9. ARM.MOD04.DRAFT_RENT_REMINDER
-10. ARM.MOD04.CREATE_LEASE
-11. ARM.MOD04.CREATE_TENANT
-12. ARM.MOD00.PRIORITIZE_INBOX
+### 3.3 Fehlende KB-Kategorie
 
-### Phase 2: Operative Erweiterungen (Prioritaet MITTEL)
+Die Kategorie **photovoltaik** existiert in der DB, aber NICHT in `armstrongKBTaxonomy.ts`. Das bedeutet, Armstrong kann die PV-Artikel nicht korrekt kategorisiert ausliefern. Die Taxonomy muss um diese Kategorie ergaenzt werden.
 
-13-22: Restliche Kalender-, Finanzierungs- und Verwaltungs-Actions
+## 4. Zusammenfassung
 
-### Phase 3: Spezialisierte Actions (Prioritaet NIEDRIG)
+### Neue Actions: 33 insgesamt
 
-23-32: Akquise-, Sanierungs- und Report-Actions
+| Modul | Neue Actions | Prioritaet |
+|-------|-------------|------------|
+| MOD-06 Verkauf | 5 | HOCH |
+| MOD-09 Vertriebspartner | 5 | HOCH |
+| MOD-10 Leadmanager | 5 | HOCH |
+| MOD-11 Finanzierungsmanager | 5 | HOCH |
+| MOD-13 Projekte (Erweiterung) | 3 | MITTEL |
+| MOD-17 Cars (Erweiterung) | 3 | MITTEL |
+| MOD-18 Finanzen (Erweiterung) | 3 | MITTEL |
+| MOD-05 Pets | 3 | NIEDRIG |
+| Summe | **33** | — |
 
-## Technische Details
+### KB-Luecken: ca. 24 fehlende Artikel
+
+| Kategorie | Fehlend | Prioritaet |
+|-----------|---------|------------|
+| system (Modul-Erklaerungen) | 15 | HOCH |
+| tax_legal | 4 | MITTEL |
+| templates | 5 | MITTEL |
+| Summe | **24** | — |
+
+### Taxonomy-Fix: 1 Aenderung
+
+- `armstrongKBTaxonomy.ts` um Kategorie `photovoltaik` ergaenzen
+
+## 5. Technische Umsetzung
 
 ### Datei-Aenderungen
 
-Nur **eine Datei** betroffen: `src/manifests/armstrongManifest.ts`
+1. **`src/manifests/armstrongManifest.ts`** — 33 neue Action-Eintraege
+2. **`src/constants/armstrongKBTaxonomy.ts`** — Kategorie `photovoltaik` hinzufuegen
+3. **Keine DB-Migration noetig** — Actions sind rein manifest-seitig, KB-Artikel werden ueber das UI oder Armstrong selbst eingepflegt
 
-- 32 neue Action-Eintraege im `armstrongActions`-Array
-- TOP_30_MVP_ACTION_CODES bleibt unveraendert (separater MVP-Scope)
-- Jede Action folgt dem bestehenden `ArmstrongActionV2`-Schema
+### Empfohlene Reihenfolge
 
-### Widget-Pattern fuer externe Actions
-
-Actions mit `execution_mode: 'execute_with_confirmation'` und Side-Effect `sends_external_communication` oder `credits_consumed` erzeugen ein Task-Widget:
-
-```text
-{
-  action_code: 'ARM.MOD02.SEND_EMAIL',
-  execution_mode: 'execute_with_confirmation',
-  side_effects: ['sends_external_communication', 'credits_consumed'],
-  // -> Armstrong erstellt Widget auf Dashboard
-  // -> User bestaetigt oder bricht ab
-  // -> Bei Bestaetigung: Edge Function fuehrt aus
-}
-```
-
-### Kein SQL noetig
-
-Alle Aenderungen sind rein manifest-seitig. Die `task_widgets`-Tabelle und der `useTaskWidgets`-Hook existieren bereits und unterstuetzen die neuen Action-Codes automatisch.
+1. Phase 1: Actions fuer MOD-06, MOD-09, MOD-10, MOD-11 (20 Actions) + Taxonomy-Fix
+2. Phase 2: Erweiterungen MOD-13, MOD-17, MOD-18 (9 Actions)
+3. Phase 3: MOD-05 Pets (3 Actions) + KB-Artikel Seeding (via Armstrong oder manuell)
 
