@@ -1,95 +1,82 @@
 
+# NK-Abrechnung Demo-Flow reparieren: Posteingang + Mieteingang-Tracking
 
-# Mobile-Ansicht: Keine Neuanlage-Widgets, nur funktionale Buttons
+## Analyse-Ergebnis
 
-## Problem
+### Problem 1: Dokumente nicht im Posteingang sichtbar
 
-Auf Mobile werden aktuell dieselben Widgets und Dialoge wie auf Desktop angezeigt:
-- "Neues Fahrzeug anlegen"-Formulare
-- "Objekt hinzufuegen"-Buttons
-- Leere Zustaende mit "Erstellen Sie..."-Aufforderungen
-- CreatePropertyDialog, CreateProjectDialog, CreateReservationDialog etc.
+Die 6 NK-Dokumente (3x WEG-Jahresabrechnung, 3x Grundsteuerbescheid) existieren in der Datenbank mit `source: 'email'` und sind korrekt mit den Properties verlinkt (`document_links`). Sie erscheinen aber **nicht** im Posteingang, weil:
 
-Das ist auf einem kleinen Bildschirm unpraktisch. Neuanlagen sollen nur via Armstrong-Actions oder Desktop/PWA-Browser moeglich sein.
+- Der Posteingang liest aus der Tabelle `inbound_emails` — dort gibt es keinen Demo-Eintrag
+- Der Posteingang ist zudem durch einen Gate geschuetzt: Ohne aktive `postservice_mandates` wird nur eine Landingpage angezeigt
+- Die Demo-Dokumente wurden per Migration direkt in `documents` und `document_links` eingefuegt — der Posteingang-Flow wurde komplett uebersprungen
 
-## Loesung: Zentraler `DesktopOnly`-Wrapper + `useIsMobile`-Guards
+**Loesung:** Fuer den Demo-Flow muessen wir den "Posteingang-Empfang"-Schritt simulieren. Dafuer:
+1. Eine Demo-`postservice_mandates`-Zeile seeden (damit der Posteingang ueberhaupt sichtbar ist)
+2. Drei Demo-`inbound_emails` Zeilen seeden (eine pro Hausverwaltung)
+3. Sechs `inbound_attachments`-Zeilen seeden (verknuepft mit den bereits vorhandenen `document_id`s)
+4. Die Sortier-Container haben korrekte Keywords — damit werden die Dokumente in den Sortier-Kacheln sichtbar
 
-Statt 27+ Module einzeln umzubauen, wird ein wiederverwendbarer Ansatz verfolgt:
+### Problem 2: Mieteingang-Tracking hat keine `rent_payments`-Eintraege
 
-### Schritt 1: Shared Wrapper-Komponente `DesktopOnly`
+Die Demo-Transaktionen in `demoKontoData.ts` erzeugen client-seitig 14 Monate Mietgutschriften (Jan 2025 – Feb 2026). Aber die Tabelle `rent_payments` ist komplett leer (0 Zeilen). Der `GeldeingangTab` zeigt deshalb 12 leere Monate.
 
-Eine kleine Utility-Komponente, die ihre Kinder auf Mobile ausblendet:
+**Loesung:** Demo-Seed fuer `rent_payments` erstellen:
+- Fuer alle 3 Leases (BER-01, MUC-01, HH-01) je 12 Monate (Maerz 2025 – Februar 2026)
+- Jeweils `status: 'paid'` mit korrekt berechneter Warmmiete
+- Ein Monat (z.B. Februar 2026) bleibt bewusst `open` fuer BER-01, damit der Mahnung-Flow demonstriert werden kann
 
-```text
-src/components/shared/DesktopOnly.tsx
+### Problem 3: NKAbrechnungTab greift auf `nk_cost_items` korrekt zu
 
-export function DesktopOnly({ children }) {
-  const isMobile = useIsMobile();
-  if (isMobile) return null;
-  return <>{children}</>;
-}
-```
+Hier funktioniert der Flow bereits: 33 `nk_cost_items` existieren, 3 `nk_periods` existieren, alle `document_links` sind vorhanden mit `link_status: 'linked'`. Der Readiness-Check sollte `READY` liefern, sobald der Tab mit den richtigen Property/Unit/Tenant-IDs aufgerufen wird.
 
-Damit koennen Neuanlage-Buttons und -Formulare in den Modulen einfach umschlossen werden:
+## Technische Umsetzung
 
-```text
-<DesktopOnly>
-  <Button onClick={() => setIsCreatingNew(true)}>Neues Fahrzeug anlegen</Button>
-</DesktopOnly>
-```
+### Schritt 1: SQL Migration — Demo-Daten fuer Posteingang + Mieteingaenge
 
-### Schritt 2: Betroffene Module identifiziert
+Eine neue Migration, die folgende Daten idempotent (ON CONFLICT DO NOTHING) einfuegt:
 
-Die folgenden Bereiche enthalten Neuanlage-UI, die auf Mobile ausgeblendet wird:
+**Tabelle `postservice_mandates`:**
+- 1 Zeile mit `status: 'active'` fuer den Demo-Tenant
 
-| Modul/Datei | Element | Aktion |
-|-------------|---------|--------|
-| `CarsFahrzeuge.tsx` | "Neues Fahrzeug anlegen" Button + Inline-Formular | `DesktopOnly` |
-| `FinanceRequestWidgets.tsx` | "Neue Anfrage" Widget-Kachel (leer) | `DesktopOnly` |
-| `CreatePropertyDialog.tsx` (Trigger) | "Neue Immobilie" Button in Portfolio | `DesktopOnly` |
-| `CreateProjectDialog.tsx` (Trigger) | "Neues Projekt" Button | `DesktopOnly` |
-| `CreateReservationDialog.tsx` (Trigger) | "Neue Reservierung" Button | `DesktopOnly` |
-| `AnalysisTab.tsx` (Akquise) | "Objekt hinzufuegen" Button + leerer Zustand | `DesktopOnly` fuer Button, angepasster Leertext |
-| `SimulationTab.tsx` | "Neues Objekt hinzufuegen" Karte | `DesktopOnly` |
-| `AbonnementsTab.tsx` | "Abonnement hinzufuegen" Karte | `DesktopOnly` |
-| `KalenderTab.tsx` | "Neuer Termin" Button + Dialog | `DesktopOnly` |
-| `InspirationPage.tsx` | "Quelle hinzufuegen" Button | `DesktopOnly` |
-| `KnowledgePage.tsx` | "Hinzufuegen" Button | `DesktopOnly` |
+**Tabelle `inbound_emails`:**
+- 3 Zeilen (eine pro HV-Absender: WEG Berliner Str. 42, WEG Maximilianstr. 8, WEG Elbchaussee 120)
+- `status: 'ready'`, `pdf_count: 2` (WEG-Abrechnung + Grundsteuer)
 
-### Schritt 3: Leere Zustaende auf Mobile anpassen
+**Tabelle `inbound_attachments`:**
+- 6 Zeilen, verknuepft mit den bestehenden `document_id`s (f0000000-...)
+- `is_pdf: true`, `document_id` gesetzt
 
-Wenn ein Modul keine Daten hat, zeigt der leere Zustand auf Mobile statt "Erstellen Sie..." den Hinweis:
+**Tabelle `rent_payments`:**
+- 35 Zeilen (3 Leases x 12 Monate, minus 1 offener Monat)
+- BER-01: 11 Monate paid (Maerz 2025 – Jan 2026), 1 Monat open (Feb 2026)
+- MUC-01: 12 Monate paid
+- HH-01: 12 Monate paid
+- Betraege exakt aus den Lease-Daten: BER=1150, MUC=1580, HH=750
 
-```text
-"Nutzen Sie Armstrong oder die Desktop-Version, um neue Eintraege anzulegen."
-```
+### Schritt 2: Posteingang-Gate fuer Demo entsperren
 
-Dies wird als optionale `mobileEmptyText`-Prop in betroffenen Leerzustand-Karten umgesetzt.
+Die `PosteingangTab.tsx` prueft aktuell `postservice_mandates.status = 'active'`. Da wir jetzt einen Demo-Eintrag haben, wird der Gate automatisch geoeffnet.
 
-### Schritt 4: WidgetGrid — Leere Neuanlage-Kacheln auf Mobile ausblenden
+Kein Code-Aenderung noetig — nur die Migration reicht.
 
-Einige Module haben eine dedizierte "Plus-Kachel" am Ende des Grids (z.B. Abonnements, Simulation). Diese werden mit `DesktopOnly` umschlossen.
+### Schritt 3: Geldeingang — Demo-Button "Mieteingang-Check ausfuehren"
 
-## Technische Details
+Im `GeldeingangTab.tsx` einen Button hinzufuegen, der die Edge Function `sot-rent-arrears-check` manuell triggert. Damit kann der Demo-Flow gezeigt werden:
+1. Tabelle zeigt 11 bezahlte + 1 offenen Monat
+2. Klick auf "Mieteingang pruefen" → Edge Function laeuft → Task Widget erscheint auf Dashboard
+3. Task Widget oeffnet Brief-Generator mit vorausgefuellter Mahnung
 
 ### Dateien
 
 | Datei | Aktion | Beschreibung |
 |-------|--------|-------------|
-| `src/components/shared/DesktopOnly.tsx` | CREATE | Utility-Wrapper (3 Zeilen) |
-| `src/components/portal/cars/CarsFahrzeuge.tsx` | EDIT | Button + Inline-Formular mit `DesktopOnly` umschliessen |
-| `src/components/finanzierung/FinanceRequestWidgets.tsx` | EDIT | Leere Anfrage-Kachel ausblenden |
-| `src/pages/portal/investments/SimulationTab.tsx` | EDIT | "Neues Objekt" Karte ausblenden |
-| `src/pages/portal/finanzanalyse/AbonnementsTab.tsx` | EDIT | "Abo hinzufuegen" Karte ausblenden |
-| `src/pages/portal/office/KalenderTab.tsx` | EDIT | "Neuer Termin" Button ausblenden |
-| `src/pages/portal/akquise-manager/components/AnalysisTab.tsx` | EDIT | Button + Leerzustand anpassen |
-| `src/pages/portal/communication-pro/social/InspirationPage.tsx` | EDIT | Button ausblenden |
-| `src/pages/portal/communication-pro/social/KnowledgePage.tsx` | EDIT | Button ausblenden |
-| Portfolio/Projekte-Seiten (Trigger-Buttons) | EDIT | Buttons mit `DesktopOnly` wrappen |
+| SQL Migration | CREATE | Demo-Seed: `postservice_mandates`, `inbound_emails`, `inbound_attachments`, `rent_payments` |
+| `src/components/portfolio/GeldeingangTab.tsx` | EDIT | Button "Mieteingang pruefen" (ruft `sot-rent-arrears-check` auf) |
 
 ### Kein Breaking Change
 
-- Desktop bleibt vollstaendig unveraendert
-- `DesktopOnly` ist rein visuell (rendert `null` auf Mobile)
-- Keine Aenderung an Hooks, Datenstrukturen oder Armstrong-Actions
-- Alle Neuanlagen bleiben ueber Armstrong-Actions auf Mobile erreichbar
+- Alle bestehenden Queries und Flows bleiben unveraendert
+- Demo-Daten nutzen feste UUIDs mit ON CONFLICT DO NOTHING
+- Die Edge Function `sot-rent-arrears-check` existiert bereits und ist deployed
+- NKAbrechnungTab benoetigt keine Aenderung — die Daten sind bereits vollstaendig
