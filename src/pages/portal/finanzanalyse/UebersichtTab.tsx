@@ -167,12 +167,12 @@ export default function UebersichtTab() {
               ]}
               thumbnailUrl={(person as any).avatar_url || undefined}
               summary={[
-                ...(person.birth_date ? [{ label: 'Geb.', value: new Date(person.birth_date).toLocaleDateString('de-DE') }] : []),
-                ...(person.street ? [{ label: 'Straße', value: `${person.street} ${person.house_number || ''}`.trim() }] : []),
-                ...(person.zip ? [{ label: 'PLZ/Ort', value: `${person.zip} ${person.city || ''}`.trim() }] : []),
-                ...((person as any).phone_landline ? [{ label: 'Tel.', value: (person as any).phone_landline }] : []),
-                ...(person.phone ? [{ label: 'Mobil', value: person.phone }] : []),
-                ...(person.email ? [{ label: 'E-Mail', value: person.email }] : []),
+                ...(person.birth_date ? [{ label: '', value: new Date(person.birth_date).toLocaleDateString('de-DE') }] : []),
+                ...(person.street ? [{ label: '', value: `${person.street} ${person.house_number || ''}`.trim() }] : []),
+                ...(person.zip ? [{ label: '', value: `${person.zip} ${person.city || ''}`.trim() }] : []),
+                ...((person as any).phone_landline ? [{ label: '', value: (person as any).phone_landline }] : []),
+                ...(person.phone ? [{ label: '', value: person.phone }] : []),
+                ...(person.email ? [{ label: '', value: person.email }] : []),
               ]}
               tenantId={activeTenantId || undefined}
               onSave={() => handleSave(person.id)}
