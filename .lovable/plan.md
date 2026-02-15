@@ -1,82 +1,84 @@
 
-# NK-Abrechnung Demo-Flow reparieren: Posteingang + Mieteingang-Tracking
+
+# Zone 1 System-Bereinigung: Duplikate entfernen + Credit-Monitoring sichtbar machen
 
 ## Analyse-Ergebnis
 
-### Problem 1: Dokumente nicht im Posteingang sichtbar
+### Problem 1: Doppelte Menuepunkte (Projekte, Listings, Landing Pages)
 
-Die 6 NK-Dokumente (3x WEG-Jahresabrechnung, 3x Grundsteuerbescheid) existieren in der Datenbank mit `source: 'email'` und sind korrekt mit den Properties verlinkt (`document_links`). Sie erscheinen aber **nicht** im Posteingang, weil:
+Die Sub-Routen `projekt-desk/projekte`, `projekt-desk/listings`, `projekt-desk/landing-pages` erscheinen faelschlicherweise in der "System"-Gruppe. Ursache: `shouldShowInNav()` filtert Sub-Routen fuer `sales-desk/`, `finance-desk/`, `acquiary/` und `futureroom/` — aber **nicht** fuer `projekt-desk/`. Die Sub-Routen fallen in den Default-Case und landen in "System".
 
-- Der Posteingang liest aus der Tabelle `inbound_emails` — dort gibt es keinen Demo-Eintrag
-- Der Posteingang ist zudem durch einen Gate geschuetzt: Ohne aktive `postservice_mandates` wird nur eine Landingpage angezeigt
-- Die Demo-Dokumente wurden per Migration direkt in `documents` und `document_links` eingefuegt — der Posteingang-Flow wurde komplett uebersprungen
+**Fix:** Eine Zeile in `shouldShowInNav()` hinzufuegen:
 
-**Loesung:** Fuer den Demo-Flow muessen wir den "Posteingang-Empfang"-Schritt simulieren. Dafuer:
-1. Eine Demo-`postservice_mandates`-Zeile seeden (damit der Posteingang ueberhaupt sichtbar ist)
-2. Drei Demo-`inbound_emails` Zeilen seeden (eine pro Hausverwaltung)
-3. Sechs `inbound_attachments`-Zeilen seeden (verknuepft mit den bereits vorhandenen `document_id`s)
-4. Die Sortier-Container haben korrekte Keywords — damit werden die Dokumente in den Sortier-Kacheln sichtbar
+```text
+path.startsWith('projekt-desk/')  // NEU — filtert Sub-Routen
+```
 
-### Problem 2: Mieteingang-Tracking hat keine `rent_payments`-Eintraege
+### Problem 2: Credit-Monitoring fehlt in der Sidebar
 
-Die Demo-Transaktionen in `demoKontoData.ts` erzeugen client-seitig 14 Monate Mietgutschriften (Jan 2025 – Feb 2026). Aber die Tabelle `rent_payments` ist komplett leer (0 Zeilen). Der `GeldeingangTab` zeigt deshalb 12 leere Monate.
+Die Seiten existieren bereits:
+- `armstrong/billing` (ArmstrongBilling) — Technische Verbrauchserfassung pro KI-Aktion
+- `armstrong/costs` (PlatformCostMonitor) — Plattform-Kostenmonitor
 
-**Loesung:** Demo-Seed fuer `rent_payments` erstellen:
-- Fuer alle 3 Leases (BER-01, MUC-01, HH-01) je 12 Monate (Maerz 2025 – Februar 2026)
-- Jeweils `status: 'paid'` mit korrekt berechneter Warmmiete
-- Ein Monat (z.B. Februar 2026) bleibt bewusst `open` fuer BER-01, damit der Mahnung-Flow demonstriert werden kann
+Beide sind aktuell als `armstrong/`-Sub-Routen klassifiziert und werden durch die Regel `if (path.startsWith('armstrong/')) return false` aus der Navigation ausgeblendet. Sie sind nur ueber das Armstrong-Dashboard intern erreichbar.
 
-### Problem 3: NKAbrechnungTab greift auf `nk_cost_items` korrekt zu
+**Fix:** Eine Ausnahme fuer `armstrong/billing` und `armstrong/costs` in `shouldShowInNav()` hinzufuegen, damit sie als eigenstaendige Menuepunkte in der "Armstrong"-Gruppe der Sidebar erscheinen.
 
-Hier funktioniert der Flow bereits: 33 `nk_cost_items` existieren, 3 `nk_periods` existieren, alle `document_links` sind vorhanden mit `link_status: 'linked'`. Der Readiness-Check sollte `READY` liefern, sobald der Tab mit den richtigen Property/Unit/Tenant-IDs aufgerufen wird.
+### Klarstellung: Kein Mieteingangs-Monitoring in Zone 1
+
+Mieteingangs-Daten (`rent_payments`) sind private Mieterdaten und bleiben ausschliesslich in Zone 2 (MOD-04 Immobilien, GeldeingangTab). Es wird **keine** Zahlungsmonitoring-Seite in Zone 1 erstellt. Der im vorherigen Plan erwaehnte "Zahlungsmonitoring"-Punkt wird gestrichen.
 
 ## Technische Umsetzung
 
-### Schritt 1: SQL Migration — Demo-Daten fuer Posteingang + Mieteingaenge
+### Datei: `src/components/admin/AdminSidebar.tsx`
 
-Eine neue Migration, die folgende Daten idempotent (ON CONFLICT DO NOTHING) einfuegt:
+**Aenderung 1 — Zeilen 184-191:** `projekt-desk/` zu den gefilterten Desk-Sub-Routen hinzufuegen:
 
-**Tabelle `postservice_mandates`:**
-- 1 Zeile mit `status: 'active'` fuer den Demo-Tenant
+```text
+if (path.includes('/') && (
+  path.startsWith('sales-desk/') ||
+  path.startsWith('finance-desk/') ||
+  path.startsWith('acquiary/') ||
+  path.startsWith('projekt-desk/')     // NEU
+)) {
+  return false;
+}
+```
 
-**Tabelle `inbound_emails`:**
-- 3 Zeilen (eine pro HV-Absender: WEG Berliner Str. 42, WEG Maximilianstr. 8, WEG Elbchaussee 120)
-- `status: 'ready'`, `pdf_count: 2` (WEG-Abrechnung + Grundsteuer)
+**Aenderung 2 — Zeilen 177-183:** Armstrong-Sub-Routen-Filter erweitern, damit Billing und Costs sichtbar werden:
 
-**Tabelle `inbound_attachments`:**
-- 6 Zeilen, verknuepft mit den bestehenden `document_id`s (f0000000-...)
-- `is_pdf: true`, `document_id` gesetzt
+```text
+if (path === 'armstrong') {
+  return true;
+}
+if (path === 'armstrong/billing' || path === 'armstrong/costs') {
+  return true;  // Credit-Monitoring in Sidebar sichtbar
+}
+if (path.startsWith('armstrong/')) {
+  return false;
+}
+```
 
-**Tabelle `rent_payments`:**
-- 35 Zeilen (3 Leases x 12 Monate, minus 1 offener Monat)
-- BER-01: 11 Monate paid (Maerz 2025 – Jan 2026), 1 Monat open (Feb 2026)
-- MUC-01: 12 Monate paid
-- HH-01: 12 Monate paid
-- Betraege exakt aus den Lease-Daten: BER=1150, MUC=1580, HH=750
+### Keine weiteren Dateien betroffen
 
-### Schritt 2: Posteingang-Gate fuer Demo entsperren
+- Keine neue Seite noetig (ArmstrongBilling und PlatformCostMonitor existieren bereits)
+- Keine Route-Aenderung noetig (Routes sind im Manifest bereits definiert)
+- Icon-Mapping fuer `ArmstrongBilling` (`CreditCard`) und `PlatformCostMonitor` existiert bereits
 
-Die `PosteingangTab.tsx` prueft aktuell `postservice_mandates.status = 'active'`. Da wir jetzt einen Demo-Eintrag haben, wird der Gate automatisch geoeffnet.
+### Ergebnis nach Bereinigung
 
-Kein Code-Aenderung noetig — nur die Migration reicht.
+**System-Gruppe (vorher):**
+- Integrationen, Oversight, Audit Hub, Fortbildung
+- Projekte (FALSCH), Listings (FALSCH), Landing Pages (FALSCH)
 
-### Schritt 3: Geldeingang — Demo-Button "Mieteingang-Check ausfuehren"
+**System-Gruppe (nachher):**
+- Integrationen, Oversight, Audit Hub, Fortbildung
 
-Im `GeldeingangTab.tsx` einen Button hinzufuegen, der die Edge Function `sot-rent-arrears-check` manuell triggert. Damit kann der Demo-Flow gezeigt werden:
-1. Tabelle zeigt 11 bezahlte + 1 offenen Monat
-2. Klick auf "Mieteingang pruefen" → Edge Function laeuft → Task Widget erscheint auf Dashboard
-3. Task Widget oeffnet Brief-Generator mit vorausgefuellter Mahnung
-
-### Dateien
+**Armstrong-Gruppe (nachher — neu sichtbar):**
+- Armstrong (Dashboard)
+- Billing (Credit-Verbrauch pro Aktion)
+- Plattform-Kostenmonitor (Gesamtkosten-Uebersicht)
 
 | Datei | Aktion | Beschreibung |
 |-------|--------|-------------|
-| SQL Migration | CREATE | Demo-Seed: `postservice_mandates`, `inbound_emails`, `inbound_attachments`, `rent_payments` |
-| `src/components/portfolio/GeldeingangTab.tsx` | EDIT | Button "Mieteingang pruefen" (ruft `sot-rent-arrears-check` auf) |
-
-### Kein Breaking Change
-
-- Alle bestehenden Queries und Flows bleiben unveraendert
-- Demo-Daten nutzen feste UUIDs mit ON CONFLICT DO NOTHING
-- Die Edge Function `sot-rent-arrears-check` existiert bereits und ist deployed
-- NKAbrechnungTab benoetigt keine Aenderung — die Daten sind bereits vollstaendig
+| `src/components/admin/AdminSidebar.tsx` | EDIT | `shouldShowInNav`: projekt-desk/ filtern + armstrong/billing und armstrong/costs sichtbar machen |
