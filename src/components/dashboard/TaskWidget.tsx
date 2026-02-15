@@ -3,13 +3,15 @@
  * 
  * DESIGN SPEC:
  * - Displays task info in a compact square layout (aspect-square)
- * - Actions: Two round glass buttons at bottom center
+ * - Actions: Two round glass buttons at bottom center + delete top-right
  *   - Left: X (cancel/reject) - outline style, hover destructive
  *   - Right: ✓ (approve/confirm) - primary tint, glass effect
+ *   - Top-right: Trash2 (delete) - small, with AlertDialog confirmation
  * - No text labels on buttons, only icons
  * - Glass morphism: backdrop-blur-sm, semi-transparent backgrounds
  */
 
+import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { 
   Mail, 
@@ -24,8 +26,20 @@ import {
   Send,
   Check, 
   X, 
-  Loader2
+  Loader2,
+  Trash2
 } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
 import type { Widget, TaskWidgetType } from '@/types/widget';
 import { WIDGET_CONFIGS } from '@/types/widget';
@@ -48,13 +62,15 @@ interface TaskWidgetProps {
   widget: Widget;
   onConfirm: (id: string) => void;
   onCancel: (id: string) => void;
+  onDelete?: (id: string) => void;
   isExecuting?: boolean;
 }
 
 export function TaskWidget({ 
   widget, 
   onConfirm, 
-  onCancel, 
+  onCancel,
+  onDelete,
   isExecuting = false 
 }: TaskWidgetProps) {
   const config = WIDGET_CONFIGS[widget.type];
@@ -81,6 +97,38 @@ export function TaskWidget({
               {config.label_de}
             </span>
           </div>
+          
+          {/* Delete Button */}
+          {onDelete && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <button
+                  className="h-6 w-6 rounded-full flex items-center justify-center text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10 transition-colors"
+                  aria-label="Löschen"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </AlertDialogTrigger>
+              <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Widget löschen?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    „{widget.title}" wird unwiderruflich gelöscht.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => onDelete(widget.id)}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    Löschen
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
         </div>
         
         {/* Title & Description */}

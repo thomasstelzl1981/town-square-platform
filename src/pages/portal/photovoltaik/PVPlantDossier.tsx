@@ -7,6 +7,9 @@ import { useMemo, useState, useCallback } from 'react';
 import { getSeasonalParams } from '@/components/photovoltaik/DemoLiveGenerator';
 import { DESIGN } from '@/config/designManifest';
 import { PvPlant, usePvPlants } from '@/hooks/usePvPlants';
+import { useWidgetPreferences } from '@/hooks/useWidgetPreferences';
+import { Switch } from '@/components/ui/switch';
+import { LayoutDashboard } from 'lucide-react';
 import { usePvMonitoring } from '@/hooks/usePvMonitoring';
 import { usePvConnectors, usePvMeasurements } from '@/hooks/usePvConnectors';
 import { generate24hCurve } from '@/components/photovoltaik/DemoLiveGenerator';
@@ -63,6 +66,26 @@ function InfoRow({ label, value, editable, onChange }: {
         <span className="text-sm font-medium text-right">{display}</span>
       )}
     </div>
+  );
+}
+
+function DashboardWidgetToggle() {
+  const { enabledWidgets, toggleWidget } = useWidgetPreferences();
+  const isEnabled = enabledWidgets.includes('SYS.PV.LIVE');
+
+  return (
+    <SectionCard icon={LayoutDashboard} title="Dashboard-Widget">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm font-medium">Widget auf Dashboard anzeigen</p>
+          <p className="text-xs text-muted-foreground">PV Live-Daten als Kachel auf der Startseite</p>
+        </div>
+        <Switch
+          checked={isEnabled}
+          onCheckedChange={(checked) => toggleWidget('SYS.PV.LIVE', checked)}
+        />
+      </div>
+    </SectionCard>
   );
 }
 
@@ -580,6 +603,9 @@ export default function PVPlantDossier({ plant, isDemo }: Props) {
         <InfoRow label="Inbetriebnahme" value={getVal('commissioning_date', plant.commissioning_date)} editable onChange={v => updateField('commissioning_date', v)} />
         <InfoRow label="Provider" value={getVal('provider', plant.provider)} editable onChange={v => updateField('provider', v)} />
       </SectionCard>
+
+      {/* ─── G2) Dashboard-Widget Toggle ─── */}
+      <DashboardWidgetToggle />
 
       {/* ─── H) Dokumente — EntityStorageTree ─── */}
       <SectionCard icon={FolderOpen} title="Dokumente">

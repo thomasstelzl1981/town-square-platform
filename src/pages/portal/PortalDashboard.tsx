@@ -72,7 +72,7 @@ export default function PortalDashboard() {
   const { enabledWidgets, isLoading: prefsLoading } = useWidgetPreferences();
 
   // Task widgets from DB with realtime
-  const { widgets: taskWidgets, executingId, handleConfirm, handleCancel } = useTaskWidgets();
+  const { widgets: taskWidgets, executingId, handleConfirm, handleCancel, handleDelete } = useTaskWidgets();
 
   // Intercept confirm for Mahnung widgets → navigate to brief generator
   const handleWidgetConfirm = useCallback((widgetId: string) => {
@@ -99,11 +99,20 @@ export default function PortalDashboard() {
       .filter(Boolean);
   }, [enabledWidgets]);
 
+  // System widget IDs (Armstrong + enabled system widgets)
+  const systemWidgetIds = useMemo(() => {
+    return [ARMSTRONG_WIDGET_ID, ...enabledSystemWidgetIds];
+  }, [enabledSystemWidgetIds]);
+
+  // Task widget IDs
+  const taskWidgetIds = useMemo(() => {
+    return taskWidgets.map(w => w.id);
+  }, [taskWidgets]);
+
   // Combine all widget IDs for ordering
   const allWidgetIds = useMemo(() => {
-    const taskIds = taskWidgets.map(w => w.id);
-    return [ARMSTRONG_WIDGET_ID, ...enabledSystemWidgetIds, ...taskIds];
-  }, [enabledSystemWidgetIds, taskWidgets]);
+    return [...systemWidgetIds, ...taskWidgetIds];
+  }, [systemWidgetIds, taskWidgetIds]);
 
   // Widget order with persistence
   const { order, updateOrder } = useWidgetOrder(allWidgetIds);
@@ -164,6 +173,7 @@ export default function PortalDashboard() {
           widget={taskWidget}
           onConfirm={handleWidgetConfirm}
           onCancel={handleCancel}
+          onDelete={handleDelete}
           isExecuting={executingId === widgetId}
         />
       );
@@ -172,18 +182,15 @@ export default function PortalDashboard() {
     return null;
   };
 
-  // Filter to only show existing widgets
-  const visibleWidgetIds = order.filter(id => {
-    if (id === ARMSTRONG_WIDGET_ID) return true;
-    if (enabledSystemWidgetIds.includes(id)) return true;
-    return taskWidgets.some(w => w.id === id);
-  });
+  // Filter ordered IDs into system and task groups
+  const visibleSystemIds = order.filter(id => systemWidgetIds.includes(id));
+  const visibleTaskIds = order.filter(id => taskWidgetIds.includes(id));
 
   const noSystemWidgetsEnabled = enabledSystemWidgetIds.length === 0;
   const noTaskWidgets = taskWidgets.length === 0;
 
   return (
-    <div className="px-2 py-3 md:p-6 lg:p-8">
+    <div className="max-w-7xl mx-auto px-2 py-3 md:p-6 lg:p-8">
       {isDevelopmentMode && (
         <p className="text-xs text-status-warn mb-4">
           Entwicklungsmodus aktiv
@@ -194,12 +201,11 @@ export default function PortalDashboard() {
         WELCOME ON BOARD
       </h1>
 
-
-      <DashboardGrid widgetIds={visibleWidgetIds} onReorder={updateOrder}>
-        {visibleWidgetIds.map(widgetId => {
+      {/* System Widgets */}
+      <DashboardGrid widgetIds={visibleSystemIds} onReorder={updateOrder}>
+        {visibleSystemIds.map(widgetId => {
           const widget = renderWidget(widgetId);
           if (!widget) return null;
-          
           return (
             <SortableWidget key={widgetId} id={widgetId}>
               {widget}
@@ -208,7 +214,7 @@ export default function PortalDashboard() {
         })}
       </DashboardGrid>
 
-      {noSystemWidgetsEnabled && noTaskWidgets && (
+      {noSystemWidgetsEnabled && (
         <Card className="mt-6 glass-card border-dashed border-muted-foreground/20">
           <CardContent className="py-8 flex flex-col items-center justify-center text-center">
             <Inbox className="h-10 w-10 text-muted-foreground/50 mb-3" />
@@ -221,6 +227,34 @@ export default function PortalDashboard() {
                 Widgets konfigurieren
               </Button>
             </Link>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Armstrong Section */}
+      <h2 className="text-lg tracking-widest text-muted-foreground mt-8 mb-4">
+        ARMSTRONG
+      </h2>
+
+      {visibleTaskIds.length > 0 ? (
+        <DashboardGrid widgetIds={visibleTaskIds} onReorder={updateOrder}>
+          {visibleTaskIds.map(widgetId => {
+            const widget = renderWidget(widgetId);
+            if (!widget) return null;
+            return (
+              <SortableWidget key={widgetId} id={widgetId}>
+                {widget}
+              </SortableWidget>
+            );
+          })}
+        </DashboardGrid>
+      ) : (
+        <Card className="glass-card border-dashed border-muted-foreground/20">
+          <CardContent className="py-8 flex flex-col items-center justify-center text-center">
+            <Inbox className="h-8 w-8 text-muted-foreground/40 mb-2" />
+            <p className="text-sm text-muted-foreground">
+              Keine aktiven Aufgaben — Armstrong erstellt hier automatisch Widgets
+            </p>
           </CardContent>
         </Card>
       )}

@@ -43,7 +43,26 @@ export function PVLiveWidget() {
 
   const anyOnline = Array.from(liveData.values()).some(d => d.isOnline);
 
-  if (plants.length === 0) return null;
+  if (plants.length === 0) {
+    return (
+      <Card
+        className="cursor-pointer hover:shadow-md transition-shadow bg-gradient-to-br from-yellow-500/5 to-orange-600/5 h-[260px] md:h-auto md:aspect-square"
+        onClick={() => navigate('/portal/photovoltaik/neu')}
+      >
+        <CardHeader className="pb-1">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Sun className="h-4 w-4 text-yellow-600" />
+            PV Live
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col items-center justify-center flex-1 text-center py-8">
+          <Sun className="h-10 w-10 text-yellow-500/50 mb-3" />
+          <p className="text-sm text-muted-foreground mb-2">Keine PV-Anlage vorhanden</p>
+          <span className="text-xs text-primary underline">Anlage anlegen →</span>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card
