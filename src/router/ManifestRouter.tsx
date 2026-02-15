@@ -84,7 +84,7 @@ const MasterTemplatesFinanzierungsakte = React.lazy(() => import('@/pages/admin/
 const AdminFutureRoomLayout = React.lazy(() => import('@/pages/admin/futureroom/FutureRoomLayout'));
 const AdminStubPage = React.lazy(() => import('@/pages/admin/stub').then(m => ({ default: m.AdminStubPage })));
 const SalesDesk = React.lazy(() => import('@/pages/admin/desks').then(m => ({ default: m.SalesDesk })));
-// FinanceDesk removed — consolidated into FutureRoom (ERA-001). Legacy redirect handles /admin/finance-desk.
+const FinanceDesk = React.lazy(() => import('@/pages/admin/desks').then(m => ({ default: m.FinanceDesk })));
 const Acquiary = React.lazy(() => import('@/pages/admin/desks').then(m => ({ default: m.Acquiary })));
 const LeadDeskComponent = React.lazy(() => import('@/pages/admin/desks').then(m => ({ default: m.LeadDesk })));
 const ProjektDeskComponent = React.lazy(() => import('@/pages/admin/desks').then(m => ({ default: m.ProjektDesk })));
@@ -261,13 +261,14 @@ const adminComponentMap: Record<string, React.ComponentType> = {
   LeadDeskDashboard: LeadDeskComponent,
   ProjektDeskDashboard: ProjektDeskComponent,
   PetmanagerDashboard: React.lazy(() => import('@/pages/admin/desks/PetmanagerDesk')),
+  FinanceDeskDashboard: FinanceDesk,
   // WebHosting sub-routes removed (all pointed to same component)
 };
 
 // Zone 1 Desk Components with internal routing (FutureRoom uses explicit nested routes)
 const adminDeskMap: Record<string, React.ComponentType> = {
   'sales-desk': SalesDesk,
-  // finance-desk: removed — consolidated into FutureRoom (ERA-001), legacy redirect active
+  'finance-desk': FinanceDesk,
   acquiary: Acquiary,
   'projekt-desk': ProjektDeskComponent,
 };
