@@ -117,25 +117,110 @@ export function isTop30MvpAction(actionCode: string): boolean {
 // =============================================================================
 
 export const ZONE3_ALLOWED_ACTION_CODES = [
-  // Explanations
+  // --- Shared: Explanations ---
   'ARM.GLOBAL.EXPLAIN_TERM',
   'ARM.GLOBAL.FAQ',
   
-  // Public Calculators
+  // --- Shared: Public Calculators ---
   'ARM.PUBLIC.RENDITE_RECHNER',
   'ARM.PUBLIC.TILGUNG_RECHNER',
   'ARM.PUBLIC.BELASTUNG_RECHNER',
   
-  // Lead Capture (no data storage, forwarding only)
+  // --- Shared: Lead Capture ---
   'ARM.PUBLIC.CONTACT_REQUEST',
   'ARM.PUBLIC.NEWSLETTER_SIGNUP',
   
-  // Listing Info (published only)
+  // --- Shared: Listing Info ---
   'ARM.PUBLIC.EXPLAIN_LISTING',
   'ARM.PUBLIC.COMPARE_LISTINGS',
+
+  // --- Coach Lifecycle (5) ---
+  'ARM.INV.COACH.AUTO_START',
+  'ARM.INV.COACH.DISMISS',
+  'ARM.INV.COACH.RESUME',
+  'ARM.INV.COACH.PAUSE_FOR_USER',
+  'ARM.INV.COACH.TO_SIMULATION',
+
+  // --- Coach Slide Actions (28) ---
+  ...(Array.from({ length: 8 }, (_, i) => `ARM.INV.COACH.VERKAUF.S${i+1}`) as string[]),
+  ...(Array.from({ length: 7 }, (_, i) => `ARM.INV.COACH.RENDITE.S${i+1}`) as string[]),
+  ...(Array.from({ length: 6 }, (_, i) => `ARM.INV.COACH.STEUER.S${i+1}`) as string[]),
+  ...(Array.from({ length: 7 }, (_, i) => `ARM.INV.COACH.SOFT.S${i+1}`) as string[]),
+
+  // --- Coach Engine Actions (8) ---
+  'ARM.INV.COACH.ENGINE.INTRO',
+  'ARM.INV.COACH.ENGINE.FRAME_START',
+  'ARM.INV.COACH.ENGINE.FRAME_NEXT',
+  'ARM.INV.COACH.ENGINE.PATH_CHOICE',
+  'ARM.INV.COACH.ENGINE.MSV_EXPLAIN',
+  'ARM.INV.COACH.ENGINE.TO_SIMULATION',
+  'ARM.INV.COACH.ENGINE.OBJECTION_DEBT',
+  'ARM.INV.COACH.ENGINE.OBJECTION_RISK',
+
+  // --- Kaufy Persona (Z3) ---
+  'ARM.Z3.KAUFY.TO_REGISTER',
+  'ARM.Z3.KAUFY.PRESENT_LISTING',
+
+  // --- FutureRoom Persona (Z3) ---
+  'ARM.Z3.FR.EXPLAIN_PROCESS',
+  'ARM.Z3.FR.START_SELBSTAUSKUNFT',
+  'ARM.Z3.FR.DOCS_CHECKLIST',
+
+  // --- SoT Persona (Z3) ---
+  'ARM.Z3.SOT.HOW_IT_WORKS',
+  'ARM.Z3.SOT.EXPLAIN_MODULE',
+  'ARM.Z3.SOT.TO_REGISTER',
 ] as const;
 
 export type Zone3ActionCode = typeof ZONE3_ALLOWED_ACTION_CODES[number];
+
+// =============================================================================
+// PERSONA PACKS — Convenience arrays for persona-specific filtering
+// =============================================================================
+
+const ZONE3_SHARED_CODES: Zone3ActionCode[] = [
+  'ARM.GLOBAL.EXPLAIN_TERM', 'ARM.GLOBAL.FAQ',
+  'ARM.PUBLIC.RENDITE_RECHNER', 'ARM.PUBLIC.TILGUNG_RECHNER', 'ARM.PUBLIC.BELASTUNG_RECHNER',
+  'ARM.PUBLIC.CONTACT_REQUEST', 'ARM.PUBLIC.NEWSLETTER_SIGNUP',
+  'ARM.PUBLIC.EXPLAIN_LISTING', 'ARM.PUBLIC.COMPARE_LISTINGS',
+];
+
+/** Kaufy: Immobilienverkauf & Investment-Beratung */
+export const KAUFY_PACK: Zone3ActionCode[] = [
+  ...ZONE3_SHARED_CODES,
+  'ARM.Z3.KAUFY.TO_REGISTER',
+  'ARM.Z3.KAUFY.PRESENT_LISTING',
+  'ARM.INV.COACH.AUTO_START', 'ARM.INV.COACH.DISMISS', 'ARM.INV.COACH.RESUME',
+  'ARM.INV.COACH.PAUSE_FOR_USER', 'ARM.INV.COACH.TO_SIMULATION',
+];
+
+/** FutureRoom: Finanzierungsberatung */
+export const FUTUREROOM_PACK: Zone3ActionCode[] = [
+  ...ZONE3_SHARED_CODES,
+  'ARM.Z3.FR.EXPLAIN_PROCESS',
+  'ARM.Z3.FR.START_SELBSTAUSKUNFT',
+  'ARM.Z3.FR.DOCS_CHECKLIST',
+];
+
+/** SoT: Plattform-Erklärer & Registrierung */
+export const SOT_PACK: Zone3ActionCode[] = [
+  ...ZONE3_SHARED_CODES,
+  'ARM.Z3.SOT.HOW_IT_WORKS',
+  'ARM.Z3.SOT.EXPLAIN_MODULE',
+  'ARM.Z3.SOT.TO_REGISTER',
+  'ARM.INV.COACH.AUTO_START', 'ARM.INV.COACH.DISMISS', 'ARM.INV.COACH.RESUME',
+  'ARM.INV.COACH.PAUSE_FOR_USER', 'ARM.INV.COACH.TO_SIMULATION',
+];
+
+/**
+ * Get the persona pack for a given route
+ */
+export function getPersonaPack(route: string): Zone3ActionCode[] | null {
+  if (route.startsWith('/website/kaufy') || route.startsWith('/kaufy')) return KAUFY_PACK;
+  if (route.startsWith('/website/futureroom') || route.startsWith('/futureroom')) return FUTUREROOM_PACK;
+  if (route.startsWith('/website/sot') || route.startsWith('/sot')) return SOT_PACK;
+  return null;
+}
 
 // =============================================================================
 // ACTIONS REGISTRY (V2 Schema)
@@ -1755,6 +1840,192 @@ export const armstrongActions: ArmstrongActionV2[] = [
     audit_event_type: 'ARM_COACH_ENGINE',
     status: 'active' as ActionStatus,
   })),
+
+  // ===========================================================================
+  // ZONE 3 PERSONA-SPECIFIC ACTIONS (8)
+  // ===========================================================================
+
+  // --- Kaufy Persona ---
+  {
+    action_code: 'ARM.Z3.KAUFY.TO_REGISTER',
+    title_de: 'Zur Registrierung leiten',
+    description_de: 'Leitet den Nutzer zum Portal-Registrierungs-Funnel',
+    zones: ['Z3'] as ArmstrongZone[],
+    module: null,
+    risk_level: 'low' as RiskLevel,
+    execution_mode: 'execute' as ExecutionMode,
+    requires_consent_code: null,
+    roles_allowed: [] as string[],
+    data_scopes_read: [] as string[],
+    data_scopes_write: [] as string[],
+    side_effects: ['navigation'],
+    version: '1.0.0',
+    cost_model: 'free' as CostModel,
+    cost_unit: null,
+    cost_hint_cents: null,
+    api_contract: { type: 'internal' as const, endpoint: null },
+    ui_entrypoints: ['/website/kaufy', '/kaufy'],
+    audit_event_type: 'ARM_Z3_KAUFY_REGISTER',
+    status: 'active' as ActionStatus,
+  },
+  {
+    action_code: 'ARM.Z3.KAUFY.PRESENT_LISTING',
+    title_de: 'Objekt vorstellen',
+    description_de: 'Stellt ein Kaufy-Inserat mit Storytelling vor',
+    zones: ['Z3'] as ArmstrongZone[],
+    module: null,
+    risk_level: 'low' as RiskLevel,
+    execution_mode: 'readonly' as ExecutionMode,
+    requires_consent_code: null,
+    roles_allowed: [] as string[],
+    data_scopes_read: ['v_public_listings'],
+    data_scopes_write: [] as string[],
+    side_effects: [] as string[],
+    version: '1.0.0',
+    cost_model: 'free' as CostModel,
+    cost_unit: null,
+    cost_hint_cents: null,
+    api_contract: { type: 'internal' as const, endpoint: null },
+    ui_entrypoints: ['/website/kaufy', '/kaufy'],
+    audit_event_type: 'ARM_Z3_KAUFY_PRESENT',
+    status: 'active' as ActionStatus,
+  },
+
+  // --- FutureRoom Persona ---
+  {
+    action_code: 'ARM.Z3.FR.EXPLAIN_PROCESS',
+    title_de: 'Finanzierungsprozess erklären',
+    description_de: 'Erklärt den FutureRoom-Finanzierungsprozess Schritt für Schritt',
+    zones: ['Z3'] as ArmstrongZone[],
+    module: null,
+    risk_level: 'low' as RiskLevel,
+    execution_mode: 'readonly' as ExecutionMode,
+    requires_consent_code: null,
+    roles_allowed: [] as string[],
+    data_scopes_read: ['knowledge_base'],
+    data_scopes_write: [] as string[],
+    side_effects: [] as string[],
+    version: '1.0.0',
+    cost_model: 'free' as CostModel,
+    cost_unit: null,
+    cost_hint_cents: null,
+    api_contract: { type: 'internal' as const, endpoint: null },
+    ui_entrypoints: ['/website/futureroom', '/futureroom'],
+    audit_event_type: 'ARM_Z3_FR_EXPLAIN',
+    status: 'active' as ActionStatus,
+  },
+  {
+    action_code: 'ARM.Z3.FR.START_SELBSTAUSKUNFT',
+    title_de: 'Selbstauskunft starten',
+    description_de: 'Leitet den Nutzer zur digitalen Selbstauskunft',
+    zones: ['Z3'] as ArmstrongZone[],
+    module: null,
+    risk_level: 'low' as RiskLevel,
+    execution_mode: 'execute' as ExecutionMode,
+    requires_consent_code: null,
+    roles_allowed: [] as string[],
+    data_scopes_read: [] as string[],
+    data_scopes_write: [] as string[],
+    side_effects: ['navigation'],
+    version: '1.0.0',
+    cost_model: 'free' as CostModel,
+    cost_unit: null,
+    cost_hint_cents: null,
+    api_contract: { type: 'internal' as const, endpoint: null },
+    ui_entrypoints: ['/website/futureroom', '/futureroom'],
+    audit_event_type: 'ARM_Z3_FR_SELBSTAUSKUNFT',
+    status: 'active' as ActionStatus,
+  },
+  {
+    action_code: 'ARM.Z3.FR.DOCS_CHECKLIST',
+    title_de: 'Unterlagen-Checkliste',
+    description_de: 'Zeigt die benötigten Unterlagen für eine Finanzierungsanfrage',
+    zones: ['Z3'] as ArmstrongZone[],
+    module: null,
+    risk_level: 'low' as RiskLevel,
+    execution_mode: 'readonly' as ExecutionMode,
+    requires_consent_code: null,
+    roles_allowed: [] as string[],
+    data_scopes_read: ['knowledge_base'],
+    data_scopes_write: [] as string[],
+    side_effects: [] as string[],
+    version: '1.0.0',
+    cost_model: 'free' as CostModel,
+    cost_unit: null,
+    cost_hint_cents: null,
+    api_contract: { type: 'internal' as const, endpoint: null },
+    ui_entrypoints: ['/website/futureroom', '/futureroom'],
+    audit_event_type: 'ARM_Z3_FR_DOCS',
+    status: 'active' as ActionStatus,
+  },
+
+  // --- SoT Persona ---
+  {
+    action_code: 'ARM.Z3.SOT.HOW_IT_WORKS',
+    title_de: 'Plattform erklären',
+    description_de: 'Erklärt wie System of a Town funktioniert',
+    zones: ['Z3'] as ArmstrongZone[],
+    module: null,
+    risk_level: 'low' as RiskLevel,
+    execution_mode: 'readonly' as ExecutionMode,
+    requires_consent_code: null,
+    roles_allowed: [] as string[],
+    data_scopes_read: ['knowledge_base'],
+    data_scopes_write: [] as string[],
+    side_effects: [] as string[],
+    version: '1.0.0',
+    cost_model: 'free' as CostModel,
+    cost_unit: null,
+    cost_hint_cents: null,
+    api_contract: { type: 'internal' as const, endpoint: null },
+    ui_entrypoints: ['/website/sot', '/sot'],
+    audit_event_type: 'ARM_Z3_SOT_HOW',
+    status: 'active' as ActionStatus,
+  },
+  {
+    action_code: 'ARM.Z3.SOT.EXPLAIN_MODULE',
+    title_de: 'Modul vorstellen',
+    description_de: 'Erklärt ein bestimmtes Portal-Modul für potenzielle Nutzer',
+    zones: ['Z3'] as ArmstrongZone[],
+    module: null,
+    risk_level: 'low' as RiskLevel,
+    execution_mode: 'readonly' as ExecutionMode,
+    requires_consent_code: null,
+    roles_allowed: [] as string[],
+    data_scopes_read: ['knowledge_base'],
+    data_scopes_write: [] as string[],
+    side_effects: [] as string[],
+    version: '1.0.0',
+    cost_model: 'free' as CostModel,
+    cost_unit: null,
+    cost_hint_cents: null,
+    api_contract: { type: 'internal' as const, endpoint: null },
+    ui_entrypoints: ['/website/sot', '/sot'],
+    audit_event_type: 'ARM_Z3_SOT_MODULE',
+    status: 'active' as ActionStatus,
+  },
+  {
+    action_code: 'ARM.Z3.SOT.TO_REGISTER',
+    title_de: 'Zur Registrierung leiten',
+    description_de: 'Leitet den Nutzer zur kostenlosen SoT-Registrierung',
+    zones: ['Z3'] as ArmstrongZone[],
+    module: null,
+    risk_level: 'low' as RiskLevel,
+    execution_mode: 'execute' as ExecutionMode,
+    requires_consent_code: null,
+    roles_allowed: [] as string[],
+    data_scopes_read: [] as string[],
+    data_scopes_write: [] as string[],
+    side_effects: ['navigation'],
+    version: '1.0.0',
+    cost_model: 'free' as CostModel,
+    cost_unit: null,
+    cost_hint_cents: null,
+    api_contract: { type: 'internal' as const, endpoint: null },
+    ui_entrypoints: ['/website/sot', '/sot'],
+    audit_event_type: 'ARM_Z3_SOT_REGISTER',
+    status: 'active' as ActionStatus,
+  },
 ];
 
 // =============================================================================
@@ -1797,10 +2068,19 @@ export function requiresConfirmation(actionCode: string): boolean {
 }
 
 /**
- * Check if action is allowed in Zone 3
+ * Check if action is allowed in Zone 3 (global check)
  */
 export function isZone3Action(actionCode: string): boolean {
   return ZONE3_ALLOWED_ACTION_CODES.includes(actionCode as Zone3ActionCode);
+}
+
+/**
+ * Check if action is allowed for a specific Zone 3 persona (route-based)
+ */
+export function isActionAllowedForPersona(actionCode: string, route: string): boolean {
+  const pack = getPersonaPack(route);
+  if (!pack) return false;
+  return pack.includes(actionCode as Zone3ActionCode);
 }
 
 /**
