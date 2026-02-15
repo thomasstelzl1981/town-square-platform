@@ -165,10 +165,15 @@ export default function UebersichtTab() {
               badges={[
                 { label: ROLE_LABELS[person.role] || person.role, variant: person.is_primary ? 'default' : 'secondary' },
               ]}
+              thumbnailUrl={(person as any).avatar_url || undefined}
               summary={[
+                ...(person.salutation ? [{ label: 'Anrede', value: person.salutation }] : []),
+                ...(person.street ? [{ label: 'Straße', value: `${person.street} ${person.house_number || ''}`.trim() }] : []),
+                ...(person.zip ? [{ label: 'PLZ/Ort', value: `${person.zip} ${person.city || ''}`.trim() }] : []),
                 ...(person.birth_date ? [{ label: 'Geb.', value: new Date(person.birth_date).toLocaleDateString('de-DE') }] : []),
+                ...((person as any).phone_landline ? [{ label: 'Tel.', value: (person as any).phone_landline }] : []),
                 ...(person.phone ? [{ label: 'Mobil', value: person.phone }] : []),
-                ...(pension?.current_pension ? [{ label: 'Rente', value: fmt(pension.current_pension) }] : []),
+                ...(person.email ? [{ label: 'E-Mail', value: person.email }] : []),
               ]}
               tenantId={activeTenantId || undefined}
               onSave={() => handleSave(person.id)}
@@ -207,6 +212,8 @@ export default function UebersichtTab() {
                     onChange={e => updateField(person.id, 'birth_date', e.target.value)} />
                   <FormInput label="E-Mail" name="email" type="email" value={form.email || ''}
                     onChange={e => updateField(person.id, 'email', e.target.value)} />
+                  <FormInput label="Festnetz" name="phone_landline" type="tel" value={form.phone_landline || ''}
+                    onChange={e => updateField(person.id, 'phone_landline', e.target.value)} />
                   <FormInput label="Mobil" name="phone" type="tel" value={form.phone || ''}
                     onChange={e => updateField(person.id, 'phone', e.target.value)} />
                 </div>
