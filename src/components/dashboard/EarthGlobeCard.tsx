@@ -7,7 +7,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Globe, Loader2 } from "lucide-react";
+import { Globe, Loader2, LocateFixed } from "lucide-react";
 import { CSSGlobeFallback } from "@/components/dashboard/earth-globe/CSSGlobeFallback";
 
 interface EarthGlobeCardProps {
@@ -103,8 +103,14 @@ export function EarthGlobeCard({ latitude, longitude, city }: EarthGlobeCardProp
 
   return (
     <Card className="relative h-[260px] md:h-auto md:aspect-square overflow-hidden border-primary/20 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      {/* Globe Container */}
-      <div ref={containerRef} className="absolute inset-0 z-0">
+      {/* Globe Container — stop pointer events from bubbling to DnD */}
+      <div
+        ref={containerRef}
+        className="absolute inset-0 z-0"
+        onPointerDown={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
+        onTouchStart={(e) => e.stopPropagation()}
+      >
         {GlobeComponent && dimensions.width > 0 && !hasError && (
           <GlobeComponent
             ref={globeRef}
@@ -131,7 +137,6 @@ export function EarthGlobeCard({ latitude, longitude, city }: EarthGlobeCardProp
                   controls.autoRotateSpeed = 0.4;
                   controls.enableZoom = false;
                 }
-                // Initial view
                 globe.pointOfView({ lat: 20, lng: 0, altitude: 2.5 }, 0);
               }
             }}
@@ -158,11 +163,22 @@ export function EarthGlobeCard({ latitude, longitude, city }: EarthGlobeCardProp
           <Globe className="h-4 w-4 text-primary drop-shadow-lg" />
         </div>
 
-        <div className="space-y-1">
+        <div className="flex items-end justify-between">
           <div className="flex flex-col gap-0.5 text-xs font-mono text-white/70 drop-shadow-md">
             <span>LAT: {formatCoord(latitude, "lat")}</span>
             <span>LNG: {formatCoord(longitude, "lng")}</span>
           </div>
+
+          {/* Zoom-to-location glass button */}
+          {latitude !== null && longitude !== null && (
+            <button
+              onClick={isZoomedIn ? handleZoomOut : handleZoomIn}
+              className="pointer-events-auto w-10 h-10 rounded-full flex items-center justify-center backdrop-blur-md bg-white/10 border border-white/20 shadow-lg hover:bg-white/20 hover:scale-105 active:scale-95 transition-all duration-200"
+              title={isZoomedIn ? 'Zurück zur Übersicht' : 'Zum Standort zoomen'}
+            >
+              <LocateFixed className={`h-4 w-4 text-white drop-shadow-md transition-transform duration-500 ${isZoomedIn ? 'text-primary' : ''}`} />
+            </button>
+          )}
         </div>
       </CardContent>
 
