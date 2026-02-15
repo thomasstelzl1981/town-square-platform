@@ -303,38 +303,28 @@ export function NKAbrechnungTab({ propertyId, tenantId, unitId }: NKAbrechnungTa
           )}
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="text-xs font-medium text-muted-foreground">Jährlicher Betrag (Haus gesamt)</label>
-              <div className="flex items-center gap-2 mt-1">
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={grundsteuerTotal}
-                  onChange={(e) => setGrundsteuerTotal(Number(e.target.value))}
-                  className="h-9 font-mono"
-                />
-                <span className="text-sm text-muted-foreground">EUR</span>
-              </div>
-            </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">Verteilerschlüssel</label>
-              <div className="flex items-center h-9 mt-1 px-3 rounded-md border bg-muted/40 text-sm">
-                MEA
-              </div>
-            </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">Ihr Anteil (berechnet)</label>
+              <label className="text-xs font-medium text-muted-foreground">Jährlicher Betrag (lt. Bescheid)</label>
               <div className="flex items-center gap-2 mt-1">
                 <Input
                   type="number"
                   step="0.01"
                   value={grundsteuerAnteil}
-                  onChange={(e) => setGrundsteuerAnteil(Number(e.target.value))}
+                  onChange={(e) => {
+                    const val = Number(e.target.value);
+                    setGrundsteuerAnteil(val);
+                    setGrundsteuerTotal(val);
+                  }}
                   className="h-9 font-mono"
                 />
                 <span className="text-sm text-muted-foreground">EUR</span>
               </div>
+            </div>
+            <div className="flex items-end">
+              <p className="text-xs text-muted-foreground pb-2">
+                Der Grundsteuerbescheid wird pro Einheit ausgestellt. Der Betrag wird direkt übernommen.
+              </p>
             </div>
           </div>
           <div className="flex justify-end mt-4">
