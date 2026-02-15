@@ -1,0 +1,416 @@
+{
+  "schema": "OPDESK-V1.0",
+  "created": "2026-02-15",
+  "title": "Operative Desk — Architektur-Audit & Refactoring-Backlog",
+  "purpose": "Systematische Analyse aller Zone-1 Operative Desks zur Etablierung eines wiederholbaren Design-Manifests und Sicherstellung der Z1→Z2→Z3 Flow-Integrität",
+
+  "manifest_proposal": {
+    "id": "OPDESK-MANIFEST",
+    "title": "Operative Desk Design-Manifest (Vorschlag)",
+    "description": "Standardisierte Struktur für alle Zone-1 Governance-Desks",
+    "sections": {
+      "1_header": {
+        "rule": "Jeder Desk MUSS einen einheitlichen Header haben",
+        "structure": "h1 (text-2xl font-bold uppercase) + p (text-muted-foreground) + Badge (MOD-XX)",
+        "status": "INKONSISTENT — Lead Desk hat Badge rechts, ProjektDesk hat Badge rechts, SalesDesk hat kein Badge, Acquiary hat kein Badge"
+      },
+      "2_kpi_row": {
+        "rule": "KPI-Zeile mit 4 Karten (DESIGN.KPI_GRID.FULL) direkt unter dem Header",
+        "structure": "4x Card mit Icon + Wert + Label, datengetrieben",
+        "status": "INKONSISTENT — ProjektDesk nutzt hardcoded '—', Agents nutzt hardcoded Fake-Zahlen (847 Runs, 99.2%), LeadDesk ist live, SalesDesk ist live"
+      },
+      "3_tabs_or_sections": {
+        "rule": "Operative Inhalte in Tabs (max 5) ODER vertikalen Sektionen",
+        "options": [
+          "A) Tabs-Pattern (Acquiary 6 Tabs, LeadDesk 3 Tabs, FutureRoom Tab-Navigation via Layout)",
+          "B) Sektions-Pattern (SalesDesk: vertikale Cards ohne Tabs)"
+        ],
+        "status": "INKONSISTENT — Mischung aus beiden Patterns ohne klare Regel"
+      },
+      "4_data_tables": {
+        "rule": "Tabellen MÜSSEN DESIGN.TABLE.* Token nutzen",
+        "status": "NICHT EINGEHALTEN — Alle Desks nutzen nackte <Table>-Komponenten ohne Design-Token"
+      },
+      "5_empty_states": {
+        "rule": "Leere Zustände müssen Icon + Text + CTA haben",
+        "status": "TEILWEISE — LeadDesk hat gute Empty States, ProjektDesk zeigt nur Platzhalter-Text"
+      },
+      "6_zone_flow_indicator": {
+        "rule": "Jeder Desk MUSS die verbundenen Zone-2 und Zone-3 Module klar ausweisen",
+        "status": "FEHLT KOMPLETT — Kein Desk zeigt den Z1→Z2→Z3 Flow visuell"
+      }
+    }
+  },
+
+  "desk_inventory": [
+    {
+      "id": "OPDESK-001",
+      "desk": "Lead Desk",
+      "file": "src/pages/admin/desks/LeadDesk.tsx",
+      "route": "/admin/lead-desk",
+      "mod_ref": "MOD-10",
+      "lines": 565,
+      "pattern": "Single-Page mit internen Tabs (Pool, Zuweisungen, Provisionen)",
+      "zone_flow": {
+        "z1_governance": "Lead Pool, Zuweisung an Partner, Provisions-Freigabe",
+        "z2_client": "MOD-08 Investment-Suche (Lead-Generierung), MOD-09 Immomanager (Lead-Empfang)",
+        "z3_surface": "Kaufy/SoT Website (Lead-Eingabe via /api/public/leads)"
+      },
+      "maturity": "FUNKTIONAL",
+      "findings": [
+        "✅ Live-Daten aus DB (leads, lead_assignments, commissions)",
+        "✅ CRUD: Lead anlegen, zuweisen",
+        "✅ aggregateCommissions() Engine-Nutzung",
+        "⚠️ Header nutzt nicht DESIGN.TYPOGRAPHY.PAGE_TITLE",
+        "⚠️ KPI-Grid nutzt nicht DESIGN.KPI_GRID.FULL",
+        "⚠️ Tabellen nutzen nicht DESIGN.TABLE.* Token",
+        "⚠️ 565 Zeilen — sollte in Sub-Komponenten aufgeteilt werden",
+        "❌ Kein Zone-Flow-Indikator"
+      ]
+    },
+    {
+      "id": "OPDESK-002",
+      "desk": "Sales Desk",
+      "file": "src/pages/admin/desks/SalesDesk.tsx",
+      "route": "/admin/sales-desk",
+      "mod_ref": "MOD-09 + MOD-13",
+      "lines": 589,
+      "pattern": "Single-Page mit vertikalen Sektionen + Sub-Routes (Veröffentlichungen, Inbox, Partner, Audit)",
+      "zone_flow": {
+        "z1_governance": "Listing-Freigabe/Block, Projekt-Kill-Switch, Partner-Distribution",
+        "z2_client": "MOD-06 Verkauf (Listing-Erstellung), MOD-04 Immobilien (Verkaufsauftrag), MOD-13 Projektmanager (Projekt-Vertrieb)",
+        "z2_partner": "MOD-09 Immomanager (Katalog-Empfang, Beratung)",
+        "z3_surface": "Kaufy/SoT Marketplace (Listing-Anzeige)"
+      },
+      "maturity": "FUNKTIONAL",
+      "findings": [
+        "✅ Live-Daten (listings, project_sales_requests)",
+        "✅ Toggle Block/Unblock für Listings",
+        "✅ Immobilien-Vertriebsaufträge mit Mandats-Erkennung",
+        "⚠️ Sub-Routes im Manifest deklariert aber nicht alle implementiert (Inbox, Partner, Audit sind Stubs)",
+        "⚠️ 589 Zeilen — ImmobilienVertriebsauftraegeCard ist inline, sollte extrahiert werden",
+        "⚠️ Header-Pattern weicht ab (UPPERCASE, kein MOD-Badge)",
+        "❌ Kein Zone-Flow-Indikator"
+      ]
+    },
+    {
+      "id": "OPDESK-003",
+      "desk": "Acquiary",
+      "file": "src/pages/admin/desks/Acquiary.tsx",
+      "route": "/admin/acquiary",
+      "mod_ref": "MOD-12",
+      "lines": 74,
+      "pattern": "Layout-Shell mit 6-Tab-Navigation + Lazy-loaded Sub-Pages (9 Dateien in acquiary/)",
+      "zone_flow": {
+        "z1_governance": "Mandats-Verwaltung, E-Mail-Routing, Kontakt-Staging, Objekt-Datenbank",
+        "z2_client": "MOD-08 Investment-Suche (Suchmandat-Eingang), MOD-12 Akquise Manager (operative Bearbeitung)",
+        "z3_surface": "Acquiary Inbound-Webhook (E-Mail → Objekt-Erfassung)"
+      },
+      "maturity": "FORTGESCHRITTEN",
+      "findings": [
+        "✅ Saubere Tab-Navigation mit lazy loading",
+        "✅ Legacy-Route-Redirects implementiert",
+        "✅ 6-Tab-Struktur per Spec",
+        "⚠️ Header ohne DESIGN.TYPOGRAPHY Token",
+        "⚠️ Kein KPI-Überblick im Shell (nur im Dashboard-Tab)",
+        "❌ Kein Zone-Flow-Indikator"
+      ]
+    },
+    {
+      "id": "OPDESK-004",
+      "desk": "FutureRoom",
+      "file": "src/pages/admin/futureroom/FutureRoomLayout.tsx",
+      "route": "/admin/futureroom",
+      "mod_ref": "MOD-07/MOD-11",
+      "lines": "~9 Dateien",
+      "pattern": "Layout-Shell mit Tab-Navigation + 8 Sub-Pages (Inbox, Zuweisung, Manager, Banken, Monitoring, Vorlagen, WebLeads, Contracts)",
+      "zone_flow": {
+        "z1_governance": "Finanzierungsanfragen-Inbox, Berater-Zuweisung, Monitoring, Vertragsmanagement",
+        "z2_client": "MOD-07 Finanzierung (Selbstauskunft → Anfrage-Einreichung)",
+        "z2_partner": "MOD-11 Finanzierungsmanager (operative Bearbeitung nach Zuweisung)",
+        "z3_surface": "FutureRoom Website (Berater-Bewerbung, Anfrage-Formular)"
+      },
+      "maturity": "FORTGESCHRITTEN",
+      "findings": [
+        "✅ Saubere Layout-Shell mit eigenem Router",
+        "✅ 8 funktionale Sub-Pages",
+        "✅ Finance Desk (legacy) redirected hierher",
+        "⚠️ Sub-Page Konsistenz unklar — nicht alle Seiten geprüft",
+        "❌ Kein Zone-Flow-Indikator"
+      ]
+    },
+    {
+      "id": "OPDESK-005",
+      "desk": "Projekt Desk",
+      "file": "src/pages/admin/desks/ProjektDesk.tsx",
+      "route": "/admin/projekt-desk",
+      "mod_ref": "MOD-13",
+      "lines": 55,
+      "pattern": "Single-Page Platzhalter",
+      "zone_flow": {
+        "z1_governance": "Projekt-Intake, Listing-Aktivierung, Landing-Page-Governance",
+        "z2_client": "MOD-13 Projektmanager (Projekt-Erstellung, Einheiten, Vertrieb)",
+        "z3_surface": "Projekt-Landing-Pages (Zone-3 Webseiten für Vertrieb)"
+      },
+      "maturity": "STUB",
+      "findings": [
+        "❌ Nur Platzhalter — keine echten Daten",
+        "❌ KPIs zeigen '—' (hardcoded)",
+        "❌ Kein operativer Inhalt",
+        "❌ Kein Zone-Flow-Indikator",
+        "📌 PRIORITÄT: Needs full implementation (Projekt-Tabelle, Listing-Übersicht, LP-Governance)"
+      ]
+    },
+    {
+      "id": "OPDESK-006",
+      "desk": "Petmanager Desk",
+      "file": "src/pages/admin/desks/PetmanagerDesk.tsx",
+      "route": "/admin/petmanager",
+      "mod_ref": "MOD-05",
+      "lines": 23,
+      "pattern": "Platzhalter",
+      "zone_flow": {
+        "z1_governance": "Pet-Governance (Tierregistrierung, Compliance)",
+        "z2_client": "MOD-05 Pets (Meine Tiere, Caring, Shop, Fotoalbum)",
+        "z3_surface": "Keine Z3-Anbindung definiert"
+      },
+      "maturity": "STUB",
+      "findings": [
+        "❌ Reiner Platzhalter — kein Inhalt",
+        "❌ Kein KPI, keine Tabelle, keine Funktionalität",
+        "📌 LOW PRIORITY — MOD-05 ist optional (requires_activation)"
+      ]
+    },
+    {
+      "id": "OPDESK-007",
+      "desk": "Agents Desk",
+      "file": "src/pages/admin/desks/Agents.tsx",
+      "route": "/admin/agents",
+      "mod_ref": "N/A (Plattform-intern)",
+      "lines": 200,
+      "pattern": "Dashboard + 4 Sub-Routes (Katalog, Instanzen, Runs, Policies)",
+      "zone_flow": {
+        "z1_governance": "Agent-Konfiguration, Policy-Management, Run-Monitoring",
+        "z2_client": "Keine direkte Z2-Anbindung (Armstrong fungiert als Mediator)",
+        "z3_surface": "Keine Z3-Anbindung"
+      },
+      "maturity": "DEMO",
+      "findings": [
+        "⚠️ KPIs sind hardcoded (6 Agenten, 847 Runs, 99.2%) — keine DB-Anbindung",
+        "⚠️ Sub-Pages sind EmptyState-Stubs",
+        "⚠️ Unterscheidet sich architektonisch von operativen Desks (keine Modul-Verbindung)",
+        "📌 Eigenständige Kategorie — kein operativer Desk im engeren Sinne"
+      ]
+    },
+    {
+      "id": "OPDESK-008",
+      "desk": "Finance Desk (Legacy)",
+      "file": "src/pages/admin/desks/FinanceDesk.tsx",
+      "route": "N/A (Redirect zu FutureRoom)",
+      "mod_ref": "MOD-07/MOD-11",
+      "lines": 44,
+      "pattern": "Redirect-Banner",
+      "maturity": "DEPRECATED",
+      "findings": [
+        "✅ Korrekt als Redirect zu FutureRoom implementiert",
+        "📌 Kann gelöscht werden, sobald alle Legacy-Links bereinigt sind"
+      ]
+    },
+    {
+      "id": "OPDESK-009",
+      "desk": "Armstrong Console",
+      "file": "src/pages/admin/armstrong/",
+      "route": "/admin/armstrong",
+      "mod_ref": "N/A (Plattform-intern)",
+      "lines": "~7 Dateien",
+      "pattern": "Layout + 7 Sub-Routes (Dashboard, Actions, Logs, Billing, KB, Policies, Test)",
+      "zone_flow": {
+        "z1_governance": "KI-Governance, Action-Katalog, Billing, Knowledge Base",
+        "z2_client": "Armstrong-Chat in allen Z2-Modulen",
+        "z3_surface": "Armstrong-Personas auf Z3-Websites"
+      },
+      "maturity": "FUNKTIONAL",
+      "findings": [
+        "✅ Eigenständige Governance-Konsole",
+        "📌 Eigenständige Kategorie — kein operativer Desk im engeren Sinne"
+      ]
+    }
+  ],
+
+  "cross_cutting_findings": [
+    {
+      "id": "XC-001",
+      "severity": "HIGH",
+      "title": "Kein einheitliches Desk-Layout-Pattern",
+      "detail": "Acquiary und FutureRoom nutzen Layout-Shells mit Tab-Navigation. LeadDesk und SalesDesk sind monolithische Single-Page-Komponenten mit internen Tabs. ProjektDesk und Petmanager sind Stubs. Es fehlt eine DeskShell-Komponente.",
+      "recommendation": "Erstelle eine `OperativeDeskShell`-Komponente mit: Header (Titel, Beschreibung, MOD-Badge, Zone-Flow-Indikator) → KPI-Row → Tab-Navigation → Content-Slot"
+    },
+    {
+      "id": "XC-002",
+      "severity": "HIGH",
+      "title": "Zone-Flow-Visualisierung fehlt komplett",
+      "detail": "Kein einziger Desk zeigt den Datenfluss Z3→Z1→Z2 an. Der Nutzer hat keine Orientierung, welche Client-Module und Website-Surfaces mit dem Desk verbunden sind.",
+      "recommendation": "Füge einen kompakten Flow-Indikator unter dem Header ein: Z3 (Quelle) → Z1 (Governance) → Z2 (Empfänger). Nutze Icons und Links zu den verbundenen Modulen."
+    },
+    {
+      "id": "XC-003",
+      "severity": "MEDIUM",
+      "title": "Design-Token nicht genutzt",
+      "detail": "Kein Desk nutzt DESIGN.TYPOGRAPHY, DESIGN.KPI_GRID, DESIGN.TABLE aus dem designManifest.ts. Stattdessen werden ad-hoc Tailwind-Klassen verwendet.",
+      "recommendation": "Alle Desks auf DESIGN-Token migrieren. Header → DESIGN.TYPOGRAPHY.PAGE_TITLE, KPIs → DESIGN.KPI_GRID.FULL, Tabellen → DESIGN.TABLE.*"
+    },
+    {
+      "id": "XC-004",
+      "severity": "MEDIUM",
+      "title": "Monolithische Dateien (LeadDesk 565 LOC, SalesDesk 589 LOC)",
+      "detail": "LeadDesk und SalesDesk sind große Single-File-Komponenten mit eingebetteten Sub-Komponenten, Dialogen und Datenlogik.",
+      "recommendation": "Aufteilen nach dem Acquiary/FutureRoom-Pattern: Shell + Sub-Pages in eigenem Ordner"
+    },
+    {
+      "id": "XC-005",
+      "severity": "MEDIUM",
+      "title": "Stub-Desks ohne Funktion",
+      "detail": "ProjektDesk (55 LOC, nur Platzhalter) und PetmanagerDesk (23 LOC, Platzhalter) bieten keine operative Funktionalität.",
+      "recommendation": "ProjektDesk mit echten Daten befüllen (dev_projects, project_sales_requests). PetmanagerDesk bleibt niedrig priorisiert."
+    },
+    {
+      "id": "XC-006",
+      "severity": "LOW",
+      "title": "Hardcoded Demo-Daten in Agents Desk",
+      "detail": "Agents Desk zeigt feste Zahlen (6 Agenten, 847 Runs, 99.2%) ohne DB-Anbindung.",
+      "recommendation": "Entweder auf armstrong_action_runs-Tabelle anbinden oder als Platzhalter markieren"
+    }
+  ],
+
+  "proposed_desk_manifest": {
+    "title": "OPERATIVE DESK DESIGN-MANIFEST V1.0",
+    "description": "Verbindliches Layout-Pattern für alle Zone-1 Operative Desks",
+    "structure": [
+      {
+        "layer": "1. DeskShell",
+        "description": "Wiederverwendbare Layout-Komponente",
+        "props": ["title: string", "description: string", "modRef: string", "zoneFlow: ZoneFlowConfig", "kpis: KPIConfig[]", "tabs?: TabConfig[]"],
+        "renders": "Header → Zone-Flow-Indikator → KPI-Row → Tab-Navigation → children"
+      },
+      {
+        "layer": "2. Header",
+        "description": "DESIGN.TYPOGRAPHY.PAGE_TITLE + Badge (MOD-XX) + Beschreibung",
+        "standard": "h1 uppercase tracking-tight + text-muted-foreground + Badge variant=outline"
+      },
+      {
+        "layer": "3. Zone-Flow-Indikator",
+        "description": "Kompakte Visualisierung: [Z3 Source] → [Z1 Desk] → [Z2 Module]",
+        "standard": "Horizontale Kette mit Badge-Links, farbkodiert nach Zone (Z1=primary, Z2=amber, Z3=teal)"
+      },
+      {
+        "layer": "4. KPI-Row",
+        "description": "DESIGN.KPI_GRID.FULL — 4 Karten mit Icon + Wert + Label",
+        "standard": "Datengetrieben, keine hardcoded Werte. Leere Zustände zeigen '0' oder '—' mit Erklärung."
+      },
+      {
+        "layer": "5. Operative Tabs",
+        "description": "Max 5 Tabs für Sub-Bereiche. Bei >5 Bereichen → separate Sub-Page-Architektur (wie Acquiary/FutureRoom)",
+        "standard": "Tabs oder Link-basierte Navigation (wie Acquiary-Pattern)"
+      },
+      {
+        "layer": "6. Content",
+        "description": "Tabellen nutzen DESIGN.TABLE.*, Listen nutzen DESIGN.LIST.*, Empty States haben Icon+Text+CTA",
+        "standard": "Alle Aktionen (CRUD) über Dialoge oder Inline-Formulare"
+      }
+    ]
+  },
+
+  "zone_flow_registry": {
+    "description": "Übersicht aller operativen Flows zwischen den Zonen — KEIN direkter Z2↔Z3 Kontakt",
+    "flows": [
+      {
+        "id": "FLOW-LEAD",
+        "name": "Lead-Flow",
+        "z3_source": "Kaufy/SoT Website → POST /api/public/leads",
+        "z1_governance": "Lead Desk → Pool → Zuweisung → Provision",
+        "z2_consumer": "MOD-09 Immomanager (Lead-Empfang) + MOD-08 Investment-Suche"
+      },
+      {
+        "id": "FLOW-LISTING",
+        "name": "Listing-Flow (Verkauf)",
+        "z2_origin": "MOD-04 Immobilien → MOD-06 Verkauf (Listing erstellen)",
+        "z1_governance": "Sales Desk → Freigabe/Block → Distribution",
+        "z2_consumer": "MOD-09 Immomanager (Katalog)",
+        "z3_surface": "Kaufy/SoT Marketplace (Anzeige)"
+      },
+      {
+        "id": "FLOW-PROJEKT",
+        "name": "Projekt-Flow (Neubau-Vertrieb)",
+        "z2_origin": "MOD-13 Projektmanager → Vertriebsauftrag aktivieren",
+        "z1_governance": "Sales Desk / Projekt Desk → Kill-Switch + Landing-Page-Governance",
+        "z2_consumer": "MOD-09 Immomanager (Projekt-Katalog)",
+        "z3_surface": "Projekt-Landing-Pages"
+      },
+      {
+        "id": "FLOW-FINANCE",
+        "name": "Finanzierungs-Flow",
+        "z2_origin": "MOD-07 Finanzierung → Anfrage einreichen",
+        "z1_governance": "FutureRoom → Inbox → Zuweisung an Berater",
+        "z2_consumer": "MOD-11 Finanzierungsmanager (operative Bearbeitung)",
+        "z3_surface": "FutureRoom Website (Bewerbung, Anfrage-Formular)"
+      },
+      {
+        "id": "FLOW-AKQUISE",
+        "name": "Akquise-Flow",
+        "z2_origin": "MOD-08 Investment-Suche → Suchmandat erstellen",
+        "z1_governance": "Acquiary → Mandats-Verwaltung → E-Mail-Routing → Objekt-Bewertung",
+        "z2_consumer": "MOD-12 Akquise Manager (operative Bearbeitung)",
+        "z3_surface": "Acquiary Inbound-Webhook (E-Mail → Objekt)"
+      },
+      {
+        "id": "FLOW-PET",
+        "name": "Pet-Flow (Optional)",
+        "z2_origin": "MOD-05 Pets → Tier-Registrierung",
+        "z1_governance": "Petmanager Desk → Governance (TBD)",
+        "z3_surface": "Keine"
+      }
+    ]
+  },
+
+  "refactoring_plan": {
+    "phase_1": {
+      "title": "DeskShell-Komponente + Design-Token-Migration",
+      "priority": "HIGH",
+      "tasks": [
+        "Erstelle src/components/admin/OperativeDeskShell.tsx mit Header, ZoneFlowIndicator, KPIRow, TabNav",
+        "Erstelle src/components/admin/ZoneFlowIndicator.tsx (kompakte Z3→Z1→Z2 Visualisierung)",
+        "Migriere LeadDesk auf DeskShell + DESIGN-Token",
+        "Migriere SalesDesk auf DeskShell + DESIGN-Token",
+        "Migriere Acquiary Shell auf DeskShell (Header-Bereich)",
+        "Migriere ProjektDesk auf DeskShell"
+      ]
+    },
+    "phase_2": {
+      "title": "Monolith-Aufteilung",
+      "priority": "MEDIUM",
+      "tasks": [
+        "LeadDesk → Ordner src/pages/admin/lead-desk/ mit Shell + 3 Sub-Pages (Pool, Zuweisungen, Provisionen)",
+        "SalesDesk → Ordner src/pages/admin/sales-desk/ mit Shell + Sub-Pages (Listings, Projekte, Partner)",
+        "Agents → auf armstrong_action_runs DB-Daten umstellen"
+      ]
+    },
+    "phase_3": {
+      "title": "Stub-Implementierung",
+      "priority": "MEDIUM",
+      "tasks": [
+        "ProjektDesk: Live-Daten aus dev_projects + project_sales_requests + Listings",
+        "ProjektDesk: Landing-Page-Governance (Verweis auf website-hosting)",
+        "SalesDesk Sub-Pages: Inbox, Partner, Audit implementieren"
+      ]
+    },
+    "phase_4": {
+      "title": "Zone-Flow-Integration",
+      "priority": "LOW",
+      "tasks": [
+        "ZoneFlowIndicator in alle Desks einbauen",
+        "Flow-Registry als navigierbare Übersicht im Admin-Dashboard",
+        "FinanceDesk-Redirect entfernen, Legacy-Links bereinigen"
+      ]
+    }
+  }
+}
