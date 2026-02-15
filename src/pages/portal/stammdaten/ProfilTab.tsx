@@ -12,7 +12,7 @@ import { DESIGN, RECORD_CARD } from '@/config/designManifest';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { FileUploader } from '@/components/shared/FileUploader';
-import { Loader2, Save, User, Phone, MapPin, FileText, PenLine, Sparkles, Building2, Mail } from 'lucide-react';
+import { Loader2, Save, User, Phone, MapPin, FileText, PenLine, Sparkles, Building2, Mail, Download, Monitor, Smartphone, Zap, WifiOff, Layout, Globe, Share } from 'lucide-react';
 import { toast } from 'sonner';
 import { OutboundIdentityWidget } from '@/components/portal/OutboundIdentityWidget';
 import { cn } from '@/lib/utils';
@@ -69,6 +69,71 @@ function ProfileWidget({ icon: Icon, title, description, children, className }: 
         {children}
       </CardContent>
     </Card>
+  );
+}
+
+/** App Download Widget for PWA installation */
+function AppDownloadWidget() {
+  const [deferredPrompt, setDeferredPrompt] = React.useState<Event | null>(null);
+  const [isInstalled, setIsInstalled] = React.useState(false);
+  const [isIOS] = React.useState(() => /iPad|iPhone|iPod/.test(navigator.userAgent));
+  const [isDesktop] = React.useState(() => !/Android|iPhone|iPad|iPod|webOS/i.test(navigator.userAgent));
+
+  React.useEffect(() => {
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+      setIsInstalled(true);
+      return;
+    }
+    const handler = (e: Event) => { e.preventDefault(); setDeferredPrompt(e); };
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  const handleInstall = () => {
+    if (!deferredPrompt) return;
+    (deferredPrompt as unknown as { prompt: () => void }).prompt();
+    setDeferredPrompt(null);
+  };
+
+  if (isInstalled) return null;
+
+  return (
+    <ProfileWidget icon={Download} title="App herunterladen" description="Armstrong als Desktop- oder Mobile-App installieren">
+      <div className="space-y-4">
+        <div className="flex flex-col gap-2">
+          {[
+            { icon: Zap, label: 'Sofortiger Start ohne Browser' },
+            { icon: WifiOff, label: 'Offline-Zugriff auf Kernfunktionen' },
+            { icon: Layout, label: 'Eigenes App-Fenster & Shortcuts' },
+          ].map(({ icon: Icon, label }) => (
+            <div key={label} className="flex items-center gap-2.5 text-xs text-muted-foreground">
+              <Icon className="h-3.5 w-3.5 shrink-0 text-primary" />
+              <span>{label}</span>
+            </div>
+          ))}
+        </div>
+
+        {deferredPrompt ? (
+          <Button onClick={handleInstall} size="sm" className="w-full gap-2">
+            <Download className="h-4 w-4" />
+            Jetzt installieren
+          </Button>
+        ) : isIOS ? (
+          <div className="text-xs text-muted-foreground space-y-1.5 bg-muted/50 rounded-lg p-3">
+            <div className="flex items-center gap-2"><Share className="h-3.5 w-3.5 shrink-0" /><span>Safari → <strong>Teilen</strong> → <strong>Zum Home-Bildschirm</strong></span></div>
+          </div>
+        ) : isDesktop ? (
+          <div className="text-xs text-muted-foreground space-y-1.5 bg-muted/50 rounded-lg p-3">
+            <div className="flex items-center gap-2"><Globe className="h-3.5 w-3.5 shrink-0" /><span><strong>Chrome:</strong> Install-Icon <kbd className="px-1 py-0.5 rounded bg-muted text-[10px] font-mono">⊕</kbd> in der Adressleiste</span></div>
+            <div className="flex items-center gap-2"><Globe className="h-3.5 w-3.5 shrink-0" /><span><strong>Edge:</strong> Menü → Apps → „Als App installieren"</span></div>
+          </div>
+        ) : (
+          <div className="text-xs text-muted-foreground bg-muted/50 rounded-lg p-3">
+            Browser-Menü (⋮) → <strong>„App installieren"</strong>
+          </div>
+        )}
+      </div>
+    </ProfileWidget>
   );
 }
 
@@ -417,6 +482,11 @@ export function ProfilTab() {
         {!isRecordOpen && <OutboundIdentityWidget />}
 
       </div>
+
+      {/* ── App-Download Widget ── */}
+      <AppDownloadWidget />
+
+      {/* ── Sticky Save Button ── */}
 
       {/* ── Sticky Save Button ── */}
       <div className={cn(
