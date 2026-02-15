@@ -1,40 +1,29 @@
 
 
-# Grundsteuer: Verteilerschluessel entfernen — Direktbetrag pro Einheit
+# V + V Tab: Umbenennung und Widget-Bereinigung
 
-## Problem
+## Aenderungen
 
-Die aktuelle UI zeigt fuer die Grundsteuer drei Felder:
-1. "Jaehrlicher Betrag (Haus gesamt)" — `grundsteuerTotal`
-2. "Verteilerschluessel" — fest auf "MEA"
-3. "Ihr Anteil (berechnet)" — `grundsteuerAnteil`
+### 1. Umbenennung "BWA" -> "V + V"
 
-Das ist falsch. Der Grundsteuerbescheid wird immer **pro Wohnung/Einheit** ausgestellt. Es gibt keinen Verteilerschluessel — der Betrag ist absolut.
+Der Tab und die Seite werden von "BWA" in "V + V" (Vermietung + Verwaltung) umbenannt.
 
-## Umsetzung
+**Betroffene Dateien:**
 
-### Datei 1: `src/components/portfolio/NKAbrechnungTab.tsx`
+| Datei | Aenderung |
+|-------|-----------|
+| `src/manifests/routesManifest.ts` (Zeile 248) | `title: "BWA"` -> `title: "V + V"` |
+| `src/pages/portal/immobilien/VerwaltungTab.tsx` (Zeile 42-43) | Header-Titel von "BWA" auf "V + V" aendern, Description anpassen auf "Vermietung + Verwaltung — Vermietereinheiten im Ueberblick." |
 
-**Grundsteuer-Card vereinfachen (Zeilen 306-338):**
-- Die drei Spalten (Haus gesamt / Verteilerschluessel / Ihr Anteil) werden ersetzt durch **ein einziges Eingabefeld**: "Jaehrlicher Betrag (lt. Bescheid)"
-- Das Feld schreibt direkt in `grundsteuerAnteil` (da dieser Wert in der Saldo-Berechnung verwendet wird)
-- `grundsteuerTotal` wird auf denselben Wert gesetzt (fuer Konsistenz in der DB)
-- Label "Verteilerschluessel" und "MEA" entfallen komplett
-- Hinweistext: "Der Grundsteuerbescheid wird pro Einheit ausgestellt. Der Betrag wird direkt uebernommen."
+### 2. CTA-Widget entfernen
 
-**Berechnung (Zeile 93):** Bleibt unveraendert — `totalCostsTenant = sumApportionable + grundsteuerAnteil` ist korrekt, da `grundsteuerAnteil` jetzt der volle Bescheid-Betrag ist.
+Das "Objekt hinzufuegen"-Widget (Plus-Button, Zeilen 96-113) wird komplett entfernt. Neue Vermietereinheiten koennen hier nicht angelegt werden — das geschieht ausschliesslich im Portfolio-Tab.
 
-### Datei 2: `src/hooks/useNKAbrechnung.ts`
+### 3. Demo-Widget sicherstellen
 
-**`saveGrundsteuer` anpassen (Zeilen 263-317):**
-- Beim Speichern: `amount_total_house` und `amount_unit` erhalten denselben Wert (kein Splitting mehr)
-- `key_type` von `'mea'` auf `'direct'` aendern (bei Neuanlage)
+Die bestehende Logik zeigt bereits die Demo-Immobilien aus `useVerwaltungData`. Das Demo-Widget bleibt als einziger Inhalt bestehen, wenn nur Demo-Daten vorhanden sind.
 
-### Datei 3: `src/engines/nkAbrechnung/pdfExport.ts`
+### 4. Empty-State anpassen
 
-- Pruefen ob die Grundsteuer-Zeile im PDF korrekt als Direktbetrag ohne Schluessel erscheint (sollte bereits passen, da `grundsteuerAnteil` verwendet wird)
+Der Leerstand-Hinweis (Zeilen 117-129) bleibt erhalten, aber der Text wird angepasst: Verweis auf Portfolio zum Anlegen von Vermietereinheiten.
 
-| Datei | Aktion | Beschreibung |
-|-------|--------|-------------|
-| `src/components/portfolio/NKAbrechnungTab.tsx` | EDIT | 3 Felder durch 1 Direktbetrag-Feld ersetzen, MEA-Anzeige entfernen |
-| `src/hooks/useNKAbrechnung.ts` | EDIT | key_type auf 'direct', amount_total = amount_unit |
