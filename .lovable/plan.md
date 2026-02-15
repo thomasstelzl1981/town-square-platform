@@ -1,47 +1,68 @@
 
-# Kaufy Website: Investment-Suche Eingabemaske reparieren
+# Recherche-Modul: UX-Redesign und Bereinigung
 
-## Problem
+## Analyse der Probleme (Screenshots)
 
-Die Suchleiste auf der Kaufy-Homepage ist optisch zerstoert. Die Eingabefelder (Einkommen, Eigenkapital) haben keine sichtbaren Containergrenzen, Labels und Werte laufen ineinander, und die Karten-Struktur ist nicht erkennbar. Die Ursache liegt in einem Konflikt zwischen der CSS-Klasse `.kaufy2026-search-card` (die `position: absolute` setzt) und den Inline-Styles, die das ueberschreiben sollen.
+### 1. Widget-Grid: Ungleiche Groessen und kein Loeschen
+- Das Demo-Widget ist deutlich groesser (mehr Inhalt) als die leeren "Neuer Recherch..."-Kacheln
+- Die leeren Entwuerfe haben abgeschnittene Titel ("Neuer Recherch...")
+- Es gibt keine Moeglichkeit, angelegte Entwuerfe zu loeschen
+- Die Widgets haben unterschiedliche Inhaltshoehen, was das Grid unruhig macht
 
-Konkret:
-- Die CSS-Klasse setzt `position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%)` — obwohl diese als "Legacy" kommentiert ist
-- Die Inline-Styles im JSX ueberschreiben `position`, `bottom`, `left` und `transform`, aber die CSS-Klasse behaelt andere Eigenschaften bei (border-radius, padding, box-shadow)
-- Die `.kaufy2026-inline-input` Container (weisse Box mit Label + Input + Waehrungszeichen) rendern optisch nicht korrekt — die Felder wirken "nackt" ohne sichtbare Begrenzung
-- Spinner-Pfeile bei Number-Inputs sind sichtbar (obwohl CSS sie verstecken sollte)
+### 2. Provider-Kacheln verraten Geschaeftsgeheimnisse
+- Section "3. Provider und Quellen" zeigt explizit "Firecrawl", "Epify", "Apollo"
+- Das sind interne Datenquellen — muessen komplett entfernt werden
+
+### 3. max_results Default ist 37 statt 25
+- Das Demo zeigt "37 / 50" und "37 Treffer" — muss auf 25 geaendert werden
+- Der Default fuer neue Auftraege muss ebenfalls 25 sein
+
+### 4. Scrollbare Bereiche in der Fortschrittsanzeige
+- `ResearchLiveProgress.tsx` Zeile 176: `max-h-[300px] overflow-y-auto` — das widerspricht dem CI
+- Alles muss nach unten wachsen, keine internen Scroll-Container
+
+### 5. Flow "Ins Kontaktbuch" nicht klar genug
+- Der Hinweis ist nur ein kleines Info-Banner — muss prominenter werden
 
 ## Loesung
 
-### Schritt 1: CSS bereinigen — Legacy-Position entfernen
+### Aenderung 1: Provider-Section komplett entfernen
+In `ResearchOrderInlineFlow.tsx` die gesamte Section 3 ("Provider und Quellen") entfernen. Die Provider-Logik (Firecrawl etc.) bleibt intern im Backend, wird aber im UI nicht mehr angezeigt. Die Section-Nummerierung rueckt auf: 1. Auftrag, 2. Trefferlimit, 3. KI-Assistent, 4. Consent, 5. Ergebnisse.
 
-In `src/styles/zone3-theme.css` die `.kaufy2026-search-card` Klasse von `position: absolute` auf `position: relative` aendern und die Legacy-Positionierung entfernen. Die Klasse wird dann rein fuer das visuelle Styling (Hintergrund, Schatten, Abrundung, Padding) verwendet.
+### Aenderung 2: Provider-Status in Live-Progress neutralisieren
+In `ResearchLiveProgress.tsx` die Provider-Zeilen (Firecrawl, Enrichment, KI-Scoring) durch neutrale Labels ersetzen:
+- "Web-Analyse" statt "Firecrawl"
+- "Datenanreicherung" statt "Enrichment"  
+- "Qualitaetsbewertung" statt "KI-Scoring"
 
-### Schritt 2: Inline-Style Overrides entfernen
+Ebenso in `ResearchDemoSimulation.tsx` und `ResearchOrderInlineFlow.tsx` (RunningProgress).
 
-In `Kaufy2026SearchBar.tsx` (Zeile 76) die Inline-Styles `position: 'relative', bottom: 'auto', left: 'auto', transform: 'none'` entfernen, da die CSS-Klasse diese nicht mehr benoetigt. Nur `width: '100%'` und `background` bleiben.
+### Aenderung 3: Scrollbare Bereiche entfernen
+In `ResearchLiveProgress.tsx` Zeile 176: `max-h-[300px] overflow-y-auto` entfernen. Der Kontakt-Feed waechst einfach nach unten ohne Limit.
 
-### Schritt 3: Input-Container Styling sicherstellen
+### Aenderung 4: Demo auf 25 Treffer limitieren
+- `ResearchDemoSimulation.tsx`: `MAX_CONTACTS` von 37 auf 25 aendern
+- `ResearchTab.tsx`: Demo-Widget zeigt "25 / 25" statt "37 / 50"
+- `useResearchOrders.ts` / `ResearchOrderInlineFlow.tsx`: Default `max_results` bleibt 25 (ist schon so)
+- Select-Options: "50" und "100" entfernen, nur "10" und "25" anbieten
 
-Die `.kaufy2026-inline-input` CSS-Klasse pruefen und sicherstellen, dass:
-- Weisser Hintergrund sichtbar ist (`background: #ffffff`)
-- Abgerundete Ecken (`border-radius: 8px`)
-- Padding korrekt (`8px 12px`)
-- Input-Spinner ausgeblendet werden (via `-moz-appearance: textfield` ergaenzen)
+### Aenderung 5: Widget-Kacheln homogenisieren + Loeschfunktion
+- `ResearchOrderWidget.tsx`: Alle Widgets bekommen exakt die gleiche Struktur (Titel, Status-Badge, Intent-Text, Treffer-Zeile). Leere Entwuerfe zeigen "Noch nicht konfiguriert" statt "Kein Suchintent definiert". Provider-Icons (Globe, Database, Search) entfernen.
+- Loeschfunktion: Ein kleines Trash-Icon (X oder Trash2) in der oberen rechten Ecke jedes Nicht-Demo-Widgets. Klick oeffnet eine Bestaetigung und loescht den Auftrag via `useDeleteResearchOrder`.
 
-### Schritt 4: MOD-08 und MOD-09 Vergleich
+### Aenderung 6: Neuen Hook `useDeleteResearchOrder` hinzufuegen
+In `useResearchOrders.ts` einen Delete-Mutation-Hook ergaenzen, der `research_orders` per ID loescht.
 
-Die Portal-Suchformulare (MOD-08 SucheTab, MOD-09 BeratungTab) verwenden korrekt die Shadcn `Card`, `Input`, `Label` und `Select` Komponenten. Diese sind nicht betroffen — der Fehler liegt ausschliesslich in der Zone 3 Kaufy SearchBar.
+### Aenderung 7: "Ins Kontaktbuch" prominenter gestalten
+In `ResearchOrderInlineFlow.tsx` Section 5 (Ergebnisse): Das Info-Banner wird zu einem ausfuellenden CTA-Banner mit grossem Button "Kontakte ins Kontaktbuch uebernehmen" und einem sekundaeren "Excel-Export" Button — aehnlich einem Abschluss-Banner.
 
 ## Betroffene Dateien
 
 | Datei | Aenderung |
 |-------|-----------|
-| `src/styles/zone3-theme.css` | `.kaufy2026-search-card`: absolute -> relative, Legacy-Positionierung entfernen, Mobile-Media-Query anpassen |
-| `src/components/zone3/kaufy2026/Kaufy2026SearchBar.tsx` | Inline-Style-Overrides bereinigen, nur visuell relevante Styles behalten |
-
-## Nicht betroffen
-
-- MOD-08 SucheTab (verwendet Shadcn Card + Input — funktioniert korrekt)
-- MOD-09 BeratungTab/KatalogTab (verwendet PartnerSearchForm — funktioniert korrekt)
-- MOD-04 Verwaltung (separate Pruefung bei naechstem Login-Test)
+| `ResearchOrderInlineFlow.tsx` | Section 3 (Provider) komplett entfernen, Nummerierung anpassen, CTA-Banner fuer Kontaktbuch, Provider-Labels in RunningProgress neutralisieren |
+| `ResearchLiveProgress.tsx` | `overflow-y-auto` + `max-h` entfernen, Provider-Labels neutralisieren |
+| `ResearchDemoSimulation.tsx` | MAX_CONTACTS 37→25, Provider-Labels neutralisieren |
+| `ResearchOrderWidget.tsx` | Provider-Icons entfernen, Loeschbutton hinzufuegen, homogenes Layout |
+| `ResearchTab.tsx` | Demo-Widget: "25/25" statt "37/50", Select-Options begrenzen |
+| `useResearchOrders.ts` | `useDeleteResearchOrder` Hook hinzufuegen |
