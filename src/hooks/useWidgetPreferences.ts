@@ -124,7 +124,20 @@ export function useWidgetPreferences() {
       
       return merged.sort((a, b) => a.sort_order - b.sort_order);
     }
-    return localPreferences;
+    // Merge missing widgets into localStorage preferences
+    const existingLocalCodes = new Set(localPreferences.map(p => p.widget_code));
+    const merged = [...localPreferences];
+    SYSTEM_WIDGETS.forEach((widget, index) => {
+      if (!existingLocalCodes.has(widget.code)) {
+        merged.push({
+          widget_code: widget.code,
+          enabled: widget.default_enabled,
+          sort_order: merged.length + index,
+          config_json: {},
+        });
+      }
+    });
+    return merged.sort((a, b) => a.sort_order - b.sort_order);
   }, [user, dbPreferences, localPreferences]);
 
   // Get only enabled widget codes in order
@@ -156,25 +169,26 @@ export function useWidgetPreferences() {
       return { code, enabled };
     },
     onMutate: async ({ code, enabled }) => {
-      // Optimistic update
       if (user) {
         await queryClient.cancelQueries({ queryKey: ['widget-preferences', user.id] });
+        const prev = queryClient.getQueryData<WidgetPreference[]>(['widget-preferences', user.id]);
+        queryClient.setQueryData<WidgetPreference[]>(['widget-preferences', user.id], (old) =>
+          old?.map(p => p.widget_code === code ? { ...p, enabled } : p)
+        );
+        return { previousPrefs: prev };
       }
       
       const newPrefs = preferences.map(p =>
         p.widget_code === code ? { ...p, enabled } : p
       );
-      
-      if (!user) {
-        setLocalPreferences(newPrefs);
-        saveToStorage(newPrefs);
-      }
-      
+      setLocalPreferences(newPrefs);
+      saveToStorage(newPrefs);
       return { previousPrefs: preferences };
     },
     onError: (err, variables, context) => {
-      // Rollback
-      if (!user && context?.previousPrefs) {
+      if (user && context?.previousPrefs) {
+        queryClient.setQueryData(['widget-preferences', user.id], context.previousPrefs);
+      } else if (!user && context?.previousPrefs) {
         setLocalPreferences(context.previousPrefs);
         saveToStorage(context.previousPrefs);
       }
@@ -213,22 +227,27 @@ export function useWidgetPreferences() {
     onMutate: async (newOrder) => {
       if (user) {
         await queryClient.cancelQueries({ queryKey: ['widget-preferences', user.id] });
+        const prev = queryClient.getQueryData<WidgetPreference[]>(['widget-preferences', user.id]);
+        const newPrefs = newOrder.map((code, index) => ({
+          ...preferences.find(p => p.widget_code === code)!,
+          sort_order: index,
+        }));
+        queryClient.setQueryData<WidgetPreference[]>(['widget-preferences', user.id], newPrefs);
+        return { previousPrefs: prev };
       }
       
       const newPrefs = newOrder.map((code, index) => ({
         ...preferences.find(p => p.widget_code === code)!,
         sort_order: index,
       }));
-      
-      if (!user) {
-        setLocalPreferences(newPrefs);
-        saveToStorage(newPrefs);
-      }
-      
+      setLocalPreferences(newPrefs);
+      saveToStorage(newPrefs);
       return { previousPrefs: preferences };
     },
     onError: (err, variables, context) => {
-      if (!user && context?.previousPrefs) {
+      if (user && context?.previousPrefs) {
+        queryClient.setQueryData(['widget-preferences', user.id], context.previousPrefs);
+      } else if (!user && context?.previousPrefs) {
         setLocalPreferences(context.previousPrefs);
         saveToStorage(context.previousPrefs);
       }
