@@ -96,6 +96,9 @@ export const TOP_30_MVP_ACTION_CODES = [
   'ARM.MOD13.CREATE_DEV_PROJECT',
   'ARM.MOD13.EXPLAIN_MODULE',
   
+  // Pack K: Communication Pro / Recherche (1)
+  'ARM.MOD14.CREATE_RESEARCH_ORDER',
+  
   // Pack J: Landing Page (1) — module-specific
   'ARM.LP.GENERATE_LANDING_PAGE',
 ] as const;
@@ -548,6 +551,28 @@ export const armstrongActions: ArmstrongActionV2[] = [
     api_contract: { type: 'internal', endpoint: null },
     ui_entrypoints: ['/portal/communication-pro/recherche'],
     audit_event_type: 'ARM_DEDUPE_SUGGEST',
+    status: 'active',
+  },
+  {
+    action_code: 'ARM.MOD14.CREATE_RESEARCH_ORDER',
+    title_de: 'Rechercheauftrag erstellen und ausführen',
+    description_de: 'Erstellt einen neuen Rechercheauftrag, führt die Kontaktsuche durch und liefert qualifizierte Ergebnisse mit Kontaktbuch-Abgleich',
+    zones: ['Z2'],
+    module: 'MOD-14',
+    risk_level: 'medium',
+    execution_mode: 'execute_with_confirmation',
+    requires_consent_code: null,
+    roles_allowed: [],
+    data_scopes_read: ['contacts'],
+    data_scopes_write: ['research_orders', 'research_results', 'credit_ledger', 'widgets'],
+    side_effects: ['credits_consumed', 'external_api_call', 'creates_widget'],
+    version: '1.0.0',
+    cost_model: 'metered',
+    cost_unit: 'per_call',
+    cost_hint_cents: 50,
+    api_contract: { type: 'edge_function', endpoint: 'sot-research-run-order' },
+    ui_entrypoints: ['/portal/communication-pro/recherche'],
+    audit_event_type: 'ARM_CREATE_RESEARCH_ORDER',
     status: 'active',
   },
 

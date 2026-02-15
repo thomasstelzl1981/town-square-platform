@@ -67,7 +67,7 @@ export function ResearchTab() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
+    <div className="max-w-5xl mx-auto space-y-6 pb-40">
       <ModulePageHeader
         title="Recherche"
         description="Asynchrone Lead-Engine — Rechercheaufträge anlegen, durchführen und Kontakte übernehmen."
