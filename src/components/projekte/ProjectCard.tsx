@@ -65,7 +65,7 @@ export function ProjectCard({ project, isSelected, isDemo, onClick }: ProjectCar
     <Card
       className={cn(
         'glass-card shadow-card cursor-pointer transition-all hover:shadow-elevated hover:scale-[1.02] group flex flex-col',
-        !isDemo && 'aspect-square',
+        'aspect-square',
         isSelected && 'ring-2 ring-primary shadow-glow',
         isDemo && DESIGN.DEMO_WIDGET.CARD,
         isDemo && DESIGN.DEMO_WIDGET.HOVER,
