@@ -1,6 +1,7 @@
 /**
  * MOD-18 Finanzen — Tab 2: INVESTMENT
  * Person-widget header + state machine: none → Onboarding Wizard, active → Demo Portfolio
+ * v2 — per-person depot state
  */
 import { useState, useMemo } from 'react';
 import { PageShell } from '@/components/shared/PageShell';
