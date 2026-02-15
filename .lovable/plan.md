@@ -1,112 +1,94 @@
 
+# Ueberarbeitung aller 4 Praesentationen — ausfuehrlich und conversion-orientiert
 
-# Fullscreen Slide Presentation Viewer
+## Ueberblick
 
-## Ziel
+Alle 4 Slide-Sets werden komplett neu geschrieben. Statt der bisherigen 4-5 Slides pro Praesentation erhalten wir 6-8 Slides mit klarer Dramaturgie, verstaendlichen Grafiken und Plattformbezug. Das CI (dunkler Hintergrund, Primary-Glow, grosse Typografie) bleibt unveraendert.
 
-Beim Klick auf die Media-Widgets in MOD-08 (Suche) und MOD-09 (Beratung) oeffnet sich ein rahmenloses Fullscreen-Overlay mit einer Slideshow. Jedes der 4 Widgets startet seine eigene Praesentation mit vordefinierten Slides im CI-Design.
+Wichtige Regeln:
+- Jede Slide hat nur eine Kernaussage
+- Maximal 3 Bulletpoints pro Slide
+- Grafik erklaert die Aussage (keine Stockbilder)
+- Keine Renditeversprechen
+- Conversion immer ueber "Simulation starten"
+- Plattform-Features (Investment Engine, Marktplatz, DMS, MSV) visuell integriert
 
-## Architektur
+---
 
-```text
-MediaWidget (Klick)
-      |
-      v
-SlideshowViewer (Fullscreen-Overlay)
-      |
-      +-- Slide 1..N (1920x1080 skaliert)
-      |
-      +-- Navigation (Pfeiltasten / Klick / Swipe)
-      |
-      +-- ESC / X zum Schliessen
-```
+## Praesentation 1: Verkaufspraesentation (8 Slides, bisher 5)
 
-## Slide-Rendering (1920x1080 Skalierung)
+| # | Titel | Inhalt / Grafik |
+|---|-------|-----------------|
+| 1 | Hero: "Sachwert schlaegt Geldwert." | Subtitel: "Vermoegensaufbau mit System." Minimalistisch, Gebaeude-Silhouette als dezente SVG-Kontur, grosse Headline, visuelle Ruhe |
+| 2 | Das eigentliche Problem | "Warum klassische Geldanlage limitiert ist" — Links: Eimer-Grafik "Nettoeinkommen" mit kleinem Pfeil "Sparrate". Rechts: Flache Wachstumslinie. Zwei Bulletpoints: Sparfaehigkeit begrenzt / Wachstum haengt am eigenen Netto |
+| 3 | Das Immobilien-Prinzip | "Bei Immobilien zahlen andere mit" — Zentraler Kreis "Investment" mit drei eingehenden Pfeilen: Miete, Steuer, Fremdkapital. Erklaerung: Investment lebt nicht nur vom Eigenkapital |
+| 4 | Die Investment Engine | "Erst rechnen. Dann investieren." — 4 horizontale Schritte mit Icons (Wallet, Calculator, BarChart, CheckCircle): EK eingeben, Einkommen pruefen, Simulation starten, Investitionsrahmen sehen |
+| 5 | Zwei Wege zur Umsetzung | Split-Screen: Links "Marktplatz" (Objekt waehlen, Finanzierung anfragen), Rechts "Akquisemandat" (Individuelle Suche, AkquiseManager). Zwei parallele Pfad-Grafiken |
+| 6 | Finanzierungsbegleitung | "Professionelle Struktur statt Alleingang" — Flow: Investment Engine → Finanzierungsmanager → Bank. Drei Bullets: Digitale Unterlagen, Transparenter Status, Strukturierter Ablauf |
+| 7 | Sicherheit durch Struktur | "Risiko entsteht durch Unordnung — nicht durch Immobilie" — Visueller Vergleich: Chaos-Dokumente (links, rot/gedimmt) vs. saubere DMS-Ordnerstruktur (rechts, gruen/primary) |
+| 8 | CTA | "Starten Sie Ihre Simulation" — Subtitel: "In wenigen Minuten zum Investitionsrahmen." Grosser Button "Simulation starten" |
 
-Alle Slides werden intern bei 1920x1080px gerendert und per CSS-Transform auf die aktuelle Viewport-Groesse skaliert. Dadurch sehen sie auf jedem Bildschirm identisch aus — wie eine echte Praesentation.
+---
 
-```text
-Container (100vw x 100vh, schwarz)
-  |
-  Slide-Wrapper (1920x1080, zentriert)
-    transform: scale(min(vw/1920, vh/1080))
-    transform-origin: center center
-```
+## Praesentation 2: Rendite erklaert (7 Slides, bisher 4)
 
-## Slide-Inhalte (4 Praesentationen)
+| # | Titel | Inhalt / Grafik |
+|---|-------|-----------------|
+| 1 | Frame aendern | "Rendite ist Vermoegenswirkung" — Grosses Wort "Vermoegensbasis", kleines %-Zeichen daneben (visueller Kontrast) |
+| 2 | Sparplan vs. Immobilie | Split-Visual: Links ein einzelner Balken "Eigenleistung". Rechts gestapelter Balken: Eigenkapital + Fremdkapital + Mietstrom |
+| 3 | Hebel-Effekt | Kleiner Block "EK" traegt grossen Block "Objektwert" — Hebelmechanik-Visual. Keine konkreten Zahlen |
+| 4 | Zeitfaktor | Zwei Linien ueber Zeitachse (ohne Zahlen): Sparplan flach, Immobilie steiler. Rein visuell, keine Prozente |
+| 5 | Plattformbezug: Simulation | "Simulation statt Bauchgefuehl" — Mock der Investment Engine UI. Drei Bullets: Szenarien vergleichen, Varianten berechnen, Belastung pruefen |
+| 6 | Stabilitaet durch Puffer | Grafik: Rate mit Sicherheitszone drumherum. Erklaerung: Puffer ist Teil der Berechnung |
+| 7 | CTA | "Berechnen Sie Ihren Rahmen" — Button "Simulation starten" |
 
-### Praesentation 1: Verkaufspraesentation (5 Slides)
-1. Titelfolie: "System of a Town — Investment-Strategie" mit Logo und Untertitel
-2. Das Problem: Warum klassische Geldanlage nicht reicht (3 Pain Points)
-3. Die Loesung: Investment Engine — EK + zVE = optimiertes Ergebnis
-4. So funktioniert's: 3-Schritte-Flow (Eingabe, Simulation, Beratung)
-5. CTA: "Starten Sie jetzt Ihre Simulation"
+---
 
-### Praesentation 2: Rendite erklaert (4 Slides)
-1. Titelfolie: "Rendite mit Immobilien"
-2. Vergleich: Tagesgeld vs. Immobilie (Balkendiagramm-Darstellung)
-3. Hebel-Effekt: Fremdkapital als Rendite-Turbo
-4. Zusammenfassung mit Beispielrechnung
+## Praesentation 3: Steuervorteil (6 Slides, bisher 4)
 
-### Praesentation 3: Steuervorteil (4 Slides)
-1. Titelfolie: "Steueroptimierung mit Immobilien"
-2. AfA und Werbungskosten erklaert
-3. Vorher/Nachher: Steuerlast mit und ohne Immobilie
-4. CTA: "Berechnen Sie Ihren persoenlichen Vorteil"
+| # | Titel | Inhalt / Grafik |
+|---|-------|-----------------|
+| 1 | Systemlogik | "Immobilien folgen wirtschaftlichen Regeln" — Zahnrad-System mit Immobilie im Zentrum |
+| 2 | Relevante Faktoren | 3 Kacheln nebeneinander: AfA, Zinsen, Bewirtschaftung — jeweils mit minimalem Icon und Einzeiler |
+| 3 | Liquiditaetswirkung | Netto-Balken mit Steueranteil: Mit Immobilie ist der Steueranteil kleiner. Nicht als "Steuer sparen" formuliert, sondern als "Liquiditaetswirkung" |
+| 4 | Plattformbezug | "Steuerwirkung simulieren" — Mock: Investment Engine mit zVE-Eingabefeld. Bullets: Einkommensdaten fliessen ein, Szenarien sichtbar |
+| 5 | Transparenz | "Dokumente sauber strukturiert" — DMS-Ordnerstruktur-Grafik mit Ordner-Icons |
+| 6 | CTA | "Persoenlichen Vorteil berechnen" — Button "Simulation starten", Disclaimer klein unten |
 
-### Praesentation 4: Verwaltung / Software (4 Slides)
-1. Titelfolie: "Ihre Immobilien — digital verwaltet"
-2. Feature-Ueberblick: Portfolio, DMS, Mieter, Buchhaltung
-3. Screenshot-Mockup: Dashboard-Ansicht
-4. CTA: "Jetzt kostenlos testen"
+---
 
-## Slide-Design (CI-konform)
+## Praesentation 4: Verwaltung / Software (7 Slides, bisher 4)
 
-Jede Slide nutzt das SoT-CI:
-- Dunkler Hintergrund (bg-background/bg-surface-2) mit Primary-Akzenten
-- Grosse Typografie (text-4xl bis text-7xl im 1920x1080 Raum)
-- Primary-Glow-Elemente und Gradient-Akzente
-- Minimalistische Icons aus Lucide
-- Kein Branding-Ueberfluss, Clean-Look
+| # | Titel | Inhalt / Grafik |
+|---|-------|-----------------|
+| 1 | Wahrheit | "Kaufen ist einfach. Verwalten entscheidet." — Links: Haus-Icon. Rechts: Checkliste mit Haekchen |
+| 2 | Portfolio-Uebersicht | Mock: Portfolio-Dashboard mit 4 KPI-Kacheln (Einheiten, Verkehrswert, Restschuld, Nettovermoegen) und 3 Widget-Platzhaltern |
+| 3 | Mietsonderverwaltung | "Digitale Mietsonderverwaltung" — Grafik: Mietstatus-Anzeige mit Zahlungseingangs-Indikator. 3 Bullets: Mieteingang, Mahnwesen, Dokumente |
+| 4 | Dokumentenmanagement | DMS mit Ordnerstruktur-Grafik. 2 Bullets: Automatische Zuordnung, Datenraum |
+| 5 | Finanzierung im Blick | Grafik: 3 nebeneinander liegende Karten — Darlehen, Restschuld, Rate |
+| 6 | KI-Unterstuetzung | Statusindikatoren und automatische Erinnerungen — Icon-Grid mit Notification-Bell, Calendar, Check, Bot |
+| 7 | CTA | "Professionell investieren. Professionell verwalten." — Button "Kostenlos testen" |
 
-## Fullscreen-Viewer Features
-
-- **Oeffnung**: Overlay ueber dem Portal (fixed inset-0, z-50, schwarzer Hintergrund)
-- **Navigation**: Links/Rechts-Pfeile am Rand, Tastatur (Pfeiltasten, Space, ESC)
-- **Slide-Indikator**: Kleine Dots am unteren Rand (aktueller Slide hervorgehoben)
-- **Schliessen**: ESC-Taste oder X-Button oben rechts
-- **Keine Browser-Fullscreen-API**: Das Overlay selbst ist der "Fullscreen" — kein requestFullscreen(), da das im iframe-Kontext problematisch ist
+---
 
 ## Technische Umsetzung
-
-### Neue Dateien
-
-| Datei | Beschreibung |
-|-------|-------------|
-| `src/components/shared/slideshow/SlideshowViewer.tsx` | Fullscreen-Overlay mit Navigation, Skalierung, Keyboard-Events |
-| `src/components/shared/slideshow/ScaledSlide.tsx` | 1920x1080 Wrapper mit auto-scale |
-| `src/components/shared/slideshow/slides/VerkaufspraesSlides.tsx` | 5 Slides fuer Verkaufspraesentation |
-| `src/components/shared/slideshow/slides/RenditeSlides.tsx` | 4 Slides fuer Rendite-Erklaerung |
-| `src/components/shared/slideshow/slides/SteuervorteilSlides.tsx` | 4 Slides fuer Steuervorteil |
-| `src/components/shared/slideshow/slides/VerwaltungSlides.tsx` | 4 Slides fuer Software/Verwaltung |
-| `src/components/shared/slideshow/slideData.ts` | Mapping: Widget-Type zu Slide-Set |
 
 ### Geaenderte Dateien
 
 | Datei | Aenderung |
 |-------|-----------|
-| `src/components/shared/MediaWidgetGrid.tsx` | State fuer aktive Praesentation, SlideshowViewer einbinden |
-| `src/components/shared/MediaWidget.tsx` | Keine Aenderung noetig (onClick wird bereits durchgereicht) |
+| `src/components/shared/slideshow/slides/VerkaufspraesSlides.tsx` | Komplett neu: 8 Slides statt 5, neue Grafiken und Dramaturgie |
+| `src/components/shared/slideshow/slides/RenditeSlides.tsx` | Komplett neu: 7 Slides statt 4, keine Renditeversprechen, rein visuelle Darstellung |
+| `src/components/shared/slideshow/slides/SteuervorteilSlides.tsx` | Komplett neu: 6 Slides statt 4, Zahnrad-System, Liquiditaetswirkung statt "Steuer sparen" |
+| `src/components/shared/slideshow/slides/VerwaltungSlides.tsx` | Komplett neu: 7 Slides statt 4, MSV, DMS, KI-Features |
+| `src/components/shared/slideshow/slideData.ts` | Aktualisierte Imports fuer alle neuen Slide-Exports (8+7+6+7 = 28 Slides total) |
 
-### Ablauf
+### Design-Prinzipien (unveraendert)
 
-1. User klickt auf ein MediaWidget (z.B. "Verkaufspraesentation")
-2. `MediaWidgetGrid` setzt `activePresentation = 'verkaufspraesentation'`
-3. `SlideshowViewer` oeffnet sich als fixed Overlay mit den zugehoerigen Slides
-4. User navigiert mit Pfeiltasten oder Klick
-5. ESC oder X schliesst den Viewer, `activePresentation = null`
+- Hintergrund: `bg-[hsl(222,47%,6%)]` (SoT Dark)
+- Akzentfarben: Primary Blue `hsl(217,91%,60%)`, Green `hsl(142,71%,45%)`, Amber `hsl(38,92%,50%)`, Cyan `hsl(199,89%,48%)`
+- Typografie: 80px Hero, 56px Section-Titel, 28px Body, 20px Beschreibung
+- Grafiken: Reine CSS/SVG-Elemente und Lucide-Icons, keine externen Bilder
+- Alle Slides bei 1920x1080px, auto-skaliert via ScaledSlide
 
-## Keine DB-Migration noetig
-
-Alle Slide-Inhalte sind fest im Code hinterlegt. Keine Datenbank-Aenderungen erforderlich.
-
+### Keine DB-Migration noetig
