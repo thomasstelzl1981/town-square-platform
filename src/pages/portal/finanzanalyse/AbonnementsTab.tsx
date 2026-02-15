@@ -20,6 +20,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Plus, Receipt } from 'lucide-react';
+import { DesktopOnly } from '@/components/shared/DesktopOnly';
 
 const CATEGORY_ENUM = [
   { value: 'streaming_video', label: 'Streaming (Video)' },
@@ -227,23 +228,24 @@ export default function AbonnementsTab() {
           );
         })}
 
-        {!showNew && (
-          <div
-            className={RECORD_CARD.CLOSED + ' border-dashed border-primary/30 flex items-center justify-center'}
-            onClick={() => { setShowNew(true); setOpenCardId(null); }}
-            role="button"
-            tabIndex={0}
-          >
-            <div className="flex flex-col items-center gap-2 text-muted-foreground">
-              <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-                <Plus className="h-6 w-6 text-primary" />
+        <DesktopOnly>
+          {!showNew && (
+            <div
+              className={RECORD_CARD.CLOSED + ' border-dashed border-primary/30 flex items-center justify-center'}
+              onClick={() => { setShowNew(true); setOpenCardId(null); }}
+              role="button"
+              tabIndex={0}
+            >
+              <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
+                  <Plus className="h-6 w-6 text-primary" />
+                </div>
+                <p className="text-sm font-medium">Abonnement hinzufügen</p>
               </div>
-              <p className="text-sm font-medium">Abonnement hinzufügen</p>
             </div>
-          </div>
-        )}
+          )}
 
-        {showNew && (
+          {showNew && (
           <div className={RECORD_CARD.OPEN}>
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-lg font-semibold">Neues Abonnement</h2>
@@ -274,6 +276,7 @@ export default function AbonnementsTab() {
             </div>
           </div>
         )}
+        </DesktopOnly>
       </div>
     </PageShell>
   );

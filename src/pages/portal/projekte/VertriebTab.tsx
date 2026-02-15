@@ -23,6 +23,7 @@ import { SalesApprovalSection } from '@/components/projekte/SalesApprovalSection
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { isDemoMode, isDemoProject, DEMO_PROJECT, DEMO_PROJECT_ID, DEMO_PROJECT_DESCRIPTION } from '@/components/projekte/demoProjectData';
+import { DesktopOnly } from '@/components/shared/DesktopOnly';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 
@@ -98,7 +99,9 @@ export default function VertriebTab() {
               </SelectContent>
             </Select>
             {projects.length > 0 && (
-              <Button onClick={() => setShowCreateDialog(true)}><Plus className="mr-2 h-4 w-4" />Neue Reservierung</Button>
+              <DesktopOnly>
+                <Button onClick={() => setShowCreateDialog(true)}><Plus className="mr-2 h-4 w-4" />Neue Reservierung</Button>
+              </DesktopOnly>
             )}
           </div>
         }

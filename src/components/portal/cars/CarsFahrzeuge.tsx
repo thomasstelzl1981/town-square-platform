@@ -27,6 +27,7 @@ import { cn } from '@/lib/utils';
 import { getActiveWidgetGlow } from '@/config/designManifest';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
+import { DesktopOnly } from '@/components/shared/DesktopOnly';
 import { WidgetGrid } from '@/components/shared/WidgetGrid';
 import { WidgetCell } from '@/components/shared/WidgetCell';
 import { useDemoToggles } from '@/hooks/useDemoToggles';
@@ -243,9 +244,11 @@ export default function CarsFahrzeuge() {
         title="Fahrzeuge"
         description="Autos & Motorräder verwalten — Klicken Sie auf ein Fahrzeug für die vollständige Akte"
         actions={
-          <Button onClick={handleCreateInline}>
-            <Plus className="h-4 w-4 mr-2" /> Fahrzeug hinzufügen
-          </Button>
+          <DesktopOnly>
+            <Button onClick={handleCreateInline}>
+              <Plus className="h-4 w-4 mr-2" /> Fahrzeug hinzufügen
+            </Button>
+          </DesktopOnly>
         }
       />
 
@@ -307,7 +310,7 @@ export default function CarsFahrzeuge() {
         })}
       </WidgetGrid>
 
-      {/* Inline Neuanlage */}
+      {/* Inline Neuanlage — Desktop only */}
       {isCreatingNew && (
         <Card className="glass-card border-primary/20 animate-in slide-in-from-top-2 duration-300">
           <CardContent className="p-6 space-y-6">

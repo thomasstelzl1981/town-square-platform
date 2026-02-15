@@ -40,6 +40,7 @@ import { ExcelImportDialog } from '@/components/portfolio/ExcelImportDialog';
 import { CreatePropertyDialog } from '@/components/portfolio/CreatePropertyDialog';
 import { PortfolioSummaryModal } from '@/components/portfolio/PortfolioSummaryModal';
 import { CreateContextDialog } from '@/components/shared/CreateContextDialog';
+import { DesktopOnly } from '@/components/shared/DesktopOnly';
 
 interface LandlordContext {
   id: string;
@@ -826,25 +827,26 @@ export function PortfolioTab() {
               );
             })}
 
-            {/* Widget 3: Neue Vermietereinheit anlegen (CTA) */}
-            <WidgetCell>
-              <button
-                onClick={() => setShowCreateContextDialog(true)}
-                className={cn(
-                  "w-full h-full flex flex-col items-center justify-center gap-4 p-5 rounded-xl border border-dashed text-center transition-all",
-                  DESIGN.CARD.BASE,
-                  "hover:border-primary/50 hover:shadow-md"
-                )}
-              >
-                <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                  <Plus className="h-6 w-6 text-primary" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-semibold">Neue Vermietereinheit</h3>
-                  <p className={cn(DESIGN.TYPOGRAPHY.LABEL, 'mt-1')}>anlegen</p>
-                </div>
-              </button>
-            </WidgetCell>
+            <DesktopOnly>
+              <WidgetCell>
+                <button
+                  onClick={() => setShowCreateContextDialog(true)}
+                  className={cn(
+                    "w-full h-full flex flex-col items-center justify-center gap-4 p-5 rounded-xl border border-dashed text-center transition-all",
+                    DESIGN.CARD.BASE,
+                    "hover:border-primary/50 hover:shadow-md"
+                  )}
+                >
+                  <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                    <Plus className="h-6 w-6 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold">Neue Vermietereinheit</h3>
+                    <p className={cn(DESIGN.TYPOGRAPHY.LABEL, 'mt-1')}>anlegen</p>
+                  </div>
+                </button>
+              </WidgetCell>
+            </DesktopOnly>
           </WidgetGrid>
         </div>
 
@@ -1102,10 +1104,12 @@ export function PortfolioTab() {
               actionRoute: '/portal/immobilien/neu'
             }}
             headerActions={
-              <Button onClick={() => navigate('/portal/immobilien/neu')}>
-                <Plus className="mr-2 h-4 w-4" />
-                Neu
-              </Button>
+              <DesktopOnly>
+                <Button onClick={() => navigate('/portal/immobilien/neu')}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Neu
+                </Button>
+              </DesktopOnly>
             }
           />
           

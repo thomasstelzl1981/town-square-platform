@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { BookOpen, Plus, Sparkles, Trash2, GripVertical, Loader2, ChevronDown, PenTool } from 'lucide-react';
+import { DesktopOnly } from '@/components/shared/DesktopOnly';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -317,22 +318,24 @@ export function KnowledgePage() {
         )}
       </div>
 
-      {/* Add topic */}
-      {topics.length < 10 && (
-        <div className="flex gap-2">
-          <Input
-            placeholder="Neues Thema, z.B. 'Kapitalanlage Basics'"
-            value={newTopic}
-            onChange={(e) => setNewTopic(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleAddTopic()}
-            className="flex-1"
-          />
-          <Button onClick={handleAddTopic} disabled={!newTopic.trim() || addTopicMutation.isPending} className="gap-1">
-            <Plus className="h-4 w-4" />
-            Hinzufügen
-          </Button>
-        </div>
-      )}
+      {/* Add topic — Desktop only */}
+      <DesktopOnly>
+        {topics.length < 10 && (
+          <div className="flex gap-2">
+            <Input
+              placeholder="Neues Thema, z.B. 'Kapitalanlage Basics'"
+              value={newTopic}
+              onChange={(e) => setNewTopic(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleAddTopic()}
+              className="flex-1"
+            />
+            <Button onClick={handleAddTopic} disabled={!newTopic.trim() || addTopicMutation.isPending} className="gap-1">
+              <Plus className="h-4 w-4" />
+              Hinzufügen
+            </Button>
+          </div>
+        )}
+      </DesktopOnly>
 
       {/* Topic list */}
       {topics.length > 0 ? (

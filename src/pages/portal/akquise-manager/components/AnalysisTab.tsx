@@ -3,6 +3,7 @@
  * V2: Tabs aufgelöst, Side-by-Side-Layout gemäß Konsolidierungsplan
  */
 import * as React from 'react';
+import { DesktopOnly } from '@/components/shared/DesktopOnly';
 import { DESIGN } from '@/config/designManifest';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -97,10 +98,12 @@ export function AnalysisTab({ mandateId, mandateCode }: AnalysisTabProps) {
             Objekte für {mandateCode} analysieren und bewerten
           </p>
         </div>
-        <Button onClick={() => setShowCreateDialog(true)}>
-          <Upload className="h-4 w-4 mr-2" />
-          Objekt hinzufügen
-        </Button>
+        <DesktopOnly>
+          <Button onClick={() => setShowCreateDialog(true)}>
+            <Upload className="h-4 w-4 mr-2" />
+            Objekt hinzufügen
+          </Button>
+        </DesktopOnly>
       </div>
 
       {/* Stats */}
@@ -118,9 +121,11 @@ export function AnalysisTab({ mandateId, mandateCode }: AnalysisTabProps) {
             <Building2 className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
             <h3 className="text-lg font-semibold">Keine Objekte</h3>
             <p className="text-muted-foreground mt-2">Fügen Sie Objekte manuell hinzu oder konvertieren Sie Inbound-E-Mails.</p>
-            <Button className="mt-4" onClick={() => setShowCreateDialog(true)}>
-              <Upload className="h-4 w-4 mr-2" />Erstes Objekt hinzufügen
-            </Button>
+            <DesktopOnly>
+              <Button className="mt-4" onClick={() => setShowCreateDialog(true)}>
+                <Upload className="h-4 w-4 mr-2" />Erstes Objekt hinzufügen
+              </Button>
+            </DesktopOnly>
           </CardContent>
         </Card>
       ) : (

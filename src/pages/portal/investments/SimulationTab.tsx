@@ -3,6 +3,7 @@
  * Portfolio mirroring from MOD-04 + add favorites for combined projection
  */
 import { useState, useMemo, useCallback } from 'react';
+import { DesktopOnly } from '@/components/shared/DesktopOnly';
 import { useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -279,14 +280,15 @@ export default function SimulationTab() {
         </CardContent>
       </Card>
 
-      {/* Add New Object Section */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Plus className="w-5 h-5" />
-            Neues Objekt hinzufügen
-          </CardTitle>
-        </CardHeader>
+      {/* Add New Object Section — Desktop only */}
+      <DesktopOnly>
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Plus className="w-5 h-5" />
+              Neues Objekt hinzufügen
+            </CardTitle>
+          </CardHeader>
         <CardContent className="space-y-4">
           {/* Favorite Selector */}
           <div className="space-y-2">
@@ -371,6 +373,7 @@ export default function SimulationTab() {
           )}
         </CardContent>
       </Card>
+      </DesktopOnly>
 
       {/* Combined Projection */}
       {combinedSummary && combinedProjection.length > 0 && (
