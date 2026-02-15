@@ -9,7 +9,7 @@
  */
 import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { calcAnnuity } from '@/engines/finanzierung/engine';
+import { calcAnnuity, calcHaushaltsrechnung } from '@/engines/finanzierung/engine';
 import { 
   ChevronRight, ChevronLeft, CheckCircle2, 
   User, Building2, Calculator, BarChart3, Home as HomeIcon, 
@@ -121,14 +121,25 @@ export default function FutureRoomBonitat() {
     : null;
   const monthlyRate = annuityCalc?.monthlyRate ?? 0;
 
-  // Household calc
+  // Household calc — delegated to engine
   const netIncome = parseFloat(formData.netIncome) || 0;
   const otherIncome = parseFloat(formData.otherIncome) || 0;
   const currentRent = parseFloat(formData.currentRent) || 0;
   const otherCosts = parseFloat(formData.otherCosts) || 0;
-  const totalIncome = netIncome + otherIncome;
-  const totalExpenses = otherCosts;
-  const availableForRate = totalIncome - totalExpenses;
+
+  const hhResult = calcHaushaltsrechnung({
+    incomes: [
+      { label: 'Nettoeinkommen', amount: netIncome, category: 'salary' },
+      { label: 'Sonstige Einnahmen', amount: otherIncome, category: 'other' },
+    ],
+    expenses: [
+      { label: 'Sonstige Kosten', amount: otherCosts, category: 'other' },
+    ],
+    plannedRate: monthlyRate,
+  });
+  const totalIncome = hhResult.totalIncome;
+  const totalExpenses = hhResult.totalExpenses;
+  const availableForRate = hhResult.surplus;
   const kdfRatio = totalIncome > 0 ? (monthlyRate / totalIncome) * 100 : 0;
 
   // Bonität check
