@@ -1,42 +1,75 @@
 
 
-# PV Live Widget -- Funktional machen
+# Reparaturplan: MOD-13 Demo-Widget zu klein
 
-## Ist-Zustand
+## Fehleranalyse
 
-Das Widget existiert und zeigt Zahlen (Leistung, Energie, Offline-Count) an, hat aber:
-- **Keine Grafik** -- kein visueller Hinweis, dass die Anlage arbeitet
-- **Falscher Link** -- navigiert zu `/portal/photovoltaik/monitoring` (existiert nicht), sollte zu `/portal/photovoltaik/anlagen` gehen
-- **Kein Lebenszeichen** -- nur statische Zahlen, keine Animation oder Kurve
+**Root Cause** — Eine einzige Zeile in `ProjectCard.tsx`, Zeile 68:
 
-## Loesung
+```
+!isDemo && 'aspect-square'
+```
 
-Das Widget erhaelt eine **Mini-Tagesertragskurve** (Sparkline), die den aktuellen Erzeugungsverlauf der PV-Anlage zeigt. Die Kurve nutzt `generate24hCurve` aus dem DemoLiveGenerator und markiert die aktuelle Stunde mit einem Punkt. Dadurch sieht der Nutzer sofort, dass die Anlage arbeitet.
+Diese Bedingung bedeutet: **Nur wenn NICHT Demo, dann quadratisch**. Das Demo-Widget bekommt daher KEIN `aspect-square` und schrumpft auf seine Content-Hoehe — es wird KLEINER als die anderen Widgets.
 
-## Aenderungen
+Der `ProjectCardPlaceholder` daneben hat `aspect-square` fest eingebaut (Zeile 122), deshalb hat er die korrekte Groesse. Das Demo-Widget daneben ist zu klein, weil es nur so hoch wird wie sein Inhalt (Status-Badge + Icon + Text + Progressbar).
 
-### Datei: `src/components/dashboard/widgets/PVLiveWidget.tsx`
+```text
+IST-ZUSTAND:
++------------------+  +------------------+
+|  [Demo-Widget]   |  | [Neues Projekt]  |
+|  Residenz am     |  |                  |
+|  Stadtpark       |  |  Demo-Projekt    |
+|  (zu klein!)     |  |                  |
++------------------+  |  (korrekt,       |
+                      |   aspect-square) |
+                      +------------------+
 
-1. **Mini-Chart hinzufuegen**: Eine Recharts `AreaChart` (Sparkline-Stil, ca. 60px hoch) zeigt die 24h-Erzeugungskurve der groessten Anlage. Der Bereich bis zur aktuellen Stunde wird gelb gefuellt, der Rest gestrichelt (Prognose). Ein Punkt markiert die aktuelle Leistung.
+SOLL-ZUSTAND:
++------------------+  +------------------+
+|  [Demo-Widget]   |  | [Neues Projekt]  |
+|                  |  |                  |
+|  Residenz am     |  |  Demo-Projekt    |
+|  Stadtpark       |  |                  |
+|                  |  |                  |
+|  (aspect-square) |  |  (aspect-square) |
++------------------+  +------------------+
+```
 
-2. **Layout anpassen**: 
-   - Oben: Titel "PV Live" mit Sonnen-Icon
-   - Mitte: Mini-Chart (Sparkline)
-   - Darunter: 3-Spalten-KPI-Reihe (Aktuelle Leistung, Heute kWh, Offline)
-   - Unten: Top-Anlagen-Liste (wie bisher)
+## Fix
 
-3. **Navigation korrigieren**: Link von `/portal/photovoltaik/monitoring` auf `/portal/photovoltaik/anlagen` aendern.
+### Datei: `src/components/projekte/ProjectCard.tsx`
 
-4. **Pulsierender Indikator**: Ein kleiner gruener Punkt neben "PV Live" pulsiert, wenn mindestens eine Anlage online ist -- visuelles Zeichen fuer "Anlage arbeitet".
+**Zeile 68 aendern:**
 
-### Technische Details
+Alt:
+```typescript
+!isDemo && 'aspect-square',
+```
 
-- `generate24hCurve(kwp)` liefert ein Array mit `{ hour, power_w, energy_kwh }` fuer jede halbe Stunde
-- `getCurrentHourDecimal()` liefert die aktuelle Stunde als Dezimalzahl
-- Die Kurve wird mit `recharts` (`AreaChart`, `Area`, `ReferenceDot`) als Sparkline ohne Achsenbeschriftung gerendert
-- Der Gradient geht von Gelb (Sonne) nach Transparent
-- Keine neuen Abhaengigkeiten noetig (recharts ist bereits installiert)
+Neu:
+```typescript
+'aspect-square',
+```
 
-### Keine weiteren Dateien betroffen
-Nur `PVLiveWidget.tsx` wird geaendert. Keine DB-Migration noetig.
+Das ist alles. `aspect-square` gilt dann fuer ALLE ProjectCards — normale UND Demo. Das Demo-Widget behaelt sein gruenes `DEMO_WIDGET.CARD` Styling (Zeile 70) und bekommt zusaetzlich die korrekte quadratische Form.
+
+**Eine Zeile, ein Fix, kein Seiteneffekt.**
+
+### Zusaetzlich: Dashboard-Reihenfolge (Problem 1 aus dem vorherigen Plan)
+
+Die Widgets und KPIs auf `/portal/projekte/dashboard` muessen nach oben verschoben werden (unter den Header, vor den Magic Intake). Das wird in `ProjekteDashboard.tsx` durch Umordnung der JSX-Sektionen geloest:
+
+1. ModulePageHeader
+2. KPI-Stats
+3. WidgetGrid (Meine Projekte)
+4. "So funktioniert's" Steps
+5. Magic Intake Upload-Zone
+
+## Betroffene Dateien
+
+| Datei | Aenderung |
+|-------|-----------|
+| `src/components/projekte/ProjectCard.tsx` | Zeile 68: `aspect-square` fuer alle Karten |
+| `src/pages/portal/projekte/ProjekteDashboard.tsx` | Sektionsreihenfolge: KPIs + Widgets nach oben |
 
