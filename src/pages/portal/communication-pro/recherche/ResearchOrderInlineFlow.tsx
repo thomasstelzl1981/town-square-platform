@@ -1,7 +1,7 @@
 /**
  * ResearchOrderInlineFlow — 6-Section inline flow for active research order
  */
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import { type ResearchOrder, useUpdateResearchOrder, useStartResearchOrder } from '@/hooks/useResearchOrders';
 import { useResearchAI } from '@/hooks/useResearchAI';
 import { ResearchResultsTable } from './ResearchResultsTable';
+import { ResearchLiveProgress, type ProviderStatus } from './ResearchLiveProgress';
 
 interface Props {
   order: ResearchOrder;
@@ -342,19 +343,9 @@ export function ResearchOrderInlineFlow({ order }: Props) {
         </Card>
       )}
 
-      {/* Running Status */}
+      {/* Running Status — Live Progress */}
       {isRunning && (
-        <Card className="glass-card p-4 md:p-6">
-          <div className="flex items-center gap-3">
-            <Loader2 className="h-5 w-5 animate-spin text-primary" />
-            <div>
-              <p className="text-sm font-medium">Recherche läuft…</p>
-              <p className="text-xs text-muted-foreground">
-                {order.results_count} Treffer gefunden • €{Number(order.cost_spent).toFixed(2)} verbraucht
-              </p>
-            </div>
-          </div>
-        </Card>
+        <RunningProgress order={order} />
       )}
 
       {/* Section 6 — Ergebnisse */}
@@ -423,6 +414,63 @@ function ProviderToggle({
       </div>
       <p className="text-xs text-muted-foreground">{locked ? lockedHint : description}</p>
     </button>
+  );
+}
+
+/** Live progress wrapper for running orders */
+function RunningProgress({ order }: { order: ResearchOrder }) {
+  const [elapsed, setElapsed] = useState(0);
+  const startRef = useRef(Date.now());
+
+  useEffect(() => {
+    startRef.current = Date.now();
+    const iv = setInterval(() => {
+      setElapsed(Math.floor((Date.now() - startRef.current) / 1000));
+    }, 1000);
+    return () => clearInterval(iv);
+  }, []);
+
+  const progress = order.max_results > 0 ? (order.results_count / order.max_results) * 100 : 0;
+  const providerPlan = order.provider_plan_json || {};
+
+  const providers: ProviderStatus[] = [
+    {
+      id: 'firecrawl',
+      label: 'Firecrawl',
+      icon: 'globe',
+      status: providerPlan.firecrawl !== false ? (order.results_count > 0 ? `${order.results_count} gefunden` : 'Crawling…') : 'Inaktiv',
+      isActive: providerPlan.firecrawl !== false,
+      isDone: progress >= 100,
+    },
+    {
+      id: 'epify',
+      label: 'Epify',
+      icon: 'database',
+      status: providerPlan.epify ? 'Anreichern…' : 'Inaktiv',
+      isActive: !!providerPlan.epify,
+      isDone: false,
+    },
+    {
+      id: 'apollo',
+      label: 'Apollo',
+      icon: 'search',
+      status: providerPlan.apollo ? 'Suche…' : 'Inaktiv',
+      isActive: !!providerPlan.apollo,
+      isDone: false,
+    },
+  ];
+
+  return (
+    <ResearchLiveProgress
+      progress={progress}
+      contactsFound={order.results_count}
+      maxContacts={order.max_results}
+      elapsedSeconds={elapsed}
+      providers={providers}
+      contacts={[]}
+      isComplete={false}
+      phase="running"
+    />
   );
 }
 
