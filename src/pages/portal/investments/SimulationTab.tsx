@@ -148,6 +148,9 @@ export default function SimulationTab() {
 
   const formatPercent = (value: number) => `${value.toFixed(1)}%`;
 
+  const { isEnabled } = useDemoToggles();
+  const showDemo = isEnabled('GP-SIMULATION');
+
   if (isLoading) {
     return (
       <div className="p-6 flex items-center justify-center py-20">
@@ -155,9 +158,6 @@ export default function SimulationTab() {
       </div>
     );
   }
-
-  const { isEnabled } = useDemoToggles();
-  const showDemo = isEnabled('GP-SIMULATION');
 
   return (
     <PageShell>
