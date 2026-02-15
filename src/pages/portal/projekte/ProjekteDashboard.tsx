@@ -156,10 +156,11 @@ export default function ProjekteDashboard() {
 
   const isDemo = isDemoMode(portfolioRows);
 
+  const demoAdd = demoEnabled ? 1 : 0;
   const stats = {
-    totalProjects: portfolioRows.length + 1,
-    activeProjects: portfolioRows.filter(p => p.status === 'in_distribution' || p.status === 'active').length + 1,
-    totalUnits: portfolioRows.reduce((sum, p) => sum + p.total_units_count, 0) + DEMO_PROJECT.total_units_count,
+    totalProjects: portfolioRows.length + demoAdd,
+    activeProjects: portfolioRows.filter(p => p.status === 'in_distribution' || p.status === 'active').length + demoAdd,
+    totalUnits: portfolioRows.reduce((sum, p) => sum + p.total_units_count, 0) + (demoEnabled ? DEMO_PROJECT.total_units_count : 0),
     soldUnits: portfolioRows.reduce((sum, p) => sum + p.units_sold, 0),
     totalRevenue: portfolioRows.reduce((sum, p) => sum + (p.sale_revenue_actual || 0), 0),
     reservedUnits: portfolioRows.reduce((sum, p) => sum + p.units_reserved, 0),
@@ -175,7 +176,7 @@ export default function ProjekteDashboard() {
           role="Projektmanager"
           gradientFrom="hsl(25,85%,50%)"
           gradientTo="hsl(15,80%,45%)"
-          badgeText={`${stats.activeProjects} aktive Projekte`}
+          badgeText={`${stats.activeProjects} ${stats.activeProjects === 1 ? 'aktives Projekt' : 'aktive Projekte'}`}
         />
         <MarketReportWidget
           icon={TrendingUpIcon}
