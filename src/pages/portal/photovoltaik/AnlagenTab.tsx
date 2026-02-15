@@ -3,6 +3,7 @@
  * Demo widget opens pre-filled demo Akte, CTA opens inline creation form
  */
 import { useState, useCallback } from 'react';
+import { useDossierAutoResearch } from '@/hooks/useDossierAutoResearch';
 import { DESIGN } from '@/config/designManifest';
 import { cn } from '@/lib/utils';
 import { usePvPlants, PvPlant } from '@/hooks/usePvPlants';
@@ -75,6 +76,7 @@ export default function AnlagenTab() {
   const { isEnabled } = useDemoToggles();
   const { createDMSTree } = usePvDMS();
   const { profile } = useAuth();
+  const { triggerResearch } = useDossierAutoResearch();
   const demoEnabled = isEnabled('GP-PV-ANLAGE');
 
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
@@ -189,6 +191,10 @@ export default function AnlagenTab() {
           }).select().single();
         } catch { /* connector creation is best-effort */ }
       }
+      // Trigger Armstrong dossier auto-research for PV
+      const pvQuery = [formName, formKwp ? `${formKwp} kWp` : '', formWrMfg, formWrModel].filter(Boolean).join(' ');
+      triggerResearch({ entityType: 'pv_plant', entityId: plant.id, searchQuery: pvQuery });
+
       setViewMode('detail');
       setSelectedPlantId(plant.id);
     } catch {

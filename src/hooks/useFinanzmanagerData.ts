@@ -49,8 +49,9 @@ export function useInsuranceContractMutations() {
         details: values.details || {},
         notes: values.notes || null,
       };
-      const { error } = await supabase.from('insurance_contracts').insert(row);
+      const { data, error } = await supabase.from('insurance_contracts').insert(row).select('id, insurer, category').single();
       if (error) throw error;
+      return data;
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: key }); toast.success('Versicherung angelegt'); },
     onError: () => toast.error('Fehler beim Anlegen'),

@@ -203,3 +203,6 @@ verify_jwt = false
 
 [functions.sot-meeting-send]
 verify_jwt = false
+
+[functions.sot-dossier-auto-research]
+verify_jwt = false

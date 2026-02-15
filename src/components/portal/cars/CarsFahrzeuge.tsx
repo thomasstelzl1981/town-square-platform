@@ -3,6 +3,7 @@
  * All editing is inline — no popup dialogs.
  */
 import { useState } from 'react';
+import { useDossierAutoResearch } from '@/hooks/useDossierAutoResearch';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -137,6 +138,7 @@ const isBike = (v: any) => v.vehicle_type === 'bike' || v.body_type === 'Motorra
 
 export default function CarsFahrzeuge() {
   const { activeTenantId } = useAuth();
+  const { triggerResearch } = useDossierAutoResearch();
   const [search, setSearch] = useState('');
   const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(null);
   const [isCreatingNew, setIsCreatingNew] = useState(false);
@@ -199,7 +201,7 @@ export default function CarsFahrzeuge() {
     }
     setIsSavingNew(true);
     try {
-      const { error } = await supabase.from('cars_vehicles').insert({
+      const { data: newVehicle, error } = await supabase.from('cars_vehicles').insert({
         tenant_id: activeTenantId,
         license_plate: newVehicleData.license_plate.toUpperCase().trim(),
         make: newVehicleData.make || null,
@@ -210,8 +212,15 @@ export default function CarsFahrzeuge() {
         hu_valid_until: newVehicleData.hu_valid_until || null,
         hsn: newVehicleData.hsn || null,
         tsn: newVehicleData.tsn || null,
-      });
+      }).select('id, make, model').single();
       if (error) throw error;
+
+      // Trigger Armstrong dossier auto-research
+      if (newVehicle) {
+        const query = [newVehicleData.make, newVehicleData.model, newVehicleData.first_registration_date?.slice(0, 4)].filter(Boolean).join(' ');
+        triggerResearch({ entityType: 'vehicle', entityId: newVehicle.id, searchQuery: query || newVehicleData.license_plate });
+      }
+
       toast.success('Fahrzeug angelegt');
       setIsCreatingNew(false);
       setNewVehicleData({});

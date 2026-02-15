@@ -3,6 +3,7 @@
  * Zentrale SSOT für alle Versicherungen. Accordion-Widgets + CRUD.
  */
 import { useState } from 'react';
+import { useDossierAutoResearch } from '@/hooks/useDossierAutoResearch';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -81,10 +82,18 @@ function NewInsuranceForm({ onSubmit, onCancel }: { onSubmit: (v: any) => void; 
 export default function FMSachversicherungenTab() {
   const { data: contracts = [], isLoading } = useInsuranceContracts();
   const { create, remove } = useInsuranceContractMutations();
+  const { triggerResearch } = useDossierAutoResearch();
   const [showNew, setShowNew] = useState(false);
 
   const handleCreate = (values: any) => {
-    create.mutate(values);
+    create.mutate(values, {
+      onSuccess: (data: any) => {
+        if (data?.id) {
+          const query = [values.insurer, CATEGORIES.find(c => c.value === values.category)?.label].filter(Boolean).join(' ');
+          triggerResearch({ entityType: 'insurance', entityId: data.id, searchQuery: query || 'Versicherung' });
+        }
+      },
+    });
     setShowNew(false);
   };
 

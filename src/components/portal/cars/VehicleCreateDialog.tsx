@@ -20,6 +20,7 @@ interface VehicleCreateDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
+  onVehicleCreated?: (vehicleId: string, searchQuery: string) => void;
 }
 
 interface FormData {
@@ -34,7 +35,7 @@ interface FormData {
   hu_valid_until: string;
 }
 
-export function VehicleCreateDialog({ open, onOpenChange, onSuccess }: VehicleCreateDialogProps) {
+export function VehicleCreateDialog({ open, onOpenChange, onSuccess, onVehicleCreated }: VehicleCreateDialogProps) {
   const { activeTenantId } = useAuth();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -62,7 +63,7 @@ export function VehicleCreateDialog({ open, onOpenChange, onSuccess }: VehicleCr
 
     setIsSubmitting(true);
     try {
-      const { error } = await supabase.from('cars_vehicles').insert({
+      const { data: newVehicle, error } = await supabase.from('cars_vehicles').insert({
         tenant_id: activeTenantId,
         license_plate: data.license_plate.toUpperCase().trim(),
         hsn: data.hsn || null,
@@ -73,9 +74,13 @@ export function VehicleCreateDialog({ open, onOpenChange, onSuccess }: VehicleCr
         holder_name: data.holder_name || null,
         current_mileage_km: data.current_mileage_km ? parseInt(data.current_mileage_km) : null,
         hu_valid_until: data.hu_valid_until || null,
-      });
-
+      }).select('id, make, model').single();
       if (error) throw error;
+
+      // Trigger Armstrong dossier auto-research
+      if (newVehicle && onVehicleCreated) {
+        onVehicleCreated(newVehicle.id, [data.make, data.model].filter(Boolean).join(' ') || data.license_plate);
+      }
 
       toast({ title: 'Erfolg', description: 'Fahrzeug wurde angelegt.' });
       reset();
