@@ -1,0 +1,161 @@
+{
+  "schema": "MOBILE-UX-V1.0",
+  "created": "2026-02-15",
+  "description": "Backlog für Mobile CI/UX Redesign — Systematische Optimierung der mobilen Ansicht",
+  "phases": [
+    {
+      "id": "PHASE-1",
+      "title": "Quick Wins — Module-Filter & Promo ausblenden",
+      "priority": "HIGH",
+      "status": "in_progress",
+      "items": [
+        {
+          "id": "MUX-001",
+          "title": "mobileConfig.ts erstellen (MOBILE_HIDDEN_MODULES)",
+          "status": "done",
+          "files": ["src/config/mobileConfig.ts"]
+        },
+        {
+          "id": "MUX-002",
+          "title": "AreaPromoCard auf Mobile ausblenden",
+          "status": "done",
+          "files": ["src/pages/portal/AreaOverviewPage.tsx"]
+        },
+        {
+          "id": "MUX-003",
+          "title": "MOD-02 und Partner-Module auf Mobile aus Area-Übersicht filtern",
+          "status": "done",
+          "files": ["src/pages/portal/AreaOverviewPage.tsx"]
+        }
+      ]
+    },
+    {
+      "id": "PHASE-2",
+      "title": "Immo-Suche Mobile-First",
+      "priority": "HIGH",
+      "status": "todo",
+      "items": [
+        {
+          "id": "MUX-010",
+          "title": "SucheTab mobile-responsive Suchformular (stacked inputs, full-width button)",
+          "status": "todo",
+          "files": ["src/pages/portal/investments/SucheTab.tsx"]
+        },
+        {
+          "id": "MUX-011",
+          "title": "InvestmentResultTile Mobile-Variante (größeres Bild, 1-Spalte)",
+          "status": "todo",
+          "files": ["src/components/investment/InvestmentResultTile.tsx"]
+        },
+        {
+          "id": "MUX-012",
+          "title": "Ergebnis-Sortierung und Counter auf Mobile",
+          "status": "todo",
+          "files": ["src/pages/portal/investments/SucheTab.tsx"]
+        },
+        {
+          "id": "MUX-013",
+          "title": "InvestmentExposePage mobile Anpassung",
+          "status": "todo",
+          "files": ["src/pages/portal/investments/InvestmentExposePage.tsx"]
+        },
+        {
+          "id": "MUX-014",
+          "title": "Pull-to-Refresh und Endlos-Scroll für Suchergebnisse",
+          "status": "todo",
+          "files": ["src/pages/portal/investments/SucheTab.tsx"]
+        }
+      ]
+    },
+    {
+      "id": "PHASE-3",
+      "title": "Grafiken und Charts mobiloptimieren",
+      "priority": "MEDIUM",
+      "status": "todo",
+      "items": [
+        {
+          "id": "MUX-020",
+          "title": "MobileChartWrapper Komponente erstellen",
+          "status": "todo",
+          "files": ["src/components/shared/MobileChartWrapper.tsx"]
+        },
+        {
+          "id": "MUX-021",
+          "title": "AufteilerCalculation mobil optimieren",
+          "status": "todo",
+          "files": ["src/pages/portal/akquise-manager/components/AufteilerCalculation.tsx"]
+        },
+        {
+          "id": "MUX-022",
+          "title": "BestandCalculation mobil optimieren",
+          "status": "todo",
+          "files": ["src/pages/portal/akquise-manager/components/BestandCalculation.tsx"]
+        }
+      ]
+    },
+    {
+      "id": "PHASE-4",
+      "title": "PWA-Setup",
+      "priority": "MEDIUM",
+      "status": "todo",
+      "items": [
+        {
+          "id": "MUX-030",
+          "title": "vite-plugin-pwa installieren und konfigurieren",
+          "status": "todo",
+          "files": ["vite.config.ts"]
+        },
+        {
+          "id": "MUX-031",
+          "title": "Web-Manifest und PWA-Icons erstellen",
+          "status": "todo",
+          "files": ["public/manifest.json", "public/icons/"]
+        },
+        {
+          "id": "MUX-032",
+          "title": "Install-Prompt-Seite (/install)",
+          "status": "todo",
+          "files": ["src/pages/Install.tsx"]
+        },
+        {
+          "id": "MUX-033",
+          "title": "Mobile Meta-Tags in index.html",
+          "status": "todo",
+          "files": ["index.html"]
+        }
+      ]
+    },
+    {
+      "id": "PHASE-5",
+      "title": "App-Feeling und Scroll-Stabilität",
+      "priority": "HIGH",
+      "status": "in_progress",
+      "items": [
+        {
+          "id": "MUX-040",
+          "title": "overflow-x hidden auf Mobile-Containern",
+          "status": "done",
+          "files": ["src/index.css"]
+        },
+        {
+          "id": "MUX-041",
+          "title": "Touch-optimierte Tap-Targets (44px min)",
+          "status": "done",
+          "files": ["src/index.css"]
+        },
+        {
+          "id": "MUX-042",
+          "title": "Scroll-Bounce deaktivieren (overscroll-behavior)",
+          "status": "done",
+          "files": ["src/index.css"]
+        },
+        {
+          "id": "MUX-043",
+          "title": "PortalLayout Mobile-Stabilität prüfen",
+          "status": "todo",
+          "files": ["src/components/portal/PortalLayout.tsx"]
+        }
+      ]
+    }
+  ]
+}
