@@ -181,13 +181,14 @@ export function validateAllActions(actions: ArmstrongActionV2[]): { valid: boole
 // =============================================================================
 
 export type KBCategory = 
-  | 'system'       // SOT-specific knowledge
-  | 'real_estate'  // German real estate domain
-  | 'tax_legal'    // Tax & legal hints (disclaimer required)
-  | 'finance'      // Financing knowledge
-  | 'sales'        // Sales communication
-  | 'templates'    // Reusable templates
-  | 'research';    // Armstrong-generated research memos
+  | 'system'        // SOT-specific knowledge
+  | 'real_estate'   // German real estate domain
+  | 'tax_legal'     // Tax & legal hints (disclaimer required)
+  | 'finance'       // Financing knowledge
+  | 'sales'         // Sales communication
+  | 'templates'     // Reusable templates
+  | 'research'      // Armstrong-generated research memos
+  | 'photovoltaik'; // Photovoltaik & Energiemanagement
 
 export type KBContentType =
   | 'article'       // Explanatory text
