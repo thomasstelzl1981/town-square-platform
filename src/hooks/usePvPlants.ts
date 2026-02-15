@@ -59,6 +59,20 @@ export interface CreatePvPlantInput {
   provider?: string;
   wr_manufacturer?: string;
   wr_model?: string;
+  has_battery?: boolean;
+  battery_kwh?: number;
+  mastr_plant_id?: string;
+  mastr_unit_id?: string;
+  mastr_status?: string;
+  grid_operator?: string;
+  energy_supplier?: string;
+  customer_reference?: string;
+  feed_in_meter_no?: string;
+  feed_in_meter_operator?: string;
+  feed_in_start_reading?: number;
+  consumption_meter_no?: string;
+  consumption_meter_operator?: string;
+  consumption_start_reading?: number;
 }
 
 export function usePvPlants() {
