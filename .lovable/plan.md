@@ -1,91 +1,112 @@
 
 
-# Zone 1: Plattform-Kostenmonitor (Testphase)
+# Einheitliche Mobile Bottom Bar: Persistente Armstrong-Eingabe + Upload
 
-## Ziel
+## Problem
 
-Ein Zone 1 Dashboard, das euch zeigt: **Was kostet uns die Plattform tatsaechlich?** Damit koennt ihr spaeter eure Credit-Preise datenbasiert kalkulieren, statt zu raten.
+Aktuell gibt es zwei komplett unterschiedliche Bottom-Bereiche auf Mobile:
 
-## Was existiert bereits
+1. **Home/Chat** (`MobileHomeChatView`): 4 Area-Glasbuttons + Eingabefeld mit Voice + Send
+2. **Modul-Ansichten** (`MobileModuleBar`): 5 Icon-Buttons (Chat + 4 Areas) ohne Eingabefeld
 
-| Komponente | Status |
-|------------|--------|
-| `armstrong_action_runs` (Tabelle) | Vorhanden — loggt jede Action mit `cost_cents`, `tokens_used`, `duration_ms` |
-| `armstrong_billing_events` (Tabelle) | Vorhanden — loggt `cost_model`, `cost_cents`, `credits_charged` |
-| `credit_ledger` (Tabelle) | Vorhanden — Einzelbuchungen mit `kind`, `amount` |
-| `v_armstrong_costs_daily` (View) | Vorhanden — Tagesaggregation |
-| `ArmstrongBilling.tsx` (Zone 1) | Vorhanden — zeigt Events und Tageskosten |
-| `KostenDashboard.tsx` (Zone 2) | Vorhanden — zeigt User-KPIs |
+Das fuehrt zu einem visuellen Bruch: Die Buttons aendern sich (4 vs. 5), das Eingabefeld verschwindet, und die gesamte Optik springt.
 
-## Was fehlt fuer den "Plattformkosten-Monitor"
+## Loesung: Eine einheitliche `MobileBottomBar`
 
-Die bestehende `ArmstrongBilling.tsx` zeigt Rohdaten pro Event. Fuer die Testphase braucht ihr ein uebergeordnetes Dashboard, das die **echten Plattformkosten** (API-Kosten, LLM-Tokens, SMTP etc.) aggregiert und mit den **geplanten Credit-Preisen** vergleicht.
-
-### Schritt 1: Datenbank — Plattformkosten-View
-
-Eine neue View `v_platform_cost_summary`, die aus `armstrong_action_runs` und `armstrong_billing_events` die realen Kosten aggregiert:
-
-- **Pro Action-Code**: Anzahl Runs, Summe Tokens, Summe cost_cents, Durchschnitt pro Run
-- **Pro Kostenkategorie**: LLM (Token-basiert), API (Flatrate pro Call), Communication (SMTP/Fax), Free
-- **Pro Zeitraum**: Taeglich, woechentlich, monatlich
-- **Marge**: Vergleich `cost_cents` (unsere Kosten) vs. `credits_charged * 50` (Erloes bei 1 Credit = 0.50 EUR)
-
-### Schritt 2: Zone 1 UI — "Plattformkosten-Monitor"
-
-Eine neue Seite unter `/admin/armstrong/costs` mit drei Bereichen:
-
-**Bereich A: KPI-Uebersicht (Header-Cards)**
-- Gesamtkosten (Plattform) in EUR — was wir bezahlen
-- Theoretischer Erloess (Credits * 0.50) — was wir einnehmen wuerden
-- Marge in % — Differenz
-- Anzahl metered Actions vs. free Actions
-
-**Bereich B: Kostenanalyse pro Action (Tabelle)**
-- Action-Code, Kategorie (LLM/API/Communication/Free)
-- Runs gesamt, Ø Kosten pro Run (in Cent)
-- Ø Tokens pro Run
-- Aktueller Credit-Preis (aus Manifest)
-- Marge pro Action (Kosten vs. Credit-Erloess)
-- Farbmarkierung: Rot = Verlust, Gruen = Gewinn
-
-**Bereich C: Credit-Kalkulator**
-- Eingabefelder: Ziel-Marge (z.B. 60%), Fixkosten pro Monat
-- Berechnet automatisch: empfohlener Credit-Preis pro Action
-- Vergleicht: aktueller Preis vs. empfohlener Preis
-- Export-Button: Kalkulationstabelle als CSV
-
-### Schritt 3: Manifest-Erweiterung
-
-Jede Action im Manifest erhaelt ein zusaetzliches Feld `cost_category`, um die Kostenart zu klassifizieren:
+Eine einzelne Komponente, die **ueberall** gleich aussieht:
 
 ```text
-cost_category: 'llm' | 'api_external' | 'communication' | 'infrastructure' | 'free'
++--------------------------------------------------+
+|  [Base] [Missions] [Operations] [Services]       |  <-- 4 Glass-Buttons (immer gleich)
++--------------------------------------------------+
+|  [Mic] [+] [Nachricht eingeben...] [Send]        |  <-- Input Bar (immer sichtbar)
++--------------------------------------------------+
 ```
 
-Dies erlaubt spaeter automatische Gruppierung und Reporting.
+### Verhalten
 
-## Dateien
+- **Auf Home**: Nachrichten erscheinen direkt im Chat darueber
+- **In Modulen**: Nachricht wird gesendet, dann automatischer Wechsel zurueck zum Chat (`/portal`)
+- **Area-Buttons**: Immer 4 Stueck (Base, Missions, Operations, Services) — kein separater "Chat"-Button noetig, da die Input Bar selbst der Rueckweg ist
+- **Upload-Button [+]**: Oeffnet ein Menue mit: "Datei anfuegen", "Foto aus Mediathek", "Fotografieren"
+
+### Upload-Menue (wie Lovable Mobile)
+
+Der `[+]` Button oeffnet ein kompaktes Popover/Sheet:
+
+```text
++---------------------------+
+|  Datei anfuegen           |
+|  Foto aus Mediathek       |
+|  Fotografieren            |
++---------------------------+
+```
+
+- Nutzt `<input type="file">` fuer Dateien
+- Nutzt `<input type="file" accept="image/*" capture="environment">` fuer Kamera
+- Angehaengte Dateien werden als Vorschau-Chips ueber der Input Bar angezeigt
+- Dateien gehen mit der naechsten Nachricht an Armstrong
+
+## Technische Umsetzung
+
+### Dateien
 
 | Datei | Aktion | Beschreibung |
 |-------|--------|-------------|
-| SQL Migration | CREATE | View `v_platform_cost_summary` |
-| `src/pages/admin/armstrong/PlatformCostMonitor.tsx` | CREATE | Neue Zone 1 Seite |
-| `src/pages/admin/armstrong/index.ts` | EDIT | Export hinzufuegen |
-| `src/router/ManifestRouter.tsx` | EDIT | Route `/admin/armstrong/costs` registrieren |
-| `src/pages/admin/armstrong/ArmstrongDashboard.tsx` | EDIT | Quick-Link zur neuen Seite |
-| `src/manifests/armstrongManifest.ts` | EDIT | `cost_category` Feld zu allen Actions hinzufuegen |
-| `src/types/armstrong.ts` | EDIT | `cost_category` zum Type hinzufuegen |
+| `src/components/portal/MobileBottomBar.tsx` | CREATE | Neue einheitliche Komponente (ersetzt MobileModuleBar + Input aus MobileHomeChatView) |
+| `src/components/portal/MobileAttachMenu.tsx` | CREATE | Upload-Popover mit 3 Optionen |
+| `src/components/portal/MobileHomeChatView.tsx` | EDIT | Area-Buttons und Input Bar entfernen, nur Chat-Messages behalten |
+| `src/components/portal/PortalLayout.tsx` | EDIT | `MobileBottomBar` einmal am Ende rendern (statt MobileModuleBar nur in Modulen) |
+| `src/components/portal/MobileModuleBar.tsx` | ENTFAELLT | Wird durch MobileBottomBar ersetzt |
 
-## Vorgehensweise
+### Aenderungen im Detail
 
-1. **Migration**: View `v_platform_cost_summary` erstellen
-2. **Type + Manifest**: `cost_category` Feld einfuehren und alle ~153 Actions klassifizieren
-3. **UI**: `PlatformCostMonitor.tsx` mit KPIs, Tabelle und Kalkulator bauen
-4. **Routing**: Seite in Zone 1 Navigation einbinden
+**1. `MobileBottomBar.tsx` (NEU)**
+- Nimmt die 4 Area-Glasbuttons aus `MobileHomeChatView` (Zeilen 161-182)
+- Nimmt die Input Bar aus `MobileHomeChatView` (Zeilen 184-227)
+- Fuegt einen `[+]` Upload-Button links neben dem Mic-Button ein
+- Erhaelt `onSendFromModule`-Prop: wenn nicht auf `/portal`, nach Send zu `/portal` navigieren
+- Voice-Integration bleibt identisch
+
+**2. `MobileAttachMenu.tsx` (NEU)**
+- Wird durch den `[+]` Button getriggert
+- 3 Optionen: Datei, Mediathek-Foto, Kamera
+- Gibt ausgewaehlte Files via Callback zurueck
+- Datei-Vorschau als kleine Chips ueber der Input Bar
+
+**3. `MobileHomeChatView.tsx` (EDIT)**
+- Zeilen 148-227 entfernen (Clear-Button, Area-Buttons, Input Bar)
+- Nur noch Chat-Messages + Loading-State behalten
+- Clear-Button kann in die `MobileBottomBar` oder als Overlay bleiben
+
+**4. `PortalLayout.tsx` (EDIT)**
+- Zeile 138 (`<MobileModuleBar />`) entfernen
+- `<MobileBottomBar />` einmal am Ende der mobilen Layout-Struktur rendern, AUSSERHALB des `isDashboard`-Conditionals
+- Damit ist die Bar ueberall sichtbar
+
+### Layout-Struktur (nachher)
+
+```text
+<div className="h-screen flex flex-col">
+  <SystemBar />
+  
+  {isDashboard ? (
+    <MobileHomeChatView />      // Nur Chat-Messages, kein Input
+  ) : (
+    <main>
+      <SubTabs />
+      <Outlet />
+    </main>
+  )}
+  
+  <MobileBottomBar />           // IMMER sichtbar: Buttons + Input + Upload
+</div>
+```
 
 ## Kein Breaking Change
 
-- Alle bestehenden Seiten bleiben unveraendert
-- `cost_category` ist optional im Type (Manifest-seitig, nicht DB)
-- Die View liest nur bestehende Tabellen
+- Armstrong Advisor Hook wird weiter verwendet (gleiche send/voice Logik)
+- Area-Navigation-Logik bleibt identisch
+- Desktop-Layout ist nicht betroffen
+- Alte `MobileBottomNav.tsx` und `ArmstrongInputBar.tsx` bleiben unangetastet (werden ohnehin nicht mehr importiert)
 
