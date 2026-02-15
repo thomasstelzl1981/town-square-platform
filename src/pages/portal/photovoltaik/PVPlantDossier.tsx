@@ -4,6 +4,7 @@
  * No tabs, no popups — one continuous flow. All fields editable with central save.
  */
 import { useMemo, useState, useCallback } from 'react';
+import { getSeasonalParams } from '@/components/photovoltaik/DemoLiveGenerator';
 import { DESIGN } from '@/config/designManifest';
 import { PvPlant, usePvPlants } from '@/hooks/usePvPlants';
 import { usePvMonitoring } from '@/hooks/usePvMonitoring';
@@ -22,6 +23,7 @@ import {
   Sun, MapPin, Shield, Zap, Gauge, Settings, Activity,
   FolderOpen, Building2, Circle, BatteryCharging, TrendingUp,
   Save, Loader2, Plug, Copy, CheckCircle, AlertCircle, WifiOff,
+  Leaf, BarChart3,
 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { toast } from 'sonner';
@@ -72,7 +74,33 @@ export default function PVPlantDossier({ plant, isDemo }: Props) {
   const { activeTenantId } = useAuth();
   const { liveData } = usePvMonitoring(plant ? [plant] : []);
   const live = liveData.get(plant.id);
+  const currentMonth = new Date().getMonth() + 1;
+  const seasonalParams = getSeasonalParams(currentMonth);
   const curve = useMemo(() => generate24hCurve(plant.kwp ?? 10), [plant.kwp]);
+
+  // Solar insights state
+  const [solarInsights, setSolarInsights] = useState<Record<string, any> | null>(null);
+  const [solarLoading, setSolarLoading] = useState(false);
+  const [solarError, setSolarError] = useState<string | null>(null);
+
+  const fetchSolarInsights = useCallback(async () => {
+    const address = [plant.street, plant.house_number, plant.postal_code, plant.city].filter(Boolean).join(' ');
+    if (!address) { toast.error('Keine Adresse hinterlegt'); return; }
+    setSolarLoading(true);
+    setSolarError(null);
+    try {
+      const res = await supabase.functions.invoke('sot-solar-insights', {
+        body: { address },
+      });
+      if (res.error) throw new Error(res.error.message);
+      if (res.data?.error) throw new Error(res.data.detail || res.data.error);
+      setSolarInsights(res.data);
+    } catch (e: any) {
+      setSolarError(e.message);
+    } finally {
+      setSolarLoading(false);
+    }
+  }, [plant.street, plant.house_number, plant.postal_code, plant.city]);
 
   // Connector state
   const { connectors, upsertConnector } = usePvConnectors(plant.id);
@@ -376,7 +404,7 @@ export default function PVPlantDossier({ plant, isDemo }: Props) {
           {connectorType === 'demo_timo_leif' && (
             <div className="p-3 bg-muted/30 rounded-lg border border-border">
               <p className="text-sm text-muted-foreground">
-                Demo-Modus aktiv — synthetische Daten werden basierend auf der kWp-Leistung und Tageszeit generiert.
+                Demo-Modus aktiv — saisonale Daten basierend auf kWp-Leistung, Tageszeit und aktuellem Monat ({new Date().toLocaleDateString('de-DE', { month: 'long' })}: ~{seasonalParams.sunHoursPerDay}h Sonne/Tag, Peak-Faktor {Math.round(seasonalParams.peakFactor * 100)}%).
               </p>
             </div>
           )}
@@ -408,6 +436,70 @@ export default function PVPlantDossier({ plant, isDemo }: Props) {
         <InfoRow label="PLZ" value={getVal('postal_code', plant.postal_code)} editable onChange={v => updateField('postal_code', v)} />
         <InfoRow label="Ort" value={getVal('city', plant.city)} editable onChange={v => updateField('city', v)} />
         <InfoRow label="Notizen" value={getVal('location_notes', plant.location_notes)} editable onChange={v => updateField('location_notes', v)} />
+        <InfoRow label="Saisonale Sonnenstunden/Tag" value={`${seasonalParams.sunHoursPerDay} h (${new Date().toLocaleDateString('de-DE', { month: 'long' })})`} />
+      </SectionCard>
+
+      {/* ─── C2) Solarpotenzial (Google Solar API) ─── */}
+      <SectionCard icon={BarChart3} title="Solarpotenzial">
+        <div className="space-y-3">
+          <div className="flex items-center gap-3">
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-2"
+              onClick={fetchSolarInsights}
+              disabled={solarLoading}
+            >
+              {solarLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sun className="h-4 w-4" />}
+              Solarpotenzial abrufen
+            </Button>
+            <span className="text-xs text-muted-foreground">Nutzt die Adresse der Anlage für standortbezogene Analyse</span>
+          </div>
+
+          {solarError && (
+            <div className="p-3 rounded-lg border border-destructive/30 bg-destructive/5 text-sm text-destructive">
+              <p className="font-medium">Fehler:</p>
+              <p>{solarError}</p>
+              <p className="text-xs mt-1 text-muted-foreground">Hinweis: Die Google Solar API muss im Cloud-Projekt aktiviert sein.</p>
+            </div>
+          )}
+
+          {solarInsights && (
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 mt-2">
+              <Card><CardContent className="p-3 text-center">
+                <p className="text-xs text-muted-foreground">Max. Sonnenstunden/Jahr</p>
+                <p className="text-lg font-mono font-semibold">{solarInsights.maxSunshineHoursPerYear?.toLocaleString('de-DE') ?? '—'} <span className="text-xs font-normal">h</span></p>
+              </CardContent></Card>
+              <Card><CardContent className="p-3 text-center">
+                <p className="text-xs text-muted-foreground">Geschätzte Jahresleistung</p>
+                <p className="text-lg font-mono font-semibold">{solarInsights.yearlyEnergyDcKwh?.toLocaleString('de-DE', { maximumFractionDigits: 0 }) ?? '—'} <span className="text-xs font-normal">kWh</span></p>
+              </CardContent></Card>
+              <Card><CardContent className="p-3 text-center">
+                <p className="text-xs text-muted-foreground">Max. Panelfläche</p>
+                <p className="text-lg font-mono font-semibold">{solarInsights.maxArrayAreaMeters2?.toLocaleString('de-DE', { maximumFractionDigits: 1 }) ?? '—'} <span className="text-xs font-normal">m²</span></p>
+              </CardContent></Card>
+              <Card><CardContent className="p-3 text-center">
+                <p className="text-xs text-muted-foreground">Max. Panels</p>
+                <p className="text-lg font-mono font-semibold">{solarInsights.maxArrayPanelsCount ?? '—'}</p>
+              </CardContent></Card>
+              <Card><CardContent className="p-3 text-center">
+                <p className="text-xs text-muted-foreground flex items-center justify-center gap-1"><Leaf className="h-3 w-3" /> CO₂-Offset</p>
+                <p className="text-lg font-mono font-semibold">{solarInsights.carbonOffsetFactorKgPerMwh?.toLocaleString('de-DE') ?? '—'} <span className="text-xs font-normal">kg/MWh</span></p>
+              </CardContent></Card>
+              <Card><CardContent className="p-3 text-center">
+                <p className="text-xs text-muted-foreground">Dachsegmente</p>
+                <p className="text-lg font-mono font-semibold">{solarInsights.roofSegments ?? '—'}</p>
+              </CardContent></Card>
+            </div>
+          )}
+
+          {!solarInsights && !solarError && (
+            <p className="text-xs text-muted-foreground">
+              Klicke auf „Solarpotenzial abrufen", um standortbezogene Daten von Google Solar zu laden.
+              Fallback: saisonale Demo-Daten werden automatisch verwendet.
+            </p>
+          )}
+        </div>
       </SectionCard>
 
       {/* ─── D) MaStR / BNetzA ─── */}
