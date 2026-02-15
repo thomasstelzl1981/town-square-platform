@@ -99,19 +99,32 @@ export function useUpdateResearchOrder() {
   });
 }
 
+export function useDeleteResearchOrder() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (orderId: string) => {
+      const { error } = await supabase
+        .from('research_orders')
+        .delete()
+        .eq('id', orderId);
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: QUERY_KEY }),
+  });
+}
+
 export function useStartResearchOrder() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (orderId: string) => {
-      // First set to queued
       const { error: updateError } = await supabase
         .from('research_orders')
         .update({ status: 'queued' } as any)
         .eq('id', orderId);
       if (updateError) throw updateError;
 
-      // Trigger the order-specific runner (orchestrates Firecrawl, Apollo, Epify)
       const response = await supabase.functions.invoke('sot-research-run-order', {
         body: { order_id: orderId },
       });
