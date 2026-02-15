@@ -30,32 +30,32 @@ import { toast } from 'sonner';
 // Demo plant data for the pre-filled Akte
 const DEMO_PLANT: PvPlant = {
   id: '00000000-0000-4000-a000-000000000901',
-  name: 'EFH SMA 9,8 kWp',
+  name: 'EFH Oberhaching 32,4 kWp',
   status: 'active',
-  street: 'Schadowstr.',
-  house_number: '12',
-  postal_code: '10117',
-  city: 'Berlin',
-  location_notes: 'Süd-Dach, 30° Neigung, keine Verschattung',
-  kwp: 9.8,
-  commissioning_date: '2024-06-15',
-  wr_manufacturer: 'SMA',
-  wr_model: 'Sunny Tripower 10.0',
-  has_battery: true,
-  battery_kwh: 10,
+  street: 'Sauerlacher Str.',
+  house_number: '30',
+  postal_code: '82041',
+  city: 'Deisenhofen',
+  location_notes: 'Süd-Nord Ausrichtung, 108 Module (JA SOLAR JAM60S01-300/PR 300 Wp)',
+  kwp: 32.4,
+  commissioning_date: '2019-04-28',
+  wr_manufacturer: 'SMA Solar Technology AG',
+  wr_model: 'Sunny Tripower 15000 TL (2×)',
+  has_battery: false,
+  battery_kwh: null,
   mastr_account_present: true,
   mastr_plant_id: 'SEE912345678',
   mastr_unit_id: 'SEE987654321',
   mastr_status: 'confirmed',
-  grid_operator: 'Stromnetz Berlin GmbH',
-  energy_supplier: 'Vattenfall',
-  customer_reference: 'VTF-2024-88321',
-  feed_in_meter_no: 'EHZ-1ESM-0044721',
-  feed_in_meter_operator: 'Stromnetz Berlin',
+  grid_operator: 'Bayernwerk Netz GmbH',
+  energy_supplier: '',
+  customer_reference: '',
+  feed_in_meter_no: '',
+  feed_in_meter_operator: 'Bayernwerk Netz',
   feed_in_start_reading: 0,
-  consumption_meter_no: 'EHZ-1ESM-0078834',
-  consumption_meter_operator: 'Stromnetz Berlin',
-  consumption_start_reading: 14520,
+  consumption_meter_no: '',
+  consumption_meter_operator: 'Bayernwerk Netz',
+  consumption_start_reading: 0,
   provider: 'demo',
   active_connector: 'demo_timo_leif',
   last_sync_at: new Date().toISOString(),
@@ -64,7 +64,7 @@ const DEMO_PLANT: PvPlant = {
   tenant_id: 'a0000000-0000-4000-a000-000000000001',
   owner_user_id: null,
   owner_org_id: null,
-  created_at: '2024-06-15T10:00:00Z',
+  created_at: '2019-04-28T10:00:00Z',
   updated_at: new Date().toISOString(),
 };
 
@@ -236,21 +236,21 @@ export default function AnlagenTab() {
                     <Badge className={cn(DESIGN.DEMO_WIDGET.BADGE, "text-[10px]")}>Demo</Badge>
                     <Badge variant="default" className="text-[10px]">Aktiv</Badge>
                   </div>
-                  <h3 className="font-semibold text-sm">EFH SMA 9,8 kWp</h3>
-                  <p className="text-xs text-muted-foreground mt-0.5">Berlin · SMA Sunny Tripower</p>
+                  <h3 className="font-semibold text-sm">EFH Oberhaching 32,4 kWp</h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">Deisenhofen · SMA Sunny Tripower</p>
                 </div>
                 <div className="mt-3 space-y-1">
                   <div className="flex justify-between text-xs">
                     <span className="text-muted-foreground flex items-center gap-1"><Zap className="h-3 w-3" /> Leistung</span>
-                    <span className="font-mono font-semibold">4.230 W</span>
+                    <span className="font-mono font-semibold">13.960 W</span>
                   </div>
                   <div className="flex justify-between text-xs">
                     <span className="text-muted-foreground flex items-center gap-1"><Activity className="h-3 w-3" /> Heute</span>
-                    <span className="font-mono">18,4 kWh</span>
+                    <span className="font-mono">60,8 kWh</span>
                   </div>
                   <div className="flex justify-between text-xs">
                     <span className="text-muted-foreground">Jahresertrag</span>
-                    <span className="font-mono">9.500 kWh</span>
+                    <span className="font-mono">31.350 kWh</span>
                   </div>
                 </div>
               </CardContent>
@@ -328,7 +328,7 @@ export default function AnlagenTab() {
       {viewMode === 'demo' && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold">Demo-Akte: EFH SMA 9,8 kWp</h3>
+            <h3 className="text-lg font-semibold">Demo-Akte: EFH Oberhaching 32,4 kWp</h3>
             <Button variant="ghost" size="sm" onClick={handleCloseDetail}>
               <X className="h-4 w-4 mr-1" /> Schließen
             </Button>
