@@ -273,6 +273,20 @@ const DEMO_PROJECT_BASE: DemoProjectListing = {
 // Main Hook
 // ============================================================================
 
+/**
+ * Deduplication helper: filters out demo items whose key already exists in DB items.
+ * DB items always take priority.
+ */
+export function deduplicateByField<T>(
+  demoItems: T[],
+  dbItems: T[],
+  keyFn: (item: T) => string
+): T[] {
+  const dbKeys = new Set(dbItems.map(keyFn));
+  const uniqueDemo = demoItems.filter(d => !dbKeys.has(keyFn(d)));
+  return [...uniqueDemo, ...dbItems];
+}
+
 export function useDemoListings() {
   const { isEnabled } = useDemoToggles();
   const portfolioActive = isEnabled('GP-PORTFOLIO');

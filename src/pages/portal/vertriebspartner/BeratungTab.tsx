@@ -19,6 +19,7 @@ import { InvestmentResultTile } from '@/components/investment/InvestmentResultTi
 import { useInvestmentEngine, type CalculationInput, defaultInput } from '@/hooks/useInvestmentEngine';
 import { usePartnerSelections } from '@/hooks/usePartnerListingSelections';
 import { fetchPropertyImages } from '@/lib/fetchPropertyImages';
+import { useDemoListings, deduplicateByField } from '@/hooks/useDemoListings';
 
 // Interface for fetched listings
 interface RawListing {
@@ -83,6 +84,9 @@ const transformToPublicListing = (listing: RawListing): PublicListing => ({
 });
 
 const BeratungTab = () => {
+  // Demo listings for immediate visibility
+  const { kaufyListings: demoListings } = useDemoListings();
+
   // Search parameters
   const [searchParams, setSearchParams] = useState<PartnerSearchParams>({
     zve: 60000,
@@ -223,10 +227,28 @@ const BeratungTab = () => {
     setHasSearched(true);
   }, [searchParams, calculate, refetch]);
 
-  // Filter out excluded listings for display
+  // Merge DB listings with demo listings (deduplicated), then filter excluded
   const visibleListings = useMemo(() => {
-    return rawListings.filter(l => !excludedIds.has(l.id));
-  }, [rawListings, excludedIds]);
+    // Transform demo listings to RawListing-like shape for display
+    const demoAsRaw: RawListing[] = demoListings.map(d => ({
+      id: d.listing_id,
+      public_id: d.public_id,
+      title: d.title,
+      asking_price: d.asking_price,
+      commission_rate: null,
+      property_address: d.address,
+      property_city: d.city,
+      property_type: d.property_type,
+      total_area_sqm: d.total_area_sqm,
+      annual_rent: d.monthly_rent_total * 12,
+      hero_image_path: d.hero_image_path || null,
+      property_id: d.listing_id,
+      unit_count: d.unit_count,
+    }));
+    
+    const merged = deduplicateByField(demoAsRaw, rawListings, (item) => item.public_id || item.id);
+    return merged.filter(l => !excludedIds.has(l.id));
+  }, [rawListings, demoListings, excludedIds]);
 
   const isLoading = isLoadingListings || isCalculating;
 
@@ -246,42 +268,27 @@ const BeratungTab = () => {
         isLoading={isLoading}
       />
 
-      {/* Property Grid - InvestmentResultTile (wie MOD-08) */}
-      {hasSearched && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {visibleListings.length === 0 ? (
-            <div className="col-span-full text-center py-12 border-2 border-dashed rounded-lg">
-              <Building2 className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-              <p className="text-muted-foreground">
-                Keine Objekte im Partner-Netzwerk verfügbar
-              </p>
-            </div>
-          ) : (
-            visibleListings.map((listing) => (
-              <InvestmentResultTile
-                key={listing.id}
-                listing={transformToPublicListing(listing)}
-                metrics={metricsCache[listing.id] || null}
-                showProvision={false}
-                linkPrefix="/portal/vertriebspartner/beratung/objekt"
-              />
-            ))
-          )}
-        </div>
-      )}
-
-      {/* Initial State */}
-      {!hasSearched && (
-        <div className="text-center py-12 border-2 border-dashed rounded-lg">
-          <Building2 className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-          <p className="text-muted-foreground">
-            Geben Sie die Kundendaten ein und klicken Sie auf "Ergebnisse anzeigen"
-          </p>
-          <p className="text-sm text-muted-foreground mt-1">
-            Die Netto-Belastung wird für jedes Objekt individuell berechnet
-          </p>
-        </div>
-      )}
+      {/* Property Grid - always visible (demo listings show immediately) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {visibleListings.length === 0 ? (
+          <div className="col-span-full text-center py-12 border-2 border-dashed rounded-lg">
+            <Building2 className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+            <p className="text-muted-foreground">
+              Keine Objekte im Partner-Netzwerk verfügbar
+            </p>
+          </div>
+        ) : (
+          visibleListings.map((listing) => (
+            <InvestmentResultTile
+              key={listing.id}
+              listing={transformToPublicListing(listing)}
+              metrics={metricsCache[listing.id] || null}
+              showProvision={false}
+              linkPrefix="/portal/vertriebspartner/beratung/objekt"
+            />
+          ))
+        )}
+      </div>
     </PageShell>
   );
 };
