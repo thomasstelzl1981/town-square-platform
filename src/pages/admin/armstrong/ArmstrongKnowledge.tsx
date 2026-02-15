@@ -196,9 +196,9 @@ export default function ArmstrongKnowledge() {
               ) : (
                 <div className="space-y-3">
                   {items.map((item) => {
-                    const category = getCategory(item.category);
+                    const category = getCategory(item.category) || { icon: 'BookOpen', label_de: item.category || 'Unbekannt', color: 'bg-gray-500', code: item.category };
                     const CategoryIcon = getCategoryIcon(category.icon);
-                    const confidence = KB_CONFIDENCE_LEVELS[item.confidence];
+                    const confidence = KB_CONFIDENCE_LEVELS[item.confidence] || { label_de: 'Unbekannt', color: 'bg-gray-400' };
                     
                     return (
                       <div 
