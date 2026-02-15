@@ -1,79 +1,35 @@
 
-# RecordCard Closed-State: Neues Layout ohne Anrede + Foto-Platzhalter mit Drag-and-Drop
+# Fix: RecordCard zeigt altes Layout wegen zu hoher Schwelle
 
-## Aenderungen
+## Ursache
 
-### 1. Anrede entfernen
-
-Aus `UebersichtTab.tsx` (Zeile 170) und `ProfilTab.tsx` die Anrede-Zeile aus dem `summary`-Array streichen. Sie gehoert nicht unter den Namen.
-
-### 2. RecordCard.tsx — Closed-State komplett umbauen (Zeilen 115-141)
-
-Das `hasDetailedSummary`-Layout wird ersetzt durch:
-
-```text
-+--------------------------------------------------+
-|  [Badge: Hauptperson]                             |
-|                                                   |
-|  +--------+   Thomas Stelzl                       |
-|  |  FOTO  |   Geb.: 15.03.1985                    |
-|  |  80x80 |                                       |
-|  | Drop   |   Sauerlacher Strasse 30              |
-|  | hier   |   82041 Oberhaching                   |
-|  +--------+                                       |
-|               Tel:  +49 89 123456                  |
-|               Mob:  +49 170 123456                 |
-|               thomas.stelzl@example.de             |
-|                                              [>]  |
-+--------------------------------------------------+
+In `RecordCard.tsx` Zeile 93 steht:
+```typescript
+const hasDetailedSummary = summary.length > 4;
 ```
 
-Kernpunkte:
-- **Foto-Kachel 80x80px** als `rounded-xl` Platzhalter mit Kamera-Icon und Text "Foto" wenn kein Bild vorhanden
-- Platzhalter reagiert auf **Drag-and-Drop** (Bild-Datei) via `onPhotoDrop` Callback — neues optionales Prop
-- Wenn Bild vorhanden: Bild anzeigen statt Platzhalter
-- **Kein Anrede-Feld** im geschlossenen Zustand
-- **Name in `text-lg font-semibold`**, Datenzeilen in `text-sm`
-- **Linksbuendig**, Labels mit fester Breite `w-16`
-- Kein `aspect-square` bei detailliertem Layout
+Das erfordert **5+ Eintraege**. Thomas Stelzl hat aber nur 4 befuellte Felder (Strasse, PLZ/Ort, Mobil, E-Mail). Geburtsdatum und Festnetz sind leer. Deshalb greift das alte zentrierte Layout.
 
-### 3. Neues Prop: `onPhotoDrop`
+## Loesung
+
+Die Schwelle von `> 4` auf `> 2` senken. Sobald mehr als 2 Summary-Felder vorhanden sind, wird das neue linksbuendige Layout mit Foto-Kachel angezeigt. Bei Personen-Karten sind praktisch immer mindestens 3-4 Felder befuellt, sodass das neue Layout zuverlaessig greift.
+
+## Aenderung
+
+### `src/components/shared/RecordCard.tsx` — Zeile 93
 
 ```typescript
-interface RecordCardProps {
-  // ... bestehende Props
-  onPhotoDrop?: (file: File) => void;  // NEU
-}
+// ALT:
+const hasDetailedSummary = summary.length > 4;
+
+// NEU:
+const hasDetailedSummary = summary.length > 2;
 ```
-
-Im geschlossenen Zustand wird die Foto-Kachel als Drop-Zone gerendert:
-- `onDragOver` / `onDrop` Events auf dem 80x80 Container
-- Akzeptiert nur Bild-Dateien (`image/*`)
-- Ruft `onPhotoDrop(file)` auf — der Parent (UebersichtTab/ProfilTab) kuemmert sich um Upload + URL-Update
-
-### 4. Summary-Reihenfolge in UebersichtTab.tsx und ProfilTab.tsx
-
-Ohne Anrede, Geburtsdatum als erstes Item (steht neben dem Foto):
-
-```typescript
-summary={[
-  // Neben dem Foto (erstes Item)
-  ...(person.birth_date ? [{ label: 'Geb.', value: new Date(person.birth_date).toLocaleDateString('de-DE') }] : []),
-  // Darunter
-  ...(person.street ? [{ label: 'Straße', value: `${person.street} ${person.house_number || ''}`.trim() }] : []),
-  ...(person.zip ? [{ label: 'PLZ/Ort', value: `${person.zip} ${person.city || ''}`.trim() }] : []),
-  ...((person as any).phone_landline ? [{ label: 'Tel.', value: (person as any).phone_landline }] : []),
-  ...(person.phone ? [{ label: 'Mobil', value: person.phone }] : []),
-  ...(person.email ? [{ label: 'E-Mail', value: person.email }] : []),
-]}
-```
-
-ProfilTab analog mit `formData`-Feldern + Geburtsdatum (falls im Profil vorhanden).
 
 ## Betroffene Dateien
 
 | Datei | Aenderung |
 |-------|-----------|
-| `src/components/shared/RecordCard.tsx` | Closed-State neu: 80px Foto-Platzhalter mit Drop, text-lg/text-sm, linksbuendig, neues `onPhotoDrop` Prop |
-| `src/pages/portal/finanzanalyse/UebersichtTab.tsx` | Anrede raus, Geb. als erstes Summary-Item |
-| `src/pages/portal/stammdaten/ProfilTab.tsx` | Anrede raus, Geb. ergaenzen, gleiche Reihenfolge |
+| `src/components/shared/RecordCard.tsx` | Schwelle von `> 4` auf `> 2` aendern (Zeile 93) |
+
+Eine einzige Zeile. Keine weiteren Dateien betroffen.
