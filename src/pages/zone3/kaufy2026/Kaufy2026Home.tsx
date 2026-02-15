@@ -49,7 +49,11 @@ interface InvestmentMetrics {
 
 export default function Kaufy2026Home() {
   // Demo listings
-  const { kaufyListings: demoListings } = useDemoListings();
+  const { kaufyListings: allDemoListings } = useDemoListings();
+  const demoListings = useMemo(() =>
+    allDemoListings.filter(d => d.property_type !== 'new_construction'),
+    [allDemoListings]
+  );
   
   // URL-based state for search parameters
   const [urlParams, setUrlParams] = useSearchParams();
@@ -250,7 +254,11 @@ export default function Kaufy2026Home() {
     setIsSearching(true);
 
     const { data: freshListings } = await refetch();
-    const listingsToProcess = (freshListings || []).slice(0, 20);
+    // Merge demo listings with DB listings (deduplicated)
+    const dbKeys = new Set((freshListings || []).map((l: any) => `${l.title}|${l.city}`));
+    const demosToInclude = demoListings
+      .filter(d => !dbKeys.has(`${d.title}|${d.city}`));
+    const listingsToProcess = [...demosToInclude.map(d => ({ ...d, isDemo: true })), ...(freshListings || [])].slice(0, 20);
 
     if (listingsToProcess.length === 0) {
       setIsSearching(false);
