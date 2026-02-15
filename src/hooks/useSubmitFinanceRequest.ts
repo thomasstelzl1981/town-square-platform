@@ -16,6 +16,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { createApplicantSnapshot } from '@/engines/finanzierung/engine';
 
 interface SubmitOptions {
   requestId: string;
@@ -73,7 +74,9 @@ export function useSubmitFinanceRequest() {
         .limit(1)
         .maybeSingle();
 
-      const applicantSnapshot = fullProfile ? { ...fullProfile, snapshot_at: new Date().toISOString() } : null;
+      const applicantSnapshot = fullProfile
+        ? createApplicantSnapshot({ profile: fullProfile as Record<string, unknown> }).snapshot
+        : null;
 
       // 3. Update finance_request status to submitted_to_zone1
       const { error: updateError } = await supabase

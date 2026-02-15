@@ -4,6 +4,7 @@
  * V2: Split-View toggle — Left: Erfassung + Datenraum | Right: Selbstauskunft (independent scroll)
  */
 import { useParams, useNavigate } from 'react-router-dom';
+import { calcAnnuity } from '@/engines/finanzierung/engine';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -162,14 +163,18 @@ export default function FMFallDetail() {
     }
   };
 
-  // Loan calculation
+  // Loan calculation — delegated to engine
   const loanAmount = Number(loanEdits.loan_amount_requested || applicant?.loan_amount_requested || 0);
   const interestRate = Number(loanEdits.interest_rate || 3.5);
   const repaymentRate = Number(loanEdits.repayment_rate || applicant?.repayment_rate_percent || 2);
   const fixedPeriod = Number(loanEdits.fixed_rate_period || applicant?.fixed_rate_period_years || 10);
-  const monthlyRate = loanAmount > 0 ? (loanAmount * (interestRate + repaymentRate) / 100 / 12) : 0;
+  
+  const annuityResult = loanAmount > 0
+    ? calcAnnuity({ loanAmount, interestRatePercent: interestRate, repaymentRatePercent: repaymentRate, fixedRatePeriodYears: fixedPeriod })
+    : null;
+  const monthlyRate = annuityResult?.monthlyRate ?? 0;
   const yearlyRepayment = loanAmount > 0 ? (loanAmount * repaymentRate / 100) : 0;
-  const remainingDebt = loanAmount > 0 ? Math.max(0, loanAmount - (yearlyRepayment * fixedPeriod)) : 0;
+  const remainingDebt = annuityResult?.remainingDebt ?? 0;
   const objektwert = Number(loanEdits.objektwert || property?.purchase_price || 0);
   const beleihungsauslauf = objektwert > 0 ? (loanAmount / objektwert * 100) : 0;
   const purchasePrice = Number(loanEdits.purchase_price || applicant?.purchase_price || 0);

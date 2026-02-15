@@ -9,6 +9,7 @@
  */
 import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { calcAnnuity } from '@/engines/finanzierung/engine';
 import { 
   ChevronRight, ChevronLeft, CheckCircle2, 
   User, Building2, Calculator, BarChart3, Home as HomeIcon, 
@@ -115,7 +116,10 @@ export default function FutureRoomBonitat() {
   const loanAmount = Math.max(0, totalCosts - equity);
   const interestRate = parseFloat(formData.interestRate) || 3.5;
   const repaymentRate = parseFloat(formData.repaymentRate) || 2;
-  const monthlyRate = loanAmount * (interestRate + repaymentRate) / 100 / 12;
+  const annuityCalc = loanAmount > 0
+    ? calcAnnuity({ loanAmount, interestRatePercent: interestRate, repaymentRatePercent: repaymentRate, fixedRatePeriodYears: 10 })
+    : null;
+  const monthlyRate = annuityCalc?.monthlyRate ?? 0;
 
   // Household calc
   const netIncome = parseFloat(formData.netIncome) || 0;
