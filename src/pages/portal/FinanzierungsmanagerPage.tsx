@@ -1,8 +1,8 @@
 /**
- * MOD-11 Finanzierungsmanager — 5-Punkt-Menü (Zone 2)
+ * MOD-11 Finanzierungsmanager — 6 operative Tiles
  * 
- * Tiles: Übersicht, Investment, Sachversicherungen, Vorsorgeverträge, Abonnements
- * Dynamic: Finanzierungsakte, Einreichung, Provisionen, Archiv, Falldetail
+ * Tiles: Dashboard, Finanzierungsakte, Einreichung, Provisionen, Archiv, Landing Page
+ * Dynamic: FallDetail, EinreichungDetail, + persönliche Finanz-Tabs (Übersicht, Investment, etc.)
  */
 import * as React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
@@ -10,20 +10,23 @@ import { ShieldAlert } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent } from '@/components/ui/card';
 
-// Lazy load sub-pages — 5 Tiles
+// Lazy load — 6 Tile pages
+const FMDashboard = React.lazy(() => import('./finanzierungsmanager/FMDashboard'));
+const FMFinanzierungsakte = React.lazy(() => import('./finanzierungsmanager/FMFinanzierungsakte'));
+const FMEinreichung = React.lazy(() => import('./finanzierungsmanager/FMEinreichung'));
+const FMProvisionen = React.lazy(() => import('./finanzierungsmanager/FMProvisionen'));
+const FMArchiv = React.lazy(() => import('./finanzierungsmanager/FMArchiv'));
+
+// Dynamic routes
+const FMFallDetail = React.lazy(() => import('./finanzierungsmanager/FMFallDetail'));
+const FMEinreichungDetail = React.lazy(() => import('./finanzierungsmanager/FMEinreichungDetail'));
+
+// Personal finance tabs (moved to dynamic_routes, still reachable)
 const FMUebersichtTab = React.lazy(() => import('./finanzierungsmanager/FMUebersichtTab'));
 const FMInvestmentTab = React.lazy(() => import('./finanzierungsmanager/FMInvestmentTab'));
 const FMSachversicherungenTab = React.lazy(() => import('./finanzierungsmanager/FMSachversicherungenTab'));
 const FMVorsorgeTab = React.lazy(() => import('./finanzierungsmanager/FMVorsorgeTab'));
 const FMAbonnementsTab = React.lazy(() => import('./finanzierungsmanager/FMAbonnementsTab'));
-
-// Dynamic routes (legacy workflows)
-const FMFinanzierungsakte = React.lazy(() => import('./finanzierungsmanager/FMFinanzierungsakte'));
-const FMFallDetail = React.lazy(() => import('./finanzierungsmanager/FMFallDetail'));
-const FMEinreichung = React.lazy(() => import('./finanzierungsmanager/FMEinreichung'));
-const FMEinreichungDetail = React.lazy(() => import('./finanzierungsmanager/FMEinreichungDetail'));
-const FMProvisionen = React.lazy(() => import('./finanzierungsmanager/FMProvisionen'));
-const FMArchiv = React.lazy(() => import('./finanzierungsmanager/FMArchiv'));
 
 export default function FinanzierungsmanagerPage() {
   const { memberships, isPlatformAdmin } = useAuth();
@@ -49,19 +52,21 @@ export default function FinanzierungsmanagerPage() {
   return (
     <Routes>
       <Route index element={<Navigate to="dashboard" replace />} />
-      {/* 5-Punkt-Menü */}
-      <Route path="dashboard" element={<FMUebersichtTab />} />
+      {/* 6 operative Tiles */}
+      <Route path="dashboard" element={<FMDashboard cases={[]} isLoading={false} />} />
+      <Route path="finanzierungsakte" element={<FMFinanzierungsakte />} />
+      <Route path="einreichung" element={<FMEinreichung cases={[]} isLoading={false} />} />
+      <Route path="provisionen" element={<FMProvisionen />} />
+      <Route path="archiv" element={<FMArchiv cases={[]} isLoading={false} />} />
+      {/* Dynamic routes */}
+      <Route path="faelle/:requestId" element={<FMFallDetail />} />
+      <Route path="einreichung/:requestId" element={<FMEinreichungDetail />} />
+      {/* Personal finance tabs (dynamic_routes, still reachable) */}
+      <Route path="uebersicht" element={<FMUebersichtTab />} />
       <Route path="investment" element={<FMInvestmentTab />} />
       <Route path="sachversicherungen" element={<FMSachversicherungenTab />} />
       <Route path="vorsorge" element={<FMVorsorgeTab />} />
       <Route path="abonnements" element={<FMAbonnementsTab />} />
-      {/* Dynamic routes (legacy) */}
-      <Route path="finanzierungsakte" element={<FMFinanzierungsakte />} />
-      <Route path="faelle/:requestId" element={<FMFallDetail />} />
-      <Route path="einreichung" element={<FMEinreichung cases={[]} isLoading={false} />} />
-      <Route path="einreichung/:requestId" element={<FMEinreichungDetail />} />
-      <Route path="provisionen" element={<FMProvisionen />} />
-      <Route path="archiv" element={<FMArchiv cases={[]} isLoading={false} />} />
       <Route path="*" element={<Navigate to="dashboard" replace />} />
     </Routes>
   );
