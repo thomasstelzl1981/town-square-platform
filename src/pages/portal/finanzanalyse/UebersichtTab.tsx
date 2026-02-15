@@ -18,12 +18,21 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useFinanzanalyseData } from '@/hooks/useFinanzanalyseData';
+import { usePersonDMS } from '@/hooks/usePersonDMS';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import {
   Users, UserPlus, Landmark, ScanSearch, Plus,
   Calendar, Mail, Phone, MapPin
 } from 'lucide-react';
+
+const MARITAL_OPTIONS = [
+  { value: 'ledig', label: 'Ledig' },
+  { value: 'verheiratet', label: 'Verheiratet' },
+  { value: 'geschieden', label: 'Geschieden' },
+  { value: 'verwitwet', label: 'Verwitwet' },
+  { value: 'eingetragene_lebenspartnerschaft', label: 'Eingetr. Lebenspartnerschaft' },
+];
 
 function fmt(v: number) {
   return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(v);
@@ -49,6 +58,8 @@ export default function UebersichtTab() {
     isLoading, persons, pensionRecords,
     createPerson, updatePerson, deletePerson, upsertPension,
   } = useFinanzanalyseData();
+
+  const { createPersonDMSTree } = usePersonDMS();
 
   const [openCardId, setOpenCardId] = useState<string | null>(null);
   const [editForms, setEditForms] = useState<Record<string, Record<string, any>>>({});
@@ -81,6 +92,14 @@ export default function UebersichtTab() {
             disability_pension: pension.disability_pension || '',
           } : { info_date: '', current_pension: '', projected_pension: '', disability_pension: '' },
         }));
+        // Lazy-create DMS tree for existing persons
+        if (activeTenantId) {
+          createPersonDMSTree.mutate({
+            personId: person.id,
+            personName: `${person.first_name || ''} ${person.last_name || ''}`.trim() || 'Person',
+            tenantId: activeTenantId,
+          });
+        }
       }
       setOpenCardId(id);
       setShowNewPerson(false);
@@ -128,8 +147,16 @@ export default function UebersichtTab() {
 
   const handleAddPerson = () => {
     createPerson.mutate(newForm, {
-      onSuccess: () => {
+      onSuccess: (newPerson) => {
         toast.success('Person hinzugefügt');
+        // Auto-create DMS tree for the new person
+        if (activeTenantId && newPerson?.id) {
+          createPersonDMSTree.mutate({
+            personId: newPerson.id,
+            personName: `${newForm.first_name} ${newForm.last_name}`.trim(),
+            tenantId: activeTenantId,
+          });
+        }
         setShowNewPerson(false);
         setNewForm({ role: 'partner', salutation: '', first_name: '', last_name: '', birth_date: '', email: '', phone: '', street: '', house_number: '', zip: '', city: '' });
       },
@@ -209,6 +236,15 @@ export default function UebersichtTab() {
                     onChange={e => updateField(person.id, 'last_name', e.target.value)} />
                   <FormInput label="Geburtsdatum" name="birth_date" type="date" value={form.birth_date || ''}
                     onChange={e => updateField(person.id, 'birth_date', e.target.value)} />
+                  <div>
+                    <Label className="text-xs">Familienstand</Label>
+                    <Select value={form.marital_status || ''} onValueChange={v => updateField(person.id, 'marital_status', v)}>
+                      <SelectTrigger><SelectValue placeholder="Bitte wählen" /></SelectTrigger>
+                      <SelectContent>
+                        {MARITAL_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
                   <FormInput label="E-Mail" name="email" type="email" value={form.email || ''}
                     onChange={e => updateField(person.id, 'email', e.target.value)} />
                   <FormInput label="Festnetz" name="phone_landline" type="tel" value={form.phone_landline || ''}

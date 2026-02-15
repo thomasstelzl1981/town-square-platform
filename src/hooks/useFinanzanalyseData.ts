@@ -254,13 +254,14 @@ export function useFinanzanalyseData() {
       phone?: string;
     }) => {
       if (!activeTenantId || !user?.id) throw new Error('No tenant/user');
-      const { error } = await supabase.from('household_persons').insert({
+      const { data, error } = await supabase.from('household_persons').insert({
         tenant_id: activeTenantId,
         user_id: user.id,
         ...person,
         birth_date: person.birth_date || null,
-      });
+      }).select().single();
       if (error) throw error;
+      return data;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['fa-persons'] }),
   });
