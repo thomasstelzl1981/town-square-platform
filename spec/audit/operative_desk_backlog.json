@@ -100,49 +100,43 @@
     "✅ LeadDesk auf OperativeDeskShell migriert",
     "✅ SalesDesk auf OperativeDeskShell migriert",
     "✅ Acquiary auf OperativeDeskShell migriert",
-    "✅ Backlog bereinigt (Agents entfernt, Website Hosting hinzugefügt)"
+    "✅ Backlog bereinigt (Agents entfernt, Website Hosting hinzugefügt)",
+    "✅ LeadDesk in Sub-Pages aufgeteilt (LeadPool, LeadAssignments, LeadCommissions)",
+    "✅ SalesDesk in Sub-Pages aufgeteilt (ImmobilienVertriebsauftraegeCard, VeroeffentlichungenTab, SalesDeskSubPages)",
+    "✅ SalesDesk Stubs implementiert (Inbox mit Query-Skeleton, Partner mit Org-Liste, Audit mit Log-Skeleton)"
   ],
 
   "refactoring_plan": {
     "phase_1": {
       "title": "DeskShell + Design-Token-Migration",
       "priority": "HIGH",
-      "status": "DONE",
-      "tasks": [
-        "✅ OperativeDeskShell.tsx erstellen",
-        "✅ ZoneFlowIndicator.tsx erstellen",
-        "✅ LeadDesk → DeskShell migrieren",
-        "✅ SalesDesk → DeskShell migrieren",
-        "✅ Acquiary → DeskShell migrieren",
-        "✅ ProjektDesk → DeskShell migrieren"
-      ]
+      "status": "DONE"
     },
     "phase_2": {
       "title": "Monolith-Aufteilung",
       "priority": "MEDIUM",
-      "status": "OPEN",
+      "status": "DONE",
       "tasks": [
-        "LeadDesk → Ordner src/pages/admin/lead-desk/ mit Shell + 3 Sub-Pages",
-        "SalesDesk → Inline-Komponenten in eigene Dateien extrahieren",
-        "FutureRoom → Optional auf OperativeDeskShell migrieren",
-        "Website Hosting → Optional auf OperativeDeskShell migrieren"
+        "✅ LeadDesk → src/pages/admin/lead-desk/ (3 Sub-Pages)",
+        "✅ SalesDesk → src/pages/admin/sales-desk/ (4 Sub-Pages)"
       ]
     },
     "phase_3": {
       "title": "Stub-Implementierung",
       "priority": "MEDIUM",
-      "status": "OPEN",
+      "status": "DONE",
       "tasks": [
-        "SalesDesk Sub-Pages implementieren (Inbox, Partner, Audit)",
-        "Landing-Page-Governance im ProjektDesk erweitern"
+        "✅ SalesDesk Sub-Pages implementiert (Inbox, Partner, Audit)",
+        "Landing-Page-Governance im ProjektDesk erweitern (optional)"
       ]
     },
     "phase_4": {
-      "title": "Zone-Flow-Integration",
+      "title": "Cleanup & Polish",
       "priority": "LOW",
       "status": "OPEN",
       "tasks": [
-        "ZoneFlowIndicator in alle Desks einbinden",
+        "FutureRoom → Optional auf OperativeDeskShell migrieren",
+        "Website Hosting → Optional auf OperativeDeskShell migrieren",
         "Finance Desk (Legacy) Redirect bereinigen/löschen"
       ]
     }
