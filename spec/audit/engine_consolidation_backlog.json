@@ -1,0 +1,247 @@
+{
+  "version": "1.0",
+  "created_at": "2026-02-15",
+  "title": "Engine Consolidation Backlog",
+  "description": "Schrittweiser Plan zur Konsolidierung aller verbleibenden Inline-Businesslogik in die Engine-Schicht (src/engines/). Jeder Eintrag beschreibt ein konkretes Refactoring-Ziel.",
+
+  "status_legend": {
+    "done": "Engine existiert UND Consumer nutzt sie",
+    "engine_ready": "Engine existiert, Consumer nutzt noch Inline-Logik",
+    "todo": "Noch nicht implementiert"
+  },
+
+  "engines": [
+    {
+      "id": "ENG-01",
+      "name": "Akquise-Kalkulation",
+      "path": "src/engines/akquiseCalc/",
+      "status": "done",
+      "consumers_refactored": [
+        "BestandCalculation.tsx",
+        "AufteilerCalculation.tsx",
+        "QuickCalcTool.tsx",
+        "ProjectAufteilerCalculation.tsx"
+      ],
+      "open_items": []
+    },
+    {
+      "id": "ENG-02",
+      "name": "Finanzierung",
+      "path": "src/engines/finanzierung/",
+      "status": "engine_ready",
+      "consumers_refactored": [
+        "useSubmitFinanceRequest.ts → createApplicantSnapshot()",
+        "FMFallDetail.tsx → calcAnnuity()",
+        "FutureRoomBonitat.tsx → calcAnnuity()"
+      ],
+      "open_items": [
+        {
+          "id": "ENG-02-A",
+          "priority": "high",
+          "status": "todo",
+          "title": "FutureRoomBonitat: Haushaltsrechnung auf calcHaushaltsrechnung() umstellen",
+          "file": "src/pages/zone3/futureroom/FutureRoomBonitat.tsx",
+          "lines": "120-128",
+          "description": "Inline totalIncome/totalExpenses/kdfRatio-Berechnung (Z.120-128) durch calcHaushaltsrechnung() ersetzen."
+        },
+        {
+          "id": "ENG-02-B",
+          "priority": "medium",
+          "status": "todo",
+          "title": "useConsumerLoan: calculateMockOffers() durch Engine delegieren",
+          "file": "src/hooks/useConsumerLoan.ts",
+          "lines": "142-182",
+          "description": "MOCK_BANKS + calculateMockOffers() in useConsumerLoan.ts nutzen eigene Bank-Logik (8 Banken, Spread-basiert). Entweder Engine erweitern oder Hook als Wrapper umbauen, der calcConsumerLoanOffers() aufruft. Consumer: LoanCalculator.tsx."
+        },
+        {
+          "id": "ENG-02-C",
+          "priority": "medium",
+          "status": "todo",
+          "title": "SelbstauskunftFormV2: completion_score-Berechnung extrahieren",
+          "file": "src/components/finanzierung/SelbstauskunftFormV2.tsx",
+          "lines": "318-322",
+          "description": "Inline filledRequired/requiredFields.length Berechnung (Z.318-322) in eine Engine-Funktion calcCompletionScore() auslagern, damit dieselbe Logik auch serverseitig (Edge Function) nutzbar ist."
+        },
+        {
+          "id": "ENG-02-D",
+          "priority": "low",
+          "status": "todo",
+          "title": "AnfrageFormV2: Einreichungs-Validierung zentralisieren",
+          "file": "src/components/finanzierung/AnfrageFormV2.tsx",
+          "lines": "289-290",
+          "description": "canSubmit = completionScore >= 80 Schwelle als Engine-Konstante FINANZIERUNG_DEFAULTS.minCompletionScore nutzen."
+        }
+      ]
+    },
+    {
+      "id": "ENG-03",
+      "name": "Provision",
+      "path": "src/engines/provision/",
+      "status": "engine_ready",
+      "consumers_refactored": [],
+      "open_items": [
+        {
+          "id": "ENG-03-A",
+          "priority": "high",
+          "status": "todo",
+          "title": "NetworkTab: Inline-Provisions-Aggregation auf calcCommission() umstellen",
+          "file": "src/pages/portal/vertriebspartner/NetworkTab.tsx",
+          "lines": "93-95",
+          "description": "totalCommissions/paidCommissions/pendingCommissions .reduce()-Bloecke durch Engine-Aufruf ersetzen."
+        },
+        {
+          "id": "ENG-03-B",
+          "priority": "high",
+          "status": "todo",
+          "title": "ProvisionenUebersicht: Provisions-Aggregation zentralisieren",
+          "file": "src/pages/portal/leads/ProvisionenUebersicht.tsx",
+          "lines": "46-48",
+          "description": "Identische .reduce()-Logik wie NetworkTab — muss denselben Engine-Pfad nutzen."
+        },
+        {
+          "id": "ENG-03-C",
+          "priority": "medium",
+          "status": "todo",
+          "title": "VorgaengeTab: commission_amount Darstellung konsistent machen",
+          "file": "src/pages/portal/verkauf/VorgaengeTab.tsx",
+          "lines": "252-254",
+          "description": "Provisions-Spalte nutzt Rohwerte — Formatierung und ggf. Berechnungslogik über Engine standardisieren."
+        },
+        {
+          "id": "ENG-03-D",
+          "priority": "medium",
+          "status": "todo",
+          "title": "CommissionApproval + LeadDesk: Doppelte Admin-Aggregation konsolidieren",
+          "files": [
+            "src/pages/admin/CommissionApproval.tsx (Z.104-108)",
+            "src/pages/admin/desks/LeadDesk.tsx (Z.158-162)"
+          ],
+          "description": "Identische totalPending/totalPaid .reduce()-Bloecke in Z1-Admin — durch Engine ersetzen."
+        },
+        {
+          "id": "ENG-03-E",
+          "priority": "low",
+          "status": "todo",
+          "title": "useProjectReservations: Reservierungs-Provisions-Summen über Engine",
+          "file": "src/hooks/useProjectReservations.ts",
+          "lines": "51-57",
+          "description": "totalReservedValue + totalCommission .reduce()-Logik in Engine-Funktion auslagern."
+        }
+      ]
+    },
+    {
+      "id": "ENG-04",
+      "name": "Bewirtschaftung / BWA",
+      "path": "src/engines/bewirtschaftung/",
+      "status": "engine_ready",
+      "consumers_refactored": [],
+      "open_items": [
+        {
+          "id": "ENG-04-A",
+          "priority": "high",
+          "status": "todo",
+          "title": "MOD-04 BWA-Tab: Engine als Fundament einbinden",
+          "file": "TBD (BWA-Tab Komponente in MOD-04)",
+          "description": "Der BWA-Tab ist derzeit leer. Bei Implementierung MUSS calcBWA(), calcInstandhaltungsruecklage(), calcLeerstandsquote() aus der Engine genutzt werden — keine Inline-Logik."
+        },
+        {
+          "id": "ENG-04-B",
+          "priority": "medium",
+          "status": "todo",
+          "title": "PropertyResearchTool: Leerstandsquote via Engine berechnen",
+          "file": "src/pages/portal/akquise-manager/components/PropertyResearchTool.tsx",
+          "lines": "250-254",
+          "description": "vacancyRate wird als Rohwert angezeigt — calcLeerstandsquote() fuer konsistente Berechnung nutzen."
+        },
+        {
+          "id": "ENG-04-C",
+          "priority": "low",
+          "status": "todo",
+          "title": "AnalysisTab: GeoMap Leerstandsquote über Engine",
+          "file": "src/pages/portal/akquise-manager/components/AnalysisTab.tsx",
+          "lines": "323",
+          "description": "Leerstandsquote aus geomapData wird direkt angezeigt — Engine-Normalisierung anwenden."
+        }
+      ]
+    },
+    {
+      "id": "ENG-05",
+      "name": "Projekt-Kalkulation",
+      "path": "src/engines/projektCalc/",
+      "status": "engine_ready",
+      "consumers_refactored": [],
+      "open_items": [
+        {
+          "id": "ENG-05-A",
+          "priority": "high",
+          "status": "todo",
+          "title": "ProjectDetailPage: Inline-Kalkulation durch calcProjektKalkulation() ersetzen",
+          "file": "src/pages/portal/projekte/ProjectDetailPage.tsx",
+          "lines": "88-92",
+          "description": "Projektkalkulations-Parameter (ancillary_cost, renovation, commission, financing) werden inline an StickyCalculatorPanel weitergereicht — Engine-Aufruf einfuegen."
+        },
+        {
+          "id": "ENG-05-B",
+          "priority": "medium",
+          "status": "todo",
+          "title": "LandingPageTab: Unit-Pricing via calcUnitPricing()",
+          "file": "src/pages/portal/projekte/LandingPageTab.tsx",
+          "lines": "106-110",
+          "description": "provision_eur Fallback-Berechnung (listPrice * 0.10) durch calcUnitPricing() standardisieren."
+        },
+        {
+          "id": "ENG-05-C",
+          "priority": "medium",
+          "status": "todo",
+          "title": "ProjektLandingPage (Z3): Unit-Pricing konsistent machen",
+          "file": "src/pages/zone3/projekt/ProjektLandingPage.tsx",
+          "lines": "74-78",
+          "description": "Gleiche Inline-Logik wie LandingPageTab — muss identische Engine-Funktion nutzen."
+        },
+        {
+          "id": "ENG-05-D",
+          "priority": "low",
+          "status": "todo",
+          "title": "SalesStatusReportWidget: Vertriebsstatus via calcVertriebsStatus()",
+          "file": "src/components/projekte/SalesStatusReportWidget.tsx",
+          "description": "PDF-Report-Generierung sollte calcVertriebsStatus() nutzen fuer konsistente Zahlen zwischen UI und Export."
+        }
+      ]
+    }
+  ],
+
+  "cross_cutting_items": [
+    {
+      "id": "CROSS-01",
+      "priority": "medium",
+      "status": "todo",
+      "title": "Engine-Typen als Re-Export in src/engines/index.ts pruefen",
+      "description": "Sicherstellen, dass alle Spec-Typen und Engine-Funktionen korrekt ueber den zentralen Index re-exportiert werden — keine zirkulaeren Abhaengigkeiten."
+    },
+    {
+      "id": "CROSS-02",
+      "priority": "low",
+      "status": "todo",
+      "title": "Unit-Tests fuer alle Engine-Funktionen",
+      "description": "Reine Funktionen ohne Seiteneffekte — ideale Kandidaten fuer Vitest-Unit-Tests. Prioritaet: calcAnnuity, calcBestandFull, calcCommission."
+    },
+    {
+      "id": "CROSS-03",
+      "priority": "low",
+      "status": "todo",
+      "title": "Edge Function Nutzung vorbereiten",
+      "description": "Engines muessen auch in Deno-Edge-Functions importierbar sein (z.B. PDF-Export). Pruefen, ob reine TS-Imports ohne React-Abhaengigkeiten funktionieren."
+    }
+  ],
+
+  "summary": {
+    "total_engines": 5,
+    "done": 1,
+    "engine_ready": 4,
+    "open_refactoring_items": 17,
+    "high_priority": 5,
+    "medium_priority": 8,
+    "low_priority": 4,
+    "cross_cutting": 3
+  }
+}
