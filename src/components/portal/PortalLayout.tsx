@@ -15,6 +15,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { SystemBar } from './SystemBar';
 import { TopNavigation } from './TopNavigation';
 import { ArmstrongContainer } from './ArmstrongContainer';
+import { DesktopInstallBanner } from '@/components/shared/DesktopInstallBanner';
 import { MobileModuleBar } from './MobileModuleBar';
 import { MobileHomeChatView } from './MobileHomeChatView';
 import { SubTabs } from './SubTabs';
@@ -161,6 +162,9 @@ function PortalLayoutInner() {
         {/* Armstrong Stripe - inline layout element when expanded */}
         <ArmstrongContainer />
       </div>
+      
+      {/* Desktop PWA Install Banner */}
+      <DesktopInstallBanner />
     </div>
   );
 }
