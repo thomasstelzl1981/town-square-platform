@@ -1,137 +1,131 @@
 
+# Klicktest-Bericht und Reparaturplan: Investment-Suche
 
-# Reparaturplan: Investment-Suche (MOD-08, MOD-09, Zone 3)
+## 1. Datenbank-Abgleich (MOD-04 vs. Listings)
 
-## Analyse: Soll-Flow vs. Ist-Zustand
+### Properties in der DB (MOD-04):
+| Code | Titel | Stadt | is_demo | ID |
+|------|-------|-------|---------|-----|
+| BER-01 | Altbau Berlin-Mitte | Berlin | true | d0000000-...-001 |
+| MUC-01 | Wohnung Schwabing | Muenchen | true | d0000000-...-002 |
+| HH-01 | Wohnung Eimsbuettel | Hamburg | true | d0000000-...-003 |
 
-### Soll-Flow (alle 3 Search Engines identisch)
+### Listings in der DB:
+| Public-ID | Titel | Stadt | Status | Asking Price |
+|-----------|-------|-------|--------|-------------|
+| DEMO-BER01 | Altbau Berlin-Mitte | Berlin | active | 280.000 |
+| DEMO-MUC01 | Wohnung Schwabing | Muenchen | active | 420.000 |
+| DEMO-HH01 | Wohnung Eimsbuettel | Hamburg | active | 175.000 |
 
-```text
-1. User oeffnet die Seite
-2. Sieht NUR das Eingabeformular (zVE, EK, Familienstand, Kirchensteuer)
-3. Drueckt "Ergebnisse anzeigen"
-4. Investment Engine berechnet fuer JEDES Objekt die Belastung
-5. Ergebnisse erscheinen MIT Bildern und MIT Berechnungsergebnissen
-   (Miete, Zinsen, Tilgung, Steuerersparnis, Monatsbelastung)
+### Demo-Daten im Code (useDemoListings):
+| Code | Titel | Stadt | Preis |
+|------|-------|-------|-------|
+| BER-01 | Altbau Berlin-Mitte | Berlin | 280.000 |
+| MUC-01 | Wohnung Schwabing | Muenchen | 420.000 |
+| HH-01 | Wohnung Eimsbuettel | Hamburg | 175.000 |
+| SOT-BT-DEMO | Residenz am Stadtpark | Muenchen | 450.000 (new_construction, MOD-13) |
+
+**Ergebnis:** Keine Phantom-Daten. Die Dedup-Logik filtert "Residenz am Stadtpark" korrekt via `new_construction`-Filter in MOD-08 und MOD-09. Keine weiteren hartcodierten Immobilien im Code gefunden.
+
+---
+
+## 2. Klicktest-Ergebnisse
+
+### MOD-08 (Investment-Suche) -- Code-Analyse
+
+**hasSearched-Gate:** KORREKT implementiert (Zeile 546-556). Vor Klick wird ein Hinweis-Platzhalter angezeigt.
+
+**Suchformular:** KORREKT -- 4-Spalten-Grid mit zVE, EK, Familienstand, Kirchensteuer (kein Collapsible).
+
+**Button-Zentrierung:** KORREKT -- `flex justify-center` (Zeile 429).
+
+**BUG GEFUNDEN -- Dedup bricht Metrics-Cache:**
+Die `handleInvestmentSearch` (Zeile 266-312) berechnet Metrics und speichert sie unter `listing.listing_id` als Key. Fuer DB-Listings ist das die UUID `e0000000-...`. Fuer Demo-Listings ist es `demo-listing-d0000000-...`. Da DB und Demo identische Titel+Stadt haben, werden die Demos in `mergedListings` (Zeile 238-252) herausgefiltert -- nur die DB-Eintraege bleiben. Die Berechnung laeuft aber korrekt auf den DB-Listings (Zeile 283), also sollten die Cache-Keys passen.
+
+**ABER:** Die Berechnung in `handleInvestmentSearch` (Zeile 270-273) dedupliziert DB gegen Demo und berechnet dann nur die verbleibenden. Die DB-Listings kommen von `freshListings` via `refetch()`, und deren IDs werden als Keys genutzt. Die Anzeige in `mergedListings` nutzt ebenfalls die DB-Listing-IDs. Das SOLLTE passen.
+
+**Moegliches Problem:** Die `refetch()` in Zeile 268 holt DB-Listings mit `listing_id` (aus `item.id` der Listings-Tabelle). In `mergedListings` wird ebenfalls `listing_id` genutzt. Das stimmt ueberein. Der Flow ist korrekt im Code.
+
+**Bilder:** DB-Listings suchen Bilder via `document_links` + `documents.file_path`. Wenn keine Bilder hochgeladen wurden, wird das Demo-Bild uebertragen (Zeile 245). Das ist korrekt implementiert.
+
+### MOD-09 (Beratung) -- Code-Analyse
+
+**hasSearched-Gate:** KORREKT (Zeile 294-303).
+
+**BUG:** Die `handleSearch` (Zeile 209) nutzt `deduplicateByField`, die Demo-IDs bevorzugt, wenn kein DB-Match existiert. Aber da die DB-Listings identische Titel+Stadt haben, werden Demos herausgefiltert. Die Berechnung laeuft auf den DB-Listings. Der Cache nutzt `listing.id` (DB-UUID). Die Anzeige in `visibleListings` (Zeile 253) nutzt ebenfalls `deduplicateByField` -- die DB-Listings behalten ihre Original-IDs. Der Cache-Key sollte passen.
+
+**Kein Phantom:** Korrekt gefiltert mit `new_construction`-Filter.
+
+### Zone 3 (Kaufy) -- Code-Analyse
+
+**KRITISCHER BUG GEFUNDEN:**
+Die `handleInvestmentSearch` (Zeile 252-253) berechnet nur `freshListings` (DB-Listings), NICHT die Demo-Listings. Zeile 253: `const listingsToProcess = (freshListings || []).slice(0, 20)`. Demo-Listings werden in der Anzeige (`allListings`, Zeile 232-237) hinzugefuegt, aber NICHT in die Berechnung einbezogen. Ergebnis: Demo-Listings auf Kaufy zeigen "---" bei den Metrics.
+
+**Loesung:** In `handleInvestmentSearch` muessen die Demo-Listings (nach Dedup) ebenfalls in `listingsToProcess` aufgenommen werden -- genau wie in MOD-08 und MOD-09.
+
+---
+
+## 3. Reparaturplan
+
+### Aenderung 1: Zone 3 Kaufy -- Demo-Listings in Berechnung einbeziehen
+
+**Datei:** `src/pages/zone3/kaufy2026/Kaufy2026Home.tsx`
+
+In `handleInvestmentSearch` (ca. Zeile 252-253) die Demo-Listings mit den DB-Listings mergen:
+
+Aktuell:
+```
+const { data: freshListings } = await refetch();
+const listingsToProcess = (freshListings || []).slice(0, 20);
 ```
 
-### Ist-Zustand (kaputt)
-
-| Problem | MOD-08 | MOD-09 | Zone 3 |
-|---------|--------|--------|--------|
-| Ergebnisse vor Klick sichtbar | Ja (kaputt) | Ja (kaputt) | Nein (korrekt als Demo-Preview) |
-| Bilder bei Demo-Objekten | Nein | Ja | Ja |
-| Berechnungsergebnisse | Nur "---" | Nur "---" | Funktioniert |
-| Familienstand/Kirchensteuer lesbar | Versteckt hinter Collapsible | Versteckt hinter Collapsible | Im Suchfeld integriert |
-| Phantom-Objekte | Nein | Moeglich | Nein |
-
----
-
-## Ursachen-Analyse
-
-### Problem 1: Ergebnisse erscheinen sofort ohne Berechnung
-In der letzten Aenderung wurde der `hasSearched`-Gate in MOD-08 entfernt. Jetzt zeigen die Demo-Listings sofort, aber OHNE Metrics (alles "---"). In MOD-09 ist dasselbe Problem: Die `visibleListings`-Grid wird immer gerendert (Zeile 276), nicht hinter `hasSearched` geschuetzt.
-
-**Loesung**: `hasSearched`-Gate wiederherstellen. Vor dem Druecken des Buttons zeigt MOD-08 nur das Suchformular und einen Hinweistext. Nach dem Druecken erscheinen die Ergebnisse MIT berechneten Metrics.
-
-### Problem 2: Keine Bilder in MOD-08
-Die Demo-Listings in `useDemoListings` haben `hero_image_path` mit importierten Bildern (demo-berlin.jpg etc.). ABER: Es existieren auch echte DB-Listings mit identischem Titel+Stadt. Die Dedup-Logik (Zeile 243-246 in SucheTab) bevorzugt DB-Eintraege -- und diese haben KEINE Bilder, weil `document_links` leer ist.
-
-**Loesung**: Bei der Deduplizierung muessen die Demo-Bilder auf die DB-Listings uebertragen werden, ODER die Demo-Listings muessen Vorrang haben, wenn sie ein Bild mitbringen.
-
-### Problem 3: Keine Berechnungsergebnisse
-Die `handleInvestmentSearch`-Funktion berechnet Metrics und speichert sie unter `listing_id` als Key im Cache. Wenn Demo-Listings mit ID `demo-listing-xxx` berechnet werden, aber nach der Dedup die DB-Listings mit ID `e0000000-xxx` angezeigt werden, passen die Cache-Keys nicht zusammen. Ergebnis: alle Kacheln zeigen "---".
-
-**Loesung**: Die Berechnung muss mit den FINALEN (nach Dedup) Listing-IDs arbeiten, nicht mit den Roh-IDs.
-
-### Problem 4: Familienstand/Kirchensteuer nicht lesbar
-Beide Felder sind hinter "Mehr Optionen" (Collapsible) versteckt. Da Familienstand und Kirchensteuer zur Kernberechnung gehoeren, sollten sie direkt sichtbar sein.
-
-**Loesung**: Familienstand und Kirchensteuer werden in die Hauptzeile des Formulars verschoben (4-Spalten-Grid statt 3). "Mehr Optionen" wird entfernt.
-
-### Problem 5: Phantom-Objekte in MOD-09
-Die 3 DB-Listings (Berlin, Muenchen, Hamburg) existieren sowohl als Demo-Daten als auch als echte DB-Eintraege. Wenn die Dedup nicht korrekt greift (z.B. wegen Titelunterschieden), erscheinen Duplikate. Zusaetzlich: MOD-09 `BeratungTab` zeigt Demo-Listings auch OHNE dass `handleSearch` gedrueckt wurde.
-
-**Loesung**: `hasSearched`-Gate auch in MOD-09 wiederherstellen. Demo-Listings nur nach Suche anzeigen, und korrekt mit DB-Listings deduplizieren.
-
----
-
-## Reparaturplan
-
-### Aenderung 1: MOD-08 SucheTab — hasSearched-Gate + Dedup-Fix
-
-**Datei**: `src/pages/portal/investments/SucheTab.tsx`
-
-- `hasSearched`-Gate wiederherstellen: Ergebnisse erst nach Button-Klick zeigen
-- Vor der Suche: Nur Formular + Hinweisbox ("Geben Sie Ihre Daten ein...")
-- Dedup-Logik anpassen: Wenn ein Demo-Listing ein Bild hat und das DB-Listing keines, das Demo-Bild auf das DB-Listing uebertragen
-- Metrics-Cache mit den finalen (nach Dedup) Listing-IDs aufbauen
-- Familienstand + Kirchensteuer aus dem Collapsible herausnehmen und direkt ins Hauptformular setzen (4er-Grid)
-
-```text
-Neues Layout:
-+----------------------------------------------------------+
-| SUCHE                                                     |
-+----------------------------------------------------------+
-| [zVE: 60.000 €] [EK: 50.000 €] [Ledig v] [KiSt: Nein v]|
-|                                                           |
-|              [ Ergebnisse anzeigen ]                      |
-+----------------------------------------------------------+
-|                                                           |
-| (Vor Suche: Hinweisbox mit Icon)                         |
-| "Geben Sie Ihr zVE und Eigenkapital ein, um passende     |
-|  Objekte mit individueller Belastungsberechnung zu finden"|
-|                                                           |
-| (Nach Suche: Grid mit berechneten Ergebnissen)            |
-| +----------+ +----------+ +----------+ +----------+      |
-| | [BILD]   | | [BILD]   | | [BILD]   | | [BILD]   |     |
-| | 280.000€ | | 420.000€ | | 175.000€ | |          |     |
-| | Berlin   | | Muenchen | | Hamburg  | |          |     |
-| | +24€/Mo  | | -180€/Mo | | +65€/Mo  | |          |     |
-| +----------+ +----------+ +----------+ +----------+      |
-+----------------------------------------------------------+
+Neu:
+```
+const { data: freshListings } = await refetch();
+// Merge demo listings with DB listings (deduplicated)
+const dbKeys = new Set((freshListings || []).map(l => `${l.title}|${l.city}`));
+const demosToInclude = demoListings
+  .filter(d => d.property_type !== 'new_construction')
+  .filter(d => !dbKeys.has(`${d.title}|${d.city}`));
+const listingsToProcess = [...demosToInclude, ...(freshListings || [])].slice(0, 20);
 ```
 
-### Aenderung 2: MOD-09 BeratungTab — hasSearched-Gate + Demo-Berechnung
+Das stellt sicher, dass auch Demo-Listings ihre Metrics berechnet bekommen, genau wie in MOD-08 und MOD-09.
 
-**Datei**: `src/pages/portal/vertriebspartner/BeratungTab.tsx`
+### Aenderung 2: Zone 3 Kaufy -- new_construction Filter
 
-- `hasSearched`-Gate wiederherstellen: Grid erst nach Suche zeigen
-- Demo-Listings in die `handleSearch`-Berechnung einbeziehen (wie in MOD-08)
-- Vor der Suche: PartnerSearchForm + Hinweistext
-- Such-Button in `PartnerSearchForm` zentrieren
+Die `allListings` Merge-Logik (Zeile 232-237) filtert aktuell NICHT nach `new_construction`. Das Projekt-Demo-Objekt ("Residenz am Stadtpark") koennte hier erscheinen.
 
-### Aenderung 3: PartnerSearchForm — Familienstand/Kirchensteuer sichtbar machen
+**Loesung:** `demoListings` in Zone 3 ebenfalls filtern:
 
-**Datei**: `src/components/vertriebspartner/PartnerSearchForm.tsx`
+Aktuell (Zeile 52):
+```
+const { kaufyListings: demoListings } = useDemoListings();
+```
 
-- Collapsible "Mehr Optionen" entfernen
-- Alle 4 Felder (zVE, EK, Familienstand, Kirchensteuer) in ein 4-Spalten-Grid
-- Such-Button zentriert darunter
-
-### Aenderung 4: MOD-08 SucheTab Investment-Form — Gleiche Aenderung
-
-**Datei**: `src/pages/portal/investments/SucheTab.tsx`
-
-- Collapsible "Mehr Optionen" im Investment-Modus entfernen
-- 4-Spalten-Grid: zVE, EK, Familienstand, Kirchensteuer
-- Such-Button zentriert
-
-### Aenderung 5: Klassische Suche Button zentrieren
-
-**Datei**: `src/pages/portal/investments/SucheTab.tsx`
-
-- Button bei der klassischen Suche ebenfalls zentriert (`flex justify-center`)
+Neu:
+```
+const { kaufyListings: allDemoListings } = useDemoListings();
+const demoListings = useMemo(() =>
+  allDemoListings.filter(d => d.property_type !== 'new_construction'),
+  [allDemoListings]
+);
+```
 
 ---
 
-## Betroffene Dateien
+## 4. Zusammenfassung
+
+| Modul | hasSearched-Gate | Formular 4-Spalten | Button zentriert | Bilder | Metrics | Phantom-Filter | Status |
+|-------|-----------------|-------------------|-----------------|--------|---------|---------------|--------|
+| MOD-08 | OK | OK | OK | OK (Dedup-Transfer) | OK | OK | KORREKT |
+| MOD-09 | OK | OK | OK | OK | OK | OK | KORREKT |
+| Zone 3 | OK | OK | OK | OK | BUG (Demos ohne Berechnung) | FEHLT | 2 BUGS |
+
+### Betroffene Dateien
 
 | Datei | Aenderung |
 |-------|-----------|
-| `src/pages/portal/investments/SucheTab.tsx` | hasSearched-Gate, Dedup-Fix, Bild-Uebernahme, 4-Spalten-Form, Button zentriert |
-| `src/pages/portal/vertriebspartner/BeratungTab.tsx` | hasSearched-Gate, Demo-Berechnung einbeziehen |
-| `src/components/vertriebspartner/PartnerSearchForm.tsx` | Collapsible entfernen, 4-Spalten-Grid, Button zentriert |
+| `src/pages/zone3/kaufy2026/Kaufy2026Home.tsx` | Demo-Listings in Berechnung einbeziehen + new_construction-Filter |
 
-**Keine DB-Migration noetig.**
-
+**Keine DB-Migration noetig. Keine Phantom-Daten in der Datenbank.**
