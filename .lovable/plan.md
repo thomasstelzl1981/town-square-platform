@@ -1,105 +1,86 @@
 
-# Abgleich Armstrong Actions: Manifest vs. Zone 2 vs. Zone 1
 
-## Analyse-Ergebnis
+# Klare Zone-Trennung im Armstrong AktionsKatalog
 
-### Drei Darstellungen derselben Daten
+## Analyse: Aktuelle Verteilung
 
-Das System zeigt die Armstrong-Actions an drei Stellen:
+Das Manifest definiert 3 Zonen-Zuordnungen:
 
-1. **Manifest (SSOT)**: `src/manifests/armstrongManifest.ts` -- definiert aktuell ca. 80+ Actions (davon 41 Coach-Actions fuer MOD-08 Slideshows/Engine)
-2. **Zone 1 Admin-Konsole**: `src/pages/admin/armstrong/ArmstrongActions.tsx` -- liest Manifest UND DB-Overrides, zeigt `effective_status`
-3. **Zone 2 Stammdaten/Abrechnung**: `src/pages/portal/communication-pro/agenten/AktionsKatalog.tsx` -- liest NUR das statische Manifest, KEINE DB-Overrides
+| Zuordnung | Anzahl | Beispiele |
+|-----------|--------|-----------|
+| Nur Z2 (Portal) | ca. 275 Actions | Immobilie anlegen, Brief senden, DMS |
+| Nur Z3 (Website) | ca. 10 Actions | Kontaktanfrage, Newsletter |
+| Z2 + Z3 (beide) | ca. 50 Actions | Rendite berechnen, FAQ, Coach-Actions |
 
-### Gefundene Diskrepanzen
+**Das Problem**: Der aktuelle Zone-Filter nutzt `includes()` -- bei Auswahl "Z2" erscheinen auch alle Actions mit `['Z2', 'Z3']`, ohne dass erkennbar ist, ob eine Action exklusiv fuer das Portal gilt oder auch auf den Websites laeuft.
 
-**Problem 1: Zone 2 ignoriert Admin-Overrides (KRITISCH)**
+## Loesung: Dreistufiger Zone-Filter mit visueller Kennzeichnung
 
-Die `AktionsKatalog`-Komponente in Zone 2 (eingebettet in Stammdaten > Abrechnung) importiert `armstrongActions` direkt aus dem Manifest und zeigt den statischen `status`. Wenn ein Admin in Zone 1 eine Action per Override auf "disabled" oder "restricted" setzt, sieht der User in Zone 2 weiterhin "Aktiv". Das ist ein Governance-Bruch.
+### 1. Filter-Optionen erweitern
 
-| Darstellung | Datenquelle | Override-Sichtbarkeit |
-|-------------|-------------|----------------------|
-| Zone 1 (Admin) | Manifest + DB-Overrides via `useArmstrongActions` Hook | Ja -- zeigt "Override"-Badge |
-| Zone 2 (User) | Nur statisches Manifest (`armstrongActions`) | Nein -- zeigt immer Manifest-Status |
-
-**Problem 2: Fehlende Filter in Zone 2**
-
-Zone 1 bietet Filter fuer Modul, Zone, Risiko und Status. Zone 2 hat nur Zone und Status -- es fehlen Modul- und Risiko-Filter. Fuer den End-User sind diese zwar weniger kritisch, aber fuer Konsistenz waere ein Modul-Filter sinnvoll.
-
-**Problem 3: ArmstrongIntegrations.tsx nicht exportiert**
-
-Die Datei `src/pages/admin/armstrong/ArmstrongIntegrations.tsx` existiert, wird aber nicht in `index.ts` exportiert. Das bedeutet, sie ist eine tote Datei und ueber das Routing nicht erreichbar.
-
-**Problem 4: Keine Detail-Ansicht in Zone 2**
-
-Zone 1 hat einen Detail-Dialog (Klick auf Eye-Icon) mit allen Metadaten (Scopes, API-Contract, Side Effects etc.). Zone 2 zeigt nur die Kartenansicht ohne Detail-Drill-Down.
-
-### Was KONSISTENT ist (kein Handlungsbedarf)
-
-- Beide Ansichten lesen aus demselben Manifest (SSOT-Prinzip intakt)
-- Die `KostenDashboard`-Komponente in Zone 2 liest korrekt aus `armstrong_billing_events` (DB)
-- Zone 1 hat korrekte Override-Logik mit `useArmstrongActions` Hook
-- Die WhatsApp-Armstrong-Card in Zone 2 ist korrekt im Abrechnung-Tab positioniert
-
-## Umsetzungsplan
-
-### Schritt 1: Zone 2 AktionsKatalog auf useArmstrongActions umstellen
-
-Die `AktionsKatalog`-Komponente (`src/pages/portal/communication-pro/agenten/AktionsKatalog.tsx`) wird von statischem Manifest-Import auf den `useArmstrongActions`-Hook umgestellt. Damit sieht der User den `effective_status` inklusive Admin-Overrides.
-
-Aenderungen:
-- Import von `useArmstrongActions` statt direktem `armstrongActions`-Import
-- Status-Badge zeigt `effective_status` statt `status`
-- Deaktivierte Actions werden visuell gedimmt dargestellt
-- Optional: "Eingeschraenkt"-Badge bei restricted Actions
-
-### Schritt 2: ArmstrongIntegrations in index.ts exportieren
-
-Die fehlende Export-Zeile in `src/pages/admin/armstrong/index.ts` wird ergaenzt:
+Statt nur "Alle / Z2 / Z3" wird der Filter auf 4 Optionen erweitert:
 
 ```text
-export { default as ArmstrongIntegrations } from './ArmstrongIntegrations';
+Alle Zonen | Nur Portal (Z2) | Nur Website (Z3) | Portal + Website
 ```
 
-Falls die Routing-Konfiguration diese Seite noch nicht verlinkt, wird sie als verfuegbar registriert.
+- **Nur Portal (Z2)**: Zeigt Actions, die EXKLUSIV in Zone 2 laufen
+- **Nur Website (Z3)**: Zeigt Actions, die EXKLUSIV in Zone 3 laufen
+- **Portal + Website**: Zeigt Actions, die in BEIDEN Zonen verfuegbar sind
 
-### Schritt 3: Modul-Filter in Zone 2 ergaenzen (optional)
+### 2. Visuelle Kennzeichnung auf den Karten
 
-Ein Modul-Filter-Dropdown wird zur Zone 2 AktionsKatalog hinzugefuegt, damit User nach Modulen filtern koennen. Dies ist eine UX-Verbesserung, keine kritische Governance-Massnahme.
+Jede Action-Card erhaelt ein farbcodiertes Zone-Badge:
 
-## Technische Details
+- **Portal-exklusiv**: Blaues Badge "Portal"
+- **Website-exklusiv**: Gruenes Badge "Website"  
+- **Beide Zonen**: Zweifarbiges Badge-Paar "Portal" + "Website"
 
-### Schritt 1 -- Konkrete Code-Aenderung
+### 3. KPI-Leiste um Zone-Verteilung ergaenzen
 
-In `AktionsKatalog.tsx`:
+Die bestehende KPI-Leiste (Gesamt / Aktiv / Eingeschraenkt / Deaktiviert) wird um eine Zeile mit Zone-Verteilung ergaenzt, damit sofort sichtbar ist, wie viele Actions pro Zone existieren.
 
-Vorher:
+## Technische Umsetzung
+
+### Datei: `AktionsKatalog.tsx`
+
+**Filter-Logik aendern** (Zeile 40):
+
+Aktuell:
 ```text
-import { armstrongActions } from '@/manifests/armstrongManifest';
-// ...
-const filtered = armstrongActions.filter(...)
+const matchesZone = zoneFilter === 'all' || action.zones.includes(zoneFilter);
 ```
 
-Nachher:
+Neu:
 ```text
-import { useArmstrongActions } from '@/hooks/useArmstrongActions';
-// ...
-const { actions, isLoading } = useArmstrongActions();
-const filtered = actions.filter(...)
-// Status-Badge nutzt action.effective_status statt action.status
+const matchesZone = 
+  zoneFilter === 'all' ||
+  (zoneFilter === 'Z2_only' && action.zones.length === 1 && action.zones[0] === 'Z2') ||
+  (zoneFilter === 'Z3_only' && action.zones.length === 1 && action.zones[0] === 'Z3') ||
+  (zoneFilter === 'Z2_Z3' && action.zones.includes('Z2') && action.zones.includes('Z3'));
 ```
 
-### Schritt 2 -- Export ergaenzen
+**Filter-Dropdown erweitern** (Zeile 96-99):
 
-Eine Zeile in `index.ts` hinzufuegen.
+```text
+<SelectItem value="all">Alle Zonen</SelectItem>
+<SelectItem value="Z2_only">Nur Portal (Z2)</SelectItem>
+<SelectItem value="Z3_only">Nur Website (Z3)</SelectItem>
+<SelectItem value="Z2_Z3">Portal + Website</SelectItem>
+```
 
-### Kein SQL noetig
+**Zone-Badges farblich differenzieren** (Zeile 147-151):
 
-Alle Aenderungen sind rein client-seitig. Die DB-Struktur (armstrong_action_overrides) existiert bereits und wird korrekt befuellt.
+Portal-Badges erhalten eine blaue Akzentfarbe, Website-Badges eine gruene -- so ist die Zugehoerigkeit auf den ersten Blick erkennbar.
 
-## Ergebnis nach Umsetzung
+### Keine weiteren Dateien betroffen
 
-- Zone 2 User sehen den tatsaechlichen, governance-konformen Status jeder Action
-- Admin-Overrides greifen sofort in Zone 1 UND Zone 2
-- Tote Datei (ArmstrongIntegrations) wird erreichbar
-- Konsistente Darstellung ueber alle Zonen
+- Kein SQL noetig
+- Keine Aenderung am Manifest oder Hook
+- Nur UI-Logik in einer Datei
+
+## Ergebnis
+
+- Klare Trennung: User sieht sofort, welche Actions nur im Portal, nur auf Websites oder in beiden Zonen laufen
+- Governance-Transparenz: Admins koennen gezielt pruefen, welche Faehigkeiten auf oeffentlichen Websites (Z3) aktiv sind
+- Farbcodierung macht die Zuordnung auch ohne Filter visuell erkennbar
