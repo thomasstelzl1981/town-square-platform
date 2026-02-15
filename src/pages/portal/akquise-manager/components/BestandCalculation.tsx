@@ -11,6 +11,8 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Calculator, TrendingUp, Loader2, RefreshCcw } from 'lucide-react';
 import { useRunCalcBestand } from '@/hooks/useAcqOffers';
+import { calcBestandFull } from '@/engines/akquiseCalc/engine';
+import type { BestandFullParams } from '@/engines/akquiseCalc/spec';
 import { DESIGN } from '@/config/designManifest';
 import { cn } from '@/lib/utils';
 import {
@@ -30,33 +32,12 @@ interface BestandCalculationProps {
   hideQuickAnalysis?: boolean;
 }
 
-interface CalcParams {
-  purchasePrice: number;
-  monthlyRent: number;
-  equityPercent: number;
-  interestRate: number;
-  repaymentRate: number;
-  rentIncreaseRate: number;
-  valueIncreaseRate: number;
-  managementCostPercent: number;
-  maintenancePercent: number;
-  ancillaryCostPercent: number;
-}
-
-interface YearlyData {
-  year: number;
-  rent: number;
-  interest: number;
-  repayment: number;
-  remainingDebt: number;
-  propertyValue: number;
-  equity: number;
-}
+// Types now come from engine spec
 
 export function BestandCalculation({ offerId, initialData, temporary = false, hideQuickAnalysis = false }: BestandCalculationProps) {
   const runCalc = useRunCalcBestand();
   
-  const [params, setParams] = React.useState<CalcParams>({
+  const [params, setParams] = React.useState<BestandFullParams>({
     purchasePrice: initialData.purchasePrice,
     monthlyRent: initialData.monthlyRent,
     equityPercent: 20,
@@ -69,79 +50,8 @@ export function BestandCalculation({ offerId, initialData, temporary = false, hi
     ancillaryCostPercent: 10,
   });
 
-  // Calculate everything
-  const calculation = React.useMemo(() => {
-    const {
-      purchasePrice, monthlyRent, equityPercent, interestRate, repaymentRate,
-      rentIncreaseRate, valueIncreaseRate, managementCostPercent, maintenancePercent,
-      ancillaryCostPercent
-    } = params;
-
-    const yearlyRent = monthlyRent * 12;
-    const ancillaryCosts = purchasePrice * (ancillaryCostPercent / 100);
-    const totalInvestment = purchasePrice + ancillaryCosts;
-    const equity = totalInvestment * (equityPercent / 100);
-    const loanAmount = totalInvestment - equity;
-    
-    const annuityRate = (interestRate + repaymentRate) / 100;
-    const yearlyAnnuity = loanAmount * annuityRate;
-    const monthlyRate = yearlyAnnuity / 12;
-
-    const grossYield = purchasePrice > 0 ? (yearlyRent / purchasePrice) * 100 : 0;
-    const maxFinancing = (yearlyRent * 0.8 / 5) * 100;
-
-    // 30-year projection
-    const yearlyData: YearlyData[] = [];
-    let currentDebt = loanAmount;
-    let currentRent = yearlyRent;
-    let currentValue = purchasePrice;
-    let totalInterest = 0;
-    let totalRepayment = 0;
-
-    for (let year = 1; year <= 30; year++) {
-      const interest = currentDebt * (interestRate / 100);
-      const repayment = Math.min(yearlyAnnuity - interest, currentDebt);
-      
-      totalInterest += interest;
-      totalRepayment += repayment;
-      currentDebt = Math.max(0, currentDebt - repayment);
-      currentRent *= (1 + rentIncreaseRate / 100);
-      currentValue *= (1 + valueIncreaseRate / 100);
-
-      yearlyData.push({
-        year,
-        rent: currentRent,
-        interest,
-        repayment,
-        remainingDebt: currentDebt,
-        propertyValue: currentValue,
-        equity: currentValue - currentDebt,
-      });
-    }
-
-    const fullRepaymentYear = yearlyData.findIndex(d => d.remainingDebt <= 0) + 1 || 30;
-
-    let value40 = purchasePrice;
-    for (let i = 0; i < 40; i++) {
-      value40 *= (1 + valueIncreaseRate / 100);
-    }
-    
-    const wealthGrowth = value40 - equity;
-    const roi = equity > 0 ? ((wealthGrowth / equity) * 100) : 0;
-
-    return {
-      totalInvestment, equity, loanAmount, yearlyAnnuity, monthlyRate,
-      grossYield, maxFinancing, yearlyData, fullRepaymentYear,
-      totalInterest, totalRepayment,
-      value10: yearlyData[9]?.propertyValue || 0,
-      value20: yearlyData[19]?.propertyValue || 0,
-      debt10: yearlyData[9]?.remainingDebt || 0,
-      debt20: yearlyData[19]?.remainingDebt || 0,
-      wealth10: yearlyData[9]?.equity || 0,
-      wealth20: yearlyData[19]?.equity || 0,
-      value40, wealthGrowth, roi,
-    };
-  }, [params]);
+  // Calculate everything via engine
+  const calculation = React.useMemo(() => calcBestandFull(params), [params]);
 
   const formatCurrency = (val: number) => 
     new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(val);

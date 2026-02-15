@@ -7,6 +7,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { calcBestandQuick, calcAufteilerQuick } from '@/engines/akquiseCalc/engine';
 
 // ============================================================================
 // TYPES
@@ -382,7 +383,7 @@ export function useRunCalcBestand() {
       if (runError) throw runError;
 
       // Calculate locally (using existing investment engine logic)
-      const result = calculateBestandKPIs(params);
+      const result = calcBestandQuick(params as any);
 
       // Update run with results
       const { error: updateError } = await supabase
@@ -434,7 +435,7 @@ export function useRunCalcAufteiler() {
 
       if (runError) throw runError;
 
-      const result = calculateAufteilerKPIs(params);
+      const result = calcAufteilerQuick(params as any);
 
       await supabase
         .from('acq_analysis_runs')
@@ -482,91 +483,6 @@ export function useExtractFromDocument() {
   });
 }
 
-// ============================================================================
-// CALCULATION HELPERS
-// ============================================================================
-
-function calculateBestandKPIs(params: Record<string, unknown>) {
-  const purchasePrice = Number(params.purchasePrice) || 0;
-  const monthlyRent = Number(params.monthlyRent) || 0;
-  const equity = Number(params.equity) || purchasePrice * 0.2;
-  const interestRate = Number(params.interestRate) || 3.5;
-  const repaymentRate = Number(params.repaymentRate) || 2;
-  const managementCostPercent = Number(params.managementCostPercent) || 25;
-  const ancillaryCostPercent = Number(params.ancillaryCostPercent) || 10;
-
-  const yearlyRent = monthlyRent * 12;
-  const ancillaryCosts = purchasePrice * (ancillaryCostPercent / 100);
-  const totalInvestment = purchasePrice + ancillaryCosts;
-  const loanAmount = totalInvestment - equity;
-  
-  const grossYield = purchasePrice > 0 ? (yearlyRent / purchasePrice) * 100 : 0;
-  const managementCosts = yearlyRent * (managementCostPercent / 100);
-  const noi = yearlyRent - managementCosts;
-  const netYield = purchasePrice > 0 ? (noi / purchasePrice) * 100 : 0;
-  
-  const yearlyInterest = loanAmount * (interestRate / 100);
-  const yearlyRepayment = loanAmount * (repaymentRate / 100);
-  const yearlyDebtService = yearlyInterest + yearlyRepayment;
-  const monthlyCashflow = (noi - yearlyDebtService) / 12;
-  
-  const ltv = totalInvestment > 0 ? (loanAmount / totalInvestment) * 100 : 0;
-  const dscr = yearlyDebtService > 0 ? noi / yearlyDebtService : 0;
-  const cashOnCash = equity > 0 ? ((noi - yearlyDebtService) / equity) * 100 : 0;
-  const multiplier = yearlyRent > 0 ? purchasePrice / yearlyRent : 0;
-
-  return {
-    purchasePrice,
-    totalInvestment,
-    equity,
-    loanAmount,
-    yearlyRent,
-    noi,
-    grossYield: Math.round(grossYield * 100) / 100,
-    netYield: Math.round(netYield * 100) / 100,
-    monthlyCashflow: Math.round(monthlyCashflow),
-    ltv: Math.round(ltv * 10) / 10,
-    dscr: Math.round(dscr * 100) / 100,
-    cashOnCash: Math.round(cashOnCash * 100) / 100,
-    multiplier: Math.round(multiplier * 10) / 10,
-  };
-}
-
-function calculateAufteilerKPIs(params: Record<string, unknown>) {
-  const purchasePrice = Number(params.purchasePrice) || 0;
-  const unitsCount = Number(params.unitsCount) || 1;
-  const avgUnitSalePrice = Number(params.avgUnitSalePrice) || 0;
-  const renovationCostPerUnit = Number(params.renovationCostPerUnit) || 0;
-  const salesCommissionPercent = Number(params.salesCommissionPercent) || 3;
-  const holdingPeriodMonths = Number(params.holdingPeriodMonths) || 24;
-  const ancillaryCostPercent = Number(params.ancillaryCostPercent) || 10;
-
-  const totalSaleProceeds = avgUnitSalePrice * unitsCount;
-  const salesCommission = totalSaleProceeds * (salesCommissionPercent / 100);
-  const totalRenovationCosts = renovationCostPerUnit * unitsCount;
-  const ancillaryCosts = purchasePrice * (ancillaryCostPercent / 100);
-  
-  const totalCosts = purchasePrice + ancillaryCosts + totalRenovationCosts + salesCommission;
-  const grossProfit = totalSaleProceeds - totalCosts;
-  const profitMarginPercent = totalCosts > 0 ? (grossProfit / totalCosts) * 100 : 0;
-  
-  const annualizedReturn = holdingPeriodMonths > 0 
-    ? (profitMarginPercent / holdingPeriodMonths) * 12 
-    : 0;
-
-  const pricePerUnit = purchasePrice / unitsCount;
-  const profitPerUnit = grossProfit / unitsCount;
-
-  return {
-    purchasePrice,
-    unitsCount,
-    totalSaleProceeds,
-    totalCosts,
-    grossProfit: Math.round(grossProfit),
-    profitMarginPercent: Math.round(profitMarginPercent * 100) / 100,
-    annualizedReturn: Math.round(annualizedReturn * 100) / 100,
-    pricePerUnit: Math.round(pricePerUnit),
-    profitPerUnit: Math.round(profitPerUnit),
-    holdingPeriodMonths,
-  };
-}
+// Calculation logic consolidated in src/engines/akquiseCalc/engine.ts
+// Re-export for backward compatibility
+export { calcBestandQuick as calculateBestandKPIs, calcAufteilerQuick as calculateAufteilerKPIs } from '@/engines/akquiseCalc/engine';
