@@ -167,10 +167,9 @@ export default function UebersichtTab() {
               ]}
               thumbnailUrl={(person as any).avatar_url || undefined}
               summary={[
-                ...(person.salutation ? [{ label: 'Anrede', value: person.salutation }] : []),
+                ...(person.birth_date ? [{ label: 'Geb.', value: new Date(person.birth_date).toLocaleDateString('de-DE') }] : []),
                 ...(person.street ? [{ label: 'Straße', value: `${person.street} ${person.house_number || ''}`.trim() }] : []),
                 ...(person.zip ? [{ label: 'PLZ/Ort', value: `${person.zip} ${person.city || ''}`.trim() }] : []),
-                ...(person.birth_date ? [{ label: 'Geb.', value: new Date(person.birth_date).toLocaleDateString('de-DE') }] : []),
                 ...((person as any).phone_landline ? [{ label: 'Tel.', value: (person as any).phone_landline }] : []),
                 ...(person.phone ? [{ label: 'Mobil', value: person.phone }] : []),
                 ...(person.email ? [{ label: 'E-Mail', value: person.email }] : []),
