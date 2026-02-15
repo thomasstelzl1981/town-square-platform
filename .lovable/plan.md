@@ -1,206 +1,91 @@
 
 
-# Armstrong Zone 2 — Vollstaendiger Scan: Fehlende Actions & Knowledge Gaps
+# Zone 1: Plattform-Kostenmonitor (Testphase)
 
-## 1. Status Quo: Action-Inventar
+## Ziel
 
-Armstrong hat aktuell **ca. 120 Z2-Actions** (inkl. Coach-Slides/Engine). Die Module-Abdeckung:
+Ein Zone 1 Dashboard, das euch zeigt: **Was kostet uns die Plattform tatsaechlich?** Damit koennt ihr spaeter eure Credit-Preise datenbasiert kalkulieren, statt zu raten.
 
-| Modul | Actions vorhanden | Status |
-|-------|-------------------|--------|
-| MOD-00 Dashboard | 9 (Widgets, Briefing, Report, Meeting) | Gut |
-| MOD-02 KI-Office | 13 (Letter, WA, Email, Calendar, Contacts) | Gut |
-| MOD-03 DMS | 5 (Search, Link, Extract, Upload, Confidence) | Gut |
-| MOD-04 Immobilien | 12 (CRUD, KPI, NK, Lease, Tenant, Expose) | Gut |
-| MOD-07 Finanzierung | 7 (Selbstauskunft, Checklist, Export, Readiness, Credit, Bank) | Gut |
-| MOD-08 Investment | 4 + 41 Coach (Analyze, Simulate, Mandate, Research) | Gut |
-| MOD-12 Akquise | 3 (Draft, Analyze, Mandate) | Basis |
-| MOD-13 Projekte | 2 (Create, Explain) | Basis |
-| MOD-14 Recherche | 5 (Free, Pro, Import, Dedupe, Order) | Gut |
-| MOD-16 Sanierung | 3 (Tender, Compare, Commission) | Basis |
-| MOD-17 Cars | 1 (Dossier Research) | Minimal |
-| MOD-18 Finanzen | 1 (Insurance Research) | Minimal |
-| MOD-19 Photovoltaik | 4 (Explain Connect, Monitoring, PV Research, View) | Gut |
-| KB | 3 (Memo, Suggest, Sales Script) | Gut |
-| Landing Page | 2 (Generate, Publish) | Gut |
-| **MOD-05 Pets** | **0** | **Fehlt** |
-| **MOD-06 Verkauf** | **0** | **Fehlt** |
-| **MOD-09 Vertriebspartner** | **0** | **Fehlt** |
-| **MOD-10 Leadmanager** | **0** | **Fehlt** |
-| **MOD-11 Finanzierungsmanager** | **0** | **Fehlt** |
+## Was existiert bereits
 
-## 2. Fehlende Actions nach Modul
+| Komponente | Status |
+|------------|--------|
+| `armstrong_action_runs` (Tabelle) | Vorhanden — loggt jede Action mit `cost_cents`, `tokens_used`, `duration_ms` |
+| `armstrong_billing_events` (Tabelle) | Vorhanden — loggt `cost_model`, `cost_cents`, `credits_charged` |
+| `credit_ledger` (Tabelle) | Vorhanden — Einzelbuchungen mit `kind`, `amount` |
+| `v_armstrong_costs_daily` (View) | Vorhanden — Tagesaggregation |
+| `ArmstrongBilling.tsx` (Zone 1) | Vorhanden — zeigt Events und Tageskosten |
+| `KostenDashboard.tsx` (Zone 2) | Vorhanden — zeigt User-KPIs |
 
-### 2.1 MOD-06 Verkauf (0 Actions -- KRITISCH)
+## Was fehlt fuer den "Plattformkosten-Monitor"
 
-| Action Code | Titel | Mode | Widget? |
-|-------------|-------|------|---------|
-| ARM.MOD06.EXPLAIN_MODULE | Verkaufsmodul erklaeren | readonly | Nein |
-| ARM.MOD06.GENERATE_EXPOSE | Expose generieren | execute_with_confirmation | Ja |
-| ARM.MOD06.PUBLISH_LISTING | Inserat veroeffentlichen | execute_with_confirmation | Ja |
-| ARM.MOD06.UNPUBLISH_LISTING | Inserat deaktivieren | execute_with_confirmation | Nein |
-| ARM.MOD06.ANALYZE_MARKET_PRICE | Marktpreis analysieren | readonly | Nein |
+Die bestehende `ArmstrongBilling.tsx` zeigt Rohdaten pro Event. Fuer die Testphase braucht ihr ein uebergeordnetes Dashboard, das die **echten Plattformkosten** (API-Kosten, LLM-Tokens, SMTP etc.) aggregiert und mit den **geplanten Credit-Preisen** vergleicht.
 
-### 2.2 MOD-09 Vertriebspartner (0 Actions -- KRITISCH)
+### Schritt 1: Datenbank — Plattformkosten-View
 
-| Action Code | Titel | Mode | Widget? |
-|-------------|-------|------|---------|
-| ARM.MOD09.EXPLAIN_MODULE | Vertriebspartner-Modul erklaeren | readonly | Nein |
-| ARM.MOD09.CREATE_PARTNER_PROFILE | Partnerprofil anlegen | execute_with_confirmation | Nein |
-| ARM.MOD09.VIEW_OBJECT_CATALOG | Objektkatalog einsehen | readonly | Nein |
-| ARM.MOD09.RUN_PARTNER_SIMULATION | Investment-Simulation fuer Kunden | readonly | Nein |
-| ARM.MOD09.DRAFT_PARTNER_OFFER | Angebot fuer Kunden erstellen | draft_only | Nein |
+Eine neue View `v_platform_cost_summary`, die aus `armstrong_action_runs` und `armstrong_billing_events` die realen Kosten aggregiert:
 
-### 2.3 MOD-10 Leadmanager (0 Actions -- KRITISCH)
+- **Pro Action-Code**: Anzahl Runs, Summe Tokens, Summe cost_cents, Durchschnitt pro Run
+- **Pro Kostenkategorie**: LLM (Token-basiert), API (Flatrate pro Call), Communication (SMTP/Fax), Free
+- **Pro Zeitraum**: Taeglich, woechentlich, monatlich
+- **Marge**: Vergleich `cost_cents` (unsere Kosten) vs. `credits_charged * 50` (Erloes bei 1 Credit = 0.50 EUR)
 
-| Action Code | Titel | Mode | Widget? |
-|-------------|-------|------|---------|
-| ARM.MOD10.EXPLAIN_MODULE | Leadmanager erklaeren | readonly | Nein |
-| ARM.MOD10.VIEW_LEAD_PIPELINE | Lead-Pipeline anzeigen | readonly | Nein |
-| ARM.MOD10.QUALIFY_LEAD | Lead qualifizieren | execute | Nein |
-| ARM.MOD10.ASSIGN_LEAD | Lead zuweisen | execute_with_confirmation | Ja |
-| ARM.MOD10.CREATE_DEAL | Deal aus Lead erstellen | execute_with_confirmation | Nein |
+### Schritt 2: Zone 1 UI — "Plattformkosten-Monitor"
 
-### 2.4 MOD-11 Finanzierungsmanager (0 Actions -- KRITISCH)
+Eine neue Seite unter `/admin/armstrong/costs` mit drei Bereichen:
 
-| Action Code | Titel | Mode | Widget? |
-|-------------|-------|------|---------|
-| ARM.MOD11.EXPLAIN_MODULE | Finanzierungsmanager erklaeren | readonly | Nein |
-| ARM.MOD11.CREATE_CASE | Finanzierungsfall anlegen | execute_with_confirmation | Nein |
-| ARM.MOD11.MAGIC_INTAKE | Magic Intake starten | execute_with_confirmation | Ja |
-| ARM.MOD11.PREPARE_SUBMISSION | Einreichung vorbereiten | execute_with_confirmation | Ja |
-| ARM.MOD11.TRACK_PROVISION | Provision tracken | readonly | Nein |
+**Bereich A: KPI-Uebersicht (Header-Cards)**
+- Gesamtkosten (Plattform) in EUR — was wir bezahlen
+- Theoretischer Erloess (Credits * 0.50) — was wir einnehmen wuerden
+- Marge in % — Differenz
+- Anzahl metered Actions vs. free Actions
 
-### 2.5 MOD-05 Pets (0 Actions -- NIEDRIG)
+**Bereich B: Kostenanalyse pro Action (Tabelle)**
+- Action-Code, Kategorie (LLM/API/Communication/Free)
+- Runs gesamt, Ø Kosten pro Run (in Cent)
+- Ø Tokens pro Run
+- Aktueller Credit-Preis (aus Manifest)
+- Marge pro Action (Kosten vs. Credit-Erloess)
+- Farbmarkierung: Rot = Verlust, Gruen = Gewinn
 
-| Action Code | Titel | Mode | Widget? |
-|-------------|-------|------|---------|
-| ARM.MOD05.EXPLAIN_MODULE | Pets-Modul erklaeren | readonly | Nein |
-| ARM.MOD05.CREATE_PET | Tier anlegen | execute_with_confirmation | Nein |
-| ARM.MOD05.SCHEDULE_VET | Tierarzttermin planen | execute_with_confirmation | Ja |
+**Bereich C: Credit-Kalkulator**
+- Eingabefelder: Ziel-Marge (z.B. 60%), Fixkosten pro Monat
+- Berechnet automatisch: empfohlener Credit-Preis pro Action
+- Vergleicht: aktueller Preis vs. empfohlener Preis
+- Export-Button: Kalkulationstabelle als CSV
 
-### 2.6 Erweiterungen bestehender Module
+### Schritt 3: Manifest-Erweiterung
 
-#### MOD-17 Cars (nur 1 Action)
+Jede Action im Manifest erhaelt ein zusaetzliches Feld `cost_category`, um die Kostenart zu klassifizieren:
 
-| Action Code | Titel | Mode | Widget? |
-|-------------|-------|------|---------|
-| ARM.MOD17.EXPLAIN_MODULE | Fahrzeugmodul erklaeren | readonly | Nein |
-| ARM.MOD17.CREATE_VEHICLE | Fahrzeug anlegen | execute_with_confirmation | Nein |
-| ARM.MOD17.SCHEDULE_SERVICE | Wartungstermin planen | execute_with_confirmation | Ja |
+```text
+cost_category: 'llm' | 'api_external' | 'communication' | 'infrastructure' | 'free'
+```
 
-#### MOD-18 Finanzen (nur 1 Action)
+Dies erlaubt spaeter automatische Gruppierung und Reporting.
 
-| Action Code | Titel | Mode | Widget? |
-|-------------|-------|------|---------|
-| ARM.MOD18.EXPLAIN_MODULE | Finanzmodul erklaeren | readonly | Nein |
-| ARM.MOD18.EXPLAIN_INSURANCE | Versicherung erklaeren | readonly | Nein |
-| ARM.MOD18.SUBSCRIPTION_OVERVIEW | Abo-Uebersicht erstellen | readonly | Nein |
+## Dateien
 
-#### MOD-13 Projekte (nur 2 Actions)
+| Datei | Aktion | Beschreibung |
+|-------|--------|-------------|
+| SQL Migration | CREATE | View `v_platform_cost_summary` |
+| `src/pages/admin/armstrong/PlatformCostMonitor.tsx` | CREATE | Neue Zone 1 Seite |
+| `src/pages/admin/armstrong/index.ts` | EDIT | Export hinzufuegen |
+| `src/router/ManifestRouter.tsx` | EDIT | Route `/admin/armstrong/costs` registrieren |
+| `src/pages/admin/armstrong/ArmstrongDashboard.tsx` | EDIT | Quick-Link zur neuen Seite |
+| `src/manifests/armstrongManifest.ts` | EDIT | `cost_category` Feld zu allen Actions hinzufuegen |
+| `src/types/armstrong.ts` | EDIT | `cost_category` zum Type hinzufuegen |
 
-| Action Code | Titel | Mode | Widget? |
-|-------------|-------|------|---------|
-| ARM.MOD13.CALCULATE_AUFTEILER | Aufteiler-Kalkulation | readonly | Nein |
-| ARM.MOD13.GENERATE_SALES_REPORT | Verkaufsstandsbericht | execute_with_confirmation | Ja |
-| ARM.MOD13.DRAFT_RESERVATION | Reservierung vorbereiten | draft_only | Nein |
+## Vorgehensweise
 
-## 3. Knowledge Base — Gap-Analyse
+1. **Migration**: View `v_platform_cost_summary` erstellen
+2. **Type + Manifest**: `cost_category` Feld einfuehren und alle ~153 Actions klassifizieren
+3. **UI**: `PlatformCostMonitor.tsx` mit KPIs, Tabelle und Kalkulator bauen
+4. **Routing**: Seite in Zone 1 Navigation einbinden
 
-### 3.1 Aktueller KB-Bestand (62 Items, 7 Kategorien)
+## Kein Breaking Change
 
-| Kategorie | Items | Abdeckung |
-|-----------|-------|-----------|
-| system | 10 | Grundlegend |
-| real_estate | 12 | Gut |
-| tax_legal | 4 | **Duenn** |
-| finance | 8 | Gut |
-| sales | 20 | Sehr gut |
-| templates | 2 | **Duenn** |
-| research | 0 | Leer (dynamisch) |
-| photovoltaik | 6 | Gut |
-
-### 3.2 Fehlende KB-Artikel (KRITISCH)
-
-#### Kategorie: system (fehlen ca. 15 Items)
-
-Armstrong kann Module erklaeren, hat aber keine KB-Artikel fuer:
-
-- **KB.SYS.MOD05** — Pets-Modul: Was kann es?
-- **KB.SYS.MOD06** — Verkaufsmodul: Golden Path Verkauf
-- **KB.SYS.MOD09** — Vertriebspartner: Onboarding & Objektkatalog
-- **KB.SYS.MOD10** — Leadmanager: Pipeline & Zuweisung
-- **KB.SYS.MOD11** — Finanzierungsmanager: Fall-Flow & Magic Intake
-- **KB.SYS.MOD12** — Akquisemanager: Mandat & Inbound-Flow
-- **KB.SYS.MOD13** — Projekte: Aufteiler & Reservierung
-- **KB.SYS.MOD16** — Sanierung: 8-Schritte-Golden-Path
-- **KB.SYS.MOD17** — Cars: Fahrzeugverwaltung
-- **KB.SYS.MOD18** — Finanzen: Privatfinanzen & Versicherungen
-- **KB.SYS.DASHBOARD** — Dashboard-Widgets & Briefing
-- **KB.SYS.DMS** — Dokumentenmanagement & Sortierregeln
-- **KB.SYS.ROLLEN** — Rollensystem (6 Rollen + org_admin)
-- **KB.SYS.BILLING** — Credit-System (1 Credit = 0.50 EUR)
-- **KB.SYS.ZONE_ARCHITECTURE** — Zone 1/2/3 Erklaerung
-
-#### Kategorie: tax_legal (fehlen ca. 4 Items)
-
-- **KB.TAX.AFA** — AfA-Modelle (linear, degressiv, Sonder-AfA)
-- **KB.TAX.GRUNDERWERBSTEUER** — Bundesland-Saetze
-- **KB.TAX.SPEKULATIONSFRIST** — 10-Jahres-Regel
-- **KB.TAX.WERBUNGSKOSTEN** — Was ist absetzbar?
-
-#### Kategorie: templates (fehlen ca. 5 Items)
-
-- **KB.TPL.MIETVERTRAG** — Mietvertrag-Checkliste
-- **KB.TPL.UEBERGABEPROTOKOLL** — Wohnungsuebergabe
-- **KB.TPL.NEBENKOSTENBRIEF** — NK-Abrechnung Begleitschreiben
-- **KB.TPL.KUENDIGUNGSBRIEF** — Kuendigungsschreiben Mieter
-- **KB.TPL.FINANZIERUNGSDOCS** — Dokumenten-Checkliste Bank
-
-### 3.3 Fehlende KB-Kategorie
-
-Die Kategorie **photovoltaik** existiert in der DB, aber NICHT in `armstrongKBTaxonomy.ts`. Das bedeutet, Armstrong kann die PV-Artikel nicht korrekt kategorisiert ausliefern. Die Taxonomy muss um diese Kategorie ergaenzt werden.
-
-## 4. Zusammenfassung
-
-### Neue Actions: 33 insgesamt
-
-| Modul | Neue Actions | Prioritaet |
-|-------|-------------|------------|
-| MOD-06 Verkauf | 5 | HOCH |
-| MOD-09 Vertriebspartner | 5 | HOCH |
-| MOD-10 Leadmanager | 5 | HOCH |
-| MOD-11 Finanzierungsmanager | 5 | HOCH |
-| MOD-13 Projekte (Erweiterung) | 3 | MITTEL |
-| MOD-17 Cars (Erweiterung) | 3 | MITTEL |
-| MOD-18 Finanzen (Erweiterung) | 3 | MITTEL |
-| MOD-05 Pets | 3 | NIEDRIG |
-| Summe | **33** | — |
-
-### KB-Luecken: ca. 24 fehlende Artikel
-
-| Kategorie | Fehlend | Prioritaet |
-|-----------|---------|------------|
-| system (Modul-Erklaerungen) | 15 | HOCH |
-| tax_legal | 4 | MITTEL |
-| templates | 5 | MITTEL |
-| Summe | **24** | — |
-
-### Taxonomy-Fix: 1 Aenderung
-
-- `armstrongKBTaxonomy.ts` um Kategorie `photovoltaik` ergaenzen
-
-## 5. Technische Umsetzung
-
-### Datei-Aenderungen
-
-1. **`src/manifests/armstrongManifest.ts`** — 33 neue Action-Eintraege
-2. **`src/constants/armstrongKBTaxonomy.ts`** — Kategorie `photovoltaik` hinzufuegen
-3. **Keine DB-Migration noetig** — Actions sind rein manifest-seitig, KB-Artikel werden ueber das UI oder Armstrong selbst eingepflegt
-
-### Empfohlene Reihenfolge
-
-1. Phase 1: Actions fuer MOD-06, MOD-09, MOD-10, MOD-11 (20 Actions) + Taxonomy-Fix
-2. Phase 2: Erweiterungen MOD-13, MOD-17, MOD-18 (9 Actions)
-3. Phase 3: MOD-05 Pets (3 Actions) + KB-Artikel Seeding (via Armstrong oder manuell)
+- Alle bestehenden Seiten bleiben unveraendert
+- `cost_category` ist optional im Type (Manifest-seitig, nicht DB)
+- Die View liest nur bestehende Tabellen
 
