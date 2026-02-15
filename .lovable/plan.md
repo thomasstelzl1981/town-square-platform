@@ -1,72 +1,101 @@
 
-
-# Demo-Daten saisonal verbessern + Google Solar API anbinden
+# PVGIS Soll-Kurve: Anlagen-Ausrichtung + Ertragsvergleich
 
 ## Ueberblick
 
-Der Demo-Generator wird so erweitert, dass er **Jahreszeit, Taglaenge und optional Standortdaten** beruecksichtigt. Zusaetzlich wird eine Edge Function erstellt, die die **Google Solar API** abfragt, um echte standortbezogene Solarpotenzial-Daten fuer eine Adresse zu liefern.
+Die EU-PVGIS-API (kostenlos, kein API-Key) ersetzt die Google Solar API als primaere Datenquelle fuer standortbezogene Soll-Daten. Der Nutzer kann Neigungswinkel und Ausrichtung seiner Anlage eingeben und erhaelt eine exakte Soll-Kurve, gegen die die tatsaechliche (oder Demo-) Produktion verglichen wird.
 
-## 1. Saisonaler Demo-Generator
+**Wichtig:** PVGIS blockiert Browser-Anfragen (CORS). Daher laeuft der Abruf ueber eine Backend-Funktion als Proxy.
 
-**Datei: `src/components/photovoltaik/DemoLiveGenerator.ts`**
+## Was aendert sich?
 
-Alle Funktionen erhalten einen optionalen Parameter `month` (default: aktueller Monat). Die folgenden saisonalen Faktoren werden eingebaut:
+### 1. Neue Backend-Funktion: PVGIS-Proxy
 
-| Monat | Sonnenaufgang | Sonnenuntergang | Peak-Faktor | Sonnenstunden/Tag |
-|-------|--------------|-----------------|-------------|-------------------|
-| Dez/Jan | 08:00 | 16:00 | 0.25 | 1.0 |
-| Feb | 07:30 | 17:00 | 0.35 | 1.5 |
-| Maerz | 06:30 | 18:30 | 0.55 | 2.5 |
-| Apr/Mai | 06:00 | 20:00 | 0.75 | 3.5 |
-| Jun/Jul | 05:15 | 21:30 | 1.0 | 4.8 |
-| Aug | 05:45 | 20:45 | 0.90 | 4.2 |
-| Sep | 06:30 | 19:30 | 0.65 | 3.0 |
-| Okt | 07:00 | 18:00 | 0.45 | 2.0 |
-| Nov | 07:30 | 16:30 | 0.30 | 1.2 |
+**Datei: `supabase/functions/pvgis-proxy/index.ts`**
 
-Aenderungen:
-- `generateDemoPower()`: Sonnenauf-/untergang und Peak-Leistung variieren nach Monat
-- `generateDemoPowerDeterministic()`: gleiche saisonale Logik
-- `generate24hCurve()`: beruecksichtigt aktuellen Monat
-- `generateDemoEnergyMonth()`: nutzt monatsspezifische Sonnenstunden statt fixe 3.2h
-- Neue Hilfsfunktion `getSeasonalParams(month)` liefert alle Parameter
+Ruft die PVGIS-API `PVcalc` auf und gibt die monatlichen Soll-Ertraege zurueck.
 
-**Ergebnis:** Im Februar (jetzt) zeigt die Demo-Kurve einen kurzen, flachen Bogen (ca. 07:30-17:00), im Sommer einen langen, hohen Bogen (05:15-21:30).
+- Eingabe: `{ lat, lon, peakpower, loss, angle, aspect }`
+- PVGIS-URL: `https://re.jrc.ec.europa.eu/api/v5_3/PVcalc?lat=...&lon=...&peakpower=...&loss=...&angle=...&aspect=...&outputformat=json`
+- Rueckgabe: Monatliche Soll-Ertraege (kWh), Jahresertrag, optimaler Winkel
 
-## 2. Google Solar API — Edge Function
+Kein API-Key noetig. Rate-Limit: 30 Anfragen/Sekunde (mehr als ausreichend).
 
-Der `GOOGLE_MAPS_API_KEY` ist bereits konfiguriert. Die Google Solar API (`solar.googleapis.com`) nutzt denselben Key — vorausgesetzt, die Solar API ist im Google Cloud Projekt aktiviert.
+### 2. Bestehende "Solarpotenzial"-Sektion wird ersetzt
 
-**Neue Datei: `supabase/functions/sot-solar-insights/index.ts`**
+Die aktuelle Google-Solar-Sektion im Dossier (Zeile 442-503) wird durch eine neue **"Anlagen-Ausrichtung und Soll-Ertrag"**-Sektion ersetzt:
 
-Endpunkt: `POST { latitude, longitude }` oder `POST { address }`
+**Eingabefelder:**
+| Feld | Bereich | Default | Erklaerung |
+|------|---------|---------|------------|
+| Neigung (angle) | 0-90 Grad | 35 | Dachneigung der Module |
+| Ausrichtung (aspect) | -180 bis 180 | 0 (Sued) | 0=Sued, 90=West, -90=Ost |
+| Systemverluste (loss) | 0-50% | 14 | Kabel, WR, Verschmutzung etc. |
+| PV-Technologie | Dropdown | crystSi | crystSi, CIS, CdTe |
 
-Ablauf:
-1. Falls nur Adresse: Geocoding ueber Google Geocoding API (gleicher Key)
-2. Request an `https://solar.googleapis.com/v1/buildingInsights:findClosest`
-3. Rueckgabe: `maxSunshineHoursPerYear`, `maxArrayPanelsCount`, `maxArrayAreaMeters2`, `yearlyEnergyDcKwh`, `carbonOffsetFactorKgPerMwh`
+**Button:** "Soll-Ertrag berechnen" — ruft die Backend-Funktion auf
 
-**Fallback:** Falls die Solar API nicht aktiviert ist oder keine Daten liefert (z.B. laendliche Gebiete), wird ein Fehler mit Hinweis zurueckgegeben, und die UI nutzt weiterhin den saisonalen Demo-Generator.
+**Ergebnis-Anzeige:**
+- 12-Monats-Balkendiagramm: Soll-Ertrag pro Monat (kWh)
+- Jahresertrag gesamt (kWh/Jahr)
+- Spezifischer Ertrag (kWh/kWp)
+- Optimaler Neigungswinkel (falls von PVGIS berechnet)
 
-## 3. UI-Integration im Dossier
+### 3. Soll-Kurve im Monitoring-Chart
 
-**Datei: `src/pages/portal/photovoltaik/PVPlantDossier.tsx`**
+Die Tageskurve im "Live-Monitoring" bekommt eine zweite Linie: die **Soll-Kurve** (gestrichelt, heller). So sieht man auf einen Blick, ob die Anlage ueber oder unter Plan liegt.
 
-- Neuer Button "Solarpotenzial abrufen" in der Technik-Sektion
-- Nutzt die Adresse der Anlage (street, postal_code, city) fuer den API-Call
-- Zeigt Ergebnis in einer Info-Box: geschaetzte Jahresleistung, optimale Panelflaeche, CO2-Einsparung
-- Wenn Daten vorhanden: Demo-Generator kann die Google-Sonnenstunden als Kalibrierung nutzen
+Dafuer wird der saisonale Demo-Generator mit den PVGIS-Monatsdaten kalibriert: Wenn PVGIS-Daten vorliegen, wird der monatliche Soll-Ertrag als Referenz verwendet statt der fest codierten Sonnenstunden-Tabelle.
 
-## 4. Betroffene Dateien
+### 4. Google Solar API bleibt optional
+
+Die bestehende `sot-solar-insights` Edge Function bleibt erhalten, wird aber aus dem Dossier entfernt. Sie kann spaeter fuer erweiterte Dachanalysen (Panels, Flaeche, CO2) wieder eingebunden werden.
+
+## Betroffene Dateien
 
 | Datei | Aenderung |
 |-------|-----------|
-| `src/components/photovoltaik/DemoLiveGenerator.ts` | Saisonale Parameter, variable Taglaenge |
-| `supabase/functions/sot-solar-insights/index.ts` | Neue Edge Function fuer Google Solar API |
-| `src/pages/portal/photovoltaik/PVPlantDossier.tsx` | Button "Solarpotenzial abrufen" + Ergebnis-Anzeige |
-| `src/hooks/usePvMonitoring.ts` | Keine Aenderung noetig (nutzt automatisch den verbesserten Generator) |
+| `supabase/functions/pvgis-proxy/index.ts` | **Neu** — Backend-Proxy fuer PVGIS API |
+| `supabase/config.toml` | Neue Funktion registrieren |
+| `src/pages/portal/photovoltaik/PVPlantDossier.tsx` | "Solarpotenzial" ersetzen durch "Anlagen-Ausrichtung + Soll-Ertrag", Soll-Linie im Chart |
+| `src/components/photovoltaik/DemoLiveGenerator.ts` | Keine Aenderung (saisonale Logik bleibt als Fallback) |
 
-## 5. Hinweis zur Google Solar API
+## Technische Details
 
-Die Solar API muss im Google Cloud Projekt aktiviert sein (unter "APIs & Services"). Der vorhandene `GOOGLE_MAPS_API_KEY` wird mitverwendet. Falls die API nicht aktiviert ist, wird die Edge Function einen klaren Fehler zurueckgeben — der saisonale Demo-Fallback funktioniert unabhaengig davon.
+### PVGIS API Response (PVcalc, JSON)
 
+```text
+{
+  "inputs": { "location": { "latitude": 51.5, "longitude": 7.0 }, ... },
+  "outputs": {
+    "monthly": {
+      "fixed": [
+        { "month": 1, "E_d": 1.23, "E_m": 38.1, "H(i)_d": 1.5, "H(i)_m": 46.5, "SD_m": 5.2 },
+        ...
+      ]
+    },
+    "totals": {
+      "fixed": { "E_d": 3.05, "E_m": 92.8, "E_y": 1113.5, "H(i)_d": 3.6, ... }
+    }
+  }
+}
+```
+
+- `E_m` = Monatlicher Ertrag in kWh
+- `E_y` = Jahresertrag in kWh
+- `E_d` = Durchschnittlicher Tagesertrag in kWh
+
+### Geocoding fuer Koordinaten
+
+Die Anlage hat Adressfelder (street, postal_code, city). Fuer PVGIS brauchen wir lat/lon. Dafuer nutzen wir die bestehende Google Geocoding API (gleicher Key wie bisher) innerhalb der Edge Function. Falls kein Google-Key vorhanden, kann der Nutzer lat/lon manuell eingeben.
+
+### Warum PVGIS statt Google Solar?
+
+| Kriterium | PVGIS | Google Solar |
+|-----------|-------|-------------|
+| Kosten | Kostenlos | Kostenlos (aber API-Aktivierung noetig) |
+| API-Key | Keiner noetig | Google Maps Key + Solar API aktivieren |
+| Anpassbar | Neigung, Ausrichtung, Verluste, Technologie | Nur Standort |
+| Datenquelle | EU-Satellit (SARAH3), 15+ Jahre | Google Imagery |
+| Soll-Kurve | Monatlich + stundlich moeglich | Nur jaehrlich |
+| Verfuegbarkeit | Europa, Afrika, Asien, Amerika | Begrenzt auf Gebiete mit Imagery |
