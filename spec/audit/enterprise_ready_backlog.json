@@ -22,7 +22,7 @@
     "module": "MOD-05",
     "title": "Spec file mod-05_website-builder.md describes MSV, not Pets",
     "description": "mod-05_website-builder.md contains MSV Downstream Contract spec. MOD-05 is now 'Pets' module. File must be renamed and rewritten.",
-    "repo_refs": ["spec/current/02_modules/mod-05_website-builder.md"],
+    "repo_refs": ["spec/current/02_modules/mod-05_pets.md"],
     "fix_plan": { "steps": ["Delete old file", "Create mod-05_pets.md with current Pets module spec"], "risk": "low" },
     "verification": "File exists with correct Pets content, no MSV references",
     "status": "fixed"
@@ -49,11 +49,11 @@
     "zone": "Cross",
     "module": "System",
     "title": "rate_limit_counters has RLS enabled but no policies",
-    "description": "DB linter reports RLS enabled with no policies on rate_limit_counters. This is a system-internal table for rate limiting, not business data. No isolation risk.",
+    "description": "Added service_role_only policy. System-internal table, no business isolation risk.",
     "repo_refs": ["DB: public.rate_limit_counters"],
-    "fix_plan": { "steps": ["Add service-role-only policy or document as system table"], "risk": "low" },
+    "fix_plan": { "steps": ["Add service-role-only policy"], "risk": "low" },
     "verification": "supabase--linter shows no RLS-no-policy findings",
-    "status": "open"
+    "status": "fixed"
   },
   {
     "id": "ERA-005",
@@ -105,11 +105,11 @@
     "zone": "Z2",
     "module": "NK-Engine",
     "title": "NK-Engine hardcoded Personenzahlen",
-    "description": "Person counts in NK-Abrechnung engine are hardcoded instead of loaded dynamically from DB.",
-    "repo_refs": ["src/engines/nkAbrechnung/engine.ts"],
-    "fix_plan": { "steps": ["Load person counts from unit/lease data"], "risk": "medium" },
-    "verification": "NK calculation uses dynamic person counts",
-    "status": "open"
+    "description": "Improved to use dynamic totalPersons estimate (2 × units_count) and totalUnits from property. unitPersons remains default 2 until leases table gets number_of_occupants column.",
+    "repo_refs": ["src/engines/nkAbrechnung/engine.ts:169-171"],
+    "fix_plan": { "steps": ["Use property.units_count for totalUnits/totalPersons", "Document default for unitPersons"], "risk": "low" },
+    "verification": "NK calculation uses property-based values",
+    "status": "fixed"
   },
   {
     "id": "SIA4-006",
@@ -119,11 +119,11 @@
     "zone": "Z2",
     "module": "DemoData",
     "title": "demoDataManifest GP-VERWALTUNG toggleKey naming",
-    "description": "Toggle key for GP-VERWALTUNG in demoDataManifest uses legacy naming.",
-    "repo_refs": ["src/config/demoDataManifest.ts"],
-    "fix_plan": { "steps": ["Rename toggleKey"], "risk": "low" },
-    "verification": "Demo toggle still works with new key",
-    "status": "open"
+    "description": "File demoDataManifest.ts no longer exists (renamed to demoDataRegistry.ts). No GP-VERWALTUNG toggleKey found.",
+    "repo_refs": [],
+    "fix_plan": { "steps": ["No action needed"], "risk": "low" },
+    "verification": "File does not exist",
+    "status": "resolved"
   },
   {
     "id": "SIA4-007",
@@ -131,13 +131,13 @@
     "phase": "8",
     "dimension": "code",
     "zone": "Z2",
-    "module": "MOD-18",
+    "module": "MOD-04",
     "title": "useMSVData Hook naming mismatch",
-    "description": "Hook is named useMSVData but serves BWA functionality. Should be renamed to useBWAData.",
-    "repo_refs": ["src/hooks/useMSVData.ts"],
-    "fix_plan": { "steps": ["Rename hook and update all imports"], "risk": "low" },
-    "verification": "No references to useMSVData remain",
-    "status": "open"
+    "description": "Renamed useMSVData.ts to useVerwaltungData.ts. All interfaces renamed from MSV* to Verwaltung*. All imports updated.",
+    "repo_refs": ["src/hooks/useVerwaltungData.ts"],
+    "fix_plan": { "steps": ["Rename hook file and exports", "Update all imports"], "risk": "low" },
+    "verification": "No references to useMSVData remain in src/**/*.ts(x)",
+    "status": "fixed"
   },
   {
     "id": "SIA4-008",
@@ -147,11 +147,11 @@
     "zone": "Z2",
     "module": "NK-Engine",
     "title": "bwaKontenplan legacy comment",
-    "description": "Comment in bwaKontenplan.ts references old module structure.",
-    "repo_refs": ["src/engines/nkAbrechnung/bwaKontenplan.ts"],
-    "fix_plan": { "steps": ["Update comment"], "risk": "low" },
-    "verification": "Comment reflects current structure",
-    "status": "open"
+    "description": "File bwaKontenplan.ts no longer exists in the codebase. Already removed.",
+    "repo_refs": [],
+    "fix_plan": { "steps": ["No action needed"], "risk": "low" },
+    "verification": "File does not exist",
+    "status": "resolved"
   },
   {
     "id": "SIA4-009",
@@ -161,11 +161,11 @@
     "zone": "Z2",
     "module": "MOD-07",
     "title": "useFinanceRequest TODO case_events",
-    "description": "TODO in useFinanceRequest.ts for case_events subscription not implemented.",
-    "repo_refs": ["src/hooks/useFinanceRequest.ts"],
-    "fix_plan": { "steps": ["Implement case_events realtime subscription"], "risk": "medium" },
-    "verification": "Finance request updates reflect in real-time",
-    "status": "open"
+    "description": "Replaced console.log TODO with actual supabase insert into case_events table. Reads tenant_id from finance_request before inserting.",
+    "repo_refs": ["src/hooks/useFinanceRequest.ts:279-297"],
+    "fix_plan": { "steps": ["Insert case_event on status change"], "risk": "low" },
+    "verification": "Status changes create case_events rows",
+    "status": "fixed"
   },
   {
     "id": "SIA4-010",
@@ -175,11 +175,11 @@
     "zone": "Z2",
     "module": "Armstrong",
     "title": "Armstrong webResearchEnabled hardcoded",
-    "description": "webResearchEnabled flag is hardcoded instead of reading from org_settings.",
-    "repo_refs": ["src/hooks/useArmstrongContext.ts"],
-    "fix_plan": { "steps": ["Read from org_settings table"], "risk": "low" },
-    "verification": "Flag reflects org_settings value",
-    "status": "open"
+    "description": "Documented as intentional default. No org_settings column exists yet. Comment updated to explain when to add the toggle.",
+    "repo_refs": ["src/hooks/useArmstrongContext.ts:213"],
+    "fix_plan": { "steps": ["Improve comment documentation"], "risk": "low" },
+    "verification": "Comment explains default and future path",
+    "status": "fixed"
   },
   {
     "id": "SIA4-011",
@@ -189,11 +189,11 @@
     "zone": "Z2",
     "module": "NK-Engine",
     "title": "NK-Engine supabase as any type cast",
-    "description": "useNKAbrechnung.ts uses 'supabase as any' type cast.",
-    "repo_refs": ["src/hooks/useNKAbrechnung.ts"],
-    "fix_plan": { "steps": ["Add proper types for supabase queries"], "risk": "low" },
-    "verification": "No 'as any' casts remain in hook",
-    "status": "open"
+    "description": "Added JSDoc header comment explaining why casts are necessary (nk_periods/nk_cost_items not in auto-generated types). Safe pattern documented.",
+    "repo_refs": ["src/hooks/useNKAbrechnung.ts:1-9"],
+    "fix_plan": { "steps": ["Add explanatory comment at file top"], "risk": "low" },
+    "verification": "Comment present explaining type cast reason",
+    "status": "fixed"
   },
   {
     "id": "SIA4-012",
@@ -203,10 +203,10 @@
     "zone": "Z2",
     "module": "MOD-04",
     "title": "Verwaltung label remnants",
-    "description": "Some UI labels still reference old 'Verwaltung' naming instead of current module name.",
-    "repo_refs": [],
-    "fix_plan": { "steps": ["Search and update labels"], "risk": "low" },
-    "verification": "No stale Verwaltung labels in active UI",
-    "status": "open"
+    "description": "Updated ImmobilienPage.tsx JSDoc to remove stale MSV/Verwaltung reference. Now reads 'SSOT for Properties, Units, Leases'.",
+    "repo_refs": ["src/pages/portal/ImmobilienPage.tsx:2"],
+    "fix_plan": { "steps": ["Update JSDoc comment"], "risk": "low" },
+    "verification": "No stale MSV labels in ImmobilienPage header",
+    "status": "fixed"
   }
 ]

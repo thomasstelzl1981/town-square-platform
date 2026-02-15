@@ -276,10 +276,25 @@ export function useUpdateRequestStatus() {
 
       if (error) throw error;
 
-      // Optionally create audit event
-      if (notes) {
-        // TODO: Create audit event in case_events table
-        console.log('Status change note:', notes);
+      // Create audit event in case_events table
+      if (notes || status) {
+        // Get tenant_id from the finance_request
+        const { data: req } = await supabase
+          .from('finance_requests')
+          .select('tenant_id')
+          .eq('id', requestId)
+          .single();
+        
+        if (req?.tenant_id) {
+          await supabase.from('case_events').insert({
+            case_id: requestId,
+            tenant_id: req.tenant_id,
+            event_type: 'status_change',
+            event_source: 'finance_manager',
+            new_status: status,
+            payload: { notes: notes || null },
+          });
+        }
       }
     },
     onSuccess: () => {

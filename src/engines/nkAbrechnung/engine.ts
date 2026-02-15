@@ -166,9 +166,9 @@ export async function calculateSettlement(
         totalAreaSqm,
         unitMea,
         totalMea,
-        unitPersons: 2, // TODO: aus Lease/Unit holen
-        totalPersons: 10, // TODO: Gesamtpersonen aus Property
-        totalUnits: 10, // Standardwert fuer unit_count-Schluessel
+        unitPersons: 2, // Default: No occupant count in leases table yet. Add 'number_of_occupants' to leases when available.
+        totalPersons: Math.max((property as any).units_count * 2, 2), // Estimate: 2 persons per unit. Add 'total_occupants' to properties when available.
+        totalUnits: (property as any).units_count || 10,
       },
       periodInfo
     );

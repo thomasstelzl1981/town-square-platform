@@ -1,5 +1,5 @@
 /**
- * useMSVData — Zentraler Daten-Hook für MOD-04 Verwaltung (MSV)
+ * useVerwaltungData — Zentraler Daten-Hook für MOD-04 Verwaltung (BWA)
  * 
  * Liest Properties (rental_managed), Units, Leases, Contacts,
  * msv_rent_payments, msv_book_values, msv_bwa_entries.
@@ -10,7 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDemoToggles } from '@/hooks/useDemoToggles';
 
-export interface MSVProperty {
+export interface VerwaltungProperty {
   id: string;
   name: string;
   address: string;
@@ -22,7 +22,7 @@ export interface MSVProperty {
   isDemo?: boolean;
 }
 
-export interface MSVUnit {
+export interface VerwaltungUnit {
   id: string;
   unitId: string;
   ort: string;
@@ -45,7 +45,7 @@ export interface MSVUnit {
   paymentDueDay: number | null;
 }
 
-export interface MSVMonthEntry {
+export interface VerwaltungMonthEntry {
   label: string;
   soll: number;
   ist: number;
@@ -56,7 +56,7 @@ export interface MSVMonthEntry {
   paymentId: string | null;
 }
 
-export interface MSVOverdueCase {
+export interface VerwaltungOverdueCase {
   id: string;
   unitId: string;
   adresse: string;
@@ -71,7 +71,7 @@ export interface MSVOverdueCase {
   propertyId: string;
 }
 
-export interface MSVRentIncreaseCase {
+export interface VerwaltungRentIncreaseCase {
   id: string;
   unitId: string;
   mieter: string;
@@ -83,7 +83,7 @@ export interface MSVRentIncreaseCase {
 // Demo constants removed — MFH Düsseldorf was a phantom property with no DB counterpart.
 // Real demo properties (BER-01, MUC-01, HH-01) are fetched from the DB with is_demo=true.
 
-export function useMSVData() {
+export function useVerwaltungData() {
   const { activeTenantId } = useAuth();
   const { isEnabled } = useDemoToggles();
   const showDemo = isEnabled('GP-VERWALTUNG');
@@ -124,12 +124,12 @@ export function useMSVData() {
     enabled: !!activeTenantId,
   });
 
-  // Build MSVProperty list
+  // Build VerwaltungProperty list
   const now = new Date();
   const currentMonth = now.getMonth() + 1;
   const currentYear = now.getFullYear();
 
-  const msvProperties: MSVProperty[] = (data?.properties || []).map(p => {
+  const verwaltungProperties: VerwaltungProperty[] = (data?.properties || []).map(p => {
     const propUnits = (data?.units || []).filter(u => u.property_id === p.id);
     const propLeases = (data?.leases || []).filter((l: any) => propUnits.some(u => u.id === l.unit_id));
     const propPayments = (data?.payments || []).filter(pay => pay.property_id === p.id && pay.period_month === currentMonth && pay.period_year === currentYear);
@@ -153,8 +153,8 @@ export function useMSVData() {
 
   // No longer injecting phantom demo property — real demo properties come from DB with is_demo=true
 
-  // Build MSVUnit list for a selected property
-  function getUnitsForProperty(propertyId: string | null): MSVUnit[] {
+  // Build VerwaltungUnit list for a selected property
+  function getUnitsForProperty(propertyId: string | null): VerwaltungUnit[] {
     if (!propertyId) return [];
     if (propertyId === '__demo_obj_1__') return [];
 
@@ -170,10 +170,10 @@ export function useMSVData() {
 
       const warmmiete = lease ? (lease.monthly_rent + (lease.nk_advance_eur || 0) + (lease.heating_advance_eur || 0)) : 0;
 
-      let status: MSVUnit['status'] = 'vacant';
+      let status: VerwaltungUnit['status'] = 'vacant';
       if (lease) {
         if (latestPayment) {
-          status = latestPayment.status as MSVUnit['status'];
+          status = latestPayment.status as VerwaltungUnit['status'];
         } else {
           status = 'overdue';
         }
@@ -205,12 +205,12 @@ export function useMSVData() {
   }
 
   // Build month history for a unit
-  function getMonthHistory(unitId: string, warmmiete: number): MSVMonthEntry[] {
+  function getMonthHistory(unitId: string, warmmiete: number): VerwaltungMonthEntry[] {
     if (unitId.startsWith('__demo_')) {
       return [];
     }
 
-    const months: MSVMonthEntry[] = [];
+    const months: VerwaltungMonthEntry[] = [];
     const startYear = currentYear - 1;
 
     for (let y = startYear; y <= currentYear; y++) {
@@ -236,7 +236,7 @@ export function useMSVData() {
   }
 
   // Get overdue cases for a property
-  function getOverdueCases(propertyId: string | null): MSVOverdueCase[] {
+  function getOverdueCases(propertyId: string | null): VerwaltungOverdueCase[] {
     if (!propertyId) return [];
     if (propertyId === '__demo_obj_1__') return [];
 
@@ -263,7 +263,7 @@ export function useMSVData() {
   }
 
   // Get rent increase candidates
-  function getRentIncreaseCases(propertyId: string | null): MSVRentIncreaseCase[] {
+  function getRentIncreaseCases(propertyId: string | null): VerwaltungRentIncreaseCase[] {
     if (!propertyId) return [];
     if (propertyId === '__demo_obj_1__') return [];
 
@@ -293,7 +293,7 @@ export function useMSVData() {
   }
 
   return {
-    properties: msvProperties,
+    properties: verwaltungProperties,
     isLoading,
     refetch,
     getUnitsForProperty,

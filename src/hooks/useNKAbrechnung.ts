@@ -2,6 +2,11 @@
  * useNKAbrechnung — React Hook fuer NK-Abrechnungs-Workflow
  * 
  * Orchestriert: Readiness-Check → Daten laden → Template-Merge → Berechnung → PDF-Export
+ * 
+ * NOTE: `(supabase as any)` casts are used for `nk_periods` and `nk_cost_items` tables
+ * because they were added after the auto-generated Supabase types were created.
+ * The types.ts file is read-only and cannot be manually updated.
+ * These casts are safe as the tables exist in the DB with correct RLS policies.
  */
 
 import { useState, useEffect, useCallback } from 'react';
