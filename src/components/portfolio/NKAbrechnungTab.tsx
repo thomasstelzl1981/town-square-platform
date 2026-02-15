@@ -18,9 +18,10 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import {
   Loader2, CheckCircle2, AlertTriangle, FileDown, FolderOpen,
-  Calculator, Send, Save, FileText, Home, User, Calendar, Info
+  Calculator, Send, Save, FileText, Home, User, Calendar, Info, Banknote
 } from 'lucide-react';
 import { useNKAbrechnung } from '@/hooks/useNKAbrechnung';
+import { StatusBadge } from '@/components/shared/StatusBadge';
 
 interface NKAbrechnungTabProps {
   propertyId: string;
@@ -56,6 +57,9 @@ export function NKAbrechnungTab({ propertyId, tenantId, unitId }: NKAbrechnungTa
     isLoadingData,
     isCalculating,
     isSaving,
+    rentPayments,
+    isLoadingPayments,
+    fetchRentPayments,
     calculate,
     exportPdf,
     updateCostItem,
@@ -417,6 +421,84 @@ export function NKAbrechnungTab({ propertyId, tenantId, unitId }: NKAbrechnungTa
                   </tfoot>
                 </table>
               </div>
+
+              <Separator />
+
+              {/* Kontenauslesung Button */}
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={fetchRentPayments}
+                  disabled={isLoadingPayments}
+                >
+                  {isLoadingPayments ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <Banknote className="h-4 w-4 mr-2" />
+                  )}
+                  Kontenauslesung beauftragen
+                </Button>
+                {rentPayments.length > 0 && (
+                  <span className="text-xs text-muted-foreground">
+                    {rentPayments.length} Zahlungseingänge geladen
+                  </span>
+                )}
+              </div>
+
+              {/* Einzelzahlungstabelle */}
+              {rentPayments.length > 0 && (
+                <div className="border rounded-md overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b bg-muted/50">
+                        <th className="text-left py-2 px-3 font-medium text-xs">Monat</th>
+                        <th className="text-right py-2 px-3 font-medium text-xs">Soll</th>
+                        <th className="text-right py-2 px-3 font-medium text-xs">Ist</th>
+                        <th className="text-left py-2 px-3 font-medium text-xs">Eingangsdatum</th>
+                        <th className="text-left py-2 px-3 font-medium text-xs">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rentPayments.map((p, idx) => (
+                        <tr key={idx} className="border-b last:border-0">
+                          <td className="py-1.5 px-3">
+                            {new Date(p.dueDate).toLocaleDateString('de-DE', { month: 'long', year: 'numeric' })}
+                          </td>
+                          <td className="py-1.5 px-3 text-right font-mono">{EUR(p.expectedAmount)}</td>
+                          <td className="py-1.5 px-3 text-right font-mono">{EUR(p.amount)}</td>
+                          <td className="py-1.5 px-3 text-muted-foreground">
+                            {p.paidDate ? new Date(p.paidDate).toLocaleDateString('de-DE') : '—'}
+                          </td>
+                          <td className="py-1.5 px-3">
+                            <StatusBadge status={
+                              p.status === 'paid' ? 'Bezahlt' :
+                              p.status === 'partial' ? 'Teilweise' :
+                              p.status === 'overdue' ? 'Überfällig' : 'Offen'
+                            } variant={
+                              p.status === 'paid' ? 'success' :
+                              p.status === 'partial' ? 'warning' :
+                              p.status === 'overdue' ? 'error' : 'muted'
+                            } />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr className="bg-muted/30 border-t">
+                        <td className="py-2 px-3 font-semibold">Summe</td>
+                        <td className="py-2 px-3 text-right font-mono font-semibold">
+                          {EUR(rentPayments.reduce((s, p) => s + p.expectedAmount, 0))}
+                        </td>
+                        <td className="py-2 px-3 text-right font-mono font-semibold">
+                          {EUR(rentPayments.reduce((s, p) => s + p.amount, 0))}
+                        </td>
+                        <td colSpan={2} />
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              )}
             </div>
           ) : (
             <p className="text-sm text-muted-foreground py-4 text-center">
