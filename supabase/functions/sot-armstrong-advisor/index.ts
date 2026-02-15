@@ -119,7 +119,7 @@ interface UserContext {
 // MVP MODULE ALLOWLIST & GLOBAL ASSIST CONFIG
 // =============================================================================
 
-const MVP_MODULES = ["MOD-00", "MOD-04", "MOD-07", "MOD-08", "MOD-13"];
+const MVP_MODULES = ["MOD-00", "MOD-04", "MOD-07", "MOD-08", "MOD-13", "MOD-14"];
 
 // Global Assist Mode: Armstrong can help with general tasks even outside MVP modules
 // These intents are allowed in ALL modules (explain, draft, research)
@@ -149,6 +149,9 @@ const MVP_EXECUTABLE_ACTIONS = [
   // MOD-13 (Projekte) - execute_with_confirmation
   "ARM.MOD13.CREATE_DEV_PROJECT",
   "ARM.MOD13.EXPLAIN_MODULE",
+  
+  // MOD-14 (Communication Pro / Recherche) - execute_with_confirmation
+  "ARM.MOD14.CREATE_RESEARCH_ORDER",
   
   // Global Actions (available in all modules)
   "ARM.GLOBAL.EXPLAIN_TERM",
@@ -478,6 +481,25 @@ const MVP_ACTIONS: ActionDefinition[] = [
     credits_estimate: 0,
     status: "active",
   },
+  // MOD-14 (Recherche)
+  {
+    action_code: "ARM.MOD14.CREATE_RESEARCH_ORDER",
+    title_de: "Rechercheauftrag erstellen",
+    description_de: "Erstellt einen Rechercheauftrag, führt die Kontaktsuche durch und liefert qualifizierte Ergebnisse mit Kontaktbuch-Abgleich",
+    zones: ["Z2"],
+    module: "MOD-14",
+    risk_level: "medium",
+    execution_mode: "execute_with_confirmation",
+    requires_consent_code: null,
+    roles_allowed: [],
+    data_scopes_read: ["contacts"],
+    data_scopes_write: ["research_orders", "research_results", "widgets"],
+    side_effects: ["credits_consumed", "external_api_call", "creates_widget"],
+    cost_model: "metered",
+    cost_hint_cents: 50,
+    credits_estimate: 25,
+    status: "active",
+  },
 ];
 
 // =============================================================================
@@ -501,7 +523,9 @@ function classifyIntent(message: string, actionRequest: ActionRequest | undefine
     "aufgabe", "erinnerung", "notiz", "reminder", "task", "note",
     "kpi", "rendite", "cashflow",
     "projekt anlegen", "projekt erstellen", "bauträger", "intake", "magic intake",
-    "exposé", "preisliste", "einheiten"
+    "exposé", "preisliste", "einheiten",
+    "recherche", "recherchiere", "kontakte suchen", "kontakte finden",
+    "immobilienmakler", "makler suchen", "firmen suchen", "leads suchen",
   ];
   if (actionKeywords.some(kw => lowerMsg.includes(kw))) {
     return "ACTION";
@@ -603,6 +627,14 @@ function suggestActionsForMessage(
         (lowerMsg.includes("projekte") || lowerMsg.includes("modul 13") || lowerMsg.includes("mod-13") || lowerMsg.includes("golden path"))) {
       relevance += 5;
       why = "Erklärt das Projekte-Modul";
+    }
+    
+    if (action.action_code === "ARM.MOD14.CREATE_RESEARCH_ORDER" && 
+        (lowerMsg.includes("recherch") || lowerMsg.includes("kontakte suchen") || lowerMsg.includes("kontakte finden") ||
+         lowerMsg.includes("immobilienmakler") || lowerMsg.includes("makler suchen") || lowerMsg.includes("firmen suchen") ||
+         lowerMsg.includes("leads suchen") || lowerMsg.includes("hausverwaltung"))) {
+      relevance += 5;
+      why = "Startet eine Kontaktrecherche mit Kontaktbuch-Abgleich";
     }
     
     if (relevance > 0) {
@@ -954,6 +986,94 @@ async function executeAction(
         };
       }
       
+      case "ARM.MOD14.CREATE_RESEARCH_ORDER": {
+        const supabaseUrl = Deno.env.get("SUPABASE_URL");
+        const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+        
+        if (!supabaseUrl || !supabaseServiceKey) {
+          return { success: false, error: "Server configuration missing" };
+        }
+
+        const intentText = (params.intent_text as string) || "Immobilienmakler";
+        const region = (params.region as string) || "München";
+        const maxResults = (params.max_results as number) || 25;
+
+        // 1. Create research order
+        const { data: order, error: orderError } = await supabase
+          .from("research_orders")
+          .insert({
+            tenant_id: userContext.org_id,
+            created_by: userContext.user_id,
+            status: "queued",
+            config: {
+              intent: intentText,
+              region: region,
+              max_results: maxResults,
+              source: "armstrong",
+            },
+          })
+          .select("id")
+          .single();
+
+        if (orderError || !order) {
+          console.error("[Armstrong] Research order creation failed:", orderError);
+          return { success: false, error: `Auftrag konnte nicht erstellt werden: ${orderError?.message}` };
+        }
+
+        // 2. Trigger sot-research-run-order
+        try {
+          const runResponse = await fetch(`${supabaseUrl}/functions/v1/sot-research-run-order`, {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${supabaseServiceKey}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              order_id: order.id,
+              tenant_id: userContext.org_id,
+              user_id: userContext.user_id,
+            }),
+          });
+
+          const runText = await runResponse.text();
+          console.log("[Armstrong] Research run response:", runResponse.status, runText);
+        } catch (fetchErr) {
+          console.error("[Armstrong] Research run fetch error:", fetchErr);
+        }
+
+        // 3. Create dashboard widget
+        try {
+          await supabase.from("task_widgets").insert({
+            tenant_id: userContext.org_id,
+            user_id: userContext.user_id,
+            widget_type: "task",
+            title: `Recherche: ${intentText} ${region}`,
+            description: `Rechercheauftrag gestartet — bis zu ${maxResults} Kontakte werden gesucht.`,
+            status: "in_progress",
+            metadata: {
+              source: "armstrong",
+              action_code: "ARM.MOD14.CREATE_RESEARCH_ORDER",
+              research_order_id: order.id,
+              link: `/portal/communication-pro/recherche?order=${order.id}`,
+            },
+          });
+        } catch (widgetErr) {
+          console.error("[Armstrong] Widget creation error:", widgetErr);
+        }
+
+        return {
+          success: true,
+          output: {
+            research_order_id: order.id,
+            intent: intentText,
+            region: region,
+            max_results: maxResults,
+            credits_cost: maxResults,
+            message: `Rechercheauftrag "${intentText} in ${region}" wurde erstellt und gestartet. Ich habe ein Widget auf Ihrem Dashboard erstellt. Sie finden die Ergebnisse unter Communication Pro → Recherche.`,
+          },
+        };
+      }
+
       default:
         return { success: false, error: `Action ${actionCode} not implemented in MVP` };
     }
