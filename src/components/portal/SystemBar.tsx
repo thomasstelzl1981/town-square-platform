@@ -144,12 +144,14 @@ export function SystemBar() {
             <Moon className="absolute h-4.5 w-4.5 rotate-90 scale-0 transition-transform dark:rotate-0 dark:scale-100" />
           </button>
 
-          {/* 3. Temperature */}
-          <button className={GLASS_BUTTON} title="Aktuelle Außentemperatur">
-            <span className="text-xs font-medium leading-none">
-              {temperature !== null ? `${temperature}°` : '—°'}
-            </span>
-          </button>
+          {/* 3. Temperature (desktop only) */}
+          {!isMobile && (
+            <button className={GLASS_BUTTON} title="Aktuelle Außentemperatur">
+              <span className="text-xs font-medium leading-none">
+                {temperature !== null ? `${temperature}°` : '—°'}
+              </span>
+            </button>
+          )}
         </div>
 
         {/* CENTER — ARMSTRONG Wordmark */}
@@ -157,7 +159,7 @@ export function SystemBar() {
           className="text-foreground font-sans font-semibold tracking-[0.2em] text-sm select-none"
           style={{ fontSize: '14px' }}
         >
-          SYSTEM OF A TOWN
+          {isMobile ? 'ARMSTRONG' : 'SYSTEM OF A TOWN'}
         </span>
 
         {/* RIGHT — 3 Glass Buttons */}

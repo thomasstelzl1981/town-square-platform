@@ -109,10 +109,6 @@ export function MobileHomeChatView() {
       <div className="flex-1 overflow-y-auto px-4 py-4">
         {advisor.messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center">
-            <div className="armstrong-planet h-16 w-16 flex items-center justify-center mb-4">
-              <Globe className="h-7 w-7 text-white/80" />
-            </div>
-            <p className="text-lg font-medium text-foreground mb-1">Armstrong</p>
             <p className="text-sm text-muted-foreground">
               Wie kann ich Ihnen helfen?
             </p>
