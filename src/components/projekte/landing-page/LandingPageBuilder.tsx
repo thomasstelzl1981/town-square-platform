@@ -137,8 +137,8 @@ export function LandingPageBuilder({ projectName, isDemo, projectId, organizatio
       <Card className="border-primary/30 bg-gradient-to-br from-primary/5 via-background to-primary/5">
         <CardContent className="p-8 space-y-6">
           <div className="flex items-start gap-4">
-            <div className="p-3 rounded-xl bg-primary/10">
-              <Sparkles className="h-8 w-8 text-primary" />
+            <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+              <Sparkles className="h-5 w-5 text-primary" />
             </div>
             <div className="flex-1">
               <h3 className="text-xl font-bold">Landing Page Builder</h3>

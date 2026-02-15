@@ -110,8 +110,8 @@ function FactCard({ icon: Icon, label, value }: { icon: any; label: string; valu
   return (
     <Card>
       <CardContent className="p-4 flex items-center gap-3">
-        <div className="p-2 rounded-lg bg-primary/10">
-          <Icon className="h-4 w-4 text-primary" />
+        <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+          <Icon className="h-5 w-5 text-primary" />
         </div>
         <div>
           <p className="text-xs text-muted-foreground">{label}</p>
