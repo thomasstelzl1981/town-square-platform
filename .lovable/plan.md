@@ -1,45 +1,87 @@
 
 
-# Meeting Recorder Widget — Visuelles Redesign
+# Recherche-Modul Zone 2 — CI-Redesign und Live-Fortschrittsanzeige
 
-## Was sich aendert
+## Probleme (Ist-Zustand)
 
-### 1. Hintergrund: Glasig-roetlicher Gradient
-- Aktuell: subtiler `from-red-500/10 to-orange-600/5` Gradient mit 30% Opacity
-- Neu: Kraeftigerer, warmer Gradient `from-rose-500/15 via-red-500/10 to-amber-500/8` mit hoeherer Opacity
-- Zusaetzlich: Dezenter radialer Glow-Effekt in der Mitte (wie ein warmes Licht)
-- Card-Border wechselt zu `border-rose-500/25`
+1. **3 zusaetzliche Widgets sichtbar**: Die WidgetGrid zeigt Demo-Widget + echte Orders + CTA nebeneinander — entspricht nicht dem Golden Path Standard (nur Demo + CTA bei leerem Zustand).
+2. **Demo-Version laesst sich nicht oeffnen**: Der Demo-Click setzt `activeOrderId = '__demo__'`, aber die Demo-Inline-Ansicht zeigt nur eine statische Tabelle ohne den beeindruckenden Flow.
+3. **Neuer Auftrag zeigt nur Teildarstellung**: Der 6-Section InlineFlow ist zu formular-lastig und zeigt beim Running-State nur einen Spinner + Text.
+4. **Kein visueller "Wow"-Effekt**: Es fehlt eine animierte Fortschrittsanzeige, die zeigt, dass aktiv Kontakte generiert werden.
 
-### 2. Record-Button statt blauem "Meeting starten"-Button
-- Gleicher Stil wie der Radio-Widget Play-Button: runder Glass-Button (h-12 w-12)
-- `backdrop-blur-sm`, `border`, halbtransparenter Hintergrund
-- Icon: Ausgefuellter Kreis (Record-Symbol) statt Play-Dreieck
-- Idle: `bg-rose-500/10 border-rose-500/30 text-rose-500`, Hover: `bg-rose-500/20`
-- Recording: Pulsierender roter Record-Button
-- Kein Text-Label auf dem Button, nur das Icon (wie beim Radio)
-- Text "Meeting starten" wird zum kleineren Untertitel unter dem Button
+## Loesung
 
-### 3. Fortschrittsbalken (90 Minuten) im Recording-Zustand
-- Horizontaler Progress-Bar am unteren Rand der Kachel
-- Zeigt den Fortschritt von 0 bis 90 Minuten an
-- Farbe: `bg-rose-500` auf `bg-rose-500/10` Track
-- Wechselt ab 80 Minuten auf warnendes Orange/Gelb
-- Hoehe: 3px, abgerundete Ecken
+### 1. WidgetGrid bereinigen — Golden Path CI
 
-### 4. Timer im Recording-Zustand
-- Bereits vorhanden (`formatDuration`), bleibt erhalten
-- Wird etwas prominenter dargestellt (groessere Schrift, tabular-nums)
-- Format: `MM:SS` bzw. `H:MM:SS`
+- Demo-Widget bleibt an Position 0 (DEMO_WIDGET CI mit smaragdgruenem Shimmer)
+- CTA-Widget ("Neuer Rechercheauftrag") an Position 1
+- Echte Orders dahinter, aber nur als kompakte Kacheln
+- Keine ueberfluessigen Widgets
+
+### 2. Demo-Flow: Beeindruckende animierte Recherche-Simulation
+
+Wenn der User auf das Demo-Widget klickt, oeffnet sich unterhalb des Grids ein **animierter Live-Flow**, der eine Recherche simuliert:
+
+- **Phase 1 — Initialisierung** (2s): Glasige Karte mit pulsierendem Radar-Icon, Text "Recherche wird vorbereitet..."
+- **Phase 2 — Suche laeuft** (8s): 
+  - Kreisfoermiger Fortschritts-Ring (wie ein Radar-Sweep) mit Prozentanzeige
+  - Darunter ein horizontaler Fortschrittsbalken (0% bis 100%)
+  - Timer der mitlaeuft (vergangene Zeit)
+  - Provider-Status-Zeilen (Firecrawl: "Crawling...", dann "12 Seiten analysiert")
+  - Kontakte erscheinen animiert einer nach dem anderen in einer Liste (fade-in + slide-up)
+  - Jeder neue Kontakt hat eine kurze Einblend-Animation
+  - Counter: "7 / 37 Kontakte gefunden" steigt live an
+- **Phase 3 — Abgeschlossen** (nach 10s): 
+  - Fortschrittsring faerbt sich gruen, Haekchen erscheint
+  - Vollstaendige Ergebnistabelle wird eingeblendet
+  - CTA-Buttons: "Excel-Export" und "Ins Kontaktbuch"
+
+### 3. Echte Running-State-Ansicht (fuer reale Auftraege)
+
+Der bisherige Spinner wird durch dieselbe Fortschrittsanzeige ersetzt:
+- Kreisfoermiger Progress-Ring mit Prozent (`results_count / max_results * 100`)
+- Horizontaler Balken
+- Live-Counter: Treffer, Credits verbraucht, vergangene Zeit
+- Kontakte erscheinen via Realtime-Subscription animiert
+
+### 4. Neue Komponente: `ResearchLiveProgress.tsx`
+
+Zentrale Komponente fuer den beeindruckenden Fortschritts-Flow:
+- Wiederverwendbar fuer Demo-Simulation und echten Running-State
+- Kreisfoermiger SVG-Fortschrittsring (animiert)
+- Provider-Status-Zeilen mit Pulse-Animation
+- Kontakt-Liste mit gestaffelter Einblend-Animation
+- Glasiges, dunkles Card-Design passend zum CI
 
 ## Technische Aenderungen
 
-### `src/components/dashboard/MeetingRecorderWidget.tsx`
-- Gradient-Overlay durch kraeftigeren roetlichen Gradient ersetzen
-- Im Idle-Zustand: Runden Glass-Record-Button (wie Radio-Widget) statt `<Button>`
-- Im Recording-Zustand: Progress-Bar hinzufuegen (`session.durationSec / (90*60) * 100`%)
-- Stop-Button ebenfalls als runden Glass-Button gestalten (Square-Icon, destructive)
-- Dezenter Untertitel "Aufnahme starten" unter dem Record-Button
+### Neue Datei: `src/pages/portal/communication-pro/recherche/ResearchLiveProgress.tsx`
+- SVG-basierter kreisfoermiger Fortschrittsring (stroke-dasharray Animation)
+- Horizontaler Progress-Bar darunter
+- Timer-Anzeige (elapsed time)
+- Provider-Status-Grid (Icon + Label + Status-Text + Pulse-Dot)
+- Kontakt-Feed: Liste mit staggered fade-in (CSS transition + delay)
+- Props: `progress` (0-100), `contactsFound`, `maxContacts`, `providerStatus`, `contacts[]`, `isComplete`
 
-### Keine weiteren Dateien betroffen
-- `useMeetingRecorder.ts` bleibt unveraendert (Logik aendert sich nicht)
-- `MeetingCountdownOverlay.tsx` bleibt unveraendert
+### Neue Datei: `src/pages/portal/communication-pro/recherche/ResearchDemoSimulation.tsx`
+- Verwendet `ResearchLiveProgress` mit einem `useEffect`-Timer
+- Simuliert alle 300ms einen neuen Kontakt aus `DEMO_RESULTS`
+- Durchlaeuft Phase 1 -> 2 -> 3 automatisch
+- Am Ende zeigt es die vollstaendige Demo-Tabelle
+
+### Geaendert: `ResearchTab.tsx`
+- WidgetGrid: Nur Demo-Widget (Pos 0) + CTA (Pos 1) + echte Orders
+- Demo-Click oeffnet `ResearchDemoSimulation` statt der statischen Tabelle
+- Running-Orders zeigen `ResearchLiveProgress` statt Spinner
+- Beibehaltung von ModulePageHeader, Golden Path Standard
+
+### Geaendert: `ResearchOrderInlineFlow.tsx`
+- Running-State (Section zwischen Consent und Ergebnisse) nutzt `ResearchLiveProgress`
+- Kontakte werden via `useResearchResults` live geladen und animiert angezeigt
+- Kein isolierter Spinner mehr
+
+### Unveraendert
+- `useResearchOrders.ts` — Logik bleibt
+- `ResearchResultsTable.tsx` — wird weiterhin fuer fertige Ergebnisse verwendet
+- `ResearchOrderWidget.tsx` — Kachel-Design bleibt
+
