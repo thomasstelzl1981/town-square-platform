@@ -10,7 +10,8 @@
  * Task widgets are persisted in DB with realtime updates from Armstrong.
  */
 
-import { useMemo } from 'react';
+import { useMemo, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { useWeather } from '@/hooks/useWeather';
@@ -59,6 +60,7 @@ const WIDGET_CODE_TO_ID: Record<string, string> = {
 
 export default function PortalDashboard() {
   const { profile, isDevelopmentMode } = useAuth();
+  const navigate = useNavigate();
   const { location, loading: locationLoading } = useGeolocation();
   const { data: weather, isLoading: weatherLoading } = useWeather(
     location?.latitude ?? null,
@@ -71,6 +73,24 @@ export default function PortalDashboard() {
 
   // Task widgets from DB with realtime
   const { widgets: taskWidgets, executingId, handleConfirm, handleCancel } = useTaskWidgets();
+
+  // Intercept confirm for Mahnung widgets → navigate to brief generator
+  const handleWidgetConfirm = useCallback((widgetId: string) => {
+    const widget = taskWidgets.find(w => w.id === widgetId);
+    if (widget?.action_code === 'ARM.RENT.REMINDER' && widget.parameters) {
+      const params = widget.parameters as Record<string, unknown>;
+      const contactId = params.contactId as string || '';
+      const amount = params.amount as number || 0;
+      const period = params.period as string || '';
+      const prompt = encodeURIComponent(
+        `Erstelle ein Mahnschreiben wegen ausstehender Mietzahlung für den Zeitraum ${period}. Der offene Betrag beträgt ${amount.toFixed(2)} EUR. Bitte halte den Ton sachlich aber bestimmt.`
+      );
+      handleConfirm(widgetId);
+      navigate(`/portal/office/brief?contactId=${contactId}&subject=Mahnung&prompt=${prompt}`);
+      return;
+    }
+    handleConfirm(widgetId);
+  }, [taskWidgets, handleConfirm, navigate]);
 
   // Convert enabled widget codes to legacy IDs
   const enabledSystemWidgetIds = useMemo(() => {
@@ -142,7 +162,7 @@ export default function PortalDashboard() {
       return (
         <TaskWidget
           widget={taskWidget}
-          onConfirm={handleConfirm}
+          onConfirm={handleWidgetConfirm}
           onCancel={handleCancel}
           isExecuting={executingId === widgetId}
         />
