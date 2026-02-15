@@ -1,54 +1,51 @@
 
 
-# NK-Abrechnung Sektion 3: Kontenauslesung + Einzelzahlungsliste
+# Kontenauslesung: Jan/Feb 2025 Seed + Editierbarkeit + Sperrfunktion
 
-## Problem
+## Ist-Zustand
 
-Sektion 3 "Mieteinnahmen & Vorauszahlungen" zeigt aktuell nur kumulierte Werte aus dem Mietvertrag (Kaltmiete x 12, NK-VZ x 12, Heizkosten-VZ x 12). Es fehlen:
-- Ein Button "Kontenauslesung beauftragen", der die tatsaechlichen Zahlungseingaenge aus der `rent_payments`-Tabelle laedt
-- Eine Tabelle mit allen Einzelzahlungen (Datum, Betrag, Status) fuer das ausgewaehlte Jahr
+Die Seed-Daten fuer `rent_payments` laufen aktuell von **Maerz 2025 bis Februar 2026** (12 Eintraege pro Lease). Bei Auswahl von Jahr 2025 fehlen daher Januar und Februar — es werden nur 10 Zeilen angezeigt.
 
-Die Daten existieren bereits in der Datenbank — es sind rent_payments mit `paid_date`, `amount`, `status` pro Lease und Monat vorhanden.
+## Umsetzung
 
-## Loesung
+### Schritt 1: SQL Migration
 
-### Datei 1: `src/hooks/useNKAbrechnung.ts`
+**a) Fehlende Seed-Daten ergaenzen (Jan + Feb 2025 pro Lease):**
 
-**Neuer State + Funktion hinzufuegen:**
+6 neue `rent_payments`-Eintraege mit deterministischen IDs:
 
-- `rentPayments` State (Array der Einzelzahlungen fuer das gewaehlte Jahr)
-- `isLoadingPayments` State
-- `fetchRentPayments()` Funktion — wird per Button-Klick ausgeloest:
-  - Laedt aus `rent_payments` WHERE `lease_id` = aktive Lease AND `due_date` im gewaehlten Jahr
-  - Sortiert nach `due_date` aufsteigend (Jan → Dez)
-  - Gibt zurueck: `paid_date`, `amount`, `expected_amount`, `status`, `due_date`
-- Beide werden im Return-Objekt des Hooks exponiert
+| Lease | due_date | expected_amount | amount | status |
+|-------|----------|-----------------|--------|--------|
+| ...0001 (Berlin) | 2025-01-01 | 1150 | 1150 | paid |
+| ...0001 (Berlin) | 2025-02-01 | 1150 | 1150 | paid |
+| ...0002 (Muenchen) | 2025-01-01 | 1580 | 1580 | paid |
+| ...0002 (Muenchen) | 2025-02-01 | 1580 | 1580 | paid |
+| ...0003 (Hamburg) | 2025-01-01 | 750 | 750 | paid |
+| ...0003 (Hamburg) | 2025-02-01 | 750 | 750 | paid |
 
-### Datei 2: `src/components/portfolio/NKAbrechnungTab.tsx`
+**b) Neue Spalte `payments_locked` (boolean, default false) auf `nk_periods`** fuer die Sperrfunktion.
 
-**Sektion 3 erweitern (nach der bestehenden Vorauszahlungstabelle):**
+### Schritt 2: `src/hooks/useNKAbrechnung.ts`
 
-1. **Button "Kontenauslesung"** — laedt die tatsaechlichen Zahlungseingaenge:
-   - Icon: `Banknote` (wie im GeldeingangTab)
-   - Text: "Kontenauslesung beauftragen"
-   - onClick: ruft `fetchRentPayments()` auf
-   - Loading-State mit Spinner
+- `RentPaymentRow` um `id` Feld erweitern
+- `fetchRentPayments`: `id` mitlesen aus DB
+- Neuer State: `paymentsLocked` (boolean)
+- `fetchRentPayments` laedt zusaetzlich `payments_locked` aus `nk_periods`
+- Neue Funktion `updateRentPayment(index, field, value)` — lokale Aenderung an `amount` oder `paidDate`
+- Neue Funktion `saveRentPayments()` — UPDATE per `id` in die DB
+- Neue Funktion `lockPayments()` — setzt `nk_periods.payments_locked = true`
+- Alles im Return-Objekt exponiert
 
-2. **Einzelzahlungstabelle** (erscheint nach Laden):
-   - Spalten: Monat (due_date), Soll (expected_amount), Ist (amount), Eingangsdatum (paid_date), Status (Badge)
-   - Status-Badges: Bezahlt (gruen), Teilweise (gelb), Offen (grau), Ueberfaellig (rot)
-   - Summenzeile am Ende mit Gesamtsumme Soll vs. Ist
+### Schritt 3: `src/components/portfolio/NKAbrechnungTab.tsx`
 
-### Keine DB-Aenderung noetig
-
-Die `rent_payments`-Tabelle existiert bereits mit allen benoetigten Feldern. RLS-Policies sind vorhanden. Demo-Daten sind eingetragen (12 Monate pro Lease).
-
-## Ergebnis
-
-Nach dem Klick auf "Kontenauslesung" erscheint eine detaillierte 12-Zeilen-Tabelle (Jan-Dez) mit allen tatsaechlichen Zahlungseingaengen, ihrem Eingangsdatum und Status — als Datengrundlage fuer weitere Funktionen.
+- Ist-Spalte und Eingangsdatum-Spalte: editierbare Input-Felder (wenn nicht gesperrt)
+- Button "Zahlungen speichern" unterhalb der Tabelle
+- Button "Festschreiben" mit Bestaetigungsdialog (AlertDialog)
+- Nach Festschreibung: alle Felder read-only, gruenes Badge "Festgeschrieben"
 
 | Datei | Aktion | Beschreibung |
 |-------|--------|-------------|
-| `src/hooks/useNKAbrechnung.ts` | EDIT | rentPayments State + fetchRentPayments() Funktion |
-| `src/components/portfolio/NKAbrechnungTab.tsx` | EDIT | Sektion 3: Button + Einzelzahlungstabelle |
+| SQL Migration | CREATE | 6 fehlende rent_payments (Jan+Feb 2025) + payments_locked Spalte auf nk_periods |
+| `src/hooks/useNKAbrechnung.ts` | EDIT | id in RentPaymentRow, updateRentPayment, saveRentPayments, lockPayments |
+| `src/components/portfolio/NKAbrechnungTab.tsx` | EDIT | Editierbare Felder + Speichern/Festschreiben Buttons |
 
