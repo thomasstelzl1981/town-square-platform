@@ -9,11 +9,8 @@ import { cn } from '@/lib/utils';
 import type { ResearchOrder } from '@/hooks/useResearchOrders';
 import {
   AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
-  AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
@@ -62,7 +59,7 @@ export function ResearchOrderWidget({ order, isActive, onClick, onDelete }: Prop
             <Trash2 className="h-4 w-4" />
           </button>
 
-          <AlertDialog open={open} onOpenChange={setOpen}>
+          <AlertDialog open={open} onOpenChange={(v) => { if (!v) setOpen(false); }}>
             <AlertDialogContent onClick={e => e.stopPropagation()}>
               <AlertDialogHeader>
                 <AlertDialogTitle>Auftrag löschen?</AlertDialogTitle>
@@ -70,18 +67,25 @@ export function ResearchOrderWidget({ order, isActive, onClick, onDelete }: Prop
                   Der Rechercheauftrag „{order.title || 'Ohne Titel'}" wird unwiderruflich gelöscht.
                 </AlertDialogDescription>
               </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Abbrechen</AlertDialogCancel>
-                <AlertDialogAction
-                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              <div className="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 pt-2">
+                <button
+                  type="button"
+                  className="mt-2 sm:mt-0 inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2"
+                  onClick={() => setOpen(false)}
+                >
+                  Abbrechen
+                </button>
+                <button
+                  type="button"
+                  className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-destructive text-destructive-foreground hover:bg-destructive/90 h-10 px-4 py-2"
                   onClick={() => {
                     onDelete(order.id);
                     setOpen(false);
                   }}
                 >
                   Löschen
-                </AlertDialogAction>
-              </AlertDialogFooter>
+                </button>
+              </div>
             </AlertDialogContent>
           </AlertDialog>
         </>
