@@ -6,16 +6,24 @@
  * Level 3: Sub Tabs (4-6 tiles per module)
  */
 
-import { useMemo } from 'react';
-import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { useMemo, useState } from 'react';
+import { NavLink, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { usePortalLayout } from '@/hooks/usePortalLayout';
 import { useAuth } from '@/contexts/AuthContext';
-import { areaConfig, AreaKey, getModuleDisplayLabel } from '@/manifests/areaConfig';
-import { getModulesSorted, getTileFullPath, ModuleDefinition } from '@/manifests/routesManifest';
+import { areaConfig, getModuleDisplayLabel } from '@/manifests/areaConfig';
+import { getModulesSorted, ModuleDefinition } from '@/manifests/routesManifest';
 import { AreaTabs } from './AreaTabs';
-import { ModuleTabs } from './ModuleTabs';
 import { SubTabs } from './SubTabs';
+import { Users, Sparkles, FolderOpen, Building2, FileText, Tag, Landmark, Search, Handshake, Target, Home, Briefcase, FolderKanban, Mail, GraduationCap, Wrench, Car, LineChart, Sun, LucideIcon } from 'lucide-react';
+
+const iconMap: Record<string, LucideIcon> = {
+  'Users': Users, 'Sparkles': Sparkles, 'FolderOpen': FolderOpen, 'Building2': Building2,
+  'FileText': FileText, 'Tag': Tag, 'Landmark': Landmark, 'Search': Search,
+  'Handshake': Handshake, 'Target': Target, 'Home': Home, 'Briefcase': Briefcase,
+  'FolderKanban': FolderKanban, 'Mail': Mail, 'GraduationCap': GraduationCap,
+  'Wrench': Wrench, 'Car': Car, 'LineChart': LineChart, 'Sun': Sun,
+};
 
 interface ModuleWithMeta {
   code: string;
@@ -26,6 +34,8 @@ interface ModuleWithMeta {
 export function TopNavigation() {
   const location = useLocation();
   const { activeArea, isMobile } = usePortalLayout();
+  const { isDevelopmentMode } = useAuth();
+  const [showModuleSwitcher, setShowModuleSwitcher] = useState(false);
 
   // Build module data from manifest
   const allModules = useMemo(() => {
@@ -65,16 +75,47 @@ export function TopNavigation() {
         <AreaTabs />
       </div>
       
-      {/* Level 2: Module Tabs - only when an area is active and NOT on area overview */}
-      {activeArea && !location.pathname.startsWith('/portal/area/') && (
-        <div className="border-b">
-          <ModuleTabs modules={areaModules} activeModule={activeModule} />
-        </div>
-      )}
-      
-      {/* Level 3: Sub Tabs (only when a module is active and not on Area-Overview) */}
+      {/* Level 2: Sub Tabs + Floating Module Switcher on hover */}
       {activeModule && !location.pathname.startsWith('/portal/area/') && (
-        <SubTabs module={activeModule.module} moduleBase={activeModule.module.base} />
+        <div
+          className="relative"
+          onMouseEnter={() => setShowModuleSwitcher(true)}
+          onMouseLeave={() => setShowModuleSwitcher(false)}
+        >
+          <SubTabs module={activeModule.module} moduleBase={activeModule.module.base} />
+
+          {/* Floating Module Switcher */}
+          {showModuleSwitcher && areaModules.length > 0 && (
+            <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 z-50
+                            flex items-center gap-1 px-4 py-2
+                            bg-card/80 backdrop-blur-xl shadow-lg rounded-2xl border border-border/30
+                            animate-in fade-in slide-in-from-top-1 duration-150">
+              {areaModules.map(({ code, module, displayLabel }) => {
+                const Icon = iconMap[module.icon] || Briefcase;
+                const isActive = activeModule?.code === code;
+                const requiresActivation = module.visibility.requires_activation && !isDevelopmentMode;
+
+                return (
+                  <NavLink
+                    key={code}
+                    to={`/portal/${module.base}`}
+                    onClick={() => setShowModuleSwitcher(false)}
+                    className={cn(
+                      'flex items-center gap-2 px-3 py-1.5 rounded-xl text-sm font-medium whitespace-nowrap transition-all',
+                      isActive
+                        ? 'bg-accent/80 text-accent-foreground'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-white/10',
+                      requiresActivation && 'opacity-50'
+                    )}
+                  >
+                    <Icon className="h-4 w-4" />
+                    <span>{displayLabel}</span>
+                  </NavLink>
+                );
+              })}
+            </div>
+          )}
+        </div>
       )}
     </nav>
   );
