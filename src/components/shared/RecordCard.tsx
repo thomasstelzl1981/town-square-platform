@@ -6,7 +6,7 @@
  */
 
 import { cn } from '@/lib/utils';
-import { RECORD_CARD } from '@/config/designManifest';
+import { RECORD_CARD, getActiveWidgetGlow, type ActiveWidgetVariant } from '@/config/designManifest';
 import { RECORD_CARD_TYPES, type RecordCardEntityType } from '@/config/recordCardManifest';
 import { FileDropZone } from '@/components/dms/FileDropZone';
 import { RecordCardGallery } from './RecordCardGallery';
@@ -49,6 +49,8 @@ interface RecordCardProps {
   tenantId?: string;
   /** Photo drag-and-drop on closed tile */
   onPhotoDrop?: (file: File) => void;
+  /** Colored glow on closed state (emerald for manual, primary for demo, etc.) */
+  glowVariant?: ActiveWidgetVariant;
   /** Actions */
   onSave?: () => void;
   onDelete?: () => void;
@@ -73,6 +75,7 @@ export function RecordCard({
   onFileDrop,
   tenantId,
   onPhotoDrop,
+  glowVariant,
   onSave,
   onDelete,
   saving,
@@ -92,12 +95,15 @@ export function RecordCard({
   if (!isOpen) {
     const hasDetailedSummary = summary.length > 2;
 
+    const glowClasses = glowVariant ? getActiveWidgetGlow(glowVariant) : '';
+
     const card = (
       <div
         className={cn(
           hasDetailedSummary
             ? 'glass-card rounded-xl cursor-pointer transition-all hover:shadow-lg overflow-hidden relative'
             : RECORD_CARD.CLOSED,
+          glowClasses,
           className,
         )}
         onClick={onToggle}

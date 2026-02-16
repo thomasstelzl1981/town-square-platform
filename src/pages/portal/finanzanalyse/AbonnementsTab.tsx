@@ -6,6 +6,7 @@ import { useState, useMemo } from 'react';
 import { PageShell } from '@/components/shared/PageShell';
 import { RecordCard } from '@/components/shared/RecordCard';
 import { RECORD_CARD } from '@/config/designManifest';
+import { getContractWidgetGlow } from '@/config/widgetCategorySpec';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { FormInput } from '@/components/shared';
 import { Button } from '@/components/ui/button';
@@ -210,6 +211,7 @@ export default function AbonnementsTab() {
               entityType="subscription"
               isOpen={openCardId === s.id}
               onToggle={() => toggleCard(s.id)}
+              glowVariant={getContractWidgetGlow(s.id) ?? undefined}
               title={s.custom_name || s.merchant || 'Abonnement'}
               subtitle={catLabel(s.category || 'other')}
               badges={[

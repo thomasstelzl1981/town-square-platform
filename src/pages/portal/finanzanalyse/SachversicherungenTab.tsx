@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { PageShell } from '@/components/shared/PageShell';
 import { RecordCard } from '@/components/shared/RecordCard';
 import { RECORD_CARD } from '@/config/designManifest';
+import { getContractWidgetGlow } from '@/config/widgetCategorySpec';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { FormInput } from '@/components/shared';
 import { Button } from '@/components/ui/button';
@@ -299,6 +300,7 @@ export default function SachversicherungenTab() {
               entityType="insurance"
               isOpen={openCardId === c.id}
               onToggle={() => toggleCard(c.id)}
+              glowVariant={getContractWidgetGlow(c.id) ?? undefined}
               title={`${c.insurer || 'Versicherer'} — ${catLabel(c.category)}`}
               subtitle={c.policy_no || undefined}
               badges={[

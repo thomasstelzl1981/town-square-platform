@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { PageShell } from '@/components/shared/PageShell';
 import { RecordCard } from '@/components/shared/RecordCard';
 import { RECORD_CARD, INFO_BANNER } from '@/config/designManifest';
+import { getContractWidgetGlow } from '@/config/widgetCategorySpec';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { FormInput } from '@/components/shared';
 import { Button } from '@/components/ui/button';
@@ -204,6 +205,7 @@ export default function VorsorgeTab() {
               entityType="vorsorge"
               isOpen={openCardId === c.id}
               onToggle={() => toggleCard(c.id)}
+              glowVariant={getContractWidgetGlow(c.id) ?? undefined}
               title={c.provider || 'Anbieter'}
               subtitle={c.contract_no || undefined}
               badges={[
