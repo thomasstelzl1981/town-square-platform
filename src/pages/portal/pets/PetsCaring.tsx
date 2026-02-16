@@ -1,11 +1,13 @@
 /**
  * Pets — Caring Tab
- * Pflege-Kalender mit Quick-Add, überfällige Events hervorgehoben, Pet-Filter
+ * 4 CI-Widgets (Gassi, Tagesstätte, Pension, Hundefriseur) + Pflege-Kalender
  */
 import { useState, useMemo } from 'react';
-import { Heart, Plus, Check, Trash2, Clock, AlertTriangle, Calendar, Filter } from 'lucide-react';
+import { Heart, Plus, Check, Trash2, Clock, AlertTriangle, Calendar, Filter, Footprints, Sun, Home, Scissors, PawPrint } from 'lucide-react';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
+import { WidgetGrid } from '@/components/shared/WidgetGrid';
+import { WidgetCell } from '@/components/shared/WidgetCell';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,9 +19,19 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useCaringEvents, useCreateCaringEvent, useCompleteCaringEvent, useDeleteCaringEvent, CARING_EVENT_TYPES } from '@/hooks/usePetCaring';
+import { useCreateBooking } from '@/hooks/usePetBookings';
 import { usePets } from '@/hooks/usePets';
-import { isPast, format, parseISO, isToday, isTomorrow, addDays } from 'date-fns';
+import { isPast, format, parseISO, isToday, isTomorrow } from 'date-fns';
 import { de } from 'date-fns/locale';
+
+type CaringWidget = 'gassi' | 'tagesstaette' | 'pension' | 'friseur';
+
+const CARING_WIDGETS: { key: CaringWidget; title: string; icon: typeof Footprints; description: string; category: string }[] = [
+  { key: 'gassi', title: 'Gassi-Service', icon: Footprints, description: 'Dog-Walking buchen', category: 'walking' },
+  { key: 'tagesstaette', title: 'Tagesstätte', icon: Sun, description: 'Tagesbetreuung buchen', category: 'daycare' },
+  { key: 'pension', title: 'Pension', icon: Home, description: 'Mehrtägige Unterbringung', category: 'boarding' },
+  { key: 'friseur', title: 'Hundefriseur', icon: Scissors, description: 'Grooming-Termin buchen', category: 'grooming' },
+];
 
 export default function PetsCaring() {
   const { data: allEvents = [], isLoading } = useCaringEvents();
@@ -27,11 +39,16 @@ export default function PetsCaring() {
   const createEvent = useCreateCaringEvent();
   const completeEvent = useCompleteCaringEvent();
   const deleteEvent = useDeleteCaringEvent();
+  const createBooking = useCreateBooking();
 
+  const [activeWidget, setActiveWidget] = useState<CaringWidget | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [petFilter, setPetFilter] = useState<string>('all');
 
-  // Form state
+  // Booking form state
+  const [bookingForm, setBookingForm] = useState({ pet_id: '', scheduled_date: '', scheduled_time_start: '', client_notes: '' });
+
+  // Caring event form state
   const [form, setForm] = useState({
     pet_id: '', event_type: 'other', title: '', description: '',
     scheduled_at: '', recurring_interval_days: 0, reminder_enabled: false,
@@ -49,9 +66,7 @@ export default function PetsCaring() {
   const handleCreate = async () => {
     if (!form.pet_id || !form.title || !form.scheduled_at) return;
     await createEvent.mutateAsync({
-      pet_id: form.pet_id,
-      event_type: form.event_type,
-      title: form.title,
+      pet_id: form.pet_id, event_type: form.event_type, title: form.title,
       description: form.description || undefined,
       scheduled_at: new Date(form.scheduled_at).toISOString(),
       recurring_interval_days: form.recurring_interval_days || undefined,
@@ -61,14 +76,26 @@ export default function PetsCaring() {
     setForm({ pet_id: '', event_type: 'other', title: '', description: '', scheduled_at: '', recurring_interval_days: 0, reminder_enabled: false });
   };
 
-  // Auto-fill title from event type
+  const handleBookService = async () => {
+    if (!bookingForm.pet_id || !bookingForm.scheduled_date || !activeWidget) return;
+    const widgetCfg = CARING_WIDGETS.find(w => w.key === activeWidget);
+    if (!widgetCfg) return;
+    await createBooking.mutateAsync({
+      pet_id: bookingForm.pet_id,
+      service_id: '', // will be matched by category in backend
+      provider_id: '',
+      scheduled_date: bookingForm.scheduled_date,
+      scheduled_time_start: bookingForm.scheduled_time_start || undefined,
+      duration_minutes: 60,
+      price_cents: 0,
+      client_notes: `${widgetCfg.title}${bookingForm.client_notes ? ': ' + bookingForm.client_notes : ''}`,
+    });
+    setBookingForm({ pet_id: '', scheduled_date: '', scheduled_time_start: '', client_notes: '' });
+  };
+
   const handleEventTypeChange = (type: string) => {
     const cfg = CARING_EVENT_TYPES[type];
-    setForm(prev => ({
-      ...prev,
-      event_type: type,
-      title: prev.title || (cfg?.label || ''),
-    }));
+    setForm(prev => ({ ...prev, event_type: type, title: prev.title || (cfg?.label || '') }));
   };
 
   function formatScheduledDate(dateStr: string): string {
@@ -78,10 +105,14 @@ export default function PetsCaring() {
     return format(d, 'dd.MM.yyyy HH:mm', { locale: de });
   }
 
+  const toggleWidget = (key: CaringWidget) => {
+    setActiveWidget(prev => prev === key ? null : key);
+    setBookingForm({ pet_id: '', scheduled_date: '', scheduled_time_start: '', client_notes: '' });
+  };
+
   function EventCard({ event, showActions = true }: { event: typeof allEvents[0]; showActions?: boolean }) {
     const cfg = CARING_EVENT_TYPES[event.event_type] || CARING_EVENT_TYPES.other;
     const isOverdue = !event.is_completed && isPast(parseISO(event.scheduled_at));
-
     return (
       <div className={`flex items-start gap-3 p-3 rounded-lg border ${isOverdue ? 'border-destructive/50 bg-destructive/5' : 'border-border/30 bg-muted/30'}`}>
         <span className="text-lg mt-0.5">{cfg.emoji}</span>
@@ -90,9 +121,7 @@ export default function PetsCaring() {
             <p className="text-sm font-medium truncate">{event.title}</p>
             {isOverdue && <Badge variant="destructive" className="text-[10px]">Überfällig</Badge>}
             {event.is_completed && <Badge variant="secondary" className="text-[10px]">Erledigt</Badge>}
-            {event.recurring_interval_days && (
-              <Badge variant="outline" className="text-[10px]">↻ {event.recurring_interval_days}d</Badge>
-            )}
+            {event.recurring_interval_days && <Badge variant="outline" className="text-[10px]">↻ {event.recurring_interval_days}d</Badge>}
           </div>
           <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
             <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{formatScheduledDate(event.scheduled_at)}</span>
@@ -116,9 +145,80 @@ export default function PetsCaring() {
 
   return (
     <PageShell>
-      <ModulePageHeader title="CARING" description="Pflege-Kalender, Tierarzt-Termine und Medikamenten-Tracking" />
+      <ModulePageHeader title="CARING" description="Services buchen und Pflege-Kalender verwalten" />
 
-      {/* KPI + Actions */}
+      {/* CI-Widget Navigation */}
+      <WidgetGrid variant="widget" className="mb-6">
+        {CARING_WIDGETS.map(w => {
+          const Icon = w.icon;
+          const isActive = activeWidget === w.key;
+          return (
+            <WidgetCell key={w.key}>
+              <button
+                onClick={() => toggleWidget(w.key)}
+                className={`w-full h-full rounded-xl border p-4 flex flex-col items-center justify-center gap-3 text-center transition-all cursor-pointer
+                  ${isActive
+                    ? 'border-teal-500/50 bg-teal-500/5 shadow-[0_0_20px_-5px_hsl(var(--teal-glow,180_60%_40%)/0.3)]'
+                    : 'border-border/40 bg-card hover:border-teal-500/30 hover:bg-teal-500/5'
+                  }`}
+              >
+                <div className={`p-3 rounded-lg ${isActive ? 'bg-teal-500/15 text-teal-600' : 'bg-muted/50 text-muted-foreground'}`}>
+                  <Icon className="h-6 w-6" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium">{w.title}</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">{w.description}</p>
+                </div>
+              </button>
+            </WidgetCell>
+          );
+        })}
+      </WidgetGrid>
+
+      {/* Inline Booking Calendar */}
+      {activeWidget && (
+        <Card className="mb-6 border-teal-500/20">
+          <CardContent className="pt-4 space-y-4">
+            <h3 className="text-sm font-semibold flex items-center gap-2">
+              {(() => { const w = CARING_WIDGETS.find(w => w.key === activeWidget); const Icon = w?.icon || Footprints; return <><Icon className="h-4 w-4 text-teal-600" />{w?.title} buchen</>; })()}
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+              <div>
+                <Label>Tier *</Label>
+                <Select value={bookingForm.pet_id} onValueChange={v => setBookingForm(f => ({ ...f, pet_id: v }))}>
+                  <SelectTrigger><SelectValue placeholder="Tier wählen…" /></SelectTrigger>
+                  <SelectContent>
+                    {pets.map(p => (
+                      <SelectItem key={p.id} value={p.id}>
+                        <span className="flex items-center gap-2"><PawPrint className="h-3 w-3" />{p.name}</span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Datum *</Label>
+                <Input type="date" value={bookingForm.scheduled_date} onChange={e => setBookingForm(f => ({ ...f, scheduled_date: e.target.value }))} min={new Date().toISOString().split('T')[0]} />
+              </div>
+              <div>
+                <Label>Uhrzeit</Label>
+                <Input type="time" value={bookingForm.scheduled_time_start} onChange={e => setBookingForm(f => ({ ...f, scheduled_time_start: e.target.value }))} />
+              </div>
+              <div className="flex items-end">
+                <Button onClick={handleBookService} disabled={createBooking.isPending || !bookingForm.pet_id || !bookingForm.scheduled_date} className="w-full">
+                  Buchen
+                </Button>
+              </div>
+            </div>
+            <div>
+              <Label>Anmerkungen</Label>
+              <Textarea value={bookingForm.client_notes} onChange={e => setBookingForm(f => ({ ...f, client_notes: e.target.value }))} placeholder="Besondere Wünsche…" rows={2} />
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Pflege-Kalender */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
           <Select value={petFilter} onValueChange={setPetFilter}>
@@ -184,24 +284,9 @@ export default function PetsCaring() {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-3 gap-4 mb-6">
-        <Card>
-          <CardContent className="pt-4 text-center">
-            <p className="text-2xl font-bold text-destructive">{overdue.length}</p>
-            <p className="text-xs text-muted-foreground">Überfällig</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4 text-center">
-            <p className="text-2xl font-bold text-primary">{upcoming.length}</p>
-            <p className="text-xs text-muted-foreground">Anstehend</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4 text-center">
-            <p className="text-2xl font-bold text-muted-foreground">{completed.length}</p>
-            <p className="text-xs text-muted-foreground">Erledigt</p>
-          </CardContent>
-        </Card>
+        <Card><CardContent className="pt-4 text-center"><p className="text-2xl font-bold text-destructive">{overdue.length}</p><p className="text-xs text-muted-foreground">Überfällig</p></CardContent></Card>
+        <Card><CardContent className="pt-4 text-center"><p className="text-2xl font-bold text-primary">{upcoming.length}</p><p className="text-xs text-muted-foreground">Anstehend</p></CardContent></Card>
+        <Card><CardContent className="pt-4 text-center"><p className="text-2xl font-bold text-muted-foreground">{completed.length}</p><p className="text-xs text-muted-foreground">Erledigt</p></CardContent></Card>
       </div>
 
       {/* Events */}

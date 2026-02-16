@@ -216,7 +216,7 @@ export const moduleContents: Record<string, HowItWorksContent> = {
     subTiles: [
       { title: 'Meine Tiere', route: '/portal/pets/meine-tiere', icon: Globe },
       { title: 'Caring', route: '/portal/pets/caring', icon: Heart },
-      { title: 'Shop & Services', route: '/portal/pets/shop', icon: ShoppingCart },
+      { title: 'Shop', route: '/portal/pets/shop', icon: ShoppingCart },
       { title: 'Mein Bereich', route: '/portal/pets/mein-bereich', icon: User },
     ],
   },

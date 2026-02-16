@@ -271,7 +271,7 @@ export const zone2Portal: ZoneDefinition = {
       tiles: [
         { path: "meine-tiere", component: "PetsMeineTiere", title: "Meine Tiere", default: true },
         { path: "caring", component: "PetsCaring", title: "Caring" },
-        { path: "shop", component: "PetsShop", title: "Shop & Services" },
+        { path: "shop", component: "PetsShop", title: "Shop" },
         { path: "mein-bereich", component: "PetsMeinBereich", title: "Mein Bereich" },
       ],
       dynamic_routes: [
