@@ -306,6 +306,24 @@ export function getActiveWidgetGlow(variant: ActiveWidgetVariant): string {
   return `relative overflow-hidden ${v.border} ${v.shadow} ${v.shimmer}`;
 }
 
+// ─── SELECTION RING HELPER (V4.6) ────────────────────────
+/** Maps glow variant to matching selection ring color for consistent UI */
+const SELECTION_RING_MAP: Record<ActiveWidgetVariant, string> = {
+  primary: 'ring-2 ring-primary',
+  amber: 'ring-2 ring-amber-400',
+  cyan: 'ring-2 ring-cyan-400',
+  violet: 'ring-2 ring-violet-400',
+  rose: 'ring-2 ring-rose-400',
+  orange: 'ring-2 ring-orange-400',
+  teal: 'ring-2 ring-teal-400',
+  emerald: 'ring-2 ring-emerald-400',
+} as const;
+
+/** Returns the selection ring class matching the given glow variant */
+export function getSelectionRing(variant: ActiveWidgetVariant): string {
+  return SELECTION_RING_MAP[variant];
+}
+
 export const ACTIVE_WIDGET = ACTIVE_WIDGET_VARIANTS;
 
 // ─── EXPORT ALS EINHEITLICHES OBJEKT ──────────────────────
