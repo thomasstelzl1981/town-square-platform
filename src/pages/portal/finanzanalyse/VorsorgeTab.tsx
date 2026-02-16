@@ -371,7 +371,11 @@ export default function VorsorgeTab() {
       {/* Vorsorge-Lückenrechner am Seitenende */}
       <Separator className="my-8" />
       <VorsorgeLueckenrechner
-        persons={demoEnabled ? persons : persons.filter((p: any) => !isDemoId(p.id))}
+        persons={(demoEnabled ? persons : persons.filter((p: any) => !isDemoId(p.id))).filter((p: any) => {
+          if (!p.birth_date) return true;
+          const age = (Date.now() - new Date(p.birth_date).getTime()) / (365.25 * 24 * 60 * 60 * 1000);
+          return age >= 20;
+        })}
         pensionRecords={pensionRecords}
         contracts={contracts}
         onUpdatePerson={async (p) => { await updatePerson.mutateAsync(p); }}

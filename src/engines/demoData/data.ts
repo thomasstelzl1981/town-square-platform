@@ -65,6 +65,9 @@ const ID_KV_LISA   = 'e0000000-0000-4000-a000-000000000502';
 const ID_KV_FELIX  = 'e0000000-0000-4000-a000-000000000503';
 const ID_KV_EMMA   = 'e0000000-0000-4000-a000-000000000504';
 
+// Pension Records (DB-geseedet)
+const ID_PENSION_LISA = 'e0000000-0000-4000-a000-000000000701';
+
 // Privatkredite
 const ID_PL_AUTO   = 'e0000000-0000-4000-a000-000000000601';
 const ID_PL_MOEBEL = 'e0000000-0000-4000-a000-000000000602';
@@ -502,6 +505,8 @@ export const ALL_DEMO_IDS: readonly string[] = [
   ID_KV_MAX, ID_KV_LISA, ID_KV_FELIX, ID_KV_EMMA,
   // Privatkredite
   ID_PL_AUTO, ID_PL_MOEBEL,
+  // Pension Records
+  ID_PENSION_LISA,
   // Portfolio (DB-IDs)
   ...DEMO_PORTFOLIO.propertyIds,
   ...DEMO_PORTFOLIO.vehicleIds,
