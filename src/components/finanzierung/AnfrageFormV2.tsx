@@ -483,7 +483,7 @@ export default function AnfrageFormV2({ requestId, onSubmitSuccess }: AnfrageFor
                   <SelectValue placeholder="Objekt auswählen..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {portfolioProperties.map((prop: any) => (
+                  {portfolioProperties.map((prop) => (
                     <SelectItem key={prop.id} value={prop.id}>
                       {prop.address}, {prop.city}
                     </SelectItem>

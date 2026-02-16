@@ -557,7 +557,9 @@ export function TestDataManager() {
       const { data, error } = await supabase.rpc('cleanup_golden_path_data');
       if (error) throw error;
 
-      const cleanupCounts = (data as any)?.cleanup_counts;
+      const cleanupCounts = data && typeof data === 'object' && 'cleanup_counts' in data 
+        ? (data as { cleanup_counts?: { contacts?: number; properties?: number; documents?: number } }).cleanup_counts 
+        : undefined;
       toast.success('Golden Path Daten zurückgesetzt', {
         description: cleanupCounts
           ? `Gelöscht: Kontakte ${cleanupCounts.contacts ?? 0}, Immobilien ${cleanupCounts.properties ?? 0}, Dokumente ${cleanupCounts.documents ?? 0}`

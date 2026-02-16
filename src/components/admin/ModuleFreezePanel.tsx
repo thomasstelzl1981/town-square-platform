@@ -76,9 +76,9 @@ export function ModuleFreezePanel({ tiles, onRefresh }: ModuleFreezePanelProps) 
       toast.success(`${tile.title} ${newState ? 'eingefroren' : 'freigegeben'}`);
       setReasons(prev => ({ ...prev, [tile.tile_code]: '' }));
       onRefresh();
-    } catch (err: any) {
+    } catch (err) {
       console.error('Freeze toggle error:', err);
-      toast.error(err.message || 'Fehler beim Umschalten');
+      toast.error(err instanceof Error ? err.message : 'Fehler beim Umschalten');
     } finally {
       setToggling(null);
     }
@@ -117,8 +117,8 @@ export function ModuleFreezePanel({ tiles, onRefresh }: ModuleFreezePanelProps) 
 
       toast.success(freeze ? 'Alle Module eingefroren' : 'Alle Module freigegeben');
       onRefresh();
-    } catch (err: any) {
-      toast.error(err.message || 'Fehler');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Fehler');
     }
   }
 
