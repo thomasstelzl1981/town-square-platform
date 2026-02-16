@@ -129,7 +129,7 @@ export const GOLDEN_PATH_PROCESSES: GoldenPathProcess[] = [
     demoWidget: {
       id: '__demo__',
       title: 'Demo: MFH Düsseldorf',
-      subtitle: 'V + V mit 6 Einheiten',
+      subtitle: 'Tax mit 6 Einheiten',
       status: 'demo',
       badgeLabel: 'Demo',
       data: {

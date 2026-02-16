@@ -248,8 +248,8 @@ export const zone2Portal: ZoneDefinition = {
         // ZUHAUSE: MOD-20 (Miety) inline gerendert innerhalb MOD-04
         { path: "zuhause", component: "MietyInline", title: "ZUHAUSE", default: true },
         { path: "portfolio", component: "PortfolioTab", title: "Portfolio" },
-        // V + V: Vermietung + Verwaltung (ehemals BWA/MSV)
-        { path: "verwaltung", component: "VerwaltungTab", title: "V + V" },
+        // Tax: Vermietung + Verwaltung — Anlage V Steuererklärung
+        { path: "verwaltung", component: "VerwaltungTab", title: "Tax" },
         { path: "sanierung", component: "SanierungTab", title: "Sanierung" },
         // Bewertung entfernt — jetzt als Tab in der Immobilienakte (PropertyDetailPage)
       ],
