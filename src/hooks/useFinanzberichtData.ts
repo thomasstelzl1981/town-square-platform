@@ -259,6 +259,17 @@ export function useFinanzberichtData(): FinanzberichtData {
     enabled: !!activeTenantId,
   });
 
+  // ─── Private Loans ───────────────────────────────────────
+  const { data: privateLoansList = [] } = useQuery({
+    queryKey: ['fb-private-loans', activeTenantId],
+    queryFn: async () => {
+      if (!activeTenantId) return [];
+      const { data } = await supabase.from('private_loans' as any).select('id, loan_purpose, bank_name, loan_amount, remaining_balance, interest_rate, monthly_rate, status').eq('tenant_id', activeTenantId);
+      return (data || []) as any[];
+    },
+    enabled: !!activeTenantId,
+  });
+
   // ─── Legal Documents (Testament/Patientenverfügung) ───────
   const { data: legalDocs = [] } = useQuery({
     queryKey: ['fb-legal-docs', activeTenantId],
@@ -335,12 +346,24 @@ export function useFinanzberichtData(): FinanzberichtData {
     const savingsMonthly = savingsOnlyContracts.reduce((s, v) => s + monthlyFromInterval(v.premium, v.payment_interval), 0);
     const investmentMonthly = investmentVorsorge.reduce((s, v) => s + monthlyFromInterval(v.premium, v.payment_interval), 0);
 
-    const activeSubscriptions = subscriptions.filter((s: any) => s.status === 'active' || s.status === 'confirmed');
-    const subscriptionTotal = activeSubscriptions.reduce((s: number, sub: any) => s + (sub.amount || 0), 0);
+    const activeSubscriptions = subscriptions.filter((s: any) => s.status === 'aktiv' || s.status === 'active' || s.status === 'confirmed');
+    const subscriptionTotal = activeSubscriptions.reduce((s: number, sub: any) => {
+      const amt = sub.amount || 0;
+      const freq = (sub.frequency || '').toLowerCase();
+      if (freq.includes('jaehr')) return s + amt / 12;
+      if (freq.includes('halb')) return s + amt / 6;
+      if (freq.includes('viertel')) return s + amt / 3;
+      return s + amt;
+    }, 0);
+
+    // Private loans (non-property)
+    const activePrivateLoans = (privateLoansList as any[]).filter((l: any) => l.status === 'aktiv');
+    const privateLoansNewMonthly = activePrivateLoans.reduce((s: number, l: any) => s + (l.monthly_rate || 0), 0);
+    const privateLoansNewDebt = activePrivateLoans.reduce((s: number, l: any) => s + (l.remaining_balance || 0), 0);
 
     // Lebenshaltungskosten: 35% der Arbeitseinkommen (Netto + Selbstständig, ohne V+V und PV)
     const livingExpenses = (netIncomeTotal + selfEmployedIncome) * 0.35;
-    const totalExpenses = warmRent + privateLoansMonthly + portfolioLoansMonthly + pvMonthlyLoanRate + pkvExpense + insurancePremiums + savingsMonthly + investmentMonthly + subscriptionTotal + livingExpenses;
+    const totalExpenses = warmRent + privateLoansMonthly + privateLoansNewMonthly + portfolioLoansMonthly + pvMonthlyLoanRate + pkvExpense + insurancePremiums + savingsMonthly + investmentMonthly + subscriptionTotal + livingExpenses;
 
     // Assets
     const portfolioPropertyValue = portfolioSummary?.totalValue || 0;
@@ -353,10 +376,10 @@ export function useFinanzberichtData(): FinanzberichtData {
     // Liabilities
     const portfolioDebt = portfolioSummary?.totalDebt || 0;
     const homeDebt = mietyLoans.reduce((s, l) => s + (l.remaining_balance || 0), 0);
-    const totalLiabilities = portfolioDebt + homeDebt + pvRemainingBalance;
+    const totalLiabilities = portfolioDebt + homeDebt + pvRemainingBalance + privateLoansNewDebt;
 
     // KPIs
-    const monthlyAmortization = (portfolioSummary?.annualAmortization || 0) / 12 + privateLoansMonthly + pvMonthlyLoanRate;
+    const monthlyAmortization = (portfolioSummary?.annualAmortization || 0) / 12 + privateLoansMonthly + privateLoansNewMonthly + pvMonthlyLoanRate;
     const monthlySavings = savingsMonthly;
     const netWealth = totalAssets - totalLiabilities;
     const liquidityPercent = totalIncome > 0 ? ((totalIncome - totalExpenses) / totalIncome) * 100 : 0;
@@ -399,6 +422,7 @@ export function useFinanzberichtData(): FinanzberichtData {
       ...portfolioLoans.map(l => ({ id: l.id, type: 'Immobiliendarlehen', provider: (l as any).bank_name || '—', monthlyAmount: l.annuity_monthly_eur || 0, contractNo: undefined })),
       ...mietyLoans.map(l => ({ id: l.id, type: l.loan_type || 'Privatdarlehen', provider: l.bank_name || '—', monthlyAmount: l.monthly_rate || 0, contractNo: undefined })),
       ...pvPlants.filter((pv: any) => pv.loan_bank).map((pv: any) => ({ id: pv.id, type: 'PV-Darlehen', provider: pv.loan_bank || '—', monthlyAmount: pv.loan_monthly_rate || 0, contractNo: undefined })),
+      ...activePrivateLoans.map((l: any) => ({ id: l.id, type: 'Privatkredit', provider: l.bank_name || '—', monthlyAmount: l.monthly_rate || 0, contractNo: undefined })),
     ];
 
     const vorsorgeContracts: ContractSummary[] = activeVorsorge
@@ -490,13 +514,22 @@ export function useFinanzberichtData(): FinanzberichtData {
         interestRate: pv.loan_interest_rate || 0,
         monthlyRate: pv.loan_monthly_rate || 0,
       })),
+      ...activePrivateLoans.map((l: any) => ({
+        id: l.id,
+        bank: l.bank_name || '—',
+        assignment: l.loan_purpose || 'Privatkredit',
+        loanAmount: l.loan_amount || 0,
+        remainingBalance: l.remaining_balance || 0,
+        interestRate: l.interest_rate || 0,
+        monthlyRate: l.monthly_rate || 0,
+      })),
     ];
 
     return {
       income: { netIncomeTotal, selfEmployedIncome, rentalIncomePortfolio, sideJobIncome, childBenefit, otherIncome, pvIncome, taxBenefitRental, totalIncome },
-      expenses: { warmRent, privateLoans: privateLoansMonthly, portfolioLoans: portfolioLoansMonthly, pvLoans: pvMonthlyLoanRate, healthInsurance: pkvExpense, insurancePremiums, savingsContracts: savingsMonthly, investmentContracts: investmentMonthly, subscriptions: subscriptionTotal, livingExpenses, totalExpenses },
+      expenses: { warmRent, privateLoans: privateLoansMonthly + privateLoansNewMonthly, portfolioLoans: portfolioLoansMonthly, pvLoans: pvMonthlyLoanRate, healthInsurance: pkvExpense, insurancePremiums, savingsContracts: savingsMonthly, investmentContracts: investmentMonthly, subscriptions: subscriptionTotal, livingExpenses, totalExpenses },
       assets: { propertyValue: portfolioPropertyValue, homeValue, bankSavings, securities, surrenderValues, totalAssets },
-      liabilities: { portfolioDebt, homeDebt, pvDebt: pvRemainingBalance, otherDebt: 0, totalLiabilities },
+      liabilities: { portfolioDebt, homeDebt, pvDebt: pvRemainingBalance, otherDebt: privateLoansNewDebt, totalLiabilities },
       monthlyAmortization,
       monthlySavings,
       netWealth,
@@ -516,5 +549,5 @@ export function useFinanzberichtData(): FinanzberichtData {
       patientenverfuegungCompleted,
       isLoading,
     };
-  }, [portfolioSummary, portfolioLoading, personsLoading, apLoading, homesLoading, applicantProfiles, homes, mietyLoans, tenancies, insuranceData, vorsorgeData, subscriptions, legalDocs, portfolioLoans, pvPlants, mietyContracts, portfolioProperties]);
+  }, [portfolioSummary, portfolioLoading, personsLoading, apLoading, homesLoading, applicantProfiles, homes, mietyLoans, tenancies, insuranceData, vorsorgeData, subscriptions, legalDocs, portfolioLoans, pvPlants, mietyContracts, portfolioProperties, privateLoansList]);
 }
