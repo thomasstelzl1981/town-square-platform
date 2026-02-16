@@ -107,10 +107,14 @@ export default function CaseDocumentRoom({ requestId, publicId, employmentType }
 
   const visibleFolders = useMemo(() => getVisibleFolders(employmentType), [employmentType]);
 
+  const foldersWithDocs = useCallback(
+    (folderId: string) => uploadedDocs.filter(d => d.folderId === folderId).length,
+    [uploadedDocs]
+  );
+
   const uploadedFolderCount = useMemo(() => {
-    const foldersWithDocs = (folderId: string) => uploadedDocs.filter(d => d.folderId === folderId).length;
     return visibleFolders.filter(f => foldersWithDocs(f.id) >= f.required).length;
-  }, [visibleFolders, uploadedDocs]);
+  }, [visibleFolders, foldersWithDocs]);
 
   const progressPercent = visibleFolders.length > 0
     ? Math.round((uploadedFolderCount / visibleFolders.length) * 100)
