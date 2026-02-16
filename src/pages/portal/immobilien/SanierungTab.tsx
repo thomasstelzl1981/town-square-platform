@@ -93,7 +93,7 @@ export function SanierungTab() {
                   `h-full cursor-pointer transition-all group flex flex-col`,
                   DESIGN.DEMO_WIDGET.CARD,
                   DESIGN.DEMO_WIDGET.HOVER,
-                  selectedCaseId === '__demo__' ? 'ring-2 ring-emerald-500 shadow-glow' : ''
+                  selectedCaseId === '__demo__' ? 'ring-2 ring-primary shadow-glow' : ''
                 )}
                 onClick={() => setSelectedCaseId('__demo__')}
               >

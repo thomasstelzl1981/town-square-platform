@@ -98,7 +98,7 @@ function KontenBlock() {
                 'h-full w-full rounded-xl cursor-pointer transition-all',
                 DEMO_WIDGET.CARD,
                 DEMO_WIDGET.HOVER,
-                openKontoId === DEMO_KONTO.id && 'ring-2 ring-emerald-400/50',
+                openKontoId === DEMO_KONTO.id && 'ring-2 ring-primary/50',
               )}
               onClick={() => setOpenKontoId(openKontoId === DEMO_KONTO.id ? null : DEMO_KONTO.id)}
               role="button"

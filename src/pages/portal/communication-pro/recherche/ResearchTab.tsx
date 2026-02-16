@@ -83,7 +83,7 @@ export function ResearchTab() {
                 'h-full cursor-pointer transition-all',
                 DESIGN.DEMO_WIDGET.CARD,
                 DESIGN.DEMO_WIDGET.HOVER,
-                isDemo && 'ring-2 ring-emerald-500 shadow-glow'
+                isDemo && 'ring-2 ring-primary shadow-glow'
               )}
               onClick={() => setActiveOrderId(isDemo ? null : '__demo__')}
             >

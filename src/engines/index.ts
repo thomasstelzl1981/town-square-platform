@@ -24,3 +24,6 @@ export * from './projektCalc/spec';
 
 // Engine 6: NK-Abrechnung (existiert bereits)
 export * from './nkAbrechnung';
+
+// Engine 7: Demo-Daten
+export * from './demoData';
