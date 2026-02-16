@@ -217,7 +217,7 @@ export function useVVSteuerData(taxYear: number) {
       acquisitionCosts: prop.acquisition_costs || 0,
       taxReferenceNumber: prop.tax_reference_number || '',
       ownershipSharePercent: prop.ownership_share_percent ?? 100,
-      areaSqm: propUnits.reduce((s: number, u: any) => s + (u.area_sqm || 0), 0) || null,
+      areaSqm: propUnits.reduce((s: number, u: any) => s + (u.area_sqm || 0), 0) || 0,
       afa,
       incomeAggregated,
       financingAggregated,

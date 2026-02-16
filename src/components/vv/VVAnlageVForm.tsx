@@ -190,6 +190,7 @@ export function VVAnlageVForm({ taxData, contextTaxNumber, onSave, isSaving }: V
         <TabularFormSection title="1. Identifikation" />
         <TabularFormRow label="Objektart">{taxData.propertyType}</TabularFormRow>
         <TabularFormRow label="Adresse">{taxData.address}, {taxData.postalCode} {taxData.city}</TabularFormRow>
+        <TabularFormRow label="Wohnfläche">{taxData.areaSqm ? `${taxData.areaSqm.toLocaleString('de-DE')} m²` : '—'}</TabularFormRow>
         <TabularFormRow label="Baujahr">{taxData.yearBuilt || '—'}</TabularFormRow>
         <TabularFormRow label="FA-Aktenzeichen">
           <Input className="h-7 border-0 bg-transparent shadow-none focus-visible:ring-1 text-sm px-1 w-48" value={taxRef} onChange={e => setTaxRef(e.target.value)} placeholder="z.B. 123/456/78901" />
