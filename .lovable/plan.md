@@ -1,107 +1,65 @@
 
-# MOD-18 Finanzanalyse: Einheitliche CI-Kacheln und Glow-Korrektur
+# Fix: Finanzanalyse-Kacheln oeffnen sich nicht
 
-## Problem
+## Analyse
 
-1. **PersonVisitenkarte** (horizontale Visitenkarten, 2 pro Reihe) werden in Uebersicht, Investment und Vorsorgedokumente verwendet -- diese sollen durch die standard-quadratischen CI-Kacheln (WidgetGrid + WidgetCell, 4 pro Reihe) ersetzt werden.
-2. **Glow-System ist falsch**: Aktuell bekommen sowohl Demo-Daten als auch eigene Daten den gleichen `emerald`-Glow. Korrekt waere: Demo = emerald (gruen), eigene Daten = rose (rot).
-3. **Vorsorgedokumente**: Die Personen-Auswahl nutzt ebenfalls PersonVisitenkarte statt CI-Kacheln.
+Nach gruendlicher Pruefung aller 7 Tabs (Uebersicht, Investment, Sachversicherungen, Vorsorge, KV, Abonnements, Vorsorgedokumente) ist die Kernlogik (onClick-Handler, State-Management, bedingte Detail-Anzeige) **korrekt implementiert**. 
 
-## Loesung
+Die wahrscheinliche Ursache fuer das Problem sind:
 
-### 1. Glow-System korrigieren (`src/config/widgetCategorySpec.ts`)
+1. **Event-Propagation**: Klick-Events koennten von uebergeordneten Elementen geschluckt werden. Alle Widget-onClick-Handler erhalten `e.stopPropagation()`.
+2. **Ungenutzte Imports**: In 3 Dateien werden `getContractWidgetGlow` und `isDemoIdSpec` importiert aber nie verwendet. Dies kann Build-Warnungen verursachen.
 
-Die Funktion `getContractWidgetGlow` gibt aktuell fuer ALLE Daten `emerald` zurueck. Aenderung:
+## Aenderungen
 
-- `isDemoId(id)` -> `'emerald'` (gruen) -- bleibt
-- Manuelle/eigene Daten -> `'rose'` (rot) -- NEU
-- Shop-Angebote -> `null` (kein Glow) -- bleibt
+### 1. Event-Propagation fixen (alle 7 Tabs)
 
-Ebenso `resolveWidgetGlow`: `'manual'` -> `'rose'` statt `'emerald'`
+In jedem Tab wird `e.stopPropagation()` zu den onClick-Handlern der Kacheln hinzugefuegt:
 
-### 2. UebersichtTab: PersonVisitenkarte durch WidgetGrid ersetzen
+**Betroffene Dateien:**
+- `UebersichtTab.tsx` — Personen-Kacheln (Zeile 341) und Konto-Kacheln (Zeilen 107, 134)
+- `InvestmentTab.tsx` — Personen-Kacheln (Zeile 112)
+- `SachversicherungenTab.tsx` — Vertrags-Kacheln (Zeile 309)
+- `VorsorgeTab.tsx` — Vertrags-Kacheln (Zeile 216)
+- `KrankenversicherungTab.tsx` — KV-Kacheln (Zeile 58)
+- `AbonnementsTab.tsx` — Abo-Kacheln (Zeile 225)
+- `VorsorgedokumenteTab.tsx` — Personen-Kacheln (Zeile 136) und Testament-Kacheln (Zeile 197)
 
-**Datei: `src/pages/portal/finanzanalyse/UebersichtTab.tsx`**
+Muster:
+```text
+// Vorher:
+onClick={() => toggleCard(person.id)}
 
-- `PersonVisitenkarte` Import entfernen
-- Personen-Block: `grid grid-cols-1 md:grid-cols-2` ersetzen durch `WidgetGrid` + `WidgetCell`
-- Jede Person als quadratische Kachel mit:
-  - Farbiger Avatar-Circle (Rollen-Gradient)
-  - Name (bold)
-  - Rolle (klein)
-  - Glass-Card Styling mit Glow (emerald fuer Demo, rose fuer eigene)
-  - `onClick` oeffnet weiterhin das Inline-Formular darunter
-  - Selection Ring bei geoeffneter Karte
-- CTA "Person hinzufuegen" bleibt als dashed WidgetCell
+// Nachher:
+onClick={(e) => { e.stopPropagation(); toggleCard(person.id); }}
+```
 
-### 3. InvestmentTab: PersonVisitenkarte durch WidgetGrid ersetzen
+### 2. Ungenutzte Imports entfernen
 
-**Datei: `src/pages/portal/finanzanalyse/InvestmentTab.tsx`**
+| Datei | Entfernter Import |
+|-------|------------------|
+| `SachversicherungenTab.tsx` | `getContractWidgetGlow`, `isDemoId as isDemoIdSpec` aus widgetCategorySpec |
+| `VorsorgeTab.tsx` | `getContractWidgetGlow` aus widgetCategorySpec |
+| `AbonnementsTab.tsx` | `getContractWidgetGlow` aus widgetCategorySpec |
 
-- `PersonVisitenkarte` Import entfernen
-- Person-Auswahl als `WidgetGrid` + `WidgetCell`:
-  - Avatar-Circle, Name, Rolle
-  - Depot-Status Badge ("Depot aktiv" / "Kein Depot")
-  - Selection Ring bei ausgewaehlter Person
-  - Kein Edit-Formular -- nur Depot-Umschaltung
+### 3. Keyboard-Accessibility
 
-### 4. VorsorgedokumenteTab: PersonVisitenkarte durch WidgetGrid ersetzen
+Alle Kacheln mit `role="button"` erhalten zusaetzlich einen `onKeyDown`-Handler fuer Enter/Space:
 
-**Datei: `src/pages/portal/finanzanalyse/VorsorgedokumenteTab.tsx`**
-
-- `PersonVisitenkarte` Import entfernen
-- Personen-Auswahl in Sektion 1 als `WidgetGrid` + `WidgetCell`:
-  - Avatar-Circle, Name, Rolle
-  - Status-Badge ("Hinterlegt" wenn PV vorhanden)
-  - Selection Ring
-- Testament-Kacheln (Sektion 2) bleiben unveraendert (nutzen bereits WidgetGrid)
-
-### 5. Glow auf alle Vertrags-Kacheln anwenden
-
-In allen Tabs (Sachversicherungen, Vorsorge, KV, Abonnements) werden die Kacheln aktuell ohne Glow gerendert (nur `CARD.BASE`). Aenderung:
-
-- Demo-Datensaetze (`isDemoId`) bekommen `getActiveWidgetGlow('emerald')` + DEMO Badge
-- Eigene Datensaetze bekommen `getActiveWidgetGlow('rose')`
-- CTA-Kacheln bleiben ohne Glow (dashed border)
+```text
+onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); handler(); }}}
+```
 
 ---
 
-## Betroffene Dateien
+## Zusammenfassung
 
 | Datei | Aenderung |
 |-------|-----------|
-| `src/config/widgetCategorySpec.ts` | `manual` -> `'rose'` statt `'emerald'` |
-| `src/pages/portal/finanzanalyse/UebersichtTab.tsx` | PersonVisitenkarte -> WidgetGrid/WidgetCell + Glow |
-| `src/pages/portal/finanzanalyse/InvestmentTab.tsx` | PersonVisitenkarte -> WidgetGrid/WidgetCell |
-| `src/pages/portal/finanzanalyse/VorsorgedokumenteTab.tsx` | PersonVisitenkarte -> WidgetGrid/WidgetCell |
-| `src/pages/portal/finanzanalyse/SachversicherungenTab.tsx` | Glow (emerald/rose) auf Kacheln anwenden |
-| `src/pages/portal/finanzanalyse/VorsorgeTab.tsx` | Glow (emerald/rose) auf Kacheln anwenden |
-| `src/pages/portal/finanzanalyse/KrankenversicherungTab.tsx` | Glow (emerald) auf Demo-Kacheln anwenden |
-| `src/pages/portal/finanzanalyse/AbonnementsTab.tsx` | Glow (emerald/rose) auf Kacheln anwenden |
-
----
-
-## Technische Details
-
-### Kachel-Layout (alle Personen-Widgets)
-
-```text
-WidgetGrid (4-col desktop, 2-col tablet, 1-col mobile)
-  [WidgetCell]         [WidgetCell]         [WidgetCell]         [WidgetCell]
-   Avatar-Circle        Avatar-Circle        Avatar-Circle        + Person
-   "Max Mustermann"     "Lisa Mustermann"    "Felix Mustermann"   hinzufuegen
-   Hauptperson          Partner/in           Kind
-   rose glow            rose glow            rose glow            dashed CTA
-```
-
-### Glow-Logik
-
-```text
-isDemoId(id) = true  -> getActiveWidgetGlow('emerald') + DEMO Badge
-isDemoId(id) = false -> getActiveWidgetGlow('rose')
-CTA / Platzhalter    -> border-dashed, kein Glow
-```
-
-### PersonVisitenkarte
-
-Die Komponente `src/components/shared/PersonVisitenkarte.tsx` wird NICHT geloescht, da sie moeglicherweise in anderen Modulen verwendet wird. Sie wird nur aus MOD-18 entfernt.
+| `src/pages/portal/finanzanalyse/UebersichtTab.tsx` | stopPropagation + onKeyDown |
+| `src/pages/portal/finanzanalyse/InvestmentTab.tsx` | stopPropagation + onKeyDown |
+| `src/pages/portal/finanzanalyse/SachversicherungenTab.tsx` | stopPropagation + onKeyDown + Import-Cleanup |
+| `src/pages/portal/finanzanalyse/VorsorgeTab.tsx` | stopPropagation + onKeyDown + Import-Cleanup |
+| `src/pages/portal/finanzanalyse/KrankenversicherungTab.tsx` | stopPropagation + onKeyDown |
+| `src/pages/portal/finanzanalyse/AbonnementsTab.tsx` | stopPropagation + onKeyDown + Import-Cleanup |
+| `src/pages/portal/finanzanalyse/VorsorgedokumenteTab.tsx` | stopPropagation + onKeyDown |
