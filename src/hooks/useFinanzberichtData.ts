@@ -1,6 +1,6 @@
 /**
- * useFinanzberichtData — Zentraler Aggregations-Hook für den Finanzbericht
- * Sammelt Daten aus: Portfolio (MOD-04), Zuhause, Versicherungen, Vorsorge, Abos, Einkommen
+ * useFinanzberichtData — Data Fetcher für den Finanzbericht
+ * Loads raw data from Supabase and delegates all calculations to the Finanzübersicht engine.
  */
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -9,136 +9,25 @@ import { useAuth } from '@/contexts/AuthContext';
 import { usePortfolioSummary } from '@/hooks/usePortfolioSummary';
 import { useFinanzanalyseData } from '@/hooks/useFinanzanalyseData';
 import { getDemoKVContracts } from '@/engines/demoData';
+import { calcFinanzuebersicht } from '@/engines/finanzuebersicht/engine';
 import type { DemoKVContract } from '@/engines/demoData/spec';
+import type { FUResult } from '@/engines/finanzuebersicht/spec';
 
-// ─── Types ───────────────────────────────────────────────────
-export interface FinanzberichtIncome {
-  netIncomeTotal: number;
-  selfEmployedIncome: number;
-  rentalIncomePortfolio: number;
-  sideJobIncome: number;
-  childBenefit: number;
-  otherIncome: number;
-  pvIncome: number;
-  taxBenefitRental: number;
-  totalIncome: number;
-}
+// ─── Re-export types for backward compatibility ──────────────
+export type FinanzberichtIncome = FUResult['income'];
+export type FinanzberichtExpenses = FUResult['expenses'];
+export type FinanzberichtAssets = FUResult['assets'];
+export type FinanzberichtLiabilities = FUResult['liabilities'];
+export type FinanzberichtProjectionYear = FUResult['projection'][number];
+export type ContractSummary = FUResult['savingsContracts'][number];
+export type SubscriptionsByCategory = FUResult['subscriptionsByCategory'][number];
+export type EnergyContract = FUResult['energyContracts'][number];
+export type PropertyListItem = FUResult['propertyList'][number];
+export type LoanListItem = FUResult['loanList'][number];
 
-export interface FinanzberichtExpenses {
-  warmRent: number;
-  privateLoans: number;
-  portfolioLoans: number;
-  pvLoans: number;
-  healthInsurance: number;
-  insurancePremiums: number;
-  savingsContracts: number;
-  investmentContracts: number;
-  subscriptions: number;
-  livingExpenses: number;
-  totalExpenses: number;
-}
-
-export interface FinanzberichtAssets {
-  propertyValue: number;
-  homeValue: number;
-  bankSavings: number;
-  securities: number;
-  surrenderValues: number;
-  totalAssets: number;
-}
-
-export interface FinanzberichtLiabilities {
-  portfolioDebt: number;
-  homeDebt: number;
-  pvDebt: number;
-  otherDebt: number;
-  totalLiabilities: number;
-}
-
-export interface FinanzberichtProjectionYear {
-  year: number;
-  propertyValue: number;
-  cumulativeSavings: number;
-  remainingDebt: number;
-  netWealth: number;
-}
-
-export interface ContractSummary {
-  id: string;
-  type: string;
-  provider: string;
-  monthlyAmount: number;
-  contractNo?: string;
-}
-
-export interface SubscriptionsByCategory {
-  category: string;
-  label: string;
-  items: Array<{ id: string; merchant: string; amount: number; status: string }>;
-  subtotal: number;
-}
-
-export interface EnergyContract {
-  id: string;
-  category: string;
-  providerName: string;
-  contractNumber: string | null;
-  monthlyCost: number;
-  startDate: string | null;
-}
-
-export interface PropertyListItem {
-  id: string;
-  label: string;
-  city: string;
-  type: string; // "Kapitalanlage" | "Eigengenutzt"
-  marketValue: number;
-  purchasePrice: number;
-}
-
-export interface LoanListItem {
-  id: string;
-  bank: string;
-  assignment: string;
-  loanAmount: number;
-  remainingBalance: number;
-  interestRate: number;
-  monthlyRate: number;
-}
-
-export interface FinanzberichtData {
-  income: FinanzberichtIncome;
-  expenses: FinanzberichtExpenses;
-  assets: FinanzberichtAssets;
-  liabilities: FinanzberichtLiabilities;
-  monthlyAmortization: number;
-  monthlySavings: number;
-  netWealth: number;
-  liquidityPercent: number;
-  projection: FinanzberichtProjectionYear[];
-  savingsContracts: ContractSummary[];
-  investmentContracts: ContractSummary[];
-  insuranceContracts: ContractSummary[];
-  loanContracts: ContractSummary[];
-  vorsorgeContracts: ContractSummary[];
+export interface FinanzberichtData extends FUResult {
   kvContracts: readonly DemoKVContract[];
-  subscriptionsByCategory: SubscriptionsByCategory[];
-  energyContracts: EnergyContract[];
-  propertyList: PropertyListItem[];
-  loanList: LoanListItem[];
-  testamentCompleted: boolean;
-  patientenverfuegungCompleted: boolean;
   isLoading: boolean;
-}
-
-function monthlyFromInterval(premium: number | null, interval: string | null): number {
-  if (!premium) return 0;
-  switch (interval) {
-    case 'jaehrlich': return premium / 12;
-    case 'halbjaehrlich': return premium / 6;
-    case 'vierteljaehrlich': return premium / 3;
-    case 'monatlich': default: return premium;
-  }
 }
 
 export function useFinanzberichtData(): FinanzberichtData {
@@ -146,7 +35,7 @@ export function useFinanzberichtData(): FinanzberichtData {
   const { summary: portfolioSummary, isLoading: portfolioLoading } = usePortfolioSummary();
   const { persons, isLoading: personsLoading } = useFinanzanalyseData();
 
-  // ─── Applicant Profiles (Einkommen/Ausgaben) ──────────────
+  // ─── Applicant Profiles ───────────────────────────────────
   const { data: applicantProfiles = [], isLoading: apLoading } = useQuery({
     queryKey: ['fb-applicant-profiles', activeTenantId],
     queryFn: async () => {
@@ -162,7 +51,7 @@ export function useFinanzberichtData(): FinanzberichtData {
     enabled: !!activeTenantId,
   });
 
-  // ─── Zuhause (miety_homes + loans + tenancies) ────────────
+  // ─── Zuhause ──────────────────────────────────────────────
   const { data: homes = [], isLoading: homesLoading } = useQuery({
     queryKey: ['fb-miety-homes', activeTenantId],
     queryFn: async () => {
@@ -173,7 +62,6 @@ export function useFinanzberichtData(): FinanzberichtData {
     enabled: !!activeTenantId,
   });
 
-  // ─── Portfolio Properties (for property list) ─────────────
   const { data: portfolioProperties = [] } = useQuery({
     queryKey: ['fb-portfolio-properties', activeTenantId],
     queryFn: async () => {
@@ -204,7 +92,6 @@ export function useFinanzberichtData(): FinanzberichtData {
     enabled: !!activeTenantId,
   });
 
-  // ─── Versicherungen ───────────────────────────────────────
   const { data: insuranceData = [] } = useQuery({
     queryKey: ['fb-insurance', activeTenantId],
     queryFn: async () => {
@@ -215,7 +102,6 @@ export function useFinanzberichtData(): FinanzberichtData {
     enabled: !!activeTenantId,
   });
 
-  // ─── Vorsorge ─────────────────────────────────────────────
   const { data: vorsorgeData = [] } = useQuery({
     queryKey: ['fb-vorsorge', activeTenantId],
     queryFn: async () => {
@@ -226,7 +112,6 @@ export function useFinanzberichtData(): FinanzberichtData {
     enabled: !!activeTenantId,
   });
 
-  // ─── Abonnements ──────────────────────────────────────────
   const { data: subscriptions = [] } = useQuery({
     queryKey: ['fb-subscriptions', activeTenantId],
     queryFn: async () => {
@@ -237,7 +122,6 @@ export function useFinanzberichtData(): FinanzberichtData {
     enabled: !!activeTenantId,
   });
 
-  // ─── Energieverträge (miety_contracts) ────────────────────
   const { data: mietyContracts = [] } = useQuery({
     queryKey: ['fb-miety-contracts', activeTenantId],
     queryFn: async () => {
@@ -248,7 +132,6 @@ export function useFinanzberichtData(): FinanzberichtData {
     enabled: !!activeTenantId,
   });
 
-  // ─── PV-Anlagen ───────────────────────────────────────────
   const { data: pvPlants = [] } = useQuery({
     queryKey: ['fb-pv-plants', activeTenantId],
     queryFn: async () => {
@@ -259,7 +142,6 @@ export function useFinanzberichtData(): FinanzberichtData {
     enabled: !!activeTenantId,
   });
 
-  // ─── Private Loans ───────────────────────────────────────
   const { data: privateLoansList = [] } = useQuery({
     queryKey: ['fb-private-loans', activeTenantId],
     queryFn: async () => {
@@ -270,7 +152,6 @@ export function useFinanzberichtData(): FinanzberichtData {
     enabled: !!activeTenantId,
   });
 
-  // ─── Legal Documents (Testament/Patientenverfügung) ───────
   const { data: legalDocs = [] } = useQuery({
     queryKey: ['fb-legal-docs', activeTenantId],
     queryFn: async () => {
@@ -281,7 +162,6 @@ export function useFinanzberichtData(): FinanzberichtData {
     enabled: !!activeTenantId,
   });
 
-  // ─── Portfolio Loans (for contract list) ──────────────────
   const { data: portfolioLoans = [] } = useQuery({
     queryKey: ['fb-portfolio-loans', activeTenantId],
     queryFn: async () => {
@@ -292,261 +172,39 @@ export function useFinanzberichtData(): FinanzberichtData {
     enabled: !!activeTenantId,
   });
 
-  // ─── Aggregation ──────────────────────────────────────────
+  // ─── Aggregation via Engine ───────────────────────────────
   return useMemo(() => {
     const isLoading = portfolioLoading || personsLoading || apLoading || homesLoading;
-
-    // PV data
-    const pvMonthlyRevenue = pvPlants.reduce((s: number, pv: any) => s + ((pv.annual_revenue || 0) / 12), 0);
-    const pvMonthlyLoanRate = pvPlants.reduce((s: number, pv: any) => s + (pv.loan_monthly_rate || 0), 0);
-    const pvRemainingBalance = pvPlants.reduce((s: number, pv: any) => s + (pv.loan_remaining_balance || 0), 0);
-
-    // Income
-    const netIncomeTotal = applicantProfiles.reduce((s, p) => s + (p.net_income_monthly || 0), 0);
-    const selfEmployedIncome = applicantProfiles.reduce((s, p) => s + (p.self_employed_income_monthly || 0), 0);
-    const rentalIncomePortfolio = portfolioSummary ? portfolioSummary.annualIncome / 12 : 0;
-    const sideJobIncome = applicantProfiles.reduce((s, p) => s + (p.side_job_income_monthly || 0), 0);
-    const childBenefit = applicantProfiles.reduce((s, p) => s + (p.child_benefit_monthly || 0), 0);
-    const otherIncome = applicantProfiles.reduce((s, p) => s + (p.other_regular_income_monthly || 0), 0);
-    const pvIncome = pvMonthlyRevenue;
-    // Steuereffekt Kapitalanlage
-    const totalPurchasePrice = portfolioProperties.reduce((s: number, p: any) => s + (p.purchase_price || 0), 0);
-    const buildingValue = totalPurchasePrice * 0.80;
-    const annualAfA = buildingValue * 0.02;
-    const annualInterest = portfolioSummary?.annualInterest || 0;
-    const annualRent = portfolioSummary?.annualIncome || 0;
-    const taxLoss = annualRent - annualInterest - annualAfA;
-    const taxBenefitRental = taxLoss < 0 ? Math.abs(taxLoss) * 0.42 / 12 : 0;
-
-    const totalIncome = netIncomeTotal + selfEmployedIncome + rentalIncomePortfolio + sideJobIncome + childBenefit + otherIncome + pvIncome + taxBenefitRental;
-
-    // KV-Daten (clientseitig)
     const kvContracts = getDemoKVContracts();
-    const pkvExpense = kvContracts.reduce((s, kv) => {
-      if (kv.type === 'PKV') return s + (kv.monthlyPremium - (kv.employerContribution || 0));
-      return s;
-    }, 0);
 
-    // Expenses
-    const warmRent = tenancies.reduce((s, t) => s + (t.total_rent || 0), 0);
-    const privateLoansMonthly = mietyLoans.reduce((s, l) => s + (l.monthly_rate || 0), 0);
-    const portfolioLoansMonthly = portfolioSummary ? (portfolioSummary.annualInterest + portfolioSummary.annualAmortization) / 12 : 0;
-    
-    const activeInsurance = insuranceData.filter(i => i.status !== 'gekuendigt');
-    const insurancePremiums = activeInsurance.reduce((s, i) => s + monthlyFromInterval(i.premium, i.payment_interval), 0);
-
-    const activeVorsorge = vorsorgeData.filter(v => v.status !== 'gekuendigt');
-    // Separate investment contracts (ETF-Sparplan, Sparplan) from pure savings (Bausparvertrag)
-    const isInvestmentContract = (type: string) => {
-      const t = type.toLowerCase();
-      return t.includes('etf') || (t.includes('sparplan') && !t.includes('bauspar'));
-    };
-    const savingsOnlyContracts = activeVorsorge.filter(v => (v.contract_type || '').toLowerCase().includes('spar') && !isInvestmentContract(v.contract_type || ''));
-    const investmentVorsorge = activeVorsorge.filter(v => isInvestmentContract(v.contract_type || ''));
-    const savingsMonthly = savingsOnlyContracts.reduce((s, v) => s + monthlyFromInterval(v.premium, v.payment_interval), 0);
-    const investmentMonthly = investmentVorsorge.reduce((s, v) => s + monthlyFromInterval(v.premium, v.payment_interval), 0);
-
-    const activeSubscriptions = subscriptions.filter((s: any) => s.status === 'aktiv' || s.status === 'active' || s.status === 'confirmed');
-    const subscriptionTotal = activeSubscriptions.reduce((s: number, sub: any) => {
-      const amt = sub.amount || 0;
-      const freq = (sub.frequency || '').toLowerCase();
-      if (freq.includes('jaehr')) return s + amt / 12;
-      if (freq.includes('halb')) return s + amt / 6;
-      if (freq.includes('viertel')) return s + amt / 3;
-      return s + amt;
-    }, 0);
-
-    // Private loans (non-property)
-    const activePrivateLoans = (privateLoansList as any[]).filter((l: any) => l.status === 'aktiv');
-    const privateLoansNewMonthly = activePrivateLoans.reduce((s: number, l: any) => s + (l.monthly_rate || 0), 0);
-    const privateLoansNewDebt = activePrivateLoans.reduce((s: number, l: any) => s + (l.remaining_balance || 0), 0);
-
-    // Lebenshaltungskosten: 35% der Arbeitseinkommen (Netto + Selbstständig, ohne V+V und PV)
-    const livingExpenses = (netIncomeTotal + selfEmployedIncome) * 0.35;
-    const totalExpenses = warmRent + privateLoansMonthly + privateLoansNewMonthly + portfolioLoansMonthly + pvMonthlyLoanRate + pkvExpense + insurancePremiums + savingsMonthly + investmentMonthly + subscriptionTotal + livingExpenses;
-
-    // Assets
-    const portfolioPropertyValue = portfolioSummary?.totalValue || 0;
-    const homeValue = homes.reduce((s, h) => s + (h.market_value || 0), 0);
-    const bankSavings = applicantProfiles.reduce((s, p) => s + (p.bank_savings || 0), 0);
-    const securities = applicantProfiles.reduce((s, p) => s + (p.securities_value || 0), 0);
-    const surrenderValues = applicantProfiles.reduce((s, p) => s + (p.life_insurance_value || 0), 0);
-    const totalAssets = portfolioPropertyValue + homeValue + bankSavings + securities + surrenderValues;
-
-    // Liabilities
-    const portfolioDebt = portfolioSummary?.totalDebt || 0;
-    const homeDebt = mietyLoans.reduce((s, l) => s + (l.remaining_balance || 0), 0);
-    const totalLiabilities = portfolioDebt + homeDebt + pvRemainingBalance + privateLoansNewDebt;
-
-    // KPIs
-    const monthlyAmortization = (portfolioSummary?.annualAmortization || 0) / 12 + privateLoansMonthly + privateLoansNewMonthly + pvMonthlyLoanRate;
-    const monthlySavings = savingsMonthly;
-    const netWealth = totalAssets - totalLiabilities;
-    const liquidityPercent = totalIncome > 0 ? ((totalIncome - totalExpenses) / totalIncome) * 100 : 0;
-
-    // 40-year projection
-    const projection: FinanzberichtProjectionYear[] = [];
-    const currentYear = new Date().getFullYear();
-    let projPropertyValue = portfolioPropertyValue + homeValue;
-    let projDebt = totalLiabilities;
-    let cumSavings = bankSavings + securities;
-    const annualAnnuity = (portfolioLoansMonthly + privateLoansMonthly + pvMonthlyLoanRate) * 12;
-    const avgRate = portfolioSummary?.avgInterestRate ? portfolioSummary.avgInterestRate / 100 : 0.03;
-
-    for (let i = 0; i <= 40; i++) {
-      const interest = projDebt * avgRate;
-      const amort = Math.min(annualAnnuity - interest, projDebt);
-      projection.push({
-        year: currentYear + i,
-        propertyValue: Math.round(projPropertyValue),
-        cumulativeSavings: Math.round(cumSavings),
-        remainingDebt: Math.max(0, Math.round(projDebt)),
-        netWealth: Math.round(projPropertyValue + cumSavings - projDebt),
-      });
-      projPropertyValue *= 1.02;
-      projDebt = Math.max(0, projDebt - amort);
-      cumSavings += monthlySavings * 12;
-    }
-
-    // Contract lists
-    const savingsContracts: ContractSummary[] = savingsOnlyContracts
-      .map(v => ({ id: v.id, type: v.contract_type || 'Sparvertrag', provider: v.provider || '—', monthlyAmount: monthlyFromInterval(v.premium, v.payment_interval), contractNo: v.contract_no || undefined }));
-
-    const investmentContractsList: ContractSummary[] = investmentVorsorge
-      .map(v => ({ id: v.id, type: v.contract_type || 'Investment', provider: v.provider || '—', monthlyAmount: monthlyFromInterval(v.premium, v.payment_interval), contractNo: v.contract_no || undefined }));
-
-    const insuranceContracts: ContractSummary[] = activeInsurance
-      .map(i => ({ id: i.id, type: i.category || 'Versicherung', provider: i.insurer || '—', monthlyAmount: monthlyFromInterval(i.premium, i.payment_interval), contractNo: i.policy_no || undefined }));
-
-    const loanContracts: ContractSummary[] = [
-      ...portfolioLoans.map(l => ({ id: l.id, type: 'Immobiliendarlehen', provider: (l as any).bank_name || '—', monthlyAmount: l.annuity_monthly_eur || 0, contractNo: undefined })),
-      ...mietyLoans.map(l => ({ id: l.id, type: l.loan_type || 'Privatdarlehen', provider: l.bank_name || '—', monthlyAmount: l.monthly_rate || 0, contractNo: undefined })),
-      ...pvPlants.filter((pv: any) => pv.loan_bank).map((pv: any) => ({ id: pv.id, type: 'PV-Darlehen', provider: pv.loan_bank || '—', monthlyAmount: pv.loan_monthly_rate || 0, contractNo: undefined })),
-      ...activePrivateLoans.map((l: any) => ({ id: l.id, type: 'Privatkredit', provider: l.bank_name || '—', monthlyAmount: l.monthly_rate || 0, contractNo: undefined })),
-    ];
-
-    const vorsorgeContracts: ContractSummary[] = activeVorsorge
-      .filter(v => !(v.contract_type || '').toLowerCase().includes('spar') && !isInvestmentContract(v.contract_type || ''))
-      .map(v => ({ id: v.id, type: v.contract_type || 'Vorsorge', provider: v.provider || '—', monthlyAmount: monthlyFromInterval(v.premium, v.payment_interval), contractNo: v.contract_no || undefined }));
-
-    // Subscriptions by category
-    const CATEGORY_LABELS: Record<string, string> = {
-      streaming_video: 'Streaming (Video)', streaming_audio: 'Streaming (Audio)',
-      telecom_mobile: 'Mobilfunk', telecom_internet: 'Internet',
-      software: 'Software', news_media: 'Nachrichten & Medien',
-      fitness: 'Fitness & Sport', other: 'Sonstiges',
-    };
-    const catMap = new Map<string, { items: any[]; subtotal: number }>();
-    activeSubscriptions.forEach((sub: any) => {
-      const cat = sub.category || 'other';
-      const entry = catMap.get(cat) || { items: [], subtotal: 0 };
-      entry.items.push({ id: sub.id, merchant: sub.merchant || '—', amount: sub.amount || 0, status: sub.status || '' });
-      entry.subtotal += sub.amount || 0;
-      catMap.set(cat, entry);
+    const result = calcFinanzuebersicht({
+      applicantProfiles,
+      portfolioSummary: portfolioSummary ? {
+        annualIncome: portfolioSummary.annualIncome,
+        annualInterest: portfolioSummary.annualInterest,
+        annualAmortization: portfolioSummary.annualAmortization,
+        totalValue: portfolioSummary.totalValue,
+        totalDebt: portfolioSummary.totalDebt,
+        avgInterestRate: portfolioSummary.avgInterestRate,
+      } : null,
+      homes: homes as any[],
+      mietyLoans,
+      tenancies,
+      insuranceData,
+      vorsorgeData,
+      subscriptions: subscriptions as any[],
+      mietyContracts: mietyContracts as any[],
+      pvPlants: pvPlants as any[],
+      privateLoans: privateLoansList as any[],
+      portfolioLoans: portfolioLoans as any[],
+      portfolioProperties: portfolioProperties as any[],
+      legalDocs: legalDocs as any[],
+      kvContracts: kvContracts as any[],
     });
-    const subscriptionsByCategory: SubscriptionsByCategory[] = Array.from(catMap.entries())
-      .map(([cat, data]) => ({ category: cat, label: CATEGORY_LABELS[cat] || cat, items: data.items, subtotal: data.subtotal }))
-      .sort((a, b) => b.subtotal - a.subtotal);
-
-    // Energy contracts
-    const energyContracts: EnergyContract[] = mietyContracts.map((c: any) => ({
-      id: c.id, category: c.category || '', providerName: c.provider_name || '—',
-      contractNumber: c.contract_number, monthlyCost: c.monthly_cost || 0, startDate: c.start_date,
-    }));
-
-    const testamentCompleted = legalDocs.some((d: any) => d.document_type === 'testament' && d.is_completed);
-    const patientenverfuegungCompleted = legalDocs.some((d: any) => d.document_type === 'patientenverfuegung' && d.is_completed);
-
-    // ─── Property List (Immobilienaufstellung) ────────────────
-    const propertyList: PropertyListItem[] = [
-      ...portfolioProperties.map((p: any) => ({
-        id: p.id,
-        label: p.code || p.address || '—',
-        city: p.city || '—',
-        type: 'Kapitalanlage',
-        marketValue: p.market_value || 0,
-        purchasePrice: p.purchase_price || 0,
-      })),
-      ...homes
-        .filter(h => h.ownership_type === 'eigentum')
-        .map(h => ({
-          id: h.id,
-          label: (h as any).name || (h as any).address || 'Eigenheim',
-          city: (h as any).city || '—',
-          type: 'Eigengenutzt',
-          marketValue: h.market_value || 0,
-          purchasePrice: 0,
-        })),
-    ];
-
-    // ─── Loan List (Darlehensaufstellung) ─────────────────────
-    // Build property code map for assignment labels
-    const propCodeMap = new Map<string, string>();
-    portfolioProperties.forEach((p: any) => {
-      propCodeMap.set(p.id, `${p.code || ''} ${p.city || ''}`.trim() || '—');
-    });
-
-    const loanList: LoanListItem[] = [
-      ...portfolioLoans.map(l => ({
-        id: l.id,
-        bank: (l as any).bank_name || '—',
-        assignment: propCodeMap.get(l.property_id) || 'Portfolio',
-        loanAmount: (l as any).original_amount || 0,
-        remainingBalance: l.outstanding_balance_eur || 0,
-        interestRate: l.interest_rate_percent || 0,
-        monthlyRate: l.annuity_monthly_eur || 0,
-      })),
-      ...mietyLoans.map(l => ({
-        id: l.id,
-        bank: l.bank_name || '—',
-        assignment: 'Eigengenutzt',
-        loanAmount: l.loan_amount || 0,
-        remainingBalance: l.remaining_balance || 0,
-        interestRate: l.interest_rate || 0,
-        monthlyRate: l.monthly_rate || 0,
-      })),
-      ...pvPlants.filter((pv: any) => pv.loan_bank).map((pv: any) => ({
-        id: pv.id,
-        bank: pv.loan_bank || '—',
-        assignment: 'Photovoltaik',
-        loanAmount: pv.loan_amount || 0,
-        remainingBalance: pv.loan_remaining_balance || 0,
-        interestRate: pv.loan_interest_rate || 0,
-        monthlyRate: pv.loan_monthly_rate || 0,
-      })),
-      ...activePrivateLoans.map((l: any) => ({
-        id: l.id,
-        bank: l.bank_name || '—',
-        assignment: l.loan_purpose || 'Privatkredit',
-        loanAmount: l.loan_amount || 0,
-        remainingBalance: l.remaining_balance || 0,
-        interestRate: l.interest_rate || 0,
-        monthlyRate: l.monthly_rate || 0,
-      })),
-    ];
 
     return {
-      income: { netIncomeTotal, selfEmployedIncome, rentalIncomePortfolio, sideJobIncome, childBenefit, otherIncome, pvIncome, taxBenefitRental, totalIncome },
-      expenses: { warmRent, privateLoans: privateLoansMonthly + privateLoansNewMonthly, portfolioLoans: portfolioLoansMonthly, pvLoans: pvMonthlyLoanRate, healthInsurance: pkvExpense, insurancePremiums, savingsContracts: savingsMonthly, investmentContracts: investmentMonthly, subscriptions: subscriptionTotal, livingExpenses, totalExpenses },
-      assets: { propertyValue: portfolioPropertyValue, homeValue, bankSavings, securities, surrenderValues, totalAssets },
-      liabilities: { portfolioDebt, homeDebt, pvDebt: pvRemainingBalance, otherDebt: privateLoansNewDebt, totalLiabilities },
-      monthlyAmortization,
-      monthlySavings,
-      netWealth,
-      liquidityPercent,
-      projection,
-      savingsContracts,
-      investmentContracts: investmentContractsList,
-      insuranceContracts,
-      loanContracts,
-      vorsorgeContracts,
+      ...result,
       kvContracts,
-      subscriptionsByCategory,
-      energyContracts,
-      propertyList,
-      loanList,
-      testamentCompleted,
-      patientenverfuegungCompleted,
       isLoading,
     };
   }, [portfolioSummary, portfolioLoading, personsLoading, apLoading, homesLoading, applicantProfiles, homes, mietyLoans, tenancies, insuranceData, vorsorgeData, subscriptions, legalDocs, portfolioLoans, pvPlants, mietyContracts, portfolioProperties, privateLoansList]);
