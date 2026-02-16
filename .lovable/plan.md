@@ -1,109 +1,110 @@
 
 
-# Fix: Floating Switcher — Immer im DOM + zuverlaessige Events
+# Fix: Floating Module Switcher wird durch overflow-hidden abgeschnitten
 
-## Kernproblem
+## Ursache
 
-Zwei zusammenhaengende Ursachen:
+Das Floating-Menue verwendet `position: absolute` und ragt unterhalb der `<nav>` heraus. Der uebergeordnete Container in `PortalLayout.tsx` (Zeile 145) hat jedoch `overflow-hidden`, was **alles abschneidet**, was ueber seine Grenzen hinausgeht — sowohl visuell als auch fuer Maus-Events.
 
-1. **Conditional Rendering** (`{showModuleSwitcher && ...}`) entfernt das Floating-Element komplett aus dem DOM, wenn der Timer ablaeuft. Dadurch kann `onMouseEnter` auf dem Floating-Container gar nicht feuern, wenn das Element gerade abgebaut wird. Der Timer laeuft, das Element wird entfernt, und eventuelle Mouse-Events gehen verloren.
+```text
+div.overflow-hidden          <-- schneidet alles ab
+  SystemBar
+  TopNavigation (nav)
+    AreaTabs
+    div.relative
+      SubTabs
+      div.absolute.top-full  <-- Floating Menu ragt UNTERHALB der nav heraus
+                                  → wird von overflow-hidden abgeschnitten
+  div.flex-1 (Main Content)
+```
 
-2. **Klicks funktionieren nicht**, weil React das Element unmounted bevor der Click-Event vollstaendig verarbeitet wird — das ist eine bekannte Race-Condition bei conditional rendering mit Timern.
+Das erklaert alle drei Symptome:
+- Menue verschwindet (es war nie sichtbar, weil geclippt)
+- Klicks funktionieren nicht (geclippter Bereich empfaengt keine Events)
+- Timer-Aenderungen haben keinen Effekt (das Problem ist nicht der Timer)
 
 ## Loesung
 
-Das Floating-Element wird **immer im DOM behalten** und nur per CSS ein-/ausgeblendet (opacity + pointer-events). Dadurch:
-- `onMouseEnter` feuert zuverlaessig, auch waehrend der Timer laeuft
-- Klicks koennen nicht durch Unmounting verloren gehen
-- Die Animation bleibt erhalten
+Das Floating-Menue muss aus dem `overflow-hidden`-Kontext herausgeloest werden. Dafuer wird es als **Portal** gerendert, das direkt in `document.body` eingefuegt wird und somit von keinem Overflow betroffen ist.
 
 ## Technische Aenderungen
 
-**Datei:** `src/components/portal/TopNavigation.tsx`
+### Datei 1: `src/components/portal/TopNavigation.tsx`
 
-### Aenderung 1: Conditional Rendering durch CSS-Visibility ersetzen (Zeile 103-141)
+**1. React Portal importieren (Zeile 9)**
 
-Vorher:
 ```tsx
-{showModuleSwitcher && areaModules.length > 0 && (
-  <div className="absolute top-full left-1/2 -translate-x-1/2 z-50 pt-3 pointer-events-auto"
-    onMouseEnter={showSwitcher}
-    onMouseLeave={hideSwitcher}
-  >
-    <div className="flex items-center gap-1 px-4 py-2 ...">
-      {areaModules.map(...)}
-    </div>
-  </div>
-)}
+import { useMemo, useState, useRef, useCallback, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 ```
 
-Nachher — Element bleibt immer im DOM, Sichtbarkeit per CSS:
+**2. Ref fuer Positionierung hinzufuegen**
+
+Ein `useRef` auf dem `div.relative` Wrapper, um die Position des Floating-Menues relativ zum Trigger zu berechnen:
+
 ```tsx
-{areaModules.length > 0 && (
+const triggerRef = useRef<HTMLDivElement>(null);
+const [portalPosition, setPortalPosition] = useState({ top: 0, left: 0 });
+```
+
+**3. Position berechnen wenn sichtbar**
+
+```tsx
+useEffect(() => {
+  if (showModuleSwitcher && triggerRef.current) {
+    const rect = triggerRef.current.getBoundingClientRect();
+    setPortalPosition({
+      top: rect.bottom,
+      left: rect.left + rect.width / 2,
+    });
+  }
+}, [showModuleSwitcher]);
+```
+
+**4. Floating-Menue als Portal rendern**
+
+Statt `position: absolute` innerhalb des `div.relative`, wird das Menue via `createPortal` in `document.body` gerendert mit `position: fixed`:
+
+```tsx
+{areaModules.length > 0 && createPortal(
   <div
     className={cn(
-      "absolute top-full left-1/2 -translate-x-1/2 z-50 pt-3 transition-all duration-200",
+      "fixed z-50 pt-3 transition-all duration-200 -translate-x-1/2",
       showModuleSwitcher
         ? "opacity-100 pointer-events-auto translate-y-0"
         : "opacity-0 pointer-events-none -translate-y-1"
     )}
+    style={{ top: portalPosition.top, left: portalPosition.left }}
     onMouseEnter={showSwitcher}
     onMouseLeave={hideSwitcher}
   >
     <div className="flex items-center gap-1 px-4 py-2
                     bg-card/80 backdrop-blur-xl shadow-lg rounded-2xl border border-border/30">
-      {areaModules.map(({ code, module, displayLabel }) => {
-        const Icon = iconMap[module.icon] || Briefcase;
-        const isActive = activeModule?.code === code;
-        const requiresActivation = module.visibility.requires_activation && !isDevelopmentMode;
-
-        return (
-          <NavLink
-            key={code}
-            to={`/portal/${module.base}`}
-            onClick={() => {
-              if (hideTimeout.current) {
-                clearTimeout(hideTimeout.current);
-                hideTimeout.current = null;
-              }
-              setShowModuleSwitcher(false);
-            }}
-            className={cn(
-              'flex items-center gap-2 px-3 py-1.5 rounded-xl text-sm font-medium whitespace-nowrap transition-all',
-              isActive
-                ? 'bg-accent/80 text-accent-foreground'
-                : 'text-muted-foreground hover:text-foreground hover:bg-white/10',
-              requiresActivation && 'opacity-50'
-            )}
-          >
-            <Icon className="h-4 w-4" />
-            <span>{displayLabel}</span>
-          </NavLink>
-        );
-      })}
+      {/* NavLinks wie bisher */}
     </div>
-  </div>
+  </div>,
+  document.body
 )}
 ```
 
-### Warum das funktioniert
+**5. triggerRef an den Wrapper binden**
 
-```text
-Vorher (conditional rendering):
-  Timer laeuft ab → React entfernt Element → onMouseEnter geht verloren
-  Klick startet → Timer entfernt Element → Klick wird abgebrochen
-
-Nachher (CSS visibility):
-  Timer laeuft ab → opacity:0 + pointer-events:none → Element bleibt im DOM
-  Maus auf Element → onMouseEnter feuert IMMER → Timer wird geloescht
-  Klick → Element ist im DOM → Navigation wird ausgefuehrt
+```tsx
+<div
+  ref={triggerRef}
+  className="relative"
+  onMouseEnter={showSwitcher}
+  onMouseLeave={hideSwitcher}
+>
+  <SubTabs ... />
+  {/* Floating menu jetzt via Portal ausserhalb */}
+</div>
 ```
 
-### Verhalten
+### Zusammenfassung
 
-- Maus auf SubTabs: Floating Pills erscheinen (fade-in + slide)
-- Maus verlaesst SubTabs: 1.5s Verzoegerung, dann fade-out
-- Maus auf Floating Pills: Timer wird geloescht, Pills bleiben sichtbar
-- Maus bleibt auf Pills: kein Timer aktiv, Pills bleiben dauerhaft
-- Klick auf Modul: sofortige Navigation, Pills schliessen sich
+- **Ursache**: `overflow-hidden` auf dem uebergeordneten Layout-Container clippt das absolute Floating-Menue
+- **Fix**: Portal (`createPortal`) rendert das Menue direkt in `document.body` mit `position: fixed`
+- **Positionierung**: wird dynamisch ueber `getBoundingClientRect()` des Trigger-Elements berechnet
+- **Timer + Events**: bleiben unveraendert (waren korrekt, nur das Rendering war das Problem)
 
