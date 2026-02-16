@@ -83,7 +83,7 @@ export default function AreaOverviewPage() {
       {/* Grid: fixed-height cards, uniform 3-col layout */}
       <div className="grid gap-3 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
         {/* Promo Card — hidden on mobile (MUX-002) */}
-        {!isMobile && promo && <AreaPromoCard promo={promo} />}
+        {!isMobile && promo && validAreaKey !== 'missions' && <AreaPromoCard promo={promo} />}
         
         {/* Module Cards */}
         {moduleData.map(({ code, content, defaultRoute }) => (
