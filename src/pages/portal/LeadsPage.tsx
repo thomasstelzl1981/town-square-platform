@@ -1,6 +1,5 @@
 /**
- * Provisionen Page (MOD-10) - Reserve Modul
- * Wird künftig für Provisionsabrechnung genutzt
+ * Provisionen Page (MOD-10) - Provisionsabrechnung
  */
 import { lazy } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
@@ -12,7 +11,7 @@ const LeadsPage = () => {
     <Routes>
       <Route index element={<Navigate to="uebersicht" replace />} />
       <Route path="uebersicht" element={<ProvisionenUebersicht />} />
-      <Route path="*" element={<Navigate to="/portal/leads" replace />} />
+      <Route path="*" element={<Navigate to="/portal/provisionen" replace />} />
     </Routes>
   );
 };

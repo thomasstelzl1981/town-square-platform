@@ -301,7 +301,7 @@ const portalModulePageMap: Record<string, React.LazyExoticComponent<React.Compon
   finanzierungsmanager: FinanzierungsmanagerPage,
   investments: InvestmentsPage,
   vertriebspartner: VertriebspartnerPage,
-  leads: LeadsPage,
+  provisionen: LeadsPage,
   'akquise-manager': AkquiseManagerPage,
   projekte: ProjektePage,
   'communication-pro': CommunicationProPage,
@@ -574,6 +574,9 @@ export function ManifestRouter() {
             />
           );
         })}
+
+        {/* Legacy redirect: /portal/leads → /portal/provisionen */}
+        <Route path="leads/*" element={<Navigate to="/portal/provisionen" replace />} />
       </Route>
 
       {/* ================================================================== */}

@@ -22,9 +22,12 @@ interface PreviewViewProps {
 export function PreviewView({ items, selectedItem, onSelectItem, onDownload, onDelete, onNavigateFolder, isDownloading }: PreviewViewProps) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
+  const isImage = selectedItem?.mimeType?.startsWith('image/');
+  const isPdf = selectedItem?.mimeType === 'application/pdf' || selectedItem?.name?.endsWith('.pdf');
+
   useEffect(() => {
     async function loadPreview() {
-      if (!selectedItem?.filePath || !selectedItem.mimeType?.startsWith('image/')) {
+      if (!selectedItem?.filePath || (!isImage && !isPdf)) {
         setPreviewUrl(null);
         return;
       }
@@ -34,7 +37,7 @@ export function PreviewView({ items, selectedItem, onSelectItem, onDownload, onD
       }
     }
     loadPreview();
-  }, [selectedItem?.filePath, selectedItem?.mimeType]);
+  }, [selectedItem?.filePath, selectedItem?.mimeType, isImage, isPdf]);
 
   const handleCopyPath = () => {
     if (selectedItem?.filePath) {
@@ -87,9 +90,11 @@ export function PreviewView({ items, selectedItem, onSelectItem, onDownload, onD
           <ScrollArea className="flex-1">
             <div className="p-6 space-y-6">
               {/* Preview area */}
-              <div className="aspect-video bg-muted/20 rounded-lg flex items-center justify-center overflow-hidden">
-                {previewUrl ? (
+              <div className={cn("bg-muted/20 rounded-lg flex items-center justify-center overflow-hidden", isPdf ? "h-[500px]" : "aspect-video")}>
+                {previewUrl && isImage ? (
                   <img src={previewUrl} alt={selectedItem.name} className="max-h-full max-w-full object-contain" />
+                ) : previewUrl && isPdf ? (
+                  <iframe src={previewUrl} title={selectedItem.name} className="w-full h-full rounded-lg border-0" />
                 ) : (
                   <Icon className="h-16 w-16 text-muted-foreground/40" />
                 )}

@@ -390,10 +390,10 @@ export const moduleContents: Record<string, HowItWorksContent> = {
     ],
     cta: 'Öffnen Sie die Inbox – und übernehmen Sie die nächsten Chancen.',
     subTiles: [
-      { title: 'Inbox', route: '/portal/leads/inbox', icon: Inbox },
-      { title: 'Meine Leads', route: '/portal/leads/meine', icon: User },
-      { title: 'Pipeline', route: '/portal/leads/pipeline', icon: GitBranch },
-      { title: 'Werbung', route: '/portal/leads/werbung', icon: Megaphone },
+      { title: 'Inbox', route: '/portal/provisionen/inbox', icon: Inbox },
+      { title: 'Meine Leads', route: '/portal/provisionen/meine', icon: User },
+      { title: 'Pipeline', route: '/portal/provisionen/pipeline', icon: GitBranch },
+      { title: 'Werbung', route: '/portal/provisionen/werbung', icon: Megaphone },
     ],
   },
 

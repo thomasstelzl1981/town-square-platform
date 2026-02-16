@@ -360,8 +360,8 @@ export const zone2Portal: ZoneDefinition = {
       ],
     },
     "MOD-10": {
-      name: "Lead Manager",
-      base: "leads",
+      name: "Provisionen",
+      base: "provisionen",
       icon: "CreditCard",
       display_order: 10,
       visibility: { default: false, org_types: ["partner"], requires_activation: true },
