@@ -1,6 +1,7 @@
 /**
  * VVAnlageVForm — 6-section TabularForm for a single property's Anlage V data
  * Uses the Selbstauskunft TabularForm pattern (Label | Value)
+ * Includes AI plausibility check via sot-vv-prefill-check edge function
  */
 import { useState, useEffect } from 'react';
 import { TabularFormWrapper, TabularFormRow, TabularFormSection } from '@/components/shared/TabularFormRow';
@@ -8,16 +9,25 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Save, CheckCircle2 } from 'lucide-react';
+import { Save, CheckCircle2, ShieldCheck, Loader2, AlertTriangle, Info, Lightbulb, X } from 'lucide-react';
 import { calculatePropertyResult, calculateAfaBasis, calculateAfaAmount } from '@/engines/vvSteuer/engine';
 import type { VVPropertyTaxData, VVAnnualManualData } from '@/engines/vvSteuer/spec';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface VVAnlageVFormProps {
   taxData: VVPropertyTaxData;
   contextTaxNumber: string;
   onSave: (data: Partial<VVAnnualManualData>, taxRefNumber?: string, ownershipPercent?: number) => void;
   isSaving: boolean;
+}
+
+interface PlausibilityResult {
+  warnings: Array<{ field: string; message: string; severity: string }>;
+  suggestions: Array<{ field: string; message: string; suggestedValue?: number }>;
+  missingItems: Array<{ field: string; message: string }>;
+  overallAssessment: string;
 }
 
 function fmt(n: number): string {
@@ -28,11 +38,15 @@ export function VVAnlageVForm({ taxData, contextTaxNumber, onSave, isSaving }: V
   const [form, setForm] = useState<VVAnnualManualData>(taxData.manualData);
   const [taxRef, setTaxRef] = useState(taxData.taxReferenceNumber);
   const [ownershipPct, setOwnershipPct] = useState(taxData.ownershipSharePercent);
+  const [plausibility, setPlausibility] = useState<PlausibilityResult | null>(null);
+  const [isChecking, setIsChecking] = useState(false);
+  const [showPlausibility, setShowPlausibility] = useState(true);
 
   useEffect(() => {
     setForm(taxData.manualData);
     setTaxRef(taxData.taxReferenceNumber);
     setOwnershipPct(taxData.ownershipSharePercent);
+    setPlausibility(null);
   }, [taxData.propertyId, taxData.manualData.id]);
 
   const setField = <K extends keyof VVAnnualManualData>(key: K, value: VVAnnualManualData[K]) => {
@@ -60,8 +74,117 @@ export function VVAnlageVForm({ taxData, contextTaxNumber, onSave, isSaving }: V
     onSave(form, taxRef, ownershipPct);
   };
 
+  const handlePlausibilityCheck = async () => {
+    setIsChecking(true);
+    setShowPlausibility(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('sot-vv-prefill-check', {
+        body: {
+          propertyName: taxData.propertyName,
+          address: taxData.address,
+          city: taxData.city,
+          postalCode: taxData.postalCode,
+          areaSqm: null, // TODO: from units
+          yearBuilt: taxData.yearBuilt,
+          purchasePrice: taxData.purchasePrice,
+          income: taxData.incomeAggregated,
+          costs: taxData.nkAggregated,
+          financing: taxData.financingAggregated,
+          afa: taxData.afa,
+        },
+      });
+      if (error) throw error;
+      if (data?.error) {
+        toast.error(data.error);
+        return;
+      }
+      setPlausibility(data);
+    } catch (e: any) {
+      toast.error('Plausibilitätsprüfung fehlgeschlagen: ' + (e.message || 'Unbekannter Fehler'));
+    } finally {
+      setIsChecking(false);
+    }
+  };
+
+  const applySuggestion = (field: string, value?: number) => {
+    if (value === undefined) return;
+    const fieldMap: Record<string, keyof VVAnnualManualData> = {
+      costMaintenance: 'costMaintenance',
+      costManagementFee: 'costManagementFee',
+      costInsuranceNonRecoverable: 'costInsuranceNonRecoverable',
+      costTravel: 'costTravel',
+      costBankFees: 'costBankFees',
+      costOther: 'costOther',
+      costLegalAdvisory: 'costLegalAdvisory',
+    };
+    const formField = fieldMap[field];
+    if (formField) {
+      setField(formField, value);
+      toast.success(`${field} auf ${fmt(value)} € gesetzt`);
+    }
+  };
+
   return (
     <div className="space-y-4">
+      {/* Plausibility Banner */}
+      {plausibility && showPlausibility && (
+        <div className="rounded-lg border bg-card p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="h-5 w-5 text-primary" />
+              <span className="font-semibold text-sm">KI-Plausibilitätsprüfung</span>
+            </div>
+            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setShowPlausibility(false)}>
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+
+          {plausibility.overallAssessment && (
+            <p className="text-sm text-muted-foreground">{plausibility.overallAssessment}</p>
+          )}
+
+          {plausibility.warnings.length > 0 && (
+            <div className="space-y-1">
+              {plausibility.warnings.map((w, i) => (
+                <div key={i} className="flex items-start gap-2 text-sm p-2 rounded bg-destructive/10 text-destructive">
+                  <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+                  <span>{w.message}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {plausibility.suggestions.length > 0 && (
+            <div className="space-y-1">
+              {plausibility.suggestions.map((s, i) => (
+                <div key={i} className="flex items-start justify-between gap-2 text-sm p-2 rounded bg-primary/10 text-primary">
+                  <div className="flex items-start gap-2">
+                    <Lightbulb className="h-4 w-4 mt-0.5 shrink-0" />
+                    <span>{s.message}</span>
+                  </div>
+                  {s.suggestedValue !== undefined && (
+                    <Button variant="outline" size="sm" className="h-6 text-xs shrink-0" onClick={() => applySuggestion(s.field, s.suggestedValue)}>
+                      Übernehmen: {fmt(s.suggestedValue)} €
+                    </Button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {plausibility.missingItems.length > 0 && (
+            <div className="space-y-1">
+              {plausibility.missingItems.map((m, i) => (
+                <div key={i} className="flex items-start gap-2 text-sm p-2 rounded bg-accent text-accent-foreground">
+                  <Info className="h-4 w-4 mt-0.5 shrink-0" />
+                  <span>{m.message}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Sektion 1: Identifikation */}
       <TabularFormWrapper>
         <TabularFormSection title="1. Identifikation" />
@@ -219,10 +342,16 @@ export function VVAnlageVForm({ taxData, contextTaxNumber, onSave, isSaving }: V
           />
           {form.confirmed && <CheckCircle2 className="h-4 w-4 text-green-500" />}
         </div>
-        <Button onClick={handleSave} disabled={isSaving} size="sm">
-          <Save className="h-4 w-4 mr-1" />
-          {isSaving ? 'Speichert...' : 'Speichern'}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={handlePlausibilityCheck} disabled={isChecking}>
+            {isChecking ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <ShieldCheck className="h-4 w-4 mr-1" />}
+            {isChecking ? 'Prüfe...' : 'Plausibilität prüfen'}
+          </Button>
+          <Button onClick={handleSave} disabled={isSaving} size="sm">
+            <Save className="h-4 w-4 mr-1" />
+            {isSaving ? 'Speichert...' : 'Speichern'}
+          </Button>
+        </div>
       </div>
     </div>
   );
