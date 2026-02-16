@@ -106,7 +106,8 @@ export function useFinanzberichtData(): FinanzberichtData {
         .from('applicant_profiles')
         .select('net_income_monthly, self_employed_income_monthly, side_job_income_monthly, child_benefit_monthly, other_regular_income_monthly, rental_income_monthly, living_expenses_monthly, current_rent_monthly, health_insurance_monthly, bank_savings, securities_value, life_insurance_value')
         .eq('tenant_id', activeTenantId)
-        .eq('profile_type', 'self');
+        .eq('profile_type', 'private')
+        .is('finance_request_id', null);
       return data || [];
     },
     enabled: !!activeTenantId,
