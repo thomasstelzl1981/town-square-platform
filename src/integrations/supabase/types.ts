@@ -11881,6 +11881,7 @@ export type Database = {
           address: string | null
           bio: string | null
           company_name: string
+          cover_image_url: string | null
           created_at: string
           email: string | null
           id: string
@@ -11888,6 +11889,7 @@ export type Database = {
           phone: string | null
           provider_type: Database["public"]["Enums"]["pet_provider_type"]
           rating_avg: number | null
+          service_area_postal_codes: string[] | null
           status: Database["public"]["Enums"]["pet_provider_status"]
           tenant_id: string
           updated_at: string
@@ -11898,6 +11900,7 @@ export type Database = {
           address?: string | null
           bio?: string | null
           company_name: string
+          cover_image_url?: string | null
           created_at?: string
           email?: string | null
           id?: string
@@ -11905,6 +11908,7 @@ export type Database = {
           phone?: string | null
           provider_type?: Database["public"]["Enums"]["pet_provider_type"]
           rating_avg?: number | null
+          service_area_postal_codes?: string[] | null
           status?: Database["public"]["Enums"]["pet_provider_status"]
           tenant_id: string
           updated_at?: string
@@ -11915,6 +11919,7 @@ export type Database = {
           address?: string | null
           bio?: string | null
           company_name?: string
+          cover_image_url?: string | null
           created_at?: string
           email?: string | null
           id?: string
@@ -11922,6 +11927,7 @@ export type Database = {
           phone?: string | null
           provider_type?: Database["public"]["Enums"]["pet_provider_type"]
           rating_avg?: number | null
+          service_area_postal_codes?: string[] | null
           status?: Database["public"]["Enums"]["pet_provider_status"]
           tenant_id?: string
           updated_at?: string
@@ -18609,6 +18615,7 @@ export type Database = {
         | "transport"
         | "nutrition"
         | "other"
+        | "puppy_class"
       pet_species:
         | "dog"
         | "cat"
@@ -19092,6 +19099,7 @@ export const Constants = {
         "transport",
         "nutrition",
         "other",
+        "puppy_class",
       ],
       pet_species: [
         "dog",
