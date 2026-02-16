@@ -24,9 +24,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Plus, Info, Umbrella, X } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
 import { isDemoId } from '@/engines/demoData/engine';
 import { useDemoToggles } from '@/hooks/useDemoToggles';
 import { cn } from '@/lib/utils';
+import { VorsorgeLueckenrechner } from '@/components/portal/finanzanalyse/VorsorgeLueckenrechner';
 
 const CONTRACT_TYPES = ['bAV', 'Riester', 'Rürup', 'Versorgungswerk', 'Berufsunfähigkeit', 'Lebensversicherung', 'Privat', 'Sonstige'] as const;
 
@@ -44,7 +46,7 @@ function fmt(v: number) {
 
 export default function VorsorgeTab() {
   const { activeTenantId, user } = useAuth();
-  const { persons } = useFinanzanalyseData();
+  const { persons, pensionRecords } = useFinanzanalyseData();
   const queryClient = useQueryClient();
   const { isEnabled } = useDemoToggles();
   const demoEnabled = isEnabled('GP-KONTEN');
@@ -350,6 +352,14 @@ export default function VorsorgeTab() {
           </div>
         </Card>
       )}
+
+      {/* Vorsorge-Lückenrechner am Seitenende */}
+      <Separator className="my-8" />
+      <VorsorgeLueckenrechner
+        persons={demoEnabled ? persons : persons.filter((p: any) => !isDemoId(p.id))}
+        pensionRecords={pensionRecords}
+        contracts={contracts}
+      />
     </PageShell>
   );
 }
