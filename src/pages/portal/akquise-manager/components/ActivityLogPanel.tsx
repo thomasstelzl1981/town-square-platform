@@ -61,7 +61,7 @@ const ACTIVITY_TYPES = [
 
 export function ActivityLogPanel({ offerId }: ActivityLogPanelProps) {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const { user, activeTenantId } = useAuth();
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [activityType, setActivityType] = React.useState('note');
   const [description, setDescription] = React.useState('');
@@ -92,6 +92,7 @@ export function ActivityLogPanel({ offerId }: ActivityLogPanelProps) {
           activity_type: activityType,
           description,
           created_by: user?.id,
+          tenant_id: activeTenantId!,
         });
 
       if (error) throw error;

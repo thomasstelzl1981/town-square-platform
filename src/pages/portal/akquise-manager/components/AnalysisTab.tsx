@@ -4,6 +4,7 @@
  */
 import * as React from 'react';
 import { DesktopOnly } from '@/components/shared/DesktopOnly';
+import { useAuth } from '@/contexts/AuthContext';
 import { DESIGN } from '@/config/designManifest';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -48,6 +49,7 @@ const STATUS_CONFIG = {
 
 export function AnalysisTab({ mandateId, mandateCode }: AnalysisTabProps) {
   const { data: offers = [], isLoading } = useAcqOffers(mandateId);
+  const { activeTenantId } = useAuth();
   const createOffer = useCreateOffer();
   
   const [selectedOfferId, setSelectedOfferId] = React.useState<string | null>(null);
@@ -59,6 +61,7 @@ export function AnalysisTab({ mandateId, mandateCode }: AnalysisTabProps) {
 
   const handleCreateOffer = async () => {
     await createOffer.mutateAsync({
+      tenant_id: activeTenantId!,
       mandate_id: mandateId,
       source_type: 'manual',
       title: newOfferForm.title || 'Neues Objekt',

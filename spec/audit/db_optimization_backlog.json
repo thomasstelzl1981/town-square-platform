@@ -1,0 +1,61 @@
+{
+  "schema_version": "1.0.0",
+  "title": "Database Optimization Backlog",
+  "created_at": "2026-02-16",
+  "updated_at": "2026-02-16",
+
+  "phase_a": {
+    "title": "Missing Indexes",
+    "status": "done",
+    "description": "84 composite indexes (tenant_id, created_at) + 1 missing tenant_id index on bank_account_meta",
+    "migration": "20260216130249_e5f3b250"
+  },
+
+  "phase_b": {
+    "title": "tenant_id NOT NULL Härtung",
+    "status": "done",
+    "description": "15 Tabellen auf NOT NULL gehärtet. 1 NULL-Record in data_event_ledger gelöscht. 3 Template-Tabellen bewusst nullable belassen.",
+    "tables_hardened": [
+      "acq_inbound_messages",
+      "acq_mandate_events",
+      "acq_offer_activities",
+      "acq_offer_documents",
+      "acq_offers",
+      "acq_outbound_messages",
+      "cars_offers",
+      "data_event_ledger",
+      "finance_submission_logs",
+      "lead_assignments",
+      "leads",
+      "pv_connectors",
+      "pv_measurements",
+      "test_data_registry",
+      "user_consents"
+    ],
+    "tables_kept_nullable": [
+      "document_checklist_items (31 global templates)",
+      "integration_registry (37 global entries)",
+      "msv_templates (17 global templates)"
+    ],
+    "code_fixes": [
+      "useAcqOffers.ts — tenant_id in CreateOfferData + inserts",
+      "useAcqOutbound.ts — tenant_id from inbound message",
+      "useExposeUpload.ts — tenant_id in offer + document inserts",
+      "useFinanceSubmission.ts — tenant_id required in input type",
+      "AbsageDialog.tsx — useAuth + tenant_id in activity insert",
+      "ActivityLogPanel.tsx — activeTenantId in activity insert",
+      "InteresseDialog.tsx — useAuth + tenant_id in activity insert",
+      "PreisvorschlagDialog.tsx — useAuth + tenant_id in activity insert",
+      "ExposeDragDropUploader.tsx — tenant_id in offer + document inserts",
+      "AnalysisTab.tsx — useAuth + tenant_id in createOffer",
+      "FMEinreichung.tsx — useAuth + tenant_id in createLog",
+      "FMProvisionen.tsx — activeTenantId in consent insert"
+    ]
+  },
+
+  "phase_c": {
+    "title": "Dokumentation",
+    "status": "done",
+    "description": "Backlog-Dateien aktualisiert"
+  }
+}

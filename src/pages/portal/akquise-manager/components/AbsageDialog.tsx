@@ -23,6 +23,7 @@ import {
 import { Loader2, Mail, Sparkles, Send, X } from 'lucide-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
 interface AbsageDialogProps {
@@ -51,6 +52,7 @@ export function AbsageDialog({
   senderEmail,
 }: AbsageDialogProps) {
   const queryClient = useQueryClient();
+  const { activeTenantId } = useAuth();
   const [reason, setReason] = React.useState<string>('');
   const [customMessage, setCustomMessage] = React.useState('');
   const [generatedEmail, setGeneratedEmail] = React.useState('');
@@ -103,6 +105,7 @@ export function AbsageDialog({
           activity_type: 'rejection',
           description: `Absage gesendet: ${REJECTION_REASONS.find(r => r.value === reason)?.label}`,
           metadata: { reason, customMessage, emailSent: !!generatedEmail },
+          tenant_id: activeTenantId!,
         });
 
       if (activityError) throw activityError;

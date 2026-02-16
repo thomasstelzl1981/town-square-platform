@@ -284,11 +284,12 @@ export function useConvertToOffer() {
         .from('acq_offers')
         .insert([{
           mandate_id: mandateId,
-          source_type: 'inbound_email',
+          source_type: 'inbound_email' as const,
           source_contact_id: inbound.contact_id,
           source_inbound_id: inboundId,
           title: inbound.subject || 'Exposé',
-          status: 'new',
+          status: 'new' as const,
+          tenant_id: inbound.tenant_id!,
         }])
         .select()
         .single();

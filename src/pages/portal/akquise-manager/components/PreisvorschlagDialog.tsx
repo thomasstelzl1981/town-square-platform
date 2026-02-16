@@ -18,6 +18,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Loader2, Mail, Sparkles, Send, MessageSquare, Euro } from 'lucide-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
 interface PreisvorschlagDialogProps {
@@ -49,6 +50,7 @@ export function PreisvorschlagDialog({
   senderEmail,
 }: PreisvorschlagDialogProps) {
   const queryClient = useQueryClient();
+  const { activeTenantId } = useAuth();
   const [proposedPrice, setProposedPrice] = React.useState<string>(
     currentPrice ? (currentPrice * 0.9).toFixed(0) : ''
   );
@@ -122,6 +124,7 @@ export function PreisvorschlagDialog({
             currentPrice,
             requestedDocuments: selectedDocs,
           },
+          tenant_id: activeTenantId!,
         });
 
       if (activityError) throw activityError;
