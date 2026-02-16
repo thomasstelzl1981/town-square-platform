@@ -90,8 +90,8 @@ export const GOLDEN_PATH_PROCESSES: GoldenPathProcess[] = [
     },
     demoWidget: {
       id: '__demo__',
-      title: 'Demo: Vermietereinheit Berlin',
-      subtitle: 'Beispiel-Portfolio mit 3 Einheiten',
+      title: 'Demo: Familie Mustermann',
+      subtitle: 'Portfolio Berlin, München, Hamburg',
       status: 'demo',
       badgeLabel: 'Demo',
       data: {
