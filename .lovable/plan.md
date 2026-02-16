@@ -1,53 +1,71 @@
 
 
-# Fix: Hover-Luecke im Floating Module Switcher
+# Fix: Floating Module Switcher — Layout und Hover
 
-## Problem
+## Zwei Probleme
 
-Der `mt-2` Abstand zwischen SubTabs und dem Floating Switcher erzeugt eine unsichtbare Luecke. Beim Bewegen der Maus von den SubTabs zum Switcher verliert der Wrapper den Hover-Zustand und der Switcher verschwindet.
-
-```text
-┌─────────────────────────────┐
-│  SubTabs                    │  ← Hover-Zone ENDET hier
-└─────────────────────────────┘
-     ↕ 8px LUECKE (kein Hover!)  ← Maus hier = onMouseLeave!
-    ╭───────────────────────╮
-    │  Floating Pills       │  ← Nie erreichbar
-    ╰───────────────────────╯
-```
+1. **`pb-12` drueckt den Seiteninhalt nach unten** — das Padding vergroessert die Nav-Bar selbst und verschiebt alles darunter
+2. **Hover-Luecke bleibt bestehen** — der Switcher ist trotzdem schwer erreichbar
 
 ## Loesung
 
-Den Abstand nicht als `mt-2` (Margin) auf dem Floating-Element setzen, sondern als `pb-4` (Padding) auf dem Wrapper-`div`. Padding gehoert zum Element und haelt den Hover-Zustand aufrecht. Zusaetzlich wird `pt-2` auf dem Floating-Element fuer den visuellen Abstand beibehalten.
+Statt `pb-12` auf dem Wrapper wird ein unsichtbares Bruecken-Element verwendet. Der Floating-Container bekommt einen transparenten oberen Bereich (`pt-3`), der die Luecke ueberbrueckt, waehrend der Wrapper selbst kein zusaetzliches Padding erhaelt.
 
 ```text
 ┌─────────────────────────────┐
-│  SubTabs                    │
-│                             │  ← pb-4 Padding = TEIL des Wrappers
-│  ╭───────────────────────╮  │
-│  │  Floating Pills       │  │  ← Erreichbar!
-│  ╰───────────────────────╯  │
+│  SubTabs                    │  ← Wrapper (relative, KEIN pb-12)
 └─────────────────────────────┘
-    Alles innerhalb der Hover-Zone
+│  ┌─ absolute top-full ────┐ │
+│  │  (transparenter pt-3)  │ │  ← Unsichtbare Bruecke, gehoert zum
+│  │  ╭──────────────────╮  │ │     absoluten Container
+│  │  │  Floating Pills  │  │ │
+│  │  ╰──────────────────╯  │ │
+│  └────────────────────────┘ │
 ```
 
 ## Technische Aenderung
 
 **Datei:** `src/components/portal/TopNavigation.tsx`
 
-1. Wrapper-`div` (Zeile 81): `className="relative"` aendern zu `className="relative pb-4"` (nur wenn Switcher sichtbar, sonst kein Padding)
-2. Floating-`div` (Zeile 89): `mt-2` entfernen, stattdessen `pt-2` verwenden — oder einfacher: den Wrapper immer mit genuegend Padding versehen und das Floating-Element direkt an `top-full` positionieren ohne Margin
+### Zeile 81 — Wrapper-Klasse
 
-Konkret:
-- Zeile 81: `className="relative"` wird zu `className={cn("relative", showModuleSwitcher && "pb-12")}` — das erzeugt genuegend Raum fuer die Pills innerhalb des Hover-Bereichs
-- Zeile 89: `mt-2` entfernen, nur `top-full` beibehalten
+Vorher:
+```
+className={cn("relative", showModuleSwitcher && "pb-12")}
+```
 
-Alternativ (eleganter): Statt Padding einfach ein unsichtbares "Bruecken-Element" (`h-4 w-full absolute`) zwischen SubTabs und Pills einbauen, das Teil des Wrappers bleibt.
+Nachher:
+```
+className="relative"
+```
 
-**Einfachste Loesung:** `mt-2` durch `pt-2` ersetzen und den Floating-Container als Teil des normalen Flows rendern statt absolut positioniert. Aber dann verschiebt er den Inhalt darunter. Daher besser:
+### Zeile 89 — Floating Container
 
-- Wrapper bekommt `pb-10` wenn Switcher offen (damit der Hover-Bereich bis zu den Pills reicht)
-- Floating-Element behaelt `absolute top-full mt-2`
+Vorher:
+```
+<div className="absolute top-full left-1/2 -translate-x-1/2 z-50
+                flex items-center gap-1 px-4 py-2
+                bg-card/80 backdrop-blur-xl shadow-lg rounded-2xl border border-border/30
+                animate-in fade-in slide-in-from-top-1 duration-150">
+```
 
-Eine Zeile Aenderung genuegt.
+Nachher — aeusserer Container fuer die Hover-Bruecke, innerer fuer die sichtbaren Pills:
+```
+<div className="absolute top-full left-1/2 -translate-x-1/2 z-50 pt-2">
+  <div className="flex items-center gap-1 px-4 py-2
+                  bg-card/80 backdrop-blur-xl shadow-lg rounded-2xl border border-border/30
+                  animate-in fade-in slide-in-from-top-1 duration-150">
+    ... (Module-Pills bleiben identisch)
+  </div>
+</div>
+```
+
+Der aeussere `div` mit `pt-2` ist transparent und unsichtbar, gehoert aber zum Hover-Bereich des Wrappers (da er ein Kind-Element ist). Der innere `div` traegt die sichtbare Glasmorphism-Optik.
+
+### Ergebnis
+
+- Kein Layout-Shift (kein pb-12 mehr)
+- Hover-Luecke ueberbrueckt durch transparenten pt-2 Bereich
+- Floating Pills schweben frei ueber dem Seiteninhalt
+- Maus kann von SubTabs nahtlos zu den Pills gleiten
 
