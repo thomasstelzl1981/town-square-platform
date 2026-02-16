@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { ServiceCaseStatus } from '@/hooks/useServiceCases';
 
@@ -21,7 +22,7 @@ interface ServiceCaseStatusBadgeProps {
   className?: string;
 }
 
-export function ServiceCaseStatusBadge({ status, className }: ServiceCaseStatusBadgeProps) {
+export const ServiceCaseStatusBadge = memo(function ServiceCaseStatusBadge({ status, className }: ServiceCaseStatusBadgeProps) {
   const config = STATUS_CONFIG[status] || { label: status, variant: 'outline' as const };
   
   return (
@@ -29,4 +30,4 @@ export function ServiceCaseStatusBadge({ status, className }: ServiceCaseStatusB
       {config.label}
     </Badge>
   );
-}
+});
