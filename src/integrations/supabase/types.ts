@@ -11586,6 +11586,68 @@ export type Database = {
           },
         ]
       }
+      private_loans: {
+        Row: {
+          bank_name: string | null
+          created_at: string
+          end_date: string | null
+          id: string
+          interest_rate: number | null
+          loan_amount: number | null
+          loan_purpose: string
+          monthly_rate: number | null
+          notes: string | null
+          remaining_balance: number | null
+          start_date: string | null
+          status: string
+          tenant_id: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          bank_name?: string | null
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          interest_rate?: number | null
+          loan_amount?: number | null
+          loan_purpose: string
+          monthly_rate?: number | null
+          notes?: string | null
+          remaining_balance?: number | null
+          start_date?: string | null
+          status?: string
+          tenant_id: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          bank_name?: string | null
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          interest_rate?: number | null
+          loan_amount?: number | null
+          loan_purpose?: string
+          monthly_rate?: number | null
+          notes?: string | null
+          remaining_balance?: number | null
+          start_date?: string | null
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "private_loans_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           active_tenant_id: string | null
