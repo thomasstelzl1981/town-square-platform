@@ -288,10 +288,10 @@ const FutureRoomContracts = React.lazy(() => import('@/pages/admin/futureroom/Fu
 // =============================================================================
 // Component Map for Zone 2 Module Pages (with internal routing)
 // =============================================================================
-const DashboardPage = React.lazy(() => import('@/pages/portal/PortalDashboard'));
+// PortalDashboard is imported statically (line 94) — used directly in portalModulePageMap to avoid duplicate import warning
 
-const portalModulePageMap: Record<string, React.LazyExoticComponent<React.ComponentType>> = {
-  dashboard: DashboardPage,
+const portalModulePageMap: Record<string, React.LazyExoticComponent<React.ComponentType> | React.ComponentType> = {
+  dashboard: PortalDashboard,
   stammdaten: StammdatenPage,
   office: OfficePage,
   dms: DMSPage,

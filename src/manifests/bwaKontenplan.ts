@@ -1,5 +1,5 @@
 /**
- * BWA-Kontenplan (SKR04 Starter) — SSOT für MOD-04 Verwaltung
+ * BWA-Kontenplan (SKR04 Starter) — SSOT für MOD-04 BWA / Controlling
  * 
  * 7 BWA-Kategorien mit zugeordneten Konten.
  * Editierbar im UI, aber diese Datei ist die Default-Konfiguration.
