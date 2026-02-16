@@ -50,7 +50,7 @@ export default function KrankenversicherungTab() {
             entityType="insurance"
             isOpen={openCardId === kv.personId}
             onToggle={() => toggleCard(kv.personId)}
-            glowVariant="primary"
+            glowVariant="emerald"
             title={kv.personName}
             subtitle={kv.type}
             badges={[

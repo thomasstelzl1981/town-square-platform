@@ -220,12 +220,12 @@ export const DASHBOARD_HEADER = {
 // ─── DEMO WIDGET (NEU V4.3) ───────────────────────────────
 /** Glasig-grünes Styling für alle Demo-Widgets zur visuellen Unterscheidung */
 export const DEMO_WIDGET = {
-  /** Card-Klassen für Demo-Widgets — Primary Blue */
-  CARD: 'bg-primary/5 border-primary/30 dark:bg-primary/10 dark:border-primary/20 relative overflow-hidden before:absolute before:inset-x-0 before:top-0 before:h-1 before:bg-gradient-to-r before:from-primary/40 before:via-primary/60 before:to-primary/40 before:rounded-t-xl',
+  /** Card-Klassen für Demo-Widgets — Emerald Green für bessere Sichtbarkeit */
+  CARD: 'bg-emerald-500/5 border-emerald-400/40 dark:bg-emerald-500/10 dark:border-emerald-400/30 relative overflow-hidden before:absolute before:inset-x-0 before:top-0 before:h-1 before:bg-gradient-to-r before:from-emerald-400/50 before:via-emerald-400/70 before:to-emerald-400/50 before:rounded-t-xl',
   /** Hover-Effekt für Demo-Widgets */
-  HOVER: 'hover:border-primary/50 dark:hover:border-primary/40',
+  HOVER: 'hover:border-emerald-400/60 dark:hover:border-emerald-400/50',
   /** Badge-Klassen für Demo-Label */
-  BADGE: 'bg-primary/10 text-primary border-primary/20 dark:bg-primary/20 dark:text-primary dark:border-primary/30',
+  BADGE: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20 dark:bg-emerald-500/20 dark:text-emerald-400 dark:border-emerald-400/30',
 } as const;
 
 // ─── RECORD CARD (NEU V4.4) ──────────────────────────────
@@ -259,44 +259,44 @@ export type ActiveWidgetVariant = 'primary' | 'amber' | 'cyan' | 'violet' | 'ros
 
 const ACTIVE_WIDGET_VARIANTS: Record<ActiveWidgetVariant, { border: string; shadow: string; shimmer: string }> = {
   primary: {
-    border: 'border-primary/30',
-    shadow: 'shadow-[0_0_15px_-3px] shadow-primary/15',
-    shimmer: 'before:absolute before:inset-x-0 before:top-0 before:h-1 before:bg-gradient-to-r before:from-primary/40 before:via-primary/60 before:to-primary/40 before:rounded-t-xl',
+    border: 'border-primary/40',
+    shadow: 'shadow-[0_0_20px_-3px] shadow-primary/25',
+    shimmer: 'before:absolute before:inset-x-0 before:top-0 before:h-1 before:bg-gradient-to-r before:from-primary/50 before:via-primary/70 before:to-primary/50 before:rounded-t-xl',
   },
   amber: {
-    border: 'border-amber-400/30',
-    shadow: 'shadow-[0_0_15px_-3px] shadow-amber-400/15',
-    shimmer: 'before:absolute before:inset-x-0 before:top-0 before:h-1 before:bg-gradient-to-r before:from-amber-400/40 before:via-amber-400/60 before:to-amber-400/40 before:rounded-t-xl',
+    border: 'border-amber-400/40',
+    shadow: 'shadow-[0_0_20px_-3px] shadow-amber-400/25',
+    shimmer: 'before:absolute before:inset-x-0 before:top-0 before:h-1 before:bg-gradient-to-r before:from-amber-400/50 before:via-amber-400/70 before:to-amber-400/50 before:rounded-t-xl',
   },
   cyan: {
-    border: 'border-cyan-400/30',
-    shadow: 'shadow-[0_0_15px_-3px] shadow-cyan-400/15',
-    shimmer: 'before:absolute before:inset-x-0 before:top-0 before:h-1 before:bg-gradient-to-r before:from-cyan-400/40 before:via-cyan-400/60 before:to-cyan-400/40 before:rounded-t-xl',
+    border: 'border-cyan-400/40',
+    shadow: 'shadow-[0_0_20px_-3px] shadow-cyan-400/25',
+    shimmer: 'before:absolute before:inset-x-0 before:top-0 before:h-1 before:bg-gradient-to-r before:from-cyan-400/50 before:via-cyan-400/70 before:to-cyan-400/50 before:rounded-t-xl',
   },
   violet: {
-    border: 'border-violet-400/30',
-    shadow: 'shadow-[0_0_15px_-3px] shadow-violet-400/15',
-    shimmer: 'before:absolute before:inset-x-0 before:top-0 before:h-1 before:bg-gradient-to-r before:from-violet-400/40 before:via-violet-400/60 before:to-violet-400/40 before:rounded-t-xl',
+    border: 'border-violet-400/40',
+    shadow: 'shadow-[0_0_20px_-3px] shadow-violet-400/25',
+    shimmer: 'before:absolute before:inset-x-0 before:top-0 before:h-1 before:bg-gradient-to-r before:from-violet-400/50 before:via-violet-400/70 before:to-violet-400/50 before:rounded-t-xl',
   },
   rose: {
-    border: 'border-rose-400/30',
-    shadow: 'shadow-[0_0_15px_-3px] shadow-rose-400/15',
-    shimmer: 'before:absolute before:inset-x-0 before:top-0 before:h-1 before:bg-gradient-to-r before:from-rose-400/40 before:via-rose-400/60 before:to-rose-400/40 before:rounded-t-xl',
+    border: 'border-rose-400/40',
+    shadow: 'shadow-[0_0_20px_-3px] shadow-rose-400/25',
+    shimmer: 'before:absolute before:inset-x-0 before:top-0 before:h-1 before:bg-gradient-to-r before:from-rose-400/50 before:via-rose-400/70 before:to-rose-400/50 before:rounded-t-xl',
   },
   orange: {
-    border: 'border-orange-400/30',
-    shadow: 'shadow-[0_0_15px_-3px] shadow-orange-400/15',
-    shimmer: 'before:absolute before:inset-x-0 before:top-0 before:h-1 before:bg-gradient-to-r before:from-orange-400/40 before:via-orange-400/60 before:to-orange-400/40 before:rounded-t-xl',
+    border: 'border-orange-400/40',
+    shadow: 'shadow-[0_0_20px_-3px] shadow-orange-400/25',
+    shimmer: 'before:absolute before:inset-x-0 before:top-0 before:h-1 before:bg-gradient-to-r before:from-orange-400/50 before:via-orange-400/70 before:to-orange-400/50 before:rounded-t-xl',
   },
   teal: {
-    border: 'border-teal-400/30',
-    shadow: 'shadow-[0_0_15px_-3px] shadow-teal-400/15',
-    shimmer: 'before:absolute before:inset-x-0 before:top-0 before:h-1 before:bg-gradient-to-r before:from-teal-400/40 before:via-teal-400/60 before:to-teal-400/40 before:rounded-t-xl',
+    border: 'border-teal-400/40',
+    shadow: 'shadow-[0_0_20px_-3px] shadow-teal-400/25',
+    shimmer: 'before:absolute before:inset-x-0 before:top-0 before:h-1 before:bg-gradient-to-r before:from-teal-400/50 before:via-teal-400/70 before:to-teal-400/50 before:rounded-t-xl',
   },
   emerald: {
-    border: 'border-emerald-400/30',
-    shadow: 'shadow-[0_0_15px_-3px] shadow-emerald-400/15',
-    shimmer: 'before:absolute before:inset-x-0 before:top-0 before:h-1 before:bg-gradient-to-r before:from-emerald-400/40 before:via-emerald-400/60 before:to-emerald-400/40 before:rounded-t-xl',
+    border: 'border-emerald-400/40',
+    shadow: 'shadow-[0_0_20px_-3px] shadow-emerald-400/25',
+    shimmer: 'before:absolute before:inset-x-0 before:top-0 before:h-1 before:bg-gradient-to-r before:from-emerald-400/50 before:via-emerald-400/70 before:to-emerald-400/50 before:rounded-t-xl',
   },
 } as const;
 
