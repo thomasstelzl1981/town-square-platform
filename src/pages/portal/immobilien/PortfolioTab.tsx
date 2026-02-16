@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 // Force rebuild — chunk cache fix
 import { DEMO_PROPERTY_IDS } from '@/config/tenantConstants';
+import { isDemoId } from '@/engines/demoData/engine';
 import { useDemoToggles } from '@/hooks/useDemoToggles';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -784,7 +785,7 @@ export function PortfolioTab() {
             </WidgetCell>
 
             {/* Dynamic Context Widgets */}
-            {contexts.map(ctx => {
+            {contexts.filter(ctx => !(demoEnabled && isDemoId(ctx.id))).map(ctx => {
               const kpi = contextKpis.get(ctx.id);
               const isActive = selectedContextId === ctx.id;
               return (
