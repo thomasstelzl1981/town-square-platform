@@ -50,7 +50,7 @@ export default function PortfolioTab() {
   const showDemoProject = isEnabled('GP-PROJEKT');
   
   // Default to demo project
-  const [selectedProjectId, setSelectedProjectId] = useState<string>(DEMO_PROJECT_ID);
+  const [selectedProjectId, setSelectedProjectId] = useState<string>(showDemoProject ? DEMO_PROJECT_ID : (portfolioRows[0]?.id || DEMO_PROJECT_ID));
 
   const isLoading = isLoadingPortfolio;
   const isSelectedDemo = isDemoProject(selectedProjectId);
@@ -225,65 +225,69 @@ export default function PortfolioTab() {
         ))}
       </WidgetGrid>
 
-      {/* Globalobjekt-Beschreibung (volle Breite) */}
-      <ProjectOverviewCard
-        isDemo={isSelectedDemo}
-        selectedProject={selectedProject}
-        unitCount={calculatedUnits.length}
-      />
-
-      {/* Preisliste (volle Breite) */}
-      {isLoading ? (
-        <LoadingState />
-      ) : (
-        <UnitPreislisteTable
-          units={calculatedUnits}
-          projectId={isSelectedDemo ? DEMO_PROJECT_ID : (selectedProject?.id || '')}
-          isDemo={isSelectedDemo}
-          onUnitPriceChange={handleUnitPriceChange}
-          onStatusChange={handleStatusChange}
-        />
-      )}
-
-      {/* Kalkulator-Zeile: 1/3 Kalkulator + 2/3 leer */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-1">
-          <StickyCalculatorPanel
-            investmentCosts={investmentCosts}
-            totalSaleTarget={totalSaleTarget}
-            provisionRate={provisionRate}
-            priceAdjustment={priceAdjustment}
-            targetYield={targetYield}
-            units={calculatedUnits}
-            onInvestmentCostsChange={setInvestmentCosts}
-            onTotalSaleTargetChange={setTotalSaleTarget}
-            onProvisionChange={setProvisionRate}
-            onPriceAdjustment={setPriceAdjustment}
-            onTargetYieldChange={setTargetYield}
-            isDemo={isSelectedDemo || !selectedProject}
-            projectId={isSelectedDemo ? DEMO_PROJECT_ID : (selectedProject?.id || '')}
+      {/* Globalobjekt-Beschreibung (volle Breite) — only if a project is actually selected */}
+      {(selectedProject && (!isSelectedDemo || showDemoProject)) && (
+        <>
+          <ProjectOverviewCard
+            isDemo={isSelectedDemo}
+            selectedProject={selectedProject}
+            unitCount={calculatedUnits.length}
           />
-        </div>
-        <div className="lg:col-span-2">
-          <SalesStatusReportWidget
-            units={calculatedUnits}
+
+          {/* Preisliste (volle Breite) */}
+          {isLoading ? (
+            <LoadingState />
+          ) : (
+            <UnitPreislisteTable
+              units={calculatedUnits}
+              projectId={isSelectedDemo ? DEMO_PROJECT_ID : (selectedProject?.id || '')}
+              isDemo={isSelectedDemo}
+              onUnitPriceChange={handleUnitPriceChange}
+              onStatusChange={handleStatusChange}
+            />
+          )}
+
+          {/* Kalkulator-Zeile: 1/3 Kalkulator + 2/3 leer */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-1">
+              <StickyCalculatorPanel
+                investmentCosts={investmentCosts}
+                totalSaleTarget={totalSaleTarget}
+                provisionRate={provisionRate}
+                priceAdjustment={priceAdjustment}
+                targetYield={targetYield}
+                units={calculatedUnits}
+                onInvestmentCostsChange={setInvestmentCosts}
+                onTotalSaleTargetChange={setTotalSaleTarget}
+                onProvisionChange={setProvisionRate}
+                onPriceAdjustment={setPriceAdjustment}
+                onTargetYieldChange={setTargetYield}
+                isDemo={isSelectedDemo || !selectedProject}
+                projectId={isSelectedDemo ? DEMO_PROJECT_ID : (selectedProject?.id || '')}
+              />
+            </div>
+            <div className="lg:col-span-2">
+              <SalesStatusReportWidget
+                units={calculatedUnits}
+                projectName={isSelectedDemo ? DEMO_PROJECT.name : (selectedProject?.name || 'Projekt')}
+                investmentCosts={investmentCosts}
+                totalSaleTarget={totalSaleTarget}
+                provisionRate={provisionRate}
+                targetYield={targetYield}
+                developerContext={DEMO_DEVELOPER_CONTEXT}
+                isDemo={isSelectedDemo}
+              />
+            </div>
+          </div>
+
+          {/* Dokumenten-Kachel */}
+          <ProjectDMSWidget
             projectName={isSelectedDemo ? DEMO_PROJECT.name : (selectedProject?.name || 'Projekt')}
-            investmentCosts={investmentCosts}
-            totalSaleTarget={totalSaleTarget}
-            provisionRate={provisionRate}
-            targetYield={targetYield}
-            developerContext={DEMO_DEVELOPER_CONTEXT}
+            units={isSelectedDemo ? DEMO_UNITS : baseUnits}
             isDemo={isSelectedDemo}
           />
-        </div>
-      </div>
-
-      {/* Dokumenten-Kachel */}
-      <ProjectDMSWidget
-        projectName={isSelectedDemo ? DEMO_PROJECT.name : (selectedProject?.name || 'Projekt')}
-        units={isSelectedDemo ? DEMO_UNITS : baseUnits}
-        isDemo={isSelectedDemo}
-      />
+        </>
+      )}
 
       {/* Delete Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

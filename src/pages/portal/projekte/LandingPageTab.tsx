@@ -57,7 +57,7 @@ export default function LandingPageTab() {
   const { projects, isLoading, portfolioRows } = useDevProjects();
   const { isEnabled } = useDemoToggles();
   const showDemoProject = isEnabled('GP-PROJEKT');
-  const [selectedId, setSelectedId] = useState<string>(showDemoProject ? DEMO_PROJECT_ID : 'new');
+  const [selectedId, setSelectedId] = useState<string>(showDemoProject ? DEMO_PROJECT_ID : (portfolioRows[0]?.id || 'new'));
 
   const isSelectedDemo = isDemoProject(selectedId);
   const isNewMode = selectedId === 'new';
