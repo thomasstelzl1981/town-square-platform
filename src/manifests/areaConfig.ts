@@ -31,7 +31,7 @@ export const areaConfig: AreaDefinition[] = [
     label: 'Client',
     labelShort: 'Client',
     icon: 'Target',
-    modules: ['MOD-02', 'MOD-04', 'MOD-07', 'MOD-06', 'MOD-08'],
+    modules: ['MOD-18', 'MOD-02', 'MOD-04', 'MOD-07', 'MOD-06', 'MOD-08'],
   },
   {
     key: 'operations',
@@ -52,7 +52,7 @@ export const areaConfig: AreaDefinition[] = [
     label: 'Base',
     labelShort: 'Base',
     icon: 'Layers',
-    modules: ['MOD-03', 'MOD-18', 'MOD-17', 'MOD-19', 'MOD-01'],
+    modules: ['MOD-03', 'MOD-17', 'MOD-19', 'MOD-01'],
   },
 ];
 
