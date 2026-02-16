@@ -1,14 +1,15 @@
 /**
- * PetsMeinBereich — Buchungshistorie, aktive Buchungen & Rechnungen
+ * PetsMeinBereich — 4 CI-Widgets: Profil, Bestellungen, Buchungen, Rechnungen
  */
 import { useState, useEffect, useCallback } from 'react';
-import { Calendar, Clock, PawPrint, CheckCircle2, XCircle, AlertCircle, Receipt, Download, FileText, Send, Check, AlertTriangle, X as XIcon } from 'lucide-react';
+import { Calendar, Clock, PawPrint, CheckCircle2, XCircle, AlertCircle, Receipt, Download, FileText, Send, Check, AlertTriangle, X as XIcon, User, ShoppingBag, CalendarCheck, CreditCard } from 'lucide-react';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
+import { WidgetGrid } from '@/components/shared/WidgetGrid';
+import { WidgetCell } from '@/components/shared/WidgetCell';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useBookings, useUpdateBookingStatus, type PetBooking } from '@/hooks/usePetBookings';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -26,7 +27,6 @@ const BOOKING_STATUS: Record<string, { label: string; variant: 'default' | 'seco
   no_show: { label: 'Nicht erschienen', variant: 'destructive', icon: XCircle },
 };
 
-// ─── Invoice Status ─────────────────────────────────────────
 type InvoiceStatus = 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled';
 const INVOICE_STATUS: Record<InvoiceStatus, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline'; icon: React.ReactNode }> = {
   draft: { label: 'Entwurf', variant: 'secondary', icon: <FileText className="h-3 w-3" /> },
@@ -37,16 +37,19 @@ const INVOICE_STATUS: Record<InvoiceStatus, { label: string; variant: 'default' 
 };
 
 interface CustomerInvoice {
-  id: string;
-  invoice_number: string;
-  amount_cents: number;
-  net_cents: number;
-  tax_cents: number;
-  status: InvoiceStatus;
-  due_date: string | null;
-  created_at: string;
-  notes: string | null;
+  id: string; invoice_number: string; amount_cents: number; net_cents: number;
+  tax_cents: number; status: InvoiceStatus; due_date: string | null;
+  created_at: string; notes: string | null;
 }
+
+type MeinBereichWidget = 'profil' | 'bestellungen' | 'buchungen' | 'rechnungen';
+
+const WIDGETS: { key: MeinBereichWidget; title: string; icon: typeof User; description: string }[] = [
+  { key: 'profil', title: 'Profil & Einstellungen', icon: User, description: 'Kundendaten und Adressen' },
+  { key: 'bestellungen', title: 'Meine Bestellungen', icon: ShoppingBag, description: 'Shop-Orders & Affiliate-History' },
+  { key: 'buchungen', title: 'Meine Buchungen', icon: CalendarCheck, description: 'Status, Änderungen, Storno' },
+  { key: 'rechnungen', title: 'Rechnungen & Zahlungen', icon: CreditCard, description: 'Belege und Rechnungsübersicht' },
+];
 
 function formatCents(cents: number): string {
   return (cents / 100).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' });
@@ -56,7 +59,6 @@ function BookingCard({ booking, onCancel }: { booking: PetBooking; onCancel?: (i
   const cfg = BOOKING_STATUS[booking.status] || BOOKING_STATUS.requested;
   const StatusIcon = cfg.icon;
   const canCancel = ['requested', 'confirmed'].includes(booking.status);
-
   return (
     <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/30 border border-border/30">
       <StatusIcon className={`h-5 w-5 mt-0.5 shrink-0 ${booking.status === 'completed' ? 'text-emerald-500' : booking.status === 'cancelled' ? 'text-destructive' : 'text-primary'}`} />
@@ -109,6 +111,7 @@ export default function PetsMeinBereich() {
   const updateStatus = useUpdateBookingStatus();
   const [invoices, setInvoices] = useState<CustomerInvoice[]>([]);
   const [invoicesLoading, setInvoicesLoading] = useState(true);
+  const [activeWidget, setActiveWidget] = useState<MeinBereichWidget | null>(null);
 
   const fetchInvoices = useCallback(async () => {
     if (!activeTenantId || !user?.id) return;
@@ -130,39 +133,26 @@ export default function PetsMeinBereich() {
 
   const downloadInvoicePdf = async (inv: CustomerInvoice) => {
     const { data: items } = await supabase
-      .from('pet_invoice_items')
-      .select('*')
-      .eq('invoice_id', inv.id)
-      .order('sort_order');
-
+      .from('pet_invoice_items').select('*').eq('invoice_id', inv.id).order('sort_order');
     const doc = new jsPDF();
-    doc.setFontSize(20);
-    doc.text('Rechnung', 20, 25);
+    doc.setFontSize(20); doc.text('Rechnung', 20, 25);
     doc.setFontSize(10);
     doc.text(`Rechnungsnr.: ${inv.invoice_number}`, 20, 35);
     doc.text(`Datum: ${format(new Date(inv.created_at), 'dd.MM.yyyy', { locale: de })}`, 20, 41);
     if (inv.due_date) doc.text(`Fällig: ${format(new Date(inv.due_date), 'dd.MM.yyyy', { locale: de })}`, 20, 47);
-
     let y = 60;
     doc.setFontSize(9);
     doc.text('Pos.', 20, y); doc.text('Beschreibung', 35, y); doc.text('Menge', 130, y); doc.text('Einzelpreis', 150, y); doc.text('Gesamt', 180, y);
     y += 5; doc.line(20, y, 195, y); y += 5;
-
     (items || []).forEach((item: any, i: number) => {
-      doc.text(`${i + 1}`, 20, y);
-      doc.text(item.description.substring(0, 50), 35, y);
-      doc.text(`${item.quantity}`, 130, y);
-      doc.text(formatCents(item.unit_price_cents), 150, y);
-      doc.text(formatCents(item.total_cents), 180, y);
-      y += 6;
+      doc.text(`${i + 1}`, 20, y); doc.text(item.description.substring(0, 50), 35, y);
+      doc.text(`${item.quantity}`, 130, y); doc.text(formatCents(item.unit_price_cents), 150, y);
+      doc.text(formatCents(item.total_cents), 180, y); y += 6;
     });
-
     y += 5; doc.line(140, y, 195, y); y += 6;
     doc.text(`Netto: ${formatCents(inv.net_cents)}`, 150, y); y += 5;
     doc.text(`USt. 19%: ${formatCents(inv.tax_cents)}`, 150, y); y += 5;
-    doc.setFontSize(11);
-    doc.text(`Gesamt: ${formatCents(inv.amount_cents)}`, 150, y);
-
+    doc.setFontSize(11); doc.text(`Gesamt: ${formatCents(inv.amount_cents)}`, 150, y);
     doc.save(`Rechnung_${inv.invoice_number}.pdf`);
   };
 
@@ -171,42 +161,108 @@ export default function PetsMeinBereich() {
   const openInvoices = invoices.filter(i => i.status === 'sent' || i.status === 'overdue');
   const paidInvoices = invoices.filter(i => i.status === 'paid');
 
+  const toggleWidget = (key: MeinBereichWidget) => setActiveWidget(prev => prev === key ? null : key);
+
   return (
     <PageShell>
-      <ModulePageHeader title="MEIN BEREICH" description="Buchungen, Rechnungen und Service-Übersicht" />
+      <ModulePageHeader title="MEIN BEREICH" description="Profil, Buchungen, Bestellungen und Rechnungen" />
 
-      {/* KPIs */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <Card><CardContent className="pt-4 text-center"><p className="text-2xl font-bold text-primary">{active.length}</p><p className="text-xs text-muted-foreground">Aktive Buchungen</p></CardContent></Card>
-        <Card><CardContent className="pt-4 text-center"><p className="text-2xl font-bold text-muted-foreground">{past.length}</p><p className="text-xs text-muted-foreground">Abgeschlossen</p></CardContent></Card>
-        <Card><CardContent className="pt-4 text-center"><p className="text-2xl font-bold text-destructive">{openInvoices.length}</p><p className="text-xs text-muted-foreground">Offene Rechnungen</p></CardContent></Card>
-        <Card><CardContent className="pt-4 text-center"><p className="text-2xl font-bold">
-          {formatCents(bookings.reduce((sum, b) => b.status === 'completed' ? sum + b.price_cents : sum, 0))}
-        </p><p className="text-xs text-muted-foreground">Gesamtausgaben</p></CardContent></Card>
-      </div>
+      {/* CI-Widget Navigation */}
+      <WidgetGrid variant="widget" className="mb-6">
+        {WIDGETS.map(w => {
+          const Icon = w.icon;
+          const isActive = activeWidget === w.key;
+          return (
+            <WidgetCell key={w.key}>
+              <button
+                onClick={() => toggleWidget(w.key)}
+                className={`w-full h-full rounded-xl border p-4 flex flex-col items-center justify-center gap-3 text-center transition-all cursor-pointer
+                  ${isActive
+                    ? 'border-teal-500/50 bg-teal-500/5 shadow-[0_0_20px_-5px_hsl(var(--teal-glow,180_60%_40%)/0.3)]'
+                    : 'border-border/40 bg-card hover:border-teal-500/30 hover:bg-teal-500/5'
+                  }`}
+              >
+                <div className={`p-3 rounded-lg ${isActive ? 'bg-teal-500/15 text-teal-600' : 'bg-muted/50 text-muted-foreground'}`}>
+                  <Icon className="h-6 w-6" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium">{w.title}</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">{w.description}</p>
+                </div>
+              </button>
+            </WidgetCell>
+          );
+        })}
+      </WidgetGrid>
 
-      <Tabs defaultValue="active">
-        <TabsList>
-          <TabsTrigger value="active">Aktiv ({active.length})</TabsTrigger>
-          <TabsTrigger value="past">Historie ({past.length})</TabsTrigger>
-          <TabsTrigger value="invoices">Rechnungen ({invoices.length})</TabsTrigger>
-        </TabsList>
+      {/* Inline Content */}
+      {activeWidget === 'profil' && (
+        <Card className="mb-6">
+          <CardContent className="pt-6 space-y-3">
+            <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Profil & Einstellungen</h3>
+            <p className="text-sm text-muted-foreground">
+              Ihre Kundendaten und Einstellungen werden über Ihr zentrales Profil verwaltet.
+            </p>
+            <Button variant="outline" size="sm" onClick={() => window.location.href = '/portal/stammdaten/personen'}>
+              Zu den Stammdaten
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
-        <TabsContent value="active" className="space-y-2 mt-4">
-          {isLoading ? <p className="text-sm text-muted-foreground text-center py-6">Laden…</p> :
-           active.length === 0 ? <p className="text-sm text-muted-foreground text-center py-6">Keine aktiven Buchungen</p> :
-           active.map(b => <BookingCard key={b.id} booking={b} onCancel={handleCancel} />)}
-        </TabsContent>
+      {activeWidget === 'bestellungen' && (
+        <Card className="mb-6">
+          <CardContent className="pt-6 space-y-3">
+            <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Meine Bestellungen</h3>
+            <div className="text-center py-8">
+              <ShoppingBag className="mx-auto h-10 w-10 text-muted-foreground/30" />
+              <p className="text-sm text-muted-foreground mt-3">Noch keine Bestellungen vorhanden.</p>
+              <p className="text-xs text-muted-foreground mt-1">Bestellungen aus dem Shop und Affiliate-Partner erscheinen hier.</p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
-        <TabsContent value="past" className="space-y-2 mt-4">
-          {past.length === 0 ? <p className="text-sm text-muted-foreground text-center py-6">Noch keine Buchungshistorie</p> :
-           past.map(b => <BookingCard key={b.id} booking={b} />)}
-        </TabsContent>
+      {activeWidget === 'buchungen' && (
+        <div className="space-y-4 mb-6">
+          <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Meine Buchungen</h3>
+          {isLoading ? (
+            <p className="text-sm text-muted-foreground text-center py-6">Laden…</p>
+          ) : (
+            <>
+              {active.length > 0 && (
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">Aktiv ({active.length})</p>
+                  <div className="space-y-2">
+                    {active.map(b => <BookingCard key={b.id} booking={b} onCancel={handleCancel} />)}
+                  </div>
+                </div>
+              )}
+              {past.length > 0 && (
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">Historie ({past.length})</p>
+                  <div className="space-y-2">
+                    {past.map(b => <BookingCard key={b.id} booking={b} />)}
+                  </div>
+                </div>
+              )}
+              {active.length === 0 && past.length === 0 && (
+                <p className="text-sm text-muted-foreground text-center py-6">Keine Buchungen vorhanden.</p>
+              )}
+            </>
+          )}
+        </div>
+      )}
 
-        <TabsContent value="invoices" className="space-y-2 mt-4">
-          {invoicesLoading ? <p className="text-sm text-muted-foreground text-center py-6">Laden…</p> :
-           invoices.length === 0 ? <p className="text-sm text-muted-foreground text-center py-6">Keine Rechnungen vorhanden</p> : (
-            <div className="space-y-4">
+      {activeWidget === 'rechnungen' && (
+        <div className="space-y-4 mb-6">
+          <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Rechnungen & Zahlungen</h3>
+          {invoicesLoading ? (
+            <p className="text-sm text-muted-foreground text-center py-6">Laden…</p>
+          ) : invoices.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-6">Keine Rechnungen vorhanden.</p>
+          ) : (
+            <>
               {openInvoices.length > 0 && (
                 <div>
                   <p className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">Offen</p>
@@ -223,10 +279,10 @@ export default function PetsMeinBereich() {
                   </div>
                 </div>
               )}
-            </div>
+            </>
           )}
-        </TabsContent>
-      </Tabs>
+        </div>
+      )}
     </PageShell>
   );
 }
