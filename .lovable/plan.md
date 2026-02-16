@@ -1,110 +1,122 @@
 
+# Fix: Pet-Akte — Impfungen, Krankengeschichte und Datenraum
 
-# Fix: Floating Module Switcher wird durch overflow-hidden abgeschnitten
+## Drei identifizierte Probleme
 
-## Ursache
+### Problem 1: Impfungen nicht erfassbar
+Die Tabelle `pet_vaccinations` existiert bereits mit allen noetigen Spalten, aber es gibt weder einen Hook zum Erstellen/Loeschen noch einen Dialog in der UI.
 
-Das Floating-Menue verwendet `position: absolute` und ragt unterhalb der `<nav>` heraus. Der uebergeordnete Container in `PortalLayout.tsx` (Zeile 145) hat jedoch `overflow-hidden`, was **alles abschneidet**, was ueber seine Grenzen hinausgeht — sowohl visuell als auch fuer Maus-Events.
+### Problem 2: Krankengeschichte fehlt komplett
+Es gibt keine Tabelle `pet_medical_records` und keine UI-Komponente. Krankengeschichte (Tierarztbesuche, Diagnosen, Behandlungen) kann nicht erfasst werden.
 
-```text
-div.overflow-hidden          <-- schneidet alles ab
-  SystemBar
-  TopNavigation (nav)
-    AreaTabs
-    div.relative
-      SubTabs
-      div.absolute.top-full  <-- Floating Menu ragt UNTERHALB der nav heraus
-                                  → wird von overflow-hidden abgeschnitten
-  div.flex-1 (Main Content)
-```
+### Problem 3: Datenraum wird nicht angezeigt
+`EntityStorageTree` sucht Pet-Ordner mit `parent_id IS NULL`, aber `createPetDMSFolders` erstellt sie mit `parent_id: rootId` (dem Modul-Root). Dadurch findet die Abfrage nichts und der Datenraum bleibt leer.
 
-Das erklaert alle drei Symptome:
-- Menue verschwindet (es war nie sichtbar, weil geclippt)
-- Klicks funktionieren nicht (geclippter Bereich empfaengt keine Events)
-- Timer-Aenderungen haben keinen Effekt (das Problem ist nicht der Timer)
-
-## Loesung
-
-Das Floating-Menue muss aus dem `overflow-hidden`-Kontext herausgeloest werden. Dafuer wird es als **Portal** gerendert, das direkt in `document.body` eingefuegt wird und somit von keinem Overflow betroffen ist.
+---
 
 ## Technische Aenderungen
 
-### Datei 1: `src/components/portal/TopNavigation.tsx`
+### Schritt 1: Datenbank — `pet_medical_records` Tabelle erstellen
 
-**1. React Portal importieren (Zeile 9)**
+Neue Tabelle mit RLS:
 
-```tsx
-import { useMemo, useState, useRef, useCallback, useEffect } from 'react';
-import { createPortal } from 'react-dom';
+```sql
+CREATE TABLE public.pet_medical_records (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  pet_id UUID NOT NULL REFERENCES public.pets(id) ON DELETE CASCADE,
+  tenant_id UUID NOT NULL,
+  record_type TEXT NOT NULL DEFAULT 'vet_visit',
+  title TEXT NOT NULL,
+  description TEXT,
+  record_date DATE NOT NULL DEFAULT CURRENT_DATE,
+  vet_name TEXT,
+  diagnosis TEXT,
+  treatment TEXT,
+  medication TEXT,
+  cost_amount NUMERIC(10,2),
+  follow_up_date DATE,
+  notes TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.pet_medical_records ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Tenant isolation" ON public.pet_medical_records
+  FOR ALL USING (
+    tenant_id IN (SELECT tenant_id FROM public.tenant_users WHERE user_id = auth.uid())
+  );
 ```
 
-**2. Ref fuer Positionierung hinzufuegen**
+Typen fuer `record_type`: `vet_visit`, `diagnosis`, `treatment`, `surgery`, `medication`, `other`.
 
-Ein `useRef` auf dem `div.relative` Wrapper, um die Position des Floating-Menues relativ zum Trigger zu berechnen:
+### Schritt 2: Hooks — `usePets.ts` erweitern
 
-```tsx
-const triggerRef = useRef<HTMLDivElement>(null);
-const [portalPosition, setPortalPosition] = useState({ top: 0, left: 0 });
+Neue Hooks in `src/hooks/usePets.ts`:
+
+- `usePetMedicalRecords(petId)` — Liest alle Eintraege
+- `useCreateVaccination()` — Erstellt Impfung in `pet_vaccinations`
+- `useDeleteVaccination()` — Loescht Impfung
+- `useCreateMedicalRecord()` — Erstellt Krankengeschichte-Eintrag
+- `useDeleteMedicalRecord()` — Loescht Eintrag
+
+### Schritt 3: Dialoge — Zwei neue Dialoge
+
+**a) `AddVaccinationDialog`** (in `PetsMeineTiere.tsx` oder separate Datei)
+
+Felder:
+- Impftyp (Text, Pflicht)
+- Impfstoff-Name (Text)
+- Verabreicht am (Datum, Pflicht)
+- Naechste Faelligkeit (Datum)
+- Tierarzt (Text)
+- Chargen-Nr. (Text)
+- Notizen (Textarea)
+
+Button "Impfung hinzufuegen" neben der Sektion "Impfhistorie".
+
+**b) `AddMedicalRecordDialog`** (gleiche Struktur)
+
+Felder:
+- Art (Select: Tierarztbesuch, Diagnose, Behandlung, OP, Medikation, Sonstiges)
+- Titel (Text, Pflicht)
+- Datum (Datum, Pflicht)
+- Tierarzt (Text)
+- Diagnose (Text)
+- Behandlung (Text)
+- Medikation (Text)
+- Kosten (Zahl)
+- Nachkontrolle am (Datum)
+- Notizen (Textarea)
+
+Neue Sektion "Krankengeschichte" in der Akte, mit Button "Eintrag hinzufuegen".
+
+### Schritt 4: Datenraum-Query fixen
+
+**Datei:** `src/components/shared/EntityStorageTree.tsx`
+
+Die Root-Folder-Query (Zeile 47-48) entfernt die Bedingung `.is('parent_id', null)`, da Pet-Ordner einen Parent haben:
+
+```
+// Vorher
+.is('parent_id', null)
+
+// Nachher — entfernt, da Entity-Ordner einen Parent haben koennen
 ```
 
-**3. Position berechnen wenn sichtbar**
+Stattdessen wird nur nach `entity_type + entity_id + node_type = 'folder'` gefiltert und der erste Treffer als Root genommen. Die Unterordner werden dann relativ dazu geladen.
 
-```tsx
-useEffect(() => {
-  if (showModuleSwitcher && triggerRef.current) {
-    const rect = triggerRef.current.getBoundingClientRect();
-    setPortalPosition({
-      top: rect.bottom,
-      left: rect.left + rect.width / 2,
-    });
-  }
-}, [showModuleSwitcher]);
-```
+### Schritt 5: UI-Integration in `PetInlineDossier`
 
-**4. Floating-Menue als Portal rendern**
+Die bestehende `PetInlineDossier`-Komponente bekommt:
 
-Statt `position: absolute` innerhalb des `div.relative`, wird das Menue via `createPortal` in `document.body` gerendert mit `position: fixed`:
+1. **Impfhistorie-Sektion**: "+" Button oeffnet `AddVaccinationDialog`, Loeschen-Button pro Eintrag
+2. **Neue Sektion "Krankengeschichte"**: zwischen Gesundheit und Versicherung, mit Timeline-Darstellung und "+" Button
+3. **Datenraum**: bleibt unten, funktioniert nach dem Query-Fix
 
-```tsx
-{areaModules.length > 0 && createPortal(
-  <div
-    className={cn(
-      "fixed z-50 pt-3 transition-all duration-200 -translate-x-1/2",
-      showModuleSwitcher
-        ? "opacity-100 pointer-events-auto translate-y-0"
-        : "opacity-0 pointer-events-none -translate-y-1"
-    )}
-    style={{ top: portalPosition.top, left: portalPosition.left }}
-    onMouseEnter={showSwitcher}
-    onMouseLeave={hideSwitcher}
-  >
-    <div className="flex items-center gap-1 px-4 py-2
-                    bg-card/80 backdrop-blur-xl shadow-lg rounded-2xl border border-border/30">
-      {/* NavLinks wie bisher */}
-    </div>
-  </div>,
-  document.body
-)}
-```
+### Betroffene Dateien
 
-**5. triggerRef an den Wrapper binden**
-
-```tsx
-<div
-  ref={triggerRef}
-  className="relative"
-  onMouseEnter={showSwitcher}
-  onMouseLeave={hideSwitcher}
->
-  <SubTabs ... />
-  {/* Floating menu jetzt via Portal ausserhalb */}
-</div>
-```
-
-### Zusammenfassung
-
-- **Ursache**: `overflow-hidden` auf dem uebergeordneten Layout-Container clippt das absolute Floating-Menue
-- **Fix**: Portal (`createPortal`) rendert das Menue direkt in `document.body` mit `position: fixed`
-- **Positionierung**: wird dynamisch ueber `getBoundingClientRect()` des Trigger-Elements berechnet
-- **Timer + Events**: bleiben unveraendert (waren korrekt, nur das Rendering war das Problem)
-
+- Datenbank-Migration (neue Tabelle `pet_medical_records`)
+- `src/hooks/usePets.ts` (5 neue Hooks)
+- `src/pages/portal/pets/PetsMeineTiere.tsx` (Dialoge + neue Sektion)
+- `src/components/shared/EntityStorageTree.tsx` (Query-Fix Zeile 47-48)
