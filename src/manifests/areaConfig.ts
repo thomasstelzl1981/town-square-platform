@@ -41,18 +41,18 @@ export const areaConfig: AreaDefinition[] = [
     modules: ['MOD-13', 'MOD-09', 'MOD-11', 'MOD-12', 'MOD-10'],
   },
   {
-    key: 'base',
-    label: 'Base',
-    labelShort: 'Base',
-    icon: 'Layers',
-    modules: ['MOD-03', 'MOD-18', 'MOD-17', 'MOD-19', 'MOD-01'],
-  },
-  {
     key: 'services',
     label: 'Service',
     labelShort: 'Service',
     icon: 'Grid',
     modules: ['MOD-14', 'MOD-15', 'MOD-05', 'MOD-16'],
+  },
+  {
+    key: 'base',
+    label: 'Base',
+    labelShort: 'Base',
+    icon: 'Layers',
+    modules: ['MOD-03', 'MOD-18', 'MOD-17', 'MOD-19', 'MOD-01'],
   },
 ];
 
