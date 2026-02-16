@@ -1,187 +1,87 @@
 
-# Caring-Seite Redesign: Suche, Anbieter-Detail und Kalender-Buchung
+# Caring-Seite: Auto-Anzeige + Lennox & Friends Demo-Provider
 
 ## Uebersicht
 
-Die Caring-Seite wird von einem Pflege-Kalender zu einer **Service-Suchmaschine** umgebaut. Zwei neue Seiten entstehen:
-1. **Caring-Startseite** (Suche + Ergebnisse)
-2. **Anbieter-Detailseite** (Profil + Kalender + Slot-Buchung)
+Drei Aenderungen:
+1. Ergebnisse sofort beim Seitenaufruf anzeigen (ohne erst "Suchen" zu klicken)
+2. Den bestehenden Demo-Provider "Pfoetchen Paradies" durch **Lennox & Friends Dog Resorts** ersetzen (mit echten Daten von der Website)
+3. Alle neuen IDs in der Demo-Engine registrieren
 
-Zusaetzlich wird eine **Backlog-Datei** fuer Engine-Anforderungen angelegt.
+## 1. Auto-Anzeige der Ergebnisse
 
----
+**Datei: `src/pages/portal/pets/PetsCaring.tsx`**
 
-## Seite 1: Caring-Startseite (`/portal/pets/caring`)
+- `searchTriggered` wird initial auf `true` gesetzt statt `false`
+- Das Ergebnis-Grid wird dadurch sofort beim Laden angezeigt
+- Der Hook `useSearchProviders` laeuft sofort ohne Filter und liefert alle aktiven Provider
 
-### Layout von oben nach unten
+## 2. Demo-Provider: Lennox & Friends Dog Resorts
 
-```text
-+----------------------------------------------------------+
-|  CARING  (ModulePageHeader)                               |
-|  "Finde den passenden Service fuer dein Tier"            |
-+----------------------------------------------------------+
-|                                                          |
-|  [4 Service-Kacheln im WidgetGrid — Emerald-Glow]       |
-|  +----------+ +----------+ +----------+ +----------+    |
-|  | Pension  | | Tages-   | | Gassi-   | | Hunde-   |    |
-|  |  (Home)  | | staette  | | Service  | | salon    |    |
-|  |          | | (Sun)    | | (Foot)   | | (Scissor)|    |
-|  +----------+ +----------+ +----------+ +----------+    |
-|                                                          |
-+----------------------------------------------------------+
-|                                                          |
-|  Suchfeld (volle Breite)                                 |
-|  +----------------------------------------------------+  |
-|  | PLZ oder Ort    |  Service-Typ (Dropdown)  | Suchen|  |
-|  +----------------------------------------------------+  |
-|                                                          |
-+----------------------------------------------------------+
-|                                                          |
-|  Ergebnis-Kacheln (WidgetGrid, 4 Spalten)               |
-|  +----------+ +----------+ +----------+ +----------+    |
-|  | Anbieter | | Anbieter | | Anbieter | |    ...   |    |
-|  | Logo     | | Logo     | | Logo     | |          |    |
-|  | Name     | | Name     | | Name     | |          |    |
-|  | Rating   | | Rating   | | Rating   | |          |    |
-|  | Services | | Services | | Services | |          |    |
-|  +----------+ +----------+ +----------+ +----------+    |
-|                                                          |
-+----------------------------------------------------------+
+### Datenbank-Migration (SQL)
+
+**Provider aktualisieren** (ID `d0000000-...0050` bleibt bestehen):
+
+```
+UPDATE pet_providers SET
+  company_name = 'Lennox & Friends Dog Resorts',
+  address = 'Rosenheimer Str. 45, 85521 Ottobrunn',
+  phone = '+49 89 66096690',
+  email = 'info@lennoxandfriends.com',
+  bio = 'Dein Hund – Unsere Leidenschaft. Wir sind ein kleines, liebevolles Team ...',
+  rating_avg = 4.9,
+  cover_image_url = 'https://images.unsplash.com/photo-...',
+  service_area_postal_codes = ARRAY['85521','85579','85635','81369','80339','80689']
+WHERE id = 'd0000000-0000-4000-a000-000000000050';
 ```
 
-### Details
+**Services aktualisieren** (bestehende IDs `...0060`, `...0061`, `...0062`):
+- `...0060`: grooming → "Hundesalon Komplett" (65 EUR)
+- `...0061`: walking → "Gassi-Service (1h)" (25 EUR)  
+- `...0062`: daycare → "Tagesstaette" (35 EUR)
 
-- Die **4 Kacheln** oben bleiben bestehen, erhalten aber **Emerald-Glow** (da Demo-Daten) und ein DEMO-Badge
-- Klick auf eine Kachel setzt den Service-Typ im Suchfeld
-- **Alles unterhalb der Kacheln** (Pflege-Kalender, KPIs, Tabs, Event-Dialoge) wird komplett entfernt
-- Das **Suchfeld** erstreckt sich ueber die volle Breite, aufgeteilt in:
-  - Eingabefeld "PLZ oder Ort" (Text)
-  - Select-Dropdown mit: Pension, Tagesstaette, Gassi-Service, Hundesalon, Welpenspielstunde
-  - Such-Button
-- **Ergebnisse** werden als Widget-Kacheln angezeigt (WidgetGrid), jede Kachel zeigt:
-  - Firmenname
-  - Bewertung (Sterne)
-  - Angebotene Services (Badges)
-  - Adresse
-- Klick auf eine Anbieter-Kachel navigiert zu `/portal/pets/caring/:providerId`
+**Neuen Service einfuegen**:
+- `d0000000-0000-4000-a000-000000000063`: boarding → "Urlaubsbetreuung / Pension" (45 EUR/Tag)
 
----
+**Verfuegbarkeit einfuegen** (`pet_provider_availability`):
+- Mo-Fr 08:00-12:00 und 14:00-18:00 (2 Slots pro Tag, je max 8 Buchungen)
+- Sa 09:00-14:00 (1 Slot, max 4 Buchungen)
+- So geschlossen
 
-## Seite 2: Anbieter-Detailseite (`/portal/pets/caring/:providerId`)
+Das ergibt 11 Eintraege mit IDs `d0000000-0000-4000-a000-000000000070` bis `...007A`.
 
-### Layout von oben nach unten
+### Demo-Engine registrieren
 
-```text
-+----------------------------------------------------------+
-|  [Zurueck-Button]                                        |
-+----------------------------------------------------------+
-|                                                          |
-|  TITELBILD (Cover, volle Breite, h-48, Placeholder)     |
-|                                                          |
-+----------------------------------------------------------+
-|                                                          |
-|  PROFIL-BEREICH                                          |
-|  Firmenname (text-2xl bold)                              |
-|  Adresse  |  Telefon  |  E-Mail                         |
-|  Rating (Sterne)                                         |
-|                                                          |
-|  "Ueber uns"                                             |
-|  Bio-Text / Werbetext des Anbieters                     |
-|                                                          |
-|  Angebotene Services (Badge-Liste)                       |
-|                                                          |
-+----------------------------------------------------------+
-|                                                          |
-|  KALENDER                                                |
-|  +----------------------------------------------------+  |
-|  |              Monats-Kalender                        |  |
-|  |   Gruene Tage = freie Termine verfuegbar           |  |
-|  |   Rote Tage = ausgebucht / geblockt                |  |
-|  |   Graue Tage = Vergangenheit                       |  |
-|  +----------------------------------------------------+  |
-|                                                          |
-+----------------------------------------------------------+
-|                                                          |
-|  SLOT-AUSWAHL (erscheint nach Klick auf gruenen Tag)    |
-|  +----------------------------------------------------+  |
-|  | Datum: 15. Maerz 2026                               |  |
-|  |                                                    |  |
-|  | [09:00] [10:00] [11:00] [14:00] [15:00] [16:00]   |  |
-|  |                                                    |  |
-|  | Tier: [Select]   Anmerkungen: [Textarea]           |  |
-|  |                                                    |  |
-|  | [Termin anfragen]                                  |  |
-|  +----------------------------------------------------+  |
-|                                                          |
-+----------------------------------------------------------+
+**Datei: `src/engines/demoData/data.ts`**
+
+Neue Konstanten:
+```
+export const DEMO_PET_PROVIDER_LENNOX = 'd0000000-0000-4000-a000-000000000050';
+const ID_PET_SVC_GROOMING  = 'd0000000-0000-4000-a000-000000000060';
+const ID_PET_SVC_WALKING   = 'd0000000-0000-4000-a000-000000000061';
+const ID_PET_SVC_DAYCARE   = 'd0000000-0000-4000-a000-000000000062';
+const ID_PET_SVC_BOARDING  = 'd0000000-0000-4000-a000-000000000063';
 ```
 
-### Details
+Alle fuenf IDs (Provider + 4 Services) werden in `ALL_DEMO_IDS` aufgenommen, Kommentar `// Pet Provider + Services (DB-geseedet)`.
 
-- **Titelbild**: Platzhalter-Gradient (kein echtes Bild vorhanden, `pet_providers` hat kein `cover_image_url`-Feld — kommt spaeter via DB-Migration)
-- **Profil**: Daten aus `pet_providers` (company_name, address, phone, email, bio, rating_avg)
-- **Services**: Aus `pet_services` geladen, gefiltert auf diesen Provider
-- **Kalender**: Nutzt die vorhandene `Calendar`-Komponente (react-day-picker). Tage werden farblich markiert:
-  - **Gruen**: Provider hat `pet_provider_availability`-Eintraege fuer diesen Wochentag UND der Tag ist nicht in `pet_provider_blocked_dates`
-  - **Rot/Grau**: Geblockte oder vergangene Tage
-- **Slot-Auswahl**: Beim Klick auf einen gruenen Tag werden die verfuegbaren Zeitfenster aus `pet_provider_availability` (start_time, end_time, max_bookings) angezeigt
-- **Buchung**: Der "Termin anfragen"-Button ist vorerst **visuell aktiv, aber nicht funktional verknuepft** — ein Toast zeigt "Buchung wird spaeter ueber Zone 1 orchestriert"
-
----
-
-## Technische Aenderungen
-
-### Datenbank
-
-**Migration**: `pet_providers` erhaelt zwei neue Spalten:
-- `cover_image_url TEXT` — Titelbild fuer die Detail-Seite
-- `service_area_postal_codes TEXT[]` — Array von PLZs fuer die Suchfunktion
-
-### Routing
-
-**`src/pages/portal/PetsPage.tsx`**: Neue Route hinzufuegen:
+Demo Coverage Map wird aktualisiert:
 ```
-caring/provider/:providerId  →  CaringProviderDetail (lazy)
+GP-PETS (MOD-05) — DB: 2 Demo-Pets + Lennox & Friends Provider + 4 Services + Availability
 ```
 
-### Neue Dateien
+## 3. Provider-Kachel mit Emerald-Glow
 
-1. **`src/pages/portal/pets/CaringProviderDetail.tsx`** — Anbieter-Detailseite mit Profil, Kalender, Slot-Auswahl
-2. **`spec/backlog/pet-engine-requirements.md`** — Backlog-Datei fuer Engine-Anforderungen
+**Datei: `src/pages/portal/pets/PetsCaring.tsx`**
 
-### Geaenderte Dateien
+In der Ergebnis-Kachel wird `isDemoId(provider.id)` geprueft. Demo-Provider erhalten:
+- `getActiveWidgetGlow('emerald')` statt `'teal'`
+- Ein DEMO-Badge oben rechts
 
-1. **`src/pages/portal/pets/PetsCaring.tsx`** — Kompletter Umbau:
-   - Kacheln behalten, Emerald-Glow + DEMO-Badge hinzufuegen
-   - Alles unterhalb der Kacheln entfernen (Pflege-Kalender, KPIs, Tabs, Dialoge)
-   - Suchfeld (PLZ + Service-Typ + Button) einfuegen
-   - Ergebnis-Grid mit Anbieter-Kacheln
-   
-2. **`src/pages/portal/PetsPage.tsx`** — Route fuer Provider-Detail hinzufuegen
-
-3. **`src/hooks/usePetBookings.ts`** — Neuer Hook `useSearchProviders(postalCode, serviceCategory)` fuer die Suche (vorerst laedt er alle Provider, da PLZ-Filterung Engine-Sache ist)
-
-### Backlog-Datei: `spec/backlog/pet-engine-requirements.md`
-
-Inhalt:
-- Zone-1-Orchestrierung fuer Buchungen (kein direkter Z2-zu-Z2-Schreibvorgang)
-- PLZ-basierte Provider-Zuordnung ueber Zone 1
-- Verfuegbarkeits-Abgleich (Slots vs. bestehende Buchungen)
-- Cross-Tenant-Isolation: Anbieter und Kunden sind verschiedene Tenants
-- Provider-Verifizierung vor Sichtbarkeit
-- Buchungs-Workflow: requested → confirmed → in_progress → completed
-- Cover-Bild-Upload fuer Provider (Storage)
-- Welpenspielstunde als neuer `pet_service_category`-Enum-Wert (`puppy_class`)
-
----
-
-## Zusammenfassung der betroffenen Dateien
+## Betroffene Dateien
 
 | Datei | Aktion |
-|-------|--------|
-| DB-Migration | Neue Spalten `cover_image_url`, `service_area_postal_codes` + Enum-Wert `puppy_class` |
-| `src/pages/portal/pets/PetsCaring.tsx` | Kompletter Umbau (Suche + Ergebnisse) |
-| `src/pages/portal/pets/CaringProviderDetail.tsx` | Neue Datei (Anbieter-Profil + Kalender) |
-| `src/pages/portal/PetsPage.tsx` | Neue Sub-Route |
-| `src/hooks/usePetBookings.ts` | Neuer Such-Hook |
-| `spec/backlog/pet-engine-requirements.md` | Neue Backlog-Datei |
+|---|---|
+| DB-Migration | UPDATE provider + services, INSERT boarding service + 11 availability slots |
+| `src/engines/demoData/data.ts` | 5 neue IDs registrieren |
+| `src/pages/portal/pets/PetsCaring.tsx` | `searchTriggered` initial `true` + Emerald-Glow fuer Demo-Provider |
