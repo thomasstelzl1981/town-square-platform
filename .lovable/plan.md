@@ -115,11 +115,20 @@ Tabelle `pet_caring_events` (event_type enum, recurring_interval_days, reminder_
 
 ### Schritt 4.2 — MOD-05 Caring-Tab (PET-031)
 
-`PetsCaring.tsx`: Kalenderansicht mit Pflege-Events aller Tiere, Quick-Add, ueberfaellige Events hervorgehoben.
+`PetsCaring.tsx`: Oben 4 CI-Widgets im WidgetGrid:
+
+| Widget | Icon | Beschreibung |
+|--------|------|-------------|
+| Gassi-Service | Footprints | Dog-Walking buchen |
+| Tagesstaette | Sun | Tagesbetreuung buchen |
+| Pension | Home | Mehrtaegige Unterbringung buchen |
+| Hundefriseur | Scissors | Grooming-Termin buchen |
+
+Klick oeffnet Buchungskalender inline (Datumsauswahl, Tier-Selektor, Zeitslots, `useCreateBooking`). Darunter bestehender Pflege-Kalender mit Events und ueberfaelligen Eintraegen.
 
 ### Schritt 4.3 — Tier-Akte Pflege-Sektion (PET-032)
 
-Pflege-Timeline in `PetDetailPage.tsx`.
+Pflege-Timeline in `PetDetailPage.tsx`. Neue Sektion "Lennox Tracker" (Kartenplatzhalter + Status, falls Tracker zugeordnet).
 
 ### Schritt 4.4 — Erinnerungen (PET-033)
 
@@ -153,14 +162,58 @@ Toast-Hinweise bei faelligen Pflege-Events.
 
 ---
 
-## Phase 6: Golden Path und Integration (5 Items)
+## Phase 6: Golden Path, Lennox Tracker und Integration (6 Items)
 
-**Ziel:** Cross-Modul-Verknuepfungen und Dokumentation.
+**Ziel:** Cross-Modul-Verknuepfungen, Lennox White-Label und Dokumentation.
 
 - GP-PETS Prozess in `goldenPathProcesses.ts` vervollstaendigen (PET-050)
 - DMS-Integration: Tier-Dokumente im MOD-03 sichtbar (PET-051)
 - Versicherungs-Referenz in insurance_contracts (PET-052)
+- Lennox Tracker API-Integration: Edge Function fuer Live-GPS-Daten, `lennox_tracker_id` Feld in `pets`-Tabelle (PET-055)
 - Specs aktualisieren: mod-05_pets.md und mod-22_petmanager.md (PET-053, PET-054)
+
+---
+
+## UI-Redesign: MOD-05 Widget-Navigation (alle Tabs)
+
+### Tab 1: Meine Tiere
+
+RecordCard-Klick oeffnet Tier-Akte **inline** (openPetId-Toggle) statt Navigation. Akte rendert unterhalb des Grids: Stammdaten, Impfhistorie, Pflege-Timeline, DMS-Tree, Lennox-Tracker-Sektion (Platzhalter).
+
+### Tab 2: Caring — 4 CI-Widgets
+
+| Widget | Icon |
+|--------|------|
+| Gassi-Service | Footprints |
+| Tagesstaette | Sun |
+| Pension | Home |
+| Hundefriseur | Scissors |
+
+Klick oeffnet Buchungskalender inline. Darunter Pflege-Kalender.
+
+### Tab 3: Shop (vorher "Shop & Services") — 4 CI-Widgets
+
+| Widget | Beschreibung |
+|--------|-------------|
+| Unser Shop | Eigener Katalog (Zone-1 verwaltete Produkte + Services) |
+| Lennox Tracker | Eigenes White-Label GPS-Tracking-Produkt bestellen, Abo verwalten |
+| Zooplus | Affiliate-Partner |
+| Fressnapf | Affiliate-Partner |
+
+**Hinweis:** Der Shop enthaelt KEINE Service-Buchungen (kein Grooming etc.) — diese werden ausschliesslich ueber den Caring-Tab gebucht. Der Lennox Tracker ist ein reines Produktangebot (Bestellung + Abo). Die Tieranzeige mit Live-GPS-Daten erfolgt in der Tierakte unter "Meine Tiere".
+
+### Tab 4: Mein Bereich — 4 CI-Widgets
+
+| Widget | Inhalt |
+|--------|--------|
+| Profil und Einstellungen | Kundendaten, Adressen, Shortcut zu "Tiere verwalten" |
+| Meine Bestellungen | Shop-Bestellungen (inkl. Lennox Tracker) + Affiliate-Clicks/History |
+| Meine Buchungen | Status, Aenderungen, Storno |
+| Rechnungen und Zahlungen | Anzahlungen, Belege, Rechnungsuebersicht |
+
+### Gemeinsames Widget-Pattern
+
+Caring, Shop und Mein Bereich nutzen identisches Muster: `WidgetGrid` (variant="widget") mit 4 quadratischen CI-Kacheln (teal-Glow), `activeWidget`-State toggelt Inline-Content darunter.
 
 ---
 
@@ -168,7 +221,7 @@ Toast-Hinweise bei faelligen Pflege-Events.
 
 | Kennzahl | Wert |
 |----------|------|
-| Gesamt-Items | 27 |
+| Gesamt-Items | 28 |
 | Neue DB-Tabellen | 8 |
 | Bestehende DB-Tabellen | 2 (pet_invoices, pet_invoice_items — werden erweitert) |
 | Naechster Schritt | Phase 1 implementieren (nach Freigabe) |
