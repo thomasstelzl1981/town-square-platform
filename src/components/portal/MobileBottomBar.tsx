@@ -1,11 +1,9 @@
 /**
  * MobileBottomBar — Unified bottom bar for ALL mobile views
  * 
- * Combines:
- * - 4 Area glass buttons (Base, Missions, Operations, Services)
+ * Features:
+ * - Home button + 4 Area glass buttons (round)
  * - Persistent Armstrong input bar with Voice, Upload, Send
- * 
- * When sending from a module view, auto-navigates back to /portal chat.
  */
 
 import * as React from 'react';
@@ -26,6 +24,7 @@ import {
   Rocket,
   Wrench,
   LayoutGrid,
+  Home,
   X
 } from 'lucide-react';
 
@@ -36,6 +35,62 @@ const areaIcons: Record<AreaKey, React.ElementType> = {
   services: LayoutGrid,
 };
 
+/* ── Area Nav Button (round) ─────────────────────────── */
+function NavButton({
+  icon: Icon,
+  label,
+  isActive,
+  onClick,
+}: {
+  icon: React.ElementType;
+  label: string;
+  isActive: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        'flex flex-col items-center justify-center gap-0.5 transition-all active:scale-95',
+        'h-14 w-14 rounded-full',
+        isActive
+          ? 'bg-primary/15 ring-1 ring-primary/30 text-primary'
+          : 'text-muted-foreground hover:text-foreground hover:bg-muted/40'
+      )}
+    >
+      <Icon className="h-5 w-5" />
+      <span className="text-[9px] font-medium leading-none">{label}</span>
+    </button>
+  );
+}
+
+/* ── Attached Files Row ──────────────────────────────── */
+function AttachedFiles({
+  files,
+  onRemove,
+}: {
+  files: File[];
+  onRemove: (index: number) => void;
+}) {
+  if (files.length === 0) return null;
+  return (
+    <div className="px-4 pb-1 flex gap-1.5 flex-wrap">
+      {files.map((file, i) => (
+        <div
+          key={i}
+          className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted/60 text-xs text-muted-foreground max-w-[140px]"
+        >
+          <span className="truncate">{file.name}</span>
+          <button onClick={() => onRemove(i)} className="shrink-0">
+            <X className="h-3 w-3" />
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ── Main Component ──────────────────────────────────── */
 export function MobileBottomBar() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -54,9 +109,7 @@ export function MobileBottomBar() {
   React.useEffect(() => {
     if (prevListeningRef.current && !voice.isListening && voice.transcript.trim()) {
       setVoiceMode(true);
-      if (!isDashboard) {
-        navigate('/portal');
-      }
+      if (!isDashboard) navigate('/portal');
       advisor.sendMessage(voice.transcript.trim());
     }
     prevListeningRef.current = voice.isListening;
@@ -65,10 +118,7 @@ export function MobileBottomBar() {
   const handleSend = () => {
     if (input.trim() && !advisor.isLoading) {
       setVoiceMode(false);
-      // Navigate to chat first if in a module
-      if (!isDashboard) {
-        navigate('/portal');
-      }
+      if (!isDashboard) navigate('/portal');
       advisor.sendMessage(input.trim());
       setInput('');
       setAttachedFiles([]);
@@ -83,11 +133,8 @@ export function MobileBottomBar() {
   };
 
   const handleVoiceToggle = React.useCallback(() => {
-    if (voice.isListening) {
-      voice.stopListening();
-    } else {
-      voice.startListening();
-    }
+    if (voice.isListening) voice.stopListening();
+    else voice.startListening();
   }, [voice]);
 
   const handleAreaClick = (areaKey: AreaKey) => {
@@ -95,6 +142,10 @@ export function MobileBottomBar() {
     setMobileNavView('modules');
     setSelectedMobileModule(null);
     navigate(`/portal/area/${areaKey}`);
+  };
+
+  const handleHomeClick = () => {
+    navigate('/portal');
   };
 
   const handleFilesSelected = (files: File[]) => {
@@ -110,51 +161,32 @@ export function MobileBottomBar() {
       className="sticky bottom-0 z-40 w-full bg-background/80 backdrop-blur-lg border-t border-border/30"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
-      {/* Area Navigation Buttons — 4 glass pills */}
-      <div className="px-3 pt-2 pb-1">
-        <div className="flex items-center justify-around gap-1">
-          {areaConfig.map((area) => {
-            const Icon = areaIcons[area.key];
-            const isActive = activeArea === area.key;
-            return (
-              <button
-                key={area.key}
-                onClick={() => handleAreaClick(area.key)}
-                className={cn(
-                  'flex flex-col items-center justify-center py-1.5 px-3 rounded-xl transition-all active:scale-95',
-                  'nav-tab-glass min-w-[60px]',
-                  isActive
-                    ? 'text-primary'
-                    : 'text-muted-foreground hover:text-foreground'
-                )}
-              >
-                <Icon className="h-5 w-5 mb-0.5" />
-                <span className="text-[10px] font-medium leading-tight">{area.labelShort}</span>
-              </button>
-            );
-          })}
+      {/* Area Navigation — 5 round buttons (Home + 4 Areas) */}
+      <div className="px-2 pt-2 pb-3">
+        <div className="flex items-center justify-around">
+          <NavButton
+            icon={Home}
+            label="Home"
+            isActive={isDashboard}
+            onClick={handleHomeClick}
+          />
+          {areaConfig.map((area) => (
+            <NavButton
+              key={area.key}
+              icon={areaIcons[area.key]}
+              label={area.labelShort}
+              isActive={activeArea === area.key && !isDashboard}
+              onClick={() => handleAreaClick(area.key)}
+            />
+          ))}
         </div>
       </div>
 
       {/* Attached files preview */}
-      {attachedFiles.length > 0 && (
-        <div className="px-3 pb-1 flex gap-1.5 flex-wrap">
-          {attachedFiles.map((file, i) => (
-            <div
-              key={i}
-              className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted/60 text-xs text-muted-foreground max-w-[140px]"
-            >
-              <span className="truncate">{file.name}</span>
-              <button onClick={() => removeFile(i)} className="shrink-0">
-                <X className="h-3 w-3" />
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
+      <AttachedFiles files={attachedFiles} onRemove={removeFile} />
 
       {/* Input Bar — [Mic] [+] [Input] [Send] */}
-      <div className="px-3 pb-2">
+      <div className="px-4 pb-4">
         <div className="flex items-center gap-1.5 p-1.5 rounded-2xl bg-muted/50 backdrop-blur-sm border border-border/30">
           <VoiceButton
             isListening={voice.isListening}

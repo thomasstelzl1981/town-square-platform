@@ -8,6 +8,8 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { ModuleDefinition, getTileFullPath } from '@/manifests/routesManifest';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { isTileHiddenOnMobile } from '@/config/mobileConfig';
 
 interface SubTabsProps {
   module: ModuleDefinition;
@@ -16,18 +18,24 @@ interface SubTabsProps {
 
 export function SubTabs({ module, moduleBase }: SubTabsProps) {
   const location = useLocation();
+  const isMobile = useIsMobile();
 
   // URL-driven visibility: show only when on a module page (not Area-Overview)
   const isOnModulePage = location.pathname.startsWith(`/portal/${moduleBase}`);
   
-  // Hide if not on module page OR no tiles exist
-  if (!isOnModulePage || !module.tiles || module.tiles.length === 0) {
+  // Filter tiles for mobile — hide desktop-only tabs
+  const visibleTiles = (module.tiles || []).filter(
+    tile => !isMobile || !isTileHiddenOnMobile(moduleBase, tile.path)
+  );
+
+  // Hide if not on module page OR no visible tiles
+  if (!isOnModulePage || visibleTiles.length === 0) {
     return null;
   }
 
   return (
     <div className="flex items-center justify-center gap-1 px-4 py-1 overflow-x-auto scrollbar-none bg-background/50">
-      {module.tiles.map((tile) => {
+      {visibleTiles.map((tile) => {
         const route = getTileFullPath(moduleBase, tile.path);
         const isActive = location.pathname === route;
         
