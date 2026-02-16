@@ -75,6 +75,7 @@ export interface VVPropertyTaxData {
   acquisitionCosts: number;
   taxReferenceNumber: string;
   ownershipSharePercent: number;
+  areaSqm: number | null;
   
   afa: VVAfaStammdaten;
   incomeAggregated: VVIncomeAggregated;

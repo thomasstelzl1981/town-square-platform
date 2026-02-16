@@ -84,7 +84,7 @@ export function VVAnlageVForm({ taxData, contextTaxNumber, onSave, isSaving }: V
           address: taxData.address,
           city: taxData.city,
           postalCode: taxData.postalCode,
-          areaSqm: null, // TODO: from units
+          areaSqm: taxData.areaSqm ?? null,
           yearBuilt: taxData.yearBuilt,
           purchasePrice: taxData.purchasePrice,
           income: taxData.incomeAggregated,

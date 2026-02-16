@@ -1,0 +1,250 @@
+{
+  "schema": "CONSOLIDATED-V1.0",
+  "created": "2026-02-16",
+  "description": "Konsolidierter Backlog — alle offenen Items aus 17 Audit-Dateien. Erledigte Items entfernt.",
+  "sources_merged": [
+    "todo_backlog_v1.json",
+    "system_integrity_audit_v4_backlog.json",
+    "deep_audit_v2_backlog.json",
+    "tenant_isolation_backlog.json",
+    "engine_consolidation_backlog.json",
+    "enterprise_ready_backlog.json",
+    "system_integrity_backlog.json",
+    "system_integrity_audit_v2_backlog.json",
+    "system_integrity_audit_v3_backlog.json",
+    "demo_toggle_consistency_backlog.json (COMPLETED)",
+    "widget_homogenization_backlog.json (COMPLETED)",
+    "mobile_ux_backlog.json (COMPLETED)",
+    "operative_desk_backlog.json (COMPLETED)",
+    "integration_registry_audit.json (COMPLETED)"
+  ],
+
+  "open_items": [
+    {
+      "id": "CB-001",
+      "origin": "TODO-001 / SIA4-004",
+      "severity": "P1",
+      "module": "MOD-04",
+      "title": "NK-Engine: Hardcoded Personenzahlen",
+      "description": "unitPersons=2, totalPersons=units*2. Erfordert neue DB-Spalten: leases.number_of_occupants, properties.total_occupants.",
+      "fix_type": "db_migration + code",
+      "effort": "medium",
+      "status": "deferred",
+      "reason": "DB-Migration nötig. Code-Kommentare dokumentieren Default. Kein Demo-Impact."
+    },
+    {
+      "id": "CB-002",
+      "origin": "TODO-002",
+      "severity": "P2",
+      "module": "MOD-04",
+      "title": "NK-Vorauszahlung: Hardcoded 12 Monate",
+      "description": "Bei unterjährigen Mietverträgen sollte anteilig berechnet werden.",
+      "fix_type": "code",
+      "effort": "low",
+      "status": "open"
+    },
+    {
+      "id": "CB-003",
+      "origin": "TODO-003",
+      "severity": "P2",
+      "module": "MOD-18",
+      "title": "VV-Steuer: NK-Nachzahlung fehlt",
+      "description": "nkNachzahlung ist hardcoded 0 — sollte aus nk_tenant_settlements gelesen werden.",
+      "fix_type": "code",
+      "effort": "medium",
+      "status": "open"
+    },
+    {
+      "id": "CB-004",
+      "origin": "TODO-004",
+      "severity": "P2",
+      "module": "MOD-18",
+      "title": "Anlage V: Wohnfläche fehlt",
+      "description": "areaSqm ist null — sollte aus units Tabelle gelesen werden.",
+      "fix_type": "code",
+      "effort": "low",
+      "status": "open"
+    },
+    {
+      "id": "CB-005",
+      "origin": "BL-000001 / BL-000005 / BL-000007",
+      "severity": "P2",
+      "module": "MOD-04",
+      "title": "Orphan MSV-Dateien löschen",
+      "description": "src/pages/portal/msv/ (6 Dateien) + src/pages/portal/MSVPage.tsx sind Orphans. Keine Imports.",
+      "fix_type": "delete",
+      "effort": "trivial",
+      "status": "open"
+    },
+    {
+      "id": "CB-006",
+      "origin": "TODO-005 / SIA4-010",
+      "severity": "P3",
+      "module": "Armstrong",
+      "title": "webResearchEnabled hardcoded true",
+      "description": "Feature-Toggle fehlt. Korrekt dokumentiert als intentional — org_settings Spalte existiert noch nicht.",
+      "fix_type": "db_migration + code",
+      "effort": "low",
+      "status": "deferred"
+    },
+    {
+      "id": "CB-007",
+      "origin": "TODO-006",
+      "severity": "P3",
+      "module": "Z1-Acquiary",
+      "title": "needsRoutingCount hardcoded 0",
+      "description": "Sollte echte Query auf acq_inbound_messages.needs_routing nutzen.",
+      "fix_type": "code",
+      "effort": "low",
+      "status": "open"
+    },
+    {
+      "id": "CB-008",
+      "origin": "TODO-007",
+      "severity": "P3",
+      "module": "Z1-FinanceDesk",
+      "title": "FinanceDesk KPIs sind Mock-Daten",
+      "description": "MOCK_KPIS sollten durch live Queries ersetzt werden.",
+      "fix_type": "code",
+      "effort": "medium",
+      "status": "open"
+    },
+    {
+      "id": "CB-009",
+      "origin": "TODO-008",
+      "severity": "P3",
+      "module": "MOD-04",
+      "title": "Angebot-Betrag speichern nicht implementiert",
+      "description": "Save offer amount Funktion fehlt im OffersComparisonPanel.",
+      "fix_type": "code",
+      "effort": "low",
+      "status": "open"
+    },
+    {
+      "id": "CB-010",
+      "origin": "TODO-009",
+      "severity": "P3",
+      "module": "MOD-04",
+      "title": "DMS Dokument-Preview nicht implementiert",
+      "description": "Preview-Button hat keine Funktionalität.",
+      "fix_type": "code",
+      "effort": "medium",
+      "status": "open"
+    },
+    {
+      "id": "CB-011",
+      "origin": "BL-000004",
+      "severity": "P3",
+      "module": "MOD-10",
+      "title": "MOD-10 base path 'leads' inkonsistent",
+      "description": "URL /portal/leads passt nicht zum Modulnamen 'Abrechnung'. Rename auf 'abrechnung' + Legacy-Redirect.",
+      "fix_type": "code",
+      "effort": "medium",
+      "status": "open"
+    },
+    {
+      "id": "CB-012",
+      "origin": "BL-000006",
+      "severity": "P3",
+      "module": "System",
+      "title": "5 Orphan Edge Functions",
+      "description": "sot-social-autoresponder, sot-research-run-order, sot-research-firecrawl-extract, sot-research-free, sot-dms-upload-url — keine Frontend-Aufrufe.",
+      "fix_type": "delete",
+      "effort": "medium",
+      "status": "pending_review"
+    },
+    {
+      "id": "CB-013",
+      "origin": "SIA-0005 / BL-000002",
+      "severity": "P3",
+      "module": "System",
+      "title": "SECURITY DEFINER Views",
+      "description": "v_public_listings ist intentional SECURITY DEFINER für Kaufy-Besucher. Dokumentiert als akzeptiertes Risiko.",
+      "fix_type": "documentation",
+      "effort": "none",
+      "status": "acknowledged"
+    },
+    {
+      "id": "CB-014",
+      "origin": "TODO-010 / SIA4-011",
+      "severity": "P4",
+      "module": "MOD-04",
+      "title": "NK-Hook: as-any Type-Casts",
+      "description": "nk_periods/nk_cost_items fehlen in auto-generierten Typen. types.ts ist read-only.",
+      "fix_type": "infrastructure",
+      "effort": "none_possible",
+      "status": "wont_fix"
+    },
+    {
+      "id": "CB-015",
+      "origin": "TODO-011",
+      "severity": "P4",
+      "module": "MOD-07",
+      "title": "Europace Consumer Loan API Stub",
+      "description": "Integration noch nicht angebunden.",
+      "fix_type": "integration",
+      "effort": "high",
+      "status": "future"
+    },
+    {
+      "id": "CB-016",
+      "origin": "TODO-012",
+      "severity": "P4",
+      "module": "MOD-11",
+      "title": "Upvest-Integration Stub",
+      "description": "Investment-Tab zeigt Empty State.",
+      "fix_type": "integration",
+      "effort": "high",
+      "status": "future"
+    },
+    {
+      "id": "CB-017",
+      "origin": "TODO-014",
+      "severity": "P4",
+      "module": "System",
+      "title": "Demo-Daten-Migration Client → DB",
+      "description": "KV/Vorsorge/Abonnement-Daten client-seitig. Migration ermöglicht RLS-Filterung.",
+      "fix_type": "db_migration + refactor",
+      "effort": "high",
+      "status": "future"
+    },
+    {
+      "id": "CB-018",
+      "origin": "ENG-04",
+      "severity": "P4",
+      "module": "MOD-04",
+      "title": "BWA Engine: Consumer noch nicht eingebunden",
+      "description": "Engine existiert, aber BWA-Tab nutzt sie noch nicht.",
+      "fix_type": "code",
+      "effort": "medium",
+      "status": "deferred"
+    }
+  ],
+
+  "planned_phases": {
+    "tenant_isolation_phase_2": {
+      "title": "Modul-RLS-Verfeinerung (iterativ)",
+      "status": "planned",
+      "modules": ["Akquise", "Finanzierung", "Portfolio", "DMS", "Social", "Verwaltung", "Service-Cases", "Cars", "WhatsApp", "Website-Builder", "Versicherung/Vorsorge"]
+    },
+    "tenant_isolation_phase_3": {
+      "title": "Pre-Go-Live Härtung",
+      "status": "planned",
+      "items": ["Katalog-Tabellen auf authenticated-only", "PII-Spalten Audit", "Cross-Tenant Leak Test"]
+    }
+  },
+
+  "summary": {
+    "total_open": 18,
+    "P1": 1,
+    "P2_fixable": 4,
+    "P3": 7,
+    "P4_future": 4,
+    "deferred": 2,
+    "acknowledged": 1,
+    "recently_fixed": [
+      "Auth OTP + Leaked Password (SIA-0006 / BL-000003) — gefixt 2026-02-16",
+      "RLS Hardening documents/properties/listings/document_links — gefixt 2026-02-16"
+    ]
+  }
+}
