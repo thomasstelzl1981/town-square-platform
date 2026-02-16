@@ -13,6 +13,7 @@ import type {
   DemoVorsorgeContract,
   DemoSubscription,
   DemoKVContract,
+  DemoPrivateLoan,
   DemoPortfolioRefs,
   DemoAcqMandate,
   DemoDevProject,
@@ -61,6 +62,10 @@ const ID_KV_MAX    = 'e0000000-0000-4000-a000-000000000501';
 const ID_KV_LISA   = 'e0000000-0000-4000-a000-000000000502';
 const ID_KV_FELIX  = 'e0000000-0000-4000-a000-000000000503';
 const ID_KV_EMMA   = 'e0000000-0000-4000-a000-000000000504';
+
+// Privatkredite
+const ID_PL_AUTO   = 'e0000000-0000-4000-a000-000000000601';
+const ID_PL_MOEBEL = 'e0000000-0000-4000-a000-000000000602';
 
 // ─── PERSONEN ──────────────────────────────────────────────
 
@@ -328,6 +333,37 @@ export const DEMO_KV_CONTRACTS: readonly DemoKVContract[] = [
   },
 ] as const;
 
+// ─── PRIVATKREDITE ─────────────────────────────────────────
+
+export const DEMO_PRIVATE_LOANS: readonly DemoPrivateLoan[] = [
+  {
+    id: ID_PL_AUTO,
+    personId: DEMO_PRIMARY_PERSON_ID,
+    bankName: 'BMW Bank',
+    loanPurpose: 'autokredit',
+    loanAmount: 35_000,
+    remainingBalance: 22_400,
+    interestRate: 3.49,
+    monthlyRate: 520,
+    startDate: '2022-06-01',
+    endDate: '2027-05-31',
+    status: 'aktiv',
+  },
+  {
+    id: ID_PL_MOEBEL,
+    personId: ID_LISA,
+    bankName: 'Santander',
+    loanPurpose: 'moebel',
+    loanAmount: 12_000,
+    remainingBalance: 4_800,
+    interestRate: 5.99,
+    monthlyRate: 250,
+    startDate: '2023-01-15',
+    endDate: '2026-12-31',
+    status: 'aktiv',
+  },
+] as const;
+
 // ─── PORTFOLIO-REFERENZEN (bestehende IDs) ─────────────────
 
 export const DEMO_PORTFOLIO: DemoPortfolioRefs = {
@@ -407,8 +443,10 @@ export const ALL_DEMO_IDS: readonly string[] = [
   // Abonnements
   ID_SUB_NETFLIX, ID_SUB_SPOTIFY, ID_SUB_AMAZON, ID_SUB_MS365,
   ID_SUB_ZEIT, ID_SUB_TELEKOM, ID_SUB_VODAFONE, ID_SUB_FITX,
-  // KV-Verträge (DB-geseedet)
+   // KV-Verträge (DB-geseedet)
   ID_KV_MAX, ID_KV_LISA, ID_KV_FELIX, ID_KV_EMMA,
+  // Privatkredite
+  ID_PL_AUTO, ID_PL_MOEBEL,
   // Portfolio (DB-IDs)
   ...DEMO_PORTFOLIO.propertyIds,
   ...DEMO_PORTFOLIO.vehicleIds,
@@ -435,6 +473,7 @@ export const DEMO_DATA_SPEC: DemoDataSpec = {
   vorsorge: DEMO_VORSORGE,
   subscriptions: DEMO_SUBSCRIPTIONS,
   kvContracts: DEMO_KV_CONTRACTS,
+  privateLoans: DEMO_PRIVATE_LOANS,
   portfolio: DEMO_PORTFOLIO,
   acqMandate: DEMO_ACQ_MANDATE,
   devProject: DEMO_DEV_PROJECT,

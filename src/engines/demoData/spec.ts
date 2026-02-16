@@ -112,6 +112,21 @@ export interface DemoSelbstauskunft {
   readonly coApplicantProfileId: string;
 }
 
+/** Demo-Privatkredit */
+export interface DemoPrivateLoan {
+  readonly id: string;
+  readonly personId: string;
+  readonly bankName: string;
+  readonly loanPurpose: 'autokredit' | 'konsumkredit' | 'moebel' | 'bildung' | 'umschuldung' | 'sonstiges';
+  readonly loanAmount: number;
+  readonly remainingBalance: number;
+  readonly interestRate: number;
+  readonly monthlyRate: number;
+  readonly startDate: string;
+  readonly endDate: string;
+  readonly status: 'aktiv' | 'abgeschlossen';
+}
+
 /** Gesamtstruktur aller Demo-Daten */
 export interface DemoDataSpec {
   readonly personas: readonly DemoPersona[];
@@ -119,6 +134,7 @@ export interface DemoDataSpec {
   readonly vorsorge: readonly DemoVorsorgeContract[];
   readonly subscriptions: readonly DemoSubscription[];
   readonly kvContracts: readonly DemoKVContract[];
+  readonly privateLoans: readonly DemoPrivateLoan[];
   readonly portfolio: DemoPortfolioRefs;
   readonly acqMandate: DemoAcqMandate;
   readonly devProject: DemoDevProject;
