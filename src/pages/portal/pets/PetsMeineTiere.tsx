@@ -309,35 +309,45 @@ export default function PetsMeineTiere() {
           <p className="mt-2 text-sm text-muted-foreground/70">Klicken Sie auf „Tier anlegen" um Ihr erstes Haustier zu registrieren.</p>
         </div>
       ) : (
-        <div className={RECORD_CARD.GRID}>
-          {pets.map((pet) => {
-            const age = getAge(pet.birth_date);
-            const summaryItems = [
-              ...(pet.breed ? [{ label: '', value: `${SPECIES_LABELS[pet.species] || pet.species} · ${pet.breed}` }] : [{ label: '', value: SPECIES_LABELS[pet.species] || pet.species }]),
-              ...(age ? [{ label: '', value: age }] : []),
-              ...(pet.weight_kg ? [{ label: '', value: `${pet.weight_kg} kg` }] : []),
-              ...(pet.chip_number ? [{ label: '', value: `Chip: ${pet.chip_number}` }] : []),
-            ];
-            return (
-              <RecordCard
-                key={pet.id}
-                id={pet.id}
-                entityType="pet"
-                isOpen={openPetId === pet.id}
-                onToggle={() => setOpenPetId(prev => prev === pet.id ? null : pet.id)}
-                thumbnailUrl={pet.photo_url || undefined}
-                title={pet.name}
-                subtitle={SPECIES_LABELS[pet.species] || pet.species}
-                summary={summaryItems}
-                glowVariant="teal"
-              >
-                {openPetId === pet.id && (
-                  <PetInlineDossier petId={pet.id} tenantId={activeTenantId || undefined} />
-                )}
-              </RecordCard>
-            );
-          })}
-        </div>
+        <>
+          {/* Block 1: Alle Karten — IMMER geschlossen */}
+          <div className={RECORD_CARD.GRID}>
+            {pets.map((pet) => {
+              const age = getAge(pet.birth_date);
+              const summaryItems = [
+                ...(pet.breed ? [{ label: '', value: `${SPECIES_LABELS[pet.species] || pet.species} · ${pet.breed}` }] : [{ label: '', value: SPECIES_LABELS[pet.species] || pet.species }]),
+                ...(age ? [{ label: '', value: age }] : []),
+                ...(pet.weight_kg ? [{ label: '', value: `${pet.weight_kg} kg` }] : []),
+                ...(pet.chip_number ? [{ label: '', value: `Chip: ${pet.chip_number}` }] : []),
+              ];
+              return (
+                <RecordCard
+                  key={pet.id}
+                  id={pet.id}
+                  entityType="pet"
+                  isOpen={false}
+                  onToggle={() => setOpenPetId(prev => prev === pet.id ? null : pet.id)}
+                  thumbnailUrl={pet.photo_url || undefined}
+                  title={pet.name}
+                  subtitle={SPECIES_LABELS[pet.species] || pet.species}
+                  summary={summaryItems}
+                  glowVariant={openPetId === pet.id ? 'teal' : undefined}
+                >
+                  {null}
+                </RecordCard>
+              );
+            })}
+          </div>
+
+          {/* Block 2: Inline-Dossier — NUR wenn ein Tier ausgewählt */}
+          {openPetId && (
+            <PetInlineDossier
+              key={openPetId}
+              petId={openPetId}
+              tenantId={activeTenantId || undefined}
+            />
+          )}
+        </>
       )}
     </PageShell>
   );
