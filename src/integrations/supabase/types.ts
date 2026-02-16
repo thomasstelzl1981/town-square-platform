@@ -9642,13 +9642,23 @@ export type Database = {
           address: string | null
           address_house_no: string | null
           area_sqm: number | null
+          bathrooms_count: number | null
           city: string | null
+          construction_year: number | null
           created_at: string
+          floor_count: number | null
+          has_basement: boolean
+          has_garage: boolean
+          has_garden: boolean
+          heating_type: string | null
           id: string
+          last_renovation_year: number | null
+          market_value: number | null
           move_in_date: string | null
           name: string
           notes: string | null
           ownership_type: string
+          plot_area_sqm: number | null
           property_type: string
           rooms_count: number | null
           tenant_id: string
@@ -9660,13 +9670,23 @@ export type Database = {
           address?: string | null
           address_house_no?: string | null
           area_sqm?: number | null
+          bathrooms_count?: number | null
           city?: string | null
+          construction_year?: number | null
           created_at?: string
+          floor_count?: number | null
+          has_basement?: boolean
+          has_garage?: boolean
+          has_garden?: boolean
+          heating_type?: string | null
           id?: string
+          last_renovation_year?: number | null
+          market_value?: number | null
           move_in_date?: string | null
           name?: string
           notes?: string | null
           ownership_type?: string
+          plot_area_sqm?: number | null
           property_type?: string
           rooms_count?: number | null
           tenant_id: string
@@ -9678,13 +9698,23 @@ export type Database = {
           address?: string | null
           address_house_no?: string | null
           area_sqm?: number | null
+          bathrooms_count?: number | null
           city?: string | null
+          construction_year?: number | null
           created_at?: string
+          floor_count?: number | null
+          has_basement?: boolean
+          has_garage?: boolean
+          has_garden?: boolean
+          heating_type?: string | null
           id?: string
+          last_renovation_year?: number | null
+          market_value?: number | null
           move_in_date?: string | null
           name?: string
           notes?: string | null
           ownership_type?: string
+          plot_area_sqm?: number | null
           property_type?: string
           rooms_count?: number | null
           tenant_id?: string
@@ -9695,6 +9725,72 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "miety_homes_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      miety_loans: {
+        Row: {
+          bank_name: string | null
+          created_at: string
+          end_date: string | null
+          home_id: string
+          id: string
+          interest_rate: number | null
+          loan_amount: number | null
+          loan_type: string | null
+          monthly_rate: number | null
+          notes: string | null
+          remaining_balance: number | null
+          start_date: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          bank_name?: string | null
+          created_at?: string
+          end_date?: string | null
+          home_id: string
+          id?: string
+          interest_rate?: number | null
+          loan_amount?: number | null
+          loan_type?: string | null
+          monthly_rate?: number | null
+          notes?: string | null
+          remaining_balance?: number | null
+          start_date?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          bank_name?: string | null
+          created_at?: string
+          end_date?: string | null
+          home_id?: string
+          id?: string
+          interest_rate?: number | null
+          loan_amount?: number | null
+          loan_type?: string | null
+          monthly_rate?: number | null
+          notes?: string | null
+          remaining_balance?: number | null
+          start_date?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "miety_loans_home_id_fkey"
+            columns: ["home_id"]
+            isOneToOne: false
+            referencedRelation: "miety_homes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "miety_loans_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "organizations"
@@ -9743,6 +9839,75 @@ export type Database = {
           },
           {
             foreignKeyName: "miety_meter_readings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      miety_tenancies: {
+        Row: {
+          additional_costs: number | null
+          base_rent: number | null
+          cancellation_period: string | null
+          created_at: string
+          deposit_amount: number | null
+          home_id: string
+          id: string
+          landlord_contact: string | null
+          landlord_name: string | null
+          lease_end: string | null
+          lease_start: string | null
+          notes: string | null
+          tenant_id: string
+          total_rent: number | null
+          updated_at: string
+        }
+        Insert: {
+          additional_costs?: number | null
+          base_rent?: number | null
+          cancellation_period?: string | null
+          created_at?: string
+          deposit_amount?: number | null
+          home_id: string
+          id?: string
+          landlord_contact?: string | null
+          landlord_name?: string | null
+          lease_end?: string | null
+          lease_start?: string | null
+          notes?: string | null
+          tenant_id: string
+          total_rent?: number | null
+          updated_at?: string
+        }
+        Update: {
+          additional_costs?: number | null
+          base_rent?: number | null
+          cancellation_period?: string | null
+          created_at?: string
+          deposit_amount?: number | null
+          home_id?: string
+          id?: string
+          landlord_contact?: string | null
+          landlord_name?: string | null
+          lease_end?: string | null
+          lease_start?: string | null
+          notes?: string | null
+          tenant_id?: string
+          total_rent?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "miety_tenancies_home_id_fkey"
+            columns: ["home_id"]
+            isOneToOne: false
+            referencedRelation: "miety_homes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "miety_tenancies_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "organizations"
