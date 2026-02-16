@@ -7,6 +7,7 @@ import React from 'react';
 
 const PetsMeineTiere = React.lazy(() => import('./pets/PetsMeineTiere'));
 const PetsCaring = React.lazy(() => import('./pets/PetsCaring'));
+const CaringProviderDetail = React.lazy(() => import('./pets/CaringProviderDetail'));
 const PetsShop = React.lazy(() => import('./pets/PetsShop'));
 const PetsMeinBereich = React.lazy(() => import('./pets/PetsMeinBereich'));
 const PetDetailPage = React.lazy(() => import('./pets/PetDetailPage'));
@@ -23,6 +24,7 @@ export default function PetsPage() {
       <Route index element={<Navigate to="meine-tiere" replace />} />
       <Route path="meine-tiere" element={<React.Suspense fallback={<Loading />}><PetsMeineTiere /></React.Suspense>} />
       <Route path="caring" element={<React.Suspense fallback={<Loading />}><PetsCaring /></React.Suspense>} />
+      <Route path="caring/provider/:providerId" element={<React.Suspense fallback={<Loading />}><CaringProviderDetail /></React.Suspense>} />
       <Route path="shop" element={<React.Suspense fallback={<Loading />}><PetsShop /></React.Suspense>} />
       <Route path="mein-bereich" element={<React.Suspense fallback={<Loading />}><PetsMeinBereich /></React.Suspense>} />
       <Route path=":petId" element={<React.Suspense fallback={<Loading />}><PetDetailPage /></React.Suspense>} />
