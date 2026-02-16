@@ -78,7 +78,7 @@ export function TopNavigation() {
       {/* Level 2: Sub Tabs + Floating Module Switcher on hover */}
       {activeModule && !location.pathname.startsWith('/portal/area/') && (
         <div
-          className={cn("relative", showModuleSwitcher && "pb-12")}
+          className="relative"
           onMouseEnter={() => setShowModuleSwitcher(true)}
           onMouseLeave={() => setShowModuleSwitcher(false)}
         >
@@ -86,33 +86,34 @@ export function TopNavigation() {
 
           {/* Floating Module Switcher */}
           {showModuleSwitcher && areaModules.length > 0 && (
-            <div className="absolute top-full left-1/2 -translate-x-1/2 z-50
-                            flex items-center gap-1 px-4 py-2
-                            bg-card/80 backdrop-blur-xl shadow-lg rounded-2xl border border-border/30
-                            animate-in fade-in slide-in-from-top-1 duration-150">
-              {areaModules.map(({ code, module, displayLabel }) => {
-                const Icon = iconMap[module.icon] || Briefcase;
-                const isActive = activeModule?.code === code;
-                const requiresActivation = module.visibility.requires_activation && !isDevelopmentMode;
+            <div className="absolute top-full left-1/2 -translate-x-1/2 z-50 pt-2">
+              <div className="flex items-center gap-1 px-4 py-2
+                              bg-card/80 backdrop-blur-xl shadow-lg rounded-2xl border border-border/30
+                              animate-in fade-in slide-in-from-top-1 duration-150">
+                {areaModules.map(({ code, module, displayLabel }) => {
+                  const Icon = iconMap[module.icon] || Briefcase;
+                  const isActive = activeModule?.code === code;
+                  const requiresActivation = module.visibility.requires_activation && !isDevelopmentMode;
 
-                return (
-                  <NavLink
-                    key={code}
-                    to={`/portal/${module.base}`}
-                    onClick={() => setShowModuleSwitcher(false)}
-                    className={cn(
-                      'flex items-center gap-2 px-3 py-1.5 rounded-xl text-sm font-medium whitespace-nowrap transition-all',
-                      isActive
-                        ? 'bg-accent/80 text-accent-foreground'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-white/10',
-                      requiresActivation && 'opacity-50'
-                    )}
-                  >
-                    <Icon className="h-4 w-4" />
-                    <span>{displayLabel}</span>
-                  </NavLink>
-                );
-              })}
+                  return (
+                    <NavLink
+                      key={code}
+                      to={`/portal/${module.base}`}
+                      onClick={() => setShowModuleSwitcher(false)}
+                      className={cn(
+                        'flex items-center gap-2 px-3 py-1.5 rounded-xl text-sm font-medium whitespace-nowrap transition-all',
+                        isActive
+                          ? 'bg-accent/80 text-accent-foreground'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-white/10',
+                        requiresActivation && 'opacity-50'
+                      )}
+                    >
+                      <Icon className="h-4 w-4" />
+                      <span>{displayLabel}</span>
+                    </NavLink>
+                  );
+                })}
+              </div>
             </div>
           )}
         </div>
