@@ -55,7 +55,8 @@ export default function KrankenversicherungTab() {
                   getActiveWidgetGlow('emerald'),
                   isSelected && getSelectionRing('emerald'),
                 )}
-                onClick={() => setSelectedId(isSelected ? null : kv.personId)}
+                onClick={(e) => { e.stopPropagation(); setSelectedId(isSelected ? null : kv.personId); }}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); setSelectedId(isSelected ? null : kv.personId); }}}
                 role="button"
                 tabIndex={0}
               >
