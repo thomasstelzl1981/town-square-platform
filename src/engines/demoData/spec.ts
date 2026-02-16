@@ -74,7 +74,7 @@ export interface DemoKVContract {
   readonly provider: string;
   readonly monthlyPremium: number;
   readonly employerContribution?: number;
-  readonly details: Record<string, string | number | boolean>;
+  readonly details: Record<string, string | number | boolean | readonly { year: number; alt: number; neu: number }[]>;
 }
 
 /** Referenzen auf bestehende Demo-Daten (Properties, Vehicles, PV) */
