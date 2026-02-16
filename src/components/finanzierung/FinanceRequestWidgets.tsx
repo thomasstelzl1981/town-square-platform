@@ -22,6 +22,7 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { useDemoToggles } from '@/hooks/useDemoToggles';
 import { GOLDEN_PATH_PROCESSES } from '@/manifests/goldenPathProcesses';
+import { isDemoId } from '@/engines/demoData/engine';
 
 const GP_FINANZIERUNG = GOLDEN_PATH_PROCESSES.find(p => p.id === 'GP-FINANZIERUNG')!;
 import { de } from 'date-fns/locale';
@@ -115,7 +116,7 @@ export function FinanceRequestWidgets({ activeRequestId }: FinanceRequestWidgets
       </WidgetCell>
 
       {/* Existing requests */}
-      {requests.map((req) => {
+      {requests.filter((req) => showDemo || !isDemoId(req.id)).map((req) => {
         const isActive = req.id === activeRequestId;
         return (
           <WidgetCell key={req.id}>

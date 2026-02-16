@@ -14,6 +14,9 @@ import { SelbstauskunftFormV2 } from '@/components/finanzierung/SelbstauskunftFo
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { toast } from 'sonner';
 import type { ApplicantProfile } from '@/types/finance';
+import { useDemoToggles } from '@/hooks/useDemoToggles';
+import { isDemoId } from '@/engines/demoData/engine';
+import { DEMO_SELBSTAUSKUNFT_PRIMARY_ID, DEMO_SELBSTAUSKUNFT_CO_ID } from '@/engines/demoData/data';
 
 // DEV MODE: Check if we're in development (no org required)
 const isDevMode = () => {
@@ -75,66 +78,73 @@ const createEmptyProfile = (): ApplicantProfile => ({
 export default function SelbstauskunftTab() {
   const { activeOrganization } = useAuth();
   const devMode = isDevMode() && !activeOrganization?.id;
+  const { isEnabled } = useDemoToggles();
+  const demoEnabled = isEnabled('GP-FINANZIERUNG');
 
   // Fetch persistent primary applicant profile
   const { data: profile, isLoading, refetch } = useQuery({
-    queryKey: ['persistent-applicant-profile', activeOrganization?.id],
+    queryKey: ['persistent-applicant-profile', activeOrganization?.id, demoEnabled],
     queryFn: async (): Promise<ApplicantProfile | null> => {
       if (!activeOrganization?.id) return createEmptyProfile();
 
-      const { data, error } = await supabase
+      // Fetch all primary profiles (no finance_request link)
+      const { data: profiles, error } = await supabase
         .from('applicant_profiles')
         .select('*')
         .eq('tenant_id', activeOrganization.id)
         .is('finance_request_id', null)
         .in('party_role', ['primary'])
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
 
-      if (!data) {
-        // Fetch profile data for prefilling
-        const { data: { user } } = await supabase.auth.getUser();
-        let prefill: Record<string, any> = {};
-        if (user) {
-          const { data: profileData } = await supabase
-            .from('profiles')
-            .select('first_name, last_name, email, street, house_number, postal_code, city, phone_landline, phone_mobile')
-            .eq('id', user.id)
-            .single();
-          if (profileData) {
-            prefill = {
-              first_name: profileData.first_name,
-              last_name: profileData.last_name,
-              email: profileData.email,
-              address_street: profileData.street
-                ? `${profileData.street} ${profileData.house_number || ''}`.trim()
-                : null,
-              address_postal_code: profileData.postal_code,
-              address_city: profileData.city,
-              phone: profileData.phone_landline,
-              phone_mobile: profileData.phone_mobile,
-            };
-          }
-        }
+      // Filter: if demo disabled, skip demo profiles
+      const candidates = (profiles || []).filter((p: any) => {
+        if (!demoEnabled && (p.id === DEMO_SELBSTAUSKUNFT_PRIMARY_ID || isDemoId(p.id))) return false;
+        return true;
+      });
 
-        const { data: newProfile, error: createError } = await supabase
-          .from('applicant_profiles')
-          .insert({
-            tenant_id: activeOrganization.id,
-            profile_type: 'private',
-            party_role: 'primary',
-            ...prefill,
-          })
-          .select()
-          .single();
-        if (createError) throw createError;
-        return newProfile as unknown as ApplicantProfile;
+      if (candidates.length > 0) {
+        return candidates[0] as unknown as ApplicantProfile;
       }
 
-      return data as unknown as ApplicantProfile;
+      // No profile found — create a fresh one
+      const { data: { user } } = await supabase.auth.getUser();
+      let prefill: Record<string, any> = {};
+      if (user) {
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('first_name, last_name, email, street, house_number, postal_code, city, phone_landline, phone_mobile')
+          .eq('id', user.id)
+          .single();
+        if (profileData) {
+          prefill = {
+            first_name: profileData.first_name,
+            last_name: profileData.last_name,
+            email: profileData.email,
+            address_street: profileData.street
+              ? `${profileData.street} ${profileData.house_number || ''}`.trim()
+              : null,
+            address_postal_code: profileData.postal_code,
+            address_city: profileData.city,
+            phone: profileData.phone_landline,
+            phone_mobile: profileData.phone_mobile,
+          };
+        }
+      }
+
+      const { data: newProfile, error: createError } = await supabase
+        .from('applicant_profiles')
+        .insert({
+          tenant_id: activeOrganization.id,
+          profile_type: 'private',
+          party_role: 'primary',
+          ...prefill,
+        })
+        .select()
+        .single();
+      if (createError) throw createError;
+      return newProfile as unknown as ApplicantProfile;
     },
     enabled: !!activeOrganization?.id || devMode,
   });

@@ -60,6 +60,7 @@ import { AcqProfilePreview } from '@/components/akquise/AcqProfilePreview';
 import { ContactBookDialog } from '@/components/akquise/ContactBookDialog';
 import logoLight from '@/assets/logos/armstrong_logo_light.png';
 import { useDemoToggles } from '@/hooks/useDemoToggles';
+import { isDemoId } from '@/engines/demoData/engine';
 
 // ── Types ──
 interface ExtractedProfile {
@@ -546,7 +547,7 @@ export default function AkquiseMandate() {
               window.scrollTo({ top: document.getElementById('mandate-erfassung')?.offsetTop || 600, behavior: 'smooth' });
             }} />
           </WidgetCell>
-          {mandates && mandates.map(m => (
+          {mandates && mandates.filter(m => demoEnabled || !isDemoId(m.id)).map(m => (
             <WidgetCell key={m.id}>
               <MandateCaseCard mandate={m} onClick={() => navigate(`/portal/akquise-manager/mandate/${m.id}`)} />
             </WidgetCell>

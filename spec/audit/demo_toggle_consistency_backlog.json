@@ -1,0 +1,102 @@
+{
+  "version": "1.0.0",
+  "title": "Demo-Toggle Konsistenz-Audit",
+  "date": "2026-02-16",
+  "status": "COMPLETED",
+  "findings": [
+    {
+      "id": "DT-001",
+      "module": "Fahrzeuge (CarsFahrzeuge)",
+      "problem": "Demo-Widgets hatten keinen Emerald-Glow, wurden immer gezeigt",
+      "toggle": "GP-FAHRZEUG",
+      "fix": "DESIGN.DEMO_WIDGET.CARD + DEMO Badge bei isDemo, Toggle-basierter Fallback",
+      "status": "resolved"
+    },
+    {
+      "id": "DT-002",
+      "module": "Fahrzeuge (CarsAutos)",
+      "problem": "Kein Toggle-Check, Demo-Daten immer sichtbar",
+      "toggle": "GP-FAHRZEUG",
+      "fix": "useDemoToggles integriert, demoEnabled-Guard für DEMO_VEHICLES Fallback",
+      "status": "resolved"
+    },
+    {
+      "id": "DT-003",
+      "module": "Photovoltaik (AnlagenTab)",
+      "problem": "DB-geseedete PV-Anlage wurde nicht per isDemoId gefiltert",
+      "toggle": "GP-PV-ANLAGE",
+      "fix": "plants.filter mit isDemoId wenn Toggle OFF",
+      "status": "resolved"
+    },
+    {
+      "id": "DT-004",
+      "module": "Abonnements (AbonnementsTab)",
+      "problem": "Kein Toggle-Check, alle DB-Demo-Abos sichtbar",
+      "toggle": "GP-KONTEN",
+      "fix": "useDemoToggles + isDemoId Filterung auf subs-Array",
+      "status": "resolved"
+    },
+    {
+      "id": "DT-005",
+      "module": "Zuhause (UebersichtTile)",
+      "problem": "Kein direkter Demo-Datensatz — echte Profildaten",
+      "toggle": "GP-PORTFOLIO",
+      "fix": "Kein Fix nötig (kein Demo-Datensatz betroffen)",
+      "status": "not_applicable"
+    },
+    {
+      "id": "DT-006",
+      "module": "Projekte (ProjekteDashboard)",
+      "problem": "Demo-Widget korrekt per Toggle gesteuert",
+      "toggle": "GP-PROJEKT",
+      "fix": "Bereits korrekt implementiert",
+      "status": "already_correct"
+    },
+    {
+      "id": "DT-007",
+      "module": "Akquise (AkquiseMandate)",
+      "problem": "DB-geseedetes Mandat wurde nicht per isDemoId gefiltert",
+      "toggle": "GP-AKQUISE-MANDAT",
+      "fix": "mandates.filter mit isDemoId wenn Toggle OFF",
+      "status": "resolved"
+    },
+    {
+      "id": "DT-008",
+      "module": "Immobilien Portfolio",
+      "problem": "Demo-Widget wird angezeigt aber DB-Properties teilweise gefiltert",
+      "toggle": "GP-PORTFOLIO",
+      "fix": "Bereits in vorherigem Sprint implementiert (is_demo Flag + isDemoId)",
+      "status": "already_correct"
+    },
+    {
+      "id": "DT-009",
+      "module": "Selbstauskunft (MOD-07)",
+      "problem": "Demo-Applicant-Profiles (Mustermann) bleiben sichtbar bei Toggle OFF",
+      "toggle": "GP-FINANZIERUNG",
+      "fix": "isDemoId + DEMO_SELBSTAUSKUNFT_PRIMARY_ID Check in Query, Fallback auf neues leeres Profil",
+      "status": "resolved"
+    },
+    {
+      "id": "DT-010",
+      "module": "Finanzierungsanfrage (FinanceRequestWidgets)",
+      "problem": "DB-geseedete finance_requests blieben sichtbar bei Toggle OFF",
+      "toggle": "GP-FINANZIERUNG",
+      "fix": "isDemoId Filter auf requests-Array in Render",
+      "status": "resolved"
+    },
+    {
+      "id": "DT-011",
+      "module": "KV-Tab",
+      "problem": "Clientseitige Demo-KV-Daten nicht per Toggle gefiltert",
+      "toggle": "GP-KONTEN",
+      "fix": "Bereits implementiert — KrankenversicherungTab prüft isEnabled('GP-18')",
+      "status": "already_correct"
+    }
+  ],
+  "summary": {
+    "total": 11,
+    "resolved": 7,
+    "already_correct": 3,
+    "not_applicable": 1
+  }
+}

@@ -24,11 +24,12 @@ import { format, differenceInDays } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { VehicleCreateDialog } from './VehicleCreateDialog';
 import { cn } from '@/lib/utils';
-import { getActiveWidgetGlow } from '@/config/designManifest';
+import { getActiveWidgetGlow, DESIGN } from '@/config/designManifest';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { WidgetGrid } from '@/components/shared/WidgetGrid';
 import { WidgetCell } from '@/components/shared/WidgetCell';
+import { useDemoToggles } from '@/hooks/useDemoToggles';
 
 type VehicleStatus = 'active' | 'inactive' | 'sold' | 'returned';
 
@@ -99,6 +100,8 @@ export default function CarsAutos() {
   const [search, setSearch] = useState('');
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(null);
+  const { isEnabled } = useDemoToggles();
+  const demoEnabled = isEnabled('GP-FAHRZEUG');
 
   // ----- Vehicle data from DB or demo -----
   const { data: dbVehicles, isLoading, refetch } = useQuery({
@@ -116,8 +119,8 @@ export default function CarsAutos() {
     enabled: !!activeTenantId,
   });
 
-  const vehicles = dbVehicles?.length ? dbVehicles : DEMO_VEHICLES;
-  const isDemo = !dbVehicles?.length;
+  const vehicles = dbVehicles?.length ? dbVehicles : (demoEnabled ? DEMO_VEHICLES : []);
+  const isDemo = !dbVehicles?.length && demoEnabled;
 
   const filteredVehicles = vehicles.filter((v: any) => {
     const s = search.toLowerCase();
@@ -168,7 +171,7 @@ export default function CarsAutos() {
                <Card
                 className={cn(
                   "glass-card overflow-hidden cursor-pointer group transition-all h-full",
-                  getActiveWidgetGlow('teal'),
+                  isDemo ? DESIGN.DEMO_WIDGET.CARD : getActiveWidgetGlow('teal'),
                   isSelected ? "border-primary ring-2 ring-primary/20" : "border-primary/10 hover:border-primary/30"
                 )}
                 onClick={() => setSelectedVehicleId(isSelected ? null : vehicle.id)}
@@ -176,7 +179,8 @@ export default function CarsAutos() {
                 <div className="relative h-[55%] bg-muted/30 overflow-hidden">
                   <img src={getImage(vehicle)} alt={`${vehicle.make} ${vehicle.model}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                   <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-transparent" />
-                  <div className="absolute top-2 left-3">
+                  <div className="absolute top-2 left-3 flex gap-1">
+                    {isDemo && <Badge className={cn(DESIGN.DEMO_WIDGET.BADGE, "text-[9px]")}>DEMO</Badge>}
                     <Badge variant="outline" className={cn("text-[9px]", statusColors[vehicle.status as VehicleStatus])}>{statusLabels[vehicle.status as VehicleStatus]}</Badge>
                   </div>
                   <div className="absolute bottom-2 left-3">
