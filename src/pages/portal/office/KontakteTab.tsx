@@ -49,6 +49,8 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { AccountIntegrationDialog } from '@/components/portal/office/AccountIntegrationDialog';
+import { useDemoToggles } from '@/hooks/useDemoToggles';
+import { isDemoId } from '@/engines/demoData/engine';
 
 // Category configuration with colors
 const CATEGORIES = [
@@ -427,17 +429,22 @@ export function KontakteTab() {
     }
   };
 
-  const filteredContacts = contacts.filter((contact) => {
-    const query = searchQuery.toLowerCase();
-    return (
-      contact.first_name.toLowerCase().includes(query) ||
-      contact.last_name.toLowerCase().includes(query) ||
-      contact.email?.toLowerCase().includes(query) ||
-      contact.company?.toLowerCase().includes(query) ||
-      contact.category?.toLowerCase().includes(query) ||
-      contact.city?.toLowerCase().includes(query)
-    );
-  });
+  const { isEnabled: isDemoEnabled } = useDemoToggles();
+  const demoContactsVisible = isDemoEnabled('GP-KONTEN');
+
+  const filteredContacts = contacts
+    .filter((contact) => demoContactsVisible || !isDemoId(contact.id))
+    .filter((contact) => {
+      const query = searchQuery.toLowerCase();
+      return (
+        contact.first_name.toLowerCase().includes(query) ||
+        contact.last_name.toLowerCase().includes(query) ||
+        contact.email?.toLowerCase().includes(query) ||
+        contact.company?.toLowerCase().includes(query) ||
+        contact.category?.toLowerCase().includes(query) ||
+        contact.city?.toLowerCase().includes(query)
+      );
+    });
 
   if (isLoading) {
     return (

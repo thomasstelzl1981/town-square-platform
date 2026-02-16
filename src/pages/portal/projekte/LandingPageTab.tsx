@@ -17,6 +17,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useDevProjects } from '@/hooks/useDevProjects';
 import { LoadingState } from '@/components/shared/LoadingState';
 import { isDemoProject, DEMO_PROJECT, DEMO_PROJECT_ID, DEMO_UNITS } from '@/components/projekte/demoProjectData';
+import { useDemoToggles } from '@/hooks/useDemoToggles';
 import { LandingPageBuilder } from '@/components/projekte/landing-page/LandingPageBuilder';
 import { LandingPagePreview } from '@/components/projekte/landing-page/LandingPagePreview';
 import { useLandingPageByProject } from '@/hooks/useLandingPage';
@@ -54,7 +55,9 @@ const DEMO_LANDING_PAGE: LandingPage = {
 export default function LandingPageTab() {
   const queryClient = useQueryClient();
   const { projects, isLoading, portfolioRows } = useDevProjects();
-  const [selectedId, setSelectedId] = useState<string>(DEMO_PROJECT_ID);
+  const { isEnabled } = useDemoToggles();
+  const showDemoProject = isEnabled('GP-PROJEKT');
+  const [selectedId, setSelectedId] = useState<string>(showDemoProject ? DEMO_PROJECT_ID : 'new');
 
   const isSelectedDemo = isDemoProject(selectedId);
   const isNewMode = selectedId === 'new';
@@ -130,35 +133,37 @@ export default function LandingPageTab() {
 
       {/* Widget Grid: Demo + Neue Website + real projects */}
       <WidgetGrid>
-        {/* Widget 1: Demo (grün, Position 0) */}
-        <WidgetCell>
-          <Card
-            className={cn(
-              'h-full cursor-pointer transition-all group flex flex-col',
-              DESIGN.DEMO_WIDGET.CARD,
-              DESIGN.DEMO_WIDGET.HOVER,
-              isSelectedDemo && 'ring-2 ring-emerald-400 shadow-glow',
-            )}
-            onClick={() => setSelectedId(DEMO_PROJECT_ID)}
-          >
-            <CardContent className="p-4 flex flex-col h-full justify-between">
-              <div className="flex items-start justify-between">
-                <Badge className={DESIGN.DEMO_WIDGET.BADGE}>DEMODATEN</Badge>
-                <span className="text-[10px] font-mono text-muted-foreground">SOT-BT-0001</span>
-              </div>
-              <div className="flex-1 flex flex-col items-center justify-center text-center gap-1 py-2">
-                <div className={cn(DESIGN.HEADER.WIDGET_ICON_BOX, 'bg-emerald-500/10')}>
-                  <Globe className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+        {/* Widget 1: Demo (grün, Position 0) — only if toggle ON */}
+        {showDemoProject && (
+          <WidgetCell>
+            <Card
+              className={cn(
+                'h-full cursor-pointer transition-all group flex flex-col',
+                DESIGN.DEMO_WIDGET.CARD,
+                DESIGN.DEMO_WIDGET.HOVER,
+                isSelectedDemo && 'ring-2 ring-emerald-400 shadow-glow',
+              )}
+              onClick={() => setSelectedId(DEMO_PROJECT_ID)}
+            >
+              <CardContent className="p-4 flex flex-col h-full justify-between">
+                <div className="flex items-start justify-between">
+                  <Badge className={DESIGN.DEMO_WIDGET.BADGE}>DEMODATEN</Badge>
+                  <span className="text-[10px] font-mono text-muted-foreground">SOT-BT-0001</span>
                 </div>
-                <p className="font-semibold text-sm leading-tight">Residenz am Stadtpark</p>
-                <p className="text-[11px] text-muted-foreground">80331 München</p>
-              </div>
-              <div className="text-center">
-                <Badge variant="outline" className="text-[10px]">24 Einheiten · Entwurf</Badge>
-              </div>
-            </CardContent>
-          </Card>
-        </WidgetCell>
+                <div className="flex-1 flex flex-col items-center justify-center text-center gap-1 py-2">
+                  <div className={cn(DESIGN.HEADER.WIDGET_ICON_BOX, 'bg-emerald-500/10')}>
+                    <Globe className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                  </div>
+                  <p className="font-semibold text-sm leading-tight">Residenz am Stadtpark</p>
+                  <p className="text-[11px] text-muted-foreground">80331 München</p>
+                </div>
+                <div className="text-center">
+                  <Badge variant="outline" className="text-[10px]">24 Einheiten · Entwurf</Badge>
+                </div>
+              </CardContent>
+            </Card>
+          </WidgetCell>
+        )}
 
         {/* Widget 2: Neue Website erstellen */}
         <WidgetCell>

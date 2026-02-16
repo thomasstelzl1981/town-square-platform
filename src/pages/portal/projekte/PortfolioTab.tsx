@@ -20,6 +20,7 @@ import { ProjectDMSWidget } from '@/components/projekte/ProjectDMSWidget';
 import { ProjectCard } from '@/components/projekte/ProjectCard';
 import { LoadingState } from '@/components/shared/LoadingState';
 import { isDemoMode, isDemoProject, DEMO_PROJECT, DEMO_PROJECT_ID, DEMO_UNITS, DEMO_CALC, DEMO_DEVELOPER_CONTEXT } from '@/components/projekte/demoProjectData';
+import { useDemoToggles } from '@/hooks/useDemoToggles';
 import type { DemoUnit } from '@/components/projekte/demoProjectData';
 import { SalesStatusReportWidget } from '@/components/projekte/SalesStatusReportWidget';
 import {
@@ -45,6 +46,8 @@ export default function PortfolioTab() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { portfolioRows, isLoadingPortfolio, deleteProject } = useDevProjects();
+  const { isEnabled } = useDemoToggles();
+  const showDemoProject = isEnabled('GP-PROJEKT');
   
   // Default to demo project
   const [selectedProjectId, setSelectedProjectId] = useState<string>(DEMO_PROJECT_ID);
@@ -199,16 +202,18 @@ export default function PortfolioTab() {
     <PageShell>
       <ModulePageHeader title="PROJEKT-PORTFOLIO" description="Übersicht aller Bauträger- und Aufteiler-Projekte" />
 
-      {/* Project Switcher — Horizontal Tile Row (Demo always first) */}
+      {/* Project Switcher — Horizontal Tile Row (Demo first if enabled) */}
       <WidgetGrid>
-        <WidgetCell>
-          <ProjectCard
-            project={DEMO_PROJECT}
-            isDemo
-            isSelected={isSelectedDemo}
-            onClick={() => setSelectedProjectId(DEMO_PROJECT_ID)}
-          />
-        </WidgetCell>
+        {showDemoProject && (
+          <WidgetCell>
+            <ProjectCard
+              project={DEMO_PROJECT}
+              isDemo
+              isSelected={isSelectedDemo}
+              onClick={() => setSelectedProjectId(DEMO_PROJECT_ID)}
+            />
+          </WidgetCell>
+        )}
         {portfolioRows.map((p) => (
           <WidgetCell key={p.id}>
             <ProjectCard
