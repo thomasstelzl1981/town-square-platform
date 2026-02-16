@@ -33,10 +33,10 @@ export default function VertriebTab() {
   const { portfolioRows, isLoadingPortfolio, projects } = useDevProjects();
   const { isEnabled } = useDemoToggles();
   const showDemoProject = isEnabled('GP-PROJEKT');
-  const [selectedProject, setSelectedProject] = useState<string>(showDemoProject ? DEMO_PROJECT_ID : (projects[0]?.id || DEMO_PROJECT_ID));
+  const [selectedProject, setSelectedProject] = useState<string>(showDemoProject ? DEMO_PROJECT_ID : (projects[0]?.id || ''));
   const [showCreateDialog, setShowCreateDialog] = useState(false);
 
-  const isSelectedDemo = isDemoProject(selectedProject);
+  const isSelectedDemo = showDemoProject && isDemoProject(selectedProject);
   const activeProjectId = isSelectedDemo ? DEMO_PROJECT.id : selectedProject;
   const { reservations, isLoading: isLoadingReservations, updateReservation } = useProjectReservations(isSelectedDemo ? undefined : activeProjectId);
   const { units } = useProjectUnits(isSelectedDemo ? undefined : activeProjectId);

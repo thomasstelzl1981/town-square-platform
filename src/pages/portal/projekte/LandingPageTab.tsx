@@ -57,17 +57,17 @@ export default function LandingPageTab() {
   const { projects, isLoading, portfolioRows } = useDevProjects();
   const { isEnabled } = useDemoToggles();
   const showDemoProject = isEnabled('GP-PROJEKT');
-  const [selectedId, setSelectedId] = useState<string>(showDemoProject ? DEMO_PROJECT_ID : (portfolioRows[0]?.id || 'new'));
+  const [selectedId, setSelectedId] = useState<string>(showDemoProject ? DEMO_PROJECT_ID : (portfolioRows[0]?.id || ''));
 
-  const isSelectedDemo = isDemoProject(selectedId);
+  const isSelectedDemo = showDemoProject && isDemoProject(selectedId);
   const isNewMode = selectedId === 'new';
 
-  const activeProject: ProjectPortfolioRow = isSelectedDemo
+  const activeProject: ProjectPortfolioRow | null = isSelectedDemo
     ? DEMO_PROJECT
-    : (portfolioRows.find(p => p.id === selectedId) || portfolioRows[0] || DEMO_PROJECT);
+    : (portfolioRows.find(p => p.id === selectedId) || portfolioRows[0] || null);
   const rawProject = isSelectedDemo ? null : projects.find(p => p.id === selectedId);
-  const projectName = activeProject.name || 'Projekt';
-  const projectId = isSelectedDemo ? undefined : activeProject.id;
+  const projectName = activeProject?.name || 'Projekt';
+  const projectId = isSelectedDemo ? undefined : activeProject?.id;
   const organizationId = rawProject?.tenant_id;
 
   const { data: landingPage, isLoading: lpLoading } = useLandingPageByProject(projectId);
