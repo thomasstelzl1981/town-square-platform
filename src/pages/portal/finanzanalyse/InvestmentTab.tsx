@@ -1,13 +1,13 @@
 /**
  * MOD-18 Finanzen — Tab 2: INVESTMENT
  * Person-widget header + state machine: none → Onboarding Wizard, active → Demo Portfolio
- * v2 — per-person depot state
+ * v3 — RecordCard person widgets (homogenized with Abo-Standard)
  */
 import { useState, useMemo } from 'react';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
-import { WidgetGrid } from '@/components/shared/WidgetGrid';
-import { WidgetCell } from '@/components/shared/WidgetCell';
+import { RecordCard } from '@/components/shared/RecordCard';
+import { RECORD_CARD } from '@/config/designManifest';
 import { useDemoDepot } from '@/hooks/useDemoDepot';
 import { DepotOnboardingWizard } from '@/components/finanzanalyse/depot/DepotOnboardingWizard';
 import { DepotPortfolio } from '@/components/finanzanalyse/depot/DepotPortfolio';
@@ -19,8 +19,6 @@ import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
-import { getActiveWidgetGlow } from '@/config/designManifest';
-import { User, TrendingUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function InvestmentTab() {
@@ -67,48 +65,38 @@ export default function InvestmentTab() {
         }
       />
 
-      {/* Person widgets */}
+      {/* Person widgets as RecordCards */}
       {persons && persons.length > 0 && (
-        <WidgetGrid className="mb-6">
+        <div className={RECORD_CARD.GRID}>
           {persons.map(person => {
             const isSelected = person.id === effectivePersonId;
             const isPrimary = person.is_primary;
-            // Check if this person has an active depot (only primary in demo)
             const personDepotKey = `depot_status_${person.id}`;
             const storedStatus = localStorage.getItem(personDepotKey);
             const hasDepot = storedStatus === 'active' || (storedStatus === null && isPrimary);
 
             return (
-              <WidgetCell key={person.id}>
-                <div
-                  onClick={() => setSelectedPersonId(person.id)}
-                  className={cn(
-                    'glass-card h-full cursor-pointer transition-all flex flex-col items-center justify-center text-center p-4 gap-2',
-                    hasDepot && getActiveWidgetGlow('primary'),
-                    isSelected ? 'ring-2 ring-primary shadow-lg' : 'hover:ring-1 hover:ring-primary/40'
-                  )}
-                >
-                  <div className={cn(
-                    'w-12 h-12 rounded-full flex items-center justify-center',
-                    hasDepot ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground'
-                  )}>
-                    {hasDepot ? <TrendingUp className="w-5 h-5" /> : <User className="w-5 h-5" />}
-                  </div>
-                  <div>
-                    <p className="font-semibold text-sm">{person.first_name} {person.last_name}</p>
-                    {hasDepot ? (
-                      <p className="text-xs text-emerald-500 font-medium">
-                        {totalValue.toLocaleString('de-DE', { minimumFractionDigits: 2 })} €
-                      </p>
-                    ) : (
-                      <p className="text-xs text-muted-foreground">Kein Depot</p>
-                    )}
-                  </div>
-                </div>
-              </WidgetCell>
+              <RecordCard
+                key={person.id}
+                id={person.id}
+                entityType="person"
+                isOpen={false}
+                onToggle={() => setSelectedPersonId(person.id)}
+                glowVariant={hasDepot ? 'primary' : undefined}
+                title={`${person.first_name} ${person.last_name}`}
+                subtitle={hasDepot ? 'Depot aktiv' : 'Kein Depot'}
+                badges={hasDepot ? [{ label: 'Aktiv', variant: 'default' as const }] : []}
+                summary={hasDepot ? [
+                  { label: 'Depotwert', value: `${totalValue.toLocaleString('de-DE', { minimumFractionDigits: 2 })} €` },
+                ] : []}
+                className={cn(isSelected && 'ring-2 ring-primary')}
+              >
+                {/* No open state — person selection only */}
+                <div />
+              </RecordCard>
             );
           })}
-        </WidgetGrid>
+        </div>
       )}
 
       {/* Content based on selected person's depot status */}

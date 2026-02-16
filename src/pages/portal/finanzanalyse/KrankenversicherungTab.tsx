@@ -1,33 +1,27 @@
 /**
  * MOD-18 Finanzen — Tab: Krankenversicherung (KV)
  * 
- * Zeigt PKV/GKV-Status aller Haushaltsmitglieder als Demo-Widgets.
+ * Zeigt PKV/GKV-Status aller Haushaltsmitglieder als RecordCard-Widgets.
  * Daten kommen aus der demoData Engine (clientseitig).
  */
-import { WidgetGrid } from '@/components/shared/WidgetGrid';
-import { WidgetCell } from '@/components/shared/WidgetCell';
-import { DEMO_WIDGET } from '@/config/designManifest';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useState } from 'react';
+import { PageShell } from '@/components/shared/PageShell';
+import { RecordCard } from '@/components/shared/RecordCard';
+import { RECORD_CARD } from '@/config/designManifest';
+import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { getDemoKVContracts } from '@/engines/demoData';
 import { useDemoToggles } from '@/hooks/useDemoToggles';
-import { Shield, Heart, Users, Euro } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { Shield } from 'lucide-react';
 
 function fmt(v: number) {
   return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 2 }).format(v);
 }
 
-const KV_TYPE_CONFIG = {
-  PKV: { label: 'Private Krankenversicherung', color: 'text-primary', icon: Shield },
-  GKV: { label: 'Gesetzliche Krankenversicherung', color: 'text-primary/70', icon: Heart },
-  familienversichert: { label: 'Familienversichert', color: 'text-muted-foreground', icon: Users },
-} as const;
-
 export default function KrankenversicherungTab() {
   const { isEnabled } = useDemoToggles();
   const demoEnabled = isEnabled('GP-18');
   const kvContracts = getDemoKVContracts();
+  const [openCardId, setOpenCardId] = useState<string | null>(null);
 
   if (!demoEnabled) {
     return (
@@ -37,67 +31,80 @@ export default function KrankenversicherungTab() {
     );
   }
 
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <Shield className="h-6 w-6 text-primary" />
-        <div>
-          <h2 className="text-lg font-semibold">Krankenversicherung</h2>
-          <p className="text-sm text-muted-foreground">PKV & GKV Übersicht für alle Haushaltsmitglieder</p>
-        </div>
-      </div>
+  const toggleCard = (id: string) => {
+    setOpenCardId(prev => prev === id ? null : id);
+  };
 
-      <WidgetGrid>
-        {kvContracts.map((kv) => {
-          const config = KV_TYPE_CONFIG[kv.type];
-          const Icon = config.icon;
-          return (
-            <WidgetCell key={kv.personId}>
-              <Card className={cn('h-full', DEMO_WIDGET.CARD, DEMO_WIDGET.HOVER)}>
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Icon className={cn('h-5 w-5', config.color)} />
-                      <CardTitle className="text-base">{kv.personName}</CardTitle>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline" className={DEMO_WIDGET.BADGE}>DEMO</Badge>
-                      <Badge variant="outline" className={config.color}>{kv.type}</Badge>
-                    </div>
+  return (
+    <PageShell>
+      <ModulePageHeader
+        title="Krankenversicherung"
+        description="PKV & GKV Übersicht für alle Haushaltsmitglieder"
+      />
+
+      <div className={RECORD_CARD.GRID}>
+        {kvContracts.map((kv) => (
+          <RecordCard
+            key={kv.personId}
+            id={kv.personId}
+            entityType="insurance"
+            isOpen={openCardId === kv.personId}
+            onToggle={() => toggleCard(kv.personId)}
+            glowVariant="primary"
+            title={kv.personName}
+            subtitle={kv.type}
+            badges={[
+              { label: 'DEMO', variant: 'outline' as const },
+              { label: kv.type, variant: 'secondary' as const },
+            ]}
+            summary={[
+              { label: 'Versicherer', value: kv.provider },
+              { label: 'Beitrag', value: fmt(kv.monthlyPremium) },
+            ]}
+          >
+            {/* Open State: KV Details read-only */}
+            <div>
+              <p className={RECORD_CARD.SECTION_TITLE}>Vertragsdetails</p>
+              <div className={RECORD_CARD.FIELD_GRID}>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">Versicherer</p>
+                  <p className="text-sm font-medium">{kv.provider}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">Typ</p>
+                  <p className="text-sm font-medium">{kv.type}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">Monatsbeitrag</p>
+                  <p className="text-sm font-medium">{fmt(kv.monthlyPremium)}</p>
+                </div>
+                {kv.employerContribution && (
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">AG-Anteil</p>
+                    <p className="text-sm font-medium">{fmt(kv.employerContribution)}</p>
                   </div>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Versicherer</span>
-                    <span className="text-sm font-medium">{kv.provider}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Monatsbeitrag</span>
-                    <span className="text-sm font-semibold flex items-center gap-1">
-                      <Euro className="h-3.5 w-3.5" />
-                      {fmt(kv.monthlyPremium)}
-                    </span>
-                  </div>
-                  {kv.employerContribution && (
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">AG-Anteil</span>
-                      <span className="text-sm text-primary/70">{fmt(kv.employerContribution)}</span>
-                    </div>
-                  )}
+                )}
+              </div>
+            </div>
+
+            {Object.keys(kv.details).length > 0 && (
+              <div>
+                <p className={RECORD_CARD.SECTION_TITLE}>Zusatzdetails</p>
+                <div className={RECORD_CARD.FIELD_GRID}>
                   {Object.entries(kv.details).map(([key, value]) => (
-                    <div key={key} className="flex items-center justify-between">
-                      <span className="text-xs text-muted-foreground capitalize">{key.replace(/_/g, ' ')}</span>
-                      <span className="text-xs">
-                        {typeof value === 'boolean' ? (value ? '✓' : '✗') : String(value)}
-                      </span>
+                    <div key={key} className="space-y-1">
+                      <p className="text-xs text-muted-foreground capitalize">{key.replace(/_/g, ' ')}</p>
+                      <p className="text-sm font-medium">
+                        {typeof value === 'boolean' ? (value ? '✓ Ja' : '✗ Nein') : String(value)}
+                      </p>
                     </div>
                   ))}
-                </CardContent>
-              </Card>
-            </WidgetCell>
-          );
-        })}
-      </WidgetGrid>
-    </div>
+                </div>
+              </div>
+            )}
+          </RecordCard>
+        ))}
+      </div>
+    </PageShell>
   );
 }
