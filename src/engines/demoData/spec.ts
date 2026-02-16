@@ -85,6 +85,27 @@ export interface DemoPortfolioRefs {
   readonly landlordContextId: string;
 }
 
+/** Demo-Akquise-Mandat */
+export interface DemoAcqMandate {
+  readonly id: string;
+  readonly code: string;
+  readonly clientDisplayName: string;
+  readonly assetFocus: string[];
+  readonly region: string;
+  readonly priceMin: number;
+  readonly priceMax: number;
+  readonly yieldTarget: number;
+}
+
+/** Demo-Projekt (Developer/Aufteiler) */
+export interface DemoDevProject {
+  readonly projectId: string;
+  readonly developerContextId: string;
+  readonly developerContextName: string;
+  readonly projectName: string;
+  readonly city: string;
+}
+
 /** Gesamtstruktur aller Demo-Daten */
 export interface DemoDataSpec {
   readonly personas: readonly DemoPersona[];
@@ -93,4 +114,6 @@ export interface DemoDataSpec {
   readonly subscriptions: readonly DemoSubscription[];
   readonly kvContracts: readonly DemoKVContract[];
   readonly portfolio: DemoPortfolioRefs;
+  readonly acqMandate: DemoAcqMandate;
+  readonly devProject: DemoDevProject;
 }
