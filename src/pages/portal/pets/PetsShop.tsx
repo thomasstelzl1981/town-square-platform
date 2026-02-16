@@ -1,5 +1,5 @@
 /**
- * PetsShop — 4 CI-Widgets: Ernährung, Lennox Tracker, Zooplus, Fressnapf
+ * PetsShop — 4 CI-Widgets: Ernährung, Lennox Tracker, Lennox Style, Fressnapf
  */
 import { useState } from 'react';
 import { ShoppingCart, MapPin, ExternalLink, Radar, Store, PawPrint, Clock, Search, Plug, WifiOff, UtensilsCrossed, Activity, Shield, Battery, Droplets, Heart, Check } from 'lucide-react';
@@ -7,6 +7,7 @@ import { DESIGN } from '@/config/designManifest';
 import lennoxHeroImg from '@/assets/lennox-hero.jpg';
 import lennoxProductImg from '@/assets/lennox-tracker-product.jpg';
 import lennoxLifestyleImg from '@/assets/lennox-lifestyle.jpg';
+import lennoxStyleProductsImg from '@/assets/lennox-style-products.png';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { WidgetGrid } from '@/components/shared/WidgetGrid';
@@ -88,7 +89,7 @@ type ShopWidget = 'shop' | 'lennox' | 'zooplus' | 'fressnapf';
 const WIDGETS: { key: ShopWidget; title: string; icon: typeof Store; description: string; badge?: string }[] = [
   { key: 'shop', title: 'Ernährung', icon: UtensilsCrossed, description: 'Lakefields — Naturbelassenes Hundefutter' },
   { key: 'lennox', title: 'Lennox Tracker', icon: Radar, description: 'GPS-Tracker für Ihr Tier bestellen' },
-  { key: 'zooplus', title: 'Zooplus', icon: ShoppingCart, description: 'Tierbedarf bei Zooplus', badge: 'Partner' },
+  { key: 'zooplus', title: 'Lennox Style', icon: PawPrint, description: 'Premium Hundezubehör — eigene Kollektion' },
   { key: 'fressnapf', title: 'Fressnapf', icon: ShoppingCart, description: 'Tierbedarf bei Fressnapf', badge: 'Partner' },
 ];
 
@@ -414,20 +415,122 @@ export default function PetsShop() {
         </div>
       )}
 
-      {activeWidget === 'zooplus' && (
-        <div className="space-y-4">
-          <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Zooplus Partner-Shop</h3>
-          <Card>
-            <CardContent className="pt-6 text-center space-y-4">
-              <ShoppingCart className="mx-auto h-12 w-12 text-muted-foreground/30" />
-              <p className="text-sm text-muted-foreground">Tierbedarf, Futter und Zubehör bei unserem Partner Zooplus.</p>
-              <Button variant="outline" className="gap-2" onClick={() => window.open('https://www.zooplus.de', '_blank')}>
-                <ExternalLink className="h-4 w-4" /> Zu Zooplus
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+      {activeWidget === 'zooplus' && (() => {
+        const LENNOX_STYLE_PRODUCTS = [
+          { name: 'LENNOX Premium Leather Leash', desc: 'Hochwertige, dreifach verstellbare Lederleine', price: '39,90 €', row: 0, col: 0, cat: 'Leinen & Geschirr' },
+          { name: 'LENNOX Adjustable Harness Pro', desc: 'Ergonomisches Y-Geschirr mit optimaler Druckverteilung', price: '49,90 €', row: 0, col: 1, cat: 'Leinen & Geschirr' },
+          { name: 'LENNOX Car Seat Protector', desc: 'Strapazierfähiger Autositzschutz für sichere Fahrten', price: '59,90 €', row: 0, col: 2, cat: 'Unterwegs' },
+          { name: 'LENNOX Treat Pouch Elite', desc: 'Stilvoller Leckerlibeutel mit Schnellzugriff', price: '29,90 €', row: 0, col: 3, cat: 'Training' },
+          { name: 'LENNOX Interactive Chew Toy', desc: 'Robustes Intelligenzspielzeug für mentale Auslastung', price: '24,90 €', row: 1, col: 0, cat: 'Spielzeug' },
+          { name: 'LENNOX Luxury Blanket', desc: 'Weiche Premium-Decke für Komfort zuhause oder unterwegs', price: '44,90 €', row: 1, col: 1, cat: 'Betten & Decken' },
+          { name: 'LENNOX Training Clicker Pro', desc: 'Präziser Trainings-Clicker für positives Hundetraining', price: '9,90 €', row: 1, col: 2, cat: 'Training' },
+          { name: 'LENNOX Travel Water Bottle', desc: 'Praktische 2-in-1 Trinkflasche mit integriertem Napf', price: '19,90 €', row: 1, col: 3, cat: 'Unterwegs' },
+          { name: 'LENNOX Orthopedic Dog Bed', desc: 'Komfortables Hundebett mit stützender Polsterung', price: '89,90 €', row: 2, col: 0, cat: 'Betten & Decken' },
+          { name: 'LENNOX Portable Dog Bowl', desc: 'Leicht faltbarer Reisenapf für Ausflüge und Touren', price: '14,90 €', row: 2, col: 1, cat: 'Unterwegs' },
+          { name: 'LENNOX Grooming Brush Set', desc: 'Effektives Fellpflege-Set für glänzendes Hundefell', price: '34,90 €', row: 2, col: 2, cat: 'Pflege' },
+          { name: 'LENNOX Reflective Night Collar', desc: 'Reflektierendes Halsband für Sichtbarkeit bei Dunkelheit', price: '22,90 €', row: 2, col: 3, cat: 'Leinen & Geschirr' },
+        ];
+        const STYLE_CATEGORIES = ['Alle', 'Leinen & Geschirr', 'Betten & Decken', 'Spielzeug', 'Unterwegs', 'Pflege', 'Training'];
+        const [styleCat, setStyleCat] = [activeCategory, setActiveCategory];
+        const filtered = LENNOX_STYLE_PRODUCTS.filter(p => !styleCat || styleCat === 'Alle' || p.cat === styleCat);
+
+        return (
+          <div className="space-y-4">
+            {/* Header Banner */}
+            <Card className="overflow-hidden border-0">
+              <div className="bg-gradient-to-br from-emerald-500/20 to-emerald-600/5 p-6 sm:p-8">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-background/80 backdrop-blur-sm shadow-sm">
+                    <PawPrint className="h-7 w-7 text-emerald-600 dark:text-emerald-400" />
+                  </div>
+                  <div className="flex-1">
+                    <h2 className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">LENNOX Style</h2>
+                    <p className="text-sm text-muted-foreground mt-1">Premium Hundezubehör — Designed for Dogs</p>
+                  </div>
+                </div>
+                <p className="text-sm text-muted-foreground mt-4 max-w-2xl">
+                  12 handverlesene Produkte aus unserer eigenen Kollektion. Qualität, Design und Funktionalität für anspruchsvolle Hundebesitzer.
+                </p>
+              </div>
+            </Card>
+
+            {/* Category Badges */}
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex flex-wrap gap-2">
+                  {STYLE_CATEGORIES.map(cat => (
+                    <Badge
+                      key={cat}
+                      variant={(styleCat === cat || (!styleCat && cat === 'Alle')) ? 'default' : 'secondary'}
+                      className="cursor-pointer hover:bg-accent transition-colors text-xs"
+                      onClick={() => setActiveCategory(cat === 'Alle' ? null : (prev => prev === cat ? null : cat))}
+                    >
+                      {cat}
+                    </Badge>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Product Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {filtered.map((product, i) => (
+                <Card key={i} className="group cursor-pointer hover:shadow-md transition-all hover:-translate-y-0.5 hover:border-emerald-500/30">
+                  <CardContent className="p-3 flex flex-col gap-2">
+                    <div className="relative aspect-square w-full rounded-xl bg-muted/40 overflow-hidden">
+                      <img
+                        src={lennoxStyleProductsImg}
+                        alt={product.name}
+                        className="absolute max-w-none group-hover:scale-105 transition-transform duration-300"
+                        style={{
+                          width: '400%',
+                          height: '300%',
+                          left: `${-product.col * 100}%`,
+                          top: `${-product.row * 100}%`,
+                        }}
+                      />
+                    </div>
+                    <span className="text-xs font-medium leading-tight line-clamp-2">{product.name}</span>
+                    <span className="text-[11px] text-muted-foreground line-clamp-1">{product.desc}</span>
+                    <span className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold">{product.price}</span>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+
+            {/* Integration Accordion */}
+            <Accordion type="single" collapsible>
+              <AccordionItem value="integration" className="border rounded-2xl px-4">
+                <AccordionTrigger className="hover:no-underline">
+                  <div className="flex items-center gap-3">
+                    <Plug className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm font-medium">Integration & Zugangsdaten</span>
+                    <Badge variant="outline" className="gap-1 text-muted-foreground ml-2">
+                      <WifiOff className="h-3 w-3" />
+                      Nicht verbunden
+                    </Badge>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent>
+                  <div className="space-y-4 pt-2 pb-2">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Shop-ID</Label>
+                      <Input placeholder="Lennox Style Shop ID" disabled className="text-sm" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">API Key</Label>
+                      <Input placeholder="Lennox Style API Key" disabled className="text-sm" />
+                    </div>
+                    <Button variant="outline" disabled size="sm">
+                      Verbindung testen
+                    </Button>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+          </div>
+        );
+      })()}
 
       {activeWidget === 'fressnapf' && (
         <div className="space-y-4">
