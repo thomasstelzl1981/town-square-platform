@@ -50,7 +50,7 @@ export default function PortfolioTab() {
   const showDemoProject = isEnabled('GP-PROJEKT');
   
   // Default to demo project
-  const [selectedProjectId, setSelectedProjectId] = useState<string>(showDemoProject ? DEMO_PROJECT_ID : (portfolioRows[0]?.id || DEMO_PROJECT_ID));
+  const [selectedProjectId, setSelectedProjectId] = useState<string>(showDemoProject ? DEMO_PROJECT_ID : (portfolioRows[0]?.id || ''));
 
   const isLoading = isLoadingPortfolio;
   const isSelectedDemo = isDemoProject(selectedProjectId);
@@ -72,9 +72,9 @@ export default function PortfolioTab() {
   };
 
   // Get selected project data
-  const selectedProject = isSelectedDemo
+  const selectedProject = (isSelectedDemo && showDemoProject)
     ? DEMO_PROJECT
-    : portfolioRows.find(p => p.id === selectedProjectId) || portfolioRows[0];
+    : portfolioRows.find(p => p.id === selectedProjectId) || portfolioRows[0] || null;
 
   // ── Fetch real units from dev_project_units ────────────────────────────
   const { data: realUnits } = useQuery({
@@ -107,7 +107,8 @@ export default function PortfolioTab() {
 
   // Base units: demo or real mapped to DemoUnit interface
   const baseUnits: DemoUnit[] = useMemo(() => {
-    if (isSelectedDemo || !realUnits || realUnits.length === 0) return DEMO_UNITS;
+    if (isSelectedDemo && showDemoProject) return DEMO_UNITS;
+    if (!realUnits || realUnits.length === 0) return [];
 
     return realUnits.map((u) => {
       const listPrice = u.list_price ?? 0;
