@@ -106,6 +106,12 @@ export interface DemoDevProject {
   readonly city: string;
 }
 
+/** Demo-Selbstauskunft (persistente Applicant Profiles) */
+export interface DemoSelbstauskunft {
+  readonly primaryProfileId: string;
+  readonly coApplicantProfileId: string;
+}
+
 /** Gesamtstruktur aller Demo-Daten */
 export interface DemoDataSpec {
   readonly personas: readonly DemoPersona[];
@@ -116,4 +122,5 @@ export interface DemoDataSpec {
   readonly portfolio: DemoPortfolioRefs;
   readonly acqMandate: DemoAcqMandate;
   readonly devProject: DemoDevProject;
+  readonly selbstauskunft: DemoSelbstauskunft;
 }
