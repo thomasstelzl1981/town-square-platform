@@ -215,7 +215,7 @@ export type Database = {
             | Database["public"]["Enums"]["acq_routing_method"]
             | null
           subject: string | null
-          tenant_id: string | null
+          tenant_id: string
           to_email: string | null
         }
         Insert: {
@@ -238,7 +238,7 @@ export type Database = {
             | Database["public"]["Enums"]["acq_routing_method"]
             | null
           subject?: string | null
-          tenant_id?: string | null
+          tenant_id: string
           to_email?: string | null
         }
         Update: {
@@ -261,7 +261,7 @@ export type Database = {
             | Database["public"]["Enums"]["acq_routing_method"]
             | null
           subject?: string | null
-          tenant_id?: string | null
+          tenant_id?: string
           to_email?: string | null
         }
         Relationships: [
@@ -303,7 +303,7 @@ export type Database = {
           id: string
           mandate_id: string
           payload: Json | null
-          tenant_id: string | null
+          tenant_id: string
         }
         Insert: {
           actor_id?: string | null
@@ -312,7 +312,7 @@ export type Database = {
           id?: string
           mandate_id: string
           payload?: Json | null
-          tenant_id?: string | null
+          tenant_id: string
         }
         Update: {
           actor_id?: string | null
@@ -321,7 +321,7 @@ export type Database = {
           id?: string
           mandate_id?: string
           payload?: Json | null
-          tenant_id?: string | null
+          tenant_id?: string
         }
         Relationships: [
           {
@@ -432,7 +432,7 @@ export type Database = {
           id: string
           metadata: Json | null
           offer_id: string
-          tenant_id: string | null
+          tenant_id: string
         }
         Insert: {
           activity_type: string
@@ -442,7 +442,7 @@ export type Database = {
           id?: string
           metadata?: Json | null
           offer_id: string
-          tenant_id?: string | null
+          tenant_id: string
         }
         Update: {
           activity_type?: string
@@ -452,7 +452,7 @@ export type Database = {
           id?: string
           metadata?: Json | null
           offer_id?: string
-          tenant_id?: string | null
+          tenant_id?: string
         }
         Relationships: [
           {
@@ -482,7 +482,7 @@ export type Database = {
           mime_type: string | null
           offer_id: string
           storage_path: string
-          tenant_id: string | null
+          tenant_id: string
         }
         Insert: {
           created_at?: string
@@ -494,7 +494,7 @@ export type Database = {
           mime_type?: string | null
           offer_id: string
           storage_path: string
-          tenant_id?: string | null
+          tenant_id: string
         }
         Update: {
           created_at?: string
@@ -506,7 +506,7 @@ export type Database = {
           mime_type?: string | null
           offer_id?: string
           storage_path?: string
-          tenant_id?: string | null
+          tenant_id?: string
         }
         Relationships: [
           {
@@ -552,7 +552,7 @@ export type Database = {
           source_type: Database["public"]["Enums"]["acq_offer_source"]
           source_url: string | null
           status: Database["public"]["Enums"]["acq_offer_status"]
-          tenant_id: string | null
+          tenant_id: string
           title: string | null
           units_count: number | null
           updated_at: string
@@ -585,7 +585,7 @@ export type Database = {
           source_type?: Database["public"]["Enums"]["acq_offer_source"]
           source_url?: string | null
           status?: Database["public"]["Enums"]["acq_offer_status"]
-          tenant_id?: string | null
+          tenant_id: string
           title?: string | null
           units_count?: number | null
           updated_at?: string
@@ -618,7 +618,7 @@ export type Database = {
           source_type?: Database["public"]["Enums"]["acq_offer_source"]
           source_url?: string | null
           status?: Database["public"]["Enums"]["acq_offer_status"]
-          tenant_id?: string | null
+          tenant_id?: string
           title?: string | null
           units_count?: number | null
           updated_at?: string
@@ -683,7 +683,7 @@ export type Database = {
           status: Database["public"]["Enums"]["acq_outbound_status"]
           subject: string
           template_code: string
-          tenant_id: string | null
+          tenant_id: string
         }
         Insert: {
           body_html?: string | null
@@ -704,7 +704,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["acq_outbound_status"]
           subject: string
           template_code: string
-          tenant_id?: string | null
+          tenant_id: string
         }
         Update: {
           body_html?: string | null
@@ -725,7 +725,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["acq_outbound_status"]
           subject?: string
           template_code?: string
-          tenant_id?: string | null
+          tenant_id?: string
         }
         Relationships: [
           {
@@ -3240,7 +3240,7 @@ export type Database = {
           price_monthly_cents: number | null
           provider: Database["public"]["Enums"]["car_offer_provider"]
           sort_order: number | null
-          tenant_id: string | null
+          tenant_id: string
           term_months: number | null
           title: string
           updated_at: string
@@ -3265,7 +3265,7 @@ export type Database = {
           price_monthly_cents?: number | null
           provider: Database["public"]["Enums"]["car_offer_provider"]
           sort_order?: number | null
-          tenant_id?: string | null
+          tenant_id: string
           term_months?: number | null
           title: string
           updated_at?: string
@@ -3290,7 +3290,7 @@ export type Database = {
           price_monthly_cents?: number | null
           provider?: Database["public"]["Enums"]["car_offer_provider"]
           sort_order?: number | null
-          tenant_id?: string | null
+          tenant_id?: string
           term_months?: number | null
           title?: string
           updated_at?: string
@@ -4795,7 +4795,7 @@ export type Database = {
           ip_hash: string | null
           payload: Json
           source: string
-          tenant_id: string | null
+          tenant_id: string
           user_agent_hash: string | null
           zone: string
         }
@@ -4811,7 +4811,7 @@ export type Database = {
           ip_hash?: string | null
           payload?: Json
           source: string
-          tenant_id?: string | null
+          tenant_id: string
           user_agent_hash?: string | null
           zone: string
         }
@@ -4827,7 +4827,7 @@ export type Database = {
           ip_hash?: string | null
           payload?: Json
           source?: string
-          tenant_id?: string | null
+          tenant_id?: string
           user_agent_hash?: string | null
           zone?: string
         }
@@ -6443,7 +6443,7 @@ export type Database = {
           response_received_at: string | null
           status: string
           submitted_at: string | null
-          tenant_id: string | null
+          tenant_id: string
           updated_at: string
         }
         Insert: {
@@ -6461,7 +6461,7 @@ export type Database = {
           response_received_at?: string | null
           status?: string
           submitted_at?: string | null
-          tenant_id?: string | null
+          tenant_id: string
           updated_at?: string
         }
         Update: {
@@ -6479,7 +6479,7 @@ export type Database = {
           response_received_at?: string | null
           status?: string
           submitted_at?: string | null
-          tenant_id?: string | null
+          tenant_id?: string
           updated_at?: string
         }
         Relationships: [
@@ -8181,7 +8181,7 @@ export type Database = {
           rejected_at: string | null
           rejection_reason: string | null
           status: string | null
-          tenant_id: string | null
+          tenant_id: string
         }
         Insert: {
           accepted_at?: string | null
@@ -8193,7 +8193,7 @@ export type Database = {
           rejected_at?: string | null
           rejection_reason?: string | null
           status?: string | null
-          tenant_id?: string | null
+          tenant_id: string
         }
         Update: {
           accepted_at?: string | null
@@ -8205,7 +8205,7 @@ export type Database = {
           rejected_at?: string | null
           rejection_reason?: string | null
           status?: string | null
-          tenant_id?: string | null
+          tenant_id?: string
         }
         Relationships: [
           {
@@ -8249,7 +8249,7 @@ export type Database = {
           source: Database["public"]["Enums"]["lead_source"]
           source_campaign_id: string | null
           status: Database["public"]["Enums"]["lead_status"] | null
-          tenant_id: string | null
+          tenant_id: string
           updated_at: string | null
           zone1_pool: boolean | null
         }
@@ -8270,7 +8270,7 @@ export type Database = {
           source: Database["public"]["Enums"]["lead_source"]
           source_campaign_id?: string | null
           status?: Database["public"]["Enums"]["lead_status"] | null
-          tenant_id?: string | null
+          tenant_id: string
           updated_at?: string | null
           zone1_pool?: boolean | null
         }
@@ -8291,7 +8291,7 @@ export type Database = {
           source?: Database["public"]["Enums"]["lead_source"]
           source_campaign_id?: string | null
           status?: Database["public"]["Enums"]["lead_status"] | null
-          tenant_id?: string | null
+          tenant_id?: string
           updated_at?: string | null
           zone1_pool?: boolean | null
         }
@@ -12314,7 +12314,7 @@ export type Database = {
           provider: string
           pv_plant_id: string
           status: string
-          tenant_id: string | null
+          tenant_id: string
         }
         Insert: {
           config_json?: Json | null
@@ -12325,7 +12325,7 @@ export type Database = {
           provider: string
           pv_plant_id: string
           status?: string
-          tenant_id?: string | null
+          tenant_id: string
         }
         Update: {
           config_json?: Json | null
@@ -12336,7 +12336,7 @@ export type Database = {
           provider?: string
           pv_plant_id?: string
           status?: string
-          tenant_id?: string | null
+          tenant_id?: string
         }
         Relationships: [
           {
@@ -12363,7 +12363,7 @@ export type Database = {
           id: string
           pv_plant_id: string
           source: string
-          tenant_id: string | null
+          tenant_id: string
           ts: string
         }
         Insert: {
@@ -12373,7 +12373,7 @@ export type Database = {
           id?: string
           pv_plant_id: string
           source?: string
-          tenant_id?: string | null
+          tenant_id: string
           ts?: string
         }
         Update: {
@@ -12383,7 +12383,7 @@ export type Database = {
           id?: string
           pv_plant_id?: string
           source?: string
-          tenant_id?: string | null
+          tenant_id?: string
           ts?: string
         }
         Relationships: [
@@ -15844,7 +15844,7 @@ export type Database = {
           id: string
           imported_at: string | null
           imported_by: string | null
-          tenant_id: string | null
+          tenant_id: string
         }
         Insert: {
           batch_id: string
@@ -15854,7 +15854,7 @@ export type Database = {
           id?: string
           imported_at?: string | null
           imported_by?: string | null
-          tenant_id?: string | null
+          tenant_id: string
         }
         Update: {
           batch_id?: string
@@ -15864,7 +15864,7 @@ export type Database = {
           id?: string
           imported_at?: string | null
           imported_by?: string | null
-          tenant_id?: string | null
+          tenant_id?: string
         }
         Relationships: [
           {
@@ -16217,7 +16217,7 @@ export type Database = {
           status: Database["public"]["Enums"]["consent_status"]
           template_id: string
           template_version: number
-          tenant_id: string | null
+          tenant_id: string
           user_agent: string | null
           user_id: string
         }
@@ -16230,7 +16230,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["consent_status"]
           template_id: string
           template_version: number
-          tenant_id?: string | null
+          tenant_id: string
           user_agent?: string | null
           user_id: string
         }
@@ -16243,7 +16243,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["consent_status"]
           template_id?: string
           template_version?: number
-          tenant_id?: string | null
+          tenant_id?: string
           user_agent?: string | null
           user_id?: string
         }

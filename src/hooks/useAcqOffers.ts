@@ -81,6 +81,7 @@ export interface AcqAnalysisRun {
 }
 
 export interface CreateOfferData {
+  tenant_id: string;
   mandate_id?: string | null;
   source_type?: AcqOfferSource;
   source_contact_id?: string;
@@ -155,6 +156,7 @@ export function useAcqOffer(offerId: string | undefined) {
  */
 export function useCreateOffer() {
   const queryClient = useQueryClient();
+  const { activeTenantId } = useAuth();
 
   return useMutation({
     mutationFn: async (data: CreateOfferData) => {
@@ -231,7 +233,7 @@ export function useUpdateOfferStatus() {
  */
 export function useUploadOfferDocument() {
   const queryClient = useQueryClient();
-
+  const { activeTenantId } = useAuth();
   return useMutation({
     mutationFn: async ({ 
       offerId, 
@@ -264,6 +266,7 @@ export function useUploadOfferDocument() {
           storage_path: storagePath,
           mime_type: file.type,
           file_size: file.size,
+          tenant_id: activeTenantId!,
         }])
         .select()
         .single();

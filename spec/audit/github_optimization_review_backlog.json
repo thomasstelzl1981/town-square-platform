@@ -28,5 +28,10 @@
     "legacy_redirects_intact": true,
     "rogue_routes_found": false
   },
-  "verdict": "1 P0 build fix applied, architecture intact"
+  "verdict": "1 P0 build fix applied, architecture intact",
+  "db_optimization": {
+    "phase_a": "done — 84 composite indexes + 1 missing index",
+    "phase_b": "done — 15 tables tenant_id NOT NULL hardened",
+    "reference": "spec/audit/db_optimization_backlog.json"
+  }
 }

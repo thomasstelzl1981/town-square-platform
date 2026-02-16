@@ -61,13 +61,12 @@ export function useCreateSubmissionLog() {
       email_subject?: string;
       email_body?: string;
       external_software_name?: string;
-      tenant_id?: string;
+      tenant_id: string;
     }) => {
       const { data, error } = await supabase
         .from('finance_submission_logs')
         .insert({
           ...input,
-          submitted_at: new Date().toISOString(),
           created_by: user?.id,
         })
         .select()

@@ -57,6 +57,7 @@ export function useExposeUpload() {
         status: 'new',
         title: file.name.replace(/\.[^/.]+$/, ''),
         received_at: new Date().toISOString(),
+        tenant_id: activeTenantId,
       };
       if (mandateId) insertData.mandate_id = mandateId;
 
@@ -77,6 +78,7 @@ export function useExposeUpload() {
         document_type: 'expose',
         mime_type: file.type,
         file_size: file.size,
+        tenant_id: activeTenantId!,
       });
       setProgress(60);
 

@@ -115,6 +115,7 @@ export function ExposeDragDropUploader() {
           status: 'new' as any,
           title: file.name.replace(/\.[^/.]+$/, ''),
           received_at: new Date().toISOString(),
+          tenant_id: activeTenantId!,
         })
         .select('id')
         .single();
@@ -132,6 +133,7 @@ export function ExposeDragDropUploader() {
           document_type: 'expose',
           mime_type: file.type,
           file_size: file.size,
+          tenant_id: activeTenantId!,
         });
 
       if (docError) throw docError;

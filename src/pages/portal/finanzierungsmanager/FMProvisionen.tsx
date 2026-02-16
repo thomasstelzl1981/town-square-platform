@@ -71,12 +71,12 @@ function useFinanceCommissions() {
 }
 
 export default function FMProvisionen() {
-  const { user } = useAuth();
+  const { user, activeTenantId } = useAuth();
   const { data: agreementData, isLoading: loadingAgreement, refetch: refetchAgreement } = useFinanceTippAgreement();
   const { data: commissions = [], isLoading: loadingCommissions } = useFinanceCommissions();
 
   const handleAcceptAgreement = async () => {
-    if (!agreementData?.template || !user?.id) return;
+    if (!agreementData?.template || !user?.id || !activeTenantId) return;
     try {
       const { error } = await supabase.from('user_consents').insert([{
         user_id: user.id,
@@ -85,6 +85,7 @@ export default function FMProvisionen() {
         consented_at: new Date().toISOString(),
         ip_address: 'platform',
         status: 'accepted' as const,
+        tenant_id: activeTenantId,
       }]);
       if (error) throw error;
       toast.success('Vereinbarung akzeptiert');

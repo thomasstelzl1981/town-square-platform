@@ -17,6 +17,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Loader2, Mail, Sparkles, Send, ThumbsUp, FolderPlus, Bell } from 'lucide-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
 interface InteresseDialogProps {
@@ -37,6 +38,7 @@ export function InteresseDialog({
   senderEmail,
 }: InteresseDialogProps) {
   const queryClient = useQueryClient();
+  const { activeTenantId } = useAuth();
   const [createDataRoom, setCreateDataRoom] = React.useState(true);
   const [notifyClient, setNotifyClient] = React.useState(true);
   const [customMessage, setCustomMessage] = React.useState('');
@@ -113,6 +115,7 @@ export function InteresseDialog({
             notifyClient,
             dataRoomFolderId,
           },
+          tenant_id: activeTenantId!,
         });
 
       if (activityError) throw activityError;

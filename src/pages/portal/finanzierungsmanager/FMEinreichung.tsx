@@ -26,6 +26,7 @@ import {
   useSendSubmissionEmail, useUpdateSubmissionLog,
 } from '@/hooks/useFinanceSubmission';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import type { FutureRoomCase } from '@/types/finance';
@@ -84,6 +85,7 @@ interface Props {
 
 export default function FMEinreichung({ cases, isLoading }: Props) {
   const { requestId: routeRequestId } = useParams<{ requestId: string }>();
+  const { activeTenantId } = useAuth();
   const [selectedId, setSelectedId] = useState<string | null>(routeRequestId || null);
 
   const readyCases = useMemo(
@@ -267,6 +269,7 @@ Mit freundlichen Grüßen`;
         email_subject: emailSubject,
         email_body: body,
         external_software_name: bank.name,
+        tenant_id: activeTenantId!,
       });
       toast.success(`E-Mail an ${bank.name} versendet`);
     }
@@ -289,6 +292,7 @@ Mit freundlichen Grüßen`;
       channel: 'external',
       status: 'handed_over',
       external_software_name: externalSoftwareName,
+      tenant_id: activeTenantId!,
     });
     await supabase.from('finance_requests').update({ status: 'submitted_to_bank' }).eq('id', selectedId);
     toast.success(`Fall an ${externalSoftwareName} übergeben`);
