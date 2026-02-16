@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { PdfExportFooter } from '@/components/pdf';
 import { useFinanzberichtData, type ContractSummary, type SubscriptionsByCategory, type EnergyContract, type PropertyListItem, type LoanListItem } from '@/hooks/useFinanzberichtData';
+import type { DemoKVContract } from '@/engines/demoData/spec';
 import { useFinanzanalyseData } from '@/hooks/useFinanzanalyseData';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -159,6 +160,7 @@ export function FinanzberichtSection() {
                 <FinanzRow label="Nettoeinkommen" value={income.netIncomeTotal} />
                 {income.selfEmployedIncome > 0 && <FinanzRow label="Selbstständige Tätigkeit" value={income.selfEmployedIncome} />}
                 {income.rentalIncomePortfolio > 0 && <FinanzRow label="Vermietung & Verpachtung" value={income.rentalIncomePortfolio} />}
+                {income.taxBenefitRental > 0 && <FinanzRow label="Steuereffekt Kapitalanlage" value={income.taxBenefitRental} />}
                 {income.pvIncome > 0 && <FinanzRow label="Einkünfte aus Photovoltaik" value={income.pvIncome} />}
                 {income.sideJobIncome > 0 && <FinanzRow label="Nebentätigkeit" value={income.sideJobIncome} />}
                 {income.childBenefit > 0 && <FinanzRow label="Kindergeld" value={income.childBenefit} />}
@@ -174,8 +176,10 @@ export function FinanzberichtSection() {
                 {expenses.portfolioLoans > 0 && <FinanzRow label="Immobiliendarlehen" value={expenses.portfolioLoans} />}
                 {expenses.privateLoans > 0 && <FinanzRow label="Private Darlehen" value={expenses.privateLoans} />}
                 {expenses.pvLoans > 0 && <FinanzRow label="PV-Darlehen" value={expenses.pvLoans} />}
+                {expenses.healthInsurance > 0 && <FinanzRow label="Krankenversicherung (PKV)" value={expenses.healthInsurance} />}
                 {expenses.insurancePremiums > 0 && <FinanzRow label="Versicherungsprämien" value={expenses.insurancePremiums} />}
                 {expenses.savingsContracts > 0 && <FinanzRow label="Sparverträge" value={expenses.savingsContracts} />}
+                {expenses.investmentContracts > 0 && <FinanzRow label="Investment-Sparpläne" value={expenses.investmentContracts} />}
                 {expenses.subscriptions > 0 && <FinanzRow label="Abonnements" value={expenses.subscriptions} />}
                 {expenses.livingExpenses > 0 && <FinanzRow label="Lebenshaltungskosten" value={expenses.livingExpenses} />}
                 <FinanzRow label="Summe Ausgaben" value={expenses.totalExpenses} bold />
@@ -314,6 +318,40 @@ export function FinanzberichtSection() {
         )}
 
 
+        {/* ═══ SEKTION: Krankenversicherung ═══ */}
+        {data.kvContracts.length > 0 && (
+          <Card className="glass-card">
+            <CardContent className="p-6">
+              <SectionTitle icon={HeartPulse} title="Krankenversicherung" />
+              <div className="space-y-1">
+                {data.kvContracts.map((kv, idx) => (
+                  <div key={idx} className="flex items-center justify-between text-sm py-2 border-b border-border/50 last:border-0">
+                    <div className="flex items-center gap-3">
+                      <Badge variant={kv.type === 'PKV' ? 'default' : kv.type === 'GKV' ? 'secondary' : 'outline'} className="text-[10px] min-w-[40px] justify-center">
+                        {kv.type}
+                      </Badge>
+                      <div>
+                        <span className="font-medium">{kv.personName}</span>
+                        <span className="text-muted-foreground ml-2">· {kv.provider}</span>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      {kv.monthlyPremium > 0 ? (
+                        <span className="font-medium tabular-nums">{fmt(kv.monthlyPremium)}/mtl.</span>
+                      ) : (
+                        <span className="text-muted-foreground text-xs">beitragsfrei</span>
+                      )}
+                      {(kv.employerContribution || 0) > 0 && (
+                        <p className="text-[10px] text-muted-foreground">AG-Anteil: {fmt(kv.employerContribution || 0)}</p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
           <KpiCard icon={CreditCard} label="Mtl. Tilgung" value={fmt(data.monthlyAmortization)} />
           <KpiCard icon={PiggyBank} label="Mtl. Sparleistung" value={fmt(data.monthlySavings)} />
@@ -425,6 +463,13 @@ export function FinanzberichtSection() {
             <div>
               <h4 className="text-sm font-semibold mb-2 flex items-center gap-2"><PiggyBank className="h-4 w-4 text-primary" /> Sparverträge</h4>
               <ContractTable contracts={data.savingsContracts} emptyLabel="Keine Sparverträge erfasst" />
+            </div>
+
+            <Separator />
+
+            <div>
+              <h4 className="text-sm font-semibold mb-2 flex items-center gap-2"><TrendingUp className="h-4 w-4 text-primary" /> Investment-Sparpläne</h4>
+              <ContractTable contracts={data.investmentContracts} emptyLabel="Keine Investment-Sparpläne erfasst" />
             </div>
 
             <Separator />

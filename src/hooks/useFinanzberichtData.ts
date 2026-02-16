@@ -8,6 +8,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePortfolioSummary } from '@/hooks/usePortfolioSummary';
 import { useFinanzanalyseData } from '@/hooks/useFinanzanalyseData';
+import { getDemoKVContracts } from '@/engines/demoData';
+import type { DemoKVContract } from '@/engines/demoData/spec';
 
 // ─── Types ───────────────────────────────────────────────────
 export interface FinanzberichtIncome {
@@ -18,6 +20,7 @@ export interface FinanzberichtIncome {
   childBenefit: number;
   otherIncome: number;
   pvIncome: number;
+  taxBenefitRental: number;
   totalIncome: number;
 }
 
@@ -26,8 +29,10 @@ export interface FinanzberichtExpenses {
   privateLoans: number;
   portfolioLoans: number;
   pvLoans: number;
+  healthInsurance: number;
   insurancePremiums: number;
   savingsContracts: number;
+  investmentContracts: number;
   subscriptions: number;
   livingExpenses: number;
   totalExpenses: number;
@@ -112,9 +117,11 @@ export interface FinanzberichtData {
   liquidityPercent: number;
   projection: FinanzberichtProjectionYear[];
   savingsContracts: ContractSummary[];
+  investmentContracts: ContractSummary[];
   insuranceContracts: ContractSummary[];
   loanContracts: ContractSummary[];
   vorsorgeContracts: ContractSummary[];
+  kvContracts: readonly DemoKVContract[];
   subscriptionsByCategory: SubscriptionsByCategory[];
   energyContracts: EnergyContract[];
   propertyList: PropertyListItem[];
@@ -268,7 +275,7 @@ export function useFinanzberichtData(): FinanzberichtData {
     queryKey: ['fb-portfolio-loans', activeTenantId],
     queryFn: async () => {
       if (!activeTenantId) return [];
-      const { data } = await supabase.from('loans').select('id, outstanding_balance_eur, annuity_monthly_eur, interest_rate_percent, property_id').eq('tenant_id', activeTenantId);
+      const { data } = await supabase.from('loans').select('id, bank_name, original_amount, outstanding_balance_eur, annuity_monthly_eur, interest_rate_percent, property_id').eq('tenant_id', activeTenantId);
       return data || [];
     },
     enabled: !!activeTenantId,
@@ -291,7 +298,23 @@ export function useFinanzberichtData(): FinanzberichtData {
     const childBenefit = applicantProfiles.reduce((s, p) => s + (p.child_benefit_monthly || 0), 0);
     const otherIncome = applicantProfiles.reduce((s, p) => s + (p.other_regular_income_monthly || 0), 0);
     const pvIncome = pvMonthlyRevenue;
-    const totalIncome = netIncomeTotal + selfEmployedIncome + rentalIncomePortfolio + sideJobIncome + childBenefit + otherIncome + pvIncome;
+    // Steuereffekt Kapitalanlage
+    const totalPurchasePrice = portfolioProperties.reduce((s: number, p: any) => s + (p.purchase_price || 0), 0);
+    const buildingValue = totalPurchasePrice * 0.80;
+    const annualAfA = buildingValue * 0.02;
+    const annualInterest = portfolioSummary?.annualInterest || 0;
+    const annualRent = portfolioSummary?.annualIncome || 0;
+    const taxLoss = annualRent - annualInterest - annualAfA;
+    const taxBenefitRental = taxLoss < 0 ? Math.abs(taxLoss) * 0.42 / 12 : 0;
+
+    const totalIncome = netIncomeTotal + selfEmployedIncome + rentalIncomePortfolio + sideJobIncome + childBenefit + otherIncome + pvIncome + taxBenefitRental;
+
+    // KV-Daten (clientseitig)
+    const kvContracts = getDemoKVContracts();
+    const pkvExpense = kvContracts.reduce((s, kv) => {
+      if (kv.type === 'PKV') return s + (kv.monthlyPremium - (kv.employerContribution || 0));
+      return s;
+    }, 0);
 
     // Expenses
     const warmRent = tenancies.reduce((s, t) => s + (t.total_rent || 0), 0);
@@ -302,13 +325,22 @@ export function useFinanzberichtData(): FinanzberichtData {
     const insurancePremiums = activeInsurance.reduce((s, i) => s + monthlyFromInterval(i.premium, i.payment_interval), 0);
 
     const activeVorsorge = vorsorgeData.filter(v => v.status !== 'gekuendigt');
-    const savingsMonthly = activeVorsorge.reduce((s, v) => s + monthlyFromInterval(v.premium, v.payment_interval), 0);
+    // Separate investment contracts (ETF-Sparplan, Sparplan) from pure savings (Bausparvertrag)
+    const isInvestmentContract = (type: string) => {
+      const t = type.toLowerCase();
+      return t.includes('etf') || (t.includes('sparplan') && !t.includes('bauspar'));
+    };
+    const savingsOnlyContracts = activeVorsorge.filter(v => (v.contract_type || '').toLowerCase().includes('spar') && !isInvestmentContract(v.contract_type || ''));
+    const investmentVorsorge = activeVorsorge.filter(v => isInvestmentContract(v.contract_type || ''));
+    const savingsMonthly = savingsOnlyContracts.reduce((s, v) => s + monthlyFromInterval(v.premium, v.payment_interval), 0);
+    const investmentMonthly = investmentVorsorge.reduce((s, v) => s + monthlyFromInterval(v.premium, v.payment_interval), 0);
 
     const activeSubscriptions = subscriptions.filter((s: any) => s.status === 'active' || s.status === 'confirmed');
     const subscriptionTotal = activeSubscriptions.reduce((s: number, sub: any) => s + (sub.amount || 0), 0);
 
-    const livingExpenses = applicantProfiles.reduce((s, p) => s + (p.living_expenses_monthly || 0), 0);
-    const totalExpenses = warmRent + privateLoansMonthly + portfolioLoansMonthly + pvMonthlyLoanRate + insurancePremiums + savingsMonthly + subscriptionTotal + livingExpenses;
+    // Lebenshaltungskosten: 35% der Arbeitseinkommen (Netto + Selbstständig, ohne V+V und PV)
+    const livingExpenses = (netIncomeTotal + selfEmployedIncome) * 0.35;
+    const totalExpenses = warmRent + privateLoansMonthly + portfolioLoansMonthly + pvMonthlyLoanRate + pkvExpense + insurancePremiums + savingsMonthly + investmentMonthly + subscriptionTotal + livingExpenses;
 
     // Assets
     const portfolioPropertyValue = portfolioSummary?.totalValue || 0;
@@ -354,21 +386,23 @@ export function useFinanzberichtData(): FinanzberichtData {
     }
 
     // Contract lists
-    const savingsContracts: ContractSummary[] = activeVorsorge
-      .filter(v => (v.contract_type || '').toLowerCase().includes('spar'))
+    const savingsContracts: ContractSummary[] = savingsOnlyContracts
       .map(v => ({ id: v.id, type: v.contract_type || 'Sparvertrag', provider: v.provider || '—', monthlyAmount: monthlyFromInterval(v.premium, v.payment_interval), contractNo: v.contract_no || undefined }));
+
+    const investmentContractsList: ContractSummary[] = investmentVorsorge
+      .map(v => ({ id: v.id, type: v.contract_type || 'Investment', provider: v.provider || '—', monthlyAmount: monthlyFromInterval(v.premium, v.payment_interval), contractNo: v.contract_no || undefined }));
 
     const insuranceContracts: ContractSummary[] = activeInsurance
       .map(i => ({ id: i.id, type: i.category || 'Versicherung', provider: i.insurer || '—', monthlyAmount: monthlyFromInterval(i.premium, i.payment_interval), contractNo: i.policy_no || undefined }));
 
     const loanContracts: ContractSummary[] = [
-      ...portfolioLoans.map(l => ({ id: l.id, type: 'Immobiliendarlehen', provider: '—', monthlyAmount: l.annuity_monthly_eur || 0, contractNo: undefined })),
+      ...portfolioLoans.map(l => ({ id: l.id, type: 'Immobiliendarlehen', provider: (l as any).bank_name || '—', monthlyAmount: l.annuity_monthly_eur || 0, contractNo: undefined })),
       ...mietyLoans.map(l => ({ id: l.id, type: l.loan_type || 'Privatdarlehen', provider: l.bank_name || '—', monthlyAmount: l.monthly_rate || 0, contractNo: undefined })),
       ...pvPlants.filter((pv: any) => pv.loan_bank).map((pv: any) => ({ id: pv.id, type: 'PV-Darlehen', provider: pv.loan_bank || '—', monthlyAmount: pv.loan_monthly_rate || 0, contractNo: undefined })),
     ];
 
     const vorsorgeContracts: ContractSummary[] = activeVorsorge
-      .filter(v => !(v.contract_type || '').toLowerCase().includes('spar'))
+      .filter(v => !(v.contract_type || '').toLowerCase().includes('spar') && !isInvestmentContract(v.contract_type || ''))
       .map(v => ({ id: v.id, type: v.contract_type || 'Vorsorge', provider: v.provider || '—', monthlyAmount: monthlyFromInterval(v.premium, v.payment_interval), contractNo: v.contract_no || undefined }));
 
     // Subscriptions by category
@@ -431,9 +465,9 @@ export function useFinanzberichtData(): FinanzberichtData {
     const loanList: LoanListItem[] = [
       ...portfolioLoans.map(l => ({
         id: l.id,
-        bank: '—',
+        bank: (l as any).bank_name || '—',
         assignment: propCodeMap.get(l.property_id) || 'Portfolio',
-        loanAmount: 0,
+        loanAmount: (l as any).original_amount || 0,
         remainingBalance: l.outstanding_balance_eur || 0,
         interestRate: l.interest_rate_percent || 0,
         monthlyRate: l.annuity_monthly_eur || 0,
@@ -459,8 +493,8 @@ export function useFinanzberichtData(): FinanzberichtData {
     ];
 
     return {
-      income: { netIncomeTotal, selfEmployedIncome, rentalIncomePortfolio, sideJobIncome, childBenefit, otherIncome, pvIncome, totalIncome },
-      expenses: { warmRent, privateLoans: privateLoansMonthly, portfolioLoans: portfolioLoansMonthly, pvLoans: pvMonthlyLoanRate, insurancePremiums, savingsContracts: savingsMonthly, subscriptions: subscriptionTotal, livingExpenses, totalExpenses },
+      income: { netIncomeTotal, selfEmployedIncome, rentalIncomePortfolio, sideJobIncome, childBenefit, otherIncome, pvIncome, taxBenefitRental, totalIncome },
+      expenses: { warmRent, privateLoans: privateLoansMonthly, portfolioLoans: portfolioLoansMonthly, pvLoans: pvMonthlyLoanRate, healthInsurance: pkvExpense, insurancePremiums, savingsContracts: savingsMonthly, investmentContracts: investmentMonthly, subscriptions: subscriptionTotal, livingExpenses, totalExpenses },
       assets: { propertyValue: portfolioPropertyValue, homeValue, bankSavings, securities, surrenderValues, totalAssets },
       liabilities: { portfolioDebt, homeDebt, pvDebt: pvRemainingBalance, otherDebt: 0, totalLiabilities },
       monthlyAmortization,
@@ -469,9 +503,11 @@ export function useFinanzberichtData(): FinanzberichtData {
       liquidityPercent,
       projection,
       savingsContracts,
+      investmentContracts: investmentContractsList,
       insuranceContracts,
       loanContracts,
       vorsorgeContracts,
+      kvContracts,
       subscriptionsByCategory,
       energyContracts,
       propertyList,
