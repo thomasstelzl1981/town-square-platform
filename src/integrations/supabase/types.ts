@@ -11415,6 +11415,111 @@ export type Database = {
           },
         ]
       }
+      pet_bookings: {
+        Row: {
+          cancellation_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          client_notes: string | null
+          client_user_id: string | null
+          completed_at: string | null
+          created_at: string
+          duration_minutes: number | null
+          id: string
+          pet_id: string
+          price_cents: number | null
+          provider_id: string
+          provider_notes: string | null
+          scheduled_date: string
+          scheduled_time_end: string | null
+          scheduled_time_start: string | null
+          service_id: string
+          status: Database["public"]["Enums"]["pet_booking_status"]
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          client_notes?: string | null
+          client_user_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          duration_minutes?: number | null
+          id?: string
+          pet_id: string
+          price_cents?: number | null
+          provider_id: string
+          provider_notes?: string | null
+          scheduled_date: string
+          scheduled_time_end?: string | null
+          scheduled_time_start?: string | null
+          service_id: string
+          status?: Database["public"]["Enums"]["pet_booking_status"]
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          client_notes?: string | null
+          client_user_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          duration_minutes?: number | null
+          id?: string
+          pet_id?: string
+          price_cents?: number | null
+          provider_id?: string
+          provider_notes?: string | null
+          scheduled_date?: string
+          scheduled_time_end?: string | null
+          scheduled_time_start?: string | null
+          service_id?: string
+          status?: Database["public"]["Enums"]["pet_booking_status"]
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pet_bookings_client_user_id_fkey"
+            columns: ["client_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pet_bookings_pet_id_fkey"
+            columns: ["pet_id"]
+            isOneToOne: false
+            referencedRelation: "pets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pet_bookings_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "pet_providers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pet_bookings_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "pet_services"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pet_bookings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pet_invoice_items: {
         Row: {
           created_at: string
@@ -11515,6 +11620,102 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      pet_provider_availability: {
+        Row: {
+          created_at: string
+          day_of_week: number
+          end_time: string
+          id: string
+          is_active: boolean
+          max_bookings: number
+          provider_id: string
+          start_time: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          day_of_week: number
+          end_time: string
+          id?: string
+          is_active?: boolean
+          max_bookings?: number
+          provider_id: string
+          start_time: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          day_of_week?: number
+          end_time?: string
+          id?: string
+          is_active?: boolean
+          max_bookings?: number
+          provider_id?: string
+          start_time?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pet_provider_availability_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "pet_providers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pet_provider_availability_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pet_provider_blocked_dates: {
+        Row: {
+          blocked_date: string
+          created_at: string
+          id: string
+          provider_id: string
+          reason: string | null
+          tenant_id: string
+        }
+        Insert: {
+          blocked_date: string
+          created_at?: string
+          id?: string
+          provider_id: string
+          reason?: string | null
+          tenant_id: string
+        }
+        Update: {
+          blocked_date?: string
+          created_at?: string
+          id?: string
+          provider_id?: string
+          reason?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pet_provider_blocked_dates_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "pet_providers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pet_provider_blocked_dates_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       pet_providers: {
         Row: {
@@ -18201,6 +18402,13 @@ export type Database = {
         | "halbjaehrlich"
         | "jaehrlich"
         | "einmalig"
+      pet_booking_status:
+        | "requested"
+        | "confirmed"
+        | "in_progress"
+        | "completed"
+        | "cancelled"
+        | "no_show"
       pet_gender: "male" | "female" | "unknown"
       pet_price_type:
         | "fixed"
@@ -18666,6 +18874,14 @@ export const Constants = {
         "halbjaehrlich",
         "jaehrlich",
         "einmalig",
+      ],
+      pet_booking_status: [
+        "requested",
+        "confirmed",
+        "in_progress",
+        "completed",
+        "cancelled",
+        "no_show",
       ],
       pet_gender: ["male", "female", "unknown"],
       pet_price_type: ["fixed", "hourly", "daily", "per_session", "on_request"],
