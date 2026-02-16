@@ -18,15 +18,19 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { CheckCircle2, FileText, ScrollText } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { isDemoId } from '@/engines/demoData/engine';
+import { useDemoToggles } from '@/hooks/useDemoToggles';
 
 export default function VorsorgedokumenteTab() {
   const { user, activeTenantId } = useAuth();
   const queryClient = useQueryClient();
+  const { isEnabled } = useDemoToggles();
+  const demoEnabled = isEnabled('GP-KONTEN');
   const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
   const [selectedVariante, setSelectedVariante] = useState(1);
 
   // Fetch household persons
-  const { data: persons } = useQuery({
+  const { data: rawPersons } = useQuery({
     queryKey: ['household_persons', activeTenantId],
     queryFn: async () => {
       if (!activeTenantId) return [];
@@ -40,7 +44,10 @@ export default function VorsorgedokumenteTab() {
     enabled: !!activeTenantId,
   });
 
-  // Auto-select primary person
+  const persons = useMemo(
+    () => demoEnabled ? rawPersons : rawPersons?.filter((p: any) => !isDemoId(p.id)),
+    [rawPersons, demoEnabled]
+  );
   const effectivePersonId = selectedPersonId || persons?.find(p => p.is_primary)?.id || persons?.[0]?.id || null;
 
   // Fetch legal documents status
