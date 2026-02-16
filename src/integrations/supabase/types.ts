@@ -16721,7 +16721,11 @@ export type Database = {
           contract_type: string | null
           created_at: string
           current_balance: number | null
+          dynamics_percent: number | null
+          end_date: string | null
           id: string
+          insured_sum: number | null
+          monthly_benefit: number | null
           notes: string | null
           payment_interval:
             | Database["public"]["Enums"]["payment_interval"]
@@ -16742,7 +16746,11 @@ export type Database = {
           contract_type?: string | null
           created_at?: string
           current_balance?: number | null
+          dynamics_percent?: number | null
+          end_date?: string | null
           id?: string
+          insured_sum?: number | null
+          monthly_benefit?: number | null
           notes?: string | null
           payment_interval?:
             | Database["public"]["Enums"]["payment_interval"]
@@ -16763,7 +16771,11 @@ export type Database = {
           contract_type?: string | null
           created_at?: string
           current_balance?: number | null
+          dynamics_percent?: number | null
+          end_date?: string | null
           id?: string
+          insured_sum?: number | null
+          monthly_benefit?: number | null
           notes?: string | null
           payment_interval?:
             | Database["public"]["Enums"]["payment_interval"]

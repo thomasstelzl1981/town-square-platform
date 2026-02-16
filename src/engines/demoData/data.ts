@@ -46,6 +46,8 @@ const ID_VS_RUERUP  = 'e0000000-0000-4000-a000-000000000301';
 const ID_VS_BAV     = 'e0000000-0000-4000-a000-000000000302';
 const ID_VS_RIESTER = 'e0000000-0000-4000-a000-000000000303';
 const ID_VS_ETF     = 'e0000000-0000-4000-a000-000000000304';
+const ID_VS_BU_MAX  = 'e0000000-0000-4000-a000-000000000305';
+const ID_VS_BU_LISA = 'e0000000-0000-4000-a000-000000000306';
 
 // Abonnements
 const ID_SUB_NETFLIX   = 'e0000000-0000-4000-a000-000000000401';
@@ -261,6 +263,34 @@ export const DEMO_VORSORGE: readonly DemoVorsorgeContract[] = [
     currentBalance: 16200,
     balanceDate: '2025-12-31',
   },
+  {
+    id: ID_VS_BU_MAX,
+    personId: DEMO_PRIMARY_PERSON_ID,
+    provider: 'Alte Leipziger',
+    contractNo: 'AL-BU-2017-MM01',
+    contractType: 'Berufsunfähigkeit',
+    startDate: '2017-07-01',
+    endDate: '2047-03-15',
+    premium: 95.00,
+    paymentInterval: 'monatlich',
+    category: 'vorsorge',
+    monthlyBenefit: 3000,
+    dynamicsPercent: 3,
+  },
+  {
+    id: ID_VS_BU_LISA,
+    personId: ID_LISA,
+    provider: 'Hallesche',
+    contractNo: 'HL-BU-2019-LM01',
+    contractType: 'Berufsunfähigkeit',
+    startDate: '2019-10-01',
+    endDate: '2047-07-22',
+    premium: 62.00,
+    paymentInterval: 'monatlich',
+    category: 'vorsorge',
+    monthlyBenefit: 1500,
+    dynamicsPercent: 3,
+  },
 ] as const;
 
 // ─── ABONNEMENTS ───────────────────────────────────────────
@@ -451,7 +481,7 @@ export const ALL_DEMO_IDS: readonly string[] = [
   ID_INS_HAFTPFLICHT, ID_INS_HAUSRAT, ID_INS_GEBAEUDE, ID_INS_RECHT,
   ID_INS_KFZ1, ID_INS_KFZ2, ID_INS_BU,
   // Vorsorge
-  ID_VS_RUERUP, ID_VS_BAV, ID_VS_RIESTER, ID_VS_ETF,
+  ID_VS_RUERUP, ID_VS_BAV, ID_VS_RIESTER, ID_VS_ETF, ID_VS_BU_MAX, ID_VS_BU_LISA,
   // Abonnements
   ID_SUB_NETFLIX, ID_SUB_SPOTIFY, ID_SUB_AMAZON, ID_SUB_MS365,
   ID_SUB_ZEIT, ID_SUB_TELEKOM, ID_SUB_VODAFONE, ID_SUB_FITX,
