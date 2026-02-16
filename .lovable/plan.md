@@ -1,133 +1,131 @@
 
-# Erweiterung Personenkarten, Finanzbericht-Strukturierung und Demodaten
 
-## 1. Personenkarten um Einkommensdaten erweitern
+# Fix: Demo-Daten des Mustermann-Kunden in Stammdaten, Selbstauskunft und Zuhause
 
-### Ist-Zustand
-Die Person-Detailkarte in `UebersichtTab.tsx` zeigt nur: Persoenliche Daten, Adresse und DRV-Renteninformation. Einkommensbezogene Felder fehlen komplett.
+## Analyse des Problems
 
-### Neue Sektion: "Beschaeftigung und Einkommen"
-Wird zwischen "Persoenliche Daten" und "Adresse" eingefuegt.
+Aktuell zeigen drei Module nicht die erwarteten Mustermann-Demo-Daten:
 
-**Felder fuer Angestellte (employment_status = 'angestellt'):**
-- Arbeitgeber (`employer_name` — existiert bereits in `household_persons`)
-- Beschaeftigungsstatus (`employment_status` — existiert bereits)
-- Bruttoeinkommen (NEUES Feld `gross_income_monthly` — muss hinzugefuegt werden)
-- Nettoeinkommen (NEUES Feld `net_income_monthly` — muss hinzugefuegt werden)
-- Steuerklasse (NEUES Feld `tax_class` — muss hinzugefuegt werden)
-- Kinderfreibetraege (NEUES Feld `child_allowances` — muss hinzugefuegt werden)
+### 1. Stammdaten (MOD-01 / profiles)
+Die `profiles`-Tabelle enthaelt die realen Daten des Entwicklers (Thomas Stelzl, Oberhaching). Da die Stammdaten direkt aus `profiles` lesen (gebunden an `auth.users.id`), sieht der Demo-Mandant "Thomas Stelzl" statt "Max Mustermann".
 
-**Felder fuer Selbststaendige (employment_status = 'selbstaendig'):**
-- Firmenname (`employer_name` — Wiederverwendung als "Firmenname")
-- Einkuenfte aus Gewerbebetrieb (NEUES Feld `business_income_monthly`)
+**Loesung:** Das Profil (`d028bc99-...`) mit den Mustermann-Stammdaten aktualisieren:
+- first_name: Max, last_name: Mustermann
+- Adresse: Leopoldstrasse 42, 80802 Muenchen
+- phone_mobile: +49 170 1234567
+- display_name: Max Mustermann
+- tax_id: DE123456789
 
-**Zusatzfelder fuer alle:**
-- Einkuenfte aus Photovoltaik (NEUES Feld `pv_income_monthly`)
+### 2. Selbstauskunft (MOD-07 / applicant_profiles)
+Es gibt aktuell 4 Eintraege im Demo-Tenant — fragmentiert und inkonsistent:
+- `00000000-...0005` (Max, mit finance_request_id → Snapshot, nicht persistent)
+- `a23366ab-...` (Max, persistent, aber KEIN net_income, KEIN Arbeitgeber)
+- `c445bafd-...` (Thomas Stelzl — Altlast, leer)
+- `703e1648-...` (Lisa, mit Daten)
 
-### DB-Migration: `household_persons` erweitern
-```sql
-ALTER TABLE household_persons ADD COLUMN IF NOT EXISTS gross_income_monthly NUMERIC;
-ALTER TABLE household_persons ADD COLUMN IF NOT EXISTS net_income_monthly NUMERIC;
-ALTER TABLE household_persons ADD COLUMN IF NOT EXISTS tax_class TEXT;
-ALTER TABLE household_persons ADD COLUMN IF NOT EXISTS child_allowances NUMERIC;
-ALTER TABLE household_persons ADD COLUMN IF NOT EXISTS business_income_monthly NUMERIC;
-ALTER TABLE household_persons ADD COLUMN IF NOT EXISTS pv_income_monthly NUMERIC;
-```
+**Loesung:**
+- Den persistenten Max-Datensatz (`a23366ab-...`) vollstaendig befuellen: Einkommen, Beschaeftigung, Adresse, Vermoegen
+- Den Thomas-Stelzl-Datensatz (`c445bafd-...`) loeschen (Altlast)
+- Den Snapshot-Datensatz (`00000000-...0005`) bleibt unveraendert (gehoert zur Finance Request)
 
-### Demo-Daten Update
-- Max Mustermann: `employment_status = 'selbstaendig'`, `business_income_monthly = 8500`, `pv_income_monthly = 320`, `gross_income_monthly = NULL` (selbstaendig)
-- Lisa Mustermann: `employment_status = 'angestellt'`, `employer_name = 'MediaCorp GmbH'`, `gross_income_monthly = 5200`, `net_income_monthly = 3200`, `tax_class = 'V'`, `child_allowances = 1.0`
+### 3. Zuhause (MOD-20 / miety_homes)
+Der einzige Eintrag hat minimale Daten:
+- ownership_type: "miete" (Mustermann ist aber Eigentuemer laut Persona)
+- market_value: NULL
+- Kein construction_year, kein heating_type, kein plot_area
 
----
+**Loesung:** Den miety_homes-Datensatz (`da78ca31-...`) mit vollstaendigen Mustermann-Daten aktualisieren:
+- ownership_type: eigentum
+- market_value: 850000
+- construction_year: 2005
+- heating_type: Waermepumpe
+- plot_area_sqm: 620
+- rooms_count: 6 (bereits gesetzt)
+- area_sqm: 300 (bereits gesetzt)
 
-## 2. PV-Anlage um Darlehensvertrag und Ertragsdaten erweitern
+## Betroffene Dateien und Aenderungen
 
-### Ist-Zustand
-`pv_plants` hat keine Felder fuer Finanzierung oder Ertragsdaten (jaehrlich).
+| Aenderung | Details |
+|-----------|---------|
+| DB-Update: `profiles` | Mustermann-Stammdaten fuer Entwickler-Profil setzen |
+| DB-Update: `applicant_profiles` (Max persistent) | Einkommen, Beschaeftigung, Adresse vervollstaendigen |
+| DB-Delete: `applicant_profiles` (Stelzl-Altlast) | Datensatz `c445bafd-...` entfernen |
+| DB-Update: `miety_homes` | Eigentum, Marktwert, Baujahr, Heizung etc. |
 
-### DB-Migration: `pv_plants` erweitern
-```sql
-ALTER TABLE pv_plants ADD COLUMN IF NOT EXISTS loan_bank TEXT;
-ALTER TABLE pv_plants ADD COLUMN IF NOT EXISTS loan_amount NUMERIC;
-ALTER TABLE pv_plants ADD COLUMN IF NOT EXISTS loan_monthly_rate NUMERIC;
-ALTER TABLE pv_plants ADD COLUMN IF NOT EXISTS loan_interest_rate NUMERIC;
-ALTER TABLE pv_plants ADD COLUMN IF NOT EXISTS loan_remaining_balance NUMERIC;
-ALTER TABLE pv_plants ADD COLUMN IF NOT EXISTS annual_yield_kwh NUMERIC;
-ALTER TABLE pv_plants ADD COLUMN IF NOT EXISTS feed_in_tariff_cents NUMERIC;
-ALTER TABLE pv_plants ADD COLUMN IF NOT EXISTS annual_revenue NUMERIC;
-```
+### Kein Code-Aenderungsbedarf
+Alle drei Module lesen bereits korrekt aus der Datenbank. Das Problem sind ausschliesslich fehlende/falsche Demo-Daten in den Tabellen. Die Trigger-Synchronisation (profiles → household_persons) wird automatisch die Personenkarten in der Finanzanalyse aktualisieren.
 
-### Demo-Daten Update (Oberhaching-Anlage)
-```sql
-UPDATE pv_plants SET
-  loan_bank = 'KfW', loan_amount = 45000, loan_monthly_rate = 285,
-  loan_interest_rate = 1.95, loan_remaining_balance = 38200,
-  annual_yield_kwh = 31000, feed_in_tariff_cents = 8.2,
-  annual_revenue = 2542
-WHERE id = '00000000-0000-4000-a000-000000000901';
-```
+## Technische Details: Daten-Updates
 
----
-
-## 3. Finanzbericht strukturierter aufbauen
-
-### Neue Sektionen im `FinanzberichtSection.tsx`
-
-**Sektion Abonnements (NEU — zwischen KPI-Kacheln und Vertragsuebersicht):**
-- Kategorisierte Liste aller Abonnements aus `user_subscriptions`
-- Gruppiert nach Kategorie (Streaming, Mobilfunk, Internet, Energie, etc.)
-- Zeigt Anbieter, monatlichen Betrag und Status
-
-**Sektion Energievertraege (NEU):**
-- Daten aus `miety_contracts` (Kategorie Strom/Gas/Wasser)
-- Zeigt: Versorger, Vertragsnummer, monatliche Kosten, Laufzeit
-
-### Erweiterung `useFinanzberichtData.ts`
-- Abonnements nach Kategorie gruppiert zurueckgeben (nicht nur als Summe)
-- `miety_contracts` Query hinzufuegen fuer Energievertraege
-- PV-Darlehen und PV-Ertraege in die Vermoegensberechnung integrieren
-
-### Demo-Daten: Energievertraege anlegen
-Neue Eintraege in `miety_contracts`:
-- Strom: "Vattenfall", 89 EUR/mtl.
-- Gas: "SWM Stadtwerke Muenchen", 125 EUR/mtl.
-- Wasser: "SWM", 45 EUR/mtl.
-
----
-
-## 4. Betroffene Dateien
-
-| Datei | Aenderung |
-|-------|-----------|
-| DB-Migration | `household_persons`: 6 neue Spalten |
-| DB-Migration | `pv_plants`: 8 neue Spalten |
-| DB-Migration | Demo-Daten: household_persons, pv_plants, miety_contracts |
-| `src/pages/portal/finanzanalyse/UebersichtTab.tsx` | Neue Sektion "Beschaeftigung und Einkommen" in der Personenkarte mit konditionaler Anzeige je nach employment_status |
-| `src/hooks/useFinanzberichtData.ts` | Abonnements gruppiert, miety_contracts Query, PV-Darlehen/Ertraege integriert |
-| `src/components/finanzanalyse/FinanzberichtSection.tsx` | Neue Sektionen: Abonnements (kategorisiert), Energievertraege; bessere Strukturierung |
-
-## 5. Technische Details
-
-### Konditionale Anzeige der Einkommensfelder
+### profiles (Entwickler-Profil → Mustermann)
 ```text
-IF employment_status === 'angestellt':
-  Show: Arbeitgeber, Brutto, Netto, Steuerklasse, Kinderfreibetraege
-IF employment_status === 'selbstaendig':
-  Show: Firmenname, Einkuenfte aus Gewerbebetrieb
-ALWAYS (if > 0):
-  Show: Einkuenfte aus Photovoltaik
+UPDATE profiles SET
+  first_name = 'Max',
+  last_name = 'Mustermann',
+  display_name = 'Max Mustermann',
+  street = 'Leopoldstraße',
+  house_number = '42',
+  postal_code = '80802',
+  city = 'München',
+  country = 'DE',
+  phone_mobile = '+49 170 1234567',
+  phone_landline = '+49 89 12345678',
+  tax_id = 'DE123456789',
+  tax_number = '143/123/45678'
+WHERE id = 'd028bc99-6e29-4fa4-b038-d03015faf222';
 ```
 
-### Abonnement-Gruppierung im Hook
+### applicant_profiles (Max persistent vervollstaendigen)
 ```text
-subscriptionsByCategory = Map<string, { label, items, subtotal }>
-  - streaming_video -> [Netflix, Disney+, ...]
-  - telecom_mobile -> [Telekom, ...]
-  - utilities_energy -> [Vattenfall, SWM, ...]
-  - ...
+UPDATE applicant_profiles SET
+  net_income_monthly = 0,
+  self_employed_income_monthly = 8500,
+  company_name = 'IT-Beratung Mustermann',
+  company_legal_form = 'Einzelunternehmen',
+  employment_type = 'selbstaendig',
+  address_street = 'Leopoldstraße 42',
+  address_postal_code = '80802',
+  address_city = 'München',
+  phone = '+49 170 1234567',
+  email = 'max@mustermann-demo.de',
+  children_count = 2,
+  adults_count = 2,
+  child_benefit_monthly = 500,
+  bank_savings = 85000,
+  securities_value = 120000,
+  life_insurance_value = 45000
+WHERE id = 'a23366ab-e769-46b0-8d44-f8117f901c15';
 ```
 
-### PV-Integration in Vermoegensberechnung
-- PV-Darlehen fliessen in die Verbindlichkeiten ein (loan_remaining_balance)
-- PV-Ertraege (annual_revenue / 12) fliessen in die Einnahmen ein
-- PV-Darlehensrate fliesst in die Ausgaben ein
+### applicant_profiles (Stelzl-Altlast loeschen)
+```text
+DELETE FROM applicant_profiles
+WHERE id = 'c445bafd-1813-4b21-8966-709078deea2a';
+```
+
+### miety_homes (Eigentum + vollstaendige Daten)
+```text
+UPDATE miety_homes SET
+  name = 'Villa Mustermann',
+  ownership_type = 'eigentum',
+  market_value = 850000,
+  construction_year = 2005,
+  heating_type = 'Wärmepumpe',
+  plot_area_sqm = 620,
+  has_garage = true,
+  has_garden = true,
+  has_basement = true,
+  floor_count = 2,
+  bathrooms_count = 3,
+  address = 'Leopoldstraße',
+  address_house_no = '42',
+  city = 'München',
+  zip = '80802'
+WHERE id = 'da78ca31-7456-44a8-980c-3e374818b49e';
+```
+
+## Auswirkungen (automatisch via Trigger)
+- Der `profiles → household_persons` Trigger synchronisiert Name, Adresse und Telefon automatisch auf die Hauptperson in der Finanzanalyse
+- Die Selbstauskunft zeigt dann korrekte Mustermann-Daten
+- Das Zuhause-Modul zeigt ein vollstaendiges Eigenheim-Dossier
+
