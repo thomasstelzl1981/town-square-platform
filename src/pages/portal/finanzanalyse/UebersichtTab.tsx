@@ -28,6 +28,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { KontoAkteInline } from '@/components/finanzanalyse/KontoAkteInline';
+import { FinanzberichtSection } from '@/components/finanzanalyse/FinanzberichtSection';
 import { DEMO_KONTO, DEMO_KONTO_IBAN_MASKED } from '@/constants/demoKontoData';
 import {
   Users, UserPlus, Landmark, ScanSearch, Plus, User,
@@ -537,6 +538,8 @@ export default function UebersichtTab() {
           </div>
         </Card>
       )}
+
+      <FinanzberichtSection />
 
       <KontenBlock />
     </PageShell>
