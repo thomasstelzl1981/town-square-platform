@@ -346,7 +346,6 @@ export const zone2Portal: ZoneDefinition = {
         { path: "kunden", component: "KundenTab", title: "Kunden" },
         { path: "network", component: "NetworkTab", title: "Netzwerk" },
         { path: "leads", component: "LeadsTab", title: "Leadeingang" },
-        { path: "landing-page", component: "VMPartnerLandingPage", title: "Landing Page" },
       ],
       dynamic_routes: [
         { path: "katalog/:publicId", component: "KatalogDetailPage", title: "Katalog-Detail", dynamic: true },
@@ -386,7 +385,6 @@ export const zone2Portal: ZoneDefinition = {
         { path: "einreichung", component: "FMEinreichung", title: "Einreichung" },
         { path: "provisionen", component: "FMProvisionen", title: "Provisionen" },
         { path: "archiv", component: "FMArchiv", title: "Archiv" },
-        { path: "landing-page", component: "FMLandingPage", title: "Landing Page" },
       ],
       dynamic_routes: [
         { path: "einreichung/:requestId", component: "FMEinreichungDetail", title: "Einreichung Detail", dynamic: true },
@@ -413,7 +411,6 @@ export const zone2Portal: ZoneDefinition = {
         { path: "objekteingang", component: "AkquiseObjekteingang", title: "Objekteingang" },
         { path: "datenbank", component: "AkquiseDatenbank", title: "Datenbank" },
         { path: "tools", component: "AkquiseTools", title: "Tools" },
-        { path: "landing-page", component: "AkquiseLandingPage", title: "Landing Page" },
       ],
       dynamic_routes: [
         { path: "mandate/neu", component: "MandatCreateWizardManager", title: "Neues Mandat" },
