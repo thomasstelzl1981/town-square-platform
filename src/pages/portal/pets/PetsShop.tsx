@@ -2,8 +2,11 @@
  * PetsShop — 4 CI-Widgets: Ernährung, Lennox Tracker, Zooplus, Fressnapf
  */
 import { useState } from 'react';
-import { ShoppingCart, MapPin, ExternalLink, Radar, Store, PawPrint, Clock, Search, Plug, WifiOff, UtensilsCrossed } from 'lucide-react';
+import { ShoppingCart, MapPin, ExternalLink, Radar, Store, PawPrint, Clock, Search, Plug, WifiOff, UtensilsCrossed, Activity, Shield, Battery, Droplets, Heart, Check } from 'lucide-react';
 import { DESIGN } from '@/config/designManifest';
+import lennoxHeroImg from '@/assets/lennox-hero.jpg';
+import lennoxProductImg from '@/assets/lennox-tracker-product.jpg';
+import lennoxLifestyleImg from '@/assets/lennox-lifestyle.jpg';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { WidgetGrid } from '@/components/shared/WidgetGrid';
@@ -271,40 +274,143 @@ export default function PetsShop() {
       )}
 
       {activeWidget === 'lennox' && (
-        <div className="space-y-4">
-          <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Lennox GPS-Tracker</h3>
-          <Card className="border-teal-500/20">
-            <CardContent className="pt-6 space-y-4">
-              <div className="flex items-start gap-4">
-                <div className="p-4 rounded-xl bg-teal-500/10">
-                  <Radar className="h-10 w-10 text-teal-600" />
-                </div>
-                <div className="flex-1">
-                  <h4 className="text-lg font-semibold">Lennox GPS-Tracker</h4>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Wissen Sie immer, wo Ihr Liebling ist. Der Lennox Tracker bietet Echtzeit-GPS-Ortung, 
-                    Aktivitätstracking und Geofencing — direkt in Ihrer Tierakte sichtbar.
-                  </p>
-                  <div className="flex flex-wrap gap-2 mt-3">
-                    <Badge variant="outline">Live-Standort</Badge>
-                    <Badge variant="outline">Aktivitäts­tracking</Badge>
-                    <Badge variant="outline">Geofencing</Badge>
-                    <Badge variant="outline">Wasserdicht</Badge>
-                  </div>
-                </div>
-              </div>
-              <div className="border-t border-border/30 pt-4 flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Ab</p>
-                  <p className="text-2xl font-bold">49,99 €</p>
-                  <p className="text-xs text-muted-foreground">zzgl. 3,99 €/Monat Abo</p>
-                </div>
-                <Button className="gap-2" disabled>
-                  <ShoppingCart className="h-4 w-4" /> Bald verfügbar
+        <div className="space-y-6">
+          {/* Hero Banner */}
+          <Card className="overflow-hidden border-0 relative">
+            <div className="relative">
+              <img src={lennoxHeroImg} alt="Lennox GPS Tracker – Hund mit Tracker" className="w-full h-64 sm:h-80 object-cover" />
+              <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/40 to-transparent" />
+              <div className="absolute inset-0 flex flex-col justify-center p-6 sm:p-10">
+                <Badge className="w-fit mb-3 bg-teal-500/90 text-white border-0 text-[10px]">GPS-Tracker</Badge>
+                <h2 className="text-3xl sm:text-4xl font-bold text-white tracking-tight">Lennox GPS Tracker</h2>
+                <p className="text-white/80 mt-2 max-w-md text-sm sm:text-base">Immer wissen, wo dein Liebling ist. Echtzeit-Ortung, Aktivitätstracking und Geofencing.</p>
+                <Button className="w-fit mt-4 gap-2 bg-teal-500 hover:bg-teal-600 text-white" disabled>
+                  <ShoppingCart className="h-4 w-4" /> Jetzt vorbestellen
                 </Button>
               </div>
-            </CardContent>
+            </div>
           </Card>
+
+          {/* Feature Grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {[
+              { icon: MapPin, title: 'Live-Ortung', desc: 'Weltweite Echtzeit-Verfolgung per GPS, WLAN & Mobilfunk' },
+              { icon: Activity, title: 'Aktivitätstracking', desc: 'Schritte, Ruhezeiten und Fitness deines Vierbeiners' },
+              { icon: Shield, title: 'Geofencing', desc: 'Sichere Zonen definieren und Benachrichtigungen erhalten' },
+              { icon: Battery, title: '14 Tage Akku', desc: 'Langlebiger Akku mit USB-C Schnellladung' },
+              { icon: Droplets, title: 'Wasserdicht IP67', desc: 'Robust bei Regen, Schlamm und Badespaß' },
+              { icon: Heart, title: 'Gesundheitswarnungen', desc: 'Auffälligkeiten bei Aktivität frühzeitig erkennen' },
+            ].map((f, i) => {
+              const Icon = f.icon;
+              return (
+                <Card key={i} className="border-teal-500/10 hover:border-teal-500/30 transition-colors">
+                  <CardContent className="p-4 flex flex-col gap-2">
+                    <div className="p-2 rounded-lg bg-teal-500/10 w-fit">
+                      <Icon className="h-5 w-5 text-teal-600 dark:text-teal-400" />
+                    </div>
+                    <p className="text-sm font-semibold">{f.title}</p>
+                    <p className="text-[11px] text-muted-foreground leading-snug">{f.desc}</p>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+
+          {/* Product Variants */}
+          <div>
+            <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-3">Produktvarianten</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {[
+                { name: 'LENNOX Mini', target: 'Kleine Hunde & Katzen bis 10 kg', price: '39,99 €', weight: '25 g', popular: false },
+                { name: 'LENNOX Standard', target: 'Hunde von 10–25 kg', price: '49,99 €', weight: '35 g', popular: true },
+                { name: 'LENNOX XL', target: 'Große Hunde ab 25 kg', price: '59,99 €', weight: '45 g', popular: false },
+              ].map((v, i) => (
+                <Card key={i} className={`relative overflow-hidden transition-all hover:-translate-y-0.5 hover:shadow-md ${v.popular ? 'border-teal-500/40 shadow-[0_0_20px_-5px_hsl(180_60%_40%/0.2)]' : 'border-border/40'}`}>
+                  {v.popular && <Badge className="absolute top-3 right-3 bg-teal-500 text-white border-0 text-[10px]">Beliebt</Badge>}
+                  <CardContent className="p-5 flex flex-col items-center text-center gap-3">
+                    <div className="w-20 h-20 rounded-2xl overflow-hidden bg-muted/30">
+                      <img src={lennoxProductImg} alt={v.name} className="w-full h-full object-cover" />
+                    </div>
+                    <div>
+                      <p className="font-bold text-sm">{v.name}</p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">{v.target}</p>
+                      <p className="text-[11px] text-muted-foreground">Gewicht: {v.weight}</p>
+                    </div>
+                    <p className="text-xl font-bold text-teal-600 dark:text-teal-400">{v.price}</p>
+                    <Button variant="outline" size="sm" className="w-full gap-2 border-teal-500/30 hover:bg-teal-500/5" disabled>
+                      <ShoppingCart className="h-3.5 w-3.5" /> Vorbestellen
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+
+          {/* Subscription Plans */}
+          <div>
+            <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-3">Abo-Modelle</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {[
+                { name: 'Basic', price: '2,99 €/Mo', features: ['Live-Ortung', 'Standort-Verlauf 24h', '1 Geofence-Zone'] },
+                { name: 'Plus', price: '4,99 €/Mo', features: ['Live-Ortung', 'Standort-Verlauf 7 Tage', '5 Geofence-Zonen', 'Aktivitätstracking'], popular: true },
+                { name: 'Premium', price: '6,99 €/Mo', features: ['Live-Ortung', 'Standort-Verlauf 365 Tage', 'Unbegrenzte Zonen', 'Aktivitäts- & Gesundheitstracking', 'Familien-Sharing'] },
+              ].map((plan, i) => (
+                <Card key={i} className={`transition-all ${(plan as any).popular ? 'border-teal-500/40' : 'border-border/40'}`}>
+                  <CardContent className="p-5 flex flex-col gap-3">
+                    <div className="flex items-center justify-between">
+                      <p className="font-bold text-sm">{plan.name}</p>
+                      {(plan as any).popular && <Badge className="bg-teal-500 text-white border-0 text-[10px]">Empfohlen</Badge>}
+                    </div>
+                    <p className="text-lg font-bold text-teal-600 dark:text-teal-400">{plan.price}</p>
+                    <ul className="space-y-1.5">
+                      {plan.features.map((f, fi) => (
+                        <li key={fi} className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                          <Check className="h-3 w-3 text-teal-500 flex-shrink-0" />
+                          {f}
+                        </li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+
+          {/* Lifestyle Image */}
+          <Card className="overflow-hidden border-0">
+            <img src={lennoxLifestyleImg} alt="Lennox Tracker im Alltag" className="w-full h-48 sm:h-64 object-cover rounded-2xl" />
+          </Card>
+
+          {/* Integration Accordion */}
+          <Accordion type="single" collapsible>
+            <AccordionItem value="integration" className="border rounded-2xl px-4">
+              <AccordionTrigger className="hover:no-underline">
+                <div className="flex items-center gap-3">
+                  <Plug className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">Integration & Zugangsdaten</span>
+                  <Badge variant="outline" className="gap-1 text-muted-foreground ml-2">
+                    <WifiOff className="h-3 w-3" />
+                    Nicht verbunden
+                  </Badge>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent>
+                <div className="space-y-4 pt-2 pb-2">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Partner-ID</Label>
+                    <Input placeholder="Lennox Partner ID" disabled className="text-sm" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">API Key</Label>
+                    <Input placeholder="Lennox API Key" disabled className="text-sm" />
+                  </div>
+                  <Button variant="outline" disabled size="sm">
+                    Verbindung testen
+                  </Button>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
         </div>
       )}
 
