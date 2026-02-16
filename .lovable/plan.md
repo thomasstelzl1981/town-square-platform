@@ -1,115 +1,166 @@
 
 
-# Entwicklungsplan: PET-Vertical Gesamtkonzept
+# Phasenweiser Implementierungsplan: PET-Vertical
 
-## Ueberblick
+## Uebersicht
 
-27 Backlog-Items in 6 Phasen, die das PET-Vertical von Platzhaltern zu einem vollstaendigen Franchise-System ausbauen. Betroffen sind MOD-05 (Client), MOD-22 (Manager) und Zone 1 (Pet Governance).
+27 Backlog-Items in 6 Phasen. Jede Phase wird einzeln freigegeben und implementiert. Bestehende Tabellen: `pet_invoices` (ohne `tenant_id`!), `pet_invoice_items`. Alle anderen Tabellen muessen neu erstellt werden.
 
 ---
 
 ## Phase 1: Datenmodell und Tier-Akten (7 Items)
 
-Fundament: Datenbank-Tabellen und die erste sichtbare UI — die Tier-Akte.
+**Ziel:** DB-Fundament + erste sichtbare UI mit Demo-Daten.
 
-| ID | Modul | Titel | Aufwand |
-|----|-------|-------|---------|
-| PET-001 | DB | Tabelle `pets` erstellen (Stammdaten, Chip-Nr, Allergien, Versicherung, Foto) | mittel |
-| PET-002 | DB | Tabelle `pet_vaccinations` (Impfhistorie, naechste Faelligkeit, Dokument-Link) | mittel |
-| PET-003 | DB | Tabelle `pet_providers` (Dienstleister-Stamm, Typ, Verifizierung, Bewertung) | mittel |
-| PET-004 | DB | Tabelle `pet_services` (Service-Katalog pro Provider: Preis, Dauer, Tierarten) | mittel |
-| PET-005 | MOD-05 | Demo-Daten: Luna (Golden Retriever) + Bello (Dackel) fuer Mustermann-Tenant | niedrig |
-| PET-006 | MOD-05 | RecordCard-Akte: Grid in "Meine Tiere" + Detail-Seite mit Impfhistorie und Foto-Upload | hoch |
-| PET-007 | MOD-05 | DMS-Ordnerstruktur pro Tier automatisch anlegen (Impfpass, Tierarzt, Fotos...) | mittel |
+### Schritt 1.1 — Datenbank-Migration (PET-001 bis PET-004)
+
+4 neue Tabellen in einer Migration:
+
+| Tabelle | Wichtigste Spalten | RLS |
+|---------|-------------------|-----|
+| `pets` | tenant_id (NOT NULL), owner_user_id, name, species (enum), breed, gender, birth_date, weight_kg, chip_number, photo_url, allergies (text[]), neutered, vet_name, insurance_provider, insurance_policy_no | tenant_id-basiert |
+| `pet_vaccinations` | pet_id (FK), tenant_id, vaccination_type, vaccine_name, administered_at, next_due_at, vet_name, batch_number, document_node_id | tenant_id-basiert |
+| `pet_providers` | tenant_id, user_id (FK profiles), company_name, provider_type (enum), status (pending/active/suspended), verified_at, rating_avg, bio, operating_hours (jsonb) | tenant_id + public read fuer verified |
+| `pet_services` | provider_id (FK), tenant_id, title, category (enum), duration_minutes, price_cents, price_type (enum), species_allowed (text[]), is_active | tenant_id-basiert |
+
+Indexes: Composite `(tenant_id, created_at)` auf jede Tabelle.
+
+### Schritt 1.2 — Demo-Daten (PET-005)
+
+Demo-Engine-Eintrag in `demoDataManifest.ts` mit festen UUIDs:
+- **Luna**: Golden Retriever, weiblich, geb. 2023-04-15, Chip DE123456789, 28kg
+- **Bello**: Dackel, maennlich, geb. 2021-09-01, Chip DE987654321, 9kg
+- Beide: `tenant_id = DEV_TENANT_UUID` (`a0000000-0000-4000-a000-000000000001`)
+- Je 2-3 Impfhistorien-Eintraege (Tollwut, Staupe, Leptospirose)
+
+Seed via SQL-Migration oder Golden-Path-Seed-Funktion.
+
+### Schritt 1.3 — RecordCard UI (PET-006)
+
+**`PetsMeineTiere.tsx`** umbauen:
+- RecordCard-Grid (bestehendes Pattern aus Stammdaten/Personen)
+- Geschlossener Zustand: Foto-Kachel links (w-1/2, aspect-[4/5]), Name/Rasse/Alter rechts
+- Klick oeffnet `/portal/pets/:petId`
+
+**`PetDetailPage.tsx`** ausbauen:
+- Offener RecordCard-Zustand mit allen Feldern
+- Impfhistorie-Sektion (Tabelle mit naechster Faelligkeit)
+- Foto-Upload-Zone (Drag-and-Drop, ersetzt ehem. Fotoalbum)
+- Integrierter DMS-Tree (entity_type='pet')
+
+### Schritt 1.4 — DMS-Ordnerstruktur (PET-007)
+
+Bei Tier-Anlage automatisch `storage_nodes` Ordner erstellen:
+- `01_Impfpass`, `02_Tierarzt`, `03_Versicherung`, `04_Fotos`, `05_Sonstiges`
 
 ---
 
 ## Phase 2: Service-Katalog und Buchungssystem (7 Items)
 
-Kernflow: Kunde bucht Service im Shop, Provider bestaetigt im Kalender.
+**Ziel:** Kompletter Buchungsflow von Client zu Provider.
 
-| ID | Modul | Titel | Aufwand |
-|----|-------|-------|---------|
-| PET-010 | DB | Tabelle `pet_bookings` (Status-Maschine: requested -> confirmed -> completed/cancelled) | hoch |
-| PET-011 | DB | Tabelle `pet_provider_availability` (Wochentag-Slots, max Buchungen pro Slot) | mittel |
-| PET-012 | DB | Tabelle `pet_provider_blocked_dates` (Urlaub/Sperrzeiten) | niedrig |
-| PET-013 | MOD-22 | Leistungen-Tab: Provider verwaltet eigene Services (CRUD) | hoch |
-| PET-014 | MOD-22 | Kalender-Tab: Verfuegbarkeits-Editor + Buchungsanfragen annehmen/ablehnen | hoch |
-| PET-015 | MOD-05 | Shop-Tab: Services browsen, Tier waehlen, Termin buchen | hoch |
-| PET-016 | MOD-05 | Mein Bereich: Aktive Buchungen und Buchungshistorie anzeigen | mittel |
+### Schritt 2.1 — Datenbank (PET-010 bis PET-012)
 
-**Buchungsflow:**
+3 neue Tabellen:
 
-```text
-Kunde (MOD-05 Shop)          Zone 1 (Governance)         Provider (MOD-22 Kalender)
-       |                            |                            |
-   Service waehlen                  |                            |
-   Tier auswaehlen                  |                            |
-   Datum/Zeit waehlen               |                            |
-   Buchung absenden ──────────> Intake pruefen ──────────> Anfrage erscheint
-       |                      (automatisch/manuell)              |
-       |                            |                    Annehmen/Ablehnen
-       |                            |                            |
-   Status: bestaetigt <──────────────────────────── confirmed/rejected
-       |                            |                            |
-   Termin wahrnehmen                |                    Service durchfuehren
-       |                            |                            |
-   Bewertung abgeben                |                    Als erledigt markieren
-```
+| Tabelle | Zweck |
+|---------|-------|
+| `pet_bookings` | Status-Maschine: requested -> confirmed -> in_progress -> completed/cancelled/no_show. FKs zu pets, pet_services, pet_providers. |
+| `pet_provider_availability` | Wochentag-Slots (day_of_week, start_time, end_time, max_bookings) |
+| `pet_provider_blocked_dates` | Urlaub/Sperrzeiten (blocked_date, reason) |
+
+### Schritt 2.2 — MOD-22 Leistungen-Tab (PET-013)
+
+`PMLeistungen.tsx`: Provider verwaltet eigene Services (CRUD-Formular mit Titel, Kategorie, Dauer, Preis, erlaubte Tierarten).
+
+### Schritt 2.3 — MOD-22 Kalender-Tab (PET-014)
+
+`PMBuchungen.tsx`: Wochenkalender mit Buchungen, Verfuegbarkeits-Editor, Buchungsanfragen annehmen/ablehnen.
+
+### Schritt 2.4 — MOD-05 Shop-Tab (PET-015)
+
+`PetsShop.tsx`: Services browsen (gefiltert nach Tierart), Tier auswaehlen, Datum/Zeit waehlen, Buchung absenden.
+
+### Schritt 2.5 — MOD-05 Mein Bereich (PET-016)
+
+`PetsMeinBereich.tsx`: Aktive Buchungen, Buchungshistorie mit Status-Badges.
 
 ---
 
 ## Phase 3: Rechnungs- und Zahlungsflow (4 Items)
 
-Provider erstellt Rechnung aus abgeschlossener Buchung, Kunde sieht sie in "Mein Bereich".
+**Ziel:** Provider erstellt Rechnung, Kunde sieht und bezahlt.
 
-| ID | Modul | Titel | Aufwand |
-|----|-------|-------|---------|
-| PET-020 | DB | Bestehende `pet_invoices` pruefen: tenant_id, FKs, RLS-Policies | mittel |
-| PET-021 | MOD-22 | Finanzen-Tab: Rechnung aus Buchung generieren, PDF-Export (jsPDF) | hoch |
-| PET-022 | MOD-05 | Mein Bereich: Rechnungseingang mit PDF-Download und Zahlungsstatus | mittel |
-| PET-023 | MOD-22 | Finanzen-Tab: Umsatz-Dashboard (Monatsumsatz, offene Forderungen) | mittel |
+### Schritt 3.1 — DB-Erweiterung (PET-020)
+
+`pet_invoices` um `tenant_id` (NOT NULL) erweitern + RLS-Policies. FK-Constraints zu `pet_bookings` und `pet_providers` validieren.
+
+### Schritt 3.2 — MOD-22 Finanzen (PET-021, PET-023)
+
+`PMFinanzen.tsx`: Rechnung aus abgeschlossener Buchung generieren, PDF-Export (jsPDF), Rechnungsliste mit Status. Umsatz-Dashboard (Recharts).
+
+### Schritt 3.3 — MOD-05 Mein Bereich erweitern (PET-022)
+
+Rechnungseingang mit PDF-Download und Zahlungsstatus in `PetsMeinBereich.tsx`.
 
 ---
 
 ## Phase 4: Caring und Pflege-Kalender (4 Items)
 
-Pflege-Tracking fuer Fuetterung, Medikamente, Tierarzt-Termine.
+**Ziel:** Pflege-Tracking fuer Fuetterung, Medikamente, Tierarzt-Termine.
 
-| ID | Modul | Titel | Aufwand |
-|----|-------|-------|---------|
-| PET-030 | DB | Tabelle `pet_caring_events` (Event-Typ, Faelligkeit, Wiederholung) | mittel |
-| PET-031 | MOD-05 | Caring-Tab: Kalenderansicht mit Pflege-Events aller Tiere | hoch |
-| PET-032 | MOD-05 | Tier-Akte: Pflege-Sektion mit Timeline und naechsten Aktionen | mittel |
-| PET-033 | MOD-05 | Erinnerungen: Toast-Hinweise bei faelligen Pflege-Events | niedrig |
+### Schritt 4.1 — DB (PET-030)
+
+Tabelle `pet_caring_events` (event_type enum, recurring_interval_days, reminder_enabled).
+
+### Schritt 4.2 — MOD-05 Caring-Tab (PET-031)
+
+`PetsCaring.tsx`: Kalenderansicht mit Pflege-Events aller Tiere, Quick-Add, ueberfaellige Events hervorgehoben.
+
+### Schritt 4.3 — Tier-Akte Pflege-Sektion (PET-032)
+
+Pflege-Timeline in `PetDetailPage.tsx`.
+
+### Schritt 4.4 — Erinnerungen (PET-033)
+
+Toast-Hinweise bei faelligen Pflege-Events.
 
 ---
 
 ## Phase 5: Zone 1 Governance und Monitoring (5 Items)
 
-Admin-Desk mit echten Daten statt Platzhalter-KPIs.
+**Ziel:** Admin-Desk mit echten Daten.
 
-| ID | Modul | Titel | Aufwand |
-|----|-------|-------|---------|
-| PET-040 | Z1 Dashboard | KPI-Kacheln mit Live-Daten (Provider-Count, Umsatz, Buchungen) | mittel |
-| PET-041 | Z1 Provider | Provider-Verzeichnis mit Verifizierungs-Workflow (pending -> verified) | hoch |
-| PET-042 | Z1 Finanzen | Aggregierte Umsatzzahlen nach Provider, offene Forderungen | mittel |
-| PET-043 | Z1 Services | Service-Katalog-Moderation: Freigabe/Ablehnung neuer Services | mittel |
-| PET-044 | Z1 Monitor | Audit-Trail, Stornoquote, Buchungen/Tag, Anomalie-Alerts | mittel |
+### Schritt 5.1 — Dashboard KPIs (PET-040)
+
+`PetmanagerDesk.tsx`: Live-Daten statt hardcoded (Provider-Count, Umsatz, Buchungen).
+
+### Schritt 5.2 — Provider-Verwaltung (PET-041)
+
+`PetmanagerProvider.tsx`: Tabelle mit Verifizierungs-Workflow (pending -> verified).
+
+### Schritt 5.3 — Finanz-Governance (PET-042)
+
+`PetmanagerFinanzen.tsx`: Aggregierte Umsatzzahlen nach Provider.
+
+### Schritt 5.4 — Service-Moderation (PET-043)
+
+`PetmanagerServices.tsx`: Freigabe/Ablehnung neuer Services.
+
+### Schritt 5.5 — Monitor (PET-044)
+
+`PetmanagerMonitor.tsx`: Audit-Trail, Stornoquote, Anomalie-Alerts.
 
 ---
 
 ## Phase 6: Golden Path und Integration (5 Items)
 
-Cross-Modul-Verknuepfungen und Spec-Dokumentation.
+**Ziel:** Cross-Modul-Verknuepfungen und Dokumentation.
 
-| ID | Modul | Titel | Aufwand |
-|----|-------|-------|---------|
-| PET-050 | MOD-05 | Golden Path GP-PETS: Sections fuer alle 4 Tabs mit DB-Daten | mittel |
-| PET-051 | MOD-05 | DMS-Integration: Tier-Dokumente im zentralen DMS (MOD-03) sichtbar | mittel |
-| PET-052 | MOD-05 | Versicherungs-Referenz: Tierhaftpflicht in insurance_contracts | niedrig |
-| PET-053 | SPEC | mod-05_pets.md an reale 4-Tab-Struktur anpassen | niedrig |
-| PET-054 | SPEC | mod-22_petmanager.md neu erstellen | niedrig |
+- GP-PETS Prozess in `goldenPathProcesses.ts` vervollstaendigen (PET-050)
+- DMS-Integration: Tier-Dokumente im MOD-03 sichtbar (PET-051)
+- Versicherungs-Referenz in insurance_contracts (PET-052)
+- Specs aktualisieren: mod-05_pets.md und mod-22_petmanager.md (PET-053, PET-054)
 
 ---
 
@@ -118,12 +169,9 @@ Cross-Modul-Verknuepfungen und Spec-Dokumentation.
 | Kennzahl | Wert |
 |----------|------|
 | Gesamt-Items | 27 |
-| Neue DB-Tabellen | 8 (pets, pet_vaccinations, pet_providers, pet_services, pet_bookings, pet_provider_availability, pet_provider_blocked_dates, pet_caring_events) |
+| Neue DB-Tabellen | 8 |
 | Bestehende DB-Tabellen | 2 (pet_invoices, pet_invoice_items — werden erweitert) |
-| Kritisch (P1) | 14 Items |
-| Wichtig (P2) | 9 Items |
-| Nice-to-have (P3) | 4 Items |
-| Demo-Daten | Luna (Golden Retriever) + Bello (Dackel) fuer DEV_TENANT |
+| Naechster Schritt | Phase 1 implementieren (nach Freigabe) |
 
-Die Backlog-JSON liegt bereits unter `spec/audit/pet_vertical_backlog.json`. Dieser Plan dient als Grundlage zur Verfeinerung vor der Implementierung.
+**Empfehlung:** Phase 1 zuerst implementieren — sie legt das gesamte DB-Fundament und liefert die erste sichtbare UI mit den Demo-Tieren Luna und Bello.
 
