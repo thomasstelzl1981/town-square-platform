@@ -132,22 +132,24 @@
       "origin": "TODO-009",
       "severity": "P3",
       "module": "MOD-04",
-      "title": "DMS Dokument-Preview nicht implementiert",
-      "description": "Preview-Button hat keine Funktionalität.",
+      "title": "DMS Dokument-Preview implementiert",
+      "description": "PreviewView zeigt jetzt Bilder UND PDFs inline via signed URL (iframe). Andere Dateitypen zeigen weiterhin das Icon.",
       "fix_type": "code",
       "effort": "medium",
-      "status": "open"
+      "status": "done",
+      "fixed_at": "2026-02-16"
     },
     {
       "id": "CB-011",
       "origin": "BL-000004",
       "severity": "P3",
       "module": "MOD-10",
-      "title": "MOD-10 base path 'leads' inkonsistent",
-      "description": "URL /portal/leads passt nicht zum Modulnamen 'Abrechnung'. Rename auf 'abrechnung' + Legacy-Redirect.",
+      "title": "MOD-10 base path auf 'provisionen' umgestellt",
+      "description": "URL /portal/leads → /portal/provisionen. Legacy-Redirect eingebaut. Armstrong-Manifest, Golden Path und moduleContents aktualisiert.",
       "fix_type": "code",
       "effort": "medium",
-      "status": "open"
+      "status": "done",
+      "fixed_at": "2026-02-16"
     },
     {
       "id": "CB-012",

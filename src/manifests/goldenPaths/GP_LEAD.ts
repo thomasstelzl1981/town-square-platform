@@ -26,7 +26,7 @@ export const GP_LEAD_GOLDEN_PATH: GoldenPathDefinition = {
     required_flags: ['lead_captured', 'lead_qualified', 'lead_assigned'],
     description: 'Lead erfasst, qualifiziert und an Partner zugewiesen.',
   },
-  failure_redirect: '/admin/leads',
+  failure_redirect: '/admin/lead-desk',
 
   steps: [
     // PHASE 1: LEAD-ERFASSUNG (Cross-Zone Z3->Z1)
@@ -69,7 +69,7 @@ export const GP_LEAD_GOLDEN_PATH: GoldenPathDefinition = {
       phase: 2,
       label: 'Lead qualifizieren (Z1 Admin)',
       type: 'action',
-      routePattern: '/admin/leads',
+      routePattern: '/admin/lead-desk',
       task_kind: 'user_task',
       camunda_key: 'GP09_STEP_02_QUALIFY_LEAD',
       preconditions: [
@@ -86,7 +86,7 @@ export const GP_LEAD_GOLDEN_PATH: GoldenPathDefinition = {
       phase: 3,
       label: 'Lead an Partner zuweisen',
       type: 'action',
-      routePattern: '/admin/leads',
+      routePattern: '/admin/lead-desk',
       task_kind: 'user_task',
       camunda_key: 'GP09_STEP_03_ASSIGN_LEAD',
       preconditions: [
