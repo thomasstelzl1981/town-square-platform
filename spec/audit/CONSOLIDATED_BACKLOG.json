@@ -37,22 +37,24 @@
       "origin": "TODO-002",
       "severity": "P2",
       "module": "MOD-04",
-      "title": "NK-Vorauszahlung: Hardcoded 12 Monate",
-      "description": "Bei unterjährigen Mietverträgen sollte anteilig berechnet werden.",
+      "title": "NK-Vorauszahlung: Heating-Advance genutzt",
+      "description": "lease.heating_advance_eur wird jetzt korrekt an calculateProratedPrepayments übergeben statt hardcoded 0. Anteilige Berechnung war bereits implementiert.",
       "fix_type": "code",
       "effort": "low",
-      "status": "open"
+      "status": "done",
+      "fixed_at": "2026-02-16"
     },
     {
       "id": "CB-003",
       "origin": "TODO-003",
       "severity": "P2",
       "module": "MOD-18",
-      "title": "VV-Steuer: NK-Nachzahlung fehlt",
-      "description": "nkNachzahlung ist hardcoded 0 — sollte aus nk_tenant_settlements gelesen werden.",
+      "title": "VV-Steuer: NK-Nachzahlung implementiert",
+      "description": "nkNachzahlung wird aus nk_tenant_settlements.saldo_eur gelesen. Positive Salden (Nachzahlung Mieter) werden summiert.",
       "fix_type": "code",
       "effort": "medium",
-      "status": "open"
+      "status": "done",
+      "fixed_at": "2026-02-16"
     },
     {
       "id": "CB-004",
