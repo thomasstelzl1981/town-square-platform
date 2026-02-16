@@ -1,6 +1,6 @@
 /**
  * useVVSteuerData — Data hook for V+V Anlage V
- * Loads landlord_contexts, properties, leases, property_accounting, nk data, vv_annual_data
+ * Loads landlord_contexts, properties, leases (via units), property_accounting, nk data, vv_annual_data
  * Provides save/confirm mutations
  */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -39,13 +39,33 @@ export function useVVSteuerData(taxYear: number) {
 
       // Get property IDs for sub-queries
       const propertyIds = (propsRes.data || []).map((p: any) => p.id);
-      if (propertyIds.length === 0) return { contexts: ctxRes.data || [], properties: [], accounting: [], annual: [], leases: [], financing: [], nkItems: [] };
+      if (propertyIds.length === 0) return { contexts: ctxRes.data || [], properties: [], accounting: [], annual: [], units: [], leases: [], financing: [], nkPeriods: [], nkItems: [] };
 
-      const [leasesRes, financingRes, nkPeriodsRes] = await Promise.all([
-        supabase.from('leases').select('id, unit_id, property_id, rent_cold_eur, nk_advance_eur, status').eq('tenant_id', activeTenantId).eq('status', 'active'),
-        (supabase as any).from('property_financing').select('property_id, annual_interest').eq('tenant_id', activeTenantId).in('property_id', propertyIds),
-        (supabase as any).from('nk_periods').select('id, property_id, year').eq('tenant_id', activeTenantId).eq('year', taxYear).in('property_id', propertyIds),
+      // FIX Bug 1: Load units first, then leases via unit_id
+      // FIX Bug 2: nk_periods filtered by period_start/period_end instead of year
+      const [unitsRes, financingRes, nkPeriodsRes] = await Promise.all([
+        supabase.from('units').select('id, property_id').eq('tenant_id', activeTenantId).in('property_id', propertyIds),
+        (supabase as any).from('property_financing').select('property_id, annual_interest, current_balance, interest_rate, is_active').eq('tenant_id', activeTenantId).in('property_id', propertyIds),
+        (supabase as any).from('nk_periods').select('id, property_id, period_start, period_end')
+          .eq('tenant_id', activeTenantId)
+          .in('property_id', propertyIds)
+          .gte('period_start', `${taxYear}-01-01`)
+          .lte('period_end', `${taxYear}-12-31`),
       ]);
+
+      const units = unitsRes.data || [];
+      const unitIds = units.map((u: any) => u.id);
+
+      // Load leases for these units
+      let leases: any[] = [];
+      if (unitIds.length > 0) {
+        const { data: leaseData } = await supabase.from('leases')
+          .select('id, unit_id, rent_cold_eur, nk_advance_eur, status')
+          .eq('tenant_id', activeTenantId)
+          .eq('status', 'active')
+          .in('unit_id', unitIds);
+        leases = leaseData || [];
+      }
 
       // Get NK cost items for relevant periods
       const periodIds = (nkPeriodsRes.data || []).map((p: any) => p.id);
@@ -60,7 +80,8 @@ export function useVVSteuerData(taxYear: number) {
         properties: propsRes.data || [],
         accounting: accountingRes.data || [],
         annual: annualRes.data || [],
-        leases: leasesRes.data || [],
+        units,
+        leases,
         financing: financingRes.data || [],
         nkPeriods: nkPeriodsRes.data || [],
         nkItems,
@@ -106,24 +127,29 @@ export function useVVSteuerData(taxYear: number) {
       modernizationYear: accounting?.modernization_year ?? null,
     };
 
-    // Income aggregation from leases
-    const propLeases = (data?.leases || []).filter((l: any) => {
-      // leases reference unit_id, find units for this property
-      return l.property_id === propertyId;
-    });
+    // FIX Bug 1: Income aggregation — join leases via units
+    const propUnits = (data?.units || []).filter((u: any) => u.property_id === propertyId);
+    const propUnitIds = propUnits.map((u: any) => u.id);
+    const propLeases = (data?.leases || []).filter((l: any) => propUnitIds.includes(l.unit_id));
+    
     const incomeAggregated: VVIncomeAggregated = {
       coldRentAnnual: propLeases.reduce((s: number, l: any) => s + (l.rent_cold_eur || 0) * 12, 0),
       nkAdvanceAnnual: propLeases.reduce((s: number, l: any) => s + (l.nk_advance_eur || 0) * 12, 0),
       nkNachzahlung: 0, // TODO: from nk_tenant_settlements
     };
 
-    // Financing
-    const propFinancing = (data?.financing || []).filter((f: any) => f.property_id === propertyId);
+    // FIX Bug 3: Financing — fallback calculation if annual_interest is null
+    const propFinancing = (data?.financing || []).filter((f: any) => f.property_id === propertyId && f.is_active !== false);
     const financingAggregated: VVFinancingAggregated = {
-      loanInterestAnnual: propFinancing.reduce((s: number, f: any) => s + (f.annual_interest || 0), 0),
+      loanInterestAnnual: propFinancing.reduce((s: number, f: any) => {
+        if (f.annual_interest && f.annual_interest > 0) return s + f.annual_interest;
+        // Fallback: calculate from current_balance * interest_rate / 100
+        if (f.current_balance && f.interest_rate) return s + (f.current_balance * f.interest_rate / 100);
+        return s;
+      }, 0),
     };
 
-    // NK aggregation
+    // NK aggregation (Bug 2 already fixed in query above)
     const propPeriods = (data?.nkPeriods || []).filter((p: any) => p.property_id === propertyId);
     const periodIds = propPeriods.map((p: any) => p.id);
     const propNKItems = (data?.nkItems || []).filter((i: any) => periodIds.includes(i.nk_period_id));
