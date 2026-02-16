@@ -1,6 +1,7 @@
 /**
  * MOD-18 Finanzen — Tab 4: VORSORGEVERTRÄGE
  * Widget CE Layout: WidgetGrid + WidgetCell (4-col, square)
+ * Filtered to category='vorsorge' only
  */
 import { useState } from 'react';
 import { PageShell } from '@/components/shared/PageShell';
@@ -53,6 +54,7 @@ export default function VorsorgeTab() {
   const [newForm, setNewForm] = useState<Record<string, any>>({
     provider: '', contract_no: '', contract_type: '', person_id: '',
     start_date: '', premium: 0, payment_interval: 'monatlich', status: 'Aktiv', notes: '',
+    current_balance: '', balance_date: '',
   });
 
   const { data: rawContracts = [], isLoading } = useQuery({
@@ -69,7 +71,9 @@ export default function VorsorgeTab() {
     enabled: !!activeTenantId,
   });
 
-  const contracts = demoEnabled ? rawContracts : rawContracts.filter((c: any) => !isDemoId(c.id));
+  // Filter: only vorsorge category (or null for legacy)
+  const allContracts = demoEnabled ? rawContracts : rawContracts.filter((c: any) => !isDemoId(c.id));
+  const contracts = allContracts.filter((c: any) => !c.category || c.category === 'vorsorge');
 
   const createMutation = useMutation({
     mutationFn: async (form: Record<string, any>) => {
@@ -81,6 +85,9 @@ export default function VorsorgeTab() {
         start_date: form.start_date || null, premium: Number(form.premium) || null,
         payment_interval: (form.payment_interval as any) || null,
         status: form.status || null, notes: form.notes || null,
+        category: 'vorsorge',
+        current_balance: form.current_balance ? Number(form.current_balance) : null,
+        balance_date: form.balance_date || null,
       });
       if (error) throw error;
     },
@@ -88,7 +95,7 @@ export default function VorsorgeTab() {
       queryClient.invalidateQueries({ queryKey: ['fin-vorsorge'] });
       toast.success('Vorsorgevertrag angelegt');
       setShowNew(false);
-      setNewForm({ provider: '', contract_no: '', contract_type: '', person_id: '', start_date: '', premium: 0, payment_interval: 'monatlich', status: 'Aktiv', notes: '' });
+      setNewForm({ provider: '', contract_no: '', contract_type: '', person_id: '', start_date: '', premium: 0, payment_interval: 'monatlich', status: 'Aktiv', notes: '', current_balance: '', balance_date: '' });
     },
   });
 
@@ -101,6 +108,8 @@ export default function VorsorgeTab() {
         start_date: rest.start_date || null, premium: Number(rest.premium) || null,
         payment_interval: (rest.payment_interval as any) || null,
         status: rest.status || null, notes: rest.notes || null,
+        current_balance: rest.current_balance ? Number(rest.current_balance) : null,
+        balance_date: rest.balance_date || null,
       }).eq('id', id);
       if (error) throw error;
     },
@@ -180,6 +189,11 @@ export default function VorsorgeTab() {
         </div>
         <FormInput label="Status" name="status" value={f.status || ''} onChange={e => onUpdate('status', e.target.value)} />
       </div>
+      <p className={cn(RECORD_CARD.SECTION_TITLE, 'mt-4')}>Guthaben</p>
+      <div className={RECORD_CARD.FIELD_GRID}>
+        <FormInput label="Aktuelles Guthaben (€)" name="current_balance" type="number" value={f.current_balance || ''} onChange={e => onUpdate('current_balance', e.target.value)} />
+        <FormInput label="Stand per" name="balance_date" type="date" value={f.balance_date || ''} onChange={e => onUpdate('balance_date', e.target.value)} />
+      </div>
       <div className="mt-3">
         <Label className="text-xs">Notizen</Label>
         <Textarea value={f.notes || ''} onChange={e => onUpdate('notes', e.target.value)} rows={2} className="mt-1" />
@@ -247,6 +261,18 @@ export default function VorsorgeTab() {
                     <span className="text-muted-foreground">Beitrag</span>
                     <span className="font-semibold">{fmt(c.premium || 0)} / {intervalLabel(c.payment_interval || '')}</span>
                   </div>
+                  {c.current_balance != null && (
+                    <div className="flex justify-between text-xs">
+                      <span className="text-muted-foreground">Guthaben</span>
+                      <span className="font-semibold">{fmt(c.current_balance)}</span>
+                    </div>
+                  )}
+                  {c.balance_date && (
+                    <div className="flex justify-between text-xs">
+                      <span className="text-muted-foreground">Stand</span>
+                      <span>{new Date(c.balance_date).toLocaleDateString('de-DE')}</span>
+                    </div>
+                  )}
                   {personName && (
                     <div className="flex justify-between text-xs">
                       <span className="text-muted-foreground">Person</span>

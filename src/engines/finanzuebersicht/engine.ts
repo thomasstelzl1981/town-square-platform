@@ -36,8 +36,10 @@ function subscriptionMonthly(amount: number, frequency: string | null | undefine
   return amount;
 }
 
-function isInvestmentContract(type: string): boolean {
-  const t = type.toLowerCase();
+function isInvestmentContract(contract: { contract_type?: string | null; category?: string | null }): boolean {
+  if (contract.category) return contract.category === 'investment';
+  // Fallback heuristic for legacy data without category
+  const t = (contract.contract_type || '').toLowerCase();
   return t.includes('etf') || (t.includes('sparplan') && !t.includes('bauspar'));
 }
 
@@ -116,9 +118,9 @@ export function calcExpenses(input: {
   // Vorsorge
   const activeVorsorge = input.vorsorgeData.filter(v => v.status !== 'gekuendigt');
   const savingsOnlyContracts = activeVorsorge.filter(v =>
-    (v.contract_type || '').toLowerCase().includes('spar') && !isInvestmentContract(v.contract_type || '')
+    (v.contract_type || '').toLowerCase().includes('spar') && !isInvestmentContract(v)
   );
-  const investmentVorsorge = activeVorsorge.filter(v => isInvestmentContract(v.contract_type || ''));
+  const investmentVorsorge = activeVorsorge.filter(v => isInvestmentContract(v));
   const savingsMonthly = savingsOnlyContracts.reduce((s, v) => s + monthlyFromInterval(v.premium, v.payment_interval), 0);
   const investmentMonthly = investmentVorsorge.reduce((s, v) => s + monthlyFromInterval(v.premium, v.payment_interval), 0);
 
@@ -280,7 +282,7 @@ export function buildContractLists(input: {
   ];
 
   const vorsorgeContracts = input.activeVorsorge
-    .filter(v => !(v.contract_type || '').toLowerCase().includes('spar') && !isInvestmentContract(v.contract_type || ''))
+    .filter(v => !(v.contract_type || '').toLowerCase().includes('spar') && !isInvestmentContract(v))
     .map(v => ({ id: v.id, type: v.contract_type || 'Vorsorge', provider: v.provider || '—', monthlyAmount: monthlyFromInterval(v.premium, v.payment_interval), contractNo: v.contract_no || undefined }));
 
   return { savingsContracts, investmentContracts, insuranceContracts, loanContracts, vorsorgeContracts };
