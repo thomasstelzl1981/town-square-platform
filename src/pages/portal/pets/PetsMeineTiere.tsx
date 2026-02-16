@@ -3,7 +3,7 @@
  * RecordCard-Grid mit Inline-Akte (kein Seitenwechsel)
  */
 import { useState } from 'react';
-import { PawPrint, Plus, Dog, Cat, Bird, Rabbit, Radar, FolderOpen } from 'lucide-react';
+import { PawPrint, Plus, Dog, Cat, Bird, Rabbit, Radar, FolderOpen, Stethoscope } from 'lucide-react';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { RecordCard } from '@/components/shared/RecordCard';
@@ -20,6 +20,7 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from '@/components/ui/card';
 import { usePets, usePet, usePetVaccinations, useCreatePet, useUpdatePet, useDeletePet } from '@/hooks/usePets';
+import { usePetMedicalRecords, useCreateVaccination, useDeleteVaccination, useCreateMedicalRecord, useDeleteMedicalRecord } from '@/hooks/usePetHealth';
 import { useCaringEvents, useCompleteCaringEvent, useDeleteCaringEvent, CARING_EVENT_TYPES } from '@/hooks/usePetCaring';
 import { useAuth } from '@/contexts/AuthContext';
 import { differenceInYears, differenceInMonths, parseISO, format, isPast, addDays } from 'date-fns';
@@ -48,12 +49,20 @@ function getAge(birthDate: string | null): string {
 function PetInlineDossier({ petId, tenantId }: { petId: string; tenantId?: string }) {
   const { data: pet } = usePet(petId);
   const { data: vaccinations = [] } = usePetVaccinations(petId);
+  const { data: medicalRecords = [] } = usePetMedicalRecords(petId);
   const { data: caringEvents = [] } = useCaringEvents({ petId });
   const completeCaring = useCompleteCaringEvent();
   const deleteCaring = useDeleteCaringEvent();
+  const createVaccination = useCreateVaccination();
+  const deleteVaccination = useDeleteVaccination();
+  const createMedicalRecord = useCreateMedicalRecord();
+  const deleteMedicalRecord = useDeleteMedicalRecord();
   const updatePet = useUpdatePet();
   const [formData, setFormData] = useState<Record<string, any>>({});
-
+  const [vaccDialogOpen, setVaccDialogOpen] = useState(false);
+  const [medDialogOpen, setMedDialogOpen] = useState(false);
+  const [vaccForm, setVaccForm] = useState({ vaccination_type: '', vaccine_name: '', administered_at: '', next_due_at: '', vet_name: '', batch_number: '', notes: '' });
+  const [medForm, setMedForm] = useState({ record_type: 'vet_visit', title: '', record_date: '', vet_name: '', diagnosis: '', treatment: '', medication: '', cost_amount: '', follow_up_date: '', notes: '' });
   if (!pet) return <p className="text-sm text-muted-foreground py-4">Laden…</p>;
 
   const currentData = { ...pet, ...formData };
@@ -160,9 +169,44 @@ function PetInlineDossier({ petId, tenantId }: { petId: string; tenantId?: strin
 
       {/* Impfhistorie */}
       <div>
-        <p className={RECORD_CARD.SECTION_TITLE}>
-          <span className="flex items-center gap-2"><Syringe className="h-3.5 w-3.5" />Impfhistorie ({vaccinations.length})</span>
-        </p>
+        <div className="flex items-center justify-between mb-2">
+          <p className={RECORD_CARD.SECTION_TITLE}>
+            <span className="flex items-center gap-2"><Syringe className="h-3.5 w-3.5" />Impfhistorie ({vaccinations.length})</span>
+          </p>
+          <Dialog open={vaccDialogOpen} onOpenChange={setVaccDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-1 h-7 text-xs"><Plus className="h-3 w-3" />Impfung</Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader><DialogTitle>Impfung erfassen</DialogTitle></DialogHeader>
+              <div className="space-y-3 pt-2">
+                <div><Label>Impftyp *</Label><Input value={vaccForm.vaccination_type} onChange={e => setVaccForm(p => ({ ...p, vaccination_type: e.target.value }))} placeholder="z.B. Tollwut" /></div>
+                <div><Label>Impfstoff</Label><Input value={vaccForm.vaccine_name} onChange={e => setVaccForm(p => ({ ...p, vaccine_name: e.target.value }))} /></div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div><Label>Verabreicht am *</Label><Input type="date" value={vaccForm.administered_at} onChange={e => setVaccForm(p => ({ ...p, administered_at: e.target.value }))} /></div>
+                  <div><Label>Nächste Fälligkeit</Label><Input type="date" value={vaccForm.next_due_at} onChange={e => setVaccForm(p => ({ ...p, next_due_at: e.target.value }))} /></div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div><Label>Tierarzt</Label><Input value={vaccForm.vet_name} onChange={e => setVaccForm(p => ({ ...p, vet_name: e.target.value }))} /></div>
+                  <div><Label>Chargen-Nr.</Label><Input value={vaccForm.batch_number} onChange={e => setVaccForm(p => ({ ...p, batch_number: e.target.value }))} /></div>
+                </div>
+                <div><Label>Notizen</Label><Textarea value={vaccForm.notes} onChange={e => setVaccForm(p => ({ ...p, notes: e.target.value }))} rows={2} /></div>
+                <Button className="w-full" disabled={!vaccForm.vaccination_type || !vaccForm.administered_at || createVaccination.isPending} onClick={() => {
+                  createVaccination.mutate({
+                    pet_id: petId,
+                    vaccination_type: vaccForm.vaccination_type,
+                    administered_at: vaccForm.administered_at,
+                    ...(vaccForm.vaccine_name && { vaccine_name: vaccForm.vaccine_name }),
+                    ...(vaccForm.next_due_at && { next_due_at: vaccForm.next_due_at }),
+                    ...(vaccForm.vet_name && { vet_name: vaccForm.vet_name }),
+                    ...(vaccForm.batch_number && { batch_number: vaccForm.batch_number }),
+                    ...(vaccForm.notes && { notes: vaccForm.notes }),
+                  }, { onSuccess: () => { setVaccDialogOpen(false); setVaccForm({ vaccination_type: '', vaccine_name: '', administered_at: '', next_due_at: '', vet_name: '', batch_number: '', notes: '' }); } });
+                }}>Speichern</Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
         {vaccinations.length === 0 ? (
           <p className="text-sm text-muted-foreground py-2">Noch keine Impfungen erfasst.</p>
         ) : (
@@ -184,6 +228,9 @@ function PetInlineDossier({ petId, tenantId }: { petId: string; tenantId?: strin
                       {overdue ? 'Überfällig' : `Fällig ${format(parseISO(v.next_due_at), 'dd.MM.yyyy', { locale: de })}`}
                     </Badge>
                   )}
+                  <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => deleteVaccination.mutate({ id: v.id, petId })}>
+                    <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                  </Button>
                 </div>
               );
             })}
@@ -191,7 +238,94 @@ function PetInlineDossier({ petId, tenantId }: { petId: string; tenantId?: strin
         )}
       </div>
 
-      {/* Pflege-Timeline */}
+      {/* Krankengeschichte */}
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <p className={RECORD_CARD.SECTION_TITLE}>
+            <span className="flex items-center gap-2"><Stethoscope className="h-3.5 w-3.5" />Krankengeschichte ({medicalRecords.length})</span>
+          </p>
+          <Dialog open={medDialogOpen} onOpenChange={setMedDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-1 h-7 text-xs"><Plus className="h-3 w-3" />Eintrag</Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-lg">
+              <DialogHeader><DialogTitle>Krankengeschichte erfassen</DialogTitle></DialogHeader>
+              <div className="space-y-3 pt-2 max-h-[60vh] overflow-y-auto">
+                <div>
+                  <Label>Art</Label>
+                  <Select value={medForm.record_type} onValueChange={v => setMedForm(p => ({ ...p, record_type: v }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="vet_visit">Tierarztbesuch</SelectItem>
+                      <SelectItem value="diagnosis">Diagnose</SelectItem>
+                      <SelectItem value="treatment">Behandlung</SelectItem>
+                      <SelectItem value="surgery">OP</SelectItem>
+                      <SelectItem value="medication">Medikation</SelectItem>
+                      <SelectItem value="other">Sonstiges</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div><Label>Titel *</Label><Input value={medForm.title} onChange={e => setMedForm(p => ({ ...p, title: e.target.value }))} placeholder="z.B. Jahresuntersuchung" /></div>
+                <div><Label>Datum *</Label><Input type="date" value={medForm.record_date} onChange={e => setMedForm(p => ({ ...p, record_date: e.target.value }))} /></div>
+                <div><Label>Tierarzt</Label><Input value={medForm.vet_name} onChange={e => setMedForm(p => ({ ...p, vet_name: e.target.value }))} /></div>
+                <div><Label>Diagnose</Label><Input value={medForm.diagnosis} onChange={e => setMedForm(p => ({ ...p, diagnosis: e.target.value }))} /></div>
+                <div><Label>Behandlung</Label><Input value={medForm.treatment} onChange={e => setMedForm(p => ({ ...p, treatment: e.target.value }))} /></div>
+                <div><Label>Medikation</Label><Input value={medForm.medication} onChange={e => setMedForm(p => ({ ...p, medication: e.target.value }))} /></div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div><Label>Kosten (€)</Label><Input type="number" value={medForm.cost_amount} onChange={e => setMedForm(p => ({ ...p, cost_amount: e.target.value }))} /></div>
+                  <div><Label>Nachkontrolle</Label><Input type="date" value={medForm.follow_up_date} onChange={e => setMedForm(p => ({ ...p, follow_up_date: e.target.value }))} /></div>
+                </div>
+                <div><Label>Notizen</Label><Textarea value={medForm.notes} onChange={e => setMedForm(p => ({ ...p, notes: e.target.value }))} rows={2} /></div>
+                <Button className="w-full" disabled={!medForm.title || !medForm.record_date || createMedicalRecord.isPending} onClick={() => {
+                  createMedicalRecord.mutate({
+                    pet_id: petId,
+                    record_type: medForm.record_type,
+                    title: medForm.title,
+                    record_date: medForm.record_date,
+                    ...(medForm.vet_name && { vet_name: medForm.vet_name }),
+                    ...(medForm.diagnosis && { diagnosis: medForm.diagnosis }),
+                    ...(medForm.treatment && { treatment: medForm.treatment }),
+                    ...(medForm.medication && { medication: medForm.medication }),
+                    ...(medForm.cost_amount && { cost_amount: parseFloat(medForm.cost_amount) }),
+                    ...(medForm.follow_up_date && { follow_up_date: medForm.follow_up_date }),
+                    ...(medForm.notes && { notes: medForm.notes }),
+                  }, { onSuccess: () => { setMedDialogOpen(false); setMedForm({ record_type: 'vet_visit', title: '', record_date: '', vet_name: '', diagnosis: '', treatment: '', medication: '', cost_amount: '', follow_up_date: '', notes: '' }); } });
+                }}>Speichern</Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
+        {medicalRecords.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-2">Noch keine Einträge erfasst.</p>
+        ) : (
+          <div className="space-y-2">
+            {medicalRecords.map(r => {
+              const typeLabels: Record<string, string> = { vet_visit: 'Tierarztbesuch', diagnosis: 'Diagnose', treatment: 'Behandlung', surgery: 'OP', medication: 'Medikation', other: 'Sonstiges' };
+              return (
+                <div key={r.id} className="flex items-center gap-3 p-2.5 rounded-lg bg-muted/30 border border-border/30">
+                  <Stethoscope className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{r.title}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {format(parseISO(r.record_date), 'dd.MM.yyyy', { locale: de })} · {typeLabels[r.record_type] || r.record_type}
+                      {r.vet_name && ` · ${r.vet_name}`}
+                      {r.cost_amount && ` · ${r.cost_amount} €`}
+                    </p>
+                  </div>
+                  {r.follow_up_date && (
+                    <Badge variant={isPast(parseISO(r.follow_up_date)) ? 'destructive' : 'secondary'} className="text-[10px] shrink-0">
+                      Nachkontrolle {format(parseISO(r.follow_up_date), 'dd.MM.yyyy', { locale: de })}
+                    </Badge>
+                  )}
+                  <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => deleteMedicalRecord.mutate({ id: r.id, petId })}>
+                    <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
       <div>
         <p className={RECORD_CARD.SECTION_TITLE}>
           <span className="flex items-center gap-2"><Heart className="h-3.5 w-3.5" />Pflege-Timeline ({caringEvents.filter(e => !e.is_completed).length} offen)</span>

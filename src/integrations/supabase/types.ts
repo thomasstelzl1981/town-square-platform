@@ -11715,6 +11715,71 @@ export type Database = {
           },
         ]
       }
+      pet_medical_records: {
+        Row: {
+          cost_amount: number | null
+          created_at: string
+          description: string | null
+          diagnosis: string | null
+          follow_up_date: string | null
+          id: string
+          medication: string | null
+          notes: string | null
+          pet_id: string
+          record_date: string
+          record_type: string
+          tenant_id: string
+          title: string
+          treatment: string | null
+          updated_at: string
+          vet_name: string | null
+        }
+        Insert: {
+          cost_amount?: number | null
+          created_at?: string
+          description?: string | null
+          diagnosis?: string | null
+          follow_up_date?: string | null
+          id?: string
+          medication?: string | null
+          notes?: string | null
+          pet_id: string
+          record_date?: string
+          record_type?: string
+          tenant_id: string
+          title: string
+          treatment?: string | null
+          updated_at?: string
+          vet_name?: string | null
+        }
+        Update: {
+          cost_amount?: number | null
+          created_at?: string
+          description?: string | null
+          diagnosis?: string | null
+          follow_up_date?: string | null
+          id?: string
+          medication?: string | null
+          notes?: string | null
+          pet_id?: string
+          record_date?: string
+          record_type?: string
+          tenant_id?: string
+          title?: string
+          treatment?: string | null
+          updated_at?: string
+          vet_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pet_medical_records_pet_id_fkey"
+            columns: ["pet_id"]
+            isOneToOne: false
+            referencedRelation: "pets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pet_provider_availability: {
         Row: {
           created_at: string

@@ -44,7 +44,8 @@ export function EntityStorageTree({ tenantId, entityType, entityId, moduleCode, 
         .eq('entity_type', entityType)
         .eq('entity_id', entityId)
         .eq('node_type', 'folder')
-        .is('parent_id', null)
+        .order('created_at', { ascending: true })
+        .limit(1)
         .maybeSingle();
       return data;
     },
