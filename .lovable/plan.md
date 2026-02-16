@@ -1,109 +1,140 @@
 
 
-# Finanzbericht-Korrekturen: 6 Punkte
+# GitHub Optimierung: Post-Merge Audit
 
-## 1. Krankenversicherung im Finanzbericht aufnehmen
+## Executive Summary
 
-Die KV-Daten liegen nur clientseitig vor (DEMO_KV_CONTRACTS in `src/engines/demoData/data.ts`). Nur die private KV (PKV) von Max (685 EUR/mtl.) ist ausgabenrelevant — Lisas GKV wird komplett vom Arbeitgeber getragen, die Kinder sind familienversichert.
+Der GitHub-Merge hat **1 kritischen Build-Fehler (P0)** eingeführt und ansonsten die Architektur intakt gelassen. Das Manifest-SSOT, die Zonen-Grenzen und die GoldenPath-Wiring sind nicht betroffen.
 
-**Aenderungen:**
-- `useFinanzberichtData.ts`: KV-Daten aus `getDemoKVContracts()` importieren und in Ausgaben integrieren (nur PKV-Beitraege ohne AG-Anteil)
-- Neues Feld `healthInsurance` in `FinanzberichtExpenses` (685 EUR/mtl.)
-- Neues Return-Feld `kvContracts` fuer die Auflistung im Bericht
-- `FinanzberichtSection.tsx`: Neue Sektion "Krankenversicherung" mit Uebersicht aller Haushaltsmitglieder (Typ, Versicherer, Beitrag, AG-Anteil)
-- In Ausgaben-Sektion: neue Zeile "Krankenversicherung (PKV)" mit 685 EUR
+---
 
-## 2. Portfolio-Darlehen: Bank und Darlehenssumme ergaenzen
+## 1. Kritischer Build-Fehler (P0)
 
-Die `loans`-Tabelle hat `bank_name` und `original_amount`, aber der Hook selektiert diese Felder nicht.
+**Datei:** `src/components/finanzierung/CaseDocumentRoom.tsx` (Zeile 140)
 
-**Aenderungen:**
-- `useFinanzberichtData.ts` Zeile 271: Query erweitern um `bank_name, original_amount`
-- Zeile 432-439: `bank` von `'—'` auf `l.bank_name` und `loanAmount` von `0` auf `l.original_amount` aendern
+**Problem:** Der GitHub-Agent hat die Funktion `foldersWithDocs` in einen `useMemo`-Block verschoben (Zeile 111), wodurch sie nur innerhalb dieses Closures sichtbar ist. Die Verwendung auf Zeile 140 (`renderFolder`) greift ins Leere.
 
-Aktuelle Demo-Daten (bereits korrekt in DB):
-- BER-01: Sparkasse Berlin, 252.000 EUR
-- MUC-01: HypoVereinsbank, 378.000 EUR
-- HH-01: Hamburger Sparkasse, 157.500 EUR
+**Ursache:** Refactoring der Variable-Scope durch den KI-Agenten -- die Hilfsfunktion wurde fälschlicherweise in den Memo-Block "eingefangen".
 
-## 3. Steuereffekt Kapitalanlage als Einnahme
+**Fix:** Die `foldersWithDocs`-Funktion muss als eigenständige Funktion (oder `useCallback`) auf Komponenten-Ebene definiert werden, sodass sowohl `useMemo` als auch `renderFolder` darauf zugreifen können:
 
-Kapitalanlage-Immobilien erzeugen typischerweise steuerliche Verluste (AfA, Zinsen uebersteigen Einnahmen), die das zu versteuernde Einkommen senken. Der monatliche Steuereffekt muss als Einnahme dargestellt werden.
+```typescript
+// Vor useMemo definieren:
+const getDocCount = useCallback(
+  (folderId: string) => uploadedDocs.filter(d => d.folderId === folderId).length,
+  [uploadedDocs]
+);
 
-**Aenderungen:**
-- `FinanzberichtIncome`: Neues Feld `taxBenefitRental`
-- Berechnung: Vereinfachte Schaetzung basierend auf Portfolio-Daten:
-  - Jaehrliche AfA (2% auf Gebaeudewert, ~80% des Kaufpreises)
-  - Jaehrliche Zinsen (aus loans)
-  - Jaehrliche Mieteinnahmen (aus portfolioSummary)
-  - Steuerlicher Verlust = Mieteinnahmen - Zinsen - AfA - Verwaltung
-  - Steuereffekt = Verlust * angenommener Grenzsteuersatz (42%)
-- In Einnahmen-Sektion: neue Zeile "Steuereffekt Kapitalanlage"
+// In useMemo verwenden:
+const uploadedFolderCount = useMemo(() => {
+  return visibleFolders.filter(f => getDocCount(f.id) >= f.required).length;
+}, [visibleFolders, getDocCount]);
 
-## 4. Lebenshaltungskosten: 35% der Arbeitseinkommen
-
-Aktuell wird `living_expenses_monthly` aus `applicant_profiles` gelesen (2.200 EUR). Stattdessen soll der Wert als 35% der Arbeitseinkommen (Netto + Selbststaendig, ohne V+V und PV) berechnet werden.
-
-**Aenderungen:**
-- `useFinanzberichtData.ts`: `livingExpenses` nicht aus DB, sondern berechnen:
-  ```
-  livingExpenses = (netIncomeTotal + selfEmployedIncome) * 0.35
-  ```
-  - Max: 8.500 EUR + Lisa: 3.200 EUR = 11.700 EUR * 0.35 = 4.095 EUR/mtl.
-
-## 5. Vorsorge-Sparplaene nach Investment verschieben
-
-Aktuell werden Vorsorge-Vertraege mit "spar" im Typ als `savingsContracts` gefuehrt. Der "Privater ETF-Sparplan" (300 EUR/mtl.) gehoert aber in die Investment-Sektion.
-
-**Aenderungen:**
-- `useFinanzberichtData.ts`: Filter-Logik aendern — Vertraege mit Typ "ETF-Sparplan" oder "Sparplan" als `investmentContracts` separieren (neues Return-Feld)
-- Reine Sparvertraege (z.B. Bausparvertrag) bleiben bei `savingsContracts`
-- `FinanzberichtSection.tsx`: Neue Sektion "Investment" mit Icon `TrendingUp` fuer ETF-Sparplaene
-- Ausgaben-Aufteilung: "Sparvertraege" und "Investment" getrennt anzeigen
-
-## 6. Betroffene Dateien
-
-| Datei | Aenderung |
-|-------|-----------|
-| `src/hooks/useFinanzberichtData.ts` | KV-Import, loans Query erweitern (bank_name, original_amount), Steuereffekt berechnen, Lebenshaltungskosten-Formel, Investment-Vertraege separieren |
-| `src/components/finanzanalyse/FinanzberichtSection.tsx` | Neue Sektionen: Krankenversicherung, Investment; Ausgaben um KV erweitern; Steuereffekt-Zeile |
-
-## 7. Technische Details
-
-### KV-Integration
-```text
-import { getDemoKVContracts } from '@/engines/demoData';
-
-kvContracts = getDemoKVContracts()
-pkvExpense = sum of (monthlyPremium - employerContribution) where type === 'PKV'
-// Max: 685 - 0 = 685 EUR
-// Lisa: GKV mit 100% AG-Anteil → 0 EUR
+// In renderFolder verwenden:
+const count = getDocCount(folder.id);
 ```
 
-### Steuereffekt-Berechnung
+---
+
+## 2. Manifest/Routing Audit
+
+| Pruefpunkt | Status | Details |
+|---|---|---|
+| routesManifest.ts unveraendert | OK | Alle 21 Module (MOD-00 bis MOD-20) korrekt definiert |
+| ManifestRouter.tsx Component Maps | OK | Alle Maps (admin, portal, Z3) vollstaendig |
+| Legacy Redirects | OK | 22 Legacy-Routes korrekt konfiguriert |
+| Rogue Routes (ausserhalb Manifest) | OK | Keine neuen nicht-manifest-Routen gefunden |
+| Zone Boundaries | OK | Keine Cross-Zone-Imports (Z2 importiert nichts aus Z3) |
+
+---
+
+## 3. GoldenPath Wiring
+
+| Pruefpunkt | Status |
+|---|---|
+| GoldenPathGuard Import in ManifestRouter | OK |
+| goldenPath Config auf dynamischen Routen (MOD-04, MOD-07, MOD-12, MOD-13, MOD-19) | OK |
+| Bypass Vectors | Keine gefunden |
+
+---
+
+## 4. Repo Hygiene
+
+| Pruefpunkt | Status | Details |
+|---|---|---|
+| vite.config.ts | OK | PWA-Config unveraendert, maximumFileSizeToCacheInBytes korrekt |
+| React.memo Optimierungen | Nicht angewendet | Keine React.memo-Aufrufe gefunden -- der Agent hat diese entweder nicht umgesetzt oder sie wurden reverted |
+| Cross-Zone Imports | OK | Keine Verletzungen |
+| Neue Orphan-Dateien | Keine gefunden | |
+
+---
+
+## 5. Risiko-Einschaetzung
+
+| Finding | Prioritaet | Risiko | Aufwand |
+|---|---|---|---|
+| CaseDocumentRoom.tsx Build Error | P0 | Hoch -- Blockiert Build | 5 Minuten |
+| Fehlende React.memo (nicht angewendet) | P3 | Niedrig -- Kein Bruch | Optional |
+
+---
+
+## 6. Reparaturplan
+
+### Schritt 1 (P0 -- sofort)
+`CaseDocumentRoom.tsx` fixen: `foldersWithDocs` aus dem `useMemo`-Closure herauslösen und als eigenstaendigen `useCallback` auf Komponenten-Ebene definieren.
+
+### Schritt 2 (P1 -- nach Build-Fix)
+Build verifizieren und Preview testen (Dashboard, MOD-04 Portfolio, MOD-07 Finanzierung).
+
+### Schritt 3 (P2 -- Dokumentation)
+Backlog-Datei `spec/audit/github_optimization_review_backlog.json` erstellen mit allen Findings.
+
+---
+
+## Technische Details
+
+### Betroffene Datei
+
 ```text
-totalPurchasePrice = sum(portfolioProperties.purchase_price)
-buildingValue = totalPurchasePrice * 0.80
-annualAfA = buildingValue * 0.02
-annualInterest = portfolioSummary.annualInterest
-annualRent = portfolioSummary.annualIncome
-taxLoss = annualRent - annualInterest - annualAfA
-taxBenefit = taxLoss < 0 ? abs(taxLoss) * 0.42 / 12 : 0
+src/components/finanzierung/CaseDocumentRoom.tsx
+  Zeile 110-113: useMemo mit foldersWithDocs (Closure-Scope)
+  Zeile 140: Aufruf von foldersWithDocs (ausserhalb Scope) --> TS2304
 ```
 
-### Loans Query Fix
-```text
-// Vorher:
-.select('id, outstanding_balance_eur, annuity_monthly_eur, interest_rate_percent, property_id')
-// Nachher:
-.select('id, bank_name, original_amount, outstanding_balance_eur, annuity_monthly_eur, interest_rate_percent, property_id')
-```
+### Backlog-Datei Struktur (spec/audit/github_optimization_review_backlog.json)
 
-### Lebenshaltungskosten
-```text
-// Vorher: aus applicant_profiles.living_expenses_monthly
-// Nachher: berechnet
-livingExpenses = (netIncomeTotal + selfEmployedIncome) * 0.35
-// = (3200 + 8500) * 0.35 = 4095 EUR
+```json
+{
+  "audit_type": "github_optimization_review",
+  "audit_date": "2026-02-16",
+  "trigger": "GitHub AI Agent Merge",
+  "findings": [
+    {
+      "id": "GH-OPT-001",
+      "priority": "P0",
+      "status": "open",
+      "category": "build_error",
+      "file": "src/components/finanzierung/CaseDocumentRoom.tsx",
+      "description": "foldersWithDocs scope error after useMemo refactor",
+      "fix": "Extract foldersWithDocs as useCallback at component level"
+    },
+    {
+      "id": "GH-OPT-002",
+      "priority": "P3",
+      "status": "info",
+      "category": "optimization_gap",
+      "description": "React.memo not applied despite being in optimization scope",
+      "fix": "Optional: Apply React.memo to heavy leaf components"
+    }
+  ],
+  "manifest_audit": {
+    "routes_manifest_intact": true,
+    "zone_boundaries_intact": true,
+    "golden_path_wiring_intact": true,
+    "legacy_redirects_intact": true,
+    "rogue_routes_found": false
+  },
+  "verdict": "1 P0 build fix required, architecture intact"
+}
 ```
 
