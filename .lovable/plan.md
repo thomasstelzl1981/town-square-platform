@@ -1,131 +1,131 @@
 
+# Zuhause-Akte verbreitern, Miet-/Darlehensverhältnis daneben, Vermögensauskunft mit Immobilien- und Darlehensaufstellung
 
-# Fix: Demo-Daten des Mustermann-Kunden in Stammdaten, Selbstauskunft und Zuhause
+## Zusammenfassung
 
-## Analyse des Problems
+Drei zusammenhaengende Aenderungen:
+1. Die Zuhause-Akte (Inline-Dossier) bekommt ein breiteres Layout mit dem Miet- oder Darlehensverhältnis als eigene Spalte rechts neben der Akte
+2. Der Finanzbericht erhaelt zwei neue dedizierte Sektionen: Immobilienaufstellung und Darlehensaufstellung
+3. Demo-Daten fuer das eigengenutzte Darlehen (miety_loans) werden angelegt
 
-Aktuell zeigen drei Module nicht die erwarteten Mustermann-Demo-Daten:
+---
 
-### 1. Stammdaten (MOD-01 / profiles)
-Die `profiles`-Tabelle enthaelt die realen Daten des Entwicklers (Thomas Stelzl, Oberhaching). Da die Stammdaten direkt aus `profiles` lesen (gebunden an `auth.users.id`), sieht der Demo-Mandant "Thomas Stelzl" statt "Max Mustermann".
+## 1. Zuhause-Akte: Breiteres Layout mit Miet-/Darlehensverhältnis
 
-**Loesung:** Das Profil (`d028bc99-...`) mit den Mustermann-Stammdaten aktualisieren:
-- first_name: Max, last_name: Mustermann
-- Adresse: Leopoldstrasse 42, 80802 Muenchen
-- phone_mobile: +49 170 1234567
-- display_name: Max Mustermann
-- tax_id: DE123456789
+### Ist-Zustand
+`MietyHomeDossierInline.tsx` hat ein 2-Spalten-Layout: Links Dokumentenbaum (280px), rechts Accordion-Sektionen. Das Miet-/Darlehensverhältnis ist als Accordion-Eintrag versteckt.
 
-### 2. Selbstauskunft (MOD-07 / applicant_profiles)
-Es gibt aktuell 4 Eintraege im Demo-Tenant — fragmentiert und inkonsistent:
-- `00000000-...0005` (Max, mit finance_request_id → Snapshot, nicht persistent)
-- `a23366ab-...` (Max, persistent, aber KEIN net_income, KEIN Arbeitgeber)
-- `c445bafd-...` (Thomas Stelzl — Altlast, leer)
-- `703e1648-...` (Lisa, mit Daten)
-
-**Loesung:**
-- Den persistenten Max-Datensatz (`a23366ab-...`) vollstaendig befuellen: Einkommen, Beschaeftigung, Adresse, Vermoegen
-- Den Thomas-Stelzl-Datensatz (`c445bafd-...`) loeschen (Altlast)
-- Den Snapshot-Datensatz (`00000000-...0005`) bleibt unveraendert (gehoert zur Finance Request)
-
-### 3. Zuhause (MOD-20 / miety_homes)
-Der einzige Eintrag hat minimale Daten:
-- ownership_type: "miete" (Mustermann ist aber Eigentuemer laut Persona)
-- market_value: NULL
-- Kein construction_year, kein heating_type, kein plot_area
-
-**Loesung:** Den miety_homes-Datensatz (`da78ca31-...`) mit vollstaendigen Mustermann-Daten aktualisieren:
-- ownership_type: eigentum
-- market_value: 850000
-- construction_year: 2005
-- heating_type: Waermepumpe
-- plot_area_sqm: 620
-- rooms_count: 6 (bereits gesetzt)
-- area_sqm: 300 (bereits gesetzt)
-
-## Betroffene Dateien und Aenderungen
-
-| Aenderung | Details |
-|-----------|---------|
-| DB-Update: `profiles` | Mustermann-Stammdaten fuer Entwickler-Profil setzen |
-| DB-Update: `applicant_profiles` (Max persistent) | Einkommen, Beschaeftigung, Adresse vervollstaendigen |
-| DB-Delete: `applicant_profiles` (Stelzl-Altlast) | Datensatz `c445bafd-...` entfernen |
-| DB-Update: `miety_homes` | Eigentum, Marktwert, Baujahr, Heizung etc. |
-
-### Kein Code-Aenderungsbedarf
-Alle drei Module lesen bereits korrekt aus der Datenbank. Das Problem sind ausschliesslich fehlende/falsche Demo-Daten in den Tabellen. Die Trigger-Synchronisation (profiles → household_persons) wird automatisch die Personenkarten in der Finanzanalyse aktualisieren.
-
-## Technische Details: Daten-Updates
-
-### profiles (Entwickler-Profil → Mustermann)
+### Neues Layout (3-Spalten)
 ```text
-UPDATE profiles SET
-  first_name = 'Max',
-  last_name = 'Mustermann',
-  display_name = 'Max Mustermann',
-  street = 'Leopoldstraße',
-  house_number = '42',
-  postal_code = '80802',
-  city = 'München',
-  country = 'DE',
-  phone_mobile = '+49 170 1234567',
-  phone_landline = '+49 89 12345678',
-  tax_id = 'DE123456789',
-  tax_number = '143/123/45678'
-WHERE id = 'd028bc99-6e29-4fa4-b038-d03015faf222';
++-------------------+---------------------------+-------------------------+
+| Dokumentenbaum    | Zuhause-Akte              | Miet-/Darlehensverhältnis|
+| (250px)           | (Gebaeude, Vertraege,     | (Loan- ODER Tenancy-    |
+|                   |  Zaehler, Versicherungen) |  Sektion, je nach       |
+|                   |                           |  ownership_type)        |
++-------------------+---------------------------+-------------------------+
 ```
 
-### applicant_profiles (Max persistent vervollstaendigen)
+### Aenderungen in `MietyHomeDossierInline.tsx`
+- Grid von `lg:grid-cols-[280px_1fr]` auf `lg:grid-cols-[250px_1fr_380px]` aendern
+- Die dritte Spalte zeigt konditional:
+  - Bei `ownership_type === 'eigentum'`: `LoanSection` in einer Card mit Titel "Finanzierung"
+  - Bei `ownership_type === 'miete'`: `TenancySection` in einer Card mit Titel "Mietverhaeltnis"
+- Die bisherigen Accordion-Items "Darlehen" und "Mietverhaeltnis" aus dem mittleren Bereich entfernen (da jetzt rechts)
+- `PageShell` mit `fullWidth` Prop verwenden, damit die volle Breite genutzt wird
+
+### Gleiche Aenderung in `MietyHomeDossier.tsx` (Standalone-Route)
+- Ebenfalls auf 3-Spalten-Layout umstellen
+- Rechte Spalte mit Loan/Tenancy-Section
+
+---
+
+## 2. Finanzbericht: Immobilienaufstellung und Darlehensaufstellung
+
+### Ist-Zustand
+Der Finanzbericht zeigt Immobilien und Darlehen nur als aggregierte Summen (z.B. "Immobilienportfolio: 995.000 EUR", "Portfolio-Darlehen: 710.000 EUR"). Es fehlt eine detaillierte Aufschluesselung.
+
+### Neue Sektionen im `FinanzberichtSection.tsx`
+
+**Sektion "Immobilienaufstellung" (zwischen Vermoegen/Verbindlichkeiten und KPIs):**
+- Tabelle mit allen Immobilien (Portfolio + eigengenutzt)
+- Spalten: Bezeichnung, Stadt, Typ, Marktwert, Kaufpreis, Eigenanteil
+- Summenzeile am Ende
+
+**Sektion "Darlehensaufstellung" (direkt nach Immobilienaufstellung):**
+- Tabelle mit allen Darlehen (Portfolio-Darlehen + Zuhause-Darlehen + PV-Darlehen)
+- Spalten: Bank/Kreditgeber, Zuordnung, Darlehenssumme, Restschuld, Zinssatz, Monatsrate
+- Summenzeile am Ende
+
+### Erweiterung `useFinanzberichtData.ts`
+- Neue Return-Felder: `propertyList` (Array mit allen Immobilien-Details) und `loanList` (Array mit allen Darlehen-Details)
+- Portfolio-Properties Query erweitern um: `code, city, address, market_value, purchase_price, property_type`
+- Portfolio-Loans erweitern um: Bank-Name (falls vorhanden), Zuordnung zum Objekt
+- Zuhause-Daten (miety_homes) ebenfalls als Zeile einfuegen
+- Miety-Loans mit Zuordnung "Eigengenutzt" kennzeichnen
+- PV-Darlehen mit Zuordnung "Photovoltaik" kennzeichnen
+
+---
+
+## 3. Demo-Daten: Eigengenutztes Darlehen
+
+### DB-Migration
+Neuer Eintrag in `miety_loans` fuer die Villa Mustermann:
+- home_id: `da78ca31-7456-44a8-980c-3e374818b49e`
+- tenant_id: `a0000000-0000-4000-a000-000000000001`
+- bank_name: "Sparkasse Muenchen"
+- loan_amount: 650000
+- remaining_balance: 520000
+- interest_rate: 2.85
+- monthly_rate: 2450
+- loan_type: "annuitaet"
+- start_date: 2020-03-01
+- end_date: 2030-03-01
+
+---
+
+## 4. Build-Warning Fix
+`ManifestRouter.tsx` importiert `PortalDashboard` sowohl statisch (Zeile 94) als auch dynamisch (Zeile 291). Der dynamische Import wird entfernt, da er nicht im `portalModulePageMap` verwendet wird (der statische Import auf Zeile 547 genuegt).
+
+---
+
+## 5. Betroffene Dateien
+
+| Datei | Aenderung |
+|-------|-----------|
+| `src/pages/portal/miety/MietyHomeDossierInline.tsx` | 3-Spalten-Layout, Loan/Tenancy rechts |
+| `src/pages/portal/miety/MietyHomeDossier.tsx` | 3-Spalten-Layout, Loan/Tenancy rechts |
+| `src/hooks/useFinanzberichtData.ts` | `propertyList` und `loanList` als neue Return-Felder |
+| `src/components/finanzanalyse/FinanzberichtSection.tsx` | Neue Sektionen: Immobilienaufstellung, Darlehensaufstellung |
+| `src/router/ManifestRouter.tsx` | Doppelten PortalDashboard-Import entfernen |
+| DB-Migration | Demo-Darlehen fuer Villa Mustermann |
+
+## 6. Technische Details
+
+### Property-List Typ
 ```text
-UPDATE applicant_profiles SET
-  net_income_monthly = 0,
-  self_employed_income_monthly = 8500,
-  company_name = 'IT-Beratung Mustermann',
-  company_legal_form = 'Einzelunternehmen',
-  employment_type = 'selbstaendig',
-  address_street = 'Leopoldstraße 42',
-  address_postal_code = '80802',
-  address_city = 'München',
-  phone = '+49 170 1234567',
-  email = 'max@mustermann-demo.de',
-  children_count = 2,
-  adults_count = 2,
-  child_benefit_monthly = 500,
-  bank_savings = 85000,
-  securities_value = 120000,
-  life_insurance_value = 45000
-WHERE id = 'a23366ab-e769-46b0-8d44-f8117f901c15';
+interface PropertyListItem {
+  id: string;
+  label: string;       // Code oder Name
+  city: string;
+  type: string;        // "Kapitalanlage" | "Eigengenutzt"
+  marketValue: number;
+  purchasePrice: number;
+}
 ```
 
-### applicant_profiles (Stelzl-Altlast loeschen)
+### Loan-List Typ
 ```text
-DELETE FROM applicant_profiles
-WHERE id = 'c445bafd-1813-4b21-8966-709078deea2a';
+interface LoanListItem {
+  id: string;
+  bank: string;
+  assignment: string;  // "BER-01 Berlin" | "Eigengenutzt" | "PV-Anlage"
+  loanAmount: number;
+  remainingBalance: number;
+  interestRate: number;
+  monthlyRate: number;
+}
 ```
 
-### miety_homes (Eigentum + vollstaendige Daten)
-```text
-UPDATE miety_homes SET
-  name = 'Villa Mustermann',
-  ownership_type = 'eigentum',
-  market_value = 850000,
-  construction_year = 2005,
-  heating_type = 'Wärmepumpe',
-  plot_area_sqm = 620,
-  has_garage = true,
-  has_garden = true,
-  has_basement = true,
-  floor_count = 2,
-  bathrooms_count = 3,
-  address = 'Leopoldstraße',
-  address_house_no = '42',
-  city = 'München',
-  zip = '80802'
-WHERE id = 'da78ca31-7456-44a8-980c-3e374818b49e';
-```
-
-## Auswirkungen (automatisch via Trigger)
-- Der `profiles → household_persons` Trigger synchronisiert Name, Adresse und Telefon automatisch auf die Hauptperson in der Finanzanalyse
-- Die Selbstauskunft zeigt dann korrekte Mustermann-Daten
-- Das Zuhause-Modul zeigt ein vollstaendiges Eigenheim-Dossier
-
+### Aggregation im Hook
+- `propertyList` = Portfolio-Properties + miety_homes (ownership_type = eigentum)
+- `loanList` = Portfolio-Loans + miety_loans + PV-Loans (mit loan_bank)
