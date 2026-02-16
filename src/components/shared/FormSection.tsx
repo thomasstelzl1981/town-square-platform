@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { memo } from 'react';
 import { cn } from '@/lib/utils';
 import { DESIGN } from '@/config/designManifest';
 import { Label } from '@/components/ui/label';
@@ -12,7 +13,7 @@ interface FormSectionProps {
   className?: string;
 }
 
-export function FormSection({ title, description, children, className }: FormSectionProps) {
+export const FormSection = memo(function FormSection({ title, description, children, className }: FormSectionProps) {
   return (
     <div className={cn(DESIGN.SPACING.SECTION, className)}>
       {(title || description) && (
@@ -24,7 +25,7 @@ export function FormSection({ title, description, children, className }: FormSec
       <div className={DESIGN.SPACING.SECTION}>{children}</div>
     </div>
   );
-}
+});
 
 interface FormFieldProps {
   label: string;
@@ -36,7 +37,7 @@ interface FormFieldProps {
   className?: string;
 }
 
-export function FormField({
+export const FormField = memo(function FormField({
   label,
   htmlFor,
   error,
@@ -56,7 +57,7 @@ export function FormField({
       {error && <p className="text-xs text-destructive">{error}</p>}
     </div>
   );
-}
+});
 
 interface FormInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label: string;
@@ -64,7 +65,7 @@ interface FormInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   hint?: string;
 }
 
-export function FormInput({ label, error, hint, required, ...props }: FormInputProps) {
+export const FormInput = memo(function FormInput({ label, error, hint, required, ...props }: FormInputProps) {
   const id = props.id || props.name;
   return (
     <FormField label={label} htmlFor={id} error={error} required={required} hint={hint}>
@@ -76,7 +77,7 @@ export function FormInput({ label, error, hint, required, ...props }: FormInputP
       />
     </FormField>
   );
-}
+});
 
 interface FormTextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
   label: string;
@@ -84,7 +85,7 @@ interface FormTextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaEle
   hint?: string;
 }
 
-export function FormTextarea({ label, error, hint, required, ...props }: FormTextareaProps) {
+export const FormTextarea = memo(function FormTextarea({ label, error, hint, required, ...props }: FormTextareaProps) {
   const id = props.id || props.name;
   return (
     <FormField label={label} htmlFor={id} error={error} required={required} hint={hint}>
@@ -96,17 +97,17 @@ export function FormTextarea({ label, error, hint, required, ...props }: FormTex
       />
     </FormField>
   );
-}
+});
 
 interface FormRowProps {
   children: React.ReactNode;
   className?: string;
 }
 
-export function FormRow({ children, className }: FormRowProps) {
+export const FormRow = memo(function FormRow({ children, className }: FormRowProps) {
   return (
     <div className={cn(DESIGN.FORM_GRID.FULL, className)}>
       {children}
     </div>
   );
-}
+});

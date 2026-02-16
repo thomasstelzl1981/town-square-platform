@@ -2,6 +2,7 @@
  * InfoBanner — Einheitliche Hinweis-/Premium-/Warnbanner
  * Verwendet INFO_BANNER aus dem Design Manifest
  */
+import { memo } from 'react';
 import { cn } from '@/lib/utils';
 import { DESIGN } from '@/config/designManifest';
 import type { LucideIcon } from 'lucide-react';
@@ -25,7 +26,7 @@ const variantMap: Record<BannerVariant, string> = {
   success: DESIGN.INFO_BANNER.SUCCESS,
 };
 
-export function InfoBanner({ variant = 'hint', icon: Icon, title, children, className, action }: InfoBannerProps) {
+export const InfoBanner = memo(function InfoBanner({ variant = 'hint', icon: Icon, title, children, className, action }: InfoBannerProps) {
   return (
     <div className={cn(DESIGN.INFO_BANNER.BASE, variantMap[variant], className)}>
       <div className="flex items-start gap-3">
@@ -38,4 +39,4 @@ export function InfoBanner({ variant = 'hint', icon: Icon, title, children, clas
       </div>
     </div>
   );
-}
+});
