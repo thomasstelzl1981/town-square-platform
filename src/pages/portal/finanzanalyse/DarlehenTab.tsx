@@ -393,6 +393,7 @@ export default function DarlehenTab() {
       ) : (
         <WidgetGrid>
           {(privateLoans as any[]).map((loan: any) => {
+            const isDemo = isDemoId(loan.id);
             const isSelected = selectedId === loan.id;
             return (
               <WidgetCell key={loan.id}>
@@ -400,16 +401,20 @@ export default function DarlehenTab() {
                   className={cn(
                     CARD.BASE, CARD.INTERACTIVE,
                     'h-full flex flex-col justify-between p-5',
-                    getActiveWidgetGlow('rose'),
-                    isSelected && getSelectionRing('rose'),
+                    getActiveWidgetGlow(isDemo ? 'emerald' : 'rose'),
+                    isSelected && getSelectionRing(isDemo ? 'emerald' : 'rose'),
                   )}
                   onClick={(e) => { e.stopPropagation(); selectCard(loan.id, 'privat'); }}
                   role="button" tabIndex={0}
                 >
                   <div className="space-y-2">
-                    <Badge variant={loan.status === 'aktiv' ? 'default' : 'secondary'} className="text-[10px]">
-                      {loan.status || 'aktiv'}
-                    </Badge>
+                    {isDemo ? (
+                      <Badge className={DEMO_WIDGET.BADGE + ' text-[10px]'}>DEMO</Badge>
+                    ) : (
+                      <Badge variant={loan.status === 'aktiv' ? 'default' : 'secondary'} className="text-[10px]">
+                        {loan.status || 'aktiv'}
+                      </Badge>
+                    )}
                     <div className={HEADER.WIDGET_ICON_BOX}>
                       <CreditCard className="h-5 w-5 text-primary" />
                     </div>

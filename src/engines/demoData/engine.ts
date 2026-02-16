@@ -4,7 +4,7 @@
  * O(1) ID-Lookup, Datenpaket-Zugriff, Empty-State-Validierung.
  */
 
-import type { DemoDataSpec, DemoPersona, DemoInsuranceContract, DemoVorsorgeContract, DemoSubscription, DemoKVContract } from './spec';
+import type { DemoDataSpec, DemoPersona, DemoInsuranceContract, DemoVorsorgeContract, DemoSubscription, DemoKVContract, DemoPrivateLoan } from './spec';
 import {
   DEMO_DATA_SPEC,
   ALL_DEMO_IDS,
@@ -13,6 +13,7 @@ import {
   DEMO_VORSORGE,
   DEMO_SUBSCRIPTIONS,
   DEMO_KV_CONTRACTS,
+  DEMO_PRIVATE_LOANS,
   DEMO_PRIMARY_PERSON_ID,
   DEMO_TENANT_ID,
 } from './data';
@@ -53,6 +54,11 @@ export function getDemoSubscriptions(): readonly DemoSubscription[] {
 /** KV-Verträge (clientseitig) */
 export function getDemoKVContracts(): readonly DemoKVContract[] {
   return DEMO_KV_CONTRACTS;
+}
+
+/** Privatkredite */
+export function getDemoPrivateLoans(): readonly DemoPrivateLoan[] {
+  return DEMO_PRIVATE_LOANS;
 }
 
 /** Alle Demo-IDs als Array */
