@@ -9,6 +9,7 @@ import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { RecordCard } from '@/components/shared/RecordCard';
 import { RECORD_CARD, DEMO_WIDGET } from '@/config/designManifest';
 import { isDemoId } from '@/engines/demoData/engine';
+import { useDemoToggles } from '@/hooks/useDemoToggles';
 import { FormInput } from '@/components/shared';
 import { EntityStorageTree } from '@/components/shared/EntityStorageTree';
 import { Button } from '@/components/ui/button';
@@ -390,7 +391,10 @@ function PetInlineDossier({ petId, tenantId }: { petId: string; tenantId?: strin
 
 export default function PetsMeineTiere() {
   const { activeTenantId } = useAuth();
-  const { data: pets = [], isLoading } = usePets();
+  const { data: allPets = [], isLoading } = usePets();
+  const { isEnabled } = useDemoToggles();
+  const demoEnabled = isEnabled('GP-PETS');
+  const pets = demoEnabled ? allPets : allPets.filter(p => !isDemoId(p.id));
   const createPet = useCreatePet();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [openPetId, setOpenPetId] = useState<string | null>(null);
