@@ -1,64 +1,122 @@
 
-# Pet Shop: Widget "Ernaehrung" mit Lakefields-Shop
+# Lennox Tracker — Produktseite mit CI-Branding und AI-generierten Bildern
 
 ## Uebersicht
 
-Das erste Widget im PetsShop wird von "Unser Shop" zu **"Ernaehrung"** umbenannt. Beim Klick wird ein Shop-Layout angezeigt, das dem bestehenden Muster aus `ShopTab.tsx` (Amazon, OTTO, Miete24) folgt: Header mit Gradient, Suchleiste, Kategorie-Badges und Produkt-Grid.
+Die aktuelle Lennox-Tracker-Sektion (Zeilen 273-308 in `PetsShop.tsx`) ist minimal — nur eine Card mit Icon, Text und "Bald verfuegbar"-Button. Sie wird zu einer vollwertigen Produktseite ausgebaut, inspiriert von Tractive: Hero-Banner mit generiertem Bild, Feature-Grid, Produktvarianten und Abo-Modell.
 
-## Aenderungen an `src/pages/portal/pets/PetsShop.tsx`
+## Neues Layout
 
-### 1. Widget-Definition umbenennen
-
+```text
++----------------------------------------------------------+
+|  HERO BANNER (volle Breite, Gradient + AI-Bild)          |
+|                                                          |
+|  [AI-generiertes Bild: Hund mit Tracker am Halsband]    |
+|                                                          |
+|  "Lennox GPS Tracker"                                    |
+|  "Immer wissen, wo dein Liebling ist."                   |
+|  [Jetzt vorbestellen]                                    |
++----------------------------------------------------------+
+|                                                          |
+|  FEATURE-GRID (3 Spalten, mobile: 1 Spalte)             |
+|                                                          |
+|  +----------------+ +----------------+ +----------------+|
+|  | MapPin         | | Activity       | | Shield         ||
+|  | Live-Ortung    | | Aktivitaets-   | | Geofencing     ||
+|  |                | | tracking       | |                ||
+|  +----------------+ +----------------+ +----------------+|
+|  +----------------+ +----------------+ +----------------+|
+|  | Battery        | | Droplets       | | Heart          ||
+|  | 14 Tage Akku   | | Wasserdicht    | | Gesundheits-   ||
+|  |                | | IP67           | | warnungen      ||
+|  +----------------+ +----------------+ +----------------+|
+|                                                          |
++----------------------------------------------------------+
+|                                                          |
+|  PRODUKT-VARIANTEN (3 Karten nebeneinander)              |
+|                                                          |
+|  +----------------+ +----------------+ +----------------+|
+|  | LENNOX Mini    | | LENNOX Std     | | LENNOX XL      ||
+|  | Fuer kleine    | | Fuer Hunde     | | Fuer grosse    ||
+|  | Hunde/Katzen   | | ab 10 kg       | | Hunde ab 25 kg ||
+|  | 39,99 EUR      | | 49,99 EUR      | | 59,99 EUR      ||
+|  | [Vorbestellen] | | [Vorbestellen] | | [Vorbestellen] ||
+|  +----------------+ +----------------+ +----------------+|
+|                                                          |
++----------------------------------------------------------+
+|  ABO-MODELLE (Badge-Row)                                 |
+|  Basic 2,99/Mo | Plus 4,99/Mo | Premium 6,99/Mo         |
++----------------------------------------------------------+
+|  INTEGRATION-ACCORDION (Partner-ID / API Key)            |
++----------------------------------------------------------+
 ```
-key: 'shop' → Titel aendern von "Unser Shop" zu "Ernaehrung"
-Beschreibung: "Lakefields — Naturbelassenes Hundefutter"
-Icon: bleibt Store (oder UtensilsCrossed fuer Ernaehrung)
+
+## Technische Umsetzung
+
+### 1. AI-generierte Bilder (Edge Function)
+
+Eine Edge Function `generate-lennox-images` wird erstellt, die ueber die Lovable AI (google/gemini-2.5-flash-image) 3 Bilder generiert:
+
+- **Hero-Bild**: "A happy golden retriever outdoors wearing a sleek small black GPS tracker on its collar, nature background, professional product photography"
+- **Tracker-Produktbild**: "A small sleek black GPS pet tracker device on white background, modern product photography, rounded edges"
+- **Lifestyle-Bild**: "A person walking with a dog in a park, checking a phone app showing GPS location, warm light"
+
+Die generierten Bilder werden in Lovable Cloud Storage (Bucket `lennox-assets`) gespeichert und die URLs in einer Konstante im Code referenziert. Alternativ: Die Bilder werden einmalig generiert und als statische URLs hinterlegt.
+
+**Pragmatischer Ansatz**: Die Edge Function wird einmalig aufgerufen (manuell oder via Button), speichert die Bilder im Storage und liefert die public URLs zurueck. Der UI-Code referenziert dann diese festen URLs. So entsteht kein Overhead bei jedem Seitenaufruf.
+
+### 2. UI-Umbau in `PetsShop.tsx`
+
+Der `activeWidget === 'lennox'`-Block (Zeilen 273-308) wird komplett ersetzt durch:
+
+**a) Hero-Banner**
+- Volle Breite Card mit `bg-gradient-to-br from-teal-500/20 via-cyan-500/10 to-blue-500/5`
+- AI-generiertes Hero-Bild als Hintergrund (oder links/rechts Split)
+- Headline "Lennox GPS Tracker", Subline, CTA-Button
+
+**b) Feature-Grid**
+- 6 Feature-Cards in `grid-cols-2 sm:grid-cols-3`
+- Icons: MapPin, Activity, Shield, Battery, Droplets, Heart
+- Kurztexte zu jedem Feature
+
+**c) Produktvarianten**
+- 3 Karten: Mini (39,99 EUR), Standard (49,99 EUR), XL (59,99 EUR)
+- Jede mit Bild-Placeholder, Specs, "Vorbestellen"-Button (noch disabled)
+
+**d) Abo-Modelle**
+- 3 Badges/Cards: Basic, Plus, Premium
+- Preise und Leistungsuebersicht
+
+**e) Integration-Accordion**
+- Wie bei Lakefields: Partner-ID, API Key, Status
+
+### 3. Storage Bucket
+
+- Bucket `lennox-assets` erstellen (public)
+- Edge Function speichert generierte Bilder dort
+
+### 4. Edge Function `generate-lennox-images`
+
+```text
+POST /generate-lennox-images
+- Generiert 3 Bilder via Lovable AI
+- Speichert in Storage Bucket
+- Gibt URLs zurueck
 ```
 
-### 2. Bisherigen Katalog-Inhalt ersetzen
-
-Der aktuelle `activeWidget === 'shop'`-Block (der Services aus der DB laedt) wird ersetzt durch ein **statisches Shop-Layout** im ShopTab-Stil:
-
-**Header-Card** (Gradient-Banner):
-- Name: "Lakefields"
-- Tagline: "Hochwertiges und naturbelassenes Hundefutter"
-- Beschreibung: "Nassfutter, Trockenfutter, Snacks und Ergaenzungsfuttermittel — aus nachhaltiger Produktion in Deutschland."
-- Gradient: `from-amber-500/20 to-amber-600/5` (warme Farbe passend zur Marke)
-- Button "Shop oeffnen" → oeffnet `https://www.lakefields.de/Hundefutter/`
-
-**Suchleiste + Kategorie-Badges:**
-- Kategorien: Nassfutter, Trockenfutter, Snacks, Ergaenzungsfuttermittel, Welpenfutter, Best-Seller
-
-**Produkt-Grid** (6 Produkte mit echten Lakefields-Daten):
-
-| Produkt | Preis | Bild-URL (CDN) |
-|---|---|---|
-| Nassfutter-Menue Wild (400g) | 3,89 EUR | `lakefields.b-cdn.net/.../nassfutter-wild-adult-...` |
-| Nassfutter-Menue Rind (400g) | 3,69 EUR | `lakefields.b-cdn.net/.../nassfutter-rind-adult-...` |
-| Nassfutter-Menue Lamm (400g) | 3,89 EUR | `lakefields.b-cdn.net/.../nassfutter-lamm-adult-...` |
-| Nassfutter-Menue Huhn (400g) | 3,69 EUR | `lakefields.b-cdn.net/.../nassfutter-huhn-adult-...` |
-| Nassfutter-Menue Pferd (400g) | 4,29 EUR | `lakefields.b-cdn.net/.../nassfutter-pferd-adult-...` |
-| Nassfutter-Menue Rind Welpe (400g) | 3,69 EUR | `lakefields.b-cdn.net/.../nassfutter-rind-welpe-...` |
-
-Jede Produktkarte zeigt:
-- Produktbild (aspect-square, object-cover)
-- Produktname (line-clamp-2)
-- Preis in amber-Akzentfarbe
-- Badge "Neu" fuer Pferd-Variante
-- Klick oeffnet Produktseite auf lakefields.de in neuem Tab
-
-**Integration-Accordion** (wie bei ShopTab):
-- Felder: Partner-ID, API Key
-- Status: "Nicht verbunden"
-
-### 3. Bestehenden Booking-Dialog beibehalten
-
-Der Booking-Dialog bleibt im Code (wird von keinem Lakefields-Produkt ausgeloest), falls andere Widgets ihn zukuenftig nutzen.
+Die Function nutzt den `LOVABLE_API_KEY` (bereits vorhanden) und die Supabase-Umgebungsvariablen.
 
 ## Betroffene Dateien
 
 | Datei | Aenderung |
 |---|---|
-| `src/pages/portal/pets/PetsShop.tsx` | Widget-Titel aendern, Shop-Inhalt durch Lakefields-Layout ersetzen |
+| `src/pages/portal/pets/PetsShop.tsx` | Lennox-Block komplett neu (Hero, Features, Produkte, Abos) |
+| `supabase/functions/generate-lennox-images/index.ts` | Neue Edge Function fuer Bildgenerierung |
+| DB-Migration | Storage Bucket `lennox-assets` erstellen |
 
-Keine DB-Migration noetig — rein statische UI-Aenderung.
+## Farbschema / CI
+
+- Primary: Teal/Cyan (`teal-500`, `cyan-500`) — passt zum bestehenden Lennox-Styling
+- Akzent: Blau fuer CTAs
+- Gradient: `from-teal-500/20 via-cyan-500/10 to-blue-500/5`
+- Produktkarten: Helle Borders mit Teal-Glow bei Hover
