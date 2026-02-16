@@ -1,27 +1,45 @@
 
 
-# MOD-14 (Kommunikation Pro) von "Manager" nach "Service" verschieben
+# MOD-22 (Pet Manager) im Bereich "Manager" sichtbar machen
 
-## Aenderung
+## Problem
 
-Eine einzelne Datei: `src/manifests/areaConfig.ts`
+MOD-22 wurde als Route und Page angelegt, aber nie in die Area-Navigation eingetragen. Deshalb erscheint der Pet Manager weder im Bereich "Manager" noch auf irgendeiner Area-Uebersichtsseite.
 
-- **Zeile 41** (operations/Manager): `MOD-14` aus dem Array entfernen
-- **Zeile 48** (services/Service): `MOD-14` zum Array hinzufuegen
+Zwei Luecken muessen geschlossen werden:
 
-### Vorher
+## Aenderung 1: `src/manifests/areaConfig.ts`
 
-```text
-operations: ['MOD-13', 'MOD-09', 'MOD-11', 'MOD-12', 'MOD-10', 'MOD-14']
-services:   ['MOD-15', 'MOD-05', 'MOD-16', 'MOD-17', 'MOD-19']
-```
-
-### Nachher
+MOD-22 zum `operations` (Manager) Array hinzufuegen:
 
 ```text
-operations: ['MOD-13', 'MOD-09', 'MOD-11', 'MOD-12', 'MOD-10']
-services:   ['MOD-15', 'MOD-05', 'MOD-16', 'MOD-17', 'MOD-19', 'MOD-14']
+Vorher:  modules: ['MOD-13', 'MOD-09', 'MOD-11', 'MOD-12', 'MOD-10']
+Nachher: modules: ['MOD-13', 'MOD-09', 'MOD-11', 'MOD-12', 'MOD-10', 'MOD-22']
 ```
 
-Keine weiteren Dateien betroffen — Routen, Labels und alles andere bleibt unveraendert, da `areaConfig.ts` rein praesentationsbezogen ist.
+Zusaetzlich einen Label-Override hinzufuegen:
+
+```text
+'MOD-22': 'Pet Manager'
+```
+
+## Aenderung 2: `src/components/portal/HowItWorks/moduleContents.ts`
+
+Neuen Eintrag fuer MOD-22 anlegen (analog zu den anderen Modulen), damit die AreaOverviewPage eine Karte rendern kann:
+
+```text
+'MOD-22': {
+  moduleCode: 'MOD-22',
+  title: 'Pet Manager',
+  oneLiner: 'Franchise-Partner Portal fuer Haustier-Dienstleistungen',
+  ...
+}
+```
+
+## Keine weiteren Aenderungen noetig
+
+- Routen sind bereits in `routesManifest.ts` korrekt definiert
+- `ManifestRouter.tsx` hat die Lazy Imports bereits
+- `PetManagerPage.tsx` und alle Sub-Pages existieren bereits
+- Es fehlt ausschliesslich die Praesentation in der Area-Navigation
 
