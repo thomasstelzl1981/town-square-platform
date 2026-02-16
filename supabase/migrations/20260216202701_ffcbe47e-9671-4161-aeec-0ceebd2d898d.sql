@@ -1,0 +1,1 @@
+ALTER TABLE public.pet_providers ADD COLUMN IF NOT EXISTS gallery_images TEXT[] DEFAULT '{}';

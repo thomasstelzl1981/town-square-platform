@@ -11884,6 +11884,7 @@ export type Database = {
           cover_image_url: string | null
           created_at: string
           email: string | null
+          gallery_images: string[] | null
           id: string
           operating_hours: Json | null
           phone: string | null
@@ -11903,6 +11904,7 @@ export type Database = {
           cover_image_url?: string | null
           created_at?: string
           email?: string | null
+          gallery_images?: string[] | null
           id?: string
           operating_hours?: Json | null
           phone?: string | null
@@ -11922,6 +11924,7 @@ export type Database = {
           cover_image_url?: string | null
           created_at?: string
           email?: string | null
+          gallery_images?: string[] | null
           id?: string
           operating_hours?: Json | null
           phone?: string | null
