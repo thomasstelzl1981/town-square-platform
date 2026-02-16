@@ -1,11 +1,12 @@
 /**
  * MOD-18 Finanzen — Tab 5: ABONNEMENTS
- * SSOT für alle Abonnements. RecordCard-Pattern + Seed Merchants.
+ * Widget CE Layout: WidgetGrid + WidgetCell (4-col, square)
  */
 import { useState, useMemo } from 'react';
 import { PageShell } from '@/components/shared/PageShell';
-import { RecordCard } from '@/components/shared/RecordCard';
-import { RECORD_CARD } from '@/config/designManifest';
+import { WidgetGrid } from '@/components/shared/WidgetGrid';
+import { WidgetCell } from '@/components/shared/WidgetCell';
+import { CARD, TYPOGRAPHY, HEADER, RECORD_CARD } from '@/config/designManifest';
 import { getContractWidgetGlow } from '@/config/widgetCategorySpec';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { isDemoId } from '@/engines/demoData/engine';
@@ -13,17 +14,18 @@ import { useDemoToggles } from '@/hooks/useDemoToggles';
 import { FormInput } from '@/components/shared';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Plus, Receipt } from 'lucide-react';
+import { Plus, Receipt, X } from 'lucide-react';
 import { DesktopOnly } from '@/components/shared/DesktopOnly';
+import { cn } from '@/lib/utils';
 
 const CATEGORY_ENUM = [
   { value: 'streaming_video', label: 'Streaming (Video)' },
@@ -55,7 +57,7 @@ export default function AbonnementsTab() {
   const { isEnabled } = useDemoToggles();
   const demoEnabled = isEnabled('GP-KONTEN');
   const queryClient = useQueryClient();
-  const [openCardId, setOpenCardId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [forms, setForms] = useState<Record<string, Record<string, any>>>({});
   const [showNew, setShowNew] = useState(false);
   const [newForm, setNewForm] = useState<Record<string, any>>({
@@ -97,14 +99,10 @@ export default function AbonnementsTab() {
     mutationFn: async (form: Record<string, any>) => {
       if (!activeTenantId || !user?.id) throw new Error('No tenant/user');
       const { error } = await supabase.from('user_subscriptions').insert({
-        tenant_id: activeTenantId,
-        user_id: user.id,
-        custom_name: form.custom_name || null,
-        merchant: form.merchant || null,
-        category: (form.category as any) || null,
-        frequency: form.frequency || null,
-        amount: Number(form.amount) || null,
-        status: form.status || null,
+        tenant_id: activeTenantId, user_id: user.id,
+        custom_name: form.custom_name || null, merchant: form.merchant || null,
+        category: (form.category as any) || null, frequency: form.frequency || null,
+        amount: Number(form.amount) || null, status: form.status || null,
         auto_renew: form.auto_renew ?? true,
       });
       if (error) throw error;
@@ -121,12 +119,9 @@ export default function AbonnementsTab() {
     mutationFn: async (form: Record<string, any>) => {
       const { id, created_at, updated_at, tenant_id, user_id, ...rest } = form;
       const { error } = await supabase.from('user_subscriptions').update({
-        custom_name: rest.custom_name || null,
-        merchant: rest.merchant || null,
-        category: (rest.category as any) || null,
-        frequency: rest.frequency || null,
-        amount: Number(rest.amount) || null,
-        status: rest.status || null,
+        custom_name: rest.custom_name || null, merchant: rest.merchant || null,
+        category: (rest.category as any) || null, frequency: rest.frequency || null,
+        amount: Number(rest.amount) || null, status: rest.status || null,
         auto_renew: rest.auto_renew ?? true,
       }).eq('id', id);
       if (error) throw error;
@@ -145,17 +140,17 @@ export default function AbonnementsTab() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['fin-subscriptions'] });
       toast.success('Abonnement gelöscht');
-      setOpenCardId(null);
+      setSelectedId(null);
     },
   });
 
   if (isLoading) return <PageShell><Skeleton className="h-64" /></PageShell>;
 
-  const toggleCard = (id: string) => {
-    if (openCardId === id) { setOpenCardId(null); return; }
+  const selectCard = (id: string) => {
+    if (selectedId === id) { setSelectedId(null); return; }
     const c = subs.find((x: any) => x.id === id);
     if (c) setForms(prev => ({ ...prev, [id]: { ...c } }));
-    setOpenCardId(id);
+    setSelectedId(id);
     setShowNew(false);
   };
 
@@ -165,26 +160,29 @@ export default function AbonnementsTab() {
 
   const catLabel = (val: string) => CATEGORY_ENUM.find(c => c.value === val)?.label || val;
 
-  const SubFields = ({ form, onUpdate }: { form: Record<string, any>; onUpdate: (f: string, v: any) => void }) => (
+  const selectedSub = subs.find((s: any) => s.id === selectedId);
+  const form = selectedId ? (forms[selectedId] || selectedSub) : null;
+
+  const SubFields = ({ form: f, onUpdate }: { form: Record<string, any>; onUpdate: (field: string, v: any) => void }) => (
     <div>
       <p className={RECORD_CARD.SECTION_TITLE}>Abo-Details</p>
       <div className={RECORD_CARD.FIELD_GRID}>
-        <FormInput label="Eigener Name" name="custom_name" value={form.custom_name || ''} onChange={e => onUpdate('custom_name', e.target.value)} />
-        <FormInput label="Anbieter / Merchant" name="merchant" value={form.merchant || ''} onChange={e => onUpdate('merchant', e.target.value)} />
+        <FormInput label="Eigener Name" name="custom_name" value={f.custom_name || ''} onChange={e => onUpdate('custom_name', e.target.value)} />
+        <FormInput label="Anbieter / Merchant" name="merchant" value={f.merchant || ''} onChange={e => onUpdate('merchant', e.target.value)} />
         <div>
           <Label className="text-xs">Kategorie</Label>
-          <Select value={form.category || 'other'} onValueChange={v => onUpdate('category', v)}>
+          <Select value={f.category || 'other'} onValueChange={v => onUpdate('category', v)}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
               {CATEGORY_ENUM.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>
-        <FormInput label="Frequenz" name="frequency" value={form.frequency || ''} onChange={e => onUpdate('frequency', e.target.value)} />
-        <FormInput label="Betrag (€)" name="amount" type="number" value={form.amount || ''} onChange={e => onUpdate('amount', e.target.value)} />
-        <FormInput label="Status" name="status" value={form.status || ''} onChange={e => onUpdate('status', e.target.value)} />
+        <FormInput label="Frequenz" name="frequency" value={f.frequency || ''} onChange={e => onUpdate('frequency', e.target.value)} />
+        <FormInput label="Betrag (€)" name="amount" type="number" value={f.amount || ''} onChange={e => onUpdate('amount', e.target.value)} />
+        <FormInput label="Status" name="status" value={f.status || ''} onChange={e => onUpdate('status', e.target.value)} />
         <div className="flex items-center gap-2 pt-5">
-          <Switch checked={!!form.auto_renew} onCheckedChange={v => onUpdate('auto_renew', v)} />
+          <Switch checked={!!f.auto_renew} onCheckedChange={v => onUpdate('auto_renew', v)} />
           <Label className="text-xs">Auto-Verlängerung</Label>
         </div>
       </div>
@@ -210,59 +208,91 @@ export default function AbonnementsTab() {
         </CardContent>
       </Card>
 
-      <div className={RECORD_CARD.GRID}>
+      <WidgetGrid>
         {filteredSubs.map((s: any) => {
-          const form = forms[s.id] || s;
+          const isSelected = selectedId === s.id;
           return (
-            <RecordCard
-              key={s.id}
-              id={s.id}
-              entityType="subscription"
-              isOpen={openCardId === s.id}
-              onToggle={() => toggleCard(s.id)}
-              glowVariant={getContractWidgetGlow(s.id) ?? undefined}
-              title={s.custom_name || s.merchant || 'Abonnement'}
-              subtitle={catLabel(s.category || 'other')}
-              badges={[
-                { label: s.status || 'aktiv', variant: s.status === 'aktiv' ? 'default' : 'secondary' },
-              ]}
-              summary={[
-                { label: 'Betrag', value: `${fmt(s.amount || 0)} / ${s.frequency || 'monatlich'}` },
-              ]}
-              tenantId={activeTenantId || undefined}
-              onSave={() => updateMutation.mutate(form)}
-              onDelete={() => deleteMutation.mutate(s.id)}
-              saving={updateMutation.isPending}
-            >
-              <SubFields form={form} onUpdate={(f, v) => updateField(s.id, f, v)} />
-            </RecordCard>
+            <WidgetCell key={s.id}>
+              <div
+                className={cn(
+                  CARD.BASE, CARD.INTERACTIVE,
+                  'h-full flex flex-col justify-between p-5',
+                  isSelected && 'ring-2 ring-primary',
+                )}
+                onClick={() => selectCard(s.id)}
+                role="button"
+                tabIndex={0}
+              >
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Badge variant={s.status === 'aktiv' ? 'default' : 'secondary'} className="text-[10px]">
+                      {s.status || 'aktiv'}
+                    </Badge>
+                  </div>
+                  <div className={HEADER.WIDGET_ICON_BOX}>
+                    <Receipt className="h-5 w-5 text-primary" />
+                  </div>
+                  <h4 className={TYPOGRAPHY.CARD_TITLE}>{s.custom_name || s.merchant || 'Abonnement'}</h4>
+                  <p className="text-xs text-muted-foreground">{catLabel(s.category || 'other')}</p>
+                </div>
+                <div className="space-y-1 mt-auto pt-3 border-t border-border/20">
+                  <div className="flex justify-between text-xs">
+                    <span className="text-muted-foreground">Betrag</span>
+                    <span className="font-semibold">{fmt(s.amount || 0)} / {s.frequency || 'monatlich'}</span>
+                  </div>
+                </div>
+              </div>
+            </WidgetCell>
           );
         })}
 
         <DesktopOnly>
           {!showNew && (
-            <div
-              className={RECORD_CARD.CLOSED + ' border-dashed border-primary/30 flex items-center justify-center'}
-              onClick={() => { setShowNew(true); setOpenCardId(null); }}
-              role="button"
-              tabIndex={0}
-            >
-              <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Plus className="h-6 w-6 text-primary" />
+            <WidgetCell>
+              <div
+                className="h-full w-full rounded-xl border-2 border-dashed border-primary/30 flex items-center justify-center cursor-pointer hover:border-primary/50 transition-colors"
+                onClick={() => { setShowNew(true); setSelectedId(null); }}
+                role="button"
+                tabIndex={0}
+              >
+                <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                  <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
+                    <Plus className="h-6 w-6 text-primary" />
+                  </div>
+                  <p className="text-sm font-medium">Abonnement hinzufügen</p>
                 </div>
-                <p className="text-sm font-medium">Abonnement hinzufügen</p>
               </div>
-            </div>
+            </WidgetCell>
           )}
+        </DesktopOnly>
+      </WidgetGrid>
 
-          {showNew && (
-          <div className={RECORD_CARD.OPEN}>
-            <div className="flex items-center justify-between mb-6">
+      {/* Detail below grid */}
+      {selectedId && form && (
+        <Card className="glass-card p-6 mt-2">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold">{form.custom_name || form.merchant || 'Abonnement'}</h2>
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setSelectedId(null)}>
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+          <div className="space-y-6">
+            <SubFields form={form} onUpdate={(f, v) => updateField(selectedId, f, v)} />
+          </div>
+          <div className={RECORD_CARD.ACTIONS}>
+            <Button variant="destructive" size="sm" onClick={() => deleteMutation.mutate(selectedId)}>Löschen</Button>
+            <Button size="sm" onClick={() => updateMutation.mutate(form)} disabled={updateMutation.isPending}>Speichern</Button>
+          </div>
+        </Card>
+      )}
+
+      {showNew && (
+        <DesktopOnly>
+          <Card className="glass-card p-6 mt-2">
+            <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold">Neues Abonnement</h2>
               <Button variant="ghost" size="sm" onClick={() => setShowNew(false)}>Abbrechen</Button>
             </div>
-
             <div className="mb-4">
               <p className="text-xs font-medium text-muted-foreground mb-2">Schnellauswahl</p>
               <div className="flex flex-wrap gap-1.5">
@@ -278,17 +308,15 @@ export default function AbonnementsTab() {
                 ))}
               </div>
             </div>
-
             <div className="space-y-6">
               <SubFields form={newForm} onUpdate={(f, v) => setNewForm(prev => ({ ...prev, [f]: v }))} />
             </div>
             <div className={RECORD_CARD.ACTIONS}>
               <Button size="sm" onClick={() => createMutation.mutate(newForm)}>Speichern</Button>
             </div>
-          </div>
-        )}
+          </Card>
         </DesktopOnly>
-      </div>
+      )}
     </PageShell>
   );
 }

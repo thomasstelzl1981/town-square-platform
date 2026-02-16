@@ -1,12 +1,12 @@
 /**
  * MOD-18 Finanzen — Tab 1: ÜBERSICHT
- * Block A: Personen im Haushalt (RecordCard)
- * Block B: Konten (RecordCard) 
+ * Block A: Personen im Haushalt (PersonVisitenkarte)
+ * Block B: Konten (WidgetGrid)
  * Block C: 12M Scan Button
  */
 import { useState } from 'react';
 import { PageShell } from '@/components/shared/PageShell';
-import { RecordCard } from '@/components/shared/RecordCard';
+import { PersonVisitenkarte } from '@/components/shared/PersonVisitenkarte';
 import { WidgetGrid } from '@/components/shared/WidgetGrid';
 import { WidgetCell } from '@/components/shared/WidgetCell';
 import { RECORD_CARD, DEMO_WIDGET } from '@/config/designManifest';
@@ -30,7 +30,7 @@ import { KontoAkteInline } from '@/components/finanzanalyse/KontoAkteInline';
 import { DEMO_KONTO, DEMO_KONTO_IBAN_MASKED } from '@/constants/demoKontoData';
 import {
   Users, UserPlus, Landmark, ScanSearch, Plus,
-  Calendar, Mail, Phone, MapPin, CreditCard
+  Calendar, Mail, Phone, MapPin, CreditCard, X
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -77,12 +77,10 @@ function KontenBlock() {
   });
 
   const showDemo = isEnabled('GP-KONTEN');
-
   const maskIban = (iban: string) => iban ? `${iban.slice(0, 9)} ••••` : '—';
 
   return (
     <>
-      {/* ═══ BLOCK B: Konten ═══ */}
       <div className="flex items-center justify-between mt-8">
         <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-2">
           <Landmark className="h-4 w-4" /> Konten
@@ -90,14 +88,12 @@ function KontenBlock() {
       </div>
 
       <WidgetGrid>
-        {/* Demo Widget Position 0 */}
         {showDemo && (
           <WidgetCell>
             <div
               className={cn(
                 'h-full w-full rounded-xl cursor-pointer transition-all',
-                DEMO_WIDGET.CARD,
-                DEMO_WIDGET.HOVER,
+                DEMO_WIDGET.CARD, DEMO_WIDGET.HOVER,
                 openKontoId === DEMO_KONTO.id && 'ring-2 ring-primary/50',
               )}
               onClick={() => setOpenKontoId(openKontoId === DEMO_KONTO.id ? null : DEMO_KONTO.id)}
@@ -119,7 +115,6 @@ function KontenBlock() {
           </WidgetCell>
         )}
 
-        {/* Echte Konten */}
         {bankAccounts.map((acc: any) => (
           <WidgetCell key={acc.id}>
             <div
@@ -148,7 +143,6 @@ function KontenBlock() {
           </WidgetCell>
         ))}
 
-        {/* CTA Widget */}
         <WidgetCell>
           <div
             className="h-full w-full rounded-xl border-2 border-dashed border-primary/30 flex items-center justify-center cursor-pointer hover:border-primary/50 transition-colors"
@@ -165,7 +159,6 @@ function KontenBlock() {
         </WidgetCell>
       </WidgetGrid>
 
-      {/* Inline Kontoakte — outside grid, full width */}
       {openKontoId === DEMO_KONTO.id && (
         <KontoAkteInline isDemo onClose={() => setOpenKontoId(null)} />
       )}
@@ -177,7 +170,6 @@ function KontenBlock() {
         />
       )}
 
-      {/* ═══ BLOCK C: 12M Scan ═══ */}
       <Card className="glass-card mt-4">
         <CardContent className="py-6">
           <div className="flex items-center gap-4">
@@ -241,7 +233,6 @@ export default function UebersichtTab() {
             disability_pension: pension.disability_pension || '',
           } : { info_date: '', current_pension: '', projected_pension: '', disability_pension: '' },
         }));
-        // Lazy-create DMS tree for existing persons
         if (activeTenantId) {
           createPersonDMSTree.mutate({
             personId: person.id,
@@ -298,7 +289,6 @@ export default function UebersichtTab() {
     createPerson.mutate(newForm, {
       onSuccess: (newPerson) => {
         toast.success('Person hinzugefügt');
-        // Auto-create DMS tree for the new person
         if (activeTenantId && newPerson?.id) {
           createPersonDMSTree.mutate({
             personId: newPerson.id,
@@ -323,39 +313,54 @@ export default function UebersichtTab() {
         </h3>
       </div>
 
-      <div className={RECORD_CARD.GRID}>
-        {persons.map((person) => {
-          const pension = pensionRecords.find(p => p.person_id === person.id);
-          const form = editForms[person.id] || person;
-          const pForm = pensionForms[person.id] || {};
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        {persons.map((person) => (
+          <PersonVisitenkarte
+            key={person.id}
+            person={person}
+            isSelected={openCardId === person.id}
+            onClick={() => toggleCard(person.id)}
+            badges={[
+              { label: ROLE_LABELS[person.role] || person.role, variant: person.is_primary ? 'default' : 'secondary' },
+            ]}
+          />
+        ))}
 
-          return (
-            <RecordCard
-              key={person.id}
-              id={person.id}
-              entityType="person"
-              isOpen={openCardId === person.id}
-              onToggle={() => toggleCard(person.id)}
-              title={`${person.first_name || ''} ${person.last_name || ''}`.trim() || 'Neue Person'}
-              subtitle={person.email || undefined}
-              badges={[
-                { label: ROLE_LABELS[person.role] || person.role, variant: person.is_primary ? 'default' : 'secondary' },
-              ]}
-              thumbnailUrl={(person as any).avatar_url || undefined}
-              summary={[
-                ...(person.birth_date ? [{ label: '', value: new Date(person.birth_date).toLocaleDateString('de-DE') }] : []),
-                ...(person.street ? [{ label: '', value: `${person.street} ${person.house_number || ''}`.trim() }] : []),
-                ...(person.zip ? [{ label: '', value: `${person.zip} ${person.city || ''}`.trim() }] : []),
-                ...((person as any).phone_landline ? [{ label: '', value: (person as any).phone_landline }] : []),
-                ...(person.phone ? [{ label: '', value: person.phone }] : []),
-                ...(person.email ? [{ label: '', value: person.email }] : []),
-              ]}
-              tenantId={activeTenantId || undefined}
-              onSave={() => handleSave(person.id)}
-              onDelete={!person.is_primary ? () => handleDelete(person.id) : undefined}
-              saving={savingId === person.id}
-            >
-              {/* Persönliche Daten */}
+        {/* CTA: Add Person */}
+        {!showNewPerson && (
+          <Card
+            className="border-2 border-dashed border-primary/30 flex items-center justify-center cursor-pointer hover:border-primary/50 transition-colors min-h-[100px]"
+            onClick={() => { setShowNewPerson(true); setOpenCardId(null); }}
+            role="button"
+            tabIndex={0}
+          >
+            <div className="flex flex-col items-center gap-2 text-muted-foreground py-4">
+              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <UserPlus className="h-5 w-5 text-primary" />
+              </div>
+              <p className="text-sm font-medium">Person hinzufügen</p>
+            </div>
+          </Card>
+        )}
+      </div>
+
+      {/* Person detail/edit below grid */}
+      {openCardId && (() => {
+        const person = persons.find(p => p.id === openCardId);
+        if (!person) return null;
+        const form = editForms[openCardId] || person;
+        const pForm = pensionForms[openCardId] || {};
+        return (
+          <Card className="glass-card p-6 mt-2">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold">{person.first_name} {person.last_name}</h2>
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setOpenCardId(null)}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+
+            {/* Persönliche Daten */}
+            <div className="space-y-6">
               <div>
                 <p className={RECORD_CARD.SECTION_TITLE}>Persönliche Daten</p>
                 <div className={RECORD_CARD.FIELD_GRID}>
@@ -403,7 +408,6 @@ export default function UebersichtTab() {
                 </div>
               </div>
 
-              {/* Adresse */}
               <div>
                 <p className={RECORD_CARD.SECTION_TITLE}>Adresse</p>
                 <div className={RECORD_CARD.FIELD_GRID}>
@@ -418,7 +422,6 @@ export default function UebersichtTab() {
                 </div>
               </div>
 
-              {/* DRV Renteninformation */}
               <div>
                 <p className={RECORD_CARD.SECTION_TITLE}>DRV Renteninformation</p>
                 <div className={RECORD_CARD.FIELD_GRID}>
@@ -436,77 +439,67 @@ export default function UebersichtTab() {
                     onChange={e => updatePensionField(person.id, 'disability_pension', e.target.value)} />
                 </div>
               </div>
-            </RecordCard>
-          );
-        })}
+            </div>
 
-        {/* CTA Widget: + Person hinzufügen */}
-        {!showNewPerson && (
-          <div
-            className={RECORD_CARD.CLOSED + ' border-dashed border-primary/30 flex items-center justify-center'}
-            onClick={() => { setShowNewPerson(true); setOpenCardId(null); }}
-            role="button"
-            tabIndex={0}
-          >
-            <div className="flex flex-col items-center gap-2 text-muted-foreground">
-              <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-                <UserPlus className="h-6 w-6 text-primary" />
-              </div>
-              <p className="text-sm font-medium">Person hinzufügen</p>
-            </div>
-          </div>
-        )}
-
-        {/* New Person Form (open state) */}
-        {showNewPerson && (
-          <div className={RECORD_CARD.OPEN}>
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-semibold">Neue Person</h2>
-              <Button variant="ghost" size="sm" onClick={() => setShowNewPerson(false)}>Abbrechen</Button>
-            </div>
-            <div>
-              <p className={RECORD_CARD.SECTION_TITLE}>Persönliche Daten</p>
-              <div className={RECORD_CARD.FIELD_GRID}>
-                <div>
-                  <Label className="text-xs">Rolle</Label>
-                  <Select value={newForm.role} onValueChange={v => setNewForm(p => ({ ...p, role: v }))}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {ROLE_OPTIONS.filter(r => r.value !== 'hauptperson').map(r => (
-                        <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label className="text-xs">Anrede</Label>
-                  <Select value={newForm.salutation} onValueChange={v => setNewForm(p => ({ ...p, salutation: v }))}>
-                    <SelectTrigger><SelectValue placeholder="Bitte wählen" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Herr">Herr</SelectItem>
-                      <SelectItem value="Frau">Frau</SelectItem>
-                      <SelectItem value="Divers">Divers</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <FormInput label="Vorname" name="new_first" value={newForm.first_name}
-                  onChange={e => setNewForm(p => ({ ...p, first_name: e.target.value }))} />
-                <FormInput label="Nachname" name="new_last" value={newForm.last_name}
-                  onChange={e => setNewForm(p => ({ ...p, last_name: e.target.value }))} />
-                <FormInput label="Geburtsdatum" name="new_birth" type="date" value={newForm.birth_date}
-                  onChange={e => setNewForm(p => ({ ...p, birth_date: e.target.value }))} />
-                <FormInput label="E-Mail" name="new_email" type="email" value={newForm.email}
-                  onChange={e => setNewForm(p => ({ ...p, email: e.target.value }))} />
-                <FormInput label="Mobil" name="new_phone" type="tel" value={newForm.phone}
-                  onChange={e => setNewForm(p => ({ ...p, phone: e.target.value }))} />
-              </div>
-            </div>
             <div className={RECORD_CARD.ACTIONS}>
-              <Button size="sm" onClick={handleAddPerson}>Speichern</Button>
+              {!person.is_primary && (
+                <Button variant="destructive" size="sm" onClick={() => handleDelete(person.id)}>Löschen</Button>
+              )}
+              <Button size="sm" onClick={() => handleSave(person.id)} disabled={savingId === person.id}>Speichern</Button>
+            </div>
+          </Card>
+        );
+      })()}
+
+      {/* New Person Form */}
+      {showNewPerson && (
+        <Card className="glass-card p-6 mt-2">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold">Neue Person</h2>
+            <Button variant="ghost" size="sm" onClick={() => setShowNewPerson(false)}>Abbrechen</Button>
+          </div>
+          <div>
+            <p className={RECORD_CARD.SECTION_TITLE}>Persönliche Daten</p>
+            <div className={RECORD_CARD.FIELD_GRID}>
+              <div>
+                <Label className="text-xs">Rolle</Label>
+                <Select value={newForm.role} onValueChange={v => setNewForm(p => ({ ...p, role: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {ROLE_OPTIONS.filter(r => r.value !== 'hauptperson').map(r => (
+                      <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-xs">Anrede</Label>
+                <Select value={newForm.salutation} onValueChange={v => setNewForm(p => ({ ...p, salutation: v }))}>
+                  <SelectTrigger><SelectValue placeholder="Bitte wählen" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Herr">Herr</SelectItem>
+                    <SelectItem value="Frau">Frau</SelectItem>
+                    <SelectItem value="Divers">Divers</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <FormInput label="Vorname" name="new_first" value={newForm.first_name}
+                onChange={e => setNewForm(p => ({ ...p, first_name: e.target.value }))} />
+              <FormInput label="Nachname" name="new_last" value={newForm.last_name}
+                onChange={e => setNewForm(p => ({ ...p, last_name: e.target.value }))} />
+              <FormInput label="Geburtsdatum" name="new_birth" type="date" value={newForm.birth_date}
+                onChange={e => setNewForm(p => ({ ...p, birth_date: e.target.value }))} />
+              <FormInput label="E-Mail" name="new_email" type="email" value={newForm.email}
+                onChange={e => setNewForm(p => ({ ...p, email: e.target.value }))} />
+              <FormInput label="Mobil" name="new_phone" type="tel" value={newForm.phone}
+                onChange={e => setNewForm(p => ({ ...p, phone: e.target.value }))} />
             </div>
           </div>
-        )}
-      </div>
+          <div className={RECORD_CARD.ACTIONS}>
+            <Button size="sm" onClick={handleAddPerson}>Speichern</Button>
+          </div>
+        </Card>
+      )}
 
       <KontenBlock />
     </PageShell>

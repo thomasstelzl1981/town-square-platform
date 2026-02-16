@@ -1,14 +1,14 @@
 /**
  * MOD-18 Finanzen — Tab 6: Vorsorge & Testament
- * Sektions-Layout: Personen-RecordCards (PV) + 4 Vorlagen-Widgets (Testament)
+ * Person selection via PersonVisitenkarte + Testament WidgetGrid
  */
 import { useState, useMemo } from 'react';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { WidgetGrid } from '@/components/shared/WidgetGrid';
 import { WidgetCell } from '@/components/shared/WidgetCell';
-import { RecordCard } from '@/components/shared/RecordCard';
-import { CARD, TYPOGRAPHY, HEADER, RECORD_CARD, getSelectionRing } from '@/config/designManifest';
+import { PersonVisitenkarte } from '@/components/shared/PersonVisitenkarte';
+import { CARD, TYPOGRAPHY, HEADER, getSelectionRing } from '@/config/designManifest';
 import { Badge } from '@/components/ui/badge';
 import { PatientenverfuegungInlineForm } from '@/components/legal/PatientenverfuegungInlineForm';
 import { TestamentVorlageInline } from '@/components/legal/TestamentVorlageInline';
@@ -29,7 +29,6 @@ export default function VorsorgedokumenteTab() {
   const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
   const [selectedVariante, setSelectedVariante] = useState(1);
 
-  // Fetch household persons
   const { data: rawPersons } = useQuery({
     queryKey: ['household_persons', activeTenantId],
     queryFn: async () => {
@@ -50,7 +49,6 @@ export default function VorsorgedokumenteTab() {
   );
   const effectivePersonId = selectedPersonId || persons?.find(p => p.is_primary)?.id || persons?.[0]?.id || null;
 
-  // Fetch legal documents status
   const { data: legalDocs } = useQuery({
     queryKey: ['legal-documents', activeTenantId],
     queryFn: async () => {
@@ -71,10 +69,7 @@ export default function VorsorgedokumenteTab() {
 
   const personAddress = useMemo(() => {
     if (!selectedPerson) return '';
-    const parts = [
-      selectedPerson.street,
-      selectedPerson.house_number,
-    ].filter(Boolean).join(' ');
+    const parts = [selectedPerson.street, selectedPerson.house_number].filter(Boolean).join(' ');
     const cityParts = [selectedPerson.zip, selectedPerson.city].filter(Boolean).join(' ');
     return [parts, cityParts].filter(Boolean).join(', ');
   }, [selectedPerson]);
@@ -97,9 +92,7 @@ export default function VorsorgedokumenteTab() {
         description="Patientenverfügung, Vorsorgevollmacht und Testament — Ihre wichtigsten Vorsorgedokumente"
       />
 
-      {/* ═══════════════════════════════════════════ */}
-      {/* SEKTION 1: Patientenverfügung & Vorsorgevollmacht */}
-      {/* ═══════════════════════════════════════════ */}
+      {/* SEKTION 1: Patientenverfügung */}
       <div className="space-y-4">
         <div className="flex items-center gap-3">
           <div className={HEADER.WIDGET_ICON_BOX}>
@@ -108,36 +101,23 @@ export default function VorsorgedokumenteTab() {
           <h2 className={TYPOGRAPHY.SECTION_TITLE}>Patientenverfügung & Vorsorgevollmacht</h2>
         </div>
 
-        {/* Personen-RecordCards */}
-        <div className={RECORD_CARD.GRID}>
+        {/* Person Visitenkarten */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {persons?.map(person => {
             const isSelected = person.id === effectivePersonId;
             const completed = isPvCompleted(person.id);
             return (
-              <RecordCard
+              <PersonVisitenkarte
                 key={person.id}
-                id={person.id}
-                entityType="person"
-                isOpen={false}
-                onToggle={() => setSelectedPersonId(person.id)}
-                title={`${person.first_name} ${person.last_name}`}
-                subtitle={person.role}
-                summary={[
-                  ...(person.birth_date ? [{ label: 'Geb.', value: person.birth_date }] : []),
-                  ...(person.city ? [{ label: 'Ort', value: person.city }] : []),
-                ]}
+                person={person}
+                isSelected={isSelected}
+                onClick={() => setSelectedPersonId(person.id)}
                 badges={completed ? [{ label: '✓ Hinterlegt', variant: 'secondary' as const }] : []}
-                glowVariant={isSelected ? 'primary' : undefined}
-                className={isSelected ? getSelectionRing('primary') : ''}
-              >
-                {/* Closed-only mode — no children rendered */}
-                <div />
-              </RecordCard>
+              />
             );
           })}
         </div>
 
-        {/* Inline-Formular (immer offen) */}
         {effectivePersonId && selectedPerson && activeTenantId && (
           <PatientenverfuegungInlineForm
             personId={effectivePersonId}
@@ -150,9 +130,7 @@ export default function VorsorgedokumenteTab() {
         )}
       </div>
 
-      {/* ═══════════════════════════════════════════ */}
       {/* SEKTION 2: Testament */}
-      {/* ═══════════════════════════════════════════ */}
       <div className="space-y-4 mt-12">
         <div className="flex items-center gap-3">
           <div className={HEADER.WIDGET_ICON_BOX}>
@@ -168,7 +146,6 @@ export default function VorsorgedokumenteTab() {
           </div>
         </div>
 
-        {/* 4 Vorlagen-Widgets */}
         <WidgetGrid>
           {TESTAMENT_VORLAGEN.map(vorlage => {
             const isSelected = vorlage.id === selectedVariante;
@@ -202,7 +179,6 @@ export default function VorsorgedokumenteTab() {
           })}
         </WidgetGrid>
 
-        {/* Inline-Vorlagentext (immer offen) */}
         {activeTenantId && (
           <TestamentVorlageInline
             vorlage={selectedVorlage}
