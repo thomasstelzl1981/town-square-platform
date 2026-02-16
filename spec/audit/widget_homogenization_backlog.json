@@ -1,348 +1,79 @@
 {
-  "version": "1.0.0",
+  "version": "3.0.0",
+  "status": "COMPLETED",
   "date": "2026-02-16",
+  "completed_at": "2026-02-16",
   "audit_scope": "Zone 2 (Portal) — 21 Module + Zone 1 Stichproben",
-  "methodology": "Code-basierte Analyse aller Tab-Komponenten auf Widget-Typ, Grid-Layout, Glow und Demo-Daten-Konsistenz",
 
-  "summary": {
-    "total_findings": 18,
-    "by_severity": { "high": 5, "medium": 9, "low": 4 },
-    "by_type": {
-      "glow_invisible": 3,
-      "layout_inconsistent": 5,
-      "wrong_widget_type": 4,
-      "demo_data_glow_wrong_color": 3,
-      "missing_demo_toggle": 2,
-      "redundant_widget_mix": 1
-    }
-  },
-
-  "widget_inventory": {
-    "RecordCard_in_RECORD_CARD_GRID": {
-      "usage_count": 7,
-      "files": [
-        "finanzanalyse/SachversicherungenTab.tsx",
-        "finanzanalyse/VorsorgeTab.tsx",
-        "finanzanalyse/AbonnementsTab.tsx",
-        "finanzanalyse/KrankenversicherungTab.tsx",
-        "finanzanalyse/InvestmentTab.tsx",
-        "finanzanalyse/UebersichtTab.tsx (Personen-Block)",
-        "stammdaten/ProfilTab.tsx"
-      ],
-      "status": "STANDARD — Referenz für Vertrags-/Akten-Widgets"
-    },
-    "WidgetCell_in_WidgetGrid": {
-      "usage_count": 27,
-      "files": "27 Dateien (siehe search results)",
-      "status": "STANDARD — Referenz für Dashboard-/System-/CTA-Widgets"
-    },
-    "Custom_Card_in_WidgetGrid": {
-      "usage_count": 11,
-      "files": [
-        "finanzanalyse/UebersichtTab.tsx (Konten-Block)",
-        "finanzanalyse/VorsorgedokumenteTab.tsx",
-        "immobilien/PortfolioTab.tsx",
-        "immobilien/SanierungTab.tsx",
-        "investments/SimulationTab.tsx",
-        "finanzierungsmanager/FMDashboard.tsx",
-        "communication-pro/SerienEmailsPage.tsx",
-        "communication-pro/recherche/ResearchTab.tsx",
-        "photovoltaik/AnlagenTab.tsx",
-        "akquise-manager/AkquiseDashboard.tsx",
-        "projekte/* (ProjectCard)"
-      ],
-      "status": "DEMO_WIDGET-Pattern — Korrekt für CTA/Demo-Widgets in WidgetGrid"
-    }
-  },
-
-  "glow_analysis": {
-    "primary_blue_glow": {
-      "definition": "border-primary/30, shadow-primary/15, shimmer-gradient primary/40-60",
-      "opacity_border": "30%",
-      "opacity_shadow": "15%",
-      "visual_impact": "SCHWACH — Blau auf dunklem Hintergrund kaum sichtbar",
-      "used_in": [
-        "KrankenversicherungTab (hardcoded primary)",
-        "InvestmentTab (hasDepot → primary)",
-        "FinanceCaseCard (FM-Manager)",
-        "DEMO_WIDGET.CARD (alle 11 Demo-Widget-Module)"
+  "phases_completed": {
+    "phase_1": {
+      "name": "Global Glow Fix + Demo-Farbe emerald",
+      "findings_resolved": ["WH-001", "WH-002", "WH-003", "WH-004", "WH-005", "WH-006"],
+      "files_modified": [
+        "src/config/designManifest.ts",
+        "src/config/widgetCategorySpec.ts",
+        "src/pages/portal/finanzanalyse/KrankenversicherungTab.tsx",
+        "src/pages/portal/finanzanalyse/InvestmentTab.tsx"
       ]
     },
-    "emerald_green_glow": {
-      "definition": "border-emerald-400/30, shadow-emerald-400/15",
-      "opacity_border": "30%",
-      "opacity_shadow": "15%",
-      "visual_impact": "MITTEL — Grün hat natürlich höhere Luminanz auf dunklem Hintergrund",
-      "used_in": [
-        "SachversicherungenTab (via getContractWidgetGlow → emerald für manuell)",
-        "VorsorgeTab (via getContractWidgetGlow → emerald für manuell)",
-        "AbonnementsTab (via getContractWidgetGlow → emerald für manuell)"
+    "phase_2b": {
+      "name": "Demo Selection Ring Fix (ring-primary → ring-emerald-400)",
+      "findings_resolved": ["WH-011"],
+      "files_modified": [
+        "src/pages/portal/immobilien/SanierungTab.tsx",
+        "src/pages/portal/immobilien/PortfolioTab.tsx",
+        "src/pages/portal/projekte/LandingPageTab.tsx",
+        "src/pages/portal/communication-pro/recherche/ResearchTab.tsx",
+        "src/pages/portal/photovoltaik/AnlagenTab.tsx",
+        "src/components/finanzierung/FinanceRequestWidgets.tsx"
       ]
     },
-    "recommendation": "Demo-Daten-Glow von 'primary' auf 'emerald' umstellen + Opazität erhöhen (Shadow 15%→25%, Border 30%→40%)"
-  },
-
-  "findings": [
-    {
-      "id": "WH-001",
-      "module": "GLOBAL",
-      "tab": "designManifest.ts",
-      "type": "glow_invisible",
-      "severity": "high",
-      "description": "Primary-Blue-Glow (Demo-Daten) ist visuell kaum sichtbar. Opazität zu gering (Border 30%, Shadow 15%).",
-      "current_state": "primary/30 border, primary/15 shadow",
-      "target_state": "emerald-400/40 border, emerald-400/25 shadow — oder gesamte Demo-Glow-Farbe auf emerald wechseln",
-      "effort": "S",
-      "files": ["src/config/designManifest.ts"]
+    "phase_3": {
+      "name": "VorsorgedokumenteTab RecordCard Migration",
+      "findings_resolved": ["WH-007"],
+      "files_modified": [
+        "src/pages/portal/finanzanalyse/VorsorgedokumenteTab.tsx"
+      ]
     },
-    {
-      "id": "WH-002",
-      "module": "GLOBAL",
-      "tab": "widgetCategorySpec.ts",
-      "type": "demo_data_glow_wrong_color",
-      "severity": "high",
-      "description": "getContractWidgetGlow() gibt 'primary' für Demo-IDs zurück. Sollte 'emerald' sein für bessere Sichtbarkeit und Konsistenz mit dem smaragdgrünen Demo-Widget-Design.",
-      "current_state": "isDemoId(id) → 'primary'",
-      "target_state": "isDemoId(id) → 'emerald'",
-      "effort": "S",
-      "files": ["src/config/widgetCategorySpec.ts"]
-    },
-    {
-      "id": "WH-003",
-      "module": "GLOBAL",
-      "tab": "designManifest.ts",
-      "type": "demo_data_glow_wrong_color",
-      "severity": "high",
-      "description": "DEMO_WIDGET.CARD verwendet primary-Farben (bg-primary/5, border-primary/30). Sollte emerald für visuellen Kontrast verwenden.",
-      "current_state": "bg-primary/5, border-primary/30, shimmer from-primary/40",
-      "target_state": "bg-emerald-500/5, border-emerald-400/30, shimmer from-emerald-400/40",
-      "effort": "S",
-      "files": ["src/config/designManifest.ts"]
-    },
-    {
-      "id": "WH-004",
-      "module": "GLOBAL",
-      "tab": "designManifest.ts",
-      "type": "glow_invisible",
-      "severity": "medium",
-      "description": "Alle Glow-Varianten haben identisch niedrige Opazität. Aktive Widgets sollten deutlicher hervorstechen.",
-      "current_state": "Alle Varianten: border X/30, shadow X/15",
-      "target_state": "Alle Varianten: border X/40, shadow X/25 — stärkerer visueller Effekt",
-      "effort": "S",
-      "files": ["src/config/designManifest.ts"]
-    },
-    {
-      "id": "WH-005",
-      "module": "MOD-18",
-      "tab": "KrankenversicherungTab",
-      "type": "demo_data_glow_wrong_color",
-      "severity": "medium",
-      "description": "KV-Tab verwendet hardcoded glowVariant='primary'. Sollte 'emerald' verwenden da reine Demo-Daten.",
-      "current_state": "glowVariant='primary' (hardcoded)",
-      "target_state": "glowVariant='emerald' — konsistent mit Demo-Farbschema",
-      "effort": "S",
-      "files": ["src/pages/portal/finanzanalyse/KrankenversicherungTab.tsx"]
-    },
-    {
-      "id": "WH-006",
-      "module": "MOD-18",
-      "tab": "InvestmentTab",
-      "type": "demo_data_glow_wrong_color",
-      "severity": "medium",
-      "description": "Investment-Tab verwendet glowVariant='primary' für aktive Depots. Da es Demo-Daten sind, sollte 'emerald' verwendet werden.",
-      "current_state": "glowVariant={hasDepot ? 'primary' : undefined}",
-      "target_state": "glowVariant={hasDepot ? 'emerald' : undefined}",
-      "effort": "S",
-      "files": ["src/pages/portal/finanzanalyse/InvestmentTab.tsx"]
-    },
-    {
-      "id": "WH-007",
-      "module": "MOD-18",
-      "tab": "VorsorgedokumenteTab",
-      "type": "wrong_widget_type",
-      "severity": "medium",
-      "description": "Vorsorge & Testament Tab verwendet WidgetGrid + WidgetCell mit custom Card statt RecordCard. Inkonsistent mit allen anderen MOD-18 Tabs.",
-      "current_state": "WidgetGrid + WidgetCell + custom Card (CARD.BASE, CARD.INTERACTIVE)",
-      "target_state": "Personen-Selektion kann WidgetGrid behalten (System-Widget-Pattern), aber sollte visuell vereinheitlicht werden",
-      "effort": "M",
-      "files": ["src/pages/portal/finanzanalyse/VorsorgedokumenteTab.tsx"]
-    },
-    {
-      "id": "WH-008",
-      "module": "MOD-18",
-      "tab": "UebersichtTab (Konten)",
-      "type": "layout_inconsistent",
-      "severity": "medium",
-      "description": "Konten-Block in Übersicht verwendet WidgetGrid (4-col) + DEMO_WIDGET statt RecordCard. Dies ist ein bewusster Design-Entscheid (Konten sind System-Widgets, keine Verträge), aber visuell inkonsistent mit dem Rest von MOD-18.",
-      "current_state": "WidgetGrid + WidgetCell + DEMO_WIDGET.CARD (custom layout)",
-      "target_state": "Kann als WidgetGrid bleiben (Konten = System-Widget), aber DEMO_WIDGET-Farbe auf emerald wechseln",
-      "effort": "S",
-      "files": ["src/pages/portal/finanzanalyse/UebersichtTab.tsx"]
-    },
-    {
-      "id": "WH-009",
-      "module": "MOD-04",
-      "tab": "PortfolioTab",
-      "type": "layout_inconsistent",
-      "severity": "low",
-      "description": "Portfolio-Tab verwendet WidgetGrid mit DEMO_WIDGET für Kontext-Selektion (Demo/Alle/Einzelimmobilien). Dies ist korrekt als Dashboard-Widget-Pattern, aber die DEMO_WIDGET-Farbe ist primary statt emerald.",
-      "current_state": "WidgetGrid + DEMO_WIDGET.CARD (primary colors)",
-      "target_state": "DEMO_WIDGET.CARD mit emerald-Farben",
-      "effort": "S",
-      "files": ["src/pages/portal/immobilien/PortfolioTab.tsx"]
-    },
-    {
-      "id": "WH-010",
-      "module": "MOD-04",
-      "tab": "SanierungTab",
-      "type": "layout_inconsistent",
-      "severity": "low",
-      "description": "Sanierung-Tab verwendet WidgetGrid mit DEMO_WIDGET + getActiveWidgetGlow('orange'). DEMO_WIDGET ist primary, echte Fälle orange. Korrekte Farbunterscheidung, aber DEMO-Farbe sollte emerald sein.",
-      "current_state": "DEMO_WIDGET.CARD (primary) + orange glow für echte Fälle",
-      "target_state": "DEMO_WIDGET.CARD (emerald) + orange glow für echte Fälle",
-      "effort": "S",
-      "files": ["src/pages/portal/immobilien/SanierungTab.tsx"]
-    },
-    {
-      "id": "WH-011",
-      "module": "MOD-11",
-      "tab": "FMDashboard",
-      "type": "layout_inconsistent",
-      "severity": "low",
-      "description": "FM-Manager Dashboard verwendet WidgetGrid + DEMO_WIDGET für Demo-Finanzierungsfall + FinanceCaseCard mit getActiveWidgetGlow('primary'). FinanceCaseCard-Glow ist primary — korrekt da es Modul-Glow ist, nicht Demo-Glow.",
-      "current_state": "DEMO_WIDGET.CARD (primary) + FinanceCaseCard glow primary",
-      "target_state": "DEMO_WIDGET.CARD (emerald) — FinanceCaseCard glow bleibt primary (Modul-Farbe)",
-      "effort": "S",
-      "files": ["src/pages/portal/finanzierungsmanager/FMDashboard.tsx", "src/components/finanzierungsmanager/FinanceCaseCard.tsx"]
-    },
-    {
-      "id": "WH-012",
-      "module": "MOD-14",
-      "tab": "SerienEmailsPage + ResearchTab",
-      "type": "layout_inconsistent",
-      "severity": "low",
-      "description": "Communication Pro verwendet WidgetGrid + DEMO_WIDGET. Korrekt als CTA/Demo-Widget, aber primary-Farbe sollte emerald werden.",
-      "current_state": "DEMO_WIDGET.CARD (primary)",
-      "target_state": "DEMO_WIDGET.CARD (emerald)",
-      "effort": "S",
-      "files": ["src/pages/portal/communication-pro/SerienEmailsPage.tsx", "src/pages/portal/communication-pro/recherche/ResearchTab.tsx"]
-    },
-    {
-      "id": "WH-013",
-      "module": "MOD-08",
-      "tab": "SimulationTab",
-      "type": "layout_inconsistent",
-      "severity": "low",
-      "description": "Simulation-Tab verwendet WidgetGrid + DEMO_WIDGET. Korrekt, aber primary-Farbe sollte emerald werden.",
-      "current_state": "DEMO_WIDGET.CARD (primary)",
-      "target_state": "DEMO_WIDGET.CARD (emerald)",
-      "effort": "S",
-      "files": ["src/pages/portal/investments/SimulationTab.tsx"]
-    },
-    {
-      "id": "WH-014",
-      "module": "MOD-19",
-      "tab": "AnlagenTab",
-      "type": "layout_inconsistent",
-      "severity": "low",
-      "description": "PV-Anlagen Tab verwendet WidgetGrid + DEMO_WIDGET. Korrekt, aber primary-Farbe sollte emerald werden.",
-      "current_state": "DEMO_WIDGET.CARD (primary)",
-      "target_state": "DEMO_WIDGET.CARD (emerald)",
-      "effort": "S",
-      "files": ["src/pages/portal/photovoltaik/AnlagenTab.tsx"]
-    },
-    {
-      "id": "WH-015",
-      "module": "MOD-17",
-      "tab": "CarsAutos",
-      "type": "glow_invisible",
-      "severity": "medium",
-      "description": "Fahrzeug-Widgets verwenden getActiveWidgetGlow('teal'). Teal-Glow hat gleiche niedrige Opazität wie alle anderen — schwer sichtbar.",
-      "current_state": "getActiveWidgetGlow('teal') mit 30%/15% Opazität",
-      "target_state": "Erhöhte Opazität durch globale Manifest-Änderung (WH-004)",
-      "effort": "S",
-      "files": ["src/components/portal/cars/CarsAutos.tsx"]
-    },
-    {
-      "id": "WH-016",
-      "module": "MOD-12",
-      "tab": "AkquiseDashboard",
-      "type": "wrong_widget_type",
-      "severity": "medium",
-      "description": "Akquise-Dashboard verwendet getActiveWidgetGlow mit custom layout. Korrekt als Manager-Dashboard, kein RecordCard nötig — aber Glow-Opazität ist zu gering.",
-      "current_state": "getActiveWidgetGlow('cyan') mit 30%/15% Opazität",
-      "target_state": "Erhöhte Opazität durch globale Manifest-Änderung (WH-004)",
-      "effort": "S",
-      "files": ["src/pages/portal/akquise-manager/AkquiseDashboard.tsx"]
-    },
-    {
-      "id": "WH-017",
-      "module": "MOD-13",
-      "tab": "ProjectCard",
-      "type": "wrong_widget_type",
-      "severity": "medium",
-      "description": "Projekt-Widgets verwenden DEMO_WIDGET.CARD für Demo + getActiveWidgetGlow('amber') für echte Projekte. Korrekte Unterscheidung, aber DEMO-Farbe sollte emerald sein.",
-      "current_state": "DEMO_WIDGET.CARD (primary) + amber glow für echte",
-      "target_state": "DEMO_WIDGET.CARD (emerald) + amber glow für echte",
-      "effort": "S",
-      "files": ["src/components/projekte/ProjectCard.tsx"]
-    },
-    {
-      "id": "WH-018",
-      "module": "MOD-07",
-      "tab": "PrivatkreditTab (ConsumerLoanWidgets)",
-      "type": "wrong_widget_type",
-      "severity": "medium",
-      "description": "Privatkredit-Widgets verwenden WidgetCell + getActiveWidgetGlow('orange'). Korrekt als Case-Widget, aber Opazität zu gering.",
-      "current_state": "getActiveWidgetGlow('orange') mit 30%/15% Opazität",
-      "target_state": "Erhöhte Opazität durch globale Manifest-Änderung (WH-004)",
-      "effort": "S",
-      "files": ["src/components/privatkredit/ConsumerLoanWidgets.tsx"]
-    }
-  ],
-
-  "action_plan": {
-    "phase_1_global_glow_fix": {
-      "priority": "CRITICAL",
-      "description": "Globale Glow-Sichtbarkeit erhöhen + Demo-Farbe auf emerald wechseln",
-      "steps": [
-        "1. designManifest.ts: Alle ACTIVE_WIDGET_VARIANTS Opazität erhöhen (border X/30→X/40, shadow X/15→X/25)",
-        "2. designManifest.ts: DEMO_WIDGET.CARD von primary auf emerald umstellen",
-        "3. designManifest.ts: DEMO_WIDGET.BADGE von primary auf emerald umstellen",
-        "4. widgetCategorySpec.ts: getContractWidgetGlow() Demo von 'primary' auf 'emerald' ändern",
-        "5. widgetCategorySpec.ts: resolveWidgetGlow() Demo von 'primary' auf 'emerald' ändern"
+    "phase_4": {
+      "name": "getSelectionRing Helper",
+      "findings_resolved": [],
+      "files_modified": [
+        "src/config/designManifest.ts"
       ],
-      "effort": "S",
-      "impact": "Alle 11+ Module mit Demo-Widgets + alle 27 Dateien mit Glow-Verwendung"
-    },
-    "phase_2_hardcoded_primary_fix": {
-      "priority": "HIGH",
-      "description": "Hardcodierte glowVariant='primary' in MOD-18 KV + Investment auf emerald umstellen",
-      "steps": [
-        "1. KrankenversicherungTab.tsx: glowVariant='primary' → 'emerald'",
-        "2. InvestmentTab.tsx: glowVariant={hasDepot ? 'primary' : undefined} → 'emerald'"
-      ],
-      "effort": "S",
-      "impact": "2 Dateien"
-    },
-    "phase_3_vorsorgedokumente_refactor": {
-      "priority": "MEDIUM",
-      "description": "VorsorgedokumenteTab von Custom WidgetGrid-Cards auf einheitlicheres Pattern umstellen",
-      "steps": [
-        "1. Personen-Selektion kann WidgetGrid + WidgetCell behalten (System-Widget korrekt)",
-        "2. Visuelles Styling vereinheitlichen (gleiche Card-Höhe, gleiche Icon-Position)",
-        "3. Optional: Testament-Vorlagen-Widgets ebenfalls angleichen"
-      ],
-      "effort": "M",
-      "impact": "1 Datei"
+      "note": "Neuer zentraler Helper für konsistente Selection-Ring-Farben"
     }
   },
 
-  "widget_standardization_rules": {
-    "rule_1": "VERTRAGS-WIDGETS (Versicherungen, Vorsorge, Abos, KV): IMMER RecordCard in RECORD_CARD.GRID (2-col)",
-    "rule_2": "DASHBOARD-WIDGETS (Konten, Personen-Selektion, System-CTAs): IMMER WidgetCell in WidgetGrid (4-col)",
-    "rule_3": "DEMO-WIDGETS: IMMER DEMO_WIDGET.CARD mit emerald-Farben + DEMO Badge",
-    "rule_4": "GLOW-FARBEN: Demo=emerald, Manuell=emerald, Modul-spezifisch=MODULE_GLOW_MAP",
-    "rule_5": "KEINE custom Cards in ad-hoc Layouts — entweder RecordCard oder WidgetCell"
+  "findings_resolution": {
+    "WH-001": "RESOLVED — Opazität global erhöht (border 40%, shadow 25%)",
+    "WH-002": "RESOLVED — widgetCategorySpec: Demo → emerald",
+    "WH-003": "RESOLVED — DEMO_WIDGET.CARD → emerald-Farben",
+    "WH-004": "RESOLVED — Alle Glow-Varianten Opazität erhöht",
+    "WH-005": "RESOLVED — KV-Tab glowVariant → emerald",
+    "WH-006": "RESOLVED — Investment-Tab glowVariant → emerald",
+    "WH-007": "RESOLVED — VorsorgedokumenteTab → RecordCard",
+    "WH-008": "RESOLVED — Implizit durch Phase 1 (DEMO_WIDGET global emerald)",
+    "WH-009": "RESOLVED — Implizit durch Phase 1 (DEMO_WIDGET global emerald)",
+    "WH-010": "RESOLVED — Implizit durch Phase 1 (DEMO_WIDGET global emerald)",
+    "WH-011": "RESOLVED — Selection Rings → ring-emerald-400 (Phase 2b)",
+    "WH-012": "RESOLVED — Implizit durch Phase 1 (DEMO_WIDGET global emerald)",
+    "WH-013": "RESOLVED — Implizit durch Phase 1 (DEMO_WIDGET global emerald)",
+    "WH-014": "RESOLVED — Implizit durch Phase 1 (DEMO_WIDGET global emerald)",
+    "WH-015": "RESOLVED — Implizit durch Phase 1 (Opazität global erhöht)",
+    "WH-016": "RESOLVED — Implizit durch Phase 1 (Opazität global erhöht)",
+    "WH-017": "RESOLVED — Implizit durch Phase 1 (DEMO_WIDGET global emerald)",
+    "WH-018": "RESOLVED — Implizit durch Phase 1 (Opazität global erhöht)"
+  },
+
+  "test_suite": {
+    "file": "src/test/demoDataSystem.test.ts",
+    "coverage": [
+      "Golden Path Registry completeness (15 processes)",
+      "Demo Toggle ON/OFF logic with localStorage",
+      "Design System glow/ring consistency",
+      "RecordCard Manifest entity types",
+      "Demo ON/OFF State Matrix for all 15 processes"
+    ]
   }
 }
