@@ -11579,6 +11579,7 @@ export type Database = {
           status: string
           tax_cents: number
           tax_rate: number
+          tenant_id: string
           updated_at: string
         }
         Insert: {
@@ -11598,6 +11599,7 @@ export type Database = {
           status?: string
           tax_cents?: number
           tax_rate?: number
+          tenant_id: string
           updated_at?: string
         }
         Update: {
@@ -11617,9 +11619,32 @@ export type Database = {
           status?: string
           tax_cents?: number
           tax_rate?: number
+          tenant_id?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "pet_invoices_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "pet_bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pet_invoices_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "pet_providers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pet_invoices_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       pet_provider_availability: {
         Row: {
