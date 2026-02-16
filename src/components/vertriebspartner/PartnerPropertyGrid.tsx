@@ -143,6 +143,7 @@ export function PartnerPropertyGrid({
                   }}
                   className="absolute bottom-2 right-2 w-8 h-8 rounded-full bg-white/90 shadow flex items-center justify-center hover:scale-110 transition-transform"
                   title="Objekt ausblenden"
+                  aria-label="Objekt ausblenden"
                 >
                   <Heart className="w-4 h-4 text-muted-foreground" />
                 </button>

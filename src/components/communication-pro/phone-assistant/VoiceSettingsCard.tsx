@@ -23,7 +23,7 @@ export function VoiceSettingsCard({ config, onUpdate }: Props) {
   const vs = config.voice_settings;
 
   const setVoice = (key: string, val: number) => {
-    onUpdate({ voice_settings: { ...vs, [key]: val } } as any);
+    onUpdate({ voice_settings: { ...vs, [key]: val } });
   };
 
   return (

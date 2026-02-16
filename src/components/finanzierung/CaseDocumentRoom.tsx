@@ -106,9 +106,9 @@ export default function CaseDocumentRoom({ requestId, publicId, employmentType }
   );
 
   const visibleFolders = useMemo(() => getVisibleFolders(employmentType), [employmentType]);
-  const foldersWithDocs = (folderId: string) => uploadedDocs.filter(d => d.folderId === folderId).length;
 
   const uploadedFolderCount = useMemo(() => {
+    const foldersWithDocs = (folderId: string) => uploadedDocs.filter(d => d.folderId === folderId).length;
     return visibleFolders.filter(f => foldersWithDocs(f.id) >= f.required).length;
   }, [visibleFolders, uploadedDocs]);
 
@@ -118,7 +118,11 @@ export default function CaseDocumentRoom({ requestId, publicId, employmentType }
 
   const toggleSection = (s: string) => {
     const next = new Set(expandedSections);
-    next.has(s) ? next.delete(s) : next.add(s);
+    if (next.has(s)) {
+      next.delete(s);
+    } else {
+      next.add(s);
+    }
     setExpandedSections(next);
   };
 

@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 
@@ -62,7 +63,7 @@ const variantStyles: Record<StatusVariant, string> = {
   muted: 'bg-muted text-muted-foreground border-border',
 };
 
-export function StatusBadge({ status, variant, className }: StatusBadgeProps) {
+export const StatusBadge = memo(function StatusBadge({ status, variant, className }: StatusBadgeProps) {
   const resolvedVariant = variant || statusVariantMap[status.toLowerCase()] || 'default';
   
   return (
@@ -73,7 +74,7 @@ export function StatusBadge({ status, variant, className }: StatusBadgeProps) {
       {status}
     </Badge>
   );
-}
+});
 
 // Dot indicator for compact status display
 interface StatusDotProps {
@@ -81,7 +82,7 @@ interface StatusDotProps {
   className?: string;
 }
 
-export function StatusDot({ variant, className }: StatusDotProps) {
+export const StatusDot = memo(function StatusDot({ variant, className }: StatusDotProps) {
   const dotColors: Record<StatusVariant, string> = {
     success: 'bg-status-success',
     warning: 'bg-status-warn',
@@ -94,4 +95,4 @@ export function StatusDot({ variant, className }: StatusDotProps) {
   return (
     <span className={cn('inline-block h-2 w-2 rounded-full', dotColors[variant], className)} />
   );
-}
+});

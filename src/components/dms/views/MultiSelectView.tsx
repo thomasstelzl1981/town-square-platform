@@ -23,7 +23,7 @@ export function MultiSelectView({ items, selectedIds, onToggleSelect, onToggleSe
       <div className="flex items-center gap-3 px-4 py-2.5 bg-muted/20 border-b border-border/30">
         <Checkbox
           checked={allSelected}
-          // @ts-ignore - indeterminate support
+          // @ts-expect-error - indeterminate support
           indeterminate={someSelected}
           onCheckedChange={onToggleSelectAll}
         />

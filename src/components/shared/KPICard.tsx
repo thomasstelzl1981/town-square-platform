@@ -2,6 +2,7 @@
  * KPICard — Unified KPI card component for all modules
  * Uses DESIGN.CARD.KPI, DESIGN.TYPOGRAPHY, DESIGN.HEADER from Design Manifest V4.0
  */
+import { memo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { DESIGN } from '@/config/designManifest';
@@ -17,7 +18,7 @@ interface KPICardProps {
   className?: string;
 }
 
-export function KPICard({ label, value, icon: Icon, subtitle, subtitleClassName, onClick, className }: KPICardProps) {
+export const KPICard = memo(function KPICard({ label, value, icon: Icon, subtitle, subtitleClassName, onClick, className }: KPICardProps) {
   return (
     <Card
       className={cn(
@@ -40,4 +41,4 @@ export function KPICard({ label, value, icon: Icon, subtitle, subtitleClassName,
       </CardContent>
     </Card>
   );
-}
+});

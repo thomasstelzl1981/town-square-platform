@@ -5,6 +5,7 @@
  * Gold-Standard: Selbstauskunft (ApplicantPersonFields)
  * Pattern: Label | Wert1 | Wert2 (optional)
  */
+import { memo } from 'react';
 import { cn } from '@/lib/utils';
 import { DESIGN } from '@/config/designManifest';
 import type { ReactNode } from 'react';
@@ -17,7 +18,7 @@ interface TabularFormRowProps {
   className?: string;
 }
 
-export function TabularFormRow({ label, children, secondColumn, className }: TabularFormRowProps) {
+export const TabularFormRow = memo(function TabularFormRow({ label, children, secondColumn, className }: TabularFormRowProps) {
   return (
     <div className={cn('flex', DESIGN.TABULAR_FORM.ROW_BORDER, className)}>
       <div className={DESIGN.TABULAR_FORM.LABEL_CELL}>
@@ -33,7 +34,7 @@ export function TabularFormRow({ label, children, secondColumn, className }: Tab
       )}
     </div>
   );
-}
+});
 
 interface TabularFormSectionProps {
   title: string;
@@ -41,23 +42,23 @@ interface TabularFormSectionProps {
   className?: string;
 }
 
-export function TabularFormSection({ title, className }: TabularFormSectionProps) {
+export const TabularFormSection = memo(function TabularFormSection({ title, className }: TabularFormSectionProps) {
   return (
     <div className={cn(DESIGN.TABULAR_FORM.SECTION_ROW, className)}>
       {title}
     </div>
   );
-}
+});
 
 interface TabularFormWrapperProps {
   children: ReactNode;
   className?: string;
 }
 
-export function TabularFormWrapper({ children, className }: TabularFormWrapperProps) {
+export const TabularFormWrapper = memo(function TabularFormWrapper({ children, className }: TabularFormWrapperProps) {
   return (
     <div className={cn(DESIGN.TABULAR_FORM.TABLE_BORDER, className)}>
       {children}
     </div>
   );
-}
+});

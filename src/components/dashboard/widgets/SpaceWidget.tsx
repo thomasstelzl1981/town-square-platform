@@ -5,12 +5,13 @@
  * Data source: NASA APOD via Edge Function
  */
 
+import { memo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Rocket, ExternalLink, AlertTriangle, Image as ImageIcon } from 'lucide-react';
 import { useSpaceAPOD } from '@/hooks/useSpaceAPOD';
 import { Skeleton } from '@/components/ui/skeleton';
 
-export function SpaceWidget() {
+export const SpaceWidget = memo(function SpaceWidget() {
   const { data: apod, isLoading, error, refetch, isRefetching } = useSpaceAPOD();
 
   return (
@@ -105,4 +106,4 @@ export function SpaceWidget() {
       </CardContent>
     </Card>
   );
-}
+});

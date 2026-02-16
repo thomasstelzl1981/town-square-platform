@@ -3,6 +3,7 @@
  * MOD-13 PROJEKTE
  */
 
+import { memo } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import type { UnitStatus } from '@/types/projekte';
@@ -40,7 +41,7 @@ const STATUS_CONFIG: Record<UnitStatus, {
   },
 };
 
-export function UnitStatusBadge({ status, size = 'default', showIcon = true }: Props) {
+export const UnitStatusBadge = memo(function UnitStatusBadge({ status, size = 'default', showIcon = true }: Props) {
   const config = STATUS_CONFIG[status];
   
   return (
@@ -57,9 +58,9 @@ export function UnitStatusBadge({ status, size = 'default', showIcon = true }: P
       {config.label}
     </Badge>
   );
-}
+});
 
-export function UnitStatusDot({ status, size = 'default' }: { status: UnitStatus; size?: 'sm' | 'default' }) {
+export const UnitStatusDot = memo(function UnitStatusDot({ status, size = 'default' }: { status: UnitStatus; size?: 'sm' | 'default' }) {
   const config = STATUS_CONFIG[status];
   
   return (
@@ -72,4 +73,4 @@ export function UnitStatusDot({ status, size = 'default' }: { status: UnitStatus
       title={config.label}
     />
   );
-}
+});

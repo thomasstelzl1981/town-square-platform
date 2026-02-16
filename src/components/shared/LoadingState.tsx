@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -7,7 +8,7 @@ interface LoadingStateProps {
   className?: string;
 }
 
-export function LoadingState({ variant = 'card', rows = 3, className }: LoadingStateProps) {
+export const LoadingState = memo(function LoadingState({ variant = 'card', rows = 3, className }: LoadingStateProps) {
   if (variant === 'page') {
     return (
       <div className={cn('space-y-6 p-6', className)}>
@@ -61,10 +62,10 @@ export function LoadingState({ variant = 'card', rows = 3, className }: LoadingS
       ))}
     </div>
   );
-}
+});
 
 // Specific loading states for common patterns
-export function LoadingCards({ count = 3 }: { count?: number }) {
+export const LoadingCards = memo(function LoadingCards({ count = 3 }: { count?: number }) {
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
       {Array.from({ length: count }).map((_, i) => (
@@ -72,8 +73,8 @@ export function LoadingCards({ count = 3 }: { count?: number }) {
       ))}
     </div>
   );
-}
+});
 
-export function LoadingTable({ rows = 5 }: { rows?: number }) {
+export const LoadingTable = memo(function LoadingTable({ rows = 5 }: { rows?: number }) {
   return <LoadingState variant="table" rows={rows} />;
-}
+});

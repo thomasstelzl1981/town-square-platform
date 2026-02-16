@@ -3,6 +3,7 @@
  * Renders as aspect-square with full brand gradient background
  */
 
+import { memo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { ShoppingBag, Landmark, Building2, Search } from 'lucide-react';
 
@@ -62,7 +63,7 @@ interface BrandLinkWidgetProps {
   code: string;
 }
 
-export function BrandLinkWidget({ code }: BrandLinkWidgetProps) {
+export const BrandLinkWidget = memo(function BrandLinkWidget({ code }: BrandLinkWidgetProps) {
   const config = BRAND_CONFIGS[code];
   if (!config) return null;
 
@@ -93,4 +94,4 @@ export function BrandLinkWidget({ code }: BrandLinkWidgetProps) {
       </CardContent>
     </Card>
   );
-}
+});

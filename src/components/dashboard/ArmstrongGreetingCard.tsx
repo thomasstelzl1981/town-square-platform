@@ -81,7 +81,7 @@ export function ArmstrongGreetingCard({
   useEffect(() => {
     const greetingText = getRandomGreeting(displayName);
     
-    let contextParts: string[] = [];
+    const contextParts: string[] = [];
     
     if (city) {
       contextParts.push(`Du bist in ${city}.`);

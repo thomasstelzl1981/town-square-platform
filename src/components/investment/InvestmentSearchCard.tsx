@@ -74,6 +74,7 @@ export function InvestmentSearchCard({
               <button
                 onClick={(e) => { e.preventDefault(); onToggleFavorite(); }}
                 className="absolute top-2 right-2 w-8 h-8 rounded-full bg-white/90 shadow flex items-center justify-center hover:scale-110 transition-transform"
+                aria-label={isFavorite ? "Aus Favoriten entfernen" : "Zu Favoriten hinzufügen"}
               >
                 <Heart className={cn("w-4 h-4", isFavorite && "fill-red-500 text-red-500")} />
               </button>

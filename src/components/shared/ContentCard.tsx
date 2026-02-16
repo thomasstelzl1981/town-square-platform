@@ -2,6 +2,7 @@
  * ContentCard — Wrapper für große Inhaltskacheln
  * Verwendet CARD.CONTENT aus dem Design Manifest
  */
+import { memo } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { DESIGN } from '@/config/designManifest';
@@ -17,7 +18,7 @@ interface ContentCardProps {
   headerAction?: ReactNode;
 }
 
-export function ContentCard({ title, description, icon: Icon, children, className, headerAction }: ContentCardProps) {
+export const ContentCard = memo(function ContentCard({ title, description, icon: Icon, children, className, headerAction }: ContentCardProps) {
   return (
     <Card className={cn(DESIGN.CARD.CONTENT, className)}>
       {(title || headerAction) && (
@@ -43,4 +44,4 @@ export function ContentCard({ title, description, icon: Icon, children, classNam
       </CardContent>
     </Card>
   );
-}
+});

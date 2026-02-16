@@ -2,6 +2,7 @@
  * ListRow — Unified row component for lists inside widgets
  * Uses DESIGN.LIST from Design Manifest V4.0
  */
+import { memo } from 'react';
 import { cn } from '@/lib/utils';
 import { DESIGN } from '@/config/designManifest';
 import type { ReactNode } from 'react';
@@ -12,7 +13,7 @@ interface ListRowProps {
   className?: string;
 }
 
-export function ListRow({ children, onClick, className }: ListRowProps) {
+export const ListRow = memo(function ListRow({ children, onClick, className }: ListRowProps) {
   return (
     <div
       className={cn(
@@ -25,4 +26,4 @@ export function ListRow({ children, onClick, className }: ListRowProps) {
       {children}
     </div>
   );
-}
+});
