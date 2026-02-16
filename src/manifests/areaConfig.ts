@@ -38,7 +38,7 @@ export const areaConfig: AreaDefinition[] = [
     label: 'Manager',
     labelShort: 'Manager',
     icon: 'Settings',
-    modules: ['MOD-13', 'MOD-09', 'MOD-11', 'MOD-12', 'MOD-10'],
+    modules: ['MOD-13', 'MOD-09', 'MOD-11', 'MOD-12', 'MOD-10', 'MOD-22'],
   },
   {
     key: 'services',
@@ -69,6 +69,7 @@ export const moduleLabelOverrides: Record<string, string> = {
   'MOD-09': 'Immomanager',        // Vertriebspartner → Immomanager
   'MOD-18': 'Finanzen',            // Finanzanalyse → Finanzen
   'MOD-20': 'ZUHAUSE',            // Miety → ZUHAUSE (display only)
+  'MOD-22': 'Pet Manager',        // Pet Manager
 };
 
 /**

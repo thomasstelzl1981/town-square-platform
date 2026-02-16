@@ -755,4 +755,38 @@ export const moduleContents: Record<string, HowItWorksContent> = {
       { title: 'Versicherungen', route: '/portal/miety/versicherungen', icon: ShieldCheck },
     ],
   },
+
+  'MOD-22': {
+    moduleCode: 'MOD-22',
+    title: 'Pet Manager',
+    oneLiner: 'Franchise-Partner Portal für Haustier-Dienstleistungen und Netzwerk-Management.',
+    benefits: [
+      'Zentrale Übersicht über alle Franchise-Standorte und Partner.',
+      'Dienstleistungen und Buchungen effizient verwalten.',
+      'Netzwerk-Performance und Umsätze transparent auswerten.',
+    ],
+    whatYouDo: [
+      'Franchise-Partner und Standorte verwalten',
+      'Dienstleistungskatalog pflegen',
+      'Buchungen und Termine koordinieren',
+      'Netzwerk-Performance analysieren',
+    ],
+    flows: [
+      {
+        title: 'Partner onboarden',
+        steps: ['Partner anlegen', 'Standort konfigurieren', 'Dienstleistungen zuweisen', 'Freischalten'],
+      },
+      {
+        title: 'Betrieb steuern',
+        steps: ['Dashboard prüfen', 'Buchungen verwalten', 'Performance auswerten'],
+      },
+    ],
+    cta: 'Starten Sie mit dem Dashboard – und behalten Sie Ihr Netzwerk im Blick.',
+    subTiles: [
+      { title: 'Dashboard', route: '/portal/pet-manager/dashboard', icon: LayoutGrid },
+      { title: 'Partner', route: '/portal/pet-manager/partner', icon: Users },
+      { title: 'Services', route: '/portal/pet-manager/services', icon: ClipboardList },
+      { title: 'Netzwerk', route: '/portal/pet-manager/netzwerk', icon: Network },
+    ],
+  },
 };
