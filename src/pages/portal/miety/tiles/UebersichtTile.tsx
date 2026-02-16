@@ -13,7 +13,7 @@ import { demoCameras } from '../shared/demoCameras';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import {
-  Home, Plus, Building2, ArrowRight, Camera, Globe, Eye, Video, ImageOff,
+  Home, Plus, Building2, ArrowRight, Camera, Globe, Eye, Video, ImageOff, X, Navigation,
 } from 'lucide-react';
 
 export default function UebersichtTile() {
@@ -23,6 +23,7 @@ export default function UebersichtTile() {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [openCardId, setOpenCardId] = useState<string | null>(null);
   const [editingHome, setEditingHome] = useState<any>(null);
+  const [streetViewActive, setStreetViewActive] = useState(false);
   const autoCreatedRef = useRef(false);
 
   const { data: homes = [], isLoading } = useHomesQuery();
@@ -192,11 +193,34 @@ export default function UebersichtTile() {
                   </CardContent>
                 </Card>
 
-                {/* Kachel 2: Street View */}
-                <Card className="glass-card h-[240px] sm:aspect-square sm:h-auto overflow-hidden">
+                {/* Kachel 2: Street View (interactive toggle) */}
+                <Card className={`glass-card overflow-hidden transition-all duration-300 ${streetViewActive ? 'col-span-1 sm:col-span-3 h-[400px]' : 'h-[240px] sm:aspect-square sm:h-auto'}`}>
                   <CardContent className="p-0 h-full relative">
-                    {(home.city || home.address) && mapsApiKey ? (
+                    {streetViewActive ? (
                       <>
+                        <iframe
+                          title="Interaktive Street View"
+                          className="w-full h-full"
+                          style={{ border: 0 }}
+                          loading="lazy"
+                          allowFullScreen
+                          referrerPolicy="no-referrer-when-downgrade"
+                          src={`https://www.google.com/maps/embed/v1/streetview?key=${mapsApiKey}&location=${mapQuery}&heading=0&pitch=0&fov=90`}
+                        />
+                        <Button
+                          size="icon"
+                          variant="secondary"
+                          className="absolute top-2 right-2 h-8 w-8 rounded-full bg-background/80 backdrop-blur-sm hover:bg-background z-10"
+                          onClick={() => setStreetViewActive(false)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </>
+                    ) : (home.city || home.address) && mapsApiKey ? (
+                      <div
+                        className="w-full h-full cursor-pointer group"
+                        onClick={() => setStreetViewActive(true)}
+                      >
                         <img
                           src={`https://maps.googleapis.com/maps/api/streetview?size=600x400&location=${mapQuery}&key=${mapsApiKey}`}
                           alt="Street View"
@@ -211,7 +235,14 @@ export default function UebersichtTile() {
                           <ImageOff className="h-12 w-12 text-muted-foreground/30 mb-3" />
                           <p className="text-sm text-muted-foreground">Street View nicht verfügbar</p>
                         </div>
-                      </>
+                        {/* Overlay: Start Street View */}
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/30 transition-colors">
+                          <div className="bg-background/80 backdrop-blur-sm rounded-full px-4 py-2 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg">
+                            <Navigation className="h-4 w-4 text-primary" />
+                            <span className="text-sm font-medium">Street View starten</span>
+                          </div>
+                        </div>
+                      </div>
                     ) : (
                       <div className="w-full h-full flex flex-col items-center justify-center bg-muted/30">
                         <Camera className="h-12 w-12 text-muted-foreground/30 mb-3" />
