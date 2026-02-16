@@ -6716,14 +6716,17 @@ export type Database = {
       household_persons: {
         Row: {
           avatar_url: string | null
+          besoldungsgruppe: string | null
           birth_date: string | null
           business_income_monthly: number | null
           child_allowances: number | null
           city: string | null
           created_at: string
+          dienstherr: string | null
           email: string | null
           employer_name: string | null
           employment_status: string | null
+          erfahrungsstufe: number | null
           first_name: string
           gross_income_monthly: number | null
           house_number: string | null
@@ -6735,8 +6738,11 @@ export type Database = {
           net_income_range: string | null
           phone: string | null
           phone_landline: string | null
+          planned_retirement_date: string | null
           pv_income_monthly: number | null
           role: string
+          ruhegehaltfaehige_dienstjahre: number | null
+          ruhegehaltfaehiges_grundgehalt: number | null
           salutation: string | null
           sort_order: number
           street: string | null
@@ -6744,18 +6750,22 @@ export type Database = {
           tenant_id: string
           updated_at: string
           user_id: string
+          verbeamtung_date: string | null
           zip: string | null
         }
         Insert: {
           avatar_url?: string | null
+          besoldungsgruppe?: string | null
           birth_date?: string | null
           business_income_monthly?: number | null
           child_allowances?: number | null
           city?: string | null
           created_at?: string
+          dienstherr?: string | null
           email?: string | null
           employer_name?: string | null
           employment_status?: string | null
+          erfahrungsstufe?: number | null
           first_name?: string
           gross_income_monthly?: number | null
           house_number?: string | null
@@ -6767,8 +6777,11 @@ export type Database = {
           net_income_range?: string | null
           phone?: string | null
           phone_landline?: string | null
+          planned_retirement_date?: string | null
           pv_income_monthly?: number | null
           role?: string
+          ruhegehaltfaehige_dienstjahre?: number | null
+          ruhegehaltfaehiges_grundgehalt?: number | null
           salutation?: string | null
           sort_order?: number
           street?: string | null
@@ -6776,18 +6789,22 @@ export type Database = {
           tenant_id: string
           updated_at?: string
           user_id: string
+          verbeamtung_date?: string | null
           zip?: string | null
         }
         Update: {
           avatar_url?: string | null
+          besoldungsgruppe?: string | null
           birth_date?: string | null
           business_income_monthly?: number | null
           child_allowances?: number | null
           city?: string | null
           created_at?: string
+          dienstherr?: string | null
           email?: string | null
           employer_name?: string | null
           employment_status?: string | null
+          erfahrungsstufe?: number | null
           first_name?: string
           gross_income_monthly?: number | null
           house_number?: string | null
@@ -6799,8 +6816,11 @@ export type Database = {
           net_income_range?: string | null
           phone?: string | null
           phone_landline?: string | null
+          planned_retirement_date?: string | null
           pv_income_monthly?: number | null
           role?: string
+          ruhegehaltfaehige_dienstjahre?: number | null
+          ruhegehaltfaehiges_grundgehalt?: number | null
           salutation?: string | null
           sort_order?: number
           street?: string | null
@@ -6808,6 +6828,7 @@ export type Database = {
           tenant_id?: string
           updated_at?: string
           user_id?: string
+          verbeamtung_date?: string | null
           zip?: string | null
         }
         Relationships: [
@@ -11347,6 +11368,7 @@ export type Database = {
           disability_pension: number | null
           id: string
           info_date: string | null
+          pension_type: string | null
           person_id: string
           projected_pension: number | null
           tenant_id: string
@@ -11358,6 +11380,7 @@ export type Database = {
           disability_pension?: number | null
           id?: string
           info_date?: string | null
+          pension_type?: string | null
           person_id: string
           projected_pension?: number | null
           tenant_id: string
@@ -11369,6 +11392,7 @@ export type Database = {
           disability_pension?: number | null
           id?: string
           info_date?: string | null
+          pension_type?: string | null
           person_id?: string
           projected_pension?: number | null
           tenant_id?: string

@@ -36,6 +36,45 @@ import {
   Briefcase, Euro
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Shield } from 'lucide-react';
+
+const DIENSTHERR_OPTIONS = [
+  { value: 'bund', label: 'Bund' },
+  { value: 'baden-wuerttemberg', label: 'Baden-Württemberg' },
+  { value: 'bayern', label: 'Bayern' },
+  { value: 'berlin', label: 'Berlin' },
+  { value: 'brandenburg', label: 'Brandenburg' },
+  { value: 'bremen', label: 'Bremen' },
+  { value: 'hamburg', label: 'Hamburg' },
+  { value: 'hessen', label: 'Hessen' },
+  { value: 'mecklenburg-vorpommern', label: 'Mecklenburg-Vorpommern' },
+  { value: 'niedersachsen', label: 'Niedersachsen' },
+  { value: 'nordrhein-westfalen', label: 'Nordrhein-Westfalen' },
+  { value: 'rheinland-pfalz', label: 'Rheinland-Pfalz' },
+  { value: 'saarland', label: 'Saarland' },
+  { value: 'sachsen', label: 'Sachsen' },
+  { value: 'sachsen-anhalt', label: 'Sachsen-Anhalt' },
+  { value: 'schleswig-holstein', label: 'Schleswig-Holstein' },
+  { value: 'thueringen', label: 'Thüringen' },
+];
+
+const BESOLDUNGSGRUPPEN = [
+  ...Array.from({ length: 15 }, (_, i) => `A${i + 2}`),
+  ...Array.from({ length: 11 }, (_, i) => `B${i + 1}`),
+  'W1', 'W2', 'W3',
+  ...Array.from({ length: 10 }, (_, i) => `R${i + 1}`),
+];
+
+function calcPension(grundgehalt: number, dienstjahre: number) {
+  const versorgungssatz = Math.min(dienstjahre * 1.79375, 71.75);
+  const bruttoPension = grundgehalt * (versorgungssatz / 100);
+  const mindestversorgung = grundgehalt * 0.35;
+  return {
+    versorgungssatz,
+    bruttoPension: Math.max(bruttoPension, mindestversorgung),
+    istMindestversorgung: bruttoPension < mindestversorgung,
+  };
+}
 
 const MARITAL_OPTIONS = [
   { value: 'ledig', label: 'Ledig' },
@@ -270,12 +309,15 @@ export default function UebersichtTab() {
   const handleSave = (personId: string) => {
     setSavingId(personId);
     const form = editForms[personId];
+    const isBeamter = form.employment_status === 'beamter';
     updatePerson.mutate(form, {
       onSuccess: () => {
         const pForm = pensionForms[personId];
-        if (pForm && (pForm.info_date || pForm.current_pension || pForm.projected_pension || pForm.disability_pension)) {
+        // Only save DRV pension data for non-Beamte
+        if (!isBeamter && pForm && (pForm.info_date || pForm.current_pension || pForm.projected_pension || pForm.disability_pension)) {
           upsertPension.mutate({
             personId,
+            pension_type: 'drv',
             info_date: pForm.info_date || null,
             current_pension: pForm.current_pension ? Number(pForm.current_pension) : null,
             projected_pension: pForm.projected_pension ? Number(pForm.projected_pension) : null,
@@ -492,6 +534,70 @@ export default function UebersichtTab() {
                     </>
                   )}
 
+                  {form.employment_status === 'beamter' && (
+                    <>
+                      <div>
+                        <Label className="text-xs">Dienstherr</Label>
+                        <Select value={form.dienstherr || ''} onValueChange={v => updateField(person.id, 'dienstherr', v)}>
+                          <SelectTrigger><SelectValue placeholder="Bitte wählen" /></SelectTrigger>
+                          <SelectContent>
+                            {DIENSTHERR_OPTIONS.map(d => <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label className="text-xs">Besoldungsgruppe</Label>
+                        <Select value={form.besoldungsgruppe || ''} onValueChange={v => updateField(person.id, 'besoldungsgruppe', v)}>
+                          <SelectTrigger><SelectValue placeholder="Bitte wählen" /></SelectTrigger>
+                          <SelectContent>
+                            {BESOLDUNGSGRUPPEN.map(bg => <SelectItem key={bg} value={bg}>{bg}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label className="text-xs">Erfahrungsstufe</Label>
+                        <Select value={String(form.erfahrungsstufe || '')} onValueChange={v => updateField(person.id, 'erfahrungsstufe', Number(v))}>
+                          <SelectTrigger><SelectValue placeholder="Bitte wählen" /></SelectTrigger>
+                          <SelectContent>
+                            {[1,2,3,4,5,6,7,8].map(s => <SelectItem key={s} value={String(s)}>Stufe {s}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <FormInput label="Bruttoeinkommen (€/mtl.)" name="gross_income_monthly" type="number"
+                        value={form.gross_income_monthly || ''}
+                        onChange={e => updateField(person.id, 'gross_income_monthly', e.target.value)} />
+                      <FormInput label="Nettoeinkommen (€/mtl.)" name="net_income_monthly" type="number"
+                        value={form.net_income_monthly || ''}
+                        onChange={e => updateField(person.id, 'net_income_monthly', e.target.value)} />
+                      <div>
+                        <Label className="text-xs">Steuerklasse</Label>
+                        <Select value={form.tax_class || ''} onValueChange={v => updateField(person.id, 'tax_class', v)}>
+                          <SelectTrigger><SelectValue placeholder="Bitte wählen" /></SelectTrigger>
+                          <SelectContent>
+                            {['I', 'II', 'III', 'IV', 'V', 'VI'].map(tc => (
+                              <SelectItem key={tc} value={tc}>{tc}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <FormInput label="Kinderfreibeträge" name="child_allowances" type="number"
+                        value={form.child_allowances || ''}
+                        onChange={e => updateField(person.id, 'child_allowances', e.target.value)} />
+                      <FormInput label="Datum der Verbeamtung" name="verbeamtung_date" type="date"
+                        value={form.verbeamtung_date || ''}
+                        onChange={e => updateField(person.id, 'verbeamtung_date', e.target.value)} />
+                      <FormInput label="Ruhegehaltfähiges Grundgehalt (€/mtl.)" name="ruhegehaltfaehiges_grundgehalt" type="number"
+                        value={form.ruhegehaltfaehiges_grundgehalt || ''}
+                        onChange={e => updateField(person.id, 'ruhegehaltfaehiges_grundgehalt', e.target.value)} />
+                      <FormInput label="Ruhegehaltfähige Dienstjahre" name="ruhegehaltfaehige_dienstjahre" type="number"
+                        value={form.ruhegehaltfaehige_dienstjahre || ''}
+                        onChange={e => updateField(person.id, 'ruhegehaltfaehige_dienstjahre', e.target.value)} />
+                      <FormInput label="Geplantes Ruhestandsdatum" name="planned_retirement_date" type="date"
+                        value={form.planned_retirement_date || ''}
+                        onChange={e => updateField(person.id, 'planned_retirement_date', e.target.value)} />
+                    </>
+                  )}
+
                   {form.employment_status === 'selbstaendig' && (
                     <>
                       <FormInput label="Firmenname" name="employer_name" value={form.employer_name || ''}
@@ -522,23 +628,65 @@ export default function UebersichtTab() {
                 </div>
               </div>
 
-              <div>
-                <p className={RECORD_CARD.SECTION_TITLE}>DRV Renteninformation</p>
-                <div className={RECORD_CARD.FIELD_GRID}>
-                  <FormInput label="Datum der Renteninformation" name="info_date" type="date"
-                    value={pForm.info_date || ''}
-                    onChange={e => updatePensionField(person.id, 'info_date', e.target.value)} />
-                  <FormInput label="Bisher erreichte Regelaltersrente (€)" name="current_pension" type="number"
-                    value={pForm.current_pension || ''}
-                    onChange={e => updatePensionField(person.id, 'current_pension', e.target.value)} />
-                  <FormInput label="Künftige Rente ohne Anpassung (€)" name="projected_pension" type="number"
-                    value={pForm.projected_pension || ''}
-                    onChange={e => updatePensionField(person.id, 'projected_pension', e.target.value)} />
-                  <FormInput label="Volle Erwerbsminderungsrente (€)" name="disability_pension" type="number"
-                    value={pForm.disability_pension || ''}
-                    onChange={e => updatePensionField(person.id, 'disability_pension', e.target.value)} />
+              {form.employment_status === 'beamter' ? (
+                <div>
+                  <p className={RECORD_CARD.SECTION_TITLE}>
+                    <Shield className="h-4 w-4 inline mr-1" />
+                    Pensionsanspruch (Beamtenversorgung)
+                  </p>
+                  {(() => {
+                    const grundgehalt = Number(form.ruhegehaltfaehiges_grundgehalt) || 0;
+                    const dienstjahre = Number(form.ruhegehaltfaehige_dienstjahre) || 0;
+                    if (!grundgehalt || !dienstjahre) {
+                      return (
+                        <p className="text-sm text-muted-foreground italic">
+                          Bitte ruhegehaltfähiges Grundgehalt und Dienstjahre eintragen, um den Pensionsanspruch zu berechnen.
+                        </p>
+                      );
+                    }
+                    const { versorgungssatz, bruttoPension, istMindestversorgung } = calcPension(grundgehalt, dienstjahre);
+                    return (
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div className="rounded-lg border border-border/50 bg-muted/30 p-4 text-center">
+                          <p className="text-xs text-muted-foreground mb-1">Versorgungssatz</p>
+                          <p className="text-xl font-bold">{versorgungssatz.toFixed(2)} %</p>
+                          {versorgungssatz >= 71.75 && <Badge variant="secondary" className="mt-1 text-[10px]">Maximum</Badge>}
+                        </div>
+                        <div className="rounded-lg border border-border/50 bg-muted/30 p-4 text-center">
+                          <p className="text-xs text-muted-foreground mb-1">Brutto-Pension (mtl.)</p>
+                          <p className="text-xl font-bold">{fmt(bruttoPension)}</p>
+                          {istMindestversorgung && <Badge variant="secondary" className="mt-1 text-[10px]">Mindestversorgung</Badge>}
+                        </div>
+                        <div className="rounded-lg border border-border/50 bg-muted/30 p-4 text-center">
+                          <p className="text-xs text-muted-foreground mb-1">Grundgehalt (ruhegehaltf.)</p>
+                          <p className="text-xl font-bold">{fmt(grundgehalt)}</p>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                  <p className="text-[10px] text-muted-foreground mt-2">
+                    Berechnung nach BeamtVG: Versorgungssatz = min(Dienstjahre × 1,79375 %, 71,75 %). Mindestversorgung: 35 % des ruhegehaltfähigen Grundgehalts.
+                  </p>
                 </div>
-              </div>
+              ) : (
+                <div>
+                  <p className={RECORD_CARD.SECTION_TITLE}>DRV Renteninformation</p>
+                  <div className={RECORD_CARD.FIELD_GRID}>
+                    <FormInput label="Datum der Renteninformation" name="info_date" type="date"
+                      value={pForm.info_date || ''}
+                      onChange={e => updatePensionField(person.id, 'info_date', e.target.value)} />
+                    <FormInput label="Bisher erreichte Regelaltersrente (€)" name="current_pension" type="number"
+                      value={pForm.current_pension || ''}
+                      onChange={e => updatePensionField(person.id, 'current_pension', e.target.value)} />
+                    <FormInput label="Künftige Rente ohne Anpassung (€)" name="projected_pension" type="number"
+                      value={pForm.projected_pension || ''}
+                      onChange={e => updatePensionField(person.id, 'projected_pension', e.target.value)} />
+                    <FormInput label="Volle Erwerbsminderungsrente (€)" name="disability_pension" type="number"
+                      value={pForm.disability_pension || ''}
+                      onChange={e => updatePensionField(person.id, 'disability_pension', e.target.value)} />
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className={RECORD_CARD.ACTIONS}>
