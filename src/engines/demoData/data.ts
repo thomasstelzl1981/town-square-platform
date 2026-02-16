@@ -73,6 +73,13 @@ const ID_PL_MOEBEL = 'e0000000-0000-4000-a000-000000000602';
 export const DEMO_PET_LUNA  = 'd0000000-0000-4000-a000-000000000010';
 export const DEMO_PET_BELLO = 'd0000000-0000-4000-a000-000000000011';
 
+// Pet Provider + Services (DB-geseedet)
+export const DEMO_PET_PROVIDER_LENNOX = 'd0000000-0000-4000-a000-000000000050';
+const ID_PET_SVC_GROOMING  = 'd0000000-0000-4000-a000-000000000060';
+const ID_PET_SVC_WALKING   = 'd0000000-0000-4000-a000-000000000061';
+const ID_PET_SVC_DAYCARE   = 'd0000000-0000-4000-a000-000000000062';
+const ID_PET_SVC_BOARDING  = 'd0000000-0000-4000-a000-000000000063';
+
 // ─── PERSONEN ──────────────────────────────────────────────
 
 export const DEMO_FAMILY: readonly DemoPersona[] = [
@@ -512,6 +519,9 @@ export const ALL_DEMO_IDS: readonly string[] = [
   // Pets (DB-geseedet)
   DEMO_PET_LUNA,
   DEMO_PET_BELLO,
+  // Pet Provider + Services (DB-geseedet)
+  DEMO_PET_PROVIDER_LENNOX,
+  ID_PET_SVC_GROOMING, ID_PET_SVC_WALKING, ID_PET_SVC_DAYCARE, ID_PET_SVC_BOARDING,
 ] as const;
 
 // ─── GESAMTPAKET ───────────────────────────────────────────
@@ -550,5 +560,5 @@ export const DEMO_DATA_SPEC: DemoDataSpec = {
  * - GP-FM-FALL       (MOD-11) — Kein Demo-Finanzierungsfall (bewusst)
  * - GP-SERIEN-EMAIL  (MOD-14) — Nur Demo-Widget, keine echte Sequenz
  * - GP-RECHERCHE     (MOD-14) — Nur Demo-Widget, keine echten Ergebnisse
- * - GP-PETS          (MOD-05) — DB: 2 Demo-Pets (Luna, Bello) + Emerald Glow
+ * - GP-PETS          (MOD-05) — DB: 2 Demo-Pets + Lennox & Friends Provider + 4 Services + Availability
  */
