@@ -1,202 +1,167 @@
 
-# Selbstauskunft befuellen + Demo-Daten-Lueckenanalyse
+# CI-Widget-System: Homogenisierung und Glow-Farbspezifikation
 
-## 1. Selbstauskunft fuer Max Mustermann befuellen (SQL-Migration)
+## 1. Analyse: Ist-Zustand aller Widgets
 
-Die bestehende persistente `applicant_profiles`-Zeile (`a23366ab-e769-46b0-8d44-f8117f901c15`, `finance_request_id = NULL`, `party_role = 'primary'`) ist komplett leer. Sie wird per SQL-UPDATE mit Max Mustermanns Daten befuellt:
+### 1.1 Widget-Typen im System (Ist)
 
-### Feldwerte fuer Max Mustermann (Sektion 1-7)
+Aktuell existieren **5 verschiedene Widget-Darstellungen**, die teilweise inkonsistent verwendet werden:
 
-| Sektion | Feld | Wert |
+| Widget-Typ | Komponente | Groesse | Verwendung |
+|---|---|---|---|
+| **A. System-Widget** | Direkt in Dashboard | `aspect-square` via WidgetCell | Armstrong, Wetter, Globe, Meeting |
+| **B. Task-Widget** | `TaskWidget.tsx` | `aspect-square` | Armstrong-Tasks im Dashboard |
+| **C. Case-Widget** | `*CaseCard.tsx` / direkte Card | `md:aspect-square` via WidgetCell | Finanzierung, Sanierung, Akquise, Projekte, Fahrzeuge |
+| **D. RecordCard** | `RecordCard.tsx` | `md:aspect-square` (closed) / full-width (open) | Personen, Versicherungen, Vorsorge, Abos |
+| **E. KV-Widget** | `KrankenversicherungTab` | `span-2` Card, **NICHT quadratisch** | KV-Tab (neu, inkonsistent) |
+
+### 1.2 Glow-Farben-Zuordnung (Ist)
+
+| Glow-Farbe | Variante | Aktuell verwendet in |
 |---|---|---|
-| **1. Person** | salutation | Herr |
-| | first_name | Max |
-| | last_name | Mustermann |
-| | birth_date | 1982-03-15 |
-| | birth_place | Muenchen |
-| | birth_country | DE |
-| | nationality | DE |
-| | address_street | Leopoldstrasse 42 |
-| | address_postal_code | 80802 |
-| | address_city | Muenchen |
-| | address_since | 2015-06-01 |
-| | phone | +49 89 12345678 |
-| | phone_mobile | +49 170 1234567 |
-| | email | max@mustermann-demo.de |
-| | tax_id | 12 345 678 901 |
-| **2. Haushalt** | marital_status | verheiratet |
-| | property_separation | false |
-| | adults_count | 2 |
-| | children_count | 2 |
-| | children_birth_dates | 2014-09-03, 2017-11-28 |
-| **3. Beruf** | employment_type | selbstaendig |
-| | company_name | IT-Beratung Mustermann |
-| | company_legal_form | Einzelunternehmen |
-| | company_founded | 2010-01-01 |
-| | company_industry | IT / Software-Beratung |
-| | company_managing_director | true |
-| | company_ownership_percent | 100 |
-| | vehicles_count | 2 |
-| **4. Bank** | iban | DE89 3704 0044 0532 0130 00 |
-| | bic | COBADEFFXXX |
-| **5. Einkommen** | self_employed_income_monthly | 8500 |
-| | rental_income_monthly | 2800 |
-| | has_rental_properties | true |
-| | child_benefit_monthly | 500 |
-| **6. Ausgaben** | current_rent_monthly | 0 (Eigentuemer) |
-| | living_expenses_monthly | 2200 |
-| | health_insurance_monthly | 685 |
-| | car_leasing_monthly | 890 |
-| | other_fixed_costs_monthly | 350 |
-| **7. Vermoegen** | bank_savings | 85000 |
-| | securities_value | 120000 |
-| | life_insurance_value | 45000 |
-| | completion_score | 92 |
+| `primary` (Blau) | Finanzierung (MOD-07), FM-Manager (MOD-11), Investment (MOD-18) | FinanceCaseCard, StatusTab, InvestmentTab |
+| `amber` (Bernstein) | Projekte (MOD-13), Portfolio (MOD-04), Invest-Mandate | ProjectCard, LandingPageTab, MandatTab |
+| `cyan` (Tuerkis) | Akquise (MOD-12) | MandateCaseCard |
+| `violet` (Violett) | CommunicationPro (MOD-14) | ResearchOrderWidget, SerienEmailsPage |
+| `orange` | Sanierung (MOD-04), Privatkredit (MOD-07) | ServiceCaseCard, ConsumerLoanWidgets |
+| `teal` (Dunkeltuerkis) | Fahrzeuge (MOD-17) | CarsAutos |
+| `rose` | Definiert aber **NICHT VERWENDET** | — |
+| **Emerald (Gruen)** | **NICHT als Glow definiert** | Nur als `text-emerald-600` im Kontostand |
 
-Zusaetzlich: Die Co-Applicant-Zeile (`703e1648-...`) wird fuer Lisa Mustermann befuellt (Angestellte, GKV).
+### 1.3 Probleme
 
-### SQL-Migration
+| Problem | Details |
+|---|---|
+| **Kein Emerald-Glow** | Echte manuell erfasste Vertraege haben aktuell KEINEN Glow — nur RecordCard-Standard ohne Farbakzent |
+| **KV-Tab inkonsistent** | Nutzt `span-2` Cards statt einheitliche `WidgetCell`-Quadrate |
+| **RecordCard hat keinen Glow** | Versicherungen, Vorsorge, Abos zeigen keinen farbigen Rand — sie sind visuell nicht von CTA/Placeholder unterscheidbar |
+| **Fehlende Glow-Variante** | `emerald` ist im `ACTIVE_WIDGET_VARIANTS` nicht registriert |
+| **Konten-Widget** | Handgebaut in UebersichtTab, kein getActiveWidgetGlow() |
+| **Personen-Widget** | RecordCard im RECORD_CARD.GRID (2-spaltig), nicht im WidgetGrid (4-spaltig) — eigenes Layout |
 
-```sql
--- 1. Primary: Max Mustermann Selbstauskunft
-UPDATE applicant_profiles SET
-  salutation = 'Herr', first_name = 'Max', last_name = 'Mustermann',
-  birth_date = '1982-03-15', birth_place = 'München', birth_country = 'DE',
-  nationality = 'DE', address_street = 'Leopoldstraße 42',
-  address_postal_code = '80802', address_city = 'München',
-  address_since = '2015-06-01', phone = '+49 89 12345678',
-  phone_mobile = '+49 170 1234567', email = 'max@mustermann-demo.de',
-  tax_id = '12 345 678 901', marital_status = 'verheiratet',
-  property_separation = false, adults_count = 2, children_count = 2,
-  children_birth_dates = '2014-09-03, 2017-11-28',
-  employment_type = 'selbstaendig', company_name = 'IT-Beratung Mustermann',
-  company_legal_form = 'Einzelunternehmen', company_founded = '2010-01-01',
-  company_industry = 'IT / Software-Beratung', company_managing_director = true,
-  company_ownership_percent = 100, vehicles_count = 2,
-  iban = 'DE89370400440532013000', bic = 'COBADEFFXXX',
-  self_employed_income_monthly = 8500, rental_income_monthly = 2800,
-  has_rental_properties = true, child_benefit_monthly = 500,
-  current_rent_monthly = 0, living_expenses_monthly = 2200,
-  health_insurance_monthly = 685, car_leasing_monthly = 890,
-  other_fixed_costs_monthly = 350, bank_savings = 85000,
-  securities_value = 120000, life_insurance_value = 45000,
-  completion_score = 92
-WHERE id = 'a23366ab-e769-46b0-8d44-f8117f901c15';
+---
 
--- 2. Co-Applicant: Lisa Mustermann
-UPDATE applicant_profiles SET
-  salutation = 'Frau', first_name = 'Lisa', last_name = 'Mustermann',
-  birth_date = '1985-07-22', birth_place = 'Hamburg', birth_country = 'DE',
-  nationality = 'DE', address_street = 'Leopoldstraße 42',
-  address_postal_code = '80802', address_city = 'München',
-  phone_mobile = '+49 170 7654321', email = 'lisa@mustermann-demo.de',
-  employment_type = 'angestellt', employer_name = 'MediaCorp GmbH',
-  employer_location = 'München', employer_industry = 'Marketing',
-  position = 'Marketing Managerin', employed_since = '2012-03-01',
-  contract_type = 'unbefristet', employer_in_germany = true,
-  net_income_monthly = 3200, bonus_yearly = 5000,
-  iban = 'DE72100110012345678901', bic = 'NTSBDEB1XXX',
-  completion_score = 78
-WHERE id = '703e1648-5dbf-40da-8f5f-040dc04bbc31';
-```
+## 2. Soll-Zustand: 3 Widget-Kategorien mit Glow-Regeln
 
-## 2. Engine-Erweiterung: DemoSelbstauskunft
+### Kategorie-Definition
 
-### `spec.ts` — Neues Interface
-
-```typescript
-/** Demo-Selbstauskunft (Applicant Profile) */
-export interface DemoSelbstauskunft {
-  readonly primaryProfileId: string;
-  readonly coApplicantProfileId: string;
-  readonly primaryData: Record<string, unknown>;
-  readonly coApplicantData: Record<string, unknown>;
-}
-```
-
-### `data.ts` — Neue Konstante
-
-```typescript
-export const DEMO_SELBSTAUSKUNFT_PRIMARY_ID = 'a23366ab-e769-46b0-8d44-f8117f901c15';
-export const DEMO_SELBSTAUSKUNFT_CO_ID = '703e1648-5dbf-40da-8f5f-040dc04bbc31';
-```
-
-Diese IDs werden in `ALL_DEMO_IDS` aufgenommen.
-
-### `DemoDataSpec` erweitern
-
-```typescript
-export interface DemoDataSpec {
-  // ...bestehend...
-  readonly selbstauskunft: DemoSelbstauskunft;
-}
-```
-
-## 3. goldenPathProcesses.ts — Akquise-Daten aktualisieren
-
-Das Demo-Widget fuer `GP-AKQUISE-MANDAT` referenziert noch "Investoren GbR Rhein" / "Koeln/Duesseldorf". Update auf:
-
-```typescript
-demoWidget: {
-  title: 'Demo: Aufteiler-Akquise München',
-  subtitle: 'Suchprofil: MFH/Aufteiler, München/Oberbayern',
-  data: {
-    clientName: 'Mustermann Projektentwicklung GmbH',
-    assetFocus: ['MFH', 'Aufteiler'],
-    region: 'München / Oberbayern',
-    minUnits: 6,
-    budgetMax: 5000000,
-  },
-}
-```
-
-Ebenso `GP-SUCHMANDAT`: "MFH NRW ab 1 Mio" anpassen an "MFH Muenchen / Oberbayern — Aufteiler".
-
-## 4. Demo-Daten-Lueckenanalyse: Wo fehlen noch Demodaten?
-
-### Vollstaendig abgedeckt (nach dieser Aenderung)
-
-| GP-Prozess | Modul | Demo-Daten-Quelle | Status |
+| Kategorie | Groesse | Glow | Beispiele |
 |---|---|---|---|
-| GP-PORTFOLIO | MOD-04 | DB: 3 Properties, Landlord Context | OK |
-| GP-VERWALTUNG | MOD-04 | DB: Leases, NK, V+V | OK |
-| GP-SANIERUNG | MOD-04 | Clientseitig: Demo-Widget | OK |
-| GP-FINANZIERUNG | MOD-07 | DB: Selbstauskunft (nach dieser Migration) | OK (neu) |
-| GP-SUCHMANDAT | MOD-08 | Clientseitig: useDemoAcquisition | OK (nach Update) |
-| GP-SIMULATION | MOD-08 | Clientseitig: Demo-Widget | OK |
-| GP-AKQUISE-MANDAT | MOD-12 | DB: acq_mandates + acq_offers | OK (nach Update) |
-| GP-PROJEKT | MOD-13 | Clientseitig: demoProjectData.ts | OK |
-| GP-FAHRZEUG | MOD-17 | DB: 2 Fahrzeuge | OK |
-| GP-PV-ANLAGE | MOD-19 | DB: PV-Anlage | OK |
-| GP-KONTEN | MOD-18 | Clientseitig: Demo-Bankkonto | OK |
+| **Dashboard-Widget** | `aspect-square` in 4-Col WidgetGrid | Keiner oder System-spezifisch | Armstrong, Wetter, Globe, Task-Widgets |
+| **Personen/Konten-Widget** | `aspect-square` in 4-Col WidgetGrid (gross wirkend, da WidgetCell) | Kein Glow (neutral) | Haushaltspersonen, Bankkonten |
+| **Vertrags-Widget** | `aspect-square` in 4-Col WidgetGrid — einheitlich klein | **Glow nach Herkunft** (siehe unten) | Versicherungen, Vorsorge, Abos, KV, Fahrzeuge, Immobilien |
 
-### Teilweise abgedeckt — Handlungsbedarf spaeter
+### Glow-Regeln nach Datenherkunft
 
-| GP-Prozess | Modul | Luecke | Prioritaet |
+| Herkunft | Glow-Farbe | Variante | Beschreibung |
 |---|---|---|---|
-| GP-FM-FALL | MOD-11 | Manager-Seite: kein Demo-Finanzierungsfall (bewusst — kein Case angelegt) | Niedrig |
-| GP-SERIEN-EMAIL | MOD-14 | Nur Demo-Widget, keine echte Sequenz | Niedrig |
-| GP-RECHERCHE | MOD-14 | Nur Demo-Widget, keine echten Ergebnisse | Niedrig |
-| GP-PETS | MOD-05 | Phase 1, noch nicht implementiert | Spaeter |
-| GP-PRIVATKREDIT | MOD-07 | Kein GP-Eintrag, nur PrivatkreditTab | Niedrig |
+| **Demo-Daten** | Blau | `primary` (DEMO_WIDGET Token) | Alle Demo-Vertraege (isDemoId = true), Shimmer + Badge "DEMO" |
+| **Manuell erfasst** | Gruen | `emerald` (NEU) | Echte, vom User angelegte Vertraege |
+| **Shop-Angebote** | Kein Glow | Neutral (glass-card Standard) | Marketplace-Angebote, CTAs, Platzhalter |
 
-### Dokumentation in der Engine
+### Glow-Regeln nach Modul (fuer Case-Widgets)
 
-Die `data.ts` erhaelt am Ende einen Kommentar-Block `DEMO_COVERAGE_MAP` der den Abdeckungsstatus aller 15 GPs dokumentiert.
+Die bestehenden modul-spezifischen Glows bleiben fuer aktive Faelle/Mandate erhalten:
 
-## 5. Dateien-Uebersicht
+| Modul | Glow | Verwendung |
+|---|---|---|
+| MOD-04 Portfolio | `amber` | Vermietereinheiten-Widgets |
+| MOD-04 Sanierung | `orange` | Sanierungsfall-Widgets |
+| MOD-07 Finanzierung | `primary` | Finanzierungsanfrage-Widgets |
+| MOD-07 Privatkredit | `orange` | Privatkredit-Fall-Widgets |
+| MOD-08 Suche | `primary` | Suchmandat-Widgets |
+| MOD-11 FM-Manager | `primary` | FM-Fall-Widgets |
+| MOD-12 Akquise | `cyan` | Akquise-Mandat-Widgets |
+| MOD-13 Projekte | `amber` | Projekt-Widgets |
+| MOD-14 CommunicationPro | `violet` | Recherche/Serien-Email-Widgets |
+| MOD-17 Fahrzeuge | `teal` | Fahrzeug-Widgets |
+| MOD-18 Versicherungen | `emerald` (manuell) / `primary` (demo) | Vertrags-Widgets |
+| MOD-18 Vorsorge | `emerald` (manuell) / `primary` (demo) | Vorsorge-Widgets |
+| MOD-18 Abos | `emerald` (manuell) / `primary` (demo) | Abo-Widgets |
+| MOD-18 KV | `primary` (nur demo) | KV-Widgets |
+| MOD-18 Konten | Kein Glow (neutral) | Konten-Widgets |
+
+---
+
+## 3. Technischer Umsetzungsplan
+
+### 3.1 Neue Spec-Datei: `src/config/widgetCategorySpec.ts`
+
+Zentrale SSOT fuer Widget-Kategorien, Glow-Zuordnungen und Regeln:
+
+```text
+src/config/widgetCategorySpec.ts
+
+Inhalte:
+- WidgetCategory enum: 'dashboard' | 'entity' | 'contract'
+- WidgetGlowSource enum: 'demo' | 'manual' | 'shop' | 'module'
+- WIDGET_GLOW_MAP: Record<Module, ActiveWidgetVariant>
+- getContractWidgetGlow(isDemoId, isShopOffer): ActiveWidgetVariant | null
+- Helper: resolveWidgetGlow(source, moduleCode)
+```
+
+### 3.2 Neue Glow-Variante: `emerald`
+
+In `designManifest.ts` wird `ActiveWidgetVariant` um `'emerald'` erweitert und die entsprechenden CSS-Klassen hinzugefuegt:
+
+```text
+emerald: {
+  border: 'border-emerald-400/30',
+  shadow: 'shadow-[0_0_15px_-3px] shadow-emerald-400/15',
+  shimmer: 'before:... from-emerald-400/40 via-emerald-400/60 to-emerald-400/40 ...',
+}
+```
+
+### 3.3 RecordCard um optionalen Glow erweitern
+
+`RecordCard.tsx` erhaelt einen neuen optionalen Prop `glowVariant?: ActiveWidgetVariant`:
+
+- Wenn gesetzt: `getActiveWidgetGlow(variant)` wird auf den Closed-State angewendet
+- Default: kein Glow (bisheriges Verhalten)
+
+### 3.4 MOD-18 Tabs umstellen
+
+| Tab | Aenderung |
+|---|---|
+| **Sachversicherungen** | RecordCard erhaelt `glowVariant={isDemoId(c.id) ? undefined : 'emerald'}` — Demo-Contracts bekommen DEMO_WIDGET Styling statt RecordCard |
+| **Vorsorge** | Gleich wie Sachversicherungen |
+| **Abos** | Gleich wie Sachversicherungen |
+| **KV** | Von `span-2` Cards auf einheitliche `WidgetCell` (aspect-square) umbauen |
+| **Uebersicht** | Personen und Konten bleiben im WidgetGrid, bekommen aber keinen Glow (neutral) |
+
+### 3.5 Versicherungen/Vorsorge/Abos: Von RecordCard zu WidgetGrid
+
+Aktuell nutzen diese Tabs `RECORD_CARD.GRID` (2-spaltig). Das Soll ist `WidgetGrid` (4-spaltig) mit `WidgetCell` fuer geschlossene Karten. Die offene RecordCard bleibt full-width unterhalb des Grids (wie bei allen anderen Modulen).
+
+**Konkret**: Die geschlossene Darstellung wird von `RECORD_CARD.CLOSED` (2-spaltig, md:aspect-square) auf `WidgetCell` im `WidgetGrid` (4-spaltig) umgestellt. Der offene State bleibt full-width inline unterhalb.
+
+### 3.6 Dateien-Uebersicht
 
 | Datei | Aktion | Beschreibung |
 |---|---|---|
-| `src/engines/demoData/spec.ts` | EDIT | Neues Interface `DemoSelbstauskunft` |
-| `src/engines/demoData/data.ts` | EDIT | Selbstauskunft-IDs, Coverage-Map Dokumentation |
-| `src/manifests/goldenPathProcesses.ts` | EDIT | GP-AKQUISE-MANDAT + GP-SUCHMANDAT Demo-Widget auf Mustermann |
-| SQL-Migration | NEU | UPDATE applicant_profiles fuer Max + Lisa |
+| `src/config/widgetCategorySpec.ts` | NEU | SSOT fuer Widget-Kategorien und Glow-Regeln |
+| `src/config/designManifest.ts` | EDIT | `emerald` als ActiveWidgetVariant hinzufuegen |
+| `src/components/shared/RecordCard.tsx` | EDIT | Optionaler `glowVariant` Prop |
+| `src/pages/portal/finanzanalyse/SachversicherungenTab.tsx` | EDIT | WidgetGrid + WidgetCell + Glow-Logik |
+| `src/pages/portal/finanzanalyse/VorsorgeTab.tsx` | EDIT | WidgetGrid + WidgetCell + Glow-Logik |
+| `src/pages/portal/finanzanalyse/AbonnementsTab.tsx` | EDIT | WidgetGrid + WidgetCell + Glow-Logik |
+| `src/pages/portal/finanzanalyse/KrankenversicherungTab.tsx` | EDIT | Von span-2 auf einheitliche WidgetCell |
+| `src/pages/portal/finanzanalyse/UebersichtTab.tsx` | EDIT | Konten-Widgets ohne Glow (neutral) |
+| `src/engines/demoData/data.ts` | EDIT | Coverage-Map um Glow-Zuordnungen erweitern |
 
-## 6. Ergebnis
+---
 
-- Selbstauskunft unter `/portal/finanzierung/selbstauskunft` zeigt vorausgefuellte Daten (92% complete)
-- Co-Applicant Lisa mit 78% Ausfuellgrad
-- Ein Finanzierungsmandat kann manuell erstellt werden (kein automatischer Demo-Case)
-- Engine dokumentiert vollstaendig welche GP-Prozesse abgedeckt sind und wo Luecken bestehen
-- Alle Demo-Widget-Texte in goldenPathProcesses.ts konsistent mit "Mustermann"-Story
+## 4. Zusammenfassung der Glow-Farbpalette
+
+| Farbe | Hex-Bereich | Verwendungszweck |
+|---|---|---|
+| Emerald (Gruen) | `emerald-400` | Manuell erfasste echte Vertraege |
+| Primary (Blau) | `primary` | Demo-Daten + Finanzierungs-Module |
+| Amber (Bernstein) | `amber-400` | Projekte, Portfolio |
+| Cyan (Tuerkis) | `cyan-400` | Akquise |
+| Violet (Violett) | `violet-400` | CommunicationPro |
+| Orange | `orange-400` | Sanierung, Privatkredit |
+| Teal (Dunkeltuerkis) | `teal-400` | Fahrzeuge, Services |
+| Rose (Pink) | `rose-400` | Leads (Zone 1) |
+| Neutral (Kein Glow) | — | Shop-Angebote, CTAs, Platzhalter |
+
