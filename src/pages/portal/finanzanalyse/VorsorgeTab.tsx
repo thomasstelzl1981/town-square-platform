@@ -30,7 +30,18 @@ import { useDemoToggles } from '@/hooks/useDemoToggles';
 import { cn } from '@/lib/utils';
 import { VorsorgeLueckenrechner } from '@/components/portal/finanzanalyse/VorsorgeLueckenrechner';
 
-const CONTRACT_TYPES = ['bAV', 'Riester', 'Rürup', 'Versorgungswerk', 'Berufsunfähigkeit', 'Lebensversicherung', 'Privat', 'Sonstige'] as const;
+const CONTRACT_TYPES = [
+  'Private Rentenversicherung',
+  'Rürup (Basisrente)',
+  'Riester-Rente',
+  'Betriebliche Altersvorsorge (bAV)',
+  'Kapitalbildende Lebensversicherung',
+  'Fondsgebundene Lebensversicherung',
+  'Versorgungswerk',
+  'Berufsunfähigkeitsversicherung',
+  'Dienstunfähigkeitsversicherung',
+  'Sonstige',
+] as const;
 
 const INTERVALS = [
   { value: 'monatlich', label: 'Monatlich' },
@@ -57,6 +68,7 @@ export default function VorsorgeTab() {
     provider: '', contract_no: '', contract_type: '', person_id: '',
     start_date: '', end_date: '', premium: 0, payment_interval: 'monatlich', status: 'Aktiv', notes: '',
     current_balance: '', balance_date: '', monthly_benefit: '', insured_sum: '', dynamics_percent: '',
+    bu_monthly_benefit: '',
   });
 
   const { data: rawContracts = [], isLoading } = useQuery({
@@ -94,6 +106,7 @@ export default function VorsorgeTab() {
         monthly_benefit: form.monthly_benefit ? Number(form.monthly_benefit) : null,
         insured_sum: form.insured_sum ? Number(form.insured_sum) : null,
         dynamics_percent: form.dynamics_percent ? Number(form.dynamics_percent) : null,
+        bu_monthly_benefit: form.bu_monthly_benefit ? Number(form.bu_monthly_benefit) : null,
       });
       if (error) throw error;
     },
@@ -101,7 +114,7 @@ export default function VorsorgeTab() {
       queryClient.invalidateQueries({ queryKey: ['fin-vorsorge'] });
       toast.success('Vorsorgevertrag angelegt');
       setShowNew(false);
-      setNewForm({ provider: '', contract_no: '', contract_type: '', person_id: '', start_date: '', end_date: '', premium: 0, payment_interval: 'monatlich', status: 'Aktiv', notes: '', current_balance: '', balance_date: '', monthly_benefit: '', insured_sum: '', dynamics_percent: '' });
+      setNewForm({ provider: '', contract_no: '', contract_type: '', person_id: '', start_date: '', end_date: '', premium: 0, payment_interval: 'monatlich', status: 'Aktiv', notes: '', current_balance: '', balance_date: '', monthly_benefit: '', insured_sum: '', dynamics_percent: '', bu_monthly_benefit: '' });
     },
   });
 
@@ -120,6 +133,7 @@ export default function VorsorgeTab() {
         monthly_benefit: rest.monthly_benefit ? Number(rest.monthly_benefit) : null,
         insured_sum: rest.insured_sum ? Number(rest.insured_sum) : null,
         dynamics_percent: rest.dynamics_percent ? Number(rest.dynamics_percent) : null,
+        bu_monthly_benefit: rest.bu_monthly_benefit ? Number(rest.bu_monthly_benefit) : null,
       }).eq('id', id);
       if (error) throw error;
     },
@@ -202,8 +216,9 @@ export default function VorsorgeTab() {
       </div>
       <p className={cn(RECORD_CARD.SECTION_TITLE, 'mt-4')}>Leistungen & Guthaben</p>
       <div className={RECORD_CARD.FIELD_GRID}>
-        <FormInput label="Monatliche Rente / BU-Rente (€)" name="monthly_benefit" type="number" value={f.monthly_benefit || ''} onChange={e => onUpdate('monthly_benefit', e.target.value)} />
-        <FormInput label="Versicherungssumme (€)" name="insured_sum" type="number" value={f.insured_sum || ''} onChange={e => onUpdate('insured_sum', e.target.value)} />
+        <FormInput label="Garantierte monatl. Rente (€)" name="monthly_benefit" type="number" value={f.monthly_benefit || ''} onChange={e => onUpdate('monthly_benefit', e.target.value)} />
+        <FormInput label="BU-Rente mtl. (€)" name="bu_monthly_benefit" type="number" value={f.bu_monthly_benefit || ''} onChange={e => onUpdate('bu_monthly_benefit', e.target.value)} />
+        <FormInput label="Ablaufleistung / Kapital (€)" name="insured_sum" type="number" value={f.insured_sum || ''} onChange={e => onUpdate('insured_sum', e.target.value)} />
         <FormInput label="Dynamik (%)" name="dynamics_percent" type="number" value={f.dynamics_percent || ''} onChange={e => onUpdate('dynamics_percent', e.target.value)} />
         <FormInput label="Aktuelles Guthaben (€)" name="current_balance" type="number" value={f.current_balance || ''} onChange={e => onUpdate('current_balance', e.target.value)} />
         <FormInput label="Stand per" name="balance_date" type="date" value={f.balance_date || ''} onChange={e => onUpdate('balance_date', e.target.value)} />

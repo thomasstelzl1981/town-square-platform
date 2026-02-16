@@ -59,6 +59,7 @@ export interface DemoVorsorgeContract {
   readonly currentBalance?: number;
   readonly balanceDate?: string;
   readonly monthlyBenefit?: number;
+  readonly buMonthlyBenefit?: number;
   readonly insuredSum?: number;
   readonly dynamicsPercent?: number;
 }

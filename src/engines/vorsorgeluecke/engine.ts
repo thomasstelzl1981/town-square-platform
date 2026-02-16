@@ -16,6 +16,8 @@ import type {
 import {
   DEFAULT_NEED_PERCENT,
   DEFAULT_ANNUITY_YEARS,
+  DEFAULT_GROWTH_RATE,
+  DEFAULT_FALLBACK_YEARS_TO_RETIREMENT,
   BEAMTE_MAX_VERSORGUNGSSATZ,
   BEAMTE_SATZ_PRO_JAHR,
   EM_FALLBACK_PERCENT,
@@ -49,6 +51,62 @@ function isVorsorgeCategory(c: VLContractInput): boolean {
   return !c.category || c.category === 'vorsorge';
 }
 
+function isCivilServant(empStatus: string): boolean {
+  return empStatus === 'civil_servant' || empStatus === 'beamter' || empStatus === 'beamte';
+}
+
+function isEmployee(empStatus: string): boolean {
+  return empStatus === 'employee' || empStatus === 'angestellt';
+}
+
+function yearsToRetirement(person: VLPersonInput): number {
+  if (person.planned_retirement_date) {
+    const diff = new Date(person.planned_retirement_date).getTime() - Date.now();
+    const years = diff / (365.25 * 24 * 60 * 60 * 1000);
+    return Math.max(0, years);
+  }
+  return DEFAULT_FALLBACK_YEARS_TO_RETIREMENT;
+}
+
+function normalizeToMonthly(premium: number, interval: string | null): number {
+  switch (interval?.toLowerCase()) {
+    case 'jaehrlich':
+    case 'jährlich':
+      return premium / 12;
+    case 'halbjaehrlich':
+    case 'halbjährlich':
+      return premium / 6;
+    case 'vierteljaehrlich':
+    case 'vierteljährlich':
+      return premium / 3;
+    case 'einmalig':
+      return 0; // einmalig wird nicht als laufender Beitrag hochgerechnet
+    default:
+      return premium;
+  }
+}
+
+function projectCapital(
+  currentBalance: number,
+  monthlyPremium: number,
+  years: number,
+  growthRate: number = DEFAULT_GROWTH_RATE,
+): number {
+  if (years <= 0) return currentBalance;
+
+  // Kapital hochrechnen: FV = PV * (1+r)^n
+  const futureBalance = currentBalance * Math.pow(1 + growthRate, years);
+
+  // Laufende Sparleistung hochrechnen (Endwert einer nachschüssigen Rente)
+  let futurePremiums = 0;
+  if (monthlyPremium > 0) {
+    const annualPremium = monthlyPremium * 12;
+    futurePremiums = annualPremium * ((Math.pow(1 + growthRate, years) - 1) / growthRate);
+  }
+
+  return futureBalance + futurePremiums;
+}
+
 // ─── Altersvorsorge ──────────────────────────────────────────
 
 export function calcAltersvorsorge(
@@ -63,7 +121,7 @@ export function calcAltersvorsorge(
 
   const empStatus = person.employment_status?.toLowerCase() ?? '';
 
-  if (empStatus === 'civil_servant' || empStatus === 'beamter') {
+  if (isCivilServant(empStatus)) {
     if (pension?.projected_pension && pension.projected_pension > 0) {
       gesetzliche = pension.projected_pension;
       quelle = 'pension';
@@ -79,7 +137,7 @@ export function calcAltersvorsorge(
       quelle = 'pension';
     }
   } else {
-    // employee / self_employed
+    // employee / self_employed / sonstige — alle können DRV-Ansprüche haben
     if (pension?.projected_pension && pension.projected_pension > 0) {
       gesetzliche = pension.projected_pension;
       quelle = 'drv';
@@ -89,6 +147,7 @@ export function calcAltersvorsorge(
   // 2) Private Altersvorsorge
   let privateRenten = 0;
   let privateVerrentung = 0;
+  const ytr = yearsToRetirement(person);
 
   const relevantContracts = contracts.filter(
     c =>
@@ -104,7 +163,11 @@ export function calcAltersvorsorge(
     } else {
       const capital = c.insured_sum || c.current_balance || 0;
       if (capital > 0) {
-        privateVerrentung += capital / DEFAULT_ANNUITY_YEARS / 12;
+        const monthlyPremium = (c.premium && c.premium > 0)
+          ? normalizeToMonthly(c.premium, c.payment_interval)
+          : 0;
+        const futureCapital = projectCapital(capital, monthlyPremium, ytr);
+        privateVerrentung += futureCapital / DEFAULT_ANNUITY_YEARS / 12;
       }
     }
   }
@@ -144,7 +207,7 @@ export function calcBuLuecke(
 
   const empStatus = person.employment_status?.toLowerCase() ?? '';
 
-  if (empStatus === 'civil_servant' || empStatus === 'beamter') {
+  if (isCivilServant(empStatus)) {
     // Dienstunfähigkeit: erreichter Versorgungssatz * Grundgehalt
     if (
       person.ruhegehaltfaehiges_grundgehalt &&
@@ -157,30 +220,45 @@ export function calcBuLuecke(
       gesetzliche = person.ruhegehaltfaehiges_grundgehalt * satz;
       quelle = 'dienstunfaehigkeit';
     }
-  } else if (empStatus === 'employee' || empStatus === 'angestellt') {
+  } else {
+    // employee / self_employed / sonstige — alle können DRV-EM-Ansprüche haben
     if (pension?.disability_pension && pension.disability_pension > 0) {
       gesetzliche = pension.disability_pension;
       quelle = 'drv_em';
-    } else if (person.gross_income_monthly) {
+    } else if (isEmployee(empStatus) && person.gross_income_monthly) {
+      // 35% Brutto-Fallback NUR für Angestellte
       gesetzliche = person.gross_income_monthly * EM_FALLBACK_PERCENT;
       quelle = 'fallback';
     }
+    // self_employed ohne DRV-Daten: bleibt 0, quelle bleibt 'missing'
   }
-  // self_employed: 0
 
-  // 2) Private BU
+  // 2) Private BU — Kombiversicherungen korrekt aggregieren
   let privateBu = 0;
-  const buContracts = contracts.filter(
+
+  const vorsorgeContracts = contracts.filter(
     c =>
       isVorsorgeCategory(c) &&
       isActiveContract(c) &&
-      isBuType(c.contract_type) &&
       c.person_id === person.id,
   );
 
-  for (const c of buContracts) {
-    if (c.monthly_benefit && c.monthly_benefit > 0) {
-      privateBu += c.monthly_benefit;
+  // 2a) Alle Verträge mit explizitem bu_monthly_benefit (Kombiversicherungen)
+  for (const c of vorsorgeContracts) {
+    if (c.bu_monthly_benefit && c.bu_monthly_benefit > 0) {
+      privateBu += c.bu_monthly_benefit;
+    }
+  }
+
+  // 2b) Reine BU-Verträge OHNE bu_monthly_benefit: Fallback auf monthly_benefit
+  for (const c of vorsorgeContracts) {
+    if (
+      isBuType(c.contract_type) &&
+      (!c.bu_monthly_benefit || c.bu_monthly_benefit <= 0)
+    ) {
+      if (c.monthly_benefit && c.monthly_benefit > 0) {
+        privateBu += c.monthly_benefit;
+      }
     }
   }
 

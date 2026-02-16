@@ -286,6 +286,7 @@ export const DEMO_VORSORGE: readonly DemoVorsorgeContract[] = [
     paymentInterval: 'monatlich',
     category: 'vorsorge',
     monthlyBenefit: 3000,
+    buMonthlyBenefit: 3000,
     dynamicsPercent: 3,
   },
   {
@@ -300,6 +301,7 @@ export const DEMO_VORSORGE: readonly DemoVorsorgeContract[] = [
     paymentInterval: 'monatlich',
     category: 'vorsorge',
     monthlyBenefit: 1500,
+    buMonthlyBenefit: 1500,
     dynamicsPercent: 3,
   },
 ] as const;

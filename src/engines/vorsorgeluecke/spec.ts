@@ -6,15 +6,23 @@
 // ─── Konstanten ──────────────────────────────────────────────
 export const DEFAULT_NEED_PERCENT = 0.75;
 export const DEFAULT_ANNUITY_YEARS = 25;
+export const DEFAULT_GROWTH_RATE = 0.05;
+export const DEFAULT_FALLBACK_YEARS_TO_RETIREMENT = 15;
 export const BEAMTE_MAX_VERSORGUNGSSATZ = 0.7175;
 export const BEAMTE_SATZ_PRO_JAHR = 0.0179375;
 export const EM_FALLBACK_PERCENT = 0.35;
 
 export const ALTERSVORSORGE_TYPES = [
   'bAV',
+  'Betriebliche Altersvorsorge',
   'Riester',
   'Rürup',
+  'Ruerup',
+  'Basisrente',
   'Lebensversicherung',
+  'Rentenversicherung',
+  'Fondsgebundene',
+  'Kapitalbildende',
   'Versorgungswerk',
   'Privat',
   'Sonstige',
@@ -22,7 +30,9 @@ export const ALTERSVORSORGE_TYPES = [
 
 export const BU_TYPES = [
   'Berufsunfähigkeit',
+  'Berufsunfaehigkeit',
   'Dienstunfähigkeitsversicherung',
+  'Dienstunfaehigkeitsversicherung',
 ] as const;
 
 // ─── Eingabetypen ────────────────────────────────────────────
@@ -32,11 +42,12 @@ export interface VLPersonInput {
   first_name: string;
   last_name: string;
   is_primary: boolean;
-  employment_status: string | null;     // 'employee' | 'civil_servant' | 'self_employed'
+  employment_status: string | null;     // 'employee' | 'civil_servant' | 'self_employed' | deutsche Varianten
   net_income_monthly: number | null;
   gross_income_monthly: number | null;
   ruhegehaltfaehiges_grundgehalt: number | null;
   ruhegehaltfaehige_dienstjahre: number | null;
+  planned_retirement_date: string | null;
 }
 
 export interface VLPensionInput {
@@ -50,9 +61,12 @@ export interface VLContractInput {
   id: string;
   person_id: string | null;
   contract_type: string | null;
-  monthly_benefit: number | null;       // Monatliche Rente / BU-Rente
+  monthly_benefit: number | null;       // Garantierte monatliche Rente
+  bu_monthly_benefit: number | null;    // BU-Rente (auch bei Kombiprodukten)
   insured_sum: number | null;           // Ablaufleistung / Kapital
   current_balance: number | null;
+  premium: number | null;               // Laufende Sparleistung
+  payment_interval: string | null;
   status: string | null;
   category: string | null;
 }
