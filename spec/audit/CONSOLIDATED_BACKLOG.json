@@ -25,12 +25,12 @@
       "origin": "TODO-001 / SIA4-004",
       "severity": "P1",
       "module": "MOD-04",
-      "title": "NK-Engine: Hardcoded Personenzahlen",
-      "description": "unitPersons=2, totalPersons=units*2. Erfordert neue DB-Spalten: leases.number_of_occupants, properties.total_occupants.",
+      "title": "NK-Engine: Personenzahlen aus DB",
+      "description": "leases.number_of_occupants (default 2) und properties.total_occupants hinzugefügt. Engine liest jetzt aus DB statt hardcoded.",
       "fix_type": "db_migration + code",
       "effort": "medium",
-      "status": "deferred",
-      "reason": "DB-Migration nötig. Code-Kommentare dokumentieren Default. Kein Demo-Impact."
+      "status": "done",
+      "fixed_at": "2026-02-16"
     },
     {
       "id": "CB-002",
