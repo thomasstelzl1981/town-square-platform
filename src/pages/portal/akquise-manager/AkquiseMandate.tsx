@@ -529,13 +529,13 @@ export default function AkquiseMandate() {
                       <Badge className={cn(DESIGN.DEMO_WIDGET.BADGE, "text-[10px]")}>Demo</Badge>
                       <Badge variant="outline" className="text-[10px]">Aktiv</Badge>
                     </div>
-                    <h3 className="font-semibold text-sm">MFH-Akquise Rheinland</h3>
-                    <p className="text-xs text-muted-foreground mt-0.5">Investoren GbR Rhein</p>
+                    <h3 className="font-semibold text-sm">Mustermann Projektentwicklung GmbH</h3>
+                    <p className="text-xs text-muted-foreground mt-0.5">München / Oberbayern</p>
                   </div>
                   <div className="mt-3 space-y-1">
-                    <div className="flex justify-between text-xs"><span className="text-muted-foreground">Asset</span><span className="font-medium">MFH ab 10 WE</span></div>
-                    <div className="flex justify-between text-xs"><span className="text-muted-foreground">Region</span><span className="font-medium">Köln/Düsseldorf</span></div>
-                    <div className="flex justify-between text-xs"><span className="text-muted-foreground">Budget</span><span className="font-mono">bis 5 Mio €</span></div>
+                    <div className="flex justify-between text-xs"><span className="text-muted-foreground">Asset</span><span className="font-medium">MFH, Aufteiler</span></div>
+                    <div className="flex justify-between text-xs"><span className="text-muted-foreground">Rendite</span><span className="font-medium">ab 4,5 %</span></div>
+                    <div className="flex justify-between text-xs"><span className="text-muted-foreground">Budget</span><span className="font-mono">1–5 Mio €</span></div>
                   </div>
                 </CardContent>
               </Card>
@@ -547,7 +547,7 @@ export default function AkquiseMandate() {
               window.scrollTo({ top: document.getElementById('mandate-erfassung')?.offsetTop || 600, behavior: 'smooth' });
             }} />
           </WidgetCell>
-          {mandates && mandates.filter(m => demoEnabled || !isDemoId(m.id)).map(m => (
+          {mandates && mandates.filter(m => !(demoEnabled && isDemoId(m.id))).map(m => (
             <WidgetCell key={m.id}>
               <MandateCaseCard mandate={m} onClick={() => navigate(`/portal/akquise-manager/mandate/${m.id}`)} />
             </WidgetCell>

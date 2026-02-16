@@ -260,7 +260,7 @@ export default function AnlagenTab() {
         )}
 
         {/* Real Plants */}
-        {plants.filter(plant => demoEnabled || !isDemoId(plant.id)).map((plant) => {
+        {plants.filter(plant => !(demoEnabled && isDemoId(plant.id))).map((plant) => {
           const live = liveData.get(plant.id);
           return (
             <WidgetCell key={plant.id}>
