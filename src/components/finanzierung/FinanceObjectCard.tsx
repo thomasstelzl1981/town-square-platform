@@ -67,7 +67,9 @@ const FinanceObjectCard = forwardRef<FinanceObjectCardHandle, Props>(
       try {
         const stored = localStorage.getItem(key);
         if (stored) return { ...emptyObjectData, ...JSON.parse(stored) };
-      } catch {}
+      } catch {
+        // Failed to parse localStorage, use defaults
+      }
       return { ...emptyObjectData, ...initialData };
     });
 

@@ -87,7 +87,9 @@ const FinanceRequestCard = forwardRef<FinanceRequestCardHandle, Props>(
       try {
         const stored = localStorage.getItem(key);
         if (stored) return { ...emptyFinanceData, ...JSON.parse(stored) };
-      } catch {}
+      } catch {
+        // Failed to parse localStorage, use defaults
+      }
       return { ...emptyFinanceData, ...initialData };
     });
 

@@ -118,7 +118,11 @@ export default function CaseDocumentRoom({ requestId, publicId, employmentType }
 
   const toggleSection = (s: string) => {
     const next = new Set(expandedSections);
-    next.has(s) ? next.delete(s) : next.add(s);
+    if (next.has(s)) {
+      next.delete(s);
+    } else {
+      next.add(s);
+    }
     setExpandedSections(next);
   };
 
