@@ -1,80 +1,56 @@
 
-# Demo-Daten Korrektur und Tab-Erweiterung: Vorsorge vs. Investment
+I will expand the "Vorsorgeverträge" data model and UI to support full capturing of Life and Occupational Disability Insurance (BU) contracts, as requested. This involves adding fields for insurance end dates and benefit/sum amounts, and updating the demo data for the Mustermann family.
 
-## Phase 1: Demo-Daten Kategorie-Anpassung
+### 1. Database Schema Extension
+I will add the following columns to the `vorsorge_contracts` table:
+- `end_date` (DATE): To capture "Versicherungsende".
+- `monthly_benefit` (NUMERIC): To capture the "BU-Rente" (monthly benefit).
+- `insured_sum` (NUMERIC): To capture the "Versicherungssumme" (insured sum for life insurance).
+- `dynamics_percent` (NUMERIC): To capture the common "Dynamik" (percentage increase).
 
-### Problem
-Die zwei Fonds-Sparplaene (DWS Riester-Rente und Vanguard ETF-Sparplan) sind aktuell unter `DEMO_VORSORGE` eingeordnet. Logisch gehoeren sie als Investment-Sparplaene in die Investment-Kategorie.
+### 2. Demo Data Updates
+I will update the demo persona "Mustermann" to include the requested BU contracts:
+- **Max Mustermann (Primary)**:
+  - BU Rente: 3.000 €/Mo
+  - End Date: 2047-03-15 (age 65)
+  - Start Date: 2017-07-01
+  - Provider: 'Alte Leipziger'
+- **Lisa Mustermann (Partner)**:
+  - BU Rente: 1.500 €/Mo
+  - End Date: 2047-07-22 (age 62)
+  - Start Date: 2019-10-01
+  - Provider: 'Hallesche'
+- I will move the existing `ID_INS_BU` from the "Insurance" category to the "Vorsorge" category in the demo engine to align with the new structure.
 
-### Loesung: Neues DB-Feld `category`
+### 3. UI Enhancements (Vorsorge-Tab)
+I will modify `src/pages/portal/finanzanalyse/VorsorgeTab.tsx`:
+- **Contract Types**: Add 'Berufsunfähigkeit' and 'Lebensversicherung' to the selection list.
+- **Form Fields**:
+  - Add "Versicherungsende" (Date input).
+  - Add "Monatliche Rente (€)" (Numeric input).
+  - Add "Versicherungssumme (€)" (Numeric input).
+  - Add "Dynamik (%)" (Numeric input).
+- **Display**: Update the contract cards to show the end date and the relevant benefit/sum values.
+- **Mutation Logic**: Update the create/update functions to handle these new fields.
 
-Eine neue Spalte `category` in `vorsorge_contracts` trennt sauber:
-
-| Wert | Bedeutung | Beispiele |
-|---|---|---|
-| `vorsorge` (Default) | Renten-/Altersvorsorge | Ruerup, bAV, Versorgungswerk |
-| `investment` | Investment-Sparplaene | ETF-Sparplan, Fonds-Sparplan |
-
-**SQL Migration:**
-- `ALTER TABLE vorsorge_contracts ADD COLUMN category text NOT NULL DEFAULT 'vorsorge';`
-- `ALTER TABLE vorsorge_contracts ADD COLUMN current_balance numeric DEFAULT NULL;`
-- `ALTER TABLE vorsorge_contracts ADD COLUMN balance_date date DEFAULT NULL;`
-
-### Demo-Daten Update (`src/engines/demoData/data.ts` + `spec.ts`)
-
-Das `DemoVorsorgeContract` Interface erhaelt ein neues Feld `category`:
-- Ruerup (ID_VS_RUERUP): `category: 'vorsorge'` -- bleibt
-- bAV (ID_VS_BAV): `category: 'vorsorge'` -- bleibt
-- DWS Riester (ID_VS_RIESTER): `category: 'investment'` -- verschoben
-- Vanguard ETF (ID_VS_ETF): `category: 'investment'` -- verschoben
-
-Zusaetzlich erhaelt jeder Demo-Vertrag realistische Guthaben-Werte:
-- Ruerup: 21.000 EUR (seit 2019, 250/mtl.)
-- bAV: 14.400 EUR (seit 2020, 200/mtl.)
-- DWS Fonds-Sparplan: 15.600 EUR (seit 2018, 162/mtl.)
-- Vanguard ETF: 16.200 EUR (seit 2021, 300/mtl.)
-
-Die DB-geseedeten Eintraege werden per UPDATE-Statement korrigiert.
-
----
-
-## Phase 2: Tab-Erweiterung (Guthaben + Datum)
-
-### VorsorgeTab (`src/pages/portal/finanzanalyse/VorsorgeTab.tsx`)
-
-Aenderungen:
-1. **Filter**: Nur `category = 'vorsorge'` anzeigen (oder `category IS NULL`)
-2. **Neue Felder** im Formular:
-   - "Aktuelles Guthaben (EUR)" -- numerisch
-   - "Stand per" -- Datumsfeld
-3. **Widget-Karte**: Guthaben + Datum in der Zusammenfassung anzeigen
-4. **Mutations**: `current_balance` und `balance_date` in create/update aufnehmen
-
-### InvestmentTab (`src/pages/portal/finanzanalyse/InvestmentTab.tsx`)
-
-Aenderungen:
-1. **Neue Sektion** unterhalb der Depot-Verwaltung: "Investment-Sparplaene"
-2. **Query**: `vorsorge_contracts` mit `category = 'investment'` laden
-3. **WidgetGrid** mit denselben CI-Kacheln wie VorsorgeTab
-4. **Formular-Felder** identisch: Anbieter, Vertragsnummer, Beitrag, Intervall, Person, Guthaben, Stand-Datum
-5. **CRUD-Operationen**: Anlegen/Bearbeiten/Loeschen von Investment-Sparplaenen
-
-### Finanzuebersicht-Engine (`src/engines/finanzuebersicht/engine.ts`)
-
-Die bestehende `isInvestmentContract()`-Funktion wird durch das neue `category`-Feld ersetzt:
-- Vorher: Heuristik basierend auf contract_type String-Matching
-- Nachher: Direkte Abfrage `category === 'investment'`
+### 4. Hook Updates
+I will update `src/hooks/useFinanzmanagerData.ts` to ensure the central `useVorsorgeContractMutations` hook supports these new fields for consistency across the app.
 
 ---
 
-## Betroffene Dateien
+### Technical Details
 
-| Datei | Aenderung |
-|---|---|
-| SQL Migration | 3 neue Spalten: `category`, `current_balance`, `balance_date` |
-| `src/engines/demoData/spec.ts` | `DemoVorsorgeContract` um `category`, `currentBalance`, `balanceDate` erweitern |
-| `src/engines/demoData/data.ts` | Kategorien und Guthaben-Werte fuer alle 4 Demo-Vertraege setzen |
-| `src/pages/portal/finanzanalyse/VorsorgeTab.tsx` | Filter + 2 neue Formularfelder + Widget-Anzeige |
-| `src/pages/portal/finanzanalyse/InvestmentTab.tsx` | Neue Sektion "Investment-Sparplaene" mit CRUD |
-| `src/engines/finanzuebersicht/engine.ts` | `isInvestmentContract()` auf `category`-Feld umstellen |
-| `src/hooks/useFinanzmanagerData.ts` | create/update Mutations um neue Felder erweitern |
+#### SQL Migration
+```sql
+ALTER TABLE public.vorsorge_contracts 
+ADD COLUMN end_date DATE,
+ADD COLUMN monthly_benefit NUMERIC,
+ADD COLUMN insured_sum NUMERIC,
+ADD COLUMN dynamics_percent NUMERIC;
+```
+
+#### Demo Data Mapping
+I'll update `src/engines/demoData/spec.ts` to include these fields in the `DemoVorsorgeContract` interface and then update `src/engines/demoData/data.ts` with the new contracts.
+
+#### UI Logic
+In `VorsorgeTab.tsx`, I will implement conditional visibility or labeling where it makes sense (e.g., show "BU-Rente" if type is BU, "Versicherungssumme" if type is Life Insurance).
