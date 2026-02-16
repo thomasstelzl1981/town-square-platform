@@ -263,6 +263,10 @@ const adminComponentMap: Record<string, React.ComponentType> = {
   LeadDeskDashboard: LeadDeskComponent,
   ProjektDeskDashboard: ProjektDeskComponent,
   PetmanagerDashboard: React.lazy(() => import('@/pages/admin/desks/PetmanagerDesk')),
+  PetmanagerProvider: React.lazy(() => import('@/pages/admin/petmanager/PetmanagerProvider')),
+  PetmanagerFinanzen: React.lazy(() => import('@/pages/admin/petmanager/PetmanagerFinanzen')),
+  PetmanagerServices: React.lazy(() => import('@/pages/admin/petmanager/PetmanagerServices')),
+  PetmanagerMonitor: React.lazy(() => import('@/pages/admin/petmanager/PetmanagerMonitor')),
   FinanceDeskDashboard: FinanceDesk,
   // WebHosting sub-routes removed (all pointed to same component)
 };

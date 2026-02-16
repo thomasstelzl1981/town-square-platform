@@ -87,6 +87,10 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   'LeadDeskDashboard': Target,
   'ProjektDeskDashboard': Building2,
   'PetmanagerDashboard': PawPrint,
+  'PetmanagerProvider': Users2,
+  'PetmanagerFinanzen': CreditCard,
+  'PetmanagerServices': ClipboardCheck,
+  'PetmanagerMonitor': Eye,
 };
 
 // Group configuration for grouping routes
@@ -146,7 +150,7 @@ function getGroupKey(path: string, component: string): string {
   // Operative Desks (Desks + LeadPool + Provisionen + Landing Pages)
   if (path.startsWith('sales-desk') || path.startsWith('finance-desk') || 
       path.startsWith('acquiary') || path === 'lead-desk' || path === 'projekt-desk' ||
-      path === 'petmanager' || path === 'website-hosting') {
+      path === 'petmanager' || path.startsWith('petmanager/') || path === 'website-hosting') {
     return 'desks';
   }
   // System (bereinigt - nur Read-only Monitoring + Fortbildung)
@@ -189,7 +193,8 @@ function shouldShowInNav(path: string): boolean {
     path.startsWith('sales-desk/') ||
     path.startsWith('finance-desk/') ||
     path.startsWith('acquiary/') ||
-    path.startsWith('projekt-desk/')
+    path.startsWith('projekt-desk/') ||
+    path.startsWith('petmanager/')
   )) {
     return false;
   }
