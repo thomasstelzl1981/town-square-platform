@@ -28,7 +28,7 @@ import { isDemoId } from '@/engines/demoData/engine';
 import { useDemoToggles } from '@/hooks/useDemoToggles';
 import { cn } from '@/lib/utils';
 
-const CONTRACT_TYPES = ['bAV', 'Riester', 'Rürup', 'Versorgungswerk', 'Privat', 'Sonstige'] as const;
+const CONTRACT_TYPES = ['bAV', 'Riester', 'Rürup', 'Versorgungswerk', 'Berufsunfähigkeit', 'Lebensversicherung', 'Privat', 'Sonstige'] as const;
 
 const INTERVALS = [
   { value: 'monatlich', label: 'Monatlich' },
@@ -53,8 +53,8 @@ export default function VorsorgeTab() {
   const [showNew, setShowNew] = useState(false);
   const [newForm, setNewForm] = useState<Record<string, any>>({
     provider: '', contract_no: '', contract_type: '', person_id: '',
-    start_date: '', premium: 0, payment_interval: 'monatlich', status: 'Aktiv', notes: '',
-    current_balance: '', balance_date: '',
+    start_date: '', end_date: '', premium: 0, payment_interval: 'monatlich', status: 'Aktiv', notes: '',
+    current_balance: '', balance_date: '', monthly_benefit: '', insured_sum: '', dynamics_percent: '',
   });
 
   const { data: rawContracts = [], isLoading } = useQuery({
@@ -88,6 +88,10 @@ export default function VorsorgeTab() {
         category: 'vorsorge',
         current_balance: form.current_balance ? Number(form.current_balance) : null,
         balance_date: form.balance_date || null,
+        end_date: form.end_date || null,
+        monthly_benefit: form.monthly_benefit ? Number(form.monthly_benefit) : null,
+        insured_sum: form.insured_sum ? Number(form.insured_sum) : null,
+        dynamics_percent: form.dynamics_percent ? Number(form.dynamics_percent) : null,
       });
       if (error) throw error;
     },
@@ -95,7 +99,7 @@ export default function VorsorgeTab() {
       queryClient.invalidateQueries({ queryKey: ['fin-vorsorge'] });
       toast.success('Vorsorgevertrag angelegt');
       setShowNew(false);
-      setNewForm({ provider: '', contract_no: '', contract_type: '', person_id: '', start_date: '', premium: 0, payment_interval: 'monatlich', status: 'Aktiv', notes: '', current_balance: '', balance_date: '' });
+      setNewForm({ provider: '', contract_no: '', contract_type: '', person_id: '', start_date: '', end_date: '', premium: 0, payment_interval: 'monatlich', status: 'Aktiv', notes: '', current_balance: '', balance_date: '', monthly_benefit: '', insured_sum: '', dynamics_percent: '' });
     },
   });
 
@@ -110,6 +114,10 @@ export default function VorsorgeTab() {
         status: rest.status || null, notes: rest.notes || null,
         current_balance: rest.current_balance ? Number(rest.current_balance) : null,
         balance_date: rest.balance_date || null,
+        end_date: rest.end_date || null,
+        monthly_benefit: rest.monthly_benefit ? Number(rest.monthly_benefit) : null,
+        insured_sum: rest.insured_sum ? Number(rest.insured_sum) : null,
+        dynamics_percent: rest.dynamics_percent ? Number(rest.dynamics_percent) : null,
       }).eq('id', id);
       if (error) throw error;
     },
@@ -176,7 +184,8 @@ export default function VorsorgeTab() {
             </SelectContent>
           </Select>
         </div>
-        <FormInput label="Beginn" name="start_date" type="date" value={f.start_date || ''} onChange={e => onUpdate('start_date', e.target.value)} />
+        <FormInput label="Versicherungsbeginn" name="start_date" type="date" value={f.start_date || ''} onChange={e => onUpdate('start_date', e.target.value)} />
+        <FormInput label="Versicherungsende" name="end_date" type="date" value={f.end_date || ''} onChange={e => onUpdate('end_date', e.target.value)} />
         <FormInput label="Beitrag (€)" name="premium" type="number" value={f.premium || ''} onChange={e => onUpdate('premium', e.target.value)} />
         <div>
           <Label className="text-xs">Intervall</Label>
@@ -189,8 +198,11 @@ export default function VorsorgeTab() {
         </div>
         <FormInput label="Status" name="status" value={f.status || ''} onChange={e => onUpdate('status', e.target.value)} />
       </div>
-      <p className={cn(RECORD_CARD.SECTION_TITLE, 'mt-4')}>Guthaben</p>
+      <p className={cn(RECORD_CARD.SECTION_TITLE, 'mt-4')}>Leistungen & Guthaben</p>
       <div className={RECORD_CARD.FIELD_GRID}>
+        <FormInput label="Monatliche Rente / BU-Rente (€)" name="monthly_benefit" type="number" value={f.monthly_benefit || ''} onChange={e => onUpdate('monthly_benefit', e.target.value)} />
+        <FormInput label="Versicherungssumme (€)" name="insured_sum" type="number" value={f.insured_sum || ''} onChange={e => onUpdate('insured_sum', e.target.value)} />
+        <FormInput label="Dynamik (%)" name="dynamics_percent" type="number" value={f.dynamics_percent || ''} onChange={e => onUpdate('dynamics_percent', e.target.value)} />
         <FormInput label="Aktuelles Guthaben (€)" name="current_balance" type="number" value={f.current_balance || ''} onChange={e => onUpdate('current_balance', e.target.value)} />
         <FormInput label="Stand per" name="balance_date" type="date" value={f.balance_date || ''} onChange={e => onUpdate('balance_date', e.target.value)} />
       </div>
@@ -261,6 +273,24 @@ export default function VorsorgeTab() {
                     <span className="text-muted-foreground">Beitrag</span>
                     <span className="font-semibold">{fmt(c.premium || 0)} / {intervalLabel(c.payment_interval || '')}</span>
                   </div>
+                  {c.monthly_benefit != null && (
+                    <div className="flex justify-between text-xs">
+                      <span className="text-muted-foreground">BU-Rente</span>
+                      <span className="font-semibold">{fmt(c.monthly_benefit)} / mtl.</span>
+                    </div>
+                  )}
+                  {c.insured_sum != null && (
+                    <div className="flex justify-between text-xs">
+                      <span className="text-muted-foreground">Vers.-Summe</span>
+                      <span className="font-semibold">{fmt(c.insured_sum)}</span>
+                    </div>
+                  )}
+                  {c.end_date && (
+                    <div className="flex justify-between text-xs">
+                      <span className="text-muted-foreground">Laufzeit bis</span>
+                      <span>{new Date(c.end_date).toLocaleDateString('de-DE')}</span>
+                    </div>
+                  )}
                   {c.current_balance != null && (
                     <div className="flex justify-between text-xs">
                       <span className="text-muted-foreground">Guthaben</span>

@@ -113,6 +113,7 @@ export function useVorsorgeContractMutations() {
         contract_no: values.contract_no || null,
         contract_type: values.contract_type || null,
         start_date: values.start_date || null,
+        end_date: values.end_date || null,
         premium: values.premium ? Number(values.premium) : null,
         payment_interval: values.payment_interval as any || 'monatlich',
         status: values.status || 'aktiv',
@@ -120,6 +121,9 @@ export function useVorsorgeContractMutations() {
         category: values.category || 'vorsorge',
         current_balance: values.current_balance ? Number(values.current_balance) : null,
         balance_date: values.balance_date || null,
+        monthly_benefit: values.monthly_benefit ? Number(values.monthly_benefit) : null,
+        insured_sum: values.insured_sum ? Number(values.insured_sum) : null,
+        dynamics_percent: values.dynamics_percent ? Number(values.dynamics_percent) : null,
       };
       const { error } = await supabase.from('vorsorge_contracts').insert(row);
       if (error) throw error;
