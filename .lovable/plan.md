@@ -1,110 +1,164 @@
 
-# E-Mail-Client Stabilitaets-Optimierung
 
-## Problem-Zusammenfassung
+# Redesign Widget-Kacheln MOD-18 Finanzanalyse
 
-Der E-Mail-Client hat 3 strukturelle Schwaechen:
+## Ziel
 
-1. **IMAP Body-Fetch Unreliabilitaet**: 4-Tier-Strategie schlaegt bei vielen Mails fehl, weil die `deno-imap` Library nicht alle MIME-Strukturen korrekt parst
-2. **Keine automatische Wiederholung**: Kein Retry-Mechanismus bei fehlgeschlagenem Body-Fetch
-3. **Unnoetige Full-Refetches**: Nach Body-Laden wird die gesamte Liste neu geladen statt nur die einzelne Nachricht
-
-## Loesungsansatz: 3-Schichten-Strategie (kostenlos)
-
-Keine externen Vertraege noetig. Alle Verbesserungen nutzen bestehende Infrastruktur.
+Alle Kacheln in MOD-18 werden auf das standardisierte Widget-Kachel-System (`WidgetGrid` + `WidgetCell`, 4-Spalten, quadratisch) umgestellt — identisch mit dem PV-Anlagen-Tab (Screenshot-Referenz). Personenkarten wechseln vom quadratischen `RecordCard`-Format auf das horizontale `ManagerVisitenkarte`-Design.
 
 ---
 
-### Schicht 1: Robusterer IMAP-Sync (Edge Function)
-
-**Datei: `supabase/functions/sot-mail-sync/index.ts`**
-
-- **Charset-Awareness**: Die `parseMimeMessage`-Funktion ignoriert aktuell den `charset`-Parameter im Content-Type. Emails mit `charset=iso-8859-1` oder `windows-1252` werden falsch dekodiert. Fix: Charset aus Content-Type extrahieren und an `TextDecoder` weitergeben.
-- **Content-Transfer-Encoding im Batch-Fetch**: Der Tier-0-Check (`BODY[1]`) prueft nicht auf Transfer-Encoding. Wenn der Body base64- oder QP-kodiert ist, wird er roh gespeichert. Fix: Transfer-Encoding aus `bodyStructure` lesen und anwenden.
-- **Timeout-Protection**: IMAP-Verbindungen haben kein Timeout. Wenn der Server haengt, blockiert die Edge Function bis zum 60s-Limit. Fix: `AbortController` mit 25s-Timeout.
-
-**Datei: `supabase/functions/sot-mail-fetch-body/index.ts`**
-
-- Gleiche Charset- und Encoding-Fixes wie oben
-- **Retry mit Backoff**: Bei Fehlschlag automatisch 1x mit 2s Pause wiederholen, bevor `success: false` zurueckgegeben wird
-
----
-
-### Schicht 2: Intelligenteres Frontend-Caching (React Query)
-
-**Datei: `src/pages/portal/office/EmailTab.tsx`**
-
-Aktuelles Problem: Nach dem Body-Fetch wird `refetchMessages()` aufgerufen, was die gesamte Liste neu laedt und die UI flackern laesst.
-
-**Loesung: Optimistic Cache Update**
-
-Statt `refetchMessages()` nach Body-Fetch: Den Body direkt in den React Query Cache der Nachrichtenliste schreiben mit `queryClient.setQueryData`. Das aktualisiert nur die eine Nachricht ohne Netzwerk-Request.
+## Ist-Zustand vs. Soll-Zustand
 
 ```text
-VORHER:
-  Body fetched -> refetchMessages() -> gesamte Liste neu laden -> UI flackert
-
-NACHHER:
-  Body fetched -> queryClient.setQueryData(['email-messages', ...], updater) -> nur 1 Nachricht aktualisiert -> kein Flackern
-```
-
-Zusaetzlich: **Auto-Retry mit Exponential Backoff**
-- Wenn der Body-Fetch fehlschlaegt: nach 2s automatisch nochmal versuchen
-- Maximal 2 Retries, dann "Erneut versuchen"-Button zeigen
-- Verhindert, dass der Nutzer manuell klicken muss
-
----
-
-### Schicht 3: Hintergrund-Sync mit Polling-Fallback
-
-**Datei: `src/pages/portal/office/EmailTab.tsx`**
-
-Ein `useEffect`-Hook der im Hintergrund alle 60 Sekunden prueft, ob neue Nachrichten vorhanden sind (Smart Polling). Das stellt sicher, dass auch ohne manuelles "Synchronisieren" neue Mails angezeigt werden.
-
-```text
-useEffect:
-  - Alle 60s: supabase.from('mail_messages').select('id').eq('account_id', ...).order('received_at', desc).limit(1)
-  - Wenn neueste Message-ID != letzte bekannte ID: queryClient.invalidateQueries(['email-messages', ...])
-  - Kein voller Sync, nur ein leichtgewichtiger Check
+KOMPONENTE              IST (RecordCard)              SOLL (Widget CE)
++---------------------+---------------------------+--------------------------+
+| Grid-Layout         | RECORD_CARD.GRID          | WidgetGrid (4-col)       |
+|                     | 2 Spalten, gap-6          | 4 Spalten, aspect-square |
++---------------------+---------------------------+--------------------------+
+| Entity-Kacheln      | RecordCard (closed)       | WidgetCell + Card        |
+| (Konten, Vers.,     | aspect-square, 2-col      | aspect-square, 4-col     |
+|  Vorsorge, Abos)    |                           | wie PV-Anlagen           |
++---------------------+---------------------------+--------------------------+
+| Personen-Kacheln    | RecordCard (closed)       | ManagerVisitenkarte      |
+| (Uebersicht,        | Quadratisch, Avatar       | Horizontal, Business-    |
+|  Investment, PV)    |                           | Card mit Gradient        |
++---------------------+---------------------------+--------------------------+
+| CTA "Hinzufuegen"   | RECORD_CARD.CLOSED        | WidgetCell + dashed Card |
+|                     | 2-col Grid                | 4-col Grid, zentriert    |
++---------------------+---------------------------+--------------------------+
+| Open State          | RECORD_CARD.OPEN          | Inline unterhalb Grid    |
+|                     | col-span-2                | Volle Breite (wie PV)    |
++---------------------+---------------------------+--------------------------+
 ```
 
 ---
 
-## Technische Umsetzung — Dateien
+## Betroffene Dateien (7 Tabs)
 
-### 1. `supabase/functions/sot-mail-sync/index.ts`
-- Charset-Erkennung in `parseMimeMessage()` hinzufuegen
-- Transfer-Encoding aus `bodyStructure` im Tier-0-Check auslesen
-- 25s Timeout per `AbortController` fuer IMAP-Verbindung
-- Connection-Cleanup im `finally`-Block absichern
+### 1. UebersichtTab.tsx (Personen + Konten)
 
-### 2. `supabase/functions/sot-mail-fetch-body/index.ts`
-- Gleiche Charset-Fixes
-- 1x automatischer Retry bei Fehlschlag (2s Pause)
-- Timeout-Protection (20s)
+**Block A — Personen im Haushalt:**
+- `RECORD_CARD.GRID` ersetzen durch horizontale Liste
+- Jede Person wird als `ManagerVisitenkarte`-aehnliche Card dargestellt (nicht quadratisch)
+- Gradient-Farbe: Primary Blue fuer Hauptperson, Neutral fuer andere
+- Zeigt: Name, Rolle, Geburtsdatum, E-Mail, Telefon als kompakte Visitenkarte
+- Klick oeffnet weiterhin den Inline-Bearbeitungsmodus (unterhalb, volle Breite)
 
-### 3. `src/pages/portal/office/EmailTab.tsx`
-- `refetchMessages()` nach Body-Fetch ersetzen durch `queryClient.setQueryData()` Optimistic Update
-- Auto-Retry-Logik im `EmailDetailPanel` (max 2 Retries mit 2s/4s Backoff)
-- Hintergrund-Polling alle 60s fuer neue Nachrichten (leichtgewichtiger DB-Check)
-- `fetchTriggered`-State verbessern: Reset bei Email-Wechsel UND bei Retry
+**Block B — Konten:**
+- `WidgetGrid` bereits vorhanden — keine Aenderung am Grid noetig
+- Kacheln bereits im WidgetCell-Format — nur kleinere Angleichung an PV-Stil (Badges oben, KPIs unten)
 
-### 4. `supabase/functions/sot-mail-send/index.ts`
-- Keine strukturellen Aenderungen noetig — SMTP-Versand via Nodemailer funktioniert
-- Kleine Verbesserung: Nach erfolgreichem Senden den React Query Cache direkt aktualisieren statt `refetchMessages()`
+### 2. InvestmentTab.tsx (Personen-Auswahl)
+
+- `RECORD_CARD.GRID` mit `RecordCard` ersetzen durch horizontale Visitenkarten-Leiste
+- Jede Person als kompakte Visitenkarte im `ManagerVisitenkarte`-Stil
+- Aktive Person bekommt `ring-2 ring-primary` Highlight
+- Depot-Status ("Aktiv" / "Kein Depot") als Badge in der Visitenkarte
+
+### 3. SachversicherungenTab.tsx (Versicherungen)
+
+- `RECORD_CARD.GRID` ersetzen durch `WidgetGrid`
+- Jede Versicherung als `WidgetCell` + `Card` im PV-Anlagen-Stil:
+  - Oben: Badges (Kategorie, Status)
+  - Mitte: Titel (Versicherer — Kategorie), Policen-Nr.
+  - Unten: KPI-Zeilen (Beitrag, Beginn)
+- CTA "Versicherung hinzufuegen" als `WidgetCell` mit dashed Border
+- Open State: Inline unterhalb des Grids (volle Breite, nicht col-span-2)
+
+### 4. VorsorgeTab.tsx (Vorsorgevertraege)
+
+- Gleiche Umstellung wie SachversicherungenTab:
+  - `RECORD_CARD.GRID` wird zu `WidgetGrid`
+  - Jeder Vertrag als `WidgetCell` + `Card`
+  - KPI-Zeilen: Beitrag, Person, Vertragsart
+  - CTA + Open State analog
+
+### 5. KrankenversicherungTab.tsx (KV)
+
+- `RECORD_CARD.GRID` ersetzen durch `WidgetGrid`
+- Jede KV-Karte als `WidgetCell` + `Card`
+- Oben: Badges (DEMO, PKV/GKV)
+- Mitte: Personenname, Versicherer
+- Unten: Monatsbeitrag
+- Open State: Inline unterhalb
+
+### 6. AbonnementsTab.tsx (Abos)
+
+- `RECORD_CARD.GRID` ersetzen durch `WidgetGrid`
+- Jedes Abo als `WidgetCell` + `Card`
+- Oben: Status-Badge
+- Mitte: Abo-Name, Kategorie
+- Unten: Betrag / Frequenz
+- CTA + Open State analog
+
+### 7. VorsorgedokumenteTab.tsx (Vorsorge und Testament)
+
+- Personen-RecordCards (Sektion 1) werden zu horizontalen Visitenkarten
+- Testament-Vorlagen nutzen bereits `WidgetGrid` + `WidgetCell` — keine Aenderung noetig
 
 ---
 
-## Kosten
+## Visitenkarten-Design fuer Personen
 
-- **0 EUR** — Alle Aenderungen nutzen bestehende Infrastruktur
-- IMAP/SMTP laeuft ueber die Mail-Server des Nutzers (keine Drittanbieter-Kosten)
-- Edge Functions sind im Lovable Cloud Kontingent enthalten
-- Kein externer E-Mail-API-Vertrag noetig
+Abgeleitet von `ManagerVisitenkarte`, aber angepasst fuer Haushaltsmitglieder:
 
-## Erwartetes Ergebnis
+```text
++----------------------------------------------------------+
+| [==== Gradient-Leiste (2px) ============================] |
+| [Avatar]  Max Mustermann                    [Bearbeiten] |
+|           HAUPTPERSON                                     |
+|           max@email.de                                    |
+|           +49 123 456 789                                 |
+|           Musterstr. 1, 80333 Muenchen                    |
+|           [Hauptperson] [Depot aktiv]                     |
++----------------------------------------------------------+
+```
 
-- **Body-Anzeige**: ~90% der Mails sollten direkt beim Sync den Body haben (vs. aktuell ~60-70%)
-- **Fallback**: Die restlichen ~10% werden zuverlaessig per On-Demand-Fetch mit Auto-Retry geladen
-- **Kein Flackern**: Optimistic Cache Updates statt Full-Refetch
-- **Automatische Updates**: Neue Mails erscheinen innerhalb von 60s ohne manuelles Sync
+- Gradient: Primary Blue fuer Hauptperson, Slate fuer Partner, Amber fuer Kinder
+- Nicht quadratisch, sondern horizontal (volle Grid-Breite oder 1/2)
+- Responsive: Auf Mobile wird die Karte einzeilig gestapelt
+
+---
+
+## Technische Details
+
+### Imports-Aenderungen in allen 7 Dateien:
+- Entfernen: `RecordCard`, `RECORD_CARD` (wo Entity-Widgets betroffen)
+- Hinzufuegen: `WidgetGrid`, `WidgetCell`, `Card`, `CardContent`
+- Fuer Personen: Neues `PersonVisitenkarte`-Pattern (inline oder als shared Component)
+
+### Neues Shared Component (optional):
+- `PersonVisitenkarte` — Spezialisierung der ManagerVisitenkarte fuer Haushaltsmitglieder
+- Props: person, isSelected, onClick, badges, gradient
+- Wiederverwendbar in UebersichtTab, InvestmentTab, VorsorgedokumenteTab
+
+### Open-State-Pattern:
+- Statt `RECORD_CARD.OPEN` mit `col-span-2` im Grid:
+- Inline-Sektion UNTERHALB des `WidgetGrid` (wie PV-Anlagen: `viewMode === 'detail'`)
+- Mit "Schliessen"-Button oben rechts
+- Alle Formularfelder bleiben identisch — nur das Layout-Wrapping aendert sich
+
+### Kachel-Inhalt (PV-Stil):
+```text
++---------------------------+
+| [Badge: Kategorie] [Aktiv]|
+|                           |
+| Versicherer — Haftpflicht |
+| Policen-Nr. 12345         |
+|                           |
+| Beitrag      45,00 EUR/Mo |
+| Beginn       01.01.2024   |
++---------------------------+
+```
+
+---
+
+## Nicht betroffen
+
+- `WidgetGrid` und `WidgetCell` Shared Components bleiben unveraendert
+- `RecordCard` Komponente selbst bleibt bestehen (wird weiterhin in anderen Modulen genutzt)
+- `designManifest.ts` bleibt unveraendert
+- Daten-Layer (Queries, Mutations, Supabase) bleiben komplett unveraendert
+- Demo-Daten-Engine bleibt unveraendert
+
