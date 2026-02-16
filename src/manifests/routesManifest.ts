@@ -540,6 +540,24 @@ export const zone2Portal: ZoneDefinition = {
       ],
     },
     // MOD-21 entfernt — Website Builder ist jetzt MOD-05
+    // =========================================================================
+    // MOD-22: PET MANAGER — Franchise-Partner Portal
+    // =========================================================================
+    "MOD-22": {
+      name: "Pet Manager",
+      base: "petmanager",
+      icon: "PawPrint",
+      display_order: 22,
+      visibility: { default: false, org_types: ["client"], requires_activation: true },
+      tiles: [
+        { path: "buchungen", component: "PMBuchungen", title: "Kalender & Buchungen", default: true },
+        { path: "leistungen", component: "PMLeistungen", title: "Leistungen & Verfügbarkeit" },
+        { path: "zahlungen", component: "PMZahlungen", title: "Zahlungen & Rechnungen" },
+        { path: "kunden", component: "PMKunden", title: "Kunden & Tiere" },
+        { path: "uebersicht", component: "PMUebersicht", title: "Übersicht" },
+      ],
+      dynamic_routes: [],
+    },
   },
 };
 

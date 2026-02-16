@@ -11415,6 +11415,107 @@ export type Database = {
           },
         ]
       }
+      pet_invoice_items: {
+        Row: {
+          created_at: string
+          description: string
+          id: string
+          invoice_id: string
+          quantity: number
+          sort_order: number
+          total_cents: number
+          unit_price_cents: number
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          id?: string
+          invoice_id: string
+          quantity?: number
+          sort_order?: number
+          total_cents?: number
+          unit_price_cents?: number
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          id?: string
+          invoice_id?: string
+          quantity?: number
+          sort_order?: number
+          total_cents?: number
+          unit_price_cents?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pet_invoice_items_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "pet_invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pet_invoices: {
+        Row: {
+          amount_cents: number
+          booking_id: string | null
+          created_at: string
+          customer_id: string | null
+          due_date: string | null
+          id: string
+          invoice_number: string | null
+          net_cents: number
+          notes: string | null
+          paid_at: string | null
+          payment_method: string | null
+          pdf_url: string | null
+          provider_id: string | null
+          status: string
+          tax_cents: number
+          tax_rate: number
+          updated_at: string
+        }
+        Insert: {
+          amount_cents?: number
+          booking_id?: string | null
+          created_at?: string
+          customer_id?: string | null
+          due_date?: string | null
+          id?: string
+          invoice_number?: string | null
+          net_cents?: number
+          notes?: string | null
+          paid_at?: string | null
+          payment_method?: string | null
+          pdf_url?: string | null
+          provider_id?: string | null
+          status?: string
+          tax_cents?: number
+          tax_rate?: number
+          updated_at?: string
+        }
+        Update: {
+          amount_cents?: number
+          booking_id?: string | null
+          created_at?: string
+          customer_id?: string | null
+          due_date?: string | null
+          id?: string
+          invoice_number?: string | null
+          net_cents?: number
+          notes?: string | null
+          paid_at?: string | null
+          payment_method?: string | null
+          pdf_url?: string | null
+          provider_id?: string | null
+          status?: string
+          tax_cents?: number
+          tax_rate?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       plans: {
         Row: {
           created_at: string
