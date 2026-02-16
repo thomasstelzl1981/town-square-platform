@@ -27,3 +27,7 @@ export * from './nkAbrechnung';
 
 // Engine 7: Demo-Daten
 export * from './demoData';
+
+// Engine 8: Finanzübersicht
+export * from './finanzuebersicht/engine';
+export * from './finanzuebersicht/spec';
