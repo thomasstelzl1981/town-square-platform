@@ -20,6 +20,7 @@ import { formatCurrency } from '@/lib/formatters';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { DESIGN } from '@/config/designManifest';
+import { useUserMailAccount } from '@/hooks/useUserMailAccount';
 
 interface TenderDraftPanelProps {
   serviceCase: ServiceCase;
@@ -44,6 +45,7 @@ export function TenderDraftPanel({
   const [editableSubject, setEditableSubject] = useState('');
   const [editableBody, setEditableBody] = useState('');
   const [hasEdited, setHasEdited] = useState(false);
+  const { hasAccount, accountEmail } = useUserMailAccount();
 
   const getSubject = () => {
     const categoryLabels: Record<string, string> = {
@@ -181,7 +183,17 @@ Mit freundlichen Grüßen
         </div>
       </div>
 
-      <p className={DESIGN.TYPOGRAPHY.HINT}>An {providersWithEmail.length} Dienstleister</p>
+      <div className="flex items-center justify-between">
+        <p className={DESIGN.TYPOGRAPHY.HINT}>An {providersWithEmail.length} Dienstleister</p>
+        {hasAccount ? (
+          <p className="text-xs text-muted-foreground flex items-center gap-1">
+            <Mail className="h-3 w-3" />
+            via <span className="font-medium text-foreground">{accountEmail}</span>
+          </p>
+        ) : (
+          <p className="text-xs text-muted-foreground">via System-Adresse</p>
+        )}
+      </div>
 
       {isPreviewMode ? (
         <div className="space-y-3">
