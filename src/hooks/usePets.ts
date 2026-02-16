@@ -119,7 +119,16 @@ export function useCreatePet() {
         .select()
         .single();
       if (error) throw error;
-      return pet as Pet;
+
+      // Create DMS folder structure for the pet
+      const petRecord = pet as Pet;
+      try {
+        await createPetDMSFolders(activeTenantId, petRecord.id, petRecord.name);
+      } catch (dmsErr) {
+        console.warn('DMS folder creation failed (non-blocking):', dmsErr);
+      }
+
+      return petRecord;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pets'] });
@@ -127,6 +136,50 @@ export function useCreatePet() {
     },
     onError: () => toast.error('Fehler beim Anlegen'),
   });
+}
+
+const PET_DMS_SUBFOLDERS = ['01_Impfpass', '02_Tierarzt', '03_Versicherung', '04_Fotos', '05_Sonstiges'];
+
+async function createPetDMSFolders(tenantId: string, petId: string, petName: string) {
+  // Find or create module root
+  const { data: rootFolder } = await supabase
+    .from('storage_nodes')
+    .select('id')
+    .eq('tenant_id', tenantId)
+    .eq('module_code', 'MOD_05')
+    .is('parent_id', null)
+    .eq('node_type', 'folder')
+    .maybeSingle();
+
+  let rootId = rootFolder?.id;
+  if (!rootId) {
+    const { data: newRoot } = await supabase
+      .from('storage_nodes')
+      .insert({ tenant_id: tenantId, name: 'Haustiere', node_type: 'folder', module_code: 'MOD_05', auto_created: true } as any)
+      .select('id')
+      .single();
+    rootId = newRoot?.id;
+  }
+
+  // Create pet folder
+  const { data: petFolder } = await supabase
+    .from('storage_nodes')
+    .insert({
+      tenant_id: tenantId, name: petName, node_type: 'folder', module_code: 'MOD_05',
+      entity_type: 'pet', entity_id: petId, parent_id: rootId, auto_created: true,
+    } as any)
+    .select('id')
+    .single();
+
+  if (!petFolder?.id) return;
+
+  // Create sub-folders
+  await supabase.from('storage_nodes').insert(
+    PET_DMS_SUBFOLDERS.map(name => ({
+      tenant_id: tenantId, name, node_type: 'folder', module_code: 'MOD_05',
+      entity_type: 'pet', entity_id: petId, parent_id: petFolder.id, auto_created: true,
+    })) as any
+  );
 }
 
 export function useUpdatePet() {
