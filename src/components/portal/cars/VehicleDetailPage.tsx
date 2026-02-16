@@ -21,7 +21,6 @@ import {
   ArrowLeft, 
   Car, 
   FileText, 
-  ShieldCheck, 
   AlertTriangle,
   BookOpen,
   FolderOpen,
@@ -30,11 +29,9 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
-import { InsuranceCreateDialog } from './InsuranceCreateDialog';
 import { ClaimCreateDialog } from './ClaimCreateDialog';
 
 type VehicleStatus = 'active' | 'inactive' | 'sold' | 'returned';
-type CoverageType = 'liability_only' | 'liability_tk' | 'liability_vk';
 type ClaimStatus = 'draft' | 'open' | 'awaiting_docs' | 'submitted' | 'in_review' | 'approved' | 'rejected' | 'closed';
 type DamageType = 'accident' | 'theft' | 'glass' | 'vandalism' | 'storm' | 'animal' | 'fire' | 'other';
 type FuelType = 'petrol' | 'diesel' | 'electric' | 'hybrid_petrol' | 'hybrid_diesel' | 'lpg' | 'cng' | 'hydrogen';
@@ -53,11 +50,6 @@ const statusVariants: Record<VehicleStatus, 'default' | 'secondary' | 'destructi
   returned: 'outline',
 };
 
-const coverageLabels: Record<CoverageType, string> = {
-  liability_only: 'KH',
-  liability_tk: 'KH + TK',
-  liability_vk: 'VK',
-};
 
 const claimStatusLabels: Record<ClaimStatus, string> = {
   draft: 'Entwurf',
@@ -118,7 +110,6 @@ export default function VehicleDetailPage() {
   const { activeTenantId } = useAuth();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState('akte');
-  const [insuranceDialogOpen, setInsuranceDialogOpen] = useState(false);
   const [claimDialogOpen, setClaimDialogOpen] = useState(false);
 
   // Fetch vehicle
@@ -154,21 +145,7 @@ export default function VehicleDetailPage() {
     enabled: !!id,
   });
 
-  // Fetch insurances
-  const { data: insurances } = useQuery({
-    queryKey: ['cars_insurances', id],
-    queryFn: async () => {
-      if (!id) return [];
-      const { data, error } = await supabase
-        .from('cars_insurances')
-        .select('*')
-        .eq('vehicle_id', id)
-        .order('term_start', { ascending: false });
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!id,
-  });
+  // Fetch claims
 
   // Fetch claims
   const { data: claims } = useQuery({
@@ -289,10 +266,6 @@ export default function VehicleDetailPage() {
             <FileText className="h-4 w-4" />
             Akte
           </TabsTrigger>
-          <TabsTrigger value="versicherungen" className="gap-2">
-            <ShieldCheck className="h-4 w-4" />
-            Versicherungen ({insurances?.length || 0})
-          </TabsTrigger>
           <TabsTrigger value="schaeden" className="gap-2">
             <AlertTriangle className="h-4 w-4" />
             Schäden ({claims?.length || 0})
@@ -386,64 +359,6 @@ export default function VehicleDetailPage() {
           </Card>
         </TabsContent>
 
-        {/* Versicherungen Tab */}
-        <TabsContent value="versicherungen" className="mt-6">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div>
-                <CardTitle>Versicherungen</CardTitle>
-                <CardDescription>Alle Versicherungspolicen für dieses Fahrzeug</CardDescription>
-              </div>
-              <Button size="sm" onClick={() => setInsuranceDialogOpen(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                Neue Police
-              </Button>
-            </CardHeader>
-            <CardContent>
-              {insurances && insurances.length > 0 ? (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Versicherer</TableHead>
-                      <TableHead>Nummer</TableHead>
-                      <TableHead>Deckung</TableHead>
-                      <TableHead>SF-KH</TableHead>
-                      <TableHead className="text-right">Jahresbeitrag</TableHead>
-                      <TableHead>Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {insurances.map((ins) => (
-                      <TableRow key={ins.id} className="cursor-pointer hover:bg-muted/50">
-                        <TableCell className="font-medium">{ins.insurer_name}</TableCell>
-                        <TableCell>{ins.policy_number}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{coverageLabels[ins.coverage_type as CoverageType]}</Badge>
-                        </TableCell>
-                        <TableCell>{ins.sf_liability}</TableCell>
-                        <TableCell className="text-right">{formatCurrency(ins.annual_premium_cents)}</TableCell>
-                        <TableCell>
-                          <Badge variant={ins.status === 'active' ? 'default' : 'secondary'}>
-                            {ins.status === 'active' ? 'Aktiv' : ins.status}
-                          </Badge>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  <ShieldCheck className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                  <p>Keine Versicherungen erfasst</p>
-                  <Button variant="outline" size="sm" className="mt-4" onClick={() => setInsuranceDialogOpen(true)}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Police hinzufügen
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
 
         {/* Schäden Tab */}
         <TabsContent value="schaeden" className="mt-6">
@@ -603,15 +518,6 @@ export default function VehicleDetailPage() {
       {/* Dialogs */}
       {id && (
         <>
-          <InsuranceCreateDialog
-            open={insuranceDialogOpen}
-            onOpenChange={setInsuranceDialogOpen}
-            vehicleId={id}
-            onSuccess={() => {
-              queryClient.invalidateQueries({ queryKey: ['cars_insurances', id] });
-              setInsuranceDialogOpen(false);
-            }}
-          />
           <ClaimCreateDialog
             open={claimDialogOpen}
             onOpenChange={setClaimDialogOpen}

@@ -4,5 +4,5 @@ export { default as CarsPrivatjet } from './CarsPrivatjet';
 export { default as CarsAngebote } from './CarsAngebote';
 export { VehicleCreateDialog } from './VehicleCreateDialog';
 export { default as VehicleDetailPage } from './VehicleDetailPage';
-export { InsuranceCreateDialog } from './InsuranceCreateDialog';
 export { ClaimCreateDialog } from './ClaimCreateDialog';
+export { CarServiceFlow } from './CarServiceFlow';
