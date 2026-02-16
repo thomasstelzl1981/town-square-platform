@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Tables, Enums } from '@/integrations/supabase/types';
 import { Button } from '@/components/ui/button';
@@ -49,7 +50,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Plus, Loader2, Users, Trash2, AlertTriangle, Pencil } from 'lucide-react';
+import { Plus, Loader2, Users, Trash2, AlertTriangle, Pencil, UserPlus } from 'lucide-react';
 import { format } from 'date-fns';
 import { PdfExportFooter } from '@/components/pdf';
 import { ROLES_CATALOG } from '@/constants/rolesMatrix';
@@ -121,6 +122,12 @@ export default function UsersPage() {
   // Delete confirmation
   const [deleteTarget, setDeleteTarget] = useState<Membership | null>(null);
   const [deleting, setDeleting] = useState(false);
+
+  // Create user dialog
+  const [createUserOpen, setCreateUserOpen] = useState(false);
+  const [creatingUser, setCreatingUser] = useState(false);
+  const [createUserError, setCreateUserError] = useState<string | null>(null);
+  const [newUser, setNewUser] = useState({ email: '', password: '', displayName: '' });
 
   async function fetchData() {
     setLoading(true);
@@ -279,6 +286,42 @@ export default function UsersPage() {
     ? ROLES 
     : ROLES.filter(r => !r.restricted);
 
+  const handleCreateUser = async () => {
+    if (!newUser.email || !newUser.password) {
+      setCreateUserError('E-Mail und Passwort sind erforderlich');
+      return;
+    }
+    if (newUser.password.length < 6) {
+      setCreateUserError('Passwort muss mindestens 6 Zeichen lang sein');
+      return;
+    }
+
+    setCreatingUser(true);
+    setCreateUserError(null);
+
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      const response = await supabase.functions.invoke('sot-create-test-user', {
+        body: {
+          email: newUser.email,
+          password: newUser.password,
+          displayName: newUser.displayName || undefined,
+        },
+      });
+
+      if (response.error) throw new Error(response.error.message);
+      if (response.data?.error) throw new Error(response.data.error);
+
+      toast.success(`Benutzer ${newUser.email} wurde angelegt`);
+      setCreateUserOpen(false);
+      setNewUser({ email: '', password: '', displayName: '' });
+      fetchData();
+    } catch (err: any) {
+      setCreateUserError(err.message || 'Fehler beim Anlegen des Benutzers');
+    }
+    setCreatingUser(false);
+  };
+
   return (
     <div className="space-y-6" ref={contentRef}>
       <div className="flex items-center justify-between">
@@ -286,13 +329,20 @@ export default function UsersPage() {
           <h2 className="text-2xl font-bold tracking-tight">Users & Memberships</h2>
           <p className="text-muted-foreground">Manage user roles and organization access</p>
         </div>
-        <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              Add Membership
+        <div className="flex gap-2">
+          {isPlatformAdmin && (
+            <Button variant="outline" onClick={() => setCreateUserOpen(true)}>
+              <UserPlus className="mr-2 h-4 w-4" />
+              Neuen Benutzer anlegen
             </Button>
-          </DialogTrigger>
+          )}
+          <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="mr-2 h-4 w-4" />
+                Add Membership
+              </Button>
+            </DialogTrigger>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Add Membership</DialogTitle>
@@ -376,6 +426,7 @@ export default function UsersPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {error && (
@@ -544,6 +595,65 @@ export default function UsersPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Create User Dialog */}
+      <Dialog open={createUserOpen} onOpenChange={setCreateUserOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Neuen Benutzer anlegen</DialogTitle>
+            <DialogDescription>
+              Der Benutzer erhält automatisch einen eigenen Mandanten und kann sich sofort mit diesen Daten einloggen.
+            </DialogDescription>
+          </DialogHeader>
+
+          {createUserError && (
+            <Alert variant="destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>{createUserError}</AlertDescription>
+            </Alert>
+          )}
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="new-email">E-Mail-Adresse</Label>
+              <Input
+                id="new-email"
+                type="email"
+                value={newUser.email}
+                onChange={(e) => setNewUser(prev => ({ ...prev, email: e.target.value }))}
+                placeholder="name@example.com"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="new-password">Passwort</Label>
+              <Input
+                id="new-password"
+                type="text"
+                value={newUser.password}
+                onChange={(e) => setNewUser(prev => ({ ...prev, password: e.target.value }))}
+                placeholder="Mindestens 6 Zeichen"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="new-displayname">Anzeigename (optional)</Label>
+              <Input
+                id="new-displayname"
+                value={newUser.displayName}
+                onChange={(e) => setNewUser(prev => ({ ...prev, displayName: e.target.value }))}
+                placeholder="Vor- und Nachname"
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCreateUserOpen(false)}>Abbrechen</Button>
+            <Button onClick={handleCreateUser} disabled={creatingUser}>
+              {creatingUser && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Benutzer anlegen
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* PDF Export */}
       <PdfExportFooter

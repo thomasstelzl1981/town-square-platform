@@ -62,7 +62,13 @@ export function AdminLayout() {
     ['platform_admin', 'org_admin', 'internal_ops'].includes(m.role)
   );
 
-  if (!hasAdminAccess && memberships.length > 0) {
+  // P0-ZONE1-GUARD: In production (non-dev mode), redirect non-admins to portal
+  if (!isDevelopmentMode && !hasAdminAccess && memberships.length > 0) {
+    navigate('/portal');
+    return null;
+  }
+
+  if (!hasAdminAccess && memberships.length > 0 && isDevelopmentMode) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
