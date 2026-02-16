@@ -1,15 +1,18 @@
 /**
  * MOD-18 Finanzen — Tab 3: SACHVERSICHERUNGEN
- * SSOT für alle Versicherungen. RecordCard-Pattern.
+ * Widget CE Layout: WidgetGrid + WidgetCell (4-col, square)
  */
 import { useState } from 'react';
 import { PageShell } from '@/components/shared/PageShell';
-import { RecordCard } from '@/components/shared/RecordCard';
-import { RECORD_CARD } from '@/config/designManifest';
+import { WidgetGrid } from '@/components/shared/WidgetGrid';
+import { WidgetCell } from '@/components/shared/WidgetCell';
+import { CARD, TYPOGRAPHY, HEADER, RECORD_CARD } from '@/config/designManifest';
 import { getContractWidgetGlow } from '@/config/widgetCategorySpec';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { FormInput } from '@/components/shared';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Card } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -18,9 +21,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Plus } from 'lucide-react';
+import { Plus, Shield, X } from 'lucide-react';
 import { isDemoId } from '@/engines/demoData/engine';
 import { useDemoToggles } from '@/hooks/useDemoToggles';
+import { cn } from '@/lib/utils';
 
 // DB enums
 const CATEGORIES = [
@@ -59,7 +63,7 @@ export default function SachversicherungenTab() {
   const queryClient = useQueryClient();
   const { isEnabled } = useDemoToggles();
   const demoEnabled = isEnabled('GP-KONTEN');
-  const [openCardId, setOpenCardId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [forms, setForms] = useState<Record<string, Record<string, any>>>({});
   const [showNew, setShowNew] = useState(false);
   const [newForm, setNewForm] = useState<Record<string, any>>({
@@ -89,18 +93,12 @@ export default function SachversicherungenTab() {
       if (!activeTenantId || !user?.id) throw new Error('No tenant/user');
       const { details, ...rest } = form;
       const { error } = await supabase.from('insurance_contracts').insert({
-        tenant_id: activeTenantId,
-        user_id: user.id,
-        category: rest.category as any,
-        insurer: rest.insurer || null,
-        policy_no: rest.policy_no || null,
-        policyholder: rest.policyholder || null,
-        start_date: rest.start_date || null,
-        end_date: rest.end_date || null,
-        premium: Number(rest.premium) || null,
-        payment_interval: (rest.payment_interval as any) || null,
-        status: (rest.status as any) || null,
-        details: details || null,
+        tenant_id: activeTenantId, user_id: user.id,
+        category: rest.category as any, insurer: rest.insurer || null,
+        policy_no: rest.policy_no || null, policyholder: rest.policyholder || null,
+        start_date: rest.start_date || null, end_date: rest.end_date || null,
+        premium: Number(rest.premium) || null, payment_interval: (rest.payment_interval as any) || null,
+        status: (rest.status as any) || null, details: details || null,
       });
       if (error) throw error;
     },
@@ -116,16 +114,11 @@ export default function SachversicherungenTab() {
     mutationFn: async (form: Record<string, any>) => {
       const { id, created_at, updated_at, tenant_id, user_id, details, ...rest } = form;
       const { error } = await supabase.from('insurance_contracts').update({
-        category: rest.category as any,
-        insurer: rest.insurer || null,
-        policy_no: rest.policy_no || null,
-        policyholder: rest.policyholder || null,
-        start_date: rest.start_date || null,
-        end_date: rest.end_date || null,
-        premium: Number(rest.premium) || null,
-        payment_interval: (rest.payment_interval as any) || null,
-        status: (rest.status as any) || null,
-        details: details || null,
+        category: rest.category as any, insurer: rest.insurer || null,
+        policy_no: rest.policy_no || null, policyholder: rest.policyholder || null,
+        start_date: rest.start_date || null, end_date: rest.end_date || null,
+        premium: Number(rest.premium) || null, payment_interval: (rest.payment_interval as any) || null,
+        status: (rest.status as any) || null, details: details || null,
       }).eq('id', id);
       if (error) throw error;
     },
@@ -143,17 +136,17 @@ export default function SachversicherungenTab() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['fin-insurance'] });
       toast.success('Versicherung gelöscht');
-      setOpenCardId(null);
+      setSelectedId(null);
     },
   });
 
   if (isLoading) return <PageShell><Skeleton className="h-64" /></PageShell>;
 
-  const toggleCard = (id: string) => {
-    if (openCardId === id) { setOpenCardId(null); return; }
+  const selectCard = (id: string) => {
+    if (selectedId === id) { setSelectedId(null); return; }
     const c = contracts.find((x: any) => x.id === id);
     if (c) setForms(prev => ({ ...prev, [id]: { ...c } }));
-    setOpenCardId(id);
+    setSelectedId(id);
     setShowNew(false);
   };
 
@@ -240,29 +233,32 @@ export default function SachversicherungenTab() {
     }
   };
 
-  const InsuranceFields = ({ form, onUpdate, onDetailUpdate }: { form: Record<string, any>; onUpdate: (f: string, v: any) => void; onDetailUpdate: (f: string, v: any) => void }) => (
+  const selectedContract = contracts.find((c: any) => c.id === selectedId);
+  const form = selectedId ? (forms[selectedId] || selectedContract) : null;
+
+  const InsuranceFields = ({ form: f, onUpdate, onDetailUpdate }: { form: Record<string, any>; onUpdate: (field: string, v: any) => void; onDetailUpdate: (field: string, v: any) => void }) => (
     <>
       <div>
         <p className={RECORD_CARD.SECTION_TITLE}>Vertragsdaten</p>
         <div className={RECORD_CARD.FIELD_GRID}>
           <div>
             <Label className="text-xs">Kategorie</Label>
-            <Select value={form.category || ''} onValueChange={v => onUpdate('category', v)}>
+            <Select value={f.category || ''} onValueChange={v => onUpdate('category', v)}>
               <SelectTrigger><SelectValue placeholder="Kategorie wählen" /></SelectTrigger>
               <SelectContent>
                 {CATEGORIES.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
-          <FormInput label="Versicherer" name="insurer" value={form.insurer || ''} onChange={e => onUpdate('insurer', e.target.value)} />
-          <FormInput label="Policen-Nr." name="policy_no" value={form.policy_no || ''} onChange={e => onUpdate('policy_no', e.target.value)} />
-          <FormInput label="Versicherungsnehmer" name="policyholder" value={form.policyholder || ''} onChange={e => onUpdate('policyholder', e.target.value)} />
-          <FormInput label="Beginn" name="start_date" type="date" value={form.start_date || ''} onChange={e => onUpdate('start_date', e.target.value)} />
-          <FormInput label="Ablauf / Kündigungsfrist" name="end_date" type="date" value={form.end_date || ''} onChange={e => onUpdate('end_date', e.target.value)} />
-          <FormInput label="Beitrag (€)" name="premium" type="number" value={form.premium || ''} onChange={e => onUpdate('premium', e.target.value)} />
+          <FormInput label="Versicherer" name="insurer" value={f.insurer || ''} onChange={e => onUpdate('insurer', e.target.value)} />
+          <FormInput label="Policen-Nr." name="policy_no" value={f.policy_no || ''} onChange={e => onUpdate('policy_no', e.target.value)} />
+          <FormInput label="Versicherungsnehmer" name="policyholder" value={f.policyholder || ''} onChange={e => onUpdate('policyholder', e.target.value)} />
+          <FormInput label="Beginn" name="start_date" type="date" value={f.start_date || ''} onChange={e => onUpdate('start_date', e.target.value)} />
+          <FormInput label="Ablauf / Kündigungsfrist" name="end_date" type="date" value={f.end_date || ''} onChange={e => onUpdate('end_date', e.target.value)} />
+          <FormInput label="Beitrag (€)" name="premium" type="number" value={f.premium || ''} onChange={e => onUpdate('premium', e.target.value)} />
           <div>
             <Label className="text-xs">Intervall</Label>
-            <Select value={form.payment_interval || 'monatlich'} onValueChange={v => onUpdate('payment_interval', v)}>
+            <Select value={f.payment_interval || 'monatlich'} onValueChange={v => onUpdate('payment_interval', v)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 {INTERVALS.map(i => <SelectItem key={i.value} value={i.value}>{i.label}</SelectItem>)}
@@ -271,7 +267,7 @@ export default function SachversicherungenTab() {
           </div>
           <div>
             <Label className="text-xs">Status</Label>
-            <Select value={form.status || 'aktiv'} onValueChange={v => onUpdate('status', v)}>
+            <Select value={f.status || 'aktiv'} onValueChange={v => onUpdate('status', v)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 {STATUSES.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
@@ -280,11 +276,11 @@ export default function SachversicherungenTab() {
           </div>
         </div>
       </div>
-      {form.category && (
+      {f.category && (
         <div>
-          <p className={RECORD_CARD.SECTION_TITLE}>{catLabel(form.category)} — Spezifisch</p>
+          <p className={RECORD_CARD.SECTION_TITLE}>{catLabel(f.category)} — Spezifisch</p>
           <div className={RECORD_CARD.FIELD_GRID}>
-            {renderCategoryFields(form.category, form.details || {}, onDetailUpdate)}
+            {renderCategoryFields(f.category, f.details || {}, onDetailUpdate)}
           </div>
         </div>
       )}
@@ -295,76 +291,114 @@ export default function SachversicherungenTab() {
     <PageShell>
       <ModulePageHeader title="Sachversicherungen" description="Zentrale Verwaltung aller Versicherungsverträge (SSOT)" />
 
-      <div className={RECORD_CARD.GRID}>
+      <WidgetGrid>
         {contracts.map((c: any) => {
-          const form = forms[c.id] || c;
           const intervalLabel = INTERVALS.find(i => i.value === c.payment_interval)?.label || c.payment_interval || '';
+          const isSelected = selectedId === c.id;
           return (
-            <RecordCard
-              key={c.id}
-              id={c.id}
-              entityType="insurance"
-              isOpen={openCardId === c.id}
-              onToggle={() => toggleCard(c.id)}
-              glowVariant={getContractWidgetGlow(c.id) ?? undefined}
-              title={`${c.insurer || 'Versicherer'} — ${catLabel(c.category)}`}
-              subtitle={c.policy_no || undefined}
-              badges={[
-                { label: STATUSES.find(s => s.value === c.status)?.label || 'Aktiv', variant: c.status === 'aktiv' ? 'default' : 'secondary' },
-              ]}
-              summary={[
-                { label: 'Beitrag', value: `${fmt(c.premium || 0)} / ${intervalLabel}` },
-                ...(c.start_date ? [{ label: 'Beginn', value: new Date(c.start_date).toLocaleDateString('de-DE') }] : []),
-              ]}
-              tenantId={activeTenantId || undefined}
-              onSave={() => updateMutation.mutate(form)}
-              onDelete={() => deleteMutation.mutate(c.id)}
-              saving={updateMutation.isPending}
-            >
-              <InsuranceFields
-                form={form}
-                onUpdate={(f, v) => updateField(c.id, f, v)}
-                onDetailUpdate={(f, v) => updateDetail(c.id, f, v)}
-              />
-            </RecordCard>
+            <WidgetCell key={c.id}>
+              <div
+                className={cn(
+                  CARD.BASE, CARD.INTERACTIVE,
+                  'h-full flex flex-col justify-between p-5',
+                  isSelected && 'ring-2 ring-primary',
+                )}
+                onClick={() => selectCard(c.id)}
+                role="button"
+                tabIndex={0}
+              >
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Badge variant={c.status === 'aktiv' ? 'default' : 'secondary'} className="text-[10px]">
+                      {STATUSES.find(s => s.value === c.status)?.label || 'Aktiv'}
+                    </Badge>
+                  </div>
+                  <div className={HEADER.WIDGET_ICON_BOX}>
+                    <Shield className="h-5 w-5 text-primary" />
+                  </div>
+                  <h4 className={TYPOGRAPHY.CARD_TITLE}>{c.insurer || 'Versicherer'}</h4>
+                  <p className="text-xs text-muted-foreground">{catLabel(c.category)}</p>
+                  {c.policy_no && <p className="text-[10px] text-muted-foreground/70">{c.policy_no}</p>}
+                </div>
+                <div className="space-y-1 mt-auto pt-3 border-t border-border/20">
+                  <div className="flex justify-between text-xs">
+                    <span className="text-muted-foreground">Beitrag</span>
+                    <span className="font-semibold">{fmt(c.premium || 0)} / {intervalLabel}</span>
+                  </div>
+                  {c.start_date && (
+                    <div className="flex justify-between text-xs">
+                      <span className="text-muted-foreground">Beginn</span>
+                      <span>{new Date(c.start_date).toLocaleDateString('de-DE')}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </WidgetCell>
           );
         })}
 
+        {/* CTA */}
         {!showNew && (
-          <div
-            className={RECORD_CARD.CLOSED + ' border-dashed border-primary/30 flex items-center justify-center'}
-            onClick={() => { setShowNew(true); setOpenCardId(null); }}
-            role="button"
-            tabIndex={0}
-          >
-            <div className="flex flex-col items-center gap-2 text-muted-foreground">
-              <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-                <Plus className="h-6 w-6 text-primary" />
+          <WidgetCell>
+            <div
+              className="h-full w-full rounded-xl border-2 border-dashed border-primary/30 flex items-center justify-center cursor-pointer hover:border-primary/50 transition-colors"
+              onClick={() => { setShowNew(true); setSelectedId(null); }}
+              role="button"
+              tabIndex={0}
+            >
+              <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
+                  <Plus className="h-6 w-6 text-primary" />
+                </div>
+                <p className="text-sm font-medium">Versicherung hinzufügen</p>
               </div>
-              <p className="text-sm font-medium">Versicherung hinzufügen</p>
             </div>
-          </div>
+          </WidgetCell>
         )}
+      </WidgetGrid>
 
-        {showNew && (
-          <div className={RECORD_CARD.OPEN}>
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-semibold">Neue Versicherung</h2>
-              <Button variant="ghost" size="sm" onClick={() => setShowNew(false)}>Abbrechen</Button>
-            </div>
-            <div className="space-y-6">
-              <InsuranceFields
-                form={newForm}
-                onUpdate={(f, v) => setNewForm(prev => ({ ...prev, [f]: v }))}
-                onDetailUpdate={updateNewDetail}
-              />
-            </div>
-            <div className={RECORD_CARD.ACTIONS}>
-              <Button size="sm" onClick={() => createMutation.mutate(newForm)}>Speichern</Button>
-            </div>
+      {/* Detail / Edit below grid */}
+      {selectedId && form && (
+        <Card className="glass-card p-6 mt-2">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold">{form.insurer || 'Versicherer'} — {catLabel(form.category)}</h2>
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setSelectedId(null)}>
+              <X className="h-4 w-4" />
+            </Button>
           </div>
-        )}
-      </div>
+          <div className="space-y-6">
+            <InsuranceFields
+              form={form}
+              onUpdate={(f, v) => updateField(selectedId, f, v)}
+              onDetailUpdate={(f, v) => updateDetail(selectedId, f, v)}
+            />
+          </div>
+          <div className={RECORD_CARD.ACTIONS}>
+            <Button variant="destructive" size="sm" onClick={() => deleteMutation.mutate(selectedId)}>Löschen</Button>
+            <Button size="sm" onClick={() => updateMutation.mutate(form)} disabled={updateMutation.isPending}>Speichern</Button>
+          </div>
+        </Card>
+      )}
+
+      {/* New form below grid */}
+      {showNew && (
+        <Card className="glass-card p-6 mt-2">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold">Neue Versicherung</h2>
+            <Button variant="ghost" size="sm" onClick={() => setShowNew(false)}>Abbrechen</Button>
+          </div>
+          <div className="space-y-6">
+            <InsuranceFields
+              form={newForm}
+              onUpdate={(f, v) => setNewForm(prev => ({ ...prev, [f]: v }))}
+              onDetailUpdate={updateNewDetail}
+            />
+          </div>
+          <div className={RECORD_CARD.ACTIONS}>
+            <Button size="sm" onClick={() => createMutation.mutate(newForm)}>Speichern</Button>
+          </div>
+        </Card>
+      )}
     </PageShell>
   );
 }
