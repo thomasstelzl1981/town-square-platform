@@ -82,7 +82,7 @@ export default function InvestmentTab() {
                 entityType="person"
                 isOpen={false}
                 onToggle={() => setSelectedPersonId(person.id)}
-                glowVariant={hasDepot ? 'primary' : undefined}
+                glowVariant={hasDepot ? 'emerald' : undefined}
                 title={`${person.first_name} ${person.last_name}`}
                 subtitle={hasDepot ? 'Depot aktiv' : 'Kein Depot'}
                 badges={hasDepot ? [{ label: 'Aktiv', variant: 'default' as const }] : []}

@@ -73,7 +73,7 @@ export function getContractWidgetGlow(
   id: string,
   isShopOffer = false,
 ): ActiveWidgetVariant | null {
-  if (isDemoId(id)) return 'primary';
+  if (isDemoId(id)) return 'emerald';
   if (isShopOffer) return null;
   return 'emerald'; // manuell erfasster Vertrag
 }
@@ -89,7 +89,7 @@ export function resolveWidgetGlow(
   moduleCode?: string,
 ): ActiveWidgetVariant | null {
   switch (source) {
-    case 'demo': return 'primary';
+    case 'demo': return 'emerald';
     case 'manual': return 'emerald';
     case 'shop': return null;
     case 'module': return moduleCode ? (MODULE_GLOW_MAP[moduleCode] ?? null) : null;
