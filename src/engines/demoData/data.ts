@@ -56,6 +56,12 @@ const ID_SUB_TELEKOM   = 'e0000000-0000-4000-a000-000000000406';
 const ID_SUB_VODAFONE  = 'e0000000-0000-4000-a000-000000000407';
 const ID_SUB_FITX      = 'e0000000-0000-4000-a000-000000000408';
 
+// KV-Verträge (DB-geseedet)
+const ID_KV_MAX    = 'e0000000-0000-4000-a000-000000000501';
+const ID_KV_LISA   = 'e0000000-0000-4000-a000-000000000502';
+const ID_KV_FELIX  = 'e0000000-0000-4000-a000-000000000503';
+const ID_KV_EMMA   = 'e0000000-0000-4000-a000-000000000504';
+
 // ─── PERSONEN ──────────────────────────────────────────────
 
 export const DEMO_FAMILY: readonly DemoPersona[] = [
@@ -253,7 +259,8 @@ export const DEMO_SUBSCRIPTIONS: readonly DemoSubscription[] = [
   { id: ID_SUB_FITX,     merchant: 'FitX Familie',         category: 'fitness',               amount: 29.98,  frequency: 'monatlich' },
 ] as const;
 
-// ─── KV-DATEN (clientseitig, kein DB-Insert) ──────────────
+// ─── KV-DATEN (DB-geseedet in kv_contracts) ───────────────
+// Kept for backward compatibility — consumers should migrate to DB queries
 
 export const DEMO_KV_CONTRACTS: readonly DemoKVContract[] = [
   {
@@ -271,6 +278,19 @@ export const DEMO_KV_CONTRACTS: readonly DemoKVContract[] = [
       einbettzimmer: true,
       chefarzt: true,
       vertragsbeginn: '2015-01-01',
+      versicherungsnummer: 'PKV-DKV-2015-MM-4711',
+      ihl_ambulant_prozent: 100,
+      ihl_stationaer_prozent: 100,
+      ihl_psychotherapie_sitzungen: 50,
+      ihl_alternativmedizin: true,
+      ihl_sehhilfen_budget: 400,
+      ihl_hoergeraete_budget: 1500,
+      ihl_reha: 'Ambulant + Stationär, Anschlussheilbehandlung',
+      beitragsanpassungen: [
+        { year: 2020, alt: 620, neu: 645 },
+        { year: 2022, alt: 645, neu: 668 },
+        { year: 2024, alt: 668, neu: 685 },
+      ],
     },
   },
   {
@@ -287,6 +307,7 @@ export const DEMO_KV_CONTRACTS: readonly DemoKVContract[] = [
       familienversichert_kinder: 2,
       krankengeld_ab_tag: 43,
       vertragsbeginn: '2010-09-01',
+      versicherungsnummer: 'TK-1985072200102',
     },
   },
   {
@@ -386,6 +407,8 @@ export const ALL_DEMO_IDS: readonly string[] = [
   // Abonnements
   ID_SUB_NETFLIX, ID_SUB_SPOTIFY, ID_SUB_AMAZON, ID_SUB_MS365,
   ID_SUB_ZEIT, ID_SUB_TELEKOM, ID_SUB_VODAFONE, ID_SUB_FITX,
+  // KV-Verträge (DB-geseedet)
+  ID_KV_MAX, ID_KV_LISA, ID_KV_FELIX, ID_KV_EMMA,
   // Portfolio (DB-IDs)
   ...DEMO_PORTFOLIO.propertyIds,
   ...DEMO_PORTFOLIO.vehicleIds,

@@ -7793,6 +7793,128 @@ export type Database = {
         }
         Relationships: []
       }
+      kv_contracts: {
+        Row: {
+          chief_physician: boolean | null
+          contract_start: string | null
+          contribution_rate: string | null
+          created_at: string
+          daily_sickness_benefit: number | null
+          deductible: number | null
+          deductible_reduction_from_67: boolean | null
+          dental_prosthetics_percent: number | null
+          employer_contribution: number | null
+          family_insured_children: number | null
+          gross_income: number | null
+          id: string
+          ihl_alternative_medicine: boolean | null
+          ihl_hearing_aid_budget: number | null
+          ihl_inpatient_percent: number | null
+          ihl_outpatient_percent: number | null
+          ihl_psychotherapy_sessions: number | null
+          ihl_rehabilitation: string | null
+          ihl_vision_aid_budget: number | null
+          income_threshold: number | null
+          insurance_number: string | null
+          insured_until_age: number | null
+          insured_via_person_name: string | null
+          kv_type: string
+          monthly_premium: number | null
+          notes: string | null
+          person_id: string
+          person_name: string
+          premium_adjustments: Json | null
+          provider: string
+          sick_pay_from_day: number | null
+          single_room: boolean | null
+          tariff_name: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          chief_physician?: boolean | null
+          contract_start?: string | null
+          contribution_rate?: string | null
+          created_at?: string
+          daily_sickness_benefit?: number | null
+          deductible?: number | null
+          deductible_reduction_from_67?: boolean | null
+          dental_prosthetics_percent?: number | null
+          employer_contribution?: number | null
+          family_insured_children?: number | null
+          gross_income?: number | null
+          id?: string
+          ihl_alternative_medicine?: boolean | null
+          ihl_hearing_aid_budget?: number | null
+          ihl_inpatient_percent?: number | null
+          ihl_outpatient_percent?: number | null
+          ihl_psychotherapy_sessions?: number | null
+          ihl_rehabilitation?: string | null
+          ihl_vision_aid_budget?: number | null
+          income_threshold?: number | null
+          insurance_number?: string | null
+          insured_until_age?: number | null
+          insured_via_person_name?: string | null
+          kv_type: string
+          monthly_premium?: number | null
+          notes?: string | null
+          person_id: string
+          person_name: string
+          premium_adjustments?: Json | null
+          provider: string
+          sick_pay_from_day?: number | null
+          single_room?: boolean | null
+          tariff_name?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          chief_physician?: boolean | null
+          contract_start?: string | null
+          contribution_rate?: string | null
+          created_at?: string
+          daily_sickness_benefit?: number | null
+          deductible?: number | null
+          deductible_reduction_from_67?: boolean | null
+          dental_prosthetics_percent?: number | null
+          employer_contribution?: number | null
+          family_insured_children?: number | null
+          gross_income?: number | null
+          id?: string
+          ihl_alternative_medicine?: boolean | null
+          ihl_hearing_aid_budget?: number | null
+          ihl_inpatient_percent?: number | null
+          ihl_outpatient_percent?: number | null
+          ihl_psychotherapy_sessions?: number | null
+          ihl_rehabilitation?: string | null
+          ihl_vision_aid_budget?: number | null
+          income_threshold?: number | null
+          insurance_number?: string | null
+          insured_until_age?: number | null
+          insured_via_person_name?: string | null
+          kv_type?: string
+          monthly_premium?: number | null
+          notes?: string | null
+          person_id?: string
+          person_name?: string
+          premium_adjustments?: Json | null
+          provider?: string
+          sick_pay_from_day?: number | null
+          single_room?: boolean | null
+          tariff_name?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kv_contracts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       landing_pages: {
         Row: {
           about_text: string | null
