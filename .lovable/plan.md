@@ -1,71 +1,83 @@
 
 
-# Fix: Floating Module Switcher — Layout und Hover
+# Fix: Zeitverzoegerung beim Ausblenden des Floating Module Switchers
 
-## Zwei Probleme
+## Problem
 
-1. **`pb-12` drueckt den Seiteninhalt nach unten** — das Padding vergroessert die Nav-Bar selbst und verschiebt alles darunter
-2. **Hover-Luecke bleibt bestehen** — der Switcher ist trotzdem schwer erreichbar
+Die "unsichtbare Bruecke" (`pt-2` auf dem aeusseren Container) funktioniert nicht zuverlaessig, weil der absolute Container ausserhalb der visuellen Grenzen des Wrappers liegt und der Browser `onMouseLeave` trotzdem ausloest, bevor die Maus den Floating-Bereich erreicht.
 
 ## Loesung
 
-Statt `pb-12` auf dem Wrapper wird ein unsichtbares Bruecken-Element verwendet. Der Floating-Container bekommt einen transparenten oberen Bereich (`pt-3`), der die Luecke ueberbrueckt, waehrend der Wrapper selbst kein zusaetzliches Padding erhaelt.
+Statt auf rein geometrische Hover-Ueberbrueckung zu setzen, wird ein **Timeout-basierter Ansatz** verwendet:
 
-```text
-┌─────────────────────────────┐
-│  SubTabs                    │  ← Wrapper (relative, KEIN pb-12)
-└─────────────────────────────┘
-│  ┌─ absolute top-full ────┐ │
-│  │  (transparenter pt-3)  │ │  ← Unsichtbare Bruecke, gehoert zum
-│  │  ╭──────────────────╮  │ │     absoluten Container
-│  │  │  Floating Pills  │  │ │
-│  │  ╰──────────────────╯  │ │
-│  └────────────────────────┘ │
-```
+- `onMouseLeave` loest nicht sofort `setShowModuleSwitcher(false)` aus, sondern startet einen Timer (500ms)
+- `onMouseEnter` loescht den Timer sofort — wenn die Maus also von SubTabs zum Floating-Bereich wechselt, wird der Timer aufgehoben bevor er feuert
+- Das Floating-Element bekommt eigene `onMouseEnter`/`onMouseLeave` Handler
+
+Dieses Pattern ist der Standard fuer Dropdown-Menues im Web und funktioniert zuverlaessig.
 
 ## Technische Aenderung
 
 **Datei:** `src/components/portal/TopNavigation.tsx`
 
-### Zeile 81 — Wrapper-Klasse
+### 1. Import `useRef` hinzufuegen (Zeile 1)
+
+```tsx
+import { useMemo, useState, useRef, useCallback } from 'react';
+```
+
+### 2. Timeout-Ref und Handler (nach dem bestehenden useState, ca. Zeile 40)
+
+```tsx
+const hideTimeout = useRef<ReturnType<typeof setTimeout>>(null);
+
+const showSwitcher = useCallback(() => {
+  if (hideTimeout.current) {
+    clearTimeout(hideTimeout.current);
+    hideTimeout.current = null;
+  }
+  setShowModuleSwitcher(true);
+}, []);
+
+const hideSwitcher = useCallback(() => {
+  hideTimeout.current = setTimeout(() => {
+    setShowModuleSwitcher(false);
+  }, 400);
+}, []);
+```
+
+### 3. Wrapper-div Handler aktualisieren (Zeile 80-83)
 
 Vorher:
-```
-className={cn("relative", showModuleSwitcher && "pb-12")}
+```tsx
+onMouseEnter={() => setShowModuleSwitcher(true)}
+onMouseLeave={() => setShowModuleSwitcher(false)}
 ```
 
 Nachher:
-```
-className="relative"
-```
-
-### Zeile 89 — Floating Container
-
-Vorher:
-```
-<div className="absolute top-full left-1/2 -translate-x-1/2 z-50
-                flex items-center gap-1 px-4 py-2
-                bg-card/80 backdrop-blur-xl shadow-lg rounded-2xl border border-border/30
-                animate-in fade-in slide-in-from-top-1 duration-150">
+```tsx
+onMouseEnter={showSwitcher}
+onMouseLeave={hideSwitcher}
 ```
 
-Nachher — aeusserer Container fuer die Hover-Bruecke, innerer fuer die sichtbaren Pills:
+### 4. Floating-Container: eigene Hover-Handler (Zeile 89)
+
+Der aeussere `div` des Floating-Bereichs bekommt ebenfalls die gleichen Handler, damit die Maus beim Betreten den Timer loescht:
+
+```tsx
+<div
+  className="absolute top-full left-1/2 -translate-x-1/2 z-50 pt-2"
+  onMouseEnter={showSwitcher}
+  onMouseLeave={hideSwitcher}
+>
 ```
-<div className="absolute top-full left-1/2 -translate-x-1/2 z-50 pt-2">
-  <div className="flex items-center gap-1 px-4 py-2
-                  bg-card/80 backdrop-blur-xl shadow-lg rounded-2xl border border-border/30
-                  animate-in fade-in slide-in-from-top-1 duration-150">
-    ... (Module-Pills bleiben identisch)
-  </div>
-</div>
-```
 
-Der aeussere `div` mit `pt-2` ist transparent und unsichtbar, gehoert aber zum Hover-Bereich des Wrappers (da er ein Kind-Element ist). Der innere `div` traegt die sichtbare Glasmorphism-Optik.
+### Verhalten
 
-### Ergebnis
+- Maus verlaesst SubTabs → 400ms Timer startet
+- Maus erreicht Floating Pills innerhalb 400ms → Timer wird geloescht, Pills bleiben
+- Maus verlaesst gesamten Bereich → nach 400ms verschwinden die Pills
+- Klick auf Modul → sofortiges Schliessen (wie bisher)
 
-- Kein Layout-Shift (kein pb-12 mehr)
-- Hover-Luecke ueberbrueckt durch transparenten pt-2 Bereich
-- Floating Pills schweben frei ueber dem Seiteninhalt
-- Maus kann von SubTabs nahtlos zu den Pills gleiten
+400ms ist kurz genug, um nicht traege zu wirken, aber lang genug, um die Luecke zu ueberbruecken.
 
