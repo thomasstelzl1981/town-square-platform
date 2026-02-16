@@ -15,8 +15,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ChevronRight, X, Save, Loader2, FileText, Camera } from 'lucide-react';
-import type { ReactNode } from 'react';
-import { useCallback } from 'react';
+import { useCallback, type ReactNode } from 'react';
 
 interface RecordCardFile {
   name: string;
