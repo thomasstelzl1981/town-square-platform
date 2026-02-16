@@ -1,180 +1,274 @@
 
-# Vorsorge-Lueckenrechner — Engine 9 + UI (am Ende des Vorsorge-Tabs)
 
-## Einordnung im Modul
+# Vorsorge-Engine: Konsolidierter Gesamtplan
 
-```text
-PORTAL (/portal)
-  └── Finanzanalyse (MOD-18) — /portal/finanzanalyse
-        ├── Dashboard        /portal/finanzanalyse/dashboard
-        ├── Investment       /portal/finanzanalyse/investment
-        ├── Sachversicherungen
-        ├── VORSORGE         /portal/finanzanalyse/vorsorge   <── HIER
-        ├── Krankenversicherung
-        ├── Abonnements
-        ├── Vorsorgedokumente
-        └── Darlehen
+## Uebersicht
+
+Dieser Plan fasst alle geplanten Aenderungen an Engine 9 (Vorsorge-Lueckenrechner) zusammen: Daten-Mapping-Korrekturen, BU-Kombiprodukt-Erkennung, Kategorie-Trennung Vorsorge vs. Investment, Wertzuwachs-Hochrechnung und korrekte Behandlung von Selbstaendigen.
+
+---
+
+## 1. DB-Migration: Neues Feld `bu_monthly_benefit`
+
+Neues Feld in `vorsorge_contracts`, damit bei JEDEM Vorsorgevertrag (auch Kombiprodukten wie Ruerup+BU) die BU-Leistung separat erfasst werden kann:
+
+```sql
+ALTER TABLE public.vorsorge_contracts
+  ADD COLUMN IF NOT EXISTS bu_monthly_benefit numeric DEFAULT NULL;
 ```
 
-### Aufbau des Vorsorge-Tabs (VorsorgeTab.tsx) — vorher vs. nachher
+**Beispiel:** Ruerup mit BU-Zusatz speichert `monthly_benefit = 500` (Rente) UND `bu_monthly_benefit = 2000` (BU-Baustein).
+
+---
+
+## 2. Engine spec.ts — Typen und Konstanten erweitern
+
+### Neue Konstante
+- `DEFAULT_GROWTH_RATE = 0.05` (5% p.a. Wertzuwachs)
+
+### VLPersonInput erweitern
+- `planned_retirement_date: string | null` (fuer Restlaufzeit-Berechnung)
+
+### VLContractInput erweitern
+- `bu_monthly_benefit: number | null` (BU-Baustein bei Kombiprodukten)
+- `premium: number | null` (laufende Sparleistung)
+- `payment_interval: string | null` (fuer Umrechnung auf monatlich)
+
+### ALTERSVORSORGE_TYPES erweitern
 
 ```text
-VORHER:                              NACHHER:
-┌────────────────────────┐           ┌────────────────────────┐
-│ ModulePageHeader [+]   │           │ ModulePageHeader [+]   │
-│ Info-Banner (DRV-Hint) │           │ Info-Banner (DRV-Hint) │
-│                        │           │                        │
-│ WidgetGrid             │           │ WidgetGrid             │
-│ ┌────┐ ┌────┐ ┌────┐  │           │ ┌────┐ ┌────┐ ┌────┐  │
-│ │bAV │ │BU  │ │Rür.│  │           │ │bAV │ │BU  │ │Rür.│  │
-│ └────┘ └────┘ └────┘  │           │ └────┘ └────┘ └────┘  │
-│                        │           │                        │
-│ [Detail-Card wenn      │           │ [Detail-Card wenn      │
-│  Vertrag selektiert]   │           │  Vertrag selektiert]   │
-│                        │           │                        │
-│                        │           │ ── Separator ────────  │
-│                        │           │                        │
-│                        │           │ VORSORGE-LUECKENRECHNER│
-│                        │           │ ┌────────────────────┐ │
-│                        │           │ │ Personen-Chips     │ │
-│                        │           │ │ [Hauptperson][Part]│ │
-│                        │           │ ├────────────────────┤ │
-│                        │           │ │ ALTERSVORSORGE     │ │
-│                        │           │ │ Gesetzl. + Privat  │ │
-│                        │           │ │ Slider 60-90%      │ │
-│                        │           │ │ => Luecke/Surplus   │ │
-│                        │           │ ├────────────────────┤ │
-│                        │           │ │ BU/EU-LUECKE       │ │
-│                        │           │ │ Gesetzl. + Privat  │ │
-│                        │           │ │ => Luecke/Surplus   │ │
-│                        │           │ ├────────────────────┤ │
-│                        │           │ │ [i] Daten fehlen?  │ │
-│                        │           │ │ -> Personenakte     │ │
-│                        │           │ └────────────────────┘ │
-└────────────────────────┘           └────────────────────────┘
+VORHER:  'bAV', 'Riester', 'Ruerup', 'Lebensversicherung', 'Versorgungswerk', 'Privat', 'Sonstige'
+
+NACHHER: 'bAV', 'Betriebliche Altersvorsorge',
+         'Riester',
+         'Ruerup', 'Basisrente',
+         'Lebensversicherung', 'Rentenversicherung',
+         'Fondsgebundene', 'Kapitalbildende',
+         'Versorgungswerk',
+         'Privat',
+         'Sonstige'
 ```
 
-## Betroffene Dateien
+---
+
+## 3. Engine engine.ts — Berechnungslogik-Fixes
+
+### 3a. Deutsche employment_status Werte erkennen
+
+4 Stellen aendern (2x Altersvorsorge, 2x BU):
+
+```text
+'civil_servant' || 'beamter' || 'beamte'
+'employee'      || 'angestellt'
+'self_employed'  || 'selbstaendig' || 'selbststaendig'
+```
+
+### 3b. Selbstaendige: Gesetzliche Rente UND EM-Rente korrekt behandeln
+
+**Altersvorsorge** (bereits korrekt): Der `else`-Branch faengt Employee UND Self-employed auf. Wenn `pension.projected_pension` vorhanden, wird es verwendet.
+
+**BU-Luecke** (FIX noetig):
+
+```text
+VORHER (Zeile 160-169):
+  } else if (empStatus === 'employee' || empStatus === 'angestellt') {
+    // nur Angestellte geprueft
+  }
+  // self_employed: immer 0 — FALSCH
+
+NACHHER:
+  } else {
+    // Alle Nicht-Beamten: DRV-EM pruefen
+    if (pension?.disability_pension > 0) {
+      gesetzliche = pension.disability_pension;
+      quelle = 'drv_em';
+    } else if (empStatus === 'employee' || empStatus === 'angestellt') {
+      // 35% Brutto-Fallback NUR fuer Angestellte
+      gesetzliche = gross_income * 0.35;
+      quelle = 'fallback';
+    }
+    // self_employed ohne DRV-Daten: bleibt 0, quelle 'missing'
+  }
+```
+
+### 3c. BU-Aggregation: Kombiversicherungen erkennen
+
+```text
+VORHER:
+  buContracts = filter(isBuType)
+  for c: privateBu += c.monthly_benefit
+
+NACHHER:
+  // 1) Alle Vertraege mit explizitem bu_monthly_benefit
+  for c of vorsorgeContracts:
+    if c.bu_monthly_benefit > 0: privateBu += c.bu_monthly_benefit
+
+  // 2) Reine BU-Vertraege OHNE bu_monthly_benefit: Fallback auf monthly_benefit
+  for c of vorsorgeContracts:
+    if isBuType(c.contract_type) AND !c.bu_monthly_benefit:
+      if c.monthly_benefit > 0: privateBu += c.monthly_benefit
+```
+
+Keine Doppelzaehlung: `bu_monthly_benefit` hat Vorrang.
+
+### 3d. Wertzuwachs bei Kapital-Verrentung (5% p.a.)
+
+```text
+VORHER:  annuity = capital / 25 / 12
+
+NACHHER:
+  Wenn planned_retirement_date vorhanden:
+    years = (retirement_date - heute) / 365
+  Sonst:
+    years = 15 (Fallback)
+
+  // Kapital hochrechnen
+  future_capital = current_balance * (1.05)^years
+
+  // Falls Premium vorhanden: laufende Sparleistung hochrechnen
+  if premium > 0:
+    monthly_premium = premium (auf monatlich normalisiert)
+    annual_premium = monthly_premium * 12
+    future_capital += annual_premium * ((1.05^years - 1) / 0.05)
+
+  annuity_monthly = future_capital / 25 / 12
+```
+
+---
+
+## 4. VorsorgeTab.tsx — CONTRACT_TYPES und Formular
+
+### 4a. CONTRACT_TYPES erweitern
+
+```text
+VORHER:
+  'bAV', 'Riester', 'Ruerup', 'Versorgungswerk',
+  'Berufsunfaehigkeit', 'Lebensversicherung', 'Privat', 'Sonstige'
+
+NACHHER:
+  'Private Rentenversicherung',
+  'Ruerup (Basisrente)',
+  'Riester-Rente',
+  'Betriebliche Altersvorsorge (bAV)',
+  'Kapitalbildende Lebensversicherung',
+  'Fondsgebundene Lebensversicherung',
+  'Versorgungswerk',
+  'Berufsunfaehigkeitsversicherung',
+  'Dienstunfaehigkeitsversicherung',
+  'Sonstige'
+```
+
+### 4b. Neues Formularfeld "BU-Rente mtl."
+
+Im `VorsorgeFields`-Formular unter "Leistungen und Guthaben":
+
+```text
+VORHER:
+  Monatliche Rente / BU-Rente (monthly_benefit)
+  Versicherungssumme (insured_sum)
+  ...
+
+NACHHER:
+  Garantierte monatl. Rente (monthly_benefit)
+  BU-Rente mtl. (bu_monthly_benefit)             <-- NEU
+  Ablaufleistung / Kapital (insured_sum)
+  ...
+```
+
+### 4c. Create/Update Mutations um bu_monthly_benefit erweitern
+
+---
+
+## 5. VorsorgeLueckenrechner.tsx — Mapping und UI-Texte
+
+### 5a. mapPerson erweitern
+
+```text
++ planned_retirement_date: p.planned_retirement_date
+```
+
+### 5b. mapContract erweitern
+
+```text
++ bu_monthly_benefit: c.bu_monthly_benefit
++ premium: c.premium
++ payment_interval: c.payment_interval
+```
+
+### 5c. Verbesserte Hinweistexte fuer Selbstaendige
+
+- Bei Altersvorsorge + `self_employed` + `missing`:
+  "Keine DRV-Daten hinterlegt. Falls Sie frueher angestellt waren, tragen Sie Ihre DRV-Renteninformation in der Personenakte ein."
+- Bei BU + `self_employed` + gesetzliche = 0:
+  "Selbstaendige haben keinen automatischen gesetzlichen BU-Schutz. Private BU-Absicherung wird beruecksichtigt."
+
+---
+
+## 6. Demo-Daten erweitern
+
+### DemoVorsorgeContract Interface (spec.ts)
+- `buMonthlyBenefit?: number` hinzufuegen
+
+### Demo-Daten (data.ts)
+- Bestehende BU-Vertraege (Max: 3.000 EUR, Lisa: 1.500 EUR) um `buMonthlyBenefit` ergaenzen
+- Demo-Seeding analog anpassen
+
+---
+
+## Betroffene Dateien (Gesamt)
 
 | Datei | Aenderung |
 |---|---|
-| `src/engines/vorsorgeluecke/spec.ts` | **NEU** — Typen und Konstanten |
-| `src/engines/vorsorgeluecke/engine.ts` | **NEU** — Berechnungslogik (pure TS) |
-| `src/engines/index.ts` | Export Engine 9 ergaenzen |
-| `src/components/portal/finanzanalyse/VorsorgeLueckenrechner.tsx` | **NEU** — UI-Komponente |
-| `src/pages/portal/finanzanalyse/VorsorgeTab.tsx` | Import + Einbindung am Seitenende |
+| **DB-Migration** | `bu_monthly_benefit` Spalte in `vorsorge_contracts` |
+| `src/engines/vorsorgeluecke/spec.ts` | `DEFAULT_GROWTH_RATE`, erweiterte Input-Typen, erweiterte `ALTERSVORSORGE_TYPES` |
+| `src/engines/vorsorgeluecke/engine.ts` | Deutsche Status-Werte, BU fuer Selbstaendige, BU-Kombi-Aggregation, Wertzuwachs-Formel |
+| `src/pages/portal/finanzanalyse/VorsorgeTab.tsx` | Erweiterte `CONTRACT_TYPES`, neues BU-Feld, Mutations angepasst |
+| `src/components/portal/finanzanalyse/VorsorgeLueckenrechner.tsx` | Erweitertes Mapping, verbesserte Hinweistexte |
+| `src/engines/demoData/spec.ts` | `buMonthlyBenefit` im Interface |
+| `src/engines/demoData/data.ts` | Demo-BU-Vertraege mit `buMonthlyBenefit` |
 
-Keine DB-Migration noetig — alle Felder existieren bereits.
+---
 
-## Engine 9: `src/engines/vorsorgeluecke/`
-
-### spec.ts — Typen und Konstanten
-
-**Eingabetypen:**
-
-- `VLPersonInput`: employment_status, net_income_monthly, gross_income_monthly, ruhegehaltfaehiges_grundgehalt, ruhegehaltfaehige_dienstjahre
-- `VLPensionInput`: projected_pension, disability_pension, pension_type
-- `VLContractInput`: contract_type, monthly_benefit, insured_sum, current_balance, status, category
-
-**Ausgabetypen:**
-
-- `AltersvorsorgeResult`: gesetzliche_versorgung, gesetzliche_quelle ('drv' | 'pension' | 'missing'), private_renten, private_verrentung, expected_total, retirement_need, gap, surplus, capital_needed
-- `BuLueckeResult`: gesetzliche_absicherung, gesetzliche_quelle ('drv_em' | 'dienstunfaehigkeit' | 'fallback' | 'missing'), private_bu, total_absicherung, bu_need, bu_gap, bu_surplus
-
-**Konstanten:**
-
-- DEFAULT_NEED_PERCENT = 0.75
-- DEFAULT_ANNUITY_YEARS = 25
-- BEAMTE_MAX_VERSORGUNGSSATZ = 0.7175
-- BEAMTE_SATZ_PRO_JAHR = 0.0179375
-- EM_FALLBACK_PERCENT = 0.35
-- Altersvorsorge-Typen: bAV, Riester, Ruerup, Lebensversicherung, Privat, Versorgungswerk, Sonstige
-- BU-Typen: Berufsunfaehigkeitsversicherung, Dienstunfaehigkeitsversicherung
-
-### engine.ts — Berechnungslogik
-
-**`calcAltersvorsorge(person, pension, contracts, needPercent?)`:**
-
-1. Gesetzliche Versorgung ermitteln:
-   - Employee/Self-employed: `pension.projected_pension` oder quelle='missing'
-   - Beamter: `pension.projected_pension` ODER Berechnung: `grundgehalt * min(dienstjahre * 1.79375%, 71.75%)`
-2. Private Altersvorsorge aggregieren (nur category='vorsorge', nur Altersvorsorge-Typen):
-   - Wenn `monthly_benefit` vorhanden: direkt addieren
-   - Sonst wenn `insured_sum` oder `current_balance`: Verrentung = Kapital / 25 / 12
-3. Ergebnis:
-   - need = net_income * needPercent
-   - gap = max(0, need - total)
-   - surplus = max(0, total - need)
-   - capital_needed = gap * 12 * 25
-
-**`calcBuLuecke(person, pension, contracts, needPercent?)`:**
-
-1. Gesetzliche BU/EU:
-   - Employee: `pension.disability_pension` oder Fallback 35% von gross
-   - Beamter: erreichter Versorgungssatz * Grundgehalt (Mindestversorgung)
-   - Self-employed: 0
-2. Private BU: Summe `monthly_benefit` aller BU/DU-Vertraege (category='vorsorge')
-3. Ergebnis: need = net_income * needPercent, gap = max(0, need - total)
-
-### Datenisolation (harte Sperre)
-
-Die Engine importiert KEINE anderen Engines. Sie erhaelt ausschliesslich:
-- Personen-Felder aus `household_persons`
-- Renten-Felder aus `pension_records`
-- Vertraege aus `vorsorge_contracts` mit `category='vorsorge'`
-
-Kein Zugriff auf: Immobilien, Investments, Depots, Cashflow, PV, Mieteinnahmen.
-
-## UI-Komponente: VorsorgeLueckenrechner.tsx
-
-### Datenquellen (uebergeben als Props, kein eigenes Fetching)
-
-- `persons` — aus `useFinanzanalyseData()`
-- `pensionRecords` — aus `useFinanzanalyseData()`
-- `contracts` — die bereits im VorsorgeTab gefilterten Vorsorge-Vertraege
-
-### Layout
-
-1. **Personen-Chips**: Horizontale Badge-Leiste, Hauptperson vorselektiert
-2. **Altersvorsorge-Sektion**:
-   - Gesetzliche Versorgung (Betrag + Quelle oder "Daten fehlen")
-   - Private Vorsorge (Summe Renten + Summe Verrentung)
-   - Bedarfs-Slider (60-90%, Default 75%)
-   - Ergebnis: Progress-Bar (gruen = gedeckt, rot = Luecke) + Zahlen
-   - Kapitalbedarf bei Luecke
-3. **BU/EU-Sektion**:
-   - Gesetzliche Absicherung (Betrag + Quelle)
-   - Private BU-Leistungen
-   - Bedarfs-Slider
-   - Ergebnis: Progress-Bar + Zahlen
-4. **Footer**: "Daten fehlen?" mit Link zur Personenakte (UebersichtTab)
-
-### Fehlende-Daten-Handling
-
-- Fehlende DRV-Daten: Hinweis-Badge "DRV-Daten fehlen" + Link "In Personenakte ergaenzen"
-- Fehlende Beamten-Daten: Analog
-- Kein Einkommen: "Nettoeinkommen nicht hinterlegt"
-- Keine Schaetzung aus anderen Modulen, keine Fallback-Werte aus Vermoegenswerten
-
-## Aenderungen in VorsorgeTab.tsx
-
-Am Ende der Datei (nach dem `showNew`-Block, vor `</PageShell>`):
+## Daten-Gegenueberstellung: Vorher vs. Nachher
 
 ```text
-<Separator className="my-8" />
-<VorsorgeLueckenrechner
-  persons={persons (gefiltert nach Demo-Toggle)}
-  pensionRecords={pensionRecords}
-  contracts={contracts (die bereits category='vorsorge' gefilterten)}
-/>
-```
+BEISPIEL 1: Ruerup mit BU-Zusatz (Alte Leipziger, Max)
 
-Dafuer wird der bestehende `useFinanzanalyseData()` Hook um `pensionRecords` erweitert (ist bereits vorhanden und wird exportiert).
+  VORHER:
+    contract_type: "Ruerup (Basisrente)"
+    monthly_benefit: null
+    current_balance: 21.000
+    bu_monthly_benefit: [Feld existiert nicht]
 
-## Engines-Index Update
+    Engine:
+      Altersvorsorge: 21.000 / 25 / 12 = 70 EUR/mtl. (ohne Wachstum)
+      BU: 0 EUR (kein BU-Typ erkannt)
 
-```text
-// Engine 9: Vorsorge-Lueckenrechner
-export * from './vorsorgeluecke/engine';
-export * from './vorsorgeluecke/spec';
+  NACHHER:
+    contract_type: "Ruerup (Basisrente)"
+    monthly_benefit: 500 (garantierte Rente)
+    current_balance: 21.000
+    bu_monthly_benefit: 2.000
+
+    Engine:
+      Altersvorsorge: 500 EUR/mtl. (garantierte Rente direkt)
+      + Kapital-Verrentung: 21.000 * 1.05^15 / 25 / 12 = 146 EUR/mtl.
+      BU: 2.000 EUR/mtl. (aus bu_monthly_benefit)
+
+
+BEISPIEL 2: Selbstaendiger mit DRV-Anspruechen (Max)
+
+  VORHER:
+    employment_status: "selbstaendig"
+    drv_estimated_pension: 800 EUR/mtl.
+    drv_em_rente: 600 EUR/mtl.
+
+    Engine BU:
+      Gesetzlich: 0 EUR (self_employed uebersprungen)
+      => BU-Luecke zu hoch
+
+  NACHHER:
+    Engine BU:
+      Gesetzlich: 600 EUR/mtl. (aus DRV-EM erkannt)
+      => Korrekte BU-Luecke
 ```
