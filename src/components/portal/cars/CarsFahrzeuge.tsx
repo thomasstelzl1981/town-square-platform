@@ -31,6 +31,7 @@ import { DesktopOnly } from '@/components/shared/DesktopOnly';
 import { WidgetGrid } from '@/components/shared/WidgetGrid';
 import { WidgetCell } from '@/components/shared/WidgetCell';
 import { useDemoToggles } from '@/hooks/useDemoToggles';
+import { isDemoId } from '@/engines/demoData/engine';
 import { GOLDEN_PATH_PROCESSES } from '@/manifests/goldenPathProcesses';
 
 const GP_FAHRZEUG = GOLDEN_PATH_PROCESSES.find(p => p.id === 'GP-FAHRZEUG')!;
@@ -164,9 +165,11 @@ export default function CarsFahrzeuge() {
 
   const { isEnabled } = useDemoToggles();
   const showDemoWidget = isEnabled('GP-FAHRZEUG');
-  // If toggle OFF, show only real (non-demo) DB vehicles; if toggle ON, fallback to DEMO_VEHICLES when no DB data
-  const realDbVehicles = dbVehicles?.filter((v: any) => !['demo-1','demo-2','demo-3','bike-1','bike-2','bike-3'].includes(v.id)) || [];
-  const vehicles = realDbVehicles.length ? realDbVehicles : (showDemoWidget ? DEMO_VEHICLES : []);
+  // Filter out demo vehicles (both client-side IDs and DB-seeded IDs) when toggle is OFF
+  const DEMO_CLIENT_IDS = new Set(['demo-1','demo-2','demo-3','bike-1','bike-2','bike-3']);
+  const realDbVehicles = dbVehicles?.filter((v: any) => !DEMO_CLIENT_IDS.has(v.id) && !isDemoId(v.id)) || [];
+  const allDbVehicles = showDemoWidget ? (dbVehicles || []) : realDbVehicles;
+  const vehicles = allDbVehicles.length ? allDbVehicles : (showDemoWidget ? DEMO_VEHICLES : []);
   const isDemo = !realDbVehicles.length && showDemoWidget;
 
   const filteredVehicles = vehicles.filter((v: any) => {

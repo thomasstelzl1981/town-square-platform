@@ -129,7 +129,9 @@ export function useVerwaltungData() {
   const currentMonth = now.getMonth() + 1;
   const currentYear = now.getFullYear();
 
-  const verwaltungProperties: VerwaltungProperty[] = (data?.properties || []).map(p => {
+  const verwaltungProperties: VerwaltungProperty[] = (data?.properties || [])
+    .filter(p => showDemo || !p.is_demo)
+    .map(p => {
     const propUnits = (data?.units || []).filter(u => u.property_id === p.id);
     const propLeases = (data?.leases || []).filter((l: any) => propUnits.some(u => u.id === l.unit_id));
     const propPayments = (data?.payments || []).filter(pay => pay.property_id === p.id && pay.period_month === currentMonth && pay.period_year === currentYear);

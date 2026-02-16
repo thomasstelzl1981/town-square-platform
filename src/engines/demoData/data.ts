@@ -311,18 +311,18 @@ export const DEMO_KV_CONTRACTS: readonly DemoKVContract[] = [
 
 export const DEMO_PORTFOLIO: DemoPortfolioRefs = {
   propertyIds: [
-    'a0000000-0000-4000-a000-000000000010', // BER-01
-    'a0000000-0000-4000-a000-000000000020', // MUC-01
-    'a0000000-0000-4000-a000-000000000030', // HH-01
+    'd0000000-0000-4000-a000-000000000001', // BER-01
+    'd0000000-0000-4000-a000-000000000002', // MUC-01
+    'd0000000-0000-4000-a000-000000000003', // HH-01
   ],
   vehicleIds: [
-    'a0000000-0000-4000-a000-000000000050', // Porsche 911
-    'a0000000-0000-4000-a000-000000000051', // BMW M5
+    '00000000-0000-4000-a000-000000000301', // Porsche 911
+    '00000000-0000-4000-a000-000000000302', // BMW M5
   ],
   pvPlantIds: [
-    'a0000000-0000-4000-a000-000000000060', // PV 32.4 kWp
+    '00000000-0000-4000-a000-000000000901', // PV 32.4 kWp
   ],
-  landlordContextId: 'a0000000-0000-4000-a000-000000000040',
+  landlordContextId: 'd0000000-0000-4000-a000-000000000010',
 };
 
 // ─── AKQUISE-MANDAT ────────────────────────────────────────
@@ -365,6 +365,16 @@ export const DEMO_SELBSTAUSKUNFT: DemoSelbstauskunft = {
 
 // ─── ALLE IDs (flach) ──────────────────────────────────────
 
+// Demo-Kontakte (DB-geseedet)
+const ID_CONTACT_MAX     = '00000000-0000-4000-a000-000000000101';
+const ID_CONTACT_LISA    = '00000000-0000-4000-a000-000000000102';
+const ID_CONTACT_BERGMANN = '00000000-0000-4000-a000-000000000103';
+const ID_CONTACT_HOFFMANN = '00000000-0000-4000-a000-000000000104';
+const ID_CONTACT_WEBER   = '00000000-0000-4000-a000-000000000105';
+
+// Demo-Finance-Request (DB-geseedet)
+const ID_FINANCE_REQUEST = '00000000-0000-4000-a000-000000000004';
+
 export const ALL_DEMO_IDS: readonly string[] = [
   // Personen
   DEMO_PRIMARY_PERSON_ID, ID_LISA, ID_FELIX, ID_EMMA,
@@ -376,11 +386,15 @@ export const ALL_DEMO_IDS: readonly string[] = [
   // Abonnements
   ID_SUB_NETFLIX, ID_SUB_SPOTIFY, ID_SUB_AMAZON, ID_SUB_MS365,
   ID_SUB_ZEIT, ID_SUB_TELEKOM, ID_SUB_VODAFONE, ID_SUB_FITX,
-  // Portfolio (bestehend)
+  // Portfolio (DB-IDs)
   ...DEMO_PORTFOLIO.propertyIds,
   ...DEMO_PORTFOLIO.vehicleIds,
   ...DEMO_PORTFOLIO.pvPlantIds,
   DEMO_PORTFOLIO.landlordContextId,
+  // Kontakte (DB-geseedet)
+  ID_CONTACT_MAX, ID_CONTACT_LISA, ID_CONTACT_BERGMANN, ID_CONTACT_HOFFMANN, ID_CONTACT_WEBER,
+  // Finance Request (DB-geseedet)
+  ID_FINANCE_REQUEST,
   // Akquise + Projekte
   DEMO_ACQ_MANDATE_ID,
   DEMO_ACQ_OFFER_ID,

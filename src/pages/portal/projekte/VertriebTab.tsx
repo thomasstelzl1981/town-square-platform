@@ -23,6 +23,7 @@ import { SalesApprovalSection } from '@/components/projekte/SalesApprovalSection
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { isDemoMode, isDemoProject, DEMO_PROJECT, DEMO_PROJECT_ID, DEMO_PROJECT_DESCRIPTION } from '@/components/projekte/demoProjectData';
+import { useDemoToggles } from '@/hooks/useDemoToggles';
 import { DesktopOnly } from '@/components/shared/DesktopOnly';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
@@ -30,7 +31,9 @@ import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 export default function VertriebTab() {
   const navigate = useNavigate();
   const { portfolioRows, isLoadingPortfolio, projects } = useDevProjects();
-  const [selectedProject, setSelectedProject] = useState<string>(DEMO_PROJECT_ID);
+  const { isEnabled } = useDemoToggles();
+  const showDemoProject = isEnabled('GP-PROJEKT');
+  const [selectedProject, setSelectedProject] = useState<string>(showDemoProject ? DEMO_PROJECT_ID : (projects[0]?.id || DEMO_PROJECT_ID));
   const [showCreateDialog, setShowCreateDialog] = useState(false);
 
   const isSelectedDemo = isDemoProject(selectedProject);
@@ -40,12 +43,15 @@ export default function VertriebTab() {
 
   if (isLoadingPortfolio) return <LoadingState />;
 
-  // Stats — use demo fallback when no real projects
-  const totalUnits = portfolioRows.reduce((sum, r) => sum + r.total_units_count, 0) + DEMO_PROJECT.total_units_count;
+  // Stats — include demo only when toggle ON
+  const demoUnits = showDemoProject ? DEMO_PROJECT.total_units_count : 0;
+  const demoAvailable = showDemoProject ? DEMO_PROJECT.units_available : 0;
+  const demoValue = showDemoProject ? (DEMO_PROJECT.total_sale_target || 0) : 0;
+  const totalUnits = portfolioRows.reduce((sum, r) => sum + r.total_units_count, 0) + demoUnits;
   const totalSold = portfolioRows.reduce((sum, r) => sum + r.units_sold, 0);
   const totalReserved = portfolioRows.reduce((sum, r) => sum + r.units_reserved, 0);
-  const totalAvailable = portfolioRows.reduce((sum, r) => sum + r.units_available, 0) + DEMO_PROJECT.units_available;
-  const totalValue = portfolioRows.reduce((sum, r) => sum + (r.total_sale_target || 0), 0) + (DEMO_PROJECT.total_sale_target || 0);
+  const totalAvailable = portfolioRows.reduce((sum, r) => sum + r.units_available, 0) + demoAvailable;
+  const totalValue = portfolioRows.reduce((sum, r) => sum + (r.total_sale_target || 0), 0) + demoValue;
   const soldValue = portfolioRows.reduce((sum, r) => {
     const unitValue = r.total_sale_target && r.total_units_count ? r.total_sale_target / r.total_units_count : 0;
     return sum + (unitValue * r.units_sold);
@@ -88,9 +94,11 @@ export default function VertriebTab() {
                 <SelectValue placeholder="Projekt wählen" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={DEMO_PROJECT_ID}>
-                  {DEMO_PROJECT.name} (Demo)
-                </SelectItem>
+                {showDemoProject && (
+                  <SelectItem value={DEMO_PROJECT_ID}>
+                    {DEMO_PROJECT.name} (Demo)
+                  </SelectItem>
+                )}
                 {projects.map((p) => (
                   <SelectItem key={p.id} value={p.id}>
                     {p.name}{p.address ? ` — ${p.address}` : ''}

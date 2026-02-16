@@ -30,6 +30,7 @@ import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { WidgetGrid } from '@/components/shared/WidgetGrid';
 import { WidgetCell } from '@/components/shared/WidgetCell';
 import { useDemoToggles } from '@/hooks/useDemoToggles';
+import { isDemoId } from '@/engines/demoData/engine';
 
 type VehicleStatus = 'active' | 'inactive' | 'sold' | 'returned';
 
@@ -119,8 +120,11 @@ export default function CarsAutos() {
     enabled: !!activeTenantId,
   });
 
-  const vehicles = dbVehicles?.length ? dbVehicles : (demoEnabled ? DEMO_VEHICLES : []);
-  const isDemo = !dbVehicles?.length && demoEnabled;
+  const DEMO_CLIENT_IDS = new Set(['demo-1','demo-2','demo-3']);
+  const realDbVehicles = dbVehicles?.filter((v: any) => !DEMO_CLIENT_IDS.has(v.id) && !isDemoId(v.id)) || [];
+  const allDbVehicles = demoEnabled ? (dbVehicles || []) : realDbVehicles;
+  const vehicles = allDbVehicles.length ? allDbVehicles : (demoEnabled ? DEMO_VEHICLES : []);
+  const isDemo = !realDbVehicles.length && demoEnabled;
 
   const filteredVehicles = vehicles.filter((v: any) => {
     const s = search.toLowerCase();

@@ -19,7 +19,7 @@ function fmt(v: number) {
 
 export default function KrankenversicherungTab() {
   const { isEnabled } = useDemoToggles();
-  const demoEnabled = isEnabled('GP-18');
+  const demoEnabled = isEnabled('GP-KONTEN');
   const kvContracts = getDemoKVContracts();
   const [openCardId, setOpenCardId] = useState<string | null>(null);
 
