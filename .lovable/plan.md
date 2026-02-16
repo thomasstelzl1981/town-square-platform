@@ -1,138 +1,129 @@
 
 
-# Plan: Pet Governance Desk (Zone 1) — Sub-Menue-Struktur + MOD-05/MOD-22 Bereinigung
+# Entwicklungsplan: PET-Vertical Gesamtkonzept
 
 ## Ueberblick
 
-Der Pet Governance Desk in Zone 1 (`/admin/petmanager`) hat aktuell nur eine einzelne Route ohne Sub-Navigation. Alle anderen Desks (Sales, Acquiary, Finance, Projekt) haben eine Sub-Seiten-Struktur mit Sidebar-Eintraegen. Das wird hier nachgezogen.
-
-Gleichzeitig werden MOD-05 und MOD-22 in Zone 2 bereinigt (Fotoalbum entfernen, Mein Bereich hinzufuegen, Uebersicht entfernen, Zahlungen zu Finanzen umbenennen).
+27 Backlog-Items in 6 Phasen, die das PET-Vertical von Platzhaltern zu einem vollstaendigen Franchise-System ausbauen. Betroffen sind MOD-05 (Client), MOD-22 (Manager) und Zone 1 (Pet Governance).
 
 ---
 
-## Teil 1: Zone 1 — Pet Governance Desk Sub-Menue
+## Phase 1: Datenmodell und Tier-Akten (7 Items)
 
-### Neue Menue-Struktur (4 Sub-Seiten + Dashboard)
+Fundament: Datenbank-Tabellen und die erste sichtbare UI — die Tier-Akte.
 
-| Nr | Menuepunkt | Route | Zweck |
-|----|-----------|-------|-------|
-| 1 | Dashboard | `/admin/petmanager` | KPI-Uebersicht, Quick Actions |
-| 2 | Provider | `/admin/petmanager/provider` | Provider-Verzeichnis, Verifizierungsstatus, Onboarding |
-| 3 | Finanzen | `/admin/petmanager/finanzen` | Umsatz-Governance, offene Forderungen, Abrechnungen |
-| 4 | Services | `/admin/petmanager/services` | Service-Katalog-Moderation, Qualitaetskontrolle |
-| 5 | Monitor | `/admin/petmanager/monitor` | Franchise-Monitoring, Alerts, Audit-Trail |
+| ID | Modul | Titel | Aufwand |
+|----|-------|-------|---------|
+| PET-001 | DB | Tabelle `pets` erstellen (Stammdaten, Chip-Nr, Allergien, Versicherung, Foto) | mittel |
+| PET-002 | DB | Tabelle `pet_vaccinations` (Impfhistorie, naechste Faelligkeit, Dokument-Link) | mittel |
+| PET-003 | DB | Tabelle `pet_providers` (Dienstleister-Stamm, Typ, Verifizierung, Bewertung) | mittel |
+| PET-004 | DB | Tabelle `pet_services` (Service-Katalog pro Provider: Preis, Dauer, Tierarten) | mittel |
+| PET-005 | MOD-05 | Demo-Daten: Luna (Golden Retriever) + Bello (Dackel) fuer Mustermann-Tenant | niedrig |
+| PET-006 | MOD-05 | RecordCard-Akte: Grid in "Meine Tiere" + Detail-Seite mit Impfhistorie und Foto-Upload | hoch |
+| PET-007 | MOD-05 | DMS-Ordnerstruktur pro Tier automatisch anlegen (Impfpass, Tierarzt, Fotos...) | mittel |
 
-### Betroffene Dateien
+---
 
-**`src/manifests/routesManifest.ts`** (Zone 1 Admin-Routes, Zeile 151-152):
+## Phase 2: Service-Katalog und Buchungssystem (7 Items)
+
+Kernflow: Kunde bucht Service im Shop, Provider bestaetigt im Kalender.
+
+| ID | Modul | Titel | Aufwand |
+|----|-------|-------|---------|
+| PET-010 | DB | Tabelle `pet_bookings` (Status-Maschine: requested -> confirmed -> completed/cancelled) | hoch |
+| PET-011 | DB | Tabelle `pet_provider_availability` (Wochentag-Slots, max Buchungen pro Slot) | mittel |
+| PET-012 | DB | Tabelle `pet_provider_blocked_dates` (Urlaub/Sperrzeiten) | niedrig |
+| PET-013 | MOD-22 | Leistungen-Tab: Provider verwaltet eigene Services (CRUD) | hoch |
+| PET-014 | MOD-22 | Kalender-Tab: Verfuegbarkeits-Editor + Buchungsanfragen annehmen/ablehnen | hoch |
+| PET-015 | MOD-05 | Shop-Tab: Services browsen, Tier waehlen, Termin buchen | hoch |
+| PET-016 | MOD-05 | Mein Bereich: Aktive Buchungen und Buchungshistorie anzeigen | mittel |
+
+**Buchungsflow:**
 
 ```text
-Vorher:
-  { path: "petmanager", component: "PetmanagerDashboard", title: "Petmanager" }
-
-Nachher:
-  { path: "petmanager", component: "PetmanagerDashboard", title: "Pet Governance" }
-  { path: "petmanager/provider", component: "PetmanagerProvider", title: "Provider" }
-  { path: "petmanager/finanzen", component: "PetmanagerFinanzen", title: "Finanzen" }
-  { path: "petmanager/services", component: "PetmanagerServices", title: "Services" }
-  { path: "petmanager/monitor", component: "PetmanagerMonitor", title: "Monitor" }
+Kunde (MOD-05 Shop)          Zone 1 (Governance)         Provider (MOD-22 Kalender)
+       |                            |                            |
+   Service waehlen                  |                            |
+   Tier auswaehlen                  |                            |
+   Datum/Zeit waehlen               |                            |
+   Buchung absenden ──────────> Intake pruefen ──────────> Anfrage erscheint
+       |                      (automatisch/manuell)              |
+       |                            |                    Annehmen/Ablehnen
+       |                            |                            |
+   Status: bestaetigt <──────────────────────────── confirmed/rejected
+       |                            |                            |
+   Termin wahrnehmen                |                    Service durchfuehren
+       |                            |                            |
+   Bewertung abgeben                |                    Als erledigt markieren
 ```
 
-**`src/components/admin/AdminSidebar.tsx`** (Icon-Mapping, Zeile 89):
+---
 
-```text
-Vorher:
-  'PetmanagerDashboard': PawPrint
+## Phase 3: Rechnungs- und Zahlungsflow (4 Items)
 
-Nachher:
-  'PetmanagerDashboard': PawPrint
-  'PetmanagerProvider': Users2
-  'PetmanagerFinanzen': CreditCard
-  'PetmanagerServices': ClipboardList
-  'PetmanagerMonitor': Eye
-```
+Provider erstellt Rechnung aus abgeschlossener Buchung, Kunde sieht sie in "Mein Bereich".
 
-**Neue Dateien** (Platzhalter-Seiten im bestehenden Pattern):
-
-| Datei | Inhalt |
-|-------|--------|
-| `src/pages/admin/petmanager/PetmanagerProvider.tsx` | Provider-Tabelle (Name, Status, Verifiziert, Umsatz) |
-| `src/pages/admin/petmanager/PetmanagerFinanzen.tsx` | Offene Forderungen, Abrechnungs-Uebersicht |
-| `src/pages/admin/petmanager/PetmanagerServices.tsx` | Service-Katalog, Moderation-Queue |
-| `src/pages/admin/petmanager/PetmanagerMonitor.tsx` | Franchise-KPIs, Alerts, Audit-Log |
-
-**`src/pages/admin/desks/PetmanagerDesk.tsx`** bleibt als Dashboard bestehen (wird von der Route `petmanager` geladen).
+| ID | Modul | Titel | Aufwand |
+|----|-------|-------|---------|
+| PET-020 | DB | Bestehende `pet_invoices` pruefen: tenant_id, FKs, RLS-Policies | mittel |
+| PET-021 | MOD-22 | Finanzen-Tab: Rechnung aus Buchung generieren, PDF-Export (jsPDF) | hoch |
+| PET-022 | MOD-05 | Mein Bereich: Rechnungseingang mit PDF-Download und Zahlungsstatus | mittel |
+| PET-023 | MOD-22 | Finanzen-Tab: Umsatz-Dashboard (Monatsumsatz, offene Forderungen) | mittel |
 
 ---
 
-## Teil 2: Zone 2 — MOD-05 "Haustiere" (Client) bereinigen
+## Phase 4: Caring und Pflege-Kalender (4 Items)
 
-### Aenderungen
+Pflege-Tracking fuer Fuetterung, Medikamente, Tierarzt-Termine.
 
-| Aktion | Detail |
-|--------|--------|
-| Entfernen | `PetsFotoalbum.tsx` — Fotoalbum wird spaeter in die Tierakte integriert |
-| Hinzufuegen | `PetsMeinBereich.tsx` — Kundendaten, Bestellhistorie, Service-Uebersicht |
-| Route aendern | `fotoalbum` entfernen, `mein-bereich` hinzufuegen |
-
-### Neue Tab-Struktur MOD-05
-
-| Nr | Tab | Route |
-|----|-----|-------|
-| 1 | Meine Tiere | `/portal/pets/meine-tiere` |
-| 2 | Caring | `/portal/pets/caring` |
-| 3 | Shop und Services | `/portal/pets/shop` |
-| 4 | Mein Bereich | `/portal/pets/mein-bereich` |
-
-### Betroffene Dateien
-
-- `src/manifests/routesManifest.ts` — MOD-05 tiles: `fotoalbum` entfernen, `mein-bereich` hinzufuegen
-- `src/pages/portal/pets/PetsMeinBereich.tsx` — **Neue Datei** (Platzhalter)
-- `src/pages/portal/pets/PetsFotoalbum.tsx` — **Loeschen**
-- `src/components/portal/HowItWorks/moduleContents.ts` — MOD-05 subTiles aktualisieren
+| ID | Modul | Titel | Aufwand |
+|----|-------|-------|---------|
+| PET-030 | DB | Tabelle `pet_caring_events` (Event-Typ, Faelligkeit, Wiederholung) | mittel |
+| PET-031 | MOD-05 | Caring-Tab: Kalenderansicht mit Pflege-Events aller Tiere | hoch |
+| PET-032 | MOD-05 | Tier-Akte: Pflege-Sektion mit Timeline und naechsten Aktionen | mittel |
+| PET-033 | MOD-05 | Erinnerungen: Toast-Hinweise bei faelligen Pflege-Events | niedrig |
 
 ---
 
-## Teil 3: Zone 2 — MOD-22 "Pet Manager" (Manager) bereinigen
+## Phase 5: Zone 1 Governance und Monitoring (5 Items)
 
-### Aenderungen
+Admin-Desk mit echten Daten statt Platzhalter-KPIs.
 
-| Aktion | Detail |
-|--------|--------|
-| Entfernen | `PMUebersicht.tsx` — KPIs werden in andere Tabs integriert |
-| Umbenennen | `PMZahlungen.tsx` zu `PMFinanzen.tsx`, Route `zahlungen` zu `finanzen` |
-
-### Neue Tab-Struktur MOD-22
-
-| Nr | Tab | Route |
-|----|-----|-------|
-| 1 | Kalender und Buchungen | `/portal/petmanager/buchungen` |
-| 2 | Leistungen | `/portal/petmanager/leistungen` |
-| 3 | Kunden und Tiere | `/portal/petmanager/kunden` |
-| 4 | Finanzen | `/portal/petmanager/finanzen` |
-
-### Betroffene Dateien
-
-- `src/manifests/routesManifest.ts` — MOD-22 tiles: `uebersicht` entfernen, `zahlungen` zu `finanzen` umbenennen
-- `src/pages/portal/petmanager/PMFinanzen.tsx` — **Neue Datei** (oder PMZahlungen umbenennen)
-- `src/pages/portal/petmanager/PMUebersicht.tsx` — **Loeschen**
-- `src/components/portal/HowItWorks/moduleContents.ts` — MOD-22 subTiles aktualisieren
+| ID | Modul | Titel | Aufwand |
+|----|-------|-------|---------|
+| PET-040 | Z1 Dashboard | KPI-Kacheln mit Live-Daten (Provider-Count, Umsatz, Buchungen) | mittel |
+| PET-041 | Z1 Provider | Provider-Verzeichnis mit Verifizierungs-Workflow (pending -> verified) | hoch |
+| PET-042 | Z1 Finanzen | Aggregierte Umsatzzahlen nach Provider, offene Forderungen | mittel |
+| PET-043 | Z1 Services | Service-Katalog-Moderation: Freigabe/Ablehnung neuer Services | mittel |
+| PET-044 | Z1 Monitor | Audit-Trail, Stornoquote, Buchungen/Tag, Anomalie-Alerts | mittel |
 
 ---
 
-## Zusammenfassung aller Dateiaenderungen
+## Phase 6: Golden Path und Integration (5 Items)
 
-| Datei | Aktion |
-|-------|--------|
-| `src/manifests/routesManifest.ts` | Zone 1: 4 Sub-Routes hinzufuegen. Zone 2 MOD-05: fotoalbum->mein-bereich. Zone 2 MOD-22: uebersicht entfernen, zahlungen->finanzen |
-| `src/components/admin/AdminSidebar.tsx` | 4 neue Icon-Mappings fuer Petmanager Sub-Seiten |
-| `src/pages/admin/petmanager/PetmanagerProvider.tsx` | Neue Datei (Platzhalter) |
-| `src/pages/admin/petmanager/PetmanagerFinanzen.tsx` | Neue Datei (Platzhalter) |
-| `src/pages/admin/petmanager/PetmanagerServices.tsx` | Neue Datei (Platzhalter) |
-| `src/pages/admin/petmanager/PetmanagerMonitor.tsx` | Neue Datei (Platzhalter) |
-| `src/pages/portal/pets/PetsMeinBereich.tsx` | Neue Datei (Platzhalter) |
-| `src/pages/portal/pets/PetsFotoalbum.tsx` | Loeschen |
-| `src/pages/portal/petmanager/PMFinanzen.tsx` | Neue Datei (ersetzt PMZahlungen) |
-| `src/pages/portal/petmanager/PMUebersicht.tsx` | Loeschen |
-| `src/components/portal/HowItWorks/moduleContents.ts` | subTiles fuer MOD-05 und MOD-22 aktualisieren |
+Cross-Modul-Verknuepfungen und Spec-Dokumentation.
+
+| ID | Modul | Titel | Aufwand |
+|----|-------|-------|---------|
+| PET-050 | MOD-05 | Golden Path GP-PETS: Sections fuer alle 4 Tabs mit DB-Daten | mittel |
+| PET-051 | MOD-05 | DMS-Integration: Tier-Dokumente im zentralen DMS (MOD-03) sichtbar | mittel |
+| PET-052 | MOD-05 | Versicherungs-Referenz: Tierhaftpflicht in insurance_contracts | niedrig |
+| PET-053 | SPEC | mod-05_pets.md an reale 4-Tab-Struktur anpassen | niedrig |
+| PET-054 | SPEC | mod-22_petmanager.md neu erstellen | niedrig |
+
+---
+
+## Zusammenfassung
+
+| Kennzahl | Wert |
+|----------|------|
+| Gesamt-Items | 27 |
+| Neue DB-Tabellen | 8 (pets, pet_vaccinations, pet_providers, pet_services, pet_bookings, pet_provider_availability, pet_provider_blocked_dates, pet_caring_events) |
+| Bestehende DB-Tabellen | 2 (pet_invoices, pet_invoice_items — werden erweitert) |
+| Kritisch (P1) | 14 Items |
+| Wichtig (P2) | 9 Items |
+| Nice-to-have (P3) | 4 Items |
+| Demo-Daten | Luna (Golden Retriever) + Bello (Dackel) fuer DEV_TENANT |
+
+Die Backlog-JSON liegt bereits unter `spec/audit/pet_vertical_backlog.json`. Dieser Plan dient als Grundlage zur Verfeinerung vor der Implementierung.
 
