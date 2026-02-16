@@ -1,69 +1,112 @@
 
 
-# Test-User anlegen und Zone 1 absichern
+# Demo Engine — Deep Test und Reparaturplan
 
-## Was aendert sich fuer dich?
+## Ziel
 
-**Nichts.** Der Entwicklungsmodus (`VITE_FORCE_DEV_TENANT`) bleibt aktiv. Du arbeitest genau wie bisher weiter. Die Aenderungen wirken sich nur auf die publizierte Version aus, in der sich echte Nutzer einloggen muessen.
+Systematische Pruefung ALLER Module mit Demo-Daten (Demo AN und Demo AUS), Duplikate beseitigen, Konsistenz sicherstellen. Ergebnisse werden in einer Backlog-Datei dokumentiert, an der wir uns Schritt fuer Schritt entlangarbeiten.
 
-## Was wird gebaut?
+---
 
-### 1. Backend-Funktion: `sot-create-test-user`
+## Schritt 1: Backlog-Datei anlegen
 
-Eine neue Backend-Funktion, die nur von Platform Admins aufgerufen werden kann. Sie erstellt einen neuen User-Account mit:
-- E-Mail + Passwort (vorgegeben)
-- Sofort verifiziert (kein Bestaetigungslink noetig)
-- Der bestehende DB-Trigger (`on_auth_user_created`) erstellt automatisch Profil, Organisation und Membership
+Neue Datei: `DEMO_ENGINE_BACKLOG.md`
 
-**Sicherheit:**
-- JWT-Pruefung: Nur eingeloggte User
-- Rollen-Pruefung: Nur `platform_admin` darf Accounts anlegen
-- Validierung: E-Mail-Format, Passwort-Mindestlaenge
+Enthaelt:
+- Alle Pruefpunkte als Checkliste
+- Status pro Modul (OK / BUG / REPARIERT)
+- Screenshot-Referenzen
+- Wird nach jeder Reparatur aktualisiert
 
-### 2. UI-Erweiterung: Users-Seite in Zone 1
+---
 
-Die bestehende Users-Seite (`/admin/users`) bekommt einen zusaetzlichen Button **"Neuen Benutzer anlegen"**. Dieser oeffnet einen Dialog mit:
+## Schritt 2: Bekannte Bugs sofort reparieren
 
-```text
-E-Mail-Adresse:    [                              ]
-Passwort:          [                              ]
-Anzeigename:       [                              ]
+### Bug 1: PV-Anlage erscheint doppelt (MOD-19)
 
-Hinweis: Der Benutzer erhaelt automatisch einen eigenen
-Mandanten und kann sich sofort mit diesen Daten einloggen.
+**Datei:** `src/pages/portal/photovoltaik/AnlagenTab.tsx`, Zeile 263
 
-[Benutzer anlegen]  [Abbrechen]
+**Problem:** Filter `demoEnabled || !isDemoId(plant.id)` zeigt den DB-Eintrag (ID `...0901`) IMMER wenn Demo aktiv ist — zusaetzlich zum hardcoded Demo-Widget darueber.
+
+**Fix:** Wenn Demo aktiv, DB-Eintraege mit Demo-ID herausfiltern:
+```
+plants.filter(plant => !isDemoId(plant.id) || !demoEnabled)
 ```
 
-Nach erfolgreichem Anlegen wird die Mitgliederliste neu geladen und der neue User erscheint.
+### Bug 2: Akquise-Mandat erscheint doppelt (MOD-12)
 
-### 3. AdminLayout Guard verstaerken
+**Datei:** `src/pages/portal/akquise-manager/AkquiseMandate.tsx`, Zeile 550
 
-Aktuell prueft der Guard in `AdminLayout.tsx` nur, ob der User eingeloggt ist. Fuer die publizierte Version wird eine zusaetzliche Pruefung eingebaut:
+**Problem:** Identisches Muster — DB-Mandat (ID `e0000000-...0001`) erscheint neben dem hardcoded Widget.
 
-```text
-VORHER:  Eingeloggt? -> Zone 1 zugaenglich
-NACHHER: Eingeloggt UND (platform_admin ODER org_admin ODER internal_ops)? -> Zone 1
-         Sonst: Weiterleitung zu /portal
-```
+**Fix:** Gleicher Filter-Ansatz wie bei PV.
 
-Wichtig: Im Entwicklungsmodus (`isDevelopmentMode`) greift dieser Guard NICHT — du kommst weiterhin ueberall rein.
+### Bug 3: Akquise Demo-Widget zeigt falschen Inhalt
 
-## Betroffene Dateien
+**Datei:** `src/pages/portal/akquise-manager/AkquiseMandate.tsx`, Zeilen 532-538
+
+**Problem:** Widget zeigt "MFH-Akquise Rheinland / Investoren GbR Rhein", aber die SSOT in `data.ts` sagt "Mustermann Projektentwicklung GmbH / Muenchen / Oberbayern".
+
+**Fix:** Widget-Text an DEMO_ACQ_MANDATE angleichen:
+- Titel: "Mustermann Projektentwicklung GmbH"
+- Region: "Muenchen / Oberbayern"
+- Asset: "MFH, Aufteiler"
+- Budget: "1-5 Mio Euro"
+
+---
+
+## Schritt 3: Systematische Pruefung (Screenshots)
+
+### Phase A — Demo AN
+
+| Nr | Modul | Tab/Bereich | Erwartung | Pruefpunkt |
+|---|---|---|---|---|
+| A1 | MOD-19 PV | Anlagen | 1 Demo-Widget (gruen) + CTA | Keine Duplikate |
+| A2 | MOD-12 Akquise | Mandate | 1 Demo-Widget (gruen) + CTA | Text = Mustermann Projektentwicklung |
+| A3 | MOD-13 Projekte | Dashboard | 1 Demo-Projekt "Residenz am Stadtpark" | Keine Duplikate |
+| A4 | MOD-04 Immobilien | Portfolio | 3 Properties (BER, MUC, HH) mit Demo-Badge | Keine Duplikate |
+| A5 | MOD-17 Fahrzeuge | Dashboard | 2 Fahrzeuge (Porsche, BMW) mit Demo-Badge | Keine Duplikate |
+| A6 | MOD-05 Pets | Dashboard | Luna + Bello mit Demo-Badge | Keine Duplikate |
+| A7 | MOD-18 Uebersicht | Finanzanalyse | Demo-Bankkonto + 4 Personen-Widgets | Vollstaendig |
+| A8 | MOD-18 Vorsorge | Sub-Tab | 6 Vertraege (Ruerup, bAV, Riester/Fonds, ETF, 2x BU) | Alle sichtbar |
+| A9 | MOD-18 Sachversicherungen | Sub-Tab | 7 Vertraege | Alle sichtbar |
+| A10 | MOD-18 Krankenversicherung | Sub-Tab | 4 KV-Eintraege (PKV Max, GKV Lisa, 2x familienversichert) | Alle sichtbar |
+| A11 | MOD-18 Abonnements | Sub-Tab | 8 Abos mit korrekten Betraegen | Alle sichtbar |
+| A12 | MOD-18 Darlehen | Sub-Tab | 2 Kredite (BMW Bank 520 Euro, Santander 250 Euro) | Betraege korrekt |
+| A13 | MOD-18 Investment | Sub-Tab | Depot-Widgets pro Person | Dargestellt |
+| A14 | MOD-18 Vorsorgedokumente | Sub-Tab | Lueckenrechner | Funktional |
+
+### Phase B — Demo AUS
+
+| Nr | Modul | Erwartung | Pruefpunkt |
+|---|---|---|---|
+| B1 | MOD-19 PV | Kein Demo-Widget, nur CTA | Keine Reste |
+| B2 | MOD-12 Akquise | Kein Demo-Widget, nur CTA | Keine DB-Demo-Mandate sichtbar |
+| B3 | MOD-13 Projekte | Kein Demo-Projekt | Keine Reste |
+| B4 | MOD-04 Immobilien | Keine Demo-Properties | Leerer Zustand oder nur echte Daten |
+| B5 | MOD-17 Fahrzeuge | Keine Demo-Fahrzeuge | Leerer Zustand |
+| B6 | MOD-05 Pets | Keine Demo-Pets | Leerer Zustand |
+| B7-B14 | MOD-18 alle Tabs | Keine Demo-Finanz-Daten | Leere Zustaende, kein Crash |
+
+---
+
+## Schritt 4: Reparaturen nach Pruefung
+
+Alle bei der Pruefung gefundenen zusaetzlichen Bugs werden in die Backlog-Datei eingetragen und einzeln abgearbeitet.
+
+## Schritt 5: Regressionstest
+
+Nach allen Reparaturen die komplette Pruefung (Phase A + B) wiederholen.
+
+---
+
+## Betroffene Dateien (bekannte Fixes)
 
 | Datei | Aenderung |
 |---|---|
-| `supabase/functions/sot-create-test-user/index.ts` | Neue Backend-Funktion mit Admin-API |
-| `src/pages/admin/Users.tsx` | Neuer "Benutzer anlegen"-Dialog mit Edge-Function-Aufruf |
-| `src/components/admin/AdminLayout.tsx` | Guard: Nicht-Admins werden zu `/portal` weitergeleitet (nur published) |
+| `DEMO_ENGINE_BACKLOG.md` | Neu: Backlog-Checkliste fuer alle Pruefpunkte |
+| `src/pages/portal/photovoltaik/AnlagenTab.tsx` | Zeile 263: Filter invertieren um Duplikate zu verhindern |
+| `src/pages/portal/akquise-manager/AkquiseMandate.tsx` | Zeile 550: Filter invertieren + Zeilen 532-538: Widget-Text an SSOT angleichen |
 
-Keine Datenbank-Migration noetig. Der bestehende `on_auth_user_created`-Trigger kuemmert sich um Profil und Mandanten-Erstellung.
-
-## Ablauf zum Testen
-
-1. Diese Aenderungen implementieren
-2. Du pruefst alles in der Vorschau (fuer dich aendert sich nichts)
-3. Wenn alles passt: Publish
-4. In der publizierten Version: Zone 1 aufrufen, 2 Tester-Accounts anlegen
-5. Tester erhalten E-Mail + Passwort, loggen sich ein, landen in Zone 2
+Weitere Dateien koennen hinzukommen, sobald die Screenshot-Pruefung zusaetzliche Bugs aufdeckt.
 
