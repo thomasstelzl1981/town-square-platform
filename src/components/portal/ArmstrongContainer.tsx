@@ -295,7 +295,10 @@ export function ArmstrongContainer() {
             multiple
             disabled={isUploading}
           >
-            <button className="h-10 w-10 rounded-full flex items-center justify-center text-muted-foreground/60 hover:text-foreground hover:bg-muted/40 transition-colors">
+            <button 
+              className="h-10 w-10 rounded-full flex items-center justify-center text-muted-foreground/60 hover:text-foreground hover:bg-muted/40 transition-colors"
+              aria-label={isUploading ? "Wird hochgeladen..." : "Datei hochladen"}
+            >
               {isUploading ? (
                 <Loader2 className="h-5 w-5 animate-spin" />
               ) : (
@@ -425,6 +428,7 @@ export function ArmstrongContainer() {
             (voice.isProcessing || voice.isSpeaking) && 'opacity-60 cursor-not-allowed'
           )}
           title={voice.isListening ? 'Mikrofon beenden' : 'Spracheingabe starten'}
+          aria-label={voice.isListening ? 'Mikrofon beenden' : 'Spracheingabe starten'}
         >
           {voice.isListening && !voice.isProcessing && (
             <>
