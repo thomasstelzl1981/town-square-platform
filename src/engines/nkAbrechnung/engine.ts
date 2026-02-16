@@ -154,6 +154,11 @@ export async function calculateSettlement(
   const warnings: string[] = [];
   const lowConfidenceItems: string[] = [];
 
+  // Bewohnerzahlen: aus Lease bzw. Property lesen, Fallback auf Defaults
+  const unitPersons = (lease as any).number_of_occupants ?? 2;
+  const totalPersons = (property as any).total_occupants
+    ?? Math.max(((property as any).units_count || 10) * 2, 2);
+
   const rows: NKMatrixRow[] = costItems.map((item) => {
     if (item.mappingConfidence < 70) {
       lowConfidenceItems.push(`${item.labelDisplay} (${item.mappingConfidence}%)`);
@@ -166,8 +171,8 @@ export async function calculateSettlement(
         totalAreaSqm,
         unitMea,
         totalMea,
-        unitPersons: 2, // Default: No occupant count in leases table yet. Add 'number_of_occupants' to leases when available.
-        totalPersons: Math.max((property as any).units_count * 2, 2), // Estimate: 2 persons per unit. Add 'total_occupants' to properties when available.
+        unitPersons,
+        totalPersons,
         totalUnits: (property as any).units_count || 10,
       },
       periodInfo

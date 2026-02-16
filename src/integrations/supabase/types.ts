@@ -8338,6 +8338,7 @@ export type Database = {
           next_rent_adjustment_earliest_date: string | null
           nk_advance_eur: number | null
           notice_date: string | null
+          number_of_occupants: number
           payment_due_day: number | null
           public_id: string | null
           rent_cold_eur: number | null
@@ -8372,6 +8373,7 @@ export type Database = {
           next_rent_adjustment_earliest_date?: string | null
           nk_advance_eur?: number | null
           notice_date?: string | null
+          number_of_occupants?: number
           payment_due_day?: number | null
           public_id?: string | null
           rent_cold_eur?: number | null
@@ -8406,6 +8408,7 @@ export type Database = {
           next_rent_adjustment_earliest_date?: string | null
           nk_advance_eur?: number | null
           notice_date?: string | null
+          number_of_occupants?: number
           payment_due_day?: number | null
           public_id?: string | null
           rent_cold_eur?: number | null
@@ -11764,6 +11767,7 @@ export type Database = {
           te_number: string | null
           tenant_id: string
           total_area_sqm: number | null
+          total_occupants: number | null
           unit_ownership_nr: string | null
           updated_at: string
           usage_type: string
@@ -11823,6 +11827,7 @@ export type Database = {
           te_number?: string | null
           tenant_id: string
           total_area_sqm?: number | null
+          total_occupants?: number | null
           unit_ownership_nr?: string | null
           updated_at?: string
           usage_type?: string
@@ -11882,6 +11887,7 @@ export type Database = {
           te_number?: string | null
           tenant_id?: string
           total_area_sqm?: number | null
+          total_occupants?: number | null
           unit_ownership_nr?: string | null
           updated_at?: string
           usage_type?: string
