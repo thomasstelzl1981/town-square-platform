@@ -24,7 +24,7 @@ import {
   Trophy, Phone, Mail, Globe, Building2, Calendar, 
   FileText, Check, Loader2, Euro, AlertCircle
 } from 'lucide-react';
-import { useServiceCaseProviders, useAwardProvider, ServiceCaseProvider } from '@/hooks/useServiceCaseInbound';
+import { useServiceCaseProviders, useAwardProvider, useUpdateInboundOffer, ServiceCaseProvider } from '@/hooks/useServiceCaseInbound';
 import { ServiceCase } from '@/hooks/useServiceCases';
 import { formatCurrency } from '@/lib/formatters';
 import { format } from 'date-fns';
@@ -48,6 +48,7 @@ export function OffersComparisonPanel({
 }: OffersComparisonPanelProps) {
   const { data: providers, isLoading } = useServiceCaseProviders(serviceCase.id);
   const awardProvider = useAwardProvider();
+  const updateOffer = useUpdateInboundOffer();
   
   const [selectedProvider, setSelectedProvider] = useState<ServiceCaseProvider | null>(null);
   const [awardDialogOpen, setAwardDialogOpen] = useState(false);
@@ -212,10 +213,15 @@ export function OffersComparisonPanel({
                           <Button
                             size="sm"
                             variant="ghost"
-                            onClick={() => {
-                              // TODO: Save offer amount
+                            disabled={updateOffer.isPending}
+                            onClick={async () => {
+                              const cents = Math.round(parseFloat(offerAmount || '0') * 100);
+                              await updateOffer.mutateAsync({
+                                inboundId: provider.id,
+                                offer_amount_cents: cents,
+                              });
                               setOfferEditId(null);
-                              toast.info('Speichern wird implementiert');
+                              toast.success('Angebotsbetrag gespeichert');
                             }}
                           >
                             <Check className="h-4 w-4" />

@@ -96,33 +96,36 @@
       "origin": "TODO-006",
       "severity": "P3",
       "module": "Z1-Acquiary",
-      "title": "needsRoutingCount hardcoded 0",
-      "description": "Sollte echte Query auf acq_inbound_messages.needs_routing nutzen.",
+      "title": "needsRoutingCount live Query",
+      "description": "Echte Query auf acq_inbound_messages.needs_routing=true implementiert.",
       "fix_type": "code",
       "effort": "low",
-      "status": "open"
+      "status": "done",
+      "fixed_at": "2026-02-16"
     },
     {
       "id": "CB-008",
       "origin": "TODO-007",
       "severity": "P3",
       "module": "Z1-FinanceDesk",
-      "title": "FinanceDesk KPIs sind Mock-Daten",
-      "description": "MOCK_KPIS sollten durch live Queries ersetzt werden.",
+      "title": "FinanceDesk KPIs live",
+      "description": "MOCK_KPIS durch live Query auf leads-Tabelle ersetzt.",
       "fix_type": "code",
       "effort": "medium",
-      "status": "open"
+      "status": "done",
+      "fixed_at": "2026-02-16"
     },
     {
       "id": "CB-009",
       "origin": "TODO-008",
       "severity": "P3",
       "module": "MOD-04",
-      "title": "Angebot-Betrag speichern nicht implementiert",
-      "description": "Save offer amount Funktion fehlt im OffersComparisonPanel.",
+      "title": "Angebot-Betrag speichern implementiert",
+      "description": "useUpdateInboundOffer wird jetzt im OffersComparisonPanel genutzt.",
       "fix_type": "code",
       "effort": "low",
-      "status": "open"
+      "status": "done",
+      "fixed_at": "2026-02-16"
     },
     {
       "id": "CB-010",

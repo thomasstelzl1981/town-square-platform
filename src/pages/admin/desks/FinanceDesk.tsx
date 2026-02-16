@@ -14,6 +14,9 @@ import {
   HeartHandshake, TrendingUp, ArrowRight, Inbox
 } from 'lucide-react';
 import type { DeskKPI } from '@/components/admin/desks/OperativeDeskShell';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 const BERATUNGSFELDER = [
   { icon: Landmark, label: 'Stiftungen', desc: 'Stiftungsgründung & -verwaltung' },
@@ -23,15 +26,35 @@ const BERATUNGSFELDER = [
   { icon: TrendingUp, label: 'Finanzierungen', desc: 'Privat- & Investitionsfinanzierungen' },
 ];
 
-// TODO: Replace with live query from leads table
-const MOCK_KPIS: DeskKPI[] = [
-  { label: 'Offene Anfragen', value: 0, icon: Inbox, color: 'text-amber-500' },
-  { label: 'Zugewiesen', value: 0, icon: Users, color: 'text-primary' },
-  { label: 'In Beratung', value: 0, icon: Video, color: 'text-emerald-500' },
-  { label: 'Abgeschlossen', value: 0, icon: Shield, color: 'text-muted-foreground' },
-];
-
 export default function FinanceDesk() {
+  const { activeTenantId } = useAuth();
+
+  const { data: kpiData } = useQuery({
+    queryKey: ['finance-desk-kpis', activeTenantId],
+    queryFn: async () => {
+      if (!activeTenantId) return { open: 0, contacted: 0, qualified: 0, closed: 0 };
+      const { data } = await supabase
+        .from('leads')
+        .select('status')
+        .eq('tenant_id', activeTenantId);
+      const leads = data || [];
+      return {
+        open: leads.filter(l => l.status === 'new').length,
+        contacted: leads.filter(l => l.status === 'contacted').length,
+        qualified: leads.filter(l => l.status === 'qualified').length,
+        closed: leads.filter(l => l.status === 'converted' || l.status === 'lost').length,
+      };
+    },
+    enabled: !!activeTenantId,
+  });
+
+  const kpis: DeskKPI[] = [
+    { label: 'Offene Anfragen', value: kpiData?.open ?? 0, icon: Inbox, color: 'text-amber-500' },
+    { label: 'Kontaktiert', value: kpiData?.contacted ?? 0, icon: Users, color: 'text-primary' },
+    { label: 'Qualifiziert', value: kpiData?.qualified ?? 0, icon: Video, color: 'text-emerald-500' },
+    { label: 'Abgeschlossen', value: kpiData?.closed ?? 0, icon: Shield, color: 'text-muted-foreground' },
+  ];
+
   return (
     <OperativeDeskShell
       title="Finance Desk"
@@ -42,7 +65,7 @@ export default function FinanceDesk() {
         z1Desk: 'Finance Desk',
         z2Manager: 'Finanzberater (Manager)',
       }}
-      kpis={MOCK_KPIS}
+      kpis={kpis}
     >
       {/* Beratungsangebot */}
       <Card>
