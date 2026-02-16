@@ -1,143 +1,107 @@
 
+# MOD-18 Finanzanalyse: Einheitliche CI-Kacheln und Glow-Korrektur
 
-# Outbound-E-Mail-Umstellung: User-Account statt Resend
+## Problem
 
-## Ueberblick
+1. **PersonVisitenkarte** (horizontale Visitenkarten, 2 pro Reihe) werden in Uebersicht, Investment und Vorsorgedokumente verwendet -- diese sollen durch die standard-quadratischen CI-Kacheln (WidgetGrid + WidgetCell, 4 pro Reihe) ersetzt werden.
+2. **Glow-System ist falsch**: Aktuell bekommen sowohl Demo-Daten als auch eigene Daten den gleichen `emerald`-Glow. Korrekt waere: Demo = emerald (gruen), eigene Daten = rose (rot).
+3. **Vorsorgedokumente**: Die Personen-Auswahl nutzt ebenfalls PersonVisitenkarte statt CI-Kacheln.
 
-5 Edge Functions (Kategorie A) werden so umgebaut, dass E-Mails ueber das verbundene Mail-Konto des Users (Google, Microsoft, IMAP/SMTP) versendet werden — mit Resend als Fallback, falls kein Konto verbunden ist.
+## Loesung
 
-Die Infrastruktur existiert bereits vollstaendig in `sot-mail-send`. Die Aufgabe ist, diese Logik in die 5 Funktionen zu integrieren.
+### 1. Glow-System korrigieren (`src/config/widgetCategorySpec.ts`)
+
+Die Funktion `getContractWidgetGlow` gibt aktuell fuer ALLE Daten `emerald` zurueck. Aenderung:
+
+- `isDemoId(id)` -> `'emerald'` (gruen) -- bleibt
+- Manuelle/eigene Daten -> `'rose'` (rot) -- NEU
+- Shop-Angebote -> `null` (kein Glow) -- bleibt
+
+Ebenso `resolveWidgetGlow`: `'manual'` -> `'rose'` statt `'emerald'`
+
+### 2. UebersichtTab: PersonVisitenkarte durch WidgetGrid ersetzen
+
+**Datei: `src/pages/portal/finanzanalyse/UebersichtTab.tsx`**
+
+- `PersonVisitenkarte` Import entfernen
+- Personen-Block: `grid grid-cols-1 md:grid-cols-2` ersetzen durch `WidgetGrid` + `WidgetCell`
+- Jede Person als quadratische Kachel mit:
+  - Farbiger Avatar-Circle (Rollen-Gradient)
+  - Name (bold)
+  - Rolle (klein)
+  - Glass-Card Styling mit Glow (emerald fuer Demo, rose fuer eigene)
+  - `onClick` oeffnet weiterhin das Inline-Formular darunter
+  - Selection Ring bei geoeffneter Karte
+- CTA "Person hinzufuegen" bleibt als dashed WidgetCell
+
+### 3. InvestmentTab: PersonVisitenkarte durch WidgetGrid ersetzen
+
+**Datei: `src/pages/portal/finanzanalyse/InvestmentTab.tsx`**
+
+- `PersonVisitenkarte` Import entfernen
+- Person-Auswahl als `WidgetGrid` + `WidgetCell`:
+  - Avatar-Circle, Name, Rolle
+  - Depot-Status Badge ("Depot aktiv" / "Kein Depot")
+  - Selection Ring bei ausgewaehlter Person
+  - Kein Edit-Formular -- nur Depot-Umschaltung
+
+### 4. VorsorgedokumenteTab: PersonVisitenkarte durch WidgetGrid ersetzen
+
+**Datei: `src/pages/portal/finanzanalyse/VorsorgedokumenteTab.tsx`**
+
+- `PersonVisitenkarte` Import entfernen
+- Personen-Auswahl in Sektion 1 als `WidgetGrid` + `WidgetCell`:
+  - Avatar-Circle, Name, Rolle
+  - Status-Badge ("Hinterlegt" wenn PV vorhanden)
+  - Selection Ring
+- Testament-Kacheln (Sektion 2) bleiben unveraendert (nutzen bereits WidgetGrid)
+
+### 5. Glow auf alle Vertrags-Kacheln anwenden
+
+In allen Tabs (Sachversicherungen, Vorsorge, KV, Abonnements) werden die Kacheln aktuell ohne Glow gerendert (nur `CARD.BASE`). Aenderung:
+
+- Demo-Datensaetze (`isDemoId`) bekommen `getActiveWidgetGlow('emerald')` + DEMO Badge
+- Eigene Datensaetze bekommen `getActiveWidgetGlow('rose')`
+- CTA-Kacheln bleiben ohne Glow (dashed border)
 
 ---
 
-## Betroffene Functions
+## Betroffene Dateien
 
-| # | Function | Frontend-Aufruf |
-|---|----------|----------------|
-| 1 | `sot-acq-outbound` | `src/hooks/useAcqOutbound.ts` |
-| 2 | `sot-renovation-outbound` | `TenderDraftPanel.tsx` |
-| 3 | `sot-serien-email-send` | `src/hooks/useMailCampaigns.ts` |
-| 4 | `sot-meeting-send` | `MeetingResultDrawer.tsx` |
-| 5 | `sot-msv-rent-report` | manuell / Cron |
+| Datei | Aenderung |
+|-------|-----------|
+| `src/config/widgetCategorySpec.ts` | `manual` -> `'rose'` statt `'emerald'` |
+| `src/pages/portal/finanzanalyse/UebersichtTab.tsx` | PersonVisitenkarte -> WidgetGrid/WidgetCell + Glow |
+| `src/pages/portal/finanzanalyse/InvestmentTab.tsx` | PersonVisitenkarte -> WidgetGrid/WidgetCell |
+| `src/pages/portal/finanzanalyse/VorsorgedokumenteTab.tsx` | PersonVisitenkarte -> WidgetGrid/WidgetCell |
+| `src/pages/portal/finanzanalyse/SachversicherungenTab.tsx` | Glow (emerald/rose) auf Kacheln anwenden |
+| `src/pages/portal/finanzanalyse/VorsorgeTab.tsx` | Glow (emerald/rose) auf Kacheln anwenden |
+| `src/pages/portal/finanzanalyse/KrankenversicherungTab.tsx` | Glow (emerald) auf Demo-Kacheln anwenden |
+| `src/pages/portal/finanzanalyse/AbonnementsTab.tsx` | Glow (emerald/rose) auf Kacheln anwenden |
 
 ---
 
-## Architektur-Ansatz: Shared Helper statt Function-zu-Function-Calls
+## Technische Details
 
-Statt dass jede Function intern `sot-mail-send` per HTTP aufruft (langsam, Auth-Overhead), wird eine **gemeinsame Hilfsfunktion** `_shared/userMailSend.ts` erstellt, die die Send-Logik aus `sot-mail-send` kapselt:
+### Kachel-Layout (alle Personen-Widgets)
 
 ```text
-supabase/functions/
-  _shared/
-    userMailSend.ts    <-- NEU: Shared send logic (SMTP/Gmail/Graph + Resend fallback)
-    ledger.ts          (existiert bereits)
-  sot-acq-outbound/
-  sot-renovation-outbound/
-  sot-serien-email-send/
-  sot-meeting-send/
-  sot-msv-rent-report/
+WidgetGrid (4-col desktop, 2-col tablet, 1-col mobile)
+  [WidgetCell]         [WidgetCell]         [WidgetCell]         [WidgetCell]
+   Avatar-Circle        Avatar-Circle        Avatar-Circle        + Person
+   "Max Mustermann"     "Lisa Mustermann"    "Felix Mustermann"   hinzufuegen
+   Hauptperson          Partner/in           Kind
+   rose glow            rose glow            rose glow            dashed CTA
 ```
 
-### Shared Helper: `_shared/userMailSend.ts`
-
-Exportiert eine Funktion:
+### Glow-Logik
 
 ```text
-sendViaUserAccountOrResend({
-  supabase,           // Service-Role Client
-  userId,             // Auth User ID
-  to: string[],
-  subject: string,
-  bodyHtml?: string,
-  bodyText?: string,
-  replyTo?: string,
-  resendFrom?: string,  // Fallback-Absender fuer Resend (z.B. "Armstrong <no-reply@systemofatown.de>")
-}) => { method: 'user_account' | 'resend' | 'skipped', messageId?: string }
+isDemoId(id) = true  -> getActiveWidgetGlow('emerald') + DEMO Badge
+isDemoId(id) = false -> getActiveWidgetGlow('rose')
+CTA / Platzhalter    -> border-dashed, kein Glow
 ```
 
-**Logik:**
-1. `mail_accounts` nach `user_id` abfragen, `is_default = true` oder erste aktive
-2. Wenn Account gefunden: Sende per Google/Microsoft/SMTP (Logik aus `sot-mail-send` extrahiert)
-3. Wenn kein Account: Fallback auf Resend (wie bisher)
-4. Wenn kein Resend-Key: Status `skipped`
+### PersonVisitenkarte
 
----
-
-## Aenderungen pro Function
-
-### 1. `sot-acq-outbound`
-- Import `sendViaUserAccountOrResend`
-- Auth-Header auswerten (fehlt aktuell! — nutzt nur Service-Role)
-- Im Send-Loop: `sendViaUserAccountOrResend()` statt direktem Resend-Aufruf
-- `acq_outbound_messages.sent_via` neues Feld: `'user_account'` oder `'resend'`
-
-### 2. `sot-renovation-outbound`
-- Auth-Header wird bereits ausgewertet (User-ID vorhanden)
-- Resend-Block ersetzen durch `sendViaUserAccountOrResend()`
-- Outbound-Identity-Logik kann entfallen (wird durch User-Account ersetzt)
-
-### 3. `sot-serien-email-send`
-- Auth-Header wird bereits ausgewertet
-- Im Recipient-Loop: `sendViaUserAccountOrResend()` statt Resend
-- Outbound-Identity als Fallback beibehalten
-- **Achtung**: Throttling beibehalten (Rate-Limits der User-Mailserver)
-
-### 4. `sot-meeting-send`
-- Auth fehlt aktuell komplett — `user_id` aus `session.user_id` nutzen
-- Resend-Block ersetzen durch `sendViaUserAccountOrResend()`
-
-### 5. `sot-msv-rent-report`
-- Ist Cron-basiert, kein User-Kontext
-- **Optionaler** `accountId`-Parameter fuer manuellen Trigger
-- Bei Cron: Resend bleibt (kein User eingeloggt)
-- Bei manuellem Trigger mit `accountId`: User-Account nutzen
-
----
-
-## Frontend-Aenderungen
-
-### Alle betroffenen Hooks/Komponenten:
-
-Vor dem Senden wird geprueft, ob der User ein verbundenes Mail-Konto hat. Falls ja, wird dies dem User angezeigt:
-
-**Neuer Shared Hook: `useUserMailAccount.ts`**
-- Fragt `mail_accounts` ab: gibt es ein aktives, default-Konto?
-- Gibt zurueck: `{ hasAccount: boolean, accountEmail: string | null, accountId: string | null }`
-
-**UI-Anpassung in den 4 Frontend-Aufrufstellen:**
-- Kleiner Hinweis-Text vor dem Senden:
-  - Wenn Account verbunden: "E-Mail wird ueber **max@gmail.com** versendet"
-  - Wenn nicht: "E-Mail wird ueber System-Adresse versendet. Verbinde dein E-Mail-Konto in den Einstellungen fuer persoenlichen Versand."
-- Kein zusaetzlicher Button noetig — die Logik ist automatisch
-
----
-
-## Datenbank-Aenderung
-
-Eine kleine Migration:
-
-```text
-ALTER TABLE acq_outbound_messages ADD COLUMN IF NOT EXISTS sent_via TEXT DEFAULT 'resend';
-```
-
-Damit kann spaeter nachvollzogen werden, ob eine E-Mail ueber den User-Account oder Resend ging.
-
----
-
-## Zusammenfassung der Dateien
-
-| Datei | Aktion |
-|-------|--------|
-| `supabase/functions/_shared/userMailSend.ts` | **NEU** — Shared Send-Logik |
-| `supabase/functions/sot-acq-outbound/index.ts` | Umbau auf userMailSend |
-| `supabase/functions/sot-renovation-outbound/index.ts` | Umbau auf userMailSend |
-| `supabase/functions/sot-serien-email-send/index.ts` | Umbau auf userMailSend |
-| `supabase/functions/sot-meeting-send/index.ts` | Umbau auf userMailSend + Auth |
-| `supabase/functions/sot-msv-rent-report/index.ts` | Optionaler accountId-Support |
-| `src/hooks/useUserMailAccount.ts` | **NEU** — Shared Hook |
-| `src/hooks/useAcqOutbound.ts` | Info-Text Integration |
-| `src/components/portal/immobilien/sanierung/tender/TenderDraftPanel.tsx` | Info-Text Integration |
-| `src/components/dashboard/MeetingResultDrawer.tsx` | Info-Text Integration |
-| `src/hooks/useMailCampaigns.ts` | Info-Text Integration |
-| SQL-Migration | `sent_via`-Spalte |
-
+Die Komponente `src/components/shared/PersonVisitenkarte.tsx` wird NICHT geloescht, da sie moeglicherweise in anderen Modulen verwendet wird. Sie wird nur aus MOD-18 entfernt.
