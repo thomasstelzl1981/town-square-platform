@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { LucideIcon, Inbox, FileText, Users, Building, FolderOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -13,7 +14,7 @@ interface EmptyStateProps {
   className?: string;
 }
 
-export function EmptyState({ icon: Icon = Inbox, title, description, action, className }: EmptyStateProps) {
+export const EmptyState = memo(function EmptyState({ icon: Icon = Inbox, title, description, action, className }: EmptyStateProps) {
   return (
     <div className={cn('flex flex-col items-center justify-center py-12 text-center', className)}>
       <div className="rounded-full bg-muted p-4">
@@ -30,10 +31,10 @@ export function EmptyState({ icon: Icon = Inbox, title, description, action, cla
       )}
     </div>
   );
-}
+});
 
 // Preset empty states for common scenarios
-export function EmptyDocuments({ onUpload }: { onUpload?: () => void }) {
+export const EmptyDocuments = memo(function EmptyDocuments({ onUpload }: { onUpload?: () => void }) {
   return (
     <EmptyState
       icon={FileText}
@@ -42,9 +43,9 @@ export function EmptyDocuments({ onUpload }: { onUpload?: () => void }) {
       action={onUpload ? { label: 'Dokument hochladen', onClick: onUpload } : undefined}
     />
   );
-}
+});
 
-export function EmptyContacts({ onAdd }: { onAdd?: () => void }) {
+export const EmptyContacts = memo(function EmptyContacts({ onAdd }: { onAdd?: () => void }) {
   return (
     <EmptyState
       icon={Users}
@@ -53,9 +54,9 @@ export function EmptyContacts({ onAdd }: { onAdd?: () => void }) {
       action={onAdd ? { label: 'Kontakt erstellen', onClick: onAdd } : undefined}
     />
   );
-}
+});
 
-export function EmptyProperties({ onAdd }: { onAdd?: () => void }) {
+export const EmptyProperties = memo(function EmptyProperties({ onAdd }: { onAdd?: () => void }) {
   return (
     <EmptyState
       icon={Building}
@@ -64,9 +65,9 @@ export function EmptyProperties({ onAdd }: { onAdd?: () => void }) {
       action={onAdd ? { label: 'Immobilie anlegen', onClick: onAdd } : undefined}
     />
   );
-}
+});
 
-export function EmptyFolder() {
+export const EmptyFolder = memo(function EmptyFolder() {
   return (
     <EmptyState
       icon={FolderOpen}
@@ -74,4 +75,4 @@ export function EmptyFolder() {
       description="Dieser Ordner enthält keine Dateien."
     />
   );
-}
+});

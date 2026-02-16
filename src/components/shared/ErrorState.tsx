@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { AlertTriangle, RefreshCw, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -10,7 +11,7 @@ interface ErrorStateProps {
   className?: string;
 }
 
-export function ErrorState({
+export const ErrorState = memo(function ErrorState({
   title = 'Etwas ist schiefgelaufen',
   description = 'Die Daten konnten nicht geladen werden. Bitte versuchen Sie es erneut.',
   onRetry,
@@ -42,10 +43,10 @@ export function ErrorState({
       </div>
     </div>
   );
-}
+});
 
 // Pre-configured error states
-export function NetworkError({ onRetry }: { onRetry?: () => void }) {
+export const NetworkError = memo(function NetworkError({ onRetry }: { onRetry?: () => void }) {
   return (
     <ErrorState
       title="Netzwerkfehler"
@@ -53,9 +54,9 @@ export function NetworkError({ onRetry }: { onRetry?: () => void }) {
       onRetry={onRetry}
     />
   );
-}
+});
 
-export function NotFoundError({ entityName = 'Eintrag' }: { entityName?: string }) {
+export const NotFoundError = memo(function NotFoundError({ entityName = 'Eintrag' }: { entityName?: string }) {
   return (
     <ErrorState
       title={`${entityName} nicht gefunden`}
@@ -63,9 +64,9 @@ export function NotFoundError({ entityName = 'Eintrag' }: { entityName?: string 
       showSupport={false}
     />
   );
-}
+});
 
-export function PermissionError() {
+export const PermissionError = memo(function PermissionError() {
   return (
     <ErrorState
       title="Keine Berechtigung"
@@ -73,4 +74,4 @@ export function PermissionError() {
       showSupport={false}
     />
   );
-}
+});
