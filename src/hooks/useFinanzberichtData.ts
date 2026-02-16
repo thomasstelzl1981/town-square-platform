@@ -17,6 +17,7 @@ export interface FinanzberichtIncome {
   sideJobIncome: number;
   childBenefit: number;
   otherIncome: number;
+  pvIncome: number;
   totalIncome: number;
 }
 
@@ -24,6 +25,7 @@ export interface FinanzberichtExpenses {
   warmRent: number;
   privateLoans: number;
   portfolioLoans: number;
+  pvLoans: number;
   insurancePremiums: number;
   savingsContracts: number;
   subscriptions: number;
@@ -43,6 +45,7 @@ export interface FinanzberichtAssets {
 export interface FinanzberichtLiabilities {
   portfolioDebt: number;
   homeDebt: number;
+  pvDebt: number;
   otherDebt: number;
   totalLiabilities: number;
 }
@@ -63,6 +66,22 @@ export interface ContractSummary {
   contractNo?: string;
 }
 
+export interface SubscriptionsByCategory {
+  category: string;
+  label: string;
+  items: Array<{ id: string; merchant: string; amount: number; status: string }>;
+  subtotal: number;
+}
+
+export interface EnergyContract {
+  id: string;
+  category: string;
+  providerName: string;
+  contractNumber: string | null;
+  monthlyCost: number;
+  startDate: string | null;
+}
+
 export interface FinanzberichtData {
   income: FinanzberichtIncome;
   expenses: FinanzberichtExpenses;
@@ -77,6 +96,8 @@ export interface FinanzberichtData {
   insuranceContracts: ContractSummary[];
   loanContracts: ContractSummary[];
   vorsorgeContracts: ContractSummary[];
+  subscriptionsByCategory: SubscriptionsByCategory[];
+  energyContracts: EnergyContract[];
   testamentCompleted: boolean;
   patientenverfuegungCompleted: boolean;
   isLoading: boolean;
@@ -171,8 +192,30 @@ export function useFinanzberichtData(): FinanzberichtData {
     queryKey: ['fb-subscriptions', activeTenantId],
     queryFn: async () => {
       if (!activeTenantId) return [];
-      const { data } = await supabase.from('user_subscriptions').select('id, merchant, amount, frequency, status').eq('tenant_id', activeTenantId);
+      const { data } = await supabase.from('user_subscriptions').select('id, merchant, category, amount, frequency, status').eq('tenant_id', activeTenantId);
       return data || [];
+    },
+    enabled: !!activeTenantId,
+  });
+
+  // ─── Energieverträge (miety_contracts) ────────────────────
+  const { data: mietyContracts = [] } = useQuery({
+    queryKey: ['fb-miety-contracts', activeTenantId],
+    queryFn: async () => {
+      if (!activeTenantId) return [];
+      const { data } = await supabase.from('miety_contracts').select('id, category, provider_name, contract_number, monthly_cost, start_date').eq('tenant_id', activeTenantId);
+      return data || [];
+    },
+    enabled: !!activeTenantId,
+  });
+
+  // ─── PV-Anlagen ───────────────────────────────────────────
+  const { data: pvPlants = [] } = useQuery({
+    queryKey: ['fb-pv-plants', activeTenantId],
+    queryFn: async () => {
+      if (!activeTenantId) return [];
+      const { data } = await supabase.from('pv_plants' as any).select('id, loan_bank, loan_amount, loan_monthly_rate, loan_interest_rate, loan_remaining_balance, annual_yield_kwh, feed_in_tariff_cents, annual_revenue').eq('tenant_id', activeTenantId);
+      return (data || []) as any[];
     },
     enabled: !!activeTenantId,
   });
@@ -203,6 +246,11 @@ export function useFinanzberichtData(): FinanzberichtData {
   return useMemo(() => {
     const isLoading = portfolioLoading || personsLoading || apLoading || homesLoading;
 
+    // PV data
+    const pvMonthlyRevenue = pvPlants.reduce((s: number, pv: any) => s + ((pv.annual_revenue || 0) / 12), 0);
+    const pvMonthlyLoanRate = pvPlants.reduce((s: number, pv: any) => s + (pv.loan_monthly_rate || 0), 0);
+    const pvRemainingBalance = pvPlants.reduce((s: number, pv: any) => s + (pv.loan_remaining_balance || 0), 0);
+
     // Income
     const netIncomeTotal = applicantProfiles.reduce((s, p) => s + (p.net_income_monthly || 0), 0);
     const selfEmployedIncome = applicantProfiles.reduce((s, p) => s + (p.self_employed_income_monthly || 0), 0);
@@ -210,7 +258,8 @@ export function useFinanzberichtData(): FinanzberichtData {
     const sideJobIncome = applicantProfiles.reduce((s, p) => s + (p.side_job_income_monthly || 0), 0);
     const childBenefit = applicantProfiles.reduce((s, p) => s + (p.child_benefit_monthly || 0), 0);
     const otherIncome = applicantProfiles.reduce((s, p) => s + (p.other_regular_income_monthly || 0), 0);
-    const totalIncome = netIncomeTotal + selfEmployedIncome + rentalIncomePortfolio + sideJobIncome + childBenefit + otherIncome;
+    const pvIncome = pvMonthlyRevenue;
+    const totalIncome = netIncomeTotal + selfEmployedIncome + rentalIncomePortfolio + sideJobIncome + childBenefit + otherIncome + pvIncome;
 
     // Expenses
     const warmRent = tenancies.reduce((s, t) => s + (t.total_rent || 0), 0);
@@ -223,11 +272,11 @@ export function useFinanzberichtData(): FinanzberichtData {
     const activeVorsorge = vorsorgeData.filter(v => v.status !== 'gekuendigt');
     const savingsMonthly = activeVorsorge.reduce((s, v) => s + monthlyFromInterval(v.premium, v.payment_interval), 0);
 
-    const activeSubscriptions = subscriptions.filter(s => s.status === 'active' || s.status === 'confirmed');
-    const subscriptionTotal = activeSubscriptions.reduce((s, sub) => s + (sub.amount || 0), 0);
+    const activeSubscriptions = subscriptions.filter((s: any) => s.status === 'active' || s.status === 'confirmed');
+    const subscriptionTotal = activeSubscriptions.reduce((s: number, sub: any) => s + (sub.amount || 0), 0);
 
     const livingExpenses = applicantProfiles.reduce((s, p) => s + (p.living_expenses_monthly || 0), 0);
-    const totalExpenses = warmRent + privateLoansMonthly + portfolioLoansMonthly + insurancePremiums + savingsMonthly + subscriptionTotal + livingExpenses;
+    const totalExpenses = warmRent + privateLoansMonthly + portfolioLoansMonthly + pvMonthlyLoanRate + insurancePremiums + savingsMonthly + subscriptionTotal + livingExpenses;
 
     // Assets
     const portfolioPropertyValue = portfolioSummary?.totalValue || 0;
@@ -240,10 +289,10 @@ export function useFinanzberichtData(): FinanzberichtData {
     // Liabilities
     const portfolioDebt = portfolioSummary?.totalDebt || 0;
     const homeDebt = mietyLoans.reduce((s, l) => s + (l.remaining_balance || 0), 0);
-    const totalLiabilities = portfolioDebt + homeDebt;
+    const totalLiabilities = portfolioDebt + homeDebt + pvRemainingBalance;
 
     // KPIs
-    const monthlyAmortization = (portfolioSummary?.annualAmortization || 0) / 12 + privateLoansMonthly;
+    const monthlyAmortization = (portfolioSummary?.annualAmortization || 0) / 12 + privateLoansMonthly + pvMonthlyLoanRate;
     const monthlySavings = savingsMonthly;
     const netWealth = totalAssets - totalLiabilities;
     const liquidityPercent = totalIncome > 0 ? ((totalIncome - totalExpenses) / totalIncome) * 100 : 0;
@@ -254,7 +303,7 @@ export function useFinanzberichtData(): FinanzberichtData {
     let projPropertyValue = portfolioPropertyValue + homeValue;
     let projDebt = totalLiabilities;
     let cumSavings = bankSavings + securities;
-    const annualAnnuity = (portfolioLoansMonthly + privateLoansMonthly) * 12;
+    const annualAnnuity = (portfolioLoansMonthly + privateLoansMonthly + pvMonthlyLoanRate) * 12;
     const avgRate = portfolioSummary?.avgInterestRate ? portfolioSummary.avgInterestRate / 100 : 0.03;
 
     for (let i = 0; i <= 40; i++) {
@@ -283,20 +332,46 @@ export function useFinanzberichtData(): FinanzberichtData {
     const loanContracts: ContractSummary[] = [
       ...portfolioLoans.map(l => ({ id: l.id, type: 'Immobiliendarlehen', provider: '—', monthlyAmount: l.annuity_monthly_eur || 0, contractNo: undefined })),
       ...mietyLoans.map(l => ({ id: l.id, type: l.loan_type || 'Privatdarlehen', provider: l.bank_name || '—', monthlyAmount: l.monthly_rate || 0, contractNo: undefined })),
+      ...pvPlants.filter((pv: any) => pv.loan_bank).map((pv: any) => ({ id: pv.id, type: 'PV-Darlehen', provider: pv.loan_bank || '—', monthlyAmount: pv.loan_monthly_rate || 0, contractNo: undefined })),
     ];
 
     const vorsorgeContracts: ContractSummary[] = activeVorsorge
       .filter(v => !(v.contract_type || '').toLowerCase().includes('spar'))
       .map(v => ({ id: v.id, type: v.contract_type || 'Vorsorge', provider: v.provider || '—', monthlyAmount: monthlyFromInterval(v.premium, v.payment_interval), contractNo: v.contract_no || undefined }));
 
+    // Subscriptions by category
+    const CATEGORY_LABELS: Record<string, string> = {
+      streaming_video: 'Streaming (Video)', streaming_audio: 'Streaming (Audio)',
+      telecom_mobile: 'Mobilfunk', telecom_internet: 'Internet',
+      software: 'Software', news_media: 'Nachrichten & Medien',
+      fitness: 'Fitness & Sport', other: 'Sonstiges',
+    };
+    const catMap = new Map<string, { items: any[]; subtotal: number }>();
+    activeSubscriptions.forEach((sub: any) => {
+      const cat = sub.category || 'other';
+      const entry = catMap.get(cat) || { items: [], subtotal: 0 };
+      entry.items.push({ id: sub.id, merchant: sub.merchant || '—', amount: sub.amount || 0, status: sub.status || '' });
+      entry.subtotal += sub.amount || 0;
+      catMap.set(cat, entry);
+    });
+    const subscriptionsByCategory: SubscriptionsByCategory[] = Array.from(catMap.entries())
+      .map(([cat, data]) => ({ category: cat, label: CATEGORY_LABELS[cat] || cat, items: data.items, subtotal: data.subtotal }))
+      .sort((a, b) => b.subtotal - a.subtotal);
+
+    // Energy contracts
+    const energyContracts: EnergyContract[] = mietyContracts.map((c: any) => ({
+      id: c.id, category: c.category || '', providerName: c.provider_name || '—',
+      contractNumber: c.contract_number, monthlyCost: c.monthly_cost || 0, startDate: c.start_date,
+    }));
+
     const testamentCompleted = legalDocs.some((d: any) => d.document_type === 'testament' && d.is_completed);
     const patientenverfuegungCompleted = legalDocs.some((d: any) => d.document_type === 'patientenverfuegung' && d.is_completed);
 
     return {
-      income: { netIncomeTotal, selfEmployedIncome, rentalIncomePortfolio, sideJobIncome, childBenefit, otherIncome, totalIncome },
-      expenses: { warmRent, privateLoans: privateLoansMonthly, portfolioLoans: portfolioLoansMonthly, insurancePremiums, savingsContracts: savingsMonthly, subscriptions: subscriptionTotal, livingExpenses, totalExpenses },
+      income: { netIncomeTotal, selfEmployedIncome, rentalIncomePortfolio, sideJobIncome, childBenefit, otherIncome, pvIncome, totalIncome },
+      expenses: { warmRent, privateLoans: privateLoansMonthly, portfolioLoans: portfolioLoansMonthly, pvLoans: pvMonthlyLoanRate, insurancePremiums, savingsContracts: savingsMonthly, subscriptions: subscriptionTotal, livingExpenses, totalExpenses },
       assets: { propertyValue: portfolioPropertyValue, homeValue, bankSavings, securities, surrenderValues, totalAssets },
-      liabilities: { portfolioDebt, homeDebt, otherDebt: 0, totalLiabilities },
+      liabilities: { portfolioDebt, homeDebt, pvDebt: pvRemainingBalance, otherDebt: 0, totalLiabilities },
       monthlyAmortization,
       monthlySavings,
       netWealth,
@@ -306,9 +381,11 @@ export function useFinanzberichtData(): FinanzberichtData {
       insuranceContracts,
       loanContracts,
       vorsorgeContracts,
+      subscriptionsByCategory,
+      energyContracts,
       testamentCompleted,
       patientenverfuegungCompleted,
       isLoading,
     };
-  }, [portfolioSummary, portfolioLoading, personsLoading, apLoading, homesLoading, applicantProfiles, homes, mietyLoans, tenancies, insuranceData, vorsorgeData, subscriptions, legalDocs, portfolioLoans]);
+  }, [portfolioSummary, portfolioLoading, personsLoading, apLoading, homesLoading, applicantProfiles, homes, mietyLoans, tenancies, insuranceData, vorsorgeData, subscriptions, legalDocs, portfolioLoans, pvPlants, mietyContracts]);
 }
