@@ -1,59 +1,69 @@
 
 
-# E-Mail-Adresse aendern — Implementierung mit Admin-API
+# Test-User anlegen und Zone 1 absichern
 
-## Hintergrund
+## Was aendert sich fuer dich?
 
-Die Login-E-Mail ist falsch (`systemofadown.com` statt `systemofatown.com`). Das Lovable Cloud Backend ist nicht ueber ein externes Dashboard erreichbar, daher muss die Aenderung ueber eine Backend-Funktion im Code erfolgen.
+**Nichts.** Der Entwicklungsmodus (`VITE_FORCE_DEV_TENANT`) bleibt aktiv. Du arbeitest genau wie bisher weiter. Die Aenderungen wirken sich nur auf die publizierte Version aus, in der sich echte Nutzer einloggen muessen.
 
-## Ablauf fuer den Nutzer
+## Was wird gebaut?
+
+### 1. Backend-Funktion: `sot-create-test-user`
+
+Eine neue Backend-Funktion, die nur von Platform Admins aufgerufen werden kann. Sie erstellt einen neuen User-Account mit:
+- E-Mail + Passwort (vorgegeben)
+- Sofort verifiziert (kein Bestaetigungslink noetig)
+- Der bestehende DB-Trigger (`on_auth_user_created`) erstellt automatisch Profil, Organisation und Membership
+
+**Sicherheit:**
+- JWT-Pruefung: Nur eingeloggte User
+- Rollen-Pruefung: Nur `platform_admin` darf Accounts anlegen
+- Validierung: E-Mail-Format, Passwort-Mindestlaenge
+
+### 2. UI-Erweiterung: Users-Seite in Zone 1
+
+Die bestehende Users-Seite (`/admin/users`) bekommt einen zusaetzlichen Button **"Neuen Benutzer anlegen"**. Dieser oeffnet einen Dialog mit:
 
 ```text
-1. Sicherheit-Tab oeffnen (bereits dort)
-2. Karte aufklappen, "Aendern" neben Login-E-Mail klicken
-3. Neue E-Mail eingeben (thomas.stelzl@systemofatown.com)
-4. "E-Mail aendern" klicken
-5. Backend aendert die E-Mail sofort (Admin-API, keine Bestaetigung an alte Adresse noetig)
-6. Automatischer Logout nach 2 Sekunden
-7. Neuer Login mit der korrekten E-Mail
+E-Mail-Adresse:    [                              ]
+Passwort:          [                              ]
+Anzeigename:       [                              ]
+
+Hinweis: Der Benutzer erhaelt automatisch einen eigenen
+Mandanten und kann sich sofort mit diesen Daten einloggen.
+
+[Benutzer anlegen]  [Abbrechen]
 ```
 
-## Technische Umsetzung
+Nach erfolgreichem Anlegen wird die Mitgliederliste neu geladen und der neue User erscheint.
 
-### 1. Neue Backend-Funktion: `sot-auth-change-email`
+### 3. AdminLayout Guard verstaerken
 
-Datei: `supabase/functions/sot-auth-change-email/index.ts`
+Aktuell prueft der Guard in `AdminLayout.tsx` nur, ob der User eingeloggt ist. Fuer die publizierte Version wird eine zusaetzliche Pruefung eingebaut:
 
-- POST-Endpunkt, erwartet `{ newEmail }` im Body
-- Liest den Authorization-Header (JWT) und extrahiert die User-ID
-- Erstellt einen Admin-Client mit `SUPABASE_SERVICE_ROLE_KEY` (automatisch in Edge Functions verfuegbar)
-- Ruft `auth.admin.updateUserById(userId, { email: newEmail, email_confirm: true })` auf
-- `email_confirm: true` markiert die neue Adresse sofort als verifiziert — keine Bestaetigung an die alte Adresse noetig
-- CORS-Headers fuer Browser-Zugriff
-- Eingabevalidierung (E-Mail-Format)
+```text
+VORHER:  Eingeloggt? -> Zone 1 zugaenglich
+NACHHER: Eingeloggt UND (platform_admin ODER org_admin ODER internal_ops)? -> Zone 1
+         Sonst: Weiterleitung zu /portal
+```
 
-### 2. UI-Erweiterung: `src/pages/portal/stammdaten/SicherheitTab.tsx`
-
-Im geoeffneten Zustand der Portalzugang-Card:
-
-- Neuer State: `isEditingEmail`, `newEmail`, `emailLoading`
-- "Aendern"-Button neben der aktuellen Login-E-Mail
-- Nach Klick: Eingabefeld fuer neue E-Mail mit "E-Mail aendern" und "Abbrechen" Buttons
-- Hinweistext: "Nach der Aenderung werden Sie abgemeldet und muessen sich mit der neuen Adresse anmelden."
-- Handler ruft die Edge Function auf, zeigt Toast bei Erfolg/Fehler
-- Bei Erfolg: `supabase.auth.signOut()` nach 2 Sekunden, Redirect zur Login-Seite
-
-### 3. Hint-Text: `src/pages/portal/stammdaten/ProfilTab.tsx`
-
-Das E-Mail-Feld im Profil-Tab: Hint von "Login-Identitaet -- nicht aenderbar" zu "Aenderbar unter Sicherheit" aendern.
+Wichtig: Im Entwicklungsmodus (`isDevelopmentMode`) greift dieser Guard NICHT — du kommst weiterhin ueberall rein.
 
 ## Betroffene Dateien
 
 | Datei | Aenderung |
 |---|---|
-| `supabase/functions/sot-auth-change-email/index.ts` | Neue Backend-Funktion mit Admin-API |
-| `src/pages/portal/stammdaten/SicherheitTab.tsx` | E-Mail-Aenderungs-UI |
-| `src/pages/portal/stammdaten/ProfilTab.tsx` | Hint-Text anpassen |
+| `supabase/functions/sot-create-test-user/index.ts` | Neue Backend-Funktion mit Admin-API |
+| `src/pages/admin/Users.tsx` | Neuer "Benutzer anlegen"-Dialog mit Edge-Function-Aufruf |
+| `src/components/admin/AdminLayout.tsx` | Guard: Nicht-Admins werden zu `/portal` weitergeleitet (nur published) |
 
-Keine Datenbank-Migration noetig. Keine neuen Abhaengigkeiten.
+Keine Datenbank-Migration noetig. Der bestehende `on_auth_user_created`-Trigger kuemmert sich um Profil und Mandanten-Erstellung.
+
+## Ablauf zum Testen
+
+1. Diese Aenderungen implementieren
+2. Du pruefst alles in der Vorschau (fuer dich aendert sich nichts)
+3. Wenn alles passt: Publish
+4. In der publizierten Version: Zone 1 aufrufen, 2 Tester-Accounts anlegen
+5. Tester erhalten E-Mail + Passwort, loggen sich ein, landen in Zone 2
 
