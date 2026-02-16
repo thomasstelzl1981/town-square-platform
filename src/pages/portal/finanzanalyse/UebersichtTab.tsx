@@ -1,15 +1,16 @@
 /**
  * MOD-18 Finanzen — Tab 1: ÜBERSICHT
- * Block A: Personen im Haushalt (PersonVisitenkarte)
+ * Block A: Personen im Haushalt (WidgetGrid CI-Kacheln)
  * Block B: Konten (WidgetGrid)
  * Block C: 12M Scan Button
  */
 import { useState } from 'react';
 import { PageShell } from '@/components/shared/PageShell';
-import { PersonVisitenkarte } from '@/components/shared/PersonVisitenkarte';
 import { WidgetGrid } from '@/components/shared/WidgetGrid';
 import { WidgetCell } from '@/components/shared/WidgetCell';
-import { RECORD_CARD, DEMO_WIDGET } from '@/config/designManifest';
+import { RECORD_CARD, DEMO_WIDGET, CARD, TYPOGRAPHY, HEADER } from '@/config/designManifest';
+import { getActiveWidgetGlow, getSelectionRing } from '@/config/designManifest';
+import { isDemoId } from '@/engines/demoData/engine';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { FormInput } from '@/components/shared';
 import { Button } from '@/components/ui/button';
@@ -29,7 +30,7 @@ import { toast } from 'sonner';
 import { KontoAkteInline } from '@/components/finanzanalyse/KontoAkteInline';
 import { DEMO_KONTO, DEMO_KONTO_IBAN_MASKED } from '@/constants/demoKontoData';
 import {
-  Users, UserPlus, Landmark, ScanSearch, Plus,
+  Users, UserPlus, Landmark, ScanSearch, Plus, User,
   Calendar, Mail, Phone, MapPin, CreditCard, X
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -58,6 +59,13 @@ const ROLE_LABELS: Record<string, string> = {
   partner: 'Partner/in',
   kind: 'Kind',
   weitere: 'Weitere',
+};
+
+const ROLE_GRADIENTS: Record<string, string> = {
+  hauptperson: 'from-primary to-primary/60',
+  partner: 'from-rose-400 to-rose-500/60',
+  kind: 'from-amber-400 to-amber-500/60',
+  weitere: 'from-muted-foreground to-muted-foreground/60',
 };
 
 // ─── Konten Block (Widget-Grid mit Demo + echte Konten) ───
@@ -119,8 +127,9 @@ function KontenBlock() {
           <WidgetCell key={acc.id}>
             <div
               className={cn(
-                'h-full w-full glass-card rounded-xl cursor-pointer transition-all hover:shadow-lg',
-                openKontoId === acc.id && 'ring-2 ring-primary/50',
+                'h-full w-full rounded-xl cursor-pointer transition-all hover:shadow-lg',
+                getActiveWidgetGlow('rose'),
+                openKontoId === acc.id && getSelectionRing('rose'),
               )}
               onClick={() => setOpenKontoId(openKontoId === acc.id ? null : acc.id)}
               role="button"
@@ -313,36 +322,67 @@ export default function UebersichtTab() {
         </h3>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        {persons.map((person) => (
-          <PersonVisitenkarte
-            key={person.id}
-            person={person}
-            isSelected={openCardId === person.id}
-            onClick={() => toggleCard(person.id)}
-            badges={[
-              { label: ROLE_LABELS[person.role] || person.role, variant: person.is_primary ? 'default' : 'secondary' },
-            ]}
-          />
-        ))}
+      <WidgetGrid>
+        {persons.map((person) => {
+          const isDemo = isDemoId(person.id);
+          const glowVariant = isDemo ? 'emerald' : 'rose';
+          const isSelected = openCardId === person.id;
+          const gradient = ROLE_GRADIENTS[person.role] || ROLE_GRADIENTS.weitere;
+
+          return (
+            <WidgetCell key={person.id}>
+              <div
+                className={cn(
+                  CARD.BASE, CARD.INTERACTIVE,
+                  'h-full flex flex-col items-center justify-center p-5 text-center',
+                  getActiveWidgetGlow(glowVariant),
+                  isSelected && getSelectionRing(glowVariant),
+                )}
+                onClick={() => toggleCard(person.id)}
+                role="button"
+                tabIndex={0}
+              >
+                {isDemo && (
+                  <Badge className={DEMO_WIDGET.BADGE + ' absolute top-3 right-3 text-[10px]'}>DEMO</Badge>
+                )}
+                <div className={cn('h-14 w-14 rounded-full bg-gradient-to-br flex items-center justify-center mb-3', gradient)}>
+                  <User className="h-7 w-7 text-white" />
+                </div>
+                <h4 className={TYPOGRAPHY.CARD_TITLE}>
+                  {person.first_name} {person.last_name}
+                </h4>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {ROLE_LABELS[person.role] || person.role}
+                </p>
+                {person.birth_date && (
+                  <p className="text-[10px] text-muted-foreground/70 mt-1">
+                    {new Date(person.birth_date).toLocaleDateString('de-DE')}
+                  </p>
+                )}
+              </div>
+            </WidgetCell>
+          );
+        })}
 
         {/* CTA: Add Person */}
         {!showNewPerson && (
-          <Card
-            className="border-2 border-dashed border-primary/30 flex items-center justify-center cursor-pointer hover:border-primary/50 transition-colors min-h-[100px]"
-            onClick={() => { setShowNewPerson(true); setOpenCardId(null); }}
-            role="button"
-            tabIndex={0}
-          >
-            <div className="flex flex-col items-center gap-2 text-muted-foreground py-4">
-              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                <UserPlus className="h-5 w-5 text-primary" />
+          <WidgetCell>
+            <div
+              className="h-full w-full rounded-xl border-2 border-dashed border-primary/30 flex items-center justify-center cursor-pointer hover:border-primary/50 transition-colors"
+              onClick={() => { setShowNewPerson(true); setOpenCardId(null); }}
+              role="button"
+              tabIndex={0}
+            >
+              <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
+                  <UserPlus className="h-6 w-6 text-primary" />
+                </div>
+                <p className="text-sm font-medium">Person hinzufügen</p>
               </div>
-              <p className="text-sm font-medium">Person hinzufügen</p>
             </div>
-          </Card>
+          </WidgetCell>
         )}
-      </div>
+      </WidgetGrid>
 
       {/* Person detail/edit below grid */}
       {openCardId && (() => {
