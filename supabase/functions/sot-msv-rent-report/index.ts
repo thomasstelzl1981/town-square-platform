@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { sendViaUserAccountOrResend } from "../_shared/userMailSend.ts";
 
 /**
  * SOT-MSV-RENT-REPORT (API-802)
@@ -7,16 +8,9 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
  * Monatliche Mietberichte für Premium-MSV-Enrollments.
  * Läuft am 15. des Monats oder manuell mit forceRun: true.
  * 
- * Report enthält:
- * - Collection Rate (%)
- * - Bezahlt/Offen Counts
- * - Unit-Details mit Mieter und Status
- * - Anzahl gesendeter Mahnungen
- * 
  * E-Mail-Versand:
- * - Benötigt RESEND_API_KEY Secret
- * - Sender-Domain muss bei Resend verifiziert sein
- * - Ohne API-Key: Nur Report-Generierung, kein Versand
+ * - Wenn userId übergeben: versucht User-Account-Versand
+ * - Ansonsten: Resend-Fallback (Cron-Kontext)
  */
 
 const corsHeaders = {
@@ -97,49 +91,6 @@ function generateReportHtml(report: any): string {
   `;
 }
 
-// Resend E-Mail versenden
-async function sendReportEmail(params: {
-  to: string;
-  subject: string;
-  html: string;
-}): Promise<{ success: boolean; messageId?: string; error?: string }> {
-  const resendApiKey = Deno.env.get("RESEND_API_KEY");
-  
-  if (!resendApiKey) {
-    console.log("RESEND_API_KEY not configured - skipping email send");
-    return { success: false, error: "RESEND_API_KEY not configured" };
-  }
-
-  try {
-    const response = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${resendApiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        from: "MSV Mietsonderverwaltung <msv@kaufy.app>",
-        to: [params.to],
-        subject: params.subject,
-        html: params.html,
-      }),
-    });
-
-    if (!response.ok) {
-      const error = await response.text();
-      console.error("Resend API error:", error);
-      return { success: false, error };
-    }
-
-    const result = await response.json();
-    console.log(`Report email sent successfully: ${result.id}`);
-    return { success: true, messageId: result.id };
-  } catch (error) {
-    console.error("Error sending email:", error);
-    return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
-  }
-}
-
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -153,8 +104,7 @@ serve(async (req: Request) => {
     const today = new Date();
     const dayOfMonth = today.getDate();
 
-    // Only run on the 15th of the month (or allow manual trigger)
-    const { forceRun, tenantId, sendTo } = await req.json().catch(() => ({}));
+    const { forceRun, tenantId, sendTo, userId } = await req.json().catch(() => ({}));
     if (dayOfMonth !== 15 && !forceRun) {
       return new Response(
         JSON.stringify({ message: "Not the 15th, skipping report generation", dayOfMonth }),
@@ -162,9 +112,7 @@ serve(async (req: Request) => {
       );
     }
 
-    // Check if Resend is configured
-    const resendConfigured = !!Deno.env.get("RESEND_API_KEY");
-    console.log(`Starting rent report generation... Resend configured: ${resendConfigured}`);
+    console.log(`Starting rent report generation...`);
 
     // Get all premium enrollments (optionally filtered by tenant)
     let query = supabase
@@ -185,9 +133,7 @@ serve(async (req: Request) => {
       .eq("tier", "premium")
       .eq("status", "active");
 
-    if (tenantId) {
-      query = query.eq("tenant_id", tenantId);
-    }
+    if (tenantId) query = query.eq("tenant_id", tenantId);
 
     const { data: enrollments, error: enrollmentError } = await query;
     if (enrollmentError) throw enrollmentError;
@@ -206,23 +152,12 @@ serve(async (req: Request) => {
       const { data: leases } = await supabase
         .from("leases")
         .select(`
-          id,
-          unit_id,
-          monthly_rent,
-          tenant_contact_id,
-          status,
-          units!inner (
-            unit_number,
-            property_id
-          ),
-          contacts:tenant_contact_id (
-            first_name,
-            last_name
-          )
+          id, unit_id, monthly_rent, tenant_contact_id, status,
+          units!inner ( unit_number, property_id ),
+          contacts:tenant_contact_id ( first_name, last_name )
         `)
         .eq("status", "active");
 
-      // Filter leases that belong to enrollment's property
       const propertyLeases = leases?.filter(
         (l: any) => l.units?.property_id === enrollment.property_id
       ) || [];
@@ -238,14 +173,12 @@ serve(async (req: Request) => {
         .gte("due_date", periodStart.toISOString())
         .lte("due_date", periodEnd.toISOString());
 
-      // Get reminders for current month
       const { data: reminders } = await supabase
         .from("rent_reminders")
         .select("id, lease_id, stage, status")
         .in("lease_id", propertyLeases.map((l: any) => l.id))
         .gte("created_at", periodStart.toISOString());
 
-      // Build report data
       const paidPayments = payments?.filter((p) => p.status === "paid") || [];
       const openPayments = payments?.filter((p) => p.status !== "paid") || [];
       const totalExpected = propertyLeases.reduce((sum, l: any) => sum + (l.monthly_rent || 0), 0);
@@ -270,35 +203,39 @@ serve(async (req: Request) => {
           const leasePayments = payments?.filter((p) => p.lease_id === lease.id) || [];
           const leaseReminders = reminders?.filter((r) => r.lease_id === lease.id) || [];
           const isPaid = leasePayments.some((p) => p.status === "paid");
-
           return {
             unit: lease.units?.unit_number,
             tenant: lease.contacts ? `${lease.contacts.first_name} ${lease.contacts.last_name}` : "—",
             rent: lease.monthly_rent,
             status: isPaid ? "bezahlt" : "offen",
-            reminders: leaseReminders.length
+            reminders: leaseReminders.length,
           };
         }),
-        generated_at: today.toISOString()
+        generated_at: today.toISOString(),
       };
 
       reports.push(reportData);
       console.log(`Generated report for ${reportData.property_address}: ${reportData.collection_rate}% collected`);
 
-      // Send email if configured and sendTo is provided (or use org admin email)
+      // Send email if sendTo is provided
       if (sendTo) {
         const reportHtml = generateReportHtml(reportData);
-        const emailResult = await sendReportEmail({
-          to: sendTo,
+
+        const sendResult = await sendViaUserAccountOrResend({
+          supabase,
+          userId: userId || '', // empty = no user account, goes straight to Resend
+          to: [sendTo],
           subject: `Mietbericht ${reportData.month} - ${reportData.property_address}`,
-          html: reportHtml,
+          bodyHtml: reportHtml,
+          resendFrom: "MSV Mietsonderverwaltung <msv@kaufy.app>",
         });
 
-        if (emailResult.success) {
+        if (sendResult.method !== 'skipped' && !sendResult.error) {
           emailsSent.push({
             property_id: enrollment.property_id,
             to: sendTo,
-            messageId: emailResult.messageId
+            messageId: sendResult.messageId,
+            sent_via: sendResult.method,
           });
         }
       }
@@ -308,11 +245,10 @@ serve(async (req: Request) => {
       JSON.stringify({
         success: true,
         month: `${monthName} ${currentYear}`,
-        resendConfigured,
         reportsGenerated: reports.length,
         emailsSent: emailsSent.length,
         reports,
-        emails: emailsSent
+        emails: emailsSent,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

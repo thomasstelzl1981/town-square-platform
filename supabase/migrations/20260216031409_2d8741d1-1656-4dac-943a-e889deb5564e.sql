@@ -1,0 +1,1 @@
+ALTER TABLE public.acq_outbound_messages ADD COLUMN IF NOT EXISTS sent_via TEXT DEFAULT 'resend';

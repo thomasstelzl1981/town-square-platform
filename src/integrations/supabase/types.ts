@@ -679,6 +679,7 @@ export type Database = {
           resend_message_id: string | null
           routing_token: string | null
           sent_at: string | null
+          sent_via: string | null
           status: Database["public"]["Enums"]["acq_outbound_status"]
           subject: string
           template_code: string
@@ -699,6 +700,7 @@ export type Database = {
           resend_message_id?: string | null
           routing_token?: string | null
           sent_at?: string | null
+          sent_via?: string | null
           status?: Database["public"]["Enums"]["acq_outbound_status"]
           subject: string
           template_code: string
@@ -719,6 +721,7 @@ export type Database = {
           resend_message_id?: string | null
           routing_token?: string | null
           sent_at?: string | null
+          sent_via?: string | null
           status?: Database["public"]["Enums"]["acq_outbound_status"]
           subject?: string
           template_code?: string

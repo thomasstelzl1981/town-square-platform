@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { sendViaUserAccountOrResend } from "../_shared/userMailSend.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -17,7 +18,6 @@ serve(async (req) => {
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const resendApiKey = Deno.env.get("RESEND_API_KEY");
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     // Load session + output
@@ -50,6 +50,9 @@ serve(async (req) => {
 <div>${summary.replace(/\n/g, "<br>")}</div>
 <h3>Aufgaben</h3>
 <ul>${actionItems.map((a: any) => `<li><strong>${a.title}</strong>${a.owner ? ` — ${a.owner}` : ""}${a.description ? `<br><small>${a.description}</small>` : ""}</li>`).join("")}</ul>`;
+
+    // Use session.user_id for user-account send
+    const userId = session.user_id as string;
 
     const results = [];
 
@@ -86,30 +89,23 @@ serve(async (req) => {
         continue;
       }
 
-      // Send via Resend
-      if (resendApiKey) {
-        try {
-          const res = await fetch("https://api.resend.com/emails", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${resendApiKey}`,
-            },
-            body: JSON.stringify({
-              from: "Armstrong <no-reply@systemofatown.de>",
-              to: [contactEmail],
-              subject: `Meeting-Protokoll: ${session.title}`,
-              html: emailHtml,
-              text: emailBody,
-            }),
-          });
-          const resData = await res.json();
-          results.push({ recipient, status: "sent", resend_id: resData.id });
-        } catch (e) {
-          results.push({ recipient, status: "error", error: e.message });
-        }
+      // Send via user account or Resend fallback
+      const sendResult = await sendViaUserAccountOrResend({
+        supabase,
+        userId,
+        to: [contactEmail],
+        subject: `Meeting-Protokoll: ${session.title}`,
+        bodyHtml: emailHtml,
+        bodyText: emailBody,
+        resendFrom: "Armstrong <no-reply@systemofatown.de>",
+      });
+
+      if (sendResult.method !== 'skipped' && !sendResult.error) {
+        results.push({ recipient, status: "sent", method: sendResult.method, messageId: sendResult.messageId });
+      } else if (sendResult.method === 'skipped') {
+        results.push({ recipient, status: "skipped", reason: sendResult.error });
       } else {
-        results.push({ recipient, status: "skipped", reason: "no RESEND_API_KEY" });
+        results.push({ recipient, status: "error", error: sendResult.error });
       }
     }
 

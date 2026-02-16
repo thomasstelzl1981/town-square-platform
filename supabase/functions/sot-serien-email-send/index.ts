@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { logDataEvent } from "../_shared/ledger.ts";
+import { sendViaUserAccountOrResend } from "../_shared/userMailSend.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -15,7 +16,6 @@ serve(async (req) => {
   }
 
   try {
-    const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
@@ -23,17 +23,13 @@ serve(async (req) => {
     if (!authHeader) throw new Error('Authorization header required');
 
     // Verify user
-    const anonKey = Deno.env.get('SUPABASE_ANON_KEY') || SUPABASE_SERVICE_ROLE_KEY;
-    const userClient = createClient(SUPABASE_URL, anonKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
-    const { data: { user }, error: authError } = await userClient.auth.getUser();
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     if (authError || !user) throw new Error('Unauthorized');
 
     const { campaign_id } = await req.json();
     if (!campaign_id) throw new Error('campaign_id required');
-
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
     // Load campaign
     const { data: campaign, error: campErr } = await supabase
@@ -58,21 +54,6 @@ serve(async (req) => {
 
     if (recErr) throw new Error('Failed to load recipients');
     if (!recipients || recipients.length === 0) throw new Error('No queued recipients');
-
-    // Load outbound identity
-    const { data: identityRows } = await supabase.rpc('get_active_outbound_identity', {
-      p_user_id: user.id,
-    });
-
-    let fromAddress = 'System of a Town <noreply@systemofatown.com>';
-    let replyTo: string | undefined;
-
-    if (identityRows && identityRows.length > 0) {
-      const identity = identityRows[0];
-      const displayName = identity.display_name || 'Portal';
-      fromAddress = `${displayName} <${identity.from_email}>`;
-      replyTo = identity.from_email;
-    }
 
     // Load signature if needed
     let signature = '';
@@ -99,7 +80,7 @@ serve(async (req) => {
       for (const att of attachments) {
         const { data: signedUrl } = await supabase.storage
           .from('tenant-documents')
-          .createSignedUrl(att.storage_path, 7 * 24 * 60 * 60); // 7 days
+          .createSignedUrl(att.storage_path, 7 * 24 * 60 * 60);
         if (signedUrl?.signedUrl) {
           links.push(`📎 ${att.filename}: ${signedUrl.signedUrl}`);
         }
@@ -113,6 +94,19 @@ serve(async (req) => {
 
     let sentCount = 0;
     let failedCount = 0;
+
+    // Resolve outbound identity as Resend fallback from address
+    const { data: identityRows } = await supabase.rpc('get_active_outbound_identity', {
+      p_user_id: user.id,
+    });
+    let resendFrom = 'System of a Town <noreply@systemofatown.com>';
+    let replyTo: string | undefined;
+    if (identityRows && identityRows.length > 0) {
+      const identity = identityRows[0];
+      const displayName = identity.display_name || 'Portal';
+      resendFrom = `${displayName} <${identity.from_email}>`;
+      replyTo = identity.from_email;
+    }
 
     for (const recipient of recipients) {
       try {
@@ -135,50 +129,32 @@ serve(async (req) => {
         // Append signature and attachment links
         const fullBody = body + attachmentLinks + signature;
 
-        if (!RESEND_API_KEY) {
-          // Log-only mode
-          console.log(`[LOG] To: ${recipient.email}, Subject: ${subject}`);
+        // Send via user account or Resend
+        const sendResult = await sendViaUserAccountOrResend({
+          supabase,
+          userId: user.id,
+          to: [recipient.email],
+          subject,
+          bodyText: fullBody,
+          replyTo,
+          resendFrom,
+        });
+
+        if (sendResult.method !== 'skipped' && !sendResult.error) {
           await supabase.from('mail_campaign_recipients').update({
             delivery_status: 'sent',
             sent_at: new Date().toISOString(),
           }).eq('id', recipient.id);
           sentCount++;
         } else {
-          // Send via Resend
-          const resendBody: Record<string, unknown> = {
-            from: fromAddress,
-            to: [recipient.email],
-            subject,
-            text: fullBody,
-          };
-          if (replyTo) resendBody.reply_to = replyTo;
-
-          const res = await fetch('https://api.resend.com/emails', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${RESEND_API_KEY}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(resendBody),
-          });
-
-          if (res.ok) {
-            await supabase.from('mail_campaign_recipients').update({
-              delivery_status: 'sent',
-              sent_at: new Date().toISOString(),
-            }).eq('id', recipient.id);
-            sentCount++;
-          } else {
-            const errData = await res.json();
-            await supabase.from('mail_campaign_recipients').update({
-              delivery_status: 'failed',
-              error: errData.message || 'Send failed',
-            }).eq('id', recipient.id);
-            failedCount++;
-          }
+          await supabase.from('mail_campaign_recipients').update({
+            delivery_status: 'failed',
+            error: sendResult.error || 'Send failed',
+          }).eq('id', recipient.id);
+          failedCount++;
         }
 
-        // Throttle
+        // Throttle to respect mail server rate limits
         if (THROTTLE_MS > 0) {
           await new Promise(r => setTimeout(r, THROTTLE_MS));
         }
@@ -207,7 +183,7 @@ serve(async (req) => {
       actor_user_id: user.id,
       event_type: "outbound.email.sent",
       direction: "egress",
-      source: "resend",
+      source: "mail_send",
       entity_type: "mail_campaign",
       entity_id: campaign_id,
       payload: {

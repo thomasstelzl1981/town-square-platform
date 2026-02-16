@@ -9,10 +9,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Send, Archive, Loader2, CheckCircle2 } from 'lucide-react';
+import { Send, Archive, Loader2, CheckCircle2, Mail } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
+import { useUserMailAccount } from '@/hooks/useUserMailAccount';
 
 interface MeetingOutput {
   summary_md: string | null;
@@ -44,6 +45,7 @@ export function MeetingResultDrawer({ sessionId, open, onOpenChange }: MeetingRe
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [showContactList, setShowContactList] = useState(false);
+  const { hasAccount, accountEmail } = useUserMailAccount();
 
   // Load output
   useEffect(() => {
@@ -199,6 +201,16 @@ export function MeetingResultDrawer({ sessionId, open, onOpenChange }: MeetingRe
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                 Protokoll versenden
               </p>
+              {hasAccount ? (
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Mail className="h-3 w-3" />
+                  Versand über <span className="font-medium text-foreground">{accountEmail}</span>
+                </p>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  Versand über System-Adresse. Verbinde dein E-Mail-Konto für persönlichen Versand.
+                </p>
+              )}
 
               <div className="relative">
                 <Input
