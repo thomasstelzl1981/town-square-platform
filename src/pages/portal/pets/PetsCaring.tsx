@@ -12,11 +12,12 @@ import { WidgetCell } from '@/components/shared/WidgetCell';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
 import { CARD, DEMO_WIDGET, getActiveWidgetGlow } from '@/config/designManifest';
 import { useSearchProviders } from '@/hooks/usePetProviderSearch';
 import { isDemoId } from '@/engines/demoData/engine';
 import { cn } from '@/lib/utils';
+import { Separator } from '@/components/ui/separator';
 
 const SERVICE_CATEGORIES = [
   { key: 'boarding', label: 'Pension', icon: Home, description: 'Mehrtägige Unterbringung' },
@@ -56,7 +57,7 @@ export default function PetsCaring() {
         description="Finde den passenden Service für dein Tier"
       />
 
-      {/* Service-Kategorie-Kacheln mit Emerald-Glow (Demo) */}
+      {/* Service-Kategorie-Kacheln */}
       <WidgetGrid variant="widget" className="mb-6">
         {SERVICE_CATEGORIES.slice(0, 4).map(cat => {
           const Icon = cat.icon;
@@ -66,15 +67,13 @@ export default function PetsCaring() {
               <button
                 onClick={() => handleCategoryClick(cat.key)}
                 className={cn(
-                  'w-full h-full rounded-xl border p-4 flex flex-col items-center justify-center gap-3 text-center transition-all cursor-pointer relative overflow-hidden',
-                  getActiveWidgetGlow('emerald'),
-                  isActive && 'ring-2 ring-emerald-400',
+                  'w-full h-full rounded-xl border p-4 flex flex-col items-center justify-center gap-3 text-center transition-all cursor-pointer',
+                  isActive ? 'ring-2 ring-primary border-primary bg-primary/5' : 'hover:border-primary/50 bg-card',
                 )}
               >
-                <Badge className={cn(DEMO_WIDGET.BADGE, 'absolute top-3 right-3 text-[10px]')}>DEMO</Badge>
                 <div className={cn(
                   'p-3 rounded-lg',
-                  isActive ? 'bg-emerald-500/15 text-emerald-600' : 'bg-muted/50 text-muted-foreground',
+                  isActive ? 'bg-primary/15 text-primary' : 'bg-muted/50 text-muted-foreground',
                 )}>
                   <Icon className="h-6 w-6" />
                 </div>
@@ -99,20 +98,6 @@ export default function PetsCaring() {
             className="h-11"
           />
         </div>
-        <div className="w-full sm:w-56">
-          <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-            <SelectTrigger className="h-11">
-              <SelectValue placeholder="Service-Typ wählen…" />
-            </SelectTrigger>
-            <SelectContent>
-              {SERVICE_CATEGORIES.map(cat => (
-                <SelectItem key={cat.key} value={cat.key}>
-                  {cat.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
         <Button onClick={handleSearch} className="h-11 px-6" disabled={isLoading}>
           <Search className="h-4 w-4 mr-2" />
           Suchen
@@ -122,6 +107,10 @@ export default function PetsCaring() {
       {/* Ergebnis-Grid */}
       {searchTriggered && (
         <>
+          <div className="mb-4">
+            <h2 className="text-lg font-semibold">Unsere Partner</h2>
+            <Separator className="mt-2" />
+          </div>
           {isLoading ? (
             <div className="flex items-center justify-center p-8">
               <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
