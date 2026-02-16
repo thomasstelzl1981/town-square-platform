@@ -110,12 +110,29 @@ function PetInlineDossier({ petId, tenantId }: { petId: string; tenantId?: strin
         </div>
       </div>
 
-      {/* Versicherung */}
+      {/* Versicherung — nur Toggle, Details in MOD-18 */}
       <div>
         <p className={RECORD_CARD.SECTION_TITLE}>Versicherung</p>
-        <div className={RECORD_CARD.FIELD_GRID}>
-          <FormInput label="Versicherer" name="insurance_provider" value={currentData.insurance_provider || ''} onChange={e => updateField('insurance_provider', e.target.value)} />
-          <FormInput label="Policen-Nr." name="insurance_policy_no" value={currentData.insurance_policy_no || ''} onChange={e => updateField('insurance_policy_no', e.target.value)} />
+        <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border border-border/30">
+          <div className="flex items-center gap-3">
+            <Switch
+              checked={!!(currentData.insurance_provider)}
+              onCheckedChange={v => {
+                if (!v) {
+                  updateField('insurance_provider', null);
+                  updateField('insurance_policy_no', null);
+                }
+              }}
+              disabled
+            />
+            <div>
+              <p className="text-sm font-medium">{currentData.insurance_provider ? 'Versicherung vorhanden' : 'Keine Versicherung hinterlegt'}</p>
+              <p className="text-xs text-muted-foreground">Versicherungsdetails werden im Modul <span className="font-medium text-primary">Finanzanalyse</span> verwaltet.</p>
+            </div>
+          </div>
+          <Button variant="outline" size="sm" onClick={() => window.location.href = '/portal/finanzanalyse'}>
+            Zur Finanzanalyse
+          </Button>
         </div>
       </div>
 
