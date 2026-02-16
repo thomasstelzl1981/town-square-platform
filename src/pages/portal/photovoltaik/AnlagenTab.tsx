@@ -23,6 +23,7 @@ import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { WidgetGrid } from '@/components/shared/WidgetGrid';
 import { WidgetCell } from '@/components/shared/WidgetCell';
 import { useDemoToggles } from '@/hooks/useDemoToggles';
+import { isDemoId } from '@/engines/demoData/engine';
 import { LoadingState } from '@/components/shared/LoadingState';
 import PVPlantDossier from './PVPlantDossier';
 import { toast } from 'sonner';
@@ -259,7 +260,7 @@ export default function AnlagenTab() {
         )}
 
         {/* Real Plants */}
-        {plants.map((plant) => {
+        {plants.filter(plant => demoEnabled || !isDemoId(plant.id)).map((plant) => {
           const live = liveData.get(plant.id);
           return (
             <WidgetCell key={plant.id}>

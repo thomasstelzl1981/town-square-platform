@@ -8,6 +8,8 @@ import { RecordCard } from '@/components/shared/RecordCard';
 import { RECORD_CARD } from '@/config/designManifest';
 import { getContractWidgetGlow } from '@/config/widgetCategorySpec';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
+import { isDemoId } from '@/engines/demoData/engine';
+import { useDemoToggles } from '@/hooks/useDemoToggles';
 import { FormInput } from '@/components/shared';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -50,6 +52,8 @@ function fmt(v: number) {
 
 export default function AbonnementsTab() {
   const { activeTenantId, user } = useAuth();
+  const { isEnabled } = useDemoToggles();
+  const demoEnabled = isEnabled('GP-KONTEN');
   const queryClient = useQueryClient();
   const [openCardId, setOpenCardId] = useState<string | null>(null);
   const [forms, setForms] = useState<Record<string, Record<string, any>>>({});
@@ -73,8 +77,13 @@ export default function AbonnementsTab() {
     enabled: !!activeTenantId,
   });
 
+  const filteredSubs = useMemo(
+    () => demoEnabled ? subs : subs.filter((s: any) => !isDemoId(s.id)),
+    [subs, demoEnabled]
+  );
+
   const monthlyCost = useMemo(() => {
-    return subs.filter((s: any) => s.status === 'aktiv').reduce((sum: number, s: any) => {
+    return filteredSubs.filter((s: any) => s.status === 'aktiv').reduce((sum: number, s: any) => {
       const amt = s.amount || 0;
       const freq = (s.frequency || '').toLowerCase();
       if (freq.includes('jaehr')) return sum + amt / 12;
@@ -82,7 +91,7 @@ export default function AbonnementsTab() {
       if (freq.includes('viertel')) return sum + amt / 3;
       return sum + amt;
     }, 0);
-  }, [subs]);
+  }, [filteredSubs]);
 
   const createMutation = useMutation({
     mutationFn: async (form: Record<string, any>) => {
@@ -197,12 +206,12 @@ export default function AbonnementsTab() {
               <p className="text-2xl font-bold">{fmt(monthlyCost)}</p>
             </div>
           </div>
-          <Badge variant="secondary">{subs.filter((s: any) => s.status === 'aktiv').length} aktive Abos</Badge>
+          <Badge variant="secondary">{filteredSubs.filter((s: any) => s.status === 'aktiv').length} aktive Abos</Badge>
         </CardContent>
       </Card>
 
       <div className={RECORD_CARD.GRID}>
-        {subs.map((s: any) => {
+        {filteredSubs.map((s: any) => {
           const form = forms[s.id] || s;
           return (
             <RecordCard
