@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import MietyHomeDossierInline from '../MietyHomeDossierInline';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -20,6 +21,7 @@ export default function UebersichtTile() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [openCardId, setOpenCardId] = useState<string | null>(null);
   const [editingHome, setEditingHome] = useState<any>(null);
   const autoCreatedRef = useRef(false);
 
@@ -107,6 +109,16 @@ export default function UebersichtTile() {
           city: editingHome.city || '', ownershipType: editingHome.ownership_type || 'miete',
           propertyType: editingHome.property_type || 'wohnung',
           areaSqm: editingHome.area_sqm?.toString() || '', roomsCount: editingHome.rooms_count?.toString() || '',
+          constructionYear: editingHome.construction_year?.toString() || '',
+          marketValue: editingHome.market_value?.toString() || '',
+          floorCount: editingHome.floor_count?.toString() || '',
+          bathroomsCount: editingHome.bathrooms_count?.toString() || '',
+          heatingType: editingHome.heating_type || '',
+          hasGarage: editingHome.has_garage || false,
+          hasGarden: editingHome.has_garden || false,
+          hasBasement: editingHome.has_basement || false,
+          lastRenovationYear: editingHome.last_renovation_year?.toString() || '',
+          plotAreaSqm: editingHome.plot_area_sqm?.toString() || '',
         }}
       />
     </div>
@@ -173,8 +185,8 @@ export default function UebersichtTile() {
                     </div>
                     <div className="flex gap-2 mt-3">
                       <Button size="sm" variant="outline" onClick={() => setEditingHome(home)}>Bearbeiten</Button>
-                      <Button size="sm" onClick={() => navigate(`/portal/immobilien/zuhause/zuhause/${home.id}`)}>
-                        <ArrowRight className="h-4 w-4 mr-1" />Öffnen
+                      <Button size="sm" onClick={() => setOpenCardId(prev => prev === home.id ? null : home.id)}>
+                        <ArrowRight className="h-4 w-4 mr-1" />{openCardId === home.id ? 'Schließen' : 'Öffnen'}
                       </Button>
                     </div>
                   </CardContent>
@@ -262,6 +274,11 @@ export default function UebersichtTile() {
               <Button variant="outline" size="sm" className="text-xs">
                 <Plus className="h-3 w-3 mr-1" />Kamera hinzufügen
               </Button>
+
+              {/* Inline Dossier */}
+              {openCardId === home.id && (
+                <MietyHomeDossierInline homeId={home.id} />
+              )}
             </div>
           );
         })

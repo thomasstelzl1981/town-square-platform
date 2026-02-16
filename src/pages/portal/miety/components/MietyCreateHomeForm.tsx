@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { Home, Plus } from 'lucide-react';
 
@@ -25,6 +26,16 @@ interface HomeInitialData {
   propertyType: string;
   areaSqm: string;
   roomsCount: string;
+  constructionYear?: string;
+  marketValue?: string;
+  floorCount?: string;
+  bathroomsCount?: string;
+  heatingType?: string;
+  hasGarage?: boolean;
+  hasGarden?: boolean;
+  hasBasement?: boolean;
+  lastRenovationYear?: string;
+  plotAreaSqm?: string;
 }
 
 interface MietyCreateHomeFormProps {
@@ -48,6 +59,16 @@ export function MietyCreateHomeForm({ onCancel, homeId, initialData }: MietyCrea
   const [propertyType, setPropertyType] = useState(initialData?.propertyType || 'wohnung');
   const [areaSqm, setAreaSqm] = useState(initialData?.areaSqm || '');
   const [roomsCount, setRoomsCount] = useState(initialData?.roomsCount || '');
+  const [constructionYear, setConstructionYear] = useState(initialData?.constructionYear || '');
+  const [marketValue, setMarketValue] = useState(initialData?.marketValue || '');
+  const [floorCount, setFloorCount] = useState(initialData?.floorCount || '');
+  const [bathroomsCount, setBathroomsCount] = useState(initialData?.bathroomsCount || '');
+  const [heatingType, setHeatingType] = useState(initialData?.heatingType || '');
+  const [hasGarage, setHasGarage] = useState(initialData?.hasGarage || false);
+  const [hasGarden, setHasGarden] = useState(initialData?.hasGarden || false);
+  const [hasBasement, setHasBasement] = useState(initialData?.hasBasement || false);
+  const [lastRenovationYear, setLastRenovationYear] = useState(initialData?.lastRenovationYear || '');
+  const [plotAreaSqm, setPlotAreaSqm] = useState(initialData?.plotAreaSqm || '');
 
   // Prefill from profile (only in create mode)
   const { data: profile } = useQuery({
@@ -88,6 +109,16 @@ export function MietyCreateHomeForm({ onCancel, homeId, initialData }: MietyCrea
         property_type: propertyType,
         area_sqm: areaSqm ? parseFloat(areaSqm) : null,
         rooms_count: roomsCount ? parseFloat(roomsCount) : null,
+        construction_year: constructionYear ? parseInt(constructionYear) : null,
+        market_value: marketValue ? parseFloat(marketValue) : null,
+        floor_count: floorCount ? parseInt(floorCount) : null,
+        bathrooms_count: bathroomsCount ? parseFloat(bathroomsCount) : null,
+        heating_type: heatingType || null,
+        has_garage: hasGarage,
+        has_garden: hasGarden,
+        has_basement: hasBasement,
+        last_renovation_year: lastRenovationYear ? parseInt(lastRenovationYear) : null,
+        plot_area_sqm: plotAreaSqm ? parseFloat(plotAreaSqm) : null,
       };
 
       if (isEditMode) {
@@ -185,6 +216,69 @@ export function MietyCreateHomeForm({ onCancel, homeId, initialData }: MietyCrea
             <div>
               <Label>Zimmer</Label>
               <Input type="number" value={roomsCount} onChange={e => setRoomsCount(e.target.value)} placeholder="3" />
+            </div>
+          </div>
+
+          {/* Extended building fields */}
+          <div className="border-t pt-4 mt-2">
+            <p className="text-sm font-medium mb-3">Gebäudedetails</p>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <div>
+              <Label>Baujahr</Label>
+              <Input type="number" value={constructionYear} onChange={e => setConstructionYear(e.target.value)} placeholder="2005" />
+            </div>
+            <div>
+              <Label>Verkehrswert (€)</Label>
+              <Input type="number" value={marketValue} onChange={e => setMarketValue(e.target.value)} placeholder="500000" />
+            </div>
+            <div>
+              <Label>Heizungsart</Label>
+              <Select value={heatingType} onValueChange={setHeatingType}>
+                <SelectTrigger><SelectValue placeholder="Wählen..." /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Gas">Gas</SelectItem>
+                  <SelectItem value="Öl">Öl</SelectItem>
+                  <SelectItem value="Fernwärme">Fernwärme</SelectItem>
+                  <SelectItem value="Wärmepumpe">Wärmepumpe</SelectItem>
+                  <SelectItem value="Pellet">Pellet</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div>
+              <Label>Etagen</Label>
+              <Input type="number" value={floorCount} onChange={e => setFloorCount(e.target.value)} placeholder="2" />
+            </div>
+            <div>
+              <Label>Badezimmer</Label>
+              <Input type="number" value={bathroomsCount} onChange={e => setBathroomsCount(e.target.value)} placeholder="1" />
+            </div>
+            <div>
+              <Label>Grundstück (m²)</Label>
+              <Input type="number" value={plotAreaSqm} onChange={e => setPlotAreaSqm(e.target.value)} placeholder="500" />
+            </div>
+            <div>
+              <Label>Letzte Sanierung</Label>
+              <Input type="number" value={lastRenovationYear} onChange={e => setLastRenovationYear(e.target.value)} placeholder="2020" />
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-4">
+            <div className="flex items-center gap-2">
+              <Checkbox id="garage" checked={hasGarage} onCheckedChange={(c) => setHasGarage(!!c)} />
+              <Label htmlFor="garage" className="text-sm cursor-pointer">Garage</Label>
+            </div>
+            <div className="flex items-center gap-2">
+              <Checkbox id="garden" checked={hasGarden} onCheckedChange={(c) => setHasGarden(!!c)} />
+              <Label htmlFor="garden" className="text-sm cursor-pointer">Garten</Label>
+            </div>
+            <div className="flex items-center gap-2">
+              <Checkbox id="basement" checked={hasBasement} onCheckedChange={(c) => setHasBasement(!!c)} />
+              <Label htmlFor="basement" className="text-sm cursor-pointer">Keller</Label>
             </div>
           </div>
 
