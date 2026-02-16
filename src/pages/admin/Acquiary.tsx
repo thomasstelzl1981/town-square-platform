@@ -58,7 +58,18 @@ export default function AcquiaryPage() {
 
   const newMandates = inboxMandates?.length || 0;
   const assignedNotAccepted = allMandates?.filter(m => m.status === 'assigned').length || 0;
-  const needsRoutingCount = 0; // TODO: Replace with actual inbound needs_routing query
+  const { data: needsRoutingCount = 0 } = useQuery({
+    queryKey: ['acq-needs-routing-count'],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from('acq_inbound_messages')
+        .select('id', { count: 'exact', head: true })
+        .eq('needs_routing', true)
+        .is('routed_at', null);
+      if (error) throw error;
+      return count ?? 0;
+    },
+  });
 
   // Determine active tab from route
   const getActiveTab = () => {
