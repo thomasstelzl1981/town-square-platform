@@ -1,13 +1,14 @@
 /**
  * MOD-18 Finanzen — Tab 6: Vorsorge & Testament
- * Sektions-Layout: Personen-Widgets (PV) + 4 Vorlagen-Widgets (Testament)
+ * Sektions-Layout: Personen-RecordCards (PV) + 4 Vorlagen-Widgets (Testament)
  */
 import { useState, useMemo } from 'react';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { WidgetGrid } from '@/components/shared/WidgetGrid';
 import { WidgetCell } from '@/components/shared/WidgetCell';
-import { CARD, TYPOGRAPHY, HEADER } from '@/config/designManifest';
+import { RecordCard } from '@/components/shared/RecordCard';
+import { CARD, TYPOGRAPHY, HEADER, RECORD_CARD, getSelectionRing } from '@/config/designManifest';
 import { Badge } from '@/components/ui/badge';
 import { PatientenverfuegungInlineForm } from '@/components/legal/PatientenverfuegungInlineForm';
 import { TestamentVorlageInline } from '@/components/legal/TestamentVorlageInline';
@@ -15,7 +16,7 @@ import { TESTAMENT_VORLAGEN } from '@/components/legal/testamentVorlagenTexte';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { CheckCircle2, User, FileText, ScrollText } from 'lucide-react';
+import { CheckCircle2, FileText, ScrollText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function VorsorgedokumenteTab() {
@@ -100,50 +101,34 @@ export default function VorsorgedokumenteTab() {
           <h2 className={TYPOGRAPHY.SECTION_TITLE}>Patientenverfügung & Vorsorgevollmacht</h2>
         </div>
 
-        {/* Personen-Widgets */}
-        <WidgetGrid>
+        {/* Personen-RecordCards */}
+        <div className={RECORD_CARD.GRID}>
           {persons?.map(person => {
             const isSelected = person.id === effectivePersonId;
             const completed = isPvCompleted(person.id);
             return (
-              <WidgetCell key={person.id}>
-                <div
-                  onClick={() => setSelectedPersonId(person.id)}
-                  className={cn(
-                    CARD.BASE,
-                    CARD.INTERACTIVE,
-                    'h-full flex flex-col justify-between p-5 ring-2',
-                    isSelected
-                      ? 'ring-primary'
-                      : completed
-                        ? 'ring-emerald-500/50 dark:ring-emerald-400/50'
-                        : 'ring-border/30'
-                  )}
-                >
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className={HEADER.WIDGET_ICON_BOX}>
-                        <User className="h-5 w-5 text-primary" />
-                      </div>
-                      {completed && (
-                        <Badge className="text-xs bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/30">
-                          <CheckCircle2 className="h-3 w-3 mr-1" /> Hinterlegt
-                        </Badge>
-                      )}
-                    </div>
-                    <h3 className={TYPOGRAPHY.CARD_TITLE}>
-                      {person.first_name} {person.last_name}
-                    </h3>
-                    <p className="text-xs text-muted-foreground capitalize">{person.role}</p>
-                  </div>
-                  <p className="text-[11px] text-muted-foreground/70 mt-2">
-                    {isSelected ? 'Ausgewählt — Formular unten' : 'Klicken zum Auswählen'}
-                  </p>
-                </div>
-              </WidgetCell>
+              <RecordCard
+                key={person.id}
+                id={person.id}
+                entityType="person"
+                isOpen={false}
+                onToggle={() => setSelectedPersonId(person.id)}
+                title={`${person.first_name} ${person.last_name}`}
+                subtitle={person.role}
+                summary={[
+                  ...(person.birth_date ? [{ label: 'Geb.', value: person.birth_date }] : []),
+                  ...(person.city ? [{ label: 'Ort', value: person.city }] : []),
+                ]}
+                badges={completed ? [{ label: '✓ Hinterlegt', variant: 'secondary' as const }] : []}
+                glowVariant={isSelected ? 'primary' : undefined}
+                className={isSelected ? getSelectionRing('primary') : ''}
+              >
+                {/* Closed-only mode — no children rendered */}
+                <div />
+              </RecordCard>
             );
           })}
-        </WidgetGrid>
+        </div>
 
         {/* Inline-Formular (immer offen) */}
         {effectivePersonId && selectedPerson && activeTenantId && (
@@ -187,8 +172,8 @@ export default function VorsorgedokumenteTab() {
                   className={cn(
                     CARD.BASE,
                     CARD.INTERACTIVE,
-                    'h-full flex flex-col justify-between p-5 ring-2',
-                    isSelected ? 'ring-primary' : 'ring-border/30'
+                    'h-full flex flex-col justify-between p-5',
+                    isSelected ? getSelectionRing('primary') : 'ring-2 ring-border/30'
                   )}
                 >
                   <div className="space-y-2">
