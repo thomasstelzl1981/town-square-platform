@@ -58,6 +58,7 @@ export default function CaringProviderDetail() {
 
   // Lightbox
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const [galleryIndex, setGalleryIndex] = useState(0);
 
   // Gallery images
   const galleryImages: string[] = (provider as any)?.gallery_images || [];
@@ -151,38 +152,46 @@ export default function CaringProviderDetail() {
       {/* ═══ OBERER BEREICH: Galerie + Profil ═══ */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
         {/* Bildergalerie */}
-        <Card>
-          <CardContent className="pt-4">
+        <Card className="overflow-hidden">
+          <CardContent className="p-0">
             {allImages.length > 0 ? (
-              <div className={cn(
-                isMobile
-                  ? 'flex gap-2 overflow-x-auto pb-2 snap-x'
-                  : 'grid grid-cols-5 grid-rows-2 gap-2'
-              )}>
-                {allImages.slice(0, 10).map((img, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setLightboxIndex(i)}
-                    className={cn(
-                      'rounded-lg overflow-hidden border border-border/30 hover:border-primary/50 transition-colors focus:outline-none focus:ring-2 focus:ring-primary/40',
-                      isMobile ? 'flex-shrink-0 w-28 h-28 snap-start' : 'aspect-square'
-                    )}
-                  >
-                    <img src={img} alt={`Bild ${i + 1}`} className="w-full h-full object-cover" />
-                  </button>
-                ))}
-                {/* Placeholder slots */}
-                {!isMobile && Array.from({ length: Math.max(0, 10 - allImages.length) }).map((_, i) => (
-                  <div
-                    key={`ph-${i}`}
-                    className="aspect-square rounded-lg bg-gradient-to-br from-muted/40 to-muted/10 border border-dashed border-border/30 flex items-center justify-center"
-                  >
-                    <PawPrint className="h-5 w-5 text-muted-foreground/20" />
-                  </div>
-                ))}
+              <div className="relative w-full aspect-[4/3]">
+                <button
+                  onClick={() => setLightboxIndex(galleryIndex)}
+                  className="w-full h-full focus:outline-none focus:ring-2 focus:ring-primary/40 rounded-lg"
+                >
+                  <img
+                    src={allImages[galleryIndex]}
+                    alt={`Bild ${galleryIndex + 1}`}
+                    className="w-full h-full object-cover"
+                  />
+                </button>
+                {allImages.length > 1 && (
+                  <>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="absolute left-2 top-1/2 -translate-y-1/2 bg-background/70 hover:bg-background/90 rounded-full"
+                      onClick={() => setGalleryIndex((galleryIndex - 1 + allImages.length) % allImages.length)}
+                    >
+                      <ChevronLeft className="h-5 w-5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 bg-background/70 hover:bg-background/90 rounded-full"
+                      onClick={() => setGalleryIndex((galleryIndex + 1) % allImages.length)}
+                    >
+                      <ChevronRight className="h-5 w-5" />
+                    </Button>
+                    <span className="absolute bottom-2 right-2 text-xs bg-background/70 px-2 py-1 rounded">
+                      {galleryIndex + 1} / {allImages.length}
+                    </span>
+                  </>
+                )}
               </div>
             ) : (
-              <div className="w-full h-48 rounded-lg bg-gradient-to-br from-teal-500/20 via-emerald-500/10 to-primary/5 flex items-center justify-center">
+              <div className="w-full aspect-[4/3] bg-gradient-to-br from-muted/40 to-muted/10 flex items-center justify-center">
                 <PawPrint className="h-16 w-16 text-muted-foreground/20" />
               </div>
             )}
