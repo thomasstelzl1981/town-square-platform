@@ -194,15 +194,58 @@ function decodeQuotedPrintable(input: string): string {
 /**
  * Decode Base64 encoded string
  */
-function decodeBase64Content(input: string): string {
+/**
+ * Extract charset from Content-Type header value
+ * e.g. "text/html; charset=iso-8859-1" -> "iso-8859-1"
+ */
+function extractCharset(contentTypeLine: string): string {
+  const match = contentTypeLine.match(/charset=["']?([^"';\s]+)/i);
+  return match ? match[1].toLowerCase() : 'utf-8';
+}
+
+/**
+ * Decode bytes with a specific charset, falling back to utf-8
+ */
+function decodeWithCharset(bytes: Uint8Array, charset: string): string {
   try {
-    // Remove all whitespace from base64
+    return new TextDecoder(charset, { fatal: false }).decode(bytes);
+  } catch {
+    // Charset not supported by TextDecoder, fall back to utf-8
+    return new TextDecoder('utf-8', { fatal: false }).decode(bytes);
+  }
+}
+
+function decodeBase64Content(input: string, charset = 'utf-8'): string {
+  try {
     const cleaned = input.replace(/\s/g, '');
     const bytes = decodeBase64(cleaned);
-    return new TextDecoder('utf-8', { fatal: false }).decode(bytes);
+    return decodeWithCharset(bytes, charset);
   } catch (e) {
     console.error('Base64 decode error:', e);
     return input;
+  }
+}
+
+/**
+ * Decode QP content with charset awareness
+ */
+function decodeQPWithCharset(input: string, charset = 'utf-8'): string {
+  // First do standard QP decode to raw bytes
+  const decoded = input
+    .replace(/=\r?\n/g, '')
+    .replace(/=([0-9A-Fa-f]{2})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
+  
+  if (charset === 'utf-8' || charset === 'us-ascii') return decoded;
+  
+  // For non-UTF-8 charsets, re-encode to bytes and decode with proper charset
+  try {
+    const bytes = new Uint8Array(decoded.length);
+    for (let i = 0; i < decoded.length; i++) {
+      bytes[i] = decoded.charCodeAt(i) & 0xFF;
+    }
+    return decodeWithCharset(bytes, charset);
+  } catch {
+    return decoded;
   }
 }
 
@@ -214,44 +257,46 @@ function parseMimeMessage(rawMessage: string): { text: string; html: string; has
   let html = '';
   let hasAttachments = false;
 
-  // Check if it's a multipart message
   const contentTypeMatch = rawMessage.match(/Content-Type:\s*multipart\/[^;]+;\s*boundary="?([^"\r\n]+)"?/i);
   
   if (contentTypeMatch) {
     const boundary = contentTypeMatch[1];
     const boundaryMarker = '--' + boundary;
-    
-    // Split by boundary
     const parts = rawMessage.split(boundaryMarker);
     
     for (const part of parts) {
       if (!part.trim() || part.trim() === '--') continue;
       
-      // Check content type of this part
-      const partContentType = part.match(/Content-Type:\s*([^;\r\n]+)/i)?.[1]?.trim().toLowerCase();
+      const partContentTypeFull = part.match(/Content-Type:\s*([^\r\n]+)/i)?.[1] || '';
+      const partContentType = partContentTypeFull.split(';')[0].trim().toLowerCase();
+      const charset = extractCharset(partContentTypeFull);
       const transferEncoding = part.match(/Content-Transfer-Encoding:\s*([^\r\n]+)/i)?.[1]?.trim().toLowerCase();
       const contentDisposition = part.match(/Content-Disposition:\s*([^;\r\n]+)/i)?.[1]?.trim().toLowerCase();
       
-      // Check if this is an attachment
       if (contentDisposition === 'attachment' || part.match(/filename=/i)) {
         hasAttachments = true;
         continue;
       }
       
-      // Find the body (after double newline)
       const bodyMatch = part.match(/\r?\n\r?\n([\s\S]*)/);
       if (!bodyMatch) continue;
       
       let bodyContent = bodyMatch[1].trim();
       
-      // Decode based on transfer encoding
+      // Decode with charset awareness
       if (transferEncoding === 'quoted-printable') {
-        bodyContent = decodeQuotedPrintable(bodyContent);
+        bodyContent = decodeQPWithCharset(bodyContent, charset);
       } else if (transferEncoding === 'base64') {
-        bodyContent = decodeBase64Content(bodyContent);
+        bodyContent = decodeBase64Content(bodyContent, charset);
+      } else if (charset !== 'utf-8' && charset !== 'us-ascii') {
+        // 7bit/8bit with non-UTF-8 charset — try re-decoding
+        try {
+          const bytes = new Uint8Array(bodyContent.length);
+          for (let i = 0; i < bodyContent.length; i++) bytes[i] = bodyContent.charCodeAt(i) & 0xFF;
+          bodyContent = decodeWithCharset(bytes, charset);
+        } catch { /* keep as-is */ }
       }
       
-      // Handle nested multipart
       if (partContentType?.startsWith('multipart/')) {
         const nestedResult = parseMimeMessage(part);
         if (nestedResult.text && !text) text = nestedResult.text;
@@ -264,20 +309,19 @@ function parseMimeMessage(rawMessage: string): { text: string; html: string; has
       }
     }
   } else {
-    // Not multipart - single part message
-    const contentType = rawMessage.match(/Content-Type:\s*([^;\r\n]+)/i)?.[1]?.trim().toLowerCase() || 'text/plain';
+    const contentTypeFull = rawMessage.match(/Content-Type:\s*([^\r\n]+)/i)?.[1] || 'text/plain';
+    const contentType = contentTypeFull.split(';')[0].trim().toLowerCase();
+    const charset = extractCharset(contentTypeFull);
     const transferEncoding = rawMessage.match(/Content-Transfer-Encoding:\s*([^\r\n]+)/i)?.[1]?.trim().toLowerCase();
     
-    // Find body after headers (double newline)
     const bodyMatch = rawMessage.match(/\r?\n\r?\n([\s\S]*)/);
     if (bodyMatch) {
       let bodyContent = bodyMatch[1].trim();
       
-      // Decode based on transfer encoding
       if (transferEncoding === 'quoted-printable') {
-        bodyContent = decodeQuotedPrintable(bodyContent);
+        bodyContent = decodeQPWithCharset(bodyContent, charset);
       } else if (transferEncoding === 'base64') {
-        bodyContent = decodeBase64Content(bodyContent);
+        bodyContent = decodeBase64Content(bodyContent, charset);
       }
       
       if (contentType === 'text/html') {
@@ -346,7 +390,7 @@ async function syncImapMail(
     throw new Error('Failed to decode credentials: ' + (e as Error).message);
   }
 
-  // Create IMAP client
+  // Create IMAP client with timeout protection
   const client = new ImapClient({
     host: account.imap_host,
     port: account.imap_port || 993,
@@ -354,6 +398,11 @@ async function syncImapMail(
     username: account.email_address,
     password: password,
   });
+
+  // 25s timeout to avoid hitting the 60s edge function limit
+  const timeoutMs = 25_000;
+  const abortController = new AbortController();
+  const timeout = setTimeout(() => abortController.abort(), timeoutMs);
 
   try {
     console.log('Connecting to IMAP server...');
@@ -463,14 +512,42 @@ async function syncImapMail(
         let snippet = '';
         let hasAttachments = false;
         
+        // Check if timed out
+        if (abortController.signal.aborted) {
+          console.warn(`[UID ${msg.uid}] Timeout reached, stopping sync`);
+          break;
+        }
+
         // === Tier 0: Check inline BODY[1] from batch fetch ===
+        // Detect charset + transfer-encoding from bodyStructure for proper decoding
+        let tier0Charset = 'utf-8';
+        let tier0Encoding = '';
+        if (msg.bodyStructure) {
+          try {
+            const bs = msg.bodyStructure;
+            // bodyStructure params may contain charset
+            const params = bs.parameters || bs.params || {};
+            if (params.charset) tier0Charset = params.charset.toLowerCase();
+            tier0Encoding = (bs.encoding || '').toLowerCase();
+          } catch { /* ignore */ }
+        }
+
         if (msg.bodyParts) {
           try {
             const part = msg.bodyParts?.get?.('1') || msg.bodyParts?.['1'];
             if (part) {
-              const content = (part instanceof Uint8Array)
-                ? new TextDecoder('utf-8', { fatal: false }).decode(part)
-                : String(part);
+              let content: string;
+              if (part instanceof Uint8Array) {
+                content = decodeWithCharset(part, tier0Charset);
+              } else {
+                content = String(part);
+              }
+              // Apply transfer-encoding if not already decoded by library
+              if (tier0Encoding === 'base64' && !content.includes('<') && content.match(/^[A-Za-z0-9+/=\s]+$/)) {
+                content = decodeBase64Content(content, tier0Charset);
+              } else if (tier0Encoding === 'quoted-printable' && content.includes('=')) {
+                content = decodeQPWithCharset(content, tier0Charset);
+              }
               if (content.length > 10) {
                 if (content.includes('<html') || content.includes('<body') || content.includes('<div')) {
                   bodyHtml = truncate(content, MAX_BODY_SIZE);
@@ -607,10 +684,12 @@ async function syncImapMail(
     }
 
     await client.disconnect();
+    clearTimeout(timeout);
     console.log(`IMAP sync complete: ${synced} messages synced`);
     return synced;
 
   } catch (error) {
+    clearTimeout(timeout);
     console.error('IMAP sync failed:', error);
     try {
       await client.disconnect();

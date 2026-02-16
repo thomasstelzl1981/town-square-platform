@@ -3,7 +3,7 @@
  * 
  * On-demand body fetch for a single email via IMAP.
  * Called when the user opens an email that has no body content.
- * Uses multiple fetch strategies for maximum reliability.
+ * Uses multiple fetch strategies with charset awareness and auto-retry.
  */
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
@@ -18,17 +18,42 @@ const corsHeaders = {
 
 const MAX_BODY_SIZE = 500 * 1024;
 
-function decodeQuotedPrintable(input: string): string {
-  return input
-    .replace(/=\r?\n/g, '')
-    .replace(/=([0-9A-Fa-f]{2})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
+/** Extract charset from Content-Type header */
+function extractCharset(contentTypeLine: string): string {
+  const match = contentTypeLine.match(/charset=["']?([^"';\s]+)/i);
+  return match ? match[1].toLowerCase() : 'utf-8';
 }
 
-function decodeBase64Content(input: string): string {
+/** Decode bytes with a specific charset, falling back to utf-8 */
+function decodeWithCharset(bytes: Uint8Array, charset: string): string {
+  try {
+    return new TextDecoder(charset, { fatal: false }).decode(bytes);
+  } catch {
+    return new TextDecoder('utf-8', { fatal: false }).decode(bytes);
+  }
+}
+
+function decodeQuotedPrintable(input: string, charset = 'utf-8'): string {
+  const decoded = input
+    .replace(/=\r?\n/g, '')
+    .replace(/=([0-9A-Fa-f]{2})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
+  
+  if (charset === 'utf-8' || charset === 'us-ascii') return decoded;
+  
+  try {
+    const bytes = new Uint8Array(decoded.length);
+    for (let i = 0; i < decoded.length; i++) bytes[i] = decoded.charCodeAt(i) & 0xFF;
+    return decodeWithCharset(bytes, charset);
+  } catch {
+    return decoded;
+  }
+}
+
+function decodeBase64Content(input: string, charset = 'utf-8'): string {
   try {
     const cleaned = input.replace(/\s/g, '');
     const bytes = decodeBase64(cleaned);
-    return new TextDecoder('utf-8', { fatal: false }).decode(bytes);
+    return decodeWithCharset(bytes, charset);
   } catch {
     return input;
   }
@@ -47,7 +72,9 @@ function parseMimeMessage(rawMessage: string): { text: string; html: string } {
     for (const part of parts) {
       if (!part.trim() || part.trim() === '--') continue;
       
-      const partContentType = part.match(/Content-Type:\s*([^;\r\n]+)/i)?.[1]?.trim().toLowerCase();
+      const partContentTypeFull = part.match(/Content-Type:\s*([^\r\n]+)/i)?.[1] || '';
+      const partContentType = partContentTypeFull.split(';')[0].trim().toLowerCase();
+      const charset = extractCharset(partContentTypeFull);
       const transferEncoding = part.match(/Content-Transfer-Encoding:\s*([^\r\n]+)/i)?.[1]?.trim().toLowerCase();
       const contentDisposition = part.match(/Content-Disposition:\s*([^;\r\n]+)/i)?.[1]?.trim().toLowerCase();
       
@@ -59,9 +86,15 @@ function parseMimeMessage(rawMessage: string): { text: string; html: string } {
       let bodyContent = bodyMatch[1].trim();
       
       if (transferEncoding === 'quoted-printable') {
-        bodyContent = decodeQuotedPrintable(bodyContent);
+        bodyContent = decodeQuotedPrintable(bodyContent, charset);
       } else if (transferEncoding === 'base64') {
-        bodyContent = decodeBase64Content(bodyContent);
+        bodyContent = decodeBase64Content(bodyContent, charset);
+      } else if (charset !== 'utf-8' && charset !== 'us-ascii') {
+        try {
+          const bytes = new Uint8Array(bodyContent.length);
+          for (let i = 0; i < bodyContent.length; i++) bytes[i] = bodyContent.charCodeAt(i) & 0xFF;
+          bodyContent = decodeWithCharset(bytes, charset);
+        } catch { /* keep as-is */ }
       }
       
       if (partContentType?.startsWith('multipart/')) {
@@ -75,14 +108,16 @@ function parseMimeMessage(rawMessage: string): { text: string; html: string } {
       }
     }
   } else {
-    const contentType = rawMessage.match(/Content-Type:\s*([^;\r\n]+)/i)?.[1]?.trim().toLowerCase() || 'text/plain';
+    const contentTypeFull = rawMessage.match(/Content-Type:\s*([^\r\n]+)/i)?.[1] || 'text/plain';
+    const contentType = contentTypeFull.split(';')[0].trim().toLowerCase();
+    const charset = extractCharset(contentTypeFull);
     const transferEncoding = rawMessage.match(/Content-Transfer-Encoding:\s*([^\r\n]+)/i)?.[1]?.trim().toLowerCase();
     
     const bodyMatch = rawMessage.match(/\r?\n\r?\n([\s\S]*)/);
     if (bodyMatch) {
       let bodyContent = bodyMatch[1].trim();
-      if (transferEncoding === 'quoted-printable') bodyContent = decodeQuotedPrintable(bodyContent);
-      else if (transferEncoding === 'base64') bodyContent = decodeBase64Content(bodyContent);
+      if (transferEncoding === 'quoted-printable') bodyContent = decodeQuotedPrintable(bodyContent, charset);
+      else if (transferEncoding === 'base64') bodyContent = decodeBase64Content(bodyContent, charset);
       
       if (contentType === 'text/html') html = bodyContent;
       else text = bodyContent;
@@ -107,6 +142,184 @@ function stripHtml(html: string): string {
 
 function truncate(str: string, maxLen: number): string {
   return str.length <= maxLen ? str : str.substring(0, maxLen);
+}
+
+/** Core fetch logic — extracted for retry */
+async function attemptFetchBody(
+  account: any,
+  password: string,
+  messageUid: string,
+  folder: string,
+): Promise<{ bodyText: string; bodyHtml: string }> {
+  const client = new ImapClient({
+    host: account.imap_host,
+    port: account.imap_port || 993,
+    tls: true,
+    username: account.email_address,
+    password: password,
+  });
+
+  let bodyText = '';
+  let bodyHtml = '';
+
+  // 20s timeout
+  const timeoutId = setTimeout(() => {
+    try { client.disconnect(); } catch { /* ignore */ }
+  }, 20_000);
+
+  try {
+    await client.connect();
+    await client.authenticate();
+
+    const FOLDER_MAPPINGS: Record<string, string[]> = {
+      'INBOX': ['INBOX'],
+      'SENT': ['Sent', 'Sent Items', 'Gesendet', 'INBOX.Sent'],
+      'DRAFTS': ['Drafts', 'INBOX.Drafts'],
+      'TRASH': ['Trash', 'Deleted Items', 'Papierkorb', 'INBOX.Trash'],
+      'ARCHIVE': ['Archive', 'Archiv', 'INBOX.Archive'],
+      'SPAM': ['Spam', 'Junk', 'INBOX.Spam'],
+    };
+
+    const possibleFolders = FOLDER_MAPPINGS[folder] || [folder];
+    let mailboxSelected = false;
+
+    for (const tryFolder of possibleFolders) {
+      try {
+        await client.selectMailbox(tryFolder);
+        mailboxSelected = true;
+        console.log(`[fetch-body] Selected mailbox: ${tryFolder}`);
+        break;
+      } catch {
+        // try next
+      }
+    }
+
+    if (!mailboxSelected) {
+      throw new Error(`Could not select mailbox for folder ${folder}`);
+    }
+
+    // Strategy 1: bodyParts ['1']
+    try {
+      console.log(`[fetch-body] Strategy 1: BODY[1]`);
+      const msgs = await client.fetch(`${messageUid}`, { bodyParts: ['1'], bodyStructure: true }, true);
+      const msg = msgs?.[0];
+      const part = msg?.bodyParts?.get?.('1') || msg?.bodyParts?.['1'];
+      if (part) {
+        // Extract charset from bodyStructure
+        let charset = 'utf-8';
+        let encoding = '';
+        if (msg?.bodyStructure) {
+          const params = msg.bodyStructure.parameters || msg.bodyStructure.params || {};
+          if (params.charset) charset = params.charset.toLowerCase();
+          encoding = (msg.bodyStructure.encoding || '').toLowerCase();
+        }
+
+        let content = (part instanceof Uint8Array) 
+          ? decodeWithCharset(part, charset)
+          : String(part);
+        
+        // Apply transfer-encoding if raw
+        if (encoding === 'base64' && content.match(/^[A-Za-z0-9+/=\s]+$/)) {
+          content = decodeBase64Content(content, charset);
+        } else if (encoding === 'quoted-printable' && content.includes('=')) {
+          content = decodeQuotedPrintable(content, charset);
+        }
+
+        if (content.length > 10) {
+          if (content.includes('<html') || content.includes('<body') || content.includes('<div')) {
+            bodyHtml = truncate(content, MAX_BODY_SIZE);
+          } else {
+            bodyText = truncate(content, MAX_BODY_SIZE);
+          }
+          console.log(`[fetch-body] Strategy 1 success: text=${bodyText.length}b, html=${bodyHtml.length}b`);
+        }
+      }
+    } catch (e) {
+      console.error(`[fetch-body] Strategy 1 failed:`, e);
+    }
+
+    // Strategy 2: bodyParts ['TEXT']
+    if (!bodyText && !bodyHtml) {
+      try {
+        console.log(`[fetch-body] Strategy 2: BODY[TEXT]`);
+        const msgs = await client.fetch(`${messageUid}`, { bodyParts: ['TEXT'] }, true);
+        const msg = msgs?.[0];
+        const part = msg?.bodyParts?.get?.('TEXT') || msg?.bodyParts?.TEXT;
+        if (part) {
+          const content = (part instanceof Uint8Array)
+            ? new TextDecoder('utf-8', { fatal: false }).decode(part)
+            : String(part);
+          if (content.length > 10) {
+            const parsed = parseMimeMessage(content);
+            bodyText = truncate(parsed.text, MAX_BODY_SIZE);
+            bodyHtml = truncate(parsed.html, MAX_BODY_SIZE);
+            console.log(`[fetch-body] Strategy 2 success: text=${bodyText.length}b, html=${bodyHtml.length}b`);
+          }
+        }
+      } catch (e) {
+        console.error(`[fetch-body] Strategy 2 failed:`, e);
+      }
+    }
+
+    // Strategy 3: full RFC822
+    if (!bodyText && !bodyHtml) {
+      try {
+        console.log(`[fetch-body] Strategy 3: full RFC822`);
+        const msgs = await client.fetch(`${messageUid}`, { full: true }, true);
+        const msg = msgs?.[0];
+        if (msg?.raw) {
+          const rawMessage = (msg.raw instanceof Uint8Array)
+            ? new TextDecoder('utf-8', { fatal: false }).decode(msg.raw)
+            : String(msg.raw);
+          if (rawMessage.length > 0) {
+            const parsed = parseMimeMessage(rawMessage);
+            bodyText = truncate(parsed.text, MAX_BODY_SIZE);
+            bodyHtml = truncate(parsed.html, MAX_BODY_SIZE);
+            console.log(`[fetch-body] Strategy 3 success: text=${bodyText.length}b, html=${bodyHtml.length}b`);
+          }
+        }
+      } catch (e) {
+        console.error(`[fetch-body] Strategy 3 failed:`, e);
+      }
+    }
+
+    // Strategy 4: nested MIME parts
+    if (!bodyText && !bodyHtml) {
+      for (const partId of ['1.1', '1.2', '2']) {
+        try {
+          console.log(`[fetch-body] Strategy 4: BODY[${partId}]`);
+          const msgs = await client.fetch(`${messageUid}`, { bodyParts: [partId] }, true);
+          const msg = msgs?.[0];
+          const part = msg?.bodyParts?.get?.(partId) || msg?.bodyParts?.[partId];
+          if (part) {
+            const content = (part instanceof Uint8Array)
+              ? new TextDecoder('utf-8', { fatal: false }).decode(part)
+              : String(part);
+            if (content.length > 10) {
+              if (content.includes('<html') || content.includes('<body') || content.includes('<div')) {
+                bodyHtml = truncate(content, MAX_BODY_SIZE);
+              } else {
+                bodyText = truncate(content, MAX_BODY_SIZE);
+              }
+              console.log(`[fetch-body] Strategy 4[${partId}] success: text=${bodyText.length}b, html=${bodyHtml.length}b`);
+              if (bodyText || bodyHtml) break;
+            }
+          }
+        } catch (e) {
+          console.error(`[fetch-body] Strategy 4[${partId}] failed:`, e);
+        }
+      }
+    }
+
+    await client.disconnect();
+  } catch (imapError) {
+    console.error(`[fetch-body] IMAP error:`, imapError);
+    try { await client.disconnect(); } catch { /* ignore */ }
+  } finally {
+    clearTimeout(timeoutId);
+  }
+
+  return { bodyText, bodyHtml };
 }
 
 serve(async (req) => {
@@ -139,7 +352,6 @@ serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    // Get the message and its account
     const { data: message, error: msgError } = await supabase
       .from('mail_messages')
       .select('*, mail_accounts!inner(*)')
@@ -162,7 +374,6 @@ serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    // Decode credentials
     let password: string;
     try {
       const credentials = JSON.parse(atob(account.credentials_vault_key));
@@ -178,153 +389,20 @@ serve(async (req) => {
 
     console.log(`[fetch-body] Fetching body for UID ${messageUid} in ${folder}`);
 
-    const client = new ImapClient({
-      host: account.imap_host,
-      port: account.imap_port || 993,
-      tls: true,
-      username: account.email_address,
-      password: password,
-    });
+    // Attempt 1
+    let { bodyText, bodyHtml } = await attemptFetchBody(account, password, messageUid, folder);
 
-    let bodyText = '';
-    let bodyHtml = '';
-    let snippet = '';
-
-    try {
-      await client.connect();
-      await client.authenticate();
-
-      // Try to select the mailbox
-      const FOLDER_MAPPINGS: Record<string, string[]> = {
-        'INBOX': ['INBOX'],
-        'SENT': ['Sent', 'Sent Items', 'Gesendet', 'INBOX.Sent'],
-        'DRAFTS': ['Drafts', 'INBOX.Drafts'],
-        'TRASH': ['Trash', 'Deleted Items', 'Papierkorb', 'INBOX.Trash'],
-        'ARCHIVE': ['Archive', 'Archiv', 'INBOX.Archive'],
-        'SPAM': ['Spam', 'Junk', 'INBOX.Spam'],
-      };
-
-      const possibleFolders = FOLDER_MAPPINGS[folder] || [folder];
-      let mailboxSelected = false;
-
-      for (const tryFolder of possibleFolders) {
-        try {
-          await client.selectMailbox(tryFolder);
-          mailboxSelected = true;
-          console.log(`[fetch-body] Selected mailbox: ${tryFolder}`);
-          break;
-        } catch {
-          // try next
-        }
-      }
-
-      if (!mailboxSelected) {
-        throw new Error(`Could not select mailbox for folder ${folder}`);
-      }
-
-      // Strategy 1: bodyParts ['1'] — first MIME part
-      try {
-        console.log(`[fetch-body] Strategy 1: BODY[1]`);
-        const msgs = await client.fetch(`${messageUid}`, { bodyParts: ['1'] }, true);
-        const msg = msgs?.[0];
-        const part = msg?.bodyParts?.get?.('1') || msg?.bodyParts?.['1'];
-        if (part) {
-          const content = (part instanceof Uint8Array) 
-            ? new TextDecoder('utf-8', { fatal: false }).decode(part) 
-            : String(part);
-          if (content.length > 10) {
-            if (content.includes('<html') || content.includes('<body') || content.includes('<div')) {
-              bodyHtml = truncate(content, MAX_BODY_SIZE);
-            } else {
-              bodyText = truncate(content, MAX_BODY_SIZE);
-            }
-            console.log(`[fetch-body] Strategy 1 success: text=${bodyText.length}b, html=${bodyHtml.length}b`);
-          }
-        }
-      } catch (e) {
-        console.error(`[fetch-body] Strategy 1 failed:`, e);
-      }
-
-      // Strategy 2: bodyParts ['TEXT']
-      if (!bodyText && !bodyHtml) {
-        try {
-          console.log(`[fetch-body] Strategy 2: BODY[TEXT]`);
-          const msgs = await client.fetch(`${messageUid}`, { bodyParts: ['TEXT'] }, true);
-          const msg = msgs?.[0];
-          const part = msg?.bodyParts?.get?.('TEXT') || msg?.bodyParts?.TEXT;
-          if (part) {
-            const content = (part instanceof Uint8Array)
-              ? new TextDecoder('utf-8', { fatal: false }).decode(part)
-              : String(part);
-            if (content.length > 10) {
-              const parsed = parseMimeMessage(content);
-              bodyText = truncate(parsed.text, MAX_BODY_SIZE);
-              bodyHtml = truncate(parsed.html, MAX_BODY_SIZE);
-              console.log(`[fetch-body] Strategy 2 success: text=${bodyText.length}b, html=${bodyHtml.length}b`);
-            }
-          }
-        } catch (e) {
-          console.error(`[fetch-body] Strategy 2 failed:`, e);
-        }
-      }
-
-      // Strategy 3: full RFC822
-      if (!bodyText && !bodyHtml) {
-        try {
-          console.log(`[fetch-body] Strategy 3: full RFC822`);
-          const msgs = await client.fetch(`${messageUid}`, { full: true }, true);
-          const msg = msgs?.[0];
-          if (msg?.raw) {
-            const rawMessage = (msg.raw instanceof Uint8Array)
-              ? new TextDecoder('utf-8', { fatal: false }).decode(msg.raw)
-              : String(msg.raw);
-            if (rawMessage.length > 0) {
-              const parsed = parseMimeMessage(rawMessage);
-              bodyText = truncate(parsed.text, MAX_BODY_SIZE);
-              bodyHtml = truncate(parsed.html, MAX_BODY_SIZE);
-              console.log(`[fetch-body] Strategy 3 success: text=${bodyText.length}b, html=${bodyHtml.length}b`);
-            }
-          }
-        } catch (e) {
-          console.error(`[fetch-body] Strategy 3 failed:`, e);
-        }
-      }
-
-      // Strategy 4: try nested MIME parts ['1.1', '1.2', '2']
-      if (!bodyText && !bodyHtml) {
-        for (const partId of ['1.1', '1.2', '2']) {
-          try {
-            console.log(`[fetch-body] Strategy 4: BODY[${partId}]`);
-            const msgs = await client.fetch(`${messageUid}`, { bodyParts: [partId] }, true);
-            const msg = msgs?.[0];
-            const part = msg?.bodyParts?.get?.(partId) || msg?.bodyParts?.[partId];
-            if (part) {
-              const content = (part instanceof Uint8Array)
-                ? new TextDecoder('utf-8', { fatal: false }).decode(part)
-                : String(part);
-              if (content.length > 10) {
-                if (content.includes('<html') || content.includes('<body') || content.includes('<div')) {
-                  bodyHtml = truncate(content, MAX_BODY_SIZE);
-                } else {
-                  bodyText = truncate(content, MAX_BODY_SIZE);
-                }
-                console.log(`[fetch-body] Strategy 4[${partId}] success: text=${bodyText.length}b, html=${bodyHtml.length}b`);
-                if (bodyText || bodyHtml) break;
-              }
-            }
-          } catch (e) {
-            console.error(`[fetch-body] Strategy 4[${partId}] failed:`, e);
-          }
-        }
-      }
-
-      await client.disconnect();
-    } catch (imapError) {
-      console.error(`[fetch-body] IMAP error:`, imapError);
-      try { await client.disconnect(); } catch { /* ignore */ }
+    // Auto-retry once after 2s if first attempt failed
+    if (!bodyText && !bodyHtml) {
+      console.log(`[fetch-body] First attempt failed, retrying after 2s...`);
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      const retry = await attemptFetchBody(account, password, messageUid, folder);
+      bodyText = retry.bodyText;
+      bodyHtml = retry.bodyHtml;
     }
 
     // Generate snippet
+    let snippet = '';
     if (bodyText) {
       snippet = truncate(bodyText.replace(/\s+/g, ' ').trim(), 200);
     } else if (bodyHtml) {
@@ -356,7 +434,7 @@ serve(async (req) => {
         snippet: snippet || null 
       }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     } else {
-      console.warn(`[fetch-body] All strategies failed for message ${messageId}`);
+      console.warn(`[fetch-body] All strategies failed (incl. retry) for message ${messageId}`);
       return new Response(JSON.stringify({ 
         success: false, 
         error: 'Could not fetch email body after trying all strategies' 
