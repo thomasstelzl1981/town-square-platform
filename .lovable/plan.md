@@ -1,167 +1,186 @@
 
+# Einkommen kumulieren, Wachstumsrate 4%, Vertrags-Hochrechnung transparent und editierbar
 
-# Vorsorge-Lueckenrechner: Transparente Datenanzeige mit Inline-Bearbeitung
+## 1. Einkommen: Kumulierung aus Anstellung + Gewerbebetrieb
 
-## Ziel
+Das Feld `business_income_monthly` existiert bereits in der DB (`household_persons`) und wird in der Uebersicht-Personenakte erfasst. Der Lueckenrechner ignoriert es bisher komplett.
 
-Den Lueckenrechner so umbauen, dass alle Berechnungsdaten offen sichtbar und direkt editierbar sind. Statt "Daten fehlen" mit Link zur Personenakte zeigt der Rechner die konkreten Felder — leer oder befuellt — und erlaubt das direkte Speichern.
+### Aenderung Engine (`spec.ts` + `engine.ts`)
 
-## Neues Layout
-
-```text
-┌─────────────────────────────────────────────────────┐
-│ [Shield] Vorsorge-Lueckenrechner                    │
-│ Transparenz ueber Ihre Altersvorsorge- und BU-...   │
-│                                                     │
-│ [Max Mustermann] [Lisa Mustermann]   <- Chips       │
-│                                                     │
-│ ┌─── DATENBASIS (Collapsible, default offen) ─────┐ │
-│ │                                                  │ │
-│ │  Persoenliche Daten                              │ │
-│ │  ┌──────────────┬──────────────┬────────────┐    │ │
-│ │  │ Netto mtl.   │ Brutto mtl.  │ Status     │    │ │
-│ │  │ [3.200 EUR]  │ [5.200 EUR]  │ [angest.]  │    │ │
-│ │  ├──────────────┴──────────────┴────────────┤    │ │
-│ │  │ Geplanter Renteneintritt: [01.07.2040]   │    │ │
-│ │  └──────────────────────────────────────────┘    │ │
-│ │                                                  │ │
-│ │  Gesetzliche Renteninformation (DRV/Pension)     │ │
-│ │  ┌──────────────┬──────────────┬────────────┐    │ │
-│ │  │ Altersrente  │ EM-Rente     │ Typ        │    │ │
-│ │  │ [1.200 EUR]  │ [800 EUR]    │ [DRV]      │    │ │
-│ │  └──────────────┴──────────────┴────────────┘    │ │
-│ │                                                  │ │
-│ │  Vorsorge-Vertraege (Altersvorsorge)             │ │
-│ │  ┌────────────────────────────────────────────┐  │ │
-│ │  │ Alte Leipziger Ruerup                      │  │ │
-│ │  │ Guthaben: 21.000  Rente: -  Sparrate: 250 │  │ │
-│ │  ├────────────────────────────────────────────┤  │ │
-│ │  │ Allianz bAV                                │  │ │
-│ │  │ Guthaben: 14.400  Rente: -  Sparrate: 200 │  │ │
-│ │  └────────────────────────────────────────────┘  │ │
-│ │                                                  │ │
-│ │  BU-Absicherung                                  │ │
-│ │  ┌────────────────────────────────────────────┐  │ │
-│ │  │ Alte Leipziger BU  -> BU-Rente: 3.000/mtl. │  │ │
-│ │  │ Ruerup BU-Zusatz   -> BU-Rente: 2.000/mtl. │  │ │
-│ │  └────────────────────────────────────────────┘  │ │
-│ │                                                  │ │
-│ │  [Aenderungen speichern]                         │ │
-│ └──────────────────────────────────────────────────┘ │
-│                                                     │
-│ ┌─── ALTERSVORSORGE-LUECKE ───────────────────────┐ │
-│ │  (Berechnung wie bisher: Slider, Progress, Gap) │ │
-│ └──────────────────────────────────────────────────┘ │
-│                                                     │
-│ ┌─── BU/EU-LUECKE ───────────────────────────────┐  │
-│ │  (Berechnung wie bisher: Slider, Progress, Gap) │ │
-│ └──────────────────────────────────────────────────┘ │
-└─────────────────────────────────────────────────────┘
+**spec.ts — VLPersonInput erweitern:**
+```
++ business_income_monthly: number | null
 ```
 
-## Aenderungen
+**engine.ts — Kumuliertes Netto berechnen:**
 
-### Datei: `src/components/portal/finanzanalyse/VorsorgeLueckenrechner.tsx`
-
-**Props erweitern:**
+An allen Stellen, wo `person.net_income_monthly` fuer den Bedarf verwendet wird (Zeile 177 in `calcAltersvorsorge`, Zeile 267 in `calcBuLuecke`):
 
 ```text
 VORHER:
-  persons: any[]
-  pensionRecords: any[]
-  contracts: any[]
+  const need = (person.net_income_monthly || 0) * needPercent
 
 NACHHER:
-  persons: any[]
-  pensionRecords: any[]
-  contracts: any[]
-  onUpdatePerson?: (person: Record<string, any>) => Promise<void>
-  onUpsertPension?: (data: { personId, projected_pension, disability_pension, pension_type }) => Promise<void>
-  onUpdateContract?: (contract: Record<string, any>) => Promise<void>
+  const totalNetIncome = (person.net_income_monthly || 0) + (person.business_income_monthly || 0)
+  const need = totalNetIncome * needPercent
 ```
 
-**Neuer Abschnitt "Datenbasis" (zwischen Personen-Chips und Altersvorsorge-Karte):**
+Das kumulierte Einkommen wird auch in den Ergebnissen sichtbar, damit die UI es darstellen kann.
 
-Collapsible-Bereich (Radix `Collapsible`, bereits installiert) mit 4 Unter-Sektionen:
+### Aenderung UI (`VorsorgeLueckenrechner.tsx`)
 
-1. **Persoenliche Daten** — Editierbare Felder:
-   - Nettoeinkommen mtl. (number)
-   - Bruttoeinkommen mtl. (number)
-   - Beschaeftigungsstatus (Select: Angestellt, Selbstaendig, Beamter)
-   - Geplanter Renteneintritt (date)
-   - Bei Beamten: Ruhegehaltfaehiges Grundgehalt + Dienstjahre
+**Datenbasis — Persoenliche Daten erweitern:**
 
-2. **Gesetzliche Renteninformation** — Editierbare Felder:
-   - Prognostizierte Altersrente (number)
-   - Erwerbsminderungsrente (number)
-   - Rententyp (Select: DRV / Beamtenpension)
-   - Wenn leer: Felder werden angezeigt mit Placeholder, nicht als "Daten fehlen"
-
-3. **Altersvorsorge-Vertraege** — Readonly-Tabelle:
-   - Zeigt alle Vertraege die in die Altersvorsorge-Berechnung fliessen
-   - Spalten: Anbieter, Typ, Guthaben, Monatl. Rente, Sparrate, Hochgerechneter Wert
-   - Nicht editierbar hier (Verwaltung bleibt oben in den Widget-Kacheln)
-
-4. **BU-Absicherung** — Readonly-Tabelle:
-   - Zeigt alle Vertraege mit BU-Leistung (bu_monthly_benefit oder reine BU-Vertraege)
-   - Spalten: Anbieter, Typ, BU-Rente mtl.
-
-**Speichern-Button:**
-- Sichtbar nur wenn Aenderungen an Person oder Pension vorliegen
-- Ruft `onUpdatePerson` und/oder `onUpsertPension` auf
-- Toast-Feedback bei Erfolg
-- Nach dem Speichern aktualisiert sich die Berechnung automatisch (React re-render)
-
-**Bisherige "Daten fehlen"-Warnungen entfernen:**
-- Kein separater "Nettoeinkommen nicht hinterlegt"-Banner mehr
-- Kein "In Personenakte ergaenzen"-Link mehr
-- Stattdessen: Leere Felder sind direkt sichtbar und editierbar
-- Felder mit fehlendem Wert bekommen einen dezenten gelben Rand als visuellen Hinweis
-
-### Datei: `src/pages/portal/finanzanalyse/VorsorgeTab.tsx`
-
-Callbacks aus `useFinanzanalyseData()` an den Rechner durchreichen:
+Neues Feld "Einnahmen aus Gewerbebetrieb (EUR/mtl.)" neben dem bestehenden Netto-Feld. Darunter eine berechnete Zeile:
 
 ```text
-<VorsorgeLueckenrechner
-  persons={...}
-  pensionRecords={pensionRecords}
-  contracts={contracts}
-  onUpdatePerson={async (p) => {
-    await updatePerson.mutateAsync(p);
-  }}
-  onUpsertPension={async (data) => {
-    await upsertPension.mutateAsync(data);
-  }}
-  onUpdateContract={async (c) => {
-    await updateMutation.mutateAsync(c);
-  }}
-/>
+  Netto mtl. (EUR)          Gewerbe mtl. (EUR)        Brutto mtl. (EUR)
+  [3.200]                   [1.800]                   [5.200]
+
+  Gesamteinkommen: 5.000 EUR / mtl.   <- berechnete Summe, nicht editierbar
 ```
 
-Dazu wird `updatePerson` und `upsertPension` aus `useFinanzanalyseData()` geholt (sind bereits exportiert).
+**mapPerson erweitern:**
+```
++ business_income_monthly: p.business_income_monthly
+```
 
-### Lokaler State im Rechner
+**handleSave erweitern:**
+```
++ business_income_monthly: editBusiness ? Number(editBusiness) : null
+```
+
+---
+
+## 2. Wachstumsrate: 4% statt 5%
+
+### Aenderung spec.ts
 
 ```text
-// Editierbare Kopie der Person-Daten fuer die ausgewaehlte Person
-const [editPerson, setEditPerson] = useState<Partial<VLPersonInput>>({})
-
-// Editierbare Kopie der Pension-Daten
-const [editPension, setEditPension] = useState<Partial<VLPensionInput>>({})
-
-// Dirty-Tracking: hat der User etwas geaendert?
-const [isDirty, setIsDirty] = useState(false)
+VORHER:  DEFAULT_GROWTH_RATE = 0.05
+NACHHER: DEFAULT_GROWTH_RATE = 0.04
 ```
 
-Bei Personenwechsel (Chip-Klick) werden die Edit-States zurueckgesetzt.
+Eine einzelne Zeile. Die `projectCapital`-Funktion in engine.ts nutzt diese Konstante bereits.
 
-### Betroffene Dateien (Gesamt)
+---
+
+## 3. Vertrags-Hochrechnung transparent und editierbar
+
+### 3a. DB-Migration: Neue Spalten fuer manuelle Ueberschreibung
+
+Zwei neue Felder in `vorsorge_contracts`:
+
+```sql
+ALTER TABLE public.vorsorge_contracts
+  ADD COLUMN IF NOT EXISTS projected_end_value numeric DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS growth_rate_override numeric DEFAULT NULL;
+```
+
+- `projected_end_value`: Manuell eingetragene Ablaufleistung (z.B. aus Versorgungsmitteilung der Lebensversicherung). Wenn vorhanden, ueberschreibt sie die automatische Hochrechnung.
+- `growth_rate_override`: Individuelle Wachstumsrate pro Vertrag (z.B. 0.03 fuer 3%). Wenn NULL, wird `DEFAULT_GROWTH_RATE` (4%) verwendet.
+
+### 3b. Engine-Logik anpassen
+
+**spec.ts — VLContractInput erweitern:**
+```
++ projected_end_value: number | null
++ growth_rate_override: number | null
+```
+
+**engine.ts — calcAltersvorsorge, Verrentungs-Block (Zeile 160-172):**
+
+```text
+VORHER:
+  const capital = c.insured_sum || c.current_balance || 0;
+  const futureCapital = projectCapital(capital, monthlyPremium, ytr);
+  privateVerrentung += futureCapital / DEFAULT_ANNUITY_YEARS / 12;
+
+NACHHER:
+  let futureCapital: number;
+
+  if (c.projected_end_value && c.projected_end_value > 0) {
+    // Manuell eingetragene Ablaufleistung (z.B. aus Versorgungsmitteilung)
+    futureCapital = c.projected_end_value;
+  } else {
+    const capital = c.insured_sum || c.current_balance || 0;
+    const rate = c.growth_rate_override ?? DEFAULT_GROWTH_RATE;
+    const monthlyPremium = (c.premium && c.premium > 0)
+      ? normalizeToMonthly(c.premium, c.payment_interval) : 0;
+    futureCapital = projectCapital(capital, monthlyPremium, ytr, rate);
+  }
+
+  privateVerrentung += futureCapital / DEFAULT_ANNUITY_YEARS / 12;
+```
+
+### 3c. UI: Vertrags-Tabelle erweitern (editierbar)
+
+Die AV-Vertragstabelle in der Datenbasis-Sektion bekommt zusaetzliche Spalten und wird editierbar:
+
+```text
+VORHER (readonly):
+  Anbieter/Typ | Guthaben | Rente mtl. | Sparrate
+
+NACHHER (teilweise editierbar):
+  Anbieter/Typ | Guthaben | Rente mtl. | Sparrate | Wachstum % | Hochrechnung | Rente aus Kapital
+                                                     [4.0]        [~43.700]       ~146 EUR/mtl.
+                                                     editierbar   editierbar      berechnet
+```
+
+- **Wachstum %**: Editierbares Input (default 4.0). Wird in `growth_rate_override` gespeichert.
+- **Hochrechnung**: Zeigt den hochgerechneten Wert. Ist editierbar — wenn manuell geaendert, wird `projected_end_value` gespeichert und die automatische Berechnung ueberschrieben.
+- **Rente aus Kapital**: Berechnet (Hochrechnung / 25 / 12). Nicht editierbar.
+
+Der Save-Button im Datenbasis-Bereich speichert auch die Vertragsaenderungen ueber den neuen `onUpdateContract`-Callback.
+
+### 3d. VorsorgeTab.tsx — Callbacks erweitern
+
+```text
+onUpdateContract={async (c) => {
+  await supabase.from('vorsorge_contracts')
+    .update({
+      growth_rate_override: c.growth_rate_override,
+      projected_end_value: c.projected_end_value,
+    })
+    .eq('id', c.id);
+}}
+```
+
+---
+
+## Betroffene Dateien
 
 | Datei | Aenderung |
 |---|---|
-| `src/components/portal/finanzanalyse/VorsorgeLueckenrechner.tsx` | Kompletter Umbau: Datenbasis-Sektion mit editierbaren Feldern, Vertrags-Tabellen, Speichern-Button, "Daten fehlen"-Warnungen entfernt |
-| `src/pages/portal/finanzanalyse/VorsorgeTab.tsx` | Callbacks `onUpdatePerson`, `onUpsertPension`, `onUpdateContract` an Rechner durchreichen |
+| **DB-Migration** | `projected_end_value` + `growth_rate_override` in `vorsorge_contracts` |
+| `src/engines/vorsorgeluecke/spec.ts` | `DEFAULT_GROWTH_RATE` auf 0.04, `business_income_monthly` in VLPersonInput, `projected_end_value` + `growth_rate_override` in VLContractInput |
+| `src/engines/vorsorgeluecke/engine.ts` | Kumuliertes Einkommen, projected_end_value-Vorrang, growth_rate_override |
+| `src/components/portal/finanzanalyse/VorsorgeLueckenrechner.tsx` | Gewerbe-Feld, Gesamteinkommen-Anzeige, editierbare Vertragstabelle mit Hochrechnung |
+| `src/pages/portal/finanzanalyse/VorsorgeTab.tsx` | `onUpdateContract` Callback durchreichen |
 
-Keine DB-Migration noetig. Keine neuen Abhaengigkeiten.
+---
 
+## Datenbeispiel
+
+```text
+Person: Max, Angestellter Geschaeftsfuehrer
+  net_income_monthly: 3.200 EUR (Anstellung)
+  business_income_monthly: 1.800 EUR (Einzelfirma)
+  => Gesamteinkommen: 5.000 EUR/mtl.
+  => Bedarf bei 75%: 3.750 EUR/mtl.
+
+Vertrag: Alte Leipziger Ruerup
+  current_balance: 21.000 EUR
+  premium: 250 EUR/mtl.
+  growth_rate_override: null => nutzt 4%
+  projected_end_value: null => automatisch
+  => Hochrechnung (15 Jahre, 4%):
+     21.000 * 1.04^15 + 250*12 * ((1.04^15 - 1) / 0.04) = ~97.900 EUR
+  => Rente aus Kapital: 97.900 / 25 / 12 = ~326 EUR/mtl.
+
+Vertrag: Allianz Lebensversicherung
+  current_balance: 45.000 EUR
+  projected_end_value: 62.000 EUR  <- manuell aus Versorgungsmitteilung
+  => Hochrechnung: 62.000 EUR (manuell, keine Berechnung)
+  => Rente aus Kapital: 62.000 / 25 / 12 = ~207 EUR/mtl.
+```
