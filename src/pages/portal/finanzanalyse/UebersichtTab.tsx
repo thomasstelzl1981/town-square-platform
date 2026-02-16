@@ -32,7 +32,8 @@ import { FinanzberichtSection } from '@/components/finanzanalyse/FinanzberichtSe
 import { DEMO_KONTO, DEMO_KONTO_IBAN_MASKED } from '@/constants/demoKontoData';
 import {
   Users, UserPlus, Landmark, ScanSearch, Plus, User,
-  Calendar, Mail, Phone, MapPin, CreditCard, X
+  Calendar, Mail, Phone, MapPin, CreditCard, X,
+  Briefcase, Euro
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -443,6 +444,67 @@ export default function UebersichtTab() {
                     onChange={e => updateField(person.id, 'phone_landline', e.target.value)} />
                   <FormInput label="Mobil" name="phone" type="tel" value={form.phone || ''}
                     onChange={e => updateField(person.id, 'phone', e.target.value)} />
+                </div>
+              </div>
+
+              {/* Beschäftigung und Einkommen */}
+              <div>
+                <p className={RECORD_CARD.SECTION_TITLE}>Beschäftigung und Einkommen</p>
+                <div className={RECORD_CARD.FIELD_GRID}>
+                  <div>
+                    <Label className="text-xs">Beschäftigungsstatus</Label>
+                    <Select value={form.employment_status || ''} onValueChange={v => updateField(person.id, 'employment_status', v)}>
+                      <SelectTrigger><SelectValue placeholder="Bitte wählen" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="angestellt">Angestellt</SelectItem>
+                        <SelectItem value="selbstaendig">Selbstständig</SelectItem>
+                        <SelectItem value="beamter">Beamter</SelectItem>
+                        <SelectItem value="rentner">Rentner</SelectItem>
+                        <SelectItem value="nicht_erwerbstaetig">Nicht erwerbstätig</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {form.employment_status === 'angestellt' && (
+                    <>
+                      <FormInput label="Arbeitgeber" name="employer_name" value={form.employer_name || ''}
+                        onChange={e => updateField(person.id, 'employer_name', e.target.value)} />
+                      <FormInput label="Bruttoeinkommen (€/mtl.)" name="gross_income_monthly" type="number"
+                        value={form.gross_income_monthly || ''}
+                        onChange={e => updateField(person.id, 'gross_income_monthly', e.target.value)} />
+                      <FormInput label="Nettoeinkommen (€/mtl.)" name="net_income_monthly" type="number"
+                        value={form.net_income_monthly || ''}
+                        onChange={e => updateField(person.id, 'net_income_monthly', e.target.value)} />
+                      <div>
+                        <Label className="text-xs">Steuerklasse</Label>
+                        <Select value={form.tax_class || ''} onValueChange={v => updateField(person.id, 'tax_class', v)}>
+                          <SelectTrigger><SelectValue placeholder="Bitte wählen" /></SelectTrigger>
+                          <SelectContent>
+                            {['I', 'II', 'III', 'IV', 'V', 'VI'].map(tc => (
+                              <SelectItem key={tc} value={tc}>{tc}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <FormInput label="Kinderfreibeträge" name="child_allowances" type="number"
+                        value={form.child_allowances || ''}
+                        onChange={e => updateField(person.id, 'child_allowances', e.target.value)} />
+                    </>
+                  )}
+
+                  {form.employment_status === 'selbstaendig' && (
+                    <>
+                      <FormInput label="Firmenname" name="employer_name" value={form.employer_name || ''}
+                        onChange={e => updateField(person.id, 'employer_name', e.target.value)} />
+                      <FormInput label="Einkünfte aus Gewerbebetrieb (€/mtl.)" name="business_income_monthly" type="number"
+                        value={form.business_income_monthly || ''}
+                        onChange={e => updateField(person.id, 'business_income_monthly', e.target.value)} />
+                    </>
+                  )}
+
+                  <FormInput label="Einkünfte aus Photovoltaik (€/mtl.)" name="pv_income_monthly" type="number"
+                    value={form.pv_income_monthly || ''}
+                    onChange={e => updateField(person.id, 'pv_income_monthly', e.target.value)} />
                 </div>
               </div>
 

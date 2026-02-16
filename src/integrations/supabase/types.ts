@@ -6717,24 +6717,30 @@ export type Database = {
         Row: {
           avatar_url: string | null
           birth_date: string | null
+          business_income_monthly: number | null
+          child_allowances: number | null
           city: string | null
           created_at: string
           email: string | null
           employer_name: string | null
           employment_status: string | null
           first_name: string
+          gross_income_monthly: number | null
           house_number: string | null
           id: string
           is_primary: boolean
           last_name: string
           marital_status: string | null
+          net_income_monthly: number | null
           net_income_range: string | null
           phone: string | null
           phone_landline: string | null
+          pv_income_monthly: number | null
           role: string
           salutation: string | null
           sort_order: number
           street: string | null
+          tax_class: string | null
           tenant_id: string
           updated_at: string
           user_id: string
@@ -6743,24 +6749,30 @@ export type Database = {
         Insert: {
           avatar_url?: string | null
           birth_date?: string | null
+          business_income_monthly?: number | null
+          child_allowances?: number | null
           city?: string | null
           created_at?: string
           email?: string | null
           employer_name?: string | null
           employment_status?: string | null
           first_name?: string
+          gross_income_monthly?: number | null
           house_number?: string | null
           id?: string
           is_primary?: boolean
           last_name?: string
           marital_status?: string | null
+          net_income_monthly?: number | null
           net_income_range?: string | null
           phone?: string | null
           phone_landline?: string | null
+          pv_income_monthly?: number | null
           role?: string
           salutation?: string | null
           sort_order?: number
           street?: string | null
+          tax_class?: string | null
           tenant_id: string
           updated_at?: string
           user_id: string
@@ -6769,24 +6781,30 @@ export type Database = {
         Update: {
           avatar_url?: string | null
           birth_date?: string | null
+          business_income_monthly?: number | null
+          child_allowances?: number | null
           city?: string | null
           created_at?: string
           email?: string | null
           employer_name?: string | null
           employment_status?: string | null
           first_name?: string
+          gross_income_monthly?: number | null
           house_number?: string | null
           id?: string
           is_primary?: boolean
           last_name?: string
           marital_status?: string | null
+          net_income_monthly?: number | null
           net_income_range?: string | null
           phone?: string | null
           phone_landline?: string | null
+          pv_income_monthly?: number | null
           role?: string
           salutation?: string | null
           sort_order?: number
           street?: string | null
+          tax_class?: string | null
           tenant_id?: string
           updated_at?: string
           user_id?: string
@@ -12266,6 +12284,8 @@ export type Database = {
       pv_plants: {
         Row: {
           active_connector: string | null
+          annual_revenue: number | null
+          annual_yield_kwh: number | null
           battery_kwh: number | null
           city: string | null
           commissioning_date: string | null
@@ -12280,12 +12300,18 @@ export type Database = {
           feed_in_meter_no: string | null
           feed_in_meter_operator: string | null
           feed_in_start_reading: number | null
+          feed_in_tariff_cents: number | null
           grid_operator: string | null
           has_battery: boolean | null
           house_number: string | null
           id: string
           kwp: number | null
           last_sync_at: string | null
+          loan_amount: number | null
+          loan_bank: string | null
+          loan_interest_rate: number | null
+          loan_monthly_rate: number | null
+          loan_remaining_balance: number | null
           location_notes: string | null
           mastr_account_present: boolean | null
           mastr_plant_id: string | null
@@ -12306,6 +12332,8 @@ export type Database = {
         }
         Insert: {
           active_connector?: string | null
+          annual_revenue?: number | null
+          annual_yield_kwh?: number | null
           battery_kwh?: number | null
           city?: string | null
           commissioning_date?: string | null
@@ -12320,12 +12348,18 @@ export type Database = {
           feed_in_meter_no?: string | null
           feed_in_meter_operator?: string | null
           feed_in_start_reading?: number | null
+          feed_in_tariff_cents?: number | null
           grid_operator?: string | null
           has_battery?: boolean | null
           house_number?: string | null
           id?: string
           kwp?: number | null
           last_sync_at?: string | null
+          loan_amount?: number | null
+          loan_bank?: string | null
+          loan_interest_rate?: number | null
+          loan_monthly_rate?: number | null
+          loan_remaining_balance?: number | null
           location_notes?: string | null
           mastr_account_present?: boolean | null
           mastr_plant_id?: string | null
@@ -12346,6 +12380,8 @@ export type Database = {
         }
         Update: {
           active_connector?: string | null
+          annual_revenue?: number | null
+          annual_yield_kwh?: number | null
           battery_kwh?: number | null
           city?: string | null
           commissioning_date?: string | null
@@ -12360,12 +12396,18 @@ export type Database = {
           feed_in_meter_no?: string | null
           feed_in_meter_operator?: string | null
           feed_in_start_reading?: number | null
+          feed_in_tariff_cents?: number | null
           grid_operator?: string | null
           has_battery?: boolean | null
           house_number?: string | null
           id?: string
           kwp?: number | null
           last_sync_at?: string | null
+          loan_amount?: number | null
+          loan_bank?: string | null
+          loan_interest_rate?: number | null
+          loan_monthly_rate?: number | null
+          loan_remaining_balance?: number | null
           location_notes?: string | null
           mastr_account_present?: boolean | null
           mastr_plant_id?: string | null

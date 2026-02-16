@@ -1,19 +1,19 @@
 /**
  * FinanzberichtSection — Strukturierte Vermögensauskunft
- * Sektionen: Personen, Einnahmen/Ausgaben, Vermögen/Verbindlichkeiten, KPIs, Chart, Verträge, PDF
+ * Sektionen: Personen, Einnahmen/Ausgaben, Vermögen/Verbindlichkeiten, KPIs, Abonnements, Energieverträge, Chart, Verträge, PDF
  */
 import { useRef } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { PdfExportFooter } from '@/components/pdf';
-import { useFinanzberichtData, type ContractSummary } from '@/hooks/useFinanzberichtData';
+import { useFinanzberichtData, type ContractSummary, type SubscriptionsByCategory, type EnergyContract } from '@/hooks/useFinanzberichtData';
 import { useFinanzanalyseData } from '@/hooks/useFinanzanalyseData';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Users, TrendingUp, TrendingDown, Wallet, Building2, Shield,
   FileText, ScrollText, CheckCircle2, XCircle, PiggyBank, Landmark,
-  CreditCard, HeartPulse
+  CreditCard, HeartPulse, Zap, Repeat, Sun
 } from 'lucide-react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -31,6 +31,10 @@ function fmtPct(v: number) {
 
 const ROLE_LABELS: Record<string, string> = {
   hauptperson: 'Hauptperson', partner: 'Partner/in', kind: 'Kind', weitere: 'Weitere',
+};
+
+const ENERGY_LABELS: Record<string, string> = {
+  strom: 'Strom', gas: 'Gas', wasser: 'Wasser', fernwaerme: 'Fernwärme',
 };
 
 // ─── Sub-Components ──────────────────────────────────────────
@@ -155,6 +159,7 @@ export function FinanzberichtSection() {
                 <FinanzRow label="Nettoeinkommen" value={income.netIncomeTotal} />
                 {income.selfEmployedIncome > 0 && <FinanzRow label="Selbstständige Tätigkeit" value={income.selfEmployedIncome} />}
                 {income.rentalIncomePortfolio > 0 && <FinanzRow label="Vermietung & Verpachtung" value={income.rentalIncomePortfolio} />}
+                {income.pvIncome > 0 && <FinanzRow label="Einkünfte aus Photovoltaik" value={income.pvIncome} />}
                 {income.sideJobIncome > 0 && <FinanzRow label="Nebentätigkeit" value={income.sideJobIncome} />}
                 {income.childBenefit > 0 && <FinanzRow label="Kindergeld" value={income.childBenefit} />}
                 {income.otherIncome > 0 && <FinanzRow label="Sonstige Einkünfte" value={income.otherIncome} />}
@@ -168,6 +173,7 @@ export function FinanzberichtSection() {
                 {expenses.warmRent > 0 && <FinanzRow label="Warmmiete" value={expenses.warmRent} />}
                 {expenses.portfolioLoans > 0 && <FinanzRow label="Immobiliendarlehen" value={expenses.portfolioLoans} />}
                 {expenses.privateLoans > 0 && <FinanzRow label="Private Darlehen" value={expenses.privateLoans} />}
+                {expenses.pvLoans > 0 && <FinanzRow label="PV-Darlehen" value={expenses.pvLoans} />}
                 {expenses.insurancePremiums > 0 && <FinanzRow label="Versicherungsprämien" value={expenses.insurancePremiums} />}
                 {expenses.savingsContracts > 0 && <FinanzRow label="Sparverträge" value={expenses.savingsContracts} />}
                 {expenses.subscriptions > 0 && <FinanzRow label="Abonnements" value={expenses.subscriptions} />}
@@ -206,6 +212,7 @@ export function FinanzberichtSection() {
                 <h4 className="text-sm font-semibold text-destructive mb-2">Verbindlichkeiten</h4>
                 {liabilities.portfolioDebt > 0 && <FinanzRow label="Portfolio-Darlehen" value={liabilities.portfolioDebt} />}
                 {liabilities.homeDebt > 0 && <FinanzRow label="Zuhause-Darlehen" value={liabilities.homeDebt} />}
+                {liabilities.pvDebt > 0 && <FinanzRow label="PV-Darlehen" value={liabilities.pvDebt} />}
                 {liabilities.otherDebt > 0 && <FinanzRow label="Sonstige Verbindlichkeiten" value={liabilities.otherDebt} />}
                 <FinanzRow label="Gesamtverbindlichkeiten" value={liabilities.totalLiabilities} bold />
               </div>
@@ -229,7 +236,74 @@ export function FinanzberichtSection() {
           <KpiCard icon={TrendingUp} label="Nettovermögen" value={fmt(data.netWealth)} sub={`Liquiditätsquote: ${fmtPct(data.liquidityPercent)}`} />
         </div>
 
-        {/* ═══ SEKTION 5: Vermögensentwicklung (Chart) ═══ */}
+        {/* ═══ SEKTION 5: Abonnements (kategorisiert) ═══ */}
+        {data.subscriptionsByCategory.length > 0 && (
+          <Card className="glass-card">
+            <CardContent className="p-6">
+              <SectionTitle icon={Repeat} title="Abonnements" />
+              <div className="space-y-4">
+                {data.subscriptionsByCategory.map(cat => (
+                  <div key={cat.category}>
+                    <h4 className="text-sm font-semibold mb-2 text-muted-foreground">{cat.label}</h4>
+                    <div className="space-y-1">
+                      {cat.items.map(item => (
+                        <div key={item.id} className="flex items-center justify-between text-sm py-1.5 border-b border-border/50 last:border-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">{item.merchant}</span>
+                            <Badge variant={item.status === 'active' ? 'default' : 'secondary'} className="text-[10px]">
+                              {item.status === 'active' ? 'Aktiv' : item.status}
+                            </Badge>
+                          </div>
+                          <span className="font-medium tabular-nums">{fmt(item.amount)}/mtl.</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex justify-between text-sm font-semibold pt-1 mt-1 border-t">
+                      <span>Zwischensumme</span>
+                      <span>{fmt(cat.subtotal)}/mtl.</span>
+                    </div>
+                  </div>
+                ))}
+                <Separator />
+                <div className="flex justify-between font-bold">
+                  <span>Gesamt Abonnements</span>
+                  <span>{fmt(expenses.subscriptions)}/mtl.</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* ═══ SEKTION 6: Energieverträge ═══ */}
+        {data.energyContracts.length > 0 && (
+          <Card className="glass-card">
+            <CardContent className="p-6">
+              <SectionTitle icon={Zap} title="Energieverträge" />
+              <div className="space-y-1">
+                {data.energyContracts.map(c => (
+                  <div key={c.id} className="flex items-center justify-between text-sm py-2 border-b border-border/50 last:border-0">
+                    <div className="flex items-center gap-3">
+                      <Badge variant="outline" className="text-[10px] min-w-[60px] justify-center">
+                        {ENERGY_LABELS[c.category] || c.category}
+                      </Badge>
+                      <div>
+                        <span className="font-medium">{c.providerName}</span>
+                        {c.contractNumber && <span className="text-muted-foreground text-xs ml-2">({c.contractNumber})</span>}
+                      </div>
+                    </div>
+                    <span className="font-medium tabular-nums">{fmt(c.monthlyCost)}/mtl.</span>
+                  </div>
+                ))}
+              </div>
+              <div className="flex justify-between font-bold text-sm pt-2 mt-2 border-t">
+                <span>Gesamt Energie</span>
+                <span>{fmt(data.energyContracts.reduce((s, c) => s + c.monthlyCost, 0))}/mtl.</span>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* ═══ SEKTION 7: Vermögensentwicklung (Chart) ═══ */}
         {projection.length > 0 && (
           <Card className="glass-card">
             <CardContent className="p-6">
@@ -257,7 +331,7 @@ export function FinanzberichtSection() {
           </Card>
         )}
 
-        {/* ═══ SEKTION 6: Vertragsübersicht ═══ */}
+        {/* ═══ SEKTION 8: Vertragsübersicht ═══ */}
         <Card className="glass-card">
           <CardContent className="p-6 space-y-6">
             <SectionTitle icon={Shield} title="Vertragsübersicht" />
@@ -316,7 +390,7 @@ export function FinanzberichtSection() {
           </CardContent>
         </Card>
 
-        {/* ═══ SEKTION 7: PDF-Export ═══ */}
+        {/* ═══ SEKTION 9: PDF-Export ═══ */}
         <PdfExportFooter
           contentRef={contentRef}
           documentTitle={`Vermögensauskunft ${new Date().toLocaleDateString('de-DE')}`}
