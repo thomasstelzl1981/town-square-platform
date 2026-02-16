@@ -93,7 +93,7 @@ export function FinanceRequestWidgets({ activeRequestId }: FinanceRequestWidgets
             showDemo
               ? [DESIGN.DEMO_WIDGET.CARD, DESIGN.DEMO_WIDGET.HOVER, 'cursor-pointer']
               : 'opacity-50 grayscale cursor-default',
-            activeRequestId === '__demo__' && showDemo ? 'ring-2 ring-primary' : ''
+            activeRequestId === '__demo__' && showDemo ? 'ring-2 ring-emerald-400' : ''
           )}
           onClick={() => showDemo && navigate('/portal/finanzierung/anfrage/__demo__')}
         >
