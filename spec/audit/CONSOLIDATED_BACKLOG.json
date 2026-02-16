@@ -60,10 +60,11 @@
       "severity": "P2",
       "module": "MOD-18",
       "title": "Anlage V: Wohnfläche fehlt",
-      "description": "areaSqm ist null — sollte aus units Tabelle gelesen werden.",
+      "description": "areaSqm war null — jetzt aus units summiert und in Anlage V Sektion 1 angezeigt.",
       "fix_type": "code",
       "effort": "low",
-      "status": "open"
+      "status": "done",
+      "fixed_at": "2026-02-16"
     },
     {
       "id": "CB-005",
@@ -71,10 +72,11 @@
       "severity": "P2",
       "module": "MOD-04",
       "title": "Orphan MSV-Dateien löschen",
-      "description": "src/pages/portal/msv/ (6 Dateien) + src/pages/portal/MSVPage.tsx sind Orphans. Keine Imports.",
+      "description": "Bereits bereinigt. Keine Orphans mehr vorhanden.",
       "fix_type": "delete",
       "effort": "trivial",
-      "status": "open"
+      "status": "done",
+      "fixed_at": "2026-02-16"
     },
     {
       "id": "CB-006",
@@ -147,11 +149,12 @@
       "origin": "BL-000006",
       "severity": "P3",
       "module": "System",
-      "title": "5 Orphan Edge Functions",
-      "description": "sot-social-autoresponder, sot-research-run-order, sot-research-firecrawl-extract, sot-research-free, sot-dms-upload-url — keine Frontend-Aufrufe.",
+      "title": "Orphan Edge Functions gelöscht",
+      "description": "4 gelöscht: sot-social-autoresponder, sot-research-firecrawl-extract, sot-research-free, sot-dms-upload-url. sot-research-run-order beibehalten (noch in useResearchOrders.ts referenziert).",
       "fix_type": "delete",
       "effort": "medium",
-      "status": "pending_review"
+      "status": "done",
+      "fixed_at": "2026-02-16"
     },
     {
       "id": "CB-013",
