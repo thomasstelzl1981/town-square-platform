@@ -13,17 +13,15 @@ import { areaConfig, AreaKey } from '@/manifests/areaConfig';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { zone2Portal } from '@/manifests/routesManifest';
 import { moduleContents } from '@/components/portal/HowItWorks/moduleContents';
-import { areaPromoContent } from '@/config/areaPromoContent';
-import { AreaPromoCard } from '@/components/portal/AreaPromoCard';
 import { AreaModuleCard } from '@/components/portal/AreaModuleCard';
 import { filterModulesForMobile, MOBILE_UI_FLAGS } from '@/config/mobileConfig';
 
 // Area descriptions for header
 const areaDescriptions: Record<AreaKey, string> = {
-  base: 'Stammdaten, KI Office, Dokumente und Services-Grundlagen',
+  base: 'Stammdaten und KI Office',
   missions: 'Immobilien, Mietverwaltung, Verkauf, Finanzierung und Investment',
-  operations: 'Projektmanager, Vertriebspartner, Finanzierungsmanager, Akquise Manager und Lead Manager',
-  services: 'Kommunikation, Fortbildung, Fahrzeuge, Analyse und Photovoltaik',
+  operations: 'Projektmanager, Vertriebspartner, Finanzierung, Akquise, Leads und Kommunikation',
+  services: 'Fortbildung, Haustiere, Shops, Fahrzeuge und Photovoltaik',
 };
 
 export default function AreaOverviewPage() {
@@ -57,8 +55,6 @@ export default function AreaOverviewPage() {
     }).filter(m => m.content); // Only include modules with content
   }, [area, isMobile]);
   
-  // Get promo content
-  const promo = validAreaKey ? areaPromoContent[validAreaKey] : null;
   
   // Invalid area → redirect to portal
   if (!area) {
@@ -82,9 +78,6 @@ export default function AreaOverviewPage() {
 
       {/* Grid: fixed-height cards, uniform 3-col layout */}
       <div className="grid gap-3 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-        {/* Promo Card — hidden on mobile (MUX-002) */}
-        {!isMobile && promo && validAreaKey !== 'missions' && <AreaPromoCard promo={promo} />}
-        
         {/* Module Cards */}
         {moduleData.map(({ code, content, defaultRoute }) => (
           <AreaModuleCard
