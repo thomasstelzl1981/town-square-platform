@@ -291,6 +291,7 @@ export function useFinanzanalyseData() {
   const upsertPension = useMutation({
     mutationFn: async (data: {
       personId: string;
+      pension_type?: string;
       info_date?: string | null;
       current_pension?: number | null;
       projected_pension?: number | null;
@@ -300,6 +301,7 @@ export function useFinanzanalyseData() {
       const existing = (pensionQuery.data || []).find(p => p.person_id === data.personId);
       if (existing) {
         const { error } = await supabase.from('pension_records').update({
+          pension_type: data.pension_type || 'drv',
           info_date: data.info_date,
           current_pension: data.current_pension,
           projected_pension: data.projected_pension,
@@ -310,6 +312,7 @@ export function useFinanzanalyseData() {
         const { error } = await supabase.from('pension_records').insert({
           person_id: data.personId,
           tenant_id: activeTenantId,
+          pension_type: data.pension_type || 'drv',
           info_date: data.info_date,
           current_pension: data.current_pension,
           projected_pension: data.projected_pension,
