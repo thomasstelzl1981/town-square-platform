@@ -133,7 +133,8 @@ export default function VorsorgedokumenteTab() {
                     getActiveWidgetGlow(glowVariant),
                     isSelected && getSelectionRing(glowVariant),
                   )}
-                  onClick={() => setSelectedPersonId(person.id)}
+                  onClick={(e) => { e.stopPropagation(); setSelectedPersonId(person.id); }}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); setSelectedPersonId(person.id); }}}
                   role="button"
                   tabIndex={0}
                 >
@@ -194,7 +195,8 @@ export default function VorsorgedokumenteTab() {
             return (
               <WidgetCell key={vorlage.id}>
                 <div
-                  onClick={() => setSelectedVariante(vorlage.id)}
+                  onClick={(e) => { e.stopPropagation(); setSelectedVariante(vorlage.id); }}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); setSelectedVariante(vorlage.id); }}}
                   className={cn(
                     CARD.BASE,
                     CARD.INTERACTIVE,

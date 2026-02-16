@@ -7,7 +7,7 @@ import { PageShell } from '@/components/shared/PageShell';
 import { WidgetGrid } from '@/components/shared/WidgetGrid';
 import { WidgetCell } from '@/components/shared/WidgetCell';
 import { CARD, TYPOGRAPHY, HEADER, RECORD_CARD, DEMO_WIDGET, getActiveWidgetGlow, getSelectionRing } from '@/config/designManifest';
-import { getContractWidgetGlow } from '@/config/widgetCategorySpec';
+
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { isDemoId } from '@/engines/demoData/engine';
 import { useDemoToggles } from '@/hooks/useDemoToggles';
@@ -222,7 +222,8 @@ export default function AbonnementsTab() {
                   getActiveWidgetGlow(glowVariant),
                   isSelected && getSelectionRing(glowVariant),
                 )}
-                onClick={() => selectCard(s.id)}
+                onClick={(e) => { e.stopPropagation(); selectCard(s.id); }}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); selectCard(s.id); }}}
                 role="button"
                 tabIndex={0}
               >

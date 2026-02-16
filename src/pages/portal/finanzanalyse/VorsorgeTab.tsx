@@ -7,7 +7,7 @@ import { PageShell } from '@/components/shared/PageShell';
 import { WidgetGrid } from '@/components/shared/WidgetGrid';
 import { WidgetCell } from '@/components/shared/WidgetCell';
 import { CARD, TYPOGRAPHY, HEADER, RECORD_CARD, INFO_BANNER, DEMO_WIDGET, getActiveWidgetGlow, getSelectionRing } from '@/config/designManifest';
-import { getContractWidgetGlow } from '@/config/widgetCategorySpec';
+
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { FormInput } from '@/components/shared';
 import { Button } from '@/components/ui/button';
@@ -213,7 +213,8 @@ export default function VorsorgeTab() {
                   getActiveWidgetGlow(glowVariant),
                   isSelected && getSelectionRing(glowVariant),
                 )}
-                onClick={() => selectCard(c.id)}
+                onClick={(e) => { e.stopPropagation(); selectCard(c.id); }}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); selectCard(c.id); }}}
                 role="button"
                 tabIndex={0}
               >

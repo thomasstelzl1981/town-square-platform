@@ -104,7 +104,8 @@ function KontenBlock() {
                 DEMO_WIDGET.CARD, DEMO_WIDGET.HOVER,
                 openKontoId === DEMO_KONTO.id && 'ring-2 ring-primary/50',
               )}
-              onClick={() => setOpenKontoId(openKontoId === DEMO_KONTO.id ? null : DEMO_KONTO.id)}
+              onClick={(e) => { e.stopPropagation(); setOpenKontoId(openKontoId === DEMO_KONTO.id ? null : DEMO_KONTO.id); }}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); setOpenKontoId(openKontoId === DEMO_KONTO.id ? null : DEMO_KONTO.id); }}}
               role="button"
               tabIndex={0}
             >
@@ -131,7 +132,8 @@ function KontenBlock() {
                 getActiveWidgetGlow('rose'),
                 openKontoId === acc.id && getSelectionRing('rose'),
               )}
-              onClick={() => setOpenKontoId(openKontoId === acc.id ? null : acc.id)}
+              onClick={(e) => { e.stopPropagation(); setOpenKontoId(openKontoId === acc.id ? null : acc.id); }}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); setOpenKontoId(openKontoId === acc.id ? null : acc.id); }}}
               role="button"
               tabIndex={0}
             >
@@ -338,7 +340,8 @@ export default function UebersichtTab() {
                   getActiveWidgetGlow(glowVariant),
                   isSelected && getSelectionRing(glowVariant),
                 )}
-                onClick={() => toggleCard(person.id)}
+                onClick={(e) => { e.stopPropagation(); toggleCard(person.id); }}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); toggleCard(person.id); }}}
                 role="button"
                 tabIndex={0}
               >

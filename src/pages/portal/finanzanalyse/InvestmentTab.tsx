@@ -109,7 +109,8 @@ export default function InvestmentTab() {
                     hasDepot ? getActiveWidgetGlow(glowVariant) : '',
                     isSelected && getSelectionRing(glowVariant),
                   )}
-                  onClick={() => setSelectedPersonId(person.id)}
+                  onClick={(e) => { e.stopPropagation(); setSelectedPersonId(person.id); }}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); setSelectedPersonId(person.id); }}}
                   role="button"
                   tabIndex={0}
                 >
