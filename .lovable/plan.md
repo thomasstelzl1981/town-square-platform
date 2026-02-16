@@ -1,132 +1,105 @@
 
 
-# Bugfix: Konsistentes Klick-Verhalten der Tierakten
+# Hover-basierter Modul-Switcher (Floating Pills)
 
-## Problem-Analyse
+## Konzept
 
-Das aktuelle Layout nutzt ein einziges CSS-Grid (`grid-cols-2`) fuer ALLE Karten — geschlossen UND offen. Wenn eine Karte geoeffnet wird, nimmt sie `col-span-2` ein und verschiebt die anderen Karten im Grid-Flow. Das fuehrt zu:
+Die mittlere Navigationszeile (Module Tabs) wird **nicht dauerhaft angezeigt**, sondern erscheint als **schwebendes Overlay unterhalb der SubTabs**, wenn der Nutzer mit der Maus ueber die SubTabs faehrt. Nach Verlassen oder Klick verschwindet es wieder.
 
-- Geschlossene Karten "springen" je nach Position im Grid
-- Die offene Akte erscheint mal unter, mal neben der geschlossenen
-- Inkonsistentes visuelles Verhalten
+## Visueller Aufbau
 
-## Soll-Bild (2 Tiere: Bello und Luna)
-
-### Szenario 1: Beide geschlossen (Anfangszustand)
+### Normalzustand (nur 2 Zeilen)
 
 ```text
-+-------------------+  +-------------------+
-|     [Foto]        |  |     [Foto]        |
-|     Bello         |  |     Luna          |
-|     Hund · Dackel |  |     Hund · Golden |
-|     4 Jahre       |  |     2 Jahre       |
-+-------------------+  +-------------------+
+┌──────────────────────────────────────────────────┐
+│  [Client]  [Manager]  [Service]  [Base]          │  Area Tabs
+├──────────────────────────────────────────────────┤
+│  [Uebersicht] [Investment] [Versicherungen]      │  Sub Tabs
+└──────────────────────────────────────────────────┘
 ```
 
-### Szenario 2: Klick auf Bello → Bello oeffnet sich
+### Hover auf SubTabs → Floating Module-Switcher
 
 ```text
-+-------------------+  +-------------------+
-|     [Foto]        |  |     [Foto]        |
-|     Bello (aktiv) |  |     Luna          |
-|     Hund · Dackel |  |     Hund · Golden |
-+-------------------+  +-------------------+
+┌──────────────────────────────────────────────────┐
+│  [Client]  [Manager]  [Service]  [Base]          │  Area Tabs
+├──────────────────────────────────────────────────┤
+│  [Uebersicht] [Investment] [Versicherungen]      │  Sub Tabs
+└──────────────────────────────────────────────────┘
+        ↕ 8px Abstand (kein border, schwebt frei)
 
-+-----------------------------------------------+
-|  Bello — Hund                            [X]  |
-|  ──────────────────────────────────────────── |
-|  STAMMDATEN                                    |
-|  Name: Bello    Tierart: Hund    Rasse: Dackel |
-|  ...                                           |
-|  DATENRAUM                                     |
-|  [EntityStorageTree]                           |
-+-----------------------------------------------+
+    ╭─────────────────────────────────────────╮
+    │  Finanzen   Immobilien   Markt   Suche  │  Floating Pills
+    ╰─────────────────────────────────────────╯
+        Glasmorphism, shadow-lg, rounded-2xl
+        animate-in: fade + slide-down (150ms)
 ```
 
-### Szenario 3: Klick auf Bello nochmal → Bello schliesst
+Die Floating Pills sind:
+- Visuell getrennt von der SubTab-Leiste (8px Gap, kein border-top)
+- Glasmorphism-Stil (bg-card/80 backdrop-blur-xl shadow-lg rounded-2xl)
+- Fade+Slide Animation beim Erscheinen
+- Das aktive Modul ist hervorgehoben (wie bisher)
+- Klick auf ein Modul navigiert und schliesst das Overlay
+
+## Technische Umsetzung
+
+### Aenderungen
+
+| Datei | Aenderung |
+|-------|-----------|
+| `src/components/portal/TopNavigation.tsx` | Level-2-Block durch Hover-Logik ersetzen, Hover-State verwalten |
+| `src/components/portal/SubTabs.tsx` | `onMouseEnter`/`onMouseLeave` Callbacks entgegennehmen |
+| Keine neue Komponente noetig | Floating Pills werden inline in TopNavigation gerendert |
+
+### TopNavigation.tsx
+
+1. Neuer State: `const [showModuleSwitcher, setShowModuleSwitcher] = useState(false)`
+2. Der bisherige Level-2-Block (ModuleTabs dauerhaft sichtbar) wird entfernt
+3. Ein Wrapper-`div` umschliesst die SubTabs und den Floating-Bereich mit `onMouseEnter` und `onMouseLeave`
+4. Der Floating-Bereich rendert die Module-Pills als `position: absolute` unterhalb der SubTabs
 
 ```text
-+-------------------+  +-------------------+
-|     [Foto]        |  |     [Foto]        |
-|     Bello         |  |     Luna          |
-|     Hund · Dackel |  |     Hund · Golden |
-+-------------------+  +-------------------+
-```
+<div
+  className="relative"
+  onMouseEnter={() => setShowModuleSwitcher(true)}
+  onMouseLeave={() => setShowModuleSwitcher(false)}
+>
+  {/* SubTabs (immer sichtbar) */}
+  <SubTabs module={...} moduleBase={...} />
 
-### Szenario 4: Klick auf Luna → Luna oeffnet sich
-
-```text
-+-------------------+  +-------------------+
-|     [Foto]        |  |     [Foto]        |
-|     Bello         |  |     Luna (aktiv)  |
-|     Hund · Dackel |  |     Hund · Golden |
-+-------------------+  +-------------------+
-
-+-----------------------------------------------+
-|  Luna — Hund                             [X]  |
-|  ──────────────────────────────────────────── |
-|  STAMMDATEN                                    |
-|  Name: Luna    Tierart: Hund    Rasse: Golden  |
-|  ...                                           |
-|  DATENRAUM                                     |
-|  [EntityStorageTree]                           |
-+-----------------------------------------------+
-```
-
-## Technische Loesung
-
-**Datei:** `src/pages/portal/pets/PetsMeineTiere.tsx`
-
-### Strukturaenderung: Zwei separate Bereiche statt einem Grid
-
-Das Layout wird in zwei Bloecke aufgeteilt:
-
-1. **Oben: Geschlossene Karten-Leiste** (immer sichtbar, alle Karten immer geschlossen dargestellt)
-2. **Unten: Offene Akte** (nur sichtbar wenn `openPetId` gesetzt)
-
-```text
-{/* Block 1: Alle Karten — IMMER geschlossen */}
-<div className={RECORD_CARD.GRID}>
-  {pets.map(pet => (
-    <RecordCard
-      key={pet.id}
-      isOpen={false}              // <-- IMMER false
-      onToggle={() => toggle}     // Toggle-Logik
-      glowVariant={openPetId === pet.id ? 'teal' : undefined}
-      // ... summary props
-    >
-      {null}
-    </RecordCard>
-  ))}
+  {/* Floating Module Switcher (nur bei Hover) */}
+  {showModuleSwitcher && areaModules.length > 0 && (
+    <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 z-50
+                    flex items-center gap-1 px-4 py-2
+                    bg-card/80 backdrop-blur-xl shadow-lg rounded-2xl border border-border/30
+                    animate-in fade-in slide-in-from-top-1 duration-150">
+      {areaModules.map(m => (
+        <NavLink
+          key={m.code}
+          to={`/portal/${m.module.base}`}
+          onClick={() => setShowModuleSwitcher(false)}
+          className={cn(
+            'px-3 py-1.5 rounded-xl text-sm font-medium ...',
+            isActive ? 'bg-accent/80 text-accent-foreground' : 'text-muted-foreground hover:text-foreground'
+          )}
+        >
+          <Icon /> {m.displayLabel}
+        </NavLink>
+      ))}
+    </div>
+  )}
 </div>
-
-{/* Block 2: Inline-Dossier — NUR wenn ein Tier ausgewaehlt */}
-{openPetId && (
-  <PetInlineDossier
-    key={openPetId}
-    petId={openPetId}
-    tenantId={activeTenantId}
-  />
-)}
 ```
 
-### Warum diese Loesung?
+### Verhalten
 
-- Geschlossene Karten bleiben **immer oben fixiert** im Grid
-- Kein Layout-Sprung, weil keine Karte `col-span-2` einnimmt
-- Die offene Akte erscheint immer **unterhalb des Grids**
-- Toggle funktioniert zuverlaessig: Klick auf aktive Karte schliesst, Klick auf andere wechselt
-- Die aktive Karte erhaelt einen `teal` Glow zur visuellen Markierung
+- **Mouse enters SubTabs-Bereich** → Floating Pills erscheinen mit Animation
+- **Mouse bleibt auf Pills** → Bleiben sichtbar (da der Wrapper beide umschliesst)
+- **Mouse verlaesst den gesamten Bereich** → Pills verschwinden
+- **Klick auf ein Modul** → Navigation + Pills schliessen sofort
+- **Touch-Geraete**: Kein Hover moeglich — auf Mobile ist die Navigation sowieso deaktiviert (isMobile-Guard in TopNavigation)
 
-### Detaillierte Aenderungen
+### Keine DB-Aenderungen noetig
 
-1. **RecordCard-Aufruf**: `isOpen` wird auf `false` gesetzt (Karten werden nie im "open"-Modus der RecordCard gerendert), `children` wird `null`
-2. **Aktive Karte markieren**: `glowVariant="teal"` nur fuer `openPetId === pet.id`, sonst `undefined`
-3. **PetInlineDossier**: Wird als eigenstaendiger Block **unterhalb** des Grids gerendert, mit `key={openPetId}` fuer sauberes Remounting
-4. **PetInlineDossier-Komponente**: Behaelt Header mit Titel, X-Button zum Schliessen, und alle Sektionen inkl. Datenraum ganz unten
-5. **onToggle Prop wird weitergereicht**: Der X-Button in PetInlineDossier braucht Zugriff auf `setOpenPetId(null)` — daher wird ein `onClose` Prop ergaenzt
-
-### Keine weiteren Dateien betroffen
-
-Nur `PetsMeineTiere.tsx` wird geaendert. Keine DB-Migration, keine Manifest-Aenderungen.
-
+Rein frontendbasierte Aenderung.
