@@ -532,20 +532,162 @@ export default function PetsShop() {
         );
       })()}
 
-      {activeWidget === 'fressnapf' && (
-        <div className="space-y-4">
-          <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Fressnapf Partner-Shop</h3>
-          <Card>
-            <CardContent className="pt-6 text-center space-y-4">
-              <ShoppingCart className="mx-auto h-12 w-12 text-muted-foreground/30" />
-              <p className="text-sm text-muted-foreground">Alles für Ihr Tier bei unserem Partner Fressnapf.</p>
-              <Button variant="outline" className="gap-2" onClick={() => window.open('https://www.fressnapf.de', '_blank')}>
-                <ExternalLink className="h-4 w-4" /> Zu Fressnapf
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+      {activeWidget === 'fressnapf' && (() => {
+        const FRESSNAPF_CATEGORIES = ['Alle', 'Zahnpflege', 'Snacks', 'Futter', 'Pflege', 'Zubehör'];
+        const FRESSNAPF_PRODUCTS = [
+          { name: 'MultiFit Mint DentalCare Sticks Junior', price: '4,29 €', cat: 'Zahnpflege', badge: 'Exklusiv', url: 'https://www.fressnapf.de/p/multifit-mint-dentalcare-sticks-junior-multipack-28-stueck-1002921001/', image: 'https://media.os.fressnapf.com/cms/2024/04/Flyout-bilder-Dog-hund-xl.png?f=webp&t=prod_xxs' },
+          { name: 'MultiFit Mint DentalCare Sticks S', price: '5,49 €', cat: 'Zahnpflege', badge: '4 Varianten', url: 'https://www.fressnapf.de/p/multifit-mint-dentalcare-sticks-multipack-s-1002921002/', image: 'https://media.os.fressnapf.com/cms/2024/04/Flyout-bilder-Cat-katze-xl.png?f=webp&t=prod_xxs' },
+          { name: 'PREMIERE Dental Wrap Mini Rolls', price: '3,49 €', cat: 'Snacks', badge: 'Exklusiv', url: 'https://www.fressnapf.de/p/premiere-dental-wrap-mini-dental-rolls-8-stueck-1278304/', image: 'https://media.os.fressnapf.com/cms/2024/04/Flyout-kleintier-xl.png?f=webp&t=prod_xxs' },
+          { name: 'TAKE CARE Zahncreme 100ml', price: '6,49 €', cat: 'Zahnpflege', badge: 'Exklusiv', url: 'https://www.fressnapf.de/p/take-care-zahncreme-100ml-1291566/', image: 'https://media.os.fressnapf.com/cms/2024/04/Flyout-bilder-bird-vogel-xl.png?f=webp&t=prod_xxs' },
+          { name: 'TAKE CARE Silikon Finger', price: '8,49 €', cat: 'Pflege', badge: 'Exklusiv', url: 'https://www.fressnapf.de/p/take-care-silikon-finger-1291564/', image: 'https://media.os.fressnapf.com/cms/2024/04/Flyout-bilder-aqua-xl.png?f=webp&t=prod_xxs' },
+          { name: 'TAKE CARE Zahn Lipid Gel', price: '13,99 €', cat: 'Zahnpflege', url: 'https://www.fressnapf.de/p/take-care-zahn-lipid-gel-1291567/', image: 'https://media.os.fressnapf.com/cms/2024/04/Flyout-bilder-terra-xl.png?f=webp&t=prod_xxs' },
+          { name: 'TAKE CARE Zahnpflege Set', price: '12,49 €', cat: 'Pflege', badge: 'Exklusiv', url: 'https://www.fressnapf.de/p/take-care-zahnpflege-set-1291569/', image: 'https://media.os.fressnapf.com/cms/2024/04/Flyout-bilder-garden-garten-xl.png?f=webp&t=prod_xxs' },
+          { name: 'TAKE CARE Zahnbürste', price: '6,49 €', cat: 'Pflege', badge: 'Exklusiv', url: 'https://www.fressnapf.de/p/take-care-zahnbuerste-1291568/', image: 'https://media.os.fressnapf.com/cms/2024/04/Flyout-bilder-VET-pet-health-xl.png?f=webp&t=prod_xxs' },
+          { name: 'TAKE CARE Anti-Plaque Finger', price: '12,99 €', cat: 'Pflege', url: 'https://www.fressnapf.de/p/take-care-anti-plaque-finger-1291565/', image: 'https://media.os.fressnapf.com/cms/2024/04/Flyout-bilder-Dog-hund-xl.png?f=webp&t=prod_xxs' },
+          { name: 'SELECT GOLD Sensitive Dental Snacks', price: '2,99 €', cat: 'Snacks', badge: 'Exklusiv', url: 'https://www.fressnapf.de/p/select-gold-sensitive-dental-snacks-alge-mini-99-g-1230943/', image: 'https://media.os.fressnapf.com/cms/2024/04/Flyout-bilder-Cat-katze-xl.png?f=webp&t=prod_xxs' },
+        ];
+        const [fCat, setFCat] = [activeCategory, setActiveCategory];
+        const filtered = FRESSNAPF_PRODUCTS.filter(p => !fCat || fCat === 'Alle' || p.cat === fCat);
+
+        return (
+          <div className="space-y-4">
+            {/* Header Banner */}
+            <Card className="overflow-hidden border-0">
+              <div className="bg-gradient-to-br from-green-600/20 to-yellow-500/5 p-6 sm:p-8">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-background/80 backdrop-blur-sm shadow-sm">
+                    <Store className="h-7 w-7 text-green-600 dark:text-green-400" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3">
+                      <h2 className="text-2xl font-bold text-green-600 dark:text-green-400">Fressnapf</h2>
+                      <Badge variant="outline" className="text-[10px] border-yellow-500/50 text-yellow-600">Awin Partner</Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-1">Europas größte Fachmarktkette für Tierbedarf — über 31.000 Artikel</p>
+                  </div>
+                  <Button className="gap-2 shadow-sm bg-green-600 hover:bg-green-700 text-white" onClick={() => window.open('https://www.fressnapf.de', '_blank')}>
+                    <ExternalLink className="h-4 w-4" />
+                    Zum Shop
+                  </Button>
+                </div>
+                <p className="text-sm text-muted-foreground mt-4 max-w-2xl">
+                  Futter, Snacks, Pflegeprodukte und Zubehör für Hund, Katze und Kleintiere. Über Awin-Affiliate verlinkt — Bestellungen direkt bei Fressnapf.
+                </p>
+              </div>
+            </Card>
+
+            {/* Category Badges */}
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex flex-wrap gap-2">
+                  {FRESSNAPF_CATEGORIES.map(cat => (
+                    <Badge
+                      key={cat}
+                      variant={(fCat === cat || (!fCat && cat === 'Alle')) ? 'default' : 'secondary'}
+                      className="cursor-pointer hover:bg-accent transition-colors text-xs"
+                      onClick={() => setActiveCategory(cat === 'Alle' ? null : (prev => prev === cat ? null : cat))}
+                    >
+                      {cat}
+                    </Badge>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Product Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {filtered.map((product, i) => (
+                <Card
+                  key={i}
+                  className="group cursor-pointer hover:shadow-md transition-all hover:-translate-y-0.5 hover:border-green-500/30"
+                  onClick={() => window.open(product.url, '_blank')}
+                >
+                  <CardContent className="p-3 flex flex-col gap-2">
+                    <div className="relative aspect-square w-full rounded-xl bg-muted/40 overflow-hidden">
+                      <img
+                        src={product.image}
+                        alt={product.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                      {product.badge && (
+                        <Badge className="absolute top-2 left-2 bg-green-600 text-white text-[10px] border-0">
+                          {product.badge}
+                        </Badge>
+                      )}
+                      <div className="absolute top-2 right-2">
+                        <ExternalLink className="h-3.5 w-3.5 text-white/70 drop-shadow-md" />
+                      </div>
+                    </div>
+                    <span className="text-xs font-medium leading-tight line-clamp-2">{product.name}</span>
+                    <span className="text-xs text-green-600 dark:text-green-400 font-semibold">{product.price}</span>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+
+            {/* Beliebte Kategorien */}
+            <div>
+              <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-3">Beliebte Kategorien</h3>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {[
+                  { name: 'Hundenassfutter', url: 'https://www.fressnapf.de/c/hund/hundefutter/nassfutter/' },
+                  { name: 'Hundetrockenfutter', url: 'https://www.fressnapf.de/c/hund/hundefutter/trockenfutter/' },
+                  { name: 'Katzennassfutter', url: 'https://www.fressnapf.de/c/katze/katzenfutter/nassfutter/' },
+                  { name: 'Katzenstreu', url: 'https://www.fressnapf.de/c/katze/hygiene-pflege/katzenstreu/' },
+                  { name: 'Hundesnacks', url: 'https://www.fressnapf.de/c/hund/hundefutter/snacks/' },
+                  { name: 'Katzenspielzeug', url: 'https://www.fressnapf.de/c/katze/katzenspielzeug/' },
+                ].map((cat, i) => (
+                  <Card
+                    key={i}
+                    className="group cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all hover:border-green-500/30"
+                    onClick={() => window.open(cat.url, '_blank')}
+                  >
+                    <CardContent className="p-4 flex items-center justify-between">
+                      <span className="text-sm font-medium">{cat.name}</span>
+                      <ExternalLink className="h-3.5 w-3.5 text-muted-foreground group-hover:text-green-500 transition-colors" />
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+
+            {/* Integration Accordion */}
+            <Accordion type="single" collapsible>
+              <AccordionItem value="integration" className="border rounded-2xl px-4">
+                <AccordionTrigger className="hover:no-underline">
+                  <div className="flex items-center gap-3">
+                    <Plug className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm font-medium">Awin Integration</span>
+                    <Badge variant="outline" className="gap-1 text-muted-foreground ml-2">
+                      <WifiOff className="h-3 w-3" />
+                      Nicht verbunden
+                    </Badge>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent>
+                  <div className="space-y-4 pt-2 pb-2">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Awin Publisher-ID</Label>
+                      <Input placeholder="Awin Publisher ID" disabled className="text-sm" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Awin API Key</Label>
+                      <Input placeholder="Awin API Key" disabled className="text-sm" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Advertiser-ID (Fressnapf)</Label>
+                      <Input placeholder="Fressnapf Advertiser ID" disabled className="text-sm" />
+                    </div>
+                    <Button variant="outline" disabled size="sm">
+                      Verbindung testen
+                    </Button>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+          </div>
+        );
+      })()}
 
       {/* Booking Dialog (kept for future use) */}
       <Dialog open={!!selectedService} onOpenChange={open => { if (!open) setSelectedService(null); }}>
