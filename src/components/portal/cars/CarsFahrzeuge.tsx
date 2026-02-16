@@ -253,8 +253,10 @@ export default function CarsFahrzeuge() {
                <Card
                 className={cn(
                   "glass-card overflow-hidden cursor-pointer group transition-all h-full",
-                  isDemo ? DESIGN.DEMO_WIDGET.CARD : getActiveWidgetGlow('teal'),
-                  isSelected ? "border-primary ring-2 ring-primary/20" : "border-primary/10 hover:border-primary/30"
+                  isDemo
+                    ? cn(DESIGN.DEMO_WIDGET.CARD, "ring-2 ring-emerald-400 border-emerald-400 shadow-sm")
+                    : getActiveWidgetGlow('teal'),
+                  isSelected ? "border-primary ring-2 ring-primary/20" : !isDemo && "border-primary/10 hover:border-primary/30"
                 )}
                 onClick={() => { setIsCreatingNew(false); setSelectedVehicleId(isSelected ? null : vehicle.id); }}
               >
