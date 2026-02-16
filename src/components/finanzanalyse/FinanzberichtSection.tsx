@@ -7,7 +7,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { PdfExportFooter } from '@/components/pdf';
-import { useFinanzberichtData, type ContractSummary, type SubscriptionsByCategory, type EnergyContract } from '@/hooks/useFinanzberichtData';
+import { useFinanzberichtData, type ContractSummary, type SubscriptionsByCategory, type EnergyContract, type PropertyListItem, type LoanListItem } from '@/hooks/useFinanzberichtData';
 import { useFinanzanalyseData } from '@/hooks/useFinanzanalyseData';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -227,7 +227,93 @@ export function FinanzberichtSection() {
           </CardContent>
         </Card>
 
-        {/* ═══ SEKTION 4: KPI-Kacheln ═══ */}
+        {/* ═══ SEKTION 3b: Immobilienaufstellung ═══ */}
+        {data.propertyList.length > 0 && (
+          <Card className="glass-card">
+            <CardContent className="p-6">
+              <SectionTitle icon={Building2} title="Immobilienaufstellung" />
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b text-muted-foreground">
+                      <th className="text-left py-2 font-medium">Bezeichnung</th>
+                      <th className="text-left py-2 font-medium">Stadt</th>
+                      <th className="text-left py-2 font-medium">Typ</th>
+                      <th className="text-right py-2 font-medium">Marktwert</th>
+                      <th className="text-right py-2 font-medium">Kaufpreis</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.propertyList.map(p => (
+                      <tr key={p.id} className="border-b border-border/50">
+                        <td className="py-2 font-medium">{p.label}</td>
+                        <td className="py-2 text-muted-foreground">{p.city}</td>
+                        <td className="py-2">
+                          <Badge variant={p.type === 'Eigengenutzt' ? 'secondary' : 'outline'} className="text-[10px]">{p.type}</Badge>
+                        </td>
+                        <td className="py-2 text-right tabular-nums">{fmt(p.marketValue)}</td>
+                        <td className="py-2 text-right tabular-nums">{p.purchasePrice > 0 ? fmt(p.purchasePrice) : '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="font-semibold border-t">
+                      <td className="py-2" colSpan={3}>Gesamt</td>
+                      <td className="py-2 text-right tabular-nums">{fmt(data.propertyList.reduce((s, p) => s + p.marketValue, 0))}</td>
+                      <td className="py-2 text-right tabular-nums">{fmt(data.propertyList.reduce((s, p) => s + p.purchasePrice, 0))}</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* ═══ SEKTION 3c: Darlehensaufstellung ═══ */}
+        {data.loanList.length > 0 && (
+          <Card className="glass-card">
+            <CardContent className="p-6">
+              <SectionTitle icon={Landmark} title="Darlehensaufstellung" />
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b text-muted-foreground">
+                      <th className="text-left py-2 font-medium">Bank</th>
+                      <th className="text-left py-2 font-medium">Zuordnung</th>
+                      <th className="text-right py-2 font-medium">Darlehenssumme</th>
+                      <th className="text-right py-2 font-medium">Restschuld</th>
+                      <th className="text-right py-2 font-medium">Zins %</th>
+                      <th className="text-right py-2 font-medium">Rate/mtl.</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.loanList.map(l => (
+                      <tr key={l.id} className="border-b border-border/50">
+                        <td className="py-2 font-medium">{l.bank}</td>
+                        <td className="py-2 text-muted-foreground">{l.assignment}</td>
+                        <td className="py-2 text-right tabular-nums">{l.loanAmount > 0 ? fmt(l.loanAmount) : '—'}</td>
+                        <td className="py-2 text-right tabular-nums">{fmt(l.remainingBalance)}</td>
+                        <td className="py-2 text-right tabular-nums">{l.interestRate > 0 ? `${l.interestRate.toFixed(2)} %` : '—'}</td>
+                        <td className="py-2 text-right tabular-nums">{fmt(l.monthlyRate)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="font-semibold border-t">
+                      <td className="py-2" colSpan={2}>Gesamt</td>
+                      <td className="py-2 text-right tabular-nums">{fmt(data.loanList.reduce((s, l) => s + l.loanAmount, 0))}</td>
+                      <td className="py-2 text-right tabular-nums">{fmt(data.loanList.reduce((s, l) => s + l.remainingBalance, 0))}</td>
+                      <td className="py-2"></td>
+                      <td className="py-2 text-right tabular-nums">{fmt(data.loanList.reduce((s, l) => s + l.monthlyRate, 0))}</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
           <KpiCard icon={CreditCard} label="Mtl. Tilgung" value={fmt(data.monthlyAmortization)} />
           <KpiCard icon={PiggyBank} label="Mtl. Sparleistung" value={fmt(data.monthlySavings)} />
