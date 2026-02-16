@@ -6,8 +6,8 @@ import { useState } from 'react';
 import { PageShell } from '@/components/shared/PageShell';
 import { WidgetGrid } from '@/components/shared/WidgetGrid';
 import { WidgetCell } from '@/components/shared/WidgetCell';
-import { CARD, TYPOGRAPHY, HEADER, RECORD_CARD } from '@/config/designManifest';
-import { getContractWidgetGlow } from '@/config/widgetCategorySpec';
+import { CARD, TYPOGRAPHY, HEADER, RECORD_CARD, DEMO_WIDGET, getActiveWidgetGlow, getSelectionRing } from '@/config/designManifest';
+import { getContractWidgetGlow, isDemoId as isDemoIdSpec } from '@/config/widgetCategorySpec';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { FormInput } from '@/components/shared';
 import { Button } from '@/components/ui/button';
@@ -295,13 +295,16 @@ export default function SachversicherungenTab() {
         {contracts.map((c: any) => {
           const intervalLabel = INTERVALS.find(i => i.value === c.payment_interval)?.label || c.payment_interval || '';
           const isSelected = selectedId === c.id;
+          const isDemo = isDemoId(c.id);
+          const glowVariant = isDemo ? 'emerald' : 'rose';
           return (
             <WidgetCell key={c.id}>
               <div
                 className={cn(
                   CARD.BASE, CARD.INTERACTIVE,
                   'h-full flex flex-col justify-between p-5',
-                  isSelected && 'ring-2 ring-primary',
+                  getActiveWidgetGlow(glowVariant),
+                  isSelected && getSelectionRing(glowVariant),
                 )}
                 onClick={() => selectCard(c.id)}
                 role="button"
@@ -309,6 +312,7 @@ export default function SachversicherungenTab() {
               >
                 <div className="space-y-2">
                   <div className="flex items-center gap-2 flex-wrap">
+                    {isDemo && <Badge className={DEMO_WIDGET.BADGE + ' text-[10px]'}>DEMO</Badge>}
                     <Badge variant={c.status === 'aktiv' ? 'default' : 'secondary'} className="text-[10px]">
                       {STATUSES.find(s => s.value === c.status)?.label || 'Aktiv'}
                     </Badge>

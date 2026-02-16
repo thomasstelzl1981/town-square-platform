@@ -1,11 +1,14 @@
 /**
  * MOD-18 Finanzen — Tab 2: INVESTMENT
- * Person selection via PersonVisitenkarte (horizontal business cards)
+ * Person selection via WidgetGrid CI-Kacheln (compact system widgets)
  */
 import { useState, useMemo } from 'react';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
-import { PersonVisitenkarte } from '@/components/shared/PersonVisitenkarte';
+import { WidgetGrid } from '@/components/shared/WidgetGrid';
+import { WidgetCell } from '@/components/shared/WidgetCell';
+import { CARD, TYPOGRAPHY, DEMO_WIDGET } from '@/config/designManifest';
+import { getActiveWidgetGlow, getSelectionRing } from '@/config/designManifest';
 import { useDemoDepot } from '@/hooks/useDemoDepot';
 import { DepotOnboardingWizard } from '@/components/finanzanalyse/depot/DepotOnboardingWizard';
 import { DepotPortfolio } from '@/components/finanzanalyse/depot/DepotPortfolio';
@@ -19,6 +22,22 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { isDemoId } from '@/engines/demoData/engine';
 import { useDemoToggles } from '@/hooks/useDemoToggles';
+import { User } from 'lucide-react';
+import { cn } from '@/lib/utils';
+
+const ROLE_LABELS: Record<string, string> = {
+  hauptperson: 'Hauptperson',
+  partner: 'Partner/in',
+  kind: 'Kind',
+  weitere: 'Weitere',
+};
+
+const ROLE_GRADIENTS: Record<string, string> = {
+  hauptperson: 'from-primary to-primary/60',
+  partner: 'from-rose-400 to-rose-500/60',
+  kind: 'from-amber-400 to-amber-500/60',
+  weitere: 'from-muted-foreground to-muted-foreground/60',
+};
 
 export default function InvestmentTab() {
   const { activeTenantId } = useAuth();
@@ -68,30 +87,60 @@ export default function InvestmentTab() {
         }
       />
 
-      {/* Person selection as horizontal Visitenkarten */}
+      {/* Person selection as compact CI-Kacheln */}
       {persons && persons.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <WidgetGrid>
           {persons.map(person => {
             const isSelected = person.id === effectivePersonId;
             const isPrimary = person.is_primary;
+            const isDemo = isDemoId(person.id);
             const personDepotKey = `depot_status_${person.id}`;
             const storedStatus = localStorage.getItem(personDepotKey);
             const hasDepot = storedStatus === 'active' || (storedStatus === null && isPrimary);
+            const gradient = ROLE_GRADIENTS[person.role] || ROLE_GRADIENTS.weitere;
+            const glowVariant = isDemo ? 'emerald' : 'primary';
 
             return (
-              <PersonVisitenkarte
-                key={person.id}
-                person={person}
-                isSelected={isSelected}
-                onClick={() => setSelectedPersonId(person.id)}
-                badges={[
-                  ...(hasDepot ? [{ label: 'Depot aktiv', variant: 'default' as const }] : [{ label: 'Kein Depot', variant: 'outline' as const }]),
-                  ...(hasDepot ? [{ label: `${totalValue.toLocaleString('de-DE', { minimumFractionDigits: 2 })} €`, variant: 'secondary' as const }] : []),
-                ]}
-              />
+              <WidgetCell key={person.id}>
+                <div
+                  className={cn(
+                    CARD.BASE, CARD.INTERACTIVE,
+                    'h-full flex flex-col items-center justify-center p-5 text-center',
+                    hasDepot ? getActiveWidgetGlow(glowVariant) : '',
+                    isSelected && getSelectionRing(glowVariant),
+                  )}
+                  onClick={() => setSelectedPersonId(person.id)}
+                  role="button"
+                  tabIndex={0}
+                >
+                  {isDemo && (
+                    <Badge className={DEMO_WIDGET.BADGE + ' absolute top-3 right-3 text-[10px]'}>DEMO</Badge>
+                  )}
+                  <div className={cn('h-14 w-14 rounded-full bg-gradient-to-br flex items-center justify-center mb-3', gradient)}>
+                    <User className="h-7 w-7 text-white" />
+                  </div>
+                  <h4 className={TYPOGRAPHY.CARD_TITLE}>
+                    {person.first_name} {person.last_name}
+                  </h4>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {ROLE_LABELS[person.role] || person.role}
+                  </p>
+                  <Badge
+                    variant={hasDepot ? 'default' : 'outline'}
+                    className="mt-2 text-[10px]"
+                  >
+                    {hasDepot ? 'Depot aktiv' : 'Kein Depot'}
+                  </Badge>
+                  {hasDepot && isSelected && (
+                    <p className="text-xs font-semibold mt-1">
+                      {totalValue.toLocaleString('de-DE', { minimumFractionDigits: 2 })} €
+                    </p>
+                  )}
+                </div>
+              </WidgetCell>
             );
           })}
-        </div>
+        </WidgetGrid>
       )}
 
       {/* Content based on selected person's depot status */}

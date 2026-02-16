@@ -12,7 +12,7 @@ import { useDemoToggles } from '@/hooks/useDemoToggles';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { CARD, TYPOGRAPHY, HEADER } from '@/config/designManifest';
+import { CARD, TYPOGRAPHY, HEADER, DEMO_WIDGET, getActiveWidgetGlow, getSelectionRing } from '@/config/designManifest';
 import { Shield, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -52,7 +52,8 @@ export default function KrankenversicherungTab() {
                 className={cn(
                   CARD.BASE, CARD.INTERACTIVE,
                   'h-full flex flex-col justify-between p-5',
-                  isSelected && 'ring-2 ring-emerald-400',
+                  getActiveWidgetGlow('emerald'),
+                  isSelected && getSelectionRing('emerald'),
                 )}
                 onClick={() => setSelectedId(isSelected ? null : kv.personId)}
                 role="button"
@@ -60,7 +61,7 @@ export default function KrankenversicherungTab() {
               >
                 <div className="space-y-2">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <Badge variant="outline" className="text-[10px]">DEMO</Badge>
+                    <Badge className={DEMO_WIDGET.BADGE + ' text-[10px]'}>DEMO</Badge>
                     <Badge variant="secondary" className="text-[10px]">{kv.type}</Badge>
                   </div>
                   <div className={HEADER.WIDGET_ICON_BOX}>

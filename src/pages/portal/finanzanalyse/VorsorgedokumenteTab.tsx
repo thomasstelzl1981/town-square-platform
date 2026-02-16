@@ -1,14 +1,14 @@
 /**
  * MOD-18 Finanzen — Tab 6: Vorsorge & Testament
- * Person selection via PersonVisitenkarte + Testament WidgetGrid
+ * Person selection via WidgetGrid CI-Kacheln + Testament WidgetGrid
  */
 import { useState, useMemo } from 'react';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { WidgetGrid } from '@/components/shared/WidgetGrid';
 import { WidgetCell } from '@/components/shared/WidgetCell';
-import { PersonVisitenkarte } from '@/components/shared/PersonVisitenkarte';
-import { CARD, TYPOGRAPHY, HEADER, getSelectionRing } from '@/config/designManifest';
+import { CARD, TYPOGRAPHY, HEADER, DEMO_WIDGET } from '@/config/designManifest';
+import { getActiveWidgetGlow, getSelectionRing } from '@/config/designManifest';
 import { Badge } from '@/components/ui/badge';
 import { PatientenverfuegungInlineForm } from '@/components/legal/PatientenverfuegungInlineForm';
 import { TestamentVorlageInline } from '@/components/legal/TestamentVorlageInline';
@@ -16,10 +16,24 @@ import { TESTAMENT_VORLAGEN } from '@/components/legal/testamentVorlagenTexte';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { CheckCircle2, FileText, ScrollText } from 'lucide-react';
+import { CheckCircle2, FileText, ScrollText, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { isDemoId } from '@/engines/demoData/engine';
 import { useDemoToggles } from '@/hooks/useDemoToggles';
+
+const ROLE_LABELS: Record<string, string> = {
+  hauptperson: 'Hauptperson',
+  partner: 'Partner/in',
+  kind: 'Kind',
+  weitere: 'Weitere',
+};
+
+const ROLE_GRADIENTS: Record<string, string> = {
+  hauptperson: 'from-primary to-primary/60',
+  partner: 'from-rose-400 to-rose-500/60',
+  kind: 'from-amber-400 to-amber-500/60',
+  weitere: 'from-muted-foreground to-muted-foreground/60',
+};
 
 export default function VorsorgedokumenteTab() {
   const { user, activeTenantId } = useAuth();
@@ -101,22 +115,50 @@ export default function VorsorgedokumenteTab() {
           <h2 className={TYPOGRAPHY.SECTION_TITLE}>Patientenverfügung & Vorsorgevollmacht</h2>
         </div>
 
-        {/* Person Visitenkarten */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        {/* Person CI-Kacheln */}
+        <WidgetGrid>
           {persons?.map(person => {
             const isSelected = person.id === effectivePersonId;
             const completed = isPvCompleted(person.id);
+            const isDemo = isDemoId(person.id);
+            const glowVariant = isDemo ? 'emerald' : 'rose';
+            const gradient = ROLE_GRADIENTS[person.role] || ROLE_GRADIENTS.weitere;
+
             return (
-              <PersonVisitenkarte
-                key={person.id}
-                person={person}
-                isSelected={isSelected}
-                onClick={() => setSelectedPersonId(person.id)}
-                badges={completed ? [{ label: '✓ Hinterlegt', variant: 'secondary' as const }] : []}
-              />
+              <WidgetCell key={person.id}>
+                <div
+                  className={cn(
+                    CARD.BASE, CARD.INTERACTIVE,
+                    'h-full flex flex-col items-center justify-center p-5 text-center',
+                    getActiveWidgetGlow(glowVariant),
+                    isSelected && getSelectionRing(glowVariant),
+                  )}
+                  onClick={() => setSelectedPersonId(person.id)}
+                  role="button"
+                  tabIndex={0}
+                >
+                  {isDemo && (
+                    <Badge className={DEMO_WIDGET.BADGE + ' absolute top-3 right-3 text-[10px]'}>DEMO</Badge>
+                  )}
+                  <div className={cn('h-14 w-14 rounded-full bg-gradient-to-br flex items-center justify-center mb-3', gradient)}>
+                    <User className="h-7 w-7 text-white" />
+                  </div>
+                  <h4 className={TYPOGRAPHY.CARD_TITLE}>
+                    {person.first_name} {person.last_name}
+                  </h4>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {ROLE_LABELS[person.role] || person.role}
+                  </p>
+                  {completed && (
+                    <Badge variant="secondary" className="mt-2 text-[10px]">
+                      <CheckCircle2 className="h-3 w-3 mr-1" /> Hinterlegt
+                    </Badge>
+                  )}
+                </div>
+              </WidgetCell>
             );
           })}
-        </div>
+        </WidgetGrid>
 
         {effectivePersonId && selectedPerson && activeTenantId && (
           <PatientenverfuegungInlineForm

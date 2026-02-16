@@ -6,7 +6,7 @@ import { useState } from 'react';
 import { PageShell } from '@/components/shared/PageShell';
 import { WidgetGrid } from '@/components/shared/WidgetGrid';
 import { WidgetCell } from '@/components/shared/WidgetCell';
-import { CARD, TYPOGRAPHY, HEADER, RECORD_CARD, INFO_BANNER } from '@/config/designManifest';
+import { CARD, TYPOGRAPHY, HEADER, RECORD_CARD, INFO_BANNER, DEMO_WIDGET, getActiveWidgetGlow, getSelectionRing } from '@/config/designManifest';
 import { getContractWidgetGlow } from '@/config/widgetCategorySpec';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { FormInput } from '@/components/shared';
@@ -202,13 +202,16 @@ export default function VorsorgeTab() {
         {contracts.map((c: any) => {
           const personName = persons.find(p => p.id === c.person_id);
           const isSelected = selectedId === c.id;
+          const isDemo = isDemoId(c.id);
+          const glowVariant = isDemo ? 'emerald' : 'rose';
           return (
             <WidgetCell key={c.id}>
               <div
                 className={cn(
                   CARD.BASE, CARD.INTERACTIVE,
                   'h-full flex flex-col justify-between p-5',
-                  isSelected && 'ring-2 ring-primary',
+                  getActiveWidgetGlow(glowVariant),
+                  isSelected && getSelectionRing(glowVariant),
                 )}
                 onClick={() => selectCard(c.id)}
                 role="button"
@@ -216,6 +219,7 @@ export default function VorsorgeTab() {
               >
                 <div className="space-y-2">
                   <div className="flex items-center gap-2 flex-wrap">
+                    {isDemo && <Badge className={DEMO_WIDGET.BADGE + ' text-[10px]'}>DEMO</Badge>}
                     {c.contract_type && <Badge variant="secondary" className="text-[10px]">{c.contract_type}</Badge>}
                     <Badge variant="default" className="text-[10px]">{c.status || 'Aktiv'}</Badge>
                   </div>

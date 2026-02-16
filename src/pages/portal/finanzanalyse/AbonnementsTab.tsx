@@ -6,7 +6,7 @@ import { useState, useMemo } from 'react';
 import { PageShell } from '@/components/shared/PageShell';
 import { WidgetGrid } from '@/components/shared/WidgetGrid';
 import { WidgetCell } from '@/components/shared/WidgetCell';
-import { CARD, TYPOGRAPHY, HEADER, RECORD_CARD } from '@/config/designManifest';
+import { CARD, TYPOGRAPHY, HEADER, RECORD_CARD, DEMO_WIDGET, getActiveWidgetGlow, getSelectionRing } from '@/config/designManifest';
 import { getContractWidgetGlow } from '@/config/widgetCategorySpec';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { isDemoId } from '@/engines/demoData/engine';
@@ -211,13 +211,16 @@ export default function AbonnementsTab() {
       <WidgetGrid>
         {filteredSubs.map((s: any) => {
           const isSelected = selectedId === s.id;
+          const isDemo = isDemoId(s.id);
+          const glowVariant = isDemo ? 'emerald' : 'rose';
           return (
             <WidgetCell key={s.id}>
               <div
                 className={cn(
                   CARD.BASE, CARD.INTERACTIVE,
                   'h-full flex flex-col justify-between p-5',
-                  isSelected && 'ring-2 ring-primary',
+                  getActiveWidgetGlow(glowVariant),
+                  isSelected && getSelectionRing(glowVariant),
                 )}
                 onClick={() => selectCard(s.id)}
                 role="button"
@@ -225,6 +228,7 @@ export default function AbonnementsTab() {
               >
                 <div className="space-y-2">
                   <div className="flex items-center gap-2 flex-wrap">
+                    {isDemo && <Badge className={DEMO_WIDGET.BADGE + ' text-[10px]'}>DEMO</Badge>}
                     <Badge variant={s.status === 'aktiv' ? 'default' : 'secondary'} className="text-[10px]">
                       {s.status || 'aktiv'}
                     </Badge>
