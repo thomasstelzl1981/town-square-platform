@@ -1,65 +1,60 @@
 
-# Fix: Finanzanalyse-Kacheln oeffnen sich nicht
+# CTA-Widgets durch Header-Plus-Button ersetzen
 
-## Analyse
+## Problem
+Die leeren Platzhalter-Widgets (gestrichelte Rahmenkacheln mit "Hinzufuegen") belegen eine volle Kachelposition im WidgetGrid und stoeren das visuelle Layout.
 
-Nach gruendlicher Pruefung aller 7 Tabs (Uebersicht, Investment, Sachversicherungen, Vorsorge, KV, Abonnements, Vorsorgedokumente) ist die Kernlogik (onClick-Handler, State-Management, bedingte Detail-Anzeige) **korrekt implementiert**. 
+## Loesung
+Jede `ModulePageHeader`-Zeile erhaelt einen runden Plus-Button als `actions`-Prop. Die bestehenden CTA-WidgetCells werden entfernt.
 
-Die wahrscheinliche Ursache fuer das Problem sind:
+## Betroffene Dateien
 
-1. **Event-Propagation**: Klick-Events koennten von uebergeordneten Elementen geschluckt werden. Alle Widget-onClick-Handler erhalten `e.stopPropagation()`.
-2. **Ungenutzte Imports**: In 3 Dateien werden `getContractWidgetGlow` und `isDemoIdSpec` importiert aber nie verwendet. Dies kann Build-Warnungen verursachen.
+### 1. UebersichtTab.tsx
+- **Entfernen:** CTA-WidgetCell "Person hinzufuegen" (Zeilen ~370-387)
+- **Aendern:** `ModulePageHeader` erhaelt `actions`-Prop mit rundem Plus-Button, der `setShowNewPerson(true)` auslst
 
-## Aenderungen
+### 2. SachversicherungenTab.tsx
+- **Entfernen:** CTA-WidgetCell "Versicherung hinzufuegen" (Zeilen ~345-362)
+- **Aendern:** `ModulePageHeader` erhaelt `actions`-Prop mit rundem Plus-Button, der `setShowNew(true)` ausloest
 
-### 1. Event-Propagation fixen (alle 7 Tabs)
+### 3. VorsorgeTab.tsx
+- **Entfernen:** CTA-WidgetCell "Vorsorgevertrag hinzufuegen" (Zeilen ~250-267)
+- **Aendern:** `ModulePageHeader` erhaelt `actions`-Prop mit rundem Plus-Button, der `setShowNew(true)` ausloest
 
-In jedem Tab wird `e.stopPropagation()` zu den onClick-Handlern der Kacheln hinzugefuegt:
+### 4. AbonnementsTab.tsx
+- **Entfernen:** CTA-WidgetCell "Abonnement hinzufuegen" (Zeilen ~254-272, inkl. DesktopOnly-Wrapper)
+- **Aendern:** `ModulePageHeader` erhaelt `actions`-Prop mit rundem Plus-Button, der `setShowNew(true)` ausloest
 
-**Betroffene Dateien:**
-- `UebersichtTab.tsx` — Personen-Kacheln (Zeile 341) und Konto-Kacheln (Zeilen 107, 134)
-- `InvestmentTab.tsx` — Personen-Kacheln (Zeile 112)
-- `SachversicherungenTab.tsx` — Vertrags-Kacheln (Zeile 309)
-- `VorsorgeTab.tsx` — Vertrags-Kacheln (Zeile 216)
-- `KrankenversicherungTab.tsx` — KV-Kacheln (Zeile 58)
-- `AbonnementsTab.tsx` — Abo-Kacheln (Zeile 225)
-- `VorsorgedokumenteTab.tsx` — Personen-Kacheln (Zeile 136) und Testament-Kacheln (Zeile 197)
+### 5. KrankenversicherungTab.tsx und VorsorgedokumenteTab.tsx
+- Keine CTA-Widgets vorhanden — keine Aenderung noetig
 
-Muster:
-```text
-// Vorher:
-onClick={() => toggleCard(person.id)}
-
-// Nachher:
-onClick={(e) => { e.stopPropagation(); toggleCard(person.id); }}
-```
-
-### 2. Ungenutzte Imports entfernen
-
-| Datei | Entfernter Import |
-|-------|------------------|
-| `SachversicherungenTab.tsx` | `getContractWidgetGlow`, `isDemoId as isDemoIdSpec` aus widgetCategorySpec |
-| `VorsorgeTab.tsx` | `getContractWidgetGlow` aus widgetCategorySpec |
-| `AbonnementsTab.tsx` | `getContractWidgetGlow` aus widgetCategorySpec |
-
-### 3. Keyboard-Accessibility
-
-Alle Kacheln mit `role="button"` erhalten zusaetzlich einen `onKeyDown`-Handler fuer Enter/Space:
+## Button-Muster (einheitlich fuer alle Tabs)
 
 ```text
-onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); handler(); }}}
+<ModulePageHeader
+  title="..."
+  description="..."
+  actions={
+    <Button
+      size="icon-round"
+      onClick={() => { setShowNew(true); setSelectedId(null); }}
+      className="h-10 w-10"
+    >
+      <Plus className="h-5 w-5" />
+    </Button>
+  }
+/>
 ```
 
----
+Der `icon-round` Variant existiert bereits in der Button-Komponente (`h-12 w-12 rounded-full`). Es wird `h-10 w-10` per className angepasst fuer ein kompakteres Erscheinungsbild.
 
-## Zusammenfassung
+## Zusammenfassung der Aenderungen
 
-| Datei | Aenderung |
-|-------|-----------|
-| `src/pages/portal/finanzanalyse/UebersichtTab.tsx` | stopPropagation + onKeyDown |
-| `src/pages/portal/finanzanalyse/InvestmentTab.tsx` | stopPropagation + onKeyDown |
-| `src/pages/portal/finanzanalyse/SachversicherungenTab.tsx` | stopPropagation + onKeyDown + Import-Cleanup |
-| `src/pages/portal/finanzanalyse/VorsorgeTab.tsx` | stopPropagation + onKeyDown + Import-Cleanup |
-| `src/pages/portal/finanzanalyse/KrankenversicherungTab.tsx` | stopPropagation + onKeyDown |
-| `src/pages/portal/finanzanalyse/AbonnementsTab.tsx` | stopPropagation + onKeyDown + Import-Cleanup |
-| `src/pages/portal/finanzanalyse/VorsorgedokumenteTab.tsx` | stopPropagation + onKeyDown |
+| Datei | Entfernt | Hinzugefuegt |
+|-------|----------|--------------|
+| UebersichtTab.tsx | CTA-WidgetCell (Person) | Plus-Button in Header |
+| SachversicherungenTab.tsx | CTA-WidgetCell (Versicherung) | Plus-Button in Header |
+| VorsorgeTab.tsx | CTA-WidgetCell (Vorsorge) | Plus-Button in Header |
+| AbonnementsTab.tsx | CTA-WidgetCell + DesktopOnly (Abo) | Plus-Button in Header |
+
+Keine strukturellen Aenderungen an `ModulePageHeader` selbst noetig — die `actions`-Prop wird bereits unterstuetzt.
