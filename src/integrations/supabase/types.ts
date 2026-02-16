@@ -11516,6 +11516,282 @@ export type Database = {
         }
         Relationships: []
       }
+      pet_providers: {
+        Row: {
+          address: string | null
+          bio: string | null
+          company_name: string
+          created_at: string
+          email: string | null
+          id: string
+          operating_hours: Json | null
+          phone: string | null
+          provider_type: Database["public"]["Enums"]["pet_provider_type"]
+          rating_avg: number | null
+          status: Database["public"]["Enums"]["pet_provider_status"]
+          tenant_id: string
+          updated_at: string
+          user_id: string | null
+          verified_at: string | null
+        }
+        Insert: {
+          address?: string | null
+          bio?: string | null
+          company_name: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          operating_hours?: Json | null
+          phone?: string | null
+          provider_type?: Database["public"]["Enums"]["pet_provider_type"]
+          rating_avg?: number | null
+          status?: Database["public"]["Enums"]["pet_provider_status"]
+          tenant_id: string
+          updated_at?: string
+          user_id?: string | null
+          verified_at?: string | null
+        }
+        Update: {
+          address?: string | null
+          bio?: string | null
+          company_name?: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          operating_hours?: Json | null
+          phone?: string | null
+          provider_type?: Database["public"]["Enums"]["pet_provider_type"]
+          rating_avg?: number | null
+          status?: Database["public"]["Enums"]["pet_provider_status"]
+          tenant_id?: string
+          updated_at?: string
+          user_id?: string | null
+          verified_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pet_providers_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pet_providers_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pet_services: {
+        Row: {
+          category: Database["public"]["Enums"]["pet_service_category"]
+          created_at: string
+          description: string | null
+          duration_minutes: number | null
+          id: string
+          is_active: boolean
+          price_cents: number | null
+          price_type: Database["public"]["Enums"]["pet_price_type"]
+          provider_id: string
+          species_allowed: string[] | null
+          tenant_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          category?: Database["public"]["Enums"]["pet_service_category"]
+          created_at?: string
+          description?: string | null
+          duration_minutes?: number | null
+          id?: string
+          is_active?: boolean
+          price_cents?: number | null
+          price_type?: Database["public"]["Enums"]["pet_price_type"]
+          provider_id: string
+          species_allowed?: string[] | null
+          tenant_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          category?: Database["public"]["Enums"]["pet_service_category"]
+          created_at?: string
+          description?: string | null
+          duration_minutes?: number | null
+          id?: string
+          is_active?: boolean
+          price_cents?: number | null
+          price_type?: Database["public"]["Enums"]["pet_price_type"]
+          provider_id?: string
+          species_allowed?: string[] | null
+          tenant_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pet_services_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "pet_providers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pet_services_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pet_vaccinations: {
+        Row: {
+          administered_at: string
+          batch_number: string | null
+          created_at: string
+          document_node_id: string | null
+          id: string
+          next_due_at: string | null
+          notes: string | null
+          pet_id: string
+          tenant_id: string
+          updated_at: string
+          vaccination_type: string
+          vaccine_name: string | null
+          vet_name: string | null
+        }
+        Insert: {
+          administered_at: string
+          batch_number?: string | null
+          created_at?: string
+          document_node_id?: string | null
+          id?: string
+          next_due_at?: string | null
+          notes?: string | null
+          pet_id: string
+          tenant_id: string
+          updated_at?: string
+          vaccination_type: string
+          vaccine_name?: string | null
+          vet_name?: string | null
+        }
+        Update: {
+          administered_at?: string
+          batch_number?: string | null
+          created_at?: string
+          document_node_id?: string | null
+          id?: string
+          next_due_at?: string | null
+          notes?: string | null
+          pet_id?: string
+          tenant_id?: string
+          updated_at?: string
+          vaccination_type?: string
+          vaccine_name?: string | null
+          vet_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pet_vaccinations_pet_id_fkey"
+            columns: ["pet_id"]
+            isOneToOne: false
+            referencedRelation: "pets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pet_vaccinations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pets: {
+        Row: {
+          allergies: string[] | null
+          birth_date: string | null
+          breed: string | null
+          chip_number: string | null
+          created_at: string
+          gender: Database["public"]["Enums"]["pet_gender"] | null
+          id: string
+          insurance_policy_no: string | null
+          insurance_provider: string | null
+          name: string
+          neutered: boolean | null
+          notes: string | null
+          owner_user_id: string | null
+          photo_url: string | null
+          species: Database["public"]["Enums"]["pet_species"]
+          tenant_id: string
+          updated_at: string
+          vet_name: string | null
+          weight_kg: number | null
+        }
+        Insert: {
+          allergies?: string[] | null
+          birth_date?: string | null
+          breed?: string | null
+          chip_number?: string | null
+          created_at?: string
+          gender?: Database["public"]["Enums"]["pet_gender"] | null
+          id?: string
+          insurance_policy_no?: string | null
+          insurance_provider?: string | null
+          name: string
+          neutered?: boolean | null
+          notes?: string | null
+          owner_user_id?: string | null
+          photo_url?: string | null
+          species?: Database["public"]["Enums"]["pet_species"]
+          tenant_id: string
+          updated_at?: string
+          vet_name?: string | null
+          weight_kg?: number | null
+        }
+        Update: {
+          allergies?: string[] | null
+          birth_date?: string | null
+          breed?: string | null
+          chip_number?: string | null
+          created_at?: string
+          gender?: Database["public"]["Enums"]["pet_gender"] | null
+          id?: string
+          insurance_policy_no?: string | null
+          insurance_provider?: string | null
+          name?: string
+          neutered?: boolean | null
+          notes?: string | null
+          owner_user_id?: string | null
+          photo_url?: string | null
+          species?: Database["public"]["Enums"]["pet_species"]
+          tenant_id?: string
+          updated_at?: string
+          vet_name?: string | null
+          weight_kg?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pets_owner_user_id_fkey"
+            columns: ["owner_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pets_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       plans: {
         Row: {
           created_at: string
@@ -17925,6 +18201,45 @@ export type Database = {
         | "halbjaehrlich"
         | "jaehrlich"
         | "einmalig"
+      pet_gender: "male" | "female" | "unknown"
+      pet_price_type:
+        | "fixed"
+        | "hourly"
+        | "daily"
+        | "per_session"
+        | "on_request"
+      pet_provider_status: "pending" | "active" | "suspended"
+      pet_provider_type:
+        | "grooming"
+        | "boarding"
+        | "walking"
+        | "training"
+        | "veterinary"
+        | "sitting"
+        | "daycare"
+        | "transport"
+        | "other"
+      pet_service_category:
+        | "grooming"
+        | "boarding"
+        | "walking"
+        | "training"
+        | "veterinary"
+        | "sitting"
+        | "daycare"
+        | "transport"
+        | "nutrition"
+        | "other"
+      pet_species:
+        | "dog"
+        | "cat"
+        | "bird"
+        | "rabbit"
+        | "hamster"
+        | "fish"
+        | "reptile"
+        | "horse"
+        | "other"
       pipeline_stage:
         | "lead"
         | "qualified"
@@ -18351,6 +18666,43 @@ export const Constants = {
         "halbjaehrlich",
         "jaehrlich",
         "einmalig",
+      ],
+      pet_gender: ["male", "female", "unknown"],
+      pet_price_type: ["fixed", "hourly", "daily", "per_session", "on_request"],
+      pet_provider_status: ["pending", "active", "suspended"],
+      pet_provider_type: [
+        "grooming",
+        "boarding",
+        "walking",
+        "training",
+        "veterinary",
+        "sitting",
+        "daycare",
+        "transport",
+        "other",
+      ],
+      pet_service_category: [
+        "grooming",
+        "boarding",
+        "walking",
+        "training",
+        "veterinary",
+        "sitting",
+        "daycare",
+        "transport",
+        "nutrition",
+        "other",
+      ],
+      pet_species: [
+        "dog",
+        "cat",
+        "bird",
+        "rabbit",
+        "hamster",
+        "fish",
+        "reptile",
+        "horse",
+        "other",
       ],
       pipeline_stage: [
         "lead",
