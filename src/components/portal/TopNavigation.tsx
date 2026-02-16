@@ -49,7 +49,7 @@ export function TopNavigation() {
   const hideSwitcher = useCallback(() => {
     hideTimeout.current = setTimeout(() => {
       setShowModuleSwitcher(false);
-    }, 400);
+    }, 1500);
   }, []);
 
   // Build module data from manifest
@@ -101,7 +101,7 @@ export function TopNavigation() {
 
           {/* Floating Module Switcher */}
           {showModuleSwitcher && areaModules.length > 0 && (
-            <div className="absolute top-full left-1/2 -translate-x-1/2 z-50 pt-2"
+            <div className="absolute top-full left-1/2 -translate-x-1/2 z-50 pt-3 pointer-events-auto"
               onMouseEnter={showSwitcher}
               onMouseLeave={hideSwitcher}
             >
@@ -117,7 +117,13 @@ export function TopNavigation() {
                     <NavLink
                       key={code}
                       to={`/portal/${module.base}`}
-                      onClick={() => setShowModuleSwitcher(false)}
+                      onClick={() => {
+                        if (hideTimeout.current) {
+                          clearTimeout(hideTimeout.current);
+                          hideTimeout.current = null;
+                        }
+                        setShowModuleSwitcher(false);
+                      }}
                       className={cn(
                         'flex items-center gap-2 px-3 py-1.5 rounded-xl text-sm font-medium whitespace-nowrap transition-all',
                         isActive
