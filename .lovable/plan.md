@@ -1,101 +1,132 @@
 
 
-# Bugfix: Datenraum bleibt von anderem Tier stehen
+# Bugfix: Konsistentes Klick-Verhalten der Tierakten
 
-## Problem
+## Problem-Analyse
 
-Beim Klick auf ein Tier passieren **zwei Dinge gleichzeitig**:
+Das aktuelle Layout nutzt ein einziges CSS-Grid (`grid-cols-2`) fuer ALLE Karten — geschlossen UND offen. Wenn eine Karte geoeffnet wird, nimmt sie `col-span-2` ein und verschiebt die anderen Karten im Grid-Flow. Das fuehrt zu:
 
-1. Die `RecordCard`-Komponente oeffnet sich und zeigt ihren **eingebauten Datenraum** (EntityStorageTree) — dieser gehoert zum angeklickten Tier
-2. Die `PetInlineDossier`-Komponente rendert **separat unterhalb des Grids** die Stammdaten, Impfungen etc.
+- Geschlossene Karten "springen" je nach Position im Grid
+- Die offene Akte erscheint mal unter, mal neben der geschlossenen
+- Inkonsistentes visuelles Verhalten
 
-Das fuehrt dazu, dass der Datenraum eines Tiers (z.B. Bello) oben in der RecordCard angezeigt wird, waehrend die Stammdaten eines anderen Tiers (z.B. Luna) weiter unten erscheinen — weil es zwei unabhaengige Anzeigebereiche sind.
+## Soll-Bild (2 Tiere: Bello und Luna)
 
-## Loesung
-
-Die `PetInlineDossier`-Inhalte werden **als children in die RecordCard** eingebettet, statt separat ausserhalb gerendert zu werden. Damit steuert die RecordCard alles konsistent: Stammdaten oben, Datenraum unten.
-
-### Aenderungen in `src/pages/portal/pets/PetsMeineTiere.tsx`
-
-1. **RecordCard erhaelt PetInlineDossier als children** statt `children={null}`:
-   - Wenn `openPetId === pet.id`, wird `PetInlineDossier` als children uebergeben
-   - Andernfalls bleibt children null
-
-2. **Separaten PetInlineDossier-Block entfernen** (Zeile 317-318):
-   - Der Block `{openPetId && <PetInlineDossier .../>}` wird geloescht, da der Inhalt jetzt innerhalb der RecordCard lebt
-
-3. **tenantId NICHT an RecordCard uebergeben** (oder alternativ):
-   - Option A: `tenantId` von RecordCard entfernen, damit RecordCard keinen eigenen Datenraum rendert. Stattdessen den Datenraum manuell als letzte Sektion in PetInlineDossier einfuegen.
-   - Option B: `tenantId` beibehalten und den RecordCard-internen Datenraum nutzen — dann muss PetInlineDossier keinen eigenen Datenraum haben.
-
-   **Empfehlung: Option A** — Datenraum wird explizit in PetInlineDossier als letzte Sektion eingefuegt (wie gewuenscht "ganz unten"), RecordCard bekommt kein tenantId mehr.
-
-### Konkrete Code-Aenderungen
-
-**RecordCard-Aufruf (ca. Zeile 300-315):**
+### Szenario 1: Beide geschlossen (Anfangszustand)
 
 ```text
-<RecordCard
-  key={pet.id}
-  id={pet.id}
-  entityType="pet"
-  isOpen={openPetId === pet.id}
-  onToggle={...}
-  thumbnailUrl={...}
-  title={pet.name}
-  subtitle={...}
-  summary={summaryItems}
-  glowVariant="teal"
->
-  {openPetId === pet.id && (
-    <PetInlineDossier petId={pet.id} tenantId={activeTenantId || undefined} />
-  )}
-</RecordCard>
++-------------------+  +-------------------+
+|     [Foto]        |  |     [Foto]        |
+|     Bello         |  |     Luna          |
+|     Hund · Dackel |  |     Hund · Golden |
+|     4 Jahre       |  |     2 Jahre       |
++-------------------+  +-------------------+
 ```
 
-- `children={null}` entfaellt
-- `tenantId` wird NICHT mehr an RecordCard uebergeben (kein doppelter Datenraum)
-
-**PetInlineDossier — Datenraum als letzte Sektion (vor Save-Button):**
-
-Import von `EntityStorageTree` und `FolderOpen` hinzufuegen. Neue Sektion nach der Pflege-Timeline:
+### Szenario 2: Klick auf Bello → Bello oeffnet sich
 
 ```text
-{/* Datenraum — ganz unten */}
-<div>
-  <p className={RECORD_CARD.SECTION_TITLE}>
-    <span className="flex items-center gap-2">
-      <FolderOpen className="h-3.5 w-3.5" /> Datenraum
-    </span>
-  </p>
-  {tenantId ? (
-    <EntityStorageTree
-      key={petId}
-      tenantId={tenantId}
-      entityType="pet"
-      entityId={petId}
-      moduleCode="MOD_05"
-    />
-  ) : (
-    <p className="text-sm text-muted-foreground">Kein Mandant zugeordnet.</p>
-  )}
++-------------------+  +-------------------+
+|     [Foto]        |  |     [Foto]        |
+|     Bello (aktiv) |  |     Luna          |
+|     Hund · Dackel |  |     Hund · Golden |
++-------------------+  +-------------------+
+
++-----------------------------------------------+
+|  Bello — Hund                            [X]  |
+|  ──────────────────────────────────────────── |
+|  STAMMDATEN                                    |
+|  Name: Bello    Tierart: Hund    Rasse: Dackel |
+|  ...                                           |
+|  DATENRAUM                                     |
+|  [EntityStorageTree]                           |
++-----------------------------------------------+
+```
+
+### Szenario 3: Klick auf Bello nochmal → Bello schliesst
+
+```text
++-------------------+  +-------------------+
+|     [Foto]        |  |     [Foto]        |
+|     Bello         |  |     Luna          |
+|     Hund · Dackel |  |     Hund · Golden |
++-------------------+  +-------------------+
+```
+
+### Szenario 4: Klick auf Luna → Luna oeffnet sich
+
+```text
++-------------------+  +-------------------+
+|     [Foto]        |  |     [Foto]        |
+|     Bello         |  |     Luna (aktiv)  |
+|     Hund · Dackel |  |     Hund · Golden |
++-------------------+  +-------------------+
+
++-----------------------------------------------+
+|  Luna — Hund                             [X]  |
+|  ──────────────────────────────────────────── |
+|  STAMMDATEN                                    |
+|  Name: Luna    Tierart: Hund    Rasse: Golden  |
+|  ...                                           |
+|  DATENRAUM                                     |
+|  [EntityStorageTree]                           |
++-----------------------------------------------+
+```
+
+## Technische Loesung
+
+**Datei:** `src/pages/portal/pets/PetsMeineTiere.tsx`
+
+### Strukturaenderung: Zwei separate Bereiche statt einem Grid
+
+Das Layout wird in zwei Bloecke aufgeteilt:
+
+1. **Oben: Geschlossene Karten-Leiste** (immer sichtbar, alle Karten immer geschlossen dargestellt)
+2. **Unten: Offene Akte** (nur sichtbar wenn `openPetId` gesetzt)
+
+```text
+{/* Block 1: Alle Karten — IMMER geschlossen */}
+<div className={RECORD_CARD.GRID}>
+  {pets.map(pet => (
+    <RecordCard
+      key={pet.id}
+      isOpen={false}              // <-- IMMER false
+      onToggle={() => toggle}     // Toggle-Logik
+      glowVariant={openPetId === pet.id ? 'teal' : undefined}
+      // ... summary props
+    >
+      {null}
+    </RecordCard>
+  ))}
 </div>
+
+{/* Block 2: Inline-Dossier — NUR wenn ein Tier ausgewaehlt */}
+{openPetId && (
+  <PetInlineDossier
+    key={openPetId}
+    petId={openPetId}
+    tenantId={activeTenantId}
+  />
+)}
 ```
 
-Der `key={petId}` auf EntityStorageTree stellt sicher, dass beim Wechsel des Tiers die Komponente komplett neu gemountet wird.
+### Warum diese Loesung?
 
-**Separaten Block loeschen (Zeile 317-318):**
+- Geschlossene Karten bleiben **immer oben fixiert** im Grid
+- Kein Layout-Sprung, weil keine Karte `col-span-2` einnimmt
+- Die offene Akte erscheint immer **unterhalb des Grids**
+- Toggle funktioniert zuverlaessig: Klick auf aktive Karte schliesst, Klick auf andere wechselt
+- Die aktive Karte erhaelt einen `teal` Glow zur visuellen Markierung
 
-```text
-// ENTFERNEN:
-{openPetId && <PetInlineDossier petId={openPetId} tenantId={activeTenantId || undefined} />}
-```
+### Detaillierte Aenderungen
 
-### Betroffene Datei
+1. **RecordCard-Aufruf**: `isOpen` wird auf `false` gesetzt (Karten werden nie im "open"-Modus der RecordCard gerendert), `children` wird `null`
+2. **Aktive Karte markieren**: `glowVariant="teal"` nur fuer `openPetId === pet.id`, sonst `undefined`
+3. **PetInlineDossier**: Wird als eigenstaendiger Block **unterhalb** des Grids gerendert, mit `key={openPetId}` fuer sauberes Remounting
+4. **PetInlineDossier-Komponente**: Behaelt Header mit Titel, X-Button zum Schliessen, und alle Sektionen inkl. Datenraum ganz unten
+5. **onToggle Prop wird weitergereicht**: Der X-Button in PetInlineDossier braucht Zugriff auf `setOpenPetId(null)` — daher wird ein `onClose` Prop ergaenzt
 
-| Datei | Aenderung |
-|-------|-----------|
-| `src/pages/portal/pets/PetsMeineTiere.tsx` | PetInlineDossier als RecordCard-children, Datenraum in PetInlineDossier als letzte Sektion, separaten Rendering-Block entfernen |
+### Keine weiteren Dateien betroffen
 
-### Keine DB-Aenderungen noetig
+Nur `PetsMeineTiere.tsx` wird geaendert. Keine DB-Migration, keine Manifest-Aenderungen.
 
