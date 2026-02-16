@@ -78,7 +78,7 @@ export function TopNavigation() {
       {/* Level 2: Sub Tabs + Floating Module Switcher on hover */}
       {activeModule && !location.pathname.startsWith('/portal/area/') && (
         <div
-          className="relative"
+          className={cn("relative", showModuleSwitcher && "pb-12")}
           onMouseEnter={() => setShowModuleSwitcher(true)}
           onMouseLeave={() => setShowModuleSwitcher(false)}
         >
@@ -86,7 +86,7 @@ export function TopNavigation() {
 
           {/* Floating Module Switcher */}
           {showModuleSwitcher && areaModules.length > 0 && (
-            <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 z-50
+            <div className="absolute top-full left-1/2 -translate-x-1/2 z-50
                             flex items-center gap-1 px-4 py-2
                             bg-card/80 backdrop-blur-xl shadow-lg rounded-2xl border border-border/30
                             animate-in fade-in slide-in-from-top-1 duration-150">
