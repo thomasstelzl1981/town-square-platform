@@ -9,6 +9,8 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
+import { WidgetGrid } from '@/components/shared/WidgetGrid';
+import { WidgetCell } from '@/components/shared/WidgetCell';
 import { TopicSection } from './TopicSection';
 import { FortbildungItemCard } from './FortbildungItemCard';
 import { fetchCuratedItems, searchCuratedItems } from '@/services/fortbildung/curatedProvider';
@@ -122,11 +124,13 @@ export function FortbildungTabContent({ tab }: FortbildungTabContentProps) {
             ) : (
               <>
                 <p className="text-sm text-muted-foreground">{searchResults.length} Treffer</p>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+                <WidgetGrid>
                   {searchResults.map(item => (
-                    <FortbildungItemCard key={item.id} item={item} />
+                    <WidgetCell key={item.id}>
+                      <FortbildungItemCard item={item} />
+                    </WidgetCell>
                   ))}
-                </div>
+                </WidgetGrid>
               </>
             )}
           </div>

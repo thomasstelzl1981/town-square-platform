@@ -1,9 +1,10 @@
 /**
- * MOD-15 — Topic Section (e.g. "Immobilien", "Finanzen")
- * Renders a horizontal grid of FortbildungItemCards.
+ * MOD-15 — Topic Section using CI WidgetGrid
  */
 
 import { Skeleton } from '@/components/ui/skeleton';
+import { WidgetGrid } from '@/components/shared/WidgetGrid';
+import { WidgetCell } from '@/components/shared/WidgetCell';
 import { FortbildungItemCard } from './FortbildungItemCard';
 import { TOPIC_LABELS, type FortbildungItem, type FortbildungTopic } from '@/services/fortbildung/types';
 
@@ -18,11 +19,13 @@ export function TopicSection({ topic, items, isLoading }: TopicSectionProps) {
     return (
       <div className="space-y-3">
         <h3 className="text-lg font-semibold tracking-tight">{TOPIC_LABELS[topic]}</h3>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+        <WidgetGrid>
           {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-52 rounded-2xl" />
+            <WidgetCell key={i}>
+              <Skeleton className="h-full w-full rounded-xl" />
+            </WidgetCell>
           ))}
-        </div>
+        </WidgetGrid>
       </div>
     );
   }
@@ -32,11 +35,13 @@ export function TopicSection({ topic, items, isLoading }: TopicSectionProps) {
   return (
     <div className="space-y-3">
       <h3 className="text-lg font-semibold tracking-tight">{TOPIC_LABELS[topic]}</h3>
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+      <WidgetGrid>
         {items.map(item => (
-          <FortbildungItemCard key={item.id} item={item} />
+          <WidgetCell key={item.id}>
+            <FortbildungItemCard item={item} />
+          </WidgetCell>
         ))}
-      </div>
+      </WidgetGrid>
     </div>
   );
 }
