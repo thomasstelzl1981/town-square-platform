@@ -1,8 +1,9 @@
 /**
- * PetsShop — 4 CI-Widgets: Unser Shop, Lennox Tracker, Zooplus, Fressnapf
+ * PetsShop — 4 CI-Widgets: Ernährung, Lennox Tracker, Zooplus, Fressnapf
  */
 import { useState } from 'react';
-import { ShoppingCart, MapPin, ExternalLink, Radar, Store, PawPrint, Clock } from 'lucide-react';
+import { ShoppingCart, MapPin, ExternalLink, Radar, Store, PawPrint, Clock, Search, Plug, WifiOff, UtensilsCrossed } from 'lucide-react';
+import { DESIGN } from '@/config/designManifest';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { WidgetGrid } from '@/components/shared/WidgetGrid';
@@ -15,6 +16,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { useAllActiveServices, useCreateBooking, type PetService } from '@/hooks/usePetBookings';
 import { usePets } from '@/hooks/usePets';
 
@@ -29,10 +31,59 @@ const CATEGORY_LABELS: Record<string, string> = {
   transport: 'Transport', nutrition: 'Ernährung', other: 'Sonstiges',
 };
 
+/* ── Lakefields product data ─────────────────────────────── */
+const LAKEFIELDS_CATEGORIES = ['Nassfutter', 'Trockenfutter', 'Snacks', 'Ergänzungsfuttermittel', 'Welpenfutter', 'Best-Seller'];
+
+const LAKEFIELDS_PRODUCTS = [
+  {
+    name: 'Nassfutter-Menü Wild (400 g)',
+    price: '3,89 €',
+    image: 'https://lakefields.b-cdn.net/media/f3/de/f5/1761171770/nassfutter-wild-adult-lf-an1140_17611717700602593.webp?ts=1761171770',
+    url: 'https://www.lakefields.de/Hundefutter/Nassfutter/Adult-Menue-Wild-400-g',
+    category: 'Nassfutter',
+  },
+  {
+    name: 'Nassfutter-Menü Rind (400 g)',
+    price: '3,69 €',
+    image: 'https://lakefields.b-cdn.net/media/04/bc/54/1761171799/nassfutter-rind-adult-lf-an2140_17611717992052295.webp?ts=1761171799',
+    url: 'https://www.lakefields.de/Hundefutter/Nassfutter/Adult-Menue-Rind-400-g',
+    category: 'Nassfutter',
+  },
+  {
+    name: 'Nassfutter-Menü Lamm (400 g)',
+    price: '3,89 €',
+    image: 'https://lakefields.b-cdn.net/media/50/b4/4e/1761171618/nassfutter-lamm-adult-lf-an3140_1761171618393151.webp?ts=1761171618',
+    url: 'https://www.lakefields.de/Hundefutter/Nassfutter/Adult-Menue-Lamm-400-g',
+    category: 'Nassfutter',
+  },
+  {
+    name: 'Nassfutter-Menü Huhn (400 g)',
+    price: '3,69 €',
+    image: 'https://lakefields.b-cdn.net/media/70/70/1d/1761171644/nassfutter-huhn-adult-lf-an4140_176117164369239.webp?ts=1761171644',
+    url: 'https://www.lakefields.de/Hundefutter/Nassfutter/Adult-Menue-Huhn-400-g',
+    category: 'Nassfutter',
+  },
+  {
+    name: 'Nassfutter-Menü Pferd (400 g)',
+    price: '4,29 €',
+    image: 'https://lakefields.b-cdn.net/media/a7/b6/0b/1763104330/nassfutter-pferd-adult-lf-an7140_1763104329593948.webp?ts=1763104330',
+    url: 'https://www.lakefields.de/Hundefutter/Nassfutter/Adult-Menue-Pferd-400-g',
+    category: 'Nassfutter',
+    badge: 'Neu',
+  },
+  {
+    name: 'Nassfutter-Menü Rind Welpe (400 g)',
+    price: '3,69 €',
+    image: 'https://lakefields.b-cdn.net/media/3b/1c/02/1761171825/nassfutter-rind-welpe-lf-wn2140_17611718246539207.webp?ts=1761171825',
+    url: 'https://www.lakefields.de/Hundefutter/Nassfutter/Welpe-Menue-Rind-400-g',
+    category: 'Welpenfutter',
+  },
+];
+
 type ShopWidget = 'shop' | 'lennox' | 'zooplus' | 'fressnapf';
 
 const WIDGETS: { key: ShopWidget; title: string; icon: typeof Store; description: string; badge?: string }[] = [
-  { key: 'shop', title: 'Unser Shop', icon: Store, description: 'Produkte & Services aus unserem Katalog' },
+  { key: 'shop', title: 'Ernährung', icon: UtensilsCrossed, description: 'Lakefields — Naturbelassenes Hundefutter' },
   { key: 'lennox', title: 'Lennox Tracker', icon: Radar, description: 'GPS-Tracker für Ihr Tier bestellen' },
   { key: 'zooplus', title: 'Zooplus', icon: ShoppingCart, description: 'Tierbedarf bei Zooplus', badge: 'Partner' },
   { key: 'fressnapf', title: 'Fressnapf', icon: ShoppingCart, description: 'Tierbedarf bei Fressnapf', badge: 'Partner' },
@@ -40,7 +91,8 @@ const WIDGETS: { key: ShopWidget; title: string; icon: typeof Store; description
 
 export default function PetsShop() {
   const [activeWidget, setActiveWidget] = useState<ShopWidget | null>(null);
-  const { data: services = [], isLoading } = useAllActiveServices();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const { data: pets = [] } = usePets();
   const createBooking = useCreateBooking();
 
@@ -64,6 +116,13 @@ export default function PetsShop() {
   };
 
   const toggleWidget = (key: ShopWidget) => setActiveWidget(prev => prev === key ? null : key);
+
+  /* ── Lakefields filter logic ─────────────────────────────── */
+  const filteredProducts = LAKEFIELDS_PRODUCTS.filter(p => {
+    const matchSearch = !searchQuery || p.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchCat = !activeCategory || p.category === activeCategory;
+    return matchSearch && matchCat;
+  });
 
   return (
     <PageShell>
@@ -98,41 +157,116 @@ export default function PetsShop() {
         })}
       </WidgetGrid>
 
-      {/* Inline Content */}
+      {/* ── Lakefields Ernährung Shop ─────────────────────────── */}
       {activeWidget === 'shop' && (
         <div className="space-y-4">
-          <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Unser Katalog</h3>
-          {isLoading ? (
-            <p className="text-center text-muted-foreground py-8">Laden…</p>
-          ) : services.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-muted-foreground/30 p-8 text-center">
-              <Store className="mx-auto h-10 w-10 text-muted-foreground/40" />
-              <p className="mt-3 text-sm text-muted-foreground">Aktuell keine Produkte verfügbar.</p>
+          {/* Header Banner */}
+          <Card className="overflow-hidden border-0">
+            <div className="bg-gradient-to-br from-amber-500/20 to-amber-600/5 p-6 sm:p-8">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-background/80 backdrop-blur-sm shadow-sm">
+                  <UtensilsCrossed className="h-7 w-7 text-amber-600 dark:text-amber-400" />
+                </div>
+                <div className="flex-1">
+                  <h2 className="text-2xl font-bold text-amber-600 dark:text-amber-400">Lakefields</h2>
+                  <p className="text-sm text-muted-foreground mt-1">Hochwertiges und naturbelassenes Hundefutter</p>
+                </div>
+                <Button className="gap-2 shadow-sm" onClick={() => window.open('https://www.lakefields.de/Hundefutter/', '_blank')}>
+                  <ExternalLink className="h-4 w-4" />
+                  Shop öffnen
+                </Button>
+              </div>
+              <p className="text-sm text-muted-foreground mt-4 max-w-2xl">
+                Nassfutter, Trockenfutter, Snacks und Ergänzungsfuttermittel — aus nachhaltiger Produktion in Deutschland.
+              </p>
             </div>
-          ) : (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {services.map(service => (
-                <Card key={service.id} className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => { setSelectedService(service); setBookingForm({ pet_id: '', scheduled_date: '', scheduled_time_start: '', client_notes: '' }); }}>
-                  <CardContent className="pt-4 space-y-2">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <p className="font-medium">{service.title}</p>
-                        <p className="text-xs text-muted-foreground">{(service as any).provider?.company_name}</p>
-                      </div>
-                      <Badge variant="secondary" className="text-[10px]">{CATEGORY_LABELS[service.category] || service.category}</Badge>
-                    </div>
-                    {service.description && <p className="text-sm text-muted-foreground line-clamp-2">{service.description}</p>}
-                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                      <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{service.duration_minutes} Min.</span>
-                      <span className="font-medium text-foreground">
-                        {service.price_type === 'on_request' ? 'Auf Anfrage' : `${(service.price_cents / 100).toFixed(2)} €`}
-                      </span>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
+          </Card>
+
+          {/* Search + Category Badges */}
+          <Card>
+            <CardContent className="p-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  className="pl-10"
+                  placeholder="Lakefields Produkte suchen…"
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                />
+              </div>
+              <div className="flex flex-wrap gap-2 mt-3">
+                {LAKEFIELDS_CATEGORIES.map(cat => (
+                  <Badge
+                    key={cat}
+                    variant={activeCategory === cat ? 'default' : 'secondary'}
+                    className="cursor-pointer hover:bg-accent transition-colors text-xs"
+                    onClick={() => setActiveCategory(prev => prev === cat ? null : cat)}
+                  >
+                    {cat}
+                  </Badge>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Product Grid */}
+          <div className={DESIGN.WIDGET_GRID.FULL}>
+            {filteredProducts.map((product, i) => (
+              <Card
+                key={i}
+                className="group cursor-pointer hover:shadow-md transition-all hover:-translate-y-0.5"
+                onClick={() => window.open(product.url, '_blank')}
+              >
+                <CardContent className="p-3 flex flex-col items-center text-center gap-2">
+                  <div className="aspect-square w-full rounded-xl bg-muted/40 overflow-hidden relative">
+                    <img
+                      src={product.image}
+                      alt={product.name}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                    {product.badge && (
+                      <Badge className="absolute top-2 left-2 bg-amber-500 text-white text-[10px]">
+                        {product.badge}
+                      </Badge>
+                    )}
+                  </div>
+                  <span className="text-xs font-medium leading-tight line-clamp-2">{product.name}</span>
+                  <span className="text-xs text-amber-600 dark:text-amber-400 font-semibold">{product.price}</span>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {/* Integration Accordion */}
+          <Accordion type="single" collapsible>
+            <AccordionItem value="integration" className="border rounded-2xl px-4">
+              <AccordionTrigger className="hover:no-underline">
+                <div className="flex items-center gap-3">
+                  <Plug className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">Integration & Zugangsdaten</span>
+                  <Badge variant="outline" className="gap-1 text-muted-foreground ml-2">
+                    <WifiOff className="h-3 w-3" />
+                    Nicht verbunden
+                  </Badge>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent>
+                <div className="space-y-4 pt-2 pb-2">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Partner-ID</Label>
+                    <Input placeholder="Lakefields Partner ID" disabled className="text-sm" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">API Key</Label>
+                    <Input placeholder="Lakefields API Key" disabled className="text-sm" />
+                  </div>
+                  <Button variant="outline" disabled size="sm">
+                    Verbindung testen
+                  </Button>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
         </div>
       )}
 
@@ -204,7 +338,7 @@ export default function PetsShop() {
         </div>
       )}
 
-      {/* Booking Dialog (for Unser Shop catalog) */}
+      {/* Booking Dialog (kept for future use) */}
       <Dialog open={!!selectedService} onOpenChange={open => { if (!open) setSelectedService(null); }}>
         <DialogContent>
           <DialogHeader><DialogTitle>Bestellen: {selectedService?.title}</DialogTitle></DialogHeader>
