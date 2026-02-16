@@ -85,11 +85,12 @@
       "origin": "TODO-005 / SIA4-010",
       "severity": "P3",
       "module": "Armstrong",
-      "title": "webResearchEnabled hardcoded true",
-      "description": "Feature-Toggle fehlt. Korrekt dokumentiert als intentional — org_settings Spalte existiert noch nicht.",
-      "fix_type": "db_migration + code",
+      "title": "webResearchEnabled aus org.settings gelesen",
+      "description": "Liest web_research_enabled aus organizations.settings JSON (default: true). Kein DB-Schema-Change nötig da settings-Spalte existiert.",
+      "fix_type": "code",
       "effort": "low",
-      "status": "deferred"
+      "status": "done",
+      "fixed_at": "2026-02-16"
     },
     {
       "id": "CB-007",
@@ -223,11 +224,12 @@
       "origin": "ENG-04",
       "severity": "P4",
       "module": "MOD-04",
-      "title": "BWA Engine: Consumer noch nicht eingebunden",
-      "description": "Engine existiert, aber BWA-Tab nutzt sie noch nicht.",
+      "title": "BWA Engine in PropertyDetail eingebunden",
+      "description": "Neuer BWA-Tab in PropertyDetailPage zeigt Cashflow-Analyse, Instandhaltungsrücklage (Peters) und Leerstandsquote via BWA-Engine.",
       "fix_type": "code",
       "effort": "medium",
-      "status": "deferred"
+      "status": "done",
+      "fixed_at": "2026-02-16"
     }
   ],
 
