@@ -1,122 +1,81 @@
 
-# Lennox Tracker — Produktseite mit CI-Branding und AI-generierten Bildern
+
+# "Lennox Style" — Eigener Produktshop mit 12 Artikeln
 
 ## Uebersicht
 
-Die aktuelle Lennox-Tracker-Sektion (Zeilen 273-308 in `PetsShop.tsx`) ist minimal — nur eine Card mit Icon, Text und "Bald verfuegbar"-Button. Sie wird zu einer vollwertigen Produktseite ausgebaut, inspiriert von Tractive: Hero-Banner mit generiertem Bild, Feature-Grid, Produktvarianten und Abo-Modell.
+Das dritte Widget "Zooplus" wird umbenannt zu **"Lennox Style"** und erhaelt einen vollwertigen Marken-Shop mit 12 eigenen Produkten. Das hochgeladene Bild (4x3 Grid) wird als einzelnes Produktbild in den `src/assets/` Ordner kopiert und den 12 Artikeln zugeordnet.
 
-## Neues Layout
+## Bild-Handling
 
-```text
-+----------------------------------------------------------+
-|  HERO BANNER (volle Breite, Gradient + AI-Bild)          |
-|                                                          |
-|  [AI-generiertes Bild: Hund mit Tracker am Halsband]    |
-|                                                          |
-|  "Lennox GPS Tracker"                                    |
-|  "Immer wissen, wo dein Liebling ist."                   |
-|  [Jetzt vorbestellen]                                    |
-+----------------------------------------------------------+
-|                                                          |
-|  FEATURE-GRID (3 Spalten, mobile: 1 Spalte)             |
-|                                                          |
-|  +----------------+ +----------------+ +----------------+|
-|  | MapPin         | | Activity       | | Shield         ||
-|  | Live-Ortung    | | Aktivitaets-   | | Geofencing     ||
-|  |                | | tracking       | |                ||
-|  +----------------+ +----------------+ +----------------+|
-|  +----------------+ +----------------+ +----------------+|
-|  | Battery        | | Droplets       | | Heart          ||
-|  | 14 Tage Akku   | | Wasserdicht    | | Gesundheits-   ||
-|  |                | | IP67           | | warnungen      ||
-|  +----------------+ +----------------+ +----------------+|
-|                                                          |
-+----------------------------------------------------------+
-|                                                          |
-|  PRODUKT-VARIANTEN (3 Karten nebeneinander)              |
-|                                                          |
-|  +----------------+ +----------------+ +----------------+|
-|  | LENNOX Mini    | | LENNOX Std     | | LENNOX XL      ||
-|  | Fuer kleine    | | Fuer Hunde     | | Fuer grosse    ||
-|  | Hunde/Katzen   | | ab 10 kg       | | Hunde ab 25 kg ||
-|  | 39,99 EUR      | | 49,99 EUR      | | 59,99 EUR      ||
-|  | [Vorbestellen] | | [Vorbestellen] | | [Vorbestellen] ||
-|  +----------------+ +----------------+ +----------------+|
-|                                                          |
-+----------------------------------------------------------+
-|  ABO-MODELLE (Badge-Row)                                 |
-|  Basic 2,99/Mo | Plus 4,99/Mo | Premium 6,99/Mo         |
-+----------------------------------------------------------+
-|  INTEGRATION-ACCORDION (Partner-ID / API Key)            |
-+----------------------------------------------------------+
+Das hochgeladene Bild enthaelt ein 4x3 Grid aller 12 Produkte. Da ein browserseitiges Zuschneiden in einzelne Bilder nicht praktikabel ist, wird das Gesamtbild als einzelnes Asset gespeichert und per CSS `object-position` + `object-fit: cover` wird jeweils der passende Bildausschnitt fuer jede Produktkarte angezeigt. So entsteht visuell der Eindruck von 12 Einzelbildern ohne manuelles Zuschneiden.
+
+**Zuordnung (Reihe x Spalte → Produkt):**
+
+| Position | Produkt | Preis |
+|---|---|---|
+| R1-C1 | Premium Leather Leash | 39,90 EUR |
+| R1-C2 | Adjustable Harness Pro | 49,90 EUR |
+| R1-C3 | Orthopedic Dog Bed (rot, gerollt) | 59,90 EUR |
+| R1-C4 | Treat Pouch Elite | 29,90 EUR |
+| R2-C1 | Interactive Chew Toy (Ball) | 24,90 EUR |
+| R2-C2 | Interactive Chew Toy (Rope) | 24,90 EUR |
+| R2-C3 | Training Clicker Pro (Puzzle) | 9,90 EUR |
+| R2-C4 | Travel Water Bottle (blau) | 19,90 EUR |
+| R3-C1 | Orthopedic Dog Bed | 89,90 EUR |
+| R3-C2 | Travel Water Bottle | 19,90 EUR |
+| R3-C3 | Grooming Brush Set | 34,90 EUR |
+| R3-C4 | Reflective Night Collar | 22,90 EUR |
+
+*Hinweis: Die visuelle Zuordnung der Bilder zu den Produkten wird nach bestem Matching vorgenommen. Falls einzelne Zuordnungen nicht passen, koennen sie nachtraeglich angepasst werden.*
+
+## Aenderungen in `PetsShop.tsx`
+
+### 1. Widget-Definition aendern (Zeile 91)
+
+```
+{ key: 'zooplus', title: 'Lennox Style', icon: PawPrint, description: 'Premium Hundezubehoer — eigene Kollektion' }
 ```
 
-## Technische Umsetzung
+Das `badge: 'Partner'` wird entfernt — es ist ein eigenes Label, kein Partner.
 
-### 1. AI-generierte Bilder (Edge Function)
+### 2. Produktdaten als Konstante
 
-Eine Edge Function `generate-lennox-images` wird erstellt, die ueber die Lovable AI (google/gemini-2.5-flash-image) 3 Bilder generiert:
+Ein neues Array `LENNOX_STYLE_PRODUCTS` mit 12 Eintraegen, jeder mit:
+- `name` (Produktname)
+- `description` (Kurzbeschreibung)
+- `price` (formatierter Preis)
+- `gridRow` / `gridCol` (Position im Quellbild fuer CSS-Crop)
 
-- **Hero-Bild**: "A happy golden retriever outdoors wearing a sleek small black GPS tracker on its collar, nature background, professional product photography"
-- **Tracker-Produktbild**: "A small sleek black GPS pet tracker device on white background, modern product photography, rounded edges"
-- **Lifestyle-Bild**: "A person walking with a dog in a park, checking a phone app showing GPS location, warm light"
+### 3. Zooplus-Block ersetzen (Zeilen 417-430)
 
-Die generierten Bilder werden in Lovable Cloud Storage (Bucket `lennox-assets`) gespeichert und die URLs in einer Konstante im Code referenziert. Alternativ: Die Bilder werden einmalig generiert und als statische URLs hinterlegt.
+Der minimale Zooplus-Platzhalter wird durch ein vollwertiges Shop-Layout ersetzt:
 
-**Pragmatischer Ansatz**: Die Edge Function wird einmalig aufgerufen (manuell oder via Button), speichert die Bilder im Storage und liefert die public URLs zurueck. Der UI-Code referenziert dann diese festen URLs. So entsteht kein Overhead bei jedem Seitenaufruf.
+**a) Header-Banner**
+- Gradient: `from-emerald-500/20 to-emerald-600/5`
+- Titel: "LENNOX Style"
+- Tagline: "Premium Hundezubehoer — Designed for Dogs"
 
-### 2. UI-Umbau in `PetsShop.tsx`
+**b) Kategorie-Badges**
+- Kategorien: Alle, Leinen & Geschirr, Betten & Decken, Spielzeug, Unterwegs, Pflege, Training
 
-Der `activeWidget === 'lennox'`-Block (Zeilen 273-308) wird komplett ersetzt durch:
+**c) Produkt-Grid** (4 Spalten Desktop, 2 Mobile)
+- 12 Produktkarten mit Bildausschnitt aus dem Gesamtbild
+- Name (line-clamp-2), Beschreibung (line-clamp-1), Preis in Emerald-Akzent
+- Hover-Effekt wie bei Lakefields
 
-**a) Hero-Banner**
-- Volle Breite Card mit `bg-gradient-to-br from-teal-500/20 via-cyan-500/10 to-blue-500/5`
-- AI-generiertes Hero-Bild als Hintergrund (oder links/rechts Split)
-- Headline "Lennox GPS Tracker", Subline, CTA-Button
+**d) Integration-Accordion** (wie bei den anderen Widgets)
 
-**b) Feature-Grid**
-- 6 Feature-Cards in `grid-cols-2 sm:grid-cols-3`
-- Icons: MapPin, Activity, Shield, Battery, Droplets, Heart
-- Kurztexte zu jedem Feature
+### 4. Asset kopieren
 
-**c) Produktvarianten**
-- 3 Karten: Mini (39,99 EUR), Standard (49,99 EUR), XL (59,99 EUR)
-- Jede mit Bild-Placeholder, Specs, "Vorbestellen"-Button (noch disabled)
-
-**d) Abo-Modelle**
-- 3 Badges/Cards: Basic, Plus, Premium
-- Preise und Leistungsuebersicht
-
-**e) Integration-Accordion**
-- Wie bei Lakefields: Partner-ID, API Key, Status
-
-### 3. Storage Bucket
-
-- Bucket `lennox-assets` erstellen (public)
-- Edge Function speichert generierte Bilder dort
-
-### 4. Edge Function `generate-lennox-images`
-
-```text
-POST /generate-lennox-images
-- Generiert 3 Bilder via Lovable AI
-- Speichert in Storage Bucket
-- Gibt URLs zurueck
-```
-
-Die Function nutzt den `LOVABLE_API_KEY` (bereits vorhanden) und die Supabase-Umgebungsvariablen.
+Das Bild `user-uploads://ChatGPT_Image_16._Feb._2026_21_51_17.png` wird nach `src/assets/lennox-style-products.png` kopiert.
 
 ## Betroffene Dateien
 
 | Datei | Aenderung |
 |---|---|
-| `src/pages/portal/pets/PetsShop.tsx` | Lennox-Block komplett neu (Hero, Features, Produkte, Abos) |
-| `supabase/functions/generate-lennox-images/index.ts` | Neue Edge Function fuer Bildgenerierung |
-| DB-Migration | Storage Bucket `lennox-assets` erstellen |
+| `src/assets/lennox-style-products.png` | Neues Asset (Kopie des Uploads) |
+| `src/pages/portal/pets/PetsShop.tsx` | Widget umbenennen, Zooplus-Block durch Lennox Style Shop ersetzen |
 
-## Farbschema / CI
+Keine DB-Migration noetig.
 
-- Primary: Teal/Cyan (`teal-500`, `cyan-500`) — passt zum bestehenden Lennox-Styling
-- Akzent: Blau fuer CTAs
-- Gradient: `from-teal-500/20 via-cyan-500/10 to-blue-500/5`
-- Produktkarten: Helle Borders mit Teal-Glow bei Hover
