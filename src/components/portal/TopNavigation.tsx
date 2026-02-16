@@ -6,7 +6,7 @@
  * Level 3: Sub Tabs (4-6 tiles per module)
  */
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useRef, useCallback } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { usePortalLayout } from '@/hooks/usePortalLayout';
@@ -36,6 +36,21 @@ export function TopNavigation() {
   const { activeArea, isMobile } = usePortalLayout();
   const { isDevelopmentMode } = useAuth();
   const [showModuleSwitcher, setShowModuleSwitcher] = useState(false);
+  const hideTimeout = useRef<ReturnType<typeof setTimeout>>(null);
+
+  const showSwitcher = useCallback(() => {
+    if (hideTimeout.current) {
+      clearTimeout(hideTimeout.current);
+      hideTimeout.current = null;
+    }
+    setShowModuleSwitcher(true);
+  }, []);
+
+  const hideSwitcher = useCallback(() => {
+    hideTimeout.current = setTimeout(() => {
+      setShowModuleSwitcher(false);
+    }, 400);
+  }, []);
 
   // Build module data from manifest
   const allModules = useMemo(() => {
@@ -79,14 +94,17 @@ export function TopNavigation() {
       {activeModule && !location.pathname.startsWith('/portal/area/') && (
         <div
           className="relative"
-          onMouseEnter={() => setShowModuleSwitcher(true)}
-          onMouseLeave={() => setShowModuleSwitcher(false)}
+          onMouseEnter={showSwitcher}
+          onMouseLeave={hideSwitcher}
         >
           <SubTabs module={activeModule.module} moduleBase={activeModule.module.base} />
 
           {/* Floating Module Switcher */}
           {showModuleSwitcher && areaModules.length > 0 && (
-            <div className="absolute top-full left-1/2 -translate-x-1/2 z-50 pt-2">
+            <div className="absolute top-full left-1/2 -translate-x-1/2 z-50 pt-2"
+              onMouseEnter={showSwitcher}
+              onMouseLeave={hideSwitcher}
+            >
               <div className="flex items-center gap-1 px-4 py-2
                               bg-card/80 backdrop-blur-xl shadow-lg rounded-2xl border border-border/30
                               animate-in fade-in slide-in-from-top-1 duration-150">
