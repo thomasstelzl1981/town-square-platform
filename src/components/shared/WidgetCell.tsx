@@ -19,6 +19,7 @@
  * ```
  */
 
+import { memo } from 'react';
 import { cn } from '@/lib/utils';
 import { WIDGET_CELL } from '@/config/designManifest';
 import type { ReactNode } from 'react';
@@ -30,7 +31,7 @@ interface WidgetCellProps {
   className?: string;
 }
 
-export function WidgetCell({ children, span = 1, className }: WidgetCellProps) {
+export const WidgetCell = memo(function WidgetCell({ children, span = 1, className }: WidgetCellProps) {
   return (
     <div
       className={cn(
@@ -42,4 +43,4 @@ export function WidgetCell({ children, span = 1, className }: WidgetCellProps) {
       {children}
     </div>
   );
-}
+});

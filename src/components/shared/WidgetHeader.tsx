@@ -2,6 +2,7 @@
  * WidgetHeader — Unified header for widget cards
  * Icon-Box + Title + optional Description + optional right-side action
  */
+import { memo } from 'react';
 import { cn } from '@/lib/utils';
 import type { LucideIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
@@ -14,7 +15,7 @@ interface WidgetHeaderProps {
   className?: string;
 }
 
-export function WidgetHeader({ icon: Icon, title, description, action, className }: WidgetHeaderProps) {
+export const WidgetHeader = memo(function WidgetHeader({ icon: Icon, title, description, action, className }: WidgetHeaderProps) {
   return (
     <div className={cn('flex items-center justify-between', className)}>
       <div className="flex items-center gap-3">
@@ -28,4 +29,4 @@ export function WidgetHeader({ icon: Icon, title, description, action, className
       {action}
     </div>
   );
-}
+});

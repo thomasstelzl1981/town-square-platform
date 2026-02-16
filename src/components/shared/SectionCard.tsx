@@ -2,6 +2,7 @@
  * SectionCard — Full-width Sektionskarte mit Icon, Titel und Beschreibung
  * Verwendet CARD.SECTION aus dem Design Manifest
  */
+import { memo } from 'react';
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { DESIGN } from '@/config/designManifest';
@@ -17,7 +18,7 @@ interface SectionCardProps {
   headerAction?: ReactNode;
 }
 
-export function SectionCard({ title, description, icon: Icon, children, className, headerAction }: SectionCardProps) {
+export const SectionCard = memo(function SectionCard({ title, description, icon: Icon, children, className, headerAction }: SectionCardProps) {
   return (
     <Card className={cn(DESIGN.CARD.SECTION, className)}>
       <div className="flex items-center justify-between mb-3">
@@ -37,4 +38,4 @@ export function SectionCard({ title, description, icon: Icon, children, classNam
       {children}
     </Card>
   );
-}
+});
