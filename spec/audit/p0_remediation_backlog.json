@@ -1,0 +1,100 @@
+{
+  "sprint": "P0 Remediation Sprint",
+  "baseline_review": "ENTERPRISE_READINESS_REVIEW.md",
+  "baseline_grade": "B-",
+  "remediation_date": "2026-02-16",
+  "p0_items": [
+    {
+      "id": "P0-001",
+      "title": "Test Coverage <5%",
+      "description": "Minimal regression suite with unit tests and 2 E2E happy-path tests",
+      "status": "in-progress",
+      "priority": "P0",
+      "commits": [],
+      "files_changed": [],
+      "proof": {
+        "test_files": [],
+        "execution_command": "npm test",
+        "coverage_before": "~4%",
+        "coverage_after": ""
+      }
+    },
+    {
+      "id": "P0-002",
+      "title": "CORS Allow-All Wildcard",
+      "description": "Remove '*' wildcards from all edge functions, implement origin allowlist",
+      "status": "in-progress",
+      "priority": "P0",
+      "commits": [],
+      "files_changed": [],
+      "proof": {
+        "grep_command": "grep -r \"'Access-Control-Allow-Origin': '\\*'\" supabase/functions/",
+        "wildcard_count_before": "109",
+        "wildcard_count_after": "",
+        "allowlist_file": "supabase/functions/_shared/cors.ts"
+      }
+    },
+    {
+      "id": "P0-003",
+      "title": "Webhook Signature Validation",
+      "description": "Implement HMAC signature verification for all inbound webhooks",
+      "status": "in-progress",
+      "priority": "P0",
+      "commits": [],
+      "files_changed": [],
+      "proof": {
+        "validation_helper": "supabase/functions/_shared/webhook-validation.ts",
+        "webhook_functions": [
+          "sot-whatsapp-webhook",
+          "sot-acq-inbound-webhook",
+          "sot-renovation-inbound-webhook"
+        ],
+        "signature_header": "x-webhook-signature",
+        "secret_env_var": "WEBHOOK_SECRET"
+      }
+    },
+    {
+      "id": "P0-004",
+      "title": "N+1 Queries in Hot Spots",
+      "description": "Fix N+1 queries in Armstrong dashboard and Portfolio summary",
+      "status": "in-progress",
+      "priority": "P0",
+      "commits": [],
+      "files_changed": [],
+      "proof": {
+        "hotspots": [
+          {
+            "name": "Armstrong Dashboard",
+            "file": "src/hooks/armstrong/useArmstrongDashboard.ts",
+            "queries_before": 6,
+            "queries_after": ""
+          },
+          {
+            "name": "Portfolio Summary",
+            "file": "src/components/portfolio/PortfolioTab.tsx",
+            "queries_before": "unbounded",
+            "queries_after": ""
+          }
+        ]
+      }
+    },
+    {
+      "id": "P0-005",
+      "title": "TypeScript Any 60+ in Critical Paths",
+      "description": "Reduce any types in engine and contract generator modules",
+      "status": "in-progress",
+      "priority": "P0",
+      "commits": [],
+      "files_changed": [],
+      "proof": {
+        "critical_modules": [
+          "src/engines/",
+          "src/lib/contracts/"
+        ],
+        "any_count_before": "60+",
+        "any_count_after": "",
+        "remaining_any_list": []
+      }
+    }
+  ]
+}

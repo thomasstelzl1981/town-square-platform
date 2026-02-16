@@ -11,11 +11,8 @@
  */
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
+import { verifyRequestSignature } from "../_shared/webhook-validation.ts";
 
 interface ResendInboundPayload {
   id: string;
@@ -33,16 +30,31 @@ interface ResendInboundPayload {
 }
 
 serve(async (req) => {
+  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return handleCorsPreflightRequest(req);
   }
 
+  const corsHeaders = getCorsHeaders(req);
+
   try {
+    // Verify webhook signature
+    const rawBody = await req.text();
+    const isValidSignature = await verifyRequestSignature(req, rawBody, 'RESEND_WEBHOOK_SECRET');
+    
+    if (!isValidSignature) {
+      console.error('Invalid webhook signature');
+      return new Response(
+        JSON.stringify({ error: 'Invalid signature' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    const payload: ResendInboundPayload = await req.json();
+    const payload: ResendInboundPayload = JSON.parse(rawBody);
     console.log('Inbound email received:', { from: payload.from, subject: payload.subject });
 
     let mandateId: string | null = null;
