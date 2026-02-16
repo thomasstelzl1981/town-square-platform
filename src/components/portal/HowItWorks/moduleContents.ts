@@ -783,10 +783,10 @@ export const moduleContents: Record<string, HowItWorksContent> = {
     ],
     cta: 'Starten Sie mit dem Dashboard – und behalten Sie Ihr Netzwerk im Blick.',
     subTiles: [
-      { title: 'Dashboard', route: '/portal/pet-manager/dashboard', icon: LayoutGrid },
-      { title: 'Partner', route: '/portal/pet-manager/partner', icon: Users },
-      { title: 'Services', route: '/portal/pet-manager/services', icon: ClipboardList },
-      { title: 'Netzwerk', route: '/portal/pet-manager/netzwerk', icon: Network },
+      { title: 'Kalender & Buchungen', route: '/portal/petmanager/buchungen', icon: LayoutGrid },
+      { title: 'Leistungen & Verfügbarkeit', route: '/portal/petmanager/leistungen', icon: ClipboardList },
+      { title: 'Zahlungen & Rechnungen', route: '/portal/petmanager/zahlungen', icon: Network },
+      { title: 'Kunden & Tiere', route: '/portal/petmanager/kunden', icon: Users },
     ],
   },
 };

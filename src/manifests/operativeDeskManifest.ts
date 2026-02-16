@@ -63,17 +63,17 @@ export const OPERATIVE_DESKS: OperativeDeskDefinition[] = [
   },
   {
     deskId: 'petmanager',
-    displayName: 'Petmanager',
+    displayName: 'Pet Governance',
     managerModuleCode: 'MOD-05',
     managerModuleName: 'Pets',
     websiteProfileId: 'pet_services',
     route: 'petmanager',
     icon: 'PawPrint',
     responsibilities: [
-      'Tier-Registrierung',
-      'Service-Governance',
-      'Shop-Management',
-      'Content-Moderation',
+      'Provider-Übersicht & Verifizierung',
+      'Umsatz- & Zahlungs-Governance',
+      'Service-Katalog-Moderation',
+      'Franchise-Netzwerk-Monitoring',
     ],
   },
   {
