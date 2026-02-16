@@ -17548,6 +17548,7 @@ export type Database = {
       vorsorge_contracts: {
         Row: {
           balance_date: string | null
+          bu_monthly_benefit: number | null
           category: string
           contract_no: string | null
           contract_type: string | null
@@ -17573,6 +17574,7 @@ export type Database = {
         }
         Insert: {
           balance_date?: string | null
+          bu_monthly_benefit?: number | null
           category?: string
           contract_no?: string | null
           contract_type?: string | null
@@ -17598,6 +17600,7 @@ export type Database = {
         }
         Update: {
           balance_date?: string | null
+          bu_monthly_benefit?: number | null
           category?: string
           contract_no?: string | null
           contract_type?: string | null

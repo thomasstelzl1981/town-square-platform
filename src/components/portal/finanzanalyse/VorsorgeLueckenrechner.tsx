@@ -54,6 +54,7 @@ function mapPerson(p: any): VLPersonInput {
     gross_income_monthly: p.gross_income_monthly,
     ruhegehaltfaehiges_grundgehalt: p.ruhegehaltfaehiges_grundgehalt,
     ruhegehaltfaehige_dienstjahre: p.ruhegehaltfaehige_dienstjahre,
+    planned_retirement_date: p.planned_retirement_date ?? null,
   };
 }
 
@@ -72,8 +73,11 @@ function mapContract(c: any): VLContractInput {
     person_id: c.person_id,
     contract_type: c.contract_type,
     monthly_benefit: c.monthly_benefit,
+    bu_monthly_benefit: c.bu_monthly_benefit ?? null,
     insured_sum: c.insured_sum,
     current_balance: c.current_balance,
+    premium: c.premium ?? null,
+    payment_interval: c.payment_interval ?? null,
     status: c.status,
     category: c.category,
   };
