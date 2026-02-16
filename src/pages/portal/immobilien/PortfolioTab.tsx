@@ -722,8 +722,9 @@ export function PortfolioTab() {
                 </div>
                 <div className="flex items-center gap-2">
                   <Building2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                  <span className="font-semibold text-sm">Vermietereinheit Berlin</span>
+                  <span className="font-semibold text-sm">Familie Mustermann</span>
                 </div>
+                <p className="text-xs text-muted-foreground mt-0.5">Berlin, München, Hamburg</p>
               </div>
               <div className="mt-4 space-y-2">
                 <div className="flex justify-between items-center">
