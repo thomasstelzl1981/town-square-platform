@@ -248,15 +248,16 @@ export default function CarsFahrzeuge() {
         {filteredVehicles.map((vehicle: any) => {
           const huStatus = getHuStatus(vehicle.hu_valid_until);
           const isSelected = selectedVehicleId === vehicle.id;
+          const vehicleIsDemo = isDemo || isDemoId(vehicle.id);
           return (
             <WidgetCell key={vehicle.id}>
                <Card
                 className={cn(
                   "glass-card overflow-hidden cursor-pointer group transition-all h-full",
-                  isDemo
+                  vehicleIsDemo
                     ? cn(DESIGN.DEMO_WIDGET.CARD, "ring-2 ring-emerald-400 border-emerald-400 shadow-sm")
                     : getActiveWidgetGlow('teal'),
-                  isSelected ? "border-primary ring-2 ring-primary/20" : !isDemo && "border-primary/10 hover:border-primary/30"
+                  isSelected ? "border-primary ring-2 ring-primary/20" : !vehicleIsDemo && "border-primary/10 hover:border-primary/30"
                 )}
                 onClick={() => { setIsCreatingNew(false); setSelectedVehicleId(isSelected ? null : vehicle.id); }}
               >
@@ -264,7 +265,7 @@ export default function CarsFahrzeuge() {
                   <img src={getImage(vehicle)} alt={`${vehicle.make} ${vehicle.model}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                   <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-transparent" />
                   <div className="absolute top-2 left-3 flex items-center gap-1.5">
-                    {isDemo && <Badge className={cn(DESIGN.DEMO_WIDGET.BADGE, "text-[9px]")}>DEMO</Badge>}
+                    {vehicleIsDemo && <Badge className={cn(DESIGN.DEMO_WIDGET.BADGE, "text-[9px]")}>DEMO</Badge>}
                     <Badge variant="outline" className={cn("text-[9px]", statusColors[vehicle.status as VehicleStatus])}>{statusLabels[vehicle.status as VehicleStatus]}</Badge>
                     {isBike(vehicle) && (
                       <Badge variant="outline" className="text-[9px] bg-primary/10 text-primary border-primary/20">
