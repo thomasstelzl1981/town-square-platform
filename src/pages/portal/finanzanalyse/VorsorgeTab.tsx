@@ -57,7 +57,7 @@ function fmt(v: number) {
 
 export default function VorsorgeTab() {
   const { activeTenantId, user } = useAuth();
-  const { persons, pensionRecords } = useFinanzanalyseData();
+  const { persons, pensionRecords, updatePerson, upsertPension } = useFinanzanalyseData();
   const queryClient = useQueryClient();
   const { isEnabled } = useDemoToggles();
   const demoEnabled = isEnabled('GP-KONTEN');
@@ -374,6 +374,8 @@ export default function VorsorgeTab() {
         persons={demoEnabled ? persons : persons.filter((p: any) => !isDemoId(p.id))}
         pensionRecords={pensionRecords}
         contracts={contracts}
+        onUpdatePerson={async (p) => { await updatePerson.mutateAsync(p); }}
+        onUpsertPension={async (data) => { await upsertPension.mutateAsync(data); }}
       />
     </PageShell>
   );
