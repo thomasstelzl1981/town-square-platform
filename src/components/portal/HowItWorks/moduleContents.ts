@@ -190,17 +190,17 @@ export const moduleContents: Record<string, HowItWorksContent> = {
   'MOD-05': {
     moduleCode: 'MOD-05',
     title: 'Haustiere',
-    oneLiner: 'Verwalten Sie Ihre Haustiere — Tierakten, Pflege, Fotoalbum und Shop.',
+    oneLiner: 'Verwalten Sie Ihre Haustiere — Tierakten, Pflege, Shop und persönlicher Bereich.',
     benefits: [
       'Digitale Tierakte mit Impfungen, Behandlungen und Dokumenten.',
       'Pflegepläne und Erinnerungen für Fütterung, Tierarzt und Pflege.',
-      'Fotoalbum und integrierter Shop für Tierbedarf.',
+      'Integrierter Shop und persönlicher Bereich für Bestellungen und Services.',
     ],
     whatYouDo: [
       'Haustiere anlegen und Tierakten pflegen',
       'Pflegepläne und Erinnerungen einrichten',
-      'Fotos im Album verwalten',
       'Tierbedarf im integrierten Shop bestellen',
+      'Kundendaten, Bestellungen und Services im persönlichen Bereich verwalten',
     ],
     flows: [
       {
@@ -209,12 +209,15 @@ export const moduleContents: Record<string, HowItWorksContent> = {
       },
       {
         title: 'Pflege organisieren',
-        steps: ['Pflegeplan erstellen', 'Erinnerungen aktivieren', 'Tierarztbesuche dokumentieren', 'Fotos hochladen'],
+        steps: ['Pflegeplan erstellen', 'Erinnerungen aktivieren', 'Tierarztbesuche dokumentieren', 'Services buchen'],
       },
     ],
     cta: 'Legen Sie Ihr erstes Haustier an — alles an einem Ort.',
     subTiles: [
       { title: 'Meine Tiere', route: '/portal/pets/meine-tiere', icon: Globe },
+      { title: 'Caring', route: '/portal/pets/caring', icon: Heart },
+      { title: 'Shop & Services', route: '/portal/pets/shop', icon: ShoppingCart },
+      { title: 'Mein Bereich', route: '/portal/pets/mein-bereich', icon: User },
     ],
   },
 
@@ -759,34 +762,34 @@ export const moduleContents: Record<string, HowItWorksContent> = {
   'MOD-22': {
     moduleCode: 'MOD-22',
     title: 'Pet Manager',
-    oneLiner: 'Franchise-Partner Portal für Haustier-Dienstleistungen und Netzwerk-Management.',
+    oneLiner: 'Ihr Cockpit für Haustier-Dienstleistungen: Buchungen, Kunden und Finanzen.',
     benefits: [
-      'Zentrale Übersicht über alle Franchise-Standorte und Partner.',
-      'Dienstleistungen und Buchungen effizient verwalten.',
-      'Netzwerk-Performance und Umsätze transparent auswerten.',
+      'Kalender und Buchungen zentral verwalten.',
+      'Kunden und deren Tiere im Überblick behalten.',
+      'Finanzen, Rechnungen und Umsätze transparent auswerten.',
     ],
     whatYouDo: [
-      'Franchise-Partner und Standorte verwalten',
-      'Dienstleistungskatalog pflegen',
       'Buchungen und Termine koordinieren',
-      'Netzwerk-Performance analysieren',
+      'Leistungskatalog pflegen',
+      'Kundenstamm und Tierdaten verwalten',
+      'Rechnungen erstellen und Zahlungen nachverfolgen',
     ],
     flows: [
       {
-        title: 'Partner onboarden',
-        steps: ['Partner anlegen', 'Standort konfigurieren', 'Dienstleistungen zuweisen', 'Freischalten'],
+        title: 'Buchung abwickeln',
+        steps: ['Termin anlegen', 'Leistung zuordnen', 'Kunde bestätigen', 'Rechnung erstellen'],
       },
       {
-        title: 'Betrieb steuern',
-        steps: ['Dashboard prüfen', 'Buchungen verwalten', 'Performance auswerten'],
+        title: 'Finanzen prüfen',
+        steps: ['Offene Posten prüfen', 'Zahlungseingänge verbuchen', 'Monatsumsatz auswerten'],
       },
     ],
-    cta: 'Starten Sie mit dem Dashboard – und behalten Sie Ihr Netzwerk im Blick.',
+    cta: 'Starten Sie mit dem Kalender – und behalten Sie Ihre Buchungen im Blick.',
     subTiles: [
-      { title: 'Kalender & Buchungen', route: '/portal/petmanager/buchungen', icon: LayoutGrid },
-      { title: 'Leistungen & Verfügbarkeit', route: '/portal/petmanager/leistungen', icon: ClipboardList },
-      { title: 'Zahlungen & Rechnungen', route: '/portal/petmanager/zahlungen', icon: Network },
+      { title: 'Kalender & Buchungen', route: '/portal/petmanager/buchungen', icon: Calendar },
+      { title: 'Leistungen', route: '/portal/petmanager/leistungen', icon: ClipboardList },
       { title: 'Kunden & Tiere', route: '/portal/petmanager/kunden', icon: Users },
+      { title: 'Finanzen', route: '/portal/petmanager/finanzen', icon: CreditCard },
     ],
   },
 };

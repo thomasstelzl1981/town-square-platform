@@ -148,8 +148,12 @@ export const zone1Admin: ZoneDefinition = {
     { path: "projekt-desk/projekte", component: "ProjektDeskProjekte", title: "Projekte" },
     { path: "projekt-desk/listings", component: "ProjektDeskListings", title: "Listings" },
     { path: "projekt-desk/landing-pages", component: "ProjektDeskLandingPages", title: "Landing Pages" },
-    // Petmanager (MOD-05) — Haustier-Governance
-    { path: "petmanager", component: "PetmanagerDashboard", title: "Petmanager" },
+    // Pet Governance Desk (MOD-05 + MOD-22) — 5 Sub-Seiten
+    { path: "petmanager", component: "PetmanagerDashboard", title: "Pet Governance" },
+    { path: "petmanager/provider", component: "PetmanagerProvider", title: "Provider" },
+    { path: "petmanager/finanzen", component: "PetmanagerFinanzen", title: "Finanzen" },
+    { path: "petmanager/services", component: "PetmanagerServices", title: "Services" },
+    { path: "petmanager/monitor", component: "PetmanagerMonitor", title: "Monitor" },
     // Finance Desk (MOD-18) — Private Finanzberatung Lead-Management
     { path: "finance-desk", component: "FinanceDeskDashboard", title: "Finance Desk" },
     // =========================================================================
@@ -267,8 +271,8 @@ export const zone2Portal: ZoneDefinition = {
       tiles: [
         { path: "meine-tiere", component: "PetsMeineTiere", title: "Meine Tiere", default: true },
         { path: "caring", component: "PetsCaring", title: "Caring" },
-        { path: "shop", component: "PetsShop", title: "Shop" },
-        { path: "fotoalbum", component: "PetsFotoalbum", title: "Fotoalbum" },
+        { path: "shop", component: "PetsShop", title: "Shop & Services" },
+        { path: "mein-bereich", component: "PetsMeinBereich", title: "Mein Bereich" },
       ],
       dynamic_routes: [
         { path: ":petId", component: "PetDetailPage", title: "Tierakte", dynamic: true },
@@ -551,10 +555,9 @@ export const zone2Portal: ZoneDefinition = {
       visibility: { default: false, org_types: ["client"], requires_activation: true },
       tiles: [
         { path: "buchungen", component: "PMBuchungen", title: "Kalender & Buchungen", default: true },
-        { path: "leistungen", component: "PMLeistungen", title: "Leistungen & Verfügbarkeit" },
-        { path: "zahlungen", component: "PMZahlungen", title: "Zahlungen & Rechnungen" },
+        { path: "leistungen", component: "PMLeistungen", title: "Leistungen" },
         { path: "kunden", component: "PMKunden", title: "Kunden & Tiere" },
-        { path: "uebersicht", component: "PMUebersicht", title: "Übersicht" },
+        { path: "finanzen", component: "PMFinanzen", title: "Finanzen" },
       ],
       dynamic_routes: [],
     },

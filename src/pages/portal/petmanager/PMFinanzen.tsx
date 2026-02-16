@@ -85,7 +85,7 @@ function formatCents(cents: number): string {
   return (cents / 100).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' });
 }
 
-export default function PMZahlungen() {
+export default function PMFinanzen() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>('all');

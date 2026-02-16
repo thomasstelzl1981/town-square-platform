@@ -7,9 +7,8 @@ import React from 'react';
 
 const PMBuchungen = React.lazy(() => import('./petmanager/PMBuchungen'));
 const PMLeistungen = React.lazy(() => import('./petmanager/PMLeistungen'));
-const PMZahlungen = React.lazy(() => import('./petmanager/PMZahlungen'));
 const PMKunden = React.lazy(() => import('./petmanager/PMKunden'));
-const PMUebersicht = React.lazy(() => import('./petmanager/PMUebersicht'));
+const PMFinanzen = React.lazy(() => import('./petmanager/PMFinanzen'));
 
 const Loading = () => (
   <div className="flex items-center justify-center p-8">
@@ -23,9 +22,8 @@ export default function PetManagerPage() {
       <Route index element={<Navigate to="buchungen" replace />} />
       <Route path="buchungen" element={<React.Suspense fallback={<Loading />}><PMBuchungen /></React.Suspense>} />
       <Route path="leistungen" element={<React.Suspense fallback={<Loading />}><PMLeistungen /></React.Suspense>} />
-      <Route path="zahlungen" element={<React.Suspense fallback={<Loading />}><PMZahlungen /></React.Suspense>} />
       <Route path="kunden" element={<React.Suspense fallback={<Loading />}><PMKunden /></React.Suspense>} />
-      <Route path="uebersicht" element={<React.Suspense fallback={<Loading />}><PMUebersicht /></React.Suspense>} />
+      <Route path="finanzen" element={<React.Suspense fallback={<Loading />}><PMFinanzen /></React.Suspense>} />
       <Route path="*" element={<Navigate to="buchungen" replace />} />
     </Routes>
   );
