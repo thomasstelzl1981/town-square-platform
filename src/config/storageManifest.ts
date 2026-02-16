@@ -296,7 +296,7 @@ export const STORAGE_MANIFEST: Record<string, ModuleStorageConfig> = {
       { name: 'TÜV-Bericht', folder: '03_TÜV_AU' },
     ],
     entity_fk_column: 'vehicle_id',
-    entity_table: 'vehicles',
+    entity_table: 'cars_vehicles',
   },
   MOD_18: {
     module_code: 'MOD_18',
