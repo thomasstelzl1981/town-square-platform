@@ -1,94 +1,80 @@
 
+# Demo-Daten Korrektur und Tab-Erweiterung: Vorsorge vs. Investment
 
-# Personenakte erweitern: Beamte, Einkommensdaten und Pensionsberechnung
+## Phase 1: Demo-Daten Kategorie-Anpassung
 
-## Ist-Zustand
+### Problem
+Die zwei Fonds-Sparplaene (DWS Riester-Rente und Vanguard ETF-Sparplan) sind aktuell unter `DEMO_VORSORGE` eingeordnet. Logisch gehoeren sie als Investment-Sparplaene in die Investment-Kategorie.
 
-### Bereits vorhanden
-| Feld | Angestellte | Selbststaendige | Beamte |
-|---|---|---|---|
-| Bruttoeinkommen | Ja | - | Fehlt |
-| Nettoeinkommen | Ja | - | Fehlt |
-| Steuerklasse | Ja | - | Fehlt |
-| Kinderfreibetraege | Ja | - | Fehlt |
-| Arbeitgeber/Firma | Ja | Ja | Fehlt |
-| Besoldungsgruppe | - | - | Fehlt |
-| Erfahrungsstufe | - | - | Fehlt |
-| Dienstherr | - | - | Fehlt |
-| Verbeamtungsdatum | - | - | Fehlt |
+### Loesung: Neues DB-Feld `category`
 
-### Renteninformation (pension_records)
-Aktuell nur DRV-Felder (current_pension, projected_pension, disability_pension). Keine Unterscheidung zwischen gesetzlicher Rente und Beamtenpension. Beamte sind NICHT in der gesetzlichen Rentenversicherung -- die aktuelle Sektion "DRV Renteninformation" ist fuer Beamte falsch.
+Eine neue Spalte `category` in `vorsorge_contracts` trennt sauber:
+
+| Wert | Bedeutung | Beispiele |
+|---|---|---|
+| `vorsorge` (Default) | Renten-/Altersvorsorge | Ruerup, bAV, Versorgungswerk |
+| `investment` | Investment-Sparplaene | ETF-Sparplan, Fonds-Sparplan |
+
+**SQL Migration:**
+- `ALTER TABLE vorsorge_contracts ADD COLUMN category text NOT NULL DEFAULT 'vorsorge';`
+- `ALTER TABLE vorsorge_contracts ADD COLUMN current_balance numeric DEFAULT NULL;`
+- `ALTER TABLE vorsorge_contracts ADD COLUMN balance_date date DEFAULT NULL;`
+
+### Demo-Daten Update (`src/engines/demoData/data.ts` + `spec.ts`)
+
+Das `DemoVorsorgeContract` Interface erhaelt ein neues Feld `category`:
+- Ruerup (ID_VS_RUERUP): `category: 'vorsorge'` -- bleibt
+- bAV (ID_VS_BAV): `category: 'vorsorge'` -- bleibt
+- DWS Riester (ID_VS_RIESTER): `category: 'investment'` -- verschoben
+- Vanguard ETF (ID_VS_ETF): `category: 'investment'` -- verschoben
+
+Zusaetzlich erhaelt jeder Demo-Vertrag realistische Guthaben-Werte:
+- Ruerup: 21.000 EUR (seit 2019, 250/mtl.)
+- bAV: 14.400 EUR (seit 2020, 200/mtl.)
+- DWS Fonds-Sparplan: 15.600 EUR (seit 2018, 162/mtl.)
+- Vanguard ETF: 16.200 EUR (seit 2021, 300/mtl.)
+
+Die DB-geseedeten Eintraege werden per UPDATE-Statement korrigiert.
 
 ---
 
-## Umsetzungsplan
+## Phase 2: Tab-Erweiterung (Guthaben + Datum)
 
-### 1. Datenbank erweitern (SQL Migration)
+### VorsorgeTab (`src/pages/portal/finanzanalyse/VorsorgeTab.tsx`)
 
-**Tabelle `household_persons` -- neue Spalten fuer Beamte:**
+Aenderungen:
+1. **Filter**: Nur `category = 'vorsorge'` anzeigen (oder `category IS NULL`)
+2. **Neue Felder** im Formular:
+   - "Aktuelles Guthaben (EUR)" -- numerisch
+   - "Stand per" -- Datumsfeld
+3. **Widget-Karte**: Guthaben + Datum in der Zusammenfassung anzeigen
+4. **Mutations**: `current_balance` und `balance_date` in create/update aufnehmen
 
-| Spalte | Typ | Beschreibung |
-|---|---|---|
-| `besoldungsgruppe` | text | z.B. "A13", "A14", "B3" |
-| `erfahrungsstufe` | integer | 1-8 (je nach Besoldungsordnung) |
-| `dienstherr` | text | "bund" oder Bundesland-Kuerzel |
-| `verbeamtung_date` | date | Datum der Verbeamtung |
-| `ruhegehaltfaehiges_grundgehalt` | numeric | Monatliches ruhegehaltfaehiges Grundgehalt |
-| `ruhegehaltfaehige_dienstjahre` | numeric | Anrechenbare Dienstjahre (inkl. Vordienstzeiten) |
-| `planned_retirement_date` | date | Geplantes Ruhestandsdatum |
+### InvestmentTab (`src/pages/portal/finanzanalyse/InvestmentTab.tsx`)
 
-**Tabelle `pension_records` -- neue Spalte:**
+Aenderungen:
+1. **Neue Sektion** unterhalb der Depot-Verwaltung: "Investment-Sparplaene"
+2. **Query**: `vorsorge_contracts` mit `category = 'investment'` laden
+3. **WidgetGrid** mit denselben CI-Kacheln wie VorsorgeTab
+4. **Formular-Felder** identisch: Anbieter, Vertragsnummer, Beitrag, Intervall, Person, Guthaben, Stand-Datum
+5. **CRUD-Operationen**: Anlegen/Bearbeiten/Loeschen von Investment-Sparplaenen
 
-| Spalte | Typ | Beschreibung |
-|---|---|---|
-| `pension_type` | text | "drv" (Standard) oder "beamtenpension" |
+### Finanzuebersicht-Engine (`src/engines/finanzuebersicht/engine.ts`)
 
-### 2. UI-Erweiterung (UebersichtTab.tsx)
+Die bestehende `isInvestmentContract()`-Funktion wird durch das neue `category`-Feld ersetzt:
+- Vorher: Heuristik basierend auf contract_type String-Matching
+- Nachher: Direkte Abfrage `category === 'investment'`
 
-**Beamten-Sektion (employment_status === 'beamter'):**
-Zeigt dieselben allgemeinen Felder wie Angestellte (Brutto, Netto, Steuerklasse, Kinderfreibetraege) PLUS beamtenspezifische Felder:
-- Dienstherr (Select: Bund, Bayern, Baden-Wuerttemberg, ... alle 16 Laender)
-- Besoldungsgruppe (Select: A2-A16, B1-B11, W1-W3, R1-R10)
-- Erfahrungsstufe (Select: 1-8)
-- Ruhegehaltfaehiges Grundgehalt (numerisch)
-- Datum der Verbeamtung (Datum)
-- Ruhegehaltfaehige Dienstjahre (numerisch)
-- Geplantes Ruhestandsdatum (Datum)
+---
 
-**Renten-/Pensionssektion -- bedingte Anzeige:**
-- Bei `employment_status !== 'beamter'`: Sektion "DRV Renteninformation" (wie bisher)
-- Bei `employment_status === 'beamter'`: Sektion "Pensionsanspruch" mit berechneten Werten:
-  - Versorgungssatz = Dienstjahre x 1,79375% (max. 71,75%)
-  - Brutto-Pension = Ruhegehaltfaehiges Grundgehalt x Versorgungssatz
-  - Anzeige als read-only KPI-Felder
-
-### 3. Pensionsberechnungslogik
-
-Gesetzliche Grundlage (BeamtVG):
-
-```text
-Versorgungssatz = min(Dienstjahre x 1,79375%, 71,75%)
-Brutto-Pension  = Ruhegehaltfaehiges Grundgehalt x Versorgungssatz
-Mindestversorgung = 35% des Grundgehalts (amtsabhaengig)
-
-Bei vorzeitigem Ruhestand:
-  Abschlag = Monate vor Regelaltersgrenze x 0,3% (max. 10,8%)
-  Gekuerzte Pension = Brutto-Pension x (1 - Abschlag)
-```
-
-Diese Logik wird direkt inline in der UI berechnet (kein separater Engine-File noetig, da es eine einfache Formel ist). Spaeter kann sie in eine Engine ausgelagert werden, wenn das Renten-Tool gebaut wird.
-
-### 4. Dateien betroffen
+## Betroffene Dateien
 
 | Datei | Aenderung |
 |---|---|
-| SQL Migration | Neue Spalten in `household_persons` und `pension_records` |
-| `src/pages/portal/finanzanalyse/UebersichtTab.tsx` | Beamten-Formularfelder, bedingte Renten-/Pensions-Sektion, Inline-Berechnung |
-
-### 5. Fehlende Felder bei Angestellten -- Pruefung
-
-Die Angestellten-Sektion ist bereits vollstaendig:
-- Arbeitgeber, Brutto, Netto, Steuerklasse, Kinderfreibetraege -- alles vorhanden.
-- Zusaetzlich sinnvoll waere "Beschaeftigt seit" (Datum), aber das ist optional und nicht zwingend fuer die Rentenberechnung, da die DRV-Daten direkt vom Rentenbescheid kommen.
-
+| SQL Migration | 3 neue Spalten: `category`, `current_balance`, `balance_date` |
+| `src/engines/demoData/spec.ts` | `DemoVorsorgeContract` um `category`, `currentBalance`, `balanceDate` erweitern |
+| `src/engines/demoData/data.ts` | Kategorien und Guthaben-Werte fuer alle 4 Demo-Vertraege setzen |
+| `src/pages/portal/finanzanalyse/VorsorgeTab.tsx` | Filter + 2 neue Formularfelder + Widget-Anzeige |
+| `src/pages/portal/finanzanalyse/InvestmentTab.tsx` | Neue Sektion "Investment-Sparplaene" mit CRUD |
+| `src/engines/finanzuebersicht/engine.ts` | `isInvestmentContract()` auf `category`-Feld umstellen |
+| `src/hooks/useFinanzmanagerData.ts` | create/update Mutations um neue Felder erweitern |
