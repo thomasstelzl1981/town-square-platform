@@ -1,142 +1,51 @@
 
-# Zuhause-Akte: Inline-Dossier mit erweiterten Gebaeudedaten
+
+# Street View Widget interaktiv machen (Inline, kein Pop-Up)
 
 ## Ist-Zustand
-- Klick auf "Oeffnen" navigiert zu separater Route `/portal/immobilien/zuhause/zuhause/:homeId`
-- Demo-Adresse stimmt bereits mit Stammdaten ueberein (Sauerlacher Strasse 30, 82041 Oberhaching)
-- Demo-Home ist als "Miete" markiert, obwohl es ein Haus mit 300m2 und 6 Zimmern ist — wird auf "Eigentum" geaendert
-- Keine erweiterten Gebaeudedaten (Baujahr, Verkehrswert etc.)
+Die Street-View-Kachel in der UebersichtTile zeigt nur ein statisches Bild (Google Street View Static API). Es gibt keinen Link und keine Moeglichkeit, interaktiv durch die Strasse zu navigieren.
 
-## Geplante Aenderungen
+## Loesung
+Die Street-View-Kachel wird klickbar gemacht. Bei Klick wird das statische Bild durch ein interaktives Google Street View Embed ersetzt — direkt in der Kachel selbst, ohne Pop-Up oder neue Seite.
 
-### 1. Datenbank: `miety_homes` erweitern
+## Technische Umsetzung
 
-Neue Spalten:
-| Spalte | Typ | Default |
-|--------|-----|---------|
-| `construction_year` | integer | null |
-| `market_value` | numeric | null |
-| `floor_count` | integer | null |
-| `bathrooms_count` | numeric | null |
-| `heating_type` | text | null |
-| `has_garage` | boolean | false |
-| `has_garden` | boolean | false |
-| `has_basement` | boolean | false |
-| `last_renovation_year` | integer | null |
-| `plot_area_sqm` | numeric | null |
+### Datei: `src/pages/portal/miety/tiles/UebersichtTile.tsx`
 
-Demo-Datensatz aktualisieren: `ownership_type` von 'miete' auf 'eigentum' setzen plus Demo-Werte fuer die neuen Felder (Baujahr 2005, Verkehrswert 850000, 2 Etagen, 2 Baeder, Gas-Heizung, Garage+Garten+Keller, Grundstueck 620m2).
+**Aenderung an der Street-View-Kachel (Zeilen 195-222):**
 
-### 2. Datenbank: Neue Tabelle `miety_loans`
+1. Neuer State: `streetViewActive` (boolean, default false)
+2. Die Kachel wird bei Klick umgeschaltet:
+   - **Inaktiv (Standard):** Statisches Bild wie bisher, mit einem kleinen "Street View starten"-Overlay-Button
+   - **Aktiv:** Ein `iframe` mit der interaktiven Google Street View Embed API ersetzt das statische Bild. Die Kachel wird auf eine groessere Hoehe (z.B. 400px) erweitert und nimmt die volle Breite des 3-Spalten-Grids ein (`col-span-3`), damit die Navigation komfortabel ist
+3. Ein "Schliessen"-Button bringt die Kachel zurueck zum statischen Bild
 
-Fuer Eigentum — Immobiliendarlehen:
-| Spalte | Typ |
-|--------|-----|
-| `id` | uuid PK |
-| `home_id` | uuid FK -> miety_homes |
-| `tenant_id` | uuid |
-| `bank_name` | text |
-| `loan_amount` | numeric |
-| `interest_rate` | numeric |
-| `monthly_rate` | numeric |
-| `start_date` | date |
-| `end_date` | date |
-| `remaining_balance` | numeric |
-| `loan_type` | text |
-| `notes` | text |
+**Embed-URL-Muster:**
+```text
+https://www.google.com/maps/embed/v1/streetview?key=${mapsApiKey}&location=${lat},${lng}&heading=0&pitch=0&fov=90
+```
+Da wir keine exakten Koordinaten haben, verwenden wir alternativ den Parameter `location` mit der kodierten Adresse oder die generische Embed-URL:
+```text
+https://www.google.com/maps/embed?pb=...&layer=streetview
+```
+Oder zuverlaessiger die einfache Embed-Variante:
+```text
+https://www.google.com/maps/embed/v1/streetview?key=${mapsApiKey}&location=${mapQuery}
+```
 
-RLS: tenant_id-basiert, gleiche Logik wie miety_homes.
+**Visuelles Verhalten:**
+- Klick auf das statische Bild -> Kachel expandiert auf `col-span-3` mit 400px Hoehe
+- Ein interaktives Street View iframe wird geladen
+- Der Nutzer kann mit Maus/Touch durch die Strassen navigieren
+- Ein "X"-Button oben rechts schliesst die interaktive Ansicht und stellt das statische Bild wieder her
 
-### 3. Datenbank: Neue Tabelle `miety_tenancies`
+### Keine weiteren Dateien betroffen
 
-Fuer Miete — Mietverhaeltnis:
-| Spalte | Typ |
-|--------|-----|
-| `id` | uuid PK |
-| `home_id` | uuid FK -> miety_homes |
-| `tenant_id` | uuid |
-| `landlord_name` | text |
-| `landlord_contact` | text |
-| `base_rent` | numeric |
-| `additional_costs` | numeric |
-| `total_rent` | numeric |
-| `deposit_amount` | numeric |
-| `lease_start` | date |
-| `lease_end` | date (nullable) |
-| `cancellation_period` | text |
-| `notes` | text |
+Es wird nur die UebersichtTile.tsx modifiziert. Keine neuen Komponenten, keine Datenbankmigrationen, keine Route-Aenderungen.
 
-RLS: gleiche Logik.
-
-### 4. UebersichtTile.tsx — Inline-Akte statt Navigation
-
-**Muster wie Finanzanalyse:** `openCardId` State + `toggleCard` Funktion.
-
-- Der "Oeffnen"-Button wird zum Toggle (klappt die Akte unterhalb der Widgets auf/zu)
-- Statt `navigate(...)` wird `setOpenCardId(home.id)` aufgerufen
-- Unterhalb des Widget-Grids wird bei geoeffneter Akte der bisherige `MietyHomeDossier`-Inhalt inline gerendert (2-Spalten-Layout mit Dokumentenbaum links, Accordion rechts)
-- Die Accordion-Sektionen bleiben bestehen, ergaenzt um neue Sektionen
-
-### 5. Neue Accordion-Sektionen im Dossier
-
-**A) "Gebaeudedetails"** (zwischen Uebersicht und Vertraege):
-- Kompaktes Grid mit: Baujahr, Verkehrswert, Etagen, Baeder, Heizung, Grundstueck, Garage/Garten/Keller
-- Bearbeiten-Button fuehrt in den bestehenden Bearbeitungsmodus
-
-**B) "Darlehen"** (nur bei ownership_type === 'eigentum'):
-- Liste vorhandener Darlehen mit Bank, Betrag, Rate, Zinsbindung
-- Plus-Button zum Hinzufuegen (Inline-Formular oder Drawer)
-
-**C) "Mietverhaeltnis"** (nur bei ownership_type === 'miete'):
-- Vermieter-Kontakt, Kaltmiete, Nebenkosten, Kaution, Kuendigungsfrist
-- Bearbeiten/Anlegen Funktionalitaet
-
-### 6. MietyCreateHomeForm.tsx erweitern
-
-Neue Felder im Formular (unterhalb der bestehenden):
-- Baujahr, Verkehrswert, Heizungsart (Select: Gas, Oel, Fernwaerme, Waermepumpe, Pellet)
-- Etagen, Badezimmer, Grundstuecksflaeche
-- Checkboxen: Garage, Garten, Keller
-- Letzte Sanierung (Jahr)
-
-### 7. Routing anpassen
-
-Die separate Route `/portal/immobilien/zuhause/zuhause/:homeId` bleibt als Fallback bestehen, aber der primaere Zugang erfolgt jetzt inline in der UebersichtTile. Der "Oeffnen"-Button in der Adress-Kachel toggelt die Inline-Akte auf/zu.
-
-## Betroffene Dateien
+## Zusammenfassung
 
 | Datei | Aenderung |
 |-------|-----------|
-| DB-Migration | miety_homes erweitern, miety_loans + miety_tenancies erstellen, Demo-Update |
-| `src/pages/portal/miety/tiles/UebersichtTile.tsx` | Inline-Akte mit openCardId Pattern statt Navigation |
-| `src/pages/portal/miety/components/MietyCreateHomeForm.tsx` | Neue Gebaeude-Felder |
-| `src/pages/portal/miety/MietyHomeDossier.tsx` | Neue Accordion-Sektionen (Gebaeudedetails, Darlehen, Mietverhaeltnis) |
-| Neue: `src/pages/portal/miety/components/BuildingDetailsSection.tsx` | Gebaeudedaten-Anzeige |
-| Neue: `src/pages/portal/miety/components/LoanSection.tsx` | Darlehensliste mit CRUD |
-| Neue: `src/pages/portal/miety/components/TenancySection.tsx` | Mietverhaeltnis mit CRUD |
+| `UebersichtTile.tsx` | Street-View-Kachel: State fuer aktiv/inaktiv, Klick expandiert zu interaktivem iframe (col-span-3, 400px), Schliessen-Button |
 
-## Technische Details
-
-Das Inline-Pattern folgt exakt dem Finanzanalyse-Vorbild:
-
-```text
-// State
-const [openCardId, setOpenCardId] = useState<string | null>(null);
-
-// Toggle
-const toggleCard = (id: string) => {
-  setOpenCardId(prev => prev === id ? null : id);
-};
-
-// Widget mit Toggle statt Navigation
-<Button onClick={() => toggleCard(home.id)}>
-  {openCardId === home.id ? 'Schliessen' : 'Oeffnen'}
-</Button>
-
-// Inline-Akte unterhalb der Widgets
-{openCardId && (
-  <Card className="glass-card p-6 mt-4">
-    {/* 2-Column Dossier content */}
-  </Card>
-)}
-```
