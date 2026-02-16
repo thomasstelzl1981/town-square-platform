@@ -188,14 +188,13 @@ export async function calculateSettlement(
     .filter((r) => r.categoryCode === NKCostCategory.HEIZUNG || r.categoryCode === NKCostCategory.WARMWASSER)
     .reduce((sum, r) => sum + r.shareUnit, 0);
 
-  const { prepaidNK } = calculateProratedPrepayments(
+  const { prepaidNK, prepaidHeating } = calculateProratedPrepayments(
     lease.nk_advance_eur || 0,
-    0,
+    lease.heating_advance_eur || 0,
     periodInfo
   );
-  const prepaidHeating = 0;
 
-  const totalPrepaid = prepaidNK;
+  const totalPrepaid = prepaidNK + prepaidHeating;
   const totalCostsTenant = totalApportionable;
   const balance = Math.round((totalCostsTenant - totalPrepaid) * 100) / 100;
 
