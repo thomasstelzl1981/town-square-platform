@@ -31,3 +31,7 @@ export * from './demoData';
 // Engine 8: Finanzübersicht
 export * from './finanzuebersicht/engine';
 export * from './finanzuebersicht/spec';
+
+// Engine 9: Vorsorge-Lückenrechner
+export * from './vorsorgeluecke/engine';
+export * from './vorsorgeluecke/spec';
