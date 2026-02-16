@@ -38,14 +38,14 @@ export const areaConfig: AreaDefinition[] = [
     label: 'Manager',
     labelShort: 'Manager',
     icon: 'Settings',
-    modules: ['MOD-13', 'MOD-09', 'MOD-11', 'MOD-12', 'MOD-10', 'MOD-14'],
+    modules: ['MOD-13', 'MOD-09', 'MOD-11', 'MOD-12', 'MOD-10'],
   },
   {
     key: 'services',
     label: 'Service',
     labelShort: 'Service',
     icon: 'Grid',
-    modules: ['MOD-15', 'MOD-05', 'MOD-16', 'MOD-17', 'MOD-19'],
+    modules: ['MOD-15', 'MOD-05', 'MOD-16', 'MOD-17', 'MOD-19', 'MOD-14'],
   },
   {
     key: 'base',
