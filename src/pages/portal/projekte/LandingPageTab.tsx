@@ -137,7 +137,7 @@ export default function LandingPageTab() {
               'h-full cursor-pointer transition-all group flex flex-col',
               DESIGN.DEMO_WIDGET.CARD,
               DESIGN.DEMO_WIDGET.HOVER,
-              isSelectedDemo && 'ring-2 ring-primary shadow-glow',
+              isSelectedDemo && 'ring-2 ring-emerald-400 shadow-glow',
             )}
             onClick={() => setSelectedId(DEMO_PROJECT_ID)}
           >

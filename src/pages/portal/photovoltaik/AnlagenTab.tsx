@@ -226,7 +226,7 @@ export default function AnlagenTab() {
                 "h-full cursor-pointer transition-colors",
                 DESIGN.DEMO_WIDGET.CARD,
                 DESIGN.DEMO_WIDGET.HOVER,
-                viewMode === 'demo' && 'ring-2 ring-primary'
+                viewMode === 'demo' && 'ring-2 ring-emerald-400'
               )}
               onClick={handleOpenDemo}
             >
