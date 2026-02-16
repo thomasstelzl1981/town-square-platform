@@ -1,131 +1,109 @@
 
-# Zuhause-Akte verbreitern, Miet-/Darlehensverhältnis daneben, Vermögensauskunft mit Immobilien- und Darlehensaufstellung
 
-## Zusammenfassung
+# Finanzbericht-Korrekturen: 6 Punkte
 
-Drei zusammenhaengende Aenderungen:
-1. Die Zuhause-Akte (Inline-Dossier) bekommt ein breiteres Layout mit dem Miet- oder Darlehensverhältnis als eigene Spalte rechts neben der Akte
-2. Der Finanzbericht erhaelt zwei neue dedizierte Sektionen: Immobilienaufstellung und Darlehensaufstellung
-3. Demo-Daten fuer das eigengenutzte Darlehen (miety_loans) werden angelegt
+## 1. Krankenversicherung im Finanzbericht aufnehmen
 
----
+Die KV-Daten liegen nur clientseitig vor (DEMO_KV_CONTRACTS in `src/engines/demoData/data.ts`). Nur die private KV (PKV) von Max (685 EUR/mtl.) ist ausgabenrelevant — Lisas GKV wird komplett vom Arbeitgeber getragen, die Kinder sind familienversichert.
 
-## 1. Zuhause-Akte: Breiteres Layout mit Miet-/Darlehensverhältnis
+**Aenderungen:**
+- `useFinanzberichtData.ts`: KV-Daten aus `getDemoKVContracts()` importieren und in Ausgaben integrieren (nur PKV-Beitraege ohne AG-Anteil)
+- Neues Feld `healthInsurance` in `FinanzberichtExpenses` (685 EUR/mtl.)
+- Neues Return-Feld `kvContracts` fuer die Auflistung im Bericht
+- `FinanzberichtSection.tsx`: Neue Sektion "Krankenversicherung" mit Uebersicht aller Haushaltsmitglieder (Typ, Versicherer, Beitrag, AG-Anteil)
+- In Ausgaben-Sektion: neue Zeile "Krankenversicherung (PKV)" mit 685 EUR
 
-### Ist-Zustand
-`MietyHomeDossierInline.tsx` hat ein 2-Spalten-Layout: Links Dokumentenbaum (280px), rechts Accordion-Sektionen. Das Miet-/Darlehensverhältnis ist als Accordion-Eintrag versteckt.
+## 2. Portfolio-Darlehen: Bank und Darlehenssumme ergaenzen
 
-### Neues Layout (3-Spalten)
-```text
-+-------------------+---------------------------+-------------------------+
-| Dokumentenbaum    | Zuhause-Akte              | Miet-/Darlehensverhältnis|
-| (250px)           | (Gebaeude, Vertraege,     | (Loan- ODER Tenancy-    |
-|                   |  Zaehler, Versicherungen) |  Sektion, je nach       |
-|                   |                           |  ownership_type)        |
-+-------------------+---------------------------+-------------------------+
-```
+Die `loans`-Tabelle hat `bank_name` und `original_amount`, aber der Hook selektiert diese Felder nicht.
 
-### Aenderungen in `MietyHomeDossierInline.tsx`
-- Grid von `lg:grid-cols-[280px_1fr]` auf `lg:grid-cols-[250px_1fr_380px]` aendern
-- Die dritte Spalte zeigt konditional:
-  - Bei `ownership_type === 'eigentum'`: `LoanSection` in einer Card mit Titel "Finanzierung"
-  - Bei `ownership_type === 'miete'`: `TenancySection` in einer Card mit Titel "Mietverhaeltnis"
-- Die bisherigen Accordion-Items "Darlehen" und "Mietverhaeltnis" aus dem mittleren Bereich entfernen (da jetzt rechts)
-- `PageShell` mit `fullWidth` Prop verwenden, damit die volle Breite genutzt wird
+**Aenderungen:**
+- `useFinanzberichtData.ts` Zeile 271: Query erweitern um `bank_name, original_amount`
+- Zeile 432-439: `bank` von `'—'` auf `l.bank_name` und `loanAmount` von `0` auf `l.original_amount` aendern
 
-### Gleiche Aenderung in `MietyHomeDossier.tsx` (Standalone-Route)
-- Ebenfalls auf 3-Spalten-Layout umstellen
-- Rechte Spalte mit Loan/Tenancy-Section
+Aktuelle Demo-Daten (bereits korrekt in DB):
+- BER-01: Sparkasse Berlin, 252.000 EUR
+- MUC-01: HypoVereinsbank, 378.000 EUR
+- HH-01: Hamburger Sparkasse, 157.500 EUR
 
----
+## 3. Steuereffekt Kapitalanlage als Einnahme
 
-## 2. Finanzbericht: Immobilienaufstellung und Darlehensaufstellung
+Kapitalanlage-Immobilien erzeugen typischerweise steuerliche Verluste (AfA, Zinsen uebersteigen Einnahmen), die das zu versteuernde Einkommen senken. Der monatliche Steuereffekt muss als Einnahme dargestellt werden.
 
-### Ist-Zustand
-Der Finanzbericht zeigt Immobilien und Darlehen nur als aggregierte Summen (z.B. "Immobilienportfolio: 995.000 EUR", "Portfolio-Darlehen: 710.000 EUR"). Es fehlt eine detaillierte Aufschluesselung.
+**Aenderungen:**
+- `FinanzberichtIncome`: Neues Feld `taxBenefitRental`
+- Berechnung: Vereinfachte Schaetzung basierend auf Portfolio-Daten:
+  - Jaehrliche AfA (2% auf Gebaeudewert, ~80% des Kaufpreises)
+  - Jaehrliche Zinsen (aus loans)
+  - Jaehrliche Mieteinnahmen (aus portfolioSummary)
+  - Steuerlicher Verlust = Mieteinnahmen - Zinsen - AfA - Verwaltung
+  - Steuereffekt = Verlust * angenommener Grenzsteuersatz (42%)
+- In Einnahmen-Sektion: neue Zeile "Steuereffekt Kapitalanlage"
 
-### Neue Sektionen im `FinanzberichtSection.tsx`
+## 4. Lebenshaltungskosten: 35% der Arbeitseinkommen
 
-**Sektion "Immobilienaufstellung" (zwischen Vermoegen/Verbindlichkeiten und KPIs):**
-- Tabelle mit allen Immobilien (Portfolio + eigengenutzt)
-- Spalten: Bezeichnung, Stadt, Typ, Marktwert, Kaufpreis, Eigenanteil
-- Summenzeile am Ende
+Aktuell wird `living_expenses_monthly` aus `applicant_profiles` gelesen (2.200 EUR). Stattdessen soll der Wert als 35% der Arbeitseinkommen (Netto + Selbststaendig, ohne V+V und PV) berechnet werden.
 
-**Sektion "Darlehensaufstellung" (direkt nach Immobilienaufstellung):**
-- Tabelle mit allen Darlehen (Portfolio-Darlehen + Zuhause-Darlehen + PV-Darlehen)
-- Spalten: Bank/Kreditgeber, Zuordnung, Darlehenssumme, Restschuld, Zinssatz, Monatsrate
-- Summenzeile am Ende
+**Aenderungen:**
+- `useFinanzberichtData.ts`: `livingExpenses` nicht aus DB, sondern berechnen:
+  ```
+  livingExpenses = (netIncomeTotal + selfEmployedIncome) * 0.35
+  ```
+  - Max: 8.500 EUR + Lisa: 3.200 EUR = 11.700 EUR * 0.35 = 4.095 EUR/mtl.
 
-### Erweiterung `useFinanzberichtData.ts`
-- Neue Return-Felder: `propertyList` (Array mit allen Immobilien-Details) und `loanList` (Array mit allen Darlehen-Details)
-- Portfolio-Properties Query erweitern um: `code, city, address, market_value, purchase_price, property_type`
-- Portfolio-Loans erweitern um: Bank-Name (falls vorhanden), Zuordnung zum Objekt
-- Zuhause-Daten (miety_homes) ebenfalls als Zeile einfuegen
-- Miety-Loans mit Zuordnung "Eigengenutzt" kennzeichnen
-- PV-Darlehen mit Zuordnung "Photovoltaik" kennzeichnen
+## 5. Vorsorge-Sparplaene nach Investment verschieben
 
----
+Aktuell werden Vorsorge-Vertraege mit "spar" im Typ als `savingsContracts` gefuehrt. Der "Privater ETF-Sparplan" (300 EUR/mtl.) gehoert aber in die Investment-Sektion.
 
-## 3. Demo-Daten: Eigengenutztes Darlehen
+**Aenderungen:**
+- `useFinanzberichtData.ts`: Filter-Logik aendern — Vertraege mit Typ "ETF-Sparplan" oder "Sparplan" als `investmentContracts` separieren (neues Return-Feld)
+- Reine Sparvertraege (z.B. Bausparvertrag) bleiben bei `savingsContracts`
+- `FinanzberichtSection.tsx`: Neue Sektion "Investment" mit Icon `TrendingUp` fuer ETF-Sparplaene
+- Ausgaben-Aufteilung: "Sparvertraege" und "Investment" getrennt anzeigen
 
-### DB-Migration
-Neuer Eintrag in `miety_loans` fuer die Villa Mustermann:
-- home_id: `da78ca31-7456-44a8-980c-3e374818b49e`
-- tenant_id: `a0000000-0000-4000-a000-000000000001`
-- bank_name: "Sparkasse Muenchen"
-- loan_amount: 650000
-- remaining_balance: 520000
-- interest_rate: 2.85
-- monthly_rate: 2450
-- loan_type: "annuitaet"
-- start_date: 2020-03-01
-- end_date: 2030-03-01
-
----
-
-## 4. Build-Warning Fix
-`ManifestRouter.tsx` importiert `PortalDashboard` sowohl statisch (Zeile 94) als auch dynamisch (Zeile 291). Der dynamische Import wird entfernt, da er nicht im `portalModulePageMap` verwendet wird (der statische Import auf Zeile 547 genuegt).
-
----
-
-## 5. Betroffene Dateien
+## 6. Betroffene Dateien
 
 | Datei | Aenderung |
 |-------|-----------|
-| `src/pages/portal/miety/MietyHomeDossierInline.tsx` | 3-Spalten-Layout, Loan/Tenancy rechts |
-| `src/pages/portal/miety/MietyHomeDossier.tsx` | 3-Spalten-Layout, Loan/Tenancy rechts |
-| `src/hooks/useFinanzberichtData.ts` | `propertyList` und `loanList` als neue Return-Felder |
-| `src/components/finanzanalyse/FinanzberichtSection.tsx` | Neue Sektionen: Immobilienaufstellung, Darlehensaufstellung |
-| `src/router/ManifestRouter.tsx` | Doppelten PortalDashboard-Import entfernen |
-| DB-Migration | Demo-Darlehen fuer Villa Mustermann |
+| `src/hooks/useFinanzberichtData.ts` | KV-Import, loans Query erweitern (bank_name, original_amount), Steuereffekt berechnen, Lebenshaltungskosten-Formel, Investment-Vertraege separieren |
+| `src/components/finanzanalyse/FinanzberichtSection.tsx` | Neue Sektionen: Krankenversicherung, Investment; Ausgaben um KV erweitern; Steuereffekt-Zeile |
 
-## 6. Technische Details
+## 7. Technische Details
 
-### Property-List Typ
+### KV-Integration
 ```text
-interface PropertyListItem {
-  id: string;
-  label: string;       // Code oder Name
-  city: string;
-  type: string;        // "Kapitalanlage" | "Eigengenutzt"
-  marketValue: number;
-  purchasePrice: number;
-}
+import { getDemoKVContracts } from '@/engines/demoData';
+
+kvContracts = getDemoKVContracts()
+pkvExpense = sum of (monthlyPremium - employerContribution) where type === 'PKV'
+// Max: 685 - 0 = 685 EUR
+// Lisa: GKV mit 100% AG-Anteil → 0 EUR
 ```
 
-### Loan-List Typ
+### Steuereffekt-Berechnung
 ```text
-interface LoanListItem {
-  id: string;
-  bank: string;
-  assignment: string;  // "BER-01 Berlin" | "Eigengenutzt" | "PV-Anlage"
-  loanAmount: number;
-  remainingBalance: number;
-  interestRate: number;
-  monthlyRate: number;
-}
+totalPurchasePrice = sum(portfolioProperties.purchase_price)
+buildingValue = totalPurchasePrice * 0.80
+annualAfA = buildingValue * 0.02
+annualInterest = portfolioSummary.annualInterest
+annualRent = portfolioSummary.annualIncome
+taxLoss = annualRent - annualInterest - annualAfA
+taxBenefit = taxLoss < 0 ? abs(taxLoss) * 0.42 / 12 : 0
 ```
 
-### Aggregation im Hook
-- `propertyList` = Portfolio-Properties + miety_homes (ownership_type = eigentum)
-- `loanList` = Portfolio-Loans + miety_loans + PV-Loans (mit loan_bank)
+### Loans Query Fix
+```text
+// Vorher:
+.select('id, outstanding_balance_eur, annuity_monthly_eur, interest_rate_percent, property_id')
+// Nachher:
+.select('id, bank_name, original_amount, outstanding_balance_eur, annuity_monthly_eur, interest_rate_percent, property_id')
+```
+
+### Lebenshaltungskosten
+```text
+// Vorher: aus applicant_profiles.living_expenses_monthly
+// Nachher: berechnet
+livingExpenses = (netIncomeTotal + selfEmployedIncome) * 0.35
+// = (3200 + 8500) * 0.35 = 4095 EUR
+```
+
