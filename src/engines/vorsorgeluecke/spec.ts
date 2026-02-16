@@ -6,7 +6,7 @@
 // ─── Konstanten ──────────────────────────────────────────────
 export const DEFAULT_NEED_PERCENT = 0.75;
 export const DEFAULT_ANNUITY_YEARS = 25;
-export const DEFAULT_GROWTH_RATE = 0.05;
+export const DEFAULT_GROWTH_RATE = 0.04;
 export const DEFAULT_FALLBACK_YEARS_TO_RETIREMENT = 15;
 export const BEAMTE_MAX_VERSORGUNGSSATZ = 0.7175;
 export const BEAMTE_SATZ_PRO_JAHR = 0.0179375;
@@ -48,6 +48,7 @@ export interface VLPersonInput {
   ruhegehaltfaehiges_grundgehalt: number | null;
   ruhegehaltfaehige_dienstjahre: number | null;
   planned_retirement_date: string | null;
+  business_income_monthly: number | null;
 }
 
 export interface VLPensionInput {
@@ -69,6 +70,8 @@ export interface VLContractInput {
   payment_interval: string | null;
   status: string | null;
   category: string | null;
+  projected_end_value: number | null;
+  growth_rate_override: number | null;
 }
 
 // ─── Ausgabetypen ────────────────────────────────────────────

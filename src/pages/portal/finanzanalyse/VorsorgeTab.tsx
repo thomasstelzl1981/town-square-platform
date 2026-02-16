@@ -376,6 +376,11 @@ export default function VorsorgeTab() {
         contracts={contracts}
         onUpdatePerson={async (p) => { await updatePerson.mutateAsync(p); }}
         onUpsertPension={async (data) => { await upsertPension.mutateAsync(data); }}
+        onUpdateContract={async (c) => {
+          const { id, ...rest } = c;
+          await supabase.from('vorsorge_contracts').update(rest).eq('id', id);
+          queryClient.invalidateQueries({ queryKey: ['fin-vorsorge'] });
+        }}
       />
     </PageShell>
   );

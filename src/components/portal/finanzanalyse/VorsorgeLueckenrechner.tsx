@@ -44,6 +44,7 @@ interface Props {
     disability_pension?: number | null;
     pension_type?: string;
   }) => Promise<void>;
+  onUpdateContract?: (contract: Record<string, any>) => Promise<void>;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────
@@ -68,6 +69,7 @@ function mapPerson(p: any): VLPersonInput {
     ruhegehaltfaehiges_grundgehalt: p.ruhegehaltfaehiges_grundgehalt,
     ruhegehaltfaehige_dienstjahre: p.ruhegehaltfaehige_dienstjahre,
     planned_retirement_date: p.planned_retirement_date ?? null,
+    business_income_monthly: p.business_income_monthly ?? null,
   };
 }
 
@@ -93,6 +95,8 @@ function mapContract(c: any): VLContractInput {
     payment_interval: c.payment_interval ?? null,
     status: c.status,
     category: c.category,
+    projected_end_value: c.projected_end_value ?? null,
+    growth_rate_override: c.growth_rate_override ?? null,
   };
 }
 
@@ -137,7 +141,7 @@ const PENSION_TYPE_OPTIONS = [
 
 // ─── Component ───────────────────────────────────────────────
 
-export function VorsorgeLueckenrechner({ persons, pensionRecords, contracts, onUpdatePerson, onUpsertPension }: Props) {
+export function VorsorgeLueckenrechner({ persons, pensionRecords, contracts, onUpdatePerson, onUpsertPension, onUpdateContract }: Props) {
   const [selectedPersonId, setSelectedPersonId] = useState<string | null>(
     () => persons.find((p: any) => p.is_primary)?.id ?? persons[0]?.id ?? null,
   );
@@ -149,6 +153,7 @@ export function VorsorgeLueckenrechner({ persons, pensionRecords, contracts, onU
   // ─── Editable local state ───
   const [editNet, setEditNet] = useState<string>('');
   const [editGross, setEditGross] = useState<string>('');
+  const [editBusiness, setEditBusiness] = useState<string>('');
   const [editStatus, setEditStatus] = useState<string>('');
   const [editRetirement, setEditRetirement] = useState<string>('');
   const [editGrundgehalt, setEditGrundgehalt] = useState<string>('');
@@ -157,6 +162,7 @@ export function VorsorgeLueckenrechner({ persons, pensionRecords, contracts, onU
   const [editDisabilityPension, setEditDisabilityPension] = useState<string>('');
   const [editPensionType, setEditPensionType] = useState<string>('drv');
   const [isDirty, setIsDirty] = useState(false);
+  const [contractEdits, setContractEdits] = useState<Record<string, { growth_rate_override?: string; projected_end_value?: string }>>({});
 
   // Sync local state when person changes
   const rawPerson = persons.find((p: any) => p.id === selectedPersonId);
@@ -166,6 +172,7 @@ export function VorsorgeLueckenrechner({ persons, pensionRecords, contracts, onU
     if (rawPerson) {
       setEditNet(rawPerson.net_income_monthly?.toString() ?? '');
       setEditGross(rawPerson.gross_income_monthly?.toString() ?? '');
+      setEditBusiness(rawPerson.business_income_monthly?.toString() ?? '');
       setEditStatus(rawPerson.employment_status ?? '');
       setEditRetirement(rawPerson.planned_retirement_date ?? '');
       setEditGrundgehalt(rawPerson.ruhegehaltfaehiges_grundgehalt?.toString() ?? '');
@@ -180,6 +187,7 @@ export function VorsorgeLueckenrechner({ persons, pensionRecords, contracts, onU
       setEditDisabilityPension('');
       setEditPensionType('drv');
     }
+    setContractEdits({});
     setIsDirty(false);
   }, [selectedPersonId, rawPerson?.id, rawPension?.id]);
 
@@ -224,6 +232,7 @@ export function VorsorgeLueckenrechner({ persons, pensionRecords, contracts, onU
           id: selectedPersonId,
           net_income_monthly: editNet ? Number(editNet) : null,
           gross_income_monthly: editGross ? Number(editGross) : null,
+          business_income_monthly: editBusiness ? Number(editBusiness) : null,
           employment_status: editStatus || null,
           planned_retirement_date: editRetirement || null,
           ruhegehaltfaehiges_grundgehalt: editGrundgehalt ? Number(editGrundgehalt) : null,
@@ -238,6 +247,17 @@ export function VorsorgeLueckenrechner({ persons, pensionRecords, contracts, onU
           pension_type: editPensionType || 'drv',
         });
       }
+      // Save contract edits
+      if (onUpdateContract && Object.keys(contractEdits).length > 0) {
+        for (const [contractId, edits] of Object.entries(contractEdits)) {
+          await onUpdateContract({
+            id: contractId,
+            growth_rate_override: edits.growth_rate_override ? Number(edits.growth_rate_override) / 100 : null,
+            projected_end_value: edits.projected_end_value ? Number(edits.projected_end_value) : null,
+          });
+        }
+      }
+      setContractEdits({});
       setIsDirty(false);
       toast.success('Datenbasis gespeichert');
     } catch (e: any) {
@@ -299,7 +319,7 @@ export function VorsorgeLueckenrechner({ persons, pensionRecords, contracts, onU
               {/* 1) Persönliche Daten */}
               <div>
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Persönliche Daten</p>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
                   <div>
                     <Label className="text-[11px] text-muted-foreground">Netto mtl. (€)</Label>
                     <Input
@@ -308,6 +328,16 @@ export function VorsorgeLueckenrechner({ persons, pensionRecords, contracts, onU
                       value={editNet}
                       onChange={e => { setEditNet(e.target.value); markDirty(); }}
                       className={cn('mt-0.5', !editNet && emptyFieldClass)}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-[11px] text-muted-foreground">Gewerbe mtl. (€)</Label>
+                    <Input
+                      type="number"
+                      placeholder="z.B. 1800"
+                      value={editBusiness}
+                      onChange={e => { setEditBusiness(e.target.value); markDirty(); }}
+                      className="mt-0.5"
                     />
                   </div>
                   <div>
@@ -343,6 +373,13 @@ export function VorsorgeLueckenrechner({ persons, pensionRecords, contracts, onU
                     />
                   </div>
                 </div>
+                {(Number(editNet) > 0 || Number(editBusiness) > 0) && (
+                  <div className="mt-2 px-1">
+                    <p className="text-xs text-muted-foreground">
+                      Gesamteinkommen: <span className="font-semibold text-foreground">{fmt((Number(editNet) || 0) + (Number(editBusiness) || 0))}</span> / mtl.
+                    </p>
+                  </div>
+                )}
                 {isBeamter && (
                   <div className="grid grid-cols-2 gap-3 mt-3">
                     <div>
@@ -409,7 +446,7 @@ export function VorsorgeLueckenrechner({ persons, pensionRecords, contracts, onU
                 </div>
               </div>
 
-              {/* 3) Altersvorsorge-Verträge (readonly) */}
+              {/* 3) Altersvorsorge-Verträge (mit editierbarer Hochrechnung) */}
               <div>
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
                   Altersvorsorge-Verträge ({avContracts.length})
@@ -423,11 +460,32 @@ export function VorsorgeLueckenrechner({ persons, pensionRecords, contracts, onU
                           <TableHead className="text-[11px] h-8 text-right">Guthaben</TableHead>
                           <TableHead className="text-[11px] h-8 text-right">Rente mtl.</TableHead>
                           <TableHead className="text-[11px] h-8 text-right">Sparrate</TableHead>
+                          <TableHead className="text-[11px] h-8 text-right">Wachstum %</TableHead>
+                          <TableHead className="text-[11px] h-8 text-right">Hochrechnung</TableHead>
+                          <TableHead className="text-[11px] h-8 text-right">Rente a. Kapital</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {avContracts.map(c => {
                           const raw = contracts.find((r: any) => r.id === c.id);
+                          const edit = contractEdits[c.id] || {};
+                          const growthPct = edit.growth_rate_override ?? ((c.growth_rate_override ?? DEFAULT_GROWTH_RATE) * 100).toString();
+                          const projectedVal = edit.projected_end_value ?? (c.projected_end_value?.toString() || '');
+                          // Calculate auto projection for display
+                          const capital = c.insured_sum || c.current_balance || 0;
+                          const ytr = selectedPerson ? (() => {
+                            if (selectedPerson.planned_retirement_date) {
+                              const diff = new Date(selectedPerson.planned_retirement_date).getTime() - Date.now();
+                              return Math.max(0, diff / (365.25 * 24 * 60 * 60 * 1000));
+                            }
+                            return DEFAULT_FALLBACK_YEARS_TO_RETIREMENT;
+                          })() : DEFAULT_FALLBACK_YEARS_TO_RETIREMENT;
+                          const rate = Number(growthPct) / 100 || DEFAULT_GROWTH_RATE;
+                          const monthlyPremium = c.premium ? c.premium : 0;
+                          const autoProjected = capital * Math.pow(1 + rate, ytr) + (monthlyPremium > 0 ? monthlyPremium * 12 * ((Math.pow(1 + rate, ytr) - 1) / rate) : 0);
+                          const displayProjected = projectedVal ? Number(projectedVal) : autoProjected;
+                          const renteAusKapital = displayProjected / DEFAULT_ANNUITY_YEARS / 12;
+
                           return (
                             <TableRow key={c.id}>
                               <TableCell className="text-xs py-2">
@@ -437,6 +495,41 @@ export function VorsorgeLueckenrechner({ persons, pensionRecords, contracts, onU
                               <TableCell className="text-xs py-2 text-right">{c.current_balance ? fmt(c.current_balance) : '–'}</TableCell>
                               <TableCell className="text-xs py-2 text-right">{c.monthly_benefit ? fmt(c.monthly_benefit) : '–'}</TableCell>
                               <TableCell className="text-xs py-2 text-right">{c.premium ? fmt(c.premium) : '–'}</TableCell>
+                              <TableCell className="text-xs py-1 text-right">
+                                {c.monthly_benefit && c.monthly_benefit > 0 ? (
+                                  <span className="text-muted-foreground">–</span>
+                                ) : (
+                                  <Input
+                                    type="number"
+                                    step="0.1"
+                                    className="h-7 w-16 text-xs text-right ml-auto"
+                                    value={growthPct}
+                                    onChange={e => {
+                                      setContractEdits(prev => ({ ...prev, [c.id]: { ...prev[c.id], growth_rate_override: e.target.value } }));
+                                      markDirty();
+                                    }}
+                                  />
+                                )}
+                              </TableCell>
+                              <TableCell className="text-xs py-1 text-right">
+                                {c.monthly_benefit && c.monthly_benefit > 0 ? (
+                                  <span className="text-muted-foreground">–</span>
+                                ) : (
+                                  <Input
+                                    type="number"
+                                    className="h-7 w-24 text-xs text-right ml-auto"
+                                    placeholder={Math.round(autoProjected).toString()}
+                                    value={projectedVal}
+                                    onChange={e => {
+                                      setContractEdits(prev => ({ ...prev, [c.id]: { ...prev[c.id], projected_end_value: e.target.value } }));
+                                      markDirty();
+                                    }}
+                                  />
+                                )}
+                              </TableCell>
+                              <TableCell className="text-xs py-2 text-right font-medium">
+                                {c.monthly_benefit && c.monthly_benefit > 0 ? '–' : fmt(renteAusKapital)}
+                              </TableCell>
                             </TableRow>
                           );
                         })}
