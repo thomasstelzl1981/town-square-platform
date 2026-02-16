@@ -1,137 +1,110 @@
 
-# Mobile UX Tiefenanalyse und Optimierung
+# E-Mail-Client Stabilitaets-Optimierung
 
-## Ist-Zustand: Was ist auf Mobile NICHT sichtbar?
+## Problem-Zusammenfassung
 
-Die `MOBILE_HIDDEN_MODULES` Liste in `mobileConfig.ts` filtert 8 Module aus der **Area-Uebersicht** heraus. Nutzer sehen diese Module nicht in den Area-Karten und koennen sie nur ueber direkte URLs oder Armstrong erreichen:
+Der E-Mail-Client hat 3 strukturelle Schwaechen:
 
-```text
-VERSTECKT (Area-Karten nicht sichtbar):
-+--------------------------------------------+----------------------------+
-| Modul                                      | Grund / Bewertung          |
-+============================================+============================+
-| MOD-02  KI Office                          | FALSCH versteckt           |
-|   Brief, WhatsApp, Videocalls sind         | Hat bereits MobileGuard    |
-|   mobil-faehig (OfficePage.tsx)             | fuer Desktop-only Tabs     |
-+--------------------------------------------+----------------------------+
-| MOD-05  Pets                               | FALSCH versteckt           |
-|   Einfache Karten-UI                       | Kein Grund fuer Ausschluss |
-+--------------------------------------------+----------------------------+
-| MOD-17  Fahrzeuge                           | FALSCH versteckt           |
-|   Identisch mit MOD-19 (PV), das sichtbar  | Kein Grund fuer Ausschluss |
-|   ist                                      |                            |
-+--------------------------------------------+----------------------------+
-| MOD-09  Immomanager                        | OK — Partner-only          |
-| MOD-10  Lead Manager                       | OK — Partner-only          |
-| MOD-11  Finanzierungsmanager               | OK — Partner-only          |
-| MOD-12  Akquisemanager                     | OK — Partner-only          |
-| MOD-14  Communication Pro                  | OK — Partner-only          |
-+--------------------------------------------+----------------------------+
-```
+1. **IMAP Body-Fetch Unreliabilitaet**: 4-Tier-Strategie schlaegt bei vielen Mails fehl, weil die `deno-imap` Library nicht alle MIME-Strukturen korrekt parst
+2. **Keine automatische Wiederholung**: Kein Retry-Mechanismus bei fehlgeschlagenem Body-Fetch
+3. **Unnoetige Full-Refetches**: Nach Body-Laden wird die gesamte Liste neu geladen statt nur die einzelne Nachricht
 
-**Kernproblem:** MOD-02 (KI Office), MOD-05 (Pets) und MOD-17 (Fahrzeuge) sind faelschlicherweise komplett versteckt, obwohl sie mobile-taugliche UIs haben. MOD-02 hat sogar eine eingebaute `MobileGuard` die Desktop-only Tabs (E-Mail, Kontakte, Kalender) bereits filtert und auf Brief umleitet.
+## Loesungsansatz: 3-Schichten-Strategie (kostenlos)
 
-Die 5 Partner/Manager-Module (MOD-09, 10, 11, 12, 14) sind sinnvoll versteckt, da sie rollengebunden und komplex sind.
+Keine externen Vertraege noetig. Alle Verbesserungen nutzen bestehende Infrastruktur.
 
 ---
 
-## Design-Probleme am MobileBottomBar
+### Schicht 1: Robusterer IMAP-Sync (Edge Function)
 
-Die aktuelle Bottom-Bar hat folgende UX-Probleme:
+**Datei: `supabase/functions/sot-mail-sync/index.ts`**
 
-1. **Area-Buttons sind keine runden Buttons** — Sie sind als eckige `rounded-xl` Pills gestaltet, nicht als die gewuenschten runden Buttons
-2. **Zu wenig Abstand** zwischen Area-Buttons und Eingabezeile (nur `pb-1` = 4px)
-3. **Eingabezeile sitzt zu hoch** — `pb-2` (8px) reicht nicht, die Bar braucht mehr Luft nach unten
-4. **Kein Home-Button** in der Bottom-Bar — der Nutzer muss die SystemBar benutzen, um zurueck zum Chat zu kommen
-5. **Area-Buttons haben kein aktives Highlight** das deutlich genug ist (nur Farbaenderung, kein Hintergrund)
+- **Charset-Awareness**: Die `parseMimeMessage`-Funktion ignoriert aktuell den `charset`-Parameter im Content-Type. Emails mit `charset=iso-8859-1` oder `windows-1252` werden falsch dekodiert. Fix: Charset aus Content-Type extrahieren und an `TextDecoder` weitergeben.
+- **Content-Transfer-Encoding im Batch-Fetch**: Der Tier-0-Check (`BODY[1]`) prueft nicht auf Transfer-Encoding. Wenn der Body base64- oder QP-kodiert ist, wird er roh gespeichert. Fix: Transfer-Encoding aus `bodyStructure` lesen und anwenden.
+- **Timeout-Protection**: IMAP-Verbindungen haben kein Timeout. Wenn der Server haengt, blockiert die Edge Function bis zum 60s-Limit. Fix: `AbortController` mit 25s-Timeout.
+
+**Datei: `supabase/functions/sot-mail-fetch-body/index.ts`**
+
+- Gleiche Charset- und Encoding-Fixes wie oben
+- **Retry mit Backoff**: Bei Fehlschlag automatisch 1x mit 2s Pause wiederholen, bevor `success: false` zurueckgegeben wird
 
 ---
 
-## Massnahmenplan
+### Schicht 2: Intelligenteres Frontend-Caching (React Query)
 
-### 1. Module freischalten (mobileConfig.ts)
+**Datei: `src/pages/portal/office/EmailTab.tsx`**
 
-MOD-02, MOD-05 und MOD-17 aus der `MOBILE_HIDDEN_MODULES` Liste entfernen. Neue granulare Liste `MOBILE_HIDDEN_TILES` einfuehren, um innerhalb von MOD-02 die Desktop-only Tabs aus den SubTabs zu filtern.
+Aktuelles Problem: Nach dem Body-Fetch wird `refetchMessages()` aufgerufen, was die gesamte Liste neu laedt und die UI flackern laesst.
 
-```text
-MOBILE_HIDDEN_MODULES (NEU — nur 5 statt 8):
-  - MOD-09  Immomanager (Partner-only)
-  - MOD-10  Lead Manager (Partner-only)
-  - MOD-11  Finanzierungsmanager (Partner-only)
-  - MOD-12  Akquisemanager (Partner-only)
-  - MOD-14  Communication Pro (Partner-only)
+**Loesung: Optimistic Cache Update**
 
-MOBILE_HIDDEN_TILES (NEU):
-  - office/email      (Desktop-only — komplexe Mailbox)
-  - office/kontakte   (Desktop-only — Kontaktverwaltung)
-  - office/kalender   (Desktop-only — Kalender-UI)
-```
-
-### 2. SubTabs-Filterung fuer Mobile (SubTabs.tsx)
-
-Die `SubTabs` Komponente wird um `MOBILE_HIDDEN_TILES` Filterung erweitert, sodass auf Mobile nur die erlaubten Kacheln (Brief, Widgets, WhatsApp, Videocalls) angezeigt werden.
-
-### 3. MobileBottomBar Redesign
+Statt `refetchMessages()` nach Body-Fetch: Den Body direkt in den React Query Cache der Nachrichtenliste schreiben mit `queryClient.setQueryData`. Das aktualisiert nur die eine Nachricht ohne Netzwerk-Request.
 
 ```text
-VORHER (aktuell):
-+----------------------------------------------+
-| [Base]  [Client]  [Manager]  [Service]       |  <-- eckige Pills, kein Home
-| [Mic] [+] [Nachricht eingeben...] [Send]     |  <-- zu nah, zu hoch
-+----------------------------------------------+
+VORHER:
+  Body fetched -> refetchMessages() -> gesamte Liste neu laden -> UI flackert
 
-NACHHER (Redesign):
-+----------------------------------------------+
-|                                              |
-|  (Home)  (Base)  (Client)  (Manager) (Serv)  |  <-- 5 RUNDE Buttons mit Icons
-|                                              |  <-- 12px Abstand
-|  [Mic] [+] [Nachricht eingeben...]    [Send] |  <-- mehr Padding unten
-|                                              |
-+----------------------------------------------+
+NACHHER:
+  Body fetched -> queryClient.setQueryData(['email-messages', ...], updater) -> nur 1 Nachricht aktualisiert -> kein Flackern
 ```
 
-Konkrete Aenderungen:
+Zusaetzlich: **Auto-Retry mit Exponential Backoff**
+- Wenn der Body-Fetch fehlschlaegt: nach 2s automatisch nochmal versuchen
+- Maximal 2 Retries, dann "Erneut versuchen"-Button zeigen
+- Verhindert, dass der Nutzer manuell klicken muss
 
-- **Home-Button hinzufuegen**: Runder Button mit Home-Icon als erstes Element, navigiert zu `/portal` (Armstrong Chat)
-- **Runde Buttons**: Von `rounded-xl` auf `rounded-full` (h-12 w-12) wechseln, Icons zentriert, Label darunter
-- **Mehr Abstand**: Area-Buttons `pb-3` statt `pb-1`, Input-Bar `pb-4` statt `pb-2`
-- **Aktiver Zustand**: Aktiver Button bekommt `bg-primary/15 ring-1 ring-primary/30` statt nur Farbwechsel
-- **Home aktiv auf Dashboard**: Wenn `location.pathname === '/portal'`, wird Home hervorgehoben
+---
 
-### 4. SystemBar Mobile Optimierung
+### Schicht 3: Hintergrund-Sync mit Polling-Fallback
 
-- Armstrong-Button im SystemBar entfernen (redundant, Chat ist die Home-Ansicht)
-- Profil-Dropdown beibehalten
-- Home/Theme-Buttons beibehalten
+**Datei: `src/pages/portal/office/EmailTab.tsx`**
+
+Ein `useEffect`-Hook der im Hintergrund alle 60 Sekunden prueft, ob neue Nachrichten vorhanden sind (Smart Polling). Das stellt sicher, dass auch ohne manuelles "Synchronisieren" neue Mails angezeigt werden.
+
+```text
+useEffect:
+  - Alle 60s: supabase.from('mail_messages').select('id').eq('account_id', ...).order('received_at', desc).limit(1)
+  - Wenn neueste Message-ID != letzte bekannte ID: queryClient.invalidateQueries(['email-messages', ...])
+  - Kein voller Sync, nur ein leichtgewichtiger Check
+```
 
 ---
 
 ## Technische Umsetzung — Dateien
 
-### Datei 1: `src/config/mobileConfig.ts`
-- MOD-02, MOD-05, MOD-17 aus `MOBILE_HIDDEN_MODULES` entfernen
-- `MOBILE_HIDDEN_TILES` Map hinzufuegen: `{ 'office': ['email', 'kontakte', 'kalender'] }`
-- Hilfsfunktion `isTileHiddenOnMobile(moduleBase: string, tilePath: string): boolean`
+### 1. `supabase/functions/sot-mail-sync/index.ts`
+- Charset-Erkennung in `parseMimeMessage()` hinzufuegen
+- Transfer-Encoding aus `bodyStructure` im Tier-0-Check auslesen
+- 25s Timeout per `AbortController` fuer IMAP-Verbindung
+- Connection-Cleanup im `finally`-Block absichern
 
-### Datei 2: `src/components/portal/SubTabs.tsx`
-- Import von `isTileHiddenOnMobile`
-- Tiles auf Mobile filtern: `module.tiles.filter(t => !isMobile || !isTileHiddenOnMobile(moduleBase, t.path))`
+### 2. `supabase/functions/sot-mail-fetch-body/index.ts`
+- Gleiche Charset-Fixes
+- 1x automatischer Retry bei Fehlschlag (2s Pause)
+- Timeout-Protection (20s)
 
-### Datei 3: `src/components/portal/MobileBottomBar.tsx`
-- Home-Button als 5. Element in die Area-Leiste einfuegen (Position 0, vor den 4 Areas)
-- Buttons von `rounded-xl` auf `rounded-full` (h-11 w-11) aendern
-- Abstand zwischen Buttons und Input erhoehen (`pb-3` und `pb-4`)
-- Aktiver Zustand mit Hintergrund-Highlight
-- Dashboard-Erkennung fuer Home-Button aktiv-Zustand
+### 3. `src/pages/portal/office/EmailTab.tsx`
+- `refetchMessages()` nach Body-Fetch ersetzen durch `queryClient.setQueryData()` Optimistic Update
+- Auto-Retry-Logik im `EmailDetailPanel` (max 2 Retries mit 2s/4s Backoff)
+- Hintergrund-Polling alle 60s fuer neue Nachrichten (leichtgewichtiger DB-Check)
+- `fetchTriggered`-State verbessern: Reset bei Email-Wechsel UND bei Retry
 
-### Datei 4: `src/components/portal/PortalLayout.tsx`
-- Keine Aenderungen noetig — SubTabs werden bereits im mobilen Layout gerendert
+### 4. `supabase/functions/sot-mail-send/index.ts`
+- Keine strukturellen Aenderungen noetig — SMTP-Versand via Nodemailer funktioniert
+- Kleine Verbesserung: Nach erfolgreichem Senden den React Query Cache direkt aktualisieren statt `refetchMessages()`
 
 ---
 
-## Ergebnis
+## Kosten
 
-- **Volle Funktionalitaet**: Alle 16 Nutzer-Module sind mobil erreichbar (nur 5 Partner-Module bleiben versteckt)
-- **Sinnvolle Einschraenkungen**: Desktop-only Tabs (E-Mail, Kontakte, Kalender) werden per SubTab-Filterung und MobileGuard abgefangen
-- **App-Feeling**: Runde Buttons, Home-Taste, mehr Luft im Bottom-Bereich, klarer aktiver Zustand
-- **Keine Kollision**: Stammdaten, Profil-Sync und Demo-Daten-Engine bleiben vollstaendig unberuehrt
+- **0 EUR** — Alle Aenderungen nutzen bestehende Infrastruktur
+- IMAP/SMTP laeuft ueber die Mail-Server des Nutzers (keine Drittanbieter-Kosten)
+- Edge Functions sind im Lovable Cloud Kontingent enthalten
+- Kein externer E-Mail-API-Vertrag noetig
+
+## Erwartetes Ergebnis
+
+- **Body-Anzeige**: ~90% der Mails sollten direkt beim Sync den Body haben (vs. aktuell ~60-70%)
+- **Fallback**: Die restlichen ~10% werden zuverlaessig per On-Demand-Fetch mit Auto-Retry geladen
+- **Kein Flackern**: Optimistic Cache Updates statt Full-Refetch
+- **Automatische Updates**: Neue Mails erscheinen innerhalb von 60s ohne manuelles Sync
