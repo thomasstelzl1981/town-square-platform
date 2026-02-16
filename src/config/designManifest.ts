@@ -255,7 +255,7 @@ export const RECORD_CARD = {
 
 // ─── ACTIVE WIDGET GLOW (NEU V4.5) ───────────────────────
 /** Farbiger Glow für aktive Widgets — jedes Modul wählt eine Farbe */
-export type ActiveWidgetVariant = 'primary' | 'amber' | 'cyan' | 'violet' | 'rose' | 'orange' | 'teal';
+export type ActiveWidgetVariant = 'primary' | 'amber' | 'cyan' | 'violet' | 'rose' | 'orange' | 'teal' | 'emerald';
 
 const ACTIVE_WIDGET_VARIANTS: Record<ActiveWidgetVariant, { border: string; shadow: string; shimmer: string }> = {
   primary: {
@@ -292,6 +292,11 @@ const ACTIVE_WIDGET_VARIANTS: Record<ActiveWidgetVariant, { border: string; shad
     border: 'border-teal-400/30',
     shadow: 'shadow-[0_0_15px_-3px] shadow-teal-400/15',
     shimmer: 'before:absolute before:inset-x-0 before:top-0 before:h-1 before:bg-gradient-to-r before:from-teal-400/40 before:via-teal-400/60 before:to-teal-400/40 before:rounded-t-xl',
+  },
+  emerald: {
+    border: 'border-emerald-400/30',
+    shadow: 'shadow-[0_0_15px_-3px] shadow-emerald-400/15',
+    shimmer: 'before:absolute before:inset-x-0 before:top-0 before:h-1 before:bg-gradient-to-r before:from-emerald-400/40 before:via-emerald-400/60 before:to-emerald-400/40 before:rounded-t-xl',
   },
 } as const;
 

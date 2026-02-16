@@ -52,7 +52,7 @@ export default function KrankenversicherungTab() {
           const config = KV_TYPE_CONFIG[kv.type];
           const Icon = config.icon;
           return (
-            <WidgetCell key={kv.personId} span={kv.type === 'familienversichert' ? 1 : 2}>
+            <WidgetCell key={kv.personId}>
               <Card className={cn('h-full', DEMO_WIDGET.CARD, DEMO_WIDGET.HOVER)}>
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
