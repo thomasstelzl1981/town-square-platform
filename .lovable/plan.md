@@ -1,87 +1,122 @@
 
-# Caring-Seite: Auto-Anzeige + Lennox & Friends Demo-Provider
+
+# PetManagerAkte — Komplett-Redesign der Anbieter-Detailseite
 
 ## Uebersicht
 
-Drei Aenderungen:
-1. Ergebnisse sofort beim Seitenaufruf anzeigen (ohne erst "Suchen" zu klicken)
-2. Den bestehenden Demo-Provider "Pfoetchen Paradies" durch **Lennox & Friends Dog Resorts** ersetzen (mit echten Daten von der Website)
-3. Alle neuen IDs in der Demo-Engine registrieren
+Die aktuelle `CaringProviderDetail.tsx` wird zur **PetManagerAkte** umgebaut — analog zur Immobilienakte ein eigenstaendiges Dossier mit eigener ID-Struktur. Das Layout wird mobilfreundlich und in vier Bereiche aufgeteilt.
 
-## 1. Auto-Anzeige der Ergebnisse
+## Neues Layout
 
-**Datei: `src/pages/portal/pets/PetsCaring.tsx`**
-
-- `searchTriggered` wird initial auf `true` gesetzt statt `false`
-- Das Ergebnis-Grid wird dadurch sofort beim Laden angezeigt
-- Der Hook `useSearchProviders` laeuft sofort ohne Filter und liefert alle aktiven Provider
-
-## 2. Demo-Provider: Lennox & Friends Dog Resorts
-
-### Datenbank-Migration (SQL)
-
-**Provider aktualisieren** (ID `d0000000-...0050` bleibt bestehen):
-
-```
-UPDATE pet_providers SET
-  company_name = 'Lennox & Friends Dog Resorts',
-  address = 'Rosenheimer Str. 45, 85521 Ottobrunn',
-  phone = '+49 89 66096690',
-  email = 'info@lennoxandfriends.com',
-  bio = 'Dein Hund – Unsere Leidenschaft. Wir sind ein kleines, liebevolles Team ...',
-  rating_avg = 4.9,
-  cover_image_url = 'https://images.unsplash.com/photo-...',
-  service_area_postal_codes = ARRAY['85521','85579','85635','81369','80339','80689']
-WHERE id = 'd0000000-0000-4000-a000-000000000050';
-```
-
-**Services aktualisieren** (bestehende IDs `...0060`, `...0061`, `...0062`):
-- `...0060`: grooming → "Hundesalon Komplett" (65 EUR)
-- `...0061`: walking → "Gassi-Service (1h)" (25 EUR)  
-- `...0062`: daycare → "Tagesstaette" (35 EUR)
-
-**Neuen Service einfuegen**:
-- `d0000000-0000-4000-a000-000000000063`: boarding → "Urlaubsbetreuung / Pension" (45 EUR/Tag)
-
-**Verfuegbarkeit einfuegen** (`pet_provider_availability`):
-- Mo-Fr 08:00-12:00 und 14:00-18:00 (2 Slots pro Tag, je max 8 Buchungen)
-- Sa 09:00-14:00 (1 Slot, max 4 Buchungen)
-- So geschlossen
-
-Das ergibt 11 Eintraege mit IDs `d0000000-0000-4000-a000-000000000070` bis `...007A`.
-
-### Demo-Engine registrieren
-
-**Datei: `src/engines/demoData/data.ts`**
-
-Neue Konstanten:
-```
-export const DEMO_PET_PROVIDER_LENNOX = 'd0000000-0000-4000-a000-000000000050';
-const ID_PET_SVC_GROOMING  = 'd0000000-0000-4000-a000-000000000060';
-const ID_PET_SVC_WALKING   = 'd0000000-0000-4000-a000-000000000061';
-const ID_PET_SVC_DAYCARE   = 'd0000000-0000-4000-a000-000000000062';
-const ID_PET_SVC_BOARDING  = 'd0000000-0000-4000-a000-000000000063';
-```
-
-Alle fuenf IDs (Provider + 4 Services) werden in `ALL_DEMO_IDS` aufgenommen, Kommentar `// Pet Provider + Services (DB-geseedet)`.
-
-Demo Coverage Map wird aktualisiert:
-```
-GP-PETS (MOD-05) — DB: 2 Demo-Pets + Lennox & Friends Provider + 4 Services + Availability
+```text
++----------------------------------------------------------+
+|  [Zurueck]                                    PetManagerAkte |
++----------------------------------------------------------+
+|                                                          |
+|  OBERER BEREICH (2 Spalten, mobile: gestapelt)           |
+|                                                          |
+|  +------------------------+ +------------------------+   |
+|  |  BILDERGALERIE          | |  PROFIL & INFO         |   |
+|  |  (Kachel, w-1/2)       | |  (w-1/2)               |   |
+|  |                        | |                        |   |
+|  |  [Bild1] [Bild2]       | |  Firmenname            |   |
+|  |  [Bild3] [Bild4]       | |  Adresse               |   |
+|  |  [Bild5] [Bild6]       | |  Tel / E-Mail          |   |
+|  |  [Bild7] [Bild8]       | |  Rating (Sterne)       |   |
+|  |  [Bild9] [Bild10]      | |  "Ueber uns" Bio-Text  |   |
+|  |                        | |                        |   |
+|  |  Klick = Lightbox      | |                        |   |
+|  +------------------------+ +------------------------+   |
+|                                                          |
++----------------------------------------------------------+
+|                                                          |
+|  UNTERER BEREICH (2 Spalten, mobile: gestapelt)          |
+|                                                          |
+|  +------------------------+ +------------------------+   |
+|  |  LEISTUNGEN            | |  KALENDER              |   |
+|  |  (Auswahl-Kachel)      | |  (2 Monate sichtbar)   |   |
+|  |                        | |                        |   |
+|  |  ( ) Pension           | |  [  Februar 2026  ]    |   |
+|  |  ( ) Tagesstaette      | |  [  Maerz 2026    ]    |   |
+|  |  ( ) Gassi-Service     | |                        |   |
+|  |  ( ) Hundesalon        | |  Gruen = verfuegbar    |   |
+|  |  ( ) Welpenspielstunde | |  Rot   = ausgebucht    |   |
+|  |                        | |                        |   |
+|  |  Preis: 45 EUR/Tag     | |                        |   |
+|  +------------------------+ +------------------------+   |
+|                                                          |
++----------------------------------------------------------+
+|                                                          |
+|  SLOT-AUSWAHL (erscheint nach Tagesklick)                |
+|  Bei "Pension": VON-BIS Datumsauswahl (range)            |
+|  Bei anderen: Einzeltag + Zeitslots                      |
+|                                                          |
+|  +----------------------------------------------------+  |
+|  | Von: 15.03.2026   Bis: 20.03.2026  (bei Pension)   |  |
+|  | ODER                                                |  |
+|  | Datum: 15.03.2026  [09:00] [10:00] [14:00]          |  |
+|  |                                                    |  |
+|  | Tier: [Select]   Anmerkungen: [Textarea]           |  |
+|  | [Termin anfragen]                                  |  |
+|  +----------------------------------------------------+  |
+|                                                          |
++----------------------------------------------------------+
 ```
 
-## 3. Provider-Kachel mit Emerald-Glow
+## Technische Aenderungen
 
-**Datei: `src/pages/portal/pets/PetsCaring.tsx`**
+### 1. Bildergalerie-Kachel (mobilfreundlich)
 
-In der Ergebnis-Kachel wird `isDemoId(provider.id)` geprueft. Demo-Provider erhalten:
-- `getActiveWidgetGlow('emerald')` statt `'teal'`
-- Ein DEMO-Badge oben rechts
+- Ersetzt das einzelne Cover-Image durch ein **5x2 Grid** (max 10 Bilder)
+- Auf Desktop: `grid-cols-5 grid-rows-2` innerhalb einer Card
+- Auf Mobile: horizontal scrollbar (`overflow-x-auto flex gap-2`)
+- Klick auf ein Bild oeffnet eine einfache Lightbox (Dialog mit grossem Bild)
+- Bilder kommen aus einem neuen Feld `gallery_images TEXT[]` auf `pet_providers`
+- Fallback: Gradient-Placeholder fuer leere Slots
+
+### 2. Profil/Info rechts neben der Galerie
+
+- Firmenname, Adresse, Telefon, E-Mail, Rating, Bio
+- Bleibt inhaltlich wie bisher, nur Layout aendert sich (halbe Breite rechts)
+
+### 3. Leistungen-Kachel (links unten)
+
+- Eigene Card mit Radiobuttons fuer die verfuegbaren Services
+- Laedt Services aus `pet_services` fuer diesen Provider
+- Zeigt Preis pro ausgewaehltem Service
+- Auswahl steuert den Kalender-Modus (Pension = Range, Rest = Single)
+
+### 4. Kalender (rechts unten)
+
+- **Zwei Monate** nebeneinander anzeigen (`numberOfMonths={2}`)
+- Wenn "Pension/Boarding" gewaehlt: `mode="range"` mit Von-Bis-Auswahl
+- Wenn anderer Service gewaehlt: `mode="single"` wie bisher
+- Verfuegbarkeits-Faerbung bleibt (gruen/rot)
+
+### 5. Slot-Auswahl / Buchungsbereich
+
+- Bei Pension: Zeigt den gewaehlten Zeitraum (Von–Bis) an
+- Bei Einzel-Services: Zeigt Zeitslots wie bisher
+- Tier-Auswahl + Anmerkungen + "Termin anfragen" Button (weiterhin nur visuell)
+
+### 6. Cross-Tenant-Fix fuer Availability und Services
+
+Die Hooks `useProviderAvailability` und `useProviderServices` filtern aktuell nach `activeTenantId`. Ein Client-Tenant sieht damit keine Daten eines Provider-Tenants. Loesung: Neue Hooks `usePublicProviderAvailability(providerId)` und `usePublicProviderServices(providerId)` die **nur** nach `provider_id` filtern (ohne tenant_id). Die RLS-Policies auf diesen Tabellen erlauben bereits Lesen fuer authentifizierte User.
+
+### 7. Datenbank-Migration
+
+- `ALTER TABLE pet_providers ADD COLUMN gallery_images TEXT[] DEFAULT '{}'`
+
+### 8. Demo-Engine
+
+- Die PetManagerAkte-ID (`d0000000-...0050`) ist bereits in der Demo-Engine registriert
+- Keine weiteren Engine-Aenderungen noetig
 
 ## Betroffene Dateien
 
 | Datei | Aktion |
 |---|---|
-| DB-Migration | UPDATE provider + services, INSERT boarding service + 11 availability slots |
-| `src/engines/demoData/data.ts` | 5 neue IDs registrieren |
-| `src/pages/portal/pets/PetsCaring.tsx` | `searchTriggered` initial `true` + Emerald-Glow fuer Demo-Provider |
+| DB-Migration | `gallery_images TEXT[]` auf `pet_providers` |
+| `src/pages/portal/pets/CaringProviderDetail.tsx` | Komplett-Umbau zum neuen 4-Bereich-Layout |
+| `src/hooks/usePetProviderSearch.ts` oder neuer Hook | `usePublicProviderServices` + `usePublicProviderAvailability` ohne tenant_id-Filter |
+
