@@ -289,7 +289,19 @@ export default function SachversicherungenTab() {
 
   return (
     <PageShell>
-      <ModulePageHeader title="Sachversicherungen" description="Zentrale Verwaltung aller Versicherungsverträge (SSOT)" />
+      <ModulePageHeader
+        title="Sachversicherungen"
+        description="Zentrale Verwaltung aller Versicherungsverträge (SSOT)"
+        actions={
+          <Button
+            size="icon-round"
+            onClick={() => { setShowNew(true); setSelectedId(null); }}
+            className="h-10 w-10"
+          >
+            <Plus className="h-5 w-5" />
+          </Button>
+        }
+      />
 
       <WidgetGrid>
         {contracts.map((c: any) => {
@@ -342,24 +354,6 @@ export default function SachversicherungenTab() {
           );
         })}
 
-        {/* CTA */}
-        {!showNew && (
-          <WidgetCell>
-            <div
-              className="h-full w-full rounded-xl border-2 border-dashed border-primary/30 flex items-center justify-center cursor-pointer hover:border-primary/50 transition-colors"
-              onClick={() => { setShowNew(true); setSelectedId(null); }}
-              role="button"
-              tabIndex={0}
-            >
-              <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Plus className="h-6 w-6 text-primary" />
-                </div>
-                <p className="text-sm font-medium">Versicherung hinzufügen</p>
-              </div>
-            </div>
-          </WidgetCell>
-        )}
       </WidgetGrid>
 
       {/* Detail / Edit below grid */}
