@@ -209,9 +209,9 @@ export function useArmstrongContext(): ArmstrongContext {
       const zoneActions = getActionsForZone('Z2');
       const allowedActions = filterActionsByRole(zoneActions, roles);
       
-      // Check if web research is enabled for this org
-      // Default: true. No org_settings column exists yet. Add 'web_research_enabled' to org_settings when feature toggle needed.
-      const webResearchEnabled = true;
+      // Read web_research_enabled from org settings (default: true)
+      const orgSettings = (activeOrganization as any).settings || {};
+      const webResearchEnabled = orgSettings.web_research_enabled !== false;
       
       const context: Zone2Context = {
         zone: 'Z2',
