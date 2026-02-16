@@ -161,20 +161,29 @@ export function calcAltersvorsorge(
     if (c.monthly_benefit && c.monthly_benefit > 0) {
       privateRenten += c.monthly_benefit;
     } else {
-      const capital = c.insured_sum || c.current_balance || 0;
-      if (capital > 0) {
+      let futureCapital: number;
+
+      if (c.projected_end_value && c.projected_end_value > 0) {
+        // Manuell eingetragene Ablaufleistung (z.B. aus Versorgungsmitteilung)
+        futureCapital = c.projected_end_value;
+      } else {
+        const capital = c.insured_sum || c.current_balance || 0;
+        if (capital <= 0) continue;
+        const rate = c.growth_rate_override ?? DEFAULT_GROWTH_RATE;
         const monthlyPremium = (c.premium && c.premium > 0)
           ? normalizeToMonthly(c.premium, c.payment_interval)
           : 0;
-        const futureCapital = projectCapital(capital, monthlyPremium, ytr);
-        privateVerrentung += futureCapital / DEFAULT_ANNUITY_YEARS / 12;
+        futureCapital = projectCapital(capital, monthlyPremium, ytr, rate);
       }
+
+      privateVerrentung += futureCapital / DEFAULT_ANNUITY_YEARS / 12;
     }
   }
 
   // 3) Ergebnis
   const expectedTotal = gesetzliche + privateRenten + privateVerrentung;
-  const need = (person.net_income_monthly || 0) * needPercent;
+  const totalNetIncome = (person.net_income_monthly || 0) + (person.business_income_monthly || 0);
+  const need = totalNetIncome * needPercent;
   const gap = Math.max(0, need - expectedTotal);
   const surplus = Math.max(0, expectedTotal - need);
   const capitalNeeded = gap * 12 * DEFAULT_ANNUITY_YEARS;
@@ -264,7 +273,8 @@ export function calcBuLuecke(
 
   // 3) Ergebnis
   const total = gesetzliche + privateBu;
-  const need = (person.net_income_monthly || 0) * needPercent;
+  const totalNetIncome = (person.net_income_monthly || 0) + (person.business_income_monthly || 0);
+  const need = totalNetIncome * needPercent;
   const gap = Math.max(0, need - total);
   const surplus = Math.max(0, total - need);
 

@@ -17556,6 +17556,7 @@ export type Database = {
           current_balance: number | null
           dynamics_percent: number | null
           end_date: string | null
+          growth_rate_override: number | null
           id: string
           insured_sum: number | null
           monthly_benefit: number | null
@@ -17565,6 +17566,7 @@ export type Database = {
             | null
           person_id: string | null
           premium: number | null
+          projected_end_value: number | null
           provider: string | null
           start_date: string | null
           status: string | null
@@ -17582,6 +17584,7 @@ export type Database = {
           current_balance?: number | null
           dynamics_percent?: number | null
           end_date?: string | null
+          growth_rate_override?: number | null
           id?: string
           insured_sum?: number | null
           monthly_benefit?: number | null
@@ -17591,6 +17594,7 @@ export type Database = {
             | null
           person_id?: string | null
           premium?: number | null
+          projected_end_value?: number | null
           provider?: string | null
           start_date?: string | null
           status?: string | null
@@ -17608,6 +17612,7 @@ export type Database = {
           current_balance?: number | null
           dynamics_percent?: number | null
           end_date?: string | null
+          growth_rate_override?: number | null
           id?: string
           insured_sum?: number | null
           monthly_benefit?: number | null
@@ -17617,6 +17622,7 @@ export type Database = {
             | null
           person_id?: string | null
           premium?: number | null
+          projected_end_value?: number | null
           provider?: string | null
           start_date?: string | null
           status?: string | null
