@@ -159,7 +159,7 @@ export function PortfolioTab() {
       if (!activeTenantId) return [];
       
       // Get units with property data - USE activeTenantId for consistent tenant scoping
-      let unitsQuery = supabase
+      const unitsQuery = supabase
         .from('units')
         .select(`
           id,
@@ -213,7 +213,7 @@ export function PortfolioTab() {
       let loans: LoanData[] = [];
       try {
         // P0-FIX: Removed .eq('is_active', true) — loans table has no such column
-        let loansQuery = (supabase as any)
+        const loansQuery = (supabase as any)
           .from('loans')
           .select('id, property_id, outstanding_balance_eur, annuity_monthly_eur, interest_rate_percent')
           .eq('tenant_id', activeTenantId);

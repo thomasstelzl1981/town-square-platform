@@ -105,7 +105,7 @@ function calculateMarginalRate(zvE: number): number {
 export function calculateTax(input: TaxCalculationInput): TaxCalculationResult {
   const { taxableIncome, assessmentType, churchTax, childrenCount } = input;
   
-  let zvE = taxableIncome;
+  const zvE = taxableIncome;
   let zvEForTax = zvE;
   
   // Apply Kinderfreibetrag (Günstigerprüfung wird vereinfacht angenommen)
