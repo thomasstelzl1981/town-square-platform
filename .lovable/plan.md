@@ -1,50 +1,36 @@
 
+# Landing Page Untermenuepunkte entfernen (MOD-09, MOD-11, MOD-12)
 
-# Area-Reorganisation: Module verschieben und Promo-Widgets entfernen
+## Aenderungen
 
-## Zusammenfassung
+Die "Landing Page"-Eintraege werden aus drei Modulen entfernt:
 
-Drei Aenderungen an der Navigationsstruktur:
+| Modul | Route | Komponenten-Datei |
+|---|---|---|
+| MOD-09 Immomanager | `landing-page` → `VMPartnerLandingPage` | `src/pages/portal/vertriebspartner/VMPartnerLandingPage.tsx` |
+| MOD-11 Finanzierungsmanager | `landing-page` → `FMLandingPage` | `src/pages/portal/finanzierungsmanager/FMLandingPage.tsx` |
+| MOD-12 Akquise-Manager | `landing-page` → `AkquiseLandingPage` | `src/pages/portal/akquise-manager/AkquiseLandingPage.tsx` |
 
-### 1. Promo-Widgets komplett entfernen
+**Hinweis**: MOD-13 (Projektmanager) behaelt seinen Landing Page Tab, da dieser dort als funktionale Projekt-Website dient.
 
-Die `AreaPromoCard`-Komponente wird aus der `AreaOverviewPage` entfernt. Die Datei `areaPromoContent.ts` und die zugehoerigen Promo-Bilder bleiben vorerst im Code (kein toter Import mehr), koennen spaeter aufgeraeumt werden.
+## Technische Schritte
 
-### 2. Modul-Verschiebungen
+### 1. Routes Manifest bereinigen (`src/manifests/routesManifest.ts`)
 
-```text
-VORHER                              NACHHER
-─────────────────────────────────    ─────────────────────────────────
-Client (missions)                   Client (missions)
-  MOD-18, MOD-02, MOD-04,            MOD-18, MOD-02, MOD-04,
-  MOD-07, MOD-06, MOD-08             MOD-07, MOD-06, MOD-08
-                                      (unveraendert)
+Drei Zeilen entfernen:
+- Zeile 349: `{ path: "landing-page", component: "VMPartnerLandingPage", title: "Landing Page" }`
+- Zeile 389: `{ path: "landing-page", component: "FMLandingPage", title: "Landing Page" }`
+- Zeile 416: `{ path: "landing-page", component: "AkquiseLandingPage", title: "Landing Page" }`
 
-Manager (operations)                Manager (operations)
-  MOD-13, MOD-09, MOD-11,            MOD-13, MOD-09, MOD-11,
-  MOD-12, MOD-10                      MOD-12, MOD-10, MOD-14
-                                      (+Kommunikation Pro)
+### 2. Komponenten-Dateien loeschen
 
-Service (services)                  Service (services)
-  MOD-14, MOD-15, MOD-05,            MOD-15, MOD-05, MOD-16,
-  MOD-16                              MOD-17, MOD-19
-                                      (-KommPro, +Fahrzeuge, +PV)
+Drei Dateien entfernen:
+- `src/pages/portal/vertriebspartner/VMPartnerLandingPage.tsx`
+- `src/pages/portal/finanzierungsmanager/FMLandingPage.tsx`
+- `src/pages/portal/akquise-manager/AkquiseLandingPage.tsx`
 
-Base (base)                         Base (base)
-  MOD-03, MOD-17, MOD-19,            MOD-03, MOD-01
-  MOD-01                              (-Fahrzeuge, -PV)
-```
+### 3. Index-Export bereinigen (falls vorhanden)
 
-### 3. Area-Beschreibungen aktualisieren
+Pruefen ob `FMLandingPage` in `src/pages/portal/finanzierungsmanager/index.ts` exportiert wird und ggf. entfernen.
 
-Die Untertitel auf den Uebersichtsseiten werden an die neue Zusammensetzung angepasst.
-
-## Technische Aenderungen
-
-| Datei | Aenderung |
-|---|---|
-| `src/manifests/areaConfig.ts` | Module-Arrays in allen 4 Areas aktualisieren |
-| `src/pages/portal/AreaOverviewPage.tsx` | AreaPromoCard-Import und -Rendering entfernen, areaDescriptions aktualisieren |
-
-Keine Route-Aenderungen noetig -- die Routen bleiben identisch, nur die Gruppierung aendert sich.
-
+Keine DB-Aenderungen noetig. Keine weiteren Abhaengigkeiten betroffen.
