@@ -382,7 +382,7 @@ export function ProfilTab() {
               <FormInput label="Anzeigename" name="display_name" value={formData.display_name}
                 onChange={e => updateField('display_name', e.target.value)} placeholder="Max Mustermann" required />
               <FormInput label="E-Mail" name="email" type="email" value={formData.email}
-                disabled hint="Login-Identität — nicht änderbar" />
+                disabled hint="Änderbar unter Sicherheit" />
             </div>
           </div>
 

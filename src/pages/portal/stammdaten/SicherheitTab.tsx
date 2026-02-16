@@ -1,19 +1,24 @@
 import * as React from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { DataTable, StatusBadge } from '@/components/shared';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { WIDGET_CELL } from '@/config/designManifest';
-import { Shield, Monitor, LogOut, Mail, Clock } from 'lucide-react';
+import { Shield, Monitor, LogOut, Mail, Clock, Pencil } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
+import { toast } from 'sonner';
 
 export function SicherheitTab() {
   const { user } = useAuth();
   const [isOpen, setIsOpen] = React.useState(false);
+  const [isEditingEmail, setIsEditingEmail] = React.useState(false);
+  const [newEmail, setNewEmail] = React.useState('');
+  const [emailLoading, setEmailLoading] = React.useState(false);
 
   const loginEmail = user?.email || '—';
   const lastSignIn = user?.last_sign_in_at
@@ -42,8 +47,51 @@ export function SicherheitTab() {
   ];
 
   const handleSignOutOthers = async () => {
-    // Supabase scope: 'others' signs out all other sessions
     await supabase.auth.signOut({ scope: 'others' });
+  };
+
+  const handleChangeEmail = async () => {
+    if (!newEmail.trim()) {
+      toast.error('Bitte geben Sie eine E-Mail-Adresse ein.');
+      return;
+    }
+    if (newEmail.trim().toLowerCase() === loginEmail.toLowerCase()) {
+      toast.error('Die neue E-Mail ist identisch mit der aktuellen.');
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(newEmail.trim())) {
+      toast.error('Bitte geben Sie eine gültige E-Mail-Adresse ein.');
+      return;
+    }
+
+    setEmailLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        toast.error('Keine aktive Sitzung gefunden.');
+        return;
+      }
+
+      const res = await supabase.functions.invoke('sot-auth-change-email', {
+        body: { newEmail: newEmail.trim() },
+      });
+
+      if (res.error) {
+        toast.error('Fehler: ' + (res.error.message || 'Unbekannter Fehler'));
+        return;
+      }
+
+      toast.success('E-Mail erfolgreich geändert! Sie werden in 2 Sekunden abgemeldet…');
+      setIsEditingEmail(false);
+      setTimeout(async () => {
+        await supabase.auth.signOut();
+      }, 2000);
+    } catch (err: any) {
+      toast.error('Fehler: ' + (err.message || 'Unbekannter Fehler'));
+    } finally {
+      setEmailLoading(false);
+    }
   };
 
   if (!isOpen) {
@@ -106,7 +154,51 @@ export function SicherheitTab() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <p className="text-sm text-muted-foreground">Login-E-Mail</p>
-                <p className="font-medium">{loginEmail}</p>
+                {isEditingEmail ? (
+                  <div className="space-y-3 mt-1">
+                    <Input
+                      type="email"
+                      placeholder="neue.email@beispiel.de"
+                      value={newEmail}
+                      onChange={(e) => setNewEmail(e.target.value)}
+                      disabled={emailLoading}
+                      autoFocus
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Nach der Änderung werden Sie abgemeldet und müssen sich mit der neuen Adresse anmelden.
+                    </p>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        onClick={handleChangeEmail}
+                        disabled={emailLoading}
+                      >
+                        {emailLoading ? 'Wird geändert…' : 'E-Mail ändern'}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => { setIsEditingEmail(false); setNewEmail(''); }}
+                        disabled={emailLoading}
+                      >
+                        Abbrechen
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <p className="font-medium">{loginEmail}</p>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2"
+                      onClick={() => { setIsEditingEmail(true); setNewEmail(''); }}
+                    >
+                      <Pencil className="h-3.5 w-3.5 mr-1" />
+                      Ändern
+                    </Button>
+                  </div>
+                )}
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Letzte Anmeldung</p>
