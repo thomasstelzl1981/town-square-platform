@@ -85,9 +85,22 @@ export function NKAbrechnungTab({ propertyId, tenantId, unitId }: NKAbrechnungTa
   const sumApportionable = apportionableItems.reduce((s, i) => s + i.amountUnit, 0);
   const sumNonApportionable = nonApportionableItems.reduce((s, i) => s + i.amountUnit, 0);
 
-  // Vorauszahlungen berechnen (12 Monate oder anteilig)
-  const months = 12; // TODO: anteilig bei unterjaehrig
-  const totalNKVZ = (leaseInfo?.nkAdvanceEur || 0) * months;
+  // Vorauszahlungen berechnen (anteilig bei unterjährigem Mietvertrag)
+  const calcMonths = (() => {
+    if (!leaseInfo?.startDate) return 12;
+    const year = Number(selectedYear);
+    const leaseStart = new Date(leaseInfo.startDate);
+    const leaseEnd = leaseInfo.endDate ? new Date(leaseInfo.endDate) : null;
+    const periodStart = new Date(year, 0, 1);
+    const periodEnd = new Date(year, 11, 31);
+    const effectiveStart = leaseStart > periodStart ? leaseStart : periodStart;
+    const effectiveEnd = leaseEnd && leaseEnd < periodEnd ? leaseEnd : periodEnd;
+    if (effectiveStart > effectiveEnd) return 0;
+    const startMonth = effectiveStart.getMonth();
+    const endMonth = effectiveEnd.getMonth();
+    return endMonth - startMonth + 1;
+  })();
+  const totalNKVZ = (leaseInfo?.nkAdvanceEur || 0) * calcMonths;
   const totalVZ = totalNKVZ;
 
   const totalCostsTenant = sumApportionable + grundsteuerAnteil;
@@ -401,7 +414,7 @@ export function NKAbrechnungTab({ propertyId, tenantId, unitId }: NKAbrechnungTa
                     <tr className="border-b">
                       <td className="py-1.5 px-3">NK-Vorauszahlung</td>
                       <td className="py-1.5 px-3 text-right font-mono">{EUR(leaseInfo.nkAdvanceEur)}</td>
-                      <td className="py-1.5 px-3 text-center text-muted-foreground">× {months}</td>
+                      <td className="py-1.5 px-3 text-center text-muted-foreground">× {calcMonths}</td>
                       <td className="py-1.5 px-3 text-right font-mono font-medium">{EUR(totalNKVZ)}</td>
                     </tr>
                   </tbody>

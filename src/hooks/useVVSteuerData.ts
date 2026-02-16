@@ -44,7 +44,7 @@ export function useVVSteuerData(taxYear: number) {
       // FIX Bug 1: Load units first, then leases via unit_id
       // FIX Bug 2: nk_periods filtered by period_start/period_end instead of year
       const [unitsRes, financingRes, nkPeriodsRes] = await Promise.all([
-        supabase.from('units').select('id, property_id').eq('tenant_id', activeTenantId).in('property_id', propertyIds),
+        supabase.from('units').select('id, property_id, area_sqm').eq('tenant_id', activeTenantId).in('property_id', propertyIds),
         (supabase as any).from('property_financing').select('property_id, annual_interest, current_balance, interest_rate, is_active').eq('tenant_id', activeTenantId).in('property_id', propertyIds),
         (supabase as any).from('nk_periods').select('id, property_id, period_start, period_end')
           .eq('tenant_id', activeTenantId)
@@ -67,12 +67,17 @@ export function useVVSteuerData(taxYear: number) {
         leases = leaseData || [];
       }
 
-      // Get NK cost items for relevant periods
+      // Get NK cost items and settlements for relevant periods
       const periodIds = (nkPeriodsRes.data || []).map((p: any) => p.id);
       let nkItems: any[] = [];
+      let nkSettlements: any[] = [];
       if (periodIds.length > 0) {
-        const { data: items } = await (supabase as any).from('nk_cost_items').select('nk_period_id, category_code, amount_total_house, is_apportionable').in('nk_period_id', periodIds);
-        nkItems = items || [];
+        const [itemsRes, settlementsRes] = await Promise.all([
+          (supabase as any).from('nk_cost_items').select('nk_period_id, category_code, amount_total_house, is_apportionable').in('nk_period_id', periodIds),
+          (supabase as any).from('nk_tenant_settlements').select('nk_period_id, saldo_eur').in('nk_period_id', periodIds),
+        ]);
+        nkItems = itemsRes.data || [];
+        nkSettlements = settlementsRes.data || [];
       }
 
       return {
@@ -85,6 +90,7 @@ export function useVVSteuerData(taxYear: number) {
         financing: financingRes.data || [],
         nkPeriods: nkPeriodsRes.data || [],
         nkItems,
+        nkSettlements,
       };
     },
     enabled: !!activeTenantId,
@@ -132,10 +138,21 @@ export function useVVSteuerData(taxYear: number) {
     const propUnitIds = propUnits.map((u: any) => u.id);
     const propLeases = (data?.leases || []).filter((l: any) => propUnitIds.includes(l.unit_id));
     
+    // NK-Nachzahlung aus nk_tenant_settlements (falls vorhanden)
+    const propPeriodIds = (data?.nkPeriods || [])
+      .filter((p: any) => p.property_id === propertyId)
+      .map((p: any) => p.id);
+    const nkSettlements = (data?.nkSettlements || [])
+      .filter((s: any) => propPeriodIds.includes(s.nk_period_id));
+    const nkNachzahlungTotal = nkSettlements.reduce((s: number, st: any) => {
+      const saldo = (st.saldo_eur || 0);
+      return saldo > 0 ? s + saldo : s; // Nur Nachzahlungen (positiver Saldo = Mieter schuldet)
+    }, 0);
+
     const incomeAggregated: VVIncomeAggregated = {
       coldRentAnnual: propLeases.reduce((s: number, l: any) => s + (l.rent_cold_eur || 0) * 12, 0),
       nkAdvanceAnnual: propLeases.reduce((s: number, l: any) => s + (l.nk_advance_eur || 0) * 12, 0),
-      nkNachzahlung: 0, // TODO: from nk_tenant_settlements
+      nkNachzahlung: nkNachzahlungTotal,
     };
 
     // FIX Bug 3: Financing — fallback calculation if annual_interest is null
@@ -200,6 +217,7 @@ export function useVVSteuerData(taxYear: number) {
       acquisitionCosts: prop.acquisition_costs || 0,
       taxReferenceNumber: prop.tax_reference_number || '',
       ownershipSharePercent: prop.ownership_share_percent ?? 100,
+      areaSqm: propUnits.reduce((s: number, u: any) => s + (u.area_sqm || 0), 0) || null,
       afa,
       incomeAggregated,
       financingAggregated,
