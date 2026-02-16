@@ -106,9 +106,9 @@ export default function CaseDocumentRoom({ requestId, publicId, employmentType }
   );
 
   const visibleFolders = useMemo(() => getVisibleFolders(employmentType), [employmentType]);
-  const foldersWithDocs = (folderId: string) => uploadedDocs.filter(d => d.folderId === folderId).length;
 
   const uploadedFolderCount = useMemo(() => {
+    const foldersWithDocs = (folderId: string) => uploadedDocs.filter(d => d.folderId === folderId).length;
     return visibleFolders.filter(f => foldersWithDocs(f.id) >= f.required).length;
   }, [visibleFolders, uploadedDocs]);
 

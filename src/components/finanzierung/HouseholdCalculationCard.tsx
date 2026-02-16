@@ -199,7 +199,7 @@ export default function HouseholdCalculationCard({
       newLoanRate: calcData?.monthlyRate || 0,
       utilityFiction: utilityFictionValue,
     });
-  }, [formData, coFormData, calcData, usage, rentalIncome, livingArea, isOwnerOccupied, isInvestment, propertyAssets]);
+  }, [formData, coFormData, calcData, usage, rentalIncome, livingArea, propertyAssets]);
 
   // Computed totals
   const totalIncome =
