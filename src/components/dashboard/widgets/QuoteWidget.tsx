@@ -4,12 +4,13 @@
  * Data source: ZenQuotes API (via Edge Function proxy)
  */
 
+import { memo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Quote, AlertTriangle } from 'lucide-react';
 import { useQuote } from '@/hooks/useQuote';
 import { Skeleton } from '@/components/ui/skeleton';
 
-export function QuoteWidget() {
+export const QuoteWidget = memo(function QuoteWidget() {
   const { data: quote, isLoading, error, refetch, isRefetching } = useQuote();
 
   return (
@@ -53,4 +54,4 @@ export function QuoteWidget() {
       </CardContent>
     </Card>
   );
-}
+});

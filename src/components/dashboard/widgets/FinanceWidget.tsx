@@ -3,12 +3,13 @@
  * Data source: CoinGecko + ECB + Yahoo Finance (via Edge Function)
  */
 
+import { memo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useFinanceData } from '@/hooks/useFinanceData';
 
-export function FinanceWidget() {
+export const FinanceWidget = memo(function FinanceWidget() {
   const { data: markets = [], isLoading } = useFinanceData();
 
   return (
@@ -64,4 +65,4 @@ export function FinanceWidget() {
       </CardContent>
     </Card>
   );
-}
+});

@@ -3,12 +3,13 @@
  * Data source: Tagesschau RSS (via Edge Function)
  */
 
+import { memo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Newspaper } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useNewsData } from '@/hooks/useNewsData';
 
-export function NewsWidget() {
+export const NewsWidget = memo(function NewsWidget() {
   const { data: headlines = [], isLoading } = useNewsData();
 
   return (
@@ -52,4 +53,4 @@ export function NewsWidget() {
       </CardContent>
     </Card>
   );
-}
+});
