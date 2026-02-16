@@ -82,6 +82,25 @@ export interface EnergyContract {
   startDate: string | null;
 }
 
+export interface PropertyListItem {
+  id: string;
+  label: string;
+  city: string;
+  type: string; // "Kapitalanlage" | "Eigengenutzt"
+  marketValue: number;
+  purchasePrice: number;
+}
+
+export interface LoanListItem {
+  id: string;
+  bank: string;
+  assignment: string;
+  loanAmount: number;
+  remainingBalance: number;
+  interestRate: number;
+  monthlyRate: number;
+}
+
 export interface FinanzberichtData {
   income: FinanzberichtIncome;
   expenses: FinanzberichtExpenses;
@@ -98,6 +117,8 @@ export interface FinanzberichtData {
   vorsorgeContracts: ContractSummary[];
   subscriptionsByCategory: SubscriptionsByCategory[];
   energyContracts: EnergyContract[];
+  propertyList: PropertyListItem[];
+  loanList: LoanListItem[];
   testamentCompleted: boolean;
   patientenverfuegungCompleted: boolean;
   isLoading: boolean;
@@ -139,7 +160,18 @@ export function useFinanzberichtData(): FinanzberichtData {
     queryKey: ['fb-miety-homes', activeTenantId],
     queryFn: async () => {
       if (!activeTenantId) return [];
-      const { data } = await supabase.from('miety_homes').select('id, market_value, ownership_type').eq('tenant_id', activeTenantId);
+      const { data } = await supabase.from('miety_homes').select('id, name, market_value, ownership_type, city, address').eq('tenant_id', activeTenantId);
+      return data || [];
+    },
+    enabled: !!activeTenantId,
+  });
+
+  // ─── Portfolio Properties (for property list) ─────────────
+  const { data: portfolioProperties = [] } = useQuery({
+    queryKey: ['fb-portfolio-properties', activeTenantId],
+    queryFn: async () => {
+      if (!activeTenantId) return [];
+      const { data } = await supabase.from('properties').select('id, code, city, address, market_value, purchase_price, property_type, status').eq('tenant_id', activeTenantId).eq('status', 'active');
       return data || [];
     },
     enabled: !!activeTenantId,
@@ -367,6 +399,65 @@ export function useFinanzberichtData(): FinanzberichtData {
     const testamentCompleted = legalDocs.some((d: any) => d.document_type === 'testament' && d.is_completed);
     const patientenverfuegungCompleted = legalDocs.some((d: any) => d.document_type === 'patientenverfuegung' && d.is_completed);
 
+    // ─── Property List (Immobilienaufstellung) ────────────────
+    const propertyList: PropertyListItem[] = [
+      ...portfolioProperties.map((p: any) => ({
+        id: p.id,
+        label: p.code || p.address || '—',
+        city: p.city || '—',
+        type: 'Kapitalanlage',
+        marketValue: p.market_value || 0,
+        purchasePrice: p.purchase_price || 0,
+      })),
+      ...homes
+        .filter(h => h.ownership_type === 'eigentum')
+        .map(h => ({
+          id: h.id,
+          label: (h as any).name || (h as any).address || 'Eigenheim',
+          city: (h as any).city || '—',
+          type: 'Eigengenutzt',
+          marketValue: h.market_value || 0,
+          purchasePrice: 0,
+        })),
+    ];
+
+    // ─── Loan List (Darlehensaufstellung) ─────────────────────
+    // Build property code map for assignment labels
+    const propCodeMap = new Map<string, string>();
+    portfolioProperties.forEach((p: any) => {
+      propCodeMap.set(p.id, `${p.code || ''} ${p.city || ''}`.trim() || '—');
+    });
+
+    const loanList: LoanListItem[] = [
+      ...portfolioLoans.map(l => ({
+        id: l.id,
+        bank: '—',
+        assignment: propCodeMap.get(l.property_id) || 'Portfolio',
+        loanAmount: 0,
+        remainingBalance: l.outstanding_balance_eur || 0,
+        interestRate: l.interest_rate_percent || 0,
+        monthlyRate: l.annuity_monthly_eur || 0,
+      })),
+      ...mietyLoans.map(l => ({
+        id: l.id,
+        bank: l.bank_name || '—',
+        assignment: 'Eigengenutzt',
+        loanAmount: l.loan_amount || 0,
+        remainingBalance: l.remaining_balance || 0,
+        interestRate: l.interest_rate || 0,
+        monthlyRate: l.monthly_rate || 0,
+      })),
+      ...pvPlants.filter((pv: any) => pv.loan_bank).map((pv: any) => ({
+        id: pv.id,
+        bank: pv.loan_bank || '—',
+        assignment: 'Photovoltaik',
+        loanAmount: pv.loan_amount || 0,
+        remainingBalance: pv.loan_remaining_balance || 0,
+        interestRate: pv.loan_interest_rate || 0,
+        monthlyRate: pv.loan_monthly_rate || 0,
+      })),
+    ];
+
     return {
       income: { netIncomeTotal, selfEmployedIncome, rentalIncomePortfolio, sideJobIncome, childBenefit, otherIncome, pvIncome, totalIncome },
       expenses: { warmRent, privateLoans: privateLoansMonthly, portfolioLoans: portfolioLoansMonthly, pvLoans: pvMonthlyLoanRate, insurancePremiums, savingsContracts: savingsMonthly, subscriptions: subscriptionTotal, livingExpenses, totalExpenses },
@@ -383,9 +474,11 @@ export function useFinanzberichtData(): FinanzberichtData {
       vorsorgeContracts,
       subscriptionsByCategory,
       energyContracts,
+      propertyList,
+      loanList,
       testamentCompleted,
       patientenverfuegungCompleted,
       isLoading,
     };
-  }, [portfolioSummary, portfolioLoading, personsLoading, apLoading, homesLoading, applicantProfiles, homes, mietyLoans, tenancies, insuranceData, vorsorgeData, subscriptions, legalDocs, portfolioLoans, pvPlants, mietyContracts]);
+  }, [portfolioSummary, portfolioLoading, personsLoading, apLoading, homesLoading, applicantProfiles, homes, mietyLoans, tenancies, insuranceData, vorsorgeData, subscriptions, legalDocs, portfolioLoans, pvPlants, mietyContracts, portfolioProperties]);
 }

@@ -67,7 +67,7 @@ export default function MietyHomeDossierInline({ homeId }: Props) {
   return (
     <>
       <Card className="glass-card p-6">
-        <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-4 min-h-0">
+        <div className="grid grid-cols-1 lg:grid-cols-[250px_1fr_380px] gap-4 min-h-0">
           {/* Left: Document Tree */}
           <Card className="glass-card hidden lg:flex flex-col overflow-hidden">
             <div className="px-3 py-2 border-b">
@@ -80,7 +80,7 @@ export default function MietyHomeDossierInline({ homeId }: Props) {
             />
           </Card>
 
-          {/* Right: Accordion Sections */}
+          {/* Center: Accordion Sections */}
           <div className="overflow-y-auto">
             <Accordion type="multiple" defaultValue={['overview', 'building', 'contracts', 'meters']} className="space-y-3">
               {/* Overview */}
@@ -102,26 +102,6 @@ export default function MietyHomeDossierInline({ homeId }: Props) {
                   <BuildingDetailsSection home={home} />
                 </AccordionContent>
               </AccordionItem>
-
-              {/* Loans (only for Eigentum) */}
-              {home.ownership_type === 'eigentum' && (
-                <AccordionItem value="loans" className="glass-card rounded-lg border px-4">
-                  <AccordionTrigger className="text-sm font-semibold py-3">Darlehen</AccordionTrigger>
-                  <AccordionContent className="pb-4">
-                    <LoanSection homeId={homeId} />
-                  </AccordionContent>
-                </AccordionItem>
-              )}
-
-              {/* Tenancy (only for Miete) */}
-              {home.ownership_type === 'miete' && (
-                <AccordionItem value="tenancy" className="glass-card rounded-lg border px-4">
-                  <AccordionTrigger className="text-sm font-semibold py-3">Mietverhältnis</AccordionTrigger>
-                  <AccordionContent className="pb-4">
-                    <TenancySection homeId={homeId} />
-                  </AccordionContent>
-                </AccordionItem>
-              )}
 
               {/* Contracts */}
               <AccordionItem value="contracts" className="glass-card rounded-lg border px-4">
@@ -188,6 +168,20 @@ export default function MietyHomeDossierInline({ homeId }: Props) {
               </AccordionItem>
             </Accordion>
           </div>
+
+          {/* Right: Loan or Tenancy */}
+          <Card className="glass-card hidden lg:flex flex-col overflow-hidden">
+            <div className="px-3 py-2 border-b">
+              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                {home.ownership_type === 'eigentum' ? 'Finanzierung' : 'Mietverhältnis'}
+              </span>
+            </div>
+            <div className="p-4 overflow-y-auto flex-1">
+              {home.ownership_type === 'eigentum'
+                ? <LoanSection homeId={homeId} />
+                : <TenancySection homeId={homeId} />}
+            </div>
+          </Card>
         </div>
       </Card>
 

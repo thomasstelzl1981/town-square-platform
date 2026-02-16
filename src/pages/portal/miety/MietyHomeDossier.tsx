@@ -1,6 +1,6 @@
 /**
- * MietyHomeDossier — 2-Column Dossier view for a single home
- * Left: Document Tree | Right: Accordion Sections + Quick Actions
+ * MietyHomeDossier — 3-Column Dossier view for a single home
+ * Left: Document Tree | Center: Accordion Sections | Right: Loan/Tenancy
  */
 import { useState } from 'react';
 import { useParams, Navigate } from 'react-router-dom';
@@ -14,6 +14,8 @@ import { MietyDocTree } from './components/MietyDocTree';
 import { MietyOverviewSection } from './components/MietyOverviewSection';
 import { MietyContractsSection } from './components/MietyContractsSection';
 import { MietyMeterSection } from './components/MietyMeterSection';
+import { LoanSection } from './components/LoanSection';
+import { TenancySection } from './components/TenancySection';
 import { ContractDrawer } from './components/ContractDrawer';
 import { MeterReadingDrawer } from './components/MeterReadingDrawer';
 import { UploadDrawer } from './components/UploadDrawer';
@@ -66,7 +68,7 @@ export default function MietyHomeDossier() {
   if (!home) return <Navigate to="/portal/immobilien/zuhause/uebersicht" replace />;
 
   return (
-    <PageShell>
+    <PageShell fullWidth>
       <MietyDossierHeader
         home={home}
         onOpenContractDrawer={() => setContractDrawerOpen(true)}
@@ -74,8 +76,8 @@ export default function MietyHomeDossier() {
         onOpenUploadDrawer={() => setUploadDrawerOpen(true)}
       />
 
-      {/* 2-Column Layout */}
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-4 min-h-0">
+      {/* 3-Column Layout */}
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-[250px_1fr_380px] gap-4 min-h-0">
         {/* Left: Document Tree */}
         <Card className="glass-card hidden lg:flex flex-col overflow-hidden">
           <div className="px-3 py-2 border-b">
@@ -88,7 +90,7 @@ export default function MietyHomeDossier() {
           />
         </Card>
 
-        {/* Right: Accordion Sections */}
+        {/* Center: Accordion Sections */}
         <div className="overflow-y-auto">
           <Accordion type="multiple" defaultValue={['overview', 'contracts', 'meters']} className="space-y-3">
             {/* A) Overview */}
@@ -168,6 +170,20 @@ export default function MietyHomeDossier() {
             </AccordionItem>
           </Accordion>
         </div>
+
+        {/* Right: Loan or Tenancy */}
+        <Card className="glass-card hidden lg:flex flex-col overflow-hidden">
+          <div className="px-3 py-2 border-b">
+            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              {home.ownership_type === 'eigentum' ? 'Finanzierung' : 'Mietverhältnis'}
+            </span>
+          </div>
+          <div className="p-4 overflow-y-auto flex-1">
+            {home.ownership_type === 'eigentum'
+              ? <LoanSection homeId={homeId!} />
+              : <TenancySection homeId={homeId!} />}
+          </div>
+        </Card>
       </div>
 
       {/* Drawers */}
