@@ -1,56 +1,50 @@
 
 
-# Phase B: tenant_id NOT NULL Haertung (15 sichere Tabellen)
+# Area-Reorganisation: Module verschieben und Promo-Widgets entfernen
 
-## Scope
+## Zusammenfassung
 
-15 Tabellen mit 0 NULL-Werten werden auf `NOT NULL` gehaertet. Plus 1 Fix fuer den einzelnen NULL-Record in `data_event_ledger`.
+Drei Aenderungen an der Navigationsstruktur:
 
-3 Tabellen bleiben bewusst nullable (globale Templates/Katalogdaten):
-- `document_checklist_items` (31 NULL)
-- `integration_registry` (37 NULL)
-- `msv_templates` (17 NULL)
+### 1. Promo-Widgets komplett entfernen
 
----
+Die `AreaPromoCard`-Komponente wird aus der `AreaOverviewPage` entfernt. Die Datei `areaPromoContent.ts` und die zugehoerigen Promo-Bilder bleiben vorerst im Code (kein toter Import mehr), koennen spaeter aufgeraeumt werden.
 
-## Migration
+### 2. Modul-Verschiebungen
 
-### Schritt 1: data_event_ledger NULL-Record fixen
+```text
+VORHER                              NACHHER
+─────────────────────────────────    ─────────────────────────────────
+Client (missions)                   Client (missions)
+  MOD-18, MOD-02, MOD-04,            MOD-18, MOD-02, MOD-04,
+  MOD-07, MOD-06, MOD-08             MOD-07, MOD-06, MOD-08
+                                      (unveraendert)
 
-```sql
-UPDATE data_event_ledger 
-SET tenant_id = '00000000-0000-0000-0000-000000000000' 
-WHERE tenant_id IS NULL;
+Manager (operations)                Manager (operations)
+  MOD-13, MOD-09, MOD-11,            MOD-13, MOD-09, MOD-11,
+  MOD-12, MOD-10                      MOD-12, MOD-10, MOD-14
+                                      (+Kommunikation Pro)
+
+Service (services)                  Service (services)
+  MOD-14, MOD-15, MOD-05,            MOD-15, MOD-05, MOD-16,
+  MOD-16                              MOD-17, MOD-19
+                                      (-KommPro, +Fahrzeuge, +PV)
+
+Base (base)                         Base (base)
+  MOD-03, MOD-17, MOD-19,            MOD-03, MOD-01
+  MOD-01                              (-Fahrzeuge, -PV)
 ```
 
-### Schritt 2: NOT NULL auf 15 Tabellen setzen
+### 3. Area-Beschreibungen aktualisieren
 
-| Tabelle | NULL-Count | Aktion |
-|---------|-----------|--------|
-| acq_inbound_messages | 0 | SET NOT NULL |
-| acq_mandate_events | 0 | SET NOT NULL |
-| acq_offer_activities | 0 | SET NOT NULL |
-| acq_offer_documents | 0 | SET NOT NULL |
-| acq_offers | 0 | SET NOT NULL |
-| acq_outbound_messages | 0 | SET NOT NULL |
-| cars_offers | 0 | SET NOT NULL |
-| data_event_ledger | 1 (wird gefixt) | SET NOT NULL |
-| finance_submission_logs | 0 | SET NOT NULL |
-| lead_assignments | 0 | SET NOT NULL |
-| leads | 0 | SET NOT NULL |
-| pv_connectors | 0 | SET NOT NULL |
-| pv_measurements | 0 | SET NOT NULL |
-| test_data_registry | 0 | SET NOT NULL |
-| user_consents | 0 | SET NOT NULL |
+Die Untertitel auf den Uebersichtsseiten werden an die neue Zusammensetzung angepasst.
 
-### Schritt 3: Backlog-Dateien aktualisieren
+## Technische Aenderungen
 
-- `spec/audit/db_optimization_backlog.json` -- Phase B Status auf "done" setzen
-- `spec/audit/github_optimization_review_backlog.json` -- Vermerk hinzufuegen
+| Datei | Aenderung |
+|---|---|
+| `src/manifests/areaConfig.ts` | Module-Arrays in allen 4 Areas aktualisieren |
+| `src/pages/portal/AreaOverviewPage.tsx` | AreaPromoCard-Import und -Rendering entfernen, areaDescriptions aktualisieren |
 
----
-
-## Risiko
-
-**Niedrig.** Alle 15 Tabellen haben bereits 0 NULL-Werte (bzw. 1 der gefixt wird). Die Trigger setzen `tenant_id` automatisch bei INSERT. Bestehende Applikationslogik ist nicht betroffen.
+Keine Route-Aenderungen noetig -- die Routen bleiben identisch, nur die Gruppierung aendert sich.
 
