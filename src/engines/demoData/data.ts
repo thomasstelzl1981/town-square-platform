@@ -69,6 +69,10 @@ const ID_KV_EMMA   = 'e0000000-0000-4000-a000-000000000504';
 const ID_PL_AUTO   = 'e0000000-0000-4000-a000-000000000601';
 const ID_PL_MOEBEL = 'e0000000-0000-4000-a000-000000000602';
 
+// Pets (DB-geseedet)
+export const DEMO_PET_LUNA  = 'd0000000-0000-4000-a000-000000000010';
+export const DEMO_PET_BELLO = 'd0000000-0000-4000-a000-000000000011';
+
 // ─── PERSONEN ──────────────────────────────────────────────
 
 export const DEMO_FAMILY: readonly DemoPersona[] = [
@@ -505,6 +509,9 @@ export const ALL_DEMO_IDS: readonly string[] = [
   // Selbstauskunft
   DEMO_SELBSTAUSKUNFT_PRIMARY_ID,
   DEMO_SELBSTAUSKUNFT_CO_ID,
+  // Pets (DB-geseedet)
+  DEMO_PET_LUNA,
+  DEMO_PET_BELLO,
 ] as const;
 
 // ─── GESAMTPAKET ───────────────────────────────────────────
@@ -543,5 +550,5 @@ export const DEMO_DATA_SPEC: DemoDataSpec = {
  * - GP-FM-FALL       (MOD-11) — Kein Demo-Finanzierungsfall (bewusst)
  * - GP-SERIEN-EMAIL  (MOD-14) — Nur Demo-Widget, keine echte Sequenz
  * - GP-RECHERCHE     (MOD-14) — Nur Demo-Widget, keine echten Ergebnisse
- * - GP-PETS          (MOD-05) — Phase 1, noch nicht implementiert
+ * - GP-PETS          (MOD-05) — DB: 2 Demo-Pets (Luna, Bello) + Emerald Glow
  */

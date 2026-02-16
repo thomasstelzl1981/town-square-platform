@@ -7,7 +7,8 @@ import { PawPrint, Plus, Dog, Cat, Bird, Rabbit, Radar, FolderOpen, Stethoscope 
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { RecordCard } from '@/components/shared/RecordCard';
-import { RECORD_CARD } from '@/config/designManifest';
+import { RECORD_CARD, DEMO_WIDGET } from '@/config/designManifest';
+import { isDemoId } from '@/engines/demoData/engine';
 import { FormInput } from '@/components/shared';
 import { EntityStorageTree } from '@/components/shared/EntityStorageTree';
 import { Button } from '@/components/ui/button';
@@ -454,6 +455,7 @@ export default function PetsMeineTiere() {
                 ...(pet.weight_kg ? [{ label: '', value: `${pet.weight_kg} kg` }] : []),
                 ...(pet.chip_number ? [{ label: '', value: `Chip: ${pet.chip_number}` }] : []),
               ];
+              const isDemo = isDemoId(pet.id);
               return (
                 <RecordCard
                   key={pet.id}
@@ -465,7 +467,8 @@ export default function PetsMeineTiere() {
                   title={pet.name}
                   subtitle={SPECIES_LABELS[pet.species] || pet.species}
                   summary={summaryItems}
-                  glowVariant={openPetId === pet.id ? 'teal' : undefined}
+                  glowVariant={isDemo ? 'emerald' : (openPetId === pet.id ? 'teal' : undefined)}
+                  badges={isDemo ? [{ label: 'DEMO', variant: 'outline' as const }] : undefined}
                 >
                   {null}
                 </RecordCard>
