@@ -1,274 +1,167 @@
 
 
-# Vorsorge-Engine: Konsolidierter Gesamtplan
+# Vorsorge-Lueckenrechner: Transparente Datenanzeige mit Inline-Bearbeitung
 
-## Uebersicht
+## Ziel
 
-Dieser Plan fasst alle geplanten Aenderungen an Engine 9 (Vorsorge-Lueckenrechner) zusammen: Daten-Mapping-Korrekturen, BU-Kombiprodukt-Erkennung, Kategorie-Trennung Vorsorge vs. Investment, Wertzuwachs-Hochrechnung und korrekte Behandlung von Selbstaendigen.
+Den Lueckenrechner so umbauen, dass alle Berechnungsdaten offen sichtbar und direkt editierbar sind. Statt "Daten fehlen" mit Link zur Personenakte zeigt der Rechner die konkreten Felder — leer oder befuellt — und erlaubt das direkte Speichern.
 
----
-
-## 1. DB-Migration: Neues Feld `bu_monthly_benefit`
-
-Neues Feld in `vorsorge_contracts`, damit bei JEDEM Vorsorgevertrag (auch Kombiprodukten wie Ruerup+BU) die BU-Leistung separat erfasst werden kann:
-
-```sql
-ALTER TABLE public.vorsorge_contracts
-  ADD COLUMN IF NOT EXISTS bu_monthly_benefit numeric DEFAULT NULL;
-```
-
-**Beispiel:** Ruerup mit BU-Zusatz speichert `monthly_benefit = 500` (Rente) UND `bu_monthly_benefit = 2000` (BU-Baustein).
-
----
-
-## 2. Engine spec.ts — Typen und Konstanten erweitern
-
-### Neue Konstante
-- `DEFAULT_GROWTH_RATE = 0.05` (5% p.a. Wertzuwachs)
-
-### VLPersonInput erweitern
-- `planned_retirement_date: string | null` (fuer Restlaufzeit-Berechnung)
-
-### VLContractInput erweitern
-- `bu_monthly_benefit: number | null` (BU-Baustein bei Kombiprodukten)
-- `premium: number | null` (laufende Sparleistung)
-- `payment_interval: string | null` (fuer Umrechnung auf monatlich)
-
-### ALTERSVORSORGE_TYPES erweitern
+## Neues Layout
 
 ```text
-VORHER:  'bAV', 'Riester', 'Ruerup', 'Lebensversicherung', 'Versorgungswerk', 'Privat', 'Sonstige'
-
-NACHHER: 'bAV', 'Betriebliche Altersvorsorge',
-         'Riester',
-         'Ruerup', 'Basisrente',
-         'Lebensversicherung', 'Rentenversicherung',
-         'Fondsgebundene', 'Kapitalbildende',
-         'Versorgungswerk',
-         'Privat',
-         'Sonstige'
+┌─────────────────────────────────────────────────────┐
+│ [Shield] Vorsorge-Lueckenrechner                    │
+│ Transparenz ueber Ihre Altersvorsorge- und BU-...   │
+│                                                     │
+│ [Max Mustermann] [Lisa Mustermann]   <- Chips       │
+│                                                     │
+│ ┌─── DATENBASIS (Collapsible, default offen) ─────┐ │
+│ │                                                  │ │
+│ │  Persoenliche Daten                              │ │
+│ │  ┌──────────────┬──────────────┬────────────┐    │ │
+│ │  │ Netto mtl.   │ Brutto mtl.  │ Status     │    │ │
+│ │  │ [3.200 EUR]  │ [5.200 EUR]  │ [angest.]  │    │ │
+│ │  ├──────────────┴──────────────┴────────────┤    │ │
+│ │  │ Geplanter Renteneintritt: [01.07.2040]   │    │ │
+│ │  └──────────────────────────────────────────┘    │ │
+│ │                                                  │ │
+│ │  Gesetzliche Renteninformation (DRV/Pension)     │ │
+│ │  ┌──────────────┬──────────────┬────────────┐    │ │
+│ │  │ Altersrente  │ EM-Rente     │ Typ        │    │ │
+│ │  │ [1.200 EUR]  │ [800 EUR]    │ [DRV]      │    │ │
+│ │  └──────────────┴──────────────┴────────────┘    │ │
+│ │                                                  │ │
+│ │  Vorsorge-Vertraege (Altersvorsorge)             │ │
+│ │  ┌────────────────────────────────────────────┐  │ │
+│ │  │ Alte Leipziger Ruerup                      │  │ │
+│ │  │ Guthaben: 21.000  Rente: -  Sparrate: 250 │  │ │
+│ │  ├────────────────────────────────────────────┤  │ │
+│ │  │ Allianz bAV                                │  │ │
+│ │  │ Guthaben: 14.400  Rente: -  Sparrate: 200 │  │ │
+│ │  └────────────────────────────────────────────┘  │ │
+│ │                                                  │ │
+│ │  BU-Absicherung                                  │ │
+│ │  ┌────────────────────────────────────────────┐  │ │
+│ │  │ Alte Leipziger BU  -> BU-Rente: 3.000/mtl. │  │ │
+│ │  │ Ruerup BU-Zusatz   -> BU-Rente: 2.000/mtl. │  │ │
+│ │  └────────────────────────────────────────────┘  │ │
+│ │                                                  │ │
+│ │  [Aenderungen speichern]                         │ │
+│ └──────────────────────────────────────────────────┘ │
+│                                                     │
+│ ┌─── ALTERSVORSORGE-LUECKE ───────────────────────┐ │
+│ │  (Berechnung wie bisher: Slider, Progress, Gap) │ │
+│ └──────────────────────────────────────────────────┘ │
+│                                                     │
+│ ┌─── BU/EU-LUECKE ───────────────────────────────┐  │
+│ │  (Berechnung wie bisher: Slider, Progress, Gap) │ │
+│ └──────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────┘
 ```
 
----
+## Aenderungen
 
-## 3. Engine engine.ts — Berechnungslogik-Fixes
+### Datei: `src/components/portal/finanzanalyse/VorsorgeLueckenrechner.tsx`
 
-### 3a. Deutsche employment_status Werte erkennen
-
-4 Stellen aendern (2x Altersvorsorge, 2x BU):
-
-```text
-'civil_servant' || 'beamter' || 'beamte'
-'employee'      || 'angestellt'
-'self_employed'  || 'selbstaendig' || 'selbststaendig'
-```
-
-### 3b. Selbstaendige: Gesetzliche Rente UND EM-Rente korrekt behandeln
-
-**Altersvorsorge** (bereits korrekt): Der `else`-Branch faengt Employee UND Self-employed auf. Wenn `pension.projected_pension` vorhanden, wird es verwendet.
-
-**BU-Luecke** (FIX noetig):
-
-```text
-VORHER (Zeile 160-169):
-  } else if (empStatus === 'employee' || empStatus === 'angestellt') {
-    // nur Angestellte geprueft
-  }
-  // self_employed: immer 0 — FALSCH
-
-NACHHER:
-  } else {
-    // Alle Nicht-Beamten: DRV-EM pruefen
-    if (pension?.disability_pension > 0) {
-      gesetzliche = pension.disability_pension;
-      quelle = 'drv_em';
-    } else if (empStatus === 'employee' || empStatus === 'angestellt') {
-      // 35% Brutto-Fallback NUR fuer Angestellte
-      gesetzliche = gross_income * 0.35;
-      quelle = 'fallback';
-    }
-    // self_employed ohne DRV-Daten: bleibt 0, quelle 'missing'
-  }
-```
-
-### 3c. BU-Aggregation: Kombiversicherungen erkennen
+**Props erweitern:**
 
 ```text
 VORHER:
-  buContracts = filter(isBuType)
-  for c: privateBu += c.monthly_benefit
+  persons: any[]
+  pensionRecords: any[]
+  contracts: any[]
 
 NACHHER:
-  // 1) Alle Vertraege mit explizitem bu_monthly_benefit
-  for c of vorsorgeContracts:
-    if c.bu_monthly_benefit > 0: privateBu += c.bu_monthly_benefit
-
-  // 2) Reine BU-Vertraege OHNE bu_monthly_benefit: Fallback auf monthly_benefit
-  for c of vorsorgeContracts:
-    if isBuType(c.contract_type) AND !c.bu_monthly_benefit:
-      if c.monthly_benefit > 0: privateBu += c.monthly_benefit
+  persons: any[]
+  pensionRecords: any[]
+  contracts: any[]
+  onUpdatePerson?: (person: Record<string, any>) => Promise<void>
+  onUpsertPension?: (data: { personId, projected_pension, disability_pension, pension_type }) => Promise<void>
+  onUpdateContract?: (contract: Record<string, any>) => Promise<void>
 ```
 
-Keine Doppelzaehlung: `bu_monthly_benefit` hat Vorrang.
+**Neuer Abschnitt "Datenbasis" (zwischen Personen-Chips und Altersvorsorge-Karte):**
 
-### 3d. Wertzuwachs bei Kapital-Verrentung (5% p.a.)
+Collapsible-Bereich (Radix `Collapsible`, bereits installiert) mit 4 Unter-Sektionen:
+
+1. **Persoenliche Daten** — Editierbare Felder:
+   - Nettoeinkommen mtl. (number)
+   - Bruttoeinkommen mtl. (number)
+   - Beschaeftigungsstatus (Select: Angestellt, Selbstaendig, Beamter)
+   - Geplanter Renteneintritt (date)
+   - Bei Beamten: Ruhegehaltfaehiges Grundgehalt + Dienstjahre
+
+2. **Gesetzliche Renteninformation** — Editierbare Felder:
+   - Prognostizierte Altersrente (number)
+   - Erwerbsminderungsrente (number)
+   - Rententyp (Select: DRV / Beamtenpension)
+   - Wenn leer: Felder werden angezeigt mit Placeholder, nicht als "Daten fehlen"
+
+3. **Altersvorsorge-Vertraege** — Readonly-Tabelle:
+   - Zeigt alle Vertraege die in die Altersvorsorge-Berechnung fliessen
+   - Spalten: Anbieter, Typ, Guthaben, Monatl. Rente, Sparrate, Hochgerechneter Wert
+   - Nicht editierbar hier (Verwaltung bleibt oben in den Widget-Kacheln)
+
+4. **BU-Absicherung** — Readonly-Tabelle:
+   - Zeigt alle Vertraege mit BU-Leistung (bu_monthly_benefit oder reine BU-Vertraege)
+   - Spalten: Anbieter, Typ, BU-Rente mtl.
+
+**Speichern-Button:**
+- Sichtbar nur wenn Aenderungen an Person oder Pension vorliegen
+- Ruft `onUpdatePerson` und/oder `onUpsertPension` auf
+- Toast-Feedback bei Erfolg
+- Nach dem Speichern aktualisiert sich die Berechnung automatisch (React re-render)
+
+**Bisherige "Daten fehlen"-Warnungen entfernen:**
+- Kein separater "Nettoeinkommen nicht hinterlegt"-Banner mehr
+- Kein "In Personenakte ergaenzen"-Link mehr
+- Stattdessen: Leere Felder sind direkt sichtbar und editierbar
+- Felder mit fehlendem Wert bekommen einen dezenten gelben Rand als visuellen Hinweis
+
+### Datei: `src/pages/portal/finanzanalyse/VorsorgeTab.tsx`
+
+Callbacks aus `useFinanzanalyseData()` an den Rechner durchreichen:
 
 ```text
-VORHER:  annuity = capital / 25 / 12
-
-NACHHER:
-  Wenn planned_retirement_date vorhanden:
-    years = (retirement_date - heute) / 365
-  Sonst:
-    years = 15 (Fallback)
-
-  // Kapital hochrechnen
-  future_capital = current_balance * (1.05)^years
-
-  // Falls Premium vorhanden: laufende Sparleistung hochrechnen
-  if premium > 0:
-    monthly_premium = premium (auf monatlich normalisiert)
-    annual_premium = monthly_premium * 12
-    future_capital += annual_premium * ((1.05^years - 1) / 0.05)
-
-  annuity_monthly = future_capital / 25 / 12
+<VorsorgeLueckenrechner
+  persons={...}
+  pensionRecords={pensionRecords}
+  contracts={contracts}
+  onUpdatePerson={async (p) => {
+    await updatePerson.mutateAsync(p);
+  }}
+  onUpsertPension={async (data) => {
+    await upsertPension.mutateAsync(data);
+  }}
+  onUpdateContract={async (c) => {
+    await updateMutation.mutateAsync(c);
+  }}
+/>
 ```
 
----
+Dazu wird `updatePerson` und `upsertPension` aus `useFinanzanalyseData()` geholt (sind bereits exportiert).
 
-## 4. VorsorgeTab.tsx — CONTRACT_TYPES und Formular
-
-### 4a. CONTRACT_TYPES erweitern
+### Lokaler State im Rechner
 
 ```text
-VORHER:
-  'bAV', 'Riester', 'Ruerup', 'Versorgungswerk',
-  'Berufsunfaehigkeit', 'Lebensversicherung', 'Privat', 'Sonstige'
+// Editierbare Kopie der Person-Daten fuer die ausgewaehlte Person
+const [editPerson, setEditPerson] = useState<Partial<VLPersonInput>>({})
 
-NACHHER:
-  'Private Rentenversicherung',
-  'Ruerup (Basisrente)',
-  'Riester-Rente',
-  'Betriebliche Altersvorsorge (bAV)',
-  'Kapitalbildende Lebensversicherung',
-  'Fondsgebundene Lebensversicherung',
-  'Versorgungswerk',
-  'Berufsunfaehigkeitsversicherung',
-  'Dienstunfaehigkeitsversicherung',
-  'Sonstige'
+// Editierbare Kopie der Pension-Daten
+const [editPension, setEditPension] = useState<Partial<VLPensionInput>>({})
+
+// Dirty-Tracking: hat der User etwas geaendert?
+const [isDirty, setIsDirty] = useState(false)
 ```
 
-### 4b. Neues Formularfeld "BU-Rente mtl."
+Bei Personenwechsel (Chip-Klick) werden die Edit-States zurueckgesetzt.
 
-Im `VorsorgeFields`-Formular unter "Leistungen und Guthaben":
-
-```text
-VORHER:
-  Monatliche Rente / BU-Rente (monthly_benefit)
-  Versicherungssumme (insured_sum)
-  ...
-
-NACHHER:
-  Garantierte monatl. Rente (monthly_benefit)
-  BU-Rente mtl. (bu_monthly_benefit)             <-- NEU
-  Ablaufleistung / Kapital (insured_sum)
-  ...
-```
-
-### 4c. Create/Update Mutations um bu_monthly_benefit erweitern
-
----
-
-## 5. VorsorgeLueckenrechner.tsx — Mapping und UI-Texte
-
-### 5a. mapPerson erweitern
-
-```text
-+ planned_retirement_date: p.planned_retirement_date
-```
-
-### 5b. mapContract erweitern
-
-```text
-+ bu_monthly_benefit: c.bu_monthly_benefit
-+ premium: c.premium
-+ payment_interval: c.payment_interval
-```
-
-### 5c. Verbesserte Hinweistexte fuer Selbstaendige
-
-- Bei Altersvorsorge + `self_employed` + `missing`:
-  "Keine DRV-Daten hinterlegt. Falls Sie frueher angestellt waren, tragen Sie Ihre DRV-Renteninformation in der Personenakte ein."
-- Bei BU + `self_employed` + gesetzliche = 0:
-  "Selbstaendige haben keinen automatischen gesetzlichen BU-Schutz. Private BU-Absicherung wird beruecksichtigt."
-
----
-
-## 6. Demo-Daten erweitern
-
-### DemoVorsorgeContract Interface (spec.ts)
-- `buMonthlyBenefit?: number` hinzufuegen
-
-### Demo-Daten (data.ts)
-- Bestehende BU-Vertraege (Max: 3.000 EUR, Lisa: 1.500 EUR) um `buMonthlyBenefit` ergaenzen
-- Demo-Seeding analog anpassen
-
----
-
-## Betroffene Dateien (Gesamt)
+### Betroffene Dateien (Gesamt)
 
 | Datei | Aenderung |
 |---|---|
-| **DB-Migration** | `bu_monthly_benefit` Spalte in `vorsorge_contracts` |
-| `src/engines/vorsorgeluecke/spec.ts` | `DEFAULT_GROWTH_RATE`, erweiterte Input-Typen, erweiterte `ALTERSVORSORGE_TYPES` |
-| `src/engines/vorsorgeluecke/engine.ts` | Deutsche Status-Werte, BU fuer Selbstaendige, BU-Kombi-Aggregation, Wertzuwachs-Formel |
-| `src/pages/portal/finanzanalyse/VorsorgeTab.tsx` | Erweiterte `CONTRACT_TYPES`, neues BU-Feld, Mutations angepasst |
-| `src/components/portal/finanzanalyse/VorsorgeLueckenrechner.tsx` | Erweitertes Mapping, verbesserte Hinweistexte |
-| `src/engines/demoData/spec.ts` | `buMonthlyBenefit` im Interface |
-| `src/engines/demoData/data.ts` | Demo-BU-Vertraege mit `buMonthlyBenefit` |
+| `src/components/portal/finanzanalyse/VorsorgeLueckenrechner.tsx` | Kompletter Umbau: Datenbasis-Sektion mit editierbaren Feldern, Vertrags-Tabellen, Speichern-Button, "Daten fehlen"-Warnungen entfernt |
+| `src/pages/portal/finanzanalyse/VorsorgeTab.tsx` | Callbacks `onUpdatePerson`, `onUpsertPension`, `onUpdateContract` an Rechner durchreichen |
 
----
+Keine DB-Migration noetig. Keine neuen Abhaengigkeiten.
 
-## Daten-Gegenueberstellung: Vorher vs. Nachher
-
-```text
-BEISPIEL 1: Ruerup mit BU-Zusatz (Alte Leipziger, Max)
-
-  VORHER:
-    contract_type: "Ruerup (Basisrente)"
-    monthly_benefit: null
-    current_balance: 21.000
-    bu_monthly_benefit: [Feld existiert nicht]
-
-    Engine:
-      Altersvorsorge: 21.000 / 25 / 12 = 70 EUR/mtl. (ohne Wachstum)
-      BU: 0 EUR (kein BU-Typ erkannt)
-
-  NACHHER:
-    contract_type: "Ruerup (Basisrente)"
-    monthly_benefit: 500 (garantierte Rente)
-    current_balance: 21.000
-    bu_monthly_benefit: 2.000
-
-    Engine:
-      Altersvorsorge: 500 EUR/mtl. (garantierte Rente direkt)
-      + Kapital-Verrentung: 21.000 * 1.05^15 / 25 / 12 = 146 EUR/mtl.
-      BU: 2.000 EUR/mtl. (aus bu_monthly_benefit)
-
-
-BEISPIEL 2: Selbstaendiger mit DRV-Anspruechen (Max)
-
-  VORHER:
-    employment_status: "selbstaendig"
-    drv_estimated_pension: 800 EUR/mtl.
-    drv_em_rente: 600 EUR/mtl.
-
-    Engine BU:
-      Gesetzlich: 0 EUR (self_employed uebersprungen)
-      => BU-Luecke zu hoch
-
-  NACHHER:
-    Engine BU:
-      Gesetzlich: 600 EUR/mtl. (aus DRV-EM erkannt)
-      => Korrekte BU-Luecke
-```
