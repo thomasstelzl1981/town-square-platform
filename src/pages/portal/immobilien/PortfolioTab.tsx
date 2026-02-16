@@ -711,7 +711,7 @@ export function PortfolioTab() {
                 DESIGN.DEMO_WIDGET.CARD,
                 DESIGN.DEMO_WIDGET.HOVER,
                 demoEnabled
-                  ? "ring-2 ring-emerald-500 border-emerald-400 shadow-sm"
+                  ? "ring-2 ring-primary border-primary shadow-sm"
                   : "opacity-60"
               )}
             >

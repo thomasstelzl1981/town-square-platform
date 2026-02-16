@@ -220,12 +220,12 @@ export const DASHBOARD_HEADER = {
 // ─── DEMO WIDGET (NEU V4.3) ───────────────────────────────
 /** Glasig-grünes Styling für alle Demo-Widgets zur visuellen Unterscheidung */
 export const DEMO_WIDGET = {
-  /** Card-Klassen für Demo-Widgets */
-  CARD: 'bg-emerald-50/40 border-emerald-200/60 dark:bg-emerald-950/20 dark:border-emerald-800/40 relative overflow-hidden before:absolute before:inset-x-0 before:top-0 before:h-1 before:bg-gradient-to-r before:from-emerald-300/60 before:via-emerald-400/40 before:to-emerald-300/60 before:rounded-t-xl',
+  /** Card-Klassen für Demo-Widgets — Primary Blue */
+  CARD: 'bg-primary/5 border-primary/30 dark:bg-primary/10 dark:border-primary/20 relative overflow-hidden before:absolute before:inset-x-0 before:top-0 before:h-1 before:bg-gradient-to-r before:from-primary/40 before:via-primary/60 before:to-primary/40 before:rounded-t-xl',
   /** Hover-Effekt für Demo-Widgets */
-  HOVER: 'hover:border-emerald-300/80 dark:hover:border-emerald-700/60',
+  HOVER: 'hover:border-primary/50 dark:hover:border-primary/40',
   /** Badge-Klassen für Demo-Label */
-  BADGE: 'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-300 dark:border-emerald-700/40',
+  BADGE: 'bg-primary/10 text-primary border-primary/20 dark:bg-primary/20 dark:text-primary dark:border-primary/30',
 } as const;
 
 // ─── RECORD CARD (NEU V4.4) ──────────────────────────────

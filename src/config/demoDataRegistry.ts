@@ -99,6 +99,13 @@ export const DEMO_DATA_SOURCES: readonly DemoDataSource[] = [
     entities: ['manifest_entries'],
     exports: ['DEMO_DATA_MANIFEST', 'getDemoEntry', 'DEMO_MANIFEST_STATS'],
   },
+  {
+    path: 'src/engines/demoData/data.ts',
+    module: 'SYSTEM',
+    type: 'hardcoded',
+    entities: ['persona', 'insurance_contracts', 'vorsorge_contracts', 'subscriptions', 'kv_contracts', 'portfolio_refs'],
+    exports: ['DEMO_FAMILY', 'DEMO_INSURANCES', 'DEMO_VORSORGE', 'DEMO_SUBSCRIPTIONS', 'DEMO_KV_CONTRACTS', 'DEMO_PORTFOLIO', 'ALL_DEMO_IDS'],
+  },
 ] as const;
 
 /** Total count of registered demo data sources */

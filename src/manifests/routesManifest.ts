@@ -501,6 +501,7 @@ export const zone2Portal: ZoneDefinition = {
         { path: "investment", component: "FinanzenInvestment", title: "Investment" },
         { path: "sachversicherungen", component: "FinanzenSachversicherungen", title: "Versicherungen" },
         { path: "vorsorge", component: "FinanzenVorsorge", title: "Vorsorge" },
+        { path: "kv", component: "FinanzenKrankenversicherung", title: "KV" },
         { path: "abonnements", component: "FinanzenAbonnements", title: "Abos" },
         { path: "vorsorgedokumente", component: "FinanzenVorsorgedokumente", title: "Vorsorge & Testament" },
       ],

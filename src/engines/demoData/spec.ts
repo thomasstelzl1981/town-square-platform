@@ -1,0 +1,96 @@
+/**
+ * Demo Data Engine — Type Specifications
+ * 
+ * Zentrale Interfaces für die Familie Mustermann Demo-Persona
+ * und alle zugehörigen Finanzverträge.
+ * 
+ * @module SYSTEM
+ * @see spec/current/08_data_provenance/DPR_V1.md
+ */
+
+/** Rolle einer Person im Haushalt */
+export type DemoPersonRole = 'hauptperson' | 'partner' | 'kind';
+
+/** Krankenversicherungstyp */
+export type DemoKVType = 'PKV' | 'GKV' | 'familienversichert';
+
+/** Demo-Person im Haushalt */
+export interface DemoPersona {
+  readonly id: string;
+  readonly role: DemoPersonRole;
+  readonly salutation: 'Herr' | 'Frau';
+  readonly firstName: string;
+  readonly lastName: string;
+  readonly birthDate: string;
+  readonly email?: string;
+  readonly phone?: string;
+  readonly employmentStatus?: string;
+  readonly employerName?: string;
+  readonly kvType: DemoKVType;
+  readonly sortOrder: number;
+  readonly isPrimary: boolean;
+}
+
+/** Demo-Sachversicherungsvertrag */
+export interface DemoInsuranceContract {
+  readonly id: string;
+  readonly category: 'haftpflicht' | 'hausrat' | 'wohngebaeude' | 'rechtsschutz' | 'kfz' | 'berufsunfaehigkeit' | 'unfall' | 'sonstige';
+  readonly insurer: string;
+  readonly policyNo: string;
+  readonly policyholder: string;
+  readonly startDate: string;
+  readonly premium: number;
+  readonly paymentInterval: 'monatlich' | 'vierteljährlich' | 'halbjährlich' | 'jährlich';
+  readonly details?: Record<string, unknown>;
+}
+
+/** Demo-Vorsorgevertrag */
+export interface DemoVorsorgeContract {
+  readonly id: string;
+  readonly personId: string;
+  readonly provider: string;
+  readonly contractNo: string;
+  readonly contractType: string;
+  readonly startDate: string;
+  readonly premium: number;
+  readonly paymentInterval: 'monatlich' | 'vierteljährlich' | 'halbjährlich' | 'jährlich';
+}
+
+/** Demo-Abonnement */
+export interface DemoSubscription {
+  readonly id: string;
+  readonly merchant: string;
+  readonly category: string;
+  readonly amount: number;
+  readonly frequency: 'monatlich' | 'jaehrlich';
+  readonly customName?: string;
+}
+
+/** KV-Daten für den KV-Tab */
+export interface DemoKVContract {
+  readonly personId: string;
+  readonly personName: string;
+  readonly type: DemoKVType;
+  readonly provider: string;
+  readonly monthlyPremium: number;
+  readonly employerContribution?: number;
+  readonly details: Record<string, string | number | boolean>;
+}
+
+/** Referenzen auf bestehende Demo-Daten (Properties, Vehicles, PV) */
+export interface DemoPortfolioRefs {
+  readonly propertyIds: readonly string[];
+  readonly vehicleIds: readonly string[];
+  readonly pvPlantIds: readonly string[];
+  readonly landlordContextId: string;
+}
+
+/** Gesamtstruktur aller Demo-Daten */
+export interface DemoDataSpec {
+  readonly personas: readonly DemoPersona[];
+  readonly insurances: readonly DemoInsuranceContract[];
+  readonly vorsorge: readonly DemoVorsorgeContract[];
+  readonly subscriptions: readonly DemoSubscription[];
+  readonly kvContracts: readonly DemoKVContract[];
+  readonly portfolio: DemoPortfolioRefs;
+}

@@ -9,6 +9,7 @@ const UebersichtTab = lazy(() => import('./finanzanalyse/UebersichtTab'));
 const InvestmentTab = lazy(() => import('./finanzanalyse/InvestmentTab'));
 const SachversicherungenTab = lazy(() => import('./finanzanalyse/SachversicherungenTab'));
 const VorsorgeTab = lazy(() => import('./finanzanalyse/VorsorgeTab'));
+const KrankenversicherungTab = lazy(() => import('./finanzanalyse/KrankenversicherungTab'));
 const AbonnementsTab = lazy(() => import('./finanzanalyse/AbonnementsTab'));
 const VorsorgedokumenteTab = lazy(() => import('./finanzanalyse/VorsorgedokumenteTab'));
 
@@ -22,6 +23,7 @@ export default function FinanzanalysePage() {
           <Route path="investment" element={<InvestmentTab />} />
           <Route path="sachversicherungen" element={<SachversicherungenTab />} />
           <Route path="vorsorge" element={<VorsorgeTab />} />
+          <Route path="kv" element={<KrankenversicherungTab />} />
           <Route path="abonnements" element={<AbonnementsTab />} />
           <Route path="vorsorgedokumente" element={<VorsorgedokumenteTab />} />
           <Route path="*" element={<Navigate to="/portal/finanzanalyse" replace />} />
