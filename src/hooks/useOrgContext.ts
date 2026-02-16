@@ -7,6 +7,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 
 export type OrgType = 'internal' | 'platform' | 'partner' | 'subpartner' | 'client' | 'renter';
 
@@ -51,8 +52,6 @@ export function useOrgContext(): OrgContextData {
   useEffect(() => {
     const fetchOrgDetails = async () => {
       if (memberships.length === 0) return;
-      
-      const { supabase } = await import('@/integrations/supabase/client');
       const tenantIds = memberships.map(m => m.tenant_id);
       
       const { data: orgs } = await supabase
