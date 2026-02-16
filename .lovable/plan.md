@@ -1,60 +1,39 @@
 
-# CTA-Widgets durch Header-Plus-Button ersetzen
 
-## Problem
-Die leeren Platzhalter-Widgets (gestrichelte Rahmenkacheln mit "Hinzufuegen") belegen eine volle Kachelposition im WidgetGrid und stoeren das visuelle Layout.
+# MOD-18 (Finanzen) von Base nach Client verschieben
 
-## Loesung
-Jede `ModulePageHeader`-Zeile erhaelt einen runden Plus-Button als `actions`-Prop. Die bestehenden CTA-WidgetCells werden entfernt.
+## Aenderungen
 
-## Betroffene Dateien
+### 1. `src/manifests/areaConfig.ts` (Zeilen 30-35 und 51-56)
 
-### 1. UebersichtTab.tsx
-- **Entfernen:** CTA-WidgetCell "Person hinzufuegen" (Zeilen ~370-387)
-- **Aendern:** `ModulePageHeader` erhaelt `actions`-Prop mit rundem Plus-Button, der `setShowNewPerson(true)` auslst
-
-### 2. SachversicherungenTab.tsx
-- **Entfernen:** CTA-WidgetCell "Versicherung hinzufuegen" (Zeilen ~345-362)
-- **Aendern:** `ModulePageHeader` erhaelt `actions`-Prop mit rundem Plus-Button, der `setShowNew(true)` ausloest
-
-### 3. VorsorgeTab.tsx
-- **Entfernen:** CTA-WidgetCell "Vorsorgevertrag hinzufuegen" (Zeilen ~250-267)
-- **Aendern:** `ModulePageHeader` erhaelt `actions`-Prop mit rundem Plus-Button, der `setShowNew(true)` ausloest
-
-### 4. AbonnementsTab.tsx
-- **Entfernen:** CTA-WidgetCell "Abonnement hinzufuegen" (Zeilen ~254-272, inkl. DesktopOnly-Wrapper)
-- **Aendern:** `ModulePageHeader` erhaelt `actions`-Prop mit rundem Plus-Button, der `setShowNew(true)` ausloest
-
-### 5. KrankenversicherungTab.tsx und VorsorgedokumenteTab.tsx
-- Keine CTA-Widgets vorhanden — keine Aenderung noetig
-
-## Button-Muster (einheitlich fuer alle Tabs)
-
-```text
-<ModulePageHeader
-  title="..."
-  description="..."
-  actions={
-    <Button
-      size="icon-round"
-      onClick={() => { setShowNew(true); setSelectedId(null); }}
-      className="h-10 w-10"
-    >
-      <Plus className="h-5 w-5" />
-    </Button>
-  }
-/>
+**Client (missions):** MOD-18 wird an erster Stelle eingefuegt:
 ```
+modules: ['MOD-18', 'MOD-02', 'MOD-04', 'MOD-07', 'MOD-06', 'MOD-08']
+```
+Das ergibt 6 Module unter Client.
 
-Der `icon-round` Variant existiert bereits in der Button-Komponente (`h-12 w-12 rounded-full`). Es wird `h-10 w-10` per className angepasst fuer ein kompakteres Erscheinungsbild.
+**Base:** MOD-18 wird entfernt:
+```
+modules: ['MOD-03', 'MOD-17', 'MOD-19', 'MOD-01']
+```
+Base hat dann 4 Module.
 
-## Zusammenfassung der Aenderungen
+### 2. `src/pages/portal/AreaOverviewPage.tsx` (Zeile ~82)
 
-| Datei | Entfernt | Hinzugefuegt |
-|-------|----------|--------------|
-| UebersichtTab.tsx | CTA-WidgetCell (Person) | Plus-Button in Header |
-| SachversicherungenTab.tsx | CTA-WidgetCell (Versicherung) | Plus-Button in Header |
-| VorsorgeTab.tsx | CTA-WidgetCell (Vorsorge) | Plus-Button in Header |
-| AbonnementsTab.tsx | CTA-WidgetCell + DesktopOnly (Abo) | Plus-Button in Header |
+Das Promo-Widget fuer den Bereich Client (missions) wird unterdrueckt. Aenderung der Bedingung:
+```
+{!isMobile && promo && validAreaKey !== 'missions' && <AreaPromoCard promo={promo} />}
+```
+So bleibt die Promo-Konfiguration erhalten (kein Datenverlust), wird aber auf der Client-Uebersichtsseite nicht angezeigt. Die anderen Bereiche behalten ihre Promo-Karten.
 
-Keine strukturellen Aenderungen an `ModulePageHeader` selbst noetig — die `actions`-Prop wird bereits unterstuetzt.
+### 3. Keine Route-Aenderungen
+
+Alle Routen bleiben unveraendert. Es handelt sich ausschliesslich um eine Neugruppierung in der Navigationsdarstellung.
+
+## Zusammenfassung
+
+| Datei | Aenderung |
+|-------|-----------|
+| `src/manifests/areaConfig.ts` | MOD-18 von base.modules nach missions.modules (Position 0) |
+| `src/pages/portal/AreaOverviewPage.tsx` | Promo-Widget fuer missions ausblenden |
+
