@@ -1,83 +1,70 @@
 
 
-# Fix: Zeitverzoegerung beim Ausblenden des Floating Module Switchers
+# Fix: Timer erhoehen + Menue bleibt sichtbar bei Hover
 
-## Problem
+## Probleme
 
-Die "unsichtbare Bruecke" (`pt-2` auf dem aeusseren Container) funktioniert nicht zuverlaessig, weil der absolute Container ausserhalb der visuellen Grenzen des Wrappers liegt und der Browser `onMouseLeave` trotzdem ausloest, bevor die Maus den Floating-Bereich erreicht.
+1. **Timer zu kurz (400ms)** — der Switcher verschwindet, bevor man ihn erreichen kann
+2. **Menue verschwindet auch bei aktivem Hover** — wenn die Maus direkt auf dem Floating-Menue ist, soll es dauerhaft sichtbar bleiben
+3. **Klicks funktionieren nicht** — Race-Condition zwischen Timer und Navigation
+
+## Ursache
+
+Der `onMouseEnter`/`onMouseLeave` auf dem aeusseren absoluten Container (`pt-2`) funktioniert nicht zuverlaessig, weil das Element ausserhalb des relativen Wrappers liegt. Der Browser loest `onMouseLeave` auf dem Wrapper aus, der 400ms-Timer laeuft ab, und das Menue verschwindet bevor `onMouseEnter` auf dem Floating-Container greift.
 
 ## Loesung
 
-Statt auf rein geometrische Hover-Ueberbrueckung zu setzen, wird ein **Timeout-basierter Ansatz** verwendet:
+1. **Timer auf 1500ms erhoehen** — genuegend Zeit, um die Maus zum Menue zu bewegen
+2. **Floating-Container bekommt `pointer-events-auto`** — sicherstellen, dass Maus-Events ankommen
+3. **NavLink onClick robust machen** — Timer beim Klick sofort loeschen, dann schliessen
 
-- `onMouseLeave` loest nicht sofort `setShowModuleSwitcher(false)` aus, sondern startet einen Timer (500ms)
-- `onMouseEnter` loescht den Timer sofort — wenn die Maus also von SubTabs zum Floating-Bereich wechselt, wird der Timer aufgehoben bevor er feuert
-- Das Floating-Element bekommt eigene `onMouseEnter`/`onMouseLeave` Handler
-
-Dieses Pattern ist der Standard fuer Dropdown-Menues im Web und funktioniert zuverlaessig.
-
-## Technische Aenderung
+## Technische Aenderungen
 
 **Datei:** `src/components/portal/TopNavigation.tsx`
 
-### 1. Import `useRef` hinzufuegen (Zeile 1)
+### 1. Timer erhoehen (Zeile 50-52)
 
-```tsx
-import { useMemo, useState, useRef, useCallback } from 'react';
+```
+// Vorher
+}, 400);
+
+// Nachher
+}, 1500);
 ```
 
-### 2. Timeout-Ref und Handler (nach dem bestehenden useState, ca. Zeile 40)
+### 2. Floating-Container: pointer-events sicherstellen (Zeile 104)
 
-```tsx
-const hideTimeout = useRef<ReturnType<typeof setTimeout>>(null);
+```
+// Vorher
+<div className="absolute top-full left-1/2 -translate-x-1/2 z-50 pt-2"
 
-const showSwitcher = useCallback(() => {
+// Nachher
+<div className="absolute top-full left-1/2 -translate-x-1/2 z-50 pt-3 pointer-events-auto"
+```
+
+`pt-3` statt `pt-2` vergroessert die unsichtbare Bruecke leicht.
+
+### 3. NavLink onClick: Timer loeschen (Zeile 120)
+
+```
+// Vorher
+onClick={() => setShowModuleSwitcher(false)}
+
+// Nachher
+onClick={() => {
   if (hideTimeout.current) {
     clearTimeout(hideTimeout.current);
     hideTimeout.current = null;
   }
-  setShowModuleSwitcher(true);
-}, []);
-
-const hideSwitcher = useCallback(() => {
-  hideTimeout.current = setTimeout(() => {
-    setShowModuleSwitcher(false);
-  }, 400);
-}, []);
+  setShowModuleSwitcher(false);
+}}
 ```
 
-### 3. Wrapper-div Handler aktualisieren (Zeile 80-83)
+### Verhalten nach dem Fix
 
-Vorher:
-```tsx
-onMouseEnter={() => setShowModuleSwitcher(true)}
-onMouseLeave={() => setShowModuleSwitcher(false)}
-```
-
-Nachher:
-```tsx
-onMouseEnter={showSwitcher}
-onMouseLeave={hideSwitcher}
-```
-
-### 4. Floating-Container: eigene Hover-Handler (Zeile 89)
-
-Der aeussere `div` des Floating-Bereichs bekommt ebenfalls die gleichen Handler, damit die Maus beim Betreten den Timer loescht:
-
-```tsx
-<div
-  className="absolute top-full left-1/2 -translate-x-1/2 z-50 pt-2"
-  onMouseEnter={showSwitcher}
-  onMouseLeave={hideSwitcher}
->
-```
-
-### Verhalten
-
-- Maus verlaesst SubTabs → 400ms Timer startet
-- Maus erreicht Floating Pills innerhalb 400ms → Timer wird geloescht, Pills bleiben
-- Maus verlaesst gesamten Bereich → nach 400ms verschwinden die Pills
-- Klick auf Modul → sofortiges Schliessen (wie bisher)
-
-400ms ist kurz genug, um nicht traege zu wirken, aber lang genug, um die Luecke zu ueberbruecken.
+- Maus verlaesst SubTabs: 1.5 Sekunden Verzoegerung bevor Menue verschwindet
+- Maus erreicht Floating Pills: Timer wird geloescht, Menue bleibt sichtbar
+- Maus bleibt auf dem Menue: kein Timer aktiv, Menue bleibt dauerhaft
+- Maus verlaesst das Menue: neuer 1.5s Timer startet
+- Klick auf Modul-Button: Timer wird sofort geloescht, Navigation wird ausgefuehrt, Menue schliesst
 
