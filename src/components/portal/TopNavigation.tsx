@@ -100,14 +100,19 @@ export function TopNavigation() {
           <SubTabs module={activeModule.module} moduleBase={activeModule.module.base} />
 
           {/* Floating Module Switcher */}
-          {showModuleSwitcher && areaModules.length > 0 && (
-            <div className="absolute top-full left-1/2 -translate-x-1/2 z-50 pt-3 pointer-events-auto"
+          {areaModules.length > 0 && (
+            <div
+              className={cn(
+                "absolute top-full left-1/2 -translate-x-1/2 z-50 pt-3 transition-all duration-200",
+                showModuleSwitcher
+                  ? "opacity-100 pointer-events-auto translate-y-0"
+                  : "opacity-0 pointer-events-none -translate-y-1"
+              )}
               onMouseEnter={showSwitcher}
               onMouseLeave={hideSwitcher}
             >
               <div className="flex items-center gap-1 px-4 py-2
-                              bg-card/80 backdrop-blur-xl shadow-lg rounded-2xl border border-border/30
-                              animate-in fade-in slide-in-from-top-1 duration-150">
+                              bg-card/80 backdrop-blur-xl shadow-lg rounded-2xl border border-border/30">
                 {areaModules.map(({ code, module, displayLabel }) => {
                   const Icon = iconMap[module.icon] || Briefcase;
                   const isActive = activeModule?.code === code;
