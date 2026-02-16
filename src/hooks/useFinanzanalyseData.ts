@@ -8,6 +8,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useMemo } from 'react';
+import { isDemoId } from '@/engines/demoData/engine';
+import { useDemoToggles } from '@/hooks/useDemoToggles';
 
 // ─── Types ───────────────────────────────────────────────────
 export interface FinanzKPI {
@@ -55,6 +57,8 @@ function categorizeTransaction(purpose: string, merchant: string): string {
 export function useFinanzanalyseData() {
   const { activeTenantId, user } = useAuth();
   const queryClient = useQueryClient();
+  const { isEnabled } = useDemoToggles();
+  const demoEnabled = isEnabled('GP-KONTEN');
 
   // 1) Bank Transactions (12 Monate)
   const twelveMonthsAgo = useMemo(() => {
@@ -332,9 +336,13 @@ export function useFinanzanalyseData() {
     // Raw
     transactions: categorizedTransactions,
     budgets: budgetQuery.data || [],
-    // Persons
-    persons: personsQuery.data || [],
-    pensionRecords: pensionQuery.data || [],
+    // Persons (filtered by demo toggle)
+    persons: demoEnabled
+      ? (personsQuery.data || [])
+      : (personsQuery.data || []).filter((p: any) => !isDemoId(p.id)),
+    pensionRecords: demoEnabled
+      ? (pensionQuery.data || [])
+      : (pensionQuery.data || []).filter((p: any) => !isDemoId(p.person_id || p.id)),
     // Aggregated
     kpis,
     monthlyFlows,

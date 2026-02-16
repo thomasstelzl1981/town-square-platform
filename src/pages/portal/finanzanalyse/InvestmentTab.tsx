@@ -20,13 +20,17 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
+import { isDemoId } from '@/engines/demoData/engine';
+import { useDemoToggles } from '@/hooks/useDemoToggles';
 
 export default function InvestmentTab() {
   const { activeTenantId } = useAuth();
+  const { isEnabled } = useDemoToggles();
+  const demoEnabled = isEnabled('GP-KONTEN');
   const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
 
   // Fetch household persons
-  const { data: persons } = useQuery({
+  const { data: rawPersons } = useQuery({
     queryKey: ['household_persons', activeTenantId],
     queryFn: async () => {
       if (!activeTenantId) return [];
@@ -39,6 +43,11 @@ export default function InvestmentTab() {
     },
     enabled: !!activeTenantId,
   });
+
+  const persons = useMemo(
+    () => demoEnabled ? rawPersons : rawPersons?.filter((p: any) => !isDemoId(p.id)),
+    [rawPersons, demoEnabled]
+  );
 
   // Auto-select primary person
   const effectivePersonId = selectedPersonId || persons?.find(p => p.is_primary)?.id || persons?.[0]?.id || null;

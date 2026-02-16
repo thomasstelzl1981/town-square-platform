@@ -20,6 +20,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Plus, Info } from 'lucide-react';
+import { isDemoId } from '@/engines/demoData/engine';
+import { useDemoToggles } from '@/hooks/useDemoToggles';
 
 const CONTRACT_TYPES = ['bAV', 'Riester', 'Rürup', 'Versorgungswerk', 'Privat', 'Sonstige'] as const;
 
@@ -39,6 +41,8 @@ export default function VorsorgeTab() {
   const { activeTenantId, user } = useAuth();
   const { persons } = useFinanzanalyseData();
   const queryClient = useQueryClient();
+  const { isEnabled } = useDemoToggles();
+  const demoEnabled = isEnabled('GP-KONTEN');
   const [openCardId, setOpenCardId] = useState<string | null>(null);
   const [forms, setForms] = useState<Record<string, Record<string, any>>>({});
   const [showNew, setShowNew] = useState(false);
@@ -47,7 +51,7 @@ export default function VorsorgeTab() {
     start_date: '', premium: 0, payment_interval: 'monatlich', status: 'Aktiv', notes: '',
   });
 
-  const { data: contracts = [], isLoading } = useQuery({
+  const { data: rawContracts = [], isLoading } = useQuery({
     queryKey: ['fin-vorsorge', activeTenantId],
     queryFn: async () => {
       if (!activeTenantId) return [];
@@ -60,6 +64,8 @@ export default function VorsorgeTab() {
     },
     enabled: !!activeTenantId,
   });
+
+  const contracts = demoEnabled ? rawContracts : rawContracts.filter((c: any) => !isDemoId(c.id));
 
   const createMutation = useMutation({
     mutationFn: async (form: Record<string, any>) => {

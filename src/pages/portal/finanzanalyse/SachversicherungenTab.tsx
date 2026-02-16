@@ -19,6 +19,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Plus } from 'lucide-react';
+import { isDemoId } from '@/engines/demoData/engine';
+import { useDemoToggles } from '@/hooks/useDemoToggles';
 
 // DB enums
 const CATEGORIES = [
@@ -55,6 +57,8 @@ const catLabel = (v: string) => CATEGORIES.find(c => c.value === v)?.label || v;
 export default function SachversicherungenTab() {
   const { activeTenantId, user } = useAuth();
   const queryClient = useQueryClient();
+  const { isEnabled } = useDemoToggles();
+  const demoEnabled = isEnabled('GP-KONTEN');
   const [openCardId, setOpenCardId] = useState<string | null>(null);
   const [forms, setForms] = useState<Record<string, Record<string, any>>>({});
   const [showNew, setShowNew] = useState(false);
@@ -64,7 +68,7 @@ export default function SachversicherungenTab() {
     status: 'aktiv', details: {},
   });
 
-  const { data: contracts = [], isLoading } = useQuery({
+  const { data: rawContracts = [], isLoading } = useQuery({
     queryKey: ['fin-insurance', activeTenantId],
     queryFn: async () => {
       if (!activeTenantId) return [];
@@ -77,6 +81,8 @@ export default function SachversicherungenTab() {
     },
     enabled: !!activeTenantId,
   });
+
+  const contracts = demoEnabled ? rawContracts : rawContracts.filter((c: any) => !isDemoId(c.id));
 
   const createMutation = useMutation({
     mutationFn: async (form: Record<string, any>) => {
