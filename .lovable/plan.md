@@ -1,56 +1,58 @@
 
-I will expand the "Vorsorgeverträge" data model and UI to support full capturing of Life and Occupational Disability Insurance (BU) contracts, as requested. This involves adding fields for insurance end dates and benefit/sum amounts, and updating the demo data for the Mustermann family.
 
-### 1. Database Schema Extension
-I will add the following columns to the `vorsorge_contracts` table:
-- `end_date` (DATE): To capture "Versicherungsende".
-- `monthly_benefit` (NUMERIC): To capture the "BU-Rente" (monthly benefit).
-- `insured_sum` (NUMERIC): To capture the "Versicherungssumme" (insured sum for life insurance).
-- `dynamics_percent` (NUMERIC): To capture the common "Dynamik" (percentage increase).
+# Fix: Google Street View Widget -- falsches Bild und Klickverhalten
 
-### 2. Demo Data Updates
-I will update the demo persona "Mustermann" to include the requested BU contracts:
-- **Max Mustermann (Primary)**:
-  - BU Rente: 3.000 €/Mo
-  - End Date: 2047-03-15 (age 65)
-  - Start Date: 2017-07-01
-  - Provider: 'Alte Leipziger'
-- **Lisa Mustermann (Partner)**:
-  - BU Rente: 1.500 €/Mo
-  - End Date: 2047-07-22 (age 62)
-  - Start Date: 2019-10-01
-  - Provider: 'Hallesche'
-- I will move the existing `ID_INS_BU` from the "Insurance" category to the "Vorsorge" category in the demo engine to align with the new structure.
+## Problem-Analyse
 
-### 3. UI Enhancements (Vorsorge-Tab)
-I will modify `src/pages/portal/finanzanalyse/VorsorgeTab.tsx`:
-- **Contract Types**: Add 'Berufsunfähigkeit' and 'Lebensversicherung' to the selection list.
-- **Form Fields**:
-  - Add "Versicherungsende" (Date input).
-  - Add "Monatliche Rente (€)" (Numeric input).
-  - Add "Versicherungssumme (€)" (Numeric input).
-  - Add "Dynamik (%)" (Numeric input).
-- **Display**: Update the contract cards to show the end date and the relevant benefit/sum values.
-- **Mutation Logic**: Update the create/update functions to handle these new fields.
+### 1. Falsches Bild
+Die Street View Static API (`maps.googleapis.com/maps/api/streetview`) wird mit dem Parameter `location=Leopoldstra%C3%9Fe%2042%2080802%20M%C3%BCnchen` aufgerufen. Google's Geocoding loest diese Zeichenkette teils ungenau auf und zeigt ein Panorama eines nahen Restaurants statt des Gebaeudes an Leopoldstrasse 42. Die Loesung: Den `location`-Parameter mit Komma-Trennern formatieren (Strasse+Nr, PLZ Stadt) statt alle Teile mit Leerzeichen zu verbinden. Zusaetzlich den `source=outdoor`-Parameter setzen, um Indoor-Panoramen (z.B. Restaurant-Innenansichten) auszuschliessen.
 
-### 4. Hook Updates
-I will update `src/hooks/useFinanzmanagerData.ts` to ensure the central `useVorsorgeContractMutations` hook supports these new fields for consistency across the app.
+### 2. Falsches Klickverhalten
+Aktuell oeffnet ein Klick auf die Street-View-Kachel ein eingebettetes Iframe innerhalb der Anwendung (`setStreetViewActive(true)`). Gewuenscht: Ein Klick soll Google Street View in einem neuen Browser-Tab oeffnen.
 
 ---
 
-### Technical Details
+## Aenderungen
 
-#### SQL Migration
-```sql
-ALTER TABLE public.vorsorge_contracts 
-ADD COLUMN end_date DATE,
-ADD COLUMN monthly_benefit NUMERIC,
-ADD COLUMN insured_sum NUMERIC,
-ADD COLUMN dynamics_percent NUMERIC;
+### Datei: `src/pages/portal/miety/tiles/UebersichtTile.tsx`
+
+**A) `buildMapQuery` anpassen**
+Die Funktion wird so geaendert, dass Adressteile mit Komma getrennt werden (bessere Geocoding-Genauigkeit):
+```
+// Vorher:
+[home.address, home.address_house_no, home.zip, home.city].filter(Boolean).join(' ')
+
+// Nachher:
+[`${home.address} ${home.address_house_no}`.trim(), `${home.zip} ${home.city}`.trim()].filter(Boolean).join(', ')
 ```
 
-#### Demo Data Mapping
-I'll update `src/engines/demoData/spec.ts` to include these fields in the `DemoVorsorgeContract` interface and then update `src/engines/demoData/data.ts` with the new contracts.
+**B) Static-Image URL: `source=outdoor` hinzufuegen**
+```
+// Vorher:
+`...streetview?size=600x400&location=${mapQuery}&key=${mapsApiKey}`
 
-#### UI Logic
-In `VorsorgeTab.tsx`, I will implement conditional visibility or labeling where it makes sense (e.g., show "BU-Rente" if type is BU, "Versicherungssumme" if type is Life Insurance).
+// Nachher:
+`...streetview?size=600x400&location=${mapQuery}&source=outdoor&key=${mapsApiKey}`
+```
+
+**C) Klickverhalten aendern: Neuer Tab statt Inline-Iframe**
+- Der `onClick`-Handler auf der Kachel wird von `setStreetViewActive(true)` auf `window.open(streetViewUrl, '_blank')` umgestellt
+- Die Street View URL wird als externer Google Maps Link generiert:
+  `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=ADRESSE`
+- Der gesamte Inline-Iframe-Block (Zeilen 199-218, der `streetViewActive`-Branch) wird entfernt, da er nicht mehr benoetigt wird
+- Die State-Variable `streetViewActive` kann ebenfalls entfernt werden
+
+**D) Overlay-Text anpassen**
+Von "Street View starten" zu "Street View oeffnen" -- um klarzumachen, dass ein externer Link geoeffnet wird.
+
+---
+
+## Zusammenfassung
+
+| Was | Vorher | Nachher |
+|---|---|---|
+| Adress-Format | Leerzeichen-getrennt | Komma-getrennt |
+| Static API | Kein `source`-Filter | `source=outdoor` |
+| Klick-Aktion | Inline-Iframe in der App | Neuer Browser-Tab mit Google Maps |
+| State `streetViewActive` | Wird benoetigt | Wird entfernt |
+
