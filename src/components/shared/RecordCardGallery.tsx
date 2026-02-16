@@ -2,9 +2,7 @@
  * RecordCardGallery — 4-Foto Grid für den Open-State der RecordCard
  */
 
-import { cn } from '@/lib/utils';
 import { RECORD_CARD } from '@/config/designManifest';
-import { FileUploader } from './FileUploader';
 import { Plus } from 'lucide-react';
 
 interface RecordCardGalleryProps {

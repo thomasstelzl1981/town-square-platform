@@ -1,4 +1,3 @@
-import * as React from 'react';
 import { LucideIcon, Inbox, FileText, Users, Building, FolderOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
