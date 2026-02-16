@@ -16715,9 +16715,12 @@ export type Database = {
       }
       vorsorge_contracts: {
         Row: {
+          balance_date: string | null
+          category: string
           contract_no: string | null
           contract_type: string | null
           created_at: string
+          current_balance: number | null
           id: string
           notes: string | null
           payment_interval:
@@ -16733,9 +16736,12 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          balance_date?: string | null
+          category?: string
           contract_no?: string | null
           contract_type?: string | null
           created_at?: string
+          current_balance?: number | null
           id?: string
           notes?: string | null
           payment_interval?:
@@ -16751,9 +16757,12 @@ export type Database = {
           user_id: string
         }
         Update: {
+          balance_date?: string | null
+          category?: string
           contract_no?: string | null
           contract_type?: string | null
           created_at?: string
+          current_balance?: number | null
           id?: string
           notes?: string | null
           payment_interval?:

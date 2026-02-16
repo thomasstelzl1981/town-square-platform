@@ -54,6 +54,9 @@ export interface DemoVorsorgeContract {
   readonly startDate: string;
   readonly premium: number;
   readonly paymentInterval: 'monatlich' | 'vierteljährlich' | 'halbjährlich' | 'jährlich';
+  readonly category: 'vorsorge' | 'investment';
+  readonly currentBalance?: number;
+  readonly balanceDate?: string;
 }
 
 /** Demo-Abonnement */
