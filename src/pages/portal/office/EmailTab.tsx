@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -312,7 +312,7 @@ function ConnectionDialog({
   );
 }
 
-// Email Detail Panel with action buttons in header + auto body fetch
+// Email Detail Panel with action buttons in header + auto body fetch + auto-retry
 function EmailDetailPanel({
   email,
   activeAccount,
@@ -341,6 +341,8 @@ function EmailDetailPanel({
   isPending: { delete: boolean; archive: boolean; star: boolean };
 }) {
   const [fetchTriggered, setFetchTriggered] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
+  const maxRetries = 2;
 
   // Auto-fetch body when email has no content
   useEffect(() => {
@@ -350,14 +352,30 @@ function EmailDetailPanel({
     }
   }, [email?.id]);
 
-  // Reset trigger when email changes
+  // Reset trigger + retry count when email changes
   useEffect(() => {
     setFetchTriggered(false);
+    setRetryCount(0);
   }, [email?.id]);
+
+  // Auto-retry with exponential backoff (2s, 4s)
+  useEffect(() => {
+    if (bodyFetchError && retryCount < maxRetries && email && !email.body_text && !email.body_html) {
+      const delay = (retryCount + 1) * 2000; // 2s, 4s
+      const timer = setTimeout(() => {
+        console.log(`[EmailDetail] Auto-retry #${retryCount + 1} for ${email.id}`);
+        setRetryCount(prev => prev + 1);
+        setFetchTriggered(true);
+        onFetchBody(email);
+      }, delay);
+      return () => clearTimeout(timer);
+    }
+  }, [bodyFetchError, retryCount, email?.id]);
 
   if (!email) return null;
 
   const hasBody = email.body_text || email.body_html;
+  const showRetryButton = bodyFetchError && retryCount >= maxRetries && !hasBody;
 
   return (
     <div className="flex flex-col h-full">
@@ -421,13 +439,15 @@ function EmailDetailPanel({
         {isLoadingBody ? (
           <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
             <Loader2 className="h-8 w-8 animate-spin mb-3" />
-            <p className="text-sm">E-Mail-Inhalt wird geladen...</p>
+            <p className="text-sm">
+              {retryCount > 0 ? `Erneuter Versuch (${retryCount}/${maxRetries})...` : 'E-Mail-Inhalt wird geladen...'}
+            </p>
           </div>
-        ) : bodyFetchError && !hasBody ? (
+        ) : showRetryButton ? (
           <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
             <AlertCircle className="h-8 w-8 mb-3" />
-            <p className="text-sm mb-2">Inhalt konnte nicht geladen werden.</p>
-            <Button variant="outline" size="sm" onClick={() => { setFetchTriggered(false); onFetchBody(email); }}>
+            <p className="text-sm mb-2">Inhalt konnte nach {maxRetries} Versuchen nicht geladen werden.</p>
+            <Button variant="outline" size="sm" onClick={() => { setRetryCount(0); setFetchTriggered(false); }}>
               <RefreshCw className="h-3 w-3 mr-2" />
               Erneut versuchen
             </Button>
@@ -535,6 +555,33 @@ export function EmailTab() {
     },
     enabled: !!activeAccount,
   });
+
+  // ─── Background Polling: check for new messages every 60s ───
+  const lastKnownIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!activeAccount) return;
+    // Set initial known ID
+    if (messages.length > 0) {
+      lastKnownIdRef.current = messages[0]?.id;
+    }
+    const interval = setInterval(async () => {
+      try {
+        const { data } = await supabase
+          .from('mail_messages')
+          .select('id')
+          .eq('account_id', activeAccount.id)
+          .eq('folder', selectedFolder.toUpperCase())
+          .order('received_at', { ascending: false })
+          .limit(1);
+        const newestId = data?.[0]?.id;
+        if (newestId && newestId !== lastKnownIdRef.current) {
+          lastKnownIdRef.current = newestId;
+          queryClient.invalidateQueries({ queryKey: ['email-messages', activeAccount.id, selectedFolder] });
+        }
+      } catch { /* silent */ }
+    }, 60_000);
+    return () => clearInterval(interval);
+  }, [activeAccount?.id, selectedFolder]);
 
   // Delete mutation - moves email to trash or permanently deletes if already in trash
   const deleteMutation = useMutation({
@@ -929,7 +976,18 @@ export function EmailTab() {
                   if (error || !data?.success) {
                     setBodyFetchError(true);
                   } else {
-                    refetchMessages();
+                    // Optimistic cache update — patch this message in the query cache
+                    queryClient.setQueryData(
+                      ['email-messages', activeAccount?.id, selectedFolder],
+                      (oldMessages: any[] | undefined) => {
+                        if (!oldMessages) return oldMessages;
+                        return oldMessages.map((m: any) =>
+                          m.id === email.id
+                            ? { ...m, body_text: data.body_text || m.body_text, body_html: data.body_html || m.body_html, snippet: data.snippet || m.snippet }
+                            : m
+                        );
+                      }
+                    );
                   }
                 } catch {
                   setBodyFetchError(true);
