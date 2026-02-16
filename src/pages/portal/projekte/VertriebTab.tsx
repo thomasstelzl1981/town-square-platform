@@ -124,7 +124,7 @@ export default function VertriebTab() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{totalUnits}</div>
-            <p className="text-xs text-muted-foreground">in {portfolioRows.length + 1} {portfolioRows.length + 1 === 1 ? 'Projekt' : 'Projekten'}</p>
+            <p className="text-xs text-muted-foreground">in {portfolioRows.length + (showDemoProject ? 1 : 0)} {(portfolioRows.length + (showDemoProject ? 1 : 0)) === 1 ? 'Projekt' : 'Projekten'}</p>
           </CardContent>
         </Card>
         <Card>

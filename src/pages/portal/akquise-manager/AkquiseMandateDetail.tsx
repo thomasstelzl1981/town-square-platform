@@ -22,6 +22,8 @@ import { AkquiseStepper } from '@/components/akquise/AkquiseStepper';
 import { AcqSectionHeader as SectionHeader } from '@/components/akquise/AcqSectionHeader';
 import { DESIGN, getActiveWidgetGlow } from '@/config/designManifest';
 import { InboundTab, AnalysisTab, DeliveryTab } from './components';
+import { useDemoToggles } from '@/hooks/useDemoToggles';
+import { isDemoId } from '@/engines/demoData/engine';
 
 function TableRow({ label, value }: { label: string; value: string }) {
   return (
@@ -38,18 +40,23 @@ export default function AkquiseMandateDetail() {
   const { user, profile } = useAuth();
   const { data: mandate, isLoading } = useAcqMandate(mandateId);
   const { data: allMandates = [] } = useAcqMandatesForManager();
+  const { isEnabled } = useDemoToggles();
+  const demoEnabled = isEnabled('GP-AKQUISE-MANDAT');
   const acceptMandate = useAcceptAcqMandate();
+
+  // Guard: redirect if demo mandate and toggle is off
+  const isDemoMandate = mandateId ? isDemoId(mandateId) : false;
 
   if (isLoading) {
     return <PageShell><div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div></PageShell>;
   }
 
-  if (!mandate) {
+  if (!mandate || (isDemoMandate && !demoEnabled)) {
     return (
       <PageShell>
         <Card><CardContent className="p-12 text-center">
           <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-          <h3 className="text-lg font-semibold">Mandat nicht gefunden</h3>
+          <h3 className="text-lg font-semibold">{isDemoMandate && !demoEnabled ? 'Demo-Mandat deaktiviert' : 'Mandat nicht gefunden'}</h3>
           <Button className="mt-4" onClick={() => navigate('/portal/akquise-manager/mandate')}>Zurück</Button>
         </CardContent></Card>
       </PageShell>
@@ -91,9 +98,9 @@ export default function AkquiseMandateDetail() {
       </div>
 
       {/* ═══ Mandat-Widgets zum Switchen ═══ */}
-      {allMandates.length > 1 && (
+      {allMandates.filter(m => demoEnabled || !isDemoId(m.id)).length > 1 && (
         <WidgetGrid>
-          {allMandates.map(m => (
+          {allMandates.filter(m => demoEnabled || !isDemoId(m.id)).map(m => (
             <WidgetCell key={m.id}>
               <div className={m.id === mandateId ? 'ring-2 ring-primary rounded-xl' : ''}>
                 <MandateCaseCard

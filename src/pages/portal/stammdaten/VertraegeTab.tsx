@@ -12,6 +12,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useDemoToggles } from '@/hooks/useDemoToggles';
+import { isDemoId } from '@/engines/demoData/engine';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
@@ -97,7 +99,8 @@ const getStatusLabel = (status: string): string => {
 
 export function VertraegeTab() {
   const { user, activeTenantId } = useAuth();
-
+  const { isEnabled } = useDemoToggles();
+  const demoEnabled = isEnabled('GP-AKQUISE-MANDAT');
   // 1. User Consents (AGB, Datenschutz, SCHUFA etc.)
   const { data: consents, isLoading: consentsLoading } = useQuery({
     queryKey: ['user-consents', user?.id],
@@ -242,8 +245,8 @@ export function VertraegeTab() {
         icon: Coins,
       };
     }),
-    // Acquisition Mandates
-    ...(acqMandates || []).map((am): Agreement => ({
+    // Acquisition Mandates (filtered by demo toggle)
+    ...(acqMandates || []).filter(am => demoEnabled || !isDemoId(am.id)).map((am): Agreement => ({
       id: am.id,
       type: 'acq_mandate',
       title: `Suchauftrag ${am.code || ''}`,
