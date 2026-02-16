@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CARD, DEMO_WIDGET, getActiveWidgetGlow } from '@/config/designManifest';
 import { useSearchProviders } from '@/hooks/usePetProviderSearch';
+import { isDemoId } from '@/engines/demoData/engine';
 import { cn } from '@/lib/utils';
 
 const SERVICE_CATEGORIES = [
@@ -29,7 +30,7 @@ export default function PetsCaring() {
   const navigate = useNavigate();
   const [searchLocation, setSearchLocation] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('');
-  const [searchTriggered, setSearchTriggered] = useState(false);
+  const [searchTriggered, setSearchTriggered] = useState(true);
 
   const { data: providers = [], isLoading } = useSearchProviders(
     searchTriggered ? searchLocation : undefined,
@@ -140,10 +141,13 @@ export default function PetsCaring() {
                     onClick={() => navigate(`provider/${provider.id}`)}
                     className={cn(
                       CARD.BASE, CARD.INTERACTIVE,
-                      'w-full h-full flex flex-col justify-between p-5 text-left',
-                      getActiveWidgetGlow('teal'),
+                      'w-full h-full flex flex-col justify-between p-5 text-left relative overflow-hidden',
+                      isDemoId(provider.id) ? getActiveWidgetGlow('emerald') : getActiveWidgetGlow('teal'),
                     )}
                   >
+                    {isDemoId(provider.id) && (
+                      <Badge className={cn(DEMO_WIDGET.BADGE, 'absolute top-3 right-3 text-[10px]')}>DEMO</Badge>
+                    )}
                     <div>
                       <h4 className="font-semibold text-sm mb-1">{provider.company_name}</h4>
                       {provider.address && (
