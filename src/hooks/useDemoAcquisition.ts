@@ -70,12 +70,12 @@ export function useDemoAcquisition() {
     if (!active) return [];
     return [{
       id: DEMO_SEARCH_MANDATE_ID,
-      title: 'MFH NRW ab 1 Mio',
-      assetFocus: ['MFH'],
-      region: 'NRW',
+      title: 'MFH München/Oberbayern — Aufteiler',
+      assetFocus: ['MFH', 'Aufteiler'],
+      region: 'München / Oberbayern',
       budgetMin: 1000000,
-      budgetMax: 3000000,
-      yieldTarget: 5.0,
+      budgetMax: 5000000,
+      yieldTarget: 4.5,
       status: 'active',
       matchCount: 12,
       createdAt: '2025-02-01T10:00:00.000Z',
@@ -87,10 +87,10 @@ export function useDemoAcquisition() {
     if (!active) return [];
     return [{
       id: DEMO_AM_CASE_ID,
-      mandateCode: 'AM-DEMO-001',
-      clientName: 'Investoren GbR Rhein',
-      assetFocus: ['MFH'],
-      region: 'Köln/Düsseldorf',
+      mandateCode: 'ACQ-DEMO-001',
+      clientName: 'Mustermann Projektentwicklung GmbH',
+      assetFocus: ['MFH', 'Aufteiler'],
+      region: 'München / Oberbayern',
       budgetMax: 5000000,
       pipelineCount: 8,
       status: 'sourcing',

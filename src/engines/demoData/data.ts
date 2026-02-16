@@ -14,6 +14,8 @@ import type {
   DemoSubscription,
   DemoKVContract,
   DemoPortfolioRefs,
+  DemoAcqMandate,
+  DemoDevProject,
   DemoDataSpec,
 } from './spec';
 
@@ -322,6 +324,34 @@ export const DEMO_PORTFOLIO: DemoPortfolioRefs = {
   landlordContextId: 'a0000000-0000-4000-a000-000000000040',
 };
 
+// ─── AKQUISE-MANDAT ────────────────────────────────────────
+
+export const DEMO_ACQ_MANDATE_ID = 'e0000000-0000-4000-e000-000000000001';
+export const DEMO_ACQ_OFFER_ID = 'f0000000-0000-4000-f000-000000000001';
+
+export const DEMO_ACQ_MANDATE: DemoAcqMandate = {
+  id: DEMO_ACQ_MANDATE_ID,
+  code: 'ACQ-DEMO-001',
+  clientDisplayName: 'Mustermann Projektentwicklung GmbH',
+  assetFocus: ['MFH', 'Aufteiler'],
+  region: 'München / Oberbayern',
+  priceMin: 1_000_000,
+  priceMax: 5_000_000,
+  yieldTarget: 4.5,
+};
+
+// ─── DEVELOPER / PROJEKTE ──────────────────────────────────
+
+export const DEMO_DEVELOPER_CONTEXT_ID = 'f5071801-351a-4067-849b-f042af5a247a';
+
+export const DEMO_DEV_PROJECT: DemoDevProject = {
+  projectId: 'demo-project-001',
+  developerContextId: DEMO_DEVELOPER_CONTEXT_ID,
+  developerContextName: 'Mustermann Projektentwicklung GmbH',
+  projectName: 'Residenz am Stadtpark',
+  city: 'München',
+};
+
 // ─── ALLE IDs (flach) ──────────────────────────────────────
 
 export const ALL_DEMO_IDS: readonly string[] = [
@@ -340,6 +370,10 @@ export const ALL_DEMO_IDS: readonly string[] = [
   ...DEMO_PORTFOLIO.vehicleIds,
   ...DEMO_PORTFOLIO.pvPlantIds,
   DEMO_PORTFOLIO.landlordContextId,
+  // Akquise + Projekte
+  DEMO_ACQ_MANDATE_ID,
+  DEMO_ACQ_OFFER_ID,
+  DEMO_DEVELOPER_CONTEXT_ID,
 ] as const;
 
 // ─── GESAMTPAKET ───────────────────────────────────────────
@@ -351,4 +385,6 @@ export const DEMO_DATA_SPEC: DemoDataSpec = {
   subscriptions: DEMO_SUBSCRIPTIONS,
   kvContracts: DEMO_KV_CONTRACTS,
   portfolio: DEMO_PORTFOLIO,
+  acqMandate: DEMO_ACQ_MANDATE,
+  devProject: DEMO_DEV_PROJECT,
 };

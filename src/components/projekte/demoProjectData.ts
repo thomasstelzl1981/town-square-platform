@@ -193,11 +193,11 @@ export interface DeveloperContext {
 }
 
 export const DEMO_DEVELOPER_CONTEXT: DeveloperContext = {
-  name: 'Stadtpark Wohnen GmbH',
+  name: 'Mustermann Projektentwicklung GmbH',
   legal_form: 'GmbH',
   hrb_number: 'HRB 287451 · AG München',
   ust_id: 'DE318294756',
-  managing_director: 'Thomas Stelzl',
+  managing_director: 'Max Mustermann',
   street: 'Leopoldstraße',
   house_number: '42',
   postal_code: '80802',
