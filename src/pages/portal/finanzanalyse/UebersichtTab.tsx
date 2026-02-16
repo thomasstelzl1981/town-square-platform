@@ -315,7 +315,19 @@ export default function UebersichtTab() {
 
   return (
     <PageShell>
-      <ModulePageHeader title="Finanzen" description="Ihre finanzielle Gesamtübersicht — Personen, Konten und Vertragsanalyse" />
+      <ModulePageHeader
+        title="Finanzen"
+        description="Ihre finanzielle Gesamtübersicht — Personen, Konten und Vertragsanalyse"
+        actions={
+          <Button
+            size="icon-round"
+            onClick={() => { setShowNewPerson(true); setOpenCardId(null); }}
+            className="h-10 w-10"
+          >
+            <Plus className="h-5 w-5" />
+          </Button>
+        }
+      />
 
       {/* ═══ BLOCK A: Personen im Haushalt ═══ */}
       <div className="flex items-center justify-between">
@@ -367,24 +379,6 @@ export default function UebersichtTab() {
           );
         })}
 
-        {/* CTA: Add Person */}
-        {!showNewPerson && (
-          <WidgetCell>
-            <div
-              className="h-full w-full rounded-xl border-2 border-dashed border-primary/30 flex items-center justify-center cursor-pointer hover:border-primary/50 transition-colors"
-              onClick={() => { setShowNewPerson(true); setOpenCardId(null); }}
-              role="button"
-              tabIndex={0}
-            >
-              <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-                  <UserPlus className="h-6 w-6 text-primary" />
-                </div>
-                <p className="text-sm font-medium">Person hinzufügen</p>
-              </div>
-            </div>
-          </WidgetCell>
-        )}
       </WidgetGrid>
 
       {/* Person detail/edit below grid */}

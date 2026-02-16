@@ -189,7 +189,19 @@ export default function VorsorgeTab() {
 
   return (
     <PageShell>
-      <ModulePageHeader title="Vorsorgeverträge" description="Renten- und Vorsorgeverträge zentral verwalten" />
+      <ModulePageHeader
+        title="Vorsorgeverträge"
+        description="Renten- und Vorsorgeverträge zentral verwalten"
+        actions={
+          <Button
+            size="icon-round"
+            onClick={() => { setShowNew(true); setSelectedId(null); }}
+            className="h-10 w-10"
+          >
+            <Plus className="h-5 w-5" />
+          </Button>
+        }
+      />
 
       <div className={`${INFO_BANNER.BASE} ${INFO_BANNER.HINT} flex items-center gap-3`}>
         <Info className="h-5 w-5 text-muted-foreground shrink-0" />
@@ -247,24 +259,6 @@ export default function VorsorgeTab() {
           );
         })}
 
-        {/* CTA */}
-        {!showNew && (
-          <WidgetCell>
-            <div
-              className="h-full w-full rounded-xl border-2 border-dashed border-primary/30 flex items-center justify-center cursor-pointer hover:border-primary/50 transition-colors"
-              onClick={() => { setShowNew(true); setSelectedId(null); }}
-              role="button"
-              tabIndex={0}
-            >
-              <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Plus className="h-6 w-6 text-primary" />
-                </div>
-                <p className="text-sm font-medium">Vorsorgevertrag hinzufügen</p>
-              </div>
-            </div>
-          </WidgetCell>
-        )}
       </WidgetGrid>
 
       {/* Detail below grid */}

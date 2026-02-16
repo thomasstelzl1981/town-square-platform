@@ -191,7 +191,19 @@ export default function AbonnementsTab() {
 
   return (
     <PageShell>
-      <ModulePageHeader title="Abonnements" description="Alle wiederkehrenden Zahlungen und Abonnements zentral verwalten" />
+      <ModulePageHeader
+        title="Abonnements"
+        description="Alle wiederkehrenden Zahlungen und Abonnements zentral verwalten"
+        actions={
+          <Button
+            size="icon-round"
+            onClick={() => { setShowNew(true); setSelectedId(null); }}
+            className="h-10 w-10"
+          >
+            <Plus className="h-5 w-5" />
+          </Button>
+        }
+      />
 
       <Card className="glass-card">
         <CardContent className="py-4 flex items-center justify-between">
@@ -251,25 +263,6 @@ export default function AbonnementsTab() {
           );
         })}
 
-        <DesktopOnly>
-          {!showNew && (
-            <WidgetCell>
-              <div
-                className="h-full w-full rounded-xl border-2 border-dashed border-primary/30 flex items-center justify-center cursor-pointer hover:border-primary/50 transition-colors"
-                onClick={() => { setShowNew(true); setSelectedId(null); }}
-                role="button"
-                tabIndex={0}
-              >
-                <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                  <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-                    <Plus className="h-6 w-6 text-primary" />
-                  </div>
-                  <p className="text-sm font-medium">Abonnement hinzufügen</p>
-                </div>
-              </div>
-            </WidgetCell>
-          )}
-        </DesktopOnly>
       </WidgetGrid>
 
       {/* Detail below grid */}
