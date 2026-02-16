@@ -16,6 +16,7 @@ import type {
   DemoPortfolioRefs,
   DemoAcqMandate,
   DemoDevProject,
+  DemoSelbstauskunft,
   DemoDataSpec,
 } from './spec';
 
@@ -352,6 +353,16 @@ export const DEMO_DEV_PROJECT: DemoDevProject = {
   city: 'München',
 };
 
+// ─── SELBSTAUSKUNFT (persistente DB-Einträge) ──────────────
+
+export const DEMO_SELBSTAUSKUNFT_PRIMARY_ID = 'a23366ab-e769-46b0-8d44-f8117f901c15';
+export const DEMO_SELBSTAUSKUNFT_CO_ID = '703e1648-5dbf-40da-8f5f-040dc04bbc31';
+
+export const DEMO_SELBSTAUSKUNFT: DemoSelbstauskunft = {
+  primaryProfileId: DEMO_SELBSTAUSKUNFT_PRIMARY_ID,
+  coApplicantProfileId: DEMO_SELBSTAUSKUNFT_CO_ID,
+};
+
 // ─── ALLE IDs (flach) ──────────────────────────────────────
 
 export const ALL_DEMO_IDS: readonly string[] = [
@@ -374,6 +385,9 @@ export const ALL_DEMO_IDS: readonly string[] = [
   DEMO_ACQ_MANDATE_ID,
   DEMO_ACQ_OFFER_ID,
   DEMO_DEVELOPER_CONTEXT_ID,
+  // Selbstauskunft
+  DEMO_SELBSTAUSKUNFT_PRIMARY_ID,
+  DEMO_SELBSTAUSKUNFT_CO_ID,
 ] as const;
 
 // ─── GESAMTPAKET ───────────────────────────────────────────
@@ -387,4 +401,29 @@ export const DEMO_DATA_SPEC: DemoDataSpec = {
   portfolio: DEMO_PORTFOLIO,
   acqMandate: DEMO_ACQ_MANDATE,
   devProject: DEMO_DEV_PROJECT,
+  selbstauskunft: DEMO_SELBSTAUSKUNFT,
 };
+
+// ─── DEMO COVERAGE MAP ────────────────────────────────────
+/**
+ * Dokumentation: Abdeckungsstatus aller 15 Golden Path Prozesse
+ *
+ * ✅ VOLLSTÄNDIG:
+ * - GP-PORTFOLIO     (MOD-04) — DB: 3 Properties + Landlord Context
+ * - GP-VERWALTUNG    (MOD-04) — DB: Leases, NK, V+V
+ * - GP-SANIERUNG     (MOD-04) — Clientseitig: Demo-Widget
+ * - GP-FINANZIERUNG  (MOD-07) — DB: Selbstauskunft Max (92%) + Lisa (78%)
+ * - GP-SUCHMANDAT    (MOD-08) — Clientseitig: useDemoAcquisition
+ * - GP-SIMULATION    (MOD-08) — Clientseitig: Demo-Widget
+ * - GP-AKQUISE-MANDAT(MOD-12) — DB: acq_mandates + acq_offers
+ * - GP-PROJEKT       (MOD-13) — Clientseitig: demoProjectData.ts
+ * - GP-FAHRZEUG      (MOD-17) — DB: 2 Fahrzeuge (Porsche, BMW)
+ * - GP-PV-ANLAGE     (MOD-19) — DB: PV-Anlage 32.4 kWp
+ * - GP-KONTEN        (MOD-18) — Clientseitig: Demo-Bankkonto
+ *
+ * ⚠️ TEILWEISE / BEWUSST OFFEN:
+ * - GP-FM-FALL       (MOD-11) — Kein Demo-Finanzierungsfall (bewusst)
+ * - GP-SERIEN-EMAIL  (MOD-14) — Nur Demo-Widget, keine echte Sequenz
+ * - GP-RECHERCHE     (MOD-14) — Nur Demo-Widget, keine echten Ergebnisse
+ * - GP-PETS          (MOD-05) — Phase 1, noch nicht implementiert
+ */
