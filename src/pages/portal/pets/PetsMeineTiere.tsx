@@ -3,12 +3,13 @@
  * RecordCard-Grid mit Inline-Akte (kein Seitenwechsel)
  */
 import { useState } from 'react';
-import { PawPrint, Plus, Dog, Cat, Bird, Rabbit, Radar } from 'lucide-react';
+import { PawPrint, Plus, Dog, Cat, Bird, Rabbit, Radar, FolderOpen } from 'lucide-react';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { RecordCard } from '@/components/shared/RecordCard';
 import { RECORD_CARD } from '@/config/designManifest';
 import { FormInput } from '@/components/shared';
+import { EntityStorageTree } from '@/components/shared/EntityStorageTree';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -220,6 +221,26 @@ function PetInlineDossier({ petId, tenantId }: { petId: string; tenantId?: strin
         )}
       </div>
 
+      {/* Datenraum — ganz unten */}
+      <div>
+        <p className={RECORD_CARD.SECTION_TITLE}>
+          <span className="flex items-center gap-2">
+            <FolderOpen className="h-3.5 w-3.5" /> Datenraum
+          </span>
+        </p>
+        {tenantId ? (
+          <EntityStorageTree
+            key={petId}
+            tenantId={tenantId}
+            entityType="pet"
+            entityId={petId}
+            moduleCode="MOD_05"
+          />
+        ) : (
+          <p className="text-sm text-muted-foreground">Kein Mandant zugeordnet.</p>
+        )}
+      </div>
+
       {/* Save */}
       {Object.keys(formData).length > 0 && (
         <div className="flex justify-end pt-2 border-t border-border/30">
@@ -308,14 +329,14 @@ export default function PetsMeineTiere() {
                 title={pet.name}
                 subtitle={SPECIES_LABELS[pet.species] || pet.species}
                 summary={summaryItems}
-                children={null}
-                tenantId={activeTenantId || undefined}
                 glowVariant="teal"
-              />
+              >
+                {openPetId === pet.id && (
+                  <PetInlineDossier petId={pet.id} tenantId={activeTenantId || undefined} />
+                )}
+              </RecordCard>
             );
           })}
-          {/* Inline dossier below grid */}
-          {openPetId && <PetInlineDossier petId={openPetId} tenantId={activeTenantId || undefined} />}
         </div>
       )}
     </PageShell>
