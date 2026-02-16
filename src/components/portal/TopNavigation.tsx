@@ -52,7 +52,7 @@ export function TopNavigation() {
   const hideSwitcher = useCallback(() => {
     hideTimeout.current = setTimeout(() => {
       setShowModuleSwitcher(false);
-    }, 1500);
+    }, 400);
   }, []);
 
   // Build module data from manifest
