@@ -11520,6 +11520,75 @@ export type Database = {
           },
         ]
       }
+      pet_caring_events: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          event_type: Database["public"]["Enums"]["pet_caring_event_type"]
+          id: string
+          is_completed: boolean
+          pet_id: string
+          recurring_interval_days: number | null
+          reminder_enabled: boolean
+          reminder_minutes_before: number | null
+          scheduled_at: string
+          tenant_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          event_type?: Database["public"]["Enums"]["pet_caring_event_type"]
+          id?: string
+          is_completed?: boolean
+          pet_id: string
+          recurring_interval_days?: number | null
+          reminder_enabled?: boolean
+          reminder_minutes_before?: number | null
+          scheduled_at: string
+          tenant_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          event_type?: Database["public"]["Enums"]["pet_caring_event_type"]
+          id?: string
+          is_completed?: boolean
+          pet_id?: string
+          recurring_interval_days?: number | null
+          reminder_enabled?: boolean
+          reminder_minutes_before?: number | null
+          scheduled_at?: string
+          tenant_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pet_caring_events_pet_id_fkey"
+            columns: ["pet_id"]
+            isOneToOne: false
+            referencedRelation: "pets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pet_caring_events_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pet_invoice_items: {
         Row: {
           created_at: string
@@ -18434,6 +18503,18 @@ export type Database = {
         | "completed"
         | "cancelled"
         | "no_show"
+      pet_caring_event_type:
+        | "feeding"
+        | "walking"
+        | "grooming"
+        | "medication"
+        | "vet_appointment"
+        | "vaccination"
+        | "deworming"
+        | "flea_treatment"
+        | "training"
+        | "weight_check"
+        | "other"
       pet_gender: "male" | "female" | "unknown"
       pet_price_type:
         | "fixed"
@@ -18907,6 +18988,19 @@ export const Constants = {
         "completed",
         "cancelled",
         "no_show",
+      ],
+      pet_caring_event_type: [
+        "feeding",
+        "walking",
+        "grooming",
+        "medication",
+        "vet_appointment",
+        "vaccination",
+        "deworming",
+        "flea_treatment",
+        "training",
+        "weight_check",
+        "other",
       ],
       pet_gender: ["male", "female", "unknown"],
       pet_price_type: ["fixed", "hourly", "daily", "per_session", "on_request"],

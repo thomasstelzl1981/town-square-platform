@@ -1,10 +1,10 @@
 /**
  * Pets — Tierakte Detail Page
- * Full RecordCard open-state with vaccination history
+ * Full RecordCard open-state with vaccination history + caring timeline
  */
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { PawPrint, ArrowLeft, Syringe, Calendar } from 'lucide-react';
+import { PawPrint, ArrowLeft, Syringe, Calendar, Heart, Check, Trash2 } from 'lucide-react';
 import { PageShell } from '@/components/shared/PageShell';
 import { RecordCard } from '@/components/shared/RecordCard';
 import { RECORD_CARD } from '@/config/designManifest';
@@ -16,6 +16,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { usePet, usePetVaccinations, useUpdatePet, useDeletePet } from '@/hooks/usePets';
+import { useCaringEvents, useCompleteCaringEvent, useDeleteCaringEvent, CARING_EVENT_TYPES } from '@/hooks/usePetCaring';
 import { useAuth } from '@/contexts/AuthContext';
 import { format, parseISO, isPast, addDays } from 'date-fns';
 import { de } from 'date-fns/locale';
@@ -35,6 +36,9 @@ export default function PetDetailPage() {
   const { activeTenantId } = useAuth();
   const { data: pet, isLoading } = usePet(petId);
   const { data: vaccinations = [] } = usePetVaccinations(petId);
+  const { data: caringEvents = [] } = useCaringEvents({ petId });
+  const completeCaring = useCompleteCaringEvent();
+  const deleteCaring = useDeleteCaringEvent();
   const updatePet = useUpdatePet();
   const deletePet = useDeletePet();
   const [isOpen, setIsOpen] = useState(true);
@@ -227,6 +231,41 @@ export default function PetDetailPage() {
                           {overdue ? 'Überfällig' : `Fällig ${format(parseISO(v.next_due_at), 'dd.MM.yyyy', { locale: de })}`}
                         </Badge>
                       )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* ── PFLEGE-TIMELINE ── */}
+          <div>
+            <p className={RECORD_CARD.SECTION_TITLE}>
+              <span className="flex items-center gap-2">
+                <Heart className="h-3.5 w-3.5" />
+                Pflege-Timeline ({caringEvents.filter(e => !e.is_completed).length} offen)
+              </span>
+            </p>
+            {caringEvents.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-2">Noch keine Pflege-Events erfasst.</p>
+            ) : (
+              <div className="space-y-2">
+                {caringEvents.filter(e => !e.is_completed).slice(0, 10).map(event => {
+                  const cfg = CARING_EVENT_TYPES[event.event_type] || CARING_EVENT_TYPES.other;
+                  const isOverdue = isPast(parseISO(event.scheduled_at));
+                  return (
+                    <div key={event.id} className={`flex items-center gap-3 p-2.5 rounded-lg border ${isOverdue ? 'border-destructive/50 bg-destructive/5' : 'border-border/30 bg-muted/30'}`}>
+                      <span className="text-base">{cfg.emoji}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{event.title}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {format(parseISO(event.scheduled_at), 'dd.MM.yyyy HH:mm', { locale: de })}
+                        </p>
+                      </div>
+                      {isOverdue && <Badge variant="destructive" className="text-[10px]">Überfällig</Badge>}
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => completeCaring.mutate(event.id)}>
+                        <Check className="h-3.5 w-3.5 text-emerald-500" />
+                      </Button>
                     </div>
                   );
                 })}
