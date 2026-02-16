@@ -2889,6 +2889,92 @@ export type Database = {
           },
         ]
       }
+      car_service_requests: {
+        Row: {
+          appointment_at: string | null
+          confirmed_at: string | null
+          contact_email: string | null
+          contact_phone: string | null
+          created_at: string | null
+          distance_km: number | null
+          id: string
+          next_available_at: string | null
+          partner: string | null
+          problem_note: string | null
+          quoted_price_max: number | null
+          quoted_price_min: number | null
+          radius_km: number | null
+          rejection_reason: string | null
+          selected_workshop_id: string | null
+          selected_workshop_name: string | null
+          service_type: string
+          status: string
+          tenant_id: string
+          updated_at: string | null
+          user_id: string
+          vehicle_id: string
+          zip: string | null
+        }
+        Insert: {
+          appointment_at?: string | null
+          confirmed_at?: string | null
+          contact_email?: string | null
+          contact_phone?: string | null
+          created_at?: string | null
+          distance_km?: number | null
+          id?: string
+          next_available_at?: string | null
+          partner?: string | null
+          problem_note?: string | null
+          quoted_price_max?: number | null
+          quoted_price_min?: number | null
+          radius_km?: number | null
+          rejection_reason?: string | null
+          selected_workshop_id?: string | null
+          selected_workshop_name?: string | null
+          service_type: string
+          status?: string
+          tenant_id: string
+          updated_at?: string | null
+          user_id?: string
+          vehicle_id: string
+          zip?: string | null
+        }
+        Update: {
+          appointment_at?: string | null
+          confirmed_at?: string | null
+          contact_email?: string | null
+          contact_phone?: string | null
+          created_at?: string | null
+          distance_km?: number | null
+          id?: string
+          next_available_at?: string | null
+          partner?: string | null
+          problem_note?: string | null
+          quoted_price_max?: number | null
+          quoted_price_min?: number | null
+          radius_km?: number | null
+          rejection_reason?: string | null
+          selected_workshop_id?: string | null
+          selected_workshop_name?: string | null
+          service_type?: string
+          status?: string
+          tenant_id?: string
+          updated_at?: string | null
+          user_id?: string
+          vehicle_id?: string
+          zip?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "car_service_requests_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "cars_vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cars_claims: {
         Row: {
           created_at: string

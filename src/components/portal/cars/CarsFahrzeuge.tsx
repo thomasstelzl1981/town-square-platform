@@ -14,11 +14,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { EntityStorageTree } from '@/components/shared/EntityStorageTree';
+import { CarServiceFlow } from './CarServiceFlow';
 
 import { toast } from 'sonner';
 import {
   Plus, Search, Car, Bike, Gauge, Calendar, User, Shield,
-  ChevronDown, FileText, ShieldCheck, AlertTriangle, BookOpen, FolderOpen, X,
+  ChevronDown, FileText, AlertTriangle, BookOpen, FolderOpen, X, Wrench,
   Check, Pencil, Wifi, Save, Loader2
 } from 'lucide-react';
 import { format, differenceInDays } from 'date-fns';
@@ -109,25 +110,6 @@ const DEMO_VEHICLES = [
   },
 ];
 
-const DEMO_INSURANCES: Record<string, Record<string, string>> = {
-  'demo-1': { insurer: 'Allianz', policy_number: 'AZ-2024-78912', coverage_type: 'Vollkasko', annual_premium: '2.840,00 €', sf_class_liability: 'SF 12', sf_class_comprehensive: 'SF 10', deductible_partial: '150 €', deductible_comprehensive: '500 €' },
-  'demo-2': { insurer: 'HUK-COBURG', policy_number: 'HUK-2022-45601', coverage_type: 'Vollkasko', annual_premium: '1.920,00 €', sf_class_liability: 'SF 15', sf_class_comprehensive: 'SF 12', deductible_partial: '150 €', deductible_comprehensive: '300 €' },
-  'demo-3': { insurer: 'AXA Versicherung', policy_number: 'AXA-2024-11234', coverage_type: 'Vollkasko', annual_premium: '3.450,00 €', sf_class_liability: 'SF 8', sf_class_comprehensive: 'SF 8', deductible_partial: '150 €', deductible_comprehensive: '1.000 €' },
-  'bike-1': { insurer: 'HUK-COBURG', policy_number: 'HUK-2025-11234', coverage_type: 'Vollkasko', annual_premium: '680,00 €', sf_class_liability: 'SF 8', sf_class_comprehensive: 'SF 6', deductible_partial: '150 €', deductible_comprehensive: '300 €' },
-  'bike-2': { insurer: 'Allianz', policy_number: 'AZ-2025-55678', coverage_type: 'Vollkasko', annual_premium: '920,00 €', sf_class_liability: 'SF 5', sf_class_comprehensive: 'SF 5', deductible_partial: '150 €', deductible_comprehensive: '500 €' },
-  'bike-3': { insurer: 'HDI', policy_number: 'HDI-2024-33456', coverage_type: 'Teilkasko', annual_premium: '450,00 €', sf_class_liability: 'SF 10', sf_class_comprehensive: '—', deductible_partial: '150 €', deductible_comprehensive: '—' },
-};
-
-const INSURANCE_FIELD_LABELS: Record<string, string> = {
-  insurer: 'Versicherer',
-  policy_number: 'Policen-Nr.',
-  coverage_type: 'Deckungsart',
-  annual_premium: 'Jahresbeitrag',
-  sf_class_liability: 'SF-Klasse KH',
-  sf_class_comprehensive: 'SF-Klasse VK',
-  deductible_partial: 'SB Teilkasko',
-  deductible_comprehensive: 'SB Vollkasko',
-};
 
 const DEMO_TRIPS = [
   { id: 't1', date: '12.02.2026', start: 'München', end: 'Stuttgart', km: 234, purpose: 'Geschäftlich' as const, customer: 'Huber GmbH' },
@@ -307,7 +289,7 @@ export default function CarsFahrzeuge() {
                     <MiniInfo icon={User} label="Halter" value={vehicle.holder_name || '—'} />
                     <MiniInfo icon={Gauge} label="KM" value={vehicle.current_mileage_km?.toLocaleString('de-DE') || '—'} />
                     <MiniInfo icon={Calendar} label="HU" value={huStatus.text} urgent={huStatus.urgency === 'expired'} />
-                    <MiniInfo icon={Shield} label="Vers." value="Aktiv" />
+                    <MiniInfo icon={Wrench} label="Service" value="Bereit" />
                   </div>
                 </CardContent>
               </Card>
@@ -415,17 +397,10 @@ export default function CarsFahrzeuge() {
 
             <Separator />
 
-            <EditableAkteSection
-              icon={ShieldCheck}
-              title="Versicherung"
+            <CarServiceFlow
               vehicleId={selectedVehicle.id}
+              holderAddress={selectedVehicle.holder_address}
               isDemo={isDemo}
-              fields={Object.entries(DEMO_INSURANCES[selectedVehicle.id] || {}).map(([key, value]) => ({
-                key,
-                label: INSURANCE_FIELD_LABELS[key] || key.replace(/_/g, ' '),
-                value: value,
-              }))}
-              onSaved={() => refetch()}
             />
 
             <Separator />
