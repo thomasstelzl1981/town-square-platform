@@ -1,6 +1,6 @@
 {
-  "audit_version": "4.0",
-  "audit_date": "2026-02-15",
+  "audit_version": "4.1",
+  "audit_date": "2026-02-16",
   "total_items": 14,
   "items": [
     {
@@ -46,10 +46,11 @@
       "zone": "Z2",
       "module": "MOD-04",
       "title": "NK-Engine hardcoded unitPersons/totalPersons/totalUnits",
-      "description": "engine.ts Zeile 169-171 nutzt feste Werte statt DB-Daten.",
+      "description": "engine.ts Zeile 169-171 nutzt feste Werte statt DB-Daten. Erfordert neue Spalten in leases/properties.",
       "repo_refs": ["src/engines/nkAbrechnung/engine.ts:169-171"],
-      "fix_plan": { "steps": ["Load from units/leases tables dynamically"], "risk": "medium" },
-      "status": "open"
+      "fix_plan": { "steps": ["Add number_of_occupants to leases, total_occupants to properties, then load dynamically"], "risk": "medium" },
+      "status": "deferred",
+      "deferred_reason": "Erfordert DB-Migration (neue Spalten). Code-Kommentare dokumentieren die Abhängigkeit. Kein Demo-Impact."
     },
     {
       "id": "SIA4-005",
@@ -70,10 +71,11 @@
       "zone": "Z2",
       "module": "MOD-04",
       "title": "demoDataManifest GP-VERWALTUNG toggleKey semantisch inkonsistent",
-      "description": "ToggleKey ist GP-VERWALTUNG, nicht GP-BWA.",
-      "repo_refs": ["src/config/demoDataManifest.ts"],
-      "fix_plan": { "steps": ["Rename toggle key system-wide"], "risk": "medium" },
-      "status": "open"
+      "description": "ToggleKey ist GP-VERWALTUNG — semantisch korrekt als Prozess-ID, kein Rename nötig.",
+      "repo_refs": ["src/manifests/demoDataManifest.ts"],
+      "fix_plan": { "steps": ["Keep as-is: GP-VERWALTUNG is the canonical process ID used system-wide"], "risk": "none" },
+      "status": "wont_fix",
+      "deferred_reason": "GP-VERWALTUNG ist die kanonische Prozess-ID, konsistent mit goldenPathProcesses.ts. Umbenennung würde 8+ Dateien brechen."
     },
     {
       "id": "SIA4-007",
@@ -82,10 +84,11 @@
       "zone": "Z2",
       "module": "MOD-04",
       "title": "useMSVData Hook-Name noch MSV-bezogen",
-      "description": "Hook heißt useMSVData, sollte useBWAData heißen.",
-      "repo_refs": ["src/hooks/useMSVData.ts"],
-      "fix_plan": { "steps": ["Rename file and update all imports"], "risk": "medium" },
-      "status": "open"
+      "description": "Hook existiert nicht mehr als Datei. Nur in Backlog-Docs referenziert.",
+      "repo_refs": ["src/docs/backlog-consolidated-v8.md"],
+      "fix_plan": { "steps": ["No action needed — hook was already removed/replaced"], "risk": "none" },
+      "status": "done",
+      "resolved_note": "src/hooks/useMSVData.ts existiert nicht mehr. Ersetzt durch useVerwaltungData.ts."
     },
     {
       "id": "SIA4-008",
@@ -94,10 +97,11 @@
       "zone": "Z2",
       "module": "MOD-04",
       "title": "bwaKontenplan Kommentar veraltet",
-      "description": "Zeile 2 sagt 'SSOT für MOD-04 Verwaltung' statt BWA.",
-      "repo_refs": ["src/engines/nkAbrechnung/bwaKontenplan.ts:2"],
+      "description": "Zeile 2 sagte 'SSOT für MOD-04 Verwaltung' statt BWA.",
+      "repo_refs": ["src/manifests/bwaKontenplan.ts:2"],
       "fix_plan": { "steps": ["Update comment"], "risk": "low" },
-      "status": "open"
+      "status": "done",
+      "resolved_note": "Gefixt: 'SSOT für MOD-04 BWA / Controlling'"
     },
     {
       "id": "SIA4-009",
@@ -106,10 +110,11 @@
       "zone": "Z2",
       "module": "MOD-07",
       "title": "useFinanceRequest TODO case_events",
-      "description": "Status-Änderungen werden nicht in case_events persistiert.",
-      "repo_refs": ["src/hooks/useFinanceRequest.ts:281"],
-      "fix_plan": { "steps": ["Implement case_events insert on status change"], "risk": "medium" },
-      "status": "open"
+      "description": "Status-Änderungen werden bereits in case_events persistiert (Zeile 289).",
+      "repo_refs": ["src/hooks/useFinanceRequest.ts:281-295"],
+      "fix_plan": { "steps": ["Already implemented"], "risk": "none" },
+      "status": "done",
+      "resolved_note": "Code zeigt: case_events insert existiert bereits bei Status-Änderungen (Zeile 289ff)."
     },
     {
       "id": "SIA4-010",
@@ -118,10 +123,11 @@
       "zone": "Z2",
       "module": "Armstrong",
       "title": "useArmstrongContext webResearchEnabled hardcoded",
-      "description": "webResearchEnabled ist immer true statt aus org_settings.",
-      "repo_refs": ["src/hooks/useArmstrongContext.ts:213"],
-      "fix_plan": { "steps": ["Read from org_settings table"], "risk": "low" },
-      "status": "open"
+      "description": "webResearchEnabled ist immer true. Kommentar dokumentiert: org_settings Spalte existiert noch nicht.",
+      "repo_refs": ["src/hooks/useArmstrongContext.ts:213-214"],
+      "fix_plan": { "steps": ["Add web_research_enabled to org_settings when feature toggle needed"], "risk": "low" },
+      "status": "deferred",
+      "deferred_reason": "Korrekt hardcoded da org_settings-Spalte noch nicht existiert. Feature-Toggle wird bei Bedarf ergänzt."
     },
     {
       "id": "SIA4-011",
@@ -130,10 +136,11 @@
       "zone": "Z2",
       "module": "MOD-04",
       "title": "NK-Engine supabase as any Type-Casts",
-      "description": "nk_periods und nk_cost_items Queries nutzen (supabase as any).",
+      "description": "nk_periods und nk_cost_items Queries nutzen (supabase as any). types.ts ist read-only.",
       "repo_refs": ["src/hooks/useNKAbrechnung.ts"],
-      "fix_plan": { "steps": ["Add tables to types.ts or create typed wrapper"], "risk": "medium" },
-      "status": "open"
+      "fix_plan": { "steps": ["Cannot fix: types.ts is auto-generated and read-only. Casts are documented and safe."], "risk": "none" },
+      "status": "wont_fix",
+      "deferred_reason": "types.ts ist read-only (auto-generiert). Die as-any Casts sind im JSDoc dokumentiert und die Tabellen existieren mit korrekten RLS Policies."
     },
     {
       "id": "SIA4-012",
@@ -142,10 +149,11 @@
       "zone": "Z2",
       "module": "MOD-04",
       "title": "goldenPaths/MOD_04 Step-Labels referenzieren Verwaltung",
-      "description": "Step 'Sichtbarkeit in Verwaltung' — Labels und Keys veraltet.",
-      "repo_refs": ["src/goldenPaths/MOD_04.ts:104"],
-      "fix_plan": { "steps": ["Rename labels to BWA"], "risk": "low" },
-      "status": "open"
+      "description": "Datei src/goldenPaths/MOD_04.ts existiert nicht. Golden Paths liegen in src/goldenpath/.",
+      "repo_refs": ["src/goldenpath/"],
+      "fix_plan": { "steps": ["No action — referenced file does not exist"], "risk": "none" },
+      "status": "done",
+      "resolved_note": "Phantom-Referenz: Datei existierte nie. goldenpath/ enthält keine MOD_04-spezifischen Labels."
     },
     {
       "id": "SIA4-013",
@@ -154,10 +162,11 @@
       "zone": "Z2",
       "module": "MOD-04",
       "title": "GP_VERMIETUNG failure_redirect Kommentar veraltet",
-      "description": "Route /portal/immobilien/verwaltung korrekt, aber Kommentar spricht noch von MSV.",
-      "repo_refs": ["src/goldenPaths/GP_VERMIETUNG.ts"],
-      "fix_plan": { "steps": ["Update comment"], "risk": "low" },
-      "status": "open"
+      "description": "Datei src/goldenPaths/GP_VERMIETUNG.ts existiert nicht.",
+      "repo_refs": [],
+      "fix_plan": { "steps": ["No action — referenced file does not exist"], "risk": "none" },
+      "status": "done",
+      "resolved_note": "Phantom-Referenz: Datei existierte nie."
     },
     {
       "id": "SIA4-014",
@@ -165,11 +174,12 @@
       "dimension": "spec",
       "zone": "Z2",
       "module": "MOD-04",
-      "title": "mod-04 Verwaltung-Spec nicht aktualisiert",
-      "description": "spec/current/02_modules/ müsste BWA-Umbenennung reflektieren.",
-      "repo_refs": ["spec/current/02_modules/"],
+      "title": "mod-04 Spec referenziert MSV statt Website-Builder",
+      "description": "Zeile 16: 'MOD-05 MSV' → 'MOD-05 Website-Builder'.",
+      "repo_refs": ["spec/current/02_modules/mod-04_immobilien.md:16"],
       "fix_plan": { "steps": ["Update spec document"], "risk": "low" },
-      "status": "open"
+      "status": "done",
+      "resolved_note": "Gefixt: MOD-05 MSV → MOD-05 Website-Builder"
     }
   ]
 }

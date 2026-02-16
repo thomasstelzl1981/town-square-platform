@@ -13,7 +13,7 @@
 
 MOD-04 "Immobilien" ist das **Single Source of Truth (SSOT)** für alle Objekt-, Einheiten- und Mietvertragsdaten im System.
 
-**Downstream-Module (MOD-05 MSV, MOD-06 Verkauf) DÜRFEN KEINE eigenen Objekt-/Einheitendaten führen.** Sie lesen ausschließlich aus MOD-04 und ergänzen lediglich modulspezifische Daten (Zahlungen, Listings, etc.).
+**Downstream-Module (MOD-05 Website-Builder, MOD-06 Verkauf) DÜRFEN KEINE eigenen Objekt-/Einheitendaten führen.** Sie lesen ausschließlich aus MOD-04 und ergänzen lediglich modulspezifische Daten (Zahlungen, Listings, etc.).
 
 ---
 
