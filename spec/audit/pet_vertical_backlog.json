@@ -1,0 +1,377 @@
+{
+  "schema": "PET-VERTICAL-BACKLOG-V1.0",
+  "created": "2026-02-16",
+  "description": "Entwicklungs-Backlog für das gesamte Pet-Vertical (MOD-05 Client, MOD-22 Manager, Zone 1 Governance). Phasenweise Umsetzung von Datenmodell über UI bis Buchungs- und Rechnungsflows.",
+  "modules_affected": ["MOD-05", "MOD-22", "Z1-PetGovernance"],
+  "existing_db_tables": ["pet_invoices", "pet_invoice_items"],
+  "missing_db_tables": ["pets", "pet_bookings", "pet_services", "pet_providers", "pet_caring_events"],
+
+  "phases": [
+    {
+      "phase": "P1",
+      "title": "Datenmodell & Tier-Akten",
+      "description": "Fundament: DB-Tabellen für Tiere, Provider, Services. RecordCard-Akte in Meine Tiere mit Demo-Daten (Bello + Luna).",
+      "items": [
+        {
+          "id": "PET-001",
+          "severity": "P1",
+          "module": "DB",
+          "title": "Tabelle 'pets' erstellen",
+          "description": "Zentrale Tiertabelle: id, tenant_id, owner_user_id, name, species (enum: hund/katze/vogel/nagetier/reptil/sonstig), breed, gender, birth_date, weight_kg, chip_number, color, photo_url, notes, neutered (bool), blood_type, allergies (text[]), vet_name, vet_phone, insurance_provider, insurance_policy_no, created_at, updated_at, deleted_at (soft delete). RLS: tenant_id-basiert.",
+          "effort": "medium",
+          "status": "open"
+        },
+        {
+          "id": "PET-002",
+          "severity": "P1",
+          "module": "DB",
+          "title": "Tabelle 'pet_vaccinations' erstellen",
+          "description": "Impf-/Behandlungshistorie: id, pet_id (FK→pets), tenant_id, vaccination_type, vaccine_name, administered_at, next_due_at, vet_name, batch_number, notes, document_node_id (FK→storage_nodes optional), created_at. RLS: tenant_id.",
+          "effort": "medium",
+          "status": "open"
+        },
+        {
+          "id": "PET-003",
+          "severity": "P1",
+          "module": "DB",
+          "title": "Tabelle 'pet_providers' erstellen",
+          "description": "Dienstleister-Stammdaten: id, tenant_id, user_id (FK→profiles, der Provider-User), company_name, contact_name, email, phone, address, provider_type (enum: tierpension/hundesitter/tierarzt/grooming/training/sonstig), verified_at, rating_avg, review_count, bio, photo_url, operating_hours (jsonb), service_area, status (active/suspended/pending), created_at, updated_at. RLS: tenant_id + public read für verifizierte.",
+          "effort": "medium",
+          "status": "open"
+        },
+        {
+          "id": "PET-004",
+          "severity": "P1",
+          "module": "DB",
+          "title": "Tabelle 'pet_services' erstellen (Service-Katalog)",
+          "description": "Was Provider anbieten: id, provider_id (FK→pet_providers), tenant_id, title, description, category (enum: betreuung/pflege/gesundheit/training/transport/sonstig), duration_minutes, price_cents, price_type (enum: fixed/hourly/daily), max_pets_per_slot, species_allowed (text[]), is_active, sort_order, created_at, updated_at. RLS: tenant_id.",
+          "effort": "medium",
+          "status": "open"
+        },
+        {
+          "id": "PET-005",
+          "severity": "P1",
+          "module": "MOD-05",
+          "title": "Demo-Daten: 2 Tiere für Mustermann-Tenant",
+          "description": "Seed-Daten (oder Demo-Engine-Eintrag) für: 1) Luna — Golden Retriever, weiblich, geb. 2023-04-15, chip DE123456789, 2) Bello — Dackel, männlich, geb. 2021-09-01, chip DE987654321. Beide dem DEV_TENANT zugeordnet. Inkl. je 2-3 Impfhistorien-Einträge.",
+          "effort": "low",
+          "status": "open"
+        },
+        {
+          "id": "PET-006",
+          "severity": "P1",
+          "module": "MOD-05",
+          "title": "RecordCard-Akte für Tiere (PetsMeineTiere + PetDetailPage)",
+          "description": "PetsMeineTiere: RecordCard-Grid (Foto links, Name/Rasse/Alter rechts, Summary-Werte ohne Labels). Klick → PetDetailPage. PetDetailPage: Offener RecordCard-Zustand mit allen Feldern, integriertem DMS-Tree (entity_type='pet'), Impfhistorie-Sektion, und Foto-Upload-Zone (ersetzt ehem. Fotoalbum). Pattern identisch zu Stammdaten/Personen.",
+          "effort": "high",
+          "status": "open"
+        },
+        {
+          "id": "PET-007",
+          "severity": "P2",
+          "module": "MOD-05",
+          "title": "DMS-Ordnerstruktur für Tier-Akte automatisieren",
+          "description": "Bei Anlage eines Tiers → storage_nodes Root-Ordner + Unterordner erstellen: 01_Impfpass, 02_Tierarzt, 03_Versicherung, 04_Fotos, 05_Sonstiges. Pattern identisch zu Person-Dossier-Standard.",
+          "effort": "medium",
+          "status": "open"
+        }
+      ]
+    },
+    {
+      "phase": "P2",
+      "title": "Service-Katalog & Buchungssystem",
+      "description": "Buchbare Services, Verfügbarkeitskalender, Buchungsflow vom Client (MOD-05 Shop) zum Provider (MOD-22).",
+      "items": [
+        {
+          "id": "PET-010",
+          "severity": "P1",
+          "module": "DB",
+          "title": "Tabelle 'pet_bookings' erstellen",
+          "description": "Buchungstabelle: id, tenant_id, pet_id (FK→pets), service_id (FK→pet_services), provider_id (FK→pet_providers), customer_user_id, status (enum: requested/confirmed/in_progress/completed/cancelled/no_show), booked_date, start_time, end_time, duration_minutes, price_cents, special_requests (text), cancellation_reason, cancelled_at, cancelled_by, confirmed_at, completed_at, rating, review_text, invoice_id (FK→pet_invoices nullable), created_at, updated_at. RLS: tenant_id + customer_user_id/provider_user_id.",
+          "effort": "high",
+          "status": "open"
+        },
+        {
+          "id": "PET-011",
+          "severity": "P1",
+          "module": "DB",
+          "title": "Tabelle 'pet_provider_availability' erstellen",
+          "description": "Verfügbarkeitsslots: id, provider_id (FK→pet_providers), day_of_week (0-6), start_time (time), end_time (time), max_bookings_per_slot, is_active, valid_from, valid_until, created_at. RLS: provider scoped.",
+          "effort": "medium",
+          "status": "open"
+        },
+        {
+          "id": "PET-012",
+          "severity": "P1",
+          "module": "DB",
+          "title": "Tabelle 'pet_provider_blocked_dates' erstellen",
+          "description": "Urlaub/Sperrzeiten der Provider: id, provider_id, blocked_date, reason, created_at. RLS: provider scoped.",
+          "effort": "low",
+          "status": "open"
+        },
+        {
+          "id": "PET-013",
+          "severity": "P1",
+          "module": "MOD-22",
+          "title": "Leistungen-Tab: Service-Katalog CRUD",
+          "description": "Provider kann eigene Services verwalten (CRUD in PMLeistungen). Formular: Titel, Beschreibung, Kategorie, Dauer, Preis, erlaubte Tierarten. RecordCard-Pattern oder Tabellen-Pattern.",
+          "effort": "high",
+          "status": "open"
+        },
+        {
+          "id": "PET-014",
+          "severity": "P1",
+          "module": "MOD-22",
+          "title": "Kalender-Tab: Verfügbarkeit & Buchungskalender",
+          "description": "PMBuchungen zeigt: 1) Wochenkalender mit bestehenden Buchungen, 2) Verfügbarkeits-Editor (Wochentag-Slots definieren), 3) Buchungsanfragen annehmen/ablehnen. Ähnlich Terminbuchung bei Immobilien-Besichtigung.",
+          "effort": "high",
+          "status": "open"
+        },
+        {
+          "id": "PET-015",
+          "severity": "P1",
+          "module": "MOD-05",
+          "title": "Shop-Tab: Service-Browsing & Buchungsflow",
+          "description": "PetsShop zeigt verfügbare Services (gefiltert nach Tierart des Users). Buchungsflow: Service wählen → Tier auswählen → Datum/Zeit wählen (aus Verfügbarkeit) → Sonderwünsche → Buchung absenden (Status: requested). Bestätigung per Toast + Eintrag in 'Mein Bereich'.",
+          "effort": "high",
+          "status": "open"
+        },
+        {
+          "id": "PET-016",
+          "severity": "P2",
+          "module": "MOD-05",
+          "title": "Mein Bereich: Buchungshistorie & aktive Buchungen",
+          "description": "PetsMeinBereich zeigt: 1) Aktive Buchungen (nächste Termine, Status), 2) Buchungshistorie, 3) Kundendaten-Übersicht. Buchungskarten mit Status-Badge (angefragt/bestätigt/abgeschlossen).",
+          "effort": "medium",
+          "status": "open"
+        }
+      ]
+    },
+    {
+      "phase": "P3",
+      "title": "Rechnungs- & Zahlungsflow",
+      "description": "Rechnungserstellung durch Provider, Zahlungsabwicklung, Finanzübersicht in beiden Zonen.",
+      "items": [
+        {
+          "id": "PET-020",
+          "severity": "P1",
+          "module": "DB",
+          "title": "pet_invoices um tenant_id erweitern + FK-Constraints prüfen",
+          "description": "Bestehende pet_invoices-Tabelle prüfen: tenant_id hinzufügen falls fehlend, FKs zu pet_bookings und pet_providers validieren. RLS-Policies erstellen (Customer sieht eigene, Provider sieht eigene).",
+          "effort": "medium",
+          "status": "open"
+        },
+        {
+          "id": "PET-021",
+          "severity": "P1",
+          "module": "MOD-22",
+          "title": "Finanzen-Tab: Rechnungserstellung aus Buchung",
+          "description": "PMFinanzen: Provider kann aus abgeschlossener Buchung eine Rechnung generieren (auto-fill aus Buchungsdaten). Rechnungsliste mit Status (entwurf/gesendet/bezahlt/überfällig). PDF-Generierung (jsPDF, bereits im Projekt).",
+          "effort": "high",
+          "status": "open"
+        },
+        {
+          "id": "PET-022",
+          "severity": "P2",
+          "module": "MOD-05",
+          "title": "Mein Bereich: Rechnungseingang & Zahlungsstatus",
+          "description": "Kunde sieht erhaltene Rechnungen in PetsMeinBereich mit Download-Link (PDF). Status-Anzeige: offen/bezahlt/überfällig.",
+          "effort": "medium",
+          "status": "open"
+        },
+        {
+          "id": "PET-023",
+          "severity": "P2",
+          "module": "MOD-22",
+          "title": "Finanzen-Tab: Umsatz-Dashboard (KPIs)",
+          "description": "Aggregierte KPIs: Monatsumsatz, offene Forderungen, bezahlte Rechnungen, Top-Services. Recharts-basiert.",
+          "effort": "medium",
+          "status": "open"
+        }
+      ]
+    },
+    {
+      "phase": "P4",
+      "title": "Caring & Pflege-Kalender",
+      "description": "Pflege-Tracking, Medikamenten-Erinnerungen, Tierarzt-Termine direkt in der Tier-Akte und im Caring-Tab.",
+      "items": [
+        {
+          "id": "PET-030",
+          "severity": "P1",
+          "module": "DB",
+          "title": "Tabelle 'pet_caring_events' erstellen",
+          "description": "Pflege-Events: id, pet_id (FK→pets), tenant_id, event_type (enum: fütterung/fellpflege/baden/zähne/krallen/entwurmung/floh_zecke/medikament/tierarzt/sonstig), title, notes, event_date, next_due_date, recurring_interval_days, reminder_enabled, completed_at, created_at, updated_at. RLS: tenant_id.",
+          "effort": "medium",
+          "status": "open"
+        },
+        {
+          "id": "PET-031",
+          "severity": "P1",
+          "module": "MOD-05",
+          "title": "Caring-Tab: Pflege-Kalender mit Events",
+          "description": "PetsCaring zeigt: 1) Kalenderansicht (Monats/Wochen) mit Pflege-Events aller Tiere, 2) Quick-Add für neue Events, 3) Überfällige Events hervorgehoben, 4) Filter nach Tier. Ähnlich dem Termin-Pattern in Portfolio.",
+          "effort": "high",
+          "status": "open"
+        },
+        {
+          "id": "PET-032",
+          "severity": "P2",
+          "module": "MOD-05",
+          "title": "PetDetailPage: Pflege-Sektion in der Akte",
+          "description": "In der Tier-Akte (PetDetailPage) eine Sektion 'Pflege & Termine' mit Timeline der letzten Events und nächsten fälligen Aktionen. Inline-Editing.",
+          "effort": "medium",
+          "status": "open"
+        },
+        {
+          "id": "PET-033",
+          "severity": "P3",
+          "module": "MOD-05",
+          "title": "Erinnerungen: Push/Toast für fällige Pflege-Events",
+          "description": "Beim Login oder Modulbesuch: Toast-Hinweis wenn Pflege-Events überfällig oder heute fällig sind.",
+          "effort": "low",
+          "status": "open"
+        }
+      ]
+    },
+    {
+      "phase": "P5",
+      "title": "Zone 1 Governance & Monitoring",
+      "description": "Admin-Desk mit Provider-Management, Finanz-Governance, Service-Moderation und System-Monitoring.",
+      "items": [
+        {
+          "id": "PET-040",
+          "severity": "P2",
+          "module": "Z1-PetGovernance",
+          "title": "Dashboard: KPI-Kacheln mit Live-Daten",
+          "description": "PetmanagerDesk Dashboard: Registrierte Provider (count), Offene Verifizierungen, Monatsumsatz (sum pet_invoices), Aktive Buchungen. Daten aus DB statt hardcoded.",
+          "effort": "medium",
+          "status": "open"
+        },
+        {
+          "id": "PET-041",
+          "severity": "P2",
+          "module": "Z1-PetGovernance",
+          "title": "Provider-Seite: Verzeichnis & Verifizierung",
+          "description": "PetmanagerProvider: Tabelle aller Provider (Name, Typ, Status, Umsatz, Bewertung). Verifizierungs-Workflow: pending → verified. Detail-Dialog mit Provider-Profil und Service-Liste.",
+          "effort": "high",
+          "status": "open"
+        },
+        {
+          "id": "PET-042",
+          "severity": "P2",
+          "module": "Z1-PetGovernance",
+          "title": "Finanzen-Seite: Umsatz-Governance",
+          "description": "PetmanagerFinanzen: Aggregierte Umsatzzahlen nach Provider, offene Forderungen, Abrechnungszeiträume. Ähnlich Finance-Desk Pattern.",
+          "effort": "medium",
+          "status": "open"
+        },
+        {
+          "id": "PET-043",
+          "severity": "P3",
+          "module": "Z1-PetGovernance",
+          "title": "Services-Seite: Katalog-Moderation",
+          "description": "PetmanagerServices: Alle Services aller Provider. Moderation-Queue für neue/geänderte Services. Freigabe/Ablehnung.",
+          "effort": "medium",
+          "status": "open"
+        },
+        {
+          "id": "PET-044",
+          "severity": "P3",
+          "module": "Z1-PetGovernance",
+          "title": "Monitor-Seite: Audit-Trail & Alerts",
+          "description": "PetmanagerMonitor: System-Health (Buchungen/Tag, Stornoquote, Beschwerden), Audit-Log der letzten Aktionen, Alerting bei Anomalien.",
+          "effort": "medium",
+          "status": "open"
+        }
+      ]
+    },
+    {
+      "phase": "P6",
+      "title": "Golden Path & Integration",
+      "description": "GP-PETS Prozess vervollständigen, Cross-Modul-Verknüpfungen, Spec-Aktualisierung.",
+      "items": [
+        {
+          "id": "PET-050",
+          "severity": "P2",
+          "module": "MOD-05",
+          "title": "Golden Path GP-PETS: Vollständiger Prozess",
+          "description": "goldenPathProcesses.ts aktualisieren: Sections für alle 4 Tabs (profile, caring, shop, mein-bereich). Demo-Widget mit Luna-Daten aus DB statt hardcoded. Phase auf 'done' setzen wenn P1-P4 abgeschlossen.",
+          "effort": "medium",
+          "status": "open"
+        },
+        {
+          "id": "PET-051",
+          "severity": "P3",
+          "module": "MOD-05",
+          "title": "DMS-Integration: Tier-Dokumente im MOD-03",
+          "description": "Tierbezogene Dokumente (Impfpass-Scans, Versicherungspolicen) im zentralen DMS (MOD-03) unter entity_type='pet' sichtbar machen. Bidirektionale Navigation.",
+          "effort": "medium",
+          "status": "open"
+        },
+        {
+          "id": "PET-052",
+          "severity": "P3",
+          "module": "MOD-05",
+          "title": "Versicherungs-Referenz: Tierversicherung in insurance_contracts",
+          "description": "Tierhaftpflicht/OP-Versicherung als Kategorie in insurance_contracts (MOD-06 Finanzmanager). Referenz in der Tier-Akte per pet_id.",
+          "effort": "low",
+          "status": "open"
+        },
+        {
+          "id": "PET-053",
+          "severity": "P2",
+          "module": "SPEC",
+          "title": "Spec mod-05_pets.md aktualisieren",
+          "description": "Spec an die reale 4-Tab-Struktur (Meine Tiere, Caring, Shop & Services, Mein Bereich) anpassen. Acceptance Checks für alle Phasen definieren.",
+          "effort": "low",
+          "status": "open"
+        },
+        {
+          "id": "PET-054",
+          "severity": "P2",
+          "module": "SPEC",
+          "title": "Spec mod-22_petmanager.md erstellen",
+          "description": "Neue Spec-Datei für MOD-22 mit 4-Tab-Struktur (Buchungen, Leistungen, Kunden & Tiere, Finanzen). Acceptance Checks und Datenmodell-Referenz.",
+          "effort": "low",
+          "status": "open"
+        }
+      ]
+    }
+  ],
+
+  "summary": {
+    "total_items": 27,
+    "by_phase": {
+      "P1_Datenmodell_Tierakten": 7,
+      "P2_Buchungssystem": 7,
+      "P3_Rechnungsflow": 4,
+      "P4_Caring_Pflege": 4,
+      "P5_Zone1_Governance": 5,
+      "P6_Integration": 5
+    },
+    "by_severity": {
+      "P1_critical": 14,
+      "P2_important": 9,
+      "P3_nice_to_have": 4
+    },
+    "db_tables_to_create": [
+      "pets",
+      "pet_vaccinations",
+      "pet_providers",
+      "pet_services",
+      "pet_bookings",
+      "pet_provider_availability",
+      "pet_provider_blocked_dates",
+      "pet_caring_events"
+    ],
+    "db_tables_existing": [
+      "pet_invoices (needs tenant_id check + RLS)",
+      "pet_invoice_items (linked to invoices)"
+    ],
+    "demo_data": {
+      "pets": ["Luna (Golden Retriever, weiblich, 2023)", "Bello (Dackel, männlich, 2021)"],
+      "tenant": "DEV_TENANT_UUID (a0000000-0000-4000-a000-000000000001)",
+      "owner": "Mustermann-Familie (Max & Lisa)"
+    }
+  }
+}
