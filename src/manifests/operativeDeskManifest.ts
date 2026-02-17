@@ -62,12 +62,12 @@ export const OPERATIVE_DESKS: OperativeDeskDefinition[] = [
     ],
   },
   {
-    deskId: 'petmanager',
-    displayName: 'Pet Governance',
+    deskId: 'pet-desk',
+    displayName: 'Pet Desk',
     managerModuleCode: 'MOD-05',
     managerModuleName: 'Pets',
     websiteProfileId: 'pet_services',
-    route: 'petmanager',
+    route: 'pet-desk',
     icon: 'PawPrint',
     responsibilities: [
       'Provider-Übersicht & Verifizierung',
