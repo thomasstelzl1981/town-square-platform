@@ -1,15 +1,25 @@
 {
   "meta": {
     "title": "Beta-Readiness Kompletttest",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "created": "2026-02-17",
+    "last_tested": "2026-02-17",
     "total_test_cases": 50,
     "phases": 7,
-    "estimated_duration_hours": 12
+    "estimated_duration_hours": 12,
+    "automated_test_results": {
+      "auth_ui_navigation": "PASS",
+      "zone3_websites_load": "PASS",
+      "legacy_redirects": "PASS",
+      "unauth_guard": "PASS",
+      "gp_validator_console": "PASS (0 errors after FIX-002 + whitelist fix)",
+      "edge_function_auth_protection": "PASS (401 without token)"
+    }
   },
   "known_bugs": [
     { "id": "BUG-001", "priority": "P0", "area": "Auth", "description": "Kein Passwort-vergessen-Link auf /auth", "status": "fixed", "fix_commit": "FIX-001" },
     { "id": "BUG-002", "priority": "P0", "area": "GoldenPath", "description": "GP-FINANCE-Z3 Step assign_manager fehlt on_error", "status": "fixed", "fix_commit": "FIX-002" },
+    { "id": "BUG-002b", "priority": "P0", "area": "GoldenPath", "description": "finance.z3.manager.assignment.error nicht in LEDGER_EVENT_WHITELIST", "status": "fixed", "fix_commit": "FIX-002b" },
     { "id": "BUG-003", "priority": "P1", "area": "Manifest", "description": "specialRoutes listet /auth/reset-password nicht", "status": "fixed", "fix_commit": "FIX-003" },
     { "id": "BUG-004", "priority": "P1", "area": "Auth", "description": "Kein Signup-Flow — Test-User via sot-create-test-user erstellen", "status": "by-design" }
   ],
