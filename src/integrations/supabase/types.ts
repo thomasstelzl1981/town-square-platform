@@ -11503,6 +11503,7 @@ export type Database = {
       }
       pet_bookings: {
         Row: {
+          booking_area: string
           cancellation_reason: string | null
           cancelled_at: string | null
           cancelled_by: string | null
@@ -11520,11 +11521,13 @@ export type Database = {
           scheduled_time_end: string | null
           scheduled_time_start: string | null
           service_id: string
+          staff_id: string | null
           status: Database["public"]["Enums"]["pet_booking_status"]
           tenant_id: string
           updated_at: string
         }
         Insert: {
+          booking_area?: string
           cancellation_reason?: string | null
           cancelled_at?: string | null
           cancelled_by?: string | null
@@ -11542,11 +11545,13 @@ export type Database = {
           scheduled_time_end?: string | null
           scheduled_time_start?: string | null
           service_id: string
+          staff_id?: string | null
           status?: Database["public"]["Enums"]["pet_booking_status"]
           tenant_id: string
           updated_at?: string
         }
         Update: {
+          booking_area?: string
           cancellation_reason?: string | null
           cancelled_at?: string | null
           cancelled_by?: string | null
@@ -11564,6 +11569,7 @@ export type Database = {
           scheduled_time_end?: string | null
           scheduled_time_start?: string | null
           service_id?: string
+          staff_id?: string | null
           status?: Database["public"]["Enums"]["pet_booking_status"]
           tenant_id?: string
           updated_at?: string
@@ -11595,6 +11601,13 @@ export type Database = {
             columns: ["service_id"]
             isOneToOne: false
             referencedRelation: "pet_services"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pet_bookings_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "pet_staff"
             referencedColumns: ["id"]
           },
           {
@@ -12113,6 +12126,7 @@ export type Database = {
       }
       pet_rooms: {
         Row: {
+          area: string
           capacity: number
           created_at: string
           description: string | null
@@ -12126,6 +12140,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          area?: string
           capacity?: number
           created_at?: string
           description?: string | null
@@ -12139,6 +12154,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          area?: string
           capacity?: number
           created_at?: string
           description?: string | null
@@ -12224,6 +12240,69 @@ export type Database = {
           },
           {
             foreignKeyName: "pet_services_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pet_staff: {
+        Row: {
+          created_at: string
+          email: string | null
+          id: string
+          is_active: boolean
+          name: string
+          phone: string | null
+          provider_id: string
+          role: string | null
+          services: string[] | null
+          sort_order: number
+          tenant_id: string
+          updated_at: string
+          work_hours: Json | null
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          phone?: string | null
+          provider_id: string
+          role?: string | null
+          services?: string[] | null
+          sort_order?: number
+          tenant_id: string
+          updated_at?: string
+          work_hours?: Json | null
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          phone?: string | null
+          provider_id?: string
+          role?: string | null
+          services?: string[] | null
+          sort_order?: number
+          tenant_id?: string
+          updated_at?: string
+          work_hours?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pet_staff_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "pet_providers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pet_staff_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "organizations"
