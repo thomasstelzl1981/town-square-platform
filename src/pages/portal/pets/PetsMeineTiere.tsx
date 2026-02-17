@@ -409,12 +409,14 @@ export default function PetsMeineTiere() {
 
   return (
     <PageShell>
-      <div className="flex items-center justify-between">
-        <ModulePageHeader title="MEINE TIERE" description="Verwalten Sie Ihre Haustiere" />
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button size="sm" className="gap-1.5"><Plus className="h-4 w-4" /> Tier anlegen</Button>
-          </DialogTrigger>
+      <ModulePageHeader
+        title="MEINE TIERE"
+        description="Verwalten Sie Ihre Haustiere"
+        actions={
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="glass" size="icon-round"><Plus className="h-5 w-5" /></Button>
+            </DialogTrigger>
           <DialogContent>
             <DialogHeader><DialogTitle>Neues Tier anlegen</DialogTitle></DialogHeader>
             <div className="space-y-4 pt-2">
@@ -436,8 +438,9 @@ export default function PetsMeineTiere() {
               <Button onClick={handleCreate} disabled={createPet.isPending || !newPet.name.trim()} className="w-full">Anlegen</Button>
             </div>
           </DialogContent>
-        </Dialog>
-      </div>
+          </Dialog>
+        }
+      />
 
       {isLoading ? (
         <div className="text-center py-12 text-muted-foreground">Laden…</div>

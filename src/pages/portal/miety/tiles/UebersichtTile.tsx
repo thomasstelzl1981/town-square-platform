@@ -134,8 +134,8 @@ export default function UebersichtTile() {
         title="Miety"
         description="Ihr Zuhause auf einen Blick"
         actions={homes.length > 0 ? (
-          <Button onClick={() => setShowCreateForm(true)} size="sm" variant="outline">
-            <Plus className="h-4 w-4 mr-1.5" />Weiteres Zuhause
+          <Button variant="glass" size="icon-round" onClick={() => setShowCreateForm(true)}>
+            <Plus className="h-5 w-5" />
           </Button>
         ) : undefined}
       />

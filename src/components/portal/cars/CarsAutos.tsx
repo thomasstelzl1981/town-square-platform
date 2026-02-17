@@ -154,8 +154,8 @@ export default function CarsAutos() {
         title="Autos"
         description="Fahrzeugverwaltung — Klicken Sie auf ein Fahrzeug für die vollständige Akte"
         actions={
-          <Button onClick={() => setCreateDialogOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" /> Fahrzeug hinzufügen
+          <Button variant="glass" size="icon-round" onClick={() => setCreateDialogOpen(true)}>
+            <Plus className="h-5 w-5" />
           </Button>
         }
       />

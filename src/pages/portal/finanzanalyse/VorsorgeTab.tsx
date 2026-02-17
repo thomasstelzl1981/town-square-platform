@@ -237,9 +237,9 @@ export default function VorsorgeTab() {
         description="Renten- und Vorsorgeverträge zentral verwalten"
         actions={
           <Button
+            variant="glass"
             size="icon-round"
             onClick={() => { setShowNew(true); setSelectedId(null); }}
-            className="h-10 w-10"
           >
             <Plus className="h-5 w-5" />
           </Button>
