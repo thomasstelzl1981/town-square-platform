@@ -159,8 +159,9 @@ export function EarthGlobeCard({ latitude, longitude, city }: EarthGlobeCardProp
 
       {/* Overlay content */}
       <CardContent className="relative z-20 p-4 h-full flex flex-col justify-between pointer-events-none">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 mb-3">
           <Globe className="h-4 w-4 text-primary drop-shadow-lg" />
+          <span className="text-sm font-medium text-white drop-shadow-md">Globus</span>
         </div>
 
         <div className="flex items-end justify-between">
