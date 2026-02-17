@@ -785,9 +785,12 @@ export const moduleContents: Record<string, HowItWorksContent> = {
     ],
     cta: 'Starten Sie mit der Pension – und legen Sie Ihre Zimmer an.',
     subTiles: [
+      { title: 'Dashboard', route: '/portal/petmanager/dashboard', icon: LayoutGrid },
       { title: 'Pension', route: '/portal/petmanager/pension', icon: DoorOpen },
-      { title: 'Services', route: '/portal/petmanager/services', icon: Users },
-      { title: 'Kalender', route: '/portal/petmanager/kalender', icon: Calendar },
+      { title: 'Services', route: '/portal/petmanager/services', icon: Calendar },
+      { title: 'Mitarbeiter', route: '/portal/petmanager/mitarbeiter', icon: Users },
+      { title: 'Kunden', route: '/portal/petmanager/kunden', icon: User },
+      { title: 'Finanzen', route: '/portal/petmanager/finanzen', icon: Wallet },
     ],
   },
 };
