@@ -18,6 +18,7 @@ import { ArmstrongContainer } from './ArmstrongContainer';
 import { DesktopInstallBanner } from '@/components/shared/DesktopInstallBanner';
 import { MobileBottomBar } from './MobileBottomBar';
 import { MobileHomeChatView } from './MobileHomeChatView';
+import { MobileModuleMenu } from './MobileModuleMenu';
 import { SubTabs } from './SubTabs';
 import { PortalLayoutProvider, usePortalLayout } from '@/hooks/usePortalLayout';
 import { getModulesSorted } from '@/manifests/routesManifest';
@@ -68,6 +69,15 @@ function PortalLayoutInner() {
       return location.pathname === route || location.pathname.startsWith(route + '/');
     });
   }, [location.pathname]);
+
+  // On mobile: detect if we're on a module's BASE route (no specific tile)
+  // e.g. /portal/finanzanalyse but NOT /portal/finanzanalyse/investment
+  const isModuleBaseRoute = useMemo(() => {
+    if (!activeModule) return false;
+    const baseRoute = `/portal/${activeModule.module.base}`;
+    // Exact match or with trailing slash only
+    return location.pathname === baseRoute || location.pathname === baseRoute + '/';
+  }, [activeModule, location.pathname]);
 
   // P0-SESSION-FIX: Debounced redirect — only navigate to /auth after a grace period
   // to avoid redirecting during transient null states (e.g. token refresh).
@@ -120,16 +130,16 @@ function PortalLayoutInner() {
       {isDashboard ? (
           /* HOME: Full-screen Armstrong Chat */
           <MobileHomeChatView />
+        ) : isModuleBaseRoute && activeModule ? (
+          /* MODULE BASE: Show vertical tile menu */
+          <MobileModuleMenu 
+            module={activeModule.module} 
+            moduleBase={activeModule.module.base}
+            moduleCode={activeModule.code}
+          />
         ) : (
-          /* MODULE VIEW: Content area */
+          /* TILE VIEW or other: Content area without SubTabs */
           <main className="flex-1 overflow-y-auto overflow-x-hidden relative">
-            {/* Mobile SubTabs: Tile-Navigation when inside a module */}
-            {activeModule && !location.pathname.startsWith('/portal/area/') && (
-              <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-sm border-b">
-                <SubTabs module={activeModule.module} moduleBase={activeModule.module.base} />
-              </div>
-            )}
-            
             <Outlet />
           </main>
         )}

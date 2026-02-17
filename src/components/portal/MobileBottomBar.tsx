@@ -15,6 +15,7 @@ import { useArmstrongVoice } from '@/hooks/useArmstrongVoice';
 import { VoiceButton } from '@/components/armstrong/VoiceButton';
 import { MobileAttachMenu } from './MobileAttachMenu';
 import { areaConfig, type AreaKey } from '@/manifests/areaConfig';
+import { MOBILE_HIDDEN_AREAS } from '@/config/mobileConfig';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import {
@@ -53,9 +54,10 @@ function NavButton({
       className={cn(
         'flex flex-col items-center justify-center gap-0.5 transition-all active:scale-95',
         'h-14 w-14 rounded-full',
+        'backdrop-blur-md border shadow-sm',
         isActive
-          ? 'bg-primary/15 ring-1 ring-primary/30 text-primary'
-          : 'text-muted-foreground hover:text-foreground hover:bg-muted/40'
+          ? 'bg-primary/15 border-primary/30 text-primary shadow-primary/10'
+          : 'bg-white/10 dark:bg-white/5 border-white/15 dark:border-white/10 text-muted-foreground hover:text-foreground hover:bg-white/20 dark:hover:bg-white/10'
       )}
     >
       <Icon className="h-5 w-5" />
@@ -156,9 +158,11 @@ export function MobileBottomBar() {
     setAttachedFiles(prev => prev.filter((_, i) => i !== index));
   };
 
+  const mobileAreas = areaConfig.filter(a => !MOBILE_HIDDEN_AREAS.includes(a.key));
+
   return (
     <nav
-      className="sticky bottom-0 z-40 w-full bg-background/80 backdrop-blur-lg border-t border-border/30"
+      className="sticky bottom-0 z-40 w-full bg-background/60 backdrop-blur-xl border-t border-border/20"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
       {/* Area Navigation — 5 round buttons (Home + 4 Areas) */}
@@ -170,7 +174,7 @@ export function MobileBottomBar() {
             isActive={isDashboard}
             onClick={handleHomeClick}
           />
-          {areaConfig.map((area) => (
+          {mobileAreas.map((area) => (
             <NavButton
               key={area.key}
               icon={areaIcons[area.key]}

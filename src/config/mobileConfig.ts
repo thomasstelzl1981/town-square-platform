@@ -9,6 +9,12 @@
  * Modules hidden on mobile devices.
  * Only partner/manager role-gated tools that are too complex for mobile.
  */
+/**
+ * Areas hidden on mobile devices.
+ * Manager/operations area is partner-only and too complex for mobile.
+ */
+export const MOBILE_HIDDEN_AREAS: string[] = ['operations'];
+
 export const MOBILE_HIDDEN_MODULES: string[] = [
   'MOD-09',  // Immomanager — partner-only, complex advisory UI
   'MOD-10',  // Lead Manager — partner-only, commission management
