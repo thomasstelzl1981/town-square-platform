@@ -14,6 +14,10 @@ import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { WidgetGrid } from '@/components/shared/WidgetGrid';
 import { WidgetCell } from '@/components/shared/WidgetCell';
+import { DEMO_WIDGET } from '@/config/designManifest';
+import { isDemoId } from '@/engines/demoData/engine';
+import { useDemoToggles } from '@/hooks/useDemoToggles';
+import { cn } from '@/lib/utils';
 import {
   Plus, Zap, Flame, Droplets, Wifi, Gauge, TrendingDown,
 } from 'lucide-react';
@@ -22,6 +26,8 @@ export default function VersorgungTile() {
   const navigate = useNavigate();
   const { activeTenantId } = useAuth();
   const { data: homes = [] } = useHomesQuery();
+  const { isEnabled } = useDemoToggles();
+  const demoEnabled = isEnabled('GP-ZUHAUSE');
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerCategory, setDrawerCategory] = useState<string>('strom');
@@ -81,17 +87,25 @@ export default function VersorgungTile() {
           const contract = contracts.find(c => c.category === category);
           const reading = meterType ? readings.find(r => r.meter_type === meterType) : null;
 
+          const isDemo = contract ? isDemoId(contract.id) : false;
+          if (!demoEnabled && isDemo) return null;
+
           return (
             <>
               {/* IST Card */}
               <WidgetCell key={`${category}-ist`}>
-                <Card className={`${contract ? 'glass-card' : 'border-dashed hover:border-primary/30 transition-colors'} h-full`}>
+                <Card className={cn(
+                  contract ? 'glass-card' : 'border-dashed hover:border-primary/30 transition-colors',
+                  'h-full',
+                  isDemo && DEMO_WIDGET.CARD,
+                )}>
                   <CardContent className="p-4 flex flex-col justify-between h-full">
                     <div className="flex items-start gap-2.5">
                       <div className={`p-1.5 rounded-lg ${contract ? 'bg-primary/10' : 'bg-muted'}`}>
                         <SIcon className={`h-4 w-4 ${contract ? 'text-primary' : 'text-muted-foreground/40'}`} />
                       </div>
                       <div className="flex-1 min-w-0">
+                        {isDemo && <Badge className={DEMO_WIDGET.BADGE + ' text-[10px] mb-1'}>DEMO</Badge>}
                         <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">Ihr Vertrag</p>
                         <p className="font-medium text-xs">{label}</p>
                         {contract ? (

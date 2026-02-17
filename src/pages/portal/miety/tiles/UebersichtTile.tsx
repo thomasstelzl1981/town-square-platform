@@ -12,6 +12,10 @@ import { useHomesQuery } from '../shared/useHomesQuery';
 
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
+import { DEMO_WIDGET } from '@/config/designManifest';
+import { isDemoId } from '@/engines/demoData/engine';
+import { useDemoToggles } from '@/hooks/useDemoToggles';
+import { cn } from '@/lib/utils';
 import {
   Home, Plus, Building2, ArrowRight, Camera, Globe, ImageOff, Navigation,
 } from 'lucide-react';
@@ -20,6 +24,8 @@ export default function UebersichtTile() {
   const { activeTenantId, user } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { isEnabled } = useDemoToggles();
+  const demoEnabled = isEnabled('GP-ZUHAUSE');
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [openCardId, setOpenCardId] = useState<string | null>(null);
   const [editingHome, setEditingHome] = useState<any>(null);
@@ -159,16 +165,18 @@ export default function UebersichtTile() {
           </CardContent>
         </Card>
       ) : (
-        homes.map((home) => {
+        homes.filter(h => demoEnabled || !isDemoId(h.id)).map((home) => {
           const mapQuery = buildMapQuery(home);
+          const isDemo = isDemoId(home.id);
           return (
             <div key={home.id} className="space-y-4">
               <div className="flex flex-col gap-3 sm:grid sm:grid-cols-3 sm:gap-4">
                 {/* Kachel 1: Adresse */}
-                <Card className="glass-card h-[240px] sm:aspect-square sm:h-auto flex flex-col">
+                <Card className={cn("glass-card h-[240px] sm:aspect-square sm:h-auto flex flex-col", isDemo && DEMO_WIDGET.CARD)}>
                   <CardContent className="p-5 flex flex-col justify-between h-full">
                     <div>
                       <div className="flex items-center gap-2 mb-3">
+                        {isDemo && <Badge className={DEMO_WIDGET.BADGE + ' text-[10px]'}>DEMO</Badge>}
                         <Building2 className="h-5 w-5 text-primary flex-shrink-0" />
                         <span className="text-xs text-muted-foreground uppercase tracking-wide">Mein Zuhause</span>
                       </div>
