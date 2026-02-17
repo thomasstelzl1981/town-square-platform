@@ -84,7 +84,7 @@ export function VerwaltungTab() {
     <PageShell>
       <ModulePageHeader
         title="Tax"
-        description="Steuererklärung Anlage V — Vermietung & Verpachtung"
+        description="Anlage V — Vermietung & Verpachtung für deine Steuererklärung"
         actions={
           <div className="flex items-center gap-3">
             {(selectedContextId || selectedPropertyId) && (

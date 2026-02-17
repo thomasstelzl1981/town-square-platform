@@ -18,7 +18,7 @@ export default function SelfieAdsAbrechnung() {
           <EmptyState
             icon={CreditCard}
             title="Noch keine Abrechnungen"
-            description="Nach Ihrer ersten Kampagnen-Beauftragung erscheinen hier Zahlungsübersicht und Rechnungen."
+            description="Nach deiner ersten Kampagnen-Beauftragung erscheinen hier Zahlungsübersicht und Rechnungen."
           />
         </CardContent>
       </Card>

@@ -333,7 +333,7 @@ export function ProfilTab() {
   return (
     <PageShell>
     <form onSubmit={handleSubmit} className="space-y-6 pb-20">
-      <ModulePageHeader title="Stammdaten" description="Ihr persönliches Profil und Kontaktdaten" />
+      <ModulePageHeader title="Stammdaten" description="Dein persönliches Profil und Kontaktdaten" />
 
       <div className={RECORD_CARD.GRID}>
         {/* ── RecordCard: Persönliche Daten (Quadratisch / Vollansicht) ── */}

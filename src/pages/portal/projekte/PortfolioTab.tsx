@@ -201,7 +201,7 @@ export default function PortfolioTab() {
 
   return (
     <PageShell>
-      <ModulePageHeader title="PROJEKT-PORTFOLIO" description="Übersicht aller Bauträger- und Aufteiler-Projekte" />
+      <ModulePageHeader title="Projekt-Portfolio" description="Übersicht aller Bauträger- und Aufteiler-Projekte" />
 
       {/* Project Switcher — Horizontal Tile Row (Demo first if enabled) */}
       <WidgetGrid>

@@ -39,7 +39,7 @@ export default function FMArchiv({ cases, isLoading }: Props) {
   return (
     <PageShell>
       <ModulePageHeader
-        title="FÄLLE"
+        title="Archiv"
         description={`${archivedCases.length} abgeschlossene Finanzierungsfälle.`}
       />
 

@@ -49,7 +49,7 @@ export default function KommunikationTile() {
 
   return (
     <PageShell>
-      <ModulePageHeader title="Kommunikation" description="Kontakt zu Ihrem Vermieter" />
+      <ModulePageHeader title="Kommunikation" description="Kontakt zu deinem Vermieter" />
       {/* Vermieter-Kontaktdaten */}
       <Card className="glass-card border-primary/20 bg-primary/5">
         <CardContent className="p-5">

@@ -361,7 +361,7 @@ export default function UebersichtTab() {
     <PageShell>
       <ModulePageHeader
         title="Finanzen"
-        description="Ihre finanzielle Gesamtübersicht — Personen, Konten und Vertragsanalyse"
+        description="Deine finanzielle Gesamtübersicht — Personen, Konten und Vertragsanalyse"
         actions={
           <Button
             variant="glass"

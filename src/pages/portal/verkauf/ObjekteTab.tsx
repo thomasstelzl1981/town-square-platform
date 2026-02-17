@@ -293,7 +293,7 @@ const ObjekteTab = () => {
 
   return (
     <PageShell>
-      <ModulePageHeader title="Verkauf" description="Ihre Verkaufsobjekte und Einheiten im Überblick" />
+      <ModulePageHeader title="Verkauf" description="Deine Verkaufsobjekte und Einheiten im Überblick" />
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           {contexts.length > 0 && (

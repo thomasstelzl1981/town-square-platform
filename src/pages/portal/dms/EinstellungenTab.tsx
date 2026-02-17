@@ -221,7 +221,7 @@ export function EinstellungenTab() {
 
   return (
     <PageShell>
-      <ModulePageHeader title="Einstellungen" description="Speicher, Postservice und Dokumenten-Auslesung verwalten" />
+      <ModulePageHeader title="Einstellungen" description="Speicher, Postservice und Dokumenten-Auslesung konfigurieren" />
 
       {/* 3-Column Grid */}
       <div className={DESIGN.WIDGET_GRID.FULL}>

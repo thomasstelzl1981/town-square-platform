@@ -161,7 +161,7 @@ export default function SimulationTab() {
 
   return (
     <PageShell>
-      <ModulePageHeader title="SIMULATION" description="Berechnen Sie die Auswirkung eines Neukaufs auf Ihr Gesamtportfolio" />
+      <ModulePageHeader title="Simulation" description="Berechne die Auswirkung eines Neukaufs auf dein Gesamtportfolio" />
 
       {/* Demo + CTA Widget-Leiste */}
       <WidgetGrid>

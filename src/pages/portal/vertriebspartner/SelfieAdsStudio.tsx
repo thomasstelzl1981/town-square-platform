@@ -34,7 +34,7 @@ export default function SelfieAdsStudio() {
           <EmptyState
             icon={Megaphone}
             title="Noch keine Kampagnen beauftragt"
-            description="Planen Sie Ihre erste Selfie Ads Kampagne — Kaufy veröffentlicht sie auf Social Media und liefert Leads direkt in Ihre Inbox."
+            description="Plane deine erste Selfie Ads Kampagne — Kaufy veröffentlicht sie auf Social Media und liefert Leads direkt in deine Inbox."
             action={{
               label: 'Erste Kampagne planen',
               onClick: () => navigate('/portal/vertriebspartner/selfie-ads-planen'),

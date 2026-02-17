@@ -193,7 +193,7 @@ export default function AbonnementsTab() {
     <PageShell>
       <ModulePageHeader
         title="Abonnements"
-        description="Alle wiederkehrenden Zahlungen und Abonnements zentral verwalten"
+        description="Alle wiederkehrenden Zahlungen und Abos zentral verwalten"
         actions={
           <Button
             variant="glass"

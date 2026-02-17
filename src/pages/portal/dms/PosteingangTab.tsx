@@ -172,7 +172,7 @@ export function PosteingangTab() {
   if (mandateLoading) {
     return (
       <PageShell>
-        <ModulePageHeader title="Posteingang" description="Digitaler Postservice" />
+        <ModulePageHeader title="Posteingang" description="Dein digitaler Postservice für eingehende Dokumente" />
         <div className="flex items-center justify-center py-16">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
@@ -183,7 +183,7 @@ export function PosteingangTab() {
   if (!hasActiveContract) {
     return (
       <PageShell>
-        <ModulePageHeader title="Posteingang" description="Digitaler Postservice für eingehende Dokumente" />
+        <ModulePageHeader title="Posteingang" description="Dein digitaler Postservice für eingehende Dokumente" />
 
         <Card className="glass-card max-w-2xl mx-auto">
           <CardHeader className="text-center pb-2">
@@ -192,7 +192,7 @@ export function PosteingangTab() {
             </div>
             <CardTitle className="text-xl">Digitaler Postservice</CardTitle>
             <CardDescription className="text-base mt-1">
-              Empfangen Sie Ihre Post digital – automatisch ausgelesen, sortiert und archiviert.
+              Empfange deine Post digital – automatisch ausgelesen, sortiert und archiviert.
             </CardDescription>
           </CardHeader>
 
@@ -224,8 +224,8 @@ export function PosteingangTab() {
                 <span className="text-sm font-medium text-foreground">Externe Post-Scan-Dienste</span>
               </div>
               <p className="text-xs text-muted-foreground">
-                Sie können Dienste wie <strong>CAYA</strong>, <strong>Dropscan</strong> oder <strong>E-Post</strong> nutzen, 
-                um physische Post digitalisieren zu lassen. Die gescannten PDFs leiten Sie dann an Ihre 
+                Du kannst Dienste wie <strong>CAYA</strong>, <strong>Dropscan</strong> oder <strong>E-Post</strong> nutzen, 
+                um physische Post digitalisieren zu lassen. Die gescannten PDFs leitest du dann an deine 
                 persönliche Inbound-Adresse weiter.
               </p>
             </div>
@@ -237,7 +237,7 @@ export function PosteingangTab() {
                 <span className="text-sm font-medium text-foreground">Manueller PDF-Upload</span>
               </div>
               <p className="text-xs text-muted-foreground">
-                Alternativ können Sie PDFs auch direkt über den <strong>Storage-Tab</strong> hochladen 
+                Alternativ kannst du PDFs auch direkt über den <strong>Storage-Tab</strong> hochladen 
                 und manuell in die richtige Ordnerstruktur einsortieren.
               </p>
             </div>
@@ -267,7 +267,7 @@ export function PosteingangTab() {
   // ═══════════════════════════════════════════════════════════════════════════
   return (
     <PageShell>
-      <ModulePageHeader title="Posteingang" description="Hier gehen E-Mails und Dokumente aus Ihrem digitalen Postservice ein." />
+      <ModulePageHeader title="Posteingang" description="Dein digitaler Postservice für eingehende Dokumente" />
 
       {/* Table */}
       <Card className="glass-card overflow-hidden">

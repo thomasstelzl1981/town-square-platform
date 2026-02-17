@@ -20,6 +20,9 @@ export function ModulePageHeader({ title, description, actions }: ModulePageHead
     <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between md:gap-4">
       <div>
         <h1 className="text-2xl md:text-3xl font-bold tracking-tight uppercase">{title}</h1>
+        {description && (
+          <p className="text-sm text-muted-foreground mt-1">{description}</p>
+        )}
       </div>
       {actions && <div className="flex items-center gap-2 flex-shrink-0 w-full md:w-auto">{actions}</div>}
     </div>

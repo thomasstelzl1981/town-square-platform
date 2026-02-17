@@ -99,8 +99,8 @@ export const VideocallsTab = () => {
   return (
     <PageShell>
       <ModulePageHeader
-        title="VIDEOCALLS"
-        description="Starten Sie gebrandete Videocalls direkt aus dem Portal"
+        title="Videocalls"
+        description="Starte gebrandete Videocalls direkt aus dem Portal"
       />
 
       {/* New Call + Invite Section */}

@@ -22,7 +22,7 @@ export default function EinstellungenTab() {
             name="SMA"
             icon={Sun}
             status="prepared"
-            description="Verbinden Sie Ihren SMA Sunny Portal Account per OAuth2 für automatisches Monitoring."
+            description="Verbinde deinen SMA Sunny Portal Account per OAuth2 für automatisches Monitoring."
             fields={[
               { label: 'Methode', value: 'OAuth2', disabled: true },
             ]}

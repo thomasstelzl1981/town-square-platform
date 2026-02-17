@@ -694,7 +694,7 @@ export function PortfolioTab() {
 
   return (
     <PageShell>
-      <ModulePageHeader title="Portfolio" description="Übersicht und Verwaltung Ihrer Immobilien und Einheiten" />
+      <ModulePageHeader title="Portfolio" description="Übersicht und Verwaltung deiner Immobilien und Einheiten" />
       {/* Portfolio Context Widgets — WidgetGrid (IMMER sichtbar) */}
       <div className="space-y-4">
         <WidgetGrid variant="widget">

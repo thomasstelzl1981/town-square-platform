@@ -16,7 +16,7 @@ export function UploadDrawer({ open, onOpenChange }: UploadDrawerProps) {
       open={open}
       onOpenChange={onOpenChange}
       title="Dokument hochladen"
-      description="Dokument in Ihre Zuhause-Akte hochladen"
+      description="Dokument in deine Zuhause-Akte hochladen"
     >
       <div className="flex flex-col items-center justify-center py-12 text-center">
         <Upload className="h-12 w-12 text-muted-foreground/30 mb-4" />

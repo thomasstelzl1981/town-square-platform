@@ -98,7 +98,7 @@ export function SicherheitTab() {
     // ─── CLOSED STATE: Square Widget ───
     return (
       <PageShell>
-        <ModulePageHeader title="Sicherheit" description="Portalzugang und Sitzungen verwalten" />
+        <ModulePageHeader title="Sicherheit" description="Dein Portalzugang und aktive Sitzungen" />
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
           <Card
             className={`${WIDGET_CELL.DIMENSIONS} cursor-pointer transition-all hover:shadow-lg overflow-hidden`}
@@ -130,7 +130,7 @@ export function SicherheitTab() {
   // ─── OPEN STATE: Full-width Dossier ───
   return (
     <PageShell>
-      <ModulePageHeader title="Sicherheit" description="Portalzugang und Sitzungen verwalten" />
+      <ModulePageHeader title="Sicherheit" description="Dein Portalzugang und aktive Sitzungen" />
       <div className="space-y-4 md:space-y-6">
         {/* Header with close */}
         <Card>

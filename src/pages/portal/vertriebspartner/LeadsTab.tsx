@@ -22,7 +22,7 @@ export default function LeadsTab() {
     <PageShell>
       <ModulePageHeader 
         title="Leadeingang" 
-        description="Lead-Generierung und -Verwaltung für Ihren Vertrieb"
+        description="Lead-Generierung und -Verwaltung für deinen Vertrieb"
         actions={
           <Button onClick={() => navigate('/portal/vertriebspartner/selfie-ads')} className="gap-2">
             <Megaphone className="h-4 w-4" />
@@ -92,7 +92,7 @@ export default function LeadsTab() {
           <EmptyState
             icon={Target}
             title="Noch keine Leads vorhanden"
-            description="Starten Sie eine Selfie Ads Kampagne, um automatisch Leads zu generieren, oder erhalten Sie Leads über Partner-Zuweisungen."
+            description="Starte eine Selfie Ads Kampagne, um automatisch Leads zu generieren, oder erhalte Leads über Partner-Zuweisungen."
             action={{
               label: 'Erste Kampagne planen',
               onClick: () => navigate('/portal/vertriebspartner/selfie-ads-planen'),

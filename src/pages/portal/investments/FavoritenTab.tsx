@@ -108,8 +108,8 @@ export default function FavoritenTab() {
   return (
     <PageShell>
       <ModulePageHeader
-        title="MEINE FAVORITEN"
-        description="Ihre vorgemerkten Investmentobjekte"
+        title="Meine Favoriten"
+        description="Deine vorgemerkten Investmentobjekte"
         actions={
           <Button variant="outline" disabled className="gap-2">
             <RefreshCw className="w-4 h-4" />

@@ -313,7 +313,7 @@ export function SortierenTab() {
         </div>
       )}
 
-      <ModulePageHeader title="Sortieren" description="Erstelle Sortierkacheln. Diese erzeugen Vorschläge im Posteingang." />
+      <ModulePageHeader title="Sortieren" description="Erstelle Sortierkacheln — diese erzeugen Vorschläge im Posteingang" />
 
       {/* Grid */}
       <div className={DESIGN.WIDGET_GRID.FULL}>

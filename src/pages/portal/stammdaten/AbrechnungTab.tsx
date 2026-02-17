@@ -88,7 +88,7 @@ export function AbrechnungTab() {
 
   return (
     <PageShell>
-      <ModulePageHeader title="Abrechnung" description="Ihr Plan, Credits und Rechnungen" />
+      <ModulePageHeader title="Abrechnung" description="Dein Plan, Credits und Rechnungen" />
       {/* Current Plan */}
       <Card>
         <CardHeader>

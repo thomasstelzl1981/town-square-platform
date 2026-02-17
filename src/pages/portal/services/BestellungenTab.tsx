@@ -215,7 +215,7 @@ export default function BestellungenTab() {
     <PageShell>
       <ModulePageHeader
         title="Bestellungen"
-        description="Verwalten Sie Ihre Bestellungen als Widgets"
+        description="Deine Bestellungen im Überblick"
       />
 
       <WidgetGrid>

@@ -609,7 +609,7 @@ export function KontakteTab() {
 
   return (
     <PageShell>
-      <ModulePageHeader title="Kontakte" description="Ihr zentrales Kontaktbuch verwalten" />
+      <ModulePageHeader title="Kontakte" description="Dein zentrales Kontaktbuch verwalten" />
     <Card className="glass-card overflow-hidden">
       <CardContent className="p-5 pb-4 border-b">
         <div className="flex items-center gap-3 mb-4">

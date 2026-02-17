@@ -410,8 +410,8 @@ export default function PetsMeineTiere() {
   return (
     <PageShell>
       <ModulePageHeader
-        title="MEINE TIERE"
-        description="Verwalten Sie Ihre Haustiere"
+        title="Meine Tiere"
+        description="Verwalte deine Haustiere"
         actions={
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>

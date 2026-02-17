@@ -130,7 +130,7 @@ export default function PetsShop() {
 
   return (
     <PageShell>
-      <ModulePageHeader title="SHOP" description="Produkte und Partner-Angebote für Ihre Tiere" />
+      <ModulePageHeader title="Shop" description="Produkte und Partner-Angebote für deine Tiere" />
 
       {/* CI-Widget Navigation */}
       <WidgetGrid variant="widget" className="mb-6">

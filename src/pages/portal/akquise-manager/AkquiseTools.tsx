@@ -20,7 +20,7 @@ export default function AkquiseTools() {
 
   return (
     <PageShell>
-      <ModulePageHeader title="AKQUISE-TOOLS" description="Werkzeuge für Recherche, Bewertung und Kalkulation" />
+      <ModulePageHeader title="Akquise-Tools" description="Werkzeuge für Recherche, Bewertung und Kalkulation" />
       
       <div className={DESIGN.SPACING.SECTION}>
         {/* 1. Portal-Recherche */}

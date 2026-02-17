@@ -291,7 +291,7 @@ export default function SachversicherungenTab() {
     <PageShell>
       <ModulePageHeader
         title="Sachversicherungen"
-        description="Zentrale Verwaltung aller Versicherungsverträge (SSOT)"
+        description="Deine Versicherungsverträge zentral verwalten"
         actions={
           <Button
             variant="glass"

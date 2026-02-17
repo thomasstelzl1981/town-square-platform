@@ -112,8 +112,8 @@ export default function FMProvisionen() {
   return (
     <PageShell>
       <ModulePageHeader
-        title="PROVISIONEN"
-        description="Ihre Provisionsvereinbarungen mit System of a Town."
+        title="Provisionen"
+        description="Deine Provisionsvereinbarungen mit System of a Town"
       />
 
       {/* Agreement Card */}

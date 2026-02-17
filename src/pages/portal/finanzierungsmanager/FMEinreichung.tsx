@@ -343,7 +343,7 @@ Mit freundlichen Grüßen`;
   return (
     <PageShell>
       <ModulePageHeader
-        title="EINREICHUNG"
+        title="Einreichung"
         description={`${readyCases.length} Einreichungen — Dokumentation aller Bank-Einreichungen.`}
       />
 
