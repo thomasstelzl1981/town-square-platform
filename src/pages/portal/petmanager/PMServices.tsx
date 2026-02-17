@@ -3,8 +3,8 @@
  * Mitarbeiter als Zeilen, Tage als Spalten (90 Tage scrollbar),
  * Slots basierend auf Arbeitszeiten, freie Tage/Urlaub ausgegraut.
  */
-import { useState, useMemo, useCallback } from 'react';
-import { Plus, Users, ChevronLeft, ChevronRight, Save, Trash2, X, PawPrint, Clock } from 'lucide-react';
+import React, { useState, useMemo, useCallback } from 'react';
+import { Plus, Users, ChevronLeft, ChevronRight, Save, Trash2, X, PawPrint, Clock, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -25,7 +25,8 @@ import { Link } from 'react-router-dom';
 const VISIBLE_DAYS = 90;
 const COL_WIDTH_STAFF = 200;
 const COL_WIDTH_DATE = 120;
-const CELL_HEIGHT = 80;
+const CELL_HEIGHT = 28;
+const STAFF_HEADER_HEIGHT = 36;
 
 const DAY_KEY_MAP: Record<number, string> = {
   0: 'sun', 1: 'mon', 2: 'tue', 3: 'wed', 4: 'thu', 5: 'fri', 6: 'sat',
@@ -94,8 +95,18 @@ export default function PMServices() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [showBookingDialog, setShowBookingDialog] = useState(false);
   const [bookingForm, setBookingForm] = useState<BookingFormData>(EMPTY_BOOKING);
+  const [collapsedStaff, setCollapsedStaff] = useState<Set<string>>(new Set());
 
   const activeStaff = staff.filter(s => s.is_active);
+
+  const toggleCollapse = useCallback((staffId: string) => {
+    setCollapsedStaff(prev => {
+      const next = new Set(prev);
+      if (next.has(staffId)) next.delete(staffId);
+      else next.add(staffId);
+      return next;
+    });
+  }, []);
 
   const visibleDays = useMemo(() => {
     return eachDayOfInterval({ start: currentDate, end: addDays(currentDate, VISIBLE_DAYS - 1) });
@@ -318,83 +329,116 @@ export default function PMServices() {
                 <tbody>
                   {activeStaff.map((member, memberIdx) => {
                     const workHours = (member.work_hours || {}) as WorkHours;
-                    return (
-                      <tr key={member.id}
-                          className={cn(memberIdx < activeStaff.length - 1 && 'border-b-2 border-b-border')}>
-                        <td className="sticky left-0 z-10 bg-card border-r p-2 font-medium"
-                            style={{ minWidth: COL_WIDTH_STAFF }}>
-                          <div className="flex items-center gap-1.5">
-                            <span className="truncate font-medium">{member.name}</span>
-                          </div>
-                          <div className="text-[10px] text-muted-foreground">{member.role}</div>
-                        </td>
-                        {visibleDays.map(day => {
-                          const dayKey = DAY_KEY_MAP[day.getDay()];
-                          const workDay = workHours[dayKey] as WorkDay;
-                          const dateStr = format(day, 'yyyy-MM-dd');
-                          const vacation = isOnVacation(day, member.id, allVacations);
-                          const isOff = !workDay || vacation;
+                    const isCollapsed = collapsedStaff.has(member.id);
 
-                          if (isOff) {
+                    // Compute max slots for this member across all weekdays for sub-rows
+                    const allWeekdaySlots = Object.values(DAY_KEY_MAP).map(dk => generateSlots(workHours[dk] as WorkDay));
+                    const maxSlots = Math.max(...allWeekdaySlots.map(s => s.length), 0);
+                    // Use a representative full set: union of all unique slot times sorted
+                    const allSlotTimes = Array.from(new Set(allWeekdaySlots.flat())).sort();
+
+                    return (
+                      <React.Fragment key={member.id}>
+                        {/* Staff header row */}
+                        <tr className={cn('border-b border-border', memberIdx > 0 && 'border-t-2 border-t-border')}>
+                          <td className="sticky left-0 z-10 bg-muted/60 backdrop-blur-sm border-r px-2 py-1 font-medium cursor-pointer select-none"
+                              style={{ minWidth: COL_WIDTH_STAFF, height: STAFF_HEADER_HEIGHT }}
+                              onClick={() => toggleCollapse(member.id)}>
+                            <div className="flex items-center gap-1.5">
+                              {isCollapsed ? <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
+                              <span className="truncate text-sm">{member.name}</span>
+                              <span className="text-[10px] text-muted-foreground ml-1">({member.role})</span>
+                            </div>
+                          </td>
+                          {visibleDays.map(day => {
+                            const dayKey = DAY_KEY_MAP[day.getDay()];
+                            const workDay = workHours[dayKey] as WorkDay;
+                            const vacation = isOnVacation(day, member.id, allVacations);
+                            const isOff = !workDay || vacation;
+                            const dateStr = format(day, 'yyyy-MM-dd');
+                            const dayBookings = bookingsByStaffDate.get(`${member.id}:${dateStr}`) || [];
+                            const totalSlots = workDay ? generateSlots(workDay).length : 0;
+
                             return (
                               <td key={day.toISOString()}
                                   className={cn(
-                                    'border-r p-0 text-center',
-                                    'bg-muted/50',
+                                    'border-r text-center text-[9px]',
+                                    isOff && 'bg-muted/50',
+                                    isToday(day) && !isOff && 'bg-primary/5',
+                                    isWeekend(day) && !isOff && !isToday(day) && 'bg-muted/20',
                                   )}
-                                  style={{ minWidth: COL_WIDTH_DATE, height: CELL_HEIGHT }}>
-                                <div className="w-full h-full flex items-center justify-center">
-                                  <span className="text-[9px] text-muted-foreground/50">
-                                    {vacation ? 'Urlaub' : 'Frei'}
+                                  style={{ minWidth: COL_WIDTH_DATE, height: STAFF_HEADER_HEIGHT }}>
+                                {isOff ? (
+                                  <span className="text-muted-foreground/50">{vacation ? 'Urlaub' : 'Frei'}</span>
+                                ) : (
+                                  <span className="text-muted-foreground">
+                                    {dayBookings.length}/{totalSlots}
                                   </span>
-                                </div>
+                                )}
                               </td>
                             );
-                          }
+                          })}
+                        </tr>
 
-                          const slots = generateSlots(workDay);
-                          const dayBookings = bookingsByStaffDate.get(`${member.id}:${dateStr}`) || [];
-                          const bookedCount = dayBookings.length;
-                          const totalSlots = slots.length;
-
-                          return (
-                            <td key={day.toISOString()}
-                                className={cn(
-                                  'border-r p-0.5 cursor-pointer transition-colors hover:bg-muted/30',
-                                  isToday(day) && 'bg-primary/5',
-                                  isWeekend(day) && !isToday(day) && 'bg-muted/20',
-                                )}
-                                style={{ minWidth: COL_WIDTH_DATE, height: CELL_HEIGHT }}
-                                onClick={() => handleOpenBooking(member.id, dateStr)}>
-                              <div className="w-full h-full flex flex-col gap-0.5 p-0.5">
-                                {/* Time range */}
-                                <div className="text-[9px] text-muted-foreground flex items-center gap-0.5">
-                                  <Clock className="h-2.5 w-2.5" />
-                                  {workDay!.start}–{workDay!.end}
-                                </div>
-                                {/* Slot usage */}
-                                <div className="flex items-center gap-1">
-                                  <Badge variant={bookedCount > 0 ? 'default' : 'outline'} className="text-[8px] px-1 py-0 h-3.5">
-                                    {bookedCount}/{totalSlots}
-                                  </Badge>
-                                </div>
-                                {/* Booked appointments preview */}
-                                {dayBookings.slice(0, 2).map((b, i) => (
-                                  <div key={b.id} className={cn(
-                                    'rounded px-1 py-0 text-[8px] text-white truncate',
-                                    SLOT_COLORS[i % SLOT_COLORS.length],
-                                  )}>
-                                    {b.scheduled_time_start?.slice(0, 5)} {b.pet?.name || b.service?.title}
-                                  </div>
-                                ))}
-                                {dayBookings.length > 2 && (
-                                  <span className="text-[8px] text-muted-foreground">+{dayBookings.length - 2}</span>
-                                )}
-                              </div>
+                        {/* Slot sub-rows (hidden when collapsed) */}
+                        {!isCollapsed && allSlotTimes.map((slotTime) => (
+                          <tr key={`${member.id}-${slotTime}`} className="border-b border-border/30">
+                            <td className="sticky left-0 z-10 bg-card border-r pl-7 pr-2 text-[10px] text-muted-foreground font-mono"
+                                style={{ minWidth: COL_WIDTH_STAFF, height: CELL_HEIGHT }}>
+                              {slotTime}
                             </td>
-                          );
-                        })}
-                      </tr>
+                            {visibleDays.map(day => {
+                              const dayKey = DAY_KEY_MAP[day.getDay()];
+                              const workDay = workHours[dayKey] as WorkDay;
+                              const dateStr = format(day, 'yyyy-MM-dd');
+                              const vacation = isOnVacation(day, member.id, allVacations);
+                              const isOff = !workDay || vacation;
+
+                              // Check if this slot is within the staff's working hours for this day
+                              const daySlots = workDay ? generateSlots(workDay) : [];
+                              const slotInRange = daySlots.includes(slotTime);
+
+                              if (isOff || !slotInRange) {
+                                return (
+                                  <td key={day.toISOString()}
+                                      className="border-r bg-muted/30"
+                                      style={{ minWidth: COL_WIDTH_DATE, height: CELL_HEIGHT }} />
+                                );
+                              }
+
+                              // Check for booking at this exact slot
+                              const bookingKey = `${member.id}:${dateStr}:${slotTime}`;
+                              const booking = bookingIndex.get(bookingKey);
+
+                              if (booking) {
+                                const colorIdx = activeStaff.indexOf(member) % SLOT_COLORS.length;
+                                return (
+                                  <td key={day.toISOString()}
+                                      className={cn('border-r cursor-pointer', SLOT_COLORS[colorIdx])}
+                                      style={{ minWidth: COL_WIDTH_DATE, height: CELL_HEIGHT }}
+                                      title={`${booking.pet?.name || ''} – ${booking.service?.title || ''}`}
+                                      onClick={() => handleOpenBooking(member.id, dateStr, slotTime)}>
+                                    <div className="px-1 text-[9px] text-white truncate leading-[28px]">
+                                      {booking.pet?.name || booking.service?.title || '•'}
+                                    </div>
+                                  </td>
+                                );
+                              }
+
+                              return (
+                                <td key={day.toISOString()}
+                                    className={cn(
+                                      'border-r cursor-pointer transition-colors hover:bg-primary/10',
+                                      isToday(day) && 'bg-primary/5',
+                                      isWeekend(day) && !isToday(day) && 'bg-muted/10',
+                                    )}
+                                    style={{ minWidth: COL_WIDTH_DATE, height: CELL_HEIGHT }}
+                                    onClick={() => handleOpenBooking(member.id, dateStr, slotTime)} />
+                              );
+                            })}
+                          </tr>
+                        ))}
+                      </React.Fragment>
                     );
                   })}
                 </tbody>
