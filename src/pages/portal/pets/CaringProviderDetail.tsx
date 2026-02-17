@@ -3,7 +3,7 @@
  */
 import { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, MapPin, Phone, Mail, Star, Clock, PawPrint, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ArrowLeft, MapPin, Phone, Mail, Star, Clock, PawPrint, X, ChevronLeft, ChevronRight, CheckCircle2 } from 'lucide-react';
 import { PageShell } from '@/components/shared/PageShell';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -16,11 +16,12 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { useProviderDetail } from '@/hooks/usePetProviderSearch';
 import { usePublicProviderAvailability, usePublicProviderServices } from '@/hooks/usePublicPetProvider';
+import { useCreateBooking } from '@/hooks/usePetBookings';
 import { usePets } from '@/hooks/usePets';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay, isBefore, startOfDay, addMonths } from 'date-fns';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay, isBefore, startOfDay, addMonths, differenceInCalendarDays } from 'date-fns';
 import { de } from 'date-fns/locale';
 import type { DateRange } from 'react-day-picker';
 
@@ -55,6 +56,8 @@ export default function CaringProviderDetail() {
   // Booking
   const [selectedPet, setSelectedPet] = useState('');
   const [notes, setNotes] = useState('');
+  const [bookingSuccess, setBookingSuccess] = useState<{ service: string; date: string; pet: string; price: string } | null>(null);
+  const createBooking = useCreateBooking();
 
   // Lightbox
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
@@ -108,8 +111,56 @@ export default function CaringProviderDetail() {
     return availabilityByDay.get(dow) || [];
   }, [selectedDate, availabilityByDay]);
 
-  const handleBooking = () => {
-    toast.info('Buchung wird später über Zone 1 orchestriert. Feature kommt bald!');
+  const handleBooking = async () => {
+    if (!selectedService || !providerId) return;
+
+    const pet = pets.find(p => p.id === selectedPet);
+    const scheduledDate = isBoarding
+      ? dateRange?.from ? format(dateRange.from, 'yyyy-MM-dd') : ''
+      : selectedDate ? format(selectedDate, 'yyyy-MM-dd') : '';
+
+    if (!scheduledDate) return;
+
+    const slot = slotsForDate.find(s => s.id === selectedSlot);
+    const scheduledTimeStart = isBoarding ? undefined : slot?.start_time?.slice(0, 5);
+
+    // Berechne Preis: Pension = Tage * Tagespreis, sonst Einzelpreis
+    let priceCents = selectedService.price_cents;
+    if (isBoarding && dateRange?.from && dateRange?.to) {
+      const days = differenceInCalendarDays(dateRange.to, dateRange.from);
+      priceCents = days * selectedService.price_cents;
+    }
+
+    try {
+      await createBooking.mutateAsync({
+        pet_id: selectedPet,
+        service_id: selectedService.id,
+        provider_id: providerId,
+        scheduled_date: scheduledDate,
+        scheduled_time_start: scheduledTimeStart,
+        duration_minutes: selectedService.duration_minutes,
+        price_cents: priceCents,
+        client_notes: notes || undefined,
+      });
+
+      setBookingSuccess({
+        service: SERVICE_LABELS[selectedService.category] || selectedService.title,
+        date: isBoarding && dateRange?.from && dateRange?.to
+          ? `${format(dateRange.from, 'dd.MM.yyyy')} – ${format(dateRange.to, 'dd.MM.yyyy')}`
+          : format(new Date(scheduledDate), 'dd.MM.yyyy', { locale: de }),
+        pet: pet?.name || '',
+        price: `${(priceCents / 100).toFixed(2)} €`,
+      });
+
+      // Reset form
+      setSelectedDate(undefined);
+      setDateRange(undefined);
+      setSelectedSlot('');
+      setSelectedPet('');
+      setNotes('');
+    } catch {
+      // Error toast is handled by useCreateBooking
+    }
   };
 
   const formatPrice = (cents: number, type: string) => {
@@ -400,8 +451,8 @@ export default function CaringProviderDetail() {
               </div>
             </div>
 
-            <Button onClick={handleBooking} className="w-full" disabled={!selectedPet || !dateRange.to}>
-              Termin anfragen
+            <Button onClick={handleBooking} className="w-full" disabled={!selectedPet || !dateRange.to || createBooking.isPending}>
+              {createBooking.isPending ? 'Wird gesendet…' : 'Termin anfragen'}
             </Button>
           </CardContent>
         </Card>
@@ -448,9 +499,37 @@ export default function CaringProviderDetail() {
               </div>
             </div>
 
-            <Button onClick={handleBooking} className="w-full" disabled={!selectedSlot || !selectedPet}>
-              Termin anfragen
+            <Button onClick={handleBooking} className="w-full" disabled={!selectedSlot || !selectedPet || createBooking.isPending}>
+              {createBooking.isPending ? 'Wird gesendet…' : 'Termin anfragen'}
             </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ═══ BUCHUNGSBESTÄTIGUNG ═══ */}
+      {bookingSuccess && (
+        <Card className="mb-4 border-emerald-500/30 bg-emerald-500/5">
+          <CardContent className="pt-6">
+            <div className="flex items-start gap-3">
+              <CheckCircle2 className="h-6 w-6 text-emerald-500 flex-shrink-0 mt-0.5" />
+              <div className="space-y-2 flex-1">
+                <h3 className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">Buchungsanfrage gesendet!</h3>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                  <span className="text-muted-foreground">Service</span>
+                  <span className="font-medium">{bookingSuccess.service}</span>
+                  <span className="text-muted-foreground">Datum</span>
+                  <span className="font-medium">{bookingSuccess.date}</span>
+                  <span className="text-muted-foreground">Tier</span>
+                  <span className="font-medium">{bookingSuccess.pet}</span>
+                  <span className="text-muted-foreground">Preis</span>
+                  <span className="font-medium">{bookingSuccess.price}</span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">Der Anbieter wird Ihre Anfrage prüfen und bestätigen.</p>
+                <Button variant="outline" size="sm" onClick={() => setBookingSuccess(null)} className="mt-2">
+                  Weitere Buchung
+                </Button>
+              </div>
+            </div>
           </CardContent>
         </Card>
       )}

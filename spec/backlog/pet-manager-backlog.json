@@ -1,0 +1,174 @@
+{
+  "title": "Pet Manager — Franchise-Plattform Backlog",
+  "version": "1.0",
+  "created": "2026-02-17",
+  "owner": "Lennox and Friends",
+  "phases": [
+    {
+      "id": "P3",
+      "title": "Buchungsflow Ende-zu-Ende",
+      "priority": 1,
+      "status": "in_progress",
+      "tasks": [
+        {
+          "id": "P3.1",
+          "title": "Buchung erstellen (Client-Seite)",
+          "description": "handleBooking in CaringProviderDetail.tsx mit useCreateBooking verbinden. Kapazitaetspruefung vor Absenden.",
+          "status": "in_progress",
+          "files": ["src/pages/portal/pets/CaringProviderDetail.tsx"]
+        },
+        {
+          "id": "P3.2",
+          "title": "Kapazitaet pro Datum pruefen",
+          "description": "usePetCapacity im Buchungsformular nutzen um ausgebuchte Tage visuell zu markieren.",
+          "status": "todo",
+          "files": ["src/pages/portal/pets/CaringProviderDetail.tsx", "src/hooks/usePetCapacity.ts"]
+        },
+        {
+          "id": "P3.3",
+          "title": "Blocked Dates im Kalender",
+          "description": "pet_provider_blocked_dates in den Kalender einbauen — gesperrte Tage rot markieren und nicht buchbar machen.",
+          "status": "todo",
+          "files": ["src/pages/portal/pets/CaringProviderDetail.tsx", "src/hooks/usePublicPetProvider.ts"]
+        },
+        {
+          "id": "P3.4",
+          "title": "Check-In / Check-Out",
+          "description": "Statusuebergaenge confirmed->in_progress (Check-In) und in_progress->completed (Check-Out). Buttons in PMBuchungen.",
+          "status": "todo",
+          "files": ["src/pages/portal/petmanager/PMBuchungen.tsx"]
+        },
+        {
+          "id": "P3.5",
+          "title": "Buchungsbestaetigung",
+          "description": "Nach erfolgreicher Buchung: Zusammenfassung mit Service, Datum, Tier, Preis anzeigen.",
+          "status": "todo",
+          "files": ["src/pages/portal/pets/CaringProviderDetail.tsx"]
+        }
+      ]
+    },
+    {
+      "id": "P4",
+      "title": "Kalenderansicht im Pet Manager",
+      "priority": 2,
+      "status": "todo",
+      "tasks": [
+        {
+          "id": "P4.1",
+          "title": "Wochenkalender",
+          "description": "Neue Komponente PMKalender.tsx — Tage als Spalten, Zeitslots als Zeilen, Buchungen als farbige Bloecke.",
+          "status": "todo",
+          "files": ["src/pages/portal/petmanager/PMKalender.tsx"]
+        },
+        {
+          "id": "P4.2",
+          "title": "Monatskalender",
+          "description": "Kompakte Monatsansicht mit Buchungszahlen pro Tag und Farbcodierung (gruen/gelb/rot).",
+          "status": "todo",
+          "files": ["src/pages/portal/petmanager/PMKalender.tsx"]
+        },
+        {
+          "id": "P4.3",
+          "title": "Tab-Integration",
+          "description": "Kalender als neuer Tab oder Toggle in PMBuchungen einbinden.",
+          "status": "todo",
+          "files": ["src/pages/portal/petmanager/PMBuchungen.tsx", "src/pages/portal/PetManagerPage.tsx"]
+        }
+      ]
+    },
+    {
+      "id": "P5",
+      "title": "Raumverwaltung und Belegung (Bestandsbuch)",
+      "priority": 3,
+      "status": "todo",
+      "tasks": [
+        {
+          "id": "P5.1",
+          "title": "DB: pet_rooms Tabelle",
+          "description": "id, provider_id, tenant_id, name, room_type (zimmer/auslauf/box), capacity, is_active.",
+          "status": "todo",
+          "files": ["supabase/migrations/"]
+        },
+        {
+          "id": "P5.2",
+          "title": "DB: pet_room_assignments Tabelle",
+          "description": "id, room_id, booking_id, pet_id, check_in_at, check_out_at.",
+          "status": "todo",
+          "files": ["supabase/migrations/"]
+        },
+        {
+          "id": "P5.3",
+          "title": "Raum-CRUD UI",
+          "description": "In PMLeistungen oder eigenem Tab: Raeume anlegen, bearbeiten, loeschen.",
+          "status": "todo",
+          "files": ["src/pages/portal/petmanager/PMLeistungen.tsx"]
+        },
+        {
+          "id": "P5.4",
+          "title": "Belegungsansicht",
+          "description": "Kartenansicht: Jeder Raum als Card mit aktuell zugeordneten Tieren (Foto + Name).",
+          "status": "todo",
+          "files": ["src/pages/portal/petmanager/PMDashboard.tsx"]
+        },
+        {
+          "id": "P5.5",
+          "title": "Zeitlinienansicht (Anigu-Style)",
+          "description": "Horizontaler Kalender: Raeume als Zeilen, Buchungen als farbige Balken mit Tierbild + Name + Dauer.",
+          "status": "todo",
+          "files": ["src/pages/portal/petmanager/PMKalender.tsx"]
+        }
+      ]
+    },
+    {
+      "id": "P6",
+      "title": "Kundenverwaltung verbessern",
+      "priority": 4,
+      "status": "todo",
+      "tasks": [
+        {
+          "id": "P6.1",
+          "title": "Profil-Join fuer echte Namen",
+          "description": "PMKunden joined auf profiles-Tabelle statt nur UUID-Fragment.",
+          "status": "todo",
+          "files": ["src/pages/portal/petmanager/PMKunden.tsx"]
+        },
+        {
+          "id": "P6.2",
+          "title": "Kundendetail-Akte",
+          "description": "Inline-Akte: Tiere des Kunden, Buchungshistorie, offene Rechnungen.",
+          "status": "todo",
+          "files": ["src/pages/portal/petmanager/PMKunden.tsx"]
+        }
+      ]
+    },
+    {
+      "id": "P7",
+      "title": "Zone 3 — Oeffentliches Provider-Verzeichnis",
+      "priority": 5,
+      "status": "todo",
+      "tasks": [
+        {
+          "id": "P7.1",
+          "title": "Oeffentliche Provider-Seite",
+          "description": "Route /tierservice: Provider-Karten mit Suche/Filter ohne Login.",
+          "status": "todo",
+          "files": ["src/pages/public/TierservicePage.tsx"]
+        },
+        {
+          "id": "P7.2",
+          "title": "Provider-Detailseite (oeffentlich)",
+          "description": "Profil mit Services, Bewertungen, Verfuegbarkeit.",
+          "status": "todo",
+          "files": ["src/pages/public/TierserviceDetailPage.tsx"]
+        },
+        {
+          "id": "P7.3",
+          "title": "Registrierungs-CTA",
+          "description": "'Jetzt buchen' fuehrt zur Registrierung/Login, danach weiter zum Buchungsflow.",
+          "status": "todo",
+          "files": ["src/pages/public/TierservicePage.tsx"]
+        }
+      ]
+    }
+  ]
+}
