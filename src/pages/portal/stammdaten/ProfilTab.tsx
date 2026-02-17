@@ -12,7 +12,8 @@ import { DESIGN, RECORD_CARD } from '@/config/designManifest';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { FileUploader } from '@/components/shared/FileUploader';
-import { Loader2, Save, User, Phone, MapPin, FileText, PenLine, Sparkles, Building2, Mail, Download, Monitor, Smartphone, Zap, WifiOff, Layout, Globe, Share } from 'lucide-react';
+import { Loader2, Save, User, Phone, MapPin, FileText, PenLine, Sparkles, Building2, Mail, Download, Monitor, Smartphone, Zap, WifiOff, Layout, Globe, Share, ExternalLink } from 'lucide-react';
+import { BrandLinkWidget } from '@/components/dashboard/widgets/BrandLinkWidget';
 import { toast } from 'sonner';
 import { OutboundIdentityWidget } from '@/components/portal/OutboundIdentityWidget';
 import { cn } from '@/lib/utils';
@@ -485,6 +486,15 @@ export function ProfilTab() {
 
       {/* ── App-Download Widget ── */}
       <AppDownloadWidget />
+
+      {/* ── Unsere Websites ── */}
+      <ProfileWidget icon={Globe} title="Unsere Websites" description="Alle Plattformen im Überblick">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {['SYS.BRAND.KAUFY', 'SYS.BRAND.SOT', 'SYS.BRAND.ACQUIARY', 'SYS.BRAND.FUTUREROOM'].map(code => (
+            <BrandLinkWidget key={code} code={code} />
+          ))}
+        </div>
+      </ProfileWidget>
 
       {/* ── Sticky Save Button ── */}
 
