@@ -9,6 +9,7 @@
  * - PDF-Export (jsPDF)
  */
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { PageShell } from '@/components/shared/PageShell';
 import { Receipt, Plus, FileText, Check, Send, AlertTriangle, X, Download, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -342,8 +343,8 @@ export default function PMFinanzen() {
   const overdueCount = invoices.filter(i => i.status === 'overdue').length;
 
   return (
+    <PageShell>
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Receipt className="h-6 w-6 text-primary" />
@@ -534,5 +535,6 @@ export default function PMFinanzen() {
         </CardContent>
       </Card>
     </div>
+    </PageShell>
   );
 }
