@@ -1,8 +1,8 @@
 /**
- * PMPension — Pensionsbereich: Zimmer-Widgets + Belegungskalender
+ * PMPension — Vertikales Widget-Layout: Zimmer links, Inline-Akte rechts
  */
 import { useState, useMemo } from 'react';
-import { DoorOpen, Plus, Edit2, Trash2, PawPrint, LogOut, Save, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, PawPrint, LogOut, Save, Trash2, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,8 +10,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Card, CardContent } from '@/components/ui/card';
+import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { useMyProvider, useBookings } from '@/hooks/usePetBookings';
 import {
   useProviderRooms, useCreateRoom, useUpdateRoom, useDeleteRoom,
@@ -37,12 +37,11 @@ export default function PMPension() {
   const deleteRoom = useDeleteRoom();
   const checkOut = useCheckOutFromRoom();
 
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [editId, setEditId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
   const [form, setForm] = useState(EMPTY_ROOM);
   const [currentDate, setCurrentDate] = useState(new Date());
 
-  // Filter to pension rooms only
   const pensionRooms = rooms.filter(r => r.is_active);
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
   const weekDays = useMemo(() => eachDayOfInterval({ start: weekStart, end: addDays(weekStart, 6) }), [weekStart]);
@@ -54,7 +53,7 @@ export default function PMPension() {
     assignmentsByRoom.get(a.room_id)!.push(a);
   });
 
-  // Group bookings by date for calendar
+  // Calendar bookings
   const pensionBookings = bookings.filter(b => !['cancelled', 'no_show'].includes(b.status));
   const bookingsByDate = new Map<string, typeof pensionBookings>();
   pensionBookings.forEach(b => {
@@ -62,30 +61,46 @@ export default function PMPension() {
     bookingsByDate.get(b.scheduled_date)!.push(b);
   });
 
-  const openCreate = () => { setEditId(null); setForm(EMPTY_ROOM); setDialogOpen(true); };
-  const openEdit = (r: PetRoom) => {
-    setEditId(r.id);
-    setForm({ name: r.name, room_type: r.room_type, capacity: r.capacity, description: r.description || '', is_active: r.is_active, sort_order: r.sort_order });
-    setDialogOpen(true);
+  const handleCreate = () => {
+    setSelectedId(null);
+    setIsCreating(true);
+    setForm(EMPTY_ROOM);
   };
+
+  const handleSelect = (room: PetRoom) => {
+    setIsCreating(false);
+    setSelectedId(room.id);
+    setForm({
+      name: room.name, room_type: room.room_type, capacity: room.capacity,
+      description: room.description || '', is_active: room.is_active, sort_order: room.sort_order,
+    });
+  };
+
+  const handleClose = () => { setSelectedId(null); setIsCreating(false); };
+
   const handleSave = async () => {
     if (!form.name.trim()) return;
-    if (editId) {
-      await updateRoom.mutateAsync({ id: editId, ...form });
+    if (selectedId) {
+      await updateRoom.mutateAsync({ id: selectedId, ...form });
     } else {
       await createRoom.mutateAsync({ ...form, provider_id: provider!.id });
+      setIsCreating(false);
     }
-    setDialogOpen(false);
   };
+
+  const handleDelete = async () => {
+    if (!selectedId) return;
+    await deleteRoom.mutateAsync(selectedId);
+    handleClose();
+  };
+
+  const showAkte = selectedId || isCreating;
 
   if (!provider) {
     return (
       <PageShell>
         <div className="space-y-6">
-          <div className="flex items-center gap-3">
-            <DoorOpen className="h-6 w-6 text-primary" />
-            <h1 className="text-2xl font-bold">Pension</h1>
-          </div>
+          <ModulePageHeader title="Pension" description="Zimmerverwaltung und Belegungskalender" />
           <div className="rounded-lg border border-dashed border-muted-foreground/30 p-12 text-center">
             <p className="text-muted-foreground">Kein Provider-Profil gefunden.</p>
           </div>
@@ -97,83 +112,158 @@ export default function PMPension() {
   return (
     <PageShell>
       <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <DoorOpen className="h-6 w-6 text-primary" />
-            <h1 className="text-2xl font-bold">Pension</h1>
-          </div>
-        </div>
+        <ModulePageHeader
+          title="Pension"
+          description="Zimmerverwaltung und Belegungskalender"
+          actions={
+            <Button variant="glass" size="icon-round" onClick={handleCreate}>
+              <Plus className="h-5 w-5" />
+            </Button>
+          }
+        />
 
-        {/* Zimmer-Widgets */}
-        <div>
-          <h2 className="text-sm font-semibold mb-3">Zimmer</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {pensionRooms.map(room => {
-              const occ = (assignmentsByRoom.get(room.id) || []).length;
-              const isFull = occ >= room.capacity;
-              return (
-                <Card key={room.id} className={cn(
-                  'relative overflow-hidden cursor-pointer hover:shadow-md transition-shadow',
-                  isFull && 'border-destructive/30',
-                  occ === 0 && 'border-emerald-500/30',
-                  occ > 0 && !isFull && 'border-amber-500/30',
-                )}>
-                  <div className={cn(
-                    'h-1',
-                    occ === 0 && 'bg-emerald-500',
-                    occ > 0 && !isFull && 'bg-amber-500',
-                    isFull && 'bg-destructive',
-                  )} />
-                  <CardContent className="pt-3 pb-3 px-3">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-sm font-medium flex items-center gap-1.5">
-                        {ROOM_TYPE_ICONS[room.room_type] || '🏠'} {room.name}
-                      </span>
-                      <div className="flex gap-0.5">
-                        <Button variant="ghost" size="icon" className="h-5 w-5" onClick={(e) => { e.stopPropagation(); openEdit(room); }}>
-                          <Edit2 className="h-3 w-3" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-5 w-5" onClick={(e) => { e.stopPropagation(); deleteRoom.mutate(room.id); }}>
-                          <Trash2 className="h-3 w-3 text-destructive" />
-                        </Button>
+        {/* Main: Widgets left + Akte right */}
+        <div className="flex flex-col md:flex-row gap-4">
+          {/* Left: Vertical widget column */}
+          <div className="md:w-48 lg:w-56 flex-shrink-0">
+            <div className="flex md:flex-col gap-3 overflow-x-auto md:overflow-x-visible md:max-h-[calc(100vh-220px)] md:overflow-y-auto pb-2 md:pb-0 md:pr-1">
+              {pensionRooms.map(room => {
+                const occ = (assignmentsByRoom.get(room.id) || []).length;
+                const isFull = occ >= room.capacity;
+                const isSelected = selectedId === room.id;
+                return (
+                  <Card
+                    key={room.id}
+                    className={cn(
+                      'relative overflow-hidden cursor-pointer hover:shadow-md transition-all flex-shrink-0',
+                      'w-36 md:w-full aspect-square',
+                      isSelected && 'ring-2 ring-primary shadow-lg',
+                      isFull && 'border-destructive/30',
+                      occ === 0 && !isSelected && 'border-emerald-500/30',
+                      occ > 0 && !isFull && !isSelected && 'border-amber-500/30',
+                    )}
+                    onClick={() => handleSelect(room)}
+                  >
+                    <div className={cn(
+                      'h-1.5',
+                      occ === 0 && 'bg-emerald-500',
+                      occ > 0 && !isFull && 'bg-amber-500',
+                      isFull && 'bg-destructive',
+                    )} />
+                    <CardContent className="p-3 flex flex-col justify-between h-[calc(100%-6px)]">
+                      <div>
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <span className="text-base">{ROOM_TYPE_ICONS[room.room_type] || '🏠'}</span>
+                          <span className="text-sm font-medium truncate">{room.name}</span>
+                        </div>
+                        <span className="text-[10px] text-muted-foreground">{ROOM_TYPE_LABELS[room.room_type]}</span>
                       </div>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <Badge variant={isFull ? 'destructive' : occ > 0 ? 'secondary' : 'outline'} className="text-[10px]">
+                      <Badge variant={isFull ? 'destructive' : occ > 0 ? 'secondary' : 'outline'} className="text-[10px] w-fit">
                         {occ}/{room.capacity} 🐕
                       </Badge>
-                      <span className="text-[10px] text-muted-foreground">{ROOM_TYPE_LABELS[room.room_type]}</span>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+              {pensionRooms.length === 0 && (
+                <div className="text-sm text-muted-foreground text-center py-8">
+                  Noch keine Zimmer angelegt.
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Right: Inline Akte */}
+          {showAkte && (
+            <div className="flex-1 min-w-0">
+              <Card>
+                <CardContent className="pt-5 pb-5 px-5">
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-lg font-bold">
+                      {isCreating ? 'Neues Zimmer' : `Zimmerakte: ${form.name}`}
+                    </h2>
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleClose}>
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+
+                  <div className="space-y-4">
+                    {/* Basisdaten */}
+                    <div className="space-y-3">
+                      <div>
+                        <Label>Name *</Label>
+                        <Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="z.B. Zimmer 1" />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <Label>Raumtyp</Label>
+                          <Select value={form.room_type} onValueChange={v => setForm(f => ({ ...f, room_type: v }))}>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              {Object.entries(ROOM_TYPE_LABELS).map(([k, v]) => (
+                                <SelectItem key={k} value={k}>{ROOM_TYPE_ICONS[k]} {v}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label>Kapazität (Tiere)</Label>
+                          <Input type="number" min={1} value={form.capacity} onChange={e => setForm(f => ({ ...f, capacity: parseInt(e.target.value) || 1 }))} />
+                        </div>
+                      </div>
+                      <div>
+                        <Label>Beschreibung</Label>
+                        <Textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={2} />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Switch checked={form.is_active} onCheckedChange={v => setForm(f => ({ ...f, is_active: v }))} />
+                        <Label>Aktiv</Label>
+                      </div>
                     </div>
-                    {/* Show assigned pets */}
-                    {(assignmentsByRoom.get(room.id) || []).length > 0 && (
-                      <div className="mt-2 space-y-1">
-                        {(assignmentsByRoom.get(room.id) || []).map(a => (
-                          <div key={a.id} className="flex items-center gap-1.5 text-[10px] bg-muted/40 rounded px-1.5 py-0.5">
-                            <PawPrint className="h-2.5 w-2.5 text-primary" />
-                            <span className="flex-1 truncate">{a.pet?.name}</span>
-                            <Button variant="ghost" size="icon" className="h-4 w-4" onClick={() => checkOut.mutate(a.id)}>
-                              <LogOut className="h-2.5 w-2.5" />
-                            </Button>
+
+                    {/* Aktuelle Belegung (nur im Edit-Modus) */}
+                    {selectedId && (assignmentsByRoom.get(selectedId) || []).length > 0 && (
+                      <div>
+                        <div className="border-t pt-4 mt-2">
+                          <h3 className="text-sm font-semibold mb-2">Aktuelle Belegung</h3>
+                          <div className="space-y-1.5">
+                            {(assignmentsByRoom.get(selectedId) || []).map(a => (
+                              <div key={a.id} className="flex items-center gap-2 bg-muted/40 rounded-lg px-3 py-2">
+                                <PawPrint className="h-4 w-4 text-primary" />
+                                <span className="flex-1 text-sm">{a.pet?.name}</span>
+                                <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => checkOut.mutate(a.id)}>
+                                  <LogOut className="h-3 w-3 mr-1" /> Check-Out
+                                </Button>
+                              </div>
+                            ))}
                           </div>
-                        ))}
+                        </div>
                       </div>
                     )}
-                  </CardContent>
-                </Card>
-              );
-            })}
-            {/* + Zimmer anlegen */}
-            <Card
-              className="border-dashed border-muted-foreground/30 cursor-pointer hover:border-primary/50 hover:shadow-sm transition-all flex items-center justify-center min-h-[100px]"
-              onClick={openCreate}
-            >
-              <div className="text-center text-muted-foreground">
-                <Plus className="h-6 w-6 mx-auto mb-1" />
-                <span className="text-xs">Zimmer anlegen</span>
-              </div>
-            </Card>
-          </div>
+
+                    {/* Actions */}
+                    <div className="flex items-center gap-2 pt-2">
+                      <Button onClick={handleSave} disabled={createRoom.isPending || updateRoom.isPending}>
+                        <Save className="h-4 w-4 mr-1" /> Speichern
+                      </Button>
+                      {selectedId && (
+                        <Button variant="destructive" onClick={handleDelete} disabled={deleteRoom.isPending}>
+                          <Trash2 className="h-4 w-4 mr-1" /> Löschen
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* Placeholder when no akte open */}
+          {!showAkte && pensionRooms.length > 0 && (
+            <div className="flex-1 flex items-center justify-center min-h-[300px]">
+              <p className="text-sm text-muted-foreground">Zimmer auswählen oder neues Zimmer anlegen</p>
+            </div>
+          )}
         </div>
 
         {/* Belegungskalender */}
@@ -228,7 +318,6 @@ export default function PMPension() {
                         {weekDays.map(day => {
                           const dateKey = format(day, 'yyyy-MM-dd');
                           const dayBookings = (bookingsByDate.get(dateKey) || []);
-                          // Simple: show count of bookings for this day
                           const count = dayBookings.length;
                           const ratio = count / Math.max(room.capacity, 1);
                           return (
@@ -260,41 +349,6 @@ export default function PMPension() {
             </Card>
           )}
         </div>
-
-        {/* Room Dialog */}
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogContent className="max-w-md">
-            <DialogHeader><DialogTitle>{editId ? 'Zimmer bearbeiten' : 'Neues Zimmer'}</DialogTitle></DialogHeader>
-            <div className="space-y-3 pt-2">
-              <div><Label>Name *</Label><Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="z.B. Zimmer 1" /></div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label>Raumtyp</Label>
-                  <Select value={form.room_type} onValueChange={v => setForm(f => ({ ...f, room_type: v }))}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(ROOM_TYPE_LABELS).map(([k, v]) => (
-                        <SelectItem key={k} value={k}>{ROOM_TYPE_ICONS[k]} {v}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label>Kapazität (Tiere)</Label>
-                  <Input type="number" min={1} value={form.capacity} onChange={e => setForm(f => ({ ...f, capacity: parseInt(e.target.value) || 1 }))} />
-                </div>
-              </div>
-              <div><Label>Beschreibung</Label><Textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={2} /></div>
-              <div className="flex items-center gap-2">
-                <Switch checked={form.is_active} onCheckedChange={v => setForm(f => ({ ...f, is_active: v }))} />
-                <Label>Aktiv</Label>
-              </div>
-              <Button onClick={handleSave} disabled={createRoom.isPending || updateRoom.isPending} className="w-full">
-                <Save className="h-4 w-4 mr-1" /> Speichern
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
       </div>
     </PageShell>
   );
