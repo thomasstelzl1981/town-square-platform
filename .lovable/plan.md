@@ -1,40 +1,90 @@
 
-# Fix: E-Mail verschwunden aus KI Office Menüleiste
 
-## Problem
+# Frontend- und Backend-Tests schreiben und ausfuehren
 
-In der Datei `SubTabs.tsx` (Level-3 Navigation / Menüleiste) werden die Tiles **E-Mail**, **Kontakte** und **Kalender** auch auf dem **Desktop** herausgefiltert. Der Code prueft `isTileHiddenOnMobile()` — eine Funktion, die nur fuer Mobilgeraete gedacht ist — aber wendet sie faelschlicherweise auch auf die Desktop-Ansicht an.
+## Ueberblick
 
-**Zeile 30-32 in SubTabs.tsx:**
-```typescript
-// Filter tiles for mobile — hide desktop-only tabs
-const visibleTiles = (module.tiles || []).filter(
-  tile => !isTileHiddenOnMobile(moduleBase, tile.path)
-);
-```
+Es gibt bereits Tests fuer 5 Engines (akquiseCalc, finanzierung, provision, bewirtschaftung, projektCalc) sowie System-Tests (demoData, routes). Vier Engines haben **keine Tests**: Vorsorgeluecke, VV-Steuer, Finanzuebersicht, NK-Abrechnung (allocationLogic). Fuer Backend-Tests werden zwei Edge Functions getestet: `sot-letter-generate` und `sot-investment-engine`.
 
-Da die Komponente auf Mobile bereits in Zeile 24 (`if (isMobile) return null`) komplett ausgeblendet wird, laueft dieser Filter **nur auf Desktop** — und entfernt dort faelschlicherweise E-Mail, Kontakte und Kalender.
+---
 
-## Loesung
+## Teil 1: Frontend-Tests (Vitest)
 
-Den `isTileHiddenOnMobile`-Filter aus `SubTabs.tsx` entfernen, da er auf Desktop nicht gelten soll und auf Mobile die Komponente ohnehin nicht gerendert wird.
+### 1a. Vorsorgeluecke Engine Test
+Datei: `src/engines/vorsorgeluecke/engine.test.ts`
 
-**Vorher:**
-```typescript
-const visibleTiles = (module.tiles || []).filter(
-  tile => !isTileHiddenOnMobile(moduleBase, tile.path)
-);
-```
+Testfaelle:
+- **calcAltersvorsorge**: Angestellter mit DRV-Rente, Luecke berechnen
+- **calcAltersvorsorge**: Beamter mit Ruhegehalt-Berechnung aus Dienstjahren
+- **calcAltersvorsorge**: Private Rentenvertraege addieren
+- **calcAltersvorsorge**: Projected end value statt Hochrechnung
+- **calcBuLuecke**: Angestellter mit DRV-EM-Rente
+- **calcBuLuecke**: Beamter mit Dienstunfaehigkeits-Berechnung
+- **calcBuLuecke**: Kombi-Vertrag mit bu_monthly_benefit
+- **calcBuLuecke**: Fallback auf 35% Brutto
 
-**Nachher:**
-```typescript
-const visibleTiles = module.tiles || [];
-```
+### 1b. VV-Steuer Engine Test
+Datei: `src/engines/vvSteuer/engine.test.ts`
 
-## Betroffene Datei
+Testfaelle:
+- **calculateAfaBasis**: Gebaeudewertanteil korrekt berechnen
+- **calculateAfaAmount**: Jaehrliche AfA aus Basis + Rate
+- **calculatePropertyResult**: Einnahmen-Ueberschuss-Rechnung komplett
+- **buildContextSummary**: Aggregation ueber mehrere Immobilien
 
-- `src/components/portal/SubTabs.tsx` — Eine Zeile aendern (Filter entfernen)
+### 1c. Finanzuebersicht Engine Test
+Datei: `src/engines/finanzuebersicht/engine.test.ts`
 
-## Ergebnis
+Testfaelle:
+- **monthlyFromInterval**: Umrechnung jaehrlich/halbjaehrlich/vierteljaehrlich/monatlich
+- **calcIncome**: Nettoeinkommen + Mieteinnahmen + PV + Steuervorteil
+- **calcAssets**: Immobilien + Bankguthaben + Wertpapiere
+- **calcLiabilities**: Portfolio-Schulden + Eigenheim + PV + Privatkredite
+- **calcProjection**: 40-Jahres-Vermoegensprojektion
 
-Die KI Office Menüleiste zeigt wieder alle 7 Tiles: **E-Mail**, Brief, Kontakte, Kalender, Widgets, WhatsApp, Videocalls.
+### 1d. NK-Abrechnung allocationLogic Test
+Datei: `src/engines/nkAbrechnung/allocationLogic.test.ts`
+
+Testfaelle:
+- **calculateLeaseDaysInPeriod**: Ganzjaehrig (365/365)
+- **calculateLeaseDaysInPeriod**: Unterjaehrig (Lease beginnt im Juni)
+- **allocateCostItem**: Verteilung nach Flaeche (AREA_SQM)
+- **allocateCostItem**: Verteilung nach MEA
+- **allocateCostItem**: Verteilung nach Personenzahl
+- **allocateCostItem**: Direktuebernahme wenn amountUnit vorhanden
+- **calculateProratedPrepayments**: Anteilige Vorauszahlungen
+
+---
+
+## Teil 2: Backend-Tests (Deno)
+
+### 2a. sot-letter-generate Test
+Datei: `supabase/functions/sot-letter-generate/index.test.ts`
+
+Testfaelle:
+- CORS preflight gibt 200 zurueck
+- Fehlende Pflichtfelder gibt 400 zurueck
+- Erfolgreicher Aufruf mit gueltigem Payload
+
+### 2b. sot-investment-engine Test
+Datei: `supabase/functions/sot-investment-engine/index.test.ts`
+
+Testfaelle:
+- CORS preflight gibt 200 zurueck
+- Erfolgreicher Aufruf mit Standard-Eingabe gibt projection zurueck
+
+---
+
+## Ausfuehrung
+
+Nach dem Schreiben aller Tests:
+1. Frontend-Tests mit Vitest ausfuehren (alle 4 neuen + bestehende)
+2. Backend-Tests mit Deno-Test-Runner ausfuehren
+
+## Technische Details
+
+- Frontend: Pure functions ohne Mocks, direkte Import der Engine-Funktionen
+- Backend: HTTP-Aufrufe an deployed Edge Functions mit echtem Supabase-URL + Anon-Key
+- Alle Tests nutzen bestehende Patterns (describe/it/expect)
+- Keine neuen Dependencies noetig
+
