@@ -161,13 +161,24 @@ export function useMyProvider() {
     queryKey: ['my_pet_provider', activeTenantId, user?.id],
     queryFn: async () => {
       if (!activeTenantId || !user?.id) return null;
-      const { data } = await supabase
+      // 1. Try direct user_id match
+      const { data: directMatch } = await supabase
         .from('pet_providers')
         .select('*')
         .eq('tenant_id', activeTenantId)
         .eq('user_id', user.id)
         .maybeSingle();
-      return data as PetProvider | null;
+      if (directMatch) return directMatch as PetProvider;
+      // 2. Fallback: first active provider of this tenant
+      const { data: tenantProvider } = await supabase
+        .from('pet_providers')
+        .select('*')
+        .eq('tenant_id', activeTenantId)
+        .eq('status', 'active')
+        .order('created_at', { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      return (tenantProvider as PetProvider) || null;
     },
     enabled: !!activeTenantId && !!user?.id,
   });
