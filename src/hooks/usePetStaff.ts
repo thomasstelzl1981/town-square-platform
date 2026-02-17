@@ -112,6 +112,36 @@ export function useStaffVacations(staffId?: string) {
   });
 }
 
+/** Load ALL vacations for all staff of a provider in a date range */
+export function useAllStaffVacations(providerId?: string, startDate?: string, endDate?: string) {
+  const { activeTenantId } = useAuth();
+  return useQuery({
+    queryKey: ['pet_staff_vacations_all', providerId, startDate, endDate],
+    queryFn: async () => {
+      if (!activeTenantId || !providerId) return [];
+      // Get staff IDs for this provider
+      const { data: staffList } = await supabase
+        .from('pet_staff')
+        .select('id')
+        .eq('provider_id', providerId)
+        .eq('tenant_id', activeTenantId);
+      if (!staffList?.length) return [];
+      const staffIds = staffList.map(s => s.id);
+      let query = supabase
+        .from('pet_staff_vacations' as any)
+        .select('*')
+        .in('staff_id', staffIds)
+        .eq('tenant_id', activeTenantId);
+      if (startDate) query = query.lte('start_date', endDate!);
+      if (endDate) query = query.gte('end_date', startDate!);
+      const { data, error } = await query;
+      if (error) throw error;
+      return (data || []) as unknown as PetStaffVacation[];
+    },
+    enabled: !!activeTenantId && !!providerId && !!startDate && !!endDate,
+  });
+}
+
 export function useCreateVacation() {
   const qc = useQueryClient();
   const { activeTenantId } = useAuth();
@@ -121,7 +151,7 @@ export function useCreateVacation() {
       const { error } = await supabase.from('pet_staff_vacations' as any).insert({ ...data, tenant_id: activeTenantId } as any);
       if (error) throw error;
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['pet_staff_vacations'] }); toast.success('Urlaub eingetragen'); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['pet_staff_vacations'] }); qc.invalidateQueries({ queryKey: ['pet_staff_vacations_all'] }); toast.success('Urlaub eingetragen'); },
     onError: () => toast.error('Fehler beim Erstellen'),
   });
 }
@@ -133,7 +163,7 @@ export function useDeleteVacation() {
       const { error } = await supabase.from('pet_staff_vacations' as any).delete().eq('id', id);
       if (error) throw error;
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['pet_staff_vacations'] }); toast.success('Urlaub gelöscht'); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['pet_staff_vacations'] }); qc.invalidateQueries({ queryKey: ['pet_staff_vacations_all'] }); toast.success('Urlaub gelöscht'); },
     onError: () => toast.error('Fehler beim Löschen'),
   });
 }
