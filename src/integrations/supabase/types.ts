@@ -12457,6 +12457,7 @@ export type Database = {
           address: string | null
           assigned_at: string | null
           assigned_provider_id: string | null
+          city: string | null
           created_at: string
           email: string | null
           first_name: string
@@ -12465,6 +12466,7 @@ export type Database = {
           lead_id: string | null
           notes: string | null
           phone: string | null
+          postal_code: string | null
           source: string
           status: string
           tenant_id: string
@@ -12475,6 +12477,7 @@ export type Database = {
           address?: string | null
           assigned_at?: string | null
           assigned_provider_id?: string | null
+          city?: string | null
           created_at?: string
           email?: string | null
           first_name: string
@@ -12483,6 +12486,7 @@ export type Database = {
           lead_id?: string | null
           notes?: string | null
           phone?: string | null
+          postal_code?: string | null
           source?: string
           status?: string
           tenant_id: string
@@ -12493,6 +12497,7 @@ export type Database = {
           address?: string | null
           assigned_at?: string | null
           assigned_provider_id?: string | null
+          city?: string | null
           created_at?: string
           email?: string | null
           first_name?: string
@@ -12501,6 +12506,7 @@ export type Database = {
           lead_id?: string | null
           notes?: string | null
           phone?: string | null
+          postal_code?: string | null
           source?: string
           status?: string
           tenant_id?: string
@@ -12520,6 +12526,75 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pet_z1_pets: {
+        Row: {
+          allergies: string[] | null
+          birth_date: string | null
+          breed: string | null
+          chip_number: string | null
+          created_at: string
+          gender: Database["public"]["Enums"]["pet_gender"] | null
+          id: string
+          name: string
+          neutered: boolean
+          notes: string | null
+          species: Database["public"]["Enums"]["pet_species"]
+          tenant_id: string
+          updated_at: string
+          weight_kg: number | null
+          z1_customer_id: string
+        }
+        Insert: {
+          allergies?: string[] | null
+          birth_date?: string | null
+          breed?: string | null
+          chip_number?: string | null
+          created_at?: string
+          gender?: Database["public"]["Enums"]["pet_gender"] | null
+          id?: string
+          name: string
+          neutered?: boolean
+          notes?: string | null
+          species?: Database["public"]["Enums"]["pet_species"]
+          tenant_id: string
+          updated_at?: string
+          weight_kg?: number | null
+          z1_customer_id: string
+        }
+        Update: {
+          allergies?: string[] | null
+          birth_date?: string | null
+          breed?: string | null
+          chip_number?: string | null
+          created_at?: string
+          gender?: Database["public"]["Enums"]["pet_gender"] | null
+          id?: string
+          name?: string
+          neutered?: boolean
+          notes?: string | null
+          species?: Database["public"]["Enums"]["pet_species"]
+          tenant_id?: string
+          updated_at?: string
+          weight_kg?: number | null
+          z1_customer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pet_z1_pets_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pet_z1_pets_z1_customer_id_fkey"
+            columns: ["z1_customer_id"]
+            isOneToOne: false
+            referencedRelation: "pet_z1_customers"
             referencedColumns: ["id"]
           },
         ]

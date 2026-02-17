@@ -167,6 +167,10 @@ const LennoxLayout = React.lazy(() => import('@/pages/zone3/lennox/LennoxLayout'
 const LennoxHome = React.lazy(() => import('@/pages/zone3/lennox/LennoxHome'));
 const LennoxProviderDetail = React.lazy(() => import('@/pages/zone3/lennox/LennoxProviderDetail'));
 const LennoxUeberUns = React.lazy(() => import('@/pages/zone3/lennox/LennoxUeberUns'));
+const LennoxAuth = React.lazy(() => import('@/pages/zone3/lennox/LennoxAuth'));
+const LennoxProfil = React.lazy(() => import('@/pages/zone3/lennox/LennoxProfil'));
+const LennoxMeineTiere = React.lazy(() => import('@/pages/zone3/lennox/LennoxMeineTiere'));
+const LennoxBuchen = React.lazy(() => import('@/pages/zone3/lennox/LennoxBuchen'));
 
 
 // 404
@@ -382,6 +386,10 @@ const zone3ComponentMaps: Record<string, Record<string, React.ComponentType>> = 
     LennoxHome,
     LennoxProviderDetail,
     LennoxUeberUns,
+    LennoxAuth,
+    LennoxProfil,
+    LennoxMeineTiere,
+    LennoxBuchen,
   },
 };
 

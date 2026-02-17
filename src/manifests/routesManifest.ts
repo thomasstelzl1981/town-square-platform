@@ -626,6 +626,10 @@ export const zone3Websites: Record<string, WebsiteDefinition> = {
       { path: "", component: "LennoxHome", title: "Tierbetreuung finden" },
       { path: "ueber-uns", component: "LennoxUeberUns", title: "Über uns" },
       { path: "anbieter/:providerId", component: "LennoxProviderDetail", title: "Anbieter-Profil", dynamic: true },
+      { path: "login", component: "LennoxAuth", title: "Anmelden" },
+      { path: "profil", component: "LennoxProfil", title: "Mein Profil" },
+      { path: "profil/tiere", component: "LennoxMeineTiere", title: "Meine Tiere" },
+      { path: "anbieter/:providerId/buchen", component: "LennoxBuchen", title: "Buchen", dynamic: true },
     ],
   },
 };
