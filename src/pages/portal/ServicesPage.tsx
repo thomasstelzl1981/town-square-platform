@@ -15,6 +15,7 @@ export default function ServicesPage() {
       <Route path="amazon" element={<ShopTab shopKey="amazon" />} />
       <Route path="otto-office" element={<ShopTab shopKey="otto-office" />} />
       <Route path="miete24" element={<ShopTab shopKey="miete24" />} />
+      <Route path="smart-home" element={<ShopTab shopKey="smart-home" />} />
       <Route path="bestellungen" element={<BestellungenTab />} />
       <Route path="*" element={<Navigate to="/portal/services" replace />} />
     </Routes>

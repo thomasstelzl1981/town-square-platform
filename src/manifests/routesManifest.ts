@@ -475,6 +475,7 @@ export const zone2Portal: ZoneDefinition = {
         { path: "amazon", component: "ShopsAmazon", title: "Amazon Business" },
         { path: "otto-office", component: "ShopsOttoOffice", title: "OTTO Office" },
         { path: "miete24", component: "ShopsMiete24", title: "Miete24" },
+        { path: "smart-home", component: "ShopsSmartHome", title: "Smart Home" },
         { path: "bestellungen", component: "ShopsBestellungen", title: "Bestellungen" },
       ],
     },
@@ -532,10 +533,9 @@ export const zone2Portal: ZoneDefinition = {
       display_order: 20,
       visibility: { default: false, org_types: ["client"], requires_activation: true },
       tiles: [
-        // 5 tiles (Einstellungen entfernt — APIs in Zone 1 Integration Registry)
+        // 4 tiles (Versicherungen → MOD-18 Finanzen)
         { path: "uebersicht", component: "MietyUebersicht", title: "Übersicht" },
         { path: "versorgung", component: "MietyVersorgung", title: "Versorgung" },
-        { path: "versicherungen", component: "MietyVersicherungen", title: "Versicherungen" },
         { path: "smarthome", component: "MietySmartHome", title: "Smart Home" },
         { path: "kommunikation", component: "MietyKommunikation", title: "Kommunikation" },
       ],

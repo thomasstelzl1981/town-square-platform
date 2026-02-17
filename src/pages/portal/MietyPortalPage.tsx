@@ -6,7 +6,6 @@ import React from 'react';
 
 const UebersichtTile = React.lazy(() => import('./miety/tiles/UebersichtTile'));
 const VersorgungTile = React.lazy(() => import('./miety/tiles/VersorgungTile'));
-const VersicherungenTile = React.lazy(() => import('./miety/tiles/VersicherungenTile'));
 const SmartHomeTile = React.lazy(() => import('./miety/tiles/SmartHomeTile'));
 const KommunikationTile = React.lazy(() => import('./miety/tiles/KommunikationTile'));
 
@@ -15,7 +14,6 @@ export default function MietyPortalPage() {
     <React.Suspense fallback={null}>
       <UebersichtTile />
       <VersorgungTile />
-      <VersicherungenTile />
       <SmartHomeTile />
       <KommunikationTile />
     </React.Suspense>
