@@ -1,90 +1,100 @@
 
+# Bereinigung: Zwei Workspace-Artefakt-Accounts loeschen
 
-# Frontend- und Backend-Tests schreiben und ausfuehren
+## Geschuetzter Account (DARF NICHT GELOESCHT WERDEN)
 
-## Ueberblick
+| Feld | Wert |
+|------|------|
+| E-Mail | `thomas.stelzl@systemofadown.com` |
+| User-ID | `d028bc99-6e29-4fa4-b038-d03015faf222` |
+| Tenant-ID | `a0000000-0000-4000-a000-000000000001` |
+| Tenant | System of a Town (sandbox) |
+| Rollen | `platform_admin`, `akquise_manager` |
 
-Es gibt bereits Tests fuer 5 Engines (akquiseCalc, finanzierung, provision, bewirtschaftung, projektCalc) sowie System-Tests (demoData, routes). Vier Engines haben **keine Tests**: Vorsorgeluecke, VV-Steuer, Finanzuebersicht, NK-Abrechnung (allocationLogic). Fuer Backend-Tests werden zwei Edge Functions getestet: `sot-letter-generate` und `sot-investment-engine`.
-
----
-
-## Teil 1: Frontend-Tests (Vitest)
-
-### 1a. Vorsorgeluecke Engine Test
-Datei: `src/engines/vorsorgeluecke/engine.test.ts`
-
-Testfaelle:
-- **calcAltersvorsorge**: Angestellter mit DRV-Rente, Luecke berechnen
-- **calcAltersvorsorge**: Beamter mit Ruhegehalt-Berechnung aus Dienstjahren
-- **calcAltersvorsorge**: Private Rentenvertraege addieren
-- **calcAltersvorsorge**: Projected end value statt Hochrechnung
-- **calcBuLuecke**: Angestellter mit DRV-EM-Rente
-- **calcBuLuecke**: Beamter mit Dienstunfaehigkeits-Berechnung
-- **calcBuLuecke**: Kombi-Vertrag mit bu_monthly_benefit
-- **calcBuLuecke**: Fallback auf 35% Brutto
-
-### 1b. VV-Steuer Engine Test
-Datei: `src/engines/vvSteuer/engine.test.ts`
-
-Testfaelle:
-- **calculateAfaBasis**: Gebaeudewertanteil korrekt berechnen
-- **calculateAfaAmount**: Jaehrliche AfA aus Basis + Rate
-- **calculatePropertyResult**: Einnahmen-Ueberschuss-Rechnung komplett
-- **buildContextSummary**: Aggregation ueber mehrere Immobilien
-
-### 1c. Finanzuebersicht Engine Test
-Datei: `src/engines/finanzuebersicht/engine.test.ts`
-
-Testfaelle:
-- **monthlyFromInterval**: Umrechnung jaehrlich/halbjaehrlich/vierteljaehrlich/monatlich
-- **calcIncome**: Nettoeinkommen + Mieteinnahmen + PV + Steuervorteil
-- **calcAssets**: Immobilien + Bankguthaben + Wertpapiere
-- **calcLiabilities**: Portfolio-Schulden + Eigenheim + PV + Privatkredite
-- **calcProjection**: 40-Jahres-Vermoegensprojektion
-
-### 1d. NK-Abrechnung allocationLogic Test
-Datei: `src/engines/nkAbrechnung/allocationLogic.test.ts`
-
-Testfaelle:
-- **calculateLeaseDaysInPeriod**: Ganzjaehrig (365/365)
-- **calculateLeaseDaysInPeriod**: Unterjaehrig (Lease beginnt im Juni)
-- **allocateCostItem**: Verteilung nach Flaeche (AREA_SQM)
-- **allocateCostItem**: Verteilung nach MEA
-- **allocateCostItem**: Verteilung nach Personenzahl
-- **allocateCostItem**: Direktuebernahme wenn amountUnit vorhanden
-- **calculateProratedPrepayments**: Anteilige Vorauszahlungen
+Dieser Account wird im Code **explizit per User-ID hardcoded ausgeschlossen** -- selbst bei Fehlbedienung ist eine Loeschung unmoeglich.
 
 ---
 
-## Teil 2: Backend-Tests (Deno)
+## Zu loeschende Accounts
 
-### 2a. sot-letter-generate Test
-Datei: `supabase/functions/sot-letter-generate/index.test.ts`
+### Account 1: Schmidt
 
-Testfaelle:
-- CORS preflight gibt 200 zurueck
-- Fehlende Pflichtfelder gibt 400 zurueck
-- Erfolgreicher Aufruf mit gueltigem Payload
+| Feld | Wert |
+|------|------|
+| E-Mail | `schmidt@softwareschmidt.com` |
+| User-ID | `3dd05cb7-d334-49b0-b539-04208e8b1508` |
+| Tenant-ID | `7222e6e5-491b-43ed-a15c-d9218277a74b` |
+| Artefakte | 26 Storage Nodes, 14 Tile Activations, 1 Mailbox |
+| Geschaeftsdaten | Keine |
 
-### 2b. sot-investment-engine Test
-Datei: `supabase/functions/sot-investment-engine/index.test.ts`
+### Account 2: Ncore
 
-Testfaelle:
-- CORS preflight gibt 200 zurueck
-- Erfolgreicher Aufruf mit Standard-Eingabe gibt projection zurueck
+| Feld | Wert |
+|------|------|
+| E-Mail | `thomas.stelzl@ncore.online` |
+| User-ID | `59215241-7f53-4592-919d-6c350dafa7a6` |
+| Tenant-ID | `6904326e-ed6a-48e4-a392-582e89f8f705` |
+| Artefakte | 26 Storage Nodes, 14 Tile Activations, 1 Mailbox |
+| Geschaeftsdaten | Keine |
 
 ---
 
-## Ausfuehrung
+## Umsetzung: Edge Function `sot-cleanup-orphan-accounts`
 
-Nach dem Schreiben aller Tests:
-1. Frontend-Tests mit Vitest ausfuehren (alle 4 neuen + bestehende)
-2. Backend-Tests mit Deno-Test-Runner ausfuehren
+### Sicherheits-Gates (3-fach)
+
+1. **JWT + platform_admin**: Nur authentifizierte Admins koennen die Funktion aufrufen
+2. **Hardcoded Protect-List**: Die User-ID `d028bc99-6e29-4fa4-b038-d03015faf222` wird im Code als unveraenderbare Konstante geschuetzt -- jeder Versuch, diesen Account zu loeschen, wird sofort mit Fehler 403 abgewiesen
+3. **Geschaeftsdaten-Pruefung**: Vor dem Loeschen wird geprueft, ob der Account Daten in `properties`, `contacts`, `documents`, `finance_requests` hat -- falls ja, wird abgebrochen
+
+### Loesch-Reihenfolge (FK-sicher, pro Account)
+
+```text
+Schritt 1: widget_preferences    (WHERE user_id = ...)
+Schritt 2: inbound_mailboxes     (WHERE tenant_id = ...)
+Schritt 3: storage_nodes         (WHERE tenant_id = ...)
+Schritt 4: tenant_tile_activation (WHERE tenant_id = ...)
+Schritt 5: memberships           (WHERE user_id = ...)
+Schritt 6: user_roles            (WHERE user_id = ...)  -- nur zur Sicherheit
+Schritt 7: profiles              (WHERE id = user_id)
+Schritt 8: organizations         (WHERE id = tenant_id)
+Schritt 9: auth.admin.deleteUser (user_id)  -- Supabase Admin API
+```
+
+### Aufruf
+
+Die Funktion wird mit einem festen Array der zwei E-Mail-Adressen aufgerufen:
+
+```text
+POST sot-cleanup-orphan-accounts
+Body: {
+  "emails": [
+    "schmidt@softwareschmidt.com",
+    "thomas.stelzl@ncore.online"
+  ]
+}
+```
+
+### Rueckgabe
+
+Ein detaillierter Bericht pro Account:
+- Welche Tabellen wurden bereinigt
+- Wie viele Zeilen pro Tabelle geloescht
+- Bestaetigung, dass auth.users-Eintrag entfernt wurde
+
+### Verifikation
+
+Nach Ausfuehrung: Datenbankabfrage zur Bestaetigung, dass nur noch der geschuetzte Account (`thomas.stelzl@systemofadown.com`) existiert.
+
+---
 
 ## Technische Details
 
-- Frontend: Pure functions ohne Mocks, direkte Import der Engine-Funktionen
-- Backend: HTTP-Aufrufe an deployed Edge Functions mit echtem Supabase-URL + Anon-Key
-- Alle Tests nutzen bestehende Patterns (describe/it/expect)
-- Keine neuen Dependencies noetig
+### Neue Datei
 
+`supabase/functions/sot-cleanup-orphan-accounts/index.ts`
+
+- CORS-Headers fuer Browser-Aufrufe
+- Service Role Key fuer Admin-Operationen (auth.admin.deleteUser)
+- DSGVO-Ledger-Eintrag via `logDataEvent` fuer jede Loeschung
+- Kein Eintrag in `supabase/config.toml` noetig (verify_jwt wird im Code gehandhabt)
