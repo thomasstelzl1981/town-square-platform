@@ -555,9 +555,10 @@ export const zone2Portal: ZoneDefinition = {
       visibility: { default: false, org_types: ["client"], requires_activation: true },
       tiles: [
         { path: "dashboard", component: "PMDashboard", title: "Dashboard", default: true },
-        { path: "buchungen", component: "PMBuchungen", title: "Kalender & Buchungen" },
-        { path: "leistungen", component: "PMLeistungen", title: "Leistungen" },
-        { path: "kunden", component: "PMKunden", title: "Kunden & Tiere" },
+        { path: "pension", component: "PMPension", title: "Pension" },
+        { path: "services", component: "PMServices", title: "Services" },
+        { path: "mitarbeiter", component: "PMPersonal", title: "Mitarbeiter" },
+        { path: "kunden", component: "PMKunden", title: "Kunden" },
         { path: "finanzen", component: "PMFinanzen", title: "Finanzen" },
       ],
       dynamic_routes: [],
