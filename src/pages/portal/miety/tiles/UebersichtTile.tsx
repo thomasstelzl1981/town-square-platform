@@ -9,11 +9,11 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { MietyCreateHomeForm } from '../components/MietyCreateHomeForm';
 import { useHomesQuery } from '../shared/useHomesQuery';
-import { demoCameras } from '../shared/demoCameras';
+
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import {
-  Home, Plus, Building2, ArrowRight, Camera, Globe, Eye, Video, ImageOff, Navigation,
+  Home, Plus, Building2, ArrowRight, Camera, Globe, ImageOff, Navigation,
 } from 'lucide-react';
 
 export default function UebersichtTile() {
@@ -249,42 +249,16 @@ export default function UebersichtTile() {
                 </Card>
               </div>
 
-              {/* Row 2: Camera Widgets */}
-              <div className="flex flex-col gap-3 sm:grid sm:grid-cols-3 sm:gap-4">
-                {demoCameras.map((cam) => (
-                  <Card key={cam.id} className="glass-card overflow-hidden group cursor-pointer">
-                    <CardContent className="p-0 relative h-[220px] sm:aspect-square sm:h-auto">
-                      <img src={cam.image} alt={cam.name} className="w-full h-full object-cover" />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-                      <Badge className={`absolute top-2 left-2 text-[10px] ${cam.status === 'online' ? 'bg-green-500/90 text-white' : 'bg-muted text-muted-foreground'}`}>
-                        {cam.status === 'online' ? '● Online' : '○ Offline'}
-                      </Badge>
-                      {cam.status === 'online' && (
-                        <Badge className="absolute top-2 right-2 bg-red-600 text-white text-[10px] animate-pulse">
-                          LIVE
-                        </Badge>
-                      )}
-                      <div className="absolute bottom-2 left-2 right-2 flex items-end justify-between">
-                        <div>
-                          <p className="text-white text-sm font-medium">{cam.name}</p>
-                          <p className="text-white/70 text-[10px]">Gerade eben</p>
-                        </div>
-                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Button size="sm" variant="ghost" className="h-7 px-2 text-white hover:bg-white/20 text-xs">
-                            <Eye className="h-3 w-3 mr-1" />Live
-                          </Button>
-                          <Button size="sm" variant="ghost" className="h-7 px-2 text-white hover:bg-white/20 text-xs">
-                            <Video className="h-3 w-3 mr-1" />Events
-                          </Button>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-              <Button variant="outline" size="sm" className="text-xs">
-                <Plus className="h-3 w-3 mr-1" />Kamera hinzufügen
-              </Button>
+              {/* Row 2: Camera placeholder */}
+              <Card className="glass-card border-dashed">
+                <CardContent className="p-6 text-center">
+                  <Camera className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
+                  <p className="text-sm font-medium text-muted-foreground">Kameras einrichten</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Verbinden Sie eine kompatible IP-Kamera unter Smart Home, um hier Live-Snapshots zu sehen.
+                  </p>
+                </CardContent>
+              </Card>
 
               {/* Inline Dossier */}
               {openCardId === home.id && (
