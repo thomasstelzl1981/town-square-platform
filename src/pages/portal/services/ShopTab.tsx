@@ -29,6 +29,18 @@ import miete24M365 from '@/assets/services/miete24-m365.jpg';
 import miete24Iphone from '@/assets/services/miete24-iphone.jpg';
 import miete24Mouse from '@/assets/services/miete24-mouse.jpg';
 
+// Smart Home camera images
+import camRlc810a from '@/assets/services/cam-reolink-rlc810a.jpg';
+import camRlc520a from '@/assets/services/cam-reolink-rlc520a.jpg';
+import camRlc842a from '@/assets/services/cam-reolink-rlc842a.jpg';
+import camIp4m1026b from '@/assets/services/cam-amcrest-ip4m1026b.jpg';
+import camE1zoom from '@/assets/services/cam-reolink-e1zoom.jpg';
+import camIp2m841 from '@/assets/services/cam-amcrest-ip2m841.jpg';
+import camArguspt from '@/assets/services/cam-reolink-arguspt.jpg';
+import camAsh21 from '@/assets/services/cam-amcrest-ash21.jpg';
+import camIp2m841b from '@/assets/services/cam-amcrest-ip2m841b.jpg';
+import camE1pro from '@/assets/services/cam-reolink-e1pro.jpg';
+
 // ─── Smart Home product catalog ─────────────────────────────────────────────
 interface SmartHomeProduct {
   name: string;
@@ -37,22 +49,23 @@ interface SmartHomeProduct {
   highlight: string;
   category: 'outdoor' | 'indoor' | 'baby';
   amazonUrl: string;
+  imageUrl: string;
 }
 
 const SMART_HOME_PRODUCTS: SmartHomeProduct[] = [
   // Outdoor
-  { name: 'RLC-810A', manufacturer: 'Reolink', price: '54,99 €', highlight: '4K PoE, Nachtsicht, wetterfest IP66', category: 'outdoor', amazonUrl: 'https://www.amazon.de/dp/B08B7XWKM3?tag=immoportal-21' },
-  { name: 'RLC-520A', manufacturer: 'Reolink', price: '44,99 €', highlight: '5MP PoE Dome, kompakt & vandalensicher', category: 'outdoor', amazonUrl: 'https://www.amazon.de/dp/B09KZG8GG5?tag=immoportal-21' },
-  { name: 'RLC-842A', manufacturer: 'Reolink', price: '79,99 €', highlight: '4K PoE Dome, Farb-Nachtsicht, IK10', category: 'outdoor', amazonUrl: 'https://www.amazon.de/dp/B0B5C5MVGL?tag=immoportal-21' },
-  { name: 'IP4M-1026B', manufacturer: 'Amcrest', price: '49,99 €', highlight: '4MP PoE Bullet, IR-Nachtsicht 30m', category: 'outdoor', amazonUrl: 'https://www.amazon.de/dp/B083G9KT4C?tag=immoportal-21' },
+  { name: 'RLC-810A', manufacturer: 'Reolink', price: '54,99 €', highlight: '4K PoE, Nachtsicht, wetterfest IP66', category: 'outdoor', amazonUrl: 'https://www.amazon.de/dp/B08B7XWKM3?tag=immoportal-21', imageUrl: camRlc810a },
+  { name: 'RLC-520A', manufacturer: 'Reolink', price: '44,99 €', highlight: '5MP PoE Dome, kompakt & vandalensicher', category: 'outdoor', amazonUrl: 'https://www.amazon.de/dp/B09KZG8GG5?tag=immoportal-21', imageUrl: camRlc520a },
+  { name: 'RLC-842A', manufacturer: 'Reolink', price: '79,99 €', highlight: '4K PoE Dome, Farb-Nachtsicht, IK10', category: 'outdoor', amazonUrl: 'https://www.amazon.de/dp/B0B5C5MVGL?tag=immoportal-21', imageUrl: camRlc842a },
+  { name: 'IP4M-1026B', manufacturer: 'Amcrest', price: '49,99 €', highlight: '4MP PoE Bullet, IR-Nachtsicht 30m', category: 'outdoor', amazonUrl: 'https://www.amazon.de/dp/B083G9KT4C?tag=immoportal-21', imageUrl: camIp4m1026b },
   // Indoor
-  { name: 'E1 Zoom', manufacturer: 'Reolink', price: '49,99 €', highlight: 'PTZ, 5MP, WLAN, 3× optischer Zoom', category: 'indoor', amazonUrl: 'https://www.amazon.de/dp/B07VD1DWG3?tag=immoportal-21' },
-  { name: 'IP2M-841', manufacturer: 'Amcrest', price: '34,99 €', highlight: 'PTZ, 1080p, WLAN, 2-Wege-Audio', category: 'indoor', amazonUrl: 'https://www.amazon.de/dp/B0145OQTPG?tag=immoportal-21' },
-  { name: 'Argus PT Ultra', manufacturer: 'Reolink', price: '89,99 €', highlight: 'Akku + Solar-Option, 4K, PTZ', category: 'indoor', amazonUrl: 'https://www.amazon.de/dp/B0BXJNJ58D?tag=immoportal-21' },
+  { name: 'E1 Zoom', manufacturer: 'Reolink', price: '49,99 €', highlight: 'PTZ, 5MP, WLAN, 3× optischer Zoom', category: 'indoor', amazonUrl: 'https://www.amazon.de/dp/B07VD1DWG3?tag=immoportal-21', imageUrl: camE1zoom },
+  { name: 'IP2M-841', manufacturer: 'Amcrest', price: '34,99 €', highlight: 'PTZ, 1080p, WLAN, 2-Wege-Audio', category: 'indoor', amazonUrl: 'https://www.amazon.de/dp/B0145OQTPG?tag=immoportal-21', imageUrl: camIp2m841 },
+  { name: 'Argus PT Ultra', manufacturer: 'Reolink', price: '89,99 €', highlight: 'Akku + Solar-Option, 4K, PTZ', category: 'indoor', amazonUrl: 'https://www.amazon.de/dp/B0BXJNJ58D?tag=immoportal-21', imageUrl: camArguspt },
   // Baby
-  { name: 'ASH21 (Apollo)', manufacturer: 'Amcrest', price: '39,99 €', highlight: 'Nachtlicht, Schlaflieder, 2-Wege-Audio', category: 'baby', amazonUrl: 'https://www.amazon.de/dp/B094GVYQFC?tag=immoportal-21' },
-  { name: 'IP2M-841B (weiß)', manufacturer: 'Amcrest', price: '34,99 €', highlight: 'Indoor PTZ, leise Motoren, Privacymodus', category: 'baby', amazonUrl: 'https://www.amazon.de/dp/B0145OQTPG?tag=immoportal-21' },
-  { name: 'E1 Pro', manufacturer: 'Reolink', price: '44,99 €', highlight: '4MP, WLAN, Personen-/Tiererkennung', category: 'indoor', amazonUrl: 'https://www.amazon.de/dp/B084BNNRL6?tag=immoportal-21' },
+  { name: 'ASH21 (Apollo)', manufacturer: 'Amcrest', price: '39,99 €', highlight: 'Nachtlicht, Schlaflieder, 2-Wege-Audio', category: 'baby', amazonUrl: 'https://www.amazon.de/dp/B094GVYQFC?tag=immoportal-21', imageUrl: camAsh21 },
+  { name: 'IP2M-841B (weiß)', manufacturer: 'Amcrest', price: '34,99 €', highlight: 'Indoor PTZ, leise Motoren, Privacymodus', category: 'baby', amazonUrl: 'https://www.amazon.de/dp/B0145OQTPG?tag=immoportal-21', imageUrl: camIp2m841b },
+  { name: 'E1 Pro', manufacturer: 'Reolink', price: '44,99 €', highlight: '4MP, WLAN, Personen-/Tiererkennung', category: 'indoor', amazonUrl: 'https://www.amazon.de/dp/B084BNNRL6?tag=immoportal-21', imageUrl: camE1pro },
 ];
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -187,8 +200,21 @@ function SmartHomeShop() {
             <Card key={i} className="group cursor-pointer hover:shadow-md transition-all hover:-translate-y-0.5">
               <CardContent className="p-4 flex flex-col gap-3">
                 {/* Camera icon placeholder */}
-                <div className="aspect-square w-full rounded-xl bg-muted/40 flex items-center justify-center">
-                  <Camera className="h-12 w-12 text-muted-foreground/30" />
+                <div className="aspect-square w-full rounded-xl bg-muted/40 overflow-hidden">
+                  <img
+                    src={product.imageUrl}
+                    alt={`${product.manufacturer} ${product.name}`}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    onError={(e) => {
+                      const target = e.currentTarget;
+                      target.style.display = 'none';
+                      const fallback = target.nextElementSibling as HTMLElement;
+                      if (fallback) fallback.style.display = 'flex';
+                    }}
+                  />
+                  <div className="w-full h-full items-center justify-center hidden">
+                    <Camera className="h-12 w-12 text-muted-foreground/30" />
+                  </div>
                 </div>
 
                 {/* Info */}
