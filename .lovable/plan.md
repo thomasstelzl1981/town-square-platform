@@ -1,34 +1,46 @@
 
-# Armstrong Orb: Resize-Verhalten verbessern
 
-## Problem
+## Pet Manager -- Aufräumen und Standardbreite
 
-Der Armstrong-Orb (eingeklappt) wird per `useDraggable` Hook positioniert. Beim Resize des Browserfensters wird die Position nur an die Viewport-Grenzen geklemmt (`constrainPosition`), aber der Orb bleibt an seiner absoluten X/Y-Position. Das bedeutet: Fenster verkleinern -> Orb verdeckt Inhalte in der Mitte statt ins Eck zu rutschen.
+### Problem-Analyse
 
-## Loesung
+1. **Seitenbreite**: Alle 7 Pet-Manager-Seiten (Dashboard, Buchungen, Kalender, Räume, Leistungen, Kunden, Finanzen) verwenden keinen `PageShell`-Wrapper. Sie rendern sich daher über die volle Bildschirmbreite statt im `max-w-7xl`-Standard.
+2. **Kein Provider-Profil vorhanden**: Da kein Provider-Profil zugewiesen ist, zeigen alle Seiten nur leere Zustände ("Kein Provider-Profil gefunden"). Das erklärt, warum du weder Kalender noch Belegung siehst -- die Daten sind an ein Provider-Profil gebunden.
+3. **Zu viele Kacheln ohne sichtbaren Inhalt**: Ohne aktives Provider-Profil sehen alle Unterseiten identisch leer aus.
 
-Den Resize-Handler im `useDraggable` Hook so aendern, dass der Orb **relativ zur unteren rechten Ecke** positioniert bleibt. Wenn der User den Orb nicht manuell verschoben hat, bleibt er immer unten rechts. Wenn er verschoben wurde, wird beim Resize die Position proportional angepasst oder auf die Default-Position (unten rechts) zurueckgesetzt.
+### Massnahmen
 
-## Technische Umsetzung
+#### 1. PageShell auf alle PM-Seiten anwenden
+Jede der 7 Seiten (`PMDashboard`, `PMBuchungen`, `PMKalender`, `PMRaeume`, `PMLeistungen`, `PMKunden`, `PMFinanzen`) wird in `<PageShell>` gewrappt, damit die Breite auf `max-w-7xl` begrenzt wird -- identisch zu allen anderen Portal-Modulen.
 
-### Datei: `src/hooks/useDraggable.ts`
+#### 2. Sidebar-Navigation reduzieren
+Die Sidebar-Kacheln werden auf die 4 Kernbereiche reduziert, die tatsächliche Funktionalität bieten:
 
-**Aenderung im Resize-Handler (Zeilen 202-215):**
+- **Dashboard** -- Visitenkarte, Kapazität, KPIs, nächste Termine
+- **Buchungen** -- Anfragen annehmen/ablehnen, Check-In/Check-Out
+- **Kalender** -- Wochen-/Monatsansicht mit Buchungsblöcken
+- **Räume** -- Raumverwaltung und Belegungsansicht
 
-Statt nur `constrainPosition` aufzurufen, wird die Position relativ zum Viewport-Rand berechnet:
+Die folgenden Einträge werden aus der Sidebar entfernt (bleiben als Routen erreichbar, aber nicht als prominente Kacheln):
+- **Leistungen** -- wird in das Dashboard oder als Tab in Buchungen integriert (Link vom Dashboard)
+- **Kunden & Tiere** -- wird als Link vom Dashboard erreichbar, nicht als eigene Kachel
+- **Finanzen** -- wird als Link vom Dashboard erreichbar, nicht als eigene Kachel
 
-1. Beim Setzen der Position wird der **Abstand zum rechten und unteren Rand** gespeichert (`offsetFromRight`, `offsetFromBottom`)
-2. Beim Resize wird die neue Position aus diesen Offsets berechnet: `x = newWidth - offsetFromRight`, `y = newHeight - offsetFromBottom`
-3. Danach wird `constrainPosition` angewendet, damit der Orb nie ausserhalb des Viewports landet
+#### 3. Dashboard mit direkten Schnellzugriffen
+Das Dashboard erhält klare Schnellzugriff-Links zu Kalender und Räume, damit diese Funktionen sofort sichtbar und erreichbar sind.
 
-Das ergibt ein natuerliches Verhalten: Der Orb "klebt" am rechten/unteren Rand und bewegt sich mit, wenn das Fenster groesser oder kleiner wird.
+### Technische Details
 
-**Konkrete Aenderungen:**
+**Dateien, die geändert werden:**
 
-- Neuer `useRef` fuer `rightBottomOffset` (Abstand zum rechten/unteren Rand)
-- Bei jeder Positionsaenderung (Drag-Ende, Initial) den Offset aktualisieren
-- Im `resize`-EventListener: Position = `(viewportWidth - offsetRight, viewportHeight - offsetBottom)`, dann constrainen
+| Datei | Änderung |
+|-------|----------|
+| `PMDashboard.tsx` | `PageShell`-Wrapper + Schnellzugriff-Links zu Kalender, Räume, Buchungen |
+| `PMBuchungen.tsx` | `PageShell`-Wrapper |
+| `PMKalender.tsx` | `PageShell`-Wrapper |
+| `PMRaeume.tsx` | `PageShell`-Wrapper |
+| `PMLeistungen.tsx` | `PageShell`-Wrapper |
+| `PMKunden.tsx` | `PageShell`-Wrapper |
+| `PMFinanzen.tsx` | `PageShell`-Wrapper |
+| `moduleContents.ts` | Sidebar von 6 auf 4 Einträge reduzieren (Dashboard, Buchungen, Kalender, Räume) |
 
-### Keine weiteren Dateien betroffen
-
-Die Aenderung ist komplett im Hook gekapselt. `ArmstrongContainer.tsx` und alle anderen Konsumenten profitieren automatisch.
