@@ -1,16 +1,21 @@
 /**
  * SoT Karriere — Partner werden
  */
+import { Handshake, Users, ArrowRight } from 'lucide-react';
+import { SotDetailPage } from '@/components/zone3/sot/SotDetailPage';
+
+const blocks = [
+  { icon: Handshake, title: 'Warum Partner werden?', description: 'Profitieren Sie von einer etablierten Plattform, digitalen Prozessen und einem wachsenden Ökosystem für Immobilien und Finanzen.' },
+  { icon: Users, title: 'Wer kann Partner werden?', description: 'Immobilienmakler, Finanzberater und Dienstleister — wir bieten maßgeschneiderte Partnerprogramme für verschiedene Branchen.' },
+  { icon: ArrowRight, title: 'Nächste Schritte', description: 'Registrieren Sie sich, durchlaufen Sie den Onboarding-Prozess und starten Sie innerhalb weniger Tage mit Ihrem eigenen Portal.' },
+];
+
 export default function SotKarriere() {
   return (
-    <div className="space-y-12">
-      <section className="pt-8 lg:pt-16 text-center">
-        <span className="sot-label" style={{ color: 'hsl(var(--z3-accent))' }}>Career</span>
-        <h1 className="sot-headline mt-4">Werde Partner.</h1>
-        <p className="sot-subheadline mt-4 max-w-2xl mx-auto">
-          Vertrieb, Projekte, Finanzierung — wachsen Sie mit uns.
-        </p>
-      </section>
-    </div>
+    <SotDetailPage
+      title="Career"
+      subtitle="Wachsen Sie mit uns."
+      blocks={blocks}
+    />
   );
 }

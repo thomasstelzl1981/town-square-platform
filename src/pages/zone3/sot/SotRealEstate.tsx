@@ -1,16 +1,22 @@
 /**
- * SoT Real Estate — Immobilien verwalten
+ * SoT Real Estate — Immobilienportfolio
  */
+import { Building2, FolderOpen, Database, BarChart3 } from 'lucide-react';
+import { SotDetailPage } from '@/components/zone3/sot/SotDetailPage';
+
+const blocks = [
+  { icon: Building2, title: 'Portfolio-Übersicht', description: 'Alle Immobilien auf einen Blick. Standort, Wertentwicklung, Mietrendite und Belegungsstatus in Echtzeit.' },
+  { icon: FolderOpen, title: 'Objektakte', description: 'Digitale Akte für jedes Objekt. Verträge, Grundbuchauszüge, Fotos und Korrespondenz strukturiert abgelegt.' },
+  { icon: Database, title: 'Datenraum', description: 'Sicherer Datenraum für Due Diligence, Verkaufsprozesse und Behördenkommunikation mit granularen Zugriffsrechten.' },
+  { icon: BarChart3, title: 'Analyse', description: 'Wertentwicklung, Mietrendite und Cashflow-Prognosen. Vergleichen Sie Objekte und treffen Sie fundierte Entscheidungen.' },
+];
+
 export default function SotRealEstate() {
   return (
-    <div className="space-y-12">
-      <section className="pt-8 lg:pt-16 text-center">
-        <span className="sot-label" style={{ color: 'hsl(var(--z3-accent))' }}>Real Estate</span>
-        <h1 className="sot-headline mt-4">Immobilien verwalten.</h1>
-        <p className="sot-subheadline mt-4 max-w-2xl mx-auto">
-          Akten, Datenraum, Bewertung — alles an einem Ort.
-        </p>
-      </section>
-    </div>
+    <SotDetailPage
+      title="Real Estate"
+      subtitle="Ihr Immobilienportfolio im Griff."
+      blocks={blocks}
+    />
   );
 }

@@ -1,16 +1,21 @@
 /**
- * SoT Energy — Energie optimieren
+ * SoT Energy — Energie transparent steuern
  */
+import { Zap, Sun, Activity } from 'lucide-react';
+import { SotDetailPage } from '@/components/zone3/sot/SotDetailPage';
+
+const blocks = [
+  { icon: Zap, title: 'Energieverträge', description: 'Strom- und Gasverträge zentral verwalten. Laufzeiten, Tarife und Kündigungsfristen immer im Blick.' },
+  { icon: Sun, title: 'Photovoltaik-Dashboard', description: 'Echtzeit-Monitoring Ihrer PV-Anlagen. Ertragsdaten, Eigenverbrauch und Einspeisevergütung transparent dargestellt.' },
+  { icon: Activity, title: 'Verbrauchsmonitoring', description: 'Energieverbrauch analysieren und optimieren. Historische Daten, Trends und intelligente Einsparempfehlungen.' },
+];
+
 export default function SotEnergy() {
   return (
-    <div className="space-y-12">
-      <section className="pt-8 lg:pt-16 text-center">
-        <span className="sot-label" style={{ color: 'hsl(var(--z3-accent))' }}>Energy</span>
-        <h1 className="sot-headline mt-4">Energie optimieren.</h1>
-        <p className="sot-subheadline mt-4 max-w-2xl mx-auto">
-          Verträge, Photovoltaik, Verbrauch — transparent und digital.
-        </p>
-      </section>
-    </div>
+    <SotDetailPage
+      title="Energy"
+      subtitle="Verbrauch, Verträge und Photovoltaik transparent steuern."
+      blocks={blocks}
+    />
   );
 }
