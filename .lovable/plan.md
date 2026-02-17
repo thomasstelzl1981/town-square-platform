@@ -1,115 +1,81 @@
 
-# Dashboard Redesign: Sticky Full-Page Sections + Notizzettel-Widget
 
-## Konzept
+# Fehleranalyse: Armstrong Spracheingabe — Mikrofonzugriff verweigert
 
-Das Dashboard wird in **zwei vollbildgrosse, vertikal gestapelte Sektionen** aufgeteilt, die per **CSS Scroll-Snap** einrasten. Der User scrollt nach unten und "landet" sanft auf der zweiten Seite -- kein freies Scrollen, sondern ein seitenweises Umschalten wie bei einer nativen App.
+## Diagnose
 
-```text
-+================================+
-|  Sektion 1: WELCOME ON BOARD  |
-|                                |
-|  [Armstrong] [Wetter] [Globe] |
-|  [Finance]   [News]   [...]   |
-|  (max 8 System-Widgets)       |
-|                                |
-|         Scroll-Indikator ↓     |
-+================================+
-|  Sektion 2: ARMSTRONG          |
-|                                |
-|  [Notizzettel] [Task1] [Task2]|
-|  [Task3]       [Task4] [...]  |
-|                                |
-|  Armstrong erstellt hier       |
-|  automatisch Widgets           |
-+================================+
-```
+### Kernproblem: Verlorener User-Gesture-Kontext
 
----
-
-## 1. Sticky Scroll-Snap Container
-
-**Datei:** `src/pages/portal/PortalDashboard.tsx`
-
-Der aeussere Container wird zu einem `snap-y snap-mandatory` Scroll-Container mit `h-screen`. Jede Sektion bekommt `snap-start` und `min-h-screen`, sodass sie beim Scrollen einrasten.
-
-- Sektion 1: "WELCOME ON BOARD" mit max. 8 System-Widgets
-- Sektion 2: "ARMSTRONG" mit Task-Widgets und dem neuen Notizzettel
-- Ein dezenter Scroll-Indikator (Chevron nach unten) am Ende von Sektion 1 signalisiert, dass es weitergeht
-
----
-
-## 2. Max. 8 System-Widgets
-
-Die `visibleSystemIds` werden auf maximal 8 Eintraege begrenzt (Armstrong zaehlt mit). Wenn ein User in den Widget-Einstellungen mehr als 7 System-Widgets aktiviert hat, werden nur die ersten 7 plus Armstrong angezeigt. Das haelt die erste Seite kompakt und verhindert, dass sie ueber den Viewport hinauswachest.
-
----
-
-## 3. Armstrong-Ueberschrift anpassen
-
-Die Ueberschrift der zweiten Sektion wird von dem schlichten `text-lg tracking-widest text-muted-foreground` auf den gleichen Stil wie "WELCOME ON BOARD" umgestellt:
-
-- `text-lg md:text-h1 text-center tracking-widest text-foreground`
-- Zentriert, gleiche Groesse, gleiche Praesenz
-
----
-
-## 4. Notizzettel-Widget (Neues Widget)
-
-**Neue Datei:** `src/components/dashboard/widgets/NotesWidget.tsx`
-
-Ein quadratisches Widget im Armstrong-Bereich, das dem User eigene Notizen ermoeglicht:
-
-- **Design:** Gleiche Groesse wie alle anderen Widgets (aspect-square), mit StickyNote-Icon und gelbem/amber Akzent
-- **Klick:** Oeffnet ein Sheet/Dialog mit einem Textfeld
-- **Funktionen:**
-  - Notiz schreiben und speichern (localStorage Phase 1, spaeter DB)
-  - Mehrere Notizen als Liste
-  - Einzelne Notizen loeschen (mit Bestaetigung)
-  - Letzte Notiz wird als Vorschau im Widget angezeigt
-- **Platzierung:** Erstes Widget in der Armstrong-Sektion, vor den Task-Widgets
-- Der bisherige leere Platzhalter ("Keine aktiven Aufgaben") wird durch dieses Widget ersetzt -- der Hinweistext wandert als dezente Zeile unter die Ueberschrift
-
----
-
-## 5. Empty-State der Armstrong-Sektion
-
-Wenn keine Task-Widgets vorhanden sind, zeigt die Sektion trotzdem den Notizzettel plus einen dezenten einzeiligen Hinweis unter der Ueberschrift:
+Browser erfordern, dass `navigator.mediaDevices.getUserMedia()` direkt aus einer Nutzeraktion (Klick) heraus aufgerufen wird. Im aktuellen Code passiert Folgendes:
 
 ```text
-ARMSTRONG
-Deine Arbeitsoberflaeche — Armstrong erstellt hier automatisch Widgets
+Button-Klick (User Gesture)
+  -> toggleVoice()
+    -> startListening()
+      -> startElevenLabs()
+        -> supabase.functions.invoke('elevenlabs-scribe-token')  // Netzwerk-Request
+        -> ... wartet auf Antwort ...                             // Gesture-Kontext VERLOREN
+        -> scribe.connect(token)
+          -> navigator.mediaDevices.getUserMedia()                // VERWEIGERT
 ```
 
-Statt des grossen leeren Platzhalter-Blocks mit Icon.
+Zwischen dem Klick und dem `getUserMedia`-Aufruf liegt ein asynchroner Netzwerk-Request (Token-Abruf). Dadurch geht der "User Gesture"-Kontext verloren — der Browser blockiert den Mikrofonzugriff mit "Permission denied". Safari ist hier besonders strikt, aber auch Chrome auf HTTPS kann betroffen sein.
+
+### Browser-Fallback ebenfalls betroffen
+
+Wenn ElevenLabs fehlschlaegt, wird `startBrowser()` aufgerufen — aber zu diesem Zeitpunkt ist der Gesture-Kontext bereits verloren. Die Browser SpeechRecognition API benoetigt ebenfalls eine aktive User Gesture.
+
+### ElevenLabs-Infrastruktur: OK
+
+- `ELEVENLABS_API_KEY` ist konfiguriert
+- `elevenlabs-scribe-token` Edge Function liefert erfolgreich Tokens zurueck (getestet, Status 200)
+- `elevenlabs-tts` Edge Function ist korrekt implementiert
+- WebSocket-URL und Konfiguration sind korrekt
 
 ---
 
-## Technische Umsetzung
+## Loesung
 
-### Geaenderte Dateien
+### Strategie: Mikrofon SOFORT bei Klick anfordern, Token PARALLEL laden
 
-| Datei | Aenderung |
-|-------|-----------|
-| `src/pages/portal/PortalDashboard.tsx` | Scroll-Snap-Container, zwei Sektionen, max 8 System-Widgets, Notizzettel einbinden, Armstrong-Headline anpassen |
-| `src/components/dashboard/DashboardGrid.tsx` | Keine Aenderung noetig (Grid bleibt gleich) |
+Der `getUserMedia`-Aufruf wird direkt beim Button-Klick ausgefuehrt — noch bevor der Token-Request startet. Der Microphone-Stream wird zwischengespeichert und spaeter an die ElevenLabs-WebSocket-Verbindung uebergeben.
 
-### Neue Dateien
+### Aenderungen in `src/hooks/useArmstrongVoice.ts`
 
-| Datei | Beschreibung |
-|-------|--------------|
-| `src/components/dashboard/widgets/NotesWidget.tsx` | Quadratisches Notizzettel-Widget mit Sheet-Dialog, CRUD auf localStorage |
+1. **`startListening()` neu strukturieren:**
+   - Schritt 1 (sofort im Gesture-Kontext): `navigator.mediaDevices.getUserMedia()` ausfuehren und Stream speichern
+   - Schritt 2 (async, parallel moeglich): Token von `elevenlabs-scribe-token` abrufen
+   - Schritt 3: Stream + Token an `ElevenLabsScribeConnection` uebergeben
 
-### CSS-Details
+2. **`ElevenLabsScribeConnection.connect()` refactoren:**
+   - Neuen Parameter `stream: MediaStream` akzeptieren statt `getUserMedia` selbst aufzurufen
+   - Der Stream wird von aussen uebergeben (bereits genehmigt)
 
-- Aeusserer Container: `h-[calc(100dvh-<header-height>)] overflow-y-auto snap-y snap-mandatory`
-- Jede Sektion: `min-h-[calc(100dvh-<header-height>)] snap-start flex flex-col`
-- Scroll-Indikator: Animierter Chevron-Down am unteren Rand von Sektion 1, verschwindet nach erstem Scroll
-- Mobile: Gleiche Snap-Logik, Widgets in 1-Spalte, Sektion 2 erreichbar durch Wischen
+3. **`startBrowser()` ebenfalls anpassen:**
+   - Akzeptiert optional einen bereits vorhandenen MediaStream
+   - Falls ElevenLabs fehlschlaegt und der Stream schon existiert, wird er fuer den Browser-Fallback wiederverwendet
+   - Browser SpeechRecognition braucht den Stream zwar nicht direkt, aber die Mikrofonberechtigung ist durch den vorherigen `getUserMedia`-Aufruf bereits erteilt
 
-### Notizzettel-Widget Struktur
+4. **Fehlerbehandlung verbessern:**
+   - Wenn `getUserMedia` fehlschlaegt: Klare Fehlermeldung "Bitte Mikrofonzugriff in den Browser-Einstellungen erlauben"
+   - Wenn Token-Abruf fehlschlaegt aber Mikrofon OK: Automatischer Fallback auf Browser-STT mit bereits erteilter Berechtigung
 
-- State: `notes: Array<{ id, text, createdAt }>` in localStorage unter `sot-user-notes`
-- Widget zeigt: StickyNote-Icon, Titel "Notizen", Anzahl, Vorschau der letzten Notiz
-- Sheet enthaelt: Liste aller Notizen, Eingabefeld unten, Loeschen per Swipe oder Trash-Icon
-- Amber/Gelb-Gradient passend zum bestehenden `note`-Widget-Typ im Design-System
+### Pseudocode der neuen Logik
+
+```text
+startListening():
+  1. stream = await getUserMedia({ audio: ... })     // SOFORT im Gesture
+  2. try:
+       token = await fetchScribeToken()              // Async, Gesture egal
+       scribe.connect(token, stream)                 // Stream uebergeben
+     catch:
+       startBrowser()                                // Berechtigung existiert bereits
+```
+
+### Keine weiteren Dateien betroffen
+
+- `VoiceButton.tsx`: Keine Aenderung noetig (ruft nur `onToggle` auf)
+- `ArmstrongContainer.tsx`: Keine Aenderung noetig
+- Edge Functions: Keine Aenderung noetig (funktionieren korrekt)
+- `ChatPanel.tsx`, `MobileBottomBar.tsx`: Keine Aenderung noetig
+
