@@ -26,10 +26,7 @@ export function SubTabs({ module, moduleBase }: SubTabsProps) {
   // URL-driven visibility: show only when on a module page (not Area-Overview)
   const isOnModulePage = location.pathname.startsWith(`/portal/${moduleBase}`);
   
-  // Filter tiles for mobile — hide desktop-only tabs
-  const visibleTiles = (module.tiles || []).filter(
-    tile => !isTileHiddenOnMobile(moduleBase, tile.path)
-  );
+  const visibleTiles = module.tiles || [];
 
   // Hide if not on module page OR no visible tiles
   if (!isOnModulePage || visibleTiles.length === 0) {
