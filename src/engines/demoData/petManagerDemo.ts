@@ -9,7 +9,7 @@
  */
 
 import type { DemoPMCustomer, DemoPMPet, DemoPMBooking } from './spec';
-import { DEMO_TENANT_ID, DEMO_PET_PROVIDER_LENNOX } from './data';
+import { DEMO_TENANT_ID, DEMO_PET_PROVIDER_LENNOX } from './constants';
 
 // ─── FESTE IDs ─────────────────────────────────────────────
 

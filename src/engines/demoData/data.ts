@@ -25,10 +25,9 @@ import type {
 import { DEMO_PM_CUSTOMERS, DEMO_PM_PETS, DEMO_PM_BOOKINGS, ALL_PM_DEMO_IDS } from './petManagerDemo';
 
 // ─── FESTE IDs ─────────────────────────────────────────────
-/** Bestehende Hauptperson (wird per UPDATE umbenannt) */
-export const DEMO_PRIMARY_PERSON_ID = 'b1f6d204-05ac-462f-9dae-8fba64ab9f88';
-export const DEMO_TENANT_ID = 'a0000000-0000-4000-a000-000000000001';
-export const DEMO_USER_ID = 'd028bc99-6e29-4fa4-b038-d03015faf222';
+/** Re-exported from constants.ts for backward compatibility */
+import { DEMO_PRIMARY_PERSON_ID, DEMO_TENANT_ID, DEMO_USER_ID, DEMO_PET_PROVIDER_LENNOX } from './constants';
+export { DEMO_PRIMARY_PERSON_ID, DEMO_TENANT_ID, DEMO_USER_ID, DEMO_PET_PROVIDER_LENNOX } from './constants';
 
 // Neue Personen
 const ID_LISA  = 'e0000000-0000-4000-a000-000000000101';
@@ -80,7 +79,7 @@ export const DEMO_PET_LUNA  = 'd0000000-0000-4000-a000-000000000010';
 export const DEMO_PET_BELLO = 'd0000000-0000-4000-a000-000000000011';
 
 // Pet Provider + Services (DB-geseedet)
-export const DEMO_PET_PROVIDER_LENNOX = 'd0000000-0000-4000-a000-000000000050';
+// DEMO_PET_PROVIDER_LENNOX is now in constants.ts
 const ID_PET_SVC_GROOMING  = 'd0000000-0000-4000-a000-000000000060';
 const ID_PET_SVC_WALKING   = 'd0000000-0000-4000-a000-000000000061';
 const ID_PET_SVC_DAYCARE   = 'd0000000-0000-4000-a000-000000000062';
