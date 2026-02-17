@@ -66,9 +66,9 @@ class ElevenLabsScribeConnection {
   onConnect?: () => void;
   onDisconnect?: () => void;
 
-  async connect(token: string) {
+  async connect(token: string, existingStream?: MediaStream) {
     try {
-      this.stream = await navigator.mediaDevices.getUserMedia({
+      this.stream = existingStream || await navigator.mediaDevices.getUserMedia({
         audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
       });
 
@@ -272,7 +272,7 @@ export function useArmstrongVoice(): UseArmstrongVoiceReturn {
   }, []);
 
   // ── ElevenLabs start (references startBrowser for fallback) ──
-  const startElevenLabs = useCallback(async () => {
+  const startElevenLabs = useCallback(async (stream: MediaStream) => {
     try {
       setState(prev => ({ ...prev, error: null, isProcessing: true }));
       
@@ -317,9 +317,10 @@ export function useArmstrongVoice(): UseArmstrongVoiceReturn {
         setState(prev => ({ ...prev, isConnected: false, isListening: false }));
       };
 
-      await scribe.connect(data.token);
+      await scribe.connect(data.token, stream);
     } catch (e) {
       console.warn('[Voice] ElevenLabs failed, falling back to browser:', e);
+      // Stream is already authorized, browser fallback will work
       startBrowser();
     }
   }, [startBrowser]);
@@ -327,8 +328,26 @@ export function useArmstrongVoice(): UseArmstrongVoiceReturn {
   // ── Public API ──
   const startListening = useCallback(async () => {
     setState(prev => ({ ...prev, error: null }));
+    
+    // Step 1: Request microphone IMMEDIATELY in user gesture context
+    let stream: MediaStream | null = null;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+      });
+    } catch (e) {
+      console.error('[Voice] Microphone access denied:', e);
+      setState(prev => ({
+        ...prev,
+        error: 'Mikrofonzugriff verweigert — bitte in den Browser-Einstellungen erlauben',
+        isProcessing: false,
+      }));
+      return;
+    }
+
+    // Step 2: With mic authorized, proceed to ElevenLabs or browser fallback
     if (VOICE_PROVIDER === 'elevenlabs') {
-      await startElevenLabs();
+      await startElevenLabs(stream);
     } else {
       startBrowser();
     }
