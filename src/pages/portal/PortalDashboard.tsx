@@ -1,16 +1,9 @@
 /**
  * PortalDashboard — Widget-based dashboard with Drag & Drop
- * 
- * Layout:
- * +----------+----------+----------+----------+
- * |Armstrong | Weather  | Globe    | Tasks... |
- * +----------+----------+----------+----------+
- * 
- * System widgets are now controlled via user preferences (KI-Office → Widgets).
- * Task widgets are persisted in DB with realtime updates from Armstrong.
+ * Two full-page snap sections: System Widgets + Armstrong workspace
  */
 
-import { useMemo, useCallback } from 'react';
+import { useMemo, useCallback, useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useGeolocation } from '@/hooks/useGeolocation';
@@ -34,15 +27,15 @@ import { RadioWidget } from '@/components/dashboard/widgets/RadioWidget';
 import { PVLiveWidget } from '@/components/dashboard/widgets/PVLiveWidget';
 import { BrandLinkWidget } from '@/components/dashboard/widgets/BrandLinkWidget';
 import { MeetingRecorderWidget } from '@/components/dashboard/MeetingRecorderWidget';
+import { NotesWidget } from '@/components/dashboard/widgets/NotesWidget';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Settings2, Inbox } from 'lucide-react';
+import { Settings2, Inbox, ChevronDown } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
-// Armstrong is always shown (not toggleable via preferences)
 const ARMSTRONG_WIDGET_ID = 'system_armstrong';
+const MAX_SYSTEM_WIDGETS = 8;
 
-// Map system widget codes to legacy IDs for rendering
 const WIDGET_CODE_TO_ID: Record<string, string> = {
   'SYS.GLOBE.EARTH': 'system_globe',
   'SYS.WEATHER.SUMMARY': 'system_weather',
@@ -69,14 +62,23 @@ export default function PortalDashboard() {
     location?.longitude ?? null
   );
   const { data: todayEvents = [], isLoading: eventsLoading } = useTodayEvents();
-  
-  // System widget preferences
   const { enabledWidgets, isLoading: prefsLoading } = useWidgetPreferences();
-
-  // Task widgets from DB with realtime
   const { widgets: taskWidgets, executingId, handleConfirm, handleCancel, handleDelete } = useTaskWidgets();
 
-  // Intercept confirm for Mahnung widgets → navigate to brief generator
+  // Scroll indicator visibility
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [showScrollHint, setShowScrollHint] = useState(true);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const onScroll = () => {
+      if (el.scrollTop > 50) setShowScrollHint(false);
+    };
+    el.addEventListener('scroll', onScroll, { passive: true });
+    return () => el.removeEventListener('scroll', onScroll);
+  }, []);
+
   const handleWidgetConfirm = useCallback((widgetId: string) => {
     const widget = taskWidgets.find(w => w.id === widgetId);
     if (widget?.action_code === 'ARM.RENT.REMINDER' && widget.parameters) {
@@ -94,34 +96,24 @@ export default function PortalDashboard() {
     handleConfirm(widgetId);
   }, [taskWidgets, handleConfirm, navigate]);
 
-  // Convert enabled widget codes to legacy IDs
   const enabledSystemWidgetIds = useMemo(() => {
     return enabledWidgets
       .map(code => WIDGET_CODE_TO_ID[code])
       .filter(Boolean);
   }, [enabledWidgets]);
 
-  // System widget IDs (Armstrong + enabled system widgets)
+  // Armstrong + enabled, capped at MAX_SYSTEM_WIDGETS
   const systemWidgetIds = useMemo(() => {
-    return [ARMSTRONG_WIDGET_ID, ...enabledSystemWidgetIds];
+    const all = [ARMSTRONG_WIDGET_ID, ...enabledSystemWidgetIds];
+    return all.slice(0, MAX_SYSTEM_WIDGETS);
   }, [enabledSystemWidgetIds]);
 
-  // Task widget IDs
-  const taskWidgetIds = useMemo(() => {
-    return taskWidgets.map(w => w.id);
-  }, [taskWidgets]);
-
-  // Combine all widget IDs for ordering
-  const allWidgetIds = useMemo(() => {
-    return [...systemWidgetIds, ...taskWidgetIds];
-  }, [systemWidgetIds, taskWidgetIds]);
-
-  // Widget order with persistence
+  const taskWidgetIds = useMemo(() => taskWidgets.map(w => w.id), [taskWidgets]);
+  const allWidgetIds = useMemo(() => [...systemWidgetIds, ...taskWidgetIds], [systemWidgetIds, taskWidgetIds]);
   const { order, updateOrder } = useWidgetOrder(allWidgetIds);
 
   const isLoading = locationLoading || weatherLoading || eventsLoading;
 
-  // Render widget by ID
   const renderWidget = (widgetId: string) => {
     if (widgetId === 'system_armstrong') {
       return (
@@ -134,27 +126,12 @@ export default function PortalDashboard() {
         />
       );
     }
-    
     if (widgetId === 'system_weather') {
-      return (
-        <WeatherCard
-          latitude={location?.latitude ?? null}
-          longitude={location?.longitude ?? null}
-          city={location?.city}
-        />
-      );
+      return <WeatherCard latitude={location?.latitude ?? null} longitude={location?.longitude ?? null} city={location?.city} />;
     }
-    
     if (widgetId === 'system_globe') {
-      return (
-        <EarthGlobeCard
-          latitude={location?.latitude ?? null}
-          longitude={location?.longitude ?? null}
-          city={location?.city}
-        />
-      );
+      return <EarthGlobeCard latitude={location?.latitude ?? null} longitude={location?.longitude ?? null} city={location?.city} />;
     }
-    
     if (widgetId === 'system_finance') return <FinanceWidget />;
     if (widgetId === 'system_accounts') return <AccountsWidget />;
     if (widgetId === 'system_news') return <NewsWidget />;
@@ -167,8 +144,7 @@ export default function PortalDashboard() {
     if (widgetId === 'system_brand_futureroom') return <BrandLinkWidget code="SYS.BRAND.FUTUREROOM" />;
     if (widgetId === 'system_brand_sot') return <BrandLinkWidget code="SYS.BRAND.SOT" />;
     if (widgetId === 'system_brand_acquiary') return <BrandLinkWidget code="SYS.BRAND.ACQUIARY" />;
-    
-    // Task widgets from DB
+
     const taskWidget = taskWidgets.find(w => w.id === widgetId);
     if (taskWidget) {
       return (
@@ -181,86 +157,102 @@ export default function PortalDashboard() {
         />
       );
     }
-    
     return null;
   };
 
-  // Filter ordered IDs into system and task groups
   const visibleSystemIds = order.filter(id => systemWidgetIds.includes(id));
   const visibleTaskIds = order.filter(id => taskWidgetIds.includes(id));
-
   const noSystemWidgetsEnabled = enabledSystemWidgetIds.length === 0;
-  const noTaskWidgets = taskWidgets.length === 0;
 
   return (
-    <div className="max-w-7xl mx-auto px-2 py-3 md:p-6 lg:p-8">
-      {isDevelopmentMode && (
-        <p className="text-xs text-status-warn mb-4">
-          Entwicklungsmodus aktiv
-        </p>
-      )}
+    <div
+      ref={scrollRef}
+      className="h-[calc(100dvh-4rem)] overflow-y-auto snap-y snap-mandatory"
+    >
+      {/* ===== Section 1: Welcome ===== */}
+      <section className="min-h-[calc(100dvh-4rem)] snap-start flex flex-col relative">
+        <div className="max-w-7xl mx-auto w-full px-2 py-3 md:p-6 lg:p-8 flex-1">
+          {isDevelopmentMode && (
+            <p className="text-xs text-status-warn mb-4">
+              Entwicklungsmodus aktiv
+            </p>
+          )}
 
-      <h1 className="text-lg md:text-h1 text-center mb-4 md:mb-8 text-foreground tracking-widest">
-        WELCOME ON BOARD
-      </h1>
+          <h1 className="text-lg md:text-h1 text-center mb-4 md:mb-8 text-foreground tracking-widest">
+            WELCOME ON BOARD
+          </h1>
 
-      {/* System Widgets */}
-      <DashboardGrid widgetIds={visibleSystemIds} onReorder={updateOrder}>
-        {visibleSystemIds.map(widgetId => {
-          const widget = renderWidget(widgetId);
-          if (!widget) return null;
-          return (
-            <SortableWidget key={widgetId} id={widgetId}>
-              {widget}
+          <DashboardGrid widgetIds={visibleSystemIds} onReorder={updateOrder}>
+            {visibleSystemIds.map(widgetId => {
+              const widget = renderWidget(widgetId);
+              if (!widget) return null;
+              return (
+                <SortableWidget key={widgetId} id={widgetId}>
+                  {widget}
+                </SortableWidget>
+              );
+            })}
+          </DashboardGrid>
+
+          {noSystemWidgetsEnabled && (
+            <Card className="mt-6 glass-card border-dashed border-muted-foreground/20">
+              <CardContent className="py-8 flex flex-col items-center justify-center text-center">
+                <Inbox className="h-10 w-10 text-muted-foreground/50 mb-3" />
+                <p className="text-sm text-muted-foreground mb-3">
+                  Keine Systemwidgets aktiviert
+                </p>
+                <Link to="/portal/office?tab=widgets">
+                  <Button variant="outline" size="sm">
+                    <Settings2 className="h-4 w-4 mr-2" />
+                    Widgets konfigurieren
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+
+        {/* Scroll indicator */}
+        <div
+          className={`flex justify-center pb-4 transition-opacity duration-500 ${
+            showScrollHint ? 'opacity-60' : 'opacity-0 pointer-events-none'
+          }`}
+        >
+          <ChevronDown className="h-6 w-6 text-muted-foreground animate-bounce" />
+        </div>
+      </section>
+
+      {/* ===== Section 2: Armstrong ===== */}
+      <section className="min-h-[calc(100dvh-4rem)] snap-start flex flex-col">
+        <div className="max-w-7xl mx-auto w-full px-2 py-3 md:p-6 lg:p-8 flex-1">
+          <h2 className="text-lg md:text-h1 text-center mb-2 md:mb-4 text-foreground tracking-widest">
+            ARMSTRONG
+          </h2>
+          <p className="text-sm text-muted-foreground text-center mb-6">
+            Deine Arbeitsoberfläche — Armstrong erstellt hier automatisch Widgets
+          </p>
+
+          <DashboardGrid
+            widgetIds={['notes_widget', ...visibleTaskIds]}
+            onReorder={updateOrder}
+          >
+            {/* Notes Widget — always first */}
+            <SortableWidget key="notes_widget" id="notes_widget">
+              <NotesWidget />
             </SortableWidget>
-          );
-        })}
-      </DashboardGrid>
 
-      {noSystemWidgetsEnabled && (
-        <Card className="mt-6 glass-card border-dashed border-muted-foreground/20">
-          <CardContent className="py-8 flex flex-col items-center justify-center text-center">
-            <Inbox className="h-10 w-10 text-muted-foreground/50 mb-3" />
-            <p className="text-sm text-muted-foreground mb-3">
-              Keine Systemwidgets aktiviert
-            </p>
-            <Link to="/portal/office?tab=widgets">
-              <Button variant="outline" size="sm">
-                <Settings2 className="h-4 w-4 mr-2" />
-                Widgets konfigurieren
-              </Button>
-            </Link>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Armstrong Section */}
-      <h2 className="text-lg tracking-widest text-muted-foreground mt-8 mb-4">
-        ARMSTRONG
-      </h2>
-
-      {visibleTaskIds.length > 0 ? (
-        <DashboardGrid widgetIds={visibleTaskIds} onReorder={updateOrder}>
-          {visibleTaskIds.map(widgetId => {
-            const widget = renderWidget(widgetId);
-            if (!widget) return null;
-            return (
-              <SortableWidget key={widgetId} id={widgetId}>
-                {widget}
-              </SortableWidget>
-            );
-          })}
-        </DashboardGrid>
-      ) : (
-        <Card className="glass-card border-dashed border-muted-foreground/20">
-          <CardContent className="py-8 flex flex-col items-center justify-center text-center">
-            <Inbox className="h-8 w-8 text-muted-foreground/40 mb-2" />
-            <p className="text-sm text-muted-foreground">
-              Keine aktiven Aufgaben — Armstrong erstellt hier automatisch Widgets
-            </p>
-          </CardContent>
-        </Card>
-      )}
+            {visibleTaskIds.map(widgetId => {
+              const widget = renderWidget(widgetId);
+              if (!widget) return null;
+              return (
+                <SortableWidget key={widgetId} id={widgetId}>
+                  {widget}
+                </SortableWidget>
+              );
+            })}
+          </DashboardGrid>
+        </div>
+      </section>
     </div>
   );
 }
