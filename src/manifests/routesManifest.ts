@@ -623,13 +623,12 @@ export const zone3Websites: Record<string, WebsiteDefinition> = {
     base: "/website/tierservice",
     layout: "LennoxLayout",
     routes: [
-      { path: "", component: "LennoxHome", title: "Tierbetreuung finden" },
-      { path: "ueber-uns", component: "LennoxUeberUns", title: "Über uns" },
-      { path: "anbieter/:providerId", component: "LennoxProviderDetail", title: "Anbieter-Profil", dynamic: true },
+      { path: "", component: "LennoxStartseite", title: "Lennox & Friends — Dog Resorts" },
+      { path: "partner/:slug", component: "LennoxPartnerProfil", title: "Partner-Profil", dynamic: true },
+      { path: "shop", component: "LennoxShop", title: "Lennox Shop" },
+      { path: "partner-werden", component: "LennoxPartnerWerden", title: "Partner werden" },
       { path: "login", component: "LennoxAuth", title: "Anmelden" },
-      { path: "profil", component: "LennoxProfil", title: "Mein Profil" },
-      { path: "profil/tiere", component: "LennoxMeineTiere", title: "Meine Tiere" },
-      { path: "anbieter/:providerId/buchen", component: "LennoxBuchen", title: "Buchen", dynamic: true },
+      { path: "mein-bereich", component: "LennoxMeinBereich", title: "Mein Bereich" },
     ],
   },
 };
@@ -669,6 +668,12 @@ export const legacyRoutes: LegacyRoute[] = [
   { path: "/sot/*", redirect_to: "/website/sot", reason: "ZBC-R08 Z3 prefix migration" },
   { path: "/acquiary", redirect_to: "/website/acquiary", reason: "ZBC-R08 Z3 prefix migration" },
   { path: "/acquiary/*", redirect_to: "/website/acquiary", reason: "ZBC-R08 Z3 prefix migration" },
+  // Lennox Website Redesign — Legacy routes
+  { path: "/website/tierservice/ueber-uns", redirect_to: "/website/tierservice", reason: "Lennox redesign — page removed" },
+  { path: "/website/tierservice/anbieter/:providerId", redirect_to: "/website/tierservice", reason: "Lennox redesign — replaced by /partner/:slug" },
+  { path: "/website/tierservice/anbieter/:providerId/buchen", redirect_to: "/website/tierservice", reason: "Lennox redesign — booking inline" },
+  { path: "/website/tierservice/profil", redirect_to: "/website/tierservice/mein-bereich", reason: "Lennox redesign — merged into mein-bereich" },
+  { path: "/website/tierservice/profil/tiere", redirect_to: "/website/tierservice/mein-bereich", reason: "Lennox redesign — merged into mein-bereich" },
 ];
 
 // =============================================================================

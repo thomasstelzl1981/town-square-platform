@@ -31,7 +31,7 @@ export default function LennoxAuth() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const returnTo = searchParams.get('returnTo') || '/website/tierservice/profil';
+  const returnTo = searchParams.get('returnTo') || '/website/tierservice/mein-bereich';
 
   const handleLogin = async () => {
     const parsed = loginSchema.safeParse({ email, password });
@@ -61,7 +61,7 @@ export default function LennoxAuth() {
       email: parsed.data.email,
       password: parsed.data.password,
       options: {
-        emailRedirectTo: window.location.origin + '/website/tierservice/profil',
+        emailRedirectTo: window.location.origin + '/website/tierservice/mein-bereich',
         data: {
           first_name: parsed.data.firstName,
           last_name: parsed.data.lastName,
