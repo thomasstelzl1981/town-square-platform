@@ -1,4 +1,5 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import PartnerContractsRegistry from '@/components/admin/integrations/PartnerContractsRegistry';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -314,6 +315,9 @@ export default function Integrations() {
           </div>
         </div>
       ))}
+
+      {/* Partner & Affiliate Contracts Registry */}
+      <PartnerContractsRegistry />
     </div>
   );
 }
