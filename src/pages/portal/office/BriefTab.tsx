@@ -12,6 +12,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
   Command,
@@ -47,6 +48,7 @@ import {
   Loader2,
   Check,
   ChevronsUpDown,
+  ChevronDown,
   Mail,
   Phone,
   FileOutput,
@@ -450,142 +452,134 @@ ${senderLine}`);
     }
   };
 
+  const [draftsOpen, setDraftsOpen] = useState(false);
+
   return (
     <PageShell>
       <ModulePageHeader title="Briefgenerator" description="KI-gestützte Briefe erstellen und versenden" />
-      <div className="grid grid-cols-12 gap-6">
-      {/* Main Form */}
-      <div className="col-span-7 space-y-6">
+      <div className="space-y-6 max-w-3xl mx-auto">
+
+        {/* Step 0: Sender */}
         <Card className="glass-card">
-          <CardContent className="p-5">
-            <div className="flex items-center gap-3 mb-5">
-              <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center">
-                <Sparkles className="h-4 w-4 text-primary" />
-              </div>
-              <div>
-                <h3 className="text-sm font-semibold">KI-Briefgenerator</h3>
-                <p className="text-xs text-muted-foreground">Professionelle Geschäftsbriefe mit Armstrong AI</p>
-              </div>
-            </div>
-            <div className="space-y-6">
-            {/* Step 0: Sender Selection (One-Click) */}
-            <div className="space-y-3">
-              <Label className="flex items-center gap-2">
-                <Badge variant="outline" className="h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">0</Badge>
-                Absender (ein Klick)
-              </Label>
-              <SenderSelector
-                options={senderOptions}
-                selected={selectedSenderId}
-                onSelect={setSelectedSenderId}
-                onAddContext={() => setShowCreateContext(true)}
-              />
-            </div>
+          <CardContent className="p-5 space-y-3">
+            <Label className="flex items-center gap-2">
+              <Badge variant="outline" className="h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">0</Badge>
+              Absender
+            </Label>
+            <SenderSelector
+              options={senderOptions}
+              selected={selectedSenderId}
+              onSelect={setSelectedSenderId}
+              onAddContext={() => setShowCreateContext(true)}
+            />
+          </CardContent>
+        </Card>
 
-            <Separator />
-
-            {/* Step 1: Recipient */}
-            <div className="space-y-2">
-              <Label className="flex items-center gap-2">
-                <Badge variant="outline" className="h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">1</Badge>
-                Empfänger auswählen
-              </Label>
-              <Popover open={contactOpen} onOpenChange={setContactOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    role="combobox"
-                    aria-expanded={contactOpen}
-                    className="w-full justify-between"
-                  >
-                    {selectedContact ? (
-                      <span className="flex items-center gap-2">
-                        <User className="h-4 w-4" />
-                        {selectedContact.first_name} {selectedContact.last_name}
-                        {selectedContact.company && (
-                          <span className="text-muted-foreground">• {selectedContact.company}</span>
-                        )}
-                      </span>
-                    ) : (
-                      <span className="text-muted-foreground">Kontakt suchen...</span>
-                    )}
-                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-[400px] p-0">
-                  <Command>
-                    <CommandInput placeholder="Kontakt suchen..." />
-                    <CommandList>
-                      <CommandEmpty>Kein Kontakt gefunden.</CommandEmpty>
-                      <CommandGroup>
-                        {contacts.map((contact) => (
-                          <CommandItem
-                            key={contact.id}
-                            value={`${contact.first_name} ${contact.last_name}`}
-                            onSelect={() => {
-                              setSelectedContact(contact);
-                              setContactOpen(false);
-                            }}
-                          >
-                            <Check
-                              className={cn(
-                                'mr-2 h-4 w-4',
-                                selectedContact?.id === contact.id ? 'opacity-100' : 'opacity-0'
-                              )}
-                            />
-                            <div className="flex flex-col">
-                              <span>{contact.first_name} {contact.last_name}</span>
-                              <span className="text-xs text-muted-foreground">
-                                {contact.company || contact.email || 'Keine Details'}
-                              </span>
-                            </div>
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
-            </div>
-
-            {/* Step 2: Subject */}
-            <div className="space-y-2">
-              <Label className="flex items-center gap-2">
-                <Badge variant="outline" className="h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">2</Badge>
-                Betreff
-              </Label>
-              <Input
-                placeholder="z.B. Mieterhöhung zum 01.04.2026"
-                value={subject}
-                onChange={(e) => setSubject(e.target.value)}
-              />
-            </div>
-
-            {/* Step 3: Prompt */}
-            <div className="space-y-2">
-              <Label className="flex items-center gap-2">
-                <Badge variant="outline" className="h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">3</Badge>
-                Beschreiben Sie Ihr Anliegen
-              </Label>
-              <div className="relative">
-                <Textarea
-                  placeholder="Schreiben Sie einen formellen Brief zur Ankündigung einer Mieterhöhung von 5% gemäß Mietspiegel. Der Mieter wohnt seit 3 Jahren in der Wohnung..."
-                  value={prompt}
-                  onChange={(e) => setPrompt(e.target.value)}
-                  className="min-h-[120px] pr-12"
-                />
+        {/* Step 1: Recipient */}
+        <Card className="glass-card">
+          <CardContent className="p-5 space-y-3">
+            <Label className="flex items-center gap-2">
+              <Badge variant="outline" className="h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">1</Badge>
+              Empfänger auswählen
+            </Label>
+            <Popover open={contactOpen} onOpenChange={setContactOpen}>
+              <PopoverTrigger asChild>
                 <Button
-                  variant="ghost"
-                  size="icon"
-                  className="absolute right-2 bottom-2"
-                  title="Spracheingabe (in Entwicklung)"
-                  disabled
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={contactOpen}
+                  className="w-full justify-between"
                 >
-                  <Mic className="h-4 w-4" />
+                  {selectedContact ? (
+                    <span className="flex items-center gap-2">
+                      <User className="h-4 w-4" />
+                      {selectedContact.first_name} {selectedContact.last_name}
+                      {selectedContact.company && (
+                        <span className="text-muted-foreground">• {selectedContact.company}</span>
+                      )}
+                    </span>
+                  ) : (
+                    <span className="text-muted-foreground">Kontakt suchen...</span>
+                  )}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
-              </div>
-            </div>
+              </PopoverTrigger>
+              <PopoverContent className="w-[400px] p-0">
+                <Command>
+                  <CommandInput placeholder="Kontakt suchen..." />
+                  <CommandList>
+                    <CommandEmpty>Kein Kontakt gefunden.</CommandEmpty>
+                    <CommandGroup>
+                      {contacts.map((contact) => (
+                        <CommandItem
+                          key={contact.id}
+                          value={`${contact.first_name} ${contact.last_name}`}
+                          onSelect={() => {
+                            setSelectedContact(contact);
+                            setContactOpen(false);
+                          }}
+                        >
+                          <Check
+                            className={cn(
+                              'mr-2 h-4 w-4',
+                              selectedContact?.id === contact.id ? 'opacity-100' : 'opacity-0'
+                            )}
+                          />
+                          <div className="flex flex-col">
+                            <span>{contact.first_name} {contact.last_name}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {contact.company || contact.email || 'Keine Details'}
+                            </span>
+                          </div>
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+          </CardContent>
+        </Card>
 
+        {/* Step 2: Subject */}
+        <Card className="glass-card">
+          <CardContent className="p-5 space-y-3">
+            <Label className="flex items-center gap-2">
+              <Badge variant="outline" className="h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">2</Badge>
+              Betreff
+            </Label>
+            <Input
+              placeholder="z.B. Mieterhöhung zum 01.04.2026"
+              value={subject}
+              onChange={(e) => setSubject(e.target.value)}
+            />
+          </CardContent>
+        </Card>
+
+        {/* Step 3: Prompt + Generate */}
+        <Card className="glass-card">
+          <CardContent className="p-5 space-y-4">
+            <Label className="flex items-center gap-2">
+              <Badge variant="outline" className="h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">3</Badge>
+              Anliegen beschreiben
+            </Label>
+            <div className="relative">
+              <Textarea
+                placeholder="Schreiben Sie einen formellen Brief zur Ankündigung einer Mieterhöhung von 5% gemäß Mietspiegel..."
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                className="min-h-[120px] pr-12"
+              />
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute right-2 bottom-2"
+                title="Spracheingabe (in Entwicklung)"
+                disabled
+              >
+                <Mic className="h-4 w-4" />
+              </Button>
+            </div>
             <Button 
               onClick={handleGenerate} 
               disabled={isGenerating || !selectedContact}
@@ -603,236 +597,204 @@ ${senderLine}`);
                 </>
               )}
             </Button>
-
-            <Separator />
-
-            {/* Step 4: Generated Letter */}
-            <div className="space-y-2">
-              <Label className="flex items-center gap-2">
-                <Badge variant="outline" className="h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">4</Badge>
-                Brief bearbeiten
-              </Label>
-              <Textarea
-                placeholder="Der generierte Brief erscheint hier..."
-                value={generatedBody}
-                onChange={(e) => setGeneratedBody(e.target.value)}
-                className="min-h-[200px] font-mono text-sm"
-              />
-            </div>
-
-            </div>
           </CardContent>
         </Card>
-      </div>
 
-      {/* Right Column: Preview + Actions + Drafts */}
-      <div className="col-span-5 space-y-4">
-        {/* Letter Preview */}
+        {/* Step 4: Edit generated letter */}
         <Card className="glass-card">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <div className="h-7 w-7 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <FileText className="h-3.5 w-3.5 text-primary" />
-                </div>
-                <h3 className="text-sm font-semibold">Brief-Vorschau</h3>
-              </div>
-              <Select value={letterFont} onValueChange={(v) => setLetterFont(v as LetterFont)}>
-                <SelectTrigger className="w-[160px] h-8 text-xs">
-                  <Type className="h-3 w-3 mr-1.5" />
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="din">D-DIN (System)</SelectItem>
-                  <SelectItem value="arial">Arial</SelectItem>
-                  <SelectItem value="calibri">Calibri</SelectItem>
-                  <SelectItem value="times">Times New Roman</SelectItem>
-                  <SelectItem value="georgia">Georgia</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <LetterPreview
-              senderName={selectedSender?.label}
-              senderCompany={selectedSender?.type === 'BUSINESS' ? selectedSender?.company : undefined}
-              senderAddress={selectedSender?.address}
-              senderCity={(() => {
-                if (selectedSenderId === 'private') return profile?.city || undefined;
-                const ctx = contexts.find(c => c.id === selectedSenderId);
-                return ctx?.city || undefined;
-              })()}
-              senderRole={selectedSender?.sublabel !== 'Persönlicher Absender' ? selectedSender?.sublabel : undefined}
-              logoUrl={profile?.letterhead_logo_url || undefined}
-              recipientName={selectedContact ? `${selectedContact.first_name} ${selectedContact.last_name}` : undefined}
-              recipientCompany={selectedContact?.company || undefined}
-              recipientAddress={selectedContact ? [
-                selectedContact.street,
-                [selectedContact.postal_code, selectedContact.city].filter(Boolean).join(' '),
-              ].filter(Boolean).join('\n') || undefined : undefined}
-              subject={subject}
-              body={generatedBody}
-              font={letterFont}
+          <CardContent className="p-5 space-y-3">
+            <Label className="flex items-center gap-2">
+              <Badge variant="outline" className="h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">4</Badge>
+              Brief bearbeiten
+            </Label>
+            <Textarea
+              placeholder="Der generierte Brief erscheint hier..."
+              value={generatedBody}
+              onChange={(e) => setGeneratedBody(e.target.value)}
+              className="min-h-[200px] font-mono text-sm"
             />
           </CardContent>
         </Card>
 
-        {/* Dispatch Channel + Actions */}
+        {/* Step 5: Preview & Dispatch (combined) */}
         <Card className="glass-card">
-          <CardContent className="p-4 space-y-4">
-            {/* PDF Actions */}
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold">PDF</Label>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="gap-1.5 flex-1"
-                  onClick={handlePdfPreview}
-                  disabled={!generatedBody}
-                >
-                  <Eye className="h-3.5 w-3.5" />
-                  Vorschau
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="gap-1.5 flex-1"
-                  onClick={handlePdfDownload}
-                  disabled={!generatedBody}
-                >
-                  <Download className="h-3.5 w-3.5" />
-                  Download
-                </Button>
-              </div>
-            </div>
+          <CardContent className="p-5 space-y-5">
+            <Label className="flex items-center gap-2">
+              <Badge variant="outline" className="h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">5</Badge>
+              Vorschau &amp; Versand
+            </Label>
 
-            <Separator />
-
-            {/* Channel selection */}
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold">Versandkanal</Label>
-              <RadioGroup value={channel} onValueChange={(v) => setChannel(v as typeof channel)} className="flex gap-3">
-                <div className="flex items-center space-x-1.5">
-                  <RadioGroupItem value="email" id="ch-email" />
-                  <Label htmlFor="ch-email" className="flex items-center gap-1 cursor-pointer text-xs">
-                    <Mail className="h-3.5 w-3.5" />
-                    E-Mail
-                  </Label>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Left: Letter Preview */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="h-7 w-7 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <FileText className="h-3.5 w-3.5 text-primary" />
+                    </div>
+                    <h3 className="text-sm font-semibold">Brief-Vorschau</h3>
+                  </div>
+                  <Select value={letterFont} onValueChange={(v) => setLetterFont(v as LetterFont)}>
+                    <SelectTrigger className="w-[140px] h-8 text-xs">
+                      <Type className="h-3 w-3 mr-1.5" />
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="din">D-DIN (System)</SelectItem>
+                      <SelectItem value="arial">Arial</SelectItem>
+                      <SelectItem value="calibri">Calibri</SelectItem>
+                      <SelectItem value="times">Times New Roman</SelectItem>
+                      <SelectItem value="georgia">Georgia</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
-                <div className="flex items-center space-x-1.5">
-                  <RadioGroupItem value="fax" id="ch-fax" />
-                  <Label htmlFor="ch-fax" className="flex items-center gap-1 cursor-pointer text-xs">
-                    <Phone className="h-3.5 w-3.5" />
-                    SimpleFax
-                  </Label>
-                </div>
-                <div className="flex items-center space-x-1.5">
-                  <RadioGroupItem value="post" id="ch-post" />
-                  <Label htmlFor="ch-post" className="flex items-center gap-1 cursor-pointer text-xs">
-                    <FileOutput className="h-3.5 w-3.5" />
-                    SimpleBrief
-                  </Label>
-                </div>
-              </RadioGroup>
-            </div>
-
-            {/* Fax number input (only for fax channel) */}
-            {channel === 'fax' && (
-              <div className="space-y-1">
-                <Label className="text-xs">Faxnummer</Label>
-                <Input
-                  placeholder="z.B. +49 30 12345678"
-                  value={faxNumber}
-                  onChange={(e) => setFaxNumber(e.target.value)}
-                  className="h-8 text-xs"
+                <LetterPreview
+                  senderName={selectedSender?.label}
+                  senderCompany={selectedSender?.type === 'BUSINESS' ? selectedSender?.company : undefined}
+                  senderAddress={selectedSender?.address}
+                  senderCity={(() => {
+                    if (selectedSenderId === 'private') return profile?.city || undefined;
+                    const ctx = contexts.find(c => c.id === selectedSenderId);
+                    return ctx?.city || undefined;
+                  })()}
+                  senderRole={selectedSender?.sublabel !== 'Persönlicher Absender' ? selectedSender?.sublabel : undefined}
+                  logoUrl={profile?.letterhead_logo_url || undefined}
+                  recipientName={selectedContact ? `${selectedContact.first_name} ${selectedContact.last_name}` : undefined}
+                  recipientCompany={selectedContact?.company || undefined}
+                  recipientAddress={selectedContact ? [
+                    selectedContact.street,
+                    [selectedContact.postal_code, selectedContact.city].filter(Boolean).join(' '),
+                  ].filter(Boolean).join('\n') || undefined : undefined}
+                  subject={subject}
+                  body={generatedBody}
+                  font={letterFont}
                 />
               </div>
-            )}
 
-            {/* Channel info hint */}
-            <p className="text-[10px] text-muted-foreground">
-              {channel === 'email' && selectedContact?.email
-                ? `An: ${selectedContact.email}`
-                : channel === 'email'
-                ? 'Kontakt hat keine E-Mail-Adresse'
-                : channel === 'fax'
-                ? 'PDF wird per SimpleFax als Fax gesendet'
-                : 'PDF wird per SimpleBrief als Postbrief versendet'}
-            </p>
-
-            <Separator />
-
-            {/* Action buttons */}
-            <div className="flex gap-2">
-              <Button 
-                variant="outline" 
-                size="sm"
-                className="gap-1.5 flex-1" 
-                onClick={() => saveDraftMutation.mutate()}
-                disabled={!generatedBody || saveDraftMutation.isPending}
-              >
-                {saveDraftMutation.isPending ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <Save className="h-3.5 w-3.5" />
-                )}
-                Speichern
-              </Button>
-              <Button 
-                size="sm" 
-                className="gap-1.5 flex-1" 
-                disabled={!generatedBody || isSending}
-                onClick={handleSend}
-              >
-                {isSending ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <Send className="h-3.5 w-3.5" />
-                )}
-                Senden
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Recent Drafts (compact) */}
-        <Card className="glass-card">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <div className="h-7 w-7 rounded-lg bg-primary/10 flex items-center justify-center">
-                <History className="h-3.5 w-3.5 text-primary" />
-              </div>
-              <h3 className="text-sm font-semibold">Letzte Entwürfe</h3>
-            </div>
-            <ScrollArea className="h-[160px]">
-              {recentDrafts.length === 0 ? (
-                <p className="text-xs text-muted-foreground text-center py-4">
-                  Noch keine Entwürfe
-                </p>
-              ) : (
-                <div className="space-y-1.5">
-                  {recentDrafts.map((draft) => (
-                    <button
-                      key={draft.id}
-                      className="w-full p-2 rounded-md border hover:bg-muted/50 transition-colors text-left"
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="font-medium text-xs truncate">
-                          {draft.subject || 'Ohne Betreff'}
-                        </span>
-                        <Badge variant={draft.status === 'sent' ? 'default' : 'secondary'} className="text-[10px] h-4">
-                          {draft.status === 'sent' ? 'Gesendet' : 'Entwurf'}
-                        </Badge>
-                      </div>
-                      <p className="text-[10px] text-muted-foreground mt-0.5">
-                        {new Date(draft.created_at).toLocaleDateString('de-DE')}
-                      </p>
-                    </button>
-                  ))}
+              {/* Right: Channel + Actions */}
+              <div className="space-y-4">
+                {/* PDF Actions */}
+                <div className="space-y-2">
+                  <Label className="text-xs font-semibold">PDF</Label>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" className="gap-1.5 flex-1" onClick={handlePdfPreview} disabled={!generatedBody}>
+                      <Eye className="h-3.5 w-3.5" />
+                      Vorschau
+                    </Button>
+                    <Button variant="outline" size="sm" className="gap-1.5 flex-1" onClick={handlePdfDownload} disabled={!generatedBody}>
+                      <Download className="h-3.5 w-3.5" />
+                      Download
+                    </Button>
+                  </div>
                 </div>
-              )}
-            </ScrollArea>
+
+                <Separator />
+
+                {/* Channel selection */}
+                <div className="space-y-2">
+                  <Label className="text-xs font-semibold">Versandkanal</Label>
+                  <RadioGroup value={channel} onValueChange={(v) => setChannel(v as typeof channel)} className="flex gap-3">
+                    <div className="flex items-center space-x-1.5">
+                      <RadioGroupItem value="email" id="ch-email" />
+                      <Label htmlFor="ch-email" className="flex items-center gap-1 cursor-pointer text-xs">
+                        <Mail className="h-3.5 w-3.5" /> E-Mail
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-1.5">
+                      <RadioGroupItem value="fax" id="ch-fax" />
+                      <Label htmlFor="ch-fax" className="flex items-center gap-1 cursor-pointer text-xs">
+                        <Phone className="h-3.5 w-3.5" /> SimpleFax
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-1.5">
+                      <RadioGroupItem value="post" id="ch-post" />
+                      <Label htmlFor="ch-post" className="flex items-center gap-1 cursor-pointer text-xs">
+                        <FileOutput className="h-3.5 w-3.5" /> SimpleBrief
+                      </Label>
+                    </div>
+                  </RadioGroup>
+                </div>
+
+                {channel === 'fax' && (
+                  <div className="space-y-1">
+                    <Label className="text-xs">Faxnummer</Label>
+                    <Input placeholder="z.B. +49 30 12345678" value={faxNumber} onChange={(e) => setFaxNumber(e.target.value)} className="h-8 text-xs" />
+                  </div>
+                )}
+
+                <p className="text-[10px] text-muted-foreground">
+                  {channel === 'email' && selectedContact?.email
+                    ? `An: ${selectedContact.email}`
+                    : channel === 'email'
+                    ? 'Kontakt hat keine E-Mail-Adresse'
+                    : channel === 'fax'
+                    ? 'PDF wird per SimpleFax als Fax gesendet'
+                    : 'PDF wird per SimpleBrief als Postbrief versendet'}
+                </p>
+
+                <Separator />
+
+                {/* Action buttons */}
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" className="gap-1.5 flex-1" onClick={() => saveDraftMutation.mutate()} disabled={!generatedBody || saveDraftMutation.isPending}>
+                    {saveDraftMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                    Speichern
+                  </Button>
+                  <Button size="sm" className="gap-1.5 flex-1" disabled={!generatedBody || isSending} onClick={handleSend}>
+                    {isSending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                    Senden
+                  </Button>
+                </div>
+              </div>
+            </div>
           </CardContent>
         </Card>
+
+        {/* Drafts (collapsible) */}
+        <Collapsible open={draftsOpen} onOpenChange={setDraftsOpen}>
+          <Card className="glass-card">
+            <CardContent className="p-4">
+              <CollapsibleTrigger asChild>
+                <button className="w-full flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="h-7 w-7 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <History className="h-3.5 w-3.5 text-primary" />
+                    </div>
+                    <h3 className="text-sm font-semibold">Letzte Entwürfe</h3>
+                    {recentDrafts.length > 0 && (
+                      <Badge variant="secondary" className="text-[10px] h-4">{recentDrafts.length}</Badge>
+                    )}
+                  </div>
+                  <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform", draftsOpen && "rotate-180")} />
+                </button>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="mt-3">
+                  {recentDrafts.length === 0 ? (
+                    <p className="text-xs text-muted-foreground text-center py-4">Noch keine Entwürfe</p>
+                  ) : (
+                    <div className="space-y-1.5">
+                      {recentDrafts.map((draft) => (
+                        <button key={draft.id} className="w-full p-2 rounded-md border hover:bg-muted/50 transition-colors text-left">
+                          <div className="flex items-center justify-between">
+                            <span className="font-medium text-xs truncate">{draft.subject || 'Ohne Betreff'}</span>
+                            <Badge variant={draft.status === 'sent' ? 'default' : 'secondary'} className="text-[10px] h-4">
+                              {draft.status === 'sent' ? 'Gesendet' : 'Entwurf'}
+                            </Badge>
+                          </div>
+                          <p className="text-[10px] text-muted-foreground mt-0.5">
+                            {new Date(draft.created_at).toLocaleDateString('de-DE')}
+                          </p>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </CollapsibleContent>
+            </CardContent>
+          </Card>
+        </Collapsible>
+
       </div>
 
       {/* PDF Preview Dialog */}
@@ -865,7 +827,6 @@ ${senderLine}`);
         open={showCreateContext} 
         onOpenChange={setShowCreateContext} 
       />
-    </div>
     </PageShell>
   );
 }
