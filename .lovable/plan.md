@@ -1,50 +1,22 @@
 
-# AccountsWidget: Echte Demo-Daten statt Hardcoded-Werte
 
-## Ziel
+# Beschriftung "Tax" zu "Steuer" aendern
 
-Das AccountsWidget auf dem Dashboard soll die tatsaechlichen Finanzdaten des angemeldeten Tenants anzeigen statt der hartcodierten ING/Trade-Republic-Werte. Wenn der Demo-Kunde aktiv ist, sieht man seine echten Zahlen — und wir koennen sofort pruefen, ob alle Datenquellen korrekt verlinkt sind.
+## Aenderung
 
-## Verfuegbare Datenquellen (Demo-Tenant)
+In `src/manifests/routesManifest.ts`, Zeile 252: Den Sub-Tab-Titel von `"Tax"` auf `"Steuer"` aendern.
 
-Aus den bestehenden Supabase-Tabellen koennen folgende Werte aggregiert werden:
+```
+// Vorher:
+{ path: "verwaltung", component: "VerwaltungTab", title: "Tax" }
 
-| Zeile | Quelle | Aktueller Demo-Wert |
-|-------|--------|---------------------|
-| Bankguthaben | `applicant_profiles.bank_savings` | 85.000 EUR |
-| Wertpapiere/Depot | `applicant_profiles.securities_value` | 120.000 EUR |
-| Lebensversicherung | `applicant_profiles.life_insurance_value` | 45.000 EUR |
-| Immobilien (Marktwert) | `units -> properties.market_value` (SUM) | 995.000 EUR |
-| Verbindlichkeiten Immo | `miety_loans.remaining_balance` | -520.000 EUR |
-| Private Kredite | `private_loans.remaining_balance` (SUM) | -27.200 EUR |
+// Nachher:
+{ path: "verwaltung", component: "VerwaltungTab", title: "Steuer" }
+```
 
-Falls `msv_bank_accounts` Eintraege hat, werden diese statt des `applicant_profiles.bank_savings`-Werts angezeigt. Da die Tabelle beim Demo-Tenant leer ist, wird auf `applicant_profiles` zurueckgegriffen.
+## Technische Details
 
-## Aenderungen
+- Betrifft nur eine einzige Zeile in `src/manifests/routesManifest.ts` (Zeile 252)
+- Die Navigation-Tabs fuer MOD-04 Immobilien lesen den Titel direkt aus dem Manifest — keine weiteren Dateien betroffen
+- Der Kommentar in Zeile 251 ("Tax: Vermietung + Verwaltung — Anlage V Steuererklaerung") kann optional ebenfalls angepasst werden
 
-### Datei: `src/components/dashboard/widgets/AccountsWidget.tsx`
-
-1. **Daten per Hook laden statt Hardcode:**
-   - `useAuth()` fuer `activeTenantId`
-   - `useQuery` fuer `applicant_profiles` (bank_savings, securities_value, life_insurance_value)
-   - Die Abfrage nutzt den gleichen Pattern wie `useFinanzberichtData`
-
-2. **Drei Zeilen dynamisch darstellen:**
-   - **Bankguthaben** (Landmark-Icon, Sky): `bank_savings` aus applicant_profiles
-   - **Depot/Wertpapiere** (Briefcase-Icon, Violet): `securities_value` aus applicant_profiles
-   - **Lebensversicherung/Sparen** (PiggyBank-Icon, Emerald): `life_insurance_value` aus applicant_profiles
-
-3. **Demo-Badge Logik:**
-   - Badge wird nur angezeigt wenn keine echten `msv_bank_accounts` vorhanden sind (= Fallback auf applicant_profiles)
-   - Sobald ein User echte Bankkonten anlegt, verschwindet das Demo-Badge
-
-4. **Loading-State:**
-   - Waehrend die Daten laden: Skeleton-Platzhalter in den drei Zeilen
-   - Kein Layout-Shift
-
-5. **Gesamt-Summe:**
-   - Weiterhin automatisch berechnet aus den drei angezeigten Werten
-
-### Keine weiteren Dateien betroffen
-
-Die Datenabfrage erfolgt direkt im Widget — kein neuer Hook noetig, da es eine einfache Query ist.
