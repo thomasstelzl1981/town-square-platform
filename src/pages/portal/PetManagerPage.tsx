@@ -7,6 +7,7 @@ import React from 'react';
 
 const PMDashboard = React.lazy(() => import('./petmanager/PMDashboard'));
 const PMBuchungen = React.lazy(() => import('./petmanager/PMBuchungen'));
+const PMKalender = React.lazy(() => import('./petmanager/PMKalender'));
 const PMLeistungen = React.lazy(() => import('./petmanager/PMLeistungen'));
 const PMKunden = React.lazy(() => import('./petmanager/PMKunden'));
 const PMFinanzen = React.lazy(() => import('./petmanager/PMFinanzen'));
@@ -23,6 +24,7 @@ export default function PetManagerPage() {
       <Route index element={<Navigate to="dashboard" replace />} />
       <Route path="dashboard" element={<React.Suspense fallback={<Loading />}><PMDashboard /></React.Suspense>} />
       <Route path="buchungen" element={<React.Suspense fallback={<Loading />}><PMBuchungen /></React.Suspense>} />
+      <Route path="kalender" element={<React.Suspense fallback={<Loading />}><PMKalender /></React.Suspense>} />
       <Route path="leistungen" element={<React.Suspense fallback={<Loading />}><PMLeistungen /></React.Suspense>} />
       <Route path="kunden" element={<React.Suspense fallback={<Loading />}><PMKunden /></React.Suspense>} />
       <Route path="finanzen" element={<React.Suspense fallback={<Loading />}><PMFinanzen /></React.Suspense>} />
