@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { Outlet, Navigate, useLocation } from 'react-router-dom';
 
 // Preload core modules for instant navigation
@@ -18,6 +18,7 @@ import { ArmstrongContainer } from './ArmstrongContainer';
 import { DesktopInstallBanner } from '@/components/shared/DesktopInstallBanner';
 import { MobileBottomBar } from './MobileBottomBar';
 import { MobileHomeChatView } from './MobileHomeChatView';
+import { MobileHomeModuleList } from './MobileHomeModuleList';
 import { MobileModuleMenu } from './MobileModuleMenu';
 import { SubTabs } from './SubTabs';
 import { PortalLayoutProvider, usePortalLayout } from '@/hooks/usePortalLayout';
@@ -45,6 +46,7 @@ function PortalLayoutInner() {
   const { isMobile } = usePortalLayout();
   const location = useLocation();
   // Armstrong sheet state removed — mobile uses full-screen chat now
+  const [mobileHomeMode, setMobileHomeMode] = useState<'modules' | 'chat'>('modules');
   
   // P0-FIX: Track if we've ever finished initial loading
   const hasInitializedRef = useRef(false);
@@ -128,8 +130,13 @@ function PortalLayoutInner() {
         <SystemBar />
         
       {isDashboard ? (
-          /* HOME: Full-screen Armstrong Chat */
-          <MobileHomeChatView />
+          mobileHomeMode === 'chat' ? (
+            /* CHAT MODE: Full-screen Armstrong Chat with back button */
+            <MobileHomeChatView onBackToModules={() => setMobileHomeMode('modules')} />
+          ) : (
+            /* MODULE LIST: Scrollable module entries */
+            <MobileHomeModuleList />
+          )
         ) : isModuleBaseRoute && activeModule ? (
           /* MODULE BASE: Show vertical tile menu */
           <MobileModuleMenu 
@@ -145,7 +152,7 @@ function PortalLayoutInner() {
         )}
         
         {/* Unified bottom bar — always visible on mobile */}
-        <MobileBottomBar />
+        <MobileBottomBar onChatActivated={() => setMobileHomeMode('chat')} />
       </div>
     );
   }
