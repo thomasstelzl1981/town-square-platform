@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { RECORD_CARD } from '@/config/designManifest';
+import { PageShell } from '@/components/shared/PageShell';
 import {
   useMyProvider, useProviderServices, useCreateService, useUpdateService, useDeleteService,
   useProviderAvailability, useSaveAvailability,
@@ -88,6 +89,7 @@ export default function PMLeistungen() {
   const handleSaveAvail = () => { if (provider) saveAvailability.mutate({ providerId: provider.id, slots: availSlots }); };
 
   return (
+    <PageShell>
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -193,5 +195,6 @@ export default function PMLeistungen() {
         </CardContent>
       </Card>
     </div>
+    </PageShell>
   );
 }

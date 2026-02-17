@@ -12,6 +12,7 @@ import { DESIGN } from '@/config/designManifest';
 import { cn } from '@/lib/utils';
 import { format, parseISO } from 'date-fns';
 import { de } from 'date-fns/locale';
+import { PageShell } from '@/components/shared/PageShell';
 
 const FACILITY_LABELS: Record<string, string> = {
   daycare: 'Tagesstätte',
@@ -63,6 +64,7 @@ export default function PMDashboard() {
   const capacityPercent = capacity ? Math.round((capacity.bookedToday / Math.max(capacity.totalCapacity, 1)) * 100) : 0;
 
   return (
+    <PageShell>
     <div className={DESIGN.SPACING.SECTION}>
       {/* DASHBOARD HEADER: Visitenkarte + Kapazität */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
@@ -177,5 +179,6 @@ export default function PMDashboard() {
         </CardContent>
       </Card>
     </div>
+    </PageShell>
   );
 }

@@ -15,6 +15,7 @@ import { de } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { DESIGN } from '@/config/designManifest';
+import { PageShell } from '@/components/shared/PageShell';
 
 const STATUS_LABELS: Record<string, string> = {
   requested: 'Angefragt', confirmed: 'Bestätigt', in_progress: 'Laufend',
@@ -135,6 +136,7 @@ export default function PMBuchungen() {
   }
 
   return (
+    <PageShell>
     <div className="space-y-6">
       <div className="flex items-center gap-3">
         <Calendar className="h-6 w-6 text-primary" />
@@ -179,5 +181,6 @@ export default function PMBuchungen() {
         </TabsContent>
       </Tabs>
     </div>
+    </PageShell>
   );
 }

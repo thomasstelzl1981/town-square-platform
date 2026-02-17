@@ -12,6 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { format, subMonths, startOfMonth, endOfMonth } from 'date-fns';
 import { de } from 'date-fns/locale';
+import { PageShell } from '@/components/shared/PageShell';
 
 interface InvoiceSummary {
   status: string;
@@ -61,6 +62,7 @@ export default function PetmanagerFinanzen() {
   }, [invoices]);
 
   return (
+    <PageShell>
     <OperativeDeskShell
       title="Finanz-Governance"
       subtitle="Umsatz · Forderungen · Abrechnungen"
@@ -124,5 +126,6 @@ export default function PetmanagerFinanzen() {
         </Card>
       </div>
     </OperativeDeskShell>
+    </PageShell>
   );
 }

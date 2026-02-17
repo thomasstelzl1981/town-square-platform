@@ -15,6 +15,7 @@ import {
 } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { PageShell } from '@/components/shared/PageShell';
 
 // ─── Status colors ────────────────────────────────────────
 const STATUS_BG: Record<string, string> = {
@@ -221,6 +222,7 @@ export default function PMKalender() {
   }
 
   return (
+    <PageShell>
     <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-2">
@@ -291,5 +293,6 @@ export default function PMKalender() {
         ))}
       </div>
     </div>
+    </PageShell>
   );
 }

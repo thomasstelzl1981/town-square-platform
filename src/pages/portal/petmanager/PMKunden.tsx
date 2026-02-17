@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useMyProvider, useBookings } from '@/hooks/usePetBookings';
 import { DESIGN } from '@/config/designManifest';
+import { PageShell } from '@/components/shared/PageShell';
 import { format, parseISO } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { useMemo, useState } from 'react';
@@ -138,6 +139,7 @@ export default function PMKunden() {
   };
 
   return (
+    <PageShell>
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -242,5 +244,6 @@ export default function PMKunden() {
         </div>
       )}
     </div>
+    </PageShell>
   );
 }
