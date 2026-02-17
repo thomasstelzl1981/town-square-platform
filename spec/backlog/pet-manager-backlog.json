@@ -123,20 +123,20 @@
       "id": "P6",
       "title": "Kundenverwaltung verbessern",
       "priority": 4,
-      "status": "todo",
+      "status": "done",
       "tasks": [
         {
           "id": "P6.1",
           "title": "Profil-Join fuer echte Namen",
           "description": "PMKunden joined auf profiles-Tabelle statt nur UUID-Fragment.",
-          "status": "todo",
+          "status": "done",
           "files": ["src/pages/portal/petmanager/PMKunden.tsx"]
         },
         {
           "id": "P6.2",
           "title": "Kundendetail-Akte",
           "description": "Inline-Akte: Tiere des Kunden, Buchungshistorie, offene Rechnungen.",
-          "status": "todo",
+          "status": "done",
           "files": ["src/pages/portal/petmanager/PMKunden.tsx"]
         }
       ]
