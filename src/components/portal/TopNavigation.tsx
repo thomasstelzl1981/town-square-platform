@@ -99,19 +99,19 @@ export function TopNavigation() {
 
   return (
     <nav className="border-b bg-card/60 backdrop-blur-md">
-      {/* Level 1: Area Tabs */}
-      <div className="border-b">
+      {/* Level 1: Area Tabs — Hover opens Module Switcher */}
+      <div
+        ref={triggerRef}
+        className="border-b"
+        onMouseEnter={showSwitcher}
+        onMouseLeave={hideSwitcher}
+      >
         <AreaTabs />
       </div>
       
-      {/* Level 2: Sub Tabs + Floating Module Switcher on hover */}
+      {/* Level 2: Sub Tabs — no hover here */}
       {activeModule && !location.pathname.startsWith('/portal/area/') && (
-        <div
-          ref={triggerRef}
-          className="relative"
-          onMouseEnter={showSwitcher}
-          onMouseLeave={hideSwitcher}
-        >
+        <div className="relative">
           <SubTabs module={activeModule.module} moduleBase={activeModule.module.base} />
         </div>
       )}
