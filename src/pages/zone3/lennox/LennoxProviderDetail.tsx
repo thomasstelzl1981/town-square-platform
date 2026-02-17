@@ -91,7 +91,7 @@ export default function LennoxProviderDetail() {
           <h3 className="font-bold text-lg">Termin buchen</h3>
           <p className="text-white/80 text-sm">Registriere dich kostenlos und buche direkt online.</p>
         </div>
-        <Link to="/auth">
+        <Link to={`/website/tierservice/anbieter/${providerId}/buchen`}>
           <Button variant="secondary" className="rounded-full font-semibold whitespace-nowrap">
             Jetzt buchen <ArrowRight className="h-4 w-4 ml-1" />
           </Button>

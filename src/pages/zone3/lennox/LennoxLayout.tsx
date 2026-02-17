@@ -2,8 +2,9 @@
  * LennoxLayout — Zone 3 Public Website for "Lennox & Friends" Pet Services
  */
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { PawPrint, Menu, X } from 'lucide-react';
-import { useState } from 'react';
+import { PawPrint, Menu, X, User, LogIn } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 const navLinks = [
   { path: '/website/tierservice', label: 'Anbieter finden', exact: true },
@@ -13,6 +14,15 @@ const navLinks = [
 export default function LennoxLayout() {
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [user, setUser] = useState<any>(null);
+
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+    supabase.auth.getUser().then(({ data: { user: u } }) => setUser(u));
+    return () => subscription.unsubscribe();
+  }, []);
 
   return (
     <div className="min-h-screen bg-[hsl(35,40%,97%)]">
@@ -40,12 +50,21 @@ export default function LennoxLayout() {
                 </Link>
               );
             })}
-            <Link
-              to="/auth"
-              className="text-sm font-semibold px-4 py-2 rounded-full bg-[hsl(25,85%,55%)] text-white hover:bg-[hsl(25,85%,48%)] transition-colors"
-            >
-              Jetzt buchen
-            </Link>
+            {user ? (
+              <Link
+                to="/website/tierservice/profil"
+                className="text-sm font-semibold px-4 py-2 rounded-full bg-[hsl(25,85%,55%)] text-white hover:bg-[hsl(25,85%,48%)] transition-colors inline-flex items-center gap-1.5"
+              >
+                <User className="h-4 w-4" /> Mein Profil
+              </Link>
+            ) : (
+              <Link
+                to="/website/tierservice/login"
+                className="text-sm font-semibold px-4 py-2 rounded-full bg-[hsl(25,85%,55%)] text-white hover:bg-[hsl(25,85%,48%)] transition-colors inline-flex items-center gap-1.5"
+              >
+                <LogIn className="h-4 w-4" /> Anmelden
+              </Link>
+            )}
           </nav>
 
           {/* Mobile toggle */}
@@ -67,13 +86,23 @@ export default function LennoxLayout() {
                 {l.label}
               </Link>
             ))}
-            <Link
-              to="/auth"
-              onClick={() => setMenuOpen(false)}
-              className="block text-center text-sm font-semibold px-4 py-2 rounded-full bg-[hsl(25,85%,55%)] text-white"
-            >
-              Jetzt buchen
-            </Link>
+            {user ? (
+              <Link
+                to="/website/tierservice/profil"
+                onClick={() => setMenuOpen(false)}
+                className="block text-center text-sm font-semibold px-4 py-2 rounded-full bg-[hsl(25,85%,55%)] text-white"
+              >
+                Mein Profil
+              </Link>
+            ) : (
+              <Link
+                to="/website/tierservice/login"
+                onClick={() => setMenuOpen(false)}
+                className="block text-center text-sm font-semibold px-4 py-2 rounded-full bg-[hsl(25,85%,55%)] text-white"
+              >
+                Anmelden
+              </Link>
+            )}
           </div>
         )}
       </header>

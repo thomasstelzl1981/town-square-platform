@@ -209,3 +209,6 @@ verify_jwt = false
 
 [functions.sot-vv-prefill-check]
 verify_jwt = false
+
+[functions.sot-pet-profile-init]
+verify_jwt = false
