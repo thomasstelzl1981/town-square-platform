@@ -11970,8 +11970,10 @@ export type Database = {
           cover_image_url: string | null
           created_at: string
           email: string | null
+          facility_type: string
           gallery_images: string[] | null
           id: string
+          max_daily_capacity: number
           operating_hours: Json | null
           phone: string | null
           provider_type: Database["public"]["Enums"]["pet_provider_type"]
@@ -11990,8 +11992,10 @@ export type Database = {
           cover_image_url?: string | null
           created_at?: string
           email?: string | null
+          facility_type?: string
           gallery_images?: string[] | null
           id?: string
+          max_daily_capacity?: number
           operating_hours?: Json | null
           phone?: string | null
           provider_type?: Database["public"]["Enums"]["pet_provider_type"]
@@ -12010,8 +12014,10 @@ export type Database = {
           cover_image_url?: string | null
           created_at?: string
           email?: string | null
+          facility_type?: string
           gallery_images?: string[] | null
           id?: string
+          max_daily_capacity?: number
           operating_hours?: Json | null
           phone?: string | null
           provider_type?: Database["public"]["Enums"]["pet_provider_type"]
