@@ -158,6 +158,7 @@ export const LEDGER_EVENT_WHITELIST: ReadonlySet<string> = new Set([
   'finance.z3.triage.timeout',
   'finance.z3.manager.assignment.timeout',
   'finance.z3.manager.assignment.rejected',
+  'finance.z3.manager.assignment.error',
   'finance.z3.bank.submit.error',
 
   // ═══════════════════════════════════════════════════════════

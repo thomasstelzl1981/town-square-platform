@@ -204,14 +204,6 @@ export default function Auth() {
                   required
                 />
               </div>
-              <Button type="submit" className="w-full" disabled={submitting}>
-                {submitting ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Lock className="mr-2 h-4 w-4" />
-                )}
-                Anmelden
-              </Button>
               <div className="flex items-center justify-between pt-1">
                 <Button
                   type="button"
@@ -227,6 +219,7 @@ export default function Auth() {
                   Passwort vergessen?
                 </Button>
               </div>
+              
               <Button type="submit" className="w-full" disabled={submitting}>
                 {submitting ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
