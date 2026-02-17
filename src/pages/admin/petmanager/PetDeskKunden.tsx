@@ -5,9 +5,14 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Users, PawPrint, ChevronDown, ChevronRight, Globe, UserCheck, Clock } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Users, PawPrint, ChevronDown, ChevronRight, Globe, UserCheck, Clock, Plus } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 const statusConfig: Record<string, { label: string; color: string; icon: typeof Clock }> = {
   new: { label: 'Neu', color: 'bg-blue-100 text-blue-700', icon: Clock },
@@ -21,6 +26,9 @@ const speciesLabels: Record<string, string> = {
 
 export default function PetDeskKunden() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [newCustomer, setNewCustomer] = useState({ firstName: '', lastName: '', email: '', phone: '', address: '', city: '', postalCode: '', notes: '' });
+  const queryClient = useQueryClient();
 
   const { data: customers = [], isLoading } = useQuery({
     queryKey: ['pet-z1-customers'],
@@ -51,6 +59,33 @@ export default function PetDeskKunden() {
     },
   });
 
+  const createMutation = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from('pet_z1_customers').insert({
+        tenant_id: 'a0000000-0000-4000-a000-000000000001',
+        first_name: newCustomer.firstName.trim(),
+        last_name: newCustomer.lastName.trim(),
+        email: newCustomer.email.trim() || null,
+        phone: newCustomer.phone.trim() || null,
+        address: newCustomer.address.trim() || null,
+        city: newCustomer.city.trim() || null,
+        postal_code: newCustomer.postalCode.trim() || null,
+        notes: newCustomer.notes.trim() || null,
+        source: 'manual',
+        status: 'new',
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['pet-z1-customers'] });
+      queryClient.invalidateQueries({ queryKey: ['pet-z1-vorgaenge'] });
+      setCreateOpen(false);
+      setNewCustomer({ firstName: '', lastName: '', email: '', phone: '', address: '', city: '', postalCode: '', notes: '' });
+      toast.success('Kunde angelegt');
+    },
+    onError: (err: any) => toast.error('Fehler: ' + err.message),
+  });
+
   return (
     <div className="space-y-6">
       {/* Zone Flow Indicator */}
@@ -63,7 +98,7 @@ export default function PetDeskKunden() {
       </div>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-base">
             <Users className="h-5 w-5" />
             Kundendatenbank
@@ -71,6 +106,39 @@ export default function PetDeskKunden() {
               <Badge variant="secondary" className="ml-2 text-xs">{customers.length}</Badge>
             )}
           </CardTitle>
+          <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+            <DialogTrigger asChild>
+              <Button size="sm" className="text-xs gap-1">
+                <Plus className="h-3.5 w-3.5" /> Kunde anlegen
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Neuen Z1-Kunden anlegen</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div><Label>Vorname *</Label><Input value={newCustomer.firstName} onChange={e => setNewCustomer(s => ({ ...s, firstName: e.target.value }))} /></div>
+                  <div><Label>Nachname *</Label><Input value={newCustomer.lastName} onChange={e => setNewCustomer(s => ({ ...s, lastName: e.target.value }))} /></div>
+                </div>
+                <div><Label>E-Mail</Label><Input type="email" value={newCustomer.email} onChange={e => setNewCustomer(s => ({ ...s, email: e.target.value }))} /></div>
+                <div><Label>Telefon</Label><Input value={newCustomer.phone} onChange={e => setNewCustomer(s => ({ ...s, phone: e.target.value }))} /></div>
+                <div><Label>Adresse</Label><Input value={newCustomer.address} onChange={e => setNewCustomer(s => ({ ...s, address: e.target.value }))} /></div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div><Label>PLZ</Label><Input value={newCustomer.postalCode} onChange={e => setNewCustomer(s => ({ ...s, postalCode: e.target.value }))} /></div>
+                  <div><Label>Stadt</Label><Input value={newCustomer.city} onChange={e => setNewCustomer(s => ({ ...s, city: e.target.value }))} /></div>
+                </div>
+                <div><Label>Notizen</Label><Textarea rows={2} value={newCustomer.notes} onChange={e => setNewCustomer(s => ({ ...s, notes: e.target.value }))} /></div>
+                <Button
+                  className="w-full"
+                  disabled={!newCustomer.firstName.trim() || !newCustomer.lastName.trim() || createMutation.isPending}
+                  onClick={() => createMutation.mutate()}
+                >
+                  {createMutation.isPending ? 'Wird angelegt…' : 'Kunde anlegen'}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
         </CardHeader>
         <CardContent>
           {isLoading ? (
