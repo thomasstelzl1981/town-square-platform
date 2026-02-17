@@ -206,7 +206,7 @@ export default function PMPersonal() {
 
           {/* Right: Inline Akte */}
           {showAkte && (
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 min-w-0 md:max-h-[calc(100vh-220px)] md:overflow-y-auto">
               <Card>
                 <CardContent className="pt-5 pb-5 px-5">
                   <div className="flex items-center justify-between mb-4">
