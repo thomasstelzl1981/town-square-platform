@@ -95,9 +95,11 @@ function AttachedFiles({
 /* ── Main Component ──────────────────────────────────── */
 interface MobileBottomBarProps {
   onChatActivated?: () => void;
+  mobileHomeMode?: 'modules' | 'chat';
+  onModeChange?: (mode: 'modules' | 'chat') => void;
 }
 
-export function MobileBottomBar({ onChatActivated }: MobileBottomBarProps) {
+export function MobileBottomBar({ onChatActivated, mobileHomeMode, onModeChange }: MobileBottomBarProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const { activeArea, setActiveArea, setMobileNavView, setSelectedMobileModule } = usePortalLayout();
@@ -191,6 +193,36 @@ export function MobileBottomBar({ onChatActivated }: MobileBottomBarProps) {
           ))}
         </div>
       </div>
+
+      {/* Module/Chat Toggle — only on dashboard */}
+      {isDashboard && mobileHomeMode && onModeChange && (
+        <div className="flex justify-center pb-2">
+          <div className="flex bg-muted/60 rounded-full p-0.5">
+            <button
+              onClick={() => onModeChange('modules')}
+              className={cn(
+                'px-5 py-1.5 rounded-full text-xs font-medium transition-all',
+                mobileHomeMode === 'modules'
+                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              Module
+            </button>
+            <button
+              onClick={() => onModeChange('chat')}
+              className={cn(
+                'px-5 py-1.5 rounded-full text-xs font-medium transition-all',
+                mobileHomeMode === 'chat'
+                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              Chat
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Attached files preview */}
       <AttachedFiles files={attachedFiles} onRemove={removeFile} />
