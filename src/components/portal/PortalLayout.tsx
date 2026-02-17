@@ -152,7 +152,11 @@ function PortalLayoutInner() {
         )}
         
         {/* Unified bottom bar — always visible on mobile */}
-        <MobileBottomBar onChatActivated={() => setMobileHomeMode('chat')} />
+        <MobileBottomBar
+          onChatActivated={() => setMobileHomeMode('chat')}
+          mobileHomeMode={isDashboard ? mobileHomeMode : undefined}
+          onModeChange={isDashboard ? setMobileHomeMode : undefined}
+        />
       </div>
     );
   }
