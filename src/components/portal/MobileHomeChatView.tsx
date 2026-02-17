@@ -12,10 +12,15 @@ import { MessageRenderer } from '@/components/chat/MessageRenderer';
 import { 
   Globe, 
   Loader2,
-  Trash2
+  Trash2,
+  ArrowLeft
 } from 'lucide-react';
 
-export function MobileHomeChatView() {
+interface MobileHomeChatViewProps {
+  onBackToModules?: () => void;
+}
+
+export function MobileHomeChatView({ onBackToModules }: MobileHomeChatViewProps) {
   const advisor = useArmstrongAdvisor();
   const voice = useArmstrongVoice();
   
@@ -42,6 +47,19 @@ export function MobileHomeChatView() {
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
+      {/* Back to modules button */}
+      {onBackToModules && (
+        <div className="px-4 pt-2 pb-1">
+          <button
+            onClick={onBackToModules}
+            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            <span>Zurück</span>
+          </button>
+        </div>
+      )}
+
       {/* Chat Messages — full available space */}
       <div className="flex-1 overflow-y-auto px-4 py-4">
         {advisor.messages.length === 0 ? (

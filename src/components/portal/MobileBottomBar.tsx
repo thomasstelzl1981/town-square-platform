@@ -93,7 +93,11 @@ function AttachedFiles({
 }
 
 /* ── Main Component ──────────────────────────────────── */
-export function MobileBottomBar() {
+interface MobileBottomBarProps {
+  onChatActivated?: () => void;
+}
+
+export function MobileBottomBar({ onChatActivated }: MobileBottomBarProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const { activeArea, setActiveArea, setMobileNavView, setSelectedMobileModule } = usePortalLayout();
@@ -112,6 +116,7 @@ export function MobileBottomBar() {
     if (prevListeningRef.current && !voice.isListening && voice.transcript.trim()) {
       setVoiceMode(true);
       if (!isDashboard) navigate('/portal');
+      onChatActivated?.();
       advisor.sendMessage(voice.transcript.trim());
     }
     prevListeningRef.current = voice.isListening;
@@ -121,6 +126,7 @@ export function MobileBottomBar() {
     if (input.trim() && !advisor.isLoading) {
       setVoiceMode(false);
       if (!isDashboard) navigate('/portal');
+      onChatActivated?.();
       advisor.sendMessage(input.trim());
       setInput('');
       setAttachedFiles([]);
