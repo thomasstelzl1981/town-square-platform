@@ -80,11 +80,13 @@ export function NotesWidget() {
       >
         <CardContent className="p-4 h-full flex flex-col">
           {/* Header */}
-          <div className="flex items-center gap-2 mb-3">
-            <StickyNote className="h-4 w-4 text-amber-500" />
-            <span className="text-sm font-medium text-foreground">Notizen</span>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <StickyNote className="h-4 w-4 text-amber-500" />
+              <span className="text-sm font-medium">Notizen</span>
+            </div>
             {notes.length > 0 && (
-              <span className="ml-auto text-xs text-muted-foreground">{notes.length}</span>
+              <span className="text-xs text-muted-foreground">{notes.length}</span>
             )}
           </div>
 

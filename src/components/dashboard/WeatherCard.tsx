@@ -424,12 +424,11 @@ export function WeatherCard({ latitude, longitude, city }: WeatherCardProps) {
       />
 
       <CardContent className={cn("relative z-10 p-4 h-full flex flex-col", textClass)}>
-        {/* Header with location */}
-        {city && (
-          <div className="text-xs uppercase tracking-wider opacity-90 mb-2 font-medium drop-shadow-sm">
-            {city}
-          </div>
-        )}
+        {/* Header */}
+        <div className="flex items-center gap-2 mb-3">
+          <CurrentIcon className="h-4 w-4 drop-shadow-md" />
+          <span className="text-sm font-medium drop-shadow-sm">{city || 'Wetter'}</span>
+        </div>
 
         {/* Current Weather */}
         <div className="flex items-start justify-between mb-3">

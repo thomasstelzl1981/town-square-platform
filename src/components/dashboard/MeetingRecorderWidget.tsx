@@ -65,13 +65,9 @@ export function MeetingRecorderWidget() {
 
         <CardContent className="p-4 h-full flex flex-col relative z-10">
           {/* Header */}
-          <div className="flex items-center gap-2 mb-2">
-            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-rose-500/20 to-amber-500/10 flex items-center justify-center">
-              <Mic className="h-4 w-4 text-rose-500" />
-            </div>
-            <span className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
-              Meeting Recorder
-            </span>
+          <div className="flex items-center gap-2 mb-3">
+            <Mic className="h-4 w-4 text-rose-500" />
+            <span className="text-sm font-medium">Meeting Recorder</span>
           </div>
 
           {/* IDLE */}
