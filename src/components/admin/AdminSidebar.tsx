@@ -150,7 +150,8 @@ function getGroupKey(path: string, component: string): string {
   // Operative Desks (Desks + LeadPool + Provisionen + Landing Pages)
   if (path.startsWith('sales-desk') || path.startsWith('finance-desk') || 
       path.startsWith('acquiary') || path === 'lead-desk' || path === 'projekt-desk' ||
-      path === 'petmanager' || path.startsWith('petmanager/') || path === 'website-hosting') {
+      path === 'petmanager' || path.startsWith('petmanager/') || path === 'website-hosting' ||
+      path.startsWith('pet-desk')) {
     return 'desks';
   }
   // System (bereinigt - nur Read-only Monitoring + Fortbildung)
