@@ -3,7 +3,7 @@
  * Phase 2: Mit Belegungsprüfung vor Buchungsannahme
  */
 import { useState } from 'react';
-import { Calendar, Check, X, Clock, PawPrint, AlertTriangle } from 'lucide-react';
+import { Calendar, Check, X, Clock, PawPrint, AlertTriangle, LogIn, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -81,8 +81,18 @@ function BookingRow({ booking, onUpdateStatus, capacityWarning }: {
           </>
         )}
         {booking.status === 'confirmed' && (
+          <>
+            <Button size="sm" variant="outline" className="h-7 gap-1 text-xs" onClick={() => onUpdateStatus(booking.id, 'in_progress')}>
+              <LogIn className="h-3 w-3" /> Check-In
+            </Button>
+            <Button size="sm" variant="outline" className="h-7 gap-1 text-xs text-destructive" onClick={() => onUpdateStatus(booking.id, 'cancelled')}>
+              <X className="h-3 w-3" /> Stornieren
+            </Button>
+          </>
+        )}
+        {booking.status === 'in_progress' && (
           <Button size="sm" variant="outline" className="h-7 gap-1 text-xs" onClick={() => onUpdateStatus(booking.id, 'completed')}>
-            <Check className="h-3 w-3" /> Erledigt
+            <LogOut className="h-3 w-3" /> Check-Out
           </Button>
         )}
       </div>
