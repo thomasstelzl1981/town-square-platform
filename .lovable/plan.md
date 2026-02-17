@@ -1,137 +1,154 @@
 
+## SoT Website Redesign — Software-Praesentationsseite mit 8-Widget-Grid
 
-## Mobile UX Overhaul — Aktualisierter Plan
+### Strategische Neupositionierung
 
-### Uebersicht der 4 Aenderungen
-
----
-
-### 1. Manager-Area (operations) auf Mobile entfernen
-
-Die `MobileBottomBar` filtert die `operations`-Area heraus. Ergebnis: 4 Buttons (Home + Base, Client, Service).
-
-**Dateien:**
-- `src/config/mobileConfig.ts`: Neue Konstante `MOBILE_HIDDEN_AREAS = ['operations']`
-- `src/components/portal/MobileBottomBar.tsx`: `areaConfig.filter(a => !MOBILE_HIDDEN_AREAS.includes(a.key))`
+Die SoT-Website wird von einer Investment/Marketplace-Plattform zu einer **Software-Praesentationsseite** fuer private Nutzer umgebaut. Fokus: Immobilien, Finanzen, KI-Office — alles was Zone 2 fuer Endkunden bietet (ohne Manager-Module).
 
 ---
 
-### 2. SystemBar auf Mobile minimieren
+### IST-Zustand (was sich aendert)
 
-Kompakte Mobile-Leiste (h-10 statt h-12):
-- Links: Nur Home-Button
-- Mitte: "ARMSTRONG"
-- Rechts: Nur Profil-Avatar
-- Entfernt auf Mobile: Theme-Toggle, Temperatur, Uhr, Armstrong-Rocket
-
-**Datei:** `src/components/portal/SystemBar.tsx`
-
----
-
-### 3. NEUES KONZEPT: SubTabs als vertikale Zwischenseite statt horizontaler Pillen
-
-**Problem:** Die horizontalen Pillen (z.B. bei Finanzanalyse: Uebersicht, Investment, Versicherungen, Vorsorge, KV, Abos, Vorsorge & Testament, Darlehen) sind auf Mobile zu viele und zu breit. Das fuehlt sich nach Browser an, nicht nach App.
-
-**Loesung:** Auf Mobile werden die SubTabs NICHT als horizontale Leiste angezeigt. Stattdessen:
-
-1. Wenn man ein Modul oeffnet, erscheint eine **vertikale Listenansicht** mit allen Sub-Tabs als grosse, tippbare Zeilen
-2. Tippt man auf einen Eintrag, slided die Zielseite von rechts rein
-3. Ein Zurueck-Button bringt einen zur Liste zurueck
-
-**Skizze am Beispiel /portal/finanzanalyse:**
-
-```text
-+----------------------------------+
-| [Home]    ARMSTRONG    [Avatar]   |  <- SystemBar (h-10)
-+----------------------------------+
-|                                  |
-|   FINANZEN                       |  <- Modul-Titel
-|                                  |
-|   +----------------------------+ |
-|   | > Uebersicht               | |  <- Tippbare Zeilen
-|   +----------------------------+ |
-|   | > Investment               | |
-|   +----------------------------+ |
-|   | > Sachversicherungen       | |
-|   +----------------------------+ |
-|   | > Vorsorge                 | |
-|   +----------------------------+ |
-|   | > Krankenversicherung      | |
-|   +----------------------------+ |
-|   | > Abonnements             | |
-|   +----------------------------+ |
-|   | > Vorsorge & Testament     | |
-|   +----------------------------+ |
-|   | > Darlehen                 | |
-|   +----------------------------+ |
-|                                  |
-+----------------------------------+
-| [Home] [Base] [Client] [Service] |  <- BottomBar
-| [Mic] [+] [Nachricht...] [Send] |
-+----------------------------------+
-```
-
-**Nach Klick auf "Investment":**
-
-```text
-+----------------------------------+
-| [<]       ARMSTRONG    [Avatar]   |  <- Zurueck-Pfeil
-+----------------------------------+
-|                                  |
-|   Investment-Tab Inhalt          |  <- Volle Seite, kein
-|   (Charts, Kacheln etc.)         |     SubTab-Balken oben
-|   ...                            |
-|   ...                            |
-|                                  |
-+----------------------------------+
-| [Home] [Base] [Client] [Service] |
-| [Mic] [+] [Nachricht...] [Send] |
-+----------------------------------+
-```
-
-**Technische Umsetzung:**
-
-- Neue Komponente: `src/components/portal/MobileModuleMenu.tsx`
-  - Empfaengt `module: ModuleDefinition` und `moduleBase: string`
-  - Zeigt Modul-Name als Header + alle Tiles als vertikale Liste
-  - Klick navigiert zum Tile-Route
-- `src/components/portal/PortalLayout.tsx` (Mobile-Bereich):
-  - Wenn auf einer Modul-Basis-Route (z.B. `/portal/finanzanalyse`) und kein konkreter Tile aktiv: Zeige `MobileModuleMenu` statt `Outlet`
-  - Wenn ein konkreter Tile aktiv (z.B. `/portal/finanzanalyse/investment`): Zeige `Outlet` ohne SubTabs
-- `src/components/portal/SubTabs.tsx`: Auf Mobile komplett ausblenden (`if (isMobile) return null`)
-- `src/components/portal/SystemBar.tsx`: Auf Mobile, wenn in einem Tile: Home-Button wird zu Zurueck-Pfeil (navigiert zum Modul-Menue)
+| Element | IST | SOLL |
+|---------|-----|------|
+| Hero | Investment Engine mit Suchfeldern | Klare H1/H2 Software-Headline |
+| Startseite | 5 Scroll-Snap Screens (Engine, 3 Wege, Features, KPIs, CTA) | Hero + 8-Widget-Grid + "Warum SoT?" + CTA |
+| Header (SubBar) | Real Estate, Capital, Projects, Mgmt, Energy, Career | MANAGEMENT, REAL ESTATE, FINANCE, ENERGY, CAREER, LOGIN |
+| Armstrong Stripe | 300px fixed rechts mit Chat | Entfernen (spaeter als schwebendes Element) |
+| Layout | 300px Spacer + Content + 300px Armstrong | Volle Breite, zentrierter Content |
+| SystemBar | Zone-2-Klon mit 6 Glass-Buttons | Entfernen — wird durch neue Header-Nav ersetzt |
+| Detail-Seiten | Stub-Seiten (nur Headline) | Ausgebaute Landingpages mit 3-4 Leistungsbloecken |
+| Footer | Links zu Capital, Projects etc. | Aktualisierte Links passend zur neuen Struktur |
 
 ---
 
-### 4. MobileBottomBar: Glass-Button-Styling
+### Dateiaenderungen
 
-Die Buttons bekommen Glass-Effekt (backdrop-blur, transparenter Hintergrund, subtle border) fuer schwebendes App-Feeling.
+#### 1. `src/pages/zone3/sot/SotLayout.tsx` — Layout vereinfachen
 
-**Datei:** `src/components/portal/MobileBottomBar.tsx`
+- Armstrong Stripe entfernen (kein Import, kein Rendering)
+- 300px Left-Spacer entfernen
+- SystemBar entfernen — durch neue Header-Komponente ersetzen
+- SotWidgetBarMobile entfernen
+- Neuer Header: Einfache Nav-Leiste mit Pills (MANAGEMENT | REAL ESTATE | FINANCE | ENERGY | CAREER | LOGIN)
+- Layout wird: Header + Main (volle Breite, scrollbar) + Footer
+
+#### 2. `src/pages/zone3/sot/SotHome.tsx` — Komplett neu
+
+**Hero Section:**
+- H1: "System of a Town"
+- H2: "Der digitale Manager fuer Immobilien und private Finanzen."
+- Subline: "Organisieren. Verwalten. Analysieren. Automatisieren."
+- 2 Buttons: "Kostenlos starten" + "Demo ansehen"
+- Kein Suchfeld, kein Intake, keine Slider
+
+**8-Widget-Grid** (2x4, responsive 4-2-1):
+
+| # | Titel | Kurztext | Icon |
+|---|-------|----------|------|
+| 1 | Immobilien | Portfolio, Akten und Dokumente zentral verwalten. | Building2 |
+| 2 | Dokumente | Digitaler Datenraum mit Struktur und KI-Unterstuetzung. | FileText |
+| 3 | Finanzen | Konten, Vertraege und Vorsorge im Ueberblick. | Wallet |
+| 4 | Energie | Verbrauch, Vertraege und Photovoltaik transparent steuern. | Zap |
+| 5 | KI Office | Intelligente Assistenz fuer Organisation und Aufgaben. | Brain |
+| 6 | E-Mail und Kommunikation | Posteingang, Kommunikation und Prozesse buendeln. | Mail |
+| 7 | Reports und Analyse | Kennzahlen, Auswertungen und Performance im Blick. | BarChart3 |
+| 8 | Sicherheit und Struktur | Zentrale Verwaltung mit klaren Rollen und Zugriffen. | Shield |
+
+Widget-Design:
+- Dunkle Karten (bg-card/80, border-border/30)
+- Leichter Glow bei Hover (shadow-primary/10)
+- Subtile Scale-Animation (hover:scale-[1.02])
+- Minimalistische Lucide Icons
+- Viel Negativraum
+
+**"Warum System of a Town?" Section:**
+- 3 Bloecke: Zentralisiert, Automatisiert, Skalierbar
+- Minimale Icons, kurze Texte
+
+**CTA Section:**
+- E-Mail-Eingabe + "Jetzt starten" Button
+- Links: Demo ansehen | Kontakt
+
+#### 3. `src/pages/zone3/sot/SotManagement.tsx` — Ausgebaute Landingpage
+
+Fokus: KI Office, Aufgaben, E-Mail, Organisation
+- H1: "Management"
+- H2: "KI-gestuetzte Organisation fuer Ihren Alltag."
+- 4 Leistungsbloecke: Aufgabenmanagement, E-Mail-Integration, Dokumentenverwaltung, Automatisierung
+- CTA am Ende
+
+#### 4. `src/pages/zone3/sot/SotRealEstate.tsx` — Ausgebaute Landingpage
+
+Fokus: Immobilienakte, Portfolio, Dokumente
+- H1: "Real Estate"
+- H2: "Ihr Immobilienportfolio im Griff."
+- 4 Leistungsbloecke: Portfolio-Uebersicht, Objektakte, Datenraum, Analyse
+
+#### 5. `src/pages/zone3/sot/SotCapital.tsx` → Umbenennen zu **SotFinance.tsx**
+
+Fokus: Private Finanzen (keine Finanzierung, keine Investment Engine)
+- H1: "Finance"
+- H2: "Private Finanzen transparent und digital."
+- 3 Leistungsbloecke: Kontenuebersicht, Versicherungen und Vertraege, Vorsorge
+- Route: `/website/sot/finance` statt `/website/sot/capital`
+
+#### 6. `src/pages/zone3/sot/SotEnergy.tsx` — Ausgebaute Landingpage
+
+Fokus: Vertraege, PV, Monitoring
+- 3 Leistungsbloecke: Energievertraege, Photovoltaik-Dashboard, Verbrauchsmonitoring
+
+#### 7. `src/pages/zone3/sot/SotKarriere.tsx` — Ausgebaute Landingpage
+
+Fokus: Partnerprogramme (high-level)
+- Keine Modul-Namen, keine Prozessdetails
+- 3 Bloecke: Warum Partner werden, Wer kann Partner werden, Naechste Schritte
+
+#### 8. `src/manifests/routesManifest.ts` — Routen aktualisieren
+
+- `capital` → `finance` (Route + Komponente)
+- `projects` Route entfernen (gehoert zu Kaufy)
+- Legacy-Redirects fuer `capital` → `finance`
+
+#### 9. `src/components/zone3/sot/SotFooter.tsx` — Links aktualisieren
+
+- "Capital" → "Finance"
+- "Projects" entfernen
+- Footer-Beschreibung aktualisieren
+
+#### 10. Zu entfernende Dateien/Importe
+
+- `SotProjects.tsx` — gehoert zu Kaufy, nicht mehr verlinkt
+- `SotArmstrongStripe.tsx` — wird nicht mehr im Layout verwendet
+- `SotWidgetSidebar.tsx` — wird nicht mehr im Layout verwendet
+- `SotSystemBar.tsx` — wird nicht mehr im Layout verwendet (neuer inline Header)
+- `SotInputBar.tsx` — Investment Engine entfernt
 
 ---
 
-### Zusammenfassung aller Dateien
+### Design-Sprache
 
-| Datei | Aenderung |
-|-------|-----------|
-| `src/config/mobileConfig.ts` | `MOBILE_HIDDEN_AREAS` hinzufuegen |
-| `src/components/portal/MobileBottomBar.tsx` | Operations filtern, Glass-Styling |
-| `src/components/portal/SystemBar.tsx` | Mobile: h-10, nur Home/Zurueck + Armstrong + Avatar |
-| `src/components/portal/SubTabs.tsx` | Mobile: komplett ausblenden |
-| `src/components/portal/MobileModuleMenu.tsx` | NEU: Vertikale Tile-Liste als Zwischenseite |
-| `src/components/portal/PortalLayout.tsx` | Mobile: MobileModuleMenu bei Modul-Basis-Route anzeigen |
+- Zone-2-Aesthetik uebertragen: Dunkle Karten, Glas-Effekte, viel Negativraum
+- SpaceX-Inspiration: Grosse Headlines, minimale Farben, keine grellen Akzente
+- Dark/Light Mode wie Zone 2
+- Keine Modulnummern (MOD-xx), keine technischen Begriffe
+- Keine Manager-Begriffe
 
-6 Dateien (1 neu, 5 geaendert), keine DB-Aenderungen.
+---
 
-### Funktionstest nach Implementierung
+### Zusammenfassung
 
-Kompletter Mobile-Walkthrough mit Screenshots:
-1. Home — Chat-Ansicht, 4 Buttons (kein Manager)
-2. Client-Area — Module-Karten
-3. Finanzanalyse oeffnen — Vertikale Tile-Liste
-4. "Investment" antippen — Inhalt ohne SubTab-Leiste
-5. Zurueck zum Modul-Menue
-6. Andere Module stichprobenartig pruefen
-7. SystemBar auf allen Seiten pruefen
+| Datei | Aktion |
+|-------|--------|
+| `SotLayout.tsx` | Stark vereinfachen (kein Armstrong, kein SystemBar, neuer Header) |
+| `SotHome.tsx` | Komplett neu: Hero + 8-Widget-Grid + Warum + CTA |
+| `SotManagement.tsx` | Ausbauen: 4 Leistungsbloecke |
+| `SotRealEstate.tsx` | Ausbauen: 4 Leistungsbloecke |
+| `SotCapital.tsx` → `SotFinance.tsx` | Umbenennen + Ausbauen: 3 Leistungsbloecke |
+| `SotEnergy.tsx` | Ausbauen: 3 Leistungsbloecke |
+| `SotKarriere.tsx` | Ausbauen: 3 Leistungsbloecke |
+| `SotFooter.tsx` | Links aktualisieren |
+| `routesManifest.ts` | capital→finance, projects entfernen |
+| Armstrong/SystemBar/Sidebar | Nicht mehr im Layout verwendet |
 
+Keine DB-Aenderungen, kein Backend, rein Frontend-Refactoring. Zone 1, Zone 2, Golden Path, Edge Functions bleiben komplett unberuehrt.
