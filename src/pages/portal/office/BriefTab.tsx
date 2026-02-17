@@ -457,7 +457,7 @@ ${senderLine}`);
   return (
     <PageShell>
       <ModulePageHeader title="Briefgenerator" description="KI-gestützte Briefe erstellen und versenden" />
-      <div className="space-y-6 max-w-3xl mx-auto">
+      <div className="space-y-6">
 
         {/* Step 0: Sender */}
         <Card className="glass-card">
@@ -616,136 +616,130 @@ ${senderLine}`);
           </CardContent>
         </Card>
 
-        {/* Step 5: Preview & Dispatch (combined) */}
+        {/* Step 5: Preview */}
         <Card className="glass-card">
-          <CardContent className="p-5 space-y-5">
+          <CardContent className="p-5 space-y-4">
             <Label className="flex items-center gap-2">
               <Badge variant="outline" className="h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">5</Badge>
-              Vorschau &amp; Versand
+              Brief-Vorschau
             </Label>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Left: Letter Preview */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="h-7 w-7 rounded-lg bg-primary/10 flex items-center justify-center">
-                      <FileText className="h-3.5 w-3.5 text-primary" />
-                    </div>
-                    <h3 className="text-sm font-semibold">Brief-Vorschau</h3>
-                  </div>
-                  <Select value={letterFont} onValueChange={(v) => setLetterFont(v as LetterFont)}>
-                    <SelectTrigger className="w-[140px] h-8 text-xs">
-                      <Type className="h-3 w-3 mr-1.5" />
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="din">D-DIN (System)</SelectItem>
-                      <SelectItem value="arial">Arial</SelectItem>
-                      <SelectItem value="calibri">Calibri</SelectItem>
-                      <SelectItem value="times">Times New Roman</SelectItem>
-                      <SelectItem value="georgia">Georgia</SelectItem>
-                    </SelectContent>
-                  </Select>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="h-7 w-7 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <FileText className="h-3.5 w-3.5 text-primary" />
                 </div>
-                <LetterPreview
-                  senderName={selectedSender?.label}
-                  senderCompany={selectedSender?.type === 'BUSINESS' ? selectedSender?.company : undefined}
-                  senderAddress={selectedSender?.address}
-                  senderCity={(() => {
-                    if (selectedSenderId === 'private') return profile?.city || undefined;
-                    const ctx = contexts.find(c => c.id === selectedSenderId);
-                    return ctx?.city || undefined;
-                  })()}
-                  senderRole={selectedSender?.sublabel !== 'Persönlicher Absender' ? selectedSender?.sublabel : undefined}
-                  logoUrl={profile?.letterhead_logo_url || undefined}
-                  recipientName={selectedContact ? `${selectedContact.first_name} ${selectedContact.last_name}` : undefined}
-                  recipientCompany={selectedContact?.company || undefined}
-                  recipientAddress={selectedContact ? [
-                    selectedContact.street,
-                    [selectedContact.postal_code, selectedContact.city].filter(Boolean).join(' '),
-                  ].filter(Boolean).join('\n') || undefined : undefined}
-                  subject={subject}
-                  body={generatedBody}
-                  font={letterFont}
-                />
+                <h3 className="text-sm font-semibold">DIN A4 Vorschau</h3>
               </div>
-
-              {/* Right: Channel + Actions */}
-              <div className="space-y-4">
-                {/* PDF Actions */}
-                <div className="space-y-2">
-                  <Label className="text-xs font-semibold">PDF</Label>
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm" className="gap-1.5 flex-1" onClick={handlePdfPreview} disabled={!generatedBody}>
-                      <Eye className="h-3.5 w-3.5" />
-                      Vorschau
-                    </Button>
-                    <Button variant="outline" size="sm" className="gap-1.5 flex-1" onClick={handlePdfDownload} disabled={!generatedBody}>
-                      <Download className="h-3.5 w-3.5" />
-                      Download
-                    </Button>
-                  </div>
-                </div>
-
-                <Separator />
-
-                {/* Channel selection */}
-                <div className="space-y-2">
-                  <Label className="text-xs font-semibold">Versandkanal</Label>
-                  <RadioGroup value={channel} onValueChange={(v) => setChannel(v as typeof channel)} className="flex gap-3">
-                    <div className="flex items-center space-x-1.5">
-                      <RadioGroupItem value="email" id="ch-email" />
-                      <Label htmlFor="ch-email" className="flex items-center gap-1 cursor-pointer text-xs">
-                        <Mail className="h-3.5 w-3.5" /> E-Mail
-                      </Label>
-                    </div>
-                    <div className="flex items-center space-x-1.5">
-                      <RadioGroupItem value="fax" id="ch-fax" />
-                      <Label htmlFor="ch-fax" className="flex items-center gap-1 cursor-pointer text-xs">
-                        <Phone className="h-3.5 w-3.5" /> SimpleFax
-                      </Label>
-                    </div>
-                    <div className="flex items-center space-x-1.5">
-                      <RadioGroupItem value="post" id="ch-post" />
-                      <Label htmlFor="ch-post" className="flex items-center gap-1 cursor-pointer text-xs">
-                        <FileOutput className="h-3.5 w-3.5" /> SimpleBrief
-                      </Label>
-                    </div>
-                  </RadioGroup>
-                </div>
-
-                {channel === 'fax' && (
-                  <div className="space-y-1">
-                    <Label className="text-xs">Faxnummer</Label>
-                    <Input placeholder="z.B. +49 30 12345678" value={faxNumber} onChange={(e) => setFaxNumber(e.target.value)} className="h-8 text-xs" />
-                  </div>
-                )}
-
-                <p className="text-[10px] text-muted-foreground">
-                  {channel === 'email' && selectedContact?.email
-                    ? `An: ${selectedContact.email}`
-                    : channel === 'email'
-                    ? 'Kontakt hat keine E-Mail-Adresse'
-                    : channel === 'fax'
-                    ? 'PDF wird per SimpleFax als Fax gesendet'
-                    : 'PDF wird per SimpleBrief als Postbrief versendet'}
-                </p>
-
-                <Separator />
-
-                {/* Action buttons */}
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" className="gap-1.5 flex-1" onClick={() => saveDraftMutation.mutate()} disabled={!generatedBody || saveDraftMutation.isPending}>
-                    {saveDraftMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-                    Speichern
-                  </Button>
-                  <Button size="sm" className="gap-1.5 flex-1" disabled={!generatedBody || isSending} onClick={handleSend}>
-                    {isSending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
-                    Senden
-                  </Button>
-                </div>
+              <div className="flex items-center gap-2">
+                <Select value={letterFont} onValueChange={(v) => setLetterFont(v as LetterFont)}>
+                  <SelectTrigger className="w-[140px] h-8 text-xs">
+                    <Type className="h-3 w-3 mr-1.5" />
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="din">D-DIN (System)</SelectItem>
+                    <SelectItem value="arial">Arial</SelectItem>
+                    <SelectItem value="calibri">Calibri</SelectItem>
+                    <SelectItem value="times">Times New Roman</SelectItem>
+                    <SelectItem value="georgia">Georgia</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button variant="outline" size="sm" className="gap-1.5" onClick={handlePdfPreview} disabled={!generatedBody}>
+                  <Eye className="h-3.5 w-3.5" />
+                  PDF
+                </Button>
+                <Button variant="outline" size="sm" className="gap-1.5" onClick={handlePdfDownload} disabled={!generatedBody}>
+                  <Download className="h-3.5 w-3.5" />
+                  Download
+                </Button>
               </div>
+            </div>
+
+            <LetterPreview
+              senderName={selectedSender?.label}
+              senderCompany={selectedSender?.type === 'BUSINESS' ? selectedSender?.company : undefined}
+              senderAddress={selectedSender?.address}
+              senderCity={(() => {
+                if (selectedSenderId === 'private') return profile?.city || undefined;
+                const ctx = contexts.find(c => c.id === selectedSenderId);
+                return ctx?.city || undefined;
+              })()}
+              senderRole={selectedSender?.sublabel !== 'Persönlicher Absender' ? selectedSender?.sublabel : undefined}
+              logoUrl={profile?.letterhead_logo_url || undefined}
+              recipientName={selectedContact ? `${selectedContact.first_name} ${selectedContact.last_name}` : undefined}
+              recipientCompany={selectedContact?.company || undefined}
+              recipientAddress={selectedContact ? [
+                selectedContact.street,
+                [selectedContact.postal_code, selectedContact.city].filter(Boolean).join(' '),
+              ].filter(Boolean).join('\n') || undefined : undefined}
+              subject={subject}
+              body={generatedBody}
+              font={letterFont}
+            />
+          </CardContent>
+        </Card>
+
+        {/* Step 6: Versand */}
+        <Card className="glass-card">
+          <CardContent className="p-5 space-y-4">
+            <Label className="flex items-center gap-2">
+              <Badge variant="outline" className="h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">6</Badge>
+              Versand
+            </Label>
+
+            {/* Channel selection */}
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold">Versandkanal</Label>
+              <RadioGroup value={channel} onValueChange={(v) => setChannel(v as typeof channel)} className="flex gap-4">
+                <div className="flex items-center space-x-1.5">
+                  <RadioGroupItem value="email" id="ch-email" />
+                  <Label htmlFor="ch-email" className="flex items-center gap-1 cursor-pointer text-sm">
+                    <Mail className="h-4 w-4" /> E-Mail
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-1.5">
+                  <RadioGroupItem value="fax" id="ch-fax" />
+                  <Label htmlFor="ch-fax" className="flex items-center gap-1 cursor-pointer text-sm">
+                    <Phone className="h-4 w-4" /> SimpleFax
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-1.5">
+                  <RadioGroupItem value="post" id="ch-post" />
+                  <Label htmlFor="ch-post" className="flex items-center gap-1 cursor-pointer text-sm">
+                    <FileOutput className="h-4 w-4" /> SimpleBrief
+                  </Label>
+                </div>
+              </RadioGroup>
+            </div>
+
+            {channel === 'fax' && (
+              <div className="space-y-1">
+                <Label className="text-xs">Faxnummer</Label>
+                <Input placeholder="z.B. +49 30 12345678" value={faxNumber} onChange={(e) => setFaxNumber(e.target.value)} />
+              </div>
+            )}
+
+            <p className="text-xs text-muted-foreground">
+              {channel === 'email' && selectedContact?.email
+                ? `An: ${selectedContact.email}`
+                : channel === 'email'
+                ? 'Kontakt hat keine E-Mail-Adresse'
+                : channel === 'fax'
+                ? 'PDF wird per SimpleFax als Fax gesendet'
+                : 'PDF wird per SimpleBrief als Postbrief versendet'}
+            </p>
+
+            {/* Action buttons */}
+            <div className="flex gap-3">
+              <Button variant="outline" className="gap-2 flex-1" onClick={() => saveDraftMutation.mutate()} disabled={!generatedBody || saveDraftMutation.isPending}>
+                {saveDraftMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                Entwurf speichern
+              </Button>
+              <Button className="gap-2 flex-1" disabled={!generatedBody || isSending} onClick={handleSend}>
+                {isSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                Jetzt senden
+              </Button>
             </div>
           </CardContent>
         </Card>
