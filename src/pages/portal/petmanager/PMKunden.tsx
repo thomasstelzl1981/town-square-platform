@@ -56,7 +56,7 @@ export default function PMKunden() {
   const [showCreate, setShowCreate] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [form, setForm] = useState<CreatePetCustomerInput>({
-    first_name: '', last_name: '', email: '', phone: '', address: '', notes: '',
+    first_name: '', last_name: '', email: '', phone: '', address: '', postal_code: '', city: '', notes: '',
   });
 
   const handleCreate = () => {
@@ -64,7 +64,7 @@ export default function PMKunden() {
     createCustomer.mutate(form, {
       onSuccess: () => {
         setShowCreate(false);
-        setForm({ first_name: '', last_name: '', email: '', phone: '', address: '', notes: '' });
+        setForm({ first_name: '', last_name: '', email: '', phone: '', address: '', postal_code: '', city: '', notes: '' });
       },
     });
   };
@@ -215,8 +215,18 @@ export default function PMKunden() {
                 </div>
               </div>
               <div>
-                <Label htmlFor="address">Adresse</Label>
+                <Label htmlFor="address">Straße & Nr.</Label>
                 <Input id="address" value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label htmlFor="postal_code">PLZ</Label>
+                  <Input id="postal_code" value={form.postal_code} onChange={e => setForm(f => ({ ...f, postal_code: e.target.value }))} />
+                </div>
+                <div>
+                  <Label htmlFor="city">Ort</Label>
+                  <Input id="city" value={form.city} onChange={e => setForm(f => ({ ...f, city: e.target.value }))} />
+                </div>
               </div>
               <div>
                 <Label htmlFor="notes">Notizen</Label>
@@ -237,15 +247,16 @@ export default function PMKunden() {
 }
 
 /** Inline dossier for an expanded customer */
-function CustomerDossier({ customer }: { customer: { id: string; address: string | null; notes: string | null; source: string } }) {
+function CustomerDossier({ customer }: { customer: { id: string; address: string | null; postal_code?: string | null; city?: string | null; notes: string | null; source: string } }) {
   const { data: pets = [], isLoading } = usePetsForCustomer(customer.id);
 
   return (
     <div className="mt-4 border-t pt-3 space-y-3">
       {/* Address & Notes */}
-      {customer.address && (
+      {(customer.address || customer.postal_code || customer.city) && (
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <MapPin className="h-3 w-3 shrink-0" /> {customer.address}
+          <MapPin className="h-3 w-3 shrink-0" />
+          {[customer.address, [customer.postal_code, customer.city].filter(Boolean).join(' ')].filter(Boolean).join(', ')}
         </div>
       )}
       {customer.notes && (
