@@ -1,79 +1,138 @@
 
 
-## Fix: Datenisolierung MOD-05 vs. MOD-22 + PM Demo-Toggle
+## MOD-22 Pet Manager: Profil-Tab + Akten-Systematik + Modul-Kreislauf-Definition
 
-### Problem
+### Ist-Zustand: Was existiert bereits?
 
-1. `usePets()` laedt alle Pets des Tenants ohne Filter — MOD-22 Business-Tiere (Rocky, Mia, Oskar) erscheinen in "Meine Tiere" (MOD-05)
-2. `PMKunden.tsx` nutzt `isDemoId()`-Checks fuer Tier-Abfragen, obwohl die Daten jetzt in der DB liegen
-3. Kein separater Demo-Toggle fuer Pet Manager (MOD-22) in Zone 1
+**Vorhandene "Akten" im Haustier-Kreislauf:**
 
-### Schritt 1: `usePets()` Filter — Datenisolierung
+| Akte | Wo? | Status | Datenquelle |
+|------|-----|--------|-------------|
+| Tier-Akte (persoenlich) | MOD-05 /portal/pets/:petId | Vorhanden | `pets` (owner_user_id) |
+| Tier-Akte (Business) | MOD-22 /portal/petmanager/kunden | Inline in Kunden-Ansicht | `pets` (customer_id) |
+| Mitarbeiter-Akte | MOD-22 /portal/petmanager/mitarbeiter | Vorhanden (Vertikales Widget) | `pet_staff` |
+| Kunden-Akte | MOD-22 /portal/petmanager/kunden | Vorhanden (Liste + Inline) | `pet_customers` |
+| **Provider-Profil (Werbeprofil)** | **FEHLT** | Nicht vorhanden | `pet_providers` (Felder vorhanden!) |
 
-**Datei:** `src/hooks/usePets.ts`
+**Preise:** Bereits in `pet_services` definiert (PMLeistungen.tsx). Price_cents, price_type (fixed/hourly/daily/per_session/on_request) sind vollstaendig modelliert. Diese koennen im Profil-Tab uebernommen (read-only Anzeige) werden.
 
-Die Funktion `usePets()` wird angepasst, sodass sie nur Tiere mit `owner_user_id = user.id` zurueckgibt. Das sind die persoenlichen MOD-05 Tiere des eingeloggten Users.
+**DB-Felder in `pet_providers` bereits vorhanden:**
+- `company_name`, `bio`, `cover_image_url`, `gallery_images[]`
+- `address`, `phone`, `email`
+- `operating_hours` (JSONB), `facility_type`
+- `service_area_postal_codes[]`, `rating_avg`
 
-```text
-Vorher:  .eq('tenant_id', activeTenantId)
-Nachher: .eq('tenant_id', activeTenantId).eq('owner_user_id', user.id)
-```
+---
 
-Damit verschwinden Rocky, Mia, Oskar aus "Meine Tiere" — sie haben `owner_user_id = NULL`.
-
-### Schritt 2: `PMKunden.tsx` — isDemoId-Check entfernen
-
-**Datei:** `src/pages/portal/petmanager/PMKunden.tsx`
-
-Die Funktion `usePetsForCustomer()` (Zeile 32-51) hat einen `isDemoId()`-Branch, der Demo-Tiere aus dem clientseitigen Array liest. Da die Daten jetzt in der DB sind, wird dieser Check entfernt — alle Abfragen gehen direkt an die DB.
-
-```text
-Vorher:
-  if (isDemoId(customerId)) {
-    return DEMO_PM_PETS.filter(...)
-  }
-
-Nachher:
-  // Direkt DB-Query, kein isDemoId-Check
-  const { data } = await supabase.from('pets').select(...).eq('customer_id', customerId);
-```
-
-Ebenso werden die nicht mehr benoetigten Imports (`isDemoId`, `DEMO_PM_PETS`, `DEMO_PM_BOOKINGS`) entfernt.
-
-### Schritt 3: PM Demo-Toggle in Zone 1
-
-**Datei:** `src/engines/demoData/goldenPathProcesses.ts` (oder wo GOLDEN_PATH_PROCESSES definiert ist)
-
-Neuer Eintrag fuer den Pet Manager Demo-Toggle:
+### Kompletter Kreislauf "Modulwelt Haustiere"
 
 ```text
-{ id: 'GP-PET', label: 'Pet Manager Demo', module: 'MOD-22' }
+ZONE 3 — Lennox & Friends Website (/website/tierservice)
+  Startseite, Partner-Profil, Shop, Partner werden, Login, Mein Bereich
+       |                    ^
+       v                    | (Profil-Daten fliessen hierher)
+ZONE 1 — Pet Desk (/admin/pet-desk)
+  Governance | Vorgaenge | Kunden | Shop | Billing
+       |
+       v
+ZONE 2 — Pet Manager MOD-22 (/portal/petmanager)
+  Dashboard | Profil [NEU] | Pension | Services | Mitarbeiter | Kunden | Finanzen
+       |
+ZONE 2 — Pets MOD-05 (/portal/pets) [Client-Modul]
+  Meine Tiere | Caring | Shop | Mein Bereich
 ```
 
-**Datei:** `src/pages/admin/petmanager/PetDeskGovernance.tsx` (oder PetDesk-Hauptseite)
+---
 
-Ein Toggle-Switch im PetDesk-Header oder Governance-Tab, der `useDemoToggles().toggle('GP-PET')` aufruft. Wenn deaktiviert, werden die Demo-Datensaetze (Nummernkreis `d0...1xxx`) in den PM-Ansichten herausgefiltert.
+### Was wird gebaut?
 
-### Schritt 4: Demo-Toggle in Zone 2 PM-Seiten anwenden
+**1. Neuer Tile "Profil" in MOD-22**
 
-**Dateien:** `PMKunden.tsx`, `PMBuchungen.tsx`, `PMPension.tsx`, `PMServices.tsx`
+Route: `/portal/petmanager/profil`
+Komponente: `PMProfil.tsx`
 
-Jede Seite konsumiert `useDemoToggles().isEnabled('GP-PET')`. Wenn deaktiviert, werden Datensaetze mit Demo-IDs (`d0...1xxx`) aus der Anzeige gefiltert — genau wie es `PetsMeineTiere.tsx` bereits fuer `GP-PETS` macht (Zeile 397).
+Aufbau (vertikal, scrollbar):
 
-### Dateien-Uebersicht
+1. **Bilder-Sektion**
+   - Cover-Bild (Drag-and-Drop Upload)
+   - Galerie-Bilder (bis zu 6 Bilder, Drag-and-Drop)
+   - Quelle: `pet_providers.cover_image_url` + `pet_providers.gallery_images`
 
-| Datei | Aktion | Beschreibung |
-|-------|--------|-------------|
-| `src/hooks/usePets.ts` | EDIT | Filter `.eq('owner_user_id', user.id)` hinzufuegen |
-| `src/pages/portal/petmanager/PMKunden.tsx` | EDIT | isDemoId-Check entfernen, Imports aufraeumen |
-| `src/manifests/goldenPathProcesses.ts` | EDIT | GP-PET Toggle-Eintrag hinzufuegen (falls nicht vorhanden) |
-| `src/pages/admin/petmanager/PetDeskGovernance.tsx` | EDIT | Demo-Toggle-Switch fuer GP-PET einfuegen |
-| `src/pages/portal/petmanager/PMBuchungen.tsx` | EDIT | GP-PET Demo-Filter anwenden |
+2. **Beschreibung**
+   - Firmenname, Bio/Beschreibungstext, Facility-Typ
+   - Quelle: `pet_providers.company_name`, `bio`, `facility_type`
 
-### Ergebnis nach Umsetzung
+3. **Kontakt / Ansprechpartner**
+   - Adresse, Telefon, E-Mail, Oeffnungszeiten
+   - Quelle: `pet_providers.address`, `phone`, `email`, `operating_hours`
 
-- "Meine Tiere" (MOD-05) zeigt nur Luna + Bello (persoenliche Tiere)
-- PM Kunden zeigt Berger, Richter, Stein mit Tierakten aus DB
-- Demo-Toggle in Zone 1 PetDesk steuert Sichtbarkeit der PM-Demo-Daten
-- Saubere Trennung: MOD-05 = `owner_user_id`, MOD-22 = `customer_id`
+4. **Angebotene Services** (Read-Only Referenz)
+   - Auflistung der aktiven Services aus `pet_services`
+   - Hinweis: "Services werden unter Leistungen verwaltet"
+   - Keine Doppelpflege — Preise kommen aus PMLeistungen
+
+5. **Preise** (Read-Only Uebersicht)
+   - Automatische Uebernahme aus `pet_services` (price_cents + price_type)
+   - Keine separate Preispflege hier, da bereits in PMLeistungen definiert
+
+6. **Vorschau-Button**
+   - Link zum oeffentlichen Profil auf Zone 3: `/website/tierservice/partner/{provider_id}`
+
+**2. Manifest-Update**
+
+In `routesManifest.ts` wird der Tile "Profil" als zweiter Eintrag nach Dashboard eingefuegt:
+
+```text
+tiles: [
+  { path: "dashboard", ..., default: true },
+  { path: "profil", component: "PMProfil", title: "Profil" },   // NEU
+  { path: "pension", ... },
+  { path: "services", ... },
+  ...
+]
+```
+
+**3. PetManagerPage.tsx Router-Update**
+
+Neue lazy Route fuer `PMProfil` hinzufuegen.
+
+**4. GP-PET Golden Path Update**
+
+Die Provider-Profil-Akte wird als Phase in den Golden Path aufgenommen:
+- `profile_complete`: Pruefen ob `bio`, `cover_image_url` und mindestens 1 aktiver Service vorhanden
+
+---
+
+### Akten-Uebersicht (Konsolidiert)
+
+Nach Umsetzung hat die Modulwelt Haustiere folgende Akten:
+
+| # | Akte | Zone | Route | Datentabelle |
+|---|------|------|-------|-------------|
+| 1 | Provider-Profil | Z2 (MOD-22) | /portal/petmanager/profil | `pet_providers` |
+| 2 | Kunden-Akte | Z2 (MOD-22) | /portal/petmanager/kunden | `pet_customers` + `pets` |
+| 3 | Mitarbeiter-Akte | Z2 (MOD-22) | /portal/petmanager/mitarbeiter | `pet_staff` + `pet_staff_vacations` |
+| 4 | Tier-Akte (Business) | Z2 (MOD-22) | Inline in Kunden-Akte | `pets` (via customer_id) |
+| 5 | Tier-Akte (Persoenlich) | Z2 (MOD-05) | /portal/pets/:petId | `pets` (via owner_user_id) |
+| 6 | Z1-Kundenprofil | Z1 | /admin/pet-desk/kunden | `pet_z1_customers` |
+
+---
+
+### Technische Dateien
+
+| Datei | Aktion |
+|-------|--------|
+| `src/pages/portal/petmanager/PMProfil.tsx` | NEU — Provider-Profilseite |
+| `src/pages/portal/PetManagerPage.tsx` | EDIT — Lazy-Import + Route fuer PMProfil |
+| `src/manifests/routesManifest.ts` | EDIT — Tile "profil" in MOD-22 einfuegen |
+| `src/manifests/goldenPaths/GP_PET.ts` | EDIT — Phase "profile_complete" hinzufuegen |
+
+### Abgrenzung zum bestehenden Portal
+
+MOD-22 ist ein eigenstaendiger Franchise-Kreislauf — vergleichbar mit MOD-12 (Akquisemanager) oder MOD-11 (Finanzierungsmanager). Die Datenisolierung erfolgt ueber:
+- `pet_providers.user_id` (Provider-Zuordnung)
+- `pet_customers.provider_id` (Kunden gehoeren zum Provider)
+- MOD-05 nutzt `owner_user_id` — komplett getrennt
+
+Der Kreislauf ist: **Z3 Lead -> Z1 Governance -> Z2 Provider-Betrieb** (und parallel Z2 MOD-05 fuer Endkunden).
 
