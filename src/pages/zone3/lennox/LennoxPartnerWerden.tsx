@@ -4,6 +4,7 @@
  */
 import { useState } from 'react';
 import { ArrowLeft, Handshake, CheckCircle, MapPin, Briefcase, Heart } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -46,11 +47,30 @@ export default function LennoxPartnerWerden() {
       return;
     }
     setLoading(true);
-    // TODO: Insert into pet_z1_customers with source: 'partner_application' via edge function
-    await new Promise(r => setTimeout(r, 800));
-    setLoading(false);
-    setSubmitted(true);
-    toast.success('Bewerbung erfolgreich eingereicht!');
+    try {
+      // Split name into first/last
+      const nameParts = parsed.data.name.trim().split(/\s+/);
+      const firstName = nameParts[0] || '';
+      const lastName = nameParts.slice(1).join(' ') || '';
+
+      const { error } = await supabase.from('pet_z1_customers').insert({
+        tenant_id: 'a0000000-0000-4000-a000-000000000001',
+        first_name: firstName,
+        last_name: lastName || firstName,
+        email: parsed.data.email,
+        address: parsed.data.region,
+        notes: [parsed.data.serviceType, parsed.data.message].filter(Boolean).join(' — '),
+        source: 'partner_application',
+        status: 'new',
+      });
+      if (error) throw error;
+      setSubmitted(true);
+      toast.success('Bewerbung erfolgreich eingereicht!');
+    } catch (err: any) {
+      toast.error('Fehler beim Senden: ' + (err.message || 'Unbekannt'));
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (submitted) {

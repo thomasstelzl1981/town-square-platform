@@ -30,10 +30,18 @@ export const ID_PM_BOOKING_3 = 'd0000000-0000-4000-a000-000000001022';
 export const ID_PM_BOOKING_4 = 'd0000000-0000-4000-a000-000000001023';
 export const ID_PM_BOOKING_5 = 'd0000000-0000-4000-a000-000000001024';
 
-// Staff (Demo-Mitarbeiter für Service-Termine)
-const STAFF_ANNA  = 'd0000000-0000-4000-a000-000000001030';
-const STAFF_MAX_K = 'd0000000-0000-4000-a000-000000001031';
-const STAFF_LISA  = 'd0000000-0000-4000-a000-000000001032';
+// Staff (echte DB-IDs aus pet_staff)
+const STAFF_ANNA  = '935e7dd4-3d93-4170-9022-0b0148c90811';
+const STAFF_MAX_K = 'c198ffb0-1b16-4cfa-b582-a86fa0fbf097';
+const STAFF_LISA  = '847b65f8-6f2e-432c-8d3e-cf54a97e4707';
+
+// Z1-Customer-IDs (Lead-Pool)
+export const ID_PM_Z1_CUSTOMER_RICHTER = 'd0000000-0000-4000-a000-000000001040';
+export const ID_PM_Z1_CUSTOMER_STEIN   = 'd0000000-0000-4000-a000-000000001041';
+
+// Z1-Pet-IDs
+export const ID_PM_Z1_PET_MIA   = 'd0000000-0000-4000-a000-000000001051';
+export const ID_PM_Z1_PET_OSKAR = 'd0000000-0000-4000-a000-000000001052';
 
 // ─── KUNDEN ────────────────────────────────────────────────
 
@@ -229,12 +237,16 @@ export const DEMO_PM_BOOKINGS: readonly DemoPMBooking[] = [
 // ─── ALLE PM-DEMO-IDs (für ALL_DEMO_IDS) ──────────────────
 
 export const ALL_PM_DEMO_IDS: readonly string[] = [
-  // Kunden
+  // Kunden (Z2)
   ID_PM_CUSTOMER_BERGER, ID_PM_CUSTOMER_RICHTER, ID_PM_CUSTOMER_STEIN,
-  // Hunde
+  // Kunden (Z1)
+  ID_PM_Z1_CUSTOMER_RICHTER, ID_PM_Z1_CUSTOMER_STEIN,
+  // Hunde (Z2)
   ID_PM_PET_ROCKY, ID_PM_PET_MIA, ID_PM_PET_OSKAR,
+  // Hunde (Z1)
+  ID_PM_Z1_PET_MIA, ID_PM_Z1_PET_OSKAR,
   // Buchungen
   ID_PM_BOOKING_1, ID_PM_BOOKING_2, ID_PM_BOOKING_3, ID_PM_BOOKING_4, ID_PM_BOOKING_5,
-  // Staff
+  // Staff (echte DB-IDs)
   STAFF_ANNA, STAFF_MAX_K, STAFF_LISA,
 ] as const;
