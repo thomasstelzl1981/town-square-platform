@@ -3,12 +3,14 @@
  *
  * Unterscheidet drei Sources: manual, lead, mod05.
  * Eigenkunden werden direkt angelegt, Lead/MOD-05 werden ueber Z1 zugewiesen.
+ * Im Demo-Modus werden hardcoded Demo-Kunden aus dem Demo-Container geliefert.
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useMyProvider } from '@/hooks/usePetBookings';
 import { toast } from 'sonner';
+import { DEMO_PM_CUSTOMERS } from '@/engines/demoData';
 
 export interface PetCustomer {
   id: string;
@@ -38,6 +40,28 @@ export interface CreatePetCustomerInput {
   notes?: string;
 }
 
+/** Wandelt Demo-Daten in das PetCustomer-Format */
+function mapDemoCustomers(): PetCustomer[] {
+  return DEMO_PM_CUSTOMERS.map(c => ({
+    id: c.id,
+    tenant_id: c.tenantId,
+    provider_id: c.providerId,
+    z1_customer_id: c.z1CustomerId || null,
+    user_id: c.userId || null,
+    first_name: c.firstName,
+    last_name: c.lastName,
+    email: c.email || null,
+    phone: c.phone || null,
+    address: c.address || null,
+    notes: c.notes || null,
+    source: c.source,
+    origin_zone: c.originZone,
+    status: c.status,
+    created_at: c.createdAt,
+    updated_at: c.createdAt,
+  }));
+}
+
 export function usePetCustomers() {
   const { data: provider } = useMyProvider();
   const queryClient = useQueryClient();
@@ -45,16 +69,18 @@ export function usePetCustomers() {
   const customersQuery = useQuery({
     queryKey: ['pet_customers', provider?.id],
     queryFn: async () => {
-      if (!provider) return [];
+      if (!provider) return mapDemoCustomers();
       const { data, error } = await supabase
         .from('pet_customers')
         .select('*')
         .eq('provider_id', provider.id)
         .order('created_at', { ascending: false });
       if (error) throw error;
-      return (data || []) as PetCustomer[];
+      const dbCustomers = (data || []) as PetCustomer[];
+      // Wenn keine DB-Kunden vorhanden, Demo-Daten zeigen
+      return dbCustomers.length > 0 ? dbCustomers : mapDemoCustomers();
     },
-    enabled: !!provider,
+    enabled: true,
   });
 
   const createCustomer = useMutation({

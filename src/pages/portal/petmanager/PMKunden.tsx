@@ -20,6 +20,8 @@ import { usePetCustomers, type CreatePetCustomerInput } from '@/hooks/usePetCust
 import { useBookings } from '@/hooks/usePetBookings';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { isDemoId } from '@/engines/demoData';
+import { DEMO_PM_PETS, DEMO_PM_BOOKINGS } from '@/engines/demoData';
 
 const SOURCE_LABELS: Record<string, { label: string; variant: 'default' | 'secondary' | 'outline' }> = {
   manual: { label: 'Eigenkunde', variant: 'secondary' },
@@ -32,6 +34,12 @@ function usePetsForCustomer(customerId: string | null) {
     queryKey: ['pets_for_customer', customerId],
     queryFn: async () => {
       if (!customerId) return [];
+      // Demo-Kunden: Tiere aus hardcoded Demo-Daten
+      if (isDemoId(customerId)) {
+        return DEMO_PM_PETS
+          .filter(p => p.customerId === customerId)
+          .map(p => ({ id: p.id, name: p.name, species: p.species, breed: p.breed, birth_date: p.birthDate }));
+      }
       const { data } = await supabase
         .from('pets')
         .select('id, name, species, breed, birth_date')
@@ -61,30 +69,20 @@ export default function PMKunden() {
     });
   };
 
-  // Count bookings per customer (by matching client_user_id or customer pets)
+  // Count bookings per customer
   const getBookingCount = (customerId: string) => {
-    // For now, count by direct pet_customers association
+    // Demo-Kunden: Buchungen aus hardcoded Demo-Daten
+    if (isDemoId(customerId)) {
+      return DEMO_PM_BOOKINGS.filter(b => b.customerId === customerId).length;
+    }
     return bookings.filter(b => {
       const customer = customers.find(c => c.id === customerId);
       return customer?.user_id && b.client_user_id === customer.user_id;
     }).length;
   };
 
-  if (!provider) {
-    return (
-      <PageShell>
-        <div className="space-y-6">
-          <div className="flex items-center gap-3">
-            <Users className="h-6 w-6 text-primary" />
-            <h1 className="text-2xl font-bold text-foreground">Kunden & Tiere</h1>
-          </div>
-          <div className="rounded-lg border border-dashed border-muted-foreground/30 p-12 text-center">
-            <p className="text-muted-foreground">Kein Provider-Profil gefunden.</p>
-          </div>
-        </div>
-      </PageShell>
-    );
-  }
+  // Provider-Check nur für Anlage-Button (Demo-Daten zeigen wir immer)
+  const canCreate = !!provider;
 
   return (
     <PageShell>
@@ -97,13 +95,15 @@ export default function PMKunden() {
           </div>
           <div className="flex items-center gap-2">
             <Badge variant="outline" className="text-xs">{customers.length} Kunden</Badge>
-            <Button
-              size="sm"
-              className="rounded-full h-8 w-8 p-0"
-              onClick={() => setShowCreate(true)}
-            >
-              <Plus className="h-4 w-4" />
-            </Button>
+            {canCreate && (
+              <Button
+                size="sm"
+                className="rounded-full h-8 w-8 p-0"
+                onClick={() => setShowCreate(true)}
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            )}
           </div>
         </div>
 

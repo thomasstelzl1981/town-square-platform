@@ -159,6 +159,59 @@ export interface DemoMietyContract {
   readonly startDate: string;
 }
 
+/** Demo-PM-Kunde (Pet Manager Kundenverwaltung) */
+export interface DemoPMCustomer {
+  readonly id: string;
+  readonly tenantId: string;
+  readonly providerId: string;
+  readonly firstName: string;
+  readonly lastName: string;
+  readonly email?: string;
+  readonly phone?: string;
+  readonly address?: string;
+  readonly notes?: string;
+  readonly source: 'manual' | 'lead' | 'mod05';
+  readonly originZone: 'Z2' | 'Z3' | 'Z2-MOD05';
+  readonly z1CustomerId?: string;
+  readonly userId?: string;
+  readonly status: 'active' | 'inactive' | 'archived';
+  readonly createdAt: string;
+}
+
+/** Demo-PM-Tier (Pet Manager) */
+export interface DemoPMPet {
+  readonly id: string;
+  readonly customerId: string;
+  readonly name: string;
+  readonly species: string;
+  readonly breed: string;
+  readonly birthDate: string;
+  readonly gender: 'männlich' | 'weiblich';
+  readonly weight: number;
+  readonly color: string;
+  readonly chipNumber?: string;
+  readonly notes?: string;
+}
+
+/** Demo-PM-Buchung (Pet Manager) */
+export interface DemoPMBooking {
+  readonly id: string;
+  readonly customerId: string;
+  readonly petId: string;
+  readonly providerId: string;
+  readonly bookingType: 'pension' | 'service';
+  readonly serviceName: string;
+  readonly startDate: string;
+  readonly endDate: string | null;
+  readonly startTime: string | null;
+  readonly durationMinutes: number | null;
+  readonly staffName: string | null;
+  readonly staffId: string | null;
+  readonly status: 'confirmed' | 'completed' | 'cancelled';
+  readonly totalPrice: number;
+  readonly notes: string | null;
+}
+
 /** Gesamtstruktur aller Demo-Daten */
 export interface DemoDataSpec {
   readonly personas: readonly DemoPersona[];
@@ -173,4 +226,7 @@ export interface DemoDataSpec {
   readonly selbstauskunft: DemoSelbstauskunft;
   readonly mietyHome: DemoMietyHome;
   readonly mietyContracts: readonly DemoMietyContract[];
+  readonly pmCustomers: readonly DemoPMCustomer[];
+  readonly pmPets: readonly DemoPMPet[];
+  readonly pmBookings: readonly DemoPMBooking[];
 }
