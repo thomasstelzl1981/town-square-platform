@@ -1,72 +1,63 @@
 
+## Service-Kalender Umbau: Individuelle 30-Minuten-Slot-Zeilen pro Mitarbeiter
 
-## Kalender-Verbesserungen + Buchungs-Workflow fuer Pension
-
-### 1. Sticky Zimmer-Spalte + breitere Spalten
-
-Die Zimmer-Spalte ist bereits `sticky left-0` im Code, aber die Spaltenbreiten sind zu schmal. Aenderungen:
-- Zimmer-Spalte: `minWidth` von 180px auf **200px** erhoehen
-- Datumsspalten: `minWidth` von 72px auf **100px** erhoehen
-- Zellenhoehe von 28px auf **32px** erhoehen
-
-### 2. Halbtags-Darstellung (Anreise/Abreise)
-
-Jede Datumszelle wird vertikal in **zwei Haelften** geteilt (obere Haelfte = Vormittag/Anreise, untere Haelfte = Nachmittag/Abreise). So kann an einem Tag sowohl ein Tier abreisen (obere Haelfte frei) als auch ein neues ankommen (untere Haelfte belegt) -- doppelte Buchung am selben Tag wird moeglich.
+### Skizze der neuen Seite
 
 ```text
-┌──────────┐
-│  AM/Abr. │  <- Check-out Tier A (halber Tag)
-├──────────┤
-│  PM/Anr. │  <- Check-in Tier B (halber Tag)
-└──────────┘
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│  Services - Terminkalender und Dienstleistungen          [👤 Mitarbeiter] [+]  │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                 │
+│  ◀  01. Mar – 30. Mai 2026  ▶  [Heute]                                        │
+│                                                                                 │
+│  ┌────────────────┬──────────┬──────────┬──────────┬──────────┬─────── ...      │
+│  │ Mitarbeiter    │ Mo 01.03 │ Di 02.03 │ Mi 03.03 │ Do 04.03 │                │
+│  ├────────────────┼──────────┼──────────┼──────────┼──────────┼─────── ...      │
+│  │ ▼ Anna Meier   │          │          │          │ URLAUB   │                │
+│  │   08:00        │          │ ████████ │          │ ░░░░░░░░ │                │
+│  │   08:30        │          │ ████████ │          │ ░░░░░░░░ │                │
+│  │   09:00        │ ████████ │          │          │ ░░░░░░░░ │                │
+│  │   09:30        │ ████████ │          │          │ ░░░░░░░░ │                │
+│  │   10:00        │          │          │ ████████ │ ░░░░░░░░ │                │
+│  │   10:30        │          │          │ ████████ │ ░░░░░░░░ │                │
+│  │   ...          │          │          │          │ ░░░░░░░░ │                │
+│  │   16:00        │          │          │          │ ░░░░░░░░ │                │
+│  ├────────────────┼──────────┼──────────┼──────────┼──────────┤                │
+│  │ ▼ Tom Schmidt  │          │          │  Frei    │          │                │
+│  │   09:00        │ ████████ │          │ ░░░░░░░░ │          │                │
+│  │   09:30        │          │          │ ░░░░░░░░ │          │                │
+│  │   10:00        │          │ ████████ │ ░░░░░░░░ │ ████████ │                │
+│  │   ...          │          │          │ ░░░░░░░░ │          │                │
+│  │   13:00        │          │          │ ░░░░░░░░ │          │                │
+│  └────────────────┴──────────┴──────────┴──────────┴──────────┘                │
+│                                                                                 │
+│  Legende: ████ = gebucht   ░░░░ = frei/Urlaub (ausgegraut)                    │
+└─────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### 3. Header-Buttons aendern
+**Erklaerung:** Jeder Mitarbeiter wird als Gruppe dargestellt. Die erste Zeile zeigt den Namen (klappbar), darunter folgen die individuellen 30-Minuten-Slots basierend auf seinen Arbeitszeiten. Anna arbeitet z.B. 08:00-16:30 = 17 Zeilen. Tom arbeitet 09:00-13:30 = 9 Zeilen. An freien Tagen und Urlaubstagen ist die gesamte Spalte grau.
 
-- **Haus-Icon** (Home) statt Plus-Icon fuer "Neues Zimmer anlegen"
-- **Zweiter Button** mit Plus-Icon fuer "Neue Buchung anlegen"
-- Beide als `variant="glass" size="icon-round"` gemaess Standard
+Gebuchte Slots zeigen einen farbigen Balken mit Hundename/Service. Klick auf leeren Slot oeffnet den Buchungs-Dialog vorausgefuellt mit Mitarbeiter, Datum und Uhrzeit.
 
-### 4. Buchungs-Dialog
+### Implementierungsplan
 
-Ein neuer Inline-Dialog / Overlay (wie die Zimmerakte) zum Anlegen einer Pension-Buchung:
-- **Felder:** Hund (Auswahl aus bestehenden Hunden/Kunden), Zimmer, Anreise-Datum, Abreise-Datum, Notizen
-- Beim Speichern: `pet_bookings` INSERT mit `booking_area = 'pension'` + `pet_room_assignments` INSERT mit `room_id`, `check_in_at`, `check_out_at`
-- Die Buchung erscheint dann automatisch im Kalender als farbiger Balken mit Hundename
+**Datei: `src/pages/portal/petmanager/PMServices.tsx`** (kompletter Umbau der Tabelle)
 
-### 5. Kalender-Zellen zeigen Buchungen
+1. **Zeilen-Struktur aendern**: Statt einer Zeile pro Mitarbeiter wird jeder Mitarbeiter zu einer Gruppe mit:
+   - Header-Zeile: Mitarbeitername (sticky left, klappbar via State)
+   - Sub-Zeilen: Eine Zeile pro 30-Min-Slot (z.B. 08:00, 08:30, 09:00...)
+   - Slot-Zeilen werden aus `work_hours` des Mitarbeiters berechnet via `generateSlots()`
 
-Statt nur "marked dots" werden echte Buchungen angezeigt:
-- Farbiger Hintergrund-Balken ueber den Buchungszeitraum
-- Hundename als Text in der Zelle
-- Klick auf belegte Zelle oeffnet die Buchung zur Bearbeitung (gleicher Dialog wie Anlage, vorausgefuellt)
-- Halbtags-Logik: Anreisetag zeigt nur untere Haelfte belegt, Abreisetag nur obere Haelfte
+2. **Zellen-Logik pro Slot-Zeile + Tag**:
+   - Arbeitstag mit Work-Hours: Slot ist verfuegbar (weiss/klickbar) oder gebucht (farbig)
+   - Freier Tag (kein work_hours-Eintrag): Zelle grau mit "Frei"
+   - Urlaubstag: Zelle grau mit "Urlaub"
+   - Gebuchte Zelle: Farbiger Hintergrund + Hundename/Service-Text
 
-### 6. Datenmodell-Erweiterung
+3. **Zeilenhoehe anpassen**: `CELL_HEIGHT` von 80px auf **28px** (kompakte Slot-Zeilen)
 
-`pet_room_assignments` hat bereits `check_in_at` und `check_out_at` -- diese werden fuer die Kalender-Darstellung genutzt. Keine Schema-Aenderung noetig. Die Buchungsdaten kommen aus dem JOIN von `pet_room_assignments` mit `pets` (Hundename).
+4. **Buchungs-Dialog**: Beim Klick auf leere Zelle wird der Dialog mit Mitarbeiter, Datum und Uhrzeit vorausgefuellt geoeffnet. Bestehende Buchung -> Dialog zeigt vorhandene Daten.
 
-Der bestehende `useRoomAssignments` Hook muss erweitert werden, um auch zukuenftige Buchungen zu laden (aktuell filtert er `check_out_at IS NULL`). Neuer Hook `usePensionCalendarData` laedt alle Assignments in einem Datumsbereich.
+5. **Kollabierbar**: Jeder Mitarbeiter-Block kann ein-/ausgeklappt werden, damit die Tabelle bei vielen Mitarbeitern uebersichtlich bleibt.
 
-### Technische Umsetzung
-
-| Datei | Aenderung |
-|-------|-----------|
-| `PMPension.tsx` | Spaltenbreiten erhoehen, Halbtags-Zellen, Header-Buttons (Haus + Plus), Buchungs-Overlay, Klick-auf-Buchung |
-| `usePetRooms.ts` | Neuer Hook `usePensionCalendarAssignments(providerId, startDate, endDate)` ohne `check_out_at IS NULL` Filter |
-| Kein DB-Migration noetig | Bestehendes Schema reicht aus |
-
-### Ablauf einer Buchung
-
-```text
-[+] Button klicken
-    -> Buchungs-Overlay oeffnet sich
-    -> Hund auswaehlen (aus pets-Tabelle)
-    -> Zimmer auswaehlen
-    -> Anreise + Abreise Datum
-    -> Speichern
-        -> INSERT pet_bookings (booking_area='pension')
-        -> INSERT pet_room_assignments (room_id, pet_id, booking_id, check_in_at, check_out_at)
-    -> Kalender zeigt Balken mit Hundename
-    -> Klick auf Balken -> Overlay mit Daten vorausgefuellt -> Bearbeiten/Loeschen
-```
+Keine Datenbank-Aenderungen noetig -- die bestehenden Hooks und Tabellen reichen aus.
