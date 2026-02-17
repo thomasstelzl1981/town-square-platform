@@ -1,13 +1,12 @@
 /* =============================================================================
    ZONE 3 — WEBSITE THEMES (Light Mode)
-   Version: 2.0.0 — Phase 3 Update (Sky Theme)
+   Version: 3.0.0 — Aurora Update
    ============================================================================= */
 
 /* ===========================================================================
    KAUFY THEME — Dezenter Himmelblau-Touch
    =========================================================================== */
 .theme-kaufy {
-  /* Sky-inspired subtle tones */
   --z3-background: 210 40% 99%;
   --z3-foreground: 220 20% 10%;
   --z3-card: 0 0% 100%;
@@ -28,7 +27,7 @@
    SYSTEM OF A TOWN THEME — SpaceX-Inspired Dark-First
    =========================================================================== */
 
-/* Default: Light Mode (for toggle) - applied to html or container */
+/* Light Mode */
 .theme-sot,
 :root[data-sot-theme="light"],
 html.theme-sot {
@@ -46,29 +45,71 @@ html.theme-sot {
   --z3-accent-foreground: 0 0% 100%;
   --z3-border: 214 32% 91%;
   --z3-input: 214 32% 91%;
+
+  /* === Bridge: map z3 → standard shadcn variables === */
+  --background: 210 40% 98%;
+  --foreground: 222 47% 11%;
+  --card: 0 0% 100%;
+  --card-foreground: 222 47% 11%;
+  --primary: 217 91% 60%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 210 40% 96%;
+  --secondary-foreground: 222 47% 11%;
+  --muted: 210 40% 96%;
+  --muted-foreground: 215 16% 47%;
+  --accent: 217 91% 60%;
+  --accent-foreground: 0 0% 100%;
+  --border: 214 32% 91%;
+  --input: 214 32% 91%;
+  --ring: 217 91% 60%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 222 47% 11%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
 }
 
-/* Dark Mode — Primary Experience (SpaceX-Inspired) */
+/* Dark Mode — Primary Experience (Aurora-Enhanced) */
 .theme-sot-dark,
 .theme-sot.dark,
 :root[data-sot-theme="dark"],
 html.theme-sot-dark {
-  --z3-background: 222 47% 6%;
+  --z3-background: 222 40% 8%;
   --z3-foreground: 210 40% 98%;
-  --z3-card: 222 30% 10%;
+  --z3-card: 222 25% 12%;
   --z3-card-foreground: 210 40% 98%;
   --z3-primary: 217 91% 60%;
   --z3-primary-foreground: 222 47% 6%;
   --z3-secondary: 222 30% 14%;
   --z3-secondary-foreground: 210 40% 98%;
-  --z3-muted: 222 25% 16%;
+  --z3-muted: 222 20% 18%;
   --z3-muted-foreground: 215 20% 65%;
   --z3-accent: 217 91% 60%;
   --z3-accent-secondary: 275 45% 50%;
   --z3-accent-foreground: 0 0% 100%;
-  --z3-border: 222 20% 18%;
-  --z3-input: 222 20% 18%;
+  --z3-border: 222 20% 20%;
+  --z3-input: 222 20% 20%;
   --z3-glow: 217 91% 60%;
+
+  /* === Bridge: map z3 → standard shadcn variables === */
+  --background: 222 40% 8%;
+  --foreground: 210 40% 98%;
+  --card: 222 25% 12%;
+  --card-foreground: 210 40% 98%;
+  --primary: 217 91% 60%;
+  --primary-foreground: 222 47% 6%;
+  --secondary: 222 30% 14%;
+  --secondary-foreground: 210 40% 98%;
+  --muted: 222 20% 18%;
+  --muted-foreground: 215 20% 65%;
+  --accent: 217 91% 60%;
+  --accent-foreground: 0 0% 100%;
+  --border: 222 20% 20%;
+  --input: 222 20% 20%;
+  --ring: 217 91% 60%;
+  --popover: 222 25% 12%;
+  --popover-foreground: 210 40% 98%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
 }
 
 /* ===========================================================================

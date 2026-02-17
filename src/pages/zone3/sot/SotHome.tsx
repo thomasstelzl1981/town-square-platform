@@ -1,6 +1,6 @@
 /**
  * SoT Home — Premium Software Presentation
- * SpaceX aesthetic with orbital visuals, deep feature sections, KI storytelling
+ * Aurora Borealis aesthetic with orbital visuals, deep feature sections, KI storytelling
  */
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
@@ -8,9 +8,10 @@ import {
   Building2, FileText, Wallet, Zap, Brain, Mail, BarChart3, Shield,
   ArrowRight, Layers, Bot, TrendingUp, Sparkles, Globe, Lock,
   CheckCircle2, ChevronRight, Cpu, Eye, Workflow, Database,
-  BellRing, PieChart, Search, Settings
+  BellRing, PieChart, Search, Settings, Home, Car, Leaf
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useSotTheme } from '@/hooks/useSotTheme';
 
 /* ── 8 Feature Widgets ── */
 const widgets = [
@@ -22,6 +23,16 @@ const widgets = [
   { icon: Mail, title: 'E-Mail & Kommunikation', description: 'Posteingang, Kommunikation und Prozesse bündeln.', href: '/website/sot/management', color: 'from-cyan-500/20 to-cyan-600/5' },
   { icon: BarChart3, title: 'Reports & Analyse', description: 'Kennzahlen, Auswertungen und Performance im Blick.', href: '/website/sot/finance', color: 'from-orange-500/20 to-orange-600/5' },
   { icon: Shield, title: 'Sicherheit & Struktur', description: 'Zentrale Verwaltung mit klaren Rollen und Zugriffen.', href: '/website/sot/management', color: 'from-slate-500/20 to-slate-600/5' },
+];
+
+/* ── Hero Feature Pills ── */
+const heroPills = [
+  { icon: Building2, label: 'Immobilien' },
+  { icon: Wallet, label: 'Finanzen' },
+  { icon: Zap, label: 'Energie' },
+  { icon: FileText, label: 'Dokumente' },
+  { icon: Car, label: 'Fahrzeuge' },
+  { icon: Brain, label: 'KI-Assistenz' },
 ];
 
 /* ── KI Feature Highlights ── */
@@ -69,36 +80,91 @@ function RevealSection({ children, className, delay = 0 }: { children: React.Rea
 
 export default function SotHome() {
   const [email, setEmail] = useState('');
+  const { isDark } = useSotTheme();
 
   return (
     <div className="min-h-screen overflow-hidden">
-      {/* ── ORBITAL BACKGROUND (Dark Mode) ── */}
+      {/* ── AURORA BACKGROUND ── */}
       <div className="fixed inset-0 pointer-events-none z-0">
-        {/* Planet glow top-right */}
-        <div className="absolute -top-32 -right-32 w-[600px] h-[600px] rounded-full bg-primary/5 blur-[120px]" />
-        {/* Nebula bottom-left */}
-        <div className="absolute -bottom-48 -left-48 w-[500px] h-[500px] rounded-full bg-violet-500/5 blur-[100px]" />
-        {/* Star field dots */}
-        <div className="absolute inset-0 opacity-30 dark:opacity-100" style={{
-          backgroundImage: `radial-gradient(1px 1px at 20% 30%, hsl(var(--primary) / 0.3) 1px, transparent 0),
-            radial-gradient(1px 1px at 40% 70%, hsl(var(--primary) / 0.2) 1px, transparent 0),
-            radial-gradient(1px 1px at 60% 20%, hsl(var(--primary) / 0.15) 1px, transparent 0),
-            radial-gradient(1.5px 1.5px at 80% 50%, hsl(var(--primary) / 0.25) 1px, transparent 0),
-            radial-gradient(1px 1px at 10% 80%, hsl(var(--primary) / 0.2) 1px, transparent 0),
-            radial-gradient(1px 1px at 90% 10%, hsl(var(--primary) / 0.15) 1px, transparent 0),
-            radial-gradient(1.5px 1.5px at 50% 90%, hsl(var(--primary) / 0.2) 1px, transparent 0),
-            radial-gradient(1px 1px at 70% 40%, hsl(var(--primary) / 0.1) 1px, transparent 0)`,
-        }} />
-        {/* Orbital ring */}
-        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[1200px] h-[400px] rounded-[50%] border border-primary/[0.04] rotate-12" />
-        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[1000px] h-[350px] rounded-[50%] border border-primary/[0.03] -rotate-6" />
+        {/* Aurora glow orbs - visible in dark, pastel in light */}
+        <div
+          className="absolute -top-20 -right-20 w-[700px] h-[700px] rounded-full blur-[140px]"
+          style={{
+            background: isDark
+              ? 'radial-gradient(circle, hsl(275 60% 30% / 0.4) 0%, hsl(275 50% 20% / 0.1) 60%, transparent 80%)'
+              : 'radial-gradient(circle, hsl(275 40% 88% / 0.5) 0%, transparent 70%)',
+            animation: 'sot-aurora-pulse 8s ease-in-out infinite',
+          }}
+        />
+        <div
+          className="absolute top-1/4 -left-32 w-[500px] h-[600px] rounded-full blur-[120px]"
+          style={{
+            background: isDark
+              ? 'radial-gradient(circle, hsl(340 50% 25% / 0.3) 0%, hsl(340 40% 15% / 0.1) 60%, transparent 80%)'
+              : 'radial-gradient(circle, hsl(340 30% 92% / 0.4) 0%, transparent 70%)',
+            animation: 'sot-aurora-drift 12s ease-in-out infinite',
+          }}
+        />
+        <div
+          className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] rounded-full blur-[100px]"
+          style={{
+            background: isDark
+              ? 'radial-gradient(circle, hsl(180 60% 22% / 0.2) 0%, transparent 70%)'
+              : 'radial-gradient(circle, hsl(180 40% 92% / 0.3) 0%, transparent 70%)',
+            animation: 'sot-aurora-pulse 10s ease-in-out infinite 2s',
+          }}
+        />
+        <div
+          className="absolute -bottom-32 -left-32 w-[500px] h-[500px] rounded-full blur-[100px]"
+          style={{
+            background: isDark
+              ? 'radial-gradient(circle, hsl(217 80% 30% / 0.25) 0%, transparent 70%)'
+              : 'radial-gradient(circle, hsl(217 50% 90% / 0.4) 0%, transparent 70%)',
+          }}
+        />
+
+        {/* Star field - dark mode only */}
+        {isDark && (
+          <div className="absolute inset-0" style={{
+            backgroundImage: `
+              radial-gradient(1px 1px at 15% 25%, hsl(275 60% 70% / 0.5) 1px, transparent 0),
+              radial-gradient(1.5px 1.5px at 35% 65%, hsl(340 50% 70% / 0.4) 1px, transparent 0),
+              radial-gradient(1px 1px at 55% 15%, hsl(217 80% 75% / 0.5) 1px, transparent 0),
+              radial-gradient(2px 2px at 75% 45%, hsl(180 60% 65% / 0.3) 1px, transparent 0),
+              radial-gradient(1px 1px at 10% 75%, hsl(275 50% 60% / 0.3) 1px, transparent 0),
+              radial-gradient(1px 1px at 85% 10%, hsl(340 40% 65% / 0.4) 1px, transparent 0),
+              radial-gradient(1.5px 1.5px at 45% 85%, hsl(217 70% 70% / 0.35) 1px, transparent 0),
+              radial-gradient(1px 1px at 65% 35%, hsl(180 50% 60% / 0.25) 1px, transparent 0),
+              radial-gradient(1px 1px at 25% 50%, hsl(275 55% 75% / 0.3) 1px, transparent 0),
+              radial-gradient(2px 2px at 90% 70%, hsl(217 90% 80% / 0.35) 1px, transparent 0),
+              radial-gradient(1px 1px at 5% 40%, hsl(340 45% 70% / 0.3) 1px, transparent 0),
+              radial-gradient(1.5px 1.5px at 50% 5%, hsl(275 60% 65% / 0.4) 1px, transparent 0)`,
+          }} />
+        )}
+
+        {/* Orbital rings - subtle */}
+        <div
+          className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[1200px] h-[400px] rounded-[50%] rotate-12"
+          style={{ border: `1px solid ${isDark ? 'hsl(275 50% 50% / 0.06)' : 'hsl(217 50% 80% / 0.15)'}` }}
+        />
+        <div
+          className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[1000px] h-[350px] rounded-[50%] -rotate-6"
+          style={{ border: `1px solid ${isDark ? 'hsl(340 40% 50% / 0.04)' : 'hsl(275 30% 85% / 0.1)'}` }}
+        />
       </div>
 
       <div className="relative z-10">
         {/* ── HERO ── */}
         <section className="relative py-28 sm:py-36 lg:py-44">
-          {/* Hero glow */}
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-primary/[0.07] rounded-full blur-[100px]" />
+          {/* Hero glow - aurora-colored */}
+          <div
+            className="absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[500px] rounded-full blur-[120px]"
+            style={{
+              background: isDark
+                ? 'radial-gradient(ellipse, hsl(275 50% 35% / 0.12) 0%, hsl(217 80% 50% / 0.08) 40%, transparent 70%)'
+                : 'radial-gradient(ellipse, hsl(217 60% 90% / 0.4) 0%, transparent 70%)',
+            }}
+          />
 
           <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative">
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-border/50 bg-card/40 backdrop-blur-sm mb-8 text-xs font-medium text-muted-foreground">
@@ -107,19 +173,34 @@ export default function SotHome() {
             </div>
 
             <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.05]">
-              <span className="bg-gradient-to-b from-foreground to-foreground/70 bg-clip-text text-transparent">
-                System of a Town
+              <span className="bg-gradient-to-b from-foreground via-foreground to-foreground/60 bg-clip-text text-transparent">
+                Ihr gesamtes Vermögen.
+              </span>
+              <br />
+              <span className="bg-gradient-to-r from-primary via-primary to-accent/80 bg-clip-text text-transparent">
+                Eine Plattform.
               </span>
             </h1>
 
-            <h2 className="mt-6 text-xl sm:text-2xl lg:text-3xl font-medium text-muted-foreground leading-relaxed max-w-3xl mx-auto">
-              Der digitale Manager für Immobilien
-              <br className="hidden sm:block" />
-              {' '}und private Finanzen.
+            <h2 className="mt-6 text-lg sm:text-xl lg:text-2xl font-medium text-muted-foreground leading-relaxed max-w-3xl mx-auto">
+              Immobilien, Finanzen, Energie, Dokumente und KI-Assistenz — alles zentral verwaltet, analysiert und automatisiert.
             </h2>
 
-            <p className="mt-5 text-base sm:text-lg text-muted-foreground/60 tracking-wide font-light">
-              Organisieren · Verwalten · Analysieren · Automatisieren
+            {/* Feature Pills */}
+            <div className="mt-8 flex flex-wrap items-center justify-center gap-2 sm:gap-3">
+              {heroPills.map((pill) => (
+                <div
+                  key={pill.label}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-border/40 bg-card/30 backdrop-blur-sm text-xs font-medium text-muted-foreground"
+                >
+                  <pill.icon className="w-3 h-3 text-primary/70" />
+                  {pill.label}
+                </div>
+              ))}
+            </div>
+
+            <p className="mt-6 text-xs sm:text-sm text-muted-foreground/50 tracking-[0.2em] uppercase font-light">
+              System of a Town
             </p>
 
             <div className="mt-12 flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -159,7 +240,8 @@ export default function SotHome() {
                       'bg-card/50 backdrop-blur-sm',
                       'hover:border-primary/40 hover:shadow-xl hover:shadow-primary/5',
                       'hover:-translate-y-1 transition-all duration-300 ease-out',
-                      'overflow-hidden'
+                      'overflow-hidden',
+                      !isDark && 'shadow-sm'
                     )}>
                       {/* Gradient overlay */}
                       <div className={cn('absolute inset-0 rounded-2xl bg-gradient-to-br opacity-0 group-hover:opacity-100 transition-opacity duration-500', w.color)} />
@@ -202,7 +284,10 @@ export default function SotHome() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               {kiFeatures.map((f, i) => (
                 <RevealSection key={f.title} delay={i * 100}>
-                  <div className="group rounded-2xl border border-border/30 bg-card/40 backdrop-blur-sm p-7 hover:border-primary/30 hover:bg-card/60 transition-all duration-300">
+                  <div className={cn(
+                    'group rounded-2xl border border-border/30 bg-card/40 backdrop-blur-sm p-7 hover:border-primary/30 hover:bg-card/60 transition-all duration-300',
+                    !isDark && 'shadow-sm'
+                  )}>
                     <div className="flex items-start gap-4">
                       <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
                         <f.icon className="w-5 h-5 text-primary" />
@@ -223,7 +308,10 @@ export default function SotHome() {
         <section className="py-16 sm:py-20">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
             <RevealSection>
-              <div className="rounded-2xl border border-border/30 bg-card/40 backdrop-blur-sm p-8 sm:p-12">
+              <div className={cn(
+                'rounded-2xl border border-border/30 bg-card/40 backdrop-blur-sm p-8 sm:p-12',
+                !isDark && 'shadow-sm'
+              )}>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-8">
                   {stats.map((s) => (
                     <div key={s.label} className="text-center">
@@ -275,7 +363,10 @@ export default function SotHome() {
                 },
               ].map((b, i) => (
                 <RevealSection key={b.title} delay={i * 120}>
-                  <div className="rounded-2xl border border-border/30 bg-card/40 backdrop-blur-sm p-8 h-full hover:border-primary/20 transition-colors duration-300">
+                  <div className={cn(
+                    'rounded-2xl border border-border/30 bg-card/40 backdrop-blur-sm p-8 h-full hover:border-primary/20 transition-colors duration-300',
+                    !isDark && 'shadow-sm'
+                  )}>
                     <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center mb-6">
                       <b.icon className="w-6 h-6 text-primary" />
                     </div>
@@ -339,7 +430,10 @@ export default function SotHome() {
                 },
               ].map((f, i) => (
                 <RevealSection key={f.title} delay={i * 80}>
-                  <div className="group rounded-2xl border border-border/30 bg-card/40 backdrop-blur-sm p-8 hover:border-primary/20 transition-all duration-300 flex flex-col sm:flex-row items-start gap-6">
+                  <div className={cn(
+                    'group rounded-2xl border border-border/30 bg-card/40 backdrop-blur-sm p-8 hover:border-primary/20 transition-all duration-300 flex flex-col sm:flex-row items-start gap-6',
+                    !isDark && 'shadow-sm'
+                  )}>
                     <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
                       <f.icon className="w-6 h-6 text-primary" />
                     </div>
