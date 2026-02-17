@@ -1,50 +1,66 @@
 
-## Audit und Vereinheitlichung: Add-Buttons fuer Entitaeten
 
-### Problem
-Die "Hinzufuegen"-Buttons fuer Entitaeten (Personen, Fahrzeuge, Tiere, Zuhause, Gesellschaften) sehen jeweils unterschiedlich aus. Manche sind Text-Buttons, manche Icon-Buttons, verschiedene Varianten und Groessen.
+## Bereinigung Zone 3: Miety, Projekt und Sites entfernen
 
-### Regel
-- **Entitaeten** (Personen, Tiere, Fahrzeuge, Zuhause, Gesellschaften): Runder Glass-Button (`variant="glass" size="icon-round"`) mit Plus-Icon im `ModulePageHeader actions`-Prop
-- **Vorgaenge** (Versicherungen, Sparplaene, Abos, Darlehen, Vorsorge): Bleiben wie sie sind — bereits als `icon-round` Plus-Buttons korrekt implementiert
+### Analyse
 
-### Betroffene Stellen (7 Dateien)
+Im System existieren 7 Zone-3-Websites. Davon bleiben 4 bestehen:
+- Kaufy (/website/kaufy)
+- System of a Town (/website/sot)
+- Acquiary (/website/acquiary)
+- FutureRoom (/website/futureroom)
 
-| Datei | Aktuell | Aenderung |
-|-------|---------|-----------|
-| `src/pages/portal/pets/PetsMeineTiere.tsx` | `size="sm"` Text-Button AUSSERHALB von `actions`, in manuellem flex-Layout | Button in `ModulePageHeader actions` verschieben, `variant="glass" size="icon-round"` |
-| `src/components/portal/cars/CarsAutos.tsx` | Default-Variant Text-Button "Fahrzeug hinzufuegen" | Umstellen auf `variant="glass" size="icon-round"` nur Plus-Icon |
-| `src/components/portal/cars/CarsBikes.tsx` | Default-Variant Text-Button "Bike hinzufuegen" | Umstellen auf `variant="glass" size="icon-round"` nur Plus-Icon |
-| `src/components/portal/cars/CarsFahrzeuge.tsx` | Default-Variant Text-Button in DesktopOnly | Umstellen auf `variant="glass" size="icon-round"` nur Plus-Icon |
-| `src/pages/portal/finanzanalyse/UebersichtTab.tsx` | `size="icon-round"` OHNE variant (default/primary) | `variant="glass"` ergaenzen |
-| `src/pages/portal/miety/tiles/UebersichtTile.tsx` | `size="sm" variant="outline"` Text-Button "Weiteres Zuhause" | Umstellen auf `variant="glass" size="icon-round"` nur Plus-Icon |
-| `src/pages/portal/projekte/KontexteTab.tsx` | Default-Variant Text-Button "Neue Gesellschaft" | Umstellen auf `variant="glass" size="icon-round"` nur Plus-Icon |
+Zu loeschen sind 3 Websites mit allen zugehoerigen Dateien:
 
-### Ziel-Pattern (einheitlich)
+### 1. Miety Website (10 Seiten-Dateien)
 
-```text
-<ModulePageHeader
-  title="..."
-  description="..."
-  actions={
-    <Button variant="glass" size="icon-round" onClick={...}>
-      <Plus className="h-5 w-5" />
-    </Button>
-  }
-/>
-```
+Dateien loeschen:
+- `src/pages/zone3/miety/MietyApp.tsx`
+- `src/pages/zone3/miety/MietyHome.tsx`
+- `src/pages/zone3/miety/MietyInvite.tsx`
+- `src/pages/zone3/miety/MietyKontakt.tsx`
+- `src/pages/zone3/miety/MietyLayout.tsx`
+- `src/pages/zone3/miety/MietyLeistungen.tsx`
+- `src/pages/zone3/miety/MietyPreise.tsx`
+- `src/pages/zone3/miety/MietyRegistrieren.tsx`
+- `src/pages/zone3/miety/MietySoFunktioniert.tsx`
+- `src/pages/zone3/miety/MietyVermieter.tsx`
 
-### Vorgaenge-Buttons (KEINE Aenderung noetig)
-Diese sind bereits korrekt als `icon-round` Plus-Buttons:
-- SachversicherungenTab.tsx (Versicherungsvertrag)
-- InvestmentTab.tsx (Sparplan)
-- AbonnementsTab.tsx (Abonnement)
-- DarlehenTab.tsx (Darlehen)
-- VorsorgeTab.tsx (Vorsorgevertrag)
+### 2. Projekt Landing Pages (2 Dateien)
 
-Einzige Ergaenzung: Auch hier `variant="glass"` setzen fuer visuelle Konsistenz (aktuell default/primary).
+Dateien loeschen:
+- `src/pages/zone3/projekt/ProjektLandingLayout.tsx`
+- `src/pages/zone3/projekt/ProjektLandingPage.tsx`
 
-### Zusammenfassung
-- 7 Dateien fuer Entitaet-Buttons: Layout-Fix + `variant="glass" size="icon-round"`
-- 5 Dateien fuer Vorgang-Buttons: Nur `variant="glass"` ergaenzen
-- Gesamt: 12 Dateien, rein visuelle Aenderungen
+### 3. Tenant Sites (2 Dateien)
+
+Dateien loeschen:
+- `src/pages/zone3/sites/TenantSiteLayout.tsx`
+- `src/pages/zone3/sites/TenantSiteRenderer.tsx`
+
+### 4. Manifest und Router bereinigen
+
+**`src/manifests/routesManifest.ts`:**
+- `zone3Websites`: Eintraege `miety`, `projekt` und `sites` entfernen
+- `legacyRoutes`: Miety-Redirects (`/miety` und `/miety/*`) und Projekt-Redirects (`/projekt` und `/projekt/*`) entfernen
+
+**`src/router/ManifestRouter.tsx`:**
+- Alle lazy-Imports fuer Miety (9 Komponenten), ProjektLanding (2 Komponenten) und TenantSite (2 Komponenten) entfernen
+- Zugehoerige Component-Map-Eintraege entfernen
+
+### 5. Audit-Datei aktualisieren
+
+**`artifacts/audit/zone3_sites.json`:**
+- Miety-Eintrag entfernen (reduziert von 4 auf 3 Sites, bzw. aktualisieren auf die reale Struktur)
+
+### 6. Zusammenfassung
+
+| Aktion | Anzahl |
+|--------|--------|
+| Seiten-Dateien loeschen | 14 |
+| Verzeichnisse (leer nach Loeschung) | 3 (miety, projekt, sites) |
+| Manifest-Eintraege entfernen | 3 Website-Definitionen + 4 Legacy-Redirects |
+| Router-Imports entfernen | ~13 lazy-Import-Zeilen |
+
+Hinweis: MOD-20 (Miety/ZUHAUSE) im Portal bleibt vollstaendig erhalten -- nur die oeffentliche Zone-3-Website unter `/website/miety` wird entfernt. Die `useWebsites`-Hook und `tenant_websites`-Tabelle bleiben ebenfalls bestehen, da sie nicht an die statischen Zone-3-Sites gebunden sind.
+
