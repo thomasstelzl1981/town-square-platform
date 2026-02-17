@@ -268,9 +268,14 @@ export default function InvestmentTab() {
         title="Investment"
         description="Depot-Verwaltung über Upvest — Wertpapiere, ETFs und mehr"
         actions={
-          status === 'active' ? (
-            <Badge variant="outline" className="text-emerald-500 border-emerald-500/30">Depot aktiv</Badge>
-          ) : undefined
+          <div className="flex items-center gap-2">
+            {status === 'active' && (
+              <Badge variant="outline" className="text-emerald-500 border-emerald-500/30">Depot aktiv</Badge>
+            )}
+            <Button variant="glass" size="icon-round" onClick={() => status === 'none' ? setStatus('active') : toast.info('Neues Investment wird vorbereitet…')}>
+              <Plus className="h-5 w-5" />
+            </Button>
+          </div>
         }
       />
 
