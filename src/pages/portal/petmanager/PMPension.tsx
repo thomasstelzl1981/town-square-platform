@@ -31,7 +31,7 @@ const ROOM_TYPE_LABELS: Record<string, string> = { zimmer: 'Zimmer', auslauf: 'A
 const ROOM_TYPE_ICONS: Record<string, string> = { zimmer: '🏠', auslauf: '🌳', box: '📦' };
 const EMPTY_ROOM = { name: '', room_type: 'zimmer', capacity: 1, description: '', is_active: true, sort_order: 0 };
 
-const VISIBLE_DAYS = 14;
+const VISIBLE_DAYS = 90; // ~3 Monate sichtbar, horizontal scrollbar
 const COL_WIDTH_ROOM = 200;
 const COL_WIDTH_DATE = 100;
 const CELL_HEIGHT = 64; // Taller for half-day split
