@@ -12542,9 +12542,11 @@ export type Database = {
           name: string
           neutered: boolean
           notes: string | null
+          photo_url: string | null
           species: Database["public"]["Enums"]["pet_species"]
           tenant_id: string
           updated_at: string
+          vet_name: string | null
           weight_kg: number | null
           z1_customer_id: string
         }
@@ -12559,9 +12561,11 @@ export type Database = {
           name: string
           neutered?: boolean
           notes?: string | null
+          photo_url?: string | null
           species?: Database["public"]["Enums"]["pet_species"]
           tenant_id: string
           updated_at?: string
+          vet_name?: string | null
           weight_kg?: number | null
           z1_customer_id: string
         }
@@ -12576,9 +12580,11 @@ export type Database = {
           name?: string
           neutered?: boolean
           notes?: string | null
+          photo_url?: string | null
           species?: Database["public"]["Enums"]["pet_species"]
           tenant_id?: string
           updated_at?: string
+          vet_name?: string | null
           weight_kg?: number | null
           z1_customer_id?: string
         }
