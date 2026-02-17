@@ -1,48 +1,37 @@
 
-## Pet Desk — Zone 1 Umbau
 
-### Was wird gemacht
+## Fix: Circular Dependency in Pet Manager Demo Data
 
-Der bestehende "Pet Governance" Admin-Bereich unter `/admin/petmanager` wird umgebaut:
+### Problem
 
-1. **Umbenennung**: "Pet Governance" wird zu **"Pet Desk"** (analog zu Sales Desk, Finance Desk)
-2. **Tab-Navigation**: 5 Tabs nach dem Acquiary-Muster (OperativeDeskShell + Tabs + Routes)
-3. **Neue Sub-Seiten**: Governance (bisheriges Dashboard), Vorgaenge (neu), Kunden (neu), Shop (neu), Billing (neu)
+The page `/portal/pets/meine-tiere` crashes with:
+```
+ReferenceError: Cannot access 'DEMO_TENANT_ID' before initialization
+```
 
-### Tab-Struktur
+This is caused by a **circular dependency**:
+- `petManagerDemo.ts` imports from `data.ts`
+- `data.ts` imports from `petManagerDemo.ts`
 
-| Tab | Pfad | Inhalt |
-|-----|------|--------|
-| Governance | `/admin/pet-desk` (index) | Bisheriges KPI-Dashboard (Provider, Umsatz, Buchungen) |
-| Vorgaenge | `/admin/pet-desk/vorgaenge` | Lead-Qualifizierung, Zuweisungen, offene Anfragen |
-| Kunden | `/admin/pet-desk/kunden` | Z1-Kundendatenbank (`pet_z1_customers`) |
-| Shop | `/admin/pet-desk/shop` | Service-Katalog-Moderation, Provider-Services |
-| Billing | `/admin/pet-desk/billing` | Rechnungen, Zahlungen, Provisionen |
+When JavaScript resolves this cycle, `DEMO_TENANT_ID` is not yet initialized when `petManagerDemo.ts` tries to use it.
 
-### Technische Umsetzung
+### Fix
 
-**1. `src/pages/admin/desks/PetmanagerDesk.tsx` umbauen**
-- Rename zu Router-Komponente mit OperativeDeskShell (wie Acquiary)
-- Title: "Pet Desk", Subtitle aktualisieren
-- zoneFlow: Z3 "Lennox Website", Z1 "Pet Desk", Z2 "MOD-22 Pet Manager"
-- 5 Tabs mit Link-Routing
-- Lazy-loaded Sub-Seiten
+Move `DEMO_TENANT_ID` and `DEMO_PET_PROVIDER_LENNOX` out of `data.ts` into a shared constants file that both can import from without cycles.
 
-**2. Neue Sub-Seiten anlegen** (unter `src/pages/admin/petmanager/`)
-- `PetDeskGovernance.tsx` — KPI-Dashboard (bestehender Code aus PetmanagerDesk verschoben)
-- `PetDeskVorgaenge.tsx` — Placeholder mit OperativeDeskShell-konformem Layout
-- `PetDeskKunden.tsx` — Placeholder fuer Z1-Kundenverwaltung (pet_z1_customers)
-- `PetDeskShop.tsx` — Placeholder (Services + Provider-Katalog)
-- `PetDeskBilling.tsx` — Placeholder (Rechnungen)
+**Option: Extract to `src/engines/demoData/constants.ts`**
 
-**3. Manifests aktualisieren**
-- `routesManifest.ts`: Route-Pfade von `petmanager` auf `pet-desk` aendern, neue Sub-Routen hinzufuegen (vorgaenge, kunden, shop, billing)
-- `operativeDeskManifest.ts`: `deskId` und `route` auf `pet-desk` aendern, `displayName` auf "Pet Desk"
-- Bestehende Sub-Seiten (PetmanagerProvider, PetmanagerServices, PetmanagerFinanzen, PetmanagerMonitor) werden in die neuen Tabs integriert oder als Content innerhalb der neuen Struktur referenziert
+1. Create `src/engines/demoData/constants.ts` with the shared IDs (`DEMO_TENANT_ID`, `DEMO_USER_ID`, `DEMO_PRIMARY_PERSON_ID`, `DEMO_PET_PROVIDER_LENNOX`, and any other base IDs used across files)
+2. Update `data.ts` to import these from `constants.ts` instead of defining them (re-export for backward compatibility)
+3. Update `petManagerDemo.ts` to import from `constants.ts` instead of `data.ts`
+4. Update `index.ts` to re-export `constants.ts`
 
-**4. Export-Index aktualisieren**
-- `src/pages/admin/desks/index.ts`: Export-Name anpassen
+### Files Changed
 
-### Keine Datenbank-Aenderungen
+- **New**: `src/engines/demoData/constants.ts` (shared base IDs)
+- **Edit**: `src/engines/demoData/data.ts` (import + re-export from constants instead of defining)
+- **Edit**: `src/engines/demoData/petManagerDemo.ts` (import from constants instead of data)
+- **Edit**: `src/engines/demoData/index.ts` (re-export constants)
 
-Rein Frontend-Umbau. Die `pet_z1_customers` Tabelle existiert bereits aus dem vorherigen Schritt.
+No other files need changes -- all existing imports from `data.ts` continue to work via re-export.
+
