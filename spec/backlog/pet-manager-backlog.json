@@ -51,27 +51,27 @@
       "id": "P4",
       "title": "Kalenderansicht im Pet Manager",
       "priority": 2,
-      "status": "todo",
+      "status": "done",
       "tasks": [
         {
           "id": "P4.1",
           "title": "Wochenkalender",
           "description": "Neue Komponente PMKalender.tsx — Tage als Spalten, Zeitslots als Zeilen, Buchungen als farbige Bloecke.",
-          "status": "todo",
+          "status": "done",
           "files": ["src/pages/portal/petmanager/PMKalender.tsx"]
         },
         {
           "id": "P4.2",
           "title": "Monatskalender",
           "description": "Kompakte Monatsansicht mit Buchungszahlen pro Tag und Farbcodierung (gruen/gelb/rot).",
-          "status": "todo",
+          "status": "done",
           "files": ["src/pages/portal/petmanager/PMKalender.tsx"]
         },
         {
           "id": "P4.3",
           "title": "Tab-Integration",
           "description": "Kalender als neuer Tab oder Toggle in PMBuchungen einbinden.",
-          "status": "todo",
+          "status": "done",
           "files": ["src/pages/portal/petmanager/PMBuchungen.tsx", "src/pages/portal/PetManagerPage.tsx"]
         }
       ]
