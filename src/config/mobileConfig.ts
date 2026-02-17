@@ -16,6 +16,7 @@
 export const MOBILE_HIDDEN_AREAS: string[] = ['operations'];
 
 export const MOBILE_HIDDEN_MODULES: string[] = [
+  'MOD-01',  // KI Office — not needed on mobile, Armstrong chat replaces it
   'MOD-09',  // Immomanager — partner-only, complex advisory UI
   'MOD-10',  // Lead Manager — partner-only, commission management
   'MOD-11',  // Finanzierungsmanager — role-gated, complex workbench

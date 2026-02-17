@@ -35,7 +35,7 @@ export function MobileModuleMenu({ module, moduleBase, moduleCode }: MobileModul
       </h1>
 
       {/* Vertical Tile List */}
-      <div className="flex flex-col gap-1.5">
+      <div className="flex flex-col gap-2">
         {visibleTiles.map((tile) => {
           const route = getTileFullPath(moduleBase, tile.path);
           
@@ -44,16 +44,16 @@ export function MobileModuleMenu({ module, moduleBase, moduleCode }: MobileModul
               key={tile.path}
               onClick={() => navigate(route)}
               className={cn(
-                'flex items-center justify-between w-full px-4 py-3.5 rounded-xl',
+                'flex items-center justify-between w-full px-5 py-4 rounded-xl',
                 'bg-card/60 backdrop-blur-sm border border-border/30',
-                'text-left text-foreground font-medium text-sm',
+                'text-left text-foreground font-medium text-base',
                 'active:scale-[0.98] transition-all',
                 'hover:bg-card/80',
                 tile.premium && 'border-warning/30'
               )}
             >
               <span>{tile.title}</span>
-              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+              <ChevronRight className="h-5 w-5 text-muted-foreground" />
             </button>
           );
         })}

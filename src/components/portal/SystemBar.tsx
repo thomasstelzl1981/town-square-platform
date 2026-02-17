@@ -95,8 +95,9 @@ export function SystemBar() {
     return () => clearInterval(timer);
   }, []);
 
-  // Fetch temperature via geolocation + OpenMeteo
+  // Fetch temperature via geolocation + OpenMeteo (desktop only)
   useEffect(() => {
+    if (isMobile) return; // Skip geolocation on mobile
     if (!navigator.geolocation) return;
 
     navigator.geolocation.getCurrentPosition(
@@ -117,7 +118,7 @@ export function SystemBar() {
       () => { /* silently fail */ },
       { enableHighAccuracy: false, timeout: 10000, maximumAge: 600000 }
     );
-  }, []);
+  }, [isMobile]);
 
   const initials = profile?.display_name
     ? profile.display_name.split(' ').map(n => n[0]).join('').toUpperCase()
