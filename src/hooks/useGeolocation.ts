@@ -5,6 +5,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 export interface GeolocationData {
   latitude: number;
@@ -15,6 +16,7 @@ export interface GeolocationData {
 
 export function useGeolocation() {
   const { profile } = useAuth();
+  const isMobile = useIsMobile();
   const [location, setLocation] = useState<GeolocationData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -24,17 +26,22 @@ export function useGeolocation() {
     const useProfileFallback = () => {
       if (profile?.city) {
         setLocation({
-          latitude: 48.0167, // Default to Munich area if no coords
+          latitude: 48.0167,
           longitude: 11.5843,
           city: profile.city as string,
           altitude: null
         });
-        console.log('Geolocation Fallback: Using profile city', profile.city);
       } else {
         setError('Standort nicht verfügbar');
       }
       setLoading(false);
     };
+
+    // On mobile: always use profile fallback, never prompt for geolocation
+    if (isMobile) {
+      useProfileFallback();
+      return;
+    }
 
     if (!navigator.geolocation) {
       useProfileFallback();
@@ -44,8 +51,6 @@ export function useGeolocation() {
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         const { latitude, longitude, altitude } = position.coords;
-        console.log('Geolocation success:', { latitude, longitude, altitude });
-        
         try {
           const response = await fetch(
             `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`,
@@ -58,12 +63,7 @@ export function useGeolocation() {
                        data.address?.municipality || 
                        'Unbekannt';
           
-          setLocation({
-            latitude,
-            longitude,
-            city,
-            altitude: altitude ? Math.round(altitude) : null
-          });
+          setLocation({ latitude, longitude, city, altitude: altitude ? Math.round(altitude) : null });
           setLoading(false);
         } catch (err) {
           console.error('Geocoding failed, using fallback:', err);
@@ -71,23 +71,21 @@ export function useGeolocation() {
         }
       },
       (geoError) => {
-        // Detailed logging for debugging
         const errorMessages: Record<number, string> = {
           1: 'Berechtigung verweigert',
           2: 'Position nicht verfügbar',
           3: 'Zeitüberschreitung',
         };
-        console.warn('Geolocation error:', errorMessages[geoError.code] || geoError.message);
         setError(errorMessages[geoError.code] || 'Fehler');
         useProfileFallback();
       },
       { 
         enableHighAccuracy: true,
-        timeout: 10000,      // 10 second timeout
-        maximumAge: 300000   // Cache for 5 minutes
+        timeout: 10000,
+        maximumAge: 300000
       }
     );
-  }, [profile?.city]);
+  }, [profile?.city, isMobile]);
 
   const retry = () => {
     setLoading(true);
