@@ -249,7 +249,7 @@ export const zone2Portal: ZoneDefinition = {
         { path: "zuhause", component: "MietyInline", title: "ZUHAUSE", default: true },
         { path: "portfolio", component: "PortfolioTab", title: "Portfolio" },
         // Tax: Vermietung + Verwaltung — Anlage V Steuererklärung
-        { path: "verwaltung", component: "VerwaltungTab", title: "Tax" },
+        { path: "verwaltung", component: "VerwaltungTab", title: "Steuer" },
         { path: "sanierung", component: "SanierungTab", title: "Sanierung" },
         // Bewertung entfernt — jetzt als Tab in der Immobilienakte (PropertyDetailPage)
       ],
