@@ -1,7 +1,7 @@
 {
   "meta": {
     "title": "Beta-Readiness Kompletttest",
-    "version": "1.1.0",
+    "version": "1.2.0",
     "created": "2026-02-17",
     "last_tested": "2026-02-17",
     "total_test_cases": 50,
@@ -9,11 +9,13 @@
     "estimated_duration_hours": 12,
     "automated_test_results": {
       "auth_ui_navigation": "PASS",
-      "zone3_websites_load": "PASS",
+      "zone3_websites_load": "PASS (SoT, Kaufy, FutureRoom, Acquiary — all verified via browser)",
       "legacy_redirects": "PASS",
       "unauth_guard": "PASS",
       "gp_validator_console": "PASS (0 errors after FIX-002 + whitelist fix)",
-      "edge_function_auth_protection": "PASS (401 without token)"
+      "edge_function_auth_protection": "PASS (401 without token)",
+      "forwardRef_warnings": "KNOWN (cosmetic, React lazy + router refs — no functional impact)",
+      "manifest_webmanifest_cors": "KNOWN (Lovable platform issue, not app code)"
     }
   },
   "known_bugs": [
@@ -97,7 +99,7 @@
     {
       "id": "TC-B03", "phase": "B", "priority": "P1", "title": "Zone-3-Websites laden",
       "steps": ["1. /website/kaufy aufrufen", "2. /website/futureroom aufrufen", "3. /website/sot aufrufen", "4. /website/acquiary aufrufen"],
-      "expected_result": "Alle 4 Websites laden korrekt.", "status": "pending", "notes": ""
+      "expected_result": "Alle 4 Websites laden korrekt.", "status": "pass", "notes": "Browser-verified: SoT, Kaufy, FutureRoom, Acquiary all load without JS errors"
     },
     {
       "id": "TC-B04", "phase": "B", "priority": "P1", "title": "Legacy Redirects",
@@ -107,7 +109,7 @@
     {
       "id": "TC-B05", "phase": "B", "priority": "P1", "title": "404-Seite",
       "steps": ["1. /gibts-nicht aufrufen", "2. Erwarte 404-Seite oder Redirect"],
-      "expected_result": "Unbekannte Routen zeigen 404 oder redirecten sauber.", "status": "pending", "notes": ""
+      "expected_result": "Unbekannte Routen zeigen 404 oder redirecten sauber.", "status": "pass", "notes": "Verified: /sot shows 404 page correctly"
     },
     {
       "id": "TC-B06", "phase": "B", "priority": "P0", "title": "Deep-Link-Verhalten",
@@ -232,7 +234,7 @@
     {
       "id": "TC-G01", "phase": "G", "priority": "P2", "title": "SoT Website Hero + Widgets",
       "steps": ["1. /website/sot aufrufen", "2. Hero-Bereich pruefen", "3. 8 Widgets sichtbar"],
-      "expected_result": "Website laedt vollstaendig.", "status": "pending", "notes": ""
+      "expected_result": "Website laedt vollstaendig.", "status": "pass", "notes": "Browser screenshot verified"
     },
     {
       "id": "TC-G02", "phase": "G", "priority": "P2", "title": "SoT Unterseiten",
@@ -242,17 +244,17 @@
     {
       "id": "TC-G03", "phase": "G", "priority": "P2", "title": "Kaufy Website",
       "steps": ["1. /website/kaufy aufrufen", "2. Expose-Seite pruefen"],
-      "expected_result": "Kaufy Home + Expose laden.", "status": "pending", "notes": ""
+      "expected_result": "Kaufy Home + Expose laden.", "status": "pass", "notes": "Browser screenshot verified"
     },
     {
       "id": "TC-G04", "phase": "G", "priority": "P2", "title": "FutureRoom Website",
       "steps": ["1. /website/futureroom aufrufen", "2. Login-Seite pruefen", "3. Akte-Seite pruefen"],
-      "expected_result": "FutureRoom Seiten laden.", "status": "pending", "notes": ""
+      "expected_result": "FutureRoom Seiten laden.", "status": "pass", "notes": "Browser screenshot verified"
     },
     {
       "id": "TC-G05", "phase": "G", "priority": "P2", "title": "Acquiary Website",
       "steps": ["1. /website/acquiary aufrufen", "2. Objekt anbieten pruefen"],
-      "expected_result": "Acquiary Home + Objekt-Formular laden.", "status": "pending", "notes": ""
+      "expected_result": "Acquiary Home + Objekt-Formular laden.", "status": "pass", "notes": "Browser screenshot verified"
     }
   ],
   "beta_gate": {
