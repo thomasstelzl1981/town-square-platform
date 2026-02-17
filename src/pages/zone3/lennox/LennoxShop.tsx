@@ -1,15 +1,14 @@
 /**
- * LennoxShop — Produktstruktur (keine Beispielprodukte, werden über Z1 angelegt)
- * Section 1: Lennox Essentials (Ernährung, Lennox Style)
- * Section 2: Affiliate Shops
+ * LennoxShop — Zone 3 Shop (reads from pet_shop_products DB via Z1 SSOT)
+ * Categories: Ernährung, Lennox Style, Fressnapf (from DB)
+ * LennoxTracker: hardcoded feature teaser
  */
-import { ShoppingBag, ExternalLink, ArrowLeft } from 'lucide-react';
+import { ShoppingBag, ExternalLink, ArrowLeft, Radar, ShoppingCart } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { useActiveShopProducts } from '@/hooks/usePetShopProducts';
 
 const COLORS = {
   primary: 'hsl(155,35%,25%)',
@@ -18,23 +17,77 @@ const COLORS = {
   sand: 'hsl(35,30%,85%)',
 };
 
-const CATEGORIES = [
+const SHOP_SECTIONS: { key: string; label: string; desc: string; isAffiliate?: boolean }[] = [
   { key: 'ernaehrung', label: 'Ernährung', desc: 'Premium-Futter & Nahrungsergänzung' },
   { key: 'lennox_style', label: 'Lennox Style', desc: 'Halsbänder, Leinen & Accessoires' },
-  { key: 'zubehoer', label: 'Zubehör', desc: 'Betten, Transportboxen & mehr' },
-  { key: 'pflege', label: 'Pflege', desc: 'Shampoos, Bürsten & Pflegeprodukte' },
+  { key: 'fressnapf', label: 'Fressnapf', desc: 'Europas größte Fachmarktkette', isAffiliate: true },
 ];
 
-const AFFILIATE_SHOPS = [
-  { name: 'Zooplus', url: '#', desc: 'Über 8.000 Produkte' },
-  { name: 'Fressnapf', url: '#', desc: 'Deutschlands größte Fachhandels-Kette' },
-  { name: 'Specials', url: '#', desc: 'Exklusive Lennox-Partner Angebote' },
-];
+function ProductSection({ categoryKey, label, desc, isAffiliate }: { categoryKey: string; label: string; desc: string; isAffiliate?: boolean }) {
+  const { data: products = [], isLoading } = useActiveShopProducts(categoryKey);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="font-semibold" style={{ color: COLORS.foreground }}>{label}</h3>
+          <p className="text-xs" style={{ color: COLORS.muted }}>{desc}</p>
+        </div>
+        {isAffiliate && (
+          <Badge variant="outline" className="text-[10px]" style={{ borderColor: COLORS.primary, color: COLORS.primary }}>
+            Partner
+          </Badge>
+        )}
+      </div>
+
+      {isLoading ? (
+        <div className="py-8 text-center text-sm" style={{ color: COLORS.muted }}>Lade Produkte…</div>
+      ) : products.length === 0 ? (
+        <div className="py-8 text-center rounded-lg border border-dashed" style={{ borderColor: COLORS.sand }}>
+          <ShoppingBag className="h-8 w-8 mx-auto mb-2 opacity-20" style={{ color: COLORS.primary }} />
+          <p className="text-sm" style={{ color: COLORS.muted }}>Produkte werden in Kürze hinzugefügt.</p>
+        </div>
+      ) : (
+        <div className="grid gap-3 grid-cols-2 sm:grid-cols-3">
+          {products.map(p => (
+            <a
+              key={p.id}
+              href={p.external_url || '#'}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block"
+            >
+              <Card className="border hover:shadow-md transition-all hover:-translate-y-0.5 cursor-pointer" style={{ borderColor: COLORS.sand, background: 'white' }}>
+                <CardContent className="p-3 flex flex-col items-center text-center gap-2">
+                  {p.image_url ? (
+                    <div className="aspect-square w-full rounded-lg overflow-hidden bg-gray-50">
+                      <img src={p.image_url} alt={p.name} className="w-full h-full object-cover" />
+                    </div>
+                  ) : (
+                    <div className="aspect-square w-full rounded-lg flex items-center justify-center bg-gray-50">
+                      <ShoppingBag className="h-8 w-8 opacity-15" style={{ color: COLORS.primary }} />
+                    </div>
+                  )}
+                  {p.badge && (
+                    <Badge className="text-[10px] text-white border-0" style={{ backgroundColor: COLORS.primary }}>
+                      {p.badge}
+                    </Badge>
+                  )}
+                  <span className="text-xs font-medium line-clamp-2" style={{ color: COLORS.foreground }}>{p.name}</span>
+                  {p.price_label && (
+                    <span className="text-xs font-semibold" style={{ color: COLORS.primary }}>{p.price_label}</span>
+                  )}
+                </CardContent>
+              </Card>
+            </a>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function LennoxShop() {
-  // TODO: Load products from Z1 pet_shop_products table when created
-  // For now just show category structure
-
   return (
     <div className="max-w-4xl mx-auto px-5 py-8 space-y-10">
       <Link to="/website/tierservice" className="inline-flex items-center gap-1 text-sm" style={{ color: COLORS.muted }}>
@@ -47,47 +100,37 @@ export default function LennoxShop() {
         <p className="text-sm" style={{ color: COLORS.muted }}>Alles für deinen Vierbeiner — kuratiert von Lennox & Friends.</p>
       </div>
 
-      {/* ═══ LENNOX ESSENTIALS ═══ */}
+      {/* ═══ LENNOX TRACKER TEASER (hardcoded) ═══ */}
       <section>
-        <h2 className="text-xl font-semibold mb-4" style={{ color: COLORS.foreground }}>Lennox Essentials</h2>
-        <div className="grid gap-4 sm:grid-cols-2">
-          {CATEGORIES.map(cat => (
-            <Card key={cat.key} className="border hover:shadow-md transition-shadow" style={{ borderColor: COLORS.sand, background: 'white' }}>
-              <CardContent className="p-5 space-y-3">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-medium" style={{ color: COLORS.foreground }}>{cat.label}</h3>
-                  <Badge variant="outline" className="text-[10px]" style={{ borderColor: COLORS.primary, color: COLORS.primary }}>
-                    Bald verfügbar
-                  </Badge>
-                </div>
-                <p className="text-sm" style={{ color: COLORS.muted }}>{cat.desc}</p>
-                <ShoppingBag className="h-12 w-12 mx-auto opacity-20" style={{ color: COLORS.primary }} />
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-        <p className="text-xs mt-3 text-center" style={{ color: COLORS.muted }}>
-          Produkte werden über den Lennox Admin-Bereich gepflegt.
-        </p>
+        <Card className="overflow-hidden" style={{ borderColor: COLORS.sand, background: 'white' }}>
+          <CardContent className="p-6 flex flex-col sm:flex-row items-center gap-4">
+            <div className="p-3 rounded-xl" style={{ backgroundColor: 'hsl(155,35%,25%,0.1)' }}>
+              <Radar className="h-8 w-8" style={{ color: COLORS.primary }} />
+            </div>
+            <div className="flex-1 text-center sm:text-left">
+              <h3 className="font-semibold" style={{ color: COLORS.foreground }}>Lennox GPS Tracker</h3>
+              <p className="text-sm mt-1" style={{ color: COLORS.muted }}>
+                Echtzeit-Ortung, Aktivitätstracking und Geofencing für deinen Liebling.
+              </p>
+            </div>
+            <Button variant="outline" size="sm" className="gap-1.5" disabled style={{ borderColor: COLORS.primary, color: COLORS.primary }}>
+              <ShoppingCart className="h-3.5 w-3.5" /> Bald verfügbar
+            </Button>
+          </CardContent>
+        </Card>
       </section>
 
-      {/* ═══ AFFILIATE SHOPS ═══ */}
-      <section>
-        <h2 className="text-xl font-semibold mb-4" style={{ color: COLORS.foreground }}>Partner-Shops</h2>
-        <div className="grid gap-4 sm:grid-cols-3">
-          {AFFILIATE_SHOPS.map(shop => (
-            <a key={shop.name} href={shop.url} target="_blank" rel="noopener noreferrer">
-              <Card className="border hover:shadow-md transition-shadow cursor-pointer" style={{ borderColor: COLORS.sand, background: 'white' }}>
-                <CardContent className="p-5 text-center space-y-2">
-                  <ExternalLink className="h-6 w-6 mx-auto" style={{ color: COLORS.primary }} />
-                  <h3 className="font-medium" style={{ color: COLORS.foreground }}>{shop.name}</h3>
-                  <p className="text-xs" style={{ color: COLORS.muted }}>{shop.desc}</p>
-                </CardContent>
-              </Card>
-            </a>
-          ))}
-        </div>
-      </section>
+      {/* ═══ PRODUCT SECTIONS (from DB) ═══ */}
+      {SHOP_SECTIONS.map(s => (
+        <section key={s.key}>
+          <ProductSection
+            categoryKey={s.key}
+            label={s.label}
+            desc={s.desc}
+            isAffiliate={s.isAffiliate}
+          />
+        </section>
+      ))}
 
       {/* Checkout hint */}
       <div className="text-center py-4">

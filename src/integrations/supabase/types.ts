@@ -12332,6 +12332,57 @@ export type Database = {
           },
         ]
       }
+      pet_shop_products: {
+        Row: {
+          badge: string | null
+          category: string
+          created_at: string
+          description: string | null
+          external_url: string | null
+          id: string
+          image_url: string | null
+          is_active: boolean | null
+          name: string
+          price_cents: number | null
+          price_label: string | null
+          sort_order: number | null
+          sub_category: string | null
+          updated_at: string
+        }
+        Insert: {
+          badge?: string | null
+          category: string
+          created_at?: string
+          description?: string | null
+          external_url?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean | null
+          name: string
+          price_cents?: number | null
+          price_label?: string | null
+          sort_order?: number | null
+          sub_category?: string | null
+          updated_at?: string
+        }
+        Update: {
+          badge?: string | null
+          category?: string
+          created_at?: string
+          description?: string | null
+          external_url?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean | null
+          name?: string
+          price_cents?: number | null
+          price_label?: string | null
+          sort_order?: number | null
+          sub_category?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       pet_staff: {
         Row: {
           created_at: string
