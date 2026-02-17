@@ -148,3 +148,52 @@ const mod04Resolver: ContextResolver = async ({ tenantId, entityId: propertyId }
 
 // Register MOD-04
 registerContextResolver('MOD-04', mod04Resolver);
+
+// ═══════════════════════════════════════════════════════════════
+// GP-PET / MOD-22 Resolver
+// ═══════════════════════════════════════════════════════════════
+
+const gpPetResolver: ContextResolver = async ({ tenantId, entityId: customerId }) => {
+  const flags: Record<string, boolean> = {
+    user_authenticated: true,
+    tenant_exists: !!tenantId,
+  };
+
+  if (!tenantId) return flags;
+
+  // Check if any pet_customers exist for this tenant
+  if (customerId) {
+    const { data: customer } = await supabase
+      .from('pet_customers')
+      .select('id')
+      .eq('id', customerId)
+      .eq('tenant_id', tenantId)
+      .maybeSingle();
+    flags.customer_exists = !!customer;
+  } else {
+    const { count } = await supabase
+      .from('pet_customers')
+      .select('*', { count: 'exact', head: true })
+      .eq('tenant_id', tenantId);
+    flags.customer_exists = (count ?? 0) > 0;
+  }
+
+  // Check if pets exist for this tenant
+  const { count: petCount } = await supabase
+    .from('pets')
+    .select('*', { count: 'exact', head: true })
+    .eq('tenant_id', tenantId);
+  flags.pet_exists = (petCount ?? 0) > 0;
+
+  // Check if any booking is completed
+  const { count: bookingCount } = await supabase
+    .from('pet_bookings')
+    .select('*', { count: 'exact', head: true })
+    .eq('tenant_id', tenantId)
+    .in('status', ['confirmed', 'completed']);
+  flags.first_booking_completed = (bookingCount ?? 0) > 0;
+
+  return flags;
+};
+
+registerContextResolver('GP-PET', gpPetResolver);

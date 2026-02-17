@@ -11688,6 +11688,85 @@ export type Database = {
           },
         ]
       }
+      pet_customers: {
+        Row: {
+          address: string | null
+          created_at: string
+          email: string | null
+          first_name: string
+          id: string
+          last_name: string
+          notes: string | null
+          origin_zone: string
+          phone: string | null
+          provider_id: string | null
+          source: string
+          status: string
+          tenant_id: string
+          updated_at: string
+          user_id: string | null
+          z1_customer_id: string | null
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string
+          email?: string | null
+          first_name: string
+          id?: string
+          last_name: string
+          notes?: string | null
+          origin_zone?: string
+          phone?: string | null
+          provider_id?: string | null
+          source?: string
+          status?: string
+          tenant_id: string
+          updated_at?: string
+          user_id?: string | null
+          z1_customer_id?: string | null
+        }
+        Update: {
+          address?: string | null
+          created_at?: string
+          email?: string | null
+          first_name?: string
+          id?: string
+          last_name?: string
+          notes?: string | null
+          origin_zone?: string
+          phone?: string | null
+          provider_id?: string | null
+          source?: string
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+          user_id?: string | null
+          z1_customer_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pet_customers_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "pet_providers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pet_customers_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pet_customers_z1_customer_id_fkey"
+            columns: ["z1_customer_id"]
+            isOneToOne: false
+            referencedRelation: "pet_z1_customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pet_invoice_items: {
         Row: {
           created_at: string
@@ -12373,6 +12452,78 @@ export type Database = {
           },
         ]
       }
+      pet_z1_customers: {
+        Row: {
+          address: string | null
+          assigned_at: string | null
+          assigned_provider_id: string | null
+          created_at: string
+          email: string | null
+          first_name: string
+          id: string
+          last_name: string
+          lead_id: string | null
+          notes: string | null
+          phone: string | null
+          source: string
+          status: string
+          tenant_id: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          address?: string | null
+          assigned_at?: string | null
+          assigned_provider_id?: string | null
+          created_at?: string
+          email?: string | null
+          first_name: string
+          id?: string
+          last_name: string
+          lead_id?: string | null
+          notes?: string | null
+          phone?: string | null
+          source?: string
+          status?: string
+          tenant_id: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          address?: string | null
+          assigned_at?: string | null
+          assigned_provider_id?: string | null
+          created_at?: string
+          email?: string | null
+          first_name?: string
+          id?: string
+          last_name?: string
+          lead_id?: string | null
+          notes?: string | null
+          phone?: string | null
+          source?: string
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pet_z1_customers_assigned_provider_id_fkey"
+            columns: ["assigned_provider_id"]
+            isOneToOne: false
+            referencedRelation: "pet_providers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pet_z1_customers_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pets: {
         Row: {
           allergies: string[] | null
@@ -12380,6 +12531,7 @@ export type Database = {
           breed: string | null
           chip_number: string | null
           created_at: string
+          customer_id: string | null
           gender: Database["public"]["Enums"]["pet_gender"] | null
           id: string
           insurance_policy_no: string | null
@@ -12401,6 +12553,7 @@ export type Database = {
           breed?: string | null
           chip_number?: string | null
           created_at?: string
+          customer_id?: string | null
           gender?: Database["public"]["Enums"]["pet_gender"] | null
           id?: string
           insurance_policy_no?: string | null
@@ -12422,6 +12575,7 @@ export type Database = {
           breed?: string | null
           chip_number?: string | null
           created_at?: string
+          customer_id?: string | null
           gender?: Database["public"]["Enums"]["pet_gender"] | null
           id?: string
           insurance_policy_no?: string | null
@@ -12438,6 +12592,13 @@ export type Database = {
           weight_kg?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "pets_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "pet_customers"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "pets_owner_user_id_fkey"
             columns: ["owner_user_id"]
