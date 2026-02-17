@@ -222,9 +222,35 @@ Phase C: Stripe Keys → Billing
 
 ---
 
+## 10. Bekannte Bugs (während E2E gefunden)
+
+| # | Bug | Prio | Status | Notizen |
+|---|-----|------|--------|---------|
+| BUG-E2E-001 | `fn_audit_pii_change()` Trigger-Fehler bei DELETE auf `profiles` | P2 | ⬜ Offen | Trigger referenziert `OLD.tenant_id`, `profiles` hat aber `active_tenant_id`. Betrifft User-Löschung. |
+
+---
+
+## E2E Test-Ergebnisse
+
+| Test | Status | Datum | Notizen |
+|------|--------|-------|---------|
+| TC-F01: sot-create-test-user | ✅ PASS | 2026-02-17 | 200, User + Org erstellt |
+| TC-F02: sot-armstrong-advisor (ohne Auth) | ⚠️ BLOCKED | 2026-02-17 | Erwartet: kein Tenant-Kontext ohne Login |
+| sot-nasa-apod | ✅ PASS | 2026-02-17 | Comet Wierzchoś — korrekte JSON-Response |
+| sot-zenquotes-proxy | ✅ PASS | 2026-02-17 | Dalai Lama Quote |
+| Security: Auth Config | ✅ DONE | 2026-02-17 | auto_confirm=false, anon=false |
+| Security: OTP Expiry | ⬜ Offen | | Muss in Cloud Dashboard konfiguriert werden |
+| Security: Leaked PW Protection | ⬜ Offen | | Muss in Cloud Dashboard konfiguriert werden |
+| TC-B01-B07: Routing (Browser) | ⏳ Wartet | | User muss in Preview eingeloggt sein |
+| TC-C01-C06: Module Smoke (Browser) | ⏳ Wartet | | User muss in Preview eingeloggt sein |
+| TC-E01-E08: Core Flows (Browser) | ⏳ Wartet | | User muss in Preview eingeloggt sein |
+
+---
+
 ## Changelog
 
 | Datum | Änderung |
 |-------|----------|
 | 2026-02-17 | Protokoll erstellt |
 | 2026-02-17 | Komplettprüfung: Security-Linter, API-Schnittstellen-Übersicht, Testbarkeits-Matrix, Edge Functions, Secrets-Abgleich hinzugefügt |
+| 2026-02-17 | E2E Tests gestartet: Edge Functions getestet, Security Config gesetzt, Audit-Trigger Bug gefunden |
