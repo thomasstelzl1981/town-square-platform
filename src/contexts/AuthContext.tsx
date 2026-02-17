@@ -237,6 +237,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     );
 
+    // MOBILE-SESSION-FIX: When user returns to the app (tab becomes visible again),
+    // immediately refresh the session. On mobile, JS execution stops in background,
+    // so the auto-refresh can miss its window. This ensures seamless re-auth.
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        supabase.auth.getSession().then(async ({ data: { session: currentSession } }) => {
+          if (currentSession) {
+            const { data: { session: refreshedSession } } = await supabase.auth.refreshSession();
+            const activeSession = refreshedSession || currentSession;
+            setSession(activeSession);
+            setUser(activeSession?.user ?? null);
+            if (activeSession?.user) {
+              fetchUserData(activeSession.user.id);
+            }
+          }
+        });
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
     // P0-FIX: On app start, try to refresh the session first to renew expired access tokens.
     // This prevents users from being logged out after browser restart when the access token
     // has expired but the refresh token (7+ days) is still valid.
@@ -259,7 +279,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [fetchUserData, fetchDevelopmentData, isDevelopmentMode, setActiveOrgStable]);
 
   const signIn = async (email: string, password: string) => {
