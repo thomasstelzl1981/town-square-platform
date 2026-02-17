@@ -44,21 +44,22 @@ export interface PetVaccination {
 }
 
 export function usePets() {
-  const { activeTenantId } = useAuth();
+  const { activeTenantId, user } = useAuth();
 
   return useQuery({
-    queryKey: ['pets', activeTenantId],
+    queryKey: ['pets', activeTenantId, user?.id],
     queryFn: async () => {
-      if (!activeTenantId) return [];
+      if (!activeTenantId || !user?.id) return [];
       const { data, error } = await supabase
         .from('pets')
         .select('*')
         .eq('tenant_id', activeTenantId)
+        .eq('owner_user_id', user.id)
         .order('created_at', { ascending: false });
       if (error) throw error;
       return (data || []) as Pet[];
     },
-    enabled: !!activeTenantId,
+    enabled: !!activeTenantId && !!user?.id,
   });
 }
 
