@@ -123,18 +123,81 @@ export function SystemBar() {
     ? profile.display_name.split(' ').map(n => n[0]).join('').toUpperCase()
     : profile?.email?.charAt(0).toUpperCase() || 'U';
 
+  // Mobile: compact SystemBar (h-10), only Home + ARMSTRONG + Avatar
+  if (isMobile) {
+    return (
+      <header className="sticky top-0 z-50 w-full border-b bg-card/70 backdrop-blur-lg supports-[backdrop-filter]:bg-card/60">
+        <div className="flex h-10 items-center justify-between px-3">
+          {/* LEFT — Home button */}
+          <button onClick={handleHomeClick} className={cn(GLASS_BUTTON, 'h-8 w-8')} title="Startseite">
+            <Home className="h-4 w-4" />
+          </button>
+
+          {/* CENTER — ARMSTRONG */}
+          <span className="text-foreground font-sans font-semibold tracking-[0.2em] text-xs select-none">
+            ARMSTRONG
+          </span>
+
+          {/* RIGHT — Profile only */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className={cn(GLASS_BUTTON, 'h-8 w-8')} title="Profil">
+                <Avatar className="h-6 w-6">
+                  <AvatarImage src={profile?.avatar_url || undefined} />
+                  <AvatarFallback className="text-[9px] font-medium bg-transparent">{initials}</AvatarFallback>
+                </Avatar>
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel>
+                <div className="flex flex-col space-y-1">
+                  <p className="text-sm font-medium">{profile?.display_name || 'Benutzer'}</p>
+                  <p className="text-xs text-muted-foreground truncate">{profile?.email}</p>
+                </div>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link to="/portal/stammdaten/profil">
+                  <User className="h-4 w-4 mr-2" />
+                  Profil
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/portal/stammdaten/sicherheit">
+                  <Settings className="h-4 w-4 mr-2" />
+                  Einstellungen
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              {isDevelopmentMode && !user && (
+                <DropdownMenuItem asChild>
+                  <Link to="/auth" className="text-primary">
+                    <KeyRound className="h-4 w-4 mr-2" />
+                    Mit Account einloggen
+                  </Link>
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuItem onClick={() => signOut()} className="text-destructive">
+                <LogOut className="h-4 w-4 mr-2" />
+                Abmelden
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </header>
+    );
+  }
+
+  // Desktop: full SystemBar
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-card/70 backdrop-blur-lg supports-[backdrop-filter]:bg-card/60">
       <div className="flex h-12 items-center justify-between px-4">
 
         {/* LEFT — 3 Glass Buttons */}
         <div className="flex items-center gap-2">
-          {/* 1. Home */}
           <button onClick={handleHomeClick} className={GLASS_BUTTON} title="Startseite">
             <Home className="h-4.5 w-4.5" />
           </button>
-
-          {/* 2. Theme Toggle */}
           <button
             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
             className={GLASS_BUTTON}
@@ -143,53 +206,40 @@ export function SystemBar() {
             <Sun className="h-4.5 w-4.5 rotate-0 scale-100 transition-transform dark:-rotate-90 dark:scale-0" />
             <Moon className="absolute h-4.5 w-4.5 rotate-90 scale-0 transition-transform dark:rotate-0 dark:scale-100" />
           </button>
-
-          {/* 3. Temperature (desktop only) */}
-          {!isMobile && (
-            <button className={GLASS_BUTTON} title="Aktuelle Außentemperatur">
-              <span className="text-xs font-medium leading-none">
-                {temperature !== null ? `${temperature}°` : '—°'}
-              </span>
-            </button>
-          )}
+          <button className={GLASS_BUTTON} title="Aktuelle Außentemperatur">
+            <span className="text-xs font-medium leading-none">
+              {temperature !== null ? `${temperature}°` : '—°'}
+            </span>
+          </button>
         </div>
 
-        {/* CENTER — ARMSTRONG Wordmark */}
-        <span
-          className="text-foreground font-sans font-semibold tracking-[0.2em] text-sm select-none"
-          style={{ fontSize: '14px' }}
-        >
-          {isMobile ? 'ARMSTRONG' : 'SYSTEM OF A TOWN'}
+        {/* CENTER — SYSTEM OF A TOWN */}
+        <span className="text-foreground font-sans font-semibold tracking-[0.2em] text-sm select-none" style={{ fontSize: '14px' }}>
+          SYSTEM OF A TOWN
         </span>
 
         {/* RIGHT — 3 Glass Buttons */}
         <div className="flex items-center gap-2">
-          {/* 1. Analog Clock */}
           <div className={GLASS_BUTTON}>
             <AnalogClock time={currentTime} />
           </div>
+          <button
+            onClick={() => {
+              if (armstrongVisible) {
+                hideArmstrong();
+              } else {
+                showArmstrong({ resetPosition: true, expanded: false });
+              }
+            }}
+            className={cn(
+              GLASS_BUTTON,
+              armstrongVisible && 'ring-2 ring-primary/30 bg-white/40 dark:bg-white/15'
+            )}
+            title={armstrongVisible ? 'Armstrong ausblenden' : 'Armstrong einblenden'}
+          >
+            <Rocket className="h-4.5 w-4.5" />
+          </button>
 
-          {/* 2. Armstrong Chatbot */}
-          {!isMobile && (
-            <button
-              onClick={() => {
-                if (armstrongVisible) {
-                  hideArmstrong();
-                } else {
-                  showArmstrong({ resetPosition: true, expanded: false });
-                }
-              }}
-              className={cn(
-                GLASS_BUTTON,
-                armstrongVisible && 'ring-2 ring-primary/30 bg-white/40 dark:bg-white/15'
-              )}
-              title={armstrongVisible ? 'Armstrong ausblenden' : 'Armstrong einblenden'}
-            >
-              <Rocket className="h-4.5 w-4.5" />
-            </button>
-          )}
-
-          {/* 3. Profile */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button className={GLASS_BUTTON} title="Profil">
@@ -220,12 +270,10 @@ export function SystemBar() {
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              {!isMobile && (
-                <DropdownMenuItem onClick={resetArmstrong}>
-                  <Rocket className="h-4 w-4 mr-2" />
-                  Armstrong zurücksetzen
-                </DropdownMenuItem>
-              )}
+              <DropdownMenuItem onClick={resetArmstrong}>
+                <Rocket className="h-4 w-4 mr-2" />
+                Armstrong zurücksetzen
+              </DropdownMenuItem>
               {isDevelopmentMode && !user && (
                 <DropdownMenuItem asChild>
                   <Link to="/auth" className="text-primary">
