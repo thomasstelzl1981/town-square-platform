@@ -9,62 +9,17 @@
 import * as React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-import { usePortalLayout } from '@/hooks/usePortalLayout';
 import { useArmstrongAdvisor } from '@/hooks/useArmstrongAdvisor';
 import { useArmstrongVoice } from '@/hooks/useArmstrongVoice';
 import { VoiceButton } from '@/components/armstrong/VoiceButton';
 import { MobileAttachMenu } from './MobileAttachMenu';
-import { areaConfig, type AreaKey } from '@/manifests/areaConfig';
-import { MOBILE_HIDDEN_AREAS } from '@/config/mobileConfig';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import {
   Send,
   Loader2,
-  Database,
-  Rocket,
-  Wrench,
-  LayoutGrid,
-  Home,
   X
 } from 'lucide-react';
-
-const areaIcons: Record<AreaKey, React.ElementType> = {
-  base: Database,
-  missions: Rocket,
-  operations: Wrench,
-  services: LayoutGrid,
-};
-
-/* ── Area Nav Button (round) ─────────────────────────── */
-function NavButton({
-  icon: Icon,
-  label,
-  isActive,
-  onClick,
-}: {
-  icon: React.ElementType;
-  label: string;
-  isActive: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={cn(
-        'flex flex-col items-center justify-center gap-0.5 transition-all active:scale-95',
-        'h-14 w-14 rounded-full',
-        'backdrop-blur-md border shadow-sm',
-        isActive
-          ? 'bg-primary/15 border-primary/30 text-primary shadow-primary/10'
-          : 'bg-white/10 dark:bg-white/5 border-white/15 dark:border-white/10 text-muted-foreground hover:text-foreground hover:bg-white/20 dark:hover:bg-white/10'
-      )}
-    >
-      <Icon className="h-5 w-5" />
-      <span className="text-[9px] font-medium leading-none">{label}</span>
-    </button>
-  );
-}
 
 /* ── Attached Files Row ──────────────────────────────── */
 function AttachedFiles({
@@ -102,7 +57,6 @@ interface MobileBottomBarProps {
 export function MobileBottomBar({ onChatActivated, mobileHomeMode, onModeChange }: MobileBottomBarProps) {
   const navigate = useNavigate();
   const location = useLocation();
-  const { activeArea, setActiveArea, setMobileNavView, setSelectedMobileModule } = usePortalLayout();
   const advisor = useArmstrongAdvisor();
   const voice = useArmstrongVoice();
 
@@ -147,17 +101,6 @@ export function MobileBottomBar({ onChatActivated, mobileHomeMode, onModeChange 
     else voice.startListening();
   }, [voice]);
 
-  const handleAreaClick = (areaKey: AreaKey) => {
-    setActiveArea(areaKey);
-    setMobileNavView('modules');
-    setSelectedMobileModule(null);
-    navigate(`/portal/area/${areaKey}`);
-  };
-
-  const handleHomeClick = () => {
-    navigate('/portal');
-  };
-
   const handleFilesSelected = (files: File[]) => {
     setAttachedFiles(prev => [...prev, ...files]);
   };
@@ -166,44 +109,21 @@ export function MobileBottomBar({ onChatActivated, mobileHomeMode, onModeChange 
     setAttachedFiles(prev => prev.filter((_, i) => i !== index));
   };
 
-  const mobileAreas = areaConfig.filter(a => !MOBILE_HIDDEN_AREAS.includes(a.key));
-
   return (
     <nav
-      className="sticky bottom-0 z-40 w-full bg-background/60 backdrop-blur-xl border-t border-border/20"
+      className="sticky bottom-0 z-40 w-full bg-background/80 backdrop-blur-2xl border-t border-border/10"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
-      {/* Area Navigation — 5 round buttons (Home + 4 Areas) */}
-      <div className="px-2 pt-2 pb-3">
-        <div className="flex items-center justify-around">
-          <NavButton
-            icon={Home}
-            label="Home"
-            isActive={isDashboard}
-            onClick={handleHomeClick}
-          />
-          {mobileAreas.map((area) => (
-            <NavButton
-              key={area.key}
-              icon={areaIcons[area.key]}
-              label={area.labelShort}
-              isActive={activeArea === area.key && !isDashboard}
-              onClick={() => handleAreaClick(area.key)}
-            />
-          ))}
-        </div>
-      </div>
-
-      {/* Module/Chat Toggle — only on dashboard */}
+      {/* Module/Chat Toggle — Lovable-style, only on dashboard */}
       {isDashboard && mobileHomeMode && onModeChange && (
-        <div className="flex justify-center pb-2">
-          <div className="flex bg-muted/60 rounded-full p-0.5">
+        <div className="flex justify-center pt-2.5 pb-2">
+          <div className="flex bg-muted/50 rounded-lg p-0.5 border border-border/20">
             <button
               onClick={() => onModeChange('modules')}
               className={cn(
-                'px-5 py-1.5 rounded-full text-xs font-medium transition-all',
+                'px-5 py-2 rounded-md text-xs font-medium transition-all',
                 mobileHomeMode === 'modules'
-                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  ? 'bg-background text-foreground shadow-sm'
                   : 'text-muted-foreground hover:text-foreground'
               )}
             >
@@ -212,9 +132,9 @@ export function MobileBottomBar({ onChatActivated, mobileHomeMode, onModeChange 
             <button
               onClick={() => onModeChange('chat')}
               className={cn(
-                'px-5 py-1.5 rounded-full text-xs font-medium transition-all',
+                'px-5 py-2 rounded-md text-xs font-medium transition-all',
                 mobileHomeMode === 'chat'
-                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  ? 'bg-background text-foreground shadow-sm'
                   : 'text-muted-foreground hover:text-foreground'
               )}
             >
@@ -227,9 +147,9 @@ export function MobileBottomBar({ onChatActivated, mobileHomeMode, onModeChange 
       {/* Attached files preview */}
       <AttachedFiles files={attachedFiles} onRemove={removeFile} />
 
-      {/* Input Bar — [Mic] [+] [Input] [Send] */}
-      <div className="px-4 pb-4">
-        <div className="flex items-center gap-1.5 p-1.5 rounded-2xl bg-muted/50 backdrop-blur-sm border border-border/30">
+      {/* Input Bar — Lovable-style clean input */}
+      <div className="px-3 pb-3 pt-1">
+        <div className="flex items-center gap-1 p-1 rounded-xl bg-muted/40 border border-border/20">
           <VoiceButton
             isListening={voice.isListening}
             isProcessing={voice.isProcessing}
@@ -250,25 +170,25 @@ export function MobileBottomBar({ onChatActivated, mobileHomeMode, onModeChange 
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Nachricht eingeben..."
-            className="border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 h-9 text-sm"
+            className="border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 h-9 text-sm placeholder:text-muted-foreground/50"
             disabled={advisor.isLoading}
           />
 
           <Button
             size="sm"
             className={cn(
-              'h-8 w-8 p-0 rounded-full transition-all shrink-0',
+              'h-7 w-7 p-0 rounded-lg transition-all shrink-0',
               input.trim() && !advisor.isLoading
-                ? 'bg-primary hover:bg-primary/90'
-                : 'bg-muted'
+                ? 'bg-foreground hover:bg-foreground/90'
+                : 'bg-muted/60'
             )}
             onClick={handleSend}
             disabled={!input.trim() || advisor.isLoading}
           >
             {advisor.isLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+              <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
             ) : (
-              <Send className="h-4 w-4 text-primary-foreground" />
+              <Send className="h-3.5 w-3.5 text-background" />
             )}
           </Button>
         </div>
