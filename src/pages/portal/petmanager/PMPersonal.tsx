@@ -1,8 +1,9 @@
 /**
  * PMPersonal — Vertikales Widget-Layout: Mitarbeiter links, Inline-Akte rechts
+ * Erweitert um Arbeitszeiten-Sektion und Urlaubs-Sektion
  */
 import { useState } from 'react';
-import { Plus, Save, Trash2, X, Phone, Mail } from 'lucide-react';
+import { Plus, Save, Trash2, X, Phone, Mail, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -12,12 +13,34 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { useMyProvider } from '@/hooks/usePetBookings';
-import { useProviderStaff, useCreateStaff, useUpdateStaff, useDeleteStaff, type PetStaff } from '@/hooks/usePetStaff';
+import {
+  useProviderStaff, useCreateStaff, useUpdateStaff, useDeleteStaff,
+  useStaffVacations, useCreateVacation, useDeleteVacation,
+  type PetStaff,
+} from '@/hooks/usePetStaff';
 import { PageShell } from '@/components/shared/PageShell';
 import { cn } from '@/lib/utils';
 
 const ROLE_OPTIONS = ['Hundefriseur', 'Gassigeher', 'Betreuer', 'Trainer', 'Tierarzthelfer'];
 const SERVICE_OPTIONS = ['Gassi', 'Tagesstätte', 'Hundesalon', 'Training', 'Tierarzt'];
+
+const DAY_KEYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
+const DAY_LABELS: Record<string, string> = { mon: 'Mo', tue: 'Di', wed: 'Mi', thu: 'Do', fri: 'Fr', sat: 'Sa', sun: 'So' };
+
+type WorkDay = { start: string; end: string } | null;
+type WorkHours = Record<string, WorkDay>;
+
+const DEFAULT_WORK_HOURS: WorkHours = {
+  mon: { start: '08:00', end: '17:00' }, tue: { start: '08:00', end: '17:00' },
+  wed: { start: '08:00', end: '17:00' }, thu: { start: '08:00', end: '17:00' },
+  fri: { start: '08:00', end: '17:00' }, sat: null, sun: null,
+};
+
+const VACATION_TYPE_OPTIONS = [
+  { value: 'urlaub', label: 'Urlaub' },
+  { value: 'krank', label: 'Krank' },
+  { value: 'frei', label: 'Frei' },
+];
 
 const EMPTY_STAFF = { name: '', role: 'Betreuer', email: '', phone: '', is_active: true, services: [] as string[], sort_order: 0 };
 
@@ -32,6 +55,13 @@ export default function PMPersonal() {
   const [isCreating, setIsCreating] = useState(false);
   const [form, setForm] = useState(EMPTY_STAFF);
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
+  const [workHours, setWorkHours] = useState<WorkHours>(DEFAULT_WORK_HOURS);
+
+  // Vacation state
+  const { data: vacations = [] } = useStaffVacations(selectedId || undefined);
+  const createVacation = useCreateVacation();
+  const deleteVacation = useDeleteVacation();
+  const [newVacation, setNewVacation] = useState<{ start_date: string; end_date: string; vacation_type: string; notes: string } | null>(null);
 
   const allStaff = staff;
 
@@ -40,6 +70,7 @@ export default function PMPersonal() {
     setIsCreating(true);
     setForm(EMPTY_STAFF);
     setSelectedServices([]);
+    setWorkHours(DEFAULT_WORK_HOURS);
   };
 
   const handleSelect = (member: PetStaff) => {
@@ -51,17 +82,33 @@ export default function PMPersonal() {
       services: member.services || [], sort_order: member.sort_order,
     });
     setSelectedServices(member.services || []);
+    setWorkHours((member.work_hours as WorkHours) || DEFAULT_WORK_HOURS);
+    setNewVacation(null);
   };
 
-  const handleClose = () => { setSelectedId(null); setIsCreating(false); };
+  const handleClose = () => { setSelectedId(null); setIsCreating(false); setNewVacation(null); };
 
   const toggleService = (svc: string) => {
     setSelectedServices(prev => prev.includes(svc) ? prev.filter(s => s !== svc) : [...prev, svc]);
   };
 
+  const toggleDay = (day: string) => {
+    setWorkHours(prev => ({
+      ...prev,
+      [day]: prev[day] ? null : { start: '08:00', end: '17:00' },
+    }));
+  };
+
+  const updateDayTime = (day: string, field: 'start' | 'end', value: string) => {
+    setWorkHours(prev => ({
+      ...prev,
+      [day]: prev[day] ? { ...prev[day]!, [field]: value } : { start: '08:00', end: '17:00', [field]: value },
+    }));
+  };
+
   const handleSave = async () => {
     if (!form.name.trim()) return;
-    const payload = { ...form, services: selectedServices };
+    const payload = { ...form, services: selectedServices, work_hours: workHours };
     if (selectedId) {
       await updateStaff.mutateAsync({ id: selectedId, ...payload });
     } else {
@@ -74,6 +121,12 @@ export default function PMPersonal() {
     if (!selectedId) return;
     await deleteStaff.mutateAsync(selectedId);
     handleClose();
+  };
+
+  const handleAddVacation = async () => {
+    if (!newVacation || !selectedId || !newVacation.start_date || !newVacation.end_date) return;
+    await createVacation.mutateAsync({ staff_id: selectedId, ...newVacation });
+    setNewVacation(null);
   };
 
   const showAkte = selectedId || isCreating;
@@ -213,6 +266,139 @@ export default function PMPersonal() {
                         ))}
                       </div>
                     </div>
+
+                    {/* Arbeitszeiten */}
+                    <div className="border-t pt-4 mt-2">
+                      <h3 className="text-sm font-semibold mb-2">Arbeitszeiten</h3>
+                      <div className="space-y-1.5">
+                        {DAY_KEYS.map(day => {
+                          const active = !!workHours[day];
+                          return (
+                            <div key={day} className="flex items-center gap-2">
+                              <Switch checked={active} onCheckedChange={() => toggleDay(day)} className="scale-75" />
+                              <span className="w-6 text-xs font-medium text-muted-foreground">{DAY_LABELS[day]}</span>
+                              {active ? (
+                                <>
+                                  <Input
+                                    type="time"
+                                    value={workHours[day]?.start || '08:00'}
+                                    onChange={e => updateDayTime(day, 'start', e.target.value)}
+                                    className="w-24 h-7 text-xs"
+                                  />
+                                  <span className="text-xs text-muted-foreground">–</span>
+                                  <Input
+                                    type="time"
+                                    value={workHours[day]?.end || '17:00'}
+                                    onChange={e => updateDayTime(day, 'end', e.target.value)}
+                                    className="w-24 h-7 text-xs"
+                                  />
+                                </>
+                              ) : (
+                                <span className="text-xs text-muted-foreground italic">Frei</span>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Urlaub / Abwesenheiten */}
+                    {selectedId && (
+                      <div className="border-t pt-4 mt-2">
+                        <div className="flex items-center justify-between mb-2">
+                          <h3 className="text-sm font-semibold">Urlaub / Abwesenheiten</h3>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 text-xs"
+                            onClick={() => setNewVacation({ start_date: '', end_date: '', vacation_type: 'urlaub', notes: '' })}
+                          >
+                            <Plus className="h-3 w-3 mr-1" /> Neu
+                          </Button>
+                        </div>
+
+                        {/* Existing vacations */}
+                        {vacations.length > 0 && (
+                          <div className="space-y-1 mb-2">
+                            {vacations.map(v => (
+                              <div key={v.id} className="flex items-center gap-2 text-xs bg-muted/40 rounded px-2 py-1.5">
+                                <Calendar className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                                <span className="font-medium">{v.start_date} – {v.end_date}</span>
+                                <Badge variant="outline" className="text-[9px] px-1 py-0">
+                                  {VACATION_TYPE_OPTIONS.find(t => t.value === v.vacation_type)?.label || v.vacation_type}
+                                </Badge>
+                                {v.notes && <span className="text-muted-foreground truncate">{v.notes}</span>}
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-5 w-5 p-0 ml-auto flex-shrink-0"
+                                  onClick={() => deleteVacation.mutate(v.id)}
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {vacations.length === 0 && !newVacation && (
+                          <p className="text-xs text-muted-foreground">Keine Einträge vorhanden.</p>
+                        )}
+
+                        {/* New vacation inline form */}
+                        {newVacation && (
+                          <div className="flex flex-wrap items-end gap-2 bg-muted/30 rounded p-2">
+                            <div>
+                              <Label className="text-[10px]">Von</Label>
+                              <Input
+                                type="date"
+                                value={newVacation.start_date}
+                                onChange={e => setNewVacation(v => v && ({ ...v, start_date: e.target.value }))}
+                                className="w-32 h-7 text-xs"
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-[10px]">Bis</Label>
+                              <Input
+                                type="date"
+                                value={newVacation.end_date}
+                                onChange={e => setNewVacation(v => v && ({ ...v, end_date: e.target.value }))}
+                                className="w-32 h-7 text-xs"
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-[10px]">Typ</Label>
+                              <Select
+                                value={newVacation.vacation_type}
+                                onValueChange={val => setNewVacation(v => v && ({ ...v, vacation_type: val }))}
+                              >
+                                <SelectTrigger className="w-24 h-7 text-xs"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  {VACATION_TYPE_OPTIONS.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="flex-1 min-w-[100px]">
+                              <Label className="text-[10px]">Notiz</Label>
+                              <Input
+                                value={newVacation.notes}
+                                onChange={e => setNewVacation(v => v && ({ ...v, notes: e.target.value }))}
+                                className="h-7 text-xs"
+                                placeholder="Optional"
+                              />
+                            </div>
+                            <div className="flex gap-1">
+                              <Button size="sm" className="h-7 text-xs" onClick={handleAddVacation} disabled={createVacation.isPending}>
+                                <Save className="h-3 w-3 mr-1" /> OK
+                              </Button>
+                              <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setNewVacation(null)}>
+                                <X className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     {/* Actions */}
                     <div className="flex items-center gap-2 pt-2">
