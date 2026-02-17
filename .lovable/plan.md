@@ -1,139 +1,83 @@
 
-# Lennox & Friends — Website Redesign + Pet-Card Datenstandard (SSOT)
 
-## 1. Pet-Card Datenstandard (SSOT für Z1/Z2/Z3)
+## Shop SSOT: Zone 1 als Produktquelle, Zone 2 + Zone 3 als Konsumenten
 
-Die Z2 `pets`-Tabelle (MOD-05 Haustiere) ist die **Vorlage** und wird NICHT verändert.
-Die Z1/Z3 `pet_z1_pets`-Tabelle wurde erweitert, um den gleichen Feldstandard abzubilden.
+### Ueberblick
 
-### Feld-Matrix
+Alle Produkte werden kuenftig in einer zentralen DB-Tabelle `pet_shop_products` verwaltet (Zone 1 PetDeskShop). Die hardcodierten Produkt-Arrays in `PetsShop.tsx` (Zone 2) werden entfernt und durch DB-Queries ersetzt. Zone 3 (LennoxShop) liest dieselbe Tabelle.
 
-| Feld | Z3 Minimum (Quick) | Z1/Z3 Standard (Profil) | Z2 Vollständig (MOD-05) | Tabelle |
-|------|:---:|:---:|:---:|---------|
-| **Tiername** | ✅ Pflicht | ✅ | ✅ | `name` |
-| **Tierart** | ✅ Pflicht | ✅ | ✅ | `species` (Enum: dog, cat, bird, rabbit, hamster, fish, reptile, horse, other) |
-| **Rasse** | — | ✅ | ✅ | `breed` |
-| **Geschlecht** | — | ✅ | ✅ | `gender` (Enum: male, female, unknown) |
-| **Geburtsdatum** | — | ✅ | ✅ | `birth_date` |
-| **Gewicht (kg)** | — | ✅ | ✅ | `weight_kg` |
-| **Chip-Nr.** | — | ✅ | ✅ | `chip_number` |
-| **Kastriert** | — | ✅ | ✅ | `neutered` |
-| **Tierarzt** | — | ✅ | ✅ | `vet_name` |
-| **Allergien** | — | ✅ | ✅ | `allergies` (text[]) |
-| **Foto** | — | ✅ | ✅ | `photo_url` |
-| **Notizen** | — | ✅ | ✅ | `notes` |
-| **Versicherer** | — | — | ✅ nur Z2 | `insurance_provider` |
-| **Policen-Nr.** | — | — | ✅ nur Z2 | `insurance_policy_no` |
-| **Impfhistorie** | — | — | ✅ nur Z2 | `pet_vaccinations` (Relation) |
-| **Krankengeschichte** | — | — | ✅ nur Z2 | `pet_medical_records` (Relation) |
-| **Pflege-Timeline** | — | — | ✅ nur Z2 | `pet_caring_events` (Relation) |
-| **Lennox Tracker** | — | — | ✅ nur Z2 | Placeholder (Shop-Link) |
-| **DMS-Tree** | — | — | ✅ nur Z2 | `EntityStorageTree` |
+**Wichtig:** Die LennoxStyle-Produkte (12 Stueck) werden komplett geloescht — neue Produkte werden spaeter manuell in Zone 1 angelegt. Ernaehrung (Lakefields) und Fressnapf bleiben als Daten erhalten, werden aber ebenfalls in die DB verschoben. Der LennoxTracker bleibt hardcoded (Produktinfo, kein Shop-Artikel).
 
-### Halter-Daten (pet_z1_customers)
+### Schritt 1: DB-Migration — `pet_shop_products` Tabelle
 
-| Feld | Z3 Minimum | Z1/Z3 Standard | Spalte |
-|------|:---:|:---:|--------|
-| **Vorname** | ✅ Pflicht | ✅ | `first_name` |
-| **Nachname** | ✅ Pflicht | ✅ | `last_name` |
-| **E-Mail** | ✅ Pflicht | ✅ | `email` |
-| **Telefon** | ✅ Pflicht | ✅ | `phone` |
-| **Straße** | — | ✅ | `address` |
-| **PLZ** | — | ✅ | `postal_code` |
-| **Ort** | — | ✅ | `city` |
+Neue Tabelle mit RLS (platform_admin schreibt, authenticated liest):
 
-### Datentransfer Z1 → Z2
+| Spalte | Typ | Beschreibung |
+|--------|-----|-------------|
+| id | uuid PK | |
+| category | text NOT NULL | `ernaehrung`, `lennox_tracker`, `lennox_style`, `fressnapf` |
+| name | text NOT NULL | Produktname |
+| description | text | Kurzbeschreibung |
+| price_label | text | Anzeige-String ("3,89 EUR") |
+| price_cents | integer | Maschinenlesbarer Preis |
+| image_url | text | Produktbild-URL |
+| external_url | text | Affiliate/Shop-Link |
+| badge | text | "Neu", "Beliebt", "Exklusiv" |
+| sub_category | text | "Nassfutter", "Leinen & Geschirr" etc. |
+| sort_order | integer DEFAULT 0 | Sortierung |
+| is_active | boolean DEFAULT true | Aktiv/Inaktiv |
+| created_at / updated_at | timestamptz | Timestamps |
 
-Bei Zuweisung eines Z1-Kunden an einen Z2-Provider werden die Daten aus `pet_z1_pets` in die `pets`-Tabelle übertragen. Die Felder `insurance_provider` und `insurance_policy_no` werden erst in Z2 ergänzt.
+RLS-Policies:
+- SELECT: alle authentifizierten Nutzer
+- INSERT/UPDATE/DELETE: nur `is_platform_admin(auth.uid())`
 
----
+### Schritt 2: Hook — `usePetShopProducts.ts`
 
-## 2. CI / Look & Feel (Alpine Modern)
+Zentraler Hook fuer alle drei Zonen:
+- `usePetShopProducts(category?)` — Lesen (mit optionalem Kategorie-Filter)
+- `useCreateShopProduct()` — Mutation fuer Z1
+- `useUpdateShopProduct()` — Mutation fuer Z1
+- `useDeleteShopProduct()` — Mutation fuer Z1
 
-### Logos (in `src/assets/logos/`)
-- `lennox_logo_main.jpeg` — Hauptlogo (LF + Berge + Hunde, Tannengrün)
-- `lennox_logo_minimal.jpeg` — Minimallogo (Lineart, nur Hunde + Text)
-- `lennox_logo_patch.jpeg` — Patch-Style (Tannengrün auf Offwhite)
-- `lennox_logo_badge.jpeg` — Badge rund (Berge + Hunde im Kreis)
+### Schritt 3: Zone 1 — `PetDeskShop.tsx` Rewrite
 
-### Hero-Bild
-- `src/assets/lennox/hero_alpine.jpg` — Generiert, zwei Labradors auf Almwiese mit Bergpanorama
+Vom Platzhalter zur vollen CRUD-Oberflaeche:
+- 4 Kategorie-Tabs: Ernaehrung, LennoxTracker, LennoxStyle, Fressnapf
+- Produktliste pro Tab mit Name, Preis, Badge, Status
+- "Produkt anlegen"-Dialog (Name, Beschreibung, Preis, Bild-URL, externer Link, Badge, Sub-Kategorie)
+- Inline-Bearbeitung und Loeschen
+- Aktiv/Inaktiv-Toggle
 
-### Farbschema
-- Tannengrün: `hsl(155, 35%, 25%)` — Primary
-- Offwhite: `hsl(40, 30%, 97%)` — Background
-- Sand: `hsl(35, 30%, 85%)` — Borders/Muted
-- Neon Coral: `hsl(10, 85%, 60%)` — Akzent (nur Hover/Badge)
-- Dunkelgrün Text: `hsl(155, 25%, 15%)` — Foreground
+### Schritt 4: Zone 2 — `PetsShop.tsx` Umbau
 
----
+Aenderungen:
+- `LAKEFIELDS_PRODUCTS` Array **entfernen** → DB-Query `category = 'ernaehrung'`
+- `LENNOX_STYLE_PRODUCTS` Array **entfernen** → DB-Query `category = 'lennox_style'`
+- `FRESSNAPF_PRODUCTS` Array **entfernen** → DB-Query `category = 'fressnapf'`
+- LennoxTracker-Sektion **bleibt hardcoded** (ist Produktinfo/Feature-Seite, keine Shop-Artikel)
+- Widget-Navigation (4 Kacheln) bleibt unveraendert
+- Produkt-Grid rendert generisch aus DB-Daten (image_url, name, price_label, external_url, badge)
+- Wenn keine Produkte in einer Kategorie: Hinweis "Produkte werden in Kuerze hinzugefuegt"
 
-## 3. Seitenstruktur (4 Bereiche)
+### Schritt 5: Zone 3 — `LennoxShop.tsx` Update
 
-| Route | Komponente | Beschreibung |
-|-------|-----------|-------------|
-| `/website/tierservice` | LennoxStartseite | One-Pager: Hero → Partnerfinder → Trust → Shop-Teaser → Partner-CTA |
-| `/website/tierservice/partner/:slug` | LennoxPartnerProfil | Dynamisches Partnerprofil mit Service-Kacheln + Inline-Booking |
-| `/website/tierservice/shop` | LennoxShop | Lennox Essentials + Affiliate |
-| `/website/tierservice/partner-werden` | LennoxPartnerWerden | Bewerbungsformular → Z1 Intake |
-| `/website/tierservice/login` | LennoxAuth | Login / Registrierung |
-| `/website/tierservice/mein-bereich` | LennoxMeinBereich | Dashboard: Tiere, Buchungen, Einstellungen |
+- Platzhalter-Kategorien durch DB-Query ersetzen
+- Nur `is_active = true` anzeigen
+- Kategorien: Ernaehrung + LennoxStyle (eigene), Fressnapf (Affiliate)
+- LennoxTracker als eigene Sektion (hardcoded Feature-Teaser, kein DB-Produkt)
 
-### Startseite — Zwei Zustände
+### Schritt 6: Seed-Daten (Lakefields + Fressnapf)
 
-**A) Vor Suche:** Hero groß + Standort-Widget + Trust + Shop-Teaser + Partner-CTA
-**B) Nach Suche:** Hero kompakt + Partner-Kacheln (Bild, Name, Ort, 2 Tags, Rating) + gleicher Rest
+Die bestehenden Lakefields-Produkte (6 Stueck) und Fressnapf-Produkte (10 Stueck) werden als INSERT-Migration in `pet_shop_products` uebernommen. **LennoxStyle wird NICHT geseeded** — leere Kategorie, wird spaeter manuell befuellt.
 
-### Partnerprofil — Standardisiert
-
-- Partner Hero (Bild, Name, Region, Badge "Geprüfter Partner")
-- Service-Module (max 4 Kacheln mit Service-Tags aus `pet_service_category` Enum)
-- Booking Block (inline): Datum, "5 € Anzahlung", Login-Check, Tier auswählen/Quick-Form
-- Galerie + Kontakt
-
-### Zwei Buchungspfade
-
-1. **Mit Profil:** Eingeloggt → Tier auswählen aus `pet_z1_pets` → Buchung senden
-2. **Ohne Profil (Quick):** Minimalpflichtfelder inline → Erstellt `pet_z1_customers` (source: 'website_quick') + `pet_z1_pets`
-
----
-
-## 4. Navigation (LennoxLayout)
-
-```
-[Logo]                    [Shop] [Partner werden] [Login/Mein Bereich]
-```
-
----
-
-## 5. Acceptance Criteria
-
-1. ✅ Startseite zeigt NIE globale Leistungen
-2. ✅ Partner-Kacheln NUR nach Standort/Ort
-3. ✅ Klick auf Partner → sofort Partnerprofil (kein Zwischenscreen)
-4. ✅ Leistungen nur im Partnerprofil (max 4 Kacheln)
-5. ✅ Booking → Zone 1 Lennox Desk Intake
-6. ✅ Schnellbuchung ohne Login mit Minimalpflichtfeldern
-7. ✅ Pet-Card Datenstandard konsistent über Z1/Z2/Z3
-
----
-
-## 6. Dateien-Übersicht
+### Dateien-Uebersicht
 
 | Datei | Aktion |
 |-------|--------|
-| `src/pages/zone3/lennox/LennoxStartseite.tsx` | NEU |
-| `src/pages/zone3/lennox/LennoxPartnerProfil.tsx` | NEU |
-| `src/pages/zone3/lennox/LennoxShop.tsx` | NEU |
-| `src/pages/zone3/lennox/LennoxPartnerWerden.tsx` | NEU |
-| `src/pages/zone3/lennox/LennoxMeinBereich.tsx` | NEU |
-| `src/pages/zone3/lennox/LennoxLayout.tsx` | EDIT — Alpine CI + neue Navigation |
-| `src/pages/zone3/lennox/LennoxAuth.tsx` | EDIT — Redirect zu /mein-bereich |
-| `src/pages/zone3/lennox/LennoxHome.tsx` | ENTFERNEN |
-| `src/pages/zone3/lennox/LennoxUeberUns.tsx` | ENTFERNEN |
-| `src/pages/zone3/lennox/LennoxProfil.tsx` | ENTFERNEN |
-| `src/pages/zone3/lennox/LennoxMeineTiere.tsx` | ENTFERNEN (→ MeinBereich) |
-| `src/pages/zone3/lennox/LennoxBuchen.tsx` | ENTFERNEN (→ PartnerProfil) |
-| `src/pages/zone3/lennox/LennoxProviderDetail.tsx` | ENTFERNEN (→ PartnerProfil) |
-| `src/manifests/routesManifest.ts` | EDIT |
-| `src/router/ManifestRouter.tsx` | EDIT |
+| DB Migration | NEU — `pet_shop_products` + RLS + Seed (Lakefields + Fressnapf) |
+| `src/hooks/usePetShopProducts.ts` | NEU — CRUD Hook |
+| `src/pages/admin/petmanager/PetDeskShop.tsx` | REWRITE — Z1 Produktverwaltung mit 4 Tabs + CRUD |
+| `src/pages/portal/pets/PetsShop.tsx` | EDIT — Hardcoded-Arrays entfernen, DB-Query nutzen |
+| `src/pages/zone3/lennox/LennoxShop.tsx` | EDIT — Produkte aus DB laden |
+
