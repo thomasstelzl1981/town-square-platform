@@ -618,8 +618,16 @@ export const zone3Websites: Record<string, WebsiteDefinition> = {
       { path: "objekt", component: "AcquiaryObjekt", title: "Objekt anbieten" },
     ],
   },
+  lennox: {
+    base: "/website/tierservice",
+    layout: "LennoxLayout",
+    routes: [
+      { path: "", component: "LennoxHome", title: "Tierbetreuung finden" },
+      { path: "ueber-uns", component: "LennoxUeberUns", title: "Über uns" },
+      { path: "anbieter/:providerId", component: "LennoxProviderDetail", title: "Anbieter-Profil", dynamic: true },
+    ],
+  },
 };
-
 // =============================================================================
 // LEGACY ROUTES (DEPRECATED)
 // =============================================================================

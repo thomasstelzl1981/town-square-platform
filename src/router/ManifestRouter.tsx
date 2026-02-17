@@ -162,6 +162,12 @@ const AcquiaryNetzwerk = React.lazy(() => import('@/pages/zone3/acquiary/Acquiar
 const AcquiaryKarriere = React.lazy(() => import('@/pages/zone3/acquiary/AcquiaryKarriere'));
 const AcquiaryObjekt = React.lazy(() => import('@/pages/zone3/acquiary/AcquiaryObjekt'));
 
+// Zone 3: Lennox & Friends Pet Service (lazy loaded)
+const LennoxLayout = React.lazy(() => import('@/pages/zone3/lennox/LennoxLayout'));
+const LennoxHome = React.lazy(() => import('@/pages/zone3/lennox/LennoxHome'));
+const LennoxProviderDetail = React.lazy(() => import('@/pages/zone3/lennox/LennoxProviderDetail'));
+const LennoxUeberUns = React.lazy(() => import('@/pages/zone3/lennox/LennoxUeberUns'));
+
 
 // 404
 import NotFound from '@/pages/NotFound';
@@ -367,6 +373,7 @@ const zone3LayoutMap: Record<string, React.ComponentType<{ children?: React.Reac
   FutureRoomLayout,
   SotLayout,
   AcquiaryLayout,
+  LennoxLayout,
 };
 
 const zone3ComponentMaps: Record<string, Record<string, React.ComponentType>> = {
@@ -374,6 +381,11 @@ const zone3ComponentMaps: Record<string, Record<string, React.ComponentType>> = 
   futureroom: futureroomComponentMap,
   sot: sotComponentMap,
   acquiary: acquiaryComponentMap,
+  lennox: {
+    LennoxHome,
+    LennoxProviderDetail,
+    LennoxUeberUns,
+  },
 };
 
 // =============================================================================
