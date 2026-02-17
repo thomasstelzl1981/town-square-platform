@@ -145,28 +145,28 @@
       "id": "P7",
       "title": "Zone 3 — Oeffentliches Provider-Verzeichnis",
       "priority": 5,
-      "status": "todo",
+      "status": "done",
       "tasks": [
         {
           "id": "P7.1",
           "title": "Oeffentliche Provider-Seite",
-          "description": "Route /tierservice: Provider-Karten mit Suche/Filter ohne Login.",
-          "status": "todo",
-          "files": ["src/pages/public/TierservicePage.tsx"]
+          "description": "Route /website/tierservice: Provider-Karten mit Suche/Filter ohne Login.",
+          "status": "done",
+          "files": ["src/pages/zone3/lennox/LennoxHome.tsx", "src/pages/zone3/lennox/LennoxLayout.tsx"]
         },
         {
           "id": "P7.2",
           "title": "Provider-Detailseite (oeffentlich)",
           "description": "Profil mit Services, Bewertungen, Verfuegbarkeit.",
-          "status": "todo",
-          "files": ["src/pages/public/TierserviceDetailPage.tsx"]
+          "status": "done",
+          "files": ["src/pages/zone3/lennox/LennoxProviderDetail.tsx"]
         },
         {
           "id": "P7.3",
           "title": "Registrierungs-CTA",
           "description": "'Jetzt buchen' fuehrt zur Registrierung/Login, danach weiter zum Buchungsflow.",
-          "status": "todo",
-          "files": ["src/pages/public/TierservicePage.tsx"]
+          "status": "done",
+          "files": ["src/pages/zone3/lennox/LennoxHome.tsx", "src/pages/zone3/lennox/LennoxProviderDetail.tsx"]
         }
       ]
     }
