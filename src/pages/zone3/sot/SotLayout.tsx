@@ -39,15 +39,15 @@ export default function SotLayout() {
         <header className="sticky top-0 z-50 border-b border-border/40 bg-background/80 backdrop-blur-xl">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
             {/* Brand */}
-            <Link to="/website/sot" className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                <div className="w-3 h-3 rounded-full bg-primary" />
+            <Link to="/website/sot" className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
+                <div className="w-3.5 h-3.5 rounded-full bg-primary shadow-[0_0_12px_2px_hsl(var(--primary)/0.4)]" />
               </div>
-              <span className="text-sm font-bold tracking-widest uppercase hidden sm:block">
-                System of a Town
+              <span className="text-base font-semibold tracking-[0.25em] uppercase hidden sm:block bg-gradient-to-r from-foreground via-foreground to-foreground/70 bg-clip-text text-transparent">
+                SYSTEM OF A TOWN
               </span>
-              <span className="text-sm font-bold tracking-widest uppercase sm:hidden">
-                SoaT
+              <span className="text-base font-semibold tracking-[0.25em] uppercase sm:hidden bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
+                SOAT
               </span>
             </Link>
 
