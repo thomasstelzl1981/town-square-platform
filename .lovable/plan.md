@@ -1,104 +1,82 @@
 
 
-# Mobile Startseite: Modul-Liste mit Chat-Umschaltung
+# Switch-Toggle fuer Chat/Module in der MobileBottomBar
 
-## Zusammenfassung
+## Idee
 
-Die mobile Startseite (/portal) zeigt aktuell nur den Armstrong-Chat. Wir bauen sie um zu einer **scrollbaren Modul-Liste** mit **Chat-Eingabe unten**. Beim Tippen/Senden wechselt die Ansicht zum Vollbild-Chat. Der "Zurueck"-Button bringt die Modul-Liste wieder.
+Statt dass der Chat automatisch beim Tippen umschaltet, kommt ein visueller **Switch-Toggle** (wie bei Lovable: "Chat | Preview") in die MobileBottomBar. Der User kann selbst zwischen den beiden Ansichten wechseln.
 
-## Aufbau der neuen Startseite
-
-```text
-+----------------------------------+
-| SystemBar                        |
-+----------------------------------+
-| Headline / Begruessung           |
-+----------------------------------+
-| Finanzueberblick          >      |
-| Immobilien                >      |
-| Konten                    >      |
-| Datenraum                 >      |
-| Posteingang               >      |
-| Sparen                    >      |
-| Versicherungen            >      |
-| Fahrzeuge                 >      |
-| Mehr                      >      |
-| Armstrong Tasks           >      |
-+----------------------------------+
-| [Mic] [+] [Eingabe...] [Send]   |
-+----------------------------------+
-```
-
-Beim Senden einer Nachricht oder Tippen:
+## Aufbau
 
 ```text
 +----------------------------------+
 | SystemBar                        |
 +----------------------------------+
-| [Zurueck zur Liste]              |
-| Chat-Nachrichten (scrollbar)     |
 |                                  |
+| [Module-Liste ODER Chat-View]    |
 |                                  |
 +----------------------------------+
+| [Home] [Client] [Service] [Base] |
+|                                  |
+|   [ Module | Chat ]  <-- Switch  |
+|                                  |
 | [Mic] [+] [Eingabe...] [Send]   |
 +----------------------------------+
 ```
+
+Der Switch sitzt zwischen den Area-Buttons und der Eingabeleiste. Zwei Segmente: **"Module"** (links) und **"Chat"** (rechts). Der aktive Zustand wird visuell hervorgehoben (wie Lovable's Toggle).
 
 ## Aenderungen
 
-### 1. Neue Komponente: `MobileHomeModuleList.tsx`
+### 1. `MobileBottomBar.tsx`
 
-- Liest Module aus `routesManifest.ts` und `areaConfig.ts`
-- Filtert nach `mobileConfig.ts` (versteckte Module ausblenden)
-- Zeigt eine konfigurierbare Liste von Modulen/Tiles als vertikale Karten
-- Jede Karte navigiert zum entsprechenden Modul oder Tile
-- Konfiguration der angezeigten Eintraege ueber ein Array (welche Module, welche Tiles)
+- Neuer Prop: `mobileHomeMode: 'modules' | 'chat'` und `onModeChange: (mode) => void`
+- **Switch-Segment** zwischen Area-Buttons und Input-Bar einfuegen
+- Zwei Buttons nebeneinander in einer Pill-Form: "Module" | "Chat"
+- Aktiver Button bekommt `bg-primary` Hintergrund, inaktiver bleibt transparent
+- Der Switch wird **nur auf der Dashboard-Route** (`/portal`) angezeigt
+- `onChatActivated` bleibt fuer automatischen Wechsel beim Senden (optional)
 
-### 2. Anpassung: `MobileHomeChatView.tsx`
+### 2. `PortalLayout.tsx`
 
-- Bekommt einen "Zurueck"-Button oben, der zum Modul-Modus wechselt
-- Wird nur angezeigt, wenn der Chat aktiv ist
+- `mobileHomeMode` und `setMobileHomeMode` werden als Props an `MobileBottomBar` weitergegeben
+- Beim Senden einer Nachricht wechselt der Mode automatisch zu `'chat'`
 
-### 3. Anpassung: `PortalLayout.tsx` (Mobile Dashboard-Bereich)
+### 3. Keine Aenderungen an
 
-- Neuer State: `mobileHomeMode: 'modules' | 'chat'`
-- Dashboard zeigt standardmaessig `MobileHomeModuleList`
-- Wechselt zu `MobileHomeChatView` wenn eine Nachricht gesendet wird
-- Die `MobileBottomBar` bleibt immer sichtbar
-
-### 4. Anpassung: `MobileBottomBar.tsx`
-
-- Die Area-Navigationsbuttons (Home, Client, Manager, Service, Base) bleiben unveraendert
-- `onChatActivated`-Callback wird hinzugefuegt: Wenn der User eine Nachricht sendet und auf der Startseite ist, wechselt die Ansicht zum Chat
-
-### 5. Konfiguration: `mobileHomeConfig.ts` (neu)
-
-Zentrales Config-Array das bestimmt, welche Eintraege auf der mobilen Startseite erscheinen:
-
-```typescript
-export const mobileHomeEntries = [
-  { type: 'module', code: 'MOD-18', label: 'Finanzueberblick' },
-  { type: 'module', code: 'MOD-04', label: 'Immobilien' },
-  { type: 'tile', code: 'MOD-02', tile: 'konten', label: 'Konten' },
-  { type: 'module', code: 'MOD-03', label: 'Datenraum' },
-  // ... etc.
-];
-```
-
-So koennen Sie frei bestimmen, welche Module oder einzelne Menüpunkte auf der Startseite erscheinen.
+- `MobileHomeChatView.tsx` (behaelt den Zurueck-Button als Alternative)
+- `MobileHomeModuleList.tsx`
+- Desktop-Layout
+- Routing
 
 ## Technische Details
 
-**Betroffene Dateien:**
-- `src/components/portal/MobileHomeModuleList.tsx` (NEU)
-- `src/config/mobileHomeConfig.ts` (NEU)
-- `src/components/portal/MobileHomeChatView.tsx` (Zurueck-Button hinzufuegen)
-- `src/components/portal/PortalLayout.tsx` (State-Logik modules/chat)
-- `src/components/portal/MobileBottomBar.tsx` (Chat-Aktivierung Callback)
+Der Switch wird als einfache segmentierte Buttongruppe gebaut (kein Radix-Switch, da es zwei benannte Optionen sind):
 
-**Keine Aenderungen an:**
-- Routing / ManifestRouter
-- Desktop-Layout
-- Bestehende Module/Tiles
-- Datenbank / Backend
+```tsx
+<div className="flex bg-muted/50 rounded-full p-0.5 mx-auto w-fit">
+  <button
+    onClick={() => onModeChange('modules')}
+    className={cn(
+      'px-4 py-1.5 rounded-full text-xs font-medium transition-all',
+      mode === 'modules' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'
+    )}
+  >
+    Module
+  </button>
+  <button
+    onClick={() => onModeChange('chat')}
+    className={cn(
+      'px-4 py-1.5 rounded-full text-xs font-medium transition-all',
+      mode === 'chat' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'
+    )}
+  >
+    Chat
+  </button>
+</div>
+```
+
+**Betroffene Dateien:**
+- `src/components/portal/MobileBottomBar.tsx` (Switch einfuegen, neue Props)
+- `src/components/portal/PortalLayout.tsx` (Props durchreichen)
 
