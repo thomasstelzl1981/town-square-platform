@@ -80,7 +80,7 @@
       "id": "P5",
       "title": "Raumverwaltung und Belegung (Bestandsbuch)",
       "priority": 3,
-      "status": "todo",
+      "status": "done",
       "tasks": [
         {
           "id": "P5.1",
