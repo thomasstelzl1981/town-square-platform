@@ -4,8 +4,9 @@
  */
 import { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
-import { Loader2 } from 'lucide-react';
+import { Loader2, ExternalLink } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
 import { OperativeDeskShell } from '@/components/admin/desks/OperativeDeskShell';
 
 const PetDeskGovernance = lazy(() => import('../petmanager/PetDeskGovernance'));
@@ -50,6 +51,14 @@ export default function PetmanagerDesk() {
       moduleCode="MOD-05"
       zoneFlow={{ z3Surface: 'Lennox Website', z1Desk: 'Pet Desk', z2Manager: 'MOD-22 Pet Manager' }}
       navigation={navigation}
+      headerActions={
+        <Button variant="outline" size="sm" asChild>
+          <Link to="/website/tierservice">
+            <ExternalLink className="h-4 w-4 mr-1.5" />
+            Lennox Website
+          </Link>
+        </Button>
+      }
     >
       <Suspense fallback={<Loading />}>
         <Routes>
