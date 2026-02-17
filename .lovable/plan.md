@@ -1,54 +1,50 @@
 
+## Audit und Vereinheitlichung: Add-Buttons fuer Entitaeten
 
-## Umbau Investment-Tab: Neue Reihenfolge und Armstrong Depot Sektion
+### Problem
+Die "Hinzufuegen"-Buttons fuer Entitaeten (Personen, Fahrzeuge, Tiere, Zuhause, Gesellschaften) sehen jeweils unterschiedlich aus. Manche sind Text-Buttons, manche Icon-Buttons, verschiedene Varianten und Groessen.
 
-### Neue Layout-Reihenfolge
+### Regel
+- **Entitaeten** (Personen, Tiere, Fahrzeuge, Zuhause, Gesellschaften): Runder Glass-Button (`variant="glass" size="icon-round"`) mit Plus-Icon im `ModulePageHeader actions`-Prop
+- **Vorgaenge** (Versicherungen, Sparplaene, Abos, Darlehen, Vorsorge): Bleiben wie sie sind — bereits als `icon-round` Plus-Buttons korrekt implementiert
+
+### Betroffene Stellen (7 Dateien)
+
+| Datei | Aktuell | Aenderung |
+|-------|---------|-----------|
+| `src/pages/portal/pets/PetsMeineTiere.tsx` | `size="sm"` Text-Button AUSSERHALB von `actions`, in manuellem flex-Layout | Button in `ModulePageHeader actions` verschieben, `variant="glass" size="icon-round"` |
+| `src/components/portal/cars/CarsAutos.tsx` | Default-Variant Text-Button "Fahrzeug hinzufuegen" | Umstellen auf `variant="glass" size="icon-round"` nur Plus-Icon |
+| `src/components/portal/cars/CarsBikes.tsx` | Default-Variant Text-Button "Bike hinzufuegen" | Umstellen auf `variant="glass" size="icon-round"` nur Plus-Icon |
+| `src/components/portal/cars/CarsFahrzeuge.tsx` | Default-Variant Text-Button in DesktopOnly | Umstellen auf `variant="glass" size="icon-round"` nur Plus-Icon |
+| `src/pages/portal/finanzanalyse/UebersichtTab.tsx` | `size="icon-round"` OHNE variant (default/primary) | `variant="glass"` ergaenzen |
+| `src/pages/portal/miety/tiles/UebersichtTile.tsx` | `size="sm" variant="outline"` Text-Button "Weiteres Zuhause" | Umstellen auf `variant="glass" size="icon-round"` nur Plus-Icon |
+| `src/pages/portal/projekte/KontexteTab.tsx` | Default-Variant Text-Button "Neue Gesellschaft" | Umstellen auf `variant="glass" size="icon-round"` nur Plus-Icon |
+
+### Ziel-Pattern (einheitlich)
 
 ```text
-+--------------------------------------------------+
-| ModulePageHeader: "Investment"                    |
-+--------------------------------------------------+
-| 1. Personen-Widgets (WidgetGrid)                  |
-|    [Max] [Lisa] [Kind 1] ...                      |
-+--------------------------------------------------+
-| 2. Investment-Sparplaene (bestehende Vertraege)   |
-|    ModulePageHeader "Investment-Sparplaene"        |
-|    WidgetGrid mit Sparplan-Kacheln + Detail-Flow   |
-+--------------------------------------------------+
-| 3. Armstrong Depot (NEU)                          |
-|    ModulePageHeader "Armstrong Depot"              |
-|    Sub: "Investieren Sie direkt aus Ihrem Portal"  |
-|                                                    |
-|    Info-Card mit Upvest-Vorteilen:                 |
-|    - BaFin-reguliert (WpIG-Lizenz)                |
-|    - Depot in Sekunden eroeffnen                   |
-|    - Aktien, ETFs, Fonds, Crypto                   |
-|    - Automatische Sparplaene                       |
-|    - Fractional Trading (Bruchstuecke)             |
-|    - Digitale Steuerreports                        |
-|                                                    |
-|    Personen-Depot-Status + Onboarding/Portfolio    |
-+--------------------------------------------------+
+<ModulePageHeader
+  title="..."
+  description="..."
+  actions={
+    <Button variant="glass" size="icon-round" onClick={...}>
+      <Plus className="h-5 w-5" />
+    </Button>
+  }
+/>
 ```
 
-### Aenderungen im Detail
+### Vorgaenge-Buttons (KEINE Aenderung noetig)
+Diese sind bereits korrekt als `icon-round` Plus-Buttons:
+- SachversicherungenTab.tsx (Versicherungsvertrag)
+- InvestmentTab.tsx (Sparplan)
+- AbonnementsTab.tsx (Abonnement)
+- DarlehenTab.tsx (Darlehen)
+- VorsorgeTab.tsx (Vorsorgevertrag)
 
-**Datei: `src/pages/portal/finanzanalyse/InvestmentTab.tsx`**
+Einzige Ergaenzung: Auch hier `variant="glass"` setzen fuer visuelle Konsistenz (aktuell default/primary).
 
-1. **Oberer Header** bleibt "Investment" (uebergeordnet)
-2. **Personen-WidgetGrid** bleibt an Position 1 (unveraendert)
-3. **Investment-Sparplaene Sektion** wird von unten nach Position 2 verschoben (direkt nach Personen)
-4. **Neue Sektion "Armstrong Depot"** wird als dritter Block eingefuegt:
-   - `ModulePageHeader` mit Titel "Armstrong Depot" und Beschreibung
-   - Eine `InfoBanner` oder `Card` mit Upvest-Vorteilen (6 Punkte mit Icons: Shield, Zap, BarChart3, PiggyBank, Puzzle, FileText)
-   - Beschreibungstext basierend auf Upvest-Website:
-     > "Mit dem Armstrong Depot investieren Sie direkt aus Ihrem Portal -- powered by Upvest. Die BaFin-regulierte Infrastruktur ermoeglicht sekundenschnelle Depoteroeffnung, Zugang zu Tausenden von Aktien, ETFs und Fonds, automatische Sparplaene und Fractional Trading. Ihre Wertpapiere werden sicher verwahrt, Steuerreports digital erstellt. Kein separates Bankkonto, kein Papierkram."
-   - Darunter der bestehende Depot-Content (Onboarding-Wizard bzw. Portfolio-Ansicht) fuer die ausgewaehlte Person
-
-### Technisch
-
-- Nur eine Datei wird geaendert: `InvestmentTab.tsx`
-- Die Depot-Status-Logik (Onboarding/Active) bleibt identisch, wird nur unterhalb der Armstrong-Depot-Ueberschrift platziert
-- Upvest-Vorteile als kompakte 3x2 Grid-Icons innerhalb einer Card
-- Verwendet bestehende Komponenten: `ModulePageHeader`, `InfoBanner`, `Card`, lucide Icons
-
+### Zusammenfassung
+- 7 Dateien fuer Entitaet-Buttons: Layout-Fix + `variant="glass" size="icon-round"`
+- 5 Dateien fuer Vorgang-Buttons: Nur `variant="glass"` ergaenzen
+- Gesamt: 12 Dateien, rein visuelle Aenderungen
