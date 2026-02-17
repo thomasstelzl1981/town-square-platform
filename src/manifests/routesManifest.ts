@@ -579,21 +579,6 @@ export const zone3Websites: Record<string, WebsiteDefinition> = {
       { path: "immobilien/:publicId", component: "Kaufy2026Expose", title: "Exposé", dynamic: true },
     ],
   },
-  miety: {
-    base: "/website/miety",
-    layout: "MietyLayout",
-    routes: [
-      { path: "", component: "MietyHome", title: "Miety Home" },
-      { path: "leistungen", component: "MietyLeistungen", title: "Leistungen" },
-      { path: "vermieter", component: "MietyVermieter", title: "Für Vermieter" },
-      { path: "app", component: "MietyApp", title: "Mieter-App" },
-      { path: "preise", component: "MietyPreise", title: "Preise" },
-      { path: "so-funktioniert", component: "MietySoFunktioniert", title: "So funktioniert's" },
-      { path: "kontakt", component: "MietyKontakt", title: "Kontakt" },
-      { path: "registrieren", component: "MietyRegistrieren", title: "Registrieren" },
-      { path: "invite", component: "MietyInvite", title: "Einladung" },
-    ],
-  },
   futureroom: {
     base: "/website/futureroom",
     layout: "FutureRoomLayout",
@@ -638,20 +623,6 @@ export const zone3Websites: Record<string, WebsiteDefinition> = {
       { path: "objekt", component: "AcquiaryObjekt", title: "Objekt anbieten" },
     ],
   },
-  projekt: {
-    base: "/website/projekt",
-    layout: "ProjektLandingLayout",
-    routes: [
-      { path: ":slug", component: "ProjektLandingPage", title: "Projekt-Website", dynamic: true },
-    ],
-  },
-  sites: {
-    base: "/website/sites",
-    layout: "TenantSiteLayout",
-    routes: [
-      { path: ":slug", component: "TenantSiteRenderer", title: "Website", dynamic: true },
-    ],
-  },
 };
 
 // =============================================================================
@@ -684,16 +655,12 @@ export const legacyRoutes: LegacyRoute[] = [
   // ==========================================================================
   { path: "/kaufy2026", redirect_to: "/website/kaufy", reason: "ZBC-R08 Z3 prefix migration" },
   { path: "/kaufy2026/*", redirect_to: "/website/kaufy", reason: "ZBC-R08 Z3 prefix migration" },
-  { path: "/miety", redirect_to: "/website/miety", reason: "ZBC-R08 Z3 prefix migration" },
-  { path: "/miety/*", redirect_to: "/website/miety", reason: "ZBC-R08 Z3 prefix migration" },
   { path: "/futureroom", redirect_to: "/website/futureroom", reason: "ZBC-R08 Z3 prefix migration" },
   { path: "/futureroom/*", redirect_to: "/website/futureroom", reason: "ZBC-R08 Z3 prefix migration" },
   { path: "/sot", redirect_to: "/website/sot", reason: "ZBC-R08 Z3 prefix migration" },
   { path: "/sot/*", redirect_to: "/website/sot", reason: "ZBC-R08 Z3 prefix migration" },
   { path: "/acquiary", redirect_to: "/website/acquiary", reason: "ZBC-R08 Z3 prefix migration" },
   { path: "/acquiary/*", redirect_to: "/website/acquiary", reason: "ZBC-R08 Z3 prefix migration" },
-  { path: "/projekt", redirect_to: "/website/projekt", reason: "ZBC-R08 Z3 prefix migration" },
-  { path: "/projekt/*", redirect_to: "/website/projekt", reason: "ZBC-R08 Z3 prefix migration" },
 ];
 
 // =============================================================================

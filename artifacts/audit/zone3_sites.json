@@ -1,72 +1,26 @@
 {
-  "generated_at": "2026-02-02T00:00:00Z",
+  "generated_at": "2026-02-17T00:00:00Z",
   "total_count": 4,
-  "total_routes": 33,
   "sites": [
     {
       "name": "kaufy",
-      "base": "/kaufy",
-      "layout": "KaufyLayout",
-      "route_count": 13,
-      "routes": [
-        { "path": "", "component": "KaufyHome", "title": "KAUFY Home" },
-        { "path": "vermieter", "component": "KaufyVermieter", "title": "Für Vermieter" },
-        { "path": "verkaeufer", "component": "KaufyVerkaeufer", "title": "Für Verkäufer" },
-        { "path": "vertrieb", "component": "KaufyVertrieb", "title": "Für Vertrieb" },
-        { "path": "beratung", "component": "KaufyBeratung", "title": "Beratung" },
-        { "path": "meety", "component": "KaufyMeety", "title": "Meety" },
-        { "path": "module", "component": "KaufyModule", "title": "Module" },
-        { "path": "module/:moduleId", "component": "KaufyModuleDetail", "title": "Modul-Details", "dynamic": true },
-        { "path": "immobilien", "component": "KaufyImmobilien", "title": "Immobilien" },
-        { "path": "immobilien/:publicId", "component": "KaufyExpose", "title": "Exposé", "dynamic": true },
-        { "path": "berater", "component": "KaufyBerater", "title": "Berater finden" },
-        { "path": "anbieter", "component": "KaufyAnbieter", "title": "Anbieter werden" },
-        { "path": "faq", "component": "KaufyFAQ", "title": "FAQ" }
-      ]
-    },
-    {
-      "name": "miety",
-      "base": "/miety",
-      "layout": "MietyLayout",
-      "route_count": 9,
-      "routes": [
-        { "path": "", "component": "MietyHome", "title": "Miety Home" },
-        { "path": "leistungen", "component": "MietyLeistungen", "title": "Leistungen" },
-        { "path": "vermieter", "component": "MietyVermieter", "title": "Für Vermieter" },
-        { "path": "app", "component": "MietyApp", "title": "Mieter-App" },
-        { "path": "preise", "component": "MietyPreise", "title": "Preise" },
-        { "path": "so-funktioniert", "component": "MietySoFunktioniert", "title": "So funktioniert's" },
-        { "path": "kontakt", "component": "MietyKontakt", "title": "Kontakt" },
-        { "path": "registrieren", "component": "MietyRegistrieren", "title": "Registrieren" },
-        { "path": "invite", "component": "MietyInvite", "title": "Einladung" }
-      ]
+      "base": "/website/kaufy",
+      "layout": "Kaufy2026Layout"
     },
     {
       "name": "futureroom",
-      "base": "/futureroom",
-      "layout": "FutureRoomLayout",
-      "route_count": 4,
-      "routes": [
-        { "path": "", "component": "FutureRoomHome", "title": "Future Room" },
-        { "path": "bonitat", "component": "FutureRoomBonitat", "title": "Bonität" },
-        { "path": "karriere", "component": "FutureRoomKarriere", "title": "Karriere" },
-        { "path": "faq", "component": "FutureRoomFAQ", "title": "FAQ" }
-      ]
+      "base": "/website/futureroom",
+      "layout": "FutureRoomLayout"
     },
     {
       "name": "sot",
-      "base": "/sot",
-      "layout": "SotLayout",
-      "route_count": 7,
-      "routes": [
-        { "path": "", "component": "SotHome", "title": "System of a Town" },
-        { "path": "produkt", "component": "SotProdukt", "title": "Produkt" },
-        { "path": "module", "component": "SotModule", "title": "Module" },
-        { "path": "module/:moduleId", "component": "SotModuleDetail", "title": "Modul-Details", "dynamic": true },
-        { "path": "use-cases", "component": "SotUseCases", "title": "Use Cases" },
-        { "path": "preise", "component": "SotPreise", "title": "Preise" },
-        { "path": "faq", "component": "SotFAQ", "title": "FAQ" }
-      ]
+      "base": "/website/sot",
+      "layout": "SotLayout"
+    },
+    {
+      "name": "acquiary",
+      "base": "/website/acquiary",
+      "layout": "AcquiaryLayout"
     }
   ]
 }
