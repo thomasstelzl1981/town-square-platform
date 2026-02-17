@@ -12,6 +12,19 @@ import type { GoldenPathDefinition } from './types';
  *   - pet_z1_customers (Zone 1, globaler Pool)
  *   - pet_customers (Zone 2, Provider-lokal)
  *
+ * Pet-Card SSOT (Datenstandard ueber alle Zonen):
+ *   MINIMUM (Quick-Booking Z3): first_name, last_name, email, phone + pet.name, pet.species
+ *   STANDARD (Z1/Z3 Profil):   + address, postal_code, city + pet.breed, gender, birth_date, weight_kg, chip_number, neutered
+ *   FULL (Z2 MOD-05):          + pet.insurance_provider, insurance_policy_no, vaccinations, medical_records, caring_events
+ *
+ * Halter-Felder (pet_z1_customers / pet_customers):
+ *   first_name, last_name, email, phone, address, postal_code, city
+ *
+ * Tier-Felder (pet_z1_pets / pets):
+ *   name, species, breed, gender, birth_date, weight_kg, chip_number, neutered,
+ *   vet_name, allergies, photo_url, notes
+ *   Z2 only: insurance_provider, insurance_policy_no + Relationen
+ *
  * P0 Hardening: Fail-States fuer alle Cross-Zone Steps.
  */
 export const GP_PET_GOLDEN_PATH: GoldenPathDefinition = {

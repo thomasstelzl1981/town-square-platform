@@ -23,6 +23,8 @@ export interface PetCustomer {
   email: string | null;
   phone: string | null;
   address: string | null;
+  postal_code: string | null;
+  city: string | null;
   notes: string | null;
   source: 'manual' | 'lead' | 'mod05';
   origin_zone: 'Z2' | 'Z3' | 'Z2-MOD05';
@@ -37,6 +39,8 @@ export interface CreatePetCustomerInput {
   email?: string;
   phone?: string;
   address?: string;
+  postal_code?: string;
+  city?: string;
   notes?: string;
 }
 
@@ -53,6 +57,8 @@ function mapDemoCustomers(): PetCustomer[] {
     email: c.email || null,
     phone: c.phone || null,
     address: c.address || null,
+    postal_code: null,
+    city: null,
     notes: c.notes || null,
     source: c.source,
     origin_zone: c.originZone,
@@ -96,6 +102,8 @@ export function usePetCustomers() {
           email: input.email || null,
           phone: input.phone || null,
           address: input.address || null,
+          postal_code: input.postal_code || null,
+          city: input.city || null,
           notes: input.notes || null,
           source: 'manual',
           origin_zone: 'Z2',

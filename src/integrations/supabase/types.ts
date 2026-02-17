@@ -11691,6 +11691,7 @@ export type Database = {
       pet_customers: {
         Row: {
           address: string | null
+          city: string | null
           created_at: string
           email: string | null
           first_name: string
@@ -11699,6 +11700,7 @@ export type Database = {
           notes: string | null
           origin_zone: string
           phone: string | null
+          postal_code: string | null
           provider_id: string | null
           source: string
           status: string
@@ -11709,6 +11711,7 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          city?: string | null
           created_at?: string
           email?: string | null
           first_name: string
@@ -11717,6 +11720,7 @@ export type Database = {
           notes?: string | null
           origin_zone?: string
           phone?: string | null
+          postal_code?: string | null
           provider_id?: string | null
           source?: string
           status?: string
@@ -11727,6 +11731,7 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          city?: string | null
           created_at?: string
           email?: string | null
           first_name?: string
@@ -11735,6 +11740,7 @@ export type Database = {
           notes?: string | null
           origin_zone?: string
           phone?: string | null
+          postal_code?: string | null
           provider_id?: string | null
           source?: string
           status?: string
