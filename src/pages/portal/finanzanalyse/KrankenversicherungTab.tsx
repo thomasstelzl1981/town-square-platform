@@ -13,7 +13,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { CARD, TYPOGRAPHY, HEADER, DEMO_WIDGET, getActiveWidgetGlow, getSelectionRing } from '@/config/designManifest';
-import { Shield, X } from 'lucide-react';
+import { Plus, Shield, X } from 'lucide-react';
+import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
 function fmt(v: number) {
@@ -41,6 +42,11 @@ export default function KrankenversicherungTab() {
       <ModulePageHeader
         title="Krankenversicherung"
         description="PKV & GKV Übersicht für alle Haushaltsmitglieder"
+        actions={
+          <Button variant="glass" size="icon-round" onClick={() => toast.info('Neue KV-Anlage wird vorbereitet…')}>
+            <Plus className="h-5 w-5" />
+          </Button>
+        }
       />
 
       <WidgetGrid>
