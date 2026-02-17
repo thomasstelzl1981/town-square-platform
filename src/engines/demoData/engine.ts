@@ -4,7 +4,7 @@
  * O(1) ID-Lookup, Datenpaket-Zugriff, Empty-State-Validierung.
  */
 
-import type { DemoDataSpec, DemoPersona, DemoInsuranceContract, DemoVorsorgeContract, DemoSubscription, DemoKVContract, DemoPrivateLoan } from './spec';
+import type { DemoDataSpec, DemoPersona, DemoInsuranceContract, DemoVorsorgeContract, DemoSubscription, DemoKVContract, DemoPrivateLoan, DemoPMCustomer, DemoPMPet, DemoPMBooking } from './spec';
 import {
   DEMO_DATA_SPEC,
   ALL_DEMO_IDS,
@@ -16,6 +16,9 @@ import {
   DEMO_PRIVATE_LOANS,
   DEMO_PRIMARY_PERSON_ID,
   DEMO_TENANT_ID,
+  DEMO_PM_CUSTOMERS,
+  DEMO_PM_PETS,
+  DEMO_PM_BOOKINGS,
 } from './data';
 
 /** O(1) Lookup-Set für Demo-IDs */
@@ -59,6 +62,21 @@ export function getDemoKVContracts(): readonly DemoKVContract[] {
 /** Privatkredite */
 export function getDemoPrivateLoans(): readonly DemoPrivateLoan[] {
   return DEMO_PRIVATE_LOANS;
+}
+
+/** Pet Manager — Kunden */
+export function getDemoPMCustomers(): readonly DemoPMCustomer[] {
+  return DEMO_PM_CUSTOMERS;
+}
+
+/** Pet Manager — Tiere */
+export function getDemoPMPets(): readonly DemoPMPet[] {
+  return DEMO_PM_PETS;
+}
+
+/** Pet Manager — Buchungen */
+export function getDemoPMBookings(): readonly DemoPMBooking[] {
+  return DEMO_PM_BOOKINGS;
 }
 
 /** Alle Demo-IDs als Array */

@@ -22,6 +22,7 @@ import type {
   DemoMietyContract,
   DemoDataSpec,
 } from './spec';
+import { DEMO_PM_CUSTOMERS, DEMO_PM_PETS, DEMO_PM_BOOKINGS, ALL_PM_DEMO_IDS } from './petManagerDemo';
 
 // ─── FESTE IDs ─────────────────────────────────────────────
 /** Bestehende Hauptperson (wird per UPDATE umbenannt) */
@@ -563,9 +564,13 @@ export const ALL_DEMO_IDS: readonly string[] = [
   // Miety Zuhause (DB-geseedet)
   ID_MIETY_HOME,
   ID_MIETY_STROM, ID_MIETY_GAS, ID_MIETY_WASSER, ID_MIETY_INTERNET,
+  // Pet Manager Demo (MOD-22)
+  ...ALL_PM_DEMO_IDS,
 ] as const;
 
 // ─── GESAMTPAKET ───────────────────────────────────────────
+
+export { DEMO_PM_CUSTOMERS, DEMO_PM_PETS, DEMO_PM_BOOKINGS, ALL_PM_DEMO_IDS };
 
 export const DEMO_DATA_SPEC: DemoDataSpec = {
   personas: DEMO_FAMILY,
@@ -580,6 +585,9 @@ export const DEMO_DATA_SPEC: DemoDataSpec = {
   selbstauskunft: DEMO_SELBSTAUSKUNFT,
   mietyHome: DEMO_MIETY_HOME,
   mietyContracts: DEMO_MIETY_CONTRACTS,
+  pmCustomers: DEMO_PM_CUSTOMERS,
+  pmPets: DEMO_PM_PETS,
+  pmBookings: DEMO_PM_BOOKINGS,
 };
 
 // ─── DEMO COVERAGE MAP ────────────────────────────────────
@@ -600,6 +608,7 @@ export const DEMO_DATA_SPEC: DemoDataSpec = {
  * - GP-KONTEN        (MOD-18) — Clientseitig: Demo-Bankkonto
  * - GP-ZUHAUSE       (MOD-20) — DB: 1 Home + 4 Versorgungsverträge (Strom, Gas, Wasser, Internet)
  * - GP-PETS          (MOD-05) — DB: 2 Demo-Pets + Lennox & Friends Provider + 4 Services + Availability
+ * - GP-PET           (MOD-22) — Clientseitig: 3 Kunden + 3 Hunde + 5 Buchungen (Pension + Service)
  *
  * ⚠️ TEILWEISE / BEWUSST OFFEN:
  * - GP-FM-FALL       (MOD-11) — Kein Demo-Finanzierungsfall (bewusst)

@@ -4,3 +4,4 @@
 export * from './spec';
 export * from './data';
 export * from './engine';
+export * from './petManagerDemo';
