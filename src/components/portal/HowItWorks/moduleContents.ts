@@ -789,9 +789,6 @@ export const moduleContents: Record<string, HowItWorksContent> = {
       { title: 'Buchungen', route: '/portal/petmanager/buchungen', icon: ClipboardList },
       { title: 'Kalender', route: '/portal/petmanager/kalender', icon: Calendar },
       { title: 'Räume', route: '/portal/petmanager/raeume', icon: ClipboardList },
-      { title: 'Leistungen', route: '/portal/petmanager/leistungen', icon: ClipboardList },
-      { title: 'Kunden & Tiere', route: '/portal/petmanager/kunden', icon: Users },
-      { title: 'Finanzen', route: '/portal/petmanager/finanzen', icon: CreditCard },
     ],
   },
 };

@@ -19,6 +19,7 @@ import {
   type PetRoom, type PetRoomAssignment,
 } from '@/hooks/usePetRooms';
 import { cn } from '@/lib/utils';
+import { PageShell } from '@/components/shared/PageShell';
 
 const ROOM_TYPE_LABELS: Record<string, string> = {
   zimmer: 'Zimmer',
@@ -91,6 +92,7 @@ export default function PMRaeume() {
   const inactiveRooms = rooms.filter(r => !r.is_active);
 
   return (
+    <PageShell>
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
@@ -268,5 +270,6 @@ export default function PMRaeume() {
         </div>
       )}
     </div>
+    </PageShell>
   );
 }
