@@ -8,6 +8,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Landmark, Mail, Lock, UserPlus, LogIn, AlertCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import SocialLoginButtons from '@/components/auth/SocialLoginButtons';
 
 export default function FutureRoomLogin() {
   const navigate = useNavigate();
@@ -109,6 +110,7 @@ export default function FutureRoomLogin() {
 
         {/* Form */}
         <div className="fr-form-card">
+          <SocialLoginButtons variant="futureroom" separatorText="oder per E-Mail" />
           <form onSubmit={handleSubmit} className="space-y-5">
             {error && (
               <div className="flex items-center gap-2 p-3 rounded-lg text-sm" style={{ background: 'hsl(0 65% 51% / 0.08)', color: 'hsl(0 65% 51%)' }}>

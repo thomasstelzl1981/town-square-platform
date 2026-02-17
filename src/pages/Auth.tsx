@@ -10,6 +10,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { Loader2, Shield, ArrowLeft, Mail, Lock } from 'lucide-react';
 import { z } from 'zod';
+import SocialLoginButtons from '@/components/auth/SocialLoginButtons';
 
 const emailSchema = z.string().email('Ungültige E-Mail-Adresse');
 
@@ -169,6 +170,11 @@ export default function Auth() {
           <CardDescription>{descriptions[step]}</CardDescription>
         </CardHeader>
         <CardContent>
+          {/* Social Login Buttons — shown on login step */}
+          {step === 'login' && (
+            <SocialLoginButtons variant="portal" />
+          )}
+
           {/* Step: Password Login */}
           {step === 'login' && (
             <form onSubmit={handlePasswordLogin} className="space-y-4">
