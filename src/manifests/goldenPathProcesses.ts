@@ -697,6 +697,41 @@ export const GOLDEN_PATH_PROCESSES: GoldenPathProcess[] = [
     ],
     phase: 'done',
   },
+
+  // ─── MOD-22: Pet Manager ───────────────
+  {
+    id: 'GP-PET',
+    moduleCode: 'MOD-22',
+    moduleName: 'Pet Manager',
+    tilePath: '/portal/petmanager',
+    processName: 'Pet Manager Demo',
+    description: 'Demo-Daten für den Pet Manager: Kunden, Tiere und Buchungen.',
+    menuPoints: 1,
+    menuPointPaths: ['/portal/petmanager'],
+    compliance: {
+      modulePageHeader: true,
+      widgetGrid: false,
+      widgetCell: false,
+      demoWidget: false,
+      inlineFlow: true,
+      noSubNavigation: true,
+    },
+    demoWidget: {
+      id: '__demo__',
+      title: 'Demo: Pet Manager',
+      subtitle: '3 Kunden, 3 Tiere, 5 Buchungen',
+      status: 'demo',
+      badgeLabel: 'Demo',
+      data: {
+        customers: 3,
+        pets: 3,
+        bookings: 5,
+      },
+      resetOnClose: true,
+    },
+    sections: [],
+    phase: '1',
+  },
 ];
 
 // =============================================================================

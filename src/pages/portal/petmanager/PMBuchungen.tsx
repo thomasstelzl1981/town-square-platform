@@ -16,6 +16,8 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { DESIGN } from '@/config/designManifest';
 import { PageShell } from '@/components/shared/PageShell';
+import { useDemoToggles } from '@/hooks/useDemoToggles';
+import { isDemoId } from '@/engines/demoData';
 
 const STATUS_LABELS: Record<string, string> = {
   requested: 'Angefragt', confirmed: 'Bestätigt', in_progress: 'Laufend',
@@ -103,9 +105,12 @@ function BookingRow({ booking, onUpdateStatus, capacityWarning }: {
 
 export default function PMBuchungen() {
   const { data: provider } = useMyProvider();
-  const { data: bookings = [], isLoading } = useBookings(provider ? { providerId: provider.id } : undefined);
+  const { data: allBookings = [], isLoading } = useBookings(provider ? { providerId: provider.id } : undefined);
   const { data: capacity } = usePetCapacity(provider?.id);
   const updateStatus = useUpdateBookingStatus();
+  const { isEnabled } = useDemoToggles();
+  const demoEnabled = isEnabled('GP-PET');
+  const bookings = demoEnabled ? allBookings : allBookings.filter(b => !isDemoId(b.id));
 
   const handleUpdate = (id: string, status: string) => updateStatus.mutate({ id, status });
 

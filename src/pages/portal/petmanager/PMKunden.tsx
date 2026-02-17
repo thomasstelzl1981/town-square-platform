@@ -20,8 +20,8 @@ import { usePetCustomers, type CreatePetCustomerInput } from '@/hooks/usePetCust
 import { useBookings } from '@/hooks/usePetBookings';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useDemoToggles } from '@/hooks/useDemoToggles';
 import { isDemoId } from '@/engines/demoData';
-import { DEMO_PM_PETS, DEMO_PM_BOOKINGS } from '@/engines/demoData';
 
 const SOURCE_LABELS: Record<string, { label: string; variant: 'default' | 'secondary' | 'outline' }> = {
   manual: { label: 'Eigenkunde', variant: 'secondary' },
@@ -34,12 +34,6 @@ function usePetsForCustomer(customerId: string | null) {
     queryKey: ['pets_for_customer', customerId],
     queryFn: async () => {
       if (!customerId) return [];
-      // Demo-Kunden: Tiere aus hardcoded Demo-Daten
-      if (isDemoId(customerId)) {
-        return DEMO_PM_PETS
-          .filter(p => p.customerId === customerId)
-          .map(p => ({ id: p.id, name: p.name, species: p.species, breed: p.breed, birth_date: p.birthDate }));
-      }
       const { data } = await supabase
         .from('pets')
         .select('id, name, species, breed, birth_date')
@@ -51,7 +45,10 @@ function usePetsForCustomer(customerId: string | null) {
 }
 
 export default function PMKunden() {
-  const { customers, isLoading, createCustomer, provider } = usePetCustomers();
+  const { customers: allCustomers, isLoading, createCustomer, provider } = usePetCustomers();
+  const { isEnabled } = useDemoToggles();
+  const demoEnabled = isEnabled('GP-PET');
+  const customers = demoEnabled ? allCustomers : allCustomers.filter(c => !isDemoId(c.id));
   const { data: bookings = [] } = useBookings(provider ? { providerId: provider.id } : undefined);
   const [showCreate, setShowCreate] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -71,10 +68,6 @@ export default function PMKunden() {
 
   // Count bookings per customer
   const getBookingCount = (customerId: string) => {
-    // Demo-Kunden: Buchungen aus hardcoded Demo-Daten
-    if (isDemoId(customerId)) {
-      return DEMO_PM_BOOKINGS.filter(b => b.customerId === customerId).length;
-    }
     return bookings.filter(b => {
       const customer = customers.find(c => c.id === customerId);
       return customer?.user_id && b.client_user_id === customer.user_id;

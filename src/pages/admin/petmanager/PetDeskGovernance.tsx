@@ -1,14 +1,17 @@
 /**
- * Pet Desk — Governance Tab: KPI Dashboard
+ * Pet Desk — Governance Tab: KPI Dashboard + Demo-Toggle
  * Moved from former PetmanagerDesk index view
  */
 import { useState, useEffect } from 'react';
 import { PawPrint, Users, CreditCard, ShieldCheck, BarChart3, Calendar, ClipboardList, TrendingUp } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { format, subMonths, startOfMonth, endOfMonth } from 'date-fns';
 import { de } from 'date-fns/locale';
+import { useDemoToggles } from '@/hooks/useDemoToggles';
 
 function formatCents(cents: number): string {
   return (cents / 100).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' });
@@ -33,6 +36,8 @@ const STATUS_COLORS = ['hsl(var(--primary))', 'hsl(var(--muted-foreground))', 'h
 export default function PetDeskGovernance() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const { isEnabled, toggle } = useDemoToggles();
+  const demoEnabled = isEnabled('GP-PET');
 
   useEffect(() => {
     (async () => {
@@ -95,6 +100,26 @@ export default function PetDeskGovernance() {
 
   return (
     <div className="space-y-6">
+      {/* Demo Toggle */}
+      <Card>
+        <CardContent className="pt-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <PawPrint className="h-4 w-4 text-primary" />
+              <Label htmlFor="gp-pet-toggle" className="text-sm font-medium">Pet Manager Demo-Daten</Label>
+            </div>
+            <Switch
+              id="gp-pet-toggle"
+              checked={demoEnabled}
+              onCheckedChange={() => toggle('GP-PET')}
+            />
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">
+            Steuert die Sichtbarkeit der Demo-Kunden, -Tiere und -Buchungen in Zone 2 (Pet Manager).
+          </p>
+        </CardContent>
+      </Card>
+
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardContent className="pt-4">
