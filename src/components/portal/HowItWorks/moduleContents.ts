@@ -38,7 +38,7 @@ import {
   Car, Gauge, CarFront,
   LineChart, FileBarChart, Lightbulb,
   Sun, CheckSquare, Folder,
-  Home, FileBox, MessageSquare, Thermometer, Plug, ShieldCheck
+  Home, FileBox, MessageSquare, Thermometer, Plug, ShieldCheck, DoorOpen
 } from 'lucide-react';
 
 export const moduleContents: Record<string, HowItWorksContent> = {
@@ -762,33 +762,32 @@ export const moduleContents: Record<string, HowItWorksContent> = {
   'MOD-22': {
     moduleCode: 'MOD-22',
     title: 'Pet Manager',
-    oneLiner: 'Ihr Cockpit für Haustier-Dienstleistungen: Buchungen, Kunden und Finanzen.',
+    oneLiner: 'Ihr Cockpit für Haustier-Dienstleistungen: Pension, Services und Kalender.',
     benefits: [
-      'Kalender und Buchungen zentral verwalten.',
-      'Kunden und deren Tiere im Überblick behalten.',
-      'Finanzen, Rechnungen und Umsätze transparent auswerten.',
+      'Pension und Services klar getrennt verwalten.',
+      'Zimmer- und Mitarbeiterverwaltung mit Belegungskalender.',
+      'Terminplanung pro Mitarbeiter für alle Dienstleistungen.',
     ],
     whatYouDo: [
-      'Buchungen und Termine koordinieren',
-      'Leistungskatalog pflegen',
-      'Kundenstamm und Tierdaten verwalten',
-      'Rechnungen erstellen und Zahlungen nachverfolgen',
+      'Pensionszimmer anlegen und Belegung verwalten',
+      'Mitarbeiter und deren Dienstleistungen pflegen',
+      'Termine und Buchungen koordinieren',
     ],
     flows: [
       {
-        title: 'Buchung abwickeln',
-        steps: ['Termin anlegen', 'Leistung zuordnen', 'Kunde bestätigen', 'Rechnung erstellen'],
+        title: 'Pension verwalten',
+        steps: ['Zimmer anlegen', 'Kapazität festlegen', 'Belegung im Kalender prüfen'],
       },
       {
-        title: 'Finanzen prüfen',
-        steps: ['Offene Posten prüfen', 'Zahlungseingänge verbuchen', 'Monatsumsatz auswerten'],
+        title: 'Services planen',
+        steps: ['Mitarbeiter anlegen', 'Dienstleistungen zuweisen', 'Termine koordinieren'],
       },
     ],
-    cta: 'Starten Sie mit dem Kalender – und behalten Sie Ihre Buchungen im Blick.',
+    cta: 'Starten Sie mit der Pension – und legen Sie Ihre Zimmer an.',
     subTiles: [
-      { title: 'Buchungen', route: '/portal/petmanager/buchungen', icon: ClipboardList },
+      { title: 'Pension', route: '/portal/petmanager/pension', icon: DoorOpen },
+      { title: 'Services', route: '/portal/petmanager/services', icon: Users },
       { title: 'Kalender', route: '/portal/petmanager/kalender', icon: Calendar },
-      { title: 'Räume', route: '/portal/petmanager/raeume', icon: ClipboardList },
     ],
   },
 };
