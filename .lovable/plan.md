@@ -1,83 +1,100 @@
 
 
-## Fix: Mouse-Over von Zeile 2 auf Zeile 1 verschieben
+## Pet Manager -- 10 Zimmer, 3 Mitarbeiter + Arbeitszeiten/Urlaub
 
-### Problem
+### 1. Demodaten: 10 Zimmer anlegen
+
+SQL INSERT in `pet_rooms` fuer Provider `d0000000-...0050`, Tenant `a0000000-...0001`:
+
+| # | Name | Typ | Kapazitaet |
+|---|------|-----|------------|
+| 1 | Zimmer 1 - Einzelzimmer | zimmer | 1 |
+| 2 | Zimmer 2 - Komfort | zimmer | 2 |
+| 3 | Zimmer 3 - Komfort | zimmer | 2 |
+| 4 | Zimmer 4 - Familienzimmer | zimmer | 3 |
+| 5 | Zimmer 5 - Familienzimmer | zimmer | 3 |
+| 6 | Zimmer 6 - Suite | zimmer | 4 |
+| 7 | Box 1 - Klein | box | 1 |
+| 8 | Box 2 - Klein | box | 1 |
+| 9 | Auslauf 1 - Garten | auslauf | 4 |
+| 10 | Auslauf 2 - Wiese | auslauf | 3 |
+
+Gesamtkapazitaet: 24 Tiere.
+
+### 2. Neue Tabelle: `pet_staff_vacations`
+
+Fuer Urlaubserfassung wird eine eigene Tabelle erstellt:
+
+| Spalte | Typ | Beschreibung |
+|--------|-----|-------------|
+| id | uuid PK | |
+| staff_id | uuid FK -> pet_staff | Mitarbeiter |
+| tenant_id | uuid | Mandant |
+| start_date | date | Urlaubsbeginn |
+| end_date | date | Urlaubsende |
+| vacation_type | text | urlaub / krank / frei |
+| notes | text | Notizen |
+| created_at | timestamptz | |
+
+RLS: Tenant-Isolation analog zu `pet_staff`.
+
+### 3. Demodaten: 3 Mitarbeiter anlegen
+
+| # | Name | Rolle | E-Mail | Telefon | Services | Arbeitszeiten |
+|---|------|-------|--------|---------|----------|---------------|
+| 1 | Anna Mueller | Hundefriseur | anna@lennox-dogs.de | 0171 1234567 | Hundesalon, Training | Mo-Fr 08:00-17:00 |
+| 2 | Max Krause | Gassigeher | max@lennox-dogs.de | 0172 9876543 | Gassi, Tagesstaette | Mo-Sa 07:00-15:00 |
+| 3 | Lisa Schmidt | Betreuer | lisa@lennox-dogs.de | 0173 5551234 | Tagesstaette, Training, Tierarzt | Mo-Fr 09:00-18:00 |
+
+Die `work_hours` werden als strukturiertes JSON gespeichert:
+```json
+{
+  "mon": { "start": "08:00", "end": "17:00" },
+  "tue": { "start": "08:00", "end": "17:00" },
+  ...
+  "sat": null,
+  "sun": null
+}
+```
+
+### 4. Mitarbeiterakte erweitern (PMPersonal.tsx)
+
+Zwei neue Sektionen in der Inline-Akte:
+
+**Sektion: Arbeitszeiten**
+- 7 Zeilen (Mo-So), je mit Start- und End-Uhrzeit (Input type="time")
+- Switch pro Tag um aktiv/inaktiv zu setzen
+- Wird in `work_hours` JSONB gespeichert
+
+**Sektion: Urlaub / Abwesenheiten**
+- Liste bestehender Urlaube (Start - Ende, Typ, Notiz)
+- Plus-Button fuer neuen Urlaubseintrag (Inline-Zeile, kein Dialog)
+- Loeschen-Button pro Eintrag
+
+### 5. Hook-Erweiterung (usePetStaff.ts)
+
+- Neuer Hook `useStaffVacations(staffId)` -- Liest Urlaube eines Mitarbeiters
+- Neuer Hook `useCreateVacation()` -- Legt Urlaub an
+- Neuer Hook `useDeleteVacation()` -- Loescht Urlaub
+
+### Technische Umsetzung
+
+| Datei | Aenderung |
+|-------|-----------|
+| Migration | 10 Zimmer INSERT + `pet_staff_vacations` Tabelle + RLS + 3 Mitarbeiter INSERT |
+| `src/hooks/usePetStaff.ts` | Vacation-Hooks hinzufuegen |
+| `src/pages/portal/petmanager/PMPersonal.tsx` | Arbeitszeiten-Sektion + Urlaubs-Sektion in Inline-Akte |
+
+### Datenfluss-Uebersicht
 
 ```text
-┌─────────────────────────────────────────────────────┐
-│  Base | Missions | Operations | Services            │  <-- Zeile 1: AreaTabs (KEIN hover)
-├─────────────────────────────────────────────────────┤
-│  Dashboard | Pension | Services | Mitarbeiter | ... │  <-- Zeile 2: SubTabs (hover HIER -- FALSCH)
-└─────────────────────────────────────────────────────┘
-         ↓ onMouseEnter oeffnet:
-┌─────────────────────────────────────────────────────┐
-│  Stammdaten | Kunden | Mitarbeiter | Services | ... │  <-- Floating Module Switcher
-└─────────────────────────────────────────────────────┘
+pet_staff (work_hours JSONB)
+    │
+    ├── Arbeitszeiten-Sektion: Lese/Schreibe work_hours
+    │
+    └── pet_staff_vacations (1:n)
+            │
+            └── Urlaubs-Sektion: CRUD ueber eigene Hooks
 ```
 
-Der `onMouseEnter`/`onMouseLeave` Handler sitzt auf dem `<div>` um die SubTabs (Zeile 108-117). Er sollte auf dem `<div>` um die AreaTabs sitzen (Zeile 103-105).
-
-### Loesung
-
-```text
-┌─────────────────────────────────────────────────────┐
-│  Base | Missions | Operations | Services            │  <-- Zeile 1: AreaTabs (hover HIER -- RICHTIG)
-├─────────────────────────────────────────────────────┤
-│  Dashboard | Pension | Services | Mitarbeiter | ... │  <-- Zeile 2: SubTabs (kein hover)
-└─────────────────────────────────────────────────────┘
-         ↓ onMouseEnter oeffnet:
-┌─────────────────────────────────────────────────────┐
-│  Stammdaten | Kunden | Mitarbeiter | Services | ... │  <-- Floating Module Switcher
-└─────────────────────────────────────────────────────┘
-```
-
-### Technische Aenderung
-
-**Datei:** `src/components/portal/TopNavigation.tsx`
-
-1. Den `ref={triggerRef}`, `onMouseEnter={showSwitcher}`, `onMouseLeave={hideSwitcher}` vom SubTabs-Wrapper (Zeile 109-113) **entfernen**
-2. Diese Attribute auf den AreaTabs-Wrapper (Zeile 103-105) **verschieben**
-
-Vorher (Zeilen 102-117):
-```typescript
-{/* Level 1: Area Tabs */}
-<div className="border-b">
-  <AreaTabs />
-</div>
-
-{/* Level 2: Sub Tabs */}
-{activeModule && ... && (
-  <div
-    ref={triggerRef}
-    className="relative"
-    onMouseEnter={showSwitcher}
-    onMouseLeave={hideSwitcher}
-  >
-    <SubTabs ... />
-  </div>
-)}
-```
-
-Nachher:
-```typescript
-{/* Level 1: Area Tabs — Hover oeffnet Module Switcher */}
-<div
-  ref={triggerRef}
-  className="border-b"
-  onMouseEnter={showSwitcher}
-  onMouseLeave={hideSwitcher}
->
-  <AreaTabs />
-</div>
-
-{/* Level 2: Sub Tabs — kein Hover hier */}
-{activeModule && ... && (
-  <div className="relative">
-    <SubTabs ... />
-  </div>
-)}
-```
-
-Eine Datei, 4 Zeilen verschoben. Keine weiteren Aenderungen noetig.
-
+Die Verfuegbarkeits-Berechnung (Kalender-Darstellung) wird im naechsten Schritt implementiert -- hier werden erst die Basisdaten erfasst.
