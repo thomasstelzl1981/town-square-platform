@@ -1,134 +1,139 @@
 
+# Lennox & Friends — Website Redesign + Pet-Card Datenstandard (SSOT)
 
-## Erweitertes Konzept: Lennox Website mit Nutzer-Profil + Buchung
+## 1. Pet-Card Datenstandard (SSOT für Z1/Z2/Z3)
 
-### Ueberblick
+Die Z2 `pets`-Tabelle (MOD-05 Haustiere) ist die **Vorlage** und wird NICHT verändert.
+Die Z1/Z3 `pet_z1_pets`-Tabelle wurde erweitert, um den gleichen Feldstandard abzubilden.
 
-Statt eines einfachen Registrierungsformulars bekommt die Lennox-Website ein vollstaendiges **Profil-System** mit Login. Eingeloggte Nutzer koennen ihr Halter-Profil und Tier-Daten verwalten und direkt bei einem Provider buchen. Alle Profile landen automatisch in Zone 1 Pet Desk unter "Kunden".
+### Feld-Matrix
 
-### Datenfluss
+| Feld | Z3 Minimum (Quick) | Z1/Z3 Standard (Profil) | Z2 Vollständig (MOD-05) | Tabelle |
+|------|:---:|:---:|:---:|---------|
+| **Tiername** | ✅ Pflicht | ✅ | ✅ | `name` |
+| **Tierart** | ✅ Pflicht | ✅ | ✅ | `species` (Enum: dog, cat, bird, rabbit, hamster, fish, reptile, horse, other) |
+| **Rasse** | — | ✅ | ✅ | `breed` |
+| **Geschlecht** | — | ✅ | ✅ | `gender` (Enum: male, female, unknown) |
+| **Geburtsdatum** | — | ✅ | ✅ | `birth_date` |
+| **Gewicht (kg)** | — | ✅ | ✅ | `weight_kg` |
+| **Chip-Nr.** | — | ✅ | ✅ | `chip_number` |
+| **Kastriert** | — | ✅ | ✅ | `neutered` |
+| **Tierarzt** | — | ✅ | ✅ | `vet_name` |
+| **Allergien** | — | ✅ | ✅ | `allergies` (text[]) |
+| **Foto** | — | ✅ | ✅ | `photo_url` |
+| **Notizen** | — | ✅ | ✅ | `notes` |
+| **Versicherer** | — | — | ✅ nur Z2 | `insurance_provider` |
+| **Policen-Nr.** | — | — | ✅ nur Z2 | `insurance_policy_no` |
+| **Impfhistorie** | — | — | ✅ nur Z2 | `pet_vaccinations` (Relation) |
+| **Krankengeschichte** | — | — | ✅ nur Z2 | `pet_medical_records` (Relation) |
+| **Pflege-Timeline** | — | — | ✅ nur Z2 | `pet_caring_events` (Relation) |
+| **Lennox Tracker** | — | — | ✅ nur Z2 | Placeholder (Shop-Link) |
+| **DMS-Tree** | — | — | ✅ nur Z2 | `EntityStorageTree` |
 
-```text
-Zone 3 (Lennox Website)                  Zone 1 (Pet Desk)
-────────────────────────                  ──────────────────
-/website/tierservice/login                Kunden-Tab
-  - Auth via Supabase Auth                  pet_z1_customers
-  - Login / Registrierung                   (user_id verknuepft)
-                                            status: new → qualified → assigned
-/website/tierservice/profil
-  - Halter: Name, Adresse,
-    Telefon, E-Mail
-  - Tiere: Name, Rasse, Geburt,
-    Gewicht, Chip-Nr. (pet_z1_pets)
-  - Bearbeiten + Loeschen
+### Halter-Daten (pet_z1_customers)
 
-/website/tierservice/anbieter/:id
-  - "Jetzt buchen" (nur eingeloggt)       Vorgaenge-Tab
-  - Erstellt Buchungsanfrage                pet_bookings (status: 'requested')
+| Feld | Z3 Minimum | Z1/Z3 Standard | Spalte |
+|------|:---:|:---:|--------|
+| **Vorname** | ✅ Pflicht | ✅ | `first_name` |
+| **Nachname** | ✅ Pflicht | ✅ | `last_name` |
+| **E-Mail** | ✅ Pflicht | ✅ | `email` |
+| **Telefon** | ✅ Pflicht | ✅ | `phone` |
+| **Straße** | — | ✅ | `address` |
+| **PLZ** | — | ✅ | `postal_code` |
+| **Ort** | — | ✅ | `city` |
+
+### Datentransfer Z1 → Z2
+
+Bei Zuweisung eines Z1-Kunden an einen Z2-Provider werden die Daten aus `pet_z1_pets` in die `pets`-Tabelle übertragen. Die Felder `insurance_provider` und `insurance_policy_no` werden erst in Z2 ergänzt.
+
+---
+
+## 2. CI / Look & Feel (Alpine Modern)
+
+### Logos (in `src/assets/logos/`)
+- `lennox_logo_main.jpeg` — Hauptlogo (LF + Berge + Hunde, Tannengrün)
+- `lennox_logo_minimal.jpeg` — Minimallogo (Lineart, nur Hunde + Text)
+- `lennox_logo_patch.jpeg` — Patch-Style (Tannengrün auf Offwhite)
+- `lennox_logo_badge.jpeg` — Badge rund (Berge + Hunde im Kreis)
+
+### Hero-Bild
+- `src/assets/lennox/hero_alpine.jpg` — Generiert, zwei Labradors auf Almwiese mit Bergpanorama
+
+### Farbschema
+- Tannengrün: `hsl(155, 35%, 25%)` — Primary
+- Offwhite: `hsl(40, 30%, 97%)` — Background
+- Sand: `hsl(35, 30%, 85%)` — Borders/Muted
+- Neon Coral: `hsl(10, 85%, 60%)` — Akzent (nur Hover/Badge)
+- Dunkelgrün Text: `hsl(155, 25%, 15%)` — Foreground
+
+---
+
+## 3. Seitenstruktur (4 Bereiche)
+
+| Route | Komponente | Beschreibung |
+|-------|-----------|-------------|
+| `/website/tierservice` | LennoxStartseite | One-Pager: Hero → Partnerfinder → Trust → Shop-Teaser → Partner-CTA |
+| `/website/tierservice/partner/:slug` | LennoxPartnerProfil | Dynamisches Partnerprofil mit Service-Kacheln + Inline-Booking |
+| `/website/tierservice/shop` | LennoxShop | Lennox Essentials + Affiliate |
+| `/website/tierservice/partner-werden` | LennoxPartnerWerden | Bewerbungsformular → Z1 Intake |
+| `/website/tierservice/login` | LennoxAuth | Login / Registrierung |
+| `/website/tierservice/mein-bereich` | LennoxMeinBereich | Dashboard: Tiere, Buchungen, Einstellungen |
+
+### Startseite — Zwei Zustände
+
+**A) Vor Suche:** Hero groß + Standort-Widget + Trust + Shop-Teaser + Partner-CTA
+**B) Nach Suche:** Hero kompakt + Partner-Kacheln (Bild, Name, Ort, 2 Tags, Rating) + gleicher Rest
+
+### Partnerprofil — Standardisiert
+
+- Partner Hero (Bild, Name, Region, Badge "Geprüfter Partner")
+- Service-Module (max 4 Kacheln mit Service-Tags aus `pet_service_category` Enum)
+- Booking Block (inline): Datum, "5 € Anzahlung", Login-Check, Tier auswählen/Quick-Form
+- Galerie + Kontakt
+
+### Zwei Buchungspfade
+
+1. **Mit Profil:** Eingeloggt → Tier auswählen aus `pet_z1_pets` → Buchung senden
+2. **Ohne Profil (Quick):** Minimalpflichtfelder inline → Erstellt `pet_z1_customers` (source: 'website_quick') + `pet_z1_pets`
+
+---
+
+## 4. Navigation (LennoxLayout)
+
+```
+[Logo]                    [Shop] [Partner werden] [Login/Mein Bereich]
 ```
 
-### Was wird gebaut
+---
 
-**1. Datenbank-Aenderungen**
+## 5. Acceptance Criteria
 
-Neue Tabelle `pet_z1_pets`:
+1. ✅ Startseite zeigt NIE globale Leistungen
+2. ✅ Partner-Kacheln NUR nach Standort/Ort
+3. ✅ Klick auf Partner → sofort Partnerprofil (kein Zwischenscreen)
+4. ✅ Leistungen nur im Partnerprofil (max 4 Kacheln)
+5. ✅ Booking → Zone 1 Lennox Desk Intake
+6. ✅ Schnellbuchung ohne Login mit Minimalpflichtfeldern
+7. ✅ Pet-Card Datenstandard konsistent über Z1/Z2/Z3
 
-| Spalte | Typ | Beschreibung |
-|--------|-----|-------------|
-| id | uuid PK | |
-| z1_customer_id | uuid FK pet_z1_customers | Halter-Referenz |
-| tenant_id | uuid FK organizations | Mandant |
-| name | text NOT NULL | Tiername |
-| species | pet_species DEFAULT 'dog' | Tierart (bestehender Enum) |
-| breed | text | Rasse |
-| gender | pet_gender | Geschlecht (bestehender Enum) |
-| birth_date | date | Geburtsdatum |
-| weight_kg | numeric | Gewicht |
-| chip_number | text | Chip-Nr. |
-| neutered | boolean DEFAULT false | Kastriert |
-| allergies | text[] | Allergien |
-| notes | text | Notizen |
-| created_at | timestamptz | |
+---
 
-Neue Spalten in `pet_z1_customers`:
-- `city` (text) — Ort
-- `postal_code` (text) — PLZ
-
-RLS fuer `pet_z1_pets`:
-- SELECT: platform_admin ODER eigener user_id ueber z1_customer_id
-- INSERT: authentifizierter User, wenn z1_customer_id.user_id = auth.uid()
-- UPDATE: eigener user_id ueber z1_customer_id
-- DELETE: eigener user_id ueber z1_customer_id ODER platform_admin
-
-RLS Erweiterung `pet_z1_customers`:
-- Neue Policy: Authentifizierte User duerfen ihren eigenen Eintrag (user_id = auth.uid()) lesen und bearbeiten
-- Neue Policy: Authentifizierte User duerfen einen neuen Eintrag mit eigenem user_id anlegen (Signup-Trigger)
-
-**2. Neue Zone-3-Seiten**
-
-| Seite | Route | Beschreibung |
-|-------|-------|-------------|
-| `LennoxAuth.tsx` | `/website/tierservice/login` | Login + Registrierung (E-Mail/Passwort) |
-| `LennoxProfil.tsx` | `/website/tierservice/profil` | Halter-Profil anzeigen/bearbeiten |
-| `LennoxMeineTiere.tsx` | `/website/tierservice/profil/tiere` | Tiere verwalten (CRUD auf pet_z1_pets) |
-| `LennoxBuchen.tsx` | `/website/tierservice/anbieter/:providerId/buchen` | Buchungsformular (Service waehlen, Datum, Notizen) |
-
-**3. Auth-Flow**
-
-- Registrierung: E-Mail + Passwort ueber Supabase Auth
-- Bei Registrierung: Edge Function `sot-pet-profile-init` erstellt automatisch einen `pet_z1_customers`-Eintrag mit `user_id = auth.uid()`, `source = 'website'`, `status = 'new'`
-- Login: Standard Supabase Auth
-- Profil-Seite: Laedt den eigenen `pet_z1_customers`-Eintrag ueber `user_id`
-- Der bestehende `/auth`-Flow der Plattform wird NICHT beruehrt — die Lennox-Auth ist eigenstaendig
-
-**4. Edge Function: `sot-pet-profile-init`**
-
-- Trigger: Wird nach erfolgreicher Registrierung ueber die Lennox-Website aufgerufen
-- Erstellt `pet_z1_customers`-Eintrag mit Default-Tenant (Lennox-Franchise-Tenant)
-- Prueft Duplikate (E-Mail bereits vorhanden)
-- Returned: customer_id
-
-**5. Navigation aktualisieren: `LennoxLayout.tsx`**
-
-- Neuer Nav-Link: "Mein Profil" → `/website/tierservice/profil` (nur sichtbar wenn eingeloggt)
-- "Login" / "Registrieren" Button → `/website/tierservice/login` (nur sichtbar wenn NICHT eingeloggt)
-- Auth-State via `supabase.auth.onAuthStateChange`
-
-**6. Provider-Detail CTA aktualisieren**
-
-- `LennoxProviderDetail.tsx`: "Jetzt buchen" fuehrt zu `/website/tierservice/anbieter/:id/buchen` wenn eingeloggt
-- Wenn NICHT eingeloggt: Redirect zu Login mit Return-URL
-
-**7. Pet Desk Kunden-Tab (`PetDeskKunden.tsx`)**
-
-- Query `pet_z1_customers` mit Status-Badges (new, qualified, assigned)
-- Anzeige verknuepfter `pet_z1_pets` als aufklappbare Liste
-- Quick-Actions: Status aendern, Provider zuweisen
-
-### Routen-Registrierung
-
-```text
-lennox.routes += [
-  { path: "login",                  component: "LennoxAuth" },
-  { path: "profil",                 component: "LennoxProfil" },
-  { path: "profil/tiere",           component: "LennoxMeineTiere" },
-  { path: "anbieter/:providerId/buchen", component: "LennoxBuchen" },
-]
-```
-
-### Zusammenfassung der Dateien
+## 6. Dateien-Übersicht
 
 | Datei | Aktion |
 |-------|--------|
-| DB Migration | NEU — `pet_z1_pets` Tabelle, `pet_z1_customers` Spalten + RLS |
-| `supabase/functions/sot-pet-profile-init/index.ts` | NEU — Profil-Init nach Registrierung |
-| `src/pages/zone3/lennox/LennoxAuth.tsx` | NEU — Login/Registrierung |
-| `src/pages/zone3/lennox/LennoxProfil.tsx` | NEU — Halter-Profil |
-| `src/pages/zone3/lennox/LennoxMeineTiere.tsx` | NEU — Tier-Verwaltung |
-| `src/pages/zone3/lennox/LennoxBuchen.tsx` | NEU — Buchungsformular |
-| `src/pages/zone3/lennox/LennoxLayout.tsx` | EDIT — Auth-aware Navigation |
-| `src/pages/zone3/lennox/LennoxProviderDetail.tsx` | EDIT — Buchen-CTA mit Auth-Check |
-| `src/manifests/routesManifest.ts` | EDIT — Neue Routen |
-| `src/router/ManifestRouter.tsx` | EDIT — Lazy Imports |
-| `src/pages/admin/petmanager/PetDeskKunden.tsx` | EDIT — Z1-Kundenliste mit Tieren |
-
+| `src/pages/zone3/lennox/LennoxStartseite.tsx` | NEU |
+| `src/pages/zone3/lennox/LennoxPartnerProfil.tsx` | NEU |
+| `src/pages/zone3/lennox/LennoxShop.tsx` | NEU |
+| `src/pages/zone3/lennox/LennoxPartnerWerden.tsx` | NEU |
+| `src/pages/zone3/lennox/LennoxMeinBereich.tsx` | NEU |
+| `src/pages/zone3/lennox/LennoxLayout.tsx` | EDIT — Alpine CI + neue Navigation |
+| `src/pages/zone3/lennox/LennoxAuth.tsx` | EDIT — Redirect zu /mein-bereich |
+| `src/pages/zone3/lennox/LennoxHome.tsx` | ENTFERNEN |
+| `src/pages/zone3/lennox/LennoxUeberUns.tsx` | ENTFERNEN |
+| `src/pages/zone3/lennox/LennoxProfil.tsx` | ENTFERNEN |
+| `src/pages/zone3/lennox/LennoxMeineTiere.tsx` | ENTFERNEN (→ MeinBereich) |
+| `src/pages/zone3/lennox/LennoxBuchen.tsx` | ENTFERNEN (→ PartnerProfil) |
+| `src/pages/zone3/lennox/LennoxProviderDetail.tsx` | ENTFERNEN (→ PartnerProfil) |
+| `src/manifests/routesManifest.ts` | EDIT |
+| `src/router/ManifestRouter.tsx` | EDIT |
