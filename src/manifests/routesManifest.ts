@@ -148,12 +148,12 @@ export const zone1Admin: ZoneDefinition = {
     { path: "projekt-desk/projekte", component: "ProjektDeskProjekte", title: "Projekte" },
     { path: "projekt-desk/listings", component: "ProjektDeskListings", title: "Listings" },
     { path: "projekt-desk/landing-pages", component: "ProjektDeskLandingPages", title: "Landing Pages" },
-    // Pet Governance Desk (MOD-05 + MOD-22) — 5 Sub-Seiten
-    { path: "petmanager", component: "PetmanagerDashboard", title: "Pet Governance" },
-    { path: "petmanager/provider", component: "PetmanagerProvider", title: "Provider" },
-    { path: "petmanager/finanzen", component: "PetmanagerFinanzen", title: "Finanzen" },
-    { path: "petmanager/services", component: "PetmanagerServices", title: "Services" },
-    { path: "petmanager/monitor", component: "PetmanagerMonitor", title: "Monitor" },
+    // Pet Desk (MOD-05 + MOD-22) — 5-Tab Structure
+    { path: "pet-desk", component: "PetDeskRouter", title: "Pet Desk" },
+    { path: "pet-desk/vorgaenge", component: "PetDeskVorgaenge", title: "Vorgänge" },
+    { path: "pet-desk/kunden", component: "PetDeskKunden", title: "Kunden" },
+    { path: "pet-desk/shop", component: "PetDeskShop", title: "Shop" },
+    { path: "pet-desk/billing", component: "PetDeskBilling", title: "Billing" },
     // Finance Desk (MOD-18) — Private Finanzberatung Lead-Management
     { path: "finance-desk", component: "FinanceDeskDashboard", title: "Finance Desk" },
     // =========================================================================

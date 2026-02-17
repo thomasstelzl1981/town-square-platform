@@ -4,4 +4,4 @@ export { default as FinanceDesk } from './FinanceDesk';
 export { default as Acquiary } from './Acquiary';
 export { default as LeadDesk } from './LeadDesk';
 export { default as ProjektDesk } from './ProjektDesk';
-export { default as PetmanagerDesk } from './PetmanagerDesk';
+export { default as PetDesk } from './PetmanagerDesk';
