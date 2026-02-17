@@ -848,7 +848,7 @@ export function KontexteTab() {
 
   return (
     <PageShell>
-      <ModulePageHeader title="Vermietereinheiten" description="Verwalten Sie Ihre steuerlichen Kontexte für die Immobilienbewertung" />
+      <ModulePageHeader title="Vermietereinheiten" description="Verwalte deine steuerlichen Kontexte für die Immobilienbewertung" />
 
       {/* Context Cards Grid */}
       {isLoading ? (

@@ -129,7 +129,7 @@ export default function AnfrageTab() {
 
   return (
     <PageShell>
-      <ModulePageHeader title="Finanzierungsanfrage" description="Erfassen Sie die Objektdaten und Ihren Finanzierungswunsch" />
+      <ModulePageHeader title="Finanzierungsanfrage" description="Erfasse die Objektdaten und deinen Finanzierungswunsch" />
 
       {/* Widget-Leiste: All requests + CTA */}
       <FinanceRequestWidgets activeRequestId={activeDraft?.id} />

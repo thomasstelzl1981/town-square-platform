@@ -30,7 +30,7 @@ export default function SelfieAdsKampagnen() {
           <EmptyState
             icon={Megaphone}
             title="Noch keine Kampagnen beauftragt"
-            description="Planen und beauftragen Sie Ihre erste Selfie Ads Kampagne, um hier den Status und die Ergebnisse zu verfolgen."
+            description="Plane und beauftrage deine erste Selfie Ads Kampagne, um hier den Status und die Ergebnisse zu verfolgen."
             action={{
               label: 'Erste Kampagne planen',
               onClick: () => navigate('/portal/vertriebspartner/selfie-ads-planen'),

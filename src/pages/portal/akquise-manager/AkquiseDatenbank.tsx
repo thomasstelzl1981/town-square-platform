@@ -165,7 +165,7 @@ export default function AkquiseDatenbank() {
     <PageShell>
       <div className="flex items-center justify-between">
         <ModulePageHeader
-          title="DATENBANK"
+          title="Datenbank"
           description="Alle eingegangenen Immobilienangebote"
         />
         <Button variant="outline" size="sm" onClick={handleExport} disabled={filtered.length === 0}>

@@ -61,7 +61,7 @@ export default function MarketingTab() {
 
   return (
     <PageShell>
-      <ModulePageHeader title="MARKETING & VERÖFFENTLICHUNG" description="Vermarkten Sie Ihre Projekte über Kaufy und eigene Landingpages" />
+      <ModulePageHeader title="Marketing & Veröffentlichung" description="Vermarkte deine Projekte über Kaufy und eigene Landingpages" />
 
       {/* Stats — ALWAYS visible */}
       <div className="grid gap-4 md:grid-cols-3">

@@ -260,7 +260,7 @@ export function VertraegeTab() {
 
   return (
     <PageShell>
-      <ModulePageHeader title="Verträge" description="Ihre rechtlichen Vereinbarungen im Überblick" />
+      <ModulePageHeader title="Verträge" description="Deine rechtlichen Vereinbarungen im Überblick" />
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">

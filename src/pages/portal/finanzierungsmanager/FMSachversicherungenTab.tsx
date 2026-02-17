@@ -100,7 +100,7 @@ export default function FMSachversicherungenTab() {
   return (
     <PageShell>
       <ModulePageHeader
-        title="SACHVERSICHERUNGEN"
+        title="Sachversicherungen"
         actions={
           <Button size="sm" onClick={() => setShowNew(true)} disabled={showNew}>
             <Plus className="h-4 w-4 mr-1" /> Versicherung

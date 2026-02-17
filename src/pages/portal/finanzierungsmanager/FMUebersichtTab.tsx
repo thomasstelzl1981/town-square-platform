@@ -237,7 +237,7 @@ export default function FMUebersichtTab() {
 
   return (
     <PageShell>
-      <ModulePageHeader title="ÜBERSICHT" />
+      <ModulePageHeader title="Übersicht" description="Personen, Einkommen und Vermögenswerte im Haushalt" />
 
       {/* BLOCK A — Personen im Haushalt */}
       <div className="space-y-3">

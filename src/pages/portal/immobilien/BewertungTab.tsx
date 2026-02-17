@@ -55,14 +55,14 @@ export function BewertungTab() {
     <PageShell>
       <ModulePageHeader
         title="Bewertung"
-        description="Marktwertermittlung via Sprengnetter — professionelle Gutachten für Ihre Liegenschaften. Wählen Sie ein Objekt aus, starten Sie die Bewertung und erhalten Sie Ihr Gutachten als PDF."
+        description="Marktwertermittlung via Sprengnetter — professionelle Gutachten für deine Immobilien"
       />
 
       <div className={DESIGN.FORM_GRID.FULL}>
         {/* Linkes Widget: Bewertbare Objekte */}
         <Card>
           <CardContent className="pt-6 space-y-4">
-            <WidgetHeader icon={TrendingUp} title="Bewertbare Objekte" description="Objekte aus Ihrem Portfolio" />
+            <WidgetHeader icon={TrendingUp} title="Bewertbare Objekte" description="Objekte aus deinem Portfolio" />
             {propsLoading ? (
               <div className="flex justify-center py-8">
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />

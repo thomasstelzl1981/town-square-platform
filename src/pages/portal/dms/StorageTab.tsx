@@ -295,7 +295,7 @@ export function StorageTab() {
   // ── Render ───────────────────────────────────────────────────
   return (
     <PageShell>
-      <ModulePageHeader title="Dateien" description="Verwalten Sie Ihre Dokumente und Ordner." />
+      <ModulePageHeader title="Dateien" description="Verwalte deine Dokumente und Ordner" />
       {/* Upload feedback */}
       {uploadedFiles.length > 0 && (
         <UploadResultList

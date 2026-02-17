@@ -17,7 +17,7 @@ export default function FMInvestmentTab() {
   if (!isConnected) {
     return (
       <PageShell>
-        <ModulePageHeader title="INVESTMENT" />
+        <ModulePageHeader title="Investment" description="Depot- und Anlageverwaltung deiner Kunden" />
         <Card>
           <CardContent className="p-12 text-center space-y-4">
             <div className="h-16 w-16 rounded-2xl bg-muted/50 flex items-center justify-center mx-auto">
@@ -39,7 +39,7 @@ export default function FMInvestmentTab() {
 
   return (
     <PageShell>
-      <ModulePageHeader title="INVESTMENT" />
+      <ModulePageHeader title="Investment" description="Depot- und Anlageverwaltung deiner Kunden" />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Depot-Übersicht */}

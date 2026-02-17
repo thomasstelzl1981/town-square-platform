@@ -101,8 +101,8 @@ export function SerienEmailsPage() {
   return (
     <PageShell>
       <ModulePageHeader
-        title="SERIEN-E-MAILS"
-        description="Personalisierter Massenversand an Ihre Kontakte"
+        title="Serien-E-Mails"
+        description="Personalisierter Massenversand an deine Kontakte"
         actions={
           <Button onClick={() => setShowWizard(true)}>
             <Plus className="h-4 w-4 mr-2" /> Neue Serien-E-Mail

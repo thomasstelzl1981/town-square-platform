@@ -78,7 +78,7 @@ export default function FMVorsorgeTab() {
   return (
     <PageShell>
       <ModulePageHeader
-        title="VORSORGEVERTRÄGE"
+        title="Vorsorgeverträge"
         actions={
           <Button size="sm" onClick={() => setShowNew(true)} disabled={showNew}>
             <Plus className="h-4 w-4 mr-1" /> Vorsorgevertrag

@@ -452,7 +452,7 @@ export default function InvestmentTab() {
       <div className="mt-8">
         <ModulePageHeader
           title="Armstrong Depot"
-          description="Investieren Sie mit unserem Partner Upvest direkt aus Ihrem Portal"
+          description="Investiere mit unserem Partner Upvest direkt aus deinem Portal"
         />
 
         <Card className="glass-card p-6 mb-6">

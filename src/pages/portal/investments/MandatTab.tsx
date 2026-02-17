@@ -61,8 +61,8 @@ export default function MandatTab() {
   return (
     <PageShell>
       <ModulePageHeader
-        title="SUCHMANDAT"
-        description="Beauftragen Sie einen AkquiseManager mit der Suche nach Ihrem Wunschobjekt"
+        title="Suchmandat"
+        description="Beauftrage einen Akquisemanager mit der Suche nach deinem Wunschobjekt"
       />
 
       <WidgetGrid>

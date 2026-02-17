@@ -131,7 +131,7 @@ const KundenTab = () => {
     <PageShell>
       <ModulePageHeader
         title="Kunden"
-        description="Ihre Kundenbeziehungen verwalten"
+        description="Deine Kundenbeziehungen verwalten"
       />
       <HowItWorks variant="kunden" />
 

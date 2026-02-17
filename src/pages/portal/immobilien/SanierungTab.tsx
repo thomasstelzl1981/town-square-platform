@@ -76,7 +76,7 @@ export function SanierungTab() {
     <PageShell>
       <ModulePageHeader
         title="Sanierung"
-        description={`${activeCases.length} aktive Vorgänge — Ausschreibungen, Angebote und Dokumentation.`}
+        description="Ausschreibungen, Angebote und Dokumentation für deine Sanierungsprojekte"
       />
 
       {isLoading ? (

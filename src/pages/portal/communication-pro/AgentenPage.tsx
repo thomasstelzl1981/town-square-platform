@@ -23,8 +23,8 @@ export function AgentenPage() {
   return (
     <PageShell>
       <ModulePageHeader
-        title="ARMSTRONG AGENTEN"
-        description="Verwalten, überwachen und steuern Sie alle KI-Aktionen im System."
+        title="Armstrong Agenten"
+        description="Alle KI-Aktionen verwalten, überwachen und steuern"
       />
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4">

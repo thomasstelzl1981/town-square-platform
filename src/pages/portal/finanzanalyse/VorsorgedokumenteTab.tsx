@@ -102,8 +102,8 @@ export default function VorsorgedokumenteTab() {
   return (
     <PageShell>
       <ModulePageHeader
-        title="Vorsorge & Testament"
-        description="Patientenverfügung, Vorsorgevollmacht und Testament — Ihre wichtigsten Vorsorgedokumente"
+        title="Testament & Vollmacht"
+        description="Patientenverfügung, Vorsorgevollmacht und Testament — deine wichtigsten Vorsorgedokumente"
       />
 
       {/* SEKTION 1: Patientenverfügung */}

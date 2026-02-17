@@ -273,7 +273,7 @@ export default function FMDashboard({ cases, isLoading }: Props) {
   return (
     <PageShell>
       <ModulePageHeader
-        title="FINANZIERUNGSMANAGER"
+        title="Finanzierungsmanager"
         description={`${activeCases.length} Fälle in Bearbeitung — noch nicht eingereicht.`}
         actions={
           <Button onClick={() => navigate('/portal/finanzierungsmanager/finanzierungsakte')} size="sm">

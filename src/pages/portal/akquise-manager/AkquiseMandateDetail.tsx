@@ -118,7 +118,7 @@ export default function AkquiseMandateDetail() {
       {/* ═══ Terms Gate ═══ */}
       {needsGate && (
         <>
-          <SectionHeader number={1} title="Split-Bestätigung" description="Bestätigen Sie die Provisionsvereinbarung." icon={<CheckCircle2 className="h-5 w-5" />} />
+          <SectionHeader number={1} title="Split-Bestätigung" description="Bestätige die Provisionsvereinbarung." icon={<CheckCircle2 className="h-5 w-5" />} />
           <Card className="border-primary/30">
             <CardContent className="p-6">
               <TermsGatePanel

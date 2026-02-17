@@ -82,8 +82,8 @@ export default function EnpalTab() {
   return (
     <PageShell>
       <ModulePageHeader
-        title="ENPAL"
-        description="Solaranlage mieten oder kaufen — Partner-Angebote für Ihre Immobilien"
+        title="Enpal"
+        description="Solaranlage mieten oder kaufen — Partner-Angebote für deine Immobilien"
       />
 
       {/* Benefits Bar */}
