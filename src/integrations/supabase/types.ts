@@ -12046,6 +12046,128 @@ export type Database = {
           },
         ]
       }
+      pet_room_assignments: {
+        Row: {
+          booking_id: string
+          check_in_at: string | null
+          check_out_at: string | null
+          created_at: string
+          id: string
+          notes: string | null
+          pet_id: string
+          room_id: string
+          tenant_id: string
+        }
+        Insert: {
+          booking_id: string
+          check_in_at?: string | null
+          check_out_at?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          pet_id: string
+          room_id: string
+          tenant_id: string
+        }
+        Update: {
+          booking_id?: string
+          check_in_at?: string | null
+          check_out_at?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          pet_id?: string
+          room_id?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pet_room_assignments_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "pet_bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pet_room_assignments_pet_id_fkey"
+            columns: ["pet_id"]
+            isOneToOne: false
+            referencedRelation: "pets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pet_room_assignments_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "pet_rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pet_room_assignments_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pet_rooms: {
+        Row: {
+          capacity: number
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          provider_id: string
+          room_type: string
+          sort_order: number
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          capacity?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          provider_id: string
+          room_type?: string
+          sort_order?: number
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          capacity?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          provider_id?: string
+          room_type?: string
+          sort_order?: number
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pet_rooms_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "pet_providers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pet_rooms_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pet_services: {
         Row: {
           category: Database["public"]["Enums"]["pet_service_category"]
