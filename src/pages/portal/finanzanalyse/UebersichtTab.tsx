@@ -364,9 +364,9 @@ export default function UebersichtTab() {
         description="Ihre finanzielle Gesamtübersicht — Personen, Konten und Vertragsanalyse"
         actions={
           <Button
+            variant="glass"
             size="icon-round"
             onClick={() => { setShowNewPerson(true); setOpenCardId(null); }}
-            className="h-10 w-10"
           >
             <Plus className="h-5 w-5" />
           </Button>

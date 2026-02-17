@@ -294,9 +294,9 @@ export default function SachversicherungenTab() {
         description="Zentrale Verwaltung aller Versicherungsverträge (SSOT)"
         actions={
           <Button
+            variant="glass"
             size="icon-round"
             onClick={() => { setShowNew(true); setSelectedId(null); }}
-            className="h-10 w-10"
           >
             <Plus className="h-5 w-5" />
           </Button>

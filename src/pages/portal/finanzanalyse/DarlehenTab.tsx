@@ -202,7 +202,7 @@ export default function DarlehenTab() {
         title="Darlehen"
         description="Konsolidierte Übersicht aller privaten Verbindlichkeiten"
         actions={
-          <Button size="icon-round" onClick={() => { setShowNew(true); setSelectedId(null); setSelectedSection(null); }} className="h-10 w-10">
+          <Button variant="glass" size="icon-round" onClick={() => { setShowNew(true); setSelectedId(null); setSelectedSection(null); }}>
             <Plus className="h-5 w-5" />
           </Button>
         }

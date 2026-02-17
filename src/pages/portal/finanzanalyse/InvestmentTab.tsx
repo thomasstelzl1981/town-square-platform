@@ -338,9 +338,9 @@ export default function InvestmentTab() {
           description="ETF-, Fonds- und Aktien-Sparpläne verwalten"
           actions={
             <Button
+              variant="glass"
               size="icon-round"
               onClick={() => { setShowNewSpar(true); setSelectedSparId(null); }}
-              className="h-10 w-10"
             >
               <Plus className="h-5 w-5" />
             </Button>

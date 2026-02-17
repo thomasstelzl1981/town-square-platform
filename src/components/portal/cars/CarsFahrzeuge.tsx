@@ -231,11 +231,9 @@ export default function CarsFahrzeuge() {
         title="Fahrzeuge"
         description="Autos & Motorräder verwalten — Klicken Sie auf ein Fahrzeug für die vollständige Akte"
         actions={
-          <DesktopOnly>
-            <Button onClick={handleCreateInline}>
-              <Plus className="h-4 w-4 mr-2" /> Fahrzeug hinzufügen
-            </Button>
-          </DesktopOnly>
+          <Button variant="glass" size="icon-round" onClick={handleCreateInline}>
+            <Plus className="h-5 w-5" />
+          </Button>
         }
       />
 

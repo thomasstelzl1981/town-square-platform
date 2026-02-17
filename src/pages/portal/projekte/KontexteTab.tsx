@@ -56,9 +56,8 @@ export default function KontexteTab() {
         title="Verkäufer-Gesellschaften"
         description="Verwalten Sie Ihre Bauträger- und Aufteiler-Gesellschaften"
         actions={
-          <Button onClick={() => setCreateOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Neue Gesellschaft
+          <Button variant="glass" size="icon-round" onClick={() => setCreateOpen(true)}>
+            <Plus className="h-5 w-5" />
           </Button>
         }
       />

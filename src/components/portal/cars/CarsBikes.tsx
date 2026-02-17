@@ -53,7 +53,7 @@ export default function CarsBikes() {
       <ModulePageHeader
         title="Bikes"
         description="Motorräder verwalten — Klicken für vollständige Akte"
-        actions={<Button><Plus className="h-4 w-4 mr-2" /> Bike hinzufügen</Button>}
+        actions={<Button variant="glass" size="icon-round"><Plus className="h-5 w-5" /></Button>}
       />
 
       <WidgetGrid>
