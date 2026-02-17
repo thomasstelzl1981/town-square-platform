@@ -1,7 +1,9 @@
 /**
- * PMPension — Vertikales Widget-Layout: Zimmer links, Inline-Akte rechts
+ * PMPension — Zimmer-Widgets links + Excel-Belegungskalender rechts
+ * Kalender: Sticky Zimmer-Spalte, Sub-Zeilen pro Kapazität, horizontaler Scroll (14+ Tage),
+ * mindestens 1 Jahr navigierbar, schwebender Speichern-Button bei dirty state.
  */
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useCallback } from 'react';
 import { Plus, PawPrint, LogOut, Save, Trash2, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,12 +22,14 @@ import {
 } from '@/hooks/usePetRooms';
 import { cn } from '@/lib/utils';
 import { PageShell } from '@/components/shared/PageShell';
-import { format, startOfWeek, addDays, addWeeks, subWeeks, isToday, eachDayOfInterval } from 'date-fns';
+import { format, addDays, isToday, eachDayOfInterval, isWeekend } from 'date-fns';
 import { de } from 'date-fns/locale';
 
 const ROOM_TYPE_LABELS: Record<string, string> = { zimmer: 'Zimmer', auslauf: 'Auslauf', box: 'Box' };
 const ROOM_TYPE_ICONS: Record<string, string> = { zimmer: '🏠', auslauf: '🌳', box: '📦' };
 const EMPTY_ROOM = { name: '', room_type: 'zimmer', capacity: 1, description: '', is_active: true, sort_order: 0 };
+
+const VISIBLE_DAYS = 14;
 
 export default function PMPension() {
   const { data: provider } = useMyProvider();
@@ -42,57 +46,77 @@ export default function PMPension() {
   const [form, setForm] = useState(EMPTY_ROOM);
   const [currentDate, setCurrentDate] = useState(new Date());
 
+  // Dirty state for calendar edits (future booking edits)
+  const [dirtyEdits, setDirtyEdits] = useState<Map<string, string>>(new Map());
+  const isDirty = dirtyEdits.size > 0;
+
   const pensionRooms = rooms.filter(r => r.is_active);
-  const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
-  const weekDays = useMemo(() => eachDayOfInterval({ start: weekStart, end: addDays(weekStart, 6) }), [weekStart]);
+
+  // Generate visible date columns
+  const visibleDays = useMemo(() => {
+    const start = currentDate;
+    return eachDayOfInterval({ start, end: addDays(start, VISIBLE_DAYS - 1) });
+  }, [currentDate]);
 
   // Group assignments by room
-  const assignmentsByRoom = new Map<string, PetRoomAssignment[]>();
-  assignments.forEach(a => {
-    if (!assignmentsByRoom.has(a.room_id)) assignmentsByRoom.set(a.room_id, []);
-    assignmentsByRoom.get(a.room_id)!.push(a);
-  });
-
-  // Calendar bookings
-  const pensionBookings = bookings.filter(b => !['cancelled', 'no_show'].includes(b.status));
-  const bookingsByDate = new Map<string, typeof pensionBookings>();
-  pensionBookings.forEach(b => {
-    if (!bookingsByDate.has(b.scheduled_date)) bookingsByDate.set(b.scheduled_date, []);
-    bookingsByDate.get(b.scheduled_date)!.push(b);
-  });
-
-  const handleCreate = () => {
-    setSelectedId(null);
-    setIsCreating(true);
-    setForm(EMPTY_ROOM);
-  };
-
-  const handleSelect = (room: PetRoom) => {
-    setIsCreating(false);
-    setSelectedId(room.id);
-    setForm({
-      name: room.name, room_type: room.room_type, capacity: room.capacity,
-      description: room.description || '', is_active: room.is_active, sort_order: room.sort_order,
+  const assignmentsByRoom = useMemo(() => {
+    const map = new Map<string, PetRoomAssignment[]>();
+    assignments.forEach(a => {
+      if (!map.has(a.room_id)) map.set(a.room_id, []);
+      map.get(a.room_id)!.push(a);
     });
+    return map;
+  }, [assignments]);
+
+  // Calendar bookings indexed by date
+  const pensionBookings = useMemo(() => bookings.filter(b => !['cancelled', 'no_show'].includes(b.status)), [bookings]);
+  const bookingsByDate = useMemo(() => {
+    const map = new Map<string, typeof pensionBookings>();
+    pensionBookings.forEach(b => {
+      if (!map.has(b.scheduled_date)) map.set(b.scheduled_date, []);
+      map.get(b.scheduled_date)!.push(b);
+    });
+    return map;
+  }, [pensionBookings]);
+
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  const navigateWeek = useCallback((dir: number) => {
+    setCurrentDate(prev => addDays(prev, dir * 7));
+  }, []);
+
+  const goToday = useCallback(() => setCurrentDate(new Date()), []);
+
+  const handleCellClick = useCallback((roomId: string, slotIdx: number, dateKey: string) => {
+    const key = `${roomId}:${slotIdx}:${dateKey}`;
+    setDirtyEdits(prev => {
+      const next = new Map(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.set(key, 'marked');
+      }
+      return next;
+    });
+  }, []);
+
+  const handleSaveEdits = useCallback(() => {
+    // TODO: persist dirty edits as bookings
+    setDirtyEdits(new Map());
+  }, []);
+
+  const handleCreate = () => { setSelectedId(null); setIsCreating(true); setForm(EMPTY_ROOM); };
+  const handleSelect = (room: PetRoom) => {
+    setIsCreating(false); setSelectedId(room.id);
+    setForm({ name: room.name, room_type: room.room_type, capacity: room.capacity, description: room.description || '', is_active: room.is_active, sort_order: room.sort_order });
   };
-
   const handleClose = () => { setSelectedId(null); setIsCreating(false); };
-
   const handleSave = async () => {
     if (!form.name.trim()) return;
-    if (selectedId) {
-      await updateRoom.mutateAsync({ id: selectedId, ...form });
-    } else {
-      await createRoom.mutateAsync({ ...form, provider_id: provider!.id });
-      setIsCreating(false);
-    }
+    if (selectedId) await updateRoom.mutateAsync({ id: selectedId, ...form });
+    else { await createRoom.mutateAsync({ ...form, provider_id: provider!.id }); setIsCreating(false); }
   };
-
-  const handleDelete = async () => {
-    if (!selectedId) return;
-    await deleteRoom.mutateAsync(selectedId);
-    handleClose();
-  };
+  const handleDelete = async () => { if (!selectedId) return; await deleteRoom.mutateAsync(selectedId); handleClose(); };
 
   const showAkte = selectedId || isCreating;
 
@@ -122,165 +146,99 @@ export default function PMPension() {
           }
         />
 
-        {/* Main: Widgets left + Akte right */}
-        <div className="flex flex-col md:flex-row gap-4">
-          {/* Left: Vertical widget column */}
-          <div className="md:w-48 lg:w-56 flex-shrink-0">
-            <div className="flex md:flex-col gap-3 overflow-x-auto md:overflow-x-visible md:max-h-[calc(100vh-220px)] md:overflow-y-auto pb-2 md:pb-0 md:pr-1">
-              {pensionRooms.map(room => {
-                const occ = (assignmentsByRoom.get(room.id) || []).length;
-                const isFull = occ >= room.capacity;
-                const isSelected = selectedId === room.id;
-                return (
-                  <Card
-                    key={room.id}
-                    className={cn(
-                      'relative overflow-hidden cursor-pointer hover:shadow-md transition-all flex-shrink-0',
-                      'w-36 md:w-full aspect-square',
-                      isSelected && 'ring-2 ring-primary shadow-lg',
-                      isFull && 'border-destructive/30',
-                      occ === 0 && !isSelected && 'border-emerald-500/30',
-                      occ > 0 && !isFull && !isSelected && 'border-amber-500/30',
-                    )}
-                    onClick={() => handleSelect(room)}
-                  >
-                    <div className={cn(
-                      'h-1.5',
-                      occ === 0 && 'bg-emerald-500',
-                      occ > 0 && !isFull && 'bg-amber-500',
-                      isFull && 'bg-destructive',
-                    )} />
-                    <CardContent className="p-3 flex flex-col justify-between h-[calc(100%-6px)]">
-                      <div>
-                        <div className="flex items-center gap-1.5 mb-1">
-                          <span className="text-base">{ROOM_TYPE_ICONS[room.room_type] || '🏠'}</span>
-                          <span className="text-sm font-medium truncate">{room.name}</span>
-                        </div>
-                        <span className="text-[10px] text-muted-foreground">{ROOM_TYPE_LABELS[room.room_type]}</span>
-                      </div>
-                      <Badge variant={isFull ? 'destructive' : occ > 0 ? 'secondary' : 'outline'} className="text-[10px] w-fit">
-                        {occ}/{room.capacity} 🐕
-                      </Badge>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-              {pensionRooms.length === 0 && (
-                <div className="text-sm text-muted-foreground text-center py-8">
-                  Noch keine Zimmer angelegt.
+        {/* Zimmerakte Overlay */}
+        {showAkte && (
+          <Card className="relative z-10">
+            <CardContent className="pt-5 pb-5 px-5">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-bold">
+                  {isCreating ? 'Neues Zimmer' : `Zimmerakte: ${form.name}`}
+                </h2>
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleClose}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+              <div className="space-y-4">
+                <div className="space-y-3">
+                  <div>
+                    <Label>Name *</Label>
+                    <Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="z.B. Zimmer 1" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label>Raumtyp</Label>
+                      <Select value={form.room_type} onValueChange={v => setForm(f => ({ ...f, room_type: v }))}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {Object.entries(ROOM_TYPE_LABELS).map(([k, v]) => (
+                            <SelectItem key={k} value={k}>{ROOM_TYPE_ICONS[k]} {v}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>Kapazität (Tiere)</Label>
+                      <Input type="number" min={1} value={form.capacity} onChange={e => setForm(f => ({ ...f, capacity: parseInt(e.target.value) || 1 }))} />
+                    </div>
+                  </div>
+                  <div>
+                    <Label>Beschreibung</Label>
+                    <Textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={2} />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Switch checked={form.is_active} onCheckedChange={v => setForm(f => ({ ...f, is_active: v }))} />
+                    <Label>Aktiv</Label>
+                  </div>
                 </div>
-              )}
-            </div>
-          </div>
 
-          {/* Right: Inline Akte */}
-          {showAkte && (
-            <div className="flex-1 min-w-0">
-              <Card>
-                <CardContent className="pt-5 pb-5 px-5">
-                  <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-lg font-bold">
-                      {isCreating ? 'Neues Zimmer' : `Zimmerakte: ${form.name}`}
-                    </h2>
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleClose}>
-                      <X className="h-4 w-4" />
+                {/* Aktuelle Belegung */}
+                {selectedId && (assignmentsByRoom.get(selectedId) || []).length > 0 && (
+                  <div className="border-t pt-4 mt-2">
+                    <h3 className="text-sm font-semibold mb-2">Aktuelle Belegung</h3>
+                    <div className="space-y-1.5">
+                      {(assignmentsByRoom.get(selectedId) || []).map(a => (
+                        <div key={a.id} className="flex items-center gap-2 bg-muted/40 rounded-lg px-3 py-2">
+                          <PawPrint className="h-4 w-4 text-primary" />
+                          <span className="flex-1 text-sm">{a.pet?.name}</span>
+                          <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => checkOut.mutate(a.id)}>
+                            <LogOut className="h-3 w-3 mr-1" /> Check-Out
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex items-center gap-2 pt-2">
+                  <Button onClick={handleSave} disabled={createRoom.isPending || updateRoom.isPending}>
+                    <Save className="h-4 w-4 mr-1" /> Speichern
+                  </Button>
+                  {selectedId && (
+                    <Button variant="destructive" onClick={handleDelete} disabled={deleteRoom.isPending}>
+                      <Trash2 className="h-4 w-4 mr-1" /> Löschen
                     </Button>
-                  </div>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
-                  <div className="space-y-4">
-                    {/* Basisdaten */}
-                    <div className="space-y-3">
-                      <div>
-                        <Label>Name *</Label>
-                        <Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="z.B. Zimmer 1" />
-                      </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <Label>Raumtyp</Label>
-                          <Select value={form.room_type} onValueChange={v => setForm(f => ({ ...f, room_type: v }))}>
-                            <SelectTrigger><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                              {Object.entries(ROOM_TYPE_LABELS).map(([k, v]) => (
-                                <SelectItem key={k} value={k}>{ROOM_TYPE_ICONS[k]} {v}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div>
-                          <Label>Kapazität (Tiere)</Label>
-                          <Input type="number" min={1} value={form.capacity} onChange={e => setForm(f => ({ ...f, capacity: parseInt(e.target.value) || 1 }))} />
-                        </div>
-                      </div>
-                      <div>
-                        <Label>Beschreibung</Label>
-                        <Textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={2} />
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Switch checked={form.is_active} onCheckedChange={v => setForm(f => ({ ...f, is_active: v }))} />
-                        <Label>Aktiv</Label>
-                      </div>
-                    </div>
-
-                    {/* Aktuelle Belegung (nur im Edit-Modus) */}
-                    {selectedId && (assignmentsByRoom.get(selectedId) || []).length > 0 && (
-                      <div>
-                        <div className="border-t pt-4 mt-2">
-                          <h3 className="text-sm font-semibold mb-2">Aktuelle Belegung</h3>
-                          <div className="space-y-1.5">
-                            {(assignmentsByRoom.get(selectedId) || []).map(a => (
-                              <div key={a.id} className="flex items-center gap-2 bg-muted/40 rounded-lg px-3 py-2">
-                                <PawPrint className="h-4 w-4 text-primary" />
-                                <span className="flex-1 text-sm">{a.pet?.name}</span>
-                                <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => checkOut.mutate(a.id)}>
-                                  <LogOut className="h-3 w-3 mr-1" /> Check-Out
-                                </Button>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Actions */}
-                    <div className="flex items-center gap-2 pt-2">
-                      <Button onClick={handleSave} disabled={createRoom.isPending || updateRoom.isPending}>
-                        <Save className="h-4 w-4 mr-1" /> Speichern
-                      </Button>
-                      {selectedId && (
-                        <Button variant="destructive" onClick={handleDelete} disabled={deleteRoom.isPending}>
-                          <Trash2 className="h-4 w-4 mr-1" /> Löschen
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          )}
-
-          {/* Placeholder when no akte open */}
-          {!showAkte && pensionRooms.length > 0 && (
-            <div className="flex-1 flex items-center justify-center min-h-[300px]">
-              <p className="text-sm text-muted-foreground">Zimmer auswählen oder neues Zimmer anlegen</p>
-            </div>
-          )}
-        </div>
-
-        {/* Belegungskalender */}
+        {/* Excel-Belegungskalender */}
         <div>
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-sm font-semibold">Belegungskalender</h2>
             <div className="flex items-center gap-2">
-              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setCurrentDate(subWeeks(currentDate, 1))}>
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => navigateWeek(-1)}>
                 <ChevronLeft className="h-4 w-4" />
               </Button>
-              <span className="text-xs text-muted-foreground min-w-[140px] text-center">
-                {format(weekStart, 'dd. MMM', { locale: de })} – {format(addDays(weekStart, 6), 'dd. MMM yyyy', { locale: de })}
+              <span className="text-xs text-muted-foreground min-w-[160px] text-center">
+                {format(visibleDays[0], 'dd. MMM', { locale: de })} – {format(visibleDays[visibleDays.length - 1], 'dd. MMM yyyy', { locale: de })}
               </span>
-              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setCurrentDate(addWeeks(currentDate, 1))}>
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => navigateWeek(1)}>
                 <ChevronRight className="h-4 w-4" />
               </Button>
-              <Button variant="link" size="sm" className="text-xs h-5" onClick={() => setCurrentDate(new Date())}>Heute</Button>
+              <Button variant="link" size="sm" className="text-xs h-5" onClick={goToday}>Heute</Button>
             </div>
           </div>
 
@@ -289,67 +247,97 @@ export default function PMPension() {
               <p className="text-sm text-muted-foreground">Legen Sie zuerst Zimmer an, um den Belegungskalender zu sehen.</p>
             </div>
           ) : (
-            <Card>
-              <CardContent className="pt-4 overflow-x-auto">
-                <table className="w-full border-collapse text-xs">
-                  <thead>
-                    <tr>
-                      <th className="text-left p-2 border-b font-medium text-muted-foreground w-28">Zimmer</th>
-                      {weekDays.map(day => (
-                        <th key={day.toISOString()} className={cn(
-                          'p-2 border-b font-medium text-center min-w-[80px]',
-                          isToday(day) ? 'text-primary bg-primary/5' : 'text-muted-foreground',
-                        )}>
-                          <div>{format(day, 'EEE', { locale: de })}</div>
-                          <div className="text-[10px]">{format(day, 'dd.MM.')}</div>
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {pensionRooms.map(room => (
-                      <tr key={room.id} className="border-b last:border-0">
-                        <td className="p-2 font-medium">
-                          <span className="flex items-center gap-1">
-                            {ROOM_TYPE_ICONS[room.room_type]} {room.name}
-                          </span>
-                          <span className="text-[10px] text-muted-foreground">max {room.capacity}</span>
-                        </td>
-                        {weekDays.map(day => {
+            <div ref={scrollRef} className="overflow-x-auto border rounded-lg bg-card">
+              <table className="border-collapse text-xs" style={{ minWidth: `${180 + VISIBLE_DAYS * 72}px` }}>
+                <thead>
+                  <tr>
+                    {/* Sticky room header */}
+                    <th className="sticky left-0 z-20 bg-muted/80 backdrop-blur-sm border-b border-r p-2 text-left font-medium text-muted-foreground"
+                        style={{ minWidth: 180 }}>
+                      Zimmer
+                    </th>
+                    {visibleDays.map(day => (
+                      <th key={day.toISOString()}
+                          className={cn(
+                            'p-1.5 border-b border-r font-medium text-center',
+                            isToday(day) ? 'text-primary bg-primary/10' : 'text-muted-foreground',
+                            isWeekend(day) && 'bg-muted/40',
+                          )}
+                          style={{ minWidth: 72 }}>
+                        <div className="text-[10px]">{format(day, 'EEE', { locale: de })}</div>
+                        <div>{format(day, 'dd.MM.')}</div>
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {pensionRooms.map((room, roomIdx) => {
+                    const slots = Array.from({ length: room.capacity }, (_, i) => i);
+                    return slots.map((slotIdx) => (
+                      <tr key={`${room.id}-${slotIdx}`}
+                          className={cn(
+                            slotIdx === room.capacity - 1 && roomIdx < pensionRooms.length - 1 && 'border-b-2 border-b-border',
+                            slotIdx < room.capacity - 1 && 'border-b border-b-border/40',
+                          )}>
+                        {/* Sticky room name cell — only on first slot row */}
+                        {slotIdx === 0 ? (
+                          <td className="sticky left-0 z-10 bg-card border-r p-2 font-medium cursor-pointer hover:bg-muted/60 transition-colors"
+                              rowSpan={room.capacity}
+                              onClick={() => handleSelect(room)}
+                              style={{ minWidth: 180 }}>
+                            <div className="flex items-center gap-1.5">
+                              <span>{ROOM_TYPE_ICONS[room.room_type]}</span>
+                              <span className="truncate">{room.name}</span>
+                            </div>
+                            <div className="flex items-center gap-1 mt-0.5">
+                              <Badge variant="outline" className="text-[9px] px-1 py-0">
+                                {(assignmentsByRoom.get(room.id) || []).length}/{room.capacity} 🐕
+                              </Badge>
+                            </div>
+                          </td>
+                        ) : null}
+                        {/* Date cells */}
+                        {visibleDays.map(day => {
                           const dateKey = format(day, 'yyyy-MM-dd');
-                          const dayBookings = (bookingsByDate.get(dateKey) || []);
-                          const count = dayBookings.length;
-                          const ratio = count / Math.max(room.capacity, 1);
+                          const cellKey = `${room.id}:${slotIdx}:${dateKey}`;
+                          const isMarked = dirtyEdits.has(cellKey);
                           return (
-                            <td key={day.toISOString()} className={cn(
-                              'p-1 text-center border-l',
-                              isToday(day) && 'bg-primary/5',
-                              ratio >= 1 && 'bg-destructive/10',
-                              ratio >= 0.5 && ratio < 1 && 'bg-amber-500/10',
-                              ratio > 0 && ratio < 0.5 && 'bg-emerald-500/10',
-                            )}>
-                              {count > 0 && (
-                                <div className="flex flex-col gap-0.5">
-                                  {dayBookings.slice(0, 3).map(b => (
-                                    <div key={b.id} className="rounded bg-primary/15 px-1 py-0.5 text-[9px] truncate">
-                                      {b.pet?.name}
-                                    </div>
-                                  ))}
-                                  {count > 3 && <span className="text-[9px] text-muted-foreground">+{count - 3}</span>}
+                            <td key={day.toISOString()}
+                                className={cn(
+                                  'border-r p-0.5 text-center cursor-pointer transition-colors',
+                                  isToday(day) && 'bg-primary/5',
+                                  isWeekend(day) && !isToday(day) && 'bg-muted/20',
+                                  isMarked && 'bg-primary/20 ring-1 ring-inset ring-primary/40',
+                                  !isMarked && 'hover:bg-muted/40',
+                                )}
+                                style={{ minWidth: 72, height: 28 }}
+                                onClick={() => handleCellClick(room.id, slotIdx, dateKey)}>
+                              {isMarked && (
+                                <div className="w-full h-full flex items-center justify-center">
+                                  <div className="w-2 h-2 rounded-full bg-primary" />
                                 </div>
                               )}
                             </td>
                           );
                         })}
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </CardContent>
-            </Card>
+                    ));
+                  })}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       </div>
+
+      {/* Floating Save Button */}
+      {isDirty && (
+        <div className="fixed bottom-6 right-6 z-50">
+          <Button onClick={handleSaveEdits} size="lg" className="shadow-xl rounded-full gap-2 px-6">
+            <Save className="h-4 w-4" /> Änderungen speichern ({dirtyEdits.size})
+          </Button>
+        </div>
+      )}
     </PageShell>
   );
 }
