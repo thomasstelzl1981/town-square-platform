@@ -152,7 +152,7 @@
 | 8.9 | **Firecrawl** (Web-Extraktion) | `FIRECRAWL_API_KEY` ✅ | ✅ | sot-research-engine | ✅ Bereit |
 | 8.10 | **Perplexity** (KI-Suche) | `PERPLEXITY_API_KEY` ✅ | ⚠️ | Armstrong (geplant) | ⚠️ Teilweise |
 | 8.11 | **Google OAuth** (Mail/Cal/Contacts) | ❌ Fehlt | ❌ | AccountIntegrationDialog | ❌ Blockiert |
-| 8.12 | **Microsoft OAuth** (Mail/Cal/Contacts) | ❌ Fehlt | ❌ | AccountIntegrationDialog | ❌ Blockiert |
+| 8.12 | **Microsoft OAuth** (Mail/Cal/Contacts) | ⏸️ Zurückgestellt | ❌ | AccountIntegrationDialog | ⏸️ Post-Beta (IMAP reicht für Beta) |
 | 8.13 | **Stripe** (Billing) | ❌ Fehlt | 🔲 | Subscription (geplant) | 🔲 Phase 2 |
 | 8.14 | **finAPI** (Banking) | ❌ Fehlt | 🔲 | Finanzen MOD-18 (geplant) | 🔲 Phase 2 |
 | 8.15 | **ImmoScout24** | ❌ Fehlt | 🔲 | Listings (geplant) | 🔲 Phase 2 |
@@ -162,7 +162,8 @@
 ### Fazit API-Schnittstellen
 
 - **10 von 17** Integrationen sind für Beta **betriebsbereit** (Secrets + Code vorhanden)
-- **2 blockiert** durch fehlende OAuth-Credentials (Google & Microsoft für KI Office)
+- **1 blockiert** durch fehlende OAuth-Credentials (Google für KI Office)
+- **1 zurückgestellt** auf Post-Beta (Microsoft OAuth → IMAP reicht für Beta)
 - **5 geplant** für spätere Phasen (Stripe, finAPI, ImmoScout, SMA, Camunda)
 
 ---
@@ -206,7 +207,7 @@
 9. E-Mail/Kalender/Kontakte Sync E2E
 
 ### Phase C — Spätere Phasen
-10. Microsoft OAuth
+10. Microsoft OAuth (zurückgestellt — IMAP reicht für Beta)
 11. Stripe, finAPI, ImmoScout, SMA, Camunda
 
 ---
@@ -254,3 +255,4 @@ Phase C: Stripe Keys → Billing
 | 2026-02-17 | Protokoll erstellt |
 | 2026-02-17 | Komplettprüfung: Security-Linter, API-Schnittstellen-Übersicht, Testbarkeits-Matrix, Edge Functions, Secrets-Abgleich hinzugefügt |
 | 2026-02-17 | E2E Tests gestartet: Edge Functions getestet, Security Config gesetzt, Audit-Trigger Bug gefunden |
+| 2026-02-17 | Microsoft OAuth auf Post-Beta zurückgestellt — IMAP als Beta-Standard für E-Mail |
