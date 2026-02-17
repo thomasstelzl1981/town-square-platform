@@ -1,84 +1,104 @@
 
 
-# Briefgenerator — Umbau auf Inline-Flow (oben nach unten)
+# Mobile Startseite: Modul-Liste mit Chat-Umschaltung
 
-## Ist-Zustand
+## Zusammenfassung
 
-Aktuell: 2-Spalten-Layout (`col-span-7` Formular links, `col-span-5` Vorschau/Aktionen rechts). Auf Mobile nicht nutzbar, auf Desktop unuebersichtlich wegen paralleler Informationen.
+Die mobile Startseite (/portal) zeigt aktuell nur den Armstrong-Chat. Wir bauen sie um zu einer **scrollbaren Modul-Liste** mit **Chat-Eingabe unten**. Beim Tippen/Senden wechselt die Ansicht zum Vollbild-Chat. Der "Zurueck"-Button bringt die Modul-Liste wieder.
 
-## Soll-Zustand: Linearer Top-to-Bottom Flow
+## Aufbau der neuen Startseite
 
 ```text
-+----------------------------------------------------------+
-|  ModulePageHeader: Briefgenerator                        |
-+----------------------------------------------------------+
-|                                                          |
-|  SCHRITT 0: Absender                                     |
-|  [ Privat ]  [ Firma A ]  [ Firma B ]  [+]              |
-|                                                          |
-+----------------------------------------------------------+
-|                                                          |
-|  SCHRITT 1: Empfaenger                                   |
-|  [ Kontakt suchen...                          v ]        |
-|                                                          |
-+----------------------------------------------------------+
-|                                                          |
-|  SCHRITT 2: Betreff                                      |
-|  [ z.B. Mieterhoehung zum 01.04.2026           ]         |
-|                                                          |
-+----------------------------------------------------------+
-|                                                          |
-|  SCHRITT 3: Anliegen beschreiben                         |
-|  +------------------------------------------------+     |
-|  |                                            [Mic]|     |
-|  |                                                 |     |
-|  +------------------------------------------------+     |
-|                                                          |
-|  [====== Brief generieren (Sparkles) ======]             |
-|                                                          |
-+----------------------------------------------------------+
-|                                                          |
-|  SCHRITT 4: Brief bearbeiten                             |
-|  +------------------------------------------------+     |
-|  | Generierter Text (editierbar, mono)             |     |
-|  |                                                 |     |
-|  +------------------------------------------------+     |
-|                                                          |
-+----------------------------------------------------------+
-|                                                          |
-|  SCHRITT 5: Vorschau & Versand                           |
-|  +---------------------------+  Schriftart: [DIN v]      |
-|  | +---------------------+  |                            |
-|  | | DIN A4 Briefvorschau|  |  Versandkanal:             |
-|  | |                     |  |  (o) E-Mail  ( ) Fax       |
-|  | |                     |  |  ( ) SimpleBrief            |
-|  | +---------------------+  |                            |
-|  +---------------------------+  [PDF Vorschau] [Download] |
-|                                 [Speichern]  [Senden]     |
-+----------------------------------------------------------+
-|                                                          |
-|  Letzte Entwuerfe (kompakt, collapsible)                 |
-|  - Mieterhoehung Mueller    Gesendet  07.02.2026         |
-|  - Kuendigung Schmidt       Entwurf   05.02.2026         |
-|                                                          |
-+----------------------------------------------------------+
++----------------------------------+
+| SystemBar                        |
++----------------------------------+
+| Headline / Begruessung           |
++----------------------------------+
+| Finanzueberblick          >      |
+| Immobilien                >      |
+| Konten                    >      |
+| Datenraum                 >      |
+| Posteingang               >      |
+| Sparen                    >      |
+| Versicherungen            >      |
+| Fahrzeuge                 >      |
+| Mehr                      >      |
+| Armstrong Tasks           >      |
++----------------------------------+
+| [Mic] [+] [Eingabe...] [Send]   |
++----------------------------------+
+```
+
+Beim Senden einer Nachricht oder Tippen:
+
+```text
++----------------------------------+
+| SystemBar                        |
++----------------------------------+
+| [Zurueck zur Liste]              |
+| Chat-Nachrichten (scrollbar)     |
+|                                  |
+|                                  |
++----------------------------------+
+| [Mic] [+] [Eingabe...] [Send]   |
++----------------------------------+
 ```
 
 ## Aenderungen
 
-### Datei: `src/pages/portal/office/BriefTab.tsx`
+### 1. Neue Komponente: `MobileHomeModuleList.tsx`
 
-1. **Grid entfernen**: Das `grid grid-cols-12` Layout wird durch ein einzelnes `space-y-6 max-w-3xl mx-auto` ersetzt.
+- Liest Module aus `routesManifest.ts` und `areaConfig.ts`
+- Filtert nach `mobileConfig.ts` (versteckte Module ausblenden)
+- Zeigt eine konfigurierbare Liste von Modulen/Tiles als vertikale Karten
+- Jede Karte navigiert zum entsprechenden Modul oder Tile
+- Konfiguration der angezeigten Eintraege ueber ein Array (welche Module, welche Tiles)
 
-2. **Lineare Abfolge**: Alle Schritte (0-4) und die Vorschau/Aktionen-Karten fliessen nacheinander vertikal.
+### 2. Anpassung: `MobileHomeChatView.tsx`
 
-3. **Schritt 5 zusammenfassen**: Briefvorschau + Versandkanal + PDF-Buttons + Senden werden in einer gemeinsamen Card zusammengefasst. Innerhalb dieser Card wird auf Desktop ein 2-Spalten-Mini-Layout verwendet (Vorschau links, Aktionen rechts), auf Mobile einfach untereinander.
+- Bekommt einen "Zurueck"-Button oben, der zum Modul-Modus wechselt
+- Wird nur angezeigt, wenn der Chat aktiv ist
 
-4. **Letzte Entwuerfe ans Ende**: Die Entwuerfe-Card rutscht ganz nach unten, optional als Collapsible.
+### 3. Anpassung: `PortalLayout.tsx` (Mobile Dashboard-Bereich)
 
-5. **Responsive**: Auf Mobile wird alles automatisch `w-full` und einspaltig — kein Sonderlayout noetig.
+- Neuer State: `mobileHomeMode: 'modules' | 'chat'`
+- Dashboard zeigt standardmaessig `MobileHomeModuleList`
+- Wechselt zu `MobileHomeChatView` wenn eine Nachricht gesendet wird
+- Die `MobileBottomBar` bleibt immer sichtbar
 
-### Keine weiteren Dateien betroffen
+### 4. Anpassung: `MobileBottomBar.tsx`
 
-Die gesamte Logik (State, Mutations, PDF-Generierung, Versand) bleibt identisch. Nur das JSX-Layout in der `return`-Anweisung wird umstrukturiert.
+- Die Area-Navigationsbuttons (Home, Client, Manager, Service, Base) bleiben unveraendert
+- `onChatActivated`-Callback wird hinzugefuegt: Wenn der User eine Nachricht sendet und auf der Startseite ist, wechselt die Ansicht zum Chat
+
+### 5. Konfiguration: `mobileHomeConfig.ts` (neu)
+
+Zentrales Config-Array das bestimmt, welche Eintraege auf der mobilen Startseite erscheinen:
+
+```typescript
+export const mobileHomeEntries = [
+  { type: 'module', code: 'MOD-18', label: 'Finanzueberblick' },
+  { type: 'module', code: 'MOD-04', label: 'Immobilien' },
+  { type: 'tile', code: 'MOD-02', tile: 'konten', label: 'Konten' },
+  { type: 'module', code: 'MOD-03', label: 'Datenraum' },
+  // ... etc.
+];
+```
+
+So koennen Sie frei bestimmen, welche Module oder einzelne Menüpunkte auf der Startseite erscheinen.
+
+## Technische Details
+
+**Betroffene Dateien:**
+- `src/components/portal/MobileHomeModuleList.tsx` (NEU)
+- `src/config/mobileHomeConfig.ts` (NEU)
+- `src/components/portal/MobileHomeChatView.tsx` (Zurueck-Button hinzufuegen)
+- `src/components/portal/PortalLayout.tsx` (State-Logik modules/chat)
+- `src/components/portal/MobileBottomBar.tsx` (Chat-Aktivierung Callback)
+
+**Keine Aenderungen an:**
+- Routing / ManifestRouter
+- Desktop-Layout
+- Bestehende Module/Tiles
+- Datenbank / Backend
 
