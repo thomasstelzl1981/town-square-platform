@@ -26,6 +26,7 @@ import { DashboardGrid } from '@/components/dashboard/DashboardGrid';
 import { SortableWidget } from '@/components/dashboard/SortableWidget';
 import { TaskWidget } from '@/components/dashboard/TaskWidget';
 import { FinanceWidget } from '@/components/dashboard/widgets/FinanceWidget';
+import { AccountsWidget } from '@/components/dashboard/widgets/AccountsWidget';
 import { NewsWidget } from '@/components/dashboard/widgets/NewsWidget';
 import { SpaceWidget } from '@/components/dashboard/widgets/SpaceWidget';
 import { QuoteWidget } from '@/components/dashboard/widgets/QuoteWidget';
@@ -56,6 +57,7 @@ const WIDGET_CODE_TO_ID: Record<string, string> = {
   'SYS.BRAND.SOT': 'system_brand_sot',
   'SYS.BRAND.ACQUIARY': 'system_brand_acquiary',
   'SYS.MEET.RECORDER': 'system_meeting_recorder',
+  'SYS.FIN.ACCOUNTS': 'system_accounts',
 };
 
 export default function PortalDashboard() {
@@ -154,6 +156,7 @@ export default function PortalDashboard() {
     }
     
     if (widgetId === 'system_finance') return <FinanceWidget />;
+    if (widgetId === 'system_accounts') return <AccountsWidget />;
     if (widgetId === 'system_news') return <NewsWidget />;
     if (widgetId === 'system_space') return <SpaceWidget />;
     if (widgetId === 'system_quote') return <QuoteWidget />;
