@@ -1,81 +1,50 @@
 
+# AccountsWidget: Echte Demo-Daten statt Hardcoded-Werte
 
-# Fehleranalyse: Armstrong Spracheingabe — Mikrofonzugriff verweigert
+## Ziel
 
-## Diagnose
+Das AccountsWidget auf dem Dashboard soll die tatsaechlichen Finanzdaten des angemeldeten Tenants anzeigen statt der hartcodierten ING/Trade-Republic-Werte. Wenn der Demo-Kunde aktiv ist, sieht man seine echten Zahlen — und wir koennen sofort pruefen, ob alle Datenquellen korrekt verlinkt sind.
 
-### Kernproblem: Verlorener User-Gesture-Kontext
+## Verfuegbare Datenquellen (Demo-Tenant)
 
-Browser erfordern, dass `navigator.mediaDevices.getUserMedia()` direkt aus einer Nutzeraktion (Klick) heraus aufgerufen wird. Im aktuellen Code passiert Folgendes:
+Aus den bestehenden Supabase-Tabellen koennen folgende Werte aggregiert werden:
 
-```text
-Button-Klick (User Gesture)
-  -> toggleVoice()
-    -> startListening()
-      -> startElevenLabs()
-        -> supabase.functions.invoke('elevenlabs-scribe-token')  // Netzwerk-Request
-        -> ... wartet auf Antwort ...                             // Gesture-Kontext VERLOREN
-        -> scribe.connect(token)
-          -> navigator.mediaDevices.getUserMedia()                // VERWEIGERT
-```
+| Zeile | Quelle | Aktueller Demo-Wert |
+|-------|--------|---------------------|
+| Bankguthaben | `applicant_profiles.bank_savings` | 85.000 EUR |
+| Wertpapiere/Depot | `applicant_profiles.securities_value` | 120.000 EUR |
+| Lebensversicherung | `applicant_profiles.life_insurance_value` | 45.000 EUR |
+| Immobilien (Marktwert) | `units -> properties.market_value` (SUM) | 995.000 EUR |
+| Verbindlichkeiten Immo | `miety_loans.remaining_balance` | -520.000 EUR |
+| Private Kredite | `private_loans.remaining_balance` (SUM) | -27.200 EUR |
 
-Zwischen dem Klick und dem `getUserMedia`-Aufruf liegt ein asynchroner Netzwerk-Request (Token-Abruf). Dadurch geht der "User Gesture"-Kontext verloren — der Browser blockiert den Mikrofonzugriff mit "Permission denied". Safari ist hier besonders strikt, aber auch Chrome auf HTTPS kann betroffen sein.
+Falls `msv_bank_accounts` Eintraege hat, werden diese statt des `applicant_profiles.bank_savings`-Werts angezeigt. Da die Tabelle beim Demo-Tenant leer ist, wird auf `applicant_profiles` zurueckgegriffen.
 
-### Browser-Fallback ebenfalls betroffen
+## Aenderungen
 
-Wenn ElevenLabs fehlschlaegt, wird `startBrowser()` aufgerufen — aber zu diesem Zeitpunkt ist der Gesture-Kontext bereits verloren. Die Browser SpeechRecognition API benoetigt ebenfalls eine aktive User Gesture.
+### Datei: `src/components/dashboard/widgets/AccountsWidget.tsx`
 
-### ElevenLabs-Infrastruktur: OK
+1. **Daten per Hook laden statt Hardcode:**
+   - `useAuth()` fuer `activeTenantId`
+   - `useQuery` fuer `applicant_profiles` (bank_savings, securities_value, life_insurance_value)
+   - Die Abfrage nutzt den gleichen Pattern wie `useFinanzberichtData`
 
-- `ELEVENLABS_API_KEY` ist konfiguriert
-- `elevenlabs-scribe-token` Edge Function liefert erfolgreich Tokens zurueck (getestet, Status 200)
-- `elevenlabs-tts` Edge Function ist korrekt implementiert
-- WebSocket-URL und Konfiguration sind korrekt
+2. **Drei Zeilen dynamisch darstellen:**
+   - **Bankguthaben** (Landmark-Icon, Sky): `bank_savings` aus applicant_profiles
+   - **Depot/Wertpapiere** (Briefcase-Icon, Violet): `securities_value` aus applicant_profiles
+   - **Lebensversicherung/Sparen** (PiggyBank-Icon, Emerald): `life_insurance_value` aus applicant_profiles
 
----
+3. **Demo-Badge Logik:**
+   - Badge wird nur angezeigt wenn keine echten `msv_bank_accounts` vorhanden sind (= Fallback auf applicant_profiles)
+   - Sobald ein User echte Bankkonten anlegt, verschwindet das Demo-Badge
 
-## Loesung
+4. **Loading-State:**
+   - Waehrend die Daten laden: Skeleton-Platzhalter in den drei Zeilen
+   - Kein Layout-Shift
 
-### Strategie: Mikrofon SOFORT bei Klick anfordern, Token PARALLEL laden
-
-Der `getUserMedia`-Aufruf wird direkt beim Button-Klick ausgefuehrt — noch bevor der Token-Request startet. Der Microphone-Stream wird zwischengespeichert und spaeter an die ElevenLabs-WebSocket-Verbindung uebergeben.
-
-### Aenderungen in `src/hooks/useArmstrongVoice.ts`
-
-1. **`startListening()` neu strukturieren:**
-   - Schritt 1 (sofort im Gesture-Kontext): `navigator.mediaDevices.getUserMedia()` ausfuehren und Stream speichern
-   - Schritt 2 (async, parallel moeglich): Token von `elevenlabs-scribe-token` abrufen
-   - Schritt 3: Stream + Token an `ElevenLabsScribeConnection` uebergeben
-
-2. **`ElevenLabsScribeConnection.connect()` refactoren:**
-   - Neuen Parameter `stream: MediaStream` akzeptieren statt `getUserMedia` selbst aufzurufen
-   - Der Stream wird von aussen uebergeben (bereits genehmigt)
-
-3. **`startBrowser()` ebenfalls anpassen:**
-   - Akzeptiert optional einen bereits vorhandenen MediaStream
-   - Falls ElevenLabs fehlschlaegt und der Stream schon existiert, wird er fuer den Browser-Fallback wiederverwendet
-   - Browser SpeechRecognition braucht den Stream zwar nicht direkt, aber die Mikrofonberechtigung ist durch den vorherigen `getUserMedia`-Aufruf bereits erteilt
-
-4. **Fehlerbehandlung verbessern:**
-   - Wenn `getUserMedia` fehlschlaegt: Klare Fehlermeldung "Bitte Mikrofonzugriff in den Browser-Einstellungen erlauben"
-   - Wenn Token-Abruf fehlschlaegt aber Mikrofon OK: Automatischer Fallback auf Browser-STT mit bereits erteilter Berechtigung
-
-### Pseudocode der neuen Logik
-
-```text
-startListening():
-  1. stream = await getUserMedia({ audio: ... })     // SOFORT im Gesture
-  2. try:
-       token = await fetchScribeToken()              // Async, Gesture egal
-       scribe.connect(token, stream)                 // Stream uebergeben
-     catch:
-       startBrowser()                                // Berechtigung existiert bereits
-```
+5. **Gesamt-Summe:**
+   - Weiterhin automatisch berechnet aus den drei angezeigten Werten
 
 ### Keine weiteren Dateien betroffen
 
-- `VoiceButton.tsx`: Keine Aenderung noetig (ruft nur `onToggle` auf)
-- `ArmstrongContainer.tsx`: Keine Aenderung noetig
-- Edge Functions: Keine Aenderung noetig (funktionieren korrekt)
-- `ChatPanel.tsx`, `MobileBottomBar.tsx`: Keine Aenderung noetig
-
+Die Datenabfrage erfolgt direkt im Widget — kein neuer Hook noetig, da es eine einfache Query ist.
