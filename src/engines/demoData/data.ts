@@ -18,6 +18,8 @@ import type {
   DemoAcqMandate,
   DemoDevProject,
   DemoSelbstauskunft,
+  DemoMietyHome,
+  DemoMietyContract,
   DemoDataSpec,
 } from './spec';
 
@@ -82,6 +84,13 @@ const ID_PET_SVC_GROOMING  = 'd0000000-0000-4000-a000-000000000060';
 const ID_PET_SVC_WALKING   = 'd0000000-0000-4000-a000-000000000061';
 const ID_PET_SVC_DAYCARE   = 'd0000000-0000-4000-a000-000000000062';
 const ID_PET_SVC_BOARDING  = 'd0000000-0000-4000-a000-000000000063';
+
+// Miety Zuhause (DB-geseedet)
+const ID_MIETY_HOME       = 'e0000000-0000-4000-a000-000000000801';
+const ID_MIETY_STROM      = 'e0000000-0000-4000-a000-000000000811';
+const ID_MIETY_GAS        = 'e0000000-0000-4000-a000-000000000812';
+const ID_MIETY_WASSER     = 'e0000000-0000-4000-a000-000000000813';
+const ID_MIETY_INTERNET   = 'e0000000-0000-4000-a000-000000000814';
 
 // ─── PERSONEN ──────────────────────────────────────────────
 
@@ -478,6 +487,28 @@ export const DEMO_SELBSTAUSKUNFT: DemoSelbstauskunft = {
   coApplicantProfileId: DEMO_SELBSTAUSKUNFT_CO_ID,
 };
 
+// ─── MIETY ZUHAUSE ─────────────────────────────────────────
+
+export const DEMO_MIETY_HOME: DemoMietyHome = {
+  id: ID_MIETY_HOME,
+  name: 'Mein Zuhause',
+  address: 'Friedrichstraße',
+  addressHouseNo: '42',
+  zip: '10117',
+  city: 'Berlin',
+  ownershipType: 'miete',
+  propertyType: 'wohnung',
+  areaSqm: 120,
+  roomsCount: 4,
+};
+
+export const DEMO_MIETY_CONTRACTS: readonly DemoMietyContract[] = [
+  { id: ID_MIETY_STROM,    category: 'strom',    providerName: 'E.ON Grundversorgung',         contractNumber: 'EON-2024-4711',  monthlyCost: 85,    startDate: '2022-01-01' },
+  { id: ID_MIETY_GAS,      category: 'gas',      providerName: 'Vattenfall',                   contractNumber: 'VF-2024-0815',   monthlyCost: 65,    startDate: '2022-01-01' },
+  { id: ID_MIETY_WASSER,   category: 'wasser',   providerName: 'Berliner Wasserbetriebe',      contractNumber: 'BWB-2024-3344',  monthlyCost: 42,    startDate: '2020-06-01' },
+  { id: ID_MIETY_INTERNET, category: 'internet', providerName: 'Telekom MagentaZuhause L',     contractNumber: 'TK-2023-5566',   monthlyCost: 44.95, startDate: '2023-03-01' },
+] as const;
+
 // ─── ALLE IDs (flach) ──────────────────────────────────────
 
 // Demo-Kontakte (DB-geseedet)
@@ -529,6 +560,9 @@ export const ALL_DEMO_IDS: readonly string[] = [
   // Pet Provider + Services (DB-geseedet)
   DEMO_PET_PROVIDER_LENNOX,
   ID_PET_SVC_GROOMING, ID_PET_SVC_WALKING, ID_PET_SVC_DAYCARE, ID_PET_SVC_BOARDING,
+  // Miety Zuhause (DB-geseedet)
+  ID_MIETY_HOME,
+  ID_MIETY_STROM, ID_MIETY_GAS, ID_MIETY_WASSER, ID_MIETY_INTERNET,
 ] as const;
 
 // ─── GESAMTPAKET ───────────────────────────────────────────
@@ -544,6 +578,8 @@ export const DEMO_DATA_SPEC: DemoDataSpec = {
   acqMandate: DEMO_ACQ_MANDATE,
   devProject: DEMO_DEV_PROJECT,
   selbstauskunft: DEMO_SELBSTAUSKUNFT,
+  mietyHome: DEMO_MIETY_HOME,
+  mietyContracts: DEMO_MIETY_CONTRACTS,
 };
 
 // ─── DEMO COVERAGE MAP ────────────────────────────────────
@@ -562,10 +598,11 @@ export const DEMO_DATA_SPEC: DemoDataSpec = {
  * - GP-FAHRZEUG      (MOD-17) — DB: 2 Fahrzeuge (Porsche, BMW)
  * - GP-PV-ANLAGE     (MOD-19) — DB: PV-Anlage 32.4 kWp
  * - GP-KONTEN        (MOD-18) — Clientseitig: Demo-Bankkonto
+ * - GP-ZUHAUSE       (MOD-20) — DB: 1 Home + 4 Versorgungsverträge (Strom, Gas, Wasser, Internet)
+ * - GP-PETS          (MOD-05) — DB: 2 Demo-Pets + Lennox & Friends Provider + 4 Services + Availability
  *
  * ⚠️ TEILWEISE / BEWUSST OFFEN:
  * - GP-FM-FALL       (MOD-11) — Kein Demo-Finanzierungsfall (bewusst)
  * - GP-SERIEN-EMAIL  (MOD-14) — Nur Demo-Widget, keine echte Sequenz
  * - GP-RECHERCHE     (MOD-14) — Nur Demo-Widget, keine echten Ergebnisse
- * - GP-PETS          (MOD-05) — DB: 2 Demo-Pets + Lennox & Friends Provider + 4 Services + Availability
  */

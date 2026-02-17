@@ -135,6 +135,30 @@ export interface DemoPrivateLoan {
   readonly status: 'aktiv' | 'abgeschlossen';
 }
 
+/** Demo-Miety-Home */
+export interface DemoMietyHome {
+  readonly id: string;
+  readonly name: string;
+  readonly address: string;
+  readonly addressHouseNo: string;
+  readonly zip: string;
+  readonly city: string;
+  readonly ownershipType: 'miete' | 'eigentum';
+  readonly propertyType: string;
+  readonly areaSqm: number;
+  readonly roomsCount: number;
+}
+
+/** Demo-Miety-Contract (Versorgung) */
+export interface DemoMietyContract {
+  readonly id: string;
+  readonly category: 'strom' | 'gas' | 'wasser' | 'internet';
+  readonly providerName: string;
+  readonly contractNumber: string;
+  readonly monthlyCost: number;
+  readonly startDate: string;
+}
+
 /** Gesamtstruktur aller Demo-Daten */
 export interface DemoDataSpec {
   readonly personas: readonly DemoPersona[];
@@ -147,4 +171,6 @@ export interface DemoDataSpec {
   readonly acqMandate: DemoAcqMandate;
   readonly devProject: DemoDevProject;
   readonly selbstauskunft: DemoSelbstauskunft;
+  readonly mietyHome: DemoMietyHome;
+  readonly mietyContracts: readonly DemoMietyContract[];
 }

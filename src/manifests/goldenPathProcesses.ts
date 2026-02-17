@@ -658,6 +658,45 @@ export const GOLDEN_PATH_PROCESSES: GoldenPathProcess[] = [
     ],
     phase: '1',
   },
+  // ─── MOD-20: Zuhause (Miety) ──────────────────────────
+  {
+    id: 'GP-ZUHAUSE',
+    moduleCode: 'MOD-20',
+    moduleName: 'Zuhause',
+    tilePath: '/portal/immobilien/zuhause',
+    processName: 'Zuhause-Verwaltung',
+    description: 'Wohnung/Haus verwalten, Versorgungsverträge pflegen und vergleichen.',
+    menuPoints: 1,
+    menuPointPaths: ['/portal/immobilien/zuhause'],
+    compliance: {
+      modulePageHeader: true,
+      widgetGrid: true,
+      widgetCell: true,
+      demoWidget: true,
+      inlineFlow: true,
+      noSubNavigation: true,
+    },
+    demoWidget: {
+      id: '__demo__',
+      title: 'Demo: Zuhause Max Mustermann',
+      subtitle: 'Friedrichstraße 42, 10117 Berlin — Miete, 120 m²',
+      status: 'demo',
+      badgeLabel: 'Demo',
+      data: {
+        address: 'Friedrichstraße 42, 10117 Berlin',
+        ownershipType: 'miete',
+        areaSqm: 120,
+        contracts: 4,
+        monthlyCostTotal: 236.95,
+      },
+      resetOnClose: true,
+    },
+    sections: [
+      { id: 'overview', title: 'Übersicht', component: 'UebersichtTile', readOnlyInDemo: true },
+      { id: 'versorgung', title: 'Versorgung', component: 'VersorgungTile', readOnlyInDemo: true },
+    ],
+    phase: 'done',
+  },
 ];
 
 // =============================================================================
