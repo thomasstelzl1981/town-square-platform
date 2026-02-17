@@ -1,98 +1,129 @@
 
 
-# Authentifizierungs-Upgrade: Apple + Google Sign-In
+# Smart Home Shop + Zuhause-Umbau
 
-## Ueberblick
+## Zusammenfassung
 
-Beide Login-Einstiegspunkte werden um Apple Sign-In und Google Sign-In erweitert. Apple wird als prominenteste Option dargestellt (Zielgruppe: iPhone-User).
+Zwei zusammenhaengende Aenderungen:
 
-## Betroffene Einstiegspunkte
+1. **Neuer "Smart Home" Shop-Tab** in MOD-16 (Services) mit kompatiblen IP-Kameras, die ueber unseren Snapshot-Proxy funktionieren -- mit Amazon-Affiliate-Links als Einnahmequelle
+2. **Zuhause-Modul (MOD-20) bereinigen**: Versicherungen entfernen (jetzt in MOD-18 Finanzen), Eufy-Integration komplett entfernen, Snapshot-Kamera-Integration vorbereiten
 
-### 1. Portal Login (`/auth`) -- Zone 1 und 2
+---
 
-Aktuelle Methoden bleiben erhalten:
-- E-Mail + Passwort
-- E-Mail + 6-stelliger PIN (OTP)
-- Passwort vergessen
+## Phase 1: Smart Home Shop (MOD-16)
 
-Neue Methoden oben auf der Seite:
-- **Apple Sign-In** (groesster Button, schwarz, Apple-Logo)
-- **Google Sign-In** (weisser Button mit Google-Logo)
-- Visueller Trenner ("oder mit E-Mail anmelden")
-- Darunter das bestehende Formular
+### Neuer Tab "Smart Home" im Services-Bereich
 
-### 2. FutureRoom Login (`/website/futureroom/login`) -- Zone 3
+Neben Amazon Business, OTTO Office, Miete24 und Bestellungen kommt ein fuenfter Tab: **Smart Home**.
 
-Aktuelle Methoden bleiben erhalten:
-- E-Mail + Passwort (Registrierung und Login)
+Dieser Tab zeigt eine kuratierte Auswahl an IP-Kameras, die mit unserem System kompatibel sind -- sortiert nach Einsatzbereich (Outdoor, Indoor, Babyfon).
 
-Neue Methoden oben auf der Seite:
-- **Apple Sign-In**
-- **Google Sign-In**
-- Visueller Trenner
-- Darunter das bestehende Formular
+### Produktkatalog (nur Reolink + Amcrest)
 
-## Visuelles Layout (beide Seiten)
+Zwei Hersteller reichen fuer den Start -- beide nutzen das gleiche CGI-Protokoll (Dahua-basiert bei Amcrest), sind preislich attraktiv und haben HTTP-Snapshot-URLs:
 
-```text
-+----------------------------------+
-|        [Apple Logo] Mit Apple    |  <-- schwarz, volle Breite
-|        anmelden / registrieren   |
-+----------------------------------+
-+----------------------------------+
-|        [G Logo] Mit Google       |  <-- weiss mit Rahmen
-|        anmelden / registrieren   |
-+----------------------------------+
+**Outdoor-Kameras:**
+| Produkt | Hersteller | ca. Preis | Highlight |
+|---------|-----------|-----------|-----------|
+| RLC-810A | Reolink | 55 EUR | 4K PoE, Nachtsicht, wetterfest |
+| RLC-520A | Reolink | 45 EUR | 5MP PoE Dome, kompakt |
+| IP4M-1026B | Amcrest | 50 EUR | 4MP PoE Bullet, Nachtsicht |
 
-      ────── oder per E-Mail ──────
+**Indoor-Kameras:**
+| Produkt | Hersteller | ca. Preis | Highlight |
+|---------|-----------|-----------|-----------|
+| E1 Zoom | Reolink | 50 EUR | PTZ, 5MP, WLAN |
+| IP2M-841 | Amcrest | 35 EUR | PTZ, 1080p, WLAN |
+| Argus PT Ultra | Reolink | 90 EUR | Akku + Solar-Option |
 
-        [ Bestehendes Formular ]
-```
+**Baby-Monitoring:**
+| Produkt | Hersteller | ca. Preis | Highlight |
+|---------|-----------|-----------|-----------|
+| ASH21 (Apollo) | Amcrest | 40 EUR | Nachtlicht, Lullabies, 2-Way-Audio |
+| IP2M-841B | Amcrest | 35 EUR | Indoor PTZ, leise |
 
-## Technische Umsetzung
+### Business-Modell: Affiliate-Links
 
-### Schritt 1: Social Login konfigurieren
+Jede Produktkarte enthaelt einen **Amazon-Affiliate-Link**. Das funktioniert ueber das **Amazon PartnerNet** (nicht AWIN -- Amazon hat ein eigenes Programm):
 
-Das Lovable Cloud Social-Login-Modul wird aktiviert (erstellt `src/integrations/lovable/` automatisch). Dieses Modul stellt die Funktion `lovable.auth.signInWithOAuth()` bereit, die Apple und Google managed -- ohne eigene API-Keys.
+- Provisions-Rate: 1-3% auf Elektronik/Kameras
+- Integration: Einfacher Link mit Partner-Tag (z.B. `?tag=immoportal-21`)
+- Spaeter ausbaubar: Reolink bietet auch ein eigenes Affiliate-Programm (6-20% Provision)
 
-### Schritt 2: PWA-Kompatibilitaet
+### UI-Design
 
-Bereits erledigt: `navigateFallbackDenylist: [/^\/~oauth/]` ist in `vite.config.ts` konfiguriert.
+Die Produktkarten folgen dem bestehenden ShopTab-Pattern:
+- Produktbild (Platzhalter/generisches Kamera-Icon initial)
+- Name, Preis, Hersteller
+- Kompatibilitaets-Badge ("Snapshot-kompatibel")
+- Einsatzbereich-Badge (Outdoor/Indoor/Baby)
+- "Bei Amazon kaufen" Button mit Affiliate-Link
+- Info-Tooltip: "Dieses Geraet kann direkt in Ihrem Zuhause-Dashboard Kamerabilder anzeigen"
 
-### Schritt 3: AuthContext erweitern
+---
 
-Neue Methode `signInWithSocial(provider: 'apple' | 'google')` im `AuthContext` hinzufuegen, die `lovable.auth.signInWithOAuth()` aufruft mit `redirect_uri: window.location.origin`.
+## Phase 2: Zuhause-Modul (MOD-20) bereinigen
 
-### Schritt 4: Gemeinsame Komponente `SocialLoginButtons`
+### 2a. Versicherungen entfernen
 
-Neue Komponente `src/components/auth/SocialLoginButtons.tsx`:
-- Apple-Button (schwarz, Apple-Icon)
-- Google-Button (weiss, Google-Icon)
-- Optionaler Trenner-Text
-- Wiederverwendbar fuer beide Login-Seiten
+- `VersicherungenTile` aus `MietyPortalPage.tsx` entfernen
+- `VersicherungenTile.tsx` Datei kann bestehen bleiben (toter Code), oder geloescht werden
+- Tile "versicherungen" aus `routesManifest.ts` MOD-20 entfernen
+- Versicherungen sind bereits in MOD-18 (Finanzen) unter "sachversicherungen" abgebildet
 
-### Schritt 5: Portal Login (`/auth`) anpassen
+### 2b. Eufy-Integration komplett entfernen
 
-`SocialLoginButtons` oberhalb des bestehenden Formulars einbinden. Keine Aenderung an E-Mail/Passwort oder OTP-Logik.
+Folgende Bestandteile werden entfernt:
+- `EufyConnectCard` Komponente aus `SmartHomeTile.tsx`
+- Amazon-Business-Link-Card fuer Eufy aus `SmartHomeTile.tsx`
+- `demoCameras.ts` -- Demo-Kameradaten entfernen
+- Demo-Kamera-Anzeige aus `UebersichtTile.tsx` (Zeilen 253-287)
+- Edge Function `eufy-connect` loeschen
 
-### Schritt 6: FutureRoom Login anpassen
+Die DB-Tabelle `miety_eufy_accounts` bleibt vorerst bestehen (keine destruktive Schema-Aenderung noetig, da leer).
 
-`SocialLoginButtons` oberhalb des bestehenden Formulars einbinden. Im FutureRoom-Design (eigene CSS-Klassen `fr-btn` etc.).
+### 2c. Snapshot-Integration vorbereiten
 
-## Dateien
+**SmartHomeTile** wird umgebaut zu:
+- "Meine Kameras" -- Leerzustand mit Hinweis: "Verbinden Sie eine kompatible IP-Kamera"
+- Link zum Smart Home Shop: "Kompatible Kameras ansehen"
+- Platzhalter fuer kuenftige Kamera-CRUD (Name, Snapshot-URL, Auth)
+
+**UebersichtTile** -- Kamera-Bereich wird zu:
+- Platzhalter mit "Kameras einrichten" wenn keine Kameras konfiguriert
+- Vorbereitet fuer echte Snapshot-Bilder (Phase 3: DB-Tabelle `miety_cameras` + Edge Function `camera-snapshot-proxy`)
+
+---
+
+## Aenderungen im Detail
+
+### Neue/Geaenderte Dateien
 
 | Datei | Aenderung |
 |-------|-----------|
-| `src/integrations/lovable/*` | Automatisch generiert (Social Login Modul) |
-| `src/components/auth/SocialLoginButtons.tsx` | Neu: Wiederverwendbare Buttons |
-| `src/contexts/AuthContext.tsx` | Erweitert: `signInWithSocial` Methode |
-| `src/pages/Auth.tsx` | Erweitert: Social Buttons eingebunden |
-| `src/pages/zone3/futureroom/FutureRoomLogin.tsx` | Erweitert: Social Buttons eingebunden |
+| `src/pages/portal/ServicesPage.tsx` | Neuer Route: `smart-home` |
+| `src/pages/portal/services/ShopTab.tsx` | Neuer Shop-Key `smart-home` mit Produktkatalog |
+| `src/manifests/routesManifest.ts` | MOD-16: Tile `smart-home` hinzufuegen; MOD-20: Tile `versicherungen` entfernen |
+| `src/pages/portal/MietyPortalPage.tsx` | `VersicherungenTile` Import + Render entfernen |
+| `src/pages/portal/miety/tiles/SmartHomeTile.tsx` | Eufy komplett raus, Snapshot-Vorbereitung rein |
+| `src/pages/portal/miety/tiles/UebersichtTile.tsx` | Demo-Kameras entfernen, Platzhalter fuer echte Kameras |
 
-## Sicherheit
+### Zu loeschende Dateien/Functions
 
-- Keine API-Keys noetig (Lovable Cloud Managed)
-- Bestehende Rollen-Logik (`memberships`, `user_roles`) bleibt unveraendert
-- OAuth-Nutzer erhalten automatisch ein Profil ueber den bestehenden DB-Trigger
-- Kein anonymes Sign-Up
+| Datei | Grund |
+|-------|-------|
+| `supabase/functions/eufy-connect/index.ts` | Eufy-Integration wird entfernt |
+| `src/pages/portal/miety/shared/demoCameras.ts` | Keine Demo-Kameras mehr noetig |
+| Demo-Kamera-Assets (`cam-entrance.jpg` etc.) | Nicht mehr referenziert |
+
+---
+
+## Business-Chancen: Smart Home als Plattform-Feature
+
+1. **Affiliate-Einnahmen**: Jede Kamera-Bestellung ueber unseren Shop generiert Provision (Amazon PartnerNet: 1-3%, Reolink direkt: 6-20%)
+2. **Kundenbindung**: Nutzer, die Kameras ueber uns kaufen und einrichten, haben einen konkreten taeglichen Grund, die Plattform zu oeffnen
+3. **Upselling**: Smart-Home-Nutzer sind empfaenglicher fuer weitere Services (Versicherungen, Energieberatung, Handwerker)
+4. **Differenzierung**: Kaum eine Immobilien-Plattform bietet Kamera-Integration -- das ist ein Alleinstellungsmerkmal
+5. **Skalierung**: Spaeter erweiterbar um Sensoren (Tuer/Fenster, Rauchmelder, Thermostate) -- gleiches Affiliate-Modell
 
