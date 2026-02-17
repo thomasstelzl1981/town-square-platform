@@ -133,17 +133,6 @@ const Kaufy2026Vermieter = React.lazy(() => import('@/pages/zone3/kaufy2026/Kauf
 const Kaufy2026Verkaeufer = React.lazy(() => import('@/pages/zone3/kaufy2026/Kaufy2026Verkaeufer'));
 const Kaufy2026Vertrieb = React.lazy(() => import('@/pages/zone3/kaufy2026/Kaufy2026Vertrieb'));
 
-// Zone 3: Miety Website (lazy loaded)
-const MietyLayout = React.lazy(() => import('@/pages/zone3/miety/MietyLayout'));
-const MietyHome = React.lazy(() => import('@/pages/zone3/miety/MietyHome'));
-const MietyLeistungen = React.lazy(() => import('@/pages/zone3/miety/MietyLeistungen'));
-const MietyVermieter = React.lazy(() => import('@/pages/zone3/miety/MietyVermieter'));
-const MietyApp = React.lazy(() => import('@/pages/zone3/miety/MietyApp'));
-const MietyPreise = React.lazy(() => import('@/pages/zone3/miety/MietyPreise'));
-const MietySoFunktioniert = React.lazy(() => import('@/pages/zone3/miety/MietySoFunktioniert'));
-const MietyKontakt = React.lazy(() => import('@/pages/zone3/miety/MietyKontakt'));
-const MietyRegistrieren = React.lazy(() => import('@/pages/zone3/miety/MietyRegistrieren'));
-const MietyInvite = React.lazy(() => import('@/pages/zone3/miety/MietyInvite'));
 
 // Zone 3: FutureRoom Website (lazy loaded)
 const FutureRoomLayout = React.lazy(() => import('@/pages/zone3/futureroom/FutureRoomLayout'));
@@ -180,9 +169,6 @@ const AcquiaryNetzwerk = React.lazy(() => import('@/pages/zone3/acquiary/Acquiar
 const AcquiaryKarriere = React.lazy(() => import('@/pages/zone3/acquiary/AcquiaryKarriere'));
 const AcquiaryObjekt = React.lazy(() => import('@/pages/zone3/acquiary/AcquiaryObjekt'));
 
-// Zone 3: Projekt Landing Pages (lazy loaded)
-const ProjektLandingLayout = React.lazy(() => import('@/pages/zone3/projekt/ProjektLandingLayout'));
-const ProjektLandingPage = React.lazy(() => import('@/pages/zone3/projekt/ProjektLandingPage'));
 
 // 404
 import NotFound from '@/pages/NotFound';
@@ -343,20 +329,6 @@ const kaufy2026ComponentMap: Record<string, React.ComponentType> = {
   Kaufy2026Vertrieb,
 };
 
-// =============================================================================
-// Component Map for Zone 3 Miety
-// =============================================================================
-const mietyComponentMap: Record<string, React.ComponentType> = {
-  MietyHome,
-  MietyLeistungen,
-  MietyVermieter,
-  MietyApp,
-  MietyPreise,
-  MietySoFunktioniert,
-  MietyKontakt,
-  MietyRegistrieren,
-  MietyInvite,
-};
 
 // =============================================================================
 // Component Map for Zone 3 FutureRoom
@@ -406,22 +378,16 @@ const acquiaryComponentMap: Record<string, React.ComponentType> = {
 // =============================================================================
 const zone3LayoutMap: Record<string, React.ComponentType<{ children?: React.ReactNode }>> = {
   Kaufy2026Layout,
-  MietyLayout,
   FutureRoomLayout,
   SotLayout,
   AcquiaryLayout,
-  ProjektLandingLayout,
-  TenantSiteLayout: React.lazy(() => import('@/pages/zone3/sites/TenantSiteLayout')),
 };
 
 const zone3ComponentMaps: Record<string, Record<string, React.ComponentType>> = {
   kaufy: kaufy2026ComponentMap,
-  miety: mietyComponentMap,
   futureroom: futureroomComponentMap,
   sot: sotComponentMap,
   acquiary: acquiaryComponentMap,
-  projekt: { ProjektLandingPage },
-  sites: { TenantSiteRenderer: React.lazy(() => import('@/pages/zone3/sites/TenantSiteRenderer')) },
 };
 
 // =============================================================================
