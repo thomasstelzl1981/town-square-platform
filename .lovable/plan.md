@@ -1,63 +1,84 @@
 
-## Service-Kalender Umbau: Individuelle 30-Minuten-Slot-Zeilen pro Mitarbeiter
 
-### Skizze der neuen Seite
+## Demo-Daten-Container fuer Pet Manager (MOD-22)
 
-```text
-┌─────────────────────────────────────────────────────────────────────────────────┐
-│  Services - Terminkalender und Dienstleistungen          [👤 Mitarbeiter] [+]  │
-├─────────────────────────────────────────────────────────────────────────────────┤
-│                                                                                 │
-│  ◀  01. Mar – 30. Mai 2026  ▶  [Heute]                                        │
-│                                                                                 │
-│  ┌────────────────┬──────────┬──────────┬──────────┬──────────┬─────── ...      │
-│  │ Mitarbeiter    │ Mo 01.03 │ Di 02.03 │ Mi 03.03 │ Do 04.03 │                │
-│  ├────────────────┼──────────┼──────────┼──────────┼──────────┼─────── ...      │
-│  │ ▼ Anna Meier   │          │          │          │ URLAUB   │                │
-│  │   08:00        │          │ ████████ │          │ ░░░░░░░░ │                │
-│  │   08:30        │          │ ████████ │          │ ░░░░░░░░ │                │
-│  │   09:00        │ ████████ │          │          │ ░░░░░░░░ │                │
-│  │   09:30        │ ████████ │          │          │ ░░░░░░░░ │                │
-│  │   10:00        │          │          │ ████████ │ ░░░░░░░░ │                │
-│  │   10:30        │          │          │ ████████ │ ░░░░░░░░ │                │
-│  │   ...          │          │          │          │ ░░░░░░░░ │                │
-│  │   16:00        │          │          │          │ ░░░░░░░░ │                │
-│  ├────────────────┼──────────┼──────────┼──────────┼──────────┤                │
-│  │ ▼ Tom Schmidt  │          │          │  Frei    │          │                │
-│  │   09:00        │ ████████ │          │ ░░░░░░░░ │          │                │
-│  │   09:30        │          │          │ ░░░░░░░░ │          │                │
-│  │   10:00        │          │ ████████ │ ░░░░░░░░ │ ████████ │                │
-│  │   ...          │          │          │ ░░░░░░░░ │          │                │
-│  │   13:00        │          │          │ ░░░░░░░░ │          │                │
-│  └────────────────┴──────────┴──────────┴──────────┴──────────┘                │
-│                                                                                 │
-│  Legende: ████ = gebucht   ░░░░ = frei/Urlaub (ausgegraut)                    │
-└─────────────────────────────────────────────────────────────────────────────────┘
-```
+### Ueberblick
 
-**Erklaerung:** Jeder Mitarbeiter wird als Gruppe dargestellt. Die erste Zeile zeigt den Namen (klappbar), darunter folgen die individuellen 30-Minuten-Slots basierend auf seinen Arbeitszeiten. Anna arbeitet z.B. 08:00-16:30 = 17 Zeilen. Tom arbeitet 09:00-13:30 = 9 Zeilen. An freien Tagen und Urlaubstagen ist die gesamte Spalte grau.
+Es wird ein eigenstaendiger Demo-Datenbereich fuer den Pet Manager angelegt, analog zum bestehenden Demo-System (Familie Mustermann). Die Daten werden als hardcoded Constants in einer neuen Datei `src/engines/demoData/petManagerDemo.ts` definiert und in `data.ts`, `spec.ts`, `engine.ts` und `index.ts` integriert.
 
-Gebuchte Slots zeigen einen farbigen Balken mit Hundename/Service. Klick auf leeren Slot oeffnet den Buchungs-Dialog vorausgefuellt mit Mitarbeiter, Datum und Uhrzeit.
+### Demo-Datensatz
 
-### Implementierungsplan
+**3 Kunden** (pet_customers, Source: manual + website):
 
-**Datei: `src/pages/portal/petmanager/PMServices.tsx`** (kompletter Umbau der Tabelle)
+| Name | Source | Origin | Hunde |
+|------|--------|--------|-------|
+| Sabine Berger | manual (Eigenkunde) | Z2 | Rocky (Labrador, 4 J.) |
+| Thomas Richter | lead (Website) | Z3 | Mia (Golden Retriever, 2 J.), Oskar (Dackel, 7 J.) |
+| Claudia Stein | lead (Website) | Z3 | — (keine eigenen Hunde, bucht fuer Freundin → nutzt Rocky) |
 
-1. **Zeilen-Struktur aendern**: Statt einer Zeile pro Mitarbeiter wird jeder Mitarbeiter zu einer Gruppe mit:
-   - Header-Zeile: Mitarbeitername (sticky left, klappbar via State)
-   - Sub-Zeilen: Eine Zeile pro 30-Min-Slot (z.B. 08:00, 08:30, 09:00...)
-   - Slot-Zeilen werden aus `work_hours` des Mitarbeiters berechnet via `generateSlots()`
+**3 Hunde** (pets mit customer_id):
 
-2. **Zellen-Logik pro Slot-Zeile + Tag**:
-   - Arbeitstag mit Work-Hours: Slot ist verfuegbar (weiss/klickbar) oder gebucht (farbig)
-   - Freier Tag (kein work_hours-Eintrag): Zelle grau mit "Frei"
-   - Urlaubstag: Zelle grau mit "Urlaub"
-   - Gebuchte Zelle: Farbiger Hintergrund + Hundename/Service-Text
+| Name | Rasse | Geburt | Kunde |
+|------|-------|--------|-------|
+| Rocky | Labrador Retriever | 2022-05-10 | Sabine Berger |
+| Mia | Golden Retriever | 2024-01-15 | Thomas Richter |
+| Oskar | Dackel | 2019-08-22 | Thomas Richter |
 
-3. **Zeilenhoehe anpassen**: `CELL_HEIGHT` von 80px auf **28px** (kompakte Slot-Zeilen)
+**5 Buchungen** (pet_bookings):
 
-4. **Buchungs-Dialog**: Beim Klick auf leere Zelle wird der Dialog mit Mitarbeiter, Datum und Uhrzeit vorausgefuellt geoeffnet. Bestehende Buchung -> Dialog zeigt vorhandene Daten.
+| # | Typ | Hund | Zeitraum/Termin | Service | Staff |
+|---|-----|------|-----------------|---------|-------|
+| 1 | Pension | Rocky | 03.03 – 16.03.2026 (2 Wochen) | Urlaubsbetreuung | — |
+| 2 | Pension | Mia | 10.03 – 23.03.2026 (2 Wochen) | Urlaubsbetreuung | — |
+| 3 | Service | Rocky | 25.02.2026 09:00 | Hundesalon Komplett | Anna Mueller |
+| 4 | Service | Oskar | 27.02.2026 10:00 | Gassi-Service (1h) | Max Krause |
+| 5 | Service | Mia | 01.03.2026 14:00 | Hundesalon Komplett | Lisa Schmidt |
 
-5. **Kollabierbar**: Jeder Mitarbeiter-Block kann ein-/ausgeklappt werden, damit die Tabelle bei vielen Mitarbeitern uebersichtlich bleibt.
+### Technische Umsetzung
 
-Keine Datenbank-Aenderungen noetig -- die bestehenden Hooks und Tabellen reichen aus.
+**1. Neue Datei: `src/engines/demoData/petManagerDemo.ts`**
+
+Enthaelt alle Pet-Manager-Demo-Konstanten:
+- Feste UUIDs fuer 3 Kunden, 3 Hunde, 5 Buchungen (Nummernkreis `d0000000-0000-4000-a000-000000001xxx`)
+- Typisierte Arrays: `DEMO_PM_CUSTOMERS`, `DEMO_PM_PETS`, `DEMO_PM_BOOKINGS`
+- Interfaces: `DemoPMCustomer`, `DemoPMPet`, `DemoPMBooking`
+- Nutzt bestehende Staff-IDs (aus DB) und Service-IDs (aus data.ts) sowie Room-IDs (aus DB)
+
+**2. Erweiterung: `src/engines/demoData/spec.ts`**
+
+Neue Interfaces hinzufuegen:
+- `DemoPMCustomer` — Kunden-Datensatz mit source/origin_zone
+- `DemoPMPet` — Tier mit customer_id Referenz
+- `DemoPMBooking` — Buchung (pension oder service)
+- `DemoDataSpec` erweitern um `pmCustomers`, `pmPets`, `pmBookings`
+
+**3. Erweiterung: `src/engines/demoData/data.ts`**
+
+- Import + Re-Export der neuen Arrays aus `petManagerDemo.ts`
+- Alle neuen Demo-IDs in `ALL_DEMO_IDS` eintragen
+- `DEMO_DATA_SPEC` um die drei neuen Felder erweitern
+- Coverage Map aktualisieren (GP-PET Eintrag)
+
+**4. Erweiterung: `src/engines/demoData/engine.ts`**
+
+Neue Accessor-Funktionen:
+- `getDemoPMCustomers()`
+- `getDemoPMPets()`
+- `getDemoPMBookings()`
+
+**5. Erweiterung: `src/engines/demoData/index.ts`**
+
+Re-Export der neuen Datei.
+
+**6. Erweiterung: `src/hooks/usePetCustomers.ts`**
+
+Demo-Daten-Integration: Wenn kein Provider vorhanden oder Demo-Modus aktiv, werden die hardcoded Demo-Kunden zurueckgegeben (analog zu anderen Demo-Hooks).
+
+**7. Integration in PMKunden.tsx**
+
+Demo-Kunden in der Kundenliste anzeigen, wenn Demo-Modus aktiv.
+
+### Keine Datenbank-Aenderungen
+
+Alle Demo-Daten sind rein clientseitig (hardcoded Constants). Sie werden nicht in die DB geschrieben, analog zum bestehenden Demo-System.
+
