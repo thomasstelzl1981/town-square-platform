@@ -15,7 +15,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { useProviderDetail } from '@/hooks/usePetProviderSearch';
-import { usePublicProviderAvailability, usePublicProviderServices } from '@/hooks/usePublicPetProvider';
+import { usePublicProviderAvailability, usePublicProviderServices, usePublicProviderBlockedDates } from '@/hooks/usePublicPetProvider';
 import { useCreateBooking } from '@/hooks/usePetBookings';
 import { usePets } from '@/hooks/usePets';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -40,7 +40,13 @@ export default function CaringProviderDetail() {
   const { data: provider, isLoading } = useProviderDetail(providerId);
   const { data: availability = [] } = usePublicProviderAvailability(providerId);
   const { data: services = [] } = usePublicProviderServices(providerId);
+  const { data: blockedDatesList = [] } = usePublicProviderBlockedDates(providerId);
   const { data: pets = [] } = usePets();
+
+  // Set of blocked date strings for quick lookup
+  const blockedDateSet = useMemo(() => {
+    return new Set(blockedDatesList.map(d => d.blocked_date));
+  }, [blockedDatesList]);
 
   // Service selection
   const [selectedServiceId, setSelectedServiceId] = useState<string>('');
@@ -87,7 +93,7 @@ export default function CaringProviderDetail() {
     return map;
   }, [availability]);
 
-  // Available/blocked days for 2 months
+  // Available/blocked days for 2 months (includes provider blocked dates)
   const { availableDays, blockedDays } = useMemo(() => {
     const start = startOfMonth(calendarMonth);
     const end = endOfMonth(addMonths(calendarMonth, 1));
@@ -98,11 +104,13 @@ export default function CaringProviderDetail() {
     for (const day of days) {
       if (isBefore(day, today)) continue;
       const dow = getDay(day);
-      if (availabilityByDay.has(dow)) avail.push(day);
+      const dateStr = format(day, 'yyyy-MM-dd');
+      const isProviderBlocked = blockedDateSet.has(dateStr);
+      if (!isProviderBlocked && availabilityByDay.has(dow)) avail.push(day);
       else blocked.push(day);
     }
     return { availableDays: avail, blockedDays: blocked };
-  }, [calendarMonth, availabilityByDay]);
+  }, [calendarMonth, availabilityByDay, blockedDateSet]);
 
   // Slots for selected date
   const slotsForDate = useMemo(() => {

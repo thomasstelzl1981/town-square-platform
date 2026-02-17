@@ -8,41 +8,41 @@
       "id": "P3",
       "title": "Buchungsflow Ende-zu-Ende",
       "priority": 1,
-      "status": "in_progress",
+      "status": "done",
       "tasks": [
         {
           "id": "P3.1",
           "title": "Buchung erstellen (Client-Seite)",
           "description": "handleBooking in CaringProviderDetail.tsx mit useCreateBooking verbinden. Kapazitaetspruefung vor Absenden.",
-          "status": "in_progress",
+          "status": "done",
           "files": ["src/pages/portal/pets/CaringProviderDetail.tsx"]
         },
         {
           "id": "P3.2",
           "title": "Kapazitaet pro Datum pruefen",
           "description": "usePetCapacity im Buchungsformular nutzen um ausgebuchte Tage visuell zu markieren.",
-          "status": "todo",
+          "status": "done",
           "files": ["src/pages/portal/pets/CaringProviderDetail.tsx", "src/hooks/usePetCapacity.ts"]
         },
         {
           "id": "P3.3",
           "title": "Blocked Dates im Kalender",
           "description": "pet_provider_blocked_dates in den Kalender einbauen — gesperrte Tage rot markieren und nicht buchbar machen.",
-          "status": "todo",
+          "status": "done",
           "files": ["src/pages/portal/pets/CaringProviderDetail.tsx", "src/hooks/usePublicPetProvider.ts"]
         },
         {
           "id": "P3.4",
           "title": "Check-In / Check-Out",
           "description": "Statusuebergaenge confirmed->in_progress (Check-In) und in_progress->completed (Check-Out). Buttons in PMBuchungen.",
-          "status": "todo",
+          "status": "done",
           "files": ["src/pages/portal/petmanager/PMBuchungen.tsx"]
         },
         {
           "id": "P3.5",
           "title": "Buchungsbestaetigung",
           "description": "Nach erfolgreicher Buchung: Zusammenfassung mit Service, Datum, Tier, Preis anzeigen.",
-          "status": "todo",
+          "status": "done",
           "files": ["src/pages/portal/pets/CaringProviderDetail.tsx"]
         }
       ]
