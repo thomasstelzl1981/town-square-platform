@@ -193,21 +193,40 @@ export function useDraggable(options: DraggableOptions = {}): DraggableResult {
   // Track drag offset
   const dragOffset = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
+  // Track distance from right/bottom edge for resize repositioning
+  const edgeOffsetRef = useRef<{ fromRight: number; fromBottom: number }>({ fromRight: 0, fromBottom: 0 });
+
+  // Helper to update edge offsets from a position
+  const updateEdgeOffset = useCallback((pos: Position) => {
+    if (typeof window === 'undefined') return;
+    edgeOffsetRef.current = {
+      fromRight: window.innerWidth - pos.x,
+      fromBottom: window.innerHeight - pos.y,
+    };
+  }, []);
+
   // Keep positionRef in sync with position state
   useEffect(() => {
     positionRef.current = position;
-  }, [position]);
+    updateEdgeOffset(position);
+  }, [position, updateEdgeOffset]);
 
   // Handle window resize - constrain position to new viewport
   useEffect(() => {
     const handleResize = () => {
-      setPosition(prev => constrainPosition(
-        prev.x,
-        prev.y,
+      const { fromRight, fromBottom } = edgeOffsetRef.current;
+      const newX = window.innerWidth - fromRight;
+      const newY = window.innerHeight - fromBottom;
+
+      const constrained = constrainPosition(
+        newX,
+        newY,
         containerSize.width,
         containerSize.height,
         boundaryPadding
-      ));
+      );
+
+      setPosition(constrained);
     };
 
     window.addEventListener('resize', handleResize);
