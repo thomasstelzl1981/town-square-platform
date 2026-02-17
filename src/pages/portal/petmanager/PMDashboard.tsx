@@ -7,7 +7,8 @@ import { Badge } from '@/components/ui/badge';
 import { KPICard } from '@/components/shared/KPICard';
 import { useMyProvider, useBookings } from '@/hooks/usePetBookings';
 import { usePetCapacity, useWeeklyBookingCount, useMonthlyRevenue } from '@/hooks/usePetCapacity';
-import { PawPrint, Calendar, Users, TrendingUp, MapPin, Phone, Mail, Clock, AlertTriangle } from 'lucide-react';
+import { PawPrint, Calendar, Users, TrendingUp, MapPin, Phone, Mail, Clock, AlertTriangle, ExternalLink } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { DESIGN } from '@/config/designManifest';
 import { cn } from '@/lib/utils';
 import { format, parseISO } from 'date-fns';
@@ -95,6 +96,15 @@ export default function PMDashboard() {
                 {provider.email && (
                   <span className="flex items-center gap-1"><Mail className="h-3.5 w-3.5" />{provider.email}</span>
                 )}
+              </div>
+              {/* Link zur öffentlichen Website */}
+              <div className="mt-3">
+                <Button variant="outline" size="sm" asChild>
+                  <a href="/website/tierservice" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5">
+                    <ExternalLink className="h-3.5 w-3.5" />
+                    Lennox &amp; Friends Website
+                  </a>
+                </Button>
               </div>
             </div>
           </div>
