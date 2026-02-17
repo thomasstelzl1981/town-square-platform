@@ -164,13 +164,12 @@ const AcquiaryObjekt = React.lazy(() => import('@/pages/zone3/acquiary/AcquiaryO
 
 // Zone 3: Lennox & Friends Pet Service (lazy loaded)
 const LennoxLayout = React.lazy(() => import('@/pages/zone3/lennox/LennoxLayout'));
-const LennoxHome = React.lazy(() => import('@/pages/zone3/lennox/LennoxHome'));
-const LennoxProviderDetail = React.lazy(() => import('@/pages/zone3/lennox/LennoxProviderDetail'));
-const LennoxUeberUns = React.lazy(() => import('@/pages/zone3/lennox/LennoxUeberUns'));
+const LennoxStartseite = React.lazy(() => import('@/pages/zone3/lennox/LennoxStartseite'));
+const LennoxPartnerProfil = React.lazy(() => import('@/pages/zone3/lennox/LennoxPartnerProfil'));
+const LennoxShop = React.lazy(() => import('@/pages/zone3/lennox/LennoxShop'));
+const LennoxPartnerWerden = React.lazy(() => import('@/pages/zone3/lennox/LennoxPartnerWerden'));
 const LennoxAuth = React.lazy(() => import('@/pages/zone3/lennox/LennoxAuth'));
-const LennoxProfil = React.lazy(() => import('@/pages/zone3/lennox/LennoxProfil'));
-const LennoxMeineTiere = React.lazy(() => import('@/pages/zone3/lennox/LennoxMeineTiere'));
-const LennoxBuchen = React.lazy(() => import('@/pages/zone3/lennox/LennoxBuchen'));
+const LennoxMeinBereich = React.lazy(() => import('@/pages/zone3/lennox/LennoxMeinBereich'));
 
 
 // 404
@@ -383,13 +382,12 @@ const zone3ComponentMaps: Record<string, Record<string, React.ComponentType>> = 
   sot: sotComponentMap,
   acquiary: acquiaryComponentMap,
   lennox: {
-    LennoxHome,
-    LennoxProviderDetail,
-    LennoxUeberUns,
+    LennoxStartseite,
+    LennoxPartnerProfil,
+    LennoxShop,
+    LennoxPartnerWerden,
     LennoxAuth,
-    LennoxProfil,
-    LennoxMeineTiere,
-    LennoxBuchen,
+    LennoxMeinBereich,
   },
 };
 
