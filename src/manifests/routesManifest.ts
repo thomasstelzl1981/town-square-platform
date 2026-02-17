@@ -663,6 +663,7 @@ export const legacyRoutes: LegacyRoute[] = [
 export const specialRoutes: SpecialRoute[] = [
   { path: "/", redirect_to: "/portal" },
   { path: "/auth", component: "Auth", title: "Login / Registrierung", public: true },
+  { path: "/auth/reset-password", component: "ResetPassword", title: "Passwort zurücksetzen", public: true },
   { path: "/presentation-sot-k7m3x9p2", component: "PresentationPage", title: "Presentation", hidden: true },
 ];
 

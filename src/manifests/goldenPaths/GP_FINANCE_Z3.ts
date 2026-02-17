@@ -253,6 +253,13 @@ export const GP_FINANCE_Z3_GOLDEN_PATH: GoldenPathDefinition = {
         recovery_strategy: 'manual_review',
         description: 'Manager hat Mandat abgelehnt — Neuzuweisung erforderlich',
       },
+      on_error: {
+        ledger_event: 'finance.z3.manager.assignment.error',
+        status_update: 'error',
+        recovery_strategy: 'escalate_to_z1',
+        description: 'Manager-Zuweisung fehlgeschlagen',
+        escalate_to: 'Z1',
+      },
       sla_hours: 48,
     },
 
