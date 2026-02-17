@@ -1,56 +1,137 @@
 
 
-## Neue Sektion: "Unsere Websites" im Profil-Tab
+## Mobile UX Overhaul — Aktualisierter Plan
 
-### Was wird gebaut
+### Uebersicht der 4 Aenderungen
 
-Unterhalb des AppDownloadWidget im ProfilTab wird eine neue Sektion mit 4 CI-Kacheln eingefuegt, die die verbleibenden Zone-3-Websites (Kaufy, System of a Town, Acquiary, FutureRoom) als klickbare Kacheln mit Links darstellen.
+---
 
-### Layout
+### 1. Manager-Area (operations) auf Mobile entfernen
+
+Die `MobileBottomBar` filtert die `operations`-Area heraus. Ergebnis: 4 Buttons (Home + Base, Client, Service).
+
+**Dateien:**
+- `src/config/mobileConfig.ts`: Neue Konstante `MOBILE_HIDDEN_AREAS = ['operations']`
+- `src/components/portal/MobileBottomBar.tsx`: `areaConfig.filter(a => !MOBILE_HIDDEN_AREAS.includes(a.key))`
+
+---
+
+### 2. SystemBar auf Mobile minimieren
+
+Kompakte Mobile-Leiste (h-10 statt h-12):
+- Links: Nur Home-Button
+- Mitte: "ARMSTRONG"
+- Rechts: Nur Profil-Avatar
+- Entfernt auf Mobile: Theme-Toggle, Temperatur, Uhr, Armstrong-Rocket
+
+**Datei:** `src/components/portal/SystemBar.tsx`
+
+---
+
+### 3. NEUES KONZEPT: SubTabs als vertikale Zwischenseite statt horizontaler Pillen
+
+**Problem:** Die horizontalen Pillen (z.B. bei Finanzanalyse: Uebersicht, Investment, Versicherungen, Vorsorge, KV, Abos, Vorsorge & Testament, Darlehen) sind auf Mobile zu viele und zu breit. Das fuehlt sich nach Browser an, nicht nach App.
+
+**Loesung:** Auf Mobile werden die SubTabs NICHT als horizontale Leiste angezeigt. Stattdessen:
+
+1. Wenn man ein Modul oeffnet, erscheint eine **vertikale Listenansicht** mit allen Sub-Tabs als grosse, tippbare Zeilen
+2. Tippt man auf einen Eintrag, slided die Zielseite von rechts rein
+3. Ein Zurueck-Button bringt einen zur Liste zurueck
+
+**Skizze am Beispiel /portal/finanzanalyse:**
 
 ```text
-+--------------------------------------------------+
-| ModulePageHeader: "Stammdaten"                    |
-+--------------------------------------------------+
-| RecordCard (Profildaten)                          |
-| OutboundIdentityWidget                            |
-+--------------------------------------------------+
-| AppDownloadWidget                                 |
-+--------------------------------------------------+
-| NEU: "Unsere Websites"                            |
-|  [Kaufy]  [System of a Town]  [Acquiary]  [FR]   |
-|  Glass-Cards, je mit Icon, Name, kurzer           |
-|  Beschreibung und Link-Button                     |
-+--------------------------------------------------+
-| Sticky Save Button                                |
-+--------------------------------------------------+
++----------------------------------+
+| [Home]    ARMSTRONG    [Avatar]   |  <- SystemBar (h-10)
++----------------------------------+
+|                                  |
+|   FINANZEN                       |  <- Modul-Titel
+|                                  |
+|   +----------------------------+ |
+|   | > Uebersicht               | |  <- Tippbare Zeilen
+|   +----------------------------+ |
+|   | > Investment               | |
+|   +----------------------------+ |
+|   | > Sachversicherungen       | |
+|   +----------------------------+ |
+|   | > Vorsorge                 | |
+|   +----------------------------+ |
+|   | > Krankenversicherung      | |
+|   +----------------------------+ |
+|   | > Abonnements             | |
+|   +----------------------------+ |
+|   | > Vorsorge & Testament     | |
+|   +----------------------------+ |
+|   | > Darlehen                 | |
+|   +----------------------------+ |
+|                                  |
++----------------------------------+
+| [Home] [Base] [Client] [Service] |  <- BottomBar
+| [Mic] [+] [Nachricht...] [Send] |
++----------------------------------+
 ```
 
-### Technische Umsetzung
+**Nach Klick auf "Investment":**
 
-**Datei: `src/pages/portal/stammdaten/ProfilTab.tsx`**
+```text
++----------------------------------+
+| [<]       ARMSTRONG    [Avatar]   |  <- Zurueck-Pfeil
++----------------------------------+
+|                                  |
+|   Investment-Tab Inhalt          |  <- Volle Seite, kein
+|   (Charts, Kacheln etc.)         |     SubTab-Balken oben
+|   ...                            |
+|   ...                            |
+|                                  |
++----------------------------------+
+| [Home] [Base] [Client] [Service] |
+| [Mic] [+] [Nachricht...] [Send] |
++----------------------------------+
+```
 
-1. Neue Komponente `WebsitesSection` innerhalb der Datei (oder als `ProfileWidget`-Nutzung):
-   - 4 `glass-card` Kacheln im `grid grid-cols-2 lg:grid-cols-4 gap-4`
-   - Jede Kachel:
-     - Website-Name als Titel (text-sm font-semibold)
-     - Kurzbeschreibung (text-xs text-muted-foreground)
-     - Icon aus lucide (Globe, ShoppingBag, Building2, Lightbulb)
-     - Klick oeffnet `/website/{slug}` in neuem Tab (`target="_blank"`)
-   - Platzierung: zwischen `AppDownloadWidget` (Zeile 487) und dem Sticky-Save-Button (Zeile 492)
+**Technische Umsetzung:**
 
-2. Website-Daten als statisches Array:
-   - `kaufy`: "Kaufy" — E-Commerce & Shopping
-   - `sot`: "System of a Town" — Investment-Plattform  
-   - `acquiary`: "Acquiary" — Akquise & Vertrieb
-   - `futureroom`: "FutureRoom" — Zukunftstechnologien
+- Neue Komponente: `src/components/portal/MobileModuleMenu.tsx`
+  - Empfaengt `module: ModuleDefinition` und `moduleBase: string`
+  - Zeigt Modul-Name als Header + alle Tiles als vertikale Liste
+  - Klick navigiert zum Tile-Route
+- `src/components/portal/PortalLayout.tsx` (Mobile-Bereich):
+  - Wenn auf einer Modul-Basis-Route (z.B. `/portal/finanzanalyse`) und kein konkreter Tile aktiv: Zeige `MobileModuleMenu` statt `Outlet`
+  - Wenn ein konkreter Tile aktiv (z.B. `/portal/finanzanalyse/investment`): Zeige `Outlet` ohne SubTabs
+- `src/components/portal/SubTabs.tsx`: Auf Mobile komplett ausblenden (`if (isMobile) return null`)
+- `src/components/portal/SystemBar.tsx`: Auf Mobile, wenn in einem Tile: Home-Button wird zu Zurueck-Pfeil (navigiert zum Modul-Menue)
 
-3. Jede Kachel nutzt das bestehende `ProfileWidget`-Pattern oder direkt eine `Card` mit `glass-card` Klasse
+---
 
-### Aenderungen
+### 4. MobileBottomBar: Glass-Button-Styling
 
-- Nur eine Datei: `src/pages/portal/stammdaten/ProfilTab.tsx`
-- Keine neuen Dateien, keine DB-Aenderungen
-- Import: `ExternalLink` Icon aus lucide ergaenzen
-- Kacheln als `<a href="/website/..." target="_blank">` oder `react-router Link`
+Die Buttons bekommen Glass-Effekt (backdrop-blur, transparenter Hintergrund, subtle border) fuer schwebendes App-Feeling.
+
+**Datei:** `src/components/portal/MobileBottomBar.tsx`
+
+---
+
+### Zusammenfassung aller Dateien
+
+| Datei | Aenderung |
+|-------|-----------|
+| `src/config/mobileConfig.ts` | `MOBILE_HIDDEN_AREAS` hinzufuegen |
+| `src/components/portal/MobileBottomBar.tsx` | Operations filtern, Glass-Styling |
+| `src/components/portal/SystemBar.tsx` | Mobile: h-10, nur Home/Zurueck + Armstrong + Avatar |
+| `src/components/portal/SubTabs.tsx` | Mobile: komplett ausblenden |
+| `src/components/portal/MobileModuleMenu.tsx` | NEU: Vertikale Tile-Liste als Zwischenseite |
+| `src/components/portal/PortalLayout.tsx` | Mobile: MobileModuleMenu bei Modul-Basis-Route anzeigen |
+
+6 Dateien (1 neu, 5 geaendert), keine DB-Aenderungen.
+
+### Funktionstest nach Implementierung
+
+Kompletter Mobile-Walkthrough mit Screenshots:
+1. Home — Chat-Ansicht, 4 Buttons (kein Manager)
+2. Client-Area — Module-Karten
+3. Finanzanalyse oeffnen — Vertikale Tile-Liste
+4. "Investment" antippen — Inhalt ohne SubTab-Leiste
+5. Zurueck zum Modul-Menue
+6. Andere Module stichprobenartig pruefen
+7. SystemBar auf allen Seiten pruefen
 
