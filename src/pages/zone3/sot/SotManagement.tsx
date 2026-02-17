@@ -1,16 +1,22 @@
 /**
- * SoT Management — KI-gestützte Verwaltung
+ * SoT Management — KI-gestützte Organisation
  */
+import { Brain, Mail, FileText, Workflow } from 'lucide-react';
+import { SotDetailPage } from '@/components/zone3/sot/SotDetailPage';
+
+const blocks = [
+  { icon: Brain, title: 'Aufgabenmanagement', description: 'KI-gesteuerte Aufgabenverteilung und Nachverfolgung. Automatische Priorisierung und Erinnerungen für alle Prozesse.' },
+  { icon: Mail, title: 'E-Mail-Integration', description: 'Verbinden Sie Ihre E-Mail-Konten und verwalten Sie alle Kommunikation zentral. KI-Klassifizierung und automatische Zuordnung.' },
+  { icon: FileText, title: 'Dokumentenverwaltung', description: 'Strukturierter Datenraum mit intelligenter Ablage. OCR-Erkennung und automatische Verschlagwortung aller Dokumente.' },
+  { icon: Workflow, title: 'Automatisierung', description: 'Wiederkehrende Prozesse automatisieren. Von der Vertragswarnung bis zur Nebenkostenabrechnung — alles regelbasiert.' },
+];
+
 export default function SotManagement() {
   return (
-    <div className="space-y-12">
-      <section className="pt-8 lg:pt-16 text-center">
-        <span className="sot-label" style={{ color: 'hsl(var(--z3-accent))' }}>Management</span>
-        <h1 className="sot-headline mt-4">KI-gestützte Verwaltung.</h1>
-        <p className="sot-subheadline mt-4 max-w-2xl mx-auto">
-          E-Mail, DMS, Automatisierung — alles mit Armstrong.
-        </p>
-      </section>
-    </div>
+    <SotDetailPage
+      title="Management"
+      subtitle="KI-gestützte Organisation für Ihren Alltag."
+      blocks={blocks}
+    />
   );
 }
