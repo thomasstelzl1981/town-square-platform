@@ -60,6 +60,24 @@ async function getUserToken(
   return res.json();
 }
 
+// ─── Helper: Delete orphaned FinAPI user ──────────────────────
+async function deleteFinAPIUser(clientToken: string, userId: string): Promise<boolean> {
+  try {
+    // First get a token for the orphaned user — we can't, we don't know the password.
+    // Instead, use the client token to delete via admin endpoint
+    const res = await fetch(`${FINAPI_BASE}/api/v2/users`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${clientToken}`,
+        "Content-Type": "application/json",
+      },
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 // ─── Helper: Create or reuse FinAPI user ───────────────────────
 async function ensureFinAPIUser(
   clientToken: string,
@@ -78,59 +96,53 @@ async function ensureFinAPIUser(
     .maybeSingle();
 
   if (existingConn?.finapi_user_id && existingConn?.finapi_user_password) {
-    // We have stored credentials — get a token and return
     console.log("[finapi] Reusing existing user:", existingConn.finapi_user_id);
-    const tokenData = await getUserToken(
-      clientId, clientSecret,
-      existingConn.finapi_user_id,
-      existingConn.finapi_user_password,
-    );
-    return {
-      userId: existingConn.finapi_user_id,
-      password: existingConn.finapi_user_password,
-      userToken: tokenData.access_token,
-    };
+    try {
+      const tokenData = await getUserToken(
+        clientId, clientSecret,
+        existingConn.finapi_user_id,
+        existingConn.finapi_user_password,
+      );
+      return {
+        userId: existingConn.finapi_user_id,
+        password: existingConn.finapi_user_password,
+        userToken: tokenData.access_token,
+      };
+    } catch (err) {
+      console.warn("[finapi] Stored credentials invalid, creating new user. Error:", err.message);
+    }
   }
 
-  // 2. No stored password — try to create a new user (with version suffix if needed)
-  const baseId = `sot_${tenantId.replace(/-/g, "").substring(0, 20)}`;
+  // 2. No stored password — use a timestamp-based unique ID to avoid collisions
+  const baseId = `sot_${tenantId.replace(/-/g, "").substring(0, 16)}`;
+  const uniqueSuffix = Date.now().toString(36); // e.g. "m1abc23"
+  const userId = `${baseId}_${uniqueSuffix}`;
+  const password = crypto.randomUUID();
 
-  for (let version = 0; version < 5; version++) {
-    const userId = version === 0 ? baseId : `${baseId}_v${version + 1}`;
-    const password = crypto.randomUUID();
+  console.log("[finapi] Creating new user with unique ID:", userId);
 
-    const createRes = await fetch(`${FINAPI_BASE}/api/v2/users`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${clientToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        id: userId,
-        password,
-        email: `${userId}@sot.internal`,
-        isAutoUpdateEnabled: false,
-      }),
-    });
+  const createRes = await fetch(`${FINAPI_BASE}/api/v2/users`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${clientToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      id: userId,
+      password,
+      email: `${userId}@sot.internal`,
+      isAutoUpdateEnabled: false,
+    }),
+  });
 
-    if (createRes.ok) {
-      console.log("[finapi] Created new user:", userId);
-      const tokenData = await getUserToken(clientId, clientSecret, userId, password);
-      return { userId, password, userToken: tokenData.access_token };
-    }
-
-    const createBody = await createRes.json();
-
-    // User already exists — try next version
-    if (createRes.status === 422 || createBody?.errors?.[0]?.code === "ENTITY_EXISTS") {
-      console.log(`[finapi] User ${userId} already exists, trying next version...`);
-      continue;
-    }
-
-    throw new Error(`Create FinAPI user failed (${createRes.status}): ${JSON.stringify(createBody)}`);
+  if (createRes.ok) {
+    console.log("[finapi] Created new user:", userId);
+    const tokenData = await getUserToken(clientId, clientSecret, userId, password);
+    return { userId, password, userToken: tokenData.access_token };
   }
 
-  throw new Error("Could not create FinAPI user after 5 attempts");
+  const createBody = await createRes.json();
+  throw new Error(`Create FinAPI user failed (${createRes.status}): ${JSON.stringify(createBody)}`);
 }
 
 // ─── Main Handler ──────────────────────────────────────────────
