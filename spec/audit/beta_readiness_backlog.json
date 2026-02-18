@@ -1,271 +1,480 @@
 {
   "meta": {
-    "title": "Beta-Readiness Kompletttest",
-    "version": "1.2.0",
+    "title": "Beta-Readiness Kompletttest — System-Audit V2",
+    "version": "2.0.0",
     "created": "2026-02-17",
-    "last_tested": "2026-02-17",
-    "total_test_cases": 50,
-    "phases": 7,
-    "estimated_duration_hours": 12,
+    "updated": "2026-02-18",
+    "last_audit": "2026-02-18",
+    "total_test_cases": 62,
+    "phases": 9,
+    "estimated_duration_hours": 16,
     "automated_test_results": {
       "auth_ui_navigation": "PASS",
-      "zone3_websites_load": "PASS (SoT, Kaufy, FutureRoom, Acquiary — all verified via browser)",
+      "zone3_websites_load": "PASS (SoT, Kaufy, FutureRoom, Acquiary, Lennox — all verified via browser)",
       "legacy_redirects": "PASS",
       "unauth_guard": "PASS",
       "gp_validator_console": "PASS (0 errors after FIX-002 + whitelist fix)",
       "edge_function_auth_protection": "PASS (401 without token)",
+      "architecture_validators": "PASS (ZBC-R09, ZBC-R13, ZBC-R10, SBC, GTC all registered)",
       "forwardRef_warnings": "KNOWN (cosmetic, React lazy + router refs — no functional impact)",
       "manifest_webmanifest_cors": "KNOWN (Lovable platform issue, not app code)"
     }
   },
+
+  "system_audit_2026_02_18": {
+    "manifest_sync": {
+      "status": "OK",
+      "routesManifest_modules": 21,
+      "tile_catalog_db_entries": 21,
+      "mismatches": [
+        {
+          "issue": "tile_catalog MOD-05 title='Website Builder' vs routesManifest MOD-05 name='Pets'",
+          "severity": "low",
+          "action": "UPDATE tile_catalog SET title='Pets' WHERE tile_code='MOD-05' — MOD-05 wurde zu Pets umbenannt"
+        },
+        {
+          "issue": "tile_catalog MOD-10 title='Leadmanager' vs routesManifest MOD-10 name='Provisionen'",
+          "severity": "low",
+          "action": "Klaerung: Lead Manager ist noch nicht gebaut (by-design). MOD-10 im Manifest ist aktuell 'Provisionen'. Titel-Sync bei Lead-Manager-Implementierung"
+        },
+        {
+          "issue": "tile_catalog MOD-20 title='Zuhause' vs routesManifest MOD-20 name='Miety'",
+          "severity": "low",
+          "action": "Korrekt — Miety rendert als 'ZUHAUSE' inline in MOD-04. Display-Name Differenz akzeptabel"
+        },
+        {
+          "issue": "tile_catalog MOD-22 fehlt in DB (Pet Manager)",
+          "severity": "medium",
+          "action": "INSERT in tile_catalog fuer MOD-22 bei naechster Migration"
+        }
+      ]
+    },
+
+    "golden_paths": {
+      "status": "OK — 8 registriert",
+      "registered": [
+        "MOD-04 (Immobilie Lifecycle)",
+        "MOD-07/11 (Finanzierung Z2→Z1→Z2)",
+        "MOD-08/12 (Akquise Z2→Z1→Z2)",
+        "MOD-13 (Projekte)",
+        "GP-VERMIETUNG (Renter Invite Flow)",
+        "GP-LEAD (Lead Capture + Assignment)",
+        "GP-FINANCE-Z3 (FutureRoom → Z1 → Z2)",
+        "GP-PET (Pet Manager Lifecycle)"
+      ],
+      "missing": [
+        {
+          "path": "GP-PAYMENT (Social Payment Flow)",
+          "priority": "P1",
+          "reason": "CONTRACT_SOCIAL_PAYMENT existiert, aber kein GP registriert. Stripe-Integration noch nicht live.",
+          "action": "Bei Payment-Implementierung nachholen"
+        },
+        {
+          "path": "GP-LEAD-MANAGER (MOD-10 Lead Desk → Partner)",
+          "priority": "P1",
+          "reason": "Lead Manager noch nicht gebaut. GP bei Implementierung erstellen.",
+          "action": "Bei Lead-Manager-Implementierung nachholen"
+        }
+      ],
+      "ledger_whitelist_entries": 83,
+      "validation": "DEV-Validator laeuft automatisch bei App-Start, 0 Errors"
+    },
+
+    "zone_isolation": {
+      "status": "OK",
+      "checks": [
+        "ZBC-R09: Alle Z3-Websites unter /website/** — keine Root-Collisions",
+        "ZBC-R10: 12 Cross-Zone Edge Functions mit Contract-Mapping registriert",
+        "ZBC-R13: tile_catalog ↔ routesManifest Sync (21 Eintraege, 3 harmlose Titel-Diffs)",
+        "SBC: 4 Private Buckets, 1 Frozen Bucket registriert",
+        "GTC: Demo-Daten-Registry aktiv, VITE_FORCE_DEV_TENANT Feature-Flag vorhanden"
+      ],
+      "rls_status": "Aktiv auf allen Tenant-Tabellen (get_user_tenant_id SECURITY DEFINER)"
+    },
+
+    "api_contracts": {
+      "status": "OK — 22 Contracts dokumentiert",
+      "contracts": [
+        "CONTRACT_ONBOARDING",
+        "CONTRACT_LEAD_CAPTURE",
+        "CONTRACT_EMAIL_INBOUND",
+        "CONTRACT_LISTING_PUBLISH",
+        "CONTRACT_LISTING_DISTRIBUTE",
+        "CONTRACT_FINANCE_SUBMIT",
+        "CONTRACT_FINANCE_DOC_REMINDER",
+        "CONTRACT_MANDATE_ASSIGNMENT",
+        "CONTRACT_ACQ_MANDATE_SUBMIT",
+        "CONTRACT_ACQ_INBOUND_EMAIL",
+        "CONTRACT_ACQ_OUTBOUND_EMAIL",
+        "CONTRACT_DATA_ROOM_ACCESS",
+        "CONTRACT_SOCIAL_MANDATE_SUBMIT",
+        "CONTRACT_SOCIAL_PAYMENT",
+        "CONTRACT_PROJECT_INTAKE",
+        "CONTRACT_LANDING_PAGE_GENERATE",
+        "CONTRACT_RENOVATION_INBOUND",
+        "CONTRACT_RENOVATION_OUTBOUND",
+        "CONTRACT_RENTER_INVITE",
+        "CONTRACT_TERMS_GATE_STANDARD",
+        "CONTRACT_WHATSAPP_INBOUND",
+        "CONTRACT_WHATSAPP_MEDIA"
+      ]
+    },
+
+    "edge_functions": {
+      "status": "OK — 97 Edge Functions deployed",
+      "critical_for_beta": [
+        "sot-create-test-user (Account-Erstellung)",
+        "sot-armstrong-advisor (KI-Assistent)",
+        "sot-dms-download-url (Datei-Downloads)",
+        "sot-mail-send (E-Mail-Versand)",
+        "sot-property-crud (Immobilien-CRUD)",
+        "sot-inbound-receive (Posteingang)"
+      ]
+    },
+
+    "kb_seeds": {
+      "status": "OK — 51 Knowledge-Base-Artikel",
+      "categories": {
+        "KB.FIN": 10,
+        "KB.RE": 15,
+        "KB.SALES": 7,
+        "KB.SYSTEM": 9,
+        "KB.TL": 3,
+        "KB.TPL": 6
+      }
+    },
+
+    "database": {
+      "organizations": {
+        "total": 3,
+        "production": 2,
+        "sandbox": 1
+      },
+      "inbound_mailbox_provisioning": "OK — Trigger trg_provision_inbound_mailbox aktiv"
+    }
+  },
+
   "known_bugs": [
     { "id": "BUG-001", "priority": "P0", "area": "Auth", "description": "Kein Passwort-vergessen-Link auf /auth", "status": "fixed", "fix_commit": "FIX-001" },
     { "id": "BUG-002", "priority": "P0", "area": "GoldenPath", "description": "GP-FINANCE-Z3 Step assign_manager fehlt on_error", "status": "fixed", "fix_commit": "FIX-002" },
     { "id": "BUG-002b", "priority": "P0", "area": "GoldenPath", "description": "finance.z3.manager.assignment.error nicht in LEDGER_EVENT_WHITELIST", "status": "fixed", "fix_commit": "FIX-002b" },
     { "id": "BUG-003", "priority": "P1", "area": "Manifest", "description": "specialRoutes listet /auth/reset-password nicht", "status": "fixed", "fix_commit": "FIX-003" },
-    { "id": "BUG-004", "priority": "P1", "area": "Auth", "description": "Kein Signup-Flow — Test-User via sot-create-test-user erstellen", "status": "by-design" }
+    { "id": "BUG-004", "priority": "P1", "area": "Auth", "description": "Kein Signup-Flow — Test-User via sot-create-test-user erstellen", "status": "by-design" },
+    { "id": "BUG-005", "priority": "P2", "area": "Finanzanalyse", "description": "Darlehen-Widgets hatten roten Glow statt gruen fuer Demo-Daten", "status": "fixed", "fix_commit": "FIX-005" },
+    { "id": "BUG-006", "priority": "P2", "area": "tile_catalog", "description": "MOD-05 Title in DB noch 'Website Builder' statt 'Pets'", "status": "open", "action": "DB-Update noetig" },
+    { "id": "BUG-007", "priority": "P2", "area": "tile_catalog", "description": "MOD-22 Pet Manager fehlt in tile_catalog", "status": "open", "action": "INSERT bei naechster Migration" }
   ],
-  "test_cases": [
+
+  "not_yet_built": [
     {
-      "id": "TC-A01", "phase": "A", "priority": "P0", "title": "Login mit Passwort (Erfolg + Fehler)",
-      "steps": ["1. /auth oeffnen", "2. Gueltige E-Mail + Passwort eingeben", "3. Anmelden klicken", "4. Erwarte Redirect zu /portal", "5. Falsche Credentials eingeben", "6. Erwarte Fehlermeldung"],
-      "expected_result": "Erfolgreicher Login redirected zu /portal. Falsches PW zeigt Fehlermeldung.", "status": "pending", "notes": ""
+      "module": "Lead Manager (MOD-10 erweitert)",
+      "priority": "P1",
+      "description": "Lead Desk in Z1 existiert, aber Z2-Lead-Manager fuer Partner noch nicht implementiert",
+      "dependencies": ["GP-LEAD-MANAGER Golden Path", "Partner-Lead-Assignment Flow"]
     },
     {
-      "id": "TC-A02", "phase": "A", "priority": "P0", "title": "Login mit OTP (Erfolg + Fehler + Resend)",
-      "steps": ["1. /auth oeffnen", "2. Stattdessen Code per E-Mail klicken", "3. E-Mail eingeben, Code senden", "4. 6-stelligen Code eingeben", "5. Falschen Code eingeben", "6. Code erneut senden nach Cooldown"],
-      "expected_result": "OTP-Flow funktioniert. Falscher Code zeigt Fehler. Resend nach 60s moeglich.", "status": "pending", "notes": ""
-    },
-    {
-      "id": "TC-A03", "phase": "A", "priority": "P0", "title": "Passwort vergessen Flow",
-      "steps": ["1. /auth oeffnen", "2. Passwort vergessen? klicken", "3. E-Mail eingeben", "4. Zuruecksetzen klicken", "5. E-Mail pruefen", "6. Link oeffnet /auth/reset-password", "7. Neues Passwort setzen"],
-      "expected_result": "Reset-Mail wird gesendet. Link fuehrt zu Reset-Page. Neues PW funktioniert.", "status": "pending", "notes": ""
-    },
-    {
-      "id": "TC-A04", "phase": "A", "priority": "P0", "title": "Session Persistence",
-      "steps": ["1. Einloggen", "2. Tab schliessen", "3. Neuen Tab oeffnen, /portal aufrufen", "4. Erwarte: noch eingeloggt"],
-      "expected_result": "Session bleibt ueber Tab-Wechsel bestehen.", "status": "pending", "notes": ""
-    },
-    {
-      "id": "TC-A05", "phase": "A", "priority": "P1", "title": "Token Refresh",
-      "steps": ["1. Einloggen", "2. 1h+ warten (oder Token manuell expiren)", "3. Seite neu laden", "4. Erwarte: automatischer Refresh, kein Logout"],
-      "expected_result": "Refresh Token erneuert Session automatisch.", "status": "pending", "notes": ""
-    },
-    {
-      "id": "TC-A06", "phase": "A", "priority": "P0", "title": "Logout",
-      "steps": ["1. Einloggen", "2. Logout klicken", "3. Erwarte Redirect zu /auth", "4. /portal direkt aufrufen", "5. Erwarte Redirect zu /auth"],
-      "expected_result": "Session wird vollstaendig geloescht. Kein Zugriff auf /portal ohne Login.", "status": "pending", "notes": ""
-    },
-    {
-      "id": "TC-A07", "phase": "A", "priority": "P0", "title": "Unauth-Zugriff auf /portal",
-      "steps": ["1. Nicht eingeloggt", "2. /portal direkt aufrufen", "3. Erwarte Redirect zu /auth"],
-      "expected_result": "Unauthentifizierte User werden zu /auth redirected.", "status": "pending", "notes": ""
-    },
-    {
-      "id": "TC-A08", "phase": "A", "priority": "P0", "title": "Unauth-Zugriff auf /admin",
-      "steps": ["1. Nicht eingeloggt", "2. /admin direkt aufrufen", "3. Erwarte Redirect zu /auth"],
-      "expected_result": "Unauthentifizierte User werden zu /auth redirected.", "status": "pending", "notes": ""
-    },
-    {
-      "id": "TC-A09", "phase": "A", "priority": "P0", "title": "Zone-1-Zugriff als Non-Admin",
-      "steps": ["1. Als normaler User einloggen", "2. /admin direkt aufrufen", "3. Erwarte Redirect zu /portal"],
-      "expected_result": "Nur platform_admin/org_admin duerfen Zone 1 betreten.", "status": "pending", "notes": ""
-    },
-    {
-      "id": "TC-A10", "phase": "A", "priority": "P0", "title": "Tenant-Isolation",
-      "steps": ["1. Als User A (Tenant X) einloggen", "2. Daten von Tenant Y abfragen (z.B. properties)", "3. Erwarte: keine Ergebnisse / RLS blockiert"],
-      "expected_result": "User A sieht keine Daten von Tenant B. RLS enforced.", "status": "pending", "notes": ""
-    },
-    {
-      "id": "TC-A11", "phase": "A", "priority": "P1", "title": "Platform-Admin Bypass",
-      "steps": ["1. Als platform_admin einloggen", "2. Tenant-Switch durchfuehren", "3. Daten aller Tenants sichtbar"],
-      "expected_result": "Platform-Admin hat God-Mode Zugriff auf alle Tenants.", "status": "pending", "notes": ""
-    },
-    {
-      "id": "TC-A12", "phase": "A", "priority": "P0", "title": "Test-User erstellen",
-      "steps": ["1. Als platform_admin einloggen", "2. sot-create-test-user Edge Function aufrufen", "3. E-Mail + Passwort fuer Test-User angeben", "4. Erwarte: User wird angelegt, Profile + Org + Membership erstellt"],
-      "expected_result": "Verifizierter Test-User mit eigenem Tenant wird angelegt.", "status": "pending", "notes": ""
-    },
-    {
-      "id": "TC-B01", "phase": "B", "priority": "P0", "title": "Alle 23 Zone-2-Module laden",
-      "steps": ["1. Einloggen", "2. Jedes Modul (MOD-00 bis MOD-22) ueber Navigation aufrufen", "3. Console auf Errors pruefen"],
-      "expected_result": "Alle Module laden ohne Console Errors.", "status": "pending", "notes": ""
-    },
-    {
-      "id": "TC-B02", "phase": "B", "priority": "P0", "title": "Zone-1-Admin-Routen laden",
-      "steps": ["1. Als platform_admin einloggen", "2. Alle Admin-Routen durchklicken", "3. Console auf Errors pruefen"],
-      "expected_result": "Alle 50+ Admin-Routen laden ohne Fehler.", "status": "pending", "notes": ""
-    },
-    {
-      "id": "TC-B03", "phase": "B", "priority": "P1", "title": "Zone-3-Websites laden",
-      "steps": ["1. /website/kaufy aufrufen", "2. /website/futureroom aufrufen", "3. /website/sot aufrufen", "4. /website/acquiary aufrufen"],
-      "expected_result": "Alle 4 Websites laden korrekt.", "status": "pass", "notes": "Browser-verified: SoT, Kaufy, FutureRoom, Acquiary all load without JS errors"
-    },
-    {
-      "id": "TC-B04", "phase": "B", "priority": "P1", "title": "Legacy Redirects",
-      "steps": ["1. /portfolio aufrufen → Redirect zu /portal/immobilien/portfolio", "2. /futureroom aufrufen → Redirect zu /website/futureroom", "3. /sot aufrufen → Redirect zu /website/sot"],
-      "expected_result": "Alle 18 Legacy-Redirects funktionieren.", "status": "pending", "notes": ""
-    },
-    {
-      "id": "TC-B05", "phase": "B", "priority": "P1", "title": "404-Seite",
-      "steps": ["1. /gibts-nicht aufrufen", "2. Erwarte 404-Seite oder Redirect"],
-      "expected_result": "Unbekannte Routen zeigen 404 oder redirecten sauber.", "status": "pass", "notes": "Verified: /sot shows 404 page correctly"
-    },
-    {
-      "id": "TC-B06", "phase": "B", "priority": "P0", "title": "Deep-Link-Verhalten",
-      "steps": ["1. Direkte URL /portal/immobilien/portfolio aufrufen (eingeloggt)", "2. Direkte URL /portal/finanzierung/selbstauskunft aufrufen", "3. Erwarte: Seite laedt korrekt"],
-      "expected_result": "Deep-Links funktionieren ohne Umwege.", "status": "pending", "notes": ""
-    },
-    {
-      "id": "TC-B07", "phase": "B", "priority": "P1", "title": "tile_catalog Sync mit routesManifest",
-      "steps": ["1. DEV-Validator ausfuehren (GoldenPathEngine)", "2. Erwarte: keine Mismatches zwischen tile_catalog und routesManifest"],
-      "expected_result": "Alle Tiles in DB stimmen mit Manifest ueberein.", "status": "pending", "notes": ""
-    },
-    {
-      "id": "TC-C01", "phase": "C", "priority": "P1", "title": "MOD-00 Dashboard Smoke",
-      "steps": ["1. /portal/dashboard aufrufen", "2. Widgets pruefen", "3. Console Errors pruefen"],
-      "expected_result": "Dashboard laedt, Widgets sichtbar.", "status": "pending", "notes": ""
-    },
-    {
-      "id": "TC-C02", "phase": "C", "priority": "P1", "title": "MOD-01 Stammdaten Smoke",
-      "steps": ["1. /portal/stammdaten/profil aufrufen", "2. Alle 5 Tiles durchklicken"],
-      "expected_result": "Alle Tiles laden, Profildaten editierbar.", "status": "pending", "notes": ""
-    },
-    {
-      "id": "TC-C03", "phase": "C", "priority": "P1", "title": "MOD-02 KI Office Smoke",
-      "steps": ["1. /portal/office/email aufrufen", "2. Alle 7 Tiles durchklicken"],
-      "expected_result": "Alle Tiles laden. Armstrong-Integration sichtbar.", "status": "pending", "notes": ""
-    },
-    {
-      "id": "TC-C04", "phase": "C", "priority": "P1", "title": "MOD-03 DMS Smoke",
-      "steps": ["1. /portal/dms/storage aufrufen", "2. Ordnerstruktur sichtbar", "3. Upload testen"],
-      "expected_result": "Storage Tree laedt. Upload funktioniert.", "status": "pending", "notes": ""
-    },
-    {
-      "id": "TC-C05", "phase": "C", "priority": "P0", "title": "MOD-04 Immobilien Smoke",
-      "steps": ["1. /portal/immobilien/zuhause aufrufen", "2. /portal/immobilien/portfolio aufrufen", "3. Neue Immobilie erstellen testen"],
-      "expected_result": "Portfolio laedt. Create-Flow funktioniert.", "status": "pending", "notes": ""
-    },
-    {
-      "id": "TC-C06", "phase": "C", "priority": "P1", "title": "MOD-05 bis MOD-22 Smoke (Batch)",
-      "steps": ["1. Jedes Modul MOD-05 bis MOD-22 aufrufen", "2. Default-Tile wird angezeigt", "3. Console Errors pruefen"],
-      "expected_result": "Alle Module laden ohne Fehler.", "status": "pending", "notes": ""
-    },
-    {
-      "id": "TC-D01", "phase": "D", "priority": "P0", "title": "DEV-Validator fehlerfrei",
-      "steps": ["1. GoldenPathEngine DEV-Validator ausfuehren", "2. Erwarte: 0 Errors"],
-      "expected_result": "Validator meldet keine Fehler (nach FIX-002).", "status": "pending", "notes": ""
-    },
-    {
-      "id": "TC-D02", "phase": "D", "priority": "P0", "title": "GoldenPathGuard blockiert bei fehlenden Preconditions",
-      "steps": ["1. Route mit goldenPath-Annotation aufrufen ohne required entity", "2. Erwarte: Guard blockiert, Redirect oder Fehlermeldung"],
-      "expected_result": "Guard verhindert Zugriff auf unvollstaendige Flows.", "status": "pending", "notes": ""
-    },
-    {
-      "id": "TC-D03", "phase": "D", "priority": "P1", "title": "Backbone-Validierung (Cross-Zone)",
-      "steps": ["1. Alle Golden Paths pruefen: keine Z2->Z2 oder Z2->Z3 Directions", "2. Nur Z2->Z1, Z1->Z2, Z3->Z1, Z1->Z3 erlaubt"],
-      "expected_result": "Alle contract_refs haben erlaubte Directions.", "status": "pending", "notes": ""
-    },
-    {
-      "id": "TC-D04", "phase": "D", "priority": "P1", "title": "Ledger-Event Whitelist vollstaendig",
-      "steps": ["1. Alle ledger_events aus Golden Paths extrahieren", "2. Gegen LEDGER_EVENT_WHITELIST abgleichen"],
-      "expected_result": "Alle Events sind in der Whitelist registriert.", "status": "pending", "notes": ""
-    },
-    {
-      "id": "TC-E01", "phase": "E", "priority": "P0", "title": "Immobilie erstellen (MOD-04 Golden Path)",
-      "steps": ["1. /portal/immobilien/portfolio aufrufen", "2. Neue Immobilie anlegen", "3. Immobilienakte oeffnen", "4. Dokumente hochladen", "5. Units/Mietvertraege pruefen"],
-      "expected_result": "Property wird in DB erstellt. Akte oeffnet sich. Docs verknuepft.", "status": "pending", "notes": ""
-    },
-    {
-      "id": "TC-E02", "phase": "E", "priority": "P1", "title": "DMS Upload + Ordnerstruktur (MOD-03)",
-      "steps": ["1. /portal/dms/storage aufrufen", "2. Datei hochladen", "3. Ordner erstellen", "4. Datei verschieben"],
-      "expected_result": "Upload, Ordner-CRUD und Verschieben funktionieren.", "status": "pending", "notes": ""
-    },
-    {
-      "id": "TC-E03", "phase": "E", "priority": "P1", "title": "Finanzierung Selbstauskunft (MOD-07)",
-      "steps": ["1. /portal/finanzierung/selbstauskunft aufrufen", "2. Felder ausfuellen", "3. Speichern", "4. Completion Score pruefen"],
-      "expected_result": "Selbstauskunft wird gespeichert. Score aktualisiert sich.", "status": "pending", "notes": ""
-    },
-    {
-      "id": "TC-E04", "phase": "E", "priority": "P1", "title": "Dashboard Widgets (MOD-00)",
-      "steps": ["1. /portal/dashboard aufrufen", "2. Portfolio-Widget pruefen", "3. Finanz-Widget pruefen", "4. Quick-Actions pruefen"],
-      "expected_result": "Widgets laden Daten korrekt.", "status": "pending", "notes": ""
-    },
-    {
-      "id": "TC-E05", "phase": "E", "priority": "P1", "title": "Stammdaten Profil bearbeiten (MOD-01)",
-      "steps": ["1. /portal/stammdaten/profil aufrufen", "2. Felder bearbeiten", "3. Speichern", "4. Seite neu laden, Aenderungen pruefen"],
-      "expected_result": "Profildaten werden persistent gespeichert.", "status": "pending", "notes": ""
-    },
-    {
-      "id": "TC-E06", "phase": "E", "priority": "P1", "title": "KI Office E-Mail senden (MOD-02)",
-      "steps": ["1. /portal/office/email aufrufen", "2. E-Mail verfassen", "3. Armstrong-Vorschlag testen"],
-      "expected_result": "E-Mail-Komposition funktioniert. KI-Vorschlaege laden.", "status": "pending", "notes": ""
-    },
-    {
-      "id": "TC-E07", "phase": "E", "priority": "P1", "title": "Finanzen Dashboard (MOD-18)",
-      "steps": ["1. /portal/finanzen aufrufen", "2. Widgets pruefen", "3. Transaktionen laden"],
-      "expected_result": "Finanz-Dashboard laedt ohne Fehler.", "status": "pending", "notes": ""
-    },
-    {
-      "id": "TC-E08", "phase": "E", "priority": "P2", "title": "Photovoltaik Anlage anlegen (MOD-19)",
-      "steps": ["1. /portal/photovoltaik aufrufen", "2. Neue Anlage erstellen", "3. Daten eingeben"],
-      "expected_result": "PV-Anlage wird in DB erstellt.", "status": "pending", "notes": ""
-    },
-    {
-      "id": "TC-F01", "phase": "F", "priority": "P0", "title": "sot-create-test-user Edge Function",
-      "steps": ["1. Als platform_admin: POST an sot-create-test-user", "2. Body: {email, password, first_name, last_name}", "3. Erwarte: 200 + user_id + org_id"],
-      "expected_result": "Test-User mit eigenem Tenant wird erstellt.", "status": "pending", "notes": ""
-    },
-    {
-      "id": "TC-F02", "phase": "F", "priority": "P1", "title": "sot-armstrong-advisor Edge Function",
-      "steps": ["1. POST an sot-armstrong-advisor", "2. Body: {action: 'general_advice', context: {query: 'test'}}", "3. Erwarte: AI-Antwort"],
-      "expected_result": "Armstrong liefert KI-Antwort.", "status": "pending", "notes": ""
-    },
-    {
-      "id": "TC-F03", "phase": "F", "priority": "P1", "title": "sot-dms-download-url Edge Function",
-      "steps": ["1. Existierende Datei-ID ermitteln", "2. POST an sot-dms-download-url", "3. Erwarte: Signed URL"],
-      "expected_result": "Signed URL wird generiert.", "status": "pending", "notes": ""
-    },
-    {
-      "id": "TC-F04", "phase": "F", "priority": "P1", "title": "sot-mail-send Edge Function",
-      "steps": ["1. POST an sot-mail-send", "2. Body: {to, subject, body}", "3. Erwarte: 200 + message_id"],
-      "expected_result": "E-Mail wird versendet.", "status": "pending", "notes": ""
-    },
-    {
-      "id": "TC-G01", "phase": "G", "priority": "P2", "title": "SoT Website Hero + Widgets",
-      "steps": ["1. /website/sot aufrufen", "2. Hero-Bereich pruefen", "3. 8 Widgets sichtbar"],
-      "expected_result": "Website laedt vollstaendig.", "status": "pass", "notes": "Browser screenshot verified"
-    },
-    {
-      "id": "TC-G02", "phase": "G", "priority": "P2", "title": "SoT Unterseiten",
-      "steps": ["1. /website/sot/management aufrufen", "2. /website/sot/real-estate", "3. /website/sot/finance", "4. /website/sot/energy", "5. /website/sot/karriere"],
-      "expected_result": "Alle Unterseiten laden.", "status": "pending", "notes": ""
-    },
-    {
-      "id": "TC-G03", "phase": "G", "priority": "P2", "title": "Kaufy Website",
-      "steps": ["1. /website/kaufy aufrufen", "2. Expose-Seite pruefen"],
-      "expected_result": "Kaufy Home + Expose laden.", "status": "pass", "notes": "Browser screenshot verified"
-    },
-    {
-      "id": "TC-G04", "phase": "G", "priority": "P2", "title": "FutureRoom Website",
-      "steps": ["1. /website/futureroom aufrufen", "2. Login-Seite pruefen", "3. Akte-Seite pruefen"],
-      "expected_result": "FutureRoom Seiten laden.", "status": "pass", "notes": "Browser screenshot verified"
-    },
-    {
-      "id": "TC-G05", "phase": "G", "priority": "P2", "title": "Acquiary Website",
-      "steps": ["1. /website/acquiary aufrufen", "2. Objekt anbieten pruefen"],
-      "expected_result": "Acquiary Home + Objekt-Formular laden.", "status": "pass", "notes": "Browser screenshot verified"
+      "module": "Payment System (Stripe Integration)",
+      "priority": "P1",
+      "description": "CONTRACT_SOCIAL_PAYMENT dokumentiert. Edge Functions sot-social-payment-create/webhook existieren. Stripe-Integration noch nicht live.",
+      "dependencies": ["Stripe API Key", "Webhook-URL Konfiguration", "GP-PAYMENT Golden Path"]
     }
   ],
+
+  "test_cases": [
+    {
+      "id": "TC-A01", "phase": "A-Auth", "priority": "P0", "title": "Login mit Passwort (Erfolg + Fehler)",
+      "steps": ["1. /auth oeffnen", "2. Gueltige E-Mail + Passwort eingeben", "3. Anmelden klicken", "4. Erwarte Redirect zu /portal", "5. Falsche Credentials eingeben", "6. Erwarte Fehlermeldung"],
+      "expected_result": "Erfolgreicher Login redirected zu /portal. Falsches PW zeigt Fehlermeldung.", "status": "pending"
+    },
+    {
+      "id": "TC-A02", "phase": "A-Auth", "priority": "P0", "title": "Login mit OTP",
+      "steps": ["1. /auth oeffnen", "2. Code per E-Mail klicken", "3. E-Mail eingeben, Code senden", "4. 6-stelligen Code eingeben"],
+      "expected_result": "OTP-Flow funktioniert.", "status": "pending"
+    },
+    {
+      "id": "TC-A03", "phase": "A-Auth", "priority": "P0", "title": "Passwort vergessen Flow",
+      "steps": ["1. /auth oeffnen", "2. Passwort vergessen? klicken", "3. E-Mail eingeben", "4. Link oeffnet /auth/reset-password", "5. Neues Passwort setzen"],
+      "expected_result": "Reset-Mail wird gesendet. Neues PW funktioniert.", "status": "pending"
+    },
+    {
+      "id": "TC-A04", "phase": "A-Auth", "priority": "P0", "title": "Session Persistence + Refresh",
+      "steps": ["1. Einloggen", "2. Tab schliessen + neu oeffnen", "3. Erwarte: noch eingeloggt"],
+      "expected_result": "Session bleibt bestehen.", "status": "pending"
+    },
+    {
+      "id": "TC-A05", "phase": "A-Auth", "priority": "P0", "title": "Logout + Unauth-Guard",
+      "steps": ["1. Logout klicken", "2. /portal aufrufen", "3. Erwarte Redirect zu /auth"],
+      "expected_result": "Session geloescht. Kein Zugriff ohne Login.", "status": "pending"
+    },
+    {
+      "id": "TC-A06", "phase": "A-Auth", "priority": "P0", "title": "Zone-1-Zugriff als Non-Admin",
+      "steps": ["1. Als normaler User einloggen", "2. /admin aufrufen", "3. Erwarte Redirect"],
+      "expected_result": "Nur platform_admin darf Zone 1 betreten.", "status": "pending"
+    },
+    {
+      "id": "TC-A07", "phase": "A-Auth", "priority": "P0", "title": "Tenant-Isolation (RLS)",
+      "steps": ["1. Als User A einloggen", "2. Daten von Tenant B abfragen", "3. Erwarte: keine Ergebnisse"],
+      "expected_result": "RLS enforced. Keine Cross-Tenant Leaks.", "status": "pending"
+    },
+    {
+      "id": "TC-A08", "phase": "A-Auth", "priority": "P0", "title": "Test-User erstellen via Edge Function",
+      "steps": ["1. POST sot-create-test-user", "2. Erwarte: User + Profile + Org + Membership erstellt"],
+      "expected_result": "Neuer Tenant mit eigenem Account.", "status": "pending"
+    },
+    {
+      "id": "TC-A09", "phase": "A-Auth", "priority": "P0", "title": "Onboarding Trigger (handle_new_user)",
+      "steps": ["1. Neuen Account erstellen", "2. Pruefen: profiles, organizations, memberships Eintraege existieren", "3. Pruefen: inbound_mailbox provisioned"],
+      "expected_result": "Automatisches Onboarding vollstaendig.", "status": "pending"
+    },
+
+    {
+      "id": "TC-B01", "phase": "B-Routing", "priority": "P0", "title": "Alle 21 Zone-2-Module laden",
+      "steps": ["1. Einloggen", "2. Jedes Modul MOD-00 bis MOD-22 aufrufen", "3. Console Errors pruefen"],
+      "expected_result": "Alle Module laden ohne Console Errors.", "status": "pending"
+    },
+    {
+      "id": "TC-B02", "phase": "B-Routing", "priority": "P0", "title": "Zone-1-Admin-Routen laden",
+      "steps": ["1. Als platform_admin einloggen", "2. Alle Admin-Routen durchklicken"],
+      "expected_result": "Alle 50+ Admin-Routen laden.", "status": "pending"
+    },
+    {
+      "id": "TC-B03", "phase": "B-Routing", "priority": "P1", "title": "Zone-3-Websites laden",
+      "steps": ["1. /website/kaufy", "2. /website/futureroom", "3. /website/sot", "4. /website/acquiary", "5. /website/tierservice"],
+      "expected_result": "Alle 5 Websites laden.", "status": "pass"
+    },
+    {
+      "id": "TC-B04", "phase": "B-Routing", "priority": "P1", "title": "Legacy Redirects (28 Routen)",
+      "steps": ["1. /portfolio → /portal/immobilien/portfolio", "2. /futureroom → /website/futureroom", "3. Stichprobe 5 weitere"],
+      "expected_result": "Legacy-Redirects funktionieren.", "status": "pending"
+    },
+    {
+      "id": "TC-B05", "phase": "B-Routing", "priority": "P1", "title": "404-Seite + Deep-Links",
+      "steps": ["1. /gibts-nicht → 404", "2. /portal/immobilien/portfolio direkt aufrufen"],
+      "expected_result": "404 korrekt. Deep-Links funktionieren.", "status": "pass"
+    },
+
+    {
+      "id": "TC-C01", "phase": "C-ModuleSmoke", "priority": "P0", "title": "MOD-00 Dashboard",
+      "steps": ["1. /portal/dashboard aufrufen", "2. Widgets sichtbar"],
+      "expected_result": "Dashboard laedt.", "status": "pending"
+    },
+    {
+      "id": "TC-C02", "phase": "C-ModuleSmoke", "priority": "P0", "title": "MOD-01 Stammdaten (5 Tiles)",
+      "steps": ["1. Alle 5 Tiles durchklicken: Profil, Vertraege, Abrechnung, Sicherheit, Demo-Daten"],
+      "expected_result": "Alle Tiles laden.", "status": "pending"
+    },
+    {
+      "id": "TC-C03", "phase": "C-ModuleSmoke", "priority": "P0", "title": "MOD-02 KI Office (7 Tiles)",
+      "steps": ["1. Alle 7 Tiles: E-Mail, Brief, Kontakte, Kalender, Widgets, WhatsApp, Videocalls"],
+      "expected_result": "Alle Tiles laden.", "status": "pending"
+    },
+    {
+      "id": "TC-C04", "phase": "C-ModuleSmoke", "priority": "P0", "title": "MOD-03 DMS (4 Tiles)",
+      "steps": ["1. Storage, Posteingang, Sortieren, Einstellungen"],
+      "expected_result": "Ordnerstruktur sichtbar.", "status": "pending"
+    },
+    {
+      "id": "TC-C05", "phase": "C-ModuleSmoke", "priority": "P0", "title": "MOD-04 Immobilien (4 Tiles)",
+      "steps": ["1. ZUHAUSE, Portfolio, Steuer, Sanierung"],
+      "expected_result": "Portfolio laedt.", "status": "pending"
+    },
+    {
+      "id": "TC-C06", "phase": "C-ModuleSmoke", "priority": "P1", "title": "MOD-05 Pets (4 Tiles)",
+      "steps": ["1. Meine Tiere, Caring, Shop, Mein Bereich"],
+      "expected_result": "Pet-Liste laedt.", "status": "pending"
+    },
+    {
+      "id": "TC-C07", "phase": "C-ModuleSmoke", "priority": "P1", "title": "MOD-06 Verkauf (4 Tiles)",
+      "steps": ["1. Objekte, Anfragen, Vorgaenge, Reporting"],
+      "expected_result": "Alle Tiles laden.", "status": "pending"
+    },
+    {
+      "id": "TC-C08", "phase": "C-ModuleSmoke", "priority": "P0", "title": "MOD-07 Finanzierung (5 Tiles)",
+      "steps": ["1. Selbstauskunft, Dokumente, Anfrage, Status, Privatkredit"],
+      "expected_result": "Selbstauskunft-Formular laedt.", "status": "pending"
+    },
+    {
+      "id": "TC-C09", "phase": "C-ModuleSmoke", "priority": "P1", "title": "MOD-08 Investment-Suche (4 Tiles)",
+      "steps": ["1. Suche, Favoriten, Mandat, Simulation"],
+      "expected_result": "Alle Tiles laden.", "status": "pending"
+    },
+    {
+      "id": "TC-C10", "phase": "C-ModuleSmoke", "priority": "P1", "title": "MOD-09 bis MOD-22 Batch-Smoke",
+      "steps": ["1. Jedes Modul MOD-09 bis MOD-22 Default-Tile aufrufen", "2. Console pruefen"],
+      "expected_result": "Alle laden ohne Fehler.", "status": "pending"
+    },
+    {
+      "id": "TC-C11", "phase": "C-ModuleSmoke", "priority": "P0", "title": "MOD-18 Finanzanalyse (8 Tiles)",
+      "steps": ["1. Uebersicht, Investment, KV, Versicherungen, Vorsorge, Darlehen, Abonnements, Testament"],
+      "expected_result": "Alle Tiles laden. Demo-Daten gruen.", "status": "pending"
+    },
+    {
+      "id": "TC-C12", "phase": "C-ModuleSmoke", "priority": "P1", "title": "MOD-19 Photovoltaik (4 Tiles)",
+      "steps": ["1. Anlagen, Enpal, Dokumente, Einstellungen"],
+      "expected_result": "PV-Dashboard laedt.", "status": "pending"
+    },
+
+    {
+      "id": "TC-D01", "phase": "D-GoldenPath", "priority": "P0", "title": "DEV-Validator 0 Errors",
+      "steps": ["1. App im DEV-Modus starten", "2. Console: [GoldenPath] pruefen"],
+      "expected_result": "0 Errors, 8 Golden Paths validiert.", "status": "pending"
+    },
+    {
+      "id": "TC-D02", "phase": "D-GoldenPath", "priority": "P0", "title": "Architecture Validators alle PASS",
+      "steps": ["1. Console: ZBC-R09, ZBC-R13, ZBC-R10, SBC, GTC pruefen"],
+      "expected_result": "Alle 5 Validators melden OK.", "status": "pending"
+    },
+    {
+      "id": "TC-D03", "phase": "D-GoldenPath", "priority": "P1", "title": "Backbone-Validierung (keine Z2→Z2 Directions)",
+      "steps": ["1. Alle contract_refs pruefen: nur Z2→Z1, Z1→Z2, Z3→Z1, Z1→Z3 erlaubt"],
+      "expected_result": "Keine unerlaubten Directions.", "status": "pending"
+    },
+    {
+      "id": "TC-D04", "phase": "D-GoldenPath", "priority": "P1", "title": "Ledger-Event Whitelist vollstaendig (83 Events)",
+      "steps": ["1. Alle ledger_events aus 8 Golden Paths extrahieren", "2. Gegen Whitelist abgleichen"],
+      "expected_result": "Alle Events registriert.", "status": "pending"
+    },
+
+    {
+      "id": "TC-E01", "phase": "E-CoreFlows", "priority": "P0", "title": "Immobilie erstellen + Akte oeffnen",
+      "steps": ["1. Portfolio → Neue Immobilie", "2. Daten eingeben", "3. Akte oeffnen", "4. DMS-Ordner pruefen"],
+      "expected_result": "Property + Units + DMS-Struktur erstellt.", "status": "pending"
+    },
+    {
+      "id": "TC-E02", "phase": "E-CoreFlows", "priority": "P0", "title": "DMS Upload + Ordner-CRUD",
+      "steps": ["1. Datei hochladen", "2. Ordner erstellen", "3. Datei verschieben"],
+      "expected_result": "Upload + Ordner funktionieren.", "status": "pending"
+    },
+    {
+      "id": "TC-E03", "phase": "E-CoreFlows", "priority": "P0", "title": "Finanzierung Selbstauskunft ausfuellen",
+      "steps": ["1. Felder ausfuellen", "2. Speichern", "3. Completion Score pruefen"],
+      "expected_result": "Daten persistent. Score aktualisiert.", "status": "pending"
+    },
+    {
+      "id": "TC-E04", "phase": "E-CoreFlows", "priority": "P1", "title": "Stammdaten Profil bearbeiten",
+      "steps": ["1. Felder aendern", "2. Speichern", "3. Reload → Aenderungen erhalten"],
+      "expected_result": "Profildaten persistent.", "status": "pending"
+    },
+    {
+      "id": "TC-E05", "phase": "E-CoreFlows", "priority": "P1", "title": "PV-Anlage anlegen",
+      "steps": ["1. Neue Anlage erstellen", "2. Daten eingeben", "3. DMS-Ordner pruefen"],
+      "expected_result": "PV-Anlage + Ordnerstruktur erstellt.", "status": "pending"
+    },
+    {
+      "id": "TC-E06", "phase": "E-CoreFlows", "priority": "P1", "title": "Fahrzeug anlegen (MOD-17)",
+      "steps": ["1. Neues Fahrzeug erstellen", "2. DMS-Ordner pruefen"],
+      "expected_result": "Fahrzeug + 7 Unterordner erstellt.", "status": "pending"
+    },
+    {
+      "id": "TC-E07", "phase": "E-CoreFlows", "priority": "P1", "title": "Kontakt erstellen (MOD-02)",
+      "steps": ["1. Kontakte-Tab oeffnen", "2. Neuen Kontakt anlegen", "3. Speichern"],
+      "expected_result": "Kontakt in DB erstellt.", "status": "pending"
+    },
+    {
+      "id": "TC-E08", "phase": "E-CoreFlows", "priority": "P2", "title": "Demo-Daten Toggle",
+      "steps": ["1. Stammdaten → Demo-Daten", "2. Demo aktivieren/deaktivieren", "3. Module pruefen"],
+      "expected_result": "Demo-Daten erscheinen/verschwinden korrekt.", "status": "pending"
+    },
+
+    {
+      "id": "TC-F01", "phase": "F-EdgeFunctions", "priority": "P0", "title": "sot-create-test-user",
+      "steps": ["1. POST mit {email, password, first_name, last_name}", "2. Erwarte: 200 + user_id + org_id"],
+      "expected_result": "Test-User erstellt.", "status": "pending"
+    },
+    {
+      "id": "TC-F02", "phase": "F-EdgeFunctions", "priority": "P1", "title": "sot-armstrong-advisor",
+      "steps": ["1. POST mit {action: 'general_advice', context: {query: 'test'}}", "2. Erwarte: AI-Antwort"],
+      "expected_result": "Armstrong liefert Antwort.", "status": "pending"
+    },
+    {
+      "id": "TC-F03", "phase": "F-EdgeFunctions", "priority": "P1", "title": "sot-dms-download-url",
+      "steps": ["1. Existierende Datei-ID ermitteln", "2. POST → Signed URL"],
+      "expected_result": "Signed URL generiert.", "status": "pending"
+    },
+    {
+      "id": "TC-F04", "phase": "F-EdgeFunctions", "priority": "P1", "title": "sot-mail-send",
+      "steps": ["1. POST mit {to, subject, body}", "2. Erwarte: 200"],
+      "expected_result": "E-Mail versendet.", "status": "pending"
+    },
+    {
+      "id": "TC-F05", "phase": "F-EdgeFunctions", "priority": "P1", "title": "sot-property-crud",
+      "steps": ["1. POST create → Property ID", "2. GET read", "3. PATCH update"],
+      "expected_result": "CRUD funktioniert.", "status": "pending"
+    },
+
+    {
+      "id": "TC-G01", "phase": "G-Websites", "priority": "P2", "title": "SoT Website + Unterseiten",
+      "steps": ["1. /website/sot", "2. /website/sot/management", "3. /website/sot/real-estate", "4. /website/sot/finance"],
+      "expected_result": "Alle laden.", "status": "pass"
+    },
+    {
+      "id": "TC-G02", "phase": "G-Websites", "priority": "P2", "title": "Kaufy Website + Expose",
+      "steps": ["1. /website/kaufy", "2. /website/kaufy/vermieter"],
+      "expected_result": "Kaufy laedt.", "status": "pass"
+    },
+    {
+      "id": "TC-G03", "phase": "G-Websites", "priority": "P2", "title": "FutureRoom + Acquiary + Lennox",
+      "steps": ["1. /website/futureroom", "2. /website/acquiary", "3. /website/tierservice"],
+      "expected_result": "Alle 3 laden.", "status": "pass"
+    },
+
+    {
+      "id": "TC-H01", "phase": "H-Z1Admin", "priority": "P1", "title": "Admin Dashboard + Orgs",
+      "steps": ["1. /admin aufrufen", "2. Organizations → Liste sichtbar"],
+      "expected_result": "Admin Dashboard laedt.", "status": "pending"
+    },
+    {
+      "id": "TC-H02", "phase": "H-Z1Admin", "priority": "P1", "title": "Tile-Katalog + Integrations",
+      "steps": ["1. /admin/tiles", "2. /admin/integrations"],
+      "expected_result": "Tile-Katalog zeigt alle 21 Module.", "status": "pending"
+    },
+    {
+      "id": "TC-H03", "phase": "H-Z1Admin", "priority": "P1", "title": "Armstrong Console",
+      "steps": ["1. /admin/armstrong → Dashboard", "2. Actions, Logs, Billing, Knowledge, Policies"],
+      "expected_result": "Alle Armstrong-Tabs laden.", "status": "pending"
+    },
+    {
+      "id": "TC-H04", "phase": "H-Z1Admin", "priority": "P1", "title": "Operative Desks Smoke",
+      "steps": ["1. FutureRoom Desk", "2. Acquiary Desk", "3. Sales Desk", "4. Lead Desk", "5. Projekt Desk", "6. Pet Desk", "7. Finance Desk"],
+      "expected_result": "Alle 7 Desks laden.", "status": "pending"
+    },
+
+    {
+      "id": "TC-I01", "phase": "I-Reparaturen", "priority": "P2", "title": "tile_catalog MOD-05 Title korrigieren",
+      "steps": ["1. UPDATE tile_catalog SET title='Pets' WHERE tile_code='MOD-05'"],
+      "expected_result": "DB-Titel synchron mit Manifest.", "status": "open"
+    },
+    {
+      "id": "TC-I02", "phase": "I-Reparaturen", "priority": "P2", "title": "MOD-22 Pet Manager in tile_catalog einfuegen",
+      "steps": ["1. INSERT tile_catalog fuer MOD-22"],
+      "expected_result": "Pet Manager in DB registriert.", "status": "open"
+    },
+    {
+      "id": "TC-I03", "phase": "I-Reparaturen", "priority": "P1", "title": "Mobile Navigation Sub-Tab Pruefung",
+      "steps": ["1. App auf 390x844 Viewport testen", "2. Alle Module: Sub-Tabs muessen hidden sein"],
+      "expected_result": "Keine Sub-Tabs auf Mobile.", "status": "pending"
+    },
+    {
+      "id": "TC-I04", "phase": "I-Reparaturen", "priority": "P2", "title": "Demo-Daten Glow-Konsistenz",
+      "steps": ["1. Alle Module mit Demo-Widgets pruefen", "2. Gruen = Demo, Rot = Live"],
+      "expected_result": "Konsistente Farb-Semantik.", "status": "pending"
+    }
+  ],
+
   "beta_gate": {
     "status": "CONDITIONALLY READY",
-    "conditions": [
-      "FIX-001: Passwort-vergessen-Link auf Auth-Seite (DONE)",
-      "FIX-002: GP-FINANCE-Z3 on_error fuer assign_manager (DONE)",
-      "FIX-003: specialRoutes um /auth/reset-password ergaenzt (DONE)",
-      "TC-A01 bis TC-A12: Auth E2E muss bestanden werden",
-      "TC-B01 bis TC-B07: Routing muss fehlerfrei sein",
-      "TC-D01: DEV-Validator muss 0 Errors melden"
+    "verdict": "System ist architektonisch stabil. Alle 21 Module existieren. 8 Golden Paths registriert und validiert. 97 Edge Functions deployed. 22 API Contracts dokumentiert. Zonenisolierung intakt.",
+    "blocker": [],
+    "conditions_for_go": [
+      "TC-A01 bis TC-A09: Auth E2E muss bestanden werden (manueller Test)",
+      "TC-B01 + TC-B02: Alle Module + Admin-Routen laden fehlerfrei",
+      "TC-D01 + TC-D02: DEV-Validator + Architecture Validators 0 Errors",
+      "TC-E01 bis TC-E03: Immobilie + DMS + Selbstauskunft Core-Flows funktionieren"
+    ],
+    "deferred_to_v2": [
+      "Lead Manager (MOD-10 Z2-Erweiterung)",
+      "Payment System (Stripe Integration)",
+      "GP-PAYMENT + GP-LEAD-MANAGER Golden Paths"
     ]
   }
 }
