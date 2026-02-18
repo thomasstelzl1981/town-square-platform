@@ -1,47 +1,59 @@
 
 
-## Lennox & Friends — Shop-Header und Partner-werden-Redesign
+## Lennox Shop -- Ueberarbeitung
 
-### 1. Shop-Hero vergroessern
+### 1. Sektionsbeschreibungen hinzufuegen
 
-Die Shop-Seite (`LennoxShop.tsx`) hat aktuell nur `35vh` Hoehe fuer den Hero-Bereich. Das wird auf `50vh` erhoegt, damit der Header visuell gleichwertig zur Startseite wirkt und das Bild nicht abgeschnitten ist.
+Jede Produktkategorie bekommt einen erklaerenden Textblock zwischen Ueberschrift und Produktgrid:
 
-### 2. Partner-werden: Neues Hero-Bild generieren
+**Ernaehrung (Lakefields):**
+- Erklaerung, warum Lakefields empfohlen wird: Manufaktur am Bodensee, Lebensmittelqualitaet, mit Tieraerzten entwickelt, ohne Getreide/Zusatzstoffe/Zucker, Fleisch aus artgerechter Haltung, ohne Tierversuche
+- Link zur Lakefields-Website
 
-Ein neues AI-generiertes Bild wird erstellt: Menschen und Hunde in alpiner Umgebung, die zusammenarbeiten — Teamwork, Netzwerk-Charakter, famililaer. Wird als `src/assets/lennox/partner_hero.jpg` gespeichert.
+**Lennox Style:**
+- Kurzer Text: "Fuer unsere Fans haben wir eine kleine Kollektion an Accessoires gestaltet — mit Liebe zum Detail und dem unverwechselbaren Lennox-Style."
 
-### 3. Partner-werden: Komplettes Redesign
+**Fressnapf:**
+- Text anpassen auf Spielzeug und Hundezubehoer statt Zahnpflege
 
-Die Seite `LennoxPartnerWerden.tsx` wird grundlegend ueberarbeitet:
+### 2. Produktkacheln gleichmaessig gestalten
 
-**Neuer Hero-Bereich:**
-- Vollbreites Bild (50vh) mit Overlay, wie bei Shop und Startseite
-- Titel: "Werde Partner in deiner Region"
-- Untertitel: Netzwerk-Botschaft
+Das aktuelle Grid zeigt Kacheln mit unterschiedlicher Hoehe, weil Texte und Badges unterschiedlich lang sind. Loesung:
 
-**Neue Inhalts-Sektion "Unsere Vision":**
-- Text ueber das Ziel: deutschlandweites Netzwerk geprüfter Hundeprofis
-- Gruenderin mit langjahhriger Erfahrung in Bayern
-- Zentrale Plattform fuer jeden Hundehalter
-- Exklusiver Regionalpartner werden
+- Feste Hoehe fuer die Produktkarten (`h-full` mit `flex flex-col` und `flex-1` auf den Textbereich)
+- Einheitliches `aspect-square` fuer alle Bildcontainer (bereits vorhanden)
+- Textbereich mit `min-h-[3.5rem]` damit alle Karten gleich hoch sind
+- `justify-between` auf der gesamten Card fuer gleichmaessige Verteilung
 
-**Ueberarbeitete Benefits (5 statt 3):**
-- Exklusivitaet fuer deine Region
-- Buchungen ueber die Plattform
-- Teil einer wachsenden Community
-- Professionelle Sichtbarkeit
-- Kuratierte Produkttipps
+### 3. Fressnapf-Produkte austauschen (DB-Update)
 
-**Formular:**
-- Alpine-Chic-Farbpalette (forest, cream, bark) wie Startseite
-- Dunkle Labels, helle Hintergruende — Kontrast-Problem behoben
-- Eingabefelder mit sichtbarem Border und dunklem Text
+Die aktuellen Fressnapf-Eintraege haben:
+- Generische Kategorie-Flyout-Bilder (Katze, Vogel, Fisch, Kleintier, etc.) statt echte Produktbilder
+- Zahnpflege-Produkte statt Hundespielzeug
+
+**DB-Migration:** Alle 9+ Fressnapf-Produkte werden aktualisiert mit:
+- Echten Fressnapf-Produktbildern (von den Produktseiten, Format: `https://media.os.fressnapf.com/products-v2/...`)
+- Hundespielzeug und -zubehoer statt Zahnpflege:
+  1. AniOne Spielzeug Herz zum Kauen und Zerren -- Seilspielzeug
+  2. KONG Classic S -- Kauspielzeug-Klassiker
+  3. AniOne Kuschelspielzeug -- Plueschtier
+  4. Tennisbaelle fuer Hunde
+  5. Wurfspielzeug / Frisbee
+  6. Intelligenzspielzeug
+- Neue `external_url`s zu den richtigen Fressnapf-Produktseiten
+- Passende Preise und Badges
+
+### 4. Code-Aenderung in LennoxShop.tsx
+
+Die `ProductSection`-Komponente wird erweitert:
+- Neues optionales Prop `intro` (React-Node oder String) fuer den Erklaerungstext
+- `SHOP_SECTIONS`-Array bekommt ein `intro`-Feld pro Kategorie
+- Card-Styling: `h-full flex flex-col` mit `flex-1` auf dem Textbereich
 
 ### Technische Aenderungen
 
-| Datei | Aenderung |
-|-------|-----------|
-| `LennoxShop.tsx` | Hero-Hoehe von `35vh` auf `50vh` erhoehen |
-| `LennoxPartnerWerden.tsx` | Komplett ueberarbeiten: Hero-Bild, neue Texte, Alpine-Chic-Palette, Formular-Kontrast fixen |
-| `src/assets/lennox/partner_hero.jpg` | Neues AI-generiertes Bild (Menschen + Hunde, alpine Teamwork-Szene) |
+| Datei / Bereich | Aenderung |
+|-----------------|-----------|
+| `LennoxShop.tsx` | `SHOP_SECTIONS` um `intro`-Texte erweitern; `ProductSection` um Intro-Block erweitern; Card-Layout fuer gleichmaessige Hoehe anpassen |
+| DB: `pet_shop_products` | Fressnapf-Produkte loeschen und durch Hundespielzeug/Zubehoer mit echten Produktbildern ersetzen |
 
