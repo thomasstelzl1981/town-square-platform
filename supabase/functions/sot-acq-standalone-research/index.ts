@@ -164,7 +164,7 @@ Antworte NUR mit dem JSON, ohne Erklärungen oder Markdown-Formatierung.`;
   } catch (error) {
     console.error('[standalone-research] Error:', error);
     return new Response(
-      JSON.stringify({ error: error.message || 'Research fehlgeschlagen' }),
+      JSON.stringify({ error: (error as Error).message || 'Research fehlgeschlagen' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

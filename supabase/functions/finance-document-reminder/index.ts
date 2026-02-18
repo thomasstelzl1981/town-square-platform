@@ -93,7 +93,7 @@ serve(async (req) => {
     let emailsSent = 0;
 
     // 3. Process each reminder
-    for (const reminder of reminders as ReminderRecord[]) {
+    for (const reminder of (reminders as unknown) as ReminderRecord[]) {
       try {
         // Get applicant profile to check employment type
         const { data: profile } = await supabase
@@ -129,7 +129,7 @@ serve(async (req) => {
             .eq("object_id", profile.id);
 
           uploadedDocTypes = (applicantDocs || [])
-            .map((d: DocumentLink) => d.document?.doc_type)
+            .map((d: any) => d.document?.doc_type)
             .filter(Boolean) as string[];
         }
 
@@ -143,7 +143,7 @@ serve(async (req) => {
             .eq("object_id", reminder.finance_request_id);
 
           const requestDocTypes = (requestDocs || [])
-            .map((d: DocumentLink) => d.document?.doc_type)
+            .map((d: any) => d.document?.doc_type)
             .filter(Boolean) as string[];
 
           uploadedDocTypes = [...uploadedDocTypes, ...requestDocTypes];
