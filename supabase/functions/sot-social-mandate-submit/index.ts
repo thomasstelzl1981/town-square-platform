@@ -33,6 +33,7 @@ serve(async (req) => {
     const body = await req.json();
     const {
       tenant_id,
+      brand_context,
       budget_total_cents,
       start_date,
       end_date,
@@ -50,6 +51,21 @@ serve(async (req) => {
       });
     }
 
+    // Validate brand_context if provided
+    if (brand_context) {
+      const { data: brandAsset } = await supabase
+        .from("social_brand_assets")
+        .select("brand_context")
+        .eq("brand_context", brand_context)
+        .eq("active", true)
+        .single();
+      if (!brandAsset) {
+        return new Response(JSON.stringify({ error: "Invalid or inactive brand_context" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+
     // Create mandate
     const { data: mandate, error: mandateError } = await supabase
       .from("social_mandates")
@@ -58,6 +74,7 @@ serve(async (req) => {
         partner_user_id: user.id,
         partner_display_name: partner_display_name || user.email,
         status: "submitted",
+        brand_context: brand_context || "kaufy",
         budget_total_cents: budget_total_cents || 0,
         start_date,
         end_date,

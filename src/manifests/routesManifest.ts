@@ -359,27 +359,28 @@ export const zone2Portal: ZoneDefinition = {
         { path: "beratung", component: "BeratungTab", title: "Beratung" },
         { path: "kunden", component: "KundenTab", title: "Kunden" },
         { path: "network", component: "NetworkTab", title: "Netzwerk" },
-        { path: "leads", component: "LeadsTab", title: "Leadeingang" },
       ],
       dynamic_routes: [
         { path: "katalog/:publicId", component: "KatalogDetailPage", title: "Katalog-Detail", dynamic: true },
         { path: "beratung/objekt/:publicId", component: "PartnerExposePage", title: "Partner-Exposé", dynamic: true },
-        { path: "selfie-ads", component: "SelfieAdsStudio", title: "Selfie Ads Studio" },
-        { path: "selfie-ads-planen", component: "SelfieAdsPlanen", title: "Kampagne planen" },
-        { path: "selfie-ads-summary", component: "SelfieAdsSummary", title: "Kampagne Zusammenfassung" },
-        { path: "selfie-ads-kampagnen", component: "SelfieAdsKampagnen", title: "Kampagnen" },
-        { path: "selfie-ads-performance", component: "SelfieAdsPerformance", title: "Performance" },
-        { path: "selfie-ads-abrechnung", component: "SelfieAdsAbrechnung", title: "Abrechnung" },
       ],
     },
     "MOD-10": {
-      name: "Provisionen",
-      base: "provisionen",
-      icon: "CreditCard",
+      name: "Lead Manager",
+      base: "lead-manager",
+      icon: "Megaphone",
       display_order: 10,
       visibility: { default: false, org_types: ["partner"], requires_activation: true },
       tiles: [
-        { path: "uebersicht", component: "ProvisionenUebersicht", title: "Übersicht" },
+        { path: "uebersicht", component: "LeadManagerUebersicht", title: "Übersicht", default: true },
+        { path: "kampagnen", component: "LeadManagerKampagnen", title: "Kampagnen" },
+        { path: "studio", component: "LeadManagerStudio", title: "Studio" },
+        { path: "leads", component: "LeadManagerLeads", title: "Leads" },
+      ],
+      dynamic_routes: [
+        { path: "kampagnen/:mandateId", component: "LeadManagerKampagneDetail", title: "Kampagne Detail", dynamic: true },
+        { path: "studio/planen", component: "LeadManagerStudioPlanen", title: "Kampagne planen" },
+        { path: "studio/summary", component: "LeadManagerStudioSummary", title: "Zusammenfassung" },
       ],
     },
     // =========================================================================
@@ -692,6 +693,19 @@ export const legacyRoutes: LegacyRoute[] = [
   { path: "/website/tierservice/anbieter/:providerId/buchen", redirect_to: "/website/tierservice", reason: "Lennox redesign — booking inline" },
   { path: "/website/tierservice/profil", redirect_to: "/website/tierservice/mein-bereich", reason: "Lennox redesign — merged into mein-bereich" },
   { path: "/website/tierservice/profil/tiere", redirect_to: "/website/tierservice/mein-bereich", reason: "Lennox redesign — merged into mein-bereich" },
+  // Legacy MOD-10 Routes (Provisionen → Lead Manager)
+  { path: "/portal/provisionen", redirect_to: "/portal/lead-manager", reason: "MOD-10 rename to Lead Manager" },
+  { path: "/portal/provisionen/*", redirect_to: "/portal/lead-manager", reason: "MOD-10 rename to Lead Manager" },
+  { path: "/portal/leads", redirect_to: "/portal/lead-manager", reason: "MOD-10 legacy leads path" },
+  { path: "/portal/leads/*", redirect_to: "/portal/lead-manager", reason: "MOD-10 legacy leads path" },
+  // Legacy MOD-09 Selfie Ads → Lead Manager
+  { path: "/portal/vertriebspartner/leads", redirect_to: "/portal/lead-manager/leads", reason: "MOD-09 leads moved to MOD-10" },
+  { path: "/portal/vertriebspartner/selfie-ads", redirect_to: "/portal/lead-manager/studio", reason: "Selfie Ads moved to Lead Manager" },
+  { path: "/portal/vertriebspartner/selfie-ads-planen", redirect_to: "/portal/lead-manager/studio/planen", reason: "Selfie Ads moved to Lead Manager" },
+  { path: "/portal/vertriebspartner/selfie-ads-summary", redirect_to: "/portal/lead-manager/studio/summary", reason: "Selfie Ads moved to Lead Manager" },
+  { path: "/portal/vertriebspartner/selfie-ads-kampagnen", redirect_to: "/portal/lead-manager/kampagnen", reason: "Selfie Ads moved to Lead Manager" },
+  { path: "/portal/vertriebspartner/selfie-ads-performance", redirect_to: "/portal/lead-manager/kampagnen", reason: "Selfie Ads moved to Lead Manager" },
+  { path: "/portal/vertriebspartner/selfie-ads-abrechnung", redirect_to: "/portal/lead-manager/kampagnen", reason: "Selfie Ads moved to Lead Manager" },
 ];
 
 // =============================================================================

@@ -16770,6 +16770,77 @@ export type Database = {
           },
         ]
       }
+      social_brand_assets: {
+        Row: {
+          active: boolean
+          brand_context: string
+          created_at: string
+          display_name: string
+          id: string
+          meta_ad_account_id: string | null
+          meta_ig_actor_id: string | null
+          meta_page_id: string | null
+        }
+        Insert: {
+          active?: boolean
+          brand_context: string
+          created_at?: string
+          display_name: string
+          id?: string
+          meta_ad_account_id?: string | null
+          meta_ig_actor_id?: string | null
+          meta_page_id?: string | null
+        }
+        Update: {
+          active?: boolean
+          brand_context?: string
+          created_at?: string
+          display_name?: string
+          id?: string
+          meta_ad_account_id?: string | null
+          meta_ig_actor_id?: string | null
+          meta_page_id?: string | null
+        }
+        Relationships: []
+      }
+      social_budget_caps: {
+        Row: {
+          created_at: string
+          id: string
+          last_synced_at: string | null
+          manager_user_id: string
+          monthly_cap_cents: number
+          spend_month_to_date_cents: number
+          tenant_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_synced_at?: string | null
+          manager_user_id: string
+          monthly_cap_cents?: number
+          spend_month_to_date_cents?: number
+          tenant_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_synced_at?: string | null
+          manager_user_id?: string
+          monthly_cap_cents?: number
+          spend_month_to_date_cents?: number
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_budget_caps_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       social_campaigns: {
         Row: {
           budget_cents: number | null
@@ -17179,13 +17250,16 @@ export type Database = {
       social_leads: {
         Row: {
           autoresponder_status: string
+          brand_context: string | null
           campaign_id: string | null
           consent_flags: Json | null
           created_at: string
           id: string
           lead_data: Json | null
+          lead_status: string
           mandate_id: string | null
           meta_payload_raw: Json | null
+          notes: string | null
           partner_user_id: string | null
           platform: string | null
           routed_to_zone2: boolean
@@ -17195,13 +17269,16 @@ export type Database = {
         }
         Insert: {
           autoresponder_status?: string
+          brand_context?: string | null
           campaign_id?: string | null
           consent_flags?: Json | null
           created_at?: string
           id?: string
           lead_data?: Json | null
+          lead_status?: string
           mandate_id?: string | null
           meta_payload_raw?: Json | null
+          notes?: string | null
           partner_user_id?: string | null
           platform?: string | null
           routed_to_zone2?: boolean
@@ -17211,13 +17288,16 @@ export type Database = {
         }
         Update: {
           autoresponder_status?: string
+          brand_context?: string | null
           campaign_id?: string | null
           consent_flags?: Json | null
           created_at?: string
           id?: string
           lead_data?: Json | null
+          lead_status?: string
           mandate_id?: string | null
           meta_payload_raw?: Json | null
+          notes?: string | null
           partner_user_id?: string | null
           platform?: string | null
           routed_to_zone2?: boolean
@@ -17252,6 +17332,7 @@ export type Database = {
       social_mandates: {
         Row: {
           audience_preset: Json | null
+          brand_context: string
           budget_total_cents: number | null
           created_at: string
           end_date: string | null
@@ -17271,6 +17352,7 @@ export type Database = {
         }
         Insert: {
           audience_preset?: Json | null
+          brand_context?: string
           budget_total_cents?: number | null
           created_at?: string
           end_date?: string | null
@@ -17290,6 +17372,7 @@ export type Database = {
         }
         Update: {
           audience_preset?: Json | null
+          brand_context?: string
           budget_total_cents?: number | null
           created_at?: string
           end_date?: string | null
@@ -17313,6 +17396,53 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      social_meta_mapping: {
+        Row: {
+          created_at: string
+          id: string
+          last_sync_at: string | null
+          mandate_id: string
+          meta_ad_id: string | null
+          meta_adset_id: string | null
+          meta_campaign_id: string | null
+          meta_creative_id: string | null
+          meta_form_id: string | null
+          meta_page_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_sync_at?: string | null
+          mandate_id: string
+          meta_ad_id?: string | null
+          meta_adset_id?: string | null
+          meta_campaign_id?: string | null
+          meta_creative_id?: string | null
+          meta_form_id?: string | null
+          meta_page_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_sync_at?: string | null
+          mandate_id?: string
+          meta_ad_id?: string | null
+          meta_adset_id?: string | null
+          meta_campaign_id?: string | null
+          meta_creative_id?: string | null
+          meta_form_id?: string | null
+          meta_page_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_meta_mapping_mandate_id_fkey"
+            columns: ["mandate_id"]
+            isOneToOne: false
+            referencedRelation: "social_mandates"
             referencedColumns: ["id"]
           },
         ]
@@ -17418,6 +17548,7 @@ export type Database = {
       social_templates: {
         Row: {
           active: boolean
+          brand_context: string
           ci_rules: Json | null
           code: string
           created_at: string
@@ -17431,6 +17562,7 @@ export type Database = {
         }
         Insert: {
           active?: boolean
+          brand_context?: string
           ci_rules?: Json | null
           code: string
           created_at?: string
@@ -17444,6 +17576,7 @@ export type Database = {
         }
         Update: {
           active?: boolean
+          brand_context?: string
           ci_rules?: Json | null
           code?: string
           created_at?: string

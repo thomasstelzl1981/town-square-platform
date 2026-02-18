@@ -106,7 +106,7 @@ const FinanzierungPage = React.lazy(() => import('@/pages/portal/FinanzierungPag
 const FinanzierungsmanagerPage = React.lazy(() => import('@/pages/portal/FinanzierungsmanagerPage'));
 const InvestmentsPage = React.lazy(() => import('@/pages/portal/InvestmentsPage'));
 const VertriebspartnerPage = React.lazy(() => import('@/pages/portal/VertriebspartnerPage'));
-const LeadsPage = React.lazy(() => import('@/pages/portal/LeadsPage'));
+const LeadManagerPage = React.lazy(() => import('@/pages/portal/LeadManagerPage'));
 const AkquiseManagerPage = React.lazy(() => import('@/pages/portal/AkquiseManagerPage'));
 const ProjektePage = React.lazy(() => import('@/pages/portal/ProjektePage'));
 const CommunicationProPage = React.lazy(() => import('@/pages/portal/CommunicationProPage'));
@@ -289,7 +289,7 @@ const portalModulePageMap: Record<string, React.LazyExoticComponent<React.Compon
   finanzierungsmanager: FinanzierungsmanagerPage,
   investments: InvestmentsPage,
   vertriebspartner: VertriebspartnerPage,
-  provisionen: LeadsPage,
+  'lead-manager': LeadManagerPage,
   'akquise-manager': AkquiseManagerPage,
   projekte: ProjektePage,
   'communication-pro': CommunicationProPage,
