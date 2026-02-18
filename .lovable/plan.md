@@ -1,46 +1,62 @@
 
 
-# Fix: Konto-Zuordnung und Geldeingang-Kontoabgleich
+# Pruefergebnis: NK/BWA Engine und Konteneröffnungsvorlage
 
-## Probleme (aus Screenshots)
+## NK/BWA Engine: KORREKT
 
-### Problem 1: Demo-Konto Zuordnungs-Select ist nicht klickbar
-- In `KontoAkteInline.tsx` Zeile 255: `disabled={isDemo}` blockiert den Select komplett
-- Der Demo-Konto hat zwar `owner_type: 'property'` gesetzt, aber der Select zeigt keinen Wert an, weil das UI den Zuordnungs-Wert nicht sichtbar macht (der encoded Value `property::d0000000-...` wird zwar in `currentValue` berechnet, aber das Select ist disabled bevor es rendern kann)
-- **Fix**: Fuer Demo-Konten den Select NICHT disablen, sondern stattdessen `readOnly`-artig verhalten — Wert anzeigen, Aenderungen nur lokal (kein DB-Write). Alternativ: Zuordnung als statischen Text anzeigen statt als disabled Select
+Beide Engines sind sauber implementiert:
 
-### Problem 2: Geldeingang — Toggle und Konto-Select funktionslos
-- In `GeldeingangTab.tsx` Zeile 352: `value={lease.linked_bank_account_id || ''}` setzt den Select-Value auf leeren String `''` — das ist das bekannte Radix-UI Problem (leere Strings sind ungueltig)
-- Es gibt **0 Bank-Accounts** in der DB (`msv_bank_accounts` ist leer), daher ist der Select-Dropdown komplett leer
-- Der Toggle (`Switch`) schreibt `auto_match_enabled` in die DB, das funktioniert technisch, aber da kein Konto verknuepft ist, hat es keinen Effekt
-- **Fix**: Select-Value `''` durch `undefined` ersetzen, "none"-Wert-Pattern nutzen
+- **NK-Abrechnung Engine** (`src/engines/nkAbrechnung/`):
+  - `spec.ts`: Vollstaendige Typdefinitionen mit allen 18 BetrKV-Kategorien, Verteilerschluessel (Flaeche, MEA, Personen, Verbrauch, Einheiten), Readiness-Status
+  - `allocationLogic.ts`: Korrekte Verteilungsberechnung inkl. unterjaehriger Anteilsberechnung (Tage-Ratio)
+  - `engine.ts`: Orchestrierung laedt Lease, Unit, Property, Kontaktname, NK-Periode und berechnet die Abrechnungsmatrix inkl. Vorauszahlungen
+  - Bewohneranzahl wird korrekt aus `lease.number_of_occupants` (Default: 2) und `property.total_occupants` gelesen
 
-### Problem 3: Demo-Konto existiert nicht in der Datenbank
-- Die Tabelle `msv_bank_accounts` ist komplett leer
-- Daher kann im Geldeingang auch kein Konto gewaehlt werden
-- Die Demo-Konten muessen als echte DB-Eintraege existieren oder das Select muss auch Demo-Konten anzeigen
+- **BWA Engine** (`src/engines/bewirtschaftung/`):
+  - `spec.ts`: Saubere Interfaces fuer BWA, Instandhaltung (Peters'sche Formel), Leerstand, Mietpotenzial
+  - `engine.ts`: Reine Funktionen ohne Seiteneffekte, getestet (`engine.test.ts` vorhanden)
+
+Keine Aenderungen noetig.
+
+---
+
+## Konteneröffnungsvorlage: 2 BUGS
+
+### Bug 1: `AddBankAccountDialog` fragt `properties.name` ab — Spalte existiert nicht
+
+In `src/components/shared/AddBankAccountDialog.tsx` Zeile 73:
+```
+supabase.from('properties').select('id, name').eq('tenant_id', activeTenantId)
+```
+
+Die Tabelle `properties` hat KEINE Spalte `name`. Es gibt nur `address` und `city`. Daher erscheinen Immobilien zwar im Dropdown, aber mit dem Fallback-Label "Immobilie" statt des echten Namens.
+
+**Fix**: Query aendern zu `select('id, address, city')` und Label bauen als `"Leopoldstr., Muenchen"` etc.
+
+### Bug 2: Inkonsistentes Zuordnungsmodell zwischen den Komponenten
+
+| Komponente | Fragt ab | owner_type |
+|------------|----------|------------|
+| `KontoAkteInline` | `landlord_contexts` | `'property'` |
+| `AddBankAccountDialog` | `properties` | `'property'` |
+
+Beide verwenden `owner_type = 'property'`, aber **verschiedene Tabellen** und **verschiedene IDs**. Das Demo-Konto hat `owner_id = d0...0010` (eine `landlord_contexts`-ID), nicht eine `properties`-ID.
+
+**Loesung**: `AddBankAccountDialog` muss dieselbe Logik verwenden wie `KontoAkteInline` — also `landlord_contexts` statt `properties` fuer den Typ "Vermietereinheit" abfragen. Oder alternativ einen neuen `owner_type = 'landlord_context'` einfuehren (waere aber ein groesserer Umbau).
+
+Empfehlung: In `AddBankAccountDialog` die Query von `properties` auf `landlord_contexts` umstellen, Label auf `c.name` setzen, und Select-Group-Label von "Vermietereinheiten" beibehalten.
+
+---
 
 ## Aenderungen
 
-### 1. `src/components/finanzanalyse/KontoAkteInline.tsx`
-- Den `disabled={isDemo}` vom Zuordnungs-Select entfernen
-- Stattdessen fuer Demo-Konten die Zuordnung als lesbaren Text/Badge anzeigen ODER den Select aktiviert lassen (Aenderungen bleiben nur clientseitig, kein DB-Write da `!isDemo`-Guard schon vorhanden in `handleOwnerChange`)
+### Datei 1: `src/components/shared/AddBankAccountDialog.tsx`
 
-### 2. `src/components/portfolio/GeldeingangTab.tsx`
-- Select-Value Fix: `value={lease.linked_bank_account_id || ''}` aendern zu `value={lease.linked_bank_account_id || undefined}`
-- `onValueChange`: Wert `"none"` als Null-Reset behandeln
-- Ein `SelectItem value="none"` hinzufuegen fuer "Kein Konto"
-- Wenn keine Bank-Accounts vorhanden: Info-Text statt leeres Dropdown anzeigen
+- Zeile 73: `properties`-Query ersetzen durch `landlord_contexts`-Query
+- Zeile 79-81: Label-Generierung anpassen auf `c.name || 'Vermietereinheit'`
+- Typ bleibt `'property'` fuer Abwaertskompatibilitaet mit bestehendem `owner_type`-Feld
 
-### 3. Demo-Konto in DB seeden (optional, aber empfohlen)
-- Das Demo-Konto (`DEMO_KONTO`) als echten Eintrag in `msv_bank_accounts` anlegen (ueber den Demo-Seeder), damit es im Geldeingang-Tab ausgewaehlt werden kann
-- Alternativ: Die `bankAccounts`-Query im GeldeingangTab um Demo-Konto-Daten ergaenzen wenn Demo-Tenant aktiv ist
+### Keine weiteren Dateien betroffen
 
-## Technische Details
-
-| Datei | Aenderung |
-|-------|-----------|
-| `src/components/finanzanalyse/KontoAkteInline.tsx` | `disabled={isDemo}` entfernen, Zuordnung fuer Demo sichtbar machen |
-| `src/components/portfolio/GeldeingangTab.tsx` | Select-Value-Fix (`undefined` statt `''`), "none"-Option, leere-Liste-Handling |
-| Demo-Seeder (optional) | Demo-Konto als DB-Eintrag in `msv_bank_accounts` anlegen |
+Die NK/BWA Engines bleiben unveraendert. Nach diesem Fix funktioniert "Konto manuell anlegen" korrekt mit den richtigen Vermietereinheiten im Dropdown, und neue Konten erhalten die korrekte `owner_id` (die `landlord_contexts.id`).
 
