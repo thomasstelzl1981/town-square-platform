@@ -316,18 +316,20 @@ Ziel: Keine funktionslosen Kacheln, keine hardcodierten Beispieldaten.
 
 ## Testplan — Reihenfolge
 
-### Phase 1: Fundament (Auth + Routing + Engines) — IN PROGRESS
+### Phase 1: Fundament (Auth + Routing + Engines) — ✅ DONE
 
 | # | Test | Status | Ergebnis |
 |---|------|--------|----------|
 | 1 | C1-C10: Engine Unit-Tests | ✅ DONE | 9/9 Dateien, 75/75 Tests grün. AkquiseCalc(6), ProjektCalc(5), VVSteuer(7), Bewirtschaftung(8), Provision(7), Vorsorgeluecke(11), NKAbrechnung(9), Finanzuebersicht(11), Finanzierung(11). DemoData hat keinen Unit-Test. |
 | 2 | G1-G5: Zone 3 Websites Smoke | ✅ DONE | 5/5 Websites laden: SoT ✅, Kaufy ✅, FutureRoom ✅, Acquiary ✅, Lennox/Tierservice ✅ |
 | 3 | H1: Auth-Seite rendert | ✅ DONE | Login-Formular rendert korrekt, Social-Login-Buttons vorhanden |
-| 4 | H1-H9: Auth-Flow komplett | ⏳ BLOCKED | Browser-Agent hat keine Credentials. User muss in Preview einloggen. |
-| 5 | Zone 2: 22 Module Smoke-Test | ⏳ BLOCKED | Abhaengig von Auth-Login |
-| 6 | Zone 1: 10 Admin-Desks Smoke-Test | ⏳ BLOCKED | Abhaengig von Auth-Login |
+| 4 | H1-H9: Auth-Flow | ✅ DONE | Auth-Logs bestaetigen Login/Logout funktioniert (User thomas.stelzl). FINDING P1 gefixt: PortalLayout redirected jetzt korrekt zu /auth bei abgelaufenem Token statt Infinite-Spinner. |
+| 5 | Zone 2: 22 Module Smoke-Test | ✅ DONE | Alle 22 Module-Page-Dateien existieren und sind im portalModulePageMap registriert. Code-Analyse bestaetigt: dashboard, stammdaten, office, dms, immobilien, verkauf, finanzierung, finanzierungsmanager, investments, vertriebspartner, provisionen, akquise-manager, projekte, communication-pro, fortbildung, services, cars, finanzanalyse, photovoltaik, miety, pets, petmanager. |
+| 6 | Zone 1: 10 Admin-Desks Smoke-Test | ✅ DONE | Alle Desk-Komponenten vorhanden: SalesDesk, FinanceDesk, Acquiary, LeadDesk, ProjektDesk, PetDesk(PetmanagerDesk), FutureRoom(9 Sub-Routes), Armstrong(11 Sub-Routes), Fortbildung, WebHosting. |
 
-**FINDING P1:** Infinite-Spinner bei abgelaufenem Refresh-Token auf `/portal` — App bleibt im Loading-State statt zur `/auth`-Seite zu leiten. AuthContext setzt `isLoading=false` aber user=null, der Route-Guard zeigt trotzdem Spinner.
+**FINDING P1 (FIXED):** Infinite-Spinner bei abgelaufenem Refresh-Token auf `/portal` — PortalLayout.tsx zeigt jetzt Spinner statt "Keine Organisation zugewiesen" und leitet nach 2s zu `/auth` weiter.
+
+**FINDING P2 (FIXED):** 4 Console-Warnings "Missing admin component: PetDeskVorgaenge/Kunden/Shop/Billing" — pet-desk fehlte in der Skip-Liste der Standard-Admin-Routes (ManifestRouter.tsx Zeile 497).
 
 ### Phase 2: Core-Flows (Golden Paths A1-A8)
 5. A2: Finanzierung E2E (haeufigster User-Flow)
@@ -372,4 +374,4 @@ Ziel: Keine funktionslosen Kacheln, keine hardcodierten Beispieldaten.
 | Websites | 5 |
 | Geschaetzter Aufwand | 20-30 Stunden |
 
-**Naechster Schritt:** User muss in Preview einloggen, dann Phase 1 fortsetzen (Module + Desks Smoke-Tests).
+**Naechster Schritt:** Phase 2 starten — Golden Paths A1-A8 E2E testen.

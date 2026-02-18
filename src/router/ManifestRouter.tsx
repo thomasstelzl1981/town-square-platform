@@ -494,7 +494,7 @@ export function ManifestRouter() {
         {/* Standard Admin Routes */}
         {zone1Admin.routes?.map((route) => {
           // Skip desk routes (handled above)
-          if (['futureroom', 'sales-desk', 'finance-desk', 'acquiary', 'projekt-desk'].some(desk => route.path.startsWith(desk))) {
+          if (['futureroom', 'sales-desk', 'finance-desk', 'acquiary', 'projekt-desk', 'pet-desk'].some(desk => route.path.startsWith(desk))) {
             return null;
           }
           
