@@ -1,70 +1,71 @@
 
 
-## MOD-11 Finanzierungsmanager: Dashboard + Finanzierungsakte aufraumen
+## Visitenkarte: Provider-Seed-Daten anzeigen
 
-### Probleme (aus Screenshots)
+### Problem
 
-| Problem | Wo | Loesung |
-|---------|-----|---------|
-| "Neuer Fall" ist ein breiter blauer Button statt runder Glasbutton | Dashboard, rechts oben | Runder Glasbutton (variant="glass", size="icon-round") wie CI-Standard |
-| Widget-Leiste oben auf Finanzierungsakte zeigt "00000000 active" und "Aktuelle Akte" | Finanzierungsakte, Zeilen 217-243 | Komplett entfernen — verwirrt, fuehrt nirgendwo hin |
-| Pfeil-Button (ArrowLeft) fuehrt zurueck zum Dashboard — redundant | Finanzierungsakte, Zeile 247 | Entfernen — Navigation erfolgt ueber Sub-Tabs |
-| Header "NEUE FINANZIERUNGSAKTE" ist ein eigener div statt ModulePageHeader | Finanzierungsakte, Zeilen 246-273 | Durch `ModulePageHeader` ersetzen mit Titel "Finanzierungsakte" + runder Plus-Button und Split-View-Toggle als Actions |
-| Demo-Widget "Max Muster, Berlin" fuehrt zu Route `faelle/__demo__` die nicht existiert | Dashboard WidgetGrid | Bleibt als Demo-Widget, aber Route wird geprueft/korrigiert |
+Die `ManagerVisitenkarte` zeigt Name, E-Mail, Telefon und Adresse ausschliesslich aus dem Auth-Profil (`useAuth().profile`). Die in der Datenbank hinterlegten Provider-Daten (Lennox & Friends Dog Resorts, Rathausstr. 12, Ottobrunn, etc.) erscheinen nur als kleines Badge unten — nicht in den Kontaktzeilen der Karte.
 
-### Umsetzung
+### Loesung
 
-**1. `FMDashboard.tsx` — "Neuer Fall" Button**
+Die `ManagerVisitenkarte` bekommt optionale Override-Props fuer die Kontaktfelder. Wenn gesetzt, haben diese Vorrang vor den Auth-Profil-Daten. So kann der Pet Manager die Provider-Daten durchreichen, waehrend andere Module weiterhin das Auth-Profil verwenden.
 
-Aktuell (Zeile 279):
-```tsx
-<Button onClick={...} size="sm">
-  <Plus /> Neuer Fall
-</Button>
+### Technische Umsetzung
+
+**1. `src/components/shared/ManagerVisitenkarte.tsx`**
+
+Neue optionale Props im Interface:
+
+```typescript
+interface ManagerVisitenkarteProps {
+  // ... bestehende Props
+  overrideName?: string;
+  overrideEmail?: string;
+  overridePhone?: string;
+  overrideAddress?: string;
+}
 ```
 
-Neu (CI-Standard runder Glasbutton):
-```tsx
-<Button variant="glass" size="icon-round" onClick={...}>
-  <Plus className="h-4 w-4" />
-</Button>
+In der Render-Logik ersetzen die Overrides die Auth-Profil-Werte:
+
+```typescript
+const displayName = overrideName || fullName;
+const displayEmail = overrideEmail || profile?.email;
+const displayPhone = overridePhone || profile?.phone_mobile;
+const displayAddress = overrideAddress || fullAddress;
 ```
 
-**2. `FMFinanzierungsakte.tsx` — Widget-Leiste + Header**
+**2. `src/pages/portal/petmanager/PMDashboard.tsx`**
 
-- **Zeilen 217-243 loeschen**: Die gesamte `existingCases`-WidgetGrid mit den Kacheln "00000000" und "Aktuelle Akte" wird entfernt
-- **Zeilen 246-273 ersetzen**: Der eigene Header-div (ArrowLeft + h2 + Split-View-Toggle) wird durch `ModulePageHeader` ersetzt:
+Die Provider-Daten werden als Overrides an die Visitenkarte durchgereicht:
 
 ```tsx
-<ModulePageHeader
-  title="Finanzierungsakte"
-  description="Neue Akte manuell befuellen und erstellen"
-  actions={
-    <div className="flex items-center gap-2">
-      {/* Split-View Toggle */}
-      <div className="hidden lg:flex items-center gap-1 border rounded-lg p-0.5">
-        <Button variant={!splitView ? 'default' : 'ghost'} size="sm" ...>Standard</Button>
-        <Button variant={splitView ? 'default' : 'ghost'} size="sm" ...>Split-View</Button>
-      </div>
-      {/* Runder Plus-Button fuer neue Akte */}
-      <Button variant="glass" size="icon-round" onClick={...}>
-        <Plus className="h-4 w-4" />
-      </Button>
-    </div>
-  }
+<ManagerVisitenkarte
+  role="Inhaberin"
+  gradientFrom="hsl(170,60%,40%)"
+  gradientTo="hsl(180,55%,35%)"
+  badgeText={provider.company_name || 'Lennox & Friends Dog Resorts'}
+  extraBadge={FACILITY_LABELS[(provider as any).facility_type] || 'Tierpension'}
+  overrideName={provider.company_name}
+  overrideEmail={provider.email}
+  overridePhone={provider.phone}
+  overrideAddress={provider.address}
 />
 ```
 
-### Technische Dateien
+### Dateien
 
 | Datei | Aktion |
 |-------|--------|
-| `src/pages/portal/finanzierungsmanager/FMDashboard.tsx` | EDIT — "Neuer Fall" Button auf runden Glasbutton umstellen |
-| `src/pages/portal/finanzierungsmanager/FMFinanzierungsakte.tsx` | EDIT — Widget-Leiste (existingCases) entfernen, Header durch ModulePageHeader ersetzen, ArrowLeft entfernen |
+| `src/components/shared/ManagerVisitenkarte.tsx` | EDIT — 4 optionale Override-Props hinzufuegen |
+| `src/pages/portal/petmanager/PMDashboard.tsx` | EDIT — Provider-Daten als Overrides durchreichen |
 
 ### Ergebnis
 
-- Dashboard: Sauberer runder Plus-Button oben rechts (CI-konform)
-- Finanzierungsakte: Kein verwirrender Akten-Balken mehr oben, kein Zurueck-Pfeil, stattdessen sauberer ModulePageHeader mit Split-View-Toggle und Plus-Button
-- Konsistentes Erscheinungsbild wie alle anderen Manager-Module
-
+Die Visitenkarte zeigt:
+- **Name**: Lennox & Friends Dog Resorts
+- **Rolle**: Inhaberin
+- **E-Mail**: info@lennoxandfriends.com
+- **Telefon**: +49 176 64 12 68 69
+- **Adresse**: Rathausstr. 12, 85521 Ottobrunn
+- **Badges**: Lennox & Friends Dog Resorts + Tierpension
