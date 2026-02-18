@@ -24,11 +24,11 @@ const PHASE_1: EngineFeature[] = [
   { icon: Cpu, label: 'Datentyp-Erkennung', status: 'live', detail: 'KI erkennt Dokumententyp (Rechnung, Vertrag, Bescheid, etc.)' },
   { icon: Lock, label: 'Credit-Preflight System', status: 'live', detail: 'Saldo-Prüfung vor kostenpflichtigen Aktionen (100 Gratis-Credits bei Start)' },
   { icon: Zap, label: 'Auto-Trigger Pipeline', status: 'live', detail: 'PDF-Upload → Credit-Check → Gemini-Extraktion → document_chunks (vollautomatisch)' },
+  { icon: CloudCog, label: 'Storage-Extraktion (eigene Dateien)', status: 'live', detail: 'Button "Datenraum scannen" → Scan/Angebot/Freigabe → Gemini Vision → document_chunks (1 Credit/Dok)' },
+  { icon: Zap, label: 'NK-Beleg-Parsing', status: 'live', detail: 'Spezialisierter Parser: Versorger, Betrag, Zeitraum, Kostenkategorie (1 Credit/Beleg)' },
 ];
 
 const PHASE_2: EngineFeature[] = [
-  { icon: CloudCog, label: 'Storage-Extraktion (eigene Dateien)', status: 'live', detail: 'Button "Dokument auslesen" im DMS → Gemini Vision → document_chunks (1 Credit/Dok)' },
-  { icon: Zap, label: 'NK-Beleg-Parsing', status: 'live', detail: 'Spezialisierter Parser: Versorger, Betrag, Zeitraum, Kostenkategorie (1 Credit/Beleg)' },
   { icon: Plug, label: 'Cloud-Sync (GDrive/Dropbox/OneDrive)', status: 'planned', detail: 'OAuth-Anbindung externer Cloud-Speicher — Edge Function + DB scaffolded' },
   { icon: Database, label: 'FinAPI Konto-Matching', status: 'planned', detail: 'PSD2 Bank-Connect → Auto-Matching — Edge Function + DB scaffolded' },
   { icon: Lock, label: 'Embedding-Index (RAG)', status: 'live', detail: 'pgvector aktiv, Hybrid-Suche (TSVector + Vektor), Embedding-Pipeline bereit' },

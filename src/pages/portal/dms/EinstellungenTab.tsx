@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
-import { HardDrive, Mail, Cpu, CheckCircle, Clock, Loader2, AlertCircle, Check, Sparkles, Shield, Zap, FileSearch, Database, Brain, CloudCog, Plug, ArrowRight, Lock } from 'lucide-react';
+import { HardDrive, Mail, Cpu, CheckCircle, Clock, Loader2, AlertCircle, Check, Sparkles, Shield, Zap, FileSearch, Database, Brain, CloudCog, Plug, ArrowRight, Lock, ScanSearch, Play, XCircle, Bot, FileText, Receipt } from 'lucide-react';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { DESIGN } from '@/config/designManifest';
@@ -15,6 +15,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { DataEngineInfoCard } from '@/components/dms/DataEngineInfoCard';
+import { StorageExtractionCard } from '@/components/dms/StorageExtractionCard';
 import {
   Dialog,
   DialogContent,
@@ -386,7 +387,7 @@ export function EinstellungenTab() {
           </CardContent>
         </Card>
 
-        {/* ═══ KACHEL C: DOKUMENTEN-AUSLESUNG ═══ */}
+        {/* ═══ KACHEL C: POSTEINGANGS-AUSLESUNG ═══ */}
         <Card className="glass-card flex flex-col overflow-hidden">
           <div className="p-6 pb-4 border-b border-border/50">
             <div className="flex items-center gap-3 mb-1">
@@ -394,8 +395,8 @@ export function EinstellungenTab() {
                 <Cpu className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <h3 className="font-semibold text-foreground">Dokumenten-Auslesung</h3>
-                <p className="text-xs text-muted-foreground">OCR & KI-Extraktion</p>
+                <h3 className="font-semibold text-foreground">Posteingangs-Auslesung</h3>
+                <p className="text-xs text-muted-foreground">Automatische End-to-End-Verarbeitung</p>
               </div>
             </div>
           </div>
@@ -404,33 +405,28 @@ export function EinstellungenTab() {
             {/* Toggle */}
             <div className="flex items-center justify-between p-3 rounded-xl border border-border/50 bg-muted/30">
               <div>
-                <p className="text-sm font-medium text-foreground">Auslesung aktivieren</p>
-                <p className="text-xs text-muted-foreground">Automatische Texterkennung</p>
+                <p className="text-sm font-medium text-foreground">Automatische Auslesung</p>
+                <p className="text-xs text-muted-foreground">Neue Dokumente im Posteingang automatisch analysieren</p>
               </div>
               <Switch checked={ocrEnabled} onCheckedChange={handleOcrToggle} />
             </div>
 
-            {/* Features */}
-            <div className="space-y-3">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Funktionen</p>
+            {/* Pipeline Steps */}
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Verarbeitungs-Pipeline</p>
               {[
-                { icon: FileSearch, text: 'Texterkennung (OCR) aus Scans' },
-                { icon: Sparkles, text: 'KI-gestützte Datenextraktion' },
-                { icon: Zap, text: 'Automatische Vorsortierung' },
-              ].map((feat) => (
-                <div key={feat.text} className="flex items-center gap-2.5">
-                  <feat.icon className={`h-4 w-4 shrink-0 ${ocrEnabled ? 'text-primary' : 'text-muted-foreground/40'}`} />
+                { icon: FileText, text: 'PDF empfangen & OCR-Texterkennung' },
+                { icon: Sparkles, text: 'Dokumententyp erkennen (Rechnung, Vertrag, Bescheid…)' },
+                { icon: Zap, text: 'Automatisch in passende Akte sortieren' },
+                { icon: Database, text: 'Für Armstrong durchsuchbar machen' },
+              ].map((step) => (
+                <div key={step.text} className="flex items-center gap-2.5">
+                  <step.icon className={`h-4 w-4 shrink-0 ${ocrEnabled ? 'text-primary' : 'text-muted-foreground/40'}`} />
                   <span className={`text-sm ${ocrEnabled ? 'text-foreground' : 'text-muted-foreground/60'}`}>
-                    {feat.text}
+                    {step.text}
                   </span>
                 </div>
               ))}
-            </div>
-
-            {/* Supported formats */}
-            <div className="p-3 rounded-xl bg-muted/50 text-xs text-muted-foreground space-y-1.5">
-              <p className="font-medium text-foreground text-sm mb-1">Unterstützte Formate</p>
-              <p>PDF, Word, Excel, Bilder (JPG/PNG), E-Mails</p>
             </div>
 
             {/* Cost */}
@@ -439,12 +435,28 @@ export function EinstellungenTab() {
                 <span className="text-sm text-foreground font-medium">Kosten pro Dokument</span>
                 <Badge variant="outline" className="font-mono">1 Credit</Badge>
               </div>
-              <p className="text-xs text-muted-foreground mt-1">Pro Dokument wird 1 Credit berechnet</p>
+              <p className="text-xs text-muted-foreground mt-1">Vollautomatisch: Upload → Extraktion → Sortierung → Index</p>
+            </div>
+
+            {/* Armstrong Examples */}
+            <div className="p-3 rounded-xl bg-muted/50 space-y-2">
+              <div className="flex items-center gap-2 mb-1">
+                <Bot className="h-4 w-4 text-primary" />
+                <p className="text-sm font-medium text-foreground">Armstrong kann dann z.B.:</p>
+              </div>
+              <div className="space-y-1 text-xs text-muted-foreground">
+                <p>• „Zeige mir alle Rechnungen vom letzten Monat"</p>
+                <p>• „Fasse den Mietvertrag Musterstr. 5 zusammen"</p>
+                <p>• „Welche offenen Fristen habe ich?"</p>
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* ═══ KACHEL D: DOCUMENT INTELLIGENCE ENGINE ═══ */}
+        {/* ═══ KACHEL D: DATENRAUM-EXTRAKTION ═══ */}
+        <StorageExtractionCard tenantId={activeTenantId} />
+
+        {/* ═══ KACHEL E: DOCUMENT INTELLIGENCE ENGINE ═══ */}
         <DataEngineInfoCard />
       </div>
 
