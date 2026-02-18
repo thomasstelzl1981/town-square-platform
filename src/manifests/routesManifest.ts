@@ -502,6 +502,7 @@ export const zone2Portal: ZoneDefinition = {
       visibility: { default: true, org_types: ["client"] },
       tiles: [
         { path: "dashboard", component: "FinanzenUebersicht", title: "Übersicht", default: true },
+        { path: "konten", component: "FinanzenKonten", title: "Konten" },
         { path: "investment", component: "FinanzenInvestment", title: "Investment" },
         { path: "kv", component: "FinanzenKrankenversicherung", title: "Krankenversicherung" },
         { path: "sachversicherungen", component: "FinanzenSachversicherungen", title: "Versicherungen" },
