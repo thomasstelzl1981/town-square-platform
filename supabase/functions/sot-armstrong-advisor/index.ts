@@ -125,7 +125,7 @@ interface UserContext {
 // MVP MODULE ALLOWLIST & GLOBAL ASSIST CONFIG
 // =============================================================================
 
-const MVP_MODULES = ["MOD-00", "MOD-04", "MOD-07", "MOD-08", "MOD-09", "MOD-11", "MOD-12", "MOD-13", "MOD-14", "MOD-17", "MOD-18", "MOD-19"];
+const MVP_MODULES = ["MOD-00", "MOD-01", "MOD-04", "MOD-06", "MOD-07", "MOD-08", "MOD-09", "MOD-11", "MOD-12", "MOD-13", "MOD-14", "MOD-17", "MOD-18", "MOD-19", "MOD-20"];
 
 // Global Assist Mode: Armstrong can help with general tasks even outside MVP modules
 // These intents are allowed in ALL modules (explain, draft, research)
@@ -167,6 +167,11 @@ const MVP_EXECUTABLE_ACTIONS = [
   "ARM.MOD12.MAGIC_INTAKE_MANDATE",
   "ARM.MOD19.MAGIC_INTAKE_PLANT",
   "ARM.MOD07.MAGIC_INTAKE_SELBSTAUSKUNFT",
+  "ARM.MOD20.MAGIC_INTAKE_CONTRACT",
+  "ARM.MOD08.MAGIC_INTAKE_MANDATE",
+  "ARM.MOD01.MAGIC_INTAKE_PROFILE",
+  "ARM.MOD06.MAGIC_INTAKE_LISTING",
+  "ARM.MOD09.MAGIC_INTAKE_PARTNER",
   
   // Global Actions (available in all modules)
   "ARM.GLOBAL.EXPLAIN_TERM",
@@ -648,6 +653,101 @@ const MVP_ACTIONS: ActionDefinition[] = [
     credits_estimate: 3,
     status: "active",
   },
+  // Magic Intake: MOD-20 (Zuhause/Miety)
+  {
+    action_code: "ARM.MOD20.MAGIC_INTAKE_CONTRACT",
+    title_de: "Vertrag aus Dokument anlegen",
+    description_de: "Erstellt einen Mietvertrag oder Versorgungsvertrag aus Dokumenten",
+    zones: ["Z2"],
+    module: "MOD-20",
+    risk_level: "medium",
+    execution_mode: "execute_with_confirmation",
+    requires_consent_code: null,
+    roles_allowed: [],
+    data_scopes_read: ["storage_nodes"],
+    data_scopes_write: ["miety_contracts"],
+    side_effects: ["credits_consumed"],
+    cost_model: "metered",
+    cost_hint_cents: 50,
+    credits_estimate: 2,
+    status: "active",
+  },
+  // Magic Intake: MOD-08 (Suchmandat)
+  {
+    action_code: "ARM.MOD08.MAGIC_INTAKE_MANDATE",
+    title_de: "Suchmandat aus Dokument anlegen",
+    description_de: "Erstellt ein Suchmandat aus Investmentkriterien-PDF",
+    zones: ["Z2"],
+    module: "MOD-08",
+    risk_level: "medium",
+    execution_mode: "execute_with_confirmation",
+    requires_consent_code: null,
+    roles_allowed: [],
+    data_scopes_read: ["storage_nodes"],
+    data_scopes_write: ["search_mandates"],
+    side_effects: ["credits_consumed"],
+    cost_model: "metered",
+    cost_hint_cents: 50,
+    credits_estimate: 2,
+    status: "active",
+  },
+  // Magic Intake: MOD-01 (Stammdaten)
+  {
+    action_code: "ARM.MOD01.MAGIC_INTAKE_PROFILE",
+    title_de: "Profil aus Dokument anlegen",
+    description_de: "Erstellt Stammdaten aus Visitenkarte oder Handelsregisterauszug",
+    zones: ["Z2"],
+    module: "MOD-01",
+    risk_level: "medium",
+    execution_mode: "execute_with_confirmation",
+    requires_consent_code: null,
+    roles_allowed: [],
+    data_scopes_read: ["storage_nodes"],
+    data_scopes_write: ["profiles", "organizations"],
+    side_effects: ["credits_consumed"],
+    cost_model: "metered",
+    cost_hint_cents: 50,
+    credits_estimate: 2,
+    status: "active",
+  },
+  // Magic Intake: MOD-06 (Verkauf)
+  {
+    action_code: "ARM.MOD06.MAGIC_INTAKE_LISTING",
+    title_de: "Verkaufsinserat aus Dokument anlegen",
+    description_de: "Erstellt ein Listing aus einem Exposé",
+    zones: ["Z2"],
+    module: "MOD-06",
+    risk_level: "medium",
+    execution_mode: "execute_with_confirmation",
+    requires_consent_code: null,
+    roles_allowed: [],
+    data_scopes_read: ["storage_nodes"],
+    data_scopes_write: ["sale_listings"],
+    side_effects: ["credits_consumed"],
+    cost_model: "metered",
+    cost_hint_cents: 75,
+    credits_estimate: 3,
+    status: "active",
+  },
+  // Magic Intake: MOD-09 (Vertriebspartner)
+  {
+    action_code: "ARM.MOD09.MAGIC_INTAKE_PARTNER",
+    title_de: "Partner aus Dokument anlegen",
+    description_de: "Erstellt ein Partnerprofil aus Bewerbung oder Lebenslauf",
+    zones: ["Z2"],
+    module: "MOD-09",
+    risk_level: "medium",
+    execution_mode: "execute_with_confirmation",
+    requires_consent_code: null,
+    roles_allowed: [],
+    data_scopes_read: ["storage_nodes"],
+    data_scopes_write: ["partner_profiles"],
+    side_effects: ["credits_consumed"],
+    cost_model: "metered",
+    cost_hint_cents: 50,
+    credits_estimate: 2,
+    status: "active",
+  },
 ];
 
 // =============================================================================
@@ -703,6 +803,21 @@ function classifyIntent(message: string, actionRequest: ActionRequest | undefine
     // MOD-07 Selbstauskunft Intake
     "gehaltsabrechnung", "gehaltsnachweis auslesen", "selbstauskunft befüllen",
     "steuerbescheid auslesen", "rentenbescheid", "gehalt erfassen",
+    // MOD-20 Contract Intake
+    "mietvertrag", "mietvertrag anlegen", "nebenkostenabrechnung", "versorgungsvertrag",
+    "mietvertrag hochladen", "leg den vertrag an", "vertrag erfassen",
+    // MOD-08 Search Mandate Intake
+    "suchmandat anlegen", "investmentkriterien", "suchmandat erstellen",
+    "suchmandat aus dokument", "leg das suchmandat an",
+    // MOD-01 Stammdaten Intake
+    "visitenkarte", "personalausweis", "handelsregisterauszug", "kontakt anlegen",
+    "profil anlegen", "stammdaten erfassen", "visitenkarte scannen",
+    // MOD-06 Verkauf Intake
+    "listing anlegen", "inserat anlegen", "verkaufsinserat", "exposé einlesen",
+    "fremdes exposé", "listing aus exposé", "verkaufsobjekt anlegen",
+    // MOD-09 Partner Intake
+    "partner anlegen", "partnerprofil", "partnerbewerbung", "lebenslauf",
+    "vertriebspartner anlegen", "ihk nummer",
   ];
   if (actionKeywords.some(kw => lowerMsg.includes(kw))) {
     return "ACTION";
@@ -872,6 +987,46 @@ function suggestActionsForMessage(
          lowerMsg.includes("steuerbescheid auslesen") || lowerMsg.includes("rentenbescheid") || lowerMsg.includes("gehalt erfassen"))) {
       relevance += 5;
       why = "Befüllt die Selbstauskunft aus dem Dokument";
+    }
+    
+    // Magic Intake: MOD-20
+    if (action.action_code === "ARM.MOD20.MAGIC_INTAKE_CONTRACT" && 
+        (lowerMsg.includes("mietvertrag") || lowerMsg.includes("nebenkostenabrechnung") || lowerMsg.includes("versorgungsvertrag") ||
+         lowerMsg.includes("leg den vertrag an") || lowerMsg.includes("vertrag erfassen"))) {
+      relevance += 5;
+      why = "Erstellt einen Vertrag aus dem Dokument";
+    }
+    
+    // Magic Intake: MOD-08 (Suchmandat)
+    if (action.action_code === "ARM.MOD08.MAGIC_INTAKE_MANDATE" && 
+        (lowerMsg.includes("suchmandat") || lowerMsg.includes("investmentkriterien") ||
+         lowerMsg.includes("leg das suchmandat an"))) {
+      relevance += 5;
+      why = "Erstellt ein Suchmandat aus dem Dokument";
+    }
+    
+    // Magic Intake: MOD-01
+    if (action.action_code === "ARM.MOD01.MAGIC_INTAKE_PROFILE" && 
+        (lowerMsg.includes("visitenkarte") || lowerMsg.includes("personalausweis") || lowerMsg.includes("handelsregisterauszug") ||
+         lowerMsg.includes("stammdaten erfassen") || lowerMsg.includes("visitenkarte scannen"))) {
+      relevance += 5;
+      why = "Erstellt Stammdaten aus dem Dokument";
+    }
+    
+    // Magic Intake: MOD-06
+    if (action.action_code === "ARM.MOD06.MAGIC_INTAKE_LISTING" && 
+        (lowerMsg.includes("listing anlegen") || lowerMsg.includes("inserat anlegen") || lowerMsg.includes("verkaufsinserat") ||
+         lowerMsg.includes("exposé einlesen") || lowerMsg.includes("fremdes exposé") || lowerMsg.includes("verkaufsobjekt anlegen"))) {
+      relevance += 5;
+      why = "Erstellt ein Verkaufsinserat aus dem Dokument";
+    }
+    
+    // Magic Intake: MOD-09
+    if (action.action_code === "ARM.MOD09.MAGIC_INTAKE_PARTNER" && 
+        (lowerMsg.includes("partner anlegen") || lowerMsg.includes("partnerprofil") || lowerMsg.includes("partnerbewerbung") ||
+         lowerMsg.includes("lebenslauf") || lowerMsg.includes("vertriebspartner anlegen"))) {
+      relevance += 5;
+      why = "Erstellt ein Partnerprofil aus dem Dokument";
     }
     
     if (relevance > 0) {
@@ -2006,6 +2161,280 @@ async function executeAction(
         } catch (err07) {
           console.error("[Armstrong] MOD-07 Magic Intake error:", err07);
           return { success: false, error: "Fehler bei der Selbstauskunft-Befüllung" };
+        }
+      }
+
+      // =====================================================================
+      // MAGIC INTAKE: MOD-20 (Mietvertrag/Versorgungsvertrag)
+      // =====================================================================
+      case "ARM.MOD20.MAGIC_INTAKE_CONTRACT": {
+        if (!userContext.org_id) return { success: false, error: "Tenant ID required" };
+        const docCtx20 = params.document_context as { extracted_text?: string } | undefined;
+        if (!docCtx20?.extracted_text) return { success: false, error: "Bitte laden Sie zuerst ein Dokument hoch (Mietvertrag, Nebenkostenabrechnung)." };
+        const sbUrl20 = Deno.env.get("SUPABASE_URL");
+        const sk20 = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+        if (!sbUrl20 || !sk20) return { success: false, error: "Server configuration missing" };
+        try {
+          const pr20 = await fetch(`${sbUrl20}/functions/v1/sot-document-parser`, {
+            method: "POST",
+            headers: { "Authorization": `Bearer ${sk20}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ text: docCtx20.extracted_text, parseMode: "general", tenant_id: userContext.org_id }),
+          });
+          if (!pr20.ok) return { success: false, error: "Dokumentanalyse fehlgeschlagen" };
+          const p20 = await pr20.json();
+          const cData = p20.contract || p20.data?.contract || p20;
+
+          // Find or use first home
+          let homeId = (params.home_id as string) || null;
+          if (!homeId) {
+            const { data: homes } = await supabase.from("miety_homes").select("id").eq("user_id", userContext.user_id).limit(1);
+            homeId = homes?.[0]?.id || null;
+          }
+
+          const contractInsert = {
+            user_id: userContext.user_id,
+            home_id: homeId,
+            category: cData.category || cData.contract_type || 'miete',
+            provider_name: cData.provider_name || cData.vermieter || cData.landlord || null,
+            contract_number: cData.contract_number || cData.vertragsnummer || null,
+            monthly_cost: cData.monthly_rent || cData.monthly_cost || cData.miete || null,
+            start_date: cData.start_date || cData.vertragsbeginn || null,
+            end_date: cData.end_date || cData.vertragsende || null,
+            notice_period: cData.notice_period || cData.kuendigungsfrist || null,
+            notes: cData.notes || null,
+          };
+
+          const { data: nc, error: cErr } = await supabase.from("miety_contracts").insert(contractInsert).select("id, category, provider_name").single();
+          if (cErr) return { success: false, error: `Vertrag konnte nicht angelegt werden: ${cErr.message}` };
+
+          return {
+            success: true,
+            output: {
+              contract_id: nc?.id,
+              extracted_data: contractInsert,
+              message: `Vertrag "${contractInsert.provider_name || contractInsert.category}" wurde angelegt.`,
+            },
+          };
+        } catch (e20) {
+          console.error("[Armstrong] MOD-20 Magic Intake error:", e20);
+          return { success: false, error: "Fehler bei der Vertragsanlage" };
+        }
+      }
+
+      // =====================================================================
+      // MAGIC INTAKE: MOD-08 (Suchmandat aus Dokument)
+      // =====================================================================
+      case "ARM.MOD08.MAGIC_INTAKE_MANDATE": {
+        if (!userContext.org_id) return { success: false, error: "Tenant ID required" };
+        const docCtx08m = params.document_context as { extracted_text?: string } | undefined;
+        if (!docCtx08m?.extracted_text) return { success: false, error: "Bitte laden Sie zuerst ein Dokument hoch (Suchprofil, Investmentkriterien)." };
+        const sbUrl08m = Deno.env.get("SUPABASE_URL");
+        const sk08m = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+        if (!sbUrl08m || !sk08m) return { success: false, error: "Server configuration missing" };
+        try {
+          const pr08m = await fetch(`${sbUrl08m}/functions/v1/sot-document-parser`, {
+            method: "POST",
+            headers: { "Authorization": `Bearer ${sk08m}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ text: docCtx08m.extracted_text, parseMode: "general", tenant_id: userContext.org_id }),
+          });
+          if (!pr08m.ok) return { success: false, error: "Dokumentanalyse fehlgeschlagen" };
+          const p08m = await pr08m.json();
+          const smData = p08m.search_mandate || p08m.data?.search_mandate || p08m;
+
+          const mandateInsert08 = {
+            tenant_id: userContext.org_id,
+            user_id: userContext.user_id,
+            title: smData.title || smData.name || 'Neues Suchmandat',
+            property_type: smData.property_type || smData.objektart || null,
+            region: smData.region || smData.standort || null,
+            budget_min: smData.budget_min || smData.min_price || null,
+            budget_max: smData.budget_max || smData.max_price || null,
+            min_yield_pct: smData.min_yield || smData.mindestrendite || null,
+            strategy: smData.strategy || smData.strategie || null,
+            notes: smData.notes || smData.beschreibung || null,
+            status: 'active',
+          };
+
+          const { data: nsm, error: smErr } = await supabase.from("search_mandates").insert(mandateInsert08).select("id, title").single();
+          if (smErr) return { success: false, error: `Suchmandat konnte nicht angelegt werden: ${smErr.message}` };
+
+          return {
+            success: true,
+            output: {
+              mandate_id: nsm?.id,
+              extracted_data: mandateInsert08,
+              message: `Suchmandat "${nsm?.title}" wurde angelegt. [Zum Suchmandat →](/portal/investments/mandate/${nsm?.id})`,
+              link: `/portal/investments/mandate/${nsm?.id}`,
+            },
+          };
+        } catch (e08m) {
+          console.error("[Armstrong] MOD-08 Magic Intake error:", e08m);
+          return { success: false, error: "Fehler bei der Suchmandats-Anlage" };
+        }
+      }
+
+      // =====================================================================
+      // MAGIC INTAKE: MOD-01 (Stammdaten aus Dokument)
+      // =====================================================================
+      case "ARM.MOD01.MAGIC_INTAKE_PROFILE": {
+        if (!userContext.org_id) return { success: false, error: "Tenant ID required" };
+        const docCtx01 = params.document_context as { extracted_text?: string } | undefined;
+        if (!docCtx01?.extracted_text) return { success: false, error: "Bitte laden Sie zuerst ein Dokument hoch (Visitenkarte, Personalausweis, Handelsregisterauszug)." };
+        const sbUrl01 = Deno.env.get("SUPABASE_URL");
+        const sk01 = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+        if (!sbUrl01 || !sk01) return { success: false, error: "Server configuration missing" };
+        try {
+          const pr01 = await fetch(`${sbUrl01}/functions/v1/sot-document-parser`, {
+            method: "POST",
+            headers: { "Authorization": `Bearer ${sk01}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ text: docCtx01.extracted_text, parseMode: "contacts", tenant_id: userContext.org_id }),
+          });
+          if (!pr01.ok) return { success: false, error: "Dokumentanalyse fehlgeschlagen" };
+          const p01 = await pr01.json();
+          const pData = p01.contact || p01.data?.contacts?.[0] || p01;
+
+          const contactInsert = {
+            tenant_id: userContext.org_id,
+            first_name: pData.first_name || pData.vorname || null,
+            last_name: pData.last_name || pData.nachname || null,
+            company: pData.company || pData.firma || null,
+            email: pData.email || null,
+            phone: pData.phone || pData.telefon || null,
+            address: pData.address || pData.adresse || null,
+            tax_id: pData.tax_id || pData.steuernummer || null,
+            vat_id: pData.vat_id || pData.ust_id || null,
+            register_number: pData.register_number || pData.handelsregisternummer || null,
+            source: 'armstrong_magic_intake',
+          };
+
+          const { data: nc01, error: c01Err } = await supabase.from("contacts").insert(contactInsert).select("id, first_name, last_name, company").single();
+          if (c01Err) return { success: false, error: `Kontakt konnte nicht angelegt werden: ${c01Err.message}` };
+
+          const displayName01 = [nc01?.first_name, nc01?.last_name].filter(Boolean).join(' ') || nc01?.company || 'Neuer Kontakt';
+
+          return {
+            success: true,
+            output: {
+              contact_id: nc01?.id,
+              display_name: displayName01,
+              extracted_data: contactInsert,
+              message: `Kontakt "${displayName01}" wurde angelegt.`,
+            },
+          };
+        } catch (e01) {
+          console.error("[Armstrong] MOD-01 Magic Intake error:", e01);
+          return { success: false, error: "Fehler bei der Kontaktanlage" };
+        }
+      }
+
+      // =====================================================================
+      // MAGIC INTAKE: MOD-06 (Verkaufsinserat aus Dokument)
+      // =====================================================================
+      case "ARM.MOD06.MAGIC_INTAKE_LISTING": {
+        if (!userContext.org_id) return { success: false, error: "Tenant ID required" };
+        const docCtx06 = params.document_context as { extracted_text?: string } | undefined;
+        if (!docCtx06?.extracted_text) return { success: false, error: "Bitte laden Sie zuerst ein Dokument hoch (Exposé, Eigentumsnachweis)." };
+        const sbUrl06 = Deno.env.get("SUPABASE_URL");
+        const sk06 = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+        if (!sbUrl06 || !sk06) return { success: false, error: "Server configuration missing" };
+        try {
+          const pr06 = await fetch(`${sbUrl06}/functions/v1/sot-document-parser`, {
+            method: "POST",
+            headers: { "Authorization": `Bearer ${sk06}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ text: docCtx06.extracted_text, parseMode: "properties", tenant_id: userContext.org_id }),
+          });
+          if (!pr06.ok) return { success: false, error: "Dokumentanalyse fehlgeschlagen" };
+          const p06 = await pr06.json();
+          const lData = p06.property || p06.data?.properties?.[0] || p06;
+
+          const listingInsert = {
+            tenant_id: userContext.org_id,
+            created_by: userContext.user_id,
+            title: lData.title || [lData.property_type, lData.address].filter(Boolean).join(' - ') || 'Neues Inserat',
+            address: lData.address || null,
+            city: lData.city || null,
+            postal_code: lData.postal_code || null,
+            property_type: lData.property_type || null,
+            price: lData.purchase_price || lData.price || null,
+            area_sqm: lData.living_area_sqm || lData.area_sqm || null,
+            rooms: lData.rooms || null,
+            construction_year: lData.construction_year || null,
+            commission_pct: lData.commission_pct || lData.provision || null,
+            description: lData.description || null,
+            status: 'draft',
+            source: 'armstrong_magic_intake',
+          };
+
+          const { data: nl06, error: l06Err } = await supabase.from("sale_listings").insert(listingInsert).select("id, title").single();
+          if (l06Err) return { success: false, error: `Inserat konnte nicht angelegt werden: ${l06Err.message}` };
+
+          return {
+            success: true,
+            output: {
+              listing_id: nl06?.id,
+              extracted_data: listingInsert,
+              message: `Verkaufsinserat "${nl06?.title}" wurde als Entwurf angelegt. [Zum Inserat →](/portal/verkauf/${nl06?.id})`,
+              link: `/portal/verkauf/${nl06?.id}`,
+            },
+          };
+        } catch (e06) {
+          console.error("[Armstrong] MOD-06 Magic Intake error:", e06);
+          return { success: false, error: "Fehler bei der Inseratsanlage" };
+        }
+      }
+
+      // =====================================================================
+      // MAGIC INTAKE: MOD-09 (Vertriebspartner aus Dokument)
+      // =====================================================================
+      case "ARM.MOD09.MAGIC_INTAKE_PARTNER": {
+        if (!userContext.org_id) return { success: false, error: "Tenant ID required" };
+        const docCtx09 = params.document_context as { extracted_text?: string } | undefined;
+        if (!docCtx09?.extracted_text) return { success: false, error: "Bitte laden Sie zuerst ein Dokument hoch (Bewerbung, Lebenslauf, Zertifikate)." };
+        const sbUrl09 = Deno.env.get("SUPABASE_URL");
+        const sk09 = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+        if (!sbUrl09 || !sk09) return { success: false, error: "Server configuration missing" };
+        try {
+          const pr09 = await fetch(`${sbUrl09}/functions/v1/sot-document-parser`, {
+            method: "POST",
+            headers: { "Authorization": `Bearer ${sk09}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ text: docCtx09.extracted_text, parseMode: "contacts", tenant_id: userContext.org_id }),
+          });
+          if (!pr09.ok) return { success: false, error: "Dokumentanalyse fehlgeschlagen" };
+          const p09 = await pr09.json();
+          const ptData = p09.partner || p09.data?.contacts?.[0] || p09;
+
+          const partnerInsert = {
+            tenant_id: userContext.org_id,
+            first_name: ptData.first_name || ptData.vorname || null,
+            last_name: ptData.last_name || ptData.nachname || null,
+            email: ptData.email || null,
+            phone: ptData.phone || ptData.telefon || null,
+            company: ptData.company || ptData.firma || null,
+            ihk_number: ptData.ihk_number || ptData.ihk_nr || null,
+            regions: ptData.regions || ptData.regionen || null,
+            qualifications: ptData.qualifications || ptData.qualifikationen || null,
+            status: 'pending',
+            source: 'armstrong_magic_intake',
+          };
+
+          const { data: np09, error: p09Err } = await supabase.from("partner_profiles").insert(partnerInsert).select("id, first_name, last_name").single();
+          if (p09Err) return { success: false, error: `Partnerprofil konnte nicht angelegt werden: ${p09Err.message}` };
+
+          const displayName09 = [np09?.first_name, np09?.last_name].filter(Boolean).join(' ') || 'Neuer Partner';
+
+          return {
+            success: true,
+            output: {
+              partner_id: np09?.id,
+              display_name: displayName09,
+              extracted_data: partnerInsert,
+              message: `Partnerprofil "${displayName09}" wurde angelegt. [Zum Partner →](/portal/vertriebspartner/${np09?.id})`,
+              link: `/portal/vertriebspartner/${np09?.id}`,
+            },
+          };
+        } catch (e09) {
+          console.error("[Armstrong] MOD-09 Magic Intake error:", e09);
+          return { success: false, error: "Fehler bei der Partneranlage" };
         }
       }
 
