@@ -2,7 +2,7 @@
  * SoT Module Card — Premium Card with Pain Points
  */
 import { Link } from 'react-router-dom';
-import { ArrowRight, AlertCircle, Check, Users, Sparkles, FolderOpen, Building2, FileText, Tag, Landmark, Search, Mail, FolderKanban, Calculator, Car, Home, Box, Sun, TrendingUp, LucideIcon } from 'lucide-react';
+import { ArrowRight, AlertCircle, Check, Users, Sparkles, FolderOpen, Building2, FileText, Tag, Landmark, Search, Mail, FolderKanban, Calculator, Car, Home, Box, Sun, TrendingUp, GraduationCap, ShoppingCart, Globe, PawPrint, LucideIcon } from 'lucide-react';
 import { SotWebsiteModule } from '@/data/sotWebsiteModules';
 
 const iconMap: Record<string, LucideIcon> = {
@@ -22,6 +22,10 @@ const iconMap: Record<string, LucideIcon> = {
   Box,
   Sun,
   TrendingUp,
+  GraduationCap,
+  ShoppingCart,
+  Globe,
+  PawPrint,
 };
 
 interface SotModuleCardProps {

@@ -6,12 +6,13 @@ import { Building2, Linkedin, Twitter, Github } from 'lucide-react';
 
 const footerLinks = {
   plattform: [
-    { label: 'Real Estate', href: '/website/sot/real-estate' },
-    { label: 'Finance', href: '/website/sot/finance' },
-    { label: 'Management', href: '/website/sot/management' },
-    { label: 'Energy', href: '/website/sot/energy' },
+    { label: 'Plattform', href: '/website/sot/plattform' },
+    { label: 'Intelligenz', href: '/website/sot/intelligenz' },
+    { label: 'Module', href: '/website/sot/module' },
+    { label: 'Preise', href: '/website/sot/preise' },
   ],
   ressourcen: [
+    { label: 'Demo', href: '/website/sot/demo' },
     { label: 'Karriere', href: '/website/sot/karriere' },
     { label: 'FAQ', href: '/website/sot/faq' },
   ],
@@ -36,7 +37,7 @@ export function SotFooter() {
               <span className="text-sm font-bold tracking-wider uppercase">System of a Town</span>
             </Link>
             <p className="text-xs text-muted-foreground mb-6 leading-relaxed">
-              Der digitale Manager für Immobilien und private Finanzen.
+              Struktur und KI für Ihren Haushalt und Ihre Finanzen.
             </p>
             <div className="flex gap-2">
               {[Linkedin, Twitter, Github].map((Icon, i) => (
