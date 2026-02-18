@@ -264,11 +264,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (existingSession) {
         // Try refreshing to get a fresh access token
         const { data: { session: refreshedSession } } = await supabase.auth.refreshSession();
-        const activeSession = refreshedSession || existingSession;
-        setSession(activeSession);
-        setUser(activeSession?.user ?? null);
-        if (activeSession?.user) {
-          fetchUserData(activeSession.user.id);
+        if (refreshedSession) {
+          setSession(refreshedSession);
+          setUser(refreshedSession.user);
+          fetchUserData(refreshedSession.user.id);
+        } else {
+          // Refresh failed — session is expired, sign out cleanly
+          console.warn('[AuthContext] Session refresh failed, signing out');
+          await supabase.auth.signOut();
+          setSession(null);
+          setUser(null);
+          setProfile(null);
+          setMemberships([]);
+          setActiveOrganization(null);
         }
       } else if (isDevelopmentMode) {
         setActiveOrgStable(DEV_MOCK_ORG);
