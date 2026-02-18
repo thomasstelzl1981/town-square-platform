@@ -10,6 +10,8 @@ import type {
   PartnerShareResult,
   TippgeberInput,
   TippgeberResult,
+  SystemFeeInput,
+  SystemFeeResult,
 } from './spec';
 import { PROVISION_DEFAULTS } from './spec';
 
@@ -55,6 +57,24 @@ export function calcTippgeberFee(input: TippgeberInput): TippgeberResult {
     sotAmount,
     tippgeberFee,
     remaining: input.commissionNetto - tippgeberFee,
+  };
+}
+
+// ─── Systemgebühr (erfolgsabhängig) ─────────────────────────────
+
+/**
+ * Berechnet die erfolgsabhängige Systemgebühr, die ein Manager
+ * bei erfolgreichem Abschluss an SoT abführt.
+ *
+ * SoT ist KEIN Tippgeber und erhält KEINE Provision.
+ * Es handelt sich um eine nutzungsbasierte Plattformgebühr.
+ */
+export function calcSystemFee(input: SystemFeeInput): SystemFeeResult {
+  const pct = input.systemFeePct ?? PROVISION_DEFAULTS.systemFeePct;
+  const systemFee = input.grossCommission * (pct / 100);
+  return {
+    systemFee,
+    managerNetto: input.grossCommission - systemFee,
   };
 }
 
