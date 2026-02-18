@@ -1,39 +1,30 @@
 /**
  * MOD-18 Finanzen — Tab 1: ÜBERSICHT
  * Block A: Personen im Haushalt (WidgetGrid CI-Kacheln)
- * Block B: Konten (WidgetGrid)
- * Block C: 12M Scan Button
+ * Block B: Finanzbericht
  */
 import { useState } from 'react';
 import { PageShell } from '@/components/shared/PageShell';
 import { WidgetGrid } from '@/components/shared/WidgetGrid';
 import { WidgetCell } from '@/components/shared/WidgetCell';
-import { RECORD_CARD, DEMO_WIDGET, CARD, TYPOGRAPHY, HEADER } from '@/config/designManifest';
+import { RECORD_CARD, DEMO_WIDGET, CARD, TYPOGRAPHY } from '@/config/designManifest';
 import { getActiveWidgetGlow, getSelectionRing } from '@/config/designManifest';
 import { isDemoId } from '@/engines/demoData/engine';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { FormInput } from '@/components/shared';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
+import { Card } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useFinanzanalyseData } from '@/hooks/useFinanzanalyseData';
 import { usePersonDMS } from '@/hooks/usePersonDMS';
 import { useAuth } from '@/contexts/AuthContext';
-import { useDemoToggles } from '@/hooks/useDemoToggles';
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { KontoAkteInline } from '@/components/finanzanalyse/KontoAkteInline';
 import { FinanzberichtSection } from '@/components/finanzanalyse/FinanzberichtSection';
-import { DEMO_KONTO, DEMO_KONTO_IBAN_MASKED } from '@/constants/demoKontoData';
 import {
-  Users, UserPlus, Landmark, ScanSearch, Plus, User,
-  Calendar, Mail, Phone, MapPin, CreditCard, X,
-  Briefcase, Euro
+  Users, Plus, User, X, Euro
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Shield } from 'lucide-react';
@@ -108,142 +99,6 @@ const ROLE_GRADIENTS: Record<string, string> = {
   kind: 'from-amber-400 to-amber-500/60',
   weitere: 'from-muted-foreground to-muted-foreground/60',
 };
-
-// ─── Konten Block (Widget-Grid mit Demo + echte Konten) ───
-function KontenBlock() {
-  const { activeTenantId } = useAuth();
-  const { isEnabled } = useDemoToggles();
-  const [openKontoId, setOpenKontoId] = useState<string | null>(null);
-
-  const { data: bankAccounts = [], isLoading: loadingAccounts } = useQuery({
-    queryKey: ['msv_bank_accounts', activeTenantId],
-    queryFn: async () => {
-      if (!activeTenantId) return [];
-      const { data } = await supabase.from('msv_bank_accounts').select('*').eq('tenant_id', activeTenantId);
-      return data || [];
-    },
-    enabled: !!activeTenantId,
-  });
-
-  const showDemo = isEnabled('GP-KONTEN');
-  const maskIban = (iban: string) => iban ? `${iban.slice(0, 9)} ••••` : '—';
-
-  return (
-    <>
-      <div className="flex items-center justify-between mt-8">
-        <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-2">
-          <Landmark className="h-4 w-4" /> Konten
-        </h3>
-      </div>
-
-      <WidgetGrid>
-        {showDemo && (
-          <WidgetCell>
-            <div
-              className={cn(
-                'h-full w-full rounded-xl cursor-pointer transition-all',
-                DEMO_WIDGET.CARD, DEMO_WIDGET.HOVER,
-                openKontoId === DEMO_KONTO.id && 'ring-2 ring-primary/50',
-              )}
-              onClick={(e) => { e.stopPropagation(); setOpenKontoId(openKontoId === DEMO_KONTO.id ? null : DEMO_KONTO.id); }}
-              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); setOpenKontoId(openKontoId === DEMO_KONTO.id ? null : DEMO_KONTO.id); }}}
-              role="button"
-              tabIndex={0}
-            >
-              <div className="p-5 flex flex-col justify-between h-full">
-                <div>
-                  <Badge className={DEMO_WIDGET.BADGE + ' mb-2'}>Demo</Badge>
-                  <h4 className="font-semibold text-sm">Demo: Girokonto Sparkasse</h4>
-                  <p className="text-xs text-muted-foreground mt-1">{DEMO_KONTO_IBAN_MASKED}</p>
-                  <Badge variant="outline" className="mt-2 text-[10px]">Vermietung</Badge>
-                </div>
-                <div className="text-right">
-                  <p className="text-lg font-bold text-emerald-600">{new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(DEMO_KONTO.balance)}</p>
-                </div>
-              </div>
-            </div>
-          </WidgetCell>
-        )}
-
-        {bankAccounts.map((acc: any) => (
-          <WidgetCell key={acc.id}>
-            <div
-              className={cn(
-                'h-full w-full rounded-xl cursor-pointer transition-all hover:shadow-lg',
-                getActiveWidgetGlow('rose'),
-                openKontoId === acc.id && getSelectionRing('rose'),
-              )}
-              onClick={(e) => { e.stopPropagation(); setOpenKontoId(openKontoId === acc.id ? null : acc.id); }}
-              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); setOpenKontoId(openKontoId === acc.id ? null : acc.id); }}}
-              role="button"
-              tabIndex={0}
-            >
-              <div className="p-5 flex flex-col justify-between h-full">
-                <div>
-                  <h4 className="font-semibold text-sm">{acc.account_name || acc.bank_name || 'Konto'}</h4>
-                  <p className="text-xs text-muted-foreground mt-1">{maskIban(acc.iban || '')}</p>
-                  <Badge variant="outline" className="mt-2 text-[10px]">{acc.account_type || 'Giro'}</Badge>
-                </div>
-                <div className="flex items-center gap-2">
-                  <CreditCard className="h-4 w-4 text-muted-foreground" />
-                  <Badge variant={acc.status === 'active' ? 'default' : 'secondary'} className="text-[10px]">
-                    {acc.status === 'active' ? 'Verbunden' : 'Inaktiv'}
-                  </Badge>
-                </div>
-              </div>
-            </div>
-          </WidgetCell>
-        ))}
-
-        <WidgetCell>
-          <div
-            className="h-full w-full rounded-xl border-2 border-dashed border-primary/30 flex items-center justify-center cursor-pointer hover:border-primary/50 transition-colors"
-            role="button"
-            tabIndex={0}
-          >
-            <div className="flex flex-col items-center gap-2 text-muted-foreground">
-              <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-                <Plus className="h-6 w-6 text-primary" />
-              </div>
-              <p className="text-sm font-medium">Konto hinzufügen</p>
-            </div>
-          </div>
-        </WidgetCell>
-      </WidgetGrid>
-
-      {openKontoId === DEMO_KONTO.id && (
-        <KontoAkteInline isDemo onClose={() => setOpenKontoId(null)} />
-      )}
-      {openKontoId && openKontoId !== DEMO_KONTO.id && (
-        <KontoAkteInline
-          isDemo={false}
-          account={bankAccounts.find((a: any) => a.id === openKontoId)}
-          onClose={() => setOpenKontoId(null)}
-        />
-      )}
-
-      <Card className="glass-card mt-4">
-        <CardContent className="py-6">
-          <div className="flex items-center gap-4">
-            <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-              <ScanSearch className="h-6 w-6 text-primary" />
-            </div>
-            <div className="flex-1">
-              <p className="font-semibold">Umsätze auslesen & Verträge erkennen</p>
-              <p className="text-sm text-muted-foreground">
-                Scannt die letzten 12 Monate Ihrer Kontoumsätze und identifiziert wiederkehrende Zahlungen als potenzielle Abonnements, Versicherungen oder Vorsorgeverträge.
-              </p>
-            </div>
-            <Button variant="outline" disabled>
-              <ScanSearch className="h-4 w-4 mr-2" />
-              Scan starten
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    </>
-  );
-}
 
 export default function UebersichtTab() {
   const { activeTenantId } = useAuth();
@@ -750,8 +605,6 @@ export default function UebersichtTab() {
       )}
 
       <FinanzberichtSection />
-
-      <KontenBlock />
     </PageShell>
   );
 }

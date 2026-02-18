@@ -10559,6 +10559,8 @@ export type Database = {
           iban: string
           id: string
           is_default: boolean | null
+          owner_id: string | null
+          owner_type: string | null
           status: string
           tenant_id: string
           updated_at: string
@@ -10572,6 +10574,8 @@ export type Database = {
           iban: string
           id?: string
           is_default?: boolean | null
+          owner_id?: string | null
+          owner_type?: string | null
           status?: string
           tenant_id: string
           updated_at?: string
@@ -10585,6 +10589,8 @@ export type Database = {
           iban?: string
           id?: string
           is_default?: boolean | null
+          owner_id?: string | null
+          owner_type?: string | null
           status?: string
           tenant_id?: string
           updated_at?: string

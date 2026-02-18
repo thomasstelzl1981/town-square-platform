@@ -6,6 +6,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const UebersichtTab = lazy(() => import('./finanzanalyse/UebersichtTab'));
+const KontenTab = lazy(() => import('./finanzanalyse/KontenTab'));
 const InvestmentTab = lazy(() => import('./finanzanalyse/InvestmentTab'));
 const SachversicherungenTab = lazy(() => import('./finanzanalyse/SachversicherungenTab'));
 const VorsorgeTab = lazy(() => import('./finanzanalyse/VorsorgeTab'));
@@ -21,6 +22,7 @@ export default function FinanzanalysePage() {
         <Routes>
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<UebersichtTab />} />
+          <Route path="konten" element={<KontenTab />} />
           <Route path="investment" element={<InvestmentTab />} />
           <Route path="sachversicherungen" element={<SachversicherungenTab />} />
           <Route path="vorsorge" element={<VorsorgeTab />} />
