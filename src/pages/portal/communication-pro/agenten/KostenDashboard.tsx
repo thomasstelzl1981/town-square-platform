@@ -9,6 +9,7 @@ import { LoadingState } from '@/components/shared/LoadingState';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { DollarSign, TrendingUp, Zap, CreditCard } from 'lucide-react';
 import { useMemo } from 'react';
+import { CreditTopUpDialog } from '@/components/armstrong/CreditTopUpDialog';
 
 export function KostenDashboard() {
   const { data: events = [], isLoading } = useQuery({
@@ -57,6 +58,11 @@ export function KostenDashboard() {
 
   return (
     <div className="space-y-4">
+      {/* Header mit Top-Up Button */}
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-muted-foreground">Verbrauchsübersicht</h3>
+        <CreditTopUpDialog />
+      </div>
       {/* KPI Cards */}
       <div className={DESIGN.KPI_GRID.FULL}>
         <Card>

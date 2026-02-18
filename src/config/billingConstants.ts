@@ -52,3 +52,18 @@ export function formatEurCents(cents: number | null): string {
   if (cents === null || cents === 0) return 'Kostenlos';
   return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(cents / 100);
 }
+
+/* ─── Credit Top-Up Packages ─── */
+export interface CreditPackage {
+  code: string;
+  label: string;
+  credits: number;
+  price_eur_cents: number;
+  popular?: boolean;
+}
+
+export const CREDIT_PACKAGES: CreditPackage[] = [
+  { code: 'starter',  label: 'Starter',  credits: 50,  price_eur_cents: 1250 },
+  { code: 'standard', label: 'Standard', credits: 100, price_eur_cents: 2500, popular: true },
+  { code: 'power',    label: 'Power',    credits: 500, price_eur_cents: 12500 },
+];

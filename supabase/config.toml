@@ -218,3 +218,9 @@ verify_jwt = false
 
 [functions.sot-storage-extractor]
 verify_jwt = false
+
+[functions.sot-credit-checkout]
+verify_jwt = false
+
+[functions.sot-credit-webhook]
+verify_jwt = false
