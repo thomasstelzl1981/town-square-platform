@@ -1,49 +1,16 @@
 
 
-## Neuanlage-Buttons auf Mobile entfernen
+## "Kontakte" in "Briefe" umbenennen (Mobile Home)
 
-### Ansatz
+### Problem
 
-Statt in 20+ einzelnen Dateien die Buttons zu entfernen, gibt es **eine zentrale Stelle**: die `ModulePageHeader`-Komponente. Alle runden Glas-Buttons (Plus-Icons) fuer Neuanlagen werden ueber die `actions`-Prop dieser Komponente gerendert. Wenn wir dort die `actions` auf Mobile ausblenden, verschwinden alle Neuanlage-Buttons auf einen Schlag.
+Auf Mobile fuehrt der Eintrag "Kontakte" zum Office-Modul (MOD-02), wird aber sofort auf den Brief-Tab umgeleitet (da Kontakte desktop-only ist). Der User sieht also nur den Brief-Generator — der Name "Kontakte" ist irrefuehrend.
 
-Zusaetzlich gibt es einige wenige Stellen, die bereits `DesktopOnly` verwenden (z.B. FinanceRequestWidgets, SimulationTab, PortfolioTab). Diese sind bereits korrekt und brauchen keine Aenderung.
-
-### Technische Aenderungen
+### Aenderungen
 
 | Datei | Aenderung |
 |-------|-----------|
-| `src/components/shared/ModulePageHeader.tsx` | Die `actions`-Sektion in eine `DesktopOnly`-Komponente wrappen. Damit werden alle Neuanlage-Buttons auf Mobile automatisch ausgeblendet. |
+| `src/config/mobileHomeConfig.ts` | Eintrag von `tile: 'kontakte', label: 'Kontakte', icon: 'Users'` aendern zu `tile: 'brief', label: 'Briefe', icon: 'FileText'` |
 
-### Konkret
+Das ist eine einzige Zeilen-Aenderung. Der Eintrag zeigt dann direkt auf den Brief-Tab und traegt den korrekten Namen "Briefe" mit einem passenden Icon.
 
-In `ModulePageHeader.tsx` wird Zeile 27 geaendert von:
-
-```tsx
-{actions && <div className="flex items-center gap-2 ...">
-  {actions}
-</div>}
-```
-
-zu:
-
-```tsx
-{actions && (
-  <DesktopOnly>
-    <div className="flex items-center gap-2 ...">
-      {actions}
-    </div>
-  </DesktopOnly>
-)}
-```
-
-### Auswirkung
-
-Alle Module, die `ModulePageHeader` mit `actions` verwenden, verlieren auf Mobile automatisch den Neuanlage-Button:
-- Finanzanalyse (Investment, Vorsorge, Sachversicherungen, Abonnements, Krankenversicherung)
-- Fahrzeuge (Autos, Bikes)
-- Pet Manager (Kunden, Personal, Pension, Leistungen)
-- Projekte (Kontexte)
-- Miety (Uebersicht)
-- und alle weiteren Module
-
-Das ist eine einzige Zeilen-Aenderung in einer einzigen Datei.
