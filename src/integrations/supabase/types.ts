@@ -12512,6 +12512,105 @@ export type Database = {
           },
         ]
       }
+      pet_z1_booking_requests: {
+        Row: {
+          client_notes: string | null
+          created_at: string
+          fee_cents: number | null
+          id: string
+          payment_intent_id: string | null
+          payment_status: string | null
+          pet_name: string | null
+          pet_z1_id: string | null
+          preferred_date: string | null
+          preferred_time: string | null
+          provider_confirmed_at: string | null
+          provider_id: string
+          service_title: string
+          status: string
+          tenant_id: string
+          updated_at: string
+          z1_customer_id: string
+          z2_booking_id: string | null
+        }
+        Insert: {
+          client_notes?: string | null
+          created_at?: string
+          fee_cents?: number | null
+          id?: string
+          payment_intent_id?: string | null
+          payment_status?: string | null
+          pet_name?: string | null
+          pet_z1_id?: string | null
+          preferred_date?: string | null
+          preferred_time?: string | null
+          provider_confirmed_at?: string | null
+          provider_id: string
+          service_title: string
+          status?: string
+          tenant_id: string
+          updated_at?: string
+          z1_customer_id: string
+          z2_booking_id?: string | null
+        }
+        Update: {
+          client_notes?: string | null
+          created_at?: string
+          fee_cents?: number | null
+          id?: string
+          payment_intent_id?: string | null
+          payment_status?: string | null
+          pet_name?: string | null
+          pet_z1_id?: string | null
+          preferred_date?: string | null
+          preferred_time?: string | null
+          provider_confirmed_at?: string | null
+          provider_id?: string
+          service_title?: string
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+          z1_customer_id?: string
+          z2_booking_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pet_z1_booking_requests_pet_z1_id_fkey"
+            columns: ["pet_z1_id"]
+            isOneToOne: false
+            referencedRelation: "pet_z1_pets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pet_z1_booking_requests_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "pet_providers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pet_z1_booking_requests_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pet_z1_booking_requests_z1_customer_id_fkey"
+            columns: ["z1_customer_id"]
+            isOneToOne: false
+            referencedRelation: "pet_z1_customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pet_z1_booking_requests_z2_booking_id_fkey"
+            columns: ["z2_booking_id"]
+            isOneToOne: false
+            referencedRelation: "pet_bookings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pet_z1_customers: {
         Row: {
           address: string | null

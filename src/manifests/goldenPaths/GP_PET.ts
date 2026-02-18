@@ -31,13 +31,14 @@ export const GP_PET_GOLDEN_PATH: GoldenPathDefinition = {
   id: 'gp-pet-lifecycle',
   module: 'MOD-22 / MOD-05 / ZONE-3',
   moduleCode: 'GP-PET',
-  version: '1.0.0',
-  label: 'Pet Manager Lifecycle — Vom Kunden bis zur aktiven Betreuung',
+  version: '2.0.0',
+  label: 'Pet Manager Lifecycle — Vom Kunden bis zur aktiven Betreuung (mit Buchungs-Governance)',
   description:
-    'Vollstaendiger Kunden-Lebenszyklus im Pet Manager: Erfassung (manuell, Lead, MOD-05), Z1-Profil, Zuweisung, Tierakte, erste Buchung.',
+    'Vollstaendiger Kunden-Lebenszyklus im Pet Manager: Erfassung, Z1-Profil, Zuweisung, Tierakte, Buchungsanfrage (Z3->Z1->Z2), Provider-Bestaetigung, Zahlung, erste Buchung.',
 
   required_entities: [
     { table: 'pet_z1_customers', description: 'Z1 Kundenprofil muss existieren (Lead/MOD-05)', scope: 'entity_id' },
+    { table: 'pet_z1_booking_requests', description: 'Buchungsanfrage in Z1 Staging', scope: 'entity_id' },
     { table: 'pet_customers', description: 'Z2 Provider-Kunde muss existieren', scope: 'entity_id' },
     { table: 'pets', description: 'Mindestens ein Tier muss vorhanden/referenziert sein', scope: 'entity_id' },
   ],
@@ -45,6 +46,9 @@ export const GP_PET_GOLDEN_PATH: GoldenPathDefinition = {
     { key: 'CONTRACT_PET_LEAD_CAPTURE', source: 'pet_z1_customers', description: 'Lead-Erfassung Z3 -> Z1' },
     { key: 'CONTRACT_PET_Z1_PROFILE_CREATE', source: 'pet_z1_customers', description: 'Z1-Profilerstellung durch Admin' },
     { key: 'CONTRACT_PET_CUSTOMER_ASSIGN', source: 'pet_customers', description: 'Zuweisung Z1 -> Z2 an Provider' },
+    { key: 'CONTRACT_PET_BOOKING_REQUEST', source: 'pet_z1_booking_requests', description: 'Buchungsanfrage Z3 -> Z1 -> Z2' },
+    { key: 'CONTRACT_PET_BOOKING_CONFIRM', source: 'pet_z1_booking_requests', description: 'Provider-Bestaetigung Z2 -> Z1' },
+    { key: 'CONTRACT_PET_BOOKING_PAYMENT', source: 'pet_z1_booking_requests', description: 'Buchungsgebuehr Z3 -> Z1' },
     { key: 'CONTRACT_PET_MOD05_BOOKING', source: 'pet_z1_customers', description: 'MOD-05 Buchungsanfrage Z2 -> Z1' },
   ],
   ledger_events: [
@@ -53,6 +57,9 @@ export const GP_PET_GOLDEN_PATH: GoldenPathDefinition = {
     { event_type: 'pet.customer.created', trigger: 'on_complete' },
     { event_type: 'pet.customer.assigned', trigger: 'on_complete' },
     { event_type: 'pet.mod05.linked', trigger: 'on_complete' },
+    { event_type: 'pet.booking.requested', trigger: 'on_complete' },
+    { event_type: 'pet.booking.provider_confirmed', trigger: 'on_complete' },
+    { event_type: 'pet.booking.payment_received', trigger: 'on_complete' },
     { event_type: 'pet.booking.first_completed', trigger: 'on_complete' },
   ],
   success_state: {
@@ -213,16 +220,99 @@ export const GP_PET_GOLDEN_PATH: GoldenPathDefinition = {
     },
 
     // ═══════════════════════════════════════════════════════════
-    // PHASE 5: Erste Buchung (Z2)
+    // PHASE 5a: Buchungsanfrage (Z3 -> Z1 -> Z2)
+    // ═══════════════════════════════════════════════════════════
+    {
+      id: 'booking_request',
+      phase: 5,
+      label: 'Buchungsanfrage stellen (Z3 -> Z1 Tracking -> Z2)',
+      type: 'system',
+      task_kind: 'service_task',
+      camunda_key: 'GP_PET_STEP_05A_BOOKING_REQUEST',
+      preconditions: [
+        { key: 'pet_exists', source: 'pets', description: 'Mindestens ein Tier muss existieren' },
+      ],
+      completion: [
+        { key: 'booking_requested', source: 'pet_z1_booking_requests', check: 'exists', description: 'Buchungsanfrage in Z1 Staging erfasst' },
+      ],
+      on_error: {
+        ledger_event: 'pet.booking.request.error',
+        status_update: 'error',
+        recovery_strategy: 'retry',
+        max_retries: 3,
+        description: 'Fehler beim Erstellen der Buchungsanfrage',
+      },
+    },
+
+    // ═══════════════════════════════════════════════════════════
+    // PHASE 5b: Provider-Bestaetigung (Z2 -> Z1)
+    // ═══════════════════════════════════════════════════════════
+    {
+      id: 'provider_confirmation',
+      phase: 5,
+      label: 'Provider bestaetigt Buchungsanfrage',
+      type: 'action',
+      routePattern: '/portal/petmanager',
+      task_kind: 'user_task',
+      camunda_key: 'GP_PET_STEP_05B_PROVIDER_CONFIRM',
+      preconditions: [
+        { key: 'booking_requested', source: 'pet_z1_booking_requests', description: 'Buchungsanfrage muss existieren' },
+      ],
+      completion: [
+        { key: 'booking_confirmed', source: 'pet_z1_booking_requests', check: 'exists', description: 'Status = confirmed' },
+      ],
+      on_timeout: {
+        ledger_event: 'pet.booking.confirm.timeout',
+        status_update: 'stale',
+        recovery_strategy: 'escalate_to_z1',
+        escalate_to: 'Z1',
+        description: 'Provider reagiert nicht innerhalb 48h',
+      },
+      on_rejected: {
+        ledger_event: 'pet.booking.confirm.rejected',
+        status_update: 'rejected',
+        recovery_strategy: 'manual_review',
+        description: 'Provider hat Buchung abgelehnt',
+      },
+      sla_hours: 48,
+    },
+
+    // ═══════════════════════════════════════════════════════════
+    // PHASE 5c: Zahlung Buchungsgebuehr (Z3 -> Z1)
+    // ═══════════════════════════════════════════════════════════
+    {
+      id: 'booking_payment',
+      phase: 5,
+      label: 'Buchungsgebuehr zahlen',
+      type: 'system',
+      task_kind: 'wait_message',
+      camunda_key: 'GP_PET_STEP_05C_PAYMENT',
+      preconditions: [
+        { key: 'booking_confirmed', source: 'pet_z1_booking_requests', description: 'Provider muss bestaetigt haben' },
+      ],
+      completion: [
+        { key: 'booking_paid', source: 'pet_z1_booking_requests', check: 'exists', description: 'payment_status = succeeded' },
+      ],
+      on_error: {
+        ledger_event: 'pet.booking.payment.failed',
+        status_update: 'payment_failed',
+        recovery_strategy: 'retry',
+        max_retries: 3,
+        description: 'Zahlung fehlgeschlagen',
+      },
+    },
+
+    // ═══════════════════════════════════════════════════════════
+    // PHASE 6: Erste Buchung aktiv (Z2)
     // ═══════════════════════════════════════════════════════════
     {
       id: 'first_booking',
-      phase: 5,
+      phase: 6,
       label: 'Erste Buchung durchfuehren',
       type: 'action',
       routePattern: '/portal/petmanager/kalender',
       task_kind: 'user_task',
-      camunda_key: 'GP_PET_STEP_05_FIRST_BOOKING',
+      camunda_key: 'GP_PET_STEP_06_FIRST_BOOKING',
       preconditions: [
         { key: 'pet_exists', source: 'pets', description: 'Mindestens ein Tier muss existieren' },
       ],
