@@ -1,185 +1,227 @@
 
-# Armstrong Magic Intake Engine -- Dokument-zu-Datensatz-Pipeline
+# Magic Intake: Soll-Ist-Analyse aller Zone-2-Module
 
-## Ausgangslage
+## Ueberblick
 
-Heute existieren **drei isolierte Intake-Muster** im System:
+Systematische Pruefung aller 20+ Zone-2-Module auf Magic-Intake-Eignung. Magic Intake = "User gibt Armstrong ein Dokument, Armstrong legt den Datensatz automatisch an."
 
-1. **MOD-13 (Projekte)**: Voll funktionaler KI-Intake via `sot-project-intake` -- Expose/Preisliste hochladen, Gemini extrahiert, User reviewed, Datensatz + Storage-Tree wird erstellt. **Funktioniert bereits ueber Armstrong** (`ARM.MOD13.CREATE_DEV_PROJECT`).
-2. **MOD-11 (Finanzmanager)**: Simpler Magic Intake -- Name + E-Mail eingeben, `finance_request` + `applicant_profile` + Storage-Ordner wird angelegt. **Keine Dokumenten-KI**.
-3. **MOD-04 (Immobilien)**: Manuelles Formular (`CreatePropertyDialog`) -- Ort, Adresse, Objektart. **Keine Dokumenten-KI**.
-4. **MOD-18 (Finanzanalyse)**: Kein Magic Intake vorhanden.
+---
 
-Der `sot-document-parser` existiert bereits und kann Dokumente (PDF, Bilder, Excel) in strukturierte JSON-Daten parsen -- mit spezialisierten Modi (`properties`, `contacts`, `financing`, `general`).
+## IST-Zustand: Was existiert bereits?
 
-## Architektur-Entscheidung: Engine vs. Dispatcher
+| Modul | Action-Code | Typ | Status |
+|-------|-------------|-----|--------|
+| MOD-04 Immobilien | `ARM.MOD04.MAGIC_INTAKE_PROPERTY` | Dokument → `properties` + `units` | Implementiert |
+| MOD-11 Finanzmanager | `ARM.MOD11.MAGIC_INTAKE_CASE` | Dokument → `finance_requests` + `applicant_profiles` | Implementiert |
+| MOD-11 Finanzmanager | `ARM.MOD11.MAGIC_INTAKE` | Formular (Name+Email) → Akte | Implementiert (MagicIntakeCard) |
+| MOD-13 Projekte | `ARM.MOD13.CREATE_DEV_PROJECT` | Expose/Preisliste → `dev_projects` + `dev_project_units` | Implementiert (sot-project-intake) |
+| MOD-18 Finanzanalyse | `ARM.MOD18.MAGIC_INTAKE_FINANCE` | Dokument → `insurance_contracts` + `user_subscriptions` | Implementiert |
 
-**Empfehlung: Zentraler Dispatcher im Armstrong Advisor (kein separater Engine)**
+**5 Magic Intakes existieren bereits.**
 
-Begruendung:
-- Der `sot-document-parser` existiert bereits als Extraktions-Engine
-- Was fehlt, ist nur die **Bruecke**: Parser-Output → Ziel-Tabelle
-- Ein separater Engine waere Over-Engineering -- Armstrong hat bereits Confirm-Gate, Credit-Preflight und Action-Execution
-- Stattdessen: **4 neue Armstrong-Actions** mit klarem Datenmapping
+---
 
-## Was gebaut wird
+## SOLL: Welche Module brauchen Magic Intake?
 
-### 1. Vier neue Armstrong Magic-Intake-Actions
+### Tier 1 — Hoher Mehrwert, klarer Dokumentenbezug (sofort umsetzen)
 
-```text
-Action                          | Modul  | Input-Dokument           | Ziel-Tabellen                    | Credits
-ARM.MOD04.MAGIC_INTAKE_PROPERTY | MOD-04 | Kaufvertrag, Expose, PDF | properties, units, storage_nodes | 3
-ARM.MOD11.MAGIC_INTAKE_CASE     | MOD-11 | Selbstauskunft, Gehalt   | finance_requests, applicant_profiles, storage_nodes | 3
-ARM.MOD18.MAGIC_INTAKE_FINANCE  | MOD-18 | Kontoauszug, Versicherung| insurance_contracts, user_subscriptions, bank_account_meta | 2
-ARM.MOD13.MAGIC_INTAKE_PROJECT  | MOD-13 | (existiert bereits)      | dev_projects, dev_project_units  | 10
-```
+#### 1. MOD-17 Fahrzeuge — `ARM.MOD17.MAGIC_INTAKE_VEHICLE`
+- **Input-Dokumente:** Fahrzeugschein (Zulassungsbescheinigung Teil I), Fahrzeugbrief, Kaufvertrag
+- **Ziel-Tabelle:** `cars_vehicles`
+- **Mapping:**
 
-### 2. Ablauf (identisch fuer alle 4 Module)
+| Parser-Feld | DB-Spalte |
+|-------------|-----------|
+| license_plate | license_plate |
+| hsn | hsn |
+| tsn | tsn |
+| make | make |
+| model | model |
+| first_registration | first_registration_date |
+| holder_name | holder_name |
+| mileage | current_mileage_km |
+| hu_until | hu_valid_until |
+| vin | vin |
 
-```text
-User im Armstrong-Chat:
-  "Hier ist mein Kaufvertrag, leg die Immobilie an"
-  + Datei-Upload (via bestehender Bueroklammer-Funktion)
-         |
-         v
-[1] ARMSTRONG erkennt Intent: ACTION + document_context vorhanden
-         |
-         v
-[2] ARMSTRONG waehlt Action: ARM.MOD04.MAGIC_INTAKE_PROPERTY
-    → Zeigt Confirm-Widget: "Ich moechte eine Immobilie aus dem Dokument anlegen (3 Credits)"
-         |
-    User bestaetigt
-         |
-         v
-[3] ARMSTRONG ruft sot-document-parser auf (parseMode: "properties")
-    → Ergebnis: { properties: [{ address: "...", city: "...", purchase_price: 350000, units: [...] }] }
-         |
-         v
-[4] ARMSTRONG zeigt extrahierte Daten als Review-Widget:
-    "Ich habe folgende Daten erkannt:
-     - Adresse: Musterstr. 42, Berlin
-     - Kaufpreis: 350.000 EUR
-     - Objektart: ETW
-     Soll ich die Immobilie so anlegen?"
-         |
-    User bestaetigt (oder korrigiert)
-         |
-         v
-[5] ARMSTRONG fuehrt INSERT aus:
-    → properties INSERT (+ Trigger erstellt Unit + Storage)
-    → inbox_sort_container mit Adress-Keywords
-    → Antwort: "Immobilie angelegt! Hier ist der Link zur Akte: /portal/immobilien/{id}"
-```
+- **Aufwand:** Gering — Tabelle + Dialog existieren, nur Mapping noetig
+- **Credits:** 2 (Parser + Advisor)
+- **Nutzer-Vorteil:** Fahrzeugschein abfotografieren statt 9 Felder tippen
 
-### 3. Datenmapping-Definitionen (das Herzstuck)
+#### 2. MOD-12 Akquise-Manager — `ARM.MOD12.MAGIC_INTAKE_MANDATE`
+- **Input-Dokumente:** Suchprofil-PDF, Ankaufsprofil, Investment-Criteria-Sheet
+- **Ziel-Tabelle:** `acq_mandates`
+- **Mapping:**
 
-Fuer jedes Modul wird ein klares Schema definiert, das den Parser-Output auf DB-Spalten mapped:
+| Parser-Feld | DB-Spalte |
+|-------------|-----------|
+| client_name | client_display_name |
+| asset_types | target_asset_types (JSONB) |
+| region | target_region |
+| min_price / max_price | budget_min / budget_max |
+| min_yield | min_yield_pct |
+| notes | notes |
 
-**MOD-04 (Immobilien):**
+- **Aufwand:** Mittel — Mandate existieren, Parser braucht spezialisierten Modus
+- **Credits:** 3
+- **Nutzer-Vorteil:** Investor-Briefing als PDF hochladen, Mandat wird sofort angelegt
 
-| Parser-Feld       | DB-Tabelle  | DB-Spalte          |
-|-------------------|-------------|---------------------|
-| address           | properties  | address             |
-| city              | properties  | city                |
-| postal_code       | properties  | postal_code         |
-| property_type     | properties  | property_type       |
-| purchase_price    | properties  | purchase_price      |
-| market_value      | properties  | market_value        |
-| construction_year | properties  | year_built          |
-| living_area_sqm   | properties  | total_area_sqm      |
-| units[]           | units       | (Bulk-Insert)       |
+#### 3. MOD-19 Photovoltaik — `ARM.MOD19.MAGIC_INTAKE_PLANT`
+- **Input-Dokumente:** Installationsprotokoll, Anlagenzertifikat, Einspeisevertrag, Datenblatt
+- **Ziel-Tabelle:** `pv_plants`
+- **Mapping:**
 
-**MOD-11 (Finanzmanager):**
+| Parser-Feld | DB-Spalte |
+|-------------|-----------|
+| plant_name | name |
+| capacity_kwp | capacity_kwp |
+| commissioning_date | commissioning_date |
+| address | address |
+| module_count | module_count |
+| inverter_type | inverter_model |
+| annual_yield_kwh | annual_yield_kwh |
+| feed_in_tariff_cents | feed_in_tariff_cents |
+| bank_name | financing_bank |
+| loan_amount | financing_original_amount |
+| monthly_rate | financing_monthly_rate |
 
-| Parser-Feld       | DB-Tabelle          | DB-Spalte          |
-|-------------------|---------------------|---------------------|
-| first_name        | applicant_profiles  | first_name          |
-| last_name         | applicant_profiles  | last_name           |
-| email             | applicant_profiles  | email               |
-| employer          | applicant_profiles  | employer_name       |
-| net_income        | applicant_profiles  | net_income          |
-| bank              | finance_requests    | (via JSONB)         |
-| loan_amount       | finance_requests    | (via JSONB)         |
+- **Aufwand:** Mittel — Tabelle existiert mit umfangreichen Feldern
+- **Credits:** 3
+- **Nutzer-Vorteil:** Installationsprotokoll hochladen statt 15+ Felder manuell eingeben
 
-**MOD-18 (Finanzanalyse):**
+#### 4. MOD-07 Finanzierung (Client-Seite) — `ARM.MOD07.MAGIC_INTAKE_SELBSTAUSKUNFT`
+- **Input-Dokumente:** Gehaltsabrechnungen, Rentenbescheide, Steuerbescheide
+- **Ziel-Tabelle:** `self_disclosure` (Sektionen 1-7 im JSONB)
+- **Mapping:**
 
-| Parser-Feld       | DB-Tabelle             | DB-Spalte          |
-|-------------------|------------------------|---------------------|
-| insurance_type    | insurance_contracts    | category            |
-| provider          | insurance_contracts    | provider            |
-| premium           | insurance_contracts    | annual_premium      |
-| contract_number   | insurance_contracts    | contract_number     |
-| subscription_name | user_subscriptions     | name                |
-| monthly_cost      | user_subscriptions     | monthly_amount      |
-| bank_name         | bank_account_meta      | display_name        |
-| iban              | bank_account_meta      | iban                |
+| Parser-Feld | DB-Spalte / JSONB-Pfad |
+|-------------|------------------------|
+| gross_income | section_1.gross_income |
+| net_income | section_1.net_income |
+| employer | section_1.employer |
+| employment_type | section_1.employment_type |
+| existing_loans | section_3.loans[] |
+| assets | section_4.assets[] |
 
-### 4. Backend-Erweiterung: sot-armstrong-advisor
+- **Aufwand:** Mittel — Selbstauskunft-Struktur existiert, aber JSONB-Mapping ist komplex
+- **Credits:** 3
+- **Nutzer-Vorteil:** Gehaltsnachweis hochladen, Armstrong fuellt Selbstauskunft automatisch
 
-Im `executeAction`-Block werden 3 neue Cases hinzugefuegt (MOD-13 existiert bereits):
+---
 
-- `ARM.MOD04.MAGIC_INTAKE_PROPERTY`: Parser → properties INSERT → Return Link
-- `ARM.MOD11.MAGIC_INTAKE_CASE`: Parser → finance_request + applicant_profile INSERT → Return Link
-- `ARM.MOD18.MAGIC_INTAKE_FINANCE`: Parser → insurance/subscription INSERT → Return Zusammenfassung
+### Tier 2 — Mittlerer Mehrwert, strukturierte Dokumente
 
-Jede Action folgt dem gleichen 3-Schritt-Muster:
-1. `sot-document-parser` aufrufen (mit parseMode)
-2. Daten validieren + Default-Werte setzen
-3. INSERT in Zieltabellen + Storage-Ordner erstellen
+#### 5. MOD-20 Zuhause (Miety) — `ARM.MOD20.MAGIC_INTAKE_CONTRACT`
+- **Input-Dokumente:** Mietvertrag, Nebenkostenabrechnung, Versorgungsvertraege
+- **Ziel-Tabellen:** `miety_contracts`, `miety_utilities`
+- **Mapping:** Miethoehe, Nebenkosten, Vermieter, Kuendigungsfrist, Vertragspartner
+- **Credits:** 2
+- **Nutzer-Vorteil:** Mietvertrag hochladen statt Daten abtippen
 
-### 5. Frontend: Keine neuen UI-Komponenten noetig
+#### 6. MOD-08 Immo-Suche — `ARM.MOD08.MAGIC_INTAKE_MANDATE`
+- **Input-Dokumente:** Suchprofil, Investmentkriterien-PDF
+- **Ziel-Tabelle:** `search_mandates`
+- **Mapping:** Region, Budget, Objektart, Mindestrendite, Strategie
+- **Credits:** 2
+- **Nutzer-Vorteil:** Suchmandat aus schriftlichem Briefing erstellen
 
-Der Armstrong-Chat hat bereits:
-- Datei-Upload (Bueroklammer, gerade implementiert)
-- Confirm-Gate (Action-Bestaetigungen)
-- Markdown-Rendering (fuer Ergebnis-Darstellung)
+#### 7. MOD-01 Stammdaten — `ARM.MOD01.MAGIC_INTAKE_PROFILE`
+- **Input-Dokumente:** Visitenkarte, Personalausweis, Handelsregisterauszug
+- **Ziel-Tabellen:** `organizations`, `profiles`
+- **Mapping:** Name, Firma, Adresse, Steuernummer, USt-ID, Handelsregisternummer
+- **Credits:** 2
+- **Nutzer-Vorteil:** Visitenkarte abfotografieren = Kontaktdaten sofort erfasst
 
-Die einzige Ergaenzung: Die **Intent-Keywords** im Advisor muessen erweitert werden, damit Armstrong bei Dokument-Upload + modulspezifischen Keywords die richtige Action vorschlaegt.
+---
 
-## Kosten-Kalkulation
+### Tier 3 — Nischenfall, aber sinnvoll
 
-**Pro Magic Intake:**
-- 1 Credit: sot-document-parser (Gemini Flash)
-- 1-2 Credits: Armstrong Advisor (Antwort-Generierung)
-- **Gesamt: 2-3 Credits = 0,50 - 0,75 EUR pro Intake**
+#### 8. MOD-06 Verkauf — `ARM.MOD06.MAGIC_INTAKE_LISTING`
+- **Input-Dokumente:** Expose eines Fremd-Maklers, Eigentumsnachweis
+- **Ziel-Tabelle:** `sale_listings`
+- **Mapping:** Objektdaten, Preis, Provision, Lage
+- **Credits:** 3
+- **Nutzer-Vorteil:** Fremdes Expose einlesen, eigenes Listing befuellen
 
-**Vergleich manueller Aufwand:**
-- Immobilie manuell anlegen: 5-15 Min Dateneingabe
-- Finanzierungsfall mit Selbstauskunft: 20-30 Min
-- Versicherungen erfassen: 10 Min pro Vertrag
+#### 9. MOD-09 Vertriebspartner — `ARM.MOD09.MAGIC_INTAKE_PARTNER`
+- **Input-Dokumente:** Partnerbewerbung, Lebenslauf, Zertifikate
+- **Ziel-Tabelle:** `partner_profiles`
+- **Mapping:** Name, Qualifikationen, Regionen, IHK-Nummer
+- **Credits:** 2
 
-Bei 0,50 EUR pro automatisiertem Intake ist das Kosten-Nutzen-Verhaeltnis exzellent.
+---
 
-**Folgefragen zum gleichen Dokument bleiben kostenlos** (Context ist gecacht).
+### Kein Magic Intake sinnvoll (begruendet)
 
-## Realismus-Bewertung
+| Modul | Grund |
+|-------|-------|
+| MOD-02 KI Office | Kein "Anlage"-Prozess — Office ist Chat/E-Mail/Brief |
+| MOD-03 DMS | Hat bereits sot-document-parser + Auto-Sortierung |
+| MOD-05 MSV (Telefon) | Placeholder-Modul, keine Datenstruktur |
+| MOD-10 Provisionen | Werden systemseitig generiert, kein User-Input |
+| MOD-14 Communication Pro | Kampagnen werden manuell konfiguriert, kein Dokumenten-Input |
+| MOD-15 Fortbildung | Kurskatalog ist admin-gepflegt, nicht user-getrieben |
+| MOD-16 Services | Shop-Katalog ist admin-gepflegt |
 
-| Aspekt | Bewertung |
-|--------|-----------|
-| Technisch machbar? | Ja -- alle Bausteine existieren |
-| Parser-Qualitaet? | Gut fuer standardisierte Dokumente (Kaufvertraege, Gehaltsabrechnungen), schwaecher bei handschriftlichen/unstrukturierten PDFs |
-| Kosten tragbar? | Ja -- 0,50 EUR/Intake bei hohem Automatisierungsgrad |
-| Skalierbar? | Ja -- neue Module brauchen nur ein neues Mapping |
-| Risiken? | Parser-Fehler → deshalb immer Review-Schritt vor INSERT |
+---
+
+## Zusammenfassung: Magic Intake Roadmap
+
+| Status | Modul | Action-Code | Credits | Prioritaet |
+|--------|-------|-------------|---------|------------|
+| Existiert | MOD-04 Immobilien | `ARM.MOD04.MAGIC_INTAKE_PROPERTY` | 3 | -- |
+| Existiert | MOD-11 Finanzmanager | `ARM.MOD11.MAGIC_INTAKE_CASE` | 3 | -- |
+| Existiert | MOD-13 Projekte | `ARM.MOD13.CREATE_DEV_PROJECT` | 10 | -- |
+| Existiert | MOD-18 Finanzanalyse | `ARM.MOD18.MAGIC_INTAKE_FINANCE` | 2 | -- |
+| **NEU** | MOD-17 Fahrzeuge | `ARM.MOD17.MAGIC_INTAKE_VEHICLE` | 2 | Tier 1 |
+| **NEU** | MOD-12 Akquise | `ARM.MOD12.MAGIC_INTAKE_MANDATE` | 3 | Tier 1 |
+| **NEU** | MOD-19 Photovoltaik | `ARM.MOD19.MAGIC_INTAKE_PLANT` | 3 | Tier 1 |
+| **NEU** | MOD-07 Finanzierung | `ARM.MOD07.MAGIC_INTAKE_SELBSTAUSKUNFT` | 3 | Tier 1 |
+| **NEU** | MOD-20 Zuhause | `ARM.MOD20.MAGIC_INTAKE_CONTRACT` | 2 | Tier 2 |
+| **NEU** | MOD-08 Immo-Suche | `ARM.MOD08.MAGIC_INTAKE_MANDATE` | 2 | Tier 2 |
+| **NEU** | MOD-01 Stammdaten | `ARM.MOD01.MAGIC_INTAKE_PROFILE` | 2 | Tier 2 |
+| **NEU** | MOD-06 Verkauf | `ARM.MOD06.MAGIC_INTAKE_LISTING` | 3 | Tier 3 |
+| **NEU** | MOD-09 Vertriebspartner | `ARM.MOD09.MAGIC_INTAKE_PARTNER` | 2 | Tier 3 |
+
+**Total: 4 existierend + 9 neue = 13 Magic Intakes**
+
+---
 
 ## Technische Umsetzung
 
-### Neue/geaenderte Dateien
+Alle 9 neuen Intakes folgen dem identischen Pattern:
 
-**Manifest (1 Datei):**
-- `src/manifests/armstrongManifest.ts` -- 3 neue Actions registrieren (MOD-04, MOD-11, MOD-18)
+1. **Manifest:** Action in `armstrongManifest.ts` registrieren (je ~20 Zeilen)
+2. **Backend:** Case im `sot-armstrong-advisor` Switch hinzufuegen (je ~50 Zeilen Mapping)
+3. **Frontend:** Nichts — Armstrong-Chat hat Upload + Confirm bereits
 
-**Backend (1 Datei):**
-- `supabase/functions/sot-armstrong-advisor/index.ts`:
-  - 3 neue Cases im `executeAction`-Switch
-  - Erweiterte Intent-Keywords fuer Dokument-Intakes
-  - Mapping-Logik: Parser-Output → DB-INSERT
-  - 3 neue Action-Definitionen im MVP_ACTIONS Array
+### Umsetzungsreihenfolge
 
-**Keine neuen Dateien** -- alles wird in bestehende Strukturen integriert.
+**Sprint 1 (Tier 1):** MOD-17 Fahrzeuge, MOD-12 Akquise, MOD-19 PV, MOD-07 Selbstauskunft
+- 4 Actions, ~200 Zeilen Backend, ~80 Zeilen Manifest
+- Geschaetzt: 1 Session
 
-### Umfang
-- ~50 Zeilen Manifest (3 Action-Registrierungen)
-- ~300 Zeilen Backend (3 Execute-Cases mit Mapping + Validation)
-- ~20 Zeilen Intent-Keywords
-- Geschaetzte Umsetzung: 1 Session
+**Sprint 2 (Tier 2):** MOD-20 Zuhause, MOD-08 Immo-Suche, MOD-01 Stammdaten
+- 3 Actions, ~150 Zeilen Backend
+- Geschaetzt: 1 Session
+
+**Sprint 3 (Tier 3):** MOD-06 Verkauf, MOD-09 Vertriebspartner
+- 2 Actions, ~100 Zeilen Backend
+- Geschaetzt: 0.5 Session
+
+### Parser-Modi
+
+Der `sot-document-parser` benoetigt folgende neue parseModes:
+
+| parseMode | Fuer | Extrahiert |
+|-----------|------|------------|
+| `vehicle_registration` | MOD-17 | Fahrzeugschein-Felder (HSN, TSN, Kennzeichen, VIN) |
+| `acquisition_profile` | MOD-12 | Investment-Kriterien, Budget, Region |
+| `pv_installation` | MOD-19 | Anlagenleistung, Module, Wechselrichter, Einspeisedaten |
+| `salary_slip` | MOD-07 | Brutto/Netto, Arbeitgeber, Steuerklasse |
+| `rental_contract` | MOD-20 | Miete, NK, Vermieter, Laufzeit |
+| `search_profile` | MOD-08 | Budget, Region, Objektart, Rendite |
+| `business_card` | MOD-01 | Name, Firma, Adresse, Kontaktdaten |
+| `sale_expose` | MOD-06 | Objektdaten, Preis, Provision |
+| `partner_cv` | MOD-09 | Qualifikationen, Regionen |
+
+Diese werden als Prompt-Templates im Advisor definiert — der Parser selbst bleibt generisch (Gemini erhaelt das Schema als Instruction).
