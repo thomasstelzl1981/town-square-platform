@@ -632,37 +632,7 @@ export function KontakteTab() {
           />
         </div>
         
-        {/* Auto-Enrich Switches */}
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <Mail className="h-4 w-4 text-muted-foreground" />
-            <Label htmlFor="email-enrich" className="text-sm text-muted-foreground cursor-pointer">
-              E-Mail
-            </Label>
-            <Switch
-              id="email-enrich"
-              checked={emailEnrichEnabled}
-              onCheckedChange={(checked) => {
-                setEmailEnrichEnabled(checked);
-                updateEnrichSettingsMutation.mutate({ field: 'auto_enrich_contacts_email', value: checked });
-              }}
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <FileText className="h-4 w-4 text-muted-foreground" />
-            <Label htmlFor="post-enrich" className="text-sm text-muted-foreground cursor-pointer">
-              Post
-            </Label>
-            <Switch
-              id="post-enrich"
-              checked={postEnrichEnabled}
-              onCheckedChange={(checked) => {
-                setPostEnrichEnabled(checked);
-                updateEnrichSettingsMutation.mutate({ field: 'auto_enrich_contacts_post', value: checked });
-              }}
-            />
-          </div>
-        </div>
+        {/* Auto-Enrich moved to Armstrong Intelligence (AbrechnungTab) */}
 
         <Button variant="outline" size="icon" onClick={() => setSettingsOpen(true)} title="Konto-Integrationen">
           <Settings className="h-4 w-4" />
