@@ -501,12 +501,12 @@ export const zone2Portal: ZoneDefinition = {
       tiles: [
         { path: "dashboard", component: "FinanzenUebersicht", title: "Übersicht", default: true },
         { path: "investment", component: "FinanzenInvestment", title: "Investment" },
+        { path: "kv", component: "FinanzenKrankenversicherung", title: "Krankenversicherung" },
         { path: "sachversicherungen", component: "FinanzenSachversicherungen", title: "Versicherungen" },
         { path: "vorsorge", component: "FinanzenVorsorge", title: "Vorsorge" },
-        { path: "kv", component: "FinanzenKrankenversicherung", title: "Krankenversicherung" },
+        { path: "darlehen", component: "FinanzenDarlehen", title: "Darlehen" },
         { path: "abonnements", component: "FinanzenAbonnements", title: "Abonnements" },
         { path: "vorsorgedokumente", component: "FinanzenVorsorgedokumente", title: "Testament & Vollmacht" },
-        { path: "darlehen", component: "FinanzenDarlehen", title: "Darlehen" },
       ],
     },
     "MOD-19": {
