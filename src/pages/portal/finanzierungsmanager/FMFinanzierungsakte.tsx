@@ -23,6 +23,7 @@ import FinanceOfferCard from '@/components/finanzierung/FinanceOfferCard';
 import AmortizationScheduleCard from '@/components/finanzierung/AmortizationScheduleCard';
 import { toast } from 'sonner';
 import { PageShell } from '@/components/shared/PageShell';
+import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import FinanceCalculatorCard from '@/components/finanzierung/FinanceCalculatorCard';
 import {
   PersonSection, EmploymentSection, BankSection, IncomeSection,
@@ -213,64 +214,40 @@ export default function FMFinanzierungsakte() {
 
   return (
     <PageShell fullWidth={splitView}>
-      {/* Widget-Leiste: bestehende Akten + CTA */}
-      {existingCases && existingCases.length > 0 && (
-        <WidgetGrid>
-          {existingCases.map((c: any) => {
-            const req = c.finance_mandates?.finance_requests?.[0];
-            const applicant = req?.applicant_profiles?.[0];
-            const label = applicant ? `${applicant.first_name || ''} ${applicant.last_name || ''}`.trim() : (req?.public_id || c.id.slice(0, 8));
-            return (
-              <WidgetCell key={c.id}>
-                <Card
-                  className="glass-card cursor-pointer transition-all h-full flex flex-col items-center justify-center text-center p-4 gap-2 hover:ring-1 hover:ring-primary/40"
-                  onClick={() => navigate(`/portal/finanzierungsmanager/fall/${c.id}`)}
-                >
-                  <FileText className="h-6 w-6 text-primary" />
-                  <span className="text-sm font-semibold truncate max-w-full">{label}</span>
-                  <Badge variant="secondary" className="text-[10px]">{c.status}</Badge>
-                </Card>
-              </WidgetCell>
-            );
-          })}
-          <WidgetCell>
-            <Card className="glass-card cursor-pointer transition-all h-full flex flex-col items-center justify-center text-center p-4 gap-2 border-dashed ring-2 ring-primary/30">
-              <Plus className="h-6 w-6 text-primary" />
-              <span className="text-sm font-medium text-muted-foreground">Aktuelle Akte</span>
-            </Card>
-          </WidgetCell>
-        </WidgetGrid>
-      )}
-
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate(-1)}>
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
-        <div className="flex-1">
-          <h2 className="text-2xl font-bold tracking-tight uppercase">Neue Finanzierungsakte</h2>
-          <p className="text-sm text-muted-foreground">Leere Akte manuell befüllen und erstellen</p>
-        </div>
-        {/* Split-View Toggle — only on lg+ */}
-        <div className="hidden lg:flex items-center gap-1 border rounded-lg p-0.5">
-          <Button
-            variant={!splitView ? 'default' : 'ghost'}
-            size="sm"
-            className="h-7 gap-1.5 text-xs rounded-md"
-            onClick={() => setSplitView(false)}
-          >
-            <LayoutList className="h-3.5 w-3.5" /> Standard
-          </Button>
-          <Button
-            variant={splitView ? 'default' : 'ghost'}
-            size="sm"
-            className="h-7 gap-1.5 text-xs rounded-md"
-            onClick={() => setSplitView(true)}
-          >
-            <LayoutPanelLeft className="h-3.5 w-3.5" /> Split-View
-          </Button>
-        </div>
-      </div>
+      <ModulePageHeader
+        title="Finanzierungsakte"
+        description="Neue Akte manuell befüllen und erstellen"
+        actions={
+          <div className="flex items-center gap-2">
+            <div className="hidden lg:flex items-center gap-1 border rounded-lg p-0.5">
+              <Button
+                variant={!splitView ? 'default' : 'ghost'}
+                size="sm"
+                className="h-7 gap-1.5 text-xs rounded-md"
+                onClick={() => setSplitView(false)}
+              >
+                <LayoutList className="h-3.5 w-3.5" /> Standard
+              </Button>
+              <Button
+                variant={splitView ? 'default' : 'ghost'}
+                size="sm"
+                className="h-7 gap-1.5 text-xs rounded-md"
+                onClick={() => setSplitView(true)}
+              >
+                <LayoutPanelLeft className="h-3.5 w-3.5" /> Split-View
+              </Button>
+            </div>
+            <Button variant="glass" size="icon-round" onClick={() => {
+              setFormData(createEmptyApplicantFormData());
+              setCoFormData(createEmptyApplicantFormData());
+              setMagicIntakeResult(null);
+              toast.success('Neue leere Akte erstellt');
+            }}>
+              <Plus className="h-4 w-4" />
+            </Button>
+          </div>
+        }
+      />
 
       {splitView ? (
         /* ===== SPLIT-VIEW LAYOUT ===== */

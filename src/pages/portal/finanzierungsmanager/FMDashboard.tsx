@@ -276,9 +276,8 @@ export default function FMDashboard({ cases, isLoading }: Props) {
         title="Finanzierungsmanager"
         description={`${activeCases.length} Fälle in Bearbeitung — noch nicht eingereicht.`}
         actions={
-          <Button onClick={() => navigate('/portal/finanzierungsmanager/finanzierungsakte')} size="sm">
-            <Plus className="h-4 w-4 mr-1" />
-            Neuer Fall
+          <Button variant="glass" size="icon-round" onClick={() => navigate('/portal/finanzierungsmanager/finanzierungsakte')}>
+            <Plus className="h-4 w-4" />
           </Button>
         }
       />
