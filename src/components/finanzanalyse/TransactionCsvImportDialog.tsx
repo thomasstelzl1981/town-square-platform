@@ -244,7 +244,27 @@ export function TransactionCsvImportDialog({
       return inserts.length;
     },
     onSuccess: (count) => {
-      toast.success(`${count} Umsätze importiert`);
+      toast.success(`${count} Umsätze importiert`, {
+        action: {
+          label: 'Abgleich starten',
+          onClick: async () => {
+            try {
+              const { data, error } = await supabase.functions.invoke('sot-rent-match', {
+                body: { account_id: accountRef },
+              });
+              if (error) throw error;
+              const result = data as { matched?: number };
+              if (result.matched && result.matched > 0) {
+                toast.success(`${result.matched} Mietzahlung${result.matched > 1 ? 'en' : ''} automatisch zugeordnet`);
+              } else {
+                toast.info('Keine neuen Zuordnungen gefunden');
+              }
+            } catch {
+              toast.error('Abgleich fehlgeschlagen');
+            }
+          },
+        },
+      });
       setRows([]);
       setFileName(null);
       onImportComplete();

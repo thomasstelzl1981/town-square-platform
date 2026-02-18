@@ -227,3 +227,6 @@ verify_jwt = false
 
 [functions.sot-finapi-sync]
 verify_jwt = false
+
+[functions.sot-rent-match]
+verify_jwt = false
