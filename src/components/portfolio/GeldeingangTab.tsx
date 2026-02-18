@@ -385,7 +385,21 @@ export function GeldeingangTab({ propertyId, tenantId, unitId }: GeldeingangTabP
             </CardHeader>
 
             <CardContent>
-              {/* Payment table */}
+              {/* Show payment table only when auto_match is enabled AND a bank account is linked */}
+              {!lease.auto_match_enabled ? (
+                <div className="text-center py-8 text-muted-foreground text-sm border border-dashed rounded-lg">
+                  <Info className="h-5 w-5 mx-auto mb-2 opacity-50" />
+                  <p>Automatischer Kontoabgleich ist deaktiviert.</p>
+                  <p className="text-xs mt-1">Aktivieren Sie den Toggle oben, um Mieteingänge mit Bankumsätzen abzugleichen.</p>
+                </div>
+              ) : !lease.linked_bank_account_id ? (
+                <div className="text-center py-8 text-muted-foreground text-sm border border-dashed rounded-lg">
+                  <CreditCard className="h-5 w-5 mx-auto mb-2 opacity-50" />
+                  <p>Kein Konto für den Abgleich ausgewählt.</p>
+                  <p className="text-xs mt-1">Wählen Sie oben ein Konto aus, auf dem die Mietzahlungen eingehen.</p>
+                </div>
+              ) : (
+              /* Payment table */
               <div className="rounded-lg border overflow-hidden">
                 <table className="w-full text-sm">
                   <thead>
@@ -438,6 +452,7 @@ export function GeldeingangTab({ propertyId, tenantId, unitId }: GeldeingangTabP
                   </tbody>
                 </table>
               </div>
+              )}
 
               {/* Manual payment entry */}
               <div className="mt-4">
