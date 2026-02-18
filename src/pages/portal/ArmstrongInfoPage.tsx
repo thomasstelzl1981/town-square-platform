@@ -1,15 +1,21 @@
 /**
- * ARMSTRONG INFO PAGE — Internal portal page explaining Armstrong capabilities
+ * ARMSTRONG INFO PAGE — Werbeseite + Billing Hub
  * Route: /portal/armstrong
+ * Zeigt: Was Armstrong kann, wie er funktioniert, Preise, Verbrauch, Add-Ons
  */
 
 import { PageShell } from '@/components/shared/PageShell';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
 import { 
   Bot, Zap, Shield, CreditCard, ArrowRight
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+
+import { KostenDashboard } from '@/pages/portal/communication-pro/agenten/KostenDashboard';
+import { SystemPreisliste } from '@/components/armstrong/SystemPreisliste';
+import { EmailEnrichmentCard } from '@/components/armstrong/EmailEnrichmentCard';
+import { WhatsAppArmstrongCard } from '@/components/armstrong/WhatsAppArmstrongCard';
+import { AktionsKatalog } from '@/pages/portal/communication-pro/agenten/AktionsKatalog';
 
 const steps = [
   { num: '1', title: 'Frage stellen', desc: 'Beschreiben Sie, was Sie brauchen — in Ihren Worten.' },
@@ -26,7 +32,7 @@ const usps = [
 export default function ArmstrongInfoPage() {
   return (
     <PageShell>
-      {/* Hero */}
+      {/* ─── HERO ─── */}
       <div className="space-y-3">
         <div className="flex items-center gap-3">
           <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center">
@@ -39,7 +45,7 @@ export default function ArmstrongInfoPage() {
         </div>
       </div>
 
-      {/* Was Armstrong besonders macht */}
+      {/* ─── USPs ─── */}
       <div className="grid gap-4 md:grid-cols-3">
         {usps.map((usp) => (
           <Card key={usp.title} className="glass-card">
@@ -58,7 +64,7 @@ export default function ArmstrongInfoPage() {
         ))}
       </div>
 
-      {/* Wie Armstrong arbeitet — 3 Schritte */}
+      {/* ─── WIE ARMSTRONG ARBEITET ─── */}
       <Card className="glass-card">
         <CardHeader>
           <CardTitle className="text-lg">Wie Armstrong arbeitet</CardTitle>
@@ -83,19 +89,53 @@ export default function ArmstrongInfoPage() {
         </CardContent>
       </Card>
 
-      {/* CTA */}
+      {/* ─── CREDIT-SALDO & VERBRAUCH ─── */}
+      <Separator className="my-2" />
+
+      <div className="space-y-1">
+        <h2 className="text-lg font-semibold flex items-center gap-2">
+          <CreditCard className="h-5 w-5 text-primary" />
+          Verbrauch & Kosten
+        </h2>
+        <p className="text-sm text-muted-foreground">Ihr aktueller Credit-Verbrauch und Transaktionen.</p>
+      </div>
+
+      <KostenDashboard />
+
+      {/* ─── SYSTEM-PREISLISTE ─── */}
+      <SystemPreisliste />
+
+      {/* ─── ADD-ONS & SERVICES ─── */}
+      <Separator className="my-2" />
+
+      <div className="space-y-1">
+        <h2 className="text-lg font-semibold">Services & Add-Ons</h2>
+        <p className="text-sm text-muted-foreground">Zusätzliche Dienste aktivieren und konfigurieren.</p>
+      </div>
+
+      <EmailEnrichmentCard />
+      <WhatsAppArmstrongCard />
+
+      {/* ─── AKTIONSKATALOG ─── */}
+      <Separator className="my-2" />
+
+      <div className="space-y-1">
+        <h2 className="text-lg font-semibold flex items-center gap-2">
+          <Bot className="h-5 w-5 text-primary" />
+          Aktionskatalog
+        </h2>
+        <p className="text-sm text-muted-foreground">Alle verfügbaren Armstrong-Aktionen durchsuchen.</p>
+      </div>
+
+      <AktionsKatalog />
+
+      {/* ─── CTA ─── */}
       <Card className="glass-card border-primary/20">
         <CardContent className="pt-6 text-center space-y-3">
           <h3 className="text-lg font-semibold">Bereit loszulegen?</h3>
           <p className="text-sm text-muted-foreground max-w-md mx-auto">
             Öffnen Sie den Armstrong-Chat über das Bot-Symbol unten rechts — und stellen Sie Ihre erste Frage. Viele Aktionen sind kostenlos.
           </p>
-          <Button asChild variant="outline">
-            <Link to="/portal/stammdaten/abrechnung">
-              <CreditCard className="h-4 w-4 mr-2" />
-              Preise und Verbrauch ansehen
-            </Link>
-          </Button>
         </CardContent>
       </Card>
     </PageShell>

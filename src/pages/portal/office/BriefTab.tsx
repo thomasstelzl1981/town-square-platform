@@ -701,13 +701,13 @@ ${senderLine}`);
                 <div className="flex items-center space-x-1.5">
                   <RadioGroupItem value="fax" id="ch-fax" />
                   <Label htmlFor="ch-fax" className="flex items-center gap-1 cursor-pointer text-sm">
-                    <Phone className="h-4 w-4" /> SimpleFax
+                    <Phone className="h-4 w-4" /> Fax
                   </Label>
                 </div>
                 <div className="flex items-center space-x-1.5">
                   <RadioGroupItem value="post" id="ch-post" />
                   <Label htmlFor="ch-post" className="flex items-center gap-1 cursor-pointer text-sm">
-                    <FileOutput className="h-4 w-4" /> SimpleBrief
+                    <FileOutput className="h-4 w-4" /> Brief
                   </Label>
                 </div>
               </RadioGroup>
@@ -726,8 +726,8 @@ ${senderLine}`);
                 : channel === 'email'
                 ? 'Kontakt hat keine E-Mail-Adresse'
                 : channel === 'fax'
-                ? 'PDF wird per SimpleFax als Fax gesendet'
-                : 'PDF wird per SimpleBrief als Postbrief versendet'}
+                ? 'PDF wird als Fax gesendet'
+                : 'PDF wird als Brief versendet'}
             </p>
 
             {/* Action buttons */}
