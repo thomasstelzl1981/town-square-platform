@@ -92,12 +92,12 @@ export default function LennoxPartnerWerden() {
   return (
     <div className="space-y-0">
       {/* ═══ HERO ═══ */}
-      <section className="relative overflow-hidden" style={{ minHeight: '50vh' }}>
+      <section className="relative overflow-hidden" style={{ minHeight: '35vh' }}>
         <div className="absolute inset-0">
-          <img src={partnerHero} alt="Lennox Partner Netzwerk" className="w-full h-full object-cover" />
+          <img src={partnerHero} alt="Lennox Partner Netzwerk" className="w-full h-full object-cover object-center" />
           <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/20 to-black/50" />
         </div>
-        <div className="relative z-10 flex flex-col items-center justify-center text-center px-5" style={{ minHeight: '50vh' }}>
+        <div className="relative z-10 flex flex-col items-center justify-center text-center px-5" style={{ minHeight: '35vh' }}>
           <h1 className="text-3xl md:text-5xl font-bold text-white mb-3">Werde Partner in deiner Region</h1>
           <p className="text-white/80 text-base md:text-lg max-w-xl">
             Gemeinsam bauen wir das größte Netzwerk für Hunde-Dienstleister in Deutschland.
