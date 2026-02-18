@@ -7,6 +7,7 @@
   "phase_1": {
     "title": "Sofort-Härtung (heute)",
     "status": "done",
+    "completed_at": "2026-02-15",
     "description": "dev_mode-Policies entfernen + RESTRICTIVE tenant_id-Isolation für alle 180 Tabellen",
     "items": [
       {

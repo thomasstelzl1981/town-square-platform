@@ -13161,6 +13161,7 @@ export type Database = {
           expires_at: string
           id: string
           session_token: string
+          tenant_id: string
         }
         Insert: {
           created_at?: string | null
@@ -13168,6 +13169,7 @@ export type Database = {
           expires_at?: string
           id?: string
           session_token: string
+          tenant_id: string
         }
         Update: {
           created_at?: string | null
@@ -13175,6 +13177,7 @@ export type Database = {
           expires_at?: string
           id?: string
           session_token?: string
+          tenant_id?: string
         }
         Relationships: [
           {
@@ -13182,6 +13185,13 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "pet_z1_customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pet_z3_sessions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
