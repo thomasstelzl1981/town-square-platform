@@ -18,6 +18,7 @@ import { de } from 'date-fns/locale';
 import { Separator } from '@/components/ui/separator';
 import { AktionsKatalog } from '@/pages/portal/communication-pro/agenten/AktionsKatalog';
 import { KostenDashboard } from '@/pages/portal/communication-pro/agenten/KostenDashboard';
+import { ArmstrongCreditPreisliste } from '@/components/armstrong/ArmstrongCreditPreisliste';
 import { toast } from 'sonner';
 
 export function AbrechnungTab() {
@@ -88,7 +89,7 @@ export function AbrechnungTab() {
 
   return (
     <PageShell>
-      <ModulePageHeader title="Abrechnung" description="Dein Plan, Credits und Rechnungen" />
+      <ModulePageHeader title="Abrechnung & Credits" description="Ihr Plan, Armstrong-Aktionen und Credit-Verbrauch im Überblick" />
       {/* Current Plan */}
       <Card>
         <CardHeader>
@@ -222,6 +223,7 @@ export function AbrechnungTab() {
         </div>
 
         <KostenDashboard />
+        <ArmstrongCreditPreisliste />
         <EmailEnrichmentCard />
         <WhatsAppArmstrongCard />
         <AktionsKatalog />

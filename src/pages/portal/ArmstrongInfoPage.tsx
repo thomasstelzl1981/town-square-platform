@@ -5,34 +5,11 @@
 
 import { PageShell } from '@/components/shared/PageShell';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { 
-  Bot, Zap, Shield, CreditCard, 
-  CheckCircle, ArrowRight, Brain,
-  FileText, Building2, Search, Mic,
-  Calculator, Globe
+  Bot, Zap, Shield, CreditCard, ArrowRight
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
-
-// Free actions users can do
-const freeActions = [
-  { icon: Brain, label: 'Begriffe erklären', desc: 'Immobilien- und Finanzbegriffe verständlich erklärt' },
-  { icon: FileText, label: 'FAQ beantworten', desc: 'Häufige Fragen zu Plattform und Prozessen' },
-  { icon: Building2, label: 'Modul-Onboarding', desc: 'Erklärt wie ein Modul funktioniert' },
-  { icon: Calculator, label: 'Rendite berechnen', desc: 'Brutto-, Netto- und Eigenkapitalrendite' },
-  { icon: Calculator, label: 'Tilgung berechnen', desc: 'Tilgungsplan und Restschuld' },
-  { icon: Calculator, label: 'Belastung berechnen', desc: 'Monatliche Netto-Belastung nach Steuern' },
-];
-
-const creditActions = [
-  { icon: Globe, label: 'Web-Recherche', cost: '5 Ct', desc: 'Recherche mit Quellennachweis' },
-  { icon: FileText, label: 'Dokument analysieren', cost: '1 Credit', desc: 'Zusammenfassung & Extraktion' },
-  { icon: Building2, label: 'Immobilie anlegen', cost: '1 Credit', desc: 'Strukturierte Datenerfassung' },
-  { icon: Search, label: 'Datenqualitäts-Check', cost: '1 Credit', desc: 'Prüfung auf Vollständigkeit' },
-  { icon: Mic, label: 'Spracheingabe', cost: '1 Credit', desc: 'Aufgaben & Notizen per Stimme' },
-  { icon: FileText, label: 'Landing Page generieren', cost: '5 Credits', desc: 'KI-generierte Verkaufsseite' },
-];
+import { Link } from 'react-router-dom';
 
 const steps = [
   { num: '1', title: 'Frage stellen', desc: 'Beschreiben Sie, was Sie brauchen — in Ihren Worten.' },
@@ -106,58 +83,6 @@ export default function ArmstrongInfoPage() {
         </CardContent>
       </Card>
 
-      {/* Kostenlos */}
-      <Card className="glass-card">
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
-            <CheckCircle className="h-5 w-5 text-primary" />
-            Kostenlos verfügbar
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {freeActions.map((action) => (
-              <div key={action.label} className="flex items-start gap-3 p-3 rounded-lg bg-muted/30">
-                <action.icon className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-                <div>
-                  <p className="text-sm font-medium">{action.label}</p>
-                  <p className="text-xs text-muted-foreground">{action.desc}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Credit-Aktionen */}
-      <Card className="glass-card">
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Zap className="h-5 w-5 text-primary" />
-            Mit Credits
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {creditActions.map((action) => (
-              <div key={action.label} className="flex items-start gap-3 p-3 rounded-lg bg-muted/30">
-                <action.icon className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-                <div>
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm font-medium">{action.label}</p>
-                    <Badge variant="outline" className="text-[10px] px-1.5 py-0">{action.cost}</Badge>
-                  </div>
-                  <p className="text-xs text-muted-foreground">{action.desc}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-          <p className="text-xs text-muted-foreground mt-4">
-            Kosten werden immer vorab angezeigt. Sie entscheiden vor jeder Ausführung.
-          </p>
-        </CardContent>
-      </Card>
-
       {/* CTA */}
       <Card className="glass-card border-primary/20">
         <CardContent className="pt-6 text-center space-y-3">
@@ -165,6 +90,12 @@ export default function ArmstrongInfoPage() {
           <p className="text-sm text-muted-foreground max-w-md mx-auto">
             Öffnen Sie den Armstrong-Chat über das Bot-Symbol unten rechts — und stellen Sie Ihre erste Frage. Viele Aktionen sind kostenlos.
           </p>
+          <Button asChild variant="outline">
+            <Link to="/portal/stammdaten/abrechnung">
+              <CreditCard className="h-4 w-4 mr-2" />
+              Preise und Verbrauch ansehen
+            </Link>
+          </Button>
         </CardContent>
       </Card>
     </PageShell>
