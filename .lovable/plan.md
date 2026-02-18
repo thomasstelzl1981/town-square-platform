@@ -1,57 +1,41 @@
 
 
-## Demo-Bilder auf der Lennox & Friends Website anzeigen
+## Drei Aenderungen an der Lennox & Friends Website
 
-### Problem
+### 1. Header-Link "Partner finden" loest sofort Ortung aus
 
-Die vier Profilbilder (Hundepension + Hundefriseur), die im Pet Manager Modul als Demo-Galerie angelegt wurden, erscheinen nur im Zone-1-Profil (`PMProfil.tsx`) als Fallback. Die Zone-3-Seiten (oeffentliche Website) lesen `cover_image_url` und `gallery_images` direkt aus der Datenbank. Dort steht:
+Aktuell gibt es keinen Header-Link fuer die Partnersuche. Der "Partner in meiner Naehe finden"-Button im Hero scrollt nur zum Standort-Widget. 
 
-- `cover_image_url`: altes Unsplash-Stockfoto
-- `gallery_images`: leeres Array `[]`
+**Aenderung:**
+- In `LennoxLayout.tsx` einen neuen Nav-Link "Partner finden" hinzufuegen, der zur Startseite navigiert mit einem URL-Parameter (`?locate=1`)
+- In `LennoxStartseite.tsx` beim Laden pruefen ob `?locate=1` gesetzt ist — wenn ja, sofort `navigator.geolocation` aufrufen und Ergebnisse anzeigen
+- Das "Standort aktivieren"-Widget (Zeilen 100-128) entfaellt komplett. Stattdessen bleibt nur die Suchleiste (Ort/PLZ + Suchen-Button) immer sichtbar
+- `handleGeolocation` wird erweitert um echte Browser-Geolocation (mit Fallback auf "Mein Standort")
 
-Deshalb sieht man auf der Website ein fremdes Hundebild statt der vier generierten Profilbilder.
+### 2. Hero-Bild bleibt nach der Suche sichtbar
 
-### Loesung
+Aktuell wird der gesamte Hero-Bereich (70vh mit Bild) durch einen kleinen Text-Header ersetzt wenn `hasSearched = true`.
 
-Zwei Aenderungen:
+**Aenderung:**
+- Der Hero mit dem grossen Bild bleibt IMMER sichtbar (Zeilen 56-78 werden nicht mehr bedingt gerendert)
+- Nach der Suche wird der Hero etwas kompakter (z.B. 40vh statt 70vh) aber das Bild bleibt
+- Der "Partner in meiner Naehe finden"-Button im Hero wird nach der Suche ausgeblendet (da Ergebnisse bereits da sind)
+- Der kompakte Text-Header (Zeilen 80-96) entfaellt
 
-**1. Datenbank aktualisieren** — Die Demo-Bilder als statische URLs in die DB schreiben:
+### 3. Shop-Seite bekommt ein generiertes Hero-Bild
 
-```sql
-UPDATE pet_providers
-SET cover_image_url = '/shop/lennox-cover-pension.jpg',
-    gallery_images = ARRAY[
-      '/assets/demo/pm-gallery-pension-1.jpg',
-      '/assets/demo/pm-gallery-pension-2.jpg',
-      '/assets/demo/pm-gallery-grooming-1.jpg',
-      '/assets/demo/pm-gallery-grooming-2.jpg'
-    ]
-WHERE id = 'd0000000-0000-4000-a000-000000000050';
-```
+Die `LennoxShop.tsx` zeigt aktuell nur ein Icon und Text als Header.
 
-Problem: Die Assets liegen unter `src/assets/demo/` und werden von Vite als Imports verarbeitet — sie haben zur Laufzeit keine vorhersagbare URL.
-
-Daher besserer Weg: **Die vier Demo-Bilder nach `public/demo/` kopieren**, damit sie als statische URLs erreichbar sind (`/demo/pm-gallery-pension-1.jpg` etc.), und dann die DB mit diesen Pfaden aktualisieren.
-
-**2. Zone-3-Seiten mit Galerie-Anzeige erweitern**
-
-Aktuell zeigen die Partner-Detail-Seiten nur ein einzelnes `cover_image_url`-Bild. Die `gallery_images` werden gar nicht gerendert. Das sollte ergaenzt werden, damit alle vier Bilder sichtbar sind.
+**Aenderung:**
+- Ein neues Hero-Bild via AI generieren (Alpine/Natur-Stil passend zum CI) und unter `public/shop/` speichern
+- In `LennoxShop.tsx` den Header durch ein Hero-Bild mit Text-Overlay ersetzen (aehnlich wie auf der Startseite, aber kompakter)
 
 ### Technische Dateien
 
-| Datei | Aktion |
-|-------|--------|
-| `public/demo/pm-gallery-pension-1.jpg` | NEU — Kopie aus `src/assets/demo/` |
-| `public/demo/pm-gallery-pension-2.jpg` | NEU — Kopie aus `src/assets/demo/` |
-| `public/demo/pm-gallery-grooming-1.jpg` | NEU — Kopie aus `src/assets/demo/` |
-| `public/demo/pm-gallery-grooming-2.jpg` | NEU — Kopie aus `src/assets/demo/` |
-| Migration SQL | NEU — `cover_image_url` und `gallery_images` in `pet_providers` aktualisieren |
-| `src/pages/zone3/lennox/LennoxPartnerProfil.tsx` | EDIT — Galerie-Grid unter dem Hero-Bild ergaenzen |
-| `src/pages/zone3/lennox/LennoxProviderDetail.tsx` | EDIT — Galerie-Grid unter dem Header ergaenzen |
-| `src/engines/demoData/petManagerDemo.ts` | EDIT — `DEMO_LENNOX_SEARCH_PROVIDER.cover_image_url` auf neuen statischen Pfad aendern |
+| Datei | Aenderung |
+|-------|-----------|
+| `LennoxLayout.tsx` | Nav-Link "Partner finden" mit `?locate=1` ergaenzen |
+| `LennoxStartseite.tsx` | Hero immer anzeigen (kompakt nach Suche), Standort-Widget entfernen, `?locate=1` abfangen und Geolocation starten, Suchleiste immer sichtbar |
+| `LennoxShop.tsx` | Hero-Bild-Sektion oben einfuegen |
+| `public/shop/lennox-shop-hero.jpg` | NEU — AI-generiertes Bild (Alpine Outdoor mit Hund) |
 
-### Ergebnis
-
-- Die Lennox & Friends Partnerseite auf der Website zeigt das erste Pensionsbild als Cover
-- Darunter eine Galerie mit allen vier Bildern (2x Hundepension, 2x Hundefriseur)
-- Der Pet Manager Profil-Bereich zeigt weiterhin dieselben Bilder als Fallback
