@@ -6086,6 +6086,78 @@ export type Database = {
         }
         Relationships: []
       }
+      extraction_jobs: {
+        Row: {
+          batch_size: number
+          completed_at: string | null
+          created_at: string
+          credits_reserved: number
+          credits_used: number
+          error_log: Json | null
+          failed_files: number
+          folder_id: string | null
+          id: string
+          processed_files: number
+          skipped_files: number
+          started_at: string | null
+          status: string
+          tenant_id: string
+          total_files: number
+          updated_at: string
+        }
+        Insert: {
+          batch_size?: number
+          completed_at?: string | null
+          created_at?: string
+          credits_reserved?: number
+          credits_used?: number
+          error_log?: Json | null
+          failed_files?: number
+          folder_id?: string | null
+          id?: string
+          processed_files?: number
+          skipped_files?: number
+          started_at?: string | null
+          status?: string
+          tenant_id: string
+          total_files?: number
+          updated_at?: string
+        }
+        Update: {
+          batch_size?: number
+          completed_at?: string | null
+          created_at?: string
+          credits_reserved?: number
+          credits_used?: number
+          error_log?: Json | null
+          failed_files?: number
+          folder_id?: string | null
+          id?: string
+          processed_files?: number
+          skipped_files?: number
+          started_at?: string | null
+          status?: string
+          tenant_id?: string
+          total_files?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "extraction_jobs_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "storage_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "extraction_jobs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       extractions: {
         Row: {
           actual_cost: number | null

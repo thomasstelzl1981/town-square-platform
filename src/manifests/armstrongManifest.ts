@@ -756,9 +756,30 @@ export const armstrongActions: ArmstrongActionV2[] = [
     audit_event_type: 'ARM_DOC_EXTRACT',
     status: 'active',
   },
+  {
+    action_code: 'ARM.DMS.STORAGE_EXTRACTION',
+    title_de: 'Datenraum analysieren',
+    description_de: 'Analysiert und extrahiert den gesamten Dokumentenbestand für Armstrong-Zugriff (Bulk)',
+    zones: ['Z2'],
+    module: 'MOD-03',
+    risk_level: 'high',
+    execution_mode: 'execute_with_confirmation',
+    requires_consent_code: null,
+    roles_allowed: [],
+    data_scopes_read: ['storage_nodes', 'document_chunks'],
+    data_scopes_write: ['document_chunks', 'extraction_jobs'],
+    side_effects: ['modifies_document_chunks', 'credits_consumed'],
+    version: '1.0.0',
+    cost_model: 'metered',
+    cost_unit: 'per_document',
+    cost_hint_cents: 25,
+    api_contract: { type: 'edge_function', endpoint: 'sot-storage-extractor' },
+    ui_entrypoints: ['/portal/dms'],
+    audit_event_type: 'ARM_STORAGE_EXTRACTION',
+    status: 'active',
+  },
 
-  // ===========================================================================
-  // MOD-04: IMMOBILIEN ACTIONS
+  //
   // ===========================================================================
   {
     action_code: 'ARM.MOD04.EXPLAIN_MODULE',

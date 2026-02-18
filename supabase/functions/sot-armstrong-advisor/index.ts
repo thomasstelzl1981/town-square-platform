@@ -178,6 +178,9 @@ const MVP_EXECUTABLE_ACTIONS = [
   "ARM.GLOBAL.FAQ",
   "ARM.GLOBAL.WEB_RESEARCH",
   "ARM.GLOBAL.DRAFT_TEXT",
+
+  // DMS Storage Extraction
+  "ARM.DMS.STORAGE_EXTRACTION",
 ];
 
 // Global Actions - available regardless of module context
@@ -748,6 +751,25 @@ const MVP_ACTIONS: ActionDefinition[] = [
     credits_estimate: 2,
     status: "active",
   },
+  // DMS: Storage Extraction (Bulk)
+  {
+    action_code: "ARM.DMS.STORAGE_EXTRACTION",
+    title_de: "Datenraum analysieren",
+    description_de: "Analysiert und extrahiert den gesamten Dokumentenbestand für Armstrong-Zugriff (Bulk)",
+    zones: ["Z2"],
+    module: "MOD-03",
+    risk_level: "high",
+    execution_mode: "execute_with_confirmation",
+    requires_consent_code: null,
+    roles_allowed: [],
+    data_scopes_read: ["storage_nodes", "document_chunks"],
+    data_scopes_write: ["document_chunks", "extraction_jobs"],
+    side_effects: ["credits_consumed", "modifies_document_chunks"],
+    cost_model: "metered",
+    cost_hint_cents: 25,
+    credits_estimate: 1,
+    status: "active",
+  },
 ];
 
 // =============================================================================
@@ -818,6 +840,10 @@ function classifyIntent(message: string, actionRequest: ActionRequest | undefine
     // MOD-09 Partner Intake
     "partner anlegen", "partnerprofil", "partnerbewerbung", "lebenslauf",
     "vertriebspartner anlegen", "ihk nummer",
+    // Storage Extraction (Bulk)
+    "datenraum analysieren", "datenraum durchsuchbar", "storage extrahieren",
+    "alle dokumente analysieren", "bulk extraktion", "datenraum vorbereiten",
+    "armstrong zugriff", "dokumente indexieren", "datenraum scannen",
   ];
   if (actionKeywords.some(kw => lowerMsg.includes(kw))) {
     return "ACTION";
@@ -1027,6 +1053,14 @@ function suggestActionsForMessage(
          lowerMsg.includes("lebenslauf") || lowerMsg.includes("vertriebspartner anlegen"))) {
       relevance += 5;
       why = "Erstellt ein Partnerprofil aus dem Dokument";
+    }
+    
+    // Storage Extraction (Bulk)
+    if (action.action_code === "ARM.DMS.STORAGE_EXTRACTION" && 
+        (lowerMsg.includes("datenraum") || lowerMsg.includes("alle dokumente") || lowerMsg.includes("bulk") ||
+         lowerMsg.includes("storage") || lowerMsg.includes("indexieren") || lowerMsg.includes("durchsuchbar"))) {
+      relevance += 5;
+      why = "Macht den gesamten Datenraum für Armstrong durchsuchbar";
     }
     
     if (relevance > 0) {
