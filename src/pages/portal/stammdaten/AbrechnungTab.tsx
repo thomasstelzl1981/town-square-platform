@@ -12,6 +12,7 @@ import { DESIGN } from '@/config/designManifest';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { Link } from 'react-router-dom';
+import { CreditTopUpDialog } from '@/components/armstrong/CreditTopUpDialog';
 
 export function AbrechnungTab() {
   const { activeTenantId } = useAuth();
@@ -29,6 +30,22 @@ export function AbrechnungTab() {
         `)
         .eq('tenant_id', activeTenantId)
         .eq('status', 'active')
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!activeTenantId,
+  });
+
+  // Fetch credit balance
+  const { data: creditBalance } = useQuery({
+    queryKey: ['credit-balance', activeTenantId],
+    queryFn: async () => {
+      if (!activeTenantId) return null;
+      const { data, error } = await supabase
+        .from('tenant_credit_balance')
+        .select('balance_credits')
+        .eq('tenant_id', activeTenantId)
         .maybeSingle();
       if (error) throw error;
       return data;
@@ -117,8 +134,10 @@ export function AbrechnungTab() {
               </div>
               <div className="rounded-lg border bg-card p-4">
                 <p className="text-sm text-muted-foreground">Credits</p>
-                <p className="text-2xl font-bold">∞</p>
-                <p className="text-sm text-muted-foreground mt-1">Unbegrenzt in diesem Plan</p>
+                <p className="text-2xl font-bold">{creditBalance?.balance_credits ?? 0}</p>
+                <div className="mt-2">
+                  <CreditTopUpDialog />
+                </div>
               </div>
             </div>
           ) : (
@@ -128,7 +147,12 @@ export function AbrechnungTab() {
               <p className="text-sm text-muted-foreground mt-1">
                 Sie nutzen derzeit die kostenlose Version.
               </p>
-              <Button className="mt-4">Plan upgraden</Button>
+              <div className="flex items-center justify-center gap-3 mt-4">
+                <div className="text-sm text-muted-foreground">
+                  Credit-Saldo: <span className="font-semibold text-foreground">{creditBalance?.balance_credits ?? 0}</span>
+                </div>
+                <CreditTopUpDialog />
+              </div>
             </div>
           )}
         </CardContent>
