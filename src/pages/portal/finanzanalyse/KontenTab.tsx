@@ -155,24 +155,9 @@ export default function KontenTab() {
         title="Konten"
         description="Bankkonten verwalten und zuordnen — Personen, Vermietung oder Photovoltaik"
         actions={
-          <div className="flex items-center gap-2">
-            <Button
-              variant="glass"
-              size="sm"
-              onClick={() => connectMutation.mutate()}
-              disabled={connectMutation.isPending}
-            >
-              {connectMutation.isPending ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <Building2 className="h-4 w-4 mr-2" />
-              )}
-              Bank verbinden
-            </Button>
-            <Button variant="glass" size="icon-round" onClick={() => setShowAddDialog(true)}>
-              <Plus className="h-5 w-5" />
-            </Button>
-          </div>
+          <Button variant="glass" size="icon-round" onClick={() => setShowAddDialog(true)}>
+            <Plus className="h-5 w-5" />
+          </Button>
         }
       />
 
