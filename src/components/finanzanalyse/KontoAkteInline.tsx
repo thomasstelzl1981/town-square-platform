@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrig
 import { DEMO_WIDGET, RECORD_CARD } from '@/config/designManifest';
 import { DEMO_KONTO, DEMO_TRANSACTIONS, type DemoTransaction } from '@/constants/demoKontoData';
 import { DEMO_FAMILY, DEMO_PORTFOLIO } from '@/engines/demoData/data';
-import { CreditCard, Link2, Link2Off, X, Info, Upload } from 'lucide-react';
+import { CreditCard, Link2, Link2Off, X, Info, Upload, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -216,6 +216,16 @@ export function KontoAkteInline({ isDemo, account, onClose }: KontoAkteInlinePro
           </Button>
         </div>
 
+        {/* Phase A: Zuordnungs-Warnung */}
+        {!isDemo && !ownerType && (
+          <div className="flex items-start gap-2 p-3 rounded-lg border border-amber-400 bg-amber-50 dark:bg-amber-950/20">
+            <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
+            <p className="text-sm text-amber-800 dark:text-amber-300">
+              Bitte weisen Sie dieses Konto einer Person oder Vermietereinheit zu, damit Umsätze korrekt zugeordnet werden können.
+            </p>
+          </div>
+        )}
+
         {/* Sektion 1: Kontodaten & Zuordnung */}
         <div>
           <p className={RECORD_CARD.SECTION_TITLE}>Kontodaten & Zuordnung</p>
@@ -243,7 +253,7 @@ export function KontoAkteInline({ isDemo, account, onClose }: KontoAkteInlinePro
             <div>
               <Label className="text-xs">Zuordnung</Label>
               <Select value={currentValue} onValueChange={handleOwnerChange} disabled={isDemo}>
-                <SelectTrigger><SelectValue placeholder="Zuordnung wählen…" /></SelectTrigger>
+                <SelectTrigger className={cn(!ownerType && !isDemo && 'border-amber-400 ring-1 ring-amber-400')}><SelectValue placeholder="Zuordnung wählen…" /></SelectTrigger>
                 <SelectContent>
                   {personOptions.length > 0 && (
                     <SelectGroup>

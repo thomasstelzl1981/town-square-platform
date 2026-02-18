@@ -15,7 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Banknote, Plus, Info, CreditCard, ShieldCheck } from 'lucide-react';
+import { Loader2, Banknote, Plus, Info, CreditCard, ShieldCheck, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { DesktopOnly } from '@/components/shared/DesktopOnly';
 import { format, subMonths, startOfMonth, endOfMonth } from 'date-fns';
@@ -89,6 +89,29 @@ export function GeldeingangTab({ propertyId, tenantId, unitId }: GeldeingangTabP
   const [paymentDate, setPaymentDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [paymentNote, setPaymentNote] = useState('');
   const [arrearsChecking, setArrearsChecking] = useState(false);
+  const [matchRunning, setMatchRunning] = useState(false);
+
+  const handleRentMatch = async () => {
+    setMatchRunning(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('sot-rent-match', {
+        body: { tenant_id: activeTenantId },
+      });
+      if (error) throw error;
+      const result = data as { matched?: number; checked?: number };
+      if (result.matched && result.matched > 0) {
+        toast.success(`${result.matched} Mietzahlung${result.matched > 1 ? 'en' : ''} automatisch zugeordnet`);
+      } else {
+        toast.info(`${result.checked || 0} Transaktionen geprüft — keine neuen Zuordnungen`);
+      }
+      queryClient.invalidateQueries({ queryKey: ['geldeingang-payments'] });
+    } catch (err) {
+      console.error('Rent match failed:', err);
+      toast.error('Abgleich fehlgeschlagen');
+    } finally {
+      setMatchRunning(false);
+    }
+  };
 
   const handleArrearsCheck = async () => {
     setArrearsChecking(true);
@@ -268,9 +291,23 @@ export function GeldeingangTab({ propertyId, tenantId, unitId }: GeldeingangTabP
 
   return (
     <div className="space-y-6">
-      {/* Arrears check button */}
-      <div className="flex justify-end">
+      {/* Action buttons */}
+      <div className="flex justify-end gap-2">
         <DesktopOnly>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRentMatch}
+            disabled={matchRunning}
+            className="gap-1.5"
+          >
+            {matchRunning ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <RefreshCw className="h-3.5 w-3.5" />
+            )}
+            Abgleich starten
+          </Button>
           <Button
             variant="outline"
             size="sm"
