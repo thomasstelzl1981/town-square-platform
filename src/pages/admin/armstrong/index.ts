@@ -11,4 +11,5 @@ export { default as ArmstrongBilling } from './ArmstrongBilling';
 export { default as ArmstrongPolicies } from './ArmstrongPolicies';
 export { default as ArmstrongTestHarness } from './ArmstrongTestHarness';
 export { default as ArmstrongIntegrations } from './ArmstrongIntegrations';
+export { default as ArmstrongEngines } from './ArmstrongEngines';
 export { default as PlatformCostMonitor } from './PlatformCostMonitor';

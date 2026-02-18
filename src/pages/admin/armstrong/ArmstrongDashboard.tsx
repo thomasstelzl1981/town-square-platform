@@ -25,6 +25,7 @@ import {
   BookOpen,
   Loader2,
   Puzzle,
+  Cpu,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useArmstrongDashboard } from "@/hooks/useArmstrongDashboard";
@@ -301,6 +302,20 @@ const ArmstrongDashboard: React.FC = () => {
                 <div>
                   <h3 className="font-semibold">Widget-Integrationen</h3>
                   <p className="text-sm text-muted-foreground">Systemwidgets Registry</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+
+        <Link to="/admin/armstrong/engines">
+          <Card className="hover:border-primary/50 transition-colors cursor-pointer">
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <Cpu className="h-8 w-8 text-primary" />
+                <div>
+                  <h3 className="font-semibold">Engine Registry</h3>
+                  <p className="text-sm text-muted-foreground">Alle Plattform-Engines</p>
                 </div>
               </div>
             </CardContent>
