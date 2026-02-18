@@ -125,7 +125,7 @@ interface UserContext {
 // MVP MODULE ALLOWLIST & GLOBAL ASSIST CONFIG
 // =============================================================================
 
-const MVP_MODULES = ["MOD-00", "MOD-04", "MOD-07", "MOD-08", "MOD-09", "MOD-11", "MOD-13", "MOD-14", "MOD-18"];
+const MVP_MODULES = ["MOD-00", "MOD-04", "MOD-07", "MOD-08", "MOD-09", "MOD-11", "MOD-12", "MOD-13", "MOD-14", "MOD-17", "MOD-18", "MOD-19"];
 
 // Global Assist Mode: Armstrong can help with general tasks even outside MVP modules
 // These intents are allowed in ALL modules (explain, draft, research)
@@ -163,6 +163,10 @@ const MVP_EXECUTABLE_ACTIONS = [
   "ARM.MOD04.MAGIC_INTAKE_PROPERTY",
   "ARM.MOD11.MAGIC_INTAKE_CASE",
   "ARM.MOD18.MAGIC_INTAKE_FINANCE",
+  "ARM.MOD17.MAGIC_INTAKE_VEHICLE",
+  "ARM.MOD12.MAGIC_INTAKE_MANDATE",
+  "ARM.MOD19.MAGIC_INTAKE_PLANT",
+  "ARM.MOD07.MAGIC_INTAKE_SELBSTAUSKUNFT",
   
   // Global Actions (available in all modules)
   "ARM.GLOBAL.EXPLAIN_TERM",
@@ -568,6 +572,82 @@ const MVP_ACTIONS: ActionDefinition[] = [
     credits_estimate: 2,
     status: "active",
   },
+  // Magic Intake: MOD-17 (Fahrzeuge)
+  {
+    action_code: "ARM.MOD17.MAGIC_INTAKE_VEHICLE",
+    title_de: "Fahrzeug aus Dokument anlegen",
+    description_de: "Erstellt ein Fahrzeug aus Fahrzeugschein, Fahrzeugbrief oder Kaufvertrag",
+    zones: ["Z2"],
+    module: "MOD-17",
+    risk_level: "medium",
+    execution_mode: "execute_with_confirmation",
+    requires_consent_code: null,
+    roles_allowed: [],
+    data_scopes_read: ["storage_nodes"],
+    data_scopes_write: ["vehicles"],
+    side_effects: ["credits_consumed"],
+    cost_model: "metered",
+    cost_hint_cents: 50,
+    credits_estimate: 2,
+    status: "active",
+  },
+  // Magic Intake: MOD-12 (Akquise-Mandat)
+  {
+    action_code: "ARM.MOD12.MAGIC_INTAKE_MANDATE",
+    title_de: "Mandat aus Dokument anlegen",
+    description_de: "Erstellt ein Akquise-Mandat aus Suchprofil oder Ankaufsprofil",
+    zones: ["Z2"],
+    module: "MOD-12",
+    risk_level: "medium",
+    execution_mode: "execute_with_confirmation",
+    requires_consent_code: null,
+    roles_allowed: [],
+    data_scopes_read: ["storage_nodes"],
+    data_scopes_write: ["acq_mandates"],
+    side_effects: ["credits_consumed"],
+    cost_model: "metered",
+    cost_hint_cents: 75,
+    credits_estimate: 3,
+    status: "active",
+  },
+  // Magic Intake: MOD-19 (PV-Anlage)
+  {
+    action_code: "ARM.MOD19.MAGIC_INTAKE_PLANT",
+    title_de: "PV-Anlage aus Dokument anlegen",
+    description_de: "Erstellt eine PV-Anlage aus Installationsprotokoll oder Datenblatt",
+    zones: ["Z2"],
+    module: "MOD-19",
+    risk_level: "medium",
+    execution_mode: "execute_with_confirmation",
+    requires_consent_code: null,
+    roles_allowed: [],
+    data_scopes_read: ["storage_nodes"],
+    data_scopes_write: ["pv_plants"],
+    side_effects: ["credits_consumed"],
+    cost_model: "metered",
+    cost_hint_cents: 75,
+    credits_estimate: 3,
+    status: "active",
+  },
+  // Magic Intake: MOD-07 (Selbstauskunft)
+  {
+    action_code: "ARM.MOD07.MAGIC_INTAKE_SELBSTAUSKUNFT",
+    title_de: "Selbstauskunft aus Dokument befüllen",
+    description_de: "Befüllt die Selbstauskunft aus Gehaltsabrechnungen oder Steuerbescheiden",
+    zones: ["Z2"],
+    module: "MOD-07",
+    risk_level: "medium",
+    execution_mode: "execute_with_confirmation",
+    requires_consent_code: null,
+    roles_allowed: [],
+    data_scopes_read: ["storage_nodes", "applicant_profiles"],
+    data_scopes_write: ["applicant_profiles"],
+    side_effects: ["credits_consumed"],
+    cost_model: "metered",
+    cost_hint_cents: 75,
+    credits_estimate: 3,
+    status: "active",
+  },
 ];
 
 // =============================================================================
@@ -611,6 +691,18 @@ function classifyIntent(message: string, actionRequest: ActionRequest | undefine
     "versicherung erfassen", "versicherung anlegen", "kontoauszug", "versicherungsschein",
     "abo erfassen", "abonnement", "bankdaten", "iban erfassen",
     "leg die immobilie an", "leg den fall an", "erfasse die versicherung",
+    // MOD-17 Vehicle Intake
+    "fahrzeug anlegen", "auto anlegen", "fahrzeugschein", "zulassungsbescheinigung",
+    "fahrzeugbrief", "kfz anlegen", "auto erfassen", "leg das fahrzeug an",
+    // MOD-12 Akquise Intake
+    "mandat anlegen", "suchprofil", "ankaufsprofil", "investment criteria",
+    "investor briefing", "leg das mandat an", "akquise mandat",
+    // MOD-19 PV Intake
+    "pv anlage", "photovoltaik anlegen", "solaranlage", "installationsprotokoll",
+    "einspeisevertrag", "pv erfassen", "leg die anlage an",
+    // MOD-07 Selbstauskunft Intake
+    "gehaltsabrechnung", "gehaltsnachweis auslesen", "selbstauskunft befüllen",
+    "steuerbescheid auslesen", "rentenbescheid", "gehalt erfassen",
   ];
   if (actionKeywords.some(kw => lowerMsg.includes(kw))) {
     return "ACTION";
@@ -747,6 +839,39 @@ function suggestActionsForMessage(
          lowerMsg.includes("bankdaten") || lowerMsg.includes("iban erfassen") || lowerMsg.includes("erfasse die versicherung"))) {
       relevance += 5;
       why = "Erfasst Finanzdaten aus dem Dokument";
+    }
+    
+    // Magic Intake: MOD-17
+    if (action.action_code === "ARM.MOD17.MAGIC_INTAKE_VEHICLE" && 
+        (lowerMsg.includes("fahrzeug anlegen") || lowerMsg.includes("fahrzeugschein") || lowerMsg.includes("auto anlegen") ||
+         lowerMsg.includes("zulassungsbescheinigung") || lowerMsg.includes("kfz anlegen") || lowerMsg.includes("leg das fahrzeug an") ||
+         (lowerMsg.includes("fahrzeug") && lowerMsg.includes("dokument")))) {
+      relevance += 5;
+      why = "Erstellt ein Fahrzeug aus dem hochgeladenen Dokument";
+    }
+    
+    // Magic Intake: MOD-12
+    if (action.action_code === "ARM.MOD12.MAGIC_INTAKE_MANDATE" && 
+        (lowerMsg.includes("mandat anlegen") || lowerMsg.includes("suchprofil") || lowerMsg.includes("ankaufsprofil") ||
+         lowerMsg.includes("investment criteria") || lowerMsg.includes("akquise mandat") || lowerMsg.includes("leg das mandat an"))) {
+      relevance += 5;
+      why = "Erstellt ein Akquise-Mandat aus dem Dokument";
+    }
+    
+    // Magic Intake: MOD-19
+    if (action.action_code === "ARM.MOD19.MAGIC_INTAKE_PLANT" && 
+        (lowerMsg.includes("pv anlage") || lowerMsg.includes("photovoltaik anlegen") || lowerMsg.includes("solaranlage") ||
+         lowerMsg.includes("installationsprotokoll") || lowerMsg.includes("einspeisevertrag") || lowerMsg.includes("leg die anlage an"))) {
+      relevance += 5;
+      why = "Erstellt eine PV-Anlage aus dem Dokument";
+    }
+    
+    // Magic Intake: MOD-07
+    if (action.action_code === "ARM.MOD07.MAGIC_INTAKE_SELBSTAUSKUNFT" && 
+        (lowerMsg.includes("gehaltsabrechnung") || lowerMsg.includes("gehaltsnachweis auslesen") || lowerMsg.includes("selbstauskunft befüllen") ||
+         lowerMsg.includes("steuerbescheid auslesen") || lowerMsg.includes("rentenbescheid") || lowerMsg.includes("gehalt erfassen"))) {
+      relevance += 5;
+      why = "Befüllt die Selbstauskunft aus dem Dokument";
     }
     
     if (relevance > 0) {
@@ -1527,6 +1652,360 @@ async function executeAction(
         } catch (err18) {
           console.error("[Armstrong] MOD-18 Magic Intake error:", err18);
           return { success: false, error: "Fehler bei der Finanzdatenerfassung" };
+        }
+      }
+
+      // =====================================================================
+      // MAGIC INTAKE: MOD-17 (Fahrzeug aus Dokument)
+      // =====================================================================
+      case "ARM.MOD17.MAGIC_INTAKE_VEHICLE": {
+        if (!userContext.org_id) {
+          return { success: false, error: "Tenant ID required" };
+        }
+
+        const docContext17 = params.document_context as {
+          extracted_text?: string;
+          filename?: string;
+        } | undefined;
+
+        if (!docContext17?.extracted_text) {
+          return { success: false, error: "Bitte laden Sie zuerst ein Dokument hoch (Fahrzeugschein, Fahrzeugbrief oder Kaufvertrag)." };
+        }
+
+        const supabaseUrl17 = Deno.env.get("SUPABASE_URL");
+        const serviceKey17 = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+        if (!supabaseUrl17 || !serviceKey17) return { success: false, error: "Server configuration missing" };
+
+        try {
+          const parserResp17 = await fetch(`${supabaseUrl17}/functions/v1/sot-document-parser`, {
+            method: "POST",
+            headers: { "Authorization": `Bearer ${serviceKey17}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ text: docContext17.extracted_text, parseMode: "general", tenant_id: userContext.org_id }),
+          });
+
+          if (!parserResp17.ok) return { success: false, error: "Dokumentanalyse fehlgeschlagen" };
+
+          const parsed17 = await parserResp17.json();
+          const vData = parsed17.vehicle || parsed17.data?.vehicle || parsed17;
+
+          const vehicleInsert = {
+            tenant_id: userContext.org_id,
+            user_id: userContext.user_id,
+            license_plate: vData.license_plate || vData.kennzeichen || null,
+            make: vData.make || vData.marke || vData.hersteller || null,
+            model: vData.model || vData.modell || null,
+            vin: vData.vin || vData.fahrzeug_ident_nr || null,
+            first_registration_date: vData.first_registration || vData.erstzulassung || null,
+            current_mileage_km: vData.mileage || vData.kilometerstand || null,
+            hu_valid_until: vData.hu_until || vData.hu_bis || null,
+            hsn: vData.hsn || null,
+            tsn: vData.tsn || null,
+            vehicle_type: vData.vehicle_type || 'car',
+            source: 'armstrong_magic_intake',
+          };
+
+          const { data: newVehicle, error: vehError } = await supabase
+            .from("cars_vehicles")
+            .insert(vehicleInsert)
+            .select("id, make, model, license_plate")
+            .single();
+
+          if (vehError) {
+            console.error("[Armstrong] Vehicle insert error:", vehError);
+            return { success: false, error: `Fahrzeug konnte nicht angelegt werden: ${vehError.message}` };
+          }
+
+          const displayName17 = [vehicleInsert.make, vehicleInsert.model].filter(Boolean).join(' ') || vehicleInsert.license_plate || 'Neues Fahrzeug';
+
+          return {
+            success: true,
+            output: {
+              vehicle_id: newVehicle?.id,
+              display_name: displayName17,
+              extracted_data: {
+                license_plate: vehicleInsert.license_plate,
+                make: vehicleInsert.make,
+                model: vehicleInsert.model,
+                vin: vehicleInsert.vin,
+                first_registration: vehicleInsert.first_registration_date,
+              },
+              message: `Fahrzeug "${displayName17}" wurde angelegt. [Zur Akte →](/portal/cars/fahrzeuge/${newVehicle?.id})`,
+              link: `/portal/cars/fahrzeuge/${newVehicle?.id}`,
+            },
+          };
+        } catch (err17) {
+          console.error("[Armstrong] MOD-17 Magic Intake error:", err17);
+          return { success: false, error: "Fehler bei der Fahrzeuganlage" };
+        }
+      }
+
+      // =====================================================================
+      // MAGIC INTAKE: MOD-12 (Akquise-Mandat aus Dokument)
+      // =====================================================================
+      case "ARM.MOD12.MAGIC_INTAKE_MANDATE": {
+        if (!userContext.org_id) {
+          return { success: false, error: "Tenant ID required" };
+        }
+
+        const docContext12 = params.document_context as {
+          extracted_text?: string;
+          filename?: string;
+        } | undefined;
+
+        if (!docContext12?.extracted_text) {
+          return { success: false, error: "Bitte laden Sie zuerst ein Dokument hoch (Suchprofil, Ankaufsprofil)." };
+        }
+
+        const supabaseUrl12 = Deno.env.get("SUPABASE_URL");
+        const serviceKey12 = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+        if (!supabaseUrl12 || !serviceKey12) return { success: false, error: "Server configuration missing" };
+
+        try {
+          const parserResp12 = await fetch(`${supabaseUrl12}/functions/v1/sot-document-parser`, {
+            method: "POST",
+            headers: { "Authorization": `Bearer ${serviceKey12}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ text: docContext12.extracted_text, parseMode: "general", tenant_id: userContext.org_id }),
+          });
+
+          if (!parserResp12.ok) return { success: false, error: "Dokumentanalyse fehlgeschlagen" };
+
+          const parsed12 = await parserResp12.json();
+          const mData = parsed12.mandate || parsed12.data?.mandate || parsed12;
+
+          // Generate mandate code
+          const codePrefix = "MAN";
+          const codeRandom = Math.random().toString(36).substring(2, 8).toUpperCase();
+          const mandateCode = `${codePrefix}-${codeRandom}`;
+
+          const mandateInsert = {
+            tenant_id: userContext.org_id,
+            created_by_user_id: userContext.user_id,
+            code: mandateCode,
+            client_display_name: mData.client_name || mData.client_display_name || null,
+            asset_focus: mData.asset_types || mData.asset_focus || null,
+            price_min: mData.min_price || mData.price_min || null,
+            price_max: mData.max_price || mData.price_max || null,
+            yield_target: mData.min_yield || mData.yield_target || null,
+            notes: mData.notes || mData.description || null,
+            profile_text_long: mData.profile_text || mData.investment_criteria || null,
+            status: 'active',
+          };
+
+          const { data: newMandate, error: manError } = await supabase
+            .from("acq_mandates")
+            .insert(mandateInsert)
+            .select("id, code, client_display_name")
+            .single();
+
+          if (manError) {
+            console.error("[Armstrong] Mandate insert error:", manError);
+            return { success: false, error: `Mandat konnte nicht angelegt werden: ${manError.message}` };
+          }
+
+          return {
+            success: true,
+            output: {
+              mandate_id: newMandate?.id,
+              mandate_code: newMandate?.code,
+              client_name: mandateInsert.client_display_name,
+              extracted_data: {
+                client_name: mandateInsert.client_display_name,
+                asset_focus: mandateInsert.asset_focus,
+                price_range: `${mandateInsert.price_min || '?'} - ${mandateInsert.price_max || '?'}`,
+                yield_target: mandateInsert.yield_target,
+              },
+              message: `Mandat "${newMandate?.code}" für "${mandateInsert.client_display_name || 'Neuer Investor'}" wurde angelegt. [Zum Mandat →](/portal/akquise-manager/mandate/${newMandate?.id})`,
+              link: `/portal/akquise-manager/mandate/${newMandate?.id}`,
+            },
+          };
+        } catch (err12) {
+          console.error("[Armstrong] MOD-12 Magic Intake error:", err12);
+          return { success: false, error: "Fehler bei der Mandatsanlage" };
+        }
+      }
+
+      // =====================================================================
+      // MAGIC INTAKE: MOD-19 (PV-Anlage aus Dokument)
+      // =====================================================================
+      case "ARM.MOD19.MAGIC_INTAKE_PLANT": {
+        if (!userContext.org_id) {
+          return { success: false, error: "Tenant ID required" };
+        }
+
+        const docContext19 = params.document_context as {
+          extracted_text?: string;
+          filename?: string;
+        } | undefined;
+
+        if (!docContext19?.extracted_text) {
+          return { success: false, error: "Bitte laden Sie zuerst ein Dokument hoch (Installationsprotokoll, Datenblatt, Einspeisevertrag)." };
+        }
+
+        const supabaseUrl19 = Deno.env.get("SUPABASE_URL");
+        const serviceKey19 = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+        if (!supabaseUrl19 || !serviceKey19) return { success: false, error: "Server configuration missing" };
+
+        try {
+          const parserResp19 = await fetch(`${supabaseUrl19}/functions/v1/sot-document-parser`, {
+            method: "POST",
+            headers: { "Authorization": `Bearer ${serviceKey19}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ text: docContext19.extracted_text, parseMode: "general", tenant_id: userContext.org_id }),
+          });
+
+          if (!parserResp19.ok) return { success: false, error: "Dokumentanalyse fehlgeschlagen" };
+
+          const parsed19 = await parserResp19.json();
+          const pvData = parsed19.pv_plant || parsed19.data?.pv_plant || parsed19;
+
+          const plantInsert = {
+            tenant_id: userContext.org_id,
+            user_id: userContext.user_id,
+            name: pvData.plant_name || pvData.name || 'Neue PV-Anlage',
+            capacity_kwp: pvData.capacity_kwp || pvData.leistung_kwp || null,
+            commissioning_date: pvData.commissioning_date || pvData.inbetriebnahme || null,
+            address: pvData.address || pvData.standort || null,
+            module_count: pvData.module_count || pvData.anzahl_module || null,
+            inverter_model: pvData.inverter_type || pvData.wechselrichter || null,
+            annual_yield_kwh: pvData.annual_yield_kwh || pvData.jahresertrag_kwh || null,
+            feed_in_tariff_cents: pvData.feed_in_tariff_cents || pvData.einspeiseverguetung_cent || null,
+            financing_bank: pvData.bank_name || pvData.bank || null,
+            financing_original_amount: pvData.loan_amount || pvData.kreditbetrag || null,
+            financing_monthly_rate: pvData.monthly_rate || pvData.monatsrate || null,
+            source: 'armstrong_magic_intake',
+          };
+
+          const { data: newPlant, error: pvError } = await supabase
+            .from("pv_plants")
+            .insert(plantInsert)
+            .select("id, name, capacity_kwp")
+            .single();
+
+          if (pvError) {
+            console.error("[Armstrong] PV plant insert error:", pvError);
+            return { success: false, error: `PV-Anlage konnte nicht angelegt werden: ${pvError.message}` };
+          }
+
+          return {
+            success: true,
+            output: {
+              plant_id: newPlant?.id,
+              plant_name: newPlant?.name,
+              capacity_kwp: newPlant?.capacity_kwp,
+              extracted_data: {
+                name: plantInsert.name,
+                capacity_kwp: plantInsert.capacity_kwp,
+                commissioning_date: plantInsert.commissioning_date,
+                annual_yield_kwh: plantInsert.annual_yield_kwh,
+                financing_bank: plantInsert.financing_bank,
+              },
+              message: `PV-Anlage "${newPlant?.name}" (${newPlant?.capacity_kwp || '?'} kWp) wurde angelegt. [Zur Anlage →](/portal/photovoltaik/${newPlant?.id})`,
+              link: `/portal/photovoltaik/${newPlant?.id}`,
+            },
+          };
+        } catch (err19) {
+          console.error("[Armstrong] MOD-19 Magic Intake error:", err19);
+          return { success: false, error: "Fehler bei der PV-Anlagenanlage" };
+        }
+      }
+
+      // =====================================================================
+      // MAGIC INTAKE: MOD-07 (Selbstauskunft aus Dokument befüllen)
+      // =====================================================================
+      case "ARM.MOD07.MAGIC_INTAKE_SELBSTAUSKUNFT": {
+        if (!userContext.org_id) {
+          return { success: false, error: "Tenant ID required" };
+        }
+
+        const docContext07 = params.document_context as {
+          extracted_text?: string;
+          filename?: string;
+        } | undefined;
+
+        if (!docContext07?.extracted_text) {
+          return { success: false, error: "Bitte laden Sie zuerst ein Dokument hoch (Gehaltsabrechnung, Steuerbescheid, Rentenbescheid)." };
+        }
+
+        const supabaseUrl07 = Deno.env.get("SUPABASE_URL");
+        const serviceKey07 = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+        if (!supabaseUrl07 || !serviceKey07) return { success: false, error: "Server configuration missing" };
+
+        try {
+          const parserResp07 = await fetch(`${supabaseUrl07}/functions/v1/sot-document-parser`, {
+            method: "POST",
+            headers: { "Authorization": `Bearer ${serviceKey07}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ text: docContext07.extracted_text, parseMode: "financing", tenant_id: userContext.org_id }),
+          });
+
+          if (!parserResp07.ok) return { success: false, error: "Dokumentanalyse fehlgeschlagen" };
+
+          const parsed07 = await parserResp07.json();
+          const saData = parsed07.applicant || parsed07.data?.applicant || parsed07;
+
+          // Build update payload for applicant_profiles
+          const profileUpdate: Record<string, unknown> = {};
+          if (saData.first_name) profileUpdate.first_name = saData.first_name;
+          if (saData.last_name) profileUpdate.last_name = saData.last_name;
+          if (saData.birth_date) profileUpdate.birth_date = saData.birth_date;
+          if (saData.employer || saData.employer_name) profileUpdate.employer_name = saData.employer || saData.employer_name;
+          if (saData.net_income || saData.net_income_monthly) profileUpdate.net_income_monthly = saData.net_income || saData.net_income_monthly;
+          if (saData.gross_income) profileUpdate.bonus_yearly = null; // trigger: we have income data
+          if (saData.employment_type) profileUpdate.employment_type = saData.employment_type;
+          if (saData.address || saData.address_street) profileUpdate.address_street = saData.address || saData.address_street;
+          if (saData.city || saData.address_city) profileUpdate.address_city = saData.city || saData.address_city;
+          if (saData.postal_code || saData.address_postal_code) profileUpdate.address_postal_code = saData.postal_code || saData.address_postal_code;
+          if (saData.tax_id) profileUpdate.tax_id = saData.tax_id;
+          if (saData.marital_status) profileUpdate.marital_status = saData.marital_status;
+
+          // Check if there's an existing profile to update
+          const entityProfileId = (params.entity_id as string) || null;
+          let resultMessage = "";
+          const fieldsFound = Object.keys(profileUpdate).length;
+
+          if (entityProfileId) {
+            // Update existing profile
+            const { error: updateErr } = await supabase
+              .from("applicant_profiles")
+              .update(profileUpdate)
+              .eq("id", entityProfileId);
+
+            if (updateErr) {
+              console.error("[Armstrong] Profile update error:", updateErr);
+              return { success: false, error: `Profil konnte nicht aktualisiert werden: ${updateErr.message}` };
+            }
+            resultMessage = `${fieldsFound} Feld(er) aus dem Dokument in die Selbstauskunft übernommen.`;
+          } else {
+            // Create new profile
+            const { data: newProf, error: createErr } = await supabase
+              .from("applicant_profiles")
+              .insert({
+                tenant_id: userContext.org_id,
+                profile_type: "primary",
+                party_role: "borrower",
+                ...profileUpdate,
+              })
+              .select("id, first_name, last_name")
+              .single();
+
+            if (createErr) {
+              console.error("[Armstrong] Profile create error:", createErr);
+              return { success: false, error: `Profil konnte nicht erstellt werden: ${createErr.message}` };
+            }
+            const name07 = [newProf?.first_name, newProf?.last_name].filter(Boolean).join(' ') || 'Neuer Antragsteller';
+            resultMessage = `Selbstauskunft für "${name07}" mit ${fieldsFound} Feld(ern) erstellt.`;
+          }
+
+          return {
+            success: true,
+            output: {
+              fields_extracted: fieldsFound,
+              extracted_fields: Object.keys(profileUpdate),
+              extracted_data: profileUpdate,
+              message: resultMessage,
+            },
+          };
+        } catch (err07) {
+          console.error("[Armstrong] MOD-07 Magic Intake error:", err07);
+          return { success: false, error: "Fehler bei der Selbstauskunft-Befüllung" };
         }
       }
 

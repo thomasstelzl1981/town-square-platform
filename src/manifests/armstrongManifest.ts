@@ -3594,6 +3594,110 @@ export const armstrongActions: ArmstrongActionV2[] = [
     audit_event_type: 'ARM_MOD05_SCHEDULE_VET',
     status: 'active' as ActionStatus,
   },
+
+  // ===========================================================================
+  // MAGIC INTAKE: MOD-17 (Fahrzeug aus Dokument)
+  // ===========================================================================
+  {
+    action_code: 'ARM.MOD17.MAGIC_INTAKE_VEHICLE',
+    title_de: 'Fahrzeug aus Dokument anlegen',
+    description_de: 'Erstellt ein Fahrzeug aus Fahrzeugschein, Fahrzeugbrief oder Kaufvertrag',
+    zones: ['Z2'] as ArmstrongZone[],
+    module: 'MOD-17',
+    risk_level: 'medium' as RiskLevel,
+    execution_mode: 'execute_with_confirmation' as ExecutionMode,
+    requires_consent_code: null,
+    roles_allowed: [],
+    data_scopes_read: ['storage_nodes'],
+    data_scopes_write: ['vehicles'],
+    side_effects: ['credits_consumed'],
+    version: '1.0.0',
+    cost_model: 'metered' as CostModel,
+    cost_unit: 'per_call' as CostUnit,
+    cost_hint_cents: 50,
+    api_contract: { type: 'edge_function' as const, endpoint: 'sot-armstrong-advisor' },
+    ui_entrypoints: ['/portal/cars'],
+    audit_event_type: 'ARM_MOD17_MAGIC_INTAKE_VEHICLE',
+    status: 'active' as ActionStatus,
+  },
+
+  // ===========================================================================
+  // MAGIC INTAKE: MOD-12 (Akquise-Mandat aus Dokument)
+  // ===========================================================================
+  {
+    action_code: 'ARM.MOD12.MAGIC_INTAKE_MANDATE',
+    title_de: 'Mandat aus Dokument anlegen',
+    description_de: 'Erstellt ein Akquise-Mandat aus Suchprofil, Ankaufsprofil oder Investment-Criteria-Sheet',
+    zones: ['Z2'] as ArmstrongZone[],
+    module: 'MOD-12',
+    risk_level: 'medium' as RiskLevel,
+    execution_mode: 'execute_with_confirmation' as ExecutionMode,
+    requires_consent_code: null,
+    roles_allowed: [],
+    data_scopes_read: ['storage_nodes'],
+    data_scopes_write: ['acq_mandates'],
+    side_effects: ['credits_consumed'],
+    version: '1.0.0',
+    cost_model: 'metered' as CostModel,
+    cost_unit: 'per_call' as CostUnit,
+    cost_hint_cents: 75,
+    api_contract: { type: 'edge_function' as const, endpoint: 'sot-armstrong-advisor' },
+    ui_entrypoints: ['/portal/akquise-manager'],
+    audit_event_type: 'ARM_MOD12_MAGIC_INTAKE_MANDATE',
+    status: 'active' as ActionStatus,
+  },
+
+  // ===========================================================================
+  // MAGIC INTAKE: MOD-19 (PV-Anlage aus Dokument)
+  // ===========================================================================
+  {
+    action_code: 'ARM.MOD19.MAGIC_INTAKE_PLANT',
+    title_de: 'PV-Anlage aus Dokument anlegen',
+    description_de: 'Erstellt eine PV-Anlage aus Installationsprotokoll, Datenblatt oder Einspeisevertrag',
+    zones: ['Z2'] as ArmstrongZone[],
+    module: 'MOD-19',
+    risk_level: 'medium' as RiskLevel,
+    execution_mode: 'execute_with_confirmation' as ExecutionMode,
+    requires_consent_code: null,
+    roles_allowed: [],
+    data_scopes_read: ['storage_nodes'],
+    data_scopes_write: ['pv_plants'],
+    side_effects: ['credits_consumed'],
+    version: '1.0.0',
+    cost_model: 'metered' as CostModel,
+    cost_unit: 'per_call' as CostUnit,
+    cost_hint_cents: 75,
+    api_contract: { type: 'edge_function' as const, endpoint: 'sot-armstrong-advisor' },
+    ui_entrypoints: ['/portal/photovoltaik'],
+    audit_event_type: 'ARM_MOD19_MAGIC_INTAKE_PLANT',
+    status: 'active' as ActionStatus,
+  },
+
+  // ===========================================================================
+  // MAGIC INTAKE: MOD-07 (Selbstauskunft aus Dokument)
+  // ===========================================================================
+  {
+    action_code: 'ARM.MOD07.MAGIC_INTAKE_SELBSTAUSKUNFT',
+    title_de: 'Selbstauskunft aus Dokument befüllen',
+    description_de: 'Befüllt die Selbstauskunft aus Gehaltsabrechnungen, Rentenbescheiden oder Steuerbescheiden',
+    zones: ['Z2'] as ArmstrongZone[],
+    module: 'MOD-07',
+    risk_level: 'medium' as RiskLevel,
+    execution_mode: 'execute_with_confirmation' as ExecutionMode,
+    requires_consent_code: null,
+    roles_allowed: [],
+    data_scopes_read: ['storage_nodes', 'applicant_profiles'],
+    data_scopes_write: ['applicant_profiles'],
+    side_effects: ['credits_consumed'],
+    version: '1.0.0',
+    cost_model: 'metered' as CostModel,
+    cost_unit: 'per_call' as CostUnit,
+    cost_hint_cents: 75,
+    api_contract: { type: 'edge_function' as const, endpoint: 'sot-armstrong-advisor' },
+    ui_entrypoints: ['/portal/finanzierung'],
+    audit_event_type: 'ARM_MOD07_MAGIC_INTAKE_SELBSTAUSKUNFT',
+    status: 'active' as ActionStatus,
+  },
 ];
 
 // =============================================================================
