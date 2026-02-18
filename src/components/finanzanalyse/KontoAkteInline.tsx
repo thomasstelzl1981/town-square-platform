@@ -252,7 +252,7 @@ export function KontoAkteInline({ isDemo, account, onClose }: KontoAkteInlinePro
             </div>
             <div>
               <Label className="text-xs">Zuordnung</Label>
-              <Select value={currentValue} onValueChange={handleOwnerChange} disabled={isDemo}>
+              <Select value={currentValue || undefined} onValueChange={handleOwnerChange}>
                 <SelectTrigger className={cn(!ownerType && !isDemo && 'border-amber-400 ring-1 ring-amber-400')}><SelectValue placeholder="Zuordnung wählen…" /></SelectTrigger>
                 <SelectContent>
                   {personOptions.length > 0 && (

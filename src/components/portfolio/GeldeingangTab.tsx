@@ -348,23 +348,34 @@ export function GeldeingangTab({ propertyId, tenantId, unitId }: GeldeingangTabP
                     />
                     <span className="text-sm font-medium">Automatischen Abgleich aktivieren</span>
                   </div>
-                  <Select
-                    value={lease.linked_bank_account_id || ''}
-                    onValueChange={(val) =>
-                      updateLeaseMutation.mutate({ leaseId: lease.id, updates: { linked_bank_account_id: val || null } })
-                    }
-                  >
-                    <SelectTrigger className="w-[280px]">
-                      <SelectValue placeholder="Konto auswählen…" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {bankAccounts.map(acc => (
-                        <SelectItem key={acc.id} value={acc.id}>
-                          {acc.account_name} {acc.bank_name ? `(${acc.bank_name})` : ''}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  {bankAccounts.length > 0 ? (
+                    <Select
+                      value={lease.linked_bank_account_id || undefined}
+                      onValueChange={(val) =>
+                        updateLeaseMutation.mutate({ 
+                          leaseId: lease.id, 
+                          updates: { linked_bank_account_id: val === 'none' ? null : val } 
+                        })
+                      }
+                    >
+                      <SelectTrigger className="w-[280px]">
+                        <SelectValue placeholder="Konto auswählen…" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Kein Konto</SelectItem>
+                        {bankAccounts.map(acc => (
+                          <SelectItem key={acc.id} value={acc.id}>
+                            {acc.account_name} {acc.bank_name ? `(${acc.bank_name})` : ''}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground px-3 py-2 border border-dashed rounded-md w-[280px]">
+                      <CreditCard className="h-3.5 w-3.5 shrink-0" />
+                      <span>Noch keine Konten angelegt — bitte unter Finanzanalyse ein Konto erstellen.</span>
+                    </div>
+                  )}
                 </div>
                 <p className="text-xs text-muted-foreground flex items-start gap-1.5">
                   <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
