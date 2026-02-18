@@ -21,6 +21,15 @@ const ALLOWED_ORIGINS = [
 ]
 
 /**
+ * Check if origin matches a Lovable preview/published domain
+ */
+function isLovableOrigin(origin: string): boolean {
+  return /^https:\/\/[a-z0-9-]+\.lovableproject\.com$/.test(origin)
+    || /^https:\/\/[a-z0-9-]+--[a-z0-9-]+\.lovable\.app$/.test(origin)
+    || /^https:\/\/[a-z0-9-]+\.lovable\.app$/.test(origin)
+}
+
+/**
  * Get CORS headers for edge function response
  * 
  * @param req - The incoming request
@@ -30,7 +39,7 @@ export function getCorsHeaders(req: Request): Record<string, string> {
   const origin = req.headers.get('origin')
   
   // Check if origin is in allowlist
-  const allowedOrigin = origin && ALLOWED_ORIGINS.includes(origin) 
+  const allowedOrigin = origin && (ALLOWED_ORIGINS.includes(origin) || isLovableOrigin(origin))
     ? origin 
     : ALLOWED_ORIGINS[0] // Default to first production origin
   
