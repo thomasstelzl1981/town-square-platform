@@ -143,9 +143,23 @@ export interface FlowState {
   result?: Record<string, unknown>;
 }
 
+const WELCOME_MESSAGE: ChatMessage = {
+  id: 'welcome',
+  role: 'assistant',
+  content: `Hallo! Ich bin Armstrong, dein persönlicher Assistent. Ich kann dir bei vielen Aufgaben helfen:
+
+- **Fragen stellen** — Ich erkläre dir alles rund um dein System
+- **Dokumente analysieren** — Hänge ein Dokument an und ich lese es für dich
+- **Daten zuordnen** — Gib mir Informationen und ich helfe dir, sie richtig einzuordnen
+- **Texte erstellen** — Briefe, E-Mails oder Zusammenfassungen
+
+Frag mich einfach, was du wissen möchtest!`,
+  timestamp: new Date(),
+};
+
 export function useArmstrongAdvisor() {
   const context = useArmstrongContext();
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>([WELCOME_MESSAGE]);
   const [isLoading, setIsLoading] = useState(false);
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
   const [isExecuting, setIsExecuting] = useState(false);
@@ -488,7 +502,7 @@ export function useArmstrongAdvisor() {
    * Clear conversation
    */
   const clearConversation = useCallback(() => {
-    setMessages([]);
+    setMessages([WELCOME_MESSAGE]);
     conversationRef.current = [];
     setPendingAction(null);
     setActiveFlow(null);
@@ -508,7 +522,7 @@ export function useArmstrongAdvisor() {
     });
 
     // Clear conversation for fresh flow
-    setMessages([]);
+    setMessages([WELCOME_MESSAGE]);
     conversationRef.current = [];
     setPendingAction(null);
     setIsLoading(true);

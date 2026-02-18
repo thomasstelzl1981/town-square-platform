@@ -5,7 +5,7 @@
  * Sits at the absolute bottom with safe-area-inset handling.
  */
 
-import { MessageCircle, ArrowUp } from 'lucide-react';
+import { Rocket, ArrowUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface ArmstrongInputBarProps {
@@ -28,7 +28,7 @@ export function ArmstrongInputBar({ onOpenSheet, className }: ArmstrongInputBarP
         aria-label="Ask Armstrong"
       >
         <div className="armstrong-planet h-9 w-9 flex items-center justify-center shrink-0">
-          <MessageCircle className="h-4 w-4 text-white/80" />
+          <Rocket className="h-4 w-4 text-white/80" />
         </div>
         <span className="flex-1 text-sm text-muted-foreground">
           Ask Armstrong...
