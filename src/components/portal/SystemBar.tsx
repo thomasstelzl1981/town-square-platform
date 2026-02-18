@@ -137,25 +137,25 @@ export function SystemBar() {
   if (isMobile) {
     return (
       <header className="sticky top-0 z-50 w-full border-b bg-card/70 backdrop-blur-lg supports-[backdrop-filter]:bg-card/60">
-        <div className="flex h-10 items-center justify-between px-3">
+        <div className="flex h-12 items-center justify-between px-3">
           {/* LEFT — Home button */}
           <button 
             onClick={isAtPortalRoot ? handleHomeClick : handleBackClick} 
-            className={cn(GLASS_BUTTON, 'h-8 w-8')} 
+            className={cn(GLASS_BUTTON, 'h-9 w-9')} 
             title={isAtPortalRoot ? 'Startseite' : 'Zurück'}
           >
-            {isAtPortalRoot ? <Home className="h-4 w-4" /> : <ArrowLeft className="h-4 w-4" />}
+            {isAtPortalRoot ? <Home className="h-4.5 w-4.5" /> : <ArrowLeft className="h-4.5 w-4.5" />}
           </button>
 
           {/* CENTER — ARMSTRONG */}
-          <span className="text-foreground font-sans font-semibold tracking-[0.2em] text-xs select-none">
+          <span className="text-foreground font-sans font-semibold tracking-[0.2em] text-sm select-none">
             ARMSTRONG
           </span>
 
           {/* RIGHT — Profile only */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className={cn(GLASS_BUTTON, 'h-8 w-8')} title="Profil">
+              <button className={cn(GLASS_BUTTON, 'h-9 w-9')} title="Profil">
                 <Avatar className="h-6 w-6">
                   <AvatarImage src={profile?.avatar_url || undefined} />
                   <AvatarFallback className="text-[9px] font-medium bg-transparent">{initials}</AvatarFallback>
