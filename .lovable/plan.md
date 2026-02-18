@@ -1,58 +1,48 @@
 
 
-## Zurueck-Navigation auf Mobile
+## Mobile Startseite vereinfachen
 
-### Problem
+### Was sich aendert
 
-Wenn man auf Mobile in tiefere Ebenen navigiert (z.B. von der Modul-Liste in eine Tile-Ansicht wie "Finanzanalyse > Investment"), gibt es keinen sichtbaren Weg zurueck. Der Home-Button in der SystemBar springt immer zur Startseite, nicht eine Ebene zurueck.
+Basierend auf dem Screenshot und deinem Feedback werden zwei Bereiche bereinigt:
 
-### Loesung: Beide Optionen implementieren
+### 1. "Module | Chat" Toggle entfernen (MobileBottomBar)
 
-Ich empfehle **beide Optionen gleichzeitig** zu implementieren, da sie sich ergaenzen:
+Der Toggle-Switch zwischen "Module" und "Chat" unten wird komplett entfernt. Die Chat-Eingabezeile bleibt bestehen -- wenn man tippt und absendet, oeffnet sich der Chat automatisch. Zurueck geht es per Swipe (bereits implementiert).
 
-**Option A: Zurueck-Button in der SystemBar (statt schwebendem Button)**
-- In der mobilen SystemBar wird der Home-Button dynamisch durch einen Zurueck-Pfeil ersetzt, wenn der User tiefer als die Startseite navigiert hat
-- Das ist intuitiver als ein schwebender Button, da es dem iOS-Pattern folgt und keinen Platz ueber dem Chat-Eingabefeld wegnimmt
-- Tipp auf den Pfeil geht eine Navigationsebene zurueck (nicht `history.back`, sondern gezielt zur uebergeordneten Route)
+**Auswirkung:** Die Props `mobileHomeMode` und `onModeChange` werden aus der MobileBottomBar entfernt. Der zugehoerige State in der uebergeordneten Komponente (PortalLayout / MobileDashboard) wird ebenfalls bereinigt.
 
-**Option B: Swipe-Geste (Wisch von links nach rechts)**
-- Ein Touch-Handler auf dem Content-Bereich erkennt horizontale Wischbewegungen von links nach rechts
-- Schwellwert: mindestens 80px horizontal, maximal 50px vertikal (um Scrollen nicht zu stoeren)
-- Navigiert zur gleichen uebergeordneten Route wie der Zurueck-Button
-- Funktioniert nur auf Mobile
+### 2. Begruessung entfernen (MobileHomeModuleList)
 
-### Navigationslogik
+Der Bereich mit "Willkommen" und "Was moechtest du heute erledigen?" wird entfernt. Die Modul-Liste startet direkt oben mit den Eintraegen, mit etwas Abstand zur SystemBar.
 
-Die Zurueck-Navigation folgt der Seitenhierarchie:
+### Skizze der neuen mobilen Startseite
 
 ```text
-/portal                          --> kein Zurueck (Home)
-/portal/finanzanalyse            --> zurueck zu /portal
-/portal/finanzanalyse/investment --> zurueck zu /portal/finanzanalyse
-/portal/stammdaten/profil        --> zurueck zu /portal/stammdaten
++-----------------------------+
+|  [<] ARMSTRONG         [MM] |  <-- SystemBar (kompakt, h-10)
++-----------------------------+
+|                             |
+|  [icon] Finanzen          > |
+|  [icon] Immobilien        > |
+|  [icon] Kontakte          > |
+|  [icon] Dokumente         > |
+|  [icon] Posteingang       > |
+|  [icon] Sparen            > |
+|  [icon] Versicherungen    > |
+|  [icon] Fahrzeuge         > |
+|  [icon] Haustiere         > |
+|                             |
++-----------------------------+
+| [mic] [+] Nachricht... [>] |  <-- Nur Eingabezeile, kein Toggle
++-----------------------------+
 ```
 
 ### Technische Aenderungen
 
 | Datei | Aenderung |
 |-------|-----------|
-| `src/components/portal/SystemBar.tsx` | Mobile-Bereich: Home-Icon wird zu ArrowLeft-Icon, wenn `location.pathname` tiefer als `/portal` ist. `onClick` navigiert zur Parent-Route. |
-| `src/hooks/useSwipeBack.ts` (neu) | Custom Hook: registriert `touchstart`/`touchmove`/`touchend` Events, erkennt Links-Rechts-Swipe, ruft `navigate()` zur Parent-Route auf. |
-| `src/components/portal/PortalLayout.tsx` | `useSwipeBack` Hook im Mobile-Layout auf den Content-Bereich (`main`) anwenden via `ref`. |
-
-### Details zur Implementierung
-
-**SystemBar (Zurueck-Button):**
-- Hilfsfunktion `getParentRoute(pathname)`: entfernt das letzte Pfad-Segment (z.B. `/portal/finanzanalyse/investment` wird zu `/portal/finanzanalyse`)
-- Wenn `pathname === '/portal'`: Home-Icon anzeigen (wie bisher)
-- Sonst: ArrowLeft-Icon anzeigen, onClick navigiert zu `getParentRoute(pathname)`
-
-**useSwipeBack Hook:**
-- Speichert `touchStartX`, `touchStartY` bei `touchstart`
-- Bei `touchend`: pruefen ob `deltaX > 80` und `deltaY < 50`
-- Falls ja: `navigate(getParentRoute(pathname))`
-- Nur aktiv wenn `isMobile === true`
-
-**Visuelles Feedback beim Swipe:**
-- Optionaler subtiler Schatten-Effekt am linken Rand waehrend des Swipe (CSS transform)
+| `src/components/portal/MobileBottomBar.tsx` | Module/Chat Toggle-Block (Zeilen 117-145) komplett entfernen. Props `mobileHomeMode` und `onModeChange` aus Interface und Destrukturierung entfernen. |
+| `src/components/portal/MobileHomeModuleList.tsx` | Greeting-Block (Zeilen 53-59) entfernen. Top-Padding der Modul-Liste anpassen (`pt-3` statt kein Padding). |
+| Eltern-Komponente (PortalLayout o.ae.) | `mobileHomeMode`-State und zugehoerige Props-Weitergabe bereinigen, falls der Chat-Modus-Wechsel dort gesteuert wird. |
 
