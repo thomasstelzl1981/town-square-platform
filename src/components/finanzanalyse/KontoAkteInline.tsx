@@ -1,18 +1,19 @@
 /**
  * KontoAkteInline — Inline-Detail für Bankkonten (Demo + echte)
- * Sektion 1: Kontodaten + Kategorisierung + Zuordnung
+ * Sektion 1: Kontodaten + Zuordnung (gruppierter Select)
  * Sektion 2: Kontoanbindung (FinAPI Platzhalter)
  * Sektion 3: Kontobewegungen
  */
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DEMO_WIDGET, RECORD_CARD } from '@/config/designManifest';
-import { DEMO_KONTO, DEMO_TRANSACTIONS, KONTO_CATEGORIES, type DemoTransaction } from '@/constants/demoKontoData';
+import { DEMO_KONTO, DEMO_TRANSACTIONS, type DemoTransaction } from '@/constants/demoKontoData';
+import { DEMO_FAMILY, DEMO_PORTFOLIO } from '@/engines/demoData/data';
 import { CreditCard, Link2, Link2Off, X, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
@@ -37,15 +38,15 @@ interface KontoAkteInlineProps {
   onClose: () => void;
 }
 
-const OWNER_TYPES = [
-  { value: 'person', label: 'Person im Haushalt' },
-  { value: 'property', label: 'Immobilie (Vermietung)' },
-  { value: 'pv_plant', label: 'Photovoltaik-Anlage' },
-];
+interface OwnerOption {
+  id: string;
+  label: string;
+  type: 'person' | 'property' | 'pv_plant';
+}
 
 const OWNER_TYPE_BADGES: Record<string, string> = {
   person: 'Person',
-  property: 'Immobilie',
+  property: 'Vermietereinheit',
   pv_plant: 'PV-Anlage',
 };
 
@@ -57,12 +58,21 @@ function fmtDate(d: string) {
   return new Date(d).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
+/** Encode owner_type + owner_id into a single select value */
+function encodeOwnerValue(type: string, id: string) {
+  return `${type}::${id}`;
+}
+
+function decodeOwnerValue(val: string): { type: string; id: string } {
+  const [type, id] = val.split('::');
+  return { type: type || '', id: id || '' };
+}
+
 export function KontoAkteInline({ isDemo, account, onClose }: KontoAkteInlineProps) {
   const { activeTenantId } = useAuth();
   const queryClient = useQueryClient();
-  const [category, setCategory] = useState(isDemo ? DEMO_KONTO.category : (account?.category || 'privat'));
-  const [ownerType, setOwnerType] = useState(account?.owner_type || '');
-  const [ownerId, setOwnerId] = useState(account?.owner_id || '');
+  const [ownerType, setOwnerType] = useState(isDemo ? DEMO_KONTO.owner_type : (account?.owner_type || ''));
+  const [ownerId, setOwnerId] = useState(isDemo ? DEMO_KONTO.owner_id : (account?.owner_id || ''));
 
   const kontoData = isDemo
     ? { name: DEMO_KONTO.accountName, iban: DEMO_KONTO.iban, bic: DEMO_KONTO.bic, bank: DEMO_KONTO.bank, holder: DEMO_KONTO.holder, status: 'active' }
@@ -70,27 +80,58 @@ export function KontoAkteInline({ isDemo, account, onClose }: KontoAkteInlinePro
 
   const transactions: DemoTransaction[] = isDemo ? DEMO_TRANSACTIONS : [];
 
-  // Load owner options
-  const { data: ownerOptions = [] } = useQuery({
-    queryKey: ['owner-options', activeTenantId, ownerType],
-    queryFn: async () => {
-      if (!activeTenantId || !ownerType) return [];
-      if (ownerType === 'person') {
-        const { data } = await supabase.from('household_persons').select('id, first_name, last_name').eq('tenant_id', activeTenantId);
-        return (data || []).map((p: any) => ({ id: p.id, label: `${p.first_name || ''} ${p.last_name || ''}`.trim() || 'Person' }));
-      }
-      if (ownerType === 'property') {
-        const { data } = await supabase.from('properties').select('id, name').eq('tenant_id', activeTenantId);
-        return (data || []).map((p: any) => ({ id: p.id, label: p.name || 'Immobilie' }));
-      }
-      if (ownerType === 'pv_plant') {
-        const { data } = await supabase.from('pv_plants').select('id, name').eq('tenant_id', activeTenantId);
-        return (data || []).map((p: any) => ({ id: p.id, label: p.name || 'PV-Anlage' }));
-      }
-      return [];
+  // Build demo owner options from static data
+  const demoOwnerOptions = useMemo<OwnerOption[]>(() => {
+    if (!isDemo) return [];
+    const persons = DEMO_FAMILY.map(p => ({
+      id: p.id,
+      label: `${p.firstName} ${p.lastName}`,
+      type: 'person' as const,
+    }));
+    const properties: OwnerOption[] = [{
+      id: DEMO_PORTFOLIO.landlordContextId,
+      label: 'Mustermann Immobilien',
+      type: 'property',
+    }];
+    const pvPlants: OwnerOption[] = DEMO_PORTFOLIO.pvPlantIds.map((id, i) => ({
+      id,
+      label: `PV-Anlage ${i + 1}`,
+      type: 'pv_plant',
+    }));
+    return [...persons, ...properties, ...pvPlants];
+  }, [isDemo]);
+
+  // Load all owner options for real accounts (single query for all types)
+  const { data: realOwnerOptions = [] } = useQuery({
+    queryKey: ['all-owner-options', activeTenantId],
+    queryFn: async (): Promise<OwnerOption[]> => {
+      if (!activeTenantId) return [];
+      const [personsRes, propsRes, pvRes] = await Promise.all([
+        supabase.from('household_persons').select('id, first_name, last_name').eq('tenant_id', activeTenantId),
+        supabase.from('properties').select('id, name').eq('tenant_id', activeTenantId),
+        supabase.from('pv_plants').select('id, name').eq('tenant_id', activeTenantId),
+      ]);
+      const persons: OwnerOption[] = (personsRes.data || []).map((p: any) => ({
+        id: p.id, label: `${p.first_name || ''} ${p.last_name || ''}`.trim() || 'Person', type: 'person',
+      }));
+      const properties: OwnerOption[] = (propsRes.data || []).map((p: any) => ({
+        id: p.id, label: p.name || 'Immobilie', type: 'property',
+      }));
+      const pvPlants: OwnerOption[] = (pvRes.data || []).map((p: any) => ({
+        id: p.id, label: p.name || 'PV-Anlage', type: 'pv_plant',
+      }));
+      return [...persons, ...properties, ...pvPlants];
     },
-    enabled: !isDemo && !!activeTenantId && !!ownerType,
+    enabled: !isDemo && !!activeTenantId,
   });
+
+  const allOptions = isDemo ? demoOwnerOptions : realOwnerOptions;
+  const personOptions = allOptions.filter(o => o.type === 'person');
+  const propertyOptions = allOptions.filter(o => o.type === 'property');
+  const pvOptions = allOptions.filter(o => o.type === 'pv_plant');
+
+  const currentValue = ownerType && ownerId ? encodeOwnerValue(ownerType, ownerId) : '';
+  const currentOwnerLabel = allOptions.find(o => o.id === ownerId)?.label;
 
   const updateOwner = useMutation({
     mutationFn: async ({ type, id }: { type: string; id: string }) => {
@@ -108,18 +149,14 @@ export function KontoAkteInline({ isDemo, account, onClose }: KontoAkteInlinePro
     onError: (err) => toast.error('Fehler: ' + err.message),
   });
 
-  const handleOwnerTypeChange = (type: string) => {
+  const handleOwnerChange = (encoded: string) => {
+    const { type, id } = decodeOwnerValue(encoded);
     setOwnerType(type);
-    setOwnerId('');
-  };
-
-  const handleOwnerIdChange = (id: string) => {
     setOwnerId(id);
-    updateOwner.mutate({ type: ownerType, id });
+    if (!isDemo) {
+      updateOwner.mutate({ type, id });
+    }
   };
-
-  // Get current owner name
-  const currentOwnerName = ownerOptions.find((o: any) => o.id === ownerId)?.label;
 
   return (
     <Card className={cn('md:col-span-2', isDemo && DEMO_WIDGET.CARD)}>
@@ -135,10 +172,10 @@ export function KontoAkteInline({ isDemo, account, onClose }: KontoAkteInlinePro
               <p className="text-sm text-muted-foreground">{kontoData.bank}</p>
             </div>
             {isDemo && <Badge className={DEMO_WIDGET.BADGE}>Demo</Badge>}
-            {!isDemo && ownerType && (
+            {ownerType && (
               <Badge variant="secondary" className="text-xs">
                 {OWNER_TYPE_BADGES[ownerType] || ownerType}
-                {currentOwnerName ? `: ${currentOwnerName}` : ''}
+                {currentOwnerLabel ? `: ${currentOwnerLabel}` : ''}
               </Badge>
             )}
           </div>
@@ -147,9 +184,9 @@ export function KontoAkteInline({ isDemo, account, onClose }: KontoAkteInlinePro
           </Button>
         </div>
 
-        {/* Sektion 1: Kontodaten & Kategorisierung */}
+        {/* Sektion 1: Kontodaten & Zuordnung */}
         <div>
-          <p className={RECORD_CARD.SECTION_TITLE}>Kontodaten & Kategorisierung</p>
+          <p className={RECORD_CARD.SECTION_TITLE}>Kontodaten & Zuordnung</p>
           <div className={RECORD_CARD.FIELD_GRID}>
             <div>
               <Label className="text-xs">Kontobezeichnung</Label>
@@ -172,56 +209,42 @@ export function KontoAkteInline({ isDemo, account, onClose }: KontoAkteInlinePro
               <Input value={kontoData.holder} readOnly={isDemo} />
             </div>
             <div>
-              <Label className="text-xs">Kategorie</Label>
-              <Select value={category} onValueChange={setCategory} disabled={isDemo}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+              <Label className="text-xs">Zuordnung</Label>
+              <Select value={currentValue} onValueChange={handleOwnerChange} disabled={isDemo}>
+                <SelectTrigger><SelectValue placeholder="Zuordnung wählen…" /></SelectTrigger>
                 <SelectContent>
-                  {KONTO_CATEGORIES.map(c => (
-                    <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
-                  ))}
+                  {personOptions.length > 0 && (
+                    <SelectGroup>
+                      <SelectLabel>Personen</SelectLabel>
+                      {personOptions.map(o => (
+                        <SelectItem key={o.id} value={encodeOwnerValue('person', o.id)}>{o.label}</SelectItem>
+                      ))}
+                    </SelectGroup>
+                  )}
+                  {propertyOptions.length > 0 && (
+                    <SelectGroup>
+                      <SelectLabel>Vermietereinheiten</SelectLabel>
+                      {propertyOptions.map(o => (
+                        <SelectItem key={o.id} value={encodeOwnerValue('property', o.id)}>{o.label}</SelectItem>
+                      ))}
+                    </SelectGroup>
+                  )}
+                  {pvOptions.length > 0 && (
+                    <SelectGroup>
+                      <SelectLabel>PV-Anlagen</SelectLabel>
+                      {pvOptions.map(o => (
+                        <SelectItem key={o.id} value={encodeOwnerValue('pv_plant', o.id)}>{o.label}</SelectItem>
+                      ))}
+                    </SelectGroup>
+                  )}
+                  {allOptions.length === 0 && (
+                    <SelectItem value="__empty__" disabled>Keine Einträge vorhanden</SelectItem>
+                  )}
                 </SelectContent>
               </Select>
             </div>
           </div>
         </div>
-
-        {/* Sektion 1b: Zuordnung */}
-        {!isDemo && (
-          <div>
-            <p className={RECORD_CARD.SECTION_TITLE}>Zuordnung</p>
-            <div className={RECORD_CARD.FIELD_GRID}>
-              <div>
-                <Label className="text-xs">Zuordnungstyp</Label>
-                <Select value={ownerType} onValueChange={handleOwnerTypeChange}>
-                  <SelectTrigger><SelectValue placeholder="Zuordnung wählen…" /></SelectTrigger>
-                  <SelectContent>
-                    {OWNER_TYPES.map(t => (
-                      <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              {ownerType && ownerOptions.length > 0 && (
-                <div>
-                  <Label className="text-xs">Inhaber</Label>
-                  <Select value={ownerId} onValueChange={handleOwnerIdChange}>
-                    <SelectTrigger><SelectValue placeholder="Bitte wählen…" /></SelectTrigger>
-                    <SelectContent>
-                      {ownerOptions.map((o: any) => (
-                        <SelectItem key={o.id} value={o.id}>{o.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-              {ownerType && ownerOptions.length === 0 && (
-                <p className="text-xs text-muted-foreground col-span-2">
-                  Keine Einträge vorhanden. Bitte zuerst anlegen.
-                </p>
-              )}
-            </div>
-          </div>
-        )}
 
         {/* Sektion 2: Kontoanbindung */}
         <div>

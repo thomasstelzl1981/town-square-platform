@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2, CreditCard } from 'lucide-react';
 
 interface AddBankAccountDialogProps {
@@ -25,6 +25,12 @@ interface BankAccountFormData {
   is_default: boolean;
   owner_type: string;
   owner_id: string;
+}
+
+interface OwnerOption {
+  id: string;
+  label: string;
+  type: 'person' | 'property' | 'pv_plant';
 }
 
 const defaultFormData: BankAccountFormData = {
@@ -43,11 +49,14 @@ function formatIBAN(iban: string): string {
   return clean.replace(/(.{4})/g, '$1 ').trim();
 }
 
-const OWNER_TYPES = [
-  { value: 'person', label: 'Person im Haushalt' },
-  { value: 'property', label: 'Immobilie (Vermietung)' },
-  { value: 'pv_plant', label: 'Photovoltaik-Anlage' },
-];
+function encodeOwnerValue(type: string, id: string) {
+  return `${type}::${id}`;
+}
+
+function decodeOwnerValue(val: string): { type: string; id: string } {
+  const [type, id] = val.split('::');
+  return { type: type || '', id: id || '' };
+}
 
 export function AddBankAccountDialog({ open, onOpenChange }: AddBankAccountDialogProps) {
   const queryClient = useQueryClient();
@@ -55,27 +64,37 @@ export function AddBankAccountDialog({ open, onOpenChange }: AddBankAccountDialo
   const [formData, setFormData] = useState<BankAccountFormData>(defaultFormData);
   const [ibanError, setIbanError] = useState<string | null>(null);
 
-  // Load owner options based on selected type
-  const { data: ownerOptions = [] } = useQuery({
-    queryKey: ['owner-options', activeTenantId, formData.owner_type],
-    queryFn: async () => {
-      if (!activeTenantId || !formData.owner_type) return [];
-      if (formData.owner_type === 'person') {
-        const { data } = await supabase.from('household_persons').select('id, first_name, last_name').eq('tenant_id', activeTenantId);
-        return (data || []).map((p: any) => ({ id: p.id, label: `${p.first_name || ''} ${p.last_name || ''}`.trim() || 'Person' }));
-      }
-      if (formData.owner_type === 'property') {
-        const { data } = await supabase.from('properties').select('id, name').eq('tenant_id', activeTenantId);
-        return (data || []).map((p: any) => ({ id: p.id, label: p.name || 'Immobilie' }));
-      }
-      if (formData.owner_type === 'pv_plant') {
-        const { data } = await supabase.from('pv_plants').select('id, name').eq('tenant_id', activeTenantId);
-        return (data || []).map((p: any) => ({ id: p.id, label: p.name || 'PV-Anlage' }));
-      }
-      return [];
+  // Load all owner options in one query
+  const { data: allOptions = [] } = useQuery({
+    queryKey: ['all-owner-options', activeTenantId],
+    queryFn: async (): Promise<OwnerOption[]> => {
+      if (!activeTenantId) return [];
+      const [personsRes, propsRes, pvRes] = await Promise.all([
+        supabase.from('household_persons').select('id, first_name, last_name').eq('tenant_id', activeTenantId),
+        supabase.from('properties').select('id, name').eq('tenant_id', activeTenantId),
+        supabase.from('pv_plants').select('id, name').eq('tenant_id', activeTenantId),
+      ]);
+      const persons: OwnerOption[] = (personsRes.data || []).map((p: any) => ({
+        id: p.id, label: `${p.first_name || ''} ${p.last_name || ''}`.trim() || 'Person', type: 'person',
+      }));
+      const properties: OwnerOption[] = (propsRes.data || []).map((p: any) => ({
+        id: p.id, label: p.name || 'Immobilie', type: 'property',
+      }));
+      const pvPlants: OwnerOption[] = (pvRes.data || []).map((p: any) => ({
+        id: p.id, label: p.name || 'PV-Anlage', type: 'pv_plant',
+      }));
+      return [...persons, ...properties, ...pvPlants];
     },
-    enabled: !!activeTenantId && !!formData.owner_type,
+    enabled: !!activeTenantId && open,
   });
+
+  const personOptions = allOptions.filter(o => o.type === 'person');
+  const propertyOptions = allOptions.filter(o => o.type === 'property');
+  const pvOptions = allOptions.filter(o => o.type === 'pv_plant');
+
+  const currentOwnerValue = formData.owner_type && formData.owner_id
+    ? encodeOwnerValue(formData.owner_type, formData.owner_id)
+    : '';
 
   const createAccount = useMutation({
     mutationFn: async (data: BankAccountFormData) => {
@@ -129,6 +148,11 @@ export function AddBankAccountDialog({ open, onOpenChange }: AddBankAccountDialo
     }
   };
 
+  const handleOwnerChange = (encoded: string) => {
+    const { type, id } = decodeOwnerValue(encoded);
+    setFormData(prev => ({ ...prev, owner_type: type, owner_id: id }));
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[450px]">
@@ -166,38 +190,42 @@ export function AddBankAccountDialog({ open, onOpenChange }: AddBankAccountDialo
               onChange={(e) => setFormData(prev => ({ ...prev, bank_name: e.target.value }))} />
           </div>
 
-          {/* Zuordnung */}
+          {/* Zuordnung — gruppierter Select */}
           <div className="space-y-2">
             <Label>Zuordnung</Label>
-            <Select value={formData.owner_type} onValueChange={(v) => setFormData(prev => ({ ...prev, owner_type: v, owner_id: '' }))}>
+            <Select value={currentOwnerValue} onValueChange={handleOwnerChange}>
               <SelectTrigger><SelectValue placeholder="Zuordnung wählen…" /></SelectTrigger>
               <SelectContent>
-                {OWNER_TYPES.map(t => (
-                  <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
-                ))}
+                {personOptions.length > 0 && (
+                  <SelectGroup>
+                    <SelectLabel>Personen</SelectLabel>
+                    {personOptions.map(o => (
+                      <SelectItem key={o.id} value={encodeOwnerValue('person', o.id)}>{o.label}</SelectItem>
+                    ))}
+                  </SelectGroup>
+                )}
+                {propertyOptions.length > 0 && (
+                  <SelectGroup>
+                    <SelectLabel>Vermietereinheiten</SelectLabel>
+                    {propertyOptions.map(o => (
+                      <SelectItem key={o.id} value={encodeOwnerValue('property', o.id)}>{o.label}</SelectItem>
+                    ))}
+                  </SelectGroup>
+                )}
+                {pvOptions.length > 0 && (
+                  <SelectGroup>
+                    <SelectLabel>PV-Anlagen</SelectLabel>
+                    {pvOptions.map(o => (
+                      <SelectItem key={o.id} value={encodeOwnerValue('pv_plant', o.id)}>{o.label}</SelectItem>
+                    ))}
+                  </SelectGroup>
+                )}
+                {allOptions.length === 0 && (
+                  <SelectItem value="__empty__" disabled>Keine Einträge vorhanden</SelectItem>
+                )}
               </SelectContent>
             </Select>
           </div>
-
-          {formData.owner_type && ownerOptions.length > 0 && (
-            <div className="space-y-2">
-              <Label>Inhaber</Label>
-              <Select value={formData.owner_id} onValueChange={(v) => setFormData(prev => ({ ...prev, owner_id: v }))}>
-                <SelectTrigger><SelectValue placeholder="Bitte wählen…" /></SelectTrigger>
-                <SelectContent>
-                  {ownerOptions.map((o: any) => (
-                    <SelectItem key={o.id} value={o.id}>{o.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
-          {formData.owner_type && ownerOptions.length === 0 && (
-            <p className="text-xs text-muted-foreground">
-              Keine {OWNER_TYPES.find(t => t.value === formData.owner_type)?.label || 'Einträge'} vorhanden. Bitte zuerst anlegen.
-            </p>
-          )}
 
           <div className="flex items-center justify-between rounded-lg border p-3">
             <div>
