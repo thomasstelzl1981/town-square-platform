@@ -30,7 +30,7 @@ export type ExecutionMode =
 export type ArmstrongZone = 'Z2' | 'Z3';
 export type RiskLevel = 'low' | 'medium' | 'high';
 export type CostModel = 'free' | 'metered' | 'premium';
-export type CostUnit = 'per_call' | 'per_token' | 'per_page' | null;
+export type CostUnit = 'per_call' | 'per_token' | 'per_page' | 'per_document' | null;
 export type CostCategory = 'llm' | 'api_external' | 'communication' | 'infrastructure' | 'free';
 export type ActionStatus = 'draft' | 'active' | 'deprecated';
 

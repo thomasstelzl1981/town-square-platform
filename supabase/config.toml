@@ -215,3 +215,6 @@ verify_jwt = false
 
 [functions.sot-z3-auth]
 verify_jwt = false
+
+[functions.sot-storage-extractor]
+verify_jwt = false

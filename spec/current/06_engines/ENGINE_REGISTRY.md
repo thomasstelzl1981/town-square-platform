@@ -23,6 +23,7 @@
 | 13 | **File Intelligence** | Analysiert hochgeladene Dateien im Kontext der Akte | Dateimanager | 1 Credit/Research |
 | 14 | **Demo-Daten Engine** | Erzeugt realistische Beispieldaten fuer neue Mandanten | Onboarding | Free |
 | 15 | **Golden Path Engine** | Fuehrt Nutzer Schritt fuer Schritt durch komplexe Workflows | Ueberall (Guided Tours) | Free |
+| 16 | **Storage Extraction** | Macht den gesamten Datenraum fuer Armstrong durchsuchbar (Bulk) | Dateimanager · Armstrong | 1 Credit/Doc |
 
 ---
 
@@ -44,12 +45,13 @@ Alle Kalkulationsengines sind **pure TypeScript Functions**, laufen **client-sid
 | ENG-VORSORGE | Vorsorgeluecke-Rechner | MOD-08 | ✅ Live | `src/engines/vorsorgeluecke/spec.ts`, `engine.ts` |
 | ENG-VVSTEUER | V+V Steuer-Engine | MOD-04 | ✅ Live | `src/engines/vvSteuer/spec.ts` |
 
-### Daten (2 Engines)
+### Daten (3 Engines)
 
 | Code | Name | Status | Billing | Ausfuehrung |
 |------|------|--------|---------|-------------|
 | ENG-DOCINT | Document Intelligence | ⚡ Teilweise | 1 Credit/PDF | Edge Function (`sot-docint-*`) |
 | ENG-RESEARCH | Research Engine (SOAT) | ⚡ Teilweise | 2-4 Credits/Run | Edge Function (`sot-research-*`) |
+| ENG-STOREX | Storage Extraction | ⚡ Teilweise | 1 Credit/Doc | Edge Function (`sot-storage-extractor`) |
 
 ### KI (2 Engines)
 
