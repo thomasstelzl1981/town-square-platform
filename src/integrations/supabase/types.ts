@@ -6574,6 +6574,7 @@ export type Database = {
       finance_requests: {
         Row: {
           applicant_snapshot: Json | null
+          archived_at: string | null
           broker_fee: number | null
           contact_email: string | null
           contact_first_name: string | null
@@ -6613,6 +6614,7 @@ export type Database = {
         }
         Insert: {
           applicant_snapshot?: Json | null
+          archived_at?: string | null
           broker_fee?: number | null
           contact_email?: string | null
           contact_first_name?: string | null
@@ -6652,6 +6654,7 @@ export type Database = {
         }
         Update: {
           applicant_snapshot?: Json | null
+          archived_at?: string | null
           broker_fee?: number | null
           contact_email?: string | null
           contact_first_name?: string | null

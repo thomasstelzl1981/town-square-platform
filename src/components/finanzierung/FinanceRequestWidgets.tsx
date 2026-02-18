@@ -16,9 +16,18 @@ import { WidgetGrid } from '@/components/shared/WidgetGrid';
 import { WidgetCell } from '@/components/shared/WidgetCell';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Plus, FileText, Loader2, Home } from 'lucide-react';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel,
+  AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
+  AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import { Plus, FileText, Loader2, Home, Trash2, Archive } from 'lucide-react';
 import { DesktopOnly } from '@/components/shared/DesktopOnly';
 import { toast } from 'sonner';
+
+const DELETABLE_STATUSES = ['draft', 'collecting'];
+const ARCHIVABLE_STATUSES = ['submitted', 'rejected', 'cancelled', 'completed'];
+const REMOVABLE_STATUSES = [...DELETABLE_STATUSES, ...ARCHIVABLE_STATUSES];
 import { format } from 'date-fns';
 import { useDemoToggles } from '@/hooks/useDemoToggles';
 import { GOLDEN_PATH_PROCESSES } from '@/manifests/goldenPathProcesses';
@@ -45,6 +54,7 @@ export function FinanceRequestWidgets({ activeRequestId }: FinanceRequestWidgets
         .from('finance_requests')
         .select('id, public_id, status, object_address, purchase_price, created_at')
         .eq('tenant_id', activeTenantId)
+        .is('archived_at', null)
         .order('created_at', { ascending: false })
         .limit(20);
       if (error) throw error;
@@ -76,6 +86,24 @@ export function FinanceRequestWidgets({ activeRequestId }: FinanceRequestWidgets
     onError: () => {
       toast.error('Fehler beim Erstellen der Anfrage');
     },
+  });
+
+  const removeMutation = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+      if (DELETABLE_STATUSES.includes(status)) {
+        const { error } = await supabase.from('finance_requests').delete().eq('id', id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from('finance_requests').update({ archived_at: new Date().toISOString() } as any).eq('id', id);
+        if (error) throw error;
+      }
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['finance-requests-list'] });
+      queryClient.invalidateQueries({ queryKey: ['finance-requests-with-mandates'] });
+      toast.success(DELETABLE_STATUSES.includes(variables.status) ? 'Entwurf gelöscht' : 'Anfrage archiviert');
+    },
+    onError: () => toast.error('Fehler beim Entfernen'),
   });
 
   const formatCurrency = (val: number | null) =>
@@ -118,6 +146,8 @@ export function FinanceRequestWidgets({ activeRequestId }: FinanceRequestWidgets
       {/* Existing requests */}
       {requests.filter((req) => showDemo || !isDemoId(req.id)).map((req) => {
         const isActive = req.id === activeRequestId;
+        const canRemove = REMOVABLE_STATUSES.includes(req.status);
+        const isDraft = DELETABLE_STATUSES.includes(req.status);
         return (
           <WidgetCell key={req.id}>
             <Card
@@ -132,9 +162,43 @@ export function FinanceRequestWidgets({ activeRequestId }: FinanceRequestWidgets
                 <div>
                   <div className="flex items-center justify-between mb-2">
                     <FileText className="h-5 w-5 text-primary" />
-                    <Badge variant={getStatusBadgeVariant(req.status)}>
-                      {getStatusLabel(req.status)}
-                    </Badge>
+                    <div className="flex items-center gap-1">
+                      {canRemove && (
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <button
+                              className="p-1 rounded hover:bg-destructive/10 transition-colors"
+                              onClick={(e) => e.stopPropagation()}
+                              title={isDraft ? 'Entwurf löschen' : 'Archivieren'}
+                            >
+                              {isDraft ? <Trash2 className="h-3.5 w-3.5 text-destructive" /> : <Archive className="h-3.5 w-3.5 text-muted-foreground" />}
+                            </button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>{isDraft ? 'Entwurf löschen?' : 'Anfrage archivieren?'}</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                {isDraft
+                                  ? 'Dieser Entwurf wird unwiderruflich gelöscht.'
+                                  : 'Die Anfrage wird aus der Übersicht entfernt.'}
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                              <AlertDialogAction
+                                className={isDraft ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90' : ''}
+                                onClick={() => removeMutation.mutate({ id: req.id, status: req.status })}
+                              >
+                                {isDraft ? 'Löschen' : 'Archivieren'}
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      )}
+                      <Badge variant={getStatusBadgeVariant(req.status)}>
+                        {getStatusLabel(req.status)}
+                      </Badge>
+                    </div>
                   </div>
                   <h3 className="font-semibold text-sm truncate">
                     {req.public_id || `#${req.id.slice(0, 8)}`}
