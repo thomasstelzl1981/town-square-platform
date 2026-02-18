@@ -50,16 +50,8 @@ export function MobileHomeModuleList() {
 
   return (
     <div className="flex-1 overflow-y-auto">
-      {/* Greeting */}
-      <div className="px-5 pt-5 pb-3">
-        <h1 className="text-xl font-semibold text-foreground">Willkommen</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">
-          Was möchtest du heute erledigen?
-        </p>
-      </div>
-
       {/* Module rows */}
-      <div className="px-3 pb-4">
+      <div className="px-3 pt-3 pb-4">
         {mobileHomeEntries.map((entry, i) => {
           const Icon = entry.icon ? iconMap[entry.icon] : LayoutGrid;
           return (

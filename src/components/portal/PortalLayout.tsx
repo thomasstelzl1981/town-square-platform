@@ -47,7 +47,7 @@ function PortalLayoutInner() {
   const { isMobile } = usePortalLayout();
   const location = useLocation();
   // Armstrong sheet state removed — mobile uses full-screen chat now
-  const [mobileHomeMode, setMobileHomeMode] = useState<'modules' | 'chat'>('modules');
+  const [mobileHomeMode, setMobileHomeMode] = useState<'modules' | 'chat'>('modules'); // kept for chat activation
   const swipeRef = useRef<HTMLDivElement>(null);
   useSwipeBack(swipeRef);
   // P0-FIX: Track if we've ever finished initial loading
@@ -156,8 +156,6 @@ function PortalLayoutInner() {
         {/* Unified bottom bar — always visible on mobile */}
         <MobileBottomBar
           onChatActivated={() => setMobileHomeMode('chat')}
-          mobileHomeMode={isDashboard ? mobileHomeMode : undefined}
-          onModeChange={isDashboard ? setMobileHomeMode : undefined}
         />
       </div>
     );
