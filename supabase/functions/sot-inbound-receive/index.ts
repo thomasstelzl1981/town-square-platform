@@ -591,7 +591,231 @@ async function processPdfAttachments(
       .eq("filename", filename);
 
     console.log(`PDF stored: ${storagePath} → doc ${doc.id}`);
+
+    // ─── AUTO-TRIGGER: Document Parser + Chunks Pipeline ───
+    await triggerDocumentExtraction(sbAdmin, doc.id, tenantId, storagePath, filename);
   }
+}
+
+/**
+ * Auto-Trigger Pipeline: PDF → Credit-Preflight → Gemini Parser → document_chunks
+ * 
+ * 1. Credit-Preflight: Prüft ob Tenant genug Credits hat (1 Credit/PDF)
+ * 2. Signed URL: Erstellt temporäre Download-URL für das PDF
+ * 3. Gemini Parser: Sendet PDF an sot-document-parser (Lovable AI)
+ * 4. Chunk Storage: Speichert extrahierten Text in document_chunks für TSVector-Suche
+ * 5. Credit Deduct: Zieht 1 Credit ab
+ */
+async function triggerDocumentExtraction(
+  sbAdmin: any,
+  documentId: string,
+  tenantId: string,
+  storagePath: string,
+  filename: string,
+) {
+  const EXTRACTION_CREDITS = 1;
+  
+  try {
+    // 1. Credit Preflight
+    const { data: preflight, error: preflightErr } = await sbAdmin.rpc("rpc_credit_preflight", {
+      p_tenant_id: tenantId,
+      p_required_credits: EXTRACTION_CREDITS,
+      p_action_code: "doc_extraction",
+    });
+
+    if (preflightErr || !preflight?.allowed) {
+      console.warn(`[auto-trigger] Credit preflight failed for tenant ${tenantId}: ${preflight?.message || preflightErr?.message}`);
+      // Mark document as extraction_skipped (no credits)
+      await sbAdmin.from("documents").update({ 
+        metadata: { extraction_status: "skipped_no_credits", checked_at: new Date().toISOString() }
+      }).eq("id", documentId);
+      return;
+    }
+
+    // 2. Get signed URL for the PDF
+    const { data: signedUrlData, error: signedUrlErr } = await sbAdmin.storage
+      .from("tenant-documents")
+      .createSignedUrl(storagePath, 600); // 10 min
+
+    if (signedUrlErr || !signedUrlData?.signedUrl) {
+      console.error(`[auto-trigger] Signed URL failed for ${storagePath}:`, signedUrlErr);
+      return;
+    }
+
+    // 3. Download PDF content and convert to base64
+    const pdfResponse = await fetch(signedUrlData.signedUrl);
+    if (!pdfResponse.ok) {
+      console.error(`[auto-trigger] PDF download failed: ${pdfResponse.status}`);
+      return;
+    }
+    const pdfBuffer = await pdfResponse.arrayBuffer();
+    const pdfBytes = new Uint8Array(pdfBuffer);
+    
+    // Convert to base64
+    let base64Content = "";
+    const chunkSize = 8192;
+    for (let i = 0; i < pdfBytes.length; i += chunkSize) {
+      const chunk = pdfBytes.slice(i, i + chunkSize);
+      base64Content += String.fromCharCode(...chunk);
+    }
+    base64Content = btoa(base64Content);
+
+    // 4. Call document parser via Lovable AI
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) {
+      console.error("[auto-trigger] LOVABLE_API_KEY not configured, skipping extraction");
+      return;
+    }
+
+    const systemPrompt = `Du bist ein spezialisierter Dokumenten-Parser für Immobilien- und Finanzdokumente.
+Analysiere das Dokument und extrahiere ALLEN Text als durchsuchbaren Volltext.
+Erkenne den Dokumententyp (Rechnung, Vertrag, Bescheid, Ausweis, Kontoauszug, Brief, etc.).
+
+Antworte NUR mit validem JSON:
+{
+  "doc_type": "rechnung|vertrag|bescheid|ausweis|kontoauszug|brief|expose|sonstiges",
+  "confidence": 0.0-1.0,
+  "summary": "Kurzzusammenfassung in 1-2 Sätzen",
+  "extracted_text": "Der komplette extrahierte Text des Dokuments, seitenweise getrennt mit ---PAGE_BREAK---",
+  "key_data": {
+    "datum": "falls erkannt",
+    "betrag": "falls erkannt (Zahl in EUR)",
+    "absender": "falls erkannt",
+    "empfaenger": "falls erkannt",
+    "aktenzeichen": "falls erkannt"
+  }
+}`;
+
+    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash",
+        messages: [
+          { role: "system", content: systemPrompt },
+          {
+            role: "user",
+            content: [
+              { type: "text", text: `Analysiere dieses Dokument: ${filename}` },
+              { type: "image_url", image_url: { url: `data:application/pdf;base64,${base64Content}` } },
+            ],
+          },
+        ],
+        temperature: 0.1,
+        max_tokens: 16000,
+      }),
+    });
+
+    if (!aiResponse.ok) {
+      const errText = await aiResponse.text();
+      console.error(`[auto-trigger] AI Gateway error ${aiResponse.status}:`, errText);
+      return;
+    }
+
+    const aiResult = await aiResponse.json();
+    const aiContent = aiResult.choices?.[0]?.message?.content || "";
+
+    // Parse AI response
+    let parsed: { doc_type?: string; confidence?: number; summary?: string; extracted_text?: string; key_data?: Record<string, string> };
+    try {
+      let jsonStr = aiContent.replace(/```json\n?/g, "").replace(/```\n?/g, "");
+      parsed = JSON.parse(jsonStr.trim());
+    } catch {
+      console.warn("[auto-trigger] AI response not valid JSON, using raw text");
+      parsed = { extracted_text: aiContent, doc_type: "sonstiges", confidence: 0.3 };
+    }
+
+    // 5. Store chunks in document_chunks
+    const fullText = parsed.extracted_text || aiContent;
+    const pages = fullText.split(/---PAGE_BREAK---/i).filter((p: string) => p.trim().length > 0);
+
+    for (let i = 0; i < pages.length; i++) {
+      const pageText = pages[i].trim();
+      if (pageText.length < 5) continue;
+
+      // Split into ~1000 char chunks per page
+      const chunks = splitIntoChunks(pageText, 1000);
+      for (let j = 0; j < chunks.length; j++) {
+        await sbAdmin.from("document_chunks").insert({
+          document_id: documentId,
+          tenant_id: tenantId,
+          text: chunks[j],
+          page_number: i + 1,
+          chunk_index: j,
+          metadata: {
+            doc_type: parsed.doc_type,
+            confidence: parsed.confidence,
+            filename,
+          },
+        });
+      }
+    }
+
+    // 6. Update document with extraction metadata
+    await sbAdmin.from("documents").update({
+      doc_type_hint: parsed.doc_type || "sonstiges",
+      metadata: {
+        extraction_status: "completed",
+        extraction_confidence: parsed.confidence,
+        extraction_summary: parsed.summary,
+        extraction_key_data: parsed.key_data,
+        extracted_at: new Date().toISOString(),
+        pages_extracted: pages.length,
+        model: "google/gemini-2.5-flash",
+      },
+    }).eq("id", documentId);
+
+    // 7. Deduct credits
+    await sbAdmin.rpc("rpc_credit_deduct", {
+      p_tenant_id: tenantId,
+      p_credits: EXTRACTION_CREDITS,
+      p_action_code: "doc_extraction",
+      p_ref_type: "document",
+      p_ref_id: documentId,
+    });
+
+    console.log(`[auto-trigger] ✅ Extracted ${pages.length} pages from ${filename} → ${documentId} (1 Credit deducted)`);
+  } catch (err) {
+    console.error(`[auto-trigger] Extraction failed for ${documentId}:`, err);
+    await sbAdmin.from("documents").update({
+      metadata: { extraction_status: "error", error: String(err), attempted_at: new Date().toISOString() },
+    }).eq("id", documentId);
+  }
+}
+
+/**
+ * Split text into chunks of approximately maxLen characters,
+ * breaking at sentence boundaries where possible.
+ */
+function splitIntoChunks(text: string, maxLen: number): string[] {
+  if (text.length <= maxLen) return [text];
+  
+  const chunks: string[] = [];
+  let remaining = text;
+  
+  while (remaining.length > 0) {
+    if (remaining.length <= maxLen) {
+      chunks.push(remaining);
+      break;
+    }
+    
+    // Try to break at sentence boundary
+    let breakPoint = remaining.lastIndexOf(". ", maxLen);
+    if (breakPoint < maxLen * 0.5) {
+      breakPoint = remaining.lastIndexOf(" ", maxLen);
+    }
+    if (breakPoint < maxLen * 0.3) {
+      breakPoint = maxLen;
+    }
+    
+    chunks.push(remaining.slice(0, breakPoint + 1).trim());
+    remaining = remaining.slice(breakPoint + 1).trim();
+  }
+  
+  return chunks;
 }
 
 // ─── Helpers ───
