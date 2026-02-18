@@ -6863,6 +6863,142 @@ export type Database = {
           },
         ]
       }
+      finapi_depot_accounts: {
+        Row: {
+          account_name: string | null
+          bank_name: string | null
+          connection_id: string | null
+          created_at: string
+          depot_number: string | null
+          finapi_account_id: string | null
+          id: string
+          person_id: string | null
+          status: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          account_name?: string | null
+          bank_name?: string | null
+          connection_id?: string | null
+          created_at?: string
+          depot_number?: string | null
+          finapi_account_id?: string | null
+          id?: string
+          person_id?: string | null
+          status?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          account_name?: string | null
+          bank_name?: string | null
+          connection_id?: string | null
+          created_at?: string
+          depot_number?: string | null
+          finapi_account_id?: string | null
+          id?: string
+          person_id?: string | null
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finapi_depot_accounts_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "finapi_connections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finapi_depot_accounts_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "household_persons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finapi_depot_accounts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      finapi_depot_positions: {
+        Row: {
+          currency: string
+          current_quote: number | null
+          current_value: number | null
+          depot_account_id: string
+          entry_quote: number | null
+          finapi_security_id: string | null
+          id: string
+          isin: string | null
+          last_updated: string | null
+          name: string | null
+          profit_or_loss: number | null
+          purchase_value: number | null
+          quantity: number | null
+          quantity_nominal: number | null
+          tenant_id: string
+          wkn: string | null
+        }
+        Insert: {
+          currency?: string
+          current_quote?: number | null
+          current_value?: number | null
+          depot_account_id: string
+          entry_quote?: number | null
+          finapi_security_id?: string | null
+          id?: string
+          isin?: string | null
+          last_updated?: string | null
+          name?: string | null
+          profit_or_loss?: number | null
+          purchase_value?: number | null
+          quantity?: number | null
+          quantity_nominal?: number | null
+          tenant_id: string
+          wkn?: string | null
+        }
+        Update: {
+          currency?: string
+          current_quote?: number | null
+          current_value?: number | null
+          depot_account_id?: string
+          entry_quote?: number | null
+          finapi_security_id?: string | null
+          id?: string
+          isin?: string | null
+          last_updated?: string | null
+          name?: string | null
+          profit_or_loss?: number | null
+          purchase_value?: number | null
+          quantity?: number | null
+          quantity_nominal?: number | null
+          tenant_id?: string
+          wkn?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finapi_depot_positions_depot_account_id_fkey"
+            columns: ["depot_account_id"]
+            isOneToOne: false
+            referencedRelation: "finapi_depot_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finapi_depot_positions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       finapi_transactions: {
         Row: {
           amount: number
