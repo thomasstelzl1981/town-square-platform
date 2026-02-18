@@ -50,11 +50,9 @@ function AttachedFiles({
 /* ── Main Component ──────────────────────────────────── */
 interface MobileBottomBarProps {
   onChatActivated?: () => void;
-  mobileHomeMode?: 'modules' | 'chat';
-  onModeChange?: (mode: 'modules' | 'chat') => void;
 }
 
-export function MobileBottomBar({ onChatActivated, mobileHomeMode, onModeChange }: MobileBottomBarProps) {
+export function MobileBottomBar({ onChatActivated }: MobileBottomBarProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const advisor = useArmstrongAdvisor();
@@ -114,36 +112,6 @@ export function MobileBottomBar({ onChatActivated, mobileHomeMode, onModeChange 
       className="sticky bottom-0 z-40 w-full bg-background/80 backdrop-blur-2xl border-t border-border/10"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
-      {/* Module/Chat Toggle — Lovable-style, only on dashboard */}
-      {isDashboard && mobileHomeMode && onModeChange && (
-        <div className="flex justify-center pt-2.5 pb-2">
-          <div className="flex bg-muted/50 rounded-lg p-0.5 border border-border/20">
-            <button
-              onClick={() => onModeChange('modules')}
-              className={cn(
-                'px-5 py-2 rounded-md text-xs font-medium transition-all',
-                mobileHomeMode === 'modules'
-                  ? 'bg-background text-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
-              )}
-            >
-              Module
-            </button>
-            <button
-              onClick={() => onModeChange('chat')}
-              className={cn(
-                'px-5 py-2 rounded-md text-xs font-medium transition-all',
-                mobileHomeMode === 'chat'
-                  ? 'bg-background text-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
-              )}
-            >
-              Chat
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* Attached files preview */}
       <AttachedFiles files={attachedFiles} onRemove={removeFile} />
 
