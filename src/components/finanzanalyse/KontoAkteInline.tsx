@@ -113,8 +113,34 @@ export function KontoAkteInline({ isDemo, account, onClose }: KontoAkteInlinePro
       }));
 
   // Build demo owner options from static data
+  // Load owner options from DB for both demo and real accounts
+  const { data: dbOwnerOptions = [] } = useQuery({
+    queryKey: ['all-owner-options-demo', activeTenantId],
+    queryFn: async (): Promise<OwnerOption[]> => {
+      const tid = activeTenantId || 'a0000000-0000-4000-a000-000000000001';
+      const [personsRes, contextsRes, pvRes] = await Promise.all([
+        supabase.from('household_persons').select('id, first_name, last_name').eq('tenant_id', tid),
+        supabase.from('landlord_contexts').select('id, name').eq('tenant_id', tid),
+        supabase.from('pv_plants').select('id, name').eq('tenant_id', tid),
+      ]);
+      const persons: OwnerOption[] = (personsRes.data || []).map((p: any) => ({
+        id: p.id, label: `${p.first_name || ''} ${p.last_name || ''}`.trim() || 'Person', type: 'person',
+      }));
+      const properties: OwnerOption[] = (contextsRes.data || []).map((c: any) => ({
+        id: c.id, label: c.name || 'Vermietereinheit', type: 'property',
+      }));
+      const pvPlants: OwnerOption[] = (pvRes.data || []).map((p: any) => ({
+        id: p.id, label: p.name || 'PV-Anlage', type: 'pv_plant',
+      }));
+      return [...persons, ...properties, ...pvPlants];
+    },
+    enabled: isDemo || !!activeTenantId,
+  });
+
   const demoOwnerOptions = useMemo<OwnerOption[]>(() => {
     if (!isDemo) return [];
+    // If we got DB data, use it; otherwise fall back to static demo data
+    if (dbOwnerOptions.length > 0) return dbOwnerOptions;
     const persons = DEMO_FAMILY.map(p => ({
       id: p.id,
       label: `${p.firstName} ${p.lastName}`,
@@ -122,7 +148,7 @@ export function KontoAkteInline({ isDemo, account, onClose }: KontoAkteInlinePro
     }));
     const properties: OwnerOption[] = [{
       id: DEMO_PORTFOLIO.landlordContextId,
-      label: 'Mustermann Immobilien',
+      label: 'Familie Mustermann',
       type: 'property',
     }];
     const pvPlants: OwnerOption[] = DEMO_PORTFOLIO.pvPlantIds.map((id, i) => ({
@@ -131,33 +157,9 @@ export function KontoAkteInline({ isDemo, account, onClose }: KontoAkteInlinePro
       type: 'pv_plant',
     }));
     return [...persons, ...properties, ...pvPlants];
-  }, [isDemo]);
+  }, [isDemo, dbOwnerOptions]);
 
-  // Load all owner options for real accounts
-  const { data: realOwnerOptions = [] } = useQuery({
-    queryKey: ['all-owner-options', activeTenantId],
-    queryFn: async (): Promise<OwnerOption[]> => {
-      if (!activeTenantId) return [];
-      const [personsRes, propsRes, pvRes] = await Promise.all([
-        supabase.from('household_persons').select('id, first_name, last_name').eq('tenant_id', activeTenantId),
-        supabase.from('properties').select('id, name').eq('tenant_id', activeTenantId),
-        supabase.from('pv_plants').select('id, name').eq('tenant_id', activeTenantId),
-      ]);
-      const persons: OwnerOption[] = (personsRes.data || []).map((p: any) => ({
-        id: p.id, label: `${p.first_name || ''} ${p.last_name || ''}`.trim() || 'Person', type: 'person',
-      }));
-      const properties: OwnerOption[] = (propsRes.data || []).map((p: any) => ({
-        id: p.id, label: p.name || 'Immobilie', type: 'property',
-      }));
-      const pvPlants: OwnerOption[] = (pvRes.data || []).map((p: any) => ({
-        id: p.id, label: p.name || 'PV-Anlage', type: 'pv_plant',
-      }));
-      return [...persons, ...properties, ...pvPlants];
-    },
-    enabled: !isDemo && !!activeTenantId,
-  });
-
-  const allOptions = isDemo ? demoOwnerOptions : realOwnerOptions;
+  const allOptions = isDemo ? demoOwnerOptions : dbOwnerOptions;
   const personOptions = allOptions.filter(o => o.type === 'person');
   const propertyOptions = allOptions.filter(o => o.type === 'property');
   const pvOptions = allOptions.filter(o => o.type === 'pv_plant');
