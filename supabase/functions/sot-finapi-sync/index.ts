@@ -202,11 +202,14 @@ Deno.serve(async (req) => {
         );
 
         // 3. Create Web Form for bank connection import
-        // Web Form 2.0 endpoint is on a SEPARATE host
-        const webFormPayload: Record<string, unknown> = {};
-        if (bankId) {
-          webFormPayload.bankId = Number(bankId);
-        }
+        // Web Form 2.0 uses nested { bank: { id } } NOT flat { bankId }
+        const webFormPayload: Record<string, unknown> = {
+          bank: { id: Number(bankId) },
+          allowedInterfaces: ["XS2A", "FINTS_SERVER", "WEB_SCRAPER"],
+          skipBalancesDownload: false,
+          skipPositionsDownload: false,
+          loadOwnerData: true,
+        };
 
         console.log("[finapi-connect] Creating Web Form with payload:", JSON.stringify(webFormPayload));
 
