@@ -359,7 +359,7 @@ export const zone2Portal: ZoneDefinition = {
         { path: "beratung", component: "BeratungTab", title: "Beratung" },
         { path: "kunden", component: "KundenTab", title: "Kunden" },
         { path: "network", component: "NetworkTab", title: "Netzwerk" },
-        { path: "systemgebuehr", component: "ImmoSystemgebuehr", title: "Systemgebühr" },
+        { path: "systemgebuehr", component: "ImmoSystemgebuehr", title: "Provisionen" },
       ],
       dynamic_routes: [
         { path: "katalog/:publicId", component: "KatalogDetailPage", title: "Katalog-Detail", dynamic: true },
@@ -427,7 +427,7 @@ export const zone2Portal: ZoneDefinition = {
         { path: "objekteingang", component: "AkquiseObjekteingang", title: "Objekteingang" },
         { path: "datenbank", component: "AkquiseDatenbank", title: "Datenbank" },
         { path: "tools", component: "AkquiseTools", title: "Tools" },
-        { path: "systemgebuehr", component: "AkquiseSystemgebuehr", title: "Systemgebühr" },
+        { path: "systemgebuehr", component: "AkquiseSystemgebuehr", title: "Provisionen" },
       ],
       dynamic_routes: [
         { path: "mandate/neu", component: "MandatCreateWizardManager", title: "Neues Mandat" },
