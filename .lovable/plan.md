@@ -1,87 +1,116 @@
 
 
-# Depot anbinden via FinAPI (Read-Only)
+# Investment-Tab Redesign: Ein Plus-Button fuer FinAPI-Depot
 
-## Uebersicht
+## Problem (IST-Zustand)
 
-Im Investment-Tab wird ein "Depot anbinden (FinAPI)"-Button hinzugefuegt, der denselben Web Form 2.0 Flow nutzt wie die Bankkonten-Anbindung. Nach erfolgreicher Verbindung werden Wertpapier-Depots und deren Positionen read-only angezeigt.
+Die Seite hat 3 separate Plus-Buttons/Header:
+1. "INVESTMENT" Header + Plus (Depot-Person)
+2. "INVESTMENT-SPARPLAENE" Header + Plus (Sparplan anlegen)
+3. "WERTPAPIER-DEPOTS (READ-ONLY)" Header + eigener Button
 
-## Datenbank
+## Loesung (SOLL-Zustand)
 
-Zwei neue Tabellen:
+**Ein einziger [+] Button** im Header. Klick oeffnet einen Dialog mit:
+1. Info-Text (Erklaerung)
+2. **Einen** Aktions-Button: "Depot anbinden (FinAPI)"
 
-**`finapi_depot_accounts`** — Verbundene Wertpapier-Depots
-- id (uuid, PK)
-- tenant_id (uuid, NOT NULL)
-- person_id (uuid, nullable) — Zuordnung zu household_persons
-- account_name (text)
-- depot_number (text)
-- bank_name (text)
-- finapi_account_id (text) — FinAPI Account-ID
-- connection_id (uuid, FK auf finapi_connections)
-- status (text, default 'active')
-- created_at, updated_at (timestamptz)
+Kein Sparplan-Button im Dialog — Sparplaene sind Demo-Daten und brauchen keine Neuanlage.
 
-**`finapi_depot_positions`** — Wertpapier-Positionen (read-only Snapshot)
-- id (uuid, PK)
-- depot_account_id (uuid, FK auf finapi_depot_accounts)
-- tenant_id (uuid)
-- finapi_security_id (text)
-- isin (text)
-- wkn (text)
-- name (text)
-- quantity (numeric)
-- quantity_nominal (numeric)
-- current_value (numeric)
-- purchase_value (numeric)
-- currency (text, default 'EUR')
-- entry_quote (numeric)
-- current_quote (numeric)
-- profit_or_loss (numeric)
-- last_updated (timestamptz)
+## Neue Seitenstruktur (Skizze)
 
-RLS: Beide Tabellen mit `tenant_id`-Policy (gleich wie `msv_bank_accounts`).
+```text
++------------------------------------------------------------------+
+| INVESTMENT                                           [+]         |
+| Wertpapiere, ETFs und Depot-Verwaltung                           |
++------------------------------------------------------------------+
+|                                                                  |
+| Klick auf [+] oeffnet Dialog:                                    |
+| +----------------------------------------------------------+    |
+| | "Wenn Sie hier ein eigenes Depot anbinden, koennen Sie    |    |
+| | darueber nicht traden. Es dient nur der Ueberwachung.     |    |
+| | Wenn Sie direkt aus Ihrem Portal heraus mit Wertpapieren  |    |
+| | handeln moechten, koennen Sie unten ueber unseren Partner |    |
+| | Upvest direkt im Portal ein eigenes Depot anlegen."       |    |
+| |                                                           |    |
+| |                      [Depot anbinden (FinAPI)]             |    |
+| +----------------------------------------------------------+    |
+|                                                                  |
++------------------------------------------------------------------+
+|                                                                  |
+| [Person 1] [Person 2] [Person 3]    (Person-Kacheln WidgetGrid) |
+|                                                                  |
++------------------------------------------------------------------+
+|                                                                  |
+| [Sparplan A (DEMO)] [Sparplan B (DEMO)] [FinAPI Depot 1]        |
+|  (Alle Investments in einem WidgetGrid — kein eigener Header)    |
+|                                                                  |
++------------------------------------------------------------------+
+| (Inline-Detail wenn Sparplan angeklickt)                         |
+| (Inline-Positionen-Tabelle wenn FinAPI-Depot angeklickt)         |
++------------------------------------------------------------------+
+| Polling-Card (nur sichtbar waehrend FinAPI-Verbindung)           |
++------------------------------------------------------------------+
+|                                                                  |
+| ARMSTRONG DEPOT                                                   |
+| (Upvest Promo + Onboarding — unveraendert)                      |
+|                                                                  |
++------------------------------------------------------------------+
+```
 
-## Edge Function: `sot-finapi-sync` erweitern
+## Funktionsbeschreibung
 
-Zwei neue Actions:
+### Plus-Button und Dialog
 
-**`connect_depot`**:
-1. Gleicher Flow wie `connect` (User erstellen, Web Form oeffnen)
-2. Nach COMPLETED im Poll: Accounts abrufen, nach Typ "Security" filtern
-3. Securities-Accounts in `finapi_depot_accounts` speichern
-4. Positionen via `GET /api/v2/securities?accountIds=...` abrufen
-5. Positionen in `finapi_depot_positions` speichern
+Der [+] Button oben rechts oeffnet einen **AlertDialog**:
 
-**`sync_depot`**:
-1. User-Token holen
-2. `GET /api/v2/securities?accountIds=...` abrufen
-3. Positionen in `finapi_depot_positions` upserten (auf `finapi_security_id`)
+- **Info-Text**: "Wenn Sie hier ein eigenes Depot anbinden, koennen Sie darueber nicht traden. Es dient nur der Ueberwachung. Wenn Sie direkt aus Ihrem Portal heraus mit Wertpapieren handeln moechten, koennen Sie unten ueber unseren Partner Upvest direkt im Portal ein eigenes Depot anlegen."
+- **Ein Button**: "Depot anbinden (FinAPI)" — startet den Web Form 2.0 Flow (Popup + Polling)
+- Kein Sparplan-Button. Sparplaene sind Demo-Daten und benoetigen keine Neuanlage.
 
-Der `poll` Action wird erweitert: Ein neues Body-Feld `type: 'depot'` steuert, ob nach dem COMPLETED-Event Securities- statt Checking-Accounts importiert werden.
+### Entfallende Elemente
 
-## Frontend: InvestmentTab.tsx
+- **"Investment-Sparplaene" Header** (Zeile 343-355): Komplett entfernen. Die Sparplan-Kacheln bleiben, aber ohne eigenen Header/Plus-Button.
+- **FinAPIDepotSection** als separate Komponente: Entfernen. Logik (connect, poll, sync, delete, Queries) wandert direkt in InvestmentTab.
 
-Neuer Abschnitt zwischen "Investment-Sparplaene" und "Armstrong Depot":
+### Gemeinsames WidgetGrid
 
-**"Wertpapier-Depots (Read-Only)"**
+Sparplan-Kacheln und FinAPI-Depot-Kacheln werden in **einem Grid** dargestellt (kein separater Header). Reihenfolge: Sparplaene zuerst, dann FinAPI-Depots.
 
-- Header mit "Depot anbinden (FinAPI)"-Button (gleicher Popup + Polling Mechanismus wie KontenTab)
-- Polling-Indikator (Loader + "Warte auf Bank-Anmeldung...")
-- WidgetGrid mit verbundenen Depots als Kacheln:
-  - Depot-Name, Bank, Depotnummer
-  - Gesamtwert, Anzahl Positionen
-  - Sync-Button
-- Unter dem Grid: Positionen-Tabelle (read-only) des ausgewaehlten Depots
-  - Spalten: Wertpapier, ISIN, Stueck, Kaufwert, Aktuell, +/- (Gewinn/Verlust)
-  - Farbcodierung: gruen fuer Gewinn, rot fuer Verlust
-- Loesch-Funktion pro Depot (mit WidgetDeleteOverlay, kein Demo-Guard noetig da keine Demo-Daten)
+### Inline-Details
 
-## Zu aendernde Dateien
+- Klick auf Sparplan: Bestehendes Detail-Formular oeffnet sich darunter (unveraendert)
+- Klick auf FinAPI-Depot: Positionen-Tabelle oeffnet sich darunter (aus FinAPIDepotSection uebernommen)
+
+### Polling-Card
+
+Direkt in InvestmentTab gerendert, erscheint nur waehrend einer aktiven FinAPI-Verbindung.
+
+### Armstrong Depot
+
+Bleibt komplett unveraendert am Ende der Seite.
+
+## Technische Aenderungen
+
+### 1. InvestmentTab.tsx
+
+- **Header-Plus-Button**: Oeffnet `AlertDialog` mit Info-Text und einem "Depot anbinden"-Button (statt direkt Depot-Status zu toggeln)
+- **Neuer State**: `showDepotDialog: boolean`, plus alle States/Queries/Mutations aus FinAPIDepotSection (isPolling, selectedDepotId, pollIntervalRef, pollTimeoutRef, connectMutation, syncMutation, deleteMutation, depotAccounts-Query, depotPositions-Query)
+- **Entfernen**: `ModulePageHeader` fuer "Investment-Sparplaene" (Zeile 343-355) inkl. Plus-Button
+- **Entfernen**: `<FinAPIDepotSection>` Import und Aufruf (Zeile 35, 459)
+- **Entfernen**: `showNewSpar` State und das "Neuer Investment-Sparplan"-Formular (Zeile 118-123, 442-455) — Demo-Daten brauchen keine Anlage
+- **WidgetGrid**: Kombiniert `investmentContracts.map(...)` + `depotAccounts.map(...)` in einem Grid
+- **Inline-Positionen**: Wenn `selectedDepotId` gesetzt, erscheint die Positionen-Tabelle unter dem Grid
+- **Polling-Card**: Direkt in InvestmentTab gerendert
+
+### 2. FinAPIDepotSection.tsx
+
+- Wird **geloescht** — alle Logik und UI wandern in InvestmentTab
+
+### Zu aendernde Dateien
 
 | Datei | Aenderung |
 |-------|-----------|
-| Migration (neue SQL) | Tabellen `finapi_depot_accounts` + `finapi_depot_positions` + RLS |
-| `supabase/functions/sot-finapi-sync/index.ts` | Actions `connect_depot`, `sync_depot` + Poll-Erweiterung |
-| `src/pages/portal/finanzanalyse/InvestmentTab.tsx` | Depot-Anbindung UI, Polling, Positionen-Tabelle |
+| `src/pages/portal/finanzanalyse/InvestmentTab.tsx` | Dialog statt 3 Plus-Buttons, FinAPI-Logik integriert, ein WidgetGrid |
+| `src/components/finanzanalyse/depot/FinAPIDepotSection.tsx` | Loeschen |
 
