@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import { useSwipeBack } from '@/hooks/useSwipeBack';
 import { Outlet, Navigate, useLocation } from 'react-router-dom';
 
 // Preload core modules for instant navigation
@@ -47,7 +48,8 @@ function PortalLayoutInner() {
   const location = useLocation();
   // Armstrong sheet state removed — mobile uses full-screen chat now
   const [mobileHomeMode, setMobileHomeMode] = useState<'modules' | 'chat'>('modules');
-  
+  const swipeRef = useRef<HTMLDivElement>(null);
+  useSwipeBack(swipeRef);
   // P0-FIX: Track if we've ever finished initial loading
   const hasInitializedRef = useRef(false);
   
@@ -125,7 +127,7 @@ function PortalLayoutInner() {
   // Mobile Layout - Identisch zu Desktop: Outlet für konsistentes Routing
   if (isMobile) {
     return (
-      <div className="h-screen bg-atmosphere flex flex-col overflow-hidden overflow-x-hidden">
+      <div ref={swipeRef} className="h-screen bg-atmosphere flex flex-col overflow-hidden overflow-x-hidden">
         {/* System Bar */}
         <SystemBar />
         
