@@ -93,7 +93,7 @@ Deno.serve(async (req: Request) => {
         // Update existing record with password
         await supabase
           .from('pet_z1_customers')
-          .update({ password_hash: passwordHash, first_name: firstName, last_name: lastName || null })
+          .update({ password_hash: passwordHash, first_name: firstName, last_name: lastName || '' })
           .eq('id', existingNoPassword.id)
         customerId = existingNoPassword.id
       } else {
@@ -104,16 +104,17 @@ Deno.serve(async (req: Request) => {
             tenant_id: 'a0000000-0000-4000-a000-000000000001',
             email: email.toLowerCase().trim(),
             first_name: firstName,
-            last_name: lastName || null,
+            last_name: lastName || '',
             password_hash: passwordHash,
-            source: 'website_signup',
+            source: 'website',
             status: 'new',
           })
           .select('id')
           .single()
 
         if (insertErr) {
-          return new Response(JSON.stringify({ error: 'Registrierung fehlgeschlagen' }), { status: 500, headers: corsHeaders })
+          console.error('Signup insert error:', insertErr)
+          return new Response(JSON.stringify({ error: 'Registrierung fehlgeschlagen', detail: insertErr.message }), { status: 500, headers: corsHeaders })
         }
         customerId = newCustomer.id
       }
