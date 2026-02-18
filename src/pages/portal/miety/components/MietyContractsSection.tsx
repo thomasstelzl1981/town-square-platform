@@ -1,7 +1,8 @@
 /**
  * MietyContractsSection — Contract cards grid with placeholder empty state
  */
-import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { DESIGN } from '@/config/designManifest';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
@@ -9,6 +10,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Plus, Zap, Droplets, Flame, Wifi, Shield, FileText } from 'lucide-react';
 import { format } from 'date-fns';
+import { WidgetDeleteOverlay } from '@/components/shared/WidgetDeleteOverlay';
+import { toast } from 'sonner';
 
 const CATEGORY_CONFIG: Record<string, { label: string; icon: any; color: string }> = {
   strom: { label: 'Strom', icon: Zap, color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300' },
@@ -39,6 +42,26 @@ interface MietyContractsSectionProps {
 }
 
 export function MietyContractsSection({ homeId, onOpenDrawer, filterCategories, title }: MietyContractsSectionProps) {
+  const queryClient = useQueryClient();
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const deleteContractMutation = useMutation({
+    mutationFn: async (contractId: string) => {
+      setDeletingId(contractId);
+      const { error } = await supabase.from('miety_contracts').delete().eq('id', contractId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      setDeletingId(null);
+      toast.success('Vertrag gelöscht');
+      queryClient.invalidateQueries({ queryKey: ['miety-contracts'] });
+    },
+    onError: (err: Error) => {
+      setDeletingId(null);
+      toast.error(`Fehler: ${err.message}`);
+    },
+  });
+
   const { data: contracts = [] } = useQuery({
     queryKey: ['miety-contracts', homeId, filterCategories],
     queryFn: async () => {
@@ -90,7 +113,12 @@ export function MietyContractsSection({ homeId, onOpenDrawer, filterCategories, 
           const cfg = CATEGORY_CONFIG[c.category] || CATEGORY_CONFIG.sonstige;
           const Icon = cfg.icon;
           return (
-            <Card key={c.id} className="glass-card">
+            <Card key={c.id} className="glass-card relative group">
+              <WidgetDeleteOverlay
+                title={c.provider_name || cfg.label}
+                onConfirmDelete={() => deleteContractMutation.mutate(c.id)}
+                isDeleting={deletingId === c.id}
+              />
               <CardContent className="p-4">
                 <div className="flex items-start gap-3">
                   <div className={`p-2 rounded-lg ${cfg.color}`}>

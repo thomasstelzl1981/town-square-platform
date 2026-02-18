@@ -17,7 +17,9 @@ import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Sun, Plus, Zap, Activity, Check, X } from 'lucide-react';
+import { Sun, Plus, Zap, Activity, Check, X, Trash2 } from 'lucide-react';
+import { WidgetDeleteOverlay } from '@/components/shared/WidgetDeleteOverlay';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { WidgetGrid } from '@/components/shared/WidgetGrid';
@@ -82,6 +84,26 @@ export default function AnlagenTab() {
 
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [selectedPlantId, setSelectedPlantId] = useState<string | null>(null);
+  const pvQueryClient = useQueryClient();
+  const [deletingPlantId, setDeletingPlantId] = useState<string | null>(null);
+
+  const deletePlantMutation = useMutation({
+    mutationFn: async (plantId: string) => {
+      setDeletingPlantId(plantId);
+      const { error } = await supabase.from('pv_plants').delete().eq('id', plantId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      setDeletingPlantId(null);
+      if (selectedPlantId === deletingPlantId) { setViewMode('grid'); setSelectedPlantId(null); }
+      toast.success('PV-Anlage gelöscht');
+      pvQueryClient.invalidateQueries({ queryKey: ['pv-plants'] });
+    },
+    onError: (err: Error) => {
+      setDeletingPlantId(null);
+      toast.error(`Fehler: ${err.message}`);
+    },
+  });
 
   // Inline create form state — all fields
   const [formName, setFormName] = useState('');
@@ -266,11 +288,16 @@ export default function AnlagenTab() {
             <WidgetCell key={plant.id}>
               <Card
                 className={cn(
-                  "h-full cursor-pointer transition-colors hover:border-primary/30",
+                  "h-full cursor-pointer transition-colors hover:border-primary/30 relative group",
                   viewMode === 'detail' && selectedPlantId === plant.id && 'ring-2 ring-primary'
                 )}
                 onClick={() => handleOpenPlant(plant.id)}
               >
+                <WidgetDeleteOverlay
+                  title={plant.name}
+                  onConfirmDelete={() => deletePlantMutation.mutate(plant.id)}
+                  isDeleting={deletingPlantId === plant.id}
+                />
                 <CardContent className="p-4 h-full flex flex-col justify-between">
                   <div>
                     <div className="flex items-center justify-between mb-2">

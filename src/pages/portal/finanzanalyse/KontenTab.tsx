@@ -20,7 +20,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { KontoAkteInline } from '@/components/finanzanalyse/KontoAkteInline';
 import { AddBankAccountDialog } from '@/components/shared/AddBankAccountDialog';
 import { DEMO_KONTO, DEMO_KONTO_IBAN_MASKED } from '@/constants/demoKontoData';
-import { Landmark, ScanSearch, Plus, CreditCard, RefreshCw, Building2, Loader2, FileSpreadsheet } from 'lucide-react';
+import { Landmark, ScanSearch, Plus, CreditCard, RefreshCw, Building2, Loader2, FileSpreadsheet, Trash2 } from 'lucide-react';
+import { WidgetDeleteOverlay } from '@/components/shared/WidgetDeleteOverlay';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -163,6 +164,26 @@ export default function KontenTab() {
     },
     onError: (err: Error) => {
       toast.error(`Bank-Verbindung fehlgeschlagen: ${err.message}`);
+    },
+  });
+
+  // Delete bank account mutation
+  const [deletingAccountId, setDeletingAccountId] = useState<string | null>(null);
+  const deleteAccountMutation = useMutation({
+    mutationFn: async (accountId: string) => {
+      setDeletingAccountId(accountId);
+      const { error } = await supabase.from('msv_bank_accounts').delete().eq('id', accountId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success('Konto gelöscht');
+      setDeletingAccountId(null);
+      if (openKontoId === deletingAccountId) setOpenKontoId(null);
+      queryClient.invalidateQueries({ queryKey: ['msv_bank_accounts'] });
+    },
+    onError: (err: Error) => {
+      setDeletingAccountId(null);
+      toast.error(`Fehler beim Löschen: ${err.message}`);
     },
   });
 
@@ -339,15 +360,22 @@ export default function KontenTab() {
           <WidgetCell key={acc.id}>
             <div
               className={cn(
-                'h-full w-full rounded-xl cursor-pointer transition-all hover:shadow-lg',
+                'h-full w-full rounded-xl cursor-pointer transition-all hover:shadow-lg relative group',
                 getActiveWidgetGlow('rose'),
                 openKontoId === acc.id && getSelectionRing('rose'),
-              )}
-              onClick={(e) => { e.stopPropagation(); setOpenKontoId(openKontoId === acc.id ? null : acc.id); }}
-              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); setOpenKontoId(openKontoId === acc.id ? null : acc.id); }}}
-              role="button"
-              tabIndex={0}
-            >
+              )}>
+              <WidgetDeleteOverlay
+                title={acc.account_name || acc.bank_name || 'Konto'}
+                onConfirmDelete={() => deleteAccountMutation.mutate(acc.id)}
+                isDeleting={deletingAccountId === acc.id}
+              />
+              <div
+                className="h-full w-full"
+                onClick={(e) => { e.stopPropagation(); setOpenKontoId(openKontoId === acc.id ? null : acc.id); }}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); setOpenKontoId(openKontoId === acc.id ? null : acc.id); }}}
+                role="button"
+                tabIndex={0}
+              >
               <div className="p-5 flex flex-col justify-between h-full">
                 <div>
                   <h4 className="font-semibold text-sm">{acc.account_name || acc.bank_name || 'Konto'}</h4>
@@ -368,6 +396,7 @@ export default function KontenTab() {
                     {acc.status === 'active' ? 'Verbunden' : 'Inaktiv'}
                   </Badge>
                 </div>
+              </div>
               </div>
             </div>
           </WidgetCell>
