@@ -125,7 +125,7 @@ interface UserContext {
 // MVP MODULE ALLOWLIST & GLOBAL ASSIST CONFIG
 // =============================================================================
 
-const MVP_MODULES = ["MOD-00", "MOD-04", "MOD-07", "MOD-08", "MOD-09", "MOD-13", "MOD-14"];
+const MVP_MODULES = ["MOD-00", "MOD-04", "MOD-07", "MOD-08", "MOD-09", "MOD-11", "MOD-13", "MOD-14", "MOD-18"];
 
 // Global Assist Mode: Armstrong can help with general tasks even outside MVP modules
 // These intents are allowed in ALL modules (explain, draft, research)
@@ -158,6 +158,11 @@ const MVP_EXECUTABLE_ACTIONS = [
   
   // MOD-14 (Communication Pro / Recherche) - execute_with_confirmation
   "ARM.MOD14.CREATE_RESEARCH_ORDER",
+  
+  // Magic Intake Actions (document-to-record pipeline)
+  "ARM.MOD04.MAGIC_INTAKE_PROPERTY",
+  "ARM.MOD11.MAGIC_INTAKE_CASE",
+  "ARM.MOD18.MAGIC_INTAKE_FINANCE",
   
   // Global Actions (available in all modules)
   "ARM.GLOBAL.EXPLAIN_TERM",
@@ -506,6 +511,63 @@ const MVP_ACTIONS: ActionDefinition[] = [
     credits_estimate: 25,
     status: "active",
   },
+  // Magic Intake: MOD-04 (Immobilien)
+  {
+    action_code: "ARM.MOD04.MAGIC_INTAKE_PROPERTY",
+    title_de: "Immobilie aus Dokument anlegen",
+    description_de: "Erstellt eine Immobilie mit Einheiten aus hochgeladenen Dokumenten (Kaufvertrag, Exposé)",
+    zones: ["Z2"],
+    module: "MOD-04",
+    risk_level: "medium",
+    execution_mode: "execute_with_confirmation",
+    requires_consent_code: null,
+    roles_allowed: [],
+    data_scopes_read: ["storage_nodes"],
+    data_scopes_write: ["properties", "units", "storage_nodes"],
+    side_effects: ["credits_consumed", "creates_storage_tree"],
+    cost_model: "metered",
+    cost_hint_cents: 75,
+    credits_estimate: 3,
+    status: "active",
+  },
+  // Magic Intake: MOD-11 (Finanzmanager)
+  {
+    action_code: "ARM.MOD11.MAGIC_INTAKE_CASE",
+    title_de: "Finanzierungsfall aus Dokument anlegen",
+    description_de: "Erstellt Finanzierungsanfrage und Antragstellerprofil aus Dokumenten (Selbstauskunft, Gehaltsnachweis)",
+    zones: ["Z2"],
+    module: "MOD-11",
+    risk_level: "medium",
+    execution_mode: "execute_with_confirmation",
+    requires_consent_code: null,
+    roles_allowed: [],
+    data_scopes_read: ["storage_nodes"],
+    data_scopes_write: ["finance_requests", "applicant_profiles", "storage_nodes"],
+    side_effects: ["credits_consumed", "creates_storage_tree"],
+    cost_model: "metered",
+    cost_hint_cents: 75,
+    credits_estimate: 3,
+    status: "active",
+  },
+  // Magic Intake: MOD-18 (Finanzanalyse)
+  {
+    action_code: "ARM.MOD18.MAGIC_INTAKE_FINANCE",
+    title_de: "Finanzdaten aus Dokument erfassen",
+    description_de: "Erfasst Versicherungen, Abonnements oder Bankdaten aus Dokumenten (Kontoauszug, Versicherungsschein)",
+    zones: ["Z2"],
+    module: "MOD-18",
+    risk_level: "medium",
+    execution_mode: "execute_with_confirmation",
+    requires_consent_code: null,
+    roles_allowed: [],
+    data_scopes_read: ["storage_nodes"],
+    data_scopes_write: ["insurance_contracts", "user_subscriptions", "bank_account_meta"],
+    side_effects: ["credits_consumed"],
+    cost_model: "metered",
+    cost_hint_cents: 50,
+    credits_estimate: 2,
+    status: "active",
+  },
 ];
 
 // =============================================================================
@@ -541,6 +603,14 @@ function classifyIntent(message: string, actionRequest: ActionRequest | undefine
     "exposé", "preisliste", "einheiten",
     "recherche", "recherchiere", "kontakte suchen", "kontakte finden",
     "immobilienmakler", "makler suchen", "firmen suchen", "leads suchen",
+    // Magic Intake Keywords
+    "immobilie anlegen", "immobilie erstellen", "kaufvertrag", "objekt anlegen",
+    "wohnung anlegen", "haus anlegen", "grundstück anlegen",
+    "finanzierung anlegen", "finanzierungsfall", "selbstauskunft", "gehaltsnachweis",
+    "finanzierungsanfrage", "darlehen anlegen", "kredit anlegen",
+    "versicherung erfassen", "versicherung anlegen", "kontoauszug", "versicherungsschein",
+    "abo erfassen", "abonnement", "bankdaten", "iban erfassen",
+    "leg die immobilie an", "leg den fall an", "erfasse die versicherung",
   ];
   if (actionKeywords.some(kw => lowerMsg.includes(kw))) {
     return "ACTION";
@@ -650,6 +720,33 @@ function suggestActionsForMessage(
          lowerMsg.includes("leads suchen") || lowerMsg.includes("hausverwaltung"))) {
       relevance += 5;
       why = "Startet eine Kontaktrecherche mit Kontaktbuch-Abgleich";
+    }
+    
+    // Magic Intake: MOD-04
+    if (action.action_code === "ARM.MOD04.MAGIC_INTAKE_PROPERTY" && 
+        (lowerMsg.includes("immobilie anlegen") || lowerMsg.includes("kaufvertrag") || lowerMsg.includes("objekt anlegen") ||
+         lowerMsg.includes("wohnung anlegen") || lowerMsg.includes("haus anlegen") || lowerMsg.includes("grundstück") ||
+         lowerMsg.includes("leg die immobilie an") || (lowerMsg.includes("immobilie") && lowerMsg.includes("dokument")))) {
+      relevance += 5;
+      why = "Erstellt eine Immobilie aus dem hochgeladenen Dokument";
+    }
+    
+    // Magic Intake: MOD-11
+    if (action.action_code === "ARM.MOD11.MAGIC_INTAKE_CASE" && 
+        (lowerMsg.includes("finanzierung anlegen") || lowerMsg.includes("finanzierungsfall") || lowerMsg.includes("selbstauskunft") ||
+         lowerMsg.includes("gehaltsnachweis") || lowerMsg.includes("finanzierungsanfrage") || lowerMsg.includes("darlehen anlegen") ||
+         lowerMsg.includes("kredit anlegen") || lowerMsg.includes("leg den fall an"))) {
+      relevance += 5;
+      why = "Erstellt einen Finanzierungsfall aus dem Dokument";
+    }
+    
+    // Magic Intake: MOD-18
+    if (action.action_code === "ARM.MOD18.MAGIC_INTAKE_FINANCE" && 
+        (lowerMsg.includes("versicherung erfassen") || lowerMsg.includes("versicherung anlegen") || lowerMsg.includes("kontoauszug") ||
+         lowerMsg.includes("versicherungsschein") || lowerMsg.includes("abo erfassen") || lowerMsg.includes("abonnement") ||
+         lowerMsg.includes("bankdaten") || lowerMsg.includes("iban erfassen") || lowerMsg.includes("erfasse die versicherung"))) {
+      relevance += 5;
+      why = "Erfasst Finanzdaten aus dem Dokument";
     }
     
     if (relevance > 0) {
@@ -1087,6 +1184,350 @@ async function executeAction(
             message: `Rechercheauftrag "${intentText} in ${region}" wurde erstellt und gestartet. Ich habe ein Widget auf Ihrem Dashboard erstellt. Sie finden die Ergebnisse unter Communication Pro → Recherche.`,
           },
         };
+      }
+
+      // =====================================================================
+      // MAGIC INTAKE: MOD-04 (Immobilie aus Dokument anlegen)
+      // =====================================================================
+      case "ARM.MOD04.MAGIC_INTAKE_PROPERTY": {
+        if (!userContext.org_id) {
+          return { success: false, error: "Tenant ID required" };
+        }
+
+        const docContext04 = params.document_context as {
+          extracted_text?: string;
+          filename?: string;
+        } | undefined;
+
+        if (!docContext04?.extracted_text) {
+          return { success: false, error: "Bitte laden Sie zuerst ein Dokument hoch (Kaufvertrag, Exposé oder PDF)." };
+        }
+
+        const supabaseUrl04 = Deno.env.get("SUPABASE_URL");
+        const serviceKey04 = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+        
+        if (!supabaseUrl04 || !serviceKey04) {
+          return { success: false, error: "Server configuration missing" };
+        }
+
+        try {
+          const parserResp = await fetch(`${supabaseUrl04}/functions/v1/sot-document-parser`, {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${serviceKey04}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              text: docContext04.extracted_text,
+              parseMode: "properties",
+              tenant_id: userContext.org_id,
+            }),
+          });
+
+          if (!parserResp.ok) {
+            const errText = await parserResp.text();
+            console.error("[Armstrong] Parser error MOD-04:", errText);
+            return { success: false, error: "Dokumentanalyse fehlgeschlagen" };
+          }
+
+          const parsed04 = await parserResp.json();
+          const propData = parsed04.properties?.[0] || parsed04.data?.properties?.[0] || parsed04;
+
+          const propertyInsert = {
+            tenant_id: userContext.org_id,
+            address_street: propData.address || propData.address_street || null,
+            address_city: propData.city || propData.address_city || null,
+            address_postal_code: propData.postal_code || propData.address_postal_code || null,
+            property_type: propData.property_type || 'apartment_building',
+            purchase_price_cents: propData.purchase_price ? Math.round(propData.purchase_price * 100) : null,
+            market_value_cents: propData.market_value ? Math.round(propData.market_value * 100) : null,
+            year_built: propData.construction_year || propData.year_built || null,
+            area_sqm: propData.living_area_sqm || propData.area_sqm || null,
+            name: propData.name || `${propData.address || 'Neue Immobilie'}, ${propData.city || ''}`.trim(),
+            source: 'armstrong_magic_intake',
+          };
+
+          const { data: newProperty, error: propError } = await supabase
+            .from("properties")
+            .insert(propertyInsert)
+            .select("id, name")
+            .single();
+
+          if (propError) {
+            console.error("[Armstrong] Property insert error:", propError);
+            return { success: false, error: `Immobilie konnte nicht angelegt werden: ${propError.message}` };
+          }
+
+          const units04 = propData.units || parsed04.units || [];
+          if (units04.length > 0 && newProperty) {
+            const unitInserts = units04.map((u: Record<string, unknown>, idx: number) => ({
+              tenant_id: userContext.org_id,
+              property_id: newProperty.id,
+              unit_number: (u.unit_number as string) || `WE ${idx + 1}`,
+              area_sqm: (u.area_sqm as number) || (u.living_area_sqm as number) || null,
+              unit_type: (u.unit_type as string) || 'residential',
+              floor: (u.floor as number) || null,
+              rooms: (u.rooms as number) || null,
+            }));
+
+            await supabase.from("units").insert(unitInserts);
+          }
+
+          return {
+            success: true,
+            output: {
+              property_id: newProperty?.id,
+              property_name: newProperty?.name,
+              units_created: units04.length,
+              extracted_data: {
+                address: propertyInsert.address_street,
+                city: propertyInsert.address_city,
+                purchase_price: propData.purchase_price,
+                property_type: propertyInsert.property_type,
+                year_built: propertyInsert.year_built,
+                area_sqm: propertyInsert.area_sqm,
+              },
+              message: `Immobilie "${newProperty?.name}" wurde angelegt${units04.length > 0 ? ` mit ${units04.length} Einheit(en)` : ''}. [Zur Akte →](/portal/immobilien/${newProperty?.id})`,
+              link: `/portal/immobilien/${newProperty?.id}`,
+            },
+          };
+        } catch (err04) {
+          console.error("[Armstrong] MOD-04 Magic Intake error:", err04);
+          return { success: false, error: "Fehler bei der Immobilienanlage" };
+        }
+      }
+
+      // =====================================================================
+      // MAGIC INTAKE: MOD-11 (Finanzierungsfall aus Dokument)
+      // =====================================================================
+      case "ARM.MOD11.MAGIC_INTAKE_CASE": {
+        if (!userContext.org_id) {
+          return { success: false, error: "Tenant ID required" };
+        }
+
+        const docContext11 = params.document_context as {
+          extracted_text?: string;
+          filename?: string;
+        } | undefined;
+
+        if (!docContext11?.extracted_text) {
+          return { success: false, error: "Bitte laden Sie zuerst ein Dokument hoch (Selbstauskunft, Gehaltsnachweis)." };
+        }
+
+        const supabaseUrl11 = Deno.env.get("SUPABASE_URL");
+        const serviceKey11 = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+        
+        if (!supabaseUrl11 || !serviceKey11) {
+          return { success: false, error: "Server configuration missing" };
+        }
+
+        try {
+          const parserResp11 = await fetch(`${supabaseUrl11}/functions/v1/sot-document-parser`, {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${serviceKey11}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              text: docContext11.extracted_text,
+              parseMode: "financing",
+              tenant_id: userContext.org_id,
+            }),
+          });
+
+          if (!parserResp11.ok) {
+            return { success: false, error: "Dokumentanalyse fehlgeschlagen" };
+          }
+
+          const parsed11 = await parserResp11.json();
+          const profileData = parsed11.applicant || parsed11.data?.applicant || parsed11;
+
+          const { data: finReq, error: frError } = await supabase
+            .from("finance_requests")
+            .insert({
+              tenant_id: userContext.org_id,
+              created_by: userContext.user_id,
+              status: "intake",
+              request_data: {
+                source: "armstrong_magic_intake",
+                loan_amount: profileData.loan_amount || null,
+                bank: profileData.bank || null,
+                purpose: profileData.purpose || "Immobilienfinanzierung",
+              },
+            })
+            .select("id")
+            .single();
+
+          if (frError) {
+            console.error("[Armstrong] Finance request insert error:", frError);
+            return { success: false, error: `Finanzierungsanfrage konnte nicht erstellt werden: ${frError.message}` };
+          }
+
+          const profileInsert11 = {
+            tenant_id: userContext.org_id,
+            finance_request_id: finReq?.id || null,
+            first_name: profileData.first_name || null,
+            last_name: profileData.last_name || null,
+            email: profileData.email || null,
+            employer_name: profileData.employer || profileData.employer_name || null,
+            net_income_monthly: profileData.net_income || profileData.net_income_monthly || null,
+            employment_type: profileData.employment_type || null,
+            birth_date: profileData.birth_date || null,
+            address_street: profileData.address || profileData.address_street || null,
+            address_city: profileData.city || profileData.address_city || null,
+            address_postal_code: profileData.postal_code || profileData.address_postal_code || null,
+            profile_type: "primary",
+            party_role: "borrower",
+          };
+
+          const { data: newProfile, error: profError } = await supabase
+            .from("applicant_profiles")
+            .insert(profileInsert11)
+            .select("id, first_name, last_name")
+            .single();
+
+          if (profError) {
+            console.error("[Armstrong] Profile insert error:", profError);
+          }
+
+          const displayName11 = [profileInsert11.first_name, profileInsert11.last_name].filter(Boolean).join(' ') || 'Neuer Antragsteller';
+
+          return {
+            success: true,
+            output: {
+              finance_request_id: finReq?.id,
+              applicant_profile_id: newProfile?.id,
+              display_name: displayName11,
+              extracted_data: {
+                first_name: profileInsert11.first_name,
+                last_name: profileInsert11.last_name,
+                email: profileInsert11.email,
+                employer: profileInsert11.employer_name,
+                net_income: profileInsert11.net_income_monthly,
+              },
+              message: `Finanzierungsfall für "${displayName11}" wurde angelegt. [Zum Fall →](/portal/finanzierungsmanager/${finReq?.id})`,
+              link: `/portal/finanzierungsmanager/${finReq?.id}`,
+            },
+          };
+        } catch (err11) {
+          console.error("[Armstrong] MOD-11 Magic Intake error:", err11);
+          return { success: false, error: "Fehler bei der Fallanlage" };
+        }
+      }
+
+      // =====================================================================
+      // MAGIC INTAKE: MOD-18 (Finanzdaten aus Dokument)
+      // =====================================================================
+      case "ARM.MOD18.MAGIC_INTAKE_FINANCE": {
+        if (!userContext.org_id) {
+          return { success: false, error: "Tenant ID required" };
+        }
+
+        const docContext18 = params.document_context as {
+          extracted_text?: string;
+          filename?: string;
+        } | undefined;
+
+        if (!docContext18?.extracted_text) {
+          return { success: false, error: "Bitte laden Sie zuerst ein Dokument hoch (Kontoauszug, Versicherungsschein)." };
+        }
+
+        const supabaseUrl18 = Deno.env.get("SUPABASE_URL");
+        const serviceKey18 = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+        
+        if (!supabaseUrl18 || !serviceKey18) {
+          return { success: false, error: "Server configuration missing" };
+        }
+
+        try {
+          const parserResp18 = await fetch(`${supabaseUrl18}/functions/v1/sot-document-parser`, {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${serviceKey18}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              text: docContext18.extracted_text,
+              parseMode: "general",
+              tenant_id: userContext.org_id,
+            }),
+          });
+
+          if (!parserResp18.ok) {
+            return { success: false, error: "Dokumentanalyse fehlgeschlagen" };
+          }
+
+          const parsed18 = await parserResp18.json();
+          const results18: string[] = [];
+
+          const insurances = parsed18.insurances || parsed18.data?.insurances || [];
+          if (insurances.length > 0) {
+            const insInserts = insurances.map((ins: Record<string, unknown>) => ({
+              tenant_id: userContext.org_id,
+              user_id: userContext.user_id,
+              category: (ins.insurance_type as string) || (ins.category as string) || 'sonstige',
+              provider: (ins.provider as string) || null,
+              annual_premium: (ins.premium as number) || (ins.annual_premium as number) || null,
+              contract_number: (ins.contract_number as string) || null,
+              status: 'active',
+              source: 'armstrong_magic_intake',
+            }));
+            
+            const { error: insErr } = await supabase.from("insurance_contracts").insert(insInserts);
+            if (insErr) console.error("[Armstrong] Insurance insert error:", insErr);
+            else results18.push(`${insInserts.length} Versicherung(en) erfasst`);
+          }
+
+          const subscriptions = parsed18.subscriptions || parsed18.data?.subscriptions || [];
+          if (subscriptions.length > 0) {
+            const subInserts = subscriptions.map((sub: Record<string, unknown>) => ({
+              tenant_id: userContext.org_id,
+              user_id: userContext.user_id,
+              name: (sub.subscription_name as string) || (sub.name as string) || 'Unbenannt',
+              monthly_amount: (sub.monthly_cost as number) || (sub.monthly_amount as number) || null,
+              status: 'active',
+              source: 'armstrong_magic_intake',
+            }));
+
+            const { error: subErr } = await supabase.from("user_subscriptions").insert(subInserts);
+            if (subErr) console.error("[Armstrong] Subscription insert error:", subErr);
+            else results18.push(`${subInserts.length} Abonnement(s) erfasst`);
+          }
+
+          const bankAccounts = parsed18.bank_accounts || parsed18.data?.bank_accounts || [];
+          if (bankAccounts.length > 0) {
+            const bankInserts = bankAccounts.map((bank: Record<string, unknown>) => ({
+              tenant_id: userContext.org_id,
+              user_id: userContext.user_id,
+              display_name: (bank.bank_name as string) || (bank.display_name as string) || 'Konto',
+              iban: (bank.iban as string) || null,
+              source: 'armstrong_magic_intake',
+            }));
+
+            const { error: bankErr } = await supabase.from("bank_account_meta").insert(bankInserts);
+            if (bankErr) console.error("[Armstrong] Bank insert error:", bankErr);
+            else results18.push(`${bankInserts.length} Bankkonto(en) erfasst`);
+          }
+
+          const summary18 = results18.length > 0 
+            ? results18.join(', ')
+            : 'Keine strukturierten Finanzdaten im Dokument erkannt';
+
+          return {
+            success: true,
+            output: {
+              insurances_created: insurances.length,
+              subscriptions_created: subscriptions.length,
+              bank_accounts_created: bankAccounts.length,
+              summary: summary18,
+              message: `Finanzdaten erfasst: ${summary18}. [Zur Finanzanalyse →](/portal/finanzanalyse)`,
+              link: `/portal/finanzanalyse`,
+            },
+          };
+        } catch (err18) {
+          console.error("[Armstrong] MOD-18 Magic Intake error:", err18);
+          return { success: false, error: "Fehler bei der Finanzdatenerfassung" };
+        }
       }
 
       default:
