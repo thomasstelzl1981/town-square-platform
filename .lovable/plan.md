@@ -1,72 +1,55 @@
 
-# Fix: FinAPI Bankanbindung + UI-Bereinigung
 
-## Problem-Analyse
+# Konten-Tab: Zwei Aktionen — Manuell (mit CSV) + FinAPI
 
-Drei zusammenhaengende Fehler verhindern die Bankanbindung:
+## Konzept
 
-1. **FinAPI API-Fehler** (Hauptursache): Der API-Call an `/api/v2/bankConnections/import` sendet kein `bankingInterface`-Feld. Die FinAPI Sandbox erfordert dieses Feld seit v2. Die Fehlermeldung aus den Logs: `Field 'bankingInterface' not valid: Field is blank.`
+Der Plus-Button wird zu einem Dropdown-Menue mit zwei Optionen:
 
-2. **CORS-Header unvollstaendig**: Die shared CORS-Konfiguration fehlt die Supabase-Client-Header (`x-supabase-client-platform`, `x-supabase-client-platform-version`, etc.). Deshalb schlaegt der Preflight fehl und der Browser zeigt "non-2xx status code".
+```text
+  [+] klick -->  ┌──────────────────────────────┐
+                  │  Konto manuell anlegen       │
+                  │  Bank anbinden (FinAPI)       │
+                  └──────────────────────────────┘
+```
 
-3. **UI-Button doppelt**: Es gibt sowohl einen breiten "Bank verbinden"-Button als auch das "+"-Icon. Nur das "+" soll bleiben.
+Der manuelle Dialog bekommt zusaetzlich einen CSV/XLSX-Import-Bereich eingebaut — direkt im selben Dialog als Tab oder Toggle.
 
 ## Aenderungen
 
-### 1. Edge Function: `supabase/functions/sot-finapi-sync/index.ts`
+### 1. `src/pages/portal/finanzanalyse/KontenTab.tsx`
 
-Im `connect`-Case wird der Import-Body um die fehlenden Pflichtfelder ergaenzt:
+- Plus-Button wird `DropdownMenuTrigger` mit zwei Eintraegen:
+  - **"Konto manuell anlegen"** — oeffnet `AddBankAccountDialog`
+  - **"Bank anbinden (FinAPI)"** — loest die bestehende `connectMutation` aus
+- Import: `DropdownMenu`, `DropdownMenuContent`, `DropdownMenuItem`, `DropdownMenuTrigger`
 
-```text
-Vorher:
-  body: JSON.stringify({ bankId })
+### 2. `src/components/shared/AddBankAccountDialog.tsx` erweitern
 
-Nachher:
-  body: JSON.stringify({
-    bankId,
-    bankingInterface: "FINTS_SERVER",
-    loginCredentials: [
-      { label: "Onlinebanking-Kennung", value: "demo" },
-      { label: "PIN", value: "demo" }
-    ]
-  })
-```
+Der bestehende Dialog erhaelt zwei Tabs (ueber Radix Tabs):
 
-Die FinAPI Sandbox (Bank-ID 280001 = finAPI Testbank) erwartet diese Felder. `FINTS_SERVER` ist das Standard-Interface fuer deutsche Banken in der Sandbox.
+- **Tab "Einzeln"**: Bestehendes Formular (Kontobezeichnung, IBAN, Bank, Zuordnung) — unveraendert
+- **Tab "CSV-Import"**: Neuer Bereich mit:
+  - Drag-and-Drop Upload-Zone (nutzt bestehenden `FileUploader`)
+  - Akzeptiert `.csv` und `.xlsx`
+  - Erwartete Spalten: `Kontobezeichnung`, `IBAN`, `Bank`, `Zuordnung` (optional)
+  - Nach Upload: Vorschau-Tabelle mit allen erkannten Zeilen
+  - IBAN-Validierung pro Zeile (nutzt bestehende `validateIBAN`-Funktion im selben File)
+  - Gueltige Zeilen gruen, fehlerhafte rot markiert
+  - "X importieren"-Button fuer Batch-Insert in `msv_bank_accounts`
+  - CSV-Parsing: Auto-Detect Semikolon/Komma als Trennzeichen
+  - XLSX-Parsing: Ueber `getXlsx()` aus `src/lib/lazyXlsx.ts`
 
-### 2. Shared CORS: `supabase/functions/_shared/cors.ts`
-
-Die `Access-Control-Allow-Headers` werden um die fehlenden Supabase-Client-Header erweitert:
-
-```text
-Vorher:
-  'authorization, x-client-info, apikey, content-type, x-webhook-signature'
-
-Nachher:
-  'authorization, x-client-info, apikey, content-type, x-webhook-signature,
-   x-supabase-client-platform, x-supabase-client-platform-version,
-   x-supabase-client-runtime, x-supabase-client-runtime-version'
-```
-
-### 3. UI: `src/pages/portal/finanzanalyse/KontenTab.tsx`
-
-Der breite "Bank verbinden"-Button (Zeilen 159-171) wird entfernt. Nur das "+"-Icon bleibt:
-
-```text
-Vorher:
-  <Button variant="glass" size="sm" onClick={...}>Bank verbinden</Button>
-  <Button variant="glass" size="icon-round" onClick={...}><Plus /></Button>
-
-Nachher:
-  <Button variant="glass" size="icon-round" onClick={...}><Plus /></Button>
-```
-
-Die `connectMutation` (Bank-Connect-Logik) bleibt im Code erhalten, wird aber vorerst nicht direkt ueber die UI ausgeloest, da die Bankanbindung ueber den AddBankAccountDialog gesteuert wird.
-
-### Zusammenfassung der betroffenen Dateien
+### Betroffene Dateien
 
 | Datei | Aenderung |
 |-------|-----------|
-| `supabase/functions/sot-finapi-sync/index.ts` | `bankingInterface` + `loginCredentials` im Import-Body |
-| `supabase/functions/_shared/cors.ts` | Fehlende Supabase-Header in Allow-Headers |
-| `src/pages/portal/finanzanalyse/KontenTab.tsx` | "Bank verbinden"-Button entfernen |
+| `src/pages/portal/finanzanalyse/KontenTab.tsx` | Plus-Button wird DropdownMenu mit 2 Optionen |
+| `src/components/shared/AddBankAccountDialog.tsx` | Tabs hinzufuegen: "Einzeln" + "CSV-Import" mit Upload, Parsing und Batch-Insert |
+
+### Keine neuen Abhaengigkeiten
+
+- `FileUploader` existiert bereits in `src/components/shared/FileUploader.tsx`
+- `xlsx` ist bereits installiert, Lazy-Loader in `src/lib/lazyXlsx.ts`
+- Radix Tabs sind bereits installiert (`@radix-ui/react-tabs`)
+- `validateIBAN` und `formatIBAN` existieren bereits im Dialog-File
