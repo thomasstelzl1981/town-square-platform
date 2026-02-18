@@ -1,6 +1,6 @@
 /**
  * MOD-18 Finanzen — Tab: KONTEN
- * Bankkonten mit polymorphischer Zuordnung + FinAPI Bank-Connect
+ * Bankkonten mit polymorphischer Zuordnung (Person, Vermietereinheit, PV-Anlage)
  */
 import { useState } from 'react';
 import { PageShell } from '@/components/shared/PageShell';
@@ -14,14 +14,13 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDemoToggles } from '@/hooks/useDemoToggles';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { KontoAkteInline } from '@/components/finanzanalyse/KontoAkteInline';
 import { AddBankAccountDialog } from '@/components/shared/AddBankAccountDialog';
 import { DEMO_KONTO, DEMO_KONTO_IBAN_MASKED } from '@/constants/demoKontoData';
-import { Landmark, ScanSearch, Plus, CreditCard, RefreshCw, Building2, Loader2 } from 'lucide-react';
+import { Landmark, ScanSearch, Plus, CreditCard } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { toast } from 'sonner';
 
 const OWNER_TYPE_LABELS: Record<string, string> = {
   person: 'Person',
@@ -34,7 +33,6 @@ export default function KontenTab() {
   const { isEnabled } = useDemoToggles();
   const [openKontoId, setOpenKontoId] = useState<string | null>(null);
   const [showAddDialog, setShowAddDialog] = useState(false);
-  const queryClient = useQueryClient();
 
   const { data: bankAccounts = [], isLoading } = useQuery({
     queryKey: ['msv_bank_accounts', activeTenantId],
@@ -47,76 +45,6 @@ export default function KontenTab() {
       return data || [];
     },
     enabled: !!activeTenantId,
-  });
-
-  // FinAPI connections
-  const { data: finapiConnections = [] } = useQuery({
-    queryKey: ['finapi_connections', activeTenantId],
-    queryFn: async () => {
-      if (!activeTenantId) return [];
-      const { data } = await supabase
-        .from('finapi_connections')
-        .select('*')
-        .eq('tenant_id', activeTenantId);
-      return data || [];
-    },
-    enabled: !!activeTenantId,
-  });
-
-  // FinAPI transactions
-  const { data: transactions = [] } = useQuery({
-    queryKey: ['finapi_transactions', activeTenantId],
-    queryFn: async () => {
-      if (!activeTenantId) return [];
-      const { data } = await supabase
-        .from('finapi_transactions')
-        .select('*')
-        .eq('tenant_id', activeTenantId)
-        .order('booking_date', { ascending: false })
-        .limit(50);
-      return data || [];
-    },
-    enabled: !!activeTenantId,
-  });
-
-  // Bank Connect mutation
-  const connectMutation = useMutation({
-    mutationFn: async () => {
-      const { data, error } = await supabase.functions.invoke('sot-finapi-sync', {
-        body: { action: 'connect', bankId: 280001 },
-      });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-      return data;
-    },
-    onSuccess: (data) => {
-      toast.success(`Bank verbunden! ${data.accounts_imported} Konten importiert.`);
-      queryClient.invalidateQueries({ queryKey: ['msv_bank_accounts'] });
-      queryClient.invalidateQueries({ queryKey: ['finapi_connections'] });
-    },
-    onError: (err: Error) => {
-      toast.error(`Bank-Verbindung fehlgeschlagen: ${err.message}`);
-    },
-  });
-
-  // Sync mutation
-  const syncMutation = useMutation({
-    mutationFn: async (connectionId: string) => {
-      const { data, error } = await supabase.functions.invoke('sot-finapi-sync', {
-        body: { action: 'sync', connectionId },
-      });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-      return data;
-    },
-    onSuccess: (data) => {
-      toast.success(`${data.transactions_synced} Transaktionen synchronisiert.`);
-      queryClient.invalidateQueries({ queryKey: ['finapi_transactions'] });
-      queryClient.invalidateQueries({ queryKey: ['finapi_connections'] });
-    },
-    onError: (err: Error) => {
-      toast.error(`Sync fehlgeschlagen: ${err.message}`);
-    },
   });
 
   // Load owner names for display
@@ -155,64 +83,11 @@ export default function KontenTab() {
         title="Konten"
         description="Bankkonten verwalten und zuordnen — Personen, Vermietung oder Photovoltaik"
         actions={
-          <div className="flex items-center gap-2">
-            <Button
-              variant="glass"
-              size="sm"
-              onClick={() => connectMutation.mutate()}
-              disabled={connectMutation.isPending}
-            >
-              {connectMutation.isPending ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <Building2 className="h-4 w-4 mr-2" />
-              )}
-              Bank verbinden
-            </Button>
-            <Button variant="glass" size="icon-round" onClick={() => setShowAddDialog(true)}>
-              <Plus className="h-5 w-5" />
-            </Button>
-          </div>
+          <Button variant="glass" size="icon-round" onClick={() => setShowAddDialog(true)}>
+            <Plus className="h-5 w-5" />
+          </Button>
         }
       />
-
-      {/* FinAPI Connections */}
-      {finapiConnections.length > 0 && (
-        <Card className="glass-card mb-4">
-          <CardContent className="py-4">
-            <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-              <Building2 className="h-4 w-4 text-primary" />
-              Bankverbindungen (FinAPI)
-            </h3>
-            <div className="space-y-2">
-              {finapiConnections.map((conn: any) => (
-                <div key={conn.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
-                  <div>
-                    <p className="text-sm font-medium">{conn.bank_name || 'Bank'}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {conn.iban_masked || '—'} · Status: {conn.status}
-                      {conn.last_sync_at && ` · Letzter Sync: ${new Date(conn.last_sync_at).toLocaleString('de-DE')}`}
-                    </p>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => syncMutation.mutate(conn.id)}
-                    disabled={syncMutation.isPending}
-                  >
-                    {syncMutation.isPending ? (
-                      <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                    ) : (
-                      <RefreshCw className="h-3 w-3 mr-1" />
-                    )}
-                    Sync
-                  </Button>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       <WidgetGrid>
         {showDemo && (
@@ -309,52 +184,6 @@ export default function KontenTab() {
           account={bankAccounts.find((a: any) => a.id === openKontoId)}
           onClose={() => setOpenKontoId(null)}
         />
-      )}
-
-      {/* Transactions from FinAPI */}
-      {transactions.length > 0 && (
-        <Card className="glass-card mt-4">
-          <CardContent className="py-4">
-            <h3 className="text-sm font-semibold mb-3">Transaktionen ({transactions.length})</h3>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b text-left text-muted-foreground">
-                    <th className="py-2 pr-4">Datum</th>
-                    <th className="py-2 pr-4">Gegenpartei</th>
-                    <th className="py-2 pr-4">Verwendungszweck</th>
-                    <th className="py-2 text-right">Betrag</th>
-                    <th className="py-2 text-center">Match</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {transactions.map((tx: any) => (
-                    <tr key={tx.id} className="border-b border-muted/20 hover:bg-muted/10">
-                      <td className="py-2 pr-4 whitespace-nowrap">
-                        {new Date(tx.booking_date).toLocaleDateString('de-DE')}
-                      </td>
-                      <td className="py-2 pr-4">{tx.counterpart_name || '—'}</td>
-                      <td className="py-2 pr-4 max-w-[200px] truncate text-muted-foreground">
-                        {tx.purpose || '—'}
-                      </td>
-                      <td className={cn(
-                        'py-2 text-right font-medium whitespace-nowrap',
-                        tx.amount >= 0 ? 'text-emerald-600' : 'text-red-500',
-                      )}>
-                        {new Intl.NumberFormat('de-DE', { style: 'currency', currency: tx.currency || 'EUR' }).format(tx.amount)}
-                      </td>
-                      <td className="py-2 text-center">
-                        <Badge variant={tx.match_status === 'matched' ? 'default' : 'secondary'} className="text-[10px]">
-                          {tx.match_status || 'unmatched'}
-                        </Badge>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
       )}
 
       <Card className="glass-card mt-4">

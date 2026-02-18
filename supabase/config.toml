@@ -224,6 +224,3 @@ verify_jwt = false
 
 [functions.sot-credit-webhook]
 verify_jwt = false
-
-[functions.sot-finapi-sync]
-verify_jwt = false

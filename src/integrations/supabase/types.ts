@@ -6804,7 +6804,6 @@ export type Database = {
           error_message: string | null
           finapi_connection_id: string | null
           finapi_user_id: string | null
-          finapi_user_password: string | null
           iban_masked: string | null
           id: string
           last_sync_at: string | null
@@ -6822,7 +6821,6 @@ export type Database = {
           error_message?: string | null
           finapi_connection_id?: string | null
           finapi_user_id?: string | null
-          finapi_user_password?: string | null
           iban_masked?: string | null
           id?: string
           last_sync_at?: string | null
@@ -6840,7 +6838,6 @@ export type Database = {
           error_message?: string | null
           finapi_connection_id?: string | null
           finapi_user_id?: string | null
-          finapi_user_password?: string | null
           iban_masked?: string | null
           id?: string
           last_sync_at?: string | null
