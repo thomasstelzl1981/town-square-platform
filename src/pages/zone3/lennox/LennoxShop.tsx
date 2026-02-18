@@ -89,16 +89,23 @@ function ProductSection({ categoryKey, label, desc, isAffiliate }: { categoryKey
 
 export default function LennoxShop() {
   return (
-    <div className="max-w-4xl mx-auto px-5 py-8 space-y-10">
+    <div className="space-y-10">
+      {/* ═══ HERO ═══ */}
+      <section className="relative overflow-hidden" style={{ minHeight: '35vh' }}>
+        <div className="absolute inset-0">
+          <img src="/shop/lennox-shop-hero.jpg" alt="" className="w-full h-full object-cover" />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/20 to-black/50" />
+        </div>
+        <div className="relative z-10 flex flex-col items-center justify-center text-center px-5" style={{ minHeight: '35vh' }}>
+          <h1 className="text-3xl md:text-5xl font-bold text-white mb-2">Lennox Shop</h1>
+          <p className="text-white/80 text-base max-w-md">Alles für deinen Vierbeiner — kuratiert von Lennox & Friends.</p>
+        </div>
+      </section>
+
+      <div className="max-w-4xl mx-auto px-5 space-y-10">
       <Link to="/website/tierservice" className="inline-flex items-center gap-1 text-sm" style={{ color: COLORS.muted }}>
         <ArrowLeft className="h-4 w-4" /> Zurück
       </Link>
-
-      <div className="text-center space-y-2">
-        <ShoppingBag className="h-10 w-10 mx-auto" style={{ color: COLORS.primary }} />
-        <h1 className="text-3xl font-bold" style={{ color: COLORS.foreground }}>Lennox Shop</h1>
-        <p className="text-sm" style={{ color: COLORS.muted }}>Alles für deinen Vierbeiner — kuratiert von Lennox & Friends.</p>
-      </div>
 
       {/* ═══ LENNOX TRACKER TEASER (hardcoded) ═══ */}
       <section>
@@ -137,6 +144,7 @@ export default function LennoxShop() {
         <p className="text-xs" style={{ color: COLORS.muted }}>
           Checkout nur nach <Link to="/website/tierservice/login" className="underline" style={{ color: COLORS.primary }}>Login</Link>.
         </p>
+      </div>
       </div>
     </div>
   );

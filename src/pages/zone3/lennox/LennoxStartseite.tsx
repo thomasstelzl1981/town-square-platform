@@ -1,10 +1,10 @@
 /**
- * LennoxStartseite — One-Pager mit 2 Zuständen
- * A) Vor Suche: Hero + Standort-Widget + Trust + Shop-Teaser + Partner-CTA
- * B) Nach Suche: Kompakter Hero + Partner-Kacheln + Rest
+ * LennoxStartseite — One-Pager
+ * Hero bleibt immer sichtbar (kompakter nach Suche)
+ * ?locate=1 löst sofort Geolocation aus
  */
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { MapPin, Star, Search, Shield, Heart, CreditCard, ArrowRight, ShoppingBag } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -30,6 +30,7 @@ const COLORS = {
 };
 
 export default function LennoxStartseite() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [searchLocation, setSearchLocation] = useState('');
   const [hasSearched, setHasSearched] = useState(false);
 
@@ -37,114 +38,100 @@ export default function LennoxStartseite() {
     hasSearched ? searchLocation : undefined
   );
 
+  // Auto-trigger geolocation when ?locate=1
+  useEffect(() => {
+    if (searchParams.get('locate') === '1') {
+      // Remove the param so it doesn't re-trigger
+      setSearchParams({}, { replace: true });
+      triggerGeolocation();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const triggerGeolocation = () => {
+    if ('geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          // For now use "Mein Standort" as label — real reverse geocoding could be added later
+          setSearchLocation('Mein Standort');
+          setHasSearched(true);
+        },
+        () => {
+          // Fallback on denied/error
+          setSearchLocation('München');
+          setHasSearched(true);
+        },
+        { timeout: 5000 }
+      );
+    } else {
+      setSearchLocation('München');
+      setHasSearched(true);
+    }
+  };
+
   const handleSearch = () => {
     if (searchLocation.trim()) {
       setHasSearched(true);
     }
   };
 
-  const handleGeolocation = () => {
-    // Placeholder for geolocation API
-    setSearchLocation('München');
-    setHasSearched(true);
-  };
-
   return (
     <div className="space-y-0">
-      {/* ═══ HERO ═══ */}
-      {!hasSearched ? (
-        <section className="relative overflow-hidden" style={{ minHeight: '70vh' }}>
-          <div className="absolute inset-0">
-            <img src={heroImage} alt="" className="w-full h-full object-cover" />
-            <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/20 to-black/60" />
-          </div>
-          <div className="relative z-10 max-w-4xl mx-auto px-5 flex flex-col items-center justify-center text-center" style={{ minHeight: '70vh' }}>
-            <h1 className="text-4xl md:text-6xl font-bold text-white leading-tight mb-4">
-              Lennox & Friends
-            </h1>
-            <p className="text-lg md:text-xl text-white/80 mb-2">Dog Resorts</p>
+      {/* ═══ HERO — always visible, compact after search ═══ */}
+      <section
+        className="relative overflow-hidden transition-all duration-700"
+        style={{ minHeight: hasSearched ? '40vh' : '70vh' }}
+      >
+        <div className="absolute inset-0">
+          <img src={heroImage} alt="" className="w-full h-full object-cover" />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/20 to-black/60" />
+        </div>
+        <div
+          className="relative z-10 max-w-4xl mx-auto px-5 flex flex-col items-center justify-center text-center"
+          style={{ minHeight: hasSearched ? '40vh' : '70vh' }}
+        >
+          <h1 className={`font-bold text-white leading-tight mb-4 transition-all duration-500 ${hasSearched ? 'text-2xl md:text-4xl' : 'text-4xl md:text-6xl'}`}>
+            Lennox & Friends
+          </h1>
+          <p className="text-lg md:text-xl text-white/80 mb-2">Dog Resorts</p>
+          {!hasSearched && (
             <p className="text-base text-white/70 max-w-lg mb-8">
               Naturverbundene Hundebetreuung durch geprüfte Partner in deiner Region.
             </p>
+          )}
+          {!hasSearched && (
             <Button
               size="lg"
               className="rounded-full text-base px-8 py-3 text-white font-semibold"
               style={{ background: COLORS.primary }}
-              onClick={() => document.getElementById('partner-finder')?.scrollIntoView({ behavior: 'smooth' })}
+              onClick={triggerGeolocation}
             >
               <MapPin className="h-5 w-5 mr-2" /> Partner in meiner Nähe finden
             </Button>
-          </div>
-        </section>
-      ) : (
-        <section className="py-8 px-5 text-center" style={{ background: COLORS.bg }}>
-          <h1 className="text-2xl md:text-3xl font-bold mb-2" style={{ color: COLORS.foreground }}>
-            Partner in deiner Nähe
-          </h1>
-          <div className="flex items-center justify-center gap-2 mb-4">
-            <Badge variant="outline" className="text-sm" style={{ borderColor: COLORS.primary, color: COLORS.primary }}>
+          )}
+          {hasSearched && (
+            <Badge variant="outline" className="text-sm bg-white/10 border-white/30 text-white">
               <MapPin className="h-3 w-3 mr-1" /> {searchLocation} (Umkreis 15 km)
             </Badge>
-            <button
-              onClick={() => { setHasSearched(false); setSearchLocation(''); }}
-              className="text-xs underline" style={{ color: COLORS.muted }}
-            >
-              ändern
-            </button>
-          </div>
-        </section>
-      )}
+          )}
+        </div>
+      </section>
 
-      {/* ═══ PARTNER FINDER WIDGET ═══ */}
-      <section id="partner-finder" className="max-w-2xl mx-auto px-5 py-10">
-        {!hasSearched && (
-          <Card className="border-2" style={{ borderColor: COLORS.sand, background: 'white' }}>
-            <CardContent className="p-6 space-y-4 text-center">
-              <MapPin className="h-8 w-8 mx-auto" style={{ color: COLORS.primary }} />
-              <h2 className="text-lg font-semibold" style={{ color: COLORS.foreground }}>Standort aktivieren</h2>
-              <Button variant="outline" className="rounded-full" onClick={handleGeolocation}>
-                Standort verwenden
-              </Button>
-              <div className="flex items-center gap-2 text-xs" style={{ color: COLORS.muted }}>
-                <div className="flex-1 h-px" style={{ background: COLORS.sand }} />
-                <span>oder</span>
-                <div className="flex-1 h-px" style={{ background: COLORS.sand }} />
-              </div>
-              <div className="flex gap-2">
-                <Input
-                  placeholder="Ort oder PLZ eingeben…"
-                  value={searchLocation}
-                  onChange={e => setSearchLocation(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && handleSearch()}
-                  className="rounded-full"
-                  style={{ borderColor: COLORS.sand }}
-                />
-                <Button className="rounded-full text-white" style={{ background: COLORS.primary }} onClick={handleSearch}>
-                  <Search className="h-4 w-4" />
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Partner results after search */}
-        {hasSearched && (
-          <div className="space-y-4">
-            {/* Inline search bar */}
-            <div className="flex gap-2 max-w-md mx-auto">
-              <Input
-                placeholder="Ort oder PLZ…"
-                value={searchLocation}
-                onChange={e => setSearchLocation(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleSearch()}
-                className="rounded-full" style={{ borderColor: COLORS.sand }}
-              />
-              <Button className="rounded-full text-white" style={{ background: COLORS.primary }} onClick={handleSearch}>
-                <Search className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        )}
+      {/* ═══ SEARCH BAR — always visible ═══ */}
+      <section className="max-w-2xl mx-auto px-5 py-8">
+        <div className="flex gap-2">
+          <Input
+            placeholder="Ort oder PLZ eingeben…"
+            value={searchLocation}
+            onChange={e => setSearchLocation(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && handleSearch()}
+            className="rounded-full"
+            style={{ borderColor: COLORS.sand }}
+          />
+          <Button className="rounded-full text-white" style={{ background: COLORS.primary }} onClick={handleSearch}>
+            <Search className="h-4 w-4 mr-1" /> Suchen
+          </Button>
+        </div>
       </section>
 
       {/* ═══ PARTNER KACHELN (nur nach Suche) ═══ */}
@@ -238,7 +225,6 @@ export default function LennoxStartseite() {
 }
 
 function PartnerCard({ provider }: { provider: SearchProvider }) {
-  // Generate slug from provider id (later: real slug field)
   const slug = provider.id;
 
   return (

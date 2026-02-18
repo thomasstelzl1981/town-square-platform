@@ -4,7 +4,7 @@
  * Verwendet eigenständiges Z3-Auth (getrennt vom Portal)
  */
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { Menu, X, User, LogIn, ShoppingBag, Handshake } from 'lucide-react';
+import { Menu, X, User, LogIn, ShoppingBag, Handshake, MapPin } from 'lucide-react';
 import { useState } from 'react';
 import { useZ3Auth } from '@/hooks/useZ3Auth';
 import lennoxLogo from '@/assets/logos/lennox_logo_minimal.jpeg';
@@ -20,6 +20,7 @@ const COLORS = {
 };
 
 const navLinks = [
+  { path: '/website/tierservice?locate=1', label: 'Partner finden', icon: MapPin },
   { path: '/website/tierservice/shop', label: 'Shop', icon: ShoppingBag },
   { path: '/website/tierservice/partner-werden', label: 'Partner werden', icon: Handshake },
 ];
