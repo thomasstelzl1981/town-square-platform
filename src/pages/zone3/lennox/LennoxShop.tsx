@@ -85,36 +85,34 @@ function ProductSection({ categoryKey, label, desc, isAffiliate, intro }: { cate
           <p className="text-sm" style={{ color: COLORS.muted }}>Produkte werden in Kürze hinzugefügt.</p>
         </div>
       ) : (
-        <div className="grid gap-3 grid-cols-2 sm:grid-cols-3">
+        <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 auto-rows-fr">
           {products.map(p => (
             <a
               key={p.id}
               href={p.external_url || '#'}
               target="_blank"
               rel="noopener noreferrer"
-              className="block h-full"
+              className="block"
             >
-              <Card className="h-full flex flex-col border hover:shadow-md transition-all hover:-translate-y-0.5 cursor-pointer" style={{ borderColor: COLORS.sand, background: 'white' }}>
-                <CardContent className="p-3 flex flex-col h-full gap-2">
-                  {p.image_url ? (
-                    <div className="aspect-square w-full rounded-lg overflow-hidden bg-gray-50 flex-shrink-0">
+              <Card className="h-full border hover:shadow-md transition-all hover:-translate-y-0.5 cursor-pointer" style={{ borderColor: COLORS.sand, background: 'white' }}>
+                <CardContent className="p-3 flex flex-col h-full">
+                  <div className="aspect-square w-full rounded-lg overflow-hidden bg-gray-50 flex-shrink-0">
+                    {p.image_url ? (
                       <img src={p.image_url} alt={p.name} className="w-full h-full object-contain" />
-                    </div>
-                  ) : (
-                    <div className="aspect-square w-full rounded-lg flex items-center justify-center bg-gray-50 flex-shrink-0">
-                      <ShoppingBag className="h-8 w-8 opacity-15" style={{ color: COLORS.primary }} />
-                    </div>
-                  )}
-                  <div className="flex flex-col flex-1 items-center text-center gap-1.5">
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <ShoppingBag className="h-8 w-8 opacity-15" style={{ color: COLORS.primary }} />
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex flex-col flex-1 items-center text-center gap-1 pt-2">
                     {p.badge && (
-                      <Badge className="text-[10px] text-white border-0 flex-shrink-0" style={{ backgroundColor: COLORS.primary }}>
+                      <Badge className="text-[10px] text-white border-0" style={{ backgroundColor: COLORS.primary }}>
                         {p.badge}
                       </Badge>
                     )}
-                    <span className="text-xs font-medium line-clamp-2 min-h-[2.5rem] flex items-center" style={{ color: COLORS.foreground }}>{p.name}</span>
-                    {p.price_label && (
-                      <span className="text-xs font-semibold mt-auto" style={{ color: COLORS.primary }}>{p.price_label}</span>
-                    )}
+                    <span className="text-xs font-medium line-clamp-2" style={{ color: COLORS.foreground }}>{p.name}</span>
+                    <span className="text-xs font-semibold mt-auto pt-1" style={{ color: COLORS.primary }}>{p.price_label || '\u00A0'}</span>
                   </div>
                 </CardContent>
               </Card>
