@@ -1,24 +1,47 @@
 
 
-## Lennox & Friends — Logo-Korrekturen
+## Lennox & Friends — Shop-Header und Partner-werden-Redesign
 
-### 1. Hero: Logo entfernen
+### 1. Shop-Hero vergroessern
 
-Das Patch-Logo im Hero-Bereich (Zeile 86-88 in `LennoxStartseite.tsx`) verdeckt den Hund im Bild. Es wird komplett entfernt.
+Die Shop-Seite (`LennoxShop.tsx`) hat aktuell nur `35vh` Hoehe fuer den Hero-Bereich. Das wird auf `50vh` erhoegt, damit der Header visuell gleichwertig zur Startseite wirkt und das Bild nicht abgeschnitten ist.
 
-### 2. Header: Rechteckiges Logo statt rundem
+### 2. Partner-werden: Neues Hero-Bild generieren
 
-Im Header (`LennoxLayout.tsx`, Zeile 40) wird das Logo aktuell quadratisch mit `rounded-lg` angezeigt, was das Bild beschneidet. Stattdessen wird ein rechteckiger Container verwendet (`h-9 w-auto`), damit das komplette Logo sichtbar ist. Dasselbe gilt fuer das kleine Logo im Footer (Zeile 107).
+Ein neues AI-generiertes Bild wird erstellt: Menschen und Hunde in alpiner Umgebung, die zusammenarbeiten — Teamwork, Netzwerk-Charakter, famililaer. Wird als `src/assets/lennox/partner_hero.jpg` gespeichert.
 
-### 3. Partner-CTA: Logo ebenfalls entfernen
+### 3. Partner-werden: Komplettes Redesign
 
-Weiter unten auf der Startseite (Zeile 339) wird das Patch nochmal im "Werde Teil der Lennox-Familie"-Block angezeigt. Dieses bleibt bestehen, da es dort das Branding unterstuetzt und nichts verdeckt.
+Die Seite `LennoxPartnerWerden.tsx` wird grundlegend ueberarbeitet:
+
+**Neuer Hero-Bereich:**
+- Vollbreites Bild (50vh) mit Overlay, wie bei Shop und Startseite
+- Titel: "Werde Partner in deiner Region"
+- Untertitel: Netzwerk-Botschaft
+
+**Neue Inhalts-Sektion "Unsere Vision":**
+- Text ueber das Ziel: deutschlandweites Netzwerk geprüfter Hundeprofis
+- Gruenderin mit langjahhriger Erfahrung in Bayern
+- Zentrale Plattform fuer jeden Hundehalter
+- Exklusiver Regionalpartner werden
+
+**Ueberarbeitete Benefits (5 statt 3):**
+- Exklusivitaet fuer deine Region
+- Buchungen ueber die Plattform
+- Teil einer wachsenden Community
+- Professionelle Sichtbarkeit
+- Kuratierte Produkttipps
+
+**Formular:**
+- Alpine-Chic-Farbpalette (forest, cream, bark) wie Startseite
+- Dunkle Labels, helle Hintergruende — Kontrast-Problem behoben
+- Eingabefelder mit sichtbarem Border und dunklem Text
 
 ### Technische Aenderungen
 
-| Datei | Zeilen | Aenderung |
-|-------|--------|-----------|
-| `LennoxStartseite.tsx` | 86-88 | `img`-Tag mit `lennoxPatch` im Hero entfernen |
-| `LennoxLayout.tsx` | 40 | Logo-Klassen aendern: `h-9 w-9 rounded-lg` wird zu `h-9 w-auto rounded-md` (rechteckig, volles Bild) |
-| `LennoxLayout.tsx` | 107 | Footer-Logo ebenfalls: `h-7 w-7 rounded-lg` wird zu `h-7 w-auto rounded-md` |
+| Datei | Aenderung |
+|-------|-----------|
+| `LennoxShop.tsx` | Hero-Hoehe von `35vh` auf `50vh` erhoehen |
+| `LennoxPartnerWerden.tsx` | Komplett ueberarbeiten: Hero-Bild, neue Texte, Alpine-Chic-Palette, Formular-Kontrast fixen |
+| `src/assets/lennox/partner_hero.jpg` | Neues AI-generiertes Bild (Menschen + Hunde, alpine Teamwork-Szene) |
 
