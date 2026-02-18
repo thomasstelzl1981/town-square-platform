@@ -70,14 +70,14 @@ export function AddBankAccountDialog({ open, onOpenChange }: AddBankAccountDialo
       if (!activeTenantId) return [];
       const [personsRes, propsRes, pvRes] = await Promise.all([
         supabase.from('household_persons').select('id, first_name, last_name').eq('tenant_id', activeTenantId),
-        supabase.from('properties').select('id, name').eq('tenant_id', activeTenantId),
+        supabase.from('landlord_contexts').select('id, name').eq('tenant_id', activeTenantId),
         supabase.from('pv_plants').select('id, name').eq('tenant_id', activeTenantId),
       ]);
       const persons: OwnerOption[] = (personsRes.data || []).map((p: any) => ({
         id: p.id, label: `${p.first_name || ''} ${p.last_name || ''}`.trim() || 'Person', type: 'person',
       }));
       const properties: OwnerOption[] = (propsRes.data || []).map((p: any) => ({
-        id: p.id, label: p.name || 'Immobilie', type: 'property',
+        id: p.id, label: p.name || 'Vermietereinheit', type: 'property',
       }));
       const pvPlants: OwnerOption[] = (pvRes.data || []).map((p: any) => ({
         id: p.id, label: p.name || 'PV-Anlage', type: 'pv_plant',
