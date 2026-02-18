@@ -13,6 +13,7 @@ const LandingPageTab = lazy(() => import('./projekte/LandingPageTab'));
 const ProjectDetailPage = lazy(() => import('./projekte/ProjectDetailPage'));
 const UnitDetailPage = lazy(() => import('./projekte/UnitDetailPage'));
 const KontexteTab = lazy(() => import('./projekte/KontexteTab'));
+const ProjekteLeadManager = lazy(() => import('./projekte/ProjekteLeadManager'));
 
 export default function ProjektePage() {
   return (
@@ -27,6 +28,9 @@ export default function ProjektePage() {
       
       {/* Hidden route for managing developer contexts */}
       <Route path="kontexte" element={<KontexteTab />} />
+      
+      {/* Lead Manager for projects */}
+      <Route path="lead-manager" element={<ProjekteLeadManager />} />
       
       {/* Project Detail (Projektakte) */}
       <Route path=":projectId" element={

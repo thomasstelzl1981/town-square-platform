@@ -446,6 +446,7 @@ export const zone2Portal: ZoneDefinition = {
         { path: "projekte", component: "PortfolioTab", title: "Projekte" },
         { path: "vertrieb", component: "VertriebTab", title: "Vertrieb" },
         { path: "landing-page", component: "LandingPageTab", title: "Landing Page" },
+        { path: "lead-manager", component: "ProjekteLeadManager", title: "Lead Manager" },
       ],
       dynamic_routes: [
         { path: ":projectId", component: "ProjectDetailPage", title: "Projektakte", dynamic: true, goldenPath: { moduleCode: 'MOD-13', entityIdParam: 'projectId' } },
