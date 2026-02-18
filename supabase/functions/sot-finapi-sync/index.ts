@@ -210,15 +210,14 @@ Deno.serve(async (req) => {
         const storedPassword = finUser.password;
 
         // 3. Import bank connection
-        const importPayload: Record<string, unknown> = {
-          bankId,
+        const importPayload = {
+          bankId: Number(bankId),
+          bankingInterface: "XS2A",
           loginCredentials: [
             { label: "Onlinebanking-ID", value: "demo" },
             { label: "PIN", value: "demo" },
           ],
         };
-        // "interface" is a TS reserved word — set via bracket notation
-        importPayload["interface"] = "XS2A";
 
         console.log("[finapi-connect] Import payload:", JSON.stringify(importPayload));
 
