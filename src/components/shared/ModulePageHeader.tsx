@@ -8,6 +8,7 @@
  * - Consistent mb-6 spacing
  */
 import type { ReactNode } from 'react';
+import { DesktopOnly } from '@/components/shared/DesktopOnly';
 
 interface ModulePageHeaderProps {
   title: string;
@@ -24,7 +25,11 @@ export function ModulePageHeader({ title, description, actions }: ModulePageHead
           <p className="text-sm text-muted-foreground mt-1">{description}</p>
         )}
       </div>
-      {actions && <div className="flex items-center gap-2 flex-shrink-0 w-full md:w-auto">{actions}</div>}
+      {actions && (
+        <DesktopOnly>
+          <div className="flex items-center gap-2 flex-shrink-0 w-full md:w-auto">{actions}</div>
+        </DesktopOnly>
+      )}
     </div>
   );
 }
