@@ -1,60 +1,26 @@
 
 
-## Hero-Hoehen Harmonisierung -- Alle 4 Lennox-Seiten
+## Hero-Hoehen Korrektur: Alle 4 Ansichten auf 85vh
 
-### Problem
+### Ist-Zustand (das Problem)
 
-Drei unterschiedliche Hero-Hoehen beim Durchklicken:
-- Startseite (vor Suche): **85vh** -- grosser Empfang, das ist korrekt
-- Startseite (nach Suche / Partner finden): **45vh** -- kompakt
-- Shop: **35vh** -- zu klein
-- Partner werden: **35vh** -- zu klein
+| Ansicht | Datei | Aktuelle Hoehe |
+|---------|-------|---------------|
+| Startseite (initial) | `LennoxStartseite.tsx` | **85vh** (korrekt) |
+| Startseite (nach Suche) | `LennoxStartseite.tsx` | 45vh (zu klein) |
+| Shop | `LennoxShop.tsx` | 45vh (zu klein) |
+| Partner werden | `LennoxPartnerWerden.tsx` | 45vh (zu klein) |
 
-### Loesung
+### Soll-Zustand
 
-Die Unterseiten (Shop, Partner werden) erhalten dieselbe Hoehe wie die Startseite nach der Suche: **45vh**. So entsteht ein konsistenter Uebergang:
+Alle vier Ansichten bekommen **85vh** -- gleiche Hoehe wie die Startseite beim ersten Laden. Der Hund und die Bilder werden vollstaendig sichtbar, kein Abschneiden mehr.
 
-```text
-┌─────────────────────────────────────────────┐
-│ STARTSEITE (initial)                        │
-│ Hero: 85vh                                  │
-│ Grosser Empfang mit Suchleiste              │
-│                                             │
-│                                             │
-│                                             │
-│                                             │
-│                                             │
-└─────────────────────────────────────────────┘
-
-┌─────────────────────────────────────────────┐
-│ STARTSEITE (nach Suche / Partner finden)    │
-│ Hero: 45vh                                  │
-│ Kompakt mit Titel + Suchleiste              │
-│                                             │
-└─────────────────────────────────────────────┘
-
-┌─────────────────────────────────────────────┐
-│ SHOP                                        │
-│ Hero: 45vh (bisher 35vh)                    │
-│ "Lennox Shop" + Untertitel                  │
-│                                             │
-└─────────────────────────────────────────────┘
-
-┌─────────────────────────────────────────────┐
-│ PARTNER WERDEN                              │
-│ Hero: 45vh (bisher 35vh)                    │
-│ "Werde Partner..." + Untertitel             │
-│                                             │
-└─────────────────────────────────────────────┘
-```
-
-### Aenderungen
+### Technische Aenderungen
 
 | Datei | Aenderung |
 |-------|-----------|
-| `LennoxShop.tsx` | `minHeight: '35vh'` -> `'45vh'` (2 Stellen: section + inner div) |
-| `LennoxPartnerWerden.tsx` | `minHeight: '35vh'` -> `'45vh'` (2 Stellen: section + inner div) |
-| `LennoxStartseite.tsx` | Keine Aenderung (85vh/45vh bleibt) |
+| `LennoxStartseite.tsx` (Zeile 77+83) | Ternary `hasSearched ? '45vh' : '85vh'` wird zu festem `'85vh'` (beide Stellen) |
+| `LennoxShop.tsx` (Zeile 131+136) | `'45vh'` wird zu `'85vh'` (beide Stellen) |
+| `LennoxPartnerWerden.tsx` (Zeile 95+100) | `'45vh'` wird zu `'85vh'` (beide Stellen) |
 
-Beide Bilder behalten `object-cover object-center` fuer korrekte Bildausschnitte bei.
-
+Insgesamt 6 Stellen, jeweils `minHeight` von `'45vh'` auf `'85vh'` aendern.
