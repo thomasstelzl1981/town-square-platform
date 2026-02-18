@@ -1,0 +1,1501 @@
+================================================================================
+SYSTEM OF A TOWN (SoT) — VOLLSTÄNDIGE SYSTEMDOKUMENTATION
+================================================================================
+Stand: 2026-02-18
+Version: v1.0
+Status: AKTUELL
+
+================================================================================
+INHALTSVERZEICHNIS
+================================================================================
+
+1.  SYSTEMÜBERSICHT
+2.  ZONEN-ARCHITEKTUR
+3.  ZONE 1 — ADMIN / GOVERNANCE (Vollständig)
+4.  ZONE 2 — USER PORTAL (Vollständig, 23 Module)
+5.  ZONE 3 — WEBSITES (Vollständig, 5 Marken)
+6.  ENGINES — Business Logic Layer (10 Engines)
+7.  GOLDEN PATHS — Portal-Prozesse (17 Stück)
+8.  GOLDEN PATHS — Engine-Workflows (8 Stück)
+9.  ARMSTRONG — KI-Copilot-System
+10. EDGE FUNCTIONS (100+ Funktionen)
+11. MANIFESTE — Single Sources of Truth
+12. DATENMODELL — Kernobjekte & Tabellen
+13. HOOKS — Custom React Hooks
+14. KOMPONENTEN — Verzeichnisstruktur
+15. SERVICES & INTEGRATIONEN
+16. MULTI-TENANCY & SICHERHEIT
+17. CREDIT-SYSTEM & BILLING
+18. DESIGN-SYSTEM
+19. SPEC-DOKUMENTATION
+
+================================================================================
+1. SYSTEMÜBERSICHT
+================================================================================
+
+"System of a Town" (SoT) ist eine mandantenfähige SaaS-Plattform für
+Immobilienverwaltung, Finanzierung, Investment, Akquise, Projektentwicklung
+und ergänzende Lifestyle-Services (Photovoltaik, Fahrzeuge, Haustiere).
+
+Technologie-Stack:
+- Frontend: React 18, TypeScript, Vite, Tailwind CSS
+- UI-Library: shadcn/ui (Radix UI Primitives)
+- State: TanStack React Query
+- Routing: React Router DOM v6, manifest-driven
+- Backend: Lovable Cloud (Supabase)
+- Edge Functions: Deno (100+ Funktionen)
+- KI: Armstrong Copilot (Gemini, GPT-5, ElevenLabs)
+- Charts: Recharts
+- PDF: jsPDF
+- Maps: Google Maps API
+- E-Mail: Resend
+- Payments: Stripe
+- Voice: ElevenLabs (Scribe + TTS)
+- Video: LiveKit
+
+================================================================================
+2. ZONEN-ARCHITEKTUR
+================================================================================
+
+Das System verwendet eine strikte 3-Zonen-Trennung:
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ ZONE 1 — ADMIN / GOVERNANCE (/admin/*)                                      │
+│ Zugang: platform_admin                                                       │
+│ Funktion: Konfiguration, Oversight, Operative Desks, Armstrong Console      │
+│ Armstrong: Keine Chat-Funktion, nur Governance-UI                           │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ ZONE 2 — USER PORTAL (/portal/*)                                            │
+│ Zugang: Authentifizierte Nutzer (org_member, org_admin, etc.)               │
+│ Funktion: 23 Module (MOD-00 bis MOD-22), vollständiges Musterportal        │
+│ Armstrong: Voller Funktionsumfang, Chat + Actions + Web-Recherche           │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ ZONE 3 — WEBSITES (/website/*)                                              │
+│ Zugang: Öffentlich (anonym oder authentifiziert)                            │
+│ Funktion: 5 Marken-Websites, Lead-Erfassung, publizierte Exposés           │
+│ Armstrong LITE: Nur readonly Actions, FAQs, Lead-Weiterleitung             │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+Datenfluss-Regeln:
+- Daten fließen NIE von Zone 2 nach Zone 3 (außer explizit publiziert)
+- Zone 1 hat keinen direkten DB-Zugriff auf Kundendaten
+- RLS isoliert Mandanten in Zone 2 vollständig
+- Alle Cross-Zone-Kommunikation läuft über Zone 1 (Backbone)
+- Direkte Z2↔Z2 oder Z2↔Z3 Schreibvorgänge sind untersagt
+
+================================================================================
+3. ZONE 1 — ADMIN / GOVERNANCE
+================================================================================
+
+Basispfad: /admin
+Layout: AdminLayout
+Rolle: platform_admin
+
+3.1 DASHBOARD & VERWALTUNG
+─────────────────────────────────────────────────────────────────────────────
+
+Route                              | Komponente               | Beschreibung
+/admin                             | Dashboard                | Admin-Übersicht, KPIs
+/admin/organizations               | Organizations            | Mandantenverwaltung
+/admin/organizations/:id           | OrganizationDetail       | Mandantendetail
+/admin/users                       | Users                    | Benutzerverwaltung
+/admin/delegations                 | Delegations              | Delegationen & Hierarchien
+/admin/tiles                       | TileCatalog              | Tile-Katalog (Modul-Aktivierung)
+/admin/integrations                | Integrations             | Integrationen-Registry
+/admin/oversight                   | Oversight                | Monitoring Dashboard
+/admin/audit                       | AuditHub                 | Audit Hub
+/admin/agreements                  | Agreements               | Vereinbarungen
+/admin/partner-verification        | PartnerVerification      | Partner-Verifizierung
+/admin/roles                       | RolesManagement          | Rollen & Berechtigungen
+/admin/support                     | Support                  | Support
+/admin/fortbildung                 | AdminFortbildung         | Fortbildungs-Management
+
+3.2 STAMMDATEN-VORLAGEN (MASTERDATA)
+─────────────────────────────────────────────────────────────────────────────
+
+Route                                     | Beschreibung
+/admin/masterdata                         | Stammdaten-Vorlagen Übersicht
+/admin/masterdata/immobilienakte          | Immobilienakte Vorlage
+/admin/masterdata/selbstauskunft          | Selbstauskunft Vorlage
+/admin/masterdata/projektakte             | Projektakte Vorlage
+/admin/masterdata/fahrzeugakte            | Fahrzeugakte Vorlage
+/admin/masterdata/photovoltaikakte        | Photovoltaikakte Vorlage
+/admin/masterdata/finanzierungsakte       | Finanzierungsakte Vorlage
+
+3.3 KI OFFICE (3-Säulen-Architektur)
+─────────────────────────────────────────────────────────────────────────────
+
+Route                            | Beschreibung
+/admin/ki-office/recherche       | SOAT Search Engine (Google Places, Apify, Firecrawl)
+/admin/ki-office/kontakte        | Zentrales CRM mit DSGVO-Compliance
+/admin/ki-office/email           | E-Mail Agent (Posteingang, Kampagnen, Templates)
+
+3.4 OPERATIVE DESKS (OperativeDeskShell-Standard)
+─────────────────────────────────────────────────────────────────────────────
+
+Alle Desks folgen dem Flow: Z3 (Surface) ↔ Z1 (Governance) ↔ Z2 (Manager)
+
+a) FUTUREROOM DESK (Finanzierung-Governance)
+   /admin/futureroom                       | Dashboard
+   /admin/futureroom/inbox                 | Eingehende Finanzierungsanfragen
+   /admin/futureroom/zuweisung             | Zuweisung an Finanzierungsmanager
+   /admin/futureroom/finanzierungsmanager  | Manager-Übersicht
+   /admin/futureroom/bankkontakte          | Bank-Kontaktdatenbank
+   /admin/futureroom/monitoring            | Prozess-Monitoring
+   /admin/futureroom/vorlagen              | Dokumentvorlagen
+   /admin/futureroom/website-leads         | Website-Leads (Zone 3)
+   /admin/futureroom/contracts             | Vertragsmanagement
+
+b) ACQUIARY DESK (Akquise-Governance, 6-Tab-Struktur)
+   /admin/acquiary                         | Dashboard (KPIs & Quick Actions)
+   /admin/acquiary/kontakte                | Mandatsübergreifende Staging-Tabelle
+   /admin/acquiary/datenbank               | Globale Immobiliensuche
+   /admin/acquiary/mandate                 | Mandatsverwaltung
+   /admin/acquiary/needs-routing           | E-Mail-Routing (ungeroutete Nachrichten)
+   /admin/acquiary/monitor                 | Monitoring
+
+c) SALES DESK (Vertrieb-Governance)
+   /admin/sales-desk                       | Dashboard
+   /admin/sales-desk/veroeffentlichungen   | Veröffentlichungen
+   /admin/sales-desk/inbox                 | Inbox
+   /admin/sales-desk/partner               | Partner-Verwaltung
+   /admin/sales-desk/audit                 | Audit
+
+d) LEAD DESK (Leadmanagement)
+   /admin/lead-desk                        | Dashboard (konsolidiert LeadPool + Provisionen)
+
+e) PROJEKT DESK (Projektmanagement)
+   /admin/projekt-desk                     | Dashboard
+   /admin/projekt-desk/projekte            | Projekte
+   /admin/projekt-desk/listings            | Listings
+   /admin/projekt-desk/landing-pages       | Landing Pages
+
+f) PET DESK (Tierservices-Governance, 5-Tab)
+   /admin/pet-desk                         | Dashboard
+   /admin/pet-desk/vorgaenge               | Vorgänge
+   /admin/pet-desk/kunden                  | Kunden
+   /admin/pet-desk/shop                    | Shop
+   /admin/pet-desk/billing                 | Billing
+
+g) FINANCE DESK (Private Finanzberatung)
+   /admin/finance-desk                     | Dashboard (Lead-Management)
+
+3.5 ARMSTRONG CONSOLE (KI-Governance)
+─────────────────────────────────────────────────────────────────────────────
+
+Route                              | Beschreibung
+/admin/armstrong                   | Dashboard — Governance-Übersicht
+/admin/armstrong/actions            | Actions-Katalog (alle Armstrong-Actions)
+/admin/armstrong/logs               | Action Logs (Ausführungsprotokoll)
+/admin/armstrong/billing            | Billing (Credit-Verbrauch)
+/admin/armstrong/knowledge          | Knowledge Base Administration
+/admin/armstrong/policies           | Policies (Governance-Regeln)
+/admin/armstrong/test               | Test Harness
+/admin/armstrong/integrations       | Widget-Integrationen
+/admin/armstrong/engines            | Engine Registry (15+ Engines)
+/admin/armstrong/golden-paths       | Golden Path Registry
+/admin/armstrong/costs              | Plattform-Kostenmonitor
+
+3.6 WEBSITE HOSTING
+─────────────────────────────────────────────────────────────────────────────
+
+/admin/website-hosting              | Landing Pages Zone 1 (konsolidiert)
+
+================================================================================
+4. ZONE 2 — USER PORTAL (23 MODULE)
+================================================================================
+
+Basispfad: /portal
+Layout: PortalLayout
+Dashboard: /portal → PortalDashboard
+
+4.0 MOD-00: DASHBOARD
+─────────────────────────────────────────────────────────────────────────────
+Icon: LayoutDashboard | Sichtbarkeit: client, partner, subpartner
+Beschreibung: Persönliches Dashboard mit Aufgaben, Erinnerungen, Notizen,
+KPIs, Wetter, Nachrichten und Armstrong-Chat-Widget.
+
+4.1 MOD-01: STAMMDATEN
+─────────────────────────────────────────────────────────────────────────────
+Icon: Users | Route: /portal/stammdaten
+Sichtbarkeit: client, partner, subpartner
+
+Tiles:
+- profil          → Persönliche Daten, Kontoinformationen
+- vertraege       → Aktive Verträge und Vereinbarungen
+- abrechnung      → Abrechnung und Credits
+- sicherheit      → Passwort, 2FA, Sessions
+- demo-daten      → Demo-Daten-Management (Golden Path Toggles)
+
+4.2 MOD-02: KI OFFICE
+─────────────────────────────────────────────────────────────────────────────
+Icon: Sparkles | Route: /portal/office
+Sichtbarkeit: client, partner
+
+Tiles:
+- email           → E-Mail (IMAP/Gmail-Integration)
+- brief           → Briefgenerator (KI-gestützt)
+- kontakte        → Kontaktmanagement
+- kalender        → Terminkalender
+- widgets         → Dashboard-Widgets
+- whatsapp        → WhatsApp Business Integration
+- videocalls      → LiveKit Videocalls
+
+Dynamic Routes:
+- videocalls/:callId → Videocall-Raum
+
+4.3 MOD-03: DMS (Document Management System)
+─────────────────────────────────────────────────────────────────────────────
+Icon: FolderOpen | Route: /portal/dms
+Sichtbarkeit: client, partner
+
+Tiles:
+- storage         → Miller-Column-Dateiverwaltung
+- posteingang     → Digitaler Posteingang (Caya-Integration)
+- sortieren       → Automatische Dokumenten-Sortierung
+- einstellungen   → DMS-Einstellungen
+
+Architektur:
+- 1 Tenant = 1 DMS-Tree
+- 2-Phasen-Upload (Upload → Kategorisierung)
+- Signed-URL-Sicherheitsmodell
+- Bucket: 'tenant-documents', Pfad: {tenantId}/{module}/{entityId}/{filename}
+- Automatische Sortierregeln (inbox_sort_rules)
+
+4.4 MOD-04: IMMOBILIEN
+─────────────────────────────────────────────────────────────────────────────
+Icon: Building2 | Route: /portal/immobilien
+Sichtbarkeit: client
+
+Tiles:
+- zuhause         → ZUHAUSE (Miety Inline, MOD-20 embedded)
+- portfolio       → Immobilien-Portfolio (Vermietereinheiten)
+- verwaltung      → Steuer (Anlage V, BWA, NK-Abrechnung)
+- sanierung       → Sanierungsprojekte (Leistungsverzeichnis, Dienstleister)
+
+Dynamic Routes:
+- neu             → Neue Immobilie anlegen
+- :id             → Immobilienakte (Dossier) mit Tabs:
+                    Exposé (Google Street View), Einheiten, BWA,
+                    NK-Abrechnung, DMS, Bewertung
+- vermietung/:id  → Miet-Exposé Detail
+
+Golden Paths:
+- GP-PORTFOLIO    → Immobilien-Portfolio verwalten
+- GP-VERWALTUNG   → BWA / Controlling
+- GP-SANIERUNG    → Sanierungsauftrag
+
+4.5 MOD-05: PETS
+─────────────────────────────────────────────────────────────────────────────
+Icon: PawPrint | Route: /portal/pets
+Sichtbarkeit: client (requires_activation)
+
+Tiles:
+- meine-tiere     → Tierübersicht und -verwaltung
+- caring          → Pflege und Termine
+- shop            → Tierbedarfsshop
+- mein-bereich    → Persönlicher Bereich
+
+Dynamic Routes:
+- :petId          → Tierakte (Detail)
+
+Golden Path: GP-PETS → Tierverwaltung
+
+4.6 MOD-06: VERKAUF
+─────────────────────────────────────────────────────────────────────────────
+Icon: Tag | Route: /portal/verkauf
+Sichtbarkeit: client (requires_activation)
+
+Tiles:
+- objekte         → Verkaufsobjekte
+- anfragen        → Eingehende Kaufanfragen
+- vorgaenge       → Verkaufsvorgänge
+- reporting       → Vertriebsreporting
+
+Dynamic Routes:
+- expose/:unitId  → Verkaufs-Exposé Detail
+
+4.7 MOD-07: FINANZIERUNG
+─────────────────────────────────────────────────────────────────────────────
+Icon: Landmark | Route: /portal/finanzierung
+Sichtbarkeit: client
+Beschreibung: Kundenseitige Finanzierungsvorbereitung
+
+Tiles:
+- selbstauskunft  → Permanente Selbstauskunft (Sektionen 1-7)
+- dokumente       → Dokumente für Finanzierung
+- anfrage         → Finanzierungsanfrage erstellen
+- status          → Status laufender Anfragen
+- privatkredit    → Privatkredit-Rechner
+
+Dynamic Routes:
+- anfrage/:requestId → Anfrage-Details
+
+Workflow: Kunde füllt Selbstauskunft aus → erstellt Anfrage →
+Snapshot wird in finance_requests.applicant_snapshot kopiert →
+Einreichung an Zone 1 FutureRoom → Zuweisung an MOD-11 Manager
+
+Golden Path: GP-FINANZIERUNG → Finanzierungsanfrage
+
+4.8 MOD-08: INVESTMENT-SUCHE
+─────────────────────────────────────────────────────────────────────────────
+Icon: Search | Route: /portal/investments
+Sichtbarkeit: client
+
+Tiles:
+- suche           → Marktplatz-Suche (v_public_listings)
+- favoriten       → Gemerkte Objekte
+- mandat          → Suchmandatsverwaltung
+- simulation      → Investment-Simulation (40-Jahres-Projektion)
+
+Dynamic Routes (intern verwaltet):
+- mandat/neu             → 5-Schritt-Wizard
+- mandat/:mandateId      → Mandatsdetail
+- objekt/:publicId       → Investment-Exposé
+
+Zwei Workflows:
+A) Selbstbedienung: Suche → Favorisieren → Simulation
+B) Suchmandat: Wizard → Triage an Zone 1/MOD-12
+
+Golden Paths: GP-SUCHMANDAT, GP-SIMULATION
+
+4.9 MOD-09: IMMOMANAGER (Vertriebspartner)
+─────────────────────────────────────────────────────────────────────────────
+Icon: Handshake | Route: /portal/vertriebspartner
+Sichtbarkeit: partner, subpartner (requires_activation)
+
+Tiles:
+- katalog         → Objekt-Katalog für Partner
+- beratung        → Beratungs-Cockpit
+- kunden          → Kundenverwaltung
+- network         → Partner-Netzwerk
+- leads           → Leadeingang
+
+Dynamic Routes:
+- katalog/:publicId              → Katalog-Detail
+- beratung/objekt/:publicId      → Partner-Exposé
+- selfie-ads                     → Selfie Ads Studio (Meta Ads)
+- selfie-ads-planen              → Kampagne planen
+- selfie-ads-kampagnen           → Kampagnen-Übersicht
+- selfie-ads-performance         → Performance Dashboard
+- selfie-ads-abrechnung          → Abrechnung
+
+4.10 MOD-10: PROVISIONEN
+─────────────────────────────────────────────────────────────────────────────
+Icon: CreditCard | Route: /portal/provisionen
+Sichtbarkeit: partner (requires_activation)
+
+Tiles:
+- uebersicht      → Provisions-Übersicht
+
+4.11 MOD-11: FINANZIERUNGSMANAGER
+─────────────────────────────────────────────────────────────────────────────
+Icon: Landmark | Route: /portal/finanzierungsmanager
+Sichtbarkeit: partner (requires_role: finance_manager)
+Beschreibung: §34i-Manager Workbench — operative Fallbearbeitung
+
+Tiles:
+- dashboard        → Dashboard (Fälle, Mandate, Rechner)
+- finanzierungsakte → Aktendossier
+- einreichung      → Bankeinreichung
+- provisionen      → Provisions-Tracking
+- archiv           → Abgeschlossene Fälle
+
+Dynamic Routes:
+- einreichung/:requestId → Einreichung Detail
+- faelle/:requestId      → Finanzierungsakte (Split-View)
+- uebersicht             → Übersicht-Tab
+- investment             → Investment-Tab
+- sachversicherungen     → Versicherungen-Tab
+- vorsorge               → Vorsorge-Tab
+- abonnements            → Abonnements-Tab
+
+Golden Path: GP-FM-FALL → Finanzierungsfall
+
+4.12 MOD-12: AKQUISEMANAGER
+─────────────────────────────────────────────────────────────────────────────
+Icon: Briefcase | Route: /portal/akquise-manager
+Sichtbarkeit: partner (requires_role: akquise_manager)
+
+Tiles:
+- dashboard        → Dashboard
+- mandate          → Mandatsverwaltung (4-Kachel-Grid)
+- objekteingang    → Eingehende Objekte
+- datenbank        → Objekt-Datenbank
+- tools            → Tools (Portal-Recherche, Bewertung, GeoMap, Kalkulator, DMS)
+
+Dynamic Routes:
+- mandate/neu              → Neues Mandat
+- mandate/:mandateId       → Mandat-Workbench (Widget-Switcher)
+- objekteingang/:offerId   → Objekteingang Detail
+
+2-Stufen-Architektur:
+1. Erfassungs-Hub: KI-Erfassung, KI-Entwurf, Kontaktrecherche, E-Mail
+2. Mandat-Workbench: Operative Abwicklung mit Analyse (Bestand/Aufteiler)
+
+Golden Path: GP-AKQUISE-MANDAT
+
+4.13 MOD-13: PROJEKTMANAGER
+─────────────────────────────────────────────────────────────────────────────
+Icon: FolderKanban | Route: /portal/projekte
+Sichtbarkeit: client, partner
+
+Tiles:
+- dashboard        → Dashboard
+- projekte         → Projekte-Portfolio
+- vertrieb         → Vertrieb & Listings
+- landing-page     → Landing Page Builder
+
+Dynamic Routes:
+- :projectId                    → Projektakte
+- :projectId/einheit/:unitId    → Einheitenakte
+
+Golden Path: GP-PROJEKT → Projektanlage
+
+4.14 MOD-14: COMMUNICATION PRO
+─────────────────────────────────────────────────────────────────────────────
+Icon: Mail | Route: /portal/communication-pro
+Sichtbarkeit: partner (requires_activation)
+
+Tiles:
+- serien-emails    → Serien-E-Mail-Kampagnen (Sequenz-Editor)
+- recherche        → SOAT Research Engine (asynchrone Lead-Engine)
+- social           → Social Media Management
+- ki-telefon       → KI-Telefonassistent
+
+Golden Paths: GP-SERIEN-EMAIL, GP-RECHERCHE
+
+4.15 MOD-15: FORTBILDUNG
+─────────────────────────────────────────────────────────────────────────────
+Icon: GraduationCap | Route: /portal/fortbildung
+Sichtbarkeit: partner, subpartner
+
+Tiles:
+- buecher          → Buchempfehlungen
+- fortbildungen    → Fortbildungskatalog
+- vortraege        → Vorträge
+- kurse            → Kurse & E-Learning
+
+4.16 MOD-16: SHOP (Services)
+─────────────────────────────────────────────────────────────────────────────
+Icon: ShoppingCart | Route: /portal/services
+Sichtbarkeit: client, partner
+
+Tiles:
+- amazon           → Amazon Business Integration
+- otto-office      → OTTO Office
+- miete24          → Miete24 (Geräte-Leasing)
+- smart-home       → Smart Home Produkte
+- bestellungen     → Bestellübersicht
+
+4.17 MOD-17: CAR-MANAGEMENT
+─────────────────────────────────────────────────────────────────────────────
+Icon: Car | Route: /portal/cars
+Sichtbarkeit: partner (requires_activation)
+
+Tiles:
+- fahrzeuge        → Fahrzeugflotte
+- boote            → Boote & Yachten
+- privatjet        → Privatjet-Buchung
+- angebote         → Angebote
+
+Golden Path: GP-FAHRZEUG
+
+4.18 MOD-18: FINANZEN (Finanzanalyse)
+─────────────────────────────────────────────────────────────────────────────
+Icon: LineChart | Route: /portal/finanzanalyse
+Sichtbarkeit: client
+
+Tiles:
+- dashboard        → Finanzübersicht (Konten, Budgets, Kategorien)
+- investment       → Investment-Portfolio
+- kv               → Krankenversicherung
+- sachversicherungen → Sachversicherungen
+- vorsorge         → Vorsorge & Altersvorsorge (Engine 9)
+- darlehen         → Darlehensübersicht
+- abonnements      → Abonnements-Tracker
+- vorsorgedokumente → Testament & Vollmacht
+
+Golden Path: GP-KONTEN → Kontoverwaltung
+
+4.19 MOD-19: PHOTOVOLTAIK
+─────────────────────────────────────────────────────────────────────────────
+Icon: Sun | Route: /portal/photovoltaik
+Sichtbarkeit: client
+
+Tiles:
+- anlagen          → PV-Anlagen-Übersicht
+- enpal            → Enpal-Integration
+- dokumente        → PV-Dokumente
+- einstellungen    → PV-Einstellungen
+
+Dynamic Routes:
+- neu              → PV-Anlage anlegen (Wizard)
+- :pvPlantId       → PV-Akte (Detail)
+
+Golden Path: GP-PV-ANLAGE
+
+4.20 MOD-20: MIETY (Zuhause)
+─────────────────────────────────────────────────────────────────────────────
+Icon: Home | Route: /portal/miety
+Sichtbarkeit: client (requires_activation)
+Hinweis: Auch inline in MOD-04 als "Zuhause"-Tab eingebettet
+
+Tiles:
+- uebersicht       → Wohnungsübersicht
+- versorgung       → Versorgungsverträge (Strom, Gas, Internet)
+- smarthome        → Smart Home Steuerung
+- kommunikation    → Hausverwaltungs-Kommunikation
+
+Dynamic Routes:
+- zuhause/:homeId  → Zuhause-Akte
+
+Golden Path: GP-ZUHAUSE
+
+4.21 MOD-22: PET MANAGER (Franchise-Partner)
+─────────────────────────────────────────────────────────────────────────────
+Icon: PawPrint | Route: /portal/petmanager
+Sichtbarkeit: client (requires_activation)
+Beschreibung: B2B-Portal für Tierpensions-Franchise-Partner
+
+Tiles:
+- dashboard        → Dashboard
+- profil           → Anbieterprofil
+- pension          → Pensionsverwaltung
+- services         → Services-Konfiguration
+- mitarbeiter      → Personalverwaltung
+- kunden           → Kundenverwaltung
+- finanzen         → Finanzen & Abrechnung
+
+Golden Path: GP-PET (Pet Manager Lifecycle)
+
+================================================================================
+5. ZONE 3 — WEBSITES (5 Marken)
+================================================================================
+
+Alle Zone-3-Websites verwenden den Pfad /website/{marke}/
+
+5.1 KAUFY — Immobilien-Marktplatz
+─────────────────────────────────────────────────────────────────────────────
+Basispfad: /website/kaufy
+Layout: Kaufy2026Layout
+
+Seiten:
+- /                        → Kaufy Home (Marktplatz-Startseite)
+- /vermieter               → Für Vermieter
+- /verkaeufer              → Für Verkäufer
+- /vertrieb                → Für Partner
+- /immobilien/:publicId    → Exposé (öffentliches Inserat)
+
+Funktion: Öffentlicher Immobilien-Marktplatz mit Lead-Capture.
+Objekte werden aus Zone 2 (MOD-06/MOD-13) publiziert.
+
+5.2 FUTUREROOM — Finanzierungsportal
+─────────────────────────────────────────────────────────────────────────────
+Basispfad: /website/futureroom
+Layout: FutureRoomLayout
+
+Seiten:
+- /                        → FutureRoom Home
+- /bonitat                 → Bonitätsprüfung (öffentlicher Rechner)
+- /karriere                → Karriere-Seite
+- /faq                     → FAQ
+- /login                   → Login (Zone-3-Auth)
+- /akte                    → Meine Akte (authentifiziert, guarded)
+
+Funktion: Öffentliche Finanzierungsanfrage und Bonitätsprüfung.
+Leads fließen an Zone 1 FutureRoom Desk.
+
+5.3 SOT — System of a Town (Unternehmenswebsite)
+─────────────────────────────────────────────────────────────────────────────
+Basispfad: /website/sot
+Layout: SotLayout
+
+Seiten:
+- /                        → SoT Home (Software-Präsentation)
+- /real-estate             → Real Estate Lösungen
+- /finance                 → Finance Lösungen
+- /management              → Management Lösungen
+- /energy                  → Energy Lösungen
+- /karriere                → Karriere-Seite
+- /faq                     → FAQ
+
+5.4 ACQUIARY — Akquise-Marke
+─────────────────────────────────────────────────────────────────────────────
+Basispfad: /website/acquiary
+Layout: AcquiaryLayout
+
+Seiten:
+- /                        → Acquiary Home
+- /methodik                → Methodik
+- /netzwerk                → Netzwerk
+- /karriere                → Karriere
+- /objekt                  → Objekt anbieten (Lead-Formular)
+
+5.5 LENNOX & FRIENDS — Dog Resorts (Tierservices)
+─────────────────────────────────────────────────────────────────────────────
+Basispfad: /website/tierservice
+Layout: LennoxLayout
+
+Seiten:
+- /                        → Startseite (Dog Resorts Übersicht)
+- /partner/:slug           → Partner-Profil (Franchise-Partner)
+- /shop                    → Lennox Shop
+- /partner-werden          → Partner werden (Franchise-Anfrage)
+- /login                   → Anmeldung
+- /mein-bereich            → Mein Bereich (authentifiziert)
+
+================================================================================
+6. ENGINES — Business Logic Layer
+================================================================================
+
+Pfad: src/engines/
+Architektur: Pure TypeScript-Funktionen, kein Side-Effect, testbar,
+kompatibel mit Edge Functions. Jede Engine hat spec.ts + engine.ts.
+
+6.1 ENGINE 1: AKQUISE-KALKULATION (akquiseCalc)
+─────────────────────────────────────────────────────────────────────────────
+Dateien: spec.ts, engine.ts
+Beschreibung: Berechnung von Bestands- und Aufteiler-Kalkulationen
+für Immobilien-Akquise. Vergleichsanalyse nebeneinander.
+Verwendet in: MOD-08, MOD-12, Zone 1 Acquiary
+
+6.2 ENGINE 2: FINANZIERUNG (finanzierung)
+─────────────────────────────────────────────────────────────────────────────
+Dateien: spec.ts, engine.ts
+Beschreibung: Haushaltssaldo, Annuitätenrechnung, Bonitätsprüfung,
+Tilgungsplan, LTV-Berechnung, Beschäftigungsstatus-Gewichtung.
+Funktionen: calcAnnuity, calcBonitaet, calcHousehold
+Verwendet in: MOD-07, MOD-11, Zone 3 FutureRoom
+
+6.3 ENGINE 3: PROVISION (provision)
+─────────────────────────────────────────────────────────────────────────────
+Dateien: spec.ts, engine.ts
+Beschreibung: Provisionsberechnung und -splitting.
+Funktionen: Commission Splits, Aggregate Totals
+Verwendet in: MOD-09, MOD-10, Zone 1 Lead Desk
+
+6.4 ENGINE 4: BEWIRTSCHAFTUNG / BWA (bewirtschaftung)
+─────────────────────────────────────────────────────────────────────────────
+Dateien: spec.ts, engine.ts
+Beschreibung: Betriebswirtschaftliche Auswertung, NOI-Berechnung,
+Instandhaltungsrücklagen (Peters'sche Formel), Leerstandsquoten.
+Verwendet in: MOD-04 (Immobilienakte BWA-Tab)
+
+6.5 ENGINE 5: PROJEKT-KALKULATION (projektCalc)
+─────────────────────────────────────────────────────────────────────────────
+Dateien: spec.ts, engine.ts
+Beschreibung: Baumargen-Berechnung, Einheiten-Pricing,
+Verkaufserlös-Projektion.
+Verwendet in: MOD-13
+
+6.6 ENGINE 6: NK-ABRECHNUNG (nkAbrechnung)
+─────────────────────────────────────────────────────────────────────────────
+Dateien: spec.ts, engine.ts, costCategoryMapping.ts, allocationLogic.ts,
+         readinessCheck.ts, pdfExport.ts, hausgeldTemplate.ts
+Beschreibung: Nebenkostenabrechnung für Vermieter.
+Features:
+- Dynamische Bewohnerzählung (number_of_occupants aus leases)
+- Heizungsvorauszahlungen integriert (kein Double-Counting)
+- Grundsteuer als direkte Einheitszuordnung
+- Read-Only-Lock für abgerechnete Perioden
+- PDF-Export
+Verwendet in: MOD-04 (Verwaltung-Tab)
+
+6.7 ENGINE 7: DEMO-DATEN (demoData)
+─────────────────────────────────────────────────────────────────────────────
+Dateien: index.ts
+Beschreibung: Clientseitige Demo-Daten für Golden Path Demo-Widgets.
+Verwendet in: Alle Module mit Golden Path Prozessen
+
+6.8 ENGINE 8: FINANZÜBERSICHT (finanzuebersicht)
+─────────────────────────────────────────────────────────────────────────────
+Dateien: spec.ts, engine.ts
+Beschreibung: Aggregierte Finanzübersicht über alle Konten,
+Budgetvergleiche, Kategorisierung.
+Verwendet in: MOD-18
+
+6.9 ENGINE 9: VORSORGE-LÜCKENRECHNER (vorsorgeluecke)
+─────────────────────────────────────────────────────────────────────────────
+Dateien: spec.ts, engine.ts
+Beschreibung: Altersvorsorge- und BU-Lückenberechnung.
+Features:
+- Einkommens-Kumulierung (net_income + business_income)
+- 4% p.a. Wertzuwachs-Projektion
+- Manuelle Overrides (projected_end_value, growth_rate_override)
+- BU-Kombiprodukte (bu_monthly_benefit)
+- Status-Logik: Angestellte (35% Brutto-Fallback), Selbstständige
+Datenquellen: household_persons, pension_records, vorsorge_contracts
+Verwendet in: MOD-18 (Vorsorge-Tab)
+
+6.10 ENGINE 10: VV-STEUER (vvSteuer)
+─────────────────────────────────────────────────────────────────────────────
+Dateien: spec.ts, engine.ts
+Beschreibung: Vermietung & Verpachtung Steuerberechnung (Anlage V).
+Verwendet in: MOD-04 (Verwaltung-Tab)
+
+================================================================================
+7. GOLDEN PATHS — Portal-Prozesse (17 Stück)
+================================================================================
+
+Quelle: src/manifests/goldenPathProcesses.ts
+
+Golden Paths definieren den standardisierten UI-Flow für alle Portalmodule:
+- ModulePageHeader → WidgetGrid → Inline-Detail Flow
+- Demo-Widget an Position 0 (hardcoded, read-only)
+- Kein Tab-Wechsel, kein Sub-Routing — alles vertikal scrollbar
+
+Compliance-Kriterien (6/6):
+1. modulePageHeader  — CI-konformer Seitentitel
+2. widgetGrid        — 4-Spalten-Grid
+3. widgetCell         — Standard-Widget-Dimensionen
+4. demoWidget        — Demo an Position 0
+5. inlineFlow        — Vertikaler Detail-Flow
+6. noSubNavigation   — Keine Tabs/Sub-Navigation
+
+ID                 | Modul   | Prozess                  | Phase | Score
+GP-PORTFOLIO       | MOD-04  | Immobilien-Portfolio     | done  | 6/6
+GP-VERWALTUNG      | MOD-04  | BWA / Controlling        | done  | 6/6
+GP-SANIERUNG       | MOD-04  | Sanierungsauftrag        | done  | 6/6
+GP-FINANZIERUNG    | MOD-07  | Finanzierungsanfrage     | done  | 6/6
+GP-SUCHMANDAT      | MOD-08  | Investment-Suchmandat    | done  | 6/6
+GP-SIMULATION      | MOD-08  | Investment-Simulation    | done  | 4/6
+GP-FM-FALL         | MOD-11  | Finanzierungsfall        | done  | 6/6
+GP-AKQUISE-MANDAT  | MOD-12  | Akquisemandat            | done  | 6/6
+GP-PROJEKT         | MOD-13  | Projektanlage            | done  | 6/6
+GP-SERIEN-EMAIL    | MOD-14  | Serien-E-Mail-Kampagne   | done  | 6/6
+GP-RECHERCHE       | MOD-14  | Rechercheauftrag         | done  | 6/6
+GP-FAHRZEUG        | MOD-17  | Fahrzeugverwaltung       | done  | 6/6
+GP-PV-ANLAGE       | MOD-19  | PV-Anlagenanlage         | done  | 6/6
+GP-KONTEN          | MOD-18  | Kontoverwaltung          | done  | 6/6
+GP-ZUHAUSE         | MOD-20  | Zuhause-Verwaltung       | done  | 6/6
+GP-PETS            | MOD-05  | Tierverwaltung           | 1     | 6/6
+GP-PET             | MOD-22  | Pet Manager Demo         | 1     | 3/6
+
+================================================================================
+8. GOLDEN PATHS — Engine-Workflows (8 Stück)
+================================================================================
+
+Quelle: src/manifests/goldenPaths/
+
+Technische Workflow-Definitionen mit Steps, Fail-States, Ledger-Events.
+Camunda-ready mit task_kind (service_task/user_task/wait_message).
+
+Key              | Workflow              | Steps | Zonen-Flow     | Fail-States
+MOD-04           | Immobilien-Zyklus     | 10    | Z2→Z1→Z2      | Ja
+MOD-07           | Finanzierung          | 5     | Z2→Z1→Z2      | Ja
+MOD-08           | Investment/Akquise    | 7     | Z2→Z1→Z2      | Ja
+MOD-13           | Projekte              | 5     | Z2→Z1         | Ja
+GP-VERMIETUNG    | Vermietungszyklus     | 5     | Z1→Z3         | Ja
+GP-LEAD          | Lead-Generierung      | 4     | Z3→Z1→Z2      | Ja
+GP-FINANCE-Z3    | Zone-3-Finanzierung   | 7     | Z3→Z1→Z2      | Ja
+GP-PET           | Pet Manager Lifecycle | 7     | Z3→Z1→Z2      | Ja
+
+Workflow-Dateien:
+- MOD_04.ts       → Immobilien-Zyklus (Anlage → Verwaltung → Verkauf/Vermietung)
+- MOD_07_11.ts    → Finanzierung (Selbstauskunft → Einreichung → Zuweisung)
+- MOD_08_12.ts    → Investment/Akquise (Suche → Mandat → Bearbeitung)
+- MOD_13.ts       → Projekte (Anlage → Einheiten → Vertrieb)
+- GP_VERMIETUNG.ts → Vermietung (Expose → Einladung → Datenraum)
+- GP_LEAD.ts      → Lead (Capture → Triage → Assignment)
+- GP_FINANCE_Z3.ts → Zone-3-Finanzierung (Website → Lead → Manager)
+- GP_PET.ts       → Pet Lifecycle (Website → Z1 → MOD-05/22)
+
+Ledger Event Whitelist: 70+ registrierte Events inkl. Fail-States
+(document.*, access_grant.*, finance.*, acq.*, project.*, renter.*,
+lead.*, pet.*, consent.*, applicant_profile.*, contact.*, profile.*)
+
+Governance-Regeln:
+- GP-GR-1: Jeder Workflow MUSS Fail-States für Cross-Zone-Steps definieren
+- GP-GR-2: Alle Events MÜSSEN in der LEDGER_EVENT_WHITELIST registriert sein
+- GP-GR-3: Demo-Widgets an Position 0 in jedem Portal-Prozess
+- GP-GR-4: Compliance 6/6 für Done-Status
+
+================================================================================
+9. ARMSTRONG — KI-Copilot-System
+================================================================================
+
+Quelle: src/manifests/armstrongManifest.ts (3629 Zeilen)
+
+Armstrong ist ein mandantenfähiger KI-Copilot mit zonenbezogenen
+Berechtigungen und 'Plan → Confirm → Execute'-Governance.
+
+9.1 ARCHITEKTUR
+─────────────────────────────────────────────────────────────────────────────
+
+Zone 2 (Portal): Voller Funktionsumfang — Chat, Actions, Web-Recherche, RAG
+Zone 3 (Websites): LITE — nur readonly Actions, FAQs, Lead-Weiterleitung
+Zone 1 (Admin): Keine Chat-Funktion, nur Governance-UI (Armstrong Console)
+
+9.2 GOVERNANCE-SCHEMA (Phase 6)
+─────────────────────────────────────────────────────────────────────────────
+
+K3 Enforcement:
+- execution_mode='execute' nur bei: risk_level='low' UND cost_model='free'
+  UND keine externen Schreibzugriffe
+- Widget-Writes gelten NICHT als schutzbedürftig
+
+K4 Enforcement:
+- execution_mode='draft_only' darf nicht in SSOT-Tabellen schreiben
+
+9.3 ACTION-KATALOG (TOP 30 MVP)
+─────────────────────────────────────────────────────────────────────────────
+
+Pack A — Core (6):
+  ARM.GLOBAL.EXPLAIN_TERM, FAQ, HOW_IT_WORKS, WEB_SEARCH,
+  SUMMARIZE_TEXT, DRAFT_MESSAGE
+
+Pack B — Dashboard (5):
+  ARM.MOD00.CREATE_TASK, CREATE_REMINDER, CREATE_NOTE,
+  CREATE_IDEA, CREATE_PROJECT
+
+Pack C — DMS (4):
+  ARM.MOD03.SEARCH_DOC, EXPLAIN_UPLOAD, LINK_DOC, EXTRACT_DOC
+
+Pack D — Immobilien (6):
+  ARM.MOD04.EXPLAIN_MODULE, VALIDATE_PROPERTY, CREATE_PROPERTY,
+  CREATE_UNIT, CALCULATE_KPI, DATA_QUALITY_CHECK
+
+Pack E — Finanzierung (4):
+  ARM.MOD07.EXPLAIN_SELBSTAUSKUNFT, DOC_CHECKLIST,
+  PREPARE_EXPORT, VALIDATE_READINESS
+
+Pack F — Investment (4):
+  ARM.MOD08.ANALYZE_FAVORITE, RUN_SIMULATION,
+  CREATE_MANDATE, WEB_RESEARCH
+
+Pack H — KB (1): ARM.KB.CREATE_RESEARCH_MEMO
+Pack I — Projekte (2): ARM.MOD13.CREATE_DEV_PROJECT, EXPLAIN_MODULE
+Pack K — Communication Pro (1+)
+
+Weitere Packs: MOD-01 (Stammdaten), MOD-15 (Training),
+MOD-20 (Miety/Home), MOD-22 (Pet Manager)
+
+9.4 VOICE-SYSTEM
+─────────────────────────────────────────────────────────────────────────────
+- ElevenLabs Scribe (Speech-to-Text)
+- ElevenLabs TTS (Text-to-Speech)
+- Browser-native Fallback
+- Coach Mode in MOD-08/09 (empathische Schritt-für-Schritt-Begleitung)
+
+9.5 CREDIT-VERBRAUCH
+─────────────────────────────────────────────────────────────────────────────
+- Free (0 Credits): FAQ, Explain
+- Standard (1-4 Credits): Recherche, Kalkulation
+- Premium (8-12 Credits): KI-Analyse, Web-Recherche
+Bewertung: 1 Credit = 0,25 EUR
+
+================================================================================
+10. EDGE FUNCTIONS (100+ Funktionen)
+================================================================================
+
+Pfad: supabase/functions/
+Runtime: Deno
+
+10.1 ARMSTRONG KI-FUNKTIONEN
+─────────────────────────────────────────────────────────────────────────────
+sot-armstrong-advisor        → Haupt-KI-Advisor (Chat, Actions)
+sot-armstrong-voice          → Voice-Integration (ElevenLabs)
+sot-armstrong-website        → Zone-3 Armstrong LITE
+
+10.2 AKQUISE (ACQ) — Automatisierte Immobilien-Akquise
+─────────────────────────────────────────────────────────────────────────────
+sot-acq-ai-research          → KI-gestützte Objektrecherche
+sot-acq-contact-enrich       → Kontakt-Anreicherung
+sot-acq-create-dataroom      → Datenraum-Erstellung
+sot-acq-generate-response    → Antwortgenerierung
+sot-acq-inbound-webhook      → E-Mail-Inbound (auto → acq_offers)
+sot-acq-offer-extract        → Angebots-Datenextraktion
+sot-acq-outbound             → Ausgehende E-Mails
+sot-acq-profile-extract      → Profil-Extraktion
+sot-acq-standalone-research  → Standalone-Recherche
+
+10.3 ADMIN & KOMMUNIKATION
+─────────────────────────────────────────────────────────────────────────────
+sot-admin-mail-send          → Admin-E-Mail-Versand
+sot-admin-sequence-runner    → E-Mail-Sequenz-Runner
+sot-mail-connect             → IMAP-Verbindung
+sot-mail-fetch-body          → Mail-Body abrufen
+sot-mail-send                → E-Mail-Versand (Portal)
+sot-mail-sync                → Mail-Synchronisation
+sot-system-mail-send         → System-E-Mails (Resend)
+sot-inbound-receive          → Inbound-E-Mail-Empfang
+sot-serien-email-send        → Serien-E-Mail-Versand
+sot-whatsapp-send            → WhatsApp-Nachricht senden
+sot-whatsapp-webhook         → WhatsApp-Webhook
+sot-whatsapp-media           → WhatsApp-Media
+
+10.4 DOKUMENT-INTELLIGENCE
+─────────────────────────────────────────────────────────────────────────────
+sot-document-parser          → PDF/Dokument-Parsing (1 Credit/PDF)
+sot-storage-extract          → Storage-Extraktion
+sot-nk-beleg-parse           → NK-Beleg-Parsing (Utility Bills)
+sot-embedding-pipeline       → RAG-Embedding (pgvector)
+sot-excel-ai-import          → Excel-Import mit KI
+
+10.5 FINANZIERUNG
+─────────────────────────────────────────────────────────────────────────────
+sot-finance-proxy            → Finanzierungsanfrage-Proxy
+sot-finance-manager-notify   → Manager-Benachrichtigung
+sot-finapi-sync              → FinAPI-Banksynchronisation (4 Credits)
+sot-vv-prefill-check         → VV-Vorausfüllungsprüfung
+finance-document-reminder    → Dokumenten-Erinnerung
+
+10.6 RESEARCH ENGINE
+─────────────────────────────────────────────────────────────────────────────
+sot-research-engine          → Zentraler Orchestrator
+sot-research-ai-assist       → KI-Unterstützung
+sot-research-import-contacts → Kontakt-Import
+sot-research-pro-contacts    → Pro-Kontakte
+sot-research-run-order       → Auftragsausführung
+sot-places-search            → Google Places Suche
+sot-extract-email            → E-Mail-Extraktion (Firecrawl)
+sot-apollo-search            → Apollo Kontaktsuche
+sot-apify-portal-job         → Apify Portal-Scraping
+sot-contact-enrichment       → Kontakt-Anreicherung
+sot-contacts-import          → Kontakt-Bulk-Import
+sot-contacts-sync            → Kontakt-Synchronisation
+
+10.7 IMMOBILIEN & PROJEKTE
+─────────────────────────────────────────────────────────────────────────────
+sot-property-crud            → Immobilien CRUD
+sot-expose-description       → Exposé-Beschreibung (KI)
+sot-listing-publish          → Listing-Veröffentlichung
+sot-sprengnetter-valuation   → Sprengnetter Immobilienbewertung
+sot-geomap-snapshot          → GeoMap-Snapshot
+sot-dossier-auto-research    → Auto-Recherche für Dossiers
+sot-investment-engine        → Investment-Engine (40-Jahres-Projektion)
+sot-project-intake           → Projekt-Intake
+sot-project-market-report    → Marktbericht (Gemini-Streaming)
+sot-public-project-intake    → Öffentlicher Projekt-Intake
+
+10.8 RENOVATION / SANIERUNG
+─────────────────────────────────────────────────────────────────────────────
+sot-renovation-scope-ai      → KI-Leistungsverzeichnis
+sot-renovation-inbound-webhook → Sanierung-Inbound
+sot-renovation-outbound      → Sanierung-Outbound
+
+10.9 VERMIETUNG (MSV)
+─────────────────────────────────────────────────────────────────────────────
+sot-msv-reminder-check       → Miet-Erinnerungen
+sot-msv-rent-report          → Mieteingangs-Report
+sot-rent-arrears-check       → Mietrückstands-Prüfung
+sot-renter-invite            → Mieter-Einladung
+
+10.10 WEBSITES & LANDING PAGES
+─────────────────────────────────────────────────────────────────────────────
+sot-website-ai-generate      → KI-Website-Generierung
+sot-website-lead-capture     → Lead-Erfassung
+sot-website-publish          → Website-Veröffentlichung
+sot-website-update-section   → Abschnitts-Update
+sot-generate-landing-page    → Landing-Page-Generierung
+check-landing-page-expiry    → Ablaufprüfung
+sot-futureroom-public-submit → FutureRoom Einreichung
+
+10.11 SOCIAL MEDIA (Selfie Ads)
+─────────────────────────────────────────────────────────────────────────────
+sot-social-analyze-performance → Performance-Analyse
+sot-social-draft-generate      → Entwurfs-Generierung
+sot-social-draft-rewrite       → Entwurfs-Überarbeitung
+sot-social-extract-patterns    → Muster-Extraktion
+sot-social-generate-briefing   → Briefing-Generierung
+sot-social-mandate-submit      → Kampagnen-Einreichung
+sot-social-meta-webhook        → Meta Webhook
+sot-social-payment-create      → Zahlung erstellen
+sot-social-payment-webhook     → Zahlungs-Webhook
+
+10.12 PHOTOVOLTAIK
+─────────────────────────────────────────────────────────────────────────────
+sot-solar-insights           → Solar-Insights
+pvgis-proxy                  → PVGIS-Proxy
+pv-connector-bridge          → PV-Connector Bridge
+
+10.13 PET MANAGEMENT
+─────────────────────────────────────────────────────────────────────────────
+sot-pet-profile-init         → Pet-Profil-Initialisierung
+
+10.14 VOICE & VIDEO
+─────────────────────────────────────────────────────────────────────────────
+elevenlabs-scribe-token      → ElevenLabs Scribe Token
+elevenlabs-tts               → Text-to-Speech
+sot-videocall-create         → Videocall erstellen
+sot-videocall-end            → Videocall beenden
+sot-videocall-invite-send    → Videocall-Einladung senden
+sot-videocall-invite-validate → Einladung validieren
+sot-meeting-send             → Meeting senden
+sot-meeting-summarize        → Meeting zusammenfassen
+
+10.15 DMS & STORAGE
+─────────────────────────────────────────────────────────────────────────────
+sot-dms-download-url         → Download-URL (Signed URL)
+sot-cloud-sync               → Cloud-Synchronisation
+sot-tenant-storage-reset     → Tenant-Storage zurücksetzen
+
+10.16 EXPORT & DOKUMENTATION
+─────────────────────────────────────────────────────────────────────────────
+sot-docs-export              → Dokumenten-Export
+sot-docs-export-appendix     → Anhang-Export
+sot-docs-export-engineering  → Engineering-Export
+sot-docs-export-modules      → Modul-Export
+sot-docs-export-rfp          → RFP-Export
+sot-docs-export-specs        → Spec-Export
+sot-letter-generate          → Brief-Generierung
+
+10.17 SONSTIGE
+─────────────────────────────────────────────────────────────────────────────
+sot-credit-preflight         → Credit-Prüfung (vor jeder kostenpflichtigen Operation)
+sot-lead-inbox               → Lead-Inbox
+sot-ledger-retention         → Ledger-Aufbewahrung
+sot-market-pulse-report      → Marktpuls-Report
+sot-auth-change-email        → E-Mail-Änderung
+sot-calendar-sync            → Kalender-Synchronisation
+sot-cleanup-orphan-accounts  → Verwaiste Konten bereinigen
+sot-create-test-user         → Test-Benutzer erstellen
+sot-google-maps-key          → Google Maps API Key
+sot-nasa-apod                → NASA Astronomie-Bild des Tages
+sot-news-proxy               → Nachrichten-Proxy
+sot-z3-auth                  → Zone-3-Authentifizierung
+sot-zenquotes-proxy          → Zitate-Proxy
+sot-extract-offer            → Angebots-Extraktion
+
+================================================================================
+11. MANIFESTE — Single Sources of Truth
+================================================================================
+
+Pfad: src/manifests/
+
+11.1 routesManifest.ts (707 Zeilen)
+─────────────────────────────────────────────────────────────────────────────
+SSOT für ALLE Routen. Definiert Zone 1, Zone 2 (23 Module), Zone 3 (5 Websites),
+Legacy-Redirects und Special Routes. ManifestRouter.tsx rendert daraus.
+
+11.2 armstrongManifest.ts (3629 Zeilen)
+─────────────────────────────────────────────────────────────────────────────
+SSOT für ALLE Armstrong-Actions. Definiert Berechtigungen, Zonen,
+Execution-Modes, Cost-Models, Side-Effects, Versioning.
+
+11.3 goldenPathProcesses.ts (759 Zeilen)
+─────────────────────────────────────────────────────────────────────────────
+SSOT für 17 Portal-Prozesse mit Demo-Widgets und Compliance-Tracking.
+
+11.4 goldenPaths/index.ts + 8 Workflow-Dateien
+─────────────────────────────────────────────────────────────────────────────
+SSOT für 8 Engine-Workflows + Ledger Event Whitelist (70+ Events).
+
+11.5 areaConfig.ts
+─────────────────────────────────────────────────────────────────────────────
+Bereichs-Konfiguration für Portal-Navigation.
+
+11.6 bwaKontenplan.ts
+─────────────────────────────────────────────────────────────────────────────
+BWA-Kontenplan (Betriebswirtschaftliche Auswertung).
+
+11.7 demoDataManifest.ts
+─────────────────────────────────────────────────────────────────────────────
+Demo-Daten-Konfiguration und Golden Path Toggle-Manifest.
+
+11.8 operativeDeskManifest.ts
+─────────────────────────────────────────────────────────────────────────────
+Operative Desk Definitionen (Zone 1).
+
+11.9 operativeDeskDesignManifest.ts
+─────────────────────────────────────────────────────────────────────────────
+Design-Tokens für Operative Desks.
+
+11.10 websiteProfileManifest.ts
+─────────────────────────────────────────────────────────────────────────────
+Website-Profil-Konfigurationen.
+
+================================================================================
+12. DATENMODELL — Kernobjekte & Tabellen
+================================================================================
+
+12.1 KERNOBJEKTE (zonenübergreifend)
+─────────────────────────────────────────────────────────────────────────────
+Organization   — Mandant/Tenant (client, partner, subpartner)
+User/Profile   — Benutzer und Profil
+Property       — Immobilie (mit Units, Leases, Transactions)
+Lead           — Lead (Source: Website, Kampagne, Manuell)
+Document       — Dokument (DMS, Storage)
+
+12.2 WICHTIGE TABELLEN (Auszug)
+─────────────────────────────────────────────────────────────────────────────
+
+Mandantenverwaltung:
+- organizations, profiles, org_memberships, org_delegations
+
+Immobilien:
+- properties, units, leases, property_transactions
+- v_public_listings (View für Marktplatz)
+
+Finanzierung:
+- finance_requests, applicant_profiles, applicant_liabilities,
+  applicant_property_assets
+
+Akquise:
+- acq_mandates, acq_offers, acq_offer_documents, acq_offer_activities,
+  acq_outbound_messages, acq_inbound_messages, acq_analysis_runs,
+  acq_email_templates, acq_mandate_events, contact_staging
+
+Armstrong:
+- armstrong_action_runs, armstrong_action_overrides,
+  armstrong_billing_events
+
+Projekte:
+- dev_projects (Bauprojekte), project_units
+
+Leads & Marketing:
+- leads, ad_campaigns, ad_campaign_leads
+
+Admin CRM:
+- contacts, admin_contact_tags, admin_email_threads,
+  admin_outbound_emails, admin_inbound_emails,
+  admin_email_sequences, admin_email_sequence_steps,
+  admin_email_enrollments, admin_email_templates,
+  admin_research_jobs, admin_saved_segments
+
+Finanzen:
+- analytics_budget_settings, analytics_category_overrides,
+  analytics_notes
+
+Zugriffskontrolle:
+- access_grants, agreement_templates, tile_catalog
+
+DMS:
+- storage_nodes (virtuelle Ordnerstruktur)
+
+12.3 ROLLEN-SYSTEM (6 Rollen)
+─────────────────────────────────────────────────────────────────────────────
+platform_admin   → Globaler Admin (God Mode via is_platform_admin())
+super_user       → Erweiterte Berechtigungen
+client_user      → Standard-Benutzer
+akquise_manager  → MOD-12 Zugang
+finance_manager  → MOD-11 Zugang
+sales_partner    → MOD-09/10 Zugang
+org_admin        → Automatisch für Tenant-Owner
+
+Modul-Aktivierung: get_tiles_for_role(membership_role) + tile_catalog
+
+================================================================================
+13. HOOKS — Custom React Hooks
+================================================================================
+
+Pfad: src/hooks/ (110+ Hooks)
+
+Kategorien:
+
+AKQUISE:
+useAcqContacts, useAcqMandate, useAcqOffers, useAcqOutbound, useAcqTools
+
+ARMSTRONG:
+useArmstrongActions, useArmstrongAdvisor, useArmstrongCoach,
+useArmstrongContext, useArmstrongDashboard, useArmstrongKnowledge,
+useArmstrongLogs, useArmstrongPolicies, useArmstrongVoice,
+useArmstrongVoiceBrowser
+
+FINANZIERUNG:
+useFinanceData, useFinanceMandate, useFinanceRequest,
+useFinanceSubmission, useFinanzanalyseData, useFinanzberichtData,
+useFinanzmanagerData, useConsumerLoan, useSubmitFinanceRequest
+
+IMMOBILIEN:
+useDossierForm, useDossierMutations, useDossierAutoResearch,
+useExposeUpload, usePortfolioSummary, useUnitDossier
+
+INVESTMENT:
+useInvestmentEngine, useInvestmentFavorites
+
+DMS:
+useDocumentAudit, useDocumentMeta, usePersonDMS, useProjectDMS,
+useRecordCardDMS, usePvDMS, useUniversalUpload
+
+PORTAL:
+useModuleTiles, useOrgContext, usePortalLayout, useTaskWidgets,
+useCompletedTaskWidgets, useWidgetOrder, useWidgetPreferences
+
+GOLDEN PATH:
+useGoldenPathSeeds, useDemoToggles
+
+ADMIN:
+useAdminEmailThreads, useAdminFortbildung, useAdminResearch,
+useAdminSequences, useSoatSearchEngine
+
+RESEARCH:
+useResearchAI, useResearchEngine, useResearchImport,
+useResearchOrders, useResearchResults
+
+PETS:
+usePets, usePetBookings, usePetCapacity, usePetCaring,
+usePetCustomers, usePetHealth, usePetProviderSearch,
+usePetRooms, usePetShopProducts, usePetStaff, usePublicPetProvider
+
+PHOTOVOLTAIK:
+usePvConnectors, usePvMonitoring, usePvPlants
+
+SONSTIGE:
+useActionHandoff, useDataEventLedger, useDemoAcquisition,
+useDemoDepot, useDemoFinanceCase, useDemoListings,
+useDemoLocalEntity, useDevProjects, useDeveloperContexts,
+useGeolocation, useHostingContract, useLandingPage,
+useMailCampaigns, useMeetingRecorder, useMSVPremium,
+useNKAbrechnung, useNewsData, useOrphanChecker,
+usePartnerListingSelections, usePhoneAssistant,
+useProjectReservations, useProjectUnits, useQuote,
+useRadio, useSalesDeskListings, useSections,
+useServiceCaseInbound, useServiceCases, useSotScrollAnimation,
+useSotTheme, useSpaceAPOD, useSwipeBack, useTenantReset,
+useTodayEvents, useUserMailAccount, useVVSteuerData,
+useVersionHistory, useVerwaltungData, useViewTracking,
+useWeather, useWebsites, useZ3Auth
+
+================================================================================
+14. KOMPONENTEN — Verzeichnisstruktur
+================================================================================
+
+Pfad: src/components/ (30+ Unterverzeichnisse)
+
+admin/              → Zone-1-Admin-Komponenten
+akquise/            → Akquise-Manager-Komponenten
+armstrong/          → Armstrong-Chat, Actions, Voice
+auth/               → Authentifizierung
+chat/               → Chat-Komponenten
+communication-pro/  → Serien-E-Mail, Recherche, Social
+dashboard/          → Portal-Dashboard-Widgets
+dms/                → Document Management (Miller-Column, Preview)
+finanzanalyse/      → Finanzanalyse-Komponenten
+finanzierung/       → Finanzierung (Selbstauskunft, Anfrage)
+finanzierungsmanager/ → FM-Cockpit
+immobilien/         → Immobilien-Komponenten
+immobilienakte/     → Immobilienakte (Dossier-Tabs)
+investment/         → Investment-Engine, MasterGraph
+layout/             → Layout-Shells (Portal, Admin)
+legal/              → Rechtliche Seiten
+msv/                → Mietverwaltung
+pdf/                → PDF-Export
+photovoltaik/       → PV-Komponenten
+portal/             → Portal-UI (WidgetGrid, ModulePageHeader)
+portfolio/          → Portfolio-Übersicht
+presentation/       → Präsentations-Modus
+privatkredit/       → Privatkredit-Rechner
+projekte/           → Projekt-Komponenten
+sanierung/          → Sanierungs-Komponenten
+shared/             → Geteilte Komponenten
+ui/                 → shadcn/ui Basiskomponenten
+verkauf/            → Verkaufs-Komponenten
+vertriebspartner/   → Partner-Komponenten
+vv/                 → Vermietung & Verpachtung
+zone3/              → Zone-3-Website-Komponenten
+
+================================================================================
+15. SERVICES & INTEGRATIONEN
+================================================================================
+
+Pfad: src/services/
+
+15.1 EUROPACE
+─────────────────────────────────────────────────────────────────────────────
+Europace-API-Integration für Bankeinreichungen (BiPRO).
+
+15.2 FORTBILDUNG
+─────────────────────────────────────────────────────────────────────────────
+Fortbildungs-Service.
+
+15.3 EXTERNE PARTNER-INTEGRATIONEN (16+ Verträge)
+─────────────────────────────────────────────────────────────────────────────
+
+Partner                | Typ                  | Integration
+Neo Digital            | Vermittlervertrag    | API/REST
+Upvest                 | Investment           | API
+Europace               | BiPRO                | API/REST
+Zurich                 | Versicherung         | §34d GewO
+Amazon PartnerNet      | Affiliate            | AWIN ID
+Vodafone               | Affiliate            | ADCELL
+Miete24                | Affiliate            | ADCELL
+Fressnapf              | Affiliate            | AWIN
+Enpal                  | Fixed Leads          | API
+Rabot Energy           | Strom/Gas            | Affiliate
+FairGarage             | KFZ-Service          | Affiliate
+Udemy                  | E-Learning           | 12% Provision
+Eventbrite             | Events               | Affiliate
+Immobilienscout24      | Listings             | API
+Meta (Facebook)        | Managed Ads          | API
+Stripe                 | Payments             | API
+
+================================================================================
+16. MULTI-TENANCY & SICHERHEIT
+================================================================================
+
+16.1 TENANT-ISOLATION
+─────────────────────────────────────────────────────────────────────────────
+- Jeder User gehört zu einem Tenant (org_type='client')
+- Automatisiertes Onboarding: SQL-Trigger erstellt Tenant + Profil + 14 Module
+- tenant_id-Invariante auf allen Business-Tabellen
+- RLS-Policies nutzen get_user_tenant_id() für Sichtbarkeit
+
+16.2 DOUBLE SAFETY BELT
+─────────────────────────────────────────────────────────────────────────────
+39 zusätzliche RESTRICTIVE Policies (tenant_isolation_restrictive):
+- Verhindern Datenlecks selbst bei zu breiten PERMISSIVE Policies
+- Verification über 3 Tenant-Typen (Platform Admin, Client, Beta-Tester)
+
+16.3 ZUGRIFFSKONTROLLE
+─────────────────────────────────────────────────────────────────────────────
+- tile_catalog + get_tiles_for_role() = SSOT für Modul-Aktivierung
+- Partner-Zugriff nur über explizite org_delegations
+- Zone-3-Auth (sot-z3-auth) für öffentliche authentifizierte Bereiche
+
+================================================================================
+17. CREDIT-SYSTEM & BILLING
+================================================================================
+
+Bewertung: 1 Credit = 0,25 EUR (25 Cent)
+
+17.1 ARMSTRONG-ACTIONS
+─────────────────────────────────────────────────────────────────────────────
+Free (0 Cr)     → FAQ, Explain, How-It-Works
+Standard (1-4 Cr) → Recherche, Kalkulation, Draft
+Premium (8-12 Cr) → KI-Analyse, Web-Recherche
+
+17.2 INFRASTRUKTUR-SERVICES
+─────────────────────────────────────────────────────────────────────────────
+1 Credit/PDF    → Inbound-PDF-Extraktion
+4 Credits       → Physische Post (Caya)
+4 Credits/Konto → Banksynchronisation (FinAPI)
+2 Credits/Match → Auto-Matching (Dokument → Vertrag)
+
+17.3 STORAGE-ABONNEMENTS
+─────────────────────────────────────────────────────────────────────────────
+Free: 1 GB
+Pro: 10 GB / 9,90 EUR/Monat
+
+17.4 PREFLIGHT-CHECK
+─────────────────────────────────────────────────────────────────────────────
+sot-credit-preflight: Prüft Credit-Guthaben VOR jeder kostenpflichtigen
+Operation. rpc_armstrong_log_action_run erzwingt 25-Cent-Regel.
+
+================================================================================
+18. DESIGN-SYSTEM
+================================================================================
+
+18.1 TECHNOLOGIE
+─────────────────────────────────────────────────────────────────────────────
+- Tailwind CSS mit semantischen Tokens (index.css)
+- shadcn/ui Basis-Komponenten
+- HSL-Farbsystem (Light + Dark Mode)
+- framer-motion für Animationen (nicht installiert, CSS-basiert)
+
+18.2 MODUL-GLOW-FARBEN (designManifest.ts)
+─────────────────────────────────────────────────────────────────────────────
+Amber     → Projects, Portfolio
+Blue      → Finance, FM
+Cyan      → AkquiseManager
+Violet    → CommunicationPro
+Orange    → Sanierung, Privatkredit
+Teal      → Services, Cars
+Rose      → Leads
+
+18.3 LAYOUT-STANDARDS
+─────────────────────────────────────────────────────────────────────────────
+- ModulePageHeader (Seitentitel + Beschreibung)
+- WidgetGrid (max 4 Spalten)
+- WidgetCell (Standard-Dimensionen)
+- OperativeDeskShell (Zone 1 Desks)
+- ManagerVisitenkarte (Manager-Module)
+- ZoneFlowIndicator (Teal-Z3, Blue-Z1, Amber-Z2)
+
+================================================================================
+19. SPEC-DOKUMENTATION
+================================================================================
+
+Pfad: spec/current/
+
+Verzeichnisstruktur:
+00_frozen/               → Eingefrorene Spezifikationen
+00_ops/                  → Operative Dokumente (diese Datei)
+01_platform/             → Plattform-Spezifikationen
+02_modules/              → Modul-Spezifikationen
+02_zones.md              → Zonen-Dokumentation
+03_actions/              → Armstrong-Action-Spezifikationen
+04_workflows/            → Workflow-Definitionen
+05_billing/              → Billing-Spezifikationen
+05_diagrams/             → Architektur-Diagramme
+06_api_contracts/        → API-Verträge (Camunda-ready)
+06_engines/              → Engine-Registry
+  ENGINE_REGISTRY.md     → SSOT für alle 15+ Engines
+  DATA_ENGINE_BACKLOG.md → DocInt Details
+07_golden_paths/         → Golden Path Registry
+  GOLDEN_PATH_REGISTRY.md → SSOT für alle Golden Paths
+07_storage_boundary/     → Storage-Grenzen
+08_data_provenance/      → Datenherkunft
+
+Weitere Docs:
+docs/architecture/       → Architektur-Diagramme (Mermaid)
+docs/armstrong/          → Armstrong-Dokumentation
+docs/audit/              → Audit-Dokumentation
+docs/design/             → Design-System
+docs/golden-paths/       → Golden Path Details
+docs/modules/            → Modul-Dokumentation
+docs/presentation/       → Präsentationsmaterialien
+docs/prompts/            → KI-Prompt-Templates
+docs/secrets/            → Secret-Dokumentation
+docs/zone3/              → Zone-3-Dokumentation
+
+================================================================================
+TYPES — TypeScript-Typdefinitionen
+================================================================================
+
+Pfad: src/types/
+
+acquisition.ts           → Akquise-Typen (Mandate, Offers, Contacts)
+armstrong.ts             → Armstrong-Typen (Actions, Zones, Execution)
+document-schemas.ts      → Dokument-Schemas
+finance.ts               → Finanzierungs-Typen
+immobilienakte.ts        → Immobilienakte-Typen
+projekte.ts              → Projekt-Typen
+widget.ts                → Widget-Typen
+
+================================================================================
+ROUTER-ARCHITEKTUR
+================================================================================
+
+Pfad: src/router/
+
+ManifestRouter.tsx       → Zentraler Router, liest aus routesManifest.ts
+                           Lazy-Loading aller Komponenten
+                           Golden Path Guards
+                           Legacy-Route-Redirects
+
+================================================================================
+KNOWLEDGE BASE
+================================================================================
+
+Pfad: src/data/kb-seeds/v1/
+
+KB-Seeds für Armstrong Knowledge Base:
+- KB.SYSTEM.002.md → Zonen-Architektur
+
+================================================================================
+ZUSAMMENFASSUNG
+================================================================================
+
+System of a Town ist eine mandantenfähige SaaS-Plattform mit:
+
+- 3 Zonen (Admin, Portal, Websites)
+- 23 Portal-Module (MOD-00 bis MOD-22)
+- 5 Marken-Websites (Kaufy, FutureRoom, SoT, Acquiary, Lennox)
+- 7 Operative Desks (FutureRoom, Acquiary, Sales, Lead, Projekt, Pet, Finance)
+- 10 Business-Engines (Kalkulation, Finanzierung, Provision, BWA, etc.)
+- 17 Golden Path Portal-Prozesse
+- 8 Golden Path Engine-Workflows (Camunda-ready)
+- 100+ Edge Functions (Deno)
+- 110+ Custom Hooks
+- 30+ Komponenten-Verzeichnisse
+- Armstrong KI-Copilot mit 30+ MVP-Actions
+- Credit-System (1 Cr = 0,25 EUR)
+- 16+ Partner-Integrationen
+- Multi-Tenancy mit Double Safety Belt (39 RESTRICTIVE Policies)
+- 6 Rollen (platform_admin bis sales_partner)
+
+================================================================================
+ENDE DER DOKUMENTATION
+================================================================================
