@@ -109,6 +109,14 @@ function PortalLayoutInner() {
   }
 
   if (!activeOrganization && !isDevelopmentMode) {
+    // If user is authenticated but org hasn't loaded yet, show loader (not error)
+    if (user) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-background">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      );
+    }
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center p-8">
