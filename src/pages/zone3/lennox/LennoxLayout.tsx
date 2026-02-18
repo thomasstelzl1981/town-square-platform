@@ -37,7 +37,7 @@ export default function LennoxLayout() {
       <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b" style={{ borderColor: C.sandLight }}>
         <div className="max-w-6xl mx-auto flex items-center justify-between h-16 px-5">
           <Link to="/website/tierservice" className="flex items-center gap-2.5">
-            <img src={lennoxPatch} alt="Lennox & Friends" className="h-9 w-9 rounded-lg object-cover shadow-sm" />
+            <img src={lennoxPatch} alt="Lennox & Friends" className="h-9 w-auto rounded-md object-cover shadow-sm" />
             <span className="text-lg font-bold tracking-tight" style={{ color: C.bark }}>
               Lennox & Friends
             </span>
@@ -104,7 +104,7 @@ export default function LennoxLayout() {
         <div className="max-w-6xl mx-auto px-5 py-10">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2.5">
-              <img src={lennoxPatch} alt="" className="h-7 w-7 rounded-lg object-cover" />
+              <img src={lennoxPatch} alt="" className="h-7 w-auto rounded-md object-cover" />
               <span className="font-bold tracking-tight" style={{ color: C.bark }}>Lennox & Friends</span>
             </div>
             <div className="flex items-center gap-4 text-xs" style={{ color: C.barkMuted }}>
