@@ -1,88 +1,110 @@
 
 
-# Engine-Dokumentation: Konsolidierte Registry + Zone-1-Uebersicht
+# Golden Path Registry + Zone-1-Dokumentation
 
 ## Ausgangslage
 
-Die Engine-Dokumentation ist aktuell fragmentiert:
-- **UI-only**: `ArmstrongEngines.tsx` enthaelt ein hardcoded `ENGINE_REGISTRY` Array (15 Engines)
-- **Einzel-Backlog**: `spec/current/06_engines/DATA_ENGINE_BACKLOG.md` (nur DocInt)
-- **Code-Specs**: `src/engines/*/spec.ts` (10 Calculation Engines)
-- **Keine konsolidierte Datei** fuer Governance, Audit oder menschliche Referenz
+Es gibt aktuell **zwei getrennte Golden-Path-Systeme** ohne konsolidierte Dokumentation:
 
-## Massnahmen
+1. **UI-Prozesse** (`goldenPathProcesses.ts`): 17 Prozesse fuer das Portal-UX (Demo-Widgets, Compliance, Inline-Flow)
+2. **Workflow-Definitionen** (`goldenPaths/index.ts`): 8 Engine-registrierte Workflows mit Steps, Fail-States, Ledger-Events
 
-### 1. Konsolidierte ENGINE_REGISTRY.md erstellen
+Es fehlt:
+- Eine konsolidierte Spec-Datei (analog `ENGINE_REGISTRY.md`)
+- Eine Zone-1-Seite zur Visualisierung aller Golden Paths (analog `/admin/armstrong/engines`)
 
-Neue Datei: `spec/current/06_engines/ENGINE_REGISTRY.md`
+---
 
-Inhalt:
-- Alle 15 registrierten Engines in einer Uebersichtstabelle
-- Pro Engine: Code, Name, Kategorie, Modul-Zuordnung, Status, Billing, Dateipfade
-- 4 Kategorien: Kalkulation (9), Daten (2), KI (2), Infrastruktur (2)
-- Governance-Regeln (pure functions, Tenant-Scope, Credit-Preflight)
-- Changelog fuer Versionierung
+## Was wird erstellt
 
-Engines die dokumentiert werden:
+### 1. Spec-Datei: `spec/current/07_golden_paths/GOLDEN_PATH_REGISTRY.md`
 
-**Kalkulation (9 Engines, alle Live, alle Free/Client-side):**
+Konsolidierte SSOT-Dokumentation aller Golden Paths mit:
 
-| Code | Name | Modul | Beschreibung |
-|------|------|-------|-------------|
-| ENG-AKQUISE | Akquise-Kalkulation | MOD-04/12 | Bestand (Hold) 30-Jahres-Projektion, Aufteiler (Flip) Gewinnermittlung |
-| ENG-FINANCE | Finanzierungs-Engine | MOD-07/11 | Haushaltsueberschuss, Annuitaet, Bonitaetspruefung (LTV/DSCR) |
-| ENG-PROVISION | Provisions-Engine | MOD-09 | Kaeuer/Verkaeufer-Split, Partner-Anteile, Tippgeber |
-| ENG-BWA | Bewirtschaftungs-Engine | MOD-04 | BWA/NOI, Peters'sche Formel, Leerstandsanalyse |
-| ENG-PROJEKT | Projekt-Kalkulation | MOD-13 | Bautraeger-Margen, Einheitspreise, Vertriebsstatus |
-| ENG-NK | NK-Abrechnungs-Engine | MOD-04 | BetrKV-konforme Nebenkostenabrechnung, 18 Kostenarten |
-| ENG-FINUEB | Finanzuebersicht-Engine | MOD-18 | Portfolio-Aggregation, 40-Jahres-Projektion, Vermoegensanalyse |
-| ENG-VORSORGE | Vorsorgeluecke-Rechner | MOD-08 | Rentenluecke, BU-Luecke, DRV/Beamte/Selbststaendige |
-| ENG-VVSTEUER | V+V Steuer-Engine | MOD-04 | Anlage V, AfA-Berechnung, Werbungskosten, Ueberschussermittlung |
+**Menschenlesbare Uebersicht (oben)**
+- Tabelle mit: Name, Modul, Was passiert?, Wo im Portal?, Zonen-Fluss
+- Beispiel: "Finanzierungsanfrage | MOD-07 | Kunde reicht Finanzierung ein | Portal > Finanzierung | Z2 -> Z1 -> Z2"
 
-**Daten (2 Engines):**
+**Technische Registry (unten)**
 
-| Code | Name | Status | Billing |
-|------|------|--------|---------|
-| ENG-DOCINT | Document Intelligence | Teilweise | 1 Credit/PDF |
-| ENG-RESEARCH | Research Engine (SOAT) | Teilweise | 2-4 Credits/Run |
+Zwei Abschnitte:
 
-**KI (2 Engines):**
+A) **17 Portal-Prozesse** (aus `goldenPathProcesses.ts`):
 
-| Code | Name | Status | Billing |
-|------|------|--------|---------|
-| ENG-ARMSTRONG | Armstrong KI-Copilot | Live | 0-12 Credits/Action |
-| ENG-FILEINTEL | File Intelligence | Teilweise | 1 Credit/Research |
+| ID | Modul | Prozess | Phase | Compliance |
+|----|-------|---------|-------|------------|
+| GP-PORTFOLIO | MOD-04 | Immobilien-Portfolio | done | 6/6 |
+| GP-VERWALTUNG | MOD-04 | BWA / Controlling | done | 6/6 |
+| GP-SANIERUNG | MOD-04 | Sanierungsauftrag | done | 6/6 |
+| GP-FINANZIERUNG | MOD-07 | Finanzierungsanfrage | done | 6/6 |
+| GP-SUCHMANDAT | MOD-08 | Investment-Suchmandat | done | 6/6 |
+| GP-SIMULATION | MOD-08 | Investment-Simulation | done | 4/6 |
+| GP-FM-FALL | MOD-11 | Finanzierungsfall | done | 6/6 |
+| GP-AKQUISE-MANDAT | MOD-12 | Akquisemandat | done | 6/6 |
+| GP-PROJEKT | MOD-13 | Projektanlage | done | 6/6 |
+| GP-SERIEN-EMAIL | MOD-14 | Serien-E-Mail-Kampagne | done | 6/6 |
+| GP-RECHERCHE | MOD-14 | Rechercheauftrag | done | 6/6 |
+| GP-FAHRZEUG | MOD-17 | Fahrzeugverwaltung | done | 6/6 |
+| GP-KONTEN | MOD-18 | Kontoverwaltung | done | 6/6 |
+| GP-PV-ANLAGE | MOD-19 | PV-Anlagenanlage | done | 6/6 |
+| GP-ZUHAUSE | MOD-20 | Zuhause-Verwaltung | done | 6/6 |
+| GP-PETS | MOD-05 | Tierverwaltung | Phase 1 | 6/6 |
+| GP-PET | MOD-22 | Pet Manager Demo | Phase 1 | 3/6 |
 
-**Infrastruktur (2 Engines):**
+B) **8 Engine-Workflows** (aus `goldenPaths/*.ts`):
 
-| Code | Name | Status | Billing |
-|------|------|--------|---------|
-| ENG-DEMO | Demo-Daten Engine | Live | Free |
-| ENG-GOLDEN | Golden Path Engine | Teilweise | Free |
+| Key | Workflow | Schritte | Zonen | Fail-States | Camunda-ready |
+|-----|----------|----------|-------|-------------|---------------|
+| MOD-04 | Immobilien-Zyklus | 10 | Z2->Z1->Z2 | Ja | Ja |
+| MOD-07 | Finanzierung | 5 | Z2->Z1->Z2 | Ja | Ja |
+| MOD-08 | Investment/Akquise | 7 | Z2->Z1->Z2 | Ja | Ja |
+| MOD-13 | Projekte | 5 | Z2->Z1 | Ja | Ja |
+| GP-VERMIETUNG | Vermietungszyklus | 5 | Z1->Z3 | Ja | Ja |
+| GP-LEAD | Lead-Generierung | 4 | Z3->Z1->Z2 | Ja | Ja |
+| GP-FINANCE-Z3 | Zone-3-Finanzierung | 7 | Z3->Z1->Z2 | Ja | Ja |
+| GP-PET | Pet Manager Lifecycle | 7 | Z3->Z1->Z2 | Ja | Ja |
 
-### 2. ArmstrongEngines.tsx aktualisieren
+**Governance-Regeln**
+- GP-GR-1: Jeder Workflow MUSS Fail-States fuer Cross-Zone-Steps definieren
+- GP-GR-2: Alle Events MUESSEN in der LEDGER_EVENT_WHITELIST registriert sein
+- GP-GR-3: Demo-Widgets an Position 0 in jedem Portal-Prozess
+- GP-GR-4: Compliance 6/6 fuer Done-Status
 
-Die UI-Komponente wird so angepasst, dass sie die `ENG-VVSTEUER` Engine korrekt anzeigt (ist bereits enthalten) und ein Hinweis auf die Spec-Datei als SSOT verweist.
+### 2. Zone-1-Seite: `ArmstrongGoldenPaths.tsx`
 
-### 3. Menschenlesbare Kurzreferenz in Zone 1
+Neue Admin-Seite unter `/admin/armstrong/golden-paths` (analog zu `/admin/armstrong/engines`):
 
-Zusaetzlich zur technischen Registry wird in der `ENGINE_REGISTRY.md` ein Abschnitt "Fuer Menschen" eingefuegt:
-- Was macht jede Engine in einem Satz?
-- Wo finde ich die Engine im Portal? (Modul-Zuordnung)
-- Was kostet die Nutzung? (Free vs. Credits)
-- Was ist der aktuelle Stand? (Live/Teilweise/Geplant)
+**Aufbau:**
+- Seitentitel: "Golden Path Registry"
+- Beschreibung: "Alle registrierten Geschaeftsprozesse und Workflow-Definitionen"
+- Filter-Tabs: Alle | Portal-Prozesse (17) | Engine-Workflows (8)
+- Pro Eintrag eine Karte mit:
+  - Name, Modul-Badge, Status-Badge (Done/Phase 1/Teilweise)
+  - Beschreibung
+  - Compliance-Score (z.B. "6/6")
+  - Zonen-Flow (farbige Badges: Z1/Z2/Z3)
+  - Route-Link zum Prozess
+
+**Datenquelle:** Liest direkt aus `goldenPathProcesses.ts` (Portal) und `goldenPaths/index.ts` (Engine) — kein Duplizieren von Daten.
+
+### 3. Navigation
+
+Neuen Menuepunkt "Golden Paths" unter Armstrong im Admin-Menue einfuegen (neben "Engines", "Logs", etc.).
 
 ---
 
 ## Technische Details
 
-### Dateien die erstellt werden
-- `spec/current/06_engines/ENGINE_REGISTRY.md` — Konsolidierte SSOT-Dokumentation
+### Neue Dateien
+- `spec/current/07_golden_paths/GOLDEN_PATH_REGISTRY.md` — SSOT-Dokumentation
+- `src/pages/admin/armstrong/ArmstrongGoldenPaths.tsx` — Zone-1-UI-Seite
 
-### Dateien die aktualisiert werden
-- Keine Code-Aenderungen noetig — die UI liest bereits aus dem hardcoded Array
+### Geaenderte Dateien
+- Armstrong-Navigation/Routing: Neuen Menuepunkt + Route hinzufuegen
+- Keine Aenderungen an den bestehenden Manifest-Dateien
 
 ### Umfang
-- 1 neue Markdown-Datei (~200 Zeilen)
-- Abgleich mit allen 10 `spec.ts` Dateien und der UI-Registry
+- 1 Markdown-Datei (~250 Zeilen)
+- 1 React-Komponente (~200 Zeilen, Muster von `ArmstrongEngines.tsx`)
+- 1 Navigations-Update
 
