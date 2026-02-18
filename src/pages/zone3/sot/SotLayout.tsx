@@ -128,7 +128,9 @@ export default function SotLayout() {
 
         {/* Main Content */}
         <main className="flex-1">
-          <Outlet />
+          <div className="max-w-7xl mx-auto">
+            <Outlet />
+          </div>
         </main>
 
         {/* Footer */}
