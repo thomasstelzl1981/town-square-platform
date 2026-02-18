@@ -128,12 +128,12 @@ export default function LennoxShop() {
   return (
     <div className="space-y-10">
       {/* ═══ HERO ═══ */}
-      <section className="relative overflow-hidden" style={{ minHeight: '45vh' }}>
+      <section className="relative overflow-hidden" style={{ minHeight: '85vh' }}>
         <div className="absolute inset-0">
           <img src="/shop/lennox-shop-hero.jpg" alt="" className="w-full h-full object-cover object-center" />
           <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/20 to-black/50" />
         </div>
-        <div className="relative z-10 flex flex-col items-center justify-center text-center px-5" style={{ minHeight: '45vh' }}>
+        <div className="relative z-10 flex flex-col items-center justify-center text-center px-5" style={{ minHeight: '85vh' }}>
           <h1 className="text-3xl md:text-5xl font-bold text-white mb-2">Lennox Shop</h1>
           <p className="text-white/80 text-base max-w-md">Alles für deinen Vierbeiner — kuratiert von Lennox & Friends.</p>
         </div>
