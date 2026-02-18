@@ -18,6 +18,7 @@ const navItems = [
   { label: 'REAL ESTATE', href: '/website/sot/real-estate' },
   { label: 'FINANCE', href: '/website/sot/finance' },
   { label: 'ENERGY', href: '/website/sot/energy' },
+  { label: 'ARMSTRONG', href: '/website/sot/armstrong' },
   { label: 'CAREER', href: '/website/sot/karriere' },
 ];
 

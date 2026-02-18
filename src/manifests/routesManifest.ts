@@ -606,6 +606,7 @@ export const zone3Websites: Record<string, WebsiteDefinition> = {
       { path: "management", component: "SotManagement", title: "Management" },
       { path: "energy", component: "SotEnergy", title: "Energy" },
       { path: "karriere", component: "SotKarriere", title: "Karriere" },
+      { path: "armstrong", component: "SotArmstrong", title: "Armstrong — KI-Co-Pilot" },
       // Legacy routes kept for backward compatibility
       { path: "capital", component: "SotFinance", title: "Finance" },
       { path: "faq", component: "SotFAQ", title: "FAQ" },
