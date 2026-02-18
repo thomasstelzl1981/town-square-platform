@@ -1,111 +1,61 @@
 
-## CI-Harmonisierung Pet Manager (MOD-22)
 
-### Analyse: Ist-Zustand vs. CI-Standard
+## Demo-Daten aktualisieren: Lennox & Friends Dog Resorts
 
-Die Referenz-Module (Projektmanager MOD-13, Immomanager/Vertriebspartner) folgen diesem Standard:
+### Was wird geaendert?
 
-```text
-ModulePageHeader (UPPERCASE Titel)
-  |
-DASHBOARD_HEADER.GRID (2-Spalten)
-  |- ManagerVisitenkarte (links)
-  |- MarketReportWidget (rechts)
-  |
-KPI_GRID (4 Spalten)
-  |
-Operativer Content
+Die Demo-Daten fuer den Pet Manager werden mit den realen Geschaeftsdaten von Lennox & Friends befuellt:
+
+**Robyn Gebhard**
+Lennox & Friends Dog Resorts
+Rathausstr. 12, 85521 Ottobrunn
+Telefon: +49 176 64 12 68 69
+E-Mail: info@lennoxandfriends.com
+
+### Betroffene Stellen
+
+**1. `petManagerDemo.ts` — Kunden-Adressen anpassen**
+
+Die Demo-Kunden-Adressen werden von Berlin nach Muenchen/Ottobrunn verlegt, da Lennox & Friends in Ottobrunn sitzt. Das macht die Demo-Daten geografisch konsistent.
+
+**2. `constants.ts` — Kommentar aktualisieren**
+
+Der Provider-Kommentar wird mit dem korrekten Firmennamen versehen.
+
+**3. Dashboard `PMDashboard.tsx` — ManagerVisitenkarte erweitern**
+
+Die ManagerVisitenkarte zeigt aktuell nur die Profildaten des eingeloggten Users (aus auth.profile). Fuer den Pet Manager sollte sie zusaetzlich den Firmennamen und die Rolle "Inhaberin" anzeigen. Das wird ueber die bereits vorhandenen Props `badgeText` und `role` sowie ein optionales `children`-Slot geloest:
+
+- role: "Inhaberin" (statt generisch "Pet Manager")
+- badgeText: "Lennox & Friends Dog Resorts" (Firmenname aus provider.company_name)
+
+**4. DB-Seed pruefen**
+
+Die Datenbank-Tabelle `pet_providers` muss den korrekten Firmennamen, Adresse, Telefon und E-Mail enthalten. Da der Provider per DB-Seed angelegt wurde, wird ein Update-Statement erstellt, das die realen Daten eintraegt:
+
+```sql
+UPDATE pet_providers SET
+  company_name = 'Lennox & Friends Dog Resorts',
+  address = 'Rathausstr. 12, 85521 Ottobrunn',
+  phone = '+49 176 64 12 68 69',
+  email = 'info@lennoxandfriends.com',
+  facility_type = 'pension'
+WHERE id = 'd0000000-0000-4000-a000-000000000050';
 ```
-
-**Abweichungen im Pet Manager:**
-
-| Seite | Problem | Soll |
-|-------|---------|------|
-| **PMDashboard** | Keine `ModulePageHeader`, keine `ManagerVisitenkarte` — stattdessen eigene Card mit Provider-Daten + Bio (gehoert ins Profil) | `ModulePageHeader` + `ManagerVisitenkarte` (Ansprechpartner: Name/Adresse/Telefon/E-Mail) + MarketReportWidget oder Kapazitaets-Widget rechts |
-| **PMProfil** | Header ist eigener `div` statt `ModulePageHeader` | `ModulePageHeader` mit Titel "Profil" und Aktions-Buttons |
-| **PMPension** | Nutzt `ModulePageHeader` korrekt | OK |
-| **PMServices** | Nutzt `ModulePageHeader` korrekt | OK |
-| **PMPersonal** | Nutzt `ModulePageHeader` korrekt | OK |
-| **PMKalender** | Kein `ModulePageHeader` — eigener div-Header | `ModulePageHeader` verwenden |
-| **PMLeistungen** | Eigener div-Header mit Icon + h1 statt `ModulePageHeader` | `ModulePageHeader` verwenden |
-| **PMKunden** | Eigener div-Header mit Icon + h1 statt `ModulePageHeader` | `ModulePageHeader` verwenden |
-| **PMFinanzen** | Eigener div-Header mit Icon + h1 statt `ModulePageHeader` | `ModulePageHeader` verwenden |
-
-### Kernproblem: Visitenkarte
-
-Die aktuelle Dashboard-Card zeigt `company_name`, `bio`, `address`, `phone`, `email` und einen Website-Link — das ist Profil-Content, kein Visitenkarten-Content. Die `ManagerVisitenkarte` zeigt stattdessen die **persoenlichen Daten des Managers** aus `useAuth().profile`:
-
-- Name (Vor-/Nachname)
-- E-Mail, Telefon, Adresse
-- Rolle: "Pet Manager"
-- Badge: z.B. "Tierpension" (facility_type)
-- Extra-Badge: Status ("Aktiv")
-
-Das Provider-Profil (Firmenname, Bio etc.) gehoert ausschliesslich auf die Profil-Seite.
-
-### Umsetzungsplan
-
-**1. PMDashboard.tsx — Komplett-Refactor Header**
-
-- `ModulePageHeader` mit Titel "PET MANAGER" einfuegen
-- `ManagerVisitenkarte` mit Teal-Gradient (Modul-Farbe Pet Manager) einfuegen
-- Kapazitaets-Widget rechts im `DASHBOARD_HEADER.GRID` beibehalten
-- Provider-Bio und Website-Link entfernen (leben jetzt auf PMProfil)
-- KPI-Grid bleibt wie es ist
-- Naechste-Termine-Card bleibt wie sie ist
-
-Gradient-Farben (Teal, wie im Manifest definiert):
-- `gradientFrom: "hsl(170,60%,40%)"`
-- `gradientTo: "hsl(180,55%,35%)"`
-
-**2. PMProfil.tsx — ModulePageHeader einfuegen**
-
-- Aktuellen eigenen Header-div ersetzen durch `ModulePageHeader`
-- Titel: "Profil"
-- Description: "Dein oeffentliches Profil auf der Lennox & Friends Website"
-- Actions: Publish-Toggle + Vorschau-Button + Speichern-Button
-
-**3. PMKalender.tsx — ModulePageHeader einfuegen**
-
-- Aktuellen eigenen Header ersetzen durch `ModulePageHeader`
-- Titel: "Kalender"
-- Description aus bestehendem Untertitel
-
-**4. PMLeistungen.tsx — ModulePageHeader einfuegen**
-
-- Eigenen div-Header (Icon + h1) ersetzen durch `ModulePageHeader`
-- Titel: "Leistungen"
-- Description: "Deine Services und Verfuegbarkeit"
-- Actions: Neuer-Service-Button
-
-**5. PMKunden.tsx — ModulePageHeader einfuegen**
-
-- Eigenen div-Header (Icon + h1) ersetzen durch `ModulePageHeader`
-- Titel: "Kunden"
-- Description: "Deine Kunden und ihre Tiere"
-- Actions: Erstellen-Button (round glass)
-
-**6. PMFinanzen.tsx — ModulePageHeader einfuegen**
-
-- Eigenen div-Header (Icon + h1) ersetzen durch `ModulePageHeader`
-- Titel: "Finanzen"
-- Description: "Zahlungen und Rechnungen"
-- Actions: Neue-Rechnung-Button
 
 ### Technische Dateien
 
 | Datei | Aktion |
 |-------|--------|
-| `PMDashboard.tsx` | EDIT — ManagerVisitenkarte + ModulePageHeader, Provider-Bio entfernen |
-| `PMProfil.tsx` | EDIT — Header durch ModulePageHeader ersetzen |
-| `PMKalender.tsx` | EDIT — Header durch ModulePageHeader ersetzen |
-| `PMLeistungen.tsx` | EDIT — Header durch ModulePageHeader ersetzen |
-| `PMKunden.tsx` | EDIT — Header durch ModulePageHeader ersetzen |
-| `PMFinanzen.tsx` | EDIT — Header durch ModulePageHeader ersetzen |
+| `src/engines/demoData/petManagerDemo.ts` | EDIT — Kundenadressen auf Muenchen/Ottobrunn-Raum anpassen |
+| `src/engines/demoData/constants.ts` | EDIT — Kommentar mit korrektem Firmennamen |
+| `src/pages/portal/petmanager/PMDashboard.tsx` | EDIT — ManagerVisitenkarte: role="Inhaberin", badgeText=provider.company_name |
+| DB (Insert-Tool) | UPDATE — pet_providers mit realen Lennox-Daten |
 
 ### Ergebnis
 
-Nach der Harmonisierung folgt jede PMSeite dem gleichen Muster wie MOD-13 (Projekte) und die Vertriebspartner-Module:
-- `ModulePageHeader` mit UPPERCASE-Titel + optionaler Description + Actions
-- Dashboard: `ManagerVisitenkarte` (persoenliche Daten) links, Kapazitaet rechts
-- Firmendaten/Bio/Website bleiben exklusiv auf der Profil-Seite
+Nach der Umsetzung zeigt der Pet Manager im Demo-Modus:
+- **Visitenkarte**: Robyn Gebhard, Inhaberin, Lennox & Friends Dog Resorts
+- **Profil-Seite**: Korrekte Adresse Ottobrunn, Telefon, E-Mail
+- **Kunden**: Adressen im Grossraum Muenchen (statt Berlin)
+- **Zone 3 Website**: Firmenname "Lennox & Friends Dog Resorts" korrekt
