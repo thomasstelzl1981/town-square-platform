@@ -52,7 +52,7 @@ export const areaConfig: AreaDefinition[] = [
     label: 'Base',
     labelShort: 'Base',
     icon: 'Layers',
-    modules: ['MOD-03', 'MOD-01'],
+    modules: ['MOD-03', 'MOD-01', 'ARMSTRONG'],
   },
 ];
 

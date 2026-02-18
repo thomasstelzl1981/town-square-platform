@@ -124,6 +124,7 @@ const FinanzanalysePage = React.lazy(() => import('@/pages/portal/FinanzanalyseP
 const PhotovoltaikPage = React.lazy(() => import('@/pages/portal/PhotovoltaikPage'));
 const MietyPortalPage = React.lazy(() => import('@/pages/portal/MietyPortalPage'));
 const AreaOverviewPage = React.lazy(() => import('@/pages/portal/AreaOverviewPage'));
+const ArmstrongInfoPage = React.lazy(() => import('@/pages/portal/ArmstrongInfoPage'));
 
 // Zone 3: Kaufy2026 Website (lazy loaded)
 const Kaufy2026Layout = React.lazy(() => import('@/pages/zone3/kaufy2026/Kaufy2026Layout'));
@@ -528,6 +529,13 @@ export function ManifestRouter() {
         <Route path="area/:areaKey" element={
           <React.Suspense fallback={<LoadingFallback />}>
             <AreaOverviewPage />
+          </React.Suspense>
+        } />
+
+        {/* Armstrong Info Page (internal) */}
+        <Route path="armstrong" element={
+          <React.Suspense fallback={<LoadingFallback />}>
+            <ArmstrongInfoPage />
           </React.Suspense>
         } />
 

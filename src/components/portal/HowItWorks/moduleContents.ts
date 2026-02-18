@@ -793,4 +793,36 @@ export const moduleContents: Record<string, HowItWorksContent> = {
       { title: 'Finanzen', route: '/portal/petmanager/finanzen', icon: Wallet },
     ],
   },
+
+  'ARMSTRONG': {
+    moduleCode: 'ARMSTRONG',
+    title: 'Armstrong',
+    oneLiner: 'Ihr KI-Co-Pilot — erklärt, analysiert und arbeitet für Sie. Direkt in jedem Modul.',
+    benefits: [
+      'Kein Abo, keine Grundgebühr — Sie zahlen nur, was Sie tatsächlich nutzen.',
+      'Arbeitet modulübergreifend: von Immobilien über Finanzierung bis DMS.',
+      'Plan → Bestätigen → Ausführen: Sie behalten immer die Kontrolle.',
+      'Ihre Daten bleiben in Ihrem Tenant — kein Training, kein Weitergeben.',
+    ],
+    whatYouDo: [
+      'Fragen stellen und Begriffe erklären lassen (kostenlos)',
+      'Dokumente analysieren und zusammenfassen',
+      'Immobiliendaten prüfen und KPIs berechnen',
+      'Finanzierungsunterlagen vorbereiten',
+      'Web-Recherchen mit Quellennachweis durchführen',
+      'Aufgaben, Notizen und Erinnerungen per Sprache erstellen',
+    ],
+    flows: [
+      {
+        title: 'So funktioniert Armstrong',
+        steps: ['Frage stellen oder Aktion wählen', 'Armstrong erstellt einen Plan', 'Sie bestätigen', 'Armstrong führt aus'],
+      },
+      {
+        title: 'Kostenmodell',
+        steps: ['Viele Aktionen sind kostenlos', 'Credit-Aktionen zeigen Kosten vorab', 'Sie entscheiden vor jeder Ausführung', 'Abrechnung transparent im Konto'],
+      },
+    ],
+    cta: 'Öffnen Sie den Armstrong-Chat — und stellen Sie Ihre erste Frage.',
+    subTiles: [],
+  },
 };
