@@ -16,6 +16,7 @@ import {
 import { de } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { PageShell } from '@/components/shared/PageShell';
+import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 
 // ─── Status colors ────────────────────────────────────────
 const STATUS_BG: Record<string, string> = {
@@ -224,22 +225,19 @@ export default function PMKalender() {
   return (
     <PageShell>
     <div className="space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <div className="flex items-center gap-3">
-          <CalendarDays className="h-6 w-6 text-primary" />
-          <h1 className="text-2xl font-bold">Kalender</h1>
-        </div>
-
-        <div className="flex items-center gap-2">
+      {/* ModulePageHeader — CI-Standard */}
+      <ModulePageHeader
+        title="Kalender"
+        description="Wochen- und Monatsansicht deiner Buchungen"
+        actions={
           <Tabs value={view} onValueChange={(v) => setView(v as 'week' | 'month')}>
             <TabsList className="h-8">
               <TabsTrigger value="week" className="text-xs px-3 h-6">Woche</TabsTrigger>
               <TabsTrigger value="month" className="text-xs px-3 h-6">Monat</TabsTrigger>
             </TabsList>
           </Tabs>
-        </div>
-      </div>
+        }
+      />
 
       {/* Navigation */}
       <div className="flex items-center justify-between">

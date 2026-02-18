@@ -19,6 +19,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { PageShell } from '@/components/shared/PageShell';
+import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { RecordCardGallery } from '@/components/shared/RecordCardGallery';
 import { useMyProvider, useProviderServices } from '@/hooks/usePetBookings';
 import type { Tables } from '@/integrations/supabase/types';
@@ -232,33 +233,33 @@ export default function PMProfil() {
 
   return (
     <PageShell>
-      {/* Header with Save + Publish Toggle */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h2 className="text-lg font-semibold">Werbeprofil</h2>
-          <p className="text-sm text-muted-foreground">Ihr öffentliches Profil auf der Lennox & Friends Website</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            <Switch
-              checked={!!(provider as any).is_published}
-              onCheckedChange={handleTogglePublish}
-              disabled={publishing}
-            />
-            <Badge variant={(provider as any).is_published ? 'default' : 'outline'} className="text-xs">
-              {(provider as any).is_published ? 'Live' : 'Entwurf'}
-            </Badge>
+      {/* ModulePageHeader — CI-Standard */}
+      <ModulePageHeader
+        title="Profil"
+        description="Dein öffentliches Profil auf der Lennox & Friends Website"
+        actions={
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <Switch
+                checked={!!(provider as any).is_published}
+                onCheckedChange={handleTogglePublish}
+                disabled={publishing}
+              />
+              <Badge variant={(provider as any).is_published ? 'default' : 'outline'} className="text-xs">
+                {(provider as any).is_published ? 'Live' : 'Entwurf'}
+              </Badge>
+            </div>
+            <Button variant="outline" size="sm" asChild>
+              <a href={`/website/tierservice/partner/${provider.id}`} target="_blank" rel="noopener">
+                <ExternalLink className="h-4 w-4 mr-1" /> Vorschau
+              </a>
+            </Button>
+            <Button size="sm" onClick={handleSave} disabled={saving || !form}>
+              <Save className="h-4 w-4 mr-1" /> {saving ? 'Speichern...' : 'Speichern'}
+            </Button>
           </div>
-          <Button variant="outline" size="sm" asChild>
-            <a href={`/website/tierservice/partner/${provider.id}`} target="_blank" rel="noopener">
-              <ExternalLink className="h-4 w-4 mr-1" /> Vorschau
-            </a>
-          </Button>
-          <Button size="sm" onClick={handleSave} disabled={saving || !form}>
-            <Save className="h-4 w-4 mr-1" /> {saving ? 'Speichern...' : 'Speichern'}
-          </Button>
-        </div>
-      </div>
+        }
+      />
 
       {/* Publish Confirmation Dialog */}
       <AlertDialog open={showPublishDialog} onOpenChange={setShowPublishDialog}>

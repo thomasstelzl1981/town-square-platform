@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { RECORD_CARD } from '@/config/designManifest';
 import { PageShell } from '@/components/shared/PageShell';
+import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import {
   useMyProvider, useProviderServices, useCreateService, useUpdateService, useDeleteService,
   useProviderAvailability, useSaveAvailability,
@@ -91,15 +92,14 @@ export default function PMLeistungen() {
   return (
     <PageShell>
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Settings className="h-6 w-6 text-primary" />
-          <h1 className="text-2xl font-bold">Leistungen & Verfügbarkeit</h1>
-        </div>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button size="sm" className="gap-1.5" onClick={openCreate}><Plus className="h-4 w-4" /> Service</Button>
-          </DialogTrigger>
+      <ModulePageHeader
+        title="Leistungen"
+        description="Deine Services und Verfügbarkeit"
+        actions={
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="glass" size="icon-round" onClick={openCreate}><Plus className="h-4 w-4" /></Button>
+            </DialogTrigger>
           <DialogContent className="max-w-md">
             <DialogHeader><DialogTitle>{editId ? 'Service bearbeiten' : 'Neuer Service'}</DialogTitle></DialogHeader>
             <div className="space-y-3 pt-2">
@@ -132,8 +132,9 @@ export default function PMLeistungen() {
               <Button onClick={handleSaveService} disabled={createService.isPending || updateService.isPending} className="w-full">Speichern</Button>
             </div>
           </DialogContent>
-        </Dialog>
-      </div>
+          </Dialog>
+        }
+      />
 
       {/* Services List */}
       <Card>

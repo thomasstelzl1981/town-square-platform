@@ -10,6 +10,7 @@
  */
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { PageShell } from '@/components/shared/PageShell';
+import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { Receipt, Plus, FileText, Check, Send, AlertTriangle, X, Download, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -345,15 +346,14 @@ export default function PMFinanzen() {
   return (
     <PageShell>
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Receipt className="h-6 w-6 text-primary" />
-          <h1 className="text-2xl font-bold text-foreground">Zahlungen & Rechnungen</h1>
-        </div>
-        <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-          <DialogTrigger asChild>
-            <Button><Plus className="h-4 w-4 mr-2" />Neue Rechnung</Button>
-          </DialogTrigger>
+      <ModulePageHeader
+        title="Finanzen"
+        description="Zahlungen und Rechnungen"
+        actions={
+          <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+            <DialogTrigger asChild>
+              <Button variant="glass" size="icon-round"><Plus className="h-4 w-4" /></Button>
+            </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Neue Rechnung erstellen</DialogTitle>
@@ -424,8 +424,9 @@ export default function PMFinanzen() {
               </Button>
             </div>
           </DialogContent>
-        </Dialog>
-      </div>
+          </Dialog>
+        }
+      />
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
