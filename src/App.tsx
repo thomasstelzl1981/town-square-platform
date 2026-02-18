@@ -40,8 +40,9 @@ const queryClient = new QueryClient({
       refetchOnWindowFocus: false,
       retry: (failureCount, error) => {
         // Don't retry on auth errors (401/403) or not found (404)
-        const status = (error as any)?.status ?? (error as any)?.code;
-        if ([401, 403, 404, 422].includes(status)) return false;
+        const errorWithStatus = error as { status?: number; code?: number };
+        const status = errorWithStatus?.status ?? errorWithStatus?.code;
+        if (status && [401, 403, 404, 422].includes(status)) return false;
         return failureCount < 2;
       },
       retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
