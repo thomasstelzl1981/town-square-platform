@@ -213,6 +213,11 @@ Deno.serve(async (req) => {
           },
           body: JSON.stringify({
             bankId,
+            bankingInterface: "FINTS_SERVER",
+            loginCredentials: [
+              { label: "Onlinebanking-Kennung", value: "demo" },
+              { label: "PIN", value: "demo" },
+            ],
           }),
         });
 
