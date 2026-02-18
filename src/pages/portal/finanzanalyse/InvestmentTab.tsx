@@ -2,12 +2,13 @@
  * MOD-18 Finanzen — Tab 2: INVESTMENT
  * Person selection via WidgetGrid CI-Kacheln + Investment-Sparpläne section
  */
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { WidgetGrid } from '@/components/shared/WidgetGrid';
 import { WidgetCell } from '@/components/shared/WidgetCell';
-import { CARD, TYPOGRAPHY, DEMO_WIDGET, HEADER, RECORD_CARD } from '@/config/designManifest';
+import { WidgetDeleteOverlay } from '@/components/shared/WidgetDeleteOverlay';
+import { CARD, TYPOGRAPHY, DEMO_WIDGET, HEADER, RECORD_CARD, TABLE } from '@/config/designManifest';
 import { getActiveWidgetGlow, getSelectionRing } from '@/config/designManifest';
 import { useDemoDepot } from '@/hooks/useDemoDepot';
 import { DepotOnboardingWizard } from '@/components/finanzanalyse/depot/DepotOnboardingWizard';
@@ -19,7 +20,7 @@ import { DepotSteuerReport } from '@/components/finanzanalyse/depot/DepotSteuerR
 import { FormInput } from '@/components/shared';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -30,7 +31,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useFinanzanalyseData } from '@/hooks/useFinanzanalyseData';
 import { isDemoId } from '@/engines/demoData/engine';
 import { useDemoToggles } from '@/hooks/useDemoToggles';
-import { User, Plus, TrendingUp, X, Shield, Zap, BarChart3, PiggyBank, Puzzle, FileText } from 'lucide-react';
+import { User, Plus, TrendingUp, X, Shield, Zap, BarChart3, PiggyBank, Puzzle, FileText, Building2, Loader2, RefreshCw, Landmark } from 'lucide-react';
+import { FinAPIDepotSection } from '@/components/finanzanalyse/depot/FinAPIDepotSection';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -452,6 +454,10 @@ export default function InvestmentTab() {
           </Card>
         )}
       </div>
+
+      {/* ─── Wertpapier-Depots (Read-Only via FinAPI) ─────────────── */}
+      <FinAPIDepotSection tenantId={activeTenantId} />
+
 
       {/* ─── Armstrong Depot ─────────────────────────── */}
       <div className="mt-8">
