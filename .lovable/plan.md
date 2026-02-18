@@ -1,70 +1,81 @@
 
-# Konten-Zuordnung: Kategorie-Dropdown durch echte Zuordnung ersetzen
+# Armstrong Expanded Panel: Redesign — Schmaler, Hoeher, Glaeser, Einheitliche Icons, Willkommensnachricht
 
-## Problem
+## Ausgangslage
 
-In der KontoAkteInline gibt es aktuell zwei separate Bereiche:
-1. **"Kategorie"** (Zeile 175) — ein einfacher Dropdown mit generischen Werten (Privat, Vermietung, PV, Tagesgeld, Sonstiges)
-2. **"Zuordnung"** (Zeile 188) — nur fuer echte Konten sichtbar (`!isDemo`), zweistufig (Typ + Inhaber)
-
-Diese Trennung ist verwirrend und die Demo zeigt die Zuordnung gar nicht. Der "Kategorie"-Dropdown muss durch einen einzigen **"Zuordnung"-Dropdown** ersetzt werden, der Personen, Vermietereinheiten und PV-Anlagen direkt anzeigt — auch fuer das Demo-Konto.
+Der expandierte Armstrong-Panel (`ArmstrongContainer.tsx`, Zeile 249-548) hat aktuell:
+- Breite: `w-[680px]` (breit) / `w-[420px]` (schmal) — zu breit
+- Hoehe: `h-[70vh] max-h-[800px]` — zu niedrig
+- Background: `bg-background/95` — fast undurchsichtig
+- Icons: Verschiedene Icons an verschiedenen Stellen:
+  - **SystemBar**: `Rocket` (Desktop-Toggle)
+  - **ArmstrongInputBar**: `MessageCircle` (Mobile)
+  - **ChatPanel / ArmstrongContainer Header + Empty State**: `Globe`
+- Empty State: Fester Text "Wie kann ich helfen?" mit Emoji-Zeile — wirkt statisch und nicht interaktiv
 
 ## Aenderungen
 
-### 1. `DEMO_KONTO` erweitern (`src/constants/demoKontoData.ts`)
+### 1. Panel-Dimensionen anpassen (`ArmstrongContainer.tsx`)
 
-Dem Demo-Konto-Objekt `owner_type` und `owner_id` hinzufuegen:
+**Breite 25% schmaler:**
+- `w-[680px]` (wide) wird zu `w-[510px]`
+- `w-[420px]` (normal) wird zu `w-[315px]`
 
-```
-owner_type: 'property' (Vermietereinheit)
-owner_id: 'd0000000-0000-4000-a000-000000000010' (landlordContextId aus Demo-Daten)
-```
+**Hoehe 25% hoeher:**
+- `h-[70vh]` wird zu `h-[87.5vh]`
+- `max-h-[800px]` wird zu `max-h-[1000px]`
 
-Die `KONTO_CATEGORIES`-Konstante wird nicht mehr benoetigt und kann entfernt werden.
+### 2. Glaesernes Design
 
-### 2. `KontoAkteInline` ueberarbeiten (`src/components/finanzanalyse/KontoAkteInline.tsx`)
+Der Panel-Container bekommt ein durchscheinendes Glas-Design:
+- `bg-background/95` wird zu `bg-background/70 backdrop-blur-2xl`
+- Border: `border-white/15 dark:border-white/10`
+- Die bestehende `backdrop-blur-2xl` bleibt
 
-**Kategorie-Dropdown entfernen** (Zeile 175-184): Das gesamte Kategorie-Feld wird entfernt.
+Der Header-Bereich wird ebenfalls subtil angepasst: `border-b border-white/10` statt `border-border/30`
 
-**Zuordnung fuer alle sichtbar machen**: Der Block `{!isDemo && (...)}` (Zeile 188-224) wird zu einem einzigen **"Zuordnung"**-Feld direkt im Kontodaten-Grid (Sektion 1). Es wird:
+### 3. Einheitliches Icon: `Rocket` ueberall
 
-- Fuer **Demo-Konten**: Einen **read-only** Zuordnungswert anzeigen (z.B. "Vermietereinheit: Mustermann Immobilien"), basierend auf den statischen Demo-Daten. Es wird ein kombinierter Select gezeigt, der disabled ist.
-- Fuer **echte Konten**: Einen **editierbaren** kombinierten Select zeigen mit allen drei Gruppen als Optionen:
-  - **Personen im Haushalt** — aus `household_persons`
-  - **Vermietereinheiten** — aus `properties` (oder `property_contexts` je nach Verfuegbarkeit)
-  - **PV-Anlagen** — aus `pv_plants`
+Alle Armstrong-bezogenen Icons werden auf `Rocket` vereinheitlicht:
 
-Der Select wird als **einzelner Dropdown** gestaltet (kein zweistufiger Typ+Inhaber mehr), in dem die Optionen gruppiert sind:
+| Stelle | Vorher | Nachher |
+|--------|--------|---------|
+| SystemBar (Desktop-Toggle) | `Rocket` | `Rocket` (bleibt) |
+| ArmstrongInputBar (Mobile) | `MessageCircle` | `Rocket` |
+| ArmstrongContainer Header | `Globe` | `Rocket` |
+| ArmstrongContainer Empty State | `Globe` | `Rocket` |
+| ArmstrongContainer Loading Indicator | `Globe` | `Rocket` |
+| ChatPanel Header (bottomsheet) | `Globe` | `Rocket` |
+| ChatPanel Empty State | `Globe` | `Rocket` |
+| ChatPanel Loading Indicator | `Globe` | `Rocket` |
 
-```
-[Zuordnung waehlen...]
---- Personen ---
-  Max Mustermann
-  Lisa Mustermann
---- Vermietereinheiten ---
-  Berliner Str. 42
-  Maximilianstr. 8
---- PV-Anlagen ---
-  PV-Anlage 32.4 kWp
-```
+### 4. Willkommensnachricht beim Oeffnen
 
-Bei Auswahl werden `owner_type` und `owner_id` automatisch gesetzt und gespeichert.
+Wenn der Panel geoeffnet wird und keine Nachrichten vorhanden sind, wird automatisch eine Willkommensnachricht als Assistant-Message eingefuegt. Diese erscheint als regulaere Chat-Nachricht (nicht als statischer Text):
 
-### 3. Demo-Daten fuer Zuordnung bereitstellen
+**Text der Willkommensnachricht:**
+> Hallo! Ich bin Armstrong, dein persoenlicher Assistent. Ich kann dir bei vielen Aufgaben helfen:
+>
+> - **Fragen stellen** — Ich erklaere dir alles rund um dein System
+> - **Dokumente analysieren** — Haenge ein Dokument an und ich lese es fuer dich
+> - **Daten zuordnen** — Gib mir Informationen und ich helfe dir, sie richtig einzuordnen
+> - **Texte erstellen** — Briefe, E-Mails oder Zusammenfassungen
+>
+> Frag mich einfach, was du wissen moechtest!
 
-Da im Demo-Modus keine DB-Abfragen laufen, werden die Demo-Optionen direkt aus den Demo-Daten geladen:
+**Implementierung:**
+- In `useArmstrongAdvisor.ts`: Eine neue Funktion `getWelcomeMessage()` die eine `ChatMessage` mit `role: 'assistant'` zurueckgibt
+- Die `messages`-Liste wird bei Initialisierung mit der Willkommensnachricht vorbelegt (sofern leer)
+- Die Willkommensnachricht bekommt eine spezielle `id: 'welcome'`, damit sie beim `clearConversation` nicht als echte History zaehlt
+- Der bisherige statische Empty-State-Block (Zeile 363-374 in ArmstrongContainer, Zeile 303-319 in ChatPanel) wird entfernt, da die Willkommensnachricht als regulaere Chat-Bubble gerendert wird
 
-- **Personen**: Max Mustermann (`DEMO_PRIMARY_PERSON_ID`), Lisa Mustermann (`ID_LISA`) — aus `src/engines/demoData/data.ts`
-- **Vermietereinheit**: landlordContextId — aus `DEMO_PORTFOLIO`
-- **PV-Anlage**: pvPlantIds[0] — aus `DEMO_PORTFOLIO`
+### 5. Empty State bereinigen
 
-### 4. `AddBankAccountDialog` anpassen (`src/components/shared/AddBankAccountDialog.tsx`)
+Der statische Empty-State mit Globe-Icon und Emoji-Text wird komplett entfernt aus:
+- `ArmstrongContainer.tsx` (Zeile 363-374)
+- `ChatPanel.tsx` (Zeile 303-319)
 
-Den zweistufigen Select (Zuordnungstyp + Inhaber) ebenfalls durch einen **einzelnen gruppierten Dropdown** ersetzen, der alle verfuegbaren Personen, Immobilien und PV-Anlagen in einer Liste zeigt. Die Logik laedt alle drei Entitaetstypen gleichzeitig und gruppiert sie im Select.
-
-### 5. `KontenTab.tsx` — Demo-Kachel Badge aktualisieren
-
-Die hardcoded Badge "Vermietung" (Zeile 111) wird durch die tatsaechliche Zuordnungsbezeichnung ersetzt (z.B. "Vermietereinheit").
+Da die Willkommensnachricht immer vorhanden ist, gibt es keinen "leeren" Zustand mehr.
 
 ---
 
@@ -72,14 +83,14 @@ Die hardcoded Badge "Vermietung" (Zeile 111) wird durch die tatsaechliche Zuordn
 
 | Datei | Aenderung |
 |-------|-----------|
-| `src/constants/demoKontoData.ts` | `owner_type` + `owner_id` zum DEMO_KONTO hinzufuegen, `KONTO_CATEGORIES` entfernen |
-| `src/components/finanzanalyse/KontoAkteInline.tsx` | Kategorie-Dropdown entfernen, Zuordnung als gruppierten Select in Sektion 1, auch fuer Demo sichtbar (read-only) |
-| `src/components/shared/AddBankAccountDialog.tsx` | Zweistufigen Select durch einzelnen gruppierten Dropdown ersetzen |
-| `src/pages/portal/finanzanalyse/KontenTab.tsx` | Demo-Kachel Badge dynamisch aus owner_type |
+| `src/components/portal/ArmstrongContainer.tsx` | Dimensionen (schmaler+hoeher), Glas-Background, Rocket statt Globe, Empty State entfernen |
+| `src/components/portal/ArmstrongInputBar.tsx` | `MessageCircle` durch `Rocket` ersetzen |
+| `src/components/chat/ChatPanel.tsx` | `Globe` durch `Rocket` ersetzen, Empty State entfernen |
+| `src/hooks/useArmstrongAdvisor.ts` | Willkommensnachricht bei leerer Conversation automatisch einfuegen |
 
 ## Reihenfolge
 
-1. `demoKontoData.ts` — Demo-Konto mit owner_type/owner_id erweitern
-2. `KontoAkteInline.tsx` — Kategorie entfernen, gruppierte Zuordnung einbauen (Demo + echte Konten)
-3. `AddBankAccountDialog.tsx` — Gleicher gruppierter Zuordnungs-Select
-4. `KontenTab.tsx` — Badge-Update
+1. `useArmstrongAdvisor.ts` — Willkommensnachricht-Logik
+2. `ArmstrongContainer.tsx` — Dimensionen, Glas, Icons, Empty State entfernen
+3. `ArmstrongInputBar.tsx` — Icon vereinheitlichen
+4. `ChatPanel.tsx` — Icon vereinheitlichen, Empty State entfernen
