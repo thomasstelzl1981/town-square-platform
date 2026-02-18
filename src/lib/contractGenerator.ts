@@ -61,16 +61,6 @@ export async function generateContract(
 }
 
 /**
- * Format a number as EUR currency string.
- */
-export function formatEUR(amount: number): string {
-  return new Intl.NumberFormat('de-DE', {
-    style: 'currency',
-    currency: 'EUR',
-  }).format(amount);
-}
-
-/**
  * Calculate platform fee (30% of gross commission).
  */
 export function calculatePlatformFee(grossCommission: number, sharePct: number = 30): {

@@ -6,7 +6,7 @@ import { Separator } from '@/components/ui/separator';
 import { Users } from 'lucide-react';
 import { TermsGatePanel } from '@/components/shared/TermsGatePanel';
 import { useAuth } from '@/contexts/AuthContext';
-import { formatEUR } from '@/lib/contractGenerator';
+import { formatCurrencyWithCents } from '@/lib/formatters';
 
 interface PartnerReleaseDialogProps {
   open: boolean;
@@ -56,7 +56,7 @@ export const PartnerReleaseDialog = ({
           <div className="p-3 bg-muted rounded-lg">
             <p className="font-medium">{listingTitle}</p>
             <p className="text-sm text-muted-foreground">
-              Kaufpreis: {formatEUR(askingPrice)}
+              Kaufpreis: {formatCurrencyWithCents(askingPrice)}
             </p>
           </div>
 
@@ -75,7 +75,7 @@ export const PartnerReleaseDialog = ({
               className="py-2"
             />
             <p className="text-sm text-muted-foreground">
-              Ca. {formatEUR(grossCommission)} bei erfolgreichem Verkauf (wird vom Käufer gezahlt)
+              Ca. {formatCurrencyWithCents(grossCommission)} bei erfolgreichem Verkauf (wird vom Käufer gezahlt)
             </p>
           </div>
 
