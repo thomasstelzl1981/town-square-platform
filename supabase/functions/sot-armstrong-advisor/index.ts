@@ -65,6 +65,12 @@ interface RequestBody {
     flow_type: string;
     flow_state?: Record<string, unknown>;
   } | null;
+  document_context?: {
+    extracted_text: string;
+    filename: string;
+    content_type: string;
+    confidence: number;
+  } | null;
 }
 
 // Legacy Request (backward compatibility)
@@ -520,7 +526,10 @@ function classifyIntent(message: string, actionRequest: ActionRequest | undefine
   }
   
   const draftKeywords = ["schreibe", "erstelle", "verfasse", "entwurf", "email", "brief", "nachricht"];
-  if (draftKeywords.some(kw => lowerMsg.includes(kw))) {
+  // Don't classify as DRAFT if document analysis keywords are present
+  const docAnalysisKeywords = ["analysiere", "zusammenfassung", "was steht", "prüfe das dokument", "rechnung", "fasse zusammen"];
+  const hasDocKeywords = docAnalysisKeywords.some(kw => lowerMsg.includes(kw));
+  if (!hasDocKeywords && draftKeywords.some(kw => lowerMsg.includes(kw))) {
     return "DRAFT";
   }
   
@@ -1281,6 +1290,87 @@ WICHTIG:
 }
 
 // =============================================================================
+// DOCUMENT ANALYSIS RESPONSE
+// =============================================================================
+
+async function generateDocumentAnalysisResponse(
+  message: string,
+  documentContext: {
+    extracted_text: string;
+    filename: string;
+    content_type: string;
+    confidence: number;
+  },
+  module: Module,
+  supabase: ReturnType<typeof createClient>
+): Promise<string> {
+  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+  
+  if (!LOVABLE_API_KEY) {
+    return `Dokument "${documentContext.filename}" erhalten. Die KI-Analyse ist derzeit nicht verfügbar.`;
+  }
+
+  try {
+    const systemPrompt = `Du bist Armstrong, ein professioneller Dokumentenanalyst bei System of a Town.
+
+AUFGABE: Analysiere das folgende Dokument und beantworte die Frage des Users.
+
+FÄHIGKEITEN:
+- Zusammenfassungen erstellen
+- Rechnungen analysieren (Positionen, Beträge, Summen)
+- Daten extrahieren (Zahlen, Daten, Namen, Adressen)
+- Verträge prüfen (Klauseln, Laufzeiten, Konditionen)
+- Tabellen aus Dokumenten erstellen
+- Vergleiche zwischen Dokumenten durchführen
+
+REGELN:
+- Antworte auf Deutsch, strukturiert mit Markdown
+- Verwende Tabellen für numerische Daten
+- Bei Rechnungen: Immer Gesamtbetrag hervorheben
+- Bei Unsicherheit: klar kommunizieren
+- KEIN Rechts- oder Steuerberatung (Hinweis auf Fachberater)
+- Confidence des Parsers: ${documentContext.confidence}
+
+DOKUMENT: "${documentContext.filename}" (${documentContext.content_type})`;
+
+    // Truncate extracted text to fit context window
+    const maxTextLength = 30000;
+    const extractedText = documentContext.extracted_text.length > maxTextLength
+      ? documentContext.extracted_text.substring(0, maxTextLength) + "\n\n[... Text gekürzt ...]"
+      : documentContext.extracted_text;
+
+    const userPrompt = message.trim() || "Fasse dieses Dokument zusammen.";
+
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: `DOKUMENTINHALT:\n\n${extractedText}\n\n---\n\nFRAGE DES USERS: ${userPrompt}` },
+        ],
+        max_tokens: 2000,
+      }),
+    });
+
+    if (!response.ok) {
+      console.error("[Armstrong] Document analysis AI error:", response.status);
+      return `Dokument "${documentContext.filename}" erhalten, aber die Analyse konnte nicht durchgeführt werden.`;
+    }
+
+    const data = await response.json();
+    return data.choices?.[0]?.message?.content || "Die Analyse konnte kein Ergebnis liefern.";
+  } catch (err) {
+    console.error("[Armstrong] Document analysis error:", err);
+    return `Fehler bei der Analyse von "${documentContext.filename}". Bitte versuchen Sie es erneut.`;
+  }
+}
+
+// =============================================================================
 // LEGACY HANDLER (backward compatibility)
 // =============================================================================
 
@@ -1683,7 +1773,7 @@ serve(async (req) => {
     
     // MVP Request handling
     const body = rawBody as RequestBody;
-    const { zone, module, route, entity, message, action_request, flow } = body;
+    const { zone, module, route, entity, message, action_request, flow, document_context } = body;
     
     console.log(`[Armstrong] MVP Request: zone=${zone}, module=${module}, route=${route}, flow=${flow?.flow_type || 'none'}`);
     
@@ -1900,6 +1990,44 @@ serve(async (req) => {
     // INTENT-BASED ROUTING
     // =======================================================================
     
+    // =======================================================================
+    // DOCUMENT ANALYSIS — intercept when document_context is present
+    // =======================================================================
+    if (document_context?.extracted_text) {
+      console.log(`[Armstrong] Document analysis: ${document_context.filename}`);
+      const docResponse = await generateDocumentAnalysisResponse(
+        message,
+        document_context,
+        module,
+        supabase
+      );
+
+      await logActionRun(
+        supabase,
+        "ARM.GLOBAL.ANALYZE_DOCUMENT",
+        zone,
+        userContext,
+        entity,
+        module,
+        route,
+        "completed",
+        { filename: document_context.filename },
+        undefined,
+        undefined
+      );
+
+      return new Response(
+        JSON.stringify({
+          type: "EXPLAIN",
+          message: docResponse,
+          citations: [],
+          suggested_actions: [],
+          next_steps: ["Stellen Sie Folgefragen zum Dokument", "Laden Sie ein weiteres Dokument hoch"],
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     if (intent === "EXPLAIN") {
       // Enable Global Assist Mode when not in MVP module
       const isGlobalAssist = !isInMvpModule;

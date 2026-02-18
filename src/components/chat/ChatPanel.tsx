@@ -8,6 +8,7 @@ import { UploadResultCard } from "@/components/shared/UploadResultCard";
 import { VoiceButton } from "@/components/armstrong/VoiceButton";
 import { useArmstrongVoice } from "@/hooks/useArmstrongVoice";
 import { useArmstrongAdvisor } from "@/hooks/useArmstrongAdvisor";
+import { useArmstrongDocUpload } from "@/hooks/useArmstrongDocUpload";
 import { MessageRenderer } from "@/components/chat/MessageRenderer";
 import { useUniversalUpload } from "@/hooks/useUniversalUpload";
 import type { UploadedFileInfo } from "@/hooks/useUniversalUpload";
@@ -20,7 +21,9 @@ import {
   Upload,
   Globe,
   Loader2,
-  Trash2
+  Trash2,
+  FileText,
+  Paperclip
 } from "lucide-react";
 
 export interface ChatContext {
@@ -87,8 +90,11 @@ const ChatPanel = React.forwardRef<HTMLDivElement, ChatPanelProps>(
     const prevMessagesLenRef = React.useRef(0);
     const prevListeningRef = React.useRef(false);
     
-    // Universal upload hook
+    // Universal upload hook (for DMS storage uploads)
     const { upload: universalUpload, uploadedFiles, clearUploadedFiles, isUploading } = useUniversalUpload();
+    
+    // Document analysis hook (for Armstrong chat context)
+    const docUpload = useArmstrongDocUpload();
     
     // Armstrong Advisor integration
     const advisor = useArmstrongAdvisor();
@@ -99,7 +105,6 @@ const ChatPanel = React.forwardRef<HTMLDivElement, ChatPanelProps>(
     // Auto-send transcript when user stops speaking
     React.useEffect(() => {
       if (prevListeningRef.current && !voice.isListening && voice.transcript.trim()) {
-        // User stopped speaking and we have a transcript
         setVoiceMode(true);
         advisor.sendMessage(voice.transcript.trim());
       }
@@ -139,9 +144,19 @@ const ChatPanel = React.forwardRef<HTMLDivElement, ChatPanelProps>(
       
       onFileUpload?.(files);
     };
+
+    /** Handle document upload for Armstrong analysis */
+    const handleDocumentForAnalysis = async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      await docUpload.uploadAndParse(file);
+      // Reset input
+      e.target.value = '';
+    };
     
     const scrollRef = React.useRef<HTMLDivElement>(null);
     const messagesEndRef = React.useRef<HTMLDivElement>(null);
+    const docInputRef = React.useRef<HTMLInputElement>(null);
 
     // Auto-scroll to bottom when new messages arrive
     React.useEffect(() => {
@@ -150,11 +165,16 @@ const ChatPanel = React.forwardRef<HTMLDivElement, ChatPanelProps>(
 
     const handleSend = () => {
       if (input.trim()) {
-        setVoiceMode(false); // Text input = no auto-speak
+        setVoiceMode(false);
         if (externalOnSend) {
           externalOnSend(input.trim());
         } else {
-          advisor.sendMessage(input.trim());
+          // Send with document context if attached
+          advisor.sendMessage(input.trim(), docUpload.documentContext || undefined);
+          // Clear document after sending
+          if (docUpload.documentContext) {
+            docUpload.clearDocument();
+          }
         }
         setInput("");
       }
@@ -288,6 +308,9 @@ const ChatPanel = React.forwardRef<HTMLDivElement, ChatPanelProps>(
                 <p className="text-sm text-muted-foreground">
                   Wie kann ich Ihnen helfen?
                 </p>
+                <p className="text-xs text-muted-foreground/60 mt-1">
+                  📄 Dokumente analysieren · ✉️ Texte erstellen · 💡 Fragen beantworten
+                </p>
                 {!advisor.isInMvpScope && context?.module && (
                   <p className="text-xs text-muted-foreground/60 mt-2">
                     Modul {context.module} – nur Erklärungen verfügbar
@@ -316,7 +339,7 @@ const ChatPanel = React.forwardRef<HTMLDivElement, ChatPanelProps>(
                     <div className="rounded-2xl px-3.5 py-2.5 text-sm armstrong-message-assistant">
                       <div className="flex items-center gap-2 text-muted-foreground">
                         <Loader2 className="h-4 w-4 animate-spin" />
-                        <span>Armstrong denkt nach...</span>
+                        <span>{docUpload.isParsing ? "Dokument wird analysiert..." : "Armstrong denkt nach..."}</span>
                       </div>
                     </div>
                   </div>
@@ -346,7 +369,7 @@ const ChatPanel = React.forwardRef<HTMLDivElement, ChatPanelProps>(
               ) : (
                 <>
                   <Upload className="h-3.5 w-3.5" />
-                  <span>Upload</span>
+                  <span>Upload (DMS)</span>
                 </>
               )}
             </div>
@@ -373,7 +396,54 @@ const ChatPanel = React.forwardRef<HTMLDivElement, ChatPanelProps>(
           )}
         </div>
 
-        {/* Input - Floating iOS Style with Voice Button */}
+        {/* Attached Document Preview */}
+        {(docUpload.attachedFile || docUpload.isParsing || docUpload.parseError) && (
+          <div className="px-4 py-2 border-t">
+            {docUpload.isParsing && (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+                <span>Dokument wird gelesen...</span>
+              </div>
+            )}
+            {docUpload.parseError && (
+              <div className="flex items-center gap-2 text-xs text-destructive">
+                <X className="h-3.5 w-3.5" />
+                <span className="flex-1 truncate">{docUpload.parseError}</span>
+                <button onClick={docUpload.clearDocument} className="shrink-0 hover:text-foreground">
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            )}
+            {docUpload.attachedFile && !docUpload.isParsing && !docUpload.parseError && (
+              <div className="flex items-center gap-2 text-xs bg-primary/5 rounded-lg px-2.5 py-1.5">
+                <FileText className="h-3.5 w-3.5 text-primary shrink-0" />
+                <span className="truncate flex-1 text-foreground font-medium">
+                  {docUpload.attachedFile.name}
+                </span>
+                <span className="text-muted-foreground shrink-0">
+                  {(docUpload.attachedFile.size / 1024).toFixed(0)} KB
+                </span>
+                <button 
+                  onClick={docUpload.clearDocument} 
+                  className="shrink-0 text-muted-foreground hover:text-foreground"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Hidden file input for document analysis */}
+        <input
+          ref={docInputRef}
+          type="file"
+          accept=".pdf,.jpg,.jpeg,.png,.webp,.docx,.doc,.csv,.xlsx,.xls"
+          className="hidden"
+          onChange={handleDocumentForAnalysis}
+        />
+
+        {/* Input - Floating iOS Style with Voice Button + Document Attach */}
         <div className="p-3">
           <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-muted/50 backdrop-blur-sm">
             <VoiceButton
@@ -385,13 +455,31 @@ const ChatPanel = React.forwardRef<HTMLDivElement, ChatPanelProps>(
               onToggle={handleVoiceToggle}
               size="md"
             />
+
+            {/* Document attach button */}
+            <Button
+              variant="ghost"
+              size="sm"
+              className={cn(
+                "h-8 w-8 p-0 rounded-full shrink-0",
+                docUpload.documentContext ? "text-primary" : "text-muted-foreground"
+              )}
+              onClick={() => docInputRef.current?.click()}
+              disabled={advisor.isLoading || docUpload.isParsing}
+              title="Dokument für Analyse anhängen"
+            >
+              <Paperclip className="h-4 w-4" />
+            </Button>
             
             <div className="relative flex-1">
               <Input
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Nachricht eingeben..."
+                placeholder={docUpload.documentContext 
+                  ? "Frage zum Dokument stellen..." 
+                  : "Nachricht eingeben..."
+                }
                 className="border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
                 disabled={advisor.isLoading}
               />
