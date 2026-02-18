@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
-import { Folder, Download, Copy } from 'lucide-react';
+import { Folder, Download, Copy, Brain, Loader2, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { getCachedSignedUrl } from '@/lib/imageCache';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 import { getFileIcon, formatFileSize, formatDateTime, formatType } from '@/components/dms/storageHelpers';
 import type { FileManagerItem } from './ListView';
 
@@ -21,9 +23,54 @@ interface PreviewViewProps {
 
 export function PreviewView({ items, selectedItem, onSelectItem, onDownload, onDelete, onNavigateFolder, isDownloading }: PreviewViewProps) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [isExtracting, setIsExtracting] = useState(false);
+  const [extractionStatus, setExtractionStatus] = useState<string | null>(null);
 
   const isImage = selectedItem?.mimeType?.startsWith('image/');
   const isPdf = selectedItem?.mimeType === 'application/pdf' || selectedItem?.name?.endsWith('.pdf');
+  const isExtractable = isPdf || isImage;
+
+  // Load extraction status when item changes
+  useEffect(() => {
+    if (!selectedItem?.documentId) {
+      setExtractionStatus(null);
+      return;
+    }
+    supabase
+      .from('documents')
+      .select('extraction_status')
+      .eq('id', selectedItem.documentId)
+      .single()
+      .then(({ data }) => {
+        setExtractionStatus(data?.extraction_status || null);
+      });
+  }, [selectedItem?.documentId]);
+
+  const handleExtract = async () => {
+    if (!selectedItem?.documentId) return;
+    setIsExtracting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('sot-storage-extract', {
+        body: { documentId: selectedItem.documentId },
+      });
+      if (error) throw error;
+      if (data?.error) {
+        if (data.error === 'Insufficient credits') {
+          toast.error(`Nicht genügend Credits (${data.available} verfügbar, ${data.required} benötigt)`);
+        } else {
+          toast.error(data.error);
+        }
+        return;
+      }
+      setExtractionStatus('completed');
+      toast.success(`Dokument ausgelesen: ${data.chunks_created} Chunks, Konfidenz ${Math.round((data.confidence || 0) * 100)}%`);
+    } catch (err) {
+      console.error('Extraction error:', err);
+      toast.error('Fehler bei der Dokumenten-Extraktion');
+    } finally {
+      setIsExtracting(false);
+    }
+  };
 
   useEffect(() => {
     async function loadPreview() {
@@ -123,7 +170,28 @@ export function PreviewView({ items, selectedItem, onSelectItem, onDownload, onD
               <Separator />
 
               {/* Actions */}
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
+                {isExtractable && extractionStatus !== 'completed' && (
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={handleExtract}
+                    disabled={isExtracting}
+                  >
+                    {isExtracting ? (
+                      <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+                    ) : (
+                      <Brain className="h-4 w-4 mr-1.5" />
+                    )}
+                    {isExtracting ? 'Wird ausgelesen…' : 'Dokument auslesen'}
+                  </Button>
+                )}
+                {extractionStatus === 'completed' && (
+                  <Badge variant="outline" className="text-emerald-600 border-emerald-300 gap-1">
+                    <CheckCircle2 className="h-3 w-3" />
+                    Ausgelesen
+                  </Badge>
+                )}
                 <Button variant="outline" size="sm" onClick={() => selectedItem.documentId && onDownload(selectedItem.documentId)} disabled={isDownloading}>
                   <Download className="h-4 w-4 mr-1.5" />
                   Download
