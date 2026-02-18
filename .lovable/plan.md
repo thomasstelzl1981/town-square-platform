@@ -1,97 +1,92 @@
 
-# Datenraum-Extraktion und Dokumenten-Auslesung — Neustrukturierung der Einstellungen
 
-## Problem
+# DMS "Intelligenz" — Erster Menuepunkt mit Marketing-Fokus
 
-Die Einstellungen-Seite zeigt aktuell eine einzelne "Dokumenten-Auslesung"-Kachel (Kachel C), die Posteingang und Storage-Extraktion vermischt. Die bereits gebaute Storage Extraction Engine (ENG-STOREX mit scan/start/process-batch) hat kein Frontend. Ausserdem fehlen klare Erklaerungen, was Armstrong mit den extrahierten Daten machen kann.
+## Ueberblick
 
----
-
-## Loesung
-
-Kachel C wird in **zwei separate Kacheln** aufgeteilt und die ENG-STOREX wird mit einer interaktiven Scan-/Freigabe-UI eingebunden:
-
-### Neue Kachelstruktur (4 Kacheln + Engine-Card)
-
-| Kachel | Titel | Inhalt |
-|--------|-------|--------|
-| A | Speicherplatz | Unveraendert |
-| B | Digitaler Postservice | Unveraendert |
-| C | Posteingangs-Auslesung | Automatische Pipeline fuer eingehende PDFs |
-| D | Datenraum-Extraktion | **NEU** — Scan/Angebot/Freigabe fuer eigene Dateien |
-| E | Document Intelligence Engine | Unveraendert (DataEngineInfoCard) |
+Der bisherige Tab "Einstellungen" wird zu **"Intelligenz"** umbenannt und an die **erste Position** im DMS-Menue verschoben — noch vor Storage und Posteingang. Die Seite wird zum Einstiegspunkt fuer DMS und erklaert, was die KI-Dokumentenverarbeitung leistet und wie der Datenraum aktiviert werden kann.
 
 ---
 
-## Kachel C: Posteingangs-Auslesung (refactored)
+## Aenderungen
 
-Fokus: **Automatische End-to-End-Verarbeitung** eingehender Dokumente.
+### 1. Route-Manifest: Position + Umbenennung
 
-**Inhalt:**
-- Toggle: "Automatische Auslesung aktivieren" (bestehend)
-- Erklaerung: "Neue Dokumente im Posteingang werden automatisch analysiert"
-- Pipeline-Schritte:
-  1. PDF empfangen
-  2. Texterkennung (OCR/Gemini Vision)
-  3. Dokumententyp erkennen
-  4. In passende Akte sortieren
-  5. Fuer Armstrong durchsuchbar machen
-- Kosten: 1 Credit pro Dokument
-- Armstrong-Beispiele:
-  - "Zeige mir alle Rechnungen vom letzten Monat"
-  - "Fasse den Mietvertrag Musterstr. 5 zusammen"
-  - "Welche offenen Fristen habe ich?"
+In `src/manifests/routesManifest.ts` wird der MOD-03 Tiles-Array umgeordnet:
+
+```
+tiles: [
+  { path: "intelligenz", component: "EinstellungenTab", title: "Intelligenz", default: true },
+  { path: "storage",      component: "StorageTab",       title: "Dateien" },
+  { path: "posteingang",  component: "PosteingangTab",   title: "Posteingang" },
+  { path: "sortieren",    component: "SortierenTab",     title: "Sortieren" },
+]
+```
+
+- "Intelligenz" kommt an Position 0 mit `default: true`
+- `einstellungen` → `intelligenz` (neue Route)
+- Component bleibt `EinstellungenTab` (Dateiname aendern wir nicht, nur den Titel)
+
+### 2. DMSPage.tsx: Route + Default anpassen
+
+- Neue Route `/intelligenz` hinzufuegen
+- Default-Redirect auf `intelligenz` statt `storage`
+- Legacy-Redirect: `/einstellungen` → `/intelligenz`
+
+### 3. EinstellungenTab.tsx: Header + Struktur
+
+**Header:**
+- Titel: "Intelligenz"
+- Beschreibung: "KI-gesteuerte Dokumentenverarbeitung — Posteingang automatisieren und Ihren Datenraum fuer Armstrong aktivieren"
+
+**Neue Seitenstruktur (5 Kacheln):**
+
+| Pos | Kachel | Inhalt |
+|-----|--------|--------|
+| 1 | **Datenraum fuer Armstrong aktivieren** | Value-Proposition + Scan/Angebot/Freigabe-Flow (StorageExtractionCard) |
+| 2 | **Posteingangs-Auslesung** | Toggle + Pipeline + NK-Beleg-Parsing + Armstrong-Beispiele |
+| 3 | **Speicherplatz** | Planauswahl (unveraendert) |
+| 4 | **Digitaler Postservice** | Mandate (unveraendert) |
+| 5 | **Document Intelligence Engine** | DataEngineInfoCard (unveraendert) |
+
+Die Datenraum-Extraktion rueckt an Position 1 — das Hauptfeature.
+
+### 4. StorageExtractionCard.tsx: Marketing-Upgrade
+
+**Vor dem Scan-Button — Value-Proposition:**
+- Headline: "Machen Sie Ihren gesamten Datenbestand fuer Armstrong lesbar"
+- Drei Highlight-Punkte:
+  - "Kein manuelles Hochladen" — Keine Copy-Paste-Schleifen wie bei ChatGPT oder Copilot
+  - "Einmal aktivieren, dauerhaft nutzen" — Einmalige Extraktion, danach sofortiger KI-Zugriff
+  - "Volle Kostenkontrolle" — Kostenvoranschlag vor der Freigabe, Sie entscheiden
+
+**Scan/Angebot/Freigabe-Flow bleibt wie gebaut** (scan → Kostenvoranschlag → start → Fortschritt → done)
+
+**NK-Beleg-Parsing wird ENTFERNT** (wandert in Kachel C Posteingangs-Auslesung)
+
+**Nach dem Flow — "Was danach moeglich ist":**
+- Konkrete Armstrong-Beispiele:
+  - "Fasse alle Mietvertraege zusammen und zeige die Kuendigungsfristen"
+  - "Erstelle eine Uebersicht aller Versicherungspolicen mit Praemien"
+  - "Vergleiche die Nebenkostenabrechnungen 2024 und 2025"
+  - "Welche Dokumente betreffen die Immobilie Musterstr. 5?"
+  - "Finde alle offenen Rechnungen der letzten 12 Monate"
+
+### 5. Posteingangs-Auslesung (Kachel C): NK-Beleg-Parsing integrieren
+
+NK-Beleg-Parsing als Unterpunkt hinzufuegen:
+- "Nebenkostenbelege werden automatisch analysiert: Versorger, Betrag, Zeitraum und Kostenkategorie werden extrahiert"
+- Inklusive im 1 Credit/Dokument Preis
 
 ---
 
-## Kachel D: Datenraum-Extraktion (NEU)
+## Betroffene Dateien
 
-Fokus: **Bulk-Analyse bestehender Dateien** — der Scan/Angebot/Freigabe-Flow.
+| Datei | Aenderung |
+|-------|-----------|
+| `src/manifests/routesManifest.ts` | MOD-03 tiles umordnen: intelligenz an Pos 0, default: true |
+| `src/pages/portal/DMSPage.tsx` | Route intelligenz + Default-Redirect + Legacy-Redirect einstellungen |
+| `src/pages/portal/dms/EinstellungenTab.tsx` | Header "Intelligenz", Kachel-Reihenfolge: Datenraum zuerst, NK-Beleg in Kachel C |
+| `src/components/dms/StorageExtractionCard.tsx` | Value-Proposition-Sektion, NK-Beleg entfernen, "Was danach moeglich ist"-Sektion |
+| `src/pages/portal/dms/index.ts` | Export bleibt (Dateiname unveraendert) |
 
-**Inhalt:**
-- Erklaerung: "Machen Sie Ihren gesamten Datenraum fuer Armstrong durchsuchbar"
-- Button "Datenraum scannen" → ruft `sot-storage-extractor` mit `action: scan` auf
-- Nach Scan: Kostenvoranschlag anzeigen:
-  - Dokumente gesamt: X
-  - Bereits extrahiert: Y
-  - Zu verarbeiten: Z
-  - Geschaetzte Kosten: Z Credits (Z × 0,25 EUR)
-  - Geschaetzte Dauer: ~N Minuten
-- Button "Extraktion starten" → ruft `action: start` auf
-- Waehrend Extraktion: Fortschrittsbalken mit polling (`action: status`)
-- Button "Abbrechen" waehrend der Verarbeitung
-- NK-Beleg-Parsing als Unterpunkt erwaehnt
-- Armstrong-Beispiele:
-  - "Durchsuche alle meine Dokumente nach Kuendigungsfristen"
-  - "Erstelle eine Uebersicht aller Versicherungspolicen"
-  - "Finde alle Nebenkostenabrechnungen der letzten 3 Jahre"
-
----
-
-## Technische Aenderungen
-
-### `src/pages/portal/dms/EinstellungenTab.tsx`
-
-- Kachel C wird auf Posteingangs-Auslesung fokussiert (reduziert, mit Armstrong-Beispielen)
-- **Neue Kachel D** eingefuegt zwischen Kachel C und DataEngineInfoCard
-- Kachel D enthaelt:
-  - States: `scanResult`, `jobStatus`, `isScanning`, `isExtracting`
-  - `scanStorageMutation`: ruft `sot-storage-extractor` mit `action: 'scan'`
-  - `startExtractionMutation`: ruft mit `action: 'start'`
-  - `processBatchMutation`: ruft mit `action: 'process-batch'` (getriggert nach start und nach jedem batch)
-  - Polling via `useQuery` mit `refetchInterval` auf `action: 'status'` waehrend `isExtracting`
-  - Progress-Anzeige mit `Progress`-Komponente
-  - Cancel-Button: ruft `action: 'cancel'`
-
-### `src/components/dms/DataEngineInfoCard.tsx`
-
-- Phase-2-Items "Storage-Extraktion" und "NK-Beleg-Parsing" von `status: 'planned'` auf den korrekten `status: 'live'` umstellen (sie sind bereits als 'live' markiert, also nur noch das Styling angleichen — gruene Badges statt amber)
-
----
-
-## Umsetzungsreihenfolge
-
-1. Kachel C refactoren (Posteingangs-Fokus + Armstrong-Beispiele)
-2. Kachel D erstellen (Scan/Angebot/Freigabe-UI mit sot-storage-extractor Calls)
-3. DataEngineInfoCard: Live-Items in Phase 1 verschieben
-4. Testen: Scan-Flow, Fortschrittsanzeige, Cancel
