@@ -75,11 +75,11 @@ export default function PMDashboard() {
       <div className={DESIGN.DASHBOARD_HEADER.GRID}>
         {/* ManagerVisitenkarte — persönliche Daten aus Auth-Profil */}
         <ManagerVisitenkarte
-          role="Pet Manager"
+          role="Inhaberin"
           gradientFrom="hsl(170,60%,40%)"
           gradientTo="hsl(180,55%,35%)"
-          badgeText={FACILITY_LABELS[(provider as any).facility_type] || 'Franchise-Partner'}
-          extraBadge={provider.status === 'active' ? 'Aktiv' : provider.status}
+          badgeText={provider.company_name || 'Lennox & Friends Dog Resorts'}
+          extraBadge={FACILITY_LABELS[(provider as any).facility_type] || 'Tierpension'}
         />
 
         {/* Kapazitäts-Widget */}
