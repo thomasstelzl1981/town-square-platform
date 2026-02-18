@@ -1,89 +1,55 @@
 
 
-# Konten-Tab in Finanzanalyse: Neuer Menuepunkt mit Zuordnungslogik
+# Mobile Startseite: Header vergroessern, Menuepunkte konsolidieren, Sticky Layout
 
-## Ausgangslage
+## Problem
 
-Die Konten (`msv_bank_accounts`) werden aktuell am Ende der Uebersicht (`/portal/finanzanalyse/dashboard`) angezeigt, eingebettet als `KontenBlock`-Funktion. Das ist nach der Neustrukturierung der Finanzuebersicht nicht mehr sinnvoll.
+1. **SystemBar zu kurz**: Die mobile SystemBar hat nur `h-10` (40px) — Icons und Text sind zu klein und wirken gedraengt
+2. **Falsche Labels**: "Sparen" (MOD-15) fuehrt zu Fortbildung, "Versicherungen" (MOD-16) fuehrt zu Shops — die Bezeichnungen stimmen nicht mit den Modulen ueberein
+3. **Zu viele Eintraege**: 12 Menuepunkte erfordern Scrollen auf kleinen Bildschirmen
+4. **Kein Sticky-Verhalten**: Die Modulliste scrollt frei, statt den gesamten sichtbaren Bereich souveraen auszufuellen
 
-**Aktuelles Problem**: Die Tabelle `msv_bank_accounts` hat nur eine `tenant_id`-Zuordnung — es gibt keine Felder fuer die fachliche Zuordnung eines Kontos zu einer Person, einer Vermietereinheit oder einer PV-Anlage. Damit kann die spaetere End-to-End-Kontenauslese nicht unterscheiden, welches Konto zu wem/wohin gehoert.
+## Loesung
 
----
+### 1. SystemBar vergroessern
 
-## Aenderungen
+In `src/components/portal/SystemBar.tsx` wird die mobile Hoehe von `h-10` auf `h-12` angehoben. Die Buttons bekommen `h-9 w-9` statt `h-8 w-8`, die ARMSTRONG-Schrift wird von `text-xs` auf `text-sm` vergroessert.
 
-### 1. DB-Migration: `msv_bank_accounts` erweitern
+### 2. Menuepunkte konsolidieren: 12 → 10
 
-Zwei neue Spalten fuer die polymorphe Zuordnung:
+In `src/config/mobileHomeConfig.ts`:
 
-```text
-ALTER TABLE msv_bank_accounts ADD COLUMN owner_type TEXT;
-ALTER TABLE msv_bank_accounts ADD COLUMN owner_id UUID;
-```
+**Entfernt:**
+- `{ type: 'module', code: 'MOD-15', label: 'Sparen', icon: 'PiggyBank' }` (Label war falsch — MOD-15 ist Fortbildung)
+- `{ type: 'module', code: 'MOD-16', label: 'Versicherungen', icon: 'Shield' }` (Label war falsch — MOD-16 ist Shop)
 
-**`owner_type`** — einer von drei Werten:
-- `person` — Zuordnung zu einer `household_persons`-ID (Privatkonten, Depots)
-- `property_context` — Zuordnung zu einer Vermietereinheit (`property_contexts`-ID aus MOD-04)
-- `pv_plant` — Zuordnung zu einer PV-Anlage (`pv_plants`-ID aus MOD-19)
+**Neu (zusammengefuehrt):**
+- `{ type: 'module', code: 'MOD-16', label: 'Shops & Fortbildung', icon: 'ShoppingBag' }` — ein einziger Menuepunkt, der zum Shop-Modul fuehrt (dort sind Fortbildungsinhalte ueber die Sub-Tabs erreichbar bzw. verlinkbar)
 
-**`owner_id`** — die UUID der jeweiligen Entitaet
+Damit sinkt die Liste von 12 auf 10 Eintraege:
+1. Finanzen
+2. Immobilien
+3. Briefe
+4. Dokumente
+5. Posteingang
+6. Fahrzeuge
+7. Haustiere
+8. Finanzierung
+9. Immo Suche
+10. Shops und Fortbildung
 
-Beide Spalten sind nullable (bestehende Konten behalten ihre Zuordnung vorerst ohne owner). Kein Foreign Key Constraint, da die Referenz polymorph ist (3 verschiedene Tabellen).
+### 3. Kompaktere Zeilen + Sticky Full-Height Layout
 
-### 2. Neuer Tab: `KontenTab.tsx`
+In `src/components/portal/MobileHomeModuleList.tsx`:
 
-Erstellt als `src/pages/portal/finanzanalyse/KontenTab.tsx`.
+- Zeilen-Padding von `py-3.5` auf `py-2.5` reduzieren (kompakter, aber noch gut tippbar)
+- Icon-Container von `h-9 w-9` auf `h-8 w-8` verkleinern
+- Aeusserer Container: `flex-1 overflow-y-auto` bleibt, aber der innere Container bekommt `flex flex-col justify-between min-h-full` — damit die Liste den verfuegbaren Platz gleichmaessig ausfuellt wenn alle Punkte hineinpassen, und nur scrollt wenn noetig
+- `ShoppingBag` Icon zum iconMap hinzufuegen
 
-**Aufbau:**
-- ModulePageHeader "Konten" mit "+" Button (oeffnet AddBankAccountDialog — erweitert)
-- WidgetGrid mit allen Konten als Kacheln (gleiche Darstellung wie bisher im UebersichtTab)
-- Demo-Konto weiterhin ueber `GP-KONTEN` Toggle
-- Klick auf Konto oeffnet `KontoAkteInline` darunter (bestehendes Pattern)
-- 12-Monats-Scan Button bleibt hier
+### 4. Icon-Map erweitern
 
-Die gesamte `KontenBlock`-Funktion (Zeilen 112-246) wird aus `UebersichtTab.tsx` entfernt und in den neuen Tab verschoben.
-
-### 3. `AddBankAccountDialog` erweitern
-
-Der bestehende Dialog (`src/components/shared/AddBankAccountDialog.tsx`) erhaelt ein neues Select-Feld **"Zuordnung"** mit drei Optionen:
-
-1. **Person im Haushalt** — laedt `household_persons` und zeigt Dropdown mit Vorname + Nachname
-2. **Vermietereinheit** — laedt `property_contexts` und zeigt Dropdown mit Context-Name
-3. **Photovoltaik-Anlage** — laedt `pv_plants` und zeigt Dropdown mit Anlagenname
-
-Bei Auswahl werden `owner_type` und `owner_id` in den INSERT geschrieben.
-
-### 4. `KontoAkteInline` erweitern
-
-Die bestehende Inline-Detailansicht erhaelt in Sektion 1 ("Kontodaten und Kategorisierung") ein zusaetzliches Anzeige-/Edit-Feld fuer die Zuordnung:
-
-- Anzeige des aktuellen Owners (Name + Typ-Badge: "Person", "Vermietereinheit", "PV-Anlage")
-- Aenderbar per Select (gleiche Logik wie im AddDialog)
-
-### 5. Route und Navigation einfuegen
-
-**`routesManifest.ts`** — Neuer Eintrag zwischen "Uebersicht" und "Investment":
-
-```text
-tiles: [
-  { path: "dashboard", ..., title: "Uebersicht", default: true },
-  { path: "konten", component: "FinanzenKonten", title: "Konten" },     // NEU
-  { path: "investment", ..., title: "Investment" },
-  ...
-]
-```
-
-**`FinanzanalysePage.tsx`** — Neue Route:
-
-```text
-<Route path="konten" element={<KontenTab />} />
-```
-
-### 6. `UebersichtTab.tsx` bereinigen
-
-- `KontenBlock`-Funktion komplett entfernen (Zeilen 112-246)
-- Imports entfernen: `KontoAkteInline`, `DEMO_KONTO`, `DEMO_KONTO_IBAN_MASKED`, `Landmark`, `ScanSearch`, `CreditCard`, `useDemoToggles` (falls nur dort verwendet)
-- Die Uebersicht zeigt dann nur noch: Personen im Haushalt + Finanzbericht
+`ShoppingBag` wird in die Imports und den `iconMap` in `MobileHomeModuleList.tsx` aufgenommen.
 
 ---
 
@@ -91,19 +57,12 @@ tiles: [
 
 | Datei | Aenderung |
 |-------|-----------|
-| DB Migration | `msv_bank_accounts` + `owner_type` (TEXT) + `owner_id` (UUID) |
-| `src/pages/portal/finanzanalyse/KontenTab.tsx` | Neuer Tab — uebernimmt KontenBlock aus UebersichtTab |
-| `src/pages/portal/FinanzanalysePage.tsx` | Neue Route `konten` einfuegen |
-| `src/manifests/routesManifest.ts` | Neuer Tile-Eintrag "Konten" zwischen Uebersicht und Investment |
-| `src/pages/portal/finanzanalyse/UebersichtTab.tsx` | KontenBlock + Scan-Button entfernen |
-| `src/components/shared/AddBankAccountDialog.tsx` | Zuordnungs-Select (owner_type + owner_id) hinzufuegen |
-| `src/components/finanzanalyse/KontoAkteInline.tsx` | Zuordnungs-Anzeige und -Aenderung in Sektion 1 |
+| `src/components/portal/SystemBar.tsx` | Mobile Hoehe `h-10` → `h-12`, Button-Groessen und Schrift anpassen |
+| `src/config/mobileHomeConfig.ts` | MOD-15 + MOD-16 Eintraege durch einen kombinierten Eintrag "Shops und Fortbildung" ersetzen |
+| `src/components/portal/MobileHomeModuleList.tsx` | Kompaktere Zeilen, `ShoppingBag` Icon, Sticky-Full-Height Layout |
 
-## Umsetzungsreihenfolge
+## Reihenfolge
 
-1. DB-Migration: `owner_type` + `owner_id` auf `msv_bank_accounts`
-2. `KontenTab.tsx` erstellen (KontenBlock-Logik verschieben)
-3. `FinanzanalysePage.tsx` + `routesManifest.ts` — Route und Navigation
-4. `UebersichtTab.tsx` — KontenBlock entfernen
-5. `AddBankAccountDialog.tsx` — Zuordnungs-Select
-6. `KontoAkteInline.tsx` — Owner-Anzeige/Edit
+1. `mobileHomeConfig.ts` — Eintraege konsolidieren (12 → 10)
+2. `MobileHomeModuleList.tsx` — Kompaktere Zeilen + neues Icon + Sticky Layout
+3. `SystemBar.tsx` — Mobile Header vergroessern
