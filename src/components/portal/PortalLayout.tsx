@@ -178,17 +178,15 @@ function PortalLayoutInner() {
       {/* Top Navigation (3 levels) */}
       <TopNavigation />
       
-      {/* Main Content + Armstrong Stripe */}
+      {/* Main Content */}
       <div className="flex-1 flex overflow-hidden">
-        <main className={cn(
-          "flex-1 overflow-y-auto relative transition-all duration-300",
-        )}>
+        <main className="flex-1 overflow-y-auto relative">
           <Outlet />
         </main>
-        
-        {/* Armstrong Stripe - inline layout element when expanded */}
-        <ArmstrongContainer />
       </div>
+      
+      {/* Armstrong Floating Overlay - outside flex layout */}
+      <ArmstrongContainer />
       
       {/* Desktop PWA Install Banner */}
       <DesktopInstallBanner />

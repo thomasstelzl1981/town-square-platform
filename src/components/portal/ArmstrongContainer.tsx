@@ -1,21 +1,23 @@
 /**
- * ARMSTRONG CONTAINER — Dual Mode: Orb (collapsed) + Stripe (expanded)
+ * ARMSTRONG CONTAINER — Dual Mode: Orb (collapsed) + Floating Overlay (expanded)
  * 
  * Collapsed: Draggable orb with voice mic (unchanged)
- * Expanded: Full-height right-side milky glass stripe, no text input, voice + upload only
+ * Expanded: Floating overlay panel with chat input + work visualization
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { usePortalLayout } from '@/hooks/usePortalLayout';
-import { ChatPanel } from '@/components/chat/ChatPanel';
 import { useArmstrongAdvisor } from '@/hooks/useArmstrongAdvisor';
+import { useArmstrongDocUpload } from '@/hooks/useArmstrongDocUpload';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { FileUploader } from '@/components/shared/FileUploader';
 import { UploadResultCard } from '@/components/shared/UploadResultCard';
 import { VoiceButton } from '@/components/armstrong/VoiceButton';
 import { MessageRenderer } from '@/components/chat/MessageRenderer';
+import { ThinkingSteps, getStepsForAction, type ThinkingStep } from '@/components/chat/ThinkingSteps';
 import { useUniversalUpload } from '@/hooks/useUniversalUpload';
 import { 
   Minimize2, 
@@ -24,7 +26,11 @@ import {
   Mic,
   Volume2,
   Upload,
-  Loader2
+  Loader2,
+  Send,
+  Paperclip,
+  FileText,
+  Trash2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useLocation } from 'react-router-dom';
@@ -38,11 +44,17 @@ export function ArmstrongContainer() {
   const isDarkMode = theme === 'dark';
   const { armstrongVisible, armstrongExpanded, toggleArmstrongExpanded, hideArmstrong, isMobile } = usePortalLayout();
   const [isFileDragOver, setIsFileDragOver] = useState(false);
+  const [input, setInput] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
   const [mounted, setMounted] = useState(false);
   const prevListeningRef = useRef(false);
   const prevMessagesLenRef = useRef(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const docInputRef = useRef<HTMLInputElement>(null);
+  
+  // Thinking steps state
+  const [thinkingSteps, setThinkingSteps] = useState<ThinkingStep[]>([]);
+  const stepsTimerRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   
   // Voice integration
   const voice = useArmstrongVoice();
@@ -50,8 +62,44 @@ export function ArmstrongContainer() {
   // Advisor for conversation
   const advisor = useArmstrongAdvisor();
 
+  // Document analysis hook
+  const docUpload = useArmstrongDocUpload();
+
   // Universal upload
   const { upload: universalUpload, uploadedFiles, clearUploadedFiles, isUploading } = useUniversalUpload();
+
+  // Simulate thinking steps during loading
+  useEffect(() => {
+    if (advisor.isLoading) {
+      // Determine action type from last user message
+      const lastUserMsg = [...advisor.messages].reverse().find(m => m.role === 'user');
+      const actionHint = lastUserMsg?.content?.includes('📄') ? 'MAGIC_INTAKE' : 'EXPLAIN';
+      const steps = getStepsForAction(actionHint);
+      setThinkingSteps(steps);
+      
+      // Progressively activate steps
+      stepsTimerRef.current = steps.map((_, i) => 
+        setTimeout(() => {
+          setThinkingSteps(prev => prev.map((s, j) => ({
+            ...s,
+            status: j < i ? 'completed' : j === i ? 'active' : 'pending',
+          })));
+        }, 800 + i * 1200)
+      );
+    } else {
+      // Complete all steps
+      stepsTimerRef.current.forEach(t => clearTimeout(t));
+      stepsTimerRef.current = [];
+      if (thinkingSteps.length > 0) {
+        setThinkingSteps(prev => prev.map(s => ({ ...s, status: 'completed' as const })));
+        // Clear after animation
+        setTimeout(() => setThinkingSteps([]), 1500);
+      }
+    }
+    return () => {
+      stepsTimerRef.current.forEach(t => clearTimeout(t));
+    };
+  }, [advisor.isLoading]);
 
   // Orb mode: auto-send transcript when user stops speaking (collapsed only)
   useEffect(() => {
@@ -73,12 +121,12 @@ export function ArmstrongContainer() {
     prevMessagesLenRef.current = msgs.length;
   }, [advisor.messages]);
 
-  // Auto-scroll in stripe mode
+  // Auto-scroll in expanded mode
   useEffect(() => {
     if (armstrongExpanded) {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [advisor.messages, armstrongExpanded]);
+  }, [advisor.messages, armstrongExpanded, thinkingSteps]);
   
   // Draggable integration for orb positioning
   const { 
@@ -99,6 +147,31 @@ export function ArmstrongContainer() {
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Chat input handlers
+  const handleSend = useCallback(() => {
+    if (input.trim()) {
+      advisor.sendMessage(input.trim(), docUpload.documentContext || undefined);
+      if (docUpload.documentContext) {
+        docUpload.clearDocument();
+      }
+      setInput('');
+    }
+  }, [input, advisor, docUpload]);
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  }, [handleSend]);
+
+  const handleDocumentForAnalysis = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    await docUpload.uploadAndParse(file);
+    e.target.value = '';
+  }, [docUpload]);
 
   // File drag handlers
   const handleFileDragOver = useCallback((e: React.DragEvent) => {
@@ -123,7 +196,6 @@ export function ArmstrongContainer() {
       if (!armstrongExpanded) {
         toggleArmstrongExpanded();
       }
-      // Upload files
       Array.from(files).forEach(file => {
         universalUpload(file, { source: 'armstrong_chat', triggerAI: false });
       });
@@ -168,159 +240,315 @@ export function ArmstrongContainer() {
     return null;
   }
 
+  // Check if viewport is wide enough for two-column layout
+  const isWideViewport = typeof window !== 'undefined' && window.innerWidth >= 1280;
+
   // ═══════════════════════════════════════════
-  // EXPANDED: Full-height right stripe (inline)
+  // EXPANDED: Floating Overlay Panel
   // ═══════════════════════════════════════════
   if (armstrongExpanded) {
-    return (
-      <div 
-        ref={containerRef}
-        className={cn(
-          "w-[304px] h-full flex flex-col shrink-0",
-          "bg-white/60 dark:bg-card/40 backdrop-blur-xl",
-          "border-l border-border/30",
-          "transition-all duration-300",
-        )}
-        onDragOver={handleFileDragOver}
-        onDragLeave={handleFileDragLeave}
-        onDrop={handleFileDrop}
-      >
-        {/* Header — ARMSTRONG wordmark + close */}
-        <div className="flex items-center justify-between px-4 py-3">
-          <div /> {/* spacer */}
-          <span className="font-sans font-semibold tracking-[0.2em] text-sm text-foreground/70 uppercase select-none">
-            Armstrong
-          </span>
-          <div className="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-              onClick={toggleArmstrongExpanded}
-              title="Minimieren"
-            >
-              <Minimize2 className="h-3.5 w-3.5" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-              onClick={hideArmstrong}
-              title="Schließen"
-            >
-              <X className="h-3.5 w-3.5" />
-            </Button>
-          </div>
-        </div>
-
-        {/* Upload zone hint */}
-        {isFileDragOver && (
-          <div className="mx-4 mb-2 py-6 rounded-xl border-2 border-dashed border-primary/30 bg-primary/5 flex flex-col items-center justify-center gap-2 transition-all">
-            <Upload className="h-6 w-6 text-primary/50" />
-            <span className="text-xs text-primary/60 font-medium">Dateien loslassen</span>
-          </div>
-        )}
-
-        {/* Messages area */}
-        <ScrollArea className="flex-1 px-4">
-          <div className="space-y-4 py-4">
-            {advisor.messages.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-40 text-center">
-                <p className="text-xs text-muted-foreground/40">
-                  Dateien hierher ziehen
-                </p>
+    const panelContent = (
+      <div className="fixed inset-0 z-[60] pointer-events-none">
+        <div 
+          ref={containerRef}
+          className={cn(
+            "pointer-events-auto flex flex-col",
+            "fixed right-4 bottom-4",
+            isWideViewport ? "w-[680px]" : "w-[420px]",
+            "h-[70vh] max-h-[800px] min-h-[400px]",
+            "rounded-2xl overflow-hidden",
+            "bg-background/95 backdrop-blur-2xl",
+            "border border-border/40",
+            "shadow-2xl shadow-black/20 dark:shadow-black/40",
+            "transition-all duration-300 ease-out",
+            "animate-in slide-in-from-bottom-4 fade-in-0 duration-300",
+          )}
+          onDragOver={handleFileDragOver}
+          onDragLeave={handleFileDragLeave}
+          onDrop={handleFileDrop}
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between px-4 py-3 border-b border-border/30">
+            <div className="flex items-center gap-2">
+              <div className="h-7 w-7 rounded-full bg-gradient-to-br from-[hsl(200_85%_45%/0.2)] to-[hsl(140_45%_40%/0.2)] flex items-center justify-center">
+                <Globe className="h-3.5 w-3.5 text-primary" />
               </div>
-            ) : (
-              <>
-                {advisor.messages.map((message) => (
-                  <MessageRenderer
-                    key={message.id}
-                    message={message}
-                    onActionSelect={advisor.selectAction}
-                    onConfirm={advisor.confirmAction}
-                    onCancel={advisor.cancelAction}
-                    isExecuting={advisor.isExecuting}
-                  />
-                ))}
-                
-                {advisor.isLoading && (
-                  <div className="flex gap-3">
-                    <div className="flex items-center justify-center h-7 w-7 rounded-full shrink-0 bg-primary/10">
-                      <Globe className="h-3.5 w-3.5 text-primary" />
-                    </div>
-                    <div className="rounded-2xl px-3.5 py-2.5 text-sm">
-                      <div className="flex items-center gap-2 text-muted-foreground">
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        <span>Armstrong denkt nach...</span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-                
-                <div ref={messagesEndRef} />
-              </>
-            )}
-          </div>
-        </ScrollArea>
-
-        {/* Uploaded files */}
-        {uploadedFiles.length > 0 && (
-          <div className="px-4 py-2 border-t border-border/20">
-            <div className="space-y-1">
-              {uploadedFiles.map((file) => (
-                <UploadResultCard
-                  key={file.documentId}
-                  file={file}
-                  status="uploaded"
-                  compact
-                />
-              ))}
+              <div>
+                <span className="font-sans font-semibold tracking-[0.15em] text-xs text-foreground/70 uppercase select-none">
+                  Armstrong
+                </span>
+                <div className="flex items-center gap-1">
+                  <span className={cn(
+                    "h-1.5 w-1.5 rounded-full",
+                    advisor.isLoading ? "bg-status-warning animate-pulse" : "bg-status-success"
+                  )} />
+                  <span className="text-[10px] text-muted-foreground">
+                    {advisor.isLoading ? "Arbeitet..." : "Online"}
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center gap-1">
+              {advisor.messages.length > 0 && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 rounded-full text-muted-foreground hover:text-foreground"
+                  onClick={advisor.clearConversation}
+                  title="Gespräch löschen"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              )}
               <Button
                 variant="ghost"
-                size="sm"
-                className="text-xs h-6 w-full text-muted-foreground"
-                onClick={clearUploadedFiles}
+                size="icon"
+                className="h-7 w-7 rounded-full text-muted-foreground hover:text-foreground"
+                onClick={toggleArmstrongExpanded}
+                title="Minimieren"
               >
-                Liste leeren
+                <Minimize2 className="h-3.5 w-3.5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 rounded-full text-muted-foreground hover:text-foreground"
+                onClick={hideArmstrong}
+                title="Schließen"
+              >
+                <X className="h-3.5 w-3.5" />
               </Button>
             </div>
           </div>
-        )}
 
-        {/* Footer — Upload button + Mic button */}
-        <div className="flex items-center justify-between px-4 py-4 border-t border-border/20">
-          <FileUploader
-            onFilesSelected={handleFilesSelected}
-            accept=".pdf,.xlsx,.xls,.doc,.docx,.png,.jpg,.jpeg"
-            multiple
-            disabled={isUploading}
-          >
-            <button 
-              className="h-10 w-10 rounded-full flex items-center justify-center text-muted-foreground/60 hover:text-foreground hover:bg-muted/40 transition-colors"
-              aria-label={isUploading ? "Wird hochgeladen..." : "Datei hochladen"}
-            >
-              {isUploading ? (
-                <Loader2 className="h-5 w-5 animate-spin" />
-              ) : (
-                <Upload className="h-5 w-5" />
+          {/* Upload zone hint */}
+          {isFileDragOver && (
+            <div className="mx-4 mt-2 py-6 rounded-xl border-2 border-dashed border-primary/30 bg-primary/5 flex flex-col items-center justify-center gap-2">
+              <Upload className="h-6 w-6 text-primary/50" />
+              <span className="text-xs text-primary/60 font-medium">Dateien loslassen</span>
+            </div>
+          )}
+
+          {/* Main content area — two-column on wide viewports */}
+          <div className={cn(
+            "flex-1 flex overflow-hidden min-h-0",
+            isWideViewport && "flex-row"
+          )}>
+            {/* Left column: ThinkingSteps (only on wide viewports) */}
+            {isWideViewport && (
+              <div className="w-[220px] shrink-0 border-r border-border/20 p-4 overflow-y-auto">
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="h-1.5 w-1.5 rounded-full bg-primary/60" />
+                    <span className="text-[10px] font-medium text-muted-foreground/60 uppercase tracking-wider">
+                      Arbeitsschritte
+                    </span>
+                  </div>
+                  
+                  {thinkingSteps.length > 0 ? (
+                    <ThinkingSteps steps={thinkingSteps} />
+                  ) : (
+                    <p className="text-[11px] text-muted-foreground/30 leading-relaxed">
+                      Hier werden die einzelnen Arbeitsschritte angezeigt, wenn Armstrong eine Aufgabe bearbeitet.
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Right column (or full width): Chat */}
+            <div className="flex-1 flex flex-col min-w-0 min-h-0">
+              <ScrollArea className="flex-1 px-4">
+                <div className="space-y-4 py-4">
+                  {advisor.messages.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-40 text-center">
+                      <div className="h-12 w-12 rounded-full bg-gradient-to-br from-[hsl(200_85%_45%)] via-[hsl(140_45%_40%)] to-[hsl(210_90%_30%)] opacity-40 flex items-center justify-center mb-3">
+                        <Globe className="h-5 w-5 text-white" />
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        Wie kann ich helfen?
+                      </p>
+                      <p className="text-xs text-muted-foreground/50 mt-1">
+                        📄 Dokumente · ✉️ Texte · 💡 Fragen
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      {advisor.messages.map((message) => (
+                        <MessageRenderer
+                          key={message.id}
+                          message={message}
+                          onActionSelect={advisor.selectAction}
+                          onConfirm={advisor.confirmAction}
+                          onCancel={advisor.cancelAction}
+                          isExecuting={advisor.isExecuting}
+                        />
+                      ))}
+                      
+                      {/* Loading with inline ThinkingSteps (single-column mode) */}
+                      {advisor.isLoading && (
+                        <div className="flex gap-3">
+                          <div className="flex items-center justify-center h-7 w-7 rounded-full shrink-0 bg-gradient-to-br from-[hsl(200_85%_45%/0.2)] to-[hsl(140_45%_40%/0.2)]">
+                            <Globe className="h-3.5 w-3.5 text-primary" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="rounded-2xl px-3.5 py-2.5 text-sm armstrong-message-assistant">
+                              <div className="flex items-center gap-2 text-muted-foreground mb-2">
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                <span>Armstrong arbeitet...</span>
+                              </div>
+                              {/* Inline steps for single-column mode */}
+                              {!isWideViewport && thinkingSteps.length > 0 && (
+                                <ThinkingSteps steps={thinkingSteps} compact />
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      
+                      <div ref={messagesEndRef} />
+                    </>
+                  )}
+                </div>
+              </ScrollArea>
+
+              {/* Uploaded files */}
+              {uploadedFiles.length > 0 && (
+                <div className="px-4 py-2 border-t border-border/20">
+                  <div className="space-y-1">
+                    {uploadedFiles.map((file) => (
+                      <UploadResultCard
+                        key={file.documentId}
+                        file={file}
+                        status="uploaded"
+                        compact
+                      />
+                    ))}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-xs h-6 w-full text-muted-foreground"
+                      onClick={clearUploadedFiles}
+                    >
+                      Liste leeren
+                    </Button>
+                  </div>
+                </div>
               )}
-            </button>
-          </FileUploader>
-          
-          <VoiceButton
-            isListening={voice.isListening}
-            isProcessing={voice.isProcessing}
-            isSpeaking={voice.isSpeaking}
-            isConnected={voice.isConnected}
-            error={voice.error}
-            onToggle={handleVoiceToggle}
-            size="lg"
-          />
-          
-          <div className="w-10" /> {/* spacer for symmetry */}
+
+              {/* Attached Document Preview */}
+              {(docUpload.attachedFile || docUpload.isParsing || docUpload.parseError) && (
+                <div className="px-4 py-2 border-t border-border/20">
+                  {docUpload.isParsing && (
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+                      <span>Dokument wird gelesen...</span>
+                    </div>
+                  )}
+                  {docUpload.parseError && (
+                    <div className="flex items-center gap-2 text-xs text-destructive">
+                      <X className="h-3.5 w-3.5" />
+                      <span className="flex-1 truncate">{docUpload.parseError}</span>
+                      <button onClick={docUpload.clearDocument} className="shrink-0 hover:text-foreground">
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  )}
+                  {docUpload.attachedFile && !docUpload.isParsing && !docUpload.parseError && (
+                    <div className="flex items-center gap-2 text-xs bg-primary/5 rounded-lg px-2.5 py-1.5">
+                      <FileText className="h-3.5 w-3.5 text-primary shrink-0" />
+                      <span className="truncate flex-1 text-foreground font-medium">
+                        {docUpload.attachedFile.name}
+                      </span>
+                      <span className="text-muted-foreground shrink-0">
+                        {(docUpload.attachedFile.size / 1024).toFixed(0)} KB
+                      </span>
+                      <button 
+                        onClick={docUpload.clearDocument} 
+                        className="shrink-0 text-muted-foreground hover:text-foreground"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Hidden file input */}
+              <input
+                ref={docInputRef}
+                type="file"
+                accept=".pdf,.jpg,.jpeg,.png,.webp,.docx,.doc,.csv,.xlsx,.xls"
+                className="hidden"
+                onChange={handleDocumentForAnalysis}
+              />
+
+              {/* Footer — Chat Input with Paperclip, Send, Voice */}
+              <div className="p-3 border-t border-border/20">
+                <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-muted/40 backdrop-blur-sm">
+                  {/* Document attach */}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className={cn(
+                      "h-8 w-8 p-0 rounded-full shrink-0",
+                      docUpload.documentContext ? "text-primary" : "text-muted-foreground"
+                    )}
+                    onClick={() => docInputRef.current?.click()}
+                    disabled={advisor.isLoading || docUpload.isParsing}
+                    title="Dokument anhängen"
+                  >
+                    <Paperclip className="h-4 w-4" />
+                  </Button>
+                  
+                  {/* Text input */}
+                  <Input
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    placeholder={docUpload.documentContext 
+                      ? "Frage zum Dokument..." 
+                      : "Nachricht eingeben..."
+                    }
+                    className="flex-1 border-0 bg-transparent shadow-none focus-visible:ring-0 h-8 text-sm placeholder:text-muted-foreground/50"
+                    disabled={advisor.isLoading}
+                  />
+                  
+                  {/* Send button */}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className={cn(
+                      "h-8 w-8 p-0 rounded-full shrink-0 transition-colors",
+                      input.trim() 
+                        ? "text-primary hover:bg-primary/10" 
+                        : "text-muted-foreground/30"
+                    )}
+                    onClick={handleSend}
+                    disabled={!input.trim() || advisor.isLoading}
+                  >
+                    <Send className="h-4 w-4" />
+                  </Button>
+                  
+                  {/* Voice button */}
+                  <VoiceButton
+                    isListening={voice.isListening}
+                    isProcessing={voice.isProcessing}
+                    isSpeaking={voice.isSpeaking}
+                    isConnected={voice.isConnected}
+                    error={voice.error}
+                    onToggle={handleVoiceToggle}
+                    size="md"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     );
+
+    return createPortal(panelContent, document.body);
   }
 
   // ═══════════════════════════════════════════
