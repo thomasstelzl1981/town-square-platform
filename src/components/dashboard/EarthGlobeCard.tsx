@@ -5,10 +5,26 @@
  * Falls back to CSSGlobeFallback on WebGL errors.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, Component, type ReactNode } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Globe, Loader2, LocateFixed } from "lucide-react";
 import { CSSGlobeFallback } from "@/components/dashboard/earth-globe/CSSGlobeFallback";
+
+/** Local ErrorBoundary to catch WebGL/Three.js unmount crashes */
+class GlobeCrashBoundary extends Component<
+  { children: ReactNode; onError?: () => void },
+  { crashed: boolean }
+> {
+  state = { crashed: false };
+  static getDerivedStateFromError() { return { crashed: true }; }
+  componentDidCatch(err: Error) {
+    console.warn('[Globe] Crash caught:', err.message);
+    this.props.onError?.();
+  }
+  render() {
+    return this.state.crashed ? <CSSGlobeFallback /> : this.props.children;
+  }
+}
 
 interface EarthGlobeCardProps {
   latitude: number | null;
@@ -43,7 +59,25 @@ export function EarthGlobeCard({ latitude, longitude, city }: EarthGlobeCardProp
           setIsLoading(false);
         }
       });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+      // Cleanup Three.js renderer to prevent DOM removeChild errors
+      try {
+        const globe = globeRef.current;
+        if (globe) {
+          const renderer = globe.renderer?.();
+          if (renderer) {
+            renderer.dispose();
+            renderer.forceContextLoss();
+          }
+          const controls = globe.controls?.();
+          if (controls) controls.dispose?.();
+          globeRef.current = null;
+        }
+      } catch {
+        // Swallow cleanup errors silently
+      }
+    };
   }, []);
 
   // Measure container
@@ -102,6 +136,7 @@ export function EarthGlobeCard({ latitude, longitude, city }: EarthGlobeCardProp
   };
 
   return (
+    <GlobeCrashBoundary onError={() => setHasError(true)}>
     <Card className="relative h-[260px] md:h-auto md:aspect-square overflow-hidden border-primary/20 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
       {/* Globe Container — stop pointer events from bubbling to DnD */}
       <div
@@ -184,5 +219,6 @@ export function EarthGlobeCard({ latitude, longitude, city }: EarthGlobeCardProp
       </CardContent>
 
     </Card>
+    </GlobeCrashBoundary>
   );
 }
