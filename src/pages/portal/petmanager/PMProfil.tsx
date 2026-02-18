@@ -3,8 +3,8 @@
  * Editierbar: Bilder, Beschreibung, Kontakt/Öffnungszeiten
  * Read-Only: Services + Preise (aus PMLeistungen)
  */
-import { useState } from 'react';
-import { Save, Image, FileText, Phone, Tag, Euro, ExternalLink, Upload, X } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { Save, FileText, Phone, Tag, Euro, ExternalLink, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -13,7 +13,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Switch } from '@/components/ui/switch';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { PageShell } from '@/components/shared/PageShell';
+import { RecordCardGallery } from '@/components/shared/RecordCardGallery';
 import { useMyProvider, useProviderServices } from '@/hooks/usePetBookings';
 import type { Tables } from '@/integrations/supabase/types';
 import { supabase } from '@/integrations/supabase/client';
@@ -53,6 +59,11 @@ export default function PMProfil() {
   const { data: services = [] } = useProviderServices(provider?.id);
 
   const [saving, setSaving] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+  const [showPublishDialog, setShowPublishDialog] = useState(false);
+  const [pendingPublishState, setPendingPublishState] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [form, setForm] = useState<{
     company_name: string;
     bio: string;
@@ -127,6 +138,72 @@ export default function PMProfil() {
 
   const activeServices = services.filter((s: any) => s.is_active);
 
+  const galleryPhotos: string[] = (provider?.gallery_images as string[]) || [];
+
+  const handleTogglePublish = (checked: boolean) => {
+    setPendingPublishState(checked);
+    setShowPublishDialog(true);
+  };
+
+  const confirmPublish = async () => {
+    if (!provider) return;
+    setPublishing(true);
+    try {
+      const { error } = await supabase
+        .from('pet_providers')
+        .update({ is_published: pendingPublishState } as any)
+        .eq('id', provider.id);
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ['my_pet_provider'] });
+      toast.success(pendingPublishState ? 'Profil veröffentlicht' : 'Profil deaktiviert');
+    } catch (e: any) {
+      toast.error('Fehler: ' + e.message);
+    } finally {
+      setPublishing(false);
+      setShowPublishDialog(false);
+    }
+  };
+
+  const handlePhotoUpload = async (file: File) => {
+    if (!provider || !activeTenantId) return;
+    setUploading(true);
+    try {
+      const index = galleryPhotos.length;
+      const path = `${activeTenantId}/pet-provider/${provider.id}/gallery_${index}_${Date.now()}.jpg`;
+      const { error: uploadError } = await supabase.storage
+        .from('tenant-documents')
+        .upload(path, file, { upsert: true });
+      if (uploadError) throw uploadError;
+
+      const { data: signedData } = await supabase.storage
+        .from('tenant-documents')
+        .createSignedUrl(path, 60 * 60 * 24 * 365);
+      if (!signedData?.signedUrl) throw new Error('Signed URL konnte nicht erstellt werden');
+
+      const newPhotos = [...galleryPhotos, signedData.signedUrl];
+      const { error } = await supabase
+        .from('pet_providers')
+        .update({
+          gallery_images: newPhotos,
+          cover_image_url: newPhotos[0],
+        })
+        .eq('id', provider.id);
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ['my_pet_provider'] });
+      toast.success('Bild hochgeladen');
+    } catch (e: any) {
+      toast.error('Upload fehlgeschlagen: ' + e.message);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleGalleryClick = () => {
+    if (galleryPhotos.length < 4) {
+      fileInputRef.current?.click();
+    }
+  };
+
   if (isLoading) {
     return (
       <PageShell>
@@ -155,13 +232,23 @@ export default function PMProfil() {
 
   return (
     <PageShell>
-      {/* Header with Save */}
-      <div className="flex items-center justify-between">
+      {/* Header with Save + Publish Toggle */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h2 className="text-lg font-semibold">Werbeprofil</h2>
           <p className="text-sm text-muted-foreground">Ihr öffentliches Profil auf der Lennox & Friends Website</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <Switch
+              checked={!!(provider as any).is_published}
+              onCheckedChange={handleTogglePublish}
+              disabled={publishing}
+            />
+            <Badge variant={(provider as any).is_published ? 'default' : 'outline'} className="text-xs">
+              {(provider as any).is_published ? 'Live' : 'Entwurf'}
+            </Badge>
+          </div>
           <Button variant="outline" size="sm" asChild>
             <a href={`/website/tierservice/partner/${provider.id}`} target="_blank" rel="noopener">
               <ExternalLink className="h-4 w-4 mr-1" /> Vorschau
@@ -173,48 +260,53 @@ export default function PMProfil() {
         </div>
       </div>
 
-      {/* 1. Bilder */}
+      {/* Publish Confirmation Dialog */}
+      <AlertDialog open={showPublishDialog} onOpenChange={setShowPublishDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {pendingPublishState ? 'Profil veröffentlichen?' : 'Profil deaktivieren?'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingPublishState
+                ? 'Ihr Profil wird auf der Lennox & Friends Website veröffentlicht und ist für potenzielle Kunden sichtbar. Fortfahren?'
+                : 'Ihr Profil wird von der Lennox & Friends Website entfernt und ist nicht mehr öffentlich sichtbar.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmPublish} disabled={publishing}>
+              {publishing ? 'Wird gespeichert...' : 'Bestätigen'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* 1. Bilder — RecordCardGallery Grid */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-sm font-medium">
-            <Image className="h-4 w-4" /> Bilder
-          </CardTitle>
+          <CardTitle className="text-sm font-medium">Bilder</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <Label className="text-xs text-muted-foreground">Cover-Bild</Label>
-            {provider.cover_image_url ? (
-              <div className="mt-1 relative rounded-lg overflow-hidden h-40 bg-muted">
-                <img src={provider.cover_image_url} alt="Cover" className="w-full h-full object-cover" />
-              </div>
-            ) : (
-              <div className="mt-1 flex items-center justify-center h-40 rounded-lg border-2 border-dashed border-muted-foreground/25 bg-muted/50">
-                <div className="text-center text-muted-foreground text-sm">
-                  <Upload className="h-6 w-6 mx-auto mb-1 opacity-50" />
-                  <span>Cover-Bild hochladen</span>
-                </div>
-              </div>
-            )}
+        <CardContent>
+          <div onClick={handleGalleryClick} className={uploading ? 'opacity-50 pointer-events-none' : ''}>
+            <RecordCardGallery photos={galleryPhotos} maxPhotos={4} />
           </div>
-          <div>
-            <Label className="text-xs text-muted-foreground">Galerie (max. 6 Bilder)</Label>
-            <div className="mt-1 grid grid-cols-3 gap-2">
-              {(provider.gallery_images || []).slice(0, 6).map((url: string, i: number) => (
-                <div key={i} className="relative rounded-lg overflow-hidden h-24 bg-muted">
-                  <img src={url} alt={`Galerie ${i + 1}`} className="w-full h-full object-cover" />
-                </div>
-              ))}
-              {(provider.gallery_images || []).length < 6 && (
-                <div className="flex items-center justify-center h-24 rounded-lg border-2 border-dashed border-muted-foreground/25 bg-muted/50 text-muted-foreground text-xs">
-                  <Upload className="h-4 w-4" />
-                </div>
-              )}
-            </div>
-          </div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) handlePhotoUpload(file);
+              e.target.value = '';
+            }}
+          />
+          <p className="text-xs text-muted-foreground mt-2">
+            Klicken Sie auf einen freien Slot, um ein Bild hochzuladen. Das erste Bild wird als Cover verwendet.
+          </p>
         </CardContent>
       </Card>
-
-      {/* 2. Beschreibung */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-sm font-medium">
