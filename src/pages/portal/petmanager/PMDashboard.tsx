@@ -1,14 +1,15 @@
 /**
- * PMDashboard — Pet Manager Dashboard (Manager-Module-Workflow-Pattern)
- * Visitenkarte + Kapazitäts-Widget + KPIs + Nächste Buchungen
+ * PMDashboard — Pet Manager Dashboard (Manager-Module-Workflow-Pattern V3.0)
+ * ModulePageHeader + ManagerVisitenkarte + Kapazitäts-Widget + KPIs + Nächste Buchungen
  */
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { KPICard } from '@/components/shared/KPICard';
+import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
+import { ManagerVisitenkarte } from '@/components/shared/ManagerVisitenkarte';
 import { useMyProvider, useBookings } from '@/hooks/usePetBookings';
 import { usePetCapacity, useWeeklyBookingCount, useMonthlyRevenue } from '@/hooks/usePetCapacity';
-import { PawPrint, Calendar, Users, TrendingUp, MapPin, Phone, Mail, Clock, AlertTriangle, ExternalLink } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Calendar, Users, TrendingUp, Clock, AlertTriangle } from 'lucide-react';
 import { DESIGN } from '@/config/designManifest';
 import { cn } from '@/lib/utils';
 import { format, parseISO } from 'date-fns';
@@ -51,10 +52,7 @@ export default function PMDashboard() {
   if (!provider) {
     return (
       <div className="space-y-6">
-        <div className="flex items-center gap-3">
-          <PawPrint className="h-6 w-6 text-primary" />
-          <h1 className="text-2xl font-bold">Pet Manager Dashboard</h1>
-        </div>
+        <ModulePageHeader title="Pet Manager" description="Dein Dashboard für Tierpension und Services" />
         <div className="rounded-lg border border-dashed border-muted-foreground/30 p-12 text-center">
           <p className="text-muted-foreground">Kein Provider-Profil gefunden. Bitte wenden Sie sich an den Administrator.</p>
         </div>
@@ -67,48 +65,22 @@ export default function PMDashboard() {
   return (
     <PageShell>
     <div className={DESIGN.SPACING.SECTION}>
-      {/* DASHBOARD HEADER: Visitenkarte + Kapazität */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
-        {/* Visitenkarte (2 Spalten) */}
-        <Card className={cn(DESIGN.CARD.CONTENT, 'md:col-span-2')}>
-          <div className="flex items-start gap-4">
-            <div className={cn(DESIGN.HEADER.WIDGET_ICON_BOX, 'h-14 w-14 rounded-2xl')}>
-              <PawPrint className="h-7 w-7 text-primary" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="text-xl font-bold">{provider.company_name}</h2>
-                <Badge variant="outline" className="text-xs">
-                  {FACILITY_LABELS[(provider as any).facility_type] || 'Franchise-Partner'}
-                </Badge>
-                <Badge variant={provider.status === 'active' ? 'default' : 'secondary'} className="text-xs">
-                  {provider.status === 'active' ? 'Aktiv' : provider.status}
-                </Badge>
-              </div>
-              {provider.bio && <p className="text-sm text-muted-foreground mt-1">{provider.bio}</p>}
-              <div className="flex flex-wrap gap-x-4 gap-y-1 mt-3 text-sm text-muted-foreground">
-                {provider.address && (
-                  <span className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5" />{provider.address}</span>
-                )}
-                {provider.phone && (
-                  <span className="flex items-center gap-1"><Phone className="h-3.5 w-3.5" />{provider.phone}</span>
-                )}
-                {provider.email && (
-                  <span className="flex items-center gap-1"><Mail className="h-3.5 w-3.5" />{provider.email}</span>
-                )}
-              </div>
-              {/* Link zur öffentlichen Website */}
-              <div className="mt-3">
-                <Button variant="outline" size="sm" asChild>
-                  <a href="/website/tierservice" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5">
-                    <ExternalLink className="h-3.5 w-3.5" />
-                    Lennox &amp; Friends Website
-                  </a>
-                </Button>
-              </div>
-            </div>
-          </div>
-        </Card>
+      {/* ModulePageHeader — CI-Standard */}
+      <ModulePageHeader
+        title="Pet Manager"
+        description="Dein Dashboard für Tierpension und Services"
+      />
+
+      {/* DASHBOARD HEADER: ManagerVisitenkarte + Kapazität */}
+      <div className={DESIGN.DASHBOARD_HEADER.GRID}>
+        {/* ManagerVisitenkarte — persönliche Daten aus Auth-Profil */}
+        <ManagerVisitenkarte
+          role="Pet Manager"
+          gradientFrom="hsl(170,60%,40%)"
+          gradientTo="hsl(180,55%,35%)"
+          badgeText={FACILITY_LABELS[(provider as any).facility_type] || 'Franchise-Partner'}
+          extraBadge={provider.status === 'active' ? 'Aktiv' : provider.status}
+        />
 
         {/* Kapazitäts-Widget */}
         <Card className={cn(DESIGN.CARD.CONTENT)}>
