@@ -1,47 +1,125 @@
 
-# Löschfunktion für Finanzierungsanfragen
 
-## Analyse
+# Armstrong-Seite: Werbeseite + Billing Hub
 
-Die zwei sichtbaren Finanzierungsanfragen sind reale Datenbankeinträge in `finance_requests`:
+## Konzept
 
-1. **SOT-F-DEMO001** — geseedeter Beispieldatensatz (Status: submitted)
-2. **SOT-FR-XW4BSP9K** — leerer Draft (Status: draft)
+Die Seite `/portal/armstrong` bleibt eine Armstrong-Werbeseite, wird aber um Billing-Sektionen erweitert. Sie dient als "Kurzbedienungsanleitung + Preisliste" — alles, was ein Nutzer ueber Armstrong wissen muss, auf einer Seite.
 
-Beide werden per Supabase-Query geladen. Es gibt keine Lösch-Möglichkeit im UI.
+## Seitenaufbau (von oben nach unten)
 
-## Lösung
+```text
++──────────────────────────────────────────────+
+│  HERO: Armstrong — Ihr KI-Co-Pilot          │
+│  Untertitel + Bot-Icon (bestehend)           │
++──────────────────────────────────────────────+
+│  3 USP-Karten: Kein Abo | Multi-Modul |     │
+│  Datenschutz (bestehend)                     │
++──────────────────────────────────────────────+
+│  "Wie Armstrong arbeitet" — 3 Schritte       │
+│  (bestehend)                                 │
++──────────────────────────────────────────────+
+│  CREDIT-SALDO (NEU)                          │
+│  KPI-Karten: Guthaben | Verbraucht |         │
+│  Transaktionen | Ø pro Aktion                │
+│  (KostenDashboard verschoben von Abrechnung) │
++──────────────────────────────────────────────+
+│  SYSTEM-PREISLISTE (NEU)                     │
+│  Konsolidierte Tabelle mit ALLEN Kosten:     │
+│  KI-Aktionen + Infrastruktur-Services        │
+│  (ArmstrongCreditPreisliste + neue Infra)    │
++──────────────────────────────────────────────+
+│  SERVICES & ADD-ONS (NEU)                    │
+│  E-Mail-Anreicherung Toggle                  │
+│  WhatsApp Business Einstellungen             │
+│  (verschoben von AbrechnungTab)              │
++──────────────────────────────────────────────+
+│  AKTIONSKATALOG (verschoben)                 │
+│  Durchsuchbare Aktionsliste                  │
+│  (verschoben von AbrechnungTab)              │
++──────────────────────────────────────────────+
+│  CTA: Chat oeffnen (bestehend, angepasst)    │
++──────────────────────────────────────────────+
+```
 
-### 1. Lösch-Button in der Widget-Leiste (StatusTab + FinanceRequestWidgets)
+## Aenderungen im Detail
 
-Jede Anfrage-Kachel bekommt einen kleinen Lösch-Button (Trash-Icon), der nur bei bestimmten Status sichtbar ist:
+### Datei 1: `src/config/billingConstants.ts` (NEU)
 
-- **Löschbar**: `draft`, `collecting` (noch nicht eingereicht)
-- **Archivierbar**: `submitted`, `rejected`, `cancelled`, `completed` (bereits im Prozess — werden als "archiviert" markiert statt gelöscht)
-- **Nicht löschbar**: `in_processing`, `bank_submitted`, `assigned` (aktive Bearbeitung)
+Zentrale Preis-SSOT fuer alle System-Services (nicht KI-Aktionen — die kommen aus dem Manifest):
 
-### 2. Bestätigungsdialog
+| Service | Credits | EUR |
+|---|---|---|
+| PDF-Extraktion (Posteingang) | 1 | 0,25 |
+| Storage-Extraktion | 1 | 0,25 |
+| NK-Beleg-Parsing | 1 | 0,25 |
+| Auto-Matching (Banktransaktionen) | 2 | 0,50 |
+| Bank-Synchronisation (finAPI) | 4 | 1,00 |
+| Fax-Versand | 4 | 1,00 |
+| Brief-Versand | 4 | 1,00 |
+| E-Mail-Anreicherung | 20/Monat | 5,00/Monat |
+| DMS Storage Free (1 GB) | — | Kostenlos |
+| DMS Storage Pro (10 GB) | — | 9,90/Monat |
 
-Vor dem Löschen wird ein AlertDialog angezeigt:
+### Datei 2: `src/components/armstrong/SystemPreisliste.tsx` (NEU)
 
-- **Draft**: "Entwurf löschen? Dieser Entwurf wird unwiderruflich gelöscht."
-- **Eingereichte Anfragen**: "Anfrage archivieren? Die Anfrage wird aus der Übersicht entfernt."
+Eine konsolidierte Preisliste-Komponente mit zwei Sektionen:
 
-### 3. Datenbank-Logik
+**Sektion A — KI-Aktionen**: Wiederverwendet die Gruppierung aus `ArmstrongCreditPreisliste` (Free / Pay-per-Use / Premium), aber kompakter als Accordion.
 
-- **Drafts**: Echtes `DELETE FROM finance_requests WHERE id = ? AND status IN ('draft', 'collecting')`
-- **Andere Status**: Soft-Delete über ein neues Feld `archived_at` (Timestamp), das per Migration hinzugefügt wird. Archivierte Anfragen werden aus den Queries gefiltert.
+**Sektion B — Infrastruktur-Services**: Liest aus `billingConstants.ts` und zeigt die obige Tabelle an. Kategorien: Dokumenten-Verarbeitung, Kommunikation, Konto-Services, Speicher.
 
-### 4. Dateien und Änderungen
+### Datei 3: `src/pages/portal/ArmstrongInfoPage.tsx` (UMBAU)
 
-| Datei | Änderung |
-|-------|----------|
-| Migration | `ALTER TABLE finance_requests ADD COLUMN archived_at TIMESTAMPTZ DEFAULT NULL` |
-| `src/pages/portal/finanzierung/StatusTab.tsx` | Lösch-/Archiv-Button pro Kachel, AlertDialog, Mutation, Query-Filter `archived_at IS NULL` |
-| `src/components/finanzierung/FinanceRequestWidgets.tsx` | Gleicher Lösch-Button + Filter für Drafts |
+Die bestehenden Sektionen (Hero, USPs, 3 Schritte) bleiben erhalten. Darunter kommen die neuen/verschobenen Sektionen:
 
-### 5. Reihenfolge
+1. **KostenDashboard** — importiert von `communication-pro/agenten/KostenDashboard`
+2. **SystemPreisliste** — neue konsolidierte Preisliste
+3. **EmailEnrichmentCard + WhatsAppArmstrongCard** — verschoben aus `AbrechnungTab.tsx` (werden als eigenstaendige Komponenten extrahiert nach `src/components/armstrong/`)
+4. **AktionsKatalog** — importiert von `communication-pro/agenten/AktionsKatalog`
+5. **CTA** — angepasst: Link zu Abrechnung entfernt, stattdessen Hinweis auf Chat-Button
 
-1. Migration: `archived_at` Spalte hinzufügen
-2. `StatusTab.tsx`: Lösch-Button + Dialog + Mutation + Query-Filter
-3. `FinanceRequestWidgets.tsx`: Gleiche Lösch-Logik für Draft-Widgets im Anfrage-Tab
+### Datei 4: `src/pages/portal/stammdaten/AbrechnungTab.tsx` (VERSCHLANKEN)
+
+Was bleibt:
+- Aktueller Plan (Subscription-Karte)
+- Rechnungen/Invoices (Tabelle)
+- Link-Banner zu `/portal/armstrong` ("Armstrong-Verbrauch und Preise ansehen")
+
+Was entfernt wird:
+- `KostenDashboard` Import + Render
+- `ArmstrongCreditPreisliste` Import + Render
+- `EmailEnrichmentCard` (wird nach `src/components/armstrong/` extrahiert)
+- `WhatsAppArmstrongCard` (wird nach `src/components/armstrong/` extrahiert)
+- `AktionsKatalog` Import + Render
+- Separator + Armstrong-Header-Sektion
+
+### Datei 5: `src/pages/portal/office/BriefTab.tsx` (LABELS)
+
+| Zeile | Vorher | Nachher |
+|---|---|---|
+| 704 | `SimpleFax` | `Fax` |
+| 710 | `SimpleBrief` | `Brief` |
+| 729 | `'PDF wird per SimpleFax als Fax gesendet'` | `'PDF wird als Fax gesendet'` |
+| 730 | `'PDF wird per SimpleBrief als Postbrief versendet'` | `'PDF wird als Brief versendet'` |
+
+Technische Mail-Adressen (`simplefax@`, `simplebrief@`) bleiben unveraendert — das sind Backend-Konfigurationen, die der Nutzer nicht sieht.
+
+### Datei 6 + 7: Komponenten-Extraktion
+
+`EmailEnrichmentCard` und `WhatsAppArmstrongCard` werden aus `AbrechnungTab.tsx` in eigenstaendige Dateien extrahiert:
+- `src/components/armstrong/EmailEnrichmentCard.tsx`
+- `src/components/armstrong/WhatsAppArmstrongCard.tsx`
+
+Das ermoeglicht den Import sowohl in der neuen Armstrong-Seite als auch (falls spaeter noetig) anderswo.
+
+## Reihenfolge der Umsetzung
+
+1. `src/config/billingConstants.ts` — Preis-SSOT
+2. `src/components/armstrong/EmailEnrichmentCard.tsx` — Extraktion
+3. `src/components/armstrong/WhatsAppArmstrongCard.tsx` — Extraktion
+4. `src/components/armstrong/SystemPreisliste.tsx` — Konsolidierte Preisliste
+5. `src/pages/portal/ArmstrongInfoPage.tsx` — Umbau zur Werbeseite + Billing Hub
+6. `src/pages/portal/stammdaten/AbrechnungTab.tsx` — Verschlanken
+7. `src/pages/portal/office/BriefTab.tsx` — Label-Korrektur
+
