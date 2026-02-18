@@ -1,12 +1,12 @@
 /**
- * Pet Desk — Vorgänge Tab: Lead-Qualifizierung, Zuweisungen, offene Anfragen
+ * Pet Desk — Vorgänge Tab: Lead-Qualifizierung, Zuweisungen + Buchungsanfragen-Tracking
  * Z3 → Z1 → Z2 Governance-Workflow
  */
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ClipboardList, ArrowRight, CheckCircle, UserCheck, Clock, AlertCircle } from 'lucide-react';
+import { ClipboardList, ArrowRight, CheckCircle, UserCheck, Clock, AlertCircle, CalendarDays } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -15,6 +15,15 @@ const statusConfig: Record<string, { label: string; color: string; icon: typeof 
   new: { label: 'Neu', color: 'bg-blue-100 text-blue-700', icon: Clock },
   qualified: { label: 'Qualifiziert', color: 'bg-amber-100 text-amber-700', icon: UserCheck },
   assigned: { label: 'Zugewiesen', color: 'bg-green-100 text-green-700', icon: CheckCircle },
+};
+
+const bookingStatusConfig: Record<string, { label: string; color: string }> = {
+  pending: { label: 'Angefragt', color: 'bg-yellow-100 text-yellow-700' },
+  confirmed: { label: 'Bestätigt', color: 'bg-green-100 text-green-700' },
+  payment_pending: { label: 'Zahlung ausstehend', color: 'bg-orange-100 text-orange-700' },
+  paid: { label: 'Bezahlt', color: 'bg-emerald-100 text-emerald-700' },
+  active: { label: 'Aktiv', color: 'bg-emerald-100 text-emerald-700' },
+  rejected: { label: 'Abgelehnt', color: 'bg-red-100 text-red-700' },
 };
 
 export default function PetDeskVorgaenge() {
@@ -41,6 +50,18 @@ export default function PetDeskVorgaenge() {
     },
   });
 
+  // Booking requests (Z1 read-only tracking)
+  const { data: bookingRequests = [], isLoading: brLoading } = useQuery({
+    queryKey: ['pet-z1-booking-requests'],
+    queryFn: async () => {
+      const { data } = await (supabase.from('pet_z1_booking_requests' as any) as any)
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(50);
+      return data || [];
+    },
+  });
+
   // Qualify lead: new → qualified
   const qualifyMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -60,7 +81,6 @@ export default function PetDeskVorgaenge() {
   // Assign lead: qualified → assigned (copy to pet_customers + pets)
   const assignMutation = useMutation({
     mutationFn: async ({ customerId, providerId }: { customerId: string; providerId: string }) => {
-      // 1. Get Z1 customer data
       const { data: z1Customer, error: z1Err } = await supabase
         .from('pet_z1_customers')
         .select('*')
@@ -68,7 +88,6 @@ export default function PetDeskVorgaenge() {
         .single();
       if (z1Err || !z1Customer) throw new Error('Z1-Kunde nicht gefunden');
 
-      // 2. Insert into pet_customers (Z2)
       const { error: pcErr } = await supabase.from('pet_customers').insert({
         tenant_id: z1Customer.tenant_id,
         provider_id: providerId,
@@ -87,13 +106,11 @@ export default function PetDeskVorgaenge() {
       });
       if (pcErr) throw pcErr;
 
-      // 3. Copy Z1 pets to pets table
       const { data: z1Pets } = await (supabase.from('pet_z1_pets' as any) as any)
         .select('*')
         .eq('z1_customer_id', customerId);
 
       if (z1Pets && z1Pets.length > 0) {
-        // Get the newly created pet_customer id
         const { data: newCustomer } = await supabase
           .from('pet_customers')
           .select('id')
@@ -119,7 +136,6 @@ export default function PetDeskVorgaenge() {
         }
       }
 
-      // 4. Update Z1 status to assigned
       const { error: updateErr } = await supabase
         .from('pet_z1_customers')
         .update({
@@ -175,6 +191,7 @@ export default function PetDeskVorgaenge() {
         ))}
       </div>
 
+      {/* Leads */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
@@ -247,6 +264,51 @@ export default function PetDeskVorgaenge() {
                         </span>
                       )}
                     </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ══════════════════════════════════════════════════
+          BUCHUNGSANFRAGEN — Z1 Read-Only Tracking
+          ══════════════════════════════════════════════════ */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <CalendarDays className="h-5 w-5" />
+            Buchungsanfragen
+            {bookingRequests.length > 0 && (
+              <Badge variant="secondary" className="ml-2 text-xs">{bookingRequests.length}</Badge>
+            )}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {brLoading ? (
+            <div className="flex justify-center py-8">
+              <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+            </div>
+          ) : bookingRequests.length === 0 ? (
+            <div className="rounded-lg border border-dashed border-border p-6 text-center">
+              <p className="text-muted-foreground text-sm">Keine Buchungsanfragen vorhanden</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {bookingRequests.map((br: any) => {
+                const bsCfg = bookingStatusConfig[br.status] || bookingStatusConfig.pending;
+                return (
+                  <div key={br.id} className="border rounded-lg p-3 flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="font-medium text-sm truncate">{br.service_title}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {br.preferred_date && new Date(br.preferred_date).toLocaleDateString('de-DE')}
+                        {br.pet_name && ` · ${br.pet_name}`}
+                        {br.payment_status !== 'none' && ` · Zahlung: ${br.payment_status}`}
+                      </p>
+                    </div>
+                    <Badge className={`text-[10px] ${bsCfg.color}`}>{bsCfg.label}</Badge>
                   </div>
                 );
               })}
