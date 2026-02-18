@@ -94,7 +94,9 @@ if (typeof window !== 'undefined' && !localStorage.getItem(ARMSTRONG_MIGRATION_K
   localStorage.setItem(ARMSTRONG_KEY, 'true');
   localStorage.setItem(ARMSTRONG_EXPANDED_KEY, 'false');
   localStorage.setItem(ARMSTRONG_MIGRATION_KEY, 'true');
-  console.log('[Armstrong] Migration v4: Complete reset to visible circle');
+  if (import.meta.env.DEV) {
+    console.log('[Armstrong] Migration v4: Complete reset to visible circle');
+  }
 }
 
 export function PortalLayoutProvider({ children }: { children: ReactNode }) {
@@ -197,7 +199,9 @@ export function PortalLayoutProvider({ children }: { children: ReactNode }) {
     
     if (resetPosition) {
       localStorage.removeItem(ARMSTRONG_POSITION_KEY);
-      console.log('[Armstrong] Position reset');
+      if (import.meta.env.DEV) {
+        console.log('[Armstrong] Position reset');
+      }
     }
     
     setArmstrongVisibleState(true);
@@ -226,7 +230,9 @@ export function PortalLayoutProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(ARMSTRONG_KEY, 'true');
     localStorage.setItem(ARMSTRONG_EXPANDED_KEY, 'false');
     
-    console.log('[Armstrong] Full reset completed');
+    if (import.meta.env.DEV) {
+      console.log('[Armstrong] Full reset completed');
+    }
   }, []);
 
   // Area controls - hide SubTabs when area changes (accepts null for Dashboard)

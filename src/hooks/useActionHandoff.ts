@@ -165,7 +165,9 @@ export function useActionHandoff() {
     };
 
     // Log payload (future: send to Camunda via edge function)
-    console.log('[ActionHandoff]', payload);
+    if (import.meta.env.DEV) {
+      console.log('[ActionHandoff]', payload);
+    }
 
     // Show immediate feedback
     toast.success(config.toastMessage, {

@@ -80,7 +80,9 @@ class ElevenLabsScribeConnection {
       );
 
       this.ws.onopen = () => {
-        console.log('[ElevenLabs STT] Connected');
+        if (import.meta.env.DEV) {
+          console.log('[ElevenLabs STT] Connected');
+        }
         this.ws?.send(JSON.stringify({
           type: 'configure',
           language_code: 'de',
@@ -116,7 +118,9 @@ class ElevenLabsScribeConnection {
       };
 
       this.ws.onclose = () => {
-        console.log('[ElevenLabs STT] Disconnected');
+        if (import.meta.env.DEV) {
+          console.log('[ElevenLabs STT] Disconnected');
+        }
         this.onDisconnect?.();
       };
     } catch (e) {

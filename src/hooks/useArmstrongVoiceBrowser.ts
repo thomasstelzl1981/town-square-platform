@@ -97,7 +97,9 @@ export function useArmstrongVoiceBrowser(
     recognition.maxAlternatives = 1;
 
     recognition.onstart = () => {
-      console.log('[BrowserVoice] Recognition started');
+      if (import.meta.env.DEV) {
+        console.log('[BrowserVoice] Recognition started');
+      }
       isStoppingRef.current = false;
       setState(prev => ({ 
         ...prev, 
@@ -108,7 +110,9 @@ export function useArmstrongVoiceBrowser(
     };
 
     recognition.onend = () => {
-      console.log('[BrowserVoice] Recognition ended');
+      if (import.meta.env.DEV) {
+        console.log('[BrowserVoice] Recognition ended');
+      }
       setState(prev => ({ ...prev, isListening: false }));
       
       // Auto-restart if not intentionally stopped

@@ -363,7 +363,9 @@ function EmailDetailPanel({
     if (bodyFetchError && retryCount < maxRetries && email && !email.body_text && !email.body_html) {
       const delay = (retryCount + 1) * 2000; // 2s, 4s
       const timer = setTimeout(() => {
-        console.log(`[EmailDetail] Auto-retry #${retryCount + 1} for ${email.id}`);
+        if (import.meta.env.DEV) {
+          console.log(`[EmailDetail] Auto-retry #${retryCount + 1} for ${email.id}`);
+        }
         setRetryCount(prev => prev + 1);
         setFetchTriggered(true);
         onFetchBody(email);
