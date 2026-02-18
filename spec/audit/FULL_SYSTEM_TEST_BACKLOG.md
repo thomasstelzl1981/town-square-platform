@@ -369,14 +369,24 @@ Ziel: Keine funktionslosen Kacheln, keine hardcodierten Beispieldaten.
 | 14 | sot-finance-proxy | ✅ 200 | Marktdaten kommen zurueck |
 | 15 | sot-acq-outbound | ⚠️ 500 | Template not found (fehlender template_code) — erwartetes Verhalten |
 
-### Phase 4: Modul-Tiefe (Zone 2)
-15. D1: Core-Module Tile-fuer-Tile
-16. D2: Manager-Module Tile-fuer-Tile
-17. D3: Addon-Module Tile-fuer-Tile
+### Phase 4: Modul-Tiefe (Zone 2) — ✅ DONE
 
-### Phase 5: Zone 1 Operative Tiefe
-18. E1: Alle 7 Operative Desks Sub-Route-fuer-Sub-Route
-19. E2: Governance Desks
+| # | Test | Status | Ergebnis |
+|---|------|--------|----------|
+| 1 | D1: Core-Module (MOD-00 bis MOD-08) | ✅ DONE | Alle 9 Module: Korrekte Route-Struktur, Lazy-Loading, DB-Queries. Dashboard (Widgets live), Stammdaten (5 Tabs), Office (7 Tabs + Mobile-Guard), DMS (4 Tabs), Immobilien (7 Routes + GP-Guard), Pets (6 Routes), Verkauf (5 Routes), Finanzierung (5 Tiles + GP-Guard), Investments (6 Routes). |
+| 2 | D2: Manager-Module (MOD-09 bis MOD-14) | ✅ DONE | Alle 6 Module korrekt: Vertriebspartner (12 Routes inkl. Selfie Ads), Provisionen (1 Route), FM (11 Routes + Rollen-Guard), Akquise (8 Routes + GP-Guard), Projekte (10 Routes + GP-Guard), CommPro (4 Routes). |
+| 3 | D3: Addon-Module (MOD-15 bis MOD-22) | ✅ DONE | Alle 8 Module korrekt: Fortbildung (4 Tabs), Services/Shop (5 Routes), Cars (4 Routes), Finanzen (9 Routes), PV (4 Routes), Miety/Zuhause (4 Tiles inline), Pets (6 Routes), PetManager (9 Routes). |
+
+**FINDING P5 (FIXED):** Auth-Session-Bug V2 — Wenn `refreshSession()` bei abgelaufenem Refresh-Token fehlschlaegt, fiel der Code auf die abgelaufene `existingSession` zurueck. Fix in AuthContext.tsx: Bei fehlgeschlagenem Refresh wird jetzt sauber `signOut()` aufgerufen statt die ungueltige Session weiterzuverwenden. Redirect zu `/auth` funktioniert jetzt zuverlaessig.
+
+**FINDING P6 (INFO):** FMDashboard, FMEinreichung, FMArchiv erhalten `cases={[]}` als unused Prop — kein echtes Problem, da die Komponenten intern eigene DB-Queries nutzen (useFinanceMandates, useFinanceRequest). Kosmetisch, kein Blocker.
+
+### Phase 5: Zone 1 Operative Tiefe — ✅ DONE
+
+| # | Test | Status | Ergebnis |
+|---|------|--------|----------|
+| 1 | E1: 7 Operative Desks | ✅ DONE | SalesDesk (5 Sub-Routes, DB), LeadDesk (5, DB+Engine), FutureRoom (9, DB), Acquiary (9, DB), ProjektDesk (4, DB), PetmanagerDesk (9), FinanceDesk (4, DB). Alle nutzen OperativeDeskShell + Supabase-Queries. |
+| 2 | E2: Governance Desks | ✅ DONE | Armstrong (11 Sub-Routes: Dashboard, Actions, Logs, Billing, Knowledge, Policies, Engines, GoldenPaths, Integrations, TestHarness, CostMonitor), Fortbildung Admin (1), WebHosting (1). |
 
 ### Phase 6: Bereinigung
 20. I1-I7: Hardcoded-Daten eliminieren
@@ -398,4 +408,4 @@ Ziel: Keine funktionslosen Kacheln, keine hardcodierten Beispieldaten.
 | Websites | 5 |
 | Geschaetzter Aufwand | 20-30 Stunden |
 
-**Naechster Schritt:** Phase 2 starten — Golden Paths A1-A8 E2E testen.
+**Status:** Phase 1-5 ✅ DONE. Phase 6 (Bereinigung) offen.
