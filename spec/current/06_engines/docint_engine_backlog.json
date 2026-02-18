@@ -1,0 +1,143 @@
+{
+  "engine": "ENG-DOCINT",
+  "name": "Document Intelligence Engine",
+  "version": "1.0",
+  "updated_at": "2026-02-18",
+  "owner": "Zone 1",
+  "credit_model": {
+    "unit": "1 Credit = 0.25 EUR = 25 Cent",
+    "services": [
+      { "service": "Posteingang PDF-Extraktion", "unit": "pro PDF", "credits": 1, "eur": 0.25, "phase": "1" },
+      { "service": "Storage-Extraktion", "unit": "pro Dokument", "credits": 1, "eur": 0.25, "phase": "2" },
+      { "service": "NK-Beleg-Parsing", "unit": "pro Beleg", "credits": 1, "eur": 0.25, "phase": "2" },
+      { "service": "Cloud-Sync Import", "unit": "pro Datei", "credits": 1, "eur": 0.25, "phase": "2" },
+      { "service": "FinAPI Konto-Sync", "unit": "pro Konto", "credits": 4, "eur": 1.00, "phase": "2" },
+      { "service": "Auto-Matching (Doc→Vertrag)", "unit": "pro Match", "credits": 2, "eur": 0.50, "phase": "2" }
+    ]
+  },
+  "phases": [
+    {
+      "phase": "1",
+      "label": "Phase 1 — Live",
+      "items": [
+        {
+          "id": "P1.1",
+          "feature": "Resend Inbound Webhook",
+          "status": "live",
+          "component": "supabase/functions/sot-inbound-receive/",
+          "description": "Empfängt E-Mails via Resend Webhook, extrahiert PDF-Anhänge, speichert in tenant-documents Storage."
+        },
+        {
+          "id": "P1.2",
+          "feature": "Gemini Vision Parser",
+          "status": "live",
+          "component": "supabase/functions/sot-document-parser/",
+          "description": "KI-basierte Dokumentenanalyse via Lovable AI Gateway (Gemini 3 Flash). Erkennt Immobilien, Kontakte, Finanzierungen."
+        },
+        {
+          "id": "P1.3",
+          "feature": "document_chunks + TSVector Volltextsuche",
+          "status": "live",
+          "component": "search_document_chunks() RPC",
+          "description": "Extrahierter Text wird in Chunks gespeichert und via PostgreSQL TSVector durchsuchbar gemacht."
+        },
+        {
+          "id": "P1.4",
+          "feature": "Auto-Sortierung (Rules Engine)",
+          "status": "live",
+          "component": "inbox_sort_containers + inbox_sort_rules",
+          "description": "Keyword-basierte Sortierung von Posteingangs-Dokumenten in Entity-Ordner."
+        },
+        {
+          "id": "P1.5",
+          "feature": "Credit-Preflight System",
+          "status": "live",
+          "component": "tenant_credit_balance + rpc_credit_preflight/deduct/topup",
+          "description": "Saldo-Tabelle mit Preflight-Check, Debit-Buchung und Top-Up. 100 Gratis-Credits bei Erstregistrierung."
+        },
+        {
+          "id": "P1.6",
+          "feature": "Auto-Trigger (Inbound → Parser → Chunks)",
+          "status": "live",
+          "component": "supabase/functions/sot-inbound-receive/ → sot-document-parser",
+          "description": "Automatische Pipeline: PDF-Upload → Gemini-Extraktion → document_chunks. Credit-Preflight vor Extraktion."
+        }
+      ]
+    },
+    {
+      "phase": "2",
+      "label": "Phase 2 — Roadmap",
+      "items": [
+        {
+          "id": "P2.1",
+          "feature": "Storage-Extraktion (eigene Dateien)",
+          "status": "backlog",
+          "priority": "P1",
+          "effort_days": "2-3",
+          "sprint": "Nächster",
+          "description": "User klickt 'Dokument auslesen' im DMS → Signed URL → Gemini Vision → document_chunks. 1 Credit/Dokument."
+        },
+        {
+          "id": "P2.2",
+          "feature": "NK-Beleg-Parsing",
+          "status": "backlog",
+          "priority": "P1",
+          "effort_days": "3-4",
+          "sprint": "Nächster",
+          "description": "Spezieller parseMode 'nk_beleg' extrahiert Versorger, Betrag, Zeitraum, Kostenkategorie. Auto-Matching zu Property."
+        },
+        {
+          "id": "P2.3",
+          "feature": "Cloud-Sync (Google Drive)",
+          "status": "backlog",
+          "priority": "P2",
+          "effort_days": "5-8",
+          "sprint": "Q2/2026",
+          "description": "OAuth2-Flow → Dateien kopieren in Tenant-Storage → automatische Extraktion. 1 Credit/Datei."
+        },
+        {
+          "id": "P2.4",
+          "feature": "Cloud-Sync (Dropbox/OneDrive)",
+          "status": "backlog",
+          "priority": "P3",
+          "effort_days": "5-8",
+          "sprint": "Q3/2026",
+          "description": "Wie GDrive, zusätzliche Provider. Tokens in connectors Tabelle."
+        },
+        {
+          "id": "P2.5",
+          "feature": "FinAPI Konto-Matching",
+          "status": "backlog",
+          "priority": "P2",
+          "effort_days": "8-12",
+          "sprint": "Q2/2026",
+          "description": "PSD2 Bank-Connect → Transaktionen importieren → Auto-Matching zu Verträgen. 4 Credits/Konto."
+        },
+        {
+          "id": "P2.6",
+          "feature": "RAG-Index (pgvector Embedding)",
+          "status": "backlog",
+          "priority": "P3",
+          "effort_days": "5-6",
+          "sprint": "Q3/2026",
+          "description": "pgvector Extension → Embedding-Pipeline → Semantische Suche für Armstrong. Hybrid: TSVector + Vektor."
+        }
+      ]
+    }
+  ],
+  "dependencies": {
+    "phase_1": [
+      { "dep": "Lovable AI (Gemini Vision)", "status": "live" },
+      { "dep": "Supabase Storage (tenant-documents)", "status": "live" },
+      { "dep": "document_chunks + TSVector", "status": "live" },
+      { "dep": "tenant_credit_balance + RPCs", "status": "live" },
+      { "dep": "inbox_sort_rules", "status": "live" }
+    ],
+    "phase_2": [
+      { "dep": "OAuth2 Token Management", "status": "planned" },
+      { "dep": "pgvector Extension", "status": "planned" },
+      { "dep": "FinAPI SDK", "status": "planned" },
+      { "dep": "Stripe (Credit Top-Up)", "status": "planned" }
+    ]
+  }
+}

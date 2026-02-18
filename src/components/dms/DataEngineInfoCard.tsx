@@ -22,6 +22,8 @@ const PHASE_1: EngineFeature[] = [
   { icon: Database, label: 'Volltextsuche (document_chunks)', status: 'live', detail: 'Deutsche TSVector-Suche über extrahierte Dokumententexte' },
   { icon: Sparkles, label: 'Auto-Sortierung', status: 'live', detail: 'Keyword-basierte Zuordnung zu Akten via Sortierregeln' },
   { icon: Cpu, label: 'Datentyp-Erkennung', status: 'live', detail: 'KI erkennt Dokumententyp (Rechnung, Vertrag, Bescheid, etc.)' },
+  { icon: Lock, label: 'Credit-Preflight System', status: 'live', detail: 'Saldo-Prüfung vor kostenpflichtigen Aktionen (100 Gratis-Credits bei Start)' },
+  { icon: Zap, label: 'Auto-Trigger Pipeline', status: 'live', detail: 'PDF-Upload → Credit-Check → Gemini-Extraktion → document_chunks (vollautomatisch)' },
 ];
 
 const PHASE_2: EngineFeature[] = [
@@ -109,7 +111,7 @@ export function DataEngineInfoCard() {
             {/* Technical Note */}
             <div className="p-3 rounded-xl bg-muted/50 text-xs text-muted-foreground mt-4">
               <p className="font-medium text-foreground text-sm mb-1">Technische Voraussetzungen</p>
-              <p>• Storage-Extraktion: Neue Edge Function + Credit-Preflight</p>
+              <p>• Storage-Extraktion: Neue Edge Function (Credit-Preflight ✅)</p>
               <p>• Cloud-Sync: OAuth2 Flow + Token-Management (GDPR)</p>
               <p>• FinAPI: Externe API-Anbindung (§34f lizenzpflichtig)</p>
               <p>• RAG-Index: pgvector Extension + Embedding-Pipeline</p>

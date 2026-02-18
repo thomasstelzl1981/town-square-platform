@@ -17232,6 +17232,50 @@ export type Database = {
         }
         Relationships: []
       }
+      tenant_credit_balance: {
+        Row: {
+          balance_credits: number
+          created_at: string
+          id: string
+          last_topup_at: string | null
+          lifetime_consumed: number
+          lifetime_purchased: number
+          reserved_credits: number
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          balance_credits?: number
+          created_at?: string
+          id?: string
+          last_topup_at?: string | null
+          lifetime_consumed?: number
+          lifetime_purchased?: number
+          reserved_credits?: number
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          balance_credits?: number
+          created_at?: string
+          id?: string
+          last_topup_at?: string | null
+          lifetime_consumed?: number
+          lifetime_purchased?: number
+          reserved_credits?: number
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_credit_balance_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenant_extraction_settings: {
         Row: {
           auto_enrich_contacts_email: boolean | null
@@ -19065,6 +19109,33 @@ export type Database = {
           p_zone: string
         }
         Returns: string
+      }
+      rpc_credit_deduct: {
+        Args: {
+          p_action_code: string
+          p_credits: number
+          p_ref_id?: string
+          p_ref_type?: string
+          p_tenant_id: string
+        }
+        Returns: Json
+      }
+      rpc_credit_preflight: {
+        Args: {
+          p_action_code?: string
+          p_required_credits: number
+          p_tenant_id: string
+        }
+        Returns: Json
+      }
+      rpc_credit_topup: {
+        Args: {
+          p_credits: number
+          p_ref_id?: string
+          p_ref_type?: string
+          p_tenant_id: string
+        }
+        Returns: Json
       }
       search_document_chunks: {
         Args: { p_limit?: number; p_query: string; p_tenant_id: string }
