@@ -15,11 +15,13 @@ const DMSPage = () => {
   return (
     <Suspense fallback={null}>
       <Routes>
-        <Route index element={<Navigate to="storage" replace />} />
+        <Route index element={<Navigate to="intelligenz" replace />} />
+        <Route path="intelligenz" element={<EinstellungenTab />} />
         <Route path="storage" element={<StorageTab />} />
         <Route path="posteingang" element={<PosteingangTab />} />
         <Route path="sortieren" element={<SortierenTab />} />
-        <Route path="einstellungen" element={<EinstellungenTab />} />
+        {/* Legacy redirect */}
+        <Route path="einstellungen" element={<Navigate to="/portal/dms/intelligenz" replace />} />
         <Route path="*" element={<Navigate to="/portal/dms" replace />} />
       </Routes>
     </Suspense>

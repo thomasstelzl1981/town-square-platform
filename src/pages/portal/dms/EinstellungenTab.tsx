@@ -223,12 +223,93 @@ export function EinstellungenTab() {
 
   return (
     <PageShell>
-      <ModulePageHeader title="Einstellungen" description="Speicher, Postservice und Dokumenten-Auslesung konfigurieren" />
+      <ModulePageHeader title="Intelligenz" description="KI-gesteuerte Dokumentenverarbeitung — Posteingang automatisieren und Ihren Datenraum für Armstrong aktivieren" />
 
       {/* 3-Column Grid */}
       <div className={DESIGN.WIDGET_GRID.FULL}>
 
-        {/* ═══ KACHEL A: SPEICHERPLATZ ═══ */}
+        {/* ═══ KACHEL 1: DATENRAUM FÜR ARMSTRONG AKTIVIEREN ═══ */}
+        <StorageExtractionCard tenantId={activeTenantId} />
+
+        {/* ═══ KACHEL 2: POSTEINGANGS-AUSLESUNG ═══ */}
+        <Card className="glass-card flex flex-col overflow-hidden">
+          <div className="p-6 pb-4 border-b border-border/50">
+            <div className="flex items-center gap-3 mb-1">
+              <div className="p-2.5 rounded-xl bg-primary/10">
+                <Cpu className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-foreground">Posteingangs-Auslesung</h3>
+                <p className="text-xs text-muted-foreground">Automatische End-to-End-Verarbeitung</p>
+              </div>
+            </div>
+          </div>
+
+          <CardContent className="flex-1 p-6 space-y-5">
+            {/* Toggle */}
+            <div className="flex items-center justify-between p-3 rounded-xl border border-border/50 bg-muted/30">
+              <div>
+                <p className="text-sm font-medium text-foreground">Automatische Auslesung</p>
+                <p className="text-xs text-muted-foreground">Neue Dokumente im Posteingang automatisch analysieren</p>
+              </div>
+              <Switch checked={ocrEnabled} onCheckedChange={handleOcrToggle} />
+            </div>
+
+            {/* Pipeline Steps */}
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Verarbeitungs-Pipeline</p>
+              {[
+                { icon: FileText, text: 'PDF empfangen & OCR-Texterkennung' },
+                { icon: Sparkles, text: 'Dokumententyp erkennen (Rechnung, Vertrag, Bescheid…)' },
+                { icon: Zap, text: 'Automatisch in passende Akte sortieren' },
+                { icon: Database, text: 'Für Armstrong durchsuchbar machen' },
+              ].map((step) => (
+                <div key={step.text} className="flex items-center gap-2.5">
+                  <step.icon className={`h-4 w-4 shrink-0 ${ocrEnabled ? 'text-primary' : 'text-muted-foreground/40'}`} />
+                  <span className={`text-sm ${ocrEnabled ? 'text-foreground' : 'text-muted-foreground/60'}`}>
+                    {step.text}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            {/* NK-Beleg-Parsing */}
+            <div className="p-3 rounded-xl border border-border/50 bg-muted/30 space-y-2">
+              <div className="flex items-center gap-2">
+                <Receipt className="h-4 w-4 text-primary" />
+                <p className="text-sm font-medium text-foreground">NK-Beleg-Parsing</p>
+                <Badge variant="outline" className="text-xs font-mono">inklusive</Badge>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Nebenkostenbelege werden automatisch analysiert: Versorger, Betrag, Zeitraum und Kostenkategorie werden extrahiert.
+              </p>
+            </div>
+
+            {/* Cost */}
+            <div className="p-3 rounded-xl border border-primary/10 bg-primary/5">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-foreground font-medium">Kosten pro Dokument</span>
+                <Badge variant="outline" className="font-mono">1 Credit</Badge>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">Vollautomatisch: Upload → Extraktion → NK-Parsing → Sortierung → Index</p>
+            </div>
+
+            {/* Armstrong Examples */}
+            <div className="p-3 rounded-xl bg-muted/50 space-y-2">
+              <div className="flex items-center gap-2 mb-1">
+                <Bot className="h-4 w-4 text-primary" />
+                <p className="text-sm font-medium text-foreground">Armstrong kann dann z.B.:</p>
+              </div>
+              <div className="space-y-1 text-xs text-muted-foreground">
+                <p>• „Zeige mir alle Rechnungen vom letzten Monat"</p>
+                <p>• „Fasse den Mietvertrag Musterstr. 5 zusammen"</p>
+                <p>• „Welche offenen Fristen habe ich?"</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* ═══ KACHEL 3: SPEICHERPLATZ ═══ */}
         <Card className="glass-card flex flex-col overflow-hidden">
           <div className="p-6 pb-4 border-b border-border/50">
             <div className="flex items-center gap-3 mb-1">
@@ -304,7 +385,7 @@ export function EinstellungenTab() {
           </CardContent>
         </Card>
 
-        {/* ═══ KACHEL B: DIGITALER POSTSERVICE ═══ */}
+        {/* ═══ KACHEL 4: DIGITALER POSTSERVICE ═══ */}
         <Card className="glass-card flex flex-col overflow-hidden">
           <div className="p-6 pb-4 border-b border-border/50">
             <div className="flex items-center gap-3 mb-1">
@@ -387,76 +468,7 @@ export function EinstellungenTab() {
           </CardContent>
         </Card>
 
-        {/* ═══ KACHEL C: POSTEINGANGS-AUSLESUNG ═══ */}
-        <Card className="glass-card flex flex-col overflow-hidden">
-          <div className="p-6 pb-4 border-b border-border/50">
-            <div className="flex items-center gap-3 mb-1">
-              <div className="p-2.5 rounded-xl bg-primary/10">
-                <Cpu className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-foreground">Posteingangs-Auslesung</h3>
-                <p className="text-xs text-muted-foreground">Automatische End-to-End-Verarbeitung</p>
-              </div>
-            </div>
-          </div>
-
-          <CardContent className="flex-1 p-6 space-y-5">
-            {/* Toggle */}
-            <div className="flex items-center justify-between p-3 rounded-xl border border-border/50 bg-muted/30">
-              <div>
-                <p className="text-sm font-medium text-foreground">Automatische Auslesung</p>
-                <p className="text-xs text-muted-foreground">Neue Dokumente im Posteingang automatisch analysieren</p>
-              </div>
-              <Switch checked={ocrEnabled} onCheckedChange={handleOcrToggle} />
-            </div>
-
-            {/* Pipeline Steps */}
-            <div className="space-y-2">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Verarbeitungs-Pipeline</p>
-              {[
-                { icon: FileText, text: 'PDF empfangen & OCR-Texterkennung' },
-                { icon: Sparkles, text: 'Dokumententyp erkennen (Rechnung, Vertrag, Bescheid…)' },
-                { icon: Zap, text: 'Automatisch in passende Akte sortieren' },
-                { icon: Database, text: 'Für Armstrong durchsuchbar machen' },
-              ].map((step) => (
-                <div key={step.text} className="flex items-center gap-2.5">
-                  <step.icon className={`h-4 w-4 shrink-0 ${ocrEnabled ? 'text-primary' : 'text-muted-foreground/40'}`} />
-                  <span className={`text-sm ${ocrEnabled ? 'text-foreground' : 'text-muted-foreground/60'}`}>
-                    {step.text}
-                  </span>
-                </div>
-              ))}
-            </div>
-
-            {/* Cost */}
-            <div className="p-3 rounded-xl border border-primary/10 bg-primary/5">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-foreground font-medium">Kosten pro Dokument</span>
-                <Badge variant="outline" className="font-mono">1 Credit</Badge>
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">Vollautomatisch: Upload → Extraktion → Sortierung → Index</p>
-            </div>
-
-            {/* Armstrong Examples */}
-            <div className="p-3 rounded-xl bg-muted/50 space-y-2">
-              <div className="flex items-center gap-2 mb-1">
-                <Bot className="h-4 w-4 text-primary" />
-                <p className="text-sm font-medium text-foreground">Armstrong kann dann z.B.:</p>
-              </div>
-              <div className="space-y-1 text-xs text-muted-foreground">
-                <p>• „Zeige mir alle Rechnungen vom letzten Monat"</p>
-                <p>• „Fasse den Mietvertrag Musterstr. 5 zusammen"</p>
-                <p>• „Welche offenen Fristen habe ich?"</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* ═══ KACHEL D: DATENRAUM-EXTRAKTION ═══ */}
-        <StorageExtractionCard tenantId={activeTenantId} />
-
-        {/* ═══ KACHEL E: DOCUMENT INTELLIGENCE ENGINE ═══ */}
+        {/* ═══ KACHEL 5: DOCUMENT INTELLIGENCE ENGINE ═══ */}
         <DataEngineInfoCard />
       </div>
 
