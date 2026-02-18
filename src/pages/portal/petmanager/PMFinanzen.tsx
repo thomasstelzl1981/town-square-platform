@@ -33,7 +33,7 @@ import { toast } from '@/hooks/use-toast';
 import { format, subMonths, startOfMonth, endOfMonth } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import jsPDF from 'jspdf';
+import { getJsPDF } from '@/lib/lazyJspdf';
 
 type InvoiceStatus = 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled';
 
@@ -277,6 +277,7 @@ export default function PMFinanzen() {
       .eq('invoice_id', inv.id)
       .order('sort_order');
 
+    const jsPDF = await getJsPDF();
     const doc = new jsPDF();
     doc.setFontSize(20);
     doc.text('Rechnung', 20, 25);

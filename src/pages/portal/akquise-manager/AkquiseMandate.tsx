@@ -55,7 +55,7 @@ import {
 } from '@/hooks/useAcqOutbound';
 import { formatDistanceToNow } from 'date-fns';
 import { de } from 'date-fns/locale';
-import jsPDF from 'jspdf';
+import { getJsPDF } from '@/lib/lazyJspdf';
 import { AcqProfilePreview } from '@/components/akquise/AcqProfilePreview';
 import { ContactBookDialog } from '@/components/akquise/ContactBookDialog';
 import logoLight from '@/assets/logos/armstrong_logo_light.png';
@@ -231,8 +231,9 @@ export default function AkquiseMandate() {
   };
 
   // ── PDF Generation ──
-  const generatePdf = () => {
+  const generatePdf = async () => {
     if (!profileData) return;
+    const jsPDF = await getJsPDF();
     const doc = new jsPDF('p', 'mm', 'a4');
     const margin = 20;
     let y = margin;

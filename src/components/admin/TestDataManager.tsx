@@ -22,7 +22,7 @@ import {
   Database, RefreshCw, Car, ShieldCheck
 } from 'lucide-react';
 import { toast } from 'sonner';
-import * as XLSX from 'xlsx';
+import { getXlsx } from '@/lib/lazyXlsx';
 import { useGoldenPathSeeds, SEED_IDS, fetchGoldenPathCounts, type SeedCounts } from '@/hooks/useGoldenPathSeeds';
 import { DEV_TENANT_UUID } from '@/config/tenantConstants';
 
@@ -218,7 +218,8 @@ export function TestDataManager() {
   });
 
   // Download template
-  const downloadTemplate = () => {
+  const downloadTemplate = async () => {
+    const XLSX = await getXlsx();
     const wb = XLSX.utils.book_new();
     const portfolioData = [
       ['Objekt', 'Art', 'Adresse', 'Ort', 'PLZ', 'qm', 'Kaltmiete', 'Mieter', 'Mieter seit', 'Mieterhöhung', 'Kaufpreis', 'Restschuld', 'Zinssatz', 'Tilgung', 'Bank'],

@@ -21,7 +21,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import { AcqOfferDetailSheet } from './components/AcqOfferDetailSheet';
-import * as XLSX from 'xlsx';
+import { getXlsx } from '@/lib/lazyXlsx';
 
 const STATUS_CONFIG: Record<AcqOfferStatus, { label: string; variant: 'default' | 'secondary' | 'outline' | 'destructive' }> = {
   new: { label: 'Neu', variant: 'default' },
@@ -135,7 +135,7 @@ export default function AkquiseDatenbank() {
     return (100 / yieldPct).toFixed(1) + 'x';
   };
 
-  const handleExport = () => {
+  const handleExport = async () => {
     const rows = filtered.map((o, i) => ({
       '#': i + 1,
       Eingang: o.received_at ? format(new Date(o.received_at as string), 'dd.MM.yyyy') : format(new Date(o.created_at), 'dd.MM.yyyy'),
@@ -151,6 +151,7 @@ export default function AkquiseDatenbank() {
       Status: STATUS_CONFIG[o.status as AcqOfferStatus]?.label || o.status,
       Mandat: (o.mandate as any)?.code || '–',
     }));
+    const XLSX = await getXlsx();
     const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Objekte');

@@ -40,7 +40,7 @@ import {
 import { useResearchImport } from '@/hooks/useResearchImport';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import * as XLSX from 'xlsx';
+import { getXlsx } from '@/lib/lazyXlsx';
 import {
   Plus,
   Search,
@@ -195,7 +195,7 @@ export default function AdminRecherche() {
   };
 
   /** Excel Export */
-  const handleExport = () => {
+  const handleExport = async () => {
     if (filteredResults.length === 0) {
       toast.error('Keine Ergebnisse zum Exportieren');
       return;
@@ -213,6 +213,7 @@ export default function AdminRecherche() {
       'Score (%)': r.confidence_score || 0,
       Status: VALIDATION_STATES[r.validation_state]?.label || r.validation_state,
     }));
+    const XLSX = await getXlsx();
     const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Ergebnisse');
