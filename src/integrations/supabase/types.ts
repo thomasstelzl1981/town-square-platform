@@ -6813,6 +6813,7 @@ export type Database = {
           sync_from_date: string | null
           tenant_id: string
           updated_at: string
+          web_form_id: string | null
         }
         Insert: {
           auto_match?: boolean | null
@@ -6831,6 +6832,7 @@ export type Database = {
           sync_from_date?: string | null
           tenant_id: string
           updated_at?: string
+          web_form_id?: string | null
         }
         Update: {
           auto_match?: boolean | null
@@ -6849,6 +6851,7 @@ export type Database = {
           sync_from_date?: string | null
           tenant_id?: string
           updated_at?: string
+          web_form_id?: string | null
         }
         Relationships: [
           {
