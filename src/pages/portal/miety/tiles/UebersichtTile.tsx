@@ -19,6 +19,7 @@ import { cn } from '@/lib/utils';
 import {
   Home, Plus, Building2, ArrowRight, Camera, Globe, ImageOff, Navigation,
 } from 'lucide-react';
+import { MietyServiceCards } from '../components/MietyServiceCards';
 
 export default function UebersichtTile() {
   const { activeTenantId, user } = useAuth();
@@ -257,7 +258,10 @@ export default function UebersichtTile() {
                 </Card>
               </div>
 
-              {/* Row 2: Camera placeholder */}
+              {/* Row 2: Service Cards (MyHammer + Betreut.de) */}
+              <MietyServiceCards plz={home.zip} />
+
+              {/* Row 3: Camera placeholder */}
               <Card className="glass-card border-dashed">
                 <CardContent className="p-6 text-center">
                   <Camera className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />

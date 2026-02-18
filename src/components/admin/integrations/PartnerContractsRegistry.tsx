@@ -269,6 +269,60 @@ const PARTNER_CONTRACTS: PartnerContract[] = [
       'Alternative Anbieter: Sprengnetter Akademie (Bewertung), DIA München (Immobilien-Zertifikate).',
   },
 
+  // ── Zuhause & Sanierung (MOD-20 / MOD-04) ──
+  {
+    id: 'myhammer',
+    name: 'MyHammer (Instapro Group)',
+    type: 'affiliate',
+    module: 'MOD-20 Zuhause (Handwerker)',
+    purpose: 'Handwerker-Vermittlung (40.000+ Fachleute, 80.000 Aufträge/Monat)',
+    commissionModel: 'Provision pro zustande gekommenem Auftrag (via Netslave)',
+    network: 'Netslave / Instapro',
+    icon: Wrench,
+    group: 'affiliate',
+    integrationDetails:
+      'Affiliate-Programm über Netslave-Plattform (partner.instapro.com). ' +
+      'MyHammer ist Teil der Instapro-Gruppe (Europas führender Handwerker-Marktplatz). ' +
+      'Anmeldung: partner.instapro.com/anmelden.cgi?new=1&cpid=4. ' +
+      'Integration: Deeplinks mit Partner-ID und UTM-Tracking. ' +
+      'Zulässig: Displays, Textlinks, E-Mails. Nicht zulässig: Cashbacks, Gutscheine. ' +
+      'Keine API für externe Suche. PLZ-basierte Deeplinks möglich.',
+  },
+  {
+    id: 'betreut-de',
+    name: 'Betreut.de (Care.com)',
+    type: 'affiliate',
+    module: 'MOD-20 Zuhause (Haushaltshilfe)',
+    purpose: 'Haushaltshilfen, Putzfrauen, Seniorenbetreuung, Kinderbetreuung',
+    commissionModel: 'CPA: 5–10 % pro Premium-Abo-Abschluss',
+    network: 'AWIN / Direkt',
+    icon: Heart,
+    group: 'affiliate',
+    integrationDetails:
+      'Betreut.de (Teil von Care.com) ist Deutschlands größte Plattform für Alltagshelfer. ' +
+      'Affiliate-Programm über AWIN prüfen oder Direktkontakt (affiliate@care.com). ' +
+      'Integration: Deeplink zu betreut.de/haushaltshilfe mit Affiliate-Tag. ' +
+      'Keine API für externe Suche. Cookie-Laufzeit: ca. 30 Tage. ' +
+      'Conversion = Premium-Mitgliedschaft.',
+  },
+  {
+    id: 'aroundhome',
+    name: 'Aroundhome',
+    type: 'affiliate',
+    module: 'MOD-04 Sanierung',
+    purpose: 'Sanierungsprojekte: Fenster, Heizung, Dämmung, Bad, Küche, Solar',
+    commissionModel: 'Lead-Provision (Umsatzbeteiligung pro qualifiziertem Lead)',
+    network: 'AWIN (Advertiser ID 68536)',
+    icon: Handshake,
+    group: 'affiliate',
+    integrationDetails:
+      'Aroundhome (aroundhome.de) ist Deutschlands größter Vermittler für Sanierungsprojekte. ' +
+      'AWIN-Programm: Advertiser ID 68536. Anmeldung: aroundhome.de/affiliateprogramm. ' +
+      'Integration: AWIN-Deeplinks zu Kategorie-Seiten (fenster, heizung, daemmung, bad, kueche, solar). ' +
+      'SubID-Tracking für Conversion-Zuordnung. Cookie-Laufzeit: 30 Tage. ' +
+      'Bis zu 3 kostenlose Angebote von geprüften Fachfirmen pro Lead.',
+  },
+
   // ── Geschäftskonten ──
   {
     id: 'amazon-business',
