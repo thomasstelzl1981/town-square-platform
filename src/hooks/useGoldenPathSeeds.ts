@@ -166,7 +166,9 @@ async function executeSeeds(tenantId: string): Promise<{ success: boolean; error
     return { success: false, error: error.message };
   }
   
-  console.log('Seed result:', data);
+  if (import.meta.env.DEV) {
+    console.log('Seed result:', data);
+  }
   return { success: true, data };
 }
 

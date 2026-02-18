@@ -80,7 +80,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .maybeSingle();
       
       if (internalOrg) {
-        console.log('[Dev-Mode] Using internal org:', internalOrg.name);
+        if (import.meta.env.DEV) {
+          console.log('[Dev-Mode] Using internal org:', internalOrg.name);
+        }
         setActiveOrgStable(internalOrg);
         
         const mockMembership: Membership = {
@@ -115,7 +117,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .maybeSingle();
       
       if (orgData) {
-        console.log('[Dev-Mode] Using fallback org:', orgData.name);
+        if (import.meta.env.DEV) {
+          console.log('[Dev-Mode] Using fallback org:', orgData.name);
+        }
         setActiveOrgStable(orgData);
         
         const mockMembership: Membership = {
@@ -141,7 +145,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
       
-      console.log('[Dev-Mode] No organizations accessible, using fixed dev constants');
+      if (import.meta.env.DEV) {
+        console.log('[Dev-Mode] No organizations accessible, using fixed dev constants');
+      }
       setActiveOrgStable(DEV_MOCK_ORG);
       setMemberships([DEV_MOCK_MEMBERSHIP]);
       setProfile(DEV_MOCK_PROFILE);

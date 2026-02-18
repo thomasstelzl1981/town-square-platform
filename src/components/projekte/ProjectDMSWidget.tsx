@@ -107,11 +107,15 @@ export function ProjectDMSWidget({ projectName, units, isDemo }: ProjectDMSWidge
   const selectedUnit = units.find((u) => u.id === selectedUnitId);
 
   const handleGeneralDrop = (files: File[]) => {
-    console.log('Drop to Allgemein/', selectedGeneralFolder, files);
+    if (import.meta.env.DEV) {
+      console.log('Drop to Allgemein/', selectedGeneralFolder, files);
+    }
   };
 
   const handleUnitDrop = (files: File[]) => {
-    console.log('Drop to Einheit/', selectedUnitId, selectedUnitFolder, files);
+    if (import.meta.env.DEV) {
+      console.log('Drop to Einheit/', selectedUnitId, selectedUnitFolder, files);
+    }
   };
 
   const unitIds = units.map((u) => u.id);

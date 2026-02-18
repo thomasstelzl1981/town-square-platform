@@ -16,11 +16,11 @@ import { useToast } from '@/hooks/use-toast';
 import {
   generateContract,
   calculatePlatformFee,
-  formatEUR,
   storeContractAndCreateRecords,
   type ContractVariables,
   type GeneratedContract,
 } from '@/lib/contractGenerator';
+import { formatCurrencyWithCents } from '@/lib/formatters';
 
 export interface TermsGatePanelProps {
   templateCode: string;
@@ -88,9 +88,9 @@ export function TermsGatePanel({
       try {
         const generated = await generateContract(templateCode, {
           ...templateVariables,
-          gross_commission: formatEUR(grossCommission),
+          gross_commission: formatCurrencyWithCents(grossCommission),
           gross_commission_pct: `${grossCommissionPct}`,
-          platform_fee: formatEUR(platformFee),
+          platform_fee: formatCurrencyWithCents(platformFee),
           date: new Date().toLocaleDateString('de-DE'),
         });
         if (!cancelled) setContract(generated);
@@ -189,18 +189,18 @@ export function TermsGatePanel({
         {grossCommission > 0 ? (
           <div className="grid grid-cols-2 gap-2 text-sm">
             <span className="text-muted-foreground">Brutto-Provision:</span>
-            <span className="font-medium text-right">{formatEUR(grossCommission)}</span>
+            <span className="font-medium text-right">{formatCurrencyWithCents(grossCommission)}</span>
 
             <span className="text-muted-foreground">Plattformgebühr (30%):</span>
             <span className="font-medium text-right text-destructive">
-              {formatEUR(platformFee)}
+              {formatCurrencyWithCents(platformFee)}
             </span>
 
             {liableRole !== 'owner' && (
               <>
                 <span className="text-muted-foreground">Ihr Anteil:</span>
                 <span className="font-semibold text-right text-primary">
-                  {formatEUR(netCommission)}
+                  {formatCurrencyWithCents(netCommission)}
                 </span>
               </>
             )}

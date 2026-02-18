@@ -1,4 +1,5 @@
 import jsPDF from 'jspdf';
+import { formatDateLong } from './formatters';
 
 export interface LetterPdfData {
   senderName?: string;
@@ -66,7 +67,7 @@ export function generateLetterPdf(data: LetterPdfData): { base64: string; blob: 
   }
 
   // ── Date — right-aligned ──
-  const dateStr = data.date || formatGermanDate(data.senderCity);
+  const dateStr = data.date || formatDateLong(new Date(), data.senderCity);
   yPos = 95; // Fixed position after window zone
   doc.setFontSize(10);
   doc.setTextColor(80, 80, 80);
@@ -106,14 +107,4 @@ export function generateLetterPdf(data: LetterPdfData): { base64: string; blob: 
   const dataUrl = doc.output('datauristring');
 
   return { base64, blob, dataUrl };
-}
-
-function formatGermanDate(city?: string): string {
-  const now = new Date();
-  const formatted = now.toLocaleDateString('de-DE', {
-    day: '2-digit',
-    month: 'long',
-    year: 'numeric',
-  });
-  return city ? `${city}, ${formatted}` : formatted;
 }
