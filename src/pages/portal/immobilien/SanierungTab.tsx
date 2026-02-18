@@ -26,6 +26,7 @@ import { PropertySelectDialog } from '@/components/portal/immobilien/sanierung/P
 import { useDemoToggles } from '@/hooks/useDemoToggles';
 import { GOLDEN_PATH_PROCESSES } from '@/manifests/goldenPathProcesses';
 import { Button } from '@/components/ui/button';
+import { AroundhomePartnerCard } from '@/components/sanierung/AroundhomePartnerCard';
 
 const GP_SANIERUNG = GOLDEN_PATH_PROCESSES.find(p => p.id === 'GP-SANIERUNG')!;
 
@@ -149,6 +150,9 @@ export function SanierungTab() {
           ))}
         </WidgetGrid>
       )}
+
+      {/* Aroundhome Affiliate-Bereich */}
+      <AroundhomePartnerCard />
 
       <PropertySelectDialog
         open={showPropertySelect}
