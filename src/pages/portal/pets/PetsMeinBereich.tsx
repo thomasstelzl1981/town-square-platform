@@ -15,7 +15,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { format, parseISO } from 'date-fns';
 import { de } from 'date-fns/locale';
-import jsPDF from 'jspdf';
+import { getJsPDF } from '@/lib/lazyJspdf';
 
 // ─── Booking Status ─────────────────────────────────────────
 const BOOKING_STATUS: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline'; icon: typeof CheckCircle2 }> = {
@@ -134,6 +134,7 @@ export default function PetsMeinBereich() {
   const downloadInvoicePdf = async (inv: CustomerInvoice) => {
     const { data: items } = await supabase
       .from('pet_invoice_items').select('*').eq('invoice_id', inv.id).order('sort_order');
+    const jsPDF = await getJsPDF();
     const doc = new jsPDF();
     doc.setFontSize(20); doc.text('Rechnung', 20, 25);
     doc.setFontSize(10);

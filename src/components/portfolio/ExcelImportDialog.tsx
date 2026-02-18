@@ -17,7 +17,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { FileUploader } from '@/components/shared/FileUploader';
 import { Loader2, FileSpreadsheet, CheckCircle2, AlertCircle, Upload } from 'lucide-react';
 import { toast } from 'sonner';
-import * as XLSX from 'xlsx';
+import { getXlsx } from '@/lib/lazyXlsx';
 
 interface ImportRow {
   rowNum: number;
@@ -69,6 +69,7 @@ export function ExcelImportDialog({ open, onOpenChange, tenantId }: ExcelImportD
     setIsParsing(true);
     
     try {
+      const XLSX = await getXlsx();
       const data = await file.arrayBuffer();
       const workbook = XLSX.read(data, { type: 'array' });
       const sheet = workbook.Sheets[workbook.SheetNames[0]];
