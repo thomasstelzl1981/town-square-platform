@@ -11,6 +11,19 @@
 import type { DemoPMCustomer, DemoPMPet, DemoPMBooking } from './spec';
 import { DEMO_TENANT_ID, DEMO_PET_PROVIDER_LENNOX } from './constants';
 
+// ─── DEMO GALLERY IMAGES ──────────────────────────────────
+import pmGalleryPension1 from '@/assets/demo/pm-gallery-pension-1.jpg';
+import pmGalleryPension2 from '@/assets/demo/pm-gallery-pension-2.jpg';
+import pmGalleryGrooming1 from '@/assets/demo/pm-gallery-grooming-1.jpg';
+import pmGalleryGrooming2 from '@/assets/demo/pm-gallery-grooming-2.jpg';
+
+export const DEMO_PM_GALLERY_IMAGES: readonly string[] = [
+  pmGalleryPension1,
+  pmGalleryPension2,
+  pmGalleryGrooming1,
+  pmGalleryGrooming2,
+] as const;
+
 // ─── FESTE IDs ─────────────────────────────────────────────
 
 // Kunden
