@@ -1,36 +1,72 @@
 
+# Fix: FinAPI Bankanbindung + UI-Bereinigung
 
-# FinAPI Integration: Secrets hinterlegen und Edge Function bauen
+## Problem-Analyse
 
-## Schritt 1: Secrets abfragen
+Drei zusammenhaengende Fehler verhindern die Bankanbindung:
 
-Zwei Secrets werden sicher im Backend hinterlegt:
+1. **FinAPI API-Fehler** (Hauptursache): Der API-Call an `/api/v2/bankConnections/import` sendet kein `bankingInterface`-Feld. Die FinAPI Sandbox erfordert dieses Feld seit v2. Die Fehlermeldung aus den Logs: `Field 'bankingInterface' not valid: Field is blank.`
 
-| Secret | Beschreibung |
-|--------|-------------|
-| `FINAPI_CLIENT_ID` | Default Client-ID aus dem FinAPI Sandbox-Dashboard |
-| `FINAPI_CLIENT_SECRET` | Default Client-Secret aus dem FinAPI Sandbox-Dashboard |
+2. **CORS-Header unvollstaendig**: Die shared CORS-Konfiguration fehlt die Supabase-Client-Header (`x-supabase-client-platform`, `x-supabase-client-platform-version`, etc.). Deshalb schlaegt der Preflight fehl und der Browser zeigt "non-2xx status code".
 
-Nach Genehmigung dieses Plans wirst du aufgefordert, beide Werte einzugeben.
+3. **UI-Button doppelt**: Es gibt sowohl einen breiten "Bank verbinden"-Button als auch das "+"-Icon. Nur das "+" soll bleiben.
 
-## Schritt 2: Edge Function `sot-finapi-sync` umbauen
+## Aenderungen
 
-Die bestehende Scaffold-Funktion wird mit echten FinAPI-API-Calls ersetzt:
+### 1. Edge Function: `supabase/functions/sot-finapi-sync/index.ts`
 
-- **Action `connect`**: OAuth2-Token holen, FinAPI-User pro Tenant anlegen, Bank-Import starten (Sandbox Test Bank 280001)
-- **Action `sync`**: Transaktionen abrufen und in die Datenbank schreiben
-- **Action `status`**: Verbindungsstatus aus DB lesen (bereits vorhanden)
+Im `connect`-Case wird der Import-Body um die fehlenden Pflichtfelder ergaenzt:
 
-## Schritt 3: Frontend — KontenTab erweitern
+```text
+Vorher:
+  body: JSON.stringify({ bankId })
 
-- "Bank verbinden"-Button im KontenTab
-- Transaktions-Liste nach erfolgreichem Sync
-- "Sync"-Button pro Verbindung
+Nachher:
+  body: JSON.stringify({
+    bankId,
+    bankingInterface: "FINTS_SERVER",
+    loginCredentials: [
+      { label: "Onlinebanking-Kennung", value: "demo" },
+      { label: "PIN", value: "demo" }
+    ]
+  })
+```
 
-## Reihenfolge
+Die FinAPI Sandbox (Bank-ID 280001 = finAPI Testbank) erwartet diese Felder. `FINTS_SERVER` ist das Standard-Interface fuer deutsche Banken in der Sandbox.
 
-1. Secrets eingeben (direkt nach Plan-Genehmigung)
-2. Edge Function implementieren
-3. Connectivity-Test gegen FinAPI Sandbox
-4. Frontend-Anbindung
+### 2. Shared CORS: `supabase/functions/_shared/cors.ts`
 
+Die `Access-Control-Allow-Headers` werden um die fehlenden Supabase-Client-Header erweitert:
+
+```text
+Vorher:
+  'authorization, x-client-info, apikey, content-type, x-webhook-signature'
+
+Nachher:
+  'authorization, x-client-info, apikey, content-type, x-webhook-signature,
+   x-supabase-client-platform, x-supabase-client-platform-version,
+   x-supabase-client-runtime, x-supabase-client-runtime-version'
+```
+
+### 3. UI: `src/pages/portal/finanzanalyse/KontenTab.tsx`
+
+Der breite "Bank verbinden"-Button (Zeilen 159-171) wird entfernt. Nur das "+"-Icon bleibt:
+
+```text
+Vorher:
+  <Button variant="glass" size="sm" onClick={...}>Bank verbinden</Button>
+  <Button variant="glass" size="icon-round" onClick={...}><Plus /></Button>
+
+Nachher:
+  <Button variant="glass" size="icon-round" onClick={...}><Plus /></Button>
+```
+
+Die `connectMutation` (Bank-Connect-Logik) bleibt im Code erhalten, wird aber vorerst nicht direkt ueber die UI ausgeloest, da die Bankanbindung ueber den AddBankAccountDialog gesteuert wird.
+
+### Zusammenfassung der betroffenen Dateien
+
+| Datei | Aenderung |
+|-------|-----------|
+| `supabase/functions/sot-finapi-sync/index.ts` | `bankingInterface` + `loginCredentials` im Import-Body |
+| `supabase/functions/_shared/cors.ts` | Fehlende Supabase-Header in Allow-Headers |
+| `src/pages/portal/finanzanalyse/KontenTab.tsx` | "Bank verbinden"-Button entfernen |
