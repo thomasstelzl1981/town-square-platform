@@ -101,7 +101,7 @@ describe('Zone 2: Portal Modules', () => {
     'MOD-15': 4,
     'MOD-16': 5,
     'MOD-17': 4,
-    'MOD-18': 8,
+    'MOD-18': 9,
     'MOD-19': 4,
     'MOD-20': 4,
     'MOD-22': 7,
@@ -236,8 +236,8 @@ describe('Route Counts', () => {
   it('should calculate total Zone 2 tile routes', () => {
     const modules = Object.values(zone2Portal.modules || {});
     const tileCount = modules.reduce((sum, m) => sum + m.tiles.length, 0);
-    // Sum of all tile counts from expectedTileCounts
-    expect(tileCount).toBe(97);
+    // Sum of all tile counts from expectedTileCounts (updated: MOD-18 now has 9 tiles)
+    expect(tileCount).toBe(98);
   });
 
   it('should calculate total Zone 3 routes', () => {

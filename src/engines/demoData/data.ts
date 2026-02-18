@@ -446,7 +446,7 @@ export const DEMO_PORTFOLIO: DemoPortfolioRefs = {
   pvPlantIds: [
     '00000000-0000-4000-a000-000000000901', // PV 32.4 kWp
   ],
-  landlordContextId: 'd0000000-0000-4000-a000-000000000010',
+  landlordContextId: 'd0000000-0000-4000-a000-000000000099', // Landlord Context (unique ID)
 };
 
 // ─── AKQUISE-MANDAT ────────────────────────────────────────

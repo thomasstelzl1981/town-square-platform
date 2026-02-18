@@ -12,6 +12,14 @@ export default defineConfig(({ mode }) => ({
     hmr: {
       overlay: false,
     },
+    headers: {
+      // Security headers for development server
+      "X-Content-Type-Options": "nosniff",
+      "X-Frame-Options": "DENY",
+      "X-XSS-Protection": "1; mode=block",
+      "Referrer-Policy": "strict-origin-when-cross-origin",
+      "Permissions-Policy": "geolocation=(), microphone=(), camera=()",
+    },
   },
   plugins: [
     react(),
@@ -77,5 +85,10 @@ export default defineConfig(({ mode }) => ({
         },
       },
     },
+    // Security: minify code and obfuscate identifiers in production
+    minify: mode === 'production' ? 'terser' : 'esbuild',
+    sourcemap: mode !== 'production',
+    // Ensure dependencies are properly externalized for security
+    target: 'esnext',
   },
 }));

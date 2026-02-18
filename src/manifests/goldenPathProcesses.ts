@@ -729,7 +729,12 @@ export const GOLDEN_PATH_PROCESSES: GoldenPathProcess[] = [
       },
       resetOnClose: true,
     },
-    sections: [],
+    sections: [
+      { id: 'dashboard', title: 'Dashboard', component: 'PetManagerDashboard', readOnlyInDemo: true },
+      { id: 'customers', title: 'Kunden', component: 'PetManagerCustomers', readOnlyInDemo: true },
+      { id: 'pets', title: 'Tiere', component: 'PetManagerPets', readOnlyInDemo: true },
+      { id: 'bookings', title: 'Buchungen', component: 'PetManagerBookings', readOnlyInDemo: true },
+    ],
     phase: '1',
   },
 ];

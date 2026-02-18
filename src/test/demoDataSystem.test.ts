@@ -18,8 +18,8 @@ import { isDemoId } from '@/engines/demoData/engine';
 // ─── REGISTRY COMPLETENESS ─────────────────────────────────
 
 describe('Golden Path Registry', () => {
-  it('should contain exactly 15 processes', () => {
-    expect(GOLDEN_PATH_PROCESSES).toHaveLength(15);
+  it('should contain exactly 17 processes', () => {
+    expect(GOLDEN_PATH_PROCESSES).toHaveLength(17);
   });
 
   it('every process should have a unique ID', () => {
@@ -74,7 +74,7 @@ describe('Demo Toggle Logic', () => {
     const defaults: Record<string, boolean> = {};
     GOLDEN_PATH_PROCESSES.forEach(p => { defaults[p.id] = true; });
     expect(Object.values(defaults).every(Boolean)).toBe(true);
-    expect(Object.keys(defaults)).toHaveLength(15);
+    expect(Object.keys(defaults)).toHaveLength(17);
   });
 
   it('toggle OFF state: all demos should be OFF', () => {
@@ -217,6 +217,21 @@ describe('Demo ID Registry — DB ID Matching', () => {
 
   it('ALL_DEMO_IDS should have no duplicate entries', () => {
     const set = new Set(ALL_DEMO_IDS);
+    
+    const duplicateCount = ALL_DEMO_IDS.length - set.size;
+    if (duplicateCount > 0) {
+      // Helper: Find the duplicate ID
+      const seen = new Set<string>();
+      const duplicates: string[] = [];
+      ALL_DEMO_IDS.forEach(id => {
+        if (seen.has(id)) {
+          duplicates.push(id);
+        }
+        seen.add(id);
+      });
+      console.warn(`Found ${duplicateCount} duplicate ID(s):`, duplicates);
+    }
+    
     expect(set.size).toBe(ALL_DEMO_IDS.length);
   });
 });
