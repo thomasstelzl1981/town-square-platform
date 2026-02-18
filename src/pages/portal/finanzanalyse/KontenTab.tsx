@@ -108,7 +108,9 @@ export default function KontenTab() {
                   <Badge className={DEMO_WIDGET.BADGE + ' mb-2'}>Demo</Badge>
                   <h4 className="font-semibold text-sm">Demo: Girokonto Sparkasse</h4>
                   <p className="text-xs text-muted-foreground mt-1">{DEMO_KONTO_IBAN_MASKED}</p>
-                  <Badge variant="outline" className="mt-2 text-[10px]">Vermietung</Badge>
+                  <Badge variant="outline" className="mt-2 text-[10px]">
+                    {OWNER_TYPE_LABELS[DEMO_KONTO.owner_type] || 'Vermietereinheit'}
+                  </Badge>
                 </div>
                 <div className="text-right">
                   <p className="text-lg font-bold text-emerald-600">{new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(DEMO_KONTO.balance)}</p>

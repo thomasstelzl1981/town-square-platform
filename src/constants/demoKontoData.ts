@@ -26,21 +26,14 @@ export const DEMO_KONTO = {
   accountName: 'Girokonto Sparkasse',
   iban: 'DE89370400440532013000',
   bic: 'COBADEFFXXX',
-  category: 'vermietung' as const,
   balance: 12450.80,
   status: 'active' as const,
   holder: 'Max Mustermann',
+  owner_type: 'property' as const,
+  owner_id: 'd0000000-0000-4000-a000-000000000010', // landlordContextId
 } as const;
 
 export const DEMO_KONTO_IBAN_MASKED = 'DE89 3704 ••••';
-
-export const KONTO_CATEGORIES = [
-  { value: 'privat', label: 'Privat' },
-  { value: 'vermietung', label: 'Vermietung' },
-  { value: 'pv', label: 'Photovoltaik' },
-  { value: 'tagesgeld', label: 'Tagesgeld' },
-  { value: 'sonstiges', label: 'Sonstiges' },
-] as const;
 
 // ─── Buchungsmuster ───────────────────────────────────────
 
