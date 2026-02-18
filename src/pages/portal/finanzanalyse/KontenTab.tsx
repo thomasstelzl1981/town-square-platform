@@ -135,8 +135,8 @@ export default function KontenTab() {
         data?.forEach(p => { names[p.id] = `${p.first_name || ''} ${p.last_name || ''}`.trim(); });
       }
       if (propIds.length) {
-        const { data } = await supabase.from('properties').select('id, name').in('id', propIds);
-        data?.forEach((p: any) => { names[p.id] = p.name || 'Immobilie'; });
+        const { data } = await supabase.from('landlord_contexts').select('id, name').in('id', propIds);
+        data?.forEach((p: any) => { names[p.id] = p.name || 'Vermietereinheit'; });
       }
       if (pvIds.length) {
         const { data } = await supabase.from('pv_plants').select('id, name').in('id', pvIds);

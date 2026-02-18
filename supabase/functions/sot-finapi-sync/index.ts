@@ -141,8 +141,13 @@ Deno.serve(async (req) => {
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
-  const finapiClientId = Deno.env.get("FINAPI_CLIENT_ID")!;
-  const finapiClientSecret = Deno.env.get("FINAPI_CLIENT_SECRET")!;
+  const finapiClientId = Deno.env.get("FINAPI_CLIENT_ID");
+    const finapiClientSecret = Deno.env.get("FINAPI_CLIENT_SECRET");
+
+    if (!finapiClientId || !finapiClientSecret) {
+      console.error("[sot-finapi-sync] FINAPI_CLIENT_ID or FINAPI_CLIENT_SECRET not set");
+      return json({ error: "FinAPI credentials not configured. Please add FINAPI_CLIENT_ID and FINAPI_CLIENT_SECRET as secrets." }, 500);
+    }
 
   const json = (data: unknown, status = 200) =>
     new Response(JSON.stringify(data), {
@@ -213,9 +218,9 @@ Deno.serve(async (req) => {
           },
           body: JSON.stringify({
             bankId,
-            bankingInterface: "FINTS_SERVER",
+            interface: "XS2A",
             loginCredentials: [
-              { label: "Onlinebanking-Kennung", value: "demo" },
+              { label: "Onlinebanking-ID", value: "demo" },
               { label: "PIN", value: "demo" },
             ],
           }),
