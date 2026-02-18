@@ -210,20 +210,25 @@ Deno.serve(async (req) => {
         const storedPassword = finUser.password;
 
         // 3. Import bank connection
+        const importPayload: Record<string, unknown> = {
+          bankId,
+          loginCredentials: [
+            { label: "Onlinebanking-ID", value: "demo" },
+            { label: "PIN", value: "demo" },
+          ],
+        };
+        // "interface" is a TS reserved word — set via bracket notation
+        importPayload["interface"] = "XS2A";
+
+        console.log("[finapi-connect] Import payload:", JSON.stringify(importPayload));
+
         const importRes = await fetch(`${FINAPI_BASE}/api/v2/bankConnections/import`, {
           method: "POST",
           headers: {
             Authorization: `Bearer ${userAccessToken}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({
-            bankId,
-            interface: "XS2A",
-            loginCredentials: [
-              { label: "Onlinebanking-ID", value: "demo" },
-              { label: "PIN", value: "demo" },
-            ],
-          }),
+          body: JSON.stringify(importPayload),
         });
 
         if (!importRes.ok) {
