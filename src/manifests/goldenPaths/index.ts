@@ -37,6 +37,7 @@ export { GP_VERMIETUNG_GOLDEN_PATH } from './GP_VERMIETUNG';
 export { GP_LEAD_GOLDEN_PATH } from './GP_LEAD';
 export { GP_FINANCE_Z3_GOLDEN_PATH } from './GP_FINANCE_Z3';
 export { GP_PET_GOLDEN_PATH } from './GP_PET';
+export { GP_COMMISSION_GOLDEN_PATH } from './GP_COMMISSION';
 
 // ═══════════════════════════════════════════════════════════════
 // Ledger Event Whitelist (mirrors data_event_ledger RPC)
@@ -197,6 +198,16 @@ export const LEDGER_EVENT_WHITELIST: ReadonlySet<string> = new Set([
   'pet.customer.assign.timeout',
   'pet.customer.assign.rejected',
   'pet.customer.assign.error',
+
+  // ─── GP-COMMISSION: Systemgebühr Events ────────────────────
+  'commission.agreement.accepted',
+  'commission.agreement.rejected',
+  'commission.record.created',
+  'commission.invoiced',
+  'commission.paid',
+  'commission.cancelled',
+  'commission.assignment.timeout',
+  'commission.payment.timeout',
 ]);
 
 // ═══════════════════════════════════════════════════════════════
@@ -212,6 +223,7 @@ import { GP_VERMIETUNG_GOLDEN_PATH as _GP_VERMIETUNG } from './GP_VERMIETUNG';
 import { GP_LEAD_GOLDEN_PATH as _GP_LEAD } from './GP_LEAD';
 import { GP_FINANCE_Z3_GOLDEN_PATH as _GP_FINANCE_Z3 } from './GP_FINANCE_Z3';
 import { GP_PET_GOLDEN_PATH as _GP_PET } from './GP_PET';
+import { GP_COMMISSION_GOLDEN_PATH as _GP_COMMISSION } from './GP_COMMISSION';
 
 // Registrierung aller Golden Paths
 registerGoldenPath('MOD-04', _MOD_04);
@@ -224,3 +236,4 @@ registerGoldenPath('GP-VERMIETUNG', _GP_VERMIETUNG);
 registerGoldenPath('GP-LEAD', _GP_LEAD);
 registerGoldenPath('GP-FINANCE-Z3', _GP_FINANCE_Z3);
 registerGoldenPath('GP-PET', _GP_PET);
+registerGoldenPath('GP-COMMISSION', _GP_COMMISSION);

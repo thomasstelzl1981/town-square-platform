@@ -32,7 +32,7 @@ export const MOD_07_11_GOLDEN_PATH: GoldenPathDefinition = {
     {
       key: 'terms_gate_finance',
       source: 'user_consents',
-      description: 'TermsGate-Akzeptanz (30% Plattformgebuehr) durch Manager',
+      description: 'Systemgebuehr-Vereinbarung (25% Plattformgebuehr) durch Manager',
     },
   ],
 
