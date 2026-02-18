@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
-import { HardDrive, Mail, Cpu, CheckCircle, Clock, Loader2, AlertCircle, Check, Sparkles, Shield, Zap, FileSearch } from 'lucide-react';
+import { HardDrive, Mail, Cpu, CheckCircle, Clock, Loader2, AlertCircle, Check, Sparkles, Shield, Zap, FileSearch, Database, Brain, CloudCog, Plug, ArrowRight, Lock } from 'lucide-react';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { DESIGN } from '@/config/designManifest';
@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { DataEngineInfoCard } from '@/components/dms/DataEngineInfoCard';
 import {
   Dialog,
   DialogContent,
@@ -442,6 +443,9 @@ export function EinstellungenTab() {
             </div>
           </CardContent>
         </Card>
+
+        {/* ═══ KACHEL D: DOCUMENT INTELLIGENCE ENGINE ═══ */}
+        <DataEngineInfoCard />
       </div>
 
       {/* ═══ ORDER DIALOG (TermsGate) ═══ */}
