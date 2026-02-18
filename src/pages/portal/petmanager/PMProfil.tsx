@@ -27,7 +27,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-
+import { DEMO_PM_GALLERY_IMAGES } from '@/engines/demoData/petManagerDemo';
 const FACILITY_TYPES: Record<string, string> = {
   home_based: 'Heimbasiert',
   dedicated_facility: 'Eigene Einrichtung',
@@ -139,7 +139,8 @@ export default function PMProfil() {
 
   const activeServices = services.filter((s: any) => s.is_active);
 
-  const galleryPhotos: string[] = (provider?.gallery_images as string[]) || [];
+  const dbPhotos: string[] = (provider?.gallery_images as string[]) || [];
+  const galleryPhotos: string[] = dbPhotos.length > 0 ? dbPhotos : [...DEMO_PM_GALLERY_IMAGES];
 
   const handleTogglePublish = (checked: boolean) => {
     setPendingPublishState(checked);
