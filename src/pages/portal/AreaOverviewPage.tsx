@@ -46,8 +46,12 @@ export default function AreaOverviewPage() {
     return visibleModules.map(code => {
       const content = moduleContents[code];
       const moduleConfig = zone2Portal.modules?.[code];
-      const defaultRoute = moduleConfig ? `/portal/${moduleConfig.base}` : '/portal';
-      const displayName = moduleLabelOverrides[code] || moduleConfig?.name || code;
+      const defaultRoute = code === 'ARMSTRONG' 
+        ? '/portal/armstrong' 
+        : moduleConfig ? `/portal/${moduleConfig.base}` : '/portal';
+      const displayName = code === 'ARMSTRONG'
+        ? 'Armstrong — KI-Co-Pilot'
+        : moduleLabelOverrides[code] || moduleConfig?.name || code;
       
       return {
         code,
