@@ -1,26 +1,34 @@
 
 
-## Hero-Hoehen Korrektur: Alle 4 Ansichten auf 85vh
+## Tab-Reihenfolge im Finanzanalyse-Modul aendern
 
-### Ist-Zustand (das Problem)
+### Aktuelle Reihenfolge
 
-| Ansicht | Datei | Aktuelle Hoehe |
-|---------|-------|---------------|
-| Startseite (initial) | `LennoxStartseite.tsx` | **85vh** (korrekt) |
-| Startseite (nach Suche) | `LennoxStartseite.tsx` | 45vh (zu klein) |
-| Shop | `LennoxShop.tsx` | 45vh (zu klein) |
-| Partner werden | `LennoxPartnerWerden.tsx` | 45vh (zu klein) |
+1. Uebersicht
+2. Investment
+3. Versicherungen
+4. Vorsorge
+5. Krankenversicherung
+6. Abonnements
+7. Testament & Vollmacht
+8. Darlehen
 
-### Soll-Zustand
+### Neue Reihenfolge
 
-Alle vier Ansichten bekommen **85vh** -- gleiche Hoehe wie die Startseite beim ersten Laden. Der Hund und die Bilder werden vollstaendig sichtbar, kein Abschneiden mehr.
+1. Uebersicht
+2. Investment
+3. Krankenversicherung
+4. Versicherungen
+5. Vorsorge
+6. Darlehen
+7. Abonnements
+8. Testament & Vollmacht
 
 ### Technische Aenderungen
 
 | Datei | Aenderung |
 |-------|-----------|
-| `LennoxStartseite.tsx` (Zeile 77+83) | Ternary `hasSearched ? '45vh' : '85vh'` wird zu festem `'85vh'` (beide Stellen) |
-| `LennoxShop.tsx` (Zeile 131+136) | `'45vh'` wird zu `'85vh'` (beide Stellen) |
-| `LennoxPartnerWerden.tsx` (Zeile 95+100) | `'45vh'` wird zu `'85vh'` (beide Stellen) |
+| `src/manifests/routesManifest.ts` (Zeilen 501-509) | Tiles-Array in die neue Reihenfolge umsortieren |
+| `src/pages/portal/FinanzanalysePage.tsx` | Keine Aenderung noetig -- die Routes sind pfadbasiert und reihenfolge-unabhaengig |
 
-Insgesamt 6 Stellen, jeweils `minHeight` von `'45vh'` auf `'85vh'` aendern.
+Es wird ausschliesslich die Reihenfolge im `tiles`-Array geaendert. Pfade, Komponenten und Titel bleiben identisch.
