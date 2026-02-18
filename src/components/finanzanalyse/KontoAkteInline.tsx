@@ -2,7 +2,7 @@
  * KontoAkteInline — Inline-Detail für Bankkonten (Demo + echte)
  * Sektion 1: Kontodaten + Zuordnung (gruppierter Select)
  * Sektion 2: Kontoanbindung (FinAPI Platzhalter)
- * Sektion 3: Kontobewegungen
+ * Sektion 3: Kontobewegungen (mit CSV-Import)
  */
 import { useState, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -14,12 +14,13 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrig
 import { DEMO_WIDGET, RECORD_CARD } from '@/config/designManifest';
 import { DEMO_KONTO, DEMO_TRANSACTIONS, type DemoTransaction } from '@/constants/demoKontoData';
 import { DEMO_FAMILY, DEMO_PORTFOLIO } from '@/engines/demoData/data';
-import { CreditCard, Link2, Link2Off, X, Info } from 'lucide-react';
+import { CreditCard, Link2, Link2Off, X, Info, Upload } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { TransactionCsvImportDialog } from './TransactionCsvImportDialog';
 
 interface KontoAkteInlineProps {
   isDemo: boolean;
@@ -73,12 +74,43 @@ export function KontoAkteInline({ isDemo, account, onClose }: KontoAkteInlinePro
   const queryClient = useQueryClient();
   const [ownerType, setOwnerType] = useState(isDemo ? DEMO_KONTO.owner_type : (account?.owner_type || ''));
   const [ownerId, setOwnerId] = useState(isDemo ? DEMO_KONTO.owner_id : (account?.owner_id || ''));
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
 
   const kontoData = isDemo
     ? { name: DEMO_KONTO.accountName, iban: DEMO_KONTO.iban, bic: DEMO_KONTO.bic, bank: DEMO_KONTO.bank, holder: DEMO_KONTO.holder, status: 'active' }
     : { name: account?.account_name || '', iban: account?.iban || '', bic: account?.bic || '', bank: account?.bank_name || '', holder: account?.account_holder || '', status: account?.status || 'inactive' };
 
-  const transactions: DemoTransaction[] = isDemo ? DEMO_TRANSACTIONS : [];
+  // For real accounts: load transactions from DB
+  const accountRef = isDemo ? '' : (account?.id || account?.iban || '');
+
+  const { data: dbTransactions = [], refetch: refetchTransactions } = useQuery({
+    queryKey: ['bank-transactions', accountRef],
+    queryFn: async () => {
+      if (!accountRef) return [];
+      const { data, error } = await supabase
+        .from('bank_transactions')
+        .select('*')
+        .eq('account_ref', accountRef)
+        .order('booking_date', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !isDemo && !!accountRef,
+  });
+
+  // Map DB transactions to display format
+  const displayTransactions: DemoTransaction[] = isDemo
+    ? DEMO_TRANSACTIONS
+    : dbTransactions.map(t => ({
+        date: t.booking_date,
+        valuta_date: t.value_date || t.booking_date,
+        booking_type: '',
+        counterpart_name: t.counterparty || '',
+        counterpart_iban: '',
+        purpose: t.purpose_text || '',
+        amount: Number(t.amount_eur),
+        saldo: 0,
+      }));
 
   // Build demo owner options from static data
   const demoOwnerOptions = useMemo<OwnerOption[]>(() => {
@@ -101,7 +133,7 @@ export function KontoAkteInline({ isDemo, account, onClose }: KontoAkteInlinePro
     return [...persons, ...properties, ...pvPlants];
   }, [isDemo]);
 
-  // Load all owner options for real accounts (single query for all types)
+  // Load all owner options for real accounts
   const { data: realOwnerOptions = [] } = useQuery({
     queryKey: ['all-owner-options', activeTenantId],
     queryFn: async (): Promise<OwnerOption[]> => {
@@ -273,8 +305,16 @@ export function KontoAkteInline({ isDemo, account, onClose }: KontoAkteInlinePro
 
         {/* Sektion 3: Kontobewegungen */}
         <div>
-          <p className={RECORD_CARD.SECTION_TITLE}>Kontobewegungen</p>
-          {transactions.length > 0 ? (
+          <div className="flex items-center justify-between mb-2">
+            <p className={RECORD_CARD.SECTION_TITLE}>Kontobewegungen</p>
+            {!isDemo && (
+              <Button variant="outline" size="sm" onClick={() => setImportDialogOpen(true)}>
+                <Upload className="h-4 w-4 mr-1.5" />
+                Umsätze importieren
+              </Button>
+            )}
+          </div>
+          {displayTransactions.length > 0 ? (
             <div className="rounded-lg border overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
@@ -291,7 +331,7 @@ export function KontoAkteInline({ isDemo, account, onClose }: KontoAkteInlinePro
                     </tr>
                   </thead>
                   <tbody>
-                    {transactions.map((t, i) => (
+                    {displayTransactions.map((t, i) => (
                       <tr key={i} className="border-b last:border-0 hover:bg-muted/20">
                         <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">{fmtDate(t.date)}</td>
                         <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">{fmtDate(t.valuta_date)}</td>
@@ -311,10 +351,22 @@ export function KontoAkteInline({ isDemo, account, onClose }: KontoAkteInlinePro
             </div>
           ) : (
             <div className="text-center py-8 text-muted-foreground text-sm border border-dashed rounded-lg">
-              Transaktionen werden nach Kontoanbindung geladen.
+              {isDemo
+                ? 'Demo-Transaktionen werden angezeigt.'
+                : 'Noch keine Umsätze vorhanden. Importieren Sie Umsätze per CSV oder binden Sie das Konto an.'}
             </div>
           )}
         </div>
+
+        {/* Import Dialog */}
+        {!isDemo && (
+          <TransactionCsvImportDialog
+            open={importDialogOpen}
+            onOpenChange={setImportDialogOpen}
+            accountRef={account?.id || account?.iban || ''}
+            onImportComplete={() => refetchTransactions()}
+          />
+        )}
       </CardContent>
     </Card>
   );
