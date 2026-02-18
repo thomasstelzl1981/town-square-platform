@@ -1,62 +1,86 @@
 
 
-# Pruefergebnis: NK/BWA Engine und Konteneröffnungsvorlage
+# Soll-Ist-Analyse: FinAPI Bank-Anbindung
 
-## NK/BWA Engine: KORREKT
+## Kritischer Bug: Falscher API-Feldname
 
-Beide Engines sind sauber implementiert:
+Der wichtigste Fehler befindet sich in Zeile 216 der Edge Function `sot-finapi-sync/index.ts`:
 
-- **NK-Abrechnung Engine** (`src/engines/nkAbrechnung/`):
-  - `spec.ts`: Vollstaendige Typdefinitionen mit allen 18 BetrKV-Kategorien, Verteilerschluessel (Flaeche, MEA, Personen, Verbrauch, Einheiten), Readiness-Status
-  - `allocationLogic.ts`: Korrekte Verteilungsberechnung inkl. unterjaehriger Anteilsberechnung (Tage-Ratio)
-  - `engine.ts`: Orchestrierung laedt Lease, Unit, Property, Kontaktname, NK-Periode und berechnet die Abrechnungsmatrix inkl. Vorauszahlungen
-  - Bewohneranzahl wird korrekt aus `lease.number_of_occupants` (Default: 2) und `property.total_occupants` gelesen
+| | Ist (Code) | Soll (FinAPI V2 Docs) |
+|---|---|---|
+| Interface-Feld | `bankingInterface: "FINTS_SERVER"` | `interface: "FINTS_SERVER"` oder `"XS2A"` |
+| Login-Label | `"Onlinebanking-Kennung"` | `"Onlinebanking-ID"` |
 
-- **BWA Engine** (`src/engines/bewirtschaftung/`):
-  - `spec.ts`: Saubere Interfaces fuer BWA, Instandhaltung (Peters'sche Formel), Leerstand, Mietpotenzial
-  - `engine.ts`: Reine Funktionen ohne Seiteneffekte, getestet (`engine.test.ts` vorhanden)
+Das Feld `bankingInterface` ist der **V1-Feldname**. In der V2-API (die wir unter `/api/v2/` aufrufen) heisst das Feld schlicht `interface`. Dadurch wird der Import-Request von FinAPI als ungueltig abgelehnt (wahrscheinlich 400 oder 422), was den Fehler "Edge-Funktion kann nicht abgerufen werden" ausloest.
 
-Keine Aenderungen noetig.
+Zusaetzlich ist das Login-Label `"Onlinebanking-Kennung"` falsch. Laut FinAPI-Dokumentation fuer Testbank 280001 muss es `"Onlinebanking-ID"` heissen.
 
 ---
 
-## Konteneröffnungsvorlage: 2 BUGS
+## Vollstaendige Soll-Ist-Vergleichstabelle
 
-### Bug 1: `AddBankAccountDialog` fragt `properties.name` ab — Spalte existiert nicht
+| Schritt | Soll (FinAPI V2 Docs) | Ist (Code) | Status |
+|---------|----------------------|------------|--------|
+| OAuth Token Endpoint | `POST /api/v2/oauth/token` | `POST /api/v2/oauth/token` | OK |
+| Client Credentials Grant | `grant_type=client_credentials` mit `client_id` + `client_secret` als form-urlencoded | Korrekt implementiert (Zeile 22-31) | OK |
+| User Password Grant | `grant_type=password` mit `client_id`, `client_secret`, `username`, `password` | Korrekt implementiert (Zeile 39-61) | OK |
+| User erstellen | `POST /api/v2/users` mit `id`, `password`, `email` im JSON-Body, Auth: Bearer client_token | Korrekt implementiert (Zeile 102-113) | OK |
+| Bank Connection Import - Endpoint | `POST /api/v2/bankConnections/import` | `POST /api/v2/bankConnections/import` | OK |
+| Bank Connection Import - Interface-Feld | `"interface": "XS2A"` oder `"FINTS_SERVER"` | `"bankingInterface": "FINTS_SERVER"` | **FALSCH** |
+| Bank Connection Import - Login Labels | `"label": "Onlinebanking-ID"`, `"label": "PIN"` | `"label": "Onlinebanking-Kennung"`, `"label": "PIN"` | **FALSCH** (Label 1) |
+| Bank Connection Import - Login Values | `"value": "demo"`, `"value": "demo"` | Korrekt | OK |
+| Sandbox URL | `https://sandbox.finapi.io` | `https://sandbox.finapi.io` | OK |
+| Test Bank ID | `280001` | `280001` | OK |
+| Secrets vorhanden | `FINAPI_CLIENT_ID` + `FINAPI_CLIENT_SECRET` | Beide als Secrets konfiguriert | OK |
+| JWT Config | `verify_jwt = false` in config.toml | Vorhanden (Zeile 228-229) | OK |
+| Auth im Code | getClaims-Pattern | Korrekt implementiert | OK |
 
-In `src/components/shared/AddBankAccountDialog.tsx` Zeile 73:
-```
-supabase.from('properties').select('id, name').eq('tenant_id', activeTenantId)
-```
+---
 
-Die Tabelle `properties` hat KEINE Spalte `name`. Es gibt nur `address` und `city`. Daher erscheinen Immobilien zwar im Dropdown, aber mit dem Fallback-Label "Immobilie" statt des echten Namens.
+## Weiterer Bug: KontenTab Owner-Name-Query
 
-**Fix**: Query aendern zu `select('id, address, city')` und Label bauen als `"Leopoldstr., Muenchen"` etc.
-
-### Bug 2: Inkonsistentes Zuordnungsmodell zwischen den Komponenten
-
-| Komponente | Fragt ab | owner_type |
-|------------|----------|------------|
-| `KontoAkteInline` | `landlord_contexts` | `'property'` |
-| `AddBankAccountDialog` | `properties` | `'property'` |
-
-Beide verwenden `owner_type = 'property'`, aber **verschiedene Tabellen** und **verschiedene IDs**. Das Demo-Konto hat `owner_id = d0...0010` (eine `landlord_contexts`-ID), nicht eine `properties`-ID.
-
-**Loesung**: `AddBankAccountDialog` muss dieselbe Logik verwenden wie `KontoAkteInline` — also `landlord_contexts` statt `properties` fuer den Typ "Vermietereinheit" abfragen. Oder alternativ einen neuen `owner_type = 'landlord_context'` einfuehren (waere aber ein groesserer Umbau).
-
-Empfehlung: In `AddBankAccountDialog` die Query von `properties` auf `landlord_contexts` umstellen, Label auf `c.name` setzen, und Select-Group-Label von "Vermietereinheiten" beibehalten.
+In `KontenTab.tsx` Zeile 138 wird `properties.name` abgefragt, aber die Spalte existiert nicht (gleicher Bug wie zuvor im AddBankAccountDialog). Muss auf `landlord_contexts` geaendert werden.
 
 ---
 
 ## Aenderungen
 
-### Datei 1: `src/components/shared/AddBankAccountDialog.tsx`
+### 1. `supabase/functions/sot-finapi-sync/index.ts` (Zeile 214-221)
 
-- Zeile 73: `properties`-Query ersetzen durch `landlord_contexts`-Query
-- Zeile 79-81: Label-Generierung anpassen auf `c.name || 'Vermietereinheit'`
-- Typ bleibt `'property'` fuer Abwaertskompatibilitaet mit bestehendem `owner_type`-Feld
+Aktuell (falsch):
+```
+body: JSON.stringify({
+  bankId,
+  bankingInterface: "FINTS_SERVER",
+  loginCredentials: [
+    { label: "Onlinebanking-Kennung", value: "demo" },
+    { label: "PIN", value: "demo" },
+  ],
+}),
+```
 
-### Keine weiteren Dateien betroffen
+Korrektur:
+```
+body: JSON.stringify({
+  bankId,
+  interface: "XS2A",
+  loginCredentials: [
+    { label: "Onlinebanking-ID", value: "demo" },
+    { label: "PIN", value: "demo" },
+  ],
+}),
+```
 
-Die NK/BWA Engines bleiben unveraendert. Nach diesem Fix funktioniert "Konto manuell anlegen" korrekt mit den richtigen Vermietereinheiten im Dropdown, und neue Konten erhalten die korrekte `owner_id` (die `landlord_contexts.id`).
+Aenderungen:
+- `bankingInterface` wird zu `interface` (V2-Feldname)
+- `"FINTS_SERVER"` wird zu `"XS2A"` (empfohlen fuer Sandbox, beide Interfaces liefern identische Daten laut Docs)
+- `"Onlinebanking-Kennung"` wird zu `"Onlinebanking-ID"` (exakter Label-Name laut FinAPI Testbank-Doku)
+
+### 2. `src/pages/portal/finanzanalyse/KontenTab.tsx` (Zeile 137-139)
+
+Owner-Name-Query von `properties` auf `landlord_contexts` umstellen (gleicher Fix wie bei AddBankAccountDialog), damit Vermietereinheiten korrekt benannt werden.
+
+### 3. Bessere Fehlerbehandlung in der Edge Function
+
+Zusaetzlich: Pruefung ob `FINAPI_CLIENT_ID` und `FINAPI_CLIENT_SECRET` gesetzt sind, bevor API-Calls gemacht werden — damit statt eines kryptischen Fehlers eine klare Meldung kommt.
 
