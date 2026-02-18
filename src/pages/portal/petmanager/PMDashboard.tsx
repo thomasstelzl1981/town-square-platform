@@ -80,6 +80,10 @@ export default function PMDashboard() {
           gradientTo="hsl(180,55%,35%)"
           badgeText={provider.company_name || 'Lennox & Friends Dog Resorts'}
           extraBadge={FACILITY_LABELS[(provider as any).facility_type] || 'Tierpension'}
+          overrideName={provider.company_name}
+          overrideEmail={(provider as any).email}
+          overridePhone={(provider as any).phone}
+          overrideAddress={(provider as any).address}
         />
 
         {/* Kapazitäts-Widget */}
