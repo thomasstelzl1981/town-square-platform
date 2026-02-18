@@ -1,71 +1,60 @@
 
 
-## Visitenkarte: Provider-Seed-Daten anzeigen
+## Lennox & Friends in der Partnersuche anzeigen
 
 ### Problem
 
-Die `ManagerVisitenkarte` zeigt Name, E-Mail, Telefon und Adresse ausschliesslich aus dem Auth-Profil (`useAuth().profile`). Die in der Datenbank hinterlegten Provider-Daten (Lennox & Friends Dog Resorts, Rathausstr. 12, Ottobrunn, etc.) erscheinen nur als kleines Badge unten — nicht in den Kontaktzeilen der Karte.
+Die Partnersuche auf der Lennox & Friends Website zeigt keine Ergebnisse, obwohl der Provider in der Datenbank existiert und als "published" markiert ist. Zwei Ursachen:
+
+1. **RLS blockiert den Zugriff**: Die aktuelle SELECT-Policy auf `pet_providers` erlaubt nur Zugriff wenn `tenant_id = get_user_tenant_id()`. Zone-3-Besucher (nicht eingeloggt oder mit Z3-Auth) haben keinen Tenant und bekommen daher immer 0 Ergebnisse.
+
+2. **Kein Demo-Fallback**: Wenn die DB-Abfrage leer zurueckkommt, zeigt die Seite nur "Keine Partner in dieser Region gefunden" statt Lennox & Friends als Fallback.
 
 ### Loesung
 
-Die `ManagerVisitenkarte` bekommt optionale Override-Props fuer die Kontaktfelder. Wenn gesetzt, haben diese Vorrang vor den Auth-Profil-Daten. So kann der Pet Manager die Provider-Daten durchreichen, waehrend andere Module weiterhin das Auth-Profil verwenden.
+**1. Neue RLS-Policy fuer oeffentliche Provider**
 
-### Technische Umsetzung
+Eine zusaetzliche SELECT-Policy erlaubt allen Nutzern (inkl. anon), veroeffentlichte Provider zu sehen:
 
-**1. `src/components/shared/ManagerVisitenkarte.tsx`**
-
-Neue optionale Props im Interface:
-
-```typescript
-interface ManagerVisitenkarteProps {
-  // ... bestehende Props
-  overrideName?: string;
-  overrideEmail?: string;
-  overridePhone?: string;
-  overrideAddress?: string;
-}
+```sql
+CREATE POLICY "public_published_providers" ON pet_providers
+  FOR SELECT TO anon, authenticated
+  USING (is_published = true AND status = 'active');
 ```
 
-In der Render-Logik ersetzen die Overrides die Auth-Profil-Werte:
+Die bestehende Tenant-Policy bleibt bestehen — Provider-Inhaber sehen weiterhin auch ihre unveroffentlichten Profile. Die neue Policy ergaenzt (PERMISSIVE = OR-Logik).
 
-```typescript
-const displayName = overrideName || fullName;
-const displayEmail = overrideEmail || profile?.email;
-const displayPhone = overridePhone || profile?.phone_mobile;
-const displayAddress = overrideAddress || fullAddress;
+**2. Search-Hook: `is_published`-Filter hinzufuegen**
+
+Der `usePetProviderSearch`-Hook filtert aktuell nur nach `status = 'active'`. Fuer die oeffentliche Suche muss zusaetzlich `is_published = true` geprueft werden, damit nur freigegebene Provider angezeigt werden.
+
+**3. Demo-Fallback in `LennoxStartseite.tsx`**
+
+Wenn nach der Suche keine Ergebnisse zurueckkommen, wird Lennox & Friends als Demo-Kachel angezeigt. Die Daten kommen aus einer neuen Konstante `DEMO_LENNOX_SEARCH_PROVIDER` im Demo-Container.
+
+```text
+Suche ausfuehren
+  |
+  v
+DB gibt Ergebnisse? ── ja ──> Echte Partner-Kacheln anzeigen
+  |
+  nein
+  |
+  v
+DEMO_LENNOX_SEARCH_PROVIDER als Fallback-Kachel anzeigen
 ```
 
-**2. `src/pages/portal/petmanager/PMDashboard.tsx`**
-
-Die Provider-Daten werden als Overrides an die Visitenkarte durchgereicht:
-
-```tsx
-<ManagerVisitenkarte
-  role="Inhaberin"
-  gradientFrom="hsl(170,60%,40%)"
-  gradientTo="hsl(180,55%,35%)"
-  badgeText={provider.company_name || 'Lennox & Friends Dog Resorts'}
-  extraBadge={FACILITY_LABELS[(provider as any).facility_type] || 'Tierpension'}
-  overrideName={provider.company_name}
-  overrideEmail={provider.email}
-  overridePhone={provider.phone}
-  overrideAddress={provider.address}
-/>
-```
-
-### Dateien
+### Technische Dateien
 
 | Datei | Aktion |
 |-------|--------|
-| `src/components/shared/ManagerVisitenkarte.tsx` | EDIT — 4 optionale Override-Props hinzufuegen |
-| `src/pages/portal/petmanager/PMDashboard.tsx` | EDIT — Provider-Daten als Overrides durchreichen |
+| Migration SQL | NEU — Neue RLS-Policy `public_published_providers` auf `pet_providers` |
+| `src/hooks/usePetProviderSearch.ts` | EDIT — `.eq('is_published', true)` zum Query hinzufuegen |
+| `src/engines/demoData/petManagerDemo.ts` | EDIT — `DEMO_LENNOX_SEARCH_PROVIDER` Konstante exportieren (SearchProvider-Format) |
+| `src/pages/zone3/lennox/LennoxStartseite.tsx` | EDIT — Demo-Fallback wenn `providers.length === 0` nach Suche |
 
-### Ergebnis
+### Sicherheit
 
-Die Visitenkarte zeigt:
-- **Name**: Lennox & Friends Dog Resorts
-- **Rolle**: Inhaberin
-- **E-Mail**: info@lennoxandfriends.com
-- **Telefon**: +49 176 64 12 68 69
-- **Adresse**: Rathausstr. 12, 85521 Ottobrunn
-- **Badges**: Lennox & Friends Dog Resorts + Tierpension
+- Die neue Policy exponiert NUR Provider mit `is_published = true AND status = 'active'`
+- Sensible Felder wie `tenant_id`, `user_id` werden im Search-Hook nicht selektiert (nur `id, company_name, address, phone, email, bio, rating_avg, cover_image_url, service_area_postal_codes`)
+- Die bestehende Tenant-basierte Policy bleibt fuer Zone 1/2 unveraendert
