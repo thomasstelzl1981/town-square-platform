@@ -85,6 +85,15 @@ export default function LennoxProviderDetail() {
         </div>
       </div>
 
+      {/* Gallery */}
+      {(provider as any).gallery_images?.length > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {((provider as any).gallery_images as string[]).map((url, i) => (
+            <img key={i} src={url} alt={`Galerie ${i + 1}`} className="w-full aspect-[4/3] rounded-xl object-cover" />
+          ))}
+        </div>
+      )}
+
       {/* CTA */}
       <div className="rounded-2xl bg-gradient-to-r from-[hsl(25,85%,55%)] to-[hsl(35,80%,50%)] p-6 text-white flex flex-col sm:flex-row items-center justify-between gap-4">
         <div>

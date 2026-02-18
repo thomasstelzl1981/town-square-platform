@@ -127,6 +127,18 @@ export default function LennoxPartnerProfil() {
         </div>
       </section>
 
+      {/* ═══ GALERIE ═══ */}
+      {(provider as any).gallery_images?.length > 0 && (
+        <section>
+          <h2 className="text-lg font-semibold mb-4" style={{ color: COLORS.foreground }}>Impressionen</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {((provider as any).gallery_images as string[]).map((url: string, i: number) => (
+              <img key={i} src={url} alt={`Galerie ${i + 1}`} className="w-full aspect-[4/3] rounded-xl object-cover" />
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* ═══ SERVICE-MODULE (max 4 Kacheln) ═══ */}
       <section>
         <h2 className="text-lg font-semibold mb-4" style={{ color: COLORS.foreground }}>Leistungen</h2>
