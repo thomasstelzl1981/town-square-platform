@@ -28,7 +28,8 @@ export function useSearchProviders(location?: string, category?: string) {
       const { data: providers, error: pErr } = await supabase
         .from('pet_providers')
         .select('id, company_name, address, phone, email, bio, rating_avg, cover_image_url, service_area_postal_codes')
-        .eq('status', 'active');
+        .eq('status', 'active')
+        .eq('is_published', true);
       if (pErr) throw pErr;
 
       const { data: services, error: sErr } = await supabase

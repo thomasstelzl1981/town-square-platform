@@ -9,6 +9,7 @@
  */
 
 import type { DemoPMCustomer, DemoPMPet, DemoPMBooking } from './spec';
+import type { SearchProvider } from '@/hooks/usePetProviderSearch';
 import { DEMO_TENANT_ID, DEMO_PET_PROVIDER_LENNOX } from './constants';
 
 // ─── DEMO GALLERY IMAGES ──────────────────────────────────
@@ -23,6 +24,20 @@ export const DEMO_PM_GALLERY_IMAGES: readonly string[] = [
   pmGalleryGrooming1,
   pmGalleryGrooming2,
 ] as const;
+
+// ─── DEMO SEARCH PROVIDER (Fallback für Zone 3 Suche) ─────
+export const DEMO_LENNOX_SEARCH_PROVIDER: SearchProvider = {
+  id: DEMO_PET_PROVIDER_LENNOX,
+  company_name: 'Lennox & Friends Dog Resorts',
+  address: 'Rathausstr. 12, 85521 Ottobrunn',
+  phone: '+49 176 64 12 68 69',
+  email: 'info@lennoxandfriends.com',
+  bio: 'Naturverbundene Hundebetreuung mit Herz — Pension, Tagesstätte und Hundesalon in Ottobrunn bei München.',
+  rating_avg: 4.9,
+  cover_image_url: pmGalleryPension1,
+  service_area_postal_codes: ['85521', '85540', '85622', '81671', '81673'],
+  services: ['boarding', 'daycare', 'grooming', 'walking'],
+};
 
 // ─── FESTE IDs ─────────────────────────────────────────────
 

@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { useSearchProviders, type SearchProvider } from '@/hooks/usePetProviderSearch';
+import { DEMO_LENNOX_SEARCH_PROVIDER } from '@/engines/demoData/petManagerDemo';
 import heroImage from '@/assets/lennox/hero_alpine.jpg';
 
 const SERVICE_TAG_LABELS: Record<string, string> = {
@@ -154,9 +155,13 @@ export default function LennoxStartseite() {
               <div className="h-8 w-8 animate-spin rounded-full border-4 border-t-transparent" style={{ borderColor: COLORS.primary }} />
             </div>
           ) : providers.length === 0 ? (
-            <div className="text-center py-12 space-y-2">
-              <Search className="h-10 w-10 mx-auto" style={{ color: COLORS.sand }} />
-              <p style={{ color: COLORS.muted }}>Keine Partner in dieser Region gefunden.</p>
+            <div className="space-y-6">
+              <div className="text-center py-4">
+                <p className="text-sm" style={{ color: COLORS.muted }}>Keine weiteren Partner in dieser Region — aber Lennox & Friends ist für dich da:</p>
+              </div>
+              <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+                <PartnerCard provider={DEMO_LENNOX_SEARCH_PROVIDER} />
+              </div>
             </div>
           ) : (
             <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
