@@ -26,6 +26,7 @@ import { PortalLayoutProvider, usePortalLayout } from '@/hooks/usePortalLayout';
 import { getModulesSorted } from '@/manifests/routesManifest';
 import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import ErrorBoundary from '@/components/ErrorBoundary';
 
 
 /**
@@ -156,7 +157,9 @@ function PortalLayoutInner() {
         ) : (
           /* TILE VIEW or other: Content area without SubTabs */
           <main className="flex-1 overflow-y-auto overflow-x-hidden relative">
-            <Outlet />
+            <ErrorBoundary moduleName="Inhalt">
+              <Outlet />
+            </ErrorBoundary>
           </main>
         )}
         
@@ -180,7 +183,9 @@ function PortalLayoutInner() {
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden">
         <main className="flex-1 overflow-y-auto relative">
-          <Outlet />
+          <ErrorBoundary moduleName="Inhalt">
+            <Outlet />
+          </ErrorBoundary>
         </main>
       </div>
       

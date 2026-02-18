@@ -1,33 +1,44 @@
 import { useEffect, useRef, useState } from "react";
-import mermaid from "mermaid";
 
-// Initialize mermaid with dark theme
-mermaid.initialize({
-  startOnLoad: false,
-  theme: "dark",
-  themeVariables: {
-    primaryColor: "#3b82f6",
-    primaryTextColor: "#f8fafc",
-    primaryBorderColor: "#3b82f6",
-    lineColor: "#64748b",
-    secondaryColor: "#1e293b",
-    tertiaryColor: "#0f172a",
-    background: "#0d1321",
-    mainBkg: "#1e293b",
-    nodeBorder: "#3b82f6",
-    clusterBkg: "#1e293b",
-    clusterBorder: "#334155",
-    titleColor: "#f8fafc",
-    edgeLabelBackground: "#1e293b",
-  },
-  flowchart: {
-    curve: "basis",
-    padding: 20,
-    nodeSpacing: 50,
-    rankSpacing: 80,
-  },
-  securityLevel: "loose",
-});
+let mermaidInstance: typeof import("mermaid").default | null = null;
+let mermaidReady: Promise<typeof import("mermaid").default> | null = null;
+
+function getMermaid() {
+  if (!mermaidReady) {
+    mermaidReady = import("mermaid").then((mod) => {
+      const m = mod.default;
+      m.initialize({
+        startOnLoad: false,
+        theme: "dark",
+        themeVariables: {
+          primaryColor: "#3b82f6",
+          primaryTextColor: "#f8fafc",
+          primaryBorderColor: "#3b82f6",
+          lineColor: "#64748b",
+          secondaryColor: "#1e293b",
+          tertiaryColor: "#0f172a",
+          background: "#0d1321",
+          mainBkg: "#1e293b",
+          nodeBorder: "#3b82f6",
+          clusterBkg: "#1e293b",
+          clusterBorder: "#334155",
+          titleColor: "#f8fafc",
+          edgeLabelBackground: "#1e293b",
+        },
+        flowchart: {
+          curve: "basis",
+          padding: 20,
+          nodeSpacing: 50,
+          rankSpacing: 80,
+        },
+        securityLevel: "loose",
+      });
+      mermaidInstance = m;
+      return m;
+    });
+  }
+  return mermaidReady;
+}
 
 interface MermaidDiagramProps {
   chart: string;
@@ -44,8 +55,9 @@ export function MermaidDiagram({ chart, className = "" }: MermaidDiagramProps) {
       if (!containerRef.current) return;
       
       try {
+        const m = await getMermaid();
         const id = `mermaid-${Math.random().toString(36).substr(2, 9)}`;
-        const { svg } = await mermaid.render(id, chart);
+        const { svg } = await m.render(id, chart);
         setSvg(svg);
         setError(null);
       } catch (err) {

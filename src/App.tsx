@@ -38,7 +38,16 @@ const queryClient = new QueryClient({
       staleTime: 5 * 60 * 1000,      // 5 minutes
       gcTime: 10 * 60 * 1000,        // 10 minutes
       refetchOnWindowFocus: false,
-      retry: 1,
+      retry: (failureCount, error) => {
+        // Don't retry on auth errors (401/403) or not found (404)
+        const status = (error as any)?.status ?? (error as any)?.code;
+        if ([401, 403, 404, 422].includes(status)) return false;
+        return failureCount < 2;
+      },
+      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
+    },
+    mutations: {
+      retry: 0, // Never retry mutations automatically
     },
   },
 });
