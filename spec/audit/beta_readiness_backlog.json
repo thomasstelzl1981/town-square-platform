@@ -161,8 +161,8 @@
     { "id": "BUG-003", "priority": "P1", "area": "Manifest", "description": "specialRoutes listet /auth/reset-password nicht", "status": "fixed", "fix_commit": "FIX-003" },
     { "id": "BUG-004", "priority": "P1", "area": "Auth", "description": "Kein Signup-Flow — Test-User via sot-create-test-user erstellen", "status": "by-design" },
     { "id": "BUG-005", "priority": "P2", "area": "Finanzanalyse", "description": "Darlehen-Widgets hatten roten Glow statt gruen fuer Demo-Daten", "status": "fixed", "fix_commit": "FIX-005" },
-    { "id": "BUG-006", "priority": "P2", "area": "tile_catalog", "description": "MOD-05 Title in DB noch 'Website Builder' statt 'Pets'", "status": "open", "action": "DB-Update noetig" },
-    { "id": "BUG-007", "priority": "P2", "area": "tile_catalog", "description": "MOD-22 Pet Manager fehlt in tile_catalog", "status": "open", "action": "INSERT bei naechster Migration" }
+    { "id": "BUG-006", "priority": "P2", "area": "tile_catalog", "description": "MOD-05 Title in DB noch 'Website Builder' statt 'Pets'", "status": "fixed", "fix_commit": "FIX-006" },
+    { "id": "BUG-007", "priority": "P2", "area": "tile_catalog", "description": "MOD-22 Pet Manager fehlt in tile_catalog", "status": "fixed", "fix_commit": "FIX-007" }
   ],
 
   "not_yet_built": [
