@@ -388,9 +388,14 @@ Ziel: Keine funktionslosen Kacheln, keine hardcodierten Beispieldaten.
 | 1 | E1: 7 Operative Desks | ✅ DONE | SalesDesk (5 Sub-Routes, DB), LeadDesk (5, DB+Engine), FutureRoom (9, DB), Acquiary (9, DB), ProjektDesk (4, DB), PetmanagerDesk (9), FinanceDesk (4, DB). Alle nutzen OperativeDeskShell + Supabase-Queries. |
 | 2 | E2: Governance Desks | ✅ DONE | Armstrong (11 Sub-Routes: Dashboard, Actions, Logs, Billing, Knowledge, Policies, Engines, GoldenPaths, Integrations, TestHarness, CostMonitor), Fortbildung Admin (1), WebHosting (1). |
 
-### Phase 6: Bereinigung
-20. I1-I7: Hardcoded-Daten eliminieren
-21. G1-G5: Zone 3 Websites Endtest
+### Phase 6: Bereinigung — ✅ DONE
+
+| # | Test | Status | Ergebnis |
+|---|------|--------|----------|
+| 1 | I1-I7: Hardcoded-Daten Audit | ✅ DONE | 11 unregistrierte inline Demo-Datenquellen gefunden und in `demoDataRegistry.ts` registriert (CarsAutos, CarsBikes, CarsFahrzeuge, LandingPageLegalTab, Kaufy2026Verkaeufer, SanierungTab, AnlagenTab, ResearchDemoSimulation, ResearchDemoResultsTable, LandingPageTab, useDemoDepot). Alle folgen dem Toggle-Pattern (useDemoToggles). Registry von 12 auf 23 Eintraege erweitert. |
+| 2 | G1-G5: Zone 3 Websites Endtest | ✅ DONE | Alle 5 Websites laden korrekt: SoT (/website/sot), Kaufy (/website/kaufy), FutureRoom (/website/futureroom), Acquiary (/website/acquiary), Lennox (/website/tierservice). |
+
+**FINDING P7 (FIXED):** Legacy-Redirect-Bug — `LegacyRedirect` Component verwendete `params['*']` aus dem uebergeordneten `/*`-Mount in App.tsx, was zu doppelten Pfadsegmenten fuehrte (z.B. `/sot` → `/website/sot/sot`). Fix: Wildcard-Parameter werden jetzt in `LegacyRedirect` ignoriert, da alle Legacy-Redirects statische Ziel-Pfade haben.
 
 ---
 
@@ -406,6 +411,17 @@ Ziel: Keine funktionslosen Kacheln, keine hardcodierten Beispieldaten.
 | Zone 1 Desks | 10 (50+ Sub-Routen) |
 | Edge Functions (kritisch) | 20 von 113 |
 | Websites | 5 |
-| Geschaetzter Aufwand | 20-30 Stunden |
 
-**Status:** Phase 1-5 ✅ DONE. Phase 6 (Bereinigung) offen.
+**Status:** Phase 1-6 ✅ ALLE DONE. Full System Test Backlog abgeschlossen.
+
+### Alle Findings
+
+| # | Schwere | Beschreibung | Status |
+|---|---------|--------------|--------|
+| P1 | CRITICAL | Portal-Layout Infinite Spinner bei fehlender Session | ✅ FIXED |
+| P2 | WARN | PetDesk Console-Warnings (fehlende Skip-List) | ✅ FIXED |
+| P3 | WARN | MOD-12 fehlte in Golden Path Registry | ✅ FIXED |
+| P4 | WARN | 4 Context Resolvers fehlten fuer GP-Guard | ✅ FIXED |
+| P5 | CRITICAL | Auth-Session-Bug V2 — abgelaufener Refresh-Token | ✅ FIXED |
+| P6 | INFO | FMDashboard unused `cases` Prop | Kosmetisch, kein Blocker |
+| P7 | WARN | Legacy-Redirect Wildcard-Bug (`/sot` → `/website/sot/sot`) | ✅ FIXED |
