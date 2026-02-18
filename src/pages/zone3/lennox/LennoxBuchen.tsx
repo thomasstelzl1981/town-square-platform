@@ -1,6 +1,6 @@
 /**
  * LennoxBuchen — Zone 3 Buchungsformular
- * Route: /website/tierservice/anbieter/:providerId/buchen
+ * Verwendet eigenständiges Z3-Auth (getrennt vom Portal)
  */
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
@@ -12,6 +12,7 @@ import { ArrowLeft, CalendarDays, Send } from 'lucide-react';
 import { useProviderDetail } from '@/hooks/usePetProviderSearch';
 import { usePublicProviderServices } from '@/hooks/usePublicPetProvider';
 import { toast } from 'sonner';
+import { useZ3Auth } from '@/hooks/useZ3Auth';
 
 const serviceTypeLabels: Record<string, string> = {
   betreuung: 'Betreuung', gassi: 'Gassi-Service', pflege: 'Pflege',
@@ -23,40 +24,25 @@ export default function LennoxBuchen() {
   const navigate = useNavigate();
   const { data: provider } = useProviderDetail(providerId);
   const { data: services = [] } = usePublicProviderServices(providerId);
+  const { z3User, z3Loading } = useZ3Auth();
 
-  const [userId, setUserId] = useState<string | null>(null);
   const [selectedService, setSelectedService] = useState('');
   const [preferredDate, setPreferredDate] = useState('');
   const [notes, setNotes] = useState('');
   const [sending, setSending] = useState(false);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) navigate(`/website/tierservice/login?returnTo=/website/tierservice/anbieter/${providerId}/buchen`);
-      else setUserId(user.id);
-    });
-  }, [navigate, providerId]);
+    if (!z3Loading && !z3User) {
+      navigate(`/website/tierservice/login?returnTo=/website/tierservice/anbieter/${providerId}/buchen`);
+    }
+  }, [z3Loading, z3User, navigate, providerId]);
 
   const handleSubmit = async () => {
     if (!selectedService) { toast.error('Bitte wähle einen Service.'); return; }
-    if (!userId) return;
+    if (!z3User) return;
 
     setSending(true);
 
-    // Get customer profile
-    const { data: customer } = await supabase
-      .from('pet_z1_customers')
-      .select('id, tenant_id')
-      .eq('user_id', userId)
-      .maybeSingle();
-
-    if (!customer) {
-      toast.error('Bitte vervollständige zuerst dein Profil.');
-      navigate('/website/tierservice/profil');
-      return;
-    }
-
-    // For now, update pet_z1_customers with a note about the booking request
     const bookingNote = `Buchungsanfrage: ${selectedService}${preferredDate ? ` am ${preferredDate}` : ''}${notes ? ` — ${notes}` : ''} (Provider: ${provider?.company_name || providerId})`;
     
     await supabase
@@ -65,14 +51,14 @@ export default function LennoxBuchen() {
         notes: bookingNote,
         status: 'qualified',
       } as any)
-      .eq('id', customer.id);
+      .eq('id', z3User.id);
 
     setSending(false);
     toast.success('Buchungsanfrage gesendet! Wir melden uns bei dir.');
     navigate('/website/tierservice/profil');
   };
 
-  if (!userId) return null;
+  if (z3Loading || !z3User) return null;
 
   return (
     <div className="max-w-lg mx-auto space-y-6">

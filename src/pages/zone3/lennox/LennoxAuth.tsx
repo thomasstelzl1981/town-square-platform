@@ -1,9 +1,10 @@
 /**
  * LennoxAuth — Zone 3 Login/Registrierung für Lennox & Friends
+ * Verwendet eigenständiges Z3-Auth (getrennt vom Portal)
  */
 import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
+import { useZ3Auth } from '@/hooks/useZ3Auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -32,6 +33,7 @@ export default function LennoxAuth() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const returnTo = searchParams.get('returnTo') || '/website/tierservice/mein-bereich';
+  const { z3Login, z3Signup } = useZ3Auth();
 
   const handleLogin = async () => {
     const parsed = loginSchema.safeParse({ email, password });
@@ -40,13 +42,14 @@ export default function LennoxAuth() {
       return;
     }
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email: parsed.data.email, password: parsed.data.password });
-    setLoading(false);
-    if (error) {
-      toast.error('Login fehlgeschlagen: ' + error.message);
-    } else {
+    try {
+      await z3Login(parsed.data.email, parsed.data.password);
       toast.success('Erfolgreich eingeloggt!');
       navigate(returnTo);
+    } catch (err: any) {
+      toast.error('Login fehlgeschlagen: ' + (err.message || 'Unbekannter Fehler'));
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -57,38 +60,15 @@ export default function LennoxAuth() {
       return;
     }
     setLoading(true);
-    const { data, error } = await supabase.auth.signUp({
-      email: parsed.data.email,
-      password: parsed.data.password,
-      options: {
-        emailRedirectTo: window.location.origin + '/website/tierservice/mein-bereich',
-        data: {
-          first_name: parsed.data.firstName,
-          last_name: parsed.data.lastName,
-          source: 'lennox_website',
-        },
-      },
-    });
-    if (error) {
+    try {
+      await z3Signup(parsed.data.email, parsed.data.password, parsed.data.firstName, parsed.data.lastName);
+      toast.success('Registrierung erfolgreich! Du bist jetzt eingeloggt.');
+      navigate(returnTo);
+    } catch (err: any) {
+      toast.error('Registrierung fehlgeschlagen: ' + (err.message || 'Unbekannter Fehler'));
+    } finally {
       setLoading(false);
-      toast.error('Registrierung fehlgeschlagen: ' + error.message);
-      return;
     }
-
-    // Create Z1 customer profile after signup
-    if (data.user) {
-      await supabase.functions.invoke('sot-pet-profile-init', {
-        body: {
-          userId: data.user.id,
-          email: parsed.data.email,
-          firstName: parsed.data.firstName,
-          lastName: parsed.data.lastName,
-        },
-      });
-    }
-
-    setLoading(false);
-    toast.success('Registrierung erfolgreich! Bitte bestätige deine E-Mail-Adresse.');
   };
 
   return (

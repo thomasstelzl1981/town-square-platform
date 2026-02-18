@@ -1,5 +1,6 @@
 /**
  * LennoxProfil — Zone 3 Halter-Profil (Self-Service)
+ * Verwendet eigenständiges Z3-Auth (getrennt vom Portal)
  */
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
@@ -10,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { PawPrint, Save, LogOut, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { z } from 'zod';
+import { useZ3Auth } from '@/hooks/useZ3Auth';
 
 const profileSchema = z.object({
   first_name: z.string().trim().min(1, 'Vorname erforderlich').max(100),
@@ -23,40 +25,29 @@ const profileSchema = z.object({
 
 export default function LennoxProfil() {
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(true);
+  const { z3User, z3Loading, z3Logout } = useZ3Auth();
   const [saving, setSaving] = useState(false);
-  const [profile, setProfile] = useState<any>(null);
   const [form, setForm] = useState({
     first_name: '', last_name: '', email: '', phone: '', address: '', city: '', postal_code: '',
   });
 
   useEffect(() => {
-    const load = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { navigate('/website/tierservice/login'); return; }
-      
-      const { data } = await supabase
-        .from('pet_z1_customers')
-        .select('*')
-        .eq('user_id', user.id)
-        .maybeSingle();
-      
-      if (data) {
-        setProfile(data);
-        setForm({
-          first_name: data.first_name || '',
-          last_name: data.last_name || '',
-          email: data.email || '',
-          phone: data.phone || '',
-          address: data.address || '',
-          city: (data as any).city || '',
-          postal_code: (data as any).postal_code || '',
-        });
-      }
-      setLoading(false);
-    };
-    load();
-  }, [navigate]);
+    if (!z3Loading && !z3User) {
+      navigate('/website/tierservice/login');
+      return;
+    }
+    if (z3User) {
+      setForm({
+        first_name: z3User.first_name || '',
+        last_name: z3User.last_name || '',
+        email: z3User.email || '',
+        phone: z3User.phone || '',
+        address: z3User.address || '',
+        city: z3User.city || '',
+        postal_code: z3User.postal_code || '',
+      });
+    }
+  }, [z3User, z3Loading, navigate]);
 
   const handleSave = async () => {
     const parsed = profileSchema.safeParse(form);
@@ -64,6 +55,7 @@ export default function LennoxProfil() {
       toast.error(parsed.error.errors[0]?.message);
       return;
     }
+    if (!z3User) return;
     setSaving(true);
     const { error } = await supabase
       .from('pet_z1_customers')
@@ -76,18 +68,18 @@ export default function LennoxProfil() {
         city: parsed.data.city || null,
         postal_code: parsed.data.postal_code || null,
       } as any)
-      .eq('id', profile.id);
+      .eq('id', z3User.id);
     setSaving(false);
     if (error) toast.error('Fehler beim Speichern');
     else toast.success('Profil gespeichert!');
   };
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    await z3Logout();
     navigate('/website/tierservice');
   };
 
-  if (loading) {
+  if (z3Loading) {
     return (
       <div className="flex justify-center py-20">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-[hsl(25,85%,55%)] border-t-transparent" />
@@ -95,7 +87,7 @@ export default function LennoxProfil() {
     );
   }
 
-  if (!profile) {
+  if (!z3User) {
     return (
       <div className="text-center py-20 space-y-3">
         <p className="text-[hsl(25,15%,55%)]">Kein Profil gefunden. Bitte registriere dich zuerst.</p>

@@ -1,5 +1,6 @@
 /**
  * LennoxMeineTiere — Zone 3 Tier-Verwaltung (CRUD auf pet_z1_pets)
+ * Verwendet eigenständiges Z3-Auth (getrennt vom Portal)
  */
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
@@ -11,6 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { PawPrint, Plus, Trash2, ArrowLeft, Save, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { z } from 'zod';
+import { useZ3Auth } from '@/hooks/useZ3Auth';
 
 const petSchema = z.object({
   name: z.string().trim().min(1, 'Name erforderlich').max(100),
@@ -33,9 +35,9 @@ const emptyPet: PetForm = { name: '', species: 'dog', breed: '', gender: 'unknow
 
 export default function LennoxMeineTiere() {
   const navigate = useNavigate();
+  const { z3User, z3Loading } = useZ3Auth();
   const [loading, setLoading] = useState(true);
   const [pets, setPets] = useState<any[]>([]);
-  const [customerId, setCustomerId] = useState<string | null>(null);
   const [tenantId, setTenantId] = useState<string | null>(null);
   const [editId, setEditId] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
@@ -43,35 +45,39 @@ export default function LennoxMeineTiere() {
   const [saving, setSaving] = useState(false);
 
   const loadPets = useCallback(async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { navigate('/website/tierservice/login'); return; }
+    if (!z3User) { setLoading(false); return; }
 
+    // Get tenant_id from customer record
     const { data: customer } = await supabase
       .from('pet_z1_customers')
-      .select('id, tenant_id')
-      .eq('user_id', user.id)
+      .select('tenant_id')
+      .eq('id', z3User.id)
       .maybeSingle();
 
-    if (!customer) { setLoading(false); return; }
-    setCustomerId(customer.id);
-    setTenantId(customer.tenant_id);
+    if (customer) setTenantId(customer.tenant_id);
 
     const { data: petData } = await supabase
       .from('pet_z1_pets' as any)
       .select('*')
-      .eq('z1_customer_id', customer.id)
+      .eq('z1_customer_id', z3User.id)
       .order('created_at', { ascending: true });
 
     setPets(petData || []);
     setLoading(false);
-  }, [navigate]);
+  }, [z3User]);
 
-  useEffect(() => { loadPets(); }, [loadPets]);
+  useEffect(() => {
+    if (!z3Loading && !z3User) {
+      navigate('/website/tierservice/login');
+      return;
+    }
+    if (z3User) loadPets();
+  }, [z3User, z3Loading, navigate, loadPets]);
 
   const handleSave = async () => {
     const parsed = petSchema.safeParse(form);
     if (!parsed.success) { toast.error(parsed.error.errors[0]?.message); return; }
-    if (!customerId || !tenantId) return;
+    if (!z3User || !tenantId) return;
 
     setSaving(true);
     const payload: any = {
@@ -90,7 +96,7 @@ export default function LennoxMeineTiere() {
       if (error) toast.error('Fehler beim Aktualisieren');
       else toast.success('Tier aktualisiert!');
     } else {
-      payload.z1_customer_id = customerId;
+      payload.z1_customer_id = z3User.id;
       payload.tenant_id = tenantId;
       const { error } = await (supabase.from('pet_z1_pets' as any) as any).insert(payload);
       if (error) toast.error('Fehler beim Anlegen');
@@ -124,7 +130,7 @@ export default function LennoxMeineTiere() {
     });
   };
 
-  if (loading) {
+  if (z3Loading || loading) {
     return (
       <div className="flex justify-center py-20">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-[hsl(25,85%,55%)] border-t-transparent" />

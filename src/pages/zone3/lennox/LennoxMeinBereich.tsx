@@ -1,16 +1,17 @@
 /**
  * LennoxMeinBereich — Dashboard für eingeloggte Nutzer
- * Widgets: Meine Tiere, Meine Buchungen, Rechnungen, Einstellungen
+ * Verwendet eigenständiges Z3-Auth (getrennt vom Portal)
  */
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { PawPrint, Calendar, FileText, Settings, LogOut, Plus, ArrowLeft } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { useZ3Auth } from '@/hooks/useZ3Auth';
 
 const COLORS = {
   primary: 'hsl(155,35%,25%)',
@@ -21,57 +22,36 @@ const COLORS = {
 
 export default function LennoxMeinBereich() {
   const navigate = useNavigate();
-  const [user, setUser] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const { z3User, z3Loading, z3Logout } = useZ3Auth();
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user: u } }) => {
-      if (!u) {
-        navigate('/website/tierservice/login?returnTo=/website/tierservice/mein-bereich');
-      } else {
-        setUser(u);
-      }
-      setLoading(false);
-    });
-  }, [navigate]);
+    if (!z3Loading && !z3User) {
+      navigate('/website/tierservice/login?returnTo=/website/tierservice/mein-bereich');
+    }
+  }, [z3Loading, z3User, navigate]);
 
-  // Load user's Z1 customer profile
-  const { data: customerProfile } = useQuery({
-    queryKey: ['my_z1_profile', user?.id],
-    queryFn: async () => {
-      if (!user) return null;
-      const { data } = await supabase
-        .from('pet_z1_customers')
-        .select('*')
-        .eq('user_id', user.id)
-        .maybeSingle();
-      return data;
-    },
-    enabled: !!user,
-  });
-
-  // Load user's pets
+  // Load user's pets via customer ID
   const { data: pets = [] } = useQuery({
-    queryKey: ['my_z1_pets', customerProfile?.id],
+    queryKey: ['my_z1_pets', z3User?.id],
     queryFn: async () => {
-      if (!customerProfile) return [];
+      if (!z3User) return [];
       const { data } = await supabase
         .from('pet_z1_pets')
         .select('*')
-        .eq('z1_customer_id', customerProfile.id)
+        .eq('z1_customer_id', z3User.id)
         .order('created_at', { ascending: false });
       return data || [];
     },
-    enabled: !!customerProfile?.id,
+    enabled: !!z3User?.id,
   });
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    await z3Logout();
     toast.success('Abgemeldet');
     navigate('/website/tierservice');
   };
 
-  if (loading) {
+  if (z3Loading) {
     return (
       <div className="flex justify-center py-20">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-t-transparent" style={{ borderColor: COLORS.primary }} />
@@ -79,11 +59,11 @@ export default function LennoxMeinBereich() {
     );
   }
 
-  if (!user) return null;
+  if (!z3User) return null;
 
-  const displayName = user.user_metadata?.first_name
-    ? `${user.user_metadata.first_name} ${user.user_metadata.last_name || ''}`
-    : user.email;
+  const displayName = z3User.first_name
+    ? `${z3User.first_name} ${z3User.last_name || ''}`
+    : z3User.email;
 
   return (
     <div className="max-w-4xl mx-auto px-5 py-8 space-y-8">
@@ -171,22 +151,18 @@ export default function LennoxMeinBereich() {
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
                 <span style={{ color: COLORS.muted }}>E-Mail</span>
-                <span style={{ color: COLORS.foreground }}>{user.email}</span>
+                <span style={{ color: COLORS.foreground }}>{z3User.email}</span>
               </div>
-              {customerProfile && (
-                <>
-                  <div className="flex justify-between">
-                    <span style={{ color: COLORS.muted }}>Telefon</span>
-                    <span style={{ color: COLORS.foreground }}>{customerProfile.phone || '—'}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span style={{ color: COLORS.muted }}>Ort</span>
-                    <span style={{ color: COLORS.foreground }}>
-                      {[customerProfile.postal_code, customerProfile.city].filter(Boolean).join(' ') || '—'}
-                    </span>
-                  </div>
-                </>
-              )}
+              <div className="flex justify-between">
+                <span style={{ color: COLORS.muted }}>Telefon</span>
+                <span style={{ color: COLORS.foreground }}>{z3User.phone || '—'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span style={{ color: COLORS.muted }}>Ort</span>
+                <span style={{ color: COLORS.foreground }}>
+                  {[z3User.postal_code, z3User.city].filter(Boolean).join(' ') || '—'}
+                </span>
+              </div>
             </div>
           </CardContent>
         </Card>
