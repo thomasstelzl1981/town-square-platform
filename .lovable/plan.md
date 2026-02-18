@@ -1,178 +1,87 @@
 
-# Storage Extraction Engine (ENG-STOREX)
+# Armstrong-Seite fuer die SoT-Website (Zone 3)
 
-## Uebersicht
+## Problem
 
-Eine neue Engine, die den gesamten Dokumentenbestand eines Mandanten (eigene Uploads oder externer Datenraum) analysiert und fuer Armstrong durchsuchbar macht. Drei Phasen: Scan, Extract, Index.
-
----
-
-## Phase 1: Scan und Kostenvoranschlag
-
-Bevor extrahiert wird, scannt die Engine den Storage-Bestand und erstellt einen Kostenvoranschlag:
-
-```text
-Datenraum-Analyse fuer "Mustermann Immobilien"
-───────────────────────────────────────────────
-  Dokumente gesamt:       847
-  Bereits extrahiert:       0
-  Noch zu verarbeiten:    847
-
-  Geschaetzte Kosten:     847 Credits (211,75 EUR)
-  Geschaetzte Dauer:      ~45 Minuten
-
-  [ Extraktion starten ]  [ Abbrechen ]
-```
-
-**Technisch:**
-- Neue Edge Function: `sot-storage-extractor`
-- Action `scan`: Zaehlt Dateien in `storage_nodes` fuer den Tenant, prueft welche bereits in `document_chunks` vorhanden sind
-- Gibt Kostenvoranschlag zurueck (Anzahl × 1 Credit)
+Die Armstrong-Erklaerungen und Credit-Uebersicht sind aktuell unter **Stammdaten > Abrechnung** versteckt. Das ist fuer potenzielle und bestehende Nutzer nicht der richtige Ort, um zu verstehen, was Armstrong kann und warum er besonders ist. Armstrong braucht eine eigene, oeffentlich zugaengliche Seite auf der SoT-Website.
 
 ---
 
-## Phase 2: Batch-Extraktion mit Job-Queue
+## Loesung
 
-Da Edge Functions ein 60-Sekunden-Timeout haben, kann ein Bulk-Job nicht in einem Call laufen. Stattdessen:
+Eine neue Seite `/website/sot/armstrong` als vollwertiger Menuepunkt in der SoT-Website-Navigation. Diese Seite erklaert:
 
-### Architektur
-
-```text
-User klickt "Starten"
-       |
-       v
-[extraction_jobs] Tabelle      ← Neuer Job mit status='pending'
-       |
-       v
-sot-storage-extractor          ← Verarbeitet 10-20 Docs pro Call
-(action: process-batch)           Signed URL → Gemini → Chunks
-       |
-       v
-document_chunks                ← Extrahierter Text wird gespeichert
-       |
-       v
-sot-embedding-pipeline         ← Embeddings generieren (optional, separater Pass)
-       |
-       v
-[extraction_jobs] updated      ← Progress: 127/847 verarbeitet
-```
-
-### Job-Tabelle: `extraction_jobs`
-
-| Spalte | Typ | Beschreibung |
-|--------|-----|-------------|
-| id | UUID | PK |
-| tenant_id | UUID | FK organizations |
-| status | text | pending, running, paused, completed, failed |
-| total_files | int | Gesamtanzahl |
-| processed_files | int | Bereits verarbeitet |
-| failed_files | int | Fehlgeschlagen |
-| credits_used | int | Verbrauchte Credits |
-| started_at | timestamptz | Start |
-| completed_at | timestamptz | Ende |
-| error_log | jsonb | Fehlerdetails |
-
-### Batch-Verarbeitung
-
-Jeder Call der Edge Function verarbeitet einen Batch von 10-20 Dokumenten:
-
-1. Naechsten Batch unverarbeiteter Dateien aus `storage_nodes` laden
-2. Fuer jede Datei: Signed URL generieren → Gemini Vision aufrufen → Text chunken
-3. Chunks in `document_chunks` speichern
-4. Job-Fortschritt updaten
-5. Wenn noch Dateien uebrig: Client triggert naechsten Batch-Call
-
-Der Client pollt den Job-Status und zeigt einen Fortschrittsbalken.
+- Was Armstrong ist (KI-Co-Pilot)
+- Was er alles **kostenlos** kann
+- Was er mit **Credits** kann (und was das kostet)
+- Wie er arbeitet (ThinkingSteps-Visualisierung als Referenz)
+- Was ihn besonders macht (Plan → Confirm → Execute, Transparenz, kein Abo)
 
 ---
 
-## Phase 3: Live-Fortschritt im Armstrong-Panel
+## Seitenstruktur
 
-Die neue ThinkingSteps-Komponente (bereits gebaut) wird wiederverwendet:
+### Hero-Sektion
+- Headline: "Armstrong — Ihr KI-Co-Pilot"
+- Subline: "Arbeitet fuer Sie. Transparent. Nur wenn Sie es wollen."
+- Animierter Orb/Glow als visuelles Element
 
-```text
-Armstrong arbeitet...
-  [ok] Datenraum gescannt (847 Dokumente)
-  [ok] Kostenvoranschlag: 847 Credits
-  [ok] Batch 1/85 verarbeitet (10 Dokumente)
-  [..] Batch 2/85 wird verarbeitet...
-  [ ] Embedding-Index erstellen
-  [ ] Hybrid-Suche aktivieren
-```
+### Sektion 1: Was Armstrong kostenlos kann
+- Begriffe erklaeren, FAQ beantworten, Navigation, How-it-Works
+- Widgets verwalten, Dashboard-Tipps
+- Alles was `cost_model: 'free'` hat im Manifest
+
+### Sektion 2: Was Armstrong mit Credits kann
+- Tabelle/Karten mit Aktionskategorien aus dem Manifest:
+  - Dokument-Analyse (1 Credit)
+  - Texte/Briefe generieren (2 Credits)
+  - Web-Research mit Quellen (4 Credits)
+  - Kontaktanreicherung (2 Credits)
+  - Datenraum-Extraktion (1 Credit/Dokument)
+  - Magic Intakes (1-4 Credits je nach Typ)
+- Jede Karte zeigt: Aktion, Credit-Preis, kurze Erklaerung
+
+### Sektion 3: Wie Armstrong arbeitet
+- Drei-Schritte-Erklaerung: Plan → Bestaetigen → Ausfuehren
+- Verweis auf die ThinkingSteps-Visualisierung (man sieht jeden Schritt)
+- Betonung: Kein Black-Box — volle Transparenz
+
+### Sektion 4: Was Armstrong besonders macht
+- Kein Abo, kein Vendor-Lock-in
+- Multi-Modul: arbeitet ueberall (Immobilien, Finanzen, DMS, Kontakte)
+- Datenschutz: Daten bleiben beim Mandanten
+- Credits = faire Abrechnung, nur bei echtem KI-Einsatz
+
+### Sektion 5: FAQ
+- "Brauche ich Armstrong?" — Nein, alles funktioniert auch ohne
+- "Wie lade ich Credits?" — In der Plattform unter Stammdaten
+- "Kann Armstrong Fehler machen?" — Ja, deshalb Plan → Confirm → Execute
+
+### CTA
+- "Jetzt kostenfrei starten" mit Link zu /auth?mode=register
 
 ---
 
 ## Technische Aenderungen
 
-### Neue Dateien
-
-| Datei | Beschreibung |
-|-------|-------------|
-| `supabase/functions/sot-storage-extractor/index.ts` | Edge Function: scan, process-batch, status, cancel |
-
-### Neue DB-Objekte (Migration)
-
-| Objekt | Beschreibung |
-|--------|-------------|
-| `extraction_jobs` Tabelle | Job-Queue mit Fortschritt |
-| RLS Policies | Tenant-Isolation wie ueblich |
-| Index `(tenant_id, status)` | Performance |
-
-### Bestehende Dateien (Aenderungen)
-
 | Datei | Aenderung |
 |-------|-----------|
-| `spec/current/06_engines/ENGINE_REGISTRY.md` | ENG-STOREX registrieren |
-| `src/manifests/armstrongManifest.ts` | Action `ARM.DMS.STORAGE_EXTRACTION` registrieren |
-| `supabase/functions/sot-armstrong-advisor/index.ts` | Intent-Erkennung fuer "Datenraum analysieren" |
-| `src/components/portal/ArmstrongContainer.tsx` | Fortschrittsanzeige fuer laufende Extraktionsjobs |
+| `src/pages/zone3/sot/SotArmstrong.tsx` | **NEU** — Die Armstrong-Erklaerseite |
+| `src/manifests/routesManifest.ts` | Route `armstrong` in `zone3Websites.sot.routes` hinzufuegen |
+| `src/pages/zone3/sot/SotLayout.tsx` | `ARMSTRONG` als neuen navItem einfuegen |
+| `src/router/ManifestRouter.tsx` | Lazy import `SotArmstrong` + Eintrag in `sotComponentMap` |
+| `src/components/zone3/sot/SotWidgetSidebar.tsx` | Neuen Widget-Eintrag "Armstrong" mit Bot-Icon hinzufuegen |
 
-### Edge Function: `sot-storage-extractor`
+### Keine Aenderung an:
+- `AbrechnungTab.tsx` — Die Credit-Uebersicht dort bleibt bestehen (ist fuer eingeloggte User relevant). Die neue Seite ist die **oeffentliche Erklaerung** fuer Website-Besucher.
 
-**Actions:**
-
-1. **scan**: Zaehlt Dateien, prueft bereits extrahierte, gibt Kostenvoranschlag zurueck
-2. **start**: Erstellt Job in `extraction_jobs`, prueft Credit-Preflight fuer Gesamtbetrag
-3. **process-batch**: Verarbeitet naechste 10-20 Dateien, deducted Credits pro Datei
-4. **status**: Gibt aktuellen Jobfortschritt zurueck
-5. **cancel**: Pausiert/stoppt laufenden Job
+### Datenquelle fuer Credit-Preise
+Die Seite liest die Action-Kategorien und Preise direkt aus dem `armstrongManifest.ts` (bereits exportiert), sodass Aenderungen im Manifest automatisch auf der Website reflektiert werden — Single Source of Truth.
 
 ---
 
-## Credit-Modell
+## Geschaetzter Umfang
 
-| Service | Credits | EUR |
-|---------|---------|-----|
-| Scan und Voranschlag | 0 (Free) | 0 |
-| Extraktion pro Dokument | 1 | 0,25 |
-| Embedding-Index (optional) | 0 (inklusive) | 0 |
-
-Marge: Gemini-Kosten ca. 0,01-0,03 EUR pro Call → 8-25x Marge bei 0,25 EUR/Credit.
-
-### Bulk-Rabatte (spaeter)
-
-Koennen ueber die Credit-Tabelle abgebildet werden:
-- Ab 500 Docs: 0,8 Credits/Doc
-- Ab 2.000 Docs: 0,6 Credits/Doc
-
----
-
-## Voraussetzungen (bereits erfuellt)
-
-- Lovable AI Gateway (Gemini 3 Flash) -- vorhanden
-- `document_chunks` Tabelle mit TSVector -- vorhanden
-- `sot-embedding-pipeline` fuer Vektoren -- vorhanden
-- `sot-credit-preflight` fuer Abrechnung -- vorhanden
-- `sot-document-parser` als Referenz-Pattern -- vorhanden
-
-Keine externen APIs wie Structured.io noetig. Der gesamte Stack ist intern abbildbar.
-
----
-
-## Umsetzungsreihenfolge
-
-1. Migration: `extraction_jobs` Tabelle + RLS
-2. Edge Function: `sot-storage-extractor` (scan + start + process-batch + status)
-3. Armstrong-Integration: Intent "Datenraum analysieren" + Fortschrittsanzeige
-4. Engine Registry: ENG-STOREX eintragen
-5. Test: End-to-End mit Testdokumenten
+- ~250 Zeilen: `SotArmstrong.tsx` (Hero + 5 Sektionen + CTA)
+- ~5 Zeilen: Route-Registrierungen (Manifest, Router, Layout, Sidebar)
+- Kein Backend noetig — rein statische/manifest-basierte Seite
