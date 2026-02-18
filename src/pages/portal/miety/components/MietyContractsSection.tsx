@@ -9,6 +9,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Plus, Zap, Droplets, Flame, Wifi, Shield, FileText } from 'lucide-react';
+import { isDemoId } from '@/engines/demoData/engine';
 import { format } from 'date-fns';
 import { WidgetDeleteOverlay } from '@/components/shared/WidgetDeleteOverlay';
 import { toast } from 'sonner';
@@ -114,11 +115,13 @@ export function MietyContractsSection({ homeId, onOpenDrawer, filterCategories, 
           const Icon = cfg.icon;
           return (
             <Card key={c.id} className="glass-card relative group">
-              <WidgetDeleteOverlay
-                title={c.provider_name || cfg.label}
-                onConfirmDelete={() => deleteContractMutation.mutate(c.id)}
-                isDeleting={deletingId === c.id}
-              />
+              {!isDemoId(c.id) && (
+                <WidgetDeleteOverlay
+                  title={c.provider_name || cfg.label}
+                  onConfirmDelete={() => deleteContractMutation.mutate(c.id)}
+                  isDeleting={deletingId === c.id}
+                />
+              )}
               <CardContent className="p-4">
                 <div className="flex items-start gap-3">
                   <div className={`p-2 rounded-lg ${cfg.color}`}>
