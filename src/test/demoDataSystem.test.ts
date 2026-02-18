@@ -217,10 +217,22 @@ describe('Demo ID Registry — DB ID Matching', () => {
 
   it('ALL_DEMO_IDS should have no duplicate entries', () => {
     const set = new Set(ALL_DEMO_IDS);
-    // Note: Currently 80 IDs total, 79 unique (1 duplicate exists - needs investigation)
-    // TODO: Find and remove the duplicate ID in demo data
-    expect(set.size).toBeLessThanOrEqual(ALL_DEMO_IDS.length);
-    expect(set.size).toBeGreaterThan(0);
+    
+    const duplicateCount = ALL_DEMO_IDS.length - set.size;
+    if (duplicateCount > 0) {
+      // Helper: Find the duplicate ID
+      const seen = new Set<string>();
+      const duplicates: string[] = [];
+      ALL_DEMO_IDS.forEach(id => {
+        if (seen.has(id)) {
+          duplicates.push(id);
+        }
+        seen.add(id);
+      });
+      console.warn(`Found ${duplicateCount} duplicate ID(s):`, duplicates);
+    }
+    
+    expect(set.size).toBe(ALL_DEMO_IDS.length);
   });
 });
 
