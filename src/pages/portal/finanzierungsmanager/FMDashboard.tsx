@@ -29,6 +29,7 @@ import {
 } from '@/components/ui/sheet';
 
 import { toast } from 'sonner';
+import FinanzierungsRechner from '@/components/finanzierungsmanager/FinanzierungsRechner';
 import type { FutureRoomCase } from '@/types/finance';
 
 interface Props {
@@ -360,7 +361,8 @@ export default function FMDashboard({ cases, isLoading }: Props) {
         </div>
       </div>
 
-      {/* Section A: Fälle in Bearbeitung */}
+      {/* Section A: Aktuelle Fälle */}
+      <h2 className={cn(DESIGN.TYPOGRAPHY.SECTION_TITLE, 'mt-6')}>Aktuelle Fälle</h2>
       <WidgetGrid>
         {demoEnabled && (
           <WidgetCell>
@@ -399,7 +401,8 @@ export default function FMDashboard({ cases, isLoading }: Props) {
         )}
       </WidgetGrid>
 
-      {/* Finanzierungsmandate */}
+      {/* Section B: Neue Mandate */}
+      <h2 className={cn(DESIGN.TYPOGRAPHY.SECTION_TITLE, 'mt-6')}>Neue Mandate</h2>
       <div className="space-y-3">
         {loadingMandates ? (
           <div className="flex items-center justify-center p-8">
@@ -470,6 +473,9 @@ export default function FMDashboard({ cases, isLoading }: Props) {
         )}
       </div>
 
+      {/* Section C: Finanzierungsrechner */}
+      <h2 className={cn(DESIGN.TYPOGRAPHY.SECTION_TITLE, 'mt-6')}>Finanzierungsrechner</h2>
+      <FinanzierungsRechner />
 
       {/* Edit Sheet */}
       <Sheet open={editOpen} onOpenChange={setEditOpen}>
