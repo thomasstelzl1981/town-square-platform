@@ -228,7 +228,7 @@ Phase C: Stripe Keys → Billing
 
 | # | Bug | Prio | Status | Notizen |
 |---|-----|------|--------|---------|
-| BUG-E2E-001 | `fn_audit_pii_change()` Trigger-Fehler bei DELETE auf `profiles` | P2 | ⬜ Offen | Trigger referenziert `OLD.tenant_id`, `profiles` hat aber `active_tenant_id`. Betrifft User-Löschung. |
+| BUG-E2E-001 | `fn_audit_pii_change()` Trigger-Fehler bei DELETE auf `profiles` | P2 | ✅ Gefixt | Trigger nutzt korrekt `OLD.active_tenant_id` für `profiles`-Tabelle. Verifiziert 2026-02-18. |
 
 ---
 
