@@ -7,7 +7,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePortalLayout } from '@/hooks/usePortalLayout';
 import { Button } from '@/components/ui/button';
@@ -23,6 +23,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { 
   Home,
+  ArrowLeft,
   LogOut, 
   Settings, 
   User,
@@ -32,6 +33,7 @@ import {
   Moon
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { getParentRoute } from '@/hooks/useSwipeBack';
 
 const GLASS_BUTTON = cn(
   'h-10 w-10 rounded-full',
@@ -75,16 +77,23 @@ function AnalogClock({ time }: { time: Date }) {
 
 export function SystemBar() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { profile, signOut, isDevelopmentMode, user } = useAuth();
   const { armstrongVisible, showArmstrong, hideArmstrong, resetArmstrong, isMobile, setActiveArea } = usePortalLayout();
   const { theme, setTheme } = useTheme();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [temperature, setTemperature] = useState<number | null>(null);
 
+  const isAtPortalRoot = location.pathname.replace(/\/+$/, '') === '/portal';
+
   const handleHomeClick = () => {
     setActiveArea(null);
     navigate('/portal');
     showArmstrong({ expanded: false });
+  };
+
+  const handleBackClick = () => {
+    navigate(getParentRoute(location.pathname));
   };
 
   // Update clock every minute
@@ -130,8 +139,12 @@ export function SystemBar() {
       <header className="sticky top-0 z-50 w-full border-b bg-card/70 backdrop-blur-lg supports-[backdrop-filter]:bg-card/60">
         <div className="flex h-10 items-center justify-between px-3">
           {/* LEFT — Home button */}
-          <button onClick={handleHomeClick} className={cn(GLASS_BUTTON, 'h-8 w-8')} title="Startseite">
-            <Home className="h-4 w-4" />
+          <button 
+            onClick={isAtPortalRoot ? handleHomeClick : handleBackClick} 
+            className={cn(GLASS_BUTTON, 'h-8 w-8')} 
+            title={isAtPortalRoot ? 'Startseite' : 'Zurück'}
+          >
+            {isAtPortalRoot ? <Home className="h-4 w-4" /> : <ArrowLeft className="h-4 w-4" />}
           </button>
 
           {/* CENTER — ARMSTRONG */}
