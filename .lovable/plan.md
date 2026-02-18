@@ -1,175 +1,170 @@
 
-## Kompletter Funktions-, Haptik- und Logik-Test: Haustiere-Vertikale (Zone 1 / 2 / 3)
 
-### Zusammenfassung
+## "Mein Bereich" Ausbau + Buchungs-Governance (korrigierter Flow)
 
-Die Haustiere-Vertikale wurde ueber alle drei Zonen systematisch geprueft. Das System ist architektonisch solide aufgebaut und folgt konsequent dem Z3-Z1-Z2 Governance-Modell. Nachfolgend die detaillierten Ergebnisse.
+### Korrektes Kernprinzip
 
----
+Der Kunde waehlt den Pet Manager SELBST in Zone 3 aus (z.B. ueber die Provider-Suche oder das Provider-Profil). Die Anfrage wird in Zone 1 getrackt UND geht direkt an den gewaehlten Pet Manager (Z2) weiter. Erst wenn der Pet Manager bestaetigt und die Buchung eintraegt, wird die Buchungsgebuehr beim Kunden ausgeloest.
 
-### Zone 3 — Lennox & Friends Website
+```text
+Kunde (Z3)                   Zone 1 (Tracking)              Pet Manager (Z2)
+    |                              |                              |
+    |-- waehlt Provider aus ------>|                              |
+    |-- Buchungsanfrage ---------->| (trackt + leitet weiter) --->|
+    |                              |                              |
+    |                              |<-- Bestaetigt + Buchung -----|
+    |                              |    eingetragen               |
+    |                              |                              |
+    |<-- Zahlungsaufforderung -----|                              |
+    |   (Buchungsgebuehr)          |                              |
+    |                              |                              |
+    |-- Zahlung ------------------>| (verbucht) ----------------->|
+    |                              |                              |
+```
 
-**Startseite** -- BESTANDEN
-- Hero mit Alpine-Chic-Design, Suchfeld und Geolocation funktioniert
-- Suche nach "Muenchen" zeigt korrekten Demo-Fallback (Lennox & Friends Dog Resorts, 4.9 Sterne)
-- Hero schrumpft nach Suche auf 45vh, Suchbar erscheint darunter
-- Trust-Sektion, Story, Netzwerk-Vision und Shop-Teaser korrekt gerendert
-- Partner-CTA mit Link zu "/partner-werden" vorhanden
-
-**Shop** -- BESTANDEN
-- Hero-Header jetzt 50vh (vorher 35vh, war abgeschnitten) -- Fix bestaetigt
-- Lennox GPS Tracker Teaser korrekt angezeigt
-- Lakefields-Beschreibung mit Erklaerungstext vorhanden
-- Produktkacheln geladen aus `pet_shop_products` (28 Produkte in DB)
-
-**Partner werden** -- BESTANDEN
-- Neues Hero-Bild mit Menschen und Hunden in alpiner Umgebung
-- Vision-Text beschreibt deutschlandweites Netzwerk korrekt
-- 5 Benefits dargestellt
-- Bewerbungsformular mit Alpine-Chic-Farbpalette
-
-**Login / Registrierung (Z3-Auth)** -- BESTANDEN
-- Eigenes Auth-System via `sot-z3-auth` Edge Function (getrennt vom Portal)
-- Login und Signup mit Zod-Validierung
-- Session in `localStorage` unter `lennox_session` (isoliert von Portal)
-- `returnTo`-Parameter fuer Redirect nach Login
-
-**Buchungsformular** -- LOGIK-HINWEIS
-- Formular existiert (`LennoxBuchen.tsx`) und zeigt Services des Providers
-- Buchungsanfrage wird als Update auf `pet_z1_customers.notes` gespeichert statt als eigenstaendiger Booking-Eintrag
-- Dies ist ein Staging-Mechanismus (Z3 schreibt nur Z1-Daten), korrekt im Sinne der Zone-Governance
+**Wichtige Unterschiede zum vorherigen Plan:**
+- Z1 ist NICHT die Stelle, die den Provider auswaehlt -- das macht der Kunde selbst
+- Z1 ist die Tracking- und Governance-Schicht (Audit Trail, Gebuehrenabwicklung)
+- Die Anfrage geht DIREKT an den vom Kunden gewaehlten Provider
+- Die Zahlung wird erst ausgeloest, wenn der Provider bestaetigt hat
 
 ---
 
-### Zone 1 — Pet Desk (Admin/Backbone)
+### 1. Neue Tabelle: `pet_z1_booking_requests`
 
-**Governance-Dashboard** -- BESTANDEN
-- KPIs: Provider-Anzahl (1 aktiv), offene Forderungen, Monatsumsatz, Buchungen (5 total)
-- Umsatzentwicklung (BarChart, 6 Monate) und Buchungen nach Status (PieChart)
-- Demo-Toggle fuer GP-PET vorhanden und funktional
+Ersetzt das aktuelle Speichern von Buchungsanfragen als Freitext in `pet_z1_customers.notes`.
 
-**Vorgaenge (Lead-Qualifizierung)** -- BESTANDEN
-- ZoneFlowIndicator: Z3 Lead -> Z1 Qualifizierung -> Z2 Provider
-- Filter-Tabs: Alle / Neu / Qualifiziert / Zugewiesen mit Zaehler-Badges
-- Qualifizieren-Button: Status `new` -> `qualified`
-- Zuweisen-Button: Kopiert Z1-Kunde nach `pet_customers`, Z1-Tiere nach `pets`, setzt Status `assigned`
-- 3 Z1-Kunden in DB vorhanden
+| Spalte | Typ | Beschreibung |
+|--------|-----|--------------|
+| `id` | uuid PK | |
+| `tenant_id` | uuid NOT NULL | Mandant (immer Lennox-Tenant) |
+| `z1_customer_id` | uuid FK | Verweis auf `pet_z1_customers` (der Kunde) |
+| `provider_id` | uuid FK NOT NULL | Vom Kunden gewaehlter Provider |
+| `service_title` | text NOT NULL | Gewuenschter Service |
+| `preferred_date` | date | Wunschtermin |
+| `preferred_time` | text | Wunschzeit (optional) |
+| `pet_z1_id` | uuid FK | Verweis auf `pet_z1_pets` (optional) |
+| `pet_name` | text | Name des Tieres (Freitext-Fallback) |
+| `client_notes` | text | Anmerkungen des Kunden |
+| `status` | text NOT NULL DEFAULT 'pending' | Lifecycle (siehe unten) |
+| `provider_confirmed_at` | timestamptz | Wann der Provider bestaetigt hat |
+| `z2_booking_id` | uuid | Verweis auf `pet_bookings` (nach Bestaetigung) |
+| `fee_cents` | integer DEFAULT 0 | Buchungsgebuehr in Cent |
+| `payment_status` | text DEFAULT 'none' | `none` / `pending` / `succeeded` / `failed` |
+| `payment_intent_id` | text | Stripe Payment Intent (spaeter) |
+| `created_at` | timestamptz DEFAULT now() | |
+| `updated_at` | timestamptz DEFAULT now() | |
 
-**Kunden-Tab** -- BESTANDEN
-- Expandierbare Kundenliste mit verknuepften Tieren aus `pet_z1_pets`
-- Manuelles Anlegen von Z1-Kunden moeglich (Dialog)
-- Source-Badge zeigt Herkunft (Website, Manual)
+**Status-Lifecycle:**
 
-**Shop-Verwaltung** -- BESTANDEN
-- 4-Kategorie-Tabs: Ernaehrung, Lennox Tracker, Lennox Style, Fressnapf
-- CRUD fuer `pet_shop_products` (28 Eintraege)
-- Zone 1 ist SSOT fuer Produktdaten
+```text
+pending ──> confirmed ──> payment_pending ──> paid ──> active
+                |
+                └──> rejected
+```
 
-**Billing** -- PLATZHALTER
-- Nur statischer Platzhalter-Text, keine operative Funktionalitaet
+- `pending`: Kunde hat Anfrage gestellt, Provider sieht sie
+- `confirmed`: Provider hat bestaetigt und Buchung in `pet_bookings` eingetragen
+- `payment_pending`: System hat Zahlungsaufforderung an Kunden gesendet
+- `paid`: Kunde hat Buchungsgebuehr bezahlt
+- `active`: Buchung ist vollstaendig abgeschlossen
+- `rejected`: Provider hat abgelehnt
 
----
-
-### Zone 2 — Portal (Client-Modul MOD-05 "Pets")
-
-**Meine Tiere** -- BESTANDEN
-- RecordCard-Grid mit Inline-Akte (kein Seitenwechsel)
-- CRUD fuer Haustiere mit DMS-Ordnerstruktur (5 Unterordner pro Tier)
-- Stammdaten, Identifikation, Gesundheit, Versicherung, Lennox Tracker
-- Impfhistorie mit Faelligkeits-Badges (ueberfaellig / faellig)
-- Krankengeschichte mit 6 Eintragstypen
-- Datenisolation: `usePets` filtert nach `owner_user_id` (nur eigene Tiere)
-- 5 Tiere in DB, davon einige mit `customer_id` (Business) vs `owner_user_id` (Privat)
-
-**Caring (Service-Suche)** -- BESTANDEN
-- 4 Kategorie-Kacheln: Pension, Tagesstaette, Gassi-Service, Hundesalon
-- PLZ-/Ort-Suche mit Provider-Ergebnis-Grid
-- Provider-Karten mit Rating, Service-Badges, Demo-Kennzeichnung
-- Navigation zu Provider-Detail-Seite
-
-**Shop (Portal-Ansicht)** -- BESTANDEN
-- Read-only Consumer der `pet_shop_products` (SSOT in Z1)
-
-**Mein Bereich** -- BESTANDEN
-- Persoenlicher Bereich fuer Portal-Nutzer
+**RLS-Policies:**
+- Z3-Kunde: INSERT eigene + SELECT eigene (via `z1_customer_id`)
+- Z1-Admin: SELECT alle (Tracking-Dashboard)
+- Z2-Provider: SELECT + UPDATE wo `provider_id` dem eigenen Provider entspricht
 
 ---
 
-### Zone 2 — Pet Manager (MOD-22, Franchise-Partner)
+### 2. Aenderungen an "Mein Bereich" (LennoxMeinBereich.tsx)
 
-**Dashboard** -- BESTANDEN
-- ManagerVisitenkarte mit Override-Props (Business-Daten statt persoenliche)
-- Teal-Gradient CI (hsl 170/180)
-- Kapazitaets-Widget mit Auslastungs-Balken und "Ausgebucht"-Warnung
-- KPI-Leiste: Heute, Diese Woche, Offene Anfragen, Monatsumsatz
-- Naechste Termine mit Status-Badges
+Kompletter Umbau von 4 Platzhalter-Kacheln zu 2 funktionalen Inline-Sektionen:
 
-**Profil** -- BESTANDEN
-- Provider-Profil mit 4-Slot RecordCardGallery
-- `is_published`-Toggle mit Bestaetigung
-- RLS: `public_published_providers` fuer Z3-Sichtbarkeit
+**Header (kompakt):**
+- Hallo-Begruessung, E-Mail, Telefon, Ort -- alles in einer Zeile/zwei Zeilen
+- Abmelden-Button rechts
 
-**Pension / Services / Kalender** -- BESTANDEN (Routing)
-- Lazy-loaded Sub-Pages vorhanden
+**Kachel 1: Buchungsanfrage + Status**
 
-**Leistungen** -- BESTANDEN
-- Service-CRUD mit Kategorie, Preismodell, Dauer, Aktiv-Toggle
-- Verfuegbarkeits-Slots (Wochentag, Zeit, Max-Buchungen)
-- 4 Services in DB
+Oberer Teil -- Inline-Formular:
+- Provider-Dropdown (geladen aus `pet_providers` wo `is_published = true`, Fallback: Lennox & Friends)
+- Service-Dropdown (dynamisch basierend auf gewaehltem Provider, geladen aus `pet_services`)
+- Wunschtermin (Date-Picker)
+- Tier auswaehlen (aus eigenen `pet_z1_pets`, optional)
+- Anmerkungen (Textarea)
+- "Anfrage senden"-Button
 
-**Kunden** -- BESTANDEN
-- Source-Badges: Eigenkunde / Website-Lead / Portal (MOD-05)
-- Expandierbare Kunden-Akte mit verknuepften Tieren
-- Manuelles Anlegen moeglich (Round Glass Plus Button)
-- Demo-Daten-Filter via `useDemoToggles`
+Unterer Teil -- Meine Anfragen (Status-Liste):
+- Alle eigenen `pet_z1_booking_requests` mit Status-Badges:
+  - Gelb "Angefragt" (pending)
+  - Gruen "Bestaetigt" (confirmed)
+  - Orange "Zahlung ausstehend" (payment_pending) + Zahlen-Button
+  - Gruen-voll "Gebucht" (paid/active)
+  - Rot "Abgelehnt" (rejected)
 
-**Finanzen** -- BESTANDEN (Routing)
-
----
-
-### Datenisolation und Sicherheit
-
-| Pruefpunkt | Status |
-|------------|--------|
-| `owner_user_id` vs `customer_id` Trennung | BESTANDEN |
-| Z3-Auth getrennt vom Portal (`lennox_session` vs Supabase Auth) | BESTANDEN |
-| Z3-Registrierung loest KEIN `handle_new_user` aus | BESTANDEN |
-| RLS auf `pet_providers` (`is_published = true` fuer Anon) | BESTANDEN |
-| Tenant-Isolation via `tenant_id` auf allen Business-Tabellen | BESTANDEN |
-| Demo-Daten-Isolation (`d0...1xxx` ID-Range) | BESTANDEN |
-| Z3 schreibt nur in Z1-Tabellen (keine direkte Z2-Interaktion) | BESTANDEN |
+**Kachel 2: Hundeakte (inline CRUD)**
+- Tier-Liste mit allen Feldern aus `pet_z1_pets`
+- Pro Tier: Stammdaten (Name, Art, Rasse, Geschlecht), Koerperdaten (Geburtsdatum, Gewicht), Identifikation (Chip-Nr, Kastriert), Gesundheit (Tierarzt, Allergien), Notizen
+- "Tier hinzufuegen"-Button mit Inline-Formular
+- Bearbeiten/Loeschen pro Tier
+- Pflichtfelder: nur Name und Tierart
 
 ---
 
-### Golden Path GP-PET (Lifecycle)
+### 3. Aenderungen am Pet Desk Vorgaenge (Zone 1)
 
-| Phase | Status |
-|-------|--------|
-| 1. Lead Capture (Z3 Website/MOD-05) | BESTANDEN -- Registrierung und Buchungsanfrage |
-| 2. Z1 Profile Creation (Pet Desk) | BESTANDEN -- Z1-Kunden manuell oder via Website |
-| 3. Qualification & Assignment | BESTANDEN -- `new` -> `qualified` -> `assigned` |
-| 4. Provider Onboarding | BESTANDEN -- Profil, Services, Verfuegbarkeit |
-| 5. First Booking (Z2) | BESTANDEN -- Booking-CRUD mit Status-Workflow |
-| 6. Active Customer | BESTANDEN -- Kunden-Akte mit Tieren und Buchungshistorie |
+Der Vorgaenge-Tab bekommt eine neue Sektion "Buchungsanfragen":
+- Liest aus `pet_z1_booking_requests` (nicht manuell zuweisen -- nur tracken)
+- Zeigt: Kunde, gewaehlter Provider, Service, Datum, Status
+- Z1 kann den Status einsehen und bei Problemen eingreifen
+- Keine manuelle Provider-Zuweisung mehr noetig (Kunde waehlt selbst)
 
 ---
 
-### Identifizierte Punkte
+### 4. Aenderungen am Pet Manager (Zone 2)
 
-**Funktional (kein Blocker, aber Hinweis):**
-
-1. **Billing-Tab (Z1)**: Nur Platzhalter -- keine operative Rechnungslogik. Invoices existieren in DB (`pet_invoices`), werden aber im Billing-Tab nicht angezeigt.
-
-2. **Buchungsanfrage Z3**: Die Buchung wird als Text-Update auf `pet_z1_customers.notes` gespeichert, nicht als strukturierter Datensatz. Das funktioniert fuer den MVP, skaliert aber nicht bei mehreren Anfragen pro Kunde.
-
-3. **Provider-Zuweisung**: Im Vorgaenge-Tab wird immer der erste aktive Provider zugewiesen (`providers[0]`). Bei mehreren Providern fehlt eine Auswahl-UI.
-
-**Haptik/UX:**
-
-4. **Konsolen-Fehler**: `manifest.webmanifest` CORS-Fehler und `refresh_token` 400-Fehler -- beides sind Infrastruktur-Themen der Preview-Umgebung, keine App-Bugs.
+Im Pet Manager Dashboard oder unter Buchungen erscheinen eingehende Anfragen:
+- Liest `pet_z1_booking_requests` wo `provider_id` = eigener Provider und `status = 'pending'`
+- Provider kann:
+  - **Annehmen**: Erstellt `pet_bookings`-Eintrag (Z2), setzt `pet_z1_booking_requests.status = 'confirmed'` und `z2_booking_id`, `provider_confirmed_at`
+  - **Ablehnen**: Setzt Status auf `rejected`
+- Nach Annahme: System setzt automatisch `payment_pending` und Kunde sieht Zahlungsaufforderung in Z3
 
 ---
 
-### Gesamtbewertung
+### 5. Golden Path GP-PET Erweiterung
 
-Die Haustiere-Vertikale ist **funktional komplett** ueber alle drei Zonen. Die Zone-Governance (Z3 -> Z1 -> Z2) wird durchgaengig eingehalten. Datenisolation zwischen privaten Tieren (MOD-05) und Business-Kunden (MOD-22) ist korrekt implementiert. Das Z3-Auth-System ist sauber vom Portal getrennt. Die identifizierten Punkte sind Enhancement-Kandidaten, keine Blocker fuer den Beta-Start.
+Neue Phasen im Lifecycle:
+
+| Phase | Beschreibung | Zone | Task-Kind |
+|-------|-------------|------|-----------|
+| 3a | Buchungsanfrage | Z3 -> Z1 | service_task |
+| 3b | Provider-Bestaetigung | Z2 -> Z1 | user_task |
+| 3c | Zahlung Buchungsgebuehr | Z3 -> Z1 | wait_message |
+
+Fail-States:
+- `on_rejected`: Provider lehnt ab -> Kunde wird informiert, kann anderen Provider waehlen
+- `on_timeout`: Provider reagiert nicht in 48h -> Z1 eskaliert
+- `on_payment_failed`: Zahlung fehlgeschlagen -> Buchung bleibt in `payment_pending`, Retry moeglich
+
+---
+
+### 6. Stripe-Zahlungsflow (Platzhalter)
+
+Die Stripe-Integration wird als Status-Feld vorbereitet (`payment_status`, `fee_cents`, `payment_intent_id`). Bis Stripe aktiviert ist, kann Z1 manuell den Status auf `paid` setzen. Der tatsaechliche Stripe-Checkout wird als Folgeschritt implementiert.
+
+---
+
+### Implementierungsreihenfolge
+
+| Schritt | Beschreibung |
+|---------|-------------|
+| 1 | DB-Migration: `pet_z1_booking_requests` Tabelle + RLS + Trigger |
+| 2 | `LennoxMeinBereich.tsx`: Kompletter Umbau mit Buchungsformular + Hundeakte inline |
+| 3 | `PetDeskVorgaenge.tsx`: Neue Sektion "Buchungsanfragen" (read-only Tracking) |
+| 4 | Pet Manager (Z2): Eingehende Anfragen mit Annehmen/Ablehnen |
+| 5 | `GP_PET.ts`: Neue Phasen 3a/3b/3c einfuegen |
+
+**Keine weiteren DB-Migrationen noetig** -- `pet_z1_pets`, `pet_z1_customers`, `pet_providers`, `pet_services`, `pet_bookings` existieren bereits.
+
