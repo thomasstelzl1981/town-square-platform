@@ -197,11 +197,11 @@ export default function Dashboard() {
               </Button>
               <Button 
                 variant="outline" 
-                onClick={() => navigate('/website/miety')}
+                onClick={() => navigate('/website/tierservice')}
                 className="gap-2"
               >
                 <ExternalLink className="h-4 w-4" />
-                Miety
+                Lennox & Friends
               </Button>
               <Button 
                 variant="outline" 
