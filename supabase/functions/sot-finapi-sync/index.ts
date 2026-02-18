@@ -66,34 +66,71 @@ async function ensureFinAPIUser(
   clientId: string,
   clientSecret: string,
   tenantId: string,
+  sbAdmin: ReturnType<typeof createClient>,
 ): Promise<{ userId: string; password: string; userToken: string }> {
-  const userId = `sot_${tenantId.replace(/-/g, "").substring(0, 24)}`;
-  const password = crypto.randomUUID();
+  // 1. Check DB first for an existing password
+  const { data: existingConn } = await sbAdmin
+    .from("finapi_connections")
+    .select("finapi_user_id, finapi_user_password")
+    .eq("tenant_id", tenantId)
+    .not("finapi_user_password", "is", null)
+    .limit(1)
+    .maybeSingle();
 
-  // Try to create user
-  const createRes = await fetch(`${FINAPI_BASE}/api/v2/users`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${clientToken}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ id: userId, password, email: `${userId}@sot.internal`, isAutoUpdateEnabled: false }),
-  });
-
-  if (createRes.ok) {
-    // New user created — get user token
-    const tokenData = await getUserToken(clientId, clientSecret, userId, password);
-    return { userId, password, userToken: tokenData.access_token };
+  if (existingConn?.finapi_user_id && existingConn?.finapi_user_password) {
+    // We have stored credentials — get a token and return
+    console.log("[finapi] Reusing existing user:", existingConn.finapi_user_id);
+    const tokenData = await getUserToken(
+      clientId, clientSecret,
+      existingConn.finapi_user_id,
+      existingConn.finapi_user_password,
+    );
+    return {
+      userId: existingConn.finapi_user_id,
+      password: existingConn.finapi_user_password,
+      userToken: tokenData.access_token,
+    };
   }
 
-  const createBody = await createRes.json();
+  // 2. No stored password — try to create a new user (with version suffix if needed)
+  const baseId = `sot_${tenantId.replace(/-/g, "").substring(0, 20)}`;
 
-  // User already exists (HTTP 422) — we need the stored password
-  if (createRes.status === 422 || createBody?.errors?.[0]?.code === "ENTITY_EXISTS") {
-    return { userId, password: "__existing__", userToken: "" };
+  for (let version = 0; version < 5; version++) {
+    const userId = version === 0 ? baseId : `${baseId}_v${version + 1}`;
+    const password = crypto.randomUUID();
+
+    const createRes = await fetch(`${FINAPI_BASE}/api/v2/users`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${clientToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        id: userId,
+        password,
+        email: `${userId}@sot.internal`,
+        isAutoUpdateEnabled: false,
+      }),
+    });
+
+    if (createRes.ok) {
+      console.log("[finapi] Created new user:", userId);
+      const tokenData = await getUserToken(clientId, clientSecret, userId, password);
+      return { userId, password, userToken: tokenData.access_token };
+    }
+
+    const createBody = await createRes.json();
+
+    // User already exists — try next version
+    if (createRes.status === 422 || createBody?.errors?.[0]?.code === "ENTITY_EXISTS") {
+      console.log(`[finapi] User ${userId} already exists, trying next version...`);
+      continue;
+    }
+
+    throw new Error(`Create FinAPI user failed (${createRes.status}): ${JSON.stringify(createBody)}`);
   }
 
-  throw new Error(`Create FinAPI user failed (${createRes.status}): ${JSON.stringify(createBody)}`);
+  throw new Error("Could not create FinAPI user after 5 attempts");
 }
 
 // ─── Main Handler ──────────────────────────────────────────────
@@ -155,42 +192,17 @@ Deno.serve(async (req) => {
         // 1. Get client token
         const clientToken = await getClientToken(finapiClientId, finapiClientSecret);
 
-        // 2. Ensure FinAPI user exists
+        // 2. Ensure FinAPI user exists (checks DB first, creates new if orphaned)
         const finUser = await ensureFinAPIUser(
           clientToken.access_token,
           finapiClientId,
           finapiClientSecret,
           tenantId,
+          sbAdmin,
         );
 
-        let userAccessToken = finUser.userToken;
-        let storedPassword = finUser.password;
-
-        // If user already existed, retrieve stored password from DB
-        if (finUser.password === "__existing__") {
-          const { data: existingConn } = await sbAdmin
-            .from("finapi_connections")
-            .select("finapi_user_id, finapi_user_password")
-            .eq("tenant_id", tenantId)
-            .not("finapi_user_password", "is", null)
-            .limit(1)
-            .maybeSingle();
-
-          if (!existingConn?.finapi_user_password) {
-            return json({
-              error: "FinAPI user exists but password not found. Please contact support.",
-            }, 500);
-          }
-
-          storedPassword = existingConn.finapi_user_password;
-          const tokenData = await getUserToken(
-            finapiClientId,
-            finapiClientSecret,
-            finUser.userId,
-            storedPassword,
-          );
-          userAccessToken = tokenData.access_token;
-        }
+        const userAccessToken = finUser.userToken;
+        const storedPassword = finUser.password;
 
         // 3. Import bank connection
         const importRes = await fetch(`${FINAPI_BASE}/api/v2/bankConnections/import`, {
