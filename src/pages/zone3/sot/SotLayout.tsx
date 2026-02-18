@@ -14,12 +14,12 @@ import '@/styles/zone3-theme.css';
 import '@/styles/sot-premium.css';
 
 const navItems = [
-  { label: 'MANAGEMENT', href: '/website/sot/management' },
-  { label: 'REAL ESTATE', href: '/website/sot/real-estate' },
-  { label: 'FINANCE', href: '/website/sot/finance' },
-  { label: 'ENERGY', href: '/website/sot/energy' },
-  { label: 'ARMSTRONG', href: '/website/sot/armstrong' },
-  { label: 'CAREER', href: '/website/sot/karriere' },
+  { label: 'PLATTFORM', href: '/website/sot/plattform' },
+  { label: 'INTELLIGENZ', href: '/website/sot/intelligenz' },
+  { label: 'MODULE', href: '/website/sot/module' },
+  { label: 'PREISE', href: '/website/sot/preise' },
+  { label: 'DEMO', href: '/website/sot/demo' },
+  { label: 'KARRIERE', href: '/website/sot/karriere' },
 ];
 
 export default function SotLayout() {
