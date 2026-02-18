@@ -1,89 +1,46 @@
 
 
-# Konten-Zuordnung und Auto-Matching: bank_transactions zu rent_payments
+# Fix: Konto-Zuordnung und Geldeingang-Kontoabgleich
 
-## Problem
+## Probleme (aus Screenshots)
 
-Die Datenkette ist unterbrochen. Drei Luecken existieren:
+### Problem 1: Demo-Konto Zuordnungs-Select ist nicht klickbar
+- In `KontoAkteInline.tsx` Zeile 255: `disabled={isDemo}` blockiert den Select komplett
+- Der Demo-Konto hat zwar `owner_type: 'property'` gesetzt, aber der Select zeigt keinen Wert an, weil das UI den Zuordnungs-Wert nicht sichtbar macht (der encoded Value `property::d0000000-...` wird zwar in `currentValue` berechnet, aber das Select ist disabled bevor es rendern kann)
+- **Fix**: Fuer Demo-Konten den Select NICHT disablen, sondern stattdessen `readOnly`-artig verhalten — Wert anzeigen, Aenderungen nur lokal (kein DB-Write). Alternativ: Zuordnung als statischen Text anzeigen statt als disabled Select
 
-1. **Konto-Zuordnung**: Auf dem Konto (KontoAkteInline) MUSS eine Zuordnung zur Vermietereinheit gewaehlt werden. Der Select existiert bereits, aber Demo-Konten haben `disabled` gesetzt und echte Konten haben oft keine Zuordnung.
+### Problem 2: Geldeingang — Toggle und Konto-Select funktionslos
+- In `GeldeingangTab.tsx` Zeile 352: `value={lease.linked_bank_account_id || ''}` setzt den Select-Value auf leeren String `''` — das ist das bekannte Radix-UI Problem (leere Strings sind ungueltig)
+- Es gibt **0 Bank-Accounts** in der DB (`msv_bank_accounts` ist leer), daher ist der Select-Dropdown komplett leer
+- Der Toggle (`Switch`) schreibt `auto_match_enabled` in die DB, das funktioniert technisch, aber da kein Konto verknuepft ist, hat es keinen Effekt
+- **Fix**: Select-Value `''` durch `undefined` ersetzen, "none"-Wert-Pattern nutzen
 
-2. **Matching-Logik fehlt**: Es gibt keinen Code, der importierte `bank_transactions` mit `rent_payments` abgleicht. Die Felder `linked_bank_account_id` und `auto_match_enabled` auf `leases` sind vorhanden, werden aber nie ausgewertet.
-
-3. **GeldeingangTab liest nur rent_payments**: Selbst wenn Transaktionen importiert sind, erscheinen sie nicht auf der Immobilien-Detailseite.
-
-## Datenkette (Soll-Zustand)
-
-```text
-CSV-Import
-    |
-    v
-bank_transactions (account_ref = Konto-ID)
-    |
-    v
-Auto-Match-Engine (Lease hat linked_bank_account_id + auto_match_enabled)
-    |  Prueft: Betrag = Warmmiete? Datum im richtigen Monat? Verwendungszweck enthaelt Miete-Kennwort?
-    v
-rent_payments (lease_id, amount, status='paid'/'partial', paid_date)
-    |
-    v
-GeldeingangTab zeigt Soll vs. Ist
-```
+### Problem 3: Demo-Konto existiert nicht in der Datenbank
+- Die Tabelle `msv_bank_accounts` ist komplett leer
+- Daher kann im Geldeingang auch kein Konto gewaehlt werden
+- Die Demo-Konten muessen als echte DB-Eintraege existieren oder das Select muss auch Demo-Konten anzeigen
 
 ## Aenderungen
 
-### Phase A: Zuordnungs-Pflicht sichtbar machen
+### 1. `src/components/finanzanalyse/KontoAkteInline.tsx`
+- Den `disabled={isDemo}` vom Zuordnungs-Select entfernen
+- Stattdessen fuer Demo-Konten die Zuordnung als lesbaren Text/Badge anzeigen ODER den Select aktiviert lassen (Aenderungen bleiben nur clientseitig, kein DB-Write da `!isDemo`-Guard schon vorhanden in `handleOwnerChange`)
 
-**`src/components/finanzanalyse/KontoAkteInline.tsx`**
+### 2. `src/components/portfolio/GeldeingangTab.tsx`
+- Select-Value Fix: `value={lease.linked_bank_account_id || ''}` aendern zu `value={lease.linked_bank_account_id || undefined}`
+- `onValueChange`: Wert `"none"` als Null-Reset behandeln
+- Ein `SelectItem value="none"` hinzufuegen fuer "Kein Konto"
+- Wenn keine Bank-Accounts vorhanden: Info-Text statt leeres Dropdown anzeigen
 
-- Wenn ein echtes Konto KEINE Zuordnung hat (`owner_type` leer), wird ein Hinweis-Banner angezeigt: "Bitte weisen Sie dieses Konto einer Person oder Vermietereinheit zu, damit Umsaetze korrekt zugeordnet werden koennen."
-- Der bestehende Zuordnungs-Select bleibt unveraendert, bekommt aber visuell einen gelben Rahmen wenn leer.
+### 3. Demo-Konto in DB seeden (optional, aber empfohlen)
+- Das Demo-Konto (`DEMO_KONTO`) als echten Eintrag in `msv_bank_accounts` anlegen (ueber den Demo-Seeder), damit es im Geldeingang-Tab ausgewaehlt werden kann
+- Alternativ: Die `bankAccounts`-Query im GeldeingangTab um Demo-Konto-Daten ergaenzen wenn Demo-Tenant aktiv ist
 
-### Phase B: Matching-Engine (Edge Function)
+## Technische Details
 
-**`supabase/functions/sot-rent-match/index.ts`** (NEU)
+| Datei | Aenderung |
+|-------|-----------|
+| `src/components/finanzanalyse/KontoAkteInline.tsx` | `disabled={isDemo}` entfernen, Zuordnung fuer Demo sichtbar machen |
+| `src/components/portfolio/GeldeingangTab.tsx` | Select-Value-Fix (`undefined` statt `''`), "none"-Option, leere-Liste-Handling |
+| Demo-Seeder (optional) | Demo-Konto als DB-Eintrag in `msv_bank_accounts` anlegen |
 
-Edge Function, die manuell oder nach jedem CSV-Import aufgerufen wird:
-
-1. Laedt alle Leases mit `auto_match_enabled = true` und `linked_bank_account_id IS NOT NULL`
-2. Fuer jede Lease: Laedt `bank_transactions` des verknuepften Kontos fuer den aktuellen Monat
-3. Matching-Kriterien:
-   - `amount_eur` entspricht Warmmiete (Toleranz +/- 1 EUR)
-   - `booking_date` liegt im erwarteten Monat
-   - Optional: `purpose_text` enthaelt Wohnungskennung oder Mieternamen
-4. Bei Match: Erstellt/aktualisiert `rent_payments`-Eintrag mit `status = 'paid'` und `paid_date`
-5. Bei Teilmatch (Betrag weicht ab): `status = 'partial'`
-6. Markiert die `bank_transaction` mit `match_status = 'AUTO_MATCHED'`
-
-### Phase C: GeldeingangTab erweitern
-
-**`src/components/portfolio/GeldeingangTab.tsx`**
-
-- Nach CSV-Import: Button "Abgleich starten" ruft `sot-rent-match` auf
-- Alternativ: Automatischer Abgleich wenn `auto_match_enabled = true` und der bestehende "Mieteingang pruefen"-Button gedrueckt wird
-- Die bestehende `sot-rent-arrears-check` Function wird erweitert oder vor dem Arrears-Check wird erst `sot-rent-match` aufgerufen
-
-### Phase D: Rueckkopplung im CSV-Import
-
-**`src/components/finanzanalyse/TransactionCsvImportDialog.tsx`**
-
-- Nach erfolgreichem Import: Toast mit Hinweis "X Umsaetze importiert. Automatischen Abgleich starten?" mit Action-Button
-- Bei Klick: `sot-rent-match` wird aufgerufen
-- Ergebnis wird als Toast angezeigt: "Y Mietzahlungen automatisch zugeordnet"
-
-## Betroffene Dateien
-
-| Datei | Phase | Aenderung |
-|-------|-------|-----------|
-| `src/components/finanzanalyse/KontoAkteInline.tsx` | A | Hinweis-Banner bei fehlender Zuordnung |
-| `supabase/functions/sot-rent-match/index.ts` | B | NEU: Matching-Engine |
-| `src/components/portfolio/GeldeingangTab.tsx` | C | Abgleich-Button, ruft sot-rent-match |
-| `src/components/finanzanalyse/TransactionCsvImportDialog.tsx` | D | Post-Import Abgleich-Trigger |
-| `supabase/config.toml` | B | Eintrag fuer sot-rent-match (verify_jwt = false) |
-
-## Voraussetzungen
-
-- `bank_transactions.match_status` Spalte existiert bereits (Typ: text, nullable)
-- `leases.linked_bank_account_id` und `auto_match_enabled` existieren bereits
-- `rent_payments` Tabelle existiert bereits mit allen benoetigten Feldern
-- Keine neue DB-Migration noetig
