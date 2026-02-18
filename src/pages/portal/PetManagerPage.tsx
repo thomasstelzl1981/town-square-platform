@@ -6,6 +6,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import React from 'react';
 
 const PMDashboard = React.lazy(() => import('./petmanager/PMDashboard'));
+const PMProfil = React.lazy(() => import('./petmanager/PMProfil'));
 const PMPension = React.lazy(() => import('./petmanager/PMPension'));
 const PMServices = React.lazy(() => import('./petmanager/PMServices'));
 const PMPersonal = React.lazy(() => import('./petmanager/PMPersonal'));
@@ -25,6 +26,7 @@ export default function PetManagerPage() {
     <Routes>
       <Route index element={<Navigate to="dashboard" replace />} />
       <Route path="dashboard" element={<React.Suspense fallback={<Loading />}><PMDashboard /></React.Suspense>} />
+      <Route path="profil" element={<React.Suspense fallback={<Loading />}><PMProfil /></React.Suspense>} />
       <Route path="pension" element={<React.Suspense fallback={<Loading />}><PMPension /></React.Suspense>} />
       <Route path="services" element={<React.Suspense fallback={<Loading />}><PMServices /></React.Suspense>} />
       <Route path="mitarbeiter" element={<React.Suspense fallback={<Loading />}><PMPersonal /></React.Suspense>} />

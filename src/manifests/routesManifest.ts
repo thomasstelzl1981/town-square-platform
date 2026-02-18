@@ -555,6 +555,7 @@ export const zone2Portal: ZoneDefinition = {
       visibility: { default: false, org_types: ["client"], requires_activation: true },
       tiles: [
         { path: "dashboard", component: "PMDashboard", title: "Dashboard", default: true },
+        { path: "profil", component: "PMProfil", title: "Profil" },
         { path: "pension", component: "PMPension", title: "Pension" },
         { path: "services", component: "PMServices", title: "Services" },
         { path: "mitarbeiter", component: "PMPersonal", title: "Mitarbeiter" },

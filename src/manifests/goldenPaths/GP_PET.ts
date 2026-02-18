@@ -173,6 +173,27 @@ export const GP_PET_GOLDEN_PATH: GoldenPathDefinition = {
     },
 
     // ═══════════════════════════════════════════════════════════
+    // PHASE 3b: Provider-Profil vervollstaendigen (Z2)
+    // ═══════════════════════════════════════════════════════════
+    {
+      id: 'complete_provider_profile',
+      phase: 3,
+      label: 'Provider-Profil vervollstaendigen',
+      type: 'action',
+      routePattern: '/portal/petmanager/profil',
+      task_kind: 'user_task',
+      camunda_key: 'GP_PET_STEP_03B_PROFILE_COMPLETE',
+      preconditions: [
+        { key: 'customer_exists', source: 'pet_customers', description: 'Provider muss existieren' },
+      ],
+      completion: [
+        { key: 'profile_has_bio', source: 'pet_providers', check: 'exists', description: 'Bio/Beschreibung ausgefuellt' },
+        { key: 'profile_has_cover', source: 'pet_providers', check: 'exists', description: 'Cover-Bild hochgeladen' },
+        { key: 'profile_has_services', source: 'pet_services', check: 'exists', description: 'Mindestens 1 aktiver Service definiert' },
+      ],
+    },
+
+    // ═══════════════════════════════════════════════════════════
     // PHASE 4: Tierakte anlegen / verknuepfen (Z2)
     // ═══════════════════════════════════════════════════════════
     {
