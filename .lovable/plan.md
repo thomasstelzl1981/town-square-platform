@@ -1,186 +1,178 @@
 
-# Armstrong Redesign: Floating Overlay + Arbeitsvisualisierung
+# Storage Extraction Engine (ENG-STOREX)
 
-## Kernproblem
+## Uebersicht
 
-Aktuell ist Armstrong im Desktop-Modus ein **inline Stripe** (`w-[304px]`) rechts im Layout. Wenn er sich oeffnet, verschiebt sich die gesamte Seite nach links. Ausserdem fehlt eine Chat-Texteingabe im Stripe — nur Voice + Upload sind vorhanden.
-
----
-
-## Neues Konzept: Floating Overlay Panel
-
-Armstrong wird vom inline Layout-Element zu einem **schwebenden Overlay** umgebaut — aehnlich wie Intercom, ChatGPT-Sidebar oder Lovable selbst.
-
-### Vorteile
-
-- Seite bleibt zentriert, kein Layout-Shift
-- Armstrong kann von ueberall geoeffnet werden ohne den Kontext zu stoeren
-- Zweispaltiges Layout moeglich bei groesseren Bildschirmen
-- Konsistent mit dem Orb-Konzept (schwebt bereits, bleibt schwebend)
-
-### Layout-Architektur
-
-```text
-+-------------------------------------------------------------+
-|  SystemBar                                                   |
-+-------------------------------------------------------------+
-|  TopNavigation                                               |
-+-------------------------------------------------------------+
-|                                                              |
-|                    Main Content                              |
-|                    (bleibt immer zentriert)                   |
-|                                                              |
-|                                          +------------------+|
-|                                          |  Armstrong       ||
-|                                          |  Floating Panel  ||
-|                                          |  (overlay, z-50) ||
-|                                          |                  ||
-|                                          |  Links: Steps    ||
-|                                          |  Rechts: Chat    ||
-|                                          +------------------+|
-+-------------------------------------------------------------+
-```
-
-### Zwei-Spalten-Modus (ab 1280px Viewport)
-
-Wenn der Viewport breit genug ist, oeffnet sich Armstrong als zweispaltiges Panel:
-
-```text
-+------------------------------------------+
-| ARMSTRONG                        [_] [x] |
-+------------------------------------------+
-|  Arbeitsschritte    |  Chat-Verlauf      |
-|                     |                    |
-|  [ok] Dokument      |  User: Analysiere  |
-|       empfangen     |  diesen Vertrag    |
-|  [ok] PDF wird      |                    |
-|       analysiert    |  Armstrong: Ich    |
-|  [..] Daten werden  |  habe 12 Felder    |
-|       extrahiert    |  erkannt...        |
-|  [ ] Datensatz      |                    |
-|       anlegen       |                    |
-|                     |                    |
-+------------------------------------------+
-| [Clip] [______Input______] [Send] [Mic]  |
-+------------------------------------------+
-```
-
-Bei schmaleren Viewports (unter 1280px) wird es einspaltig: Die Arbeitsschritte erscheinen dann **inline im Chat** als aufklappbarer Block innerhalb der Assistant-Nachricht.
+Eine neue Engine, die den gesamten Dokumentenbestand eines Mandanten (eigene Uploads oder externer Datenraum) analysiert und fuer Armstrong durchsuchbar macht. Drei Phasen: Scan, Extract, Index.
 
 ---
 
-## Arbeitsvisualisierung: ThinkingSteps
+## Phase 1: Scan und Kostenvoranschlag
 
-### Was der User sieht
+Bevor extrahiert wird, scannt die Engine den Storage-Bestand und erstellt einen Kostenvoranschlag:
 
-Wenn Armstrong arbeitet (Magic Intake, Research, Draft), werden die einzelnen Arbeitsschritte live angezeigt:
+```text
+Datenraum-Analyse fuer "Mustermann Immobilien"
+───────────────────────────────────────────────
+  Dokumente gesamt:       847
+  Bereits extrahiert:       0
+  Noch zu verarbeiten:    847
 
-| Schritt | Status |
-|---------|--------|
-| Dokument empfangen | Abgeschlossen |
-| PDF wird analysiert (3 Seiten) | Abgeschlossen |
-| Daten werden extrahiert | Aktiv (Spinner) |
-| Fahrzeug in Portfolio anlegen | Ausstehend |
-| Ergebnis zusammenfassen | Ausstehend |
+  Geschaetzte Kosten:     847 Credits (211,75 EUR)
+  Geschaetzte Dauer:      ~45 Minuten
 
-Jeder Schritt hat einen Status: `pending`, `active`, `completed`, `error`.
+  [ Extraktion starten ]  [ Abbrechen ]
+```
 
-### Warum das wichtig ist
+**Technisch:**
+- Neue Edge Function: `sot-storage-extractor`
+- Action `scan`: Zaehlt Dateien in `storage_nodes` fuer den Tenant, prueft welche bereits in `document_chunks` vorhanden sind
+- Gibt Kostenvoranschlag zurueck (Anzahl × 1 Credit)
 
-Da Credits berechnet werden, muss der User sehen, welche Arbeit Armstrong leistet. Das schafft Vertrauen und Transparenz — der User versteht, wofuer er bezahlt.
+---
 
-### Technische Umsetzung
+## Phase 2: Batch-Extraktion mit Job-Queue
 
-**Simulierte Steps waehrend `isLoading`:** Da der Backend-Call kein Streaming unterstuetzt, werden die Steps client-seitig mit Timeouts progressiv angezeigt. Wenn die Response kommt, werden die finalen Steps aus der Backend-Antwort uebernommen.
+Da Edge Functions ein 60-Sekunden-Timeout haben, kann ein Bulk-Job nicht in einem Call laufen. Stattdessen:
 
-**Backend:** Der `sot-armstrong-advisor` gibt im Response ein optionales `thinking_steps` Array zurueck, das die tatsaechlich durchgefuehrten Schritte dokumentiert.
+### Architektur
+
+```text
+User klickt "Starten"
+       |
+       v
+[extraction_jobs] Tabelle      ← Neuer Job mit status='pending'
+       |
+       v
+sot-storage-extractor          ← Verarbeitet 10-20 Docs pro Call
+(action: process-batch)           Signed URL → Gemini → Chunks
+       |
+       v
+document_chunks                ← Extrahierter Text wird gespeichert
+       |
+       v
+sot-embedding-pipeline         ← Embeddings generieren (optional, separater Pass)
+       |
+       v
+[extraction_jobs] updated      ← Progress: 127/847 verarbeitet
+```
+
+### Job-Tabelle: `extraction_jobs`
+
+| Spalte | Typ | Beschreibung |
+|--------|-----|-------------|
+| id | UUID | PK |
+| tenant_id | UUID | FK organizations |
+| status | text | pending, running, paused, completed, failed |
+| total_files | int | Gesamtanzahl |
+| processed_files | int | Bereits verarbeitet |
+| failed_files | int | Fehlgeschlagen |
+| credits_used | int | Verbrauchte Credits |
+| started_at | timestamptz | Start |
+| completed_at | timestamptz | Ende |
+| error_log | jsonb | Fehlerdetails |
+
+### Batch-Verarbeitung
+
+Jeder Call der Edge Function verarbeitet einen Batch von 10-20 Dokumenten:
+
+1. Naechsten Batch unverarbeiteter Dateien aus `storage_nodes` laden
+2. Fuer jede Datei: Signed URL generieren → Gemini Vision aufrufen → Text chunken
+3. Chunks in `document_chunks` speichern
+4. Job-Fortschritt updaten
+5. Wenn noch Dateien uebrig: Client triggert naechsten Batch-Call
+
+Der Client pollt den Job-Status und zeigt einen Fortschrittsbalken.
+
+---
+
+## Phase 3: Live-Fortschritt im Armstrong-Panel
+
+Die neue ThinkingSteps-Komponente (bereits gebaut) wird wiederverwendet:
+
+```text
+Armstrong arbeitet...
+  [ok] Datenraum gescannt (847 Dokumente)
+  [ok] Kostenvoranschlag: 847 Credits
+  [ok] Batch 1/85 verarbeitet (10 Dokumente)
+  [..] Batch 2/85 wird verarbeitet...
+  [ ] Embedding-Index erstellen
+  [ ] Hybrid-Suche aktivieren
+```
 
 ---
 
 ## Technische Aenderungen
 
-### 1. `src/components/portal/PortalLayout.tsx`
+### Neue Dateien
 
-Armstrong wird aus dem `flex`-Layout entfernt. Statt als Inline-Element neben `main` wird `ArmstrongContainer` ausserhalb des Flex-Containers platziert — als Overlay.
+| Datei | Beschreibung |
+|-------|-------------|
+| `supabase/functions/sot-storage-extractor/index.ts` | Edge Function: scan, process-batch, status, cancel |
 
-**Vorher:**
-```text
-<div class="flex">
-  <main>...</main>
-  <ArmstrongContainer />  // inline, verschiebt Layout
-</div>
-```
+### Neue DB-Objekte (Migration)
 
-**Nachher:**
-```text
-<div class="flex">
-  <main>...</main>
-</div>
-<ArmstrongContainer />  // overlay, schwebt ueber allem
-```
+| Objekt | Beschreibung |
+|--------|-------------|
+| `extraction_jobs` Tabelle | Job-Queue mit Fortschritt |
+| RLS Policies | Tenant-Isolation wie ueblich |
+| Index `(tenant_id, status)` | Performance |
 
-### 2. `src/components/portal/ArmstrongContainer.tsx`
+### Bestehende Dateien (Aenderungen)
 
-Groesster Umbau:
+| Datei | Aenderung |
+|-------|-----------|
+| `spec/current/06_engines/ENGINE_REGISTRY.md` | ENG-STOREX registrieren |
+| `src/manifests/armstrongManifest.ts` | Action `ARM.DMS.STORAGE_EXTRACTION` registrieren |
+| `supabase/functions/sot-armstrong-advisor/index.ts` | Intent-Erkennung fuer "Datenraum analysieren" |
+| `src/components/portal/ArmstrongContainer.tsx` | Fortschrittsanzeige fuer laufende Extraktionsjobs |
 
-- **Expanded-Modus:** Von `w-[304px] h-full` inline-Element zu `fixed right-4 bottom-4 w-[420px] h-[70vh] z-50` Overlay mit Schatten und abgerundeten Ecken
-- **Zweispaltig (optional):** Ab 1280px Viewport wird `w-[680px]` mit `grid grid-cols-[240px_1fr]` — links ThinkingSteps, rechts Chat
-- **Chat-Input:** Text-Eingabefeld mit Paperclip, Send-Button und Voice-Button im Footer (identisches Pattern wie `ChatPanel.tsx`)
-- **Collapsed (Orb):** Bleibt unveraendert — draggable, floating, mit Mic
+### Edge Function: `sot-storage-extractor`
 
-### 3. `src/components/chat/ThinkingSteps.tsx` (NEU)
+**Actions:**
 
-Neue Komponente fuer die Arbeitsvisualisierung:
+1. **scan**: Zaehlt Dateien, prueft bereits extrahierte, gibt Kostenvoranschlag zurueck
+2. **start**: Erstellt Job in `extraction_jobs`, prueft Credit-Preflight fuer Gesamtbetrag
+3. **process-batch**: Verarbeitet naechste 10-20 Dateien, deducted Credits pro Datei
+4. **status**: Gibt aktuellen Jobfortschritt zurueck
+5. **cancel**: Pausiert/stoppt laufenden Job
 
-- Vertikale Schritt-Liste mit Icons (Check, Spinner, Circle)
-- Animierte Uebergaenge von `pending` zu `active` zu `completed`
-- Kompakte Darstellung (passt in 240px Spalte)
-- Wiederverwendbar sowohl in der Zwei-Spalten-Ansicht als auch inline im Chat
+---
 
-### 4. `src/hooks/useArmstrongAdvisor.ts`
+## Credit-Modell
 
-- Neuer State: `thinkingSteps: ThinkingStep[]`
-- Step-Simulation waehrend `isLoading` mit progressiven Timeouts
-- Mapping der finalen `thinking_steps` aus der Backend-Response
-- Neues Feld `thinkingSteps` im `ChatMessage` Type
+| Service | Credits | EUR |
+|---------|---------|-----|
+| Scan und Voranschlag | 0 (Free) | 0 |
+| Extraktion pro Dokument | 1 | 0,25 |
+| Embedding-Index (optional) | 0 (inklusive) | 0 |
 
-### 5. `src/components/chat/MessageRenderer.tsx`
+Marge: Gemini-Kosten ca. 0,01-0,03 EUR pro Call → 8-25x Marge bei 0,25 EUR/Credit.
 
-- Nach Abschluss: ThinkingSteps werden inline in der Assistant-Nachricht angezeigt (im einspaltigen Modus)
-- Aufklappbar mit Chevron — standardmaessig eingeklappt nach Abschluss
+### Bulk-Rabatte (spaeter)
 
-### 6. `supabase/functions/sot-armstrong-advisor/index.ts`
+Koennen ueber die Credit-Tabelle abgebildet werden:
+- Ab 500 Docs: 0,8 Credits/Doc
+- Ab 2.000 Docs: 0,6 Credits/Doc
 
-- `thinking_steps` Array im Response fuer Magic Intakes und Metered Actions
-- Automatische Step-Generierung basierend auf Action-Typ:
-  - Magic Intake: "Dokument empfangen" → "Analysiert" → "Extrahiert" → "Angelegt"
-  - Research: "Kontext geladen" → "Recherchiert" → "Zusammengefasst"
-  - Draft: "Vorlage geladen" → "Entwurf erstellt"
+---
 
-### 7. `src/hooks/usePortalLayout.tsx`
+## Voraussetzungen (bereits erfuellt)
 
-- Keine Layout-Aenderungen mehr noetig fuer `armstrongExpanded` — da Armstrong jetzt ein Overlay ist, beeinflusst der State nur die Sichtbarkeit des Panels, nicht das Layout
+- Lovable AI Gateway (Gemini 3 Flash) -- vorhanden
+- `document_chunks` Tabelle mit TSVector -- vorhanden
+- `sot-embedding-pipeline` fuer Vektoren -- vorhanden
+- `sot-credit-preflight` fuer Abrechnung -- vorhanden
+- `sot-document-parser` als Referenz-Pattern -- vorhanden
+
+Keine externen APIs wie Structured.io noetig. Der gesamte Stack ist intern abbildbar.
 
 ---
 
 ## Umsetzungsreihenfolge
 
-1. PortalLayout anpassen (Armstrong aus flex entfernen)
-2. ArmstrongContainer zu Floating Overlay umbauen + Chat-Input hinzufuegen
-3. ThinkingSteps Komponente erstellen
-4. Hook erweitern (thinkingSteps State + Simulation)
-5. MessageRenderer Integration (inline Steps)
-6. Backend: thinking_steps im Response
-7. Zweispalten-Layout (ab 1280px)
-
----
-
-## Zusammenfassung
-
-| Aspekt | Vorher | Nachher |
-|--------|--------|---------|
-| Layout | Inline Stripe, verschiebt Seite | Floating Overlay, Seite bleibt stabil |
-| Breite | 304px fest | 420px (1-spaltig) / 680px (2-spaltig) |
-| Chat-Input | Fehlt (nur Voice+Upload) | Vollstaendige Eingabezeile |
-| Arbeitsschritte | "Armstrong denkt nach..." (Spinner) | Live-Schrittliste mit Status |
-| Credits-Transparenz | Nicht sichtbar | Jeder Schritt dokumentiert und sichtbar |
+1. Migration: `extraction_jobs` Tabelle + RLS
+2. Edge Function: `sot-storage-extractor` (scan + start + process-batch + status)
+3. Armstrong-Integration: Intent "Datenraum analysieren" + Fortschrittsanzeige
+4. Engine Registry: ENG-STOREX eintragen
+5. Test: End-to-End mit Testdokumenten
