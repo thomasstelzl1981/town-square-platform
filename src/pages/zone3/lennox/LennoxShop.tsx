@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Link } from 'react-router-dom';
 import { useActiveShopProducts } from '@/hooks/usePetShopProducts';
+import { ReactNode } from 'react';
 
 const COLORS = {
   primary: 'hsl(155,35%,25%)',
@@ -17,13 +18,47 @@ const COLORS = {
   sand: 'hsl(35,30%,85%)',
 };
 
-const SHOP_SECTIONS: { key: string; label: string; desc: string; isAffiliate?: boolean }[] = [
-  { key: 'ernaehrung', label: 'Ernährung', desc: 'Premium-Futter & Nahrungsergänzung' },
-  { key: 'lennox_style', label: 'Lennox Style', desc: 'Halsbänder, Leinen & Accessoires' },
-  { key: 'fressnapf', label: 'Fressnapf', desc: 'Europas größte Fachmarktkette', isAffiliate: true },
+const SHOP_SECTIONS: { key: string; label: string; desc: string; isAffiliate?: boolean; intro?: ReactNode }[] = [
+  {
+    key: 'ernaehrung',
+    label: 'Ernährung',
+    desc: 'Premium-Futter & Nahrungsergänzung',
+    intro: (
+      <div className="rounded-xl p-5 space-y-2" style={{ backgroundColor: 'hsl(40,40%,96%)' }}>
+        <p className="text-sm leading-relaxed" style={{ color: COLORS.foreground }}>
+          Wir empfehlen <a href="https://www.lakefields.de" target="_blank" rel="noopener noreferrer" className="font-semibold underline underline-offset-2" style={{ color: COLORS.primary }}>Lakefields</a> — eine Manufaktur am Bodensee, die Premium-Hundefutter in Lebensmittelqualität herstellt. Entwickelt mit Tierärzten, ohne Getreide, ohne künstliche Zusatzstoffe und ohne Zucker. Das Fleisch stammt aus artgerechter Haltung und es werden keine Tierversuche durchgeführt. Genau das, was wir für unsere Vierbeiner wollen.
+        </p>
+      </div>
+    ),
+  },
+  {
+    key: 'lennox_style',
+    label: 'Lennox Style',
+    desc: 'Halsbänder, Leinen & Accessoires',
+    intro: (
+      <div className="rounded-xl p-5" style={{ backgroundColor: 'hsl(40,40%,96%)' }}>
+        <p className="text-sm leading-relaxed" style={{ color: COLORS.foreground }}>
+          Für unsere Fans haben wir eine kleine Kollektion an Accessoires gestaltet — mit Liebe zum Detail und dem unverwechselbaren Lennox-Style. Von Halsbändern über Leinen bis hin zu besonderen Kleinigkeiten für deinen Liebling.
+        </p>
+      </div>
+    ),
+  },
+  {
+    key: 'fressnapf',
+    label: 'Fressnapf',
+    desc: 'Europas größte Fachmarktkette',
+    isAffiliate: true,
+    intro: (
+      <div className="rounded-xl p-5" style={{ backgroundColor: 'hsl(40,40%,96%)' }}>
+        <p className="text-sm leading-relaxed" style={{ color: COLORS.foreground }}>
+          Unsere Auswahl an hochwertigem Hundespielzeug und Zubehör von Fressnapf — vom Klassiker KONG bis zum Intelligenzspielzeug. Alles, was deinen Vierbeiner beschäftigt und glücklich macht.
+        </p>
+      </div>
+    ),
+  },
 ];
 
-function ProductSection({ categoryKey, label, desc, isAffiliate }: { categoryKey: string; label: string; desc: string; isAffiliate?: boolean }) {
+function ProductSection({ categoryKey, label, desc, isAffiliate, intro }: { categoryKey: string; label: string; desc: string; isAffiliate?: boolean; intro?: ReactNode }) {
   const { data: products = [], isLoading } = useActiveShopProducts(categoryKey);
 
   return (
@@ -40,6 +75,8 @@ function ProductSection({ categoryKey, label, desc, isAffiliate }: { categoryKey
         )}
       </div>
 
+      {intro && <div>{intro}</div>}
+
       {isLoading ? (
         <div className="py-8 text-center text-sm" style={{ color: COLORS.muted }}>Lade Produkte…</div>
       ) : products.length === 0 ? (
@@ -55,28 +92,30 @@ function ProductSection({ categoryKey, label, desc, isAffiliate }: { categoryKey
               href={p.external_url || '#'}
               target="_blank"
               rel="noopener noreferrer"
-              className="block"
+              className="block h-full"
             >
-              <Card className="border hover:shadow-md transition-all hover:-translate-y-0.5 cursor-pointer" style={{ borderColor: COLORS.sand, background: 'white' }}>
-                <CardContent className="p-3 flex flex-col items-center text-center gap-2">
+              <Card className="h-full flex flex-col border hover:shadow-md transition-all hover:-translate-y-0.5 cursor-pointer" style={{ borderColor: COLORS.sand, background: 'white' }}>
+                <CardContent className="p-3 flex flex-col h-full gap-2">
                   {p.image_url ? (
-                    <div className="aspect-square w-full rounded-lg overflow-hidden bg-gray-50">
-                      <img src={p.image_url} alt={p.name} className="w-full h-full object-cover" />
+                    <div className="aspect-square w-full rounded-lg overflow-hidden bg-gray-50 flex-shrink-0">
+                      <img src={p.image_url} alt={p.name} className="w-full h-full object-contain" />
                     </div>
                   ) : (
-                    <div className="aspect-square w-full rounded-lg flex items-center justify-center bg-gray-50">
+                    <div className="aspect-square w-full rounded-lg flex items-center justify-center bg-gray-50 flex-shrink-0">
                       <ShoppingBag className="h-8 w-8 opacity-15" style={{ color: COLORS.primary }} />
                     </div>
                   )}
-                  {p.badge && (
-                    <Badge className="text-[10px] text-white border-0" style={{ backgroundColor: COLORS.primary }}>
-                      {p.badge}
-                    </Badge>
-                  )}
-                  <span className="text-xs font-medium line-clamp-2" style={{ color: COLORS.foreground }}>{p.name}</span>
-                  {p.price_label && (
-                    <span className="text-xs font-semibold" style={{ color: COLORS.primary }}>{p.price_label}</span>
-                  )}
+                  <div className="flex flex-col flex-1 items-center text-center gap-1.5">
+                    {p.badge && (
+                      <Badge className="text-[10px] text-white border-0 flex-shrink-0" style={{ backgroundColor: COLORS.primary }}>
+                        {p.badge}
+                      </Badge>
+                    )}
+                    <span className="text-xs font-medium line-clamp-2 min-h-[2.5rem] flex items-center" style={{ color: COLORS.foreground }}>{p.name}</span>
+                    {p.price_label && (
+                      <span className="text-xs font-semibold mt-auto" style={{ color: COLORS.primary }}>{p.price_label}</span>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
             </a>
@@ -135,6 +174,7 @@ export default function LennoxShop() {
             label={s.label}
             desc={s.desc}
             isAffiliate={s.isAffiliate}
+            intro={s.intro}
           />
         </section>
       ))}
