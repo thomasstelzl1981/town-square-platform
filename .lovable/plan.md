@@ -1,41 +1,24 @@
 
 
-## Drei Aenderungen an der Lennox & Friends Website
+## Lennox & Friends — Logo-Korrekturen
 
-### 1. Header-Link "Partner finden" loest sofort Ortung aus
+### 1. Hero: Logo entfernen
 
-Aktuell gibt es keinen Header-Link fuer die Partnersuche. Der "Partner in meiner Naehe finden"-Button im Hero scrollt nur zum Standort-Widget. 
+Das Patch-Logo im Hero-Bereich (Zeile 86-88 in `LennoxStartseite.tsx`) verdeckt den Hund im Bild. Es wird komplett entfernt.
 
-**Aenderung:**
-- In `LennoxLayout.tsx` einen neuen Nav-Link "Partner finden" hinzufuegen, der zur Startseite navigiert mit einem URL-Parameter (`?locate=1`)
-- In `LennoxStartseite.tsx` beim Laden pruefen ob `?locate=1` gesetzt ist — wenn ja, sofort `navigator.geolocation` aufrufen und Ergebnisse anzeigen
-- Das "Standort aktivieren"-Widget (Zeilen 100-128) entfaellt komplett. Stattdessen bleibt nur die Suchleiste (Ort/PLZ + Suchen-Button) immer sichtbar
-- `handleGeolocation` wird erweitert um echte Browser-Geolocation (mit Fallback auf "Mein Standort")
+### 2. Header: Rechteckiges Logo statt rundem
 
-### 2. Hero-Bild bleibt nach der Suche sichtbar
+Im Header (`LennoxLayout.tsx`, Zeile 40) wird das Logo aktuell quadratisch mit `rounded-lg` angezeigt, was das Bild beschneidet. Stattdessen wird ein rechteckiger Container verwendet (`h-9 w-auto`), damit das komplette Logo sichtbar ist. Dasselbe gilt fuer das kleine Logo im Footer (Zeile 107).
 
-Aktuell wird der gesamte Hero-Bereich (70vh mit Bild) durch einen kleinen Text-Header ersetzt wenn `hasSearched = true`.
+### 3. Partner-CTA: Logo ebenfalls entfernen
 
-**Aenderung:**
-- Der Hero mit dem grossen Bild bleibt IMMER sichtbar (Zeilen 56-78 werden nicht mehr bedingt gerendert)
-- Nach der Suche wird der Hero etwas kompakter (z.B. 40vh statt 70vh) aber das Bild bleibt
-- Der "Partner in meiner Naehe finden"-Button im Hero wird nach der Suche ausgeblendet (da Ergebnisse bereits da sind)
-- Der kompakte Text-Header (Zeilen 80-96) entfaellt
+Weiter unten auf der Startseite (Zeile 339) wird das Patch nochmal im "Werde Teil der Lennox-Familie"-Block angezeigt. Dieses bleibt bestehen, da es dort das Branding unterstuetzt und nichts verdeckt.
 
-### 3. Shop-Seite bekommt ein generiertes Hero-Bild
+### Technische Aenderungen
 
-Die `LennoxShop.tsx` zeigt aktuell nur ein Icon und Text als Header.
-
-**Aenderung:**
-- Ein neues Hero-Bild via AI generieren (Alpine/Natur-Stil passend zum CI) und unter `public/shop/` speichern
-- In `LennoxShop.tsx` den Header durch ein Hero-Bild mit Text-Overlay ersetzen (aehnlich wie auf der Startseite, aber kompakter)
-
-### Technische Dateien
-
-| Datei | Aenderung |
-|-------|-----------|
-| `LennoxLayout.tsx` | Nav-Link "Partner finden" mit `?locate=1` ergaenzen |
-| `LennoxStartseite.tsx` | Hero immer anzeigen (kompakt nach Suche), Standort-Widget entfernen, `?locate=1` abfangen und Geolocation starten, Suchleiste immer sichtbar |
-| `LennoxShop.tsx` | Hero-Bild-Sektion oben einfuegen |
-| `public/shop/lennox-shop-hero.jpg` | NEU — AI-generiertes Bild (Alpine Outdoor mit Hund) |
+| Datei | Zeilen | Aenderung |
+|-------|--------|-----------|
+| `LennoxStartseite.tsx` | 86-88 | `img`-Tag mit `lennoxPatch` im Hero entfernen |
+| `LennoxLayout.tsx` | 40 | Logo-Klassen aendern: `h-9 w-9 rounded-lg` wird zu `h-9 w-auto rounded-md` (rechteckig, volles Bild) |
+| `LennoxLayout.tsx` | 107 | Footer-Logo ebenfalls: `h-7 w-7 rounded-lg` wird zu `h-7 w-auto rounded-md` |
 
