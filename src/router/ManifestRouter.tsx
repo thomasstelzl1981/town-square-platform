@@ -148,13 +148,13 @@ const FutureRoomAkte = React.lazy(() => import('@/pages/zone3/futureroom/FutureR
 // Zone 3: System of a Town Website (lazy loaded)
 const SotLayout = React.lazy(() => import('@/pages/zone3/sot/SotLayout'));
 const SotHome = React.lazy(() => import('@/pages/zone3/sot/SotHome'));
-const SotRealEstate = React.lazy(() => import('@/pages/zone3/sot/SotRealEstate'));
-const SotFinance = React.lazy(() => import('@/pages/zone3/sot/SotFinance'));
-const SotManagement = React.lazy(() => import('@/pages/zone3/sot/SotManagement'));
-const SotEnergy = React.lazy(() => import('@/pages/zone3/sot/SotEnergy'));
+const SotPlattform = React.lazy(() => import('@/pages/zone3/sot/SotPlattform'));
+const SotIntelligenz = React.lazy(() => import('@/pages/zone3/sot/SotIntelligenz'));
+const SotModule = React.lazy(() => import('@/pages/zone3/sot/SotModule'));
+const SotPreise = React.lazy(() => import('@/pages/zone3/sot/SotPreise'));
+const SotDemo = React.lazy(() => import('@/pages/zone3/sot/SotDemo'));
 const SotKarriere = React.lazy(() => import('@/pages/zone3/sot/SotKarriere'));
 const SotFAQ = React.lazy(() => import('@/pages/zone3/sot/SotFAQ'));
-const SotArmstrong = React.lazy(() => import('@/pages/zone3/sot/SotArmstrong'));
 
 // Zone 3: ACQUIARY Website (lazy loaded)
 const AcquiaryLayout = React.lazy(() => import('@/pages/zone3/acquiary/AcquiaryLayout'));
@@ -352,13 +352,13 @@ const futureroomComponentMap: Record<string, React.ComponentType> = {
 // =============================================================================
 const sotComponentMap: Record<string, React.ComponentType> = {
   SotHome,
-  SotRealEstate,
-  SotFinance,
-  SotManagement,
-  SotEnergy,
+  SotPlattform,
+  SotIntelligenz,
+  SotModule: React.lazy(() => import('@/pages/zone3/sot/SotModule')),
+  SotPreise,
+  SotDemo,
   SotKarriere,
   SotFAQ,
-  SotArmstrong,
 };
 
 // =============================================================================

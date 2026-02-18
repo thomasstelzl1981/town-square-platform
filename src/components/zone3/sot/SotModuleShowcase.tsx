@@ -13,7 +13,7 @@ interface SotModuleShowcaseProps {
 }
 
 // Define category order
-const CATEGORY_ORDER: SotWebsiteModule['category'][] = ['foundation', 'management', 'finance', 'extensions'];
+const CATEGORY_ORDER: SotWebsiteModule['category'][] = ['client', 'service', 'base'];
 
 export function SotModuleShowcase({ 
   showCategories = true, 
