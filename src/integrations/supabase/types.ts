@@ -17342,6 +17342,7 @@ export type Database = {
           payment_ref: Json | null
           payment_status: string
           personalization: Json | null
+          project_id: string | null
           publishing_meta: Json | null
           regions: Json | null
           start_date: string | null
@@ -17362,6 +17363,7 @@ export type Database = {
           payment_ref?: Json | null
           payment_status?: string
           personalization?: Json | null
+          project_id?: string | null
           publishing_meta?: Json | null
           regions?: Json | null
           start_date?: string | null
@@ -17382,6 +17384,7 @@ export type Database = {
           payment_ref?: Json | null
           payment_status?: string
           personalization?: Json | null
+          project_id?: string | null
           publishing_meta?: Json | null
           regions?: Json | null
           start_date?: string | null
@@ -17391,6 +17394,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "social_mandates_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "dev_projects"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "social_mandates_tenant_id_fkey"
             columns: ["tenant_id"]

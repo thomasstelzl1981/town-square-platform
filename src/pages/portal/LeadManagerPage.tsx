@@ -1,26 +1,20 @@
 /**
- * Lead Manager Page (MOD-10) — Self-Serve Werbeschaltung & Lead-Verwaltung
+ * Lead Manager Page (MOD-10) — Simplified to single inline view
  */
 import { lazy } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 
-const LeadManagerUebersicht = lazy(() => import('./lead-manager/LeadManagerUebersicht'));
-const LeadManagerKampagnen = lazy(() => import('./lead-manager/LeadManagerKampagnen'));
-const LeadManagerStudio = lazy(() => import('./lead-manager/LeadManagerStudio'));
-const LeadManagerStudioPlanen = lazy(() => import('./lead-manager/LeadManagerStudioPlanen'));
-const LeadManagerStudioSummary = lazy(() => import('./lead-manager/LeadManagerStudioSummary'));
-const LeadManagerLeads = lazy(() => import('./lead-manager/LeadManagerLeads'));
+const LeadManagerInline = lazy(() => import('./lead-manager/LeadManagerInline'));
 
 const LeadManagerPage = () => {
   return (
     <Routes>
-      <Route index element={<Navigate to="uebersicht" replace />} />
-      <Route path="uebersicht" element={<LeadManagerUebersicht />} />
-      <Route path="kampagnen" element={<LeadManagerKampagnen />} />
-      <Route path="studio" element={<LeadManagerStudio />} />
-      <Route path="studio/planen" element={<LeadManagerStudioPlanen />} />
-      <Route path="studio/summary" element={<LeadManagerStudioSummary />} />
-      <Route path="leads" element={<LeadManagerLeads />} />
+      <Route index element={<LeadManagerInline />} />
+      {/* Legacy redirects */}
+      <Route path="uebersicht" element={<Navigate to="/portal/lead-manager" replace />} />
+      <Route path="kampagnen" element={<Navigate to="/portal/lead-manager" replace />} />
+      <Route path="studio/*" element={<Navigate to="/portal/lead-manager" replace />} />
+      <Route path="leads" element={<Navigate to="/portal/lead-manager" replace />} />
       <Route path="*" element={<Navigate to="/portal/lead-manager" replace />} />
     </Routes>
   );

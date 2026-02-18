@@ -34,6 +34,7 @@ serve(async (req) => {
     const {
       tenant_id,
       brand_context,
+      project_id,
       budget_total_cents,
       start_date,
       end_date,
@@ -67,23 +68,26 @@ serve(async (req) => {
     }
 
     // Create mandate
+    const mandateInsert: Record<string, any> = {
+      tenant_id,
+      partner_user_id: user.id,
+      partner_display_name: partner_display_name || user.email,
+      status: "submitted",
+      brand_context: project_id ? "project" : (brand_context || "kaufy"),
+      budget_total_cents: budget_total_cents || 0,
+      start_date,
+      end_date,
+      regions: regions || [],
+      audience_preset: audience_preset || {},
+      template_slots: template_slots || {},
+      personalization: personalization || {},
+      payment_status: "unpaid",
+    };
+    if (project_id) mandateInsert.project_id = project_id;
+
     const { data: mandate, error: mandateError } = await supabase
       .from("social_mandates")
-      .insert({
-        tenant_id,
-        partner_user_id: user.id,
-        partner_display_name: partner_display_name || user.email,
-        status: "submitted",
-        brand_context: brand_context || "kaufy",
-        budget_total_cents: budget_total_cents || 0,
-        start_date,
-        end_date,
-        regions: regions || [],
-        audience_preset: audience_preset || {},
-        template_slots: template_slots || {},
-        personalization: personalization || {},
-        payment_status: "unpaid",
-      })
+      .insert(mandateInsert)
       .select()
       .single();
 
