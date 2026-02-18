@@ -22,7 +22,7 @@ import { useUniversalUpload } from '@/hooks/useUniversalUpload';
 import { 
   Minimize2, 
   X,
-  Globe,
+  Rocket,
   Mic,
   Volume2,
   Upload,
@@ -254,11 +254,11 @@ export function ArmstrongContainer() {
           className={cn(
             "pointer-events-auto flex flex-col",
             "fixed right-4 bottom-4",
-            isWideViewport ? "w-[680px]" : "w-[420px]",
-            "h-[70vh] max-h-[800px] min-h-[400px]",
+            isWideViewport ? "w-[510px]" : "w-[315px]",
+            "h-[87.5vh] max-h-[1000px] min-h-[400px]",
             "rounded-2xl overflow-hidden",
-            "bg-background/95 backdrop-blur-2xl",
-            "border border-border/40",
+            "bg-background/70 backdrop-blur-2xl",
+            "border border-white/15 dark:border-white/10",
             "shadow-2xl shadow-black/20 dark:shadow-black/40",
             "transition-all duration-300 ease-out",
             "animate-in slide-in-from-bottom-4 fade-in-0 duration-300",
@@ -268,10 +268,10 @@ export function ArmstrongContainer() {
           onDrop={handleFileDrop}
         >
           {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-border/30">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
             <div className="flex items-center gap-2">
               <div className="h-7 w-7 rounded-full bg-gradient-to-br from-[hsl(200_85%_45%/0.2)] to-[hsl(140_45%_40%/0.2)] flex items-center justify-center">
-                <Globe className="h-3.5 w-3.5 text-primary" />
+                <Rocket className="h-3.5 w-3.5 text-primary" />
               </div>
               <div>
                 <span className="font-sans font-semibold tracking-[0.15em] text-xs text-foreground/70 uppercase select-none">
@@ -360,19 +360,7 @@ export function ArmstrongContainer() {
             <div className="flex-1 flex flex-col min-w-0 min-h-0">
               <ScrollArea className="flex-1 px-4">
                 <div className="space-y-4 py-4">
-                  {advisor.messages.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-40 text-center">
-                      <div className="h-12 w-12 rounded-full bg-gradient-to-br from-[hsl(200_85%_45%)] via-[hsl(140_45%_40%)] to-[hsl(210_90%_30%)] opacity-40 flex items-center justify-center mb-3">
-                        <Globe className="h-5 w-5 text-white" />
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        Wie kann ich helfen?
-                      </p>
-                      <p className="text-xs text-muted-foreground/50 mt-1">
-                        📄 Dokumente · ✉️ Texte · 💡 Fragen
-                      </p>
-                    </div>
-                  ) : (
+                {advisor.messages.length === 0 ? null : (
                     <>
                       {advisor.messages.map((message) => (
                         <MessageRenderer
@@ -389,7 +377,7 @@ export function ArmstrongContainer() {
                       {advisor.isLoading && (
                         <div className="flex gap-3">
                           <div className="flex items-center justify-center h-7 w-7 rounded-full shrink-0 bg-gradient-to-br from-[hsl(200_85%_45%/0.2)] to-[hsl(140_45%_40%/0.2)]">
-                            <Globe className="h-3.5 w-3.5 text-primary" />
+                            <Rocket className="h-3.5 w-3.5 text-primary" />
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="rounded-2xl px-3.5 py-2.5 text-sm armstrong-message-assistant">

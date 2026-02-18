@@ -19,7 +19,7 @@ import {
   Maximize2,
   Sparkles,
   Upload,
-  Globe,
+  Rocket,
   Loader2,
   Trash2,
   FileText,
@@ -216,7 +216,7 @@ const ChatPanel = React.forwardRef<HTMLDivElement, ChatPanelProps>(
           <div className="flex items-center justify-between px-4 py-3 border-b">
             <div className="flex items-center gap-2">
               <div className="flex items-center justify-center h-8 w-8 rounded-lg bg-primary/10">
-                <Globe className="h-4 w-4 text-primary" />
+                <Rocket className="h-4 w-4 text-primary" />
               </div>
               <div>
                 <h3 className="text-sm font-semibold">Armstrong</h3>
@@ -300,24 +300,7 @@ const ChatPanel = React.forwardRef<HTMLDivElement, ChatPanelProps>(
         {/* Messages */}
         <ScrollArea className="flex-1 px-4 py-4" ref={scrollRef}>
           <div className="space-y-4">
-            {displayMessages.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-32 text-center">
-                <div className="h-12 w-12 rounded-full bg-gradient-to-br from-[hsl(200_85%_45%)] via-[hsl(140_45%_40%)] to-[hsl(210_90%_30%)] opacity-60 flex items-center justify-center mb-3">
-                  <Globe className="h-5 w-5 text-white" />
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  Wie kann ich Ihnen helfen?
-                </p>
-                <p className="text-xs text-muted-foreground/60 mt-1">
-                  📄 Dokumente analysieren · ✉️ Texte erstellen · 💡 Fragen beantworten
-                </p>
-                {!advisor.isInMvpScope && context?.module && (
-                  <p className="text-xs text-muted-foreground/60 mt-2">
-                    Modul {context.module} – nur Erklärungen verfügbar
-                  </p>
-                )}
-              </div>
-            ) : (
+            {displayMessages.length === 0 ? null : (
               <>
                 {advisor.messages.map((message) => (
                   <MessageRenderer
@@ -334,7 +317,7 @@ const ChatPanel = React.forwardRef<HTMLDivElement, ChatPanelProps>(
                 {advisor.isLoading && (
                   <div className="flex gap-3">
                     <div className="flex items-center justify-center h-7 w-7 rounded-full shrink-0 bg-gradient-to-br from-[hsl(200_85%_45%/0.2)] to-[hsl(140_45%_40%/0.2)]">
-                      <Globe className="h-3.5 w-3.5 text-primary" />
+                      <Rocket className="h-3.5 w-3.5 text-primary" />
                     </div>
                     <div className="rounded-2xl px-3.5 py-2.5 text-sm armstrong-message-assistant">
                       <div className="flex items-center gap-2 text-muted-foreground">
