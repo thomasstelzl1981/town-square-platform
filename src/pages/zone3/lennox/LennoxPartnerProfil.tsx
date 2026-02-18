@@ -1,6 +1,6 @@
 /**
  * LennoxPartnerProfil — Dynamisches Partnerprofil mit Service-Kacheln + Inline-Booking
- * Route: /website/tierservice/partner/:slug
+ * Verwendet eigenständiges Z3-Auth (getrennt vom Portal)
  */
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, MapPin, Star, Shield, Phone, Clock, Calendar, ChevronRight } from 'lucide-react';
@@ -13,8 +13,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { useProviderDetail } from '@/hooks/usePetProviderSearch';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { toast } from 'sonner';
+import { useZ3Auth } from '@/hooks/useZ3Auth';
 
 const SERVICE_TAG_LABELS: Record<string, string> = {
   boarding: 'Pension', daycare: 'Tagesstätte', grooming: 'Pflege',
@@ -35,13 +36,9 @@ export default function LennoxPartnerProfil() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const { data: provider, isLoading } = useProviderDetail(slug);
-  const [user, setUser] = useState<any>(null);
+  const { z3User } = useZ3Auth();
   const [showBooking, setShowBooking] = useState(false);
   const [selectedService, setSelectedService] = useState<string | null>(null);
-
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user: u } }) => setUser(u));
-  }, []);
 
   // Load provider services
   const { data: services = [] } = useQuery({
@@ -81,7 +78,7 @@ export default function LennoxPartnerProfil() {
   }
 
   const handleBookingRequest = () => {
-    if (!user) {
+    if (!z3User) {
       navigate(`/website/tierservice/login?returnTo=/website/tierservice/partner/${slug}`);
       return;
     }
@@ -167,7 +164,7 @@ export default function LennoxPartnerProfil() {
       </section>
 
       {/* ═══ BOOKING BLOCK (inline) ═══ */}
-      {showBooking && user && (
+      {showBooking && z3User && (
         <BookingBlock
           providerId={provider.id}
           providerName={provider.company_name}

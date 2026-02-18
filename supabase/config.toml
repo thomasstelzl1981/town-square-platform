@@ -212,3 +212,6 @@ verify_jwt = false
 
 [functions.sot-pet-profile-init]
 verify_jwt = false
+
+[functions.sot-z3-auth]
+verify_jwt = false

@@ -12525,6 +12525,7 @@ export type Database = {
           last_name: string
           lead_id: string | null
           notes: string | null
+          password_hash: string | null
           phone: string | null
           postal_code: string | null
           source: string
@@ -12545,6 +12546,7 @@ export type Database = {
           last_name: string
           lead_id?: string | null
           notes?: string | null
+          password_hash?: string | null
           phone?: string | null
           postal_code?: string | null
           source?: string
@@ -12565,6 +12567,7 @@ export type Database = {
           last_name?: string
           lead_id?: string | null
           notes?: string | null
+          password_hash?: string | null
           phone?: string | null
           postal_code?: string | null
           source?: string
@@ -12659,6 +12662,38 @@ export type Database = {
           {
             foreignKeyName: "pet_z1_pets_z1_customer_id_fkey"
             columns: ["z1_customer_id"]
+            isOneToOne: false
+            referencedRelation: "pet_z1_customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pet_z3_sessions: {
+        Row: {
+          created_at: string | null
+          customer_id: string
+          expires_at: string
+          id: string
+          session_token: string
+        }
+        Insert: {
+          created_at?: string | null
+          customer_id: string
+          expires_at?: string
+          id?: string
+          session_token: string
+        }
+        Update: {
+          created_at?: string | null
+          customer_id?: string
+          expires_at?: string
+          id?: string
+          session_token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pet_z3_sessions_customer_id_fkey"
+            columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "pet_z1_customers"
             referencedColumns: ["id"]

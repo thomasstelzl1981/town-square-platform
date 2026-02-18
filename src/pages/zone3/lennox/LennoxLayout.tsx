@@ -1,11 +1,12 @@
 /**
  * LennoxLayout — Zone 3 Public Website "Lennox & Friends — Dog Resorts"
  * Alpine Modern CI: Tannengrün + Offwhite + Sand + Neon Coral Akzent
+ * Verwendet eigenständiges Z3-Auth (getrennt vom Portal)
  */
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { Menu, X, User, LogIn, ShoppingBag, Handshake } from 'lucide-react';
-import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { useState } from 'react';
+import { useZ3Auth } from '@/hooks/useZ3Auth';
 import lennoxLogo from '@/assets/logos/lennox_logo_minimal.jpeg';
 
 const COLORS = {
@@ -26,15 +27,7 @@ const navLinks = [
 export default function LennoxLayout() {
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [user, setUser] = useState<any>(null);
-
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-    });
-    supabase.auth.getUser().then(({ data: { user: u } }) => setUser(u));
-    return () => subscription.unsubscribe();
-  }, []);
+  const { z3User } = useZ3Auth();
 
   const isActive = (path: string) => location.pathname === path || location.pathname.startsWith(path + '/');
 
@@ -63,7 +56,7 @@ export default function LennoxLayout() {
                 {l.label}
               </Link>
             ))}
-            {user ? (
+            {z3User ? (
               <Link
                 to="/website/tierservice/mein-bereich"
                 className="text-sm font-semibold px-4 py-2 rounded-full text-white transition-colors inline-flex items-center gap-1.5"
@@ -102,12 +95,12 @@ export default function LennoxLayout() {
               </Link>
             ))}
             <Link
-              to={user ? '/website/tierservice/mein-bereich' : '/website/tierservice/login'}
+              to={z3User ? '/website/tierservice/mein-bereich' : '/website/tierservice/login'}
               onClick={() => setMenuOpen(false)}
               className="block text-center text-sm font-semibold px-4 py-2 rounded-full text-white"
               style={{ background: COLORS.primary }}
             >
-              {user ? 'Mein Bereich' : 'Anmelden'}
+              {z3User ? 'Mein Bereich' : 'Anmelden'}
             </Link>
           </div>
         )}
