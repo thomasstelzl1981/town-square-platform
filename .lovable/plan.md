@@ -1,110 +1,129 @@
 
+# Armstrong: ChatGPT-Parität -- Dokument-Analyse im Chat
 
-# Golden Path Registry + Zone-1-Dokumentation
+## Status Quo
 
-## Ausgangslage
+Armstrong kann bereits:
+- Texte zusammenfassen (wenn der User den Text als Nachricht eingibt)
+- E-Mails, Briefe, Anschreiben entwerfen (Global Assist Mode)
+- Allgemeine Fragen beantworten (wie ChatGPT)
+- Begriffe erklaeren, Checklisten erstellen, Strategien vorschlagen
 
-Es gibt aktuell **zwei getrennte Golden-Path-Systeme** ohne konsolidierte Dokumentation:
+Was fehlt: Der User kann Armstrong **kein Dokument uebergeben** und sagen "analysiere das". Der Datenpfad "Datei -> Armstrong-Chat" existiert nicht.
 
-1. **UI-Prozesse** (`goldenPathProcesses.ts`): 17 Prozesse fuer das Portal-UX (Demo-Widgets, Compliance, Inline-Flow)
-2. **Workflow-Definitionen** (`goldenPaths/index.ts`): 8 Engine-registrierte Workflows mit Steps, Fail-States, Ledger-Events
+## Was gebaut werden muss
 
-Es fehlt:
-- Eine konsolidierte Spec-Datei (analog `ENGINE_REGISTRY.md`)
-- Eine Zone-1-Seite zur Visualisierung aller Golden Paths (analog `/admin/armstrong/engines`)
+### 1. Armstrong Chat: Dokument-Upload ermoeglichen
 
----
+Aktuell akzeptiert der Armstrong-Chat nur Text-Nachrichten. Ergaenzung:
+- Upload-Button im Chat-Interface (Bueroklammer-Icon)
+- Unterstuetzte Formate: PDF, Bilder (JPG/PNG), DOCX
+- Dateien werden temporaer in den Supabase Storage hochgeladen
+- Der Dateiinhalt wird per `sot-document-parser` extrahiert und als Kontext an Armstrong uebergeben
 
-## Was wird erstellt
+### 2. Neue Armstrong-Aktion: `ARM.GLOBAL.ANALYZE_DOCUMENT`
 
-### 1. Spec-Datei: `spec/current/07_golden_paths/GOLDEN_PATH_REGISTRY.md`
+Registrierung im Manifest:
+- action_code: `ARM.GLOBAL.ANALYZE_DOCUMENT`
+- execution_mode: `readonly` (liest nur, schreibt nichts)
+- cost_model: `metered` (1 Credit pro Dokument, wie ENG-DOCINT)
+- Verfuegbar in allen Modulen (Global Action)
+- Intent-Keywords: "analysiere", "pruefe", "was steht in", "zusammenfassung", "rechnung"
 
-Konsolidierte SSOT-Dokumentation aller Golden Paths mit:
+### 3. Backend: Dokument-Kontext an Lovable AI uebergeben
 
-**Menschenlesbare Uebersicht (oben)**
-- Tabelle mit: Name, Modul, Was passiert?, Wo im Portal?, Zonen-Fluss
-- Beispiel: "Finanzierungsanfrage | MOD-07 | Kunde reicht Finanzierung ein | Portal > Finanzierung | Z2 -> Z1 -> Z2"
+Erweiterung der `sot-armstrong-advisor` Edge Function:
+- Neuer Parameter `document_context` im Request-Body
+- Wenn vorhanden: Extrahierter Text wird als System-Context an das LLM uebergeben
+- Prompt-Template fuer Dokumentanalyse: "Analysiere das folgende Dokument und beantworte die Frage des Users"
+- Unterstuetzte Analyse-Typen:
+  - Zusammenfassung ("Fasse das zusammen")
+  - Rechnungsanalyse ("Was steht auf dieser Rechnung?")
+  - Datenextraktion ("Extrahiere die wichtigsten Zahlen")
+  - Vergleich ("Vergleiche diese zwei Dokumente")
+  - Aufbereitung ("Erstelle eine Tabelle aus diesen Daten")
 
-**Technische Registry (unten)**
+### 4. Frontend: Chat-UI-Erweiterung
 
-Zwei Abschnitte:
+Aenderungen am Armstrong-Chat-Panel:
+- Datei-Upload-Button neben dem Textfeld
+- Datei-Vorschau (Thumbnail + Dateiname) ueber dem Textfeld
+- Lade-Indikator waehrend der Dokument-Extraktion
+- Ergebnis-Darstellung mit Markdown-Rendering (Tabellen, Listen, etc.)
 
-A) **17 Portal-Prozesse** (aus `goldenPathProcesses.ts`):
+## Ablauf fuer den User
 
-| ID | Modul | Prozess | Phase | Compliance |
-|----|-------|---------|-------|------------|
-| GP-PORTFOLIO | MOD-04 | Immobilien-Portfolio | done | 6/6 |
-| GP-VERWALTUNG | MOD-04 | BWA / Controlling | done | 6/6 |
-| GP-SANIERUNG | MOD-04 | Sanierungsauftrag | done | 6/6 |
-| GP-FINANZIERUNG | MOD-07 | Finanzierungsanfrage | done | 6/6 |
-| GP-SUCHMANDAT | MOD-08 | Investment-Suchmandat | done | 6/6 |
-| GP-SIMULATION | MOD-08 | Investment-Simulation | done | 4/6 |
-| GP-FM-FALL | MOD-11 | Finanzierungsfall | done | 6/6 |
-| GP-AKQUISE-MANDAT | MOD-12 | Akquisemandat | done | 6/6 |
-| GP-PROJEKT | MOD-13 | Projektanlage | done | 6/6 |
-| GP-SERIEN-EMAIL | MOD-14 | Serien-E-Mail-Kampagne | done | 6/6 |
-| GP-RECHERCHE | MOD-14 | Rechercheauftrag | done | 6/6 |
-| GP-FAHRZEUG | MOD-17 | Fahrzeugverwaltung | done | 6/6 |
-| GP-KONTEN | MOD-18 | Kontoverwaltung | done | 6/6 |
-| GP-PV-ANLAGE | MOD-19 | PV-Anlagenanlage | done | 6/6 |
-| GP-ZUHAUSE | MOD-20 | Zuhause-Verwaltung | done | 6/6 |
-| GP-PETS | MOD-05 | Tierverwaltung | Phase 1 | 6/6 |
-| GP-PET | MOD-22 | Pet Manager Demo | Phase 1 | 3/6 |
+```text
++----------------------------------------------------------+
+|  User                                                     |
+|  1. Klickt Bueroklammer-Icon im Armstrong-Chat            |
+|  2. Waehlt Datei (PDF, Bild, DOCX)                       |
+|  3. Tippt: "Fasse das zusammen" oder "Was steht drauf?"  |
+|  4. Sendet                                                |
++----------------------------------------------------------+
+          |
+          v
++----------------------------------------------------------+
+|  Frontend                                                 |
+|  1. Upload der Datei in Supabase Storage (temp/)         |
+|  2. Aufruf: sot-document-parser (Text-Extraktion)        |
+|  3. Aufruf: sot-armstrong-advisor mit document_context    |
++----------------------------------------------------------+
+          |
+          v
++----------------------------------------------------------+
+|  Armstrong Advisor (Backend)                              |
+|  1. Erkennt Intent: EXPLAIN oder DRAFT                   |
+|  2. Fuegt extrahierten Dokumenttext als Context ein      |
+|  3. Sendet an Lovable AI (Gemini) mit Analyse-Prompt     |
+|  4. Gibt strukturierte Antwort zurueck                   |
++----------------------------------------------------------+
+          |
+          v
++----------------------------------------------------------+
+|  User sieht                                               |
+|  - Zusammenfassung / Analyse / Tabelle                   |
+|  - Kann Folgefragen stellen (Kontext bleibt erhalten)    |
+|  - Kann Ergebnis kopieren oder als Widget speichern      |
++----------------------------------------------------------+
+```
 
-B) **8 Engine-Workflows** (aus `goldenPaths/*.ts`):
+## Was NICHT gebaut werden muss
 
-| Key | Workflow | Schritte | Zonen | Fail-States | Camunda-ready |
-|-----|----------|----------|-------|-------------|---------------|
-| MOD-04 | Immobilien-Zyklus | 10 | Z2->Z1->Z2 | Ja | Ja |
-| MOD-07 | Finanzierung | 5 | Z2->Z1->Z2 | Ja | Ja |
-| MOD-08 | Investment/Akquise | 7 | Z2->Z1->Z2 | Ja | Ja |
-| MOD-13 | Projekte | 5 | Z2->Z1 | Ja | Ja |
-| GP-VERMIETUNG | Vermietungszyklus | 5 | Z1->Z3 | Ja | Ja |
-| GP-LEAD | Lead-Generierung | 4 | Z3->Z1->Z2 | Ja | Ja |
-| GP-FINANCE-Z3 | Zone-3-Finanzierung | 7 | Z3->Z1->Z2 | Ja | Ja |
-| GP-PET | Pet Manager Lifecycle | 7 | Z3->Z1->Z2 | Ja | Ja |
+- Die KI-Infrastruktur (Lovable AI Gateway) existiert bereits
+- `sot-document-parser` existiert bereits (ENG-DOCINT)
+- Der Global Assist Mode existiert bereits (EXPLAIN + DRAFT funktionieren)
+- E-Mail-Drafts funktionieren bereits (AIReplyAssistant)
 
-**Governance-Regeln**
-- GP-GR-1: Jeder Workflow MUSS Fail-States fuer Cross-Zone-Steps definieren
-- GP-GR-2: Alle Events MUESSEN in der LEDGER_EVENT_WHITELIST registriert sein
-- GP-GR-3: Demo-Widgets an Position 0 in jedem Portal-Prozess
-- GP-GR-4: Compliance 6/6 fuer Done-Status
-
-### 2. Zone-1-Seite: `ArmstrongGoldenPaths.tsx`
-
-Neue Admin-Seite unter `/admin/armstrong/golden-paths` (analog zu `/admin/armstrong/engines`):
-
-**Aufbau:**
-- Seitentitel: "Golden Path Registry"
-- Beschreibung: "Alle registrierten Geschaeftsprozesse und Workflow-Definitionen"
-- Filter-Tabs: Alle | Portal-Prozesse (17) | Engine-Workflows (8)
-- Pro Eintrag eine Karte mit:
-  - Name, Modul-Badge, Status-Badge (Done/Phase 1/Teilweise)
-  - Beschreibung
-  - Compliance-Score (z.B. "6/6")
-  - Zonen-Flow (farbige Badges: Z1/Z2/Z3)
-  - Route-Link zum Prozess
-
-**Datenquelle:** Liest direkt aus `goldenPathProcesses.ts` (Portal) und `goldenPaths/index.ts` (Engine) — kein Duplizieren von Daten.
-
-### 3. Navigation
-
-Neuen Menuepunkt "Golden Paths" unter Armstrong im Admin-Menue einfuegen (neben "Engines", "Logs", etc.).
-
----
+Es fehlt nur der **Verbindungspfad**: Datei-Upload -> Text-Extraktion -> Armstrong-Context
 
 ## Technische Details
 
-### Neue Dateien
-- `spec/current/07_golden_paths/GOLDEN_PATH_REGISTRY.md` — SSOT-Dokumentation
-- `src/pages/admin/armstrong/ArmstrongGoldenPaths.tsx` — Zone-1-UI-Seite
+### Neue/geaenderte Dateien
 
-### Geaenderte Dateien
-- Armstrong-Navigation/Routing: Neuen Menuepunkt + Route hinzufuegen
-- Keine Aenderungen an den bestehenden Manifest-Dateien
+**Manifest (1 Datei):**
+- `src/manifests/armstrongManifest.ts` -- Neue Action `ARM.GLOBAL.ANALYZE_DOCUMENT` registrieren
 
-### Umfang
-- 1 Markdown-Datei (~250 Zeilen)
-- 1 React-Komponente (~200 Zeilen, Muster von `ArmstrongEngines.tsx`)
-- 1 Navigations-Update
+**Backend (1 Datei):**
+- `supabase/functions/sot-armstrong-advisor/index.ts` -- Erweiterung um `document_context` Parameter, Analyse-Prompt-Template, Intent-Keywords
 
+**Frontend (2-3 Dateien):**
+- Armstrong-Chat-Komponente -- Upload-Button, Datei-Vorschau, Upload-Logik
+- Hook fuer Dokument-Upload + Parser-Aufruf (ggf. neuer Hook `useArmstrongDocUpload`)
+
+### Kosten-Modell
+- 1 Credit pro Dokument-Analyse (wie ENG-DOCINT)
+- Credit-Preflight vor Parser-Aufruf
+- Folgefragen zum selben Dokument: Free (Kontext ist bereits extrahiert)
+
+### Governance
+- execution_mode: `readonly` -- Armstrong liest nur, schreibt nichts
+- risk_level: `low` -- keine Seiteneffekte
+- Dokumente bleiben im Tenant-Scope (RLS)
+- Temporaere Dateien werden nach 24h geloescht
+
+## Umfang
+- 1 Manifest-Eintrag
+- 1 Backend-Erweiterung (~100 Zeilen)
+- 2-3 Frontend-Dateien (~200 Zeilen)
+- Geschaetzte Umsetzung: 1 Session
