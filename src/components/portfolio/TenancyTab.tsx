@@ -20,6 +20,7 @@ import {
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import { Loader2, AlertTriangle, UserPlus, Mail, CheckCircle, XCircle, Clock, History, Euro, Plus, FileText, TrendingUp, ChevronDown, Save, Trash2 } from 'lucide-react';
+import { isDemoId } from '@/engines/demoData/engine';
 import { WidgetDeleteOverlay } from '@/components/shared/WidgetDeleteOverlay';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -371,11 +372,13 @@ export function TenancyTab({ propertyId, tenantId, unitId }: TenancyTabProps) {
 
     return (
       <Card key={lease.id} className="relative group">
-        <WidgetDeleteOverlay
-          title={lease.tenant_contact ? `${lease.tenant_contact.first_name} ${lease.tenant_contact.last_name}` : 'Mietvertrag'}
-          onConfirmDelete={() => handleDeleteLease(lease.id)}
-          isDeleting={deletingLeaseId === lease.id}
-        />
+        {!isDemoId(lease.id) && (
+          <WidgetDeleteOverlay
+            title={lease.tenant_contact ? `${lease.tenant_contact.first_name} ${lease.tenant_contact.last_name}` : 'Mietvertrag'}
+            onConfirmDelete={() => handleDeleteLease(lease.id)}
+            isDeleting={deletingLeaseId === lease.id}
+          />
+        )}
         <CardHeader className="pb-2 pt-3 px-4">
           <div className="flex items-center justify-between">
             <CardTitle className="text-sm flex items-center gap-2">

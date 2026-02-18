@@ -199,11 +199,13 @@ export default function UebersichtTile() {
               <div className="flex flex-col gap-3 sm:grid sm:grid-cols-3 sm:gap-4">
                 {/* Kachel 1: Adresse */}
                 <Card className={cn("glass-card h-[240px] sm:aspect-square sm:h-auto flex flex-col relative group", isDemo && DEMO_WIDGET.CARD)}>
-                  <WidgetDeleteOverlay
-                    title={home.name || 'Zuhause'}
-                    onConfirmDelete={() => deleteHomeMutation.mutate(home.id)}
-                    isDeleting={deletingHomeId === home.id}
-                  />
+                  {!isDemo && (
+                    <WidgetDeleteOverlay
+                      title={home.name || 'Zuhause'}
+                      onConfirmDelete={() => deleteHomeMutation.mutate(home.id)}
+                      isDeleting={deletingHomeId === home.id}
+                    />
+                  )}
                   <CardContent className="p-5 flex flex-col justify-between h-full">
                     <div>
                       <div className="flex items-center gap-2 mb-3">

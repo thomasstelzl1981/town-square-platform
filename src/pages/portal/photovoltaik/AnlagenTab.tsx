@@ -293,11 +293,13 @@ export default function AnlagenTab() {
                 )}
                 onClick={() => handleOpenPlant(plant.id)}
               >
-                <WidgetDeleteOverlay
-                  title={plant.name}
-                  onConfirmDelete={() => deletePlantMutation.mutate(plant.id)}
-                  isDeleting={deletingPlantId === plant.id}
-                />
+                {!isDemoId(plant.id) && (
+                  <WidgetDeleteOverlay
+                    title={plant.name}
+                    onConfirmDelete={() => deletePlantMutation.mutate(plant.id)}
+                    isDeleting={deletingPlantId === plant.id}
+                  />
+                )}
                 <CardContent className="p-4 h-full flex flex-col justify-between">
                   <div>
                     <div className="flex items-center justify-between mb-2">
