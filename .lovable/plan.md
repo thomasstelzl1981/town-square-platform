@@ -1,259 +1,102 @@
 
 
-# MOD-10 Lead Manager: Inline-Umbau + Projekt-Kampagnen fuer MOD-13
+# Soll-Ist-Analyse: Spec-Dateien, Audit-Katalog und Manifest nach Manager-Modul-Aenderungen
 
-## Ueberblick
+## Zusammenfassung der bisherigen Aenderungen
 
-Der Lead Manager (MOD-10) wird von 6 separaten Seiten zu **einer einzigen Inline-Seite** zusammengefuehrt. Zusaetzlich erhaelt MOD-13 (Projektmanager) einen eigenen "Lead Manager"-Tile, ueber den der Projektmanager Kampagnen **fuer seine angelegten Projekte** starten kann.
+In den letzten Sessions wurden folgende Aenderungen umgesetzt:
 
-## Kernlogik: Projekt-Kampagnen
+1. **MOD-09 (Immomanager):** Tile "Systemgebühr" hinzugefuegt, Titel auf "Provisionen" umbenannt
+2. **MOD-12 (Akquisemanager):** Tile "Systemgebühr" hinzugefuegt (6. Tile!), Titel auf "Provisionen" umbenannt
+3. **MOD-11 (Finanzierungsmanager):** Hatte bereits "Provisionen" — keine Aenderung
+4. **MOD-10 (Lead Manager):** Komplett umgebaut von 6 Sub-Seiten auf Inline-Flow, Route von `/portal/provisionen` auf `/portal/lead-manager` geaendert, Name von "Provisionen" auf "Lead Manager"
+5. **MOD-13 (Projektmanager):** Neuer Tile "Lead Manager" hinzugefuegt (5. Tile!), DB-Spalte `social_mandates.project_id`
 
-Der Projektmanager hat Projekte in `dev_projects` angelegt. Wenn er eine Lead-Kampagne startet, waehlt er nicht eine feste Firmen-Brand (Kaufy, FutureRoom etc.), sondern **eines seiner eigenen Projekte** als Kampagnenkontext. Die Projektdaten (Name, Ort, Preisrange, Einheitentypen) fliessen automatisch in die Personalisierung und Template-Texte ein.
+---
 
-## Inline-Flow Skizze (eine Seite, von oben nach unten)
+## Soll-Ist je Datei
 
-```text
-/portal/lead-manager  (oder /portal/projekte/lead-manager fuer MOD-13)
-+====================================================================+
-|  ModulePageHeader: LEAD MANAGER                                    |
-|  "Kampagnen planen, Leads verwalten"                               |
-+====================================================================+
+### 1. `artifacts/audit/zone2_modules.json`
 
-+--------------------------------------------------------------------+
-| KACHEL 1: UEBERSICHT (KPIs)                                       |
-|                                                                    |
-|  +------------+ +----------------+ +--------+ +-----------------+  |
-|  | Ausgaben   | | Leads generiert| | CPL    | | Aktive Kampagnen|  |
-|  | 12.500 EUR | | 47             | | 266 EUR| | 3               |  |
-|  +------------+ +----------------+ +--------+ +-----------------+  |
-|                                                                    |
-|  Filter: [Alle] [Kaufy] [FutureRoom] [Acquiary] [Projekte]        |
-+--------------------------------------------------------------------+
+| Modul | IST (veraltet) | SOLL (aktuell) |
+|-------|----------------|----------------|
+| MOD-09 | `tiles: ["katalog","beratung","kunden","network","leads"]`, tile_count: 5 | `tiles: ["katalog","beratung","kunden","network","systemgebuehr"]`, tile_count: 5, note: Tile "leads" umbenannt zu "systemgebuehr", Display-Titel "Provisionen" |
+| MOD-10 | `name: "Provisionen"`, `base: "provisionen"`, `tiles: ["uebersicht"]`, tile_count: 1, note: "Legacy route /portal/leads" | `name: "Lead Manager"`, `base: "lead-manager"`, `tiles: ["inline"]`, tile_count: 1, note: "Inline-Flow. Legacy routes /portal/provisionen + /portal/leads redirect here." |
+| MOD-12 | `tiles: ["dashboard","mandate","objekteingang","datenbank","tools"]`, tile_count: 5 | `tiles: ["dashboard","mandate","objekteingang","datenbank","tools","systemgebuehr"]`, tile_count: 6, note: "6. Tile 'systemgebuehr' (Display: Provisionen) hinzugefuegt" |
+| MOD-13 | `tiles: ["dashboard","projekte","vertrieb","landing-page"]`, tile_count: 4 | `tiles: ["dashboard","projekte","vertrieb","landing-page","lead-manager"]`, tile_count: 5, note: "5. Tile 'lead-manager' fuer Projekt-Kampagnen" |
 
-+--------------------------------------------------------------------+
-| KACHEL 2: MEINE KAMPAGNEN (Liste)                                  |
-|                                                                    |
-|  +--------------------------------------------------------------+  |
-|  | [Kaufy] Kampagne #1         Budget: 2.500 EUR     [Live]     |  |
-|  | 01.03 - 31.03.2026  |  Muenchen, Berlin                     |  |
-|  +--------------------------------------------------------------+  |
-|  | [Projekt: Residenz am Park] Kampagne #2  5.000 EUR [Eingereicht]|
-|  | 15.03 - 15.04.2026  |  Muenchen                              |  |
-|  +--------------------------------------------------------------+  |
-|                                                                    |
-|  Klick -> Inline-Detail klappt auf (Status, Creatives, Leads)      |
-|  Wenn leer: EmptyState "Noch keine Kampagnen"                      |
-+--------------------------------------------------------------------+
+Ausserdem: `total_tiles` muss von 95 auf 97 aktualisiert werden (+1 MOD-12, +1 MOD-13; MOD-09 bleibt 5, MOD-10 bleibt 1).
 
-+--------------------------------------------------------------------+
-| KACHEL 3: NEUE KAMPAGNE PLANEN (Step-by-Step, immer sichtbar)      |
-|                                                                    |
-|  SCHRITT 3a: Kontext waehlen                                       |
-|  +--------------------------------------------------------------+  |
-|  | Was moechten Sie bewerben?                                    |  |
-|  |                                                               |  |
-|  | [Kaufy] [FutureRoom] [Acquiary] [Lennox & Friends]            |  |
-|  |                                                               |  |
-|  | --- oder ---                                                  |  |
-|  |                                                               |  |
-|  | [v Mein Projekt waehlen]                                      |  |
-|  |   > Residenz am Park (Muenchen, 24 Einheiten)                 |  |
-|  |   > Sonnenhof Bogenhausen (Muenchen, 12 Einheiten)            |  |
-|  |   > Parkvillen Gruenwald (Gruenwald, 6 Einheiten)             |  |
-|  |                                                               |  |
-|  | Gewaehlt: [Residenz am Park - Muenchen]                       |  |
-|  +--------------------------------------------------------------+  |
-|                                                                    |
-|  SCHRITT 3b: Kampagnen-Parameter                                   |
-|  +--------------------------------------------------------------+  |
-|  | Ziel: Lead-Generierung     | Plattform: Facebook + Instagram |  |
-|  | Laufzeit: [01.03] - [31.03]| Budget: [5.000] EUR             |  |
-|  | Regionen: [Muenchen] (vorbefuellt aus Projekt)                |  |
-|  | Zielgruppe: [Kapitalanlage] [Eigennutz] [Vermietung]          |  |
-|  +--------------------------------------------------------------+  |
-|                                                                    |
-|  SCHRITT 3c: Template-Slots (5 CI Templates)                       |
-|  +--------------------------------------------------------------+  |
-|  | Bei Brand: Standard-Templates (Rendite, Portrait, etc.)       |  |
-|  | Bei Projekt: Projekt-spezifische Templates:                   |  |
-|  |                                                               |  |
-|  | [T1: Projekt-Showcase]    Projektname + Ort + Visualisierung  |  |
-|  | [T2: Berater-Portrait]    Ihr Name + Region + Erfahrung       |  |
-|  | [T3: Preis-Highlight]     Preisrange + Einheitentypen         |  |
-|  | [T4: Standort-Highlight]  Lage + Infrastruktur + Karte        |  |
-|  | [T5: Verfuegbarkeit]      X von Y Einheiten verfuegbar        |  |
-|  |                                                               |  |
-|  | Gewaehlt: 3/5 Slots                                           |  |
-|  +--------------------------------------------------------------+  |
-|                                                                    |
-|  SCHRITT 3d: Personalisierung                                      |
-|  +--------------------------------------------------------------+  |
-|  | Beraterportrait: [Upload]   | Name: [Max Mustermann]         |  |
-|  | Region: [Muenchen] (auto)   | Claim: [Ihr Projektexperte]    |  |
-|  |                                                               |  |
-|  | Bei Projekt automatisch vorbefuellt:                           |  |
-|  | Projektname: Residenz am Park                                 |  |
-|  | Standort: Muenchen                                            |  |
-|  | Preisrange: ab 289.000 EUR                                    |  |
-|  | Einheiten: 24 (18 frei, 4 reserviert, 2 verkauft)             |  |
-|  +--------------------------------------------------------------+  |
-|                                                                    |
-|  SCHRITT 3e: Creatives generieren                                  |
-|  +--------------------------------------------------------------+  |
-|  | [Button: Generieren (3 Slots)]                                |  |
-|  |                                                               |  |
-|  | T1: Projekt-Showcase  [Slide 1][Slide 2][Slide 3][Slide 4]    |  |
-|  |     Caption: "Residenz am Park — ab 289.000 EUR"              |  |
-|  |     CTA: "Jetzt Exposé anfordern"                             |  |
-|  | T3: Preis-Highlight   [Slide 1][Slide 2][Slide 3][Slide 4]    |  |
-|  |     Caption: "24 Wohneinheiten — 18 noch verfuegbar"          |  |
-|  |     CTA: "Einheiten entdecken"                                |  |
-|  +--------------------------------------------------------------+  |
-|                                                                    |
-|  SCHRITT 3f: Zusammenfassung + Beauftragen                         |
-|  +--------------------------------------------------------------+  |
-|  | Kontext: Residenz am Park  | Budget: 5.000 EUR               |  |
-|  | Laufzeit: 01.03-31.03      | Templates: 3 Slots              |  |
-|  | Leistungsumfang:                                              |  |
-|  |   - 3 Slideshow-Anzeigen                                     |  |
-|  |   - Veroeffentlichung ueber zentralen Meta-Account            |  |
-|  |   - Lead-Erfassung + automatische Zuordnung                   |  |
-|  |   - Performance-Dashboard                                     |  |
-|  |                                                               |  |
-|  | [======= Beauftragen - 5.000 EUR =======]                     |  |
-|  +--------------------------------------------------------------+  |
-+--------------------------------------------------------------------+
+### 2. `spec/current/02_modules/mod-09_vertriebspartner.md`
 
-+--------------------------------------------------------------------+
-| KACHEL 4: MEINE LEADS (Liste mit Inline-Detail)                    |
-|                                                                    |
-|  Filter: [Status v] [Brand/Projekt v]                              |
-|                                                                    |
-|  +--------------------------------------------------------------+  |
-|  | [o] Max Mueller  |  12.03.2026  |  Kaufy      |  [Neu]       |  |
-|  +--------------------------------------------------------------+  |
-|  | [o] Anna Schmidt |  14.03.2026  |  Residenz.. |  [Kontaktiert]|  |
-|  +--------------------------------------------------------------+  |
-|     v Inline-Detail (aufgeklappt):                                  |
-|     +----------------------------------------------------------+   |
-|     | Name: Anna Schmidt    | E-Mail: anna@example.de          |   |
-|     | Telefon: 0171-...     | Projekt: Residenz am Park         |   |
-|     | Status: [v Kontaktiert]                                   |   |
-|     | Notizen: [___________________________]                    |   |
-|     +----------------------------------------------------------+   |
-|                                                                    |
-|  Wenn leer: EmptyState "Noch keine Leads"                          |
-+--------------------------------------------------------------------+
-```
+| Aspekt | IST | SOLL |
+|--------|-----|------|
+| Tiles-Tabelle | 5 Tiles: Katalog, Beratung, Kunden, Network, Leads | 5 Tiles: Katalog, Beratung, Kunden, Network, **Provisionen** (Route: systemgebuehr) |
+| Tile-Catalog YAML | `sub_tiles: [katalog, beratung, kunden, network, leads]` | `sub_tiles: [katalog, beratung, kunden, network, systemgebuehr]` |
+| Selfie Ads Abschnitt | Route: `/portal/vertriebspartner/selfie-ads` | Entfernen oder als Legacy markieren — Selfie Ads ist jetzt in MOD-10 Lead Manager konsolidiert |
+| Version | 1.0.0 | 1.1.0 |
+| Changelog | Nur Initial Release | + "1.1.0: Tile 'Leads' ersetzt durch 'Provisionen' (Systemgebuehr-Vereinbarung). Selfie Ads in MOD-10 konsolidiert." |
 
-## Technische Umsetzung
+### 3. `spec/current/02_modules/mod-10_abrechnung.md`
 
-### 1. DB-Migration: `project_id` auf `social_mandates`
+| Aspekt | IST | SOLL |
+|--------|-----|------|
+| Dateiname | `mod-10_abrechnung.md` | Umbenennen zu `mod-10_lead-manager.md` |
+| Titel | "ABRECHNUNG (Commission Management)" | "LEAD MANAGER (Campaign & Lead Management)" |
+| Route-Prefix | `/portal/leads` | `/portal/lead-manager` |
+| SSOT-Rolle | "Source of Truth fuer Provisionsabrechnungen" | "Source of Truth fuer Lead-Kampagnen, Selfie Ads und Lead-Verwaltung" |
+| FROZEN RULES R2 | Route bleibt `/portal/leads` | Route ist `/portal/lead-manager`, Legacy-Redirects fuer `/portal/leads` und `/portal/provisionen` |
+| FROZEN RULES R3 | Display-Name "Abrechnung" | Display-Name "Lead Manager" |
+| Tiles | 1 Tile: Uebersicht | 1 Tile: Inline-Flow (KPIs, Kampagnen, Planung, Leads — alles auf einer Seite) |
+| Tile-Catalog YAML | `title: "Abrechnung"`, `main_route: "/portal/leads"` | `title: "Lead Manager"`, `main_route: "/portal/lead-manager"`, `icon: "Megaphone"` |
+| Neuer Abschnitt | — | Projekt-Kampagnen: `social_mandates.project_id` fuer MOD-13 Integration |
+| Edge Functions | — | `sot-social-mandate-submit` (erweitert um project_id) |
+| Version | 1.2.0 | 2.0.0 |
 
-```sql
-ALTER TABLE public.social_mandates
-  ADD COLUMN IF NOT EXISTS project_id UUID REFERENCES public.dev_projects(id);
-CREATE INDEX idx_social_mandates_project ON public.social_mandates(project_id);
-```
+### 4. `spec/current/02_modules/mod-12_akquise-manager.md`
 
-- `project_id` ist NULL bei Brand-Kampagnen (Kaufy, FutureRoom etc.)
-- `project_id` ist gefuellt bei Projekt-Kampagnen aus MOD-13
-- Wenn `project_id` gesetzt, wird `brand_context` auf `'project'` gesetzt
+| Aspekt | IST | SOLL |
+|--------|-----|------|
+| Tiles-Tabelle | 5 Tiles | 6 Tiles: + Provisionen (Route: systemgebuehr) |
+| Tile-Catalog YAML | `sub_tiles: [dashboard, mandate, objekteingang, tools, datenbank]` | `sub_tiles: [dashboard, mandate, objekteingang, datenbank, tools, systemgebuehr]` |
+| Version | 1.0.0 | 1.1.0 |
+| Changelog | Nur Initial Release | + "1.1.0: Tile 'Provisionen' (Systemgebuehr-Vereinbarung) hinzugefuegt." |
 
-### 2. Neue Datei: `LeadManagerInline.tsx`
+### 5. `spec/current/02_modules/mod-13_projekte.md`
 
-Ersetzt die bisherigen 6 Einzelseiten durch eine einzige Inline-Seite mit 4 Kacheln (Cards). Akzeptiert optionale Props:
+| Aspekt | IST | SOLL |
+|--------|-----|------|
+| Tiles-Tabelle | 4 Tiles: Uebersicht, Timeline, Dokumente, Einstellungen | **Achtung: Spec ist komplett veraltet!** Manifest hat: Dashboard, Projekte, Vertrieb, Landing Page, Lead Manager (5 Tiles) |
+| Tile-Catalog YAML | `sub_tiles: [uebersicht, timeline, dokumente, einstellungen]` | `sub_tiles: [dashboard, projekte, vertrieb, landing-page, lead-manager]` |
+| Edge Functions | 3 Functions | + `sot-social-mandate-submit` (Projekt-Kampagnen) |
+| Neuer Abschnitt | — | Lead Manager: Projekt-Kampagnen, `social_mandates.project_id`, Inline-Flow |
+| Version | 1.0.0 | 1.1.0 |
+| Changelog | Nur Initial Release | + "1.1.0: Tile 'Lead Manager' hinzugefuegt. Tiles an Manifest angeglichen (Dashboard, Projekte, Vertrieb, Landing Page, Lead Manager)." |
 
-```text
-Props:
-  projectFilter?: string   — Wenn gesetzt, zeigt nur Kampagnen/Leads dieses Projekts
-  contextMode?: 'brand' | 'project' | 'all'  — Steuert Kontext-Auswahl in Kachel 3
-```
+### 6. `spec/current/02_modules/mod-11_finanzierungsmanager.md`
 
-Kachel 1 = KPI-Logik aus `LeadManagerUebersicht.tsx`
-Kachel 2 = Kampagnenliste aus `LeadManagerKampagnen.tsx` (mit Inline-Detail statt Navigation)
-Kachel 3 = Kampagnen-Planung aus `LeadManagerStudioPlanen.tsx` + Summary aus `LeadManagerStudioSummary.tsx` (zusammengefuehrt, kein Seitenwechsel)
-Kachel 4 = Lead-Liste aus `LeadManagerLeads.tsx` (bereits Inline-Detail)
+| Aspekt | IST | SOLL |
+|--------|-----|------|
+| Routes-Tabelle | Veraltet (dashboard, faelle, kommunikation, status) | Manifest hat: Dashboard, Finanzierungsakte, Einreichung, Provisionen, Archiv (5 Tiles) |
+| Version | 2.1.0 | 2.2.0 |
+| Changelog | — | + "2.2.0: Routes-Tabelle an Manifest angeglichen. Tile 'Provisionen' (Systemgebuehr) dokumentiert." |
 
-### 3. Projekt-Kontext in Kachel 3
+### 7. `spec/current/02_zones.md` — Keine Aenderung noetig
 
-Wenn `contextMode` `'project'` oder `'all'` ist:
-- Neben den 4 Brand-Badges erscheint ein Separator und ein Select-Dropdown "Mein Projekt waehlen"
-- Das Dropdown laedt `dev_projects` des Users via `useDevProjects()` Hook (existiert bereits)
-- Bei Projektwahl werden automatisch vorbefuellt:
-  - Region aus `dev_projects.city`
-  - Personalisierung: Projektname, Ort, Preisrange (aus `dev_project_units` MIN/MAX Preis)
-  - Template-Texte passen sich an (projekt-spezifische Captions/CTAs)
+Die Zone-Boundary-Contracts sind stabil. Keine strukturellen Aenderungen.
 
-### 4. Projekt-spezifische Templates
-
-Bei `brand_context === 'project'` werden statt der Standard-Templates projektspezifische angeboten:
-
-| Slot | Template | Beschreibung |
-|------|----------|-------------|
-| T1 | Projekt-Showcase | Projektname + Ort + Visualisierung |
-| T2 | Berater-Portrait | Persoenliche Vorstellung (wie Standard) |
-| T3 | Preis-Highlight | Preisrange + Einheitentypen aus Projektdaten |
-| T4 | Standort-Highlight | Lage + Infrastruktur |
-| T5 | Verfuegbarkeit | X von Y frei, erzeugt Dringlichkeit |
-
-### 5. LeadManagerPage.tsx vereinfachen
-
-Statt 6 Sub-Routes nur noch:
-
-```text
-<Routes>
-  <Route index element={<LeadManagerInline />} />
-  {/* Legacy-Redirects fuer Bookmarks */}
-  <Route path="uebersicht" element={<Navigate to="/portal/lead-manager" replace />} />
-  <Route path="kampagnen" element={<Navigate to="/portal/lead-manager" replace />} />
-  <Route path="studio/*" element={<Navigate to="/portal/lead-manager" replace />} />
-  <Route path="leads" element={<Navigate to="/portal/lead-manager" replace />} />
-  <Route path="*" element={<Navigate to="/portal/lead-manager" replace />} />
-</Routes>
-```
-
-### 6. MOD-13 Integration: Neuer Tile "Lead Manager"
-
-In `routesManifest.ts` unter MOD-13 einen neuen Tile hinzufuegen:
-
-```text
-{ path: "lead-manager", component: "ProjekteLeadManager", title: "Lead Manager" }
-```
-
-Neue Datei `src/pages/portal/projekte/ProjekteLeadManager.tsx`:
-- Rendert `<LeadManagerInline contextMode="project" />`
-- Der Projektmanager sieht hier nur Kampagnen/Leads, die mit seinen Projekten verknuepft sind
-- Im Kontext-Schritt (3a) werden nur seine eigenen Projekte aus `dev_projects` angezeigt (keine Brand-Auswahl)
-
-### 7. Edge Function Update: `sot-social-mandate-submit`
-
-Erweitern um optionalen `project_id` Parameter:
-- Wird in `social_mandates.project_id` gespeichert
-- `brand_context` wird auf `'project'` gesetzt wenn `project_id` vorhanden
-
-### 8. Routing + Manifest Updates
-
-| Datei | Aenderung |
-|-------|-----------|
-| `src/pages/portal/lead-manager/LeadManagerInline.tsx` | Neu: Einzel-Inline-Seite mit 4 Kacheln |
-| `src/pages/portal/LeadManagerPage.tsx` | Vereinfachen auf eine Route + Legacy-Redirects |
-| `src/pages/portal/projekte/ProjekteLeadManager.tsx` | Neu: Wrapper fuer MOD-13 |
-| `src/manifests/routesManifest.ts` | MOD-13 Tile "Lead Manager" + MOD-10 Tiles bereinigen |
-| `src/router/ManifestRouter.tsx` | componentMap: ProjekteLeadManager hinzufuegen |
-| `src/pages/portal/ProjektePage.tsx` | Route "lead-manager" hinzufuegen |
-| `supabase/functions/sot-social-mandate-submit/index.ts` | `project_id` Parameter |
-| Migration SQL | `social_mandates.project_id` Spalte |
-
-Die bisherigen Einzelseiten (`LeadManagerUebersicht`, `LeadManagerKampagnen`, `LeadManagerStudio`, `LeadManagerStudioPlanen`, `LeadManagerStudioSummary`, `LeadManagerLeads`) bleiben als Legacy-Dateien bestehen, werden aber nicht mehr geroutet.
+---
 
 ## Umsetzungsreihenfolge
 
-1. DB-Migration: `project_id` Spalte auf `social_mandates`
-2. `LeadManagerInline.tsx` bauen (4 Kacheln, alles inline, Step-by-Step)
-3. Projekt-Kontext integrieren (dev_projects laden, Templates anpassen)
-4. `LeadManagerPage.tsx` vereinfachen
-5. `ProjekteLeadManager.tsx` + MOD-13 Routing
-6. Edge Function `sot-social-mandate-submit` erweitern
-7. ManifestRouter componentMap aktualisieren
+| # | Datei | Aenderungstyp |
+|---|-------|---------------|
+| 1 | `artifacts/audit/zone2_modules.json` | MOD-09, MOD-10, MOD-12, MOD-13 aktualisieren, total_tiles auf 97 |
+| 2 | `spec/current/02_modules/mod-10_abrechnung.md` | Komplett umschreiben und umbenennen zu `mod-10_lead-manager.md` |
+| 3 | `spec/current/02_modules/mod-09_vertriebspartner.md` | Tiles-Tabelle, YAML, Changelog aktualisieren |
+| 4 | `spec/current/02_modules/mod-12_akquise-manager.md` | 6. Tile dokumentieren, YAML, Changelog |
+| 5 | `spec/current/02_modules/mod-13_projekte.md` | Tiles komplett an Manifest angleichen, Lead Manager dokumentieren |
+| 6 | `spec/current/02_modules/mod-11_finanzierungsmanager.md` | Routes-Tabelle an Manifest angleichen |
+
+Insgesamt: **6 Dateien** werden aktualisiert/umgeschrieben.
 
