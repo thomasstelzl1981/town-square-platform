@@ -1,0 +1,1 @@
+ALTER TABLE public.pet_providers ADD COLUMN is_published boolean DEFAULT false;

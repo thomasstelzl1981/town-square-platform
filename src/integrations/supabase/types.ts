@@ -12071,6 +12071,7 @@ export type Database = {
           facility_type: string
           gallery_images: string[] | null
           id: string
+          is_published: boolean | null
           max_daily_capacity: number
           operating_hours: Json | null
           phone: string | null
@@ -12093,6 +12094,7 @@ export type Database = {
           facility_type?: string
           gallery_images?: string[] | null
           id?: string
+          is_published?: boolean | null
           max_daily_capacity?: number
           operating_hours?: Json | null
           phone?: string | null
@@ -12115,6 +12117,7 @@ export type Database = {
           facility_type?: string
           gallery_images?: string[] | null
           id?: string
+          is_published?: boolean | null
           max_daily_capacity?: number
           operating_hours?: Json | null
           phone?: string | null
