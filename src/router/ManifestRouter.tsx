@@ -153,6 +153,7 @@ const SotManagement = React.lazy(() => import('@/pages/zone3/sot/SotManagement')
 const SotEnergy = React.lazy(() => import('@/pages/zone3/sot/SotEnergy'));
 const SotKarriere = React.lazy(() => import('@/pages/zone3/sot/SotKarriere'));
 const SotFAQ = React.lazy(() => import('@/pages/zone3/sot/SotFAQ'));
+const SotArmstrong = React.lazy(() => import('@/pages/zone3/sot/SotArmstrong'));
 
 // Zone 3: ACQUIARY Website (lazy loaded)
 const AcquiaryLayout = React.lazy(() => import('@/pages/zone3/acquiary/AcquiaryLayout'));
@@ -356,6 +357,7 @@ const sotComponentMap: Record<string, React.ComponentType> = {
   SotEnergy,
   SotKarriere,
   SotFAQ,
+  SotArmstrong,
 };
 
 // =============================================================================

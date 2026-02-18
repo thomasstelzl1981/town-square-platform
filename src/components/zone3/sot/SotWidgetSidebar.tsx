@@ -3,7 +3,7 @@
  * Mobile: Instagram-style glass bottom nav with 6 round buttons.
  */
 import { Link, useLocation } from 'react-router-dom';
-import { Building2, TrendingUp, FolderKanban, Settings, Zap, Users } from 'lucide-react';
+import { Building2, TrendingUp, FolderKanban, Settings, Zap, Users, Bot } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const sidebarWidgets = [
@@ -41,6 +41,13 @@ const sidebarWidgets = [
     sublabel: 'PV & Energieverträge',
     icon: Zap, 
     href: '/website/sot/energy',
+  },
+  { 
+    id: 'armstrong', 
+    label: 'Armstrong', 
+    sublabel: 'KI-Co-Pilot',
+    icon: Bot, 
+    href: '/website/sot/armstrong',
   },
   { 
     id: 'karriere', 
