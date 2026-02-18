@@ -1,125 +1,104 @@
 
 
-# Armstrong-Seite: Werbeseite + Billing Hub
+# Stripe-Integration: Erklaerung und Umsetzungsplan
 
-## Konzept
+## Was ist "Social Payment" in MOD-14?
 
-Die Seite `/portal/armstrong` bleibt eine Armstrong-Werbeseite, wird aber um Billing-Sektionen erweitert. Sie dient als "Kurzbedienungsanleitung + Preisliste" — alles, was ein Nutzer ueber Armstrong wissen muss, auf einer Seite.
+MOD-14 ("Communication Pro") hat einen Bereich namens **Social** unter `/portal/communication-pro/social`. Dort koennen Nutzer Social-Media-Posts erstellen, bearbeiten und planen (LinkedIn, Instagram, Facebook).
 
-## Seitenaufbau (von oben nach unten)
+Der Workflow ist aktuell **manuell**: Post schreiben, Text kopieren, selbst bei LinkedIn/Instagram einfuegen. Es gibt keine direkte API-Anbindung an Social-Media-Plattformen.
 
-```text
-+──────────────────────────────────────────────+
-│  HERO: Armstrong — Ihr KI-Co-Pilot          │
-│  Untertitel + Bot-Icon (bestehend)           │
-+──────────────────────────────────────────────+
-│  3 USP-Karten: Kein Abo | Multi-Modul |     │
-│  Datenschutz (bestehend)                     │
-+──────────────────────────────────────────────+
-│  "Wie Armstrong arbeitet" — 3 Schritte       │
-│  (bestehend)                                 │
-+──────────────────────────────────────────────+
-│  CREDIT-SALDO (NEU)                          │
-│  KPI-Karten: Guthaben | Verbraucht |         │
-│  Transaktionen | Ø pro Aktion                │
-│  (KostenDashboard verschoben von Abrechnung) │
-+──────────────────────────────────────────────+
-│  SYSTEM-PREISLISTE (NEU)                     │
-│  Konsolidierte Tabelle mit ALLEN Kosten:     │
-│  KI-Aktionen + Infrastruktur-Services        │
-│  (ArmstrongCreditPreisliste + neue Infra)    │
-+──────────────────────────────────────────────+
-│  SERVICES & ADD-ONS (NEU)                    │
-│  E-Mail-Anreicherung Toggle                  │
-│  WhatsApp Business Einstellungen             │
-│  (verschoben von AbrechnungTab)              │
-+──────────────────────────────────────────────+
-│  AKTIONSKATALOG (verschoben)                 │
-│  Durchsuchbare Aktionsliste                  │
-│  (verschoben von AbrechnungTab)              │
-+──────────────────────────────────────────────+
-│  CTA: Chat oeffnen (bestehend, angepasst)    │
-+──────────────────────────────────────────────+
-```
+**"Social Payment"** ist ein separater, geplanter Flow, der so funktionieren soll:
 
-## Aenderungen im Detail
+1. Ein Nutzer erstellt ein **Social Mandate** (= Auftrag fuer eine Social-Media-Kampagne mit Budget)
+2. Bevor das Mandat bearbeitet wird, muss der Nutzer **per Stripe Checkout bezahlen**
+3. Nach Zahlung wechselt der Status auf "review" und die Kampagne wird bearbeitet
 
-### Datei 1: `src/config/billingConstants.ts` (NEU)
+Aktuell sind die Edge Functions dafuer **Stubs** — sie erzeugen eine Fake-Checkout-URL (`checkout.stub.kaufy.dev`), kein echtes Stripe. Die `social_mandates`-Tabelle existiert in der Datenbank, wird aber im UI noch nicht aktiv genutzt.
 
-Zentrale Preis-SSOT fuer alle System-Services (nicht KI-Aktionen — die kommen aus dem Manifest):
+**Fazit:** Social Payment ist ein Zukunfts-Feature. Es ist NICHT das, was wir jetzt brauchen.
 
-| Service | Credits | EUR |
+---
+
+## Was wir JETZT brauchen: Credit Top-Up via Stripe
+
+Das primaere Zahlungs-Feature ist: **Nutzer muessen Credits kaufen koennen.** Alles andere (Armstrong-Aktionen, PDF-Extraktion, Fax, Brief, Bank-Sync) verbraucht Credits — aber es gibt keinen Weg, Credits aufzuladen.
+
+### Was bereits existiert (Backend)
+
+| Komponente | Status |
+|---|---|
+| `tenant_credit_balance` Tabelle | Existiert — Saldo pro Tenant |
+| `rpc_credit_preflight()` | Existiert — Pruefen ob genug Credits da sind |
+| `rpc_credit_deduct()` | Existiert — Credits abziehen |
+| `rpc_credit_topup()` | Existiert — Credits hinzufuegen (aktuell nur manuell/Admin) |
+| `sot-credit-preflight` Edge Function | Existiert — hat `topup`-Action, aber ohne Stripe-Anbindung |
+| `billingConstants.ts` | Existiert — Preisliste aller Services |
+
+### Was FEHLT
+
+| Komponente | Beschreibung |
+|---|---|
+| Stripe-Verbindung | API-Key im System hinterlegt |
+| Checkout Edge Function | Erzeugt eine Stripe Checkout Session fuer Credit-Pakete |
+| Webhook Edge Function | Empfaengt Stripe-Callback nach Zahlung, ruft `rpc_credit_topup` auf |
+| Credit-Pakete Definition | Welche Pakete kann man kaufen? (z.B. 50 Cr / 100 Cr / 500 Cr) |
+| "Credits aufladen" Button im UI | Auf der Armstrong-Seite oder im KostenDashboard |
+
+---
+
+## Umsetzungsplan
+
+### Schritt 1: Stripe aktivieren
+
+Ueber die Lovable Stripe-Integration wird der API-Key hinterlegt. Das gibt uns Zugang zu den Stripe-Tools (Produkte, Preise, Checkout Sessions).
+
+### Schritt 2: Credit-Pakete als Stripe-Produkte anlegen
+
+| Paket | Credits | Preis (EUR) |
 |---|---|---|
-| PDF-Extraktion (Posteingang) | 1 | 0,25 |
-| Storage-Extraktion | 1 | 0,25 |
-| NK-Beleg-Parsing | 1 | 0,25 |
-| Auto-Matching (Banktransaktionen) | 2 | 0,50 |
-| Bank-Synchronisation (finAPI) | 4 | 1,00 |
-| Fax-Versand | 4 | 1,00 |
-| Brief-Versand | 4 | 1,00 |
-| E-Mail-Anreicherung | 20/Monat | 5,00/Monat |
-| DMS Storage Free (1 GB) | — | Kostenlos |
-| DMS Storage Pro (10 GB) | — | 9,90/Monat |
+| Starter | 50 Credits | 12,50 EUR |
+| Standard | 100 Credits | 25,00 EUR |
+| Power | 500 Credits | 125,00 EUR |
 
-### Datei 2: `src/components/armstrong/SystemPreisliste.tsx` (NEU)
+(Preise basierend auf 1 Credit = 0,25 EUR, kein Rabatt auf groessere Pakete — kann spaeter angepasst werden)
 
-Eine konsolidierte Preisliste-Komponente mit zwei Sektionen:
+### Schritt 3: Checkout Edge Function
 
-**Sektion A — KI-Aktionen**: Wiederverwendet die Gruppierung aus `ArmstrongCreditPreisliste` (Free / Pay-per-Use / Premium), aber kompakter als Accordion.
+Neue Edge Function `sot-credit-checkout` die:
+1. Nutzer authentifiziert
+2. Gewaehltes Credit-Paket validiert
+3. Stripe Checkout Session erstellt
+4. Checkout-URL zurueckgibt
 
-**Sektion B — Infrastruktur-Services**: Liest aus `billingConstants.ts` und zeigt die obige Tabelle an. Kategorien: Dokumenten-Verarbeitung, Kommunikation, Konto-Services, Speicher.
+### Schritt 4: Webhook Edge Function
 
-### Datei 3: `src/pages/portal/ArmstrongInfoPage.tsx` (UMBAU)
+Neue Edge Function `sot-credit-webhook` die:
+1. Stripe Webhook-Signatur validiert
+2. Bei `checkout.session.completed`: Tenant-ID und Credit-Menge aus Metadata liest
+3. `rpc_credit_topup()` aufruft
+4. Optional: Beleg in `armstrong_billing_events` loggt
 
-Die bestehenden Sektionen (Hero, USPs, 3 Schritte) bleiben erhalten. Darunter kommen die neuen/verschobenen Sektionen:
+### Schritt 5: UI — "Credits aufladen" Button
 
-1. **KostenDashboard** — importiert von `communication-pro/agenten/KostenDashboard`
-2. **SystemPreisliste** — neue konsolidierte Preisliste
-3. **EmailEnrichmentCard + WhatsAppArmstrongCard** — verschoben aus `AbrechnungTab.tsx` (werden als eigenstaendige Komponenten extrahiert nach `src/components/armstrong/`)
-4. **AktionsKatalog** — importiert von `communication-pro/agenten/AktionsKatalog`
-5. **CTA** — angepasst: Link zu Abrechnung entfernt, stattdessen Hinweis auf Chat-Button
+Auf der Armstrong-Seite (`/portal/armstrong`) im KostenDashboard:
+- Button "Credits aufladen"
+- Dialog mit den 3 Paketen zur Auswahl
+- Klick oeffnet Stripe Checkout in neuem Tab
+- Nach Rueckkehr wird der Saldo automatisch aktualisiert
 
-### Datei 4: `src/pages/portal/stammdaten/AbrechnungTab.tsx` (VERSCHLANKEN)
+### Schritt 6: Social Payment Stubs ersetzen (optional, spaeter)
 
-Was bleibt:
-- Aktueller Plan (Subscription-Karte)
-- Rechnungen/Invoices (Tabelle)
-- Link-Banner zu `/portal/armstrong` ("Armstrong-Verbrauch und Preise ansehen")
+Die bestehenden Stub-Functions (`sot-social-payment-create`, `sot-social-payment-webhook`) koennen spaeter mit echtem Stripe ersetzt werden — das ist ein separater Schritt, der erst relevant wird, wenn Social Mandates im UI aktiv genutzt werden.
 
-Was entfernt wird:
-- `KostenDashboard` Import + Render
-- `ArmstrongCreditPreisliste` Import + Render
-- `EmailEnrichmentCard` (wird nach `src/components/armstrong/` extrahiert)
-- `WhatsAppArmstrongCard` (wird nach `src/components/armstrong/` extrahiert)
-- `AktionsKatalog` Import + Render
-- Separator + Armstrong-Header-Sektion
+---
 
-### Datei 5: `src/pages/portal/office/BriefTab.tsx` (LABELS)
+## Reihenfolge
 
-| Zeile | Vorher | Nachher |
-|---|---|---|
-| 704 | `SimpleFax` | `Fax` |
-| 710 | `SimpleBrief` | `Brief` |
-| 729 | `'PDF wird per SimpleFax als Fax gesendet'` | `'PDF wird als Fax gesendet'` |
-| 730 | `'PDF wird per SimpleBrief als Postbrief versendet'` | `'PDF wird als Brief versendet'` |
-
-Technische Mail-Adressen (`simplefax@`, `simplebrief@`) bleiben unveraendert — das sind Backend-Konfigurationen, die der Nutzer nicht sieht.
-
-### Datei 6 + 7: Komponenten-Extraktion
-
-`EmailEnrichmentCard` und `WhatsAppArmstrongCard` werden aus `AbrechnungTab.tsx` in eigenstaendige Dateien extrahiert:
-- `src/components/armstrong/EmailEnrichmentCard.tsx`
-- `src/components/armstrong/WhatsAppArmstrongCard.tsx`
-
-Das ermoeglicht den Import sowohl in der neuen Armstrong-Seite als auch (falls spaeter noetig) anderswo.
-
-## Reihenfolge der Umsetzung
-
-1. `src/config/billingConstants.ts` — Preis-SSOT
-2. `src/components/armstrong/EmailEnrichmentCard.tsx` — Extraktion
-3. `src/components/armstrong/WhatsAppArmstrongCard.tsx` — Extraktion
-4. `src/components/armstrong/SystemPreisliste.tsx` — Konsolidierte Preisliste
-5. `src/pages/portal/ArmstrongInfoPage.tsx` — Umbau zur Werbeseite + Billing Hub
-6. `src/pages/portal/stammdaten/AbrechnungTab.tsx` — Verschlanken
-7. `src/pages/portal/office/BriefTab.tsx` — Label-Korrektur
+1. Stripe aktivieren (API-Key)
+2. Credit-Pakete in `billingConstants.ts` definieren
+3. `sot-credit-checkout` Edge Function erstellen
+4. `sot-credit-webhook` Edge Function erstellen
+5. UI: "Credits aufladen" Dialog in Armstrong-Seite
+6. Testen: End-to-End Flow (Button klicken, Stripe Checkout, Webhook, Saldo-Update)
 
