@@ -12,6 +12,7 @@ import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDemoToggles } from '@/hooks/useDemoToggles';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -19,7 +20,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { KontoAkteInline } from '@/components/finanzanalyse/KontoAkteInline';
 import { AddBankAccountDialog } from '@/components/shared/AddBankAccountDialog';
 import { DEMO_KONTO, DEMO_KONTO_IBAN_MASKED } from '@/constants/demoKontoData';
-import { Landmark, ScanSearch, Plus, CreditCard, RefreshCw, Building2, Loader2 } from 'lucide-react';
+import { Landmark, ScanSearch, Plus, CreditCard, RefreshCw, Building2, Loader2, FileSpreadsheet } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -155,9 +156,26 @@ export default function KontenTab() {
         title="Konten"
         description="Bankkonten verwalten und zuordnen — Personen, Vermietung oder Photovoltaik"
         actions={
-          <Button variant="glass" size="icon-round" onClick={() => setShowAddDialog(true)}>
-            <Plus className="h-5 w-5" />
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="glass" size="icon-round">
+                <Plus className="h-5 w-5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setShowAddDialog(true)}>
+                <CreditCard className="h-4 w-4 mr-2" />
+                Konto manuell anlegen
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => connectMutation.mutate()}
+                disabled={connectMutation.isPending}
+              >
+                <Building2 className="h-4 w-4 mr-2" />
+                Bank anbinden (FinAPI)
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         }
       />
 
