@@ -3772,6 +3772,131 @@ export type Database = {
         }
         Relationships: []
       }
+      cloud_sync_connectors: {
+        Row: {
+          access_token: string | null
+          account_email: string | null
+          account_name: string | null
+          auto_extract: boolean | null
+          created_at: string
+          error_message: string | null
+          id: string
+          last_sync_at: string | null
+          last_sync_files_count: number | null
+          provider: string
+          refresh_token: string | null
+          remote_folder_id: string | null
+          remote_folder_name: string | null
+          status: string
+          sync_interval_minutes: number | null
+          tenant_id: string
+          token_expires_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          access_token?: string | null
+          account_email?: string | null
+          account_name?: string | null
+          auto_extract?: boolean | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          last_sync_at?: string | null
+          last_sync_files_count?: number | null
+          provider: string
+          refresh_token?: string | null
+          remote_folder_id?: string | null
+          remote_folder_name?: string | null
+          status?: string
+          sync_interval_minutes?: number | null
+          tenant_id: string
+          token_expires_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          access_token?: string | null
+          account_email?: string | null
+          account_name?: string | null
+          auto_extract?: boolean | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          last_sync_at?: string | null
+          last_sync_files_count?: number | null
+          provider?: string
+          refresh_token?: string | null
+          remote_folder_id?: string | null
+          remote_folder_name?: string | null
+          status?: string
+          sync_interval_minutes?: number | null
+          tenant_id?: string
+          token_expires_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cloud_sync_connectors_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cloud_sync_log: {
+        Row: {
+          completed_at: string | null
+          connector_id: string
+          credits_used: number | null
+          error_message: string | null
+          files_extracted: number | null
+          files_synced: number | null
+          id: string
+          started_at: string
+          status: string
+          tenant_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          connector_id: string
+          credits_used?: number | null
+          error_message?: string | null
+          files_extracted?: number | null
+          files_synced?: number | null
+          id?: string
+          started_at?: string
+          status?: string
+          tenant_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          connector_id?: string
+          credits_used?: number | null
+          error_message?: string | null
+          files_extracted?: number | null
+          files_synced?: number | null
+          id?: string
+          started_at?: string
+          status?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cloud_sync_log_connector_id_fkey"
+            columns: ["connector_id"]
+            isOneToOne: false
+            referencedRelation: "cloud_sync_connectors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cloud_sync_log_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       commissions: {
         Row: {
           agreement_consent_id: string | null
@@ -5593,6 +5718,7 @@ export type Database = {
           chunk_index: number
           created_at: string
           document_id: string
+          embedding: string | null
           id: string
           metadata: Json | null
           page_number: number | null
@@ -5605,6 +5731,7 @@ export type Database = {
           chunk_index?: number
           created_at?: string
           document_id: string
+          embedding?: string | null
           id?: string
           metadata?: Json | null
           page_number?: number | null
@@ -5617,6 +5744,7 @@ export type Database = {
           chunk_index?: number
           created_at?: string
           document_id?: string
+          embedding?: string | null
           id?: string
           metadata?: Json | null
           page_number?: number | null
@@ -6585,6 +6713,149 @@ export type Database = {
           },
           {
             foreignKeyName: "finance_submission_logs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      finapi_connections: {
+        Row: {
+          auto_match: boolean | null
+          bank_bic: string | null
+          bank_name: string | null
+          created_at: string
+          error_message: string | null
+          finapi_connection_id: string | null
+          finapi_user_id: string | null
+          iban_masked: string | null
+          id: string
+          last_sync_at: string | null
+          last_sync_transactions: number | null
+          status: string
+          sync_from_date: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          auto_match?: boolean | null
+          bank_bic?: string | null
+          bank_name?: string | null
+          created_at?: string
+          error_message?: string | null
+          finapi_connection_id?: string | null
+          finapi_user_id?: string | null
+          iban_masked?: string | null
+          id?: string
+          last_sync_at?: string | null
+          last_sync_transactions?: number | null
+          status?: string
+          sync_from_date?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          auto_match?: boolean | null
+          bank_bic?: string | null
+          bank_name?: string | null
+          created_at?: string
+          error_message?: string | null
+          finapi_connection_id?: string | null
+          finapi_user_id?: string | null
+          iban_masked?: string | null
+          id?: string
+          last_sync_at?: string | null
+          last_sync_transactions?: number | null
+          status?: string
+          sync_from_date?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finapi_connections_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      finapi_transactions: {
+        Row: {
+          amount: number
+          bank_booking_key: string | null
+          booking_date: string
+          connection_id: string
+          counterpart_iban: string | null
+          counterpart_name: string | null
+          created_at: string
+          currency: string | null
+          finapi_transaction_id: string | null
+          id: string
+          match_confidence: number | null
+          match_status: string | null
+          matched_at: string | null
+          matched_by: string | null
+          matched_contract_id: string | null
+          matched_contract_type: string | null
+          purpose: string | null
+          tenant_id: string
+          value_date: string | null
+        }
+        Insert: {
+          amount: number
+          bank_booking_key?: string | null
+          booking_date: string
+          connection_id: string
+          counterpart_iban?: string | null
+          counterpart_name?: string | null
+          created_at?: string
+          currency?: string | null
+          finapi_transaction_id?: string | null
+          id?: string
+          match_confidence?: number | null
+          match_status?: string | null
+          matched_at?: string | null
+          matched_by?: string | null
+          matched_contract_id?: string | null
+          matched_contract_type?: string | null
+          purpose?: string | null
+          tenant_id: string
+          value_date?: string | null
+        }
+        Update: {
+          amount?: number
+          bank_booking_key?: string | null
+          booking_date?: string
+          connection_id?: string
+          counterpart_iban?: string | null
+          counterpart_name?: string | null
+          created_at?: string
+          currency?: string | null
+          finapi_transaction_id?: string | null
+          id?: string
+          match_confidence?: number | null
+          match_status?: string | null
+          matched_at?: string | null
+          matched_by?: string | null
+          matched_contract_id?: string | null
+          matched_contract_type?: string | null
+          purpose?: string | null
+          tenant_id?: string
+          value_date?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finapi_transactions_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "finapi_connections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finapi_transactions_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "organizations"
@@ -10685,6 +10956,122 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      nk_beleg_extractions: {
+        Row: {
+          balance_amount: number | null
+          billing_period_end: string | null
+          billing_period_start: string | null
+          confidence: number
+          consumption_unit: string | null
+          consumption_value: number | null
+          cost_category: string | null
+          created_at: string
+          document_id: string
+          extracted_at: string
+          extractor_version: string | null
+          id: string
+          meter_number: string | null
+          meter_reading_end: number | null
+          meter_reading_start: number | null
+          needs_review: boolean
+          prepayment_amount: number | null
+          property_id: string | null
+          provider_name: string | null
+          provider_type: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          tenant_id: string
+          total_amount: number | null
+          unit_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          balance_amount?: number | null
+          billing_period_end?: string | null
+          billing_period_start?: string | null
+          confidence?: number
+          consumption_unit?: string | null
+          consumption_value?: number | null
+          cost_category?: string | null
+          created_at?: string
+          document_id: string
+          extracted_at?: string
+          extractor_version?: string | null
+          id?: string
+          meter_number?: string | null
+          meter_reading_end?: number | null
+          meter_reading_start?: number | null
+          needs_review?: boolean
+          prepayment_amount?: number | null
+          property_id?: string | null
+          provider_name?: string | null
+          provider_type?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          tenant_id: string
+          total_amount?: number | null
+          unit_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          balance_amount?: number | null
+          billing_period_end?: string | null
+          billing_period_start?: string | null
+          confidence?: number
+          consumption_unit?: string | null
+          consumption_value?: number | null
+          cost_category?: string | null
+          created_at?: string
+          document_id?: string
+          extracted_at?: string
+          extractor_version?: string | null
+          id?: string
+          meter_number?: string | null
+          meter_reading_end?: number | null
+          meter_reading_start?: number | null
+          needs_review?: boolean
+          prepayment_amount?: number | null
+          property_id?: string | null
+          provider_name?: string | null
+          provider_type?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          tenant_id?: string
+          total_amount?: number | null
+          unit_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nk_beleg_extractions_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nk_beleg_extractions_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nk_beleg_extractions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nk_beleg_extractions_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "units"
             referencedColumns: ["id"]
           },
         ]
@@ -19025,6 +19412,24 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      hybrid_search_documents: {
+        Args: {
+          p_limit?: number
+          p_query: string
+          p_query_embedding?: string
+          p_tenant_id: string
+          p_vector_weight?: number
+        }
+        Returns: {
+          chunk_id: string
+          chunk_text: string
+          combined_score: number
+          document_id: string
+          page_number: number
+          ts_rank: number
+          vector_similarity: number
+        }[]
       }
       increment_billing_usage: {
         Args: {
