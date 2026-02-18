@@ -141,8 +141,12 @@ export const zone1Admin: ZoneDefinition = {
     { path: "sales-desk/inbox", component: "SalesDeskInbox", title: "Inbox" },
     { path: "sales-desk/partner", component: "SalesDeskPartner", title: "Partner" },
     { path: "sales-desk/audit", component: "SalesDeskAudit", title: "Audit" },
-    // Lead Desk (MOD-10 Leadmanager) — konsolidiert LeadPool + Provisionen
+    // Lead Desk (MOD-10 Leadmanager) — 4-Tab Structure: Pool, Zuweisungen, Provisionen, Monitor
     { path: "lead-desk", component: "LeadDeskDashboard", title: "Lead Desk" },
+    { path: "lead-desk/pool", component: "LeadDeskDashboard", title: "Lead Pool" },
+    { path: "lead-desk/zuweisungen", component: "LeadDeskDashboard", title: "Zuweisungen" },
+    { path: "lead-desk/provisionen", component: "LeadDeskDashboard", title: "Provisionen" },
+    { path: "lead-desk/monitor", component: "LeadDeskDashboard", title: "Monitor" },
     // Projekt Desk (MOD-13 Projektmanager) — 4-Tab Structure
     { path: "projekt-desk", component: "ProjektDeskDashboard", title: "Projekt Desk" },
     { path: "projekt-desk/projekte", component: "ProjektDeskProjekte", title: "Projekte" },
@@ -154,8 +158,12 @@ export const zone1Admin: ZoneDefinition = {
     { path: "pet-desk/kunden", component: "PetDeskKunden", title: "Kunden" },
     { path: "pet-desk/shop", component: "PetDeskShop", title: "Shop" },
     { path: "pet-desk/billing", component: "PetDeskBilling", title: "Billing" },
-    // Finance Desk (MOD-18) — Private Finanzberatung Lead-Management
+    // Finance Desk (MOD-18) — 4-Tab Structure: Dashboard, Inbox, Fälle, Monitor
     { path: "finance-desk", component: "FinanceDeskDashboard", title: "Finance Desk" },
+    { path: "finance-desk/inbox", component: "FinanceDeskDashboard", title: "Inbox" },
+    { path: "finance-desk/zuweisung", component: "FinanceDeskDashboard", title: "Zuweisung" },
+    { path: "finance-desk/faelle", component: "FinanceDeskDashboard", title: "Fälle" },
+    { path: "finance-desk/monitor", component: "FinanceDeskDashboard", title: "Monitor" },
     // =========================================================================
     // ARMSTRONG CONSOLE — KI-Assistent Governance (Config only, no chat)
     // =========================================================================

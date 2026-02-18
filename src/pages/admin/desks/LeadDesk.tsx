@@ -21,6 +21,7 @@ import type { DeskKPI } from '@/components/admin/desks/OperativeDeskShell';
 import { LeadPool } from '../lead-desk/LeadPool';
 import { LeadAssignments, type LeadAssignment } from '../lead-desk/LeadAssignments';
 import { LeadCommissions, type Commission, type CommissionStats } from '../lead-desk/LeadCommissions';
+import { LeadMonitor } from '../lead-desk/LeadMonitor';
 
 interface Lead {
   id: string;
@@ -222,6 +223,7 @@ export default function LeadDesk() {
             <TabsTrigger value="pool">Lead Pool</TabsTrigger>
             <TabsTrigger value="assignments">Zuweisungen</TabsTrigger>
             <TabsTrigger value="commissions">Provisionen</TabsTrigger>
+            <TabsTrigger value="monitor">Monitor</TabsTrigger>
           </TabsList>
 
           <TabsContent value="pool" className="space-y-4">
@@ -234,6 +236,10 @@ export default function LeadDesk() {
 
           <TabsContent value="commissions" className="space-y-4">
             <LeadCommissions commissions={commissions} stats={commissionStats} />
+          </TabsContent>
+
+          <TabsContent value="monitor" className="space-y-4">
+            <LeadMonitor stats={{ ...leadStats, lost: leads.filter(l => l.status === 'lost').length }} commissionStats={commissionStats} />
           </TabsContent>
         </Tabs>
 
