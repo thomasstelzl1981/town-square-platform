@@ -2,15 +2,17 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 
 /**
- * SOT FinAPI Sync — Real Integration
+ * SOT FinAPI Sync — Web Form 2.0 Flow
  *
  * Actions:
- *   connect  → Create FinAPI user, import bank connection
- *   sync     → Fetch transactions for a connection
- *   status   → Get connection status from DB
+ *   connect  → Create FinAPI user, create Web Form for bank connection import
+ *   poll     → Check Web Form status, import accounts on COMPLETED
+ *   sync     → Fetch transactions for an existing connection
+ *   status   → Get connections from DB
  */
 
 const FINAPI_BASE = "https://sandbox.finapi.io";
+const FINAPI_WEBFORM_BASE = "https://webform-sandbox.finapi.io";
 
 interface FinAPIToken {
   access_token: string;
@@ -18,7 +20,7 @@ interface FinAPIToken {
   expires_in: number;
 }
 
-// ─── Helper: FinAPI OAuth2 Token ───────────────────────────────
+// ─── Helper: FinAPI OAuth2 Tokens ─────────────────────────────
 async function getClientToken(clientId: string, clientSecret: string): Promise<FinAPIToken> {
   const res = await fetch(`${FINAPI_BASE}/api/v2/oauth/token`, {
     method: "POST",
@@ -60,25 +62,7 @@ async function getUserToken(
   return res.json();
 }
 
-// ─── Helper: Delete orphaned FinAPI user ──────────────────────
-async function deleteFinAPIUser(clientToken: string, userId: string): Promise<boolean> {
-  try {
-    // First get a token for the orphaned user — we can't, we don't know the password.
-    // Instead, use the client token to delete via admin endpoint
-    const res = await fetch(`${FINAPI_BASE}/api/v2/users`, {
-      method: "DELETE",
-      headers: {
-        Authorization: `Bearer ${clientToken}`,
-        "Content-Type": "application/json",
-      },
-    });
-    return res.ok;
-  } catch {
-    return false;
-  }
-}
-
-// ─── Helper: Create or reuse FinAPI user ───────────────────────
+// ─── Helper: Ensure FinAPI user exists ────────────────────────
 async function ensureFinAPIUser(
   clientToken: string,
   clientId: string,
@@ -86,7 +70,7 @@ async function ensureFinAPIUser(
   tenantId: string,
   sbAdmin: ReturnType<typeof createClient>,
 ): Promise<{ userId: string; password: string; userToken: string }> {
-  // 1. Check DB first for an existing password
+  // Check DB for existing credentials
   const { data: existingConn } = await sbAdmin
     .from("finapi_connections")
     .select("finapi_user_id, finapi_user_password")
@@ -109,17 +93,17 @@ async function ensureFinAPIUser(
         userToken: tokenData.access_token,
       };
     } catch (err) {
-      console.warn("[finapi] Stored credentials invalid, creating new user. Error:", err.message);
+      console.warn("[finapi] Stored credentials invalid, creating new user:", err.message);
     }
   }
 
-  // 2. No stored password — use a timestamp-based unique ID to avoid collisions
+  // Create new user with unique timestamp-based ID
   const baseId = `sot_${tenantId.replace(/-/g, "").substring(0, 16)}`;
-  const uniqueSuffix = Date.now().toString(36); // e.g. "m1abc23"
+  const uniqueSuffix = Date.now().toString(36);
   const userId = `${baseId}_${uniqueSuffix}`;
   const password = crypto.randomUUID();
 
-  console.log("[finapi] Creating new user with unique ID:", userId);
+  console.log("[finapi] Creating new user:", userId);
 
   const createRes = await fetch(`${FINAPI_BASE}/api/v2/users`, {
     method: "POST",
@@ -135,37 +119,36 @@ async function ensureFinAPIUser(
     }),
   });
 
-  if (createRes.ok) {
-    console.log("[finapi] Created new user:", userId);
-    const tokenData = await getUserToken(clientId, clientSecret, userId, password);
-    return { userId, password, userToken: tokenData.access_token };
+  if (!createRes.ok) {
+    const createBody = await createRes.text();
+    throw new Error(`Create FinAPI user failed (${createRes.status}): ${createBody}`);
   }
 
-  const createBody = await createRes.json();
-  throw new Error(`Create FinAPI user failed (${createRes.status}): ${JSON.stringify(createBody)}`);
+  console.log("[finapi] Created new user:", userId);
+  const tokenData = await getUserToken(clientId, clientSecret, userId, password);
+  return { userId, password, userToken: tokenData.access_token };
 }
 
-// ─── Main Handler ──────────────────────────────────────────────
+// ─── Main Handler ─────────────────────────────────────────────
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return handleCorsPreflightRequest(req);
 
   const corsHeaders = getCorsHeaders(req);
-  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-  const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
-  const finapiClientId = Deno.env.get("FINAPI_CLIENT_ID");
-    const finapiClientSecret = Deno.env.get("FINAPI_CLIENT_SECRET");
-
-    if (!finapiClientId || !finapiClientSecret) {
-      console.error("[sot-finapi-sync] FINAPI_CLIENT_ID or FINAPI_CLIENT_SECRET not set");
-      return json({ error: "FinAPI credentials not configured. Please add FINAPI_CLIENT_ID and FINAPI_CLIENT_SECRET as secrets." }, 500);
-    }
-
   const json = (data: unknown, status = 200) =>
     new Response(JSON.stringify(data), {
       status,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
+
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+  const finapiClientId = Deno.env.get("FINAPI_CLIENT_ID");
+  const finapiClientSecret = Deno.env.get("FINAPI_CLIENT_SECRET");
+
+  if (!finapiClientId || !finapiClientSecret) {
+    return json({ error: "FinAPI credentials not configured" }, 500);
+  }
 
   try {
     // ── Auth ──
@@ -178,12 +161,12 @@ Deno.serve(async (req) => {
     });
     const { data: claimsData, error: claimsErr } = await sbUser.auth.getClaims(token);
     if (claimsErr || !claimsData?.claims?.sub) return json({ error: "Invalid user" }, 401);
-    const user = { id: claimsData.claims.sub as string };
+    const userId = claimsData.claims.sub as string;
 
     const { data: profile } = await sbUser
       .from("profiles")
       .select("active_tenant_id")
-      .eq("id", user.id)
+      .eq("id", userId)
       .maybeSingle();
     if (!profile?.active_tenant_id) return json({ error: "No active tenant" }, 400);
     const tenantId = profile.active_tenant_id;
@@ -202,101 +185,184 @@ Deno.serve(async (req) => {
         return json({ connections: connections || [] });
       }
 
-      // ─────────────── CONNECT ──────────────
+      // ─────────────── CONNECT (Web Form 2.0) ──────────────
       case "connect": {
-        const bankId = body.bankId || 280001; // Default: finAPI Test Bank
+        const bankId = body.bankId || 280001;
 
         // 1. Get client token
-        const clientToken = await getClientToken(finapiClientId, finapiClientSecret);
+        const clientTokenData = await getClientToken(finapiClientId, finapiClientSecret);
 
-        // 2. Ensure FinAPI user exists (checks DB first, creates new if orphaned)
+        // 2. Ensure FinAPI user
         const finUser = await ensureFinAPIUser(
-          clientToken.access_token,
+          clientTokenData.access_token,
           finapiClientId,
           finapiClientSecret,
           tenantId,
           sbAdmin,
         );
 
-        const userAccessToken = finUser.userToken;
-        const storedPassword = finUser.password;
+        // 3. Create Web Form for bank connection import
+        // Web Form 2.0 endpoint is on a SEPARATE host
+        const webFormPayload: Record<string, unknown> = {};
+        if (bankId) {
+          webFormPayload.bankId = Number(bankId);
+        }
 
-        // 3. Import bank connection
-        const importPayload = {
-          bankId: Number(bankId),
-          bankingInterface: "XS2A",
-          loginCredentials: [
-            { label: "Onlinebanking-ID", value: "demo" },
-            { label: "PIN", value: "demo" },
-          ],
-        };
+        console.log("[finapi-connect] Creating Web Form with payload:", JSON.stringify(webFormPayload));
 
-        console.log("[finapi-connect] Import payload:", JSON.stringify(importPayload));
-
-        const importRes = await fetch(`${FINAPI_BASE}/api/v2/bankConnections/import`, {
+        const webFormRes = await fetch(`${FINAPI_WEBFORM_BASE}/api/webForms/bankConnectionImport`, {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${userAccessToken}`,
+            Authorization: `Bearer ${finUser.userToken}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify(importPayload),
+          body: JSON.stringify(webFormPayload),
         });
 
-        if (!importRes.ok) {
-          const errBody = await importRes.text();
-          console.error("[finapi-connect] Import failed:", importRes.status, errBody);
-          return json({ error: "Bank import failed", details: errBody }, importRes.status);
+        if (!webFormRes.ok) {
+          const errBody = await webFormRes.text();
+          console.error("[finapi-connect] Web Form creation failed:", webFormRes.status, errBody);
+          return json({ error: "Web Form creation failed", details: errBody }, webFormRes.status);
         }
 
-        const bankConn = await importRes.json();
+        const webFormData = await webFormRes.json();
+        console.log("[finapi-connect] Web Form created:", JSON.stringify(webFormData));
 
-        // 4. Save connection to DB
+        // 4. Save connection stub to DB (status = PENDING)
         const connData = {
           tenant_id: tenantId,
-          status: bankConn.status || "COMPLETED",
+          status: "PENDING",
           finapi_user_id: finUser.userId,
-          finapi_user_password: storedPassword,
-          finapi_connection_id: String(bankConn.id),
-          bank_name: bankConn.bank?.name || `Bank ${bankId}`,
-          bank_bic: bankConn.bank?.bic || null,
-          iban_masked: bankConn.accounts?.[0]?.iban
-            ? `****${bankConn.accounts[0].iban.slice(-4)}`
-            : null,
+          finapi_user_password: finUser.password,
+          finapi_connection_id: null,
+          bank_name: `Bank ${bankId}`,
+          web_form_id: webFormData.id,
         };
 
-        const { data: savedConn, error: saveErr } = await sbAdmin
+        await sbAdmin
           .from("finapi_connections")
-          .insert(connData)
-          .select()
-          .single();
-
-        if (saveErr) {
-          console.error("[finapi-connect] DB save error:", saveErr);
-          return json({ error: "Connection saved in FinAPI but DB save failed" }, 500);
-        }
-
-        // 5. Create bank accounts from imported accounts
-        if (bankConn.accounts?.length) {
-          const accounts = bankConn.accounts.map((acc: Record<string, unknown>) => ({
-            tenant_id: tenantId,
-            account_name: acc.accountName || acc.iban || "Konto",
-            iban: acc.iban || null,
-            bic: acc.accountHolderName || null,
-            bank_name: bankConn.bank?.name || null,
-            account_type: "checking",
-            owner_type: "person",
-            owner_id: user.id,
-            finapi_account_id: String(acc.id),
-          }));
-
-          await sbAdmin.from("msv_bank_accounts").insert(accounts);
-        }
+          .insert(connData);
 
         return json({
-          status: "connected",
-          connection: savedConn,
-          accounts_imported: bankConn.accounts?.length || 0,
+          status: "web_form_created",
+          webFormUrl: webFormData.url,
+          webFormId: webFormData.id,
         });
+      }
+
+      // ─────────────── POLL (Web Form Status) ──────────────
+      case "poll": {
+        const { webFormId } = body;
+        if (!webFormId) return json({ error: "Missing webFormId" }, 400);
+
+        // Get connection from DB to retrieve user credentials
+        const { data: conn } = await sbAdmin
+          .from("finapi_connections")
+          .select("*")
+          .eq("tenant_id", tenantId)
+          .eq("web_form_id", webFormId)
+          .maybeSingle();
+
+        if (!conn) return json({ error: "Connection not found for this web form" }, 404);
+
+        // Get user token
+        const userTokenData = await getUserToken(
+          finapiClientId,
+          finapiClientSecret,
+          conn.finapi_user_id!,
+          conn.finapi_user_password!,
+        );
+
+        // Check Web Form status
+        const statusRes = await fetch(`${FINAPI_WEBFORM_BASE}/api/webForms/${webFormId}`, {
+          headers: {
+            Authorization: `Bearer ${userTokenData.access_token}`,
+          },
+        });
+
+        if (!statusRes.ok) {
+          const errText = await statusRes.text();
+          console.error("[finapi-poll] Status check failed:", statusRes.status, errText);
+          return json({ error: "Status check failed", details: errText }, statusRes.status);
+        }
+
+        const statusData = await statusRes.json();
+        console.log("[finapi-poll] Web Form status:", statusData.status);
+
+        if (statusData.status === "COMPLETED") {
+          // Extract bankConnectionId from payload
+          const bankConnectionId = statusData.payload?.bankConnectionId;
+          console.log("[finapi-poll] Bank connection ID:", bankConnectionId);
+
+          if (bankConnectionId) {
+            // Fetch accounts from FinAPI
+            const accountsRes = await fetch(
+              `${FINAPI_BASE}/api/v2/accounts?bankConnectionIds=${bankConnectionId}`,
+              {
+                headers: { Authorization: `Bearer ${userTokenData.access_token}` },
+              },
+            );
+
+            let accountsImported = 0;
+            if (accountsRes.ok) {
+              const accountsData = await accountsRes.json();
+              const accounts = accountsData.accounts || [];
+
+              if (accounts.length) {
+                const rows = accounts.map((acc: Record<string, unknown>) => ({
+                  tenant_id: tenantId,
+                  account_name: (acc as any).accountName || (acc as any).iban || "Konto",
+                  iban: (acc as any).iban || null,
+                  bic: (acc as any).accountHolderName || null,
+                  bank_name: (acc as any).bankName || conn.bank_name || null,
+                  account_type: "checking",
+                  owner_type: "person",
+                  owner_id: userId,
+                  finapi_account_id: String(acc.id),
+                }));
+
+                await sbAdmin.from("msv_bank_accounts").insert(rows);
+                accountsImported = rows.length;
+              }
+            }
+
+            // Update connection in DB
+            await sbAdmin
+              .from("finapi_connections")
+              .update({
+                status: "COMPLETED",
+                finapi_connection_id: String(bankConnectionId),
+              })
+              .eq("id", conn.id);
+
+            return json({
+              status: "connected",
+              accounts_imported: accountsImported,
+            });
+          }
+
+          // COMPLETED but no bankConnectionId
+          await sbAdmin
+            .from("finapi_connections")
+            .update({ status: "COMPLETED" })
+            .eq("id", conn.id);
+
+          return json({ status: "connected", accounts_imported: 0 });
+        }
+
+        if (statusData.status === "NOT_YET_OPENED" || statusData.status === "OPENED") {
+          return json({ status: "pending" });
+        }
+
+        if (statusData.status === "ABORTED" || statusData.status === "FAILED") {
+          await sbAdmin
+            .from("finapi_connections")
+            .update({ status: statusData.status })
+            .eq("id", conn.id);
+          return json({ status: "failed", reason: statusData.status });
+        }
+
+        return json({ status: "unknown", rawStatus: statusData.status });
       }
 
       // ─────────────── SYNC ─────────────────
@@ -304,7 +370,6 @@ Deno.serve(async (req) => {
         const { connectionId } = body;
         if (!connectionId) return json({ error: "Missing connectionId" }, 400);
 
-        // Get connection from DB
         const { data: conn } = await sbAdmin
           .from("finapi_connections")
           .select("*")
@@ -314,7 +379,6 @@ Deno.serve(async (req) => {
 
         if (!conn) return json({ error: "Connection not found" }, 404);
 
-        // Get user token
         const userToken = await getUserToken(
           finapiClientId,
           finapiClientSecret,
@@ -322,7 +386,7 @@ Deno.serve(async (req) => {
           conn.finapi_user_password!,
         );
 
-        // Trigger update at FinAPI
+        // Trigger update
         await fetch(`${FINAPI_BASE}/api/v2/bankConnections/update`, {
           method: "POST",
           headers: {
@@ -334,7 +398,6 @@ Deno.serve(async (req) => {
           }),
         });
 
-        // Small delay to let async update process
         await new Promise((r) => setTimeout(r, 2000));
 
         // Fetch transactions
@@ -351,7 +414,6 @@ Deno.serve(async (req) => {
           return json({ status: "no_accounts", transactions_synced: 0 });
         }
 
-        // Paginated transaction fetch
         let page = 1;
         let totalSynced = 0;
         const perPage = 500;
@@ -367,18 +429,12 @@ Deno.serve(async (req) => {
             headers: { Authorization: `Bearer ${userToken.access_token}` },
           });
 
-          if (!txRes.ok) {
-            const errText = await txRes.text();
-            console.error("[finapi-sync] Transaction fetch failed:", errText);
-            break;
-          }
+          if (!txRes.ok) break;
 
           const txData = await txRes.json();
           const transactions = txData.transactions || [];
-
           if (!transactions.length) break;
 
-          // Upsert transactions
           const rows = transactions.map((tx: Record<string, unknown>) => ({
             tenant_id: tenantId,
             connection_id: connectionId,
@@ -394,22 +450,15 @@ Deno.serve(async (req) => {
             match_status: "unmatched",
           }));
 
-          const { error: upsertErr } = await sbAdmin
+          await sbAdmin
             .from("finapi_transactions")
             .upsert(rows, { onConflict: "finapi_transaction_id" });
 
-          if (upsertErr) {
-            console.error("[finapi-sync] Upsert error:", upsertErr);
-          }
-
           totalSynced += rows.length;
-
-          // Check if more pages
           if (transactions.length < perPage) break;
           page++;
         }
 
-        // Update last_sync_at
         await sbAdmin
           .from("finapi_connections")
           .update({

@@ -1,8 +1,8 @@
 /**
  * MOD-18 Finanzen — Tab: KONTEN
- * Bankkonten mit polymorphischer Zuordnung + FinAPI Bank-Connect
+ * Bankkonten mit polymorphischer Zuordnung + FinAPI Web Form 2.0 Flow
  */
-import { useState } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { PageShell } from '@/components/shared/PageShell';
 import { WidgetGrid } from '@/components/shared/WidgetGrid';
 import { WidgetCell } from '@/components/shared/WidgetCell';
@@ -30,12 +30,74 @@ const OWNER_TYPE_LABELS: Record<string, string> = {
   pv_plant: 'PV-Anlage',
 };
 
+const POLL_INTERVAL_MS = 3000;
+const POLL_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
+
 export default function KontenTab() {
   const { activeTenantId } = useAuth();
   const { isEnabled } = useDemoToggles();
   const [openKontoId, setOpenKontoId] = useState<string | null>(null);
   const [showAddDialog, setShowAddDialog] = useState(false);
+  const [isPolling, setIsPolling] = useState(false);
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const queryClient = useQueryClient();
+
+  // Cleanup polling on unmount
+  useEffect(() => {
+    return () => {
+      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+      if (pollTimeoutRef.current) clearTimeout(pollTimeoutRef.current);
+    };
+  }, []);
+
+  const stopPolling = useCallback(() => {
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current);
+      pollIntervalRef.current = null;
+    }
+    if (pollTimeoutRef.current) {
+      clearTimeout(pollTimeoutRef.current);
+      pollTimeoutRef.current = null;
+    }
+    setIsPolling(false);
+  }, []);
+
+  const startPolling = useCallback((webFormId: string) => {
+    setIsPolling(true);
+
+    pollIntervalRef.current = setInterval(async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('sot-finapi-sync', {
+          body: { action: 'poll', webFormId },
+        });
+
+        if (error) {
+          console.error('[poll] Error:', error);
+          return;
+        }
+
+        if (data?.status === 'connected') {
+          stopPolling();
+          toast.success(`Bank verbunden! ${data.accounts_imported || 0} Konten importiert.`);
+          queryClient.invalidateQueries({ queryKey: ['msv_bank_accounts'] });
+          queryClient.invalidateQueries({ queryKey: ['finapi_connections'] });
+        } else if (data?.status === 'failed') {
+          stopPolling();
+          toast.error(`Bank-Verbindung fehlgeschlagen: ${data.reason || 'Unbekannter Fehler'}`);
+        }
+        // "pending" → keep polling
+      } catch (err) {
+        console.error('[poll] Exception:', err);
+      }
+    }, POLL_INTERVAL_MS);
+
+    // Timeout after 5 minutes
+    pollTimeoutRef.current = setTimeout(() => {
+      stopPolling();
+      toast.error('Zeitüberschreitung: Bank-Verbindung nicht abgeschlossen.');
+    }, POLL_TIMEOUT_MS);
+  }, [stopPolling, queryClient]);
 
   const { data: bankAccounts = [], isLoading } = useQuery({
     queryKey: ['msv_bank_accounts', activeTenantId],
@@ -50,7 +112,6 @@ export default function KontenTab() {
     enabled: !!activeTenantId,
   });
 
-  // FinAPI connections
   const { data: finapiConnections = [] } = useQuery({
     queryKey: ['finapi_connections', activeTenantId],
     queryFn: async () => {
@@ -64,7 +125,6 @@ export default function KontenTab() {
     enabled: !!activeTenantId,
   });
 
-  // FinAPI transactions
   const { data: transactions = [] } = useQuery({
     queryKey: ['finapi_transactions', activeTenantId],
     queryFn: async () => {
@@ -80,7 +140,7 @@ export default function KontenTab() {
     enabled: !!activeTenantId,
   });
 
-  // Bank Connect mutation
+  // Bank Connect mutation — Web Form 2.0 Flow
   const connectMutation = useMutation({
     mutationFn: async () => {
       const { data, error } = await supabase.functions.invoke('sot-finapi-sync', {
@@ -91,9 +151,15 @@ export default function KontenTab() {
       return data;
     },
     onSuccess: (data) => {
-      toast.success(`Bank verbunden! ${data.accounts_imported} Konten importiert.`);
-      queryClient.invalidateQueries({ queryKey: ['msv_bank_accounts'] });
-      queryClient.invalidateQueries({ queryKey: ['finapi_connections'] });
+      if (data.webFormUrl && data.webFormId) {
+        // Open Web Form in popup
+        window.open(data.webFormUrl, '_blank', 'width=500,height=700,scrollbars=yes');
+        toast.info('FinAPI-Formular geöffnet. Bitte melden Sie sich bei Ihrer Bank an.');
+        // Start polling for completion
+        startPolling(data.webFormId);
+      } else {
+        toast.error('Keine Web Form URL erhalten.');
+      }
     },
     onError: (err: Error) => {
       toast.error(`Bank-Verbindung fehlgeschlagen: ${err.message}`);
@@ -169,15 +235,36 @@ export default function KontenTab() {
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => connectMutation.mutate()}
-                disabled={connectMutation.isPending}
+                disabled={connectMutation.isPending || isPolling}
               >
                 <Building2 className="h-4 w-4 mr-2" />
-                Bank anbinden (FinAPI)
+                {isPolling ? 'Warte auf Bank-Login…' : 'Bank anbinden (FinAPI)'}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         }
       />
+
+      {/* Polling indicator */}
+      {isPolling && (
+        <Card className="glass-card mb-4 border-primary/30">
+          <CardContent className="py-4">
+            <div className="flex items-center gap-3">
+              <Loader2 className="h-5 w-5 animate-spin text-primary" />
+              <div>
+                <p className="text-sm font-medium">Warte auf Bank-Anmeldung…</p>
+                <p className="text-xs text-muted-foreground">
+                  Bitte melden Sie sich im geöffneten Fenster bei Ihrer Bank an. 
+                  Diese Seite aktualisiert sich automatisch.
+                </p>
+              </div>
+              <Button variant="outline" size="sm" onClick={stopPolling} className="ml-auto">
+                Abbrechen
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* FinAPI Connections */}
       {finapiConnections.length > 0 && (
@@ -201,7 +288,7 @@ export default function KontenTab() {
                     variant="outline"
                     size="sm"
                     onClick={() => syncMutation.mutate(conn.id)}
-                    disabled={syncMutation.isPending}
+                    disabled={syncMutation.isPending || conn.status === 'PENDING'}
                   >
                     {syncMutation.isPending ? (
                       <Loader2 className="h-3 w-3 mr-1 animate-spin" />
