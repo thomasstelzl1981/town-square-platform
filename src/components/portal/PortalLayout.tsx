@@ -104,12 +104,14 @@ function PortalLayoutInner() {
     );
   }
 
+  // P1-FIX: Redirect to /auth IMMEDIATELY when no user and not loading (no 2s delay needed
+  // for the "no org" case — only the shouldRedirect path needs debounce for token refresh)
   if (shouldRedirect && !user && !isDevelopmentMode) {
     return <Navigate to="/auth" replace />;
   }
 
+  // Show "no org" only for authenticated users whose org hasn't loaded yet
   if (!activeOrganization && !isDevelopmentMode) {
-    // If user is authenticated but org hasn't loaded yet, show loader (not error)
     if (user) {
       return (
         <div className="min-h-screen flex items-center justify-center bg-background">
@@ -117,14 +119,11 @@ function PortalLayoutInner() {
         </div>
       );
     }
+    // No user AND no org AND not redirecting yet = waiting for debounce timer
+    // Show loader instead of "Keine Organisation" to avoid confusing flash
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-center p-8">
-          <p className="text-muted-foreground">Keine Organisation zugewiesen.</p>
-          <p className="text-sm text-muted-foreground mt-2">
-            Bitte kontaktiere deinen Administrator.
-          </p>
-        </div>
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
   }
