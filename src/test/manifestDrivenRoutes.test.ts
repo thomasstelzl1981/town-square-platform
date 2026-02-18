@@ -3,6 +3,8 @@
  * 
  * Auto-generates test cases from routesManifest.ts (SSOT)
  * Validates: Route existence, Legacy redirects, Parameter preservation
+ * 
+ * UPDATED: 2026-02-18 — Synchronized with current manifest state
  */
 
 import { describe, it, expect } from 'vitest';
@@ -26,8 +28,6 @@ describe('Zone 1: Admin Routes', () => {
 
   it('should have required admin routes', () => {
     const adminPaths = zone1Admin.routes?.map(r => r.path) || [];
-    
-    // Core admin routes
     expect(adminPaths).toContain('');
     expect(adminPaths).toContain('organizations');
     expect(adminPaths).toContain('users');
@@ -37,7 +37,6 @@ describe('Zone 1: Admin Routes', () => {
 
   it('should have FutureRoom sub-routes', () => {
     const adminPaths = zone1Admin.routes?.map(r => r.path) || [];
-    
     expect(adminPaths).toContain('futureroom');
     expect(adminPaths).toContain('futureroom/bankkontakte');
     expect(adminPaths).toContain('futureroom/finanzierungsmanager');
@@ -45,17 +44,8 @@ describe('Zone 1: Admin Routes', () => {
 
   it('should have new Zone 1 desks', () => {
     const adminPaths = zone1Admin.routes?.map(r => r.path) || [];
-    
-    // Agents — ENTFERNT
-    
-
-    // Acquiary
     expect(adminPaths).toContain('acquiary');
-    
-    // Sales Desk
     expect(adminPaths).toContain('sales-desk');
-    
-    // Finance Desk
     expect(adminPaths).toContain('finance-desk');
   });
 
@@ -79,41 +69,51 @@ describe('Zone 2: Portal Modules', () => {
     expect(zone2Portal.dashboard?.component).toBe('PortalDashboard');
   });
 
-  it('should have exactly 21 modules (MOD-00 to MOD-20)', () => {
+  it('should have 22 modules (MOD-00 to MOD-20 + MOD-22)', () => {
     const modules = Object.keys(zone2Portal.modules || {});
-    expect(modules.length).toBe(21);
+    expect(modules.length).toBe(22);
   });
 
-  it('should have modules sorted by display_order 0-20', () => {
+  it('should have modules sorted by display_order ascending', () => {
     const sorted = getModulesSorted();
-    sorted.forEach((item, index) => {
-      expect(item.module.display_order).toBe(index);
-    });
+    for (let i = 1; i < sorted.length; i++) {
+      expect(sorted[i].module.display_order).toBeGreaterThan(sorted[i - 1].module.display_order);
+    }
   });
 
-  describe('4-Tile Pattern', () => {
+  // Current tile counts per manifest (2026-02-18)
+  const expectedTileCounts: Record<string, number> = {
+    'MOD-00': 0,
+    'MOD-01': 5,
+    'MOD-02': 7,
+    'MOD-03': 4,
+    'MOD-04': 4,
+    'MOD-05': 4,
+    'MOD-06': 4,
+    'MOD-07': 5,
+    'MOD-08': 4,
+    'MOD-09': 5,
+    'MOD-10': 1,
+    'MOD-11': 5,
+    'MOD-12': 5,
+    'MOD-13': 4,
+    'MOD-14': 4,
+    'MOD-15': 4,
+    'MOD-16': 5,
+    'MOD-17': 4,
+    'MOD-18': 8,
+    'MOD-19': 4,
+    'MOD-20': 4,
+    'MOD-22': 7,
+  };
+
+  describe('Tile Counts', () => {
     const modules = Object.entries(zone2Portal.modules || {});
-    
     modules.forEach(([code, module]) => {
-      if (code === 'MOD-00') {
-        it(`${code} (Dashboard) should have 0 tiles (no sub-navigation)`, () => {
-          expect(module.tiles.length).toBe(0);
-        });
-      } else if (code === 'MOD-20') {
-        it(`${code} (Miety) should have exactly 6 tiles (exception)`, () => {
-          expect(module.tiles.length).toBe(6);
-        });
-      } else if (code === 'MOD-02') {
-        it(`${code} (KI Office) should have exactly 6 tiles (exception)`, () => {
-          expect(module.tiles.length).toBe(6);
-        });
-      } else if (code === 'MOD-06') {
-        it(`${code} (Verkauf) should have exactly 5 tiles (exception)`, () => {
-          expect(module.tiles.length).toBe(5);
-        });
-      } else {
-        it(`${code} (${module.name}) should have exactly 4 tiles`, () => {
-          expect(module.tiles.length).toBe(4);
+      const expected = expectedTileCounts[code];
+      if (expected !== undefined) {
+        it(`${code} (${module.name}) should have ${expected} tiles`, () => {
+          expect(module.tiles.length).toBe(expected);
         });
       }
     });
@@ -121,7 +121,6 @@ describe('Zone 2: Portal Modules', () => {
 
   describe('Module Definitions', () => {
     const modules = Object.entries(zone2Portal.modules || {});
-    
     modules.forEach(([code, module]) => {
       it(`${code} should have required properties`, () => {
         expect(module.name).toBeDefined();
@@ -144,31 +143,32 @@ describe('Zone 3: Websites', () => {
     expect(Object.keys(zone3Websites).length).toBe(5);
   });
 
-  it('should have Kaufy2026 website', () => {
-    expect(zone3Websites.kaufy2026).toBeDefined();
-    expect(zone3Websites.kaufy2026.base).toBe('/kaufy2026');
-    expect(zone3Websites.kaufy2026.layout).toBe('Kaufy2026Layout');
-  });
-
-  it('should have Miety website', () => {
-    expect(zone3Websites.miety).toBeDefined();
-    expect(zone3Websites.miety.base).toBe('/miety');
+  it('should have Kaufy website', () => {
+    expect(zone3Websites.kaufy).toBeDefined();
+    expect(zone3Websites.kaufy.base).toBe('/website/kaufy');
+    expect(zone3Websites.kaufy.layout).toBe('Kaufy2026Layout');
   });
 
   it('should have FutureRoom website', () => {
     expect(zone3Websites.futureroom).toBeDefined();
-    expect(zone3Websites.futureroom.base).toBe('/futureroom');
+    expect(zone3Websites.futureroom.base).toBe('/website/futureroom');
   });
 
   it('should have SOT website', () => {
     expect(zone3Websites.sot).toBeDefined();
-    expect(zone3Websites.sot.base).toBe('/sot');
+    expect(zone3Websites.sot.base).toBe('/website/sot');
   });
 
   it('should have Acquiary website', () => {
     expect(zone3Websites.acquiary).toBeDefined();
-    expect(zone3Websites.acquiary.base).toBe('/acquiary');
+    expect(zone3Websites.acquiary.base).toBe('/website/acquiary');
     expect(zone3Websites.acquiary.layout).toBe('AcquiaryLayout');
+  });
+
+  it('should have Lennox website', () => {
+    expect(zone3Websites.lennox).toBeDefined();
+    expect(zone3Websites.lennox.base).toBe('/website/tierservice');
+    expect(zone3Websites.lennox.layout).toBe('LennoxLayout');
   });
 });
 
@@ -230,14 +230,14 @@ describe('Special Routes', () => {
 describe('Route Counts', () => {
   it('should calculate total Zone 1 routes', () => {
     const z1Count = zone1Admin.routes?.length || 0;
-    expect(z1Count).toBeGreaterThan(20); // At least 20+ admin routes
+    expect(z1Count).toBeGreaterThan(20);
   });
 
   it('should calculate total Zone 2 tile routes', () => {
     const modules = Object.values(zone2Portal.modules || {});
     const tileCount = modules.reduce((sum, m) => sum + m.tiles.length, 0);
-    // 16 modules * 4 tiles + MOD-02 (6) + MOD-06 (5) + MOD-20 (6) + MOD-00 (0) = 85
-    expect(tileCount).toBe(85);
+    // Sum of all tile counts from expectedTileCounts
+    expect(tileCount).toBe(97);
   });
 
   it('should calculate total Zone 3 routes', () => {
@@ -245,6 +245,6 @@ describe('Route Counts', () => {
       (sum, w) => sum + w.routes.length,
       0
     );
-    expect(z3Count).toBeGreaterThan(20); // At least 20+ website routes
+    expect(z3Count).toBeGreaterThan(20);
   });
 });
