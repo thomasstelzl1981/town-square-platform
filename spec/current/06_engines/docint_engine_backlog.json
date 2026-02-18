@@ -71,11 +71,12 @@
         {
           "id": "P2.1",
           "feature": "Storage-Extraktion (eigene Dateien)",
-          "status": "backlog",
+          "status": "live",
           "priority": "P1",
           "effort_days": "2-3",
           "sprint": "Nächster",
-          "description": "User klickt 'Dokument auslesen' im DMS → Signed URL → Gemini Vision → document_chunks. 1 Credit/Dokument."
+          "description": "User klickt 'Dokument auslesen' im DMS → Signed URL → Gemini Vision → document_chunks. 1 Credit/Dokument.",
+          "component": "supabase/functions/sot-storage-extract/ + PreviewView.tsx"
         },
         {
           "id": "P2.2",

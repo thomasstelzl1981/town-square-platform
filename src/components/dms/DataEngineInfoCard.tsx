@@ -27,7 +27,7 @@ const PHASE_1: EngineFeature[] = [
 ];
 
 const PHASE_2: EngineFeature[] = [
-  { icon: CloudCog, label: 'Storage-Extraktion (eigene Dateien)', status: 'planned', detail: 'Eigene Dateien im DMS auslesen — erfordert neue Edge Function' },
+  { icon: CloudCog, label: 'Storage-Extraktion (eigene Dateien)', status: 'live', detail: 'Button "Dokument auslesen" im DMS → Gemini Vision → document_chunks (1 Credit/Dok)' },
   { icon: Plug, label: 'Google Drive / Dropbox Sync', status: 'planned', detail: 'OAuth-Anbindung externer Cloud-Speicher mit Index-Aufbau' },
   { icon: Zap, label: 'End-to-End NK-Abrechnung', status: 'planned', detail: 'Automatische Zuordnung von NK-Belegen zu Positionen' },
   { icon: Database, label: 'FinAPI Konto-Matching', status: 'planned', detail: 'Transaktionen ↔ Verträge automatisch abgleichen' },
@@ -111,7 +111,7 @@ export function DataEngineInfoCard() {
             {/* Technical Note */}
             <div className="p-3 rounded-xl bg-muted/50 text-xs text-muted-foreground mt-4">
               <p className="font-medium text-foreground text-sm mb-1">Technische Voraussetzungen</p>
-              <p>• Storage-Extraktion: Neue Edge Function (Credit-Preflight ✅)</p>
+              <p>• Storage-Extraktion: ✅ Live (sot-storage-extract Edge Function)</p>
               <p>• Cloud-Sync: OAuth2 Flow + Token-Management (GDPR)</p>
               <p>• FinAPI: Externe API-Anbindung (§34f lizenzpflichtig)</p>
               <p>• RAG-Index: pgvector Extension + Embedding-Pipeline</p>
