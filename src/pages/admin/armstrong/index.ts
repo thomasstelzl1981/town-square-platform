@@ -12,4 +12,5 @@ export { default as ArmstrongPolicies } from './ArmstrongPolicies';
 export { default as ArmstrongTestHarness } from './ArmstrongTestHarness';
 export { default as ArmstrongIntegrations } from './ArmstrongIntegrations';
 export { default as ArmstrongEngines } from './ArmstrongEngines';
+export { default as ArmstrongGoldenPaths } from './ArmstrongGoldenPaths';
 export { default as PlatformCostMonitor } from './PlatformCostMonitor';
