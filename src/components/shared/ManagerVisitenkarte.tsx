@@ -18,6 +18,10 @@ interface ManagerVisitenkarteProps {
   extraBadge?: string;
   onEdit?: () => void;
   children?: React.ReactNode;
+  overrideName?: string;
+  overrideEmail?: string;
+  overridePhone?: string;
+  overrideAddress?: string;
 }
 
 export function ManagerVisitenkarte({
@@ -28,6 +32,10 @@ export function ManagerVisitenkarte({
   extraBadge,
   onEdit,
   children,
+  overrideName,
+  overrideEmail,
+  overridePhone,
+  overrideAddress,
 }: ManagerVisitenkarteProps) {
   const { profile } = useAuth();
 
@@ -35,6 +43,11 @@ export function ManagerVisitenkarte({
   const fullAddress = [profile?.street, profile?.postal_code, profile?.city]
     .filter(Boolean)
     .join(', ');
+
+  const displayName = overrideName || fullName;
+  const displayEmail = overrideEmail || profile?.email;
+  const displayPhone = overridePhone || profile?.phone_mobile;
+  const displayAddress = overrideAddress || fullAddress;
 
   return (
     <Card className={cn("overflow-hidden border-0 shadow-card", DESIGN.DASHBOARD_HEADER.CARD_HEIGHT)}>
@@ -48,7 +61,7 @@ export function ManagerVisitenkarte({
             style={{ background: `linear-gradient(to bottom right, ${gradientFrom}, ${gradientTo})` }}
           >
             {profile?.avatar_url ? (
-              <img src={profile.avatar_url} alt={fullName} className="h-12 w-12 rounded-full object-cover" />
+              <img src={profile.avatar_url} alt={displayName} className="h-12 w-12 rounded-full object-cover" />
             ) : (
               <User className="h-5 w-5 text-white" />
             )}
@@ -56,7 +69,7 @@ export function ManagerVisitenkarte({
           <div className="flex-1 min-w-0 space-y-1.5">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-base font-bold">{fullName}</h3>
+                <h3 className="text-base font-bold">{displayName}</h3>
                 <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{role}</p>
               </div>
               {onEdit && (
@@ -67,22 +80,22 @@ export function ManagerVisitenkarte({
             </div>
 
             <div className="space-y-0.5">
-              {profile?.email && (
+              {displayEmail && (
                 <div className="flex items-center gap-2 text-[11px]">
                   <Mail className="h-3 w-3 text-muted-foreground shrink-0" />
-                  <span className="truncate">{profile.email}</span>
+                  <span className="truncate">{displayEmail}</span>
                 </div>
               )}
-              {profile?.phone_mobile && (
+              {displayPhone && (
                 <div className="flex items-center gap-2 text-[11px]">
                   <Phone className="h-3 w-3 text-muted-foreground shrink-0" />
-                  <span>{profile.phone_mobile}</span>
+                  <span>{displayPhone}</span>
                 </div>
               )}
-              {fullAddress && (
+              {displayAddress && (
                 <div className="flex items-center gap-2 text-[11px]">
                   <MapPin className="h-3 w-3 text-muted-foreground shrink-0" />
-                  <span className="truncate">{fullAddress}</span>
+                  <span className="truncate">{displayAddress}</span>
                 </div>
               )}
             </div>
