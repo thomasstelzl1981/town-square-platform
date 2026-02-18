@@ -1,14 +1,14 @@
 /**
- * useArmstrongVoice — ElevenLabs Scribe v2 Realtime STT + Browser Fallback
+ * useArmstrongVoice — Browser SpeechRecognition STT + ElevenLabs TTS
  * 
- * Primary: ElevenLabs useScribe (scribe_v2_realtime, VAD commit)
- * Fallback: Browser SpeechRecognition API (de-DE)
+ * STT: Browser SpeechRecognition API (de-DE) — stable, no external dependencies
+ * TTS: ElevenLabs via edge function
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
-const VOICE_PROVIDER: 'elevenlabs' | 'browser' = 'elevenlabs';
+const VOICE_PROVIDER: 'elevenlabs' | 'browser' = 'browser';
 
 interface VoiceState {
   isConnected: boolean;
@@ -328,27 +328,69 @@ export function useArmstrongVoice(): UseArmstrongVoiceReturn {
   // ── Public API ──
   const startListening = useCallback(async () => {
     setState(prev => ({ ...prev, error: null }));
-    
-    // Step 1: Request microphone IMMEDIATELY in user gesture context
+
+    // Check mediaDevices availability (fails in non-secure contexts / restrictive iframes)
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      console.error('[Voice] navigator.mediaDevices not available');
+      setState(prev => ({
+        ...prev,
+        error: 'Mikrofon in diesem Kontext nicht verfügbar (HTTPS erforderlich)',
+        isProcessing: false,
+      }));
+      return;
+    }
+
+    // Pre-check permission state if Permissions API is available
+    try {
+      const permResult = await navigator.permissions.query({ name: 'microphone' as PermissionName });
+      if (permResult.state === 'denied') {
+        setState(prev => ({
+          ...prev,
+          error: 'Mikrofon ist dauerhaft blockiert. Bitte in den Browser-Einstellungen für diese Seite erlauben und Seite neu laden.',
+          isProcessing: false,
+        }));
+        return;
+      }
+    } catch {
+      // permissions.query not supported — continue with getUserMedia
+    }
+
+    // Request microphone IMMEDIATELY in user gesture context
     let stream: MediaStream | null = null;
     try {
       stream = await navigator.mediaDevices.getUserMedia({
         audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
       });
     } catch (e) {
-      console.error('[Voice] Microphone access denied:', e);
+      const err = e instanceof Error ? e : new Error(String(e));
+      console.error('[Voice] getUserMedia error:', {
+        name: err.name,
+        message: err.message,
+        error: e,
+      });
+
+      const errorMessages: Record<string, string> = {
+        NotAllowedError: 'Mikrofonzugriff verweigert — bitte in den Browser-Einstellungen erlauben',
+        NotFoundError: 'Kein Mikrofon gefunden — bitte ein Mikrofon anschließen',
+        NotReadableError: 'Mikrofon wird bereits verwendet — bitte andere Tabs schließen',
+        OverconstrainedError: 'Mikrofon-Einstellungen nicht unterstützt',
+        TypeError: 'Mikrofon in diesem Kontext nicht verfügbar (HTTPS erforderlich)',
+      };
+
       setState(prev => ({
         ...prev,
-        error: 'Mikrofonzugriff verweigert — bitte in den Browser-Einstellungen erlauben',
+        error: errorMessages[err.name] || `Mikrofonfehler: ${err.message}`,
         isProcessing: false,
       }));
       return;
     }
 
-    // Step 2: With mic authorized, proceed to ElevenLabs or browser fallback
+    // With mic authorized, proceed to provider
     if (VOICE_PROVIDER === 'elevenlabs') {
       await startElevenLabs(stream);
     } else {
+      // Release the stream — browser SpeechRecognition manages its own audio
+      stream.getTracks().forEach(t => t.stop());
       startBrowser();
     }
   }, [startElevenLabs, startBrowser]);
