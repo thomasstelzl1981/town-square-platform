@@ -30,7 +30,7 @@ const plans: PricingPlan[] = [
     period: 'nur bei Nutzung',
     description: 'Sie zahlen nur, wenn KI wirklich für Sie arbeitet — transparent pro Aktion.',
     features: [
-      'Kontaktanreicherung aus E-Mail-Signaturen',
+      'E-Mail-Anreicherung: 20 Credits/Monat (5,00 €)',
       'Dokument-Extraktion & Klassifizierung',
       'Digitale Post: Zuordnung & Ablage',
       'Recherche mit Quellenprotokoll',

@@ -513,6 +513,51 @@ async function handleTenantMailbox(
     }
   }
 
+  // ─── AUTO-TRIGGER: Contact Enrichment from Email Signature ───
+  try {
+    const { data: enrichSettings } = await sbAdmin
+      .from('tenant_extraction_settings')
+      .select('auto_enrich_contacts_email')
+      .eq('tenant_id', tenantId)
+      .maybeSingle();
+
+    if (enrichSettings?.auto_enrich_contacts_email) {
+      const bodyText = emailData.text || emailData.body_text || emailData.html || "";
+      const fromName = typeof emailData.from === "string"
+        ? emailData.from
+        : emailData.from?.name || emailData.from?.address || "";
+
+      const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+      const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+      // Call contact enrichment edge function via direct fetch
+      const enrichUrl = `${supabaseUrl}/functions/v1/sot-contact-enrichment`;
+      const enrichResponse = await fetch(enrichUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${serviceKey}`,
+        },
+        body: JSON.stringify({
+          source: "email",
+          scope: "zone2_tenant",
+          tenant_id: tenantId,
+          data: {
+            email: fromEmail,
+            from_name: fromName,
+            body_text: bodyText,
+          },
+        }),
+      });
+
+      const enrichResult = await enrichResponse.json();
+      console.log(`[contact-enrichment] Result for ${fromEmail}:`, enrichResult);
+    }
+  } catch (enrichErr) {
+    // Non-blocking: enrichment failure should not break email processing
+    console.error("[contact-enrichment] Error (non-blocking):", enrichErr);
+  }
+
   console.log(`Inbound email processed: ${inboundEmail.id} (${pdfCount} PDFs)`);
   return json({ ok: true, inbound_email_id: inboundEmail.id });
 }

@@ -42,6 +42,7 @@ const creditCategories = [
   { name: 'Dokumentenanalyse', price: '2–5 Credits', desc: 'Verträge vergleichen, Klauseln finden, Inhalte extrahieren' },
   { name: 'Web-Recherche', price: '3–5 Credits', desc: 'Internet-Recherche mit Quellenprotokoll und Zusammenfassung' },
   { name: 'Posteingang-Pipeline', price: '1 Credit/Dokument', desc: 'Automatische End-to-End-Verarbeitung neuer Dokumente' },
+  { name: 'E-Mail-Anreicherung', price: '20 Credits/Monat', desc: 'Kontaktdaten aus E-Mail-Signaturen automatisch extrahieren und im Kontaktbuch ergänzen' },
 ];
 
 const comparisonItems = [

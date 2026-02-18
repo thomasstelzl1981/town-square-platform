@@ -159,6 +159,66 @@ function generatePublicId(firstName: string | null, lastName: string | null): st
   return `SOT-K-${namePart}${randomSuffix}`;
 }
 
+/**
+ * Check if tenant has an active contact_enrichment subscription
+ * and still has credits left in the current billing month.
+ * Returns { allowed: boolean, reason?: string }
+ */
+async function checkEnrichmentSubscription(
+  supabase: any,
+  tenantId: string,
+): Promise<{ allowed: boolean; reason?: string; creditsUsedThisMonth?: number; creditsPerMonth?: number }> {
+  // 1. Check for active subscription
+  const { data: sub, error: subErr } = await supabase
+    .from('tenant_subscriptions')
+    .select('*')
+    .eq('tenant_id', tenantId)
+    .eq('service_code', 'contact_enrichment')
+    .eq('is_active', true)
+    .maybeSingle();
+
+  if (subErr) {
+    console.error("Subscription check error:", subErr);
+    return { allowed: false, reason: "subscription_check_failed" };
+  }
+
+  if (!sub) {
+    return { allowed: false, reason: "no_active_subscription" };
+  }
+
+  const creditsPerMonth = sub.credits_per_month || 20;
+
+  // 2. Count credits used this month for contact_enrichment
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+
+  const { count, error: countErr } = await supabase
+    .from('credit_ledger')
+    .select('*', { count: 'exact', head: true })
+    .eq('tenant_id', tenantId)
+    .eq('action_code', 'contact_enrichment')
+    .gte('created_at', monthStart)
+    .lt('amount', 0); // Only deductions (negative amounts)
+
+  if (countErr) {
+    console.error("Credit count error:", countErr);
+    return { allowed: false, reason: "credit_count_failed" };
+  }
+
+  const creditsUsed = count || 0;
+
+  if (creditsUsed >= creditsPerMonth) {
+    return { 
+      allowed: false, 
+      reason: "monthly_budget_exhausted", 
+      creditsUsedThisMonth: creditsUsed, 
+      creditsPerMonth 
+    };
+  }
+
+  return { allowed: true, creditsUsedThisMonth: creditsUsed, creditsPerMonth };
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -176,7 +236,6 @@ serve(async (req) => {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
-
     }
 
     // Create Supabase client
@@ -184,35 +243,42 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Check if enrichment is enabled for this channel (only for zone2_tenant with tenant_id)
+    // Check subscription + monthly budget (for zone2_tenant)
     if (scope === 'zone2_tenant' && tenant_id) {
-      const { data: settings, error: settingsError } = await supabase
+      const subscriptionCheck = await checkEnrichmentSubscription(supabase, tenant_id);
+      
+      if (!subscriptionCheck.allowed) {
+        console.log(`Enrichment not allowed: ${subscriptionCheck.reason} (used: ${subscriptionCheck.creditsUsedThisMonth}/${subscriptionCheck.creditsPerMonth})`);
+        return new Response(JSON.stringify({ 
+          skipped: true, 
+          reason: subscriptionCheck.reason,
+          credits_used: subscriptionCheck.creditsUsedThisMonth,
+          credits_limit: subscriptionCheck.creditsPerMonth,
+        }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Also check legacy tenant_extraction_settings for channel-level toggle
+      const { data: settings } = await supabase
         .from('tenant_extraction_settings')
         .select('auto_enrich_contacts_email, auto_enrich_contacts_post')
         .eq('tenant_id', tenant_id)
         .maybeSingle();
 
-      if (settingsError) {
-        console.error("Error fetching settings:", settingsError);
-        return new Response(JSON.stringify({ error: "Failed to fetch settings" }), {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
       const isEnabled = source === 'email' 
         ? settings?.auto_enrich_contacts_email 
         : settings?.auto_enrich_contacts_post;
 
-      if (!isEnabled) {
-        console.log(`Auto-enrich is disabled for ${source}`);
-        return new Response(JSON.stringify({ skipped: true, reason: `Auto-enrich disabled for ${source}` }), {
+      if (isEnabled === false) {
+        console.log(`Auto-enrich is disabled for ${source} channel`);
+        return new Response(JSON.stringify({ skipped: true, reason: `channel_disabled_${source}` }), {
           status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
     }
-    // For zone1_admin, enrichment is always enabled (admin controls it manually)
 
     // Extract contact data based on source
     let extractedContact: ExtractedContact | null = null;
@@ -220,7 +286,6 @@ serve(async (req) => {
     if (source === 'email' && data.body_text) {
       extractedContact = await extractContactFromSignature(data.body_text);
       
-      // Use from_name as fallback for name extraction
       if ((!extractedContact?.first_name || !extractedContact?.last_name) && data.from_name) {
         const nameParts = data.from_name.trim().split(/\s+/);
         if (nameParts.length >= 2) {
@@ -232,7 +297,6 @@ serve(async (req) => {
         }
       }
       
-      // Use email from header if not extracted
       if (!extractedContact?.email && data.email) {
         extractedContact = {
           ...extractedContact,
@@ -253,7 +317,7 @@ serve(async (req) => {
 
     console.log("Extracted contact:", extractedContact);
 
-    // Search for existing contact by email (with scope filter)
+    // Search for existing contact by email
     let existingContact = null;
     if (extractedContact.email) {
       let query = supabase
@@ -262,7 +326,6 @@ serve(async (req) => {
         .eq('scope', scope)
         .eq('email', extractedContact.email);
       
-      // For zone2_tenant, also filter by tenant_id
       if (scope === 'zone2_tenant' && tenant_id) {
         query = query.eq('tenant_id', tenant_id);
       }
@@ -271,34 +334,19 @@ serve(async (req) => {
       existingContact = found;
     }
 
+    let result: { action: string; contact_id?: string; fields_updated?: string[] };
+
     if (existingContact) {
-      // Update only NULL fields
       const updateData: Record<string, string | null> = {};
       
-      if (!existingContact.first_name && extractedContact.first_name) {
-        updateData.first_name = extractedContact.first_name;
-      }
-      if (!existingContact.last_name && extractedContact.last_name) {
-        updateData.last_name = extractedContact.last_name;
-      }
-      if (!existingContact.company && extractedContact.company) {
-        updateData.company = extractedContact.company;
-      }
-      if (!existingContact.phone_mobile && extractedContact.phone_mobile) {
-        updateData.phone_mobile = extractedContact.phone_mobile;
-      }
-      if (!existingContact.phone && extractedContact.phone) {
-        updateData.phone = extractedContact.phone;
-      }
-      if (!existingContact.street && extractedContact.street) {
-        updateData.street = extractedContact.street;
-      }
-      if (!existingContact.postal_code && extractedContact.postal_code) {
-        updateData.postal_code = extractedContact.postal_code;
-      }
-      if (!existingContact.city && extractedContact.city) {
-        updateData.city = extractedContact.city;
-      }
+      if (!existingContact.first_name && extractedContact.first_name) updateData.first_name = extractedContact.first_name;
+      if (!existingContact.last_name && extractedContact.last_name) updateData.last_name = extractedContact.last_name;
+      if (!existingContact.company && extractedContact.company) updateData.company = extractedContact.company;
+      if (!existingContact.phone_mobile && extractedContact.phone_mobile) updateData.phone_mobile = extractedContact.phone_mobile;
+      if (!existingContact.phone && extractedContact.phone) updateData.phone = extractedContact.phone;
+      if (!existingContact.street && extractedContact.street) updateData.street = extractedContact.street;
+      if (!existingContact.postal_code && extractedContact.postal_code) updateData.postal_code = extractedContact.postal_code;
+      if (!existingContact.city && extractedContact.city) updateData.city = extractedContact.city;
 
       if (Object.keys(updateData).length > 0) {
         const { error: updateError } = await supabase
@@ -309,34 +357,18 @@ serve(async (req) => {
         if (updateError) {
           console.error("Error updating contact:", updateError);
           return new Response(JSON.stringify({ error: "Failed to update contact" }), {
-            status: 500,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
 
-        console.log(`Updated contact ${existingContact.id} with fields:`, Object.keys(updateData));
-        return new Response(JSON.stringify({ 
-          action: 'updated', 
-          contact_id: existingContact.id,
-          fields_updated: Object.keys(updateData)
-        }), {
-          status: 200,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        result = { action: 'updated', contact_id: existingContact.id, fields_updated: Object.keys(updateData) };
       } else {
-        console.log("No fields to update for existing contact");
-        return new Response(JSON.stringify({ action: 'unchanged', contact_id: existingContact.id }), {
-          status: 200,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        result = { action: 'unchanged', contact_id: existingContact.id };
       }
     } else {
-      // Create new contact with category "Offen"
       if (!extractedContact.first_name && !extractedContact.last_name) {
-        console.log("Cannot create contact without name");
         return new Response(JSON.stringify({ skipped: true, reason: "No name extracted" }), {
-          status: 200,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
@@ -365,21 +397,34 @@ serve(async (req) => {
       if (insertError) {
         console.error("Error creating contact:", insertError);
         return new Response(JSON.stringify({ error: "Failed to create contact" }), {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
-      console.log(`Created new contact ${inserted.id} with category 'Offen'`);
-      return new Response(JSON.stringify({ 
-        action: 'created', 
-        contact_id: inserted.id,
-        category: 'Offen'
-      }), {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      result = { action: 'created', contact_id: inserted.id };
     }
+
+    // Deduct 1 credit for successful enrichment (zone2_tenant only)
+    if (scope === 'zone2_tenant' && tenant_id && result.action !== 'unchanged') {
+      try {
+        await supabase.rpc("rpc_credit_deduct", {
+          p_tenant_id: tenant_id,
+          p_credits: 1,
+          p_action_code: "contact_enrichment",
+          p_ref_type: "contact",
+          p_ref_id: result.contact_id || null,
+        });
+        console.log(`1 Credit deducted for contact_enrichment (tenant: ${tenant_id})`);
+      } catch (creditErr) {
+        console.error("Credit deduction failed (non-blocking):", creditErr);
+      }
+    }
+
+    console.log(`Contact enrichment result:`, result);
+    return new Response(JSON.stringify(result), {
+      status: 200,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   } catch (error) {
     console.error("Contact enrichment error:", error);
     return new Response(JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }), {

@@ -17795,6 +17795,53 @@ export type Database = {
           },
         ]
       }
+      tenant_subscriptions: {
+        Row: {
+          activated_at: string | null
+          created_at: string
+          credits_per_month: number
+          id: string
+          is_active: boolean
+          next_billing: string | null
+          price_cents: number
+          service_code: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          activated_at?: string | null
+          created_at?: string
+          credits_per_month?: number
+          id?: string
+          is_active?: boolean
+          next_billing?: string | null
+          price_cents?: number
+          service_code: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          activated_at?: string | null
+          created_at?: string
+          credits_per_month?: number
+          id?: string
+          is_active?: boolean
+          next_billing?: string | null
+          price_cents?: number
+          service_code?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_subscriptions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenant_tile_activation: {
         Row: {
           activated_at: string
