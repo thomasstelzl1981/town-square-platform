@@ -1154,8 +1154,8 @@ async function executeAction(
         
         if (error) return { success: false, error: error.message };
         
-        const purchasePrice = (property.purchase_price_cents || 0) / 100;
-        const monthlyRent = property.units?.reduce((sum: number, unit: Record<string, unknown>) => {
+        const purchasePrice = ((property as any).purchase_price_cents || 0) / 100;
+        const monthlyRent = (property as any).units?.reduce((sum: number, unit: Record<string, unknown>) => {
           const leases = unit.leases as Array<Record<string, unknown>> | undefined;
           const activeLeases = leases?.filter((l) => l.status === "active") || [];
           const rent = (activeLeases[0]?.rent_net_cents as number) || 0;
@@ -1195,7 +1195,7 @@ async function executeAction(
           { rule: "has_address", passed: !!(property.address_street && property.address_city), message: "Adresse vollständig" },
           { rule: "has_year_built", passed: !!property.year_built, message: "Baujahr angegeben" },
           { rule: "has_price", passed: !!property.purchase_price_cents, message: "Kaufpreis angegeben" },
-          { rule: "valid_year", passed: property.year_built >= 1800 && property.year_built <= 2030, message: "Baujahr plausibel" },
+          { rule: "valid_year", passed: (property as any).year_built >= 1800 && (property as any).year_built <= 2030, message: "Baujahr plausibel" },
         ];
         
         return {

@@ -101,7 +101,7 @@ serve(async (req) => {
     let processed = 0;
     let errors = 0;
 
-    for (const enrollment of (enrollments || []) as Enrollment[]) {
+    for (const enrollment of ((enrollments || []) as unknown) as Enrollment[]) {
       try {
         // Skip if sequence is not active
         if (enrollment.sequence?.status !== "active") {
@@ -135,7 +135,7 @@ serve(async (req) => {
 
         if (stepsError) throw stepsError;
 
-        const currentStep = (steps as SequenceStep[])?.find(
+        const currentStep = ((steps as unknown) as SequenceStep[])?.find(
           s => s.step_order === enrollment.current_step
         );
 
@@ -163,7 +163,7 @@ serve(async (req) => {
 
           if (count && count > 0) {
             // Contact replied - skip to next step or complete
-            const nextStep = (steps as SequenceStep[])?.find(
+            const nextStep = ((steps as unknown) as SequenceStep[])?.find(
               s => s.step_order === enrollment.current_step + 1
             );
 
@@ -255,7 +255,7 @@ serve(async (req) => {
         });
 
         // 7. Update enrollment for next step
-        const nextStep = (steps as SequenceStep[])?.find(
+        const nextStep = ((steps as unknown) as SequenceStep[])?.find(
           s => s.step_order === enrollment.current_step + 1
         );
 

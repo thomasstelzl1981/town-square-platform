@@ -94,7 +94,7 @@ serve(async (req) => {
       await supabase
         .from("admin_email_threads")
         .update({
-          message_count: supabase.rpc ? undefined : 1, // Will use raw update below
+          // message_count handled separately
           last_activity_at: new Date().toISOString(),
         })
         .eq("id", payload.thread_id);
