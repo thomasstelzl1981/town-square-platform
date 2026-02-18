@@ -22,20 +22,13 @@ function LegacyRedirect({ to }: { to: string }) {
   const params = useParams();
   const location = useLocation();
   
-  // Replace all param placeholders with actual values
+  // Replace all named param placeholders with actual values (skip wildcard '*')
   let redirectPath = to;
   Object.entries(params).forEach(([key, value]) => {
-    if (value) {
+    if (key !== '*' && value) {
       redirectPath = redirectPath.replace(`:${key}`, value);
     }
   });
-  
-  // Handle wildcard params (e.g., /portfolio/:id/* → keep extra path segments)
-  if (params['*']) {
-    redirectPath = redirectPath.endsWith('/') 
-      ? `${redirectPath}${params['*']}`
-      : `${redirectPath}/${params['*']}`;
-  }
   
   // Preserve query string and hash
   const fullPath = `${redirectPath}${location.search}${location.hash}`;
