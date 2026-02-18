@@ -12,7 +12,7 @@ import {
   ChevronRight,
   TrendingUp,
   Building2,
-  Users,
+  FileText,
   FolderOpen,
   Inbox,
   PiggyBank,
@@ -27,7 +27,7 @@ import {
 import type { ElementType } from 'react';
 
 const iconMap: Record<string, ElementType> = {
-  TrendingUp, Building2, Users, FolderOpen, Inbox,
+  TrendingUp, Building2, FileText, FolderOpen, Inbox,
   PiggyBank, Shield, Car, PawPrint, Landmark,
   Search, ListChecks, LayoutGrid,
 };
