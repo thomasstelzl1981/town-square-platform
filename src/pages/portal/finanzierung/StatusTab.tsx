@@ -7,7 +7,7 @@ import { getActiveWidgetGlow } from '@/config/designManifest';
 import { cn } from '@/lib/utils';
 
 import { useState, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { PageShell } from '@/components/shared/PageShell';
@@ -18,14 +18,24 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { Progress } from '@/components/ui/progress';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel,
+  AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
+  AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { 
   Clock, CheckCircle, Send, User, Building2,
   Loader2, Mail, AlertCircle, FileCheck, Landmark,
-  ArrowRight, FileText
+  ArrowRight, FileText, Trash2, Archive
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { getStatusLabel, getStatusBadgeVariant } from '@/types/finance';
+import { toast } from 'sonner';
+
+const DELETABLE_STATUSES = ['draft', 'collecting'];
+const ARCHIVABLE_STATUSES = ['submitted', 'rejected', 'cancelled', 'completed'];
+const REMOVABLE_STATUSES = [...DELETABLE_STATUSES, ...ARCHIVABLE_STATUSES];
 
 // TimelineEvent interface and STATUS_PROGRESSION
 interface TimelineEvent {
@@ -61,6 +71,7 @@ function getProgressStep(status: string): number {
 
 export default function StatusTab() {
   const { activeOrganization } = useAuth();
+  const queryClient = useQueryClient();
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
 
   // Fetch requests with mandates AND future_room_cases for status mirroring
@@ -82,6 +93,7 @@ export default function StatusTab() {
           )
         `)
         .eq('tenant_id', activeOrganization.id)
+        .is('archived_at', null)
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data || [];
@@ -249,6 +261,31 @@ export default function StatusTab() {
     );
   }
 
+  const deleteMutation = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+      if (DELETABLE_STATUSES.includes(status)) {
+        const { error } = await supabase
+          .from('finance_requests')
+          .delete()
+          .eq('id', id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('finance_requests')
+          .update({ archived_at: new Date().toISOString() } as any)
+          .eq('id', id);
+        if (error) throw error;
+      }
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['finance-requests-with-mandates'] });
+      queryClient.invalidateQueries({ queryKey: ['finance-requests-list'] });
+      if (selectedRequestId === variables.id) setSelectedRequestId(null);
+      toast.success(DELETABLE_STATUSES.includes(variables.status) ? 'Entwurf gelöscht' : 'Anfrage archiviert');
+    },
+    onError: () => toast.error('Fehler beim Entfernen'),
+  });
+
   return (
     <PageShell>
       {/* Widget Bar — one tile per finance request */}
@@ -256,6 +293,8 @@ export default function StatusTab() {
         {requests.map((req) => {
           const isActive = req.id === effectiveSelectedId;
           const status = getEffectiveStatus(req);
+          const canRemove = REMOVABLE_STATUSES.includes(req.status);
+          const isDraft = DELETABLE_STATUSES.includes(req.status);
           return (
             <WidgetCell key={req.id}>
               <Card
@@ -270,9 +309,43 @@ export default function StatusTab() {
                   <div>
                     <div className="flex items-center justify-between mb-2">
                       <FileText className="h-5 w-5 text-primary" />
-                      <Badge variant={getStatusBadgeVariant(status)}>
-                        {getStatusLabel(status)}
-                      </Badge>
+                      <div className="flex items-center gap-1">
+                        {canRemove && (
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <button
+                                className="p-1 rounded hover:bg-destructive/10 transition-colors"
+                                onClick={(e) => e.stopPropagation()}
+                                title={isDraft ? 'Entwurf löschen' : 'Archivieren'}
+                              >
+                                {isDraft ? <Trash2 className="h-3.5 w-3.5 text-destructive" /> : <Archive className="h-3.5 w-3.5 text-muted-foreground" />}
+                              </button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>{isDraft ? 'Entwurf löschen?' : 'Anfrage archivieren?'}</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  {isDraft
+                                    ? 'Dieser Entwurf wird unwiderruflich gelöscht.'
+                                    : 'Die Anfrage wird aus der Übersicht entfernt.'}
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                                <AlertDialogAction
+                                  className={isDraft ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90' : ''}
+                                  onClick={() => deleteMutation.mutate({ id: req.id, status: req.status })}
+                                >
+                                  {isDraft ? 'Löschen' : 'Archivieren'}
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        )}
+                        <Badge variant={getStatusBadgeVariant(status)}>
+                          {getStatusLabel(status)}
+                        </Badge>
+                      </div>
                     </div>
                     <h3 className="font-semibold text-sm truncate">
                       {req.public_id || `#${req.id.slice(0, 8)}`}

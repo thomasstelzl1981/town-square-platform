@@ -1,0 +1,1 @@
+ALTER TABLE public.finance_requests ADD COLUMN archived_at TIMESTAMPTZ DEFAULT NULL;
