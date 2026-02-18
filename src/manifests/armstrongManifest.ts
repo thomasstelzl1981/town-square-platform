@@ -56,6 +56,7 @@ export const TOP_30_MVP_ACTION_CODES = [
   'ARM.GLOBAL.WEB_SEARCH',
   'ARM.GLOBAL.SUMMARIZE_TEXT',
   'ARM.GLOBAL.DRAFT_MESSAGE',
+  'ARM.GLOBAL.ANALYZE_DOCUMENT',
   
   // Pack B: Dashboard (5)
   'ARM.MOD00.CREATE_TASK',
@@ -1416,6 +1417,30 @@ export const armstrongActions: ArmstrongActionV2[] = [
     api_contract: { type: 'edge_function', endpoint: 'sot-armstrong-advisor' },
     ui_entrypoints: ['/portal', '/portal/office'],
     audit_event_type: 'ARM_DRAFT_MESSAGE',
+    status: 'active',
+  },
+
+  {
+    action_code: 'ARM.GLOBAL.ANALYZE_DOCUMENT',
+    title_de: 'Dokument analysieren',
+    description_de: 'Analysiert ein hochgeladenes Dokument (PDF, Bild, DOCX) und beantwortet Fragen zum Inhalt',
+    zones: ['Z2'],
+    module: null,
+    risk_level: 'low',
+    execution_mode: 'readonly',
+    requires_consent_code: null,
+    roles_allowed: [],
+    data_scopes_read: ['tenant_documents'],
+    data_scopes_write: [],
+    side_effects: ['credits_consumed'],
+    version: '1.0.0',
+    cost_model: 'metered',
+    cost_unit: 'per_call',
+    cost_hint_cents: 25,
+    credits_estimate: 1,
+    api_contract: { type: 'edge_function', endpoint: 'sot-armstrong-advisor' },
+    ui_entrypoints: ['/portal'],
+    audit_event_type: 'ARM_ANALYZE_DOCUMENT',
     status: 'active',
   },
 

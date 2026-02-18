@@ -95,6 +95,12 @@ interface AdvisorRequest {
     flow_type: string;
     flow_state?: Record<string, unknown>;
   } | null;
+  document_context?: {
+    extracted_text: string;
+    filename: string;
+    content_type: string;
+    confidence: number;
+  } | null;
 }
 
 interface AdvisorResponse {
@@ -170,7 +176,8 @@ export function useArmstrongAdvisor() {
   const buildRequest = useCallback((
     message: string,
     actionRequest?: AdvisorRequest['action_request'],
-    flow?: AdvisorRequest['flow']
+    flow?: AdvisorRequest['flow'],
+    documentContext?: AdvisorRequest['document_context']
   ): AdvisorRequest => {
     const z2ctx = context as Zone2Context;
     
@@ -188,6 +195,7 @@ export function useArmstrongAdvisor() {
       },
       action_request: actionRequest || null,
       flow: flow || (activeFlow ? { flow_type: activeFlow.flow_type, flow_state: { step: activeFlow.step } } : null),
+      document_context: documentContext || null,
     };
   }, [context, getCurrentModule, activeFlow]);
 
@@ -283,7 +291,7 @@ export function useArmstrongAdvisor() {
   /**
    * Send a message to the advisor
    */
-  const sendMessage = useCallback(async (text: string) => {
+  const sendMessage = useCallback(async (text: string, documentContext?: AdvisorRequest['document_context']) => {
     if (!text.trim()) return;
 
     // Clear any pending action when new message is sent
@@ -293,7 +301,7 @@ export function useArmstrongAdvisor() {
     const userMessage: ChatMessage = {
       id: crypto.randomUUID(),
       role: 'user',
-      content: text,
+      content: documentContext ? `📄 ${documentContext.filename}\n\n${text}` : text,
       timestamp: new Date(),
     };
     addMessage(userMessage);
@@ -301,7 +309,7 @@ export function useArmstrongAdvisor() {
     setIsLoading(true);
 
     try {
-      const request = buildRequest(text);
+      const request = buildRequest(text, undefined, undefined, documentContext);
       
       const { data, error } = await supabase.functions.invoke('sot-armstrong-advisor', {
         body: request,
