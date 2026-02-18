@@ -316,11 +316,18 @@ Ziel: Keine funktionslosen Kacheln, keine hardcodierten Beispieldaten.
 
 ## Testplan — Reihenfolge
 
-### Phase 1: Fundament (Auth + Routing + Engines)
-1. H1-H9: Auth-Flow komplett testen
-2. Alle 22 Module laden (Smoke-Test)
-3. Alle 10 Admin-Desks laden (Smoke-Test)
-4. C1-C10: Engine Unit-Tests ausfuehren
+### Phase 1: Fundament (Auth + Routing + Engines) — IN PROGRESS
+
+| # | Test | Status | Ergebnis |
+|---|------|--------|----------|
+| 1 | C1-C10: Engine Unit-Tests | ✅ DONE | 9/9 Dateien, 75/75 Tests grün. AkquiseCalc(6), ProjektCalc(5), VVSteuer(7), Bewirtschaftung(8), Provision(7), Vorsorgeluecke(11), NKAbrechnung(9), Finanzuebersicht(11), Finanzierung(11). DemoData hat keinen Unit-Test. |
+| 2 | G1-G5: Zone 3 Websites Smoke | ✅ DONE | 5/5 Websites laden: SoT ✅, Kaufy ✅, FutureRoom ✅, Acquiary ✅, Lennox/Tierservice ✅ |
+| 3 | H1: Auth-Seite rendert | ✅ DONE | Login-Formular rendert korrekt, Social-Login-Buttons vorhanden |
+| 4 | H1-H9: Auth-Flow komplett | ⏳ BLOCKED | Browser-Agent hat keine Credentials. User muss in Preview einloggen. |
+| 5 | Zone 2: 22 Module Smoke-Test | ⏳ BLOCKED | Abhaengig von Auth-Login |
+| 6 | Zone 1: 10 Admin-Desks Smoke-Test | ⏳ BLOCKED | Abhaengig von Auth-Login |
+
+**FINDING P1:** Infinite-Spinner bei abgelaufenem Refresh-Token auf `/portal` — App bleibt im Loading-State statt zur `/auth`-Seite zu leiten. AuthContext setzt `isLoading=false` aber user=null, der Route-Guard zeigt trotzdem Spinner.
 
 ### Phase 2: Core-Flows (Golden Paths A1-A8)
 5. A2: Finanzierung E2E (haeufigster User-Flow)
@@ -365,4 +372,4 @@ Ziel: Keine funktionslosen Kacheln, keine hardcodierten Beispieldaten.
 | Websites | 5 |
 | Geschaetzter Aufwand | 20-30 Stunden |
 
-**Naechster Schritt:** Phase 1 starten — Auth + Smoke-Tests + Engine-Unit-Tests.
+**Naechster Schritt:** User muss in Preview einloggen, dann Phase 1 fortsetzen (Module + Desks Smoke-Tests).
