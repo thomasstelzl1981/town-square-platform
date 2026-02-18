@@ -19,7 +19,8 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
-import { Loader2, AlertTriangle, UserPlus, Mail, CheckCircle, XCircle, Clock, History, Euro, Plus, FileText, TrendingUp, ChevronDown, Save } from 'lucide-react';
+import { Loader2, AlertTriangle, UserPlus, Mail, CheckCircle, XCircle, Clock, History, Euro, Plus, FileText, TrendingUp, ChevronDown, Save, Trash2 } from 'lucide-react';
+import { WidgetDeleteOverlay } from '@/components/shared/WidgetDeleteOverlay';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -287,6 +288,20 @@ export function TenancyTab({ propertyId, tenantId, unitId }: TenancyTabProps) {
     setSaving(false);
   };
 
+  const [deletingLeaseId, setDeletingLeaseId] = useState<string | null>(null);
+  const handleDeleteLease = async (leaseId: string) => {
+    setDeletingLeaseId(leaseId);
+    try {
+      const { error } = await supabase.from('leases').delete().eq('id', leaseId);
+      if (error) throw error;
+      toast.success('Mietvertrag gelöscht');
+      await fetchData();
+    } catch (err: any) {
+      toast.error(err.message || 'Fehler beim Löschen');
+    }
+    setDeletingLeaseId(null);
+  };
+
   const handleActivateLease = async (leaseId: string) => {
     try {
       const { error } = await supabase.from('leases').update({ status: 'active' }).eq('id', leaseId);
@@ -355,7 +370,12 @@ export function TenancyTab({ propertyId, tenantId, unitId }: TenancyTabProps) {
     const warmRent = calculateWarmRent(cold, nk, heating);
 
     return (
-      <Card key={lease.id}>
+      <Card key={lease.id} className="relative group">
+        <WidgetDeleteOverlay
+          title={lease.tenant_contact ? `${lease.tenant_contact.first_name} ${lease.tenant_contact.last_name}` : 'Mietvertrag'}
+          onConfirmDelete={() => handleDeleteLease(lease.id)}
+          isDeleting={deletingLeaseId === lease.id}
+        />
         <CardHeader className="pb-2 pt-3 px-4">
           <div className="flex items-center justify-between">
             <CardTitle className="text-sm flex items-center gap-2">

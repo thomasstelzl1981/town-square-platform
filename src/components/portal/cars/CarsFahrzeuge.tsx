@@ -4,7 +4,7 @@
  */
 import { useState } from 'react';
 import { useDossierAutoResearch } from '@/hooks/useDossierAutoResearch';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent } from '@/components/ui/card';
@@ -20,8 +20,9 @@ import { toast } from 'sonner';
 import {
   Plus, Search, Car, Bike, Gauge, Calendar, User, Shield,
   ChevronDown, FileText, AlertTriangle, BookOpen, FolderOpen, X, Wrench,
-  Check, Pencil, Wifi, Save, Loader2
+  Check, Pencil, Wifi, Save, Loader2, Trash2
 } from 'lucide-react';
+import { WidgetDeleteOverlay } from '@/components/shared/WidgetDeleteOverlay';
 import { format, differenceInDays } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -130,8 +131,29 @@ export default function CarsFahrzeuge() {
   const [newVehicleData, setNewVehicleData] = useState<Record<string, string>>({});
   const [isSavingNew, setIsSavingNew] = useState(false);
 
+  const queryClient = useQueryClient();
+  const [deletingVehicleId, setDeletingVehicleId] = useState<string | null>(null);
+
+  const deleteVehicleMutation = useMutation({
+    mutationFn: async (vehicleId: string) => {
+      setDeletingVehicleId(vehicleId);
+      const { error } = await supabase.from('cars_vehicles').delete().eq('id', vehicleId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      setDeletingVehicleId(null);
+      if (selectedVehicleId === deletingVehicleId) setSelectedVehicleId(null);
+      toast.success('Fahrzeug gelöscht');
+      queryClient.invalidateQueries({ queryKey: ['cars_vehicles'] });
+    },
+    onError: (err: Error) => {
+      setDeletingVehicleId(null);
+      toast.error(`Fehler: ${err.message}`);
+    },
+  });
+
   const { data: dbVehicles, refetch } = useQuery({
-    queryKey: ['cars_vehicles', activeTenantId],
+    queryKey: ['cars_vehicles', activeTenantId] as const,
     queryFn: async () => {
       if (!activeTenantId) return [];
       const { data, error } = await supabase
@@ -251,14 +273,21 @@ export default function CarsFahrzeuge() {
             <WidgetCell key={vehicle.id}>
                <Card
                 className={cn(
-                  "glass-card overflow-hidden cursor-pointer group transition-all h-full",
+                  "glass-card overflow-hidden cursor-pointer group transition-all h-full relative",
                   vehicleIsDemo
                     ? cn(DESIGN.DEMO_WIDGET.CARD, "ring-2 ring-emerald-400 border-emerald-400 shadow-sm")
                     : getActiveWidgetGlow('teal'),
                   isSelected ? "border-primary ring-2 ring-primary/20" : !vehicleIsDemo && "border-primary/10 hover:border-primary/30"
                 )}
-                onClick={() => { setIsCreatingNew(false); setSelectedVehicleId(isSelected ? null : vehicle.id); }}
-              >
+                 onClick={() => { setIsCreatingNew(false); setSelectedVehicleId(isSelected ? null : vehicle.id); }}
+               >
+                {!vehicleIsDemo && (
+                  <WidgetDeleteOverlay
+                    title={`${vehicle.make} ${vehicle.model}`}
+                    onConfirmDelete={() => deleteVehicleMutation.mutate(vehicle.id)}
+                    isDeleting={deletingVehicleId === vehicle.id}
+                  />
+                )}
                 <div className="relative h-[55%] bg-muted/30 overflow-hidden">
                   <img src={getImage(vehicle)} alt={`${vehicle.make} ${vehicle.model}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                   <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-transparent" />

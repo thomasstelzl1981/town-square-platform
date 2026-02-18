@@ -17,8 +17,10 @@ import { isDemoId } from '@/engines/demoData/engine';
 import { useDemoToggles } from '@/hooks/useDemoToggles';
 import { cn } from '@/lib/utils';
 import {
-  Home, Plus, Building2, ArrowRight, Camera, Globe, ImageOff, Navigation,
+  Home, Plus, Building2, ArrowRight, Camera, Globe, ImageOff, Navigation, Trash2, Loader2,
 } from 'lucide-react';
+import { WidgetDeleteOverlay } from '@/components/shared/WidgetDeleteOverlay';
+import { toast } from 'sonner';
 import { MietyServiceCards } from '../components/MietyServiceCards';
 
 export default function UebersichtTile() {
@@ -59,6 +61,29 @@ export default function UebersichtTile() {
       return data;
     },
     enabled: !!user?.id,
+  });
+
+  const [deletingHomeId, setDeletingHomeId] = useState<string | null>(null);
+  const deleteHomeMutation = useMutation({
+    mutationFn: async (homeId: string) => {
+      setDeletingHomeId(homeId);
+      // Delete related contracts first
+      await supabase.from('miety_contracts').delete().eq('home_id', homeId);
+      await supabase.from('miety_meter_readings').delete().eq('home_id', homeId);
+      await supabase.from('miety_loans').delete().eq('home_id', homeId);
+      const { error } = await supabase.from('miety_homes').delete().eq('id', homeId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      setDeletingHomeId(null);
+      if (openCardId === deletingHomeId) setOpenCardId(null);
+      toast.success('Zuhause gelöscht');
+      queryClient.invalidateQueries({ queryKey: ['miety-homes'] });
+    },
+    onError: (err: Error) => {
+      setDeletingHomeId(null);
+      toast.error(`Fehler: ${err.message}`);
+    },
   });
 
   const autoCreateMutation = useMutation({
@@ -173,7 +198,12 @@ export default function UebersichtTile() {
             <div key={home.id} className="space-y-4">
               <div className="flex flex-col gap-3 sm:grid sm:grid-cols-3 sm:gap-4">
                 {/* Kachel 1: Adresse */}
-                <Card className={cn("glass-card h-[240px] sm:aspect-square sm:h-auto flex flex-col", isDemo && DEMO_WIDGET.CARD)}>
+                <Card className={cn("glass-card h-[240px] sm:aspect-square sm:h-auto flex flex-col relative group", isDemo && DEMO_WIDGET.CARD)}>
+                  <WidgetDeleteOverlay
+                    title={home.name || 'Zuhause'}
+                    onConfirmDelete={() => deleteHomeMutation.mutate(home.id)}
+                    isDeleting={deletingHomeId === home.id}
+                  />
                   <CardContent className="p-5 flex flex-col justify-between h-full">
                     <div>
                       <div className="flex items-center gap-2 mb-3">

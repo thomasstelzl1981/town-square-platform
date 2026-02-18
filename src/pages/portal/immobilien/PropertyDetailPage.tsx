@@ -7,10 +7,14 @@
  * It renders an empty state when no property is found (e.g., for testing with fake IDs).
  */
 import { useEffect, useState } from 'react';
-import { useParams, Link, useSearchParams } from 'react-router-dom';
+import { useParams, Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { isDemoProperty } from '@/config/tenantConstants';
 import { useDemoToggles } from '@/hooks/useDemoToggles';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -20,7 +24,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, Loader2, AlertTriangle, FileText, Building2, Calculator, LayoutList, LayoutPanelLeft, TrendingUp, Banknote, Receipt, BarChart3 } from 'lucide-react';
+import { ArrowLeft, Loader2, AlertTriangle, FileText, Building2, Calculator, LayoutList, LayoutPanelLeft, TrendingUp, Banknote, Receipt, BarChart3, Trash2 } from 'lucide-react';
 import { ExposeTab } from '@/components/portfolio/ExposeTab';
 import { VerkaufsauftragTab } from '@/components/portfolio/VerkaufsauftragTab';
 import { TenancyTab } from '@/components/portfolio/TenancyTab';
@@ -173,7 +177,34 @@ export default function PropertyDetailPage() {
   const initialTab = searchParams.get('tab') || 'akte';
   const [activeTab, setActiveTab] = useState(initialTab);
   const [splitView, setSplitView] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const navigate = useNavigate();
+  const deleteQueryClient = useQueryClient();
   const contentRef = usePdfContentRef();
+
+  const handleDeleteProperty = async () => {
+    if (!id) return;
+    setIsDeleting(true);
+    try {
+      // Delete cascade: leases -> units -> property
+      const { data: units } = await supabase.from('units').select('id').eq('property_id', id);
+      if (units?.length) {
+        const unitIds = units.map(u => u.id);
+        await supabase.from('leases').delete().in('unit_id', unitIds);
+        await supabase.from('units').delete().eq('property_id', id);
+      }
+      const { error } = await supabase.from('properties').delete().eq('id', id);
+      if (error) throw error;
+      toast({ title: 'Immobilie gelöscht' });
+      deleteQueryClient.invalidateQueries({ queryKey: ['portfolio-units-annual'] });
+      navigate('/portal/immobilien/portfolio');
+    } catch (err: any) {
+      toast({ title: 'Fehler', description: err.message, variant: 'destructive' });
+    }
+    setIsDeleting(false);
+    setShowDeleteDialog(false);
+  };
 
   // Guard: if this is a demo property and demo mode is off, show not-found
   const blockedByDemoToggle = isDemo && !demoEnabled;
@@ -388,7 +419,12 @@ export default function PropertyDetailPage() {
             </Badge>
           )}
 
-          {/* Split-View Toggle — lg+ only */}
+          {!isDemo && (
+            <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive no-print" onClick={() => setShowDeleteDialog(true)}>
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
+
           <div className="hidden lg:flex items-center gap-1 border rounded-md p-0.5 bg-muted/30 no-print">
             <Button
               variant={splitView ? 'ghost' : 'secondary'}
@@ -559,6 +595,24 @@ export default function PropertyDetailPage() {
         documentTitle={getDocumentTitle()} 
         moduleName="MOD-04 Immobilien – Immobilienakte" 
       />
+      {/* Delete confirmation dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Immobilie löschen?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Alle verknüpften Einheiten, Mietverträge und Dokumente werden ebenfalls entfernt. Dieser Vorgang kann nicht rückgängig gemacht werden.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+            <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={handleDeleteProperty} disabled={isDeleting}>
+              {isDeleting ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
+              Löschen
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </PageShell>
   );
 }

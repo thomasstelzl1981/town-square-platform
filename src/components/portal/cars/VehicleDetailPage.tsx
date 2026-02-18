@@ -25,8 +25,15 @@ import {
   BookOpen,
   FolderOpen,
   Plus,
-  Pencil
+  Pencil,
+  Trash2,
+  Loader2,
 } from 'lucide-react';
+import { toast } from 'sonner';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { ClaimCreateDialog } from './ClaimCreateDialog';
@@ -111,6 +118,24 @@ export default function VehicleDetailPage() {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState('akte');
   const [claimDialogOpen, setClaimDialogOpen] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleDeleteVehicle = async () => {
+    if (!id) return;
+    setIsDeleting(true);
+    try {
+      const { error } = await supabase.from('cars_vehicles').delete().eq('id', id);
+      if (error) throw error;
+      toast.success('Fahrzeug gelöscht');
+      queryClient.invalidateQueries({ queryKey: ['cars_vehicles'] });
+      navigate('/portal/cars/fahrzeuge');
+    } catch (err: any) {
+      toast.error(`Fehler: ${err.message}`);
+    }
+    setIsDeleting(false);
+    setShowDeleteDialog(false);
+  };
 
   // Fetch vehicle
   const { data: vehicle, isLoading: vehicleLoading } = useQuery({
@@ -256,6 +281,9 @@ export default function VehicleDetailPage() {
         <Button variant="outline" size="sm">
           <Pencil className="h-4 w-4 mr-2" />
           Bearbeiten
+        </Button>
+        <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => setShowDeleteDialog(true)}>
+          <Trash2 className="h-4 w-4" />
         </Button>
       </div>
 
@@ -529,6 +557,25 @@ export default function VehicleDetailPage() {
           />
         </>
       )}
+
+      {/* Delete confirmation */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Fahrzeug löschen?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Das Fahrzeug und alle verknüpften Daten werden unwiderruflich gelöscht.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+            <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={handleDeleteVehicle} disabled={isDeleting}>
+              {isDeleting ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
+              Löschen
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
