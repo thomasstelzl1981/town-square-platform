@@ -28,9 +28,10 @@ Diese Regeln dürfen unter keinen Umständen verletzt werden.
 
 ## K2: Credits ↔ Cents Konsistenz
 
-- [ ] 1 Credit = 0,50 EUR = 50 Cent
-- [ ] `credits_estimate × 50 = cost_hint_cents`
+- [ ] 1 Credit = 0,25 EUR = 25 Cent
+- [ ] `credits_estimate × 25 = cost_hint_cents`
 - [ ] Alle `free` Actions: `credits_estimate=0`
+- [ ] Posteingang-Extraktion: 1 Credit pro PDF (pauschal)
 
 ---
 
