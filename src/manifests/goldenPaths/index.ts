@@ -217,6 +217,8 @@ import { GP_PET_GOLDEN_PATH as _GP_PET } from './GP_PET';
 registerGoldenPath('MOD-04', _MOD_04);
 registerGoldenPath('MOD-07', _MOD_07_11);
 registerGoldenPath('MOD-08', _MOD_08_12);
+// P2-FIX: MOD-12 Guard uses this code — register same GP under both keys
+registerGoldenPath('MOD-12', _MOD_08_12);
 registerGoldenPath('MOD-13', _MOD_13);
 registerGoldenPath('GP-VERMIETUNG', _GP_VERMIETUNG);
 registerGoldenPath('GP-LEAD', _GP_LEAD);

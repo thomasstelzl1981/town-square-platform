@@ -150,6 +150,103 @@ const mod04Resolver: ContextResolver = async ({ tenantId, entityId: propertyId }
 registerContextResolver('MOD-04', mod04Resolver);
 
 // ═══════════════════════════════════════════════════════════════
+// MOD-07 Resolver (Finanzierung)
+// ═══════════════════════════════════════════════════════════════
+
+const mod07Resolver: ContextResolver = async ({ tenantId, entityId: requestId }) => {
+  const flags: Record<string, boolean> = {
+    user_authenticated: true,
+    tenant_exists: !!tenantId,
+  };
+  if (!tenantId) return flags;
+
+  if (requestId) {
+    const { data: req } = await supabase
+      .from('finance_requests')
+      .select('id, status')
+      .eq('id', requestId)
+      .eq('tenant_id', tenantId)
+      .maybeSingle();
+    flags.finance_request_exists = !!req;
+    flags.finance_request_submitted = req?.status === 'submitted' || req?.status === 'in_review' || req?.status === 'approved';
+  }
+
+  // Check applicant profile exists
+  const { count: profileCount } = await supabase
+    .from('applicant_profiles')
+    .select('*', { count: 'exact', head: true })
+    .eq('tenant_id', tenantId);
+  flags.applicant_profile_complete = (profileCount ?? 0) > 0;
+
+  return flags;
+};
+
+registerContextResolver('MOD-07', mod07Resolver);
+
+// ═══════════════════════════════════════════════════════════════
+// MOD-08/12 Resolver (Akquise)
+// ═══════════════════════════════════════════════════════════════
+
+const mod08Resolver: ContextResolver = async ({ tenantId, entityId: mandateId }) => {
+  const flags: Record<string, boolean> = {
+    user_authenticated: true,
+    tenant_exists: !!tenantId,
+  };
+  if (!tenantId) return flags;
+
+  if (mandateId) {
+    const { data: mandate } = await supabase
+      .from('acq_mandates')
+      .select('id, status')
+      .eq('id', mandateId)
+      .eq('tenant_id', tenantId)
+      .maybeSingle();
+    flags.mandate_draft_exists = !!mandate;
+    flags.mandate_submitted = mandate?.status === 'submitted_to_zone1' || mandate?.status === 'active';
+    flags.mandate_assigned = mandate?.status === 'active';
+  }
+
+  return flags;
+};
+
+registerContextResolver('MOD-08', mod08Resolver);
+registerContextResolver('MOD-12', mod08Resolver);
+
+// ═══════════════════════════════════════════════════════════════
+// MOD-13 Resolver (Projekte)
+// ═══════════════════════════════════════════════════════════════
+
+const mod13Resolver: ContextResolver = async ({ tenantId, entityId: projectId }) => {
+  const flags: Record<string, boolean> = {
+    user_authenticated: true,
+    tenant_exists: !!tenantId,
+  };
+  if (!tenantId) return flags;
+
+  if (projectId) {
+    const { data: project } = await supabase
+      .from('dev_projects')
+      .select('id, status')
+      .eq('id', projectId)
+      .eq('tenant_id', tenantId)
+      .maybeSingle();
+    flags.project_exists = !!project;
+
+    if (project) {
+      const { count: unitCount } = await supabase
+        .from('dev_project_units')
+        .select('*', { count: 'exact', head: true })
+        .eq('project_id', projectId);
+      flags.units_created = (unitCount ?? 0) > 0;
+    }
+  }
+
+  return flags;
+};
+
+registerContextResolver('MOD-13', mod13Resolver);
+
+// ═══════════════════════════════════════════════════════════════
 // GP-PET / MOD-22 Resolver
 // ═══════════════════════════════════════════════════════════════
 
