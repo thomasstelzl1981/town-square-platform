@@ -322,15 +322,15 @@ export const GP_PET_GOLDEN_PATH: GoldenPathDefinition = {
     },
 
     // ═══════════════════════════════════════════════════════════
-    // PHASE 6: Aktiver Kunde (Success State)
+    // PHASE 7: Aktiver Kunde (Success State)
     // ═══════════════════════════════════════════════════════════
     {
       id: 'active_customer',
-      phase: 6,
+      phase: 7,
       label: 'Aktiver Kunde',
       type: 'system',
       task_kind: 'service_task',
-      camunda_key: 'GP_PET_STEP_06_ACTIVE',
+      camunda_key: 'GP_PET_STEP_07_ACTIVE',
       preconditions: [
         { key: 'customer_exists', source: 'pet_customers', description: 'Kunde existiert' },
         { key: 'pet_exists', source: 'pets', description: 'Tier existiert' },
