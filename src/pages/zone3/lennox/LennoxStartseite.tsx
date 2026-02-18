@@ -82,10 +82,6 @@ export default function LennoxStartseite() {
         <div className="relative z-10 max-w-5xl mx-auto px-6 flex flex-col items-center justify-center text-center"
           style={{ minHeight: hasSearched ? '45vh' : '85vh' }}>
           
-          {/* Patch Badge */}
-          {!hasSearched && (
-            <img src={lennoxPatch} alt="Lennox Patch" className="h-20 w-20 rounded-2xl object-cover mb-6 shadow-xl border-2 border-white/20" />
-          )}
           
           <h1 className={`font-bold text-white leading-tight tracking-tight transition-all duration-500 ${hasSearched ? 'text-2xl md:text-4xl mb-3' : 'text-4xl md:text-6xl lg:text-7xl mb-4'}`}
             style={{ textShadow: '0 2px 20px rgba(0,0,0,0.3)' }}>
