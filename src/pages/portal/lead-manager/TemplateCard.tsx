@@ -1,6 +1,6 @@
 /**
  * TemplateCard — Reusable template card for brand content workshops
- * 250px gradient header, editable fields, save/toggle
+ * 4:5 aspect ratio with image support, editable fields, save/toggle
  */
 import { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -33,11 +33,13 @@ interface TemplateCardProps {
   selectable?: boolean;
   selected?: boolean;
   onSelect?: (id: string) => void;
+  /** Pre-generated template image URL */
+  imageUrl?: string;
 }
 
 export function TemplateCard({
   id, name, code, brandGradient, fields: initialFields, active,
-  isSaving, onSave, onToggleActive, selectable, selected, onSelect,
+  isSaving, onSave, onToggleActive, selectable, selected, onSelect, imageUrl,
 }: TemplateCardProps) {
   const [fields, setFields] = useState<TemplateFields>(initialFields);
   const [dirty, setDirty] = useState(false);
@@ -57,6 +59,20 @@ export function TemplateCard({
     setDirty(false);
   };
 
+  // Image or gradient header
+  const ImageHeader = ({ className }: { className?: string }) => (
+    imageUrl ? (
+      <div className={cn('relative overflow-hidden', className)}>
+        <img src={imageUrl} alt={name} className="w-full h-full object-cover" />
+      </div>
+    ) : (
+      <div className={cn(`bg-gradient-to-br ${brandGradient} flex flex-col items-center justify-center gap-3 p-6`, className)}>
+        <ImagePlus className="h-10 w-10 text-white/50" />
+        <p className="text-white/60 text-sm">Bild-Upload kommt bald</p>
+      </div>
+    )
+  );
+
   if (selectable) {
     return (
       <Card
@@ -66,12 +82,7 @@ export function TemplateCard({
         )}
         onClick={() => onSelect?.(id)}
       >
-        <div className={`aspect-[4/5] bg-gradient-to-br ${brandGradient} flex items-end p-4`}>
-          <div>
-            <p className="text-white font-semibold text-sm">{name}</p>
-            <p className="text-white/70 text-xs">{code}</p>
-          </div>
-        </div>
+        <ImageHeader className="aspect-[4/5]" />
         <CardContent className="p-3 space-y-1">
           <p className="text-xs text-muted-foreground line-clamp-2">{fields.caption || '—'}</p>
           <Badge variant="outline" className="text-[10px]">{fields.cta || '—'}</Badge>
@@ -83,11 +94,7 @@ export function TemplateCard({
 
   return (
     <Card className="overflow-hidden">
-      {/* Gradient header */}
-      <div className={`aspect-[4/5] bg-gradient-to-br ${brandGradient} flex flex-col items-center justify-center gap-3 p-6`}>
-        <ImagePlus className="h-10 w-10 text-white/50" />
-        <p className="text-white/60 text-sm">Bild-Upload kommt bald</p>
-      </div>
+      <ImageHeader className="aspect-[4/5]" />
 
       <CardContent className="p-5 space-y-4">
         {/* Name & Code */}

@@ -13,6 +13,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { TemplateCard } from './TemplateCard';
 import { toast } from 'sonner';
 import { DESIGN } from '@/config/designManifest';
+import { TEMPLATE_IMAGES } from './templateImages';
 
 // ─── Brand Config ───────────────────────────────────────────────────────────
 
@@ -201,6 +202,7 @@ export default function LeadManagerBrand() {
               isSaving={saveMutation.isPending}
               onSave={(id, fields) => saveMutation.mutate({ id, fields })}
               onToggleActive={(id, active) => toggleMutation.mutate({ id, active })}
+              imageUrl={(t as any).image_url || TEMPLATE_IMAGES[t.code]}
             />
           ))}
         </div>

@@ -17565,6 +17565,7 @@ export type Database = {
           editable_fields_schema: Json | null
           format_type: string
           id: string
+          image_url: string | null
           name: string
           preview_document_id: string | null
           tenant_id: string
@@ -17579,6 +17580,7 @@ export type Database = {
           editable_fields_schema?: Json | null
           format_type?: string
           id?: string
+          image_url?: string | null
           name: string
           preview_document_id?: string | null
           tenant_id: string
@@ -17593,6 +17595,7 @@ export type Database = {
           editable_fields_schema?: Json | null
           format_type?: string
           id?: string
+          image_url?: string | null
           name?: string
           preview_document_id?: string | null
           tenant_id?: string
