@@ -1,142 +1,58 @@
 
 
-# Engine 17: Konto-Matching Engine (ENG-KONTOMATCH)
+# MOD-04 Immobilienakte: Konto-Matching & Tab-Struktur Korrektur
 
-## Antwort auf die Frage
+## Analyse der vier gemeldeten Probleme
 
-**Ja, wir brauchen eine eigene Engine.** Begruendung:
+### 1. Geldeingang: Konto-Dropdown fehlt
+**Befund: Code ist vorhanden, aber UI wird blockiert.**
+Der Code in `GeldeingangTab.tsx` (Zeile 340-384) enthalt das Bank-Account-Dropdown korrekt. Es wird aus `msv_bank_accounts` geladen. Das Problem: Die gesamte Konto-Auswahl wird nur angezeigt, wenn ein aktives Mietverhaltnis existiert (`leases.length > 0`). Wenn kein aktiver Mietvertrag gefunden wird (z.B. wegen fehlender `unit_id`), zeigt die Komponente nur den leeren Zustand "Kein aktives Mietverhaltnis vorhanden".
 
-1. **sot-rent-match existiert bereits als Edge Function** — aber ohne `spec.ts`, ohne Typen, ohne Engine-Registry-Eintrag. Es ist eine "wilde" Funktion ausserhalb der Governance.
-2. **Die Matching-Logik ist reine Geschaeftslogik** (Betragstoleranz, Verwendungszweck-Parsing, Kategorie-Erkennung). Das gehoert in eine Engine mit `spec.ts` + `engine.ts`, genau wie BWA, NK-Abrechnung etc.
-3. **Zwei getrennte Transaktions-Tabellen** (`bank_transactions` + `finapi_transactions`) brauchen eine einheitliche Abstraktion, die in der Spec dokumentiert ist.
-4. **Drei verschiedene owner_types** (Person, Immobilie, PV-Anlage) brauchen unterschiedliche Matching-Regeln — das muss an EINER Stelle definiert sein.
+**Loesung:** Pruefen, ob `unitId` korrekt an `GeldeingangTab` uebergeben wird. In `PropertyDetailPage.tsx` Zeile 551 wird `unitId={unit?.id || ''}` verwendet -- wenn kein Unit existiert, wird ein leerer String uebergeben, und die Query laeuft mit `.eq('unit_id', '')`, was keine Ergebnisse liefert. Hier muss die Fehlerbehandlung verbessert werden.
+
+### 2. NK-Abrechnung zeigt Mieteinnahmen
+**Befund: Korrekt so vorgesehen.**
+Die Sektion 3 "Mieteinnahmen & Vorauszahlungen" in der NK-Abrechnung ist absichtlich enthalten. Sie zeigt die NK-Vorauszahlungen des Mieters fuer die Saldo-Berechnung (Kostenumlage minus Vorauszahlungen). Dies ist keine Darstellung der Geldeingaenge, sondern ein Berechnungsschritt fuer die Nebenkostenabrechnung. Hier besteht kein Fehler.
+
+### 3. BWA-Tab: Falsche Ebene (Objekt statt Vermietereinheit)
+**Befund: BWA ist aktuell als eigener Tab auf Objektebene in der Immobilienakte.**
+Der BWA-Tab wurde als eigenstaendiger Tab in `PropertyDetailPage.tsx` (Zeile 494-497) eingefuegt. Der User hat Recht: BWA (Bewirtschaftungsanalyse) bezieht sich auf die gesamte Vermietereinheit, nicht auf ein einzelnes Objekt.
+
+**Loesung:**
+- BWA-Tab aus der PropertyDetailPage (Immobilienakte) entfernen
+- BWA als Unterbereich im VerwaltungTab (Steuer/Tax) integrieren, mit einem Switch zwischen "Anlage V" und "BWA" Ansicht
+- Die BWA-Engine bereits auf Vermietereinheit-Ebene aggregieren (alle Objekte einer VE zusammenfassen)
+
+### 4. Steuer-Tab: Mieteingaenge als Datenquelle
+**Befund: Daten kommen aus den Mietvertraegen (Soll-Miete), NICHT aus den tatsaechlichen Geldeingaengen.**
+Der `useVVSteuerData` Hook (Zeile 152-154) berechnet `coldRentAnnual` und `nkAdvanceAnnual` direkt aus der `leases`-Tabelle:
+```
+coldRentAnnual: propLeases.reduce((s, l) => s + (l.rent_cold_eur || 0) * 12, 0)
+```
+Das ist die **Soll-Miete** aus dem Vertrag, nicht die tatsaechlich eingegangene Miete aus `rent_payments`.
+
+**Bewertung:** Fuer die Anlage V (Steuererklaerung) ist die Soll-Miete steuerrechtlich korrekt -- das Finanzamt besteuert die vereinbarte Miete, nicht den tatsaechlichen Zahlungseingang. ABER: Es waere hilfreich, die tatsaechlichen Eingaenge als Vergleichswert (Ist vs. Soll) anzuzeigen, damit der Nutzer Diskrepanzen erkennen kann.
+
+**Loesung:** Einen optionalen Hinweis im VVAnlageVForm einbauen, der bei Abweichung zwischen Soll (Vertrag) und Ist (rent_payments) warnt.
 
 ---
 
-## Was wird gebaut
+## Technischer Umsetzungsplan
 
-### Teil 1: Engine-Dateien (Client-seitige Spec + Logik)
+### Schritt 1: BWA-Tab aus Immobilienakte entfernen
+- `PropertyDetailPage.tsx`: BWA-TabsTrigger (Zeile 494-497) und TabsContent (Zeile 556-566) entfernen
+- Import von `BWATab` und `BarChart3` Icon entfernen
 
-Neue Dateien unter `src/engines/kontoMatch/`:
+### Schritt 2: BWA in VerwaltungTab (Steuer) integrieren
+- `VerwaltungTab.tsx`: Toggle/Switch einfuegen zwischen "Anlage V" und "BWA" Modus
+- Im BWA-Modus: BWATab auf Vermietereinheit-Ebene rendern (aggregiert ueber alle Objekte der gewaehlten VE)
+- Props fuer BWATab anpassen: Statt einzelner `propertyId` werden aggregierte Werte aller Objekte der VE uebergeben
 
-**spec.ts** — Typen und Konstanten (SSOT fuer Matching-Regeln)
+### Schritt 3: Geldeingang-Tab robuster machen
+- `GeldeingangTab.tsx`: Bessere Behandlung wenn `unitId` leer ist -- Hinweis "Bitte zuerst eine Einheit anlegen" statt stille Fehlabfrage
+- Sicherstellen, dass das Konto-Dropdown auch sichtbar bleibt, wenn der automatische Abgleich deaktiviert ist (die manuelle Kontenzuordnung sollte unabhaengig vom Auto-Match-Toggle sein)
 
-```text
-Definiert:
-- TransactionCategory (enum): MIETE, HAUSGELD, GRUNDSTEUER, VERSICHERUNG,
-  EINSPEISEVERGUETUNG, DARLEHEN, WARTUNG, PACHT, SONSTIG_EINGANG, SONSTIG_AUSGANG
-- MatchRule: { category, ownerTypes[], patterns[], amountRange?, direction }
-- DEFAULT_MATCH_RULES: Array von MatchRule — die kanonische Liste aller Erkennungsregeln
-- MatchResult: { transactionId, category, confidence, matchedBy, ruleCode }
-- UnifiedTransaction: { id, tenantId, accountRef, bookingDate, amount, purpose, counterparty, source }
-- MATCH_TOLERANCES: { rentAmountEur: 1, minConfidence: 0.75 }
-```
-
-**engine.ts** — Pure Functions
-
-```text
-Exportiert:
-- unifyTransaction(csv | finapi): UnifiedTransaction
-  Normalisiert beide Tabellen-Formate in ein einheitliches Objekt
-
-- categorizeTransaction(tx: UnifiedTransaction, rules: MatchRule[], context: OwnerContext): MatchResult
-  Wendet die Regeln sequentiell an, gibt die beste Kategorie + Confidence zurueck
-
-- matchRentPayment(tx, lease, tolerance): RentMatchResult
-  Die bestehende Logik aus sot-rent-match als pure Function (testbar!)
-
-- matchPVIncome(tx, pvPlant): PVMatchResult
-  Einspeiseverguetung erkennen (Netzbetreiber, regelmaessiger Eingang)
-
-- matchLoanPayment(tx, loanRef): LoanMatchResult
-  Darlehenszahlung erkennen (Bank-IBAN, regelmaessige Ausgabe)
-```
-
-### Teil 2: Engine-Registry aktualisieren
-
-**ENGINE_REGISTRY.md** — Neuer Eintrag #17:
-
-```text
-| 17 | **Konto-Matching Engine** | Ordnet Kontobewegungen automatisch Immobilien, PV-Anlagen und Vertraegen zu | Finanzanalyse, Immobilien, PV | Free |
-
-Technische Registry:
-| ENG-KONTOMATCH | Konto-Matching Engine | MOD-04, MOD-18, MOD-19 | Teilweise | src/engines/kontoMatch/spec.ts, engine.ts |
-```
-
-Kategorie: **Kalkulation** (die regelbasierte Logik ist eine pure Function, die Edge Function nutzt sie nur als Consumer).
-
-### Teil 3: index.ts erweitern
-
-```text
-// Engine 10: Konto-Matching
-export * from './kontoMatch/engine';
-export * from './kontoMatch/spec';
-```
-
-### Teil 4: sot-rent-match refactoren
-
-Die bestehende Edge Function `sot-rent-match` wird vereinfacht:
-- Die Matching-Logik wird durch Imports aus der Engine ersetzt (soweit in Edge Functions moeglich)
-- Die Engine-Typen werden in der Edge Function gespiegelt (da Edge Functions nicht direkt aus src/ importieren koennen)
-- Die Funktion wird umbenannt/erweitert zu einem breiteren Matching-Scope
-
-Da Edge Functions nicht direkt aus `src/engines/` importieren koennen, wird die Spec als Kopie im Edge-Function-Verzeichnis gehalten, mit einem Kommentar der auf die SSOT verweist.
-
-### Teil 5: Default-Matching-Regeln (die SSOT)
-
-Die wichtigsten Regeln die in `spec.ts` definiert werden:
-
-**Fuer owner_type = 'property_context' (Immobilie):**
-
-```text
-| Kategorie          | Erkennung                                                    | Richtung |
-|--------------------|--------------------------------------------------------------|----------|
-| MIETE              | Betragsabgleich mit Warmmiete (+-1 EUR), Mietername          | Eingang  |
-| HAUSGELD           | "Hausgeld", "WEG", Hausverwaltung im Zweck                  | Ausgang  |
-| GRUNDSTEUER        | "Grundsteuer" im Zweck, Finanzamt als Empfaenger             | Ausgang  |
-| VERSICHERUNG       | "Versicherung", "Gebaeude", bekannte Versicherer             | Ausgang  |
-| DARLEHEN           | Bank-IBAN aus Darlehensvertrag, regelmaessiger Betrag        | Ausgang  |
-| INSTANDHALTUNG     | "Handwerker", "Reparatur", "Sanierung" im Zweck              | Ausgang  |
-```
-
-**Fuer owner_type = 'pv_plant' (PV-Anlage):**
-
-```text
-| Kategorie              | Erkennung                                                | Richtung |
-|------------------------|----------------------------------------------------------|----------|
-| EINSPEISEVERGUETUNG    | Netzbetreiber im Empfaenger, regelmaessiger Eingang      | Eingang  |
-| WARTUNG                | "Wartung", "Service", "PV" im Zweck                     | Ausgang  |
-| PACHT                  | "Pacht", "Dachmiete" im Zweck                           | Ausgang  |
-| DARLEHEN               | Bank-IBAN aus PV-Finanzierung                            | Ausgang  |
-| VERSICHERUNG           | "PV", "Solar", "Anlage" + "Versicherung" im Zweck       | Ausgang  |
-```
-
-**Fuer owner_type = 'person' (Privatkonto):**
-
-```text
-| Kategorie    | Erkennung                                        | Richtung |
-|--------------|--------------------------------------------------|----------|
-| GEHALT       | "Gehalt", "Lohn" im Zweck, regelmaessig          | Eingang  |
-| SONSTIG      | Keine spezifische Regel greift                    | Beide    |
-```
-
----
-
-## Dateien-Uebersicht
-
-| Datei | Aktion | Beschreibung |
-|-------|--------|-------------|
-| `src/engines/kontoMatch/spec.ts` | NEU | Typen, Kategorien, Default-Regeln |
-| `src/engines/kontoMatch/engine.ts` | NEU | Pure Functions: unify, categorize, match |
-| `src/engines/index.ts` | EDIT | Engine 10 re-export hinzufuegen |
-| `spec/current/06_engines/ENGINE_REGISTRY.md` | EDIT | Engine #17 ENG-KONTOMATCH eintragen |
-| `supabase/functions/sot-rent-match/index.ts` | EDIT | Refactor: Engine-Typen nutzen, Scope erweitern |
-
-## Nicht in diesem Schritt
-
-- SQL-View `v_all_transactions` (Phase 2 — erfordert separate DB-Migration)
-- KI-Fallback-Matching (Phase 3)
-- Review-Queue UI (Phase 4)
-
-Diese werden als Folge-Schritte geplant, sobald die Engine-Grundlage steht.
+### Schritt 4: Steuer-Tab Ist/Soll-Vergleich
+- `useVVSteuerData.ts`: Optional die tatsaechlichen Mieteingaenge aus `rent_payments` laden
+- Im `VVAnlageVForm`: Warnung anzeigen wenn Ist-Miete von Soll-Miete abweicht (z.B. bei Mietrueckstaenden)
 
