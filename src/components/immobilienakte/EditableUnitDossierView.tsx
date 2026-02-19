@@ -13,6 +13,7 @@ import {
   EditableFinancingBlock,
   EditableLegalBlock,
   EditableWEGBlock,
+  EditableAfaBlock,
 } from './editable';
 import { useDossierForm } from '@/hooks/useDossierForm';
 import { useSaveDossier } from '@/hooks/useDossierMutations';
@@ -149,7 +150,7 @@ export function EditableUnitDossierView({ data }: EditableUnitDossierViewProps) 
         />
       </div>
 
-      {/* ROW 2: 2 columns — Legal | Financing */}
+      {/* ROW 2: 2 columns — Legal | AfA & Steuer */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <EditableLegalBlock
           landRegisterCourt={formData.landRegisterCourt}
@@ -165,6 +166,30 @@ export function EditableUnitDossierView({ data }: EditableUnitDossierViewProps) 
           onFieldChange={handleFieldChange}
         />
 
+        <EditableAfaBlock
+          akGround={formData.akGround}
+          akBuilding={formData.akBuilding}
+          akAncillary={formData.akAncillary}
+          landSharePercent={formData.landSharePercent}
+          buildingSharePercent={formData.buildingSharePercent}
+          afaModel={formData.afaModel}
+          afaRatePercent={formData.afaRatePercent}
+          afaStartDate={formData.afaStartDate}
+          afaMethod={formData.afaMethod}
+          remainingUsefulLifeYears={formData.remainingUsefulLifeYears}
+          bookValueEur={formData.bookValueEur}
+          bookValueDate={formData.bookValueDate}
+          cumulativeAfa={formData.cumulativeAfa}
+          sonderAfaAnnual={formData.sonderAfaAnnual}
+          denkmalAfaAnnual={formData.denkmalAfaAnnual}
+          modernizationCostsEur={formData.modernizationCostsEur}
+          modernizationYear={formData.modernizationYear}
+          onFieldChange={handleFieldChange}
+        />
+      </div>
+
+      {/* ROW 3: 2 columns — Financing | WEG */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <EditableFinancingBlock
           bankName={formData.bankName}
           loanNumber={formData.loanNumber}

@@ -139,16 +139,7 @@ export function EditableLegalBlock({
                 className="h-7 text-xs"
               />
             </div>
-            <div className="space-y-1">
-              <Label className="text-[11px] text-muted-foreground">Erwerbsnebenkosten (€)</Label>
-              <Input 
-                type="number"
-                step="0.01"
-                value={acquisitionCosts || ''} 
-                onChange={(e) => onFieldChange('acquisitionCosts', e.target.value ? parseFloat(e.target.value) : undefined)}
-                className="h-7 text-xs"
-              />
-            </div>
+            {/* Erwerbsnebenkosten moved to EditableAfaBlock */}
           </div>
         </div>
       </CardContent>

@@ -16,7 +16,7 @@ function makePropertyData(overrides: Partial<VVPropertyTaxData> = {}): VVPropert
     taxReferenceNumber: '123/456/789',
     ownershipSharePercent: 100,
     areaSqm: 80,
-    afa: { buildingSharePercent: 80, landSharePercent: 20, afaRatePercent: 2, afaStartDate: null, afaMethod: 'linear', modernizationCostsEur: 0, modernizationYear: null },
+    afa: { buildingSharePercent: 80, landSharePercent: 20, afaRatePercent: 2, afaStartDate: null, afaMethod: 'linear', modernizationCostsEur: 0, modernizationYear: null, afaModel: '7_4_2b', akGround: 0, akBuilding: 0, akAncillary: 0, sonderAfaAnnual: 0, denkmalAfaAnnual: 0, bookValueEur: 0, cumulativeAfa: 0 },
     incomeAggregated: { coldRentAnnual: 12000, nkAdvanceAnnual: 2400, nkNachzahlung: 0 },
     financingAggregated: { loanInterestAnnual: 3000 },
     nkAggregated: { grundsteuer: 300, nonRecoverableCosts: 500 },

@@ -316,7 +316,7 @@ export function useUpsertPropertyAccounting() {
     mutationFn: async ({ accountingId, data }: { accountingId?: string; data: AccountingFormData }) => {
       if (!activeTenantId) throw new Error('No active tenant');
 
-      const accountingData = {
+      const accountingData: Record<string, any> = {
         tenant_id: activeTenantId,
         property_id: data.propertyId,
         land_share_percent: data.landSharePercent || null,
@@ -330,6 +330,15 @@ export function useUpsertPropertyAccounting() {
         modernization_year: data.modernizationYear || null,
         coa_version: data.coaVersion || 'SKR04_Starter',
         account_mappings: data.accountMappings || {},
+        // New AfA fields
+        afa_model: data.afaModel || '7_4_2b',
+        ak_ground: data.akGround ?? 0,
+        ak_building: data.akBuilding ?? 0,
+        ak_ancillary: data.akAncillary ?? 0,
+        book_value_date: data.bookValueDate || null,
+        cumulative_afa: data.cumulativeAfa ?? 0,
+        sonder_afa_annual: data.sonderAfaAnnual ?? 0,
+        denkmal_afa_annual: data.denkmalAfaAnnual ?? 0,
       };
 
       if (accountingId) {
@@ -344,7 +353,7 @@ export function useUpsertPropertyAccounting() {
         // Use upsert to handle unique constraint on (tenant_id, property_id)
         const { data: newAccounting, error } = await supabase
           .from('property_accounting')
-          .upsert(accountingData, { onConflict: 'tenant_id,property_id' })
+          .upsert(accountingData as any, { onConflict: 'tenant_id,property_id' })
           .select('id')
           .single();
         if (error) throw error;
