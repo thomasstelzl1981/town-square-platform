@@ -21,6 +21,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { TransactionCsvImportDialog } from './TransactionCsvImportDialog';
+import { TransactionReviewQueue } from './TransactionReviewQueue';
 
 interface KontoAkteInlineProps {
   isDemo: boolean;
@@ -370,7 +371,10 @@ export function KontoAkteInline({ isDemo, account, onClose }: KontoAkteInlinePro
           )}
         </div>
 
-        {/* Import Dialog */}
+        {/* Sektion 4: Kategorisierung & Review */}
+        {!isDemo && accountRef && (
+          <TransactionReviewQueue accountRef={accountRef} />
+        )}
         {!isDemo && (
           <TransactionCsvImportDialog
             open={importDialogOpen}
