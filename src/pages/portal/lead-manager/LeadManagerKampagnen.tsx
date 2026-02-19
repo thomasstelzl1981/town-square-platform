@@ -259,11 +259,7 @@ export default function LeadManagerKampagnen({ contextMode = 'all', projectFilte
       <ModulePageHeader
         title="KAMPAGNEN"
         description="Kampagnen erstellen, buchen und Leads verwalten."
-        actions={
-          <Button onClick={() => setShowCreator(v => !v)} className="gap-2">
-            <Plus className="h-4 w-4" /> Neue Kampagne
-          </Button>
-        }
+        actions={undefined}
       />
 
       <div className="space-y-8">
@@ -363,15 +359,12 @@ export default function LeadManagerKampagnen({ contextMode = 'all', projectFilte
         </Card>
 
         {/* ━━━ Neue Kampagne erstellen ━━━ */}
-        {showCreator && (
+        {(
           <Card>
             <CardContent className="p-5 space-y-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Plus className="h-4 w-4 text-muted-foreground" />
-                  <h2 className="text-sm font-medium">Neue Kampagne erstellen</h2>
-                </div>
-                <Button variant="ghost" size="sm" onClick={resetCreator}>Abbrechen</Button>
+              <div className="flex items-center gap-2">
+                <Plus className="h-4 w-4 text-muted-foreground" />
+                <h2 className="text-sm font-medium">Neue Kampagne erstellen</h2>
               </div>
 
               {/* Schritt 1: Marke wählen */}
@@ -407,7 +400,7 @@ export default function LeadManagerKampagnen({ contextMode = 'all', projectFilte
                     Vorlagen können in den jeweiligen Marken-Tabs bearbeitet werden.
                   </p>
                   {availableTemplates && availableTemplates.length > 0 ? (
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                       {availableTemplates.map(t => (
                         <TemplateCard
                           key={t.id}

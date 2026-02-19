@@ -66,7 +66,7 @@ export function TemplateCard({
         )}
         onClick={() => onSelect?.(id)}
       >
-        <div className={`h-[120px] bg-gradient-to-br ${brandGradient} flex items-end p-4`}>
+        <div className={`aspect-[4/5] bg-gradient-to-br ${brandGradient} flex items-end p-4`}>
           <div>
             <p className="text-white font-semibold text-sm">{name}</p>
             <p className="text-white/70 text-xs">{code}</p>
@@ -84,7 +84,7 @@ export function TemplateCard({
   return (
     <Card className="overflow-hidden">
       {/* Gradient header */}
-      <div className={`h-[250px] bg-gradient-to-br ${brandGradient} flex flex-col items-center justify-center gap-3 p-6`}>
+      <div className={`aspect-[4/5] bg-gradient-to-br ${brandGradient} flex flex-col items-center justify-center gap-3 p-6`}>
         <ImagePlus className="h-10 w-10 text-white/50" />
         <p className="text-white/60 text-sm">Bild-Upload kommt bald</p>
       </div>
