@@ -1,2 +1,2 @@
-id;tenant_id;account_name;iban;bank_name;bic;is_default;status;owner_type;owner_id
-d0000000-0000-4000-a000-000000000300;;Girokonto Sparkasse;DE89370400440532013000;Sparkasse;COBADEFFXXX;true;active;property;d0000000-0000-4000-a000-000000000010
+id;account_name;iban;bank_name;bic;is_default;status;owner_type;owner_id
+d0000000-0000-4000-a000-000000000300;Girokonto Sparkasse;DE89370400440532013000;Sparkasse;COBADEFFXXX;true;connected;property;d0000000-0000-4000-a000-000000000001

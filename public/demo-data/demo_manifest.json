@@ -1,20 +1,21 @@
 {
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Demo-Daten SSOT für den Musterkunden Max Mustermann",
   "persona": {
     "name": "Max Mustermann",
     "address": "Leopoldstraße 42, 80802 München",
-    "tenantId": "b1f6d204-05ac-462f-9dae-8fba64ab9f88"
+    "tenantId": "dynamic"
   },
   "entities": {
-    "properties": { "file": "demo_properties.csv", "expectedCount": 3 },
-    "units": { "file": "demo_units.csv", "expectedCount": 3 },
-    "contacts": { "file": "demo_contacts.csv", "expectedCount": 5 },
-    "leases": { "file": "demo_leases.csv", "expectedCount": 3 },
-    "loans": { "file": "demo_loans.csv", "expectedCount": 3 },
+    "contacts": { "file": "demo_contacts.csv", "expectedCount": 5, "dbTable": "contacts" },
+    "properties": { "file": "demo_properties.csv", "expectedCount": 3, "dbTable": "properties" },
+    "units": { "file": "demo_units.csv", "expectedCount": 3, "dbTable": "units" },
+    "leases": { "file": "demo_leases.csv", "expectedCount": 3, "dbTable": "leases" },
+    "loans": { "file": "demo_loans.csv", "expectedCount": 3, "dbTable": "loans" },
     "bank_accounts": { "file": "demo_bank_accounts.csv", "expectedCount": 1, "dbTable": "msv_bank_accounts" },
     "bank_transactions": { "file": "demo_bank_transactions.csv", "expectedCount": 100, "dbTable": "bank_transactions" }
   },
   "seedBatchId": "demo-ssot",
+  "idPrefix": "d0000000-0000-4000",
   "updatedAt": "2026-02-19"
 }
