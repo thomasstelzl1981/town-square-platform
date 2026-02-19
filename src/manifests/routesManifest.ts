@@ -183,7 +183,7 @@ export const zone1Admin: ZoneDefinition = {
     { path: "fortbildung", component: "AdminFortbildung", title: "Fortbildung" },
     // Website Hosting (Landing Pages Zone 1) — konsolidiert auf 1 Route
     { path: "website-hosting", component: "WebHostingDashboard", title: "Website Hosting" },
-    // Compliance Desk — Legal Engine SSOT (10 internal tabs)
+    // Compliance Desk — Legal Engine SSOT (8 internal tabs)
     { path: "compliance", component: "ComplianceDeskRouter", title: "Compliance Desk" },
   ],
 };
