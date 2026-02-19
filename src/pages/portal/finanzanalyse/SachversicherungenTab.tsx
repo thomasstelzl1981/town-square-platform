@@ -22,6 +22,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Plus, Shield, X } from 'lucide-react';
+import { useLegalConsent } from '@/hooks/useLegalConsent';
+import { ConsentRequiredModal } from '@/components/portal/ConsentRequiredModal';
 import { isDemoId } from '@/engines/demoData/engine';
 import { useDemoToggles } from '@/hooks/useDemoToggles';
 import { cn } from '@/lib/utils';
@@ -63,6 +65,7 @@ export default function SachversicherungenTab() {
   const queryClient = useQueryClient();
   const { isEnabled } = useDemoToggles();
   const demoEnabled = isEnabled('GP-KONTEN');
+  const consentGuard = useLegalConsent();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [forms, setForms] = useState<Record<string, Record<string, any>>>({});
   const [showNew, setShowNew] = useState(false);
@@ -90,6 +93,7 @@ export default function SachversicherungenTab() {
 
   const createMutation = useMutation({
     mutationFn: async (form: Record<string, any>) => {
+      if (!consentGuard.requireConsent()) throw new Error('Consent required');
       if (!activeTenantId || !user?.id) throw new Error('No tenant/user');
       const { details, ...rest } = form;
       const { error } = await supabase.from('insurance_contracts').insert({
@@ -112,6 +116,7 @@ export default function SachversicherungenTab() {
 
   const updateMutation = useMutation({
     mutationFn: async (form: Record<string, any>) => {
+      if (!consentGuard.requireConsent()) throw new Error('Consent required');
       const { id, created_at, updated_at, tenant_id, user_id, details, ...rest } = form;
       const { error } = await supabase.from('insurance_contracts').update({
         category: rest.category as any, insurer: rest.insurer || null,
@@ -130,6 +135,7 @@ export default function SachversicherungenTab() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
+      if (!consentGuard.requireConsent()) throw new Error('Consent required');
       const { error } = await supabase.from('insurance_contracts').delete().eq('id', id);
       if (error) throw error;
     },

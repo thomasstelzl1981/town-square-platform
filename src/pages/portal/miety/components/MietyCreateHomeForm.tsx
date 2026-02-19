@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { Home, Plus } from 'lucide-react';
+import { useLegalConsent } from '@/hooks/useLegalConsent';
 
 interface HomeInitialData {
   name: string;
@@ -46,6 +47,7 @@ interface MietyCreateHomeFormProps {
 
 export function MietyCreateHomeForm({ onCancel, homeId, initialData }: MietyCreateHomeFormProps) {
   const { activeTenantId, user } = useAuth();
+  const consentGuard = useLegalConsent();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const isEditMode = !!homeId;
@@ -96,6 +98,7 @@ export function MietyCreateHomeForm({ onCancel, homeId, initialData }: MietyCrea
 
   const saveMutation = useMutation({
     mutationFn: async () => {
+      if (!consentGuard.requireConsent()) throw new Error('Consent required');
       if (!activeTenantId || !user?.id) throw new Error('Nicht eingeloggt');
       if (!address || !city) throw new Error('Bitte Adresse und Stadt eingeben');
 

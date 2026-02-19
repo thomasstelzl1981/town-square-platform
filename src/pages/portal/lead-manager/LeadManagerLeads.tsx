@@ -20,6 +20,7 @@ import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { DESIGN } from '@/config/designManifest';
 import { toast } from 'sonner';
+import { useLegalConsent } from '@/hooks/useLegalConsent';
 
 const STATUS_OPTIONS = [
   { value: 'new', label: 'Neu' },
@@ -45,6 +46,7 @@ export default function LeadManagerLeads() {
   const { user, activeTenantId } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const consentGuard = useLegalConsent();
   const [statusFilter, setStatusFilter] = useState('all');
   const [brandFilter, setBrandFilter] = useState('all');
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
@@ -69,6 +71,7 @@ export default function LeadManagerLeads() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: Record<string, any> }) => {
+      if (!consentGuard.requireConsent()) throw new Error('Consent required');
       const { error } = await supabase.from('social_leads').update(updates).eq('id', id);
       if (error) throw error;
     },
