@@ -33,6 +33,13 @@ export function formatComplianceStatus(status: string): string {
     scheduled: 'Eingeplant',
     executed: 'Ausgeführt',
     closed: 'Geschlossen',
+    // DSAR Phase 1 statuses
+    NEW: 'Neu',
+    IDENTITY_REQUIRED: 'ID prüfen',
+    IN_REVIEW: 'In Prüfung',
+    RESPONDED: 'Beantwortet',
+    CLOSED: 'Geschlossen',
+    REJECTED: 'Abgelehnt',
   };
   return map[status] || status;
 }
