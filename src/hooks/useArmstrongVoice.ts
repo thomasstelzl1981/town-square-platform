@@ -333,7 +333,16 @@ export function useArmstrongVoice(): UseArmstrongVoiceReturn {
   const startListening = useCallback(async () => {
     setState(prev => ({ ...prev, error: null }));
 
-    // Check mediaDevices availability (fails in non-secure contexts / restrictive iframes)
+    // For browser SpeechRecognition: skip getUserMedia entirely!
+    // SpeechRecognition manages its own audio capture.
+    // Calling getUserMedia first breaks the user-gesture context chain,
+    // causing the browser to block microphone access.
+    if (VOICE_PROVIDER === 'browser') {
+      startBrowser();
+      return;
+    }
+
+    // ElevenLabs path: needs explicit getUserMedia for WebSocket audio streaming
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       console.error('[Voice] navigator.mediaDevices not available');
       setState(prev => ({
@@ -389,14 +398,7 @@ export function useArmstrongVoice(): UseArmstrongVoiceReturn {
       return;
     }
 
-    // With mic authorized, proceed to provider
-    if (VOICE_PROVIDER === 'elevenlabs') {
-      await startElevenLabs(stream);
-    } else {
-      // Release the stream — browser SpeechRecognition manages its own audio
-      stream.getTracks().forEach(t => t.stop());
-      startBrowser();
-    }
+    await startElevenLabs(stream);
   }, [startElevenLabs, startBrowser]);
 
   const stopListening = useCallback(() => {
