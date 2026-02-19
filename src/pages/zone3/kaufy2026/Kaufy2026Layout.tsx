@@ -275,11 +275,9 @@ export default function Kaufy2026Layout() {
                 © {new Date().getFullYear()} kaufy GmbH
               </p>
               <div className="flex items-center gap-4 text-xs text-[hsl(215,16%,47%)]">
-                <a href="#" className="hover:text-[hsl(220,20%,10%)] transition-colors">Impressum</a>
+                <Link to="/website/kaufy/impressum" className="hover:text-[hsl(220,20%,10%)] transition-colors">Impressum</Link>
                 <span className="text-[hsl(210,20%,85%)]">·</span>
-                <a href="#" className="hover:text-[hsl(220,20%,10%)] transition-colors">Datenschutz</a>
-                <span className="text-[hsl(210,20%,85%)]">·</span>
-                <a href="#" className="hover:text-[hsl(220,20%,10%)] transition-colors">AGB</a>
+                <Link to="/website/kaufy/datenschutz" className="hover:text-[hsl(220,20%,10%)] transition-colors">Datenschutz</Link>
               </div>
             </div>
           </div>

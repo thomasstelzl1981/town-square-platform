@@ -327,6 +327,8 @@ const kaufy2026ComponentMap: Record<string, React.ComponentType> = {
   Kaufy2026Vermieter,
   Kaufy2026Verkaeufer,
   Kaufy2026Vertrieb,
+  Kaufy2026Impressum: React.lazy(() => import('@/pages/zone3/kaufy2026/Kaufy2026Impressum')),
+  Kaufy2026Datenschutz: React.lazy(() => import('@/pages/zone3/kaufy2026/Kaufy2026Datenschutz')),
 };
 
 
@@ -340,6 +342,8 @@ const futureroomComponentMap: Record<string, React.ComponentType> = {
   FutureRoomFAQ,
   FutureRoomLogin,
   FutureRoomAkte: React.lazy(() => import('@/pages/zone3/futureroom/FutureRoomAkteGuarded')),
+  FutureRoomImpressum: React.lazy(() => import('@/pages/zone3/futureroom/FutureRoomImpressum')),
+  FutureRoomDatenschutz: React.lazy(() => import('@/pages/zone3/futureroom/FutureRoomDatenschutz')),
 };
 
 // =============================================================================
@@ -354,6 +358,8 @@ const sotComponentMap: Record<string, React.ComponentType> = {
   SotDemo,
   SotKarriere,
   SotFAQ,
+  SotImpressum: React.lazy(() => import('@/pages/zone3/sot/SotImpressum')),
+  SotDatenschutz: React.lazy(() => import('@/pages/zone3/sot/SotDatenschutz')),
 };
 
 // =============================================================================
@@ -365,6 +371,8 @@ const acquiaryComponentMap: Record<string, React.ComponentType> = {
   AcquiaryNetzwerk,
   AcquiaryKarriere,
   AcquiaryObjekt,
+  AcquiaryImpressum: React.lazy(() => import('@/pages/zone3/acquiary/AcquiaryImpressum')),
+  AcquiaryDatenschutz: React.lazy(() => import('@/pages/zone3/acquiary/AcquiaryDatenschutz')),
 };
 
 // =============================================================================

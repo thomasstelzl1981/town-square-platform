@@ -600,6 +600,8 @@ export const zone3Websites: Record<string, WebsiteDefinition> = {
       { path: "verkaeufer", component: "Kaufy2026Verkaeufer", title: "Für Verkäufer" },
       { path: "vertrieb", component: "Kaufy2026Vertrieb", title: "Für Partner" },
       { path: "immobilien/:publicId", component: "Kaufy2026Expose", title: "Exposé", dynamic: true },
+      { path: "impressum", component: "Kaufy2026Impressum", title: "Impressum" },
+      { path: "datenschutz", component: "Kaufy2026Datenschutz", title: "Datenschutz" },
     ],
   },
   futureroom: {
@@ -612,6 +614,8 @@ export const zone3Websites: Record<string, WebsiteDefinition> = {
       { path: "faq", component: "FutureRoomFAQ", title: "FAQ" },
       { path: "login", component: "FutureRoomLogin", title: "Login" },
       { path: "akte", component: "FutureRoomAkte", title: "Meine Akte" },
+      { path: "impressum", component: "FutureRoomImpressum", title: "Impressum" },
+      { path: "datenschutz", component: "FutureRoomDatenschutz", title: "Datenschutz" },
     ],
   },
   sot: {
@@ -626,6 +630,8 @@ export const zone3Websites: Record<string, WebsiteDefinition> = {
       { path: "demo", component: "SotDemo", title: "Demo" },
       { path: "karriere", component: "SotKarriere", title: "Karriere" },
       { path: "faq", component: "SotFAQ", title: "FAQ" },
+      { path: "impressum", component: "SotImpressum", title: "Impressum" },
+      { path: "datenschutz", component: "SotDatenschutz", title: "Datenschutz" },
       // Legacy redirects handled via component redirects
       { path: "real-estate", component: "SotPlattform", title: "Plattform" },
       { path: "finance", component: "SotPlattform", title: "Plattform" },
@@ -644,6 +650,8 @@ export const zone3Websites: Record<string, WebsiteDefinition> = {
       { path: "netzwerk", component: "AcquiaryNetzwerk", title: "Netzwerk" },
       { path: "karriere", component: "AcquiaryKarriere", title: "Karriere" },
       { path: "objekt", component: "AcquiaryObjekt", title: "Objekt anbieten" },
+      { path: "impressum", component: "AcquiaryImpressum", title: "Impressum" },
+      { path: "datenschutz", component: "AcquiaryDatenschutz", title: "Datenschutz" },
     ],
   },
   lennox: {
