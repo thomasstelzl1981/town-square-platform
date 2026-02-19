@@ -230,17 +230,25 @@ function buildSystemPrompt(mode: ParserMode): string {
   const config = MODE_CONFIGS[mode];
 
   if (mode === 'allgemein') {
-    const modeList = Object.entries(MODE_CONFIGS)
+    const modeBlocks = Object.entries(MODE_CONFIGS)
       .filter(([k]) => k !== 'allgemein')
-      .map(([k, v]) => `  - "${k}": ${v.label} (${v.exampleDocuments.slice(0, 3).join(', ')})`)
-      .join('\n');
+      .map(([k, v]) => {
+        const fieldList = v.fields.map(f => {
+          let line = `      "${f.key}": ${f.label} (${f.type}${f.required ? ', PFLICHT' : ''})`;
+          if (f.enumValues) line += ` — Werte: ${f.enumValues.join(', ')}`;
+          return line;
+        }).join('\n');
+        return `  - "${k}": ${v.label} (Beispiele: ${v.exampleDocuments.slice(0, 3).join(', ')})\n    Felder:\n${fieldList}`;
+      })
+      .join('\n\n');
 
     return `Du bist ein intelligenter Dokumenten-Klassifizierer und -Parser.
 
 SCHRITT 1: Erkenne den Dokumenttyp und ordne ihn einem dieser Modi zu:
-${modeList}
+${modeBlocks}
 
-SCHRITT 2: Extrahiere die relevanten Daten gemäß dem erkannten Modus.
+SCHRITT 2: Extrahiere die Daten mit EXAKT den oben definierten Keys des erkannten Modus.
+WICHTIG: Verwende NUR die englischen Keys aus der Felddefinition (z.B. "provider_name", NICHT "anbieter").
 
 REGELN:
 - Alle Zahlen als Number (nicht String)
@@ -255,7 +263,7 @@ Antworte NUR mit validem JSON:
   "confidence": 0.0-1.0,
   "warnings": [],
   "detectedMode": "<modus>",
-  "records": [{ ... }]
+  "records": [{ ... mit den exakten Keys aus der Felddefinition ... }]
 }`;
   }
 
