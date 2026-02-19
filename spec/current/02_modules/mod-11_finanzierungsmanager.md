@@ -1,10 +1,10 @@
 # MOD-11: Finanzierungsmanager (Finance Manager Workbench)
 
-**Version:** 2.1.0  
+**Version:** 2.2.0  
 **Zone:** 2 (Portal)  
 **Status:** FROZEN  
 **Role-Gated:** `finance_manager`  
-**Last Updated:** 2026-02-03
+**Last Updated:** 2026-02-18
 
 ---
 
@@ -16,16 +16,37 @@ MOD-11 ist die Workbench für verifizierte Finanzierungsmanager. Manager bearbei
 
 ---
 
-## Routes (FROZEN)
+## Routes (FROZEN — aligned with routesManifest.ts)
 
 | Pfad | Component | Beschreibung |
 |------|-----------|--------------|
 | `/portal/finanzierungsmanager` | Index | Redirect zu dashboard |
 | `/portal/finanzierungsmanager/dashboard` | FMDashboard | Übersicht der Fälle |
-| `/portal/finanzierungsmanager/faelle` | FMFaelle | Fall-Liste |
-| `/portal/finanzierungsmanager/faelle/:requestId` | FMFallDetail | Fall-Details + Aktionen |
-| `/portal/finanzierungsmanager/kommunikation` | FMKommunikation | Nachrichtenverlauf |
-| `/portal/finanzierungsmanager/status` | FMStatus | Status-Definitionen + Audit |
+| `/portal/finanzierungsmanager/finanzierungsakte` | FMFinanzierungsakte | Finanzierungsakte |
+| `/portal/finanzierungsmanager/einreichung` | FMEinreichung | Bank-Einreichung |
+| `/portal/finanzierungsmanager/provisionen` | FMProvisionen | Provisionen (Systemgebühr) |
+| `/portal/finanzierungsmanager/archiv` | FMArchiv | Archiv |
+
+### Dynamic Routes
+
+| Pfad | Component | Beschreibung |
+|------|-----------|--------------|
+| `/portal/finanzierungsmanager/einreichung/:requestId` | FMEinreichungDetail | Einreichung Detail |
+| `/portal/finanzierungsmanager/faelle/:requestId` | FMFallDetail | Finanzierungsakte Detail |
+
+---
+
+## Tile-Catalog Eintrag
+
+```yaml
+MOD-11:
+  code: "MOD-11"
+  title: "Finanzierungsmanager"
+  icon: "Landmark"
+  main_route: "/portal/finanzierungsmanager"
+  display_order: 11
+  sub_tiles: [dashboard, finanzierungsakte, einreichung, provisionen, archiv]
+```
 
 ---
 
@@ -213,14 +234,10 @@ Bei Annahme:
 
 ---
 
-## Acceptance Criteria
+## Changelog
 
-- [x] Routes definiert und dokumentiert
-- [x] Rollenprüfung spezifiziert
-- [x] Status-Machine dokumentiert
-- [x] UI-Struktur skizziert
-- [x] Kommissionierung dokumentiert
-- [ ] Dashboard zeigt aktive/wartende Fälle
-- [ ] Fall-Detail zeigt Selbstauskunft read-only
-- [ ] Status-Änderungen werden protokolliert
-- [ ] Rückfragen setzen needs_customer_action
+| Version | Datum | Änderung |
+|---------|-------|----------|
+| 2.2.0 | 2026-02-18 | Routes-Tabelle an Manifest angeglichen: Dashboard, Finanzierungsakte, Einreichung, Provisionen, Archiv. Tile-Catalog YAML aktualisiert. |
+| 2.1.0 | 2026-02-03 | Status-Machine und Kommissionierung dokumentiert |
+| 2.0.0 | 2026-02-01 | Komplett-Umbau zur Manager-Workbench |

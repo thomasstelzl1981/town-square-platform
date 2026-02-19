@@ -373,15 +373,13 @@ export const zone2Portal: ZoneDefinition = {
       display_order: 10,
       visibility: { default: false, org_types: ["partner"], requires_activation: true },
       tiles: [
-        { path: "uebersicht", component: "LeadManagerUebersicht", title: "Übersicht", default: true },
-        { path: "kampagnen", component: "LeadManagerKampagnen", title: "Kampagnen" },
-        { path: "studio", component: "LeadManagerStudio", title: "Studio" },
-        { path: "leads", component: "LeadManagerLeads", title: "Leads" },
+        { path: "inline", component: "LeadManagerInline", title: "Lead Manager", default: true },
       ],
-      dynamic_routes: [
-        { path: "kampagnen/:mandateId", component: "LeadManagerKampagneDetail", title: "Kampagne Detail", dynamic: true },
-        { path: "studio/planen", component: "LeadManagerStudioPlanen", title: "Kampagne planen" },
-        { path: "studio/summary", component: "LeadManagerStudioSummary", title: "Zusammenfassung" },
+      deprecated_routes: [
+        { path: "uebersicht", reason: "Consolidated into inline flow", remove_in: "3.0.0" },
+        { path: "kampagnen", reason: "Consolidated into inline flow", remove_in: "3.0.0" },
+        { path: "studio", reason: "Consolidated into inline flow", remove_in: "3.0.0" },
+        { path: "leads", reason: "Consolidated into inline flow", remove_in: "3.0.0" },
       ],
     },
     // =========================================================================

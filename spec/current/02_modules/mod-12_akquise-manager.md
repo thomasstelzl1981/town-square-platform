@@ -1,8 +1,8 @@
 # MOD-12 — AKQUISE-MANAGER (Acquisition Workbench)
 
-> **Version**: 1.0.0  
+> **Version**: 1.1.0  
 > **Status**: ACTIVE  
-> **Datum**: 2026-02-13  
+> **Datum**: 2026-02-18  
 > **Zone**: 2 (User Portal)  
 > **Route-Prefix**: `/portal/akquise-manager`  
 > **SSOT-Rolle**: Source of Truth für Akquise-Mandate, Objekteingang und Kontaktrecherche
@@ -13,8 +13,8 @@
 
 MOD-12 "Akquise-Manager" implementiert eine 2-Stufen-Architektur zur Trennung von
 Mandatserstellung und operativer Verwaltung. Es umfasst KI-gestützte Profilerfassung,
-automatisierte Kontaktrecherche, Objekteingang mit Exposé-Verarbeitung und professionelle
-Bewertungstools.
+automatisierte Kontaktrecherche, Objekteingang mit Exposé-Verarbeitung, professionelle
+Bewertungstools und eine Systemgebühr-/Provisionsübersicht.
 
 ---
 
@@ -29,15 +29,16 @@ Bewertungstools.
 
 ---
 
-## 3. Tiles (5)
+## 3. Tiles (6)
 
 | Tile | Route | Beschreibung |
 |------|-------|--------------|
 | Dashboard | `/portal/akquise-manager/dashboard` | Widget-Cards mit aktiven Mandaten und KPIs |
 | Mandate | `/portal/akquise-manager/mandate` | Erfassungs-Hub (4-Kachel-Grid: KI-Erfassung, KI-Entwurf, Recherche, E-Mail) |
 | Objekteingang | `/portal/akquise-manager/objekteingang` | Exposé-Eingang mit DnD-Zuordnung zu Mandaten |
-| Tools | `/portal/akquise-manager/tools` | Portal-Recherche, Bewertung, GeoMap, Kalkulator, Datenraum |
 | Datenbank | `/portal/akquise-manager/datenbank` | Kontakt- und Objektdatenbank |
+| Tools | `/portal/akquise-manager/tools` | Portal-Recherche, Bewertung, GeoMap, Kalkulator, Datenraum |
+| Provisionen | `/portal/akquise-manager/systemgebuehr` | Systemgebühr-Vereinbarung und Provisionsübersicht |
 
 ---
 
@@ -84,11 +85,11 @@ Bewertungstools.
 ```yaml
 MOD-12:
   code: "MOD-12"
-  title: "Akquise-Manager"
-  icon: "Target"
+  title: "Akquisemanager"
+  icon: "Briefcase"
   main_route: "/portal/akquise-manager"
   display_order: 12
-  sub_tiles: [dashboard, mandate, objekteingang, tools, datenbank]
+  sub_tiles: [dashboard, mandate, objekteingang, datenbank, tools, systemgebuehr]
 ```
 
 ---
@@ -97,4 +98,5 @@ MOD-12:
 
 | Version | Datum | Änderung |
 |---------|-------|----------|
+| 1.1.0 | 2026-02-18 | 6. Tile "Provisionen" (Route: systemgebuehr) hinzugefügt. Tile-Catalog YAML aktualisiert. |
 | 1.0.0 | 2026-02-13 | Initial Release (Sprint S5) |
