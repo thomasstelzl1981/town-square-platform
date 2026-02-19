@@ -1,65 +1,64 @@
 
+# Komplettanalyse: Stale Data bei ausgeschaltetem Demo-Button
 
-# Zuhause-Modul: Datenbereinigung und Routing-Fix
+## Befund
 
-## Analyse-Ergebnis
+Bei ausgeschaltetem Demo-Toggle bleiben **6 verwaiste Datensaetze** sichtbar, die NICHT als Demo-IDs erkannt werden und daher vom `isDemoId()`-Filter nicht erfasst werden.
 
-Im Zuhause-Modul erscheinen **zwei Personen/Homes**, weil es zwei verschiedene Quellen gibt:
+### Stale (Nicht-Demo) Records in der Datenbank
 
-### Home 1: "Villa Mustermann" (Muenchen) -- Auto-Create
-- ID: `da78ca31-...` (KEINE Demo-ID)
-- Erzeugt durch den **Auto-Create-Mechanismus** in `UebersichtTile.tsx` (Zeile 89-112): Wenn keine Homes existieren UND das Profil eine Stadt hat, wird automatisch ein Home aus den Profildaten angelegt
-- Adresse: Leopoldstrasse, 80802 Muenchen (aus dem Profil von Max Mustermann)
-- **Problem**: Diesem Home sind 3 Contracts mit **Demo-IDs** (`e0000000...601-603`) zugeordnet, die eigentlich zur alten Seed-Migration gehoeren
+| # | Tabelle | ID | Beschreibung | Ursache |
+|---|---------|----|--------------|---------| 
+| 1 | `household_persons` | `b1f6d204-...` | "Max Mustermann, hauptperson" | Auto-Create durch FMUebersichtTab |
+| 2 | `pension_records` | `2618b959-...` | Verknuepft mit Person b1f6d204 | Automatisch mit Person erstellt |
+| 3 | `miety_homes` | `da78ca31-...` | "Villa Mustermann, Muenchen" | Auto-Create durch UebersichtTile |
+| 4 | `finance_requests` | `32695673-...` | Status: draft | Manuell erstellt (Test) |
+| 5 | `applicant_profiles` | `703e1648-...`, `a23366ab-...` | 2 Selbstauskunft-Profile | Manuell erstellt (Test) |
+| 6 | `miety_loans` | `6db3e303-...` | Kredit-Eintrag | Manuell erstellt (Test) |
 
-### Home 2: "Mein Zuhause" (Berlin) -- DB-Migration-Seed
-- ID: `e0000000-0000-4000-a000-000000000801` (Demo-ID)
-- Erzeugt durch Migration `20260217181859` als Demo-Datensatz
-- Adresse: Friedrichstrasse 42, 10117 Berlin
-- Hat 4 eigene Demo-Contracts (Strom, Gas, Wasser, Internet)
-- **Problem**: Diese Daten stammen aus `DEMO_MIETY_HOME` in `data.ts` -- eine fiktive Berliner Adresse, die NICHT zum Demo-Mandanten "Max Mustermann, Muenchen" passt
+### Korrekte Demo-Daten (funktionieren bereits richtig)
 
-### Die 3 Probleme
+Alle Datensaetze mit Demo-IDs (`d0000000...`, `e0000000...`, `00000000...`) werden korrekt erkannt und bei ausgeschaltetem Toggle ausgeblendet. Betrifft:
+- 3 Properties, 3 Leases, 5 Contacts, 5 Pets, 7 Versicherungen, 4 KV-Vertraege, 2 Privatkredite, 2 Fahrzeuge, 3 Listings, 41 Dokumente, 1 PV-Anlage, 1 Finance Request, 1 Akquise-Mandat, 1 Akquise-Angebot, 1 Pet-Provider
 
-1. **Falsche Demo-Daten**: Der Berliner Datensatz hat nichts mit dem Muenchner Demo-Mandanten zu tun. Die DEMO_MIETY_HOME Definition in `data.ts` verwendet Berlin statt Muenchen.
+## Ursachen
 
-2. **Verwaiste Contracts**: Die 3 Contracts (`e0000000...601-603`) mit Demo-IDs sind dem Auto-Create Home (Villa Mustermann) zugeordnet statt dem Demo-Home. Das entstand durch eine aeltere Migration die VOR dem Berlin-Seed lief.
+### Problem 1: Auto-Create erzeugt nicht-Demo-Daten
+Zwei Stellen erzeugen automatisch Datensaetze mit realen UUIDs (die nicht in `ALL_DEMO_IDS` stehen):
+- **`UebersichtTile.tsx`** (Zeile 89-105): Erstellt automatisch ein Home aus dem Profil wenn keins existiert
+- **`FMUebersichtTab.tsx`** (Zeile 207-220): Erstellt automatisch eine `household_person` aus dem Profil
 
-3. **Demo-Toggle funktioniert nur halb**: Der Filter in Zeile 194 blendet das Berliner Home korrekt aus wenn GP-ZUHAUSE aus ist, aber die verwaisten Contracts am Muenchner Home haben Demo-IDs und werden trotzdem angezeigt.
+### Problem 2: Test-Daten aus manuellen Tests
+Finance-Request (draft), Applicant-Profiles und Miety-Loans wurden waehrend der Entwicklung manuell erstellt und nie aufgeraeumt.
 
 ## Fix-Plan
 
-### 1. DB-Bereinigung: Verwaiste Daten loeschen
-**SQL-Migration** die ausfuehrt:
-- Loesche das Berliner Demo-Home `e0000000-0000-4000-a000-000000000801` (CASCADE loescht automatisch die 4 zugehoerigen Contracts)
-- Loesche die 3 verwaisten Demo-Contracts (`e0000000...601-603`) die am Muenchner Home haengen
-- Ergebnis: Nur noch "Villa Mustermann" bleibt, OHNE Demo-Contracts
+### Schritt 1: DB-Bereinigung (Migration)
+Alle 6 stale Records loeschen:
 
-### 2. Demo-Daten korrigieren: Berlin -> Muenchen
-**Datei: `src/engines/demoData/data.ts`**
-- `DEMO_MIETY_HOME` Adresse von "Friedrichstrasse, Berlin" auf "Leopoldstrasse, Muenchen" aendern (konsistent mit dem Profil des Demo-Mandanten)
-- Contract-Provider anpassen: "Berliner Wasserbetriebe" -> "SWM" (passend zu Muenchen)
+```text
+DELETE household_persons   WHERE id = 'b1f6d204-...'
+DELETE pension_records     WHERE id = '2618b959-...'
+DELETE miety_homes         WHERE id = 'da78ca31-...'  (Villa Mustermann auto-create)
+DELETE finance_requests    WHERE id = '32695673-...'
+DELETE applicant_profiles  WHERE id IN ('703e1648-...', 'a23366ab-...')
+DELETE miety_loans         WHERE id = '6db3e303-...'
+```
 
-### 3. Auto-Create entschaerfen
-**Datei: `src/pages/portal/miety/tiles/UebersichtTile.tsx`**
-- Der Auto-Create erzeugt bei JEDEM neuen Tenant sofort ein Home wenn ein Profil mit Stadt existiert
-- Problem: Nach einem Sandbox-Reset oder bei mehreren Sessions kann das zu Duplikaten fuehren
-- Fix: Vor dem Auto-Create pruefen ob bereits ein Home mit gleicher Stadt+Adresse existiert (Deduplizierung)
+### Schritt 2: Auto-Create nur bei Demo-AN
+**`UebersichtTile.tsx`**: Auto-Create nur ausfuehren wenn `demoEnabled === true` -- bei ausgeschaltetem Demo soll kein Home automatisch erzeugt werden. Der User soll dann ein leeres Modul sehen.
 
-### 4. Demo-Migration entfernen
-- Die Migration `20260217181859` hat den Berliner Datensatz in die DB geschrieben
-- Die Daten werden per Schritt 1 bereinigt
-- Keine neue Seed-Migration noetig -- Demo-Miety-Daten werden clientseitig verwaltet (wie alle anderen Demo-Daten)
+**`FMUebersichtTab.tsx`**: Auto-Create fuer `household_persons` nur wenn Demo aktiv ist. Bei Demo-OFF soll der Finanzierungsmanager leer sein.
+
+### Schritt 3: Sicherheitscheck in weiteren Modulen
+Pruefen ob andere Stellen auch bei Demo-OFF Daten anzeigen (Vorsorge, Finanzanalyse). Die Pension-Records und Applicant-Profiles sind bereits durch die DB-Bereinigung geloest, aber die Auto-Create-Logik muss in allen betroffenen Modulen Demo-aware sein.
 
 ## Geaenderte/Neue Dateien
 
-1. **SQL-Migration** (neue Migration) -- Berliner Home + verwaiste Contracts loeschen
-2. `src/engines/demoData/data.ts` -- DEMO_MIETY_HOME Adresse auf Muenchen korrigieren
-3. `src/pages/portal/miety/tiles/UebersichtTile.tsx` -- Auto-Create Deduplizierung
+1. **SQL-Migration** -- 6 stale Records loeschen
+2. **`src/pages/portal/miety/tiles/UebersichtTile.tsx`** -- Auto-Create nur bei demoEnabled
+3. **`src/pages/portal/finanzierungsmanager/FMUebersichtTab.tsx`** -- Auto-Create nur bei demoEnabled
 
-## Auswirkungen
+## Ergebnis nach Fix
 
-- Nach der Migration existiert nur noch 1 Home (Villa Mustermann, Muenchen) ohne Demo-Vertraege
-- Der Demo-Toggle GP-ZUHAUSE zeigt clientseitige Demo-Daten korrekt an/aus
-- Kein Berliner Phantom-Datensatz mehr sichtbar
-
+Bei ausgeschaltetem Demo-Button: Alle Module zeigen leere Zustaende (Empty States). Nur Login, E-Mail und Kennwort bleiben bestehen. Keine Phantom-Daten mehr.
