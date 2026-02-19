@@ -237,30 +237,6 @@ export default function StatusTab() {
     return events.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center p-12">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
-
-  if (!requests || requests.length === 0) {
-    return (
-      <Card>
-        <CardContent className="text-center py-12">
-          <Clock className="h-12 w-12 mx-auto text-muted-foreground/50" />
-          <p className="mt-4 text-muted-foreground">
-            Noch keine Finanzierungsanfragen
-          </p>
-          <p className="text-sm text-muted-foreground mt-2">
-            Erstellen Sie eine Anfrage im Tab "Anfrage"
-          </p>
-        </CardContent>
-      </Card>
-    );
-  }
-
   const deleteMutation = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
       if (DELETABLE_STATUSES.includes(status)) {
@@ -285,6 +261,30 @@ export default function StatusTab() {
     },
     onError: () => toast.error('Fehler beim Entfernen'),
   });
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center p-12">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (!requests || requests.length === 0) {
+    return (
+      <Card>
+        <CardContent className="text-center py-12">
+          <Clock className="h-12 w-12 mx-auto text-muted-foreground/50" />
+          <p className="mt-4 text-muted-foreground">
+            Noch keine Finanzierungsanfragen
+          </p>
+          <p className="text-sm text-muted-foreground mt-2">
+            Erstellen Sie eine Anfrage im Tab "Anfrage"
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <PageShell>
