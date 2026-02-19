@@ -1,5 +1,6 @@
 /**
  * Tab 3: Public Pages — Website Legaltexte pro Brand, inline Cards
+ * Editor ist standardmäßig eingeklappt — nur per Button aufklappbar.
  */
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,12 +8,16 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { FileText, Save } from 'lucide-react';
+import { FileText, Save, Pencil, ChevronDown, ChevronUp } from 'lucide-react';
 import { LoadingState } from '@/components/shared';
 import ReactMarkdown from 'react-markdown';
 import { useComplianceDocuments, useDocumentVersions, type ComplianceDocument } from './useComplianceDocuments';
 
 const BRANDS = ['kaufy', 'futureroom', 'sot', 'acquiary', 'tierservice'];
+const BRAND_LABELS: Record<string, string> = {
+  kaufy: 'Kaufy', futureroom: 'Future Room', sot: 'System of a Town',
+  acquiary: 'Acquiary', tierservice: 'Lennox & Friends',
+};
 const DOC_TYPE_LABELS: Record<string, string> = { website_imprint: 'Impressum', website_privacy: 'Datenschutz' };
 
 function PublicPageCard({ doc }: { doc: ComplianceDocument }) {
@@ -21,6 +26,8 @@ function PublicPageCard({ doc }: { doc: ComplianceDocument }) {
   const [newContent, setNewContent] = useState('');
   const [changeNote, setChangeNote] = useState('');
   const [prefilled, setPrefilled] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   const activeVersion = versions?.find(v => v.status === 'active');
   const latestDraft = versions?.find(v => v.status === 'draft');
@@ -34,7 +41,6 @@ function PublicPageCard({ doc }: { doc: ComplianceDocument }) {
 
   const hasChanges = newContent !== (activeVersion?.content_md || '');
 
-  // Extract brand and type from doc_key
   const docKey = doc.doc_key || '';
   const brand = BRANDS.find(b => docKey.endsWith(`_${b}`)) || '';
   const typeKey = docKey.replace(`_${brand}`, '');
@@ -42,66 +48,81 @@ function PublicPageCard({ doc }: { doc: ComplianceDocument }) {
 
   return (
     <Card>
-      <CardHeader className="pb-3">
+      <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2 text-base">
+          <CardTitle className="flex items-center gap-2 text-sm">
             <FileText className="h-4 w-4" />
             {doc.title}
           </CardTitle>
-          <div className="flex items-center gap-2">
-            <Badge variant="outline" className="capitalize">{brand}</Badge>
-            <Badge variant="outline">{typeLabel}</Badge>
-            <Badge variant={doc.status === 'active' ? 'default' : 'secondary'}>{doc.status}</Badge>
-            <Badge variant="outline">v{doc.current_version}</Badge>
+          <div className="flex items-center gap-1.5">
+            <Badge variant="outline" className="text-xs">{typeLabel}</Badge>
+            <Badge variant={doc.status === 'active' ? 'default' : 'secondary'} className="text-xs">
+              {doc.status === 'active' ? `v${doc.current_version} aktiv` : doc.status}
+            </Badge>
           </div>
         </div>
       </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Aktive Version immer sichtbar */}
+      <CardContent className="space-y-3 pt-0">
+        {/* Kompakte Vorschau — aufklappbar */}
         {activeVersion && (
           <div>
-            <p className="text-xs font-medium text-muted-foreground mb-2">Aktuelle Version (v{activeVersion.version})</p>
-            <div className="p-4 rounded-lg border bg-muted/30 prose prose-sm max-w-none dark:prose-invert text-sm">
-              <ReactMarkdown>{activeVersion.content_md}</ReactMarkdown>
-            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-xs text-muted-foreground px-0 h-auto py-1"
+              onClick={() => setPreviewOpen(!previewOpen)}
+            >
+              {previewOpen ? <ChevronUp className="h-3 w-3 mr-1" /> : <ChevronDown className="h-3 w-3 mr-1" />}
+              {previewOpen ? 'Vorschau ausblenden' : 'Vorschau anzeigen'}
+            </Button>
+            {previewOpen && (
+              <div className="p-4 rounded-lg border bg-muted/30 prose prose-sm max-w-none dark:prose-invert text-sm mt-1 max-h-[400px] overflow-y-auto">
+                <ReactMarkdown>{activeVersion.content_md}</ReactMarkdown>
+              </div>
+            )}
           </div>
         )}
 
-        {/* Inline-Editor */}
-        <div className="space-y-2">
-          <p className="text-sm font-medium">
-            {activeVersion ? 'Neue Version erstellen:' : 'Erste Version erstellen:'}
-          </p>
-          <Textarea
-            value={newContent}
-            onChange={e => setNewContent(e.target.value)}
-            placeholder="Markdown-Inhalt des Rechtstexts…"
-            className="min-h-[400px] font-mono text-xs"
-          />
-          <Input
-            value={changeNote}
-            onChange={e => setChangeNote(e.target.value)}
-            placeholder="Änderungsnotiz (optional)"
-            className="text-sm"
-          />
-          <div className="flex items-center gap-2 justify-end">
-            {hasChanges && (
-              <span className="text-xs text-muted-foreground">Ungespeicherte Änderungen</span>
-            )}
-            <Button
-              size="sm"
-              disabled={!newContent.trim() || createVersion.isPending}
-              onClick={() => {
-                createVersion.mutate(
-                  { documentId: doc.id, contentMd: newContent, changeNote: changeNote || undefined },
-                  { onSuccess: () => { setChangeNote(''); setPrefilled(false); } }
-                );
-              }}
-            >
-              <Save className="h-3 w-3 mr-1" /> Draft speichern
-            </Button>
+        {/* Editor — standardmäßig eingeklappt */}
+        {!editing ? (
+          <Button variant="outline" size="sm" onClick={() => setEditing(true)} className="text-xs">
+            <Pencil className="h-3 w-3 mr-1" />
+            {activeVersion ? 'Neue Version erstellen' : 'Erste Version erstellen'}
+          </Button>
+        ) : (
+          <div className="space-y-2 border rounded-lg p-3 bg-muted/10">
+            <Textarea
+              value={newContent}
+              onChange={e => setNewContent(e.target.value)}
+              placeholder="Markdown-Inhalt des Rechtstexts…"
+              className="min-h-[300px] font-mono text-xs"
+            />
+            <Input
+              value={changeNote}
+              onChange={e => setChangeNote(e.target.value)}
+              placeholder="Änderungsnotiz (optional)"
+              className="text-sm"
+            />
+            <div className="flex items-center gap-2 justify-end">
+              {hasChanges && (
+                <span className="text-xs text-muted-foreground">Ungespeicherte Änderungen</span>
+              )}
+              <Button variant="ghost" size="sm" onClick={() => setEditing(false)}>Abbrechen</Button>
+              <Button
+                size="sm"
+                disabled={!newContent.trim() || createVersion.isPending}
+                onClick={() => {
+                  createVersion.mutate(
+                    { documentId: doc.id, contentMd: newContent, changeNote: changeNote || undefined },
+                    { onSuccess: () => { setChangeNote(''); setPrefilled(false); setEditing(false); } }
+                  );
+                }}
+              >
+                <Save className="h-3 w-3 mr-1" /> Draft speichern
+              </Button>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Draft aktivieren */}
         {latestDraft && (
@@ -129,7 +150,6 @@ export function CompliancePublicPages() {
 
   if (isLoading) return <LoadingState />;
 
-  // Group documents by brand
   const grouped = BRANDS.reduce<Record<string, ComplianceDocument[]>>((acc, brand) => {
     const docs = documents.filter(d => (d.doc_key || '').endsWith(`_${brand}`));
     if (docs.length > 0) acc[brand] = docs;
@@ -141,8 +161,8 @@ export function CompliancePublicPages() {
   return (
     <div className="space-y-6 mt-4">
       {Object.entries(grouped).map(([brand, docs]) => (
-        <div key={brand} className="space-y-4">
-          <h3 className="text-sm font-semibold capitalize text-muted-foreground">{brand}</h3>
+        <div key={brand} className="space-y-3">
+          <h3 className="text-sm font-semibold text-muted-foreground">{BRAND_LABELS[brand] || brand}</h3>
           {docs.map(doc => (
             <PublicPageCard key={doc.id} doc={doc} />
           ))}

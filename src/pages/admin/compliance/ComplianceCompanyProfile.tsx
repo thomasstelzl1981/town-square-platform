@@ -14,6 +14,7 @@ import { LoadingState } from '@/components/shared';
 const COMPANY_SLOTS = [
   { slug: 'sot', label: 'Firma 1: System of a Town' },
   { slug: 'futureroom', label: 'Firma 2: Future Room', subtitle: 'betreibt Kaufy + Acquiary' },
+  { slug: 'lennox', label: 'Firma 3: Lennox & Friends Dog Resorts', subtitle: 'Einzelunternehmen — Robyn Gebhard' },
 ] as const;
 
 

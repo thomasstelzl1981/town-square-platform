@@ -1,6 +1,6 @@
 /**
  * ComplianceDeskRouter — Zone 1 Compliance Desk
- * Legal Engine SSOT with 10-tab internal navigation.
+ * Legal Engine SSOT with 8-tab internal navigation.
  */
 import { useState } from 'react';
 import { PageShell } from '@/components/shared';
