@@ -7,7 +7,7 @@
  * 2. UPLOADING - Files being uploaded via useUniversalUpload (Phase 1)
  * 3. UPLOADED - Files persisted, UploadResultCards shown with preview links
  * 4. ANALYZING - AI extraction in progress (user-triggered)
- * 5. REVIEW - User reviews/edits extracted data
+ * 5. REVIEW - User reviews/edits extracted data + sees column mapping
  * 6. CREATING - Project being created
  */
 
@@ -16,7 +16,7 @@ import { useDropzone } from 'react-dropzone';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
 import { Card, CardContent } from '@/components/ui/card';
-import { Upload, FileText, Table2, Sparkles, X, Loader2, AlertCircle, CheckCircle2, Building2 } from 'lucide-react';
+import { Upload, FileText, Table2, Sparkles, X, Loader2, AlertCircle, CheckCircle2, Building2, Download, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -28,12 +28,18 @@ import { Progress } from '@/components/ui/progress';
 import { useUniversalUpload } from '@/hooks/useUniversalUpload';
 import type { UploadedFileInfo } from '@/hooks/useUniversalUpload';
 import { UploadResultCard } from '@/components/shared/UploadResultCard';
+import { getXlsx } from '@/lib/lazyXlsx';
 
 interface QuickIntakeUploaderProps {
   onSuccess?: (projectId: string) => void;
 }
 
 type UploadPhase = 'idle' | 'uploading' | 'uploaded' | 'analyzing' | 'review' | 'creating';
+
+interface ColumnMapping {
+  original_column: string;
+  mapped_to: string;
+}
 
 interface ExtractedData {
   projectName: string;
@@ -49,7 +55,18 @@ interface ExtractedData {
     area: number;
     price: number;
   }>;
+  columnMapping?: ColumnMapping[];
 }
+
+const MAPPED_TO_LABELS: Record<string, string> = {
+  unitNumber: 'Einheit-Nr.',
+  type: 'Typ',
+  area: 'Fläche (m²)',
+  rooms: 'Zimmer',
+  floor: 'Etage',
+  price: 'Kaufpreis (EUR)',
+  currentRent: 'Akt. Miete (EUR/Monat)',
+};
 
 export function QuickIntakeUploader({ onSuccess }: QuickIntakeUploaderProps) {
   const [open, setOpen] = useState(false);
@@ -67,6 +84,34 @@ export function QuickIntakeUploader({ onSuccess }: QuickIntakeUploaderProps) {
   
   const { upload: universalUpload } = useUniversalUpload();
   const { contexts, defaultContext, isLoading: loadingContexts } = useDeveloperContexts();
+
+  // ── Download Muster-Vorlage ───────────────────────────────────────────────
+  const downloadPreislistenVorlage = async () => {
+    try {
+      const XLSX = await getXlsx();
+      const wb = XLSX.utils.book_new();
+      const header = [
+        'Einheit-Nr.', 'Typ', 'Fläche (m²)', 'Zimmer',
+        'Etage', 'Kaufpreis (EUR)', 'Aktuelle Miete (EUR/Monat)',
+      ];
+      const example1 = ['WE-001', 'Wohnung', 65.0, 2, 'EG', 289000, 650];
+      const example2 = ['WE-002', 'Penthouse', 120.0, 4, 'DG', 589000, 0];
+      const ws = XLSX.utils.aoa_to_sheet([header, example1, example2]);
+
+      // Column widths
+      ws['!cols'] = [
+        { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 10 },
+        { wch: 10 }, { wch: 18 }, { wch: 26 },
+      ];
+
+      XLSX.utils.book_append_sheet(wb, ws, 'Preisliste');
+      XLSX.writeFile(wb, 'Preisliste_Vorlage.xlsx');
+      toast.success('Vorlage heruntergeladen');
+    } catch (err) {
+      console.error('Template download error:', err);
+      toast.error('Fehler beim Download der Vorlage');
+    }
+  };
 
   // Expose dropzone
   const onDropExpose = useCallback((acceptedFiles: File[]) => {
@@ -311,7 +356,7 @@ export function QuickIntakeUploader({ onSuccess }: QuickIntakeUploaderProps) {
       case 'uploaded':
         return (
           <div className="space-y-4 py-4">
-            <div className="flex items-center gap-2 p-3 rounded-lg bg-green-500/10 text-green-700">
+            <div className="flex items-center gap-2 p-3 rounded-lg bg-accent/50 text-accent-foreground">
               <CheckCircle2 className="h-5 w-5 flex-shrink-0" />
               <span className="font-medium">Dateien erfolgreich hochgeladen</span>
             </div>
@@ -417,6 +462,26 @@ export function QuickIntakeUploader({ onSuccess }: QuickIntakeUploaderProps) {
                     onChange={(e) => handleEditExtractedField('address', e.target.value)}
                   />
                 </div>
+
+                {/* Column Mapping Display */}
+                {extractedData.columnMapping && extractedData.columnMapping.length > 0 && (
+                  <div className="mt-2">
+                    <Label className="mb-2 block text-muted-foreground">KI-Spalten-Zuordnung</Label>
+                    <div className="border rounded-lg p-3 bg-muted/30 space-y-1.5">
+                      {extractedData.columnMapping.map((m, i) => (
+                        <div key={i} className="flex items-center gap-2 text-sm">
+                          <span className="font-mono text-xs bg-muted px-2 py-0.5 rounded truncate max-w-[180px]" title={m.original_column}>
+                            "{m.original_column}"
+                          </span>
+                          <ArrowRight className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                          <span className="text-foreground">
+                            {MAPPED_TO_LABELS[m.mapped_to] || m.mapped_to}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {extractedData.extractedUnits && extractedData.extractedUnits.length > 0 && (
                   <div className="mt-2">
@@ -525,7 +590,21 @@ export function QuickIntakeUploader({ onSuccess }: QuickIntakeUploaderProps) {
 
             {/* Pricelist Upload */}
             <div className="space-y-2">
-              <Label>Preisliste (XLSX/CSV/PDF)</Label>
+              <div className="flex items-center justify-between">
+                <Label>Preisliste (XLSX/CSV/PDF)</Label>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    downloadPreislistenVorlage();
+                  }}
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  Muster-Vorlage
+                </Button>
+              </div>
               <div
                 {...getPricelistRootProps()}
                 className={cn(

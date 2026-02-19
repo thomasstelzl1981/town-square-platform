@@ -3,7 +3,7 @@
  * MOD-13 PROJEKTE
  * 
  * Modes:
- *   analyze  — Extract project data from Exposé (AI) + parse Pricelist (XLSX)
+ *   analyze  — Extract project data from Exposé (AI) + parse Pricelist (XLSX) via Tool-Calling
  *   create   — Create project, bulk-insert units, seed storage_nodes tree
  */
 
@@ -27,6 +27,64 @@ const corsHeaders = {
 };
 
 const MAX_AI_PROCESSING_SIZE = 20 * 1024 * 1024; // 20MB — storage-based, no body-size constraint
+
+// ── Tool-Calling definitions ──────────────────────────────────────────────────
+
+const EXTRACT_UNITS_TOOL = {
+  type: 'function' as const,
+  function: {
+    name: 'extract_units',
+    description: 'Extrahiere alle Einheiten aus der Preisliste und melde welche Original-Spalten zu welchen Feldern gemappt wurden.',
+    parameters: {
+      type: 'object',
+      properties: {
+        units: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              unitNumber: { type: 'string', description: 'Wohnungsnummer, z.B. WE-001, Top 1, Whg. 1' },
+              type: { type: 'string', enum: ['Wohnung', 'Apartment', 'Penthouse', 'Maisonette', 'Gewerbe', 'Stellplatz', 'Buero', 'Lager', 'Keller'] },
+              area: { type: 'number', description: 'Wohnfläche in m²' },
+              rooms: { type: 'number', description: 'Zimmeranzahl' },
+              floor: { type: 'string', description: 'Etage/Geschoss, z.B. EG, 1.OG, DG' },
+              price: { type: 'number', description: 'Kaufpreis in EUR (ohne Tausenderpunkte)' },
+              currentRent: { type: 'number', description: 'Aktuelle Monatsmiete in EUR, 0 wenn nicht vorhanden' },
+            },
+            required: ['unitNumber', 'type', 'area', 'price'],
+          },
+        },
+        column_mapping: {
+          type: 'array',
+          description: 'Zuordnung der Original-Spaltenbezeichnungen zu den internen Feldnamen',
+          items: {
+            type: 'object',
+            properties: {
+              original_column: { type: 'string', description: 'Exakter Spaltenname aus der Quelldatei' },
+              mapped_to: { type: 'string', description: 'Internes Feld: unitNumber, type, area, rooms, floor, price, currentRent' },
+            },
+            required: ['original_column', 'mapped_to'],
+          },
+        },
+      },
+      required: ['units', 'column_mapping'],
+    },
+  },
+};
+
+const PRICELIST_SYSTEM_PROMPT = `Du bist ein Preislisten-Parser für Immobilienprojekte. Extrahiere alle Wohneinheiten aus der Preisliste.
+
+WICHTIG: Die Spalten können in beliebiger Reihenfolge und mit unterschiedlichen Bezeichnungen vorkommen. Hier sind gängige Varianten:
+
+- unitNumber: "Whg-Nr", "Whg.", "WE-Nr.", "Einheit", "Nr.", "Top", "Wohnungsnummer", "Obj.-Nr."
+- type: "Typ", "Art", "Wohnungstyp", "Nutzung", "Kategorie"
+- area: "Wfl.", "Wohnfläche", "Fläche", "qm", "m²", "m2", "Wfl. (qm)", "Wohnfl.", "Nutzfläche"
+- rooms: "Zimmer", "Zi.", "Räume", "Zi.-Anz.", "Zimmeranzahl"
+- floor: "Etage", "Geschoss", "OG", "Stockwerk", "Ebene", "Lage"
+- price: "Kaufpreis", "Preis", "VK-Preis", "Verkaufspreis", "KP", "Kaufpreis netto", "Preis (EUR)", "Gesamtpreis"
+- currentRent: "Miete", "Ist-Miete", "Monatsmiete", "Kaltmiete", "Nettomiete", "akt. Miete", "Mieteinnahme"
+
+Nutze die Tool-Funktion extract_units um die Daten strukturiert zurückzugeben. Befülle IMMER das column_mapping mit den Original-Spaltenbezeichnungen aus der Datei.`;
 
 // ── Standard folder templates ─────────────────────────────────────────────────
 const PROJECT_FOLDERS = [
@@ -57,6 +115,11 @@ interface ExtractedUnit {
   currentRent?: number;
 }
 
+interface ColumnMapping {
+  original_column: string;
+  mapped_to: string;
+}
+
 interface ExtractedData {
   projectName: string;
   address: string;
@@ -68,6 +131,7 @@ interface ExtractedData {
   description?: string;
   projectType?: 'neubau' | 'aufteilung';
   extractedUnits?: ExtractedUnit[];
+  columnMapping?: ColumnMapping[];
 }
 
 serve(async (req) => {
@@ -161,7 +225,7 @@ async function handleAnalyze(
     extractedUnits: [],
   };
 
-  // ── 1. Exposé — AI extraction ─────────────────────────────────────────────
+  // ── 1. Exposé — AI extraction (unchanged, free-text is fine for unstructured docs) ──
   if (storagePaths.expose) {
     try {
       const { data: fileData, error: dlError } = await supabase.storage
@@ -257,7 +321,6 @@ Antworte NUR mit einem JSON-Objekt:
           } else {
             const errText = await aiResponse.text();
             console.error('AI error:', aiResponse.status, errText);
-            // Surface rate-limit errors
             if (aiResponse.status === 429 || aiResponse.status === 402) {
               return new Response(JSON.stringify({
                 error: aiResponse.status === 429
@@ -278,7 +341,7 @@ Antworte NUR mit einem JSON-Objekt:
     }
   }
 
-  // ── 2. Pricelist — XLSX/CSV parsing via AI ────────────────────────────────
+  // ── 2. Pricelist — AI extraction via Tool-Calling ─────────────────────────
   if (storagePaths.pricelist) {
     try {
       const { data: fileData, error: dlError } = await supabase.storage
@@ -310,58 +373,80 @@ Antworte NUR mit einem JSON-Objekt:
               messages: [
                 {
                   role: 'system',
-                  content: `Du bist ein Preislisten-Parser für Immobilienprojekte. Extrahiere alle Wohneinheiten aus der Preisliste.
-
-Für jede Einheit extrahiere:
-- unitNumber: Wohnungsnummer (z.B. "WE-001", "Top 1", "Whg. 1")
-- type: Typ (z.B. "Wohnung", "Apartment", "Penthouse", "Maisonette", "Gewerbe", "Stellplatz")
-- area: Wohnfläche in m² (Zahl)
-- rooms: Zimmeranzahl (Zahl)
-- floor: Etage/Geschoss (z.B. "EG", "1.OG", "DG")
-- price: Kaufpreis in EUR (Zahl, ohne Tausenderpunkte)
-- currentRent: Aktuelle Monatsmiete in EUR (wenn vorhanden, sonst 0)
-
-Antworte NUR mit einem JSON-Array:
-[
-  { "unitNumber": "WE-001", "type": "Wohnung", "area": 65.0, "rooms": 2, "floor": "EG", "price": 289000, "currentRent": 650 }
-]`
+                  content: PRICELIST_SYSTEM_PROMPT,
                 },
                 {
                   role: 'user',
                   content: [
-                    { type: 'text', text: 'Extrahiere alle Einheiten aus dieser Preisliste:' },
+                    { type: 'text', text: 'Extrahiere alle Einheiten aus dieser Preisliste und melde das Spalten-Mapping:' },
                     { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64}` } }
                   ]
                 }
               ],
+              tools: [EXTRACT_UNITS_TOOL],
+              tool_choice: { type: 'function' as const, function: { name: 'extract_units' } },
               max_tokens: 4000,
             }),
           });
 
           if (aiResponse.ok) {
             const aiResult = await aiResponse.json();
-            const content = aiResult.choices?.[0]?.message?.content;
-            if (content) {
-              const jsonMatch = content.match(/\[[\s\S]*\]/);
-              if (jsonMatch) {
-                try {
-                  const units = JSON.parse(jsonMatch[0]) as ExtractedUnit[];
-                  if (Array.isArray(units) && units.length > 0) {
-                    extractedData.extractedUnits = units;
-                    extractedData.unitsCount = units.length;
-                    extractedData.totalArea = units.reduce((s, u) => s + (u.area || 0), 0);
-                    const prices = units.map(u => u.price).filter(p => p > 0);
-                    if (prices.length > 0) {
-                      const min = Math.min(...prices);
-                      const max = Math.max(...prices);
-                      extractedData.priceRange = min === max
-                        ? `${min.toLocaleString('de-DE')} €`
-                        : `${min.toLocaleString('de-DE')} – ${max.toLocaleString('de-DE')} €`;
-                    }
-                    console.log(`Pricelist parsed: ${units.length} units extracted`);
+            
+            // Parse tool-calling response
+            const toolCall = aiResult.choices?.[0]?.message?.tool_calls?.[0];
+            if (toolCall?.function?.arguments) {
+              try {
+                const args = JSON.parse(toolCall.function.arguments);
+                const units = args.units as ExtractedUnit[];
+                const columnMapping = args.column_mapping as ColumnMapping[];
+
+                if (Array.isArray(units) && units.length > 0) {
+                  extractedData.extractedUnits = units;
+                  extractedData.unitsCount = units.length;
+                  extractedData.totalArea = units.reduce((s, u) => s + (u.area || 0), 0);
+                  const prices = units.map(u => u.price).filter(p => p > 0);
+                  if (prices.length > 0) {
+                    const min = Math.min(...prices);
+                    const max = Math.max(...prices);
+                    extractedData.priceRange = min === max
+                      ? `${min.toLocaleString('de-DE')} €`
+                      : `${min.toLocaleString('de-DE')} – ${max.toLocaleString('de-DE')} €`;
                   }
-                } catch (parseErr) {
-                  console.error('Pricelist parse error:', parseErr);
+                  console.log(`Pricelist parsed via tool-calling: ${units.length} units extracted`);
+                }
+
+                if (Array.isArray(columnMapping) && columnMapping.length > 0) {
+                  extractedData.columnMapping = columnMapping;
+                  console.log('Column mapping:', JSON.stringify(columnMapping));
+                }
+              } catch (parseErr) {
+                console.error('Tool-calling parse error:', parseErr);
+              }
+            } else {
+              // Fallback: try content-based parsing (in case model didn't use tool)
+              const content = aiResult.choices?.[0]?.message?.content;
+              if (content) {
+                const jsonMatch = content.match(/\[[\s\S]*\]/);
+                if (jsonMatch) {
+                  try {
+                    const units = JSON.parse(jsonMatch[0]) as ExtractedUnit[];
+                    if (Array.isArray(units) && units.length > 0) {
+                      extractedData.extractedUnits = units;
+                      extractedData.unitsCount = units.length;
+                      extractedData.totalArea = units.reduce((s, u) => s + (u.area || 0), 0);
+                      const prices = units.map(u => u.price).filter(p => p > 0);
+                      if (prices.length > 0) {
+                        const min = Math.min(...prices);
+                        const max = Math.max(...prices);
+                        extractedData.priceRange = min === max
+                          ? `${min.toLocaleString('de-DE')} €`
+                          : `${min.toLocaleString('de-DE')} – ${max.toLocaleString('de-DE')} €`;
+                      }
+                      console.log(`Pricelist parsed (fallback): ${units.length} units`);
+                    }
+                  } catch (parseErr) {
+                    console.error('Pricelist fallback parse error:', parseErr);
+                  }
                 }
               }
             }
@@ -453,201 +538,141 @@ async function handleCreate(
         created_at: new Date().toISOString(),
         files: storagePaths,
         reviewed_data: reviewedData,
+        column_mapping: reviewedData.columnMapping || [],
       },
-      created_by: userId,
     })
-    .select()
+    .select('id, project_code')
     .single();
 
   if (projErr) throw new Error('Project creation failed: ' + projErr.message);
-  console.log('Project created:', project.id, projectCode);
 
   // ── 4. Bulk-insert units ──────────────────────────────────────────────────
-  const units = reviewedData.extractedUnits || [];
-  const createdUnitIds: string[] = [];
-
-  if (units.length > 0) {
-    const unitRows = units.map((u, idx) => ({
-      project_id: project.id,
+  if (reviewedData.extractedUnits && reviewedData.extractedUnits.length > 0) {
+    const unitRows = reviewedData.extractedUnits.map((u, idx) => ({
       tenant_id: tenantId,
+      project_id: project.id,
       unit_number: u.unitNumber || `WE-${String(idx + 1).padStart(3, '0')}`,
-      unit_type: u.type || 'Wohnung',
-      area_sqm: u.area || null,
-      rooms_count: u.rooms || null,
-      floor: u.floor || null,
-      list_price: u.price || null,
-      minimum_price: u.price ? Math.round(u.price * 0.95) : null,
-      current_rent: u.currentRent || null,
-      price_per_sqm: u.area && u.price ? Math.round(u.price / u.area) : null,
-      status: 'available',
+      unit_type: mapUnitType(u.type),
+      area_sqm: u.area || 0,
+      rooms: u.rooms || 0,
+      floor: u.floor || '',
+      sale_price: u.price || 0,
+      current_rent: u.currentRent || 0,
+      status: 'geplant',
     }));
 
-    const { data: insertedUnits, error: unitsErr } = await supabase
+    const { error: unitsErr } = await supabase
       .from('dev_project_units')
-      .insert(unitRows)
-      .select('id');
+      .insert(unitRows);
 
     if (unitsErr) {
       console.error('Units insert error:', unitsErr);
-    } else if (insertedUnits) {
-      insertedUnits.forEach(u => createdUnitIds.push(u.id));
-      console.log(`Inserted ${insertedUnits.length} units`);
-
-      // Update project total_units_count
-      await supabase.from('dev_projects').update({
-        total_units_count: insertedUnits.length,
-      }).eq('id', project.id);
+    } else {
+      console.log(`Inserted ${unitRows.length} units for project ${project.project_code}`);
     }
   }
 
-  // ── 5. Seed Storage-Tree ──────────────────────────────────────────────────
-  await seedStorageTree(supabase, tenantId, project.id, projectCode, createdUnitIds, units);
+  // ── 5. Seed storage_nodes tree ────────────────────────────────────────────
+  try {
+    // Project root folder
+    const { data: rootNode, error: rootErr } = await supabase
+      .from('storage_nodes')
+      .insert({
+        tenant_id: tenantId,
+        name: project.project_code,
+        node_type: 'folder',
+        module_code: 'MOD_13',
+        entity_id: project.id,
+        parent_id: null,
+      })
+      .select('id')
+      .single();
 
-  // ── 6. Move uploaded files to project folders ─────────────────────────────
-  if (storagePaths.expose) {
-    try {
-      const fileName = storagePaths.expose.split('/').pop() || 'expose.pdf';
-      const newPath = `projects/${tenantId}/${project.id}/expose/${fileName}`;
-      await supabase.storage.from('tenant-documents').copy(storagePaths.expose, newPath);
-      console.log('Copied expose to project folder');
-    } catch (e) { console.error('Move expose error:', e); }
+    if (!rootErr && rootNode) {
+      // Project subfolders
+      for (const folderName of PROJECT_FOLDERS) {
+        await supabase.from('storage_nodes').insert({
+          tenant_id: tenantId,
+          name: folderName,
+          node_type: 'folder',
+          module_code: 'MOD_13',
+          entity_id: project.id,
+          parent_id: rootNode.id,
+        });
+      }
+
+      // Unit folders
+      if (reviewedData.extractedUnits && reviewedData.extractedUnits.length > 0) {
+        const { data: unitsParent } = await supabase
+          .from('storage_nodes')
+          .insert({
+            tenant_id: tenantId,
+            name: '07_einheiten',
+            node_type: 'folder',
+            module_code: 'MOD_13',
+            entity_id: project.id,
+            parent_id: rootNode.id,
+          })
+          .select('id')
+          .single();
+
+        if (unitsParent) {
+          for (const unit of reviewedData.extractedUnits) {
+            const { data: unitFolder } = await supabase
+              .from('storage_nodes')
+              .insert({
+                tenant_id: tenantId,
+                name: unit.unitNumber || 'WE-???',
+                node_type: 'folder',
+                module_code: 'MOD_13',
+                entity_id: project.id,
+                parent_id: unitsParent.id,
+              })
+              .select('id')
+              .single();
+
+            if (unitFolder) {
+              for (const sub of UNIT_FOLDERS) {
+                await supabase.from('storage_nodes').insert({
+                  tenant_id: tenantId,
+                  name: sub,
+                  node_type: 'folder',
+                  module_code: 'MOD_13',
+                  entity_id: project.id,
+                  parent_id: unitFolder.id,
+                });
+              }
+            }
+          }
+        }
+      }
+      console.log('Storage tree seeded for', project.project_code);
+    }
+  } catch (treeErr) {
+    console.error('Storage tree error:', treeErr);
   }
-  if (storagePaths.pricelist) {
-    try {
-      const fileName = storagePaths.pricelist.split('/').pop() || 'pricelist.xlsx';
-      const newPath = `projects/${tenantId}/${project.id}/pricelist/${fileName}`;
-      await supabase.storage.from('tenant-documents').copy(storagePaths.pricelist, newPath);
-      console.log('Copied pricelist to project folder');
-    } catch (e) { console.error('Move pricelist error:', e); }
-  }
+
+  // ── 6. Move uploaded files into project tree ──────────────────────────────
+  // (optional — files stay accessible via original storagePaths)
 
   return new Response(JSON.stringify({
     success: true,
     projectId: project.id,
-    projectCode,
-    unitsCreated: createdUnitIds.length,
-    message: `Projekt "${reviewedData.projectName}" mit ${createdUnitIds.length} Einheiten erstellt.`,
+    projectCode: project.project_code,
   }), {
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   });
 }
 
-// ══════════════════════════════════════════════════════════════════════════════
-// STORAGE TREE SEEDING
-// ══════════════════════════════════════════════════════════════════════════════
-
-async function seedStorageTree(
-  supabase: ReturnType<typeof createClient>,
-  tenantId: string,
-  projectId: string,
-  projectCode: string,
-  unitIds: string[],
-  units: ExtractedUnit[]
-): Promise<void> {
-  console.log('Seeding storage tree for', projectCode);
-
-  try {
-    // Find the MOD_13 root folder for this tenant
-    const { data: modRoot } = await supabase
-      .from('storage_nodes')
-      .select('id')
-      .eq('tenant_id', tenantId)
-      .eq('name', 'MOD_13')
-      .eq('node_type', 'folder')
-      .is('parent_id', null)
-      .limit(1);
-
-    const parentId = modRoot?.[0]?.id || null;
-
-    // Create project root folder
-    const { data: projectFolder, error: pfErr } = await supabase
-      .from('storage_nodes')
-      .insert({
-        tenant_id: tenantId,
-        parent_id: parentId,
-        name: projectCode,
-        node_type: 'folder',
-        dev_project_id: projectId,
-      })
-      .select('id')
-      .single();
-
-    if (pfErr) {
-      console.error('Project folder creation error:', pfErr);
-      return;
-    }
-
-    const projectFolderId = projectFolder.id;
-
-    // Create standard project sub-folders
-    const folderInserts = PROJECT_FOLDERS.map(name => ({
-      tenant_id: tenantId,
-      parent_id: projectFolderId,
-      name,
-      node_type: 'folder' as const,
-      dev_project_id: projectId,
-    }));
-
-    const { error: subErr } = await supabase
-      .from('storage_nodes')
-      .insert(folderInserts);
-
-    if (subErr) {
-      console.error('Sub-folder creation error:', subErr);
-    }
-
-    // Create unit folders (if units exist)
-    if (unitIds.length > 0) {
-      // Create "Einheiten" container
-      const { data: einheitenFolder } = await supabase
-        .from('storage_nodes')
-        .insert({
-          tenant_id: tenantId,
-          parent_id: projectFolderId,
-          name: 'Einheiten',
-          node_type: 'folder',
-          dev_project_id: projectId,
-        })
-        .select('id')
-        .single();
-
-      if (einheitenFolder) {
-        for (let i = 0; i < unitIds.length; i++) {
-          const unitNumber = units[i]?.unitNumber || `WE-${String(i + 1).padStart(3, '0')}`;
-          
-          // Create unit folder
-          const { data: unitFolder } = await supabase
-            .from('storage_nodes')
-            .insert({
-              tenant_id: tenantId,
-              parent_id: einheitenFolder.id,
-              name: unitNumber,
-              node_type: 'folder',
-              dev_project_id: projectId,
-              dev_project_unit_id: unitIds[i],
-            })
-            .select('id')
-            .single();
-
-          if (unitFolder) {
-            // Create unit sub-folders
-            const unitSubFolders = UNIT_FOLDERS.map(name => ({
-              tenant_id: tenantId,
-              parent_id: unitFolder.id,
-              name,
-              node_type: 'folder' as const,
-              dev_project_id: projectId,
-              dev_project_unit_id: unitIds[i],
-            }));
-
-            await supabase.from('storage_nodes').insert(unitSubFolders);
-          }
-        }
-      }
-    }
-
-    console.log('Storage tree seeded:', PROJECT_FOLDERS.length, 'project folders +', unitIds.length, 'unit folders');
-  } catch (err) {
-    console.error('Storage tree seeding error:', err);
-  }
+function mapUnitType(raw: string): string {
+  const lower = (raw || '').toLowerCase();
+  if (lower.includes('penthouse')) return 'penthouse';
+  if (lower.includes('maisonette')) return 'maisonette';
+  if (lower.includes('gewerbe')) return 'gewerbe';
+  if (lower.includes('stellplatz') || lower.includes('garage') || lower.includes('parkplatz')) return 'stellplatz';
+  if (lower.includes('büro') || lower.includes('buero')) return 'buero';
+  if (lower.includes('lager')) return 'lager';
+  if (lower.includes('keller')) return 'keller';
+  if (lower.includes('apartment')) return 'apartment';
+  return 'wohnung';
 }
