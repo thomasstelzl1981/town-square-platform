@@ -1,24 +1,37 @@
 
+# Impressum im Portal (Zone 2) — § 5 DDG Compliance
 
-# Consents-Tab aus Compliance Desk entfernen
+## Rechtlicher Hintergrund
 
-## Begruendung
+Jedes Telemedium in Deutschland muss ein Impressum haben, das "leicht erkennbar, unmittelbar erreichbar und staendig verfuegbar" ist (§ 5 DDG). Das Portal ist ein eigenstaendiges Telemedium und braucht daher ein eigenes Impressum. Da das Portal von der **System of a Town GmbH** betrieben wird, verwenden wir das bereits in der Datenbank vorhandene Dokument `website_imprint_sot`.
 
-Die `consent_templates`-Tabelle ist leer und wird nirgends produktiv genutzt. Alle operativen Consents (SALES_MANDATE_V2, DATA_ACCURACY_CONSENT, SYSTEM_SUCCESS_FEE) laufen ueber die `agreement_templates`-Tabelle. Das Tab ist toter Code.
+## Zwei Massnahmen
 
-## Aenderungen
+### 1. Impressum in RechtlichesTab anzeigen (Stammdaten > Rechtliches)
 
-### 1. Tab-Eintrag + Import entfernen
-**Datei:** `src/pages/admin/compliance/ComplianceDeskRouter.tsx`
-- Import von `ComplianceConsents` entfernen
-- Eintrag `{ value: 'consents', ... }` aus TABS-Array entfernen
-- `<TabsContent value="consents">` entfernen
+Das SoT-Impressum wird als **dritte, read-only Karte** in der RechtlichesTab angezeigt — unterhalb der AGB und Datenschutzerklaerung. Kein Consent-Checkbox noetig, da das Impressum nur informativ ist.
 
-### 2. Komponenten-Datei loeschen
-**Datei:** `src/pages/admin/compliance/ComplianceConsents.tsx` — komplett loeschen
+**Datei:** `src/pages/portal/stammdaten/RechtlichesTab.tsx`
+- Zweite Query ergaenzen die `website_imprint_sot` aus `compliance_documents` + aktive Version laedt
+- Neue `DocCard` unterhalb der bestehenden Karten rendern mit Titel "Impressum" und dem Markdown-Inhalt
+- Kein Consent-Mechanismus — reine Anzeige
 
-### 3. DB-Tabelle vorerst behalten
-Die `consent_templates`-Tabelle bleibt in der DB bestehen (leer, kein Schaden). Falls gewuenscht, kann sie spaeter per Migration gedroppt werden.
+### 2. Impressum-Link im SystemBar (ueberall erreichbar)
 
-## Ergebnis
-Der Compliance Desk hat dann 8 statt 9 Tabs. Keine funktionalen Auswirkungen, da das Tab nie genutzt wurde.
+Ein kleiner, dezenter "Impressum"-Link wird im SystemBar ergaenzt, damit er von **jeder Seite im Portal** aus erreichbar ist — wie gesetzlich gefordert.
+
+**Datei:** `src/components/portal/SystemBar.tsx`
+- Kleiner Text-Link "Impressum" hinzufuegen (z.B. neben dem Logo-Bereich oder am rechten Rand)
+- Verlinkt auf `/portal/stammdaten/rechtliches` (wo der Volltext steht)
+- Styling: dezent, `text-xs text-muted-foreground` — sichtbar aber nicht stoerend
+
+## Kein neues Dokument noetig
+
+Das Impressum `website_imprint_sot` (ID: bereits in DB, doc_key: `website_imprint_sot`) ist aktiv mit Version 1. Es wird einfach wiederverwendet — gleicher Platzhalter-Mechanismus via `renderComplianceMarkdown()` mit dem `sot` Company Profile.
+
+## Datei-Zusammenfassung
+
+| Aktion | Datei | Beschreibung |
+|--------|-------|-------------|
+| EDIT | `src/pages/portal/stammdaten/RechtlichesTab.tsx` | Impressum-Karte (read-only) ergaenzen |
+| EDIT | `src/components/portal/SystemBar.tsx` | Dezenter "Impressum"-Link hinzufuegen |
