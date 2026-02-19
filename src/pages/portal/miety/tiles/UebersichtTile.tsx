@@ -106,7 +106,11 @@ export default function UebersichtTile() {
   });
 
   useEffect(() => {
-    if (!isLoading && homes.length === 0 && profile?.city && !autoCreatedRef.current && !autoCreateMutation.isPending) {
+    // Deduplizierung: Nur auto-create wenn kein Home mit gleicher Stadt existiert
+    const alreadyExists = homes.some(h => 
+      h.city?.toLowerCase() === profile?.city?.toLowerCase()
+    );
+    if (!isLoading && homes.length === 0 && !alreadyExists && profile?.city && !autoCreatedRef.current && !autoCreateMutation.isPending) {
       autoCreatedRef.current = true;
       autoCreateMutation.mutate();
     }
