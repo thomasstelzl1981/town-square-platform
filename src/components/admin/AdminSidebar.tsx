@@ -91,6 +91,8 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   'PetmanagerFinanzen': CreditCard,
   'PetmanagerServices': ClipboardCheck,
   'PetmanagerMonitor': Eye,
+  // Compliance Desk
+  'ComplianceDeskRouter': Scale,
 };
 
 // Group configuration for grouping routes
@@ -108,6 +110,7 @@ const GROUP_CONFIG: Record<string, GroupConfig> = {
   'backbone': { label: 'Backbone', priority: 6 },
   'desks': { label: 'Operative Desks', priority: 7 },
   // agents group removed
+  'compliance': { label: 'Compliance', priority: 8 },
   'system': { label: 'System', priority: 9 },
   'platformAdmin': { label: 'Platform Admin', priority: 10 },
 };
@@ -153,6 +156,10 @@ function getGroupKey(path: string, component: string): string {
       path === 'petmanager' || path.startsWith('petmanager/') || path === 'website-hosting' ||
       path.startsWith('pet-desk')) {
     return 'desks';
+  }
+  // Compliance Desk
+  if (path === 'compliance') {
+    return 'compliance';
   }
   // System (bereinigt - nur Read-only Monitoring + Fortbildung)
   if (path === 'integrations' || path === 'oversight' || path === 'audit' || 

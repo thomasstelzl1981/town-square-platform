@@ -246,6 +246,8 @@ const adminComponentMap: Record<string, React.ComponentType> = {
   AdminFortbildung: React.lazy(() => import('@/pages/admin/AdminFortbildung')),
   // Website Hosting (MOD-05 Zone 1)
   WebHostingDashboard: React.lazy(() => import('@/pages/admin/website-hosting/WebHostingDashboard')),
+  // Compliance Desk (Legal Engine SSOT)
+  ComplianceDeskRouter: React.lazy(() => import('@/pages/admin/compliance/ComplianceDeskRouter')),
   // New Desks
   LeadDeskDashboard: LeadDeskComponent,
   ProjektDeskDashboard: ProjektDeskComponent,
