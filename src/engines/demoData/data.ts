@@ -560,8 +560,9 @@ export const ALL_DEMO_IDS: readonly string[] = [
   // Pet Provider + Services (DB-geseedet)
   DEMO_PET_PROVIDER_LENNOX,
   ID_PET_SVC_GROOMING, ID_PET_SVC_WALKING, ID_PET_SVC_DAYCARE, ID_PET_SVC_BOARDING,
-  // Bankkonto (verwaister DB-Seed, Absicherung)
+  // Bankkonto (DB-Seed legacy + CSV-Seed)
   '00000000-0000-4000-a000-000000000300',
+  'd0000000-0000-4000-a000-000000000300',
   // Miety Zuhause (DB-geseedet)
   ID_MIETY_HOME,
   ID_MIETY_STROM, ID_MIETY_GAS, ID_MIETY_WASSER, ID_MIETY_INTERNET,
@@ -606,7 +607,7 @@ export const DEMO_DATA_SPEC: DemoDataSpec = {
  * - GP-PROJEKT       (MOD-13) — Clientseitig: demoProjectData.ts
  * - GP-FAHRZEUG      (MOD-17) — DB: 2 Fahrzeuge (Porsche, BMW)
  * - GP-PV-ANLAGE     (MOD-19) — DB: PV-Anlage 32.4 kWp
- * - GP-KONTEN        (MOD-18) — Clientseitig: Demo-Bankkonto
+ * - GP-KONTEN        (MOD-18) — DB-geseedet via CSV: Bankkonto + 100 Transaktionen
  * - GP-ZUHAUSE       (MOD-20) — DB: 1 Home + 4 Versorgungsverträge (Strom, Gas, Wasser, Internet)
  * - GP-PETS          (MOD-05) — DB: 2 Demo-Pets + Lennox & Friends Provider + 4 Services + Availability
  * - GP-PET           (MOD-22) — Clientseitig: 3 Kunden + 3 Hunde + 5 Buchungen (Pension + Service)
