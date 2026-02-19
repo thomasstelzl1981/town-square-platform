@@ -1,53 +1,107 @@
 
-# SOT Research Engine -- Fehleranalyse und Fix
 
-## Ursache: Edge-Function-Timeout
+# SOT Research Engine -- Alle Einsatzorte und Optimierung
 
-Die Engine **funktioniert technisch**, aber laeuft in ein **Timeout** (60s Limit fuer Edge Functions). Der Ablauf:
+## Wo die Engine ueberall eingesetzt wird
 
-1. **Phase 1** (Google Places + Apify parallel): ~25-30s -- liefert 6-10 Ergebnisse (OK)
-2. **Phase 2** (Firecrawl Email-Scraping): Scrapt bis zu **10 Websites parallel**, jede mit `waitFor: 2000ms` -- addiert 15-30s
-3. **Phase 3** (AI Merge via Lovable AI): ~5-10s
-4. **Gesamt**: 45-70s -- ueberschreitet das 60s-Limit
+Die `sot-research-engine` wird an **8 Stellen** im Projekt aufgerufen:
 
-Beweis aus den Logs:
-- "Bank Eggenfelden" (6 Ergebnisse, 6 Websites): 40s = knapp geschafft
-- "Sanitaer Installateur Muenchen" (10 Ergebnisse, 10 Websites): Timeout, keine Antwort
+| # | Datei | Intent | max_results | Modul |
+|---|-------|--------|-------------|-------|
+| 1 | `ProviderSearchPanel.tsx` (Sanierung) | find_contractors | 20 | sanierung |
+| 2 | `FMEinreichung.tsx` (Bankensuche) | find_companies | 20 | finanzierung |
+| 3 | `SourcingTab.tsx` (Akquise) | find_brokers | apolloForm.limit | akquise |
+| 4 | `SourcingTab.tsx` (Akquise) | search_portals | apifyForm.limit | akquise |
+| 5 | `AkquiseMandate.tsx` (Apollo) | find_brokers | apolloForm.limit | akquise |
+| 6 | `AkquiseMandate.tsx` (Portale) | search_portals | apifyForm.limit | akquise |
+| 7 | `AkquiseMandate.tsx` (Auto-Recherche) | find_brokers | 25 | akquise |
+| 8 | `useAdminResearch.ts` (Admin) | find_contacts | 25 | recherche |
+| 9 | `useSoatSearchEngine.ts` (SOAT) | find_contacts | (default 20) | soat_search |
+| 10 | `useAcqTools.ts` (Portal-Hook) | search_portals | 50 | akquise |
 
-## Fix-Plan
+## Aenderungen
 
-### Aenderung 1: Firecrawl-Limit reduzieren (Hauptfix)
-In `scrapeEmailsFirecrawl()`: Maximal **5 statt 10** Websites scrapen und `waitFor` von 2000ms auf **1000ms** reduzieren. Das spart 10-15s.
+### 1. Edge Function: Limits erhoehen und Timeouts anpassen
+**Datei: `supabase/functions/sot-research-engine/index.ts`**
 
-### Aenderung 2: Apify-Timeout reduzieren
-Der Apify-Aufruf hat ein 50s-Timeout (`setTimeout(() => controller.abort(), 50000)`). Bei paralleler Ausfuehrung mit Google Places reicht das nicht. Reduzierung auf **30s**.
+- **Apify `maxCrawledPlacesPerSearch`**: Von `Math.min(maxResults, 10)` auf `Math.min(maxResults, 25)` erhoehen (Zeile 119), damit bis zu 25 Google-Places-Ergebnisse moeglich sind
+- **Firecrawl URL-Limit**: Von `slice(0, 5)` auf `slice(0, 10)` erhoehen (Zeile 265 und 606), weil mehr Ergebnisse auch mehr Email-Anreicherung brauchen
+- **Firecrawl `waitFor`**: Bleibt bei 1000ms (OK)
+- **Phase 2 Timeout**: Von 15s auf **25s** erhoehen (Zeile 622), da mehr URLs gescrapt werden
+- **Apify Actor Timeout**: Von 25s auf **35s** erhoehen (Zeile 107), damit bei 25 Ergebnissen genug Zeit bleibt
+- **Apify Abort Timeout**: Von 30s auf **40s** (Zeile 110)
+- **Phase 3 AI Merge**: Schwelle von 8 auf **12** anpassen -- bei bis zu 25 Ergebnissen lohnt sich AI Merge erst bei mehr Daten
 
-### Aenderung 3: Globales Timeout mit Fallback
-Eine globale Zeitschranke (50s) einbauen. Wenn Phase 2 zu lange dauert, werden die Ergebnisse OHNE Email-Anreicherung zurueckgegeben -- besser als gar keine Antwort.
+### 2. useResearchEngine Hook: Timer und Fortschrittsanzeige
+**Datei: `src/hooks/useResearchEngine.ts`**
 
-### Aenderung 4: Phase 3 (AI Merge) nur bei wenig Ergebnissen
-AI Merge ueberspringen wenn weniger als 8 Ergebnisse (Deduplizierung lohnt sich nicht). Das spart 5-10s.
+Neuen State hinzufuegen:
+- `elapsedSeconds: number` -- zaehlt jede Sekunde hoch waehrend `isSearching === true`
+- `estimatedDuration: number` -- geschaetzte Dauer basierend auf `max_results` (z.B. max_results <= 10: ~30s, <= 20: ~45s, <= 25: ~55s)
+- Ein `setInterval` das jede Sekunde `elapsedSeconds` hochzaehlt, gestoppt beim Ende der Suche
+- Beides im Return-Objekt exponieren
 
-## Technische Umsetzung
+### 3. ProviderSearchPanel: Timer-UI und max_results erhoehen
+**Datei: `src/components/portal/immobilien/sanierung/tender/ProviderSearchPanel.tsx`**
 
-### Geaenderte Datei: `supabase/functions/sot-research-engine/index.ts`
+- `max_results` von 20 auf **25** erhoehen
+- Waehrend `isSearching`: Fortschrittsanzeige mit:
+  - Animiertem Progress-Balken (nutzt `elapsedSeconds / estimatedDuration * 100`)
+  - Text: "Suche laeuft... XX/~60s -- Bitte warten, Ergebnisse werden aus mehreren Quellen zusammengefuehrt"
+  - Phasen-Hinweise: 0-15s "Google Places durchsuchen...", 15-35s "Websites nach E-Mails scannen...", 35-55s "Ergebnisse zusammenfuehren..."
 
-Konkrete Aenderungen:
-- **Zeile 107**: Apify timeout von `50000` auf `30000` reduzieren
-- **Zeile 110**: Apify abort timeout von `50000` auf `30000`
-- **Zeile 265**: `slice(0, 10)` aendern zu `slice(0, 5)` (max 5 Websites)
-- **Zeile 279**: `waitFor: 2000` aendern zu `waitFor: 1000`
-- **Zeile 596-629**: Phase 2 in ein `Promise.race` mit 15s-Timeout wrappen
-- **Zeile 634**: AI Merge nur wenn `allResults.length >= 8` (sonst Fallback-Deduplizierung)
+### 4. FMEinreichung: Timer-UI und max_results erhoehen
+**Datei: `src/pages/portal/finanzierungsmanager/FMEinreichung.tsx`**
 
-### Erwartete Zeiten nach Fix
+- `max_results` von 20 auf **25** erhoehen
+- Waehrend `aiLoading`: Gleiche Fortschrittsanzeige wie ProviderSearchPanel
+  - Progress-Balken mit Sekundenzaehler
+  - Text: "Bankensuche laeuft... XX/~60s"
+
+### 5. Gemeinsame Timer-Komponente erstellen
+**Neue Datei: `src/components/portal/shared/SearchProgressIndicator.tsx`**
+
+Wiederverwendbare Komponente fuer alle Einsatzorte:
 
 ```text
-Phase 1 (Places + Apify):   ~15-20s  (Apify-Timeout 30s statt 50s)
-Phase 2 (Firecrawl, max 5): ~5-8s    (5 URLs, 1s waitFor, 15s hard limit)
-Phase 3 (AI Merge):         ~5s      (nur bei >= 8 Ergebnissen)
-────────────────────────────────────
-Gesamt:                     ~25-35s  (deutlich unter 60s)
+Aufbau:
++--------------------------------------------------+
+| [=====>                    ]  12/~55s             |
+| Google Places durchsuchen...                      |
+| Bitte warten -- Ergebnisse werden aus mehreren    |
+| Quellen zusammengefuehrt.                         |
++--------------------------------------------------+
 ```
 
-Keine neuen Dateien noetig -- reine Optimierung in einer einzigen Edge Function.
+Props:
+- `elapsedSeconds: number`
+- `estimatedDuration: number` (default 55)
+- `phases?: { upTo: number; label: string }[]` (optionale Phasen-Labels)
+
+Nutzt die bestehende `Progress`-Komponente aus `src/components/ui/progress.tsx`.
+
+### 6. Weitere Aufrufstellen anpassen
+- `useAdminResearch.ts`: max_results bleibt bei 25 (bereits OK)
+- `AkquiseMandate.tsx` Auto-Recherche: bleibt bei 25 (bereits OK)
+- `useSoatSearchEngine.ts`: kein max_results gesetzt -- default 20, erhoehen auf 25
+- `useAcqTools.ts`: max_results 50 fuer Portale -- bleibt (Portal-Suche ist anders)
+
+## Geaenderte/Neue Dateien
+
+1. `supabase/functions/sot-research-engine/index.ts` -- Limits und Timeouts erhoehen
+2. `src/hooks/useResearchEngine.ts` -- Timer-State (elapsedSeconds, estimatedDuration)
+3. `src/components/portal/shared/SearchProgressIndicator.tsx` -- NEUE Komponente
+4. `src/components/portal/immobilien/sanierung/tender/ProviderSearchPanel.tsx` -- max_results=25 + Timer-UI
+5. `src/pages/portal/finanzierungsmanager/FMEinreichung.tsx` -- max_results=25 + Timer-UI
+6. `src/hooks/useSoatSearchEngine.ts` -- max_results=25
+
+## Erwartete Zeiten nach Anpassung
+
+```text
+Phase 1 (Places + Apify, 25 Ergebnisse): ~20-30s
+Phase 2 (Firecrawl, max 10 URLs, 25s limit): ~8-15s
+Phase 3 (AI Merge, ab 12 Ergebnisse):     ~5-8s
+────────────────────────────────────────────────────
+Gesamt:                                   ~35-50s (unter 60s)
+```
+
