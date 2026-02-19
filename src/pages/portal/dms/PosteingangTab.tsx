@@ -17,6 +17,10 @@ import { de } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { resolveStorageSignedUrl } from '@/lib/storage-url';
 import { useNavigate } from 'react-router-dom';
+import { DESIGN } from '@/config/designManifest';
+import { PosteingangAuslesungCard } from '@/components/dms/PosteingangAuslesungCard';
+import { PostserviceCard } from '@/components/dms/PostserviceCard';
+import { StorageExtractionCard } from '@/components/dms/StorageExtractionCard';
 
 interface InboundEmail {
   id: string;
@@ -246,7 +250,7 @@ export function PosteingangTab() {
             <Button
               className="w-full"
               size="lg"
-              onClick={() => navigate('/portal/dms/einstellungen')}
+              onClick={() => navigate('/portal/dms/intelligenz')}
             >
               <Mail className="h-4 w-4 mr-2" />
               Postservice aktivieren
@@ -258,6 +262,13 @@ export function PosteingangTab() {
             </p>
           </CardContent>
         </Card>
+
+        {/* Steuerungs-Kacheln */}
+        <div className={DESIGN.WIDGET_GRID.FULL}>
+          <PosteingangAuslesungCard />
+          <StorageExtractionCard tenantId={activeTenantId} />
+          <PostserviceCard />
+        </div>
       </PageShell>
     );
   }
@@ -390,6 +401,13 @@ export function PosteingangTab() {
           </p>
         </CardContent>
       </Card>
+
+      {/* Steuerungs-Kacheln */}
+      <div className={DESIGN.WIDGET_GRID.FULL}>
+        <PosteingangAuslesungCard />
+        <StorageExtractionCard tenantId={activeTenantId} />
+        <PostserviceCard />
+      </div>
 
       {/* Detail Dialog */}
       <Dialog open={!!selectedEmail} onOpenChange={(open) => !open && setSelectedEmail(null)}>
