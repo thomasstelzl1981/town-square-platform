@@ -1,49 +1,94 @@
 
+# Fix: Chunk-Ladefehler (Problem 1)
 
-# Fix: React Error #310 in Finanzierung (Status & Privatkredit)
+## Problem
 
-## Ursache
+Nach jeder Code-Aenderung erzeugt Vite neue JS-Dateien mit neuen Hash-Namen. Der Browser oder Service Worker versucht aber noch die alten URLs zu laden (z.B. `AreaOverviewPage-CPdAq382.js`), die nicht mehr existieren. Ergebnis: "Failed to fetch dynamically imported module" -- Navigation blockiert.
 
-**React Error #310 = "Rendered more hooks than during the previous render"**
+## Datenstatus Max Mustermann (zur Info, wird jetzt NICHT geaendert)
 
-In `StatusTab.tsx` wird `useMutation` (Zeile 264) NACH zwei fruehen Returns aufgerufen (Zeile 240: Loading-State, Zeile 248: leere Daten). Das verletzt Reacts Hook-Regeln: Beim ersten Render (isLoading=true) wird der Hook uebersprungen, beim naechsten Render (Daten geladen) wird er ausgefuehrt -- React erkennt die unterschiedliche Hook-Anzahl und wirft Error #310.
+| Daten | Status |
+|-------|--------|
+| Kontakt Max Mustermann | Vorhanden |
+| 3 Mietvertraege (leases) | Vorhanden |
+| Mietzahlungen (rent_payments) | Vorhanden (10+ Eintraege) |
+| Bankkonten (msv_bank_accounts) | GELOESCHT -- 0 Eintraege |
+| Banktransaktionen (bank_transactions) | GELOESCHT -- 0 Eintraege |
+| Bank-Metadaten (bank_account_meta) | GELOESCHT -- 0 Eintraege |
 
-Der Privatkredit-Tab hat keinen Code-Fehler. Der Crash dort haengt vermutlich mit den gemeldeten Supabase-Infrastrukturproblemen zusammen oder mit einem kaskadierenden ErrorBoundary-State.
+Die Bankkonten und CSV-Transaktionsdaten wurden beim versehentlichen Loeschen von Max Mustermann mit entfernt und nicht wiederhergestellt. Vertraege und Mietzahlungen sind intakt. Die Wiederherstellung dieser Daten erfolgt in einem separaten Schritt, sobald du das freigibst.
 
-**Das ist KEIN Server-Problem, sondern ein Code-Bug.**
+## Loesung: Auto-Reload bei Chunk-Fehler
 
-## Loesung
+**Datei: `src/components/ErrorBoundary.tsx`**
 
-### StatusTab.tsx: useMutation vor die Early Returns verschieben
+In der `componentDidCatch`-Methode wird geprueft, ob der Fehler ein Chunk-Ladefehler ist. Wenn ja, wird automatisch die Seite neu geladen -- aber nur einmal, um Endlosschleifen zu vermeiden.
 
-Die `useMutation`-Deklaration (Zeilen 264-287) muss nach oben verschoben werden -- direkt nach den anderen Hooks (`useQuery`, `useMemo`), also vor Zeile 240.
+### Ablauf
 
-Die fruehen Returns fuer Loading und leere Daten bleiben bestehen, werden aber jetzt erst NACH allen Hook-Aufrufen ausgefuehrt.
+```text
+Nutzer klickt auf Menuepunkt
+  -> Browser versucht alten JS-Chunk zu laden
+  -> Fehler: "Failed to fetch dynamically imported module"
+  -> ErrorBoundary faengt den Fehler
+  -> Erkennt Chunk-Fehler am Text im error.message
+  -> Prueft sessionStorage-Flag "chunk-reload-attempted"
+  -> Flag nicht gesetzt? -> Setzt Flag + window.location.reload()
+  -> Browser laedt neue index.html mit korrekten Chunk-URLs
+  -> Seite funktioniert normal
+  -> Flag wird beim naechsten erfolgreichen Render zurueckgesetzt
+```
 
 ### Konkrete Aenderung
 
-```typescript
-// VORHER (fehlerhaft):
-// ... useQuery, useMemo ...
-if (isLoading) return <Loading />;        // <-- Early return
-if (!requests) return <EmptyState />;     // <-- Early return
-const deleteMutation = useMutation({...}); // <-- HOOK NACH RETURN = BUG
+Die `componentDidCatch`-Methode (Zeile 38-42) wird erweitert:
 
-// NACHHER (korrekt):
-// ... useQuery, useMemo ...
-const deleteMutation = useMutation({...}); // <-- Hook VOR Early Returns
-if (isLoading) return <Loading />;
-if (!requests) return <EmptyState />;
+```typescript
+componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+  // Chunk-Ladefehler erkennen und automatisch neu laden
+  const isChunkError =
+    error.message.includes('Failed to fetch dynamically imported module') ||
+    error.message.includes('Loading chunk') ||
+    error.message.includes('Loading CSS chunk');
+
+  if (isChunkError) {
+    const alreadyReloaded = sessionStorage.getItem('chunk-reload-attempted');
+    if (!alreadyReloaded) {
+      sessionStorage.setItem('chunk-reload-attempted', 'true');
+      window.location.reload();
+      return;
+    }
+    // Wenn bereits neu geladen wurde, normalen Fehler anzeigen
+    sessionStorage.removeItem('chunk-reload-attempted');
+  }
+
+  this.setState({ errorInfo });
+  console.error('ErrorBoundary caught error:', error, errorInfo);
+}
 ```
 
-### Keine Aenderung noetig
+Zusaetzlich wird das sessionStorage-Flag bei erfolgreicher Navigation zurueckgesetzt, indem in der `render()`-Methode bei `hasError === false` das Flag entfernt wird:
 
-- **PrivatkreditTab**: Kein Hook-Fehler im Code. Sollte nach dem StatusTab-Fix und Stabilisierung der Infrastruktur funktionieren.
-- **Alle anderen Finanzierungs-Tabs** (Selbstauskunft, Dokumente, Anfrage): Keine Aenderungen noetig.
+```typescript
+render() {
+  if (this.state.hasError) {
+    // ... Fehler-UI ...
+  }
+
+  // Erfolgreicher Render: Chunk-Reload-Flag zuruecksetzen
+  sessionStorage.removeItem('chunk-reload-attempted');
+  return this.props.children;
+}
+```
 
 ## Betroffene Dateien
 
 | Datei | Aenderung |
 |-------|-----------|
-| `src/pages/portal/finanzierung/StatusTab.tsx` | `useMutation` Block von Zeile 264 nach oben verschieben (vor die Early Returns) |
+| `src/components/ErrorBoundary.tsx` | Chunk-Fehler-Erkennung + Auto-Reload in componentDidCatch, Flag-Reset in render |
 
+## Was NICHT geaendert wird
+
+- Keine neuen Daten werden angelegt
+- Keine Bankkonten oder Transaktionen werden eingefuegt
+- Keine anderen Dateien werden veraendert
