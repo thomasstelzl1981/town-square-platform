@@ -4131,6 +4131,227 @@ export type Database = {
           },
         ]
       }
+      compliance_bundle_items: {
+        Row: {
+          bundle_id: string
+          document_id: string
+          id: string
+          required: boolean
+          required_version: number | null
+          sort_order: number
+        }
+        Insert: {
+          bundle_id: string
+          document_id: string
+          id?: string
+          required?: boolean
+          required_version?: number | null
+          sort_order?: number
+        }
+        Update: {
+          bundle_id?: string
+          document_id?: string
+          id?: string
+          required?: boolean
+          required_version?: number | null
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "compliance_bundle_items_bundle_id_fkey"
+            columns: ["bundle_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_bundles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_bundle_items_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      compliance_bundles: {
+        Row: {
+          bundle_key: string
+          created_at: string
+          description: string | null
+          id: string
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          bundle_key: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          bundle_key?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      compliance_company_profile: {
+        Row: {
+          address_line1: string | null
+          address_line2: string | null
+          city: string | null
+          commercial_register: Json | null
+          company_name: string
+          country: string | null
+          email: string | null
+          id: string
+          last_updated_at: string
+          last_updated_by: string | null
+          legal_form: string | null
+          managing_directors: Json | null
+          phone: string | null
+          postal_code: string | null
+          supervisory_authority: string | null
+          vat_id: string | null
+          website_url: string | null
+        }
+        Insert: {
+          address_line1?: string | null
+          address_line2?: string | null
+          city?: string | null
+          commercial_register?: Json | null
+          company_name?: string
+          country?: string | null
+          email?: string | null
+          id?: string
+          last_updated_at?: string
+          last_updated_by?: string | null
+          legal_form?: string | null
+          managing_directors?: Json | null
+          phone?: string | null
+          postal_code?: string | null
+          supervisory_authority?: string | null
+          vat_id?: string | null
+          website_url?: string | null
+        }
+        Update: {
+          address_line1?: string | null
+          address_line2?: string | null
+          city?: string | null
+          commercial_register?: Json | null
+          company_name?: string
+          country?: string | null
+          email?: string | null
+          id?: string
+          last_updated_at?: string
+          last_updated_by?: string | null
+          legal_form?: string | null
+          managing_directors?: Json | null
+          phone?: string | null
+          postal_code?: string | null
+          supervisory_authority?: string | null
+          vat_id?: string | null
+          website_url?: string | null
+        }
+        Relationships: []
+      }
+      compliance_document_versions: {
+        Row: {
+          activated_at: string | null
+          change_note: string | null
+          content_md: string
+          created_at: string
+          created_by: string | null
+          document_id: string
+          id: string
+          status: string
+          version: number
+        }
+        Insert: {
+          activated_at?: string | null
+          change_note?: string | null
+          content_md?: string
+          created_at?: string
+          created_by?: string | null
+          document_id: string
+          id?: string
+          status?: string
+          version: number
+        }
+        Update: {
+          activated_at?: string | null
+          change_note?: string | null
+          content_md?: string
+          created_at?: string
+          created_by?: string | null
+          document_id?: string
+          id?: string
+          status?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "compliance_document_versions_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      compliance_documents: {
+        Row: {
+          brand: string | null
+          created_at: string
+          current_version: number
+          description: string | null
+          doc_key: string
+          doc_type: string
+          id: string
+          locale: string | null
+          scope: string
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          brand?: string | null
+          created_at?: string
+          current_version?: number
+          description?: string | null
+          doc_key: string
+          doc_type: string
+          id?: string
+          locale?: string | null
+          scope?: string
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          brand?: string | null
+          created_at?: string
+          current_version?: number
+          description?: string | null
+          doc_key?: string
+          doc_type?: string
+          id?: string
+          locale?: string | null
+          scope?: string
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       consent_templates: {
         Row: {
           body_de: string
@@ -5045,6 +5266,53 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "data_event_ledger_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      deletion_requests: {
+        Row: {
+          created_at: string
+          executed_at: string | null
+          id: string
+          legal_hold_reason: string | null
+          notes: string | null
+          requester_email: string
+          status: string
+          tenant_id: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          executed_at?: string | null
+          id?: string
+          legal_hold_reason?: string | null
+          notes?: string | null
+          requester_email: string
+          status?: string
+          tenant_id: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          executed_at?: string | null
+          id?: string
+          legal_hold_reason?: string | null
+          notes?: string | null
+          requester_email?: string
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deletion_requests_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "organizations"
@@ -6085,6 +6353,59 @@ export type Database = {
           validation?: Json | null
         }
         Relationships: []
+      }
+      dsar_requests: {
+        Row: {
+          closed_at: string | null
+          created_at: string
+          due_date: string | null
+          id: string
+          notes: string | null
+          request_type: string
+          requester_email: string
+          requester_name: string | null
+          status: string
+          tenant_id: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          closed_at?: string | null
+          created_at?: string
+          due_date?: string | null
+          id?: string
+          notes?: string | null
+          request_type?: string
+          requester_email: string
+          requester_name?: string | null
+          status?: string
+          tenant_id: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          closed_at?: string | null
+          created_at?: string
+          due_date?: string | null
+          id?: string
+          notes?: string | null
+          request_type?: string
+          requester_email?: string
+          requester_name?: string | null
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dsar_requests_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       extraction_jobs: {
         Row: {
