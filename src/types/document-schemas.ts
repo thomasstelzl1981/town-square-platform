@@ -84,7 +84,9 @@ export interface ParseDocumentRequest {
   contentType: string; // MIME type
   filename: string;
   tenantId?: string;
-  parseMode?: 'properties' | 'contacts' | 'financing' | 'general';
+  parseMode?: 'properties' | 'contacts' | 'financing' | 'general'
+    | 'immobilie' | 'finanzierung' | 'versicherung' | 'fahrzeugschein'
+    | 'pv_anlage' | 'vorsorge' | 'person' | 'haustier' | 'kontakt' | 'allgemein';
 }
 
 export interface ParseDocumentResponse {

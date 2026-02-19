@@ -58,7 +58,9 @@ export interface UniversalUploadOptions {
   /** Trigger AI extraction after upload? (Phase 2 runs automatically after Phase 1) */
   triggerAI?: boolean;
   /** Parse mode for AI extraction */
-  parseMode?: 'properties' | 'contacts' | 'financing' | 'general';
+  parseMode?: 'properties' | 'contacts' | 'financing' | 'general'
+    | 'immobilie' | 'finanzierung' | 'versicherung' | 'fahrzeugschein'
+    | 'pv_anlage' | 'vorsorge' | 'person' | 'haustier' | 'kontakt' | 'allgemein';
   /** Called when file is uploaded and registered (end of Phase 1), before AI analysis */
   onFileUploaded?: (file: UploadedFileInfo) => void;
 }
@@ -135,7 +137,9 @@ export function useUniversalUpload() {
     options: {
       fileName?: string;
       contentType?: string;
-      parseMode?: 'properties' | 'contacts' | 'financing' | 'general';
+      parseMode?: 'properties' | 'contacts' | 'financing' | 'general'
+        | 'immobilie' | 'finanzierung' | 'versicherung' | 'fahrzeugschein'
+        | 'pv_anlage' | 'vorsorge' | 'person' | 'haustier' | 'kontakt' | 'allgemein';
       source?: string;
     } = {},
   ): Promise<boolean> => {
