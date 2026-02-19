@@ -82,12 +82,13 @@ Deno.serve(async (req: Request) => {
       // Check if there's an existing Z1 customer without password (created by admin)
       const { data: existingNoPassword } = await supabase
         .from('pet_z1_customers')
-        .select('id')
+        .select('id, tenant_id')
         .eq('email', email.toLowerCase().trim())
         .is('password_hash', null)
         .maybeSingle()
 
       let customerId: string
+      let tenantId: string = 'a0000000-0000-4000-a000-000000000001'
 
       if (existingNoPassword) {
         // Update existing record with password
@@ -96,12 +97,13 @@ Deno.serve(async (req: Request) => {
           .update({ password_hash: passwordHash, first_name: firstName, last_name: lastName || '' })
           .eq('id', existingNoPassword.id)
         customerId = existingNoPassword.id
+        tenantId = existingNoPassword.tenant_id || tenantId
       } else {
         // Create new customer
         const { data: newCustomer, error: insertErr } = await supabase
           .from('pet_z1_customers')
           .insert({
-            tenant_id: 'a0000000-0000-4000-a000-000000000001',
+            tenant_id: tenantId,
             email: email.toLowerCase().trim(),
             first_name: firstName,
             last_name: lastName || '',
@@ -121,10 +123,15 @@ Deno.serve(async (req: Request) => {
 
       // Create session
       const sessionToken = generateSessionToken()
-      await supabase.from('pet_z3_sessions').insert({
+      const { error: sessionErr } = await supabase.from('pet_z3_sessions').insert({
         customer_id: customerId,
         session_token: sessionToken,
+        tenant_id: tenantId,
       })
+      if (sessionErr) {
+        console.error('Signup session insert error:', sessionErr)
+        return new Response(JSON.stringify({ error: 'Session konnte nicht erstellt werden', detail: sessionErr.message }), { status: 500, headers: corsHeaders })
+      }
 
       // Return customer data
       const { data: customer } = await supabase
@@ -145,7 +152,7 @@ Deno.serve(async (req: Request) => {
 
       const { data: customer } = await supabase
         .from('pet_z1_customers')
-        .select('id, first_name, last_name, email, phone, address, city, postal_code, password_hash, status')
+        .select('id, first_name, last_name, email, phone, address, city, postal_code, password_hash, status, tenant_id')
         .eq('email', email.toLowerCase().trim())
         .not('password_hash', 'is', null)
         .maybeSingle()
@@ -165,12 +172,17 @@ Deno.serve(async (req: Request) => {
 
       // Create session
       const sessionToken = generateSessionToken()
-      await supabase.from('pet_z3_sessions').insert({
+      const { error: sessionErr } = await supabase.from('pet_z3_sessions').insert({
         customer_id: customer.id,
         session_token: sessionToken,
+        tenant_id: customer.tenant_id,
       })
+      if (sessionErr) {
+        console.error('Login session insert error:', sessionErr)
+        return new Response(JSON.stringify({ error: 'Session konnte nicht erstellt werden', detail: sessionErr.message }), { status: 500, headers: corsHeaders })
+      }
 
-      const { password_hash: _, status: __, ...safeCustomer } = customer
+      const { password_hash: _, status: __, tenant_id: ___, ...safeCustomer } = customer
       return new Response(JSON.stringify({ session_token: sessionToken, customer: safeCustomer }), { headers: corsHeaders })
     }
 
