@@ -1,121 +1,194 @@
 
-# Diagnose: Konto-Umsaetze vs. Modul 4 Geldeingaenge
+# Demo-Engine Komplett-Umbau: Seed ON = Alles da, Seed OFF = Alles weg
 
-## Befund
+## Ziel
 
-### Problem 1: Konten zeigen nur 3 statt 100 Transaktionen
+Der Demo-Toggle muss wie ein echter Account funktionieren:
+- **Toggle ON**: Alle Demo-Daten werden per Seed-Engine in die Datenbank geschrieben (simuliert echte Dateneingabe)
+- **Toggle OFF**: Alle Demo-Daten werden vollstaendig entfernt (0 Records in allen Tabellen)
+- Kein "Ghost Data", keine halblebigen DB-Seeds
 
-Die CSV-Datei `demo_bank_transactions.csv` enthaelt **100 vollstaendige Transaktionen** (14 Monate: Jan 2025 - Feb 2026, je 3 Mieten + 3 Hausgelder + quartalsweise Grundsteuer + 1 Reparatur).
+## Ist-Zustand (Probleme)
 
-In der Datenbank (`bank_transactions`) existieren jedoch **nur 3 Datensaetze** — die ersten 3 Zeilen der CSV. 
+| Problem | Detail |
+|---------|--------|
+| Seed-Engine deckt nur 7 Tabellen ab | contacts, properties, units, leases, loans, msv_bank_accounts, bank_transactions |
+| 15+ Tabellen sind "DB-Seeds" | cars_vehicles, insurance_contracts, household_persons, pv_plants, kv_contracts, vorsorge_contracts, private_loans, miety_homes, acq_mandates, pets, pet_customers, pet_bookings, pet_providers, pet_services, pet_rooms, pet_staff |
+| Cleanup loescht nur Registry-Eintraege | Aktuell nur bank_transactions (100) in Registry — alles andere bleibt |
+| Subscriptions nie geseeded | 8 Abos in data.ts definiert, 0 in DB |
+| dev_projects = 0 | MOD-13 Projekt fehlt komplett |
+| rent_payments = 0 | Rent-Match Pipeline wurde nie getriggert |
 
-**Ursache:** Die Seed-Engine (`useDemoSeedEngine.ts`) funktioniert technisch korrekt (Chunks a 50 Zeilen, Upsert), aber der Seed-Lauf wurde offenbar nur einmal waehrend eines fruehen Tests ausgefuehrt, als die CSV noch weniger Zeilen hatte — oder der zweite Chunk (Zeilen 51-100) schlug fehl, ohne dass der Fehler sichtbar war (der Code loggt den Fehler per `console.error`, bricht aber nicht ab und zaehlt trotzdem alle IDs als erfolgreich).
+## Soll-Zustand
 
-**Fix:** Die Seed-Engine muss erneut getriggert werden, und die Fehlerbehandlung muss verbessert werden, sodass nur tatsaechlich geschriebene IDs gezaehlt werden.
-
-### Problem 2: Modul 4 zeigt "Geldeingaenge" ohne Kontodaten
-
-Der `GeldeingangTab` in Modul 4 liest **nicht** aus `bank_transactions`. Er liest aus zwei separaten Quellen:
-
-```text
-Datenfluesse — Ist-Zustand:
-
-  bank_transactions (Konten-Tab)
-  |
-  |  [KEIN automatischer Link!]
-  |
-  leases ──────────► GeldeingangTab (Soll-Spalte)
-  rent_payments ───► GeldeingangTab (Ist-Spalte)
-```
-
-Der Tab zeigt ein 12-Monats-Raster mit:
-- **Soll**: Berechnet aus `leases.monthly_rent` (kommt direkt aus den SSOT-Leases)
-- **Ist**: Kommt aus `rent_payments` — aktuell **0 Eintraege**
-
-Was der User sieht, sind die **Soll-Werte aus den Mietvertraegen**, nicht tatsaechliche Zahlungen. Die "Ist"-Spalte ist leer.
-
-### Soll-Datenfluss (fehlendes Glied)
-
-Der korrekte Fluss waere:
+Nach Toggle ON muessen exakt diese Daten existieren:
 
 ```text
-CSV ──► bank_transactions (100 Buchungen)
-              |
-              ▼
-        Engine 17 (KontoMatch) kategorisiert als "MIETE"
-              |
-              ▼
-        Edge Function "sot-rent-match" matched zu Lease
-              |
-              ▼
-        rent_payments (automatisch erzeugt)
-              |
-              ▼
-        GeldeingangTab zeigt Soll vs. Ist
+Container 1: Max Mustermann (Komplett-Demo)
+|
++-- 4 Haushaltspersonen (Max, Lisa, Felix, Emma)
++-- 5 Kontakte (Max, Lisa, Bergmann, Hoffmann, Weber)
++-- 3 Immobilien (Berlin, Muenchen, Hamburg)
+|   +-- je 1 Unit, 1 Lease, 1 Loan, 1 Listing
++-- 2 Fahrzeuge (Porsche 911, BMW M5)
++-- 1 PV-Anlage (32.4 kWp)
++-- 7 Sachversicherungen
++-- 6 Vorsorgevertraege
++-- 4 KV-Vertraege
++-- 2 Privatkredite
++-- 8 Abonnements
++-- 1 Bankkonto + 100 Transaktionen
++-- 1 Miety-Zuhause + 4 Versorgungsvertraege
++-- 1 Akquise-Mandat
++-- 1 Immobilienprojekt (Residenz am Stadtpark)
++-- 2 Pets (Luna, Bello)
+
+Container 2: Lennox & Friends Pet Manager
+|
++-- 1 Provider + 4 Services + 10 Zimmer + 3 Staff
++-- 3 Kunden + 3 Hunde + 5 Buchungen
 ```
 
-Aktuell bricht die Kette bei Schritt 1 ab — nur 3 von 100 Transaktionen sind in der DB.
-
----
+Nach Toggle OFF: **0 Records** in allen operativen Tabellen.
 
 ## Umsetzungsplan
 
-### Schritt 1: Bank-Transaktionen vollstaendig seeden
+### Phase 1: CSV-Dateien fuer fehlende Entities erstellen
 
-Die `seedBankTransactions`-Funktion reparieren:
-- **Fehlerbehandlung verbessern**: Nur IDs von tatsaechlich erfolgreichen Inserts zaehlen
-- **Re-Seed triggern**: Alle 100 Transaktionen per Upsert schreiben
-- **Verifikation**: DB-Count nach Seed pruefen (Erwartung: 100)
+Neue CSV-Dateien in `public/demo-data/`:
 
-### Schritt 2: KontoAkteInline verifizieren
+| Datei | Inhalt | Zeilen |
+|-------|--------|--------|
+| `demo_vehicles.csv` | 2 Fahrzeuge | 2 |
+| `demo_insurance_contracts.csv` | 7 Versicherungen | 7 |
+| `demo_household_persons.csv` | 4 Personen | 4 |
+| `demo_pv_plants.csv` | 1 Anlage | 1 |
+| `demo_kv_contracts.csv` | 4 Vertraege | 4 |
+| `demo_vorsorge_contracts.csv` | 6 Vertraege | 6 |
+| `demo_subscriptions.csv` | 8 Abonnements | 8 |
+| `demo_private_loans.csv` | 2 Kredite | 2 |
+| `demo_miety_homes.csv` | 1 Home | 1 |
+| `demo_miety_contracts.csv` | 4 Versorgungsvertraege | 4 |
+| `demo_acq_mandates.csv` | 1 Mandat | 1 |
+| `demo_pets.csv` | 5 Pets (Luna, Bello + PM-Demo) | 5 |
+| `demo_pet_customers.csv` | 3 Kunden | 3 |
+| `demo_pet_bookings.csv` | 5 Buchungen | 5 |
 
-Nach erfolgreichem Seed pruefen, dass der Konten-Tab alle 100 Transaktionen anzeigt. Die `KontoAkteInline`-Komponente liest bereits per Standard-Query aus `bank_transactions` — das sollte funktionieren.
+Alle Spalten werden exakt aus den bestehenden `data.ts`-Konstanten und DB-Schema abgeleitet.
 
-### Schritt 3: Rent-Match-Pipeline testen
+### Phase 2: Seed-Engine erweitern (useDemoSeedEngine.ts)
 
-Den Button "Mietabgleich starten" im GeldeingangTab nutzen, um die `sot-rent-match` Edge Function zu triggern. Diese sollte:
-1. Alle Mietzahlungen in `bank_transactions` finden (36 Stueck: 3 Mieter x 12 Monate)
-2. Via Engine 17 als `MIETE` kategorisieren
-3. Zu `rent_payments` matchen und Eintraege erstellen
+Neue Seed-Funktionen fuer jede Tabelle, gleicher Pattern wie existierende:
+1. `seedVehicles(tenantId)` 
+2. `seedInsuranceContracts(tenantId)`
+3. `seedHouseholdPersons(tenantId)`
+4. `seedPvPlants(tenantId)`
+5. `seedKvContracts(tenantId)`
+6. `seedVorsorgeContracts(tenantId)`
+7. `seedSubscriptions(tenantId)`
+8. `seedPrivateLoans(tenantId)`
+9. `seedMietyHomes(tenantId)`
+10. `seedMietyContracts(tenantId)`
+11. `seedAcqMandates(tenantId)`
+12. `seedPets(tenantId)`
+13. `seedPetCustomers(tenantId)`
+14. `seedPetBookings(tenantId)`
 
-### Schritt 4: Backlog aktualisieren
+Seed-Reihenfolge im `seedDemoData()` Orchestrator:
+```text
+1. contacts (FK-Ziel fuer leases)
+2. properties
+3. units (FK: property_id)
+4. leases (FK: unit_id, contact_id)
+5. loans (FK: property_id)
+6. msv_bank_accounts
+7. bank_transactions (FK: account_ref)
+8. household_persons
+9. cars_vehicles
+10. pv_plants
+11. insurance_contracts
+12. kv_contracts
+13. vorsorge_contracts
+14. subscriptions
+15. private_loans
+16. miety_homes
+17. miety_contracts (FK: home_id)
+18. acq_mandates
+19. pets
+20. pet_customers
+21. pet_bookings
+```
 
-`FK_CASCADE_BACKLOG.md` mit dem Status der Rent-Match-Pipeline aktualisieren.
+Jede Funktion registriert ihre IDs in `test_data_registry`.
 
----
+### Phase 3: Cleanup-Engine erweitern (useDemoCleanup.ts)
+
+`CLEANUP_ORDER` erweitern um alle neuen Entity-Typen:
+```text
+bank_transactions → pet_bookings → pet_customers → pets →
+miety_contracts → miety_homes → subscriptions → private_loans →
+vorsorge_contracts → kv_contracts → insurance_contracts →
+pv_plants → cars_vehicles → household_persons →
+acq_mandates → loans → leases → units →
+msv_bank_accounts → properties → contacts
+```
+
+### Phase 4: Alt-DB-Seeds einmalig loeschen
+
+Alle bestehenden "DB-Seed"-Daten, die bisher NICHT ueber die Seed-Engine verwaltet wurden, muessen einmalig geloescht werden:
+- 2 cars_vehicles, 7 insurance_contracts, 4 household_persons, 1 pv_plant
+- 4 kv_contracts, 6 vorsorge_contracts, 2 private_loans
+- 1 miety_home, 1 acq_mandate
+- 5 pets, 3 pet_customers, 5 pet_bookings
+- Pet Provider/Services/Rooms/Staff (bleiben als Infrastruktur, werden NICHT getoggelt)
+
+Diese werden danach NUR noch via Seed-Engine erzeugt.
+
+### Phase 5: Backlog-Datei erstellen
+
+Neue Datei `DEMO_ENGINE_BACKLOG.md` mit:
+- Vollstaendige Entity-Checkliste (Soll vs. Ist)
+- Status pro Tabelle (CSV vorhanden / Seed-Funktion / Cleanup-Funktion / Getestet)
+- Offene Punkte (dev_projects, rent_payments via rent-match)
+- Test-Protokoll: Seed ON → Verify Counts → Seed OFF → Verify 0
+
+### Phase 6: Verifizierung
+
+Nach Implementierung wird ein vollstaendiger Zyklus getestet:
+1. Toggle OFF → Cleanup → DB-Counts pruefen (alles 0)
+2. Toggle ON → Seed → DB-Counts pruefen (alle Soll-Werte)
+3. Toggle OFF → Cleanup → DB-Counts pruefen (wieder 0)
+
+## Bewusst ausgenommen (spaeter)
+
+| Entity | Grund |
+|--------|-------|
+| dev_projects (MOD-13) | Braucht eigene CSV + komplexe Struktur (Units, Berechnungen) |
+| rent_payments | Werden via sot-rent-match Edge Function erzeugt, nicht direkt geseeded |
+| Pet Provider/Services/Rooms/Staff | Infrastruktur-Daten, gehoeren zum Mandanten, nicht zum Demo-Toggle |
+| documents (DMS) | 41 Eintraege, Ordnerstruktur — gehoert zur Mandanten-Konfiguration |
 
 ## Technische Details
 
-### Seed-Engine Fix (useDemoSeedEngine.ts)
+### CSV-Format
+- Delimiter: `;` (Semikolon, wie bestehende CSVs)
+- Encoding: UTF-8
+- Alle IDs: Bestehende `e0000000-*` und `d0000000-*` Praefix-IDs aus data.ts
+- Alle Spalten: Exakt wie DB-Schema (snake_case)
 
-Aktuelle Schwaeche in `seedBankTransactions`:
+### Seed-Engine Pattern (pro Tabelle)
 ```typescript
-// PROBLEM: IDs werden auch bei Fehler gezaehlt
-if (error) {
-  console.error(`...chunk ${i}:`, error.message);
+async function seedVehicles(tenantId: string): Promise<string[]> {
+  const rows = await fetchCSV('/demo-data/demo_vehicles.csv');
+  if (!rows.length) return [];
+  const data = rows.map(r => stripNulls({ ...r, tenant_id: tenantId }));
+  const { error } = await (supabase as any)
+    .from('cars_vehicles').upsert(data, { onConflict: 'id' });
+  if (error) console.error('[DemoSeed] cars_vehicles:', error.message);
+  else console.log(`[DemoSeed] cars_vehicles: ${rows.length}`);
+  return error ? [] : rows.map(r => r.id as string);
 }
-allIds.push(...chunk.map(...)); // ← Zaehlt IMMER
 ```
 
-Fix:
-```typescript
-if (error) {
-  console.error(`...chunk ${i}:`, error.message);
-} else {
-  allIds.push(...chunk.map(...)); // ← Nur bei Erfolg
-}
-```
-
-### CSV-Schema vs. DB-Schema (Kompatibilitaet)
-
-| CSV-Spalte | DB-Spalte | Match |
-|------------|-----------|-------|
-| id | id | OK |
-| account_ref | account_ref | OK |
-| booking_date | booking_date | OK |
-| value_date | value_date | OK |
-| amount_eur | amount_eur | OK |
-| counterparty | counterparty | OK |
-| purpose_text | purpose_text | OK |
-
-Alle Spalten stimmen ueberein. Das `coerceRow`-System wandelt `amount_eur` korrekt in eine Zahl um. Die fehlenden DB-Spalten (`match_status`, `match_category`, etc.) haben Defaults und muessen nicht in der CSV stehen.
+### Cleanup-Order Logik
+Kinder vor Eltern, RESTRICT-FK vor CASCADE-FK. Die erweiterte Liste stellt sicher, dass keine FK-Violations auftreten.
