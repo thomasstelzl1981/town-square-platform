@@ -2671,6 +2671,9 @@ export type Database = {
           counterparty: string | null
           created_at: string | null
           id: string
+          match_category: string | null
+          match_confidence: number | null
+          match_rule_code: string | null
           match_status: string | null
           matched_entity: Json | null
           purpose_text: string | null
@@ -2684,6 +2687,9 @@ export type Database = {
           counterparty?: string | null
           created_at?: string | null
           id?: string
+          match_category?: string | null
+          match_confidence?: number | null
+          match_rule_code?: string | null
           match_status?: string | null
           matched_entity?: Json | null
           purpose_text?: string | null
@@ -2697,6 +2703,9 @@ export type Database = {
           counterparty?: string | null
           created_at?: string | null
           id?: string
+          match_category?: string | null
+          match_confidence?: number | null
+          match_rule_code?: string | null
           match_status?: string | null
           matched_entity?: Json | null
           purpose_text?: string | null
@@ -7425,7 +7434,9 @@ export type Database = {
           currency: string | null
           finapi_transaction_id: string | null
           id: string
+          match_category: string | null
           match_confidence: number | null
+          match_rule_code: string | null
           match_status: string | null
           matched_at: string | null
           matched_by: string | null
@@ -7446,7 +7457,9 @@ export type Database = {
           currency?: string | null
           finapi_transaction_id?: string | null
           id?: string
+          match_category?: string | null
           match_confidence?: number | null
+          match_rule_code?: string | null
           match_status?: string | null
           matched_at?: string | null
           matched_by?: string | null
@@ -7467,7 +7480,9 @@ export type Database = {
           currency?: string | null
           finapi_transaction_id?: string | null
           id?: string
+          match_category?: string | null
           match_confidence?: number | null
+          match_rule_code?: string | null
           match_status?: string | null
           matched_at?: string | null
           matched_by?: string | null
@@ -20117,6 +20132,28 @@ export type Database = {
       }
     }
     Views: {
+      v_all_transactions: {
+        Row: {
+          account_ref: string | null
+          amount: number | null
+          booking_date: string | null
+          counterpart_iban: string | null
+          counterparty: string | null
+          created_at: string | null
+          id: string | null
+          match_category: string | null
+          match_confidence: number | null
+          match_rule_code: string | null
+          match_status: string | null
+          owner_id: string | null
+          owner_type: string | null
+          purpose: string | null
+          source: string | null
+          tenant_id: string | null
+          value_date: string | null
+        }
+        Relationships: []
+      }
       v_armstrong_costs_daily: {
         Row: {
           action_code: string | null
