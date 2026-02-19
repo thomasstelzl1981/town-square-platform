@@ -491,21 +491,21 @@ export const DEMO_SELBSTAUSKUNFT: DemoSelbstauskunft = {
 
 export const DEMO_MIETY_HOME: DemoMietyHome = {
   id: ID_MIETY_HOME,
-  name: 'Mein Zuhause',
-  address: 'Friedrichstraße',
-  addressHouseNo: '42',
-  zip: '10117',
-  city: 'Berlin',
-  ownershipType: 'miete',
-  propertyType: 'wohnung',
-  areaSqm: 120,
-  roomsCount: 4,
+  name: 'Villa Mustermann',
+  address: 'Leopoldstraße',
+  addressHouseNo: '12',
+  zip: '80802',
+  city: 'München',
+  ownershipType: 'eigentum',
+  propertyType: 'haus',
+  areaSqm: 220,
+  roomsCount: 6,
 };
 
 export const DEMO_MIETY_CONTRACTS: readonly DemoMietyContract[] = [
-  { id: ID_MIETY_STROM,    category: 'strom',    providerName: 'E.ON Grundversorgung',         contractNumber: 'EON-2024-4711',  monthlyCost: 85,    startDate: '2022-01-01' },
-  { id: ID_MIETY_GAS,      category: 'gas',      providerName: 'Vattenfall',                   contractNumber: 'VF-2024-0815',   monthlyCost: 65,    startDate: '2022-01-01' },
-  { id: ID_MIETY_WASSER,   category: 'wasser',   providerName: 'Berliner Wasserbetriebe',      contractNumber: 'BWB-2024-3344',  monthlyCost: 42,    startDate: '2020-06-01' },
+  { id: ID_MIETY_STROM,    category: 'strom',    providerName: 'SWM Grundversorgung',          contractNumber: 'SWM-2024-4711',  monthlyCost: 95,    startDate: '2022-01-01' },
+  { id: ID_MIETY_GAS,      category: 'gas',      providerName: 'SWM Erdgas',                   contractNumber: 'SWM-2024-0815',  monthlyCost: 72,    startDate: '2022-01-01' },
+  { id: ID_MIETY_WASSER,   category: 'wasser',   providerName: 'SWM Wasser',                   contractNumber: 'SWM-2024-3344',  monthlyCost: 48,    startDate: '2020-06-01' },
   { id: ID_MIETY_INTERNET, category: 'internet', providerName: 'Telekom MagentaZuhause L',     contractNumber: 'TK-2023-5566',   monthlyCost: 44.95, startDate: '2023-03-01' },
 ] as const;
 
