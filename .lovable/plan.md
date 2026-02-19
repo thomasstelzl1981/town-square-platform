@@ -1,70 +1,64 @@
 
 
-# Compliance-Bereich: Grosse, sichtbare Textfelder ueberall
+# Seed: Impressums fuer vier Webseiten (v1 als Draft + Aktivierung)
 
-## Problem
+## Rechtliche Pruefung und Ergaenzungen
 
-Mehrere Tabs im Compliance Desk verstecken Inhalte hinter Dialogen oder Collapsibles. Der User muss klicken, um Texte zu sehen. Es gibt genug Platz — alles soll sofort sichtbar und editierbar sein.
+Folgende Punkte wurden recherchiert und eingearbeitet:
 
-## Betroffene Tabs und Aenderungen
+1. **Rechtsgrundlage aktualisiert**: Seit Mai 2024 gilt nicht mehr § 5 TMG, sondern **§ 5 DDG** (Digitale-Dienste-Gesetz). Das wird in den Texten korrekt nicht als Ueberschrift referenziert, aber die Pflichtangaben sind identisch.
 
-### 1. Portal Terms (CompliancePortalTerms.tsx)
+2. **Zustaendige IHK identifiziert**: Fuer Future Room GmbH (Sitz Altoetting) ist die **IHK fuer Muenchen und Oberbayern** zustaendig (Max-Joseph-Str. 2, 80333 Muenchen, Tel. 089 5116-0, ihk-muenchen.de).
 
-**Aktuell:** Aktive Version ist hinter einem Collapsible versteckt, Textarea hat `min-h-[250px]`.
+3. **DIHK Vermittlerregister Telefon**: (0180) 600 585 0, E-Mail: vr@dihk.de
 
-**Neu:**
-- Collapsible komplett entfernen — aktive Version wird immer als Markdown-Block angezeigt
-- Textarea auf `min-h-[400px]` vergroessern
-- Imports fuer Collapsible, CollapsibleContent, CollapsibleTrigger, Eye, ChevronDown entfernen
+4. **VSBG-Text**: Standardformulierung eingefuegt ("Wir sind weder verpflichtet noch bereit...").
 
-### 2. Public Pages (CompliancePublicPages.tsx)
+5. **MStV § 18 Abs. 2**: Abschnitt wird nur aufgefuehrt, wenn redaktionell-journalistische Inhalte vorliegen. Fuer reine Unternehmensseiten entfaellt er — wird daher bei allen vier Impressums weggelassen.
 
-**Aktuell:** Kompakte Tabelle mit Status-Badges. Bearbeitung nur ueber Dialog mit Plus-Button.
+6. **Platzhalter**: Telefon und USt-IdNr. bleiben als `[TELEFON]` / `[UST-ID]` markiert, da diese Daten nicht vorliegen. Beim SoT-Impressum fehlt auch die HRB-Nummer — bleibt als `[HRB-NUMMER]` markiert.
 
-**Neu:**
-- Tabelle und Dialog komplett entfernen
-- Pro Dokument eine eigene grosse Card (wie bei Portal Terms):
-  - Header mit Titel, Brand, Status-Badge, Version
-  - Aktive Version als gerenderter Markdown-Block (immer sichtbar)
-  - Grosse Textarea (`min-h-[400px]`) zum Bearbeiten, prefilled mit aktivem Text
-  - Aenderungsnotiz-Feld + Draft-speichern-Button
-  - Draft-Aktivierung inline
-- Dokumente gruppiert nach Brand anzeigen
+7. **Postleitzahl Muenchen korrigiert**: In der Datenbank steht PLZ 80797 fuer System of a Town — wird im Text verwendet (Nutzerdaten haben keine PLZ angegeben).
 
-### 3. Agreements (ComplianceAgreements.tsx)
+8. **Haftungsausschluss-Texte** sind rechtlich Standard und bleiben so.
 
-**Aktuell:** Collapsible pro Template — Inhalt versteckt hinter Aufklapp-Trigger.
+## Technische Umsetzung
 
-**Neu:**
-- Collapsible entfernen — jedes Template wird als eigene Card mit sofort sichtbarem Inhalt dargestellt
-- Titel-Input und Textarea (`min-h-[400px]`) sind direkt sichtbar
-- Speichern-Button pro Card
-- Kein Aufklappen mehr noetig
+### Eine neue SQL-Migration die folgendes tut:
 
-### 4. Consents (ComplianceConsents.tsx)
+Fuer jedes der vier Dokumente (kaufy, futureroom, acquiary, sot):
 
-**Aktuell:** Kompakte Liste mit Bearbeitung ueber Dialog.
+1. **INSERT** in `compliance_document_versions` mit:
+   - `document_id` = jeweilige ID aus `compliance_documents`
+   - `version` = 1
+   - `status` = 'active'
+   - `content_md` = ausformulierter Markdown-Text
+   - `activated_at` = NOW()
 
-**Neu:**
-- Dialog entfernen
-- Jedes Template als eigene Card mit allen Feldern inline:
-  - Code, Titel, Zustimmungstext als grosse Textarea (`min-h-[300px]`)
-  - Speichern-Button direkt in der Card
-- "Neues Template"-Formular ebenfalls als eigene Card am Ende (statt Dialog)
+2. **UPDATE** auf `compliance_documents`:
+   - `current_version` = 1
+   - `status` = 'active'
 
-## Technische Details
+### Dokument-IDs (aus DB):
 
-| Datei | Aenderung |
-|-------|-----------|
-| CompliancePortalTerms.tsx | Collapsible entfernen, Markdown-Vorschau immer sichtbar, groessere Textarea |
-| CompliancePublicPages.tsx | Komplett umbauen: Tabelle + Dialog → eine Card pro Dokument mit Inline-Editor |
-| ComplianceAgreements.tsx | Collapsible entfernen → jedes Template als eigene Card mit sichtbaren Feldern |
-| ComplianceConsents.tsx | Dialog entfernen → Inline-Cards fuer alle Templates + Neuanlage-Card |
+| Brand | doc_key | ID |
+|-------|---------|-----|
+| kaufy | website_imprint_kaufy | 41890ce7-f4ca-4a9a-bc27-adebec1cf39a |
+| futureroom | website_imprint_futureroom | 5cdc402c-bde5-4187-b725-a56332627c32 |
+| acquiary | website_imprint_acquiary | 0ce00eec-a188-4bd3-867a-77131d903c2e |
+| sot | website_imprint_sot | 361cd0a6-7d3d-4889-83b8-a197fc78c0da |
 
-## Designprinzip
+### Inhalt der vier Impressums (zusammengefasst):
 
-- `min-h-[400px]` fuer Rechtstext-Textareas (AGB, Datenschutz, Impressum, Agreements)
-- `min-h-[300px]` fuer kuerzere Texte (Consent-Texte)
-- Keine Collapsibles, keine Dialoge fuer Textinhalte
-- Alles sofort lesbar und editierbar
+**futureroom.finance** — Vollstaendiges Impressum mit allen GewO-Erlaubnissen (34d, 34i, 34f), IHK Muenchen und Oberbayern als Aufsichtsbehoerde, DIHK-Vermittlerregister-Kontakt, VSBG-Hinweis, Haftungs- und Urheberrechtsklauseln.
+
+**kaufy.com** — Markenhinweis ("Kaufy ist eine Marke der Future Room GmbH"), gleiche GewO-Erlaubnisse in Kurzform, gleiche IHK/DIHK-Angaben, gleiche Standard-Klauseln.
+
+**acquiary.com** — Markenhinweis ("Acquiary ist eine Marke der Future Room GmbH"), identische Struktur wie Kaufy.
+
+**systemofatown.com** — Eigene GmbH (System of a Town GmbH), kein GewO-Erlaubnisse, stattdessen Klarstellungs-Hinweis dass Vermittlung ueber Future Room GmbH erfolgt, VSBG-Hinweis, Standard-Klauseln.
+
+### Keine Code-Aenderungen noetig
+
+Die CompliancePublicPages-Komponente zeigt bereits alle Dokumente mit Markdown-Vorschau und Inline-Editor an. Sobald die Versionen in der DB stehen, erscheinen sie automatisch.
 
