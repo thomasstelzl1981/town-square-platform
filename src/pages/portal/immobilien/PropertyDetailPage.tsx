@@ -24,7 +24,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, Loader2, AlertTriangle, FileText, Building2, Calculator, LayoutList, LayoutPanelLeft, TrendingUp, Banknote, Receipt, BarChart3, Trash2 } from 'lucide-react';
+import { ArrowLeft, Loader2, AlertTriangle, FileText, Building2, Calculator, LayoutList, LayoutPanelLeft, TrendingUp, Banknote, Receipt, Trash2 } from 'lucide-react';
 import { ExposeTab } from '@/components/portfolio/ExposeTab';
 import { useLegalConsent } from '@/hooks/useLegalConsent';
 import { VerkaufsauftragTab } from '@/components/portfolio/VerkaufsauftragTab';
@@ -35,7 +35,6 @@ import { EditableUnitDossierView } from '@/components/immobilienakte';
 import { InventoryInvestmentSimulation } from '@/components/immobilienakte/InventoryInvestmentSimulation';
 import { PdfExportFooter, usePdfContentRef } from '@/components/pdf';
 import { NKAbrechnungTab } from '@/components/portfolio/NKAbrechnungTab';
-import { BWATab } from '@/components/portfolio/BWATab';
 import { PageShell } from '@/components/shared/PageShell';
 
 interface Property {
@@ -491,10 +490,6 @@ export default function PropertyDetailPage() {
                 <Receipt className="h-4 w-4" />
                 NK-Abrechnung
               </TabsTrigger>
-              <TabsTrigger value="bwa" className="flex items-center gap-1">
-                <BarChart3 className="h-4 w-4" />
-                BWA
-              </TabsTrigger>
               <TabsTrigger value="datenraum">Datenraum</TabsTrigger>
             </TabsList>
 
@@ -550,18 +545,6 @@ export default function PropertyDetailPage() {
                 propertyId={property.id}
                 tenantId={property.tenant_id}
                 unitId={unit?.id || ''}
-              />
-            </TabsContent>
-
-            <TabsContent value="bwa">
-              <BWATab
-                propertyId={property.id}
-                tenantId={property.tenant_id}
-                unitId={unit?.id}
-                annualIncome={property.annual_income}
-                yearBuilt={property.year_built}
-                purchasePrice={property.purchase_price}
-                totalAreaSqm={property.total_area_sqm}
               />
             </TabsContent>
 
