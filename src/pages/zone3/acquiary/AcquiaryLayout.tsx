@@ -133,9 +133,8 @@ export default function AcquiaryLayout() {
           <div>
             <h4 className="aq-footer-title">Rechtliches</h4>
             <ul className="aq-footer-links">
-              <li><Link to="#">Impressum</Link></li>
-              <li><Link to="#">Datenschutz</Link></li>
-              <li><Link to="#">AGB</Link></li>
+              <li><Link to="/website/acquiary/impressum">Impressum</Link></li>
+              <li><Link to="/website/acquiary/datenschutz">Datenschutz</Link></li>
             </ul>
           </div>
           <div>

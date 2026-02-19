@@ -19,7 +19,6 @@ const footerLinks = {
   rechtliches: [
     { label: 'Impressum', href: '/website/sot/impressum' },
     { label: 'Datenschutz', href: '/website/sot/datenschutz' },
-    { label: 'AGB', href: '/website/sot/agb' },
   ],
 };
 

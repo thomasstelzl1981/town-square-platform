@@ -12,8 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
-import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
-import { CheckCircle2, AlertTriangle, ChevronDown, Scale, RefreshCw } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, Scale, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
 import { renderComplianceMarkdown } from '@/lib/complianceHelpers';
@@ -287,44 +286,33 @@ function DocCard({
   doc: DocWithVersion;
   companyProfile: any;
 }) {
-  const [open, setOpen] = useState(false);
   const rendered = renderComplianceMarkdown(doc.contentMd, companyProfile);
 
   return (
     <Card>
-      <Collapsible open={open} onOpenChange={setOpen}>
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base">{doc.title}</CardTitle>
-            <div className="flex items-center gap-2">
-              <Badge variant="outline" className="text-xs">v{doc.version}</Badge>
-              <Badge
-                variant={doc.status === 'active' ? 'default' : doc.status === 'draft' ? 'secondary' : 'destructive'}
-                className="text-xs"
-              >
-                {doc.status === 'active' ? 'Aktiv' : doc.status === 'draft' ? 'Entwurf' : doc.status === 'missing' ? 'Fehlt' : doc.status}
-              </Badge>
-            </div>
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-base">{doc.title}</CardTitle>
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="text-xs">v{doc.version}</Badge>
+            <Badge
+              variant={doc.status === 'active' ? 'default' : doc.status === 'draft' ? 'secondary' : 'destructive'}
+              className="text-xs"
+            >
+              {doc.status === 'active' ? 'Aktiv' : doc.status === 'draft' ? 'Entwurf' : doc.status === 'missing' ? 'Fehlt' : doc.status}
+            </Badge>
           </div>
-        </CardHeader>
-        <CardContent className="pt-0">
-          <CollapsibleTrigger asChild>
-            <Button variant="ghost" size="sm" className="gap-1 text-xs text-muted-foreground">
-              <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? 'rotate-180' : ''}`} />
-              {open ? 'Einklappen' : 'Volltext anzeigen'}
-            </Button>
-          </CollapsibleTrigger>
-          <CollapsibleContent>
-            <div className="mt-3 p-4 rounded-md bg-muted/50 prose prose-sm dark:prose-invert max-w-none text-sm">
-              {rendered ? (
-                <ReactMarkdown>{rendered}</ReactMarkdown>
-              ) : (
-                <p className="text-muted-foreground italic">Kein Inhalt verfügbar.</p>
-              )}
-            </div>
-          </CollapsibleContent>
-        </CardContent>
-      </Collapsible>
+        </div>
+      </CardHeader>
+      <CardContent className="pt-0">
+        <div className="p-4 rounded-md bg-muted/50 prose prose-sm dark:prose-invert max-w-none text-sm min-h-[200px]">
+          {rendered ? (
+            <ReactMarkdown>{rendered}</ReactMarkdown>
+          ) : (
+            <p className="text-muted-foreground italic">Kein Inhalt verfügbar.</p>
+          )}
+        </div>
+      </CardContent>
     </Card>
   );
 }

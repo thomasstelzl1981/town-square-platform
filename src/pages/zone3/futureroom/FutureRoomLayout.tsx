@@ -179,9 +179,8 @@ export default function FutureRoomLayout() {
           <div>
             <h4 className="fr-footer-title">Rechtliches</h4>
             <ul className="fr-footer-links">
-              <li><Link to="#">Impressum</Link></li>
-              <li><Link to="#">Datenschutz</Link></li>
-              <li><Link to="#">AGB</Link></li>
+              <li><Link to="/website/futureroom/impressum">Impressum</Link></li>
+              <li><Link to="/website/futureroom/datenschutz">Datenschutz</Link></li>
             </ul>
           </div>
           <div>
