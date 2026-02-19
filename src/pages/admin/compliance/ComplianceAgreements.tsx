@@ -1,7 +1,7 @@
 /**
- * Tab 6: Agreement Templates — Wrapper um bestehende agreement_templates mit Editor
+ * Tab 6: Agreement Templates — Jedes Template als eigene Card mit sichtbaren Feldern
  */
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,33 +9,28 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { FileCheck, ChevronDown, Save } from 'lucide-react';
+import { FileCheck, Save } from 'lucide-react';
 import { LoadingState } from '@/components/shared';
 import { toast } from 'sonner';
 
-export function ComplianceAgreements() {
+function AgreementCard({ template }: { template: any }) {
   const qc = useQueryClient();
-  const [openId, setOpenId] = useState<string | null>(null);
-  const [editTitle, setEditTitle] = useState('');
-  const [editContent, setEditContent] = useState('');
+  const [editTitle, setEditTitle] = useState(template.title);
+  const [editContent, setEditContent] = useState(template.content || '');
 
-  const { data: templates, isLoading } = useQuery({
-    queryKey: ['agreement-templates'],
-    queryFn: async () => {
-      const { data, error } = await supabase.from('agreement_templates').select('*').order('code');
-      if (error) throw error;
-      return data || [];
-    },
-  });
+  // Sync if template changes externally
+  useEffect(() => {
+    setEditTitle(template.title);
+    setEditContent(template.content || '');
+  }, [template.title, template.content]);
 
   const updateTemplate = useMutation({
-    mutationFn: async ({ id, title, content }: { id: string; title: string; content: string }) => {
+    mutationFn: async () => {
       const { error } = await supabase.from('agreement_templates').update({
-        title,
-        content,
+        title: editTitle,
+        content: editContent,
         updated_at: new Date().toISOString(),
-      }).eq('id', id);
+      }).eq('id', template.id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -45,81 +40,76 @@ export function ComplianceAgreements() {
     onError: (err: any) => toast.error('Fehler: ' + err.message),
   });
 
-  if (isLoading) return <LoadingState />;
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <FileCheck className="h-4 w-4" />
+            <span className="font-mono text-xs text-muted-foreground">{template.code}</span>
+            <span>· v{template.version}</span>
+          </CardTitle>
+          <div className="flex items-center gap-2">
+            <Badge variant={template.is_active ? 'default' : 'secondary'}>{template.is_active ? 'Aktiv' : 'Inaktiv'}</Badge>
+            <Badge variant="outline" className="text-xs">{template.requires_consent ? 'Consent nötig' : 'Info'}</Badge>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div>
+          <label className="text-xs font-medium text-muted-foreground">Titel</label>
+          <Input
+            value={editTitle}
+            onChange={e => setEditTitle(e.target.value)}
+            className="mt-1"
+          />
+        </div>
+        <div>
+          <label className="text-xs font-medium text-muted-foreground">Inhalt (Markdown)</label>
+          <Textarea
+            value={editContent}
+            onChange={e => setEditContent(e.target.value)}
+            placeholder="Template-Text als Markdown..."
+            className="min-h-[400px] font-mono text-sm mt-1"
+          />
+        </div>
+        <div className="flex justify-end">
+          <Button
+            size="sm"
+            onClick={() => updateTemplate.mutate()}
+            disabled={updateTemplate.isPending}
+          >
+            <Save className="h-3 w-3 mr-1" /> Speichern
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
-  const handleOpen = (t: any) => {
-    if (openId === t.id) {
-      setOpenId(null);
-    } else {
-      setOpenId(t.id);
-      setEditTitle(t.title);
-      setEditContent(t.content || '');
-    }
-  };
+export function ComplianceAgreements() {
+  const { data: templates, isLoading } = useQuery({
+    queryKey: ['agreement-templates'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('agreement_templates').select('*').order('code');
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  if (isLoading) return <LoadingState />;
 
   return (
     <div className="space-y-4 mt-4">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <FileCheck className="h-5 w-5" /> Vereinbarungs-Templates
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          {templates?.map(t => (
-            <Collapsible key={t.id} open={openId === t.id} onOpenChange={() => handleOpen(t)}>
-              <div className="rounded-lg border">
-                <CollapsibleTrigger asChild>
-                  <div className="flex items-center justify-between p-3 cursor-pointer hover:bg-muted/20">
-                    <div>
-                      <p className="font-medium text-sm">{t.title}</p>
-                      <p className="text-xs text-muted-foreground font-mono">{t.code} · v{t.version}</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant={t.is_active ? 'default' : 'secondary'}>{t.is_active ? 'Aktiv' : 'Inaktiv'}</Badge>
-                      <Badge variant="outline" className="text-xs">{t.requires_consent ? 'Consent nötig' : 'Info'}</Badge>
-                      <ChevronDown className={`h-4 w-4 transition-transform ${openId === t.id ? 'rotate-180' : ''}`} />
-                    </div>
-                  </div>
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                  <div className="p-3 pt-0 space-y-3 border-t">
-                    <div>
-                      <label className="text-xs font-medium text-muted-foreground">Titel</label>
-                      <Input
-                        value={editTitle}
-                        onChange={e => setEditTitle(e.target.value)}
-                        className="mt-1"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs font-medium text-muted-foreground">Inhalt (Markdown)</label>
-                      <Textarea
-                        value={editContent}
-                        onChange={e => setEditContent(e.target.value)}
-                        placeholder="Template-Text als Markdown..."
-                        className="min-h-[300px] font-mono text-sm mt-1"
-                      />
-                    </div>
-                    <div className="flex justify-end">
-                      <Button
-                        size="sm"
-                        onClick={() => updateTemplate.mutate({ id: t.id, title: editTitle, content: editContent })}
-                        disabled={updateTemplate.isPending}
-                      >
-                        <Save className="h-3 w-3 mr-1" /> Speichern
-                      </Button>
-                    </div>
-                  </div>
-                </CollapsibleContent>
-              </div>
-            </Collapsible>
-          ))}
-          {(!templates || templates.length === 0) && (
-            <p className="text-sm text-muted-foreground text-center py-8">Keine Agreement Templates vorhanden.</p>
-          )}
-        </CardContent>
-      </Card>
+      <h3 className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+        <FileCheck className="h-5 w-5" /> Vereinbarungs-Templates
+      </h3>
+      {templates?.map(t => (
+        <AgreementCard key={t.id} template={t} />
+      ))}
+      {(!templates || templates.length === 0) && (
+        <p className="text-sm text-muted-foreground text-center py-8">Keine Agreement Templates vorhanden.</p>
+      )}
     </div>
   );
 }

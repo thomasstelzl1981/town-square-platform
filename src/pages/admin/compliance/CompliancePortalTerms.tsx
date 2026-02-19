@@ -7,8 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { FileText, ChevronDown, Eye, Save } from 'lucide-react';
+import { FileText, Save } from 'lucide-react';
 import { LoadingState } from '@/components/shared';
 import ReactMarkdown from 'react-markdown';
 import { useComplianceDocuments, useDocumentVersions, type ComplianceDocument } from './useComplianceDocuments';
@@ -18,7 +17,6 @@ function DocumentCard({ doc }: { doc: ComplianceDocument }) {
   const { data: versions } = useDocumentVersions(doc.id);
   const [newContent, setNewContent] = useState('');
   const [changeNote, setChangeNote] = useState('');
-  const [previewOpen, setPreviewOpen] = useState(false);
   const [prefilled, setPrefilled] = useState(false);
 
   const activeVersion = versions?.find(v => v.status === 'active');
@@ -50,21 +48,14 @@ function DocumentCard({ doc }: { doc: ComplianceDocument }) {
         {doc.description && <p className="text-xs text-muted-foreground mt-1">{doc.description}</p>}
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Collapsible: aktive Version als Markdown-Vorschau */}
+        {/* Aktive Version immer als Markdown-Vorschau sichtbar */}
         {activeVersion && (
-          <Collapsible open={previewOpen} onOpenChange={setPreviewOpen}>
-            <CollapsibleTrigger asChild>
-              <Button variant="ghost" size="sm" className="w-full justify-between text-xs">
-                <span className="flex items-center gap-1"><Eye className="h-3 w-3" /> Aktuelle Version anzeigen (v{activeVersion.version})</span>
-                <ChevronDown className={`h-3 w-3 transition-transform ${previewOpen ? 'rotate-180' : ''}`} />
-              </Button>
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-              <div className="mt-2 p-4 rounded-lg border bg-muted/30 prose prose-sm max-w-none dark:prose-invert text-sm">
-                <ReactMarkdown>{activeVersion.content_md}</ReactMarkdown>
-              </div>
-            </CollapsibleContent>
-          </Collapsible>
+          <div>
+            <p className="text-xs font-medium text-muted-foreground mb-2">Aktuelle Version (v{activeVersion.version})</p>
+            <div className="p-4 rounded-lg border bg-muted/30 prose prose-sm max-w-none dark:prose-invert text-sm">
+              <ReactMarkdown>{activeVersion.content_md}</ReactMarkdown>
+            </div>
+          </div>
         )}
 
         {/* Inline-Editor: neue Version erstellen */}
@@ -76,7 +67,7 @@ function DocumentCard({ doc }: { doc: ComplianceDocument }) {
             value={newContent}
             onChange={e => setNewContent(e.target.value)}
             placeholder="Markdown-Inhalt des Rechtstexts…"
-            className="min-h-[250px] font-mono text-xs"
+            className="min-h-[400px] font-mono text-xs"
           />
           <Input
             value={changeNote}
