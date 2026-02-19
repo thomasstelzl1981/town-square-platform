@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-02-17T00:00:00Z",
-  "total_count": 4,
+  "generated_at": "2026-02-19T04:00:00Z",
+  "total_count": 5,
   "sites": [
     {
       "name": "kaufy",
@@ -21,6 +21,11 @@
       "name": "acquiary",
       "base": "/website/acquiary",
       "layout": "AcquiaryLayout"
+    },
+    {
+      "name": "lennox",
+      "base": "/website/tierservice",
+      "layout": "LennoxLayout"
     }
   ]
 }
