@@ -42,8 +42,10 @@ export interface ComplianceCompanyProfile {
   company_name?: string;
   legal_form?: string | null;
   address_line1?: string | null;
+  address_line2?: string | null;
   postal_code?: string | null;
   city?: string | null;
+  country?: string | null;
   email?: string | null;
   phone?: string | null;
   managing_directors?: unknown;
@@ -71,11 +73,14 @@ export function renderComplianceMarkdown(
     '{company_name}': profile.company_name || '—',
     '{legal_form}': profile.legal_form || '—',
     '{address_line1}': profile.address_line1 || '—',
+    '{address_line2}': (profile as any).address_line2 || '',
     '{postal_code}': profile.postal_code || '—',
     '{city}': profile.city || '—',
+    '{country}': (profile as any).country || 'DE',
     '{email}': profile.email || '—',
     '{phone}': profile.phone || '—',
     '{managing_directors}': directors,
+    '{commercial_register}': [cr.court, cr.number].filter(Boolean).join(', ') || '—',
     '{commercial_register.court}': cr.court || '—',
     '{commercial_register.number}': cr.number || '—',
     '{vat_id}': profile.vat_id || '—',
