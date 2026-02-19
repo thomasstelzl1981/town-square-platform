@@ -159,3 +159,7 @@ Nach Anwendung der CASCADE-Migration vereinfacht sich die Cleanup-Reihenfolge:
 | 2026-02-19 | FK-Analyse aller 6 Demo-Parent-Tabellen | ✅ |
 | 2026-02-19 | Migration: 10x CASCADE (properties), 6x CASCADE (listings), 2x CASCADE (leases), 1x SET NULL (bank_accounts→leases), 20x SET NULL (contacts) | ✅ |
 | 2026-02-19 | Cleanup-Code vereinfacht: keine manuellen Child-Deletes mehr noetig | ✅ |
+| 2026-02-19 | Golden Tenant Bereinigung: 3 alte Leases, 3 Units, 3 Loans, 5 Contacts geloescht | ✅ |
+| 2026-02-19 | Fremde Tenants entfernt: test-beta-check + marchner (inkl. storage_nodes, data_event_ledger) | ✅ |
+| 2026-02-19 | test_data_registry geleert (wird bei naechstem Seed neu befuellt) | ✅ |
+| 2026-02-19 | Auth-Users (test-beta-check, marchner) muessen manuell in Cloud View entfernt werden | ⚠️ |
