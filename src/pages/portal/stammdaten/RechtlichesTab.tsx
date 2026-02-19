@@ -92,7 +92,7 @@ export function RechtlichesTab() {
       const { data } = await supabase
         .from('compliance_company_profile' as any)
         .select('*')
-        .limit(1)
+        .eq('slug', 'sot')
         .maybeSingle();
       return data as any;
     },
