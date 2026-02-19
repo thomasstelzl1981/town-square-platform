@@ -116,7 +116,7 @@ export function MobileBottomBar({ onChatActivated }: MobileBottomBarProps) {
       <AttachedFiles files={attachedFiles} onRemove={removeFile} />
 
       {/* Input Bar — Lovable-style clean input */}
-      <div className="px-3 pb-3 pt-1">
+      <div className="px-3 pb-2 pt-0.5">
         <div className="flex items-center gap-1 p-1 rounded-xl bg-muted/40 border border-border/20">
           <VoiceButton
             isListening={voice.isListening}
