@@ -8,7 +8,7 @@ import { KPICard } from '@/components/shared';
 import { useComplianceDocuments } from './useComplianceDocuments';
 import { useComplianceCompany } from './useComplianceCompany';
 import { useDSARRequests, useDeletionRequests } from './useComplianceCases';
-import { useComplianceBundles } from './useComplianceBundles';
+
 
 interface Props { onNavigate: (tab: string) => void; }
 
@@ -18,7 +18,6 @@ export function ComplianceOverview({ onNavigate }: Props) {
   const { documents } = useComplianceDocuments();
   const { requests: dsarRequests } = useDSARRequests();
   const { requests: deletionRequests } = useDeletionRequests();
-  const { bundles } = useComplianceBundles();
 
   const activeDocs = documents.filter(d => d.status === 'active').length;
   const draftDocs = documents.filter(d => d.status === 'draft').length;
@@ -31,14 +30,11 @@ export function ComplianceOverview({ onNavigate }: Props) {
   const allBrandsImprint = ['kaufy', 'futureroom', 'sot', 'acquiary', 'tierservice'].every(brand =>
     documents.some(d => d.doc_key === `website_imprint_${brand}` && d.status === 'active')
   );
-  const bundleActive = bundles.some(b => b.status === 'active');
-
   const checklist = [
     { label: 'Company Profile vollständig', done: companyComplete, tab: 'company' },
     { label: 'Portal AGB aktiv', done: portalAgbActive, tab: 'portal-terms' },
     { label: 'Portal Datenschutz aktiv', done: portalPrivacyActive, tab: 'portal-terms' },
     { label: 'Impressum für alle Brands', done: allBrandsImprint, tab: 'public-pages' },
-    { label: 'Onboarding-Bundle aktiv', done: bundleActive, tab: 'bundles' },
   ];
   const score = checklist.filter(c => c.done).length;
 

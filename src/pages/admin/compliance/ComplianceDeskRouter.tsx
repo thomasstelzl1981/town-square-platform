@@ -5,12 +5,11 @@
 import { useState } from 'react';
 import { PageShell } from '@/components/shared';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Scale, Building2, Globe, FileText, Layers, FileCheck, ShieldCheck, UserSearch, Trash2, Shield } from 'lucide-react';
+import { Scale, Building2, Globe, FileText, FileCheck, ShieldCheck, UserSearch, Trash2, Shield } from 'lucide-react';
 import { ComplianceOverview } from './ComplianceOverview';
 import { ComplianceCompanyProfile } from './ComplianceCompanyProfile';
 import { CompliancePublicPages } from './CompliancePublicPages';
 import { CompliancePortalTerms } from './CompliancePortalTerms';
-import { ComplianceBundles } from './ComplianceBundles';
 import { ComplianceAgreements } from './ComplianceAgreements';
 import { ComplianceConsents } from './ComplianceConsents';
 import { ComplianceDSAR } from './ComplianceDSAR';
@@ -22,7 +21,6 @@ const TABS = [
   { value: 'company', label: 'Company Profile', icon: Building2 },
   { value: 'public-pages', label: 'Public Pages', icon: Globe },
   { value: 'portal-terms', label: 'Portal Terms', icon: FileText },
-  { value: 'bundles', label: 'Bundles', icon: Layers },
   { value: 'agreements', label: 'Agreements', icon: FileCheck },
   { value: 'consents', label: 'Consents', icon: ShieldCheck },
   { value: 'dsar', label: 'DSAR', icon: UserSearch },
@@ -59,7 +57,6 @@ export default function ComplianceDeskRouter() {
         <TabsContent value="company"><ComplianceCompanyProfile /></TabsContent>
         <TabsContent value="public-pages"><CompliancePublicPages /></TabsContent>
         <TabsContent value="portal-terms"><CompliancePortalTerms /></TabsContent>
-        <TabsContent value="bundles"><ComplianceBundles /></TabsContent>
         <TabsContent value="agreements"><ComplianceAgreements /></TabsContent>
         <TabsContent value="consents"><ComplianceConsents /></TabsContent>
         <TabsContent value="dsar"><ComplianceDSAR /></TabsContent>
