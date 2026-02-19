@@ -36,7 +36,7 @@ function coerceValue(value: string, key: string): unknown {
     'payment_due_day', 'deposit_amount_eur',
     'original_amount', 'interest_rate_percent', 'annuity_monthly_eur',
     'repayment_rate_percent', 'outstanding_balance_eur',
-    'amount', 'saldo',
+    'amount_eur',
   ];
   if (numericKeys.includes(key)) {
     const num = parseFloat(value);
@@ -82,12 +82,16 @@ async function registerEntities(
     batch_name: batchName,
   }));
 
-  const { error } = await (supabase as any)
-    .from('test_data_registry')
-    .upsert(rows, { onConflict: 'entity_type,entity_id' });
+  // Insert in chunks of 100 to avoid payload limits
+  for (let i = 0; i < rows.length; i += 100) {
+    const chunk = rows.slice(i, i + 100);
+    const { error } = await (supabase as any)
+      .from('test_data_registry')
+      .upsert(chunk, { onConflict: 'entity_type,entity_id' });
 
-  if (error) {
-    console.warn(`[DemoSeed] Registry insert failed for ${entityType}:`, error.message);
+    if (error) {
+      console.warn(`[DemoSeed] Registry insert failed for ${entityType} (chunk ${i}):`, error.message);
+    }
   }
 }
 
@@ -167,6 +171,48 @@ async function seedLoans(tenantId: string): Promise<string[]> {
   return rows.map(r => r.id as string);
 }
 
+async function seedBankAccounts(tenantId: string): Promise<string[]> {
+  const rows = await fetchCSV('/demo-data/demo_bank_accounts.csv');
+  if (!rows.length) return [];
+
+  const data = rows.map(r => ({
+    ...r,
+    tenant_id: tenantId,
+  }));
+  const { error } = await (supabase as any)
+    .from('msv_bank_accounts')
+    .upsert(data, { onConflict: 'id' });
+
+  if (error) console.error('[DemoSeed] msv_bank_accounts:', error.message);
+  return rows.map(r => r.id as string);
+}
+
+async function seedBankTransactions(tenantId: string): Promise<string[]> {
+  const rows = await fetchCSV('/demo-data/demo_bank_transactions.csv');
+  if (!rows.length) return [];
+
+  const data = rows.map(r => ({
+    ...r,
+    tenant_id: tenantId,
+  }));
+
+  // Insert in chunks of 50 to avoid payload limits
+  const allIds: string[] = [];
+  for (let i = 0; i < data.length; i += 50) {
+    const chunk = data.slice(i, i + 50);
+    const { error } = await (supabase as any)
+      .from('bank_transactions')
+      .upsert(chunk, { onConflict: 'id' });
+
+    if (error) {
+      console.error(`[DemoSeed] bank_transactions chunk ${i}:`, error.message);
+    }
+    allIds.push(...chunk.map(r => (r as Record<string, unknown>).id as string));
+  }
+
+  return allIds;
+}
+
 // ─── Main Seed Orchestrator ────────────────────────────────
 
 export interface DemoSeedResult {
@@ -183,7 +229,7 @@ export async function seedDemoData(
   const seeded: Record<string, number> = {};
 
   try {
-    // Order matters: contacts first, then properties, units, leases, loans
+    // Order matters: contacts first, then properties, units, leases, loans, bank
     const contactIds = await seedContacts(tenantId);
     seeded.contacts = contactIds.length;
     await registerEntities(tenantId, 'contacts', contactIds);
@@ -203,6 +249,14 @@ export async function seedDemoData(
     const loanIds = await seedLoans(tenantId);
     seeded.loans = loanIds.length;
     await registerEntities(tenantId, 'loans', loanIds);
+
+    const bankAccountIds = await seedBankAccounts(tenantId);
+    seeded.msv_bank_accounts = bankAccountIds.length;
+    await registerEntities(tenantId, 'msv_bank_accounts', bankAccountIds);
+
+    const txIds = await seedBankTransactions(tenantId);
+    seeded.bank_transactions = txIds.length;
+    await registerEntities(tenantId, 'bank_transactions', txIds);
 
     console.log('[DemoSeed] ✓ Seeding complete:', seeded);
   } catch (err) {

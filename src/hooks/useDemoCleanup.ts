@@ -2,7 +2,7 @@
  * Demo Cleanup — Deletes all demo entities tracked in test_data_registry
  * 
  * Uses the registry as the single source of truth for which entities to remove.
- * Deletion order respects FK constraints (leases → loans → units → properties → contacts).
+ * Deletion order respects FK constraints (bank_transactions → leases → loans → units → msv_bank_accounts → properties → contacts).
  * 
  * @demo-data
  */
@@ -11,9 +11,11 @@ import { supabase } from '@/integrations/supabase/client';
 
 /** Entity types in deletion order (children first) */
 const CLEANUP_ORDER = [
+  'bank_transactions',
   'leases',
   'loans',
   'units',
+  'msv_bank_accounts',
   'properties',
   'contacts',
 ] as const;
@@ -61,17 +63,22 @@ export async function cleanupDemoData(tenantId: string): Promise<DemoCleanupResu
         continue;
       }
 
-      const { error: delError } = await (supabase as any)
-        .from(entityType)
-        .delete()
-        .in('id', ids);
+      // Delete in chunks for large sets (e.g. 100 transactions)
+      let deletedCount = 0;
+      for (let i = 0; i < ids.length; i += 50) {
+        const chunk = ids.slice(i, i + 50);
+        const { error: delError } = await (supabase as any)
+          .from(entityType)
+          .delete()
+          .in('id', chunk);
 
-      if (delError) {
-        errors.push(`Delete ${entityType}: ${delError.message}`);
-        deleted[entityType] = 0;
-      } else {
-        deleted[entityType] = ids.length;
+        if (delError) {
+          errors.push(`Delete ${entityType} chunk ${i}: ${delError.message}`);
+        } else {
+          deletedCount += chunk.length;
+        }
       }
+      deleted[entityType] = deletedCount;
     }
 
     // Also handle any entity types not in the standard order
