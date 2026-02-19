@@ -74,6 +74,10 @@ const MasterTemplatesProjektakte = React.lazy(() => import('@/pages/admin/Master
 const MasterTemplatesFahrzeugakte = React.lazy(() => import('@/pages/admin/MasterTemplatesFahrzeugakte'));
 const MasterTemplatesPhotovoltaikakte = React.lazy(() => import('@/pages/admin/MasterTemplatesPhotovoltaikakte'));
 const MasterTemplatesFinanzierungsakte = React.lazy(() => import('@/pages/admin/MasterTemplatesFinanzierungsakte'));
+const MasterTemplatesVersicherungsakte = React.lazy(() => import('@/pages/admin/MasterTemplatesVersicherungsakte'));
+const MasterTemplatesVorsorgeakte = React.lazy(() => import('@/pages/admin/MasterTemplatesVorsorgeakte'));
+const MasterTemplatesPersonenakte = React.lazy(() => import('@/pages/admin/MasterTemplatesPersonenakte'));
+const MasterTemplatesHaustierakte = React.lazy(() => import('@/pages/admin/MasterTemplatesHaustierakte'));
 const AdminFutureRoomLayout = React.lazy(() => import('@/pages/admin/futureroom/FutureRoomLayout'));
 const AdminStubPage = React.lazy(() => import('@/pages/admin/stub').then(m => ({ default: m.AdminStubPage })));
 const SalesDesk = React.lazy(() => import('@/pages/admin/desks').then(m => ({ default: m.SalesDesk })));
@@ -210,6 +214,10 @@ const adminComponentMap: Record<string, React.ComponentType> = {
   MasterTemplatesFahrzeugakte,
   MasterTemplatesPhotovoltaikakte,
   MasterTemplatesFinanzierungsakte,
+  MasterTemplatesVersicherungsakte,
+  MasterTemplatesVorsorgeakte,
+  MasterTemplatesPersonenakte,
+  MasterTemplatesHaustierakte,
   TileCatalog,
   Integrations,
   // CommunicationHub removed

@@ -97,6 +97,10 @@ export const zone1Admin: ZoneDefinition = {
     { path: "masterdata/fahrzeugakte", component: "MasterTemplatesFahrzeugakte", title: "Fahrzeugakte Vorlage" },
     { path: "masterdata/photovoltaikakte", component: "MasterTemplatesPhotovoltaikakte", title: "Photovoltaikakte Vorlage" },
     { path: "masterdata/finanzierungsakte", component: "MasterTemplatesFinanzierungsakte", title: "Finanzierungsakte Vorlage" },
+    { path: "masterdata/versicherungsakte", component: "MasterTemplatesVersicherungsakte", title: "Versicherungsakte Vorlage" },
+    { path: "masterdata/vorsorgeakte", component: "MasterTemplatesVorsorgeakte", title: "Vorsorgeakte Vorlage" },
+    { path: "masterdata/personenakte", component: "MasterTemplatesPersonenakte", title: "Personenakte Vorlage" },
+    { path: "masterdata/haustierakte", component: "MasterTemplatesHaustierakte", title: "Haustierakte Vorlage" },
     // KI Office — Konsolidiert: 3 Menüpunkte
     { path: "ki-office/recherche", component: "AdminRecherche", title: "Recherche" },
     { path: "ki-office/kontakte", component: "AdminKontaktbuch", title: "Kontaktbuch" },
