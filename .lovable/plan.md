@@ -1,203 +1,187 @@
 
 
-# Strategie: Demo-Daten-Konsolidierung — "Realistic Seeding"
+# Golden Tenant Bereinigung — Komplettplan
 
-## Analyse: 3 Grundprobleme
+## Ist-Zustand: Dateninventar
 
-### Problem 1: Drei inkonsistente Datenquellen
+### Golden Tenant (thomas.stelzl@systemofatown.com)
+**User-ID:** `d028bc99-6e29-4fa4-b038-d03015faf222`
+**Tenant-ID:** `a0000000-0000-4000-a000-000000000001`
 
-Das System hat aktuell drei voellig getrennte Wege, Demo-Daten bereitzustellen:
+| Tabelle | Anzahl | Davon Alt-Seeds (zu loeschen) | Davon SSOT-Demo (behalten) | Davon DB-Seeds (Entscheidung) |
+|---------|--------|-------------------------------|---------------------------|-------------------------------|
+| contacts | 10 | 5x `00000000-*` (Alt) | 5x `d0000000-*` (SSOT) | — |
+| properties | 3 | — | 3x `d0000000-*` (SSOT) | — |
+| units | 6 | 3x `d0000000-b000-*` (Alt) | 3x `d0000000-a000-001x` (SSOT) | — |
+| leases | 6 | 3x `d0000000-c000-*` (Alt, verweisen auf alte Kontakte) | 3x `d0000000-a000-020x` (SSOT) | — |
+| loans | 6 | 3x `d0000000-d000-*` (Alt) | 3x `d0000000-a000-050x` (SSOT) | — |
+| msv_bank_accounts | 1 | — | 1x `d0000000-*` (SSOT) | — |
+| bank_transactions | 3 | — | 3x (SSOT) | — |
+| cars_vehicles | 2 | — | — | 2x `00000000-*` (DB-Seed, BEHALTEN) |
+| insurance_contracts | 7 | — | — | 7x `e0000000-*` (DB-Seed, BEHALTEN) |
+| household_persons | 4 | — | — | 4x (DB-Seed, BEHALTEN) |
+| pv_plants | 1 | — | — | 1x `00000000-*` (DB-Seed, BEHALTEN) |
+| acq_mandates | 1 | — | — | 1x `e0000000-*` (DB-Seed, BEHALTEN) |
+| listings | 3 | — | — | 3x (automatisch via Properties) |
+| rent_payments | 42 | — | — | Kinder von Leases (CASCADE) |
+| property_accounting | 3 | — | — | Kinder von Properties (CASCADE) |
+| listing_publications | 6 | — | — | Kinder von Listings (CASCADE) |
+| documents | 41 | — | — | DMS-Eintraege (BEHALTEN) |
+| pets | 5 | — | 2x Luna+Bello (MOD-05 Demo) | 3x Rocky+Mia+Oskar (Pet Manager Demo) |
+| pet_customers | 3 | — | — | 3x (Pet Manager Demo, BEHALTEN) |
+| pet_bookings | 5 | — | — | 5x (Pet Manager Demo, BEHALTEN) |
+| pet_providers | 1 | — | — | 1x Lennox (BEHALTEN) |
+| pet_services | 4 | — | — | 4x (BEHALTEN) |
+| pet_rooms | 10 | — | — | 10x (BEHALTEN) |
+| pet_staff | 3 | — | — | 3x (BEHALTEN) |
+| pet_z1_customers | 4 | — | — | 4x (BEHALTEN) |
+| pet_z1_pets | 2 | — | — | 2x (BEHALTEN) |
+| pet_vaccinations | 5 | — | — | 5x (BEHALTEN) |
+| pet_provider_availability | 11 | — | — | 11x (BEHALTEN) |
 
-| Quelle | Mechanismus | Toggle-Steuerung | Beispiele |
-|--------|-------------|-------------------|-----------|
-| **DB-Seeds** (`seed_golden_path_data` RPC) | SQL-Funktion schreibt in echte Tabellen | Kein Toggle — Daten bleiben permanent in der DB | Properties, Leases, Loans, Contacts, Documents |
-| **Client-seitig hardcoded** (TypeScript-Konstanten) | Wird im Browser generiert, nie in DB geschrieben | Per `useDemoToggles` + `GP-*` Keys | Bankkonten, Transaktionen, Listings, Versicherungen |
-| **CSV-Dateien** (`public/demo-data/`) | Liegen im Repo, werden aber von KEINEM Code gelesen | Gar keine | `demo_bank_accounts.csv`, `demo_bank_transactions.csv` |
-
-**Konsequenz:** DB-Seeds verschwinden nicht bei Toggle OFF. Client-seitige Daten sind nie "echt" eingegeben. CSV-Dateien sind verwaist.
-
-### Problem 2: Toggle OFF ist nicht wirklich leer
-
-Wenn ein User alle Toggles deaktiviert:
-- DB-Seeds (Properties, Contacts, Leases, Loans) bleiben sichtbar — sie werden mit `is_demo` gefiltert oder gar nicht
-- `isDemoId()` erkennt nur IDs im `DEMO_ID_SET` (aus `demoData/data.ts`) — DB-Seed-IDs wie `00000000-0000-4000-a000-000000000001` sind dort NICHT registriert
-- Ergebnis: "Geister-Daten" die weder als Demo erkannt noch ausgeblendet werden
-
-### Problem 3: Daten werden nicht "realistisch" eingespielt
-
-Die DB-Seeds schreiben direkt per SQL in Tabellen. Das umgeht:
-- Validierungslogik der UI-Formulare
-- Storage-Node-Erstellung (DMS-Ordnerstruktur)
-- Automatische Berechnungen (AfA, BWA)
-- CSV-Import-Pfade (Kontoauszuege)
-
----
-
-## Loesung: 4-Schichten-Architektur
-
-```text
- Schicht 1: SSOT-Dateien (CSV + JSON in public/demo-data/)
-     |
- Schicht 2: Seed-Engine (Edge Function oder RPC)
-     |        Liest CSVs, schreibt ueber dieselben Pfade wie ein User
-     |
- Schicht 3: Demo-Registry (DB-Tabelle test_data_registry)
-     |        Trackt jede erzeugte Entity-ID pro Batch
-     |
- Schicht 4: Toggle-Guard + Cleanup
-            Toggle OFF → alle registrierten Demo-Entities loeschen
-```
-
-### Schicht 1: SSOT-Dateien erweitern
-
-**Verzeichnis: `public/demo-data/`**
-
-Alle Demo-Daten werden als editierbare Dateien erfasst:
-
-| Datei | Inhalt | Modul |
-|-------|--------|-------|
-| `demo_bank_accounts.csv` | Bankkonten (existiert, erweitern) | MOD-18 |
-| `demo_bank_transactions.csv` | Kontobewegungen (existiert, erweitern) | MOD-18 |
-| `demo_properties.csv` | NEU: Immobilien mit AfA-Stammdaten | MOD-04 |
-| `demo_units.csv` | NEU: Wohneinheiten | MOD-04 |
-| `demo_leases.csv` | NEU: Mietvertraege | MOD-04/05 |
-| `demo_contacts.csv` | NEU: Kontakte (Mieter, Verwalter, Berater) | MOD-01 |
-| `demo_loans.csv` | NEU: Darlehen | MOD-04 |
-| `demo_vehicles.csv` | NEU: Fahrzeuge | MOD-17 |
-| `demo_insurances.json` | NEU: Versicherungen, Vorsorge | MOD-18 |
-| `demo_pv_plants.csv` | NEU: PV-Anlagen | MOD-19 |
-| `demo_manifest.json` | NEU: Metadaten (Version, Musterkunde, Checksummen) | SYSTEM |
-
-Alle Dateien sind manuell editierbar. Aenderungen an den CSVs aendern direkt die Demo-Daten.
-
-### Schicht 2: Unified Seed-Engine
-
-**Neue Datei: `src/hooks/useDemoSeedEngine.ts`**
-
-Ersetzt sowohl `seed_golden_path_data` (SQL) als auch die verstreuten Client-Konstanten:
-
-```text
-async function seedDemoData(tenantId: string):
-  1. Laedt CSVs aus /demo-data/ per fetch()
-  2. Parsed jede CSV/JSON
-  3. Schreibt Daten ueber Supabase SDK (INSERT mit ON CONFLICT)
-     → Gleicher Pfad wie ein normaler User
-     → Validierung greift, Storage-Nodes werden erstellt
-  4. Registriert jede Entity in test_data_registry (batch_id = 'demo-ssot')
-  5. Gibt SeedResult zurueck (vorher/nachher Counts)
-```
-
-**Kritische Unterschiede zum jetzigen System:**
-- Kein direktes SQL mehr — alles ueber das SDK
-- Jede erstellte Entity bekommt einen Eintrag in `test_data_registry`
-- IDs werden aus den CSVs gelesen (deterministische UUIDs, kein `crypto.randomUUID()`)
-- AfA-Werte, Buchwerte, Finanzierungsdaten kommen direkt aus den CSVs
-
-### Schicht 3: Vollstaendiges Demo-Registry
-
-Die Tabelle `test_data_registry` existiert bereits. Sie wird zum **Single Point of Cleanup**:
-
-```text
-Jede Demo-Entity hat einen Eintrag:
-  tenant_id | batch_id='demo-ssot' | entity_type | entity_id | imported_at
-
-Toggle OFF → DELETE FROM [tabelle] WHERE id IN (
-  SELECT entity_id FROM test_data_registry
-  WHERE tenant_id = ? AND batch_id = 'demo-ssot' AND entity_type = ?
-)
-```
-
-### Schicht 4: Toggle-Guard mit Cleanup
-
-**Aenderung in `useDemoToggles.ts`:**
-
-Wenn ein User **alle Toggles auf OFF** setzt (oder den Master-Toggle nutzt):
-1. Alle Demo-Entities aus `test_data_registry` (batch `demo-ssot`) werden geloescht
-2. Danach ist die DB tatsaechlich leer — kein Filtern mehr noetig
-3. Re-Toggle ON → Seed-Engine laeuft erneut
-
-```text
-toggleAll(OFF):
-  → cleanupDemoData(tenantId)  // Loescht alle registrierten Demo-Entities
-  → localStorage: alle Toggles = false
-
-toggleAll(ON):
-  → seedDemoData(tenantId)     // Schreibt Demo-Daten aus CSVs
-  → localStorage: alle Toggles = true
-```
+### Andere Tenants (ZU LOESCHEN)
+| Tenant | User | Daten |
+|--------|------|-------|
+| `8a50d191-*` (test-beta-check) | `bea22e67-*` | 0 operative Records, nur Membership + Profile |
+| `f46f793a-*` (marchner) | `9e2863d9-*` | 0 operative Records, nur Membership + Profile |
 
 ---
 
-## Betroffene Dateien und Aenderungen
+## Was wird geloescht
 
-### Neue Dateien
+### 1. Alt-Seed-Duplikate im Golden Tenant
 
-| Datei | Zweck |
-|-------|-------|
-| `public/demo-data/demo_properties.csv` | SSOT: 3 Immobilien mit AfA, Kaufpreis, Adressen |
-| `public/demo-data/demo_units.csv` | SSOT: Wohneinheiten pro Immobilie |
-| `public/demo-data/demo_leases.csv` | SSOT: Mietvertraege |
-| `public/demo-data/demo_contacts.csv` | SSOT: 5 Kontakte |
-| `public/demo-data/demo_loans.csv` | SSOT: Darlehen |
-| `public/demo-data/demo_vehicles.csv` | SSOT: Fahrzeuge (BMW M4) |
-| `public/demo-data/demo_insurances.json` | SSOT: Versicherungen + Vorsorge |
-| `public/demo-data/demo_pv_plants.csv` | SSOT: PV-Anlagen |
-| `public/demo-data/demo_manifest.json` | Metadaten, Version, Checksummen |
-| `src/hooks/useDemoSeedEngine.ts` | Unified Seed: CSV lesen → DB schreiben → Registry |
-| `src/hooks/useDemoCleanup.ts` | Cleanup: Registry lesen → alle Entities loeschen |
+Die folgenden Entities sind Ueberbleibsel der alten `seed_golden_path_data` RPC und existieren parallel zu den neuen SSOT-Daten:
 
-### Zu aendernde Dateien
+**Schritt 1 — Alte Leases loeschen (RESTRICT auf Contacts):**
+- `d0000000-0000-4000-c000-000000000001` (verweist auf alten Kontakt 00000000-...103)
+- `d0000000-0000-4000-c000-000000000002` (verweist auf alten Kontakt 00000000-...101)
+- `d0000000-0000-4000-c000-000000000003` (verweist auf alten Kontakt 00000000-...102)
+- Ihre `rent_payments` werden per CASCADE mitgeloescht
 
-| Datei | Aenderung |
-|-------|-----------|
-| `src/hooks/useDemoToggles.ts` | Toggle OFF/ON triggert Cleanup/Seed |
-| `src/components/admin/TestDataManager.tsx` | "Demo-Daten" Sektion: CSV-Vorschau, Seed-Button, Cleanup-Button |
-| `src/hooks/useGoldenPathSeeds.ts` | Deprecated — wird durch useDemoSeedEngine ersetzt |
-| `src/engines/demoData/data.ts` | Reduzieren: Nur noch IDs + isDemoId-Set, keine Daten mehr |
-| `src/constants/demoKontoData.ts` | Deprecated — Daten kommen aus CSV |
-| `src/config/demoDataRegistry.ts` | Aktualisieren: Alle Quellen zeigen auf public/demo-data/ |
+**Schritt 2 — Alte Units loeschen:**
+- `d0000000-0000-4000-b000-000000000001`
+- `d0000000-0000-4000-b000-000000000002`
+- `d0000000-0000-4000-b000-000000000003`
 
-### Zu entfernende Client-seitige Hardcoding-Stellen (schrittweise)
+**Schritt 3 — Alte Loans loeschen:**
+- `d0000000-0000-4000-d000-000000000001`
+- `d0000000-0000-4000-d000-000000000002`
+- `d0000000-0000-4000-d000-000000000003`
 
-Die folgenden 20+ Dateien mit `@demo-data` Tags werden Schritt fuer Schritt auf die CSV-basierte Seed-Engine umgestellt. Sobald eine Entity per Seed in der DB liegt, entfaellt der clientseitige Fallback.
+**Schritt 4 — Alte Contacts loeschen (erst nach Leases!):**
+- `00000000-0000-4000-a000-000000000101` (Max Mustermann, alt)
+- `00000000-0000-4000-a000-000000000102` (Lisa Mustermann, alt)
+- `00000000-0000-4000-a000-000000000103` (Thomas Bergmann, alt)
+- `00000000-0000-4000-a000-000000000104` (Sandra Hoffmann, alt)
+- `00000000-0000-4000-a000-000000000105` (Michael Weber, alt)
 
----
+### 2. Andere Tenants komplett entfernen
 
-## Implementierungsreihenfolge
+**Reihenfolge (FK-sicher):**
+1. Memberships der beiden Tenants loeschen
+2. Profiles der beiden User loeschen
+3. Organizations loeschen
+4. Auth-Users loeschen (sofern moeglich via Supabase Admin API, ansonsten manuell)
 
-### Phase 1: SSOT-CSVs erstellen (Grundlage)
-1. CSV-Dateien fuer Properties, Units, Leases, Contacts, Loans anlegen
-2. Bestehende CSVs (Bank) pruefen und aktualisieren
-3. `demo_manifest.json` mit Version und Entity-Uebersicht
+**Betroffen:**
+- User `bea22e67-*` (test-beta-check@example.com) + Tenant `8a50d191-*`
+- User `9e2863d9-*` (marchner@mm7immobilien.de) + Tenant `f46f793a-*`
 
-### Phase 2: Seed-Engine bauen
-4. `useDemoSeedEngine.ts` — CSV-Parser + SDK-basierter Insert
-5. `useDemoCleanup.ts` — Registry-basierter Delete
-6. Integration in TestDataManager (neuer "Demo-Daten einspielen" Button)
+### 3. test_data_registry bereinigen
 
-### Phase 3: Toggle-Lifecycle
-7. `useDemoToggles.ts` erweitern: ON → Seed, OFF → Cleanup
-8. Testen: Toggle OFF → DB ist leer, Toggle ON → alle Daten da
-
-### Phase 4: Client-seitige Altlasten abbauen
-9. `demoKontoData.ts` → durch DB-Daten ersetzen (aus CSV geseeded)
-10. `demoData/data.ts` → reduzieren auf ID-Registry
-11. Einzelne Modul-Hooks (`useDemoListings`, etc.) → direkt aus DB lesen
-
-### Phase 5: Validierung
-12. Automated Test: Neuer Tenant → Toggle OFF → Assertion: 0 Records in allen Tabellen
-13. Toggle ON → Assertion: exakte Counts aus `demo_manifest.json`
-14. Toggle OFF → Assertion: wieder 0
+Alle Registry-Eintraege loeschen und neu anlegen, damit sie exakt den verbleibenden Demo-Entities entsprechen.
 
 ---
 
-## Erwartetes Ergebnis
+## Was NICHT geloescht wird
 
-| Szenario | Vorher | Nachher |
-|----------|--------|---------|
-| Neuer User, Toggles OFF | Geister-Daten aus DB-Seeds sichtbar | **Komplett leer** — 0 Records |
-| Neuer User, Toggles ON | Mix aus DB-Seeds + Client-Daten, inkonsistent | **Vollstaendige, realistische Daten** aus CSVs |
-| Toggle OFF nach ON | DB-Seeds bleiben, Client-Daten verschwinden | **Alles weg** — Registry-basierter Cleanup |
-| Demo-Daten aendern | Code aendern in 20+ Dateien | **CSV editieren** in `public/demo-data/` |
-| Neues Modul hinzufuegen | Neuen Hook + Konstanten + Registry-Eintrag | **CSV-Zeile hinzufuegen** + Seed-Engine kennt es automatisch |
+| Kategorie | Entities | Grund |
+|-----------|----------|-------|
+| Login-Daten | thomas.stelzl@systemofadown.com | Explizite Anforderung |
+| Golden Tenant Org | `a0000000-*` (System of a Town) | Basis-Infrastruktur |
+| Membership | `b0000000-*` (platform_admin) | Zugehoerigkeit |
+| Profile | `d028bc99-*` (Display: Max Mustermann) | User-Profil |
+| SSOT-Demo-Daten | 3 Properties, 5 Contacts, 3 Units, 3 Leases, 3 Loans, 1 Bankkonto, Transaktionen | Neue CSV-basierte Demo |
+| DB-Seed-Demo | 2 Autos, 7 Versicherungen, 1 PV-Anlage, 1 Akquise-Mandat, 4 Haushaltspersonen | Bestehende Demo-Seeds |
+| Pet Manager (MOD-05) | 2 Pets (Luna, Bello), Provider Lennox, 4 Services | Demo-Container 1 |
+| Pet Manager (MOD-22) | 3 Kunden, 3 Hunde, 5 Buchungen, 10 Zimmer, 3 Staff | Demo-Container 2 |
+| DMS Documents | 41 Eintraege | Ordnerstruktur |
+| Listings | 3 (Kinder der Properties) | CASCADE-abhaengig |
+
+---
+
+## Technische Umsetzung
+
+### Schritt 1: Datenbereinigung (SQL via Insert Tool)
+
+FK-sichere Loeschreihenfolge:
+
+```text
+1. DELETE leases WHERE id IN (3 alte c000-IDs)      → rent_payments CASCADE
+2. DELETE units WHERE id IN (3 alte b000-IDs)        → keine Kinder mehr
+3. DELETE loans WHERE id IN (3 alte d000-IDs)
+4. DELETE contacts WHERE id IN (5 alte 00000000-IDs) → SET NULL auf Referenzen
+5. DELETE memberships WHERE tenant_id IN (2 fremde Tenants)
+6. DELETE profiles WHERE id IN (2 fremde User-IDs)
+7. DELETE organizations WHERE id IN (2 fremde Tenant-IDs)
+8. TRUNCATE + re-seed test_data_registry mit korrekten IDs
+```
+
+### Schritt 2: ID-Registry aktualisieren
+
+`src/engines/demoData/data.ts` — `ALL_DEMO_IDS` muss alle verbleibenden Demo-IDs enthalten:
+- Alte `00000000-*` IDs fuer Vehicles und PV-Plant behalten (DB-Seeds)
+- Alle `e0000000-*` IDs fuer Insurance, Household, Acq-Mandate behalten
+- Alle `d0000000-*` SSOT-IDs behalten
+- Alte `00000000-*` Contact-IDs ENTFERNEN
+
+### Schritt 3: Cleanup-Hook erweitern
+
+`useDemoCleanup.ts` muss die erweiterten Entity-Typen (vehicles, insurance, pv_plants, acq_mandates, household_persons, pets, pet_customers, etc.) kennen.
+
+### Schritt 4: Seed-Engine erweitern
+
+`useDemoSeedEngine.ts` soll langfristig auch Vehicles, Insurance, PV-Plants, Akquise-Mandate per CSV seeden. Fuer jetzt bleiben diese als DB-Seeds bestehen — die Seed-Engine wird in Phase 4/5 erweitert.
+
+### Schritt 5: Auth-User-Bereinigung
+
+Die beiden Test-User (`test-beta-check`, `marchner`) muessen aus `auth.users` entfernt werden. Da direkte Aenderungen an `auth.*` nicht per Migration moeglich sind, wird dies ueber die Admin-API (Edge Function) oder manuell erledigt.
+
+---
+
+## Erwartetes Endergebnis
+
+Nach der Bereinigung enthaelt die Datenbank **exakt einen Tenant** mit folgender Demo-Welt:
+
+```text
+Golden Tenant: System of a Town (thomas.stelzl@systemofadown.com)
+|
++-- Haushalt: Max & Lisa Mustermann, Felix (Kind), Emma (Kind)
+|
++-- 3 Immobilien (Berlin, Muenchen, Hamburg)
+|   +-- je 1 Unit, 1 Lease, 1 Loan
+|   +-- je 1 Listing mit Publications
+|   +-- je 1 Property Accounting
+|   +-- 42 Rent Payments
+|
++-- 2 Fahrzeuge (Porsche 911, BMW M5)
++-- 1 PV-Anlage
++-- 7 Versicherungen (PHV, Hausrat, Wohngebaeude, Rechtsschutz, 2x KFZ, BU)
++-- 1 Bankkonto (Sparkasse) + 3 Transaktionen
++-- 1 Akquise-Mandat
+|
++-- Pet Manager Container 1 (MOD-05):
+|   Luna (Golden Retriever) + Bello (Dackel)
+|   Provider: Lennox & Friends, 4 Services
+|
++-- Pet Manager Container 2 (MOD-22):
+    3 Kunden (Sabine, Thomas, Claudia)
+    3 Hunde (Rocky, Mia, Oskar)
+    5 Buchungen, 10 Zimmer, 3 Staff
+
+Fehlend (spaeter ergaenzen):
+- MOD-13: Immobilienprojekt (dev_projects = 0)
+- Demo-Banktransaktionen: Nur 3 statt 100 (CSV hat 100, Seeding lief nicht vollstaendig)
+```
 
