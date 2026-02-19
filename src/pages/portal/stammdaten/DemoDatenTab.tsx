@@ -52,7 +52,7 @@ function PhaseBadge({ phase }: { phase: string }) {
 }
 
 export function DemoDatenTab() {
-  const { isEnabled, toggle, toggleAll, allEnabled } = useDemoToggles();
+  const { isEnabled, toggle, toggleAll, allEnabled, isSeedingOrCleaning } = useDemoToggles();
 
   return (
     <PageShell>
@@ -65,10 +65,16 @@ export function DemoDatenTab() {
       <div className={cn(INFO_BANNER.BASE, INFO_BANNER.PREMIUM, 'flex items-center justify-between')}>
         <div>
           <p className={TYPOGRAPHY.CARD_TITLE}>Alle Demo-Daten</p>
-          <p className={TYPOGRAPHY.HINT}>Globaler Toggle für alle Prozesse gleichzeitig</p>
+          <p className={TYPOGRAPHY.HINT}>
+            {isSeedingOrCleaning 
+              ? (allEnabled ? 'Demo-Daten werden eingespielt…' : 'Demo-Daten werden entfernt…')
+              : 'Globaler Toggle für alle Prozesse gleichzeitig'
+            }
+          </p>
         </div>
         <Switch
           checked={allEnabled}
+          disabled={isSeedingOrCleaning}
           onCheckedChange={(checked) => toggleAll(checked)}
         />
       </div>

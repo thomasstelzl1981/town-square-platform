@@ -1,0 +1,6 @@
+id;salutation;first_name;last_name;email;phone;company;category;scope
+00000000-0000-4000-a000-000000000101;Herr;Max;Mustermann;max@mustermann-demo.de;+49 170 1234567;;owner;private
+00000000-0000-4000-a000-000000000102;Frau;Lisa;Mustermann;lisa@mustermann-demo.de;+49 170 7654321;;owner;private
+00000000-0000-4000-a000-000000000103;Herr;Klaus;Bergmann;k.bergmann@email.de;+49 30 9876543;;tenant;private
+00000000-0000-4000-a000-000000000104;Frau;Sabine;Hoffmann;hoffmann@immo-verwaltung.de;+49 89 1112222;Hoffmann Hausverwaltung;hausverwaltung;business
+00000000-0000-4000-a000-000000000105;Herr;Thomas;Weber;weber@finanzberatung.de;+49 40 3334444;Weber Finanzberatung;berater;business
