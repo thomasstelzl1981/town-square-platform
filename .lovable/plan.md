@@ -1,123 +1,137 @@
 
+# Loeschantraege (Art. 17 DSGVO) — Pragmatischer Ausbau
 
-# DSAR-Workflow: Pragmatischer Ausbau (Phase 1)
+## Bewertung des ChatGPT-Prompts
 
-## Bewertung des Prompts
-
-Der Prompt beschreibt ein vollstaendiges Enterprise-DSAR-System. Die Analyse zeigt:
+Gleiche Situation wie beim DSAR-Prompt: Der Vorschlag beschreibt ein Enterprise-System mit Execution Engine, Dry-Run-Mode, Tombstone-Strategien und automatisierten Deletion Runnern. Das ist fuer ein System mit 0 aktiven Loeschantraegen massives Over-Engineering.
 
 | Bereich | Prompt-Umfang | Jetzt noetig? | Begruendung |
 |---------|--------------|---------------|-------------|
-| Status-Workflow (8 Stufen) | Ja | **Teilweise** | 6 Status reichen fuer MVP (ohne COLLECTING/EXPORT_READY) |
-| Identitaetspruefung | Ja | **Ja** | Pflicht — keine Daten ohne Verifizierung |
-| Datensammlung (Subject Map) | Ja | **Nein** | Manueller Prozess reicht bei 0-5 Anfragen/Jahr |
-| ZIP-Export mit Checksums | Ja | **Nein** | Manuell zusammenstellen, PDF-Vorlage reicht |
-| Antwortvorlage | Ja | **Ja** | Spart Zeit und ist rechtlich sauber |
-| Camunda-ready Keys | Ja | **Nein** | Kein Camunda im Einsatz |
-| Auto-Deletion Job | Ja | **Nein** | Manuell loeschbar bei geringem Volumen |
-| dsar_artifacts Tabelle | Ja | **Nein** | Ein Export pro Case reicht |
+| Status-Workflow (9 Stufen) | Ja | **Teilweise** | 6 Status reichen (ohne DELETING/PARTIALLY_COMPLETED) |
+| Identitaetspruefung | Ja | **Ja** | Pflicht — identisch zum DSAR-Pattern |
+| Anspruchspruefung (Legal Hold) | Ja | **Ja** | Kernthema Art. 17 — welche Daten duerfen/muessen bleiben |
+| Deletion Runner / Execution Engine | Ja | **Nein** | Bei 0-5 Anfragen/Jahr: manuell loeschen reicht |
+| Dry-Run Mode | Ja | **Nein** | Ohne automatische Loesch-Engine kein Dry-Run noetig |
+| Tombstone/Anonymize Strategy per Table | Ja | **Nein** | Dokumentation reicht, keine automatische Ausfuehrung |
+| deletion_plan_tasks Tabelle | Ja | **Nein** | Freitext-Notizen reichen fuer manuellen Prozess |
+| Backup Scrub Jobs | Ja | **Nein** | Standard-Praxis, nur im Antworttext erwaehnen |
+| 3 Antwortvorlagen | Ja | **Ja** | Spart Zeit, rechtlich sauber |
+| Camunda Keys | Ja | **Nein** | Kein Camunda im Einsatz |
 
 ## Was Phase 1 liefert
 
-Ein funktionsfaehiger DSAR-Workflow, der **rechtlich sauber** ist, aber ohne Over-Engineering:
+Exakt das DSAR-Pattern gespiegelt: Manuelles Case-Management mit Identitaetspruefung, Legal-Hold-Bewertung, 3 Antwortvorlagen und Ledger-Audit. Keine automatische Loesch-Engine.
 
-### 1. DB-Migration: Tabelle erweitern (12 → ~22 Felder)
+### 1. DB-Migration: Tabelle erweitern
 
-Neue Felder auf `dsar_requests`:
+Aktuelle `deletion_requests` hat nur 10 Felder. Neue Felder:
 
 ```text
 + request_channel          (text, default 'EMAIL')
 + request_received_at      (timestamptz)
-+ identity_status          (text, default 'UNVERIFIED')  -- UNVERIFIED | VERIFIED | FAILED
-+ identity_method          (text, nullable)               -- LOGIN | EMAIL | ID_DOC | OTHER
++ requester_name           (text, nullable)
++ due_date                 (date)
++ identity_status          (text, default 'UNVERIFIED')
++ identity_method          (text, nullable)
 + identity_notes           (text, nullable)
-+ scope_mode               (text, default 'FULL')         -- FULL | LIMITED
++ scope_mode               (text, default 'FULL_ERASURE')
 + scope_notes              (text, nullable)
-+ response_status          (text, default 'NONE')         -- NONE | DRAFT | SENT
++ retention_notes          (text, nullable)        -- Freitext: welche Daten behalten + Grund
++ erasure_summary          (text, nullable)         -- Freitext: was geloescht wurde
++ response_status          (text, default 'NONE')
 + response_sent_at         (timestamptz, nullable)
-+ response_channel         (text, nullable)               -- EMAIL | PORTAL | POSTAL
++ response_channel         (text, nullable)
++ response_type            (text, nullable)         -- COMPLETED | PARTIAL | REJECTED
 + assigned_to              (uuid, nullable)
 + internal_notes           (text, nullable)
 ```
 
-Status-Werte anpassen auf: `NEW`, `IDENTITY_REQUIRED`, `IN_REVIEW`, `RESPONDED`, `CLOSED`, `REJECTED`
+Status-Werte anpassen: `NEW`, `IDENTITY_REQUIRED`, `IN_REVIEW`, `HOLD_LEGAL`, `RESPONDED`, `CLOSED`, `REJECTED`
 
-(Kein COLLECTING/EXPORT_READY — das ist Phase 2 wenn automatischer Export kommt)
+### 2. UI: Deletion Tab komplett neu aufbauen
 
-### 2. UI: DSAR Tab komplett neu aufbauen
+Gleiche Architektur wie DSAR — Inbox + Detail + Intake + Response Generator:
 
-Statt der simplen Collapsible-Liste ein richtiges Case-Management:
-
-**a) Inbox-Liste (oben)**
-- Tabelle mit: Requester, Kanal, Status-Badge, Fristdatum, Zugewiesen-an
+**a) Inbox-Liste** (`DeletionCaseList.tsx`)
+- Tabelle: Requester, Kanal, Status-Badge, Fristdatum, Legal Hold Indikator
 - Filter nach Status
-- Button "Neue Anfrage erfassen" (manueller Intake)
+- Button "Neuen Loeschantrag erfassen"
 
-**b) Case Detail (Inline-Expansion oder Subpage)**
+**b) Case Detail** (`DeletionCaseDetail.tsx`) — 5 Bloecke:
 
-Vier Bloecke:
+1. **Anfragedaten** — Requester, Kanal, Eingang, Frist (30 Tage), Scope (Voll/Eingeschraenkt)
+2. **Identitaetspruefung** — Identisch zum DSAR-Pattern (Methode + Buttons + Notizen)
+3. **Anspruchspruefung / Legal Hold** — Hier das Kernthema Art. 17:
+   - Legal Hold Grund (Freitext: z.B. "Steuerrechtliche Aufbewahrung bis 2033")
+   - Retention-Notizen: Welche Datenkategorien behalten werden + warum
+   - Erasure Summary: Was geloescht/anonymisiert wurde
+   - Toggle: "Vollstaendig geloescht" vs. "Teilweise geloescht (Legal Hold)"
+4. **Antwort** — 3 Vorlagen (Completed, Partial, Rejected), Copy-to-Clipboard
+5. **Intern** — Notizen, Zuweisung
 
-1. **Anfragedaten** — Requester-Info, Kanal, Eingangsdatum, Frist (auto-berechnet: +30 Tage)
-2. **Identitaetspruefung** — Status-Anzeige + Buttons (Verifiziert / Fehlgeschlagen) + Methode + Notizen
-3. **Antwort** — Status + Antwortvorlage-Generator (Button generiert Text aus Case-Daten + Company Profile)
-4. **Intern** — Notizen, Zuweisung, Timeline (Ledger Events)
+**c) Schutzregel**: Antwort nur moeglich wenn `identity_status = 'VERIFIED'`
 
-**c) Schutzregel**: Antwort-Generierung und Status "RESPONDED" nur moeglich wenn `identity_status = 'VERIFIED'`
+### 3. Drei Antwortvorlagen (`deletionResponseTemplates.ts`)
 
-### 3. Antwortvorlage-Generator
+Alle drei Texte aus dem Prompt (Abschnitt I) als Template-Funktionen:
 
-Eine reine Frontend-Funktion die aus den Case-Daten + Company Profile (`sot`) den Art. 15 Antworttext generiert:
+1. **COMPLETED** — Bestaetigung der vollstaendigen Loeschung
+2. **PARTIAL** — Teilweise Loeschung mit Legal-Hold-Begruendung
+3. **REJECTED** — Ablehnung (z.B. Identitaet nicht nachgewiesen)
 
-- Platzhalter werden ersetzt: `[NAME]`, `[REQUEST_DATE]`, `[COMPANY_LEGAL_NAME]`, etc.
-- Text wird in einem grossen Textarea angezeigt (Copy-to-Clipboard)
-- Der vollstaendige Text aus dem Prompt (Abschnitt G) wird als Template hardcoded
-- Company-Daten kommen aus `compliance_company_profile` (gleicher Mechanismus wie Impressum)
+Platzhalter werden aus Case-Daten + Company Profile (`sot`) ersetzt.
 
-### 4. Ledger-Events (Whitelist erweitern)
+### 4. Response Generator (`DeletionResponseGenerator.tsx`)
 
-Neue Events im bestehenden Ledger-System:
+Spiegelt den DSAR-Generator:
+- Dropdown: Antworttyp waehlen (Completed / Partial / Rejected)
+- Text wird generiert und in grossem Textarea angezeigt
+- Copy-to-Clipboard
+- Versandkanal (E-Mail/Post) + "Als versendet markieren"
 
-- `dsar.created`
-- `dsar.identity_verified`
-- `dsar.identity_failed`
-- `dsar.response_generated`
-- `dsar.response_sent`
-- `dsar.closed`
-- `dsar.rejected`
+### 5. Ledger-Events (Whitelist erweitern)
 
-### 5. Intake-Formular
+Neue Events:
 
-Ein einfaches Formular zum manuellen Erfassen einer DSAR-Anfrage:
-- Pflicht: requester_email, request_channel, request_received_at
-- Optional: requester_name, requester_phone, user_id (falls bekannt)
-- Auto: due_date = received_at + 30 Tage, status = NEW
+- `legal.deletion.created`
+- `legal.deletion.identity_verified`
+- `legal.deletion.identity_failed`
+- `legal.deletion.legal_hold_applied`
+- `legal.deletion.response_sent`
+- `legal.deletion.closed`
+- `legal.deletion.rejected`
 
-## Was bewusst NICHT in Phase 1 kommt
+### 6. Hook erweitern (`useComplianceCases.ts`)
+
+- `DeletionRequest` Interface aktualisieren mit allen neuen Feldern
+- `createDeletionRequest` Mutation hinzufuegen (analog `createRequest` bei DSAR)
+- `updateDeletionStatus` erweitern fuer neue Felder + Ledger-Events
+
+## Was bewusst NICHT kommt
 
 | Feature | Grund |
 |---------|-------|
-| Automatischer Daten-Export (ZIP) | Erfordert Subject-Map ueber alle Tabellen — bei 0 Anfragen nicht lohnend |
-| dsar_artifacts Tabelle | Ein Case = eine Antwort reicht |
-| Signed URL Downloads | Keine automatischen Exports = kein Download noetig |
-| Auto-Deletion Cron Job | Manuell loeschbar |
-| Camunda Keys | Kein Camunda im Einsatz |
-| Scope JSON (Module/Brands) | Scope-Notizen als Freitext reichen |
-| Extension-Management | Seltenfall, Freitext-Notiz reicht |
+| Deletion Runner / Execution Engine | Manuelle Loesung bei 0-5 Anfragen/Jahr |
+| Dry-Run Mode | Ohne Engine kein Dry-Run |
+| deletion_plan_tasks Tabelle | Freitext-Notizen reichen |
+| Tombstone-Strategie per Table | Dokumentation, keine Automatisierung |
+| Backup Scrub Jobs | Standard-Praxis, im Antworttext erwaehnt |
+| Auto-Deletion / Retention Cron | Manuell loeschbar |
 
 ## Datei-Zusammenfassung
 
 | Aktion | Datei | Beschreibung |
 |--------|-------|-------------|
-| MIGRATION | `dsar_requests` | ~10 neue Spalten, Status-Werte anpassen |
-| NEU | `src/pages/admin/compliance/dsar/DSARCaseList.tsx` | Inbox-Tabelle mit Filtern |
-| NEU | `src/pages/admin/compliance/dsar/DSARCaseDetail.tsx` | Case-Detailansicht (4 Bloecke) |
-| NEU | `src/pages/admin/compliance/dsar/DSARIntakeForm.tsx` | Manuelles Erfassungsformular |
-| NEU | `src/pages/admin/compliance/dsar/DSARResponseGenerator.tsx` | Antwortvorlage-Generator |
-| NEU | `src/pages/admin/compliance/dsar/dsarResponseTemplate.ts` | Art. 15 Textvorlage als Konstante |
-| EDIT | `src/pages/admin/compliance/ComplianceDSAR.tsx` | Komplett ersetzen durch neue Subkomponenten |
-| EDIT | `src/pages/admin/compliance/useComplianceCases.ts` | Hook erweitern fuer neue Felder + Intake-Mutation |
-| EDIT | Ledger Event Whitelist | 7 neue `dsar.*` Events registrieren |
+| MIGRATION | `deletion_requests` | ~17 neue Spalten, Status-Werte anpassen |
+| NEU | `src/pages/admin/compliance/deletion/DeletionCaseList.tsx` | Inbox-Tabelle |
+| NEU | `src/pages/admin/compliance/deletion/DeletionCaseDetail.tsx` | Case-Detailansicht (5 Bloecke) |
+| NEU | `src/pages/admin/compliance/deletion/DeletionIntakeForm.tsx` | Erfassungsformular |
+| NEU | `src/pages/admin/compliance/deletion/DeletionResponseGenerator.tsx` | Antwortvorlage-Generator (3 Typen) |
+| NEU | `src/pages/admin/compliance/deletion/deletionResponseTemplates.ts` | 3 Art. 17 Textvorlagen |
+| EDIT | `src/pages/admin/compliance/ComplianceDeletion.tsx` | Komplett ersetzen durch neue Subkomponenten |
+| EDIT | `src/pages/admin/compliance/useComplianceCases.ts` | Hook erweitern: neue Felder, Create-Mutation, Ledger |
+| EDIT | Ledger Event Whitelist (RPC) | 7 neue `legal.deletion.*` Events |
 
 ## Ergebnis
 
-Ein rechtlich sauberer DSAR-Workflow der sofort nutzbar ist: Anfrage erfassen, Identitaet pruefen, Antwort generieren, Case schliessen. Alles auditiert im Ledger. Automatischer Export kann als Phase 2 nachgeruestet werden wenn das Volumen steigt.
+Der Deletion Tab wird zum Spiegel des DSAR-Tabs: Gleiche Qualitaet, gleiche Patterns, gleiche UX. Manuelles Case-Management das rechtlich sauber ist. Automatische Loesch-Engine kann als Phase 2 nachgeruestet werden wenn das Volumen es rechtfertigt.
