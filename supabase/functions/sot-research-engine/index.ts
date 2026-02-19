@@ -104,10 +104,10 @@ async function searchApify(
 
   // Use the Google Maps Scraper actor (compass/crawler-google-places)
   // timeout=45s to avoid edge function timeout
-  const runUrl = `https://api.apify.com/v2/acts/compass~crawler-google-places/run-sync-get-dataset-items?token=${apiToken}&timeout=45`;
+  const runUrl = `https://api.apify.com/v2/acts/compass~crawler-google-places/run-sync-get-dataset-items?token=${apiToken}&timeout=25`;
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 50000);
+  const timeoutId = setTimeout(() => controller.abort(), 30000);
 
   try {
     const resp = await fetch(runUrl, {
@@ -262,7 +262,7 @@ async function scrapeEmailsFirecrawl(
   apiKey: string
 ): Promise<Map<string, string>> {
   const emailMap = new Map<string, string>();
-  const urlsToScrape = websites.filter(Boolean).slice(0, 10);
+  const urlsToScrape = websites.filter(Boolean).slice(0, 5);
 
   const scrapePromises = urlsToScrape.map(async (url) => {
     try {
@@ -276,7 +276,7 @@ async function scrapeEmailsFirecrawl(
           url,
           formats: ["markdown"],
           onlyMainContent: false,
-          waitFor: 2000,
+          waitFor: 1000,
         }),
       });
 
@@ -593,7 +593,7 @@ serve(async (req) => {
       `Phase 1 complete: ${allResults.length} results from ${providersUsed.join(", ")}`
     );
 
-    // ── Phase 2: Firecrawl email enrichment ────────────────────────
+    // ── Phase 2: Firecrawl email enrichment (with 15s hard limit) ─
     if (
       !isPortalSearch &&
       activeProviders.includes("firecrawl") &&
@@ -603,16 +603,26 @@ serve(async (req) => {
       const websitesToScrape = allResults
         .filter((r) => r.website && !r.email)
         .map((r) => r.website!)
-        .slice(0, 10);
+        .slice(0, 5);
 
       if (websitesToScrape.length > 0) {
         console.log(
-          `Phase 2: Scraping ${websitesToScrape.length} websites for emails`
+          `Phase 2: Scraping ${websitesToScrape.length} websites for emails (15s limit)`
         );
-        const emailMap = await scrapeEmailsFirecrawl(
+
+        // Wrap Phase 2 in a 15s timeout — better partial results than no response
+        const phase2Promise = scrapeEmailsFirecrawl(
           websitesToScrape,
           FIRECRAWL_API_KEY
         );
+        const timeoutPromise = new Promise<Map<string, string>>((resolve) =>
+          setTimeout(() => {
+            console.warn("Phase 2 hit 15s timeout — returning partial results");
+            resolve(new Map());
+          }, 15000)
+        );
+
+        const emailMap = await Promise.race([phase2Promise, timeoutPromise]);
 
         for (const result of allResults) {
           if (!result.email && result.website && emailMap.has(result.website)) {
@@ -628,11 +638,11 @@ serve(async (req) => {
       }
     }
 
-    // ── Phase 3: AI merge & score ──────────────────────────────────
+    // ── Phase 3: AI merge & score (skip for < 8 results) ──────────
     let finalResults: ContactResult[];
 
-    if (LOVABLE_API_KEY && allResults.length > 0) {
-      console.log("Phase 3: AI merge and scoring");
+    if (LOVABLE_API_KEY && allResults.length >= 8) {
+      console.log(`Phase 3: AI merge and scoring (${allResults.length} results)`);
       finalResults = await aiMergeAndScore(
         allResults,
         intent,
@@ -640,6 +650,7 @@ serve(async (req) => {
         LOVABLE_API_KEY
       );
     } else {
+      console.log(`Phase 3 skipped (${allResults.length} results < 8) — using fallback dedup`);
       finalResults = deduplicateFallback(allResults, filters);
     }
 
