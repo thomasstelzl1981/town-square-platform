@@ -6362,42 +6362,78 @@ export type Database = {
       }
       dsar_requests: {
         Row: {
+          assigned_to: string | null
           closed_at: string | null
           created_at: string
           due_date: string | null
           id: string
+          identity_method: string | null
+          identity_notes: string | null
+          identity_status: string
+          internal_notes: string | null
           notes: string | null
+          request_channel: string
+          request_received_at: string | null
           request_type: string
           requester_email: string
           requester_name: string | null
+          response_channel: string | null
+          response_sent_at: string | null
+          response_status: string
+          scope_mode: string
+          scope_notes: string | null
           status: string
           tenant_id: string
           updated_at: string
           user_id: string | null
         }
         Insert: {
+          assigned_to?: string | null
           closed_at?: string | null
           created_at?: string
           due_date?: string | null
           id?: string
+          identity_method?: string | null
+          identity_notes?: string | null
+          identity_status?: string
+          internal_notes?: string | null
           notes?: string | null
+          request_channel?: string
+          request_received_at?: string | null
           request_type?: string
           requester_email: string
           requester_name?: string | null
+          response_channel?: string | null
+          response_sent_at?: string | null
+          response_status?: string
+          scope_mode?: string
+          scope_notes?: string | null
           status?: string
           tenant_id: string
           updated_at?: string
           user_id?: string | null
         }
         Update: {
+          assigned_to?: string | null
           closed_at?: string | null
           created_at?: string
           due_date?: string | null
           id?: string
+          identity_method?: string | null
+          identity_notes?: string | null
+          identity_status?: string
+          internal_notes?: string | null
           notes?: string | null
+          request_channel?: string
+          request_received_at?: string | null
           request_type?: string
           requester_email?: string
           requester_name?: string | null
+          response_channel?: string | null
+          response_sent_at?: string | null
+          response_status?: string
+          scope_mode?: string
+          scope_notes?: string | null
           status?: string
           tenant_id?: string
           updated_at?: string
