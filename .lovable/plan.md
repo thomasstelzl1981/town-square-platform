@@ -1,57 +1,60 @@
 
-# Fix: Max Mustermann wiederherstellen
 
-## Problem
+# Fix: Doppeltes Bankkonto in MOD-18 Konten
 
-Bei der letzten Bereinigungsmigration (`20260219154009`) wurde Max Mustermann (`b1f6d204-05ac-462f-9dae-8fba64ab9f88`) aus `household_persons` geloescht. Er ist die **Hauptperson** der Demo-Familie und muss in der DB existieren, da andere Datensaetze (Vorsorge, KV-Vertraege) auf seine `person_id` verweisen.
+## Befund
 
-Die clientseitige Demo-Definition in `data.ts` ist korrekt — Max steht dort als erster Eintrag in `DEMO_FAMILY`. Aber die DB hat den Record nicht mehr.
+Es gibt **zwei Quellen** fuer dasselbe Konto "Girokonto Sparkasse":
 
-## Loesung
+### Quelle 1: Client-seitige Demo (GRUEN)
+- Definiert in `src/constants/demoKontoData.ts` als `DEMO_KONTO` (id: `__demo_konto__`)
+- Wird in `KontenTab.tsx` (Zeile 329-357) als Demo-Widget mit gruenem Glow angezeigt wenn GP-KONTEN aktiv ist
+- IBAN: DE89370400440532013000 — **korrekt, das ist das offizielle Demo-Konto**
 
-### SQL-Migration: Max Mustermann re-inserieren
+### Quelle 2: DB-Record (ROT/ROSE)
+- ID: `00000000-0000-4000-a000-000000000300` in Tabelle `msv_bank_accounts`
+- Wurde irgendwann in die DB geschrieben (keine Migration mehr vorhanden — wahrscheinlich aus einer frueheren, geloeschten Seed-Migration)
+- Gleiche IBAN, gleicher Bankname, gleicher BIC
+- `owner_id`: `d0000000-0000-4000-a000-000000000010` (= Demo-Property aus MOD-04)
+- **Problem**: Die ID ist NICHT in `ALL_DEMO_IDS` registriert, daher wird sie vom `isDemoId()`-Filter nicht erkannt
+- Der `KontenTab` filtert DB-Records auch gar nicht nach Demo-IDs — er zeigt einfach ALLE Konten des Tenants
 
-Ein einzelnes INSERT in `household_persons` mit allen Feldern aus der Demo-Spezifikation:
+### Verbindung zu Modul 4 und CSV
+- Das DB-Konto (`...000300`) ist ueber `owner_id` mit der Demo-Property `d0000000-...-000000000010` verknuepft (MOD-04 Vermietereinheit)
+- Die CSV-Datei `public/demo-data/demo_bank_accounts.csv` enthaelt dieselben Daten (IBAN, Bank, Kontoinhaber) — sie ist die Quelle fuer die clientseitige Demo-Darstellung, NICHT fuer den DB-Record
+- **Das DB-Konto ist das Duplikat und kann sicher geloescht werden**
 
-```text
-INSERT INTO household_persons (
-  id, tenant_id, user_id, role, salutation,
-  first_name, last_name, birth_date, email, phone,
-  employment_status, employer_name, marital_status,
-  sort_order, is_primary
-) VALUES (
-  'b1f6d204-05ac-462f-9dae-8fba64ab9f88',
-  'a0000000-0000-4000-a000-000000000001',
-  'd028bc99-6e29-4fa4-b038-d03015faf222',
-  'hauptperson', 'Herr', 'Max', 'Mustermann', '1982-03-15',
-  'max@mustermann-demo.de', '+49 170 1234567',
-  'selbstaendig', 'IT-Beratung Mustermann', 'verheiratet',
-  0, true
-)
-ON CONFLICT (id) DO NOTHING;
-```
+## Fix-Plan
 
-Zusaetzlich: Adresse (Strasse, PLZ, Stadt) setzen, passend zum Profil:
+### Schritt 1: DB-Record loeschen (Migration)
+Das verwaiste DB-Konto `00000000-0000-4000-a000-000000000300` per SQL-Migration loeschen. Es ist ein Phantom aus einer alten Seed-Migration.
 
 ```text
-UPDATE household_persons SET
-  street = 'Leopoldstraße 42',
-  zip = '80802',
-  city = 'München'
-WHERE id = 'b1f6d204-05ac-462f-9dae-8fba64ab9f88';
+DELETE FROM msv_bank_accounts 
+WHERE id = '00000000-0000-4000-a000-000000000300';
 ```
 
-### Keine Code-Aenderungen noetig
+### Schritt 2: Demo-ID registrieren (Absicherung)
+Die ID `00000000-0000-4000-a000-000000000300` in `ALL_DEMO_IDS` in `data.ts` aufnehmen, damit falls sie jemals wieder auftaucht (z.B. durch eine zukuenftige Migration), der `isDemoId()`-Filter sie erkennt.
 
-- `data.ts`: Max ist dort korrekt definiert
-- `ALL_DEMO_IDS`: Enthaelt `DEMO_PRIMARY_PERSON_ID` bereits
-- `isDemoId()`: Erkennt die ID korrekt
+### Schritt 3: KontenTab Demo-Filter ergaenzen
+In `KontenTab.tsx` die DB-Ergebnisse durch `filterOutDemoIds()` filtern, damit DB-Records mit Demo-IDs bei ausgeschaltetem Toggle nicht angezeigt werden. Das ist eine Sicherheitsebene die in anderen Modulen bereits existiert.
 
-## Geaenderte Dateien
-
-1. **Neue SQL-Migration** — Max Mustermann re-insert mit vollstaendigen Demo-Daten
+```text
+// Zeile nach bankAccounts-Query:
+const filteredAccounts = showDemo 
+  ? bankAccounts 
+  : filterOutDemoIds(bankAccounts);
+```
 
 ## Ergebnis
 
-- Demo AN: Max, Lisa, Felix, Emma sichtbar (4 Personen wie in der Spezifikation)
-- Demo AUS: 0 Personen (alle 4 IDs sind in `ALL_DEMO_IDS`)
+- Demo AN: 1x gruenes Demo-Widget "Girokonto Sparkasse" (clientseitig)
+- Demo AUS: 0 Konten (leerer Zustand)
+- Kein Duplikat mehr sichtbar
+
+## Geaenderte/Neue Dateien
+
+1. **Neue SQL-Migration** — DB-Record `...000300` loeschen
+2. **`src/engines/demoData/data.ts`** — ID in ALL_DEMO_IDS aufnehmen
+3. **`src/pages/portal/finanzanalyse/KontenTab.tsx`** — Demo-Filter fuer DB-Records
