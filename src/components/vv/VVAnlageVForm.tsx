@@ -5,6 +5,8 @@
  */
 import { useState, useEffect } from 'react';
 import { TabularFormWrapper, TabularFormRow, TabularFormSection } from '@/components/shared/TabularFormRow';
+import { useQuery } from '@tanstack/react-query';
+import { useAuth } from '@/contexts/AuthContext';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
@@ -35,12 +37,50 @@ function fmt(n: number): string {
 }
 
 export function VVAnlageVForm({ taxData, contextTaxNumber, onSave, isSaving }: VVAnlageVFormProps) {
+  const { activeTenantId } = useAuth();
   const [form, setForm] = useState<VVAnnualManualData>(taxData.manualData);
   const [taxRef, setTaxRef] = useState(taxData.taxReferenceNumber);
   const [ownershipPct, setOwnershipPct] = useState(taxData.ownershipSharePercent);
   const [plausibility, setPlausibility] = useState<PlausibilityResult | null>(null);
   const [isChecking, setIsChecking] = useState(false);
   const [showPlausibility, setShowPlausibility] = useState(true);
+
+  // Ist-Miete: actual rent payments for this property in the tax year
+  const { data: actualRentTotal } = useQuery({
+    queryKey: ['ist-miete', taxData.propertyId, activeTenantId],
+    queryFn: async () => {
+      if (!activeTenantId) return null;
+      // Get units for this property
+      const { data: units } = await supabase
+        .from('units')
+        .select('id')
+        .eq('property_id', taxData.propertyId)
+        .eq('tenant_id', activeTenantId);
+      if (!units?.length) return null;
+
+      const unitIds = units.map(u => u.id);
+      // Get leases for those units
+      const { data: leases } = await supabase
+        .from('leases')
+        .select('id')
+        .eq('tenant_id', activeTenantId)
+        .in('unit_id', unitIds);
+      if (!leases?.length) return null;
+
+      const leaseIds = leases.map(l => l.id);
+      // Get actual payments for the tax year
+      const { data: payments } = await supabase
+        .from('rent_payments')
+        .select('amount')
+        .in('lease_id', leaseIds)
+        .gte('due_date', `${taxData.manualData.taxYear}-01-01`)
+        .lte('due_date', `${taxData.manualData.taxYear}-12-31`)
+        .in('status', ['paid', 'partial']);
+      if (!payments?.length) return 0;
+      return payments.reduce((s, p) => s + (p.amount || 0), 0);
+    },
+    enabled: !!activeTenantId && !!taxData.propertyId,
+  });
 
   useEffect(() => {
     setForm(taxData.manualData);
@@ -222,6 +262,36 @@ export function VVAnlageVForm({ taxData, contextTaxNumber, onSave, isSaving }: V
           <span className="text-sm font-bold text-right w-32 inline-block">{fmt(result.totalIncome)} €</span>
         </TabularFormRow>
       </TabularFormWrapper>
+
+      {/* Ist/Soll-Vergleich Warnung */}
+      {actualRentTotal !== null && actualRentTotal !== undefined && (() => {
+        const sollMiete = taxData.incomeAggregated.coldRentAnnual + taxData.incomeAggregated.nkAdvanceAnnual;
+        const abweichung = sollMiete - actualRentTotal;
+        if (sollMiete > 0 && Math.abs(abweichung) > 50) {
+          return (
+            <div className={cn(
+              "flex items-start gap-2 p-3 rounded-lg border text-sm",
+              abweichung > 0
+                ? "bg-destructive/5 border-destructive/20 text-destructive"
+                : "bg-primary/5 border-primary/20 text-primary"
+            )}>
+              <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+              <div>
+                <p className="font-medium">
+                  {abweichung > 0 ? 'Mietrückstand erkannt' : 'Überzahlung erkannt'}
+                </p>
+                <p className="text-xs mt-0.5 opacity-80">
+                  Soll-Miete (Vertrag): {fmt(sollMiete)} € — Ist-Eingang (Zahlungen): {fmt(actualRentTotal)} € — Differenz: {fmt(Math.abs(abweichung))} €
+                </p>
+                <p className="text-xs mt-1 opacity-60">
+                  Steuerlich wird die Soll-Miete lt. Vertrag angesetzt (§ 21 EStG). Die Ist-Zahlungen dienen nur der Kontrolle.
+                </p>
+              </div>
+            </div>
+          );
+        }
+        return null;
+      })()}
 
       {/* Sektion 3: Werbungskosten */}
       <TabularFormWrapper>
