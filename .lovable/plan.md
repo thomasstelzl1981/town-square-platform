@@ -1,141 +1,183 @@
 
-# Akten-Entwicklung -- Strukturierter 3-Phasen-Plan
 
-## Analyse: "Grundstuecksakte"
+# Document Parser Engine -- Manifest-gesteuertes Parsing-System
 
-Die Immobilienakte (AKTE-01) enthaelt bereits alle Grundstuecksdaten:
-- Fluerstuecksnummer (`parcelNumber`)
-- Grundbuch: Amtsgericht, Blatt, Band (`landRegisterCourt`, `landRegisterSheet`, `landRegisterVolume`)
-- Teilungserklaerung (`teNumber`)
-- Kaufpreis, Kaufdatum, Erwerbsnebenkosten
+## Analyse: Finanzierung vs. Immobilie
 
-Eine separate Grundstuecksakte ist daher **nicht erforderlich**. Der Eintrag wird aus dem Backlog entfernt.
+Die Finanzierungsakte (AKTE-10) ist bereits von der Immobilienakte (AKTE-01) getrennt:
+- **Immobilienakte** = MOD-04, DB: `units/properties` -- Objektdaten, Mieter, NK
+- **Finanzierungsakte** = MOD-11, DB: `finance_requests/finance_mandates/applicant_profiles` -- Darlehen, Konditionen, Selbstauskunft
 
----
-
-## Bestandsaufnahme: 9 Akten-Typen
-
-| Nr | Akte | Modul | DB-Tabelle | Dossier-View | DMS | Parser | Status |
-|----|------|-------|------------|-------------|-----|--------|--------|
-| 01 | Immobilienakte | MOD_04 | units/properties | Ja (10 Bloecke) | Vollstaendig | Live | Fertig |
-| 02 | PV-Akte | MOD_19 | pv_plants | Ja (7 Bloecke) | DMS ja, Sortierung fehlt | Fehlt | Phase 1 |
-| 03 | Personenakte | MOD_01 | household_persons | Nein (RecordCard) | DMS ja, Sortierung fehlt | Fehlt | Phase 1 |
-| 04 | Versicherungsakte | MOD_11 | insurance_contracts | Nein | Fehlt komplett | Fehlt | Phase 1 |
-| 05 | Fahrzeugakte | MOD_17 | cars_vehicles | Inline (9 Bloecke) | DMS ja, Sortierung fehlt | Fehlt | Phase 1 |
-| 06 | Vorsorgeakte | MOD_11 | vorsorge_contracts | Nein | Fehlt komplett | Fehlt | Phase 1 |
-| 07 | Abonnement-Akte | MOD_11 | user_subscriptions | Nein | N/A (Bankdaten) | N/A | Fertig |
-| 08 | Bankkonto-Akte | MOD_11 | bank_account_meta | Nein | N/A (FinAPI) | N/A | Fertig |
-| 09 | Haustierakte | MOD_05 | pets | Inline | DMS ja, Sortierung fehlt | Fehlt | Phase 1 |
+Die Trennung ist korrekt. Der Parser muss jedoch eigenstaendige Modi fuer beide haben, damit z.B. ein Kreditvertrag nicht faelschlich als Immobilien-Dokument klassifiziert wird.
 
 ---
 
-## Phase 1: Akten definieren und Datenpunkte festlegen
+## Problem: Aktueller Zustand
 
-Fuer jede Akte wird eine vollstaendige **Mastervorlage** erstellt (analog zu den bereits existierenden `MasterTemplatesFahrzeugakte.tsx` und `MasterTemplatesPhotovoltaikakte.tsx`).
+Der `sot-document-parser` arbeitet derzeit mit:
+- 4 generische `parseMode`-Strings (`properties`, `contacts`, `financing`, `general`)
+- Freitext-Prompts ohne formale Felddefinitionen
+- Keine Verbindung zu den Akten-Mastervorlagen
+- Keine automatische DMS-Ablage nach Parsing
+- Keine Validierung der extrahierten Felder gegen ein Schema
 
-### 1.1 Versicherungsakte (AKTE-04) -- Neue Mastervorlage
-
-Datenpunkte (aus `insurance_contracts`):
-
-| Block | Titel | Felder |
-|-------|-------|--------|
-| A | Identitaet | ID, Kategorie (Hausrat/Haftpflicht/KFZ/Wohngebaeude/Rechtsschutz/Unfall/...), Status |
-| B | Vertragsdaten | Versicherer, Policen-Nr., Versicherungsnehmer, Vertragsbeginn, Vertragsende, Kuendigungsfrist |
-| C | Praemie/Kosten | Praemie, Zahlungsintervall (monatlich/vierteljaehrlich/jaehrlich), Selbstbeteiligung |
-| D | Deckung | Versicherungssumme, Deckungsumfang (JSONB-Details je Kategorie) |
-| E | Schaden/Claims | Schadensmeldungen, Schadensnummer, Status, Regulierungsbetrag |
-| F | Zuordnung | Verknuepfte Immobilie, Verknuepftes Fahrzeug, Verknuepfte Person |
-| G | Dokumente | DMS-Ordner: 01_Police, 02_Nachtraege, 03_Schaeden, 04_Korrespondenz, 05_Sonstiges |
-
-### 1.2 Vorsorgeakte (AKTE-06) -- Neue Mastervorlage
-
-| Block | Titel | Felder |
-|-------|-------|--------|
-| A | Identitaet | ID, Vertragstyp (Riester/Ruerup/bAV/Privat/Kapital-LV), Status |
-| B | Vertragsdaten | Anbieter, Vertragsnummer, Vertragsbeginn, Vertragsende |
-| C | Beitraege | Beitrag, Zahlungsintervall, Dynamik (%), BU-Zusatzbeitrag |
-| D | Leistungen | Aktueller Vertragswert, Stichtag, Prognostizierter Endwert, Monatliche Rente, Versicherte Summe |
-| E | Zuordnung | Person (FK household_persons), Bezugsberechtigter |
-| F | Dokumente | DMS-Ordner: 01_Vertrag, 02_Standmitteilungen, 03_Renteninformation, 04_Korrespondenz |
-
-### 1.3 Personenakte (AKTE-03) -- Bestehende Daten dokumentieren
-
-| Block | Titel | Felder |
-|-------|-------|--------|
-| A | Stammdaten | Anrede, Vorname, Nachname, Geburtsdatum, Avatar |
-| B | Kontakt | E-Mail, Telefon mobil, Telefon Festnetz |
-| C | Adresse | Strasse, Hausnummer, PLZ, Ort |
-| D | Beschaeftigung | Status, Arbeitgeber, Brutto-/Nettoeinkommen, Steuerklasse |
-| E | Beamten-Felder | Besoldungsgruppe, Erfahrungsstufe, Dienstherr, Verbeamtungsdatum, Dienstjahre |
-| F | Vorsorge-Referenz | Geplantes Renteneintrittsdatum, Kindergeld-Freibetrag |
-| G | Familienstand | Familienstand, Rolle im Haushalt |
-| H | Dokumente | DMS-Ordner (bereits implementiert): 01_Personalausweis bis 08_Sonstiges |
-
-### 1.4 Haustierakte (AKTE-09) -- Bestehende Daten dokumentieren
-
-| Block | Titel | Felder |
-|-------|-------|--------|
-| A | Stammdaten | Name, Tierart, Rasse, Geschlecht, Geburtsdatum, Gewicht |
-| B | Identifikation | Chipnummer, Foto |
-| C | Gesundheit | Allergien, Kastriert, Tierarzt-Name |
-| D | Versicherung | Versicherungsanbieter, Policennummer |
-| E | Dokumente | DMS-Ordner: 01_Impfpass, 02_Tierarzt, 03_Versicherung, 04_Sonstiges |
+Das ist fragil und wird bei Erweiterung auf 10+ Aktentypen unwartbar.
 
 ---
 
-## Phase 2: RecordCard-Manifest und DMS-Integration
+## Loesung: Parser Engine Manifest (`parserManifest.ts`)
 
-### 2.1 DMS-Auto-Ordner nachrüsten
+Eine zentrale Konfigurationsdatei, die pro Aktentyp exakt definiert:
+1. Welche Felder extrahiert werden (mit DB-Mapping)
+2. In welchen DMS-Ordner die Datei abgelegt wird
+3. Welcher AI-Prompt verwendet wird
+4. Wie das Ergebnis validiert wird
 
-Fuer **Versicherung** und **Vorsorge** fehlt die DMS-Integration komplett. Es werden dedizierte `useInsuranceDMS` und `useVorsorgeDMS` Hooks erstellt (analog zu `usePersonDMS` und `usePvDMS`):
+### Architektur-Uebersicht
 
-- `useInsuranceDMS`: Erstellt Root-Ordner + 5 Unterordner bei Neuanlage
-- `useVorsorgeDMS`: Erstellt Root-Ordner + 4 Unterordner bei Neuanlage
-
-### 2.2 RecordCard-Manifest aktualisieren
-
-Das `recordCardManifest.ts` wird um DMS-Ordner-Definitionen erweitert, sodass jeder Akten-Typ seine eigene Ordnerstruktur kennt.
-
-### 2.3 Inbox-Sortierregeln
-
-Bei Anlage einer neuen Akte werden automatisch `inbox_sort_containers` + keyword-basierte `inbox_sort_rules` erstellt (Versicherer-Name, Policennr, Kennzeichen, etc.).
+```text
++---------------------------+
+|   parserManifest.ts       |  <-- SSOT: Feld-Definitionen pro Aktentyp
+|   (src/config/)           |
++-------------+-------------+
+              |
+              v
++---------------------------+
+|   sot-document-parser     |  <-- Edge Function: Liest Manifest-Daten
+|   (supabase/functions/)   |      als Prompt-Instruktionen
++-------------+-------------+
+              |
+              v
++---------------------------+
+|   useDocumentIntake.ts    |  <-- Client-Hook: Orchestriert Upload ->
+|   (src/hooks/)            |      Parse -> DMS-Ablage -> DB-Write
++---------------------------+
+```
 
 ---
 
-## Phase 3: Parser-Modi (nachgelagerter Schritt)
+## Phase 3.1: Parser Manifest erstellen
 
-Erst wenn die Akten-Struktur steht, werden die Parser-Modi im `sot-document-parser` erweitert:
+### Neue Datei: `src/config/parserManifest.ts`
 
-1. **versicherung** -- Erkennung von Policen-PDFs
-2. **fahrzeugschein** -- Zulassungsbescheinigung Teil I/II
-3. **pv_anlage** -- MaStR-Auszuege und Anlagen-Datenblaetter
-4. **vorsorge** -- Standmitteilungen und Renteninformationen
-5. **tierarzt** -- Tierarzt-Rechnungen und Impfpaesse
+Definiert pro Aktentyp ein `ParserProfile`:
+
+| Feld | Typ | Beschreibung |
+|------|-----|-------------|
+| `parseMode` | string | Eindeutiger Modus-Schluessel (z.B. `immobilie`, `versicherung`) |
+| `entityType` | string | Verknuepfung zu `recordCardManifest` |
+| `label` | string | Anzeigename |
+| `targetTable` | string | Ziel-DB-Tabelle fuer Import |
+| `targetDmsFolder` | string | Standard-DMS-Ordner fuer Ablage (z.B. `01_Police`) |
+| `fields` | Array | Felder mit `key`, `label`, `type`, `required`, `dbColumn` |
+| `promptTemplate` | string | Strukturierter AI-Prompt mit exakten Feldnamen |
+| `validationRules` | Array | Min/Max, Regex, Pflichtfelder |
+| `exampleDocuments` | Array | Dokumenttypen, die dieser Modus erkennt |
+
+### Definierte Parser-Modi (10 Stueck):
+
+| Nr | parseMode | Aktentyp | Ziel-Tabelle | Primaere Felder |
+|----|-----------|----------|-------------|----------------|
+| 1 | `immobilie` | Immobilienakte | `units` | Adresse, Kaufpreis, Wohnflaeche, Baujahr, Mieteinnahmen |
+| 2 | `finanzierung` | Finanzierungsakte | `finance_requests` | Bank, Darlehensbetrag, Zinssatz, Tilgung, Laufzeit |
+| 3 | `versicherung` | Versicherungsakte | `insurance_contracts` | Versicherer, Policennr, Kategorie, Praemie, SB |
+| 4 | `fahrzeugschein` | Fahrzeugakte | `cars_vehicles` | Kennzeichen, FIN, HSN/TSN, Erstzulassung, Halter |
+| 5 | `pv_anlage` | PV-Akte | `pv_plants` | kWp, MaStR-Nr, Inbetriebnahme, Einspeiseverguetung |
+| 6 | `vorsorge` | Vorsorgeakte | `vorsorge_contracts` | Anbieter, Vertragsnr, Vertragswert, Rente, Typ |
+| 7 | `person` | Personenakte | `household_persons` | Name, Geburtsdatum, Adresse, Arbeitgeber, Einkommen |
+| 8 | `haustier` | Haustierakte | `pets` | Name, Tierart, Rasse, Chipnummer, Tierarzt |
+| 9 | `kontakt` | Kontakte (allg.) | `contacts` | Name, E-Mail, Telefon, Firma, Rolle |
+| 10 | `allgemein` | Auto-Erkennung | -- | KI erkennt Dokumenttyp und waehlt Modus automatisch |
 
 ---
 
-## Technische Umsetzung (Phase 1)
+## Phase 3.2: Edge Function refactoring
+
+### Aenderungen an `sot-document-parser/index.ts`:
+
+1. **parseMode erweitern**: Die 4 alten Modi (`properties`, `contacts`, `financing`, `general`) werden als Aliase beibehalten fuer Abwaertskompatibilitaet, intern aber auf die neuen Modi gemappt
+2. **Strukturierte Prompts**: Statt Freitext-Instruktionen generiert die Edge Function den Prompt aus dem Manifest -- jedes Feld wird mit exaktem Key, Typ und Validierung spezifiziert
+3. **Response-Validierung**: Nach dem AI-Call wird das Ergebnis gegen das Manifest validiert (fehlende Pflichtfelder -> Warning, falsche Typen -> Auto-Korrektur)
+4. **Neues Response-Format**: Das `data`-Objekt enthaelt statt generischer Arrays (`properties[]`, `contacts[]`) nun ein typisiertes `records`-Array mit `parseMode`-Referenz
+
+```text
+Aktuell:
+  { data: { properties: [...], contacts: [...] } }
+
+Neu:
+  { data: { 
+      parseMode: "versicherung",
+      records: [{ provider_name: "HUK", policy_number: "V-123", ... }],
+      targetTable: "insurance_contracts",
+      targetDmsFolder: "01_Police"
+    } 
+  }
+```
+
+---
+
+## Phase 3.3: Client-seitiger Orchestrator-Hook
+
+### Neue Datei: `src/hooks/useDocumentIntake.ts`
+
+Dieser Hook ersetzt die bisherigen fragmentierten Upload-Logiken und orchestriert den gesamten Prozess:
+
+```text
+1. Upload     -> Datei in Storage hochladen
+2. Parse      -> sot-document-parser mit parseMode aufrufen
+3. Preview    -> Extrahierte Daten dem Nutzer zur Pruefung zeigen
+4. DMS-Ablage -> Datei in den korrekten Akten-Ordner verschieben
+5. DB-Write   -> Extrahierte Daten in die Ziel-Tabelle schreiben
+6. Feedback   -> Erfolg/Fehler-Meldung
+```
+
+Der Hook erhaelt den `parseMode` aus dem Kontext (welches Modul ist aktiv) und nutzt das Manifest, um:
+- Den richtigen DMS-Ordner zu bestimmen
+- Die richtigen DB-Felder zu mappen
+- Die Preview-UI mit den korrekten Labels zu fuellen
+
+---
+
+## Phase 3.4: Abwaertskompatibilitaet
+
+Die bestehenden Aufrufe bleiben funktionsfaehig:
+
+| Alter Modus | Neuer Modus | Mapping |
+|-------------|-------------|---------|
+| `properties` | `immobilie` | Alias |
+| `contacts` | `kontakt` | Alias |
+| `financing` | `finanzierung` | Alias |
+| `general` | `allgemein` | Alias |
+
+Armstrong (`useArmstrongDocUpload`) und die Finanzierungs-Uploads (`DocumentUploadSection`, `FinanceUploadZone`) werden schrittweise auf die neuen Modi umgestellt.
+
+---
+
+## Dateien-Uebersicht
 
 ### Neue Dateien
-- `src/pages/admin/MasterTemplatesVersicherungsakte.tsx` -- Versicherungsakte Mastervorlage (analog Fahrzeugakte-Pattern)
-- `src/pages/admin/MasterTemplatesVorsorgeakte.tsx` -- Vorsorgeakte Mastervorlage
-- `src/pages/admin/MasterTemplatesPersonenakte.tsx` -- Personenakte Mastervorlage
-- `src/pages/admin/MasterTemplatesHaustierakte.tsx` -- Haustierakte Mastervorlage
+- `src/config/parserManifest.ts` -- SSOT fuer alle Parser-Modi, Felder, Prompts, Validierung
+- `src/hooks/useDocumentIntake.ts` -- Orchestrator-Hook (Upload -> Parse -> DMS -> DB)
+- `src/types/parser-engine.ts` -- TypeScript-Typen fuer das neue Parser-System
 
 ### Geaenderte Dateien
-- `src/pages/admin/MasterTemplates.tsx` -- 4 neue Karten fuer die neuen Mastervorlagen
-- `src/router/ManifestRouter.tsx` -- 4 neue Routen registrieren
-- `src/manifests/routesManifest.ts` -- 4 neue Route-Eintraege
-- `spec/current/07_akten/akten_backlog.json` -- "Grundstuecksakte" entfernen, Status aktualisieren
+- `supabase/functions/sot-document-parser/index.ts` -- Neue Modi, strukturierte Prompts, Response-Validierung
+- `src/types/document-schemas.ts` -- Erweiterte ParseMode-Union, neues Record-Format
+- `src/hooks/useArmstrongDocUpload.ts` -- Migration auf neuen Orchestrator
+- `src/hooks/useUniversalUpload.ts` -- ParseMode-Union erweitern
+- `spec/current/07_akten/akten_backlog.json` -- BL-03 bis BL-06 als "in_progress" markieren
 
-### Bestehende Dateien (unveraendert in Phase 1)
-- `MasterTemplatesFahrzeugakte.tsx` -- bereits vollstaendig (9 Bloecke, 47 Felder)
-- `MasterTemplatesPhotovoltaikakte.tsx` -- bereits vollstaendig (7 Bloecke, 44 Felder)
+### Unveraendert
+- `src/config/recordCardManifest.ts` -- Wird vom parserManifest referenziert, nicht geaendert
+- Bestehende MasterTemplate-Komponenten -- Dienen weiterhin als Referenz-Dokumentation
 
 ---
 
-## Zusammenfassung der Reihenfolge
+## Reihenfolge der Implementierung
 
-1. **Jetzt (Phase 1):** Mastervorlagen fuer alle 4 fehlenden Akten erstellen, Routing einrichten, Backlog bereinigen
-2. **Danach (Phase 2):** DMS-Hooks und Auto-Ordner fuer Versicherung + Vorsorge implementieren
-3. **Zuletzt (Phase 3):** Parser-Modi im `sot-document-parser` erweitern
+1. **Schritt 1**: `parserManifest.ts` + `parser-engine.ts` erstellen (Manifest + Typen)
+2. **Schritt 2**: `sot-document-parser` refactorn (10 Modi, strukturierte Prompts)
+3. **Schritt 3**: `useDocumentIntake.ts` Hook bauen (Orchestrator)
+4. **Schritt 4**: Bestehende Uploads migrieren (Armstrong, Finanzierung)
+5. **Schritt 5**: E2E-Test pro Aktentyp (BL-08)
+
