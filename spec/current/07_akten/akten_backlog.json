@@ -111,9 +111,11 @@
       "has_dossier_view": false,
       "dossier_component": null,
       "dms_integration": {
-        "entity_storage_tree": false,
-        "inbox_sort_container": false,
-        "auto_folder_creation": false
+        "entity_storage_tree": true,
+        "inbox_sort_container": true,
+        "auto_folder_creation": true,
+        "auto_folders": ["01_Police", "02_Nachtraege", "03_Schaeden", "04_Korrespondenz", "05_Sonstiges"],
+        "dms_hook": "useInsuranceDMS"
       },
       "data_points": [
         "Versicherungskategorie (Hausrat, Haftpflicht, KFZ, Wohngebäude, etc.)",
@@ -141,8 +143,10 @@
       "dossier_component": "src/components/portal/cars/CarsFahrzeuge.tsx (inline)",
       "dms_integration": {
         "entity_storage_tree": true,
-        "inbox_sort_container": false,
-        "auto_folder_creation": false
+        "inbox_sort_container": true,
+        "auto_folder_creation": true,
+        "auto_folders": ["01_Zulassung", "02_Versicherung", "03_Werkstatt_TUeV", "04_Kaufvertrag", "05_Sonstiges"],
+        "dms_hook": "useVehicleDMS"
       },
       "data_points": [
         "Kennzeichen",
@@ -172,9 +176,11 @@
       "record_card_manifest": true,
       "has_dossier_view": false,
       "dms_integration": {
-        "entity_storage_tree": false,
-        "inbox_sort_container": false,
-        "auto_folder_creation": false
+        "entity_storage_tree": true,
+        "inbox_sort_container": true,
+        "auto_folder_creation": true,
+        "auto_folders": ["01_Vertrag", "02_Standmitteilungen", "03_Renteninformation", "04_Korrespondenz"],
+        "dms_hook": "useVorsorgeDMS"
       },
       "data_points": [
         "Anbieter",
@@ -260,8 +266,10 @@
       "dossier_component": "src/pages/portal/pets/PetsMeineTiere.tsx (inline)",
       "dms_integration": {
         "entity_storage_tree": true,
-        "inbox_sort_container": false,
-        "auto_folder_creation": false
+        "inbox_sort_container": true,
+        "auto_folder_creation": true,
+        "auto_folders": ["01_Impfpass", "02_Tierarzt", "03_Versicherung", "04_Sonstiges"],
+        "dms_hook": "usePetDMS"
       },
       "data_points": [
         "Name",
@@ -328,16 +336,16 @@
       "task": "DMS-Integration für Versicherungsakte nachrüsten",
       "akten": ["AKTE-04"],
       "priority": "P1",
-      "status": "open",
-      "description": "EntityStorageTree + Auto-Ordner (01_Police, 02_Schäden, 03_Korrespondenz) bei Anlage einer Versicherung erstellen."
+      "status": "done",
+      "description": "EntityStorageTree + Auto-Ordner (01_Police, 02_Nachtraege, 03_Schaeden, 04_Korrespondenz, 05_Sonstiges). Hook: useInsuranceDMS."
     },
     {
       "id": "BL-02",
       "task": "DMS-Integration für Vorsorgeakte nachrüsten",
       "akten": ["AKTE-06"],
       "priority": "P1",
-      "status": "open",
-      "description": "EntityStorageTree + Auto-Ordner (01_Vertrag, 02_Standmitteilungen, 03_Korrespondenz) erstellen."
+      "status": "done",
+      "description": "EntityStorageTree + Auto-Ordner (01_Vertrag, 02_Standmitteilungen, 03_Renteninformation, 04_Korrespondenz). Hook: useVorsorgeDMS."
     },
     {
       "id": "BL-03",
@@ -374,10 +382,10 @@
     {
       "id": "BL-07",
       "task": "Inbox-Sortierregeln bei Akten-Anlage auto-generieren",
-      "akten": ["AKTE-02", "AKTE-03", "AKTE-05", "AKTE-09"],
+      "akten": ["AKTE-02", "AKTE-03", "AKTE-04", "AKTE-05", "AKTE-06", "AKTE-09"],
       "priority": "P2",
-      "status": "open",
-      "description": "Bei Anlage einer neuen Akte automatisch inbox_sort_container + keyword-basierte Regeln erstellen."
+      "status": "done",
+      "description": "useRecordCardDMS erstellt jetzt automatisch inbox_sort_containers + keyword-basierte Regeln + DMS-Unterordner aus recordCardManifest.dmsFolders."
     },
     {
       "id": "BL-08",
