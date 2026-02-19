@@ -1,0 +1,9 @@
+id;merchant;category;frequency;amount;status
+e0000000-0000-4000-a000-000000000401;Netflix;streaming_video;monatlich;17.99;active
+e0000000-0000-4000-a000-000000000402;Spotify Family;streaming_music;monatlich;16.99;active
+e0000000-0000-4000-a000-000000000403;Amazon Prime;ecommerce_membership;jaehrlich;89.90;active
+e0000000-0000-4000-a000-000000000404;Microsoft 365 Family;software_saas;jaehrlich;99.00;active
+e0000000-0000-4000-a000-000000000405;ZEIT Digital;news_media;monatlich;19.99;active
+e0000000-0000-4000-a000-000000000406;Telekom Magenta L;telecom_mobile;monatlich;49.95;active
+e0000000-0000-4000-a000-000000000407;Vodafone Kabel 1000;internet;monatlich;39.99;active
+e0000000-0000-4000-a000-000000000408;FitX Familie;fitness;monatlich;29.98;active

@@ -1,0 +1,7 @@
+id;person_id;provider;contract_no;contract_type;start_date;end_date;premium;payment_interval;category;current_balance;balance_date;monthly_benefit;bu_monthly_benefit;dynamics_percent;status
+e0000000-0000-4000-a000-000000000301;b1f6d204-05ac-462f-9dae-8fba64ab9f88;Alte Leipziger;AL-RUE-2019-001;Rürup (Basisrente);2019-01-01;;250.00;monatlich;vorsorge;21000;2025-12-31;;;;aktiv
+e0000000-0000-4000-a000-000000000302;e0000000-0000-4000-a000-000000000101;Allianz;AZ-BAV-2020-001;bAV (Entgeltumwandlung);2020-04-01;;200.00;monatlich;vorsorge;14400;2025-12-31;;;;aktiv
+e0000000-0000-4000-a000-000000000303;e0000000-0000-4000-a000-000000000101;DWS;DWS-FSP-2018-001;Fonds-Sparplan;2018-01-01;;162.17;monatlich;investment;15600;2025-12-31;;;;aktiv
+e0000000-0000-4000-a000-000000000304;b1f6d204-05ac-462f-9dae-8fba64ab9f88;Vanguard;VG-ETF-2021-001;Privater ETF-Sparplan;2021-06-01;;300.00;monatlich;investment;16200;2025-12-31;;;;aktiv
+e0000000-0000-4000-a000-000000000305;b1f6d204-05ac-462f-9dae-8fba64ab9f88;Alte Leipziger;AL-BU-2017-MM01;Berufsunfähigkeit;2017-07-01;2047-03-15;95.00;monatlich;vorsorge;;;3000;;3;aktiv
+e0000000-0000-4000-a000-000000000306;e0000000-0000-4000-a000-000000000101;Hallesche;HL-BU-2019-LM01;Berufsunfähigkeit;2019-10-01;2047-07-22;62.00;monatlich;vorsorge;;;1500;;3;aktiv

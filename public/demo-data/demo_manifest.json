@@ -1,5 +1,5 @@
 {
-  "version": "1.2.0",
+  "version": "2.0.0",
   "description": "Demo-Daten SSOT für den Musterkunden Max Mustermann",
   "persona": {
     "name": "Max Mustermann",
@@ -13,7 +13,21 @@
     "leases": { "file": "demo_leases.csv", "expectedCount": 3, "dbTable": "leases" },
     "loans": { "file": "demo_loans.csv", "expectedCount": 3, "dbTable": "loans" },
     "bank_accounts": { "file": "demo_bank_accounts.csv", "expectedCount": 1, "dbTable": "msv_bank_accounts" },
-    "bank_transactions": { "file": "demo_bank_transactions.csv", "expectedCount": 100, "dbTable": "bank_transactions" }
+    "bank_transactions": { "file": "demo_bank_transactions.csv", "expectedCount": 100, "dbTable": "bank_transactions" },
+    "household_persons": { "file": "demo_household_persons.csv", "expectedCount": 4, "dbTable": "household_persons" },
+    "vehicles": { "file": "demo_vehicles.csv", "expectedCount": 2, "dbTable": "cars_vehicles" },
+    "pv_plants": { "file": "demo_pv_plants.csv", "expectedCount": 1, "dbTable": "pv_plants" },
+    "insurance_contracts": { "file": null, "expectedCount": 7, "dbTable": "insurance_contracts", "seedMethod": "code" },
+    "kv_contracts": { "file": null, "expectedCount": 4, "dbTable": "kv_contracts", "seedMethod": "code" },
+    "vorsorge_contracts": { "file": "demo_vorsorge_contracts.csv", "expectedCount": 6, "dbTable": "vorsorge_contracts" },
+    "user_subscriptions": { "file": "demo_user_subscriptions.csv", "expectedCount": 8, "dbTable": "user_subscriptions" },
+    "private_loans": { "file": "demo_private_loans.csv", "expectedCount": 2, "dbTable": "private_loans" },
+    "miety_homes": { "file": "demo_miety_homes.csv", "expectedCount": 1, "dbTable": "miety_homes" },
+    "miety_contracts": { "file": "demo_miety_contracts.csv", "expectedCount": 4, "dbTable": "miety_contracts" },
+    "acq_mandates": { "file": null, "expectedCount": 1, "dbTable": "acq_mandates", "seedMethod": "code" },
+    "pet_customers": { "file": "demo_pet_customers.csv", "expectedCount": 3, "dbTable": "pet_customers" },
+    "pets": { "file": null, "expectedCount": 5, "dbTable": "pets", "seedMethod": "code" },
+    "pet_bookings": { "file": "demo_pet_bookings.csv", "expectedCount": 5, "dbTable": "pet_bookings" }
   },
   "seedBatchId": "demo-ssot",
   "idPrefix": "d0000000-0000-4000",

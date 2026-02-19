@@ -1,0 +1,4 @@
+id;provider_id;first_name;last_name;email;phone;address;city;postal_code;notes;source;origin_zone;z1_customer_id;status
+d0000000-0000-4000-a000-000000001001;d0000000-0000-4000-a000-000000000050;Sabine;Berger;sabine.berger@demo.de;+49 171 2223344;Lindenstraße 12;Berlin;10969;Stammkundin, Rocky hat Futtermittelallergie (kein Huhn);manual;Z2;;active
+d0000000-0000-4000-a000-000000001002;d0000000-0000-4000-a000-000000000050;Thomas;Richter;thomas.richter@demo.de;+49 172 5556677;Hauptstraße 88;Berlin;10827;Über Website-Anfrage gekommen, zwei Hunde;lead;Z3;d0000000-0000-4000-a000-000000001040;active
+d0000000-0000-4000-a000-000000001003;d0000000-0000-4000-a000-000000000050;Claudia;Stein;claudia.stein@demo.de;+49 176 8889900;Schönhauser Allee 45;Berlin;10435;Bucht für Freundin Sabine Berger (Rocky). Keine eigenen Hunde.;lead;Z3;d0000000-0000-4000-a000-000000001041;active
