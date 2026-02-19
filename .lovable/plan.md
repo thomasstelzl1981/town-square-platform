@@ -1,107 +1,65 @@
 
 
-# SOT Research Engine -- Alle Einsatzorte und Optimierung
+# Zuhause-Modul: Datenbereinigung und Routing-Fix
 
-## Wo die Engine ueberall eingesetzt wird
+## Analyse-Ergebnis
 
-Die `sot-research-engine` wird an **8 Stellen** im Projekt aufgerufen:
+Im Zuhause-Modul erscheinen **zwei Personen/Homes**, weil es zwei verschiedene Quellen gibt:
 
-| # | Datei | Intent | max_results | Modul |
-|---|-------|--------|-------------|-------|
-| 1 | `ProviderSearchPanel.tsx` (Sanierung) | find_contractors | 20 | sanierung |
-| 2 | `FMEinreichung.tsx` (Bankensuche) | find_companies | 20 | finanzierung |
-| 3 | `SourcingTab.tsx` (Akquise) | find_brokers | apolloForm.limit | akquise |
-| 4 | `SourcingTab.tsx` (Akquise) | search_portals | apifyForm.limit | akquise |
-| 5 | `AkquiseMandate.tsx` (Apollo) | find_brokers | apolloForm.limit | akquise |
-| 6 | `AkquiseMandate.tsx` (Portale) | search_portals | apifyForm.limit | akquise |
-| 7 | `AkquiseMandate.tsx` (Auto-Recherche) | find_brokers | 25 | akquise |
-| 8 | `useAdminResearch.ts` (Admin) | find_contacts | 25 | recherche |
-| 9 | `useSoatSearchEngine.ts` (SOAT) | find_contacts | (default 20) | soat_search |
-| 10 | `useAcqTools.ts` (Portal-Hook) | search_portals | 50 | akquise |
+### Home 1: "Villa Mustermann" (Muenchen) -- Auto-Create
+- ID: `da78ca31-...` (KEINE Demo-ID)
+- Erzeugt durch den **Auto-Create-Mechanismus** in `UebersichtTile.tsx` (Zeile 89-112): Wenn keine Homes existieren UND das Profil eine Stadt hat, wird automatisch ein Home aus den Profildaten angelegt
+- Adresse: Leopoldstrasse, 80802 Muenchen (aus dem Profil von Max Mustermann)
+- **Problem**: Diesem Home sind 3 Contracts mit **Demo-IDs** (`e0000000...601-603`) zugeordnet, die eigentlich zur alten Seed-Migration gehoeren
 
-## Aenderungen
+### Home 2: "Mein Zuhause" (Berlin) -- DB-Migration-Seed
+- ID: `e0000000-0000-4000-a000-000000000801` (Demo-ID)
+- Erzeugt durch Migration `20260217181859` als Demo-Datensatz
+- Adresse: Friedrichstrasse 42, 10117 Berlin
+- Hat 4 eigene Demo-Contracts (Strom, Gas, Wasser, Internet)
+- **Problem**: Diese Daten stammen aus `DEMO_MIETY_HOME` in `data.ts` -- eine fiktive Berliner Adresse, die NICHT zum Demo-Mandanten "Max Mustermann, Muenchen" passt
 
-### 1. Edge Function: Limits erhoehen und Timeouts anpassen
-**Datei: `supabase/functions/sot-research-engine/index.ts`**
+### Die 3 Probleme
 
-- **Apify `maxCrawledPlacesPerSearch`**: Von `Math.min(maxResults, 10)` auf `Math.min(maxResults, 25)` erhoehen (Zeile 119), damit bis zu 25 Google-Places-Ergebnisse moeglich sind
-- **Firecrawl URL-Limit**: Von `slice(0, 5)` auf `slice(0, 10)` erhoehen (Zeile 265 und 606), weil mehr Ergebnisse auch mehr Email-Anreicherung brauchen
-- **Firecrawl `waitFor`**: Bleibt bei 1000ms (OK)
-- **Phase 2 Timeout**: Von 15s auf **25s** erhoehen (Zeile 622), da mehr URLs gescrapt werden
-- **Apify Actor Timeout**: Von 25s auf **35s** erhoehen (Zeile 107), damit bei 25 Ergebnissen genug Zeit bleibt
-- **Apify Abort Timeout**: Von 30s auf **40s** (Zeile 110)
-- **Phase 3 AI Merge**: Schwelle von 8 auf **12** anpassen -- bei bis zu 25 Ergebnissen lohnt sich AI Merge erst bei mehr Daten
+1. **Falsche Demo-Daten**: Der Berliner Datensatz hat nichts mit dem Muenchner Demo-Mandanten zu tun. Die DEMO_MIETY_HOME Definition in `data.ts` verwendet Berlin statt Muenchen.
 
-### 2. useResearchEngine Hook: Timer und Fortschrittsanzeige
-**Datei: `src/hooks/useResearchEngine.ts`**
+2. **Verwaiste Contracts**: Die 3 Contracts (`e0000000...601-603`) mit Demo-IDs sind dem Auto-Create Home (Villa Mustermann) zugeordnet statt dem Demo-Home. Das entstand durch eine aeltere Migration die VOR dem Berlin-Seed lief.
 
-Neuen State hinzufuegen:
-- `elapsedSeconds: number` -- zaehlt jede Sekunde hoch waehrend `isSearching === true`
-- `estimatedDuration: number` -- geschaetzte Dauer basierend auf `max_results` (z.B. max_results <= 10: ~30s, <= 20: ~45s, <= 25: ~55s)
-- Ein `setInterval` das jede Sekunde `elapsedSeconds` hochzaehlt, gestoppt beim Ende der Suche
-- Beides im Return-Objekt exponieren
+3. **Demo-Toggle funktioniert nur halb**: Der Filter in Zeile 194 blendet das Berliner Home korrekt aus wenn GP-ZUHAUSE aus ist, aber die verwaisten Contracts am Muenchner Home haben Demo-IDs und werden trotzdem angezeigt.
 
-### 3. ProviderSearchPanel: Timer-UI und max_results erhoehen
-**Datei: `src/components/portal/immobilien/sanierung/tender/ProviderSearchPanel.tsx`**
+## Fix-Plan
 
-- `max_results` von 20 auf **25** erhoehen
-- Waehrend `isSearching`: Fortschrittsanzeige mit:
-  - Animiertem Progress-Balken (nutzt `elapsedSeconds / estimatedDuration * 100`)
-  - Text: "Suche laeuft... XX/~60s -- Bitte warten, Ergebnisse werden aus mehreren Quellen zusammengefuehrt"
-  - Phasen-Hinweise: 0-15s "Google Places durchsuchen...", 15-35s "Websites nach E-Mails scannen...", 35-55s "Ergebnisse zusammenfuehren..."
+### 1. DB-Bereinigung: Verwaiste Daten loeschen
+**SQL-Migration** die ausfuehrt:
+- Loesche das Berliner Demo-Home `e0000000-0000-4000-a000-000000000801` (CASCADE loescht automatisch die 4 zugehoerigen Contracts)
+- Loesche die 3 verwaisten Demo-Contracts (`e0000000...601-603`) die am Muenchner Home haengen
+- Ergebnis: Nur noch "Villa Mustermann" bleibt, OHNE Demo-Contracts
 
-### 4. FMEinreichung: Timer-UI und max_results erhoehen
-**Datei: `src/pages/portal/finanzierungsmanager/FMEinreichung.tsx`**
+### 2. Demo-Daten korrigieren: Berlin -> Muenchen
+**Datei: `src/engines/demoData/data.ts`**
+- `DEMO_MIETY_HOME` Adresse von "Friedrichstrasse, Berlin" auf "Leopoldstrasse, Muenchen" aendern (konsistent mit dem Profil des Demo-Mandanten)
+- Contract-Provider anpassen: "Berliner Wasserbetriebe" -> "SWM" (passend zu Muenchen)
 
-- `max_results` von 20 auf **25** erhoehen
-- Waehrend `aiLoading`: Gleiche Fortschrittsanzeige wie ProviderSearchPanel
-  - Progress-Balken mit Sekundenzaehler
-  - Text: "Bankensuche laeuft... XX/~60s"
+### 3. Auto-Create entschaerfen
+**Datei: `src/pages/portal/miety/tiles/UebersichtTile.tsx`**
+- Der Auto-Create erzeugt bei JEDEM neuen Tenant sofort ein Home wenn ein Profil mit Stadt existiert
+- Problem: Nach einem Sandbox-Reset oder bei mehreren Sessions kann das zu Duplikaten fuehren
+- Fix: Vor dem Auto-Create pruefen ob bereits ein Home mit gleicher Stadt+Adresse existiert (Deduplizierung)
 
-### 5. Gemeinsame Timer-Komponente erstellen
-**Neue Datei: `src/components/portal/shared/SearchProgressIndicator.tsx`**
-
-Wiederverwendbare Komponente fuer alle Einsatzorte:
-
-```text
-Aufbau:
-+--------------------------------------------------+
-| [=====>                    ]  12/~55s             |
-| Google Places durchsuchen...                      |
-| Bitte warten -- Ergebnisse werden aus mehreren    |
-| Quellen zusammengefuehrt.                         |
-+--------------------------------------------------+
-```
-
-Props:
-- `elapsedSeconds: number`
-- `estimatedDuration: number` (default 55)
-- `phases?: { upTo: number; label: string }[]` (optionale Phasen-Labels)
-
-Nutzt die bestehende `Progress`-Komponente aus `src/components/ui/progress.tsx`.
-
-### 6. Weitere Aufrufstellen anpassen
-- `useAdminResearch.ts`: max_results bleibt bei 25 (bereits OK)
-- `AkquiseMandate.tsx` Auto-Recherche: bleibt bei 25 (bereits OK)
-- `useSoatSearchEngine.ts`: kein max_results gesetzt -- default 20, erhoehen auf 25
-- `useAcqTools.ts`: max_results 50 fuer Portale -- bleibt (Portal-Suche ist anders)
+### 4. Demo-Migration entfernen
+- Die Migration `20260217181859` hat den Berliner Datensatz in die DB geschrieben
+- Die Daten werden per Schritt 1 bereinigt
+- Keine neue Seed-Migration noetig -- Demo-Miety-Daten werden clientseitig verwaltet (wie alle anderen Demo-Daten)
 
 ## Geaenderte/Neue Dateien
 
-1. `supabase/functions/sot-research-engine/index.ts` -- Limits und Timeouts erhoehen
-2. `src/hooks/useResearchEngine.ts` -- Timer-State (elapsedSeconds, estimatedDuration)
-3. `src/components/portal/shared/SearchProgressIndicator.tsx` -- NEUE Komponente
-4. `src/components/portal/immobilien/sanierung/tender/ProviderSearchPanel.tsx` -- max_results=25 + Timer-UI
-5. `src/pages/portal/finanzierungsmanager/FMEinreichung.tsx` -- max_results=25 + Timer-UI
-6. `src/hooks/useSoatSearchEngine.ts` -- max_results=25
+1. **SQL-Migration** (neue Migration) -- Berliner Home + verwaiste Contracts loeschen
+2. `src/engines/demoData/data.ts` -- DEMO_MIETY_HOME Adresse auf Muenchen korrigieren
+3. `src/pages/portal/miety/tiles/UebersichtTile.tsx` -- Auto-Create Deduplizierung
 
-## Erwartete Zeiten nach Anpassung
+## Auswirkungen
 
-```text
-Phase 1 (Places + Apify, 25 Ergebnisse): ~20-30s
-Phase 2 (Firecrawl, max 10 URLs, 25s limit): ~8-15s
-Phase 3 (AI Merge, ab 12 Ergebnisse):     ~5-8s
-────────────────────────────────────────────────────
-Gesamt:                                   ~35-50s (unter 60s)
-```
+- Nach der Migration existiert nur noch 1 Home (Villa Mustermann, Muenchen) ohne Demo-Vertraege
+- Der Demo-Toggle GP-ZUHAUSE zeigt clientseitige Demo-Daten korrekt an/aus
+- Kein Berliner Phantom-Datensatz mehr sichtbar
 
