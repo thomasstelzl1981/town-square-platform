@@ -9655,10 +9655,10 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "listing_act_tenant_listing_fk"
-            columns: ["tenant_id", "listing_id"]
+            columns: ["listing_id"]
             isOneToOne: false
             referencedRelation: "listings"
-            referencedColumns: ["tenant_id", "id"]
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "listing_activities_performed_by_fkey"
@@ -9740,10 +9740,10 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "listing_inq_tenant_listing_fk"
-            columns: ["tenant_id", "listing_id"]
+            columns: ["listing_id"]
             isOneToOne: false
             referencedRelation: "listings"
-            referencedColumns: ["tenant_id", "id"]
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "listing_inquiries_contact_id_fkey"
@@ -9829,10 +9829,10 @@ export type Database = {
           },
           {
             foreignKeyName: "listing_terms_tenant_listing_fk"
-            columns: ["tenant_id", "listing_id"]
-            isOneToOne: false
+            columns: ["listing_id"]
+            isOneToOne: true
             referencedRelation: "listings"
-            referencedColumns: ["tenant_id", "id"]
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -9882,10 +9882,10 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "listing_pub_tenant_listing_fk"
-            columns: ["tenant_id", "listing_id"]
+            columns: ["listing_id"]
             isOneToOne: false
             referencedRelation: "listings"
-            referencedColumns: ["tenant_id", "id"]
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "listing_publications_tenant_id_fkey"
@@ -10053,10 +10053,10 @@ export type Database = {
           },
           {
             foreignKeyName: "listings_tenant_property_fk"
-            columns: ["tenant_id", "property_id"]
+            columns: ["property_id"]
             isOneToOne: false
             referencedRelation: "properties"
-            referencedColumns: ["tenant_id", "id"]
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "listings_unit_id_fkey"
@@ -11420,10 +11420,10 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "me_tenant_property_fk"
-            columns: ["tenant_id", "property_id"]
+            columns: ["property_id"]
             isOneToOne: false
             referencedRelation: "properties"
-            referencedColumns: ["tenant_id", "id"]
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "msv_enrollments_tenant_id_fkey"
@@ -15315,10 +15315,10 @@ export type Database = {
           },
           {
             foreignKeyName: "rp_tenant_lease_fk"
-            columns: ["tenant_id", "lease_id"]
+            columns: ["lease_id"]
             isOneToOne: false
             referencedRelation: "leases"
-            referencedColumns: ["tenant_id", "id"]
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -15402,10 +15402,10 @@ export type Database = {
           },
           {
             foreignKeyName: "rr_tenant_lease_fk"
-            columns: ["tenant_id", "lease_id"]
+            columns: ["lease_id"]
             isOneToOne: false
             referencedRelation: "leases"
-            referencedColumns: ["tenant_id", "id"]
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -15494,10 +15494,10 @@ export type Database = {
           },
           {
             foreignKeyName: "rental_listings_tenant_property_fk"
-            columns: ["tenant_id", "property_id"]
+            columns: ["property_id"]
             isOneToOne: false
             referencedRelation: "properties"
-            referencedColumns: ["tenant_id", "id"]
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "rental_listings_unit_id_fkey"
@@ -16015,10 +16015,10 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "reserv_tenant_listing_fk"
-            columns: ["tenant_id", "listing_id"]
+            columns: ["listing_id"]
             isOneToOne: false
             referencedRelation: "listings"
-            referencedColumns: ["tenant_id", "id"]
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "reservations_buyer_contact_id_fkey"
@@ -16132,10 +16132,10 @@ export type Database = {
           },
           {
             foreignKeyName: "trans_tenant_listing_fk"
-            columns: ["tenant_id", "listing_id"]
+            columns: ["listing_id"]
             isOneToOne: false
             referencedRelation: "listings"
-            referencedColumns: ["tenant_id", "id"]
+            referencedColumns: ["id"]
           },
         ]
       }

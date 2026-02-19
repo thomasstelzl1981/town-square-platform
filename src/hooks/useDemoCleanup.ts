@@ -2,8 +2,9 @@
  * Demo Cleanup — Deletes all demo entities tracked in test_data_registry
  * 
  * Uses the registry as the single source of truth for which entities to remove.
- * Deletion order respects FK constraints.
- * For properties: also cleans up FK-child tables that don't cascade on delete.
+ * Deletion order respects FK constraints (RESTRICT on contacts).
+ * Most child tables are now ON DELETE CASCADE, so only the core entities
+ * need explicit deletion.
  * 
  * @demo-data
  */
@@ -12,24 +13,35 @@ import { supabase } from '@/integrations/supabase/client';
 
 /**
  * Entity types in deletion order (children first).
- * Tables with ON DELETE CASCADE are handled automatically by Postgres,
- * but tables without CASCADE must be listed explicitly here.
+ * 
+ * After the FK CASCADE migration (2026-02-19), the following cascades exist:
+ * - properties → listings, property_accounting, partner_pipelines, finance_packages,
+ *   msv_enrollments, rental_listings, dev_project_units, calendar_events,
+ *   nk_beleg_extractions, nk_tenant_settlements, units → leases → rent_payments, rent_reminders
+ * - listings → listing_publications, listing_activities, listing_inquiries,
+ *   listing_partner_terms, reservations, sale_transactions
+ * - contacts → SET NULL on all references (leads, etc.)
+ * - msv_bank_accounts → bank_account_meta (CASCADE), leases.linked_bank_account_id (SET NULL)
+ * 
+ * Only RESTRICT constraints remain on contacts (leases.tenant_contact_id, renter_invites.contact_id),
+ * so leases must be deleted before contacts.
  */
 const CLEANUP_ORDER = [
-  // Deepest children first
+  // bank_transactions has no FK to msv_bank_accounts (linked via text account_ref)
+  // but must be deleted explicitly since it's in the registry
   'bank_transactions',
-  'leases',
+  // loans reference properties via SET NULL, but are in the registry → delete explicitly
   'loans',
-  // FK children of properties WITHOUT cascade (must be explicitly deleted)
-  'listings',
-  'property_accounting',
-  'partner_pipelines',
-  'finance_packages',
-  'msv_enrollments',
-  // Then core entities
+  // leases are CASCADE'd from units→properties, but also RESTRICT on contacts
+  // → delete explicitly before contacts to be safe
+  'leases',
+  // units CASCADE from properties, but delete explicitly for registry tracking
   'units',
+  // msv_bank_accounts: leases.linked_bank_account_id is now SET NULL
   'msv_bank_accounts',
+  // properties: all children CASCADE (listings, accounting, etc.)
   'properties',
+  // contacts: all references SET NULL, RESTRICT children already deleted above
   'contacts',
 ] as const;
 
@@ -70,36 +82,10 @@ export async function cleanupDemoData(tenantId: string): Promise<DemoCleanupResu
       grouped[entry.entity_type].push(entry.entity_id);
     }
 
-    // Also find property IDs — we need to clean FK children of properties
-    // even if those children aren't in the registry
-    const propertyIds = grouped['properties'] || [];
-    
-    if (propertyIds.length > 0) {
-      // Delete non-cascading FK children of properties by property_id
-      const propertyChildTables = [
-        'listings', 'property_accounting', 'partner_pipelines', 
-        'finance_packages', 'msv_enrollments',
-      ];
-      for (const childTable of propertyChildTables) {
-        const { error: childErr, count } = await (supabase as any)
-          .from(childTable)
-          .delete({ count: 'exact' })
-          .in('property_id', propertyIds);
-
-        if (childErr) {
-          console.warn(`[DemoCleanup] ${childTable} cleanup: ${childErr.message}`);
-        } else {
-          deleted[`${childTable}(cascade)`] = count ?? 0;
-        }
-      }
-    }
-
     // Delete in FK-safe order
     for (const entityType of CLEANUP_ORDER) {
       const ids = grouped[entityType];
-      if (!ids || ids.length === 0) {
-        continue;
-      }
+      if (!ids || ids.length === 0) continue;
 
       let deletedCount = 0;
       for (let i = 0; i < ids.length; i += 50) {
