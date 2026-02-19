@@ -7,8 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Save, Eye, ChevronDown, Building2 } from 'lucide-react';
+import { Save, Building2 } from 'lucide-react';
 import { useComplianceCompany, type CompanyProfile } from './useComplianceCompany';
 import { LoadingState } from '@/components/shared';
 
@@ -17,17 +16,6 @@ const COMPANY_SLOTS = [
   { slug: 'futureroom', label: 'Firma 2: Future Room', subtitle: 'betreibt Kaufy + Acquiary' },
 ] as const;
 
-function buildImprintMd(form: Partial<CompanyProfile>): string {
-  const directors = Array.isArray(form.managing_directors)
-    ? (form.managing_directors as string[]).join(', ')
-    : form.managing_directors || '—';
-  const cr = (form.commercial_register as Record<string, string>) || {};
-  let md = `**${form.company_name || '—'}**\n${form.legal_form || ''}\n${form.address_line1 || ''}\n${form.address_line2 || ''}\n${form.postal_code || ''} ${form.city || ''}, ${form.country || 'DE'}\n\nE-Mail: ${form.email || '—'}\nTelefon: ${form.phone || '—'}\n\nGeschäftsführer: ${directors}\nHandelsregister: ${cr.court || ''} ${cr.number || ''}\nUSt-IdNr.: ${form.vat_id || '—'}`;
-  if (form.legal_notes) {
-    md += `\n\n---\n**Sonstige rechtliche Anmerkungen:**\n${form.legal_notes}`;
-  }
-  return md;
-}
 
 interface CompanyCardProps {
   slug: string;
@@ -40,7 +28,7 @@ interface CompanyCardProps {
 
 function CompanyCard({ slug, label, subtitle, initial, onSave, isSaving }: CompanyCardProps) {
   const [form, setForm] = useState<Partial<CompanyProfile>>({});
-  const [previewOpen, setPreviewOpen] = useState(false);
+  
 
   useEffect(() => {
     setForm(initial);
@@ -93,23 +81,6 @@ function CompanyCard({ slug, label, subtitle, initial, onSave, isSaving }: Compa
         </CardContent>
       </Card>
 
-      <Collapsible open={previewOpen} onOpenChange={setPreviewOpen}>
-        <Card>
-          <CollapsibleTrigger asChild>
-            <CardHeader className="cursor-pointer hover:bg-muted/30 transition-colors">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Eye className="h-4 w-4" /> Impressum-Vorschau
-                <ChevronDown className={`h-4 w-4 ml-auto transition-transform ${previewOpen ? 'rotate-180' : ''}`} />
-              </CardTitle>
-            </CardHeader>
-          </CollapsibleTrigger>
-          <CollapsibleContent>
-            <CardContent>
-              <pre className="whitespace-pre-wrap text-sm bg-muted/30 p-4 rounded-lg font-mono">{buildImprintMd(form)}</pre>
-            </CardContent>
-          </CollapsibleContent>
-        </Card>
-      </Collapsible>
     </div>
   );
 }
