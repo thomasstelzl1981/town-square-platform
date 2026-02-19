@@ -9,6 +9,8 @@ import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useDemoToggles } from '@/hooks/useDemoToggles';
+import { DEMO_KONTO } from '@/constants/demoKontoData';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -83,6 +85,7 @@ const fmtEur = (v: number) =>
 
 export function GeldeingangTab({ propertyId, tenantId, unitId }: GeldeingangTabProps) {
   const { activeTenantId } = useAuth();
+  const { isEnabled: isDemoEnabled } = useDemoToggles();
   const queryClient = useQueryClient();
   const [showPaymentForm, setShowPaymentForm] = useState<string | null>(null); // lease_id
   const [paymentAmount, setPaymentAmount] = useState('');
@@ -170,7 +173,7 @@ export function GeldeingangTab({ propertyId, tenantId, unitId }: GeldeingangTabP
   });
 
   // Fetch bank accounts
-  const { data: bankAccounts = [] } = useQuery({
+  const { data: dbBankAccounts = [] } = useQuery({
     queryKey: ['msv_bank_accounts', activeTenantId],
     queryFn: async () => {
       if (!activeTenantId) return [];
@@ -182,6 +185,20 @@ export function GeldeingangTab({ propertyId, tenantId, unitId }: GeldeingangTabP
     },
     enabled: !!activeTenantId,
   });
+
+  // Demo-Fallback: wenn DB leer und GP-KONTEN aktiv, clientseitiges Demo-Konto nutzen
+  const bankAccounts: BankAccount[] = useMemo(() => {
+    if (dbBankAccounts.length > 0) return dbBankAccounts;
+    if (isDemoEnabled('GP-KONTEN')) {
+      return [{
+        id: DEMO_KONTO.id,
+        account_name: DEMO_KONTO.accountName,
+        bank_name: DEMO_KONTO.bank,
+        iban: DEMO_KONTO.iban,
+      }];
+    }
+    return [];
+  }, [dbBankAccounts, isDemoEnabled]);
 
   // Fetch contact names for leases
   const contactIds = leases.map(l => l.tenant_contact_id);
