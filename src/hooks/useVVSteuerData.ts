@@ -33,7 +33,7 @@ export function useVVSteuerData(taxYear: number) {
       const [ctxRes, propsRes, accountingRes, annualRes] = await Promise.all([
         supabase.from('landlord_contexts').select('id, name, context_type, tax_number').eq('tenant_id', activeTenantId),
         supabase.from('properties').select('id, code, address, address_house_no, city, postal_code, property_type, year_built, purchase_price, acquisition_costs, landlord_context_id, rental_managed, is_demo, tax_reference_number, ownership_share_percent').eq('tenant_id', activeTenantId).eq('rental_managed', true),
-        (supabase as any).from('property_accounting').select('property_id, building_share_percent, land_share_percent, afa_rate_percent, afa_start_date, afa_method, modernization_costs_eur, modernization_year').eq('tenant_id', activeTenantId),
+        (supabase as any).from('property_accounting').select('property_id, building_share_percent, land_share_percent, afa_rate_percent, afa_start_date, afa_method, modernization_costs_eur, modernization_year, afa_model, ak_ground, ak_building, ak_ancillary, book_value_eur, book_value_date, cumulative_afa, sonder_afa_annual, denkmal_afa_annual').eq('tenant_id', activeTenantId),
         (supabase as any).from('vv_annual_data').select('*').eq('tenant_id', activeTenantId).eq('tax_year', taxYear),
       ]);
 
