@@ -1,5 +1,5 @@
 /**
- * Hook: CRUD for compliance_company_profile (single-row Platform SSOT)
+ * Hook: CRUD for compliance_company_profile (multi-row, slug-based)
  */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 
 export interface CompanyProfile {
   id: string;
+  slug: string | null;
   company_name: string;
   legal_form: string | null;
   address_line1: string | null;
@@ -22,6 +23,7 @@ export interface CompanyProfile {
   vat_id: string | null;
   supervisory_authority: string | null;
   website_url: string | null;
+  legal_notes: string | null;
   last_updated_at: string;
   last_updated_by: string | null;
 }
@@ -35,17 +37,18 @@ export function useComplianceCompany() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('compliance_company_profile' as any)
-        .select('*')
-        .limit(1)
-        .maybeSingle();
+        .select('*');
       if (error) throw error;
-      return data as unknown as CompanyProfile | null;
+      return (data as unknown as CompanyProfile[]) || [];
     },
   });
 
+  const getProfileBySlug = (slug: string): CompanyProfile | undefined =>
+    query.data?.find(p => p.slug === slug);
+
   const upsert = useMutation({
-    mutationFn: async (profile: Partial<CompanyProfile>) => {
-      const existing = query.data;
+    mutationFn: async (profile: Partial<CompanyProfile> & { slug: string }) => {
+      const existing = query.data?.find(p => p.slug === profile.slug);
       if (existing?.id) {
         const { error } = await supabase
           .from('compliance_company_profile' as any)
@@ -67,5 +70,5 @@ export function useComplianceCompany() {
     onError: (err: any) => toast.error('Fehler: ' + err.message),
   });
 
-  return { profile: query.data, isLoading: query.isLoading, upsert };
+  return { profiles: query.data || [], isLoading: query.isLoading, upsert, getProfileBySlug };
 }

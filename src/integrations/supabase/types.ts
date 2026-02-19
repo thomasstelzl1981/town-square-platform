@@ -4216,9 +4216,11 @@ export type Database = {
           last_updated_at: string
           last_updated_by: string | null
           legal_form: string | null
+          legal_notes: string | null
           managing_directors: Json | null
           phone: string | null
           postal_code: string | null
+          slug: string | null
           supervisory_authority: string | null
           vat_id: string | null
           website_url: string | null
@@ -4235,9 +4237,11 @@ export type Database = {
           last_updated_at?: string
           last_updated_by?: string | null
           legal_form?: string | null
+          legal_notes?: string | null
           managing_directors?: Json | null
           phone?: string | null
           postal_code?: string | null
+          slug?: string | null
           supervisory_authority?: string | null
           vat_id?: string | null
           website_url?: string | null
@@ -4254,9 +4258,11 @@ export type Database = {
           last_updated_at?: string
           last_updated_by?: string | null
           legal_form?: string | null
+          legal_notes?: string | null
           managing_directors?: Json | null
           phone?: string | null
           postal_code?: string | null
+          slug?: string | null
           supervisory_authority?: string | null
           vat_id?: string | null
           website_url?: string | null

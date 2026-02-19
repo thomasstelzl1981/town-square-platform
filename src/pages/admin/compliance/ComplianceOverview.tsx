@@ -13,7 +13,8 @@ import { useComplianceBundles } from './useComplianceBundles';
 interface Props { onNavigate: (tab: string) => void; }
 
 export function ComplianceOverview({ onNavigate }: Props) {
-  const { profile } = useComplianceCompany();
+  const { profiles, getProfileBySlug } = useComplianceCompany();
+  const profile = getProfileBySlug('sot');
   const { documents } = useComplianceDocuments();
   const { requests: dsarRequests } = useDSARRequests();
   const { requests: deletionRequests } = useDeletionRequests();
