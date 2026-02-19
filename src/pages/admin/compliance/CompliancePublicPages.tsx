@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Plus, FileText } from 'lucide-react';
@@ -19,6 +20,7 @@ export function CompliancePublicPages() {
   const { documents, isLoading, createVersion, activateVersion } = useComplianceDocuments('website');
   const [selectedDoc, setSelectedDoc] = useState<string | null>(null);
   const [newContent, setNewContent] = useState('');
+  const [changeNote, setChangeNote] = useState('');
   const { data: versions } = useDocumentVersions(selectedDoc);
 
   if (isLoading) return <LoadingState />;
@@ -54,7 +56,7 @@ export function CompliancePublicPages() {
                               <span className="text-xs text-muted-foreground">v{doc.current_version}</span>
                               <Dialog>
                                 <DialogTrigger asChild>
-                                  <Button variant="ghost" size="sm" onClick={() => setSelectedDoc(doc.id)}>
+                                  <Button variant="ghost" size="sm" onClick={() => { setSelectedDoc(doc.id); setNewContent(''); setChangeNote(''); }}>
                                     <Plus className="h-3 w-3" />
                                   </Button>
                                 </DialogTrigger>
@@ -68,10 +70,17 @@ export function CompliancePublicPages() {
                                     placeholder="Markdown-Inhalt..."
                                     className="min-h-[300px] font-mono text-sm"
                                   />
+                                  <Input
+                                    value={changeNote}
+                                    onChange={e => setChangeNote(e.target.value)}
+                                    placeholder="Änderungsnotiz (optional)"
+                                    className="text-sm"
+                                  />
                                   <div className="flex gap-2 justify-end">
                                     <Button onClick={() => {
-                                      createVersion.mutate({ documentId: doc.id, contentMd: newContent });
+                                      createVersion.mutate({ documentId: doc.id, contentMd: newContent, changeNote: changeNote || undefined });
                                       setNewContent('');
+                                      setChangeNote('');
                                     }}>
                                       Draft speichern
                                     </Button>
@@ -81,7 +90,10 @@ export function CompliancePublicPages() {
                                       <p className="text-sm font-medium">Versionen:</p>
                                       {versions.map(v => (
                                         <div key={v.id} className="flex items-center justify-between p-2 bg-muted/20 rounded text-xs">
-                                          <span>v{v.version} — {v.status}</span>
+                                          <div>
+                                            <span>v{v.version} — {v.status}</span>
+                                            {v.change_note && <span className="ml-2 text-muted-foreground">({v.change_note})</span>}
+                                          </div>
                                           {v.status === 'draft' && (
                                             <Button size="sm" variant="outline" onClick={() => activateVersion.mutate({ documentId: doc.id, versionId: v.id, version: v.version })}>
                                               Aktivieren

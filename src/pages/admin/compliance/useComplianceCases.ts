@@ -81,10 +81,11 @@ export function useDeletionRequests() {
   });
 
   const updateStatus = useMutation({
-    mutationFn: async ({ id, status, notes }: { id: string; status: string; notes?: string }) => {
+    mutationFn: async ({ id, status, notes, legalHoldReason }: { id: string; status: string; notes?: string; legalHoldReason?: string }) => {
       const updates: any = { status, updated_at: new Date().toISOString() };
       if (status === 'executed') updates.executed_at = new Date().toISOString();
       if (notes !== undefined) updates.notes = notes;
+      if (legalHoldReason !== undefined) updates.legal_hold_reason = legalHoldReason;
       const { error } = await supabase.from('deletion_requests' as any).update(updates).eq('id', id);
       if (error) throw error;
       logEvent({ zone: 'Z1', eventType: status === 'executed' ? 'legal.deletion.executed' : 'legal.deletion.status_changed', direction: 'mutate', source: 'admin',
