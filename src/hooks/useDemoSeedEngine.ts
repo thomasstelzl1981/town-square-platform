@@ -230,8 +230,9 @@ async function seedBankTransactions(tenantId: string): Promise<string[]> {
 
     if (error) {
       console.error(`[DemoSeed] bank_transactions chunk ${i}:`, error.message);
+    } else {
+      allIds.push(...chunk.map(r => (r as Record<string, unknown>).id as string));
     }
-    allIds.push(...chunk.map(r => (r as Record<string, unknown>).id as string));
   }
 
   console.log(`[DemoSeed] ✓ bank_transactions: ${allIds.length}`);
