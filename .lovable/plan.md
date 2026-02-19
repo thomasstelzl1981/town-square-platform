@@ -1,76 +1,62 @@
 
 
-# Company Profile Seed-Daten + Zone-2 SOT-Filter
+# Portal Terms: Inline-Editor fuer Rechtstexte
 
-## Ueberblick
+## Problem
 
-Zwei Aktionen:
-1. Seed-Daten fuer beide Firmen in `compliance_company_profile` einfuegen
-2. Zone-2 Rechtliches (`RechtlichesTab.tsx`) so anpassen, dass explizit das **SOT-Profil** (slug='sot') fuer Placeholder-Rendering geladen wird
+Der Tab "Portal Terms" in Zone 1 zeigt aktuell nur eine kompakte Liste (Titel + Status-Badge + Version-Button). Der eigentliche Markdown-Inhalt der Dokumente ist **nicht sichtbar**. Man muss erst auf "+ Version" klicken, um in einem Dialog neuen Text einzugeben — aber den bestehenden aktiven Text sieht man nirgends.
 
-## 1. Daten einfuegen (DB Insert)
+## Loesung
 
-### Firma 1: System of a Town (slug: `sot`)
+Den Tab "Portal Terms" (`CompliancePortalTerms.tsx`) so umbauen, dass fuer jedes Dokument (portal_agb, portal_privacy) eine **aufklappbare Card** mit folgendem Inhalt erscheint:
 
-| Feld | Wert |
-|------|------|
-| slug | sot |
-| company_name | System of a Town |
-| legal_form | GmbH |
-| address_line1 | Barbara Straße 2D |
-| postal_code | (ohne, da nicht angegeben) |
-| city | München |
-| country | DE |
-| email | info@systemofatown.com |
-| managing_directors | ["Sebastian Maximilian Bergler"] |
-| commercial_register | {"court": "Amtsgericht München", "number": ""} |
-| website_url | https://systemofatown.com |
-| legal_notes | Keine gewerberechtlichen Erlaubnisse nach §34d/§34i/§34f/§34h GewO erforderlich, da ausschließlich Software-/Plattformbetrieb. Vermittlungstaetigkeiten erfolgen ueber Future Room GmbH. HRB noch nicht vorhanden. |
+### Pro Dokument-Card:
 
-### Firma 2: Future Room (slug: `futureroom`)
+1. **Header**: Titel, Status-Badge, aktuelle Version
+2. **Aktiver Text (read-only Vorschau)**: Der aktuelle `content_md` der aktiven Version wird als Markdown gerendert angezeigt (Collapsible, standardmaessig eingeklappt)
+3. **Editierbare Textarea**: Zum Erstellen einer neuen Draft-Version mit dem Text vorausgefuellt aus der aktuellen aktiven Version
+4. **Aenderungsnotiz** + **Speichern-Button**
 
-| Feld | Wert |
-|------|------|
-| slug | futureroom |
-| company_name | Future Room |
-| legal_form | GmbH |
-| address_line1 | Burghauser Str. 73 a |
-| postal_code | 84503 |
-| city | Altötting |
-| country | DE |
-| email | info@futureroom.finance |
-| managing_directors | ["Tobias Riener"] |
-| commercial_register | {"court": "Amtsgericht Traunstein", "number": "HRB 26581"} |
-| vat_id | (leer, nicht angegeben) |
-| website_url | https://futureroom.finance |
-| legal_notes | Betreibt die Marken FUTURE ROOM, KAUFY (kaufy.com) und ACQUIARY (acquiary.com). Gewerberechtliche Erlaubnisse: §34d Abs.1 GewO (Versicherungsmakler, D-K7I4-Y5R8P-34), §34i Abs.1 GewO (Immobiliardarlehensvermittler, D-W-155-VCH8-31), §34f Abs.1 GewO (Finanzanlagenvermittler, D-F-155-K8X5-48). §34h GewO: nicht registriert. |
+### Datenfluss:
 
-## 2. RechtlichesTab.tsx: SOT-Profil explizit laden
+- Fuer jedes Dokument wird `useDocumentVersions(doc.id)` aufgerufen
+- Die aktive Version (status='active') wird gesucht und deren `content_md` als Vorschau + Prefill angezeigt
+- Beim Speichern wird eine neue Draft-Version erstellt (wie bisher)
 
-**Problem:** Zeile 91-98 laedt das Company Profile mit `.limit(1).maybeSingle()` ohne Slug-Filter. Das koennte zufaellig das Future-Room-Profil zurueckgeben.
-
-**Fix:** Filter auf `slug = 'sot'` setzen, da Zone 2 Portal von System of a Town betrieben wird:
-
-```text
-// Vorher:
-.select('*').limit(1).maybeSingle()
-
-// Nachher:
-.select('*').eq('slug', 'sot').maybeSingle()
-```
-
-So erscheinen in den AGB und der Datenschutzerklaerung immer die SOT-Firmendaten.
-
-## Dateien
+## Technische Aenderungen
 
 | Datei | Aenderung |
 |-------|-----------|
-| DB: compliance_company_profile | 2x INSERT (sot + futureroom) |
-| src/pages/portal/stammdaten/RechtlichesTab.tsx | Zeile 94: `.eq('slug', 'sot')` hinzufuegen |
+| CompliancePortalTerms.tsx | Kompletter Umbau: pro Dokument eine expandierbare Card mit Markdown-Vorschau + Textarea-Editor |
 
-## Kein weiterer Code-Aenderungsbedarf
+### Neuer Aufbau pro Dokument:
 
-- complianceHelpers.ts: Mappings wurden bereits im letzten Schritt erweitert
-- useComplianceCompany.ts: Multi-Row-Query bereits implementiert
-- ComplianceCompanyProfile.tsx: Zwei-Slot-UI bereits vorhanden
+```text
++-----------------------------------------------+
+| [FileText] Nutzungsbedingungen (Portal)       |
+| Status: active  |  Version: 1                 |
++-----------------------------------------------+
+| [Collapsible] Aktuelle Version anzeigen        |
+|   -> Gerendeter Markdown-Text (read-only)      |
++-----------------------------------------------+
+| Neue Version erstellen:                        |
+| +-------------------------------------------+ |
+| | [Textarea, prefilled mit aktivem Text]    | |
+| |                                           | |
+| +-------------------------------------------+ |
+| Aenderungsnotiz: [_______________]             |
+| [Draft speichern]  [Aktivieren wenn Draft]     |
++-----------------------------------------------+
+```
+
+### Keine Aenderung an:
+
+- ComplianceBundles.tsx (bleibt eigener Tab — Bundles sind Dokumenten-Gruppierungen)
+- useComplianceDocuments.ts (Hook bleibt unveraendert)
+- ComplianceDeskRouter.tsx (Tab-Struktur bleibt)
+
+## Reihenfolge
+
+1. CompliancePortalTerms.tsx umschreiben mit inline Textarea + Markdown-Vorschau
+2. Aktive Version automatisch als Prefill laden
 
