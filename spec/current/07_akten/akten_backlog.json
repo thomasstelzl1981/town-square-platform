@@ -352,32 +352,32 @@
       "task": "Parser-Modus 'versicherung' implementieren",
       "akten": ["AKTE-04"],
       "priority": "P1",
-      "status": "open",
-      "description": "sot-document-parser um parseMode 'versicherung' erweitern: Erkennung von Versicherer, Policennr, Kategorie, Prämie, SB."
+      "status": "done",
+      "description": "Manifest-driven parseMode 'versicherung' in parserManifest.ts + sot-document-parser v2.0. Felder: provider_name, policy_number, category, premium_amount, deductible, coverage_amount, etc."
     },
     {
       "id": "BL-04",
       "task": "Parser-Modus 'fahrzeugschein' implementieren",
       "akten": ["AKTE-05"],
       "priority": "P2",
-      "status": "open",
-      "description": "Zulassungsbescheinigung Teil I/II erkennen: Kennzeichen, FIN, HSN/TSN, Erstzulassung, Halter."
+      "status": "done",
+      "description": "Manifest-driven parseMode 'fahrzeugschein'. Felder: license_plate, vin, brand, model, hsn, tsn, first_registration, fuel_type, power_kw."
     },
     {
       "id": "BL-05",
       "task": "Parser-Modus 'pv_anlage' implementieren",
       "akten": ["AKTE-02"],
       "priority": "P2",
-      "status": "open",
-      "description": "PV-Datenblätter und MaStR-Auszüge erkennen: kWp, MaStR-Nr, Einspeisevergütung, Netzbetreiber."
+      "status": "done",
+      "description": "Manifest-driven parseMode 'pv_anlage'. Felder: name, kwp, mastr_plant_id, commissioning_date, feed_in_tariff, inverter_model, grid_operator."
     },
     {
       "id": "BL-06",
       "task": "Parser-Modus 'vorsorge' implementieren",
       "akten": ["AKTE-06"],
       "priority": "P2",
-      "status": "open",
-      "description": "Standmitteilungen und Renteninformationen parsen: Anbieter, Vertragswert, prognostizierte Rente."
+      "status": "done",
+      "description": "Manifest-driven parseMode 'vorsorge'. Felder: provider_name, contract_number, contract_type, contribution_amount, current_value, monthly_pension."
     },
     {
       "id": "BL-07",
