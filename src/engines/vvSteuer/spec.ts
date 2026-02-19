@@ -12,6 +12,15 @@ export interface VVAfaStammdaten {
   afaMethod: string | null;
   modernizationCostsEur: number;
   modernizationYear: number | null;
+  // Extended AfA fields
+  afaModel: string;
+  akGround: number;
+  akBuilding: number;
+  akAncillary: number;
+  sonderAfaAnnual: number;
+  denkmalAfaAnnual: number;
+  bookValueEur: number;
+  cumulativeAfa: number;
 }
 
 /** Aggregated from leases for a property+year */

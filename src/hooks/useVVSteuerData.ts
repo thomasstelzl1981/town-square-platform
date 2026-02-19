@@ -131,6 +131,14 @@ export function useVVSteuerData(taxYear: number) {
       afaMethod: accounting?.afa_method ?? 'linear',
       modernizationCostsEur: accounting?.modernization_costs_eur ?? 0,
       modernizationYear: accounting?.modernization_year ?? null,
+      afaModel: (accounting as any)?.afa_model ?? '7_4_2b',
+      akGround: (accounting as any)?.ak_ground ?? 0,
+      akBuilding: (accounting as any)?.ak_building ?? 0,
+      akAncillary: (accounting as any)?.ak_ancillary ?? 0,
+      sonderAfaAnnual: (accounting as any)?.sonder_afa_annual ?? 0,
+      denkmalAfaAnnual: (accounting as any)?.denkmal_afa_annual ?? 0,
+      bookValueEur: accounting?.book_value_eur ?? 0,
+      cumulativeAfa: (accounting as any)?.cumulative_afa ?? 0,
     };
 
     // FIX Bug 1: Income aggregation — join leases via units

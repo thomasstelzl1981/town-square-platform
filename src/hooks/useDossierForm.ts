@@ -203,7 +203,9 @@ export function useDossierForm(initialData: UnitDossierData | null) {
     const accountingFields = [
       'landSharePercent', 'buildingSharePercent', 'bookValueEur', 'afaRatePercent',
       'afaStartDate', 'afaMethod', 'remainingUsefulLifeYears', 'modernizationCostsEur',
-      'modernizationYear', 'coaVersion', 'accountMappings'
+      'modernizationYear', 'coaVersion', 'accountMappings',
+      'afaModel', 'akGround', 'akBuilding', 'akAncillary', 'bookValueDate',
+      'cumulativeAfa', 'sonderAfaAnnual', 'denkmalAfaAnnual'
     ];
     
     const hasAccountingChanges = accountingFields.some(f => dirtyFields.has(f));
@@ -222,6 +224,14 @@ export function useDossierForm(initialData: UnitDossierData | null) {
       modernizationYear: mergedData.modernizationYear,
       coaVersion: mergedData.coaVersion,
       accountMappings: mergedData.accountMappings,
+      afaModel: mergedData.afaModel,
+      akGround: mergedData.akGround,
+      akBuilding: mergedData.akBuilding,
+      akAncillary: mergedData.akAncillary,
+      bookValueDate: mergedData.bookValueDate,
+      cumulativeAfa: mergedData.cumulativeAfa,
+      sonderAfaAnnual: mergedData.sonderAfaAnnual,
+      denkmalAfaAnnual: mergedData.denkmalAfaAnnual,
     };
   }, [mergedData, dirtyFields]);
 

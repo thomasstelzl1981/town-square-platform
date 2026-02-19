@@ -177,6 +177,15 @@ export interface AccountingData {
   modernizationYear?: number;
   coaVersion: string;
   accountMappings?: Record<string, string>;
+  // New AfA fields
+  afaModel?: string;
+  akGround?: number;
+  akBuilding?: number;
+  akAncillary?: number;
+  bookValueDate?: string;
+  cumulativeAfa?: number;
+  sonderAfaAnnual?: number;
+  denkmalAfaAnnual?: number;
 }
 
 // ============================================================
@@ -337,6 +346,15 @@ export interface UnitDossierData {
   modernizationYear?: number;
   coaVersion: string;
   accountMappings?: Record<string, string>;
+  // New AfA fields
+  afaModel?: string;
+  akGround?: number;
+  akBuilding?: number;
+  akAncillary?: number;
+  bookValueDate?: string;
+  cumulativeAfa?: number;
+  sonderAfaAnnual?: number;
+  denkmalAfaAnnual?: number;
 
   // Block J: Documents
   documents: DocumentStatus[];
@@ -474,6 +492,15 @@ export interface AccountingFormData {
   modernizationYear?: number;
   coaVersion: string;
   accountMappings?: Record<string, string>;
+  // New AfA fields
+  afaModel?: string;
+  akGround?: number;
+  akBuilding?: number;
+  akAncillary?: number;
+  bookValueDate?: string;
+  cumulativeAfa?: number;
+  sonderAfaAnnual?: number;
+  denkmalAfaAnnual?: number;
 }
 
 // ============================================================

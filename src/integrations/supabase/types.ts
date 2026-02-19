@@ -14533,54 +14533,78 @@ export type Database = {
         Row: {
           account_mappings: Json | null
           afa_method: string | null
+          afa_model: string | null
           afa_rate_percent: number | null
           afa_start_date: string | null
+          ak_ancillary: number | null
+          ak_building: number | null
+          ak_ground: number | null
+          book_value_date: string | null
           book_value_eur: number | null
           building_share_percent: number | null
           coa_version: string | null
           created_at: string | null
+          cumulative_afa: number | null
+          denkmal_afa_annual: number | null
           id: string
           land_share_percent: number | null
           modernization_costs_eur: number | null
           modernization_year: number | null
           property_id: string
           remaining_useful_life_years: number | null
+          sonder_afa_annual: number | null
           tenant_id: string
           updated_at: string | null
         }
         Insert: {
           account_mappings?: Json | null
           afa_method?: string | null
+          afa_model?: string | null
           afa_rate_percent?: number | null
           afa_start_date?: string | null
+          ak_ancillary?: number | null
+          ak_building?: number | null
+          ak_ground?: number | null
+          book_value_date?: string | null
           book_value_eur?: number | null
           building_share_percent?: number | null
           coa_version?: string | null
           created_at?: string | null
+          cumulative_afa?: number | null
+          denkmal_afa_annual?: number | null
           id?: string
           land_share_percent?: number | null
           modernization_costs_eur?: number | null
           modernization_year?: number | null
           property_id: string
           remaining_useful_life_years?: number | null
+          sonder_afa_annual?: number | null
           tenant_id: string
           updated_at?: string | null
         }
         Update: {
           account_mappings?: Json | null
           afa_method?: string | null
+          afa_model?: string | null
           afa_rate_percent?: number | null
           afa_start_date?: string | null
+          ak_ancillary?: number | null
+          ak_building?: number | null
+          ak_ground?: number | null
+          book_value_date?: string | null
           book_value_eur?: number | null
           building_share_percent?: number | null
           coa_version?: string | null
           created_at?: string | null
+          cumulative_afa?: number | null
+          denkmal_afa_annual?: number | null
           id?: string
           land_share_percent?: number | null
           modernization_costs_eur?: number | null
           modernization_year?: number | null
           property_id?: string
           remaining_useful_life_years?: number | null
+          sonder_afa_annual?: number | null
           tenant_id?: string
           updated_at?: string | null
         }
