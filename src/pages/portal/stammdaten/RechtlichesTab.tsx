@@ -39,7 +39,7 @@ export function RechtlichesTab() {
       const { data: documents, error: docErr } = await supabase
         .from('compliance_documents')
         .select('id, doc_key, title, current_version, status')
-        .in('doc_key', ['portal_agb', 'portal_privacy', 'portal_security_notice']);
+        .in('doc_key', ['portal_agb', 'portal_privacy', 'portal_security_notice', 'website_imprint_sot']);
       if (docErr) throw docErr;
       if (!documents?.length) return [];
 
@@ -150,6 +150,7 @@ export function RechtlichesTab() {
   const agbDoc = docs?.find(d => d.docKey === 'portal_agb');
   const privacyDoc = docs?.find(d => d.docKey === 'portal_privacy');
   const securityDoc = docs?.find(d => d.docKey === 'portal_security_notice');
+  const imprintDoc = docs?.find(d => d.docKey === 'website_imprint_sot');
 
   const hasAgbConsent = existingConsents?.some(
     c => c.compliance_doc_id === agbDoc?.docId && c.compliance_version === agbDoc?.version
@@ -264,17 +265,10 @@ export function RechtlichesTab() {
           </CardContent>
         </Card>
       )}
-      {/* Placeholder: Optional Consents */}
-      <Card className="border-dashed opacity-60">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base text-muted-foreground">Optionale Einwilligungen</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
-            Hier werden zukünftig weitere optionale Einwilligungen angezeigt.
-          </p>
-        </CardContent>
-      </Card>
+      {/* Impressum (read-only, § 5 DDG) */}
+      {imprintDoc && (
+        <DocCard doc={imprintDoc} companyProfile={companyProfile} />
+      )}
     </div>
   );
 }
