@@ -1,81 +1,54 @@
 
 
-# Posteingang -- Soll-Ist-Analyse und Korrekturplan
+# Posteingang Fix -- Inbox wird nicht angezeigt
 
-## Analyse
+## Ursache
 
-### IST-Zustand
-- **Posteingang-Tab** (`PosteingangTab.tsx`): Zeigt NUR die Inbox (Aktivierungskarte bei fehlendem Vertrag ODER E-Mail-Liste bei aktivem Vertrag)
-- **Intelligenz-Tab** (`EinstellungenTab.tsx`): Enthaelt die Steuer-Kacheln mit Switches:
-  - Kachel 1: Datenraum-Extraktion (StorageExtractionCard)
-  - Kachel 2: Posteingangs-Auslesung (OCR-Toggle/Switch)
-  - Kachel 3: Speicherplatz
-  - Kachel 4: Digitaler Postservice (Nachsendeauftrag)
-- Die Switches fuer Aktivierung sind vom Posteingang **abgetrennt** auf einem anderen Tab
+Die `postservice_mandates`-Tabelle hat genau einen Eintrag mit Status **`cancelled`**. Der Code prueft auf `status === 'active'` (Zeile 63) -- da kein aktiver Vertrag existiert, zeigt er die Aktivierungskarte statt der Inbox.
 
-### SOLL-Zustand
-- **Posteingang-Tab** zeigt OBEN den Inbox-Bereich (E-Mail-Liste oder Aktivierungskarte) und DARUNTER die relevanten Steuerungs-Switches:
-  - Posteingangs-Auslesung (OCR on/off)
-  - Datenraum-Extraktion
-  - Postservice-Aktivierung
-- Alle zusammengehoerenden Funktionen auf EINER Seite, nicht verstreut ueber zwei Tabs
+Die 3 Demo-E-Mails (WEG-Jahresabrechnungen) sind in `inbound_emails` vorhanden und korrekt, werden aber nie abgefragt, weil die Query `enabled: !!user && hasActiveContract` ist (Zeile 107).
 
-## Korrekturplan
+## Loesung
 
-### Schritt 1: Steuerungs-Kacheln als eigenstaendige Komponenten extrahieren
-Die drei relevanten Kacheln aus `EinstellungenTab.tsx` werden in eigene Komponenten ausgelagert, damit sie in beiden Kontexten (Intelligenz-Tab UND Posteingang-Tab) wiederverwendbar sind:
-- `PosteingangAuslesungCard` -- OCR-Switch + Pipeline-Uebersicht
-- `PostserviceCard` -- Nachsendeauftrag-Verwaltung
+### Schritt 1: Demo-Mandat reaktivieren
+SQL-Migration: Status des bestehenden Mandats auf `active` setzen, damit die Inbox sofort sichtbar wird.
 
-Die `StorageExtractionCard` existiert bereits als eigene Komponente.
+### Schritt 2: PosteingangTab-Logik korrigieren
+Die aktuelle Logik ist zu restriktiv. Der Posteingang sollte IMMER die Inbox-Tabelle anzeigen (auch ohne aktiven Vertrag), weil:
+- Demo-Daten sollen immer sichtbar sein
+- Die Aktivierungs-Info kann als kleinere Karte NEBEN oder UNTER der Tabelle stehen
+- Die E-Mail-Upload-Karte wird nur bei aktivem Vertrag gezeigt
 
-### Schritt 2: PosteingangTab erweitern
-Die `PosteingangTab.tsx` wird um die extrahierten Kacheln ergaenzt:
-- OBEN: Bestehender Inbox-Bereich (E-Mail-Tabelle oder Aktivierungskarte)
-- UNTEN: Steuerungs-Kacheln in einem Grid-Layout:
-  - Posteingangs-Auslesung (OCR-Switch)
-  - Datenraum-Extraktion
-  - Postservice-Karte
-
-### Schritt 3: EinstellungenTab (Intelligenz) bereinigen
-Die `EinstellungenTab` verwendet die gleichen extrahierten Komponenten, sodass kein doppelter Code entsteht. Die Intelligenz-Seite bleibt als Konfigurationsuebersicht bestehen, referenziert aber die gleichen Komponenten.
-
-## Technische Umsetzung
-
-### Neue Dateien
-- `src/components/dms/PosteingangAuslesungCard.tsx` -- OCR-Toggle-Kachel (extrahiert aus EinstellungenTab Zeilen 234-310)
-- `src/components/dms/PostserviceCard.tsx` -- Nachsendeauftrag-Kachel (extrahiert aus EinstellungenTab Zeilen 388-530)
-
-### Geaenderte Dateien
-- `src/pages/portal/dms/PosteingangTab.tsx` -- Import und Einbindung der 3 Steuerungskacheln unterhalb des Inbox-Bereichs
-- `src/pages/portal/dms/EinstellungenTab.tsx` -- Inline-Code durch die neuen Komponenten ersetzen (Deduplizierung)
-
-### Layout-Struktur PosteingangTab (nach Aenderung)
+Konkrete Aenderungen in `PosteingangTab.tsx`:
+- E-Mails werden IMMER geladen (Query `enabled` aendern)
+- Die Inbox-Tabelle wird IMMER gerendert (nicht hinter `if (!hasActiveContract)` versteckt)
+- Ohne aktiven Vertrag: Inbox-Tabelle oben, darunter eine kompakte Aktivierungskarte
+- Mit aktivem Vertrag: Inbox-Tabelle oben, darunter die Upload-E-Mail-Karte
+- Steuerungs-Kacheln bleiben ganz unten in beiden Faellen
 
 ```text
+NEUES LAYOUT (beide Zustaende):
 +--------------------------------------------------+
 |  POSTEINGANG                                     |
-|  Dein digitaler Postservice fuer eingehende Dok. |
 +--------------------------------------------------+
-|                                                  |
-|  [Inbox-Bereich: E-Mail-Tabelle oder             |
-|   Aktivierungskarte wenn kein Vertrag]           |
-|                                                  |
+|  [Inbox-Tabelle: IMMER sichtbar]                 |
+|  - WEG Berliner Str. 42    | 2 PDFs | Bereit    |
+|  - WEG Maximilianstr. 8    | 2 PDFs | Bereit    |
+|  - WEG Elbchaussee 120     | 2 PDFs | Bereit    |
 +--------------------------------------------------+
-|                                                  |
-|  [Steuerungs-Grid: 3 Spalten]                    |
-|  +----------------+ +----------------+ +--------+|
-|  | Posteingangs-  | | Datenraum-     | | Post-  ||
-|  | Auslesung      | | Extraktion     | | service||
-|  | [OCR Switch]   | | [Scan/Analyze] | | [Auft.]||
-|  +----------------+ +----------------+ +--------+|
-|                                                  |
+|  [Nur wenn KEIN Vertrag:]                        |
+|  Kompakte Aktivierungskarte (1 Zeile CTA)        |
+|  [Nur wenn Vertrag AKTIV:]                       |
+|  Upload-E-Mail-Karte mit Adresse                 |
++--------------------------------------------------+
+|  [Steuerungs-Grid: 3 Kacheln]                    |
+|  Auslesung | Extraktion | Postservice            |
 +--------------------------------------------------+
 ```
 
-## Zusammenfassung
-- Kein Routing-Problem -- die Seite rendert korrekt
-- Problem: Steuerungs-Switches auf falschem Tab (Intelligenz statt Posteingang)
-- Loesung: Komponenten extrahieren und in PosteingangTab unterhalb der Inbox einbinden
-- Nebeneffekt: EinstellungenTab wird schlanker durch Wiederverwendung der gleichen Komponenten
+### Geaenderte Dateien
+- `src/pages/portal/dms/PosteingangTab.tsx` -- Inbox IMMER rendern, Queries immer aktiv, Layout umstrukturieren
+
+### Datenbank
+- SQL: `UPDATE postservice_mandates SET status = 'active' WHERE id = 'bae27a56-...'` (Demo-Mandat reaktivieren)
 
