@@ -1,156 +1,142 @@
 
 
-# Preislisten-Parsing MOD-13: KI-Mapping und Muster-Vorlage
+# Engine 17: Konto-Matching Engine (ENG-KONTOMATCH)
 
-## Ist-Zustand
+## Antwort auf die Frage
 
-Die Edge Function `sot-project-intake` parst Preislisten bereits KI-gestuetzt (Gemini 2.5 Flash). Das funktioniert grundsaetzlich, hat aber drei Schwaechen:
+**Ja, wir brauchen eine eigene Engine.** Begruendung:
 
-1. **Freitext-JSON statt Tool-Calling** -- Die KI gibt JSON als Text zurueck, das per Regex extrahiert wird. Bei ungewoehnlichen Formaten kann das scheitern.
-2. **Keine Muster-Excel-Vorlage** -- User koennen keine Vorlage herunterladen, die die erwarteten Spalten vorgibt.
-3. **Kein Spalten-Mapping-Feedback** -- Der User sieht extrahierte Einheiten, weiss aber nicht, welche Original-Spalte zu welchem Feld gemappt wurde, und kann keine Korrektur vornehmen.
+1. **sot-rent-match existiert bereits als Edge Function** — aber ohne `spec.ts`, ohne Typen, ohne Engine-Registry-Eintrag. Es ist eine "wilde" Funktion ausserhalb der Governance.
+2. **Die Matching-Logik ist reine Geschaeftslogik** (Betragstoleranz, Verwendungszweck-Parsing, Kategorie-Erkennung). Das gehoert in eine Engine mit `spec.ts` + `engine.ts`, genau wie BWA, NK-Abrechnung etc.
+3. **Zwei getrennte Transaktions-Tabellen** (`bank_transactions` + `finapi_transactions`) brauchen eine einheitliche Abstraktion, die in der Spec dokumentiert ist.
+4. **Drei verschiedene owner_types** (Person, Immobilie, PV-Anlage) brauchen unterschiedliche Matching-Regeln — das muss an EINER Stelle definiert sein.
 
-## Loesung (3 Teile)
+---
 
-### Teil 1: Muster-Excel-Vorlage bereitstellen
+## Was wird gebaut
 
-Eine XLSX-Datei mit vordefinierten Spalten generieren und als Download im `QuickIntakeUploader` sowie im `ProjekteDashboard` anbieten:
+### Teil 1: Engine-Dateien (Client-seitige Spec + Logik)
 
-**Spalten der Vorlage:**
+Neue Dateien unter `src/engines/kontoMatch/`:
 
-```text
-| Einheit-Nr. | Typ | Flaeche (m2) | Zimmer | Etage | Kaufpreis (EUR) | Aktuelle Miete (EUR/Monat) |
-|-------------|-----|-------------|--------|-------|-----------------|---------------------------|
-| WE-001      | Wohnung | 65,0  | 2      | EG    | 289.000         | 650                       |
-| WE-002      | Penthouse | 120,0 | 4    | DG    | 589.000         | 0                         |
-```
-
-**Implementierung:**
-- Neue Funktion `downloadPreislistenVorlage()` in `QuickIntakeUploader.tsx`
-- Nutzt bestehende `getXlsx()` aus `src/lib/lazyXlsx.ts`
-- Download-Button neben dem Preislisten-Dropzone
-
-### Teil 2: Tool-Calling statt Freitext-JSON
-
-In `sot-project-intake/index.ts` den AI-Call von Freitext-JSON auf **Tool-Calling** umstellen. Das erzwingt strukturiertes Output und eliminiert Regex-Parsing-Fehler.
-
-**Aenderung in der Edge Function:**
-
-Statt:
-```text
-messages: [{ role: 'system', content: 'Antworte NUR mit einem JSON-Array...' }]
-```
-
-Neu:
-```text
-tools: [{
-  type: 'function',
-  function: {
-    name: 'extract_units',
-    description: 'Extrahiere alle Einheiten aus der Preisliste',
-    parameters: {
-      type: 'object',
-      properties: {
-        units: {
-          type: 'array',
-          items: {
-            type: 'object',
-            properties: {
-              unitNumber: { type: 'string' },
-              type: { type: 'string', enum: ['Wohnung','Apartment','Penthouse','Maisonette','Gewerbe','Stellplatz','Buero','Lager','Keller'] },
-              area: { type: 'number' },
-              rooms: { type: 'number' },
-              floor: { type: 'string' },
-              price: { type: 'number' },
-              currentRent: { type: 'number' }
-            },
-            required: ['unitNumber','type','area','price']
-          }
-        },
-        column_mapping: {
-          type: 'array',
-          items: {
-            type: 'object',
-            properties: {
-              original_column: { type: 'string' },
-              mapped_to: { type: 'string' }
-            }
-          }
-        }
-      },
-      required: ['units']
-    }
-  }
-}],
-tool_choice: { type: 'function', function: { name: 'extract_units' } }
-```
-
-**Vorteil:** Die KI muss die Daten exakt in das Schema pressen. Zusaetzlich wird ein `column_mapping` zurueckgegeben, das zeigt, welche Original-Spalte zu welchem Feld gemappt wurde.
-
-### Teil 3: Spalten-Mapping im Review anzeigen
-
-Im Review-Schritt des `QuickIntakeUploader` (Phase "review") das `column_mapping` anzeigen, damit der User sieht:
+**spec.ts** — Typen und Konstanten (SSOT fuer Matching-Regeln)
 
 ```text
-Original-Spalte          → Zuordnung
-"Wfl. (qm)"             → Flaeche (m2)
-"Kaufpreis netto"        → Kaufpreis (EUR)
-"Whg-Nr"                 → Einheit-Nr.
-"Geschoss"               → Etage
+Definiert:
+- TransactionCategory (enum): MIETE, HAUSGELD, GRUNDSTEUER, VERSICHERUNG,
+  EINSPEISEVERGUETUNG, DARLEHEN, WARTUNG, PACHT, SONSTIG_EINGANG, SONSTIG_AUSGANG
+- MatchRule: { category, ownerTypes[], patterns[], amountRange?, direction }
+- DEFAULT_MATCH_RULES: Array von MatchRule — die kanonische Liste aller Erkennungsregeln
+- MatchResult: { transactionId, category, confidence, matchedBy, ruleCode }
+- UnifiedTransaction: { id, tenantId, accountRef, bookingDate, amount, purpose, counterparty, source }
+- MATCH_TOLERANCES: { rentAmountEur: 1, minConfidence: 0.75 }
 ```
 
-Das gibt Transparenz und Vertrauen in die KI-Extraktion.
-
-## Geaenderte/Neue Dateien
-
-1. **`supabase/functions/sot-project-intake/index.ts`** -- Tool-Calling statt Freitext, `column_mapping` in Response
-2. **`src/components/projekte/QuickIntakeUploader.tsx`** -- Vorlage-Download-Button + Spalten-Mapping-Anzeige im Review
-3. **`supabase/functions/sot-public-project-intake/index.ts`** -- Gleiche Tool-Calling-Umstellung (Kaufy Zone 3)
-
-## Technische Details
-
-### Tool-Calling Response-Parsing
+**engine.ts** — Pure Functions
 
 ```text
-// Statt Regex:
-const jsonMatch = content.match(/\[[\s\S]*\]/);
+Exportiert:
+- unifyTransaction(csv | finapi): UnifiedTransaction
+  Normalisiert beide Tabellen-Formate in ein einheitliches Objekt
 
-// Neu — strukturiert:
-const toolCall = aiResult.choices?.[0]?.message?.tool_calls?.[0];
-const args = JSON.parse(toolCall.function.arguments);
-const units = args.units;
-const columnMapping = args.column_mapping;
+- categorizeTransaction(tx: UnifiedTransaction, rules: MatchRule[], context: OwnerContext): MatchResult
+  Wendet die Regeln sequentiell an, gibt die beste Kategorie + Confidence zurueck
+
+- matchRentPayment(tx, lease, tolerance): RentMatchResult
+  Die bestehende Logik aus sot-rent-match als pure Function (testbar!)
+
+- matchPVIncome(tx, pvPlant): PVMatchResult
+  Einspeiseverguetung erkennen (Netzbetreiber, regelmaessiger Eingang)
+
+- matchLoanPayment(tx, loanRef): LoanMatchResult
+  Darlehenszahlung erkennen (Bank-IBAN, regelmaessige Ausgabe)
 ```
 
-### System-Prompt-Erweiterung
+### Teil 2: Engine-Registry aktualisieren
 
-Der System-Prompt wird erweitert um:
-- Hinweis, dass Spalten in beliebiger Reihenfolge und mit unterschiedlichen Bezeichnungen kommen koennen
-- Beispiele fuer gaengige Spalten-Varianten (z.B. "Wfl.", "Wohnflaeche", "qm", "m2" → alle = `area`)
-- Anweisung, das `column_mapping` zu befuellen
-
-### Vorlage-Generierung
+**ENGINE_REGISTRY.md** — Neuer Eintrag #17:
 
 ```text
-const downloadPreislistenVorlage = async () => {
-  const XLSX = await getXlsx();
-  const wb = XLSX.utils.book_new();
-  const header = [
-    'Einheit-Nr.', 'Typ', 'Fläche (m²)', 'Zimmer',
-    'Etage', 'Kaufpreis (EUR)', 'Aktuelle Miete (EUR/Monat)'
-  ];
-  const example = [
-    'WE-001', 'Wohnung', 65.0, 2, 'EG', 289000, 650
-  ];
-  const ws = XLSX.utils.aoa_to_sheet([header, example]);
-  XLSX.utils.book_append_sheet(wb, ws, 'Preisliste');
-  XLSX.writeFile(wb, 'Preisliste_Vorlage.xlsx');
-};
+| 17 | **Konto-Matching Engine** | Ordnet Kontobewegungen automatisch Immobilien, PV-Anlagen und Vertraegen zu | Finanzanalyse, Immobilien, PV | Free |
+
+Technische Registry:
+| ENG-KONTOMATCH | Konto-Matching Engine | MOD-04, MOD-18, MOD-19 | Teilweise | src/engines/kontoMatch/spec.ts, engine.ts |
 ```
 
-## Ergebnis
+Kategorie: **Kalkulation** (die regelbasierte Logik ist eine pure Function, die Edge Function nutzt sie nur als Consumer).
 
-- User koennen eine Muster-Vorlage herunterladen und ihre Daten dort eintragen
-- Beliebige Excel-Formate werden trotzdem korrekt per KI erkannt und gemappt
-- Das Spalten-Mapping ist transparent und nachvollziehbar im Review-Schritt
-- Tool-Calling eliminiert Parsing-Fehler bei ungewoehnlichen KI-Antworten
+### Teil 3: index.ts erweitern
+
+```text
+// Engine 10: Konto-Matching
+export * from './kontoMatch/engine';
+export * from './kontoMatch/spec';
+```
+
+### Teil 4: sot-rent-match refactoren
+
+Die bestehende Edge Function `sot-rent-match` wird vereinfacht:
+- Die Matching-Logik wird durch Imports aus der Engine ersetzt (soweit in Edge Functions moeglich)
+- Die Engine-Typen werden in der Edge Function gespiegelt (da Edge Functions nicht direkt aus src/ importieren koennen)
+- Die Funktion wird umbenannt/erweitert zu einem breiteren Matching-Scope
+
+Da Edge Functions nicht direkt aus `src/engines/` importieren koennen, wird die Spec als Kopie im Edge-Function-Verzeichnis gehalten, mit einem Kommentar der auf die SSOT verweist.
+
+### Teil 5: Default-Matching-Regeln (die SSOT)
+
+Die wichtigsten Regeln die in `spec.ts` definiert werden:
+
+**Fuer owner_type = 'property_context' (Immobilie):**
+
+```text
+| Kategorie          | Erkennung                                                    | Richtung |
+|--------------------|--------------------------------------------------------------|----------|
+| MIETE              | Betragsabgleich mit Warmmiete (+-1 EUR), Mietername          | Eingang  |
+| HAUSGELD           | "Hausgeld", "WEG", Hausverwaltung im Zweck                  | Ausgang  |
+| GRUNDSTEUER        | "Grundsteuer" im Zweck, Finanzamt als Empfaenger             | Ausgang  |
+| VERSICHERUNG       | "Versicherung", "Gebaeude", bekannte Versicherer             | Ausgang  |
+| DARLEHEN           | Bank-IBAN aus Darlehensvertrag, regelmaessiger Betrag        | Ausgang  |
+| INSTANDHALTUNG     | "Handwerker", "Reparatur", "Sanierung" im Zweck              | Ausgang  |
+```
+
+**Fuer owner_type = 'pv_plant' (PV-Anlage):**
+
+```text
+| Kategorie              | Erkennung                                                | Richtung |
+|------------------------|----------------------------------------------------------|----------|
+| EINSPEISEVERGUETUNG    | Netzbetreiber im Empfaenger, regelmaessiger Eingang      | Eingang  |
+| WARTUNG                | "Wartung", "Service", "PV" im Zweck                     | Ausgang  |
+| PACHT                  | "Pacht", "Dachmiete" im Zweck                           | Ausgang  |
+| DARLEHEN               | Bank-IBAN aus PV-Finanzierung                            | Ausgang  |
+| VERSICHERUNG           | "PV", "Solar", "Anlage" + "Versicherung" im Zweck       | Ausgang  |
+```
+
+**Fuer owner_type = 'person' (Privatkonto):**
+
+```text
+| Kategorie    | Erkennung                                        | Richtung |
+|--------------|--------------------------------------------------|----------|
+| GEHALT       | "Gehalt", "Lohn" im Zweck, regelmaessig          | Eingang  |
+| SONSTIG      | Keine spezifische Regel greift                    | Beide    |
+```
+
+---
+
+## Dateien-Uebersicht
+
+| Datei | Aktion | Beschreibung |
+|-------|--------|-------------|
+| `src/engines/kontoMatch/spec.ts` | NEU | Typen, Kategorien, Default-Regeln |
+| `src/engines/kontoMatch/engine.ts` | NEU | Pure Functions: unify, categorize, match |
+| `src/engines/index.ts` | EDIT | Engine 10 re-export hinzufuegen |
+| `spec/current/06_engines/ENGINE_REGISTRY.md` | EDIT | Engine #17 ENG-KONTOMATCH eintragen |
+| `supabase/functions/sot-rent-match/index.ts` | EDIT | Refactor: Engine-Typen nutzen, Scope erweitern |
+
+## Nicht in diesem Schritt
+
+- SQL-View `v_all_transactions` (Phase 2 — erfordert separate DB-Migration)
+- KI-Fallback-Matching (Phase 3)
+- Review-Queue UI (Phase 4)
+
+Diese werden als Folge-Schritte geplant, sobald die Engine-Grundlage steht.
+
