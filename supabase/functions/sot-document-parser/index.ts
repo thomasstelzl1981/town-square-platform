@@ -12,71 +12,39 @@ const corsHeaders = {
  * Uses Lovable AI (Gemini 3 Flash) to parse uploaded documents
  * and extract structured data for Armstrong AI access.
  * 
+ * Supports TWO input modes:
+ *   A) storagePath + bucket  — Downloads from Storage, supports files up to 20MB
+ *   B) content (base64)      — Legacy inline mode, limited by request body size
+ * 
  * Supports: Excel, CSV, PDF, Images
- * 
- * Input:
- *   - content: base64 encoded file OR text content
- *   - contentType: MIME type
- *   - filename: Original filename
- *   - tenantId: For tracking usage
- * 
- * Output:
- *   - success: boolean
- *   - parsed: Structured JSON with properties, contacts, financing, etc.
- *   - engine: "lovable_ai"
- *   - confidence: 0-1 score
  */
 
+/** Chunked Base64 conversion — safe for large files */
+function uint8ToBase64(bytes: Uint8Array): string {
+  let binary = '';
+  const chunkSize = 8192;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    const chunk = bytes.subarray(i, Math.min(i + chunkSize, bytes.length));
+    binary += String.fromCharCode(...chunk);
+  }
+  return btoa(binary);
+}
+
 interface ParseRequest {
-  content: string;
-  contentType: string;
+  // Mode A: Storage-based (preferred for large files)
+  storagePath?: string;
+  bucket?: string;         // defaults to 'tenant-documents'
+  // Mode B: Inline base64 (legacy, for small files / Armstrong chat)
+  content?: string;
+  // Common
+  contentType?: string;
   filename: string;
   tenantId?: string;
+  documentId?: string;
   parseMode?: "properties" | "contacts" | "financing" | "general";
 }
 
-interface ParsedProperty {
-  code?: string;
-  property_type?: string;
-  address?: string;
-  city?: string;
-  postal_code?: string;
-  purchase_price?: number;
-  market_value?: number;
-  units?: Array<{
-    unit_number?: string;
-    area_sqm?: number;
-    monthly_rent?: number;
-    tenant_name?: string;
-  }>;
-}
-
-interface ParseResult {
-  version: string;
-  engine: string;
-  model: string;
-  parsed_at: string;
-  confidence: number;
-  warnings: string[];
-  data: {
-    properties?: ParsedProperty[];
-    contacts?: Array<{
-      first_name?: string;
-      last_name?: string;
-      email?: string;
-      phone?: string;
-      company?: string;
-    }>;
-    financing?: Array<{
-      bank?: string;
-      current_balance?: number;
-      interest_rate?: number;
-      monthly_payment?: number;
-    }>;
-    raw_text?: string;
-    detected_type?: string;
-  };
-}
+const MAX_AI_FILE_SIZE = 20 * 1024 * 1024; // 20MB
 
 function getSystemPrompt(parseMode: string): string {
   const basePrompt = `Du bist ein spezialisierter Dokumenten-Parser für Immobiliendaten. 
@@ -125,87 +93,132 @@ Antworte NUR mit validem JSON im folgenden Format:
 }`;
 }
 
-function buildUserPrompt(filename: string, contentType: string, content: string): string {
-  const isBase64 = content.length > 1000 && !content.includes("\n");
-  
-  if (contentType.includes("image") || contentType.includes("pdf")) {
-    return `Analysiere dieses Dokument: ${filename}
-
-[Bilddaten als Base64 - bitte visuell analysieren]`;
-  }
-  
-  // For text-based content (CSV, Excel-extracted text)
-  return `Analysiere dieses Dokument: ${filename}
-
-Inhalt:
-${content.substring(0, 50000)}`; // Limit to 50k chars
-}
-
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
   try {
-    const { content, contentType, filename, tenantId, parseMode = "general" }: ParseRequest = await req.json();
+    const body: ParseRequest = await req.json();
+    const { storagePath, bucket, content, contentType, filename, tenantId, documentId, parseMode = "general" } = body;
 
-    if (!content || !filename) {
+    if (!filename) {
       return new Response(
-        JSON.stringify({ error: "Missing required fields: content, filename" }),
+        JSON.stringify({ error: "Missing required field: filename" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    console.log(`[sot-document-parser] Parsing: ${filename} (${contentType})`);
+    if (!storagePath && !content) {
+      return new Response(
+        JSON.stringify({ error: "Either storagePath or content must be provided" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
+    console.log(`[sot-document-parser] Parsing: ${filename} (mode: ${storagePath ? 'storage' : 'inline'}, parseMode: ${parseMode})`);
+
+    // ── Resolve file content ─────────────────────────────────────────────
+    let resolvedContent: string;
+    let resolvedContentType = contentType || "application/pdf";
+
+    if (storagePath) {
+      // Mode A: Download from Storage
+      const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+      const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+      const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+      const targetBucket = bucket || "tenant-documents";
+      console.log(`[sot-document-parser] Downloading from ${targetBucket}/${storagePath}`);
+
+      const { data: fileData, error: dlError } = await supabase.storage
+        .from(targetBucket)
+        .download(storagePath);
+
+      if (dlError || !fileData) {
+        console.error("[sot-document-parser] Storage download error:", dlError);
+        return new Response(
+          JSON.stringify({ error: `File download failed: ${dlError?.message || 'Unknown'}` }),
+          { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      if (fileData.size > MAX_AI_FILE_SIZE) {
+        return new Response(
+          JSON.stringify({ error: `File too large: ${(fileData.size / 1024 / 1024).toFixed(1)}MB (max ${MAX_AI_FILE_SIZE / 1024 / 1024}MB)` }),
+          { status: 413, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Detect content type from filename if not provided
+      if (!contentType) {
+        const ext = filename.toLowerCase().split('.').pop();
+        const mimeMap: Record<string, string> = {
+          pdf: "application/pdf",
+          jpg: "image/jpeg", jpeg: "image/jpeg",
+          png: "image/png", webp: "image/webp",
+          doc: "application/msword",
+          docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          xls: "application/vnd.ms-excel",
+          xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          csv: "text/csv",
+        };
+        resolvedContentType = mimeMap[ext || ''] || "application/octet-stream";
+      }
+
+      const buffer = await fileData.arrayBuffer();
+      resolvedContent = uint8ToBase64(new Uint8Array(buffer));
+      console.log(`[sot-document-parser] Downloaded ${(fileData.size / 1024).toFixed(0)}KB`);
+    } else {
+      // Mode B: Inline content (legacy)
+      resolvedContent = content!;
+    }
+
+    // ── Call AI Gateway ──────────────────────────────────────────────────
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    // Build messages for Lovable AI
     const systemPrompt = getSystemPrompt(parseMode);
-    const userPrompt = buildUserPrompt(filename, contentType, content);
-
-    // Determine if we should use vision (for images/PDFs)
-    const useVision = contentType.includes("image") || contentType.includes("pdf");
+    const useVision = resolvedContentType.includes("image") || resolvedContentType.includes("pdf");
     
     let messages: Array<{ role: string; content: string | Array<{ type: string; text?: string; image_url?: { url: string } }> }>;
     
-    if (useVision && content.startsWith("data:")) {
-      // Image with data URL
+    if (useVision) {
+      // Ensure proper data URL
+      let dataUrl: string;
+      if (resolvedContent.startsWith("data:")) {
+        dataUrl = resolvedContent;
+      } else {
+        dataUrl = `data:${resolvedContentType};base64,${resolvedContent}`;
+      }
+
       messages = [
         { role: "system", content: systemPrompt },
         {
           role: "user",
           content: [
             { type: "text", text: `Analysiere dieses Dokument: ${filename}` },
-            { type: "image_url", image_url: { url: content } }
-          ]
-        }
-      ];
-    } else if (useVision) {
-      // Base64 image without data URL prefix
-      const mimeType = contentType || "image/png";
-      messages = [
-        { role: "system", content: systemPrompt },
-        {
-          role: "user",
-          content: [
-            { type: "text", text: `Analysiere dieses Dokument: ${filename}` },
-            { type: "image_url", image_url: { url: `data:${mimeType};base64,${content}` } }
+            { type: "image_url", image_url: { url: dataUrl } }
           ]
         }
       ];
     } else {
-      // Text-based content
+      // Text-based content (CSV, Excel)
+      let textContent: string;
+      try {
+        textContent = atob(resolvedContent);
+      } catch {
+        textContent = resolvedContent;
+      }
+
       messages = [
         { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt }
+        { role: "user", content: `Analysiere dieses Dokument: ${filename}\n\nInhalt:\n${textContent.substring(0, 50000)}` }
       ];
     }
 
-    // Call Lovable AI Gateway
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -215,7 +228,7 @@ serve(async (req) => {
       body: JSON.stringify({
         model: "google/gemini-3-flash-preview",
         messages,
-        temperature: 0.1, // Low temperature for structured extraction
+        temperature: 0.1,
         max_tokens: 8000,
       }),
     });
@@ -229,7 +242,7 @@ serve(async (req) => {
       }
       if (aiResponse.status === 402) {
         return new Response(
-          JSON.stringify({ error: "Payment required. Please add funds to your Lovable AI workspace." }),
+          JSON.stringify({ error: "Payment required." }),
           { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
@@ -243,10 +256,9 @@ serve(async (req) => {
 
     console.log("[sot-document-parser] AI response received, parsing JSON...");
 
-    // Parse AI response (might be wrapped in markdown code blocks)
+    // Parse AI response
     let parsedData: { confidence: number; warnings: string[]; detected_type: string; data: Record<string, unknown> };
     try {
-      // Remove markdown code blocks if present
       let jsonStr = aiContent;
       if (jsonStr.includes("```json")) {
         jsonStr = jsonStr.replace(/```json\n?/g, "").replace(/```\n?/g, "");
@@ -254,9 +266,8 @@ serve(async (req) => {
         jsonStr = jsonStr.replace(/```\n?/g, "");
       }
       parsedData = JSON.parse(jsonStr.trim());
-    } catch (parseError) {
-      console.error("[sot-document-parser] Failed to parse AI response as JSON:", aiContent);
-      // Return raw text if JSON parsing fails
+    } catch {
+      console.error("[sot-document-parser] Failed to parse AI response as JSON:", aiContent.substring(0, 500));
       parsedData = {
         confidence: 0.3,
         warnings: ["Konnte keine strukturierten Daten extrahieren"],
@@ -265,9 +276,8 @@ serve(async (req) => {
       };
     }
 
-    // Build final result
-    const result: ParseResult = {
-      version: "1.0",
+    const result = {
+      version: "1.1",
       engine: "lovable_ai",
       model: "google/gemini-3-flash-preview",
       parsed_at: new Date().toISOString(),
@@ -279,7 +289,7 @@ serve(async (req) => {
       }
     };
 
-    // Track usage if tenantId provided
+    // Track usage
     if (tenantId) {
       try {
         const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -297,23 +307,15 @@ serve(async (req) => {
           p_calls: 1,
           p_tokens: aiResult.usage?.total_tokens || 0
         });
-
-        console.log(`[sot-document-parser] Usage tracked for tenant ${tenantId}`);
       } catch (usageError) {
         console.error("[sot-document-parser] Failed to track usage:", usageError);
-        // Don't fail the request if usage tracking fails
       }
     }
 
     console.log(`[sot-document-parser] Successfully parsed ${filename}, confidence: ${result.confidence}`);
 
     return new Response(
-      JSON.stringify({
-        success: true,
-        parsed: result,
-        filename,
-        contentType
-      }),
+      JSON.stringify({ success: true, parsed: result, filename, contentType: resolvedContentType }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
 

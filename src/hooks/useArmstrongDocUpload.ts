@@ -1,11 +1,16 @@
 /**
  * useArmstrongDocUpload — Upload + Parse documents for Armstrong chat context
  * 
- * Flow: File → Base64 → sot-document-parser → extracted_text → Armstrong advisor
+ * Architecture (v2 — Storage-First):
+ *   File → Storage upload → sot-document-parser (storagePath) → extracted_text → Armstrong advisor
+ * 
+ * This avoids the Edge Function body-size limit by uploading to Storage first,
+ * then passing only the storagePath to the parser. Supports files up to 20MB.
  */
 
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 export interface DocumentContext {
   extracted_text: string;
@@ -41,28 +46,10 @@ const SUPPORTED_TYPES = [
   'application/vnd.ms-excel',
 ];
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
-
-function fileToBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      // For images, keep the full data URL; for others, extract base64
-      if (file.type.startsWith('image/')) {
-        resolve(result);
-      } else {
-        // Remove data URL prefix for non-image files
-        const base64 = result.split(',')[1] || result;
-        resolve(base64);
-      }
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
+const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
 
 export function useArmstrongDocUpload(): UseArmstrongDocUploadReturn {
+  const { activeTenantId } = useAuth();
   const [documentContext, setDocumentContext] = useState<DocumentContext | null>(null);
   const [isParsing, setIsParsing] = useState(false);
   const [parseError, setParseError] = useState<string | null>(null);
@@ -77,7 +64,12 @@ export function useArmstrongDocUpload(): UseArmstrongDocUploadReturn {
 
     // Validate file size
     if (file.size > MAX_FILE_SIZE) {
-      setParseError('Datei ist zu groß (max. 10 MB).');
+      setParseError('Datei ist zu groß (max. 20 MB).');
+      return null;
+    }
+
+    if (!activeTenantId) {
+      setParseError('Kein aktiver Tenant.');
       return null;
     }
 
@@ -86,15 +78,28 @@ export function useArmstrongDocUpload(): UseArmstrongDocUploadReturn {
     setAttachedFile({ name: file.name, size: file.size, type: file.type });
 
     try {
-      // Convert to base64
-      const content = await fileToBase64(file);
+      // ── Step 1: Upload to Storage ──────────────────────────────────────
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+      const storagePath = `${activeTenantId}/armstrong/${Date.now()}_${safeName}`;
 
-      // Call sot-document-parser
+      const { error: uploadError } = await supabase.storage
+        .from('tenant-documents')
+        .upload(storagePath, file, { cacheControl: '3600', upsert: false });
+
+      if (uploadError) {
+        throw new Error(`Upload fehlgeschlagen: ${uploadError.message}`);
+      }
+
+      console.log(`[ArmstrongDocUpload] Uploaded to storage: ${storagePath} (${(file.size / 1024).toFixed(0)}KB)`);
+
+      // ── Step 2: Call parser with storagePath ───────────────────────────
       const { data, error } = await supabase.functions.invoke('sot-document-parser', {
         body: {
-          content,
+          storagePath,
+          bucket: 'tenant-documents',
           contentType: file.type,
           filename: file.name,
+          tenantId: activeTenantId,
           parseMode: 'general',
         },
       });
@@ -110,7 +115,6 @@ export function useArmstrongDocUpload(): UseArmstrongDocUploadReturn {
       if (parsed.data?.raw_text) {
         extractedText = parsed.data.raw_text;
       } else {
-        // Build text from structured data
         const parts: string[] = [];
         
         if (parsed.data?.detected_type) {
@@ -140,6 +144,10 @@ export function useArmstrongDocUpload(): UseArmstrongDocUploadReturn {
       };
 
       setDocumentContext(ctx);
+
+      // ── Step 3: Cleanup temp file from storage (fire-and-forget) ───────
+      supabase.storage.from('tenant-documents').remove([storagePath]).catch(() => {});
+
       return ctx;
     } catch (err) {
       console.error('[useArmstrongDocUpload] Error:', err);
@@ -150,7 +158,7 @@ export function useArmstrongDocUpload(): UseArmstrongDocUploadReturn {
     } finally {
       setIsParsing(false);
     }
-  }, []);
+  }, [activeTenantId]);
 
   const clearDocument = useCallback(() => {
     setDocumentContext(null);
