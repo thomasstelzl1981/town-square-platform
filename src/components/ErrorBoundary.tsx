@@ -36,8 +36,24 @@ class ErrorBoundaryClass extends React.Component<
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    // Chunk-Ladefehler erkennen und automatisch neu laden
+    const isChunkError =
+      error.message.includes('Failed to fetch dynamically imported module') ||
+      error.message.includes('Loading chunk') ||
+      error.message.includes('Loading CSS chunk');
+
+    if (isChunkError) {
+      const alreadyReloaded = sessionStorage.getItem('chunk-reload-attempted');
+      if (!alreadyReloaded) {
+        sessionStorage.setItem('chunk-reload-attempted', 'true');
+        window.location.reload();
+        return;
+      }
+      // Wenn bereits neu geladen wurde, normalen Fehler anzeigen
+      sessionStorage.removeItem('chunk-reload-attempted');
+    }
+
     this.setState({ errorInfo });
-    // Log to console for debugging
     console.error('ErrorBoundary caught error:', error, errorInfo);
   }
 
@@ -108,6 +124,8 @@ class ErrorBoundaryClass extends React.Component<
       );
     }
 
+    // Erfolgreicher Render: Chunk-Reload-Flag zuruecksetzen
+    sessionStorage.removeItem('chunk-reload-attempted');
     return this.props.children;
   }
 }
