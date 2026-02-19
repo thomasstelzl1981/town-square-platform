@@ -1,63 +1,126 @@
 
+# Compliance-Mapping: Zone 3 Legal Pages + Zone 2 Rechtliches — Komplett-Integration
 
-# Seed: Datenschutzerklaerungen fuer vier Webseiten (v1, active)
+## Ist-Zustand
 
-## Rechtliche Pruefung und Ergaenzungen
+### Was existiert:
+- **Datenbank**: 8 Website-Dokumente (4x Impressum, 4x Datenschutz) mit Status `active`, Version 1, Markdown-Inhalt
+- **Datenbank**: Portal AGB + Portal Privacy mit Status `active`, Version 1
+- **Zone 2 RechtlichesTab**: Funktioniert komplett — laedt `portal_agb` + `portal_privacy`, rendert Markdown mit Platzhalter-Ersetzung, Consent-Verwaltung via `user_consents`
+- **Zone 1 Compliance Desk**: Verwaltung aller Dokumente mit Inline-Editoren
 
-1. **TDDDG korrekt referenziert**: Seit Mai 2024 ersetzt das TDDDG (Telekommunikation-Digitale-Dienste-Datenschutz-Gesetz) das fruehere TTDSG. Die Texte referenzieren korrekt TDDDG fuer Cookie-/Endgeraetezugriff.
+### Was fehlt:
+- **Zone 3**: Keine der vier Websites hat eine funktionsfaehige Impressum- oder Datenschutz-Seite
+- **SoT Footer**: Verlinkt auf `/website/sot/impressum` und `/website/sot/datenschutz` — Seiten existieren nicht (404)
+- **Kaufy, FutureRoom, Acquiary Footers**: Verlinken auf `#` — kein Ziel
+- **Keine AGB-Seiten**: SoT-Footer verlinkt auch auf `/website/sot/agb` — es gibt aber kein `website_agb`-Dokument in der DB (unklar ob noetig fuer Zone 3)
+- **RechtlichesTab (Zone 2)**: Nutzt noch Collapsible fuer Texte — Volltext ist versteckt
 
-2. **Aufsichtsbehoerde identifiziert**: Fuer nicht-oeffentliche Stellen in Bayern ist das **Bayerische Landesamt fuer Datenschutzaufsicht (BayLDA)** zustaendig:
-   - Promenade 18, 91522 Ansbach
-   - Telefon: 0981 180093-0
-   - Internet: lda.bayern.de
+## Plan
 
-3. **Bewerbungs-Abschnitt**: § 26 BDSG wurde durch § 26 BDSG n.F. (seit 2024 teils diskutiert) nicht ersetzt — bleibt als Rechtsgrundlage korrekt. Der Abschnitt wird bei allen vier Seiten als optionaler Platzhalter belassen.
+### 1. Gemeinsame Komponente: `Zone3LegalPage`
 
-4. **Kaufy und Acquiary**: Die Vorlage verweist auf "identisch wie futureroom". Fuer die Seed-Daten werden **vollstaendige, eigenstaendige Texte** erstellt (nicht Verweise), damit jede Webseite eine komplett lesbare Datenschutzerklaerung hat. Unterschiede: E-Mail-Adresse und Markenhinweis.
+Eine einzige wiederverwendbare Komponente fuer alle Zone 3 Legal-Seiten. Sie:
+- Erhaelt `brand` und `docType` als Props
+- Laedt das passende Dokument aus `compliance_documents` + aktive Version aus `compliance_document_versions`
+- Laedt das Company Profile (je nach Brand: `sot` oder `futureroom`)
+- Ersetzt Platzhalter via `renderComplianceMarkdown()`
+- Rendert als vollformatige Markdown-Seite mit sauberem Layout
 
-5. **System of a Town**: Eigene GmbH, eigener Verantwortlicher (Sebastian Maximilian Bergler), kein Vermittlungsbezug. Abschnitt 7 wird auf "Produkt-/Plattformbezug" angepasst statt Vermittlung.
+**Datei:** `src/components/zone3/shared/Zone3LegalPage.tsx`
 
-6. **Platzhalter bleiben**: Alle `[PLATZHALTER]` werden beibehalten und koennen spaeter im Compliance Desk Inline-Editor ersetzt werden. Bekannte Werte (Aufsichtsbehoerde) werden direkt eingesetzt.
+### 2. Routen im Manifest registrieren (4 Websites)
 
-7. **OS-Plattform-Link**: Der Link zur EU-OS-Plattform (ec.europa.eu/consumers/odr) ist seit Juli 2025 nicht mehr aktiv (Verordnung 2024/3228 hat die ODR-Plattform abgeschafft). Der Hinweis auf die Plattform wird daher weggelassen — nur der VSBG-Hinweis bleibt.
+Fuer jede Website werden die Routen `impressum` und `datenschutz` ergaenzt:
 
-## Technische Umsetzung
+| Website | Neue Routen |
+|---------|------------|
+| SoT | `impressum`, `datenschutz` (existieren schon im Footer) |
+| Kaufy | `impressum`, `datenschutz` |
+| FutureRoom | `impressum`, `datenschutz` |
+| Acquiary | `impressum`, `datenschutz` |
 
-### Daten-INSERT (kein Schema-Aenderung, nur Daten)
+**Datei:** `src/manifests/routesManifest.ts` — je 2 neue Eintraege pro Website
 
-Fuer jedes der vier Dokumente:
+### 3. Wrapper-Komponenten pro Brand
 
-1. **INSERT** in `compliance_document_versions`:
-   - `document_id` = jeweilige ID
-   - `version` = 1
-   - `status` = 'active'
-   - `content_md` = vollstaendiger Markdown-Text
-   - `activated_at` = NOW()
+Pro Brand eine kleine Wrapper-Datei die `Zone3LegalPage` mit den richtigen Props aufruft:
 
-2. **UPDATE** auf `compliance_documents`:
-   - `current_version` = 1
-   - `status` = 'active'
+| Brand | Dateien |
+|-------|---------|
+| SoT | `src/pages/zone3/sot/SotImpressum.tsx`, `SotDatenschutz.tsx` |
+| Kaufy | `src/pages/zone3/kaufy2026/Kaufy2026Impressum.tsx`, `Kaufy2026Datenschutz.tsx` |
+| FutureRoom | `src/pages/zone3/futureroom/FutureRoomImpressum.tsx`, `FutureRoomDatenschutz.tsx` |
+| Acquiary | `src/pages/zone3/acquiary/AcquiaryImpressum.tsx`, `AcquiaryDatenschutz.tsx` |
 
-### Dokument-IDs:
+Jede Datei ist ca. 5 Zeilen gross — importiert nur `Zone3LegalPage` und setzt Brand + DocType.
 
-| Brand | doc_key | ID |
-|-------|---------|-----|
-| futureroom | website_privacy_futureroom | 982d366b-d92e-4a44-b0a3-d452525025c7 |
-| kaufy | website_privacy_kaufy | 4cf15a95-bdfa-4537-a8c0-859a432d7738 |
-| acquiary | website_privacy_acquiary | c0b4086a-fc29-4c37-a793-99a3c34f38f4 |
-| sot | website_privacy_sot | 2dc282de-f150-46eb-af26-f14e6d66506e |
+### 4. Component Maps + Lazy Imports aktualisieren
 
-### Inhalt (zusammengefasst):
+In `ManifestRouter.tsx`:
+- 8 neue Lazy-Imports hinzufuegen
+- 4 Component Maps ergaenzen (je 2 neue Eintraege)
 
-**futureroom.finance** — Vollstaendige 16-Abschnitte-Datenschutzerklaerung mit DSGVO + TDDDG, BayLDA als Aufsichtsbehoerde, alle Platzhalter fuer Hosting/Analytics/Newsletter/DPO.
+### 5. Footer-Links korrigieren
 
-**kaufy.com** — Eigenstaendiger Volltext (nicht Verweis), Markenhinweis "Kaufy ist eine Marke der Future Room GmbH", E-Mail info@kaufy.com, sonst identische Struktur.
+| Footer | Aenderung |
+|--------|-----------|
+| `SotFooter.tsx` | Links existieren schon korrekt (`/website/sot/impressum` etc.) — kein AGB-Link, da kein AGB-Dokument fuer Zone 3 existiert |
+| `Kaufy2026Layout.tsx` | `href="#"` aendern zu `/website/kaufy/impressum` und `/website/kaufy/datenschutz` |
+| `FutureRoomLayout.tsx` | `Link to="#"` aendern zu `/website/futureroom/impressum` und `/website/futureroom/datenschutz` |
+| `AcquiaryLayout.tsx` | `Link to="#"` aendern zu `/website/acquiary/impressum` und `/website/acquiary/datenschutz` |
 
-**acquiary.com** — Eigenstaendiger Volltext, Markenhinweis "Acquiary ist eine Marke der Future Room GmbH", E-Mail info@acquiary.com, sonst identische Struktur.
+### 6. Zone 2 RechtlichesTab: Collapsible entfernen
 
-**systemofatown.com** — Eigene GmbH (System of a Town GmbH), Geschaeftsfuehrer Sebastian Maximilian Bergler, Abschnitt 7 auf Software-/Plattformbezug angepasst, keine Vermittlungsreferenzen.
+Die `DocCard`-Subkomponente in `RechtlichesTab.tsx` nutzt noch Collapsible (Volltext ist versteckt). Diese werden entfernt — der Markdown-Text wird immer sichtbar angezeigt, konsistent mit dem Compliance-Desk-Standard.
 
-### Keine Code-Aenderungen noetig
+### 7. AGB-Links in Footern
 
-Die CompliancePublicPages-Komponente zeigt bereits alle Dokumente inline an. Sobald die Versionen in der DB stehen, erscheinen die Datenschutzerklaerungen automatisch neben den Impressums.
+SoT-Footer hat einen AGB-Link, aber es gibt kein `website_agb`-Dokument. Da Zone 3 keine eigenen AGB braucht (die Portal-AGB gelten nur fuer Zone 2), wird der AGB-Link aus dem SoT-Footer entfernt. Bei Kaufy, FutureRoom und Acquiary werden die AGB-Links ebenfalls entfernt — sie haben keine eigenstaendige AGB fuer die oeffentlichen Webseiten.
 
+## Company-Profile-Mapping
+
+Die Platzhalter-Ersetzung nutzt den richtigen Company-Profile-Slug:
+
+| Brand | Company Profile Slug | Firma |
+|-------|---------------------|-------|
+| kaufy | `futureroom` | Future Room GmbH |
+| futureroom | `futureroom` | Future Room GmbH |
+| acquiary | `futureroom` | Future Room GmbH |
+| sot | `sot` | System of a Town GmbH |
+
+## Datenfluss-Uebersicht
+
+```text
+compliance_documents (DB)          compliance_document_versions (DB)
+  doc_key = website_imprint_kaufy    version 1, status=active, content_md
+       |                                   |
+       +-----------------------------------+
+                      |
+             Zone3LegalPage (shared component)
+               - laedt Dokument + aktive Version
+               - laedt Company Profile (futureroom/sot)
+               - renderComplianceMarkdown() → Platzhalter ersetzen
+               - ReactMarkdown rendern
+                      |
+       +------+-------+-------+---------+
+       |      |       |       |         |
+    /website  /website /website /website
+    /kaufy/   /future  /sot/    /acquiary/
+    impressum room/    impressum impressum
+              impressum
+```
+
+## Datei-Zusammenfassung
+
+| Aktion | Datei | Beschreibung |
+|--------|-------|-------------|
+| NEU | `src/components/zone3/shared/Zone3LegalPage.tsx` | Gemeinsame Komponente |
+| NEU | 8x Wrapper-Dateien (je 2 pro Brand) | Impressum + Datenschutz pro Website |
+| EDIT | `src/manifests/routesManifest.ts` | 8 neue Routen |
+| EDIT | `src/router/ManifestRouter.tsx` | 8 Lazy-Imports + 4 Component Maps |
+| EDIT | `src/components/zone3/sot/SotFooter.tsx` | AGB-Link entfernen |
+| EDIT | `src/pages/zone3/kaufy2026/Kaufy2026Layout.tsx` | Footer-Links korrigieren, AGB entfernen |
+| EDIT | `src/pages/zone3/futureroom/FutureRoomLayout.tsx` | Footer-Links korrigieren, AGB entfernen |
+| EDIT | `src/pages/zone3/acquiary/AcquiaryLayout.tsx` | Footer-Links korrigieren, AGB entfernen |
+| EDIT | `src/pages/portal/stammdaten/RechtlichesTab.tsx` | Collapsible entfernen, Volltext sichtbar |
