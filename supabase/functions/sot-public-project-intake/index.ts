@@ -2,8 +2,7 @@
  * SOT Public Project Intake — No-Auth Magic Intake for Kaufy Website
  * 
  * Modes:
- *   upload   — Upload files to public-intake bucket, return storage paths
- *   analyze  — Extract project data from Exposé (AI) + parse Pricelist
+ *   analyze  — Extract project data from Exposé (AI) + parse Pricelist via Tool-Calling
  *   submit   — Create submission in Zone 1 + lead in admin pool
  */
 
@@ -26,6 +25,63 @@ const corsHeaders = {
 };
 
 const MAX_AI_SIZE = 5 * 1024 * 1024;
+
+// ── Tool-Calling definition (shared with sot-project-intake) ──────────────
+
+const EXTRACT_UNITS_TOOL = {
+  type: 'function' as const,
+  function: {
+    name: 'extract_units',
+    description: 'Extrahiere alle Einheiten aus der Preisliste und melde welche Original-Spalten zu welchen Feldern gemappt wurden.',
+    parameters: {
+      type: 'object',
+      properties: {
+        units: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              unitNumber: { type: 'string' },
+              type: { type: 'string', enum: ['Wohnung', 'Apartment', 'Penthouse', 'Maisonette', 'Gewerbe', 'Stellplatz', 'Buero', 'Lager', 'Keller'] },
+              area: { type: 'number' },
+              rooms: { type: 'number' },
+              floor: { type: 'string' },
+              price: { type: 'number' },
+              currentRent: { type: 'number' },
+            },
+            required: ['unitNumber', 'type', 'area', 'price'],
+          },
+        },
+        column_mapping: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              original_column: { type: 'string' },
+              mapped_to: { type: 'string' },
+            },
+            required: ['original_column', 'mapped_to'],
+          },
+        },
+      },
+      required: ['units', 'column_mapping'],
+    },
+  },
+};
+
+const PRICELIST_SYSTEM_PROMPT = `Du bist ein Preislisten-Parser für Immobilienprojekte. Extrahiere alle Wohneinheiten aus der Preisliste.
+
+WICHTIG: Die Spalten können in beliebiger Reihenfolge und mit unterschiedlichen Bezeichnungen vorkommen. Hier sind gängige Varianten:
+
+- unitNumber: "Whg-Nr", "Whg.", "WE-Nr.", "Einheit", "Nr.", "Top", "Wohnungsnummer", "Obj.-Nr."
+- type: "Typ", "Art", "Wohnungstyp", "Nutzung", "Kategorie"
+- area: "Wfl.", "Wohnfläche", "Fläche", "qm", "m²", "m2", "Wfl. (qm)", "Wohnfl.", "Nutzfläche"
+- rooms: "Zimmer", "Zi.", "Räume", "Zi.-Anz.", "Zimmeranzahl"
+- floor: "Etage", "Geschoss", "OG", "Stockwerk", "Ebene", "Lage"
+- price: "Kaufpreis", "Preis", "VK-Preis", "Verkaufspreis", "KP", "Kaufpreis netto", "Preis (EUR)", "Gesamtpreis"
+- currentRent: "Miete", "Ist-Miete", "Monatsmiete", "Kaltmiete", "Nettomiete", "akt. Miete", "Mieteinnahme"
+
+Nutze die Tool-Funktion extract_units um die Daten strukturiert zurückzugeben. Befülle IMMER das column_mapping mit den Original-Spaltenbezeichnungen aus der Datei.`;
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -60,7 +116,7 @@ serve(async (req) => {
 });
 
 // ══════════════════════════════════════════════════════════════════════════════
-// ANALYZE MODE — AI extraction from uploaded files
+// ANALYZE MODE — AI extraction via Tool-Calling
 // ══════════════════════════════════════════════════════════════════════════════
 
 async function handleAnalyze(
@@ -79,7 +135,7 @@ async function handleAnalyze(
     extractedUnits: [],
   };
 
-  // Exposé — AI extraction
+  // Exposé — AI extraction (free-text OK for unstructured docs)
   if (storagePaths?.expose) {
     try {
       const { data: fileData, error: dlError } = await supabase.storage
@@ -145,7 +201,7 @@ Antworte NUR mit JSON:
     }
   }
 
-  // Pricelist — AI extraction
+  // Pricelist — AI extraction via Tool-Calling
   if (storagePaths?.pricelist) {
     try {
       const { data: fileData, error: dlError } = await supabase.storage
@@ -170,41 +226,61 @@ Antworte NUR mit JSON:
             body: JSON.stringify({
               model: 'google/gemini-2.5-flash',
               messages: [
-                {
-                  role: 'system',
-                  content: `Extrahiere alle Wohneinheiten aus der Preisliste. Antworte NUR mit JSON-Array:
-[{"unitNumber":"WE-001","type":"Wohnung","area":65,"rooms":2,"floor":"EG","price":289000,"currentRent":650}]`
-                },
+                { role: 'system', content: PRICELIST_SYSTEM_PROMPT },
                 {
                   role: 'user',
                   content: [
-                    { type: 'text', text: 'Extrahiere alle Einheiten:' },
+                    { type: 'text', text: 'Extrahiere alle Einheiten aus dieser Preisliste und melde das Spalten-Mapping:' },
                     { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64}` } }
                   ]
                 }
               ],
+              tools: [EXTRACT_UNITS_TOOL],
+              tool_choice: { type: 'function' as const, function: { name: 'extract_units' } },
               max_tokens: 4000,
             }),
           });
 
           if (aiResponse.ok) {
             const aiResult = await aiResponse.json();
-            const content = aiResult.choices?.[0]?.message?.content;
-            if (content) {
-              const jsonMatch = content.match(/\[[\s\S]*\]/);
-              if (jsonMatch) {
-                try {
-                  const units = JSON.parse(jsonMatch[0]);
-                  if (Array.isArray(units) && units.length > 0) {
-                    extractedData.extractedUnits = units;
-                    extractedData.unitsCount = units.length;
-                    extractedData.totalArea = units.reduce((s: number, u: any) => s + (u.area || 0), 0);
-                    const prices = units.map((u: any) => u.price).filter((p: number) => p > 0);
-                    if (prices.length > 0) {
-                      extractedData.priceRange = `${Math.min(...prices).toLocaleString('de-DE')} – ${Math.max(...prices).toLocaleString('de-DE')} €`;
-                    }
+            const toolCall = aiResult.choices?.[0]?.message?.tool_calls?.[0];
+            
+            if (toolCall?.function?.arguments) {
+              try {
+                const args = JSON.parse(toolCall.function.arguments);
+                const units = args.units;
+                if (Array.isArray(units) && units.length > 0) {
+                  extractedData.extractedUnits = units;
+                  extractedData.unitsCount = units.length;
+                  extractedData.totalArea = units.reduce((s: number, u: any) => s + (u.area || 0), 0);
+                  const prices = units.map((u: any) => u.price).filter((p: number) => p > 0);
+                  if (prices.length > 0) {
+                    extractedData.priceRange = `${Math.min(...prices).toLocaleString('de-DE')} – ${Math.max(...prices).toLocaleString('de-DE')} €`;
                   }
-                } catch (_) { /* parse error */ }
+                }
+                if (Array.isArray(args.column_mapping)) {
+                  extractedData.columnMapping = args.column_mapping;
+                }
+              } catch (_) { /* parse error */ }
+            } else {
+              // Fallback: content-based parsing
+              const content = aiResult.choices?.[0]?.message?.content;
+              if (content) {
+                const jsonMatch = content.match(/\[[\s\S]*\]/);
+                if (jsonMatch) {
+                  try {
+                    const units = JSON.parse(jsonMatch[0]);
+                    if (Array.isArray(units) && units.length > 0) {
+                      extractedData.extractedUnits = units;
+                      extractedData.unitsCount = units.length;
+                      extractedData.totalArea = units.reduce((s: number, u: any) => s + (u.area || 0), 0);
+                      const prices = units.map((u: any) => u.price).filter((p: number) => p > 0);
+                      if (prices.length > 0) {
+                        extractedData.priceRange = `${Math.min(...prices).toLocaleString('de-DE')} – ${Math.max(...prices).toLocaleString('de-DE')} €`;
+                      }
+                    }
+                  } catch (_) { /* parse error */ }
+                }
               }
             }
           }
