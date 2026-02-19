@@ -35,3 +35,7 @@ export * from './finanzuebersicht/spec';
 // Engine 9: Vorsorge-Lückenrechner
 export * from './vorsorgeluecke/engine';
 export * from './vorsorgeluecke/spec';
+
+// Engine 17: Konto-Matching (ENG-KONTOMATCH)
+export * from './kontoMatch/engine';
+export * from './kontoMatch/spec';

@@ -24,6 +24,7 @@
 | 14 | **Demo-Daten Engine** | Erzeugt realistische Beispieldaten fuer neue Mandanten | Onboarding | Free |
 | 15 | **Golden Path Engine** | Fuehrt Nutzer Schritt fuer Schritt durch komplexe Workflows | Ueberall (Guided Tours) | Free |
 | 16 | **Storage Extraction** | Macht den gesamten Datenraum fuer Armstrong durchsuchbar (Bulk) | Dateimanager · Armstrong | 1 Credit/Doc |
+| 17 | **Konto-Matching Engine** | Ordnet Kontobewegungen automatisch Immobilien, PV-Anlagen und Vertraegen zu | Konten · Immobilien · PV | Free |
 
 ---
 
@@ -44,6 +45,7 @@ Alle Kalkulationsengines sind **pure TypeScript Functions**, laufen **client-sid
 | ENG-FINUEB | Finanzuebersicht-Engine | MOD-18 | ✅ Live | `src/engines/finanzuebersicht/spec.ts`, `engine.ts` |
 | ENG-VORSORGE | Vorsorgeluecke-Rechner | MOD-08 | ✅ Live | `src/engines/vorsorgeluecke/spec.ts`, `engine.ts` |
 | ENG-VVSTEUER | V+V Steuer-Engine | MOD-04 | ✅ Live | `src/engines/vvSteuer/spec.ts` |
+| ENG-KONTOMATCH | Konto-Matching Engine | MOD-04, MOD-18, MOD-19 | ⚡ Teilweise | `src/engines/kontoMatch/spec.ts`, `engine.ts` |
 
 ### Daten (3 Engines)
 
