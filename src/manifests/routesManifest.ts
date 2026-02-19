@@ -373,13 +373,17 @@ export const zone2Portal: ZoneDefinition = {
       display_order: 10,
       visibility: { default: false, org_types: ["partner"], requires_activation: true },
       tiles: [
-        { path: "inline", component: "LeadManagerInline", title: "Lead Manager", default: true },
+        { path: "kampagnen", component: "LeadManagerKampagnen", title: "Kampagnen", default: true },
+        { path: "kaufy", component: "LeadManagerBrand", title: "Kaufy" },
+        { path: "futureroom", component: "LeadManagerBrand", title: "FutureRoom" },
+        { path: "acquiary", component: "LeadManagerBrand", title: "Acquiary" },
+        { path: "projekte", component: "LeadManagerProjekte", title: "Projekte" },
       ],
       deprecated_routes: [
-        { path: "uebersicht", reason: "Consolidated into inline flow", remove_in: "3.0.0" },
-        { path: "kampagnen", reason: "Consolidated into inline flow", remove_in: "3.0.0" },
-        { path: "studio", reason: "Consolidated into inline flow", remove_in: "3.0.0" },
-        { path: "leads", reason: "Consolidated into inline flow", remove_in: "3.0.0" },
+        { path: "inline", reason: "Replaced by 5-tile architecture", remove_in: "3.0.0" },
+        { path: "uebersicht", reason: "Consolidated into kampagnen", remove_in: "3.0.0" },
+        { path: "studio", reason: "Consolidated into brand tiles", remove_in: "3.0.0" },
+        { path: "leads", reason: "Consolidated into kampagnen", remove_in: "3.0.0" },
       ],
     },
     // =========================================================================
