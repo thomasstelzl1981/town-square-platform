@@ -1,62 +1,28 @@
 
 
-# Portal Terms: Inline-Editor fuer Rechtstexte
+# Impressum-Vorschau aus Company Profile entfernen
 
 ## Problem
 
-Der Tab "Portal Terms" in Zone 1 zeigt aktuell nur eine kompakte Liste (Titel + Status-Badge + Version-Button). Der eigentliche Markdown-Inhalt der Dokumente ist **nicht sichtbar**. Man muss erst auf "+ Version" klicken, um in einem Dialog neuen Text einzugeben — aber den bestehenden aktiven Text sieht man nirgends.
+Im Tab "Company Profile" gibt es unter jeder Firmen-Card eine aufklappbare "Impressum-Vorschau", die einen Markdown-Text aus den Formulardaten generiert. Das ist verwirrend und redundant, weil:
+- Tab "Public Pages" ist der eigentliche Ort fuer Impressums-Texte
+- Die Vorschau suggeriert, dass dort das Impressum gepflegt wird
+- Company Profile soll reine **Stammdaten-Eingabe** sein (SSOT fuer Firmendaten)
 
-## Loesung
+## Aenderung
 
-Den Tab "Portal Terms" (`CompliancePortalTerms.tsx`) so umbauen, dass fuer jedes Dokument (portal_agb, portal_privacy) eine **aufklappbare Card** mit folgendem Inhalt erscheint:
+**Datei:** `src/pages/admin/compliance/ComplianceCompanyProfile.tsx`
 
-### Pro Dokument-Card:
+Entfernt werden:
+1. Die Funktion `buildImprintMd()` (Zeilen 20-30)
+2. Der gesamte Collapsible-Block "Impressum-Vorschau" (Zeilen 96-112)
+3. Die Imports fuer `Collapsible`, `CollapsibleContent`, `CollapsibleTrigger`, `Eye`, `ChevronDown`
+4. Der State `previewOpen` in der CompanyCard
 
-1. **Header**: Titel, Status-Badge, aktuelle Version
-2. **Aktiver Text (read-only Vorschau)**: Der aktuelle `content_md` der aktiven Version wird als Markdown gerendert angezeigt (Collapsible, standardmaessig eingeklappt)
-3. **Editierbare Textarea**: Zum Erstellen einer neuen Draft-Version mit dem Text vorausgefuellt aus der aktuellen aktiven Version
-4. **Aenderungsnotiz** + **Speichern-Button**
+Was bleibt: Nur das Stammdaten-Formular mit Speichern-Button pro Firma.
 
-### Datenfluss:
+## Keine weiteren Aenderungen
 
-- Fuer jedes Dokument wird `useDocumentVersions(doc.id)` aufgerufen
-- Die aktive Version (status='active') wird gesucht und deren `content_md` als Vorschau + Prefill angezeigt
-- Beim Speichern wird eine neue Draft-Version erstellt (wie bisher)
-
-## Technische Aenderungen
-
-| Datei | Aenderung |
-|-------|-----------|
-| CompliancePortalTerms.tsx | Kompletter Umbau: pro Dokument eine expandierbare Card mit Markdown-Vorschau + Textarea-Editor |
-
-### Neuer Aufbau pro Dokument:
-
-```text
-+-----------------------------------------------+
-| [FileText] Nutzungsbedingungen (Portal)       |
-| Status: active  |  Version: 1                 |
-+-----------------------------------------------+
-| [Collapsible] Aktuelle Version anzeigen        |
-|   -> Gerendeter Markdown-Text (read-only)      |
-+-----------------------------------------------+
-| Neue Version erstellen:                        |
-| +-------------------------------------------+ |
-| | [Textarea, prefilled mit aktivem Text]    | |
-| |                                           | |
-| +-------------------------------------------+ |
-| Aenderungsnotiz: [_______________]             |
-| [Draft speichern]  [Aktivieren wenn Draft]     |
-+-----------------------------------------------+
-```
-
-### Keine Aenderung an:
-
-- ComplianceBundles.tsx (bleibt eigener Tab — Bundles sind Dokumenten-Gruppierungen)
-- useComplianceDocuments.ts (Hook bleibt unveraendert)
-- ComplianceDeskRouter.tsx (Tab-Struktur bleibt)
-
-## Reihenfolge
-
-1. CompliancePortalTerms.tsx umschreiben mit inline Textarea + Markdown-Vorschau
-2. Aktive Version automatisch als Prefill laden
-
+- Public Pages (Tab 3): bleibt unveraendert — dort gehoert das Impressum hin
+- Portal Terms (Tab 4): gerade erst umgebaut, bleibt so
+- Bundles (Tab 5): eigenstaendige Gruppierungslogik, bleibt so
