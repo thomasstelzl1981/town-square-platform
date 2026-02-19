@@ -1,102 +1,227 @@
 
 
-# Soll-Ist-Analyse: Spec-Dateien, Audit-Katalog und Manifest nach Manager-Modul-Aenderungen
+# Lead Manager (MOD-10) — Komplett-Ueberarbeitung der UI
 
-## Zusammenfassung der bisherigen Aenderungen
+## Problem (IST-Zustand)
 
-In den letzten Sessions wurden folgende Aenderungen umgesetzt:
+Basierend auf den Screenshots und dem Code:
 
-1. **MOD-09 (Immomanager):** Tile "Systemgebühr" hinzugefuegt, Titel auf "Provisionen" umbenannt
-2. **MOD-12 (Akquisemanager):** Tile "Systemgebühr" hinzugefuegt (6. Tile!), Titel auf "Provisionen" umbenannt
-3. **MOD-11 (Finanzierungsmanager):** Hatte bereits "Provisionen" — keine Aenderung
-4. **MOD-10 (Lead Manager):** Komplett umgebaut von 6 Sub-Seiten auf Inline-Flow, Route von `/portal/provisionen` auf `/portal/lead-manager` geaendert, Name von "Provisionen" auf "Lead Manager"
-5. **MOD-13 (Projektmanager):** Neuer Tile "Lead Manager" hinzugefuegt (5. Tile!), DB-Spalte `social_mandates.project_id`
+1. **Leer und unverstaendlich**: Alle Bereiche zeigen "0" oder "Noch keine Kampagnen/Leads" — keine Demo-Inhalte
+2. **Template-Slots viel zu klein**: Winzige 48px hohe Platzhalter-Karten mit nur einem Icon — kein Bild, keine Vorschau
+3. **Kein erklaerter Flow**: Schritte als trockene UPPERCASE-Labels ohne Beschreibung, was passiert
+4. **Kontext-Auswahl unklar**: Brand-Badges sind kleine Textpillen — kein visuelles Branding, keine Bilder
+5. **Alles wirkt blockiert/leer**: Man sieht nicht, wie das Modul funktioniert, weil es null Vorbefuellung gibt
+6. **Sub-Tabs oben stehen noch**: UEBERSICHT, KAMPAGNEN, STUDIO, LEADS — obwohl alles inline sein sollte
 
----
+## Loesung (SOLL-Zustand)
 
-## Soll-Ist je Datei
+Kompletter visueller Umbau mit drei Saeulen:
 
-### 1. `artifacts/audit/zone2_modules.json`
+### A) Marken-Vorlagen als grosse, visuelle Karten (statt Badges)
 
-| Modul | IST (veraltet) | SOLL (aktuell) |
-|-------|----------------|----------------|
-| MOD-09 | `tiles: ["katalog","beratung","kunden","network","leads"]`, tile_count: 5 | `tiles: ["katalog","beratung","kunden","network","systemgebuehr"]`, tile_count: 5, note: Tile "leads" umbenannt zu "systemgebuehr", Display-Titel "Provisionen" |
-| MOD-10 | `name: "Provisionen"`, `base: "provisionen"`, `tiles: ["uebersicht"]`, tile_count: 1, note: "Legacy route /portal/leads" | `name: "Lead Manager"`, `base: "lead-manager"`, `tiles: ["inline"]`, tile_count: 1, note: "Inline-Flow. Legacy routes /portal/provisionen + /portal/leads redirect here." |
-| MOD-12 | `tiles: ["dashboard","mandate","objekteingang","datenbank","tools"]`, tile_count: 5 | `tiles: ["dashboard","mandate","objekteingang","datenbank","tools","systemgebuehr"]`, tile_count: 6, note: "6. Tile 'systemgebuehr' (Display: Provisionen) hinzugefuegt" |
-| MOD-13 | `tiles: ["dashboard","projekte","vertrieb","landing-page"]`, tile_count: 4 | `tiles: ["dashboard","projekte","vertrieb","landing-page","lead-manager"]`, tile_count: 5, note: "5. Tile 'lead-manager' fuer Projekt-Kampagnen" |
+Statt kleiner Badge-Pillen fuer "Kaufy / FutureRoom / Acquiary" werden **grosse Brand-Karten** mit Gradient-Hintergrund, Icon und Beschreibung gezeigt (wie die bestehenden `BrandLinkWidget`-Karten). Man klickt eine Brand-Karte, um den Kontext zu waehlen. Dazu ein freier "Eigene Kampagne"-Slot.
 
-Ausserdem: `total_tiles` muss von 95 auf 97 aktualisiert werden (+1 MOD-12, +1 MOD-13; MOD-09 bleibt 5, MOD-10 bleibt 1).
+### B) Template-Vorlagen gross und mit Beispielinhalt
 
-### 2. `spec/current/02_modules/mod-09_vertriebspartner.md`
+Statt 48px hoher leerer Karten werden die Templates als **grosse Vorschaukarten** (mind. 200px hoch) dargestellt. Jede Karte zeigt:
+- Einen farbigen Gradient-Header als Bild-Platzhalter
+- Den Template-Namen gross
+- Eine klare Beschreibung
+- Bei Demo-Kampagnen: Vorausgefuellte Beispieltexte
 
-| Aspekt | IST | SOLL |
-|--------|-----|------|
-| Tiles-Tabelle | 5 Tiles: Katalog, Beratung, Kunden, Network, Leads | 5 Tiles: Katalog, Beratung, Kunden, Network, **Provisionen** (Route: systemgebuehr) |
-| Tile-Catalog YAML | `sub_tiles: [katalog, beratung, kunden, network, leads]` | `sub_tiles: [katalog, beratung, kunden, network, systemgebuehr]` |
-| Selfie Ads Abschnitt | Route: `/portal/vertriebspartner/selfie-ads` | Entfernen oder als Legacy markieren — Selfie Ads ist jetzt in MOD-10 Lead Manager konsolidiert |
-| Version | 1.0.0 | 1.1.0 |
-| Changelog | Nur Initial Release | + "1.1.0: Tile 'Leads' ersetzt durch 'Provisionen' (Systemgebuehr-Vereinbarung). Selfie Ads in MOD-10 konsolidiert." |
+### C) 3 Demo-Kampagnen vorgeneriert
 
-### 3. `spec/current/02_modules/mod-10_abrechnung.md`
+Das Modul startet mit 3 hardcoded Demo-Kampagnen (je eine pro Brand), damit der User sofort sieht, wie fertige Kampagnen aussehen:
 
-| Aspekt | IST | SOLL |
-|--------|-----|------|
-| Dateiname | `mod-10_abrechnung.md` | Umbenennen zu `mod-10_lead-manager.md` |
-| Titel | "ABRECHNUNG (Commission Management)" | "LEAD MANAGER (Campaign & Lead Management)" |
-| Route-Prefix | `/portal/leads` | `/portal/lead-manager` |
-| SSOT-Rolle | "Source of Truth fuer Provisionsabrechnungen" | "Source of Truth fuer Lead-Kampagnen, Selfie Ads und Lead-Verwaltung" |
-| FROZEN RULES R2 | Route bleibt `/portal/leads` | Route ist `/portal/lead-manager`, Legacy-Redirects fuer `/portal/leads` und `/portal/provisionen` |
-| FROZEN RULES R3 | Display-Name "Abrechnung" | Display-Name "Lead Manager" |
-| Tiles | 1 Tile: Uebersicht | 1 Tile: Inline-Flow (KPIs, Kampagnen, Planung, Leads — alles auf einer Seite) |
-| Tile-Catalog YAML | `title: "Abrechnung"`, `main_route: "/portal/leads"` | `title: "Lead Manager"`, `main_route: "/portal/lead-manager"`, `icon: "Megaphone"` |
-| Neuer Abschnitt | — | Projekt-Kampagnen: `social_mandates.project_id` fuer MOD-13 Integration |
-| Edge Functions | — | `sot-social-mandate-submit` (erweitert um project_id) |
-| Version | 1.2.0 | 2.0.0 |
+| Demo | Brand | Budget | Status | Templates |
+|------|-------|--------|--------|-----------|
+| 1 | Kaufy | 2.500 EUR | Live | Rendite-Highlight, Objekt-Showcase |
+| 2 | FutureRoom | 3.000 EUR | Eingereicht | Berater-Portrait, Region-Focus |
+| 3 | Acquiary | 1.800 EUR | Entwurf | Objekt-Showcase, Testimonial |
 
-### 4. `spec/current/02_modules/mod-12_akquise-manager.md`
+Jede Demo-Kampagne hat vorgenerierte Captions und CTAs, die zu den jeweiligen Brands passen.
 
-| Aspekt | IST | SOLL |
-|--------|-----|------|
-| Tiles-Tabelle | 5 Tiles | 6 Tiles: + Provisionen (Route: systemgebuehr) |
-| Tile-Catalog YAML | `sub_tiles: [dashboard, mandate, objekteingang, tools, datenbank]` | `sub_tiles: [dashboard, mandate, objekteingang, datenbank, tools, systemgebuehr]` |
-| Version | 1.0.0 | 1.1.0 |
-| Changelog | Nur Initial Release | + "1.1.0: Tile 'Provisionen' (Systemgebuehr-Vereinbarung) hinzugefuegt." |
+## Detaillierte UI-Struktur (Top-to-Bottom)
 
-### 5. `spec/current/02_modules/mod-13_projekte.md`
+```text
++====================================================================+
+|  ModulePageHeader: LEAD MANAGER                                    |
+|  "Social-Media-Kampagnen planen, Creatives gestalten, Leads        |
+|   verwalten — alles an einem Ort."                                 |
++====================================================================+
 
-| Aspekt | IST | SOLL |
-|--------|-----|------|
-| Tiles-Tabelle | 4 Tiles: Uebersicht, Timeline, Dokumente, Einstellungen | **Achtung: Spec ist komplett veraltet!** Manifest hat: Dashboard, Projekte, Vertrieb, Landing Page, Lead Manager (5 Tiles) |
-| Tile-Catalog YAML | `sub_tiles: [uebersicht, timeline, dokumente, einstellungen]` | `sub_tiles: [dashboard, projekte, vertrieb, landing-page, lead-manager]` |
-| Edge Functions | 3 Functions | + `sot-social-mandate-submit` (Projekt-Kampagnen) |
-| Neuer Abschnitt | — | Lead Manager: Projekt-Kampagnen, `social_mandates.project_id`, Inline-Flow |
-| Version | 1.0.0 | 1.1.0 |
-| Changelog | Nur Initial Release | + "1.1.0: Tile 'Lead Manager' hinzugefuegt. Tiles an Manifest angeglichen (Dashboard, Projekte, Vertrieb, Landing Page, Lead Manager)." |
++--------------------------------------------------------------------+
+| KACHEL 1: UEBERSICHT (KPIs) — mit Demo-Daten vorbefuellt          |
+|                                                                    |
+|  [7.300 EUR]   [23 Leads]   [317 EUR CPL]   [2 Aktive]            |
+|  Gesamtausg.   Generiert    Cost per Lead    Kampagnen             |
+|                                                                    |
+|  Filter-Badges: [Alle] [Kaufy] [FutureRoom] [Acquiary] [Projekte] |
++--------------------------------------------------------------------+
 
-### 6. `spec/current/02_modules/mod-11_finanzierungsmanager.md`
++--------------------------------------------------------------------+
+| KACHEL 2: MEINE KAMPAGNEN — 3 Demo-Kampagnen vorgeladen           |
+|                                                                    |
+|  +--------------------------------------------------------------+  |
+|  | [gradient: Kaufy-blau]                        [DEMO] [Live]  |  |
+|  | Kaufy Fruehjahrs-Kampagne                                    |  |
+|  | Budget: 2.500 EUR  |  01.03 - 31.03.2026  |  Muenchen        |  |
+|  | "Kapitalanlage ab 289.000 EUR — Jetzt beraten lassen"         |  |
+|  +--------------------------------------------------------------+  |
+|  | [gradient: FutureRoom-gruen]                [DEMO] [Eingereicht]|
+|  | FutureRoom Finanzierungs-Kampagne                             |  |
+|  | Budget: 3.000 EUR  |  15.03 - 15.04.2026  |  Berlin, Hamburg  |  |
+|  +--------------------------------------------------------------+  |
+|  | [gradient: Acquiary-blau]                   [DEMO] [Entwurf]  |  |
+|  | Acquiary Sourcing-Kampagne                                    |  |
+|  | Budget: 1.800 EUR  |  01.04 - 30.04.2026  |  Frankfurt        |  |
+|  +--------------------------------------------------------------+  |
++--------------------------------------------------------------------+
 
-| Aspekt | IST | SOLL |
-|--------|-----|------|
-| Routes-Tabelle | Veraltet (dashboard, faelle, kommunikation, status) | Manifest hat: Dashboard, Finanzierungsakte, Einreichung, Provisionen, Archiv (5 Tiles) |
-| Version | 2.1.0 | 2.2.0 |
-| Changelog | — | + "2.2.0: Routes-Tabelle an Manifest angeglichen. Tile 'Provisionen' (Systemgebuehr) dokumentiert." |
++--------------------------------------------------------------------+
+| KACHEL 3: NEUE KAMPAGNE ERSTELLEN                                  |
+|                                                                    |
+|  "Waehlen Sie eine Vorlage oder erstellen Sie eine freie           |
+|   Kampagne. Sie koennen alles anpassen."                           |
+|                                                                    |
+|  SCHRITT 1: Fuer wen moechten Sie werben?                          |
+|  +------------------+ +------------------+ +------------------+    |
+|  | [Kaufy-Gradient] | | [FR-Gradient]    | | [Acq-Gradient]   |   |
+|  | KAUFY            | | FutureRoom       | | ACQUIARY         |   |
+|  | Marktplatz &     | | Finanzierung     | | Sourcing &       |   |
+|  | Investment       | |                  | | Akquisition      |   |
+|  |                  | |                  | |                  |   |
+|  | 4 Vorlagen       | | 4 Vorlagen       | | 4 Vorlagen       |   |
+|  +------------------+ +------------------+ +------------------+    |
+|                                                                    |
+|  +------------------+ +--------------------------------------+     |
+|  | [Projekt-Icon]   | | [Upload-Icon]                        |     |
+|  | Mein Projekt     | | Eigene Kampagne                      |     |
+|  | Waehlen Sie ein  | | Laden Sie eigene Bilder hoch und     |     |
+|  | Projekt aus Ihrem| | gestalten Sie Ihre Kampagne frei.    |     |
+|  | Portfolio        | |                                      |     |
+|  +------------------+ +--------------------------------------+     |
+|                                                                    |
+|  SCHRITT 2: Kampagnen-Details                                      |
+|  (Zwei-Spalten-Grid: Laufzeit, Budget, Regionen, Zielgruppe)      |
+|  - Beschreibungstext unter jedem Feld                              |
+|                                                                    |
+|  SCHRITT 3: Anzeigen gestalten                                     |
+|  "Waehlen Sie bis zu 5 Vorlagen. Jede Vorlage wird als            |
+|   4-Slide-Anzeige fuer Facebook & Instagram generiert."            |
+|                                                                    |
+|  +---------------------------+ +---------------------------+       |
+|  | [Gradient-BG 200px hoch]  | | [Gradient-BG 200px hoch]  |       |
+|  | Bild-Bereich               | | Bild-Bereich              |       |
+|  | (Upload oder Platzhalter)  | | (Upload oder Platzhalter) |       |
+|  |                            | |                           |       |
+|  | T1: Rendite-Highlight      | | T2: Berater-Portrait      |       |
+|  | Renditezahlen und Fakten   | | Persoenliche Vorstellung  |       |
+|  | im Fokus. Zeigen Sie       | | des Beraters. Schaffen    |       |
+|  | Investoren, was moeglich   | | Sie Vertrauen durch       |       |
+|  | ist.                       | | Kompetenz und Naehe.      |       |
+|  |                            | |                           |       |
+|  | Caption: [editierbar]      | | Caption: [editierbar]     |       |
+|  | CTA: [editierbar]          | | CTA: [editierbar]         |       |
+|  | [Eigenes Bild hochladen]   | | [Eigenes Bild hochladen]  |       |
+|  +---------------------------+ +---------------------------+       |
+|  (... weitere Templates im 2-Spalten-Grid)                         |
+|                                                                    |
+|  SCHRITT 4: Personalisierung                                       |
+|  (Portrait-Upload groesser: 80x80px, mit Beispiel-Avatar)         |
+|                                                                    |
+|  SCHRITT 5: Vorschau & Beauftragen                                 |
+|  (Zusammenfassung + grosser Beauftragen-Button)                    |
++--------------------------------------------------------------------+
 
-### 7. `spec/current/02_zones.md` — Keine Aenderung noetig
++--------------------------------------------------------------------+
+| KACHEL 4: MEINE LEADS — mit Demo-Leads vorbefuellt                |
+|                                                                    |
+|  5 Demo-Leads mit Status, Name, Datum, Brand-Zuordnung             |
++--------------------------------------------------------------------+
+```
 
-Die Zone-Boundary-Contracts sind stabil. Keine strukturellen Aenderungen.
+## Technische Umsetzung
 
----
+### 1. `LeadManagerInline.tsx` — Komplett umschreiben (~800 Zeilen)
 
-## Umsetzungsreihenfolge
+**Aenderungen im Detail:**
 
-| # | Datei | Aenderungstyp |
-|---|-------|---------------|
-| 1 | `artifacts/audit/zone2_modules.json` | MOD-09, MOD-10, MOD-12, MOD-13 aktualisieren, total_tiles auf 97 |
-| 2 | `spec/current/02_modules/mod-10_abrechnung.md` | Komplett umschreiben und umbenennen zu `mod-10_lead-manager.md` |
-| 3 | `spec/current/02_modules/mod-09_vertriebspartner.md` | Tiles-Tabelle, YAML, Changelog aktualisieren |
-| 4 | `spec/current/02_modules/mod-12_akquise-manager.md` | 6. Tile dokumentieren, YAML, Changelog |
-| 5 | `spec/current/02_modules/mod-13_projekte.md` | Tiles komplett an Manifest angleichen, Lead Manager dokumentieren |
-| 6 | `spec/current/02_modules/mod-11_finanzierungsmanager.md` | Routes-Tabelle an Manifest angleichen |
+**a) Brand-Auswahl als visuelle Karten:**
+- Wiederverwendung der Gradient-Farben aus `BrandLinkWidget` (`BRAND_CONFIGS`)
+- 5 Karten in einem Grid: Kaufy, FutureRoom, Acquiary, "Mein Projekt", "Eigene Kampagne"
+- Klick waehlt den Kontext; ausgewaehlte Karte bekommt `ring-2 ring-primary`
+- "Eigene Kampagne" hat keinen Brand-Kontext — der User kann frei gestalten
 
-Insgesamt: **6 Dateien** werden aktualisiert/umgeschrieben.
+**b) Template-Slots als grosse Vorschaukarten:**
+- Mindesthoehe 200px statt 48px
+- Gradient-Header-Bereich (brand-farbig) als Bild-Platzhalter
+- Jeder Slot hat einen "Eigenes Bild hochladen"-Button (Dropzone)
+- Vorausgefuellte Demo-Captions und CTAs je nach Brand
+- 2-Spalten-Grid statt 5-Spalten (damit die Karten gross genug sind)
+
+**c) 3 Demo-Kampagnen hardcoded:**
+- Erscheinen in "Meine Kampagnen" mit `[DEMO]`-Badge (gruener Emerald-Glow)
+- Haben realistische Daten (Daten, Budget, Regionen, Status)
+- Werden vor den echten Kampagnen angezeigt
+- Sind nicht editierbar, nur sichtbar als Referenz
+
+**d) 5 Demo-Leads hardcoded:**
+- Erscheinen in "Meine Leads" mit `[DEMO]`-Badge
+- Verschiedene Status (Neu, Kontaktiert, Qualifiziert)
+- Realistische deutsche Namen und Kontaktdaten
+
+**e) Erklaerende Texte an jedem Schritt:**
+- Jeder Schritt bekommt 1-2 Saetze Beschreibung unter der Ueberschrift
+- Schritte heissen menschlicher: "Fuer wen moechten Sie werben?" statt "KONTEXT WAEHLEN"
+
+**f) Sub-Tabs entfernen:**
+- Die UEBERSICHT/KAMPAGNEN/STUDIO/LEADS Tabs kommen aus dem Manifest
+- Da das Manifest bereits auf einen einzigen Inline-Tile umgestellt wurde, sollten die Tabs verschwinden
+- Falls sie noch gerendert werden: im `routesManifest.ts` pruefen, ob `deprecated_routes` Tabs erzeugen
+
+### 2. Brand-spezifische Demo-Vorlagen (4 pro Brand)
+
+Jede Brand bekommt 4 vorgefertigte Template-Texte:
+
+**Kaufy (Marktplatz):**
+| Template | Caption | CTA |
+|----------|---------|-----|
+| Rendite-Highlight | "Bis zu 5,2% Mietrendite — Kapitalanlagen in Toplagen" | "Jetzt Objekte entdecken" |
+| Berater-Portrait | "Ihr Immobilienexperte — persoenlich und kompetent" | "Kostenlose Beratung" |
+| Objekt-Showcase | "Neubauwohnungen ab 289.000 EUR — bezugsfertig 2026" | "Expose anfordern" |
+| Testimonial | "Ueber 200 zufriedene Investoren vertrauen Kaufy" | "Erfolgsgeschichten lesen" |
+
+**FutureRoom (Finanzierung):**
+| Template | Caption | CTA |
+|----------|---------|-----|
+| Rendite-Highlight | "Beste Konditionen ab 2,8% — ueber 400 Bankpartner" | "Konditionen vergleichen" |
+| Berater-Portrait | "Ihr Finanzierungsexperte — digital und persoenlich" | "Beratung buchen" |
+| Region-Focus | "Finanzierungsmarkt Muenchen — aktuelle Analyse" | "Marktbericht lesen" |
+| Testimonial | "98% Abschlussquote bei KI-gestuetzter Aufbereitung" | "Jetzt starten" |
+
+**Acquiary (Sourcing):**
+| Template | Caption | CTA |
+|----------|---------|-----|
+| Rendite-Highlight | "Off-Market-Chancen — exklusive Objekte vor allen anderen" | "Portfolio ansehen" |
+| Berater-Portrait | "Ihr Akquisitionspartner — strategisch und diskret" | "Kontakt aufnehmen" |
+| Objekt-Showcase | "Mehrfamilienhaeuser in A-Lagen — 3-7% Rendite" | "Objektliste anfordern" |
+| Region-Focus | "Sourcing-Hotspots 2026 — wo sich Investitionen lohnen" | "Analyse anfordern" |
+
+### 3. Dateiaenderungen
+
+| Datei | Aenderung |
+|-------|-----------|
+| `src/pages/portal/lead-manager/LeadManagerInline.tsx` | Kompletter visueller Umbau |
+| `src/manifests/routesManifest.ts` | Pruefen ob `deprecated_routes` Sub-Tabs erzeugt — ggf. bereinigen |
+
+### 4. Umsetzungsreihenfolge
+
+1. Demo-Daten (Kampagnen, Leads, Brand-Vorlagen) als Konstanten definieren
+2. Brand-Auswahl als grosse visuelle Karten (Gradient-Cards) umbauen
+3. Template-Slots als grosse Vorschaukarten mit Upload-Option
+4. Erklaerende Texte und bessere Schritt-Bezeichnungen
+5. KPI-Kachel mit Demo-Daten vorbefuellen
+6. Lead-Kachel mit Demo-Leads
+7. Sub-Tabs pruefen und bereinigen
 
