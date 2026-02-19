@@ -106,7 +106,8 @@ export default function UebersichtTile() {
   });
 
   useEffect(() => {
-    // Deduplizierung: Nur auto-create wenn kein Home mit gleicher Stadt existiert
+    // Auto-Create nur bei aktivem Demo-Toggle — bei Demo-OFF bleibt das Modul leer
+    if (!demoEnabled) return;
     const alreadyExists = homes.some(h => 
       h.city?.toLowerCase() === profile?.city?.toLowerCase()
     );
@@ -114,7 +115,7 @@ export default function UebersichtTile() {
       autoCreatedRef.current = true;
       autoCreateMutation.mutate();
     }
-  }, [isLoading, homes.length, profile?.city]);
+  }, [isLoading, homes.length, profile?.city, demoEnabled]);
 
   const { data: contracts = [] } = useQuery({
     queryKey: ['miety-contracts-overview', activeTenantId],
