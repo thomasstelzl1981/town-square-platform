@@ -1,108 +1,203 @@
 
-# AfA-Implementierung vervollstaendigen + Demo-Daten mit realistischen AfA-Werten
 
-## Teil 1: Bug-Fix — useVVSteuerData laedt neue Spalten nicht
+# Strategie: Demo-Daten-Konsolidierung — "Realistic Seeding"
 
-**Problem:** Die V+V-Datenabfrage in `src/hooks/useVVSteuerData.ts` (Zeile 36) selektiert nur die alten Spalten aus `property_accounting`. Die neuen AfA-Spalten (`afa_model`, `ak_ground`, `ak_building`, `ak_ancillary`, `book_value_eur`, `book_value_date`, `cumulative_afa`, `sonder_afa_annual`, `denkmal_afa_annual`) fehlen im SELECT.
+## Analyse: 3 Grundprobleme
 
-**Auswirkung:** Die V+V-Engine berechnet die AfA immer mit Fallback-Werten (0), obwohl die Daten in der DB vorhanden waeren.
+### Problem 1: Drei inkonsistente Datenquellen
 
-**Fix:** Zeile 36 in `useVVSteuerData.ts` erweitern:
+Das System hat aktuell drei voellig getrennte Wege, Demo-Daten bereitzustellen:
 
-```text
-property_accounting SELECT erweitern um:
-  afa_model, ak_ground, ak_building, ak_ancillary,
-  book_value_eur, book_value_date, cumulative_afa,
-  sonder_afa_annual, denkmal_afa_annual
-```
+| Quelle | Mechanismus | Toggle-Steuerung | Beispiele |
+|--------|-------------|-------------------|-----------|
+| **DB-Seeds** (`seed_golden_path_data` RPC) | SQL-Funktion schreibt in echte Tabellen | Kein Toggle — Daten bleiben permanent in der DB | Properties, Leases, Loans, Contacts, Documents |
+| **Client-seitig hardcoded** (TypeScript-Konstanten) | Wird im Browser generiert, nie in DB geschrieben | Per `useDemoToggles` + `GP-*` Keys | Bankkonten, Transaktionen, Listings, Versicherungen |
+| **CSV-Dateien** (`public/demo-data/`) | Liegen im Repo, werden aber von KEINEM Code gelesen | Gar keine | `demo_bank_accounts.csv`, `demo_bank_transactions.csv` |
 
-| Datei | Aenderung |
-|-------|-----------|
-| `src/hooks/useVVSteuerData.ts` | SELECT um 9 neue Spalten erweitern (Zeile 36) |
+**Konsequenz:** DB-Seeds verschwinden nicht bei Toggle OFF. Client-seitige Daten sind nie "echt" eingegeben. CSV-Dateien sind verwaist.
 
----
+### Problem 2: Toggle OFF ist nicht wirklich leer
 
-## Teil 2: Demo-Daten mit realistischen AfA-Werten befuellen
+Wenn ein User alle Toggles deaktiviert:
+- DB-Seeds (Properties, Contacts, Leases, Loans) bleiben sichtbar — sie werden mit `is_demo` gefiltert oder gar nicht
+- `isDemoId()` erkennt nur IDs im `DEMO_ID_SET` (aus `demoData/data.ts`) — DB-Seed-IDs wie `00000000-0000-4000-a000-000000000001` sind dort NICHT registriert
+- Ergebnis: "Geister-Daten" die weder als Demo erkannt noch ausgeblendet werden
 
-**Ist-Zustand der DB** (`property_accounting`):
+### Problem 3: Daten werden nicht "realistisch" eingespielt
 
-| Property | Gebaeude% | Grund% | AfA-Satz | ak_ground | ak_building | ak_ancillary |
-|----------|-----------|--------|----------|-----------|-------------|-------------|
-| BER-01 (280.000 EUR) | 70% | 30% | 2,0% | 0 | 0 | 0 |
-| MUC-01 (420.000 EUR) | 75% | 25% | 2,0% | 0 | 0 | 0 |
-| HH-01 (175.000 EUR) | 65% | 35% | 2,0% | 0 | 0 | 0 |
-
-Die AfA-Aufteilung fehlt komplett. Ohne `ak_building` / `ak_ground` greift nur der Fallback (`purchasePrice * buildingShare%`), was funktioniert, aber die neue Kachel zeigt leere Felder.
-
-**Realistische Demo-Werte (abgeleitet aus Kaufpreis + Erwerbsnebenkosten):**
-
-| Property | ak_ground | ak_building | ak_ancillary | AfA-Basis | AfA p.a. | Buchwert (31.12.2025) | Kum. AfA |
-|----------|-----------|-------------|-------------|-----------|----------|----------------------|----------|
-| BER-01 | 84.000 | 196.000 | 30.800 | 217.560 | 4.351 | 182.749 | 34.811 (8 J.) |
-| MUC-01 | 105.000 | 315.000 | 46.200 | 349.650 | 6.993 | 314.006 | 35.644 (ab 06/2020, 5,5 J.) |
-| HH-01 | 61.250 | 113.750 | 19.250 | 126.318 | 2.526 | 109.326 | 16.992 (ab 03/2019, ~6,75 J.) |
-
-Diese Werte werden per UPDATE in `property_accounting` geschrieben.
-
-**Aenderungen:**
-
-| Aktion | Details |
-|--------|---------|
-| DB UPDATE | `property_accounting` fuer alle 3 Demo-Properties: `ak_ground`, `ak_building`, `ak_ancillary`, `book_value_eur`, `book_value_date`, `cumulative_afa` befuellen |
+Die DB-Seeds schreiben direkt per SQL in Tabellen. Das umgeht:
+- Validierungslogik der UI-Formulare
+- Storage-Node-Erstellung (DMS-Ordnerstruktur)
+- Automatische Berechnungen (AfA, BWA)
+- CSV-Import-Pfade (Kontoauszuege)
 
 ---
 
-## Teil 3: Konzept — Demo-Daten aus dem Musterkunden ableiten
-
-### Ist-Zustand
-
-Demo-Daten verteilen sich aktuell auf 3 Quellen:
-
-| Quelle | Beispiele | Steuerung |
-|--------|-----------|-----------|
-| DB-Seeds (property_accounting, properties, leases) | 3 Immobilien, Mietvertraege, Kontakte | Fest in der Datenbank |
-| Client-seitig hardcoded (useDemoListings, demoKontoData) | Kaufy-Listings, Bankkonten, Transaktionen | GP-PORTFOLIO / GP-KONTEN Toggle |
-| Engine-Daten (demoData/data.ts) | Versicherungen, Vorsorge, Abos, Fahrzeuge | Diverse GP-Toggles |
-
-### Problem
-
-Die Demo-Properties (BER-01 Berlin, MUC-01 Muenchen, HH-01 Hamburg) widersprechen teilweise der SSOT-Regel: Max Mustermann wohnt in Muenchen, Leopoldstrasse 42. Die Berliner und Hamburger Objekte sind als "Altlasten" markiert, aber noch aktiv.
-
-### Konzept: Zentraler Demo-Property-Generator
-
-Statt die AfA-Werte manuell in der DB zu pflegen, soll ein **clientseitiger Demo-Property-Provider** die vollstaendigen Immobiliendaten (inkl. AfA) aus einer einzigen Quelle liefern — analog zu `demoKontoData.ts` fuer Bankkonten.
-
-**Schritt 1: Neue Datei `src/engines/demoData/demoPropertyData.ts`**
-
-Enthaelt die vollstaendigen Demo-Immobiliendaten als Konstanten:
-- Alle 3 Properties mit AK-Split, AfA-Modell, Buchwerten
-- Abgeleitet aus dem Musterkunden Max Mustermann
-- Konsistent mit den DB-Seeds (gleiche IDs)
-
-**Schritt 2: Hook `useDemoPropertyAccounting(propertyId)`**
-
-- Liefert AfA-Stammdaten clientseitig, wenn GP-PORTFOLIO aktiv
-- Wird von `EditableAfaBlock` und `useVVSteuerData` als Fallback genutzt
-- Bei echten DB-Daten (ak_building > 0) werden DB-Werte bevorzugt
-
-**Schritt 3: Langfristig — DB-Seeds reduzieren**
-
-Die `property_accounting`-Seeds werden langfristig durch den clientseitigen Provider ersetzt. Toggle OFF = keine Demo-Daten sichtbar, Toggle ON = vollstaendige Immobilienakte mit allen AfA-Werten.
-
-### Reihenfolge der Implementierung
+## Loesung: 4-Schichten-Architektur
 
 ```text
-1. useVVSteuerData.ts — SELECT erweitern (Bug-Fix)
-2. DB UPDATE — property_accounting mit realistischen AfA-Werten befuellen
-3. demoPropertyData.ts — Neue SSOT fuer Demo-Immobilien-Stammdaten (NEU)
-4. useDemoPropertyAccounting — Hook fuer clientseitigen Fallback (NEU)
+ Schicht 1: SSOT-Dateien (CSV + JSON in public/demo-data/)
+     |
+ Schicht 2: Seed-Engine (Edge Function oder RPC)
+     |        Liest CSVs, schreibt ueber dieselben Pfade wie ein User
+     |
+ Schicht 3: Demo-Registry (DB-Tabelle test_data_registry)
+     |        Trackt jede erzeugte Entity-ID pro Batch
+     |
+ Schicht 4: Toggle-Guard + Cleanup
+            Toggle OFF → alle registrierten Demo-Entities loeschen
 ```
 
-### Betroffene Dateien (Zusammenfassung)
+### Schicht 1: SSOT-Dateien erweitern
+
+**Verzeichnis: `public/demo-data/`**
+
+Alle Demo-Daten werden als editierbare Dateien erfasst:
+
+| Datei | Inhalt | Modul |
+|-------|--------|-------|
+| `demo_bank_accounts.csv` | Bankkonten (existiert, erweitern) | MOD-18 |
+| `demo_bank_transactions.csv` | Kontobewegungen (existiert, erweitern) | MOD-18 |
+| `demo_properties.csv` | NEU: Immobilien mit AfA-Stammdaten | MOD-04 |
+| `demo_units.csv` | NEU: Wohneinheiten | MOD-04 |
+| `demo_leases.csv` | NEU: Mietvertraege | MOD-04/05 |
+| `demo_contacts.csv` | NEU: Kontakte (Mieter, Verwalter, Berater) | MOD-01 |
+| `demo_loans.csv` | NEU: Darlehen | MOD-04 |
+| `demo_vehicles.csv` | NEU: Fahrzeuge | MOD-17 |
+| `demo_insurances.json` | NEU: Versicherungen, Vorsorge | MOD-18 |
+| `demo_pv_plants.csv` | NEU: PV-Anlagen | MOD-19 |
+| `demo_manifest.json` | NEU: Metadaten (Version, Musterkunde, Checksummen) | SYSTEM |
+
+Alle Dateien sind manuell editierbar. Aenderungen an den CSVs aendern direkt die Demo-Daten.
+
+### Schicht 2: Unified Seed-Engine
+
+**Neue Datei: `src/hooks/useDemoSeedEngine.ts`**
+
+Ersetzt sowohl `seed_golden_path_data` (SQL) als auch die verstreuten Client-Konstanten:
+
+```text
+async function seedDemoData(tenantId: string):
+  1. Laedt CSVs aus /demo-data/ per fetch()
+  2. Parsed jede CSV/JSON
+  3. Schreibt Daten ueber Supabase SDK (INSERT mit ON CONFLICT)
+     → Gleicher Pfad wie ein normaler User
+     → Validierung greift, Storage-Nodes werden erstellt
+  4. Registriert jede Entity in test_data_registry (batch_id = 'demo-ssot')
+  5. Gibt SeedResult zurueck (vorher/nachher Counts)
+```
+
+**Kritische Unterschiede zum jetzigen System:**
+- Kein direktes SQL mehr — alles ueber das SDK
+- Jede erstellte Entity bekommt einen Eintrag in `test_data_registry`
+- IDs werden aus den CSVs gelesen (deterministische UUIDs, kein `crypto.randomUUID()`)
+- AfA-Werte, Buchwerte, Finanzierungsdaten kommen direkt aus den CSVs
+
+### Schicht 3: Vollstaendiges Demo-Registry
+
+Die Tabelle `test_data_registry` existiert bereits. Sie wird zum **Single Point of Cleanup**:
+
+```text
+Jede Demo-Entity hat einen Eintrag:
+  tenant_id | batch_id='demo-ssot' | entity_type | entity_id | imported_at
+
+Toggle OFF → DELETE FROM [tabelle] WHERE id IN (
+  SELECT entity_id FROM test_data_registry
+  WHERE tenant_id = ? AND batch_id = 'demo-ssot' AND entity_type = ?
+)
+```
+
+### Schicht 4: Toggle-Guard mit Cleanup
+
+**Aenderung in `useDemoToggles.ts`:**
+
+Wenn ein User **alle Toggles auf OFF** setzt (oder den Master-Toggle nutzt):
+1. Alle Demo-Entities aus `test_data_registry` (batch `demo-ssot`) werden geloescht
+2. Danach ist die DB tatsaechlich leer — kein Filtern mehr noetig
+3. Re-Toggle ON → Seed-Engine laeuft erneut
+
+```text
+toggleAll(OFF):
+  → cleanupDemoData(tenantId)  // Loescht alle registrierten Demo-Entities
+  → localStorage: alle Toggles = false
+
+toggleAll(ON):
+  → seedDemoData(tenantId)     // Schreibt Demo-Daten aus CSVs
+  → localStorage: alle Toggles = true
+```
+
+---
+
+## Betroffene Dateien und Aenderungen
+
+### Neue Dateien
+
+| Datei | Zweck |
+|-------|-------|
+| `public/demo-data/demo_properties.csv` | SSOT: 3 Immobilien mit AfA, Kaufpreis, Adressen |
+| `public/demo-data/demo_units.csv` | SSOT: Wohneinheiten pro Immobilie |
+| `public/demo-data/demo_leases.csv` | SSOT: Mietvertraege |
+| `public/demo-data/demo_contacts.csv` | SSOT: 5 Kontakte |
+| `public/demo-data/demo_loans.csv` | SSOT: Darlehen |
+| `public/demo-data/demo_vehicles.csv` | SSOT: Fahrzeuge (BMW M4) |
+| `public/demo-data/demo_insurances.json` | SSOT: Versicherungen + Vorsorge |
+| `public/demo-data/demo_pv_plants.csv` | SSOT: PV-Anlagen |
+| `public/demo-data/demo_manifest.json` | Metadaten, Version, Checksummen |
+| `src/hooks/useDemoSeedEngine.ts` | Unified Seed: CSV lesen → DB schreiben → Registry |
+| `src/hooks/useDemoCleanup.ts` | Cleanup: Registry lesen → alle Entities loeschen |
+
+### Zu aendernde Dateien
 
 | Datei | Aenderung |
 |-------|-----------|
-| `src/hooks/useVVSteuerData.ts` | SELECT um neue AfA-Spalten erweitern |
-| `property_accounting` (DB) | UPDATE: realistische AfA-Werte fuer 3 Demo-Properties |
-| `src/engines/demoData/demoPropertyData.ts` | NEU — Zentrale Demo-Immobilien-Stammdaten |
-| `src/engines/demoData/demoPropertyData.ts` | NEU — Hook `useDemoPropertyAccounting` |
+| `src/hooks/useDemoToggles.ts` | Toggle OFF/ON triggert Cleanup/Seed |
+| `src/components/admin/TestDataManager.tsx` | "Demo-Daten" Sektion: CSV-Vorschau, Seed-Button, Cleanup-Button |
+| `src/hooks/useGoldenPathSeeds.ts` | Deprecated — wird durch useDemoSeedEngine ersetzt |
+| `src/engines/demoData/data.ts` | Reduzieren: Nur noch IDs + isDemoId-Set, keine Daten mehr |
+| `src/constants/demoKontoData.ts` | Deprecated — Daten kommen aus CSV |
+| `src/config/demoDataRegistry.ts` | Aktualisieren: Alle Quellen zeigen auf public/demo-data/ |
+
+### Zu entfernende Client-seitige Hardcoding-Stellen (schrittweise)
+
+Die folgenden 20+ Dateien mit `@demo-data` Tags werden Schritt fuer Schritt auf die CSV-basierte Seed-Engine umgestellt. Sobald eine Entity per Seed in der DB liegt, entfaellt der clientseitige Fallback.
+
+---
+
+## Implementierungsreihenfolge
+
+### Phase 1: SSOT-CSVs erstellen (Grundlage)
+1. CSV-Dateien fuer Properties, Units, Leases, Contacts, Loans anlegen
+2. Bestehende CSVs (Bank) pruefen und aktualisieren
+3. `demo_manifest.json` mit Version und Entity-Uebersicht
+
+### Phase 2: Seed-Engine bauen
+4. `useDemoSeedEngine.ts` — CSV-Parser + SDK-basierter Insert
+5. `useDemoCleanup.ts` — Registry-basierter Delete
+6. Integration in TestDataManager (neuer "Demo-Daten einspielen" Button)
+
+### Phase 3: Toggle-Lifecycle
+7. `useDemoToggles.ts` erweitern: ON → Seed, OFF → Cleanup
+8. Testen: Toggle OFF → DB ist leer, Toggle ON → alle Daten da
+
+### Phase 4: Client-seitige Altlasten abbauen
+9. `demoKontoData.ts` → durch DB-Daten ersetzen (aus CSV geseeded)
+10. `demoData/data.ts` → reduzieren auf ID-Registry
+11. Einzelne Modul-Hooks (`useDemoListings`, etc.) → direkt aus DB lesen
+
+### Phase 5: Validierung
+12. Automated Test: Neuer Tenant → Toggle OFF → Assertion: 0 Records in allen Tabellen
+13. Toggle ON → Assertion: exakte Counts aus `demo_manifest.json`
+14. Toggle OFF → Assertion: wieder 0
+
+---
+
+## Erwartetes Ergebnis
+
+| Szenario | Vorher | Nachher |
+|----------|--------|---------|
+| Neuer User, Toggles OFF | Geister-Daten aus DB-Seeds sichtbar | **Komplett leer** — 0 Records |
+| Neuer User, Toggles ON | Mix aus DB-Seeds + Client-Daten, inkonsistent | **Vollstaendige, realistische Daten** aus CSVs |
+| Toggle OFF nach ON | DB-Seeds bleiben, Client-Daten verschwinden | **Alles weg** — Registry-basierter Cleanup |
+| Demo-Daten aendern | Code aendern in 20+ Dateien | **CSV editieren** in `public/demo-data/` |
+| Neues Modul hinzufuegen | Neuen Hook + Konstanten + Registry-Eintrag | **CSV-Zeile hinzufuegen** + Seed-Engine kennt es automatisch |
+
