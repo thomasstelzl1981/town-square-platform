@@ -305,11 +305,6 @@
     ],
     "potential_new_akten": [
       {
-        "name": "Grundstücksakte",
-        "reason": "Unbebaute Grundstücke werden aktuell nicht von der Immobilienakte abgedeckt",
-        "priority": "low"
-      },
-      {
         "name": "Kreditakte (Privatkredit)",
         "reason": "Privatkredite ohne Immobilienbezug haben keine eigene Akte",
         "priority": "medium"
