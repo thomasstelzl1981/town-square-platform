@@ -157,6 +157,7 @@ export function useStartSoatOrder() {
         body: {
           intent: 'find_contacts',
           query: 'SOAT Recherche',
+          max_results: 25,
           context: { module: 'soat_search', reference_id: orderId },
         },
       });

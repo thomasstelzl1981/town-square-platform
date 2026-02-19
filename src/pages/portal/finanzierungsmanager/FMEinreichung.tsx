@@ -2,7 +2,7 @@
  * FM Einreichung — 4 eigenständige Kacheln:
  * 1. Exposé  2. Bankauswahl + E-Mail  3. Status & Ergebnis  4. Europace API
  */
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { Loader2, FileText, Building2, Mail, Check, Globe,
   Send, AlertTriangle, Archive, Download, X, Plus, Sparkles, Search } from 'lucide-react';
@@ -29,6 +29,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { SearchProgressIndicator } from '@/components/portal/shared/SearchProgressIndicator';
 import type { FutureRoomCase } from '@/types/finance';
 
 const eurFormat = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
@@ -112,6 +113,8 @@ export default function FMEinreichung({ cases, isLoading }: Props) {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
   const [aiSearchInput, setAiSearchInput] = useState('');
+  const [aiElapsed, setAiElapsed] = useState(0);
+  const aiTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const applicant = request?.applicant_profiles?.[0];
   const property = request?.properties;
@@ -130,18 +133,21 @@ export default function FMEinreichung({ cases, isLoading }: Props) {
 
     setAiLoading(true);
     setAiError(null);
+    setAiElapsed(0);
+    if (aiTimerRef.current) clearInterval(aiTimerRef.current);
+    aiTimerRef.current = setInterval(() => setAiElapsed(p => p + 1), 1000);
+
     try {
       const { data, error } = await supabase.functions.invoke('sot-research-engine', {
         body: {
           intent: 'find_companies',
           query: `Bank ${locationHint}`,
           location: locationHint,
-          max_results: 20,
+          max_results: 25,
           context: { module: 'finanzierung' },
         },
       });
       if (error) throw error;
-      // Map engine results to PlaceResult format
       const mapped = (data?.results || []).map((r: any, idx: number) => ({
         place_id: `engine_${idx}`,
         name: r.name,
@@ -157,6 +163,7 @@ export default function FMEinreichung({ cases, isLoading }: Props) {
       setAiError('Bankensuche fehlgeschlagen');
       toast.error('KI-Bankensuche fehlgeschlagen');
     } finally {
+      if (aiTimerRef.current) { clearInterval(aiTimerRef.current); aiTimerRef.current = null; }
       setAiLoading(false);
     }
   }, [aiSearchInput, defaultAiQuery]);
@@ -520,10 +527,15 @@ Mit freundlichen Grüßen`;
                 </div>
 
                 {aiLoading ? (
-                  <div className="flex items-center gap-2 py-6 justify-center">
-                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                    <span className="text-[10px] text-muted-foreground">Suche Banken im Umkreis…</span>
-                  </div>
+                  <SearchProgressIndicator
+                    elapsedSeconds={aiElapsed}
+                    estimatedDuration={55}
+                    phases={[
+                      { upTo: 15, label: "Banken im Umkreis suchen…" },
+                      { upTo: 35, label: "Websites nach Kontaktdaten scannen…" },
+                      { upTo: 55, label: "Ergebnisse zusammenführen…" },
+                    ]}
+                  />
                 ) : aiError ? (
                   <div className="text-center py-4 space-y-2">
                     <p className="text-[10px] text-destructive">{aiError}</p>

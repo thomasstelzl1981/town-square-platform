@@ -13,6 +13,7 @@ import {
 import { toast } from 'sonner';
 import { DESIGN } from '@/config/designManifest';
 import { useResearchEngine, type ResearchContact } from '@/hooks/useResearchEngine';
+import { SearchProgressIndicator } from '@/components/portal/shared/SearchProgressIndicator';
 
 // ============================================================================
 // Types
@@ -77,7 +78,7 @@ export function ProviderSearchPanel({
   const [manualProvider, setManualProvider] = useState<Partial<SelectedProvider>>({});
   const [manualEmails, setManualEmails] = useState<Record<string, string>>({});
 
-  const { search, isSearching } = useResearchEngine();
+  const { search, isSearching, elapsedSeconds, estimatedDuration } = useResearchEngine();
 
   const handleSearch = useCallback(async () => {
     if (!location) { toast.error('Bitte geben Sie einen Standort an'); return; }
@@ -90,7 +91,7 @@ export function ProviderSearchPanel({
       intent: 'find_contractors',
       query,
       location,
-      max_results: 20,
+      max_results: 25,
       filters: { industry: category },
       context: { module: 'sanierung' },
     });
@@ -186,17 +187,10 @@ export function ProviderSearchPanel({
 
       {/* Search Results */}
       {isSearching ? (
-        <div className="space-y-2">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="flex items-center gap-3 p-2.5 border rounded-lg">
-              <Skeleton className="h-8 w-8 rounded" />
-              <div className="flex-1 space-y-1.5">
-                <Skeleton className="h-3.5 w-40" />
-                <Skeleton className="h-3 w-56" />
-              </div>
-            </div>
-          ))}
-        </div>
+        <SearchProgressIndicator
+          elapsedSeconds={elapsedSeconds}
+          estimatedDuration={estimatedDuration}
+        />
       ) : searchResults.length > 0 ? (
         <div className="space-y-1.5 max-h-[320px] overflow-y-auto">
           {searchResults.map((place) => {
