@@ -1,4 +1,4 @@
-id;unit_id;tenant_contact_id;rent_cold_eur;nk_advance_eur;heating_advance_eur;start_date;status;payment_due_day;deposit_amount_eur;deposit_status;lease_type;rent_model
-d0000000-0000-4000-a000-000000000021;d0000000-0000-4000-a000-000000000011;00000000-0000-4000-a000-000000000103;850;180;120;2018-04-01;active;1;2550;received;unbefristet;nettokaltmiete
-d0000000-0000-4000-a000-000000000022;d0000000-0000-4000-a000-000000000012;;1250;220;110;2020-07-01;active;1;3750;received;unbefristet;nettokaltmiete
-d0000000-0000-4000-a000-000000000023;d0000000-0000-4000-a000-000000000013;;600;120;50;2019-03-15;active;1;1800;received;unbefristet;nettokaltmiete
+id;unit_id;tenant_contact_id;monthly_rent;rent_cold_eur;nk_advance_eur;heating_advance_eur;start_date;status;payment_due_day;deposit_amount_eur;deposit_status;lease_type;rent_model
+d0000000-0000-4000-a000-000000000201;d0000000-0000-4000-a000-000000000011;d0000000-0000-4000-a000-000000000103;1150;850;180;120;2018-04-01;active;1;2550;received;unbefristet;nettokaltmiete
+d0000000-0000-4000-a000-000000000202;d0000000-0000-4000-a000-000000000012;d0000000-0000-4000-a000-000000000103;1580;1250;220;110;2020-07-01;active;1;3750;received;unbefristet;nettokaltmiete
+d0000000-0000-4000-a000-000000000203;d0000000-0000-4000-a000-000000000013;d0000000-0000-4000-a000-000000000103;770;600;120;50;2019-03-15;active;1;1800;received;unbefristet;nettokaltmiete

@@ -24,21 +24,28 @@ function parseCSV(text: string, delimiter = ';'): Record<string, string>[] {
   });
 }
 
+/** Numeric columns across all CSVs */
+const NUMERIC_KEYS = new Set([
+  'total_area_sqm', 'purchase_price', 'year_built', 'area_sqm', 'rooms',
+  'current_monthly_rent', 'ancillary_costs', 'hausgeld_monthly',
+  'monthly_rent', 'rent_cold_eur', 'nk_advance_eur', 'heating_advance_eur',
+  'payment_due_day', 'deposit_amount_eur', 'deposit_amount',
+  'original_amount', 'interest_rate_percent', 'annuity_monthly_eur',
+  'repayment_rate_percent', 'outstanding_balance_eur',
+  'amount_eur', 'floor',
+]);
+
+/** Boolean columns */
+const BOOLEAN_KEYS = new Set([
+  'is_demo', 'weg_flag', 'is_default', 'is_public_listing',
+]);
+
 function coerceValue(value: string, key: string): unknown {
-  if (value === '' || value === 'null') return null;
-  if (value === 'true') return true;
-  if (value === 'false') return false;
-  // Numeric columns
-  const numericKeys = [
-    'total_area_sqm', 'purchase_price', 'year_built', 'area_sqm', 'rooms',
-    'current_monthly_rent', 'ancillary_costs', 'hausgeld_monthly',
-    'rent_cold_eur', 'nk_advance_eur', 'heating_advance_eur',
-    'payment_due_day', 'deposit_amount_eur',
-    'original_amount', 'interest_rate_percent', 'annuity_monthly_eur',
-    'repayment_rate_percent', 'outstanding_balance_eur',
-    'amount_eur',
-  ];
-  if (numericKeys.includes(key)) {
+  if (value === '' || value === 'null' || value === undefined) return null;
+  if (BOOLEAN_KEYS.has(key)) {
+    return value === 'true';
+  }
+  if (NUMERIC_KEYS.has(key)) {
     const num = parseFloat(value);
     return isNaN(num) ? value : num;
   }
@@ -67,6 +74,9 @@ async function fetchCSV(path: string): Promise<Record<string, unknown>[]> {
 
 // ─── Registry ──────────────────────────────────────────────
 
+/** Stable deterministic batch ID for demo-ssot */
+const DEMO_BATCH_ID = 'deadbeef-0000-4000-a000-000000000000';
+
 async function registerEntities(
   tenantId: string,
   entityType: string,
@@ -79,10 +89,10 @@ async function registerEntities(
     tenant_id: tenantId,
     entity_type: entityType,
     entity_id: id,
+    batch_id: DEMO_BATCH_ID,
     batch_name: batchName,
   }));
 
-  // Insert in chunks of 100 to avoid payload limits
   for (let i = 0; i < rows.length; i += 100) {
     const chunk = rows.slice(i, i + 100);
     const { error } = await (supabase as any)
@@ -95,18 +105,30 @@ async function registerEntities(
   }
 }
 
+// ─── Helpers ───────────────────────────────────────────────
+
+/** Remove null/undefined values from an object to avoid sending explicit nulls for NOT NULL columns with defaults */
+function stripNulls(obj: Record<string, unknown>): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(obj)) {
+    if (v !== null && v !== undefined) result[k] = v;
+  }
+  return result;
+}
+
 // ─── Seed Functions ────────────────────────────────────────
 
 async function seedContacts(tenantId: string): Promise<string[]> {
   const rows = await fetchCSV('/demo-data/demo_contacts.csv');
   if (!rows.length) return [];
 
-  const data = rows.map(r => ({ ...r, tenant_id: tenantId }));
+  const data = rows.map(r => stripNulls({ ...r, tenant_id: tenantId }));
   const { error } = await (supabase as any)
     .from('contacts')
     .upsert(data, { onConflict: 'id' });
 
   if (error) console.error('[DemoSeed] contacts:', error.message);
+  else console.log(`[DemoSeed] ✓ contacts: ${rows.length}`);
   return rows.map(r => r.id as string);
 }
 
@@ -114,7 +136,7 @@ async function seedProperties(tenantId: string, landlordContextId?: string): Pro
   const rows = await fetchCSV('/demo-data/demo_properties.csv');
   if (!rows.length) return [];
 
-  const data = rows.map(r => ({
+  const data = rows.map(r => stripNulls({
     ...r,
     tenant_id: tenantId,
     ...(landlordContextId ? { landlord_context_id: landlordContextId } : {}),
@@ -124,6 +146,7 @@ async function seedProperties(tenantId: string, landlordContextId?: string): Pro
     .upsert(data, { onConflict: 'id' });
 
   if (error) console.error('[DemoSeed] properties:', error.message);
+  else console.log(`[DemoSeed] ✓ properties: ${rows.length}`);
   return rows.map(r => r.id as string);
 }
 
@@ -131,12 +154,13 @@ async function seedUnits(tenantId: string): Promise<string[]> {
   const rows = await fetchCSV('/demo-data/demo_units.csv');
   if (!rows.length) return [];
 
-  const data = rows.map(r => ({ ...r, tenant_id: tenantId }));
+  const data = rows.map(r => stripNulls({ ...r, tenant_id: tenantId }));
   const { error } = await (supabase as any)
     .from('units')
     .upsert(data, { onConflict: 'id' });
 
   if (error) console.error('[DemoSeed] units:', error.message);
+  else console.log(`[DemoSeed] ✓ units: ${rows.length}`);
   return rows.map(r => r.id as string);
 }
 
@@ -145,9 +169,7 @@ async function seedLeases(tenantId: string): Promise<string[]> {
   if (!rows.length) return [];
 
   const data = rows.map(r => {
-    const cleaned: Record<string, unknown> = { ...r, tenant_id: tenantId };
-    // Remove empty tenant_contact_id
-    if (!cleaned.tenant_contact_id) delete cleaned.tenant_contact_id;
+    const cleaned = stripNulls({ ...r, tenant_id: tenantId });
     return cleaned;
   });
   const { error } = await (supabase as any)
@@ -155,6 +177,7 @@ async function seedLeases(tenantId: string): Promise<string[]> {
     .upsert(data, { onConflict: 'id' });
 
   if (error) console.error('[DemoSeed] leases:', error.message);
+  else console.log(`[DemoSeed] ✓ leases: ${rows.length}`);
   return rows.map(r => r.id as string);
 }
 
@@ -162,12 +185,13 @@ async function seedLoans(tenantId: string): Promise<string[]> {
   const rows = await fetchCSV('/demo-data/demo_loans.csv');
   if (!rows.length) return [];
 
-  const data = rows.map(r => ({ ...r, tenant_id: tenantId }));
+  const data = rows.map(r => stripNulls({ ...r, tenant_id: tenantId }));
   const { error } = await (supabase as any)
     .from('loans')
     .upsert(data, { onConflict: 'id' });
 
   if (error) console.error('[DemoSeed] loans:', error.message);
+  else console.log(`[DemoSeed] ✓ loans: ${rows.length}`);
   return rows.map(r => r.id as string);
 }
 
@@ -175,7 +199,7 @@ async function seedBankAccounts(tenantId: string): Promise<string[]> {
   const rows = await fetchCSV('/demo-data/demo_bank_accounts.csv');
   if (!rows.length) return [];
 
-  const data = rows.map(r => ({
+  const data = rows.map(r => stripNulls({
     ...r,
     tenant_id: tenantId,
   }));
@@ -184,6 +208,7 @@ async function seedBankAccounts(tenantId: string): Promise<string[]> {
     .upsert(data, { onConflict: 'id' });
 
   if (error) console.error('[DemoSeed] msv_bank_accounts:', error.message);
+  else console.log(`[DemoSeed] ✓ msv_bank_accounts: ${rows.length}`);
   return rows.map(r => r.id as string);
 }
 
@@ -191,12 +216,11 @@ async function seedBankTransactions(tenantId: string): Promise<string[]> {
   const rows = await fetchCSV('/demo-data/demo_bank_transactions.csv');
   if (!rows.length) return [];
 
-  const data = rows.map(r => ({
+  const data = rows.map(r => stripNulls({
     ...r,
     tenant_id: tenantId,
   }));
 
-  // Insert in chunks of 50 to avoid payload limits
   const allIds: string[] = [];
   for (let i = 0; i < data.length; i += 50) {
     const chunk = data.slice(i, i + 50);
@@ -210,6 +234,7 @@ async function seedBankTransactions(tenantId: string): Promise<string[]> {
     allIds.push(...chunk.map(r => (r as Record<string, unknown>).id as string));
   }
 
+  console.log(`[DemoSeed] ✓ bank_transactions: ${allIds.length}`);
   return allIds;
 }
 
@@ -228,8 +253,10 @@ export async function seedDemoData(
   const errors: string[] = [];
   const seeded: Record<string, number> = {};
 
+  console.log(`[DemoSeed] Starting seed for tenant ${tenantId}...`);
+
   try {
-    // Order matters: contacts first, then properties, units, leases, loans, bank
+    // Order matters: contacts first (FK target), then properties, units, leases, loans, bank
     const contactIds = await seedContacts(tenantId);
     seeded.contacts = contactIds.length;
     await registerEntities(tenantId, 'contacts', contactIds);

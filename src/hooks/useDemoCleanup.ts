@@ -2,18 +2,31 @@
  * Demo Cleanup — Deletes all demo entities tracked in test_data_registry
  * 
  * Uses the registry as the single source of truth for which entities to remove.
- * Deletion order respects FK constraints (bank_transactions → leases → loans → units → msv_bank_accounts → properties → contacts).
+ * Deletion order respects FK constraints.
+ * For properties: also cleans up FK-child tables that don't cascade on delete.
  * 
  * @demo-data
  */
 
 import { supabase } from '@/integrations/supabase/client';
 
-/** Entity types in deletion order (children first) */
+/**
+ * Entity types in deletion order (children first).
+ * Tables with ON DELETE CASCADE are handled automatically by Postgres,
+ * but tables without CASCADE must be listed explicitly here.
+ */
 const CLEANUP_ORDER = [
+  // Deepest children first
   'bank_transactions',
   'leases',
   'loans',
+  // FK children of properties WITHOUT cascade (must be explicitly deleted)
+  'listings',
+  'property_accounting',
+  'partner_pipelines',
+  'finance_packages',
+  'msv_enrollments',
+  // Then core entities
   'units',
   'msv_bank_accounts',
   'properties',
@@ -29,6 +42,8 @@ export interface DemoCleanupResult {
 export async function cleanupDemoData(tenantId: string): Promise<DemoCleanupResult> {
   const errors: string[] = [];
   const deleted: Record<string, number> = {};
+
+  console.log(`[DemoCleanup] Starting cleanup for tenant ${tenantId}...`);
 
   try {
     // Fetch all registered demo entities for this tenant
@@ -55,15 +70,37 @@ export async function cleanupDemoData(tenantId: string): Promise<DemoCleanupResu
       grouped[entry.entity_type].push(entry.entity_id);
     }
 
+    // Also find property IDs — we need to clean FK children of properties
+    // even if those children aren't in the registry
+    const propertyIds = grouped['properties'] || [];
+    
+    if (propertyIds.length > 0) {
+      // Delete non-cascading FK children of properties by property_id
+      const propertyChildTables = [
+        'listings', 'property_accounting', 'partner_pipelines', 
+        'finance_packages', 'msv_enrollments',
+      ];
+      for (const childTable of propertyChildTables) {
+        const { error: childErr, count } = await (supabase as any)
+          .from(childTable)
+          .delete({ count: 'exact' })
+          .in('property_id', propertyIds);
+
+        if (childErr) {
+          console.warn(`[DemoCleanup] ${childTable} cleanup: ${childErr.message}`);
+        } else {
+          deleted[`${childTable}(cascade)`] = count ?? 0;
+        }
+      }
+    }
+
     // Delete in FK-safe order
     for (const entityType of CLEANUP_ORDER) {
       const ids = grouped[entityType];
       if (!ids || ids.length === 0) {
-        deleted[entityType] = 0;
         continue;
       }
 
-      // Delete in chunks for large sets (e.g. 100 transactions)
       let deletedCount = 0;
       for (let i = 0; i < ids.length; i += 50) {
         const chunk = ids.slice(i, i + 50);
@@ -81,9 +118,9 @@ export async function cleanupDemoData(tenantId: string): Promise<DemoCleanupResu
       deleted[entityType] = deletedCount;
     }
 
-    // Also handle any entity types not in the standard order
+    // Handle any entity types not in the standard order
     for (const [entityType, ids] of Object.entries(grouped)) {
-      if (CLEANUP_ORDER.includes(entityType as any)) continue;
+      if ((CLEANUP_ORDER as readonly string[]).includes(entityType)) continue;
       
       const { error: delError } = await (supabase as any)
         .from(entityType)
