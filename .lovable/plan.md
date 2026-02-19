@@ -1,191 +1,49 @@
 
 
-# Lead Manager (MOD-10) — Saubere Architektur mit Brand-Untermenuepunkten
+# Lead Manager — Post-Format und Kampagnen-Flow korrigieren
 
-## Neue Struktur
+## Problem 1: Bildformate stimmen nicht
 
-Statt alles in eine einzige Inline-Seite zu quetschen, bekommt MOD-10 **5 Tiles** als Untermenuepunkte:
+Die aktuellen Template-Karten haben eine feste Hoehe von `h-[250px]` — das entspricht keinem Social-Media-Format. Instagram und Facebook Feed-Posts verwenden standardmaessig:
 
-```text
-Lead Manager
-  ├── Kampagnen      ← Kampagnen erstellen, buchen, veroeffentlichen, Leads sehen
-  ├── Kaufy          ← Content-Werkstatt: 4 Vorlagen fuer Kaufy
-  ├── FutureRoom     ← Content-Werkstatt: 4 Vorlagen fuer FutureRoom
-  ├── Acquiary       ← Content-Werkstatt: 4 Vorlagen fuer Acquiary
-  └── Projekte       ← Content-Werkstatt: Vorlagen fuer eigene Projekte
-```
+- **Feed-Post (vertikal):** 1080 x 1350 px = Seitenverhaeltnis **4:5**
+- **Feed-Post (quadratisch):** 1080 x 1080 px = Seitenverhaeltnis **1:1**
+- **Story / Reel:** 1080 x 1920 px = Seitenverhaeltnis **9:16**
 
-### Trennung der Verantwortlichkeiten
+Die Template-Karten muessen das 4:5-Format (Standard fuer Instagram/Facebook Ads) verwenden, damit sie wie echte Posts aussehen.
 
-**Brand-Seiten (Kaufy, FutureRoom, Acquiary, Projekte):**
-- Hier wird der Content vorbereitet: Texte, Bilder, Captions, CTAs
-- Templates werden in `social_templates` gespeichert (DB-gestuetzt)
-- Jede Seite zeigt die 4 Templates der jeweiligen Brand als grosse, editierbare Karten
-- Man kann eigene Bilder hochladen, Texte anpassen, Templates aktivieren/deaktivieren
-- Alles wird persistent in der DB gespeichert
+## Problem 2: "Neue Kampagne"-Button
 
-**Kampagnen-Seite:**
-- KPI-Uebersicht (echte Daten aus `social_mandates` / `social_leads`)
-- Liste bestehender Kampagnen
-- Neue Kampagne erstellen: Brand waehlen → fertige Templates aus DB laden → Budget/Laufzeit festlegen → Beauftragen
-- Lead-Inbox mit Status-Tracking
+Der blaue Button oben rechts togglet eine versteckte Sektion. Das ist nicht intuitiv. Der Kampagnen-Erstellungsbereich wird stattdessen immer sichtbar inline angezeigt (unterhalb der bestehenden Kampagnen). Der Button wird entfernt.
 
-## Detaillierte UI je Seite
+## Aenderungen
 
-### Kampagnen-Seite (`/portal/lead-manager/kampagnen`)
+### 1. `TemplateCard.tsx` — Social-Media-Format
 
-```text
-+====================================================================+
-| KPIs: Ausgaben | Leads | CPL | Aktive Kampagnen                   |
-+====================================================================+
+**Editier-Modus (Brand-Seiten):**
+- Gradient-Header: `h-[250px]` wird zu `aspect-[4/5]` (ergibt ca. 400px bei typischer Kartenbreite)
+- Der Bildbereich bekommt das korrekte Seitenverhaeltnis eines echten Instagram-Posts
+- Upload-Bereich passt sich dem Format an
+- Text-Overlay-Bereich unten im Bild (wie bei echten Posts)
 
-+-- Meine Kampagnen (aus social_mandates) --+
-| Wenn leer: "Erstellen Sie Ihre erste Kampagne."                    |
-| Wenn gefuellt: Kampagnen-Liste mit Status, Budget, Inline-Detail   |
-+--------------------------------------------------------------------+
+**Auswahl-Modus (Kampagnen-Seite):**
+- `h-[120px]` wird zu `aspect-[4/5]` (kleinere Version, aber gleiches Verhaeltnis)
+- Sieht aus wie eine Miniatur-Vorschau eines echten Posts
 
-+-- Neue Kampagne --+
-| Schritt 1: Brand waehlen (grosse Karten: Kaufy / FR / Acquiary)   |
-|            + "Mein Projekt" + "Eigene Kampagne"                    |
-| Schritt 2: Template-Vorlagen auswaehlen                            |
-|            (aus social_templates geladen — was auf der Brand-Seite  |
-|             vorbereitet wurde, erscheint hier als Auswahl-Karte)   |
-| Schritt 3: Kampagnen-Details (Name, Budget, Laufzeit, Regionen)   |
-| Schritt 4: Personalisierung (Portrait, Name, Claim)               |
-| Schritt 5: Zusammenfassung + Beauftragen                          |
-+--------------------------------------------------------------------+
+### 2. `LeadManagerKampagnen.tsx` — Kampagnen-Flow
 
-+-- Meine Leads (aus social_leads) --+
-| Filter nach Status | Inline-Detail bei Klick                      |
-+--------------------------------------------------------------------+
-```
+- "Neue Kampagne"-Button entfernen
+- Kampagnen-Erstellungsbereich ist immer sichtbar (nicht hinter Toggle versteckt)
+- Template-Auswahl-Grid: `grid-cols-4` wird zu `grid-cols-2 md:grid-cols-3` damit die 4:5-Karten genug Platz haben
 
-### Brand-Seite (z.B. `/portal/lead-manager/kaufy`)
+### 3. `LeadManagerBrand.tsx` — Kein Code-Aenderung noetig
 
-```text
-+====================================================================+
-| Kaufy — Anzeigenvorlagen                                           |
-| "Bereiten Sie hier Ihre Werbeinhalte fuer Kaufy vor.               |
-|  Diese Vorlagen stehen Ihnen bei der Kampagnenerstellung            |
-|  zur Verfuegung."                                                   |
-+====================================================================+
+Die Brand-Seiten verwenden bereits das 2-Spalten-Grid. Durch die Aenderung in TemplateCard von `h-[250px]` zu `aspect-[4/5]` werden die Karten automatisch groesser und sehen wie echte Posts aus.
 
-+---------------------------+ +---------------------------+
-| [Kaufy-Gradient 250px]   | | [Kaufy-Gradient 250px]    |
-| Bild-Upload-Bereich      | | Bild-Upload-Bereich       |
-| [Bild hochladen]         | | [Bild hochladen]          |
-|                           | |                           |
-| Rendite-Highlight         | | Objekt-Showcase           |
-| "Renditezahlen und Fakten | | "Immobilien praesentieren  |
-|  im Fokus."               | |  mit Standortvorteilen."  |
-|                           | |                           |
-| Anzeigentext:             | | Anzeigentext:              |
-| [Bis zu 5,2% Mietrendite | | [Neubauwohnungen ab       |
-|  — Kapitalanlagen in      | |  289.000 EUR — bezugs-    |
-|  Toplagen_______________] | |  fertig 2026____________] |
-|                           | |                           |
-| Call-to-Action:           | | Call-to-Action:            |
-| [Jetzt Objekte entdecken] | | [Expose anfordern________]|
-|                           | |                           |
-| [Speichern]    [Aktiv: ✓] | | [Speichern]    [Aktiv: ✓] |
-+---------------------------+ +---------------------------+
+## Dateien
 
-+---------------------------+ +---------------------------+
-| Berater-Portrait          | | Testimonial               |
-| (gleiche Struktur)        | | (gleiche Struktur)        |
-+---------------------------+ +---------------------------+
-```
-
-Jede Brand-Seite hat also 4 grosse Template-Karten im 2-Spalten-Grid. Jede Karte:
-- 250px Gradient-Header mit Bild-Upload (Dropzone)
-- Template-Name und Beschreibung
-- Editierbare Felder: Anzeigentext (Textarea) und CTA (Input)
-- Speichern-Button (schreibt in `social_templates`)
-- Aktiv-Toggle (nur aktive Templates erscheinen in der Kampagnen-Auswahl)
-
-### Projekte-Seite (`/portal/lead-manager/projekte`)
-
-Zeigt die eigenen Projekte aus `dev_projects`. Bei Klick auf ein Projekt werden projekt-spezifische Templates angezeigt (Projekt-Showcase, Preis-Highlight, Standort, Verfuegbarkeit), die automatisch mit Projektdaten vorbefuellt sind.
-
-## Technische Umsetzung
-
-### 1. DB-Migration: 12 Templates seeden
-
-12 Datensaetze in `social_templates` (je 4 pro Brand), mit `editable_fields_schema` das Default-Texte enthaelt. Die Templates gehoeren einem System-Tenant oder werden beim ersten Zugriff pro Tenant kopiert.
-
-Da `social_templates` ein `tenant_id` hat (NOT NULL), werden die Templates **pro Tenant beim ersten Zugriff** automatisch erstellt (Lazy Seeding via Edge Function oder Client-Logik).
-
-### 2. Manifest: MOD-10 auf 5 Tiles erweitern
-
-```text
-"MOD-10": {
-  name: "Lead Manager",
-  base: "lead-manager",
-  icon: "Megaphone",
-  tiles: [
-    { path: "kampagnen", component: "LeadManagerKampagnen", title: "Kampagnen", default: true },
-    { path: "kaufy", component: "LeadManagerBrand", title: "Kaufy" },
-    { path: "futureroom", component: "LeadManagerBrand", title: "FutureRoom" },
-    { path: "acquiary", component: "LeadManagerBrand", title: "Acquiary" },
-    { path: "projekte", component: "LeadManagerProjekte", title: "Projekte" },
-  ],
-}
-```
-
-### 3. Neue Dateien
-
-| Datei | Beschreibung |
-|-------|-------------|
-| `src/pages/portal/lead-manager/LeadManagerKampagnen.tsx` | Hauptseite: KPIs, Kampagnenliste, Kampagne erstellen (Templates aus DB laden), Lead-Inbox |
-| `src/pages/portal/lead-manager/LeadManagerBrand.tsx` | Wiederverwendbare Brand-Content-Seite. Erkennt anhand der Route (kaufy/futureroom/acquiary), welche Templates geladen werden. 4 grosse editierbare Template-Karten |
-| `src/pages/portal/lead-manager/LeadManagerProjekte.tsx` | Projekt-Auswahl + projekt-spezifische Templates |
-| `src/pages/portal/lead-manager/TemplateCard.tsx` | Wiederverwendbare Template-Karte (250px Gradient, Upload, editierbare Felder, Speichern) |
-
-### 4. Bestehende Datei loeschen/ersetzen
-
-`LeadManagerInline.tsx` wird durch `LeadManagerKampagnen.tsx` ersetzt. Alle hardcoded Demo-Daten, Asset-Imports und Fake-Konstanten werden komplett entfernt.
-
-### 5. Template-Seeding Logik
-
-Beim Laden einer Brand-Seite prueft ein `useEffect`:
-- Gibt es bereits Templates fuer diesen Tenant + Brand in `social_templates`?
-- Falls nein: 4 Default-Templates automatisch anlegen (mit den vordefinierten Texten)
-- Falls ja: Aus DB laden und anzeigen
-
-So hat jeder Tenant seine eigenen editierbaren Kopien.
-
-### 6. Kampagnen-Seite: Template-Auswahl
-
-In Schritt 2 der Kampagnenerstellung:
-- Templates werden via `useQuery` aus `social_templates` geladen (nur aktive, passend zur gewaehlten Brand)
-- Jedes Template wird als Vorschaukarte angezeigt (mit dem gespeicherten Bild, Text, CTA)
-- Der User klickt Templates an/ab (Checkbox-Logik)
-- Beim Beauftragen werden die gewaehlten Template-IDs an die Edge Function uebergeben
-
-### 7. Dateiaenderungen Zusammenfassung
-
-| Datei | Aktion |
-|-------|--------|
-| `src/manifests/routesManifest.ts` | MOD-10 Tiles: 1 → 5 |
-| `src/pages/portal/lead-manager/LeadManagerKampagnen.tsx` | Neu: Kampagnen-Hauptseite |
-| `src/pages/portal/lead-manager/LeadManagerBrand.tsx` | Neu: Brand-Content-Werkstatt |
-| `src/pages/portal/lead-manager/LeadManagerProjekte.tsx` | Neu: Projekt-Templates |
-| `src/pages/portal/lead-manager/TemplateCard.tsx` | Neu: Wiederverwendbare Template-Karte |
-| `src/pages/portal/lead-manager/LeadManagerInline.tsx` | Entfernen (durch LeadManagerKampagnen ersetzt) |
-| `src/pages/portal/lead-manager/LeadManagerPage.tsx` | Routing anpassen |
-| `src/pages/portal/projekte/ProjekteLeadManager.tsx` | Auf neue Komponente verweisen |
-| `src/assets/templates/*.jpg` | 4 Fake-Bilder entfernen |
-| `artifacts/audit/zone2_modules.json` | MOD-10 tile_count: 1 → 5, total_tiles anpassen |
-| DB-Migration | Lazy-Seeding-Logik oder Edge Function |
-
-### 8. Umsetzungsreihenfolge
-
-1. Manifest aktualisieren (5 Tiles)
-2. `TemplateCard.tsx` bauen (wiederverwendbar)
-3. `LeadManagerBrand.tsx` bauen (Templates laden/erstellen/bearbeiten)
-4. `LeadManagerProjekte.tsx` bauen
-5. `LeadManagerKampagnen.tsx` bauen (ohne Demo-Daten, nur echte DB-Abfragen)
-6. `LeadManagerInline.tsx` und Fake-Assets entfernen
-7. Routing in `LeadManagerPage.tsx` anpassen
-8. Audit-Katalog aktualisieren
+| Datei | Aenderung |
+|-------|-----------|
+| `src/pages/portal/lead-manager/TemplateCard.tsx` | Zeile 87: `h-[250px]` → `aspect-[4/5]`; Zeile 69: `h-[120px]` → `aspect-[4/5]` |
+| `src/pages/portal/lead-manager/LeadManagerKampagnen.tsx` | Button "Neue Kampagne" entfernen, `showCreator`-Toggle entfernen, Erstellungsbereich immer sichtbar, Template-Grid anpassen |
 
