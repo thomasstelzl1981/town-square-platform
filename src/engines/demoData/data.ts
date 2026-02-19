@@ -560,6 +560,8 @@ export const ALL_DEMO_IDS: readonly string[] = [
   // Pet Provider + Services (DB-geseedet)
   DEMO_PET_PROVIDER_LENNOX,
   ID_PET_SVC_GROOMING, ID_PET_SVC_WALKING, ID_PET_SVC_DAYCARE, ID_PET_SVC_BOARDING,
+  // Bankkonto (verwaister DB-Seed, Absicherung)
+  '00000000-0000-4000-a000-000000000300',
   // Miety Zuhause (DB-geseedet)
   ID_MIETY_HOME,
   ID_MIETY_STROM, ID_MIETY_GAS, ID_MIETY_WASSER, ID_MIETY_INTERNET,

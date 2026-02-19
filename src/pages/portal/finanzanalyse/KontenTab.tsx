@@ -24,6 +24,7 @@ import { Landmark, ScanSearch, Plus, CreditCard, RefreshCw, Building2, Loader2, 
 import { WidgetDeleteOverlay } from '@/components/shared/WidgetDeleteOverlay';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { filterOutDemoIds } from '@/engines/demoData/engine';
 
 const OWNER_TYPE_LABELS: Record<string, string> = {
   person: 'Person',
@@ -235,6 +236,7 @@ export default function KontenTab() {
   });
 
   const showDemo = isEnabled('GP-KONTEN');
+  const filteredAccounts = showDemo ? bankAccounts : filterOutDemoIds(bankAccounts);
   const maskIban = (iban: string) => iban ? `${iban.slice(0, 9)} ••••` : '—';
 
   return (
@@ -356,7 +358,7 @@ export default function KontenTab() {
           </WidgetCell>
         )}
 
-        {bankAccounts.map((acc: any) => (
+        {filteredAccounts.map((acc: any) => (
           <WidgetCell key={acc.id}>
             <div
               className={cn(
