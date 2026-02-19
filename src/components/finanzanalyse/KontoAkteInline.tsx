@@ -85,21 +85,25 @@ export function KontoAkteInline({ isDemo, account, onClose }: KontoAkteInlinePro
   };
 
   // Load transactions from DB for all accounts (demo + real)
-  const accountRef = account?.id || account?.iban || '';
+  // account_ref in bank_transactions stores the IBAN, so we match by IBAN
+  const accountIban = account?.iban || '';
+  const accountId = account?.id || '';
 
   const { data: dbTransactions = [], refetch: refetchTransactions } = useQuery({
-    queryKey: ['bank-transactions', accountRef],
+    queryKey: ['bank-transactions', accountIban || accountId],
     queryFn: async () => {
-      if (!accountRef) return [];
+      if (!accountIban && !accountId) return [];
+      // Try IBAN first (standard), fall back to account ID
+      const ref = accountIban || accountId;
       const { data, error } = await supabase
         .from('bank_transactions')
         .select('*')
-        .eq('account_ref', accountRef)
+        .eq('account_ref', ref)
         .order('booking_date', { ascending: false });
       if (error) throw error;
       return data || [];
     },
-    enabled: !!accountRef,
+    enabled: !!(accountIban || accountId),
   });
 
   interface DisplayTransaction {
@@ -361,8 +365,8 @@ export function KontoAkteInline({ isDemo, account, onClose }: KontoAkteInlinePro
         </div>
 
         {/* Sektion 4: Kategorisierung & Review */}
-        {!isDemo && accountRef && (
-          <TransactionReviewQueue accountRef={accountRef} />
+        {!isDemo && (accountIban || accountId) && (
+          <TransactionReviewQueue accountRef={accountIban || accountId} />
         )}
         {!isDemo && (
           <TransactionCsvImportDialog
