@@ -55,6 +55,24 @@ export function useRecordCardDMS() {
 
       if (folderError) throw folderError;
 
+      // 2b. Create DMS subfolders from manifest
+      if (config.dmsFolders.length > 0) {
+        const subfolders = config.dmsFolders.map(name => ({
+          tenant_id: tenantId,
+          name,
+          node_type: 'folder',
+          module_code: config.moduleCode,
+          entity_type: entityType,
+          entity_id: entityId,
+          parent_id: folder.id,
+          auto_created: true,
+        }));
+
+        await supabase
+          .from('storage_nodes')
+          .insert(subfolders as any);
+      }
+
       // 3. Create sort container (inbox_sort_containers)
       const { data: container, error: containerError } = await supabase
         .from('inbox_sort_containers')
