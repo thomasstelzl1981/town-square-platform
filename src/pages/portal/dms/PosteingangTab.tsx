@@ -70,7 +70,7 @@ export function PosteingangTab() {
 
   const hasActiveContract = !!activeMandate;
 
-  // Only fetch mailbox + emails if contract is active
+  // Mailbox address — only when contract active
   const { data: mailboxAddress } = useQuery({
     queryKey: ['inbound-mailbox'],
     queryFn: async () => {
@@ -93,6 +93,7 @@ export function PosteingangTab() {
     enabled: !!user && hasActiveContract,
   });
 
+  // ALWAYS fetch emails — regardless of contract status
   const { data: emails = [], isLoading } = useQuery({
     queryKey: ['inbound-emails'],
     queryFn: async () => {
@@ -104,7 +105,7 @@ export function PosteingangTab() {
       if (error) throw error;
       return (data || []) as InboundEmail[];
     },
-    enabled: !!user && hasActiveContract,
+    enabled: !!user,
   });
 
   const { data: attachments = [], isLoading: attachmentsLoading } = useQuery({
@@ -168,11 +169,8 @@ export function PosteingangTab() {
     }
   };
 
-  const SKELETON_ROWS = 10;
+  const SKELETON_ROWS = 5;
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // GATE: No active contract → Info screen
-  // ═══════════════════════════════════════════════════════════════════════════
   if (mandateLoading) {
     return (
       <PageShell>
@@ -184,103 +182,14 @@ export function PosteingangTab() {
     );
   }
 
-  if (!hasActiveContract) {
-    return (
-      <PageShell>
-        <ModulePageHeader title="Posteingang" description="Dein digitaler Postservice für eingehende Dokumente" />
-
-        <Card className="glass-card max-w-2xl mx-auto">
-          <CardHeader className="text-center pb-2">
-            <div className="mx-auto p-4 rounded-2xl bg-primary/10 w-fit mb-3">
-              <Mail className="h-8 w-8 text-primary" />
-            </div>
-            <CardTitle className="text-xl">Digitaler Postservice</CardTitle>
-            <CardDescription className="text-base mt-1">
-              Empfange deine Post digital – automatisch ausgelesen, sortiert und archiviert.
-            </CardDescription>
-          </CardHeader>
-
-          <CardContent className="space-y-6">
-            {/* How it works */}
-            <div className="space-y-3">
-              <h4 className="font-semibold text-sm text-foreground">So funktioniert es</h4>
-              <div className="grid gap-3">
-                {[
-                  { step: '1', text: 'Postservice aktivieren und Vertrag abschließen' },
-                  { step: '2', text: 'Persönliche Inbound-E-Mail-Adresse erhalten' },
-                  { step: '3', text: 'PDFs per E-Mail senden oder Post-Scan-Dienst einrichten' },
-                  { step: '4', text: 'Dokumente werden automatisch ausgelesen und vorsortiert' },
-                ].map((item) => (
-                  <div key={item.step} className="flex items-start gap-3">
-                    <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
-                      {item.step}
-                    </div>
-                    <span className="text-sm text-muted-foreground">{item.text}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* External services hint */}
-            <div className="p-4 rounded-xl bg-muted/50 space-y-2">
-              <div className="flex items-center gap-2">
-                <Info className="h-4 w-4 text-muted-foreground shrink-0" />
-                <span className="text-sm font-medium text-foreground">Externe Post-Scan-Dienste</span>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Du kannst Dienste wie <strong>CAYA</strong>, <strong>Dropscan</strong> oder <strong>E-Post</strong> nutzen, 
-                um physische Post digitalisieren zu lassen. Die gescannten PDFs leitest du dann an deine 
-                persönliche Inbound-Adresse weiter.
-              </p>
-            </div>
-
-            {/* Manual upload hint */}
-            <div className="p-4 rounded-xl bg-muted/50 space-y-2">
-              <div className="flex items-center gap-2">
-                <Upload className="h-4 w-4 text-muted-foreground shrink-0" />
-                <span className="text-sm font-medium text-foreground">Manueller PDF-Upload</span>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Alternativ kannst du PDFs auch direkt über den <strong>Storage-Tab</strong> hochladen 
-                und manuell in die richtige Ordnerstruktur einsortieren.
-              </p>
-            </div>
-
-            {/* CTA */}
-            <Button
-              className="w-full"
-              size="lg"
-              onClick={() => navigate('/portal/dms/intelligenz')}
-            >
-              <Mail className="h-4 w-4 mr-2" />
-              Postservice aktivieren
-            </Button>
-
-            {/* Pricing hint */}
-            <p className="text-xs text-center text-muted-foreground">
-              Ab 30 Credits/Monat · 3 Credits pro verarbeitetem Dokument
-            </p>
-          </CardContent>
-        </Card>
-
-        {/* Steuerungs-Kacheln */}
-        <div className={DESIGN.WIDGET_GRID.FULL}>
-          <PosteingangAuslesungCard />
-          <StorageExtractionCard tenantId={activeTenantId} />
-          <PostserviceCard />
-        </div>
-      </PageShell>
-    );
-  }
-
   // ═══════════════════════════════════════════════════════════════════════════
-  // ACTIVE CONTRACT: Show full inbox
+  // UNIFIED LAYOUT: Inbox table ALWAYS visible
   // ═══════════════════════════════════════════════════════════════════════════
   return (
     <PageShell>
       <ModulePageHeader title="Posteingang" description="Dein digitaler Postservice für eingehende Dokumente" />
 
-      {/* Table */}
+      {/* ── Inbox Table: ALWAYS rendered ── */}
       <Card className="glass-card overflow-hidden">
         <div className="overflow-x-auto"><Table>
           <TableHeader>
@@ -336,80 +245,83 @@ export function PosteingangTab() {
                 </TableRow>
               ))
             ) : (
-              <>
-                {Array.from({ length: SKELETON_ROWS }).map((_, i) => (
-                  <TableRow key={`empty-${i}`} className="hover:bg-transparent">
-                    <TableCell className="text-muted-foreground/30 text-sm">––.––.–– ––:––</TableCell>
-                    <TableCell><div className="h-3 w-28 bg-muted/20 rounded" /></TableCell>
-                    <TableCell><div className="h-3 bg-muted/20 rounded" style={{ width: `${50 + Math.random() * 40}%` }} /></TableCell>
-                    <TableCell className="text-center text-muted-foreground/30">–</TableCell>
-                    <TableCell><div className="h-5 w-16 bg-muted/20 rounded-full" /></TableCell>
-                    <TableCell />
-                  </TableRow>
-                ))}
-              </>
+              <TableRow>
+                <TableCell colSpan={6} className="text-center py-8">
+                  <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                    <Inbox className="h-6 w-6" />
+                    <span className="text-sm">Noch keine E-Mails eingegangen</span>
+                  </div>
+                </TableCell>
+              </TableRow>
             )}
           </TableBody>
         </Table></div>
-
-        {!isLoading && emails.length === 0 && (
-          <div className="border-t px-4 py-4 text-center">
-            <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-              <Inbox className="h-4 w-4" />
-              <span>Noch keine E-Mails eingegangen</span>
-            </div>
-            {mailboxAddress && (
-              <p className="text-xs text-muted-foreground/70 mt-1">
-                Sende PDFs an <strong>{mailboxAddress}</strong> — sie erscheinen automatisch hier.
-              </p>
-            )}
-          </div>
-        )}
       </Card>
 
-      {/* Upload Email Card */}
-      <Card className="glass-card overflow-hidden">
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <div className="p-2 rounded-lg bg-primary/10">
-                <Mail className="h-5 w-5 text-primary" />
+      {/* ── Conditional middle section ── */}
+      {hasActiveContract ? (
+        /* Upload Email Card — active contract */
+        <Card className="glass-card overflow-hidden">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <div className="p-2 rounded-lg bg-primary/10">
+                  <Mail className="h-5 w-5 text-primary" />
+                </div>
+                Deine Upload-E-Mail
+              </CardTitle>
+              <div className="flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+                <span className="text-xs text-muted-foreground">Aktiv</span>
               </div>
-              Deine Upload-E-Mail
-            </CardTitle>
-            <div className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-              <span className="text-xs text-muted-foreground">Aktiv</span>
             </div>
-          </div>
-          <CardDescription>
-            Sende PDFs an diese Adresse. Anhänge landen automatisch hier und im Storage.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center gap-3">
-            <code className="flex-1 px-3 py-2.5 bg-muted rounded-lg font-mono text-sm border">
-              {mailboxAddress || 'Wird geladen...'}
-            </code>
-            <Button variant="outline" size="sm" onClick={copyAddress} disabled={!mailboxAddress}>
-              <Copy className="h-4 w-4 mr-1" />
-              Kopieren
+            <CardDescription>
+              Sende PDFs an diese Adresse. Anhänge landen automatisch hier und im Storage.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-3">
+              <code className="flex-1 px-3 py-2.5 bg-muted rounded-lg font-mono text-sm border">
+                {mailboxAddress || 'Wird geladen...'}
+              </code>
+              <Button variant="outline" size="sm" onClick={copyAddress} disabled={!mailboxAddress}>
+                <Copy className="h-4 w-4 mr-1" />
+                Kopieren
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground mt-2">
+              Pro verarbeitetem Dokument wird 1 Credit berechnet.
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        /* Compact activation CTA — no contract */
+        <Card className="glass-card">
+          <CardContent className="flex items-center gap-4 py-4">
+            <div className="p-2.5 rounded-xl bg-primary/10 shrink-0">
+              <Mail className="h-5 w-5 text-primary" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-foreground">Digitaler Postservice</p>
+              <p className="text-xs text-muted-foreground">
+                Aktiviere den Postservice, um eine persönliche E-Mail-Adresse für automatischen PDF-Empfang zu erhalten.
+              </p>
+            </div>
+            <Button size="sm" onClick={() => navigate('/portal/dms/intelligenz')}>
+              Aktivieren
             </Button>
-          </div>
-          <p className="text-xs text-muted-foreground mt-2">
-            Pro verarbeitetem Dokument wird 1 Credit berechnet.
-          </p>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
-      {/* Steuerungs-Kacheln */}
+      {/* ── Control cards grid ── */}
       <div className={DESIGN.WIDGET_GRID.FULL}>
         <PosteingangAuslesungCard />
         <StorageExtractionCard tenantId={activeTenantId} />
         <PostserviceCard />
       </div>
 
-      {/* Detail Dialog */}
+      {/* ── Detail Dialog ── */}
       <Dialog open={!!selectedEmail} onOpenChange={(open) => !open && setSelectedEmail(null)}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
