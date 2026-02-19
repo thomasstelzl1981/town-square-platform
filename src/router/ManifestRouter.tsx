@@ -398,6 +398,8 @@ const zone3ComponentMaps: Record<string, Record<string, React.ComponentType>> = 
     LennoxPartnerWerden,
     LennoxAuth,
     LennoxMeinBereich,
+    LennoxImpressum: React.lazy(() => import('@/pages/zone3/lennox/LennoxImpressum')),
+    LennoxDatenschutz: React.lazy(() => import('@/pages/zone3/lennox/LennoxDatenschutz')),
   },
 };
 

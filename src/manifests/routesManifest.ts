@@ -664,6 +664,8 @@ export const zone3Websites: Record<string, WebsiteDefinition> = {
       { path: "partner-werden", component: "LennoxPartnerWerden", title: "Partner werden" },
       { path: "login", component: "LennoxAuth", title: "Anmelden" },
       { path: "mein-bereich", component: "LennoxMeinBereich", title: "Mein Bereich" },
+      { path: "impressum", component: "LennoxImpressum", title: "Impressum" },
+      { path: "datenschutz", component: "LennoxDatenschutz", title: "Datenschutz" },
     ],
   },
 };
