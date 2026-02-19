@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -71,6 +71,14 @@ export interface ResearchResponse {
   error?: string;
 }
 
+// ── Estimate helper ───────────────────────────────────────────────
+
+function estimateDuration(maxResults?: number): number {
+  if (!maxResults || maxResults <= 10) return 30;
+  if (maxResults <= 20) return 45;
+  return 55;
+}
+
 // ── Hook ───────────────────────────────────────────────────────────
 
 export function useResearchEngine() {
@@ -78,10 +86,28 @@ export function useResearchEngine() {
   const [results, setResults] = useState<ResearchContact[]>([]);
   const [meta, setMeta] = useState<ResearchMeta | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [estimatedDuration, setEstimatedDuration] = useState(55);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Clean up interval on unmount
+  useEffect(() => {
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, []);
 
   const search = useCallback(async (request: ResearchRequest): Promise<ResearchResponse | null> => {
     setIsSearching(true);
     setError(null);
+    setElapsedSeconds(0);
+    setEstimatedDuration(estimateDuration(request.max_results));
+
+    // Start timer
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    intervalRef.current = setInterval(() => {
+      setElapsedSeconds((prev) => prev + 1);
+    }, 1000);
 
     try {
       const { data, error: fnError } = await supabase.functions.invoke(
@@ -119,6 +145,10 @@ export function useResearchEngine() {
       toast.error("Recherche-Fehler", { description: msg });
       return null;
     } finally {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
       setIsSearching(false);
     }
   }, []);
@@ -127,6 +157,7 @@ export function useResearchEngine() {
     setResults([]);
     setMeta(null);
     setError(null);
+    setElapsedSeconds(0);
   }, []);
 
   return {
@@ -136,5 +167,7 @@ export function useResearchEngine() {
     results,
     meta,
     error,
+    elapsedSeconds,
+    estimatedDuration,
   };
 }
