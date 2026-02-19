@@ -1,0 +1,396 @@
+{
+  "title": "Akten-System — Backlog & Inventar",
+  "version": "1.0",
+  "updated_at": "2026-02-19",
+  "owner": "Zone 1",
+  "purpose": "Strukturierte Prüfung aller Akten-Typen: Datenpunkte, DMS-Integration, Upload/Parsing-Readiness",
+
+  "akten_inventar": [
+    {
+      "id": "AKTE-01",
+      "name": "Immobilienakte",
+      "entity_type": "property",
+      "module_code": "MOD_04",
+      "db_table": "units (+ properties, tenancies, nk_*)",
+      "record_card_manifest": false,
+      "has_dossier_view": true,
+      "dossier_component": "src/components/immobilienakte/UnitDossierView.tsx",
+      "dms_integration": {
+        "entity_storage_tree": true,
+        "inbox_sort_container": true,
+        "auto_folder_creation": true
+      },
+      "data_points": [
+        "Adresse (Straße, PLZ, Ort)",
+        "Objekttyp (ETW, MFH, EFH, Gewerbe)",
+        "Baujahr, Wohnfläche m², Nutzfläche m²",
+        "Kaufpreis, Kaufdatum",
+        "Grundbuch (Amtsgericht, Blatt, Band)",
+        "Flurstück, Grundstücksgröße",
+        "Mieteinnahmen (Kalt-/Warmmiete)",
+        "Mieter-Daten (Name, Vertragsbeginn, Kaution)",
+        "NK/WEG-Abrechnung (Hausgeld, NK-Vorauszahlung)",
+        "Finanzierung (Darlehen, Zinssatz, Tilgung, Bank)",
+        "Investment-KPIs (BF, Rendite, Cashflow)",
+        "Energieausweis, Denkmalschutz"
+      ],
+      "upload_parsing_status": "live",
+      "notes": "Vollständigste Akte. Parser erkennt Immobilien-Exposés mit hoher Confidence."
+    },
+    {
+      "id": "AKTE-02",
+      "name": "Photovoltaik-Akte",
+      "entity_type": "pv_plant",
+      "module_code": "MOD_19",
+      "db_table": "pv_plants",
+      "record_card_manifest": true,
+      "has_dossier_view": true,
+      "dossier_component": "src/pages/portal/photovoltaik/PVPlantDossier.tsx",
+      "dms_integration": {
+        "entity_storage_tree": true,
+        "inbox_sort_container": false,
+        "auto_folder_creation": true
+      },
+      "data_points": [
+        "Anlagenname",
+        "Standort (Straße, PLZ, Ort)",
+        "Leistung (kWp)",
+        "Inbetriebnahmedatum",
+        "Wechselrichter (Hersteller, Modell)",
+        "Batteriespeicher (ja/nein, kWh)",
+        "MaStR-Nummer (Anlagen-ID, Einheiten-ID, Status)",
+        "Netzbetreiber, Energieversorger",
+        "Zähler (Einspeise-Nr, Verbrauchs-Nr, Startwerte)",
+        "Finanzierung (Bank, Darlehensbetrag, Rate, Zins, Restschuld)",
+        "Ertrag (Jahresertrag kWh, Einspeisevergütung ct/kWh, Jahreserlös €)"
+      ],
+      "upload_parsing_status": "untested",
+      "notes": "DB-Schema vollständig. Parser-Modus für PV-Dokumente noch nicht getestet."
+    },
+    {
+      "id": "AKTE-03",
+      "name": "Personenakte",
+      "entity_type": "person",
+      "module_code": "MOD_01",
+      "db_table": "household_persons",
+      "record_card_manifest": true,
+      "has_dossier_view": false,
+      "dossier_component": null,
+      "dms_integration": {
+        "entity_storage_tree": true,
+        "inbox_sort_container": false,
+        "auto_folder_creation": true,
+        "auto_folders": ["01_Personalausweis", "02_Meldebescheinigung", "03_Einkommensnachweise", "04_Steuerbescheide", "05_Renteninfo", "06_Arbeitsvertrag", "07_Gesundheit", "08_Sonstiges"]
+      },
+      "data_points": [
+        "Anrede, Vorname, Nachname",
+        "Geburtsdatum",
+        "E-Mail, Telefon (mobil + Festnetz)",
+        "Adresse (Straße, Hausnummer, PLZ, Ort)",
+        "Familienstand",
+        "Beschäftigungsstatus, Arbeitgeber",
+        "Brutto-/Nettoeinkommen, Steuerklasse",
+        "Kindergeld-Freibetrag",
+        "Gewerbeeinkommen, PV-Einkommen",
+        "Beamten-Felder (Besoldungsgruppe, Erfahrungsstufe, Dienstherr, Verbeamtungsdatum)",
+        "Ruhegehaltfähiges Grundgehalt, Dienstjahre",
+        "Geplantes Renteneintrittsdatum",
+        "Avatar-URL",
+        "Rolle (Hauptperson, Partner, Kind, etc.)"
+      ],
+      "upload_parsing_status": "untested",
+      "notes": "Auto-Anlage bei Registrierung via Trigger. Profil-Sync implementiert. Kein eigenes Dossier-View — wird über RecordCard dargestellt."
+    },
+    {
+      "id": "AKTE-04",
+      "name": "Versicherungsakte",
+      "entity_type": "insurance",
+      "module_code": "MOD_11",
+      "db_table": "insurance_contracts",
+      "record_card_manifest": true,
+      "has_dossier_view": false,
+      "dossier_component": null,
+      "dms_integration": {
+        "entity_storage_tree": false,
+        "inbox_sort_container": false,
+        "auto_folder_creation": false
+      },
+      "data_points": [
+        "Versicherungskategorie (Hausrat, Haftpflicht, KFZ, Wohngebäude, etc.)",
+        "Versicherer",
+        "Policennummer",
+        "Versicherungsnehmer",
+        "Vertragsbeginn, Vertragsende",
+        "Kündigungsfrist",
+        "Prämie (Betrag + Zahlungsintervall)",
+        "Status (aktiv, gekündigt, ruhend)",
+        "Details (JSONB — kategoriespezifisch, z.B. Versicherungssumme, SB)",
+        "Notizen"
+      ],
+      "upload_parsing_status": "untested",
+      "notes": "Kein EntityStorageTree integriert! Fehlende DMS-Anbindung. Parser muss Versicherungspolicen erkennen können."
+    },
+    {
+      "id": "AKTE-05",
+      "name": "Fahrzeugakte",
+      "entity_type": "vehicle",
+      "module_code": "MOD_17",
+      "db_table": "cars_vehicles",
+      "record_card_manifest": true,
+      "has_dossier_view": false,
+      "dossier_component": "src/components/portal/cars/CarsFahrzeuge.tsx (inline)",
+      "dms_integration": {
+        "entity_storage_tree": true,
+        "inbox_sort_container": false,
+        "auto_folder_creation": false
+      },
+      "data_points": [
+        "Kennzeichen",
+        "FIN (Fahrzeug-Identnummer)",
+        "HSN/TSN (Herstellerschlüssel)",
+        "Marke, Modell, Variante",
+        "Karosserieform, Farbe",
+        "Erstzulassung",
+        "Leistung (kW), Hubraum (ccm)",
+        "Kraftstoffart, CO2-Emission g/km",
+        "Gewicht (Leer/Gesamt), Sitzplätze, Türen",
+        "Kilometerstand (aktuell + Jahresfahrleistung)",
+        "Halter (Name, Adresse), Hauptfahrer",
+        "HU/AU gültig bis",
+        "Status (aktiv, verkauft, abgemeldet, stillgelegt)",
+        "Notizen"
+      ],
+      "upload_parsing_status": "untested",
+      "notes": "DB vollständig. EntityStorageTree integriert. Parser-Modus für Fahrzeugschein/Zulassungsbescheinigung fehlt."
+    },
+    {
+      "id": "AKTE-06",
+      "name": "Vorsorgeakte",
+      "entity_type": "vorsorge",
+      "module_code": "MOD_11",
+      "db_table": "vorsorge_contracts",
+      "record_card_manifest": true,
+      "has_dossier_view": false,
+      "dms_integration": {
+        "entity_storage_tree": false,
+        "inbox_sort_container": false,
+        "auto_folder_creation": false
+      },
+      "data_points": [
+        "Anbieter",
+        "Vertragsnummer",
+        "Vertragstyp (Riester, Rürup, bAV, privat, etc.)",
+        "Kategorie",
+        "Vertragsbeginn, Vertragsende",
+        "Beitrag (Betrag + Zahlungsintervall)",
+        "Status",
+        "Aktueller Vertragswert, Stichtag",
+        "Prognostizierter Endwert",
+        "Monatliche Rente (Hochrechnung)",
+        "Versicherte Summe",
+        "Dynamik (%)",
+        "BU-Monatsbeitrag",
+        "Wachstumsrate-Override",
+        "Person (FK → household_persons)",
+        "Notizen"
+      ],
+      "upload_parsing_status": "untested",
+      "notes": "Kein EntityStorageTree! Keine DMS-Anbindung. Parser muss Renteninformationen und Vorsorge-Abrechnungen erkennen."
+    },
+    {
+      "id": "AKTE-07",
+      "name": "Abonnement-Akte",
+      "entity_type": "subscription",
+      "module_code": "MOD_11",
+      "db_table": "user_subscriptions",
+      "record_card_manifest": true,
+      "has_dossier_view": false,
+      "dms_integration": {
+        "entity_storage_tree": false,
+        "inbox_sort_container": false,
+        "auto_folder_creation": false
+      },
+      "data_points": [
+        "Eigener Name",
+        "Händler/Anbieter",
+        "Kategorie (streaming, software, fitness, etc.)",
+        "Frequenz (monatlich, jährlich, etc.)",
+        "Betrag (min + max)",
+        "Zahlungsquelle (Konto-FK)",
+        "Geschätzter Beginn, Verlängerungsdatum",
+        "Letzte Zahlung",
+        "Status (aktiv, pausiert, gekündigt)",
+        "Auto-Verlängerung (ja/nein)",
+        "Confidence-Score",
+        "Notizen"
+      ],
+      "upload_parsing_status": "not_applicable",
+      "notes": "Wird aus Banktransaktionen erkannt, nicht aus Dokumenten. Upload/Parsing hier N/A."
+    },
+    {
+      "id": "AKTE-08",
+      "name": "Bankkonto-Akte",
+      "entity_type": "bank_account",
+      "module_code": "MOD_11",
+      "db_table": "bank_account_meta",
+      "record_card_manifest": true,
+      "has_dossier_view": false,
+      "dms_integration": {
+        "entity_storage_tree": false,
+        "inbox_sort_container": false,
+        "auto_folder_creation": false
+      },
+      "data_points": [
+        "Eigener Name",
+        "Kategorie (Girokonto, Sparkonto, Tagesgeld, Depot, etc.)",
+        "Organisationseinheit",
+        "Konto-FK (→ fm_bank_accounts)"
+      ],
+      "upload_parsing_status": "not_applicable",
+      "notes": "Meta-Tabelle für Benennungen. Kontodaten kommen über FinAPI-Import. Upload/Parsing N/A."
+    },
+    {
+      "id": "AKTE-09",
+      "name": "Haustierakte",
+      "entity_type": "pet",
+      "module_code": "MOD_05",
+      "db_table": "pets",
+      "record_card_manifest": true,
+      "has_dossier_view": false,
+      "dossier_component": "src/pages/portal/pets/PetsMeineTiere.tsx (inline)",
+      "dms_integration": {
+        "entity_storage_tree": true,
+        "inbox_sort_container": false,
+        "auto_folder_creation": false
+      },
+      "data_points": [
+        "Name",
+        "Tierart (Hund, Katze, etc.)",
+        "Rasse",
+        "Geschlecht",
+        "Geburtsdatum",
+        "Gewicht (kg)",
+        "Chipnummer",
+        "Foto-URL",
+        "Allergien (Array)",
+        "Kastriert (ja/nein)",
+        "Tierarzt-Name",
+        "Versicherung (Anbieter + Policennummer)",
+        "Notizen"
+      ],
+      "upload_parsing_status": "untested",
+      "notes": "DB vollständig. EntityStorageTree integriert. Parser-Modus für Tierarzt-Rechnungen/Impfpässe fehlt."
+    }
+  ],
+
+  "gap_analysis": {
+    "missing_dms_integration": [
+      "AKTE-04 (Versicherung) — kein EntityStorageTree, kein Auto-Ordner",
+      "AKTE-06 (Vorsorge) — kein EntityStorageTree, kein Auto-Ordner",
+      "AKTE-07 (Abonnement) — kein EntityStorageTree (ggf. N/A)",
+      "AKTE-08 (Bankkonto) — kein EntityStorageTree (N/A)"
+    ],
+    "missing_inbox_sort_rules": [
+      "AKTE-02 (PV-Anlage) — keine Auto-Sortierung bei Anlage",
+      "AKTE-03 (Person) — keine Auto-Sortierung bei Anlage",
+      "AKTE-05 (Fahrzeug) — keine Auto-Sortierung bei Anlage",
+      "AKTE-09 (Haustier) — keine Auto-Sortierung bei Anlage"
+    ],
+    "missing_parser_modes": [
+      "Versicherungspolice (Kategorie, Versicherer, Policennr, Prämie)",
+      "Fahrzeugschein / Zulassungsbescheinigung Teil I+II",
+      "PV-Anlagen-Datenblatt (kWp, MaStR, Einspeisevergütung)",
+      "Vorsorge-Standmitteilung (Anbieter, Vertragswert, Rente)",
+      "Tierarzt-Rechnung / Impfpass"
+    ],
+    "potential_new_akten": [
+      {
+        "name": "Grundstücksakte",
+        "reason": "Unbebaute Grundstücke werden aktuell nicht von der Immobilienakte abgedeckt",
+        "priority": "low"
+      },
+      {
+        "name": "Kreditakte (Privatkredit)",
+        "reason": "Privatkredite ohne Immobilienbezug haben keine eigene Akte",
+        "priority": "medium"
+      },
+      {
+        "name": "Steuerakte",
+        "reason": "Steuerbescheide, Vorauszahlungen, Steuererklärungen — bisher nur als Ordner in Personenakte",
+        "priority": "medium"
+      },
+      {
+        "name": "Arbeitsvertrag-Akte",
+        "reason": "Arbeitsverhältnisse mit Gehaltsnachweisen, Arbeitsverträgen — aktuell nur Ordner",
+        "priority": "low"
+      }
+    ]
+  },
+
+  "backlog_items": [
+    {
+      "id": "BL-01",
+      "task": "DMS-Integration für Versicherungsakte nachrüsten",
+      "akten": ["AKTE-04"],
+      "priority": "P1",
+      "status": "open",
+      "description": "EntityStorageTree + Auto-Ordner (01_Police, 02_Schäden, 03_Korrespondenz) bei Anlage einer Versicherung erstellen."
+    },
+    {
+      "id": "BL-02",
+      "task": "DMS-Integration für Vorsorgeakte nachrüsten",
+      "akten": ["AKTE-06"],
+      "priority": "P1",
+      "status": "open",
+      "description": "EntityStorageTree + Auto-Ordner (01_Vertrag, 02_Standmitteilungen, 03_Korrespondenz) erstellen."
+    },
+    {
+      "id": "BL-03",
+      "task": "Parser-Modus 'versicherung' implementieren",
+      "akten": ["AKTE-04"],
+      "priority": "P1",
+      "status": "open",
+      "description": "sot-document-parser um parseMode 'versicherung' erweitern: Erkennung von Versicherer, Policennr, Kategorie, Prämie, SB."
+    },
+    {
+      "id": "BL-04",
+      "task": "Parser-Modus 'fahrzeugschein' implementieren",
+      "akten": ["AKTE-05"],
+      "priority": "P2",
+      "status": "open",
+      "description": "Zulassungsbescheinigung Teil I/II erkennen: Kennzeichen, FIN, HSN/TSN, Erstzulassung, Halter."
+    },
+    {
+      "id": "BL-05",
+      "task": "Parser-Modus 'pv_anlage' implementieren",
+      "akten": ["AKTE-02"],
+      "priority": "P2",
+      "status": "open",
+      "description": "PV-Datenblätter und MaStR-Auszüge erkennen: kWp, MaStR-Nr, Einspeisevergütung, Netzbetreiber."
+    },
+    {
+      "id": "BL-06",
+      "task": "Parser-Modus 'vorsorge' implementieren",
+      "akten": ["AKTE-06"],
+      "priority": "P2",
+      "status": "open",
+      "description": "Standmitteilungen und Renteninformationen parsen: Anbieter, Vertragswert, prognostizierte Rente."
+    },
+    {
+      "id": "BL-07",
+      "task": "Inbox-Sortierregeln bei Akten-Anlage auto-generieren",
+      "akten": ["AKTE-02", "AKTE-03", "AKTE-05", "AKTE-09"],
+      "priority": "P2",
+      "status": "open",
+      "description": "Bei Anlage einer neuen Akte automatisch inbox_sort_container + keyword-basierte Regeln erstellen."
+    },
+    {
+      "id": "BL-08",
+      "task": "Upload-Test alle Akten-Typen E2E",
+      "akten": ["AKTE-01", "AKTE-02", "AKTE-03", "AKTE-04", "AKTE-05", "AKTE-06", "AKTE-09"],
+      "priority": "P0",
+      "status": "open",
+      "description": "Für jeden Akten-Typ ein Test-Dokument hochladen, parsen, und Zuordnung zum Entity-Ordner prüfen."
+    }
+  ]
+}
