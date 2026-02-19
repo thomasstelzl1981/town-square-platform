@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Demo-Daten SSOT für den Musterkunden Max Mustermann",
   "persona": {
     "name": "Max Mustermann",
@@ -12,8 +12,8 @@
     "contacts": { "file": "demo_contacts.csv", "expectedCount": 5 },
     "leases": { "file": "demo_leases.csv", "expectedCount": 3 },
     "loans": { "file": "demo_loans.csv", "expectedCount": 3 },
-    "bank_accounts": { "file": "demo_bank_accounts.csv", "expectedCount": 1 },
-    "bank_transactions": { "file": "demo_bank_transactions.csv", "expectedCount": 101 }
+    "bank_accounts": { "file": "demo_bank_accounts.csv", "expectedCount": 1, "dbTable": "msv_bank_accounts" },
+    "bank_transactions": { "file": "demo_bank_transactions.csv", "expectedCount": 100, "dbTable": "bank_transactions" }
   },
   "seedBatchId": "demo-ssot",
   "updatedAt": "2026-02-19"
