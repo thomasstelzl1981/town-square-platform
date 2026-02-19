@@ -4,13 +4,20 @@
  * Part of Engine 17: Konto-Matching Engine (ENG-KONTOMATCH)
  * SSOT: src/engines/kontoMatch/spec.ts
  *
- * Reads unmatched transactions from v_all_transactions,
- * applies rule-based matching per owner_type context,
- * writes match_category + match_confidence back to source tables.
+ * Pipeline:
+ * 1. Rule-based matching (patterns + owner_type)
+ * 2. AI fallback (Lovable AI / Gemini Flash) for unmatched transactions
+ * 3. Write results back to source tables
  */
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 // ─── Mirrored from src/engines/kontoMatch/spec.ts (SSOT) ─────
+
+const VALID_CATEGORIES = [
+  'MIETE', 'HAUSGELD', 'GRUNDSTEUER', 'VERSICHERUNG', 'DARLEHEN',
+  'INSTANDHALTUNG', 'EINSPEISEVERGUETUNG', 'WARTUNG', 'PACHT',
+  'GEHALT', 'SONSTIG_EINGANG', 'SONSTIG_AUSGANG',
+] as const;
 
 const MATCH_TOLERANCES = {
   rentAmountEur: 1,
@@ -33,19 +40,15 @@ interface MatchRule {
 }
 
 const DEFAULT_MATCH_RULES: MatchRule[] = [
-  // Property rules
   { ruleCode: 'PROP_HAUSGELD', category: 'HAUSGELD', ownerTypes: ['property'], direction: 'debit', patterns: ['hausgeld', 'weg', 'hausverwaltung', 'wohnungseigentümer'] },
   { ruleCode: 'PROP_GRUNDSTEUER', category: 'GRUNDSTEUER', ownerTypes: ['property'], direction: 'debit', patterns: ['grundsteuer', 'finanzamt'] },
   { ruleCode: 'PROP_VERSICHERUNG', category: 'VERSICHERUNG', ownerTypes: ['property'], direction: 'debit', patterns: ['versicherung', 'gebäudeversicherung', 'wohngebäude'] },
   { ruleCode: 'PROP_INSTANDHALTUNG', category: 'INSTANDHALTUNG', ownerTypes: ['property'], direction: 'debit', patterns: ['reparatur', 'sanierung', 'handwerker', 'instandhaltung', 'wartung'] },
-  // PV rules
   { ruleCode: 'PV_EINSPEISUNG', category: 'EINSPEISEVERGUETUNG', ownerTypes: ['pv_plant'], direction: 'credit', patterns: ['einspeisevergütung', 'einspeisung', 'netzbetreiber', 'eeg'] },
   { ruleCode: 'PV_WARTUNG', category: 'WARTUNG', ownerTypes: ['pv_plant'], direction: 'debit', patterns: ['wartung', 'service', 'solar', 'photovoltaik', 'pv'] },
   { ruleCode: 'PV_PACHT', category: 'PACHT', ownerTypes: ['pv_plant'], direction: 'debit', patterns: ['pacht', 'dachmiete', 'dachpacht', 'flächenmiete'] },
   { ruleCode: 'PV_VERSICHERUNG', category: 'VERSICHERUNG', ownerTypes: ['pv_plant'], direction: 'debit', patterns: ['versicherung'] },
-  // Shared
   { ruleCode: 'SHARED_DARLEHEN', category: 'DARLEHEN', ownerTypes: ['property', 'pv_plant'], direction: 'debit', patterns: ['darlehen', 'tilgung', 'annuität', 'kreditrate', 'zins und tilgung'] },
-  // Person
   { ruleCode: 'PERSON_GEHALT', category: 'GEHALT', ownerTypes: ['person'], direction: 'credit', patterns: ['gehalt', 'lohn', 'bezüge', 'entgelt'] },
 ];
 
@@ -54,7 +57,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-// ─── Matching Logic ───────────────────────────────────────────
+// ─── Rule-Based Matching ──────────────────────────────────────
 
 interface MatchResult {
   category: string;
@@ -91,7 +94,6 @@ function categorize(
 
     if (!matched) continue;
 
-    // Count how many patterns match for confidence
     const matchCount = rule.patterns.filter((p) => haystack.includes(p)).length;
     const confidence = Math.min(0.95, 0.7 + matchCount * 0.08);
 
@@ -101,6 +103,128 @@ function categorize(
   }
 
   return bestMatch && bestMatch.confidence >= MATCH_TOLERANCES.minConfidence ? bestMatch : null;
+}
+
+// ─── AI Fallback (Lovable AI / Gemini Flash) ──────────────────
+
+interface TxForAI {
+  id: string;
+  amount: number;
+  purpose: string;
+  counterparty: string;
+  ownerType: string;
+  source: string;
+}
+
+async function categorizeWithAI(
+  transactions: TxForAI[],
+): Promise<Map<string, MatchResult>> {
+  const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+  if (!LOVABLE_API_KEY || transactions.length === 0) return new Map();
+
+  // Batch up to 20 transactions per AI call
+  const batches: TxForAI[][] = [];
+  for (let i = 0; i < transactions.length; i += 20) {
+    batches.push(transactions.slice(i, i + 20));
+  }
+
+  const allResults = new Map<string, MatchResult>();
+
+  for (const batch of batches) {
+    const txList = batch.map((tx, i) =>
+      `${i + 1}. ID=${tx.id} | Betrag=${tx.amount}€ | Zweck="${tx.purpose}" | Empfänger="${tx.counterparty}" | Kontotyp=${tx.ownerType}`
+    ).join('\n');
+
+    try {
+      const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'google/gemini-3-flash-preview',
+          messages: [
+            {
+              role: 'system',
+              content: `Du bist ein Spezialist für die Kategorisierung von Kontobewegungen im Immobilien- und PV-Anlagen-Bereich.
+
+Kategorisiere jede Transaktion in GENAU EINE der folgenden Kategorien:
+${VALID_CATEGORIES.join(', ')}
+
+Kontotyp-Kontext:
+- "property" = Immobilien-Konto (Hausgeld, Grundsteuer, Versicherung, Darlehen, Instandhaltung)
+- "pv_plant" = PV-Anlagen-Konto (Einspeisevergütung, Wartung, Pacht, Darlehen)
+- "person" = Privatkonto (Gehalt, Sonstiges)
+
+Wenn unklar: SONSTIG_EINGANG (positiver Betrag) oder SONSTIG_AUSGANG (negativer Betrag).`,
+            },
+            {
+              role: 'user',
+              content: `Kategorisiere diese Transaktionen:\n${txList}`,
+            },
+          ],
+          tools: [
+            {
+              type: 'function',
+              function: {
+                name: 'categorize_transactions',
+                description: 'Kategorisiert Banktransaktionen',
+                parameters: {
+                  type: 'object',
+                  properties: {
+                    results: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        properties: {
+                          id: { type: 'string', description: 'Transaction ID' },
+                          category: { type: 'string', enum: [...VALID_CATEGORIES] },
+                          confidence: { type: 'number', description: '0.0 to 1.0' },
+                        },
+                        required: ['id', 'category', 'confidence'],
+                        additionalProperties: false,
+                      },
+                    },
+                  },
+                  required: ['results'],
+                  additionalProperties: false,
+                },
+              },
+            },
+          ],
+          tool_choice: { type: 'function', function: { name: 'categorize_transactions' } },
+        }),
+      });
+
+      if (!response.ok) {
+        const status = response.status;
+        console.error(`AI gateway error: ${status}`);
+        if (status === 429 || status === 402) continue; // skip batch, don't fail
+        continue;
+      }
+
+      const data = await response.json();
+      const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
+      if (!toolCall) continue;
+
+      const parsed = JSON.parse(toolCall.function.arguments);
+      for (const r of parsed.results || []) {
+        if (VALID_CATEGORIES.includes(r.category) && r.confidence >= 0.6) {
+          allResults.set(r.id, {
+            category: r.category,
+            confidence: Math.min(r.confidence, 0.85), // cap AI confidence below rule-based
+            ruleCode: 'AI_FALLBACK',
+          });
+        }
+      }
+    } catch (err) {
+      console.error('AI categorization batch error:', err);
+      continue;
+    }
+  }
+
+  return allResults;
 }
 
 // ─── Handler ──────────────────────────────────────────────────
@@ -119,14 +243,16 @@ Deno.serve(async (req) => {
     let tenantId: string | null = null;
     let accountRef: string | null = null;
     let dryRun = false;
+    let skipAI = false;
     try {
       const body = await req.json();
       tenantId = body.tenant_id || null;
       accountRef = body.account_ref || null;
       dryRun = body.dry_run === true;
+      skipAI = body.skip_ai === true;
     } catch { /* no body */ }
 
-    // 1. Load unmatched transactions via unified view
+    // 1. Load unmatched transactions
     let query = sb
       .from('v_all_transactions')
       .select('id, tenant_id, account_ref, booking_date, amount, purpose, counterparty, source, owner_type, owner_id, match_status')
@@ -143,13 +269,14 @@ Deno.serve(async (req) => {
 
     if (!transactions?.length) {
       return new Response(
-        JSON.stringify({ categorized: 0, checked: 0, message: 'Keine ungematchten Transaktionen gefunden' }),
+        JSON.stringify({ categorized: 0, checked: 0, ai_categorized: 0, message: 'Keine ungematchten Transaktionen gefunden' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }
 
-    // 2. Categorize each transaction
+    // 2. Rule-based categorization
     const results: Array<{ id: string; source: string; category: string; confidence: number; ruleCode: string }> = [];
+    const unmatchedForAI: TxForAI[] = [];
 
     for (const tx of transactions) {
       const match = categorize(
@@ -161,22 +288,37 @@ Deno.serve(async (req) => {
       );
 
       if (match) {
-        results.push({
+        results.push({ id: tx.id, source: tx.source, category: match.category, confidence: match.confidence, ruleCode: match.ruleCode });
+      } else if (!skipAI) {
+        unmatchedForAI.push({
           id: tx.id,
+          amount: Number(tx.amount),
+          purpose: tx.purpose || '',
+          counterparty: tx.counterparty || '',
+          ownerType: tx.owner_type || 'person',
           source: tx.source,
-          category: match.category,
-          confidence: match.confidence,
-          ruleCode: match.ruleCode,
         });
       }
     }
 
-    // 3. Write back to source tables (unless dry_run)
+    // 3. AI fallback for unmatched
+    let aiCategorized = 0;
+    if (unmatchedForAI.length > 0) {
+      const aiResults = await categorizeWithAI(unmatchedForAI);
+      for (const tx of unmatchedForAI) {
+        const aiMatch = aiResults.get(tx.id);
+        if (aiMatch) {
+          results.push({ id: tx.id, source: tx.source, ...aiMatch });
+          aiCategorized++;
+        }
+      }
+    }
+
+    // 4. Write back (unless dry_run)
     if (!dryRun) {
       const csvUpdates = results.filter((r) => r.source === 'csv');
       const finapiUpdates = results.filter((r) => r.source === 'finapi');
 
-      // Batch update CSV transactions
       for (const u of csvUpdates) {
         await sb
           .from('bank_transactions')
@@ -184,19 +326,18 @@ Deno.serve(async (req) => {
             match_category: u.category,
             match_confidence: u.confidence,
             match_rule_code: u.ruleCode,
-            match_status: 'CATEGORIZED',
+            match_status: u.ruleCode === 'AI_FALLBACK' ? 'AI_SUGGESTED' : 'CATEGORIZED',
           })
           .eq('id', u.id);
       }
 
-      // Batch update FinAPI transactions
       for (const u of finapiUpdates) {
         await sb
           .from('finapi_transactions')
           .update({
             match_category: u.category,
             match_rule_code: u.ruleCode,
-            match_status: 'CATEGORIZED',
+            match_status: u.ruleCode === 'AI_FALLBACK' ? 'AI_SUGGESTED' : 'CATEGORIZED',
           })
           .eq('id', u.id);
       }
@@ -205,7 +346,10 @@ Deno.serve(async (req) => {
     return new Response(
       JSON.stringify({
         categorized: results.length,
+        rule_based: results.length - aiCategorized,
+        ai_categorized: aiCategorized,
         checked: transactions.length,
+        unmatched: transactions.length - results.length,
         dry_run: dryRun,
         results: dryRun ? results : undefined,
       }),
