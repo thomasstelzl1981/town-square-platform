@@ -1,49 +1,79 @@
 
+# Social-Media-Vorlagenbilder generieren — 12 Posts fuer 3 Brands
 
-# Lead Manager — Post-Format und Kampagnen-Flow korrigieren
+## Ueberblick
 
-## Problem 1: Bildformate stimmen nicht
+Eine neue Edge Function generiert 12 Social-Media-taugliche Bilder (4 pro Brand) via AI-Bildgenerierung und speichert sie im `social-assets` Storage Bucket. Die `TemplateCard` wird erweitert, um diese Bilder anzuzeigen. Zusaetzlich wird das `social_templates`-Schema um ein `image_url`-Feld erweitert.
 
-Die aktuellen Template-Karten haben eine feste Hoehe von `h-[250px]` — das entspricht keinem Social-Media-Format. Instagram und Facebook Feed-Posts verwenden standardmaessig:
+## Brands und ihre 4 Template-Bilder
 
-- **Feed-Post (vertikal):** 1080 x 1350 px = Seitenverhaeltnis **4:5**
-- **Feed-Post (quadratisch):** 1080 x 1080 px = Seitenverhaeltnis **1:1**
-- **Story / Reel:** 1080 x 1920 px = Seitenverhaeltnis **9:16**
+### Kaufy (Kapitalanlage-Immobilien)
+- **Rendite-Highlight**: Modernes Apartment-Gebaeude, blauer Gradient-Overlay, grosse Renditezahl "5,2%", Kaufy-Branding (blau/violett)
+- **Objekt-Showcase**: Architektonische Aussenansicht eines Neubauprojekts, professionelle Immobilienfotografie-Optik
+- **Berater-Portrait**: Professioneller Hintergrund fuer Beraterfoto — abstraktes blaues Design mit Platz fuer Portrait
+- **Testimonial**: Cityscape/Skyline mit Kundenzitat-Platzhalter, vertrauensbildend
 
-Die Template-Karten muessen das 4:5-Format (Standard fuer Instagram/Facebook Ads) verwenden, damit sie wie echte Posts aussehen.
+### FutureRoom (Finanzierung)
+- **Konditionen-Highlight**: Abstrakte gruene Grafik mit Zinssymbolik, Prozentzahlen, Bankpartner-Netzwerk
+- **Berater-Portrait**: Professioneller gruener Hintergrund fuer Finanzierungsberater
+- **Region-Focus**: Stadtkarte/Stadtsilhouette mit Marktdaten-Overlay
+- **Testimonial**: Abschluss-Szene (Handschlag, Vertragsunterzeichnung), Erfolgsstatistik
 
-## Problem 2: "Neue Kampagne"-Button
+### Acquiary (Objektakquise/Sourcing)
+- **Off-Market-Chancen**: Exklusives Gebaeude hinter "Vorhang"/Blur, VIP-Feeling, blauer Gradient
+- **Objekt-Showcase**: Mehrfamilienhaus in A-Lage, Investment-Optik
+- **Berater-Portrait**: Strategischer blauer Hintergrund fuer Akquisitionspartner
+- **Sourcing-Hotspots**: Deutschland-Karte mit markierten Hotspots, Daten-Overlay
 
-Der blaue Button oben rechts togglet eine versteckte Sektion. Das ist nicht intuitiv. Der Kampagnen-Erstellungsbereich wird stattdessen immer sichtbar inline angezeigt (unterhalb der bestehenden Kampagnen). Der Button wird entfernt.
+Alle Bilder werden im **4:5 Hochformat** (1080x1350px) generiert — dem Instagram/Facebook-Feed-Standard.
 
-## Aenderungen
+## Technische Umsetzung
 
-### 1. `TemplateCard.tsx` — Social-Media-Format
+### 1. DB-Migration: `image_url` Spalte hinzufuegen
 
-**Editier-Modus (Brand-Seiten):**
-- Gradient-Header: `h-[250px]` wird zu `aspect-[4/5]` (ergibt ca. 400px bei typischer Kartenbreite)
-- Der Bildbereich bekommt das korrekte Seitenverhaeltnis eines echten Instagram-Posts
-- Upload-Bereich passt sich dem Format an
-- Text-Overlay-Bereich unten im Bild (wie bei echten Posts)
+`social_templates` bekommt eine neue Spalte `image_url TEXT` (nullable), die den oeffentlichen Storage-URL des generierten Bildes speichert.
 
-**Auswahl-Modus (Kampagnen-Seite):**
-- `h-[120px]` wird zu `aspect-[4/5]` (kleinere Version, aber gleiches Verhaeltnis)
-- Sieht aus wie eine Miniatur-Vorschau eines echten Posts
+### 2. Neue Edge Function: `sot-social-template-images`
 
-### 2. `LeadManagerKampagnen.tsx` — Kampagnen-Flow
+Diese Edge Function:
+1. Empfaengt `tenant_id` und `brand_context`
+2. Laedt alle Templates fuer diesen Brand/Tenant
+3. Generiert fuer jedes Template ein Bild via Lovable AI (`google/gemini-2.5-flash-image`)
+4. Laedt das Bild als Base64 in den `social-assets` Bucket hoch (Pfad: `{tenant_id}/templates/{template_code}.png`)
+5. Speichert die oeffentliche URL in `social_templates.image_url`
 
-- "Neue Kampagne"-Button entfernen
-- Kampagnen-Erstellungsbereich ist immer sichtbar (nicht hinter Toggle versteckt)
-- Template-Auswahl-Grid: `grid-cols-4` wird zu `grid-cols-2 md:grid-cols-3` damit die 4:5-Karten genug Platz haben
+**Prompt-Strategie pro Template:**
+Jeder Prompt beschreibt ein professionelles Social-Media-Ad-Visual im 4:5-Format mit Brand-spezifischen Farben, ohne echten Text (der wird vom Frontend ueberlagert). Stattdessen: Architektur, Abstraktion, Farben, Stimmung.
 
-### 3. `LeadManagerBrand.tsx` — Kein Code-Aenderung noetig
+### 3. `TemplateCard.tsx` anpassen
 
-Die Brand-Seiten verwenden bereits das 2-Spalten-Grid. Durch die Aenderung in TemplateCard von `h-[250px]` zu `aspect-[4/5]` werden die Karten automatisch groesser und sehen wie echte Posts aus.
+- Wenn `image_url` vorhanden: Bild anzeigen statt Gradient-Platzhalter
+- Bild im 4:5-Format (`aspect-[4/5]`, `object-cover`)
+- Fallback: Gradient bleibt als Platzhalter wenn kein Bild vorhanden
+
+### 4. `LeadManagerBrand.tsx` anpassen
+
+- Nach dem Lazy-Seeding: automatisch die Edge Function aufrufen, um Bilder zu generieren
+- Loading-State waehrend der Bildgenerierung anzeigen
+- Button "Bilder neu generieren" fuer manuelles Triggern
+
+### 5. Lazy-Seeding um `image_url` erweitern
+
+Beim Seeding wird die Edge Function einmalig getriggert. Die generierten Bilder werden persistent gespeichert — kein erneutes Generieren bei jedem Laden.
 
 ## Dateien
 
 | Datei | Aenderung |
 |-------|-----------|
-| `src/pages/portal/lead-manager/TemplateCard.tsx` | Zeile 87: `h-[250px]` → `aspect-[4/5]`; Zeile 69: `h-[120px]` → `aspect-[4/5]` |
-| `src/pages/portal/lead-manager/LeadManagerKampagnen.tsx` | Button "Neue Kampagne" entfernen, `showCreator`-Toggle entfernen, Erstellungsbereich immer sichtbar, Template-Grid anpassen |
+| DB-Migration | `ALTER TABLE social_templates ADD COLUMN image_url TEXT` |
+| `supabase/functions/sot-social-template-images/index.ts` | Neue Edge Function: 12 Bilder generieren und in Storage speichern |
+| `src/pages/portal/lead-manager/TemplateCard.tsx` | `image_url` Prop hinzufuegen, Bild statt Gradient anzeigen |
+| `src/pages/portal/lead-manager/LeadManagerBrand.tsx` | Bildgenerierung nach Seeding triggern, Loading-State |
 
+## Umsetzungsreihenfolge
+
+1. DB-Migration: `image_url` Spalte
+2. Edge Function schreiben und deployen
+3. `TemplateCard.tsx` um Bild-Anzeige erweitern
+4. `LeadManagerBrand.tsx` um Generierungs-Trigger erweitern
+5. Testen: Brand-Seite oeffnen, Bilder werden generiert und angezeigt
