@@ -54,14 +54,31 @@ export function RechtlichesTab() {
           .order('version', { ascending: false })
           .limit(1);
 
-        const activeVersion = versions?.[0];
+      let activeVersion = versions?.[0];
+        let versionStatus = activeVersion ? 'active' : 'missing';
+
+        // Draft fallback: if no active version, use latest draft
+        if (!activeVersion) {
+          const { data: draftVersions } = await supabase
+            .from('compliance_document_versions')
+            .select('version, content_md, status')
+            .eq('document_id', doc.id)
+            .eq('status', 'draft')
+            .order('version', { ascending: false })
+            .limit(1);
+          if (draftVersions?.[0]) {
+            activeVersion = draftVersions[0];
+            versionStatus = 'draft';
+          }
+        }
+
         results.push({
           docId: doc.id,
           docKey: doc.doc_key,
           title: doc.title,
           version: activeVersion?.version ?? doc.current_version,
           contentMd: activeVersion?.content_md ?? '',
-          status: activeVersion ? 'active' : 'missing',
+          status: versionStatus,
         });
       }
       return results;
@@ -248,6 +265,17 @@ export function RechtlichesTab() {
           </CardContent>
         </Card>
       )}
+      {/* Placeholder: Optional Consents */}
+      <Card className="border-dashed opacity-60">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base text-muted-foreground">Optionale Einwilligungen</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">
+            Hier werden zukünftig weitere optionale Einwilligungen angezeigt.
+          </p>
+        </CardContent>
+      </Card>
     </div>
   );
 }
@@ -271,10 +299,10 @@ function DocCard({
             <div className="flex items-center gap-2">
               <Badge variant="outline" className="text-xs">v{doc.version}</Badge>
               <Badge
-                variant={doc.status === 'active' ? 'default' : 'secondary'}
+                variant={doc.status === 'active' ? 'default' : doc.status === 'draft' ? 'secondary' : 'destructive'}
                 className="text-xs"
               >
-                {doc.status === 'active' ? 'Aktiv' : doc.status === 'missing' ? 'Fehlt' : doc.status}
+                {doc.status === 'active' ? 'Aktiv' : doc.status === 'draft' ? 'Entwurf' : doc.status === 'missing' ? 'Fehlt' : doc.status}
               </Badge>
             </div>
           </div>

@@ -2,8 +2,9 @@
  * useLegalConsent — Central hook for checking portal legal consent status.
  * 
  * Checks if user has accepted the latest active versions of portal_agb + portal_privacy.
- * Provides requireConsent() that shows a blocking toast + redirect if not consented.
+ * Provides requireConsent() that shows a blocking modal + toast if not consented.
  */
+import { useState, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -13,6 +14,7 @@ import { toast } from 'sonner';
 export function useLegalConsent() {
   const { user, activeTenantId } = useAuth();
   const navigate = useNavigate();
+  const [showConsentModal, setShowConsentModal] = useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ['legal-consent-status', user?.id, activeTenantId],
@@ -30,9 +32,10 @@ export function useLegalConsent() {
         return { isConsentGiven: true };
       }
 
-      // Get active version numbers
+      // Get active version numbers (fallback to draft for MVP)
       const docMap: Record<string, { id: string; version: number }> = {};
       for (const doc of docs) {
+        // Try active first
         const { data: versions } = await supabase
           .from('compliance_document_versions')
           .select('version')
@@ -43,10 +46,23 @@ export function useLegalConsent() {
         
         if (versions?.[0]) {
           docMap[doc.doc_key] = { id: doc.id, version: versions[0].version };
+        } else {
+          // Fallback: latest draft
+          const { data: draftVersions } = await supabase
+            .from('compliance_document_versions')
+            .select('version')
+            .eq('document_id', doc.id)
+            .eq('status', 'draft')
+            .order('version', { ascending: false })
+            .limit(1);
+          
+          if (draftVersions?.[0]) {
+            docMap[doc.doc_key] = { id: doc.id, version: draftVersions[0].version };
+          }
         }
       }
 
-      // If no active versions exist, don't block
+      // If no versions exist at all, don't block
       if (!docMap.portal_agb && !docMap.portal_privacy) {
         return { isConsentGiven: true };
       }
@@ -75,10 +91,14 @@ export function useLegalConsent() {
 
   const isConsentGiven = data?.isConsentGiven ?? false;
 
-  const requireConsent = (): boolean => {
+  const requireConsent = useCallback((): boolean => {
     if (isLoading) return false; // block while loading
     if (isConsentGiven) return true;
 
+    // Show modal
+    setShowConsentModal(true);
+
+    // Also show toast as fallback
     toast.error('Bitte bestätige zuerst die Nutzungsvereinbarungen', {
       description: 'Unter Stammdaten → Rechtliches kannst du die AGB und Datenschutzerklärung akzeptieren.',
       action: {
@@ -88,7 +108,7 @@ export function useLegalConsent() {
       duration: 8000,
     });
     return false;
-  };
+  }, [isLoading, isConsentGiven, navigate]);
 
-  return { isConsentGiven, isLoading, requireConsent };
+  return { isConsentGiven, isLoading, requireConsent, showConsentModal, setShowConsentModal };
 }

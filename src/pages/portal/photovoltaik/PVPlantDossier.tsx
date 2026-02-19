@@ -31,6 +31,7 @@ import {
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, Line, ComposedChart } from 'recharts';
 import { Slider } from '@/components/ui/slider';
 import { toast } from 'sonner';
+import { useLegalConsent } from '@/hooks/useLegalConsent';
 
 function SectionCard({ icon: Icon, title, children }: { icon: React.ElementType; title: string; children: React.ReactNode }) {
   return (
@@ -96,6 +97,7 @@ interface Props {
 
 export default function PVPlantDossier({ plant, isDemo }: Props) {
   const { activeTenantId } = useAuth();
+  const consentGuard = useLegalConsent();
   const { liveData } = usePvMonitoring(plant ? [plant] : []);
   const live = liveData.get(plant.id);
   const currentMonth = new Date().getMonth() + 1;
@@ -179,6 +181,7 @@ export default function PVPlantDossier({ plant, isDemo }: Props) {
 
   const handleSave = async () => {
     if (isDemo) { toast.success('Gespeichert (Demo-Modus)'); setFormData({}); return; }
+    if (!consentGuard.requireConsent()) return;
     setIsSaving(true);
     try {
       const updates: Record<string, any> = {};

@@ -12,6 +12,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { Plus, Trash2, Landmark, X } from 'lucide-react';
+import { useLegalConsent } from '@/hooks/useLegalConsent';
 
 interface LoanSectionProps {
   homeId: string;
@@ -19,6 +20,7 @@ interface LoanSectionProps {
 
 export function LoanSection({ homeId }: LoanSectionProps) {
   const { activeTenantId } = useAuth();
+  const consentGuard = useLegalConsent();
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({
@@ -41,6 +43,7 @@ export function LoanSection({ homeId }: LoanSectionProps) {
 
   const insertMutation = useMutation({
     mutationFn: async () => {
+      if (!consentGuard.requireConsent()) throw new Error('Consent required');
       if (!activeTenantId) throw new Error('Kein Mandant');
       const { error } = await supabase.from('miety_loans').insert({
         home_id: homeId,
@@ -68,6 +71,7 @@ export function LoanSection({ homeId }: LoanSectionProps) {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
+      if (!consentGuard.requireConsent()) throw new Error('Consent required');
       const { error } = await supabase.from('miety_loans').delete().eq('id', id);
       if (error) throw error;
     },

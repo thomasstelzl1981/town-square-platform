@@ -27,6 +27,8 @@ import { getModulesSorted } from '@/manifests/routesManifest';
 import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import ErrorBoundary from '@/components/ErrorBoundary';
+import { useLegalConsent } from '@/hooks/useLegalConsent';
+import { ConsentRequiredModal } from './ConsentRequiredModal';
 
 
 /**
@@ -46,6 +48,7 @@ import ErrorBoundary from '@/components/ErrorBoundary';
 function PortalLayoutInner() {
   const { user, isLoading, activeOrganization, isDevelopmentMode } = useAuth();
   const { isMobile } = usePortalLayout();
+  const { showConsentModal, setShowConsentModal } = useLegalConsent();
   const location = useLocation();
   // Armstrong sheet state removed — mobile uses full-screen chat now
   const [mobileHomeMode, setMobileHomeMode] = useState<'modules' | 'chat'>('modules'); // kept for chat activation
@@ -167,6 +170,8 @@ function PortalLayoutInner() {
         <MobileBottomBar
           onChatActivated={() => setMobileHomeMode('chat')}
         />
+        {/* Global Consent Modal (mobile) */}
+        <ConsentRequiredModal open={showConsentModal} onOpenChange={setShowConsentModal} />
       </div>
     );
   }
@@ -194,6 +199,9 @@ function PortalLayoutInner() {
       
       {/* Desktop PWA Install Banner */}
       <DesktopInstallBanner />
+      
+      {/* Global Consent Modal */}
+      <ConsentRequiredModal open={showConsentModal} onOpenChange={setShowConsentModal} />
     </div>
   );
 }

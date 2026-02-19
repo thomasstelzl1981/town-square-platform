@@ -26,6 +26,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowLeft, Loader2, AlertTriangle, FileText, Building2, Calculator, LayoutList, LayoutPanelLeft, TrendingUp, Banknote, Receipt, BarChart3, Trash2 } from 'lucide-react';
 import { ExposeTab } from '@/components/portfolio/ExposeTab';
+import { useLegalConsent } from '@/hooks/useLegalConsent';
 import { VerkaufsauftragTab } from '@/components/portfolio/VerkaufsauftragTab';
 import { TenancyTab } from '@/components/portfolio/TenancyTab';
 import { GeldeingangTab } from '@/components/portfolio/GeldeingangTab';
@@ -162,6 +163,7 @@ function PropertyValuationTab({ propertyId, tenantId }: { propertyId: string; te
 }
 
 export default function PropertyDetailPage() {
+  const consentGuard = useLegalConsent();
   const { id } = useParams<{ id: string }>();
   const { activeOrganization, activeTenantId } = useAuth();
   const { toast } = useToast();
@@ -185,6 +187,7 @@ export default function PropertyDetailPage() {
 
   const handleDeleteProperty = async () => {
     if (!id) return;
+    if (!consentGuard.requireConsent()) return;
     setIsDeleting(true);
     try {
       // Delete cascade: leases -> units -> property

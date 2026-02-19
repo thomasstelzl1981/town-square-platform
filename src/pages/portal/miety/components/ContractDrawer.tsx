@@ -13,6 +13,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { Save } from 'lucide-react';
+import { useLegalConsent } from '@/hooks/useLegalConsent';
+import { ConsentRequiredModal } from '@/components/portal/ConsentRequiredModal';
 
 const CATEGORIES = [
   { value: 'strom', label: 'Strom' },
@@ -34,6 +36,7 @@ interface ContractDrawerProps {
 
 export function ContractDrawer({ open, onOpenChange, homeId, defaultCategory }: ContractDrawerProps) {
   const { activeTenantId } = useAuth();
+  const { requireConsent, showConsentModal, setShowConsentModal } = useLegalConsent();
   const queryClient = useQueryClient();
   const [category, setCategory] = useState(defaultCategory || 'sonstige');
   const [providerName, setProviderName] = useState('');
@@ -82,13 +85,14 @@ export function ContractDrawer({ open, onOpenChange, homeId, defaultCategory }: 
   }
 
   return (
+    <>
     <DetailDrawer
       open={open}
       onOpenChange={onOpenChange}
       title="Vertrag anlegen"
       description="Neuen Vertrag für Ihr Zuhause erfassen"
       footer={
-        <Button onClick={() => createMutation.mutate()} disabled={createMutation.isPending} className="w-full">
+        <Button onClick={() => { if (!requireConsent()) return; createMutation.mutate(); }} disabled={createMutation.isPending} className="w-full">
           <Save className="h-4 w-4 mr-2" />
           {createMutation.isPending ? 'Speichern...' : 'Vertrag speichern'}
         </Button>
@@ -138,5 +142,7 @@ export function ContractDrawer({ open, onOpenChange, homeId, defaultCategory }: 
         </div>
       </div>
     </DetailDrawer>
+    <ConsentRequiredModal open={showConsentModal} onOpenChange={setShowConsentModal} />
+    </>
   );
 }

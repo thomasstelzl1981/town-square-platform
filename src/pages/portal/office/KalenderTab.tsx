@@ -41,6 +41,7 @@ import {
   Settings,
 } from 'lucide-react';
 import { AccountIntegrationDialog } from '@/components/portal/office/AccountIntegrationDialog';
+import { useLegalConsent } from '@/hooks/useLegalConsent';
 
 interface CalendarEvent {
   id: string;
@@ -60,6 +61,7 @@ interface CalendarEvent {
 
 export function KalenderTab() {
   const queryClient = useQueryClient();
+  const consentGuard = useLegalConsent();
   const isMobile = useIsMobile();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -98,6 +100,7 @@ export function KalenderTab() {
   // Create event mutation
   const createMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
+      if (!consentGuard.requireConsent()) throw new Error('Consent required');
       const { data: profile } = await supabase
         .from('profiles')
         .select('active_tenant_id, id')

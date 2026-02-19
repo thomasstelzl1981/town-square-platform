@@ -13,6 +13,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/hooks/use-toast';
 import { useDropzone } from 'react-dropzone';
+import { useLegalConsent } from '@/hooks/useLegalConsent';
 
 const TAG_OPTIONS = ['Business', 'Casual', 'Outdoor', 'Speaking', 'Portrait', 'Team', 'Event'];
 const MAX_ASSETS = 20;
@@ -36,6 +37,7 @@ export function AssetsPage() {
   const queryClient = useQueryClient();
   const userId = user?.id || 'dev-user';
   const tenantId = activeOrganization?.id;
+  const consentGuard = useLegalConsent();
   const [uploading, setUploading] = useState(false);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
 
@@ -78,6 +80,7 @@ export function AssetsPage() {
   });
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
+    if (!consentGuard.requireConsent()) return;
     if (!tenantId) return;
     const remaining = MAX_ASSETS - assets.length;
     if (remaining <= 0) {
