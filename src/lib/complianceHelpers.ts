@@ -37,6 +37,7 @@ export function formatComplianceStatus(status: string): string {
     NEW: 'Neu',
     IDENTITY_REQUIRED: 'ID prüfen',
     IN_REVIEW: 'In Prüfung',
+    HOLD_LEGAL: 'Legal Hold',
     RESPONDED: 'Beantwortet',
     CLOSED: 'Geschlossen',
     REJECTED: 'Abgelehnt',

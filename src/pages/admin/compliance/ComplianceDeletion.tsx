@@ -1,39 +1,55 @@
 /**
- * Tab 9: Deletion Requests — Löschanträge Art. 17 DSGVO
+ * Tab: Deletion Requests — Löschanträge Art. 17 DSGVO
+ * Vollständiges Case-Management mit Inbox, Detail, Intake und Response Generator.
  */
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Trash2, AlertTriangle, ChevronDown, Save } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
 import { LoadingState } from '@/components/shared';
 import { useDeletionRequests } from './useComplianceCases';
-
-const STATUS_COLORS: Record<string, string> = {
-  open: 'bg-amber-500/10 text-amber-700 border-amber-200',
-  verifying: 'bg-blue-500/10 text-blue-700 border-blue-200',
-  scheduled: 'bg-violet-500/10 text-violet-700 border-violet-200',
-  executed: 'bg-emerald-500/10 text-emerald-700 border-emerald-200',
-  closed: 'bg-muted text-muted-foreground',
-};
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { DeletionCaseList } from './deletion/DeletionCaseList';
+import { DeletionCaseDetail } from './deletion/DeletionCaseDetail';
+import { DeletionIntakeForm } from './deletion/DeletionIntakeForm';
 
 export function ComplianceDeletion() {
-  const { requests, isLoading, updateStatus } = useDeletionRequests();
-  const [openId, setOpenId] = useState<string | null>(null);
-  const [editNotes, setEditNotes] = useState('');
-  const [editLegalHold, setEditLegalHold] = useState('');
+  const { requests, isLoading, updateStatus, createRequest } = useDeletionRequests();
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [showIntake, setShowIntake] = useState(false);
 
-  const handleOpen = (r: typeof requests[0]) => {
-    if (openId === r.id) {
-      setOpenId(null);
-    } else {
-      setOpenId(r.id);
-      setEditNotes(r.notes || '');
-      setEditLegalHold(r.legal_hold_reason || '');
-    }
+  const { data: companyProfile } = useQuery({
+    queryKey: ['compliance-company-profile', 'sot'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('compliance_company_profile' as any)
+        .select('*')
+        .eq('slug', 'sot')
+        .maybeSingle();
+      return data;
+    },
+  });
+
+  const selectedRequest = requests.find(r => r.id === selectedId);
+
+  const handleUpdate = (id: string, updates: Record<string, any>) => {
+    updateStatus.mutate({ id, ...updates });
+  };
+
+  const handleCreate = (data: { requester_email: string; requester_name?: string; request_channel: string; request_received_at: string }) => {
+    const receivedAt = new Date(data.request_received_at);
+    const dueDate = new Date(receivedAt);
+    dueDate.setDate(dueDate.getDate() + 30);
+
+    createRequest.mutate({
+      requester_email: data.requester_email,
+      requester_name: data.requester_name || null,
+      request_channel: data.request_channel,
+      request_received_at: receivedAt.toISOString(),
+      due_date: dueDate.toISOString().split('T')[0],
+    }, {
+      onSuccess: () => setShowIntake(false),
+    });
   };
 
   if (isLoading) return <LoadingState />;
@@ -46,82 +62,30 @@ export function ComplianceDeletion() {
             <Trash2 className="h-5 w-5" /> Löschanträge (Art. 17 DSGVO)
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          {requests.length > 0 ? (
-            <div className="space-y-2">
-              {requests.map(r => (
-                <Collapsible key={r.id} open={openId === r.id} onOpenChange={() => handleOpen(r)}>
-                  <div className="rounded-lg border">
-                    <CollapsibleTrigger asChild>
-                      <div className="flex items-center justify-between p-3 cursor-pointer hover:bg-muted/20">
-                        <div>
-                          <p className="font-medium text-sm">{r.requester_email}</p>
-                          <p className="text-xs text-muted-foreground">
-                            Erstellt: {new Date(r.created_at).toLocaleDateString('de-DE')}
-                            {r.executed_at && ` · Gelöscht: ${new Date(r.executed_at).toLocaleDateString('de-DE')}`}
-                          </p>
-                          {r.legal_hold_reason && (
-                            <p className="text-xs text-amber-600 flex items-center gap-1 mt-1">
-                              <AlertTriangle className="h-3 w-3" /> Legal Hold: {r.legal_hold_reason}
-                            </p>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Badge className={STATUS_COLORS[r.status] || ''}>{r.status}</Badge>
-                          {r.status === 'open' && (
-                            <Button size="sm" variant="outline" onClick={e => { e.stopPropagation(); updateStatus.mutate({ id: r.id, status: 'scheduled' }); }}>Einplanen</Button>
-                          )}
-                          {r.status === 'scheduled' && (
-                            <Button size="sm" variant="destructive" onClick={e => { e.stopPropagation(); updateStatus.mutate({ id: r.id, status: 'executed' }); }}>Ausführen</Button>
-                          )}
-                          <ChevronDown className={`h-4 w-4 transition-transform ${openId === r.id ? 'rotate-180' : ''}`} />
-                        </div>
-                      </div>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent>
-                      <div className="p-3 pt-0 space-y-3 border-t">
-                        <div>
-                          <label className="text-xs font-medium text-muted-foreground">Interne Notizen</label>
-                          <Textarea
-                            value={editNotes}
-                            onChange={e => setEditNotes(e.target.value)}
-                            placeholder="Bearbeitungsnotizen..."
-                            className="min-h-[120px] text-sm mt-1"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-                            <AlertTriangle className="h-3 w-3 text-amber-500" /> Legal Hold Grund
-                          </label>
-                          <Input
-                            value={editLegalHold}
-                            onChange={e => setEditLegalHold(e.target.value)}
-                            placeholder="Grund für Legal Hold (optional)"
-                            className="mt-1 text-sm"
-                          />
-                        </div>
-                        <div className="flex justify-end">
-                          <Button
-                            size="sm"
-                            onClick={() => updateStatus.mutate({
-                              id: r.id,
-                              status: r.status,
-                              notes: editNotes,
-                              legalHoldReason: editLegalHold || undefined,
-                            })}
-                            disabled={updateStatus.isPending}
-                          >
-                            <Save className="h-3 w-3 mr-1" /> Speichern
-                          </Button>
-                        </div>
-                      </div>
-                    </CollapsibleContent>
-                  </div>
-                </Collapsible>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-8 text-muted-foreground text-sm">Keine Löschanträge vorhanden.</div>
+        <CardContent className="space-y-4">
+          {showIntake && (
+            <DeletionIntakeForm
+              onSubmit={handleCreate}
+              onCancel={() => setShowIntake(false)}
+              isPending={createRequest.isPending}
+            />
+          )}
+
+          <DeletionCaseList
+            requests={requests}
+            selectedId={selectedId}
+            onSelect={id => setSelectedId(selectedId === id ? null : id)}
+            onNewRequest={() => setShowIntake(true)}
+          />
+
+          {selectedRequest && (
+            <DeletionCaseDetail
+              request={selectedRequest}
+              companyProfile={companyProfile}
+              onUpdate={handleUpdate}
+              onClose={() => setSelectedId(null)}
+              isPending={updateStatus.isPending}
+            />
           )}
         </CardContent>
       </Card>
