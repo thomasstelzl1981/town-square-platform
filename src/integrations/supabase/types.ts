@@ -18954,45 +18954,58 @@ export type Database = {
       }
       user_consents: {
         Row: {
+          compliance_doc_id: string | null
+          compliance_version: number | null
           consented_at: string
           created_at: string
           id: string
           ip_address: string | null
           metadata: Json
           status: Database["public"]["Enums"]["consent_status"]
-          template_id: string
-          template_version: number
+          template_id: string | null
+          template_version: number | null
           tenant_id: string
           user_agent: string | null
           user_id: string
         }
         Insert: {
+          compliance_doc_id?: string | null
+          compliance_version?: number | null
           consented_at?: string
           created_at?: string
           id?: string
           ip_address?: string | null
           metadata?: Json
           status?: Database["public"]["Enums"]["consent_status"]
-          template_id: string
-          template_version: number
+          template_id?: string | null
+          template_version?: number | null
           tenant_id: string
           user_agent?: string | null
           user_id: string
         }
         Update: {
+          compliance_doc_id?: string | null
+          compliance_version?: number | null
           consented_at?: string
           created_at?: string
           id?: string
           ip_address?: string | null
           metadata?: Json
           status?: Database["public"]["Enums"]["consent_status"]
-          template_id?: string
-          template_version?: number
+          template_id?: string | null
+          template_version?: number | null
           tenant_id?: string
           user_agent?: string | null
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "user_consents_compliance_doc_id_fkey"
+            columns: ["compliance_doc_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_documents"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "user_consents_template_id_fkey"
             columns: ["template_id"]

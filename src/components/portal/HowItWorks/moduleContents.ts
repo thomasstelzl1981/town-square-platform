@@ -38,7 +38,8 @@ import {
   Car, Gauge, CarFront,
   LineChart, FileBarChart, Lightbulb,
   Sun, CheckSquare, Folder,
-  Home, FileBox, MessageSquare, Thermometer, Plug, ShieldCheck, DoorOpen
+  Home, FileBox, MessageSquare, Thermometer, Plug, ShieldCheck, DoorOpen,
+  Scale
 } from 'lucide-react';
 
 export const moduleContents: Record<string, HowItWorksContent> = {
@@ -74,6 +75,7 @@ export const moduleContents: Record<string, HowItWorksContent> = {
       { title: 'Verträge', route: '/portal/stammdaten/vertraege', icon: FileText },
       { title: 'Abrechnung', route: '/portal/stammdaten/abrechnung', icon: CreditCard },
       { title: 'Sicherheit', route: '/portal/stammdaten/sicherheit', icon: Shield },
+      { title: 'Rechtliches', route: '/portal/stammdaten/rechtliches', icon: Scale },
     ],
   },
 

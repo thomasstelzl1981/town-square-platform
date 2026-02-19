@@ -3,6 +3,8 @@
  */
 import { DetailDrawer } from '@/components/shared/DetailDrawer';
 import { Upload } from 'lucide-react';
+import { useLegalConsent } from '@/hooks/useLegalConsent';
+import { useEffect } from 'react';
 
 interface UploadDrawerProps {
   open: boolean;
@@ -11,6 +13,15 @@ interface UploadDrawerProps {
 }
 
 export function UploadDrawer({ open, onOpenChange }: UploadDrawerProps) {
+  const { requireConsent, isLoading } = useLegalConsent();
+
+  // Block opening if consent not given
+  useEffect(() => {
+    if (open && !isLoading && !requireConsent()) {
+      onOpenChange(false);
+    }
+  }, [open, isLoading]);
+
   return (
     <DetailDrawer
       open={open}

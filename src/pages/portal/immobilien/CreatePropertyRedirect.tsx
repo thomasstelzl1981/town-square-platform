@@ -10,14 +10,20 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Loader2, Building2 } from 'lucide-react';
+import { useLegalConsent } from '@/hooks/useLegalConsent';
 
 export function CreatePropertyRedirect() {
   const navigate = useNavigate();
+  const { requireConsent, isLoading } = useLegalConsent();
   
   useEffect(() => {
-    // Immediate redirect - no async operations
+    if (isLoading) return;
+    if (!requireConsent()) {
+      navigate('/portal/immobilien/portfolio', { replace: true });
+      return;
+    }
     navigate('/portal/immobilien/portfolio?create=1', { replace: true });
-  }, [navigate]);
+  }, [navigate, isLoading, requireConsent]);
   
   // Always render visible fallback - never null or empty
   return (
