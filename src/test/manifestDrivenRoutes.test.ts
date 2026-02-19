@@ -84,7 +84,7 @@ describe('Zone 2: Portal Modules', () => {
   // Current tile counts per manifest (2026-02-18)
   const expectedTileCounts: Record<string, number> = {
     'MOD-00': 0,
-    'MOD-01': 5,
+    'MOD-01': 6,
     'MOD-02': 7,
     'MOD-03': 4,
     'MOD-04': 4,
@@ -93,10 +93,10 @@ describe('Zone 2: Portal Modules', () => {
     'MOD-07': 5,
     'MOD-08': 4,
     'MOD-09': 5,
-    'MOD-10': 1,
+    'MOD-10': 5,
     'MOD-11': 5,
-    'MOD-12': 5,
-    'MOD-13': 4,
+    'MOD-12': 6,
+    'MOD-13': 5,
     'MOD-14': 4,
     'MOD-15': 4,
     'MOD-16': 5,
@@ -236,8 +236,8 @@ describe('Route Counts', () => {
   it('should calculate total Zone 2 tile routes', () => {
     const modules = Object.values(zone2Portal.modules || {});
     const tileCount = modules.reduce((sum, m) => sum + m.tiles.length, 0);
-    // Sum of all tile counts from expectedTileCounts (updated: MOD-18 now has 9 tiles)
-    expect(tileCount).toBe(98);
+    // Sum of all tile counts from expectedTileCounts (updated: MOD-01=6, MOD-10=5, MOD-12=6, MOD-13=5)
+    expect(tileCount).toBe(105);
   });
 
   it('should calculate total Zone 3 routes', () => {
