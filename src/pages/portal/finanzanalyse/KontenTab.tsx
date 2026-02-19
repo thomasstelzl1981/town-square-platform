@@ -19,12 +19,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { KontoAkteInline } from '@/components/finanzanalyse/KontoAkteInline';
 import { AddBankAccountDialog } from '@/components/shared/AddBankAccountDialog';
-import { DEMO_KONTO, DEMO_KONTO_IBAN_MASKED } from '@/constants/demoKontoData';
 import { Landmark, ScanSearch, Plus, CreditCard, RefreshCw, Building2, Loader2, FileSpreadsheet, Trash2 } from 'lucide-react';
 import { WidgetDeleteOverlay } from '@/components/shared/WidgetDeleteOverlay';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-import { filterOutDemoIds } from '@/engines/demoData/engine';
+import { isDemoId, filterOutDemoIds } from '@/engines/demoData/engine';
 
 const OWNER_TYPE_LABELS: Record<string, string> = {
   person: 'Person',
@@ -328,49 +327,23 @@ export default function KontenTab() {
       )}
 
       <WidgetGrid>
-        {showDemo && (
-          <WidgetCell>
-            <div
-              className={cn(
-                'h-full w-full rounded-xl cursor-pointer transition-all',
-                DEMO_WIDGET.CARD, DEMO_WIDGET.HOVER,
-                openKontoId === DEMO_KONTO.id && 'ring-2 ring-primary/50',
-              )}
-              onClick={(e) => { e.stopPropagation(); setOpenKontoId(openKontoId === DEMO_KONTO.id ? null : DEMO_KONTO.id); }}
-              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); setOpenKontoId(openKontoId === DEMO_KONTO.id ? null : DEMO_KONTO.id); }}}
-              role="button"
-              tabIndex={0}
-            >
-              <div className="p-5 flex flex-col justify-between h-full">
-                <div>
-                  <Badge className={DEMO_WIDGET.BADGE + ' mb-2'}>Demo</Badge>
-                  <h4 className="font-semibold text-sm">Demo: Girokonto Sparkasse</h4>
-                  <p className="text-xs text-muted-foreground mt-1">{DEMO_KONTO_IBAN_MASKED}</p>
-                  <Badge variant="outline" className="mt-2 text-[10px]">
-                    {OWNER_TYPE_LABELS[DEMO_KONTO.owner_type] || 'Vermietereinheit'}
-                  </Badge>
-                </div>
-                <div className="text-right">
-                  <p className="text-lg font-bold text-emerald-600">{new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(DEMO_KONTO.balance)}</p>
-                </div>
-              </div>
-            </div>
-          </WidgetCell>
-        )}
-
-        {filteredAccounts.map((acc: any) => (
+        {filteredAccounts.map((acc: any) => {
+          const isDemo = isDemoId(acc.id);
+          return (
           <WidgetCell key={acc.id}>
             <div
               className={cn(
                 'h-full w-full rounded-xl cursor-pointer transition-all hover:shadow-lg relative group',
-                getActiveWidgetGlow('rose'),
-                openKontoId === acc.id && getSelectionRing('rose'),
+                isDemo ? cn(DEMO_WIDGET.CARD, DEMO_WIDGET.HOVER) : getActiveWidgetGlow('rose'),
+                openKontoId === acc.id && (isDemo ? 'ring-2 ring-primary/50' : getSelectionRing('rose')),
               )}>
-              <WidgetDeleteOverlay
-                title={acc.account_name || acc.bank_name || 'Konto'}
-                onConfirmDelete={() => deleteAccountMutation.mutate(acc.id)}
-                isDeleting={deletingAccountId === acc.id}
-              />
+              {!isDemo && (
+                <WidgetDeleteOverlay
+                  title={acc.account_name || acc.bank_name || 'Konto'}
+                  onConfirmDelete={() => deleteAccountMutation.mutate(acc.id)}
+                  isDeleting={deletingAccountId === acc.id}
+                />
+              )}
               <div
                 className="h-full w-full"
                 onClick={(e) => { e.stopPropagation(); setOpenKontoId(openKontoId === acc.id ? null : acc.id); }}
@@ -380,6 +353,7 @@ export default function KontenTab() {
               >
               <div className="p-5 flex flex-col justify-between h-full">
                 <div>
+                  {isDemo && <Badge className={DEMO_WIDGET.BADGE + ' mb-2'}>Demo</Badge>}
                   <h4 className="font-semibold text-sm">{acc.account_name || acc.bank_name || 'Konto'}</h4>
                   <p className="text-xs text-muted-foreground mt-1">{maskIban(acc.iban || '')}</p>
                   <div className="flex items-center gap-1 mt-2 flex-wrap">
@@ -402,7 +376,8 @@ export default function KontenTab() {
               </div>
             </div>
           </WidgetCell>
-        ))}
+          );
+        })}
 
         <WidgetCell>
           <div
@@ -421,12 +396,9 @@ export default function KontenTab() {
         </WidgetCell>
       </WidgetGrid>
 
-      {openKontoId === DEMO_KONTO.id && (
-        <KontoAkteInline isDemo onClose={() => setOpenKontoId(null)} />
-      )}
-      {openKontoId && openKontoId !== DEMO_KONTO.id && (
+      {openKontoId && (
         <KontoAkteInline
-          isDemo={false}
+          isDemo={isDemoId(openKontoId)}
           account={bankAccounts.find((a: any) => a.id === openKontoId)}
           onClose={() => setOpenKontoId(null)}
         />

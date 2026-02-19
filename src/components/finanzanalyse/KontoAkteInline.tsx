@@ -4,7 +4,7 @@
  * Sektion 2: Kontoanbindung (FinAPI Platzhalter)
  * Sektion 3: Kontobewegungen (mit CSV-Import)
  */
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -12,8 +12,6 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DEMO_WIDGET, RECORD_CARD } from '@/config/designManifest';
-import { DEMO_KONTO, DEMO_TRANSACTIONS, type DemoTransaction } from '@/constants/demoKontoData';
-import { DEMO_FAMILY, DEMO_PORTFOLIO } from '@/engines/demoData/data';
 import { CreditCard, Link2, Link2Off, X, Info, Upload, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
@@ -73,16 +71,21 @@ function decodeOwnerValue(val: string): { type: string; id: string } {
 export function KontoAkteInline({ isDemo, account, onClose }: KontoAkteInlineProps) {
   const { activeTenantId } = useAuth();
   const queryClient = useQueryClient();
-  const [ownerType, setOwnerType] = useState(isDemo ? DEMO_KONTO.owner_type : (account?.owner_type || ''));
-  const [ownerId, setOwnerId] = useState(isDemo ? DEMO_KONTO.owner_id : (account?.owner_id || ''));
+  const [ownerType, setOwnerType] = useState(account?.owner_type || '');
+  const [ownerId, setOwnerId] = useState(account?.owner_id || '');
   const [importDialogOpen, setImportDialogOpen] = useState(false);
 
-  const kontoData = isDemo
-    ? { name: DEMO_KONTO.accountName, iban: DEMO_KONTO.iban, bic: DEMO_KONTO.bic, bank: DEMO_KONTO.bank, holder: DEMO_KONTO.holder, status: 'active' }
-    : { name: account?.account_name || '', iban: account?.iban || '', bic: account?.bic || '', bank: account?.bank_name || '', holder: account?.account_holder || '', status: account?.status || 'inactive' };
+  const kontoData = {
+    name: account?.account_name || '',
+    iban: account?.iban || '',
+    bic: account?.bic || '',
+    bank: account?.bank_name || '',
+    holder: account?.account_holder || '',
+    status: account?.status || 'inactive',
+  };
 
-  // For real accounts: load transactions from DB
-  const accountRef = isDemo ? '' : (account?.id || account?.iban || '');
+  // Load transactions from DB for all accounts (demo + real)
+  const accountRef = account?.id || account?.iban || '';
 
   const { data: dbTransactions = [], refetch: refetchTransactions } = useQuery({
     queryKey: ['bank-transactions', accountRef],
@@ -96,33 +99,41 @@ export function KontoAkteInline({ isDemo, account, onClose }: KontoAkteInlinePro
       if (error) throw error;
       return data || [];
     },
-    enabled: !isDemo && !!accountRef,
+    enabled: !!accountRef,
   });
 
-  // Map DB transactions to display format
-  const displayTransactions: DemoTransaction[] = isDemo
-    ? DEMO_TRANSACTIONS
-    : dbTransactions.map(t => ({
-        date: t.booking_date,
-        valuta_date: t.value_date || t.booking_date,
-        booking_type: '',
-        counterpart_name: t.counterparty || '',
-        counterpart_iban: '',
-        purpose: t.purpose_text || '',
-        amount: Number(t.amount_eur),
-        saldo: 0,
-      }));
+  interface DisplayTransaction {
+    date: string;
+    valuta_date: string;
+    booking_type: string;
+    counterpart_name: string;
+    counterpart_iban: string;
+    purpose: string;
+    amount: number;
+    saldo: number;
+  }
 
-  // Build demo owner options from static data
+  // Map DB transactions to display format
+  const displayTransactions: DisplayTransaction[] = dbTransactions.map(t => ({
+    date: t.booking_date,
+    valuta_date: t.value_date || t.booking_date,
+    booking_type: '',
+    counterpart_name: t.counterparty || '',
+    counterpart_iban: '',
+    purpose: t.purpose_text || '',
+    amount: Number(t.amount_eur),
+    saldo: 0,
+  }));
+
   // Load owner options from DB for both demo and real accounts
   const { data: dbOwnerOptions = [] } = useQuery({
-    queryKey: ['all-owner-options-demo', activeTenantId],
+    queryKey: ['all-owner-options', activeTenantId],
     queryFn: async (): Promise<OwnerOption[]> => {
-      const tid = activeTenantId || 'a0000000-0000-4000-a000-000000000001';
+      if (!activeTenantId) return [];
       const [personsRes, contextsRes, pvRes] = await Promise.all([
-        supabase.from('household_persons').select('id, first_name, last_name').eq('tenant_id', tid),
-        supabase.from('landlord_contexts').select('id, name').eq('tenant_id', tid),
-        supabase.from('pv_plants').select('id, name').eq('tenant_id', tid),
+        supabase.from('household_persons').select('id, first_name, last_name').eq('tenant_id', activeTenantId),
+        supabase.from('landlord_contexts').select('id, name').eq('tenant_id', activeTenantId),
+        supabase.from('pv_plants').select('id, name').eq('tenant_id', activeTenantId),
       ]);
       const persons: OwnerOption[] = (personsRes.data || []).map((p: any) => ({
         id: p.id, label: `${p.first_name || ''} ${p.last_name || ''}`.trim() || 'Person', type: 'person',
@@ -135,32 +146,10 @@ export function KontoAkteInline({ isDemo, account, onClose }: KontoAkteInlinePro
       }));
       return [...persons, ...properties, ...pvPlants];
     },
-    enabled: isDemo || !!activeTenantId,
+    enabled: !!activeTenantId,
   });
 
-  const demoOwnerOptions = useMemo<OwnerOption[]>(() => {
-    if (!isDemo) return [];
-    // If we got DB data, use it; otherwise fall back to static demo data
-    if (dbOwnerOptions.length > 0) return dbOwnerOptions;
-    const persons = DEMO_FAMILY.map(p => ({
-      id: p.id,
-      label: `${p.firstName} ${p.lastName}`,
-      type: 'person' as const,
-    }));
-    const properties: OwnerOption[] = [{
-      id: DEMO_PORTFOLIO.landlordContextId,
-      label: 'Familie Mustermann',
-      type: 'property',
-    }];
-    const pvPlants: OwnerOption[] = DEMO_PORTFOLIO.pvPlantIds.map((id, i) => ({
-      id,
-      label: `PV-Anlage ${i + 1}`,
-      type: 'pv_plant',
-    }));
-    return [...persons, ...properties, ...pvPlants];
-  }, [isDemo, dbOwnerOptions]);
-
-  const allOptions = isDemo ? demoOwnerOptions : dbOwnerOptions;
+  const allOptions = dbOwnerOptions;
   const personOptions = allOptions.filter(o => o.type === 'person');
   const propertyOptions = allOptions.filter(o => o.type === 'property');
   const pvOptions = allOptions.filter(o => o.type === 'pv_plant');
