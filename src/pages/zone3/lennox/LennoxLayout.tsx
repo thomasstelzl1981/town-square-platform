@@ -108,9 +108,9 @@ export default function LennoxLayout() {
               <span className="font-bold tracking-tight" style={{ color: C.bark }}>Lennox & Friends</span>
             </div>
             <div className="flex items-center gap-4 text-xs" style={{ color: C.barkMuted }}>
-              <Link to="#" className="hover:underline">Impressum</Link>
-              <Link to="#" className="hover:underline">Datenschutz</Link>
-              <Link to="#" className="hover:underline">Kontakt</Link>
+              <Link to="/website/tierservice/impressum" className="hover:underline">Impressum</Link>
+              <Link to="/website/tierservice/datenschutz" className="hover:underline">Datenschutz</Link>
+              <Link to="mailto:info@lennoxandfriends.com" className="hover:underline">Kontakt</Link>
             </div>
             <p className="text-xs" style={{ color: C.barkMuted }}>
               © {new Date().getFullYear()} Lennox & Friends — Dein Hundenetzwerk

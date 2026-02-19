@@ -14,10 +14,11 @@ const BRAND_PROFILE_MAP: Record<string, string> = {
   futureroom: 'futureroom',
   acquiary: 'futureroom',
   sot: 'sot',
+  tierservice: 'lennox',
 };
 
 interface Zone3LegalPageProps {
-  brand: 'kaufy' | 'futureroom' | 'acquiary' | 'sot';
+  brand: 'kaufy' | 'futureroom' | 'acquiary' | 'sot' | 'tierservice';
   docType: 'imprint' | 'privacy';
 }
 
