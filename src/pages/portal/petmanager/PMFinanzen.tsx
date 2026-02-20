@@ -34,6 +34,8 @@ import { format, subMonths, startOfMonth, endOfMonth } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { getJsPDF } from '@/lib/lazyJspdf';
+import { useDemoToggles } from '@/hooks/useDemoToggles';
+import { isDemoId } from '@/engines/demoData';
 
 type InvoiceStatus = 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled';
 
@@ -90,6 +92,8 @@ function formatCents(cents: number): string {
 
 export default function PMFinanzen() {
   const { activeTenantId } = useAuth();
+  const { isEnabled } = useDemoToggles();
+  const demoEnabled = isEnabled('GP-PET');
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -150,6 +154,7 @@ export default function PMFinanzen() {
       setCompletedBookings(
         (data as any[])
           .filter(b => !invoicedBookingIds.has(b.id))
+          .filter(b => demoEnabled || !isDemoId(b.id))
           .map(b => ({
             id: b.id,
             pet: b.pets,

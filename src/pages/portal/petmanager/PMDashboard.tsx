@@ -19,6 +19,8 @@ import { PageShell } from '@/components/shared/PageShell';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useDemoToggles } from '@/hooks/useDemoToggles';
+import { isDemoId } from '@/engines/demoData';
 
 const FACILITY_LABELS: Record<string, string> = {
   daycare: 'Tagesstätte',
@@ -33,7 +35,10 @@ export default function PMDashboard() {
   const { data: capacity } = usePetCapacity(provider?.id);
   const { data: weeklyCount } = useWeeklyBookingCount(provider?.id);
   const { data: monthlyRevenue } = useMonthlyRevenue(provider?.id);
-  const { data: allBookings = [] } = useBookings(provider ? { providerId: provider.id } : undefined);
+  const { data: rawBookings = [] } = useBookings(provider ? { providerId: provider.id } : undefined);
+  const { isEnabled } = useDemoToggles();
+  const demoEnabled = isEnabled('GP-PET');
+  const allBookings = demoEnabled ? rawBookings : rawBookings.filter(b => !isDemoId(b.id));
 
   // ── Incoming booking requests from Z3 ──────────────
   const { data: incomingRequests = [] } = useQuery({
