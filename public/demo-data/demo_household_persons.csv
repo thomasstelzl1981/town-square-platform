@@ -1,5 +1,5 @@
-id;role;salutation;first_name;last_name;birth_date;email;phone;street;house_number;zip;city;marital_status;employment_status;employer_name;sort_order;is_primary;gross_income_monthly;net_income_monthly;tax_class;child_allowances
-b1f6d204-05ac-462f-9dae-8fba64ab9f88;hauptperson;Herr;Max;Mustermann;1982-03-15;max@mustermann-demo.de;+49 170 1234567;Leopoldstraße 42;;80802;München;verheiratet;selbstaendig;IT-Beratung Mustermann;0;true;;;
-e0000000-0000-4000-a000-000000000101;partner;Frau;Lisa;Mustermann;1985-07-22;lisa@mustermann-demo.de;+49 170 7654321;Am Stadtpark;12a;80331;München;verheiratet;angestellt;MediaCorp GmbH;1;false;4200;2800;V;1.0
-e0000000-0000-4000-a000-000000000102;kind;Herr;Felix;Mustermann;2014-09-03;;;Am Stadtpark;12a;80331;München;;;;;2;false;;;
-e0000000-0000-4000-a000-000000000103;kind;Frau;Emma;Mustermann;2017-11-28;;;Am Stadtpark;12a;80331;München;;;;;3;false;;;
+id;role;salutation;first_name;last_name;birth_date;email;phone;street;house_number;zip;city;marital_status;employment_status;employer_name;sort_order;is_primary;gross_income_monthly;net_income_monthly;tax_class;child_allowances;business_income_monthly;pv_income_monthly;planned_retirement_date
+b1f6d204-05ac-462f-9dae-8fba64ab9f88;hauptperson;Herr;Max;Mustermann;1982-03-15;max@mustermann-demo.de;+49 170 1234567;Leopoldstraße 42;;80802;München;verheiratet;selbstaendig;IT-Beratung Mustermann;0;true;8500;5200;III;2.0;8500;212;2049-03-15
+e0000000-0000-4000-a000-000000000101;partner;Frau;Lisa;Mustermann;1985-07-22;lisa@mustermann-demo.de;+49 170 7654321;Am Stadtpark;12a;80331;München;verheiratet;angestellt;MediaCorp GmbH;1;false;4200;2800;V;1.0;;;2052-07-22
+e0000000-0000-4000-a000-000000000102;kind;Herr;Felix;Mustermann;2014-09-03;;;Am Stadtpark;12a;80331;München;;;;;2;false;;;;;
+e0000000-0000-4000-a000-000000000103;kind;Frau;Emma;Mustermann;2017-11-28;;;Am Stadtpark;12a;80331;München;;;;;3;false;;;;;

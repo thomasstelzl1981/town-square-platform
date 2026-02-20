@@ -25,6 +25,7 @@
     "miety_homes": { "file": "demo_miety_homes.csv", "expectedCount": 1, "dbTable": "miety_homes" },
     "miety_contracts": { "file": "demo_miety_contracts.csv", "expectedCount": 4, "dbTable": "miety_contracts" },
     "acq_mandates": { "file": null, "expectedCount": 1, "dbTable": "acq_mandates", "seedMethod": "code" },
+    "acq_offers": { "file": "demo_acq_offers.csv", "expectedCount": 1, "dbTable": "acq_offers" },
     "pet_customers": { "file": "demo_pet_customers.csv", "expectedCount": 3, "dbTable": "pet_customers" },
     "pets": { "file": null, "expectedCount": 5, "dbTable": "pets", "seedMethod": "code" },
     "pet_bookings": { "file": "demo_pet_bookings.csv", "expectedCount": 5, "dbTable": "pet_bookings" },
