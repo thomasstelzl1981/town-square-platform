@@ -781,7 +781,7 @@ export function PortfolioTab() {
             </WidgetCell>
 
             {/* Dynamic Context Widgets */}
-            {contexts.filter(ctx => !(demoEnabled && isDemoId(ctx.id))).map(ctx => {
+            {contexts.filter(ctx => demoEnabled || !isDemoId(ctx.id)).map(ctx => {
               const kpi = contextKpis.get(ctx.id);
               const isActive = selectedContextId === ctx.id;
               return (
