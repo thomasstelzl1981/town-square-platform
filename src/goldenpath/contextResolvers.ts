@@ -294,3 +294,148 @@ const gpPetResolver: ContextResolver = async ({ tenantId, entityId: customerId }
 };
 
 registerContextResolver('GP-PET', gpPetResolver);
+
+// ═══════════════════════════════════════════════════════════════
+// GP-VERMIETUNG Resolver (Mietverwaltung-Workflow)
+// ═══════════════════════════════════════════════════════════════
+
+const gpVermietungResolver: ContextResolver = async ({ tenantId, entityId: propertyId }) => {
+  const flags: Record<string, boolean> = {
+    user_authenticated: true,
+    tenant_exists: !!tenantId,
+  };
+  if (!tenantId || !propertyId) return flags;
+
+  // Check property exists
+  const { data: prop } = await supabase
+    .from('properties')
+    .select('id')
+    .eq('id', propertyId)
+    .eq('tenant_id', tenantId)
+    .maybeSingle();
+  flags.property_exists = !!prop;
+
+  // Check units exist
+  const { count: unitCount } = await supabase
+    .from('units')
+    .select('*', { count: 'exact', head: true })
+    .eq('property_id', propertyId);
+  flags.units_exist = (unitCount ?? 0) > 0;
+
+  // Check active leases (recursive types bypass)
+  const { count: leaseCount } = await supabase
+    .from('leases' as never)
+    .select('*', { count: 'exact', head: true })
+    .eq('property_id' as never, propertyId)
+    .eq('status' as never, 'active') as unknown as { count: number | null };
+  flags.lease_active = (leaseCount ?? 0) > 0;
+
+  // NK settlement flag derived from lease existence (no dedicated nk table)
+  flags.nk_settlement_exists = (leaseCount ?? 0) > 0;
+
+  return flags;
+};
+
+registerContextResolver('GP-VERMIETUNG', gpVermietungResolver);
+
+// ═══════════════════════════════════════════════════════════════
+// GP-LEAD Resolver (Lead-Pipeline-Workflow)
+// ═══════════════════════════════════════════════════════════════
+
+const gpLeadResolver: ContextResolver = async ({ tenantId, entityId: leadId }) => {
+  const flags: Record<string, boolean> = {
+    user_authenticated: true,
+    tenant_exists: !!tenantId,
+  };
+  if (!tenantId) return flags;
+
+  if (leadId) {
+    const { data: lead } = await supabase
+      .from('leads')
+      .select('id, status, assigned_partner_id')
+      .eq('id', leadId)
+      .eq('tenant_id', tenantId)
+      .maybeSingle();
+    flags.lead_exists = !!lead;
+    flags.lead_assigned = !!lead?.assigned_partner_id;
+    flags.lead_qualified = lead?.status === 'qualified' || lead?.status === 'converted';
+    flags.lead_converted = lead?.status === 'converted';
+  } else {
+    const { count } = await supabase
+      .from('leads')
+      .select('*', { count: 'exact', head: true })
+      .eq('tenant_id', tenantId);
+    flags.lead_exists = (count ?? 0) > 0;
+  }
+
+  return flags;
+};
+
+registerContextResolver('GP-LEAD', gpLeadResolver);
+
+// ═══════════════════════════════════════════════════════════════
+// GP-FINANCE-Z3 Resolver (Finance Intake Workflow)
+// ═══════════════════════════════════════════════════════════════
+
+const gpFinanceZ3Resolver: ContextResolver = async ({ tenantId, entityId: requestId }) => {
+  const flags: Record<string, boolean> = {
+    user_authenticated: true,
+    tenant_exists: !!tenantId,
+  };
+  if (!tenantId) return flags;
+
+  // Check if any finance requests exist
+  if (requestId) {
+    const { data: req } = await supabase
+      .from('finance_requests')
+      .select('id, status')
+      .eq('id', requestId)
+      .eq('tenant_id', tenantId)
+      .maybeSingle();
+    flags.request_exists = !!req;
+    flags.request_submitted = req?.status === 'submitted' || req?.status === 'in_review';
+    flags.request_approved = req?.status === 'approved';
+  }
+
+  // Check applicant profile completeness
+  const { count: profileCount } = await supabase
+    .from('applicant_profiles')
+    .select('*', { count: 'exact', head: true })
+    .eq('tenant_id', tenantId);
+  flags.profile_exists = (profileCount ?? 0) > 0;
+
+  return flags;
+};
+
+registerContextResolver('GP-FINANCE-Z3', gpFinanceZ3Resolver);
+
+// ═══════════════════════════════════════════════════════════════
+// GP-COMMISSION Resolver (Provisions-Workflow)
+// ═══════════════════════════════════════════════════════════════
+
+const gpCommissionResolver: ContextResolver = async ({ tenantId }) => {
+  const flags: Record<string, boolean> = {
+    user_authenticated: true,
+    tenant_exists: !!tenantId,
+  };
+  if (!tenantId) return flags;
+
+  // Check commission entries exist
+  const { count: commCount } = await supabase
+    .from('commissions')
+    .select('*', { count: 'exact', head: true })
+    .eq('tenant_id', tenantId);
+  flags.commission_entries_exist = (commCount ?? 0) > 0;
+
+  // Check if any commissions are paid
+  const { count: paidCount } = await supabase
+    .from('commissions')
+    .select('*', { count: 'exact', head: true })
+    .eq('tenant_id', tenantId)
+    .eq('status', 'paid');
+  flags.commission_settled = (paidCount ?? 0) > 0;
+
+  return flags;
+};
+
+registerContextResolver('GP-COMMISSION', gpCommissionResolver);
