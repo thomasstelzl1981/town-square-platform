@@ -656,7 +656,7 @@ export const GOLDEN_PATH_PROCESSES: GoldenPathProcess[] = [
       { id: 'profile', title: 'Tierprofil', component: 'PetProfile', readOnlyInDemo: false },
       { id: 'caring', title: 'Pflege & Termine', component: 'PetCaring', readOnlyInDemo: true },
     ],
-    phase: '1',
+    phase: 'done',
   },
   // ─── MOD-20: Zuhause (Miety) ──────────────────────────
   {
@@ -710,9 +710,9 @@ export const GOLDEN_PATH_PROCESSES: GoldenPathProcess[] = [
     menuPointPaths: ['/portal/petmanager'],
     compliance: {
       modulePageHeader: true,
-      widgetGrid: false,
-      widgetCell: false,
-      demoWidget: false,
+      widgetGrid: true,
+      widgetCell: true,
+      demoWidget: true,
       inlineFlow: true,
       noSubNavigation: true,
     },
@@ -735,7 +735,7 @@ export const GOLDEN_PATH_PROCESSES: GoldenPathProcess[] = [
       { id: 'pets', title: 'Tiere', component: 'PetManagerPets', readOnlyInDemo: true },
       { id: 'bookings', title: 'Buchungen', component: 'PetManagerBookings', readOnlyInDemo: true },
     ],
-    phase: '1',
+    phase: 'done',
   },
 ];
 
