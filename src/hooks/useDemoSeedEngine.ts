@@ -461,7 +461,7 @@ export async function seedDemoData(
 
   // Phase 4: Household & Finance
   await seed('household_persons', () => seedFromCSV('/demo-data/demo_household_persons.csv', 'household_persons', tenantId, { user_id: userId }));
-  await seed('cars_vehicles', () => seedFromCSV('/demo-data/demo_vehicles.csv', 'cars_vehicles', tenantId));
+  await seed('cars_vehicles', () => seedFromCSV('/demo-data/demo_vehicles.csv', 'cars_vehicles', tenantId, { user_id: userId }));
   await seed('pv_plants', () => seedFromCSV('/demo-data/demo_pv_plants.csv', 'pv_plants', tenantId));
   await seed('insurance_contracts', () => seedInsuranceContracts(tenantId, userId));
   await seed('kv_contracts', () => seedKvContracts(tenantId));
