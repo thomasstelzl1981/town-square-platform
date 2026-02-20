@@ -1,202 +1,184 @@
 
 
-# Umbau Steuer-Tab (Anlage V) + BWA im DATEV-Style (MOD-04)
+# BWA & SuSa: Umbau auf echtes DATEV-Format (SKR04)
 
-## Teil 1: Steuer / Anlage V — Flow-Verbesserung
+## Analyse: IST vs. SOLL
 
-### Ist-Zustand & Probleme
-- Der aktuelle Flow ist 3-stufig: (1) Vermietereinheit waehlen → (2) Objekt waehlen → (2b) Anlage V Form oeffnen → (3) Erklaerung anzeigen (nur wenn alle bestaetigt)
-- **Problem**: Nach Bestaetigung eines Objekts muss man zurueck navigieren, ein anderes Objekt klicken, erneut bestaetigen — der Zustand ist unklar
-- **Problem**: Die Erklaerung erscheint erst wenn ALLE Objekte bestaetigt sind, aber das wird nirgends erklaert
-- **Problem**: Felder werden einzeln pro Objekt geoeffnet, statt alle sichtbar zu sein
+Die hochgeladene PDF zeigt die echte DATEV-BWA der "ZL Wohnbau GmbH". Unsere aktuelle Implementierung weicht in **Struktur, Kontenrahmen und Umfang** erheblich ab.
 
-### Loesung: Inline-Flow (alles auf einer Seite)
+### Strukturelle Unterschiede
 
-Nach Auswahl der Vermietereinheit klappt sich sofort alles auf:
+| Bereich | Unser IST (BWA-10 bis BWA-70) | DATEV SOLL (Kurzfristige Erfolgsrechnung) |
+|---------|-------------------------------|-------------------------------------------|
+| Ertraege | BWA-10 Mietertraege (4400/4410) | Umsatzerloese (4105 Steuerfreie Umsaetze V+V) |
+| Zwischensummen | Nur Gesamtleistung | Gesamtleistung, Rohertrag, Betrieblicher Rohertrag |
+| Kostenarten | Eigene Kategorien BWA-30..50 | DATEV-Standard: Raumkosten, Betr. Steuern, Versicherungen, Abschreibungen, Reparatur, Sonstige |
+| Zinsen | In BWA-60 als Aufwand | **Separater Block "Neutrales Ergebnis"** (nach Betriebsergebnis!) |
+| Abschreibungen | In BWA-70 (Kto 4830) | Innerhalb Gesamtkosten (Kto 6221, 6220, 6260) |
+| Ergebnis | Nur Betriebsergebnis | Betriebsergebnis + Neutrales Ergebnis + Vorlaeufliges Ergebnis |
+| Kennzahlen | Keine | % Ges.-Leistung, % Ges.-Kosten pro Zeile |
+| Zinsen Detail | Ein Summenwert | **Pro Darlehen einzeln** (7321, 7322, 7323...) |
+| SuSa | Nur P+L-Konten | **Alle Kontenklassen 0-9** (Anlagevermoegen, Bank, Darlehen, Eigenkapital, P+L) |
 
-```text
-┌──────────────────────────────────────────┐
-│ [VE-Widget: Muster GmbH]  [VE2] [VE3]   │  ← Stufe 1 (bleibt)
-├──────────────────────────────────────────┤
-│                                          │
-│ ▼ Objekt 1: Musterstr. 10, Berlin        │  ← Accordion/Collapsible
-│   ┌──────────────────────────────────┐   │
-│   │ Sektion 1-6 (alle Felder offen)  │   │
-│   │ Auto-Werte mit Badge "auto"      │   │
-│   │ Manuelle Felder editierbar       │   │
-│   │ Ergebnis: +3.450 €              │   │
-│   │ [Bestaetigen ✓] [Plausibil.]    │   │
-│   └──────────────────────────────────┘   │
-│                                          │
-│ ▼ Objekt 2: Parkweg 5, Hamburg           │  ← naechstes Accordion
-│   ┌──────────────────────────────────┐   │
-│   │ (identisch)                      │   │
-│   └──────────────────────────────────┘   │
-│                                          │
-│ ═══ Gesamtergebnis ═══                   │  ← immer sichtbar
-│ Einnahmen: 24.000 € | Kosten: 18.400 € │
-│ Ueberschuss/Verlust: +5.600 €           │
-│ Status: 2/3 bestaetigt                   │
-│ [CSV Export] [Plausibilitaet alle]       │
-│                                          │
-│ ⚠ Hinweis: 1 Objekt noch offen.         │
-│   Erst nach Bestaetigung aller Objekte   │
-│   kann die Erklaerung generiert werden.  │
-└──────────────────────────────────────────┘
-```
+### SKR04-Konten: Korrektes Mapping
 
-### Konkrete Aenderungen
+| DATEV-Konto | Bezeichnung | Unsere Datenquelle | Status |
+|-------------|-------------|---------------------|--------|
+| **Ertraege (Klasse 4)** | | | |
+| 4105 | Steuerfreie Umsaetze V+V § 4 Nr. 12 UStG | leases.rent_cold_eur x 12 | UMBAU noetig (bisher 4400) |
+| 4420 | NK-Vorauszahlungen | leases.nk_advance_eur x 12 | OK (wird zu Gesamtleistung addiert) |
+| 4849 | Erloese Sachanlageverkauf (Buchgewinn) | Nicht verfuegbar | NEU - optional/manuell |
+| 4970 | Versicherungsentschaedigung | vv_annual_data.income_insurance_payout | OK |
+| 4975 | Investitionszuschuesse | Nicht verfuegbar | NEU - optional/manuell |
+| **Kostenarten (Klasse 6)** | | | |
+| 6221 | Abschreibungen auf Gebaeude | AfA-Engine (property_accounting) | UMBAU (bisher 4830) |
+| 6220 | Abschreibungen auf Sachanlagen | Nicht separat erfasst | NEU - optional |
+| 6260 | Sofortabschreibung GWG | Nicht erfasst | NEU - optional |
+| 6325 | Gas, Strom, Wasser | nk_cost_items: wasser_abwasser + allgemeinstrom | UMBAU (bisher 6020/6070) |
+| 6350 | Grundstuecksaufwendungen, betrieblich | nk_cost_items: gartenpflege + strassenreinigung | NEU - Zusammenfassung |
+| 6400 | Versicherungen (allgemein) | nk_cost_items: haftpflicht | UMBAU |
+| 6405 | Versicherung fuer Gebaeude | nk_cost_items: gebaeudeversicherung | UMBAU (bisher 6100) |
+| 6420 | Beitraege | Nicht separat erfasst | NEU - optional/manuell |
+| 6430 | Sonstige Abgaben | nk_cost_items: muell_entsorgung | UMBAU |
+| 6490 | Sonstige Reparaturen u. Instandhaltungen | vv_annual_data.cost_maintenance | OK (bisher 6200) |
+| 6825 | Rechts- und Beratungskosten | vv_annual_data.cost_legal_advisory | NEU (bisher 6320) |
+| 6855 | Nebenkosten des Geldverkehrs | vv_annual_data.cost_bank_fees | OK (bisher 6330) |
+| 6859 | Aufwand Abraum-/Abfallbeseitigung | nk_cost_items: muell_entsorgung (anteilig) | NEU |
+| **Steuern (Klasse 7)** | | | |
+| 7680 | Grundsteuer | nk_cost_items: grundsteuer | UMBAU (bisher 6000 in Klasse 6!) |
+| 7310-73xx | Zinsaufwendungen **pro Darlehen** | property_financing (je Darlehen einzeln) | UMBAU (bisher ein Summenwert 7300) |
 
-**Datei: `src/pages/portal/immobilien/VerwaltungTab.tsx`**
-- Stufe 2 und 2b verschmelzen: Nach Klick auf VE werden ALLE Objekte als `Collapsible`-Accordions angezeigt (erstes standardmaessig offen)
-- Jedes Accordion enthaelt die bestehende `VVAnlageVForm` als Inline-Content
-- Unten: permanentes Gesamtergebnis mit Fortschrittsanzeige ("2/3 bestaetigt")
-- Klarer Hinweis-Text wenn nicht alle bestaetigt
-- Erklaerung-Button wird ausgegraut mit Tooltip "Alle Objekte muessen bestaetigt sein"
+### SuSa: Fehlende Kontenklassen
 
-**Datei: `src/components/vv/VVAnlageVForm.tsx`**
-- Keine strukturellen Aenderungen, Form bleibt wie sie ist
-- Kleinere UX-Verbesserung: "Bestaetigen"-Switch wird prominenter (gruener Rahmen wenn aktiv)
+Unsere SuSa zeigt aktuell NUR die Ertrags-/Aufwandskonten (Klasse 4+6+7). Die echte DATEV-SuSa umfasst:
+
+| Klasse | Inhalt | Unsere Datenquelle | Status |
+|--------|--------|---------------------|--------|
+| 0 | Anlagevermoegen (Grundstuecke, Gebaeude, AfA) | properties.purchase_price, property_accounting.ak_building, cumulative_afa | **MACHBAR** |
+| 1 | Umlaufvermoegen (Bankkonten, Forderungen) | bank_accounts (Saldo), offene Mietforderungen | **MACHBAR** |
+| 2 | Eigenkapital (Stammkapital, Ruecklagen, Gewinnvortrag) | Nicht erfasst | MANUELL noetig |
+| 3 | Verbindlichkeiten (Darlehen, Kautionen, Lieferanten) | property_financing.current_balance, leases.deposit_amount | **MACHBAR** |
+| 4 | Ertraege | Leases + vv_annual_data | OK |
+| 6 | Aufwendungen | NK + vv_annual_data + AfA | OK |
+| 7 | Zinsen + Steuern | property_financing + nk_cost_items | OK |
+| 9 | Saldenvortraege | Rechnerisch | MACHBAR |
 
 ---
 
-## Teil 2: BWA im DATEV-Style mit SuSa
+## Umsetzungsplan
 
-### Ist-Zustand & Probleme
-- Die aktuelle BWA ist eine **grobe Schaetzung**: Kosten werden als Prozentsaetze vom Bruttoeinkommen geschaetzt (4% Verwaltung, 6% Instandhaltung usw.)
-- Es existiert bereits ein **SKR04-Kontenplan** in `src/manifests/bwaKontenplan.ts` mit 7 BWA-Kategorien und 26 Konten — dieser wird aber NICHT genutzt
-- Das System hat echte Daten: `nk_cost_items`, `property_financing`, `property_accounting`, `leases`, `rent_payments`, `bank_transactions`, `vv_annual_data`
-- Es fehlt: Zeitraumauswahl, SuSa (Summen- und Saldenliste), DATEV-Layout
+### Schritt 1: Kontenplan komplett umbauen
 
-### Loesung: DATEV-konforme BWA + SuSa
+**Datei: `src/manifests/bwaKontenplan.ts`**
 
-#### A) Neues BWA-Layout (DATEV Standard-BWA Kurzform)
+Statt der 7 eigenen Kategorien BWA-10..70 wird der **DATEV-Standard "Kurzfristige Erfolgsrechnung"** implementiert:
 
 ```text
-┌─────────────────────────────────────────────────────────────┐
-│  BWA — Muster GmbH                                         │
-│  Zeitraum: [01.01.2024 - 31.12.2024 ▾]  [Vorjahr] [Q1-Q4] │
-├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│  BWA-10: Mietertraege                                       │
-│  ├─ 4400 Mietertraege Wohnraum          18.000,00 €        │
-│  ├─ 4410 Mietertraege Stellplaetze       2.400,00 €        │
-│  ├─ 4490 Sonstige Ertraege                 120,00 €        │
-│  └─ SUMME BWA-10                        20.520,00 €        │
-│                                                             │
-│  BWA-20: Nebenkosten/Umlagen                                │
-│  ├─ 4420 NK-Vorauszahlungen              3.600,00 €        │
-│  └─ SUMME BWA-20                         3.600,00 €        │
-│                                                             │
-│  ═══ GESAMTLEISTUNG                     24.120,00 €  ═══   │
-│                                                             │
-│  BWA-30: Betriebskosten (umlagefaehig)                      │
-│  ├─ 6000 Grundsteuer                       480,00 €        │
-│  ├─ 6020 Wasser/Abwasser                   960,00 €        │
-│  ├─ ...                                                     │
-│  └─ SUMME BWA-30                         3.120,00 €        │
-│                                                             │
-│  BWA-40: Instandhaltung                                     │
-│  BWA-50: Verwaltung                                         │
-│  BWA-60: Finanzierung                                       │
-│  BWA-70: Abschreibungen                                     │
-│                                                             │
-│  ═══ GESAMTAUFWAND                      12.480,00 €  ═══   │
-│  ═══ BETRIEBSERGEBNIS                   11.640,00 €  ═══   │
-│                                                             │
-│  [PDF Export]  [Zur SuSa ▸]                                 │
-└─────────────────────────────────────────────────────────────┘
+LEISTUNG
+  Umsatzerloese (4105)
+  NK-Umlagen (4420)
+  Gesamtleistung
+  Material (leer bei Immo)
+  Rohertrag
+  So. betr. Erloese
+  Betrieblicher Rohertrag
+
+KOSTENARTEN
+  Personalkosten (leer bei privat)
+  Raumkosten (6325, 6350)
+  Betriebliche Steuern (7680)
+  Versicherungen/Beitraege (6400, 6405, 6420, 6430)
+  Abschreibungen (6220, 6221, 6260)
+  Reparatur/Instandhaltung (6490)
+  Sonstige Kosten (6300, 6825, 6855, 6859)
+  Gesamtkosten
+
+ERGEBNIS
+  Betriebsergebnis
+  Zinsaufwand (7310, 7321, 7322... pro Darlehen)
+  Sonstiger neutraler Aufwand
+  Neutraler Aufwand
+  Sonstiger neutraler Ertrag (4849, 4970, 4975)
+  Neutraler Ertrag
+  Ergebnis vor Steuern
+  Vorlaeufliges Ergebnis
 ```
 
-#### B) SuSa (Summen- und Saldenliste)
+### Schritt 2: Engine-Types und Berechnung umbauen
 
-Zeigt pro Konto: Anfangsbestand, Soll-Buchungen, Haben-Buchungen, Saldo.
-Wird aus denselben Datenquellen befuellt.
+**Datei: `src/engines/bewirtschaftung/bwaDatevSpec.ts`**
+- `DatevBWAInput` erhaelt neue Felder: `darlehen: Array<{ id, name, zinsaufwand }>` statt eines Summenwerts
+- Neue Sections fuer "Neutrales Ergebnis"
+- `DatevBWAResult` erhaelt: `rohertrag`, `betrieblerRohertrag`, `neutralerAufwand`, `neutralerErtrag`, `ergebnisVorSteuern`, `vorlaeufligesErgebnis`
+- Neue Kennzahlen: `umsatzrentabilitaet`, `handelsspanne`
 
-```text
-┌─────────────────────────────────────────────────────────────────────┐
-│  SuSa — Muster GmbH  |  01.01.2024 - 31.12.2024                   │
-├──────┬──────────────────────┬──────────┬──────────┬──────────┬──────┤
-│ Kto  │ Bezeichnung          │ EB       │ Soll     │ Haben    │ Saldo│
-├──────┼──────────────────────┼──────────┼──────────┼──────────┼──────┤
-│ 4400 │ Mietertr. Wohnraum   │    0,00  │    0,00  │18.000,00 │  H   │
-│ 4410 │ Mietertr. Stellpl.   │    0,00  │    0,00  │ 2.400,00 │  H   │
-│ 4420 │ NK-Vorauszahlungen   │    0,00  │    0,00  │ 3.600,00 │  H   │
-│ 6000 │ Grundsteuer          │    0,00  │  480,00  │    0,00  │  S   │
-│ 6020 │ Wasser/Abwasser      │    0,00  │  960,00  │    0,00  │  S   │
-│ ...  │ ...                  │   ...    │   ...    │   ...    │ ...  │
-│ 7300 │ Zinsaufwand Darlehen │    0,00  │ 4.800,00 │    0,00  │  S   │
-├──────┴──────────────────────┼──────────┼──────────┼──────────┼──────┤
-│ SUMMEN                      │    0,00  │24.120,00 │24.120,00 │      │
-└─────────────────────────────┴──────────┴──────────┴──────────┴──────┘
-```
+**Datei: `src/engines/bewirtschaftung/bwaDatev.ts`**
+- `calcDatevBWA()` komplett umgeschrieben auf DATEV-Struktur
+- Zinsen **pro Darlehen** einzeln als Kontozeile (7321 "Zinsen Darlehen SPK-2018-0042", 7322 "Zinsen Darlehen HVB-2020-0815"...)
+- NK-Kategorien auf korrekte SKR04-Konten gemappt (grundsteuer → 7680, nicht 6000)
+- Abschreibungen in Klasse 6 (6221) statt Klasse 4 (4830)
 
-#### C) Daten-Mapping: SKR04-Konten ← Vorhandene Tabellen
+### Schritt 3: SuSa auf alle Kontenklassen erweitern
 
-Die echten Werte werden so befuellt (KEINE Prozent-Schaetzungen mehr):
+**Datei: `src/engines/bewirtschaftung/bwaDatevSpec.ts`**
+- `SuSaEntry` erhaelt `klasse: number` (0-9)
+- `SuSaResult` erhaelt `summenProKlasse: Record<number, { soll, haben }>`
 
-| SKR04-Konto | Datenquelle | Aggregation |
-|-------------|-------------|-------------|
-| 4400 Mietertraege | `leases.rent_cold_eur` | SUM × 12 (aktive) |
-| 4410 Stellplaetze | `leases` WHERE unit.type = 'stellplatz' | SUM × 12 |
-| 4420 NK-Vorausz. | `leases.nk_advance_eur` | SUM × 12 |
-| 4490 Sonstige | `vv_annual_data.income_other` | direkt |
-| 4760 Versicherung | `vv_annual_data.income_insurance_payout` | direkt |
-| 6000 Grundsteuer | `nk_cost_items` WHERE category = 'grundsteuer' | SUM |
-| 6020-6110 Betr.K. | `nk_cost_items` per category_code | SUM per code |
-| 6200 Instandhaltung | `vv_annual_data.cost_maintenance` | direkt |
-| 6300 Verwaltung | `vv_annual_data.cost_management_fee` | direkt |
-| 6310 Steuerberatung | (neu: optionales Feld oder aus cost_other) | direkt |
-| 6330 Bankgebuehren | `vv_annual_data.cost_bank_fees` | direkt |
-| 7300 Zinsen | `property_financing.annual_interest` | SUM (aktive) |
-| 4830 AfA Gebaeude | Engine: `calculateAfaAmount()` | berechnet |
+**Datei: `src/engines/bewirtschaftung/bwaDatev.ts`**
+- `calcSuSa()` erzeugt zusaetzlich Bilanzkonten:
+  - Klasse 0: Grundstuecke/Gebaeude (aus properties.purchase_price, property_accounting.ak_building, ak_ground, cumulative_afa)
+  - Klasse 1: Bankkonten (aus bank_accounts Saldo, offene Mietforderungen)
+  - Klasse 3: Darlehen (aus property_financing.current_balance), Kautionen (aus leases.deposit_amount)
+  - Klasse 4+6+7: Aus BWA-Berechnung (wie bisher, aber mit korrekten Kontonummern)
 
-#### D) Zeitraum-Optionen
-- **Vorjahr (Standard)**: 01.01. - 31.12. des Vorjahres
-- **Laufendes Jahr bis letztes Quartal**: 01.01. - letzter Quartalsstichtag
-- **Freie Eingabe**: Von/Bis Datum
+### Schritt 4: BWATab.tsx komplett im DATEV-Layout
 
-### Technische Umsetzung
+**Datei: `src/components/portfolio/BWATab.tsx`**
+- Layout exakt wie PDF: Berichtsposition | Monat | Jan-Dez kumuliert
+- Neue Spalten: "% Ges.-Leistg.", "% Ges.-Kosten"
+- Klare Trennung: Leistung → Kostenarten → Betriebsergebnis → Neutrales Ergebnis → Vorl. Ergebnis
+- SuSa-Ansicht mit Kontenklassen-Gruppierung (Klasse 0, 1, 2, 3, 4, 6, 7, 9)
+- Jede Klasse mit Zwischensumme "Summe Klasse X"
 
-**Neue Datei: `src/engines/bewirtschaftung/bwaDatev.ts`** (Engine-Erweiterung)
-- Neue pure Funktion `calcDatevBWA()` die den SKR04-Kontenplan (`BWA_KATEGORIEN`) als Struktur nimmt und echte Werte aus den Datenquellen eintraegt
-- Neue pure Funktion `calcSuSa()` die die SuSa-Tabelle erzeugt
-- Types: `DatevBWAResult`, `SuSaEntry`, `SuSaResult`
+### Schritt 5: BWATab Datenabfrage erweitern
 
-**Neue Datei: `src/engines/bewirtschaftung/bwaDatevSpec.ts`**
-- Typen fuer DATEV-BWA und SuSa
+**Datei: `src/components/portfolio/BWATab.tsx`** (Query-Teil)
+- `property_financing` nicht mehr aggregiert, sondern **pro Darlehen einzeln** uebergeben mit bank_name und loan_number
+- `bank_accounts` zusaetzlich abfragen fuer SuSa (Kontenklasse 1)
+- `leases.deposit_amount` fuer Kautionen (Klasse 3)
 
-**Umgeschrieben: `src/components/portfolio/BWATab.tsx`**
-- Komplett neues Layout im DATEV-Stil
-- Zeitraum-Selector (Vorjahr / Lfd. bis Q / Frei)
-- BWA-Ansicht mit Kontenplan-Gliederung
-- SuSa-Toggle/Tab
-- PDF-Export via jsPDF (bereits installiert)
+---
 
-**Geaendert: `src/pages/portal/immobilien/VerwaltungTab.tsx`**
-- BWA-Mode uebergibt alle Properties der VE (nicht nur die erste)
-- Aggregation ueber alle Objekte einer Vermietereinheit
-- Zeitraum-Parameter wird durchgereicht
+## Was wir mit vorhandenen Daten abbilden koennen
 
-**Geaendert: `src/hooks/useVVSteuerData.ts`**
-- Optionaler Zeitraum-Parameter fuer BWA-Modus (default: Vorjahr)
-- Evtl. separater Hook `useBWAData.ts` wenn zu komplex
+| DATEV-Bereich | Abdeckung | Bemerkung |
+|---------------|-----------|-----------|
+| Umsatzerloese (V+V) | 100% | leases.rent_cold_eur |
+| NK-Umlagen | 100% | leases.nk_advance_eur |
+| Raumkosten | ~80% | nk_cost_items (Gas/Wasser/Strom via allgemeinstrom + wasser_abwasser) |
+| Betr. Steuern (Grundsteuer) | 100% | nk_cost_items: grundsteuer |
+| Versicherungen | 100% | nk_cost_items: gebaeudeversicherung + haftpflicht |
+| Abschreibungen Gebaeude | 100% | AfA-Engine aus property_accounting |
+| Abschreibungen Sachanlagen/GWG | 0% | Nicht erfasst — Zeile wird leer dargestellt |
+| Reparatur/Instandhaltung | 100% | vv_annual_data.cost_maintenance |
+| Sonstige Kosten (Beratung, Bank) | 100% | vv_annual_data.cost_legal_advisory + cost_bank_fees + cost_other |
+| Zinsaufwand pro Darlehen | 100% | property_financing (3 Demo-Darlehen) |
+| Neutraler Ertrag (Verkaeufe) | 0% | Nicht erfasst — Zeile wird leer dargestellt |
+| SuSa Klasse 0 (Anlagevermoegen) | 90% | property_accounting.ak_building + ak_ground + cumulative_afa |
+| SuSa Klasse 1 (Bankkonten) | 80% | bank_accounts vorhanden |
+| SuSa Klasse 2 (Eigenkapital) | 0% | Nicht erfasst — Zeile bleibt leer |
+| SuSa Klasse 3 (Darlehen) | 100% | property_financing.current_balance |
 
-### Was NICHT geaendert wird
-- SKR04-Kontenplan (`bwaKontenplan.ts`) — bleibt SSOT, wird jetzt endlich genutzt
-- V+V Engine (`vvSteuer/engine.ts`) — laeuft bereits korrekt
-- Edge Functions — keine Aenderung noetig
-- Tabellenstruktur — alle benoetigten Daten sind vorhanden
+**Fazit**: ~85% des DATEV-Formats koennen wir mit vorhandenen Daten abbilden. Fehlende Zeilen (GWG, Personalkosten, Eigenkapital) werden korrekt mit 0,00 dargestellt — genau wie bei der echten ZL Wohnbau BWA, wo z.B. "Personalkosten" und "Material" auch 0,00 zeigen.
 
-### Zusammenfassung der Dateien
+---
+
+## Betroffene Dateien
 
 | Datei | Aktion |
 |-------|--------|
-| `src/pages/portal/immobilien/VerwaltungTab.tsx` | Umgebaut: Inline-Accordion fuer Anlage V + BWA mit Aggregation |
-| `src/components/vv/VVAnlageVForm.tsx` | Kleine UX-Verbesserungen |
-| `src/engines/bewirtschaftung/bwaDatevSpec.ts` | NEU: Types fuer DATEV-BWA + SuSa |
-| `src/engines/bewirtschaftung/bwaDatev.ts` | NEU: Pure calc-Funktionen |
-| `src/components/portfolio/BWATab.tsx` | Komplett umgebaut: DATEV-Layout + SuSa |
-| `src/engines/bewirtschaftung/spec.ts` | Evtl. erweitert um DatevBWA-Export |
-| `src/engines/index.ts` | Export der neuen Engine-Funktionen |
+| `src/manifests/bwaKontenplan.ts` | UMGEBAUT: DATEV-Standard Kontenrahmen statt eigene Kategorien |
+| `src/engines/bewirtschaftung/bwaDatevSpec.ts` | UMGEBAUT: Neue Types fuer DATEV-Vollformat |
+| `src/engines/bewirtschaftung/bwaDatev.ts` | UMGEBAUT: Korrekte SKR04-Konten, Zinsen pro Darlehen, Neutrales Ergebnis |
+| `src/components/portfolio/BWATab.tsx` | UMGEBAUT: DATEV-konformes Layout mit %-Spalten und Kontenklassen-SuSa |
 
