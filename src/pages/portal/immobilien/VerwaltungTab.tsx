@@ -1,8 +1,8 @@
 /**
  * VerwaltungTab — V + V Anlage V Steuererklärung + BWA
  * 
- * Switch between "Anlage V" (tax) and "BWA" (Bewirtschaftungsanalyse) views.
- * BWA aggregates across all properties of the selected Vermietereinheit.
+ * Anlage V: Inline-Accordion-Flow (alle Objekte auf einer Seite)
+ * BWA: DATEV-konform mit SuSa
  */
 import { useState, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -10,7 +10,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Building2, AlertCircle, CheckCircle2, ChevronLeft, FileText, BarChart3 } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Building2, AlertCircle, CheckCircle2, ChevronDown, FileText, BarChart3, ChevronLeft } from 'lucide-react';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { WidgetGrid } from '@/components/shared/WidgetGrid';
@@ -21,7 +22,7 @@ import { useVVSteuerData } from '@/hooks/useVVSteuerData';
 import { VVAnlageVForm } from '@/components/vv/VVAnlageVForm';
 import { VVErklaerungView } from '@/components/vv/VVErklaerungView';
 import { BWATab } from '@/components/portfolio/BWATab';
-import { buildContextSummary } from '@/engines/vvSteuer/engine';
+import { buildContextSummary, calculatePropertyResult } from '@/engines/vvSteuer/engine';
 
 const currentYear = new Date().getFullYear();
 const YEAR_OPTIONS = [currentYear - 1, currentYear - 2, currentYear - 3];
@@ -29,9 +30,9 @@ const YEAR_OPTIONS = [currentYear - 1, currentYear - 2, currentYear - 3];
 export function VerwaltungTab() {
   const [taxYear, setTaxYear] = useState(currentYear - 1);
   const [selectedContextId, setSelectedContextId] = useState<string | null>(null);
-  const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(null);
   const [showErklaerung, setShowErklaerung] = useState(false);
   const [viewMode, setViewMode] = useState<'anlageV' | 'bwa'>('anlageV');
+  const [openAccordions, setOpenAccordions] = useState<Record<string, boolean>>({});
 
   const { contexts, isLoading, buildPropertyTaxData, save, isSaving } = useVVSteuerData(taxYear);
 
@@ -54,33 +55,55 @@ export function VerwaltungTab() {
     );
   }, [showErklaerung, selectedContext, taxYear, buildPropertyTaxData]);
 
+  // Gesamtergebnis for the selected context (Anlage V mode)
+  const gesamtErgebnis = useMemo(() => {
+    if (!selectedContext) return null;
+    let totalIncome = 0;
+    let totalCosts = 0;
+    let confirmed = 0;
+    const total = selectedContext.properties.length;
+
+    for (const prop of selectedContext.properties) {
+      const td = buildPropertyTaxData(prop.id);
+      if (td) {
+        const r = calculatePropertyResult(td);
+        totalIncome += r.totalIncome;
+        totalCosts += r.totalCosts;
+        if (td.manualData.confirmed) confirmed++;
+      }
+    }
+
+    return { totalIncome, totalCosts, surplus: totalIncome - totalCosts, confirmed, total };
+  }, [selectedContext, buildPropertyTaxData]);
+
   const handleContextClick = (ctxId: string) => {
     if (selectedContextId === ctxId) {
-      if (viewMode === 'anlageV') {
-        const ctx = contexts.find((c: any) => c.id === ctxId);
-        if (ctx?.allConfirmed) {
-          setShowErklaerung(!showErklaerung);
-          setSelectedPropertyId(null);
-        }
-      }
+      setSelectedContextId(null);
+      setShowErklaerung(false);
     } else {
       setSelectedContextId(ctxId);
-      setSelectedPropertyId(null);
       setShowErklaerung(false);
+      // Open first accordion by default
+      const ctx = contexts.find((c: any) => c.id === ctxId);
+      if (ctx?.properties?.length > 0) {
+        setOpenAccordions({ [ctx.properties[0].id]: true });
+      }
     }
+  };
+
+  const toggleAccordion = (propId: string) => {
+    setOpenAccordions(prev => ({ ...prev, [propId]: !prev[propId] }));
   };
 
   const handleBack = () => {
     if (showErklaerung) {
       setShowErklaerung(false);
-    } else if (selectedPropertyId) {
-      setSelectedPropertyId(null);
     } else {
       setSelectedContextId(null);
     }
   };
 
-  const selectedTaxData = selectedPropertyId ? buildPropertyTaxData(selectedPropertyId) : null;
+  const fmt = (n: number) => n.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   return (
     <PageShell>
@@ -92,7 +115,7 @@ export function VerwaltungTab() {
         }
         actions={
           <div className="flex items-center gap-3">
-            {(selectedContextId || selectedPropertyId) && viewMode === 'anlageV' && (
+            {selectedContextId && viewMode === 'anlageV' && (
               <Button variant="ghost" size="sm" onClick={handleBack}>
                 <ChevronLeft className="h-4 w-4 mr-1" /> Zurück
               </Button>
@@ -106,7 +129,6 @@ export function VerwaltungTab() {
                 checked={viewMode === 'bwa'}
                 onCheckedChange={(checked) => {
                   setViewMode(checked ? 'bwa' : 'anlageV');
-                  setSelectedPropertyId(null);
                   setShowErklaerung(false);
                 }}
               />
@@ -115,7 +137,7 @@ export function VerwaltungTab() {
             </div>
 
             {viewMode === 'anlageV' && (
-              <Select value={String(taxYear)} onValueChange={v => { setTaxYear(Number(v)); setSelectedPropertyId(null); setShowErklaerung(false); }}>
+              <Select value={String(taxYear)} onValueChange={v => { setTaxYear(Number(v)); setShowErklaerung(false); }}>
                 <SelectTrigger className="w-[120px] h-9">
                   <SelectValue />
                 </SelectTrigger>
@@ -173,12 +195,9 @@ export function VerwaltungTab() {
             <div className="space-y-4">
               <h3 className="text-base font-semibold">BWA — {selectedContext.name}</h3>
               <BWATab
-                propertyId={selectedContext.properties[0]?.id || ''}
+                propertyIds={selectedContext.properties.map((p: any) => p.id)}
+                veName={selectedContext.name}
                 tenantId={selectedContext.properties[0]?.tenant_id || ''}
-                annualIncome={null}
-                yearBuilt={null}
-                purchasePrice={null}
-                totalAreaSqm={null}
               />
             </div>
           )}
@@ -187,9 +206,7 @@ export function VerwaltungTab() {
             <Card className={DESIGN.CARD.SECTION}>
               <CardContent className="p-6 text-center">
                 <AlertCircle className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
-                <p className="text-sm text-muted-foreground">
-                  Keine Vermietereinheiten gefunden.
-                </p>
+                <p className="text-sm text-muted-foreground">Keine Vermietereinheiten gefunden.</p>
               </CardContent>
             </Card>
           )}
@@ -278,66 +295,133 @@ export function VerwaltungTab() {
             <VVErklaerungView summary={erklaerungSummary} />
           )}
 
-          {/* STUFE 2: Objekt-Widgets */}
+          {/* INLINE-FLOW: All properties as Collapsible Accordions */}
           {selectedContext && !showErklaerung && (
             <>
               <div className="flex items-center gap-2">
                 <h3 className="text-base font-semibold">{selectedContext.name} — Objekte ({taxYear})</h3>
               </div>
 
-              <WidgetGrid variant="widget">
+              <div className="space-y-3">
                 {selectedContext.properties.map((prop: any) => {
-                  const annual = (buildPropertyTaxData(prop.id))?.manualData;
-                  const isConfirmed = annual?.confirmed ?? false;
+                  const taxData = buildPropertyTaxData(prop.id);
+                  const isConfirmed = taxData?.manualData?.confirmed ?? false;
+                  const isOpen = openAccordions[prop.id] ?? false;
+                  const result = taxData ? calculatePropertyResult(taxData) : null;
 
                   return (
-                    <WidgetCell key={prop.id}>
-                      <button
-                        onClick={() => { setSelectedPropertyId(selectedPropertyId === prop.id ? null : prop.id); setShowErklaerung(false); }}
-                        className={cn(
-                          "w-full h-full flex flex-col justify-between p-5 rounded-xl border text-left transition-all",
+                    <Collapsible key={prop.id} open={isOpen} onOpenChange={() => toggleAccordion(prop.id)}>
+                      <CollapsibleTrigger asChild>
+                        <button className={cn(
+                          "w-full flex items-center justify-between p-4 rounded-xl border text-left transition-all",
                           DESIGN.CARD.BASE,
-                          selectedPropertyId === prop.id
-                            ? "ring-2 ring-primary border-primary shadow-sm"
-                            : "border-border/50 hover:border-primary/40"
-                        )}
-                      >
-                        <div>
-                          <div className="flex items-center justify-between mb-2">
-                            <Badge variant="outline" className="text-[10px]">{prop.property_type}</Badge>
+                          isOpen ? "ring-2 ring-primary border-primary" : "border-border/50 hover:border-primary/40",
+                          isConfirmed && !isOpen && "border-primary/30 bg-primary/5"
+                        )}>
+                          <div className="flex items-center gap-3">
                             {isConfirmed ? (
-                              <CheckCircle2 className="h-4 w-4 text-primary" />
+                              <CheckCircle2 className="h-5 w-5 text-primary shrink-0" />
                             ) : (
-                              <div className="h-3 w-3 rounded-full bg-muted-foreground/30" />
+                              <div className="h-5 w-5 rounded-full border-2 border-muted-foreground/30 shrink-0" />
                             )}
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <span className="font-semibold text-sm">{prop.code || prop.address}</span>
+                                <Badge variant="outline" className="text-[10px]">{prop.property_type}</Badge>
+                              </div>
+                              <p className="text-xs text-muted-foreground">{prop.address} {prop.address_house_no}, {prop.postal_code} {prop.city}</p>
+                            </div>
                           </div>
-                          <span className="font-semibold text-sm">{prop.code || prop.address}</span>
-                          <p className="text-xs text-muted-foreground mt-1">{prop.address} {prop.address_house_no}, {prop.postal_code} {prop.city}</p>
-                        </div>
-                        <div className="mt-3">
-                          <Badge className={cn(
-                            "border-0 text-[10px]",
-                            isConfirmed ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
-                          )}>
-                            {isConfirmed ? 'Bestätigt' : 'Offen'}
-                          </Badge>
-                        </div>
-                      </button>
-                    </WidgetCell>
+                          <div className="flex items-center gap-3">
+                            {result && (
+                              <span className={cn(
+                                "text-sm font-semibold",
+                                result.surplus >= 0 ? "text-primary" : "text-destructive"
+                              )}>
+                                {result.surplus >= 0 ? '+' : ''}{fmt(result.surplus)} €
+                              </span>
+                            )}
+                            <ChevronDown className={cn(
+                              "h-4 w-4 text-muted-foreground transition-transform",
+                              isOpen && "rotate-180"
+                            )} />
+                          </div>
+                        </button>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        {taxData && (
+                          <div className="pt-2 pb-4 px-1">
+                            <VVAnlageVForm
+                              taxData={taxData}
+                              contextTaxNumber={selectedContext.tax_number || ''}
+                              onSave={(data, taxRef, ownershipPct) => save({ propertyId: taxData.propertyId, data, taxRefNumber: taxRef, ownershipPercent: ownershipPct })}
+                              isSaving={isSaving}
+                            />
+                          </div>
+                        )}
+                      </CollapsibleContent>
+                    </Collapsible>
                   );
                 })}
-              </WidgetGrid>
-            </>
-          )}
+              </div>
 
-          {/* STUFE 2b: Anlage V Form */}
-          {selectedTaxData && !showErklaerung && (
-            <VVAnlageVForm
-              taxData={selectedTaxData}
-              contextTaxNumber={selectedContext?.tax_number || ''}
-              onSave={(data, taxRef, ownershipPct) => save({ propertyId: selectedTaxData.propertyId, data, taxRefNumber: taxRef, ownershipPercent: ownershipPct })}
-              isSaving={isSaving}
-            />
+              {/* Gesamtergebnis — permanent visible */}
+              {gesamtErgebnis && (
+                <Card className={cn("border-2", gesamtErgebnis.confirmed === gesamtErgebnis.total ? "border-primary/30" : "border-border")}>
+                  <CardContent className="p-5">
+                    <div className="flex items-center justify-between mb-4">
+                      <h4 className="font-bold text-sm">Gesamtergebnis — {selectedContext.name}</h4>
+                      <Badge className={cn(
+                        "text-xs",
+                        gesamtErgebnis.confirmed === gesamtErgebnis.total
+                          ? "bg-primary/10 text-primary border-0"
+                          : "bg-muted text-muted-foreground border-0"
+                      )}>
+                        {gesamtErgebnis.confirmed}/{gesamtErgebnis.total} bestätigt
+                      </Badge>
+                    </div>
+                    <div className="grid grid-cols-3 gap-4 text-sm">
+                      <div>
+                        <p className="text-muted-foreground text-xs mb-1">Einnahmen</p>
+                        <p className="font-semibold">{fmt(gesamtErgebnis.totalIncome)} €</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground text-xs mb-1">Werbungskosten</p>
+                        <p className="font-semibold">{fmt(gesamtErgebnis.totalCosts)} €</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground text-xs mb-1">Überschuss / Verlust</p>
+                        <p className={cn(
+                          "font-bold text-lg",
+                          gesamtErgebnis.surplus >= 0 ? "text-primary" : "text-destructive"
+                        )}>
+                          {gesamtErgebnis.surplus >= 0 ? '+' : ''}{fmt(gesamtErgebnis.surplus)} €
+                        </p>
+                      </div>
+                    </div>
+
+                    {gesamtErgebnis.confirmed < gesamtErgebnis.total && (
+                      <div className="mt-4 p-3 rounded-lg bg-accent/50 flex items-start gap-2 text-sm">
+                        <AlertCircle className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                        <p className="text-muted-foreground">
+                          {gesamtErgebnis.total - gesamtErgebnis.confirmed} Objekt(e) noch nicht bestätigt. 
+                          Erst nach Bestätigung aller Objekte kann die Steuererklärung generiert werden.
+                        </p>
+                      </div>
+                    )}
+
+                    {gesamtErgebnis.confirmed === gesamtErgebnis.total && (
+                      <div className="mt-4 flex justify-end">
+                        <Button size="sm" onClick={() => setShowErklaerung(true)}>
+                          <FileText className="h-4 w-4 mr-1" />
+                          Steuererklärung anzeigen
+                        </Button>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+            </>
           )}
         </>
       )}

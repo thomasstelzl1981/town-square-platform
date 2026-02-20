@@ -1,101 +1,173 @@
 /**
- * BWATab — Bewirtschaftungsanalyse für eine Immobilie
- * Nutzt die BWA-Engine (src/engines/bewirtschaftung) als SSOT für alle Berechnungen.
+ * BWATab — DATEV-konforme BWA + SuSa für eine Vermietereinheit
+ * Nutzt den SKR04-Kontenplan und echte Daten statt Prozent-Schätzungen
  */
-import { useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useAuth } from '@/contexts/AuthContext';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from '@/components/ui/table';
 import { Separator } from '@/components/ui/separator';
-import { TrendingUp, TrendingDown, Minus, Loader2, AlertCircle } from 'lucide-react';
-import { calcBWA, calcInstandhaltungsruecklage, calcLeerstandsquote, calcMietpotenzial } from '@/engines/bewirtschaftung/engine';
-import type { BWACostItem, LeaseInfo } from '@/engines/bewirtschaftung/spec';
+import { Loader2, AlertCircle, FileDown, ArrowRightLeft } from 'lucide-react';
+import { calcDatevBWA, calcSuSa } from '@/engines/bewirtschaftung/bwaDatev';
+import { calculateAfaBasis, calculateAfaAmount } from '@/engines/vvSteuer/engine';
+import type { DatevBWAInput } from '@/engines/bewirtschaftung/bwaDatevSpec';
+import { cn } from '@/lib/utils';
 
 interface BWATabProps {
-  propertyId: string;
+  /** All property IDs of the VE */
+  propertyIds: string[];
+  veName: string;
   tenantId: string;
-  unitId?: string;
-  annualIncome?: number | null;
-  yearBuilt?: number | null;
-  purchasePrice?: number | null;
-  totalAreaSqm?: number | null;
 }
 
 const fmt = (n: number) => n.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const pct = (n: number) => (n * 100).toFixed(1) + ' %';
 
-export function BWATab({ propertyId, tenantId, unitId, annualIncome, yearBuilt, purchasePrice, totalAreaSqm }: BWATabProps) {
-  // Fetch leases for vacancy and rent data
-  const { data: leases, isLoading } = useQuery({
-    queryKey: ['bwa-leases', propertyId],
-    queryFn: async () => {
-      const q = supabase
-        .from('leases' as any)
-        .select('id, unit_id, rent_net, is_active, start_date, end_date, number_of_occupants')
-        .eq('property_id', propertyId);
-      const { data } = await q;
-      return (data || []) as any[];
-    },
-  });
+type Zeitraum = 'vorjahr' | 'lfd_quartal' | 'custom';
+type Ansicht = 'bwa' | 'susa';
 
-  // Fetch units for area/count info
-  const { data: units } = useQuery({
-    queryKey: ['bwa-units', propertyId],
+const currentYear = new Date().getFullYear();
+const currentMonth = new Date().getMonth(); // 0-based
+const lastQuartalEnd = (() => {
+  const q = Math.floor(currentMonth / 3);
+  if (q === 0) return `${currentYear - 1}-12-31`;
+  return `${currentYear}-${String(q * 3).padStart(2, '0')}-${q === 1 ? '31' : q === 2 ? '30' : '30'}`;
+})();
+
+function getZeitraumDates(z: Zeitraum): { von: string; bis: string } {
+  switch (z) {
+    case 'vorjahr':
+      return { von: `${currentYear - 1}-01-01`, bis: `${currentYear - 1}-12-31` };
+    case 'lfd_quartal':
+      return { von: `${currentYear}-01-01`, bis: lastQuartalEnd };
+    default:
+      return { von: `${currentYear - 1}-01-01`, bis: `${currentYear - 1}-12-31` };
+  }
+}
+
+export function BWATab({ propertyIds, veName, tenantId }: BWATabProps) {
+  const { activeTenantId } = useAuth();
+  const tid = activeTenantId || tenantId;
+  const [zeitraum, setZeitraum] = useState<Zeitraum>('vorjahr');
+  const [ansicht, setAnsicht] = useState<Ansicht>('bwa');
+  const { von, bis } = getZeitraumDates(zeitraum);
+
+  // Fetch all data for BWA calculation
+  const { data, isLoading } = useQuery({
+    queryKey: ['datev-bwa', propertyIds.join(','), von, bis, tid],
     queryFn: async () => {
-      const { data } = await supabase
-        .from('units')
-        .select('id, area_sqm, rent_net')
-        .eq('property_id', propertyId);
-      return data || [];
+      if (!tid || propertyIds.length === 0) return null;
+
+      const [unitsRes, financingRes, accountingRes, annualRes, nkPeriodsRes] = await Promise.all([
+        supabase.from('units').select('id, property_id, area_sqm, unit_type').eq('tenant_id', tid).in('property_id', propertyIds),
+        (supabase as any).from('property_financing').select('property_id, annual_interest, current_balance, interest_rate, is_active').eq('tenant_id', tid).in('property_id', propertyIds),
+        (supabase as any).from('property_accounting').select('property_id, building_share_percent, afa_rate_percent').eq('tenant_id', tid).in('property_id', propertyIds),
+        (supabase as any).from('vv_annual_data').select('property_id, income_other, income_insurance_payout, cost_maintenance, cost_management_fee, cost_bank_fees, cost_legal_advisory, cost_other, cost_disagio, cost_financing_fees').eq('tenant_id', tid).in('property_id', propertyIds).eq('tax_year', parseInt(von.substring(0, 4))),
+        (supabase as any).from('nk_periods').select('id, property_id').eq('tenant_id', tid).in('property_id', propertyIds).gte('period_start', von).lte('period_end', bis),
+      ]);
+
+      const units = unitsRes.data || [];
+      const unitIds = units.map((u: any) => u.id);
+
+      let leases: any[] = [];
+      if (unitIds.length > 0) {
+        const { data: ld } = await supabase.from('leases')
+          .select('id, unit_id, rent_cold_eur, nk_advance_eur, status')
+          .eq('tenant_id', tid).eq('status', 'active').in('unit_id', unitIds);
+        leases = ld || [];
+      }
+
+      const periodIds = (nkPeriodsRes.data || []).map((p: any) => p.id);
+      let nkItems: any[] = [];
+      if (periodIds.length > 0) {
+        const { data: ni } = await (supabase as any).from('nk_cost_items').select('nk_period_id, category_code, amount_total_house').in('nk_period_id', periodIds);
+        nkItems = ni || [];
+      }
+
+      // Get properties for purchase_price
+      const { data: props } = await supabase.from('properties').select('id, purchase_price, year_built').in('id', propertyIds);
+
+      return { units, leases, financing: financingRes.data || [], accounting: accountingRes.data || [], annual: annualRes.data || [], nkItems, properties: props || [] };
     },
+    enabled: !!tid && propertyIds.length > 0,
   });
 
   const bwaResult = useMemo(() => {
-    const grossIncome = annualIncome || (leases || [])
-      .filter((l: any) => l.is_active)
-      .reduce((s: number, l: any) => s + (l.rent_net || 0) * 12, 0);
+    if (!data) return null;
 
-    // Estimated non-recoverable costs (simplified: 15% of gross)
-    const estimatedCosts: BWACostItem[] = [
-      { label: 'Verwaltung', amount: grossIncome * 0.04, category: 'verwaltung' },
-      { label: 'Instandhaltung', amount: grossIncome * 0.06, category: 'instandhaltung' },
-      { label: 'Versicherung', amount: grossIncome * 0.02, category: 'versicherung' },
-      { label: 'Grundsteuer', amount: grossIncome * 0.02, category: 'grundsteuer' },
-      { label: 'Sonstige', amount: grossIncome * 0.01, category: 'sonstig' },
-    ];
+    // Aggregate all leases
+    const stellplatzUnitIds = data.units.filter((u: any) => u.unit_type === 'stellplatz' || u.unit_type === 'garage').map((u: any) => u.id);
+    const wohnLeases = data.leases.filter((l: any) => !stellplatzUnitIds.includes(l.unit_id));
+    const stellLeases = data.leases.filter((l: any) => stellplatzUnitIds.includes(l.unit_id));
 
-    return calcBWA({
-      grossRentalIncome: grossIncome,
-      nonRecoverableCosts: estimatedCosts,
-      annualDebtService: 0, // Could be enriched from financing data
-      depreciation: purchasePrice ? purchasePrice * 0.02 : 0,
-    });
-  }, [annualIncome, leases, purchasePrice]);
+    // NK costs by category
+    const nkKosten: Record<string, number> = {};
+    for (const item of data.nkItems) {
+      const code = item.category_code || 'sonstig';
+      nkKosten[code] = (nkKosten[code] || 0) + (item.amount_total_house || 0);
+    }
 
-  const instandhaltung = useMemo(() => {
-    if (!yearBuilt || !purchasePrice) return null;
-    return calcInstandhaltungsruecklage({
-      buildingCost: purchasePrice * 0.75, // Approx building cost (excl. land)
-      yearBuilt,
-    });
-  }, [yearBuilt, purchasePrice]);
+    // Aggregate annual data across all properties
+    const annualAgg = data.annual.reduce((acc: any, a: any) => ({
+      incomeOther: acc.incomeOther + (a.income_other || 0),
+      insurancePayout: acc.insurancePayout + (a.income_insurance_payout || 0),
+      maintenance: acc.maintenance + (a.cost_maintenance || 0),
+      management: acc.management + (a.cost_management_fee || 0),
+      bankFees: acc.bankFees + (a.cost_bank_fees || 0),
+      legal: acc.legal + (a.cost_legal_advisory || 0),
+      other: acc.other + (a.cost_other || 0),
+      disagio: acc.disagio + (a.cost_disagio || 0),
+      finFees: acc.finFees + (a.cost_financing_fees || 0),
+    }), { incomeOther: 0, insurancePayout: 0, maintenance: 0, management: 0, bankFees: 0, legal: 0, other: 0, disagio: 0, finFees: 0 });
 
-  const leerstand = useMemo(() => {
-    if (!units || units.length === 0) return null;
-    const today = new Date();
-    const leaseInfos: LeaseInfo[] = units.map((u: any) => {
-      const activeLease = (leases || []).find((l: any) => l.unit_id === u.id && l.is_active);
-      return {
-        unitId: u.id,
-        isVacant: !activeLease,
-        vacantDays: activeLease ? 0 : 365,
-        totalDays: 365,
-      };
-    });
-    const avgRent = units.reduce((s: number, u: any) => s + (u.rent_net || 0), 0) / units.length;
-    return calcLeerstandsquote(leaseInfos, avgRent);
-  }, [units, leases]);
+    // Financing
+    const activeFinancing = data.financing.filter((f: any) => f.is_active !== false);
+    const zinsaufwand = activeFinancing.reduce((s: number, f: any) => {
+      if (f.annual_interest > 0) return s + f.annual_interest;
+      if (f.current_balance && f.interest_rate) return s + (f.current_balance * f.interest_rate / 100);
+      return s;
+    }, 0);
+
+    // AfA
+    let totalAfa = 0;
+    for (const prop of data.properties) {
+      const acc = data.accounting.find((a: any) => a.property_id === prop.id);
+      if (prop.purchase_price && acc) {
+        const basis = calculateAfaBasis(prop.purchase_price, 0, acc.building_share_percent || 70);
+        totalAfa += calculateAfaAmount(basis, acc.afa_rate_percent || 2);
+      }
+    }
+
+    const input: DatevBWAInput = {
+      mietertragWohnraum: wohnLeases.reduce((s: number, l: any) => s + (l.rent_cold_eur || 0) * 12, 0),
+      mietertragStellplaetze: stellLeases.reduce((s: number, l: any) => s + (l.rent_cold_eur || 0) * 12, 0),
+      nkVorauszahlungen: data.leases.reduce((s: number, l: any) => s + (l.nk_advance_eur || 0) * 12, 0),
+      sonstigeErtraege: annualAgg.incomeOther,
+      versicherungserstattungen: annualAgg.insurancePayout,
+      nkKosten,
+      instandhaltung: annualAgg.maintenance,
+      verwaltung: annualAgg.management,
+      steuerberatung: 0,
+      bankgebuehren: annualAgg.bankFees,
+      rechtsberatung: annualAgg.legal,
+      sonstigeVerwaltung: annualAgg.other,
+      zinsaufwand,
+      sonstigeFinanzierung: annualAgg.disagio + annualAgg.finFees,
+      afaGebaeude: totalAfa,
+      afaBga: 0,
+    };
+
+    return calcDatevBWA(input, veName, von, bis);
+  }, [data, veName, von, bis]);
+
+  const susaResult = useMemo(() => {
+    if (!bwaResult) return null;
+    return calcSuSa(bwaResult);
+  }, [bwaResult]);
 
   if (isLoading) {
     return (
@@ -105,126 +177,192 @@ export function BWATab({ propertyId, tenantId, unitId, annualIncome, yearBuilt, 
     );
   }
 
-  return (
-    <div className="space-y-6">
-      {/* BWA Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <KPICard
-          label="Brutto-Mieteinnahmen p.a."
-          value={`${fmt(bwaResult.grossIncome)} €`}
-        />
-        <KPICard
-          label="NOI (Net Operating Income)"
-          value={`${fmt(bwaResult.noi)} €`}
-          trend={bwaResult.noi > 0 ? 'up' : bwaResult.noi < 0 ? 'down' : 'neutral'}
-        />
-        <KPICard
-          label="Kostenquote"
-          value={pct(bwaResult.costRatio)}
-          subtitle="Nicht umlagefähige Kosten / Einnahmen"
-          trend={bwaResult.costRatio < 0.2 ? 'up' : bwaResult.costRatio > 0.35 ? 'down' : 'neutral'}
-        />
-      </div>
-
-      {/* Cashflow */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-semibold">Cashflow-Analyse</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2 text-sm">
-            <Row label="Brutto-Mieteinnahmen" value={fmt(bwaResult.grossIncome)} />
-            <Row label="− Nicht umlagefähige Kosten" value={fmt(bwaResult.totalCosts)} negative />
-            <Separator />
-            <Row label="= NOI" value={fmt(bwaResult.noi)} bold />
-            <Row label="− Schuldendienst" value={fmt(0)} negative />
-            <Separator />
-            <Row label="= Cashflow vor Steuern" value={fmt(bwaResult.cashflowBeforeTax)} bold />
-            <Row label="+ AfA" value={fmt(bwaResult.cashflowAfterDepreciation - bwaResult.cashflowBeforeTax)} />
-            <Separator />
-            <Row label="= Cashflow nach AfA" value={fmt(bwaResult.cashflowAfterDepreciation)} bold />
-          </div>
+  if (!bwaResult || !data) {
+    return (
+      <Card className="border-dashed">
+        <CardContent className="p-6 text-center">
+          <AlertCircle className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
+          <p className="text-sm text-muted-foreground">Keine Daten für den gewählten Zeitraum vorhanden.</p>
         </CardContent>
       </Card>
+    );
+  }
 
-      {/* Instandhaltungsrücklage */}
-      {instandhaltung && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-semibold">Instandhaltungsrücklage (Peters'sche Formel)</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2 text-sm">
-              <Row label="Gebäudealter" value={`${instandhaltung.buildingAge} Jahre`} />
-              <Row label="Peters-Faktor" value={pct(instandhaltung.petersFactor)} />
-              <Row label="Empf. Rücklage p.a." value={`${fmt(instandhaltung.annualReserve)} €`} bold />
-              <Row label="Empf. Rücklage mtl." value={`${fmt(instandhaltung.monthlyReserve)} €`} />
-            </div>
-          </CardContent>
-        </Card>
-      )}
+  return (
+    <div className="space-y-4">
+      {/* Controls */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div className="flex items-center gap-2">
+          <Select value={zeitraum} onValueChange={v => setZeitraum(v as Zeitraum)}>
+            <SelectTrigger className="w-[220px] h-9">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="vorjahr">Vorjahr ({currentYear - 1})</SelectItem>
+              <SelectItem value="lfd_quartal">Lfd. Jahr bis letztes Quartal</SelectItem>
+            </SelectContent>
+          </Select>
+          <Badge variant="outline" className="text-xs">{von} — {bis}</Badge>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant={ansicht === 'bwa' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setAnsicht('bwa')}
+          >
+            BWA
+          </Button>
+          <Button
+            variant={ansicht === 'susa' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setAnsicht('susa')}
+          >
+            <ArrowRightLeft className="h-3.5 w-3.5 mr-1" />
+            SuSa
+          </Button>
+        </div>
+      </div>
 
-      {/* Leerstandsquote */}
-      {leerstand && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-semibold">Leerstandsanalyse</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2 text-sm">
-              <Row label="Einheiten gesamt" value={String(leerstand.totalUnits)} />
-              <Row label="Davon leer" value={String(leerstand.vacantUnits)} />
-              <Row label="Leerstandsquote" value={pct(leerstand.vacancyRate)} />
-              {leerstand.estimatedLoss > 0 && (
-                <Row label="Geschätzte Mietausfälle p.a." value={`${fmt(leerstand.estimatedLoss)} €`} negative />
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {!annualIncome && (!leases || leases.length === 0) && (
-        <Card className="border-dashed">
-          <CardContent className="p-6 text-center">
-            <AlertCircle className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
-            <p className="text-sm text-muted-foreground">
-              Keine Mietdaten vorhanden. Legen Sie Mietverträge an, um die BWA-Analyse zu nutzen.
-            </p>
-          </CardContent>
-        </Card>
+      {ansicht === 'bwa' ? (
+        <BWAView bwa={bwaResult} />
+      ) : (
+        susaResult && <SuSaView susa={susaResult} />
       )}
     </div>
   );
 }
 
-// ── Sub-Components ──
-
-function KPICard({ label, value, subtitle, trend }: { label: string; value: string; subtitle?: string; trend?: 'up' | 'down' | 'neutral' }) {
-  const Icon = trend === 'up' ? TrendingUp : trend === 'down' ? TrendingDown : Minus;
-  const color = trend === 'up' ? 'text-primary' : trend === 'down' ? 'text-destructive' : 'text-muted-foreground';
+function BWAView({ bwa }: { bwa: NonNullable<ReturnType<typeof calcDatevBWA>> }) {
+  const ertragsKats = bwa.kategorien.filter(k => k.code === 'BWA-10' || k.code === 'BWA-20');
+  const aufwandKats = bwa.kategorien.filter(k => !['BWA-10', 'BWA-20'].includes(k.code));
 
   return (
     <Card>
-      <CardContent className="p-4">
-        <p className="text-xs text-muted-foreground mb-1">{label}</p>
-        <div className="flex items-center gap-2">
-          <span className="text-lg font-bold">{value}</span>
-          {trend && <Icon className={`h-4 w-4 ${color}`} />}
+      <CardContent className="p-0">
+        <div className="p-4 border-b">
+          <h3 className="font-semibold text-sm">BWA — {bwa.veName}</h3>
+          <p className="text-xs text-muted-foreground">{bwa.zeitraumVon} bis {bwa.zeitraumBis}</p>
         </div>
-        {subtitle && <p className="text-[10px] text-muted-foreground mt-1">{subtitle}</p>}
+
+        <div className="divide-y">
+          {/* Erträge */}
+          {ertragsKats.map(kat => (
+            <KategorieBlock key={kat.code} kat={kat} />
+          ))}
+
+          {/* Gesamtleistung */}
+          <div className="px-4 py-3 bg-muted/30">
+            <div className="flex justify-between items-center">
+              <span className="font-bold text-sm">GESAMTLEISTUNG</span>
+              <span className="font-bold text-sm">{fmt(bwa.gesamtleistung)} €</span>
+            </div>
+          </div>
+
+          {/* Aufwand */}
+          {aufwandKats.map(kat => (
+            <KategorieBlock key={kat.code} kat={kat} isAufwand />
+          ))}
+
+          {/* Gesamtaufwand */}
+          <div className="px-4 py-3 bg-muted/30">
+            <div className="flex justify-between items-center">
+              <span className="font-bold text-sm">GESAMTAUFWAND</span>
+              <span className="font-bold text-sm text-destructive">{fmt(bwa.gesamtaufwand)} €</span>
+            </div>
+          </div>
+
+          {/* Betriebsergebnis */}
+          <div className="px-4 py-4 bg-primary/5">
+            <div className="flex justify-between items-center">
+              <span className="font-bold">BETRIEBSERGEBNIS</span>
+              <span className={cn(
+                "font-bold text-lg",
+                bwa.betriebsergebnis >= 0 ? "text-primary" : "text-destructive"
+              )}>
+                {fmt(bwa.betriebsergebnis)} €
+              </span>
+            </div>
+          </div>
+        </div>
       </CardContent>
     </Card>
   );
 }
 
-function Row({ label, value, bold, negative }: { label: string; value: string; bold?: boolean; negative?: boolean }) {
+function KategorieBlock({ kat, isAufwand }: { kat: ReturnType<typeof calcDatevBWA>['kategorien'][0]; isAufwand?: boolean }) {
+  if (kat.konten.length === 0 && kat.summe === 0) return null;
+
   return (
-    <div className="flex justify-between items-center">
-      <span className={bold ? 'font-semibold' : ''}>{label}</span>
-      <span className={`${bold ? 'font-semibold' : ''} ${negative ? 'text-destructive' : ''}`}>
-        {value} {!value.includes('€') && !value.includes('%') && !value.includes('Jahre') ? '' : ''}
-      </span>
+    <div className="px-4 py-3">
+      <div className="flex justify-between items-center mb-2">
+        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{kat.code}: {kat.name}</span>
+      </div>
+      {kat.konten.map(konto => (
+        <div key={konto.kontoNr} className="flex justify-between items-center py-1 text-sm">
+          <div className="flex items-center gap-2">
+            <span className="text-muted-foreground font-mono text-xs w-10">{konto.kontoNr}</span>
+            <span>{konto.name}</span>
+            <Badge variant="outline" className="text-[9px] h-4">{konto.quelle}</Badge>
+          </div>
+          <span className={isAufwand ? 'text-destructive' : ''}>{fmt(konto.betrag)} €</span>
+        </div>
+      ))}
+      <Separator className="my-1" />
+      <div className="flex justify-between items-center text-sm font-medium">
+        <span>Summe {kat.code}</span>
+        <span className={isAufwand ? 'text-destructive' : ''}>{fmt(kat.summe)} €</span>
+      </div>
     </div>
+  );
+}
+
+function SuSaView({ susa }: { susa: NonNullable<ReturnType<typeof calcSuSa>> }) {
+  return (
+    <Card>
+      <CardContent className="p-0">
+        <div className="p-4 border-b">
+          <h3 className="font-semibold text-sm">SuSa — {susa.veName}</h3>
+          <p className="text-xs text-muted-foreground">{susa.zeitraumVon} bis {susa.zeitraumBis}</p>
+        </div>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-16 font-mono">Kto</TableHead>
+              <TableHead>Bezeichnung</TableHead>
+              <TableHead className="text-right w-24">EB</TableHead>
+              <TableHead className="text-right w-24">Soll</TableHead>
+              <TableHead className="text-right w-24">Haben</TableHead>
+              <TableHead className="text-right w-16">Saldo</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {susa.eintraege.map(e => (
+              <TableRow key={e.kontoNr}>
+                <TableCell className="font-mono text-xs">{e.kontoNr}</TableCell>
+                <TableCell className="text-sm">{e.name}</TableCell>
+                <TableCell className="text-right text-sm">{fmt(e.eb)}</TableCell>
+                <TableCell className="text-right text-sm">{e.soll > 0 ? fmt(e.soll) : '—'}</TableCell>
+                <TableCell className="text-right text-sm">{e.haben > 0 ? fmt(e.haben) : '—'}</TableCell>
+                <TableCell className="text-right text-sm font-medium">
+                  <Badge variant="outline" className={cn("text-[10px]", e.saldoSeite === 'S' ? 'text-destructive' : 'text-primary')}>
+                    {e.saldoSeite}
+                  </Badge>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+          <TableFooter>
+            <TableRow>
+              <TableCell colSpan={2} className="font-bold">SUMMEN</TableCell>
+              <TableCell className="text-right font-bold">{fmt(0)}</TableCell>
+              <TableCell className="text-right font-bold">{fmt(susa.summenSoll)}</TableCell>
+              <TableCell className="text-right font-bold">{fmt(susa.summenHaben)}</TableCell>
+              <TableCell />
+            </TableRow>
+          </TableFooter>
+        </Table>
+      </CardContent>
+    </Card>
   );
 }
 

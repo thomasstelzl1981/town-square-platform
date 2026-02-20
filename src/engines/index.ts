@@ -17,6 +17,8 @@ export * from './provision/spec';
 // Engine 4: Bewirtschaftung / BWA
 export * from './bewirtschaftung/engine';
 export * from './bewirtschaftung/spec';
+export * from './bewirtschaftung/bwaDatev';
+export * from './bewirtschaftung/bwaDatevSpec';
 
 // Engine 5: Projekt-Kalkulation
 export * from './projektCalc/engine';
