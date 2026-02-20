@@ -17,7 +17,7 @@
     "MOD-10": { "frozen": true, "frozen_at": "2026-02-20", "reason": "Global Freeze – nur MOD-04 offen" },
     "MOD-11": { "frozen": true, "frozen_at": "2026-02-20", "reason": "Global Freeze – nur MOD-04 offen" },
     "MOD-12": { "frozen": true, "frozen_at": "2026-02-20", "reason": "Global Freeze – nur MOD-04 offen" },
-    "MOD-13": { "frozen": true, "frozen_at": "2026-02-20", "reason": "Global Freeze – nur MOD-04 offen" },
+    "MOD-13": { "frozen": false, "unfrozen_at": "2026-02-20", "reason": "UNFREEZE by user – org_types visibility fix (partner only)" },
     "MOD-14": { "frozen": true, "frozen_at": "2026-02-20", "reason": "Global Freeze – nur MOD-04 offen" },
     "MOD-15": { "frozen": true, "frozen_at": "2026-02-20", "reason": "Global Freeze – nur MOD-04 offen" },
     "MOD-16": { "frozen": true, "frozen_at": "2026-02-20", "reason": "Global Freeze – nur MOD-04 offen" },
