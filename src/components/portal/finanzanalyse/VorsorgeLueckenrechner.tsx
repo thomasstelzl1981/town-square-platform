@@ -3,7 +3,7 @@
  * Zeigt Altersvorsorge- und BU/EU-Lücke pro Person.
  * Transparente Datenbasis: Alle Berechnungsdaten sind sichtbar und editierbar.
  */
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Slider } from '@/components/ui/slider';
@@ -15,7 +15,8 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Shield, TrendingDown, TrendingUp, ChevronDown, Save, Database } from 'lucide-react';
+import { Shield, TrendingDown, TrendingUp, ChevronDown, Save, Database, PlayCircle, Loader2 } from 'lucide-react';
+import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend } from 'recharts';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import {
@@ -139,6 +140,28 @@ const PENSION_TYPE_OPTIONS = [
   { value: 'beamte', label: 'Beamtenpension' },
 ] as const;
 
+// ─── Chart colors (HSL from design tokens) ──────────────────
+const CHART_COLORS = [
+  'hsl(var(--primary))',
+  'hsl(var(--accent))',
+  'hsl(210, 60%, 55%)',
+  'hsl(160, 50%, 45%)',
+  'hsl(35, 80%, 55%)',
+];
+const GAP_COLOR = 'hsl(var(--destructive))';
+const SURPLUS_COLOR = 'hsl(145, 60%, 42%)';
+
+// ─── Analysis loading steps ─────────────────────────────────
+const ANALYSIS_STEPS = [
+  'Haushaltsdaten laden…',
+  'Einkommen aggregieren…',
+  'DRV-Ansprüche prüfen…',
+  'Vorsorgeverträge analysieren…',
+  'BU-Absicherung berechnen…',
+  'Hochrechnung erstellen…',
+  'Visualisierung aufbauen…',
+];
+
 // ─── Component ───────────────────────────────────────────────
 
 export function VorsorgeLueckenrechner({ persons, pensionRecords, contracts, onUpdatePerson, onUpsertPension, onUpdateContract }: Props) {
@@ -149,6 +172,9 @@ export function VorsorgeLueckenrechner({ persons, pensionRecords, contracts, onU
   const [buNeedPercent, setBuNeedPercent] = useState(75);
   const [datenbasisOpen, setDatenbasisOpen] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [analysisRun, setAnalysisRun] = useState(false);
+  const [analysisLoading, setAnalysisLoading] = useState(false);
+  const [analysisStep, setAnalysisStep] = useState(0);
 
   // ─── Editable local state ───
   const [editNet, setEditNet] = useState<string>('');
@@ -189,6 +215,7 @@ export function VorsorgeLueckenrechner({ persons, pensionRecords, contracts, onU
     }
     setContractEdits({});
     setIsDirty(false);
+    setAnalysisRun(false);
   }, [selectedPersonId, rawPerson?.id, rawPension?.id]);
 
   const markDirty = () => setIsDirty(true);
@@ -207,15 +234,63 @@ export function VorsorgeLueckenrechner({ persons, pensionRecords, contracts, onU
     (c.bu_monthly_benefit && c.bu_monthly_benefit > 0) || isBuType(c.contract_type)
   );
 
+  // Only compute results when analysis has been triggered
   const alterResult: AltersvorsorgeResult | null = useMemo(() => {
-    if (!selectedPerson) return null;
+    if (!selectedPerson || !analysisRun) return null;
     return calcAltersvorsorge(selectedPerson, selectedPension, mappedContracts, alterNeedPercent / 100);
-  }, [selectedPerson, selectedPension, mappedContracts, alterNeedPercent]);
+  }, [selectedPerson, selectedPension, mappedContracts, alterNeedPercent, analysisRun]);
 
   const buResult: BuLueckeResult | null = useMemo(() => {
-    if (!selectedPerson) return null;
+    if (!selectedPerson || !analysisRun) return null;
     return calcBuLuecke(selectedPerson, selectedPension, mappedContracts, buNeedPercent / 100);
-  }, [selectedPerson, selectedPension, mappedContracts, buNeedPercent]);
+  }, [selectedPerson, selectedPension, mappedContracts, buNeedPercent, analysisRun]);
+
+  // ─── "Analyse starten" handler ───
+  const handleStartAnalysis = useCallback(async () => {
+    setAnalysisLoading(true);
+    setAnalysisStep(0);
+    setAnalysisRun(false);
+
+    for (let i = 0; i < ANALYSIS_STEPS.length; i++) {
+      setAnalysisStep(i);
+      await new Promise(r => setTimeout(r, 350 + Math.random() * 250));
+    }
+
+    setAnalysisRun(true);
+    setAnalysisLoading(false);
+    toast.success('Analyse abgeschlossen');
+  }, []);
+
+  // ─── Chart data builders (before early return – hooks rule) ───
+  const avChartData = useMemo(() => {
+    if (!alterResult) return [];
+    const items: { name: string; value: number }[] = [];
+    if (alterResult.gesetzliche_versorgung > 0) items.push({ name: 'Gesetzliche Rente', value: Math.round(alterResult.gesetzliche_versorgung) });
+    if (alterResult.private_renten > 0) items.push({ name: 'Private Renten', value: Math.round(alterResult.private_renten) });
+    if (alterResult.private_verrentung > 0) items.push({ name: 'Verrentung aus Kapital', value: Math.round(alterResult.private_verrentung) });
+    if (alterResult.gap > 0) items.push({ name: 'Versorgungslücke', value: Math.round(alterResult.gap) });
+    return items;
+  }, [alterResult]);
+
+  const buChartData = useMemo(() => {
+    if (!buResult) return [];
+    const items: { name: string; gedeckt: number; luecke: number }[] = [];
+    items.push({
+      name: 'Absicherung',
+      gedeckt: Math.round(buResult.total_absicherung),
+      luecke: Math.round(buResult.bu_gap),
+    });
+    return items;
+  }, [buResult]);
+
+  const buBreakdownData = useMemo(() => {
+    if (!buResult) return [];
+    const items: { name: string; value: number }[] = [];
+    if (buResult.gesetzliche_absicherung > 0) items.push({ name: 'Gesetzl. EM-Rente', value: Math.round(buResult.gesetzliche_absicherung) });
+    if (buResult.private_bu > 0) items.push({ name: 'Private BU', value: Math.round(buResult.private_bu) });
+    if (buResult.bu_gap > 0) items.push({ name: 'BU-Lücke', value: Math.round(buResult.bu_gap) });
+    return items;
+  }, [buResult]);
 
   if (persons.length === 0) return null;
 
@@ -247,7 +322,6 @@ export function VorsorgeLueckenrechner({ persons, pensionRecords, contracts, onU
           pension_type: editPensionType || 'drv',
         });
       }
-      // Save contract edits
       if (onUpdateContract && Object.keys(contractEdits).length > 0) {
         for (const [contractId, edits] of Object.entries(contractEdits)) {
           await onUpdateContract({
@@ -446,7 +520,7 @@ export function VorsorgeLueckenrechner({ persons, pensionRecords, contracts, onU
                 </div>
               </div>
 
-              {/* 3) Altersvorsorge-Verträge (mit editierbarer Hochrechnung) */}
+              {/* 3) Altersvorsorge-Verträge */}
               <div>
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
                   Altersvorsorge-Verträge ({avContracts.length})
@@ -471,7 +545,6 @@ export function VorsorgeLueckenrechner({ persons, pensionRecords, contracts, onU
                           const edit = contractEdits[c.id] || {};
                           const growthPct = edit.growth_rate_override ?? ((c.growth_rate_override ?? DEFAULT_GROWTH_RATE) * 100).toString();
                           const projectedVal = edit.projected_end_value ?? (c.projected_end_value?.toString() || '');
-                          // Calculate auto projection for display
                           const capital = c.insured_sum || c.current_balance || 0;
                           const ytr = selectedPerson ? (() => {
                             if (selectedPerson.planned_retirement_date) {
@@ -593,205 +666,354 @@ export function VorsorgeLueckenrechner({ persons, pensionRecords, contracts, onU
         </Card>
       </Collapsible>
 
-      {/* Altersvorsorge */}
+      {/* ─── ANALYSE STARTEN BUTTON ─── */}
+      {!analysisRun && (
+        <Card className="p-6">
+          <div className="flex flex-col items-center gap-4">
+            {analysisLoading ? (
+              <>
+                <Loader2 className="h-10 w-10 text-primary animate-spin" />
+                <div className="text-center space-y-2">
+                  <p className="text-sm font-semibold text-foreground">Analyse läuft…</p>
+                  <p className="text-xs text-muted-foreground animate-pulse">
+                    {ANALYSIS_STEPS[analysisStep]}
+                  </p>
+                  <Progress
+                    value={((analysisStep + 1) / ANALYSIS_STEPS.length) * 100}
+                    className="h-1.5 w-48 mx-auto [&>div]:bg-primary"
+                  />
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-muted-foreground text-center max-w-md">
+                  Klicken Sie auf "Analyse starten", um die aktuellen Werte aus Ihrer Datenbasis zu laden und die Versorgungslücke zu berechnen.
+                </p>
+                <Button onClick={handleStartAnalysis} size="lg" className="gap-2">
+                  <PlayCircle className="h-5 w-5" />
+                  Analyse starten
+                </Button>
+              </>
+            )}
+          </div>
+        </Card>
+      )}
+
+      {/* ─── ERGEBNISSE (nur nach Analyse) ─── */}
+
+      {/* Altersvorsorge mit Donut-Chart */}
       {alterResult && (
         <Card className="p-5 space-y-4">
           <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">
             Altersvorsorge-Lücke
           </h3>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <p className="text-xs text-muted-foreground">Gesetzliche Versorgung</p>
-              <p className="text-xl font-bold">{fmt(alterResult.gesetzliche_versorgung)}<span className="text-xs font-normal text-muted-foreground"> / mtl.</span></p>
-              <Badge
-                variant={alterResult.gesetzliche_quelle === 'missing' ? 'destructive' : 'secondary'}
-                className="text-[10px]"
-              >
-                {quelleLabel(alterResult.gesetzliche_quelle)}
-              </Badge>
-            </div>
-
-            <div className="space-y-2">
-              <p className="text-xs text-muted-foreground">
-                Versorgungsziel: <strong>{alterNeedPercent}%</strong> des Nettoeinkommens
-              </p>
-              <Slider
-                value={[alterNeedPercent]}
-                onValueChange={v => setAlterNeedPercent(v[0])}
-                min={60}
-                max={90}
-                step={5}
-                className="w-full"
-              />
-              <p className="text-sm font-semibold">
-                Bedarf: {fmt(alterResult.retirement_need)} / mtl.
-              </p>
-            </div>
-          </div>
-
-          <div className="text-sm space-y-1 pt-2 border-t border-border/30">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Private Renten</span>
-              <span className="font-medium">{fmt(alterResult.private_renten)} / mtl.</span>
-            </div>
-            {alterResult.private_verrentung > 0 && (
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Verrentung aus Kapital</span>
-                <span className="font-medium">{fmt(alterResult.private_verrentung)} / mtl.</span>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Left: Chart */}
+            <div className="flex flex-col items-center">
+              <ResponsiveContainer width="100%" height={220}>
+                <PieChart>
+                  <Pie
+                    data={avChartData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={55}
+                    outerRadius={90}
+                    paddingAngle={2}
+                    dataKey="value"
+                    strokeWidth={0}
+                  >
+                    {avChartData.map((entry, i) => (
+                      <Cell
+                        key={entry.name}
+                        fill={entry.name === 'Versorgungslücke' ? GAP_COLOR : CHART_COLORS[i % CHART_COLORS.length]}
+                      />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    formatter={(val: number) => fmt(val) + ' / mtl.'}
+                    contentStyle={{ fontSize: '12px', borderRadius: '8px', border: '1px solid hsl(var(--border))' }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+              {/* Legend */}
+              <div className="flex flex-wrap justify-center gap-3 mt-2">
+                {avChartData.map((entry, i) => (
+                  <div key={entry.name} className="flex items-center gap-1.5 text-xs">
+                    <div
+                      className="w-2.5 h-2.5 rounded-full shrink-0"
+                      style={{ backgroundColor: entry.name === 'Versorgungslücke' ? GAP_COLOR : CHART_COLORS[i % CHART_COLORS.length] }}
+                    />
+                    <span className="text-muted-foreground">{entry.name}</span>
+                    <span className="font-medium">{fmt(entry.value)}</span>
+                  </div>
+                ))}
               </div>
-            )}
-          </div>
-
-          <div className="pt-3 border-t border-border/30 space-y-3">
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Gesamtversorgung</span>
-              <span className="font-bold text-base">{fmt(alterResult.expected_total)} / mtl.</span>
             </div>
 
-            {hasIncome && alterResult.retirement_need > 0 && (
+            {/* Right: Details */}
+            <div className="space-y-4">
               <div className="space-y-1">
-                <Progress
-                  value={Math.min(100, (alterResult.expected_total / alterResult.retirement_need) * 100)}
-                  className={cn(
-                    'h-3',
-                    alterResult.gap > 0 ? '[&>div]:bg-destructive' : '[&>div]:bg-emerald-500',
-                  )}
-                />
-                <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>{Math.round((alterResult.expected_total / alterResult.retirement_need) * 100)}% gedeckt</span>
-                  <span>Ziel: {fmt(alterResult.retirement_need)}</span>
-                </div>
+                <p className="text-xs text-muted-foreground">Gesetzliche Versorgung</p>
+                <p className="text-xl font-bold">{fmt(alterResult.gesetzliche_versorgung)}<span className="text-xs font-normal text-muted-foreground"> / mtl.</span></p>
+                <Badge
+                  variant={alterResult.gesetzliche_quelle === 'missing' ? 'destructive' : 'secondary'}
+                  className="text-[10px]"
+                >
+                  {quelleLabel(alterResult.gesetzliche_quelle)}
+                </Badge>
               </div>
-            )}
 
-            {hasIncome && (
-              <div className={cn(
-                'rounded-lg p-3 flex items-center gap-3',
-                alterResult.gap > 0
-                  ? 'bg-destructive/10 border border-destructive/20'
-                  : 'bg-emerald-500/10 border border-emerald-500/20',
-              )}>
-                {alterResult.gap > 0 ? (
-                  <TrendingDown className="h-5 w-5 text-destructive shrink-0" />
-                ) : (
-                  <TrendingUp className="h-5 w-5 text-emerald-500 shrink-0" />
-                )}
-                <div>
-                  {alterResult.gap > 0 ? (
-                    <>
-                      <p className="text-sm font-semibold text-destructive">
-                        Lücke: {fmt(alterResult.gap)} / mtl.
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        Kapitalbedarf: {fmt(alterResult.capital_needed)}
-                      </p>
-                    </>
-                  ) : (
-                    <p className="text-sm font-semibold text-emerald-600">
-                      Überschuss: {fmt(alterResult.surplus)} / mtl.
-                    </p>
-                  )}
-                </div>
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground">
+                  Versorgungsziel: <strong>{alterNeedPercent}%</strong> des Nettoeinkommens
+                </p>
+                <Slider
+                  value={[alterNeedPercent]}
+                  onValueChange={v => setAlterNeedPercent(v[0])}
+                  min={60}
+                  max={90}
+                  step={5}
+                  className="w-full"
+                />
+                <p className="text-sm font-semibold">
+                  Bedarf: {fmt(alterResult.retirement_need)} / mtl.
+                </p>
               </div>
-            )}
+
+              <div className="text-sm space-y-1 pt-2 border-t border-border/30">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Private Renten</span>
+                  <span className="font-medium">{fmt(alterResult.private_renten)} / mtl.</span>
+                </div>
+                {alterResult.private_verrentung > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Verrentung aus Kapital</span>
+                    <span className="font-medium">{fmt(alterResult.private_verrentung)} / mtl.</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="pt-3 border-t border-border/30 space-y-3">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Gesamtversorgung</span>
+                  <span className="font-bold text-base">{fmt(alterResult.expected_total)} / mtl.</span>
+                </div>
+
+                {hasIncome && alterResult.retirement_need > 0 && (
+                  <div className="space-y-1">
+                    <Progress
+                      value={Math.min(100, (alterResult.expected_total / alterResult.retirement_need) * 100)}
+                      className={cn(
+                        'h-3',
+                        alterResult.gap > 0 ? '[&>div]:bg-destructive' : '[&>div]:bg-emerald-500',
+                      )}
+                    />
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                      <span>{Math.round((alterResult.expected_total / alterResult.retirement_need) * 100)}% gedeckt</span>
+                      <span>Ziel: {fmt(alterResult.retirement_need)}</span>
+                    </div>
+                  </div>
+                )}
+
+                {hasIncome && (
+                  <div className={cn(
+                    'rounded-lg p-3 flex items-center gap-3',
+                    alterResult.gap > 0
+                      ? 'bg-destructive/10 border border-destructive/20'
+                      : 'bg-emerald-500/10 border border-emerald-500/20',
+                  )}>
+                    {alterResult.gap > 0 ? (
+                      <TrendingDown className="h-5 w-5 text-destructive shrink-0" />
+                    ) : (
+                      <TrendingUp className="h-5 w-5 text-emerald-500 shrink-0" />
+                    )}
+                    <div>
+                      {alterResult.gap > 0 ? (
+                        <>
+                          <p className="text-sm font-semibold text-destructive">
+                            Lücke: {fmt(alterResult.gap)} / mtl.
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Kapitalbedarf: {fmt(alterResult.capital_needed)}
+                          </p>
+                        </>
+                      ) : (
+                        <p className="text-sm font-semibold text-emerald-600">
+                          Überschuss: {fmt(alterResult.surplus)} / mtl.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </Card>
       )}
 
-      {/* BU / EU Lücke */}
+      {/* BU / EU Lücke mit Balkendiagramm */}
       {buResult && (
         <Card className="p-5 space-y-4">
           <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">
             BU / EU-Lücke
           </h3>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <p className="text-xs text-muted-foreground">Gesetzliche Absicherung</p>
-              <p className="text-xl font-bold">{fmt(buResult.gesetzliche_absicherung)}<span className="text-xs font-normal text-muted-foreground"> / mtl.</span></p>
-              <Badge
-                variant={buResult.gesetzliche_quelle === 'missing' ? 'destructive' : 'secondary'}
-                className="text-[10px]"
-              >
-                {quelleLabel(buResult.gesetzliche_quelle)}
-              </Badge>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Left: Charts */}
+            <div className="space-y-4">
+              {/* Donut for BU breakdown */}
+              <ResponsiveContainer width="100%" height={180}>
+                <PieChart>
+                  <Pie
+                    data={buBreakdownData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={45}
+                    outerRadius={75}
+                    paddingAngle={2}
+                    dataKey="value"
+                    strokeWidth={0}
+                  >
+                    {buBreakdownData.map((entry, i) => (
+                      <Cell
+                        key={entry.name}
+                        fill={entry.name === 'BU-Lücke' ? GAP_COLOR : CHART_COLORS[i % CHART_COLORS.length]}
+                      />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    formatter={(val: number) => fmt(val) + ' / mtl.'}
+                    contentStyle={{ fontSize: '12px', borderRadius: '8px', border: '1px solid hsl(var(--border))' }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+              {/* BU Bar: Gedeckt vs Lücke */}
+              <ResponsiveContainer width="100%" height={60}>
+                <BarChart data={buChartData} layout="vertical" barSize={24}>
+                  <XAxis type="number" hide />
+                  <YAxis type="category" dataKey="name" hide />
+                  <Tooltip
+                    formatter={(val: number, name: string) => [fmt(val) + ' / mtl.', name === 'gedeckt' ? 'Gedeckt' : 'Lücke']}
+                    contentStyle={{ fontSize: '12px', borderRadius: '8px', border: '1px solid hsl(var(--border))' }}
+                  />
+                  <Bar dataKey="gedeckt" stackId="a" fill={CHART_COLORS[0]} radius={[4, 0, 0, 4]} />
+                  <Bar dataKey="luecke" stackId="a" fill={GAP_COLOR} radius={[0, 4, 4, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+              {/* Legend */}
+              <div className="flex flex-wrap justify-center gap-3">
+                {buBreakdownData.map((entry, i) => (
+                  <div key={entry.name} className="flex items-center gap-1.5 text-xs">
+                    <div
+                      className="w-2.5 h-2.5 rounded-full shrink-0"
+                      style={{ backgroundColor: entry.name === 'BU-Lücke' ? GAP_COLOR : CHART_COLORS[i % CHART_COLORS.length] }}
+                    />
+                    <span className="text-muted-foreground">{entry.name}</span>
+                    <span className="font-medium">{fmt(entry.value)}</span>
+                  </div>
+                ))}
+              </div>
             </div>
 
-            <div className="space-y-2">
-              <p className="text-xs text-muted-foreground">
-                BU-Bedarf: <strong>{buNeedPercent}%</strong> des Nettoeinkommens
-              </p>
-              <Slider
-                value={[buNeedPercent]}
-                onValueChange={v => setBuNeedPercent(v[0])}
-                min={60}
-                max={90}
-                step={5}
-                className="w-full"
-              />
-              <p className="text-sm font-semibold">
-                Bedarf: {fmt(buResult.bu_need)} / mtl.
-              </p>
-            </div>
-          </div>
-
-          <div className="text-sm pt-2 border-t border-border/30">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Private BU-Leistungen</span>
-              <span className="font-medium">{fmt(buResult.private_bu)} / mtl.</span>
-            </div>
-          </div>
-
-          <div className="pt-3 border-t border-border/30 space-y-3">
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Gesamtabsicherung</span>
-              <span className="font-bold text-base">{fmt(buResult.total_absicherung)} / mtl.</span>
-            </div>
-
-            {hasIncome && buResult.bu_need > 0 && (
+            {/* Right: Details */}
+            <div className="space-y-4">
               <div className="space-y-1">
-                <Progress
-                  value={Math.min(100, (buResult.total_absicherung / buResult.bu_need) * 100)}
-                  className={cn(
-                    'h-3',
-                    buResult.bu_gap > 0 ? '[&>div]:bg-destructive' : '[&>div]:bg-emerald-500',
-                  )}
-                />
-                <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>{Math.round((buResult.total_absicherung / buResult.bu_need) * 100)}% gedeckt</span>
-                  <span>Ziel: {fmt(buResult.bu_need)}</span>
-                </div>
+                <p className="text-xs text-muted-foreground">Gesetzliche Absicherung</p>
+                <p className="text-xl font-bold">{fmt(buResult.gesetzliche_absicherung)}<span className="text-xs font-normal text-muted-foreground"> / mtl.</span></p>
+                <Badge
+                  variant={buResult.gesetzliche_quelle === 'missing' ? 'destructive' : 'secondary'}
+                  className="text-[10px]"
+                >
+                  {quelleLabel(buResult.gesetzliche_quelle)}
+                </Badge>
               </div>
-            )}
 
-            {hasIncome && (
-              <div className={cn(
-                'rounded-lg p-3 flex items-center gap-3',
-                buResult.bu_gap > 0
-                  ? 'bg-destructive/10 border border-destructive/20'
-                  : 'bg-emerald-500/10 border border-emerald-500/20',
-              )}>
-                {buResult.bu_gap > 0 ? (
-                  <TrendingDown className="h-5 w-5 text-destructive shrink-0" />
-                ) : (
-                  <TrendingUp className="h-5 w-5 text-emerald-500 shrink-0" />
-                )}
-                <div>
-                  {buResult.bu_gap > 0 ? (
-                    <p className="text-sm font-semibold text-destructive">
-                      Lücke: {fmt(buResult.bu_gap)} / mtl.
-                    </p>
-                  ) : (
-                    <p className="text-sm font-semibold text-emerald-600">
-                      Überschuss: {fmt(buResult.bu_surplus)} / mtl.
-                    </p>
-                  )}
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground">
+                  BU-Bedarf: <strong>{buNeedPercent}%</strong> des Nettoeinkommens
+                </p>
+                <Slider
+                  value={[buNeedPercent]}
+                  onValueChange={v => setBuNeedPercent(v[0])}
+                  min={60}
+                  max={90}
+                  step={5}
+                  className="w-full"
+                />
+                <p className="text-sm font-semibold">
+                  Bedarf: {fmt(buResult.bu_need)} / mtl.
+                </p>
+              </div>
+
+              <div className="text-sm pt-2 border-t border-border/30">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Private BU-Leistungen</span>
+                  <span className="font-medium">{fmt(buResult.private_bu)} / mtl.</span>
                 </div>
               </div>
-            )}
+
+              <div className="pt-3 border-t border-border/30 space-y-3">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Gesamtabsicherung</span>
+                  <span className="font-bold text-base">{fmt(buResult.total_absicherung)} / mtl.</span>
+                </div>
+
+                {hasIncome && buResult.bu_need > 0 && (
+                  <div className="space-y-1">
+                    <Progress
+                      value={Math.min(100, (buResult.total_absicherung / buResult.bu_need) * 100)}
+                      className={cn(
+                        'h-3',
+                        buResult.bu_gap > 0 ? '[&>div]:bg-destructive' : '[&>div]:bg-emerald-500',
+                      )}
+                    />
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                      <span>{Math.round((buResult.total_absicherung / buResult.bu_need) * 100)}% gedeckt</span>
+                      <span>Ziel: {fmt(buResult.bu_need)}</span>
+                    </div>
+                  </div>
+                )}
+
+                {hasIncome && (
+                  <div className={cn(
+                    'rounded-lg p-3 flex items-center gap-3',
+                    buResult.bu_gap > 0
+                      ? 'bg-destructive/10 border border-destructive/20'
+                      : 'bg-emerald-500/10 border border-emerald-500/20',
+                  )}>
+                    {buResult.bu_gap > 0 ? (
+                      <TrendingDown className="h-5 w-5 text-destructive shrink-0" />
+                    ) : (
+                      <TrendingUp className="h-5 w-5 text-emerald-500 shrink-0" />
+                    )}
+                    <div>
+                      {buResult.bu_gap > 0 ? (
+                        <p className="text-sm font-semibold text-destructive">
+                          Lücke: {fmt(buResult.bu_gap)} / mtl.
+                        </p>
+                      ) : (
+                        <p className="text-sm font-semibold text-emerald-600">
+                          Überschuss: {fmt(buResult.bu_surplus)} / mtl.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </Card>
+      )}
+
+      {/* Re-run analysis button */}
+      {analysisRun && (
+        <div className="flex justify-center">
+          <Button variant="outline" size="sm" onClick={handleStartAnalysis} className="gap-2">
+            <PlayCircle className="h-4 w-4" />
+            Analyse erneut starten
+          </Button>
+        </div>
       )}
     </div>
   );
