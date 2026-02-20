@@ -1,0 +1,2 @@
+first_name;last_name;display_name;street;house_number;postal_code;city;country;phone_mobile;phone_landline;phone_whatsapp;tax_number;tax_id;is_business;person_mode
+Max;Mustermann;Max Mustermann;Leopoldstraße;42;80802;München;Deutschland;+49 170 1234567;+49 89 12345678;+49 170 1234567;143/123/45678;12 345 678 901;false;private
