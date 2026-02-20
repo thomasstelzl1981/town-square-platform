@@ -408,6 +408,73 @@ async function seedProfile(userId: string): Promise<string[]> {
   return [userId];
 }
 
+// ─── Household Persons (dynamic hauptperson ID) ───────────
+
+async function seedHouseholdPersons(tenantId: string, userId: string): Promise<string[]> {
+  const rows = await fetchCSV('/demo-data/demo_household_persons.csv');
+  if (!rows.length) return [];
+
+  const data = rows.map(r => {
+    const row = stripNulls({ ...r, tenant_id: tenantId, user_id: userId });
+    // Replace hardcoded hauptperson UUID with actual user ID
+    if (row.id === HAUPTPERSON_PLACEHOLDER_ID) {
+      row.id = userId;
+    }
+    return row;
+  });
+
+  const allIds: string[] = [];
+  for (let i = 0; i < data.length; i += 50) {
+    const chunk = data.slice(i, i + 50);
+    const { error } = await (supabase as any)
+      .from('household_persons')
+      .upsert(chunk, { onConflict: 'id' });
+    if (error) {
+      console.error(`[DemoSeed] household_persons chunk ${i}:`, error.message);
+    } else {
+      allIds.push(...chunk.map(r => (r as Record<string, unknown>).id as string));
+    }
+  }
+  console.log(`[DemoSeed] ✓ household_persons: ${allIds.length}`);
+  return allIds;
+}
+
+// ─── Vorsorge Contracts (dynamic person_id mapping) ────────
+
+/** The household_persons CSV uses this hardcoded UUID for "hauptperson" Max Mustermann.
+ *  At runtime we replace it with the actual logged-in user's ID so the FK to
+ *  household_persons is satisfied. */
+const HAUPTPERSON_PLACEHOLDER_ID = 'b1f6d204-05ac-462f-9dae-8fba64ab9f88';
+
+async function seedVorsorgeContracts(tenantId: string, userId: string): Promise<string[]> {
+  const rows = await fetchCSV('/demo-data/demo_vorsorge_contracts.csv');
+  if (!rows.length) return [];
+
+  // Replace hauptperson placeholder with actual userId
+  const data = rows.map(r => {
+    const row = stripNulls({ ...r, tenant_id: tenantId, user_id: userId });
+    if (row.person_id === HAUPTPERSON_PLACEHOLDER_ID) {
+      row.person_id = userId;
+    }
+    return row;
+  });
+
+  const allIds: string[] = [];
+  for (let i = 0; i < data.length; i += 50) {
+    const chunk = data.slice(i, i + 50);
+    const { error } = await (supabase as any)
+      .from('vorsorge_contracts')
+      .upsert(chunk, { onConflict: 'id' });
+    if (error) {
+      console.error(`[DemoSeed] vorsorge_contracts chunk ${i}:`, error.message);
+    } else {
+      allIds.push(...chunk.map(r => (r as Record<string, unknown>).id as string));
+    }
+  }
+  console.log(`[DemoSeed] ✓ vorsorge_contracts: ${allIds.length}`);
+  return allIds;
+}
+
 // ─── Main Seed Orchestrator ────────────────────────────────
 
 export interface DemoSeedResult {
@@ -460,12 +527,12 @@ export async function seedDemoData(
   await seed('bank_transactions', () => seedFromCSV('/demo-data/demo_bank_transactions.csv', 'bank_transactions', tenantId));
 
   // Phase 4: Household & Finance
-  await seed('household_persons', () => seedFromCSV('/demo-data/demo_household_persons.csv', 'household_persons', tenantId, { user_id: userId }));
+  await seed('household_persons', () => seedHouseholdPersons(tenantId, userId));
   await seed('cars_vehicles', () => seedFromCSV('/demo-data/demo_vehicles.csv', 'cars_vehicles', tenantId, { user_id: userId }));
   await seed('pv_plants', () => seedFromCSV('/demo-data/demo_pv_plants.csv', 'pv_plants', tenantId));
   await seed('insurance_contracts', () => seedInsuranceContracts(tenantId, userId));
   await seed('kv_contracts', () => seedKvContracts(tenantId));
-  await seed('vorsorge_contracts', () => seedFromCSV('/demo-data/demo_vorsorge_contracts.csv', 'vorsorge_contracts', tenantId, { user_id: userId }));
+  await seed('vorsorge_contracts', () => seedVorsorgeContracts(tenantId, userId));
   await seed('user_subscriptions', () => seedFromCSV('/demo-data/demo_user_subscriptions.csv', 'user_subscriptions', tenantId, { user_id: userId }));
   await seed('private_loans', () => seedFromCSV('/demo-data/demo_private_loans.csv', 'private_loans', tenantId, { user_id: userId }));
 
