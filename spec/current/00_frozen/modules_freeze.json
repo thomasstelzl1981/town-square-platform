@@ -22,7 +22,7 @@
     "MOD-15": { "frozen": true, "frozen_at": "2026-02-20", "reason": "Global Freeze – nur MOD-04 offen" },
     "MOD-16": { "frozen": true, "frozen_at": "2026-02-20", "reason": "Global Freeze – nur MOD-04 offen" },
     "MOD-17": { "frozen": true, "frozen_at": "2026-02-20", "reason": "Global Freeze – nur MOD-04 offen" },
-    "MOD-18": { "frozen": true, "frozen_at": "2026-02-20", "reason": "Global Freeze – nur MOD-04 offen" },
+    "MOD-18": { "frozen": false, "unfrozen_at": "2026-02-20", "reason": "UNFREEZE by user – Charts & Analyse-Button" },
     "MOD-19": { "frozen": true, "frozen_at": "2026-02-20", "reason": "Global Freeze – nur MOD-04 offen" },
     "MOD-20": { "frozen": true, "frozen_at": "2026-02-20", "reason": "Global Freeze – nur MOD-04 offen" },
     "MOD-22": { "frozen": true, "frozen_at": "2026-02-20", "reason": "Global Freeze – nur MOD-04 offen" }
