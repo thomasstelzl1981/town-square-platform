@@ -9,7 +9,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { GOLDEN_PATH_PROCESSES } from '@/manifests/goldenPathProcesses';
 import { supabase } from '@/integrations/supabase/client';
-import { seedDemoData, isDemoSeeded } from '@/hooks/useDemoSeedEngine';
+import { seedDemoData } from '@/hooks/useDemoSeedEngine';
 import { cleanupDemoData } from '@/hooks/useDemoCleanup';
 
 const STORAGE_KEY_PREFIX = 'gp_demo_toggles';
@@ -110,11 +110,9 @@ export function useDemoToggles() {
 
       if (tenantId) {
         if (on) {
-          // Seed demo data from CSVs into DB
-          const alreadySeeded = await isDemoSeeded(tenantId);
-          if (!alreadySeeded) {
-            await seedDemoData(tenantId);
-          }
+          // Always run cleanup first, then seed fresh — avoids partial state from previous failures
+          await cleanupDemoData(tenantId);
+          await seedDemoData(tenantId);
         } else {
           // Cleanup all registered demo entities
           await cleanupDemoData(tenantId);

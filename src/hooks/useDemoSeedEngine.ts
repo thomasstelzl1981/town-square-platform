@@ -738,13 +738,32 @@ async function seedHouseholdPersons(tenantId: string, userId: string): Promise<s
   const rows = await fetchCSV('/demo-data/demo_household_persons.csv');
   if (!rows.length) return [];
 
-  const data = rows.map(r => {
-    const row = stripNulls({ ...r, tenant_id: tenantId, user_id: userId });
+  const data = rows.map((r, idx) => {
+    const row: Record<string, unknown> = { ...r, tenant_id: tenantId, user_id: userId };
     // Replace hardcoded hauptperson UUID with actual user ID
     if (row.id === HAUPTPERSON_PLACEHOLDER_ID) {
       row.id = userId;
     }
-    return row;
+    // Ensure sort_order is always a number (NOT NULL in DB, default 0)
+    if (row.sort_order === null || row.sort_order === undefined || row.sort_order === '') {
+      row.sort_order = idx;
+    } else {
+      row.sort_order = Number(row.sort_order);
+    }
+    // Ensure is_primary is boolean
+    row.is_primary = row.is_primary === true || row.is_primary === 'true';
+    // Explicitly null out empty numeric fields for children
+    for (const numKey of ['gross_income_monthly', 'net_income_monthly', 'child_allowances']) {
+      if (row[numKey] === '' || row[numKey] === undefined) row[numKey] = null;
+    }
+    // Strip truly null values but KEEP 0 and false
+    const cleaned: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(row)) {
+      if (v !== null && v !== undefined && v !== '') cleaned[k] = v;
+    }
+    // Re-add sort_order even if 0 (it's required NOT NULL)
+    cleaned.sort_order = row.sort_order;
+    return cleaned;
   });
 
   const allIds: string[] = [];
@@ -903,10 +922,17 @@ export async function seedDemoData(
   await seed('msv_bank_accounts', () => seedFromCSV('/demo-data/demo_bank_accounts.csv', 'msv_bank_accounts', tenantId));
   await seed('bank_transactions', () => seedFromCSV('/demo-data/demo_bank_transactions.csv', 'bank_transactions', tenantId));
 
-  // Phase 4: Household & Finance
+  // Phase 4: Household & Finance — household_persons MUST succeed before vorsorge/depots
   await seed('household_persons', () => seedHouseholdPersons(tenantId, userId));
-  // cars_vehicles: use created_by (NOT user_id, column doesn't exist)
-  await seed('cars_vehicles', () => seedFromCSV('/demo-data/demo_vehicles.csv', 'cars_vehicles', tenantId, { created_by: userId }));
+  // cars_vehicles: delete orphaned storage_nodes first, then use created_by
+  await seed('cars_vehicles', async () => {
+    // Pre-cleanup: remove storage_nodes that reference these vehicle IDs to avoid unique constraint
+    const vehicleIds = ['00000000-0000-4000-a000-000000000301', '00000000-0000-4000-a000-000000000302'];
+    await (supabase as any).from('storage_nodes').delete().in('vehicle_id', vehicleIds);
+    // Also try car_id column if it exists
+    try { await (supabase as any).from('storage_nodes').delete().in('car_id', vehicleIds); } catch {}
+    return seedFromCSV('/demo-data/demo_vehicles.csv', 'cars_vehicles', tenantId, { created_by: userId });
+  });
   await seed('pv_plants', () => seedFromCSV('/demo-data/demo_pv_plants.csv', 'pv_plants', tenantId));
   await seed('insurance_contracts', () => seedInsuranceContracts(tenantId, userId));
   await seed('kv_contracts', () => seedKvContracts(tenantId));
