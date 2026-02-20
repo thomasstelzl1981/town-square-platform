@@ -619,8 +619,21 @@ async function seedProperties(
 
     // Step 1: Per-property thorough cleanup (children first, parent last)
     try {
-      // 1a. Delete storage_nodes (DMS folders) — these block property deletion via FK
+      // 1a. Delete storage_nodes by property_id (normal case)
       await (supabase as any).from('storage_nodes').delete().eq('property_id', propId);
+
+      // 1a2. Delete ORPHANED storage_nodes (property_id IS NULL) that match the address pattern
+      // These are left behind when a previous seed failed mid-insert: the property gets rolled back
+      // but the trigger-created storage_nodes remain with property_id = NULL
+      const address = (row.address as string) || '';
+      if (address) {
+        await (supabase as any)
+          .from('storage_nodes')
+          .delete()
+          .eq('tenant_id', tenantId)
+          .is('property_id', null)
+          .like('name', `%${address}%`);
+      }
 
       // 1b. Delete property_accounting (AfA data)
       await (supabase as any).from('property_accounting').delete().eq('property_id', propId);
