@@ -67,7 +67,7 @@ export default function DarlehenTab() {
   });
 
   // ─── Hausdarlehen (miety_loans) ─────────────────────────
-  const { data: mietyLoans = [], isLoading: loadingHaus } = useQuery({
+  const { data: rawMietyLoans = [], isLoading: loadingHaus } = useQuery({
     queryKey: ['darlehen-miety-loans', activeTenantId],
     queryFn: async () => {
       if (!activeTenantId) return [];
@@ -78,9 +78,10 @@ export default function DarlehenTab() {
     },
     enabled: !!activeTenantId,
   });
+  const mietyLoans = demoEnabled ? rawMietyLoans : rawMietyLoans.filter(l => !isDemoId(l.id));
 
   // ─── PV-Darlehen (pv_plants) ───────────────────────────
-  const { data: pvPlants = [], isLoading: loadingPV } = useQuery({
+  const { data: rawPvPlants = [], isLoading: loadingPV } = useQuery({
     queryKey: ['darlehen-pv-plants', activeTenantId],
     queryFn: async () => {
       if (!activeTenantId) return [];
@@ -91,6 +92,7 @@ export default function DarlehenTab() {
     },
     enabled: !!activeTenantId,
   });
+  const pvPlants = demoEnabled ? rawPvPlants : rawPvPlants.filter((p: any) => !isDemoId(p.id));
 
   // ─── Privatkredite (private_loans) ─────────────────────
   const { data: privateLoans = [], isLoading: loadingPrivat } = useQuery({

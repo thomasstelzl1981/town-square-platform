@@ -172,11 +172,11 @@ export function ProfilTab() {
         .maybeSingle();
       if (!data && isDevelopmentMode) {
         return {
-          id: 'dev-user', display_name: 'Entwickler', first_name: 'Max', last_name: 'Mustermann',
+          id: 'dev-user', display_name: '', first_name: '', last_name: '',
           email: 'dev@systemofatown.de', avatar_url: null,
-          street: 'Musterstraße', house_number: '1', postal_code: '80331', city: 'München', country: 'DE',
-          phone_landline: '+49 89 12345678', phone_mobile: '+49 170 1234567', phone_whatsapp: '+49 170 1234567',
-          tax_number: '123/456/78901', tax_id: 'DE123456789',
+          street: '', house_number: '', postal_code: '', city: '', country: 'DE',
+          phone_landline: '', phone_mobile: '', phone_whatsapp: '',
+          tax_number: '', tax_id: '',
           email_signature: '', letterhead_logo_url: '', letterhead_company_line: '', letterhead_extra_line: '',
           letterhead_bank_name: '', letterhead_iban: '', letterhead_bic: '', letterhead_website: '',
         };
