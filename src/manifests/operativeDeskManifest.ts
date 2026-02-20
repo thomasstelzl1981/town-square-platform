@@ -1,10 +1,10 @@
 /**
- * OPERATIVE DESK MANIFEST — SSOT for Zone 1 Desk ↔ Manager ↔ Website-Profil Mapping
+ * OPERATIVE DESK MANIFEST — SSOT for Zone 1 Desk ↔ Manager ↔ Client ↔ Website-Profil Mapping
  * 
- * Every Manager-Module (Zone 2) has exactly ONE corresponding Operative Desk (Zone 1)
- * and ONE Website Profile (Zone 3 / Website Builder).
+ * Every Manager-Module (Zone 2) has exactly ONE corresponding Operative Desk (Zone 1),
+ * an optional Client-Module (Zone 2), and an optional Website Profile (Zone 3).
  * 
- * This manifest is the single source of truth for that 1:1:1 relationship.
+ * This manifest is the single source of truth for the Z2-Client ↔ Z1-Desk ↔ Z2-Manager chain.
  */
 
 export interface OperativeDeskDefinition {
@@ -16,6 +16,10 @@ export interface OperativeDeskDefinition {
   managerModuleCode: string;
   /** Manager-Module display name */
   managerModuleName: string;
+  /** Associated Client-Module code (Zone 2) — empty if intake is Z3-only */
+  clientModuleCode: string;
+  /** Client-Module display name */
+  clientModuleName: string;
   /** Associated Website Profile ID (from websiteProfileManifest.ts) */
   websiteProfileId: string;
   /** Route path in Zone 1 (relative to /admin/) */
@@ -27,7 +31,7 @@ export interface OperativeDeskDefinition {
 }
 
 // =============================================================================
-// DESK DEFINITIONS — 1:1 with Manager-Modules
+// DESK DEFINITIONS — Z2-Client ↔ Z1-Desk ↔ Z2-Manager
 // =============================================================================
 
 export const OPERATIVE_DESKS: OperativeDeskDefinition[] = [
@@ -36,6 +40,8 @@ export const OPERATIVE_DESKS: OperativeDeskDefinition[] = [
     displayName: 'Sales Desk',
     managerModuleCode: 'MOD-09',
     managerModuleName: 'Vertriebsmanager',
+    clientModuleCode: 'MOD-06',
+    clientModuleName: 'Verkauf',
     websiteProfileId: 'sales_partner',
     route: 'sales-desk',
     icon: 'ShoppingBag',
@@ -51,7 +57,9 @@ export const OPERATIVE_DESKS: OperativeDeskDefinition[] = [
     displayName: 'Lead Desk',
     managerModuleCode: 'MOD-10',
     managerModuleName: 'Leadmanager',
-    websiteProfileId: '', // Kein Landing Page für MOD-10
+    clientModuleCode: '',
+    clientModuleName: '',
+    websiteProfileId: '',
     route: 'lead-desk',
     icon: 'Target',
     responsibilities: [
@@ -64,8 +72,10 @@ export const OPERATIVE_DESKS: OperativeDeskDefinition[] = [
   {
     deskId: 'pet-desk',
     displayName: 'Pet Desk',
-    managerModuleCode: 'MOD-05',
-    managerModuleName: 'Pets',
+    managerModuleCode: 'MOD-22',
+    managerModuleName: 'Pet Manager',
+    clientModuleCode: 'MOD-05',
+    clientModuleName: 'Pets',
     websiteProfileId: 'pet_services',
     route: 'pet-desk',
     icon: 'PawPrint',
@@ -81,6 +91,8 @@ export const OPERATIVE_DESKS: OperativeDeskDefinition[] = [
     displayName: 'FutureRoom',
     managerModuleCode: 'MOD-11',
     managerModuleName: 'Finanzierungsmanager',
+    clientModuleCode: 'MOD-07',
+    clientModuleName: 'Finanzierung',
     websiteProfileId: 'finance_broker',
     route: 'futureroom',
     icon: 'Landmark',
@@ -96,6 +108,8 @@ export const OPERATIVE_DESKS: OperativeDeskDefinition[] = [
     displayName: 'Acquiary',
     managerModuleCode: 'MOD-12',
     managerModuleName: 'Akquisemanager',
+    clientModuleCode: 'MOD-08',
+    clientModuleName: 'Investment-Suche',
     websiteProfileId: 'acquisition_agent',
     route: 'acquiary',
     icon: 'Briefcase',
@@ -111,6 +125,8 @@ export const OPERATIVE_DESKS: OperativeDeskDefinition[] = [
     displayName: 'Projekt Desk',
     managerModuleCode: 'MOD-13',
     managerModuleName: 'Projektmanager',
+    clientModuleCode: '',
+    clientModuleName: '',
     websiteProfileId: 'project_developer',
     route: 'projekt-desk',
     icon: 'Building2',
@@ -119,6 +135,23 @@ export const OPERATIVE_DESKS: OperativeDeskDefinition[] = [
       'Listing-Aktivierung',
       'Landing-Page-Governance',
       'Einheiten-Monitoring',
+    ],
+  },
+  {
+    deskId: 'finance-desk',
+    displayName: 'Finance Desk',
+    managerModuleCode: '',
+    managerModuleName: '',
+    clientModuleCode: 'MOD-18',
+    clientModuleName: 'Finanzen',
+    websiteProfileId: '',
+    route: 'finance-desk',
+    icon: 'LineChart',
+    responsibilities: [
+      'Finanzberater-Zuweisung',
+      'Service-Portfolio-Governance',
+      'Kunden-Intake-Triage',
+      'Monitoring',
     ],
   },
 ];
@@ -135,6 +168,11 @@ export function getDeskById(deskId: string): OperativeDeskDefinition | undefined
 /** Get the desk for a given Manager-Module */
 export function getDeskByModule(moduleCode: string): OperativeDeskDefinition | undefined {
   return OPERATIVE_DESKS.find(d => d.managerModuleCode === moduleCode);
+}
+
+/** Get the desk for a given Client-Module */
+export function getDeskByClientModule(moduleCode: string): OperativeDeskDefinition | undefined {
+  return OPERATIVE_DESKS.find(d => d.clientModuleCode === moduleCode);
 }
 
 /** Get the desk for a given Website Profile */
