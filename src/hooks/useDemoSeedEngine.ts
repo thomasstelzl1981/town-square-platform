@@ -58,10 +58,15 @@ const NUMERIC_KEYS = new Set([
   'monthly_cost',
   // household
   'sort_order', 'gross_income_monthly', 'net_income_monthly', 'child_allowances',
+  'business_income_monthly', 'pv_income_monthly',
   // pet_bookings
   'duration_minutes', 'price_cents',
   // kv
   'monthly_premium', 'employer_contribution',
+  // properties
+  'market_value',
+  // acq_offers
+  'price_asking', 'units_count', 'yield_indicated', 'noi_indicated',
 ]);
 
 /** Boolean columns */
@@ -296,6 +301,12 @@ async function seedAcqMandates(tenantId: string, userId: string): Promise<string
   if (error) { console.error('[DemoSeed] acq_mandates:', error.message); return []; }
   console.log('[DemoSeed] ✓ acq_mandates: 1');
   return [DEMO_ACQ_MANDATE_ID];
+}
+
+// ─── Acq Offers (Objekteingang) ────────────────────────────
+
+async function seedAcqOffers(tenantId: string): Promise<string[]> {
+  return seedFromCSV('/demo-data/demo_acq_offers.csv', 'acq_offers', tenantId);
 }
 
 // ─── Dev Projects (MOD-13) ─────────────────────────────────
@@ -559,7 +570,7 @@ async function seedPropertyAccounting(tenantId: string, insertedPropertyIds: str
   const rows = DEMO_PROPERTY_ACCOUNTING
     .filter(p => insertedPropertyIds.includes(p.propertyId))
     .map(p => ({
-      id: `e0000000-0000-4000-a000-afa${p.propertyId.slice(-3)}001`,
+      id: `e0000000-0000-4000-a000-0000afa0000${insertedPropertyIds.indexOf(p.propertyId) + 1}`,
       property_id: p.propertyId,
       tenant_id: tenantId,
       building_share_percent: p.afa.buildingSharePercent,
@@ -999,6 +1010,7 @@ export async function seedDemoData(
 
   // Phase 6: Akquise
   await seed('acq_mandates', () => seedAcqMandates(tenantId, userId));
+  await seed('acq_offers', () => seedAcqOffers(tenantId));
 
   // Phase 6.5: Dev Projects (MOD-13)
   await seed('dev_projects', () => seedDevProject(tenantId, userId));
@@ -1018,7 +1030,7 @@ export async function seedDemoData(
     user_subscriptions: 8, private_loans: 2,
     finapi_depot_accounts: 2, finapi_depot_positions: 5,
     miety_homes: 1, miety_contracts: 4,
-    acq_mandates: 1,
+    acq_mandates: 1, acq_offers: 1,
     dev_projects: 1,
     pet_customers: 3, pets: 5, pet_bookings: 5,
   };
