@@ -20,6 +20,7 @@
     "insurance_contracts": { "file": null, "expectedCount": 7, "dbTable": "insurance_contracts", "seedMethod": "code" },
     "kv_contracts": { "file": null, "expectedCount": 4, "dbTable": "kv_contracts", "seedMethod": "code" },
     "vorsorge_contracts": { "file": "demo_vorsorge_contracts.csv", "expectedCount": 6, "dbTable": "vorsorge_contracts" },
+    "pension_records": { "file": "demo_pension_records.csv", "expectedCount": 2, "dbTable": "pension_records" },
     "user_subscriptions": { "file": "demo_user_subscriptions.csv", "expectedCount": 8, "dbTable": "user_subscriptions" },
     "private_loans": { "file": "demo_private_loans.csv", "expectedCount": 2, "dbTable": "private_loans" },
     "miety_homes": { "file": "demo_miety_homes.csv", "expectedCount": 1, "dbTable": "miety_homes" },
