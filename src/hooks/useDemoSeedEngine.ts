@@ -14,6 +14,8 @@ import {
   DEMO_KV_CONTRACTS,
   DEMO_ACQ_MANDATE,
   DEMO_ACQ_MANDATE_ID,
+  DEMO_DEV_PROJECT,
+  DEMO_DEVELOPER_CONTEXT_ID,
   DEMO_PET_LUNA,
   DEMO_PET_BELLO,
 } from '@/engines/demoData/data';
@@ -296,6 +298,41 @@ async function seedAcqMandates(tenantId: string, userId: string): Promise<string
   return [DEMO_ACQ_MANDATE_ID];
 }
 
+// ─── Dev Projects (MOD-13) ─────────────────────────────────
+
+const DEMO_DEV_PROJECT_ID = 'f0000000-0000-4000-a000-000000013001';
+
+async function seedDevProject(tenantId: string, userId: string): Promise<string[]> {
+  const p = DEMO_DEV_PROJECT;
+  const data = {
+    id: DEMO_DEV_PROJECT_ID,
+    tenant_id: tenantId,
+    developer_context_id: DEMO_DEVELOPER_CONTEXT_ID,
+    project_code: 'PRJ-DEMO-001',
+    name: p.projectName,
+    city: p.city,
+    status: 'active',
+    created_by: userId,
+    total_units_count: 24,
+    purchase_price: 8500000,
+    renovation_budget: 2200000,
+    total_sale_target: 14400000,
+    avg_unit_price: 600000,
+    commission_rate_percent: 3.57,
+    project_start_date: '2024-06-01',
+    target_end_date: '2026-12-31',
+    description: 'Kernsanierung Altbau zum modernen Wohnensemble mit 24 Einheiten',
+  };
+
+  const { error } = await (supabase as any)
+    .from('dev_projects')
+    .upsert([data], { onConflict: 'id' });
+
+  if (error) { console.error('[DemoSeed] dev_projects:', error.message); return []; }
+  console.log('[DemoSeed] ✓ dev_projects: 1');
+  return [DEMO_DEV_PROJECT_ID];
+}
+
 // ─── Landlord Context (ensure exists for property linkage) ──
 
 const DEMO_LANDLORD_CONTEXT_ID = 'd0000000-0000-4000-a000-000000000010';
@@ -372,14 +409,15 @@ async function seedInvestmentDepots(tenantId: string, userId: string): Promise<s
   }
 
   // Seed positions for each depot
+  // DB columns: current_quote (not current_price), profit_or_loss (not profit_loss)
   const positions = [
     // Max's ETF depot positions
-    { id: 'd0000000-0000-4000-a000-000000000711', depot_account_id: DEMO_DEPOT_IDS[0], tenant_id: tenantId, isin: 'IE00B4L5Y983', name: 'iShares Core MSCI World', quantity: 145, current_price: 82.34, current_value: 11939.30, purchase_value: 9800, profit_loss: 2139.30, currency: 'EUR' },
-    { id: 'd0000000-0000-4000-a000-000000000712', depot_account_id: DEMO_DEPOT_IDS[0], tenant_id: tenantId, isin: 'IE00BKM4GZ66', name: 'iShares Core EM IMI', quantity: 200, current_price: 33.12, current_value: 6624.00, purchase_value: 5600, profit_loss: 1024.00, currency: 'EUR' },
-    { id: 'd0000000-0000-4000-a000-000000000713', depot_account_id: DEMO_DEPOT_IDS[0], tenant_id: tenantId, isin: 'IE00B52MJY50', name: 'iShares Core S&P 500', quantity: 50, current_price: 52.18, current_value: 2609.00, purchase_value: 2200, profit_loss: 409.00, currency: 'EUR' },
+    { id: 'd0000000-0000-4000-a000-000000000711', depot_account_id: DEMO_DEPOT_IDS[0], tenant_id: tenantId, isin: 'IE00B4L5Y983', name: 'iShares Core MSCI World', quantity: 145, current_quote: 82.34, current_value: 11939.30, purchase_value: 9800, profit_or_loss: 2139.30, currency: 'EUR' },
+    { id: 'd0000000-0000-4000-a000-000000000712', depot_account_id: DEMO_DEPOT_IDS[0], tenant_id: tenantId, isin: 'IE00BKM4GZ66', name: 'iShares Core EM IMI', quantity: 200, current_quote: 33.12, current_value: 6624.00, purchase_value: 5600, profit_or_loss: 1024.00, currency: 'EUR' },
+    { id: 'd0000000-0000-4000-a000-000000000713', depot_account_id: DEMO_DEPOT_IDS[0], tenant_id: tenantId, isin: 'IE00B52MJY50', name: 'iShares Core S&P 500', quantity: 50, current_quote: 52.18, current_value: 2609.00, purchase_value: 2200, profit_or_loss: 409.00, currency: 'EUR' },
     // Lisa's Fonds depot positions
-    { id: 'd0000000-0000-4000-a000-000000000721', depot_account_id: DEMO_DEPOT_IDS[1], tenant_id: tenantId, isin: 'DE0008474024', name: 'DWS Akkumula', quantity: 30, current_price: 1685.20, current_value: 50556.00, purchase_value: 42000, profit_loss: 8556.00, currency: 'EUR' },
-    { id: 'd0000000-0000-4000-a000-000000000722', depot_account_id: DEMO_DEPOT_IDS[1], tenant_id: tenantId, isin: 'LU0360863863', name: 'ARERO - Der Weltfonds', quantity: 80, current_price: 268.45, current_value: 21476.00, purchase_value: 18400, profit_loss: 3076.00, currency: 'EUR' },
+    { id: 'd0000000-0000-4000-a000-000000000721', depot_account_id: DEMO_DEPOT_IDS[1], tenant_id: tenantId, isin: 'DE0008474024', name: 'DWS Akkumula', quantity: 30, current_quote: 1685.20, current_value: 50556.00, purchase_value: 42000, profit_or_loss: 8556.00, currency: 'EUR' },
+    { id: 'd0000000-0000-4000-a000-000000000722', depot_account_id: DEMO_DEPOT_IDS[1], tenant_id: tenantId, isin: 'LU0360863863', name: 'ARERO - Der Weltfonds', quantity: 80, current_quote: 268.45, current_value: 21476.00, purchase_value: 18400, profit_or_loss: 3076.00, currency: 'EUR' },
   ];
 
   const { error: posError } = await (supabase as any)
@@ -611,10 +649,9 @@ async function seedProperties(
     // Step 2: Small delay for CASCADE/cleanup to settle
     await new Promise(r => setTimeout(r, 300));
 
-    // Step 3: INSERT property (triggers fire for public_id, code, MAIN unit, DMS folders)
+    // Step 3: INSERT property (triggers fire for code, MAIN unit, DMS folders)
     const data = stripNulls({ ...row, tenant_id: tenantId });
-    // Remove trigger-generated fields to avoid conflicts
-    delete data.public_id;
+    // Remove trigger-generated code (but KEEP public_id — it's NOT NULL)
     delete data.code;
     // Map CSV usage_type to DB expected values
     if (data.usage_type === 'residential') data.usage_type = 'Vermietung';
@@ -950,6 +987,9 @@ export async function seedDemoData(
   // Phase 6: Akquise
   await seed('acq_mandates', () => seedAcqMandates(tenantId, userId));
 
+  // Phase 6.5: Dev Projects (MOD-13)
+  await seed('dev_projects', () => seedDevProject(tenantId, userId));
+
   // Phase 7: Pet Manager (customers before pets before bookings)
   await seed('pet_customers', () => seedFromCSV('/demo-data/demo_pet_customers.csv', 'pet_customers', tenantId));
   await seed('pets', () => seedPets(tenantId, userId));
@@ -966,6 +1006,7 @@ export async function seedDemoData(
     finapi_depot_accounts: 2, finapi_depot_positions: 5,
     miety_homes: 1, miety_contracts: 4,
     acq_mandates: 1,
+    dev_projects: 1,
     pet_customers: 3, pets: 5, pet_bookings: 5,
   };
 
