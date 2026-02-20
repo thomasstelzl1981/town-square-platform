@@ -1,27 +1,23 @@
 /**
  * DATEV-BWA & SuSa Engine — Pure calculation functions
- * Maps real data to SKR04 accounts and produces DATEV-standard BWA + SuSa
+ * Kurzfristige Erfolgsrechnung (SKR04) für Immobilien V+V
  */
-import { BWA_KATEGORIEN } from '@/manifests/bwaKontenplan';
-import type { DatevBWAInput, DatevBWAResult, DatevBWAKategorie, DatevKontoValue, SuSaResult, SuSaEntry } from './bwaDatevSpec';
+import type {
+  DatevBWAInput,
+  DatevBWAResult,
+  DatevBWAKategorie,
+  DatevKontoValue,
+  SuSaResult,
+  SuSaEntry,
+  SuSaBilanzInput,
+} from './bwaDatevSpec';
 
-/** Map NK category codes to SKR04 account numbers */
-const NK_CATEGORY_TO_SKR04: Record<string, string> = {
-  grundsteuer: '6000',
-  wasser_abwasser: '6020',
-  muell_entsorgung: '6030',
-  strassenreinigung: '6040',
-  hausmeister: '6050',
-  gartenpflege: '6060',
-  allgemeinstrom: '6070',
-  schornsteinfeger: '6080',
-  aufzug: '6090',
-  gebaeudeversicherung: '6100',
-  haftpflicht: '6110',
-};
-
-function buildKontoValue(kontoNr: string, name: string, betrag: number, quelle: DatevKontoValue['quelle']): DatevKontoValue {
+function kv(kontoNr: string, name: string, betrag: number, quelle: DatevKontoValue['quelle']): DatevKontoValue {
   return { kontoNr, name, betrag: Math.abs(betrag), quelle };
+}
+
+function kat(code: string, name: string, konten: DatevKontoValue[]): DatevBWAKategorie {
+  return { code, name, konten, summe: konten.reduce((s, k) => s + k.betrag, 0) };
 }
 
 export function calcDatevBWA(
@@ -30,101 +26,191 @@ export function calcDatevBWA(
   zeitraumVon: string,
   zeitraumBis: string,
 ): DatevBWAResult {
-  const kategorien: DatevBWAKategorie[] = BWA_KATEGORIEN.map(kat => {
-    const konten: DatevKontoValue[] = [];
+  // ── LEISTUNG ──
+  const umsatzKonten: DatevKontoValue[] = [];
+  if (input.mietertragGesamt > 0) umsatzKonten.push(kv('4105', 'Steuerfreie Umsätze V+V § 4 Nr. 12 UStG', input.mietertragGesamt, 'leases'));
+  const umsatzerloese = kat('UMSATZ', 'Umsatzerlöse', umsatzKonten);
 
-    switch (kat.code) {
-      case 'BWA-10': // Mietertraege
-        if (input.mietertragWohnraum > 0) konten.push(buildKontoValue('4400', 'Mieterträge Wohnraum', input.mietertragWohnraum, 'leases'));
-        if (input.mietertragStellplaetze > 0) konten.push(buildKontoValue('4410', 'Mieterträge Stellplätze/Garagen', input.mietertragStellplaetze, 'leases'));
-        if (input.sonstigeErtraege > 0) konten.push(buildKontoValue('4490', 'Sonstige Erträge', input.sonstigeErtraege, 'vv_annual_data'));
-        if (input.versicherungserstattungen > 0) konten.push(buildKontoValue('4760', 'Versicherungsentschädigungen', input.versicherungserstattungen, 'vv_annual_data'));
-        break;
+  const nkKonten: DatevKontoValue[] = [];
+  if (input.nkVorauszahlungen > 0) nkKonten.push(kv('4420', 'NK-Vorauszahlungen (Umlagen)', input.nkVorauszahlungen, 'leases'));
+  const nkUmlagen = kat('NK-UMLAGEN', 'NK-Vorauszahlungen / Umlagen', nkKonten);
 
-      case 'BWA-20': // NK/Umlagen
-        if (input.nkVorauszahlungen > 0) konten.push(buildKontoValue('4420', 'NK-Vorauszahlungen (Umlagen)', input.nkVorauszahlungen, 'leases'));
-        break;
+  const gesamtleistung = umsatzerloese.summe + nkUmlagen.summe;
+  const rohertrag = gesamtleistung; // Material = 0 bei V+V
+  const sonstigeBetrErloese = input.sonstigeBetrErloese || 0;
+  const betriebsRohertrag = rohertrag + sonstigeBetrErloese;
 
-      case 'BWA-30': // Betriebskosten
-        for (const [catCode, amount] of Object.entries(input.nkKosten)) {
-          const skr04 = NK_CATEGORY_TO_SKR04[catCode];
-          if (skr04 && amount > 0) {
-            const kontoInfo = kat.konten.find(k => k.nummer === skr04);
-            konten.push(buildKontoValue(skr04, kontoInfo?.name || catCode, amount, 'nk_cost_items'));
-          }
-        }
-        break;
+  // ── KOSTENARTEN ──
+  const personalkosten = kat('PERSONAL', 'Personalkosten', []);
 
-      case 'BWA-40': // Instandhaltung
-        if (input.instandhaltung > 0) konten.push(buildKontoValue('6200', 'Instandhaltung/Reparaturen', input.instandhaltung, 'vv_annual_data'));
-        break;
+  const raumKonten: DatevKontoValue[] = [];
+  if (input.gasStromWasser > 0) raumKonten.push(kv('6325', 'Gas, Strom, Wasser', input.gasStromWasser, 'nk_cost_items'));
+  if (input.grundstuecksaufwand > 0) raumKonten.push(kv('6350', 'Grundstücksaufwendungen, betrieblich', input.grundstuecksaufwand, 'nk_cost_items'));
+  const raumkosten = kat('RAUM', 'Raumkosten / Grundstücksaufwand', raumKonten);
 
-      case 'BWA-50': // Verwaltung
-        if (input.verwaltung > 0) konten.push(buildKontoValue('6300', 'Hausverwaltung', input.verwaltung, 'vv_annual_data'));
-        if (input.steuerberatung > 0) konten.push(buildKontoValue('6310', 'Steuerberatung', input.steuerberatung, 'vv_annual_data'));
-        if (input.rechtsberatung > 0) konten.push(buildKontoValue('6320', 'Rechtsberatung', input.rechtsberatung, 'vv_annual_data'));
-        if (input.bankgebuehren > 0) konten.push(buildKontoValue('6330', 'Bankgebühren', input.bankgebuehren, 'vv_annual_data'));
-        if (input.sonstigeVerwaltung > 0) konten.push(buildKontoValue('6340', 'Porto/Telefon/IT', input.sonstigeVerwaltung, 'vv_annual_data'));
-        break;
+  const steuerKonten: DatevKontoValue[] = [];
+  if (input.grundsteuer > 0) steuerKonten.push(kv('7680', 'Grundsteuer', input.grundsteuer, 'nk_cost_items'));
+  const betrieblicheSteuern = kat('BETR-STEUERN', 'Betriebliche Steuern', steuerKonten);
 
-      case 'BWA-60': // Finanzierung
-        if (input.zinsaufwand > 0) konten.push(buildKontoValue('7300', 'Zinsaufwand Darlehen', input.zinsaufwand, 'property_financing'));
-        if (input.sonstigeFinanzierung > 0) konten.push(buildKontoValue('7310', 'Sonst. Finanzierungskosten', input.sonstigeFinanzierung, 'vv_annual_data'));
-        break;
+  const versKonten: DatevKontoValue[] = [];
+  if (input.versicherungAllgemein > 0) versKonten.push(kv('6400', 'Versicherungen (allgemein)', input.versicherungAllgemein, 'nk_cost_items'));
+  if (input.gebaeudeversicherung > 0) versKonten.push(kv('6405', 'Versicherung für Gebäude', input.gebaeudeversicherung, 'nk_cost_items'));
+  if (input.beitraege > 0) versKonten.push(kv('6420', 'Beiträge', input.beitraege, 'manual'));
+  if (input.sonstigeAbgaben > 0) versKonten.push(kv('6430', 'Sonstige Abgaben', input.sonstigeAbgaben, 'nk_cost_items'));
+  const versicherungen = kat('VERSICHERUNG', 'Versicherungen / Beiträge', versKonten);
 
-      case 'BWA-70': // Abschreibungen
-        if (input.afaGebaeude > 0) konten.push(buildKontoValue('4830', 'AfA Gebäude', input.afaGebaeude, 'engine_calc'));
-        if (input.afaBga > 0) konten.push(buildKontoValue('4850', 'AfA BGA/GWG', input.afaBga, 'manual'));
-        break;
+  const afaKonten: DatevKontoValue[] = [];
+  if (input.afaSachanlagen > 0) afaKonten.push(kv('6220', 'Abschreibungen auf Sachanlagen', input.afaSachanlagen, 'manual'));
+  if (input.afaGebaeude > 0) afaKonten.push(kv('6221', 'Abschreibungen auf Gebäude', input.afaGebaeude, 'engine_calc'));
+  if (input.afaGwg > 0) afaKonten.push(kv('6260', 'Sofortabschreibung GWG', input.afaGwg, 'manual'));
+  const abschreibungen = kat('AFA', 'Abschreibungen', afaKonten);
+
+  const repKonten: DatevKontoValue[] = [];
+  if (input.instandhaltung > 0) repKonten.push(kv('6490', 'Sonstige Reparaturen u. Instandhaltungen', input.instandhaltung, 'vv_annual_data'));
+  const reparatur = kat('REPARATUR', 'Reparatur / Instandhaltung', repKonten);
+
+  const sonstKonten: DatevKontoValue[] = [];
+  if (input.verwaltung > 0) sonstKonten.push(kv('6300', 'Hausverwaltung / WEG-Verwalter', input.verwaltung, 'vv_annual_data'));
+  if (input.rechtsberatung > 0) sonstKonten.push(kv('6825', 'Rechts- und Beratungskosten', input.rechtsberatung, 'vv_annual_data'));
+  if (input.bankgebuehren > 0) sonstKonten.push(kv('6855', 'Nebenkosten des Geldverkehrs', input.bankgebuehren, 'vv_annual_data'));
+  if (input.abfallbeseitigung > 0) sonstKonten.push(kv('6859', 'Aufwand Abfallbeseitigung', input.abfallbeseitigung, 'nk_cost_items'));
+  const sonstigeKosten = kat('SONST-KOSTEN', 'Sonstige Kosten', sonstKonten);
+
+  const gesamtkosten = personalkosten.summe + raumkosten.summe + betrieblicheSteuern.summe
+    + versicherungen.summe + abschreibungen.summe + reparatur.summe + sonstigeKosten.summe;
+
+  const betriebsergebnis = betriebsRohertrag - gesamtkosten;
+
+  // ── NEUTRALES ERGEBNIS ──
+  const zinsKonten: DatevKontoValue[] = [];
+  for (let i = 0; i < input.darlehen.length; i++) {
+    const d = input.darlehen[i];
+    if (d.zinsaufwand > 0) {
+      const nr = i === 0 ? '7310' : `73${(20 + i).toString()}`;
+      zinsKonten.push(kv(nr, `Zinsen Darlehen ${d.bankName} ${d.loanNumber}`, d.zinsaufwand, 'property_financing'));
     }
+  }
+  if (input.sonstigeFinanzierung > 0) {
+    zinsKonten.push(kv('7319', 'Bereitstellungszinsen / sonst. Finanzierungskosten', input.sonstigeFinanzierung, 'vv_annual_data'));
+  }
+  const zinsaufwandKat = kat('ZINSEN', 'Zinsaufwand', zinsKonten);
 
-    return {
-      code: kat.code,
-      name: kat.name,
-      konten,
-      summe: konten.reduce((s, k) => s + k.betrag, 0),
-    };
-  });
+  const sonstigerNeutralerAufwand = 0;
+  const neutralerAufwand = zinsaufwandKat.summe + sonstigerNeutralerAufwand;
 
-  const gesamtleistung = kategorien
-    .filter(k => k.code === 'BWA-10' || k.code === 'BWA-20')
-    .reduce((s, k) => s + k.summe, 0);
+  const neutralErtrKonten: DatevKontoValue[] = [];
+  if (input.versicherungserstattungen > 0) neutralErtrKonten.push(kv('4970', 'Versicherungsentschädigungen', input.versicherungserstattungen, 'vv_annual_data'));
+  const neutralerErtragKat = kat('NEUTRAL-ERTRAG', 'Sonstiger neutraler Ertrag', neutralErtrKonten);
 
-  const gesamtaufwand = kategorien
-    .filter(k => !['BWA-10', 'BWA-20'].includes(k.code))
-    .reduce((s, k) => s + k.summe, 0);
+  const neutralesErgebnis = neutralerErtragKat.summe - neutralerAufwand;
+
+  const ergebnisVorSteuern = betriebsergebnis + neutralesErgebnis;
+  const vorlaeufligesErgebnis = ergebnisVorSteuern; // Keine Ertragsteuern bei V+V natürl. Personen
 
   return {
     veName,
     zeitraumVon,
     zeitraumBis,
-    kategorien,
+    umsatzerloese,
+    nkUmlagen,
     gesamtleistung,
-    gesamtaufwand,
-    betriebsergebnis: gesamtleistung - gesamtaufwand,
+    rohertrag,
+    sonstigeBetrErloese,
+    betriebsRohertrag,
+    personalkosten,
+    raumkosten,
+    betrieblicheSteuern,
+    versicherungen,
+    abschreibungen,
+    reparatur,
+    sonstigeKosten,
+    gesamtkosten,
+    betriebsergebnis,
+    zinsaufwand: zinsaufwandKat,
+    sonstigerNeutralerAufwand,
+    neutralerAufwand,
+    neutralerErtrag: neutralerErtragKat,
+    neutralesErgebnis,
+    ergebnisVorSteuern,
+    vorlaeufligesErgebnis,
   };
 }
 
-export function calcSuSa(bwa: DatevBWAResult): SuSaResult {
+// ── SuSa ────────────────────────────────────────────────────────────────────
+
+function susaEntry(kontoNr: string, name: string, klasse: number, soll: number, haben: number, eb: number = 0): SuSaEntry {
+  const saldo = Math.abs(soll - haben);
+  return {
+    kontoNr,
+    name,
+    klasse,
+    eb,
+    soll,
+    haben,
+    saldoSeite: soll >= haben ? 'S' : 'H',
+    saldo,
+  };
+}
+
+export function calcSuSa(bwa: DatevBWAResult, bilanz?: SuSaBilanzInput): SuSaResult {
   const eintraege: SuSaEntry[] = [];
 
-  for (const kat of bwa.kategorien) {
-    for (const konto of kat.konten) {
-      const isErtrag = kat.code === 'BWA-10' || kat.code === 'BWA-20';
-      eintraege.push({
-        kontoNr: konto.kontoNr,
-        name: konto.name,
-        eb: 0,
-        soll: isErtrag ? 0 : konto.betrag,
-        haben: isErtrag ? konto.betrag : 0,
-        saldoSeite: isErtrag ? 'H' : 'S',
-        saldo: konto.betrag,
-      });
+  // ── Klasse 0: Anlagevermögen ──
+  if (bilanz) {
+    if (bilanz.akGrundstuecke > 0) eintraege.push(susaEntry('0065', 'Grundstücke, grundstücksgl. Rechte', 0, bilanz.akGrundstuecke, 0, bilanz.akGrundstuecke));
+    if (bilanz.akGebaeude > 0) eintraege.push(susaEntry('0090', 'Geschäftsbauten', 0, bilanz.akGebaeude, 0, bilanz.akGebaeude));
+    if (bilanz.kumulierteAfaGebaeude > 0) eintraege.push(susaEntry('0094', 'Wertberichtigung Geschäftsbauten', 0, 0, bilanz.kumulierteAfaGebaeude, 0));
+  }
+
+  // ── Klasse 1: Umlaufvermögen ──
+  if (bilanz) {
+    if (bilanz.mietforderungen > 0) eintraege.push(susaEntry('1200', 'Forderungen aus V+V', 1, bilanz.mietforderungen, 0));
+    if (bilanz.bankguthaben !== 0) {
+      const s = bilanz.bankguthaben >= 0 ? bilanz.bankguthaben : 0;
+      const h = bilanz.bankguthaben < 0 ? Math.abs(bilanz.bankguthaben) : 0;
+      eintraege.push(susaEntry('1800', 'Bank', 1, s, h, s));
     }
   }
 
+  // ── Klasse 3: Verbindlichkeiten ──
+  if (bilanz) {
+    for (const dl of bilanz.darlehenSalden) {
+      eintraege.push(susaEntry(dl.kontoNr, dl.name, 3, 0, dl.saldo, dl.saldo));
+    }
+    if (bilanz.kautionen > 0) eintraege.push(susaEntry('3730', 'Erhaltene Kautionen', 3, 0, bilanz.kautionen, bilanz.kautionen));
+  }
+
+  // ── Klasse 4: Erträge ──
+  const addKat = (kateg: DatevBWAKategorie, klasse: number, isErtrag: boolean) => {
+    for (const k of kateg.konten) {
+      eintraege.push(susaEntry(k.kontoNr, k.name, klasse, isErtrag ? 0 : k.betrag, isErtrag ? k.betrag : 0));
+    }
+  };
+  addKat(bwa.umsatzerloese, 4, true);
+  addKat(bwa.nkUmlagen, 4, true);
+  addKat(bwa.neutralerErtrag, 4, true);
+
+  // ── Klasse 6: Aufwendungen ──
+  addKat(bwa.raumkosten, 6, false);
+  addKat(bwa.versicherungen, 6, false);
+  addKat(bwa.abschreibungen, 6, false);
+  addKat(bwa.reparatur, 6, false);
+  addKat(bwa.sonstigeKosten, 6, false);
+
+  // ── Klasse 7: Zinsen + Steuern ──
+  addKat(bwa.betrieblicheSteuern, 7, false);
+  addKat(bwa.zinsaufwand, 7, false);
+
   // Sort by account number
   eintraege.sort((a, b) => a.kontoNr.localeCompare(b.kontoNr));
+
+  // Summen pro Klasse
+  const summenProKlasse: Record<number, { soll: number; haben: number }> = {};
+  for (const e of eintraege) {
+    if (!summenProKlasse[e.klasse]) summenProKlasse[e.klasse] = { soll: 0, haben: 0 };
+    summenProKlasse[e.klasse].soll += e.soll;
+    summenProKlasse[e.klasse].haben += e.haben;
+  }
 
   return {
     veName: bwa.veName,
@@ -133,5 +219,6 @@ export function calcSuSa(bwa: DatevBWAResult): SuSaResult {
     eintraege,
     summenSoll: eintraege.reduce((s, e) => s + e.soll, 0),
     summenHaben: eintraege.reduce((s, e) => s + e.haben, 0),
+    summenProKlasse,
   };
 }
