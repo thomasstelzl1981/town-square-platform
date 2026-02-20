@@ -298,7 +298,7 @@ export const DEMO_DATA_MANIFEST: readonly DemoDataEntry[] = [
     consumers: [
       { file: 'src/pages/portal/pets/PetsMeineTiere.tsx', zone: 2, mergeStrategy: 'inject', description: 'Demo-Guard für Luna (Golden Retriever)' },
     ],
-    status: 'planned',
+    status: 'done',
   },
 ] as const;
 
