@@ -272,6 +272,8 @@ async function seedAcqMandates(tenantId: string, userId: string): Promise<string
     id: DEMO_ACQ_MANDATE_ID,
     tenant_id: tenantId,
     created_by_user_id: userId,
+    assigned_manager_user_id: userId,
+    assigned_at: new Date().toISOString(),
     code: m.code,
     client_display_name: m.clientDisplayName,
     asset_focus: m.assetFocus,
@@ -288,6 +290,107 @@ async function seedAcqMandates(tenantId: string, userId: string): Promise<string
   if (error) { console.error('[DemoSeed] acq_mandates:', error.message); return []; }
   console.log('[DemoSeed] ✓ acq_mandates: 1');
   return [DEMO_ACQ_MANDATE_ID];
+}
+
+// ─── Landlord Context (ensure exists for property linkage) ──
+
+const DEMO_LANDLORD_CONTEXT_ID = 'd0000000-0000-4000-a000-000000000010';
+
+async function ensureLandlordContext(tenantId: string): Promise<string | null> {
+  // Check if it already exists
+  const { data: existing } = await (supabase as any)
+    .from('landlord_contexts')
+    .select('id')
+    .eq('id', DEMO_LANDLORD_CONTEXT_ID)
+    .eq('tenant_id', tenantId)
+    .maybeSingle();
+
+  if (existing) return DEMO_LANDLORD_CONTEXT_ID;
+
+  // Create it
+  const { error } = await (supabase as any)
+    .from('landlord_contexts')
+    .insert({
+      id: DEMO_LANDLORD_CONTEXT_ID,
+      tenant_id: tenantId,
+      name: 'Familie Mustermann',
+    });
+
+  if (error) {
+    console.error('[DemoSeed] landlord_contexts:', error.message);
+    return null;
+  }
+  // Register for cleanup
+  await registerEntities(tenantId, 'landlord_contexts', [DEMO_LANDLORD_CONTEXT_ID]);
+  console.log('[DemoSeed] ✓ landlord_contexts: 1');
+  return DEMO_LANDLORD_CONTEXT_ID;
+}
+
+// ─── Investment Depots (finapi_depot_accounts + positions) ──
+
+const DEMO_DEPOT_IDS = [
+  'd0000000-0000-4000-a000-000000000701', // Max ETF Depot
+  'd0000000-0000-4000-a000-000000000702', // Lisa Fonds Depot
+];
+
+async function seedInvestmentDepots(tenantId: string, userId: string): Promise<string[]> {
+  // Get household person IDs for Max (userId) and Lisa
+  const lisaId = 'e0000000-0000-4000-a000-000000000101';
+
+  const depots = [
+    {
+      id: DEMO_DEPOT_IDS[0],
+      tenant_id: tenantId,
+      person_id: userId,
+      account_name: 'ETF-Depot Scalable Capital',
+      depot_number: 'SC-2021-MM-001',
+      bank_name: 'Scalable Capital / Baader Bank',
+      status: 'active',
+    },
+    {
+      id: DEMO_DEPOT_IDS[1],
+      tenant_id: tenantId,
+      person_id: lisaId,
+      account_name: 'Fonds-Depot DWS',
+      depot_number: 'DWS-2018-LM-001',
+      bank_name: 'DWS / Deutsche Bank',
+      status: 'active',
+    },
+  ];
+
+  const { error: depotError } = await (supabase as any)
+    .from('finapi_depot_accounts')
+    .upsert(depots, { onConflict: 'id' });
+
+  if (depotError) {
+    console.error('[DemoSeed] finapi_depot_accounts:', depotError.message);
+    return [];
+  }
+
+  // Seed positions for each depot
+  const positions = [
+    // Max's ETF depot positions
+    { id: 'd0000000-0000-4000-a000-000000000711', depot_account_id: DEMO_DEPOT_IDS[0], tenant_id: tenantId, isin: 'IE00B4L5Y983', name: 'iShares Core MSCI World', quantity: 145, current_price: 82.34, current_value: 11939.30, purchase_value: 9800, profit_loss: 2139.30, currency: 'EUR' },
+    { id: 'd0000000-0000-4000-a000-000000000712', depot_account_id: DEMO_DEPOT_IDS[0], tenant_id: tenantId, isin: 'IE00BKM4GZ66', name: 'iShares Core EM IMI', quantity: 200, current_price: 33.12, current_value: 6624.00, purchase_value: 5600, profit_loss: 1024.00, currency: 'EUR' },
+    { id: 'd0000000-0000-4000-a000-000000000713', depot_account_id: DEMO_DEPOT_IDS[0], tenant_id: tenantId, isin: 'IE00B52MJY50', name: 'iShares Core S&P 500', quantity: 50, current_price: 52.18, current_value: 2609.00, purchase_value: 2200, profit_loss: 409.00, currency: 'EUR' },
+    // Lisa's Fonds depot positions
+    { id: 'd0000000-0000-4000-a000-000000000721', depot_account_id: DEMO_DEPOT_IDS[1], tenant_id: tenantId, isin: 'DE0008474024', name: 'DWS Akkumula', quantity: 30, current_price: 1685.20, current_value: 50556.00, purchase_value: 42000, profit_loss: 8556.00, currency: 'EUR' },
+    { id: 'd0000000-0000-4000-a000-000000000722', depot_account_id: DEMO_DEPOT_IDS[1], tenant_id: tenantId, isin: 'LU0360863863', name: 'ARERO - Der Weltfonds', quantity: 80, current_price: 268.45, current_value: 21476.00, purchase_value: 18400, profit_loss: 3076.00, currency: 'EUR' },
+  ];
+
+  const { error: posError } = await (supabase as any)
+    .from('finapi_depot_positions')
+    .upsert(positions, { onConflict: 'id' });
+
+  if (posError) {
+    console.error('[DemoSeed] finapi_depot_positions:', posError.message);
+  }
+
+  // Register positions for cleanup too
+  await registerEntities(tenantId, 'finapi_depot_positions', positions.map(p => p.id));
+
+  console.log(`[DemoSeed] ✓ finapi_depot_accounts: ${depots.length}, positions: ${positions.length}`);
+  return DEMO_DEPOT_IDS;
 }
 
 async function seedPets(tenantId: string, userId: string): Promise<string[]> {
@@ -625,7 +728,7 @@ export interface DemoSeedResult {
 
 export async function seedDemoData(
   tenantId: string,
-  landlordContextId?: string
+  _landlordContextId?: string
 ): Promise<DemoSeedResult> {
   const errors: string[] = [];
   const seeded: Record<string, number> = {};
@@ -652,9 +755,12 @@ export async function seedDemoData(
   // Phase 0: Profile (UPDATE existing row)
   await seed('profile', () => seedProfile(userId));
 
+  // Phase 0.5: Ensure landlord context exists
+  const landlordContextId = await ensureLandlordContext(tenantId);
+
   // Phase 1: Core entities (FK targets)
   await seed('contacts', () => seedFromCSV('/demo-data/demo_contacts.csv', 'contacts', tenantId));
-  await seed('properties', () => seedProperties(tenantId, landlordContextId));
+  await seed('properties', () => seedProperties(tenantId, landlordContextId ?? undefined));
 
   // Phase 2: Property children
   // Units: UPDATE trigger-created MAIN units, collect CSV→actual ID mapping for leases
@@ -707,13 +813,17 @@ export async function seedDemoData(
 
   // Phase 4: Household & Finance
   await seed('household_persons', () => seedHouseholdPersons(tenantId, userId));
-  await seed('cars_vehicles', () => seedFromCSV('/demo-data/demo_vehicles.csv', 'cars_vehicles', tenantId, { user_id: userId }));
+  // cars_vehicles: use created_by (NOT user_id, column doesn't exist)
+  await seed('cars_vehicles', () => seedFromCSV('/demo-data/demo_vehicles.csv', 'cars_vehicles', tenantId, { created_by: userId }));
   await seed('pv_plants', () => seedFromCSV('/demo-data/demo_pv_plants.csv', 'pv_plants', tenantId));
   await seed('insurance_contracts', () => seedInsuranceContracts(tenantId, userId));
   await seed('kv_contracts', () => seedKvContracts(tenantId));
   await seed('vorsorge_contracts', () => seedVorsorgeContracts(tenantId, userId));
   await seed('user_subscriptions', () => seedFromCSV('/demo-data/demo_user_subscriptions.csv', 'user_subscriptions', tenantId, { user_id: userId }));
   await seed('private_loans', () => seedFromCSV('/demo-data/demo_private_loans.csv', 'private_loans', tenantId, { user_id: userId }));
+
+  // Phase 4.5: Investment Depots
+  await seed('finapi_depot_accounts', () => seedInvestmentDepots(tenantId, userId));
 
   // Phase 5: Miety (Zuhause)
   await seed('miety_homes', () => seedFromCSV('/demo-data/demo_miety_homes.csv', 'miety_homes', tenantId, { user_id: userId }));

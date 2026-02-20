@@ -37,6 +37,9 @@ const CLEANUP_ORDER = [
   'vorsorge_contracts',
   'kv_contracts',
   'insurance_contracts',
+  // Investment depots (positions before accounts)
+  'finapi_depot_positions',
+  'finapi_depot_accounts',
   // storage_nodes must be deleted BEFORE pv_plants (FK: storage_nodes.pv_plant_id → pv_plants.id)
   'storage_nodes',
   'pv_plants',
