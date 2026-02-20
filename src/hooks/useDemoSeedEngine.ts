@@ -17,6 +17,7 @@ import {
   DEMO_PET_LUNA,
   DEMO_PET_BELLO,
 } from '@/engines/demoData/data';
+import { DEMO_PROPERTY_ACCOUNTING } from '@/engines/demoData/demoPropertyData';
 
 // ─── CSV Parser ────────────────────────────────────────────
 
@@ -73,8 +74,11 @@ function coerceValue(value: string, key: string): unknown {
   if (BOOLEAN_KEYS.has(key)) return value === 'true';
   if (NUMERIC_KEYS.has(key)) {
     const num = parseFloat(value);
-    return isNaN(num) ? value : num;
+    return isNaN(num) ? null : num;
   }
+  // Catch any remaining "true"/"false" strings for non-registered boolean columns
+  if (value === 'true') return true;
+  if (value === 'false') return false;
   return value;
 }
 
@@ -511,6 +515,45 @@ async function seedProfile(userId: string): Promise<string[]> {
   return [userId];
 }
 
+// ─── Property Accounting (AfA data from demoPropertyData.ts) ──
+
+async function seedPropertyAccounting(tenantId: string, insertedPropertyIds: string[]): Promise<void> {
+  const rows = DEMO_PROPERTY_ACCOUNTING
+    .filter(p => insertedPropertyIds.includes(p.propertyId))
+    .map(p => ({
+      id: `e0000000-0000-4000-a000-afa${p.propertyId.slice(-3)}001`,
+      property_id: p.propertyId,
+      tenant_id: tenantId,
+      building_share_percent: p.afa.buildingSharePercent,
+      land_share_percent: p.afa.landSharePercent,
+      afa_rate_percent: p.afa.afaRatePercent,
+      afa_start_date: p.afa.afaStartDate,
+      afa_method: p.afa.afaMethod,
+      afa_model: p.afa.afaModel,
+      ak_ground: p.afa.akGround,
+      ak_building: p.afa.akBuilding,
+      ak_ancillary: p.afa.akAncillary,
+      modernization_costs_eur: p.afa.modernizationCostsEur,
+      sonder_afa_annual: p.afa.sonderAfaAnnual,
+      denkmal_afa_annual: p.afa.denkmalAfaAnnual,
+      book_value_eur: p.afa.bookValueEur,
+      cumulative_afa: p.afa.cumulativeAfa,
+    }));
+
+  if (!rows.length) return;
+
+  const { error } = await (supabase as any)
+    .from('property_accounting')
+    .upsert(rows, { onConflict: 'id' });
+
+  if (error) {
+    console.error('[DemoSeed] property_accounting:', error.message);
+  } else {
+    console.log(`[DemoSeed] ✓ property_accounting: ${rows.length}`);
+    await registerEntities(tenantId, 'property_accounting', rows.map(r => r.id));
+  }
+}
+
 // ─── Properties (INSERT-based to fire DB triggers) ─────────
 
 /**
@@ -530,19 +573,34 @@ async function seedProperties(
   const rows = await fetchCSV('/demo-data/demo_properties.csv');
   if (!rows.length) return [];
 
-  // 1. Delete existing demo properties first (CASCADE handles units, storage_nodes, etc.)
   const demoIds = rows.map(r => r.id as string).filter(Boolean);
+
+  // 1. Clean up orphaned storage_nodes that reference demo properties
+  //    (these can survive if a previous property delete didn't cascade properly)
   if (demoIds.length > 0) {
+    await (supabase as any).from('storage_nodes').delete().in('property_id', demoIds);
+    // Also clean leases → units cascade path
+    await (supabase as any).from('leases').delete().in('id', [
+      'd0000000-0000-4000-a000-000000000201',
+      'd0000000-0000-4000-a000-000000000202',
+      'd0000000-0000-4000-a000-000000000203',
+    ]);
+    await (supabase as any).from('property_accounting').delete().in('property_id', demoIds);
     await (supabase as any).from('properties').delete().in('id', demoIds);
   }
 
-  // 2. INSERT each property individually so triggers fire per row
+  // 2. Small delay to let CASCADE settle
+  await new Promise(r => setTimeout(r, 500));
+
+  // 3. INSERT each property individually so triggers fire per row
   const allIds: string[] = [];
   for (const row of rows) {
     const data = stripNulls({ ...row, tenant_id: tenantId });
     // Remove trigger-generated fields to avoid conflicts
     delete data.public_id;
     delete data.code;
+    // Map CSV usage_type to DB expected values
+    if (data.usage_type === 'residential') data.usage_type = 'Vermietung';
     if (landlordContextId) data.landlord_context_id = landlordContextId;
 
     const { error } = await (supabase as any)
@@ -554,6 +612,11 @@ async function seedProperties(
     } else {
       allIds.push(row.id as string);
     }
+  }
+
+  // 4. Seed property_accounting (AfA data) for inserted properties
+  if (allIds.length > 0) {
+    await seedPropertyAccounting(tenantId, allIds);
   }
 
   console.log(`[DemoSeed] ✓ properties (INSERT): ${allIds.length}`);
@@ -763,6 +826,9 @@ export async function seedDemoData(
   await seed('properties', () => seedProperties(tenantId, landlordContextId ?? undefined));
 
   // Phase 2: Property children
+  // Wait for triggers to create MAIN units
+  await new Promise(r => setTimeout(r, 1000));
+
   // Units: UPDATE trigger-created MAIN units, collect CSV→actual ID mapping for leases
   const unitIdMap = new Map<string, string>();
   await seed('units', async () => {
@@ -777,14 +843,22 @@ export async function seedDemoData(
       delete updateData.property_id;
       delete updateData.tenant_id;
       delete updateData.public_id;
+      // Map CSV usage_type to DB values
+      if (updateData.usage_type === 'residential') updateData.usage_type = 'Wohnen';
 
-      const { data: existingUnit } = await (supabase as any)
-        .from('units')
-        .select('id')
-        .eq('property_id', propertyId)
-        .eq('tenant_id', tenantId)
-        .limit(1)
-        .maybeSingle();
+      // Find the auto-created unit for this property (retry once if not found)
+      let existingUnit: { id: string } | null = null;
+      for (let attempt = 0; attempt < 2; attempt++) {
+        const { data } = await (supabase as any)
+          .from('units')
+          .select('id')
+          .eq('property_id', propertyId)
+          .eq('tenant_id', tenantId)
+          .limit(1)
+          .maybeSingle();
+        if (data) { existingUnit = data; break; }
+        if (attempt === 0) await new Promise(r => setTimeout(r, 500));
+      }
 
       if (existingUnit) {
         const { error } = await (supabase as any)

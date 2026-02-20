@@ -47,6 +47,7 @@ const CLEANUP_ORDER = [
   'household_persons',
   'acq_mandates',
   // Property tree (CASCADE handles most children)
+  'property_accounting',
   'loans',
   'leases',
   'units',
