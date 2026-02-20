@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -19,12 +19,61 @@ import {
 import { 
   Upload, Download, Trash2, Loader2, FileSpreadsheet, 
   Building2, Users, FileText, Home, CheckCircle2, AlertCircle, Sparkles, X,
-  Database, RefreshCw, Car, ShieldCheck
+  Database, RefreshCw, Car, ShieldCheck, Package
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getXlsx } from '@/lib/lazyXlsx';
-import { useGoldenPathSeeds, SEED_IDS, fetchGoldenPathCounts, type SeedCounts } from '@/hooks/useGoldenPathSeeds';
-import { DEV_TENANT_UUID } from '@/config/tenantConstants';
+import { seedDemoData, type DemoSeedResult } from '@/hooks/useDemoSeedEngine';
+import { cleanupDemoData } from '@/hooks/useDemoCleanup';
+import demoManifest from '../../../public/demo-data/demo_manifest.json';
+
+// ─── SSOT Entity Definitions from Manifest ─────────────────
+
+interface ManifestEntity {
+  file: string | null;
+  expectedCount: number;
+  dbTable: string;
+  seedMethod?: string;
+}
+
+const ENTITY_LABELS: Record<string, { label: string; icon: string }> = {
+  contacts: { label: 'Kontakte', icon: 'users' },
+  properties: { label: 'Immobilien', icon: 'building' },
+  units: { label: 'Einheiten', icon: 'home' },
+  leases: { label: 'Mietverträge', icon: 'file' },
+  loans: { label: 'Darlehen', icon: 'file' },
+  bank_accounts: { label: 'Bankkonten', icon: 'database' },
+  bank_transactions: { label: 'Transaktionen', icon: 'database' },
+  household_persons: { label: 'Haushalt', icon: 'users' },
+  vehicles: { label: 'Fahrzeuge', icon: 'car' },
+  pv_plants: { label: 'PV-Anlagen', icon: 'shield' },
+  insurance_contracts: { label: 'Versicherungen', icon: 'shield' },
+  kv_contracts: { label: 'KV-Verträge', icon: 'shield' },
+  vorsorge_contracts: { label: 'Vorsorge', icon: 'shield' },
+  user_subscriptions: { label: 'Abos', icon: 'package' },
+  private_loans: { label: 'Privatkredite', icon: 'file' },
+  miety_homes: { label: 'Zuhause', icon: 'home' },
+  miety_contracts: { label: 'Hausverträge', icon: 'file' },
+  acq_mandates: { label: 'Mandate', icon: 'file' },
+  pet_customers: { label: 'Tierkunden', icon: 'users' },
+  pets: { label: 'Haustiere', icon: 'package' },
+  pet_bookings: { label: 'Buchungen', icon: 'file' },
+};
+
+function getEntityIcon(type: string) {
+  const info = ENTITY_LABELS[type];
+  const iconType = info?.icon ?? 'file';
+  switch (iconType) {
+    case 'users': return <Users className="h-3 w-3" />;
+    case 'building': return <Building2 className="h-3 w-3" />;
+    case 'home': return <Home className="h-3 w-3" />;
+    case 'car': return <Car className="h-3 w-3" />;
+    case 'shield': return <ShieldCheck className="h-3 w-3" />;
+    case 'database': return <Database className="h-3 w-3" />;
+    case 'package': return <Package className="h-3 w-3" />;
+    default: return <FileText className="h-3 w-3" />;
+  }
+}
 
 interface TestBatch {
   batch_id: string;
@@ -88,32 +137,96 @@ export function TestDataManager() {
   const [aiSummary, setAiSummary] = useState<AISummary | null>(null);
   const [importProgress, setImportProgress] = useState(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [isResetting, setIsResetting] = useState(false);
 
-  // P1-1: Initial counts state for display without click
-  const [initialCounts, setInitialCounts] = useState<SeedCounts | null>(null);
-  const [isLoadingCounts, setIsLoadingCounts] = useState(true);
+  // SSOT Demo State
+  const [isSeeding, setIsSeeding] = useState(false);
+  const [isCleaning, setIsCleaning] = useState(false);
 
-  // Golden Path Seeds
-  const { runSeeds, isSeeding, lastResult, isSeedAllowed } = useGoldenPathSeeds(
-    activeOrganization?.id,
-    activeOrganization?.name,
-    activeOrganization?.org_type,
-    true // devMode
-  );
+  // ─── SSOT Live Counts ────────────────────────────────────
+  const entities = demoManifest.entities as Record<string, ManifestEntity>;
+  const entityKeys = Object.keys(entities);
 
-  // P1-1: Fetch counts on component mount
-  useEffect(() => {
-    fetchGoldenPathCounts()
-      .then(counts => {
-        setInitialCounts(counts);
-        setIsLoadingCounts(false);
-      })
-      .catch(err => {
-        console.error('Failed to fetch initial counts:', err);
-        setIsLoadingCounts(false);
-      });
-  }, []);
+  const { data: liveCounts, isLoading: isLoadingCounts, refetch: refetchCounts } = useQuery({
+    queryKey: ['demo-ssot-counts', activeOrganization?.id],
+    queryFn: async (): Promise<Record<string, number>> => {
+      if (!activeOrganization?.id) return {};
+      const counts: Record<string, number> = {};
+
+      // Fetch counts in parallel for all entity tables
+      const results = await Promise.allSettled(
+        entityKeys.map(async (key) => {
+          const table = entities[key].dbTable;
+          const { count, error } = await (supabase as any)
+            .from(table)
+            .select('id', { count: 'exact', head: true })
+            .eq('tenant_id', activeOrganization.id);
+          return { key, count: error ? 0 : (count ?? 0) };
+        })
+      );
+
+      for (const r of results) {
+        if (r.status === 'fulfilled') {
+          counts[r.value.key] = r.value.count;
+        }
+      }
+      return counts;
+    },
+    enabled: !!activeOrganization?.id,
+    refetchInterval: false,
+  });
+
+  // ─── Seed Demo Data ──────────────────────────────────────
+  const handleSeedDemo = async () => {
+    if (!activeOrganization?.id) return;
+    setIsSeeding(true);
+    try {
+      const result = await seedDemoData(activeOrganization.id);
+      if (result.success) {
+        toast.success('Demo-Daten erfolgreich eingespielt', {
+          description: `${Object.values(result.seeded).reduce((a, b) => a + b, 0)} Datensätze in ${Object.keys(result.seeded).length} Tabellen`,
+        });
+      } else {
+        toast.warning('Demo-Daten teilweise eingespielt', {
+          description: `${result.errors.length} Fehler aufgetreten`,
+        });
+      }
+      refetchCounts();
+      queryClient.invalidateQueries({ queryKey: ['properties'] });
+      queryClient.invalidateQueries({ queryKey: ['contacts'] });
+    } catch (err) {
+      toast.error('Fehler beim Einspielen der Demo-Daten');
+      console.error(err);
+    } finally {
+      setIsSeeding(false);
+    }
+  };
+
+  // ─── Cleanup Demo Data ───────────────────────────────────
+  const handleCleanupDemo = async () => {
+    if (!activeOrganization?.id) return;
+    setIsCleaning(true);
+    try {
+      const result = await cleanupDemoData(activeOrganization.id);
+      if (result.success) {
+        const total = Object.values(result.deleted).reduce((a, b) => a + b, 0);
+        toast.success('Demo-Daten bereinigt', {
+          description: `${total} Datensätze gelöscht`,
+        });
+      } else {
+        toast.warning('Bereinigung mit Fehlern', {
+          description: result.errors.join(', '),
+        });
+      }
+      refetchCounts();
+      queryClient.invalidateQueries({ queryKey: ['properties'] });
+      queryClient.invalidateQueries({ queryKey: ['contacts'] });
+    } catch (err) {
+      toast.error('Fehler bei der Bereinigung');
+      console.error(err);
+    } finally {
+      setIsCleaning(false);
+    }
+  };
 
   // Fetch test batches from test_data_registry
   const { data: batches = [], isLoading } = useQuery({
@@ -531,16 +644,6 @@ export function TestDataManager() {
     });
   };
 
-  const getEntityIcon = (type: string) => {
-    switch (type) {
-      case 'property': return <Building2 className="h-3 w-3" />;
-      case 'unit': return <Home className="h-3 w-3" />;
-      case 'contact': return <Users className="h-3 w-3" />;
-      case 'document': return <FileText className="h-3 w-3" />;
-      default: return null;
-    }
-  };
-
   const getConfidenceBadge = (confidence: number) => {
     if (confidence >= 0.9) return <Badge className="bg-green-600 text-xs">✓ {Math.round(confidence * 100)}%</Badge>;
     if (confidence >= 0.7) return <Badge className="bg-yellow-600 text-xs">⚠ {Math.round(confidence * 100)}%</Badge>;
@@ -549,137 +652,63 @@ export function TestDataManager() {
 
   const isProcessing = phase === 'uploading' || phase === 'analyzing' || phase === 'importing';
 
-  // Reset Golden Path data
-  const handleResetGoldenPath = async () => {
-    setIsResetting(true);
-
-    try {
-      // Use deterministic, scoped backend cleanup (demo tenant only)
-      const { data, error } = await supabase.rpc('cleanup_golden_path_data');
-      if (error) throw error;
-
-      const cleanupCounts = data && typeof data === 'object' && 'cleanup_counts' in data 
-        ? (data as { cleanup_counts?: { contacts?: number; properties?: number; documents?: number } }).cleanup_counts 
-        : undefined;
-      toast.success('Golden Path Daten zurückgesetzt', {
-        description: cleanupCounts
-          ? `Gelöscht: Kontakte ${cleanupCounts.contacts ?? 0}, Immobilien ${cleanupCounts.properties ?? 0}, Dokumente ${cleanupCounts.documents ?? 0}`
-          : undefined,
-      });
-
-      queryClient.invalidateQueries({ queryKey: ['properties'] });
-      queryClient.invalidateQueries({ queryKey: ['contacts'] });
-      queryClient.invalidateQueries({ queryKey: ['units'] });
-      queryClient.invalidateQueries({ queryKey: ['landlord-contexts'] });
-    } catch (error) {
-      toast.error('Fehler beim Zurücksetzen');
-      console.error('Golden Path reset error:', error);
-    } finally {
-      setIsResetting(false);
-    }
-  };
-
-  // Run Golden Path Seeds
-  const handleRunSeeds = async () => {
-    const result = await runSeeds();
-    if (result.success) {
-      const delta = {
-        contacts: result.after.contacts - result.before.contacts,
-        properties: result.after.properties - result.before.properties,
-        documents: result.after.documents - result.before.documents,
-      };
-      toast.success('Golden Path aktualisiert', {
-        description: `Δ +${delta.contacts} Kontakte, +${delta.properties} Immobilien, +${delta.documents} Dokumente | Stand: ${result.after.contacts}/5, ${result.after.properties}/1, ${result.after.documents}/12`,
-      });
-      queryClient.invalidateQueries({ queryKey: ['properties'] });
-      queryClient.invalidateQueries({ queryKey: ['contacts'] });
-      queryClient.invalidateQueries({ queryKey: ['units'] });
-      queryClient.invalidateQueries({ queryKey: ['landlord-contexts'] });
-    } else {
-      toast.error(result.error || 'Fehler beim Einspielen der Testdaten');
-    }
+  // Helper: status color for entity count
+  const getCountStatus = (actual: number, expected: number) => {
+    if (actual >= expected) return 'bg-green-500/15 border-green-500/30 text-green-700';
+    if (actual > 0) return 'bg-yellow-500/15 border-yellow-500/30 text-yellow-700';
+    return 'bg-muted border-border text-muted-foreground';
   };
 
   return (
     <div className="space-y-6">
-      {/* Golden Path Section */}
+      {/* Demo-Daten SSOT Section */}
       <Card className="border-primary/20 bg-primary/5">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Database className="h-5 w-5 text-primary" />
-            Golden Path Demo-Daten
+            Demo-Daten SSOT
           </CardTitle>
           <CardDescription>
-            Komplette Demo-Umgebung für Musterportal-Entwicklung: 5 Kontakte (Max, Lisa, Mieter, HV, Bankberater), 
-            1 Musterimmobilie Leipzig mit Einheit/Mietvertrag/Darlehen, 12 Dokumente, Vermieter-Kontext (Ehepaar), 
-            und vollständige Selbstauskunft.
+            Komplette Demo-Umgebung aus <code className="bg-muted px-1 rounded text-xs">public/demo-data/</code> — 
+            {entityKeys.length} Entity-Typen, gesteuert über <code className="bg-muted px-1 rounded text-xs">demo_manifest.json</code>.
+            IDs: <code className="bg-muted px-1 rounded text-xs">d0000000-*</code> / <code className="bg-muted px-1 rounded text-xs">e0000000-*</code>
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Status Grid */}
           {isLoadingCounts ? (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
-              {[1, 2, 3, 4].map(i => (
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2">
+              {Array.from({ length: 14 }).map((_, i) => (
                 <div key={i} className="p-2 bg-background rounded border animate-pulse h-10" />
               ))}
             </div>
-          ) : (lastResult || initialCounts) ? (
-            <div className="grid grid-cols-2 md:grid-cols-6 gap-2 text-sm">
-              {(() => {
-                const displayCounts = lastResult?.after || initialCounts;
-                return (
-                  <>
-                    <div className="p-2 bg-background rounded border flex items-center gap-2">
-                      <Users className="h-3 w-3 text-muted-foreground" />
-                      <span>Kontakte: <strong>{displayCounts?.contacts ?? 0}</strong>/5</span>
-                    </div>
-                    <div className="p-2 bg-background rounded border flex items-center gap-2">
-                      <Building2 className="h-3 w-3 text-muted-foreground" />
-                      <span>Immobilien: <strong>{displayCounts?.properties ?? 0}</strong>/1</span>
-                    </div>
-                    <div className="p-2 bg-background rounded border flex items-center gap-2">
-                      <FileText className="h-3 w-3 text-muted-foreground" />
-                      <span>Dokumente: <strong>{displayCounts?.documents ?? 0}</strong>/12</span>
-                    </div>
-                    <div className="p-2 bg-background rounded border flex items-center gap-2">
-                      <Home className="h-3 w-3 text-muted-foreground" />
-                      <span>Kontexte: <strong>{displayCounts?.landlord_contexts ?? 0}</strong>/1</span>
-                    </div>
-                    {/* Acquiary Data */}
-                    <div className="p-2 bg-primary/5 rounded border border-primary/20 flex items-center gap-2">
-                      <FileText className="h-3 w-3 text-primary" />
-                      <span>Mandate: <strong>{displayCounts?.acq_mandates ?? 0}</strong></span>
-                    </div>
-                    <div className="p-2 bg-primary/5 rounded border border-primary/20 flex items-center gap-2">
-                      <Building2 className="h-3 w-3 text-primary" />
-                      <span>Offers: <strong>{displayCounts?.acq_offers ?? 0}</strong></span>
-                    </div>
-                    {/* Car Management (MOD-17) */}
-                    <div className="p-2 bg-amber-500/10 rounded border border-amber-500/20 flex items-center gap-2">
-                      <Car className="h-3 w-3 text-amber-600" />
-                      <span>Fahrzeuge: <strong>{displayCounts?.cars_vehicles ?? 0}</strong>/2</span>
-                    </div>
-                    <div className="p-2 bg-amber-500/10 rounded border border-amber-500/20 flex items-center gap-2">
-                      <FileText className="h-3 w-3 text-amber-600" />
-                      <span>Finanzierungen: <strong>{displayCounts?.cars_financing ?? 0}</strong>/2</span>
-                    </div>
-                    <div className="p-2 bg-amber-500/10 rounded border border-amber-500/20 flex items-center gap-2">
-                      <ShieldCheck className="h-3 w-3 text-amber-600" />
-                      <span>KFZ-Versicherungen: <strong>{displayCounts?.cars_insurances ?? 0}</strong>/2</span>
-                    </div>
-                  </>
-                );
-              })()}
-            </div>
           ) : (
-            <p className="text-sm text-muted-foreground">Keine Daten geladen</p>
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2 text-sm">
+              {entityKeys.map((key) => {
+                const entity = entities[key];
+                const actual = liveCounts?.[key] ?? 0;
+                const expected = entity.expectedCount;
+                const label = ENTITY_LABELS[key]?.label ?? key;
+                return (
+                  <div
+                    key={key}
+                    className={`p-2 rounded border flex items-center gap-1.5 ${getCountStatus(actual, expected)}`}
+                  >
+                    {getEntityIcon(key)}
+                    <span className="truncate">
+                      {label}: <strong>{actual}</strong>/{expected}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
           )}
           
           {/* Buttons */}
           <div className="flex gap-3">
             <Button 
-              onClick={handleRunSeeds} 
-              disabled={isSeeding || isResetting || !isSeedAllowed}
+              onClick={handleSeedDemo} 
+              disabled={isSeeding || isCleaning}
               className="flex-1"
             >
               {isSeeding ? (
@@ -689,32 +718,45 @@ export function TestDataManager() {
               )}
               Einspielen / Aktualisieren
             </Button>
-            <Button 
-              variant="destructive" 
-              onClick={handleResetGoldenPath} 
-              disabled={isSeeding || isResetting}
-            >
-              {isResetting ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <Trash2 className="h-4 w-4 mr-2" />
-              )}
-              Zurücksetzen
-            </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" disabled={isSeeding || isCleaning}>
+                  {isCleaning ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-4 w-4 mr-2" />
+                  )}
+                  Zurücksetzen
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Demo-Daten löschen?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Alle Demo-Daten (IDs <code>d0000000-*</code> / <code>e0000000-*</code>) werden 
+                    unwiderruflich aus allen {entityKeys.length} Tabellen gelöscht.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleCleanupDemo}
+                    className="bg-destructive hover:bg-destructive/90"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Alle Demo-Daten löschen
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
           
           {/* Info */}
           <p className="text-xs text-muted-foreground">
-            Verwendet feste UUIDs (<code className="bg-muted px-1 rounded">00000000-0000-4000-a000-...</code>). 
-            Kann jederzeit vollständig gelöscht werden ohne andere Daten zu beeinflussen.
+            Seed-Engine: <code className="bg-muted px-1 rounded">useDemoSeedEngine</code> | 
+            Cleanup: <code className="bg-muted px-1 rounded">useDemoCleanup</code> | 
+            Manifest v{demoManifest.version}
           </p>
-
-          {!isSeedAllowed && (
-            <div className="p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg text-sm text-yellow-700 flex items-start gap-2">
-              <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
-              <span>Golden Path Seeds sind nur für interne Organisationen verfügbar.</span>
-            </div>
-          )}
         </CardContent>
       </Card>
 
