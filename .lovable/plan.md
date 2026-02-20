@@ -1,239 +1,171 @@
 
-# Demo-Daten Seed Engine: Vollstaendige Diagnose und Neuaufbau
 
-## 1. IST-Zustand: Datenbank vs. CSV-Erwartung
+# Reparaturplan: Daten-Vollstaendigkeit und Korrektheit
 
-| # | Entitaet | DB-Tabelle | CSV/Code Soll | DB Ist | Status | Fehlerursache |
-|---|----------|------------|---------------|--------|--------|---------------|
-| 1 | Profil | profiles | 1 (UPDATE) | 1 | OK | - |
-| 2 | Kontakte | contacts | 5 | 5 | OK | - |
-| 3 | Landlord Context | landlord_contexts | 1 | 1 | OK | - |
-| 4 | **Immobilien** | properties | **3** | **1** (HH-01) | **FEHLT** | BER-01 + MUC-01 INSERT scheitert (orphaned storage_nodes / unique constraint) |
-| 5 | **Units** | units | **3** | **1** | **FEHLT** | Abhaengig von Properties |
-| 6 | **Leases** | leases | **3** | **1** | **FEHLT** | Abhaengig von Units |
-| 7 | **Loans** | loans | **3** | **0** | **FEHLT** | Abhaengig von Properties (property_id FK) |
-| 8 | **Property Accounting** | property_accounting | **3** | **0** | **FEHLT** | Abhaengig von Properties |
-| 9 | Bankkonto | msv_bank_accounts | 1 | 1 | OK | - |
-| 10 | Transaktionen | bank_transactions | 100 | 100 | OK | - |
-| 11 | **Haushaltspersonen** | household_persons | **4** | **0** | **FEHLT** | Leere Zellen fuer gross_income werden falsch geparst; hauptperson-ID-Mapping |
-| 12 | **Fahrzeuge** | cars_vehicles | **2** | **0** (falsche IDs) | **FEHLT** | CSV-IDs (d0000000-...0301) =/= DB-IDs (00000000-...0301) - Dopplung |
-| 13 | PV-Anlage | pv_plants | 1 | 1 | OK | - |
-| 14 | Versicherungen | insurance_contracts | 7 | 7 | OK | - |
-| 15 | KV-Vertraege | kv_contracts | 4 | 4 | OK | - |
-| 16 | **Vorsorge** | vorsorge_contracts | **6** | **0** | **FEHLT** | person_id FK auf household_persons, die fehlen |
-| 17 | Abonnements | user_subscriptions | 8 | 8 | OK | - |
-| 18 | Privatkredite | private_loans | 2 | 2 | OK | - |
-| 19 | **Miety Wohnung** | miety_homes | **1** | **0** | **FEHLT** | Im Registry aber nicht in DB - Seed-Fehler |
-| 20 | **Miety Vertraege** | miety_contracts | **4** | **0** | **FEHLT** | Abhaengig von miety_homes |
-| 21 | **Akquise-Mandat** | acq_mandates | **1** | **0** | **FEHLT** | Im Registry aber nicht in DB |
-| 22 | Tierkunden | pet_customers | 3 | 3 | OK | - |
-| 23 | Haustiere | pets | 5 | 5 | OK | - |
-| 24 | Tierbuchungen | pet_bookings | 5 | 5 | OK | - |
-| 25 | **Investment Depots** | finapi_depot_accounts | **2** | **0** | **FEHLT** | Seed-Funktion fehlerhaft oder nicht erreicht |
-| 26 | **Depot Positionen** | finapi_depot_positions | **5** | **0** | **FEHLT** | Abhaengig von Depots |
+## Ist-Zustand nach Analyse
 
-**Ergebnis: 13 von 26 Entitaeten fehlen oder sind unvollstaendig.**
+### Entitaeten-Status (27 Punkte)
 
----
+| # | Entitaet | Soll | Ist | Status | Problem |
+|---|----------|------|-----|--------|---------|
+| 1 | Profil | 1 | 1 | OK | |
+| 2 | Kontakte | 5 | 5 | OK | |
+| 3 | Landlord Context | 1 | 1 | OK | |
+| 4 | Properties | 3 | 3 | OK | Aber market_value ist NULL |
+| 5 | Units | 3 | 3 | OK | |
+| 6 | Leases | 3 | 3 | OK | tenant_contact_id korrekt auf Klaus Bergmann |
+| 7 | Loans | 3 | 3 | OK | |
+| 8 | **Property Accounting** | **3** | **0** | **FEHLT** | Upsert scheitert leise |
+| 9 | Bankkonten | 1 | 1 | OK | |
+| 10 | Transaktionen | 100 | 100 | OK | |
+| 11 | **Haushaltspersonen** | 4 | 4 | **UNVOLLST.** | Max: alle Finanzfelder NULL |
+| 12 | Fahrzeuge | 2 | 2 | OK | |
+| 13 | PV-Anlage | 1 | 1 | OK | |
+| 14 | Versicherungen | 7 | 7 | OK | |
+| 15 | KV-Vertraege | 4 | 4 | OK | |
+| 16 | Vorsorge | 6 | 6 | OK | |
+| 17 | Abonnements | 8 | 8 | OK | |
+| 18 | Privatkredite | 2 | 2 | OK | |
+| 19 | Miety Home | 1 | 1 | OK | |
+| 20 | Miety Contracts | 4 | 4 | OK | |
+| 21 | Acq Mandate | 1 | 1 | OK | |
+| 22 | **Acq Offers** | **1** | **0** | **FEHLT** | Kein Objekteingang-Demo |
+| 23 | Pet Customers | 3 | 3 | OK | |
+| 24 | Pets | 5 | 5 | OK | |
+| 25 | Pet Bookings | 5 | 5 | OK | |
+| 26 | Depot Accounts | 2 | 2 | OK | |
+| 27 | Depot Positions | 5 | 5 | OK | |
+| 28 | Dev Projects | 1 | 1 | OK | |
 
-## 2. Identifizierte Kernprobleme
-
-### Problem A: Property INSERT scheitert bei 2 von 3
-Die `seedProperties`-Funktion loescht zwar vorher mit `.delete().in('id', demoIds)`, aber die Loesch-Reihenfolge ist nicht vollstaendig: `storage_nodes` werden nur per `property_id` geloescht, aber es gibt auch storage_nodes fuer die DMS-Ordnerstruktur, die ueber andere Wege referenziert sein koennten. Wenn ein INSERT fuer Property 1 (BER-01) scheitert, laeuft der Loop weiter, aber die abhaengigen Entities (Units, Leases, Loans, AfA) fuer BER-01 und MUC-01 fehlen komplett.
-
-### Problem B: Fahrzeug-ID-Mismatch
-- CSV `demo_vehicles.csv`: `d0000000-0000-4000-a000-000000000301`
-- `data.ts` DEMO_PORTFOLIO.vehicleIds: `00000000-0000-4000-a000-000000000301`
-- DB hat die `00000000`-Variante (aus einem frueheren Seed)
-- Neuer Seed versucht `d0000000`-IDs, findet keine bestehenden, INSERT scheitert evtl. an `created_by`-Column
-
-### Problem C: household_persons Parse-Fehler
-CSV hat leere Felder fuer `gross_income_monthly`, `net_income_monthly` bei Kindern. Der Parser gibt `null` zurueck (korrekt nach dem Fix), aber die `hauptperson`-Zeile hat die ID `b1f6d204-...` die durch `userId` ersetzt werden muss. Wenn dieser Mapping-Schritt fehlschlaegt oder das Ergebnis-Objekt die falschen Typen hat, scheitert der gesamte UPSERT-Batch.
-
-### Problem D: Kaskaden-Versagen
-Wenn household_persons scheitert, scheitert auch vorsorge_contracts (FK auf person_id). Wenn properties scheitert, scheitern units, leases, loans und property_accounting.
-
-### Problem E: Registry-Inkonsistenz
-Die test_data_registry enthaelt Eintraege fuer miety_homes (1) und acq_mandates (1), aber die DB-Tabellen sind leer. Das bedeutet: die Registrierung lief, aber der eigentliche INSERT/UPSERT schlug fehl - die Reihenfolge ist falsch (Register VOR Fehlercheck).
+**Ergebnis: 24 von 28 OK, 4 Punkte offen**
 
 ---
 
-## 3. Das Drehbuch: Exakter Seed-Ablauf (Akte fuer Akte)
+## Die 4 offenen Probleme und Reparaturen
 
-### Phase 0: Profil (UPDATE)
-```
-AKTION: UPDATE profiles SET first_name, last_name, ... WHERE id = auth.uid()
-QUELLE: demo_profile.csv
-ERGEBNIS: 1 Profil aktualisiert
-```
+### Problem 1: Property Accounting leer (0/3)
 
-### Phase 1: Kontakte (5 Stueck)
-```
-AKTION: UPSERT contacts
-QUELLE: demo_contacts.csv (5 Zeilen)
-ERGEBNIS: 5 Kontakte (Max, Lisa, Klaus Bergmann, Sabine Hoffmann, Thomas Weber)
-```
+**Ursache:** Die `seedPropertyAccounting`-Funktion schreibt die AfA-Daten korrekt zusammen, aber die ID-Generierung nutzt `e0000000-0000-4000-a000-afa${propId.slice(-3)}001`. Der Upsert scheitert leise, vermutlich weil die generierte ID ein ungueltiges UUID-Format erzeugt (`...afa001001` ist keine gueltige Hex-Sequenz in UUID v4).
 
-### Phase 2: Haushaltspersonen (4 Stueck)
-```
-AKTION: UPSERT household_persons
-QUELLE: demo_household_persons.csv (4 Zeilen)
-MAPPING: Zeile 1 (hauptperson) → id = auth.uid() statt b1f6d204-...
-ERGEBNIS: Max (userId), Lisa, Felix, Emma
-KRITISCH: Muss VOR vorsorge_contracts laufen (FK person_id)
-```
+**Reparatur in `src/hooks/useDemoSeedEngine.ts`:**
+- ID-Generierung auf valides UUID-Format aendern, z.B. `e0000000-0000-4000-a000-00000afa0001`, `...0002`, `...0003`
+- Error-Logging verbessern, damit Upsert-Fehler sichtbar werden
 
-### Phase 3: Immobilien-Akten (3 Stueck, je 5 Schritte)
+### Problem 2: Max Mustermann Finanzfelder NULL
 
-Fuer JEDE der 3 Properties (BER-01, MUC-01, HH-01):
+**Ursache:** Die CSV `demo_household_persons.csv` hat fuer Max (Zeile 2) LEERE Felder bei `gross_income_monthly`, `net_income_monthly`, `tax_class`. Zusaetzlich fehlen die DB-Spalten `business_income_monthly` und `pv_income_monthly` komplett in der CSV.
 
-```
-Schritt 1: CLEANUP — Loesche alle Reste
-  DELETE FROM storage_nodes WHERE property_id = '{id}'
-  DELETE FROM property_accounting WHERE property_id = '{id}'
-  DELETE FROM loans WHERE property_id = '{id}'
-  DELETE FROM leases WHERE unit_id IN (SELECT id FROM units WHERE property_id = '{id}')
-  DELETE FROM units WHERE property_id = '{id}'
-  DELETE FROM properties WHERE id = '{id}'
+Die DB hat diese Spalten:
+- `gross_income_monthly` -- leer in CSV
+- `net_income_monthly` -- leer in CSV
+- `tax_class` -- leer in CSV
+- `business_income_monthly` -- nicht in CSV (existiert als DB-Spalte)
+- `pv_income_monthly` -- nicht in CSV (existiert als DB-Spalte)
+- `planned_retirement_date` -- nicht in CSV
 
-Schritt 2: AKTE EROEFFNEN — INSERT property
-  INSERT INTO properties (id, tenant_id, property_type, city, address, ...)
-  → Trigger feuert: public_id, code, MAIN-Unit, 17 DMS-Ordner
-  → WARTEN: 500ms fuer Trigger-Ausfuehrung
+**Reparatur in `public/demo-data/demo_household_persons.csv`:**
 
-Schritt 3: UNIT BEFUELLEN — UPDATE auto-erstellte Unit
-  SELECT id FROM units WHERE property_id = '{id}' (trigger-erzeugt)
-  UPDATE units SET area_sqm, rooms, current_monthly_rent, ... WHERE id = '{unit_id}'
+Header erweitern um: `business_income_monthly;pv_income_monthly;planned_retirement_date`
 
-Schritt 4: MIETVERTRAG ANLEGEN — INSERT lease
-  INSERT INTO leases (id, unit_id = {trigger-unit-id}, tenant_contact_id, ...)
+Max-Zeile befuellen:
+- `gross_income_monthly`: 8500 (Selbstaendiger, IT-Berater)
+- `net_income_monthly`: 5200
+- `tax_class`: III (verheiratet, Alleinverdiener)
+- `business_income_monthly`: 8500 (= Einkommen aus Selbstaendigkeit)
+- `pv_income_monthly`: 212 (= annual_revenue 2542 / 12 aus PV-Anlage)
+- `planned_retirement_date`: 2049-03-15 (Alter 67)
 
-Schritt 5: DARLEHEN ANLEGEN — INSERT loan
-  INSERT INTO loans (id, property_id, bank_name, original_amount, ...)
+Lisa-Zeile ergaenzen:
+- `business_income_monthly`: (leer)
+- `pv_income_monthly`: (leer)
+- `planned_retirement_date`: 2052-07-22 (Alter 67)
 
-Schritt 6: AFA-DATEN — INSERT property_accounting
-  INSERT INTO property_accounting (property_id, afa_rate_percent, ak_building, ...)
-```
+### Problem 3: market_value NULL fuer alle Properties
 
-### Phase 4: Fahrzeug-Akten (2 Stueck)
-```
-AKTION: UPSERT cars_vehicles
-QUELLE: demo_vehicles.csv
-FIX NOETIG: IDs in CSV auf 00000000-Prefix aendern ODER data.ts anpassen
-EXTRA-FELD: created_by = auth.uid()
-```
+**Ursache:** Die CSV `demo_properties.csv` hat keine Spalte `market_value`. Die DB-Spalte existiert aber.
 
-### Phase 5: PV-Akte (1 Stueck)
-```
-AKTION: UPSERT pv_plants
-QUELLE: demo_pv_plants.csv
-ID: 00000000-0000-4000-a000-000000000901
-```
+**Reparatur in `public/demo-data/demo_properties.csv`:**
 
-### Phase 6: Versicherungs-Akten (7 Stueck)
-```
-AKTION: UPSERT insurance_contracts
-QUELLE: data.ts → DEMO_INSURANCES (JSONB details)
-```
+Spalte `market_value` hinzufuegen:
+- BER-01: 340000 (Altbau Berlin, Wertzuwachs seit Kauf 2017)
+- MUC-01: 520000 (Muenchen Premium-Lage, Wertzuwachs seit 2020)
+- HH-01: 210000 (Hamburg Elbchaussee, Wertzuwachs seit 2019)
 
-### Phase 7: KV-Akten (4 Stueck)
-```
-AKTION: UPSERT kv_contracts
-QUELLE: data.ts → DEMO_KV_CONTRACTS
-```
+### Problem 4: Objekteingang (acq_offers) leer
 
-### Phase 8: Vorsorge-Akten (6 Stueck)
-```
-AKTION: UPSERT vorsorge_contracts
-QUELLE: demo_vorsorge_contracts.csv
-MAPPING: person_id b1f6d204-... → auth.uid()
-ABHAENGIGKEIT: household_persons muss existieren (Phase 2)
-```
+**Ursache:** Es gibt keine CSV-Datei und keine Seed-Funktion fuer `acq_offers`. Das Akquise-Mandat (ACQ-DEMO-001) existiert, aber es fehlt ein eingegangenes Objekt, um den Objekteingang demonstrieren zu koennen.
 
-### Phase 9: Abonnement-Akten (8 Stueck)
-```
-AKTION: UPSERT user_subscriptions
-QUELLE: demo_user_subscriptions.csv
-EXTRA-FELD: user_id = auth.uid()
-```
+**Reparatur:**
 
-### Phase 10: Privatkredit-Akten (2 Stueck)
-```
-AKTION: UPSERT private_loans
-QUELLE: demo_private_loans.csv
-EXTRA-FELD: user_id = auth.uid()
-```
+1. Neue CSV erstellen: `public/demo-data/demo_acq_offers.csv`
+   - 1 Demo-Objekt: MFH-Angebot aus Berlin-Neukoelln
+   - Verknuepft mit Mandat `e0000000-0000-4000-e000-000000000001`
+   - Felder: title, address, postal_code, city, price_asking, units_count, area_sqm, year_built, yield_indicated, provider_name, status, received_at
 
-### Phase 11: Bankkonto + Transaktionen
-```
-AKTION: UPSERT msv_bank_accounts (1), dann bank_transactions (100)
-QUELLE: demo_bank_accounts.csv, demo_bank_transactions.csv
-```
+2. Neue Funktion: `seedAcqOffers()` in `useDemoSeedEngine.ts`
 
-### Phase 12: Investment-Depot-Akten (2 Stueck + 5 Positionen)
-```
-AKTION: UPSERT finapi_depot_accounts (2), dann finapi_depot_positions (5)
-QUELLE: data.ts → seedInvestmentDepots()
-```
+3. Demo-Daten-Eintrag: `demo_manifest.json` um `acq_offers: 1` erweitern
 
-### Phase 13: Miety-Zuhause (1 Heim + 4 Vertraege)
-```
-AKTION: UPSERT miety_homes (1), dann miety_contracts (4)
-QUELLE: demo_miety_homes.csv, demo_miety_contracts.csv
-EXTRA-FELD: user_id = auth.uid() fuer miety_homes
-```
-
-### Phase 14: Akquise-Mandat (1 Stueck)
-```
-AKTION: UPSERT acq_mandates
-QUELLE: data.ts → DEMO_ACQ_MANDATE
-EXTRA-FELDER: created_by_user_id, assigned_manager_user_id, assigned_at
-```
-
-### Phase 15: Pet Manager (3 Kunden + 5 Tiere + 5 Buchungen)
-```
-AKTION: UPSERT pet_customers (3), pets (5), pet_bookings (5)
-QUELLE: CSV + data.ts (Mischform)
-```
+4. Cleanup erweitern: `acq_offers` vor `acq_mandates` loeschen
 
 ---
 
-## 4. Technische Aenderungen (Implementierung)
-
-### 4.1 CSV-Fix: demo_vehicles.csv
-IDs aendern von `d0000000-...` zu `00000000-...` passend zur PV-Anlage und data.ts.
-
-### 4.2 seedProperties() komplett neu
-Statt alle 3 Properties in einem Loop: individuelle Fehlerbehandlung pro Property mit vollstaendigem Cleanup vorher (inkl. units, leases, loans, storage_nodes, property_accounting). Jede Property wird einzeln inserted, und bei Fehler wird der naechste versucht statt abzubrechen.
-
-### 4.3 seedHouseholdPersons() robuster machen
-- Leere numerische Felder explizit auf `null` setzen
-- `tax_class` als String belassen (nicht als Zahl parsen)
-- Hauptperson-ID-Mapping verifizieren mit Logging
-
-### 4.4 Registry erst NACH erfolgreichem Insert
-`registerEntities()` wird NUR aufgerufen, wenn der INSERT/UPSERT tatsaechlich erfolgreich war. Aktuell wird manchmal registriert obwohl der DB-Eintrag fehlschlug.
-
-### 4.5 Fehler-Isolation pro Phase
-Wenn eine Phase scheitert (z.B. Property BER-01), darf das nicht die nachfolgenden Phasen (Fahrzeuge, Versicherungen etc.) blockieren. Jede Phase laeuft unabhaengig, nur innerhalb der Immobilien-Kaskade ist die Reihenfolge strikt.
-
-### 4.6 Miety + Acq: user_id / created_by pruefen
-Die UPSERT-Aufrufe fuer miety_homes und acq_mandates muessen die korrekten Felder setzen. Aktueller Code scheint korrekt, aber der Fehler liegt moeglicherweise an fehlenden NOT NULL Feldern.
-
-### 4.7 Cleanup erweitern
-`CLEANUP_ORDER` muss `property_accounting` VOR `properties` enthalten (bereits der Fall) und auch die richtigen Fahrzeug-IDs abdecken (00000000-Prefix).
-
-### 4.8 Diagnostik-Log
-Am Ende des Seeds: vollstaendige Tabelle ausgeben (Soll vs. Ist) als Console-Log, damit Fehler sofort sichtbar sind.
-
----
-
-## 5. Zusammenfassung der Code-Aenderungen
+## Zusammenfassung der Datei-Aenderungen
 
 | Datei | Aenderung |
 |-------|-----------|
-| `public/demo-data/demo_vehicles.csv` | IDs von d0000000 auf 00000000 aendern |
-| `src/hooks/useDemoSeedEngine.ts` | seedProperties: Per-Property Cleanup + Insert mit individueller Fehlerbehandlung; seedHouseholdPersons: Robusteres Parsing; Registry nur nach Erfolg; Diagnostik-Log am Ende; Miety/Acq Debugging |
-| `src/hooks/useDemoCleanup.ts` | Fahrzeug-IDs (00000000-Prefix) in Fallback-Cleanup aufnehmen |
+| `public/demo-data/demo_household_persons.csv` | 3 neue Spalten (business_income, pv_income, retirement_date), Max-Zeile mit Werten befuellen |
+| `public/demo-data/demo_properties.csv` | Spalte market_value hinzufuegen mit realistischen Verkehrswerten |
+| `public/demo-data/demo_acq_offers.csv` | NEU: 1 Demo-Objekt fuer Objekteingang |
+| `src/hooks/useDemoSeedEngine.ts` | Property-Accounting ID-Fix, seedAcqOffers()-Funktion, Parsing fuer neue CSV-Spalten |
+| `src/hooks/useDemoCleanup.ts` | acq_offers in Cleanup-Reihenfolge |
+| `src/engines/demoData/data.ts` | acq_offers ID in ALL_DEMO_IDS |
+| `public/demo-data/demo_manifest.json` | acq_offers: 1 hinzufuegen |
 
-Geschaetzter Aufwand: Mittlerer Refactor der Seed-Engine mit Fokus auf Fehler-Isolation und korrekter Reihenfolge.
+---
+
+## Technische Details
+
+### Property Accounting ID-Fix
+
+Aktuell:
+```text
+id: `e0000000-0000-4000-a000-afa${propId.slice(-3)}001`
+// ergibt: e0000000-0000-4000-a000-afa001001 (nicht-hex "afa" ist ungueltig)
+```
+
+Neu:
+```text
+id: `e0000000-0000-4000-a000-0000afa00001` (BER-01)
+id: `e0000000-0000-4000-a000-0000afa00002` (MUC-01)
+id: `e0000000-0000-4000-a000-0000afa00003` (HH-01)
+```
+
+### CSV-Erweiterung household_persons (Zeile Max)
+
+```text
+Header: ...;gross_income_monthly;net_income_monthly;tax_class;child_allowances;business_income_monthly;pv_income_monthly;planned_retirement_date
+Max:    ...;8500;5200;III;2.0;8500;212;2049-03-15
+Lisa:   ...;4200;2800;V;1.0;;;2052-07-22
+```
+
+### Neues acq_offers Demo-Objekt
+
+```text
+id: e0000000-0000-4000-e000-000000000010
+mandate_id: e0000000-0000-4000-e000-000000000001
+title: MFH Berlin-Neukoelln, 8 WE
+address: Sonnenallee 142
+postal_code: 12059
+city: Berlin
+price_asking: 2400000
+units_count: 8
+area_sqm: 640
+year_built: 1912
+yield_indicated: 4.8
+provider_name: Engel & Voelkers Berlin
+status: new
+received_at: 2026-02-18
+source_type: email
+```
+
