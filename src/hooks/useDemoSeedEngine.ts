@@ -879,6 +879,36 @@ async function seedVorsorgeContracts(tenantId: string, userId: string): Promise<
   return allIds;
 }
 
+// ─── Pension Records (DRV data) ────────────────────────────
+
+async function seedPensionRecords(tenantId: string, userId: string): Promise<string[]> {
+  const rows = await fetchCSV('/demo-data/demo_pension_records.csv');
+  if (!rows.length) return [];
+
+  const data = rows.map(r => {
+    const row = stripNulls({ ...r, tenant_id: tenantId });
+    // Replace hauptperson placeholder with actual userId
+    if (row.person_id === HAUPTPERSON_PLACEHOLDER_ID) {
+      row.person_id = userId;
+    }
+    return row;
+  });
+
+  const allIds: string[] = [];
+  for (const record of data) {
+    const { error } = await (supabase as any)
+      .from('pension_records')
+      .upsert(record, { onConflict: 'id' });
+    if (error) {
+      console.error(`[DemoSeed] pension_records ${record.id}:`, error.message);
+    } else {
+      allIds.push(record.id as string);
+    }
+  }
+  console.log(`[DemoSeed] ✓ pension_records: ${allIds.length}`);
+  return allIds;
+}
+
 // ─── Main Seed Orchestrator ────────────────────────────────
 
 export interface DemoSeedResult {
@@ -998,6 +1028,7 @@ export async function seedDemoData(
   await seed('insurance_contracts', () => seedInsuranceContracts(tenantId, userId));
   await seed('kv_contracts', () => seedKvContracts(tenantId));
   await seed('vorsorge_contracts', () => seedVorsorgeContracts(tenantId, userId));
+  await seed('pension_records', () => seedPensionRecords(tenantId, userId));
   await seed('user_subscriptions', () => seedFromCSV('/demo-data/demo_user_subscriptions.csv', 'user_subscriptions', tenantId, { user_id: userId }));
   await seed('private_loans', () => seedFromCSV('/demo-data/demo_private_loans.csv', 'private_loans', tenantId, { user_id: userId }));
 
@@ -1027,6 +1058,7 @@ export async function seedDemoData(
     msv_bank_accounts: 1, bank_transactions: 100,
     household_persons: 4, cars_vehicles: 2, pv_plants: 1,
     insurance_contracts: 7, kv_contracts: 4, vorsorge_contracts: 6,
+    pension_records: 2,
     user_subscriptions: 8, private_loans: 2,
     finapi_depot_accounts: 2, finapi_depot_positions: 5,
     miety_homes: 1, miety_contracts: 4,

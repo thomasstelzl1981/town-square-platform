@@ -44,6 +44,7 @@ const CLEANUP_ORDER = [
   'storage_nodes',
   'pv_plants',
   'cars_vehicles',
+  'pension_records',
   'household_persons',
   'acq_offers',
   'acq_mandates',
