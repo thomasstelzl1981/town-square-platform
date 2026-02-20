@@ -99,7 +99,7 @@ export function RechtlichesTab() {
 
   // Check existing consents for current user
   const { data: existingConsents, isLoading: consentsLoading } = useQuery({
-    queryKey: ['legal-consent-status', user?.id, activeTenantId],
+    queryKey: ['legal-consent-detail', user?.id, activeTenantId],
     queryFn: async () => {
       if (!user?.id || !activeTenantId) return [];
       const { data, error } = await supabase
