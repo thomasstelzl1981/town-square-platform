@@ -18,6 +18,8 @@ import { useProviderStaff, useAllStaffVacations, type PetStaff, type PetStaffVac
 import { usePets } from '@/hooks/usePets';
 import { cn } from '@/lib/utils';
 import { PageShell } from '@/components/shared/PageShell';
+import { useDemoToggles } from '@/hooks/useDemoToggles';
+import { isDemoId } from '@/engines/demoData';
 import { format, addDays, isToday, eachDayOfInterval, isWeekend, parseISO, isWithinInterval } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { Link } from 'react-router-dom';
@@ -87,10 +89,13 @@ const EMPTY_BOOKING: BookingFormData = { pet_id: '', service_id: '', staff_id: '
 export default function PMServices() {
   const { data: provider } = useMyProvider();
   const { data: staff = [] } = useProviderStaff(provider?.id);
-  const { data: bookings = [] } = useBookings(provider ? { providerId: provider.id } : undefined);
+  const { data: rawBookings = [] } = useBookings(provider ? { providerId: provider.id } : undefined);
   const { data: services = [] } = useProviderServices(provider?.id);
   const { data: allPets = [] } = usePets();
   const createBooking = useCreateBooking();
+  const { isEnabled } = useDemoToggles();
+  const demoEnabled = isEnabled('GP-PET');
+  const bookings = demoEnabled ? rawBookings : rawBookings.filter(b => !isDemoId(b.id));
 
   const [currentDate, setCurrentDate] = useState(new Date());
   const [showBookingDialog, setShowBookingDialog] = useState(false);

@@ -17,6 +17,8 @@ import { de } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
+import { useDemoToggles } from '@/hooks/useDemoToggles';
+import { isDemoId } from '@/engines/demoData';
 
 // ─── Status colors ────────────────────────────────────────
 const STATUS_BG: Record<string, string> = {
@@ -191,7 +193,10 @@ function MonthView({ bookings, monthStart, maxCapacity }: { bookings: PetBooking
 // ─── MAIN ─────────────────────────────────────────────────
 export default function PMKalender() {
   const { data: provider } = useMyProvider();
-  const { data: bookings = [], isLoading } = useBookings(provider ? { providerId: provider.id } : undefined);
+  const { data: rawBookings = [], isLoading } = useBookings(provider ? { providerId: provider.id } : undefined);
+  const { isEnabled } = useDemoToggles();
+  const demoEnabled = isEnabled('GP-PET');
+  const bookings = demoEnabled ? rawBookings : rawBookings.filter(b => !isDemoId(b.id));
   const [view, setView] = useState<'week' | 'month'>('week');
   const [currentDate, setCurrentDate] = useState(new Date());
 
