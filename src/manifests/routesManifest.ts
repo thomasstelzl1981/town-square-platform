@@ -449,7 +449,7 @@ export const zone2Portal: ZoneDefinition = {
       base: "projekte",
       icon: "FolderKanban",
       display_order: 13,
-      visibility: { default: true, org_types: ["client", "partner"] },
+      visibility: { default: false, org_types: ["partner"], requires_activation: true },
       tiles: [
         { path: "dashboard", component: "ProjekteDashboard", title: "Dashboard", default: true },
         { path: "projekte", component: "PortfolioTab", title: "Projekte" },
