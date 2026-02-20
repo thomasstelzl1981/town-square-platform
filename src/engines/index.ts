@@ -38,6 +38,9 @@ export * from './finanzuebersicht/spec';
 export * from './vorsorgeluecke/engine';
 export * from './vorsorgeluecke/spec';
 
+// Engine 10: V+V Steuer (ENG-VVSTEUER)
+export * from './vvSteuer';
+
 // Engine 17: Konto-Matching (ENG-KONTOMATCH)
 export * from './kontoMatch/engine';
 export * from './kontoMatch/spec';
