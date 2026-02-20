@@ -563,8 +563,8 @@ async function seedPropertyAccounting(tenantId: string, insertedPropertyIds: str
  * - trg_property_create_default_unit → auto-creates a MAIN unit
  * - property_folder_structure → creates DMS folder tree in storage_nodes
  *
- * Before inserting, we delete any existing demo properties (CASCADE cleans children).
- * CSV fields public_id and code are stripped since the triggers generate them.
+ * Each property is cleaned up and inserted individually for error isolation.
+ * If one property fails, the others still get seeded.
  */
 async function seedProperties(
   tenantId: string,
@@ -573,28 +573,45 @@ async function seedProperties(
   const rows = await fetchCSV('/demo-data/demo_properties.csv');
   if (!rows.length) return [];
 
-  const demoIds = rows.map(r => r.id as string).filter(Boolean);
-
-  // 1. Clean up orphaned storage_nodes that reference demo properties
-  //    (these can survive if a previous property delete didn't cascade properly)
-  if (demoIds.length > 0) {
-    await (supabase as any).from('storage_nodes').delete().in('property_id', demoIds);
-    // Also clean leases → units cascade path
-    await (supabase as any).from('leases').delete().in('id', [
-      'd0000000-0000-4000-a000-000000000201',
-      'd0000000-0000-4000-a000-000000000202',
-      'd0000000-0000-4000-a000-000000000203',
-    ]);
-    await (supabase as any).from('property_accounting').delete().in('property_id', demoIds);
-    await (supabase as any).from('properties').delete().in('id', demoIds);
-  }
-
-  // 2. Small delay to let CASCADE settle
-  await new Promise(r => setTimeout(r, 500));
-
-  // 3. INSERT each property individually so triggers fire per row
   const allIds: string[] = [];
+
   for (const row of rows) {
+    const propId = row.id as string;
+    console.log(`[DemoSeed] Property ${propId}: starting cleanup...`);
+
+    // Step 1: Per-property thorough cleanup (children first, parent last)
+    try {
+      // 1a. Delete storage_nodes (DMS folders) — these block property deletion via FK
+      await (supabase as any).from('storage_nodes').delete().eq('property_id', propId);
+
+      // 1b. Delete property_accounting (AfA data)
+      await (supabase as any).from('property_accounting').delete().eq('property_id', propId);
+
+      // 1c. Delete loans
+      await (supabase as any).from('loans').delete().eq('property_id', propId);
+
+      // 1d. Find existing units → delete their leases first, then units
+      const { data: existingUnits } = await (supabase as any)
+        .from('units')
+        .select('id')
+        .eq('property_id', propId);
+
+      if (existingUnits?.length) {
+        const unitIds = existingUnits.map((u: { id: string }) => u.id);
+        await (supabase as any).from('leases').delete().in('unit_id', unitIds);
+        await (supabase as any).from('units').delete().in('id', unitIds);
+      }
+
+      // 1e. Delete the property itself
+      await (supabase as any).from('properties').delete().eq('id', propId);
+    } catch (cleanupErr) {
+      console.warn(`[DemoSeed] Cleanup warning for property ${propId}:`, cleanupErr);
+    }
+
+    // Step 2: Small delay for CASCADE/cleanup to settle
+    await new Promise(r => setTimeout(r, 300));
+
+    // Step 3: INSERT property (triggers fire for public_id, code, MAIN unit, DMS folders)
     const data = stripNulls({ ...row, tenant_id: tenantId });
     // Remove trigger-generated fields to avoid conflicts
     delete data.public_id;
@@ -608,18 +625,19 @@ async function seedProperties(
       .insert(data);
 
     if (error) {
-      console.error(`[DemoSeed] properties INSERT ${row.id}:`, error.message);
+      console.error(`[DemoSeed] ✗ property INSERT ${propId}:`, error.message, error.details);
     } else {
-      allIds.push(row.id as string);
+      allIds.push(propId);
+      console.log(`[DemoSeed] ✓ property ${propId} inserted successfully`);
     }
   }
 
-  // 4. Seed property_accounting (AfA data) for inserted properties
+  // Step 4: Seed property_accounting (AfA data) for successfully inserted properties
   if (allIds.length > 0) {
     await seedPropertyAccounting(tenantId, allIds);
   }
 
-  console.log(`[DemoSeed] ✓ properties (INSERT): ${allIds.length}`);
+  console.log(`[DemoSeed] ✓ properties total: ${allIds.length}/${rows.length}`);
   return allIds;
 }
 
@@ -911,8 +929,34 @@ export async function seedDemoData(
   await seed('pets', () => seedPets(tenantId, userId));
   await seed('pet_bookings', () => seedFromCSV('/demo-data/demo_pet_bookings.csv', 'pet_bookings', tenantId));
 
-  console.log('[DemoSeed] ✓ Seeding complete:', seeded);
-  if (errors.length) console.warn('[DemoSeed] Errors:', errors);
+  // ─── Diagnostics: Soll vs. Ist ───────────────────────────
+  const EXPECTED: Record<string, number> = {
+    profile: 1, contacts: 5, landlord_contexts: 1,
+    properties: 3, units: 3, leases: 3, loans: 3, property_accounting: 3,
+    msv_bank_accounts: 1, bank_transactions: 100,
+    household_persons: 4, cars_vehicles: 2, pv_plants: 1,
+    insurance_contracts: 7, kv_contracts: 4, vorsorge_contracts: 6,
+    user_subscriptions: 8, private_loans: 2,
+    finapi_depot_accounts: 2, finapi_depot_positions: 5,
+    miety_homes: 1, miety_contracts: 4,
+    acq_mandates: 1,
+    pet_customers: 3, pets: 5, pet_bookings: 5,
+  };
+
+  console.log('\n[DemoSeed] ══════════════════════════════════════════');
+  console.log('[DemoSeed] DIAGNOSE: Soll vs. Ist');
+  console.log('[DemoSeed] ──────────────────────────────────────────');
+  let allOk = true;
+  for (const [entity, expected] of Object.entries(EXPECTED)) {
+    const actual = seeded[entity] ?? 0;
+    const status = actual >= expected ? '✅' : '❌';
+    if (actual < expected) allOk = false;
+    console.log(`[DemoSeed] ${status} ${entity}: ${actual}/${expected}`);
+  }
+  console.log('[DemoSeed] ──────────────────────────────────────────');
+  console.log(`[DemoSeed] Gesamt: ${allOk ? '✅ VOLLSTÄNDIG' : '❌ UNVOLLSTÄNDIG'}`);
+  if (errors.length) console.warn('[DemoSeed] Fehler:', errors);
+  console.log('[DemoSeed] ══════════════════════════════════════════\n');
 
   return { success: errors.length === 0, seeded, errors };
 }
