@@ -35,8 +35,9 @@
 | 19 | pet_customers | demo_pet_customers.csv | seedFromCSV | ✓ | 3 | ✅ |
 | 20 | pets | — (ARRAY) | seedPets | ✓ | 5 | 🔧 |
 | 21 | pet_bookings | demo_pet_bookings.csv | seedFromCSV | ✓ | 5 | ✅ |
+| 22 | profiles | demo_profile.csv | seedProfile (UPDATE) | ✓ (reset) | 1 | ✅ |
 
-**Gesamt: 21 Tabellen, 163 Entities**
+**Gesamt: 22 Tabellen, 164 Entities**
 
 ---
 

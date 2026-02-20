@@ -65,6 +65,7 @@ const NUMERIC_KEYS = new Set([
 const BOOLEAN_KEYS = new Set([
   'is_demo', 'weg_flag', 'is_default', 'is_public_listing',
   'is_primary', 'has_battery', 'mastr_account_present',
+  'is_business',
 ]);
 
 function coerceValue(value: string, key: string): unknown {
@@ -374,6 +375,39 @@ async function seedPets(tenantId: string, userId: string): Promise<string[]> {
   return allPets.map(p => p.id);
 }
 
+// ─── Profile Seed (UPDATE, not INSERT) ─────────────────────
+
+const PROFILE_SEED_FIELDS = [
+  'first_name', 'last_name', 'display_name', 'street', 'house_number',
+  'postal_code', 'city', 'country', 'phone_mobile', 'phone_landline',
+  'phone_whatsapp', 'tax_number', 'tax_id', 'is_business', 'person_mode',
+] as const;
+
+async function seedProfile(userId: string): Promise<string[]> {
+  const rows = await fetchCSV('/demo-data/demo_profile.csv');
+  if (!rows.length) return [];
+
+  const row = rows[0];
+  const updateData: Record<string, unknown> = {};
+  for (const key of PROFILE_SEED_FIELDS) {
+    if (row[key] !== undefined && row[key] !== null) {
+      updateData[key] = coerceValue(String(row[key]), key);
+    }
+  }
+
+  const { error } = await supabase
+    .from('profiles')
+    .update(updateData)
+    .eq('id', userId);
+
+  if (error) {
+    console.error('[DemoSeed] profiles:', error.message);
+    return [];
+  }
+  console.log('[DemoSeed] ✓ profiles: 1 (update)');
+  return [userId];
+}
+
 // ─── Main Seed Orchestrator ────────────────────────────────
 
 export interface DemoSeedResult {
@@ -407,6 +441,9 @@ export async function seedDemoData(
       console.error(`[DemoSeed] ✗ ${msg}`);
     }
   }
+
+  // Phase 0: Profile (UPDATE existing row)
+  await seed('profile', () => seedProfile(userId));
 
   // Phase 1: Core entities (FK targets)
   await seed('contacts', () => seedFromCSV('/demo-data/demo_contacts.csv', 'contacts', tenantId));

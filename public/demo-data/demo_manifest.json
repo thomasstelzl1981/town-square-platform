@@ -27,7 +27,8 @@
     "acq_mandates": { "file": null, "expectedCount": 1, "dbTable": "acq_mandates", "seedMethod": "code" },
     "pet_customers": { "file": "demo_pet_customers.csv", "expectedCount": 3, "dbTable": "pet_customers" },
     "pets": { "file": null, "expectedCount": 5, "dbTable": "pets", "seedMethod": "code" },
-    "pet_bookings": { "file": "demo_pet_bookings.csv", "expectedCount": 5, "dbTable": "pet_bookings" }
+    "pet_bookings": { "file": "demo_pet_bookings.csv", "expectedCount": 5, "dbTable": "pet_bookings" },
+    "profile": { "file": "demo_profile.csv", "expectedCount": 1, "dbTable": "profiles", "seedMethod": "update" }
   },
   "seedBatchId": "demo-ssot",
   "idPrefix": "d0000000-0000-4000",

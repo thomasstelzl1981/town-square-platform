@@ -157,6 +157,31 @@ export async function cleanupDemoData(tenantId: string): Promise<DemoCleanupResu
       }
     }
 
+    // Reset profile fields (UPDATE to NULL, don't delete the row)
+    const profileFields = grouped['profile'];
+    if (profileFields && profileFields.length > 0) {
+      const resetData: Record<string, null> = {};
+      for (const key of [
+        'first_name', 'last_name', 'display_name', 'street', 'house_number',
+        'postal_code', 'city', 'country', 'phone_mobile', 'phone_landline',
+        'phone_whatsapp', 'tax_number', 'tax_id',
+      ]) {
+        resetData[key] = null;
+      }
+      // Also reset booleans/enums to defaults
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ ...resetData, is_business: false, person_mode: 'private' })
+        .eq('id', profileFields[0]);
+
+      if (profileError) {
+        errors.push(`Profile reset: ${profileError.message}`);
+      } else {
+        deleted['profile'] = 1;
+        console.log('[DemoCleanup] ✓ profile reset to NULL');
+      }
+    }
+
     // Clear the registry entries
     const { error: clearError } = await (supabase as any)
       .from('test_data_registry')
