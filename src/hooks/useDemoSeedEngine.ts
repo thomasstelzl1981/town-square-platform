@@ -408,6 +408,146 @@ async function seedProfile(userId: string): Promise<string[]> {
   return [userId];
 }
 
+// ─── Properties (INSERT-based to fire DB triggers) ─────────
+
+/**
+ * Properties MUST use INSERT (not upsert) so that DB triggers fire:
+ * - trg_set_property_public_id → generates public_id
+ * - trg_generate_property_code → generates code  
+ * - trg_property_create_default_unit → auto-creates a MAIN unit
+ * - property_folder_structure → creates DMS folder tree in storage_nodes
+ *
+ * Before inserting, we delete any existing demo properties (CASCADE cleans children).
+ * CSV fields public_id and code are stripped since the triggers generate them.
+ */
+async function seedProperties(
+  tenantId: string,
+  landlordContextId?: string
+): Promise<string[]> {
+  const rows = await fetchCSV('/demo-data/demo_properties.csv');
+  if (!rows.length) return [];
+
+  // 1. Delete existing demo properties first (CASCADE handles units, storage_nodes, etc.)
+  const demoIds = rows.map(r => r.id as string).filter(Boolean);
+  if (demoIds.length > 0) {
+    await (supabase as any).from('properties').delete().in('id', demoIds);
+  }
+
+  // 2. INSERT each property individually so triggers fire per row
+  const allIds: string[] = [];
+  for (const row of rows) {
+    const data = stripNulls({ ...row, tenant_id: tenantId });
+    // Remove trigger-generated fields to avoid conflicts
+    delete data.public_id;
+    delete data.code;
+    if (landlordContextId) data.landlord_context_id = landlordContextId;
+
+    const { error } = await (supabase as any)
+      .from('properties')
+      .insert(data);
+
+    if (error) {
+      console.error(`[DemoSeed] properties INSERT ${row.id}:`, error.message);
+    } else {
+      allIds.push(row.id as string);
+    }
+  }
+
+  console.log(`[DemoSeed] ✓ properties (INSERT): ${allIds.length}`);
+  return allIds;
+}
+
+// ─── Units (UPDATE trigger-created MAIN units) ─────────────
+
+/**
+ * The property INSERT trigger auto-creates a "MAIN" unit per property.
+ * We UPDATE these auto-created units with the CSV data (rent, area, etc.)
+ * instead of inserting new units (which would create duplicates).
+ */
+async function seedUnits(tenantId: string): Promise<string[]> {
+  const rows = await fetchCSV('/demo-data/demo_units.csv');
+  if (!rows.length) return [];
+
+  const allIds: string[] = [];
+  for (const row of rows) {
+    const propertyId = row.property_id as string;
+    const updateData = stripNulls({ ...row, tenant_id: tenantId });
+    // Remove fields that identify the row — we match by property_id
+    delete updateData.id;
+    delete updateData.property_id;
+    delete updateData.tenant_id;
+    delete updateData.public_id;
+
+    // Find the auto-created unit for this property
+    const { data: existingUnit } = await (supabase as any)
+      .from('units')
+      .select('id')
+      .eq('property_id', propertyId)
+      .eq('tenant_id', tenantId)
+      .limit(1)
+      .maybeSingle();
+
+    if (existingUnit) {
+      // UPDATE the trigger-created unit with CSV data
+      const { error } = await (supabase as any)
+        .from('units')
+        .update(updateData)
+        .eq('id', existingUnit.id);
+
+      if (error) {
+        console.error(`[DemoSeed] units UPDATE ${existingUnit.id}:`, error.message);
+      } else {
+        allIds.push(existingUnit.id);
+      }
+    } else {
+      console.warn(`[DemoSeed] No auto-created unit found for property ${propertyId}`);
+    }
+  }
+
+  console.log(`[DemoSeed] ✓ units (UPDATE): ${allIds.length}`);
+  return allIds;
+}
+
+// ─── Leases (remap unit_id from CSV to actual trigger-created IDs) ──
+
+/**
+ * Leases reference unit_id, but the actual unit IDs are trigger-generated.
+ * We build a mapping from CSV unit IDs → actual unit IDs via property_id.
+ */
+async function seedLeases(
+  tenantId: string,
+  unitIdMap: Map<string, string>
+): Promise<string[]> {
+  const rows = await fetchCSV('/demo-data/demo_leases.csv');
+  if (!rows.length) return [];
+
+  const allIds: string[] = [];
+  for (const row of rows) {
+    const csvUnitId = row.unit_id as string;
+    const actualUnitId = unitIdMap.get(csvUnitId);
+    
+    if (!actualUnitId) {
+      console.warn(`[DemoSeed] leases: no mapped unit for CSV id ${csvUnitId}`);
+      continue;
+    }
+
+    const data = stripNulls({ ...row, tenant_id: tenantId, unit_id: actualUnitId });
+
+    const { error } = await (supabase as any)
+      .from('leases')
+      .upsert(data, { onConflict: 'id' });
+
+    if (error) {
+      console.error(`[DemoSeed] leases ${row.id}:`, error.message);
+    } else {
+      allIds.push(row.id as string);
+    }
+  }
+
+  console.log(`[DemoSeed] ✓ leases: ${allIds.length}`);
+  return allIds;
+}
+
 // ─── Household Persons (dynamic hauptperson ID) ───────────
 
 async function seedHouseholdPersons(tenantId: string, userId: string): Promise<string[]> {
@@ -514,12 +654,51 @@ export async function seedDemoData(
 
   // Phase 1: Core entities (FK targets)
   await seed('contacts', () => seedFromCSV('/demo-data/demo_contacts.csv', 'contacts', tenantId));
-  await seed('properties', () => seedFromCSV('/demo-data/demo_properties.csv', 'properties', tenantId,
-    landlordContextId ? { landlord_context_id: landlordContextId } : undefined));
+  await seed('properties', () => seedProperties(tenantId, landlordContextId));
 
   // Phase 2: Property children
-  await seed('units', () => seedFromCSV('/demo-data/demo_units.csv', 'units', tenantId));
-  await seed('leases', () => seedFromCSV('/demo-data/demo_leases.csv', 'leases', tenantId));
+  // Units: UPDATE trigger-created MAIN units, collect CSV→actual ID mapping for leases
+  const unitIdMap = new Map<string, string>();
+  await seed('units', async () => {
+    const csvRows = await fetchCSV('/demo-data/demo_units.csv');
+    if (!csvRows.length) return [];
+    const allIds: string[] = [];
+    for (const row of csvRows) {
+      const propertyId = row.property_id as string;
+      const csvUnitId = row.id as string;
+      const updateData = stripNulls({ ...row, tenant_id: tenantId });
+      delete updateData.id;
+      delete updateData.property_id;
+      delete updateData.tenant_id;
+      delete updateData.public_id;
+
+      const { data: existingUnit } = await (supabase as any)
+        .from('units')
+        .select('id')
+        .eq('property_id', propertyId)
+        .eq('tenant_id', tenantId)
+        .limit(1)
+        .maybeSingle();
+
+      if (existingUnit) {
+        const { error } = await (supabase as any)
+          .from('units')
+          .update(updateData)
+          .eq('id', existingUnit.id);
+        if (error) {
+          console.error(`[DemoSeed] units UPDATE ${existingUnit.id}:`, error.message);
+        } else {
+          unitIdMap.set(csvUnitId, existingUnit.id);
+          allIds.push(existingUnit.id);
+        }
+      } else {
+        console.warn(`[DemoSeed] No auto-created unit found for property ${propertyId}`);
+      }
+    }
+    console.log(`[DemoSeed] ✓ units (UPDATE): ${allIds.length}, mapping: ${unitIdMap.size}`);
+    return allIds;
+  });
+  await seed('leases', () => seedLeases(tenantId, unitIdMap));
   await seed('loans', () => seedFromCSV('/demo-data/demo_loans.csv', 'loans', tenantId));
 
   // Phase 3: Bank
