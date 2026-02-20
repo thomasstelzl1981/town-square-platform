@@ -73,7 +73,7 @@ const NUMERIC_KEYS = new Set([
 const BOOLEAN_KEYS = new Set([
   'is_demo', 'weg_flag', 'is_default', 'is_public_listing',
   'is_primary', 'has_battery', 'mastr_account_present',
-  'is_business',
+  'is_business', 'rental_managed',
 ]);
 
 function coerceValue(value: string, key: string): unknown {
@@ -681,6 +681,22 @@ async function seedProperties(
     if (data.usage_type === 'residential') data.usage_type = 'Vermietung';
     if (landlordContextId) data.landlord_context_id = landlordContextId;
 
+    // Fallback: market_value from DEMO_PROPERTY_ACCOUNTING if CSV parsing failed
+    const MARKET_VALUE_FALLBACK: Record<string, number> = {
+      'd0000000-0000-4000-a000-000000000001': 340000,
+      'd0000000-0000-4000-a000-000000000002': 520000,
+      'd0000000-0000-4000-a000-000000000003': 210000,
+    };
+    if (!data.market_value && MARKET_VALUE_FALLBACK[propId]) {
+      data.market_value = MARKET_VALUE_FALLBACK[propId];
+      console.log(`[DemoSeed] market_value fallback for ${propId}: ${data.market_value}`);
+    }
+
+    // Ensure rental_managed is set for demo properties
+    if (data.rental_managed === undefined || data.rental_managed === null) {
+      data.rental_managed = true;
+    }
+
     const { error } = await (supabase as any)
       .from('properties')
       .insert(data);
@@ -689,7 +705,7 @@ async function seedProperties(
       console.error(`[DemoSeed] ✗ property INSERT ${propId}:`, error.message, error.details);
     } else {
       allIds.push(propId);
-      console.log(`[DemoSeed] ✓ property ${propId} inserted successfully`);
+      console.log(`[DemoSeed] ✓ property ${propId} inserted (market_value=${data.market_value}, rental_managed=${data.rental_managed})`);
     }
   }
 
