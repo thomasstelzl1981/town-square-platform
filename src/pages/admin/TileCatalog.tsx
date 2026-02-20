@@ -397,10 +397,7 @@ export default function TileCatalogPage() {
         </TabsContent>
 
         <TabsContent value="freeze">
-          <ModuleFreezePanel
-            tiles={tiles as any}
-            onRefresh={fetchData}
-          />
+          <ModuleFreezePanel />
         </TabsContent>
       </Tabs>
     </div>
