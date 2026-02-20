@@ -1,130 +1,92 @@
 
+# Testdaten-Panel Reparatur
 
-# Demo-Daten Reparatur -- Runde 2
+## Problem
 
-## Befund-Analyse und Massnahmen
+Das Testdaten-Panel unter `/admin/tiles?tab=testdata` verwendet ein veraltetes Seeding-System (`useGoldenPathSeeds`) mit eigenen UUIDs (`00000000-*`), das nicht mit dem aktuellen Demo-Daten-SSOT (`useDemoSeedEngine` + CSV-Dateien) synchron ist.
 
-### Befund 1: PV-Darlehen bleibt in Finanzanalyse
+**Konkret:**
+- Panel zeigt: 5 Kontakte, 1 Immobilie, 12 Dokumente (alte Golden Path Seeds)
+- SSOT definiert: 5 Kontakte, 3 Immobilien, 3 Einheiten, 3 Mietvertraege, 3 Darlehen, 100 Transaktionen, 4 Haushaltspersonen, 2 Fahrzeuge, 1 PV-Anlage, 7 Versicherungen, 6 Vorsorgevertraege, 8 Abonnements, 4 KV-Vertraege, 2 Privatkredite, 1 Miety-Home, 4 Miety-Vertraege, 1 Akquise-Mandat, 3 Pet-Kunden, 5 Haustiere, 5 Pet-Buchungen
+- Zwei verschiedene UUID-Bereiche (`00000000-*` vs `d0000000-*`) erzeugen Doppelungen
 
-**Ursache:** In `useFinanzberichtData.ts` werden `pvPlants` zwar gefiltert (Zeile 187), aber die `portfolioLoans` (Zeile 189) und vor allem die `mietyContracts` und `homes` / `mietyLoans` werden NICHT durch `isDemoId` gefiltert. Das PV-Darlehen kommt aus `pv_plants.loan_*` Feldern oder aus `miety_loans` — beides wird ungefiltert an die Engine weitergereicht.
+## Loesung
 
-**Fix:** In `useFinanzberichtData.ts` auch `homes`, `mietyLoans`, `tenancies`, `portfolioProperties` und `legalDocs` filtern:
-```typescript
-const filteredHomes = demoEnabled ? homes : homes.filter(r => !isDemoId(r.id));
-const filteredMietyLoans = demoEnabled ? mietyLoans : mietyLoans.filter(r => !isDemoId(r.id));
-const filteredProperties = demoEnabled ? portfolioProperties : portfolioProperties.filter(r => !isDemoId(r.id));
+Das TestDataManager-Panel wird auf das aktuelle SSOT-System umgestellt:
+
+### 1. Golden Path Sektion ersetzen
+
+Die aktuelle "Golden Path Demo-Daten"-Karte wird durch eine neue "Demo-Daten SSOT"-Karte ersetzt, die:
+
+- **Manifest liest**: Entity-Typen und Soll-Zaehler aus `public/demo-data/demo_manifest.json`
+- **Ist-Zaehler zeigt**: Aktuelle DB-Counts pro Entity-Typ (aus den richtigen Tabellen laut Manifest)
+- **Seed-Button**: Ruft `useDemoSeedEngine.seedAll()` auf (statt `seed_golden_path_data` RPC)
+- **Cleanup-Button**: Ruft `useDemoCleanup` auf (statt `cleanup_golden_path_data` RPC)
+- **Status-Grid**: Zeigt alle 21 Entity-Typen mit Soll/Ist-Vergleich und farblicher Markierung (gruen = komplett, gelb = teilweise, rot = leer)
+
+### 2. Zaehler-Logik anpassen
+
+Neuer Hook oder Inline-Logik, die Counts aus den korrekten Tabellen holt:
+
+```text
+Entity               DB-Tabelle              Soll
+-------------------------------------------------------
+contacts             contacts                5
+properties           properties              3
+units                units                   3
+leases               leases                  3
+loans                loans                   3
+bank_accounts        msv_bank_accounts       1
+bank_transactions    bank_transactions       100
+household_persons    household_persons       4
+vehicles             cars_vehicles           2
+pv_plants            pv_plants               1
+insurance_contracts  insurance_contracts     7
+kv_contracts         kv_contracts            4
+vorsorge_contracts   vorsorge_contracts      6
+user_subscriptions   user_subscriptions      8
+private_loans        private_loans           2
+miety_homes          miety_homes             1
+miety_contracts      miety_contracts         4
+acq_mandates         acq_mandates            1
+pet_customers        pet_customers           3
+pets                 pets                    5
+pet_bookings         pet_bookings            5
 ```
 
----
+### 3. KI-Excel-Import beibehalten
 
-### Befund 2: Pet-Manager Daten bleiben bei Toggle OFF
+Der zweite Teil des Panels (KI-gestuetzter Excel-Import) bleibt unveraendert -- er ist funktional und unabhaengig vom Demo-System.
 
-**Ursache:** `usePetCustomers.ts` Zeile 78 und 87 liefern **immer** Demo-Kunden als Fallback — ohne Demo-Toggle-Pruefung. Wenn kein Provider existiert ODER keine DB-Kunden vorhanden sind, werden hardcodierte `DEMO_PM_CUSTOMERS` zurueckgegeben.
+### 4. Aktive Test-Batches beibehalten
 
-**Fix:** In `usePetCustomers.ts` den `useDemoToggles` Hook importieren und die Demo-Fallback-Logik an `demoEnabled` koppeln:
-```typescript
-const { isEnabled } = useDemoToggles();
-const demoEnabled = isEnabled('GP-PET');
+Die Batch-Uebersicht (test_data_registry) bleibt ebenfalls, da sie fuer den Excel-Import relevant ist.
 
-// Zeile 78: if (!provider) return demoEnabled ? mapDemoCustomers() : [];
-// Zeile 87: return dbCustomers.length > 0 ? dbCustomers : (demoEnabled ? mapDemoCustomers() : []);
-```
+### 5. Aufraeum-Arbeiten
 
-Gleiches Muster fuer `usePetBookings.ts` und alle Pet-Hooks die Demo-Daten als Fallback nutzen.
+- Import von `useGoldenPathSeeds` aus dem TestDataManager entfernen
+- `fetchGoldenPathCounts`-Aufruf entfernen
+- Alte Zaehler-States (`initialCounts`, `isLoadingCounts`) durch neue SSOT-Counts ersetzen
 
 ---
 
-### Befund 3: Projekte-Manager Daten bleiben
+## Technische Details
 
-Pet-Manager und Projekte-Manager nutzen dasselbe Pattern. Die Cleanup-Engine loescht `acq_mandates` bereits (Zeile 43 in CLEANUP_ORDER). Das Problem ist die **invertierte Filter-Logik** in `AkquiseMandate.tsx` Zeile 551:
+### Betroffene Dateien
 
-```typescript
-// FALSCH (aktuell): Filtert Demo-Mandate WENN Demo aktiv ist
-mandates.filter(m => !(demoEnabled && isDemoId(m.id)))
+| Datei | Aenderung |
+|---|---|
+| `src/components/admin/TestDataManager.tsx` | Hauptumbau: Golden Path Sektion durch SSOT-Sektion ersetzen |
+| `src/hooks/useDemoSeedEngine.ts` | Ggf. `seedAll()`-Export pruefen/ergaenzen |
+| `src/hooks/useDemoCleanup.ts` | Ggf. Cleanup-Funktion als Export pruefen |
 
-// RICHTIG: Filtert Demo-Mandate WENN Demo NICHT aktiv ist
-mandates.filter(m => demoEnabled || !isDemoId(m.id))
-```
+### Nicht betroffene Dateien
 
-**Fix:** Filter-Logik in `AkquiseMandate.tsx` Zeile 551 korrigieren.
+- `src/hooks/useGoldenPathSeeds.ts` -- wird nicht geloescht (koennte noch anderswo referenziert sein), aber nicht mehr vom TestDataManager importiert
+- Excel-Import-Logik (Zeilen 220-490) -- bleibt unveraendert
+- Batch-Tabelle (Zeilen 880-990) -- bleibt unveraendert
 
----
+### Freeze-Check
 
-### Befund 4: Max Mustermann bleibt in Stammdaten
-
-**Ursache:** `useFinanzanalyseData.ts` filtert `persons` korrekt (Zeile 343-345). Aber die `household_persons`-Records werden trotzdem in der DB gehalten, weil die Cleanup entweder fehlschlaegt oder die DB-Daten noch nicht geloescht wurden. Zudem wird `useFinanzanalyseData` korrekt gefiltert -- das Problem liegt wahrscheinlich in einem **anderen Hook oder einer anderen Seite**, die `household_persons` direkt liest ohne `isDemoId`-Filter.
-
-**Fix:** Alle Stellen die `household_persons` lesen pruefen und sicherstellen, dass sie den Demo-Toggle respektieren. Falls die Daten aus der Cleanup nicht geloescht werden, greift der ID-Pattern-Fallback (bereits implementiert).
-
----
-
-### Befund 5: Falsche Toast-Nachricht beim Deaktivieren
-
-**Ursache:** In `DemoDatenTab.tsx` Zeile 69-70:
-```typescript
-{isSeedingOrCleaning 
-  ? (allEnabled ? 'Demo-Daten werden eingespielt…' : 'Demo-Daten werden entfernt…')
-```
-
-`allEnabled` ist zum Zeitpunkt des Cleanups noch `true` (der Toggle-State wird erst NACH dem Cleanup umgeschaltet in `useDemoToggles.ts` Zeile 122). Daher wird beim Deaktivieren faelschlicherweise "eingespielt" angezeigt.
-
-**Fix:** Statt `allEnabled` eine eigene State-Variable verwenden, die die **Zielrichtung** der Operation speichert. In `useDemoToggles.ts` eine `pendingAction: 'seeding' | 'cleaning' | null` exportieren:
-```typescript
-const [pendingAction, setPendingAction] = useState<'seeding' | 'cleaning' | null>(null);
-// In toggleAll: setPendingAction(on ? 'seeding' : 'cleaning');
-// In finally: setPendingAction(null);
-```
-
-In `DemoDatenTab.tsx`:
-```typescript
-{isSeedingOrCleaning 
-  ? (pendingAction === 'seeding' ? 'Demo-Daten werden eingespielt…' : 'Demo-Daten werden entfernt…')
-```
-
----
-
-### Befund 6: Stammdatenvertraege (unkritisch)
-
-Wie vom User vermutet: Wahrscheinlich echte Entwicklungsdaten, kein Demo-Daten-Problem. Wird zum Schluss beim finalen Clean-Slate-Test manuell bereinigt. **Keine Code-Aenderung noetig.**
-
----
-
-### Befund 7: Familie Mustermann Widget in Portfolio
-
-**Status:** Bereits im vorherigen Fix behoben (`{demoEnabled && (...)}` um das Widget in `PortfolioTab.tsx` Zeile 702). Falls es weiterhin sichtbar ist, wurde der Build noch nicht aktualisiert. **Keine weitere Aenderung noetig.**
-
----
-
-### Befund 8: Briefgenerator — CreateContext Widget + Familie Mustermann
-
-**Problem A:** Der "Neuen Kontext hinzufuegen" Button (`onAddContext`) im `SenderSelector` ist im Briefgenerator sichtbar. Das ist ein Feature-Element, kein Demo-Problem — der Button existiert, damit der Nutzer einen neuen Vermieter-Kontext anlegen kann. Falls er entfernt werden soll:
-
-**Fix A:** In `BriefTab.tsx` Zeile 473 die `onAddContext` Prop entfernen.
-
-**Problem B:** Familie Mustermann erscheint als Absender-Option, weil `landlord_contexts` noch in der DB steht. Die Cleanup-Engine loescht `landlord_contexts` bereits (Zeile 51 in CLEANUP_ORDER). Falls die Daten trotzdem bleiben, liegt es am gleichen Registry-Fallback-Problem. Zusaetzlich fehlt ein `isDemoId`-Filter auf der `contexts`-Query in `BriefTab.tsx` Zeile 131-143.
-
-**Fix B:** In `BriefTab.tsx` die `contexts` Query-Ergebnisse durch `isDemoId` filtern wenn Demo OFF:
-```typescript
-const filteredContexts = demoEnabled ? contexts : contexts.filter(c => !isDemoId(c.id));
-```
-
----
-
-### Befund 9: Demo-Sanierungsmandat bleibt
-
-**Ursache:** Invertierte Filter-Logik in `AkquiseMandate.tsx` (= Befund 3). Bereits oben als Fix beschrieben.
-
----
-
-## Zusammenfassung der Aenderungen
-
-| Nr | Datei | Aenderung |
-|----|-------|-----------|
-| 1 | `src/hooks/useFinanzberichtData.ts` | homes, mietyLoans, properties, tenancies durch isDemoId filtern |
-| 2 | `src/hooks/usePetCustomers.ts` | Demo-Fallback an demoEnabled koppeln |
-| 3 | `src/pages/portal/akquise-manager/AkquiseMandate.tsx` | Filter-Logik invertieren (Zeile 551) |
-| 4 | `src/hooks/useDemoToggles.ts` | `pendingAction` State exportieren |
-| 5 | `src/pages/portal/stammdaten/DemoDatenTab.tsx` | Toast-Text via `pendingAction` steuern |
-| 6 | `src/pages/portal/office/BriefTab.tsx` | landlord_contexts durch isDemoId filtern, onAddContext entfernen |
-| 7 | Weitere Pet-Hooks | Demo-Fallback-Logik pruefen und an Toggle koppeln |
-
+- `TestDataManager.tsx` liegt unter `src/components/admin/` -- kein Modul-Pfad, daher **nicht eingefroren**
+- Hooks unter `src/hooks/` -- ebenfalls **nicht eingefroren**
