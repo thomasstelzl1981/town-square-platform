@@ -698,28 +698,23 @@ export function PortfolioTab() {
       {/* Portfolio Context Widgets — WidgetGrid (IMMER sichtbar) */}
       <div className="space-y-4">
         <WidgetGrid variant="widget">
-          {/* Demo Widget — Position 0, klickbar zum Togglen */}
+          {/* Demo Widget — Position 0, nur sichtbar wenn Demo aktiv */}
+          {demoEnabled && (
           <WidgetCell>
             <button
               onClick={() => {
-                if (!demoEnabled) {
-                  toggle('GP-PORTFOLIO');
-                }
                 navigate(`/portal/immobilien/${DEMO_PROPERTY_IDS[0]}`);
               }}
               className={cn(
                 "w-full h-full flex flex-col justify-between p-5 rounded-xl border text-left transition-all",
                 DESIGN.DEMO_WIDGET.CARD,
                 DESIGN.DEMO_WIDGET.HOVER,
-                demoEnabled
-                  ? "ring-2 ring-emerald-400 border-emerald-400 shadow-sm"
-                  : "opacity-60"
+                "ring-2 ring-emerald-400 border-emerald-400 shadow-sm"
               )}
             >
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <Badge className={cn(DESIGN.DEMO_WIDGET.BADGE, "text-[10px]")}>Demo</Badge>
-                  <span className="text-[10px] text-muted-foreground">{demoEnabled ? 'Aktiv' : 'Inaktiv'}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Building2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
@@ -747,6 +742,7 @@ export function PortfolioTab() {
               </div>
             </button>
           </WidgetCell>
+          )}
             {/* Widget 1: Alle Immobilien */}
             <WidgetCell>
               <button

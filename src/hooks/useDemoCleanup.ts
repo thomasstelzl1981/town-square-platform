@@ -2,12 +2,14 @@
  * Demo Cleanup — Deletes all demo entities tracked in test_data_registry
  * 
  * Uses the registry as the single source of truth for which entities to remove.
+ * Falls back to ID-pattern-based deletion if registry is empty.
  * Deletion order respects FK constraints (children before parents).
  * 
  * @demo-data
  */
 
 import { supabase } from '@/integrations/supabase/client';
+import { ALL_DEMO_IDS } from '@/engines/demoData/data';
 
 /**
  * Entity types in deletion order (children first, parents last).
@@ -45,6 +47,8 @@ const CLEANUP_ORDER = [
   'units',
   'msv_bank_accounts',
   'properties',
+  // Landlord contexts (after properties, before contacts)
+  'landlord_contexts',
   // Contacts last (RESTRICT from leases, which are now deleted)
   'contacts',
 ] as const;
@@ -53,6 +57,22 @@ export interface DemoCleanupResult {
   success: boolean;
   deleted: Record<string, number>;
   errors: string[];
+}
+
+/**
+ * Group ALL_DEMO_IDS by entity type using known ID patterns.
+ * This is the fallback when test_data_registry is empty.
+ */
+function buildFallbackGroups(): Record<string, string[]> {
+  const grouped: Record<string, string[]> = {};
+  
+  // We delete ALL known demo IDs from ALL tables in CLEANUP_ORDER
+  // The delete will simply return 0 affected rows if the ID doesn't exist in that table
+  for (const entityType of CLEANUP_ORDER) {
+    grouped[entityType] = [...ALL_DEMO_IDS];
+  }
+  
+  return grouped;
 }
 
 export async function cleanupDemoData(tenantId: string): Promise<DemoCleanupResult> {
@@ -74,16 +94,20 @@ export async function cleanupDemoData(tenantId: string): Promise<DemoCleanupResu
       return { success: false, deleted, errors };
     }
 
-    if (!registry || registry.length === 0) {
-      console.log('[DemoCleanup] No demo entities found in registry');
-      return { success: true, deleted, errors };
-    }
+    // Determine groups: registry-based or fallback
+    let grouped: Record<string, string[]> = {};
+    let useFallback = false;
 
-    // Group by entity type
-    const grouped: Record<string, string[]> = {};
-    for (const entry of registry) {
-      if (!grouped[entry.entity_type]) grouped[entry.entity_type] = [];
-      grouped[entry.entity_type].push(entry.entity_id);
+    if (!registry || registry.length === 0) {
+      console.log('[DemoCleanup] Registry empty — using ID-pattern fallback');
+      grouped = buildFallbackGroups();
+      useFallback = true;
+    } else {
+      // Group by entity type from registry
+      for (const entry of registry) {
+        if (!grouped[entry.entity_type]) grouped[entry.entity_type] = [];
+        grouped[entry.entity_type].push(entry.entity_id);
+      }
     }
 
     // Delete in FK-safe order
@@ -94,34 +118,42 @@ export async function cleanupDemoData(tenantId: string): Promise<DemoCleanupResu
       let deletedCount = 0;
       for (let i = 0; i < ids.length; i += 50) {
         const chunk = ids.slice(i, i + 50);
+        const { error: delError, count } = await (supabase as any)
+          .from(entityType)
+          .delete()
+          .in('id', chunk)
+          .eq('tenant_id', tenantId);
+
+        if (delError) {
+          // Don't report errors for tables that may not have all IDs (fallback mode)
+          if (!useFallback) {
+            errors.push(`Delete ${entityType} chunk ${i}: ${delError.message}`);
+          }
+        } else {
+          deletedCount += count ?? chunk.length;
+        }
+      }
+      if (deletedCount > 0) {
+        deleted[entityType] = deletedCount;
+      }
+    }
+
+    // Handle any entity types not in the standard order (registry mode only)
+    if (!useFallback) {
+      for (const [entityType, ids] of Object.entries(grouped)) {
+        if ((CLEANUP_ORDER as readonly string[]).includes(entityType)) continue;
+        
         const { error: delError } = await (supabase as any)
           .from(entityType)
           .delete()
-          .in('id', chunk);
+          .in('id', ids);
 
         if (delError) {
-          errors.push(`Delete ${entityType} chunk ${i}: ${delError.message}`);
+          errors.push(`Delete ${entityType}: ${delError.message}`);
+          deleted[entityType] = 0;
         } else {
-          deletedCount += chunk.length;
+          deleted[entityType] = ids.length;
         }
-      }
-      deleted[entityType] = deletedCount;
-    }
-
-    // Handle any entity types not in the standard order
-    for (const [entityType, ids] of Object.entries(grouped)) {
-      if ((CLEANUP_ORDER as readonly string[]).includes(entityType)) continue;
-      
-      const { error: delError } = await (supabase as any)
-        .from(entityType)
-        .delete()
-        .in('id', ids);
-
-      if (delError) {
-        errors.push(`Delete ${entityType}: ${delError.message}`);
-        deleted[entityType] = 0;
-      } else {
-        deleted[entityType] = ids.length;
       }
     }
 
