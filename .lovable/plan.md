@@ -1,92 +1,90 @@
 
-# Testdaten-Panel Reparatur
+# Stammdaten-Profil in Demo-Seeding aufnehmen
 
 ## Problem
 
-Das Testdaten-Panel unter `/admin/tiles?tab=testdata` verwendet ein veraltetes Seeding-System (`useGoldenPathSeeds`) mit eigenen UUIDs (`00000000-*`), das nicht mit dem aktuellen Demo-Daten-SSOT (`useDemoSeedEngine` + CSV-Dateien) synchron ist.
+Beim Aktivieren der Demo-Daten wird das `profiles`-Profil des eingeloggten Users nicht befuellt. Felder wie `first_name`, `last_name`, `street`, `house_number`, `postal_code`, `city`, Telefonnummern etc. bleiben leer. Das fuehrt dazu, dass:
+- Visitenkarten in den Manager-Modulen leer sind
+- Das Stammdatenformular unter MOD-01 nicht befuellt ist
+- Nur `tax_number` einen Wert hat (manuell gesetzt)
 
-**Konkret:**
-- Panel zeigt: 5 Kontakte, 1 Immobilie, 12 Dokumente (alte Golden Path Seeds)
-- SSOT definiert: 5 Kontakte, 3 Immobilien, 3 Einheiten, 3 Mietvertraege, 3 Darlehen, 100 Transaktionen, 4 Haushaltspersonen, 2 Fahrzeuge, 1 PV-Anlage, 7 Versicherungen, 6 Vorsorgevertraege, 8 Abonnements, 4 KV-Vertraege, 2 Privatkredite, 1 Miety-Home, 4 Miety-Vertraege, 1 Akquise-Mandat, 3 Pet-Kunden, 5 Haustiere, 5 Pet-Buchungen
-- Zwei verschiedene UUID-Bereiche (`00000000-*` vs `d0000000-*`) erzeugen Doppelungen
+Gleichzeitig werden Adressdaten in `miety_homes` (Modul Zuhause) und in `household_persons` (Selbstauskunft MOD-07) korrekt geseedet — das Profil selbst aber nicht.
+
+## Besonderheit: profiles ist kein normaler Demo-Entity
+
+Die `profiles`-Tabelle unterscheidet sich grundlegend von allen anderen 21 Entity-Typen:
+- Die `id` ist die `auth.users.id` des eingeloggten Users (kein Demo-UUID)
+- Es wird kein neuer Datensatz eingefuegt, sondern der bestehende Datensatz **aktualisiert**
+- Beim Cleanup darf die Zeile **nicht geloescht** werden — stattdessen werden die Felder auf NULL zurueckgesetzt
+- Die E-Mail-Adresse wird **nicht** angetastet (kommt vom Auth-System)
 
 ## Loesung
 
-Das TestDataManager-Panel wird auf das aktuelle SSOT-System umgestellt:
+### 1. Neue CSV-Datei: `public/demo-data/demo_profile.csv`
 
-### 1. Golden Path Sektion ersetzen
-
-Die aktuelle "Golden Path Demo-Daten"-Karte wird durch eine neue "Demo-Daten SSOT"-Karte ersetzt, die:
-
-- **Manifest liest**: Entity-Typen und Soll-Zaehler aus `public/demo-data/demo_manifest.json`
-- **Ist-Zaehler zeigt**: Aktuelle DB-Counts pro Entity-Typ (aus den richtigen Tabellen laut Manifest)
-- **Seed-Button**: Ruft `useDemoSeedEngine.seedAll()` auf (statt `seed_golden_path_data` RPC)
-- **Cleanup-Button**: Ruft `useDemoCleanup` auf (statt `cleanup_golden_path_data` RPC)
-- **Status-Grid**: Zeigt alle 21 Entity-Typen mit Soll/Ist-Vergleich und farblicher Markierung (gruen = komplett, gelb = teilweise, rot = leer)
-
-### 2. Zaehler-Logik anpassen
-
-Neuer Hook oder Inline-Logik, die Counts aus den korrekten Tabellen holt:
+Semicolon-delimited, eine Datenzeile (ohne id, ohne email):
 
 ```text
-Entity               DB-Tabelle              Soll
--------------------------------------------------------
-contacts             contacts                5
-properties           properties              3
-units                units                   3
-leases               leases                  3
-loans                loans                   3
-bank_accounts        msv_bank_accounts       1
-bank_transactions    bank_transactions       100
-household_persons    household_persons       4
-vehicles             cars_vehicles           2
-pv_plants            pv_plants               1
-insurance_contracts  insurance_contracts     7
-kv_contracts         kv_contracts            4
-vorsorge_contracts   vorsorge_contracts      6
-user_subscriptions   user_subscriptions      8
-private_loans        private_loans           2
-miety_homes          miety_homes             1
-miety_contracts      miety_contracts         4
-acq_mandates         acq_mandates            1
-pet_customers        pet_customers           3
-pets                 pets                    5
-pet_bookings         pet_bookings            5
+first_name;last_name;display_name;street;house_number;postal_code;city;country;phone_mobile;phone_landline;phone_whatsapp;tax_number;tax_id;is_business;person_mode
+Max;Mustermann;Max Mustermann;Leopoldstrasse;42;80802;Muenchen;Deutschland;+49 170 1234567;+49 89 12345678;+49 170 1234567;143/123/45678;12 345 678 901;false;private
 ```
 
-### 3. KI-Excel-Import beibehalten
+Felder, die NICHT in die CSV kommen:
+- `id` (wird dynamisch vom eingeloggten User genommen)
+- `email` (kommt vom Auth-System)
+- `avatar_url` (optional, nicht im Demo-Scope)
+- `active_tenant_id` (bereits gesetzt)
+- `spouse_profile_id` (kein zweiter User vorhanden)
+- `email_signature`, `letterhead_*`, `reg_*`, `insurance_*` (optionale Business-Felder, spaeter ergaenzbar)
 
-Der zweite Teil des Panels (KI-gestuetzter Excel-Import) bleibt unveraendert -- er ist funktional und unabhaengig vom Demo-System.
+### 2. Neue Seed-Funktion in `useDemoSeedEngine.ts`
 
-### 4. Aktive Test-Batches beibehalten
+```text
+async function seedProfile(tenantId: string, userId: string): Promise<string[]>
+```
 
-Die Batch-Uebersicht (test_data_registry) bleibt ebenfalls, da sie fuer den Excel-Import relevant ist.
+- Liest `demo_profile.csv` via `fetchCSV()`
+- Nimmt die erste Zeile als Feldwerte
+- Fuehrt ein `supabase.from('profiles').update({...fields}).eq('id', userId)` aus
+- Gibt `[userId]` als registrierte ID zurueck
+- Entity-Type in der Registry: `profile` (Singular, da immer nur 1 Datensatz)
 
-### 5. Aufraeum-Arbeiten
+Einordnung im Seed-Ablauf: **Phase 0** (vor contacts), da das Profil die Basis fuer Visitenkarten und Anzeigenamen ist.
 
-- Import von `useGoldenPathSeeds` aus dem TestDataManager entfernen
-- `fetchGoldenPathCounts`-Aufruf entfernen
-- Alte Zaehler-States (`initialCounts`, `isLoadingCounts`) durch neue SSOT-Counts ersetzen
+### 3. Cleanup-Erweiterung in `useDemoCleanup.ts`
+
+Neuer spezieller Cleanup-Schritt fuer `profile`:
+- Statt `DELETE` ein `UPDATE ... SET first_name = NULL, last_name = NULL, display_name = NULL, street = NULL, ...`
+- Nur die Felder zuruecksetzen, die per CSV gesetzt wurden
+- `email`, `active_tenant_id`, `id` bleiben unangetastet
+- Position im Cleanup: ganz am Ende (nach contacts), da keine FK-Abhaengigkeit
+
+### 4. Manifest aktualisieren
+
+`public/demo-data/demo_manifest.json` erhaelt einen neuen Eintrag:
+
+```text
+"profile": { "file": "demo_profile.csv", "expectedCount": 1, "dbTable": "profiles", "seedMethod": "update" }
+```
+
+Das Feld `seedMethod: "update"` signalisiert, dass hier kein Insert/Upsert sondern ein Update erfolgt.
+
+### 5. Backlog aktualisieren
+
+`DEMO_SEED_BACKLOG.md`: Neue Zeile Nr. 22 fuer `profiles`.
 
 ---
 
-## Technische Details
-
-### Betroffene Dateien
+## Betroffene Dateien
 
 | Datei | Aenderung |
 |---|---|
-| `src/components/admin/TestDataManager.tsx` | Hauptumbau: Golden Path Sektion durch SSOT-Sektion ersetzen |
-| `src/hooks/useDemoSeedEngine.ts` | Ggf. `seedAll()`-Export pruefen/ergaenzen |
-| `src/hooks/useDemoCleanup.ts` | Ggf. Cleanup-Funktion als Export pruefen |
+| `public/demo-data/demo_profile.csv` | Neu: CSV mit Max Mustermann Stammdaten |
+| `public/demo-data/demo_manifest.json` | Neuer Entity-Eintrag `profile` |
+| `src/hooks/useDemoSeedEngine.ts` | Neue Funktion `seedProfile()` + Phase 0 Aufruf |
+| `src/hooks/useDemoCleanup.ts` | Spezieller Reset-Schritt fuer `profiles` (UPDATE statt DELETE) |
+| `DEMO_SEED_BACKLOG.md` | Neue Zeile Nr. 22 |
 
-### Nicht betroffene Dateien
+## Freeze-Check
 
-- `src/hooks/useGoldenPathSeeds.ts` -- wird nicht geloescht (koennte noch anderswo referenziert sein), aber nicht mehr vom TestDataManager importiert
-- Excel-Import-Logik (Zeilen 220-490) -- bleibt unveraendert
-- Batch-Tabelle (Zeilen 880-990) -- bleibt unveraendert
-
-### Freeze-Check
-
-- `TestDataManager.tsx` liegt unter `src/components/admin/` -- kein Modul-Pfad, daher **nicht eingefroren**
-- Hooks unter `src/hooks/` -- ebenfalls **nicht eingefroren**
+Alle betroffenen Dateien liegen ausserhalb der Modul-Pfade — kein Freeze betroffen.
