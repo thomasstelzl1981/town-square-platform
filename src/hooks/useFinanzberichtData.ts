@@ -8,7 +8,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePortfolioSummary } from '@/hooks/usePortfolioSummary';
 import { useFinanzanalyseData } from '@/hooks/useFinanzanalyseData';
-import { getDemoKVContracts } from '@/engines/demoData';
+import { useDemoToggles } from '@/hooks/useDemoToggles';
+import { getDemoKVContracts, isDemoId } from '@/engines/demoData';
 import { calcFinanzuebersicht } from '@/engines/finanzuebersicht/engine';
 import type { DemoKVContract } from '@/engines/demoData/spec';
 import type { FUResult } from '@/engines/finanzuebersicht/spec';
@@ -32,6 +33,8 @@ export interface FinanzberichtData extends FUResult {
 
 export function useFinanzberichtData(): FinanzberichtData {
   const { activeTenantId } = useAuth();
+  const { isEnabled } = useDemoToggles();
+  const demoEnabled = isEnabled('GP-KONTEN');
   const { summary: portfolioSummary, isLoading: portfolioLoading } = usePortfolioSummary();
   const { persons, isLoading: personsLoading } = useFinanzanalyseData();
 
@@ -175,7 +178,16 @@ export function useFinanzberichtData(): FinanzberichtData {
   // ─── Aggregation via Engine ───────────────────────────────
   return useMemo(() => {
     const isLoading = portfolioLoading || personsLoading || apLoading || homesLoading;
-    const kvContracts = getDemoKVContracts();
+    const kvContracts = demoEnabled ? getDemoKVContracts() : [];
+
+    // Filter out demo data from DB results when demo is OFF
+    const filteredInsurance = demoEnabled ? insuranceData : insuranceData.filter(r => !isDemoId(r.id));
+    const filteredVorsorge = demoEnabled ? vorsorgeData : vorsorgeData.filter(r => !isDemoId(r.id));
+    const filteredSubscriptions = demoEnabled ? subscriptions : (subscriptions as any[]).filter(r => !isDemoId(r.id));
+    const filteredPvPlants = demoEnabled ? pvPlants : (pvPlants as any[]).filter(r => !isDemoId(r.id));
+    const filteredPrivateLoans = demoEnabled ? privateLoansList : (privateLoansList as any[]).filter(r => !isDemoId(r.id));
+    const filteredPortfolioLoans = demoEnabled ? portfolioLoans : portfolioLoans.filter(r => !isDemoId(r.id));
+    const filteredMietyContracts = demoEnabled ? mietyContracts : (mietyContracts as any[]).filter(r => !isDemoId(r.id));
 
     const result = calcFinanzuebersicht({
       applicantProfiles,
@@ -190,13 +202,13 @@ export function useFinanzberichtData(): FinanzberichtData {
       homes: homes as any[],
       mietyLoans,
       tenancies,
-      insuranceData,
-      vorsorgeData,
-      subscriptions: subscriptions as any[],
-      mietyContracts: mietyContracts as any[],
-      pvPlants: pvPlants as any[],
-      privateLoans: privateLoansList as any[],
-      portfolioLoans: portfolioLoans as any[],
+      insuranceData: filteredInsurance,
+      vorsorgeData: filteredVorsorge,
+      subscriptions: filteredSubscriptions as any[],
+      mietyContracts: filteredMietyContracts as any[],
+      pvPlants: filteredPvPlants as any[],
+      privateLoans: filteredPrivateLoans as any[],
+      portfolioLoans: filteredPortfolioLoans as any[],
       portfolioProperties: portfolioProperties as any[],
       legalDocs: legalDocs as any[],
       kvContracts: kvContracts as any[],
@@ -207,5 +219,5 @@ export function useFinanzberichtData(): FinanzberichtData {
       kvContracts,
       isLoading,
     };
-  }, [portfolioSummary, portfolioLoading, personsLoading, apLoading, homesLoading, applicantProfiles, homes, mietyLoans, tenancies, insuranceData, vorsorgeData, subscriptions, legalDocs, portfolioLoans, pvPlants, mietyContracts, portfolioProperties, privateLoansList]);
+  }, [portfolioSummary, portfolioLoading, personsLoading, apLoading, homesLoading, applicantProfiles, homes, mietyLoans, tenancies, insuranceData, vorsorgeData, subscriptions, legalDocs, portfolioLoans, pvPlants, mietyContracts, portfolioProperties, privateLoansList, demoEnabled]);
 }
