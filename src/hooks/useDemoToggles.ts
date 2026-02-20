@@ -66,6 +66,7 @@ function saveToggles(toggles: DemoToggles) {
 export function useDemoToggles() {
   const [toggles, setToggles] = useState<DemoToggles>(loadToggles);
   const [isSeedingOrCleaning, setIsSeedingOrCleaning] = useState(false);
+  const [pendingAction, setPendingAction] = useState<'seeding' | 'cleaning' | null>(null);
   const seedLockRef = useRef(false);
 
   useEffect(() => {
@@ -102,6 +103,7 @@ export function useDemoToggles() {
     if (seedLockRef.current) return;
     seedLockRef.current = true;
     setIsSeedingOrCleaning(true);
+    setPendingAction(on ? 'seeding' : 'cleaning');
 
     try {
       const tenantId = await getTenantId();
@@ -129,11 +131,12 @@ export function useDemoToggles() {
     } finally {
       seedLockRef.current = false;
       setIsSeedingOrCleaning(false);
+      setPendingAction(null);
     }
   }, [getTenantId]);
 
   const allEnabled = Object.values(toggles).every(Boolean);
   const noneEnabled = Object.values(toggles).every(v => !v);
 
-  return { isEnabled, toggle, toggleAll, toggles, allEnabled, noneEnabled, isSeedingOrCleaning };
+  return { isEnabled, toggle, toggleAll, toggles, allEnabled, noneEnabled, isSeedingOrCleaning, pendingAction };
 }

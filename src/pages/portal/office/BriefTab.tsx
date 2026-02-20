@@ -61,7 +61,8 @@ import {
 import { LetterPreview, type LetterFont } from '@/components/portal/office/LetterPreview';
 import { SenderSelector, CreateContextDialog, type SenderOption } from '@/components/shared';
 import { generateLetterPdf, type LetterPdfData } from '@/lib/letterPdf';
-
+import { useDemoToggles } from '@/hooks/useDemoToggles';
+import { isDemoId } from '@/engines/demoData/engine';
 interface Contact {
   id: string;
   first_name: string;
@@ -101,6 +102,8 @@ interface Profile {
 export function BriefTab() {
   const queryClient = useQueryClient();
   const { activeTenantId } = useAuth();
+  const { isEnabled } = useDemoToggles();
+  const demoEnabled = isEnabled('GP-KONTEN');
   const [searchParams] = useSearchParams();
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [contactOpen, setContactOpen] = useState(false);
@@ -156,8 +159,8 @@ export function BriefTab() {
         [profile.postal_code, profile.city].filter(Boolean).join(' '),
       ].filter(Boolean).join(', ') || undefined : undefined,
     },
-    // Business contexts
-    ...contexts.map((ctx): SenderOption => ({
+    // Business contexts (filtered by demo toggle)
+    ...(demoEnabled ? contexts : contexts.filter(c => !isDemoId(c.id))).map((ctx): SenderOption => ({
       id: ctx.id,
       type: ctx.context_type as 'PRIVATE' | 'BUSINESS',
       label: ctx.name,
@@ -470,7 +473,6 @@ ${senderLine}`);
               options={senderOptions}
               selected={selectedSenderId}
               onSelect={setSelectedSenderId}
-              onAddContext={() => setShowCreateContext(true)}
             />
           </CardContent>
         </Card>

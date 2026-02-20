@@ -199,9 +199,9 @@ export function useFinanzberichtData(): FinanzberichtData {
         totalDebt: portfolioSummary.totalDebt,
         avgInterestRate: portfolioSummary.avgInterestRate,
       } : null,
-      homes: homes as any[],
-      mietyLoans,
-      tenancies,
+      homes: (demoEnabled ? homes : homes.filter((r: any) => !isDemoId(r.id))) as any[],
+      mietyLoans: demoEnabled ? mietyLoans : mietyLoans.filter((r: any) => !isDemoId(r.id)),
+      tenancies: demoEnabled ? tenancies : tenancies.filter((r: any) => !isDemoId(r.id)),
       insuranceData: filteredInsurance,
       vorsorgeData: filteredVorsorge,
       subscriptions: filteredSubscriptions as any[],
@@ -209,8 +209,8 @@ export function useFinanzberichtData(): FinanzberichtData {
       pvPlants: filteredPvPlants as any[],
       privateLoans: filteredPrivateLoans as any[],
       portfolioLoans: filteredPortfolioLoans as any[],
-      portfolioProperties: portfolioProperties as any[],
-      legalDocs: legalDocs as any[],
+      portfolioProperties: (demoEnabled ? portfolioProperties : portfolioProperties.filter((r: any) => !isDemoId(r.id))) as any[],
+      legalDocs: (demoEnabled ? legalDocs : legalDocs.filter((r: any) => !isDemoId(r.id))) as any[],
       kvContracts: kvContracts as any[],
     });
 

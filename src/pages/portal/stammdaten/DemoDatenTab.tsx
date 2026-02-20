@@ -52,7 +52,7 @@ function PhaseBadge({ phase }: { phase: string }) {
 }
 
 export function DemoDatenTab() {
-  const { isEnabled, toggle, toggleAll, allEnabled, isSeedingOrCleaning } = useDemoToggles();
+  const { isEnabled, toggle, toggleAll, allEnabled, isSeedingOrCleaning, pendingAction } = useDemoToggles();
 
   return (
     <PageShell>
@@ -67,7 +67,7 @@ export function DemoDatenTab() {
           <p className={TYPOGRAPHY.CARD_TITLE}>Alle Demo-Daten</p>
           <p className={TYPOGRAPHY.HINT}>
             {isSeedingOrCleaning 
-              ? (allEnabled ? 'Demo-Daten werden eingespielt…' : 'Demo-Daten werden entfernt…')
+              ? (pendingAction === 'seeding' ? 'Demo-Daten werden eingespielt…' : 'Demo-Daten werden entfernt…')
               : 'Globaler Toggle für alle Prozesse gleichzeitig'
             }
           </p>

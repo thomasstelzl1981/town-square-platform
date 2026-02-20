@@ -548,7 +548,7 @@ export default function AkquiseMandate() {
               window.scrollTo({ top: document.getElementById('mandate-erfassung')?.offsetTop || 600, behavior: 'smooth' });
             }} />
           </WidgetCell>
-          {mandates && mandates.filter(m => !(demoEnabled && isDemoId(m.id))).map(m => (
+          {mandates && mandates.filter(m => demoEnabled || !isDemoId(m.id)).map(m => (
             <WidgetCell key={m.id}>
               <MandateCaseCard mandate={m} onClick={() => navigate(`/portal/akquise-manager/mandate/${m.id}`)} />
             </WidgetCell>
