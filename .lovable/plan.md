@@ -1,171 +1,86 @@
 
 
-# Reparaturplan: Daten-Vollstaendigkeit und Korrektheit
+# Umbau "Geldeingang" zu "Zahlungsverkehr" (MOD-04)
 
-## Ist-Zustand nach Analyse
+## Problemanalyse
 
-### Entitaeten-Status (27 Punkte)
+Nach Code-Review der aktuellen Implementierung wurden folgende Defizite identifiziert:
 
-| # | Entitaet | Soll | Ist | Status | Problem |
-|---|----------|------|-----|--------|---------|
-| 1 | Profil | 1 | 1 | OK | |
-| 2 | Kontakte | 5 | 5 | OK | |
-| 3 | Landlord Context | 1 | 1 | OK | |
-| 4 | Properties | 3 | 3 | OK | Aber market_value ist NULL |
-| 5 | Units | 3 | 3 | OK | |
-| 6 | Leases | 3 | 3 | OK | tenant_contact_id korrekt auf Klaus Bergmann |
-| 7 | Loans | 3 | 3 | OK | |
-| 8 | **Property Accounting** | **3** | **0** | **FEHLT** | Upsert scheitert leise |
-| 9 | Bankkonten | 1 | 1 | OK | |
-| 10 | Transaktionen | 100 | 100 | OK | |
-| 11 | **Haushaltspersonen** | 4 | 4 | **UNVOLLST.** | Max: alle Finanzfelder NULL |
-| 12 | Fahrzeuge | 2 | 2 | OK | |
-| 13 | PV-Anlage | 1 | 1 | OK | |
-| 14 | Versicherungen | 7 | 7 | OK | |
-| 15 | KV-Vertraege | 4 | 4 | OK | |
-| 16 | Vorsorge | 6 | 6 | OK | |
-| 17 | Abonnements | 8 | 8 | OK | |
-| 18 | Privatkredite | 2 | 2 | OK | |
-| 19 | Miety Home | 1 | 1 | OK | |
-| 20 | Miety Contracts | 4 | 4 | OK | |
-| 21 | Acq Mandate | 1 | 1 | OK | |
-| 22 | **Acq Offers** | **1** | **0** | **FEHLT** | Kein Objekteingang-Demo |
-| 23 | Pet Customers | 3 | 3 | OK | |
-| 24 | Pets | 5 | 5 | OK | |
-| 25 | Pet Bookings | 5 | 5 | OK | |
-| 26 | Depot Accounts | 2 | 2 | OK | |
-| 27 | Depot Positions | 5 | 5 | OK | |
-| 28 | Dev Projects | 1 | 1 | OK | |
+1. **Zwei redundante Buttons** ("Abgleich starten" + "Mieteingang pruefen") -- beide rufen unterschiedliche Edge Functions auf (`sot-rent-match` bzw. `sot-rent-arrears-check`), aber der Nutzer erkennt den Unterschied nicht
+2. **Auto-Match funktioniert nur unter Bedingungen**: `auto_match_enabled = true` UND `linked_bank_account_id` muss gesetzt sein -- sonst passiert nichts
+3. **Keine Sicht auf vorhandene Transaktionen**: Die Tabelle zeigt nur `rent_payments`-Eintraege, nicht die zugrunde liegenden `bank_transactions`
+4. **Manuelle Zuordnung fehlt**: Es gibt keine Moeglichkeit, eine existierende Banktransaktion manuell einer Immobilie/einem Mietverhaeltnis zuzuweisen
+5. **Tab-Name zu eng**: "Geldeingang" suggeriert nur Einnahmen -- fuer NK-Abrechnung und Steuer werden aber alle Buchungen benoetigt
 
-**Ergebnis: 24 von 28 OK, 4 Punkte offen**
+## Loesung: 3-Zonen-Layout "Zahlungsverkehr"
 
----
+### Zone A: Aktionsleiste (oben)
+- **Ein einzelner Button "Kontenabgleich starten"** mit animiertem Fortschritt (wie beim Vorsorgerechner)
+  - Ruft `sot-rent-match` auf (Auto-Matching)
+  - Danach automatisch `sot-rent-arrears-check` (Rueckstands-Pruefung)
+  - Zeigt Ergebnis: "X Zahlungen zugeordnet, Y Rueckstaende erkannt"
+- **Button "Zahlung manuell erfassen"** (wie bisher, aber prominenter)
 
-## Die 4 offenen Probleme und Reparaturen
+### Zone B: Zahlungsuebersicht (Mitte) -- bestehende 12-Monats-Tabelle
+- Bleibt erhalten: Soll vs. Ist pro Monat
+- Wird ergaenzt um eine **Quell-Spalte** ("Auto" / "Manuell" / "Bank")
+- Klick auf eine Zeile oeffnet Detail-Ansicht mit der zugeordneten Banktransaktion
 
-### Problem 1: Property Accounting leer (0/3)
+### Zone C: Transaktions-Zuordnung (unten) -- NEU
+- **Collapsible-Bereich "Nicht zugeordnete Buchungen"**
+- Laedt alle `bank_transactions` fuer das verknuepfte Konto mit `match_status IS NULL` oder `unmatched`
+- Jede Transaktion zeigt: Datum, Betrag, Verwendungszweck, Absender
+- **Button "Zuordnen"** pro Transaktion: Erstellt einen `rent_payments`-Eintrag und setzt `match_status = 'MANUAL_OVERRIDE'` in `bank_transactions`
+- Filter nach Zeitraum und Betragsspanne
 
-**Ursache:** Die `seedPropertyAccounting`-Funktion schreibt die AfA-Daten korrekt zusammen, aber die ID-Generierung nutzt `e0000000-0000-4000-a000-afa${propId.slice(-3)}001`. Der Upsert scheitert leise, vermutlich weil die generierte ID ein ungueltiges UUID-Format erzeugt (`...afa001001` ist keine gueltige Hex-Sequenz in UUID v4).
-
-**Reparatur in `src/hooks/useDemoSeedEngine.ts`:**
-- ID-Generierung auf valides UUID-Format aendern, z.B. `e0000000-0000-4000-a000-00000afa0001`, `...0002`, `...0003`
-- Error-Logging verbessern, damit Upsert-Fehler sichtbar werden
-
-### Problem 2: Max Mustermann Finanzfelder NULL
-
-**Ursache:** Die CSV `demo_household_persons.csv` hat fuer Max (Zeile 2) LEERE Felder bei `gross_income_monthly`, `net_income_monthly`, `tax_class`. Zusaetzlich fehlen die DB-Spalten `business_income_monthly` und `pv_income_monthly` komplett in der CSV.
-
-Die DB hat diese Spalten:
-- `gross_income_monthly` -- leer in CSV
-- `net_income_monthly` -- leer in CSV
-- `tax_class` -- leer in CSV
-- `business_income_monthly` -- nicht in CSV (existiert als DB-Spalte)
-- `pv_income_monthly` -- nicht in CSV (existiert als DB-Spalte)
-- `planned_retirement_date` -- nicht in CSV
-
-**Reparatur in `public/demo-data/demo_household_persons.csv`:**
-
-Header erweitern um: `business_income_monthly;pv_income_monthly;planned_retirement_date`
-
-Max-Zeile befuellen:
-- `gross_income_monthly`: 8500 (Selbstaendiger, IT-Berater)
-- `net_income_monthly`: 5200
-- `tax_class`: III (verheiratet, Alleinverdiener)
-- `business_income_monthly`: 8500 (= Einkommen aus Selbstaendigkeit)
-- `pv_income_monthly`: 212 (= annual_revenue 2542 / 12 aus PV-Anlage)
-- `planned_retirement_date`: 2049-03-15 (Alter 67)
-
-Lisa-Zeile ergaenzen:
-- `business_income_monthly`: (leer)
-- `pv_income_monthly`: (leer)
-- `planned_retirement_date`: 2052-07-22 (Alter 67)
-
-### Problem 3: market_value NULL fuer alle Properties
-
-**Ursache:** Die CSV `demo_properties.csv` hat keine Spalte `market_value`. Die DB-Spalte existiert aber.
-
-**Reparatur in `public/demo-data/demo_properties.csv`:**
-
-Spalte `market_value` hinzufuegen:
-- BER-01: 340000 (Altbau Berlin, Wertzuwachs seit Kauf 2017)
-- MUC-01: 520000 (Muenchen Premium-Lage, Wertzuwachs seit 2020)
-- HH-01: 210000 (Hamburg Elbchaussee, Wertzuwachs seit 2019)
-
-### Problem 4: Objekteingang (acq_offers) leer
-
-**Ursache:** Es gibt keine CSV-Datei und keine Seed-Funktion fuer `acq_offers`. Das Akquise-Mandat (ACQ-DEMO-001) existiert, aber es fehlt ein eingegangenes Objekt, um den Objekteingang demonstrieren zu koennen.
-
-**Reparatur:**
-
-1. Neue CSV erstellen: `public/demo-data/demo_acq_offers.csv`
-   - 1 Demo-Objekt: MFH-Angebot aus Berlin-Neukoelln
-   - Verknuepft mit Mandat `e0000000-0000-4000-e000-000000000001`
-   - Felder: title, address, postal_code, city, price_asking, units_count, area_sqm, year_built, yield_indicated, provider_name, status, received_at
-
-2. Neue Funktion: `seedAcqOffers()` in `useDemoSeedEngine.ts`
-
-3. Demo-Daten-Eintrag: `demo_manifest.json` um `acq_offers: 1` erweitern
-
-4. Cleanup erweitern: `acq_offers` vor `acq_mandates` loeschen
-
----
-
-## Zusammenfassung der Datei-Aenderungen
-
-| Datei | Aenderung |
-|-------|-----------|
-| `public/demo-data/demo_household_persons.csv` | 3 neue Spalten (business_income, pv_income, retirement_date), Max-Zeile mit Werten befuellen |
-| `public/demo-data/demo_properties.csv` | Spalte market_value hinzufuegen mit realistischen Verkehrswerten |
-| `public/demo-data/demo_acq_offers.csv` | NEU: 1 Demo-Objekt fuer Objekteingang |
-| `src/hooks/useDemoSeedEngine.ts` | Property-Accounting ID-Fix, seedAcqOffers()-Funktion, Parsing fuer neue CSV-Spalten |
-| `src/hooks/useDemoCleanup.ts` | acq_offers in Cleanup-Reihenfolge |
-| `src/engines/demoData/data.ts` | acq_offers ID in ALL_DEMO_IDS |
-| `public/demo-data/demo_manifest.json` | acq_offers: 1 hinzufuegen |
-
----
+### Tab-Umbenennung
+- Von "Geldeingang" zu **"Zahlungen"** (kurz, neutral, umfasst Ein- und Ausgaben)
+- Icon bleibt `Banknote`
 
 ## Technische Details
 
-### Property Accounting ID-Fix
+### Dateien die geaendert werden
 
-Aktuell:
-```text
-id: `e0000000-0000-4000-a000-afa${propId.slice(-3)}001`
-// ergibt: e0000000-0000-4000-a000-afa001001 (nicht-hex "afa" ist ungueltig)
-```
+1. **`src/components/portfolio/GeldeingangTab.tsx`** -- Hauptumbau:
+   - Rename-Export zu `ZahlungsverkehrTab` (Alias beibehalten fuer Kompatibilitaet)
+   - Konsolidierung der zwei Buttons zu einem sequentiellen Ablauf
+   - Neuer Bereich: Nicht zugeordnete Transaktionen mit manuellem Zuordnungs-Button
+   - Neue Query auf `bank_transactions` WHERE `account_ref = linked_bank_account_id` AND `match_status` IS NULL/unmatched
 
-Neu:
-```text
-id: `e0000000-0000-4000-a000-0000afa00001` (BER-01)
-id: `e0000000-0000-4000-a000-0000afa00002` (MUC-01)
-id: `e0000000-0000-4000-a000-0000afa00003` (HH-01)
-```
+2. **`src/pages/portal/immobilien/PropertyDetailPage.tsx`** -- Tab-Label:
+   - `TabsTrigger value="geldeingang"` Label aendern zu "Zahlungen"
 
-### CSV-Erweiterung household_persons (Zeile Max)
+3. **`supabase/functions/sot-rent-match/index.ts`** -- Edge Function bleibt, wird nicht geaendert (Logik ist korrekt)
+
+### Datenfluss
 
 ```text
-Header: ...;gross_income_monthly;net_income_monthly;tax_class;child_allowances;business_income_monthly;pv_income_monthly;planned_retirement_date
-Max:    ...;8500;5200;III;2.0;8500;212;2049-03-15
-Lisa:   ...;4200;2800;V;1.0;;;2052-07-22
+Nutzer klickt "Kontenabgleich starten"
+         |
+         v
+  sot-rent-match (Edge Function)
+  - Liest bank_transactions (unmatched)
+  - Vergleicht mit Warmmiete + Suchbegriffe
+  - Erstellt rent_payments + setzt match_status
+         |
+         v
+  sot-rent-arrears-check (Edge Function)
+  - Prueft offene Monate ohne Zahlung
+  - Erstellt Task-Widgets bei Rueckstaenden
+         |
+         v
+  UI aktualisiert: 12-Monats-Tabelle + Rest-Liste
+         |
+         v
+  Nutzer kann MANUELL zuordnen:
+  - Klickt "Zuordnen" bei einer Transaktion
+  - System erstellt rent_payment + markiert TX
 ```
 
-### Neues acq_offers Demo-Objekt
-
-```text
-id: e0000000-0000-4000-e000-000000000010
-mandate_id: e0000000-0000-4000-e000-000000000001
-title: MFH Berlin-Neukoelln, 8 WE
-address: Sonnenallee 142
-postal_code: 12059
-city: Berlin
-price_asking: 2400000
-units_count: 8
-area_sqm: 640
-year_built: 1912
-yield_indicated: 4.8
-provider_name: Engel & Voelkers Berlin
-status: new
-received_at: 2026-02-18
-source_type: email
-```
+### Was NICHT geaendert wird
+- `sot-rent-match` Edge Function (Logik funktioniert, Problem war nur UI-seitig)
+- `sot-rent-arrears-check` Edge Function
+- `rent_payments` Tabellenstruktur
+- `bank_transactions` Tabellenstruktur
+- NK-Abrechnung (bleibt wie ist, konsumiert `rent_payments`)
 
