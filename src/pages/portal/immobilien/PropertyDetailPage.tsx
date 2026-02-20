@@ -484,7 +484,7 @@ export default function PropertyDetailPage() {
               <TabsTrigger value="tenancy">Mietverhältnis</TabsTrigger>
               <TabsTrigger value="geldeingang" className="flex items-center gap-1">
                 <Banknote className="h-4 w-4" />
-                Geldeingang
+                Zahlungen
               </TabsTrigger>
               <TabsTrigger value="nkabrechnung" className="flex items-center gap-1">
                 <Receipt className="h-4 w-4" />
