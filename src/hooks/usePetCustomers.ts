@@ -11,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useMyProvider } from '@/hooks/usePetBookings';
 import { toast } from 'sonner';
 import { DEMO_PM_CUSTOMERS } from '@/engines/demoData';
+import { useDemoToggles } from '@/hooks/useDemoToggles';
 
 export interface PetCustomer {
   id: string;
@@ -71,11 +72,13 @@ function mapDemoCustomers(): PetCustomer[] {
 export function usePetCustomers() {
   const { data: provider } = useMyProvider();
   const queryClient = useQueryClient();
+  const { isEnabled } = useDemoToggles();
+  const demoEnabled = isEnabled('GP-PET');
 
   const customersQuery = useQuery({
-    queryKey: ['pet_customers', provider?.id],
+    queryKey: ['pet_customers', provider?.id, demoEnabled],
     queryFn: async () => {
-      if (!provider) return mapDemoCustomers();
+      if (!provider) return demoEnabled ? mapDemoCustomers() : [];
       const { data, error } = await supabase
         .from('pet_customers')
         .select('*')
@@ -83,8 +86,8 @@ export function usePetCustomers() {
         .order('created_at', { ascending: false });
       if (error) throw error;
       const dbCustomers = (data || []) as PetCustomer[];
-      // Wenn keine DB-Kunden vorhanden, Demo-Daten zeigen
-      return dbCustomers.length > 0 ? dbCustomers : mapDemoCustomers();
+      // Wenn keine DB-Kunden vorhanden, Demo-Daten nur zeigen wenn Demo aktiv
+      return dbCustomers.length > 0 ? dbCustomers : (demoEnabled ? mapDemoCustomers() : []);
     },
     enabled: true,
   });

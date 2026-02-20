@@ -22,16 +22,21 @@ import { toast } from 'sonner';
 import { Plus, User, CreditCard, ScanSearch, Loader2, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DESIGN } from '@/config/designManifest';
+import { useDemoToggles } from '@/hooks/useDemoToggles';
+import { isDemoId } from '@/engines/demoData/engine';
 
 // ─── Personen Hook (shared with MOD-18) ───────────────────
 function useHouseholdPersons() {
   const { activeTenantId } = useAuth();
+  const { isEnabled } = useDemoToggles();
+  const demoEnabled = isEnabled('GP-KONTEN');
   return useQuery({
-    queryKey: ['household_persons', activeTenantId],
+    queryKey: ['household_persons', activeTenantId, demoEnabled],
     queryFn: async () => {
       if (!activeTenantId) return [];
       const { data } = await supabase.from('household_persons').select('*').eq('tenant_id', activeTenantId).order('role');
-      return data || [];
+      const all = data || [];
+      return demoEnabled ? all : all.filter((p: any) => !isDemoId(p.id));
     },
     enabled: !!activeTenantId,
   });
