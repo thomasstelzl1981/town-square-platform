@@ -1,74 +1,32 @@
 
-# Iteration 2: Datenbank + RLS + Default-Seeding fuer MOD-21 KI-Browser
+# Fix: KI-Browser URL-Leiste und Impressum-Link
 
-## Uebersicht
+## Probleme
 
-Erstellung der 5 Datenbanktabellen mit vollstaendigen RLS-Policies und Seeding der Default-Policy + Domain-Rules.
+1. **URL-Eingabezeile verschwindet hinter dem Menu** -- Die Session-Seite nutzt `h-[calc(100vh-4rem)]` mit `-mt-6`, aber die tatsaechliche Hoehe von SystemBar + AreaNav + ModulTabs ist groesser als 4rem. Dadurch wird die URL-Toolbar hinter der Navigation versteckt.
 
-## Aenderungen
+2. **"Impressum"-Link im Header** -- In `SystemBar.tsx` (Zeile 230-238) wurde ein Link zum Impressum neben "SYSTEM OF A TOWN" eingefuegt. Das gehoert dort nicht hin.
 
-### 1. SQL-Migration: 5 Tabellen erstellen
+## Loesung
 
-**Tabellen:**
+### 1. Impressum-Link aus SystemBar entfernen (SystemBar.tsx)
 
-1. `ki_browser_policies` (muss ZUERST erstellt werden, da andere Tabellen FK darauf haben)
-   - id, name, json_rules, is_active, created_by, created_at, updated_at
-   - RLS: SELECT fuer alle authentifizierten User, INSERT/UPDATE/DELETE nur `is_platform_admin()`
+- Zeilen 230-238: Den "Impressum"-Link entfernen, nur "SYSTEM OF A TOWN" stehen lassen
+- Das Impressum ist bereits unter `/portal/stammdaten/rechtliches` erreichbar -- das reicht. Ein eigener Link im Header ist nicht noetig.
 
-2. `ki_browser_domain_rules`
-   - id, policy_id (FK ki_browser_policies), rule_type, pattern, reason, created_at
-   - RLS: SELECT fuer alle, Schreibzugriff nur `is_platform_admin()`
+### 2. URL-Toolbar sichtbar machen (KiBrowserSession.tsx)
 
-3. `ki_browser_sessions`
-   - id, tenant_id (NOT NULL, FK organizations), user_id (NOT NULL), policy_profile_id (FK ki_browser_policies), purpose, status, step_count, max_steps, expires_at, created_at, updated_at
-   - RLS: tenant_id = get_user_tenant_id() fuer SELECT/INSERT/UPDATE/DELETE
-   - Platform Admin: full access
-   - Tenant-Isolation Restrictive Policy (Double Safety Belt)
+- Den negativen Margin `-mt-6` entfernen
+- Die Hoehe von `h-[calc(100vh-4rem)]` auf einen realistischen Wert anpassen, der SystemBar (~3.5rem) + AreaNav (~3rem) + ModulTabs (~3rem) + Padding beruecksichtigt -- also ca. `h-[calc(100vh-12rem)]`
+- Alternativ: kein festes `calc()`, sondern `flex-1` mit `min-h-0` im uebergeordneten Layout nutzen, damit die Seite den verbleibenden Platz fuellt
 
-4. `ki_browser_steps`
-   - id, session_id (FK sessions, CASCADE), step_number, kind, status, risk_level, payload_json, result_json, rationale, proposed_by, approved_by, blocked_reason, url_before, url_after, duration_ms, created_at
-   - RLS: via JOIN auf sessions.tenant_id = get_user_tenant_id()
-   - Platform Admin: full access
+## Betroffene Dateien
 
-5. `ki_browser_artifacts`
-   - id, session_id (FK sessions, CASCADE), step_id (FK steps), artifact_type, storage_ref, content_hash, meta_json, created_at
-   - RLS: via JOIN auf sessions.tenant_id = get_user_tenant_id()
-   - Platform Admin: full access
+| Datei | Aenderung |
+|---|---|
+| `src/components/portal/SystemBar.tsx` | Impressum-Link entfernen (Zeilen 230-238) |
+| `src/pages/portal/ki-browser/KiBrowserSession.tsx` | Layout-Fix: negativen Margin entfernen, Hoehe korrigieren |
 
-### 2. Indexes
+## Zur Frage "Impressum bei Rechtliches"
 
-- `(tenant_id, created_at)` Composite Index auf ki_browser_sessions (Performance-Standard)
-- `(session_id, step_number)` auf ki_browser_steps
-- `(session_id, artifact_type)` auf ki_browser_artifacts
-- `(policy_id)` auf ki_browser_domain_rules
-
-### 3. Default-Policy Seeding (via INSERT tool)
-
-Eine Default-Policy "Standard Safe Mode" mit:
-- max_steps: 50
-- ttl_minutes: 30
-- max_extract_size_kb: 500
-- allowed_step_kinds: alle ausser blocked
-- is_active: true
-
-Default Domain-Rules (ca. 15 Eintraege):
-- DENY: Banking, Crypto, Payment, lokale IPs, Metadata-Endpoints
-- ALLOW: Docs, Wiki, GitHub, StackOverflow, Gov-Domains
-
-### 4. Realtime
-
-Realtime fuer `ki_browser_sessions` und `ki_browser_steps` aktivieren (fuer Live-Session-Updates im UI).
-
-## Technische Details
-
-- Alle Tabellen nutzen das etablierte Pattern: `tenant_id = (SELECT public.get_user_tenant_id())` fuer RLS
-- Platform-Admin-Zugriff via `public.is_platform_admin()`
-- Child-Tabellen (steps, artifacts) nutzen EXISTS-Subquery auf sessions fuer tenant-Scoping
-- Kein Trigger auf auth-Schema (Supabase-Reserved)
-- updated_at Trigger nur auf sessions und policies (bestehender `moddatetime`-Pattern oder eigener Trigger)
-
-## Reihenfolge
-
-1. Migration ausfuehren (1 SQL-Block, Tabellen in Abhaengigkeitsreihenfolge)
-2. Default-Policy + Domain-Rules per INSERT seeden
-3. Realtime aktivieren
+Ja, es reicht voellig, wenn das Impressum unter "Stammdaten > Rechtliches" erreichbar ist. Es muss nicht auf jeder Seite im Header klickbar sein. Gesetzlich muss ein Impressum nur "leicht erreichbar" sein -- ein Menuepunkt im Portal genuegt.
