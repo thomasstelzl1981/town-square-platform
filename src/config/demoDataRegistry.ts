@@ -79,6 +79,27 @@ export const DEMO_DATA_SOURCES: readonly DemoDataSource[] = [
     entities: ['manifest'],
     exports: ['JSON'],
   },
+  {
+    path: 'public/demo-data/demo_property_features.csv',
+    module: 'MOD-04',
+    type: 'hardcoded',
+    entities: ['property_features'],
+    exports: ['CSV'],
+  },
+  {
+    path: 'public/demo-data/demo_listings.csv',
+    module: 'MOD-06',
+    type: 'hardcoded',
+    entities: ['listings'],
+    exports: ['CSV'],
+  },
+  {
+    path: 'public/demo-data/demo_listing_publications.csv',
+    module: 'MOD-06',
+    type: 'hardcoded',
+    entities: ['listing_publications'],
+    exports: ['CSV'],
+  },
   // ─── Seed Engine (Phase 2) ─────────────────────────────────
   {
     path: 'src/hooks/useDemoSeedEngine.ts',

@@ -49,6 +49,10 @@ const CLEANUP_ORDER = [
   'acq_offers',
   'acq_mandates',
   'dev_projects',
+  // Sales workflow (children first)
+  'listing_publications',
+  'listings',
+  'property_features',
   // Property tree (CASCADE handles most children)
   'property_accounting',
   'loans',

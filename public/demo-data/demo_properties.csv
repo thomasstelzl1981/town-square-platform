@@ -1,4 +1,4 @@
-id;code;property_type;city;address;address_house_no;postal_code;total_area_sqm;purchase_price;year_built;usage_type;is_demo;category;weg_flag;country;status;public_id;market_value;rental_managed
-d0000000-0000-4000-a000-000000000001;BER-01;etw;Berlin;Schadowstr.;42;10117;62;280000;1928;residential;true;kapitalanlage;true;DE;active;demo-ber-01;340000;true
-d0000000-0000-4000-a000-000000000002;MUC-01;etw;München;Maximilianstr.;8;80539;85;420000;1965;residential;true;kapitalanlage;true;DE;active;demo-muc-01;520000;true
-d0000000-0000-4000-a000-000000000003;HH-01;etw;Hamburg;Elbchaussee;120;22763;48;175000;2005;residential;true;kapitalanlage;true;DE;active;demo-hh-01;210000;true
+id;code;property_type;city;address;address_house_no;postal_code;total_area_sqm;purchase_price;year_built;usage_type;is_demo;category;weg_flag;country;status;public_id;market_value;rental_managed;sale_enabled
+d0000000-0000-4000-a000-000000000001;BER-01;etw;Berlin;Schadowstr.;42;10117;62;280000;1928;residential;true;kapitalanlage;true;DE;active;demo-ber-01;340000;true;true
+d0000000-0000-4000-a000-000000000002;MUC-01;etw;München;Maximilianstr.;8;80539;85;420000;1965;residential;true;kapitalanlage;true;DE;active;demo-muc-01;520000;true;false
+d0000000-0000-4000-a000-000000000003;HH-01;etw;Hamburg;Elbchaussee;120;22763;48;175000;2005;residential;true;kapitalanlage;true;DE;active;demo-hh-01;210000;true;false
