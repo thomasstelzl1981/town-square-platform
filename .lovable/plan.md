@@ -1,129 +1,101 @@
 
 
-# Demo-Daten erweitern: Verkaufs-Workflow (MOD-04 → MOD-06/08/09 → Kaufy)
+# Session-Verlaengerung + Golden Path & Engine Tests (Runde 7)
 
-## Ziel
+## Teil 1: Session-Timeout verlaengern
 
-Einen vollstaendigen Verkaufs-Workflow fuer **eine** Demo-Immobilie (Berlin, BER-01) als CSV-basierte Demo-Daten hinzufuegen. Dadurch wird die komplette Kette `sale_enabled → property_features → listings → listing_publications` aktiviert und die Module MOD-06, MOD-08 und MOD-09 sowie Kaufy zeigen reale Daten.
+### Problem
+Die Standard-JWT-Expiry von Lovable Cloud ist auf 3600 Sekunden (1 Stunde) eingestellt, aber der Refresh-Token-Mechanismus scheint nicht korrekt zu greifen, sodass du dich alle 5 Minuten neu einloggen musst.
 
-## Welche Immobilie?
+### Loesung
+Die Supabase Auth-Konfiguration unterstuetzt keine direkte JWT-Expiry-Aenderung ueber config.toml in Lovable Cloud. Stattdessen werden wir den Supabase-Client so konfigurieren, dass der **Auto-Refresh aggressiver** arbeitet:
 
-**BER-01** (Berlin, Schadowstr. 42) — Marktwert 340.000 EUR, Kaufpreis 280.000 EUR. Diese Immobilie erhaelt `sale_enabled = true` und einen aktiven Verkaufsauftrag.
+1. **Datei: `src/integrations/supabase/client.ts`** — Diese Datei wird automatisch generiert und darf NICHT editiert werden.
+2. **Alternative:** Wir stellen sicher, dass der `onAuthStateChange`-Listener korrekt implementiert ist und Token-Refreshes nicht blockiert werden. Ausserdem pruefen wir, ob irgendwo im Code ein expliziter Logout oder Session-Kill passiert.
+
+**Konkrete Aenderung:** Im AuthContext pruefen wir, ob `autoRefreshToken` und `persistSession` aktiv sind und ob der `onAuthStateChange`-Listener vor `getSession()` registriert wird (Best Practice).
 
 ---
 
-## Aenderungen im Detail
+## Teil 2: Golden Path Tests (D-01 bis D-17) + Engine Workflows (E-01 bis E-10)
 
-### 1. CSV: `demo_properties.csv` anpassen
+### Strategie
 
-Neue Spalte `sale_enabled` hinzufuegen. BER-01 bekommt `true`, die anderen beiden bleiben `false`.
+Da die Golden Path Tests UI-Navigation erfordern, werde ich den **Browser-Tool** nutzen, um systematisch durch die Module zu navigieren und die Compliance-Kriterien zu pruefen.
 
-```text
-...;sale_enabled
-...;true       (BER-01)
-...;false      (MUC-01)
-...;false      (HH-01)
-```
+### D-Tests: Portal-Prozesse (17 Tests)
 
-### 2. Neue CSV: `public/demo-data/demo_property_features.csv`
+Fuer jeden Test pruefen wir die 6 Compliance-Kriterien:
 
-```text
-id;property_id;feature_code;status;config
-d0000000-0000-4000-a000-000000000f01;d0000000-0000-4000-a000-000000000001;kaufy;active;{}
-d0000000-0000-4000-a000-000000000f02;d0000000-0000-4000-a000-000000000001;website_visibility;active;{}
-```
+| Kriterium | Pruefmethode |
+|-----------|-------------|
+| ModulePageHeader | Visuell — CI-konformer Titel mit Icon |
+| WidgetGrid | Visuell — Karten-Grid vorhanden |
+| DemoWidget | Klick — Position 0, Badge sichtbar |
+| InlineFlow | Scroll — Detail oeffnet vertikal |
+| NoSubNavigation | Navigation — Keine Tabs/Sub-Routing |
+| WidgetCell | Visuell — Standard-Dimensionen |
 
-### 3. Neue CSV: `public/demo-data/demo_listings.csv`
-
-Ein aktives Listing fuer BER-01:
+### Reihenfolge (Demo-Daten muessen aktiv sein):
 
 ```text
-id;property_id;title;description;asking_price;commission_rate;status;partner_visibility;public_id;min_price
-d0000000-0000-4000-a000-000000000l01;d0000000-0000-4000-a000-000000000001;Altbau-ETW Berlin Mitte;Charmante 62qm Altbauwohnung in bester Lage nahe Unter den Linden;349000;3.57;active;partner_network;demo-listing-ber-01;320000
+D-01  GP-PORTFOLIO     → /portal/immobilien
+D-02  GP-VERWALTUNG    → /portal/immobilien (BWA-Tab)
+D-04  GP-FINANZIERUNG  → /portal/finanzierung
+D-05  GP-SUCHMANDAT    → /portal/investments
+D-06  GP-SIMULATION    → /portal/investments
+D-09  GP-PROJEKT       → /portal/projekte
+D-12  GP-FAHRZEUG      → /portal/cars
+D-13  GP-KONTEN        → /portal/finanzanalyse
+D-14  GP-PV-ANLAGE     → /portal/photovoltaik
+D-15  GP-ZUHAUSE       → /portal/miety
+D-16  GP-PETS          → /portal/msv
+D-17  GP-PET           → /portal/petmanager
 ```
 
-### 4. Neue CSV: `public/demo-data/demo_listing_publications.csv`
+### E-Tests: Engine-Workflows (10 Tests)
 
-Zwei Publikationen (Partner-Netzwerk + Kaufy):
+Diese Tests validieren die Golden Path Engine + Context Resolver Kombination:
 
-```text
-id;listing_id;channel;status
-d0000000-0000-4000-a000-000000000p01;d0000000-0000-4000-a000-000000000l01;partner_network;active
-d0000000-0000-4000-a000-000000000p02;d0000000-0000-4000-a000-000000000l01;kaufy;active
-```
+| Test | Validierung |
+|------|------------|
+| E-01 MOD-04 | mod04Resolver: property_exists, main_unit_exists, listing_active |
+| E-02 MOD-07 | mod07Resolver: finance_request_exists, applicant_profile_complete |
+| E-03 MOD-08 | mod08Resolver: mandate_draft_exists, mandate_submitted |
+| E-04 MOD-13 | mod13Resolver: project_exists, units_created |
+| E-05 GP-VERMIETUNG | gpVermietungResolver: units_exist, lease_active |
+| E-06 GP-LEAD | gpLeadResolver: lead_exists, lead_qualified, lead_assigned |
+| E-07 GP-FINANCE-Z3 | gpFinanceZ3Resolver: request_exists, profile_exists |
+| E-08 GP-PET | gpPetResolver: customer_exists, pet_exists, first_booking_completed |
+| E-09 GP-MANAGER-LIFECYCLE | gpManagerLifecycleResolver: application_submitted, org_type_upgraded |
+| E-10 GP-CLIENT-ASSIGNMENT | gpClientAssignmentResolver: org_link_created, delegation_scoped |
 
-### 5. Seed Engine (`useDemoSeedEngine.ts`)
+Fuer die Engine-Workflows kann ich die **Context Resolver direkt via DB-Queries** validieren, ohne manuellen Login.
 
-Neue Phase zwischen Property-Accounting und Phase 3 einfuegen:
+### C-22: Golden Path Guard
 
-```text
-Phase 2.5: Sales Workflow
-```
-
-- `sale_enabled` wird bereits ueber die CSV-Property-Daten gesetzt (Spalte hinzugefuegt)
-- `seedFromCSV('demo_property_features.csv', 'property_features', tenantId)`
-- `seedFromCSV('demo_listings.csv', 'listings', tenantId)`
-- `seedFromCSV('demo_listing_publications.csv', 'listing_publications', tenantId)`
-- Registrierung in `registerEntities()` fuer alle drei neuen Entity-Typen
-- EXPECTED-Map um 3 Eintraege erweitern: `property_features: 2, listings: 1, listing_publications: 2`
-
-### 6. Cleanup (`useDemoCleanup.ts`)
-
-Drei neue Entity-Typen in CLEANUP_ORDER einfuegen — VOR `property_accounting` (Leaf-Entities):
-
-```text
-'listing_publications',   // Kind von listings
-'listings',               // Kind von properties
-'property_features',      // Kind von properties
-```
-
-### 7. Registrierungen
-
-| Datei | Aenderung |
-|-------|-----------|
-| `src/config/demoDataRegistry.ts` | 3 neue CSV-Eintraege (property_features, listings, listing_publications) |
-| `public/demo-data/demo_manifest.json` | 3 neue Entities hinzufuegen |
-| `DEMO_SEED_BACKLOG.md` | 3 neue Zeilen in der Entity-Checkliste |
-| `src/hooks/useDemoSeedEngine.ts` | BOOLEAN_KEYS um `sale_enabled` erweitern |
-
-### 8. Keine DB-Migration noetig
-
-Die Tabellen `property_features`, `listings` und `listing_publications` existieren bereits mit korrekten Spalten und RLS-Policies.
+Zusaetzlich teste ich den Guard (`GoldenPathGuard.tsx`) gegen die Engine — ob nicht-konforme Routen korrekt blockiert werden.
 
 ---
 
 ## Technische Details
 
-### ID-Schema (Demo-Range `d0000000-*`)
+### Session-Fix: AuthContext pruefen
 
-| Entity | ID-Pattern |
-|--------|-----------|
-| property_features | `d0000000-...-000000000f01/f02` |
-| listings | `d0000000-...-000000000l01` |
-| listing_publications | `d0000000-...-000000000p01/p02` |
+Dateien die geprueft/angepasst werden:
+- `src/contexts/AuthContext.tsx` — onAuthStateChange Listener-Reihenfolge
+- Evtl. `src/App.tsx` — Session-Handling bei Route-Changes
 
-### Seed-Reihenfolge (FK-sicher)
+### GP-Tests: Automatisierbar via Browser-Tool
 
-```text
-properties (mit sale_enabled=true)
-  → property_features (FK: property_id)
-    → listings (FK: property_id)
-      → listing_publications (FK: listing_id)
-```
+- Navigation zu jeder Modul-Route
+- Screenshot + Observe fuer Compliance-Check
+- DB-Queries fuer Context-Resolver-Validierung
 
-### Cleanup-Reihenfolge (Children first)
+### Betroffene Dateien (maximal)
 
-```text
-listing_publications → listings → property_features → ... → properties
-```
-
-### Betroffene Module nach Seed
-
-| Modul | Erwartetes Ergebnis |
-|-------|-------------------|
-| MOD-04 (Immobilien) | BER-01 zeigt sale_enabled=true, Verkaufs-Tab aktiv |
-| MOD-06 (Verkauf) | 1 aktives Listing sichtbar |
-| MOD-08 (Investments) | BER-01 im Partner-Netzwerk auffindbar |
-| MOD-09 (Vertriebspartner) | 1 Listing im Netzwerk |
-| Kaufy (Zone 3) | BER-01 oeffentlich sichtbar via v_public_listings |
+| Datei | Aenderung |
+|-------|-----------|
+| `src/contexts/AuthContext.tsx` | Session-Refresh-Logik haerten |
+| `spec/current/08_testing/E2E_TEST_BACKLOG.md` | Testergebnisse D-01 bis D-17, E-01 bis E-10, C-22 |
 
