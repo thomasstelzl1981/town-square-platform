@@ -10,6 +10,7 @@ const StorageTab = lazy(() => import('./dms/StorageTab').then(m => ({ default: m
 const PosteingangTab = lazy(() => import('./dms/PosteingangTab').then(m => ({ default: m.PosteingangTab })));
 const SortierenTab = lazy(() => import('./dms/SortierenTab').then(m => ({ default: m.SortierenTab })));
 const EinstellungenTab = lazy(() => import('./dms/EinstellungenTab').then(m => ({ default: m.EinstellungenTab })));
+const IntakeTab = lazy(() => import('./dms/IntakeTab').then(m => ({ default: m.IntakeTab })));
 
 const DMSPage = () => {
   return (
@@ -20,6 +21,7 @@ const DMSPage = () => {
         <Route path="storage" element={<StorageTab />} />
         <Route path="posteingang" element={<PosteingangTab />} />
         <Route path="sortieren" element={<SortierenTab />} />
+        <Route path="intake" element={<IntakeTab />} />
         {/* Legacy redirect */}
         <Route path="einstellungen" element={<Navigate to="/portal/dms/intelligenz" replace />} />
         <Route path="*" element={<Navigate to="/portal/dms" replace />} />

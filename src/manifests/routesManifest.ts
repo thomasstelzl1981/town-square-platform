@@ -254,6 +254,7 @@ export const zone2Portal: ZoneDefinition = {
         { path: "storage", component: "StorageTab", title: "Dateien" },
         { path: "posteingang", component: "PosteingangTab", title: "Posteingang" },
         { path: "sortieren", component: "SortierenTab", title: "Sortieren" },
+        { path: "intake", component: "IntakeTab", title: "Magic Intake" },
       ],
     },
     "MOD-04": {
