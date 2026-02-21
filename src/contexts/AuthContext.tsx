@@ -208,82 +208,78 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user, fetchUserData, isDevelopmentMode, fetchDevelopmentData]);
 
+  // P0-SESSION-FIX-V2: Refresh lock prevents concurrent token refreshes
+  // that invalidate each other and cause rapid re-login loops.
+  const refreshLockRef = useRef(false);
+  const lastFetchedUserRef = useRef<string | null>(null);
+
   useEffect(() => {
+    // 1. Register onAuthStateChange FIRST (Supabase best practice)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        // P0-SESSION-FIX: Only clear user state on explicit SIGNED_OUT event.
-        // During token refresh cycles, session can briefly be null — we must NOT
-        // reset state in that case, or it triggers unwanted redirects to /auth.
+      (event, currentSession) => {
         if (event === 'SIGNED_OUT') {
           setSession(null);
           setUser(null);
           setProfile(null);
           setMemberships([]);
           setActiveOrganization(null);
+          lastFetchedUserRef.current = null;
           setIsLoading(false);
           return;
         }
 
-        if (session?.user) {
-          setSession(session);
-          setUser(session.user);
-          setTimeout(() => {
-            fetchUserData(session.user.id);
-          }, 0);
+        if (currentSession?.user) {
+          setSession(currentSession);
+          setUser(currentSession.user);
+          // Only fetch user data if user ID changed (prevents redundant fetches on token refresh)
+          if (lastFetchedUserRef.current !== currentSession.user.id) {
+            lastFetchedUserRef.current = currentSession.user.id;
+            setTimeout(() => fetchUserData(currentSession.user.id), 0);
+          }
         } else if (isDevelopmentMode) {
           setActiveOrgStable(DEV_MOCK_ORG);
           setMemberships([DEV_MOCK_MEMBERSHIP]);
           setProfile(DEV_MOCK_PROFILE);
-          setTimeout(() => {
-            fetchDevelopmentData();
-          }, 0);
+          setTimeout(() => fetchDevelopmentData(), 0);
         }
-        // else: transient null state during refresh — do NOT touch user/session
+        // else: transient null during refresh — do NOT clear state
         setIsLoading(false);
       }
     );
 
-    // MOBILE-SESSION-FIX: When user returns to the app (tab becomes visible again),
-    // immediately refresh the session. On mobile, JS execution stops in background,
-    // so the auto-refresh can miss its window. This ensures seamless re-auth.
+    // 2. MOBILE-SESSION-FIX: On tab-visible, let Supabase auto-refresh handle it.
+    // Only force refresh if session looks expired (access_token expired).
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        supabase.auth.getSession().then(async ({ data: { session: currentSession } }) => {
-          if (currentSession) {
-            const { data: { session: refreshedSession } } = await supabase.auth.refreshSession();
-            const activeSession = refreshedSession || currentSession;
-            setSession(activeSession);
-            setUser(activeSession?.user ?? null);
-            if (activeSession?.user) {
-              fetchUserData(activeSession.user.id);
+      if (document.visibilityState === 'visible' && !refreshLockRef.current) {
+        refreshLockRef.current = true;
+        supabase.auth.getSession().then(({ data: { session: s } }) => {
+          if (s) {
+            // Check if token expires within 60s — only then force refresh
+            const expiresAt = s.expires_at ?? 0;
+            const nowSec = Math.floor(Date.now() / 1000);
+            if (expiresAt - nowSec < 60) {
+              supabase.auth.refreshSession().finally(() => {
+                refreshLockRef.current = false;
+              });
+            } else {
+              refreshLockRef.current = false;
             }
+          } else {
+            refreshLockRef.current = false;
           }
-        });
+        }).catch(() => { refreshLockRef.current = false; });
       }
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
-    // P0-FIX: On app start, try to refresh the session first to renew expired access tokens.
-    // This prevents users from being logged out after browser restart when the access token
-    // has expired but the refresh token (7+ days) is still valid.
-    supabase.auth.getSession().then(async ({ data: { session: existingSession } }) => {
-      if (existingSession) {
-        // Try refreshing to get a fresh access token
-        const { data: { session: refreshedSession } } = await supabase.auth.refreshSession();
-        if (refreshedSession) {
-          setSession(refreshedSession);
-          setUser(refreshedSession.user);
-          fetchUserData(refreshedSession.user.id);
-        } else {
-          // Refresh failed — session is expired, sign out cleanly
-          console.warn('[AuthContext] Session refresh failed, signing out');
-          await supabase.auth.signOut();
-          setSession(null);
-          setUser(null);
-          setProfile(null);
-          setMemberships([]);
-          setActiveOrganization(null);
-        }
+    // 3. Initial session check — do NOT force refresh (onAuthStateChange handles it).
+    // Only read current session to bootstrap state.
+    supabase.auth.getSession().then(({ data: { session: existingSession } }) => {
+      if (existingSession?.user) {
+        setSession(existingSession);
+        setUser(existingSession.user);
+        lastFetchedUserRef.current = existingSession.user.id;
+        fetchUserData(existingSession.user.id);
       } else if (isDevelopmentMode) {
         setActiveOrgStable(DEV_MOCK_ORG);
         setMemberships([DEV_MOCK_MEMBERSHIP]);
