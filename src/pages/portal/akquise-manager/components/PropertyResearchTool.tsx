@@ -53,8 +53,8 @@ export function PropertyResearchTool() {
       toast.success('Sprengnetter-Bewertung erhalten');
       // Store result alongside research data
       setResearchResult(prev => prev ? { ...prev, sprengnetter: data } : { query, timestamp: new Date().toISOString(), sprengnetter: data } as any);
-    } catch (err: any) {
-      toast.error('Sprengnetter-Fehler: ' + (err.message || 'Unbekannt'));
+    } catch (err: unknown) {
+      toast.error('Sprengnetter-Fehler: ' + (err instanceof Error ? err.message : String(err) || 'Unbekannt'));
     }
   };
 

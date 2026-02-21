@@ -28,8 +28,8 @@ export default function SocialLoginButtons({
       if (result.error) {
         toast.error(`Anmeldung fehlgeschlagen: ${result.error.message}`);
       }
-    } catch (err: any) {
-      toast.error(err.message || 'Ein Fehler ist aufgetreten.');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : String(err) || 'Ein Fehler ist aufgetreten.');
     } finally {
       setLoading(null);
     }

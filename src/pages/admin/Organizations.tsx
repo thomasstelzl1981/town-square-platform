@@ -87,8 +87,8 @@ export default function Organizations() {
 
       if (error) throw error;
       setOrganizations(data || []);
-    } catch (err: any) {
-      setError(err.message || 'Failed to fetch organizations');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : String(err) || 'Failed to fetch organizations');
     }
     setLoading(false);
   }
@@ -152,8 +152,8 @@ export default function Organizations() {
       setCreateOpen(false);
       setNewOrg({ name: '', slug: '', org_type: '', parent_id: '' });
       fetchOrganizations();
-    } catch (err: any) {
-      setCreateError(err.message || 'Failed to create organization');
+    } catch (err: unknown) {
+      setCreateError(err instanceof Error ? err.message : String(err) || 'Failed to create organization');
     }
     setCreating(false);
   };

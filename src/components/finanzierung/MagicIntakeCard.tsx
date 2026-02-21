@@ -100,9 +100,9 @@ export default function MagicIntakeCard({ onCaseCreated }: Props) {
         lastName: lastName.trim(),
         email: email.trim(),
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Magic Intake error:', err);
-      toast.error('Fehler: ' + (err?.message || 'Unbekannt'));
+      toast.error('Fehler: ' + (err instanceof Error ? err.message : String(err) || 'Unbekannt'));
       setState('idle');
     }
   };

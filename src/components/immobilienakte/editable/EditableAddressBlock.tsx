@@ -70,7 +70,7 @@ export function EditableAddressBlock({
         onFieldChange('description', data.description);
         toast.success('Objektbeschreibung generiert');
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error generating description:', err);
       toast.error('KI-Generierung fehlgeschlagen');
     } finally {

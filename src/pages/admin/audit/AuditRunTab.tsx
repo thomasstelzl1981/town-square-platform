@@ -65,8 +65,8 @@ export default function AuditRunTab() {
       });
 
       toast.success(`Audit abgeschlossen: ${result.status}`);
-    } catch (err: any) {
-      toast.error(`Audit fehlgeschlagen: ${err.message}`);
+    } catch (err: unknown) {
+      toast.error(`Audit fehlgeschlagen: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setRunning(false);
     }

@@ -130,8 +130,8 @@ export default function VehicleDetailPage() {
       toast.success('Fahrzeug gelöscht');
       queryClient.invalidateQueries({ queryKey: ['cars_vehicles'] });
       navigate('/portal/cars/fahrzeuge');
-    } catch (err: any) {
-      toast.error(`Fehler: ${err.message}`);
+    } catch (err: unknown) {
+      toast.error(`Fehler: ${err instanceof Error ? err.message : String(err)}`);
     }
     setIsDeleting(false);
     setShowDeleteDialog(false);

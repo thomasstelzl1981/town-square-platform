@@ -158,7 +158,7 @@ export default function FMEinreichung({ cases, isLoading }: Props) {
         user_ratings_total: r.reviews_count,
       }));
       setAiResults(mapped as PlaceResult[]);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('KI-Bankensuche Fehler:', err);
       setAiError('Bankensuche fehlgeschlagen');
       toast.error('KI-Bankensuche fehlgeschlagen');

@@ -221,7 +221,7 @@ export default function FutureRoomBonitat() {
       setPublicId(data?.publicId || 'FR-' + Date.now());
       setSubmitted(true);
       toast.success('Ihre Anfrage wurde erfolgreich eingereicht!');
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Submit error:', err);
       toast.error('Fehler beim Einreichen. Bitte versuchen Sie es erneut.');
     } finally {
