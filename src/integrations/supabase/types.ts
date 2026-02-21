@@ -8784,6 +8784,241 @@ export type Database = {
           },
         ]
       }
+      ki_browser_artifacts: {
+        Row: {
+          artifact_type: string
+          content_hash: string | null
+          created_at: string
+          id: string
+          meta_json: Json | null
+          session_id: string
+          step_id: string | null
+          storage_ref: string | null
+        }
+        Insert: {
+          artifact_type: string
+          content_hash?: string | null
+          created_at?: string
+          id?: string
+          meta_json?: Json | null
+          session_id: string
+          step_id?: string | null
+          storage_ref?: string | null
+        }
+        Update: {
+          artifact_type?: string
+          content_hash?: string | null
+          created_at?: string
+          id?: string
+          meta_json?: Json | null
+          session_id?: string
+          step_id?: string | null
+          storage_ref?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ki_browser_artifacts_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "ki_browser_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ki_browser_artifacts_step_id_fkey"
+            columns: ["step_id"]
+            isOneToOne: false
+            referencedRelation: "ki_browser_steps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ki_browser_domain_rules: {
+        Row: {
+          created_at: string
+          id: string
+          pattern: string
+          policy_id: string
+          reason: string | null
+          rule_type: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          pattern: string
+          policy_id: string
+          reason?: string | null
+          rule_type: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          pattern?: string
+          policy_id?: string
+          reason?: string | null
+          rule_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ki_browser_domain_rules_policy_id_fkey"
+            columns: ["policy_id"]
+            isOneToOne: false
+            referencedRelation: "ki_browser_policies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ki_browser_policies: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          json_rules: Json
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          json_rules?: Json
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          json_rules?: Json
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      ki_browser_sessions: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          max_steps: number
+          policy_profile_id: string | null
+          purpose: string | null
+          status: string
+          step_count: number
+          tenant_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          max_steps?: number
+          policy_profile_id?: string | null
+          purpose?: string | null
+          status?: string
+          step_count?: number
+          tenant_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          max_steps?: number
+          policy_profile_id?: string | null
+          purpose?: string | null
+          status?: string
+          step_count?: number
+          tenant_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ki_browser_sessions_policy_profile_id_fkey"
+            columns: ["policy_profile_id"]
+            isOneToOne: false
+            referencedRelation: "ki_browser_policies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ki_browser_sessions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ki_browser_steps: {
+        Row: {
+          approved_by: string | null
+          blocked_reason: string | null
+          created_at: string
+          duration_ms: number | null
+          id: string
+          kind: string
+          payload_json: Json | null
+          proposed_by: string | null
+          rationale: string | null
+          result_json: Json | null
+          risk_level: string
+          session_id: string
+          status: string
+          step_number: number
+          url_after: string | null
+          url_before: string | null
+        }
+        Insert: {
+          approved_by?: string | null
+          blocked_reason?: string | null
+          created_at?: string
+          duration_ms?: number | null
+          id?: string
+          kind: string
+          payload_json?: Json | null
+          proposed_by?: string | null
+          rationale?: string | null
+          result_json?: Json | null
+          risk_level?: string
+          session_id: string
+          status?: string
+          step_number: number
+          url_after?: string | null
+          url_before?: string | null
+        }
+        Update: {
+          approved_by?: string | null
+          blocked_reason?: string | null
+          created_at?: string
+          duration_ms?: number | null
+          id?: string
+          kind?: string
+          payload_json?: Json | null
+          proposed_by?: string | null
+          rationale?: string | null
+          result_json?: Json | null
+          risk_level?: string
+          session_id?: string
+          status?: string
+          step_number?: number
+          url_after?: string | null
+          url_before?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ki_browser_steps_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "ki_browser_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       knowledge_base: {
         Row: {
           category: string
