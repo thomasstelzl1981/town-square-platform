@@ -28,7 +28,7 @@ export default function LeadManagerStudioSummary() {
     try {
       const raw = sessionStorage.getItem('leadManagerPlanData');
       if (raw) return JSON.parse(raw);
-    } catch {}
+    } catch (err) { console.error('[LeadManagerStudioSummary] Failed to parse plan data:', err); }
     return {
       brandContext: 'kaufy', goal: 'Lead-Generierung', platform: 'Facebook + Instagram (Paid)',
       startDate: '2026-03-01', endDate: '2026-03-31', budget: 2500, regions: 'München',
