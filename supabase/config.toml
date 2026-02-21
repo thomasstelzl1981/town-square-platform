@@ -233,6 +233,8 @@ verify_jwt = false
 
 [functions.sot-cloud-sync]
 verify_jwt = false
-
 [functions.sot-manager-activate]
+verify_jwt = false
+
+[functions.sot-ki-browser]
 verify_jwt = false
