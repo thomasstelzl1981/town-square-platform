@@ -6,6 +6,7 @@
  * - Keine Provisions-Anzeige (für Endkunden)
  */
 import { useState, useEffect, useCallback } from 'react';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { useParams, Link } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -58,6 +59,7 @@ interface ListingData {
 
 export default function PartnerExposePage() {
   const { publicId } = useParams<{ publicId: string }>();
+  const isMobile = useIsMobile();
   const [isFavorite, setIsFavorite] = useState(false);
   const { calculate, result: calcResult, isLoading: isCalculating } = useInvestmentEngine();
   const { kaufyListings: demoListings } = useDemoListings();
@@ -354,6 +356,17 @@ export default function PartnerExposePage() {
                 </div>
               )}
             </div>
+
+            {/* Mobile Slider — inline before MasterGraph */}
+            {isMobile && (
+              <InvestmentSliderPanel
+                value={params}
+                onChange={setParams}
+                layout="vertical"
+                showAdvanced={true}
+                purchasePrice={listing.asking_price}
+              />
+            )}
 
             {/* MasterGraph */}
             {isCalculating ? (
