@@ -1,5 +1,5 @@
 /**
- * ArmstrongChipBar — Module-specific quick action chips
+ * ArmstrongChipBar — Module-specific and website-specific quick action chips
  * 
  * Displays 2-4 clickable chips above the chat input that trigger
  * Armstrong actions directly, bypassing intent classification.
@@ -19,8 +19,31 @@ interface ArmstrongChipBarProps {
   onChipClick: (actionCode: string, label: string) => void;
   disabled?: boolean;
   className?: string;
+  website?: string | null;
 }
 
+// Website-specific chip sets (Zone 3 Lead Capture)
+const WEBSITE_CHIPS: Record<string, ChipDefinition[]> = {
+  'kaufy': [
+    { label: 'Immobilie finden', action_code: 'ARM.Z3.KAUFY.TO_REGISTER' },
+    { label: 'Exposé anfordern', action_code: 'ARM.Z3.KAUFY.REQUEST_EXPOSE' },
+    { label: 'Kontakt aufnehmen', action_code: 'ARM.Z3.KAUFY.CAPTURE_LEAD' },
+  ],
+  'futureroom': [
+    { label: 'Finanzierbarkeit prüfen', action_code: 'ARM.Z3.FR.QUICK_CHECK' },
+    { label: 'Finanzierungsablauf', action_code: 'ARM.Z3.FR.EXPLAIN_PROCESS' },
+    { label: 'Selbstauskunft starten', action_code: 'ARM.Z3.FR.START_SELBSTAUSKUNFT' },
+    { label: 'Checkliste Unterlagen', action_code: 'ARM.Z3.FR.DOCS_CHECKLIST' },
+  ],
+  'sot': [
+    { label: 'Welche Module passen?', action_code: 'ARM.Z3.SOT.RECOMMEND_MODULES' },
+    { label: 'Demo buchen', action_code: 'ARM.Z3.SOT.BOOK_DEMO' },
+    { label: 'Wie funktioniert SoT?', action_code: 'ARM.Z3.SOT.HOW_IT_WORKS' },
+    { label: 'Jetzt registrieren', action_code: 'ARM.Z3.SOT.TO_REGISTER' },
+  ],
+};
+
+// Module-specific chip sets (Zone 2 Portal)
 const MODULE_CHIPS: Record<string, ChipDefinition[]> = {
   'MOD-04': [
     { label: 'Immobilie aus Dokument', action_code: 'ARM.MOD04.MAGIC_INTAKE_PROPERTY' },
@@ -63,8 +86,9 @@ const MODULE_CHIPS: Record<string, ChipDefinition[]> = {
 };
 
 export const ArmstrongChipBar = React.memo<ArmstrongChipBarProps>(
-  ({ moduleCode, onChipClick, disabled = false, className }) => {
-    const chips = MODULE_CHIPS[moduleCode];
+  ({ moduleCode, onChipClick, disabled = false, className, website }) => {
+    // Website chips take priority over module chips
+    const chips = website ? WEBSITE_CHIPS[website] : MODULE_CHIPS[moduleCode];
 
     if (!chips || chips.length === 0) return null;
 

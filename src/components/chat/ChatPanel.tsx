@@ -68,6 +68,15 @@ const MODULE_MAP: Record<string, string> = {
   'Services': 'MOD_16',
 };
 
+/** Detect Zone 3 website from current pathname */
+function detectWebsite(): string | null {
+  const path = window.location.pathname.toLowerCase();
+  if (path.startsWith('/website/kaufy') || path.startsWith('/kaufy')) return 'kaufy';
+  if (path.startsWith('/website/futureroom') || path.startsWith('/futureroom')) return 'futureroom';
+  if (path.startsWith('/website/sot') || path.startsWith('/sot')) return 'sot';
+  return null;
+}
+
 const ChatPanel = React.forwardRef<HTMLDivElement, ChatPanelProps>(
   (
     {
@@ -450,6 +459,7 @@ const ChatPanel = React.forwardRef<HTMLDivElement, ChatPanelProps>(
         {/* Quick Action Chips */}
         <ArmstrongChipBar
           moduleCode={advisor.currentModule}
+          website={detectWebsite()}
           onChipClick={(actionCode, label) => {
             advisor.selectAction({
               action_code: actionCode,

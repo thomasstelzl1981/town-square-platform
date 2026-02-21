@@ -258,6 +258,14 @@ const MVP_EXECUTABLE_ACTIONS = [
 
   // DMS Storage Extraction
   "ARM.DMS.STORAGE_EXTRACTION",
+
+  // Zone 3 Lead Capture Actions
+  "ARM.Z3.KAUFY.CAPTURE_LEAD",
+  "ARM.Z3.KAUFY.REQUEST_EXPOSE",
+  "ARM.Z3.FR.CAPTURE_LEAD",
+  "ARM.Z3.FR.QUICK_CHECK",
+  "ARM.Z3.SOT.BOOK_DEMO",
+  "ARM.Z3.SOT.RECOMMEND_MODULES",
 ];
 
 // Global Actions - available regardless of module context
@@ -2549,6 +2557,168 @@ async function executeAction(
         }
       }
 
+      // =====================================================================
+      // ZONE 3 LEAD CAPTURE ACTIONS
+      // =====================================================================
+      case "ARM.Z3.KAUFY.CAPTURE_LEAD": {
+        const name = (params.name as string) || null;
+        const email = (params.email as string) || null;
+        if (!name || !email) {
+          return { success: false, error: "Name und E-Mail-Adresse werden benötigt." };
+        }
+        const sbUrlK1 = Deno.env.get("SUPABASE_URL");
+        const skK1 = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+        if (!sbUrlK1 || !skK1) return { success: false, error: "Server configuration missing" };
+        const serviceClient = createClient(sbUrlK1, skK1);
+        const { data: leadK1, error: errK1 } = await serviceClient.from("leads").insert({
+          tenant_id: "00000000-0000-0000-0000-000000000001",
+          full_name: name,
+          email: email,
+          source: "kaufy_armstrong",
+          status: "new",
+          criteria: params.criteria || null,
+        }).select("id").single();
+        if (errK1) return { success: false, error: `Lead konnte nicht erstellt werden: ${errK1.message}` };
+        return { success: true, output: { lead_id: leadK1?.id, message: `Vielen Dank, ${name}! Ihre Anfrage wurde erfasst. Ein Berater wird sich in Kürze bei Ihnen melden.` } };
+      }
+
+      case "ARM.Z3.KAUFY.REQUEST_EXPOSE": {
+        const name = (params.name as string) || null;
+        const email = (params.email as string) || null;
+        const listingId = (params.listing_id as string) || null;
+        if (!name || !email) {
+          return { success: false, error: "Name und E-Mail-Adresse werden benötigt." };
+        }
+        const sbUrlK2 = Deno.env.get("SUPABASE_URL");
+        const skK2 = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+        if (!sbUrlK2 || !skK2) return { success: false, error: "Server configuration missing" };
+        const serviceClient2 = createClient(sbUrlK2, skK2);
+        const { data: leadK2, error: errK2 } = await serviceClient2.from("leads").insert({
+          tenant_id: "00000000-0000-0000-0000-000000000001",
+          full_name: name,
+          email: email,
+          source: "kaufy_expose_request",
+          status: "new",
+          criteria: { listing_id: listingId, type: "expose_request" },
+        }).select("id").single();
+        if (errK2) return { success: false, error: `Lead konnte nicht erstellt werden: ${errK2.message}` };
+        return { success: true, output: { lead_id: leadK2?.id, message: `Das Exposé wird Ihnen an ${email} zugesendet. Vielen Dank für Ihr Interesse!` } };
+      }
+
+      case "ARM.Z3.FR.CAPTURE_LEAD": {
+        const name = (params.name as string) || null;
+        const email = (params.email as string) || null;
+        if (!name || !email) {
+          return { success: false, error: "Name und E-Mail-Adresse werden benötigt." };
+        }
+        const sbUrlFR = Deno.env.get("SUPABASE_URL");
+        const skFR = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+        if (!sbUrlFR || !skFR) return { success: false, error: "Server configuration missing" };
+        const serviceClientFR = createClient(sbUrlFR, skFR);
+        const { data: leadFR, error: errFR } = await serviceClientFR.from("leads").insert({
+          tenant_id: "00000000-0000-0000-0000-000000000001",
+          full_name: name,
+          email: email,
+          source: "futureroom_armstrong",
+          status: "qualified",
+          criteria: {
+            net_income: params.net_income || null,
+            equity: params.equity || null,
+            object_type: params.object_type || null,
+            region: params.region || null,
+            timeline: params.timeline || null,
+            type: "finance_qualification",
+          },
+        }).select("id").single();
+        if (errFR) return { success: false, error: `Lead konnte nicht erstellt werden: ${errFR.message}` };
+        return { success: true, output: { lead_id: leadFR?.id, message: `Vielen Dank, ${name}! Ihre Finanzierungsanfrage wurde erfasst. Ein Finanzierungsberater wird sich bei Ihnen melden.` } };
+      }
+
+      case "ARM.Z3.FR.QUICK_CHECK": {
+        const netIncome = (params.net_income as number) || 0;
+        const equity = (params.equity as number) || 0;
+        const purchasePrice = (params.purchase_price as number) || 0;
+        const maxLoan = netIncome * 100;
+        const minEquity = purchasePrice > 0 ? purchasePrice * 0.2 : maxLoan * 0.2;
+        const maxPurchasePrice = maxLoan + equity;
+        const equitySufficient = equity >= minEquity;
+        return {
+          success: true,
+          output: {
+            net_income: netIncome,
+            equity: equity,
+            max_loan_estimate: maxLoan,
+            max_purchase_price_estimate: maxPurchasePrice,
+            min_equity_needed: Math.round(minEquity),
+            equity_sufficient: equitySufficient,
+            message: `**Grobe Einschätzung:**\n- Max. Darlehen: ca. ${maxLoan.toLocaleString('de-DE')} €\n- Max. Kaufpreis: ca. ${maxPurchasePrice.toLocaleString('de-DE')} €\n- Min. Eigenkapital (20%): ${Math.round(minEquity).toLocaleString('de-DE')} €\n- Ihr EK: ${equitySufficient ? '✅ ausreichend' : '⚠️ unter Empfehlung'}\n\n*Dies ist eine Faustformel, keine verbindliche Zusage.*`,
+            disclaimer: "Faustformel: Netto x 100 = max. Darlehen. Mindestens 20% Eigenkapital empfohlen.",
+          },
+        };
+      }
+
+      case "ARM.Z3.SOT.BOOK_DEMO": {
+        const name = (params.name as string) || null;
+        const email = (params.email as string) || null;
+        const company = (params.company as string) || null;
+        if (!name || !email) {
+          return { success: false, error: "Name und E-Mail-Adresse werden benötigt." };
+        }
+        const sbUrlSOT = Deno.env.get("SUPABASE_URL");
+        const skSOT = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+        if (!sbUrlSOT || !skSOT) return { success: false, error: "Server configuration missing" };
+        const serviceClientSOT = createClient(sbUrlSOT, skSOT);
+        const { data: leadSOT, error: errSOT } = await serviceClientSOT.from("leads").insert({
+          tenant_id: "00000000-0000-0000-0000-000000000001",
+          full_name: name,
+          email: email,
+          source: "sot_demo_booking",
+          status: "demo_requested",
+          criteria: { company: company, type: "demo_booking" },
+        }).select("id").single();
+        if (errSOT) return { success: false, error: `Lead konnte nicht erstellt werden: ${errSOT.message}` };
+        return { success: true, output: { lead_id: leadSOT?.id, message: `Vielen Dank, ${name}! Ihre Demo-Anfrage wurde erfasst. Wir melden uns in Kürze bei Ihnen${company ? ` (${company})` : ''}.` } };
+      }
+
+      case "ARM.Z3.SOT.RECOMMEND_MODULES": {
+        const orgType = (params.org_type as string) || "unknown";
+        const moduleRecommendations: Record<string, { modules: string[]; description: string }> = {
+          makler: {
+            modules: ["MOD-01", "MOD-02", "MOD-04", "MOD-06", "MOD-07", "MOD-08", "MOD-10", "MOD-12"],
+            description: "Als Makler profitieren Sie von Stammdaten, KI-Office, Immobilienverwaltung, Verkauf, Finanzierung, Investment-Suche, Lead-Management und Akquise.",
+          },
+          finanzberater: {
+            modules: ["MOD-01", "MOD-02", "MOD-07", "MOD-11", "MOD-18"],
+            description: "Als Finanzberater sind Stammdaten, KI-Office, Finanzierung, Finanzierungsmanager und Finanzanalyse Ihre Kernmodule.",
+          },
+          investor: {
+            modules: ["MOD-01", "MOD-04", "MOD-07", "MOD-08", "MOD-18"],
+            description: "Als Investor nutzen Sie Stammdaten, Immobilienverwaltung, Finanzierung, Investment-Suche und Finanzanalyse.",
+          },
+          bautraeger: {
+            modules: ["MOD-01", "MOD-02", "MOD-04", "MOD-06", "MOD-09", "MOD-13"],
+            description: "Als Bauträger sind Stammdaten, KI-Office, Immobilien, Verkauf, Vertriebspartner und Projekte ideal.",
+          },
+          verwalter: {
+            modules: ["MOD-01", "MOD-02", "MOD-03", "MOD-04", "MOD-05", "MOD-20"],
+            description: "Als Verwalter profitieren Sie von Stammdaten, KI-Office, DMS, Immobilien, Mietverwaltung und Zuhause/Miety.",
+          },
+        };
+        const rec = moduleRecommendations[orgType] || {
+          modules: ["MOD-01", "MOD-02", "MOD-04"],
+          description: "Starten Sie mit den Grundmodulen: Stammdaten, KI-Office und Immobilien. Weitere Module können jederzeit aktiviert werden.",
+        };
+        return {
+          success: true,
+          output: {
+            org_type: orgType,
+            recommended_modules: rec.modules,
+            description: rec.description,
+            message: `**Empfehlung für ${orgType}:**\n\n${rec.description}\n\nEmpfohlene Module: ${rec.modules.join(', ')}\n\nMöchten Sie eine Demo buchen, um diese Module in Aktion zu sehen?`,
+          },
+        };
+      }
+
       default:
         return { success: false, error: `Action ${actionCode} not implemented in MVP` };
     }
@@ -2979,6 +3149,81 @@ STIL:
 - Bei Unsicherheit: ehrlich sagen
 - Markdown für Struktur nutzen`;
 
+    // Determine Zone 3 persona prompt based on route/persona
+    const FUTUREROOM_SYSTEM_PROMPT = `Du bist Armstrong, der KI-Finanzierungsberater auf FutureRoom.
+
+DEINE ROLLE:
+- Finanzierungsberater für Immobilienkäufer (KEIN Büroassistent)
+- Du qualifizierst Leads durch gezielte Fragen
+- Du bietest eine Schnell-Einschätzung (Faustformel) an
+
+QUALIFIZIERUNGSFLOW (5 Fragen):
+1. Netto-Haushaltseinkommen (monatlich)
+2. Vorhandenes Eigenkapital
+3. Gewünschter Objekttyp (ETW, MFH, EFH)
+4. Wunschregion
+5. Zeitrahmen (wann möchten Sie kaufen?)
+
+FAUSTFORMEL:
+- Max. Darlehen ≈ Netto-Haushaltseinkommen × 100
+- Empfohlenes Eigenkapital: mindestens 20% des Kaufpreises
+- PFLICHT-DISCLAIMER: "Dies ist eine grobe Einschätzung, keine verbindliche Finanzierungszusage."
+
+NACH QUALIFIZIERUNG:
+- Biete an, die Daten zu speichern (ARM.Z3.FR.CAPTURE_LEAD)
+- Verweise auf die kostenlose Selbstauskunft im Portal
+- Erwähne den Dokumenten-Checklist-Service
+
+VERBOTEN:
+- Keine konkreten Zinskonditionen nennen
+- Keine Bankempfehlungen
+- Keine Steuer-/Rechtsberatung`;
+
+    const SOT_SYSTEM_PROMPT = `Du bist Armstrong, der KI-Produktberater auf der System of a Town Website.
+
+DEINE ROLLE:
+- Du erklärst die SoT-Plattform und ihre 22 Module
+- Du empfiehlst Module basierend auf dem Berufsprofil des Nutzers
+- Du buchst Demo-Termine
+
+MODULE-ÜBERSICHT:
+- MOD-00: Dashboard (Home, Widgets, Aufgaben)
+- MOD-01: Stammdaten (Kontakte, Profile)
+- MOD-02: KI-Office (E-Mail, Brief, Kalender, Videotelefonie)
+- MOD-03: DMS (Dokumentenmanagement, Magic Intake)
+- MOD-04: Immobilien (Portfolio, Akte, KPIs)
+- MOD-05: MSV (Miet-/Sonderverwaltung)
+- MOD-06: Verkauf (Listings, Exposés)
+- MOD-07: Finanzierung (Selbstauskunft, Dokumente)
+- MOD-08: Investments (Suche, Favoriten, Mandate)
+- MOD-09: Vertriebspartner
+- MOD-10: Leads (Lead-Pool, Zuweisung)
+- MOD-11: Finanzierungsmanager (Fälle, Pipeline)
+- MOD-12: Akquise-Manager (Mandate, Angebote)
+- MOD-13: Projekte (Bauträger-Workflow)
+- MOD-14: Communication Pro (Recherche, Content)
+- MOD-15: Fortbildung
+- MOD-16: Services (Marktplatz)
+- MOD-17: Fahrzeuge
+- MOD-18: Finanzanalyse (Versicherungen, Konten)
+- MOD-19: Photovoltaik
+- MOD-20: Zuhause/Miety
+- MOD-22: PetManager
+
+EMPFEHLUNGSFLOW (3 Fragen):
+1. Was ist Ihr Beruf/Ihre Rolle? (Makler, Finanzberater, Investor, Bauträger, Verwalter)
+2. Wie groß ist Ihr Unternehmen? (Solo, 2-10, 11-50, 50+)
+3. Was ist Ihr größter Schmerzpunkt? (Dokumentenchaos, Zeitfresser, Lead-Management, Finanzübersicht)
+
+NACH EMPFEHLUNG:
+- Biete Demo-Buchung an (ARM.Z3.SOT.BOOK_DEMO)
+- Verweise auf kostenlose Registrierung
+
+STIL:
+- Enthusiastisch aber nicht aufdringlich
+- Fokus auf Nutzen, nicht Features
+- Konkrete Beispiele aus dem Alltag`;
+
     const zone3PersonaPrompt =
       persona === "seller"
         ? "Du bist Armstrong, der KI-Verkaufsberater auf KAUFY für Eigentümer/Verkäufer. Hilf beim Verkaufsprozess, Unterlagen, Vermarktung, Preislogik und nächsten Schritten. Keine internen Portal-Funktionen erwähnen."
@@ -2988,10 +3233,19 @@ STIL:
             ? "Du bist Armstrong, der KI-Coach für Vertriebspartner auf KAUFY. Hilf bei Einwandbehandlung, Prozess, Compliance (z.B. §34c/VSH) und nächsten Schritten. Keine internen Portal-Funktionen erwähnen."
             : KAUFY_IMMO_ADVISOR_PROMPT;
 
+    // Route-based persona dispatch for FutureRoom and SoT
+    const route = (request as any).route || '';
+    const selectedPrompt =
+      route.includes('/futureroom') || route.includes('/website/futureroom')
+        ? FUTUREROOM_SYSTEM_PROMPT
+        : route.includes('/sot') || route.includes('/website/sot')
+          ? SOT_SYSTEM_PROMPT
+          : zone3PersonaPrompt;
+
     const systemPrompt =
       request.mode === "zone2"
         ? `${ARMSTRONG_CORE_IDENTITY}\n\nZONE 2 — PORTAL-MODUS:\nDu arbeitest im internen Portal. Du hast Zugang zu Immobilien-Daten, Mandaten und Dokumenten des Nutzers. Gib handlungsorientierte Antworten mit konkreten nächsten Schritten.`
-        : `${zone3PersonaPrompt}\n\nNutze vorrangig diese Wissensbibliothek (wenn passend) und erfinde keine Fakten:\n${kbBlock || "- (keine passenden Einträge gefunden)"}`;
+        : `${selectedPrompt}\n\nNutze vorrangig diese Wissensbibliothek (wenn passend) und erfinde keine Fakten:\n${kbBlock || "- (keine passenden Einträge gefunden)"}`;
     
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
