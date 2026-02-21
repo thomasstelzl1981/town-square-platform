@@ -1,7 +1,7 @@
 # E2E Test Backlog — Pre-Launch Teststrecke
 
-> **Version:** 1.1 | **Stand:** 2026-02-21  
-> **Status:** IN ARBEIT — Runde 4 (Edge Functions + Zone 3 + Cross-Cutting) abgeschlossen
+> **Version:** 1.2 | **Stand:** 2026-02-21  
+> **Status:** IN ARBEIT — Runde 5 (Zone 3 Kaufy + Sales Workflow Verifizierung) abgeschlossen
 > **Golden Tenant:** thomas.stelzl@systemofadown.com (a0000000-0000-4000-a000-000000000001)
 
 ---
@@ -52,7 +52,7 @@
 | B-07 | MOD-04 Immobilien — Sanierung | Sanierungsprojekt anlegen, LV erstellen | ⬜ UI | N/A |
 | B-08 | MOD-04 Immobilien — Zuhause | Zuhause anlegen, Verträge verwalten | ✅ DATA | 1 Miety-Home |
 | B-09 | MOD-05 MSV/Pets | Haustier anlegen, Pflege-Events erfassen | ✅ DATA | 5 Pets |
-| B-10 | MOD-06 Verkauf | Immobilie zum Verkauf einstellen | ⚠️ WARN | 0 sale_transactions |
+| B-10 | MOD-06 Verkauf | Immobilie zum Verkauf einstellen | ✅ DATA | 1 Listing (BER-01, 349k, active) |
 | B-11 | MOD-07 Finanzierung | Finanzierungsanfrage erstellen, Kalkulation prüfen | ✅ DATA | 1 Finance-Request |
 | B-12 | MOD-08 Investments — Suchmandat | Suchmandat anlegen, Profil konfigurieren | ⚠️ WARN | 0 investment_profiles |
 | B-13 | MOD-08 Investments — Simulation | Simulation starten (Button), Ergebnis prüfen | ⬜ UI | N/A |
@@ -120,8 +120,8 @@
 
 | # | Engine | Test | Erwartung | Status |
 |---|--------|------|-----------|--------|
-| C-20 | ENG-DEMO | Demo-Seed triggern | Alle Demo-Daten korrekt geseedet | ⬜ |
-| C-21 | ENG-DEMO (Cleanup) | Demo-Cleanup triggern | Alle Demo-Daten rückstandsfrei gelöscht | ⬜ |
+| C-20 | ENG-DEMO | Demo-Seed triggern | Alle Demo-Daten korrekt geseedet | ✅ PASS (Sales Workflow: 1 property sale_enabled, 2 features, 1 listing, 2 publications) |
+| C-21 | ENG-DEMO (Cleanup) | Demo-Cleanup triggern | Alle Demo-Daten rückstandsfrei gelöscht | ⬜ (pending Runde 6) |
 | C-22 | ENG-GOLDEN | Golden Path Guard prüfen | Nicht-konforme Routen werden markiert | ⬜ |
 
 ---
@@ -196,18 +196,18 @@ Für JEDEN Workflow (E-01 bis E-10):
 
 | # | Test | Seite | Erwartung | Status |
 |---|------|-------|-----------|--------|
-| F-01 | Kaufy Landing Page laden | /website/kaufy | Hero, SearchBar, Listings sichtbar | ✅ PASS (Nav + Loading = no listings yet) |
-| F-02 | SearchBar — Basis-Filter | /website/kaufy | Preis, Ort, Typ filtern funktioniert | ⬜ BLOCKED (needs seeded listings) |
-| F-03 | SearchBar — Erweiterte Filter | /website/kaufy | Familienstand, Kirchensteuer → stabil, kein Scroll-Jump | ⬜ BLOCKED (needs seeded listings) |
-| F-04 | Listing-Detail öffnen | /website/kaufy/immobilien/:publicId | Exposé vollständig, Kalkulator sichtbar | ⬜ BLOCKED (needs seeded listings) |
-| F-05 | Kaufy Kalkulator | /website/kaufy/immobilien/:publicId | Berechnung erst nach Button-Klick | ⬜ BLOCKED (needs seeded listings) |
-| F-06 | Kontaktformular absenden | /website/kaufy/immobilien/:publicId | Lead wird erstellt, Bestätigung sichtbar | ⬜ BLOCKED (needs seeded listings) |
+| F-01 | Kaufy Landing Page laden | /website/kaufy | Hero, SearchBar, Listings sichtbar | ✅ PASS (Hero + SearchBar + 4 Listings) |
+| F-02 | SearchBar — Basis-Filter | /website/kaufy | Preis, Ort, Typ filtern funktioniert | ✅ PASS (Berlin-Filter → 4 Ergebnisse) |
+| F-03 | SearchBar — Erweiterte Filter | /website/kaufy | Familienstand, Kirchensteuer → stabil, kein Scroll-Jump | ✅ PASS (Klassische Suche + Investment-Suche) |
+| F-04 | Listing-Detail öffnen | /website/kaufy/immobilien/:publicId | Exposé vollständig, Kalkulator sichtbar | ✅ PASS (BER-01: 280k, Kalkulator mit Slidern) |
+| F-05 | Kaufy Kalkulator | /website/kaufy/immobilien/:publicId | Berechnung erst nach Button-Klick | ✅ PASS (Kalkulator zeigt Parameter, keine Auto-Berechnung) |
+| F-06 | Kontaktformular absenden | /website/kaufy/immobilien/:publicId | Lead wird erstellt, Bestätigung sichtbar | ⬜ (needs auth to test lead creation) |
 | F-07 | Website Builder — Seite laden | /website | Öffentliche Seite korrekt gerendert | ⬜ SKIP (needs tenant website) |
 | F-08 | Registrierung über Zone 3 | /register | Account-Erstellung, Weiterleitung | ⬜ SKIP (creates real account) |
 | F-09 | Responsive — Mobile (390px) | /website/kaufy | Layout korrekt, keine Überlappungen | ✅ PASS |
-| F-10 | Responsive — Tablet (768px) | /website/kaufy | Layout korrekt, SearchBar nutzbar | ⬜ |
+| F-10 | Responsive — Tablet (768px) | /website/kaufy | Layout korrekt, SearchBar nutzbar | ✅ PASS |
 | F-11 | Responsive — Desktop (1920px) | /website/kaufy | Volle Breite, Grid korrekt | ✅ PASS |
-| F-12 | SEO-Meta-Tags | /website/kaufy | Title, Description, OG-Tags vorhanden | ⬜ |
+| F-12 | SEO-Meta-Tags | /website/kaufy | Title, Description, OG-Tags vorhanden | ⚠️ WARN (Title ✅, OG-Tags + Description fehlen) |
 
 > **Zusätzlich getestet:**
 > - /website/kaufy/vermieter ✅ PASS (Hero, Feature-Cards, Benefits)
@@ -325,3 +325,4 @@ Für JEDEN Workflow (E-01 bis E-10):
 | Version | Datum | Änderung |
 |---------|-------|----------|
 | 1.0 | 2026-02-21 | Initiale Erstellung: ~215 Tests über alle Module, Engines und Golden Paths |
+| 1.2 | 2026-02-21 | Runde 5: Sales Workflow verifiziert (DB + Kaufy UI), F-01–F-05/F-10/F-12 aktualisiert, C-20 PASS, B-10 auf DATA |
