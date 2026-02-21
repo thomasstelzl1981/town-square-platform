@@ -101,7 +101,7 @@ export default function DelegationsPage() {
       setOrganizations(orgsRes.data || []);
       setDelegations(delegationsRes.data || []);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : String(err) || 'Failed to fetch data');
+      setError((err instanceof Error ? err.message : String(err)) || 'Failed to fetch data');
     }
     setLoading(false);
   }
@@ -168,7 +168,7 @@ export default function DelegationsPage() {
       });
       fetchData();
     } catch (err: unknown) {
-      setCreateError(err instanceof Error ? err.message : String(err) || 'Failed to create delegation');
+      setCreateError((err instanceof Error ? err.message : String(err)) || 'Failed to create delegation');
     }
     setCreating(false);
   };
@@ -190,7 +190,7 @@ export default function DelegationsPage() {
       if (error) throw error;
       fetchData();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : String(err) || 'Failed to revoke delegation');
+      setError((err instanceof Error ? err.message : String(err)) || 'Failed to revoke delegation');
     }
     setRevoking(false);
     setRevokeTarget(null);

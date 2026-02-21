@@ -102,7 +102,7 @@ export default function MagicIntakeCard({ onCaseCreated }: Props) {
       });
     } catch (err: unknown) {
       console.error('Magic Intake error:', err);
-      toast.error('Fehler: ' + (err instanceof Error ? err.message : String(err) || 'Unbekannt'));
+      toast.error('Fehler: ' + ((err instanceof Error ? err.message : String(err)) || 'Unbekannt'));
       setState('idle');
     }
   };

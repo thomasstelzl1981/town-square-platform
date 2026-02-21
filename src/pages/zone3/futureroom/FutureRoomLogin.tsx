@@ -60,7 +60,7 @@ export default function FutureRoomLogin() {
         navigate('/website/futureroom/akte');
       }
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : String(err) || 'Ein Fehler ist aufgetreten.');
+      setError((err instanceof Error ? err.message : String(err)) || 'Ein Fehler ist aufgetreten.');
     } finally {
       setLoading(false);
     }

@@ -68,7 +68,7 @@ export default function FutureRoomAkte() {
       localStorage.removeItem('futureroom_intake_data');
       setActiveTab('status');
     } catch (err: unknown) {
-      toast.error('Fehler beim Einreichen: ' + (err instanceof Error ? err.message : String(err) || 'Unbekannt'));
+      toast.error('Fehler beim Einreichen: ' + ((err instanceof Error ? err.message : String(err)) || 'Unbekannt'));
     }
   };
 

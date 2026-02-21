@@ -44,7 +44,7 @@ export default function LennoxAuth() {
       toast.success('Erfolgreich eingeloggt!');
       navigate(returnTo);
     } catch (err: unknown) {
-      toast.error('Login fehlgeschlagen: ' + (err instanceof Error ? err.message : String(err) || 'Unbekannter Fehler'));
+      toast.error('Login fehlgeschlagen: ' + ((err instanceof Error ? err.message : String(err)) || 'Unbekannter Fehler'));
     } finally { setLoading(false); }
   };
 
@@ -57,7 +57,7 @@ export default function LennoxAuth() {
       toast.success('Registrierung erfolgreich!');
       navigate(returnTo);
     } catch (err: unknown) {
-      toast.error('Registrierung fehlgeschlagen: ' + (err instanceof Error ? err.message : String(err) || 'Unbekannter Fehler'));
+      toast.error('Registrierung fehlgeschlagen: ' + ((err instanceof Error ? err.message : String(err)) || 'Unbekannter Fehler'));
     } finally { setLoading(false); }
   };
 

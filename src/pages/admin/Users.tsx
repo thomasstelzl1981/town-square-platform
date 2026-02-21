@@ -152,7 +152,7 @@ export default function UsersPage() {
       if (membershipError) throw membershipError;
       setMemberships(membershipData || []);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : String(err) || 'Failed to fetch data');
+      setError((err instanceof Error ? err.message : String(err)) || 'Failed to fetch data');
     }
     setLoading(false);
   }
@@ -253,7 +253,7 @@ export default function UsersPage() {
       setEditRole('');
       fetchData();
     } catch (err: unknown) {
-      setEditError(err instanceof Error ? err.message : String(err) || 'Failed to update membership');
+      setEditError((err instanceof Error ? err.message : String(err)) || 'Failed to update membership');
     }
     setEditing(false);
   };
@@ -271,7 +271,7 @@ export default function UsersPage() {
       if (error) throw error;
       fetchData();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : String(err) || 'Failed to delete membership');
+      setError((err instanceof Error ? err.message : String(err)) || 'Failed to delete membership');
     }
     setDeleting(false);
     setDeleteTarget(null);
@@ -318,7 +318,7 @@ export default function UsersPage() {
       setNewUser({ email: '', password: '', displayName: '' });
       fetchData();
     } catch (err: unknown) {
-      setCreateUserError(err instanceof Error ? err.message : String(err) || 'Fehler beim Anlegen des Benutzers');
+      setCreateUserError((err instanceof Error ? err.message : String(err)) || 'Fehler beim Anlegen des Benutzers');
     }
     setCreatingUser(false);
   };

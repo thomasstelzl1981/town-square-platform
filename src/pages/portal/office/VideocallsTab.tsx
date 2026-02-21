@@ -48,7 +48,7 @@ export const VideocallsTab = () => {
       toast.success('Videocall erstellt');
       navigate(`/portal/office/videocalls/${callId}`);
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : String(err) || 'Fehler beim Erstellen');
+      toast.error((err instanceof Error ? err.message : String(err)) || 'Fehler beim Erstellen');
     } finally {
       setCreating(false);
     }
@@ -81,7 +81,7 @@ export const VideocallsTab = () => {
       setInviteName('');
       refetch();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : String(err) || 'Fehler beim Versenden');
+      toast.error((err instanceof Error ? err.message : String(err)) || 'Fehler beim Versenden');
     } finally {
       setSending(false);
     }

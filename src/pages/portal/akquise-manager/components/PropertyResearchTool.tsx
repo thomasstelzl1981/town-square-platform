@@ -54,7 +54,7 @@ export function PropertyResearchTool() {
       // Store result alongside research data
       setResearchResult(prev => prev ? { ...prev, sprengnetter: data } : { query, timestamp: new Date().toISOString(), sprengnetter: data } as any);
     } catch (err: unknown) {
-      toast.error('Sprengnetter-Fehler: ' + (err instanceof Error ? err.message : String(err) || 'Unbekannt'));
+      toast.error('Sprengnetter-Fehler: ' + ((err instanceof Error ? err.message : String(err)) || 'Unbekannt'));
     }
   };
 

@@ -203,7 +203,7 @@ export default function GenerateCaseCard({
       toast.success(`Finanzierungsfall ${frPublicId} erfolgreich angelegt`);
     } catch (err: unknown) {
       console.error('Generate case error:', err);
-      toast.error('Fehler beim Anlegen: ' + (err instanceof Error ? err.message : String(err) || 'Unbekannt'));
+      toast.error('Fehler beim Anlegen: ' + ((err instanceof Error ? err.message : String(err)) || 'Unbekannt'));
       setState('idle');
     }
   };

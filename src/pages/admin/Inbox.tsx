@@ -185,7 +185,7 @@ export default function InboxPage() {
       setOrganizations(orgsRes.data || []);
       setMandates(mandatesRes.data || []);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : String(err) || 'Fehler beim Laden');
+      setError((err instanceof Error ? err.message : String(err)) || 'Fehler beim Laden');
     } finally {
       setLoading(false);
     }

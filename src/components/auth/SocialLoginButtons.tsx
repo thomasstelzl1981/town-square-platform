@@ -29,7 +29,7 @@ export default function SocialLoginButtons({
         toast.error(`Anmeldung fehlgeschlagen: ${result.error.message}`);
       }
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : String(err) || 'Ein Fehler ist aufgetreten.');
+      toast.error((err instanceof Error ? err.message : String(err)) || 'Ein Fehler ist aufgetreten.');
     } finally {
       setLoading(null);
     }

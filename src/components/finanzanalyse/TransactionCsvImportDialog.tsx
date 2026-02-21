@@ -212,7 +212,7 @@ export function TransactionCsvImportDialog({
 
       setRows(taggedRows);
     } catch (err: unknown) {
-      toast.error('Fehler beim Lesen: ' + err instanceof Error ? err.message : String(err));
+      toast.error('Fehler beim Lesen: ' + (err instanceof Error ? err.message : String(err)));
     } finally {
       setChecking(false);
     }
@@ -270,7 +270,7 @@ export function TransactionCsvImportDialog({
       onImportComplete();
       onOpenChange(false);
     },
-    onError: (err) => toast.error('Import fehlgeschlagen: ' + err instanceof Error ? err.message : String(err)),
+    onError: (err) => toast.error('Import fehlgeschlagen: ' + (err instanceof Error ? err.message : String(err))),
   });
 
   const handleClose = (v: boolean) => {

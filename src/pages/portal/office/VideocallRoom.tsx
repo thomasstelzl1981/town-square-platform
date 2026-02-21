@@ -91,7 +91,7 @@ export const VideocallRoom = ({ guestToken, guestRoomName, guestLivekitUrl }: Vi
       setInviteEmail('');
       setInviteOpen(false);
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : String(err) || 'Fehler beim Senden');
+      toast.error((err instanceof Error ? err.message : String(err)) || 'Fehler beim Senden');
     } finally {
       setSending(false);
     }

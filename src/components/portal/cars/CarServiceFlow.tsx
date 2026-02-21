@@ -202,7 +202,7 @@ export function CarServiceFlow({ vehicleId, holderAddress, isDemo }: CarServiceF
 
       setTimeout(() => comparisonRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : String(err) || 'Fehler beim Erstellen');
+      toast.error((err instanceof Error ? err.message : String(err)) || 'Fehler beim Erstellen');
     } finally {
       setIsSaving(false);
     }

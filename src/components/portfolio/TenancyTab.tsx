@@ -154,7 +154,7 @@ export function TenancyTab({ propertyId, tenantId, unitId }: TenancyTabProps) {
         .order('last_name');
       setContacts(contactsData || []);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : String(err) || 'Fehler beim Laden');
+      setError((err instanceof Error ? err.message : String(err)) || 'Fehler beim Laden');
     }
     setLoading(false);
   }, [unitId, tenantId]);
@@ -240,7 +240,7 @@ export function TenancyTab({ propertyId, tenantId, unitId }: TenancyTabProps) {
       toast.success('Mietverträge gespeichert');
       await fetchData();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : String(err) || 'Fehler beim Speichern');
+      toast.error((err instanceof Error ? err.message : String(err)) || 'Fehler beim Speichern');
     }
     setSaving(false);
   };
@@ -284,7 +284,7 @@ export function TenancyTab({ propertyId, tenantId, unitId }: TenancyTabProps) {
       });
       await fetchData();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : String(err) || 'Fehler beim Erstellen');
+      toast.error((err instanceof Error ? err.message : String(err)) || 'Fehler beim Erstellen');
     }
     setSaving(false);
   };
@@ -298,7 +298,7 @@ export function TenancyTab({ propertyId, tenantId, unitId }: TenancyTabProps) {
       toast.success('Mietvertrag gelöscht');
       await fetchData();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : String(err) || 'Fehler beim Löschen');
+      toast.error((err instanceof Error ? err.message : String(err)) || 'Fehler beim Löschen');
     }
     setDeletingLeaseId(null);
   };
@@ -310,7 +310,7 @@ export function TenancyTab({ propertyId, tenantId, unitId }: TenancyTabProps) {
       toast.success('Mietvertrag aktiviert');
       await fetchData();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : String(err) || 'Fehler beim Aktivieren');
+      toast.error((err instanceof Error ? err.message : String(err)) || 'Fehler beim Aktivieren');
     }
   };
 

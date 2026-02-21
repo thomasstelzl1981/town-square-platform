@@ -319,7 +319,7 @@ export default function PropertyDetailPage() {
       setUnit(unitData);
     } catch (err: unknown) {
       console.error('PropertyDetailPage fetch error:', err);
-      setError(err instanceof Error ? err.message : String(err) || 'Fehler beim Laden der Immobilie');
+      setError((err instanceof Error ? err.message : String(err)) || 'Fehler beim Laden der Immobilie');
     }
     setLoading(false);
   }

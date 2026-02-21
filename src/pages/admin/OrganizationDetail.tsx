@@ -114,7 +114,7 @@ export default function OrganizationDetail() {
         }
 
       } catch (err: unknown) {
-        setError(err instanceof Error ? err.message : String(err) || 'Failed to load organization');
+        setError((err instanceof Error ? err.message : String(err)) || 'Failed to load organization');
       }
       setLoading(false);
     }
@@ -157,7 +157,7 @@ export default function OrganizationDetail() {
       );
       setLockdownDialogOpen(false);
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : String(err) || 'Failed to update lockdown status');
+      toast.error((err instanceof Error ? err.message : String(err)) || 'Failed to update lockdown status');
     }
     setIsTogglingLockdown(false);
   };

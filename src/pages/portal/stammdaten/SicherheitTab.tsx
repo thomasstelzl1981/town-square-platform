@@ -88,7 +88,7 @@ export function SicherheitTab() {
         await supabase.auth.signOut();
       }, 2000);
     } catch (err: unknown) {
-      toast.error('Fehler: ' + (err instanceof Error ? err.message : String(err) || 'Unbekannter Fehler'));
+      toast.error('Fehler: ' + ((err instanceof Error ? err.message : String(err)) || 'Unbekannter Fehler'));
     } finally {
       setEmailLoading(false);
     }

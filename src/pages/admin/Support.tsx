@@ -123,7 +123,7 @@ export default function SupportPage() {
         setProfiles([]);
       }
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : String(err) || 'Search failed');
+      setError((err instanceof Error ? err.message : String(err)) || 'Search failed');
     }
     setLoading(false);
   };
@@ -162,7 +162,7 @@ export default function SupportPage() {
       ));
       setEditTarget(null);
     } catch (err: unknown) {
-      setSaveError(err instanceof Error ? err.message : String(err) || 'Failed to update profile');
+      setSaveError((err instanceof Error ? err.message : String(err)) || 'Failed to update profile');
     }
     setSaving(false);
   };

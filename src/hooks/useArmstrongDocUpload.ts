@@ -183,7 +183,7 @@ export function useArmstrongDocUpload(): UseArmstrongDocUploadReturn {
         throw new Error(`Upload fehlgeschlagen: ${uploadError.message}`);
       }
 
-      console.log(`[ArmstrongDocUpload] Uploaded to storage: ${storagePath} (${(file.size / 1024).toFixed(0)}KB)`);
+      if (import.meta.env.DEV) { console.log(`[ArmstrongDocUpload] Uploaded to storage: ${storagePath} (${(file.size / 1024).toFixed(0)}KB)`); }
 
       // ── Step 2: Call parser with storagePath ───────────────────────────
       const { data, error } = await supabase.functions.invoke('sot-document-parser', {
@@ -241,7 +241,7 @@ export function useArmstrongDocUpload(): UseArmstrongDocUploadReturn {
       };
 
       if (suggestedIntake) {
-        console.log(`[ArmstrongDocUpload] Detected intake: ${suggestedIntake.action_code} (${suggestedIntake.label})`);
+        if (import.meta.env.DEV) { console.log(`[ArmstrongDocUpload] Detected intake: ${suggestedIntake.action_code} (${suggestedIntake.label})`); }
       }
 
       setDocumentContext(ctx);

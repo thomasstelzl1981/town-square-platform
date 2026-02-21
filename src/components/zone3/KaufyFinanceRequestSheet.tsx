@@ -247,7 +247,7 @@ export default function KaufyFinanceRequestSheet({ open, onClose, listing, engin
       toast.success('Finanzierungsanfrage erfolgreich eingereicht!');
     } catch (err: unknown) {
       console.error('Submit error:', err);
-      toast.error(err instanceof Error ? err.message : String(err) || 'Fehler bei der Einreichung');
+      toast.error((err instanceof Error ? err.message : String(err)) || 'Fehler bei der Einreichung');
     } finally {
       setSubmitting(false);
     }

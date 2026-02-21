@@ -224,7 +224,7 @@ function BookingBlock({ providerId, providerName, serviceId, customerId, onClose
       toast.success(`Buchungsanfrage an ${providerName} gesendet!`);
       onClose();
     } catch (err: unknown) {
-      toast.error('Fehler: ' + (err instanceof Error ? err.message : String(err) || 'Unbekannt'));
+      toast.error('Fehler: ' + ((err instanceof Error ? err.message : String(err)) || 'Unbekannt'));
     } finally {
       setSubmitting(false);
     }

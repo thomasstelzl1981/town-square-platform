@@ -46,7 +46,7 @@ const VideocallJoinPage = () => {
       setState('joined');
     } catch (err: unknown) {
       setState('error');
-      const msg = err instanceof Error ? err.message : String(err) || 'Fehler';
+      const msg = (err instanceof Error ? err.message : String(err)) || 'Fehler';
       if (msg.includes('expired')) setError('Diese Einladung ist abgelaufen.');
       else if (msg.includes('Invalid token')) setError('Ungültiger Token.');
       else if (msg.includes('revoked')) setError('Diese Einladung wurde widerrufen.');

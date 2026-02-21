@@ -113,7 +113,7 @@ export default function AgreementsPage() {
       setTemplates(templatesRes.data || []);
       setConsents(consentsRes.data || []);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : String(err) || 'Fehler beim Laden');
+      setError((err instanceof Error ? err.message : String(err)) || 'Fehler beim Laden');
     } finally {
       setLoading(false);
     }

@@ -113,7 +113,7 @@ export function CreatePropertyDialog({ open, onOpenChange }: CreatePropertyDialo
       navigate(`/portal/immobilien/${data.id}`);
     } catch (err: unknown) {
       console.error('Create property error:', err);
-      toast.error(err instanceof Error ? err.message : String(err) || 'Fehler beim Anlegen');
+      toast.error((err instanceof Error ? err.message : String(err)) || 'Fehler beim Anlegen');
     } finally {
       setSaving(false);
     }
