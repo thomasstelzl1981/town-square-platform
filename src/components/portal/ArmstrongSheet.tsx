@@ -76,11 +76,26 @@ export function ArmstrongSheet({ open, onOpenChange }: ArmstrongSheetProps) {
     };
   };
 
+  // Desktop: render compact floating widget (no Sheet)
+  const isDesktop = typeof window !== 'undefined' && window.innerWidth >= 768;
+
+  if (isDesktop) {
+    if (!open) return null;
+    return (
+      <ChatPanel
+        context={getContext()}
+        position="compact"
+        onClose={() => onOpenChange(false)}
+      />
+    );
+  }
+
+  // Mobile: bottom-sheet with reduced height
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent 
         side="bottom" 
-        className="h-[80vh] max-h-[80vh] rounded-t-xl p-0"
+        className="h-[50vh] max-h-[50vh] rounded-t-xl p-0"
       >
         <ChatPanel
           context={getContext()}

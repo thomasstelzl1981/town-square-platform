@@ -129,6 +129,23 @@ export default {
           from: { transform: "translateY(100%)" },
           to: { transform: "translateY(0)" },
         },
+        "orb-spin": {
+          from: { transform: "rotate(0deg)" },
+          to: { transform: "rotate(360deg)" },
+        },
+        "orb-breathe": {
+          "0%, 100%": { transform: "scale(1)" },
+          "50%": { transform: "scale(1.15)" },
+        },
+        "orb-orbit": {
+          from: { transform: "rotate(0deg)" },
+          to: { transform: "rotate(360deg)" },
+        },
+        "orb-shake": {
+          "0%, 100%": { transform: "translateX(0)" },
+          "25%": { transform: "translateX(-2px)" },
+          "75%": { transform: "translateX(2px)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -136,6 +153,10 @@ export default {
         "fade-in": "fade-in 0.2s ease-out",
         "slide-in-right": "slide-in-right 0.3s ease-out",
         "slide-in-bottom": "slide-in-bottom 0.3s ease-out",
+        "orb-spin": "orb-spin 2s linear infinite",
+        "orb-breathe": "orb-breathe 2s ease-in-out infinite",
+        "orb-orbit": "orb-orbit 1.5s linear infinite",
+        "orb-shake": "orb-shake 0.3s ease-in-out",
       },
     },
   },
