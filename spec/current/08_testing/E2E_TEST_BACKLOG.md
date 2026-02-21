@@ -1,7 +1,7 @@
 # E2E Test Backlog — Pre-Launch Teststrecke
 
 > **Version:** 1.2 | **Stand:** 2026-02-21  
-> **Status:** IN ARBEIT — Runde 5 (Zone 3 Kaufy + Sales Workflow Verifizierung) abgeschlossen
+> **Status:** IN ARBEIT — Runde 6 (Cleanup-Verifizierung) abgeschlossen
 > **Golden Tenant:** thomas.stelzl@systemofadown.com (a0000000-0000-4000-a000-000000000001)
 
 ---
@@ -121,7 +121,7 @@
 | # | Engine | Test | Erwartung | Status |
 |---|--------|------|-----------|--------|
 | C-20 | ENG-DEMO | Demo-Seed triggern | Alle Demo-Daten korrekt geseedet | ✅ PASS (Sales Workflow: 1 property sale_enabled, 2 features, 1 listing, 2 publications) |
-| C-21 | ENG-DEMO (Cleanup) | Demo-Cleanup triggern | Alle Demo-Daten rückstandsfrei gelöscht | ⬜ (pending Runde 6) |
+| C-21 | ENG-DEMO (Cleanup) | Demo-Cleanup triggern | Alle Demo-Daten rückstandsfrei gelöscht | ✅ PASS (29 Entity-Typen gelöscht, 0 Restdaten, Registry leer) |
 | C-22 | ENG-GOLDEN | Golden Path Guard prüfen | Nicht-konforme Routen werden markiert | ⬜ |
 
 ---
@@ -273,7 +273,7 @@ Für JEDEN Workflow (E-01 bis E-10):
 
 | # | Test | Erwartung | Status |
 |---|------|-----------|--------|
-| H-15 | Demo-Seed + Cleanup Roundtrip | Seed → Cleanup → keine Restdaten in DB | ⬜ |
+| H-15 | Demo-Seed + Cleanup Roundtrip | Seed → Cleanup → keine Restdaten in DB | ✅ PASS (Seed: 29 Entities, Cleanup: 0 Restdaten) |
 | H-16 | Concurrent Edits | Zwei Tabs, gleicher Datensatz → kein Datenverlust | ⬜ |
 | H-17 | Offline-Verhalten | Graceful Degradation bei Netzwerkverlust | ⬜ |
 | H-18 | File-Upload (>10MB) | Fehlermeldung oder korrekter Upload | ⬜ |
