@@ -79,7 +79,7 @@ const KiBrowserSession = () => {
 
   // Active session — fullscreen browser layout
   return (
-    <div className="flex flex-col h-[calc(100vh-4rem)] -mx-6 -mt-6">
+    <div className="flex flex-col h-[calc(100vh-12rem)] -mx-6">
       {/* Top URL Toolbar */}
       <div className="flex items-center gap-2 px-3 py-2 border-b border-border bg-muted/30 shrink-0">
         {/* Session status */}
