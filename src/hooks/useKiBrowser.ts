@@ -1,7 +1,7 @@
 /**
  * useKiBrowser — Hook for MOD-21 KI-Browser edge function calls
  */
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -57,17 +57,31 @@ async function callKiBrowser<T = unknown>(action: string, params: Record<string,
 }
 
 export function useKiBrowser() {
-  const [sessionId, setSessionId] = useState<string | null>(null);
   const [session, setSession] = useState<KiBrowserSession | null>(null);
   const [steps, setSteps] = useState<KiBrowserStep[]>([]);
   const [loading, setLoading] = useState(false);
   const [fetchedContent, setFetchedContent] = useState<FetchResult | null>(null);
 
+  // useRef to avoid stale closures — all callbacks read the latest value
+  const sessionIdRef = useRef<string | null>(null);
+
+  const refreshSession = useCallback(async (sid?: string) => {
+    const id = sid || sessionIdRef.current;
+    if (!id) return;
+    try {
+      const result = await callKiBrowser<{ session: KiBrowserSession; steps: KiBrowserStep[] }>('get_session', { session_id: id });
+      setSession(result.session);
+      setSteps(result.steps);
+    } catch {
+      // silent
+    }
+  }, []);
+
   const startSession = useCallback(async (purpose?: string) => {
     setLoading(true);
     try {
       const result = await callKiBrowser<{ session_id: string; status: string; max_steps: number; expires_at: string }>('create_session', { purpose });
-      setSessionId(result.session_id);
+      sessionIdRef.current = result.session_id;
       setSession({
         id: result.session_id,
         status: result.status,
@@ -90,10 +104,10 @@ export function useKiBrowser() {
   }, []);
 
   const closeSession = useCallback(async () => {
-    if (!sessionId) return;
+    if (!sessionIdRef.current) return;
     setLoading(true);
     try {
-      await callKiBrowser('close_session', { session_id: sessionId });
+      await callKiBrowser('close_session', { session_id: sessionIdRef.current });
       setSession(prev => prev ? { ...prev, status: 'completed' } : null);
       toast.success('Session beendet');
     } catch (e: any) {
@@ -101,13 +115,13 @@ export function useKiBrowser() {
     } finally {
       setLoading(false);
     }
-  }, [sessionId]);
+  }, []);
 
   const fetchUrl = useCallback(async (url: string) => {
-    if (!sessionId) return null;
+    if (!sessionIdRef.current) return null;
     setLoading(true);
     try {
-      const result = await callKiBrowser<FetchResult>('fetch_url', { session_id: sessionId, url });
+      const result = await callKiBrowser<FetchResult>('fetch_url', { session_id: sessionIdRef.current, url });
       setFetchedContent(result);
       await refreshSession();
       return result;
@@ -117,14 +131,14 @@ export function useKiBrowser() {
     } finally {
       setLoading(false);
     }
-  }, [sessionId]);
+  }, [refreshSession]);
 
   const extractContent = useCallback(async (artifactId: string, selectors?: string[]) => {
-    if (!sessionId) return null;
+    if (!sessionIdRef.current) return null;
     setLoading(true);
     try {
       const result = await callKiBrowser<ExtractResult>('extract_content', {
-        session_id: sessionId,
+        session_id: sessionIdRef.current,
         artifact_id: artifactId,
         selectors,
       });
@@ -136,14 +150,14 @@ export function useKiBrowser() {
     } finally {
       setLoading(false);
     }
-  }, [sessionId]);
+  }, [refreshSession]);
 
   const summarize = useCallback(async (artifactId: string, focus?: string) => {
-    if (!sessionId) return null;
+    if (!sessionIdRef.current) return null;
     setLoading(true);
     try {
       const result = await callKiBrowser<SummarizeResult>('summarize', {
-        session_id: sessionId,
+        session_id: sessionIdRef.current,
         artifact_id: artifactId,
         focus,
       });
@@ -155,14 +169,14 @@ export function useKiBrowser() {
     } finally {
       setLoading(false);
     }
-  }, [sessionId]);
+  }, [refreshSession]);
 
   const proposeStep = useCallback(async (kind: string, payload: Record<string, unknown>) => {
-    if (!sessionId) return null;
+    if (!sessionIdRef.current) return null;
     setLoading(true);
     try {
       const result = await callKiBrowser<KiBrowserStep>('propose_step', {
-        session_id: sessionId,
+        session_id: sessionIdRef.current,
         kind,
         payload,
       });
@@ -174,13 +188,13 @@ export function useKiBrowser() {
     } finally {
       setLoading(false);
     }
-  }, [sessionId]);
+  }, [refreshSession]);
 
   const approveStep = useCallback(async (stepId: string) => {
-    if (!sessionId) return;
+    if (!sessionIdRef.current) return;
     setLoading(true);
     try {
-      await callKiBrowser('approve_step', { session_id: sessionId, step_id: stepId });
+      await callKiBrowser('approve_step', { session_id: sessionIdRef.current, step_id: stepId });
       await refreshSession();
       toast.success('Schritt genehmigt');
     } catch (e: any) {
@@ -188,13 +202,13 @@ export function useKiBrowser() {
     } finally {
       setLoading(false);
     }
-  }, [sessionId]);
+  }, [refreshSession]);
 
   const rejectStep = useCallback(async (stepId: string, reason?: string) => {
-    if (!sessionId) return;
+    if (!sessionIdRef.current) return;
     setLoading(true);
     try {
-      await callKiBrowser('reject_step', { session_id: sessionId, step_id: stepId, reason });
+      await callKiBrowser('reject_step', { session_id: sessionIdRef.current, step_id: stepId, reason });
       await refreshSession();
       toast.info('Schritt abgelehnt');
     } catch (e: any) {
@@ -202,13 +216,13 @@ export function useKiBrowser() {
     } finally {
       setLoading(false);
     }
-  }, [sessionId]);
+  }, [refreshSession]);
 
   const executeStep = useCallback(async (stepId: string) => {
-    if (!sessionId) return null;
+    if (!sessionIdRef.current) return null;
     setLoading(true);
     try {
-      const result = await callKiBrowser('execute_step', { session_id: sessionId, step_id: stepId });
+      const result = await callKiBrowser('execute_step', { session_id: sessionIdRef.current, step_id: stepId });
       await refreshSession();
       return result;
     } catch (e: any) {
@@ -217,28 +231,17 @@ export function useKiBrowser() {
     } finally {
       setLoading(false);
     }
-  }, [sessionId]);
-
-  const refreshSession = useCallback(async () => {
-    if (!sessionId) return;
-    try {
-      const result = await callKiBrowser<{ session: KiBrowserSession; steps: KiBrowserStep[] }>('get_session', { session_id: sessionId });
-      setSession(result.session);
-      setSteps(result.steps);
-    } catch {
-      // silent
-    }
-  }, [sessionId]);
+  }, [refreshSession]);
 
   const resetSession = useCallback(() => {
-    setSessionId(null);
+    sessionIdRef.current = null;
     setSession(null);
     setSteps([]);
     setFetchedContent(null);
   }, []);
 
   return {
-    sessionId,
+    sessionId: sessionIdRef.current,
     session,
     steps,
     loading,
