@@ -514,24 +514,48 @@ async function handleFetchUrl(
     return json({ error: guardrail.blocked_reason, risk_level: "blocked" }, 403);
   }
 
-  // Fetch
+  // Fetch with retry logic for HTTP/2 errors
   const targetUrl = String(url);
   const startMs = Date.now();
   let fetchResponse: Response;
-  try {
-    fetchResponse = await fetch(targetUrl, {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (compatible; SoT-KI-Browser/1.0; Research-Agent)",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        "Accept-Language": "de-DE,de;q=0.9,en;q=0.8",
-      },
-      redirect: "follow",
-      signal: AbortSignal.timeout(15000),
-    });
-  } catch (fetchErr) {
+  
+  const headersAttempts = [
+    {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      "Accept-Language": "de-DE,de;q=0.9,en;q=0.8",
+    },
+    {
+      "User-Agent": "Mozilla/5.0 (compatible; SoT-Research/1.0)",
+      "Accept": "text/html,*/*",
+    },
+  ];
+
+  let lastError: Error | null = null;
+  for (let attempt = 0; attempt < headersAttempts.length; attempt++) {
+    try {
+      fetchResponse = await fetch(targetUrl, {
+        headers: headersAttempts[attempt],
+        redirect: "follow",
+        signal: AbortSignal.timeout(20000),
+      });
+      lastError = null;
+      break;
+    } catch (fetchErr) {
+      lastError = fetchErr instanceof Error ? fetchErr : new Error("Network error");
+      console.warn(`Fetch attempt ${attempt + 1} failed:`, lastError.message);
+      if (attempt < headersAttempts.length - 1) {
+        await new Promise(r => setTimeout(r, 500));
+      }
+    }
+  }
+
+  if (lastError) {
+    const isHttp2 = lastError.message.includes("http2") || lastError.message.includes("stream error");
     return json({
-      error: "Failed to fetch URL",
-      detail: fetchErr instanceof Error ? fetchErr.message : "Network error",
+      error: isHttp2
+        ? "Diese Website blockiert automatisierte Zugriffe. Versuchen Sie eine andere URL."
+        : `Verbindungsfehler: ${lastError.message.substring(0, 150)}`,
     }, 502);
   }
 
@@ -596,7 +620,7 @@ async function handleFetchUrl(
     url: targetUrl,
     title,
     description,
-    text: truncatedText,
+    text_content: truncatedText,
     links: links.slice(0, 50),
     status_code: fetchResponse.status,
     duration_ms: durationMs,
