@@ -1,300 +1,200 @@
 
-# Architekturplan: Manager-Tenant-Lifecycle und Cross-Tenant-Orchestrierung
+# Plan: Zone-3 Login/Registrierung und Manager-Bewerbungs-Workflow
 
-## 1. Ueberblick: Das Gesamtbild
+## Ueberblick
 
-Das System bedient zwei fundamental verschiedene Nutzergruppen in Zone 2:
+Zwei getrennte Flows auf den Zone-3 Websites:
 
-- **Kunden (Clients):** Privatpersonen/Unternehmen die ihre Immobilien, Finanzen, Dokumente verwalten. Registrieren sich selbst. Erhalten 14 Basis-Module.
-- **Manager (Partner):** Freiberufliche Spezialisten die im Auftrag der Plattform Kunden betreuen. Werden von Zone 1 freigeschaltet. Erhalten 14 Basis-Module PLUS ihr jeweiliges Manager-Modul.
+1. **Kunden-Registrierung (direkt):** User registriert sich, bekommt sofort 14 Basis-Module, wird zum Portal weitergeleitet. Kein Manager-Modul.
+2. **Manager-Bewerbung (nur Bewerbung):** Interessent fuellt Bewerbungsformular auf der Karriere-Seite aus. Es wird ein Eintrag in `manager_applications` erstellt. Kein Login, kein Portal-Zugang. Erst nach Freischaltung durch Zone 1 erhaelt der Manager eine E-Mail mit Zugangsdaten.
 
-Kunden und Manager sehen sich **niemals** direkt. Jede Interaktion laeuft ueber Zone 1 (Backbone-Orchestrierung).
+### Brand-zu-Modul Zuordnung
 
-### Die 6 Manager-Module (korrigierte Zuordnung)
+| Brand | Manager-Module bei Bewerbung | Kunden-Login |
+|---|---|---|
+| **Kaufy** | MOD-09, MOD-10, MOD-11, MOD-12, MOD-13 (alle ausser Pet) | Ja, direkt via `/auth` |
+| **FutureRoom** | MOD-09, MOD-10, MOD-11, MOD-12, MOD-13 (alle ausser Pet) | Ja, direkt via `/website/futureroom/login` |
+| **Acquiary** | MOD-09, MOD-10, MOD-11, MOD-12, MOD-13 (alle ausser Pet) | Nein (kein Kunden-Login noetig, reine Akquise-Plattform) |
+| **SoT** | MOD-09, MOD-10, MOD-11, MOD-12, MOD-13 (alle ausser Pet) | Ja, direkt via `/auth` |
+| **Lennox** | MOD-22 (Pet Manager), MOD-10 (Lead Manager) | Ja, eigenes Z3-Auth (`useZ3Auth`) — bleibt getrennt |
 
-| Manager-Modul | Code | Rolle | Zone-1-Desk | Client-Modul (Gegenstueck) |
+---
+
+## Ist-Zustand der Karriere-Seiten
+
+| Brand | Seite | Bewerbungsformular | Schreibt nach | Problem |
 |---|---|---|---|---|
-| Immo-Manager (Vertrieb) | MOD-09 | sales_partner | Sales Desk | MOD-06 (Verkauf) |
-| Lead Manager | MOD-10 | sales_partner | Lead Desk | -- (Z3-Intake) |
-| Finanzierungsmanager | MOD-11 | finance_manager | FutureRoom | MOD-07 (Finanzierung) |
-| Akquise-Manager | MOD-12 | akquise_manager | Acquiary | MOD-08 (Investment-Suche) |
-| Projektmanager | MOD-13 | super_user* | Projekt Desk | -- (kein Client-Modul) |
-| Pet Manager | MOD-22 | super_user* | Pet Desk | MOD-05 (Pets) |
+| FutureRoom | `/website/futureroom/karriere` | Ja, vollstaendig | Nirgends (simuliert mit `setTimeout`) | Kein DB-Insert |
+| Acquiary | `/website/acquiary/karriere` | Nein (CTA linkt zu `/acquiary/objekt`) | -- | Kein Formular |
+| Lennox | `/website/tierservice/partner-werden` | Ja | `pet_z1_customers` | Schreibt in falsche Tabelle |
+| Kaufy | `/website/kaufy/vertrieb` | Nein (CTA linkt zu `/auth`) | -- | Kein Bewerbungsformular |
+| SoT | `/website/sot/karriere` | Nein (nur 3 Info-Bloecke) | -- | Kein Formular |
 
-*MOD-13 und MOD-22 haben aktuell keine dedizierte membership_role -- das ist einer der zu loesenden Punkte.
+---
 
-### Datenfluss-Prinzip
+## Loesung
+
+### Teil 1: Shared Manager-Bewerbungs-Komponente
+
+**Neue Datei: `src/components/zone3/shared/ManagerApplicationForm.tsx`**
+
+Eine wiederverwendbare Bewerbungskomponente, die:
+- Name, E-Mail, Telefon, Qualifikation, Nachricht abfragt
+- Branchenspezifische Felder per Props steuert (z.B. §34i fuer FutureRoom, Immobilienerfahrung fuer Acquiary, Hundedienst-Art fuer Lennox)
+- In `manager_applications` schreibt (INSERT mit `requested_role`, `qualification_data`, `status: 'submitted'`, `source_brand`)
+- Kein Login/Signup ausloest -- nur eine Bewerbung
+- Design per Props/CSS-Klassen an die jeweilige Brand anpassbar (Farbschema, Buttons)
+
+**Interface:**
+```text
+ManagerApplicationForm({
+  brand: 'futureroom' | 'acquiary' | 'kaufy' | 'sot' | 'lennox',
+  requestedRoles: membership_role[],    // z.B. ['finance_manager'] oder ['pet_manager', 'sales_partner']
+  qualificationFields: QualField[],     // Branchenspezifische Felder
+  className?: string,
+  colorScheme?: { primary: string, ... },
+  onSuccess?: () => void,
+})
+```
+
+### Teil 2: Karriere-Seiten aktualisieren (5 Dateien)
+
+**FutureRoomKarriere.tsx:**
+- Bestehender Content bleibt (Benefits, Rolle, Anforderungen)
+- Formular-Sektion ersetzt durch `<ManagerApplicationForm brand="futureroom" requestedRoles={['finance_manager']} />`
+- Qualifikationsfeld: §34i GewO (ja/in Beantragung/nein), Erfahrung Baufinanzierung
+
+**AcquiaryKarriere.tsx:**
+- Bestehender Content bleibt
+- CTA-Button aendern: statt Link zu `/acquiary/objekt` → Scroll zu Bewerbungsformular
+- `<ManagerApplicationForm brand="acquiary" requestedRoles={['akquise_manager']} />` hinzufuegen
+- Qualifikationsfeld: Immobilienerfahrung, Regionales Netzwerk
+
+**Kaufy2026Vertrieb.tsx:**
+- Bestehender Content bleibt (Tracks, Features)
+- CTA-Buttons aendern: statt Link zu `/auth` → Scroll zu Bewerbungsformular
+- `<ManagerApplicationForm brand="kaufy" requestedRoles={['sales_partner']} />` hinzufuegen
+- Qualifikationsfeld: §34c GewO, VSH
+
+**SotKarriere.tsx:**
+- Erweitern: Statt nur 3 Info-Bloecke → vollstaendige Karriere-Seite mit Formular
+- `<ManagerApplicationForm brand="sot" requestedRoles={['sales_partner']} />` hinzufuegen
+- Als "Hub" -- erklaert alle Manager-Rollen, Formular fragt gewuenschte Rolle ab
+
+**LennoxPartnerWerden.tsx:**
+- Bestehender Content bleibt (Vision, Benefits, Hero)
+- Formular umstellen: statt `pet_z1_customers` INSERT → `manager_applications` INSERT
+- `<ManagerApplicationForm brand="lennox" requestedRoles={['pet_manager']} />` hinzufuegen
+- Qualifikationsfeld: Angebotene Leistung(en), Region
+
+### Teil 3: Kunden-Login auf Karriere-Seiten trennen
+
+Die Karriere-Seiten sind NUR fuer Bewerbungen. Login-Links auf den Websites bleiben wie sie sind:
+- **Kaufy**: `/auth` → Portal-Login (unveraendert)
+- **SoT**: `/auth` → Portal-Login (unveraendert)
+- **FutureRoom**: `/website/futureroom/login` → Kunden-Login (unveraendert)
+- **Lennox**: `/website/tierservice/login` → Z3-Kunden-Login (unveraendert, eigenes Auth-System)
+- **Acquiary**: Kein Kunden-Login (reine B2B-Plattform)
+
+### Teil 4: DB-Erweiterung fuer manager_applications
+
+Die Tabelle existiert bereits. Erweiterung um:
+- `source_brand` (text): Welche Website die Bewerbung ausgeloest hat (kaufy/futureroom/acquiary/sot/lennox)
+- RLS-Policy: Anonymous INSERT erlauben (Public-Formular ohne Login), SELECT nur fuer den eigenen Tenant oder Admins
+
+---
+
+## Workflow-Ablauf (End-to-End)
 
 ```text
-KUNDE (Client-Tenant)                    MANAGER (Partner-Tenant)
-   |                                           |
-   |  "Ich brauche eine Finanzierung"          |  "Ich betreue Kunden"
-   |                                           |
-   v                                           v
-MOD-07: Finanzierungsanfrage              MOD-11: Manager-Workbench
-   |                                           ^
-   |  Status: 'submitted'                     |
-   v                                           |
-   +--------> ZONE 1 (FutureRoom Desk) --------+
-              - Triage
-              - Manager-Zuweisung
-              - org_link erstellen
-              - org_delegation erteilen
+1. Interessent besucht z.B. /website/futureroom/karriere
+2. Liest Benefits, Anforderungen
+3. Fuellt Bewerbungsformular aus (Name, E-Mail, §34i, Erfahrung)
+4. Klickt "Bewerbung absenden"
+5. INSERT in manager_applications:
+   - requested_role: 'finance_manager'
+   - qualification_data: { has_34i: 'yes', experience: '3-5', ... }
+   - status: 'submitted'
+   - source_brand: 'futureroom'
+   - tenant_id: NULL (noch kein Tenant!)
+   - user_id: NULL (noch kein User!)
+6. Bestaetigung: "Bewerbung eingegangen. Wir melden uns innerhalb von 48h."
+
+--- Zone 1 ---
+7. Admin sieht Bewerbung in /admin/manager-freischaltung
+8. Admin prueft Qualifikation
+9. Admin genehmigt:
+   a. System erstellt User (supabase.auth.admin.createUser)
+   b. handle_new_user() erstellt Client-Tenant + 14 Basis-Module
+   c. Admin-Logik: org_type → 'partner', membership_role → 'finance_manager'
+   d. Tile MOD-11 aktivieren
+   e. Willkommens-E-Mail mit Login-Link senden
+10. Manager loggt sich ein → sieht 14 Basis + MOD-11
 ```
 
 ---
 
-## 2. Ist-Zustand (Infrastruktur-Analyse)
+## Technische Details
 
-### Was existiert und funktioniert
+### Neue/Geaenderte Dateien
 
-| Baustein | Status | Details |
+| Datei | Aktion | Modul-Zuordnung |
 |---|---|---|
-| `organizations` Tabelle | Vorhanden | org_type enum: internal, partner, sub_partner, client, renter |
-| `memberships` Tabelle | Vorhanden | membership_role enum: org_admin, sales_partner, finance_manager, akquise_manager, ... |
-| `org_links` Tabelle | Vorhanden, LEER | from_org_id, to_org_id, link_type (manages/delegates_to), status |
-| `org_delegations` Tabelle | Vorhanden, LEER | delegate_org_id, target_org_id, scopes (jsonb), status, expires_at |
-| `tenant_tile_activation` | Vorhanden | tile_code + status pro Tenant |
-| `get_tiles_for_role()` | Vorhanden | Mappt membership_role auf Tile-Array |
-| `my_scope_org_ids()` | Vorhanden | Rekursive Funktion: eigene Org + Children + org_links (manages/delegates_to) |
-| `handle_new_user()` | Vorhanden | Erstellt Client-Tenant (org_type=client, role=org_admin, 14 Basis-Tiles) |
-| `operativeDeskManifest.ts` | Vorhanden | 7 Desks mit Client-Modul ↔ Z1-Desk ↔ Manager-Modul Mapping |
+| `src/components/zone3/shared/ManagerApplicationForm.tsx` | NEU | Kein Modul (shared Z3) |
+| `src/pages/zone3/futureroom/FutureRoomKarriere.tsx` | AENDERN | Kein Modul (Z3) |
+| `src/pages/zone3/acquiary/AcquiaryKarriere.tsx` | AENDERN | Kein Modul (Z3) |
+| `src/pages/zone3/kaufy2026/Kaufy2026Vertrieb.tsx` | AENDERN | Kein Modul (Z3) |
+| `src/pages/zone3/sot/SotKarriere.tsx` | AENDERN | Kein Modul (Z3) |
+| `src/pages/zone3/lennox/LennoxPartnerWerden.tsx` | AENDERN | Kein Modul (Z3) |
+| Migration SQL | NEU | DB |
+| `src/pages/admin/ManagerFreischaltung.tsx` | AENDERN | Kein Modul (Z1 Admin) |
 
-### Was FEHLT
+### DB-Migration
 
-| Luecke | Auswirkung |
-|---|---|
-| Kein Manager-Signup-Flow | Manager koennen sich nicht registrieren und die richtigen Module bekommen |
-| Keine membership_role fuer MOD-13 und MOD-22 | Projektmanager und Pet Manager haben keine dedizierte Rolle |
-| org_links/org_delegations sind leer | Cross-Tenant-Sichtbarkeit ist nicht getestet |
-| Kein Zone-1-UI fuer Manager-Freischaltung | Admin kann keine Manager-Tenants erstellen/freischalten |
-| Kein Golden Path fuer den Manager-Lifecycle | Der Prozess Signup → Verifizierung → Freischaltung → Kundenzuweisung ist nicht formalisiert |
-| get_tiles_for_role() kennt MOD-22 nicht | Pet Manager ist nicht im Tile-Set enthalten |
-| Kein Delegations-Scoping | org_delegations.scopes ist jsonb ohne definiertes Schema |
+```text
+-- source_brand Spalte hinzufuegen
+ALTER TABLE manager_applications ADD COLUMN IF NOT EXISTS source_brand text;
+
+-- tenant_id und user_id nullable machen (Bewerbung ohne Account)
+ALTER TABLE manager_applications ALTER COLUMN tenant_id DROP NOT NULL;
+ALTER TABLE manager_applications ALTER COLUMN user_id DROP NOT NULL;
+
+-- RLS: Anonymous INSERT fuer Bewerbungen
+CREATE POLICY "anon_can_apply" ON manager_applications
+  FOR INSERT TO anon, authenticated
+  WITH CHECK (status = 'submitted');
+
+-- RLS: Nur Admins koennen lesen
+CREATE POLICY "admin_can_read_applications" ON manager_applications
+  FOR SELECT TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM user_roles
+      WHERE user_id = auth.uid() AND role = 'admin'
+    )
+  );
+```
+
+### ManagerFreischaltung.tsx Erweiterung
+
+Die Zone-1 Seite muss um Schritt 9 erweitert werden:
+- Bei "Genehmigen" → Edge Function aufrufen die:
+  1. User erstellt (supabase.auth.admin.createUser mit E-Mail + generiertem Passwort)
+  2. Willkommens-E-Mail versendet (mit Link zu Password-Reset)
+  3. Org-Type upgraded
+  4. Tiles aktiviert
+
+Dies erfordert eine neue Edge Function `sot-manager-activate` die diese Schritte atomar ausfuehrt.
+
+### Keine Modul-Freezes betroffen
+
+Alle geaenderten Dateien liegen in Zone 3 (`src/pages/zone3/`) oder Zone 1 Admin (`src/pages/admin/`), die nicht in der Modul-Freeze-Matrix enthalten sind.
 
 ---
 
-## 3. Architektur-Entscheidungen
+## Was NICHT in diesem Schritt umgesetzt wird
 
-### 3.1 Neue Rollen fuer MOD-13 und MOD-22
-
-Aktuell fehlen dedizierte membership_roles. Vorschlag:
-
-| Modul | Neue membership_role | Tiles |
-|---|---|---|
-| MOD-13 Projektmanager | `project_manager` | 14 Basis + MOD-13 |
-| MOD-22 Pet Manager | `pet_manager` | 14 Basis + MOD-22 |
-
-Dies erfordert:
-- Enum-Erweiterung: `ALTER TYPE membership_role ADD VALUE 'project_manager'` und `'pet_manager'`
-- `get_tiles_for_role()` erweitern
-- `rolesMatrix.ts` aktualisieren
-- `ROLE_EXTRA_TILES` erweitern
-
-### 3.2 Manager-Signup-Flow (3 Phasen)
-
-**Phase A -- Selbstregistrierung (Zone 3/Public)**
-1. Manager registriert sich ueber normalen Signup
-2. System erstellt Client-Tenant (org_type=client, 14 Basis-Module) -- wie bisher
-3. Manager beantragt "Manager-Status" ueber ein Formular (z.B. unter Stammdaten oder separater Route)
-4. Antrag wird in einer neuen Tabelle `manager_applications` gespeichert
-
-**Phase B -- Verifizierung (Zone 1)**
-1. Zone 1 Admin sieht den Antrag im entsprechenden Operative Desk
-2. Admin prueft Qualifikationen (§34i GewO fuer Finanzierung, etc.)
-3. Admin genehmigt oder lehnt ab
-
-**Phase C -- Freischaltung (Zone 1, automatisiert)**
-Bei Genehmigung:
-1. `organizations.org_type` von 'client' auf 'partner' aendern
-2. `memberships.role` auf die passende Manager-Rolle aendern (z.B. finance_manager)
-3. Manager-Modul-Tile aktivieren in `tenant_tile_activation`
-4. Optional: `user_roles` Eintrag fuer app_role
-
-### 3.3 Kunden-Zuweisung (Zone 1 Orchestrierung)
-
-Wenn ein Kunde eine Anfrage stellt (z.B. Finanzierungsantrag):
-1. Anfrage landet im Zone-1-Desk (z.B. FutureRoom)
-2. Admin weist einen Manager zu
-3. System erstellt `org_link` (from: Manager-Org, to: Client-Org, link_type: 'manages', status: 'active')
-4. System erstellt `org_delegation` (delegate: Manager-Org, target: Client-Org, scopes: {modules: ['MOD-07'], read: true, write: false})
-5. `my_scope_org_ids()` gibt dem Manager nun Sichtbarkeit auf die Client-Daten (gemaess Scopes)
-
-### 3.4 Delegations-Schema (scopes)
-
-```text
-org_delegations.scopes = {
-  "modules": ["MOD-07"],      // Welche Module-Daten sichtbar sind
-  "access_level": "read",     // read | read_write
-  "entity_types": ["finance_requests", "applicant_profiles", "documents"],
-  "expires_days": 365         // Auto-Expiry
-}
-```
-
----
-
-## 4. Benoetigte Golden Paths und Engines
-
-### 4.1 Neuer Golden Path: GP-MANAGER-LIFECYCLE
-
-Dies ist ein Cross-Zone Engine-Workflow (wie GP-LEAD oder GP-FINANCE-Z3):
-
-```text
-GP-MANAGER-LIFECYCLE
-  Phase 1: APPLICATION (Z2 → Z1)
-    Step 1: manager_application_submitted (user_task, Z2)
-    Step 2: application_received_at_desk (service_task, Z1)
-    
-  Phase 2: VERIFICATION (Z1)
-    Step 3: qualification_check (user_task, Z1)
-    Step 4: compliance_review (user_task, Z1)
-    Fail: on_rejected → notify_applicant, status='rejected'
-    
-  Phase 3: ACTIVATION (Z1)
-    Step 5: org_type_upgrade (service_task, Z1)
-    Step 6: tile_activation (service_task, Z1)
-    Step 7: welcome_notification (service_task, Z1)
-    
-  Phase 4: ASSIGNMENT (Z1 → Z2)
-    Step 8: first_client_assigned (wait_message, Z1)
-    Step 9: org_link_created (service_task, Z1)
-    Step 10: delegation_granted (service_task, Z1)
-    
-  Success: manager_active_with_clients
-  
-  Fail-States:
-    on_timeout: 14d ohne Reaktion → Erinnerung
-    on_rejected: Ablehnungsgrund + Re-Apply-Option
-    on_error: Rollback org_type + Tiles
-```
-
-### 4.2 Neuer Golden Path: GP-CLIENT-ASSIGNMENT
-
-Fuer die Zuweisung eines Kunden an einen Manager (wiederkehrender Prozess):
-
-```text
-GP-CLIENT-ASSIGNMENT
-  Step 1: client_request_received (service_task, Z2-Client)
-  Step 2: desk_triage (user_task, Z1)
-  Step 3: manager_selected (user_task, Z1)
-  Step 4: org_link_created (service_task, Z1)
-  Step 5: delegation_scoped (service_task, Z1)
-  Step 6: manager_notified (service_task, Z1)
-  Step 7: manager_accepts (user_task, Z2-Manager)
-  
-  Fail-States:
-    on_timeout: 48h → Re-Route an anderen Manager
-    on_rejected: Manager lehnt ab → zurueck zu Step 3
-    on_error: Delegation widerrufen
-```
-
-### 4.3 Keine neue Engine noetig
-
-Die Manager-Freischaltung ist ein Governance-Workflow, keine Kalkulation. Die bestehende Golden Path Engine (ENG-GOLDEN) reicht aus. Die Logik (org_type aendern, Tiles aktivieren, org_link erstellen) sind DB-Operationen, keine Berechnungen.
-
----
-
-## 5. Datenbank-Aenderungen
-
-### 5.1 Neue Tabelle: manager_applications
-
-```text
-manager_applications
-  id: uuid (PK)
-  tenant_id: uuid (FK organizations)
-  user_id: uuid (FK auth.users)
-  requested_role: membership_role
-  qualification_data: jsonb  -- Zertifikate, §34i Nachweis, etc.
-  status: text  -- draft, submitted, in_review, approved, rejected
-  reviewed_by: uuid
-  reviewed_at: timestamptz
-  rejection_reason: text
-  created_at: timestamptz
-  updated_at: timestamptz
-```
-
-### 5.2 Enum-Erweiterungen
-
-```text
-ALTER TYPE membership_role ADD VALUE 'project_manager';
-ALTER TYPE membership_role ADD VALUE 'pet_manager';
-```
-
-### 5.3 get_tiles_for_role() erweitern
-
-```text
-WHEN 'project_manager' THEN RETURN base_tiles || ARRAY['MOD-13'];
-WHEN 'pet_manager' THEN RETURN base_tiles || ARRAY['MOD-22'];
-```
-
-### 5.4 Delegations-Scope-Validierung
-
-Eine DB-Funktion die prueft ob ein Manager auf bestimmte Daten zugreifen darf:
-
-```text
-has_delegation_scope(manager_org_id, client_org_id, module_code) → boolean
-```
-
----
-
-## 6. Implementierungs-Phasenplan
-
-### Phase 1: Fundament (jetzt umsetzbar)
-
-| # | Aufgabe | Dateien |
-|---|---|---|
-| 1 | DB-Migration: membership_role enum + get_tiles_for_role() + manager_applications Tabelle | Migration SQL |
-| 2 | rolesMatrix.ts aktualisieren: project_manager + pet_manager Rollen | src/constants/rolesMatrix.ts |
-| 3 | Golden Path Definition: GP-MANAGER-LIFECYCLE + GP-CLIENT-ASSIGNMENT | src/manifests/goldenPaths/ |
-| 4 | Golden Path Registry aktualisieren | spec/current/07_golden_paths/GOLDEN_PATH_REGISTRY.md |
-| 5 | Context Resolver: GP-MANAGER-LIFECYCLE (prueft manager_applications Status) | src/goldenpath/contextResolvers.ts |
-
-### Phase 2: Zone-1-UI (spaetere Phase)
-
-| # | Aufgabe | Wo |
-|---|---|---|
-| 6 | Manager-Antraege im jeweiligen Desk anzeigen | Zone 1 Admin |
-| 7 | Genehmigungs-Workflow mit org_type Upgrade + Tile-Aktivierung | Zone 1 Admin |
-| 8 | Kunden-Zuweisung UI (org_link + org_delegation erstellen) | Zone 1 Desk |
-
-### Phase 3: Zone-2-UI (spaetere Phase)
-
-| # | Aufgabe | Wo |
-|---|---|---|
-| 9 | Manager-Bewerbungsformular (unter Stammdaten oder separater Route) | Zone 2 Portal |
-| 10 | Manager-Dashboard: zugewiesene Kunden sehen | Manager-Module |
-| 11 | RLS-Erweiterung: my_scope_org_ids() + has_delegation_scope() in relevanten Policies | DB |
-
-### Phase 4: Demo-Daten und Testing
-
-| # | Aufgabe |
-|---|---|
-| 12 | Demo-Manager-Tenant erstellen (org_type=partner, role=finance_manager) |
-| 13 | Demo-org_link zwischen Golden Tenant und Manager-Tenant |
-| 14 | Demo-org_delegation mit konkreten Scopes |
-| 15 | E2E-Test: Manager sieht Client-Daten nur im zugewiesenen Scope |
-
----
-
-## 7. Was NICHT geaendert wird
-
-- Bestehende Client-Module (alle frozen ausser MOD-04, MOD-13, MOD-18)
-- Bestehende Manager-Module (Implementierung bleibt, nur Zugangssteuerung wird formalisiert)
-- handle_new_user() -- bleibt unveraendert (erstellt weiterhin Client-Tenants)
-- Zone-3-Websites (keine Aenderung)
-- Bestehende Engine-Workflows (MOD-04, MOD-07, etc.)
-
----
-
-## 8. Zusammenfassung
-
-| Entscheidung | Empfehlung |
-|---|---|
-| Neue Engine? | Nein -- Governance-Workflow, keine Kalkulation |
-| Neue Golden Paths? | Ja -- GP-MANAGER-LIFECYCLE + GP-CLIENT-ASSIGNMENT |
-| Neue DB-Tabelle? | Ja -- manager_applications |
-| Neue Rollen? | Ja -- project_manager + pet_manager |
-| Bestehende Golden Paths aendern? | Nein -- die existierenden 17+8 bleiben unveraendert |
-| operativeDeskManifest aendern? | Nein -- Mapping ist bereits korrekt |
-
-Die Phase 1 (Fundament) kann sofort umgesetzt werden, da sie nur nicht-frozen Dateien betrifft (constants, manifests, goldenpath, spec, DB-Migration). Die UI-Phasen koennen spaeter folgen.
+- Zone-2 Bewerbungsformular (fuer bestehende User die Manager werden wollen) → spaetere Phase
+- Kunden-Zuweisung UI (org_link + org_delegation) → spaetere Phase
+- E-Mail-Templates fuer Willkommens-E-Mail → spaetere Phase (vorerst Standard-Reset-E-Mail)
+- SoT-Karriereseite als "Hub" fuer alle Rollen → kann einfach gehalten werden mit Verweis auf die Brand-spezifischen Seiten
