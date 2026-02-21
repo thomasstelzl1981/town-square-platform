@@ -41,42 +41,42 @@
 
 ### B1. Basis-Module (für alle Rollen)
 
-| # | Modul | Test | Status |
-|---|-------|------|--------|
-| B-01 | MOD-00 Dashboard | Dashboard lädt, Widgets sichtbar, Navigation funktioniert | ⬜ |
-| B-02 | MOD-01 Stammdaten | Kontakte anlegen, bearbeiten, suchen, löschen | ⬜ |
-| B-03 | MOD-02 Office | Armstrong Panel öffnen, Copilot-Frage stellen | ⬜ |
-| B-04 | MOD-03 DMS | Ordner erstellen, Datei hochladen, Datei öffnen, löschen | ⬜ |
-| B-05 | MOD-04 Immobilien — Portfolio | Objekt anlegen, Einheiten verwalten, KPI anzeigen | ⬜ |
-| B-06 | MOD-04 Immobilien — Verwaltung | BWA anzeigen, NK-Abrechnung erstellen | ⬜ |
-| B-07 | MOD-04 Immobilien — Sanierung | Sanierungsprojekt anlegen, LV erstellen | ⬜ |
-| B-08 | MOD-04 Immobilien — Zuhause | Zuhause anlegen, Verträge verwalten | ⬜ |
-| B-09 | MOD-05 MSV/Pets | Haustier anlegen, Pflege-Events erfassen | ⬜ |
-| B-10 | MOD-06 Verkauf | Immobilie zum Verkauf einstellen | ⬜ |
-| B-11 | MOD-07 Finanzierung | Finanzierungsanfrage erstellen, Kalkulation prüfen | ⬜ |
-| B-12 | MOD-08 Investments — Suchmandat | Suchmandat anlegen, Profil konfigurieren | ⬜ |
-| B-13 | MOD-08 Investments — Simulation | Simulation starten (Button), Ergebnis prüfen | ⬜ |
-| B-14 | MOD-10 Leads | Lead anlegen, Status ändern | ⬜ |
-| B-15 | MOD-14 Communication — Recherche | Rechercheauftrag anlegen | ⬜ |
-| B-16 | MOD-14 Communication — Serien-E-Mail | Sequenz erstellen, Steps konfigurieren | ⬜ |
-| B-17 | MOD-15 Fortbildung | Kurse anzeigen, Fortschritt tracken | ⬜ |
-| B-18 | MOD-16 Services | Service-Katalog laden, Info anzeigen | ⬜ |
-| B-19 | MOD-17 Cars | Fahrzeug anlegen, Leasing-Details speichern | ⬜ |
-| B-20 | MOD-18 Finanzanalyse | Konto verbinden (CSV), Transaktionen anzeigen | ⬜ |
-| B-21 | MOD-19 Photovoltaik | PV-Anlage anlegen, Ertragsdaten eintragen | ⬜ |
-| B-22 | MOD-20 Miety/Zuhause | Wohnobjekt verwalten, Versorger eintragen | ⬜ |
+| # | Modul | Test | Status | DB-Smoke |
+|---|-------|------|--------|----------|
+| B-01 | MOD-00 Dashboard | Dashboard lädt, Widgets sichtbar, Navigation funktioniert | ⬜ UI | 22 Tiles aktiv |
+| B-02 | MOD-01 Stammdaten | Kontakte anlegen, bearbeiten, suchen, löschen | ✅ DATA | 5 Kontakte |
+| B-03 | MOD-02 Office | Armstrong Panel öffnen, Copilot-Frage stellen | ⬜ UI | N/A (AI-Engine) |
+| B-04 | MOD-03 DMS | Ordner erstellen, Datei hochladen, Datei öffnen, löschen | ✅ DATA | 252 Storage-Nodes |
+| B-05 | MOD-04 Immobilien — Portfolio | Objekt anlegen, Einheiten verwalten, KPI anzeigen | ✅ DATA | 3 Properties |
+| B-06 | MOD-04 Immobilien — Verwaltung | BWA anzeigen, NK-Abrechnung erstellen | ✅ DATA | 3 Leases |
+| B-07 | MOD-04 Immobilien — Sanierung | Sanierungsprojekt anlegen, LV erstellen | ⬜ UI | N/A |
+| B-08 | MOD-04 Immobilien — Zuhause | Zuhause anlegen, Verträge verwalten | ✅ DATA | 1 Miety-Home |
+| B-09 | MOD-05 MSV/Pets | Haustier anlegen, Pflege-Events erfassen | ✅ DATA | 5 Pets |
+| B-10 | MOD-06 Verkauf | Immobilie zum Verkauf einstellen | ⚠️ WARN | 0 sale_transactions |
+| B-11 | MOD-07 Finanzierung | Finanzierungsanfrage erstellen, Kalkulation prüfen | ✅ DATA | 1 Finance-Request |
+| B-12 | MOD-08 Investments — Suchmandat | Suchmandat anlegen, Profil konfigurieren | ⚠️ WARN | 0 investment_profiles |
+| B-13 | MOD-08 Investments — Simulation | Simulation starten (Button), Ergebnis prüfen | ⬜ UI | N/A |
+| B-14 | MOD-10 Leads | Lead anlegen, Status ändern | ⚠️ WARN | 0 Leads |
+| B-15 | MOD-14 Communication — Recherche | Rechercheauftrag anlegen | ⬜ UI | N/A (AI-Engine) |
+| B-16 | MOD-14 Communication — Serien-E-Mail | Sequenz erstellen, Steps konfigurieren | ⬜ UI | N/A |
+| B-17 | MOD-15 Fortbildung | Kurse anzeigen, Fortschritt tracken | ⬜ UI | N/A (curated) |
+| B-18 | MOD-16 Services | Service-Katalog laden, Info anzeigen | ✅ DATA | 7 Insurance-Contracts |
+| B-19 | MOD-17 Cars | Fahrzeug anlegen, Leasing-Details speichern | ✅ DATA | 2 Fahrzeuge |
+| B-20 | MOD-18 Finanzanalyse | Konto verbinden (CSV), Transaktionen anzeigen | ✅ DATA | 100 Transaktionen |
+| B-21 | MOD-19 Photovoltaik | PV-Anlage anlegen, Ertragsdaten eintragen | ✅ DATA | 1 PV-Anlage |
+| B-22 | MOD-20 Miety/Zuhause | Wohnobjekt verwalten, Versorger eintragen | ✅ DATA | 1 Miety-Home |
 
 ### B2. Manager-Module (rollenspezifisch)
 
-| # | Modul | Test | Rolle | Status |
-|---|-------|------|-------|--------|
-| B-23 | MOD-09 Vertriebspartner — Katalog | Objekte laden, Beratungs-Toggle nutzen | sales_partner | ⬜ |
-| B-24 | MOD-09 Vertriebspartner — Exposé | Exposé öffnen, Kalkulator NICHT auto-startet | sales_partner | ⬜ |
-| B-25 | MOD-09 Vertriebspartner — Beratung | Beratungsansicht mit gefilterten Objekten | sales_partner | ⬜ |
-| B-26 | MOD-11 Finanzierungsmanager | Fall anlegen, Status-Workflow durchlaufen | finance_manager | ⬜ |
-| B-27 | MOD-12 Akquise-Manager | Mandat anlegen, Objekte zuordnen | akquise_manager | ⬜ |
-| B-28 | MOD-13 Projekte | Projekt anlegen, Einheiten definieren | project_manager | ⬜ |
-| B-29 | MOD-22 Pet Manager | Pet-Profil anlegen, Buchung erstellen | pet_manager | ⬜ |
+| # | Modul | Test | Rolle | Status | DB-Smoke |
+|---|-------|------|-------|--------|----------|
+| B-23 | MOD-09 Vertriebspartner — Katalog | Objekte laden, Beratungs-Toggle nutzen | sales_partner | ✅ DATA | 1 Finance-Mandate |
+| B-24 | MOD-09 Vertriebspartner — Exposé | Exposé öffnen, Kalkulator NICHT auto-startet | sales_partner | ⬜ UI | N/A |
+| B-25 | MOD-09 Vertriebspartner — Beratung | Beratungsansicht mit gefilterten Objekten | sales_partner | ⬜ UI | N/A |
+| B-26 | MOD-11 Finanzierungsmanager | Fall anlegen, Status-Workflow durchlaufen | finance_manager | ⚠️ WARN | 0 finance_cases |
+| B-27 | MOD-12 Akquise-Manager | Mandat anlegen, Objekte zuordnen | akquise_manager | ✅ DATA | 1 acq_mandate |
+| B-28 | MOD-13 Projekte | Projekt anlegen, Einheiten definieren | project_manager | ✅ DATA | 1 dev_project |
+| B-29 | MOD-22 Pet Manager | Pet-Profil anlegen, Buchung erstellen | pet_manager | ✅ DATA | 5 Pets |
 
 ---
 
