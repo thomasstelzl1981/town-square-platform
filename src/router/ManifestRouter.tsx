@@ -312,6 +312,7 @@ const portalModulePageMap: Record<string, React.LazyExoticComponent<React.Compon
   miety: MietyPortalPage,
   pets: React.lazy(() => import('@/pages/portal/PetsPage')),
   petmanager: React.lazy(() => import('@/pages/portal/PetManagerPage')),
+  'ki-browser': React.lazy(() => import('@/pages/portal/KiBrowserPage')),
 };
 
 // =============================================================================

@@ -569,7 +569,23 @@ export const zone2Portal: ZoneDefinition = {
         { path: "zuhause/:homeId", component: "MietyHomeDossier", title: "Zuhause-Akte", dynamic: true },
       ],
     },
-    // MOD-21 entfernt — Website Builder ist jetzt MOD-05
+    // =========================================================================
+    // MOD-21: KI-BROWSER — Armstrong Remote Browsing Module
+    // =========================================================================
+    "MOD-21": {
+      name: "KI-Browser",
+      base: "ki-browser",
+      icon: "Globe",
+      display_order: 21,
+      visibility: { default: false, org_types: ["client", "partner"], requires_activation: true },
+      tiles: [
+        { path: "uebersicht", component: "KiBrowserUebersicht", title: "Übersicht", default: true },
+        { path: "session", component: "KiBrowserSession", title: "Session" },
+        { path: "quellen", component: "KiBrowserQuellen", title: "Quellen & Belege" },
+        { path: "vorlagen", component: "KiBrowserVorlagen", title: "Vorlagen" },
+        { path: "policies", component: "KiBrowserPolicies", title: "Policies" },
+      ],
+    },
     // =========================================================================
     // MOD-22: PET MANAGER — Franchise-Partner Portal
     // =========================================================================
