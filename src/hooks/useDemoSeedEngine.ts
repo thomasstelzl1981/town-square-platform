@@ -67,13 +67,15 @@ const NUMERIC_KEYS = new Set([
   'market_value',
   // acq_offers
   'price_asking', 'units_count', 'yield_indicated', 'noi_indicated',
+  // listings
+  'asking_price', 'commission_rate', 'min_price',
 ]);
 
 /** Boolean columns */
 const BOOLEAN_KEYS = new Set([
   'is_demo', 'weg_flag', 'is_default', 'is_public_listing',
   'is_primary', 'has_battery', 'mastr_account_present',
-  'is_business', 'rental_managed',
+  'is_business', 'rental_managed', 'sale_enabled',
 ]);
 
 function coerceValue(value: string, key: string): unknown {
@@ -646,7 +648,17 @@ async function seedProperties(
           .like('name', `%${address}%`);
       }
 
-      // 1b. Delete property_accounting (AfA data)
+      // 1b. Delete sales workflow children (listing_publications → listings → property_features)
+      const { data: existingListings } = await (supabase as any)
+        .from('listings').select('id').eq('property_id', propId);
+      if (existingListings?.length) {
+        const listingIds = existingListings.map((l: { id: string }) => l.id);
+        await (supabase as any).from('listing_publications').delete().in('listing_id', listingIds);
+        await (supabase as any).from('listings').delete().in('id', listingIds);
+      }
+      await (supabase as any).from('property_features').delete().eq('property_id', propId);
+
+      // 1c. Delete property_accounting (AfA data)
       await (supabase as any).from('property_accounting').delete().eq('property_id', propId);
 
       // 1c. Delete loans
@@ -1025,6 +1037,11 @@ export async function seedDemoData(
   await seed('leases', () => seedLeases(tenantId, unitIdMap));
   await seed('loans', () => seedFromCSV('/demo-data/demo_loans.csv', 'loans', tenantId));
 
+  // Phase 2.5: Sales Workflow (property_features → listings → listing_publications)
+  await seed('property_features', () => seedFromCSV('/demo-data/demo_property_features.csv', 'property_features', tenantId));
+  await seed('listings', () => seedFromCSV('/demo-data/demo_listings.csv', 'listings', tenantId));
+  await seed('listing_publications', () => seedFromCSV('/demo-data/demo_listing_publications.csv', 'listing_publications', tenantId));
+
   // Phase 3: Bank
   await seed('msv_bank_accounts', () => seedFromCSV('/demo-data/demo_bank_accounts.csv', 'msv_bank_accounts', tenantId));
   await seed('bank_transactions', () => seedFromCSV('/demo-data/demo_bank_transactions.csv', 'bank_transactions', tenantId));
@@ -1071,6 +1088,7 @@ export async function seedDemoData(
   const EXPECTED: Record<string, number> = {
     profile: 1, contacts: 5, landlord_contexts: 1,
     properties: 3, units: 3, leases: 3, loans: 3, property_accounting: 3,
+    property_features: 2, listings: 1, listing_publications: 2,
     msv_bank_accounts: 1, bank_transactions: 100,
     household_persons: 4, cars_vehicles: 2, pv_plants: 1,
     insurance_contracts: 7, kv_contracts: 4, vorsorge_contracts: 6,

@@ -30,7 +30,10 @@
     "pet_customers": { "file": "demo_pet_customers.csv", "expectedCount": 3, "dbTable": "pet_customers" },
     "pets": { "file": null, "expectedCount": 5, "dbTable": "pets", "seedMethod": "code" },
     "pet_bookings": { "file": "demo_pet_bookings.csv", "expectedCount": 5, "dbTable": "pet_bookings" },
-    "profile": { "file": "demo_profile.csv", "expectedCount": 1, "dbTable": "profiles", "seedMethod": "update" }
+    "profile": { "file": "demo_profile.csv", "expectedCount": 1, "dbTable": "profiles", "seedMethod": "update" },
+    "property_features": { "file": "demo_property_features.csv", "expectedCount": 2, "dbTable": "property_features" },
+    "listings": { "file": "demo_listings.csv", "expectedCount": 1, "dbTable": "listings" },
+    "listing_publications": { "file": "demo_listing_publications.csv", "expectedCount": 2, "dbTable": "listing_publications" }
   },
   "seedBatchId": "demo-ssot",
   "idPrefix": "d0000000-0000-4000",
