@@ -38,6 +38,8 @@ export { GP_LEAD_GOLDEN_PATH } from './GP_LEAD';
 export { GP_FINANCE_Z3_GOLDEN_PATH } from './GP_FINANCE_Z3';
 export { GP_PET_GOLDEN_PATH } from './GP_PET';
 export { GP_COMMISSION_GOLDEN_PATH } from './GP_COMMISSION';
+export { GP_MANAGER_LIFECYCLE_GOLDEN_PATH } from './GP_MANAGER_LIFECYCLE';
+export { GP_CLIENT_ASSIGNMENT_GOLDEN_PATH } from './GP_CLIENT_ASSIGNMENT';
 
 // ═══════════════════════════════════════════════════════════════
 // Ledger Event Whitelist (mirrors data_event_ledger RPC)
@@ -208,6 +210,29 @@ export const LEDGER_EVENT_WHITELIST: ReadonlySet<string> = new Set([
   'commission.cancelled',
   'commission.assignment.timeout',
   'commission.payment.timeout',
+
+  // ─── GP-MANAGER-LIFECYCLE: Manager-Bewerbung & Freischaltung ─
+  'manager.application.submitted',
+  'manager.application.approved',
+  'manager.application.rejected',
+  'manager.application.submit.error',
+  'manager.qualification.check.timeout',
+  'manager.org.upgraded',
+  'manager.org.upgrade.error',
+  'manager.tiles.activated',
+  'manager.tiles.activation.error',
+  'manager.first_client.assigned',
+  'manager.delegation.grant.error',
+
+  // ─── GP-CLIENT-ASSIGNMENT: Kunden-Zuweisung ────────────────
+  'client.request.received',
+  'client.request.receive.error',
+  'client.assignment.completed',
+  'client.assignment.triage.timeout',
+  'client.assignment.delegation.error',
+  'client.assignment.accept.timeout',
+  'client.assignment.rejected',
+  'manager.assignment.accepted',
 ]);
 
 // ═══════════════════════════════════════════════════════════════
@@ -224,6 +249,8 @@ import { GP_LEAD_GOLDEN_PATH as _GP_LEAD } from './GP_LEAD';
 import { GP_FINANCE_Z3_GOLDEN_PATH as _GP_FINANCE_Z3 } from './GP_FINANCE_Z3';
 import { GP_PET_GOLDEN_PATH as _GP_PET } from './GP_PET';
 import { GP_COMMISSION_GOLDEN_PATH as _GP_COMMISSION } from './GP_COMMISSION';
+import { GP_MANAGER_LIFECYCLE_GOLDEN_PATH as _GP_MANAGER_LIFECYCLE } from './GP_MANAGER_LIFECYCLE';
+import { GP_CLIENT_ASSIGNMENT_GOLDEN_PATH as _GP_CLIENT_ASSIGNMENT } from './GP_CLIENT_ASSIGNMENT';
 
 // Registrierung aller Golden Paths
 registerGoldenPath('MOD-04', _MOD_04);
@@ -237,3 +264,5 @@ registerGoldenPath('GP-LEAD', _GP_LEAD);
 registerGoldenPath('GP-FINANCE-Z3', _GP_FINANCE_Z3);
 registerGoldenPath('GP-PET', _GP_PET);
 registerGoldenPath('GP-COMMISSION', _GP_COMMISSION);
+registerGoldenPath('GP-MANAGER-LIFECYCLE', _GP_MANAGER_LIFECYCLE);
+registerGoldenPath('GP-CLIENT-ASSIGNMENT', _GP_CLIENT_ASSIGNMENT);

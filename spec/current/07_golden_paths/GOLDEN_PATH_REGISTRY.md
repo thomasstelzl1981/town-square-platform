@@ -1,6 +1,6 @@
 # Golden Path Registry — SSOT
 
-> **Stand:** 2026-02-18 | **Version:** 1.0  
+> **Stand:** 2026-02-21 | **Version:** 1.1  
 > **Pfad:** `spec/current/07_golden_paths/GOLDEN_PATH_REGISTRY.md`  
 > **Zone-1-UI:** `/admin/armstrong/golden-paths`
 
@@ -27,6 +27,8 @@
 | Zuhause-Verwaltung | MOD-20 | Wohnung/Haus + Versorgungsvertraege | Portal > Immobilien > Zuhause | Z2 |
 | Tierverwaltung | MOD-05 | Haustiere + Pflege + Services | Portal > Pets | Z2 |
 | Pet Manager Demo | MOD-22 | Kunden, Tiere, Buchungen (Demo) | Portal > Pet Manager | Z3 → Z1 → Z2 |
+| **Manager-Lifecycle** | **CROSS** | **Bewerbung → Verifizierung → Freischaltung → Kundenzuweisung** | **Z1 Admin + Stammdaten** | **Z2 → Z1 → Z2** |
+| **Kunden-Zuweisung** | **CROSS** | **Kundenanfrage → Triage → Manager-Zuweisung → Annahme** | **Z1 Admin** | **Z2 → Z1 → Z2** |
 
 ---
 
@@ -67,7 +69,7 @@ Jeder Portal-Prozess wird gegen 6 Kriterien geprueft:
 
 ---
 
-## B) Engine-Workflows (8)
+## B) Engine-Workflows (10)
 
 > Quelle: `src/manifests/goldenPaths/index.ts` + Einzeldateien
 
@@ -81,6 +83,8 @@ Jeder Portal-Prozess wird gegen 6 Kriterien geprueft:
 | GP-LEAD | Lead-Generierung | 4 | Z3 → Z1 → Z2 | ✅ | ✅ |
 | GP-FINANCE-Z3 | Zone-3-Finanzierung | 7 | Z3 → Z1 → Z2 | ✅ | ✅ |
 | GP-PET | Pet Manager Lifecycle | 7 | Z3 → Z1 → Z2 | ✅ | ✅ |
+| **GP-MANAGER-LIFECYCLE** | **Manager-Bewerbung & Freischaltung** | **10** | **Z2 → Z1 → Z2** | **✅** | **✅** |
+| **GP-CLIENT-ASSIGNMENT** | **Kunden-Zuweisung** | **7** | **Z2 → Z1 → Z2** | **✅** | **✅** |
 
 ### Workflow-Architektur
 
@@ -94,6 +98,32 @@ Jeder Engine-Workflow besteht aus:
 
 ---
 
+## C) Manager-Modul-Zuordnung (NEU V1.1)
+
+| Manager-Modul | Code | membership_role | Zone-1-Desk | Client-Gegenstueck |
+|---|---|---|---|---|
+| Immo-Manager (Vertrieb) | MOD-09 | sales_partner | Sales Desk | MOD-06 |
+| Lead Manager | MOD-10 | sales_partner | Lead Desk | — (Z3-Intake) |
+| Finanzierungsmanager | MOD-11 | finance_manager | FutureRoom | MOD-07 |
+| Akquise-Manager | MOD-12 | akquise_manager | Acquiary | MOD-08 |
+| Projektmanager | MOD-13 | project_manager | Projekt Desk | — |
+| Pet Manager | MOD-22 | pet_manager | Pet Desk | MOD-05 |
+
+### Rollen-Matrix (8 aktive Rollen)
+
+| Rolle | membership_role | Module |
+|-------|----------------|--------|
+| Platform Admin | platform_admin | Alle 22 |
+| Super-User | org_admin + super_user | Alle 22 |
+| Standardkunde | org_admin | 14 Basis |
+| Akquise-Manager | akquise_manager | 14 + MOD-12 |
+| Finanzierungsmanager | finance_manager | 14 + MOD-11 |
+| Vertriebspartner | sales_partner | 14 + MOD-09/10 |
+| Projektmanager | project_manager | 14 + MOD-13 |
+| Pet Manager | pet_manager | 14 + MOD-22 |
+
+---
+
 ## Governance-Regeln
 
 | Code | Regel | Gilt fuer |
@@ -102,6 +132,9 @@ Jeder Engine-Workflow besteht aus:
 | GP-GR-2 | Alle Events MUESSEN in der `LEDGER_EVENT_WHITELIST` registriert sein | Engine-Workflows |
 | GP-GR-3 | Demo-Widget an Position 0 in jedem Portal-Prozess (id: `__demo__`) | Portal-Prozesse |
 | GP-GR-4 | Compliance 6/6 fuer Done-Status | Portal-Prozesse |
+| GP-GR-5 | Manager-Freischaltung NUR ueber Zone 1 (GP-MANAGER-LIFECYCLE) | Manager-Module |
+| GP-GR-6 | Kunden-Zuweisung NUR ueber org_links + org_delegations via Z1 | Cross-Tenant |
+| GP-GR-7 | Kein direkter Z2↔Z2 Datenzugriff — alles via Z1-Orchestrierung | Cross-Tenant |
 
 ---
 
@@ -113,15 +146,21 @@ Jeder Engine-Workflow besteht aus:
 
 ### Engine-Workflows
 - Registry: `src/manifests/goldenPaths/index.ts`
-- Definitionen: `src/manifests/goldenPaths/MOD_04.ts`, `MOD_07_11.ts`, `MOD_08_12.ts`, `MOD_13.ts`, `GP_VERMIETUNG.ts`, `GP_LEAD.ts`, `GP_FINANCE_Z3.ts`, `GP_PET.ts`
+- Definitionen: `src/manifests/goldenPaths/MOD_04.ts`, `MOD_07_11.ts`, `MOD_08_12.ts`, `MOD_13.ts`, `GP_VERMIETUNG.ts`, `GP_LEAD.ts`, `GP_FINANCE_Z3.ts`, `GP_PET.ts`, **`GP_MANAGER_LIFECYCLE.ts`**, **`GP_CLIENT_ASSIGNMENT.ts`**
 - Engine: `src/goldenpath/engine.ts`
 - Hook: `src/goldenpath/useGoldenPath.ts`
 - Guard: `src/goldenpath/GoldenPathGuard.tsx`
 - Validator: `src/goldenpath/devValidator.ts`
 
+### Manager-Lifecycle
+- DB-Tabelle: `manager_applications` (status: draft → submitted → in_review → approved → rejected)
+- DB-Funktion: `has_delegation_scope(manager_org_id, client_org_id, module_code)`
+- DB-Funktion: `get_tiles_for_role()` — erweitert um project_manager + pet_manager
+- Context Resolver: `src/goldenpath/contextResolvers.ts` (GP-MANAGER-LIFECYCLE, GP-CLIENT-ASSIGNMENT)
+
 ### Ledger-Events
 - Whitelist: `LEDGER_EVENT_WHITELIST` in `src/manifests/goldenPaths/index.ts`
-- Aktuell ~80 registrierte Events (inkl. Fail-States und DSGVO-Events)
+- Aktuell ~95 registrierte Events (inkl. Fail-States, DSGVO-Events, Manager-Lifecycle)
 
 ---
 
@@ -130,3 +169,4 @@ Jeder Engine-Workflow besteht aus:
 | Version | Datum | Aenderung |
 |---------|-------|-----------|
 | 1.0 | 2026-02-18 | Initiale Konsolidierung: 17 Portal-Prozesse + 8 Engine-Workflows |
+| 1.1 | 2026-02-21 | Manager-Lifecycle: GP-MANAGER-LIFECYCLE + GP-CLIENT-ASSIGNMENT, 2 neue Rollen (project_manager, pet_manager), manager_applications Tabelle, has_delegation_scope() Funktion, ~15 neue Ledger-Events |
