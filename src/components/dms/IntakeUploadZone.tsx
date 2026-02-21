@@ -1,12 +1,10 @@
 /**
  * IntakeUploadZone — Context-aware upload dropzone for the Magic Intake Center.
- * 
- * Activated only after entity selection. Shows allowed document types
- * and progress of the intake pipeline.
+ * Supports multi-file upload (up to 10 files) with per-file status tracking.
  */
 
 import { useCallback, useState } from 'react';
-import { Upload, FileCheck, Loader2, AlertCircle } from 'lucide-react';
+import { Upload, FileCheck, Loader2, AlertCircle, File, CheckCircle2, XCircle } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
 import { cn } from '@/lib/utils';
 import { Card, CardContent } from '@/components/ui/card';
@@ -15,45 +13,94 @@ import { Progress } from '@/components/ui/progress';
 import { useDocumentIntake } from '@/hooks/useDocumentIntake';
 import { getParserProfile } from '@/config/parserManifest';
 import type { IntakeSelection } from './IntakeEntityPicker';
-import type { ExtractedRecord } from '@/types/parser-engine';
+
+interface FileStatus {
+  file: File;
+  status: 'queued' | 'uploading' | 'parsing' | 'done' | 'error';
+  error?: string;
+}
 
 interface IntakeUploadZoneProps {
   selection: IntakeSelection | null;
+  onUploadComplete?: () => void;
 }
 
-export function IntakeUploadZone({ selection }: IntakeUploadZoneProps) {
+export function IntakeUploadZone({ selection, onUploadComplete }: IntakeUploadZoneProps) {
   const {
     intake,
     confirmImport,
     resetIntake,
     intakeProgress,
     pendingRecords,
-    setPendingRecords,
-    parserResponse,
   } = useDocumentIntake();
-  const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
+  const [fileStatuses, setFileStatuses] = useState<FileStatus[]>([]);
+  const [activeFileIndex, setActiveFileIndex] = useState<number>(-1);
 
   const profile = selection ? getParserProfile(selection.parseMode) : null;
+
+  const processFiles = useCallback(
+    async (files: File[]) => {
+      if (!selection || files.length === 0) return;
+
+      const statuses: FileStatus[] = files.map((f) => ({ file: f, status: 'queued' as const }));
+      setFileStatuses(statuses);
+
+      for (let i = 0; i < files.length; i++) {
+        setActiveFileIndex(i);
+        setFileStatuses((prev) =>
+          prev.map((s, idx) => (idx === i ? { ...s, status: 'uploading' } : s)),
+        );
+
+        try {
+          await intake(files[i], {
+            parseMode: selection.parseMode,
+            entityId: selection.entityId || undefined,
+            moduleCode: profile?.moduleCode,
+          });
+
+          setFileStatuses((prev) =>
+            prev.map((s, idx) => (idx === i ? { ...s, status: 'done' } : s)),
+          );
+        } catch (err) {
+          setFileStatuses((prev) =>
+            prev.map((s, idx) =>
+              idx === i ? { ...s, status: 'error', error: (err as Error).message } : s,
+            ),
+          );
+        }
+      }
+
+      setActiveFileIndex(-1);
+      onUploadComplete?.();
+    },
+    [selection, intake, profile, onUploadComplete],
+  );
 
   const onDrop = useCallback(
     async (accepted: File[]) => {
       if (!selection || accepted.length === 0) return;
-      const file = accepted[0];
-      setUploadedFileName(file.name);
 
-      await intake(file, {
-        parseMode: selection.parseMode,
-        entityId: selection.entityId || undefined,
-        moduleCode: profile?.moduleCode,
-      });
+      // For single file, use original preview flow
+      if (accepted.length === 1) {
+        setFileStatuses([{ file: accepted[0], status: 'uploading' }]);
+        await intake(accepted[0], {
+          parseMode: selection.parseMode,
+          entityId: selection.entityId || undefined,
+          moduleCode: profile?.moduleCode,
+        });
+        return;
+      }
+
+      // For multi-file, use batch processing
+      await processFiles(accepted);
     },
-    [selection, intake, profile],
+    [selection, intake, profile, processFiles],
   );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     disabled: !selection,
-    maxFiles: 1,
+    maxFiles: 10,
     accept: {
       'application/pdf': ['.pdf'],
       'image/*': ['.png', '.jpg', '.jpeg', '.webp'],
@@ -67,11 +114,13 @@ export function IntakeUploadZone({ selection }: IntakeUploadZoneProps) {
   const handleConfirm = async () => {
     if (!selection) return;
     await confirmImport(selection.parseMode, pendingRecords, selection.entityId || undefined);
+    onUploadComplete?.();
   };
 
   const handleReset = () => {
     resetIntake();
-    setUploadedFileName(null);
+    setFileStatuses([]);
+    setActiveFileIndex(-1);
   };
 
   if (!selection) {
@@ -85,12 +134,12 @@ export function IntakeUploadZone({ selection }: IntakeUploadZoneProps) {
     );
   }
 
-  // Show pipeline progress
-  if (intakeProgress.step !== 'idle') {
+  // Show single-file pipeline progress (original flow)
+  if (intakeProgress.step !== 'idle' && fileStatuses.length <= 1) {
+    const uploadedFileName = fileStatuses[0]?.file.name ?? 'Dokument';
     return (
       <Card>
         <CardContent className="p-6 space-y-4">
-          {/* Progress bar */}
           <div className="space-y-2">
             <div className="flex items-center justify-between text-sm">
               <span className="font-medium">{uploadedFileName}</span>
@@ -99,7 +148,6 @@ export function IntakeUploadZone({ selection }: IntakeUploadZoneProps) {
             <Progress value={intakeProgress.progress} className="h-2" />
           </div>
 
-          {/* Error state */}
           {intakeProgress.step === 'error' && (
             <div className="flex items-center gap-2 text-destructive text-sm">
               <AlertCircle className="h-4 w-4" />
@@ -108,7 +156,6 @@ export function IntakeUploadZone({ selection }: IntakeUploadZoneProps) {
             </div>
           )}
 
-          {/* Preview state */}
           {intakeProgress.step === 'preview' && pendingRecords.length > 0 && (
             <div className="space-y-3">
               <p className="text-sm font-medium">Erkannte Daten:</p>
@@ -136,7 +183,6 @@ export function IntakeUploadZone({ selection }: IntakeUploadZoneProps) {
             </div>
           )}
 
-          {/* Parsing state */}
           {intakeProgress.step === 'parsing' && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -144,9 +190,8 @@ export function IntakeUploadZone({ selection }: IntakeUploadZoneProps) {
             </div>
           )}
 
-          {/* Done state */}
           {intakeProgress.step === 'done' && (
-              <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-sm text-primary">
                 <FileCheck className="h-4 w-4" />
                 <span>{intakeProgress.message}</span>
@@ -155,6 +200,58 @@ export function IntakeUploadZone({ selection }: IntakeUploadZoneProps) {
                 Weiteres Dokument
               </Button>
             </div>
+          )}
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Show multi-file batch status
+  if (fileStatuses.length > 1) {
+    const doneCount = fileStatuses.filter((s) => s.status === 'done').length;
+    const errorCount = fileStatuses.filter((s) => s.status === 'error').length;
+    const totalPercent = Math.round((doneCount / fileStatuses.length) * 100);
+
+    return (
+      <Card>
+        <CardContent className="p-6 space-y-4">
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-sm">
+              <span className="font-medium">Batch-Upload ({fileStatuses.length} Dateien)</span>
+              <span className="text-muted-foreground">
+                {doneCount}/{fileStatuses.length} fertig
+                {errorCount > 0 && ` · ${errorCount} Fehler`}
+              </span>
+            </div>
+            <Progress value={totalPercent} className="h-2" />
+          </div>
+
+          <div className="space-y-1.5 max-h-60 overflow-y-auto">
+            {fileStatuses.map((fs, idx) => (
+              <div key={idx} className="flex items-center gap-2 text-xs py-1">
+                {fs.status === 'done' && <CheckCircle2 className="h-3.5 w-3.5 text-primary flex-shrink-0" />}
+                {fs.status === 'error' && <XCircle className="h-3.5 w-3.5 text-destructive flex-shrink-0" />}
+                {(fs.status === 'uploading' || fs.status === 'parsing') && (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin text-primary flex-shrink-0" />
+                )}
+                {fs.status === 'queued' && <File className="h-3.5 w-3.5 text-muted-foreground/40 flex-shrink-0" />}
+                <span className={cn(
+                  'truncate',
+                  fs.status === 'done' && 'text-foreground',
+                  fs.status === 'error' && 'text-destructive',
+                  fs.status === 'queued' && 'text-muted-foreground',
+                )}>
+                  {fs.file.name}
+                </span>
+                {fs.error && <span className="text-destructive ml-auto flex-shrink-0">{fs.error}</span>}
+              </div>
+            ))}
+          </div>
+
+          {activeFileIndex === -1 && (
+            <Button variant="outline" size="sm" onClick={handleReset}>
+              Weiteres Upload
+            </Button>
           )}
         </CardContent>
       </Card>
@@ -177,11 +274,11 @@ export function IntakeUploadZone({ selection }: IntakeUploadZoneProps) {
         </div>
         <div>
           <p className="text-sm font-medium">
-            Dokument für {selection.categoryLabel}
+            Dokumente für {selection.categoryLabel}
             {selection.isNewEntity ? ' (neues Objekt)' : ''} hochladen
           </p>
           <p className="text-xs text-muted-foreground mt-1">
-            PDF, Bilder, Word oder Excel — bis 20 MB
+            PDF, Bilder, Word oder Excel — bis 20 MB · bis zu 10 Dateien
           </p>
         </div>
         {profile && profile.exampleDocuments.length > 0 && (
