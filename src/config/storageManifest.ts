@@ -344,6 +344,16 @@ export const STORAGE_MANIFEST: Record<string, ModuleStorageConfig> = {
     entity_fk_column: null,
     entity_table: null,
   },
+  MOD_21: {
+    module_code: 'MOD_21',
+    root_name: 'KI-Browser',
+    root_template_id: 'MOD_21_ROOT',
+    display_order: 21,
+    entity_sub_folders: [],
+    required_docs: [],
+    entity_fk_column: null,
+    entity_table: 'ki_browser_sessions',
+  },
 };
 
 // ── Helpers ──────────────────────────────────────────────────────────────────

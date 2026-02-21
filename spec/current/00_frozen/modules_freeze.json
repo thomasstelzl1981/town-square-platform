@@ -25,6 +25,7 @@
     "MOD-18": { "frozen": true, "frozen_at": "2026-02-21", "reason": "Global Freeze – Pre-Launch E2E Testing" },
     "MOD-19": { "frozen": true, "frozen_at": "2026-02-21", "reason": "Global Freeze – Pre-Launch E2E Testing" },
     "MOD-20": { "frozen": true, "frozen_at": "2026-02-21", "reason": "Global Freeze – Pre-Launch E2E Testing" },
-    "MOD-22": { "frozen": true, "frozen_at": "2026-02-21", "reason": "Global Freeze – Pre-Launch E2E Testing" }
+    "MOD-22": { "frozen": true, "frozen_at": "2026-02-21", "reason": "Global Freeze – Pre-Launch E2E Testing" },
+    "MOD-21": { "frozen": false, "frozen_at": null, "reason": "Neues Modul – KI-Browser (Phase 1 MVP)" }
   }
 }
