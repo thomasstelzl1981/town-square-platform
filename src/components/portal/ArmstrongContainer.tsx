@@ -1,8 +1,8 @@
 /**
  * ARMSTRONG CONTAINER — Dual Mode: Orb (collapsed) + Floating Overlay (expanded)
  * 
- * Collapsed: Draggable orb with voice mic (unchanged)
- * Expanded: Floating overlay panel with chat input + work visualization
+ * Collapsed: Draggable orb with voice mic
+ * Expanded: Compact floating overlay panel (380px, single-column)
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react';
