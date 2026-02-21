@@ -1,10 +1,6 @@
 /**
  * MOD-08 Investment Search Tab
  * Two modes: Investment-Suche (zVE + EK) and Klassische Suche
- * 
- * FIXES: 
- * - enabled: false → no auto-search on page load
- * - Added onboarding hero, sorting, summary bar, top-recommendation badges
  */
 import { useState, useCallback, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -29,7 +25,7 @@ import {
 import { InvestmentResultTile } from '@/components/investment/InvestmentResultTile';
 import { 
   Search, Calculator, Loader2, Building2, 
-  TrendingUp, LayoutGrid, List, Sparkles, Shield, BarChart3, ArrowUpDown
+  TrendingUp, LayoutGrid, List 
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { MediaWidgetGrid } from '@/components/shared/MediaWidgetGrid';
@@ -54,7 +50,6 @@ interface PublicListing {
 
 type SearchMode = 'investment' | 'classic';
 type ViewMode = 'grid' | 'list';
-type SortMode = 'default' | 'price_asc' | 'price_desc' | 'yield_desc' | 'burden_asc' | 'area_desc';
 
 export default function SucheTab() {
   const isMobile = useIsMobile();
@@ -63,7 +58,6 @@ export default function SucheTab() {
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
-  const [sortMode, setSortMode] = useState<SortMode>('default');
 
   // Investment search params
   const [zve, setZve] = useState(60000);
@@ -78,21 +72,23 @@ export default function SucheTab() {
   const [yieldMin, setYieldMin] = useState<number | null>(null);
 
   // Metrics cache for investment search
-  const [metricsCache, setMetricsCache] = useState<Record<string, { monthlyBurden: number; roiAfterTax: number; loanAmount: number; yearlyInterest?: number; yearlyRepayment?: number; yearlyTaxSavings?: number }>>({});
+  const [metricsCache, setMetricsCache] = useState<Record<string, { monthlyBurden: number; roiAfterTax: number; loanAmount: number }>>({});
 
   const { calculate, isLoading: isCalculating } = useInvestmentEngine();
   const { data: favorites = [] } = useInvestmentFavorites();
   const toggleFavorite = useToggleInvestmentFavorite();
   const { kaufyListings: allDemoListings } = useDemoListings();
+  // Filter out project demo listings (new_construction) — only real portfolio demos
   const demoListings = useMemo(() => 
     allDemoListings.filter(d => d.property_type !== 'new_construction'), 
     [allDemoListings]
   );
 
-  // Fetch public listings — FIXED: enabled: false (no auto-search)
+  // Fetch public listings with title images
   const { data: listings = [], isLoading: isLoadingListings, refetch } = useQuery({
     queryKey: ['public-listings-search', cityFilter, priceMax, areaMin],
     queryFn: async () => {
+      // Fetch listings
       let query = supabase
         .from('listings')
         .select(`
@@ -114,6 +110,7 @@ export default function SucheTab() {
         .order('created_at', { ascending: false })
         .limit(50);
 
+      // Apply classic filters
       if (cityFilter) {
         query = query.ilike('properties.city', `%${cityFilter}%`);
       }
@@ -127,12 +124,18 @@ export default function SucheTab() {
         return [];
       }
 
-      if (!data || data.length === 0) return [];
+      if (!data || data.length === 0) {
+        return [];
+      }
 
+      // Get property IDs for image lookup
       const propertyIds = data
         .map((item: any) => item.properties?.id)
         .filter(Boolean) as string[];
 
+      // Pick best image per property:
+      // 1) is_title_image=true
+      // 2) lowest display_order
       const imageMap = new Map<string, string>();
 
       if (propertyIds.length > 0) {
@@ -150,8 +153,13 @@ export default function SucheTab() {
           .order('display_order', { ascending: true })
           .order('created_at', { ascending: true });
 
-        if (!linksError) {
-          const bestByProperty = new Map<string, { file_path: string; is_title_image: boolean; display_order: number }>();
+        if (linksError) {
+          console.warn('Title image lookup error:', linksError);
+        } else {
+          const bestByProperty = new Map<
+            string,
+            { file_path: string; is_title_image: boolean; display_order: number }
+          >();
 
           for (const link of (imageLinks || []) as any[]) {
             const doc = link.documents as any;
@@ -169,10 +177,14 @@ export default function SucheTab() {
               bestByProperty.set(link.object_id, candidate);
               continue;
             }
+
+            // Prefer explicit title image
             if (candidate.is_title_image && !current.is_title_image) {
               bestByProperty.set(link.object_id, candidate);
               continue;
             }
+
+            // Otherwise, prefer lower display_order
             if (candidate.is_title_image === current.is_title_image && candidate.display_order < current.display_order) {
               bestByProperty.set(link.object_id, candidate);
             }
@@ -181,12 +193,14 @@ export default function SucheTab() {
           await Promise.all(
             Array.from(bestByProperty.entries()).map(async ([objectId, best]) => {
               const url = await getCachedSignedUrl(best.file_path);
-              if (url) imageMap.set(objectId, url);
+              if (url) {
+                imageMap.set(objectId, url);
+              }
             })
           );
         }
       }
-
+      // Query unit counts per property
       const unitCountMap = new Map<string, number>();
       if (propertyIds.length > 0) {
         const { data: unitRows } = await supabase
@@ -201,6 +215,7 @@ export default function SucheTab() {
         }
       }
 
+      // Transform to PublicListing format with hero images
       return (data || []).map((item: any) => ({
         listing_id: item.id,
         public_id: item.public_id,
@@ -218,10 +233,11 @@ export default function SucheTab() {
         hero_image_path: imageMap.get(item.properties?.id) || null,
       })) as PublicListing[];
     },
-    enabled: false,
+    enabled: true,
   });
 
-  // Merge demo listings with DB listings
+  // Merge demo listings with DB listings (deduplicated by title+city)
+  // When DB listing has no image but demo has one, transfer the demo image
   const mergedListings = useMemo(() => {
     const demoByKey = new Map(demoListings.map(d => [`${d.title}|${d.city}`, d]));
     const dbKeys = new Set<string>();
@@ -240,72 +256,21 @@ export default function SucheTab() {
 
   // Filter by yield (client-side)
   const filteredListings = useMemo(() => {
-    let result = mergedListings;
-    if (yieldMin) {
-      result = result.filter(l => {
-        const grossYield = l.asking_price > 0 
-          ? (l.monthly_rent_total * 12) / l.asking_price * 100
-          : 0;
-        return grossYield >= yieldMin;
-      });
-    }
-    return result;
+    if (!yieldMin) return mergedListings;
+    return mergedListings.filter(l => {
+      const grossYield = l.asking_price > 0 
+        ? (l.monthly_rent_total * 12) / l.asking_price * 100
+        : 0;
+      return grossYield >= yieldMin;
+    });
   }, [mergedListings, yieldMin]);
 
-  // Sort listings
-  const sortedListings = useMemo(() => {
-    const list = [...filteredListings];
-    switch (sortMode) {
-      case 'price_asc':
-        return list.sort((a, b) => a.asking_price - b.asking_price);
-      case 'price_desc':
-        return list.sort((a, b) => b.asking_price - a.asking_price);
-      case 'yield_desc':
-        return list.sort((a, b) => {
-          const yA = a.asking_price > 0 ? (a.monthly_rent_total * 12) / a.asking_price : 0;
-          const yB = b.asking_price > 0 ? (b.monthly_rent_total * 12) / b.asking_price : 0;
-          return yB - yA;
-        });
-      case 'burden_asc':
-        return list.sort((a, b) => {
-          const bA = metricsCache[a.listing_id]?.monthlyBurden ?? Infinity;
-          const bB = metricsCache[b.listing_id]?.monthlyBurden ?? Infinity;
-          return bA - bB;
-        });
-      case 'area_desc':
-        return list.sort((a, b) => (b.total_area_sqm || 0) - (a.total_area_sqm || 0));
-      default:
-        return list;
-    }
-  }, [filteredListings, sortMode, metricsCache]);
-
-  // Determine top recommendations (lowest burden, max 3)
-  const topListingIds = useMemo(() => {
-    if (searchMode !== 'investment' || Object.keys(metricsCache).length === 0) return new Set<string>();
-    const withMetrics = filteredListings
-      .filter(l => metricsCache[l.listing_id])
-      .sort((a, b) => metricsCache[a.listing_id].monthlyBurden - metricsCache[b.listing_id].monthlyBurden)
-      .slice(0, 3);
-    return new Set(withMetrics.map(l => l.listing_id));
-  }, [filteredListings, metricsCache, searchMode]);
-
-  // Summary stats
-  const summaryStats = useMemo(() => {
-    if (!hasSearched || sortedListings.length === 0) return null;
-    const yields = sortedListings.map(l => l.asking_price > 0 ? (l.monthly_rent_total * 12) / l.asking_price * 100 : 0);
-    const bestYield = Math.max(...yields);
-    const burdens = sortedListings
-      .map(l => metricsCache[l.listing_id]?.monthlyBurden)
-      .filter((b): b is number => b !== undefined);
-    const lowestBurden = burdens.length > 0 ? Math.min(...burdens) : null;
-    const positiveCashflowCount = burdens.filter(b => b <= 0).length;
-    return { bestYield, lowestBurden, positiveCashflowCount, total: sortedListings.length };
-  }, [hasSearched, sortedListings, metricsCache]);
-
-  // Calculate metrics for investment search
+  // Calculate metrics for investment search - FIX: use fresh data from refetch
   const handleInvestmentSearch = useCallback(async () => {
+    // First fetch listings from DB
     const { data: freshListings } = await refetch();
     
+    // Merge demo listings with DB listings for calculation (deduplicated)
     const dbKeys = new Set((freshListings || []).map((l: PublicListing) => `${l.title}|${l.city}`));
     const demosToInclude = demoListings.filter(d => !dbKeys.has(`${d.title}|${d.city}`));
     const allListingsToProcess = [...demosToInclude, ...(freshListings || [])].slice(0, 30);
@@ -315,6 +280,7 @@ export default function SucheTab() {
       return;
     }
 
+    // Calculate metrics for ALL listings (DB + demo) in parallel
     const newCache: Record<string, any> = {};
     
     await Promise.all(allListingsToProcess.map(async (listing: PublicListing) => {
@@ -358,7 +324,13 @@ export default function SucheTab() {
   }, [favorites]);
 
   const handleToggleFavorite = useCallback((listing: PublicListing) => {
-    const searchParams: SearchParams = { zve, equity, maritalStatus, hasChurchTax };
+    const searchParams: SearchParams = {
+      zve,
+      equity,
+      maritalStatus,
+      hasChurchTax,
+    };
+
     toggleFavorite.mutate({
       listingId: listing.listing_id,
       title: listing.title,
@@ -382,12 +354,13 @@ export default function SucheTab() {
     <PageShell>
       <ModulePageHeader title="SUCHE" description={isMobile ? "Kapitalanlage finden" : "Finden Sie passende Kapitalanlage-Objekte für Ihre Situation"} />
 
+      {/* Media Widgets — hidden on mobile */}
       {!isMobile && <MediaWidgetGrid />}
 
       {/* Search Mode Toggle */}
       <Card>
         <CardHeader className={isMobile ? "pb-2 px-3 pt-3" : "pb-3"}>
-          <Tabs value={searchMode} onValueChange={(v) => { setSearchMode(v as SearchMode); setHasSearched(false); }}>
+          <Tabs value={searchMode} onValueChange={(v) => setSearchMode(v as SearchMode)}>
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="investment" className="gap-2">
                 <Calculator className="w-4 h-4" />
@@ -404,7 +377,11 @@ export default function SucheTab() {
         <CardContent className={isMobile ? "space-y-3 px-3 pb-3" : "space-y-4"}>
           {searchMode === 'investment' ? (
             <>
-              <div className={cn("grid gap-4", isMobile ? "grid-cols-1" : "grid-cols-1 md:grid-cols-4")}>
+              {/* Investment Search Form — stacked on mobile, 4-col on desktop */}
+              <div className={cn(
+                "grid gap-4",
+                isMobile ? "grid-cols-1" : "grid-cols-1 md:grid-cols-4"
+              )}>
                 <div className="space-y-2">
                   <Label>zu versteuerndes Einkommen (zVE)</Label>
                   <div className="relative">
@@ -431,12 +408,15 @@ export default function SucheTab() {
                   </div>
                 </div>
 
+                {/* On mobile: Familienstand & Kirchensteuer side by side */}
                 {isMobile ? (
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-2">
                       <Label>Familienstand</Label>
                       <Select value={maritalStatus} onValueChange={(v) => setMaritalStatus(v as 'single' | 'married')}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="single">Ledig</SelectItem>
                           <SelectItem value="married">Verheiratet</SelectItem>
@@ -446,7 +426,9 @@ export default function SucheTab() {
                     <div className="space-y-2">
                       <Label>Kirchensteuer</Label>
                       <Select value={hasChurchTax ? 'yes' : 'no'} onValueChange={(v) => setHasChurchTax(v === 'yes')}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="no">Nein</SelectItem>
                           <SelectItem value="yes">Ja</SelectItem>
@@ -459,7 +441,9 @@ export default function SucheTab() {
                     <div className="space-y-2">
                       <Label>Familienstand</Label>
                       <Select value={maritalStatus} onValueChange={(v) => setMaritalStatus(v as 'single' | 'married')}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="single">Ledig</SelectItem>
                           <SelectItem value="married">Verheiratet</SelectItem>
@@ -469,7 +453,9 @@ export default function SucheTab() {
                     <div className="space-y-2">
                       <Label>Kirchensteuer</Label>
                       <Select value={hasChurchTax ? 'yes' : 'no'} onValueChange={(v) => setHasChurchTax(v === 'yes')}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="no">Nein</SelectItem>
                           <SelectItem value="yes">Ja</SelectItem>
@@ -480,43 +466,70 @@ export default function SucheTab() {
                 )}
               </div>
 
+              {/* Prominent search button — full-width on mobile */}
               <Button 
                 onClick={handleInvestmentSearch} 
                 disabled={isLoadingListings || isCalculating}
-                className={cn("gap-2", isMobile ? "w-full h-12 text-base" : "")}
+                className={isMobile ? "w-full h-12 text-base" : ""}
                 size={isMobile ? "lg" : "default"}
               >
-                {(isLoadingListings || isCalculating) ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-                Ergebnisse berechnen
+                {(isLoadingListings || isCalculating) && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                Ergebnisse anzeigen
               </Button>
             </>
           ) : (
             <>
+              {/* Classic Search Form — stacked on mobile */}
               <div className={cn("grid gap-4", isMobile ? "grid-cols-1" : "grid-cols-1 md:grid-cols-4")}>
                 <div className="space-y-2">
                   <Label>Stadt</Label>
-                  <Input placeholder="z.B. Berlin, München..." value={cityFilter} onChange={(e) => setCityFilter(e.target.value)} />
+                  <Input
+                    placeholder="z.B. Berlin, München..."
+                    value={cityFilter}
+                    onChange={(e) => setCityFilter(e.target.value)}
+                  />
                 </div>
+
                 <div className="space-y-2">
                   <Label>Max. Kaufpreis</Label>
                   <div className="relative">
-                    <Input type="number" placeholder="Unbegrenzt" value={priceMax || ''} onChange={(e) => setPriceMax(e.target.value ? Number(e.target.value) : null)} className="pr-8" />
+                    <Input
+                      type="number"
+                      placeholder="Unbegrenzt"
+                      value={priceMax || ''}
+                      onChange={(e) => setPriceMax(e.target.value ? Number(e.target.value) : null)}
+                      className="pr-8"
+                    />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">€</span>
                   </div>
                 </div>
+
+                {/* On mobile: Fläche & Rendite side by side */}
                 {isMobile ? (
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-2">
                       <Label>Min. Fläche</Label>
                       <div className="relative">
-                        <Input type="number" placeholder="Keine" value={areaMin || ''} onChange={(e) => setAreaMin(e.target.value ? Number(e.target.value) : null)} className="pr-10" />
+                        <Input
+                          type="number"
+                          placeholder="Keine"
+                          value={areaMin || ''}
+                          onChange={(e) => setAreaMin(e.target.value ? Number(e.target.value) : null)}
+                          className="pr-10"
+                        />
                         <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">m²</span>
                       </div>
                     </div>
                     <div className="space-y-2">
                       <Label>Min. Rendite</Label>
                       <div className="relative">
-                        <Input type="number" placeholder="Keine" value={yieldMin || ''} onChange={(e) => setYieldMin(e.target.value ? Number(e.target.value) : null)} className="pr-8" />
+                        <Input
+                          type="number"
+                          placeholder="Keine"
+                          value={yieldMin || ''}
+                          onChange={(e) => setYieldMin(e.target.value ? Number(e.target.value) : null)}
+                          className="pr-8"
+                        />
                         <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">%</span>
                       </div>
                     </div>
@@ -526,14 +539,26 @@ export default function SucheTab() {
                     <div className="space-y-2">
                       <Label>Min. Fläche</Label>
                       <div className="relative">
-                        <Input type="number" placeholder="Keine" value={areaMin || ''} onChange={(e) => setAreaMin(e.target.value ? Number(e.target.value) : null)} className="pr-10" />
+                        <Input
+                          type="number"
+                          placeholder="Keine"
+                          value={areaMin || ''}
+                          onChange={(e) => setAreaMin(e.target.value ? Number(e.target.value) : null)}
+                          className="pr-10"
+                        />
                         <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">m²</span>
                       </div>
                     </div>
                     <div className="space-y-2">
                       <Label>Min. Rendite</Label>
                       <div className="relative">
-                        <Input type="number" placeholder="Keine" value={yieldMin || ''} onChange={(e) => setYieldMin(e.target.value ? Number(e.target.value) : null)} className="pr-8" />
+                        <Input
+                          type="number"
+                          placeholder="Keine"
+                          value={yieldMin || ''}
+                          onChange={(e) => setYieldMin(e.target.value ? Number(e.target.value) : null)}
+                          className="pr-8"
+                        />
                         <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">%</span>
                       </div>
                     </div>
@@ -541,13 +566,14 @@ export default function SucheTab() {
                 )}
               </div>
 
+              {/* Prominent search button — full-width on mobile */}
               <Button 
                 onClick={handleClassicSearch} 
                 disabled={isLoadingListings}
-                className={cn("gap-2", isMobile ? "w-full h-12 text-base" : "")}
+                className={isMobile ? "w-full h-12 text-base" : ""}
                 size={isMobile ? "lg" : "default"}
               >
-                {isLoadingListings ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                {isLoadingListings && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                 Suchen
               </Button>
             </>
@@ -556,150 +582,85 @@ export default function SucheTab() {
       </Card>
 
       {/* Results */}
+      {/* Results - always visible (demo listings show immediately) */}
       <div className="space-y-4">
-        {!hasSearched ? (
-          /* ═══ ONBOARDING HERO ═══ */
-          <Card className="border-2 border-dashed border-primary/20 bg-gradient-to-br from-primary/5 to-accent/5">
-            <CardContent className={cn("text-center", isMobile ? "py-8 px-4" : "py-16")}>
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 mb-6">
-                <TrendingUp className="w-8 h-8 text-primary" />
-              </div>
-              <h3 className={cn("font-bold mb-3", isMobile ? "text-xl" : "text-2xl")}>
-                {searchMode === 'investment' ? 'Ihre persönliche Investment-Analyse' : 'Immobilien durchsuchen'}
-              </h3>
-              <p className="text-muted-foreground max-w-lg mx-auto mb-8">
-                {searchMode === 'investment'
-                  ? 'Geben Sie Ihr zu versteuerndes Einkommen und Eigenkapital ein. Wir berechnen für jedes Objekt Ihre individuelle monatliche Belastung nach Steuern.'
-                  : 'Filtern Sie nach Stadt, Kaufpreis, Fläche oder Rendite, um passende Objekte zu finden.'}
-              </p>
-              
-              {!isMobile && (
-                <div className="grid grid-cols-3 gap-6 max-w-xl mx-auto">
-                  <div className="flex flex-col items-center gap-2 text-sm">
-                    <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-                      <Calculator className="w-5 h-5 text-green-600" />
-                    </div>
-                    <span className="text-muted-foreground font-medium">Steueroptimiert</span>
-                    <span className="text-xs text-muted-foreground/70">Individuelle Berechnung</span>
-                  </div>
-                  <div className="flex flex-col items-center gap-2 text-sm">
-                    <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-                      <Shield className="w-5 h-5 text-blue-600" />
-                    </div>
-                    <span className="text-muted-foreground font-medium">Geprüfte Objekte</span>
-                    <span className="text-xs text-muted-foreground/70">Qualitätsgesichert</span>
-                  </div>
-                  <div className="flex flex-col items-center gap-2 text-sm">
-                    <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
-                      <BarChart3 className="w-5 h-5 text-amber-600" />
-                    </div>
-                    <span className="text-muted-foreground font-medium">Sofort vergleichbar</span>
-                    <span className="text-xs text-muted-foreground/70">T-Konto Übersicht</span>
-                  </div>
-                </div>
+        {/* Results Header */}
+        {hasSearched && (
+          <div className={cn("flex items-center justify-between", isMobile && "flex-col gap-2 items-start")}>
+            <div className="flex items-center gap-3">
+              <Badge variant="secondary" className={isMobile ? "text-base px-3 py-1" : "text-sm"}>
+                {filteredListings.length} Objekte
+              </Badge>
+              {searchMode === 'investment' && !isMobile && (
+                <span className="text-sm text-muted-foreground">
+                  berechnet für {formatCurrency(zve)} zVE · {formatCurrency(equity)} EK
+                </span>
               )}
+            </div>
+
+            {/* View mode toggle — hidden on mobile (always single column) */}
+            {!isMobile && (
+              <div className="flex items-center gap-2">
+                <Button
+                  variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
+                  size="icon"
+                  onClick={() => setViewMode('grid')}
+                >
+                  <LayoutGrid className="w-4 h-4" />
+                </Button>
+                <Button
+                  variant={viewMode === 'list' ? 'secondary' : 'ghost'}
+                  size="icon"
+                  onClick={() => setViewMode('list')}
+                >
+                  <List className="w-4 h-4" />
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Listings Grid/List — only after search */}
+        {!hasSearched ? (
+          <Card>
+            <CardContent className="py-12 text-center">
+              <TrendingUp className="w-12 h-12 mx-auto mb-4 text-primary opacity-70" />
+              <h3 className="text-lg font-semibold mb-2">Finden Sie Ihre nächste Kapitalanlage</h3>
+              <p className="text-muted-foreground max-w-md mx-auto">
+                Geben Sie Ihr zu versteuerndes Einkommen und Eigenkapital ein, um passende Objekte mit 
+                individueller Belastungsberechnung zu finden.
+              </p>
+            </CardContent>
+          </Card>
+        ) : filteredListings.length === 0 ? (
+          <Card>
+            <CardContent className="py-12 text-center">
+              <Building2 className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+              <h3 className="text-lg font-semibold mb-2">Keine Ergebnisse</h3>
+              <p className="text-muted-foreground max-w-md mx-auto">
+                Für Ihre Suchkriterien wurden keine passenden Objekte gefunden.
+              </p>
             </CardContent>
           </Card>
         ) : (
-          <>
-            {/* ═══ SUMMARY BAR ═══ */}
-            {summaryStats && (
-              <div className={cn(
-                "rounded-lg border bg-card p-4",
-                isMobile ? "space-y-2" : "flex items-center justify-between"
-              )}>
-                <div className={cn("flex items-center gap-4 flex-wrap", isMobile && "gap-2")}>
-                  <Badge variant="secondary" className={cn(isMobile ? "text-base px-3 py-1" : "text-sm px-3 py-1")}>
-                    {summaryStats.total} Objekte
-                  </Badge>
-                  {searchMode === 'investment' && !isMobile && (
-                    <span className="text-sm text-muted-foreground">
-                      für {formatCurrency(zve)} zVE · {formatCurrency(equity)} EK
-                    </span>
-                  )}
-                  <div className="flex items-center gap-3 text-sm">
-                    <span className="text-muted-foreground">
-                      Beste Rendite: <strong className="text-green-600">{summaryStats.bestYield.toFixed(1)}%</strong>
-                    </span>
-                    {summaryStats.lowestBurden !== null && (
-                      <span className="text-muted-foreground">
-                        Niedrigste Belastung: <strong className={summaryStats.lowestBurden <= 0 ? "text-green-600" : "text-foreground"}>
-                          {formatCurrency(Math.abs(summaryStats.lowestBurden))}/Mo
-                        </strong>
-                      </span>
-                    )}
-                    {summaryStats.positiveCashflowCount > 0 && (
-                      <Badge variant="outline" className="text-green-600 border-green-200 bg-green-50 dark:bg-green-950/30">
-                        {summaryStats.positiveCashflowCount}× positiver Cashflow
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  {/* Sorting */}
-                  <Select value={sortMode} onValueChange={(v) => setSortMode(v as SortMode)}>
-                    <SelectTrigger className="w-[180px] h-9">
-                      <ArrowUpDown className="w-3.5 h-3.5 mr-1.5 text-muted-foreground" />
-                      <SelectValue placeholder="Sortierung" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="default">Standard</SelectItem>
-                      <SelectItem value="price_asc">Preis ↑</SelectItem>
-                      <SelectItem value="price_desc">Preis ↓</SelectItem>
-                      <SelectItem value="yield_desc">Rendite ↓</SelectItem>
-                      <SelectItem value="burden_asc">Belastung ↑</SelectItem>
-                      <SelectItem value="area_desc">Fläche ↓</SelectItem>
-                    </SelectContent>
-                  </Select>
-
-                  {!isMobile && (
-                    <div className="flex items-center gap-1">
-                      <Button variant={viewMode === 'grid' ? 'secondary' : 'ghost'} size="icon" className="h-9 w-9" onClick={() => setViewMode('grid')}>
-                        <LayoutGrid className="w-4 h-4" />
-                      </Button>
-                      <Button variant={viewMode === 'list' ? 'secondary' : 'ghost'} size="icon" className="h-9 w-9" onClick={() => setViewMode('list')}>
-                        <List className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* ═══ LISTINGS GRID ═══ */}
-            {sortedListings.length === 0 ? (
-              <Card>
-                <CardContent className="py-12 text-center">
-                  <Building2 className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-                  <h3 className="text-lg font-semibold mb-2">Keine Ergebnisse</h3>
-                  <p className="text-muted-foreground max-w-md mx-auto">
-                    Für Ihre Suchkriterien wurden keine passenden Objekte gefunden.
-                  </p>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className={cn(
-                isMobile 
-                  ? 'flex flex-col gap-4'
-                  : viewMode === 'grid' 
-                    ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4'
-                    : 'flex flex-col gap-4'
-              )}>
-                {sortedListings.map((listing) => (
-                  <InvestmentResultTile
-                    key={listing.listing_id}
-                    listing={listing}
-                    metrics={searchMode === 'investment' ? metricsCache[listing.listing_id] : null}
-                    isFavorite={isFavorite(listing.listing_id)}
-                    onToggleFavorite={() => handleToggleFavorite(listing)}
-                    linkPrefix="/portal/investments/objekt"
-                    isTopRecommendation={topListingIds.has(listing.listing_id)}
-                  />
-                ))}
-              </div>
-            )}
-          </>
+          <div className={cn(
+            isMobile 
+              ? 'flex flex-col gap-4'
+              : viewMode === 'grid' 
+                ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4'
+                : 'flex flex-col gap-4'
+          )}>
+            {filteredListings.map((listing) => (
+              <InvestmentResultTile
+                key={listing.listing_id}
+                listing={listing}
+                metrics={searchMode === 'investment' ? metricsCache[listing.listing_id] : null}
+                isFavorite={isFavorite(listing.listing_id)}
+                onToggleFavorite={() => handleToggleFavorite(listing)}
+                linkPrefix="/portal/investments/objekt"
+              />
+            ))}
+          </div>
         )}
       </div>
     </PageShell>

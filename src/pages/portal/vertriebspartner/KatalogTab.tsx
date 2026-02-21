@@ -3,9 +3,8 @@
  * Mit erweiterten Filtern: Lage, Typ, Preis, Provision, Rendite
  * + DASHBOARD_HEADER: Visitenkarte + Marktlage-Widget
  */
-import { useState, useMemo, useCallback } from 'react';
-import { Newspaper, Eye, EyeOff } from 'lucide-react';
-import { useExcludedListingIds, useToggleExclusion } from '@/hooks/usePartnerListingSelections';
+import { useState, useMemo } from 'react';
+import { Newspaper } from 'lucide-react';
 import { DESIGN } from '@/config/designManifest';
 import { ManagerVisitenkarte } from '@/components/shared/ManagerVisitenkarte';
 import { MediaWidgetGrid } from '@/components/shared/MediaWidgetGrid';
@@ -83,15 +82,7 @@ const KatalogTab = () => {
   // Demo listings
   const { partnerKatalog: demoPartnerListings } = useDemoListings();
 
-  // Exclusion hooks
-  const excludedIds = useExcludedListingIds();
-  const toggleExclusion = useToggleExclusion();
-  const excludedCount = excludedIds.size;
-
-  const handleToggleExclusion = useCallback((e: React.MouseEvent, listingId: string) => {
-    e.stopPropagation();
-    toggleExclusion.mutate({ listingId, isCurrentlyExcluded: excludedIds.has(listingId) });
-  }, [excludedIds, toggleExclusion]);
+  // Exclusions removed — entire row is clickable
 
   // Fetch partner-released listings
   const { data: listings = [], isLoading } = useQuery({
@@ -222,33 +213,11 @@ const KatalogTab = () => {
 
   const columns: PropertyTableColumn<PartnerListing>[] = [
     {
-      key: 'id' as any,
-      header: 'Sichtbar',
-      minWidth: '70px',
-      align: 'center',
-      render: (_: any, row: any) => {
-        const isExcluded = excludedIds.has(row.id);
-        return (
-          <button
-            onClick={(e) => handleToggleExclusion(e, row.id)}
-            className="p-1.5 rounded-md hover:bg-muted transition-colors"
-            title={isExcluded ? 'Objekt wieder einblenden' : 'Objekt ausblenden'}
-          >
-            {isExcluded ? (
-              <EyeOff className="h-4 w-4 text-destructive" />
-            ) : (
-              <Eye className="h-4 w-4 text-primary" />
-            )}
-          </button>
-        );
-      }
-    },
-    {
       key: 'title',
       header: 'Objekt',
       minWidth: '220px',
       render: (_: any, row: any) => (
-        <div className={`flex items-center gap-2 ${excludedIds.has(row.id) ? 'opacity-50' : ''}`}>
+        <div className="flex items-center gap-2">
           <PropertyAddressCell 
             address={row.title} 
             subtitle={`${row.property_address}, ${row.property_city}`} 
@@ -323,7 +292,7 @@ const KatalogTab = () => {
           role="Immomanager / Vertriebspartner"
           gradientFrom="hsl(160,60%,40%)"
           gradientTo="hsl(180,50%,45%)"
-          badgeText={`${allListings.length} Objekte im Katalog${excludedCount > 0 ? ` · ${excludedCount} ausgeblendet` : ''}`}
+          badgeText={`${allListings.length} Objekte im Katalog`}
         />
         <MarketReportWidget
           icon={Newspaper}
@@ -479,14 +448,6 @@ const KatalogTab = () => {
           </CollapsibleContent>
         </Card>
       </Collapsible>
-
-      {/* Info hint */}
-      {excludedCount > 0 && (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 rounded-lg px-4 py-2">
-          <EyeOff className="h-4 w-4 text-destructive shrink-0" />
-          <span>Objekte mit geschlossenem Auge werden in der Kundenberatung nicht angezeigt.</span>
-        </div>
-      )}
 
       {/* Listings Table */}
       <Card className="glass-card">
