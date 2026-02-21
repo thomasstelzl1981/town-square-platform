@@ -8,8 +8,8 @@ export function NoHomeBanner({ onCreateClick }: { onCreateClick: () => void }) {
       <CardContent className="p-4 flex items-center gap-3">
         <Home className="h-5 w-5 text-primary flex-shrink-0" />
         <div className="flex-1">
-          <p className="text-sm font-medium">Zuhause anlegen</p>
-          <p className="text-xs text-muted-foreground">Legen Sie zuerst Ihr Zuhause an, um Verträge zu speichern.</p>
+          <p className="text-sm font-medium">Objekt anlegen</p>
+          <p className="text-xs text-muted-foreground">Legen Sie zuerst ein Objekt an, um Verträge zu speichern.</p>
         </div>
         <Button size="sm" onClick={onCreateClick}>
           <Plus className="h-4 w-4 mr-1" />Anlegen
