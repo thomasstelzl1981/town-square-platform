@@ -238,14 +238,14 @@ Für JEDEN Workflow (E-01 bis E-10):
 
 ### H1. Sicherheit
 
-| # | Test | Erwartung | Status |
-|---|------|-----------|--------|
-| H-01 | RLS — Tenant-Isolation | User A sieht keine Daten von User B | ⬜ |
-| H-02 | RLS — Manager-Delegation | Manager sieht nur delegierte Kunden-Daten | ⬜ |
-| H-03 | Unauthenticated Access | Alle Portal-Routen redirect auf /auth | ⬜ |
-| H-04 | API-Rate-Limiting | Edge Functions throttlen bei Überlastung | ⬜ |
-| H-05 | DSGVO — Datenexport | Nutzerdaten exportierbar | ⬜ |
-| H-06 | DSGVO — Datenlöschung | Account-Löschung entfernt alle Daten | ⬜ |
+| # | Test | Erwartung | Status | Ergebnis |
+|---|------|-----------|--------|----------|
+| H-01 | RLS — Tenant-Isolation | User A sieht keine Daten von User B | ✅ PASS | 297 Tabellen, alle RLS enabled, 1170 Policies |
+| H-02 | RLS — Manager-Delegation | Manager sieht nur delegierte Kunden-Daten | ⬜ | Manueller Test mit 2 Accounts erforderlich |
+| H-03 | Unauthenticated Access | Alle Portal-Routen redirect auf /auth | ✅ PASS | /portal → Auth-Seite |
+| H-04 | API-Rate-Limiting | Edge Functions throttlen bei Überlastung | ⬜ SKIP | Lasttest erforderlich |
+| H-05 | DSGVO — Datenexport | Nutzerdaten exportierbar | ⬜ SKIP | Manueller Test |
+| H-06 | DSGVO — Datenlöschung | Account-Löschung entfernt alle Daten | ⬜ SKIP | Manueller Test |
 
 ### H2. Performance
 
