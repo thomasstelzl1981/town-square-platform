@@ -231,5 +231,8 @@ verify_jwt = false
 [functions.sot-rent-match]
 verify_jwt = false
 
+[functions.sot-cloud-sync]
+verify_jwt = false
+
 [functions.sot-manager-activate]
 verify_jwt = false

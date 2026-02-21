@@ -2,28 +2,32 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 
 /**
- * SOT Cloud Sync — P2.3/P2.4 (Scaffold)
- * 
- * Manages OAuth connections and file sync for:
- * - Google Drive (P2.3)
- * - Dropbox / OneDrive (P2.4)
- * 
- * Endpoints:
- *   POST /init    → Start OAuth flow (returns redirect URL)
- *   POST /callback → Handle OAuth callback (exchange code for tokens)
- *   POST /sync    → Trigger file sync for a connector
- *   GET  /status  → Get connector status
- * 
- * Cost: 1 Credit per synced file
+ * SOT Cloud Sync — Google Drive Integration
+ *
+ * Actions:
+ *   POST init       → Build Google OAuth URL, return redirect
+ *   GET  callback   → Exchange auth code for tokens, store in DB, redirect to app
+ *   POST folders    → List Google Drive folders for picker
+ *   POST sync       → Delta-sync files from Drive folder into DMS
+ *   POST disconnect → Revoke tokens + delete connector
+ *   GET  status     → List connectors for tenant
  */
 
+const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
+const GOOGLE_DRIVE_API = "https://www.googleapis.com/drive/v3";
+const GOOGLE_USERINFO_URL = "https://www.googleapis.com/oauth2/v2/userinfo";
+const GOOGLE_REVOKE_URL = "https://oauth2.googleapis.com/revoke";
+
 Deno.serve(async (req) => {
+  // Handle CORS preflight — and also GET callback from Google OAuth
   if (req.method === "OPTIONS") return handleCorsPreflightRequest(req);
 
   const corsHeaders = getCorsHeaders(req);
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+  const clientId = Deno.env.get("GOOGLE_DRIVE_CLIENT_ID");
+  const clientSecret = Deno.env.get("GOOGLE_DRIVE_CLIENT_SECRET");
 
   const json = (data: unknown, status = 200) =>
     new Response(JSON.stringify(data), {
@@ -31,8 +35,107 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
 
+  const redirectHtml = (url: string) =>
+    new Response(`<html><head><meta http-equiv="refresh" content="0;url=${url}"/></head><body>Redirecting...</body></html>`, {
+      status: 200,
+      headers: { ...corsHeaders, "Content-Type": "text/html" },
+    });
+
   try {
-    // Auth
+    const url = new URL(req.url);
+    const sbAdmin = createClient(supabaseUrl, serviceKey);
+
+    // Determine action — callback comes as GET with query params
+    let action: string;
+    let body: Record<string, unknown> = {};
+
+    if (req.method === "GET") {
+      action = url.searchParams.get("action") || "status";
+    } else {
+      body = await req.json().catch(() => ({}));
+      action = (body.action as string) || "status";
+    }
+
+    // ── CALLBACK — no auth needed (comes from Google redirect) ──
+    if (action === "callback") {
+      const code = url.searchParams.get("code");
+      const state = url.searchParams.get("state");
+      const error = url.searchParams.get("error");
+
+      if (error) {
+        console.error("[cloud-sync] OAuth error:", error);
+        return redirectHtml(`${url.origin}/?cloud_sync_error=${encodeURIComponent(error)}`);
+      }
+
+      if (!code || !state || !clientId || !clientSecret) {
+        return json({ error: "Missing code, state, or OAuth credentials" }, 400);
+      }
+
+      // Decode state: base64 of JSON { tenantId, userId, returnUrl }
+      let stateData: { tenantId: string; userId: string; returnUrl: string };
+      try {
+        stateData = JSON.parse(atob(state));
+      } catch {
+        return json({ error: "Invalid state parameter" }, 400);
+      }
+
+      const redirectUri = `${supabaseUrl}/functions/v1/sot-cloud-sync?action=callback&provider=google_drive`;
+
+      // Exchange code for tokens
+      const tokenRes = await fetch(GOOGLE_TOKEN_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          code,
+          client_id: clientId,
+          client_secret: clientSecret,
+          redirect_uri: redirectUri,
+          grant_type: "authorization_code",
+        }),
+      });
+
+      const tokenData = await tokenRes.json();
+      if (!tokenRes.ok || !tokenData.access_token) {
+        console.error("[cloud-sync] Token exchange failed:", tokenData);
+        return redirectHtml(`${stateData.returnUrl}?cloud_sync_error=token_exchange_failed`);
+      }
+
+      // Get user info from Google
+      const userInfoRes = await fetch(GOOGLE_USERINFO_URL, {
+        headers: { Authorization: `Bearer ${tokenData.access_token}` },
+      });
+      const userInfo = await userInfoRes.json();
+
+      const expiresAt = new Date(Date.now() + (tokenData.expires_in || 3600) * 1000).toISOString();
+
+      // Upsert connector
+      const { error: upsertErr } = await sbAdmin
+        .from("cloud_sync_connectors")
+        .upsert(
+          {
+            tenant_id: stateData.tenantId,
+            provider: "google_drive",
+            status: "connected",
+            access_token: tokenData.access_token,
+            refresh_token: tokenData.refresh_token || null,
+            token_expires_at: expiresAt,
+            account_email: userInfo.email || null,
+            account_name: userInfo.name || null,
+            error_message: null,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "tenant_id,provider" }
+        );
+
+      if (upsertErr) {
+        console.error("[cloud-sync] Upsert error:", upsertErr);
+        return redirectHtml(`${stateData.returnUrl}?cloud_sync_error=db_error`);
+      }
+
+      return redirectHtml(`${stateData.returnUrl}?cloud_sync_success=true`);
+    }
+
+    // ── All other actions require auth ──
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) return json({ error: "Missing authorization" }, 401);
 
@@ -50,79 +153,212 @@ Deno.serve(async (req) => {
     if (!profile?.active_tenant_id) return json({ error: "No active tenant" }, 400);
     const tenantId = profile.active_tenant_id;
 
-    const sbAdmin = createClient(supabaseUrl, serviceKey);
-    const url = new URL(req.url);
-    const body = req.method === "POST" ? await req.json() : {};
-    const action = body.action || url.searchParams.get("action") || "status";
-
     switch (action) {
+      // ── STATUS ──
       case "status": {
-        // List all connectors for tenant
         const { data: connectors } = await sbAdmin
           .from("cloud_sync_connectors")
-          .select("*")
+          .select("id,provider,status,account_email,account_name,remote_folder_id,remote_folder_name,last_sync_at,last_sync_files_count,error_message,token_expires_at")
           .eq("tenant_id", tenantId);
         return json({ connectors: connectors || [] });
       }
 
+      // ── INIT — Start OAuth flow ──
       case "init": {
-        const { provider } = body;
-        if (!provider || !["google_drive", "dropbox", "onedrive"].includes(provider)) {
-          return json({ error: "Invalid provider. Must be: google_drive, dropbox, onedrive" }, 400);
+        if (!clientId || !clientSecret) {
+          return json({ error: "Google Drive OAuth nicht konfiguriert. GOOGLE_DRIVE_CLIENT_ID und GOOGLE_DRIVE_CLIENT_SECRET fehlen." }, 500);
         }
 
-        // Scaffold: OAuth URLs would be constructed here
-        // For now, return placeholder indicating external setup needed
-        const oauthUrls: Record<string, string> = {
-          google_drive: "https://accounts.google.com/o/oauth2/v2/auth",
-          dropbox: "https://www.dropbox.com/oauth2/authorize",
-          onedrive: "https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
-        };
+        const returnUrl = (body.returnUrl as string) || `${url.origin}`;
+        const state = btoa(JSON.stringify({ tenantId, userId: user.id, returnUrl }));
+        const redirectUri = `${supabaseUrl}/functions/v1/sot-cloud-sync?action=callback&provider=google_drive`;
 
-        return json({
-          status: "scaffold",
-          message: `Cloud-Sync für ${provider} ist vorbereitet. OAuth2-Konfiguration erforderlich.`,
-          provider,
-          oauth_endpoint: oauthUrls[provider],
-          required_secrets: [
-            `${provider.toUpperCase()}_CLIENT_ID`,
-            `${provider.toUpperCase()}_CLIENT_SECRET`,
-          ],
-          redirect_uri: `${supabaseUrl}/functions/v1/sot-cloud-sync?action=callback&provider=${provider}`,
-        });
+        const authUrl = new URL("https://accounts.google.com/o/oauth2/v2/auth");
+        authUrl.searchParams.set("client_id", clientId);
+        authUrl.searchParams.set("redirect_uri", redirectUri);
+        authUrl.searchParams.set("response_type", "code");
+        authUrl.searchParams.set("scope", "https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile");
+        authUrl.searchParams.set("access_type", "offline");
+        authUrl.searchParams.set("prompt", "consent");
+        authUrl.searchParams.set("state", state);
+
+        return json({ redirect_url: authUrl.toString() });
       }
 
-      case "callback": {
-        // Scaffold: Exchange auth code for tokens
-        return json({
-          status: "scaffold",
-          message: "OAuth callback handler prepared. Awaiting client credentials configuration.",
-        });
+      // ── FOLDERS — List Drive folders ──
+      case "folders": {
+        const connector = await getConnector(sbAdmin, tenantId, "google_drive");
+        if (!connector) return json({ error: "Google Drive nicht verbunden" }, 404);
+
+        const accessToken = await ensureFreshToken(sbAdmin, connector, clientId!, clientSecret!);
+        const parentId = (body.parentId as string) || "root";
+
+        const q = `'${parentId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`;
+        const res = await fetch(
+          `${GOOGLE_DRIVE_API}/files?q=${encodeURIComponent(q)}&fields=files(id,name)&orderBy=name&pageSize=100`,
+          { headers: { Authorization: `Bearer ${accessToken}` } }
+        );
+        const data = await res.json();
+        return json({ folders: data.files || [] });
       }
 
-      case "sync": {
-        const { connectorId } = body;
-        if (!connectorId) return json({ error: "Missing connectorId" }, 400);
+      // ── SET FOLDER — Save selected folder ──
+      case "set_folder": {
+        const folderId = body.folderId as string;
+        const folderName = body.folderName as string;
+        if (!folderId || !folderName) return json({ error: "Missing folderId or folderName" }, 400);
 
-        const { data: connector } = await sbAdmin
+        await sbAdmin
           .from("cloud_sync_connectors")
-          .select("*")
-          .eq("id", connectorId)
+          .update({ remote_folder_id: folderId, remote_folder_name: folderName, updated_at: new Date().toISOString() })
           .eq("tenant_id", tenantId)
+          .eq("provider", "google_drive");
+
+        return json({ success: true });
+      }
+
+      // ── SYNC — Download files from Drive ──
+      case "sync": {
+        const connector = await getConnector(sbAdmin, tenantId, "google_drive");
+        if (!connector) return json({ error: "Google Drive nicht verbunden" }, 404);
+        if (!connector.remote_folder_id) return json({ error: "Kein Ordner ausgewählt. Bitte wählen Sie zuerst einen Google Drive Ordner." }, 400);
+
+        const accessToken = await ensureFreshToken(sbAdmin, connector, clientId!, clientSecret!);
+
+        // Create sync log entry
+        const { data: syncLog } = await sbAdmin
+          .from("cloud_sync_log")
+          .insert({ tenant_id: tenantId, connector_id: connector.id, status: "running" })
+          .select("id")
           .single();
 
-        if (!connector) return json({ error: "Connector not found" }, 404);
-        if (connector.status !== "connected") {
-          return json({ error: "Connector not connected. Please complete OAuth setup first." }, 400);
+        try {
+          // List files in folder (delta-sync via modifiedTime)
+          let query = `'${connector.remote_folder_id}' in parents and trashed=false and mimeType!='application/vnd.google-apps.folder'`;
+          if (connector.last_sync_at) {
+            query += ` and modifiedTime > '${connector.last_sync_at}'`;
+          }
+
+          const listRes = await fetch(
+            `${GOOGLE_DRIVE_API}/files?q=${encodeURIComponent(query)}&fields=files(id,name,mimeType,size,modifiedTime)&orderBy=modifiedTime&pageSize=50`,
+            { headers: { Authorization: `Bearer ${accessToken}` } }
+          );
+          const listData = await listRes.json();
+          const files = listData.files || [];
+
+          let filesSynced = 0;
+
+          for (const file of files) {
+            try {
+              // Download file content
+              const downloadRes = await fetch(
+                `${GOOGLE_DRIVE_API}/files/${file.id}?alt=media`,
+                { headers: { Authorization: `Bearer ${accessToken}` } }
+              );
+              if (!downloadRes.ok) {
+                console.error(`[cloud-sync] Failed to download ${file.name}:`, downloadRes.status);
+                continue;
+              }
+
+              const fileBlob = await downloadRes.blob();
+              const storagePath = `${tenantId}/CLOUD_SYNC/${file.name}`;
+
+              // Upload to storage
+              const { error: uploadErr } = await sbAdmin.storage
+                .from("tenant-documents")
+                .upload(storagePath, fileBlob, {
+                  contentType: file.mimeType || "application/octet-stream",
+                  upsert: true,
+                });
+
+              if (uploadErr) {
+                console.error(`[cloud-sync] Upload error for ${file.name}:`, uploadErr);
+                continue;
+              }
+
+              // Create document record
+              const publicId = crypto.randomUUID().slice(0, 8);
+              await sbAdmin.from("documents").insert({
+                tenant_id: tenantId,
+                name: file.name,
+                file_path: storagePath,
+                mime_type: file.mimeType || "application/octet-stream",
+                size_bytes: parseInt(file.size || "0"),
+                uploaded_by: user.id,
+                public_id: publicId,
+                source: "cloud_sync",
+                extraction_status: "pending",
+              });
+
+              filesSynced++;
+            } catch (fileErr) {
+              console.error(`[cloud-sync] Error syncing file ${file.name}:`, fileErr);
+            }
+          }
+
+          // Update connector
+          await sbAdmin
+            .from("cloud_sync_connectors")
+            .update({
+              last_sync_at: new Date().toISOString(),
+              last_sync_files_count: filesSynced,
+              error_message: null,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", connector.id);
+
+          // Update sync log
+          if (syncLog) {
+            await sbAdmin
+              .from("cloud_sync_log")
+              .update({ status: "completed", files_synced: filesSynced, completed_at: new Date().toISOString() })
+              .eq("id", syncLog.id);
+          }
+
+          return json({ success: true, files_synced: filesSynced, total_available: files.length });
+        } catch (syncErr) {
+          console.error("[cloud-sync] Sync error:", syncErr);
+          if (syncLog) {
+            await sbAdmin
+              .from("cloud_sync_log")
+              .update({ status: "failed", error_message: String(syncErr), completed_at: new Date().toISOString() })
+              .eq("id", syncLog.id);
+          }
+          return json({ error: "Sync fehlgeschlagen" }, 500);
+        }
+      }
+
+      // ── DISCONNECT ──
+      case "disconnect": {
+        const connector = await getConnector(sbAdmin, tenantId, "google_drive");
+        if (!connector) return json({ error: "Kein Google Drive Connector gefunden" }, 404);
+
+        // Revoke token at Google
+        if (connector.access_token) {
+          try {
+            await fetch(`${GOOGLE_REVOKE_URL}?token=${connector.access_token}`, { method: "POST" });
+          } catch { /* ignore revoke errors */ }
         }
 
-        // Scaffold: File listing + download + extraction pipeline
-        return json({
-          status: "scaffold",
-          message: `Sync für ${connector.provider} ist vorbereitet. Implementierung folgt nach OAuth-Setup.`,
-          connector_id: connectorId,
-          provider: connector.provider,
-        });
+        await sbAdmin
+          .from("cloud_sync_connectors")
+          .update({
+            status: "not_connected",
+            access_token: null,
+            refresh_token: null,
+            token_expires_at: null,
+            account_email: null,
+            account_name: null,
+            remote_folder_id: null,
+            remote_folder_name: null,
+            last_sync_at: null,
+            last_sync_files_count: 0,
+            error_message: null,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", connector.id);
+
+        return json({ success: true });
       }
 
       default:
@@ -133,3 +369,57 @@ Deno.serve(async (req) => {
     return json({ error: "Internal server error" }, 500);
   }
 });
+
+// ── Helpers ──
+
+async function getConnector(sbAdmin: ReturnType<typeof createClient>, tenantId: string, provider: string) {
+  const { data } = await sbAdmin
+    .from("cloud_sync_connectors")
+    .select("*")
+    .eq("tenant_id", tenantId)
+    .eq("provider", provider)
+    .maybeSingle();
+  return data;
+}
+
+async function ensureFreshToken(
+  sbAdmin: ReturnType<typeof createClient>,
+  connector: Record<string, unknown>,
+  clientId: string,
+  clientSecret: string
+): Promise<string> {
+  const expiresAt = connector.token_expires_at ? new Date(connector.token_expires_at as string) : null;
+  const isExpired = !expiresAt || expiresAt.getTime() < Date.now() + 60_000; // 1min buffer
+
+  if (!isExpired && connector.access_token) {
+    return connector.access_token as string;
+  }
+
+  if (!connector.refresh_token) {
+    throw new Error("Token abgelaufen und kein Refresh-Token vorhanden. Bitte erneut verbinden.");
+  }
+
+  const res = await fetch(GOOGLE_TOKEN_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      client_id: clientId,
+      client_secret: clientSecret,
+      refresh_token: connector.refresh_token as string,
+      grant_type: "refresh_token",
+    }),
+  });
+
+  const data = await res.json();
+  if (!res.ok || !data.access_token) {
+    throw new Error("Token-Erneuerung fehlgeschlagen. Bitte erneut verbinden.");
+  }
+
+  const newExpiry = new Date(Date.now() + (data.expires_in || 3600) * 1000).toISOString();
+  await sbAdmin
+    .from("cloud_sync_connectors")
+    .update({ access_token: data.access_token, token_expires_at: newExpiry, updated_at: new Date().toISOString() })
+    .eq("id", connector.id as string);
+
+  return data.access_token;
+}
