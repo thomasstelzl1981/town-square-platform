@@ -388,6 +388,118 @@ Deno.serve(async (req) => {
         return json({ success: true });
       }
 
+      // ── LIST FILES — List files in cloud folder without downloading ──
+      case "list_files": {
+        const connector = await getConnector(sbAdmin, tenantId, "google_drive");
+        if (!connector) return json({ error: "Google Drive nicht verbunden" }, 404);
+        if (!connector.remote_folder_id) return json({ error: "Kein Ordner ausgewählt" }, 400);
+
+        const accessToken = await ensureFreshToken(sbAdmin, connector, clientId!, clientSecret!);
+
+        let allFiles: Array<Record<string, unknown>> = [];
+        let pageToken: string | undefined;
+
+        do {
+          const q = `'${connector.remote_folder_id}' in parents and trashed=false and mimeType!='application/vnd.google-apps.folder'`;
+          let url = `${GOOGLE_DRIVE_API}/files?q=${encodeURIComponent(q)}&fields=nextPageToken,files(id,name,mimeType,size,modifiedTime)&orderBy=name&pageSize=100`;
+          if (pageToken) url += `&pageToken=${encodeURIComponent(pageToken)}`;
+
+          const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
+          const data = await res.json();
+          allFiles = allFiles.concat(data.files || []);
+          pageToken = data.nextPageToken;
+        } while (pageToken);
+
+        return json({ files: allFiles, total: allFiles.length });
+      }
+
+      // ── ANALYZE CLOUD — Download + parse files directly from cloud ──
+      case "analyze_cloud": {
+        const connector = await getConnector(sbAdmin, tenantId, "google_drive");
+        if (!connector) return json({ error: "Google Drive nicht verbunden" }, 404);
+        if (!connector.remote_folder_id) return json({ error: "Kein Ordner ausgewählt" }, 400);
+
+        const accessToken = await ensureFreshToken(sbAdmin, connector, clientId!, clientSecret!);
+        const requestedFileIds = (body.fileIds as string[] | undefined);
+
+        // List files
+        let q = `'${connector.remote_folder_id}' in parents and trashed=false and mimeType!='application/vnd.google-apps.folder'`;
+        const listRes = await fetch(
+          `${GOOGLE_DRIVE_API}/files?q=${encodeURIComponent(q)}&fields=files(id,name,mimeType,size,modifiedTime)&orderBy=name&pageSize=100`,
+          { headers: { Authorization: `Bearer ${accessToken}` } }
+        );
+        const listData = await listRes.json();
+        let files = listData.files || [];
+
+        // Filter to requested IDs if provided
+        if (requestedFileIds && requestedFileIds.length > 0) {
+          const idSet = new Set(requestedFileIds);
+          files = files.filter((f: Record<string, unknown>) => idSet.has(f.id as string));
+        }
+
+        let filesProcessed = 0;
+        let filesFailed = 0;
+
+        for (const file of files) {
+          try {
+            // Download
+            const downloadRes = await fetch(
+              `${GOOGLE_DRIVE_API}/files/${file.id}?alt=media`,
+              { headers: { Authorization: `Bearer ${accessToken}` } }
+            );
+            if (!downloadRes.ok) { filesFailed++; continue; }
+
+            const fileBlob = await downloadRes.blob();
+            const storagePath = `${tenantId}/CLOUD_SYNC/${file.name}`;
+
+            // Upload to storage
+            const { error: uploadErr } = await sbAdmin.storage
+              .from("tenant-documents")
+              .upload(storagePath, fileBlob, {
+                contentType: file.mimeType || "application/octet-stream",
+                upsert: true,
+              });
+            if (uploadErr) { filesFailed++; continue; }
+
+            // Create document record
+            const publicId = crypto.randomUUID().slice(0, 8);
+            await sbAdmin.from("documents").insert({
+              tenant_id: tenantId,
+              name: file.name,
+              file_path: storagePath,
+              mime_type: file.mimeType || "application/octet-stream",
+              size_bytes: parseInt(file.size || "0"),
+              uploaded_by: user.id,
+              public_id: publicId,
+              source: "cloud_sync",
+              extraction_status: "pending",
+            });
+
+            filesProcessed++;
+          } catch (err) {
+            console.error(`[cloud-sync] analyze_cloud error for ${file.name}:`, err);
+            filesFailed++;
+          }
+        }
+
+        // Update connector last sync
+        await sbAdmin
+          .from("cloud_sync_connectors")
+          .update({
+            last_sync_at: new Date().toISOString(),
+            last_sync_files_count: filesProcessed,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", connector.id);
+
+        return json({
+          success: true,
+          files_processed: filesProcessed,
+          files_failed: filesFailed,
+          total_available: files.length,
+        });
+      }
+
       default:
         return json({ error: `Unknown action: ${action}` }, 400);
     }

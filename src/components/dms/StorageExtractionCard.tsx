@@ -1,6 +1,7 @@
 /**
  * StorageExtractionCard — Datenraum für Armstrong aktivieren
  * Marketing-fokussierte Kachel mit Scan/Angebot/Freigabe/Abarbeitung-Flow
+ * Now supports cloud sources via CloudSourcePicker.
  */
 import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -11,6 +12,8 @@ import { ScanSearch, Play, XCircle, Loader2, Bot, CheckCircle, Brain, Upload, Cl
 import { supabase } from '@/integrations/supabase/client';
 import { useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { CloudSourcePicker, type CloudSourceSelection } from '@/components/dms/CloudSourcePicker';
+import { useCloudSync } from '@/hooks/useCloudSync';
 
 interface ScanResult {
   total_files: number;
@@ -63,8 +66,28 @@ export function StorageExtractionCard({ tenantId }: Props) {
   const [scanResult, setScanResult] = useState<ScanResult | null>(null);
   const [jobStatus, setJobStatus] = useState<JobStatus | null>(null);
   const [isPolling, setIsPolling] = useState(false);
+  const [sourceSelection, setSourceSelection] = useState<CloudSourceSelection>({ source: 'storage', mode: 'sync_first' });
+  const { listFiles, syncNow, analyzeCloud, isSyncing: isCloudSyncing } = useCloudSync();
 
-  // ── Scan ──
+  // ── Cloud file count ──
+  const cloudScanMutation = useMutation({
+    mutationFn: async () => {
+      const result = await listFiles();
+      return result;
+    },
+    onSuccess: (data) => {
+      setScanResult({
+        total_files: data.total,
+        already_extracted: 0,
+        to_process: data.total,
+        estimated_credits: data.total,
+        estimated_minutes: Math.max(1, Math.ceil(data.total / 5)),
+      });
+    },
+    onError: (e: Error) => toast.error(`Cloud-Scan fehlgeschlagen: ${e.message}`),
+  });
+
+  // ── Scan (DMS Storage) ──
   const scanMutation = useMutation({
     mutationFn: async () => {
       const { data, error } = await supabase.functions.invoke('sot-storage-extractor', {
@@ -86,7 +109,15 @@ export function StorageExtractionCard({ tenantId }: Props) {
     onError: (e: Error) => toast.error(`Scan fehlgeschlagen: ${e.message}`),
   });
 
-  // ── Start ──
+  const handleScan = useCallback(() => {
+    if (sourceSelection.source === 'cloud') {
+      cloudScanMutation.mutate();
+    } else {
+      scanMutation.mutate();
+    }
+  }, [sourceSelection, cloudScanMutation, scanMutation]);
+
+  // ── Start (DMS Storage) ──
   const startMutation = useMutation({
     mutationFn: async () => {
       const { data, error } = await supabase.functions.invoke('sot-storage-extractor', {
@@ -110,6 +141,19 @@ export function StorageExtractionCard({ tenantId }: Props) {
     },
     onError: (e: Error) => toast.error(`Start fehlgeschlagen: ${e.message}`),
   });
+
+  const handleStart = useCallback(async () => {
+    if (sourceSelection.source === 'cloud') {
+      if (sourceSelection.mode === 'sync_first') {
+        await syncNow();
+      }
+      await analyzeCloud();
+      setScanResult(null);
+      toast.success('Cloud-Analyse abgeschlossen');
+    } else {
+      startMutation.mutate();
+    }
+  }, [sourceSelection, syncNow, analyzeCloud, startMutation]);
 
   // ── Cancel ──
   const cancelMutation = useMutation({
@@ -205,18 +249,21 @@ export function StorageExtractionCard({ tenantId }: Props) {
           {/* State: Initial */}
           {!scanResult && !jobStatus && (
             <>
+              <CloudSourcePicker onSelect={setSourceSelection} className="mb-2" />
               <p className="text-sm text-muted-foreground">
-                Starten Sie einen Scan, um zu sehen, wie viele Dokumente verarbeitet werden können. Sie erhalten einen Kostenvoranschlag und entscheiden dann, ob Sie die Extraktion freigeben.
+                {sourceSelection.source === 'cloud'
+                  ? 'Zählen Sie die Dateien in Ihrem Cloud-Ordner, um einen Kostenvoranschlag zu erhalten.'
+                  : 'Starten Sie einen Scan, um zu sehen, wie viele Dokumente verarbeitet werden können. Sie erhalten einen Kostenvoranschlag und entscheiden dann, ob Sie die Extraktion freigeben.'}
               </p>
               <Button
-                onClick={() => scanMutation.mutate()}
-                disabled={scanMutation.isPending || !tenantId}
+                onClick={handleScan}
+                disabled={scanMutation.isPending || cloudScanMutation.isPending || !tenantId}
                 size="lg"
               >
-                {scanMutation.isPending ? (
-                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Datenraum wird analysiert…</>
+                {(scanMutation.isPending || cloudScanMutation.isPending) ? (
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> {sourceSelection.source === 'cloud' ? 'Cloud wird analysiert…' : 'Datenraum wird analysiert…'}</>
                 ) : (
-                  <><ScanSearch className="h-4 w-4 mr-2" /> Datenraum scannen</>
+                  <><ScanSearch className="h-4 w-4 mr-2" /> {sourceSelection.source === 'cloud' ? 'Cloud-Ordner scannen' : 'Datenraum scannen'}</>
                 )}
               </Button>
             </>
@@ -267,8 +314,8 @@ export function StorageExtractionCard({ tenantId }: Props) {
                     Abbrechen
                   </Button>
                   <Button
-                    onClick={() => startMutation.mutate()}
-                    disabled={startMutation.isPending}
+                    onClick={handleStart}
+                    disabled={startMutation.isPending || isCloudSyncing}
                     className="flex-1"
                   >
                     {startMutation.isPending ? (
