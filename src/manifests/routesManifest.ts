@@ -265,7 +265,7 @@ export const zone2Portal: ZoneDefinition = {
       visibility: { default: true, org_types: ["client"] },
       tiles: [
         // ZUHAUSE: MOD-20 (Miety) inline gerendert innerhalb MOD-04
-        { path: "zuhause", component: "MietyInline", title: "ZUHAUSE", default: true },
+        { path: "zuhause", component: "MietyInline", title: "HOME", default: true },
         { path: "portfolio", component: "PortfolioTab", title: "Portfolio" },
         // Tax: Vermietung + Verwaltung — Anlage V Steuererklärung
         { path: "verwaltung", component: "VerwaltungTab", title: "Steuer" },
@@ -566,7 +566,7 @@ export const zone2Portal: ZoneDefinition = {
         { path: "kommunikation", component: "MietyKommunikation", title: "Kommunikation" },
       ],
       dynamic_routes: [
-        { path: "zuhause/:homeId", component: "MietyHomeDossier", title: "Zuhause-Akte", dynamic: true },
+        { path: "zuhause/:homeId", component: "MietyHomeDossier", title: "Home-Akte", dynamic: true },
       ],
     },
     // =========================================================================
