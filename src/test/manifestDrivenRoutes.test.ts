@@ -69,9 +69,9 @@ describe('Zone 2: Portal Modules', () => {
     expect(zone2Portal.dashboard?.component).toBe('PortalDashboard');
   });
 
-  it('should have 22 modules (MOD-00 to MOD-20 + MOD-22)', () => {
+  it('should have 23 modules (MOD-00 to MOD-21 + MOD-22)', () => {
     const modules = Object.keys(zone2Portal.modules || {});
-    expect(modules.length).toBe(22);
+    expect(modules.length).toBe(23);
   });
 
   it('should have modules sorted by display_order ascending', () => {
@@ -86,7 +86,7 @@ describe('Zone 2: Portal Modules', () => {
     'MOD-00': 0,
     'MOD-01': 6,
     'MOD-02': 7,
-    'MOD-03': 4,
+    'MOD-03': 5,
     'MOD-04': 4,
     'MOD-05': 4,
     'MOD-06': 4,
@@ -237,7 +237,7 @@ describe('Route Counts', () => {
     const modules = Object.values(zone2Portal.modules || {});
     const tileCount = modules.reduce((sum, m) => sum + m.tiles.length, 0);
     // Sum of all tile counts from expectedTileCounts (updated: MOD-01=6, MOD-10=5, MOD-12=6, MOD-13=5)
-    expect(tileCount).toBe(105);
+    expect(tileCount).toBe(111);
   });
 
   it('should calculate total Zone 3 routes', () => {

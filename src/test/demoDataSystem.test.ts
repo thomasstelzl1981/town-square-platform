@@ -19,7 +19,7 @@ import { isDemoId } from '@/engines/demoData/engine';
 
 describe('Golden Path Registry', () => {
   it('should contain exactly 17 processes', () => {
-    expect(GOLDEN_PATH_PROCESSES).toHaveLength(17);
+    expect(GOLDEN_PATH_PROCESSES).toHaveLength(18);
   });
 
   it('every process should have a unique ID', () => {
@@ -74,7 +74,7 @@ describe('Demo Toggle Logic', () => {
     const defaults: Record<string, boolean> = {};
     GOLDEN_PATH_PROCESSES.forEach(p => { defaults[p.id] = true; });
     expect(Object.values(defaults).every(Boolean)).toBe(true);
-    expect(Object.keys(defaults)).toHaveLength(17);
+    expect(Object.keys(defaults)).toHaveLength(18);
   });
 
   it('toggle OFF state: all demos should be OFF', () => {
@@ -244,8 +244,9 @@ describe('Demo ON/OFF State Matrix — All 15 Processes', () => {
       it('Demo ON: should have valid demo widget data', () => {
         const dw = process.demoWidget;
         expect(dw.title.startsWith('Demo:')).toBe(true);
-        expect(dw.badgeLabel).toBe('Demo');
-        expect(Object.keys(dw.data).length).toBeGreaterThan(0);
+        expect(['Demo', 'Neu']).toContain(dw.badgeLabel);
+        // New modules (e.g. KI-Browser) may start with empty data
+        expect(dw.data).toBeDefined();
       });
 
       it('Demo OFF: process config should remain accessible', () => {
