@@ -1,15 +1,28 @@
-import { Globe, Shield, Search, FileText, Clock } from 'lucide-react';
+import { Globe, Shield, Search, FileText, Clock, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 
 const KiBrowserUebersicht = () => {
   const navigate = useNavigate();
 
+  const { data: recentSessions, isLoading } = useQuery({
+    queryKey: ['ki-browser-sessions-recent'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('ki_browser_sessions')
+        .select('id, status, purpose, step_count, max_steps, created_at')
+        .order('created_at', { ascending: false })
+        .limit(5);
+      return data || [];
+    },
+  });
+
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-foreground">KI-Browser</h1>
         <p className="text-muted-foreground mt-1">
@@ -74,24 +87,18 @@ const KiBrowserUebersicht = () => {
           <CardTitle className="text-base">Quick Start</CardTitle>
         </CardHeader>
         <CardContent>
-          <Button 
-            onClick={() => navigate('/portal/ki-browser/session')}
-            className="mr-3"
-          >
+          <Button onClick={() => navigate('/portal/ki-browser/session')} className="mr-3">
             <Globe className="h-4 w-4 mr-2" />
             Neue Session starten
           </Button>
-          <Button 
-            variant="outline"
-            onClick={() => navigate('/portal/ki-browser/vorlagen')}
-          >
+          <Button variant="outline" onClick={() => navigate('/portal/ki-browser/vorlagen')}>
             <FileText className="h-4 w-4 mr-2" />
             Vorlage verwenden
           </Button>
         </CardContent>
       </Card>
 
-      {/* Session History (Placeholder) */}
+      {/* Session History */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
@@ -100,9 +107,46 @@ const KiBrowserUebersicht = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground">
-            Keine Sessions vorhanden. Starten Sie eine neue Session, um zu beginnen.
-          </p>
+          {isLoading ? (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Laden...
+            </div>
+          ) : !recentSessions?.length ? (
+            <p className="text-sm text-muted-foreground">
+              Keine Sessions vorhanden. Starten Sie eine neue Session, um zu beginnen.
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {recentSessions.map((s) => (
+                <div
+                  key={s.id}
+                  className="flex items-center justify-between p-2 rounded-md bg-muted/50 hover:bg-muted cursor-pointer transition-colors"
+                  onClick={() => navigate('/portal/ki-browser/session')}
+                >
+                  <div className="flex items-center gap-3 text-sm">
+                    <Badge
+                      variant="outline"
+                      className={
+                        s.status === 'active'
+                          ? 'bg-green-500/10 text-green-700 border-green-200'
+                          : s.status === 'completed'
+                            ? 'bg-blue-500/10 text-blue-700 border-blue-200'
+                            : 'bg-muted'
+                      }
+                    >
+                      {s.status}
+                    </Badge>
+                    <span className="text-foreground">{s.purpose || 'Ohne Zweck'}</span>
+                    <span className="text-muted-foreground text-xs">{s.step_count}/{s.max_steps} Steps</span>
+                  </div>
+                  <span className="text-xs text-muted-foreground">
+                    {new Date(s.created_at).toLocaleDateString('de-DE')}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
