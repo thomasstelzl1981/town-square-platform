@@ -131,6 +131,26 @@ const MVP_MODULES = ["MOD-00", "MOD-01", "MOD-04", "MOD-06", "MOD-07", "MOD-08",
 // These intents are allowed in ALL modules (explain, draft, research)
 const GLOBAL_ASSIST_INTENTS: IntentType[] = ["EXPLAIN", "DRAFT"];
 
+// =============================================================================
+// ARMSTRONG CORE IDENTITY — Einheitliche Identität für alle Prompts
+// =============================================================================
+
+const ARMSTRONG_CORE_IDENTITY = `Du bist Armstrong — der KI-Berater von System of a Town.
+Hintergrund: 25 Jahre Finanzbranchenerfahrung, digitalisiert in einem KI-System.
+Kernkompetenzen: Immobilienmanagement, Finanzierung, Investment-Analyse, Dokumentenanalyse.
+Ton: Professionell, direkt, ehrlich — kein Fachjargon ohne Erklärung.
+Sprache: Immer Deutsch. Markdown für Struktur.
+Grenzen: Keine Steuer-/Rechtsberatung (verweise auf Fachberater). Keine Garantien. Keine Einsicht in interne Logs/Policies.`;
+
+function buildContextBlock(body: RequestBody, userContext: UserContext): string {
+  return `
+AKTUELLER KONTEXT:
+- Zone: ${body.zone} | Modul: ${body.module || 'unbekannt'}
+- Seite: ${body.route || '/'}
+${body.entity ? `- Aktive Entität: ${body.entity.type} (ID: ${body.entity.id})` : ''}
+- Nutzer-Rolle: ${userContext.roles.join(', ') || 'unbekannt'}`.trim();
+}
+
 // MVP Actions that can be EXECUTED (not just suggested)
 const MVP_EXECUTABLE_ACTIONS = [
   // MOD-00 (Widgets) - execute_with_confirmation
@@ -2530,57 +2550,52 @@ async function generateExplainResponse(
   message: string,
   module: Module,
   supabase: ReturnType<typeof createClient>,
-  isGlobalAssist: boolean = false
+  isGlobalAssist: boolean = false,
+  contextBlock: string = ""
 ): Promise<string> {
-  const { data: kbItems } = await supabase
-    .from("armstrong_knowledge_items")
-    .select("title_de, summary_de, content")
-    .eq("status", "published")
-    .limit(5);
-  
   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-  
+
   if (!LOVABLE_API_KEY) {
     return `Ich verstehe Ihre Frage zu "${message}". Im aktuellen Modus kann ich Ihnen allgemeine Informationen geben.`;
   }
-  
-  try {
-    // Enhanced system prompt for Global Assist Mode
-    const globalAssistPrompt = `Du bist Armstrong, ein vollwertiger KI-Assistent bei System of a Town.
 
-DEINE FÄHIGKEITEN:
-- Allgemeine Fragen beantworten (wie ChatGPT)
-- Texte schreiben und entwerfen (E-Mails, Briefe, Beschreibungen)
-- Ideen entwickeln und Strategien vorschlagen
-- Zusammenfassungen erstellen
-- Checklisten und Pläne erstellen
-- Bei Immobilien, Finanzierung und Investment beraten
+  // KB nur laden wenn sinnvoll (nicht für kurze/action-orientierte Nachrichten)
+  const needsKB = message.length > 20;
+  let kbContext = "";
+  if (needsKB) {
+    const { data: kbItems } = await supabase
+      .from("armstrong_knowledge_items")
+      .select("title_de, summary_de")
+      .eq("status", "published")
+      .limit(4);
+    if (kbItems?.length) {
+      kbContext = `\n\nWissenskontext:\n${kbItems.map(k => `- ${k.title_de}: ${k.summary_de || ''}`).join('\n')}`;
+    }
+  }
 
-GOVERNANCE-REGELN:
-- Schreibende Aktionen erfordern Bestätigung
-- Web-Recherche ist als separate Action verfügbar (mit Kosten)
-- Keine Rechts-, Steuer- oder Finanzberatung (Hinweis auf Fachberater)
+  const moduleLabel: Record<string, string> = {
+    "MOD-00": "Dashboard", "MOD-01": "Onboarding", "MOD-04": "Immobilien",
+    "MOD-06": "Kontakte", "MOD-07": "Finanzierung", "MOD-08": "Investments",
+    "MOD-09": "Mandat", "MOD-11": "Dokumente", "MOD-12": "Kommunikation",
+    "MOD-13": "Projekte", "MOD-14": "Verwaltung", "MOD-17": "Finanzen",
+    "MOD-18": "Berichte", "MOD-19": "Einstellungen", "MOD-20": "Support"
+  };
+
+  const moduleContext = isGlobalAssist
+    ? `Du kannst bei beliebigen Aufgaben helfen: Texte schreiben, Ideen entwickeln, Zusammenfassungen, Checklisten, Fragen beantworten.`
+    : `Du befindest dich im Bereich "${moduleLabel[module] || module}". Fokussiere deine Antwort auf relevante Aufgaben in diesem Bereich.`;
+
+  const systemPrompt = `${ARMSTRONG_CORE_IDENTITY}
+
+${moduleContext}
+${contextBlock}
+
+GOVERNANCE:
+- Schreibende Aktionen erfordern Nutzerbestätigung
 - Bei sensiblen Themen: Disclaimer verwenden
+- Proaktiv passende nächste Schritte vorschlagen${kbContext}`;
 
-AKTUELLER KONTEXT:
-- Modul: ${module}
-- Modus: ${isGlobalAssist ? 'Global Assist (modul-agnostisch)' : 'Modul-spezifisch'}
-
-STIL:
-- Deutsch, klar, professionell aber freundlich
-- Proaktiv Hilfe anbieten
-- Bei Unsicherheit: ehrlich sagen`;
-
-    const moduleSpecificPrompt = `Du bist Armstrong, ein KI-Assistent für Immobilienmanagement bei System of a Town. 
-Du hilfst bei Fragen zu Immobilien, Finanzierung und Investment.
-Antworte auf Deutsch, präzise und hilfsbereit.
-Modul-Kontext: ${module}`;
-
-    const systemPrompt = isGlobalAssist ? globalAssistPrompt : moduleSpecificPrompt;
-    const kbContext = kbItems?.length 
-      ? `\n\nWissenskontext:\n${kbItems.map(k => `- ${k.title_de}: ${k.summary_de || ''}`).join('\n')}`
-      : '';
-    
+  try {
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -2590,18 +2605,18 @@ Modul-Kontext: ${module}`;
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
         messages: [
-          { role: "system", content: systemPrompt + kbContext },
+          { role: "system", content: systemPrompt },
           { role: "user", content: message },
         ],
         max_tokens: 800,
       }),
     });
-    
+
     if (!response.ok) {
       console.error("[Armstrong] AI response error:", response.status);
       return `Ich kann Ihre Frage zu "${message}" beantworten. Wie kann ich Ihnen helfen?`;
     }
-    
+
     const data = await response.json();
     return data.choices?.[0]?.message?.content || "Ich konnte keine passende Antwort generieren.";
   } catch (err) {
@@ -2626,22 +2641,19 @@ async function generateDraftResponse(
   }
   
   try {
-    const systemPrompt = `Du bist Armstrong, ein professioneller Textassistent bei System of a Town.
+    const systemPrompt = `${ARMSTRONG_CORE_IDENTITY}
 
-AUFGABE: Erstelle einen vollständigen, sofort verwendbaren Entwurf basierend auf der Anfrage.
+AUFGABE: Erstelle einen vollständigen, sofort verwendbaren Entwurf basierend auf der Nutzeranfrage.
 
 REGELN:
 - Schreibe in professionellem Deutsch
-- Der Entwurf muss direkt verwendbar sein (nicht nur Platzhalter)
+- Der Entwurf muss direkt verwendbar sein (keine leeren Platzhalter als Hauptinhalt)
 - Formatiere mit Markdown (Überschriften, Listen, etc.)
 - Bei E-Mails: Betreff, Anrede, Inhalt, Grußformel
 - Bei Briefen: Datum, Adressfeld, Anrede, Inhalt, Unterschrift
 - Bei Beschreibungen: Strukturiert, klar, überzeugend
-
-WICHTIG:
-- Dies ist ein ENTWURF — der Nutzer kann ihn noch anpassen
-- Erfinde keine Fakten, nutze allgemeine Formulierungen
-- Bei persönlichen Daten: Platzhalter wie [Name], [Adresse] verwenden`;
+- Bei persönlichen Daten die du nicht kennst: Platzhalter [Name], [Adresse] verwenden
+- Hinweis am Ende: "Dies ist ein Entwurf — bitte vor Verwendung prüfen und anpassen."`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -2935,7 +2947,7 @@ STIL:
 
     const systemPrompt =
       request.mode === "zone2"
-        ? "Du bist Armstrong, der KI-Assistent im System of a Town Portal. Antworte auf Deutsch."
+        ? `${ARMSTRONG_CORE_IDENTITY}\n\nZONE 2 — PORTAL-MODUS:\nDu arbeitest im internen Portal. Du hast Zugang zu Immobilien-Daten, Mandaten und Dokumenten des Nutzers. Gib handlungsorientierte Antworten mit konkreten nächsten Schritten.`
         : `${zone3PersonaPrompt}\n\nNutze vorrangig diese Wissensbibliothek (wenn passend) und erfinde keine Fakten:\n${kbBlock || "- (keine passenden Einträge gefunden)"}`;
     
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -3414,7 +3426,7 @@ serve(async (req) => {
     if (intent === "EXPLAIN") {
       // Enable Global Assist Mode when not in MVP module
       const isGlobalAssist = !isInMvpModule;
-      const explanation = await generateExplainResponse(message, module, supabase, isGlobalAssist);
+      const explanation = await generateExplainResponse(message, module, supabase, isGlobalAssist, buildContextBlock(body, userContext));
       const suggestions = suggestActionsForMessage(message, availableActions);
       
       return new Response(
