@@ -45,23 +45,23 @@ export function generateLetterPdf(data: LetterPdfData): { base64: string; blob: 
 
   // ── Recipient window (DIN 5008: starts at 45mm from top, 85x45mm) ──
   let yPos = 49;
-  doc.setFontSize(11);
+  doc.setFontSize(12);
   doc.setTextColor(0, 0, 0);
 
   if (data.recipientCompany) {
     doc.text(data.recipientCompany, leftMargin, yPos);
-    yPos += 5;
+    yPos += 5.5;
   }
   if (data.recipientName) {
     doc.text(data.recipientName, leftMargin, yPos);
-    yPos += 5;
+    yPos += 5.5;
   }
   if (data.recipientAddress) {
     const addressLines = data.recipientAddress.split('\n');
     for (const line of addressLines) {
       if (line.trim()) {
         doc.text(line.trim(), leftMargin, yPos);
-        yPos += 5;
+        yPos += 5.5;
       }
     }
   }
@@ -69,14 +69,14 @@ export function generateLetterPdf(data: LetterPdfData): { base64: string; blob: 
   // ── Date — right-aligned ──
   const dateStr = data.date || formatDateLong(new Date(), data.senderCity);
   yPos = 95; // Fixed position after window zone
-  doc.setFontSize(10);
+  doc.setFontSize(12);
   doc.setTextColor(80, 80, 80);
   doc.text(dateStr, pageWidth - rightMargin, yPos, { align: 'right' });
   yPos += 12;
 
   // ── Subject — bold ──
   if (data.subject) {
-    doc.setFontSize(11);
+    doc.setFontSize(13);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(0, 0, 0);
     doc.text(data.subject, leftMargin, yPos);
@@ -85,12 +85,12 @@ export function generateLetterPdf(data: LetterPdfData): { base64: string; blob: 
 
   // ── Body ──
   if (data.body) {
-    doc.setFontSize(10);
+    doc.setFontSize(12);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(30, 30, 30);
 
     const lines = doc.splitTextToSize(data.body, textWidth);
-    const lineHeight = 5;
+    const lineHeight = 6;
     
     for (const line of lines) {
       if (yPos > 270) {
