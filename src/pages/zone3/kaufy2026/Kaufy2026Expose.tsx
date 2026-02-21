@@ -10,6 +10,7 @@
  * PHASE 2 FIX: Reads zvE/equity/maritalStatus from URL params
  */
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -67,6 +68,7 @@ export default function Kaufy2026Expose() {
   const { publicId } = useParams<{ publicId: string }>();
   const navigate = useNavigate();
   const [urlParams] = useSearchParams();
+  const isMobile = useIsMobile();
   const [isFavorite, setIsFavorite] = useState(false);
   const [showFinanceRequest, setShowFinanceRequest] = useState(false);
   const { calculate, result: calcResult, isLoading: isCalculating } = useInvestmentEngine();
@@ -386,6 +388,17 @@ export default function Kaufy2026Expose() {
                 </div>
               )}
             </div>
+
+            {/* Mobile Slider — inline before MasterGraph */}
+            {isMobile && (
+              <InvestmentSliderPanel
+                value={params}
+                onChange={setParams}
+                layout="vertical"
+                showAdvanced={true}
+                purchasePrice={listing.asking_price}
+              />
+            )}
 
             {/* MasterGraph */}
             {isCalculating ? (
