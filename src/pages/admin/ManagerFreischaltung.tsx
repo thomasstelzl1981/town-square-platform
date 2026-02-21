@@ -42,8 +42,8 @@ import { ROLES_CATALOG, ROLE_EXTRA_TILES, BASE_TILES } from '@/constants/rolesMa
 // ─── Types ───────────────────────────────────────────────────────────────────
 interface ManagerApplication {
   id: string;
-  tenant_id: string;
-  user_id: string;
+  tenant_id: string | null;
+  user_id: string | null;
   requested_role: string;
   qualification_data: Record<string, unknown> | null;
   status: string;
@@ -52,6 +52,10 @@ interface ManagerApplication {
   rejection_reason: string | null;
   created_at: string;
   updated_at: string;
+  source_brand: string | null;
+  applicant_name: string | null;
+  applicant_email: string | null;
+  applicant_phone: string | null;
   // Enriched
   org_name?: string;
   user_email?: string;
@@ -184,39 +188,46 @@ export default function ManagerFreischaltung() {
 
     try {
       if (reviewAction === 'approve') {
-        // Step 1: Update application status
-        await supabase
-          .from('manager_applications')
-          .update({
-            status: 'approved',
-            reviewed_at: new Date().toISOString(),
-          } as never)
-          .eq('id', selectedApp.id);
+        // For anonymous applications (no user_id): call edge function to create user + activate
+        if (!selectedApp.user_id) {
+          const { data, error } = await supabase.functions.invoke('sot-manager-activate', {
+            body: { application_id: selectedApp.id },
+          });
+          if (error) throw new Error(error.message || 'Edge function error');
+          if (data?.error) throw new Error(data.error);
+          toast.success(`Manager genehmigt — ${getRoleLabel(selectedApp.requested_role)} aktiviert. Zugangsdaten wurden per E-Mail versendet.`);
+        } else {
+          // Existing user: upgrade directly
+          await supabase
+            .from('manager_applications')
+            .update({
+              status: 'approved',
+              reviewed_at: new Date().toISOString(),
+            } as never)
+            .eq('id', selectedApp.id);
 
-        // Step 2: Upgrade org_type to partner
-        await supabase
-          .from('organizations')
-          .update({ org_type: 'partner' } as never)
-          .eq('id', selectedApp.tenant_id);
+          await supabase
+            .from('organizations')
+            .update({ org_type: 'partner' } as never)
+            .eq('id', selectedApp.tenant_id);
 
-        // Step 3: Update membership role
-        await supabase
-          .from('memberships')
-          .update({ role: selectedApp.requested_role } as never)
-          .eq('tenant_id', selectedApp.tenant_id)
-          .eq('user_id', selectedApp.user_id);
+          await supabase
+            .from('memberships')
+            .update({ role: selectedApp.requested_role } as never)
+            .eq('tenant_id', selectedApp.tenant_id)
+            .eq('user_id', selectedApp.user_id);
 
-        // Step 4: Activate manager tiles
-        const extraTiles = ROLE_EXTRA_TILES[selectedApp.requested_role] || [];
-        for (const tileCode of extraTiles) {
-          await supabase.from('tenant_tile_activation').upsert({
-            tenant_id: selectedApp.tenant_id,
-            tile_code: tileCode,
-            status: 'active',
-          } as never, { onConflict: 'tenant_id,tile_code' });
+          const extraTiles = ROLE_EXTRA_TILES[selectedApp.requested_role] || [];
+          for (const tileCode of extraTiles) {
+            await supabase.from('tenant_tile_activation').upsert({
+              tenant_id: selectedApp.tenant_id,
+              tile_code: tileCode,
+              status: 'active',
+            } as never, { onConflict: 'tenant_id,tile_code' });
+          }
+
+          toast.success(`Manager genehmigt — ${getRoleLabel(selectedApp.requested_role)} aktiviert`);
         }
-
-        toast.success(`Manager genehmigt — ${getRoleLabel(selectedApp.requested_role)} aktiviert`);
       } else {
         // Reject
         await supabase
@@ -233,9 +244,9 @@ export default function ManagerFreischaltung() {
 
       setReviewDialogOpen(false);
       fetchData();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error processing review:', error);
-      toast.error('Fehler bei der Verarbeitung');
+      toast.error(error.message || 'Fehler bei der Verarbeitung');
     } finally {
       setProcessing(false);
     }
@@ -358,7 +369,7 @@ export default function ManagerFreischaltung() {
                     <TableHeader>
                       <TableRow>
                         <TableHead>Bewerber</TableHead>
-                        <TableHead>Organisation</TableHead>
+                        <TableHead>Brand</TableHead>
                         <TableHead>Gewünschte Rolle</TableHead>
                         <TableHead>Modul</TableHead>
                         <TableHead>Status</TableHead>
@@ -371,13 +382,18 @@ export default function ManagerFreischaltung() {
                         <TableRow key={app.id}>
                           <TableCell>
                             <div>
-                              <p className="font-medium">{app.user_display_name || app.user_email}</p>
-                              {app.user_display_name && (
-                                <p className="text-xs text-muted-foreground">{app.user_email}</p>
+                              <p className="font-medium">{app.applicant_name || app.user_display_name || app.user_email || '—'}</p>
+                              <p className="text-xs text-muted-foreground">{app.applicant_email || app.user_email || '—'}</p>
+                              {app.applicant_phone && (
+                                <p className="text-xs text-muted-foreground">{app.applicant_phone}</p>
                               )}
                             </div>
                           </TableCell>
-                          <TableCell className="text-muted-foreground">{app.org_name}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="text-xs">
+                              {app.source_brand || '—'}
+                            </Badge>
+                          </TableCell>
                           <TableCell>
                             <Badge variant="outline">{getRoleLabel(app.requested_role)}</Badge>
                           </TableCell>
@@ -590,10 +606,21 @@ export default function ManagerFreischaltung() {
                     Bei Genehmigung werden folgende Schritte automatisch ausgeführt:
                   </p>
                   <ul className="text-xs text-primary/80 space-y-1 list-disc list-inside">
+                    {!selectedApp.user_id && (
+                      <>
+                        <li>Neuer Benutzer wird erstellt für <code>{selectedApp.applicant_email}</code></li>
+                        <li>Zugangsdaten werden per E-Mail versendet (Password-Reset-Link)</li>
+                      </>
+                    )}
                     <li>Organisation wird auf <code>org_type: partner</code> upgegradet</li>
                     <li>Mitgliedschaft wird auf <code>{selectedApp.requested_role}</code> gesetzt</li>
                     <li>Manager-Modul(e) <code>{ROLE_MODULE_MAP[selectedApp.requested_role]}</code> werden aktiviert</li>
                   </ul>
+                  {selectedApp.source_brand && (
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Quelle: <Badge variant="outline" className="text-xs ml-1">{selectedApp.source_brand}</Badge>
+                    </p>
+                  )}
                 </div>
               )}
 

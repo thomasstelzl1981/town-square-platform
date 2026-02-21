@@ -1,13 +1,41 @@
 /**
- * AcquiaryKarriere — Consolidated: Akquisemanager + Karriere
+ * AcquiaryKarriere — Akquisemanager Recruiting Page
  */
-import { Link } from 'react-router-dom';
 import {
   ChevronRight, MapPin, Euro, Laptop, Clock,
   TrendingUp, Users, Award, CheckCircle
 } from 'lucide-react';
+import { ManagerApplicationForm } from '@/components/zone3/shared/ManagerApplicationForm';
+import type { QualificationField } from '@/components/zone3/shared/ManagerApplicationForm';
+
+const qualificationFields: QualificationField[] = [
+  {
+    key: 'immobilien_erfahrung',
+    label: 'Erfahrung im Immobilienmarkt',
+    type: 'select',
+    required: true,
+    options: [
+      { value: 'makler', label: 'Makler' },
+      { value: 'verwalter', label: 'Verwalter' },
+      { value: 'projektentwickler', label: 'Projektentwickler' },
+      { value: 'sonstige', label: 'Sonstige Erfahrung' },
+      { value: 'keine', label: 'Quereinsteiger' },
+    ],
+  },
+  {
+    key: 'region',
+    label: 'Regionales Netzwerk / Region',
+    type: 'text',
+    required: true,
+    placeholder: 'z.B. München, Rhein-Main, Hamburg',
+  },
+];
 
 export default function AcquiaryKarriere() {
+  const scrollToForm = () => {
+    document.getElementById('bewerbungsformular')?.scrollIntoView({ behavior: 'smooth' });
+  };
+
   return (
     <>
       {/* Hero */}
@@ -21,12 +49,10 @@ export default function AcquiaryKarriere() {
             Werden Sie Teil unseres Netzwerks und akquirieren Sie Immobilien — 
             selbstständig, leistungsbasiert und mit modernster Technologie.
           </p>
-          <Link to="/acquiary/objekt">
-            <button className="aq-btn aq-btn-primary">
-              Jetzt bewerben
-              <ChevronRight className="h-4 w-4" />
-            </button>
-          </Link>
+          <button className="aq-btn aq-btn-primary" onClick={scrollToForm}>
+            Jetzt bewerben
+            <ChevronRight className="h-4 w-4" />
+          </button>
         </div>
       </section>
 
@@ -101,6 +127,22 @@ export default function AcquiaryKarriere() {
         </div>
       </section>
 
+      {/* Application Form */}
+      <section id="bewerbungsformular" className="aq-section">
+        <div className="aq-section-header">
+          <div className="aq-section-eyebrow">Bewerbung</div>
+          <h2 className="aq-section-title">Jetzt bewerben</h2>
+        </div>
+        <div className="max-w-2xl mx-auto">
+          <ManagerApplicationForm
+            brand="acquiary"
+            requestedRoles={['akquise_manager']}
+            qualificationFields={qualificationFields}
+            accentColor="hsl(207, 90%, 54%)"
+          />
+        </div>
+      </section>
+
       {/* CTA */}
       <section className="aq-cta">
         <div className="aq-cta-content">
@@ -109,12 +151,10 @@ export default function AcquiaryKarriere() {
             Bewerben Sie sich als Akquisemanager und werden Sie Teil 
             eines wachsenden Netzwerks.
           </p>
-          <Link to="/acquiary/objekt">
-            <button className="aq-btn aq-btn-primary">
-              Jetzt bewerben
-              <ChevronRight className="h-4 w-4" />
-            </button>
-          </Link>
+          <button className="aq-btn aq-btn-primary" onClick={scrollToForm}>
+            Jetzt bewerben
+            <ChevronRight className="h-4 w-4" />
+          </button>
         </div>
       </section>
     </>

@@ -1,28 +1,14 @@
 /**
- * LennoxPartnerWerden — Bewerbungsformular für neue Partner
- * Submit → Zone 1 Pet Desk Intake (pet_z1_customers source: partner_application)
+ * LennoxPartnerWerden — Bewerbungsformular für neue Pet Manager Partner
+ * Submit → manager_applications (source: lennox)
  */
-import { useState } from 'react';
-import { ArrowLeft, CheckCircle, MapPin, Users, Star, Eye, ShoppingBag } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { ArrowLeft, MapPin, Users, Star, Eye, ShoppingBag } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from '@/components/ui/card';
-import { toast } from 'sonner';
-import { z } from 'zod';
 import { LENNOX as C } from './lennoxTheme';
+import { ManagerApplicationForm } from '@/components/zone3/shared/ManagerApplicationForm';
+import type { QualificationField } from '@/components/zone3/shared/ManagerApplicationForm';
 import partnerHero from '@/assets/lennox/partner_hero.jpg';
-
-const formSchema = z.object({
-  name: z.string().trim().min(2, 'Name erforderlich').max(100),
-  email: z.string().trim().email('Ungültige E-Mail').max(255),
-  region: z.string().trim().min(2, 'Region angeben').max(100),
-  serviceType: z.string().trim().min(2, 'Leistung angeben').max(200),
-  message: z.string().trim().max(1000).optional(),
-});
 
 const BENEFITS = [
   { icon: MapPin, title: 'Exklusivität für deine Region', desc: 'Werde alleiniger Lennox-Partner in deinem Gebiet — ohne direkte Konkurrenz auf der Plattform.' },
@@ -32,56 +18,24 @@ const BENEFITS = [
   { icon: Star, title: 'Kuratierte Produkttipps', desc: 'Empfehle ausgewählte Produkte aus dem Lennox Shop und profitiere von unserem Partnerprogramm.' },
 ];
 
+const qualificationFields: QualificationField[] = [
+  {
+    key: 'region',
+    label: 'Region',
+    type: 'text',
+    required: true,
+    placeholder: 'z.B. München-Süd',
+  },
+  {
+    key: 'service_type',
+    label: 'Angebotene Leistung(en)',
+    type: 'text',
+    required: true,
+    placeholder: 'z.B. Hundepension, Grooming, Gassi-Service',
+  },
+];
+
 export default function LennoxPartnerWerden() {
-  const [form, setForm] = useState({ name: '', email: '', region: '', serviceType: '', message: '' });
-  const [submitted, setSubmitted] = useState(false);
-  const [loading, setLoading] = useState(false);
-
-  const handleSubmit = async () => {
-    const parsed = formSchema.safeParse(form);
-    if (!parsed.success) {
-      toast.error(parsed.error.errors[0]?.message);
-      return;
-    }
-    setLoading(true);
-    try {
-      const nameParts = parsed.data.name.trim().split(/\s+/);
-      const firstName = nameParts[0] || '';
-      const lastName = nameParts.slice(1).join(' ') || '';
-
-      const { error } = await supabase.from('pet_z1_customers').insert({
-        tenant_id: 'a0000000-0000-4000-a000-000000000001',
-        first_name: firstName,
-        last_name: lastName || firstName,
-        email: parsed.data.email,
-        address: parsed.data.region,
-        notes: [parsed.data.serviceType, parsed.data.message].filter(Boolean).join(' — '),
-        source: 'partner_application',
-        status: 'new',
-      });
-      if (error) throw error;
-      setSubmitted(true);
-      toast.success('Bewerbung erfolgreich eingereicht!');
-    } catch (err: any) {
-      toast.error('Fehler beim Senden: ' + (err.message || 'Unbekannt'));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (submitted) {
-    return (
-      <div className="max-w-md mx-auto px-5 py-20 text-center space-y-4">
-        <CheckCircle className="h-12 w-12 mx-auto" style={{ color: C.forest }} />
-        <h1 className="text-2xl font-bold" style={{ color: C.bark }}>Vielen Dank!</h1>
-        <p style={{ color: C.barkMuted }}>Deine Bewerbung wurde eingereicht. Wir melden uns innerhalb von 48 Stunden.</p>
-        <Link to="/website/tierservice">
-          <Button variant="outline" className="rounded-full mt-4">Zur Startseite</Button>
-        </Link>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-0">
       {/* ═══ HERO ═══ */}
@@ -138,40 +92,15 @@ export default function LennoxPartnerWerden() {
         </section>
 
         {/* ═══ FORM ═══ */}
-        <Card className="max-w-md mx-auto border" style={{ borderColor: C.sand, background: C.sandLight }}>
-          <CardContent className="p-6 space-y-4">
-            <h2 className="text-lg font-semibold" style={{ color: C.bark }}>Bewerbungsformular</h2>
-            <div>
-              <Label className="text-sm font-medium" style={{ color: C.bark }}>Name *</Label>
-              <Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} maxLength={100}
-                className="mt-1 border" style={{ borderColor: C.sand, color: C.bark, background: 'white' }} />
-            </div>
-            <div>
-              <Label className="text-sm font-medium" style={{ color: C.bark }}>E-Mail *</Label>
-              <Input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} maxLength={255}
-                className="mt-1 border" style={{ borderColor: C.sand, color: C.bark, background: 'white' }} />
-            </div>
-            <div>
-              <Label className="text-sm font-medium" style={{ color: C.bark }}>Region *</Label>
-              <Input placeholder="z.B. München-Süd" value={form.region} onChange={e => setForm(f => ({ ...f, region: e.target.value }))} maxLength={100}
-                className="mt-1 border" style={{ borderColor: C.sand, color: C.bark, background: 'white' }} />
-            </div>
-            <div>
-              <Label className="text-sm font-medium" style={{ color: C.bark }}>Angebotene Leistung(en) *</Label>
-              <Input placeholder="z.B. Hundepension, Grooming" value={form.serviceType} onChange={e => setForm(f => ({ ...f, serviceType: e.target.value }))} maxLength={200}
-                className="mt-1 border" style={{ borderColor: C.sand, color: C.bark, background: 'white' }} />
-            </div>
-            <div>
-              <Label className="text-sm font-medium" style={{ color: C.bark }}>Nachricht (optional)</Label>
-              <Textarea rows={3} value={form.message} onChange={e => setForm(f => ({ ...f, message: e.target.value }))} maxLength={1000}
-                className="mt-1 border" style={{ borderColor: C.sand, color: C.bark, background: 'white' }} />
-            </div>
-            <Button className="w-full rounded-full text-white font-semibold" style={{ background: C.forest }}
-              onClick={handleSubmit} disabled={loading}>
-              {loading ? 'Wird gesendet…' : 'Bewerbung absenden'}
-            </Button>
-          </CardContent>
-        </Card>
+        <section className="max-w-md mx-auto">
+          <h2 className="text-lg font-semibold mb-4 text-center" style={{ color: C.bark }}>Bewerbungsformular</h2>
+          <ManagerApplicationForm
+            brand="lennox"
+            requestedRoles={['pet_manager']}
+            qualificationFields={qualificationFields}
+            accentColor={C.forest}
+          />
+        </section>
       </div>
     </div>
   );

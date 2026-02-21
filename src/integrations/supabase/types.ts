@@ -10492,6 +10492,9 @@ export type Database = {
       }
       manager_applications: {
         Row: {
+          applicant_email: string | null
+          applicant_name: string | null
+          applicant_phone: string | null
           created_at: string
           id: string
           qualification_data: Json | null
@@ -10499,12 +10502,16 @@ export type Database = {
           requested_role: Database["public"]["Enums"]["membership_role"]
           reviewed_at: string | null
           reviewed_by: string | null
+          source_brand: string | null
           status: string
-          tenant_id: string
+          tenant_id: string | null
           updated_at: string
-          user_id: string
+          user_id: string | null
         }
         Insert: {
+          applicant_email?: string | null
+          applicant_name?: string | null
+          applicant_phone?: string | null
           created_at?: string
           id?: string
           qualification_data?: Json | null
@@ -10512,12 +10519,16 @@ export type Database = {
           requested_role: Database["public"]["Enums"]["membership_role"]
           reviewed_at?: string | null
           reviewed_by?: string | null
+          source_brand?: string | null
           status?: string
-          tenant_id: string
+          tenant_id?: string | null
           updated_at?: string
-          user_id: string
+          user_id?: string | null
         }
         Update: {
+          applicant_email?: string | null
+          applicant_name?: string | null
+          applicant_phone?: string | null
           created_at?: string
           id?: string
           qualification_data?: Json | null
@@ -10525,10 +10536,11 @@ export type Database = {
           requested_role?: Database["public"]["Enums"]["membership_role"]
           reviewed_at?: string | null
           reviewed_by?: string | null
+          source_brand?: string | null
           status?: string
-          tenant_id?: string
+          tenant_id?: string | null
           updated_at?: string
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: [
           {
