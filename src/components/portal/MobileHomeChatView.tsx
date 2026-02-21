@@ -7,7 +7,7 @@
 
 import * as React from 'react';
 import { useArmstrongAdvisor } from '@/hooks/useArmstrongAdvisor';
-import { useArmstrongVoice } from '@/hooks/useArmstrongVoice';
+import { useArmstrongVoice } from '@/hooks/useArmstrongVoice'; // kept for future manual TTS button
 import { MessageRenderer } from '@/components/chat/MessageRenderer';
 import { 
   Globe, 
@@ -24,7 +24,7 @@ export function MobileHomeChatView({ onBackToModules }: MobileHomeChatViewProps)
   const advisor = useArmstrongAdvisor();
   const voice = useArmstrongVoice();
   
-  const [voiceMode, setVoiceMode] = React.useState(false);
+  // voiceMode removed — auto-speak disabled
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
   const prevMessagesLenRef = React.useRef(0);
 
@@ -33,17 +33,10 @@ export function MobileHomeChatView({ onBackToModules }: MobileHomeChatViewProps)
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [advisor.messages]);
 
-  // Auto-speak new assistant messages in voice mode
+  // Track message count (auto-speak removed — user must click to hear)
   React.useEffect(() => {
-    const msgs = advisor.messages;
-    if (voiceMode && msgs.length > prevMessagesLenRef.current) {
-      const lastMsg = msgs[msgs.length - 1];
-      if (lastMsg?.role === 'assistant' && lastMsg.content) {
-        voice.speakResponse(lastMsg.content);
-      }
-    }
-    prevMessagesLenRef.current = msgs.length;
-  }, [advisor.messages, voiceMode]);
+    prevMessagesLenRef.current = advisor.messages.length;
+  }, [advisor.messages]);
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">

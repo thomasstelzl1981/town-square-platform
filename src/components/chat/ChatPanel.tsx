@@ -111,17 +111,10 @@ const ChatPanel = React.forwardRef<HTMLDivElement, ChatPanelProps>(
       prevListeningRef.current = voice.isListening;
     }, [voice.isListening, voice.transcript]);
 
-    // Auto-speak when new assistant message arrives in voice mode
+    // Track message count (auto-speak removed — user must click to hear)
     React.useEffect(() => {
-      const msgs = advisor.messages;
-      if (voiceMode && msgs.length > prevMessagesLenRef.current) {
-        const lastMsg = msgs[msgs.length - 1];
-        if (lastMsg?.role === 'assistant' && lastMsg.content) {
-          voice.speakResponse(lastMsg.content);
-        }
-      }
-      prevMessagesLenRef.current = msgs.length;
-    }, [advisor.messages, voiceMode]);
+      prevMessagesLenRef.current = advisor.messages.length;
+    }, [advisor.messages]);
 
     const handleVoiceToggle = React.useCallback(() => {
       if (voice.isListening) {

@@ -109,16 +109,9 @@ export function ArmstrongContainer() {
     prevListeningRef.current = voice.isListening;
   }, [voice.isListening, voice.transcript, armstrongExpanded]);
 
-  // Auto-speak when new assistant message arrives
+  // Track message count (auto-speak removed — user must click to hear)
   useEffect(() => {
-    const msgs = advisor.messages;
-    if (msgs.length > prevMessagesLenRef.current) {
-      const lastMsg = msgs[msgs.length - 1];
-      if (lastMsg?.role === 'assistant' && lastMsg.content) {
-        voice.speakResponse(lastMsg.content);
-      }
-    }
-    prevMessagesLenRef.current = msgs.length;
+    prevMessagesLenRef.current = advisor.messages.length;
   }, [advisor.messages]);
 
   // Auto-scroll in expanded mode

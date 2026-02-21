@@ -440,6 +440,39 @@ export function useArmstrongVoice(): UseArmstrongVoiceReturn {
     setState(prev => ({ ...prev, isSpeaking: false }));
   }, []);
 
+  // ── Browser TTS Fallback ──
+  const speakWithBrowser = useCallback((text: string) => {
+    if (!window.speechSynthesis) {
+      console.warn('[Voice] Browser speechSynthesis not available');
+      setState(prev => ({ ...prev, isSpeaking: false }));
+      return;
+    }
+
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'de-DE';
+    utterance.rate = 1.0;
+    utterance.pitch = 1.0;
+
+    // Pick best German voice
+    const voices = window.speechSynthesis.getVoices();
+    const germanVoice = voices.find(v => v.lang === 'de-DE' && v.localService) 
+      || voices.find(v => v.lang === 'de-DE')
+      || voices.find(v => v.lang.startsWith('de'));
+    if (germanVoice) utterance.voice = germanVoice;
+
+    utterance.onend = () => {
+      setState(prev => ({ ...prev, isSpeaking: false }));
+    };
+    utterance.onerror = () => {
+      console.error('[Voice] Browser TTS error');
+      setState(prev => ({ ...prev, isSpeaking: false }));
+    };
+
+    setState(prev => ({ ...prev, isSpeaking: true }));
+    window.speechSynthesis.speak(utterance);
+  }, []);
+
   const speakResponse = useCallback(async (text: string) => {
     if (!text.trim()) return;
     
@@ -477,7 +510,9 @@ export function useArmstrongVoice(): UseArmstrongVoiceReturn {
       );
 
       if (!response.ok) {
-        throw new Error(`TTS request failed: ${response.status}`);
+        console.warn(`[Voice] ElevenLabs failed (${response.status}), falling back to browser TTS`);
+        speakWithBrowser(cleanText);
+        return;
       }
 
       const audioBlob = await response.blob();
@@ -495,19 +530,19 @@ export function useArmstrongVoice(): UseArmstrongVoiceReturn {
       };
       
       audio.onerror = () => {
-        console.error('[Voice] TTS playback error');
-        setState(prev => ({ ...prev, isSpeaking: false }));
+        console.warn('[Voice] ElevenLabs playback error, falling back to browser TTS');
         URL.revokeObjectURL(audioUrl);
         audioUrlRef.current = null;
         audioRef.current = null;
+        speakWithBrowser(cleanText);
       };
       
       await audio.play();
     } catch (e) {
-      console.error('[Voice] TTS error:', e);
-      setState(prev => ({ ...prev, isSpeaking: false }));
+      console.warn('[Voice] TTS error, falling back to browser:', e);
+      speakWithBrowser(cleanText);
     }
-  }, [stopSpeaking]);
+  }, [stopSpeaking, speakWithBrowser]);
 
   // Cleanup on unmount
   useEffect(() => {
