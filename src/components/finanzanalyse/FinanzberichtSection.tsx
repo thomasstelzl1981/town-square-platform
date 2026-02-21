@@ -14,7 +14,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import {
   Users, TrendingUp, TrendingDown, Wallet, Building2, Shield,
   FileText, ScrollText, CheckCircle2, XCircle, PiggyBank, Landmark,
-  CreditCard, HeartPulse, Zap, Repeat, Sun
+  CreditCard, HeartPulse, Zap, Repeat, Sun, Car, LineChart, Briefcase
 } from 'lucide-react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -207,6 +207,9 @@ export function FinanzberichtSection() {
                 <h4 className="text-sm font-semibold text-emerald-600 dark:text-emerald-400 mb-2">Vermögen</h4>
                 {assets.propertyValue > 0 && <FinanzRow label="Immobilienportfolio" value={assets.propertyValue} />}
                 {assets.homeValue > 0 && <FinanzRow label="Eigengenutzte Immobilie" value={assets.homeValue} />}
+                {assets.depotValue > 0 && <FinanzRow label="Investment-Depots" value={assets.depotValue} />}
+                {assets.vorsorgeBalance > 0 && <FinanzRow label="Vorsorge-Guthaben" value={assets.vorsorgeBalance} />}
+                {assets.vehicleValue > 0 && <FinanzRow label="Fahrzeuge" value={assets.vehicleValue} />}
                 {assets.bankSavings > 0 && <FinanzRow label="Bank- & Sparguthaben" value={assets.bankSavings} />}
                 {assets.securities > 0 && <FinanzRow label="Wertpapiere" value={assets.securities} />}
                 {assets.surrenderValues > 0 && <FinanzRow label="Rückkaufswerte (LV)" value={assets.surrenderValues} />}
@@ -309,6 +312,50 @@ export function FinanzberichtSection() {
                       <td className="py-2 text-right tabular-nums">{fmt(data.loanList.reduce((s, l) => s + l.remainingBalance, 0))}</td>
                       <td className="py-2"></td>
                       <td className="py-2 text-right tabular-nums">{fmt(data.loanList.reduce((s, l) => s + l.monthlyRate, 0))}</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* ═══ SEKTION 3d: Depotaufstellung ═══ */}
+        {data.depotPositionList.length > 0 && (
+          <Card className="glass-card">
+            <CardContent className="p-6">
+              <SectionTitle icon={LineChart} title="Depotaufstellung" />
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b text-muted-foreground">
+                      <th className="text-left py-2 font-medium">Depot</th>
+                      <th className="text-left py-2 font-medium">Bezeichnung</th>
+                      <th className="text-left py-2 font-medium">ISIN</th>
+                      <th className="text-right py-2 font-medium">Aktueller Wert</th>
+                      <th className="text-right py-2 font-medium">+/−</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.depotPositionList.map(dp => (
+                      <tr key={dp.id} className="border-b border-border/50">
+                        <td className="py-2 text-muted-foreground">{dp.depotName}</td>
+                        <td className="py-2 font-medium">{dp.name}</td>
+                        <td className="py-2 text-muted-foreground text-xs">{dp.isin || '—'}</td>
+                        <td className="py-2 text-right tabular-nums">{fmt(dp.currentValue)}</td>
+                        <td className={cn('py-2 text-right tabular-nums', dp.profitOrLoss >= 0 ? 'text-emerald-600' : 'text-destructive')}>
+                          {dp.profitOrLoss >= 0 ? '+' : ''}{fmt(dp.profitOrLoss)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="font-semibold border-t">
+                      <td className="py-2" colSpan={3}>Gesamt</td>
+                      <td className="py-2 text-right tabular-nums">{fmt(data.depotPositionList.reduce((s, dp) => s + dp.currentValue, 0))}</td>
+                      <td className={cn('py-2 text-right tabular-nums', data.depotPositionList.reduce((s, dp) => s + dp.profitOrLoss, 0) >= 0 ? 'text-emerald-600' : 'text-destructive')}>
+                        {data.depotPositionList.reduce((s, dp) => s + dp.profitOrLoss, 0) >= 0 ? '+' : ''}{fmt(data.depotPositionList.reduce((s, dp) => s + dp.profitOrLoss, 0))}
+                      </td>
                     </tr>
                   </tfoot>
                 </table>
