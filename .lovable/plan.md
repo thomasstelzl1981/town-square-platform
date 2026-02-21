@@ -1,128 +1,86 @@
 
 
-# Plan: SoT Website Content-Relaunch + Teststrategie
+# Plan: Armstrong Voice-System -- Browser-TTS Fallback
 
-## Teil 1: Teststrategie -- Morgen bereit fuer Partner
+## Ziel
+ElevenLabs-TTS durch kostenlose Browser `speechSynthesis` API ersetzen, damit Armstrong sofort wieder sprechen kann -- ohne Credits, ohne Kosten. ElevenLabs bleibt als Premium-Option erhalten fuer spaeter.
 
-### Manueller Testplan (sofort umsetzbar)
+## Was sich aendert
 
-Zum Testen der Plattform vor dem Partner-Rollout empfehle ich folgende Schritte:
+### 1. `src/hooks/useArmstrongVoice.ts` -- TTS Fallback einbauen
 
-**Zone 3 Websites (oeffentlich, kein Login)**
-1. Alle 5 Websites aufrufen und durchklicken:
-   - `/website/sot` -- System of a Town
-   - `/website/kaufy` -- Kaufy
-   - `/website/futureroom` -- FutureRoom
-   - `/website/acquiary` -- Acquiary
-   - `/website/tierservice` -- Lennox and Friends
-2. Pruefen: Alle Links funktionieren, keine 404-Seiten, keine kaputten Bilder
-3. Mobile-Ansicht testen (Handy oder Browser-DevTools)
-4. Dark/Light Mode umschalten auf SoT
+Die `speakResponse()`-Funktion bekommt eine Fallback-Kette:
+1. Versuche ElevenLabs TTS (wenn Credits vorhanden)
+2. Bei Fehler (502, quota_exceeded): automatisch Browser `speechSynthesis` nutzen
+3. Browser-TTS spricht Deutsch (`de-DE`) mit der besten verfuegbaren Stimme
 
-**Auth-Flow**
-5. Registrierung testen unter `/auth?mode=register`
-6. Login testen unter `/auth`
-7. Passwort-Reset testen (falls implementiert)
+Konkret:
+- Neue Hilfsfunktion `speakWithBrowser(text)` die `window.speechSynthesis.speak()` nutzt
+- `speakResponse()` faengt ElevenLabs-Fehler ab und faellt auf Browser zurueck
+- Kein manueller Wechsel noetig -- passiert automatisch
 
-**Zone 2 Portal (nach Login)**
-8. Dashboard laden -- zeigt es Tiles und Widgets?
-9. Jedes aktivierte Modul einmal oeffnen
-10. Demo-Daten pruefen: Sind Beispieldaten vorhanden?
-11. Armstrong Chat oeffnen und eine Frage stellen
+### 2. Sprachausgabe nur auf Wunsch (nicht automatisch)
 
-**Zone 1 Admin**
-12. `/admin` aufrufen -- nur als platform_admin sichtbar?
-13. Testdaten-Dashboard pruefen: Stimmen die Zahlen?
+Aktuell wird jede Armstrong-Antwort automatisch vorgelesen wenn Voice aktiv ist. Das aendern wir:
+- `voice.speakResponse()` wird NUR aufgerufen wenn der User aktiv im Voice-Modus ist (Mikrofon war an)
+- Neuer optionaler "Vorlesen"-Button neben Armstrong-Antworten (kleines Lautsprecher-Icon)
+- So spricht Armstrong nicht mehr unerwartet los
 
-### Automatisierte Tests (optional, spaeter)
-- Vitest-Setup existiert bereits (`vitest.config.ts`)
-- Playwright ist installiert fuer E2E-Tests
-- Kann spaeter aufgebaut werden, aber fuer morgen reicht manuelles Testing
+Dateien: `ChatPanel.tsx`, `ArmstrongContainer.tsx`, `MobileHomeChatView.tsx`, `KaufyArmstrongWidget.tsx`
 
----
+### 3. Keine neuen Abhaengigkeiten
 
-## Teil 2: SoT Website Content-Relaunch
+- `window.speechSynthesis` ist eine Standard Web API (Chrome, Safari, Firefox, Edge)
+- Deutsche Stimmen sind auf allen Plattformen verfuegbar
+- Kein npm-Paket noetig
 
-### Problem-Analyse
+## Technische Details
 
-Die aktuelle SoT-Website hat inhaltliche Schwaechen:
-- **Zu eng auf Immobilien fokussiert** -- der Slogan "Software fuer Immobilienverwaltung" verschenkt das volle Potenzial
-- **Digitalisierung als Kernversprechen fehlt** -- "Chaos beseitigen", "Digitalisierung greifbar machen", "buchbar und umsetzbar" kommt nicht rueber
-- **Keine klare Zielgruppen-Ansprache** fuer KMU/Unternehmer/Selbstaendige
-- **Die Use Cases sind nur Immobilien-bezogen** -- Service- und Base-Module werden kaum vermarktet
-- **SotProdukt.tsx sagt "Software fuer Immobilienverwaltung"** statt die breite Plattform zu erklaeren
+### Browser speechSynthesis Implementation
 
-### Geplante Aenderungen
+```text
+function speakWithBrowser(text: string):
+  1. window.speechSynthesis.cancel() -- laufende Ausgabe stoppen
+  2. utterance = new SpeechSynthesisUtterance(text)
+  3. utterance.lang = 'de-DE'
+  4. utterance.rate = 1.0
+  5. utterance.pitch = 1.0
+  6. Beste deutsche Stimme waehlen aus getVoices()
+  7. utterance.onend -> setState isSpeaking = false
+  8. window.speechSynthesis.speak(utterance)
+```
 
-#### 1. `SotHome.tsx` -- Neuer Hero und Messaging (Hauptseite)
+### Fallback-Logik in speakResponse
 
-**Vorher:** "Struktur und KI fuer Ihren Haushalt"
-**Nachher:** Neues Messaging rund um:
-- "Digitalisierung greifbar machen -- ohne grosse Investitionen"
-- "Chaos beseitigen. Struktur schaffen. KI nutzen."
-- Klare Zielgruppen: Unternehmer, Vermieter, Teams
-- Neuer Hero-Text der Digitalisierung als buchbare Dienstleistung positioniert
-- Neue "Pain-Point"-Sektion: Was kostet Sie fehlendes System? (Zeit, Geld, Nerven)
-- Social Proof / Zahlen-Sektion aufwerten
+```text
+async speakResponse(text):
+  1. Text bereinigen (Markdown entfernen)
+  2. Versuche ElevenLabs fetch()
+  3. Wenn response.ok -> Audio abspielen (wie bisher)
+  4. Wenn Fehler (502, 401, quota) -> speakWithBrowser(text)
+  5. setState isSpeaking entsprechend setzen
+```
 
-#### 2. `SotProdukt.tsx` -- Komplett ueberarbeiten
+### Dateien die geaendert werden
 
-**Vorher:** "Software fuer Immobilienverwaltung" mit 4 generischen Prinzipien
-**Nachher:**
-- Titel: "Digitalisierung. Greifbar. Buchbar. Umsetzbar."
-- 3 klare Versprechen: Chaos beseitigen / Sofort nutzbar / Keine eigene IT-Investition
-- Problem-Loesung-Ergebnis neu formuliert fuer breites Publikum
-- Konkrete Beispiele aus allen Bereichen (nicht nur Immobilien)
+| Datei | Aenderung |
+|---|---|
+| `src/hooks/useArmstrongVoice.ts` | Browser-TTS Fallback in `speakResponse()`, neue `speakWithBrowser()` Funktion |
+| `src/components/chat/ChatPanel.tsx` | `speakResponse` nur bei aktivem Voice-Modus aufrufen |
+| `src/components/portal/ArmstrongContainer.tsx` | Gleiche Anpassung |
+| `src/components/portal/MobileHomeChatView.tsx` | Gleiche Anpassung |
+| `src/components/zone3/kaufy2026/KaufyArmstrongWidget.tsx` | Gleiche Anpassung |
 
-#### 3. `SotUseCases.tsx` -- Erweitern um Service + Base
-
-**Vorher:** 6 Use Cases, alle Immobilien-bezogen
-**Nachher:** 10+ Use Cases aus allen 3 Bereichen:
-- CLIENT: Finanzueberblick, Verkauf ohne Makler, Finanzierungspaket
-- SERVICE: Fuhrpark-Management, PV-Ertraege monitoren, E-Mail-Automatisierung
-- BASE: Dokumentenchaos beseitigen, KI-Assistent fuer alles, Kontakte synchronisieren
-
-#### 4. `SotPlattform.tsx` -- Staerkerer Einstieg
-
-- Neuer Hero-Text: "Eine Plattform ersetzt 15 Einzelloesungen"
-- Konkretere Beschreibungen pro Area
-- "Was Sie NICHT mehr brauchen"-Sektion (Excel, Ordner, 5 Apps)
-
-#### 5. `sotWebsiteModules.ts` -- Beschreibungen schl.rfen
-
-- MOD-05 umbenennen (aktuell "Website Builder" -- das passt nicht zum SOT-Kontext, sollte Mietverwaltung/MSV sein)
-- Alle Taglines und Descriptions ueberarbeiten mit Marketing-Fokus
-- Pain Points konkreter und emotionaler formulieren
-
-#### 6. `SotFAQ.tsx` -- Aktualisieren
-
-- FAQ-Antworten an neues Messaging anpassen
-- "Was ist System of a Town?" neu formulieren (nicht nur Immobilien)
-- Neue FAQ-Kategorie "Fuer Unternehmen" hinzufuegen
-
-#### 7. `SotLayout.tsx` -- Meta-Description aktualisieren
-
-- Document Meta anpassen: Nicht nur "Immobilien und private Finanzen"
-- Neuer Untertitel: "Die Digitalisierungsplattform fuer Unternehmer und Vermieter"
-
-### Nicht geaendert (bereits gut)
-
-- `SotIntelligenz.tsx` -- Armstrong-Seite ist stark, nur kleine Textanpassungen
-- `SotPreise.tsx` -- Pricing-Modell ist klar und ueberzeugend
-- `SotDemo.tsx` -- Demo-Seite funktioniert gut
-- Alle anderen Zone-3 Websites (Kaufy, FutureRoom, Acquiary, Lennox) -- die sind gut
-
-### Technische Details
-
-- Alle Aenderungen betreffen nur Zone 3 SoT-Dateien (kein Freeze relevant)
-- Keine Datenbank-Aenderungen noetig
+### Was NICHT geaendert wird
+- Edge Function `elevenlabs-tts` bleibt bestehen (fuer spaeter wenn Credits aufgeladen)
+- Edge Function `elevenlabs-scribe-token` bleibt bestehen
+- Spracheingabe (STT) bleibt Browser-basiert (funktioniert bereits)
+- Keine Datenbank-Aenderungen
 - Keine neuen Abhaengigkeiten
-- Dateien betroffen:
-  - `src/pages/zone3/sot/SotHome.tsx`
-  - `src/pages/zone3/sot/SotProdukt.tsx`
-  - `src/pages/zone3/sot/SotUseCases.tsx`
-  - `src/pages/zone3/sot/SotPlattform.tsx`
-  - `src/pages/zone3/sot/SotFAQ.tsx`
-  - `src/pages/zone3/sot/SotLayout.tsx`
-  - `src/data/sotWebsiteModules.ts`
 
+## Ergebnis
+
+- Armstrong kann sofort wieder sprechen -- kostenlos
+- Stimme klingt etwas roboterhaft, aber funktional fuer die Beta-Phase
+- Wenn ElevenLabs-Credits aufgeladen werden, wechselt das System automatisch zurueck zur Premium-Stimme
+- Armstrong spricht nur noch wenn gewuenscht, nicht mehr unkontrolliert
