@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
 interface CloudConnector {
@@ -22,6 +23,7 @@ interface DriveFolder {
 }
 
 export function useCloudSync() {
+  const { user } = useAuth();
   const [connectors, setConnectors] = useState<CloudConnector[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isConnecting, setIsConnecting] = useState(false);
@@ -38,17 +40,20 @@ export function useCloudSync() {
   }, []);
 
   const fetchStatus = useCallback(async () => {
+    if (!user) {
+      setIsLoading(false);
+      return;
+    }
     try {
       setIsLoading(true);
       const data = await invoke('status');
       setConnectors(data.connectors || []);
     } catch (err) {
-      // Silent fail on status — user might not be logged in yet
       console.warn('[useCloudSync] status error:', err);
     } finally {
       setIsLoading(false);
     }
-  }, [invoke]);
+  }, [invoke, user]);
 
   useEffect(() => {
     fetchStatus();
@@ -72,6 +77,10 @@ export function useCloudSync() {
   }, [fetchStatus]);
 
   const connectGoogleDrive = useCallback(async () => {
+    if (!user) {
+      toast.error('Bitte melden Sie sich zuerst an, um Google Drive zu verbinden.');
+      return;
+    }
     try {
       setIsConnecting(true);
       const returnUrl = window.location.origin + window.location.pathname;
@@ -86,13 +95,11 @@ export function useCloudSync() {
       const popup = window.open(data.redirect_url, 'google_drive_oauth', 'width=600,height=700,scrollbars=yes');
 
       if (!popup) {
-        // Popup blocked — fall back to direct redirect
         toast.info('Popup blockiert — Sie werden weitergeleitet...');
         window.location.href = data.redirect_url;
         return;
       }
 
-      // Listen for postMessage from popup (callback page sends result)
       const messageHandler = (event: MessageEvent) => {
         try {
           const msg = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
@@ -112,7 +119,6 @@ export function useCloudSync() {
       };
       window.addEventListener('message', messageHandler);
 
-      // Fallback: poll for popup close
       const pollTimer = setInterval(() => {
         if (popup.closed) {
           clearInterval(pollTimer);
@@ -121,13 +127,14 @@ export function useCloudSync() {
           fetchStatus();
         }
       }, 500);
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('[useCloudSync] init error:', err);
-      toast.error('Verbindung konnte nicht gestartet werden. Bitte stellen Sie sicher, dass Sie eingeloggt sind.');
+      const message = err instanceof Error ? err.message : String(err);
+      toast.error(`Verbindung fehlgeschlagen: ${message}`);
     } finally {
       setIsConnecting(false);
     }
-  }, [invoke, fetchStatus]);
+  }, [invoke, fetchStatus, user]);
 
   const disconnectProvider = useCallback(async () => {
     try {
@@ -188,6 +195,7 @@ export function useCloudSync() {
     isLoading,
     isConnecting,
     isSyncing,
+    isAuthReady: !!user,
     folders,
     isFoldersLoading,
     connectGoogleDrive,

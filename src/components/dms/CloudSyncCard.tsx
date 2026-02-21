@@ -18,6 +18,7 @@ export function CloudSyncCard() {
     isLoading,
     isConnecting,
     isSyncing,
+    isAuthReady,
     folders,
     isFoldersLoading,
     connectGoogleDrive,
@@ -99,10 +100,10 @@ export function CloudSyncCard() {
                 variant="outline"
                 className="text-xs h-7"
                 onClick={connectGoogleDrive}
-                disabled={isConnecting || isLoading}
+                disabled={isConnecting || isLoading || !isAuthReady}
               >
                 {isConnecting ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Cloud className="h-3 w-3 mr-1" />}
-                Mit Google Drive verbinden
+                {!isAuthReady ? 'Anmeldung erforderlich' : 'Mit Google Drive verbinden'}
               </Button>
             ) : (
               <>

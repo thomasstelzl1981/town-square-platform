@@ -157,7 +157,14 @@ Deno.serve(async (req) => {
 
     // ── All other actions require auth ──
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) return json({ error: "Missing authorization" }, 401);
+    if (!authHeader) {
+      console.warn("[cloud-sync] Missing Authorization header for action:", action);
+      // Graceful degradation for status — return empty list instead of 401
+      if (action === "status") {
+        return json({ connectors: [] });
+      }
+      return json({ error: "Missing authorization" }, 401);
+    }
 
     const sbUser = createClient(supabaseUrl, anonKey, {
       global: { headers: { Authorization: authHeader } },
