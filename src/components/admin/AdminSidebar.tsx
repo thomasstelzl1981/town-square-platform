@@ -44,6 +44,7 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   'AuditHub': FileText,
   'Agreements': FileCheck,
   'PartnerVerification': ClipboardCheck,
+  'ManagerFreischaltung': UserCog,
   'Support': LifeBuoy,
   // FutureRoom
   'FutureRoom': Landmark,
@@ -139,7 +140,7 @@ function getGroupKey(path: string, component: string): string {
     return 'armstrong'; // grouped but filtered out in shouldShowInNav
   }
   // Feature Activation (inkl. Partner-Verifizierung und Rollen)
-  if (path === 'tiles' || path === 'partner-verification' || path === 'roles') {
+  if (path === 'tiles' || path === 'partner-verification' || path === 'roles' || path === 'manager-freischaltung') {
     return 'activation';
   }
   // FutureRoom gehört zu Operative Desks

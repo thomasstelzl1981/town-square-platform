@@ -112,6 +112,7 @@ export const zone1Admin: ZoneDefinition = {
     
     { path: "agreements", component: "Agreements", title: "Vereinbarungen" },
     { path: "partner-verification", component: "PartnerVerification", title: "Partner-Verifizierung" },
+    { path: "manager-freischaltung", component: "ManagerFreischaltung", title: "Manager-Freischaltung" },
     { path: "roles", component: "RolesManagement", title: "Rollen & Berechtigungen" },
     { path: "support", component: "Support", title: "Support" },
     // =========================================================================

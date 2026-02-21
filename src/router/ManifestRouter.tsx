@@ -230,6 +230,7 @@ const adminComponentMap: Record<string, React.ComponentType> = {
   
   Agreements,
   PartnerVerification,
+  ManagerFreischaltung: React.lazy(() => import('@/pages/admin/ManagerFreischaltung')),
   RolesManagement,
   AdminFutureRoomLayout,
   FutureRoomBanks: React.lazy(() => import('@/pages/admin/futureroom/FutureRoomBanks')),
