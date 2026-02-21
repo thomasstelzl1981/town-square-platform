@@ -15,6 +15,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { StorageExtractionCard } from '@/components/dms/StorageExtractionCard';
 import { PosteingangAuslesungCard } from '@/components/dms/PosteingangAuslesungCard';
 import { PostserviceCard } from '@/components/dms/PostserviceCard';
+import { CloudSyncCard } from '@/components/dms/CloudSyncCard';
 
 interface StoragePlan {
   id: string;
@@ -218,7 +219,15 @@ export function EinstellungenTab() {
           </div>
         </section>
 
-        {/* ── BLOCK 4: Postservice ── */}
+        {/* ── BLOCK 4: Cloud-Sync ── */}
+        <section className="space-y-2">
+          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+            Cloud-Synchronisation
+          </h3>
+          <CloudSyncCard />
+        </section>
+
+        {/* ── BLOCK 5: Postservice ── */}
         <section className="space-y-2">
           <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
             Digitaler Postservice
