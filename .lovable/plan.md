@@ -1,88 +1,139 @@
 
+# DMS Komplett-Ueberarbeitung: Intelligenz + Magic Intake
 
-# Magic Intake Center — Bugfixes und Haertung
+## Analyse-Ergebnis
 
-## Problem
+### Intelligenz-Seite (aktueller Zustand)
+- Layout ist unbalanciert: StorageExtractionCard nimmt 2/3 der Breite ein, Posteingangs-Auslesung ist daneben gequetscht
+- Speicherplatz-Karte queried `plans`-Tabelle die vermutlich leer ist (zeigt "Free" mit 0% belegt)
+- DataEngineInfoCard ist ein Entwickler-Statusboard (Phase 1/Phase 2, technische Voraussetzungen) -- das gehoert nicht auf eine Nutzerseite
+- PostserviceCard ist hier fehl am Platz -- hat nichts mit "Intelligenz" zu tun
+- Gesamteindruck: zusammengewuerfelt, keine klare Hierarchie
 
-Die Tiefenanalyse hat 3 kritische Probleme aufgedeckt, die das Intake Center daran hindern, ein geschlossenes System zu sein.
+### Magic Intake Seite (aktueller Zustand)
+- Hero-Section und StorageExtractionCard wiederholen dieselben Value Props ("Kein manuelles Hochladen", "Volle Kostenkontrolle")
+- Die Seite hat keinen PageShell/ModulePageHeader -- weicht vom Standard aller anderen Tabs ab
+- IntakePricingInfo zeigt statische Preise (0,25 EUR) -- das ist UI-Copy, kein Verstoss gegen Demo-Data-Governance
+- Checklist und Letzte Uploads kommen korrekt aus der Datenbank
 
-## Befund 1: Entity Loader — 5 von 8 Kategorien kaputt
+### Tab-uebergreifende Redundanz
+- StorageExtractionCard erscheint auf: Intelligenz + Posteingang + Magic Intake (3x!)
+- PosteingangAuslesungCard erscheint auf: Intelligenz + Posteingang (2x)
+- PostserviceCard erscheint auf: Intelligenz + Posteingang (2x)
+- Das verwirrt den Nutzer: wo soll er was konfigurieren?
 
-`useIntakeEntityLoader.ts` verwendet Spaltennamen, die in der Datenbank nicht existieren. Ergebnis: 400-Fehler, leeres Dropdown, Nutzer kann kein Objekt zuordnen.
+---
 
-| Kategorie | Falscher Spaltenname | Korrekter Spaltenname |
+## Verbesserungsplan
+
+### Massnahme 1: Klare Zustaendigkeit pro Tab
+
+Jeder Tab bekommt eine klare Rolle -- keine Komponenten-Dopplung mehr:
+
+| Tab | Rolle | Exklusive Inhalte |
 |---|---|---|
-| Fahrzeug | `brand` | `make` |
-| PV-Anlage | `capacity_kwp` | `kwp` |
-| Versicherung | `provider_name` | `insurer` |
-| Vorsorge | `provider_name` | `provider` |
-| Finanzierung | `bank_name, loan_amount` | `purchase_price, loan_amount_requested` (oder `status, purpose`) |
+| **Intelligenz** | Zentrale Steuerung aller KI-Features | OCR-Toggle, Datenraum-Scan, Kosten-Uebersicht |
+| **Dateien** | File-Manager | Miller-Column UI (bleibt) |
+| **Posteingang** | E-Mail-Inbox | Tabelle + Vertrag/Adresse + Upload-Link |
+| **Sortieren** | Sortierregeln | Kacheln + Regel-Editor (bleibt) |
+| **Magic Intake** | Manueller Upload mit KI | Entity-Picker + Upload + Checkliste |
 
-**Fix**: Alle `selectFields` und `buildLabel`-Funktionen korrigieren.
+### Massnahme 2: Intelligenz-Seite komplett neu strukturieren
 
-## Befund 2: Checklist-Matching auf Namen statt doc_type
+Aktuell: Zusammengewuerfeltes Widget-Grid ohne Hierarchie.
 
-`useIntakeChecklistProgress.ts` prueft `documents.name` per Freitext-includes(). Das fuehrt zu unzuverlaessigen Ergebnissen. Die `documents`-Tabelle hat ein `doc_type`-Feld, das praeziser waere.
+Neu: Vertikale Blockstruktur mit klaren Sektionen.
 
-**Fix**: Matching-Logik auf `doc_type` umstellen. In `storageManifest.ts` ein optionales `doc_type`-Feld zu jedem `required_docs`-Eintrag hinzufuegen und im Hook darauf pruefen.
+```text
++-- PageShell + ModulePageHeader --+
+|                                  |
+|  BLOCK 1: KI-Steuerung          |
+|  ┌──────────────────────────────┐|
+|  │ PosteingangAuslesungCard     ││
+|  │ (Toggle + Pipeline)          ││
+|  └──────────────────────────────┘|
+|                                  |
+|  BLOCK 2: Datenraum-Scan        |
+|  ┌──────────────────────────────┐|
+|  │ StorageExtractionCard        ││
+|  │ (Scan/Angebot/Freigabe)      ││
+|  └──────────────────────────────┘|
+|                                  |
+|  BLOCK 3: Speicher & Kosten     |
+|  ┌──────────┐  ┌───────────────┐|
+|  │ Speicher  │  │ Kostenmodell  ││
+|  │ Plan/Usage│  │ Credits/Preise││
+|  └──────────┘  └───────────────┘|
+|                                  |
+|  BLOCK 4: Postservice           |
+|  ┌──────────────────────────────┐|
+|  │ PostserviceCard (Vertrag)    ││
+|  └──────────────────────────────┘|
++----------------------------------+
+```
 
-## Befund 3: Upload landet im Modul-Root statt im Entity-Ordner
+Was entfernt wird:
+- **DataEngineInfoCard** -- Entwickler-Roadmap gehoert nicht auf die Nutzerseite. Die Info ist intern relevant aber kein User-Feature.
 
-Wenn der Nutzer ein bestehendes Objekt waehlt (z.B. Immobilie "WE-01"), wird die `entityId` zwar an `useDocumentIntake.intake()` uebergeben, aber in `useUniversalUpload` wird der `parentNodeId` nicht aufgeloest. Die Datei landet im generischen `{moduleCode}_ROOT` statt im Entity-spezifischen Unterordner.
+### Massnahme 3: Magic Intake entschlacken
 
-**Fix**: In `useDocumentIntake` vor dem Upload-Aufruf den korrekten `storage_nodes`-Ordner fuer die Entity aufloesen (Query: `storage_nodes` WHERE `property_id = X` oder `entity_id = X` etc.) und als `parentNodeId` uebergeben.
+Aenderungen:
+1. **PageShell + ModulePageHeader** hinzufuegen (Konsistenz mit allen anderen Tabs)
+2. **StorageExtractionCard entfernen** -- die ist bereits auf der Intelligenz-Seite. Stattdessen ein kompakter Hinweis-Link: "Fuer automatische Massenverarbeitung: Intelligenz-Tab"
+3. **Hero-Section kuerzen** -- die 3 Value-Proposition-Karten werden zu einem einzeiligen Infotext zusammengefasst. Die Schrittleiste "So funktioniert's" bleibt
+4. **IntakePricingInfo** wird zu einem kompakten Einzeiler im Hero oder im Upload-Bereich (statt eines eigenen Blocks)
+
+Neue Block-Reihenfolge:
+```text
++-- PageShell + ModulePageHeader ----+
+|                                    |
+|  BLOCK 1: Schrittleiste            |
+|  "So funktioniert's" (4 Steps)     |
+|                                    |
+|  BLOCK 2: Entity-Picker + Upload   |
+|  Kategorie waehlen > Objekt > Drop |
+|  (Kostenhinweis: 1 Credit/Dok)     |
+|                                    |
+|  BLOCK 3: Dokument-Checkliste      |
+|  (Live-Fortschritt aus DB)         |
+|                                    |
+|  BLOCK 4: Letzte Uploads           |
+|  (aus documents-Tabelle)           |
+|                                    |
+|  Kompakt-Link: "Automatisch alle   |
+|  Dokumente verarbeiten? -> Intel." |
++------------------------------------+
+```
+
+### Massnahme 4: Posteingang-Tab bereinigen
+
+Die Karten-Grid am Ende des Posteingangs (PosteingangAuslesungCard, StorageExtractionCard, PostserviceCard) wird entfernt. Diese Steuerungselemente gehoeren auf die Intelligenz-Seite.
+
+Der Posteingang behaelt:
+- Die Inbox-Tabelle (immer sichtbar)
+- Die Upload-E-Mail-Karte (bei aktivem Vertrag) / Aktivierungs-CTA (ohne Vertrag)
+- Kein Widget-Grid am Ende
 
 ---
 
 ## Technische Aenderungen
 
-### Datei 1: `src/hooks/useIntakeEntityLoader.ts`
+### Dateien die geaendert werden
 
-Alle 5 fehlerhaften Konfigurationen korrigieren:
+| Datei | Aenderung |
+|---|---|
+| `src/pages/portal/dms/EinstellungenTab.tsx` | Komplettes Refactoring: vertikale Block-Struktur, DataEngineInfoCard entfernt, Speicher+Kosten nebeneinander |
+| `src/pages/portal/dms/IntakeTab.tsx` | PageShell+Header, StorageExtractionCard raus, Hero kuerzen, Pricing inline |
+| `src/components/dms/IntakeHowItWorks.tsx` | Nur noch Schrittleiste, Value Props und Hero-Block entfernt |
+| `src/pages/portal/dms/PosteingangTab.tsx` | Widget-Grid am Ende entfernt (3 Karten raus) |
 
-```text
-fahrzeugschein:
-  selectFields: 'id, make, model, license_plate'
-  buildLabel: r.make statt r.brand
+### Dateien die NICHT geaendert werden
+- `StorageExtractionCard.tsx` -- wird weiterverwendet auf Intelligenz-Seite
+- `PosteingangAuslesungCard.tsx` -- wird weiterverwendet auf Intelligenz-Seite
+- `PostserviceCard.tsx` -- wird weiterverwendet auf Intelligenz-Seite
+- `IntakeUploadZone.tsx`, `IntakeEntityPicker.tsx`, `IntakeChecklistGrid.tsx` -- funktionieren korrekt
+- Kein Routing, keine Manifests, kein DB-Schema betroffen
 
-pv_anlage:
-  selectFields: 'id, name, kwp'
-  buildLabel: r.kwp statt r.capacity_kwp
-
-versicherung:
-  selectFields: 'id, insurer, category'
-  buildLabel: r.insurer statt r.provider_name
-
-vorsorge:
-  selectFields: 'id, provider, contract_type'
-  buildLabel: r.provider statt r.provider_name
-
-finanzierung:
-  selectFields: 'id, purpose, status, purchase_price'
-  buildLabel: r.purpose + r.purchase_price statt r.bank_name + r.loan_amount
-```
-
-### Datei 2: `src/hooks/useIntakeChecklistProgress.ts`
-
-- Query aendern: `documents.doc_type` statt `documents.name` laden
-- Matching: `doc_type` gegen neue `doc_type_hint`-Felder in `storageManifest.required_docs` pruefen
-- Fallback: Name-Matching bleibt als Sekundaer-Check
-
-### Datei 3: `src/config/storageManifest.ts`
-
-- `required_docs`-Eintraege um optionales `doc_type?: string` erweitern
-- Mapping z.B.: `{ name: 'Grundbuchauszug', folder: '02_Grundbuch', doc_type: 'GRUNDBUCHAUSZUG' }`
-
-### Datei 4: `src/hooks/useDocumentIntake.ts`
-
-- Vor dem `universalUpload.upload()`-Aufruf: Entity-spezifischen `parentNodeId` aus `storage_nodes` aufloesen
-- Query: `storage_nodes WHERE tenant_id AND {entity_fk_column} = entityId AND node_type = 'folder'`
-- Den aufgeloesten `parentNodeId` an `universalUpload.upload()` uebergeben
-
-### Keine Aenderungen an
-
-- `useUniversalUpload.ts` (Logik ist korrekt, nur die Aufrufer muessen richtige Parameter liefern)
-- `StorageExtractionCard.tsx` (funktioniert korrekt)
-- Datenbank-Schema (keine Migrationen noetig)
-- Routing/Manifests
-
+### Was entfernt wird
+- `DataEngineInfoCard` wird nicht mehr importiert (Komponente bleibt fuer spaetere interne Nutzung)
+- `IntakePricingInfo.tsx` wird aufgeloest -- der Inhalt wird als Einzeiler in den Upload-Block integriert
