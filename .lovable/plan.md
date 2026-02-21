@@ -1,79 +1,129 @@
 
 
-# Reparaturplan: MOD-08, MOD-09 und Kaufy SearchBar
+# Demo-Daten erweitern: Verkaufs-Workflow (MOD-04 → MOD-06/08/09 → Kaufy)
 
-Drei Probleme wurden identifiziert. Der Plan ist in drei Phasen unterteilt.
+## Ziel
 
----
+Einen vollstaendigen Verkaufs-Workflow fuer **eine** Demo-Immobilie (Berlin, BER-01) als CSV-basierte Demo-Daten hinzufuegen. Dadurch wird die komplette Kette `sale_enabled → property_features → listings → listing_publications` aktiviert und die Module MOD-06, MOD-08 und MOD-09 sowie Kaufy zeigen reale Daten.
 
-## Phase 1: MOD-09 Kalkulator Auto-Start unterbinden
+## Welche Immobilie?
 
-**Problem:** Auf der `PartnerExposePage` (Beratungs-Expose) startet die Kalkulation automatisch, sobald das Listing geladen wird (Zeile 216-220: `useEffect` triggert `calculate()` wenn `purchasePrice > 0`). Das gleiche Verhalten existiert auch in MOD-08 (`InvestmentExposePage`).
-
-**Loesung:** Den automatischen `useEffect`-Trigger entfernen und stattdessen einen expliziten "Berechnen"-Button einfuegen. Die Kalkulation startet erst, wenn der Nutzer bewusst klickt.
-
-**Dateien:**
-- `src/pages/portal/vertriebspartner/PartnerExposePage.tsx` — useEffect (Zeile 216-220) entfernen, Button "Jetzt berechnen" hinzufuegen, der `calculate(params)` aufruft
-- `src/pages/portal/investments/InvestmentExposePage.tsx` — gleiche Aenderung fuer Konsistenz
-
-**Details:**
-- Der useEffect in Zeile 216-220 (`if (params.purchasePrice > 0) calculate(params)`) wird entfernt
-- Ein neuer State `hasCalculated` wird eingefuehrt
-- Ein prominenter Button "Jetzt berechnen" wird oberhalb des MasterGraph platziert
-- Nach erstem Klick: Button aendert sich zu "Neu berechnen" und Ergebnisse bleiben sichtbar
-- Slider-Aenderungen loesen KEINE automatische Neuberechnung aus
+**BER-01** (Berlin, Schadowstr. 42) — Marktwert 340.000 EUR, Kaufpreis 280.000 EUR. Diese Immobilie erhaelt `sale_enabled = true` und einen aktiven Verkaufsauftrag.
 
 ---
 
-## Phase 2: Kaufy2026 SearchBar — Collapsible bleibt stabil
+## Aenderungen im Detail
 
-**Problem:** Wenn der Nutzer den erweiterten Bereich (Familienstand, Kirchensteuer) oeffnet und dort Werte aendert, scrollt die Seite nach unten und der Bereich wird unzugaenglich. Vermutlich verursacht durch:
-1. Die SearchBar hat `position: relative` und liegt in einem `margin: -60px auto` Container
-2. Beim Oeffnen/Schliessen des Collapsible aendert sich die Gesamthoehe, was den Browser-Scroll verschiebt
+### 1. CSV: `demo_properties.csv` anpassen
 
-**Loesung:**
-- Den SearchBar-Container mit `position: sticky` oder festem z-index versehen, damit er beim Scrollen sichtbar bleibt
-- Dem `CollapsibleContent` eine CSS-Transition mit fester Hoehe geben statt `auto`
-- `onOpenChange` mit `e.preventDefault()` auf Scroll-Events schuetzen
+Neue Spalte `sale_enabled` hinzufuegen. BER-01 bekommt `true`, die anderen beiden bleiben `false`.
 
-**Dateien:**
-- `src/components/zone3/kaufy2026/Kaufy2026SearchBar.tsx` — Collapsible-Verhalten stabilisieren
-- `src/components/zone3/kaufy2026/Kaufy2026Hero.tsx` — searchFloat-Container mit `position: sticky` und `top` versehen
+```text
+...;sale_enabled
+...;true       (BER-01)
+...;false      (MUC-01)
+...;false      (HH-01)
+```
 
-**Details:**
-- `heroStyles.searchFloat` erhaelt `position: 'sticky'`, `top: 16`, `zIndex: 50`
-- Die Buttons innerhalb CollapsibleContent erhalten `onClick` mit `e.stopPropagation()` (bereits vorhanden, aber type="button" sicherstellen)
-- Testen, ob der Scroll-Sprung durch Layout-Shift entsteht, und ggf. `min-height` auf den SearchBar-Wrapper setzen
+### 2. Neue CSV: `public/demo-data/demo_property_features.csv`
+
+```text
+id;property_id;feature_code;status;config
+d0000000-0000-4000-a000-000000000f01;d0000000-0000-4000-a000-000000000001;kaufy;active;{}
+d0000000-0000-4000-a000-000000000f02;d0000000-0000-4000-a000-000000000001;website_visibility;active;{}
+```
+
+### 3. Neue CSV: `public/demo-data/demo_listings.csv`
+
+Ein aktives Listing fuer BER-01:
+
+```text
+id;property_id;title;description;asking_price;commission_rate;status;partner_visibility;public_id;min_price
+d0000000-0000-4000-a000-000000000l01;d0000000-0000-4000-a000-000000000001;Altbau-ETW Berlin Mitte;Charmante 62qm Altbauwohnung in bester Lage nahe Unter den Linden;349000;3.57;active;partner_network;demo-listing-ber-01;320000
+```
+
+### 4. Neue CSV: `public/demo-data/demo_listing_publications.csv`
+
+Zwei Publikationen (Partner-Netzwerk + Kaufy):
+
+```text
+id;listing_id;channel;status
+d0000000-0000-4000-a000-000000000p01;d0000000-0000-4000-a000-000000000l01;partner_network;active
+d0000000-0000-4000-a000-000000000p02;d0000000-0000-4000-a000-000000000l01;kaufy;active
+```
+
+### 5. Seed Engine (`useDemoSeedEngine.ts`)
+
+Neue Phase zwischen Property-Accounting und Phase 3 einfuegen:
+
+```text
+Phase 2.5: Sales Workflow
+```
+
+- `sale_enabled` wird bereits ueber die CSV-Property-Daten gesetzt (Spalte hinzugefuegt)
+- `seedFromCSV('demo_property_features.csv', 'property_features', tenantId)`
+- `seedFromCSV('demo_listings.csv', 'listings', tenantId)`
+- `seedFromCSV('demo_listing_publications.csv', 'listing_publications', tenantId)`
+- Registrierung in `registerEntities()` fuer alle drei neuen Entity-Typen
+- EXPECTED-Map um 3 Eintraege erweitern: `property_features: 2, listings: 1, listing_publications: 2`
+
+### 6. Cleanup (`useDemoCleanup.ts`)
+
+Drei neue Entity-Typen in CLEANUP_ORDER einfuegen — VOR `property_accounting` (Leaf-Entities):
+
+```text
+'listing_publications',   // Kind von listings
+'listings',               // Kind von properties
+'property_features',      // Kind von properties
+```
+
+### 7. Registrierungen
+
+| Datei | Aenderung |
+|-------|-----------|
+| `src/config/demoDataRegistry.ts` | 3 neue CSV-Eintraege (property_features, listings, listing_publications) |
+| `public/demo-data/demo_manifest.json` | 3 neue Entities hinzufuegen |
+| `DEMO_SEED_BACKLOG.md` | 3 neue Zeilen in der Entity-Checkliste |
+| `src/hooks/useDemoSeedEngine.ts` | BOOLEAN_KEYS um `sale_enabled` erweitern |
+
+### 8. Keine DB-Migration noetig
+
+Die Tabellen `property_features`, `listings` und `listing_publications` existieren bereits mit korrekten Spalten und RLS-Policies.
 
 ---
 
-## Phase 3: Katalog — Objektauswahl fuer Beratung
+## Technische Details
 
-**Problem:** Im KatalogTab (MOD-09) fehlt eine UI-Moeglichkeit, Objekte fuer die Beratungsansicht ein- oder auszuschliessen. Der Hook `usePartnerSelections` existiert bereits (wird in BeratungTab genutzt), aber im Katalog gibt es keine Steuerung dafuer.
+### ID-Schema (Demo-Range `d0000000-*`)
 
-**Loesung:** Eine neue Spalte "Beratung" in der PropertyTable einfuegen mit einem Toggle (Eye/EyeOff Icon), mit dem der Partner Objekte fuer die Beratungsansicht aktivieren oder deaktivieren kann.
+| Entity | ID-Pattern |
+|--------|-----------|
+| property_features | `d0000000-...-000000000f01/f02` |
+| listings | `d0000000-...-000000000l01` |
+| listing_publications | `d0000000-...-000000000p01/p02` |
 
-**Dateien:**
-- `src/pages/portal/vertriebspartner/KatalogTab.tsx` — Neue Spalte mit Toggle-Button, `usePartnerSelections`-Hook einbinden
-- `src/hooks/usePartnerListingSelections.ts` — Pruefen, ob write-Funktionen (toggle) vorhanden sind; ggf. ergaenzen
+### Seed-Reihenfolge (FK-sicher)
 
-**Details:**
-- Neue Spalte in `columns` Array: Key `beratung_visible`, Header "Beratung", mit Eye/EyeOff Button
-- Klick auf den Button ruft `toggleSelection(listingId)` auf
-- Visuelles Feedback: gruenes Eye = sichtbar in Beratung, graues EyeOff = ausgeblendet
-- Daten aus `usePartnerSelections` werden als Set geladen und in der Spalte abgefragt
+```text
+properties (mit sale_enabled=true)
+  → property_features (FK: property_id)
+    → listings (FK: property_id)
+      → listing_publications (FK: listing_id)
+```
 
----
+### Cleanup-Reihenfolge (Children first)
 
-## Technische Zusammenfassung
+```text
+listing_publications → listings → property_features → ... → properties
+```
 
-| Phase | Datei | Aenderung |
-|-------|-------|-----------|
-| 1 | PartnerExposePage.tsx | Auto-calc useEffect entfernen, "Berechnen"-Button |
-| 1 | InvestmentExposePage.tsx | Gleiche Aenderung |
-| 2 | Kaufy2026SearchBar.tsx | Scroll-Stabilisierung |
-| 2 | Kaufy2026Hero.tsx | Sticky-Positionierung |
-| 3 | KatalogTab.tsx | Beratungs-Toggle-Spalte |
-| 3 | usePartnerListingSelections.ts | Toggle-Funktion pruefen |
+### Betroffene Module nach Seed
 
-Alle Aenderungen betreffen MOD-08 (unfrozen) und MOD-09 (unfrozen). Keine frozen Module werden beruehrt.
+| Modul | Erwartetes Ergebnis |
+|-------|-------------------|
+| MOD-04 (Immobilien) | BER-01 zeigt sale_enabled=true, Verkaufs-Tab aktiv |
+| MOD-06 (Verkauf) | 1 aktives Listing sichtbar |
+| MOD-08 (Investments) | BER-01 im Partner-Netzwerk auffindbar |
+| MOD-09 (Vertriebspartner) | 1 Listing im Netzwerk |
+| Kaufy (Zone 3) | BER-01 oeffentlich sichtbar via v_public_listings |
+
