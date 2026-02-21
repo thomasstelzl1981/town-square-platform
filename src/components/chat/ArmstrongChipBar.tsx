@@ -20,6 +20,7 @@ interface ArmstrongChipBarProps {
   disabled?: boolean;
   className?: string;
   website?: string | null;
+  maxChips?: number;
 }
 
 // Website-specific chip sets (Zone 3 Lead Capture)
@@ -120,9 +121,10 @@ const MODULE_CHIPS: Record<string, ChipDefinition[]> = {
 };
 
 export const ArmstrongChipBar = React.memo<ArmstrongChipBarProps>(
-  ({ moduleCode, onChipClick, disabled = false, className, website }) => {
+  ({ moduleCode, onChipClick, disabled = false, className, website, maxChips }) => {
     // Website chips take priority over module chips
-    const chips = website ? WEBSITE_CHIPS[website] : MODULE_CHIPS[moduleCode];
+    const allChips = website ? WEBSITE_CHIPS[website] : MODULE_CHIPS[moduleCode];
+    const chips = maxChips ? allChips?.slice(0, maxChips) : allChips;
 
     if (!chips || chips.length === 0) return null;
 
