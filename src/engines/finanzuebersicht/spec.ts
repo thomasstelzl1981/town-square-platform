@@ -37,6 +37,9 @@ export interface FUAssets {
   bankSavings: number;
   securities: number;
   surrenderValues: number;
+  depotValue: number;
+  vorsorgeBalance: number;
+  vehicleValue: number;
   totalAssets: number;
 }
 
@@ -99,6 +102,16 @@ export interface FULoanListItem {
   monthlyRate: number;
 }
 
+export interface FUDepotPositionItem {
+  id: string;
+  depotName: string;
+  name: string;
+  isin: string | null;
+  currentValue: number;
+  purchaseValue: number;
+  profitOrLoss: number;
+}
+
 export interface FUResult {
   income: FUIncome;
   expenses: FUExpenses;
@@ -118,11 +131,49 @@ export interface FUResult {
   energyContracts: FUEnergyContract[];
   propertyList: FUPropertyListItem[];
   loanList: FULoanListItem[];
+  depotPositionList: FUDepotPositionItem[];
   testamentCompleted: boolean;
   patientenverfuegungCompleted: boolean;
 }
 
 // ─── Input Types (raw DB rows, loosely typed) ────────────────
+
+export interface FUHouseholdPerson {
+  id: string;
+  role?: string | null;
+  first_name?: string | null;
+  last_name?: string | null;
+  net_income_monthly?: number | null;
+  gross_income_monthly?: number | null;
+  business_income_monthly?: number | null;
+  pv_income_monthly?: number | null;
+  child_allowances?: number | null;
+  employment_status?: string | null;
+}
+
+export interface FUDepotAccount {
+  id: string;
+  account_name?: string | null;
+  bank_name?: string | null;
+  status?: string | null;
+}
+
+export interface FUDepotPosition {
+  id: string;
+  depot_account_id?: string | null;
+  name?: string | null;
+  isin?: string | null;
+  current_value?: number | null;
+  purchase_value?: number | null;
+  profit_or_loss?: number | null;
+}
+
+export interface FUVehicle {
+  id: string;
+  make?: string | null;
+  model?: string | null;
+  estimated_value_eur?: number | null;
+}
 
 export interface FUApplicantProfile {
   net_income_monthly?: number | null;
@@ -191,6 +242,7 @@ export interface FUVorsorgeContract {
   payment_interval?: string | null;
   contract_no?: string | null;
   status?: string | null;
+  current_balance?: number | null;
 }
 
 export interface FUSubscription {
@@ -269,6 +321,7 @@ export interface FUKVContract {
 /** All raw inputs needed by the engine */
 export interface FUInput {
   applicantProfiles: FUApplicantProfile[];
+  householdPersons: FUHouseholdPerson[];
   portfolioSummary: FUPortfolioSummary | null;
   homes: FUHome[];
   mietyLoans: FUMietyLoan[];
@@ -283,6 +336,9 @@ export interface FUInput {
   portfolioProperties: FUPortfolioProperty[];
   legalDocs: FULegalDoc[];
   kvContracts: FUKVContract[];
+  depotAccounts: FUDepotAccount[];
+  depotPositions: FUDepotPosition[];
+  vehicles: FUVehicle[];
 }
 
 // ─── Constants ───────────────────────────────────────────────
@@ -307,6 +363,9 @@ export const MARGINAL_TAX_RATE = 0.42;
 
 /** Default average interest rate if not provided */
 export const DEFAULT_AVG_INTEREST_RATE = 0.03;
+
+/** Kindergeld per child (2026 rate) */
+export const KINDERGELD_PER_CHILD = 250;
 
 /** Subscription category labels */
 export const SUBSCRIPTION_CATEGORY_LABELS: Record<string, string> = {

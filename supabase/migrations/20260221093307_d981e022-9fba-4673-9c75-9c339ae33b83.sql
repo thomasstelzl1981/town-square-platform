@@ -1,0 +1,1 @@
+ALTER TABLE cars_vehicles ADD COLUMN IF NOT EXISTS estimated_value_eur NUMERIC DEFAULT NULL;

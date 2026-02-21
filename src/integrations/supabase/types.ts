@@ -3499,6 +3499,7 @@ export type Database = {
           dms_folder_id: string | null
           doors: number | null
           engine_ccm: number | null
+          estimated_value_eur: number | null
           first_registration_date: string | null
           fuel_type: Database["public"]["Enums"]["car_fuel_type"] | null
           holder_address: string | null
@@ -3537,6 +3538,7 @@ export type Database = {
           dms_folder_id?: string | null
           doors?: number | null
           engine_ccm?: number | null
+          estimated_value_eur?: number | null
           first_registration_date?: string | null
           fuel_type?: Database["public"]["Enums"]["car_fuel_type"] | null
           holder_address?: string | null
@@ -3575,6 +3577,7 @@ export type Database = {
           dms_folder_id?: string | null
           doors?: number | null
           engine_ccm?: number | null
+          estimated_value_eur?: number | null
           first_registration_date?: string | null
           fuel_type?: Database["public"]["Enums"]["car_fuel_type"] | null
           holder_address?: string | null

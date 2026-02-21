@@ -8,12 +8,13 @@ import type {
   FUPropertyListItem, FULoanListItem, FUInsuranceContract, FUVorsorgeContract,
   FUSubscription, FUPvPlant, FUPrivateLoan, FUPortfolioLoan, FUPortfolioProperty,
   FUHome, FUMietyLoan, FUTenancy, FUApplicantProfile, FUKVContract, FULegalDoc,
-  FUMietyContract,
+  FUMietyContract, FUHouseholdPerson, FUDepotAccount, FUDepotPosition, FUVehicle,
+  FUDepotPositionItem,
 } from './spec';
 import {
   LIVING_EXPENSE_RATE, PROPERTY_APPRECIATION_RATE, PROJECTION_YEARS,
   BUILDING_VALUE_FRACTION, AFA_RATE, MARGINAL_TAX_RATE, DEFAULT_AVG_INTEREST_RATE,
-  SUBSCRIPTION_CATEGORY_LABELS,
+  SUBSCRIPTION_CATEGORY_LABELS, KINDERGELD_PER_CHILD,
 } from './spec';
 
 // ─── Helpers ─────────────────────────────────────────────────
@@ -38,7 +39,6 @@ function subscriptionMonthly(amount: number, frequency: string | null | undefine
 
 function isInvestmentContract(contract: { contract_type?: string | null; category?: string | null }): boolean {
   if (contract.category) return contract.category === 'investment';
-  // Fallback heuristic for legacy data without category
   const t = (contract.contract_type || '').toLowerCase();
   return t.includes('etf') || (t.includes('sparplan') && !t.includes('bauspar'));
 }
@@ -47,17 +47,49 @@ function isInvestmentContract(contract: { contract_type?: string | null; categor
 
 export function calcIncome(
   profiles: FUApplicantProfile[],
+  householdPersons: FUHouseholdPerson[],
   portfolioSummary: FUInput['portfolioSummary'],
   portfolioProperties: FUPortfolioProperty[],
   pvPlants: FUPvPlant[],
 ): FUIncome {
-  const netIncomeTotal = profiles.reduce((s, p) => s + (p.net_income_monthly || 0), 0);
-  const selfEmployedIncome = profiles.reduce((s, p) => s + (p.self_employed_income_monthly || 0), 0);
+  // Primary source: household_persons (has actual current income data)
+  // Fallback: applicant_profiles (legacy, only for finance requests)
+  const hasHouseholdIncome = householdPersons.some(p =>
+    (p.net_income_monthly || 0) > 0 || (p.business_income_monthly || 0) > 0
+  );
+
+  let netIncomeTotal: number;
+  let selfEmployedIncome: number;
+  let sideJobIncome: number;
+  let childBenefit: number;
+  let otherIncome: number;
+  let pvIncomePersonal: number;
+
+  if (hasHouseholdIncome) {
+    // Aggregate from household_persons (adults only for income)
+    const adults = householdPersons.filter(p => p.role === 'hauptperson' || p.role === 'partner');
+    netIncomeTotal = adults.reduce((s, p) => s + (p.net_income_monthly || 0), 0);
+    selfEmployedIncome = adults.reduce((s, p) => s + (p.business_income_monthly || 0), 0);
+    pvIncomePersonal = adults.reduce((s, p) => s + (p.pv_income_monthly || 0), 0);
+    sideJobIncome = 0; // Not tracked in household_persons
+    // Kindergeld: count children via child_allowances on adults
+    const totalChildAllowances = adults.reduce((s, p) => s + (p.child_allowances || 0), 0);
+    childBenefit = totalChildAllowances * KINDERGELD_PER_CHILD;
+    otherIncome = 0;
+  } else {
+    // Fallback to applicant_profiles
+    netIncomeTotal = profiles.reduce((s, p) => s + (p.net_income_monthly || 0), 0);
+    selfEmployedIncome = profiles.reduce((s, p) => s + (p.self_employed_income_monthly || 0), 0);
+    sideJobIncome = profiles.reduce((s, p) => s + (p.side_job_income_monthly || 0), 0);
+    childBenefit = profiles.reduce((s, p) => s + (p.child_benefit_monthly || 0), 0);
+    otherIncome = profiles.reduce((s, p) => s + (p.other_regular_income_monthly || 0), 0);
+    pvIncomePersonal = 0;
+  }
+
   const rentalIncomePortfolio = portfolioSummary ? portfolioSummary.annualIncome / 12 : 0;
-  const sideJobIncome = profiles.reduce((s, p) => s + (p.side_job_income_monthly || 0), 0);
-  const childBenefit = profiles.reduce((s, p) => s + (p.child_benefit_monthly || 0), 0);
-  const otherIncome = profiles.reduce((s, p) => s + (p.other_regular_income_monthly || 0), 0);
-  const pvIncome = pvPlants.reduce((s, pv) => s + ((pv.annual_revenue || 0) / 12), 0);
+  // PV income: from plants (feed-in revenue) + personal PV income from household
+  const pvIncomePlants = pvPlants.reduce((s, pv) => s + ((pv.annual_revenue || 0) / 12), 0);
+  const pvIncome = pvIncomePlants + pvIncomePersonal;
 
   // Tax benefit from rental properties (AfA + interest deduction)
   const totalPurchasePrice = portfolioProperties.reduce((s, p) => s + (p.purchase_price || 0), 0);
@@ -155,7 +187,6 @@ export function calcExpenses(input: {
     subscriptions: subscriptionTotal,
     livingExpenses,
     totalExpenses,
-    // Pass-through for downstream use
     activeInsurance,
     savingsOnlyContracts,
     investmentVorsorge,
@@ -174,14 +205,33 @@ export function calcAssets(
   portfolioSummary: FUInput['portfolioSummary'],
   homes: FUHome[],
   profiles: FUApplicantProfile[],
+  depotPositions: FUDepotPosition[],
+  vorsorgeData: FUVorsorgeContract[],
+  vehicles: FUVehicle[],
 ): FUAssets {
   const propertyValue = portfolioSummary?.totalValue || 0;
   const homeValue = homes.reduce((s, h) => s + (h.market_value || 0), 0);
   const bankSavings = profiles.reduce((s, p) => s + (p.bank_savings || 0), 0);
   const securities = profiles.reduce((s, p) => s + (p.securities_value || 0), 0);
   const surrenderValues = profiles.reduce((s, p) => s + (p.life_insurance_value || 0), 0);
-  const totalAssets = propertyValue + homeValue + bankSavings + securities + surrenderValues;
-  return { propertyValue, homeValue, bankSavings, securities, surrenderValues, totalAssets };
+
+  // NEW: Investment depot positions
+  const depotValue = depotPositions.reduce((s, dp) => s + (dp.current_value || 0), 0);
+
+  // NEW: Vorsorge contract balances (Rückkaufswerte / Guthaben)
+  const activeVorsorge = vorsorgeData.filter(v => {
+    const status = (v.status || '').toLowerCase();
+    return status === 'aktiv' || status === 'active';
+  });
+  const vorsorgeBalance = activeVorsorge.reduce((s, v) => s + (v.current_balance || 0), 0);
+
+  // NEW: Vehicle values
+  const vehicleValue = vehicles.reduce((s, v) => s + (v.estimated_value_eur || 0), 0);
+
+  const totalAssets = propertyValue + homeValue + bankSavings + securities + surrenderValues
+    + depotValue + vorsorgeBalance + vehicleValue;
+
+  return { propertyValue, homeValue, bankSavings, securities, surrenderValues, depotValue, vorsorgeBalance, vehicleValue, totalAssets };
 }
 
 // ─── Liabilities ─────────────────────────────────────────────
@@ -209,6 +259,8 @@ export function calcProjection(input: {
   totalLiabilities: number;
   bankSavings: number;
   securities: number;
+  depotValue: number;
+  vorsorgeBalance: number;
   portfolioLoansMonthly: number;
   privateLoansMonthly: number;
   pvMonthlyLoanRate: number;
@@ -219,7 +271,8 @@ export function calcProjection(input: {
   const currentYear = new Date().getFullYear();
   let projPropertyValue = input.portfolioPropertyValue + input.homeValue;
   let projDebt = input.totalLiabilities;
-  let cumSavings = input.bankSavings + input.securities;
+  // Include depot + vorsorge balances in cumulative savings start
+  let cumSavings = input.bankSavings + input.securities + input.depotValue + input.vorsorgeBalance;
   const annualAnnuity = (input.portfolioLoansMonthly + input.privateLoansMonthly + input.pvMonthlyLoanRate) * 12;
   const avgRate = input.avgInterestRate ? input.avgInterestRate / 100 : DEFAULT_AVG_INTEREST_RATE;
 
@@ -358,6 +411,28 @@ export function buildLoanList(
   ];
 }
 
+// ─── Depot Position List ─────────────────────────────────────
+
+export function buildDepotPositionList(
+  depotAccounts: FUDepotAccount[],
+  depotPositions: FUDepotPosition[],
+): FUDepotPositionItem[] {
+  const accountNameMap = new Map<string, string>();
+  depotAccounts.forEach(a => {
+    accountNameMap.set(a.id, a.account_name || a.bank_name || '—');
+  });
+
+  return depotPositions.map(dp => ({
+    id: dp.id,
+    depotName: accountNameMap.get(dp.depot_account_id || '') || '—',
+    name: dp.name || '—',
+    isin: dp.isin || null,
+    currentValue: dp.current_value || 0,
+    purchaseValue: dp.purchase_value || 0,
+    profitOrLoss: dp.profit_or_loss || 0,
+  }));
+}
+
 // ─── Energy Contracts ────────────────────────────────────────
 
 export function buildEnergyContracts(contracts: FUMietyContract[]): FUEnergyContract[] {
@@ -370,7 +445,13 @@ export function buildEnergyContracts(contracts: FUMietyContract[]): FUEnergyCont
 // ─── Master Aggregation ──────────────────────────────────────
 
 export function calcFinanzuebersicht(input: FUInput): FUResult {
-  const income = calcIncome(input.applicantProfiles, input.portfolioSummary, input.portfolioProperties, input.pvPlants);
+  const income = calcIncome(
+    input.applicantProfiles,
+    input.householdPersons,
+    input.portfolioSummary,
+    input.portfolioProperties,
+    input.pvPlants,
+  );
 
   const expensesResult = calcExpenses({
     tenancies: input.tenancies,
@@ -386,7 +467,14 @@ export function calcFinanzuebersicht(input: FUInput): FUResult {
     selfEmployedIncome: income.selfEmployedIncome,
   });
 
-  const assets = calcAssets(input.portfolioSummary, input.homes, input.applicantProfiles);
+  const assets = calcAssets(
+    input.portfolioSummary,
+    input.homes,
+    input.applicantProfiles,
+    input.depotPositions,
+    input.vorsorgeData,
+    input.vehicles,
+  );
   const liabilities = calcLiabilities(input.portfolioSummary, input.mietyLoans, input.pvPlants, input.privateLoans);
 
   const monthlySavings = expensesResult.savingsContracts;
@@ -403,6 +491,8 @@ export function calcFinanzuebersicht(input: FUInput): FUResult {
     totalLiabilities: liabilities.totalLiabilities,
     bankSavings: assets.bankSavings,
     securities: assets.securities,
+    depotValue: assets.depotValue,
+    vorsorgeBalance: assets.vorsorgeBalance,
     portfolioLoansMonthly: expensesResult.portfolioLoansMonthly,
     privateLoansMonthly: expensesResult.privateLoansMonthly,
     pvMonthlyLoanRate: expensesResult.pvMonthlyLoanRate,
@@ -426,6 +516,7 @@ export function calcFinanzuebersicht(input: FUInput): FUResult {
   const energyContracts = buildEnergyContracts(input.mietyContracts);
   const propertyList = buildPropertyList(input.portfolioProperties, input.homes);
   const loanList = buildLoanList(input.portfolioLoans, input.mietyLoans, input.pvPlants, expensesResult.activePrivateLoans, input.portfolioProperties);
+  const depotPositionList = buildDepotPositionList(input.depotAccounts, input.depotPositions);
 
   const testamentCompleted = input.legalDocs.some(d => d.document_type === 'testament' && d.is_completed);
   const patientenverfuegungCompleted = input.legalDocs.some(d => d.document_type === 'patientenverfuegung' && d.is_completed);
@@ -457,6 +548,7 @@ export function calcFinanzuebersicht(input: FUInput): FUResult {
     energyContracts,
     propertyList,
     loanList,
+    depotPositionList,
     testamentCompleted,
     patientenverfuegungCompleted,
   };

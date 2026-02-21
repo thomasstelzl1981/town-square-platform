@@ -12,7 +12,7 @@ import { useDemoToggles } from '@/hooks/useDemoToggles';
 import { getDemoKVContracts, isDemoId } from '@/engines/demoData';
 import { calcFinanzuebersicht } from '@/engines/finanzuebersicht/engine';
 import type { DemoKVContract } from '@/engines/demoData/spec';
-import type { FUResult } from '@/engines/finanzuebersicht/spec';
+import type { FUResult, FUDepotPositionItem } from '@/engines/finanzuebersicht/spec';
 
 // ─── Re-export types for backward compatibility ──────────────
 export type FinanzberichtIncome = FUResult['income'];
@@ -25,6 +25,7 @@ export type SubscriptionsByCategory = FUResult['subscriptionsByCategory'][number
 export type EnergyContract = FUResult['energyContracts'][number];
 export type PropertyListItem = FUResult['propertyList'][number];
 export type LoanListItem = FUResult['loanList'][number];
+export type { FUDepotPositionItem };
 
 export interface FinanzberichtData extends FUResult {
   kvContracts: readonly DemoKVContract[];
@@ -38,7 +39,22 @@ export function useFinanzberichtData(): FinanzberichtData {
   const { summary: portfolioSummary, isLoading: portfolioLoading } = usePortfolioSummary();
   const { persons, isLoading: personsLoading } = useFinanzanalyseData();
 
-  // ─── Applicant Profiles ───────────────────────────────────
+  // ─── Household Persons (PRIMARY income source) ────────────
+  const { data: householdPersons = [], isLoading: hpLoading } = useQuery({
+    queryKey: ['fb-household-persons', activeTenantId],
+    queryFn: async () => {
+      if (!activeTenantId) return [];
+      const { data } = await supabase
+        .from('household_persons')
+        .select('id, role, first_name, last_name, net_income_monthly, gross_income_monthly, business_income_monthly, pv_income_monthly, child_allowances, employment_status')
+        .eq('tenant_id', activeTenantId)
+        .order('sort_order', { ascending: true });
+      return data || [];
+    },
+    enabled: !!activeTenantId,
+  });
+
+  // ─── Applicant Profiles (fallback income source) ──────────
   const { data: applicantProfiles = [], isLoading: apLoading } = useQuery({
     queryKey: ['fb-applicant-profiles', activeTenantId],
     queryFn: async () => {
@@ -50,6 +66,47 @@ export function useFinanzberichtData(): FinanzberichtData {
         .eq('profile_type', 'private')
         .is('finance_request_id', null);
       return data || [];
+    },
+    enabled: !!activeTenantId,
+  });
+
+  // ─── Investment Depots ────────────────────────────────────
+  const { data: depotAccounts = [] } = useQuery({
+    queryKey: ['fb-depot-accounts', activeTenantId],
+    queryFn: async () => {
+      if (!activeTenantId) return [];
+      const { data } = await (supabase as any)
+        .from('finapi_depot_accounts')
+        .select('id, account_name, bank_name, status')
+        .eq('tenant_id', activeTenantId);
+      return (data || []) as any[];
+    },
+    enabled: !!activeTenantId,
+  });
+
+  const { data: depotPositions = [] } = useQuery({
+    queryKey: ['fb-depot-positions', activeTenantId],
+    queryFn: async () => {
+      if (!activeTenantId) return [];
+      const { data } = await (supabase as any)
+        .from('finapi_depot_positions')
+        .select('id, depot_account_id, name, isin, current_value, purchase_value, profit_or_loss')
+        .eq('tenant_id', activeTenantId);
+      return (data || []) as any[];
+    },
+    enabled: !!activeTenantId,
+  });
+
+  // ─── Vehicles ─────────────────────────────────────────────
+  const { data: vehicles = [] } = useQuery({
+    queryKey: ['fb-vehicles', activeTenantId],
+    queryFn: async () => {
+      if (!activeTenantId) return [];
+      const { data } = await (supabase as any)
+        .from('cars_vehicles')
+        .select('id, make, model, estimated_value_eur')
+        .eq('tenant_id', activeTenantId);
+      return (data || []) as any[];
     },
     enabled: !!activeTenantId,
   });
@@ -109,7 +166,7 @@ export function useFinanzberichtData(): FinanzberichtData {
     queryKey: ['fb-vorsorge', activeTenantId],
     queryFn: async () => {
       if (!activeTenantId) return [];
-      const { data } = await supabase.from('vorsorge_contracts').select('id, contract_type, provider, premium, payment_interval, contract_no, status').eq('tenant_id', activeTenantId);
+      const { data } = await supabase.from('vorsorge_contracts').select('id, contract_type, provider, premium, payment_interval, contract_no, status, current_balance').eq('tenant_id', activeTenantId);
       return data || [];
     },
     enabled: !!activeTenantId,
@@ -177,7 +234,7 @@ export function useFinanzberichtData(): FinanzberichtData {
 
   // ─── Aggregation via Engine ───────────────────────────────
   return useMemo(() => {
-    const isLoading = portfolioLoading || personsLoading || apLoading || homesLoading;
+    const isLoading = portfolioLoading || personsLoading || apLoading || homesLoading || hpLoading;
     const kvContracts = demoEnabled ? getDemoKVContracts() : [];
 
     // Filter out demo data from DB results when demo is OFF
@@ -188,9 +245,14 @@ export function useFinanzberichtData(): FinanzberichtData {
     const filteredPrivateLoans = demoEnabled ? privateLoansList : (privateLoansList as any[]).filter(r => !isDemoId(r.id));
     const filteredPortfolioLoans = demoEnabled ? portfolioLoans : portfolioLoans.filter(r => !isDemoId(r.id));
     const filteredMietyContracts = demoEnabled ? mietyContracts : (mietyContracts as any[]).filter(r => !isDemoId(r.id));
+    const filteredDepotAccounts = demoEnabled ? depotAccounts : (depotAccounts as any[]).filter((r: any) => !isDemoId(r.id));
+    const filteredDepotPositions = demoEnabled ? depotPositions : (depotPositions as any[]).filter((r: any) => !isDemoId(r.id));
+    const filteredVehicles = demoEnabled ? vehicles : (vehicles as any[]).filter((r: any) => !isDemoId(r.id));
+    const filteredHouseholdPersons = demoEnabled ? householdPersons : (householdPersons as any[]).filter((r: any) => !isDemoId(r.id));
 
     const result = calcFinanzuebersicht({
       applicantProfiles,
+      householdPersons: filteredHouseholdPersons as any[],
       portfolioSummary: portfolioSummary ? {
         annualIncome: portfolioSummary.annualIncome,
         annualInterest: portfolioSummary.annualInterest,
@@ -212,6 +274,9 @@ export function useFinanzberichtData(): FinanzberichtData {
       portfolioProperties: (demoEnabled ? portfolioProperties : portfolioProperties.filter((r: any) => !isDemoId(r.id))) as any[],
       legalDocs: (demoEnabled ? legalDocs : legalDocs.filter((r: any) => !isDemoId(r.id))) as any[],
       kvContracts: kvContracts as any[],
+      depotAccounts: filteredDepotAccounts as any[],
+      depotPositions: filteredDepotPositions as any[],
+      vehicles: filteredVehicles as any[],
     });
 
     return {
@@ -219,5 +284,5 @@ export function useFinanzberichtData(): FinanzberichtData {
       kvContracts,
       isLoading,
     };
-  }, [portfolioSummary, portfolioLoading, personsLoading, apLoading, homesLoading, applicantProfiles, homes, mietyLoans, tenancies, insuranceData, vorsorgeData, subscriptions, legalDocs, portfolioLoans, pvPlants, mietyContracts, portfolioProperties, privateLoansList, demoEnabled]);
+  }, [portfolioSummary, portfolioLoading, personsLoading, apLoading, homesLoading, hpLoading, applicantProfiles, householdPersons, homes, mietyLoans, tenancies, insuranceData, vorsorgeData, subscriptions, legalDocs, portfolioLoans, pvPlants, mietyContracts, portfolioProperties, privateLoansList, depotAccounts, depotPositions, vehicles, demoEnabled]);
 }
