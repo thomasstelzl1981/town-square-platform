@@ -1,13 +1,13 @@
 {
   "version": "2.0",
-  "updated_at": "2026-02-13T18:30:00.000Z",
+  "updated_at": "2026-02-21T18:00:00.000Z",
   "description": "SSOT for module freeze states. Lovable and all AI assistants MUST check this file before modifying any module code. If a module is frozen, changes to its paths are NOT ALLOWED without explicit unfreeze.",
   "freeze_criteria": "Spec vorhanden, Audit S1-S6 bestanden, produktionsreife Implementierung",
   "modules": {
     "MOD-00": { "frozen": true, "frozen_at": "2026-02-21", "reason": "Global Freeze – Pre-Launch E2E Testing" },
     "MOD-01": { "frozen": true, "frozen_at": "2026-02-21", "reason": "Global Freeze – Pre-Launch E2E Testing" },
-    "MOD-02": { "frozen": false, "frozen_at": "2026-02-21", "unfrozen_at": "2026-02-21", "reason": "Unfrozen for Briefgenerator font size and multi-page fix" },
-    "MOD-03": { "frozen": false, "frozen_at": "2026-02-21", "unfrozen_at": "2026-02-21", "reason": "Unfrozen for Magic Intake Center implementation" },
+    "MOD-02": { "frozen": true, "frozen_at": "2026-02-21", "reason": "Re-frozen after Briefgenerator fix (12pt + multi-page)" },
+    "MOD-03": { "frozen": true, "frozen_at": "2026-02-21", "reason": "Re-frozen after Magic Intake Center implementation" },
     "MOD-04": { "frozen": true, "frozen_at": "2026-02-21", "reason": "Global Freeze – Pre-Launch E2E Testing" },
     "MOD-05": { "frozen": true, "frozen_at": "2026-02-21", "reason": "Global Freeze – Pre-Launch E2E Testing" },
     "MOD-06": { "frozen": true, "frozen_at": "2026-02-21", "reason": "Global Freeze – Pre-Launch E2E Testing" },
@@ -24,8 +24,8 @@
     "MOD-17": { "frozen": true, "frozen_at": "2026-02-21", "reason": "Global Freeze – Pre-Launch E2E Testing" },
     "MOD-18": { "frozen": true, "frozen_at": "2026-02-21", "reason": "Global Freeze – Pre-Launch E2E Testing" },
     "MOD-19": { "frozen": true, "frozen_at": "2026-02-21", "reason": "Global Freeze – Pre-Launch E2E Testing" },
-    "MOD-20": { "frozen": false, "frozen_at": "2026-02-21", "unfrozen_at": "2026-02-21", "reason": "Unfrozen for Miety text neutralization (Home statt Zuhause)" },
+    "MOD-20": { "frozen": true, "frozen_at": "2026-02-21", "reason": "Re-frozen after Miety text neutralization (Home/Objekt)" },
     "MOD-22": { "frozen": true, "frozen_at": "2026-02-21", "reason": "Global Freeze – Pre-Launch E2E Testing" },
-    "MOD-21": { "frozen": false, "frozen_at": null, "reason": "Neues Modul – KI-Browser (Phase 1 MVP)" }
+    "MOD-21": { "frozen": true, "frozen_at": "2026-02-21", "reason": "Re-frozen after KI-Browser Phase 1 MVP" }
   }
 }
