@@ -48,9 +48,13 @@ export default function AreaOverviewPage() {
       const moduleConfig = zone2Portal.modules?.[code];
       const defaultRoute = code === 'ARMSTRONG' 
         ? '/portal/armstrong' 
+        : code === 'INTAKE'
+        ? '/portal/dms/intake'
         : moduleConfig ? `/portal/${moduleConfig.base}` : '/portal';
       const displayName = code === 'ARMSTRONG'
         ? 'Armstrong — KI-Co-Pilot'
+        : code === 'INTAKE'
+        ? 'Magic Intake Center'
         : moduleLabelOverrides[code] || moduleConfig?.name || code;
       
       return {

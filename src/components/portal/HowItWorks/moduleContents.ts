@@ -827,4 +827,31 @@ export const moduleContents: Record<string, HowItWorksContent> = {
     cta: 'Öffnen Sie den Armstrong-Chat — und stellen Sie Ihre erste Frage.',
     subTiles: [],
   },
+
+  'INTAKE': {
+    moduleCode: 'INTAKE',
+    title: 'Magic Intake Center',
+    oneLiner: 'Dokumente hochladen, KI erkennt den Inhalt — automatisch richtig abgelegt.',
+    benefits: [
+      'Upload → KI-Erkennung → automatische Zuordnung in einem Schritt.',
+      'Unterstützt alle Kategorien: Immobilien, Fahrzeuge, Haustiere, Finanzen.',
+      'Keine manuelle Sortierung mehr — das System lernt mit.',
+    ],
+    whatYouDo: [
+      'Kategorie und Objekt wählen',
+      'Dokumente per Drag & Drop hochladen',
+      'KI analysiert und ordnet automatisch zu',
+      'Ergebnisse prüfen und bei Bedarf korrigieren',
+    ],
+    flows: [
+      {
+        title: 'Dokument einreichen',
+        steps: ['Kategorie wählen', 'Objekt auswählen', 'Datei hochladen', 'KI ordnet zu'],
+      },
+    ],
+    cta: 'Laden Sie Ihr erstes Dokument hoch — die KI erledigt den Rest.',
+    subTiles: [
+      { title: 'Intake starten', route: '/portal/dms/intake', icon: Inbox },
+    ],
+  },
 };
