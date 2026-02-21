@@ -77,7 +77,7 @@ export default function UebersichtTile() {
     onSuccess: () => {
       setDeletingHomeId(null);
       if (openCardId === deletingHomeId) setOpenCardId(null);
-      toast.success('Zuhause gelöscht');
+      toast.success('Objekt gelöscht');
       queryClient.invalidateQueries({ queryKey: ['miety-homes'] });
     },
     onError: (err: Error) => {
@@ -168,8 +168,8 @@ export default function UebersichtTile() {
   return (
     <PageShell>
       <ModulePageHeader
-        title="Miety"
-        description="Ihr Zuhause auf einen Blick"
+        title="Home"
+        description="Ihre Objekte auf einen Blick"
         actions={homes.length > 0 ? (
           <Button variant="glass" size="icon-round" onClick={() => setShowCreateForm(true)}>
             <Plus className="h-5 w-5" />
@@ -184,7 +184,7 @@ export default function UebersichtTile() {
             <div className="p-4 rounded-full bg-primary/10 inline-block mb-4">
               <Home className="h-10 w-10 text-primary" />
             </div>
-            <h3 className="text-lg font-semibold mb-2">Ihr Zuhause einrichten</h3>
+            <h3 className="text-lg font-semibold mb-2">Objekt einrichten</h3>
             <p className="text-muted-foreground mb-4 max-w-md mx-auto">
               {profile?.city ? 'Wird automatisch aus Ihren Stammdaten erstellt...' : 'Bitte hinterlegen Sie zuerst Ihre Adresse in den Stammdaten.'}
             </p>
@@ -206,7 +206,7 @@ export default function UebersichtTile() {
                 <Card className={cn("glass-card h-[240px] sm:aspect-square sm:h-auto flex flex-col relative group", isDemo && DEMO_WIDGET.CARD)}>
                   {!isDemo && (
                     <WidgetDeleteOverlay
-                      title={home.name || 'Zuhause'}
+                      title={home.name || 'Objekt'}
                       onConfirmDelete={() => deleteHomeMutation.mutate(home.id)}
                       isDeleting={deletingHomeId === home.id}
                     />
@@ -216,7 +216,7 @@ export default function UebersichtTile() {
                       <div className="flex items-center gap-2 mb-3">
                         {isDemo && <Badge className={DEMO_WIDGET.BADGE + ' text-[10px]'}>DEMO</Badge>}
                         <Building2 className="h-5 w-5 text-primary flex-shrink-0" />
-                        <span className="text-xs text-muted-foreground uppercase tracking-wide">Mein Zuhause</span>
+                        <span className="text-xs text-muted-foreground uppercase tracking-wide">Mein Objekt</span>
                       </div>
                       <div className="space-y-1">
                         <p className="text-lg font-semibold">{profile?.first_name || ''} {profile?.last_name || ''}</p>
