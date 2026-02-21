@@ -43,7 +43,8 @@ export function useCloudSync() {
       const data = await invoke('status');
       setConnectors(data.connectors || []);
     } catch (err) {
-      console.error('[useCloudSync] status error:', err);
+      // Silent fail on status — user might not be logged in yet
+      console.warn('[useCloudSync] status error:', err);
     } finally {
       setIsLoading(false);
     }
@@ -58,7 +59,6 @@ export function useCloudSync() {
     const params = new URLSearchParams(window.location.search);
     if (params.get('cloud_sync_success') === 'true') {
       toast.success('Google Drive erfolgreich verbunden!');
-      // Clean URL
       const cleanUrl = window.location.pathname + window.location.hash;
       window.history.replaceState({}, '', cleanUrl);
       fetchStatus();
@@ -76,18 +76,58 @@ export function useCloudSync() {
       setIsConnecting(true);
       const returnUrl = window.location.origin + window.location.pathname;
       const data = await invoke('init', { returnUrl });
-      if (data.redirect_url) {
-        window.location.href = data.redirect_url;
-      } else {
+
+      if (!data?.redirect_url) {
         toast.error('OAuth URL konnte nicht erstellt werden.');
+        return;
       }
+
+      // Use popup to avoid iframe redirect issues in preview
+      const popup = window.open(data.redirect_url, 'google_drive_oauth', 'width=600,height=700,scrollbars=yes');
+
+      if (!popup) {
+        // Popup blocked — fall back to direct redirect
+        toast.info('Popup blockiert — Sie werden weitergeleitet...');
+        window.location.href = data.redirect_url;
+        return;
+      }
+
+      // Listen for postMessage from popup (callback page sends result)
+      const messageHandler = (event: MessageEvent) => {
+        try {
+          const msg = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+          if (msg?.type === 'cloud_sync_result') {
+            window.removeEventListener('message', messageHandler);
+            clearInterval(pollTimer);
+            popup?.close();
+            setIsConnecting(false);
+            if (msg.success) {
+              toast.success('Google Drive erfolgreich verbunden!');
+            } else {
+              toast.error(`Google Drive Verbindung fehlgeschlagen: ${msg.error || 'Unbekannter Fehler'}`);
+            }
+            fetchStatus();
+          }
+        } catch { /* ignore non-JSON messages */ }
+      };
+      window.addEventListener('message', messageHandler);
+
+      // Fallback: poll for popup close
+      const pollTimer = setInterval(() => {
+        if (popup.closed) {
+          clearInterval(pollTimer);
+          window.removeEventListener('message', messageHandler);
+          setIsConnecting(false);
+          fetchStatus();
+        }
+      }, 500);
     } catch (err) {
       console.error('[useCloudSync] init error:', err);
-      toast.error('Verbindung konnte nicht gestartet werden.');
+      toast.error('Verbindung konnte nicht gestartet werden. Bitte stellen Sie sicher, dass Sie eingeloggt sind.');
     } finally {
       setIsConnecting(false);
     }
-  }, [invoke]);
+  }, [invoke, fetchStatus]);
 
   const disconnectProvider = useCallback(async () => {
     try {

@@ -35,11 +35,31 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
 
-  const redirectHtml = (url: string) =>
-    new Response(`<html><head><meta http-equiv="refresh" content="0;url=${url}"/></head><body>Redirecting...</body></html>`, {
-      status: 200,
-      headers: { ...corsHeaders, "Content-Type": "text/html" },
-    });
+  /** Return an HTML page that posts a message to the opener and closes itself (popup flow),
+   *  or redirects if opened as a full page. */
+  const popupResultHtml = (success: boolean, errorMsg?: string) => {
+    const messageObj = success
+      ? { type: "cloud_sync_result", success: true }
+      : { type: "cloud_sync_result", success: false, error: errorMsg || "unknown" };
+    const messageJson = JSON.stringify(JSON.stringify(messageObj)); // double-stringify for safe JS embedding
+    const fallbackParam = success ? "cloud_sync_success=true" : `cloud_sync_error=${encodeURIComponent(errorMsg || "unknown")}`;
+    const bodyText = success ? "Verbunden! Dieses Fenster schließt sich automatisch..." : `Fehler: ${errorMsg || "Unbekannt"}`;
+    return new Response(
+      `<!DOCTYPE html><html><head><title>Cloud Sync</title></head><body>
+<script>
+  if (window.opener) {
+    window.opener.postMessage(${messageJson}, "*");
+    window.close();
+  } else {
+    var base = document.referrer || "/";
+    window.location.href = base + (base.indexOf("?") >= 0 ? "&" : "?") + "${fallbackParam}";
+  }
+</script>
+<p>${bodyText}</p>
+</body></html>`,
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "text/html" } }
+    );
+  };
 
   try {
     const url = new URL(req.url);
@@ -64,7 +84,7 @@ Deno.serve(async (req) => {
 
       if (error) {
         console.error("[cloud-sync] OAuth error:", error);
-        return redirectHtml(`${url.origin}/?cloud_sync_error=${encodeURIComponent(error)}`);
+        return popupResultHtml(false, error);
       }
 
       if (!code || !state || !clientId || !clientSecret) {
@@ -97,7 +117,7 @@ Deno.serve(async (req) => {
       const tokenData = await tokenRes.json();
       if (!tokenRes.ok || !tokenData.access_token) {
         console.error("[cloud-sync] Token exchange failed:", tokenData);
-        return redirectHtml(`${stateData.returnUrl}?cloud_sync_error=token_exchange_failed`);
+        return popupResultHtml(false, "token_exchange_failed");
       }
 
       // Get user info from Google
@@ -129,10 +149,10 @@ Deno.serve(async (req) => {
 
       if (upsertErr) {
         console.error("[cloud-sync] Upsert error:", upsertErr);
-        return redirectHtml(`${stateData.returnUrl}?cloud_sync_error=db_error`);
+        return popupResultHtml(false, "db_error");
       }
 
-      return redirectHtml(`${stateData.returnUrl}?cloud_sync_success=true`);
+      return popupResultHtml(true);
     }
 
     // ── All other actions require auth ──
