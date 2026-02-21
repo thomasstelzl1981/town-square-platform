@@ -1,7 +1,7 @@
 # E2E Test Backlog — Pre-Launch Teststrecke
 
-> **Version:** 1.3 | **Stand:** 2026-02-21  
-> **Status:** IN ARBEIT — Runde 7 (Session + Golden Path + Engine) abgeschlossen
+> **Version:** 1.4 | **Stand:** 2026-02-21  
+> **Status:** IN ARBEIT — Runde 7b (D-Tests visuell + E-Tests DB-validiert) abgeschlossen
 > **Golden Tenant:** thomas.stelzl@systemofadown.com (a0000000-0000-4000-a000-000000000001)
 
 ---
@@ -132,23 +132,23 @@
 
 | # | GP-ID | Prozess | Modul | Compliance | Test-Fokus | Status |
 |---|-------|---------|-------|------------|------------|--------|
-| D-01 | GP-PORTFOLIO | Immobilien-Portfolio | MOD-04 | 6/6 | Demo-Widget → KPI-Ansicht → Einheiten | ⚠️ STRUCT (Navigation vorhanden, Empty-State korrekt, Demo-Widget nicht testbar ohne Seed) |
-| D-02 | GP-VERWALTUNG | BWA/Controlling | MOD-04 | 6/6 | Demo-Widget → BWA → NK-Abrechnung | ⚠️ STRUCT (wie D-01) |
+| D-01 | GP-PORTFOLIO | Immobilien-Portfolio | MOD-04 | 6/6 | Demo-Widget → KPI-Ansicht → Einheiten | ✅ PASS (Header ✅, WidgetGrid ✅, DemoWidget@0 "Familie Mustermann" mit Badge ✅, KPI-Cards ✅) |
+| D-02 | GP-VERWALTUNG | BWA/Controlling | MOD-04 | 6/6 | Demo-Widget → BWA → NK-Abrechnung | ⚠️ STRUCT (nicht separat navigiert) |
 | D-03 | GP-SANIERUNG | Sanierungsauftrag | MOD-04 | 6/6 | Demo-Widget → LV → Dienstleister | ⚠️ STRUCT |
-| D-04 | GP-FINANZIERUNG | Finanzierungsanfrage | MOD-07 | 6/6 | Demo-Widget → Kalkulation → Dokumente | ⚠️ STRUCT |
-| D-05 | GP-SUCHMANDAT | Investment-Suchmandat | MOD-08 | 6/6 | Demo-Widget → Suchprofil → Ergebnisse | ⚠️ STRUCT |
+| D-04 | GP-FINANZIERUNG | Finanzierungsanfrage | MOD-07 | 6/6 | Demo-Widget → Kalkulation → Dokumente | ⚠️ WARN (Header ✅, Tab-Navigation statt WidgetGrid — formularbasiert) |
+| D-05 | GP-SUCHMANDAT | Investment-Suchmandat | MOD-08 | 6/6 | Demo-Widget → Suchprofil → Ergebnisse | ⚠️ WARN (Header ✅, Tab-Nav, Investment-Suche Widget vorhanden) |
 | D-06 | GP-SIMULATION | Investment-Simulation | MOD-08 | 4/6 | Demo-Widget → Engine starten → 40J-Projektion | ⚠️ STRUCT |
 | D-07 | GP-FM-FALL | Finanzierungsfall | MOD-11 | 6/6 | Demo-Widget → Intake → Bank-Zuweisung | ⚠️ STRUCT |
 | D-08 | GP-AKQUISE-MANDAT | Akquisemandat | MOD-12 | 6/6 | Demo-Widget → Profil → Pipeline | ⚠️ STRUCT |
-| D-09 | GP-PROJEKT | Projektanlage | MOD-13 | 6/6 | Demo-Widget → Übersicht → Einheiten | ⚠️ STRUCT |
+| D-09 | GP-PROJEKT | Projektanlage | MOD-13 | 6/6 | Demo-Widget → Übersicht → Einheiten | ✅ PASS (Header ✅, Profil-Widget ✅, Marktanalyse-CTA ✅, Projekt-Grid ✅) |
 | D-10 | GP-SERIEN-EMAIL | Serien-E-Mail | MOD-14 | 6/6 | Demo-Widget → Editor → Statistiken | ⚠️ STRUCT |
 | D-11 | GP-RECHERCHE | Rechercheauftrag | MOD-14 | 6/6 | Demo-Widget → Ergebnisse → KI-Analyse | ⚠️ STRUCT |
-| D-12 | GP-FAHRZEUG | Fahrzeugverwaltung | MOD-17 | 6/6 | Demo-Widget → Fahrzeugdaten → Leasing | ⚠️ STRUCT |
-| D-13 | GP-KONTEN | Kontoverwaltung | MOD-18 | 6/6 | Demo-Widget → Transaktionen → Matching | ⚠️ STRUCT |
-| D-14 | GP-PV-ANLAGE | PV-Anlagenanlage | MOD-19 | 6/6 | Demo-Widget → Anlagendaten → Erträge | ⚠️ STRUCT |
-| D-15 | GP-ZUHAUSE | Zuhause-Verwaltung | MOD-20 | 6/6 | Demo-Widget → Wohnung → Versorger | ⚠️ STRUCT |
-| D-16 | GP-PETS | Tierverwaltung | MOD-05 | 6/6 | Demo-Widget → Tierprofil → Pflege | ⚠️ STRUCT |
-| D-17 | GP-PET | Pet Manager Demo | MOD-22 | 3/6 | Demo → Kunden → Buchungen | ⚠️ STRUCT |
+| D-12 | GP-FAHRZEUG | Fahrzeugverwaltung | MOD-17 | 6/6 | Demo-Widget → Fahrzeugdaten → Leasing | ✅ PASS (Header ✅, WidgetGrid ✅, 2 Demo-Fahrzeuge BMW M5 + Porsche 911 mit DEMO-Badge ✅) |
+| D-13 | GP-KONTEN | Kontoverwaltung | MOD-18 | 6/6 | Demo-Widget → Transaktionen → Matching | ✅ PASS (Header ✅, Haushalt-Grid 4 Personen mit DEMO-Badges ✅, Finanzbericht ✅) |
+| D-14 | GP-PV-ANLAGE | PV-Anlagenanlage | MOD-19 | 6/6 | Demo-Widget → Anlagendaten → Erträge | ✅ PASS (Header ✅, WidgetGrid ✅, Demo EFH Oberhaching 32.4 kWp mit Badge ✅) |
+| D-15 | GP-ZUHAUSE | Zuhause-Verwaltung | MOD-20 | 6/6 | Demo-Widget → Wohnung → Versorger | ✅ PASS (Header ✅, Demo Leopoldstr. 12 ✅, Google Maps ✅, Service-Cards ✅) |
+| D-16 | GP-PETS | Tierverwaltung | MOD-05 | 6/6 | Demo-Widget → Tierprofil → Pflege | ❌ FAIL (404 — Route /portal/msv nicht registriert) |
+| D-17 | GP-PET | Pet Manager Demo | MOD-22 | 3/6 | Demo → Kunden → Buchungen | ✅ PASS (Header ✅, Dashboard Lennox & Friends ✅, KPIs ✅, Tageskapazität 0/12 ✅) |
 
 ### Compliance-Checkliste pro Prozess
 
