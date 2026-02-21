@@ -1,11 +1,9 @@
 /**
  * BeratungTab — MOD-09 Vertriebspartner Investment-Beratung
  * 
- * REFAKTORISIERT: Nutzt jetzt InvestmentResultTile (wie MOD-08)
- * - Keine Provisions-Anzeige (showProvision=false)
- * - Metrics-Struktur wie MOD-08
- * - Navigation zu Full-Page Exposé
- * - Zwei Modi: Investment-Suche und Klassische Suche (wie MOD-08)
+ * FIXES:
+ * - enabled: false → no auto-search on page load
+ * - Added onboarding hero, sorting, summary bar, top-recommendation badges
  */
 import { useState, useCallback, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -16,13 +14,21 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Building2, Calculator, Search, Loader2, Newspaper } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Building2, Calculator, Search, Loader2, Newspaper, Users, Sparkles, TrendingUp, Shield, ArrowUpDown } from 'lucide-react';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { DESIGN } from '@/config/designManifest';
 import { ManagerVisitenkarte } from '@/components/shared/ManagerVisitenkarte';
 import { MarketReportWidget } from '@/components/shared/MarketReportWidget';
 import { formatCurrency } from '@/lib/formatters';
+import { cn } from '@/lib/utils';
 
 import { PartnerSearchForm, type PartnerSearchParams } from '@/components/vertriebspartner';
 import { InvestmentResultTile } from '@/components/investment/InvestmentResultTile';
@@ -31,6 +37,7 @@ import { usePartnerSelections } from '@/hooks/usePartnerListingSelections';
 import { fetchPropertyImages } from '@/lib/fetchPropertyImages';
 import { useDemoListings, deduplicateByField } from '@/hooks/useDemoListings';
 import { MediaWidgetGrid } from '@/components/shared/MediaWidgetGrid';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 // Interface for fetched listings
 interface RawListing {
@@ -91,17 +98,18 @@ const transformToPublicListing = (listing: RawListing): PublicListing => ({
 });
 
 type SearchMode = 'investment' | 'classic';
+type SortMode = 'default' | 'price_asc' | 'price_desc' | 'yield_desc' | 'burden_asc' | 'area_desc';
 
 const BeratungTab = () => {
-  // Demo listings for immediate visibility (filter out project demos)
+  const isMobile = useIsMobile();
   const { kaufyListings: allDemoListings } = useDemoListings();
   const demoListings = useMemo(() => 
     allDemoListings.filter(d => d.property_type !== 'new_construction'),
     [allDemoListings]
   );
 
-  // Search mode
   const [searchMode, setSearchMode] = useState<SearchMode>('investment');
+  const [sortMode, setSortMode] = useState<SortMode>('default');
 
   // Investment search parameters
   const [searchParams, setSearchParams] = useState<PartnerSearchParams>({
@@ -128,7 +136,7 @@ const BeratungTab = () => {
 
   const { calculate, isLoading: isCalculating } = useInvestmentEngine();
 
-  // Fetch partner-released listings with property data
+  // FIXED: enabled: false — no auto-fetch on page load
   const { data: rawListings = [], isLoading: isLoadingListings, refetch } = useQuery({
     queryKey: ['partner-beratung-listings'],
     queryFn: async () => {
@@ -176,8 +184,6 @@ const BeratungTab = () => {
 
       return listingsData.map((l: any) => {
         const props = l.properties;
-        const annualRent = props?.annual_income || 0;
-        
         return {
           id: l.id,
           public_id: l.public_id,
@@ -188,13 +194,14 @@ const BeratungTab = () => {
           property_city: props?.city || '',
           property_type: props?.property_type,
           total_area_sqm: props?.total_area_sqm,
-          annual_rent: annualRent,
+          annual_rent: props?.annual_income || 0,
           hero_image_path: imageMap.get(props.id) || null,
           property_id: props?.id || '',
           unit_count: unitCountMap.get(props?.id) || 1,
         } as RawListing;
       });
     },
+    enabled: false,
   });
 
   // Helper: merge DB + demo listings
@@ -284,11 +291,59 @@ const BeratungTab = () => {
       });
     }
 
-    // Search-first: no results before search
     if (!hasSearched) return [];
-
     return merged;
   }, [getMergedListings, searchMode, hasSearched, cityFilter, priceMax, areaMin, yieldMin]);
+
+  // Sort listings
+  const sortedListings = useMemo(() => {
+    const list = [...visibleListings];
+    switch (sortMode) {
+      case 'price_asc':
+        return list.sort((a, b) => a.asking_price - b.asking_price);
+      case 'price_desc':
+        return list.sort((a, b) => b.asking_price - a.asking_price);
+      case 'yield_desc':
+        return list.sort((a, b) => {
+          const yA = a.asking_price > 0 ? a.annual_rent / a.asking_price : 0;
+          const yB = b.asking_price > 0 ? b.annual_rent / b.asking_price : 0;
+          return yB - yA;
+        });
+      case 'burden_asc':
+        return list.sort((a, b) => {
+          const bA = metricsCache[a.id]?.monthlyBurden ?? Infinity;
+          const bB = metricsCache[b.id]?.monthlyBurden ?? Infinity;
+          return bA - bB;
+        });
+      case 'area_desc':
+        return list.sort((a, b) => (b.total_area_sqm || 0) - (a.total_area_sqm || 0));
+      default:
+        return list;
+    }
+  }, [visibleListings, sortMode, metricsCache]);
+
+  // Top recommendations (lowest burden, max 3)
+  const topListingIds = useMemo(() => {
+    if (searchMode !== 'investment' || Object.keys(metricsCache).length === 0) return new Set<string>();
+    const withMetrics = visibleListings
+      .filter(l => metricsCache[l.id])
+      .sort((a, b) => metricsCache[a.id].monthlyBurden - metricsCache[b.id].monthlyBurden)
+      .slice(0, 3);
+    return new Set(withMetrics.map(l => l.id));
+  }, [visibleListings, metricsCache, searchMode]);
+
+  // Summary stats
+  const summaryStats = useMemo(() => {
+    if (!hasSearched || sortedListings.length === 0) return null;
+    const yields = sortedListings.map(l => l.asking_price > 0 ? (l.annual_rent / l.asking_price) * 100 : 0);
+    const bestYield = Math.max(...yields);
+    const burdens = sortedListings
+      .map(l => metricsCache[l.id]?.monthlyBurden)
+      .filter((b): b is number => b !== undefined);
+    const lowestBurden = burdens.length > 0 ? Math.min(...burdens) : null;
+    const positiveCashflowCount = burdens.filter(b => b <= 0).length;
+    return { bestYield, lowestBurden, positiveCashflowCount, total: sortedListings.length };
+  }, [hasSearched, sortedListings, metricsCache]);
 
   const isLoading = isLoadingListings || isCalculating;
 
@@ -297,7 +352,7 @@ const BeratungTab = () => {
       <ModulePageHeader
         title="KUNDENBERATUNG"
         description="Finden Sie das perfekte Investment für Ihren Kunden"
-        actions={hasSearched ? <Badge variant="secondary">{visibleListings.length} Objekt{visibleListings.length !== 1 ? 'e' : ''}</Badge> : undefined}
+        actions={hasSearched ? <Badge variant="secondary">{sortedListings.length} Objekt{sortedListings.length !== 1 ? 'e' : ''}</Badge> : undefined}
       />
 
       {/* ═══ DASHBOARD_HEADER: Visitenkarte + Marktlage ═══ */}
@@ -321,7 +376,6 @@ const BeratungTab = () => {
         />
       </div>
 
-      {/* Media Widgets */}
       <MediaWidgetGrid />
 
       {/* Search Mode Toggle + Form */}
@@ -351,59 +405,36 @@ const BeratungTab = () => {
             />
           ) : (
             <>
-              {/* Classic Search Form */}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div className="space-y-2">
                   <Label>Stadt</Label>
-                  <Input
-                    placeholder="z.B. Berlin, München..."
-                    value={cityFilter}
-                    onChange={(e) => setCityFilter(e.target.value)}
-                  />
+                  <Input placeholder="z.B. Berlin, München..." value={cityFilter} onChange={(e) => setCityFilter(e.target.value)} />
                 </div>
                 <div className="space-y-2">
                   <Label>Max. Kaufpreis</Label>
                   <div className="relative">
-                    <Input
-                      type="number"
-                      placeholder="Unbegrenzt"
-                      value={priceMax || ''}
-                      onChange={(e) => setPriceMax(e.target.value ? Number(e.target.value) : null)}
-                      className="pr-8"
-                    />
+                    <Input type="number" placeholder="Unbegrenzt" value={priceMax || ''} onChange={(e) => setPriceMax(e.target.value ? Number(e.target.value) : null)} className="pr-8" />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">€</span>
                   </div>
                 </div>
                 <div className="space-y-2">
                   <Label>Min. Fläche</Label>
                   <div className="relative">
-                    <Input
-                      type="number"
-                      placeholder="Keine"
-                      value={areaMin || ''}
-                      onChange={(e) => setAreaMin(e.target.value ? Number(e.target.value) : null)}
-                      className="pr-10"
-                    />
+                    <Input type="number" placeholder="Keine" value={areaMin || ''} onChange={(e) => setAreaMin(e.target.value ? Number(e.target.value) : null)} className="pr-10" />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">m²</span>
                   </div>
                 </div>
                 <div className="space-y-2">
                   <Label>Min. Rendite</Label>
                   <div className="relative">
-                    <Input
-                      type="number"
-                      placeholder="Keine"
-                      value={yieldMin || ''}
-                      onChange={(e) => setYieldMin(e.target.value ? Number(e.target.value) : null)}
-                      className="pr-8"
-                    />
+                    <Input type="number" placeholder="Keine" value={yieldMin || ''} onChange={(e) => setYieldMin(e.target.value ? Number(e.target.value) : null)} className="pr-8" />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">%</span>
                   </div>
                 </div>
               </div>
               <div className="flex justify-center w-full">
-                <Button onClick={handleClassicSearch} disabled={isLoadingListings}>
-                  {isLoadingListings && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                <Button onClick={handleClassicSearch} disabled={isLoadingListings} className="gap-2">
+                  {isLoadingListings ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
                   Ergebnisse anzeigen
                 </Button>
               </div>
@@ -413,40 +444,123 @@ const BeratungTab = () => {
       </Card>
 
       {/* Results */}
-      {!hasSearched ? (
-        <Card className="border-2 border-dashed">
-          <CardContent className="py-12 text-center">
-            <Building2 className="w-12 h-12 mx-auto mb-4 text-primary opacity-70" />
-            <h3 className="text-lg font-semibold mb-2">Kundenberatung starten</h3>
-            <p className="text-muted-foreground max-w-md mx-auto">
-              {searchMode === 'investment'
-                ? 'Geben Sie das zu versteuernde Einkommen und Eigenkapital Ihres Kunden ein, um passende Objekte mit individueller Belastungsberechnung zu finden.'
-                : 'Filtern Sie nach Stadt, Kaufpreis, Fläche oder Rendite, um passende Objekte für Ihren Kunden zu finden.'}
-            </p>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {visibleListings.length === 0 ? (
-            <div className="col-span-full text-center py-12 border-2 border-dashed rounded-lg">
-              <Building2 className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-              <p className="text-muted-foreground">
-                Keine Objekte im Partner-Netzwerk verfügbar
+      <div className="space-y-4">
+        {!hasSearched ? (
+          /* ═══ ONBOARDING HERO ═══ */
+          <Card className="border-2 border-dashed border-primary/20 bg-gradient-to-br from-primary/5 to-accent/5">
+            <CardContent className={cn("text-center", isMobile ? "py-8 px-4" : "py-16")}>
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 mb-6">
+                <Users className="w-8 h-8 text-primary" />
+              </div>
+              <h3 className={cn("font-bold mb-3", isMobile ? "text-xl" : "text-2xl")}>
+                Kundenberatung starten
+              </h3>
+              <p className="text-muted-foreground max-w-lg mx-auto mb-8">
+                {searchMode === 'investment'
+                  ? 'Geben Sie das zu versteuernde Einkommen und Eigenkapital Ihres Kunden ein. Wir berechnen für jedes Objekt die individuelle monatliche Belastung nach Steuern — ohne Provisionsanzeige.'
+                  : 'Filtern Sie nach Stadt, Kaufpreis, Fläche oder Rendite, um passende Objekte für Ihren Kunden zu finden.'}
               </p>
-            </div>
-          ) : (
-            visibleListings.map((listing) => (
-              <InvestmentResultTile
-                key={listing.id}
-                listing={transformToPublicListing(listing)}
-                metrics={searchMode === 'investment' ? (metricsCache[listing.id] || null) : null}
-                showProvision={false}
-                linkPrefix="/portal/vertriebspartner/beratung/objekt"
-              />
-            ))
-          )}
-        </div>
-      )}
+              
+              {!isMobile && (
+                <div className="grid grid-cols-3 gap-6 max-w-xl mx-auto">
+                  <div className="flex flex-col items-center gap-2 text-sm">
+                    <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                      <Calculator className="w-5 h-5 text-green-600" />
+                    </div>
+                    <span className="text-muted-foreground font-medium">Steueroptimiert</span>
+                    <span className="text-xs text-muted-foreground/70">Nach §35a EStG</span>
+                  </div>
+                  <div className="flex flex-col items-center gap-2 text-sm">
+                    <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                      <Shield className="w-5 h-5 text-blue-600" />
+                    </div>
+                    <span className="text-muted-foreground font-medium">Kundenfreundlich</span>
+                    <span className="text-xs text-muted-foreground/70">Keine Provisionsdaten</span>
+                  </div>
+                  <div className="flex flex-col items-center gap-2 text-sm">
+                    <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+                      <TrendingUp className="w-5 h-5 text-amber-600" />
+                    </div>
+                    <span className="text-muted-foreground font-medium">Sofort vergleichbar</span>
+                    <span className="text-xs text-muted-foreground/70">T-Konto Übersicht</span>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        ) : (
+          <>
+            {/* ═══ SUMMARY BAR ═══ */}
+            {summaryStats && (
+              <div className={cn(
+                "rounded-lg border bg-card p-4",
+                isMobile ? "space-y-2" : "flex items-center justify-between"
+              )}>
+                <div className={cn("flex items-center gap-4 flex-wrap", isMobile && "gap-2")}>
+                  <Badge variant="secondary" className="text-sm px-3 py-1">
+                    {summaryStats.total} Objekte
+                  </Badge>
+                  <div className="flex items-center gap-3 text-sm">
+                    <span className="text-muted-foreground">
+                      Beste Rendite: <strong className="text-green-600">{summaryStats.bestYield.toFixed(1)}%</strong>
+                    </span>
+                    {summaryStats.lowestBurden !== null && (
+                      <span className="text-muted-foreground">
+                        Niedrigste Belastung: <strong className={summaryStats.lowestBurden <= 0 ? "text-green-600" : "text-foreground"}>
+                          {formatCurrency(Math.abs(summaryStats.lowestBurden))}/Mo
+                        </strong>
+                      </span>
+                    )}
+                    {summaryStats.positiveCashflowCount > 0 && (
+                      <Badge variant="outline" className="text-green-600 border-green-200 bg-green-50 dark:bg-green-950/30">
+                        {summaryStats.positiveCashflowCount}× positiver Cashflow
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+
+                <Select value={sortMode} onValueChange={(v) => setSortMode(v as SortMode)}>
+                  <SelectTrigger className="w-[180px] h-9">
+                    <ArrowUpDown className="w-3.5 h-3.5 mr-1.5 text-muted-foreground" />
+                    <SelectValue placeholder="Sortierung" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="default">Standard</SelectItem>
+                    <SelectItem value="price_asc">Preis ↑</SelectItem>
+                    <SelectItem value="price_desc">Preis ↓</SelectItem>
+                    <SelectItem value="yield_desc">Rendite ↓</SelectItem>
+                    <SelectItem value="burden_asc">Belastung ↑</SelectItem>
+                    <SelectItem value="area_desc">Fläche ↓</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* ═══ LISTINGS GRID ═══ */}
+            {sortedListings.length === 0 ? (
+              <div className="col-span-full text-center py-12 border-2 border-dashed rounded-lg">
+                <Building2 className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+                <p className="text-muted-foreground">
+                  Keine Objekte im Partner-Netzwerk verfügbar
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {sortedListings.map((listing) => (
+                  <InvestmentResultTile
+                    key={listing.id}
+                    listing={transformToPublicListing(listing)}
+                    metrics={searchMode === 'investment' ? (metricsCache[listing.id] || null) : null}
+                    showProvision={false}
+                    linkPrefix="/portal/vertriebspartner/beratung/objekt"
+                    isTopRecommendation={topListingIds.has(listing.id)}
+                  />
+                ))}
+              </div>
+            )}
+          </>
+        )}
+      </div>
     </PageShell>
   );
 };
