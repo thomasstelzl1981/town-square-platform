@@ -1,26 +1,12 @@
 /**
- * InvestmentResultTile — Suchergebnis-Kachel mit korrektem Layout
+ * InvestmentResultTile — Suchergebnis-Kachel mit T-Konto Layout
  * 
- * Layout (RICHTIG):
- * ┌─────────────────────────────────────┐
- * │           [BILD]                    │
- * │         (Titelbild)                 │
- * │                                     │
- * ├──────────────────┬──────────────────┤
- * │  € 220.000       │  3,7% Rendite    │
- * │  Leipzig · ETW   │  62 m²           │
- * ├──────────────────┴──────────────────┤
- * │  EINNAHMEN       │  AUSGABEN        │
- * │  + Miete  €682   │  − Zins   €495   │
- * │  + Steuer €120   │  − Tilg.  €283   │
- * ├─────────────────────────────────────┤
- * │  MONATSBELASTUNG: +€24/Mo ✓         │
- * └─────────────────────────────────────┘
+ * NEW: isTopRecommendation prop for golden border + badge
  */
 import { Link, useSearchParams } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Heart, MapPin, Building2, TrendingUp } from 'lucide-react';
+import { Heart, MapPin, Building2, TrendingUp, Award } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 
@@ -56,6 +42,7 @@ interface InvestmentResultTileProps {
   onToggleFavorite?: () => void;
   showProvision?: boolean;
   linkPrefix?: string;
+  isTopRecommendation?: boolean;
 }
 
 export function InvestmentResultTile({
@@ -64,10 +51,10 @@ export function InvestmentResultTile({
   isFavorite = false,
   onToggleFavorite,
   showProvision = false,
-  linkPrefix = '/portal/investments/objekt'
+  linkPrefix = '/portal/investments/objekt',
+  isTopRecommendation = false,
 }: InvestmentResultTileProps) {
   const isMobile = useIsMobile();
-  // PHASE 2: Preserve search params in link
   const [urlParams] = useSearchParams();
   const linkUrl = `${linkPrefix}/${listing.public_id || listing.listing_id}${urlParams.toString() ? `?${urlParams.toString()}` : ''}`;
 
@@ -83,13 +70,11 @@ export function InvestmentResultTile({
 
   const isPositiveCashflow = metrics && metrics.monthlyBurden <= 0;
   
-  // Calculate monthly values from metrics
   const monthlyRent = listing.monthly_rent_total || 0;
   const monthlyInterest = metrics?.yearlyInterest ? metrics.yearlyInterest / 12 : (metrics?.loanAmount ? (metrics.loanAmount * 0.035) / 12 : 0);
   const monthlyRepayment = metrics?.yearlyRepayment ? metrics.yearlyRepayment / 12 : (metrics?.loanAmount ? (metrics.loanAmount * 0.02) / 12 : 0);
   const monthlyTaxSavings = metrics?.yearlyTaxSavings ? metrics.yearlyTaxSavings / 12 : 0;
 
-  // Calculate totals for T-Konto
   const totalRevenue = monthlyRent + monthlyTaxSavings;
   const totalExpenses = monthlyInterest + monthlyRepayment;
 
@@ -102,8 +87,11 @@ export function InvestmentResultTile({
 
   return (
     <Link to={linkUrl}>
-      <Card className="overflow-hidden hover:shadow-lg transition-shadow group cursor-pointer">
-        {/* Bild OBEN — larger aspect ratio on mobile for better visual impact */}
+      <Card className={cn(
+        "overflow-hidden hover:shadow-lg transition-all group cursor-pointer",
+        isTopRecommendation && "ring-2 ring-amber-400/60 shadow-amber-100 dark:shadow-amber-900/20 shadow-lg"
+      )}>
+        {/* Image */}
         <div className={cn("bg-muted flex items-center justify-center relative overflow-hidden", isMobile ? "aspect-[4/3]" : "aspect-[16/9]")}>
           {listing.hero_image_path ? (
             <img 
@@ -115,6 +103,14 @@ export function InvestmentResultTile({
             <Building2 className="w-12 h-12 text-muted-foreground" />
           )}
           
+          {/* Top Recommendation Badge */}
+          {isTopRecommendation && (
+            <Badge className="absolute top-2 left-2 bg-amber-500 text-white shadow-lg gap-1 text-xs">
+              <Award className="w-3 h-3" />
+              Top-Empfehlung
+            </Badge>
+          )}
+
           {/* Favorite Button */}
           {onToggleFavorite && (
             <button
@@ -126,7 +122,7 @@ export function InvestmentResultTile({
           )}
 
           {/* Provision Badge */}
-          {showProvision && listing.partner_commission_rate && (
+          {showProvision && listing.partner_commission_rate && !isTopRecommendation && (
             <Badge className="absolute top-2 left-2 text-xs bg-primary">
               {listing.partner_commission_rate}%
             </Badge>
@@ -139,7 +135,7 @@ export function InvestmentResultTile({
           </Badge>
         </div>
 
-        {/* Daten-Bar (Preis, Ort, Fläche, Typ) */}
+        {/* Data Bar */}
         <div className="px-4 py-3 border-b bg-card">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0 flex-1">
@@ -158,9 +154,8 @@ export function InvestmentResultTile({
           </div>
         </div>
 
-        {/* T-Konto (Einnahmen | Ausgaben) */}
+        {/* T-Konto */}
         <div className="grid grid-cols-2 divide-x">
-          {/* Einnahmen (links, grün) */}
           <div className="p-3 bg-green-50/50 dark:bg-green-950/20">
             <p className="text-xs font-semibold text-green-700 dark:text-green-400 uppercase tracking-wide mb-2">
               Einnahmen
@@ -168,28 +163,21 @@ export function InvestmentResultTile({
             <div className="space-y-1 text-sm">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">+ Miete</span>
-                <span className="font-medium text-green-600">
-                  {formatCurrencyShort(monthlyRent)}
-                </span>
+                <span className="font-medium text-green-600">{formatCurrencyShort(monthlyRent)}</span>
               </div>
               {monthlyTaxSavings > 0 && (
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">+ Steuer</span>
-                  <span className="font-medium text-green-600">
-                    {formatCurrencyShort(monthlyTaxSavings)}
-                  </span>
+                  <span className="font-medium text-green-600">{formatCurrencyShort(monthlyTaxSavings)}</span>
                 </div>
               )}
               <div className="flex justify-between pt-1 border-t border-green-200 dark:border-green-800">
                 <span className="font-medium text-green-700 dark:text-green-400">Σ</span>
-                <span className="font-bold text-green-700 dark:text-green-400">
-                  {formatCurrencyShort(totalRevenue)}
-                </span>
+                <span className="font-bold text-green-700 dark:text-green-400">{formatCurrencyShort(totalRevenue)}</span>
               </div>
             </div>
           </div>
 
-          {/* Ausgaben (rechts, rot) */}
           <div className="p-3 bg-red-50/50 dark:bg-red-950/20">
             <p className="text-xs font-semibold text-red-700 dark:text-red-400 uppercase tracking-wide mb-2">
               Ausgaben
@@ -197,27 +185,21 @@ export function InvestmentResultTile({
             <div className="space-y-1 text-sm">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">− Zinsen</span>
-                <span className="font-medium text-red-600">
-                  {formatCurrencyShort(monthlyInterest)}
-                </span>
+                <span className="font-medium text-red-600">{formatCurrencyShort(monthlyInterest)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">− Tilgung</span>
-                <span className="font-medium text-red-600">
-                  {formatCurrencyShort(monthlyRepayment)}
-                </span>
+                <span className="font-medium text-red-600">{formatCurrencyShort(monthlyRepayment)}</span>
               </div>
               <div className="flex justify-between pt-1 border-t border-red-200 dark:border-red-800">
                 <span className="font-medium text-red-700 dark:text-red-400">Σ</span>
-                <span className="font-bold text-red-700 dark:text-red-400">
-                  {formatCurrencyShort(totalExpenses)}
-                </span>
+                <span className="font-bold text-red-700 dark:text-red-400">{formatCurrencyShort(totalExpenses)}</span>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Footer: Monatsbelastung - prominent */}
+        {/* Footer: Monatsbelastung */}
         <div className={cn(
           "px-4 py-3 border-t flex items-center justify-between",
           isPositiveCashflow 
