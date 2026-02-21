@@ -125,7 +125,7 @@ interface UserContext {
 // MVP MODULE ALLOWLIST & GLOBAL ASSIST CONFIG
 // =============================================================================
 
-const MVP_MODULES = ["MOD-00", "MOD-01", "MOD-04", "MOD-06", "MOD-07", "MOD-08", "MOD-09", "MOD-11", "MOD-12", "MOD-13", "MOD-14", "MOD-17", "MOD-18", "MOD-19", "MOD-20"];
+const MVP_MODULES = ["MOD-00", "MOD-01", "MOD-04", "MOD-06", "MOD-07", "MOD-08", "MOD-09", "MOD-11", "MOD-12", "MOD-13", "MOD-14", "MOD-15", "MOD-17", "MOD-18", "MOD-19", "MOD-20", "MOD-22"];
 
 // Global Assist Mode: Armstrong can help with general tasks even outside MVP modules
 // These intents are allowed in ALL modules (explain, draft, research)
@@ -159,8 +159,9 @@ const MODULE_LABELS: Record<string, string> = {
   "MOD-00": "Dashboard", "MOD-01": "Stammdaten", "MOD-04": "Immobilien",
   "MOD-06": "Verkauf", "MOD-07": "Finanzierung", "MOD-08": "Investments",
   "MOD-09": "Vertriebspartner", "MOD-11": "Finanzierungsmanager", "MOD-12": "Akquise-Manager",
-  "MOD-13": "Projekte", "MOD-14": "Communication Pro", "MOD-17": "Fahrzeuge",
-  "MOD-18": "Finanzanalyse", "MOD-19": "Photovoltaik", "MOD-20": "Zuhause/Miety",
+  "MOD-13": "Projekte", "MOD-14": "Communication Pro", "MOD-15": "Fortbildung",
+  "MOD-17": "Fahrzeuge", "MOD-18": "Finanzanalyse", "MOD-19": "Photovoltaik",
+  "MOD-20": "Zuhause/Miety", "MOD-22": "PetManager",
 };
 
 function buildUnifiedSystemPrompt(
@@ -266,6 +267,19 @@ const MVP_EXECUTABLE_ACTIONS = [
   "ARM.Z3.FR.QUICK_CHECK",
   "ARM.Z3.SOT.BOOK_DEMO",
   "ARM.Z3.SOT.RECOMMEND_MODULES",
+
+  // Sprint 2: New Module Actions
+  "ARM.MOD15.EXPLAIN_MODULE",
+  "ARM.MOD15.RECOMMEND_COURSE",
+  "ARM.MOD15.TRACK_PROGRESS",
+  "ARM.MOD22.EXPLAIN_MODULE",
+  "ARM.MOD22.VIEW_PIPELINE",
+  "ARM.MOD22.DRAFT_CUSTOMER_EMAIL",
+  "ARM.MOD01.EXPLAIN_MODULE",
+  "ARM.MOD01.CHECK_COMPLETENESS",
+  "ARM.MOD20.EXPLAIN_MODULE",
+  "ARM.MOD20.EXPLAIN_RIGHTS",
+  "ARM.MOD20.CHECK_NK",
 ];
 
 // Global Actions - available regardless of module context
@@ -2719,6 +2733,43 @@ async function executeAction(
         };
       }
 
+      // =================================================================
+      // SPRINT 2: NEW MODULE ACTIONS (readonly / draft_only)
+      // =================================================================
+      case "ARM.MOD15.EXPLAIN_MODULE": {
+        return { success: true, output: { title: "Fortbildung (MOD-15)", description: "Das Fortbildungsmodul bietet Zugang zu Weiterbildungsinhalten für Immobilienprofis: Fachwissen zu Finanzierung, Recht, Steuer und Vertrieb. Kurse können individuell zugewiesen und der Fortschritt nachverfolgt werden.", next_steps: ["Verfügbare Kurse durchstöbern", "Fortbildungsplan erstellen"] } };
+      }
+      case "ARM.MOD15.RECOMMEND_COURSE": {
+        return { success: true, output: { title: "Kursempfehlung", recommendations: [{ name: "Kapitalanlage-Grundlagen", category: "Investment", level: "Einsteiger" }, { name: "Finanzierungsstrukturierung", category: "Finanzierung", level: "Fortgeschritten" }, { name: "Mietrecht-Update 2026", category: "Recht", level: "Alle" }], message: "Basierend auf allgemeinen Empfehlungen. Im Fortbildungsmodul finden Sie personalisierte Vorschläge." } };
+      }
+      case "ARM.MOD15.TRACK_PROGRESS": {
+        return { success: true, output: { title: "Fortbildungsstand", message: "Ihren aktuellen Fortbildungsstand finden Sie im Fortbildungs-Dashboard unter Portal → Fortbildung. Dort sehen Sie absolvierte Kurse, offene Module und Zertifikate.", link: "/portal/fortbildung" } };
+      }
+      case "ARM.MOD22.EXPLAIN_MODULE": {
+        return { success: true, output: { title: "PetManager (MOD-22)", description: "Der PetManager ist Ihr CRM für Kunden-Pipeline und Beziehungsmanagement. Verwalten Sie Interessenten, Bestandskunden und Empfehlungsgeber in einer übersichtlichen Pipeline mit Status-Tracking.", next_steps: ["Pipeline aufrufen", "Neuen Kontakt anlegen"] } };
+      }
+      case "ARM.MOD22.VIEW_PIPELINE": {
+        return { success: true, output: { title: "Kunden-Pipeline", message: "Die Kunden-Pipeline finden Sie unter Portal → PetManager. Dort sehen Sie alle Kontakte nach Status geordnet: Interessent → Qualifiziert → Angebot → Abschluss.", link: "/portal/petmanager" } };
+      }
+      case "ARM.MOD22.DRAFT_CUSTOMER_EMAIL": {
+        return { success: true, output: { title: "E-Mail-Entwurf für Kunden", draft: { subject: "Betreff: [Ihr Thema]", body: "Sehr geehrte/r [Name],\n\nvielen Dank für Ihr Interesse. Gerne möchte ich Ihnen folgende Informationen zukommen lassen:\n\n[Inhalt]\n\nFür Rückfragen stehe ich Ihnen jederzeit zur Verfügung.\n\nMit freundlichen Grüßen\n[Ihr Name]" }, message: "Hier ist ein E-Mail-Entwurf. Bitte passen Sie ihn an und prüfen Sie vor dem Versand. Dies ist ein Entwurf — keine E-Mail wurde versendet." } };
+      }
+      case "ARM.MOD01.EXPLAIN_MODULE": {
+        return { success: true, output: { title: "Stammdaten (MOD-01)", description: "Das Stammdaten-Modul verwaltet alle Kontakte, Profile und Organisationsdaten. Es ist die zentrale Datenbasis für alle anderen Module: Kontakte, Adressen, Bankverbindungen und Dokumentenzuordnungen.", next_steps: ["Kontakte durchsuchen", "Neuen Kontakt anlegen", "Profil-Vollständigkeit prüfen"] } };
+      }
+      case "ARM.MOD01.CHECK_COMPLETENESS": {
+        return { success: true, output: { title: "Profil-Vollständigkeit", message: "Prüfen Sie Ihre Stammdaten auf Vollständigkeit: Sind alle Pflichtfelder ausgefüllt? Sind Bankverbindungen hinterlegt? Sind Dokumentenordner verknüpft? Navigieren Sie zu Stammdaten → Ihr Profil für eine detaillierte Übersicht.", checklist: ["Kontaktdaten (Name, E-Mail, Telefon)", "Adresse", "Bankverbindung (IBAN)", "Steuer-ID", "Ausweisdokument"], link: "/portal/stammdaten" } };
+      }
+      case "ARM.MOD20.EXPLAIN_MODULE": {
+        return { success: true, output: { title: "Zuhause / Miety (MOD-20)", description: "Miety ist Ihr digitales Zuhause-Management: Mietverträge, Versorgungsverträge, Nebenkostenabrechnungen und Schadensmeldungen — alles an einem Ort. Ideal für Mieter und Eigentümer gleichermaßen.", next_steps: ["Verträge einsehen", "Neuen Vertrag anlegen"] } };
+      }
+      case "ARM.MOD20.EXPLAIN_RIGHTS": {
+        return { success: true, output: { title: "Mieterrechte — Überblick", sections: [{ topic: "Mietminderung", info: "Bei Mängeln kann die Miete gemindert werden — Mangel muss dem Vermieter angezeigt werden." }, { topic: "Kündigungsschutz", info: "Ordentliche Kündigung durch Vermieter nur bei berechtigtem Interesse (z.B. Eigenbedarf)." }, { topic: "Nebenkostenabrechnung", info: "Muss innerhalb von 12 Monaten nach Abrechnungszeitraum zugestellt werden." }, { topic: "Kaution", info: "Maximal 3 Nettokaltmieten, muss getrennt angelegt werden." }], disclaimer: "Allgemeine Information — keine Rechtsberatung. Bei konkreten Fragen wenden Sie sich an einen Mieterverein oder Rechtsanwalt." } };
+      }
+      case "ARM.MOD20.CHECK_NK": {
+        return { success: true, output: { title: "Nebenkostenabrechnung prüfen", checklist: ["Abrechnungszeitraum korrekt (12 Monate)?", "Fristgerecht zugestellt (innerhalb 12 Monate nach Ende)?", "Nur umlagefähige Kosten enthalten?", "Verteilerschlüssel nachvollziehbar?", "Vorauszahlungen korrekt verrechnet?", "Einzelbelege einsehbar?"], advice: "Laden Sie Ihre Nebenkostenabrechnung in Miety hoch — Armstrong kann die Eckdaten automatisch extrahieren.", link: "/portal/miety" } };
+      }
+
       default:
         return { success: false, error: `Action ${actionCode} not implemented in MVP` };
     }
@@ -3132,6 +3183,12 @@ PORTAL-WISSEN (System of a Town):
 - MOD-13 Projekte (Bauträger-Workflow)
 - "Im Portal kannst du dein Portfolio anlegen, Dokumente sauber ablegen, Finanzierungen vorbereiten und Investments simulieren."
 
+EINWANDBEHANDLUNG (nutze proaktiv bei typischen Bedenken):
+- "Schulden sind schlecht": Unterscheide Konsum- vs. Investmentschulden. Investmentschulden werden durch Mieteinnahmen getilgt, der Sachwert bleibt. Nominale Schuld bleibt gleich, Inflation entwertet sie real.
+- "ETF ist besser": Fairer Vergleich muss den Fremdkapitalhebel einbeziehen. Bei 60.000 € EK: ETF = 4.200 € Ertrag (7%). Immobilie mit Hebel: EK-Rendite 8-15%. Idealerweise beides.
+- "Immobilien sind riskant": Jede Anlage hat Risiken. Immobilien: Klumpenrisiko, aber Nutzwert (Wohnraum wird immer gebraucht). Risiko minimieren durch: gute Lage, konservative Finanzierung, Rücklagen. Diversifikation über mehrere Objekte.
+- Nutze die Einwandbehandlung NICHT belehrend, sondern empathisch und zahlenbasiert.
+
 VERBOTEN:
 - Keine individuellen Kaufempfehlungen als Garantie
 - Keine Steuer-/Rechtsberatung im Detail
@@ -3173,6 +3230,11 @@ NACH QUALIFIZIERUNG:
 - Biete an, die Daten zu speichern (ARM.Z3.FR.CAPTURE_LEAD)
 - Verweise auf die kostenlose Selbstauskunft im Portal
 - Erwähne den Dokumenten-Checklist-Service
+
+VERTIEFUNG (nutze bei Nachfragen):
+- Nachfass-Fragen: Welchen Objekttyp suchen Sie genau? Wann möchten Sie kaufen? Gibt es bestehende Verbindlichkeiten?
+- Unterlagen-Erklärung: "Die Bank benötigt Gehaltsnachweise, um Ihre Bonität einzuschätzen. Kontoauszüge zeigen Ihr Ausgabeverhalten. Die Selbstauskunft fasst alles zusammen."
+- Ablauf-Transparenz: "Nach Ihrer Anfrage: 1) Unterlagenprüfung (1-2 Tage), 2) Bankgespräch (3-5 Tage), 3) Konditionsangebot, 4) Notartermin. Gesamtdauer: ca. 4-8 Wochen."
 
 VERBOTEN:
 - Keine konkreten Zinskonditionen nennen
@@ -3218,6 +3280,17 @@ EMPFEHLUNGSFLOW (3 Fragen):
 NACH EMPFEHLUNG:
 - Biete Demo-Buchung an (ARM.Z3.SOT.BOOK_DEMO)
 - Verweise auf kostenlose Registrierung
+
+BRANCHEN-PERSONAS (nutze bei Berufsnennung):
+- Makler: "Als Makler profitieren Sie besonders von Immobilien, Verkauf, Lead-Management und Akquise. SoT ersetzt 3-4 separate Tools."
+- Finanzberater: "Finanzierung, Finanzierungsmanager und Finanzanalyse sind Ihre Kernmodule. Selbstauskunft-Digitalisierung spart Ihnen Stunden."
+- Investor: "Immobilien-Portfolio, Investment-Suche mit Simulation und Finanzanalyse — alles in einem System."
+- Bauträger: "Projekte-Modul mit Einheiten-Management, Verkauf mit Exposé-Generator und Vertriebspartner-Netzwerk."
+- Verwalter: "DMS, Immobilien-Akte, MSV und Miety — Ihre gesamte Verwaltung digital und Armstrong-gestützt."
+
+STATUS-QUO-VERGLEICH (nutze bei Interesse):
+- "Wie managen Sie heute Ihre Dokumente? Ordner auf dem Desktop? SoT digitalisiert das komplett."
+- "Wie viel Zeit verbringen Sie mit Selbstauskünften? Armstrong macht das in 30 Sekunden aus einem PDF."
 
 STIL:
 - Enthusiastisch aber nicht aufdringlich
