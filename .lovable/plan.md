@@ -1,63 +1,50 @@
 
 
-# Fix: Briefgenerator -- Schriftgroesse und Mehrseitige Briefe
+# Fix: Miety-Texte neutralisieren (Home statt Zuhause)
 
-## Probleme
+## Kontext
 
-1. **Schrift zu gross**: Die Vorschau nutzt `fontSize: 10px` als Basis und `0.85em` fuer den Body -- das entspricht etwa 8.5px. Word nutzt standardmaessig 12pt (~16px). Die Proportionen stimmen nicht, weil der Container nur 420px breit ist (A4 waere bei 96dpi ~794px). Dadurch wirkt alles zu gross im Verhaeltnis zum Papier.
+Die Ansicht unter `/portal/immobilien/zuhause` heisst aktuell "Miety" mit "Ihr Zuhause auf einen Blick". Das muss neutraler werden, damit es auch fuer Buero-Immobilien funktioniert -- nicht nur fuer private Wohnungen.
 
-2. **Kein Seitenumbruch in der Vorschau**: `LetterPreview.tsx` hat `overflow-hidden` auf dem Body-Container und ein festes `aspectRatio: 210/297`. Laengerer Text wird einfach abgeschnitten. Es gibt keinen zweiten Seitenumbruch.
+## Aenderungen
 
-3. **PDF-Schriftgroesse ebenfalls falsch**: `letterPdf.ts` nutzt `setFontSize(10)` fuer den Body und `lineHeight: 5mm`. Standard-Geschaeftsbriefe in Word nutzen 12pt mit 1.5-fachem Zeilenabstand (~6mm).
+### 1. Tab-Titel im Menue (routesManifest.ts)
 
-## Loesung
+- Zeile 268: `title: "ZUHAUSE"` aendern auf `title: "HOME"`
 
-### 1. PDF korrigieren (letterPdf.ts)
+### 2. Ueberschrift und Beschreibung (UebersichtTile.tsx)
 
-- Body-Schriftgroesse von `10` auf `12` (pt) aendern -- entspricht Word 12pt
-- Betreff-Schriftgroesse von `11` auf `13` aendern (leicht groesser als Body, wie in Word ueblich)
-- Empfaenger-Schriftgroesse von `11` auf `12` aendern
-- Zeilenhoehe von `5mm` auf `6mm` aendern (entspricht 1.5-fachem Zeilenabstand bei 12pt)
-- Seitenumbruch-Schwelle bleibt bei 270mm (funktioniert bereits korrekt)
+| Zeile | Alt | Neu |
+|---|---|---|
+| 171 | `title="Miety"` | `title="Home"` |
+| 172 | `description="Ihr Zuhause auf einen Blick"` | `description="Ihre Objekte auf einen Blick"` |
+| 187 | `Ihr Zuhause einrichten` | `Objekt einrichten` |
+| 219 | `Mein Zuhause` | `Mein Objekt` |
+| 95 | `name: 'Mein Zuhause'` (Auto-Create Default) | `name: 'Mein Zuhause'` (bleibt -- ist ein sinnvoller Default fuer private Nutzer) |
+| 80 | `toast.success('Zuhause geloescht')` | `toast.success('Objekt geloescht')` |
+| 209 | `title={home.name \|\| 'Zuhause'}` | `title={home.name \|\| 'Objekt'}` |
 
-### 2. Vorschau mehrseitig machen (LetterPreview.tsx)
+### 3. NoHomeBanner (shared/NoHomeBanner.tsx)
 
-**Ansatz:** Den Body-Text in "Seiten" aufteilen. Da wir kein Canvas nutzen, simulieren wir den Seitenumbruch:
+- Zeile 11: `Zuhause anlegen` → `Objekt anlegen`
+- Zeile 12: `Legen Sie zuerst Ihr Zuhause an...` → `Legen Sie zuerst ein Objekt an, um Vertraege zu speichern.`
 
-- Die feste `aspectRatio` und `overflow-hidden` entfernen
-- Stattdessen: Jede "Seite" als eigenes A4-proportionales `div` rendern
-- Den Body-Text zeichenweise in Zeilen aufteilen (basierend auf geschaetzter Zeichenanzahl pro Zeile)
-- Wenn die erste Seite voll ist (ca. 35-40 Zeilen bei 12pt-Aequivalent), beginnt eine neue Seite
-- Folgeseiten zeigen nur den fortgesetzten Text (ohne Absender/Empfaenger/Betreff)
-- Zwischen den Seiten ein visueller Trenner (Schatten + Abstand)
+### 4. Dynamic Route Titel (routesManifest.ts)
 
-**Vereinfachter Ansatz (empfohlen):** Statt exakter Zeilenberechnung nutzen wir CSS-basiertes Paging:
-- Ein innerer Container mit fester Hoehe pro "Seite" (proportional zu A4)
-- `overflow: visible` statt `hidden`
-- Jede Seite als separates weisses Blatt mit Schatten darstellen
-- JavaScript misst die tatsaechliche Content-Hoehe und berechnet die Seitenanzahl
+- Zeile 569: `title: "Zuhause-Akte"` → `title: "Home-Akte"`
 
-### 3. Schriftgroessen-Proportionen in der Vorschau anpassen
+## Nicht geaendert (bewusst)
 
-Die Vorschau bei 420px Breite stellt 210mm dar, also 2px/mm. Bei 12pt in echt (ca. 4.2mm Zeichenhoehe) brauchen wir ~8.4px in der Vorschau. Aktuell ist der Body bei 8.5px -- das passt eigentlich. Das Problem ist eher, dass die anderen Elemente (Empfaenger bei `1em = 10px`, Betreff bei `1.05em`) proportional zu gross sind.
-
-Korrektur:
-- Basis-Schriftgroesse von `10px` auf `8.5px` senken (Body bleibt bei `1em`)
-- Empfaenger: `1em` (gleich wie Body, wie in Word)
-- Betreff: `1.08em` (leicht groesser)
-- Absenderzeile: `0.6em` (bleibt klein)
-- Datum: `1em` (gleich wie Body)
+- `name: 'Mein Zuhause'` als Default-Name beim Auto-Create bleibt -- der User kann das jederzeit umbenennen
+- Golden Path Prozess-ID `GP-ZUHAUSE` bleibt (interne ID, nicht sichtbar)
+- Route-Pfad `/portal/immobilien/zuhause` bleibt (URL-Stabilitaet)
+- Datenbank-Tabellennamen `miety_*` bleiben (keine Schema-Aenderung noetig)
 
 ## Betroffene Dateien
 
-| Datei | Aenderung |
-|---|---|
-| `src/lib/letterPdf.ts` | Schriftgroessen auf 12pt, Zeilenhoehe auf 6mm |
-| `src/components/portal/office/LetterPreview.tsx` | Mehrseitige Darstellung, Schriftproportionen korrigieren |
-
-## Ergebnis
-
-- PDF-Output entspricht Word 12pt Standard
-- Vorschau zeigt bei langen Briefen mehrere A4-Seiten untereinander
-- Proportionen zwischen Vorschau und PDF stimmen ueberein
+| Datei | Modul | Aenderung |
+|---|---|---|
+| `src/manifests/routesManifest.ts` | -- (shared) | Tab-Titel und Dynamic-Route-Titel |
+| `src/pages/portal/miety/tiles/UebersichtTile.tsx` | MOD-20 | Header, Labels, Toasts |
+| `src/pages/portal/miety/shared/NoHomeBanner.tsx` | MOD-20 | Banner-Text |
 
