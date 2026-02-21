@@ -14287,6 +14287,7 @@ export type Database = {
           letterhead_logo_url: string | null
           letterhead_website: string | null
           person_mode: string | null
+          phone: string | null
           phone_landline: string | null
           phone_mobile: string | null
           phone_whatsapp: string | null
@@ -14326,6 +14327,7 @@ export type Database = {
           letterhead_logo_url?: string | null
           letterhead_website?: string | null
           person_mode?: string | null
+          phone?: string | null
           phone_landline?: string | null
           phone_mobile?: string | null
           phone_whatsapp?: string | null
@@ -14365,6 +14367,7 @@ export type Database = {
           letterhead_logo_url?: string | null
           letterhead_website?: string | null
           person_mode?: string | null
+          phone?: string | null
           phone_landline?: string | null
           phone_mobile?: string | null
           phone_whatsapp?: string | null
