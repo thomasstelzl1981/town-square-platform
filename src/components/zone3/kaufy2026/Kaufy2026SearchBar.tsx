@@ -73,7 +73,7 @@ export function Kaufy2026SearchBar({
   };
 
   return (
-    <div style={{ position: 'relative', width: '100%', background: 'hsl(210, 20%, 94%)', borderRadius: 16, padding: '16px 24px', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.15)' }}>
+    <div style={{ position: 'relative', width: '100%', background: 'hsl(210, 20%, 94%)', borderRadius: 16, padding: '16px 24px', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.15)', minHeight: expanded ? 140 : 80 }}>
       <Collapsible open={expanded} onOpenChange={setExpanded}>
          <form onSubmit={handleSubmit}>
           {/* Mode Toggle Tabs */}

@@ -58,8 +58,9 @@ const heroStyles = {
     marginTop: '1rem',
   } as React.CSSProperties,
   searchFloat: {
-    position: 'relative',
-    zIndex: 10,
+    position: 'sticky',
+    top: 16,
+    zIndex: 50,
     maxWidth: 900,
     width: '85%',
     margin: '-60px auto 0',
