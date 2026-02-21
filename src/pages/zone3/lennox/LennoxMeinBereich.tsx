@@ -4,7 +4,7 @@
  *   1. Buchungsanfrage + Status list
  *   2. Hundeakte (inline CRUD for pet_z1_pets)
  */
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import {
   PawPrint, Calendar, Plus, ArrowLeft, Send, Save, X, Trash2, Check, XCircle, Clock,
@@ -16,23 +16,11 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useZ3Auth } from '@/hooks/useZ3Auth';
 import { z } from 'zod';
-
-/* ── Alpine Chic palette ─────────────────────────────── */
-const C = {
-  forest: 'hsl(155,35%,22%)',
-  cream: 'hsl(38,45%,96%)',
-  bark: 'hsl(25,30%,18%)',
-  barkMuted: 'hsl(25,15%,42%)',
-  sand: 'hsl(32,35%,82%)',
-  sandLight: 'hsl(35,40%,92%)',
-  coral: 'hsl(10,78%,58%)',
-  coralHover: 'hsl(10,78%,50%)',
-  white: '#fff',
-};
+import { LENNOX as C, SPECIES_LABELS, GENDER_LABELS } from './lennoxTheme';
 
 /* ── Pet form schema & helpers ───────────────────────── */
 const petSchema = z.object({
@@ -51,9 +39,6 @@ const petSchema = z.object({
 type PetForm = z.infer<typeof petSchema>;
 const emptyPet: PetForm = { name: '', species: 'dog', breed: '', gender: 'unknown', birth_date: '', weight_kg: null, chip_number: '', neutered: false, vet_name: '', allergies: [], notes: '' };
 
-const speciesLabels: Record<string, string> = { dog: 'Hund', cat: 'Katze', bird: 'Vogel', small_animal: 'Kleintier', reptile: 'Reptil', other: 'Sonstiges' };
-const genderLabels: Record<string, string> = { male: 'Männlich', female: 'Weiblich', unknown: 'Unbekannt' };
-
 const statusConfig: Record<string, { label: string; color: string; icon: typeof Clock }> = {
   pending: { label: 'Angefragt', color: 'hsl(45,80%,50%)', icon: Clock },
   confirmed: { label: 'Bestätigt', color: 'hsl(155,50%,40%)', icon: Check },
@@ -63,7 +48,6 @@ const statusConfig: Record<string, { label: string; color: string; icon: typeof 
   rejected: { label: 'Abgelehnt', color: 'hsl(0,60%,50%)', icon: XCircle },
 };
 
-/* ── Select styling helper ───────────────────────────── */
 const selectCls = `w-full h-10 rounded-md border px-3 text-sm`;
 
 export default function LennoxMeinBereich() {
@@ -310,7 +294,6 @@ export default function LennoxMeinBereich() {
           {/* ── Booking Form ─────────────────────────── */}
           <div className="space-y-4 p-4 rounded-lg" style={{ background: C.sandLight }}>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {/* Provider */}
               <div className="space-y-1">
                 <Label className="text-xs font-medium" style={{ color: C.barkMuted }}>Anbieter *</Label>
                 <select value={selectedProviderId} onChange={e => { setSelectedProviderId(e.target.value); setBookingService(''); }}
@@ -319,7 +302,6 @@ export default function LennoxMeinBereich() {
                   {providers.map((p: any) => <option key={p.id} value={p.id}>{p.company_name}</option>)}
                 </select>
               </div>
-              {/* Service */}
               <div className="space-y-1">
                 <Label className="text-xs font-medium" style={{ color: C.barkMuted }}>Service *</Label>
                 <select value={bookingService} onChange={e => setBookingService(e.target.value)}
@@ -333,31 +315,27 @@ export default function LennoxMeinBereich() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              {/* Date */}
               <div className="space-y-1">
                 <Label className="text-xs font-medium" style={{ color: C.barkMuted }}>Wunschtermin</Label>
                 <Input type="date" value={bookingDate} onChange={e => setBookingDate(e.target.value)}
                   min={new Date().toISOString().split('T')[0]}
                   style={{ borderColor: C.sand }} />
               </div>
-              {/* Time */}
               <div className="space-y-1">
                 <Label className="text-xs font-medium" style={{ color: C.barkMuted }}>Wunschzeit</Label>
                 <Input type="time" value={bookingTime} onChange={e => setBookingTime(e.target.value)}
                   style={{ borderColor: C.sand }} />
               </div>
-              {/* Pet */}
               <div className="space-y-1">
                 <Label className="text-xs font-medium" style={{ color: C.barkMuted }}>Für welches Tier?</Label>
                 <select value={bookingPetId} onChange={e => setBookingPetId(e.target.value)}
                   className={selectCls} style={{ borderColor: C.sand, background: C.cream }}>
                   <option value="">— optional —</option>
-                  {pets.map((p: any) => <option key={p.id} value={p.id}>{p.name} ({speciesLabels[p.species] || p.species})</option>)}
+                  {pets.map((p: any) => <option key={p.id} value={p.id}>{p.name} ({SPECIES_LABELS[p.species] || p.species})</option>)}
                 </select>
               </div>
             </div>
 
-            {/* Notes */}
             <div className="space-y-1">
               <Label className="text-xs font-medium" style={{ color: C.barkMuted }}>Anmerkungen</Label>
               <Textarea value={bookingNotes} onChange={e => setBookingNotes(e.target.value)}
@@ -431,7 +409,6 @@ export default function LennoxMeinBereich() {
                 </button>
               </div>
 
-              {/* Stammdaten */}
               <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: C.barkMuted }}>Stammdaten</p>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
@@ -442,7 +419,7 @@ export default function LennoxMeinBereich() {
                   <Label className="text-xs" style={{ color: C.barkMuted }}>Tierart *</Label>
                   <select value={petForm.species} onChange={e => setPetForm(f => ({ ...f, species: e.target.value as any }))}
                     className={selectCls} style={{ borderColor: C.sand, background: C.cream }}>
-                    {Object.entries(speciesLabels).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                    {Object.entries(SPECIES_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
                   </select>
                 </div>
                 <div className="space-y-1">
@@ -453,12 +430,11 @@ export default function LennoxMeinBereich() {
                   <Label className="text-xs" style={{ color: C.barkMuted }}>Geschlecht</Label>
                   <select value={petForm.gender} onChange={e => setPetForm(f => ({ ...f, gender: e.target.value as any }))}
                     className={selectCls} style={{ borderColor: C.sand, background: C.cream }}>
-                    {Object.entries(genderLabels).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                    {Object.entries(GENDER_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
                   </select>
                 </div>
               </div>
 
-              {/* Körperdaten + Identifikation */}
               <p className="text-xs font-semibold uppercase tracking-wide pt-2" style={{ color: C.barkMuted }}>Körperdaten & Identifikation</p>
               <div className="grid grid-cols-3 gap-3">
                 <div className="space-y-1">
@@ -479,7 +455,6 @@ export default function LennoxMeinBereich() {
                 Kastriert / Sterilisiert
               </label>
 
-              {/* Gesundheit */}
               <p className="text-xs font-semibold uppercase tracking-wide pt-2" style={{ color: C.barkMuted }}>Gesundheit</p>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
@@ -512,13 +487,12 @@ export default function LennoxMeinBereich() {
             <div className="space-y-3">
               {pets.map((pet: any) => (
                 <div key={pet.id} className="p-4 rounded-lg space-y-2" style={{ background: C.sandLight }}>
-                  {/* Header row */}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <PawPrint className="h-4 w-4" style={{ color: C.forest }} />
                       <span className="font-semibold text-sm" style={{ color: C.bark }}>{pet.name}</span>
                       <Badge variant="outline" className="text-[10px]" style={{ borderColor: C.sand, color: C.barkMuted }}>
-                        {speciesLabels[pet.species] || pet.species}
+                        {SPECIES_LABELS[pet.species] || pet.species}
                       </Badge>
                       {pet.breed && <span className="text-xs" style={{ color: C.barkMuted }}>{pet.breed}</span>}
                     </div>
@@ -529,9 +503,8 @@ export default function LennoxMeinBereich() {
                       </Button>
                     </div>
                   </div>
-                  {/* Detail grid */}
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-1 text-xs" style={{ color: C.barkMuted }}>
-                    <span>Geschlecht: <strong style={{ color: C.bark }}>{genderLabels[pet.gender] || '—'}</strong></span>
+                    <span>Geschlecht: <strong style={{ color: C.bark }}>{GENDER_LABELS[pet.gender] || '—'}</strong></span>
                     <span>Geb.: <strong style={{ color: C.bark }}>{pet.birth_date ? new Date(pet.birth_date).toLocaleDateString('de-DE') : '—'}</strong></span>
                     <span>Gewicht: <strong style={{ color: C.bark }}>{pet.weight_kg ? `${pet.weight_kg} kg` : '—'}</strong></span>
                     <span>Chip: <strong style={{ color: C.bark }}>{pet.chip_number || '—'}</strong></span>

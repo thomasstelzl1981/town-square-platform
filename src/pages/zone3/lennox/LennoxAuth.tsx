@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Mail, Lock, User, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import { z } from 'zod';
+import { LENNOX as C } from './lennoxTheme';
 import lennoxPatch from '@/assets/logos/lennox_logo_patch.jpeg';
 
 const loginSchema = z.object({
@@ -21,16 +22,6 @@ const signupSchema = loginSchema.extend({
   firstName: z.string().trim().min(1, 'Vorname erforderlich').max(100),
   lastName: z.string().trim().min(1, 'Nachname erforderlich').max(100),
 });
-
-const C = {
-  forest: 'hsl(155,35%,22%)',
-  cream: 'hsl(38,45%,96%)',
-  bark: 'hsl(25,30%,18%)',
-  barkMuted: 'hsl(25,15%,42%)',
-  sand: 'hsl(32,35%,82%)',
-  sandLight: 'hsl(35,40%,92%)',
-  coral: 'hsl(10,78%,58%)',
-};
 
 export default function LennoxAuth() {
   const [mode, setMode] = useState<'login' | 'signup'>('login');
@@ -77,7 +68,7 @@ export default function LennoxAuth() {
         <ArrowLeft className="h-4 w-4" /> Zurück zur Startseite
       </Link>
 
-      <Card className="w-full max-w-md shadow-xl border" style={{ borderColor: C.sandLight, background: 'white' }}>
+      <Card className="w-full max-w-md shadow-xl border" style={{ borderColor: C.sandLight, background: C.white }}>
         <CardHeader className="text-center space-y-3 pb-2">
           <img src={lennoxPatch} alt="Lennox & Friends" className="h-16 w-16 rounded-xl object-cover mx-auto shadow-md" />
           <CardTitle className="text-xl font-bold" style={{ color: C.bark }}>

@@ -4,38 +4,18 @@
  */
 import { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { MapPin, Star, Search, Shield, Heart, CreditCard, ArrowRight, ShoppingBag, Mountain, Users, CheckCircle, Globe, PawPrint } from 'lucide-react';
+import { MapPin, Star, Search, Shield, Heart, ArrowRight, ShoppingBag, Mountain, Users, CheckCircle, Globe, PawPrint } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { useSearchProviders, type SearchProvider } from '@/hooks/usePetProviderSearch';
 import { DEMO_LENNOX_SEARCH_PROVIDER } from '@/engines/demoData/petManagerDemo';
+import { LENNOX as C, SERVICE_TAG_LABELS } from './lennoxTheme';
 import heroImage from '@/assets/lennox/hero_alpine_chic.jpg';
 import cozyImage from '@/assets/lennox/section_cozy.jpg';
 import lennoxPatch from '@/assets/logos/lennox_logo_patch.jpeg';
 import lennoxBadge from '@/assets/logos/lennox_logo_badge.jpeg';
-
-const SERVICE_TAG_LABELS: Record<string, string> = {
-  boarding: 'Pension', daycare: 'Tagesstätte', grooming: 'Pflege',
-  walking: 'Gassi', training: 'Training', sitting: 'Sitting',
-  veterinary: 'Tierarzt', transport: 'Transport', nutrition: 'Ernährung', other: 'Sonstiges',
-};
-
-/* ─── Alpine Chic Palette ─── */
-const C = {
-  forest: 'hsl(155,35%,22%)',
-  forestLight: 'hsl(155,28%,32%)',
-  cream: 'hsl(38,45%,96%)',
-  warmWhite: 'hsl(40,40%,99%)',
-  sand: 'hsl(32,35%,82%)',
-  sandLight: 'hsl(35,40%,92%)',
-  bark: 'hsl(25,30%,18%)',
-  barkMuted: 'hsl(25,15%,42%)',
-  coral: 'hsl(10,78%,58%)',
-  coralHover: 'hsl(10,78%,50%)',
-  gold: 'hsl(40,85%,50%)',
-};
 
 export default function LennoxStartseite() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -81,7 +61,6 @@ export default function LennoxStartseite() {
         </div>
         <div className="relative z-10 max-w-5xl mx-auto px-6 flex flex-col items-center justify-center text-center"
           style={{ minHeight: '85vh' }}>
-          
           
           <h1 className={`font-bold text-white leading-tight tracking-tight transition-all duration-500 ${hasSearched ? 'text-2xl md:text-4xl mb-3' : 'text-4xl md:text-6xl lg:text-7xl mb-4'}`}
             style={{ textShadow: '0 2px 20px rgba(0,0,0,0.3)' }}>
@@ -302,16 +281,17 @@ export default function LennoxStartseite() {
           </div>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {[
-              { name: 'Trucker Caps', img: '/shop/lennox-cap-green.jpg', price: '34,90 €' },
-              { name: 'Bommelmützen-Set', img: '/shop/lennox-beanies.jpg', price: '29,90 €' },
-              { name: 'Hundehalsbänder', img: '/shop/lennox-collars.jpg', price: '24,90 €' },
-              { name: 'Canvas Tote Bag', img: '/shop/lennox-tote-bag.jpg', price: '39,90 €' },
+              { name: 'Trucker Caps', emoji: '🧢', price: '34,90 €' },
+              { name: 'Bommelmützen-Set', emoji: '🎿', price: '29,90 €' },
+              { name: 'Hundehalsbänder', emoji: '🐕', price: '24,90 €' },
+              { name: 'Canvas Tote Bag', emoji: '👜', price: '39,90 €' },
             ].map(p => (
               <Link key={p.name} to="/website/tierservice/shop">
                 <Card className="border overflow-hidden hover:shadow-lg transition-all cursor-pointer group"
                   style={{ borderColor: C.sandLight, background: 'white' }}>
-                  <div className="h-44 overflow-hidden">
-                    <img src={p.img} alt={p.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                  <div className="h-44 flex items-center justify-center"
+                    style={{ background: `linear-gradient(135deg, ${C.sandLight}, ${C.cream})` }}>
+                    <span className="text-5xl group-hover:scale-110 transition-transform duration-300">{p.emoji}</span>
                   </div>
                   <CardContent className="p-4 space-y-1">
                     <p className="font-semibold text-sm" style={{ color: C.bark }}>{p.name}</p>
