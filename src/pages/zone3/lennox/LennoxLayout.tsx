@@ -5,18 +5,8 @@ import { Outlet, Link, useLocation } from 'react-router-dom';
 import { Menu, X, User, LogIn, ShoppingBag, Handshake, MapPin } from 'lucide-react';
 import { useState } from 'react';
 import { useZ3Auth } from '@/hooks/useZ3Auth';
+import { LENNOX as C } from './lennoxTheme';
 import lennoxPatch from '@/assets/logos/lennox_logo_patch.jpeg';
-
-const C = {
-  forest: 'hsl(155,35%,22%)',
-  forestHover: 'hsl(155,35%,18%)',
-  cream: 'hsl(38,45%,96%)',
-  bark: 'hsl(25,30%,18%)',
-  barkMuted: 'hsl(25,15%,42%)',
-  sand: 'hsl(32,35%,82%)',
-  sandLight: 'hsl(35,40%,92%)',
-  coral: 'hsl(10,78%,58%)',
-};
 
 const navLinks = [
   { path: '/website/tierservice?locate=1', label: 'Partner finden', icon: MapPin },
@@ -32,7 +22,7 @@ export default function LennoxLayout() {
   const isActive = (path: string) => location.pathname === path || location.pathname.startsWith(path + '/');
 
   return (
-    <div className="min-h-screen" style={{ background: C.cream }}>
+    <div className="min-h-screen flex flex-col" style={{ background: C.cream }}>
       {/* Header */}
       <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b" style={{ borderColor: C.sandLight }}>
         <div className="max-w-6xl mx-auto flex items-center justify-between h-16 px-5">
@@ -97,23 +87,35 @@ export default function LennoxLayout() {
         )}
       </header>
 
-      <main><Outlet /></main>
+      <main className="flex-1"><Outlet /></main>
 
       {/* Footer */}
       <footer className="border-t bg-white" style={{ borderColor: C.sandLight }}>
         <div className="max-w-6xl mx-auto px-5 py-10">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-start">
+            {/* Brand */}
             <div className="flex items-center gap-2.5">
-              <img src={lennoxPatch} alt="" className="h-7 w-auto rounded-md object-cover" />
-              <span className="font-bold tracking-tight" style={{ color: C.bark }}>Lennox & Friends</span>
+              <img src={lennoxPatch} alt="" className="h-8 w-auto rounded-md object-cover" />
+              <div>
+                <span className="font-bold tracking-tight block" style={{ color: C.bark }}>Lennox & Friends</span>
+                <span className="text-xs" style={{ color: C.barkMuted }}>Dein Hundenetzwerk</span>
+              </div>
             </div>
-            <div className="flex items-center gap-4 text-xs" style={{ color: C.barkMuted }}>
+
+            {/* Links */}
+            <div className="flex flex-wrap gap-x-6 gap-y-2 text-xs" style={{ color: C.barkMuted }}>
+              <Link to="/website/tierservice/partner-werden" className="hover:underline">Partner werden</Link>
+              <Link to="/website/tierservice/shop" className="hover:underline">Shop</Link>
               <Link to="/website/tierservice/impressum" className="hover:underline">Impressum</Link>
               <Link to="/website/tierservice/datenschutz" className="hover:underline">Datenschutz</Link>
-              <Link to="mailto:info@lennoxandfriends.com" className="hover:underline">Kontakt</Link>
+              <a href="mailto:info@lennoxandfriends.com" className="hover:underline">Kontakt</a>
             </div>
-            <p className="text-xs" style={{ color: C.barkMuted }}>
-              © {new Date().getFullYear()} Lennox & Friends — Dein Hundenetzwerk
+
+            {/* Copyright */}
+            <p className="text-xs md:text-right" style={{ color: C.barkMuted }}>
+              © {new Date().getFullYear()} Lennox & Friends
+              <br />
+              <span className="text-[10px] opacity-60">Ein Netzwerk der SOT Plattform</span>
             </p>
           </div>
         </div>

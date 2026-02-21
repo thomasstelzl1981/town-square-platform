@@ -13,15 +13,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { z } from 'zod';
+import { LENNOX as C } from './lennoxTheme';
 import partnerHero from '@/assets/lennox/partner_hero.jpg';
-
-const COLORS = {
-  forest: 'hsl(155,35%,25%)',
-  bark: 'hsl(155,25%,15%)',
-  muted: 'hsl(155,10%,45%)',
-  sand: 'hsl(35,30%,85%)',
-  cream: 'hsl(40,40%,96%)',
-};
 
 const formSchema = z.object({
   name: z.string().trim().min(2, 'Name erforderlich').max(100),
@@ -79,9 +72,9 @@ export default function LennoxPartnerWerden() {
   if (submitted) {
     return (
       <div className="max-w-md mx-auto px-5 py-20 text-center space-y-4">
-        <CheckCircle className="h-12 w-12 mx-auto" style={{ color: COLORS.forest }} />
-        <h1 className="text-2xl font-bold" style={{ color: COLORS.bark }}>Vielen Dank!</h1>
-        <p style={{ color: COLORS.muted }}>Deine Bewerbung wurde eingereicht. Wir melden uns innerhalb von 48 Stunden.</p>
+        <CheckCircle className="h-12 w-12 mx-auto" style={{ color: C.forest }} />
+        <h1 className="text-2xl font-bold" style={{ color: C.bark }}>Vielen Dank!</h1>
+        <p style={{ color: C.barkMuted }}>Deine Bewerbung wurde eingereicht. Wir melden uns innerhalb von 48 Stunden.</p>
         <Link to="/website/tierservice">
           <Button variant="outline" className="rounded-full mt-4">Zur Startseite</Button>
         </Link>
@@ -92,12 +85,12 @@ export default function LennoxPartnerWerden() {
   return (
     <div className="space-y-0">
       {/* ═══ HERO ═══ */}
-      <section className="relative overflow-hidden" style={{ minHeight: '85vh' }}>
+      <section className="relative overflow-hidden" style={{ minHeight: '70vh' }}>
         <div className="absolute inset-0">
           <img src={partnerHero} alt="Lennox Partner Netzwerk" className="w-full h-full object-cover object-center" />
           <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/20 to-black/50" />
         </div>
-        <div className="relative z-10 flex flex-col items-center justify-center text-center px-5" style={{ minHeight: '85vh' }}>
+        <div className="relative z-10 flex flex-col items-center justify-center text-center px-5" style={{ minHeight: '70vh' }}>
           <h1 className="text-3xl md:text-5xl font-bold text-white mb-3">Werde Partner in deiner Region</h1>
           <p className="text-white/80 text-base md:text-lg max-w-xl">
             Gemeinsam bauen wir das größte Netzwerk für Hunde-Dienstleister in Deutschland.
@@ -106,38 +99,38 @@ export default function LennoxPartnerWerden() {
       </section>
 
       <div className="max-w-4xl mx-auto px-5 py-10 space-y-12">
-        <Link to="/website/tierservice" className="inline-flex items-center gap-1 text-sm" style={{ color: COLORS.muted }}>
+        <Link to="/website/tierservice" className="inline-flex items-center gap-1 text-sm" style={{ color: C.barkMuted }}>
           <ArrowLeft className="h-4 w-4" /> Zurück
         </Link>
 
         {/* ═══ VISION ═══ */}
         <section className="space-y-4 max-w-2xl">
-          <h2 className="text-2xl font-bold" style={{ color: COLORS.bark }}>Unsere Vision</h2>
-          <p className="leading-relaxed" style={{ color: COLORS.muted }}>
+          <h2 className="text-2xl font-bold" style={{ color: C.bark }}>Unsere Vision</h2>
+          <p className="leading-relaxed" style={{ color: C.barkMuted }}>
             Unser Ziel ist ein deutschlandweites Netzwerk geprüfter Hundeprofis — eine zentrale Plattform,
             auf der sich jeder Hundehalter Unterstützung holen kann: ob Betreuung während des Urlaubs,
             professionelle Pflege oder einfach einen zuverlässigen Gassi-Service in der Nachbarschaft.
           </p>
-          <p className="leading-relaxed" style={{ color: COLORS.muted }}>
+          <p className="leading-relaxed" style={{ color: C.barkMuted }}>
             Lennox & Friends ist bereits Teil einer wachsenden Plattform für private Dienstleistungen.
             Gegründet in Bayern, mit langjähriger Erfahrung in der Hundebetreuung, möchten wir sehr bald
             in jeder Region Deutschlands einen exklusiven Partner an unserer Seite haben.
           </p>
-          <p className="font-semibold" style={{ color: COLORS.forest }}>
+          <p className="font-semibold" style={{ color: C.forest }}>
             Werden Sie exklusiver Partner für Ihre Region in unserem Netzwerk.
           </p>
         </section>
 
         {/* ═══ BENEFITS ═══ */}
         <section className="space-y-6">
-          <h2 className="text-2xl font-bold" style={{ color: COLORS.bark }}>Ihre Vorteile als Partner</h2>
+          <h2 className="text-2xl font-bold" style={{ color: C.bark }}>Ihre Vorteile als Partner</h2>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {BENEFITS.map(b => (
-              <Card key={b.title} className="border" style={{ borderColor: COLORS.sand, background: 'white' }}>
+              <Card key={b.title} className="border" style={{ borderColor: C.sand, background: 'white' }}>
                 <CardContent className="p-5 space-y-2">
-                  <b.icon className="h-7 w-7" style={{ color: COLORS.forest }} />
-                  <h3 className="font-semibold text-sm" style={{ color: COLORS.bark }}>{b.title}</h3>
-                  <p className="text-xs leading-relaxed" style={{ color: COLORS.muted }}>{b.desc}</p>
+                  <b.icon className="h-7 w-7" style={{ color: C.forest }} />
+                  <h3 className="font-semibold text-sm" style={{ color: C.bark }}>{b.title}</h3>
+                  <p className="text-xs leading-relaxed" style={{ color: C.barkMuted }}>{b.desc}</p>
                 </CardContent>
               </Card>
             ))}
@@ -145,69 +138,36 @@ export default function LennoxPartnerWerden() {
         </section>
 
         {/* ═══ FORM ═══ */}
-        <Card className="max-w-md mx-auto border" style={{ borderColor: COLORS.sand, background: COLORS.cream }}>
+        <Card className="max-w-md mx-auto border" style={{ borderColor: C.sand, background: C.sandLight }}>
           <CardContent className="p-6 space-y-4">
-            <h2 className="text-lg font-semibold" style={{ color: COLORS.bark }}>Bewerbungsformular</h2>
+            <h2 className="text-lg font-semibold" style={{ color: C.bark }}>Bewerbungsformular</h2>
             <div>
-              <Label className="text-sm font-medium" style={{ color: COLORS.bark }}>Name *</Label>
-              <Input
-                value={form.name}
-                onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                maxLength={100}
-                className="mt-1 border"
-                style={{ borderColor: COLORS.sand, color: COLORS.bark, background: 'white' }}
-              />
+              <Label className="text-sm font-medium" style={{ color: C.bark }}>Name *</Label>
+              <Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} maxLength={100}
+                className="mt-1 border" style={{ borderColor: C.sand, color: C.bark, background: 'white' }} />
             </div>
             <div>
-              <Label className="text-sm font-medium" style={{ color: COLORS.bark }}>E-Mail *</Label>
-              <Input
-                type="email"
-                value={form.email}
-                onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
-                maxLength={255}
-                className="mt-1 border"
-                style={{ borderColor: COLORS.sand, color: COLORS.bark, background: 'white' }}
-              />
+              <Label className="text-sm font-medium" style={{ color: C.bark }}>E-Mail *</Label>
+              <Input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} maxLength={255}
+                className="mt-1 border" style={{ borderColor: C.sand, color: C.bark, background: 'white' }} />
             </div>
             <div>
-              <Label className="text-sm font-medium" style={{ color: COLORS.bark }}>Region *</Label>
-              <Input
-                placeholder="z.B. München-Süd"
-                value={form.region}
-                onChange={e => setForm(f => ({ ...f, region: e.target.value }))}
-                maxLength={100}
-                className="mt-1 border"
-                style={{ borderColor: COLORS.sand, color: COLORS.bark, background: 'white' }}
-              />
+              <Label className="text-sm font-medium" style={{ color: C.bark }}>Region *</Label>
+              <Input placeholder="z.B. München-Süd" value={form.region} onChange={e => setForm(f => ({ ...f, region: e.target.value }))} maxLength={100}
+                className="mt-1 border" style={{ borderColor: C.sand, color: C.bark, background: 'white' }} />
             </div>
             <div>
-              <Label className="text-sm font-medium" style={{ color: COLORS.bark }}>Angebotene Leistung(en) *</Label>
-              <Input
-                placeholder="z.B. Hundepension, Grooming"
-                value={form.serviceType}
-                onChange={e => setForm(f => ({ ...f, serviceType: e.target.value }))}
-                maxLength={200}
-                className="mt-1 border"
-                style={{ borderColor: COLORS.sand, color: COLORS.bark, background: 'white' }}
-              />
+              <Label className="text-sm font-medium" style={{ color: C.bark }}>Angebotene Leistung(en) *</Label>
+              <Input placeholder="z.B. Hundepension, Grooming" value={form.serviceType} onChange={e => setForm(f => ({ ...f, serviceType: e.target.value }))} maxLength={200}
+                className="mt-1 border" style={{ borderColor: C.sand, color: C.bark, background: 'white' }} />
             </div>
             <div>
-              <Label className="text-sm font-medium" style={{ color: COLORS.bark }}>Nachricht (optional)</Label>
-              <Textarea
-                rows={3}
-                value={form.message}
-                onChange={e => setForm(f => ({ ...f, message: e.target.value }))}
-                maxLength={1000}
-                className="mt-1 border"
-                style={{ borderColor: COLORS.sand, color: COLORS.bark, background: 'white' }}
-              />
+              <Label className="text-sm font-medium" style={{ color: C.bark }}>Nachricht (optional)</Label>
+              <Textarea rows={3} value={form.message} onChange={e => setForm(f => ({ ...f, message: e.target.value }))} maxLength={1000}
+                className="mt-1 border" style={{ borderColor: C.sand, color: C.bark, background: 'white' }} />
             </div>
-            <Button
-              className="w-full rounded-full text-white font-semibold"
-              style={{ background: COLORS.forest }}
-              onClick={handleSubmit}
-              disabled={loading}
-            >
+            <Button className="w-full rounded-full text-white font-semibold" style={{ background: C.forest }}
+              onClick={handleSubmit} disabled={loading}>
               {loading ? 'Wird gesendet…' : 'Bewerbung absenden'}
             </Button>
           </CardContent>
