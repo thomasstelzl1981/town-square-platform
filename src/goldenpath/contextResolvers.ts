@@ -315,23 +315,27 @@ const gpVermietungResolver: ContextResolver = async ({ tenantId, entityId: prope
     .maybeSingle();
   flags.property_exists = !!prop;
 
-  // Check units exist
-  const { count: unitCount } = await supabase
+  // Check units exist and collect unit IDs for lease lookup
+  const { data: units } = await supabase
     .from('units')
-    .select('*', { count: 'exact', head: true })
+    .select('id')
     .eq('property_id', propertyId);
-  flags.units_exist = (unitCount ?? 0) > 0;
+  flags.units_exist = (units?.length ?? 0) > 0;
 
-  // Check active leases (recursive types bypass)
-  const { count: leaseCount } = await supabase
-    .from('leases' as never)
-    .select('*', { count: 'exact', head: true })
-    .eq('property_id' as never, propertyId)
-    .eq('status' as never, 'active') as unknown as { count: number | null };
-  flags.lease_active = (leaseCount ?? 0) > 0;
-
-  // NK settlement flag derived from lease existence (no dedicated nk table)
-  flags.nk_settlement_exists = (leaseCount ?? 0) > 0;
+  // Check active leases via unit_id (leases belong to units, not properties)
+  if (units && units.length > 0) {
+    const unitIds = units.map(u => u.id);
+    const { count: leaseCount } = await supabase
+      .from('leases' as never)
+      .select('*', { count: 'exact', head: true })
+      .in('unit_id' as never, unitIds)
+      .eq('status' as never, 'active') as unknown as { count: number | null };
+    flags.lease_active = (leaseCount ?? 0) > 0;
+    flags.nk_settlement_exists = (leaseCount ?? 0) > 0;
+  } else {
+    flags.lease_active = false;
+    flags.nk_settlement_exists = false;
+  }
 
   return flags;
 };

@@ -147,7 +147,7 @@
 | D-13 | GP-KONTEN | Kontoverwaltung | MOD-18 | 6/6 | Demo-Widget → Transaktionen → Matching | ✅ PASS (Header ✅, Haushalt-Grid 4 Personen mit DEMO-Badges ✅, Finanzbericht ✅) |
 | D-14 | GP-PV-ANLAGE | PV-Anlagenanlage | MOD-19 | 6/6 | Demo-Widget → Anlagendaten → Erträge | ✅ PASS (Header ✅, WidgetGrid ✅, Demo EFH Oberhaching 32.4 kWp mit Badge ✅) |
 | D-15 | GP-ZUHAUSE | Zuhause-Verwaltung | MOD-20 | 6/6 | Demo-Widget → Wohnung → Versorger | ✅ PASS (Header ✅, Demo Leopoldstr. 12 ✅, Google Maps ✅, Service-Cards ✅) |
-| D-16 | GP-PETS | Tierverwaltung | MOD-05 | 6/6 | Demo-Widget → Tierprofil → Pflege | ❌ FAIL (404 — Route /portal/msv nicht registriert) |
+| D-16 | GP-PETS | Tierverwaltung | MOD-05 | — | — | ⬜ N/A — Mietsonderverwaltung in MOD-04 (Immobilienakte) integriert, kein eigenständiges Modul |
 | D-17 | GP-PET | Pet Manager Demo | MOD-22 | 3/6 | Demo → Kunden → Buchungen | ✅ PASS (Header ✅, Dashboard Lennox & Friends ✅, KPIs ✅, Tageskapazität 0/12 ✅) |
 
 ### Compliance-Checkliste pro Prozess
