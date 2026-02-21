@@ -106,6 +106,7 @@ const CROSS_ZONE_EDGE_FUNCTIONS = [
   { fn: 'sot-renovation-inbound-webhook', contract: 'CONTRACT_RENOVATION_INBOUND' },
   { fn: 'sot-whatsapp-webhook', contract: 'CONTRACT_WHATSAPP_INBOUND' },
   { fn: 'sot-project-intake', contract: 'CONTRACT_PROJECT_INTAKE' },
+  { fn: 'sot-ki-browser', contract: 'CONTRACT_KI_BROWSER_SESSION' },
 ];
 
 export function validateContractCoverage(): void {
