@@ -20983,6 +20983,10 @@ export type Database = {
         | "referral"
         | "manual"
         | "kaufy_website"
+        | "kaufy_armstrong"
+        | "kaufy_expose_request"
+        | "futureroom_armstrong"
+        | "sot_demo_booking"
       lead_status: "new" | "contacted" | "qualified" | "converted" | "lost"
       listing_status:
         | "draft"
@@ -21466,6 +21470,10 @@ export const Constants = {
         "referral",
         "manual",
         "kaufy_website",
+        "kaufy_armstrong",
+        "kaufy_expose_request",
+        "futureroom_armstrong",
+        "sot_demo_booking",
       ],
       lead_status: ["new", "contacted", "qualified", "converted", "lost"],
       listing_status: [
