@@ -18,6 +18,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { useUniversalUpload } from '@/hooks/useUniversalUpload';
 import { PARSER_PROFILES, getParserProfile, resolveLegacyMode } from '@/config/parserManifest';
+import { STORAGE_MANIFEST } from '@/config/storageManifest';
 import type { ParserMode, ParserEngineResponse, IntakeStep, IntakeProgress, IntakeResult, ExtractedRecord } from '@/types/parser-engine';
 
 export interface DocumentIntakeOptions {
@@ -71,13 +72,37 @@ export function useDocumentIntake() {
     const moduleCode = options.moduleCode || profile.moduleCode;
 
     try {
+      // ── Step 0: Resolve entity folder if entityId provided ─────────
+      let resolvedParentNodeId = options.parentNodeId;
+      
+      if (!resolvedParentNodeId && options.entityId && moduleCode) {
+        const manifestEntry = STORAGE_MANIFEST[moduleCode];
+        const fkColumn = manifestEntry?.entity_fk_column;
+        
+        if (fkColumn) {
+          const { data: folderNode } = await (supabase as any)
+            .from('storage_nodes')
+            .select('id')
+            .eq('tenant_id', activeTenantId)
+            .eq(fkColumn, options.entityId)
+            .eq('node_type', 'folder')
+            .is('parent_id', null)
+            .limit(1)
+            .maybeSingle();
+          
+          if (folderNode?.id) {
+            resolvedParentNodeId = folderNode.id;
+          }
+        }
+      }
+
       // ── Step 1: Upload (Phase 1 via useUniversalUpload) ────────────
       setIntakeProgress({ step: 'uploading', progress: 10, message: 'Datei wird hochgeladen…' });
 
       const uploadResult = await universalUpload.upload(file, {
         moduleCode,
         entityId: options.entityId,
-        parentNodeId: options.parentNodeId,
+        parentNodeId: resolvedParentNodeId,
         triggerAI: false, // We handle parsing ourselves
         source: 'intake',
       });

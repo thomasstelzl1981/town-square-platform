@@ -32,33 +32,33 @@ const ENTITY_LOADER_CONFIG: Partial<Record<ParserMode, EntityLoaderConfig>> = {
   },
   fahrzeugschein: {
     table: 'cars_vehicles',
-    selectFields: 'id, brand, model, license_plate',
+    selectFields: 'id, make, model, license_plate',
     buildLabel: (r) => {
-      const parts = [r.brand, r.model, r.license_plate ? `(${r.license_plate})` : null].filter(Boolean);
+      const parts = [r.make, r.model, r.license_plate ? `(${r.license_plate})` : null].filter(Boolean);
       return parts.join(' ') || 'Fahrzeug';
     },
   },
   pv_anlage: {
     table: 'pv_plants',
-    selectFields: 'id, name, capacity_kwp',
+    selectFields: 'id, name, kwp',
     buildLabel: (r) => {
-      const parts = [r.name, r.capacity_kwp ? `(${r.capacity_kwp} kWp)` : null].filter(Boolean);
+      const parts = [r.name, r.kwp ? `(${r.kwp} kWp)` : null].filter(Boolean);
       return parts.join(' ') || 'PV-Anlage';
     },
   },
   versicherung: {
     table: 'insurance_contracts',
-    selectFields: 'id, provider_name, category',
+    selectFields: 'id, insurer, category',
     buildLabel: (r) => {
-      const parts = [r.provider_name, r.category].filter(Boolean);
+      const parts = [r.insurer, r.category].filter(Boolean);
       return parts.join(' — ') || 'Versicherung';
     },
   },
   vorsorge: {
     table: 'vorsorge_contracts',
-    selectFields: 'id, provider_name, contract_type',
+    selectFields: 'id, provider, contract_type',
     buildLabel: (r) => {
-      const parts = [r.provider_name, r.contract_type].filter(Boolean);
+      const parts = [r.provider, r.contract_type].filter(Boolean);
       return parts.join(' — ') || 'Vorsorge';
     },
   },
@@ -80,11 +80,11 @@ const ENTITY_LOADER_CONFIG: Partial<Record<ParserMode, EntityLoaderConfig>> = {
   },
   finanzierung: {
     table: 'finance_requests',
-    selectFields: 'id, bank_name, loan_amount',
+    selectFields: 'id, purpose, status, purchase_price',
     buildLabel: (r) => {
       const parts = [
-        r.bank_name,
-        r.loan_amount ? `${Number(r.loan_amount).toLocaleString('de-DE')} €` : null,
+        r.purpose,
+        r.purchase_price ? `${Number(r.purchase_price).toLocaleString('de-DE')} €` : null,
       ].filter(Boolean);
       return parts.join(' — ') || 'Finanzierung';
     },
