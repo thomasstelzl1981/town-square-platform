@@ -1,42 +1,53 @@
 
 
-# Plan: Katalog-Ausschlussfunktion wieder sichtbar machen
+# Plan: Kalkulator-Fix — Kaufy (Zone 3) und MOD-09 PartnerExposePage
 
 ## Analyse
 
-Die Exclusion-Logik ist vollstaendig implementiert:
+Der InvestmentSliderPanel (Kalkulator fuer Zins, Tilgung, Eigenkapital) ist an 4 Stellen im Einsatz:
 
-- **Hook `usePartnerListingSelections.ts`:** Funktioniert korrekt. `useToggleExclusion()` schreibt in die Tabelle `partner_listing_selections`. `is_active=true` bedeutet "ausgeblendet".
-- **BeratungTab.tsx (Zeile 132-135):** Liest `excludedIds` und filtert ausgeblendete Objekte korrekt aus den Suchergebnissen heraus.
-- **KatalogTab.tsx (Zeile 85):** `// Exclusions removed` — Die UI zum Ausblenden wurde entfernt. Es gibt aktuell keine Moeglichkeit, Objekte zu markieren.
+| Seite | Sticky Desktop | Mobile Slider | Status |
+|---|---|---|---|
+| MOD-08 InvestmentExposePage | sticky top-20 + isMobile-Fallback | Ja (inline) | OK |
+| MOD-09 PartnerExposePage | sticky top-20, aber `hidden lg:block` | Nein — komplett unsichtbar | FEHLT |
+| Zone 3 Kaufy2026Expose | sticky top-24, aber `hidden lg:block` | Nein — komplett unsichtbar | FEHLT |
+| MOD-09 PartnerExposeModal | In ScrollArea-Sidebar | N/A (Modal) | OK |
 
-Das heisst: Die Backend-Logik funktioniert, aber der Berater hat keinen Button/Toggle um sie zu benutzen.
+### Problem 1: Kein Kalkulator auf Mobile (Kaufy + MOD-09)
+
+Auf Bildschirmen unter `lg` (1024px) ist der Kalkulator komplett ausgeblendet (`hidden lg:block`). Der User kann Zins, Tilgung und Eigenkapital nicht aendern. MOD-08 loest das korrekt mit einer `isMobile`-Abfrage und zeigt den Slider inline an.
+
+### Problem 2: Kein konsistentes sticky-Verhalten
+
+- MOD-08: `sticky top-20`
+- MOD-09: `sticky top-20`
+- Kaufy: `sticky top-24`
+
+Kaufy hat `top-24` wegen des eigenen Headers (sticky top-0, ca. 64px). Das ist korrekt. MOD-08/09 nutzen `top-20` fuer den Portal-Header. Das passt ebenfalls.
+
+Das Sticky funktioniert technisch — es liegt kein CSS-Bug vor. Das Problem ist ausschliesslich, dass auf Mobile der Slider gar nicht gerendert wird.
 
 ---
 
 ## Loesung
 
-### KatalogTab.tsx: Exclusion-Spalte hinzufuegen
+### Kaufy2026Expose.tsx (Zone 3)
 
-Eine neue Spalte in der PropertyTable mit einem Toggle-Icon (Auge-auf/Auge-zu):
+Das gleiche Pattern wie MOD-08 einbauen:
 
-| Was | Details |
-|---|---|
-| Neue Spalte | "Sichtbar" als erste oder letzte Spalte in der Tabelle |
-| Icon | `Eye` (sichtbar) / `EyeOff` (ausgeblendet) — klickbar |
-| Verhalten | Klick auf Eye → Objekt wird in BeratungTab ausgeblendet, Zeile in KatalogTab wird visuell abgedimmt |
-| Hook | `usePartnerSelections()` + `useToggleExclusion()` — bereits vorhanden |
-| Visueller Hinweis | Ausgeblendete Zeilen erhalten `opacity-50` und einen roten `EyeOff`-Icon |
-| Info-Text | Ueber der Tabelle ein kurzer Hinweis: "Objekte mit geschlossenem Auge werden in der Kundenberatung nicht angezeigt" |
+1. `useIsMobile()` Hook importieren
+2. Vor dem Grid: Mobile-Slider inline rendern (ohne sticky, ohne hidden)
+3. Desktop: bestehender `hidden lg:block` mit sticky bleibt
 
-### Zusaetzlich: Zaehler im Header
+Position des Mobile-Sliders: **Nach der Bildergalerie und den Key Facts, vor MasterGraph** — damit der User zuerst das Objekt sieht, dann die Parameter anpasst, und darunter die Ergebnisse live aktualisiert werden.
 
-Der bestehende Badge-Text `X Objekte im Katalog` wird erweitert um die Exclusion-Anzahl:
-- z.B. "24 Objekte im Katalog · 3 ausgeblendet"
+### PartnerExposePage.tsx (MOD-09)
 
-### Keine Aenderung an BeratungTab
+Identische Aenderung:
 
-BeratungTab filtert bereits korrekt nach `excludedIds`. Sobald der Katalog die Toggle-Funktion wieder hat, wirkt sich das automatisch auf die Beratungssuche aus.
+1. `useIsMobile()` Hook importieren
+2. Mobile-Slider inline rendern
+3. Desktop: bestehender sticky-Block bleibt
 
 ---
 
@@ -44,7 +55,8 @@ BeratungTab filtert bereits korrekt nach `excludedIds`. Sobald der Katalog die T
 
 | Datei | Aenderung |
 |---|---|
-| `src/pages/portal/vertriebspartner/KatalogTab.tsx` | Exclusion-Spalte + Hook-Integration + visuelles Feedback |
+| `src/pages/zone3/kaufy2026/Kaufy2026Expose.tsx` | useIsMobile + Mobile-Slider-Block hinzufuegen |
+| `src/pages/portal/vertriebspartner/PartnerExposePage.tsx` | useIsMobile + Mobile-Slider-Block hinzufuegen (MOD-09) |
 
-Keine DB-Migration noetig. Keine neue Datei noetig. Die Tabelle `partner_listing_selections` und alle RLS-Policies existieren bereits.
+Keine DB-Aenderung. Keine neue Datei. Kein Engine-Change. MOD-09 ist bereits UNFROZEN. Kaufy liegt in Zone 3 (kein Freeze).
 
