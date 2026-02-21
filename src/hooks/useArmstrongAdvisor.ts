@@ -5,7 +5,7 @@
  * Handles message sending, action confirmation, and state management.
  */
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useArmstrongContext, Zone2Context } from './useArmstrongContext';
 import { toast } from '@/hooks/use-toast';
@@ -143,10 +143,84 @@ export interface FlowState {
   result?: Record<string, unknown>;
 }
 
-const WELCOME_MESSAGE: ChatMessage = {
-  id: 'welcome',
-  role: 'assistant',
-  content: `Hallo! Ich bin Armstrong, dein persönlicher Assistent. Ich kann dir bei vielen Aufgaben helfen:
+// =============================================================================
+// CONTEXT-SENSITIVE WELCOME MESSAGE
+// =============================================================================
+
+interface WelcomeChip {
+  label: string;
+  action_code: string;
+}
+
+const MODULE_WELCOME_CONFIG: Record<string, { greeting: string; chips: WelcomeChip[] }> = {
+  'MOD-04': {
+    greeting: 'Willkommen in deinem Immobilien-Portfolio. Ich kann dir sofort helfen:',
+    chips: [
+      { label: '📄 Immobilie aus Dokument', action_code: 'ARM.MOD04.MAGIC_INTAKE_PROPERTY' },
+      { label: '📊 KPIs berechnen', action_code: 'ARM.MOD04.CALCULATE_KPI' },
+      { label: '✅ Datenqualität prüfen', action_code: 'ARM.MOD04.DATA_QUALITY_CHECK' },
+    ],
+  },
+  'MOD-07': {
+    greeting: 'Ich bin bereit für deine Finanzierung. Was soll ich tun?',
+    chips: [
+      { label: '📋 Selbstauskunft erklären', action_code: 'ARM.MOD07.EXPLAIN_SELBSTAUSKUNFT' },
+      { label: '📑 Dokument-Checkliste', action_code: 'ARM.MOD07.DOC_CHECKLIST' },
+      { label: '🔍 Bereitschaft prüfen', action_code: 'ARM.MOD07.VALIDATE_READINESS' },
+    ],
+  },
+  'MOD-08': {
+    greeting: 'Investment-Bereich. Ich unterstütze dich bei der Analyse:',
+    chips: [
+      { label: '📈 Simulation starten', action_code: 'ARM.MOD08.RUN_SIMULATION' },
+      { label: '📄 Suchmandat aus Dokument', action_code: 'ARM.MOD08.MAGIC_INTAKE_MANDATE' },
+      { label: '⭐ Favorit analysieren', action_code: 'ARM.MOD08.ANALYZE_FAVORITE' },
+    ],
+  },
+  'MOD-11': {
+    greeting: 'Finanzierungsmanager. Wie kann ich helfen?',
+    chips: [
+      { label: '📄 Fall aus Dokument anlegen', action_code: 'ARM.MOD11.MAGIC_INTAKE_CASE' },
+    ],
+  },
+  'MOD-12': {
+    greeting: 'Akquise-Manager. Was soll ich tun?',
+    chips: [
+      { label: '📄 Mandat aus Dokument', action_code: 'ARM.MOD12.MAGIC_INTAKE_MANDATE' },
+    ],
+  },
+  'MOD-13': {
+    greeting: 'Projekte-Bereich. Ich helfe dir beim Bauträgerprojekt:',
+    chips: [
+      { label: '🏗️ Projekt aus Dokument', action_code: 'ARM.MOD13.CREATE_DEV_PROJECT' },
+      { label: '❓ Modul erklären', action_code: 'ARM.MOD13.EXPLAIN_MODULE' },
+    ],
+  },
+  'MOD-18': {
+    greeting: 'Finanzanalyse. Ich kann Dokumente direkt auswerten:',
+    chips: [
+      { label: '📄 Finanzdaten aus Dokument', action_code: 'ARM.MOD18.MAGIC_INTAKE_FINANCE' },
+    ],
+  },
+};
+
+function getWelcomeMessage(moduleCode: string): ChatMessage {
+  const config = MODULE_WELCOME_CONFIG[moduleCode];
+
+  if (config) {
+    const chipLabels = config.chips.map(c => `- ${c.label}`).join('\n');
+    return {
+      id: 'welcome',
+      role: 'assistant',
+      content: `${config.greeting}\n\n${chipLabels}\n\nOder frag mich einfach — ich helfe bei allem rund um dein System.`,
+      timestamp: new Date(),
+    };
+  }
+
+  return {
+    id: 'welcome',
+    role: 'assistant',
+    content: `Hallo! Ich bin Armstrong, dein persönlicher Assistent. Ich kann dir bei vielen Aufgaben helfen:
 
 - **Fragen stellen** — Ich erkläre dir alles rund um dein System
 - **Dokumente analysieren** — Hänge ein Dokument an und ich lese es für dich
@@ -154,17 +228,29 @@ const WELCOME_MESSAGE: ChatMessage = {
 - **Texte erstellen** — Briefe, E-Mails oder Zusammenfassungen
 
 Frag mich einfach, was du wissen möchtest!`,
-  timestamp: new Date(),
-};
+    timestamp: new Date(),
+  };
+}
 
 export function useArmstrongAdvisor() {
   const context = useArmstrongContext();
-  const [messages, setMessages] = useState<ChatMessage[]>([WELCOME_MESSAGE]);
+  const [messages, setMessages] = useState<ChatMessage[]>([getWelcomeMessage('MOD-00')]);
   const [isLoading, setIsLoading] = useState(false);
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
   const [isExecuting, setIsExecuting] = useState(false);
   const [activeFlow, setActiveFlow] = useState<FlowState | null>(null);
   const conversationRef = useRef<Array<{ role: string; content: string }>>([]);
+  const lastModuleRef = useRef<string>('MOD-00');
+
+  // Update welcome message when module changes
+  useEffect(() => {
+    const mod = context.zone === 'Z2' ? (context as Zone2Context).current_module || 'MOD-00' : 'MOD-00';
+    if (mod !== lastModuleRef.current && messages.length <= 1) {
+      lastModuleRef.current = mod;
+      setMessages([getWelcomeMessage(mod)]);
+      conversationRef.current = [];
+    }
+  }, [context]);
 
   /**
    * Check if current module is in MVP scope
@@ -502,7 +588,7 @@ export function useArmstrongAdvisor() {
    * Clear conversation
    */
   const clearConversation = useCallback(() => {
-    setMessages([WELCOME_MESSAGE]);
+    setMessages([getWelcomeMessage(getCurrentModule())]);
     conversationRef.current = [];
     setPendingAction(null);
     setActiveFlow(null);
@@ -522,7 +608,7 @@ export function useArmstrongAdvisor() {
     });
 
     // Clear conversation for fresh flow
-    setMessages([WELCOME_MESSAGE]);
+    setMessages([getWelcomeMessage(getCurrentModule())]);
     conversationRef.current = [];
     setPendingAction(null);
     setIsLoading(true);

@@ -17,6 +17,12 @@ export interface DocumentContext {
   filename: string;
   content_type: string;
   confidence: number;
+  /** Auto-detected Magic Intake suggestion (if any) */
+  suggestedIntake?: {
+    action_code: string;
+    label: string;
+    module: string;
+  } | null;
 }
 
 interface UseArmstrongDocUploadReturn {
@@ -47,6 +53,93 @@ const SUPPORTED_TYPES = [
 ];
 
 const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
+
+// =============================================================================
+// DOCUMENT INTENT DETECTION — proactive Magic Intake suggestion
+// =============================================================================
+
+interface IntakeRule {
+  action_code: string;
+  label: string;
+  module: string;
+  filenamePatterns: RegExp[];
+  textPatterns: RegExp[];
+}
+
+const INTAKE_RULES: IntakeRule[] = [
+  {
+    action_code: 'ARM.MOD04.MAGIC_INTAKE_PROPERTY',
+    label: 'Immobilie aus Dokument anlegen',
+    module: 'MOD-04',
+    filenamePatterns: [/kaufvertrag/i, /exposé/i, /expose/i, /grundbuch/i, /immobilie/i],
+    textPatterns: [/grundbuch/i, /kaufvertrag/i, /flurstück/i, /wohnfläche/i, /mieteinnahmen/i, /exposé/i],
+  },
+  {
+    action_code: 'ARM.MOD07.MAGIC_INTAKE_SELBSTAUSKUNFT',
+    label: 'Selbstauskunft befüllen',
+    module: 'MOD-07',
+    filenamePatterns: [/selbstauskunft/i, /gehalt/i, /lohn/i, /einkommens/i, /steuerbescheid/i],
+    textPatterns: [/nettoeinkommen/i, /bruttoeinkommen/i, /gehalt/i, /arbeitgeber/i, /steuerbescheid/i, /einkommensteuer/i],
+  },
+  {
+    action_code: 'ARM.MOD11.MAGIC_INTAKE_CASE',
+    label: 'Finanzierungsfall anlegen',
+    module: 'MOD-11',
+    filenamePatterns: [/finanzierung/i, /darlehen/i, /kredit/i],
+    textPatterns: [/darlehensbetrag/i, /finanzierungsanfrage/i, /kreditvertrag/i, /tilgung/i, /sollzins/i],
+  },
+  {
+    action_code: 'ARM.MOD18.MAGIC_INTAKE_FINANCE',
+    label: 'Finanzdaten erfassen',
+    module: 'MOD-18',
+    filenamePatterns: [/versicherung/i, /police/i, /kontoauszug/i],
+    textPatterns: [/versicherungsschein/i, /polizzennummer/i, /versicherungsnehmer/i, /kontoauszug/i, /abonnement/i],
+  },
+  {
+    action_code: 'ARM.MOD20.MAGIC_INTAKE_CONTRACT',
+    label: 'Vertrag aus Dokument anlegen',
+    module: 'MOD-20',
+    filenamePatterns: [/mietvertrag/i, /miet/i, /nebenkosten/i],
+    textPatterns: [/mietvertrag/i, /mieter/i, /vermieter/i, /kaltmiete/i, /nebenkostenabrechnung/i],
+  },
+  {
+    action_code: 'ARM.MOD17.MAGIC_INTAKE_VEHICLE',
+    label: 'Fahrzeug aus Dokument anlegen',
+    module: 'MOD-17',
+    filenamePatterns: [/fahrzeug/i, /kfz/i, /zulassung/i, /fahrzeugschein/i, /fahrzeugbrief/i],
+    textPatterns: [/fahrzeugidentnummer/i, /zulassungsbescheinigung/i, /fahrzeugschein/i, /fahrgestellnummer/i],
+  },
+  {
+    action_code: 'ARM.MOD19.MAGIC_INTAKE_PLANT',
+    label: 'PV-Anlage aus Dokument anlegen',
+    module: 'MOD-19',
+    filenamePatterns: [/photovoltaik/i, /solar/i, /pv/i, /einspeise/i],
+    textPatterns: [/photovoltaik/i, /einspeisevergütung/i, /solarmodul/i, /wechselrichter/i, /kwp/i],
+  },
+];
+
+function detectDocumentIntent(
+  filename: string,
+  extractedText: string
+): DocumentContext['suggestedIntake'] | null {
+  const textSample = extractedText.slice(0, 3000); // check first 3000 chars
+
+  for (const rule of INTAKE_RULES) {
+    const fnMatch = rule.filenamePatterns.some(p => p.test(filename));
+    const txtMatch = rule.textPatterns.filter(p => p.test(textSample)).length;
+
+    // filename match alone or 2+ text pattern matches
+    if (fnMatch || txtMatch >= 2) {
+      return {
+        action_code: rule.action_code,
+        label: rule.label,
+        module: rule.module,
+      };
+    }
+  }
+
+  return null;
+}
 
 export function useArmstrongDocUpload(): UseArmstrongDocUploadReturn {
   const { activeTenantId } = useAuth();
@@ -136,12 +229,20 @@ export function useArmstrongDocUpload(): UseArmstrongDocUploadReturn {
         extractedText = parts.join('\n') || JSON.stringify(parsed.data, null, 2);
       }
 
+      // ── Detect document intent for proactive Magic Intake suggestion ──
+      const suggestedIntake = detectDocumentIntent(file.name, extractedText);
+
       const ctx: DocumentContext = {
         extracted_text: extractedText,
         filename: file.name,
         content_type: file.type,
         confidence: parsed.confidence || 0.5,
+        suggestedIntake,
       };
+
+      if (suggestedIntake) {
+        console.log(`[ArmstrongDocUpload] Detected intake: ${suggestedIntake.action_code} (${suggestedIntake.label})`);
+      }
 
       setDocumentContext(ctx);
 

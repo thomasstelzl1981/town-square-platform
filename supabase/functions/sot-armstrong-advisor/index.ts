@@ -151,6 +151,63 @@ ${body.entity ? `- Aktive Entität: ${body.entity.type} (ID: ${body.entity.id})`
 - Nutzer-Rolle: ${userContext.roles.join(', ') || 'unbekannt'}`.trim();
 }
 
+// =============================================================================
+// UNIFIED SYSTEM PROMPT — Single consolidated prompt builder
+// =============================================================================
+
+const MODULE_LABELS: Record<string, string> = {
+  "MOD-00": "Dashboard", "MOD-01": "Stammdaten", "MOD-04": "Immobilien",
+  "MOD-06": "Verkauf", "MOD-07": "Finanzierung", "MOD-08": "Investments",
+  "MOD-09": "Vertriebspartner", "MOD-11": "Finanzierungsmanager", "MOD-12": "Akquise-Manager",
+  "MOD-13": "Projekte", "MOD-14": "Communication Pro", "MOD-17": "Fahrzeuge",
+  "MOD-18": "Finanzanalyse", "MOD-19": "Photovoltaik", "MOD-20": "Zuhause/Miety",
+};
+
+function buildUnifiedSystemPrompt(
+  body: RequestBody,
+  userContext: UserContext,
+  availableActions: ActionDefinition[],
+  kbContext: string,
+  isGlobalAssist: boolean
+): string {
+  const moduleLabel = MODULE_LABELS[body.module] || body.module;
+  const topActions = availableActions.slice(0, 5).map(a => `  - ${a.title_de} (${a.action_code})`).join('\n');
+  const hasDoc = !!body.document_context?.extracted_text;
+
+  return `${ARMSTRONG_CORE_IDENTITY}
+
+AKTUELLE SITUATION:
+- Zone: ${body.zone} | Modul: ${moduleLabel} (${body.module})
+- Seite: ${body.route || '/'}
+${body.entity?.id ? `- Aktive Entität: ${body.entity.type} (ID: ${body.entity.id})` : '- Keine aktive Entität'}
+- Nutzer-Rolle: ${userContext.roles.join(', ') || 'Standard'}
+${isGlobalAssist ? '- MODUS: Global Assist (allgemeine Hilfe, keine modulspezifischen Actions)' : ''}
+
+PERSÖNLICHKEIT:
+- Professionell, direkt, ehrlich
+- Markdown für Struktur (Überschriften, Listen, Tabellen)
+- Proaktiv nächste Schritte vorschlagen
+- Bei Unsicherheit: ehrlich sagen
+
+PRIORITÄTEN (in dieser Reihenfolge):
+1. Sicherheit — Schreibende Aktionen erfordern Nutzerbestätigung
+2. Kontext — Antworten auf aktuelles Modul/Entität fokussieren
+3. Actions — Passende Aktionen vorschlagen statt nur erklären
+4. Sprache — Immer Deutsch, keine unnötige Fachsprache
+
+VERFÜGBARE AKTIONEN (Top 5 für aktuellen Kontext):
+${topActions || '  - (keine modulspezifischen Aktionen verfügbar)'}
+
+${hasDoc ? `MAGIC INTAKE REGEL:
+Wenn ein Dokument angehängt ist, prüfe ob eine Magic Intake Action passend ist.
+Schlage diese proaktiv vor, z.B.: "Ich erkenne ein Exposé — soll ich daraus eine Immobilie anlegen?"
+` : ''}GOVERNANCE:
+- Bei sensiblen Themen: Disclaimer verwenden
+- Keine Steuer-/Rechtsberatung (verweise auf Fachberater)
+- Keine Garantien oder Zusagen
+${kbContext ? `\nWISSENSKONTEXT:\n${kbContext}` : ''}`.trim();
+}
+
 // MVP Actions that can be EXECUTED (not just suggested)
 const MVP_EXECUTABLE_ACTIONS = [
   // MOD-00 (Widgets) - execute_with_confirmation
@@ -2551,7 +2608,10 @@ async function generateExplainResponse(
   module: Module,
   supabase: ReturnType<typeof createClient>,
   isGlobalAssist: boolean = false,
-  contextBlock: string = ""
+  contextBlock: string = "",
+  body?: RequestBody,
+  userContext?: UserContext,
+  availableActions?: ActionDefinition[]
 ): Promise<string> {
   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
@@ -2569,31 +2629,14 @@ async function generateExplainResponse(
       .eq("status", "published")
       .limit(4);
     if (kbItems?.length) {
-      kbContext = `\n\nWissenskontext:\n${kbItems.map(k => `- ${k.title_de}: ${k.summary_de || ''}`).join('\n')}`;
+      kbContext = kbItems.map(k => `- ${k.title_de}: ${k.summary_de || ''}`).join('\n');
     }
   }
 
-  const moduleLabel: Record<string, string> = {
-    "MOD-00": "Dashboard", "MOD-01": "Onboarding", "MOD-04": "Immobilien",
-    "MOD-06": "Kontakte", "MOD-07": "Finanzierung", "MOD-08": "Investments",
-    "MOD-09": "Mandat", "MOD-11": "Dokumente", "MOD-12": "Kommunikation",
-    "MOD-13": "Projekte", "MOD-14": "Verwaltung", "MOD-17": "Finanzen",
-    "MOD-18": "Berichte", "MOD-19": "Einstellungen", "MOD-20": "Support"
-  };
-
-  const moduleContext = isGlobalAssist
-    ? `Du kannst bei beliebigen Aufgaben helfen: Texte schreiben, Ideen entwickeln, Zusammenfassungen, Checklisten, Fragen beantworten.`
-    : `Du befindest dich im Bereich "${moduleLabel[module] || module}". Fokussiere deine Antwort auf relevante Aufgaben in diesem Bereich.`;
-
-  const systemPrompt = `${ARMSTRONG_CORE_IDENTITY}
-
-${moduleContext}
-${contextBlock}
-
-GOVERNANCE:
-- Schreibende Aktionen erfordern Nutzerbestätigung
-- Bei sensiblen Themen: Disclaimer verwenden
-- Proaktiv passende nächste Schritte vorschlagen${kbContext}`;
+  // Use unified prompt when body/userContext available, fall back to legacy
+  const systemPrompt = (body && userContext)
+    ? buildUnifiedSystemPrompt(body, userContext, availableActions || [], kbContext, isGlobalAssist)
+    : `${ARMSTRONG_CORE_IDENTITY}\n\n${contextBlock}\n\nGOVERNANCE:\n- Schreibende Aktionen erfordern Nutzerbestätigung\n- Bei sensiblen Themen: Disclaimer verwenden\n- Proaktiv passende nächste Schritte vorschlagen${kbContext ? `\n\nWissenskontext:\n${kbContext}` : ''}`;
 
   try {
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -3426,7 +3469,7 @@ serve(async (req) => {
     if (intent === "EXPLAIN") {
       // Enable Global Assist Mode when not in MVP module
       const isGlobalAssist = !isInMvpModule;
-      const explanation = await generateExplainResponse(message, module, supabase, isGlobalAssist, buildContextBlock(body, userContext));
+      const explanation = await generateExplainResponse(message, module, supabase, isGlobalAssist, buildContextBlock(body, userContext), body, userContext, availableActions);
       const suggestions = suggestActionsForMessage(message, availableActions);
       
       return new Response(

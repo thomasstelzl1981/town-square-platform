@@ -10,6 +10,7 @@ import { useArmstrongVoice } from "@/hooks/useArmstrongVoice";
 import { useArmstrongAdvisor } from "@/hooks/useArmstrongAdvisor";
 import { useArmstrongDocUpload } from "@/hooks/useArmstrongDocUpload";
 import { MessageRenderer } from "@/components/chat/MessageRenderer";
+import { ArmstrongChipBar } from "@/components/chat/ArmstrongChipBar";
 import { useUniversalUpload } from "@/hooks/useUniversalUpload";
 import type { UploadedFileInfo } from "@/hooks/useUniversalUpload";
 import { 
@@ -391,20 +392,47 @@ const ChatPanel = React.forwardRef<HTMLDivElement, ChatPanelProps>(
               </div>
             )}
             {docUpload.attachedFile && !docUpload.isParsing && !docUpload.parseError && (
-              <div className="flex items-center gap-2 text-xs bg-primary/5 rounded-lg px-2.5 py-1.5">
-                <FileText className="h-3.5 w-3.5 text-primary shrink-0" />
-                <span className="truncate flex-1 text-foreground font-medium">
-                  {docUpload.attachedFile.name}
-                </span>
-                <span className="text-muted-foreground shrink-0">
-                  {(docUpload.attachedFile.size / 1024).toFixed(0)} KB
-                </span>
-                <button 
-                  onClick={docUpload.clearDocument} 
-                  className="shrink-0 text-muted-foreground hover:text-foreground"
-                >
-                  <X className="h-3 w-3" />
-                </button>
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2 text-xs bg-primary/5 rounded-lg px-2.5 py-1.5">
+                  <FileText className="h-3.5 w-3.5 text-primary shrink-0" />
+                  <span className="truncate flex-1 text-foreground font-medium">
+                    {docUpload.attachedFile.name}
+                  </span>
+                  <span className="text-muted-foreground shrink-0">
+                    {(docUpload.attachedFile.size / 1024).toFixed(0)} KB
+                  </span>
+                  <button 
+                    onClick={docUpload.clearDocument} 
+                    className="shrink-0 text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+                {/* Proactive Magic Intake suggestion */}
+                {docUpload.documentContext?.suggestedIntake && (
+                  <button
+                    onClick={() => {
+                      const intake = docUpload.documentContext!.suggestedIntake!;
+                      advisor.selectAction({
+                        action_code: intake.action_code,
+                        title_de: intake.label,
+                        execution_mode: 'execute_with_confirmation',
+                        risk_level: 'medium',
+                        cost_model: 'metered',
+                        credits_estimate: 2,
+                        cost_hint_cents: 50,
+                        side_effects: ['credits_consumed'],
+                        why: 'Automatisch erkannter Dokumenttyp',
+                      });
+                    }}
+                    disabled={advisor.isLoading}
+                    className="w-full flex items-center gap-2 text-xs bg-primary/10 hover:bg-primary/20 text-primary rounded-lg px-2.5 py-2 transition-colors text-left"
+                  >
+                    <Sparkles className="h-3.5 w-3.5 shrink-0" />
+                    <span className="font-medium">{docUpload.documentContext.suggestedIntake.label}</span>
+                    <span className="ml-auto text-[10px] text-primary/60">Vorschlag</span>
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -417,6 +445,25 @@ const ChatPanel = React.forwardRef<HTMLDivElement, ChatPanelProps>(
           accept=".pdf,.jpg,.jpeg,.png,.webp,.docx,.doc,.csv,.xlsx,.xls"
           className="hidden"
           onChange={handleDocumentForAnalysis}
+        />
+
+        {/* Quick Action Chips */}
+        <ArmstrongChipBar
+          moduleCode={advisor.currentModule}
+          onChipClick={(actionCode, label) => {
+            advisor.selectAction({
+              action_code: actionCode,
+              title_de: label,
+              execution_mode: 'execute_with_confirmation',
+              risk_level: 'low',
+              cost_model: 'free',
+              credits_estimate: 0,
+              cost_hint_cents: 0,
+              side_effects: [],
+              why: '',
+            });
+          }}
+          disabled={advisor.isLoading}
         />
 
         {/* Input - Floating iOS Style with Voice Button + Document Attach */}
