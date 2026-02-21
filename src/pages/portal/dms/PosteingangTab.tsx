@@ -17,11 +17,6 @@ import { de } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { resolveStorageSignedUrl } from '@/lib/storage-url';
 import { useNavigate } from 'react-router-dom';
-import { DESIGN } from '@/config/designManifest';
-import { PosteingangAuslesungCard } from '@/components/dms/PosteingangAuslesungCard';
-import { PostserviceCard } from '@/components/dms/PostserviceCard';
-import { StorageExtractionCard } from '@/components/dms/StorageExtractionCard';
-
 interface InboundEmail {
   id: string;
   from_email: string;
@@ -313,13 +308,6 @@ export function PosteingangTab() {
           </CardContent>
         </Card>
       )}
-
-      {/* ── Control cards grid ── */}
-      <div className={DESIGN.WIDGET_GRID.FULL}>
-        <PosteingangAuslesungCard />
-        <StorageExtractionCard tenantId={activeTenantId} />
-        <PostserviceCard />
-      </div>
 
       {/* ── Detail Dialog ── */}
       <Dialog open={!!selectedEmail} onOpenChange={(open) => !open && setSelectedEmail(null)}>
