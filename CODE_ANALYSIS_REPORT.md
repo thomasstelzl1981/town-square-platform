@@ -3,7 +3,7 @@
 
 **Generated:** 2026-02-21  
 **Scope:** Full-stack fintech platform (React 18, TypeScript, Vite, Tailwind CSS, shadcn-ui, Supabase)  
-**Codebase size:** 1,186 source files (440 components, 125 hooks, 410 pages, 121 Edge Functions)  
+**Codebase size:** 1,186 source files (440 components, 410 pages, 125 hooks, 46 engine files, 62 types/lib/integration, 121 Edge Functions, 3 other)  
 **ESLint findings:** 1,678 problems (1,589 errors · 89 warnings)  
 **Test status:** ✅ 279/279 tests passing (2 pre-existing failures fixed in this PR)
 
@@ -19,7 +19,7 @@
 | 4. Component Architecture | 0 | 3 | 10 | 0 |
 | 5. Performance | 0 | 4 | 62 | 0 |
 | 6. Broken / Missing Features | 0 | 4 | 3 | 3 |
-| 7. Code Quality | 0 | 17 | 3 | 62 |
+| 7. Code Quality | 0 | 17 | 2 | 62 |
 | 8. Deployment Readiness | 0 | 1 | 3 | 2 |
 
 ---
@@ -319,14 +319,7 @@ block any deployment pipeline. The predominant rule is `@typescript-eslint/no-ex
 1,589 errors), indicating a systematic pattern of skipping type annotations rather than isolated
 oversights.
 
-### 7.3 Inconsistent UUID prefix conventions in demo data (MEDIUM) ✅ Fixed
-`src/engines/demoData/data.ts` used the wrong `d0000000-` prefix for contact IDs that are
-DB-seeded with the `00000000-` prefix (confirmed against Supabase migration files).
-Additionally, `DEMO_PET_BELLO` (`d0000000-…-000011`) was duplicated as a "Units CSV-Seed" entry.
-
-**Status:** Fixed in this PR — tests now pass (was 277/279, now 279/279).
-
-### 7.4 Mixed German/English naming in source files (LOW)
+### 7.3 Mixed German/English naming in source files (LOW)
 Variable names, component names, and comments mix German and English inconsistently:
 - Component: `VorsorgeLueckenrechner`, `Selbstauskunft`, `Finanzmanager`
 - Hook: `usePetBookings` (English) vs `useVVSteuerData` (German abbreviation)
@@ -334,7 +327,7 @@ Variable names, component names, and comments mix German and English inconsisten
 
 This is not a bug but creates onboarding friction for new engineers.
 
-### 7.5 `lovable-tagger` plugin active in CI builds (LOW)
+### 7.4 `lovable-tagger` plugin active in CI builds (LOW)
 `vite.config.ts:27` enables `componentTagger()` only for `mode === 'development'`, which is correct.
 However, `lovable-tagger` adds `data-lovable-id` attributes to DOM nodes in development. Verify that
 the `NODE_ENV` / `mode` distinction is enforced in all CI pipelines so tagger never runs in
@@ -375,6 +368,17 @@ For a fintech application, a strict CSP is essential.
 `vite.config.ts:94` enables source maps for all non-production builds (`mode !== 'production'`).
 If a staging/preview environment is publicly accessible, source maps expose the full source code.
 Restrict to `mode === 'development'` only.
+
+---
+
+## Issues Fixed in This PR
+
+### F.1 Inconsistent UUID prefix conventions in demo data ✅ Fixed
+`src/engines/demoData/data.ts` used the wrong `d0000000-` prefix for contact IDs that are
+DB-seeded with the `00000000-` prefix (confirmed against Supabase migration files).
+Additionally, `DEMO_PET_BELLO` (`d0000000-…-000011`) was duplicated as a "Units CSV-Seed" entry.
+
+**Status:** Fixed — tests now pass (was 277/279, now 279/279).
 
 ---
 
