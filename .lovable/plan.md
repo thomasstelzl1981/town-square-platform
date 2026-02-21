@@ -1,177 +1,210 @@
 
-# Plan: MOD-18 Finanzanalyse Engine -- Vollstaendige Korrektur
+# Plan: Flaechendeckender Consent-Check + Erklaer-Onboarding
 
-## Diagnose (verfeinert)
+## Uebersicht
 
-Die Engine liest Einkommens- und Vermoegensdaten aus den falschen Quellen. Hier die vollstaendige Ist-Analyse:
-
-### Daten in der Datenbank (vorhanden, aber nicht genutzt)
-
-| Datenquelle | Inhalt | Status in Engine |
-|---|---|---|
-| `household_persons` (Max) | Netto 5.200, Business 8.500, PV 212 EUR/mtl. | NICHT GELESEN |
-| `household_persons` (Lisa) | Netto 2.800, Brutto 4.200 EUR/mtl. | NICHT GELESEN |
-| `finapi_depot_accounts` (2 Depots) | Scalable Capital + DWS | NICHT GELESEN |
-| `finapi_depot_positions` (5 Positionen) | Gesamtwert 93.204 EUR | NICHT GELESEN |
-| `vorsorge_contracts` (current_balance) | Ruuerup 21.000 + bAV 14.400 + Fonds 15.600 + ETF 16.200 = 67.200 EUR | NICHT GELESEN |
-| `miety_homes` (Villa Mustermann) | market_value = NULL (sollte ~850.000 sein) | Wird gelesen, aber 0 |
-| `applicant_profiles` (Einkommen) | Max: net_income 4.800, bank_savings 35.000, securities 15.000 | Wird gelesen, aber nur 1 von 2 Profilen hat Daten |
-| `cars_vehicles` (2 Fahrzeuge) | Porsche 911 + BMW M5 -- kein Wertfeld vorhanden | KEIN WERTFELD |
-
-### 6 Probleme im Detail
-
-**Problem 1 -- Einkommen aus falscher Quelle (KRITISCH)**
-Die Engine liest `applicant_profiles` (MOD-07 Finanzierungsantraege). Diese Tabelle hat nur 1 Profil mit Daten (4.800 EUR netto). Die `household_persons` haben die korrekten, aktuellen Werte: Max 5.200 + Lisa 2.800 = 8.000 EUR netto, plus 8.500 EUR Business-Einkommen, plus 212 EUR PV.
-
-**Problem 2 -- Investment-Depots fehlen komplett**
-Zwei Demo-Depots existieren mit 5 Positionen (Gesamtwert 93.204 EUR). Die Engine hat keinen Input-Typ fuer Depots und ignoriert sie komplett. Diese fehlen sowohl in der Vermoegensaufstellung als auch in der 40-Jahres-Projektion.
-
-**Problem 3 -- Vorsorge-Rueckkaufswerte/Guthaben fehlen**
-`vorsorge_contracts` hat ein `current_balance`-Feld mit Werten (67.200 EUR gesamt). Die Engine liest dieses Feld nicht und nutzt stattdessen `life_insurance_value` aus `applicant_profiles` (= NULL). Die Vermoegensposition "Rueckkaufswerte (LV)" zeigt daher 0.
-
-**Problem 4 -- Eigenheim ohne Marktwert**
-`miety_homes` hat `market_value = NULL` fuer Villa Mustermann. Der Seed muss 850.000 EUR setzen.
-
-**Problem 5 -- Fahrzeuge fehlen in Vermoegensaufstellung**
-`cars_vehicles` hat kein `estimated_value_eur`-Feld. Zwei Fahrzeuge (Porsche 911, BMW M5) mit geschaetztem Gesamtwert ca. 180.000 EUR fehlen komplett.
-
-**Problem 6 -- Bank-/Sparguthaben kommen aus falscher Quelle**
-`applicant_profiles.bank_savings` = 35.000 EUR (nur 1 Profil). Der korrekte Wert sollte alle Haushaltsmitglieder beruecksichtigen. Aktuell keine dedizierte Sparkonto-Tabelle, aber die existierenden Werte werden nicht vollstaendig aggregiert.
+Zwei Massnahmen:
+1. **Consent-Check in allen fehlenden Modulen** einbauen (derzeit nur ~12 von ~45 Write-Actions geschuetzt)
+2. **Erklaer-Funktion ("Data Readiness Guard")** -- ein einmaliger Hinweis, der dem User erklaert: "Um eigene Daten einzugeben, musst du (a) Demo-Daten deaktivieren und (b) Rechtliches bestaetigen"
 
 ---
 
-## Geplante Aenderungen
+## Teil 1: Consent-Check flaechendeckend einbauen
 
-### 1. Engine Spec: `src/engines/finanzuebersicht/spec.ts`
+### Bestandsaufnahme
 
-Neue Input-Typen hinzufuegen:
+**Bereits geschuetzt (12 Stellen):**
+- MietyCreateHomeForm (insert/update)
+- ContractDrawer (insert)
+- LoanSection (insert/delete)
+- SachversicherungenTab (insert/update/delete)
+- PropertyDetailPage (delete)
+- CreatePropertyRedirect (redirect-guard)
+- UploadDrawer (open-guard)
+- KalenderTab (insert)
+- PVPlantDossier (update)
+- LeadManagerLeads (update)
+- AssetsPage (upload)
 
-```text
-FUHouseholdPerson {
-  id, role, first_name, last_name,
-  net_income_monthly, gross_income_monthly,
-  business_income_monthly, pv_income_monthly,
-  child_allowances, employment_status
-}
+**FEHLEND -- muss ergaenzt werden (33 Stellen in 19 Dateien):**
 
-FUDepotAccount {
-  id, account_name, bank_name, status
-}
-
-FUDepotPosition {
-  id, depot_account_id, name, isin,
-  current_value, purchase_value, profit_or_loss
-}
-
-FUVehicle {
-  id, make, model, estimated_value_eur
-}
-```
-
-Erweitern:
-- `FUVorsorgeContract` um `current_balance?: number | null`
-- `FUInput` um `householdPersons`, `depotAccounts`, `depotPositions`, `vehicles`
-- `FUAssets` um `depotValue: number`, `vorsorgeBalance: number`, `vehicleValue: number`
-
-### 2. Engine Logic: `src/engines/finanzuebersicht/engine.ts`
-
-**calcIncome()** -- Neue Signatur:
-- Primaer aus `householdPersons` lesen (Summe aller net_income_monthly, business_income_monthly, pv_income_monthly)
-- Fallback auf `applicantProfiles` wenn householdPersons leer
-- Kindergeld: 250 EUR pro Kind (child_allowances aus household_persons)
-
-**calcAssets()** -- Erweitern:
-- `depotValue`: Summe aller `finapi_depot_positions.current_value`
-- `vorsorgeBalance`: Summe aller `vorsorge_contracts.current_balance` (Rueckkaufswerte/Guthaben)
-- `vehicleValue`: Summe aller `cars_vehicles.estimated_value_eur`
-- `totalAssets` um alle drei erweitern
-- `securities` weiterhin aus applicantProfiles als Fallback
-
-**calcProjection()** -- Erweitern:
-- `cumSavings` Startwert um `depotValue` + `vorsorgeBalance` erhoehen
-
-### 3. Daten-Hook: `src/hooks/useFinanzberichtData.ts`
-
-Neue Queries hinzufuegen:
-- `household_persons` mit Einkommensfeldern (net_income_monthly, gross_income_monthly, business_income_monthly, pv_income_monthly, child_allowances, role, employment_status)
-- `finapi_depot_accounts` (id, account_name, bank_name, status) WHERE status = 'active'
-- `finapi_depot_positions` (id, depot_account_id, name, isin, current_value, purchase_value, profit_or_loss) per Depot-Account
-- `cars_vehicles` (id, make, model, estimated_value_eur)
-- `vorsorge_contracts` erweitern um `current_balance`
-
-Alle neuen Daten an `calcFinanzuebersicht()` uebergeben.
-
-### 4. UI: `src/components/finanzanalyse/FinanzberichtSection.tsx`
-
-Vermoegenssektion erweitern:
-- "Investment-Depots" Zeile (Summe aller Depot-Positionen)
-- "Vorsorge-Guthaben" Zeile (current_balance aus vorsorge_contracts)
-- "Fahrzeuge" Zeile (geschaetzte Fahrzeugwerte)
-
-Neue Sektion 3d: **Depot-Aufstellung** (nach Darlehensaufstellung)
-- Tabelle mit Spalten: Depot | ISIN | Bezeichnung | Stueck | Aktueller Wert | +/-
-- Gruppiert nach Depot-Account
-
-### 5. Datenbank-Migration
-
-```text
-ALTER TABLE cars_vehicles ADD COLUMN estimated_value_eur NUMERIC DEFAULT NULL;
-```
-
-### 6. Demo-Daten Korrekturen
-
-**`public/demo-data/demo_miety_homes.csv`:**
-- Spalte `market_value` hinzufuegen mit Wert 850000
-
-**`public/demo-data/demo_vehicles.csv`:**
-- Spalte `estimated_value_eur` hinzufuegen: Porsche 911 = 95000, BMW M5 = 85000
-
-**`src/hooks/useDemoSeedEngine.ts`:**
-- Miety-Homes Seed: `market_value` aus CSV mappen
-- Vehicles Seed: `estimated_value_eur` aus CSV mappen
-
----
-
-## Erwartetes Ergebnis nach Fix
-
-| Position | Vorher | Nachher |
-|---|---|---|
-| Nettoeinkommen | 4.800 EUR (1 Profil) | 8.000 EUR (Max + Lisa) |
-| Business-Einkommen | 0 EUR | 8.500 EUR |
-| PV-Einkuenfte | 0 EUR (nicht aus HP gelesen) | 212 EUR |
-| Kindergeld | 0 EUR | 500 EUR (2 Kinder) |
-| **Summe Einkommen** | **~7.500 EUR** | **~20.000 EUR** |
-| Immobilienportfolio | 1.070.000 EUR | 1.070.000 EUR (bleibt) |
-| Eigenheim | 0 EUR | 850.000 EUR |
-| Investment-Depots | 0 EUR | 93.204 EUR |
-| Vorsorge-Guthaben | 0 EUR | 67.200 EUR |
-| Fahrzeuge | nicht vorhanden | 180.000 EUR |
-| Bank-/Sparguthaben | 35.000 EUR | 35.000 EUR (bleibt) |
-| Wertpapiere (alt) | 15.000 EUR | 15.000 EUR (bleibt, Fallback) |
-| **Gesamtvermoegen** | **~1.120.000 EUR** | **~2.310.404 EUR** |
-
----
-
-## Technische Details
-
-### Dateien die geaendert werden
-
-| Datei | Aenderung |
+| Datei | Write-Actions ohne Check |
 |---|---|
-| `src/engines/finanzuebersicht/spec.ts` | 4 neue Input-Typen, FUInput + FUAssets erweitert |
-| `src/engines/finanzuebersicht/engine.ts` | calcIncome + calcAssets + calcProjection ueberarbeitet |
-| `src/hooks/useFinanzberichtData.ts` | 4 neue Queries, vorsorge um current_balance erweitert |
-| `src/components/finanzanalyse/FinanzberichtSection.tsx` | 3 neue Vermoegenszeilen + Depot-Tabelle |
-| `public/demo-data/demo_miety_homes.csv` | market_value Spalte |
-| `public/demo-data/demo_vehicles.csv` | estimated_value_eur Spalte |
-| `src/hooks/useDemoSeedEngine.ts` | Seed fuer market_value + estimated_value_eur |
-| Datenbank-Migration | estimated_value_eur Spalte in cars_vehicles |
+| `finanzanalyse/VorsorgeTab.tsx` | insert, update, delete (3x) |
+| `finanzanalyse/InvestmentTab.tsx` | insert, update, delete (3x) |
+| `finanzanalyse/AbonnementsTab.tsx` | insert, update, delete (3x) |
+| `finanzanalyse/KontenTab.tsx` | delete (1x) |
+| `miety/components/MietyContractsSection.tsx` | delete (1x) |
+| `miety/components/TenancySection.tsx` | insert/update (1x) |
+| `miety/components/MeterReadingDrawer.tsx` | insert (1x) |
+| `miety/tiles/UebersichtTile.tsx` | delete, insert (2x) |
+| `office/KontakteTab.tsx` | insert, update, delete (3x) |
+| `office/BriefTab.tsx` | insert (2x) |
+| `dms/StorageTab.tsx` | insert, delete (4x) |
+| `dms/SortierenTab.tsx` | insert, delete (4x) |
+| `dms/EinstellungenTab.tsx` | update (1x) |
+| `photovoltaik/AnlagenTab.tsx` | delete, insert (2x) |
+| `communication-pro/social/KnowledgePage.tsx` | insert, delete, update (3x) |
+| `communication-pro/social/CreatePage.tsx` | update, delete, insert (4x) |
+| `communication-pro/social/InspirationPage.tsx` | insert, delete (3x) |
+| `communication-pro/social/InboundPage.tsx` | insert, delete, update (3x) |
+| `communication-pro/social/CalendarPage.tsx` | update (2x) |
+| `communication-pro/social/PerformancePage.tsx` | insert (1x) |
+| `communication-pro/social/OverviewPage.tsx` | insert (1x) |
+| `finanzierungsmanager/FMUebersichtTab.tsx` | insert, update, delete (3x) |
+| `finanzierungsmanager/FMFallDetail.tsx` | insert, update (2x) |
+| `finanzierungsmanager/FMEinreichung.tsx` | update (3x) |
+| `finanzierungsmanager/FMDashboard.tsx` | update (1x) |
+| `akquise-manager/AkquiseDashboard.tsx` | update (1x) |
+| `petmanager/PMFinanzen.tsx` | insert, update (2x) |
 
-### Freeze-Check
-MOD-18 ist NICHT eingefroren (frozen: false). Alle Dateien liegen unter `src/engines/finanzuebersicht/*`, `src/hooks/useFinanzbericht*`, `src/components/finanzanalyse/*` -- alles editierbar.
+### Implementierungsmuster
 
-### Was NICHT geaendert wird
-- Vertragsverlinkung (funktioniert)
-- Investment-Tab UI (separates Feature)
-- Vorsorge-Tab UI (separates Feature)
-- Andere Module (alle frozen)
+Jede Datei bekommt dasselbe Pattern (bereits in 12 Stellen bewaehrt):
+
+```text
+// Import
+import { useLegalConsent } from '@/hooks/useLegalConsent';
+import { ConsentRequiredModal } from '@/components/portal/ConsentRequiredModal';
+
+// In der Komponente
+const consentGuard = useLegalConsent();
+
+// In jeder Mutation
+mutationFn: async (...) => {
+  if (!consentGuard.requireConsent()) throw new Error('Consent required');
+  // ... bestehende Logik
+}
+
+// Im JSX (einmal pro Datei)
+<ConsentRequiredModal
+  open={consentGuard.showConsentModal}
+  onOpenChange={consentGuard.setShowConsentModal}
+/>
+```
+
+---
+
+## Teil 2: Erklaer-Funktion ("Data Readiness Guard")
+
+### Konzept
+
+Ein **einmaliger Onboarding-Hinweis**, der erscheint wenn ein User zum ersten Mal versucht, eigene Daten einzugeben. Er erklaert die 2 Voraussetzungen:
+
+1. **Demo-Daten deaktivieren** -- damit keine Muster-Eintraege die eigenen Daten vermischen
+2. **Rechtliches bestaetigen** -- AGB + Datenschutz akzeptieren
+
+### UI-Konzept: "DataReadinessModal"
+
+Ein AlertDialog (wie ConsentRequiredModal), der bei der ersten Write-Action erscheint, BEVOR der Consent-Check greift. Drei Zustaende:
+
+```text
++-----------------------------------------------+
+|  Eigene Daten eingeben                         |
+|                                                |
+|  Bevor du eigene Vertraege und Daten anlegen   |
+|  kannst, sind zwei Schritte noetig:            |
+|                                                |
+|  [x] Demo-Daten deaktivieren                   |
+|      Unter Stammdaten > Demo-Daten die         |
+|      Musterdaten ausschalten, damit deine      |
+|      eigenen Eintraege nicht vermischt werden   |
+|                                                |
+|  [x] Nutzungsvereinbarungen bestaetigen        |
+|      Unter Stammdaten > Rechtliches die AGB    |
+|      und Datenschutzerklaerung akzeptieren      |
+|                                                |
+|  [Abbrechen]  [Zu Demo-Daten]  [Zu Rechtliches]|
++-----------------------------------------------+
+```
+
+### Technische Umsetzung
+
+**Neue Datei: `src/components/portal/DataReadinessModal.tsx`**
+- AlertDialog mit den zwei Schritten
+- Zeigt Status-Icons (Haken wenn erledigt, Warnung wenn offen)
+- Buttons zu den beiden Stammdaten-Seiten
+- Wird nur angezeigt wenn BEIDES noch nicht erledigt ist
+
+**Neue Datei: `src/hooks/useDataReadiness.ts`**
+- Kombiniert `useLegalConsent()` + `useDemoToggles()`
+- Prueft: Sind Demo-Daten aktiv UND Consent fehlt?
+- `requireReadiness()` -- zeigt Modal wenn nicht bereit, gibt `true` zurueck wenn alles OK
+- Speichert "dismissed" in localStorage, damit der Hinweis nicht bei jeder Action kommt
+- Logik: Wenn Demo-Daten AUS und Consent gegeben --> direkt durchlassen
+- Wenn nur Consent fehlt --> ConsentRequiredModal (wie bisher)
+- Wenn beides fehlt --> DataReadinessModal (erklaert beide Schritte)
+
+**Integration:** Der `useDataReadiness` Hook ersetzt `useLegalConsent` in allen Write-Action-Guards. So bekommt der User automatisch den richtigen Hinweis.
+
+### Ablauf-Logik
+
+```text
+User klickt "Speichern" / "Anlegen"
+  |
+  v
+useDataReadiness.requireReadiness()
+  |
+  +-- Demo AUS + Consent OK --> true (durchlassen)
+  |
+  +-- Demo AUS + Consent FEHLT --> ConsentRequiredModal zeigen, return false
+  |
+  +-- Demo AN + Consent FEHLT --> DataReadinessModal zeigen (erklaert beide Schritte), return false
+  |
+  +-- Demo AN + Consent OK --> optionaler Hinweis "Demo-Daten noch aktiv", aber durchlassen (User hat bewusst entschieden)
+```
+
+---
+
+## Dateien die geaendert/erstellt werden
+
+### Neue Dateien (2)
+| Datei | Inhalt |
+|---|---|
+| `src/hooks/useDataReadiness.ts` | Kombinations-Hook aus useLegalConsent + useDemoToggles |
+| `src/components/portal/DataReadinessModal.tsx` | Erklaer-Dialog mit 2 Schritten |
+
+### Geaenderte Dateien (~25)
+
+Alle oben gelisteten Dateien ohne Consent-Check bekommen:
+1. `import { useDataReadiness }` statt oder zusaetzlich zu `useLegalConsent`
+2. `requireReadiness()` Guard in jeder Mutation
+3. `<DataReadinessModal />` und/oder `<ConsentRequiredModal />` im JSX
+
+Die bereits geschuetzten Dateien (12 Stellen) werden auf `useDataReadiness` umgestellt, damit der Erklaer-Flow konsistent ist.
+
+### Keine Datenbank-Aenderungen
+
+Alles client-seitig. Keine Migration noetig.
+
+### Keine neuen Abhaengigkeiten
+
+Verwendet nur vorhandene UI-Komponenten (AlertDialog, Badge, Button).
+
+---
+
+## Freeze-Check
+
+Die betroffenen Module und ihr Freeze-Status muessen geprueft werden. Dateien unter `src/hooks/` und `src/components/portal/` sind NICHT modul-gebunden und daher frei editierbar.
+
+Die Modul-Dateien selbst (z.B. `finanzanalyse/VorsorgeTab.tsx`) gehoeren zu ihren jeweiligen Modulen:
+- MOD-18 Finanzanalyse -- muss geprueft werden
+- MOD-20 Miety -- muss geprueft werden
+- MOD-02 Office -- muss geprueft werden
+- MOD-03 DMS -- muss geprueft werden
+- MOD-19 Photovoltaik -- muss geprueft werden
+- MOD-14 Communication Pro -- muss geprueft werden
+- MOD-11 Finanzierungsmanager -- muss geprueft werden
+- MOD-12 Akquise -- muss geprueft werden
+- MOD-22 Petmanager -- muss geprueft werden
+
+Frozen Module werden uebersprungen. Der Consent-Guard wird nur in unfrozen Modulen eingebaut.
+
+---
+
+## Erwartetes Ergebnis
+
+- **100% der Write-Actions** im Portal sind durch den Consent-Check geschuetzt
+- Beim ersten Versuch, eigene Daten einzugeben, bekommt der User eine klare Erklaerung was zu tun ist
+- Der Erklaer-Dialog verlinkt direkt zu den beiden relevanten Stammdaten-Seiten
+- Bestehende geschuetzte Stellen funktionieren weiterhin, werden aber auf den neuen kombinierten Hook umgestellt
