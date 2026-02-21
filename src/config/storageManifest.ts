@@ -64,7 +64,7 @@ export interface ModuleStorageConfig {
    * Required documents checklist.
    * Each entry maps a human-readable doc name to the target sub-folder.
    */
-  required_docs: { name: string; folder: string }[];
+  required_docs: { name: string; folder: string; doc_type?: string }[];
   /**
    * The DB column on storage_nodes that links a file-node to its parent
    * entity (e.g. 'property_id', 'vehicle_id', 'pv_plant_id').
@@ -127,10 +127,10 @@ export const STORAGE_MANIFEST: Record<string, ModuleStorageConfig> = {
       '08_Sonstiges',
     ],
     required_docs: [
-      { name: 'Grundbuchauszug', folder: '02_Grundbuch' },
-      { name: 'Teilungserklärung', folder: '02_Grundbuch' },
-      { name: 'Energieausweis', folder: '01_Grunddaten' },
-      { name: 'Wohnflächenberechnung', folder: '01_Grunddaten' },
+      { name: 'Grundbuchauszug', folder: '02_Grundbuch', doc_type: 'grundbuchauszug' },
+      { name: 'Teilungserklärung', folder: '02_Grundbuch', doc_type: 'teilungserklaerung' },
+      { name: 'Energieausweis', folder: '01_Grunddaten', doc_type: 'energieausweis' },
+      { name: 'Wohnflächenberechnung', folder: '01_Grunddaten', doc_type: 'wohnflaechenberechnung' },
     ],
     entity_fk_column: 'property_id',
     entity_table: 'properties',
@@ -168,10 +168,10 @@ export const STORAGE_MANIFEST: Record<string, ModuleStorageConfig> = {
       '05_Vertrag',
     ],
     required_docs: [
-      { name: 'Gehaltsnachweis (3 Monate)', folder: '02_Einkommensnachweise' },
-      { name: 'Steuerbescheid', folder: '02_Einkommensnachweise' },
-      { name: 'Selbstauskunft', folder: '01_Antrag' },
-      { name: 'Kaufvertragsentwurf', folder: '03_Objektunterlagen' },
+      { name: 'Gehaltsnachweis (3 Monate)', folder: '02_Einkommensnachweise', doc_type: 'gehaltsnachweis' },
+      { name: 'Steuerbescheid', folder: '02_Einkommensnachweise', doc_type: 'steuerbescheid' },
+      { name: 'Selbstauskunft', folder: '01_Antrag', doc_type: 'selbstauskunft' },
+      { name: 'Kaufvertragsentwurf', folder: '03_Objektunterlagen', doc_type: 'kaufvertrag' },
     ],
     entity_fk_column: null,
     entity_table: 'finance_requests',
@@ -291,9 +291,9 @@ export const STORAGE_MANIFEST: Record<string, ModuleStorageConfig> = {
       '06_Sonstiges',
     ],
     required_docs: [
-      { name: 'Fahrzeugschein (Zulassung)', folder: '01_Fahrzeugschein' },
-      { name: 'Versicherungspolice', folder: '02_Versicherung' },
-      { name: 'TÜV-Bericht', folder: '03_TÜV_AU' },
+      { name: 'Fahrzeugschein (Zulassung)', folder: '01_Fahrzeugschein', doc_type: 'fahrzeugschein' },
+      { name: 'Versicherungspolice', folder: '02_Versicherung', doc_type: 'versicherungspolice' },
+      { name: 'TÜV-Bericht', folder: '03_TÜV_AU', doc_type: 'tuev_bericht' },
     ],
     entity_fk_column: 'vehicle_id',
     entity_table: 'cars_vehicles',
@@ -324,12 +324,12 @@ export const STORAGE_MANIFEST: Record<string, ModuleStorageConfig> = {
       '08_Wartung_Service',
     ],
     required_docs: [
-      { name: 'Inbetriebnahmeprotokoll', folder: '05_Wechselrichter_und_Speicher' },
-      { name: 'Netzbetreiber-Bestätigung', folder: '03_Netzbetreiber' },
-      { name: 'Anmeldebestätigung MaStR', folder: '02_MaStR_BNetzA' },
-      { name: 'Zählerprotokoll', folder: '04_Zaehler' },
-      { name: 'Versicherungsnachweis', folder: '06_Versicherung' },
-      { name: 'Wartungsvertrag', folder: '08_Wartung_Service' },
+      { name: 'Inbetriebnahmeprotokoll', folder: '05_Wechselrichter_und_Speicher', doc_type: 'inbetriebnahmeprotokoll' },
+      { name: 'Netzbetreiber-Bestätigung', folder: '03_Netzbetreiber', doc_type: 'netzbetreiber_bestaetigung' },
+      { name: 'Anmeldebestätigung MaStR', folder: '02_MaStR_BNetzA', doc_type: 'mastr_anmeldung' },
+      { name: 'Zählerprotokoll', folder: '04_Zaehler', doc_type: 'zaehlerprotokoll' },
+      { name: 'Versicherungsnachweis', folder: '06_Versicherung', doc_type: 'versicherungsnachweis' },
+      { name: 'Wartungsvertrag', folder: '08_Wartung_Service', doc_type: 'wartungsvertrag' },
     ],
     entity_fk_column: 'pv_plant_id',
     entity_table: 'pv_plants',

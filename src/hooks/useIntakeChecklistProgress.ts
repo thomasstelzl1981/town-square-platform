@@ -30,13 +30,15 @@ export function useIntakeChecklistProgress(refreshKey: number = 0) {
     const load = async () => {
       setIsLoading(true);
       try {
-        // Get all document names for this tenant
+        // Get all documents for this tenant with doc_type and name
         const { data: docs } = await supabase
           .from('documents')
-          .select('name')
+          .select('name, doc_type')
           .eq('tenant_id', activeTenantId);
 
-        const docNames = new Set((docs ?? []).map((d) => d.name?.toLowerCase().trim()));
+        const docList = docs ?? [];
+        const docTypes = new Set(docList.map((d) => d.doc_type?.toLowerCase().trim()).filter(Boolean));
+        const docNames = new Set(docList.map((d) => d.name?.toLowerCase().trim()).filter(Boolean));
 
         const results: ChecklistProgress[] = [];
 
@@ -47,8 +49,13 @@ export function useIntakeChecklistProgress(refreshKey: number = 0) {
           const foundDocs = new Set<string>();
 
           for (const reqDoc of mod.required_docs) {
+            // Primary: match by doc_type (precise)
+            if (reqDoc.doc_type && docTypes.has(reqDoc.doc_type.toLowerCase().trim())) {
+              foundDocs.add(reqDoc.name);
+              continue;
+            }
+            // Fallback: match by name (fuzzy)
             const reqLower = reqDoc.name.toLowerCase().trim();
-            // Check if any uploaded document name contains the required doc name
             for (const uploaded of docNames) {
               if (uploaded.includes(reqLower) || reqLower.includes(uploaded)) {
                 foundDocs.add(reqDoc.name);
