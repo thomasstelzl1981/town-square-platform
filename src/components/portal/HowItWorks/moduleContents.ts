@@ -854,4 +854,35 @@ export const moduleContents: Record<string, HowItWorksContent> = {
       { title: 'Intake starten', route: '/portal/dms/intake', icon: Inbox },
     ],
   },
+  'MOD-21': {
+    moduleCode: 'MOD-21',
+    title: 'KI-Browser',
+    oneLiner: 'Armstrong browst das Web für Sie — kontrolliert, transparent und sicher.',
+    benefits: [
+      'Webrecherche durch KI-gesteuerte Sessions',
+      'Automatische Inhaltsextraktion und Zusammenfassung',
+      'Vollständige Protokollierung aller Aktionen',
+      'Policy-basierte Sicherheitskontrollen',
+    ],
+    whatYouDo: [
+      'URL eingeben oder Vorlage wählen',
+      'Armstrong extrahiert Inhalte und Links',
+      'Ergebnisse prüfen und zusammenfassen lassen',
+      'Artefakte für spätere Nutzung speichern',
+    ],
+    flows: [
+      {
+        title: 'Web-Recherche starten',
+        steps: ['Session öffnen', 'URL eingeben', 'Inhalte extrahieren', 'KI fasst zusammen'],
+      },
+    ],
+    cta: 'Starten Sie Ihre erste KI-Recherche — Armstrong übernimmt das Browsen.',
+    subTiles: [
+      { title: 'Übersicht', route: '/portal/ki-browser/uebersicht', icon: Globe },
+      { title: 'Session', route: '/portal/ki-browser/session', icon: Bot },
+      { title: 'Quellen', route: '/portal/ki-browser/quellen', icon: FileBox },
+      { title: 'Vorlagen', route: '/portal/ki-browser/vorlagen', icon: BookOpen },
+      { title: 'Policies', route: '/portal/ki-browser/policies', icon: ShieldCheck },
+    ],
+  },
 };
