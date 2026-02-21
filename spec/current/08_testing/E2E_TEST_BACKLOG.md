@@ -86,20 +86,20 @@
 
 | # | Engine | Test | Erwartung | Status |
 |---|--------|------|-----------|--------|
-| C-01 | ENG-AKQUISE (Bestand) | Kaufpreis 500k, Miete 2k/M | Rendite, Cashflow, Faktor korrekt | ⬜ |
-| C-02 | ENG-AKQUISE (Aufteiler) | Kaufpreis 1M, 10 WE | Split-Kalkulation, Marge korrekt | ⬜ |
-| C-03 | ENG-FINANCE (Haushaltsüberschuss) | Einkommen 5k, Ausgaben 2.5k | Überschuss = 2.5k, Tragfähigkeit ✅ | ⬜ |
-| C-04 | ENG-FINANCE (Annuität) | 300k Darlehen, 3.5%, 10J | Monatsrate korrekt berechnet | ⬜ |
-| C-05 | ENG-PROVISION | Kaufpreis 400k, 3.57% Käufer | Provision korrekt aufgeteilt | ⬜ |
-| C-06 | ENG-BWA | 6 WE, div. Einnahmen/Ausgaben | NOI, Cashflow, Maintenance korrekt | ⬜ |
-| C-07 | ENG-BWA (DATEV) | BWA-Daten → DATEV-Format | Export-Format valide | ⬜ |
-| C-08 | ENG-PROJEKT | 24 WE Neubau, Baukosten | Marge, Einheitspreise, Break-Even | ⬜ |
-| C-09 | ENG-NK | 6 WE, Betriebskosten 12 Monate | NK-Abrechnung gemäß BetrKV korrekt | ⬜ |
-| C-10 | ENG-FINUEB | Portfolio 3 Objekte, 40 Jahre | Projektion, Vermögensaufbau korrekt | ⬜ |
-| C-11 | ENG-VORSORGE | Alter 35, Einkommen 5k | Rentenlücke, BU-Lücke berechnet | ⬜ |
-| C-12 | ENG-VVSTEUER | 2 Objekte, Einnahmen/Werbungskosten | Anlage V korrekt erstellt | ⬜ |
-| C-13 | ENG-KONTOMATCH (Regel) | CSV-Import mit bekannten Merchants | Auto-Kategorisierung ≥75% Confidence | ⬜ |
-| C-14 | ENG-KONTOMATCH (AI Fallback) | Unbekannte Merchants | AI-Suggestion ≤85% Confidence | ⬜ |
+| C-01 | ENG-AKQUISE (Bestand) | Kaufpreis 500k, Miete 2k/M | Rendite, Cashflow, Faktor korrekt | ✅ PASS |
+| C-02 | ENG-AKQUISE (Aufteiler) | Kaufpreis 1M, 10 WE | Split-Kalkulation, Marge korrekt | ✅ PASS |
+| C-03 | ENG-FINANCE (Haushaltsüberschuss) | Einkommen 5k, Ausgaben 2.5k | Überschuss = 2.5k, Tragfähigkeit ✅ | ✅ PASS |
+| C-04 | ENG-FINANCE (Annuität) | 300k Darlehen, 3.5%, 10J | Monatsrate korrekt berechnet | ✅ PASS |
+| C-05 | ENG-PROVISION | Kaufpreis 400k, 3.57% Käufer | Provision korrekt aufgeteilt | ✅ PASS |
+| C-06 | ENG-BWA | 6 WE, div. Einnahmen/Ausgaben | NOI, Cashflow, Maintenance korrekt | ✅ PASS |
+| C-07 | ENG-BWA (DATEV) | BWA-Daten → DATEV-Format | Export-Format valide | ⬜ SKIP (separate test) |
+| C-08 | ENG-PROJEKT | 24 WE Neubau, Baukosten | Marge, Einheitspreise, Break-Even | ✅ PASS |
+| C-09 | ENG-NK | 6 WE, Betriebskosten 12 Monate | NK-Abrechnung gemäß BetrKV korrekt | ✅ PASS |
+| C-10 | ENG-FINUEB | Portfolio 3 Objekte, 40 Jahre | Projektion, Vermögensaufbau korrekt | ✅ PASS |
+| C-11 | ENG-VORSORGE | Alter 35, Einkommen 5k | Rentenlücke, BU-Lücke berechnet | ✅ PASS |
+| C-12 | ENG-VVSTEUER | 2 Objekte, Einnahmen/Werbungskosten | Anlage V korrekt erstellt | ⬜ SKIP (existing test) |
+| C-13 | ENG-KONTOMATCH (Regel) | CSV-Import mit bekannten Merchants | Auto-Kategorisierung ≥75% Confidence | ✅ PASS |
+| C-14 | ENG-KONTOMATCH (AI Fallback) | Unbekannte Merchants | AI-Suggestion ≤85% Confidence | ⬜ SKIP (Edge Function) |
 
 ### C2. Daten-Engines (Edge Functions)
 
