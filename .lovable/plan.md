@@ -1,188 +1,128 @@
 
-# Analyse: Manager-Module, Client-Module und Zone 1 Operative Desks
 
-## Architektur-Regel
+# Plan: SoT Website Content-Relaunch + Teststrategie
 
-```text
-Client (Zone 2)  -->  Operative Desk (Zone 1)  -->  Manager (Zone 2)
-     MOD-XX              Z1 Desk                      MOD-YY
-```
+## Teil 1: Teststrategie -- Morgen bereit fuer Partner
 
-Kunden haben nur Client-Module. Manager haben zusaetzlich ein Manager-Modul. Jede Verbindung zwischen Client und Manager MUSS ueber ein Zone-1-Desk laufen. Kein direkter Z2-zu-Z2-Kontakt.
+### Manueller Testplan (sofort umsetzbar)
 
----
+Zum Testen der Plattform vor dem Partner-Rollout empfehle ich folgende Schritte:
 
-## IST-Zustand: Mapping-Tabelle
+**Zone 3 Websites (oeffentlich, kein Login)**
+1. Alle 5 Websites aufrufen und durchklicken:
+   - `/website/sot` -- System of a Town
+   - `/website/kaufy` -- Kaufy
+   - `/website/futureroom` -- FutureRoom
+   - `/website/acquiary` -- Acquiary
+   - `/website/tierservice` -- Lennox and Friends
+2. Pruefen: Alle Links funktionieren, keine 404-Seiten, keine kaputten Bilder
+3. Mobile-Ansicht testen (Handy oder Browser-DevTools)
+4. Dark/Light Mode umschalten auf SoT
 
-| # | Client-Modul (Z2) | Zone 1 Desk | Manager-Modul (Z2) | Operative Desk Manifest | Status |
-|---|-------------------|-------------|--------------------|-----------------------|--------|
-| 1 | MOD-07 Finanzierung | FutureRoom | MOD-11 Finanzierungsmanager | Registriert (futureroom → MOD-11) | OK |
-| 2 | MOD-08 Investment-Suche | Acquiary | MOD-12 Akquisemanager | Registriert (acquiary → MOD-12) | OK |
-| 3 | MOD-06 Verkauf | Sales Desk | MOD-09 Immomanager | Registriert (sales-desk → MOD-09) | OK |
-| 4 | MOD-05 Pets (Service) | Pet Desk | MOD-22 Pet Manager | FEHLER: Registriert als MOD-05, nicht MOD-22 | PROBLEM |
-| 5 | MOD-13 Projektmanager | Projekt Desk | MOD-13 Projektmanager | Registriert (projekt-desk → MOD-13) | UNKLAR |
-| 6 | Leads (Z3 Websites) | Lead Desk | MOD-10 Lead Manager | Registriert (lead-desk → MOD-10) | OK |
-| 7 | MOD-18 Finanzen | Finance Desk | ??? | FEHLT im Operative Desk Manifest | PROBLEM |
-| 8 | MOD-04 Immobilien | ??? | ??? | Kein Desk vorhanden | OFFEN |
+**Auth-Flow**
+5. Registrierung testen unter `/auth?mode=register`
+6. Login testen unter `/auth`
+7. Passwort-Reset testen (falls implementiert)
 
----
+**Zone 2 Portal (nach Login)**
+8. Dashboard laden -- zeigt es Tiles und Widgets?
+9. Jedes aktivierte Modul einmal oeffnen
+10. Demo-Daten pruefen: Sind Beispieldaten vorhanden?
+11. Armstrong Chat oeffnen und eine Frage stellen
 
-## Gefundene Probleme
+**Zone 1 Admin**
+12. `/admin` aufrufen -- nur als platform_admin sichtbar?
+13. Testdaten-Dashboard pruefen: Stimmen die Zahlen?
 
-### Problem 1: Pet Desk zeigt auf falsches Modul
-
-In `operativeDeskManifest.ts`:
-```text
-Pet Desk → managerModuleCode: 'MOD-05' (Pets = CLIENT/Service-Modul)
-```
-
-**Korrekt muesste es sein:**
-```text
-Pet Desk → managerModuleCode: 'MOD-22' (Pet Manager = MANAGER-Modul)
-```
-
-MOD-05 (Pets) ist das Client/Service-Modul, in dem Tierhalter ihre Haustiere verwalten. MOD-22 (Pet Manager) ist das Manager-Modul fuer Franchise-Partner. Der Desk muss also BEIDE referenzieren:
-- `clientModuleCode: 'MOD-05'` (Tierhalter-Seite)
-- `managerModuleCode: 'MOD-22'` (Franchise-Partner-Seite)
-
-### Problem 2: Finance Desk fehlt im Manifest
-
-In `routesManifest.ts` existieren Routes fuer `finance-desk` (Z1):
-```text
-/admin/finance-desk          → Dashboard
-/admin/finance-desk/inbox    → Inbox
-/admin/finance-desk/zuweisung → Zuweisung
-/admin/finance-desk/faelle   → Faelle
-/admin/finance-desk/monitor  → Monitor
-```
-
-**Aber:** Der Finance Desk ist NICHT in `operativeDeskManifest.ts` registriert. Es fehlt die formale 1:1:1-Zuordnung:
-- Client: MOD-18 (Finanzen) — Kunde verwaltet Konten, Versicherungen, Vorsorge
-- Z1 Desk: finance-desk — Governance ueber Finanzberater-Zuweisungen
-- Manager: ??? — Kein separates Manager-Modul vorhanden
-
-**Frage:** Wird MOD-18 zukuenftig ein Manager-Pendant erhalten? Oder handelt Finance Desk die Governance direkt (ohne Z2-Manager)?
-
-### Problem 3: MOD-13 ist hybrid (Client + Manager)
-
-`routesManifest.ts` zeigt:
-```text
-MOD-13: visibility: { org_types: ["client", "partner"] }
-```
-
-MOD-13 ist sowohl fuer Clients als auch fuer Partner sichtbar. Wenn ein Client ein Projekt erstellt und ein Manager es uebernimmt, laufen beide im selben Modul. Das widerspricht dem Prinzip, dass Client- und Manager-Module getrennt sind.
-
-**Moegliche Loesung:** MOD-13 als reines Manager-Modul definieren. Clients interagieren mit Projekten ueber MOD-08 (Investment-Suche, als Kaeufer) oder MOD-06 (Verkauf, als Eigentuemer). Der Projekt Desk (Z1) routet zwischen diesen.
-
-### Problem 4: Operative Desk Manifest kennt kein `clientModuleCode`
-
-Das aktuelle Interface `OperativeDeskDefinition` hat nur:
-```text
-managerModuleCode: string    // Z2 Manager
-websiteProfileId: string     // Z3 Website
-```
-
-Es fehlt:
-```text
-clientModuleCode: string     // Z2 Client-Pendant
-```
-
-Ohne dieses Feld kann das System die vollstaendige Z2-Client ↔ Z1-Desk ↔ Z2-Manager Kette nicht programmatisch abbilden.
-
-### Problem 5: MOD-04 Immobilien hat kein Desk
-
-MOD-04 (Immobilien) ist das zentrale Client-Modul fuer Immobilienbesitzer. Es gibt kein dediziertes Z1-Desk dafuer. Aktuell fliesst die Governance indirekt:
-- Verkauf (MOD-06) → Sales Desk → MOD-09
-- Investment (MOD-08) → Acquiary → MOD-12
-- Finanzierung (MOD-07) → FutureRoom → MOD-11
-
-MOD-04 selbst hat jedoch keinen eigenen Desk, da es rein private Daten verwaltet (Portfolio, BWA, Steuer). Das ist architektonisch korrekt — MOD-04 hat keine Manager-Interaktion, es ist ein reines Self-Service-Modul.
+### Automatisierte Tests (optional, spaeter)
+- Vitest-Setup existiert bereits (`vitest.config.ts`)
+- Playwright ist installiert fuer E2E-Tests
+- Kann spaeter aufgebaut werden, aber fuer morgen reicht manuelles Testing
 
 ---
 
-## Vollstaendiges Ziel-Mapping
+## Teil 2: SoT Website Content-Relaunch
 
-| Client-Modul | Funktion | Z1 Desk | Manager-Modul | Z3 Website |
-|-------------|----------|---------|---------------|------------|
-| MOD-07 Finanzierung | Selbstauskunft + Anfrage erstellen | FutureRoom | MOD-11 FM | finance_broker |
-| MOD-08 Investment-Suche | Objekte suchen + Mandat erteilen | Acquiary | MOD-12 Akquise | acquisition_agent |
-| MOD-06 Verkauf | Immobilie zum Verkauf listen | Sales Desk | MOD-09 Immomanager | sales_partner |
-| MOD-05 Pets | Haustiere verwalten + Services buchen | Pet Desk | MOD-22 Pet Manager | pet_services |
-| MOD-18 Finanzen | Konten/Versicherungen/Vorsorge | Finance Desk | (keiner / TBD) | (keiner) |
-| MOD-04 Immobilien | Portfolio, BWA, Steuer | (keiner — Self-Service) | (keiner) | (keiner) |
-| (Z3 Leads) | Website-Kontaktformulare | Lead Desk | MOD-10 Lead Manager | (alle Z3 Sites) |
-| (Z3 Projekte) | Projekt-Landing-Pages | Projekt Desk | MOD-13 Projektmanager | project_developer |
+### Problem-Analyse
 
----
+Die aktuelle SoT-Website hat inhaltliche Schwaechen:
+- **Zu eng auf Immobilien fokussiert** -- der Slogan "Software fuer Immobilienverwaltung" verschenkt das volle Potenzial
+- **Digitalisierung als Kernversprechen fehlt** -- "Chaos beseitigen", "Digitalisierung greifbar machen", "buchbar und umsetzbar" kommt nicht rueber
+- **Keine klare Zielgruppen-Ansprache** fuer KMU/Unternehmer/Selbstaendige
+- **Die Use Cases sind nur Immobilien-bezogen** -- Service- und Base-Module werden kaum vermarktet
+- **SotProdukt.tsx sagt "Software fuer Immobilienverwaltung"** statt die breite Plattform zu erklaeren
 
-## Empfohlene Aenderungen
+### Geplante Aenderungen
 
-### 1. `operativeDeskManifest.ts` — Interface erweitern
+#### 1. `SotHome.tsx` -- Neuer Hero und Messaging (Hauptseite)
 
-Neues Feld `clientModuleCode` hinzufuegen, um die vollstaendige Dreierkette abzubilden:
+**Vorher:** "Struktur und KI fuer Ihren Haushalt"
+**Nachher:** Neues Messaging rund um:
+- "Digitalisierung greifbar machen -- ohne grosse Investitionen"
+- "Chaos beseitigen. Struktur schaffen. KI nutzen."
+- Klare Zielgruppen: Unternehmer, Vermieter, Teams
+- Neuer Hero-Text der Digitalisierung als buchbare Dienstleistung positioniert
+- Neue "Pain-Point"-Sektion: Was kostet Sie fehlendes System? (Zeit, Geld, Nerven)
+- Social Proof / Zahlen-Sektion aufwerten
 
-```text
-OperativeDeskDefinition {
-  deskId: string;
-  displayName: string;
-  managerModuleCode: string;     // Z2 Manager
-  clientModuleCode: string;      // Z2 Client (NEU)
-  websiteProfileId: string;      // Z3 Website
-  ...
-}
-```
+#### 2. `SotProdukt.tsx` -- Komplett ueberarbeiten
 
-### 2. Pet Desk korrigieren
+**Vorher:** "Software fuer Immobilienverwaltung" mit 4 generischen Prinzipien
+**Nachher:**
+- Titel: "Digitalisierung. Greifbar. Buchbar. Umsetzbar."
+- 3 klare Versprechen: Chaos beseitigen / Sofort nutzbar / Keine eigene IT-Investition
+- Problem-Loesung-Ergebnis neu formuliert fuer breites Publikum
+- Konkrete Beispiele aus allen Bereichen (nicht nur Immobilien)
 
-```text
-Pet Desk:
-  clientModuleCode: 'MOD-05'    // Pets (Tierhalter)
-  managerModuleCode: 'MOD-22'   // Pet Manager (Franchise-Partner)
-```
+#### 3. `SotUseCases.tsx` -- Erweitern um Service + Base
 
-### 3. Finance Desk registrieren
+**Vorher:** 6 Use Cases, alle Immobilien-bezogen
+**Nachher:** 10+ Use Cases aus allen 3 Bereichen:
+- CLIENT: Finanzueberblick, Verkauf ohne Makler, Finanzierungspaket
+- SERVICE: Fuhrpark-Management, PV-Ertraege monitoren, E-Mail-Automatisierung
+- BASE: Dokumentenchaos beseitigen, KI-Assistent fuer alles, Kontakte synchronisieren
 
-```text
-{
-  deskId: 'finance-desk',
-  displayName: 'Finance Desk',
-  clientModuleCode: 'MOD-18',    // Finanzen (Kunde)
-  managerModuleCode: '',         // Kein Manager-Modul (vorerst)
-  websiteProfileId: '',
-  route: 'finance-desk',
-  icon: 'LineChart',
-  responsibilities: [
-    'Finanzberater-Zuweisung',
-    'Service-Portfolio-Governance',
-    'Kunden-Intake-Triage',
-    'Monitoring',
-  ],
-}
-```
+#### 4. `SotPlattform.tsx` -- Staerkerer Einstieg
 
-### 4. Alle bestehenden Desks um `clientModuleCode` ergaenzen
+- Neuer Hero-Text: "Eine Plattform ersetzt 15 Einzelloesungen"
+- Konkretere Beschreibungen pro Area
+- "Was Sie NICHT mehr brauchen"-Sektion (Excel, Ordner, 5 Apps)
 
-| Desk | clientModuleCode | managerModuleCode |
-|------|-----------------|-------------------|
-| Sales Desk | MOD-06 | MOD-09 |
-| Lead Desk | (Z3 only) | MOD-10 |
-| Pet Desk | MOD-05 | MOD-22 (FIX!) |
-| FutureRoom | MOD-07 | MOD-11 |
-| Acquiary | MOD-08 | MOD-12 |
-| Projekt Desk | (Z3 only) | MOD-13 |
-| Finance Desk (NEU) | MOD-18 | (keiner) |
+#### 5. `sotWebsiteModules.ts` -- Beschreibungen schl.rfen
 
-### 5. MOD-13 Visibility klaeren
+- MOD-05 umbenennen (aktuell "Website Builder" -- das passt nicht zum SOT-Kontext, sollte Mietverwaltung/MSV sein)
+- Alle Taglines und Descriptions ueberarbeiten mit Marketing-Fokus
+- Pain Points konkreter und emotionaler formulieren
 
-MOD-13 hat `org_types: ["client", "partner"]`. Wenn es ein reines Manager-Modul sein soll, aendern zu `["partner"]`. Clients interagieren mit Projekten ueber MOD-08 (Suche) oder MOD-06 (Verkauf).
+#### 6. `SotFAQ.tsx` -- Aktualisieren
 
----
+- FAQ-Antworten an neues Messaging anpassen
+- "Was ist System of a Town?" neu formulieren (nicht nur Immobilien)
+- Neue FAQ-Kategorie "Fuer Unternehmen" hinzufuegen
 
-## Betroffene Dateien
+#### 7. `SotLayout.tsx` -- Meta-Description aktualisieren
 
-| Datei | Aenderung |
-|-------|-----------|
-| `src/manifests/operativeDeskManifest.ts` | Interface um `clientModuleCode` erweitern, Pet Desk korrigieren (MOD-22), Finance Desk hinzufuegen |
-| `src/manifests/routesManifest.ts` | MOD-13 visibility pruefen (client + partner → nur partner?) |
-| Keine weiteren Dateien | Die Helpers `getDeskByModule()` etc. funktionieren weiterhin, neuer Helper `getDeskByClientModule()` hinzufuegen |
+- Document Meta anpassen: Nicht nur "Immobilien und private Finanzen"
+- Neuer Untertitel: "Die Digitalisierungsplattform fuer Unternehmer und Vermieter"
+
+### Nicht geaendert (bereits gut)
+
+- `SotIntelligenz.tsx` -- Armstrong-Seite ist stark, nur kleine Textanpassungen
+- `SotPreise.tsx` -- Pricing-Modell ist klar und ueberzeugend
+- `SotDemo.tsx` -- Demo-Seite funktioniert gut
+- Alle anderen Zone-3 Websites (Kaufy, FutureRoom, Acquiary, Lennox) -- die sind gut
+
+### Technische Details
+
+- Alle Aenderungen betreffen nur Zone 3 SoT-Dateien (kein Freeze relevant)
+- Keine Datenbank-Aenderungen noetig
+- Keine neuen Abhaengigkeiten
+- Dateien betroffen:
+  - `src/pages/zone3/sot/SotHome.tsx`
+  - `src/pages/zone3/sot/SotProdukt.tsx`
+  - `src/pages/zone3/sot/SotUseCases.tsx`
+  - `src/pages/zone3/sot/SotPlattform.tsx`
+  - `src/pages/zone3/sot/SotFAQ.tsx`
+  - `src/pages/zone3/sot/SotLayout.tsx`
+  - `src/data/sotWebsiteModules.ts`
 
