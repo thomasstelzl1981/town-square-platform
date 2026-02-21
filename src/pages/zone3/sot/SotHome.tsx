@@ -1,6 +1,6 @@
 /**
- * SoT Home — Remastered: Haushalt, Finanzen & KI
- * Aurora Borealis aesthetic, Areas-basierte Struktur, Armstrong Intelligence Highlight
+ * SoT Home — Digitalisierung greifbar machen
+ * Aurora Borealis aesthetic, Marketing-fokussiert
  */
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
@@ -9,7 +9,8 @@ import {
   ArrowRight, Sparkles, Globe, Lock, Shield,
   CheckCircle2, ChevronRight, Cpu, Eye, Workflow,
   GraduationCap, ShoppingCart, Sun, Users, FolderOpen,
-  MessageSquare, Landmark, Search, Tag, Mail, PawPrint
+  MessageSquare, Landmark, Search, Tag, Mail, PawPrint,
+  Clock, AlertTriangle, TrendingDown, Rocket
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSotTheme } from '@/hooks/useSotTheme';
@@ -19,9 +20,34 @@ const heroPills = [
   { icon: Building2, label: 'Immobilien' },
   { icon: Wallet, label: 'Finanzen' },
   { icon: FileText, label: 'Dokumente' },
-  { icon: Zap, label: 'Energie' },
-  { icon: Car, label: 'Fahrzeuge' },
+  { icon: Car, label: 'Fuhrpark' },
+  { icon: Sun, label: 'Energie' },
   { icon: Brain, label: 'KI-Assistent' },
+];
+
+/* ── Pain Points ── */
+const painPoints = [
+  {
+    icon: Clock,
+    stat: '12h',
+    unit: '/ Woche',
+    title: 'Zeitverlust',
+    desc: 'verbringen Unternehmer mit Suchen, Sortieren und manueller Verwaltung.',
+  },
+  {
+    icon: AlertTriangle,
+    stat: '5+',
+    unit: 'Tools',
+    title: 'Tool-Chaos',
+    desc: 'nutzen KMU durchschnittlich — ohne Verbindung zueinander.',
+  },
+  {
+    icon: TrendingDown,
+    stat: '3.200€',
+    unit: '/ Jahr',
+    title: 'Versteckte Kosten',
+    desc: 'gehen durch ineffiziente Prozesse und fehlende Übersicht verloren.',
+  },
 ];
 
 /* ── 3 Areas ── */
@@ -30,45 +56,45 @@ const areas = [
     key: 'client',
     label: 'CLIENT',
     title: 'Ihr Vermögen',
-    desc: 'Finanzen, Immobilien, Finanzierung und Investments — alles, was mit Ihrem Vermögen zu tun hat.',
+    desc: 'Finanzen, Immobilien, Finanzierung und Investments — alles, was mit Ihrem Vermögen zu tun hat. Übersicht statt Zettelwirtschaft.',
     color: 'from-blue-500/20 to-blue-600/5',
     accentHsl: '217 91% 60%',
     modules: [
-      { icon: Wallet, name: 'Finanzen', desc: 'Konten, Einnahmen, Ausgaben, Verträge' },
+      { icon: Wallet, name: 'Finanzanalyse', desc: 'Vermögen, Cashflow, Szenarien' },
       { icon: Building2, name: 'Immobilien', desc: 'Portfolio, Objektakten, Mietverträge' },
       { icon: Landmark, name: 'Finanzierung', desc: 'Selbstauskunft, bankfertige Unterlagen' },
-      { icon: Search, name: 'Investment-Suche', desc: 'Kapitalanlagen finden, Rendite berechnen' },
-      { icon: Tag, name: 'Verkauf', desc: 'Inserate, Anfragen, Reservierungen' },
-      { icon: Sparkles, name: 'KI Office', desc: 'E-Mails, Briefe, Kalender, WhatsApp' },
+      { icon: Search, name: 'Investment-Suche', desc: 'Kapitalanlagen finden & bewerten' },
+      { icon: Tag, name: 'Verkauf', desc: 'Ohne Makler verkaufen — 6% sparen' },
+      { icon: Sparkles, name: 'KI Office', desc: 'E-Mails, Briefe, Termine, WhatsApp' },
     ],
   },
   {
     key: 'service',
     label: 'SERVICE',
-    title: 'Ihr Haushalt',
-    desc: 'Fahrzeuge, Energie, Fortbildung, Haustiere und Shopping — Ihr kompletter Haushalt digital.',
+    title: 'Ihr Betrieb',
+    desc: 'Fuhrpark, Energie, Kommunikation, Fortbildung und Einkauf — alles, was Ihr Unternehmen am Laufen hält. Digital statt Papierchaos.',
     color: 'from-emerald-500/20 to-emerald-600/5',
     accentHsl: '160 60% 45%',
     modules: [
-      { icon: Car, name: 'Fahrzeuge', desc: 'Fuhrpark, TÜV, Fahrtenbuch' },
-      { icon: Sun, name: 'Photovoltaik', desc: 'PV-Anlagen, Erträge, Wartung' },
-      { icon: GraduationCap, name: 'Fortbildung', desc: 'Bücher, Kurse, Zertifikate' },
-      { icon: PawPrint, name: 'Haustiere', desc: 'Tierakten, Caring, Tierservice' },
+      { icon: Car, name: 'Fahrzeuge', desc: 'Fuhrpark, TÜV, Fahrtenbuch, Kosten' },
+      { icon: Sun, name: 'Photovoltaik', desc: 'PV-Erträge, Wartung, Amortisation' },
+      { icon: Mail, name: 'Kommunikation Pro', desc: 'E-Mail-Serien, Tracking, KI-Agenten' },
+      { icon: GraduationCap, name: 'Fortbildung', desc: 'Kurse, Bücher, Zertifikate' },
       { icon: ShoppingCart, name: 'Shops', desc: 'Amazon Business, OTTO, Bestellungen' },
-      { icon: Mail, name: 'Kommunikation Pro', desc: 'E-Mail-Serien, Tracking' },
+      { icon: PawPrint, name: 'Haustiere & mehr', desc: 'Tierakten, Smart Home, Mieterportal' },
     ],
   },
   {
     key: 'base',
     label: 'BASE',
-    title: 'Ihr System',
-    desc: 'Dokumente, Stammdaten und KI-Intelligenz — das Fundament Ihrer digitalen Verwaltung.',
+    title: 'Ihr Fundament',
+    desc: 'Dokumente, Kontakte und KI-Intelligenz — das digitale Rückgrat Ihres Unternehmens. Einmal aufgebaut, immer verfügbar.',
     color: 'from-violet-500/20 to-violet-600/5',
     accentHsl: '275 45% 50%',
     modules: [
       { icon: FolderOpen, name: 'DMS', desc: 'Datenraum, Posteingang, KI-Sortierung' },
-      { icon: Users, name: 'Stammdaten', desc: 'Profile, Kontakte, Verträge' },
-      { icon: Brain, name: 'Armstrong', desc: 'KI-Co-Pilot, Datenraum-Extraktion' },
+      { icon: Users, name: 'Stammdaten', desc: 'Profile, Kontakte, Verträge, Sync' },
+      { icon: Brain, name: 'Armstrong', desc: 'KI-Co-Pilot für Ihren gesamten Datenraum' },
     ],
   },
 ];
@@ -76,16 +102,16 @@ const areas = [
 /* ── Armstrong Highlights ── */
 const armstrongHighlights = [
   { icon: Eye, title: 'Kein Upload nötig', desc: 'Armstrong liest Ihren gesamten Datenraum — einmal aktivieren, dauerhaft nutzen.' },
-  { icon: Cpu, title: 'Pay per Use', desc: 'Keine monatliche Gebühr. Sie zahlen nur, wenn KI wirklich für Sie arbeitet.' },
+  { icon: Cpu, title: 'Pay per Use', desc: 'Keine monatliche Gebühr für KI. Sie zahlen nur, wenn Armstrong wirklich für Sie arbeitet.' },
   { icon: Shield, title: 'Volle Kontrolle', desc: 'Sie sehen den Preis vorher. Keine versteckten Kosten, keine Überraschungen.' },
 ];
 
 /* ── Steps ── */
 const steps = [
   { num: '01', title: 'Registrieren', desc: 'Kostenfrei in 30 Sekunden. Keine Kreditkarte.' },
-  { num: '02', title: 'Daten anlegen', desc: 'Importieren oder manuell erfassen — Magic Intake hilft.' },
-  { num: '03', title: 'Datenraum aktivieren', desc: 'Armstrong scannt und extrahiert Ihre Dokumente.' },
-  { num: '04', title: 'KI arbeiten lassen', desc: 'Fragen Sie Armstrong alles über Ihre Daten.' },
+  { num: '02', title: 'Module aktivieren', desc: 'Wählen Sie, was Sie brauchen — vom Fuhrpark bis zur Immobilie.' },
+  { num: '03', title: 'Datenraum befüllen', desc: 'Importieren, scannen oder manuell — Magic Intake hilft.' },
+  { num: '04', title: 'KI arbeiten lassen', desc: 'Armstrong organisiert, analysiert und automatisiert für Sie.' },
 ];
 
 /* ── Stats ── */
@@ -94,6 +120,12 @@ const stats = [
   { value: 'DSGVO', label: 'Konform' },
   { value: '24/7', label: 'KI-Assistenz' },
   { value: '0 €', label: 'Grundgebühr' },
+];
+
+/* ── Replaced-By Badges ── */
+const replacedTools = [
+  'Excel-Listen', 'Papierordner', 'WhatsApp-Gruppen', 'E-Mail-Chaos',
+  'Separate Buchhaltung', 'Makler-Portale', 'Post-Its', 'Cloud-Wirrwarr',
 ];
 
 /* ── Scroll animation hook ── */
@@ -189,22 +221,23 @@ export default function SotHome() {
 
           <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative">
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-border/50 bg-card/40 backdrop-blur-sm mb-8 text-xs font-medium text-muted-foreground">
-              <Sparkles className="w-3.5 h-3.5 text-primary" />
-              KI-gestützte Plattform für Haushalt & Finanzen
+              <Rocket className="w-3.5 h-3.5 text-primary" />
+              Digitalisierung — greifbar, buchbar, umsetzbar
             </div>
 
             <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.05]">
               <span className="bg-gradient-to-b from-foreground via-foreground to-foreground/60 bg-clip-text text-transparent">
-                Struktur und KI
+                Chaos beseitigen.
               </span>
               <br />
               <span className="bg-gradient-to-r from-primary via-primary to-accent/80 bg-clip-text text-transparent">
-                für Ihren Haushalt.
+                Digitalisierung leben.
               </span>
             </h1>
 
             <h2 className="mt-6 text-lg sm:text-xl lg:text-2xl font-medium text-muted-foreground leading-relaxed max-w-3xl mx-auto">
-              Immobilien, Finanzen, Dokumente, Energie und Fahrzeuge — zentral verwaltet, intelligent analysiert. Kein Abo. Pay per Use.
+              Eine Plattform für Immobilien, Finanzen, Fuhrpark, Dokumente und mehr — 
+              mit KI-Assistent. Ohne große Investitionen. Sofort einsatzbereit.
             </h2>
 
             <div className="mt-8 flex flex-wrap items-center justify-center gap-2 sm:gap-3">
@@ -237,15 +270,68 @@ export default function SotHome() {
           </div>
         </section>
 
+        {/* ── PAIN POINTS ── */}
+        <section className="py-16 sm:py-20">
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+            <RevealSection>
+              <div className="text-center mb-12">
+                <h2 className="text-sm font-semibold tracking-widest uppercase text-primary mb-3">Das Problem</h2>
+                <p className="text-2xl sm:text-3xl font-bold">Was kostet Sie fehlendes System?</p>
+              </div>
+            </RevealSection>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+              {painPoints.map((pp, i) => (
+                <RevealSection key={pp.title} delay={i * 100}>
+                  <div className={cn(
+                    'rounded-2xl border border-border/30 bg-card/40 backdrop-blur-sm p-7 text-center',
+                    !isDark && 'shadow-sm'
+                  )}>
+                    <div className="h-12 w-12 rounded-xl bg-destructive/10 flex items-center justify-center mx-auto mb-4">
+                      <pp.icon className="w-6 h-6 text-destructive" />
+                    </div>
+                    <div className="text-3xl font-bold text-foreground">
+                      {pp.stat}<span className="text-lg text-muted-foreground ml-1">{pp.unit}</span>
+                    </div>
+                    <h3 className="text-sm font-semibold mt-2 mb-1">{pp.title}</h3>
+                    <p className="text-xs text-muted-foreground leading-relaxed">{pp.desc}</p>
+                  </div>
+                </RevealSection>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ── WHAT WE REPLACE ── */}
+        <section className="py-12">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <RevealSection>
+              <div className="text-center mb-6">
+                <p className="text-sm font-medium text-muted-foreground">Was Sie mit System of a Town nicht mehr brauchen:</p>
+              </div>
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                {replacedTools.map((tool) => (
+                  <span
+                    key={tool}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-destructive/20 bg-destructive/5 text-xs font-medium text-muted-foreground line-through decoration-destructive/40"
+                  >
+                    {tool}
+                  </span>
+                ))}
+              </div>
+            </RevealSection>
+          </div>
+        </section>
+
         {/* ── 3 AREAS ── */}
         <section className="py-16 sm:py-24">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
             <RevealSection>
               <div className="text-center mb-14">
-                <h2 className="text-sm font-semibold tracking-widest uppercase text-primary mb-3">3 Bereiche</h2>
-                <p className="text-2xl sm:text-3xl font-bold">Alles, was Sie brauchen. An einem Ort.</p>
+                <h2 className="text-sm font-semibold tracking-widest uppercase text-primary mb-3">Eine Plattform — 3 Bereiche</h2>
+                <p className="text-2xl sm:text-3xl font-bold">15+ Module. Ein System. Null Chaos.</p>
                 <p className="mt-3 text-muted-foreground max-w-2xl mx-auto">
-                  Client für Ihr Vermögen, Service für Ihren Haushalt, Base für Ihr System.
+                  Client für Ihr Vermögen, Service für Ihren Betrieb, Base für Ihr digitales Fundament.
                 </p>
               </div>
             </RevealSection>
@@ -288,7 +374,7 @@ export default function SotHome() {
                 to="/website/sot/plattform"
                 className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline"
               >
-                Alle Bereiche im Detail
+                Alle Module im Detail
                 <ChevronRight className="w-4 h-4" />
               </Link>
             </div>
@@ -306,10 +392,11 @@ export default function SotHome() {
                   Armstrong Intelligence
                 </div>
                 <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight">
-                  Ihre KI liest Ihren<br />gesamten Datenraum.
+                  Ihre KI kennt Ihr<br />gesamtes Unternehmen.
                 </h2>
                 <p className="mt-5 text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-                  Kein manuelles Hochladen. Kein Copy-Paste. Einmal aktivieren — Armstrong kennt alle Ihre Dokumente, Verträge und Daten.
+                  Kein manuelles Hochladen. Kein Copy-Paste. Armstrong liest Ihren gesamten Datenraum — 
+                  Dokumente, Verträge, E-Mails, Finanzen. Fragen Sie einfach.
                 </p>
               </div>
             </RevealSection>
@@ -340,10 +427,11 @@ export default function SotHome() {
                 <p className="text-xs font-semibold tracking-widest uppercase text-muted-foreground mb-4">Beispiel-Anfragen an Armstrong</p>
                 <div className="flex flex-wrap gap-2">
                   {[
+                    'Welche Fahrzeuge brauchen bald TÜV?',
                     'Fasse alle Mietverträge zusammen',
-                    'Welche Versicherungen laufen bald aus?',
+                    'Erstelle eine Übersicht offener Rechnungen',
+                    'Was kostet mich mein Fuhrpark pro Monat?',
                     'Vergleiche die Nebenkostenabrechnungen 2024 und 2025',
-                    'Erstelle eine Übersicht aller offenen Rechnungen',
                   ].map((q) => (
                     <div key={q} className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/5 border border-primary/10 text-sm text-foreground">
                       <MessageSquare className="w-3.5 h-3.5 text-primary flex-shrink-0" />
@@ -371,8 +459,8 @@ export default function SotHome() {
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
             <RevealSection>
               <div className="text-center mb-14">
-                <h2 className="text-3xl sm:text-4xl font-bold tracking-tight">So funktioniert es</h2>
-                <p className="mt-4 text-muted-foreground">In 4 Schritten zur intelligenten Verwaltung.</p>
+                <h2 className="text-3xl sm:text-4xl font-bold tracking-tight">In 4 Schritten digital</h2>
+                <p className="mt-4 text-muted-foreground">Keine langen Einführungsprojekte. Kein IT-Budget nötig.</p>
               </div>
             </RevealSection>
 
@@ -420,13 +508,14 @@ export default function SotHome() {
             <RevealSection>
               <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-border/50 bg-card/40 mb-6 text-xs font-medium text-muted-foreground">
                 <Globe className="w-3.5 h-3.5 text-primary" />
-                Kostenlos starten
+                Jetzt Digitalisierung starten
               </div>
               <h2 className="text-3xl sm:text-4xl font-bold mb-4">
-                Bereit loszulegen?
+                Bereit für Ordnung?
               </h2>
               <p className="text-muted-foreground mb-10 leading-relaxed">
-                Starten Sie kostenlos und bringen Sie Struktur und KI in Ihren Haushalt und Ihre Finanzen.
+                Starten Sie kostenlos — keine Kreditkarte, kein Abo, keine Grundgebühr. 
+                Digitalisierung, die Sie sofort nutzen können.
               </p>
               <div className="flex gap-2 max-w-sm mx-auto">
                 <input

@@ -1,44 +1,68 @@
 /**
- * SoT Produkt — Dark Premium Product Page
+ * SoT Produkt — Digitalisierung. Greifbar. Buchbar. Umsetzbar.
  */
 import { Link } from 'react-router-dom';
-import { ArrowRight, Layers, Zap, Shield, Clock } from 'lucide-react';
+import { ArrowRight, Layers, Zap, Shield, Clock, Ban, Rocket, CreditCard } from 'lucide-react';
 import { SotCTA } from '@/components/zone3/sot';
 import { useSotScrollAnimation, useSotStaggerAnimation } from '@/hooks/useSotScrollAnimation';
 
-const principles = [
+const promises = [
   {
-    icon: Layers,
-    title: 'Alles an einem Ort',
-    description: 'Dokumente, Objekte, Kontakte und Prozesse – zentral und vernetzt.',
+    icon: Ban,
+    title: 'Chaos beseitigen',
+    description: 'Schluss mit Excel, Papierordnern und 5 verschiedenen Apps. Eine Plattform für alles — strukturiert, durchsuchbar, intelligent.',
   },
   {
-    icon: Zap,
-    title: 'KI-unterstützt',
-    description: 'Intelligente Automatisierung für wiederkehrende Aufgaben.',
+    icon: Rocket,
+    title: 'Sofort nutzbar',
+    description: 'Keine monatelangen IT-Projekte. Registrieren, Module aktivieren, loslegen. In 10 Minuten startklar.',
+  },
+  {
+    icon: CreditCard,
+    title: 'Keine große Investition',
+    description: 'Kein Abo. Keine Grundgebühr. Pay per Use — Sie zahlen nur, was Sie tatsächlich nutzen. Digitalisierung, die sich jeder leisten kann.',
   },
   {
     icon: Shield,
-    title: 'Sicher & privat',
-    description: 'Ihre Daten bleiben Ihre Daten. Volle Kontrolle, volle Transparenz.',
-  },
-  {
-    icon: Clock,
-    title: 'Zeitgewinn',
-    description: 'Weniger Suchen, weniger Chaos, mehr Zeit für das Wesentliche.',
+    title: 'DSGVO-konform & sicher',
+    description: 'Ihre Daten gehören Ihnen. Deutsche Server, verschlüsselt, volle Kontrolle. Keine Weitergabe, kein Tracking.',
   },
 ];
 
+const beforeAfter = {
+  problem: [
+    'Dokumente in 10 Ordnern verstreut',
+    'Fuhrpark-Kosten? Keine Ahnung.',
+    'Mietverträge? Irgendwo im Schrank.',
+    'Finanzierung? Unterlagen fehlen.',
+    'KI nutzen? Zu komplex, zu teuer.',
+  ],
+  solution: [
+    'Ein Datenraum — alles sofort findbar',
+    'Fahrzeug-Modul mit Kostenüberblick',
+    'Digitale Objektakte mit allen Verträgen',
+    'Bankfertige Unterlagen auf Knopfdruck',
+    'Armstrong KI — Pay per Use, ohne Setup',
+  ],
+  outcome: [
+    'Stunden pro Woche eingespart',
+    'Volle Kostenkontrolle über den Fuhrpark',
+    'Professionelle Verwaltung wie ein Profi',
+    'Finanzierungszusage in Tagen statt Wochen',
+    'KI-Assistent für den gesamten Datenraum',
+  ],
+};
+
 const steps = [
-  { number: '01', title: 'Registrieren', description: 'Kostenloses Konto erstellen' },
-  { number: '02', title: 'Einrichten', description: 'Objekte und Kontakte anlegen' },
-  { number: '03', title: 'Dokumente', description: 'Posteingang verbinden' },
-  { number: '04', title: 'Nutzen', description: 'Ordnung genießen' },
+  { number: '01', title: 'Registrieren', description: 'Kostenfrei — keine Kreditkarte nötig' },
+  { number: '02', title: 'Module wählen', description: 'Immobilien, Fuhrpark, Finanzen — was Sie brauchen' },
+  { number: '03', title: 'Daten importieren', description: 'Magic Intake — KI sortiert Ihre Dokumente' },
+  { number: '04', title: 'Durchstarten', description: 'Ordnung genießen, KI arbeiten lassen' },
 ];
 
 export default function SotProdukt() {
   const { ref: heroRef, isVisible: heroVisible } = useSotScrollAnimation();
-  const { containerRef: principlesRef, visibleItems: principlesVisible } = useSotStaggerAnimation(principles.length, 100);
+  const { containerRef: promisesRef, visibleItems: promisesVisible } = useSotStaggerAnimation(promises.length, 100);
   const { ref: problemRef, isVisible: problemVisible } = useSotScrollAnimation();
   const { containerRef: stepsRef, visibleItems: stepsVisible } = useSotStaggerAnimation(steps.length, 150);
 
@@ -52,12 +76,15 @@ export default function SotProdukt() {
           className={`zone3-container relative z-10 text-center sot-fade-in ${heroVisible ? 'visible' : ''}`}
         >
           <span className="sot-label mb-4 inline-block" style={{ color: 'hsl(var(--z3-accent))' }}>
-            Produkt
+            Das Produkt
           </span>
-          <h1 className="sot-display mb-6">Software für Immobilienverwaltung.</h1>
+          <h1 className="sot-display mb-6">
+            Digitalisierung.<br />
+            Greifbar. Buchbar. Umsetzbar.
+          </h1>
           <p className="sot-subheadline max-w-2xl mx-auto mb-10">
-            System of a Town bringt Ordnung in Ihre Immobilienverwaltung — mit über 17 Modulen 
-            für Dokumente, Objekte, Finanzen, Projekte und mehr.
+            System of a Town macht Digitalisierung für Unternehmer, Vermieter und Teams 
+            sofort nutzbar — mit 15+ Modulen, KI-Assistent und ohne eigene IT-Investition.
           </p>
           <div className="flex justify-center gap-4 flex-wrap">
             <Link to="/auth?mode=register&source=sot" className="sot-btn-primary">
@@ -71,21 +98,24 @@ export default function SotProdukt() {
         </div>
       </section>
 
-      {/* Principles */}
+      {/* Promises */}
       <section className="py-24">
         <div className="zone3-container">
           <div className="text-center mb-16">
-            <h2 className="sot-headline">Unsere Prinzipien</h2>
+            <h2 className="sot-headline">Was wir versprechen</h2>
+            <p className="sot-subheadline mt-3 max-w-xl mx-auto">
+              Digitalisierung muss nicht teuer, kompliziert oder langwierig sein.
+            </p>
           </div>
           
           <div 
-            ref={principlesRef}
+            ref={promisesRef}
             className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6"
           >
-            {principles.map((p, i) => (
+            {promises.map((p, i) => (
               <div 
                 key={i} 
-                className={`sot-glass-card p-8 text-center sot-fade-in ${principlesVisible[i] ? 'visible' : ''}`}
+                className={`sot-glass-card p-8 text-center sot-fade-in ${promisesVisible[i] ? 'visible' : ''}`}
               >
                 <div 
                   className="w-14 h-14 rounded-2xl mx-auto mb-6 flex items-center justify-center"
@@ -106,85 +136,49 @@ export default function SotProdukt() {
       {/* Problem → Solution → Outcome */}
       <section className="py-24" style={{ backgroundColor: 'hsl(var(--z3-card))' }}>
         <div className="zone3-container">
+          <div className="text-center mb-12">
+            <h2 className="sot-headline">Vorher → Nachher → Ergebnis</h2>
+            <p className="sot-subheadline mt-3 max-w-xl mx-auto">
+              Von der Zettelwirtschaft zur digitalen Ordnung — konkret und messbar.
+            </p>
+          </div>
           <div 
             ref={problemRef}
             className={`grid md:grid-cols-3 gap-8 sot-fade-in ${problemVisible ? 'visible' : ''}`}
           >
             <div className="sot-glass-card p-8 border-l-4 border-l-red-500/50">
-              <h3 className="text-lg font-bold mb-4 text-red-400">Das Problem</h3>
+              <h3 className="text-lg font-bold mb-4 text-red-400">Vorher</h3>
               <ul className="space-y-3 text-sm" style={{ color: 'hsl(var(--z3-muted-foreground))' }}>
-                <li className="flex items-start gap-2">
-                  <span className="text-red-400">×</span>
-                  Dokumente über mehrere Ordner verteilt
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-red-400">×</span>
-                  Posteingang unübersichtlich
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-red-400">×</span>
-                  Keine Übersicht über Mietverträge
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-red-400">×</span>
-                  Prozesse nicht nachvollziehbar
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-red-400">×</span>
-                  Zeitverlust durch Suchen
-                </li>
+                {beforeAfter.problem.map((item, i) => (
+                  <li key={i} className="flex items-start gap-2">
+                    <span className="text-red-400">×</span>
+                    {item}
+                  </li>
+                ))}
               </ul>
             </div>
             
             <div className="sot-glass-card p-8 border-l-4" style={{ borderLeftColor: 'hsl(var(--z3-accent))' }}>
-              <h3 className="text-lg font-bold mb-4" style={{ color: 'hsl(var(--z3-accent))' }}>Die Lösung</h3>
+              <h3 className="text-lg font-bold mb-4" style={{ color: 'hsl(var(--z3-accent))' }}>System of a Town</h3>
               <ul className="space-y-3 text-sm" style={{ color: 'hsl(var(--z3-muted-foreground))' }}>
-                <li className="flex items-start gap-2">
-                  <span style={{ color: 'hsl(var(--z3-accent))' }}>→</span>
-                  Zentrales Dokumentenmanagement
-                </li>
-                <li className="flex items-start gap-2">
-                  <span style={{ color: 'hsl(var(--z3-accent))' }}>→</span>
-                  Automatischer Posteingang
-                </li>
-                <li className="flex items-start gap-2">
-                  <span style={{ color: 'hsl(var(--z3-accent))' }}>→</span>
-                  Strukturierte Objektverwaltung
-                </li>
-                <li className="flex items-start gap-2">
-                  <span style={{ color: 'hsl(var(--z3-accent))' }}>→</span>
-                  KI-unterstützte Prozesse
-                </li>
-                <li className="flex items-start gap-2">
-                  <span style={{ color: 'hsl(var(--z3-accent))' }}>→</span>
-                  Einheitliches System
-                </li>
+                {beforeAfter.solution.map((item, i) => (
+                  <li key={i} className="flex items-start gap-2">
+                    <span style={{ color: 'hsl(var(--z3-accent))' }}>→</span>
+                    {item}
+                  </li>
+                ))}
               </ul>
             </div>
             
             <div className="sot-glass-card p-8 border-l-4 border-l-green-500/50">
-              <h3 className="text-lg font-bold mb-4 text-green-400">Das Ergebnis</h3>
+              <h3 className="text-lg font-bold mb-4 text-green-400">Ihr Ergebnis</h3>
               <ul className="space-y-3 text-sm" style={{ color: 'hsl(var(--z3-muted-foreground))' }}>
-                <li className="flex items-start gap-2">
-                  <span className="text-green-400">✓</span>
-                  Alles sofort auffindbar
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-green-400">✓</span>
-                  Weniger Verwaltungsaufwand
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-green-400">✓</span>
-                  Bessere Entscheidungen
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-green-400">✓</span>
-                  Mehr Transparenz
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-green-400">✓</span>
-                  Zeit für das Wesentliche
-                </li>
+                {beforeAfter.outcome.map((item, i) => (
+                  <li key={i} className="flex items-start gap-2">
+                    <span className="text-green-400">✓</span>
+                    {item}
+                  </li>
+                ))}
               </ul>
             </div>
           </div>
@@ -195,7 +189,7 @@ export default function SotProdukt() {
       <section className="py-24">
         <div className="zone3-container">
           <div className="text-center mb-16">
-            <h2 className="sot-headline">So funktioniert es</h2>
+            <h2 className="sot-headline">4 Schritte zur digitalen Ordnung</h2>
           </div>
           
           <div 
@@ -229,8 +223,8 @@ export default function SotProdukt() {
       {/* CTA */}
       <SotCTA 
         variant="gradient"
-        title="Bereit für strukturierte Verwaltung?"
-        subtitle="Starten Sie kostenlos und bringen Sie Ordnung in Ihre Immobilienverwaltung."
+        title="Digitalisierung starten — ohne Risiko"
+        subtitle="Kostenlos registrieren. Keine Kreditkarte. Keine Grundgebühr. Sofort einsatzbereit."
       />
     </div>
   );
