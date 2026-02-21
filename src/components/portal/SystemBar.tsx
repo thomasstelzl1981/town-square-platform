@@ -227,15 +227,10 @@ export function SystemBar() {
           </button>
         </div>
 
-        {/* CENTER — SYSTEM OF A TOWN + Impressum */}
-        <div className="flex items-center gap-3">
-          <span className="text-foreground font-sans font-semibold tracking-[0.2em] text-sm select-none" style={{ fontSize: '14px' }}>
-            SYSTEM OF A TOWN
-          </span>
-          <Link to="/portal/stammdaten/rechtliches" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
-            Impressum
-          </Link>
-        </div>
+        {/* CENTER — SYSTEM OF A TOWN */}
+        <span className="text-foreground font-sans font-semibold tracking-[0.2em] text-sm select-none" style={{ fontSize: '14px' }}>
+          SYSTEM OF A TOWN
+        </span>
 
         {/* RIGHT — 3 Glass Buttons */}
         <div className="flex items-center gap-2">
