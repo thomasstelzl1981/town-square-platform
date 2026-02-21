@@ -1,50 +1,113 @@
 
+# Magic Intake Center — Komplettanalyse und Verbesserungsplan
 
-# Magic Intake Center — Sichtbarkeit auf Area Base verbessern
+## Ist-Zustand: Was haben wir?
 
-## Problem
+Die aktuelle Seite `/portal/dms/intake` besteht aus 5 Bloecken:
 
-Das Magic Intake Center wurde als Sub-Tile innerhalb von MOD-03 (DMS) unter `/portal/dms/intake` angelegt. Auf der Area-Uebersichtsseite `/portal/area/base` erscheinen nur die 3 Modul-Karten (Dokumente, Stammdaten, Armstrong). Der Nutzer findet das Intake Center nicht ohne den Umweg ueber DMS.
+1. **Page Header** — Titel + einzeiliger Untertitel
+2. **IntakeHowItWorks** — 3 Karten (Kategorie waehlen, Upload, KI analysiert)
+3. **IntakeEntityPicker + IntakeUploadZone** — 2-Step-Selektion + Dropzone
+4. **IntakeChecklistGrid** — Statische Liste benoetigter Dokumente (immer 0%)
+5. **IntakeRecentActivity** — Letzte 5 Uploads aus `documents`
 
-## Aktueller Zugriffspfad
+## Identifizierte Schwachstellen
 
-```text
-/portal/area/base → "Dokumente" klicken → DMS oeffnet sich → Tile "Magic Intake" waehlen
-```
+### 1. Seite wirkt "zu komprimiert" — kein Storytelling
+- Der Header ist ein einzeiliger Satz. Es fehlt eine visuelle Hero-Section, die dem Nutzer sofort vermittelt: "Das ist ein Premium-Feature, das dir Arbeit abnimmt."
+- IntakeHowItWorks zeigt 3 generische Schritte ohne emotionalen Kontext (kein Zeitersparnis-Versprechen, keine Kosteninfo).
 
-## Loesungsvorschlag: Intake als eigene Karte auf Area Base
+### 2. Datenraum-Auslese fehlt komplett
+- Die `StorageExtractionCard` (Datenraum fuer Armstrong aktivieren) existiert bereits als Komponente und wird im Posteingang und in den Einstellungen genutzt — aber NICHT im Magic Intake Center.
+- Das ist der wichtigste Automatisierungs-Hebel: Der Kunde aktiviert einmalig die Datenraum-Extraktion, und Armstrong kann danach ALLE Dokumente lesen, ohne manuellen Upload.
 
-### Option A — Eigener Eintrag in moduleContents + areaConfig (empfohlen)
+### 3. Kosten/Credit-Transparenz fehlt
+- Nirgends auf der Intake-Seite wird erklaert, was der Service kostet (Credits pro Dokument, Preis pro Credit).
+- Die StorageExtractionCard hat einen Kostenvoranschlag-Flow — dieser muss prominent in die Seite integriert werden.
 
-Das Magic Intake Center bekommt einen eigenen Pseudo-Modul-Eintrag in `moduleContents.ts` (z.B. unter dem Key `INTAKE`) und wird in `areaConfig.ts` zur Area `base` hinzugefuegt. Dadurch erscheint es als eigene Karte neben Dokumente, Stammdaten und Armstrong.
+### 4. ChecklistGrid zeigt immer 0% — kein Live-Fortschritt
+- `IntakeChecklistGrid` zeigt statisch `0 von X vorhanden` ohne je die DB zu pruefen.
+- Es fehlt ein Query gegen `documents` + `document_links` um zu zaehlen, welche Dokument-Typen bereits vorhanden sind.
 
-**Aenderungen:**
+### 5. Kein Multi-File-Upload
+- Die Dropzone akzeptiert `maxFiles: 1`. Fuer ein "Magic Intake" das Arbeit abnehmen soll, sollte Batch-Upload moeglich sein.
 
-1. **`src/components/portal/HowItWorks/moduleContents.ts`** — Neuer Eintrag `INTAKE` mit Titel "Magic Intake Center", oneLiner, benefits, und subTiles (die auf `/portal/dms/intake` verweisen)
+### 6. Keine Verbindung zwischen Upload und Checkliste
+- Wenn ein Dokument hochgeladen wird, aktualisiert sich die Checkliste nicht automatisch.
 
-2. **`src/manifests/areaConfig.ts`** — `INTAKE` in die Area `base` aufnehmen:
-   ```
-   modules: ['MOD-03', 'MOD-01', 'ARMSTRONG', 'INTAKE']
-   ```
+### 7. MagicIntakeCard (Finanzierung) ist isoliert
+- `src/components/finanzierung/MagicIntakeCard.tsx` erstellt eine Finanzierungsakte, aber nutzt nicht die IntakeTab-Pipeline. Es ist ein separater Flow.
 
-3. **`src/pages/portal/AreaOverviewPage.tsx`** — Im `defaultRoute`-Mapping einen Sonderfall fuer `INTAKE` ergaenzen, der auf `/portal/dms/intake` zeigt (aehnlich wie `ARMSTRONG` auf `/portal/armstrong` zeigt)
+---
 
-**Vorteile:**
-- Sofort sichtbar auf Area Base als eigene Karte
-- Kein neuer MOD-Code noetig (wie ARMSTRONG auch keinen hat)
-- Bestehende Route `/portal/dms/intake` bleibt unveraendert
-- AreaOverviewPage rendert die Karte automatisch
+## Verbesserungsplan (7 Massnahmen)
 
-**Nachteile:**
-- INTAKE ist kein echtes Modul, sondern ein Pseudo-Eintrag (aber ARMSTRONG funktioniert genauso)
+### Massnahme 1: Hero-Section mit Value Proposition ersetzen
+**Was**: Den komprimierten Header + IntakeHowItWorks durch eine grosszuegige Hero-Section ersetzen.
 
-### Option B — Nur einen Deep-Link in der MOD-03-Karte (minimal)
+**Neue Struktur**:
+- Grosse Ueberschrift: "Magic Intake Center"
+- Untertitel mit konkretem Nutzenversprechen (Zeitersparnis)
+- 3 Value-Proposition-Karten (aehnlich wie in StorageExtractionCard):
+  - "Kein manuelles Abtippen" — KI liest und befuellt
+  - "Alle Kategorien" — Immobilie, Fahrzeug, PV, Versicherung, etc.
+  - "Volle Kostenkontrolle" — Sie sehen vorher, was es kostet
+- Darunter: visueller Prozess-Flow als horizontale Schrittleiste (nicht 3 separate Karten)
 
-Die bestehende MOD-03 "Dokumente"-Karte bekommt in ihren `subTiles` einen prominenten Eintrag "Magic Intake". Kein neuer Eintrag auf der Area-Seite.
+### Massnahme 2: StorageExtractionCard in IntakeTab einbetten
+**Was**: Die bestehende `StorageExtractionCard` als Block 2 in die IntakeTab-Seite einbauen — zwischen Hero und manuellem Upload.
 
-### Empfehlung
+**Warum**: Das ist der "Autopilot"-Modus. Nutzer sollen zuerst sehen: "Sie koennen den gesamten Datenraum auf einmal aktivieren" — und nur wenn sie einzelne Dokumente manuell hochladen wollen, scrollen sie weiter.
 
-**Option A** — Das Intake Center verdient eine eigene Karte auf Area Base, da es ein zentraler Einstiegspunkt fuer alle Uploads ist und nicht hinter dem DMS versteckt sein sollte.
+**Aenderung**:
+- `IntakeTab.tsx`: Import und Einbettung von `StorageExtractionCard` mit `tenantId` aus `useAuth()`
+- Ueberschrift: "Automatische Datenraum-Auslese" als Section-Header
+
+### Massnahme 3: Credit/Kosten-Info-Block hinzufuegen
+**Was**: Neuer Block `IntakePricingInfo` der transparent erklaert:
+- 1 Credit = 1 Dokument-Analyse
+- Preis pro Credit (z.B. 0,25 EUR)
+- Beispielrechnung: "20 Dokumente = 5,00 EUR"
+- Link zum Credit-Guthaben
+
+**Platzierung**: Zwischen StorageExtractionCard und manuellem Upload-Bereich.
+
+### Massnahme 4: IntakeChecklistGrid mit Live-Fortschritt
+**Was**: Die Checkliste soll den tatsaechlichen Stand aus der Datenbank laden.
+
+**Implementierung**:
+- Neuer Hook `useIntakeChecklistProgress` der fuer jede required_doc-Kategorie in `storageManifest` prueft, ob ein passender `documents`-Eintrag existiert (ueber `document_links` + `storage_nodes`)
+- Fortschrittsbalken und Check-Icons werden dynamisch aktualisiert
+- Bereits vorhandene Dokumente bekommen ein gruenes Haekchen statt grauem Kreis
+
+### Massnahme 5: Multi-File-Upload ermoeglichen
+**Was**: `IntakeUploadZone` auf `maxFiles: 10` erweitern mit einer Dateiliste und Fortschrittsanzeige pro Datei.
+
+**Implementierung**:
+- Dropzone: `maxFiles: 10`
+- Dateiliste unterhalb der Dropzone mit individuellem Status (uploading/parsing/done/error)
+- Sequenzielle Verarbeitung ueber die bestehende `intake()`-Pipeline
+
+### Massnahme 6: Seitenlayout aufloesen — mehr Weissraum
+**Was**: Die Seite grosszuegiger gestalten mit klaren visuellen Trennern zwischen den Bloecken.
+
+**Neue Block-Reihenfolge**:
+1. Hero-Section (Value Proposition + Prozess-Flow)
+2. Datenraum-Auslese (StorageExtractionCard) — der Autopilot-Weg
+3. Credit-Info (IntakePricingInfo) — Kostentransparenz
+4. Manueller Upload (EntityPicker + UploadZone) — der manuelle Weg
+5. Dokument-Checkliste (mit Live-Fortschritt) — was fehlt noch?
+6. Letzte Aktivitaet (IntakeRecentActivity)
+
+### Massnahme 7: Verbindung zwischen Upload-Erfolg und Checkliste
+**Was**: Nach erfolgreichem Upload (`intakeProgress.step === 'done'`) die Checkliste automatisch refreshen.
+
+**Implementierung**:
+- IntakeTab haelt einen `refreshKey`-State
+- Nach Upload-Erfolg wird `refreshKey` inkrementiert
+- IntakeChecklistGrid bekommt `refreshKey` als Prop und re-fetcht bei Aenderung
+
+---
 
 ## Technische Details
 
@@ -52,14 +115,21 @@ Die bestehende MOD-03 "Dokumente"-Karte bekommt in ihren `subTiles` einen promin
 
 | Datei | Aenderung |
 |---|---|
-| `src/components/portal/HowItWorks/moduleContents.ts` | Neuer Eintrag `INTAKE` mit Beschreibung und subTiles |
-| `src/manifests/areaConfig.ts` | `'INTAKE'` zur Area `base` modules-Liste hinzufuegen |
-| `src/pages/portal/AreaOverviewPage.tsx` | Sonderfall `INTAKE` im defaultRoute-Mapping (zeigt auf `/portal/dms/intake`) |
+| `src/pages/portal/dms/IntakeTab.tsx` | Neue Block-Reihenfolge, StorageExtractionCard einbetten, refreshKey-State |
+| `src/components/dms/IntakeHowItWorks.tsx` | Komplett ueberarbeiten: Hero-Section mit Value Props + Prozess-Schrittleiste |
+| `src/components/dms/IntakeUploadZone.tsx` | Multi-File-Support (maxFiles: 10), Dateiliste mit Status |
+| `src/components/dms/IntakeChecklistGrid.tsx` | Live-Fortschritt via neuem Hook, refreshKey-Prop |
 
-### Keine strukturellen Aenderungen
+### Neue Dateien
 
-- Kein neuer MOD-Code
-- Keine neuen Routen (bestehende Route wird wiederverwendet)
-- Keine Aenderung an routesManifest.ts
-- Keine DB-Aenderungen
+| Datei | Inhalt |
+|---|---|
+| `src/components/dms/IntakePricingInfo.tsx` | Credit-Kosten-Erklaerung mit Beispielrechnung |
+| `src/hooks/useIntakeChecklistProgress.ts` | DB-Query fuer vorhandene Dokumente pro required_doc-Typ |
 
+### Keine Aenderungen an
+
+- Routing, Manifests, Datenbank-Schema
+- `useDocumentIntake.ts` (Pipeline bleibt unveraendert)
+- `StorageExtractionCard.tsx` (wird nur eingebettet, nicht geaendert)
+- `MagicIntakeCard.tsx` (Finanzierung) — bleibt separater Flow fuer MOD-07
