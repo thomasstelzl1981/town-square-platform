@@ -3,6 +3,9 @@
  * Redesigned: Single [+] button with AlertDialog for FinAPI depot connection
  */
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import { useDataReadiness } from '@/hooks/useDataReadiness';
+import { DataReadinessModal } from '@/components/portal/DataReadinessModal';
+import { ConsentRequiredModal } from '@/components/portal/ConsentRequiredModal';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { WidgetGrid } from '@/components/shared/WidgetGrid';
@@ -89,6 +92,7 @@ export default function InvestmentTab() {
   const { activeTenantId, user } = useAuth();
   const { isEnabled } = useDemoToggles();
   const demoEnabled = isEnabled('GP-KONTEN');
+  const readiness = useDataReadiness();
   const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
   const { persons } = useFinanzanalyseData();
   const queryClient = useQueryClient();
@@ -152,6 +156,7 @@ export default function InvestmentTab() {
 
   const createSparMutation = useMutation({
     mutationFn: async (form: Record<string, any>) => {
+      if (!readiness.requireReadiness()) throw new Error('Readiness required');
       if (!activeTenantId || !user?.id) throw new Error('No tenant/user');
       const { error } = await supabase.from('vorsorge_contracts').insert({
         tenant_id: activeTenantId, user_id: user.id,
@@ -174,6 +179,7 @@ export default function InvestmentTab() {
 
   const updateSparMutation = useMutation({
     mutationFn: async (form: Record<string, any>) => {
+      if (!readiness.requireReadiness()) throw new Error('Readiness required');
       const { id, created_at, updated_at, tenant_id, user_id, ...rest } = form;
       const { error } = await supabase.from('vorsorge_contracts').update({
         provider: rest.provider || null, contract_no: rest.contract_no || null,
@@ -194,6 +200,7 @@ export default function InvestmentTab() {
 
   const deleteSparMutation = useMutation({
     mutationFn: async (id: string) => {
+      if (!readiness.requireReadiness()) throw new Error('Readiness required');
       const { error } = await supabase.from('vorsorge_contracts').delete().eq('id', id);
       if (error) throw error;
     },
@@ -785,6 +792,16 @@ export default function InvestmentTab() {
           </div>
         )}
       </div>
+      <DataReadinessModal
+        open={readiness.showReadinessModal}
+        onOpenChange={readiness.setShowReadinessModal}
+        isDemoActive={readiness.isDemoActive}
+        isConsentGiven={readiness.isConsentGiven}
+      />
+      <ConsentRequiredModal
+        open={readiness.showConsentModal}
+        onOpenChange={readiness.setShowConsentModal}
+      />
     </PageShell>
   );
 }
