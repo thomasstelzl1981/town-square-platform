@@ -25,6 +25,7 @@ import {
   Rocket,
   Mic,
   Volume2,
+  VolumeX,
   Upload,
   Loader2,
   Send,
@@ -228,13 +229,19 @@ export function ArmstrongContainer() {
     }
   }, [universalUpload]);
 
+  // Speak handler for TTS on individual messages
+  const handleSpeak = useCallback((text: string) => {
+    if (voice.isSpeaking) {
+      voice.stopSpeaking();
+    } else {
+      voice.speakResponse(text);
+    }
+  }, [voice]);
+
   // All hooks called — early return now safe
   if (!armstrongVisible || isMobile || !mounted) {
     return null;
   }
-
-  // Check if viewport is wide enough for two-column layout
-  const isWideViewport = typeof window !== 'undefined' && window.innerWidth >= 1280;
 
   // ═══════════════════════════════════════════
   // EXPANDED: Floating Overlay Panel
@@ -247,8 +254,8 @@ export function ArmstrongContainer() {
           className={cn(
             "pointer-events-auto flex flex-col",
             "fixed right-4 bottom-4",
-            isWideViewport ? "w-[510px]" : "w-[315px]",
-            "h-[87.5vh] max-h-[1000px] min-h-[400px]",
+            "w-[380px]",
+            "h-[70vh] max-h-[700px] min-h-[400px]",
             "rounded-2xl overflow-hidden",
             "bg-background/70 backdrop-blur-2xl",
             "border border-white/15 dark:border-white/10",
@@ -282,6 +289,17 @@ export function ArmstrongContainer() {
               </div>
             </div>
             <div className="flex items-center gap-1">
+              {voice.isSpeaking && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 rounded-full text-destructive hover:text-destructive hover:bg-destructive/10"
+                  onClick={() => voice.stopSpeaking()}
+                  title="Sprachausgabe stoppen"
+                >
+                  <VolumeX className="h-3.5 w-3.5" />
+                </Button>
+              )}
               {advisor.messages.length > 0 && (
                 <Button
                   variant="ghost"
@@ -322,34 +340,8 @@ export function ArmstrongContainer() {
             </div>
           )}
 
-          {/* Main content area — two-column on wide viewports */}
-          <div className={cn(
-            "flex-1 flex overflow-hidden min-h-0",
-            isWideViewport && "flex-row"
-          )}>
-            {/* Left column: ThinkingSteps (only on wide viewports) */}
-            {isWideViewport && (
-              <div className="w-[220px] shrink-0 border-r border-border/20 p-4 overflow-y-auto">
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="h-1.5 w-1.5 rounded-full bg-primary/60" />
-                    <span className="text-[10px] font-medium text-muted-foreground/60 uppercase tracking-wider">
-                      Arbeitsschritte
-                    </span>
-                  </div>
-                  
-                  {thinkingSteps.length > 0 ? (
-                    <ThinkingSteps steps={thinkingSteps} />
-                  ) : (
-                    <p className="text-[11px] text-muted-foreground/30 leading-relaxed">
-                      Hier werden die einzelnen Arbeitsschritte angezeigt, wenn Armstrong eine Aufgabe bearbeitet.
-                    </p>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Right column (or full width): Chat */}
+          {/* Chat area — single column */}
+          <div className="flex-1 flex overflow-hidden min-h-0">
             <div className="flex-1 flex flex-col min-w-0 min-h-0">
               <ScrollArea className="flex-1 px-4">
                 <div className="space-y-4 py-4">
@@ -363,6 +355,8 @@ export function ArmstrongContainer() {
                           onConfirm={advisor.confirmAction}
                           onCancel={advisor.cancelAction}
                           isExecuting={advisor.isExecuting}
+                          onSpeak={handleSpeak}
+                          isSpeaking={voice.isSpeaking}
                         />
                       ))}
                       
@@ -378,8 +372,8 @@ export function ArmstrongContainer() {
                                 <Loader2 className="h-4 w-4 animate-spin" />
                                 <span>Armstrong arbeitet...</span>
                               </div>
-                              {/* Inline steps for single-column mode */}
-                              {!isWideViewport && thinkingSteps.length > 0 && (
+                              {/* Inline thinking steps */}
+                              {thinkingSteps.length > 0 && (
                                 <ThinkingSteps steps={thinkingSteps} compact />
                               )}
                             </div>
