@@ -737,6 +737,45 @@ export const GOLDEN_PATH_PROCESSES: GoldenPathProcess[] = [
     ],
     phase: 'done',
   },
+
+  // ─── MOD-21: KI-Browser ───────────────
+  {
+    id: 'GP-BROWSER-SESSION',
+    moduleCode: 'MOD-21',
+    moduleName: 'KI-Browser',
+    tilePath: '/portal/ki-browser/session',
+    processName: 'Browser Research Session',
+    description: 'KI-gestützte Web-Recherche mit Guardrails, Quellen-Extraktion und Report-Generierung.',
+    menuPoints: 1,
+    menuPointPaths: [
+      '/portal/ki-browser/session',
+    ],
+    compliance: {
+      modulePageHeader: true,
+      widgetGrid: true,
+      widgetCell: true,
+      demoWidget: false,
+      inlineFlow: true,
+      noSubNavigation: true,
+    },
+    demoWidget: {
+      id: '__demo__',
+      title: 'Demo: KI-Browser',
+      subtitle: 'Research-Session starten',
+      status: 'demo',
+      badgeLabel: 'Neu',
+      data: {},
+      resetOnClose: true,
+    },
+    sections: [
+      { id: 'uebersicht', title: 'Übersicht', component: 'KiBrowserUebersicht', readOnlyInDemo: false },
+      { id: 'session', title: 'Session', component: 'KiBrowserSession', readOnlyInDemo: false },
+      { id: 'quellen', title: 'Quellen & Belege', component: 'KiBrowserQuellen', readOnlyInDemo: false },
+      { id: 'vorlagen', title: 'Vorlagen', component: 'KiBrowserVorlagen', readOnlyInDemo: false },
+      { id: 'policies', title: 'Policies', component: 'KiBrowserPolicies', readOnlyInDemo: false },
+    ],
+    phase: '1',
+  },
 ];
 
 // =============================================================================
