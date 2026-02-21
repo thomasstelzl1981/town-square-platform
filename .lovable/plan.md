@@ -1,135 +1,88 @@
 
-# Magic Intake Center — Komplettanalyse und Verbesserungsplan
 
-## Ist-Zustand: Was haben wir?
+# Magic Intake Center — Bugfixes und Haertung
 
-Die aktuelle Seite `/portal/dms/intake` besteht aus 5 Bloecken:
+## Problem
 
-1. **Page Header** — Titel + einzeiliger Untertitel
-2. **IntakeHowItWorks** — 3 Karten (Kategorie waehlen, Upload, KI analysiert)
-3. **IntakeEntityPicker + IntakeUploadZone** — 2-Step-Selektion + Dropzone
-4. **IntakeChecklistGrid** — Statische Liste benoetigter Dokumente (immer 0%)
-5. **IntakeRecentActivity** — Letzte 5 Uploads aus `documents`
+Die Tiefenanalyse hat 3 kritische Probleme aufgedeckt, die das Intake Center daran hindern, ein geschlossenes System zu sein.
 
-## Identifizierte Schwachstellen
+## Befund 1: Entity Loader — 5 von 8 Kategorien kaputt
 
-### 1. Seite wirkt "zu komprimiert" — kein Storytelling
-- Der Header ist ein einzeiliger Satz. Es fehlt eine visuelle Hero-Section, die dem Nutzer sofort vermittelt: "Das ist ein Premium-Feature, das dir Arbeit abnimmt."
-- IntakeHowItWorks zeigt 3 generische Schritte ohne emotionalen Kontext (kein Zeitersparnis-Versprechen, keine Kosteninfo).
+`useIntakeEntityLoader.ts` verwendet Spaltennamen, die in der Datenbank nicht existieren. Ergebnis: 400-Fehler, leeres Dropdown, Nutzer kann kein Objekt zuordnen.
 
-### 2. Datenraum-Auslese fehlt komplett
-- Die `StorageExtractionCard` (Datenraum fuer Armstrong aktivieren) existiert bereits als Komponente und wird im Posteingang und in den Einstellungen genutzt — aber NICHT im Magic Intake Center.
-- Das ist der wichtigste Automatisierungs-Hebel: Der Kunde aktiviert einmalig die Datenraum-Extraktion, und Armstrong kann danach ALLE Dokumente lesen, ohne manuellen Upload.
+| Kategorie | Falscher Spaltenname | Korrekter Spaltenname |
+|---|---|---|
+| Fahrzeug | `brand` | `make` |
+| PV-Anlage | `capacity_kwp` | `kwp` |
+| Versicherung | `provider_name` | `insurer` |
+| Vorsorge | `provider_name` | `provider` |
+| Finanzierung | `bank_name, loan_amount` | `purchase_price, loan_amount_requested` (oder `status, purpose`) |
 
-### 3. Kosten/Credit-Transparenz fehlt
-- Nirgends auf der Intake-Seite wird erklaert, was der Service kostet (Credits pro Dokument, Preis pro Credit).
-- Die StorageExtractionCard hat einen Kostenvoranschlag-Flow — dieser muss prominent in die Seite integriert werden.
+**Fix**: Alle `selectFields` und `buildLabel`-Funktionen korrigieren.
 
-### 4. ChecklistGrid zeigt immer 0% — kein Live-Fortschritt
-- `IntakeChecklistGrid` zeigt statisch `0 von X vorhanden` ohne je die DB zu pruefen.
-- Es fehlt ein Query gegen `documents` + `document_links` um zu zaehlen, welche Dokument-Typen bereits vorhanden sind.
+## Befund 2: Checklist-Matching auf Namen statt doc_type
 
-### 5. Kein Multi-File-Upload
-- Die Dropzone akzeptiert `maxFiles: 1`. Fuer ein "Magic Intake" das Arbeit abnehmen soll, sollte Batch-Upload moeglich sein.
+`useIntakeChecklistProgress.ts` prueft `documents.name` per Freitext-includes(). Das fuehrt zu unzuverlaessigen Ergebnissen. Die `documents`-Tabelle hat ein `doc_type`-Feld, das praeziser waere.
 
-### 6. Keine Verbindung zwischen Upload und Checkliste
-- Wenn ein Dokument hochgeladen wird, aktualisiert sich die Checkliste nicht automatisch.
+**Fix**: Matching-Logik auf `doc_type` umstellen. In `storageManifest.ts` ein optionales `doc_type`-Feld zu jedem `required_docs`-Eintrag hinzufuegen und im Hook darauf pruefen.
 
-### 7. MagicIntakeCard (Finanzierung) ist isoliert
-- `src/components/finanzierung/MagicIntakeCard.tsx` erstellt eine Finanzierungsakte, aber nutzt nicht die IntakeTab-Pipeline. Es ist ein separater Flow.
+## Befund 3: Upload landet im Modul-Root statt im Entity-Ordner
+
+Wenn der Nutzer ein bestehendes Objekt waehlt (z.B. Immobilie "WE-01"), wird die `entityId` zwar an `useDocumentIntake.intake()` uebergeben, aber in `useUniversalUpload` wird der `parentNodeId` nicht aufgeloest. Die Datei landet im generischen `{moduleCode}_ROOT` statt im Entity-spezifischen Unterordner.
+
+**Fix**: In `useDocumentIntake` vor dem Upload-Aufruf den korrekten `storage_nodes`-Ordner fuer die Entity aufloesen (Query: `storage_nodes` WHERE `property_id = X` oder `entity_id = X` etc.) und als `parentNodeId` uebergeben.
 
 ---
 
-## Verbesserungsplan (7 Massnahmen)
+## Technische Aenderungen
 
-### Massnahme 1: Hero-Section mit Value Proposition ersetzen
-**Was**: Den komprimierten Header + IntakeHowItWorks durch eine grosszuegige Hero-Section ersetzen.
+### Datei 1: `src/hooks/useIntakeEntityLoader.ts`
 
-**Neue Struktur**:
-- Grosse Ueberschrift: "Magic Intake Center"
-- Untertitel mit konkretem Nutzenversprechen (Zeitersparnis)
-- 3 Value-Proposition-Karten (aehnlich wie in StorageExtractionCard):
-  - "Kein manuelles Abtippen" — KI liest und befuellt
-  - "Alle Kategorien" — Immobilie, Fahrzeug, PV, Versicherung, etc.
-  - "Volle Kostenkontrolle" — Sie sehen vorher, was es kostet
-- Darunter: visueller Prozess-Flow als horizontale Schrittleiste (nicht 3 separate Karten)
+Alle 5 fehlerhaften Konfigurationen korrigieren:
 
-### Massnahme 2: StorageExtractionCard in IntakeTab einbetten
-**Was**: Die bestehende `StorageExtractionCard` als Block 2 in die IntakeTab-Seite einbauen — zwischen Hero und manuellem Upload.
+```text
+fahrzeugschein:
+  selectFields: 'id, make, model, license_plate'
+  buildLabel: r.make statt r.brand
 
-**Warum**: Das ist der "Autopilot"-Modus. Nutzer sollen zuerst sehen: "Sie koennen den gesamten Datenraum auf einmal aktivieren" — und nur wenn sie einzelne Dokumente manuell hochladen wollen, scrollen sie weiter.
+pv_anlage:
+  selectFields: 'id, name, kwp'
+  buildLabel: r.kwp statt r.capacity_kwp
 
-**Aenderung**:
-- `IntakeTab.tsx`: Import und Einbettung von `StorageExtractionCard` mit `tenantId` aus `useAuth()`
-- Ueberschrift: "Automatische Datenraum-Auslese" als Section-Header
+versicherung:
+  selectFields: 'id, insurer, category'
+  buildLabel: r.insurer statt r.provider_name
 
-### Massnahme 3: Credit/Kosten-Info-Block hinzufuegen
-**Was**: Neuer Block `IntakePricingInfo` der transparent erklaert:
-- 1 Credit = 1 Dokument-Analyse
-- Preis pro Credit (z.B. 0,25 EUR)
-- Beispielrechnung: "20 Dokumente = 5,00 EUR"
-- Link zum Credit-Guthaben
+vorsorge:
+  selectFields: 'id, provider, contract_type'
+  buildLabel: r.provider statt r.provider_name
 
-**Platzierung**: Zwischen StorageExtractionCard und manuellem Upload-Bereich.
+finanzierung:
+  selectFields: 'id, purpose, status, purchase_price'
+  buildLabel: r.purpose + r.purchase_price statt r.bank_name + r.loan_amount
+```
 
-### Massnahme 4: IntakeChecklistGrid mit Live-Fortschritt
-**Was**: Die Checkliste soll den tatsaechlichen Stand aus der Datenbank laden.
+### Datei 2: `src/hooks/useIntakeChecklistProgress.ts`
 
-**Implementierung**:
-- Neuer Hook `useIntakeChecklistProgress` der fuer jede required_doc-Kategorie in `storageManifest` prueft, ob ein passender `documents`-Eintrag existiert (ueber `document_links` + `storage_nodes`)
-- Fortschrittsbalken und Check-Icons werden dynamisch aktualisiert
-- Bereits vorhandene Dokumente bekommen ein gruenes Haekchen statt grauem Kreis
+- Query aendern: `documents.doc_type` statt `documents.name` laden
+- Matching: `doc_type` gegen neue `doc_type_hint`-Felder in `storageManifest.required_docs` pruefen
+- Fallback: Name-Matching bleibt als Sekundaer-Check
 
-### Massnahme 5: Multi-File-Upload ermoeglichen
-**Was**: `IntakeUploadZone` auf `maxFiles: 10` erweitern mit einer Dateiliste und Fortschrittsanzeige pro Datei.
+### Datei 3: `src/config/storageManifest.ts`
 
-**Implementierung**:
-- Dropzone: `maxFiles: 10`
-- Dateiliste unterhalb der Dropzone mit individuellem Status (uploading/parsing/done/error)
-- Sequenzielle Verarbeitung ueber die bestehende `intake()`-Pipeline
+- `required_docs`-Eintraege um optionales `doc_type?: string` erweitern
+- Mapping z.B.: `{ name: 'Grundbuchauszug', folder: '02_Grundbuch', doc_type: 'GRUNDBUCHAUSZUG' }`
 
-### Massnahme 6: Seitenlayout aufloesen — mehr Weissraum
-**Was**: Die Seite grosszuegiger gestalten mit klaren visuellen Trennern zwischen den Bloecken.
+### Datei 4: `src/hooks/useDocumentIntake.ts`
 
-**Neue Block-Reihenfolge**:
-1. Hero-Section (Value Proposition + Prozess-Flow)
-2. Datenraum-Auslese (StorageExtractionCard) — der Autopilot-Weg
-3. Credit-Info (IntakePricingInfo) — Kostentransparenz
-4. Manueller Upload (EntityPicker + UploadZone) — der manuelle Weg
-5. Dokument-Checkliste (mit Live-Fortschritt) — was fehlt noch?
-6. Letzte Aktivitaet (IntakeRecentActivity)
-
-### Massnahme 7: Verbindung zwischen Upload-Erfolg und Checkliste
-**Was**: Nach erfolgreichem Upload (`intakeProgress.step === 'done'`) die Checkliste automatisch refreshen.
-
-**Implementierung**:
-- IntakeTab haelt einen `refreshKey`-State
-- Nach Upload-Erfolg wird `refreshKey` inkrementiert
-- IntakeChecklistGrid bekommt `refreshKey` als Prop und re-fetcht bei Aenderung
-
----
-
-## Technische Details
-
-### Dateien die geaendert werden
-
-| Datei | Aenderung |
-|---|---|
-| `src/pages/portal/dms/IntakeTab.tsx` | Neue Block-Reihenfolge, StorageExtractionCard einbetten, refreshKey-State |
-| `src/components/dms/IntakeHowItWorks.tsx` | Komplett ueberarbeiten: Hero-Section mit Value Props + Prozess-Schrittleiste |
-| `src/components/dms/IntakeUploadZone.tsx` | Multi-File-Support (maxFiles: 10), Dateiliste mit Status |
-| `src/components/dms/IntakeChecklistGrid.tsx` | Live-Fortschritt via neuem Hook, refreshKey-Prop |
-
-### Neue Dateien
-
-| Datei | Inhalt |
-|---|---|
-| `src/components/dms/IntakePricingInfo.tsx` | Credit-Kosten-Erklaerung mit Beispielrechnung |
-| `src/hooks/useIntakeChecklistProgress.ts` | DB-Query fuer vorhandene Dokumente pro required_doc-Typ |
+- Vor dem `universalUpload.upload()`-Aufruf: Entity-spezifischen `parentNodeId` aus `storage_nodes` aufloesen
+- Query: `storage_nodes WHERE tenant_id AND {entity_fk_column} = entityId AND node_type = 'folder'`
+- Den aufgeloesten `parentNodeId` an `universalUpload.upload()` uebergeben
 
 ### Keine Aenderungen an
 
-- Routing, Manifests, Datenbank-Schema
-- `useDocumentIntake.ts` (Pipeline bleibt unveraendert)
-- `StorageExtractionCard.tsx` (wird nur eingebettet, nicht geaendert)
-- `MagicIntakeCard.tsx` (Finanzierung) — bleibt separater Flow fuer MOD-07
+- `useUniversalUpload.ts` (Logik ist korrekt, nur die Aufrufer muessen richtige Parameter liefern)
+- `StorageExtractionCard.tsx` (funktioniert korrekt)
+- Datenbank-Schema (keine Migrationen noetig)
+- Routing/Manifests
+
