@@ -19,6 +19,7 @@ import {
   Calendar,
   Share2,
   Loader2,
+  Calculator,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -217,10 +218,12 @@ export default function InvestmentExposePage() {
     }
   }, [listing]);
 
-  // Calculate when params change
-  useEffect(() => {
+  // Manual calculation trigger (no auto-start)
+  const [hasCalculated, setHasCalculated] = useState(false);
+  const handleCalculate = useCallback(() => {
     if (params.purchasePrice > 0) {
       calculate(params);
+      setHasCalculated(true);
     }
   }, [params, calculate]);
 
@@ -362,6 +365,23 @@ export default function InvestmentExposePage() {
                 </div>
               )}
 
+            </div>
+
+            {/* Calculate Button */}
+            <div className="flex justify-center">
+              <Button
+                size="lg"
+                onClick={handleCalculate}
+                disabled={isCalculating}
+                className="gap-2"
+              >
+                {isCalculating ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Calculator className="w-4 h-4" />
+                )}
+                {hasCalculated ? 'Neu berechnen' : 'Jetzt berechnen'}
+              </Button>
             </div>
 
             {/* MasterGraph - Gemeinsame Komponente */}

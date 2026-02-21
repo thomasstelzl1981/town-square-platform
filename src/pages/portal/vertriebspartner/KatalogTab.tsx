@@ -4,7 +4,8 @@
  * + DASHBOARD_HEADER: Visitenkarte + Marktlage-Widget
  */
 import { useState, useMemo } from 'react';
-import { Newspaper } from 'lucide-react';
+import { Newspaper, Eye, EyeOff } from 'lucide-react';
+import { useExcludedListingIds, useToggleExclusion } from '@/hooks/usePartnerListingSelections';
 import { DESIGN } from '@/config/designManifest';
 import { ManagerVisitenkarte } from '@/components/shared/ManagerVisitenkarte';
 import { MediaWidgetGrid } from '@/components/shared/MediaWidgetGrid';
@@ -71,6 +72,8 @@ const KatalogTab = () => {
   const navigate = useNavigate();
   const [filtersOpen, setFiltersOpen] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const excludedIds = useExcludedListingIds();
+  const toggleExclusion = useToggleExclusion();
   
   // Filter states
   const [cityFilter, setCityFilter] = useState<string>('');
@@ -279,6 +282,33 @@ const KatalogTab = () => {
           {val === 'reserved' ? 'Reserviert' : 'Verfügbar'}
         </Badge>
       )
+    },
+    {
+      key: 'id' as any,
+      header: 'Beratung',
+      align: 'center',
+      minWidth: '90px',
+      render: (_: any, row: any) => {
+        const isExcluded = excludedIds.has(row.id);
+        return (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 p-0"
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleExclusion.mutate({ listingId: row.id, isCurrentlyExcluded: isExcluded });
+            }}
+            title={isExcluded ? 'In Beratung einblenden' : 'Aus Beratung ausblenden'}
+          >
+            {isExcluded ? (
+              <EyeOff className="h-4 w-4 text-muted-foreground" />
+            ) : (
+              <Eye className="h-4 w-4 text-emerald-600" />
+            )}
+          </Button>
+        );
+      }
     },
   ];
 

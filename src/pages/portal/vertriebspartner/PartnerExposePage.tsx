@@ -6,6 +6,7 @@
  * - Keine Provisions-Anzeige (für Endkunden)
  */
 import { useState, useEffect, useCallback } from 'react';
+import { Calculator } from 'lucide-react';
 import { useParams, Link } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -212,10 +213,12 @@ export default function PartnerExposePage() {
     }
   }, [listing]);
 
-  // Calculate when params change
-  useEffect(() => {
+  // Manual calculation trigger (no auto-start)
+  const [hasCalculated, setHasCalculated] = useState(false);
+  const handleCalculate = useCallback(() => {
     if (params.purchasePrice > 0) {
       calculate(params);
+      setHasCalculated(true);
     }
   }, [params, calculate]);
 
@@ -353,6 +356,23 @@ export default function PartnerExposePage() {
                   <p className="text-muted-foreground">{listing.description}</p>
                 </div>
               )}
+            </div>
+
+            {/* Calculate Button */}
+            <div className="flex justify-center">
+              <Button
+                size="lg"
+                onClick={handleCalculate}
+                disabled={isCalculating}
+                className="gap-2"
+              >
+                {isCalculating ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Calculator className="w-4 h-4" />
+                )}
+                {hasCalculated ? 'Neu berechnen' : 'Jetzt berechnen'}
+              </Button>
             </div>
 
             {/* MasterGraph */}
