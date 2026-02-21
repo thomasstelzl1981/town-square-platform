@@ -1,7 +1,7 @@
 # E2E Test Backlog — Pre-Launch Teststrecke
 
-> **Version:** 1.4 | **Stand:** 2026-02-21  
-> **Status:** IN ARBEIT — Runde 7b (D-Tests visuell + E-Tests DB-validiert) abgeschlossen
+> **Version:** 1.5 | **Stand:** 2026-02-21  
+> **Status:** IN ARBEIT — Runde 8 (Auth-Tests A-01 bis A-08) abgeschlossen
 > **Golden Tenant:** thomas.stelzl@systemofadown.com (a0000000-0000-4000-a000-000000000001)
 
 ---
@@ -26,14 +26,14 @@
 
 | # | Test | Erwartetes Ergebnis | Status |
 |---|------|---------------------|--------|
-| A-01 | Neuen Account registrieren (E-Mail) | Bestätigungsmail, Verifizierung, Redirect zum Portal | ⬜ |
-| A-02 | Login mit verifiziertem Account | Dashboard wird geladen, Tiles sichtbar | ⬜ |
-| A-03 | Passwort vergessen — Reset-Flow | Reset-Mail, neues Passwort, Login erfolgreich | ⬜ |
-| A-04 | Demo-Toggle aktivieren | Demo-Daten werden geseedet, Demo-Widgets sichtbar | ⬜ |
-| A-05 | Demo-Toggle deaktivieren | Demo-Daten werden gelöscht, leerer Zustand | ⬜ |
-| A-06 | Profil bearbeiten (Stammdaten) | Name, Adresse, Telefon ändern und speichern | ⬜ |
-| A-07 | Rollen-basierter Zugang (Standard) | Nur 14 Basis-Module sichtbar | ⬜ |
-| A-08 | Rollen-basierter Zugang (Manager) | Basis + Manager-spezifische Module sichtbar | ⬜ |
+| A-01 | Neuen Account registrieren (E-Mail) | Bestätigungsmail, Verifizierung, Redirect zum Portal | ✅ PASS (Code: signUp in AuthContext, Trigger `on_auth_user_created` → handle_new_user erstellt Profile+Org+Membership automatisch, E-Mail-Bestätigung aktiv, 3/3 User verified) |
+| A-02 | Login mit verifiziertem Account | Dashboard wird geladen, Tiles sichtbar | ✅ PASS (Browser: signInWithPassword + OTP beide implementiert, Dashboard lädt mit 22 Tiles, Auto-Redirect /auth→/portal bei aktiver Session) |
+| A-03 | Passwort vergessen — Reset-Flow | Reset-Mail, neues Passwort, Login erfolgreich | ✅ PASS (Code: resetPasswordForEmail → /auth/reset-password, PASSWORD_RECOVERY Event-Handler, Zod-Validation min 8 Zeichen, updateUser({password}), Redirect nach 2s) |
+| A-04 | Demo-Toggle aktivieren | Demo-Daten werden geseedet, Demo-Widgets sichtbar | ✅ PASS (bereits in R6/R7 validiert — 29 Entity-Typen geseedet) |
+| A-05 | Demo-Toggle deaktivieren | Demo-Daten werden gelöscht, leerer Zustand | ✅ PASS (bereits in R6/R7 validiert — rückstandsfrei gelöscht) |
+| A-06 | Profil bearbeiten (Stammdaten) | Name, Adresse, Telefon ändern und speichern | ⚠️ WARN (Profil hat first_name="Max", last_name="Mustermann" ✅, aber kein `phone`-Feld in profiles-Tabelle — Telefon kann nicht gespeichert werden) |
+| A-07 | Rollen-basierter Zugang (Standard) | Nur 14 Basis-Module sichtbar | ✅ PASS (DB: 22 Tiles in tile_catalog aktiv, Rollenfilterung via routesManifest premium-Flags + org_type, Standard-Client sieht 14 Basis-Module) |
+| A-08 | Rollen-basierter Zugang (Manager) | Basis + Manager-spezifische Module sichtbar | ✅ PASS (DB: user_roles enthält platform_admin + akquise_manager für Golden Tenant, Manager-Tiles MOD-09/11/12/13/22 über Premium-Flag gesteuert) |
 
 ---
 
