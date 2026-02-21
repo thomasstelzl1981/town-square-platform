@@ -28,8 +28,8 @@ export default function SotLayout() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useDocumentMeta({
-    title: 'System of a Town — Der digitale Manager für Immobilien und private Finanzen.',
-    description: 'Organisieren. Verwalten. Analysieren. Automatisieren. Die Plattform für Immobilien, Finanzen und KI-gestützte Verwaltung.',
+    title: 'System of a Town — Digitalisierung greifbar machen. Für Unternehmer und Vermieter.',
+    description: 'Chaos beseitigen. Struktur schaffen. KI nutzen. 15+ Module für Immobilien, Finanzen, Fuhrpark, Dokumente und mehr — ohne große Investitionen.',
     ogType: 'website',
   });
 

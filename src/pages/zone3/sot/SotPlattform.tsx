@@ -1,13 +1,21 @@
 /**
- * SoT Plattform — Eine Plattform. Drei Bereiche. Alles im Griff.
- * Replaces: SotRealEstate, SotFinance, SotManagement, SotEnergy
+ * SoT Plattform — Eine Plattform ersetzt 15 Einzellösungen
  */
 import { Link } from 'react-router-dom';
-import { ArrowRight, CheckCircle2, Brain } from 'lucide-react';
+import { ArrowRight, CheckCircle2, Brain, X } from 'lucide-react';
 import { SOT_WEBSITE_MODULES } from '@/data/sotWebsiteModules';
 import { useSotScrollAnimation } from '@/hooks/useSotScrollAnimation';
 import { SotCTA } from '@/components/zone3/sot';
 import * as Icons from 'lucide-react';
+
+const replacedTools = [
+  { name: 'Excel-Listen', desc: 'für Finanzen & Objekte' },
+  { name: 'Papierordner', desc: 'für Verträge & Dokumente' },
+  { name: 'Separate E-Mail-Tools', desc: 'für Kommunikation' },
+  { name: 'Maklersoftware', desc: 'für Verkauf & Inserate' },
+  { name: 'Cloud-Speicher', desc: 'für Dokumente' },
+  { name: 'Fahrtenbuch-Apps', desc: 'für den Fuhrpark' },
+];
 
 // Area definitions mapping modules to areas
 const areaDefinitions = [
@@ -15,23 +23,23 @@ const areaDefinitions = [
     key: 'client',
     label: 'CLIENT',
     title: 'Ihr Vermögen',
-    subtitle: 'Finanzen, Immobilien, Finanzierung und Investments — alles, was mit Ihrem Vermögen zu tun hat.',
+    subtitle: 'Finanzen, Immobilien, Finanzierung und Investments — strukturiert verwalten, intelligent analysieren, fundiert entscheiden.',
     moduleCodes: ['MOD-18', 'MOD-04', 'MOD-07', 'MOD-02', 'MOD-06', 'MOD-08'],
     accentColor: 'hsl(217 91% 60%)',
   },
   {
     key: 'service',
     label: 'SERVICE',
-    title: 'Ihr Haushalt',
-    subtitle: 'Fahrzeuge, Energie, Fortbildung und Shopping — Ihr kompletter Haushalt digital organisiert.',
+    title: 'Ihr Betrieb',
+    subtitle: 'Fuhrpark, Energie, Kommunikation, Fortbildung und Einkauf — alles, was Ihr Unternehmen am Laufen hält. Digital statt analog.',
     moduleCodes: ['MOD-17', 'MOD-19', 'MOD-15', 'MOD-05', 'MOD-16', 'MOD-14'],
     accentColor: 'hsl(160 60% 45%)',
   },
   {
     key: 'base',
     label: 'BASE',
-    title: 'Ihr System',
-    subtitle: 'Dokumente, Stammdaten und KI-Intelligenz — das Fundament Ihrer digitalen Verwaltung.',
+    title: 'Ihr Fundament',
+    subtitle: 'Dokumente, Kontakte und KI-Intelligenz — das digitale Rückgrat. Einmal aufgebaut, überall verfügbar.',
     moduleCodes: ['MOD-03', 'MOD-01'],
     accentColor: 'hsl(275 45% 50%)',
     extraModules: [
@@ -48,7 +56,6 @@ const areaDefinitions = [
 ];
 
 function getIcon(iconName: string) {
-  // Import specific icons used in module data
   const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
     Users: Icons.Users, Sparkles: Icons.Sparkles, FolderOpen: Icons.FolderOpen,
     Building2: Icons.Building2, Globe: Icons.Globe, FolderKanban: Icons.FolderKanban,
@@ -62,6 +69,7 @@ function getIcon(iconName: string) {
 
 export default function SotPlattform() {
   const { ref, isVisible } = useSotScrollAnimation();
+  const { ref: replaceRef, isVisible: replaceVisible } = useSotScrollAnimation();
 
   return (
     <div>
@@ -74,11 +82,11 @@ export default function SotPlattform() {
               Plattform
             </span>
             <h1 className="sot-display mb-6">
-              Eine Plattform.<br />Drei Bereiche.
+              Eine Plattform ersetzt<br />15 Einzellösungen.
             </h1>
             <p className="sot-subheadline max-w-3xl mx-auto mb-10">
-              Von der Kontoauswertung bis zur Nebenkostenabrechnung — System of a Town bringt 
-              Struktur und KI in Ihren Haushalt und Ihre Finanzen.
+              Von der Finanzanalyse bis zum Fuhrpark, vom Dokumentenmanagement bis zur KI-Assistenz — 
+              System of a Town bringt alles in ein System. Keine Insellösungen mehr. Kein Chaos.
             </p>
             <div className="flex flex-wrap justify-center gap-4">
               <Link to="/auth?mode=register&source=sot" className="sot-btn-primary">
@@ -89,6 +97,31 @@ export default function SotPlattform() {
                 <Brain className="w-4 h-4" />
                 Armstrong Intelligence
               </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* What you DON'T need anymore */}
+      <section className="py-16 lg:py-20" style={{ backgroundColor: 'hsl(var(--z3-card))' }}>
+        <div className="zone3-container">
+          <div className={`sot-fade-in ${replaceVisible ? 'visible' : ''}`} ref={replaceRef}>
+            <div className="text-center mb-10">
+              <h2 className="sot-headline">Was Sie nicht mehr brauchen</h2>
+              <p className="sot-subheadline mt-3 max-w-xl mx-auto">
+                System of a Town ersetzt fragmentierte Einzellösungen durch ein einheitliches System.
+              </p>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+              {replacedTools.map((tool) => (
+                <div key={tool.name} className="sot-glass-card p-4 text-center relative">
+                  <div className="absolute top-2 right-2">
+                    <X className="w-3.5 h-3.5 text-red-400/60" />
+                  </div>
+                  <p className="text-sm font-medium line-through decoration-red-400/40">{tool.name}</p>
+                  <p className="text-[11px] mt-1" style={{ color: 'hsl(var(--z3-muted-foreground))' }}>{tool.desc}</p>
+                </div>
+              ))}
             </div>
           </div>
         </div>
@@ -124,8 +157,8 @@ export default function SotPlattform() {
       </section>
 
       <SotCTA
-        title="Bereit für Struktur und KI?"
-        subtitle="Starten Sie kostenlos — kein Abo, keine Grundgebühr."
+        title="Bereit für eine Plattform statt 15 Tools?"
+        subtitle="Starten Sie kostenlos — kein Abo, keine Grundgebühr, sofort einsatzbereit."
         variant="gradient"
       />
     </div>
