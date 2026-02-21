@@ -1,120 +1,63 @@
 
 
-# Armstrong Chatbot Optimierungsstrategie
+# Fix: Briefgenerator -- Schriftgroesse und Mehrseitige Briefe
 
-## Ausgangslage
+## Probleme
 
-Armstrong ist technisch solide (3.500+ Zeilen Edge Function, 200+ Actions, 12 Magic Intake Module), hat aber drei kritische UX-Schwachstellen:
+1. **Schrift zu gross**: Die Vorschau nutzt `fontSize: 10px` als Basis und `0.85em` fuer den Body -- das entspricht etwa 8.5px. Word nutzt standardmaessig 12pt (~16px). Die Proportionen stimmen nicht, weil der Container nur 420px breit ist (A4 waere bei 96dpi ~794px). Dadurch wirkt alles zu gross im Verhaeltnis zum Papier.
 
-1. **Statische Begruessung** -- Immer derselbe generische Text, egal welches Modul aktiv ist
-2. **Keyword-basierte Intent-Erkennung** -- `classifyIntent()` nutzt 80+ hartcodierte Keywords; natuerliche Sprache wird oft falsch klassifiziert
-3. **Keine visuellen Shortcuts** -- User muss per Freitext kommunizieren, kein Chip-System fuer haeufige Actions
+2. **Kein Seitenumbruch in der Vorschau**: `LetterPreview.tsx` hat `overflow-hidden` auf dem Body-Container und ein festes `aspectRatio: 210/297`. Laengerer Text wird einfach abgeschnitten. Es gibt keinen zweiten Seitenumbruch.
 
-## Empfohlene Strategie: 4 Schritte, aufeinander aufbauend
+3. **PDF-Schriftgroesse ebenfalls falsch**: `letterPdf.ts` nutzt `setFontSize(10)` fuer den Body und `lineHeight: 5mm`. Standard-Geschaeftsbriefe in Word nutzen 12pt mit 1.5-fachem Zeilenabstand (~6mm).
 
-Basierend auf den Dossiers und dem aktuellen Code empfehle ich eine pragmatische 4-Schritt-Umsetzung. Wir verzichten bewusst auf Tool-Use/MCP (Phase 3+5 aus dem Dossier) -- das ist ein spaeterer Architektursprung. Stattdessen konzentrieren wir uns auf die Massnahmen mit dem groessten UX-Impact bei geringstem Aufwand.
+## Loesung
 
----
+### 1. PDF korrigieren (letterPdf.ts)
 
-### Schritt 1: Kontextsensitive Begruessung
+- Body-Schriftgroesse von `10` auf `12` (pt) aendern -- entspricht Word 12pt
+- Betreff-Schriftgroesse von `11` auf `13` aendern (leicht groesser als Body, wie in Word ueblich)
+- Empfaenger-Schriftgroesse von `11` auf `12` aendern
+- Zeilenhoehe von `5mm` auf `6mm` aendern (entspricht 1.5-fachem Zeilenabstand bei 12pt)
+- Seitenumbruch-Schwelle bleibt bei 270mm (funktioniert bereits korrekt)
 
-**Datei:** `src/hooks/useArmstrongAdvisor.ts`
+### 2. Vorschau mehrseitig machen (LetterPreview.tsx)
 
-**Was:** Das statische `WELCOME_MESSAGE` durch eine Funktion `getWelcomeMessage(moduleCode, entityType)` ersetzen, die modulspezifische Begruessungen mit sofort klickbaren Action-Vorschlaegen liefert.
+**Ansatz:** Den Body-Text in "Seiten" aufteilen. Da wir kein Canvas nutzen, simulieren wir den Seitenumbruch:
 
-**Beispiel:**
-- MOD-04 (Immobilien): "Willkommen in deinem Immobilien-Portfolio. Ich kann sofort helfen mit: Dokument hochladen, KPI berechnen, Datenqualitaet pruefen"
-- MOD-07 (Finanzierung): "Ich bin bereit fuer deine Finanzierung. Selbstauskunft befuellen, Checkliste anzeigen, Bereitschaft pruefen"
-- Default: "Hallo! Ich bin Armstrong -- dein KI-Assistent fuer Immobilien und Finanzen."
+- Die feste `aspectRatio` und `overflow-hidden` entfernen
+- Stattdessen: Jede "Seite" als eigenes A4-proportionales `div` rendern
+- Den Body-Text zeichenweise in Zeilen aufteilen (basierend auf geschaetzter Zeichenanzahl pro Zeile)
+- Wenn die erste Seite voll ist (ca. 35-40 Zeilen bei 12pt-Aequivalent), beginnt eine neue Seite
+- Folgeseiten zeigen nur den fortgesetzten Text (ohne Absender/Empfaenger/Betreff)
+- Zwischen den Seiten ein visueller Trenner (Schatten + Abstand)
 
-Die Funktion wird ueberall aufgerufen wo `WELCOME_MESSAGE` heute referenziert wird (Init, clearConversation, selectAction-Reset).
+**Vereinfachter Ansatz (empfohlen):** Statt exakter Zeilenberechnung nutzen wir CSS-basiertes Paging:
+- Ein innerer Container mit fester Hoehe pro "Seite" (proportional zu A4)
+- `overflow: visible` statt `hidden`
+- Jede Seite als separates weisses Blatt mit Schatten darstellen
+- JavaScript misst die tatsaechliche Content-Hoehe und berechnet die Seitenanzahl
 
-**Impact:** Sofortiger AHA-Effekt -- User sieht, dass Armstrong den Kontext kennt.
+### 3. Schriftgroessen-Proportionen in der Vorschau anpassen
 
----
+Die Vorschau bei 420px Breite stellt 210mm dar, also 2px/mm. Bei 12pt in echt (ca. 4.2mm Zeichenhoehe) brauchen wir ~8.4px in der Vorschau. Aktuell ist der Body bei 8.5px -- das passt eigentlich. Das Problem ist eher, dass die anderen Elemente (Empfaenger bei `1em = 10px`, Betreff bei `1.05em`) proportional zu gross sind.
 
-### Schritt 2: Action-Chip-Bar (Quick Actions)
+Korrektur:
+- Basis-Schriftgroesse von `10px` auf `8.5px` senken (Body bleibt bei `1em`)
+- Empfaenger: `1em` (gleich wie Body, wie in Word)
+- Betreff: `1.08em` (leicht groesser)
+- Absenderzeile: `0.6em` (bleibt klein)
+- Datum: `1em` (gleich wie Body)
 
-**Neue Datei:** `src/components/armstrong/ArmstrongChipBar.tsx`
-**Integration:** `src/components/chat/ChatPanel.tsx`
-
-**Was:** Eine horizontale Leiste mit 2-4 klickbaren Chips ueber dem Eingabefeld, die je nach aktivem Modul die haeufigsten Actions zeigen.
-
-**Chip-Definitionen:**
-- MOD-04: Immobilie aus Dokument | KPI berechnen | Daten pruefen
-- MOD-07: Selbstauskunft befuellen | Checkliste | Bereitschaft pruefen
-- MOD-08: Simulation starten | Mandat aus Dokument | Favoriten analysieren
-- MOD-11/12/13/18: jeweils 1-2 modulspezifische Chips
-- Default: keine Chips (leeres Array)
-
-**Klick-Verhalten:** Chip-Klick ruft `selectAction()` mit dem jeweiligen Action-Code auf -- kein Tippen, kein Intent-Problem.
-
-**Impact:** Loest das Intent-Erkennungsproblem fuer die haeufigsten Use Cases zu ~70% ohne jede Backend-Aenderung.
-
----
-
-### Schritt 3: Unified System Prompt
-
-**Datei:** `supabase/functions/sot-armstrong-advisor/index.ts`
-
-**Was:** Die 5 fragmentierten Prompt-Bloecke (ARMSTRONG_CORE_IDENTITY, buildContextBlock, plus weitere verstreute Anweisungen) durch eine einzige Funktion `buildUnifiedSystemPrompt()` ersetzen.
-
-**Struktur des neuen Prompts:**
-1. Identitaet (wer ist Armstrong)
-2. Aktuelle Situation (Zone, Modul, Pfad, Entity)
-3. Persoenlichkeit (professionell, direkt, Deutsch)
-4. Prioritaeten (Sicherheit > Kontext > Actions > Sprache)
-5. Verfuegbare Actions (Top 5 fuer aktuelles Modul)
-6. Magic Intake Regel (proaktiv vorschlagen bei Dokumenten)
-7. Web-Recherche Status
-
-Alle Parameter kommen aus dem bestehenden Request-Body -- keine neuen Datenquellen noetig.
-
-**Impact:** Konsistenteres Verhalten, weniger Halluzinationen, klare Prioritaeten bei Widerspruechen.
-
----
-
-### Schritt 4: Proaktiver Document-Upload-Flow
-
-**Datei:** `src/hooks/useArmstrongDocUpload.ts` (oder wo der Upload-Handler sitzt)
-
-**Was:** Nach erfolgreichem Dokument-Upload erkennt eine `detectDocumentIntent(filename, extractedText)` Funktion automatisch den wahrscheinlichsten Dokumenttyp und schlaegt die passende Magic Intake Action als Confirmation-Dialog vor.
-
-**Erkennungslogik:**
-- Dateiname enthaelt "Kaufvertrag" oder Text enthaelt "Grundbuch" --> MOD-04 Magic Intake
-- "Selbstauskunft" / "Gehalt" / "Netto" --> MOD-07 Magic Intake
-- "Versicherung" / "Polizzennummer" --> MOD-18 Magic Intake
-- "Mietvertrag" / "Mieter" --> MOD-20 Magic Intake
-- usw. fuer MOD-17 (Fahrzeuge), MOD-19 (PV), MOD-11 (Finanzierung)
-
-**Fallback:** Kein erkannter Typ --> normales Verhalten, User tippt selbst.
-
-**Impact:** Magic Intake wird deutlich haeufiger genutzt, da Armstrong proaktiv die richtige Action vorschlaegt.
-
----
-
-## Was bewusst NICHT in dieser Runde umgesetzt wird
-
-| Massnahme | Grund |
-|---|---|
-| LLM-Vorklassifikation statt Keywords (Phase 2.1) | Erfordert zusaetzlichen API-Call pro Nachricht, Kosten und Latenz steigen. Chip-Bar loest 70% des Problems kostenlos. |
-| Tool-Use / Function Calling (Phase 3) | Fundamentaler Architekturumbau, 2-3 Wochen Aufwand. Sinnvoll als naechster grosser Schritt NACH diesen Quick Wins. |
-| MCP Server (Phase 5) | Langfristiges Ziel, abhaengig von Tool-Use als Vorstufe. |
-| ElevenLabs TTS Reaktivierung | Unabhaengig von diesen UX-Fixes, kann separat erfolgen. |
-
----
-
-## Betroffene Dateien (Zusammenfassung)
+## Betroffene Dateien
 
 | Datei | Aenderung |
 |---|---|
-| `src/hooks/useArmstrongAdvisor.ts` | `WELCOME_MESSAGE` durch `getWelcomeMessage()` ersetzen |
-| `src/components/armstrong/ArmstrongChipBar.tsx` | Neue Komponente: modulspezifische Action-Chips |
-| `src/components/chat/ChatPanel.tsx` | ChipBar-Integration ueber dem Eingabefeld |
-| `supabase/functions/sot-armstrong-advisor/index.ts` | `buildUnifiedSystemPrompt()` statt fragmentierter Bloecke |
-| `src/hooks/useArmstrongDocUpload.ts` | `detectDocumentIntent()` fuer proaktiven Upload-Flow |
+| `src/lib/letterPdf.ts` | Schriftgroessen auf 12pt, Zeilenhoehe auf 6mm |
+| `src/components/portal/office/LetterPreview.tsx` | Mehrseitige Darstellung, Schriftproportionen korrigieren |
 
-## Reihenfolge
+## Ergebnis
 
-Schritt 1 und 2 sind voneinander unabhaengig und koennen parallel umgesetzt werden. Schritt 3 ist ein Backend-only-Change. Schritt 4 baut auf dem bestehenden Upload-Hook auf.
+- PDF-Output entspricht Word 12pt Standard
+- Vorschau zeigt bei langen Briefen mehrere A4-Seiten untereinander
+- Proportionen zwischen Vorschau und PDF stimmen ueberein
 
