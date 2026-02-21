@@ -10490,6 +10490,56 @@ export type Database = {
           },
         ]
       }
+      manager_applications: {
+        Row: {
+          created_at: string
+          id: string
+          qualification_data: Json | null
+          rejection_reason: string | null
+          requested_role: Database["public"]["Enums"]["membership_role"]
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          tenant_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          qualification_data?: Json | null
+          rejection_reason?: string | null
+          requested_role: Database["public"]["Enums"]["membership_role"]
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          tenant_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          qualification_data?: Json | null
+          rejection_reason?: string | null
+          requested_role?: Database["public"]["Enums"]["membership_role"]
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "manager_applications_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       meeting_outputs: {
         Row: {
           action_items_json: Json | null
@@ -20314,7 +20364,12 @@ export type Database = {
         }[]
       }
       get_active_tenant_mode: { Args: never; Returns: string }
-      get_tiles_for_role: { Args: { p_role: string }; Returns: string[] }
+      get_tiles_for_role:
+        | {
+            Args: { _role: Database["public"]["Enums"]["membership_role"] }
+            Returns: string[]
+          }
+        | { Args: { p_role: string }; Returns: string[] }
       get_user_memberships: {
         Args: { p_user_id: string }
         Returns: {
@@ -20323,6 +20378,14 @@ export type Database = {
         }[]
       }
       get_user_tenant_id: { Args: never; Returns: string }
+      has_delegation_scope: {
+        Args: {
+          _client_org_id: string
+          _manager_org_id: string
+          _module_code: string
+        }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -20687,6 +20750,8 @@ export type Database = {
         | "finance_manager"
         | "akquise_manager"
         | "future_room_web_user_lite"
+        | "project_manager"
+        | "pet_manager"
       org_type: "internal" | "partner" | "sub_partner" | "client" | "renter"
       partner_verification_status:
         | "pending"
@@ -21170,6 +21235,8 @@ export const Constants = {
         "finance_manager",
         "akquise_manager",
         "future_room_web_user_lite",
+        "project_manager",
+        "pet_manager",
       ],
       org_type: ["internal", "partner", "sub_partner", "client", "renter"],
       partner_verification_status: [

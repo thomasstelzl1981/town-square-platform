@@ -13,9 +13,10 @@
  * membership_role steuert Tile-Aktivierung (tenant-bezogen).
  * app_role steuert globale Rechte (Zone-1-Zugang, God Mode).
  * 
- * 6 Rollen: platform_admin, super_user, client_user,
- *           akquise_manager, finance_manager, sales_partner
- * 21 Module: MOD-00 bis MOD-20
+ * 8 Rollen: platform_admin, super_user, client_user,
+ *           akquise_manager, finance_manager, sales_partner,
+ *           project_manager, pet_manager
+ * 22 Module: MOD-00 bis MOD-20 + MOD-22
  */
 
 // =============================================================================
@@ -56,11 +57,13 @@ export const ROLE_EXTRA_TILES: Record<string, string[]> = {
   sales_partner: ['MOD-09', 'MOD-10'],
   finance_manager: ['MOD-11'],
   akquise_manager: ['MOD-12'],
+  project_manager: ['MOD-13'],
+  pet_manager: ['MOD-22'],
 };
 
-/** 7 Spezial-Module (nicht im Basis-Set) */
+/** 8 Spezial-Module (nicht im Basis-Set) */
 export const SPECIALIST_TILES: string[] = [
-  'MOD-09', 'MOD-10', 'MOD-11', 'MOD-12', 'MOD-13', 'MOD-14', 'MOD-19',
+  'MOD-09', 'MOD-10', 'MOD-11', 'MOD-12', 'MOD-13', 'MOD-14', 'MOD-19', 'MOD-22',
 ];
 
 /** Alle 21 Module */
@@ -118,6 +121,22 @@ export const ROLES_CATALOG: RoleDefinition[] = [
     membershipRole: 'sales_partner',
     appRole: 'sales_partner',
     totalModules: 16,
+  },
+  {
+    code: 'project_manager',
+    label: 'Projektmanager',
+    description: 'Projektmanager — Basis-Module + MOD-13 Projekte.',
+    membershipRole: 'project_manager',
+    appRole: 'project_manager',
+    totalModules: 15,
+  },
+  {
+    code: 'pet_manager',
+    label: 'Pet Manager',
+    description: 'Pet Manager — Basis-Module + MOD-22 Pet Manager.',
+    membershipRole: 'pet_manager',
+    appRole: 'pet_manager',
+    totalModules: 15,
   },
 ];
 
@@ -181,9 +200,10 @@ export const MODULE_ROLE_MATRIX: Record<string, string[]> = {
   'MOD-10': ['platform_admin', 'super_user', 'sales_partner'],
   'MOD-11': ['platform_admin', 'super_user', 'finance_manager'],
   'MOD-12': ['platform_admin', 'super_user', 'akquise_manager'],
-  'MOD-13': ['platform_admin', 'super_user'],
+  'MOD-13': ['platform_admin', 'super_user', 'project_manager'],
   'MOD-14': ['platform_admin', 'super_user'],
   'MOD-19': ['platform_admin', 'super_user'],
+  'MOD-22': ['platform_admin', 'super_user', 'pet_manager'],
 };
 
 // =============================================================================

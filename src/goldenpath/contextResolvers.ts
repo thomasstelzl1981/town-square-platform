@@ -439,3 +439,113 @@ const gpCommissionResolver: ContextResolver = async ({ tenantId }) => {
 };
 
 registerContextResolver('GP-COMMISSION', gpCommissionResolver);
+
+// ═══════════════════════════════════════════════════════════════
+// GP-MANAGER-LIFECYCLE Resolver (Manager-Bewerbung & Freischaltung)
+// ═══════════════════════════════════════════════════════════════
+
+const gpManagerLifecycleResolver: ContextResolver = async ({ tenantId, entityId: applicationId }) => {
+  const flags: Record<string, boolean> = {
+    user_authenticated: true,
+    tenant_exists: !!tenantId,
+  };
+  if (!tenantId) return flags;
+
+  // Check manager application status
+  if (applicationId) {
+    const { data: app } = await supabase
+      .from('manager_applications' as never)
+      .select('id, status' as never)
+      .eq('id' as never, applicationId)
+      .eq('tenant_id' as never, tenantId)
+      .maybeSingle() as unknown as { data: { id: string; status: string } | null };
+    flags.application_submitted = app?.status === 'submitted' || app?.status === 'in_review' || app?.status === 'approved';
+    flags.application_in_review = app?.status === 'in_review' || app?.status === 'approved';
+    flags.qualification_passed = app?.status === 'approved';
+    flags.application_approved = app?.status === 'approved';
+  } else {
+    const { count } = await supabase
+      .from('manager_applications' as never)
+      .select('*', { count: 'exact', head: true })
+      .eq('tenant_id' as never, tenantId) as unknown as { count: number | null };
+    flags.application_submitted = (count ?? 0) > 0;
+  }
+
+  // Check org_type
+  const { data: org } = await supabase
+    .from('organizations')
+    .select('org_type')
+    .eq('id', tenantId)
+    .maybeSingle();
+  flags.org_type_upgraded = org?.org_type === 'partner';
+
+  // Check org_links (manages)
+  const { count: linkCount } = await supabase
+    .from('org_links')
+    .select('*', { count: 'exact', head: true })
+    .eq('from_org_id', tenantId)
+    .eq('link_type', 'manages')
+    .eq('status', 'active');
+  flags.first_client_assigned = (linkCount ?? 0) > 0;
+  flags.org_link_active = (linkCount ?? 0) > 0;
+
+  // Check org_delegations
+  const { count: delCount } = await supabase
+    .from('org_delegations')
+    .select('*', { count: 'exact', head: true })
+    .eq('delegate_org_id', tenantId)
+    .eq('status', 'active');
+  flags.delegation_active = (delCount ?? 0) > 0;
+
+  // Check tile activation
+  const { count: tileCount } = await supabase
+    .from('tenant_tile_activation')
+    .select('*', { count: 'exact', head: true })
+    .eq('tenant_id', tenantId)
+    .in('tile_code', ['MOD-09', 'MOD-10', 'MOD-11', 'MOD-12', 'MOD-13', 'MOD-22'])
+    .eq('status', 'active');
+  flags.tiles_activated = (tileCount ?? 0) > 0;
+
+  return flags;
+};
+
+registerContextResolver('GP-MANAGER-LIFECYCLE', gpManagerLifecycleResolver);
+
+// ═══════════════════════════════════════════════════════════════
+// GP-CLIENT-ASSIGNMENT Resolver (Kunden-Zuweisung)
+// ═══════════════════════════════════════════════════════════════
+
+const gpClientAssignmentResolver: ContextResolver = async ({ tenantId, entityId: assignmentId }) => {
+  const flags: Record<string, boolean> = {
+    user_authenticated: true,
+    tenant_exists: !!tenantId,
+  };
+  if (!tenantId) return flags;
+
+  // Check org_links (active manages links for this tenant as manager)
+  const { count: linkCount } = await supabase
+    .from('org_links')
+    .select('*', { count: 'exact', head: true })
+    .eq('from_org_id', tenantId)
+    .eq('link_type', 'manages')
+    .eq('status', 'active');
+  flags.org_link_created = (linkCount ?? 0) > 0;
+  flags.manager_selected = (linkCount ?? 0) > 0;
+
+  // Check org_delegations
+  const { count: delCount } = await supabase
+    .from('org_delegations')
+    .select('*', { count: 'exact', head: true })
+    .eq('delegate_org_id', tenantId)
+    .eq('status', 'active');
+  flags.delegation_scoped = (delCount ?? 0) > 0;
+
+  // General flags
+  flags.request_received = true; // If resolver is called, a request exists
+  flags.triage_completed = (linkCount ?? 0) > 0;
+  flags.manager_accepted = (linkCount ?? 0) > 0;
+
+  return flags;
+};
+
+registerContextResolver('GP-CLIENT-ASSIGNMENT', gpClientAssignmentResolver);
