@@ -11,7 +11,7 @@
  */
 
 import { useState, useCallback } from 'react';
-import { Upload as UploadIcon, Sparkles, ArrowRight } from 'lucide-react';
+import { Upload as UploadIcon, Sparkles, ArrowRight, Cloud, Loader2 } from 'lucide-react';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { IntakeHowItWorks } from '@/components/dms/IntakeHowItWorks';
@@ -19,16 +19,36 @@ import { IntakeEntityPicker, type IntakeSelection } from '@/components/dms/Intak
 import { IntakeUploadZone } from '@/components/dms/IntakeUploadZone';
 import { IntakeChecklistGrid } from '@/components/dms/IntakeChecklistGrid';
 import { IntakeRecentActivity } from '@/components/dms/IntakeRecentActivity';
+import { CloudSourcePicker, type CloudSourceSelection } from '@/components/dms/CloudSourcePicker';
+import { useCloudSync } from '@/hooks/useCloudSync';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { useNavigate } from 'react-router-dom';
 
 export function IntakeTab() {
   const [selection, setSelection] = useState<IntakeSelection | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [cloudSource, setCloudSource] = useState<CloudSourceSelection>({ source: 'storage', mode: 'sync_first' });
+  const [isCloudImporting, setIsCloudImporting] = useState(false);
+  const { listFiles, syncNow, analyzeCloud, isConnected } = useCloudSync();
   const navigate = useNavigate();
 
   const handleUploadComplete = useCallback(() => {
     setRefreshKey((k) => k + 1);
   }, []);
+
+  const handleCloudImport = useCallback(async () => {
+    setIsCloudImporting(true);
+    try {
+      if (cloudSource.mode === 'sync_first') {
+        await syncNow();
+      }
+      await analyzeCloud();
+      setRefreshKey((k) => k + 1);
+    } finally {
+      setIsCloudImporting(false);
+    }
+  }, [cloudSource, syncNow, analyzeCloud]);
 
   return (
     <PageShell>
@@ -61,6 +81,36 @@ export function IntakeTab() {
             onUploadComplete={handleUploadComplete}
           />
         </section>
+
+        {/* ── Block 2b: Cloud-Import ── */}
+        {isConnected && (
+          <section className="space-y-4">
+            <div className="flex items-center gap-2">
+              <Cloud className="h-4 w-4 text-primary" />
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Aus Cloud importieren
+              </h3>
+              <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 ml-auto">
+                1 Credit / Dokument
+              </Badge>
+            </div>
+            <CloudSourcePicker onSelect={setCloudSource} />
+            {cloudSource.source === 'cloud' && (
+              <Button
+                onClick={handleCloudImport}
+                disabled={isCloudImporting}
+                size="lg"
+                className="w-full"
+              >
+                {isCloudImporting ? (
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Cloud-Dateien werden importiert…</>
+                ) : (
+                  <><Cloud className="h-4 w-4 mr-2" /> Cloud-Ordner importieren & analysieren</>
+                )}
+              </Button>
+            )}
+          </section>
+        )}
 
         {/* ── Block 3: Dokument-Checkliste ── */}
         <IntakeChecklistGrid refreshKey={refreshKey} />

@@ -22,6 +22,14 @@ interface DriveFolder {
   name: string;
 }
 
+export interface CloudFileInfo {
+  id: string;
+  name: string;
+  mimeType: string;
+  size: string;
+  modifiedTime: string;
+}
+
 export function useCloudSync() {
   const { user } = useAuth();
   const [connectors, setConnectors] = useState<CloudConnector[]>([]);
@@ -185,6 +193,32 @@ export function useCloudSync() {
     }
   }, [invoke, fetchStatus]);
 
+  const listFiles = useCallback(async (): Promise<{ files: CloudFileInfo[]; total: number }> => {
+    try {
+      const data = await invoke('list_files');
+      return { files: data.files || [], total: data.total || 0 };
+    } catch (err) {
+      console.error('[useCloudSync] list_files error:', err);
+      toast.error('Dateiliste konnte nicht geladen werden.');
+      return { files: [], total: 0 };
+    }
+  }, [invoke]);
+
+  const analyzeCloud = useCallback(async (fileIds?: string[]) => {
+    try {
+      setIsSyncing(true);
+      const data = await invoke('analyze_cloud', { fileIds });
+      toast.success(`Analyse abgeschlossen: ${data.files_processed} Datei(en) verarbeitet.`);
+      return data;
+    } catch (err) {
+      console.error('[useCloudSync] analyze_cloud error:', err);
+      toast.error('Cloud-Analyse fehlgeschlagen.');
+      return null;
+    } finally {
+      setIsSyncing(false);
+    }
+  }, [invoke]);
+
   const googleDriveConnector = connectors.find(c => c.provider === 'google_drive');
   const isConnected = googleDriveConnector?.status === 'connected';
 
@@ -203,6 +237,8 @@ export function useCloudSync() {
     loadFolders,
     setFolder,
     syncNow,
+    listFiles,
+    analyzeCloud,
     refreshStatus: fetchStatus,
   };
 }
