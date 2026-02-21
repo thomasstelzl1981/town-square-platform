@@ -1,6 +1,6 @@
 /**
  * ObjekteingangDetail — CI-konformes Objektakte-Layout
- * Redesign: KPI-Zeile, Side-by-Side Kalkulation, Collapsible Extrahierte Daten
+ * Redesign: KPI-Zeile, Tab-basierte Kalkulation, Collapsible Extrahierte Daten
  */
 import * as React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   ArrowLeft, Loader2, Building2, MapPin, Euro, X, ThumbsUp, MessageSquare, 
   FileText, Upload, Check, ChevronDown, TrendingUp, Ruler, Home
@@ -27,6 +28,8 @@ import { SourceEmailViewer } from './components/SourceEmailViewer';
 import { ActivityLogPanel } from './components/ActivityLogPanel';
 import { PageShell } from '@/components/shared/PageShell';
 import { DESIGN } from '@/config/designManifest';
+import { calcBestandQuick, calcAufteilerFull } from '@/engines/akquiseCalc/engine';
+import { AUFTEILER_DEFAULTS } from '@/engines/akquiseCalc/spec';
 
 const STATUS_OPTIONS: { value: AcqOfferStatus; label: string }[] = [
   { value: 'new', label: 'Eingegangen' },
@@ -48,6 +51,15 @@ const OFFER_STEPS = [
 const STATUS_TO_STEP: Record<string, number> = {
   new: 0, analyzing: 1, analyzed: 2, presented: 3, accepted: 3, rejected: 2, archived: 3,
 };
+
+/** Derive yearly rent with fallback: noi_indicated > price * yield > 0 */
+function deriveYearlyRent(offer: { noi_indicated?: number | null; price_asking?: number | null; yield_indicated?: number | null }): number {
+  if (offer.noi_indicated) return offer.noi_indicated;
+  if (offer.price_asking && offer.yield_indicated) {
+    return offer.price_asking * offer.yield_indicated / 100;
+  }
+  return 0;
+}
 
 export function ObjekteingangDetail() {
   const { offerId } = useParams();
@@ -83,6 +95,9 @@ export function ObjekteingangDetail() {
   };
 
   const currentStepIdx = STATUS_TO_STEP[offer.status] ?? 0;
+
+  // Derived yearly rent with fallback
+  const yearlyRent = deriveYearlyRent(offer);
 
   return (
     <PageShell>
@@ -186,7 +201,7 @@ export function ObjekteingangDetail() {
               <DataRow label="Einheiten" value={offer.units_count?.toString() || '–'} />
               <DataRow label="Fläche" value={offer.area_sqm ? `${offer.area_sqm.toLocaleString('de-DE')} m²` : '–'} />
               <DataRow label="Kaufpreis" value={formatPrice(offer.price_asking)} />
-              <DataRow label="Jahresmiete (IST)" value={offer.noi_indicated ? formatPrice(offer.noi_indicated) : '–'} />
+              <DataRow label="Jahresmiete (IST)" value={yearlyRent > 0 ? formatPrice(yearlyRent) : '–'} />
             </div>
           </CardContent>
         </Card>
@@ -246,27 +261,26 @@ export function ObjekteingangDetail() {
         </div>
       </div>
 
-      {/* ROW 4: Schnellanalyse (volle Breite) + Kalkulation Side-by-Side */}
+      {/* ROW 4: Schnellanalyse + Tab-basierte Kalkulation */}
       <div className="space-y-4">
         <h2 className={cn(DESIGN.TYPOGRAPHY.SECTION_TITLE, 'mb-1')}>Kalkulation</h2>
         
-        {/* Schnellanalyse — volle Breite über beiden Spalten */}
-        <QuickAnalysisBanner offer={offer} />
+        {/* Schnellanalyse — volle Breite, Engine-basiert */}
+        <QuickAnalysisBanner offer={offer} yearlyRent={yearlyRent} />
 
-        <div className={DESIGN.FORM_GRID.FULL}>
-          <div className="space-y-2">
-            <h3 className={cn(DESIGN.TYPOGRAPHY.CARD_TITLE, 'flex items-center gap-2')}>
-              <span className="text-base">🏠</span> Bestand (Hold)
-            </h3>
-            <BestandCalculation offerId={offer.id} hideQuickAnalysis initialData={{ purchasePrice: offer.price_asking || 0, monthlyRent: offer.noi_indicated ? offer.noi_indicated / 12 : 0, units: offer.units_count || 1, areaSqm: offer.area_sqm || 0 }} />
-          </div>
-          <div className="space-y-2">
-            <h3 className={cn(DESIGN.TYPOGRAPHY.CARD_TITLE, 'flex items-center gap-2')}>
-              <span className="text-base">📊</span> Aufteiler (Flip)
-            </h3>
-            <AufteilerCalculation offerId={offer.id} initialData={{ purchasePrice: offer.price_asking || 0, yearlyRent: offer.noi_indicated || 0, units: offer.units_count || 1, areaSqm: offer.area_sqm || 0 }} />
-          </div>
-        </div>
+        {/* Tab-Layout statt Side-by-Side */}
+        <Tabs defaultValue="bestand" className="w-full">
+          <TabsList>
+            <TabsTrigger value="bestand">🏠 Bestand (Hold)</TabsTrigger>
+            <TabsTrigger value="aufteiler">📊 Aufteiler (Flip)</TabsTrigger>
+          </TabsList>
+          <TabsContent value="bestand">
+            <BestandCalculation offerId={offer.id} hideQuickAnalysis initialData={{ purchasePrice: offer.price_asking || 0, monthlyRent: yearlyRent / 12, units: offer.units_count || 1, areaSqm: offer.area_sqm || 0 }} />
+          </TabsContent>
+          <TabsContent value="aufteiler">
+            <AufteilerCalculation offerId={offer.id} initialData={{ purchasePrice: offer.price_asking || 0, yearlyRent, units: offer.units_count || 1, areaSqm: offer.area_sqm || 0 }} />
+          </TabsContent>
+        </Tabs>
       </div>
 
       {/* ROW 5: Aktivitäten */}
@@ -327,32 +341,26 @@ function DataRow({ label, value }: { label: string; value?: string | null }) {
   );
 }
 
-/* ─── Quick Analysis Banner (volle Breite) ─────────────── */
-function QuickAnalysisBanner({ offer }: { offer: NonNullable<ReturnType<typeof useAcqOffer>['data']> }) {
+/* ─── Quick Analysis Banner (Engine-basiert) ───────────── */
+function QuickAnalysisBanner({ offer, yearlyRent }: { offer: NonNullable<ReturnType<typeof useAcqOffer>['data']>; yearlyRent: number }) {
   const formatCurrency = (val: number) =>
     new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(val);
 
   const purchasePrice = offer.price_asking || 0;
-  const yearlyRent = offer.noi_indicated || 0;
-  const monthlyRent = yearlyRent / 12;
 
-  // Bestand KPIs
-  const ancillaryCosts = purchasePrice * 0.1;
-  const totalInvestment = purchasePrice + ancillaryCosts;
-  const equity = totalInvestment * 0.2;
-  const maxFinancing = (yearlyRent * 0.8 / 5) * 100;
-  const grossYield = purchasePrice > 0 ? (yearlyRent / purchasePrice) * 100 : 0;
-
-  // Aufteiler KPIs (default 4% target yield, 8% commission, 24 months)
-  const salesPriceGross = yearlyRent > 0 ? yearlyRent / 0.04 : 0;
-  const salesCommission = salesPriceGross * 0.08;
-  const salesPriceNet = salesPriceGross - salesCommission;
-  const loanAmount = totalInvestment * 0.7;
-  const interestCosts = loanAmount * 0.05 * 2;
-  const rentIncome = yearlyRent * 2;
-  const netCosts = totalInvestment + interestCosts - rentIncome;
-  const profit = salesPriceNet - netCosts;
-  const profitMargin = salesPriceNet > 0 ? (profit / salesPriceNet) * 100 : 0;
+  // Engine-basierte Berechnungen statt inline-Logik
+  const bestand = calcBestandQuick({ purchasePrice, monthlyRent: yearlyRent / 12 });
+  const aufteiler = calcAufteilerFull({
+    purchasePrice,
+    yearlyRent,
+    targetYield: AUFTEILER_DEFAULTS.targetYield,
+    salesCommission: AUFTEILER_DEFAULTS.salesCommission,
+    holdingPeriodMonths: AUFTEILER_DEFAULTS.holdingPeriodMonths,
+    ancillaryCostPercent: AUFTEILER_DEFAULTS.ancillaryCostPercent,
+    interestRate: AUFTEILER_DEFAULTS.interestRate,
+    equityPercent: AUFTEILER_DEFAULTS.equityPercent,
+    projectCosts: 0,
+  });
 
   return (
     <Card className={cn(DESIGN.CARD.BASE, DESIGN.INFO_BANNER.PREMIUM)}>
@@ -360,34 +368,34 @@ function QuickAnalysisBanner({ offer }: { offer: NonNullable<ReturnType<typeof u
         <CardTitle className={DESIGN.TYPOGRAPHY.CARD_TITLE}>Schnellanalyse</CardTitle>
       </CardHeader>
       <CardContent className="px-4 pb-4">
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 items-stretch">
           <div>
             <div className={DESIGN.TYPOGRAPHY.HINT}>Gesamtinvestition</div>
-            <div className={DESIGN.TYPOGRAPHY.VALUE + ' text-lg'}>{formatCurrency(totalInvestment)}</div>
+            <div className={DESIGN.TYPOGRAPHY.VALUE + ' text-lg'}>{formatCurrency(bestand.totalInvestment)}</div>
           </div>
           <div>
-            <div className={DESIGN.TYPOGRAPHY.HINT}>Max. Finanzierbarkeit</div>
-            <div className={DESIGN.TYPOGRAPHY.VALUE + ' text-lg'}>{formatCurrency(maxFinancing)}</div>
+            <div className={DESIGN.TYPOGRAPHY.HINT}>Monatl. Cashflow</div>
+            <div className={cn(DESIGN.TYPOGRAPHY.VALUE, 'text-lg', bestand.monthlyCashflow >= 0 ? 'text-emerald-500' : 'text-destructive')}>{formatCurrency(bestand.monthlyCashflow)}</div>
           </div>
           <div>
             <div className={DESIGN.TYPOGRAPHY.HINT}>EK-Bedarf</div>
-            <div className={DESIGN.TYPOGRAPHY.VALUE + ' text-lg'}>{formatCurrency(equity)}</div>
+            <div className={DESIGN.TYPOGRAPHY.VALUE + ' text-lg'}>{formatCurrency(bestand.equity)}</div>
           </div>
           <div>
             <div className={DESIGN.TYPOGRAPHY.HINT}>Bruttorendite</div>
-            <div className={DESIGN.TYPOGRAPHY.VALUE + ' text-lg'}>{grossYield.toFixed(2)}%</div>
+            <div className={DESIGN.TYPOGRAPHY.VALUE + ' text-lg'}>{bestand.grossYield.toFixed(2)}%</div>
           </div>
           <div>
             <div className={DESIGN.TYPOGRAPHY.HINT}>Gewinn (Flip)</div>
-            <div className={cn(DESIGN.TYPOGRAPHY.VALUE, 'text-lg', profit >= 0 ? 'text-emerald-500' : 'text-destructive')}>{formatCurrency(profit)}</div>
+            <div className={cn(DESIGN.TYPOGRAPHY.VALUE, 'text-lg', aufteiler.profit >= 0 ? 'text-emerald-500' : 'text-destructive')}>{formatCurrency(aufteiler.profit)}</div>
           </div>
           <div>
             <div className={DESIGN.TYPOGRAPHY.HINT}>Marge (Flip)</div>
-            <div className={cn(DESIGN.TYPOGRAPHY.VALUE, 'text-lg', profitMargin >= 0 ? 'text-emerald-500' : 'text-destructive')}>{profitMargin.toFixed(1)}%</div>
+            <div className={cn(DESIGN.TYPOGRAPHY.VALUE, 'text-lg', aufteiler.profitMargin >= 0 ? 'text-emerald-500' : 'text-destructive')}>{aufteiler.profitMargin.toFixed(1)}%</div>
           </div>
           <div>
             <div className={DESIGN.TYPOGRAPHY.HINT}>Faktor (Flip)</div>
-            <div className={cn(DESIGN.TYPOGRAPHY.VALUE, 'text-lg text-primary')}>{yearlyRent > 0 ? (salesPriceGross / yearlyRent).toFixed(1) + 'x' : '–'}</div>
+            <div className={cn(DESIGN.TYPOGRAPHY.VALUE, 'text-lg text-primary')}>{aufteiler.factor > 0 ? aufteiler.factor.toFixed(1) + 'x' : '–'}</div>
           </div>
         </div>
       </CardContent>
