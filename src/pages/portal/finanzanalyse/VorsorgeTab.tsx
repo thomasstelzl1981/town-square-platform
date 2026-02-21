@@ -4,6 +4,9 @@
  * Filtered to category='vorsorge' only
  */
 import { useState } from 'react';
+import { useDataReadiness } from '@/hooks/useDataReadiness';
+import { DataReadinessModal } from '@/components/portal/DataReadinessModal';
+import { ConsentRequiredModal } from '@/components/portal/ConsentRequiredModal';
 import { PageShell } from '@/components/shared/PageShell';
 import { WidgetGrid } from '@/components/shared/WidgetGrid';
 import { WidgetCell } from '@/components/shared/WidgetCell';
@@ -61,6 +64,7 @@ export default function VorsorgeTab() {
   const queryClient = useQueryClient();
   const { isEnabled } = useDemoToggles();
   const demoEnabled = isEnabled('GP-KONTEN');
+  const readiness = useDataReadiness();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [forms, setForms] = useState<Record<string, Record<string, any>>>({});
   const [showNew, setShowNew] = useState(false);
@@ -91,6 +95,7 @@ export default function VorsorgeTab() {
 
   const createMutation = useMutation({
     mutationFn: async (form: Record<string, any>) => {
+      if (!readiness.requireReadiness()) throw new Error('Readiness required');
       if (!activeTenantId || !user?.id) throw new Error('No tenant/user');
       const { error } = await supabase.from('vorsorge_contracts').insert({
         tenant_id: activeTenantId, user_id: user.id,
@@ -120,6 +125,7 @@ export default function VorsorgeTab() {
 
   const updateMutation = useMutation({
     mutationFn: async (form: Record<string, any>) => {
+      if (!readiness.requireReadiness()) throw new Error('Readiness required');
       const { id, created_at, updated_at, tenant_id, user_id, ...rest } = form;
       const { error } = await supabase.from('vorsorge_contracts').update({
         provider: rest.provider || null, contract_no: rest.contract_no || null,
@@ -145,6 +151,7 @@ export default function VorsorgeTab() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
+      if (!readiness.requireReadiness()) throw new Error('Readiness required');
       const { error } = await supabase.from('vorsorge_contracts').delete().eq('id', id);
       if (error) throw error;
     },
@@ -385,6 +392,16 @@ export default function VorsorgeTab() {
           await supabase.from('vorsorge_contracts').update(rest).eq('id', id);
           queryClient.invalidateQueries({ queryKey: ['fin-vorsorge'] });
         }}
+      />
+      <DataReadinessModal
+        open={readiness.showReadinessModal}
+        onOpenChange={readiness.setShowReadinessModal}
+        isDemoActive={readiness.isDemoActive}
+        isConsentGiven={readiness.isConsentGiven}
+      />
+      <ConsentRequiredModal
+        open={readiness.showConsentModal}
+        onOpenChange={readiness.setShowConsentModal}
       />
     </PageShell>
   );

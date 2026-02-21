@@ -3,6 +3,9 @@
  * Bankkonten mit polymorphischer Zuordnung + FinAPI Web Form 2.0 Flow
  */
 import { useState, useRef, useCallback, useEffect } from 'react';
+import { useDataReadiness } from '@/hooks/useDataReadiness';
+import { DataReadinessModal } from '@/components/portal/DataReadinessModal';
+import { ConsentRequiredModal } from '@/components/portal/ConsentRequiredModal';
 import { PageShell } from '@/components/shared/PageShell';
 import { WidgetGrid } from '@/components/shared/WidgetGrid';
 import { WidgetCell } from '@/components/shared/WidgetCell';
@@ -37,6 +40,7 @@ const POLL_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
 export default function KontenTab() {
   const { activeTenantId } = useAuth();
   const { isEnabled } = useDemoToggles();
+  const readiness = useDataReadiness();
   const [openKontoId, setOpenKontoId] = useState<string | null>(null);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [isPolling, setIsPolling] = useState(false);
@@ -171,6 +175,7 @@ export default function KontenTab() {
   const [deletingAccountId, setDeletingAccountId] = useState<string | null>(null);
   const deleteAccountMutation = useMutation({
     mutationFn: async (accountId: string) => {
+      if (!readiness.requireReadiness()) throw new Error('Readiness required');
       setDeletingAccountId(accountId);
       const { error } = await supabase.from('msv_bank_accounts').delete().eq('id', accountId);
       if (error) throw error;
@@ -471,6 +476,16 @@ export default function KontenTab() {
       </Card>
 
       <AddBankAccountDialog open={showAddDialog} onOpenChange={setShowAddDialog} />
+      <DataReadinessModal
+        open={readiness.showReadinessModal}
+        onOpenChange={readiness.setShowReadinessModal}
+        isDemoActive={readiness.isDemoActive}
+        isConsentGiven={readiness.isConsentGiven}
+      />
+      <ConsentRequiredModal
+        open={readiness.showConsentModal}
+        onOpenChange={readiness.setShowConsentModal}
+      />
     </PageShell>
   );
 }

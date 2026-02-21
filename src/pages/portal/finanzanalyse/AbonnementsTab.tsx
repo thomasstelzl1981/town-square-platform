@@ -3,6 +3,9 @@
  * Widget CE Layout: WidgetGrid + WidgetCell (4-col, square)
  */
 import { useState, useMemo } from 'react';
+import { useDataReadiness } from '@/hooks/useDataReadiness';
+import { DataReadinessModal } from '@/components/portal/DataReadinessModal';
+import { ConsentRequiredModal } from '@/components/portal/ConsentRequiredModal';
 import { PageShell } from '@/components/shared/PageShell';
 import { WidgetGrid } from '@/components/shared/WidgetGrid';
 import { WidgetCell } from '@/components/shared/WidgetCell';
@@ -56,6 +59,7 @@ export default function AbonnementsTab() {
   const { activeTenantId, user } = useAuth();
   const { isEnabled } = useDemoToggles();
   const demoEnabled = isEnabled('GP-KONTEN');
+  const readiness = useDataReadiness();
   const queryClient = useQueryClient();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [forms, setForms] = useState<Record<string, Record<string, any>>>({});
@@ -97,6 +101,7 @@ export default function AbonnementsTab() {
 
   const createMutation = useMutation({
     mutationFn: async (form: Record<string, any>) => {
+      if (!readiness.requireReadiness()) throw new Error('Readiness required');
       if (!activeTenantId || !user?.id) throw new Error('No tenant/user');
       const { error } = await supabase.from('user_subscriptions').insert({
         tenant_id: activeTenantId, user_id: user.id,
@@ -117,6 +122,7 @@ export default function AbonnementsTab() {
 
   const updateMutation = useMutation({
     mutationFn: async (form: Record<string, any>) => {
+      if (!readiness.requireReadiness()) throw new Error('Readiness required');
       const { id, created_at, updated_at, tenant_id, user_id, ...rest } = form;
       const { error } = await supabase.from('user_subscriptions').update({
         custom_name: rest.custom_name || null, merchant: rest.merchant || null,
@@ -134,6 +140,7 @@ export default function AbonnementsTab() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
+      if (!readiness.requireReadiness()) throw new Error('Readiness required');
       const { error } = await supabase.from('user_subscriptions').delete().eq('id', id);
       if (error) throw error;
     },
@@ -315,6 +322,16 @@ export default function AbonnementsTab() {
           </Card>
         </DesktopOnly>
       )}
+      <DataReadinessModal
+        open={readiness.showReadinessModal}
+        onOpenChange={readiness.setShowReadinessModal}
+        isDemoActive={readiness.isDemoActive}
+        isConsentGiven={readiness.isConsentGiven}
+      />
+      <ConsentRequiredModal
+        open={readiness.showConsentModal}
+        onOpenChange={readiness.setShowConsentModal}
+      />
     </PageShell>
   );
 }
