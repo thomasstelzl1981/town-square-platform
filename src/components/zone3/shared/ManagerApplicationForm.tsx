@@ -109,7 +109,7 @@ export function ManagerApplicationForm({
 
       setSubmitted(true);
       onSuccess?.();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Application submit error:', err);
       toast.error('Fehler beim Senden. Bitte versuchen Sie es erneut.');
     } finally {

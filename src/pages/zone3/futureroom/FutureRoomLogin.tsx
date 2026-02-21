@@ -59,8 +59,8 @@ export default function FutureRoomLogin() {
         toast.success('Erfolgreich eingeloggt!');
         navigate('/website/futureroom/akte');
       }
-    } catch (err: any) {
-      setError(err.message || 'Ein Fehler ist aufgetreten.');
+    } catch (err: unknown) {
+      setError((err instanceof Error ? err.message : String(err)) || 'Ein Fehler ist aufgetreten.');
     } finally {
       setLoading(false);
     }

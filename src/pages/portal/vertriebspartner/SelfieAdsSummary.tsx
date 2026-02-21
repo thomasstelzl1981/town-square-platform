@@ -29,7 +29,7 @@ export default function SelfieAdsSummary() {
     try {
       const raw = sessionStorage.getItem('selfieAdsPlanData');
       if (raw) return JSON.parse(raw);
-    } catch {}
+    } catch (err) { console.error('[SelfieAdsSummary] Failed to parse plan data:', err); }
     // Fallback demo data
     return {
       goal: 'Kapitalanleger-Leads',

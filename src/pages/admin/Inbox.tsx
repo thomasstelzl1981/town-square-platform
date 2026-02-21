@@ -184,8 +184,8 @@ export default function InboxPage() {
       setRules(rulesRes.data || []);
       setOrganizations(orgsRes.data || []);
       setMandates(mandatesRes.data || []);
-    } catch (err: any) {
-      setError(err.message || 'Fehler beim Laden');
+    } catch (err: unknown) {
+      setError((err instanceof Error ? err.message : String(err)) || 'Fehler beim Laden');
     } finally {
       setLoading(false);
     }
@@ -249,8 +249,8 @@ export default function InboxPage() {
       setAssignItem(null);
       fetchData();
       toast.success('Zugewiesen');
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : String(err));
     } finally {
       setAssigning(false);
     }
@@ -286,8 +286,8 @@ export default function InboxPage() {
       const { error } = await supabase.from('inbound_items').update({ status: newStatus } as any).eq('id', itemId);
       if (error) throw error;
       fetchData();
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : String(err));
     }
   };
 
@@ -337,8 +337,8 @@ export default function InboxPage() {
       }
       setRuleDialog(null);
       fetchData();
-    } catch (err: any) {
-      toast.error(err.message);
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : String(err));
     } finally {
       setSavingRule(false);
     }
@@ -350,8 +350,8 @@ export default function InboxPage() {
       if (error) throw error;
       toast.success('Regel gelöscht');
       fetchData();
-    } catch (err: any) {
-      toast.error(err.message);
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : String(err));
     }
   };
 
@@ -374,8 +374,8 @@ export default function InboxPage() {
       toast.success('Mandat aktualisiert');
       setViewMandate(null);
       fetchData();
-    } catch (err: any) {
-      toast.error(err.message);
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : String(err));
     } finally {
       setSavingMandate(false);
     }

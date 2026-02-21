@@ -201,8 +201,8 @@ export default function PropertyDetailPage() {
       toast({ title: 'Immobilie gelöscht' });
       deleteQueryClient.invalidateQueries({ queryKey: ['portfolio-units-annual'] });
       navigate('/portal/immobilien/portfolio');
-    } catch (err: any) {
-      toast({ title: 'Fehler', description: err.message, variant: 'destructive' });
+    } catch (err: unknown) {
+      toast({ title: 'Fehler', description: err instanceof Error ? err.message : String(err), variant: 'destructive' });
     }
     setIsDeleting(false);
     setShowDeleteDialog(false);
@@ -317,9 +317,9 @@ export default function PropertyDetailPage() {
         .maybeSingle();
 
       setUnit(unitData);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('PropertyDetailPage fetch error:', err);
-      setError(err.message || 'Fehler beim Laden der Immobilie');
+      setError((err instanceof Error ? err.message : String(err)) || 'Fehler beim Laden der Immobilie');
     }
     setLoading(false);
   }

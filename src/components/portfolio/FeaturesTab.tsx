@@ -61,8 +61,8 @@ export function FeaturesTab({ propertyId, tenantId, onUpdate }: FeaturesTabProps
 
       if (fetchError) throw fetchError;
       setFeatures(data || []);
-    } catch (err: any) {
-      setError(err.message || 'Fehler beim Laden der Features');
+    } catch (err: unknown) {
+      setError((err instanceof Error ? err.message : String(err)) || 'Fehler beim Laden der Features');
     }
     setLoading(false);
   }
@@ -123,8 +123,8 @@ export function FeaturesTab({ propertyId, tenantId, onUpdate }: FeaturesTabProps
       
       await fetchFeatures();
       onUpdate?.();
-    } catch (err: any) {
-      toast.error(err.message || 'Fehler beim Aktualisieren');
+    } catch (err: unknown) {
+      toast.error((err instanceof Error ? err.message : String(err)) || 'Fehler beim Aktualisieren');
     }
     setUpdating(null);
   }

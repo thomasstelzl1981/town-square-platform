@@ -41,7 +41,7 @@ export function CreditTopUpDialog() {
       } else if (data?.error) {
         toast.error(data.error);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Checkout error:', err);
       toast.error('Checkout konnte nicht gestartet werden. Bitte versuchen Sie es später erneut.');
     } finally {

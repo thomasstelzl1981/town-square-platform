@@ -151,8 +151,8 @@ export default function UsersPage() {
       
       if (membershipError) throw membershipError;
       setMemberships(membershipData || []);
-    } catch (err: any) {
-      setError(err.message || 'Failed to fetch data');
+    } catch (err: unknown) {
+      setError((err instanceof Error ? err.message : String(err)) || 'Failed to fetch data');
     }
     setLoading(false);
   }
@@ -218,11 +218,12 @@ export default function UsersPage() {
       setCreateOpen(false);
       setNewMembership({ user_id: '', tenant_id: orgFilter || '', role: '' });
       fetchData();
-    } catch (err: any) {
-      if (err.message.includes('duplicate') || err.code === '23505') {
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      if (errMsg.includes('duplicate') || (err as { code?: string })?.code === '23505') {
         setCreateError('This user already has a membership in this organization');
       } else {
-        setCreateError(err.message || 'Failed to create membership');
+        setCreateError(errMsg || 'Failed to create membership');
       }
     }
     setCreating(false);
@@ -251,8 +252,8 @@ export default function UsersPage() {
       setEditTarget(null);
       setEditRole('');
       fetchData();
-    } catch (err: any) {
-      setEditError(err.message || 'Failed to update membership');
+    } catch (err: unknown) {
+      setEditError((err instanceof Error ? err.message : String(err)) || 'Failed to update membership');
     }
     setEditing(false);
   };
@@ -269,8 +270,8 @@ export default function UsersPage() {
 
       if (error) throw error;
       fetchData();
-    } catch (err: any) {
-      setError(err.message || 'Failed to delete membership');
+    } catch (err: unknown) {
+      setError((err instanceof Error ? err.message : String(err)) || 'Failed to delete membership');
     }
     setDeleting(false);
     setDeleteTarget(null);
@@ -316,8 +317,8 @@ export default function UsersPage() {
       setCreateUserOpen(false);
       setNewUser({ email: '', password: '', displayName: '' });
       fetchData();
-    } catch (err: any) {
-      setCreateUserError(err.message || 'Fehler beim Anlegen des Benutzers');
+    } catch (err: unknown) {
+      setCreateUserError((err instanceof Error ? err.message : String(err)) || 'Fehler beim Anlegen des Benutzers');
     }
     setCreatingUser(false);
   };

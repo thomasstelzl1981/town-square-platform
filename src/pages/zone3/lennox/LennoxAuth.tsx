@@ -43,8 +43,8 @@ export default function LennoxAuth() {
       await z3Login(parsed.data.email, parsed.data.password);
       toast.success('Erfolgreich eingeloggt!');
       navigate(returnTo);
-    } catch (err: any) {
-      toast.error('Login fehlgeschlagen: ' + (err.message || 'Unbekannter Fehler'));
+    } catch (err: unknown) {
+      toast.error('Login fehlgeschlagen: ' + ((err instanceof Error ? err.message : String(err)) || 'Unbekannter Fehler'));
     } finally { setLoading(false); }
   };
 
@@ -56,8 +56,8 @@ export default function LennoxAuth() {
       await z3Signup(parsed.data.email, parsed.data.password, parsed.data.firstName, parsed.data.lastName);
       toast.success('Registrierung erfolgreich!');
       navigate(returnTo);
-    } catch (err: any) {
-      toast.error('Registrierung fehlgeschlagen: ' + (err.message || 'Unbekannter Fehler'));
+    } catch (err: unknown) {
+      toast.error('Registrierung fehlgeschlagen: ' + ((err instanceof Error ? err.message : String(err)) || 'Unbekannter Fehler'));
     } finally { setLoading(false); }
   };
 

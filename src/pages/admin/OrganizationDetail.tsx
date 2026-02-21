@@ -113,8 +113,8 @@ export default function OrganizationDetail() {
           }
         }
 
-      } catch (err: any) {
-        setError(err.message || 'Failed to load organization');
+      } catch (err: unknown) {
+        setError((err instanceof Error ? err.message : String(err)) || 'Failed to load organization');
       }
       setLoading(false);
     }
@@ -156,8 +156,8 @@ export default function OrganizationDetail() {
         : 'Parent access restored successfully'
       );
       setLockdownDialogOpen(false);
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to update lockdown status');
+    } catch (err: unknown) {
+      toast.error((err instanceof Error ? err.message : String(err)) || 'Failed to update lockdown status');
     }
     setIsTogglingLockdown(false);
   };

@@ -112,8 +112,8 @@ export default function AgreementsPage() {
 
       setTemplates(templatesRes.data || []);
       setConsents(consentsRes.data || []);
-    } catch (err: any) {
-      setError(err.message || 'Fehler beim Laden');
+    } catch (err: unknown) {
+      setError((err instanceof Error ? err.message : String(err)) || 'Fehler beim Laden');
     } finally {
       setLoading(false);
     }
@@ -190,8 +190,8 @@ export default function AgreementsPage() {
       }
       setTemplateDialogOpen(false);
       fetchData();
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : String(err));
     } finally {
       setSaving(false);
     }

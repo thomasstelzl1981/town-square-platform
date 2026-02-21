@@ -25,7 +25,7 @@ export default function FutureRoomAkte() {
     // Load intake data from localStorage (from Bonitat wizard)
     const stored = localStorage.getItem('futureroom_intake_data');
     if (stored) {
-      try { setIntakeData(JSON.parse(stored)); } catch {}
+      try { setIntakeData(JSON.parse(stored)); } catch (err) { console.error('[FutureRoomAkte] Failed to parse intake data:', err); }
     }
   }, []);
 
@@ -67,8 +67,8 @@ export default function FutureRoomAkte() {
       toast.success('Ihre Finanzierungsakte wurde erfolgreich eingereicht!');
       localStorage.removeItem('futureroom_intake_data');
       setActiveTab('status');
-    } catch (err: any) {
-      toast.error('Fehler beim Einreichen: ' + (err.message || 'Unbekannt'));
+    } catch (err: unknown) {
+      toast.error('Fehler beim Einreichen: ' + ((err instanceof Error ? err.message : String(err)) || 'Unbekannt'));
     }
   };
 

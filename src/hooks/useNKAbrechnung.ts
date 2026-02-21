@@ -178,7 +178,7 @@ export function useNKAbrechnung(
         setGrundsteuerTotal(0);
         setGrundsteuerAnteil(0);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Data loading failed:', err);
       // Bei Fehler trotzdem Template anzeigen
       const merged = mergeWithTemplate([]);
@@ -252,8 +252,8 @@ export function useNKAbrechnung(
       toast({ title: 'Gespeichert', description: 'Kostenpositionen wurden aktualisiert.' });
       // Daten neu laden um DB-IDs zu erhalten
       await loadData();
-    } catch (err: any) {
-      toast({ title: 'Fehler beim Speichern', description: err.message, variant: 'destructive' });
+    } catch (err: unknown) {
+      toast({ title: 'Fehler beim Speichern', description: err instanceof Error ? err.message : String(err), variant: 'destructive' });
     } finally {
       setIsSaving(false);
     }
@@ -309,8 +309,8 @@ export function useNKAbrechnung(
       }
 
       toast({ title: 'Gespeichert', description: 'Grundsteuer wurde aktualisiert.' });
-    } catch (err: any) {
-      toast({ title: 'Fehler beim Speichern', description: err.message, variant: 'destructive' });
+    } catch (err: unknown) {
+      toast({ title: 'Fehler beim Speichern', description: err instanceof Error ? err.message : String(err), variant: 'destructive' });
     } finally {
       setIsSaving(false);
     }
@@ -332,11 +332,11 @@ export function useNKAbrechnung(
         title: 'Berechnung abgeschlossen',
         description: `Saldo: ${result.summary.balance >= 0 ? 'Nachzahlung' : 'Guthaben'} ${Math.abs(result.summary.balance).toFixed(2)} €`,
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Calculation failed:', err);
       toast({
         title: 'Fehler bei Berechnung',
-        description: err.message,
+        description: err instanceof Error ? err.message : String(err),
         variant: 'destructive',
       });
     } finally {
@@ -355,11 +355,11 @@ export function useNKAbrechnung(
         title: 'PDF erstellt',
         description: 'Die Nebenkostenabrechnung wurde als PDF heruntergeladen.',
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('PDF export failed:', err);
       toast({
         title: 'Fehler beim PDF-Export',
-        description: err.message,
+        description: err instanceof Error ? err.message : String(err),
         variant: 'destructive',
       });
     }
@@ -401,7 +401,7 @@ export function useNKAbrechnung(
           .maybeSingle();
         setPaymentsLocked(!!period?.payments_locked);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('fetchRentPayments failed:', err);
       toast({ title: 'Fehler', description: 'Zahlungsdaten konnten nicht geladen werden.', variant: 'destructive' });
     } finally {
@@ -431,8 +431,8 @@ export function useNKAbrechnung(
           .eq('id', p.id);
       }
       toast({ title: 'Gespeichert', description: 'Zahlungseingänge wurden aktualisiert.' });
-    } catch (err: any) {
-      toast({ title: 'Fehler beim Speichern', description: err.message, variant: 'destructive' });
+    } catch (err: unknown) {
+      toast({ title: 'Fehler beim Speichern', description: err instanceof Error ? err.message : String(err), variant: 'destructive' });
     } finally {
       setIsSavingPayments(false);
     }
@@ -451,8 +451,8 @@ export function useNKAbrechnung(
         .eq('id', nkPeriodId);
       setPaymentsLocked(true);
       toast({ title: 'Festgeschrieben', description: 'Zahlungseingänge wurden gesperrt und können nicht mehr bearbeitet werden.' });
-    } catch (err: any) {
-      toast({ title: 'Fehler', description: err.message, variant: 'destructive' });
+    } catch (err: unknown) {
+      toast({ title: 'Fehler', description: err instanceof Error ? err.message : String(err), variant: 'destructive' });
     }
   }, [nkPeriodId]);
 

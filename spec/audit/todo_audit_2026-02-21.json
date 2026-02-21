@@ -1,0 +1,26 @@
+[
+  {
+    "file": "src/services/europace/consumerLoanAdapter.ts",
+    "line": 9,
+    "comment": "TODO: POST /api/europace/consumer-loan/offers",
+    "priority": "P2"
+  },
+  {
+    "file": "src/services/europace/consumerLoanAdapter.ts",
+    "line": 14,
+    "comment": "TODO: POST /api/europace/consumer-loan/submit",
+    "priority": "P2"
+  },
+  {
+    "file": "src/pages/portal/finanzierungsmanager/FMInvestmentTab.tsx",
+    "line": 14,
+    "comment": "TODO: Upvest integration — for now show empty state",
+    "priority": "P2"
+  },
+  {
+    "file": "src/components/portal/immobilien/sanierung/scope/DMSDocumentSelector.tsx",
+    "line": 245,
+    "comment": "TODO: Open preview",
+    "priority": "P3"
+  }
+]

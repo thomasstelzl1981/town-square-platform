@@ -153,8 +153,8 @@ export function TenancyTab({ propertyId, tenantId, unitId }: TenancyTabProps) {
         .eq('tenant_id', tenantId)
         .order('last_name');
       setContacts(contactsData || []);
-    } catch (err: any) {
-      setError(err.message || 'Fehler beim Laden');
+    } catch (err: unknown) {
+      setError((err instanceof Error ? err.message : String(err)) || 'Fehler beim Laden');
     }
     setLoading(false);
   }, [unitId, tenantId]);
@@ -239,8 +239,8 @@ export function TenancyTab({ propertyId, tenantId, unitId }: TenancyTabProps) {
       setEdits({});
       toast.success('Mietverträge gespeichert');
       await fetchData();
-    } catch (err: any) {
-      toast.error(err.message || 'Fehler beim Speichern');
+    } catch (err: unknown) {
+      toast.error((err instanceof Error ? err.message : String(err)) || 'Fehler beim Speichern');
     }
     setSaving(false);
   };
@@ -283,8 +283,8 @@ export function TenancyTab({ propertyId, tenantId, unitId }: TenancyTabProps) {
         deposit_status: 'OPEN', payment_due_day: '1', rent_model: 'FIX', next_rent_adjustment_date: '',
       });
       await fetchData();
-    } catch (err: any) {
-      toast.error(err.message || 'Fehler beim Erstellen');
+    } catch (err: unknown) {
+      toast.error((err instanceof Error ? err.message : String(err)) || 'Fehler beim Erstellen');
     }
     setSaving(false);
   };
@@ -297,8 +297,8 @@ export function TenancyTab({ propertyId, tenantId, unitId }: TenancyTabProps) {
       if (error) throw error;
       toast.success('Mietvertrag gelöscht');
       await fetchData();
-    } catch (err: any) {
-      toast.error(err.message || 'Fehler beim Löschen');
+    } catch (err: unknown) {
+      toast.error((err instanceof Error ? err.message : String(err)) || 'Fehler beim Löschen');
     }
     setDeletingLeaseId(null);
   };
@@ -309,8 +309,8 @@ export function TenancyTab({ propertyId, tenantId, unitId }: TenancyTabProps) {
       if (error) throw error;
       toast.success('Mietvertrag aktiviert');
       await fetchData();
-    } catch (err: any) {
-      toast.error(err.message || 'Fehler beim Aktivieren');
+    } catch (err: unknown) {
+      toast.error((err instanceof Error ? err.message : String(err)) || 'Fehler beim Aktivieren');
     }
   };
 
