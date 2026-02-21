@@ -16,7 +16,7 @@
     "MOD-09": { "frozen": true, "frozen_at": "2026-02-21", "reason": "Global Freeze – Pre-Launch E2E Testing" },
     "MOD-10": { "frozen": true, "frozen_at": "2026-02-21", "reason": "Global Freeze – Pre-Launch E2E Testing" },
     "MOD-11": { "frozen": true, "frozen_at": "2026-02-21", "reason": "Global Freeze – Pre-Launch E2E Testing" },
-    "MOD-12": { "frozen": true, "frozen_at": "2026-02-21", "reason": "Global Freeze – Pre-Launch E2E Testing" },
+    "MOD-12": { "frozen": false, "frozen_at": "2026-02-21", "unfrozen_at": "2026-02-21", "reason": "Unfrozen for Berechnungsmodul Bugfix, Seed-Korrektur & Redesign" },
     "MOD-13": { "frozen": true, "frozen_at": "2026-02-21", "reason": "Global Freeze – Pre-Launch E2E Testing" },
     "MOD-14": { "frozen": true, "frozen_at": "2026-02-21", "reason": "Global Freeze – Pre-Launch E2E Testing" },
     "MOD-15": { "frozen": true, "frozen_at": "2026-02-21", "reason": "Global Freeze – Pre-Launch E2E Testing" },
