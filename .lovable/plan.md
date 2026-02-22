@@ -1,105 +1,71 @@
 
 
-## Demo-Modus fuer systemofatown.com -- Verfeinert
+## Fix: Legal-Seiten (Impressum/Datenschutz) fuer Website-Besucher sichtbar machen
 
-### Konzept
+### Problem
 
-Ein Besucher klickt auf der SoT-Website "Demo starten" und landet **ohne sichtbaren Login** direkt im Portal. Im Hintergrund passiert Folgendes:
+Die Impressum- und Datenschutzseiten auf allen 5 Brand-Websites (systemofatown.com, kaufy.immo, futureroom.online, acquiary.com, lennoxandfriends.app) zeigen nur "Dokument nicht verfuegbar", weil die Datenbank-Abfragen leer zurueckkommen.
 
-1. **Stiller Auto-Login** mit einem festen Demo-Account (`demo@systemofatown.com`)
-2. **Demo-Daten werden bei jedem Start frisch geseedet** (Clean-Slate-Prinzip: erst Cleanup, dann Seed)
-3. **Manager-Module (Area "operations") sind komplett ausgeblendet** -- nur die 14 Basis-Module
-4. **Beim Verlassen wird aufraeumen**: Logout + Cleanup der Demo-Daten
+**Ursache**: Die drei relevanten Tabellen haben Row-Level-Security (RLS) aktiviert, und die SELECT-Policies erlauben nur eingeloggte Benutzer (`authenticated`). Website-Besucher sind **nicht** eingeloggt und erhalten daher keine Daten.
 
-### Lebenszyklus einer Demo-Session
+Betroffene Tabellen:
+- `compliance_documents` (Policy: `cd_select_authenticated`)
+- `compliance_document_versions` (Policy: `cdv_select_authenticated`)
+- `compliance_company_profile` (Policy: `ccp_select_authenticated`)
 
-```text
-Besucher klickt "Demo starten"
-         |
-         v
-  /portal?mode=demo
-         |
-         v
-  useDemoAutoLogin Hook:
-    1. signInWithPassword(demo@..., geheimesPasswort)
-    2. cleanupDemoData(tenantId)   -- altes entfernen
-    3. seedDemoData(tenantId)      -- frisch befuellen
-         |
-         v
-  Portal laedt:
-    - Area "operations" (Manager-Module) ausgeblendet
-    - Demo-Banner oben: "Demo-Modus | Eigenen Account erstellen"
-         |
-         v
-  Besucher verlaesst (Tab schliessen, Navigation weg, "Account erstellen"):
-    1. cleanupDemoData(tenantId)   -- Daten loeschen
-    2. signOut()                   -- Session beenden
+Die Daten selbst sind alle vorhanden und korrekt (10 Dokumente mit aktiven Versionen, 3 Firmenprofile).
+
+### Loesung
+
+Drei neue RLS-Policies hinzufuegen, die **anonymen Lesezugriff (SELECT)** auf diese oeffentlichen Dokumente erlauben. Die bestehenden Policies bleiben unveraendert.
+
+### SQL Migration
+
+```sql
+-- 1. Compliance Documents: anon darf website_* Dokumente lesen
+CREATE POLICY "cd_select_anon_website"
+  ON compliance_documents
+  FOR SELECT
+  TO anon
+  USING (doc_key LIKE 'website_%');
+
+-- 2. Compliance Document Versions: anon darf aktive Versionen lesen
+--    (nur fuer Dokumente, die ueber Policy 1 sichtbar sind)
+CREATE POLICY "cdv_select_anon_active"
+  ON compliance_document_versions
+  FOR SELECT
+  TO anon
+  USING (
+    status = 'active'
+    AND document_id IN (
+      SELECT id FROM compliance_documents WHERE doc_key LIKE 'website_%'
+    )
+  );
+
+-- 3. Company Profile: anon darf alle Profile lesen (nur oeffentliche Firmendaten)
+CREATE POLICY "ccp_select_anon"
+  ON compliance_company_profile
+  FOR SELECT
+  TO anon
+  USING (true);
 ```
 
-### Warum Cleanup beim Verlassen?
+### Sicherheitsaspekte
 
-- Der Demo-Account wird von **allen Besuchern geteilt**
-- Ohne Cleanup wuerden sich Aenderungen eines Besuchers akkumulieren
-- Das Clean-Slate-Prinzip (Cleanup vor jedem Seed) faengt den Fall ab, wenn der Cleanup beim Verlassen fehlschlaegt (z.B. Browser-Tab wird hart geschlossen)
-- **Doppelte Sicherheit**: Cleanup beim Start UND beim Verlassen
+- Die Policies erlauben **nur SELECT** (kein INSERT/UPDATE/DELETE) fuer `anon`
+- `compliance_documents`: Nur Dokumente mit `website_*` Prefix sind sichtbar (keine internen Portal-Dokumente wie `portal_agb`)
+- `compliance_document_versions`: Nur `active` Versionen von Website-Dokumenten (keine Drafts)
+- `compliance_company_profile`: Enthaelt ausschliesslich oeffentliche Firmendaten (Adresse, Handelsregister) -- diese stehen ohnehin im Impressum
 
-### Schritte
+### Kein Code-Aenderung noetig
 
-**1. Demo-Account in der Datenbank anlegen (SQL Migration)**
-- User `demo@systemofatown.com` mit festem Passwort erstellen
-- Profil: "Demo Benutzer", verknuepft mit Demo-Tenant (`a0000000-0000-4000-a000-000000000001`)
-- Mitgliedschaft: Rolle `viewer` (kein Admin, kein Manager)
-- Nur die 14 Basis-Module aktiviert (keine Manager-Module MOD-09 bis MOD-13, MOD-22)
-
-**2. Neue Datei: `src/config/demoAccountConfig.ts`**
-- `DEMO_EMAIL` und `DEMO_PASSWORD` als Konstanten
-- `DEMO_HIDDEN_AREAS = ['operations']` -- filtert die gesamte Manager-Area raus
-- `isDemoSession(user)` -- prueft anhand der User-Email ob es der Demo-Account ist
-- Sicherheitshinweis: Credentials sind bewusst im Client -- der Account ist read-only und enthaelt nur Demo-Daten
-
-**3. Neuer Hook: `src/hooks/useDemoAutoLogin.ts`**
-- Erkennt `?mode=demo` in der URL
-- Fuehrt `signInWithPassword` still aus (Lade-Spinner waehrenddessen)
-- Nach erfolgreichem Login: `cleanupDemoData()` dann `seedDemoData()` ausfuehren
-- Speichert `demo_mode=true` in `sessionStorage`
-- Registriert Cleanup-Handler:
-  - `beforeunload` Event: Cleanup + Logout (best-effort, funktioniert nicht immer)
-  - `visibilitychange` zu `hidden`: Cleanup + Logout als Backup
-  - Expliziter "Verlassen"-Button im Demo-Banner: zuverlaessigster Weg
-- Bei Fehler: Redirect zu `/auth`
-
-**4. Aenderung: `src/components/portal/PortalLayout.tsx`**
-- `useDemoAutoLogin()` Hook einbinden
-- Wenn Demo-Session aktiv (`isDemoSession(user)`):
-  - Area `operations` aus Navigation herausfiltern (kein Rendering der Manager-Module)
-  - Demo-Banner am oberen Rand: "Demo-Modus -- Eigenen Account erstellen" (Link zu `/auth?mode=register&source=sot`)
-  - "Demo beenden"-Button im Banner, der explizit Cleanup + Logout ausfuehrt
-
-**5. Aenderung: `src/pages/zone3/sot/SotDemo.tsx`**
-- Alle "Demo starten" Links aendern: `/portal` wird zu `/portal?mode=demo`
-- Modul-Direktlinks ebenfalls mit `?mode=demo` versehen
-
-### Was passiert wenn der Browser einfach geschlossen wird?
-
-- `beforeunload` und `visibilitychange` versuchen den Cleanup -- aber Browser garantieren das nicht
-- **Deshalb der doppelte Schutz**: Beim naechsten "Demo starten" wird ZUERST `cleanupDemoData()` ausgefuehrt, bevor neu geseedet wird
-- Das bestehende Clean-Slate-Prinzip aus `useDemoToggles.ts` wird hier wiederverwendet
+Die Komponente `Zone3LegalPage.tsx` und alle Brand-spezifischen Seiten (SotImpressum, SotDatenschutz, etc.) funktionieren bereits korrekt. Das Problem liegt ausschliesslich in den fehlenden Datenbank-Policies.
 
 ### Betroffene Dateien
 
-| Datei | Art | Aenderung |
-|-------|-----|-----------|
-| `src/config/demoAccountConfig.ts` | Neu | Demo-Credentials, isDemoSession(), DEMO_HIDDEN_AREAS |
-| `src/hooks/useDemoAutoLogin.ts` | Neu | Auto-Login, Seed, Cleanup-on-Leave |
-| `src/components/portal/PortalLayout.tsx` | Edit | Demo-Banner, Area-Filter, Hook-Einbindung |
-| `src/pages/zone3/sot/SotDemo.tsx` | Edit | Links auf `?mode=demo` umstellen |
-| Backend: SQL Migration | Neu | Demo-User, Profil, Membership, Module anlegen |
+| Aenderung | Typ |
+|-----------|-----|
+| SQL Migration: 3 neue RLS-Policies | Backend |
 
-### Nicht betroffen
-
-- AuthContext (nutzt normalen signIn-Flow, keine Aenderung)
-- RLS-Policies (Demo-User nutzt bestehende Tenant-Isolation)
-- Demo-Seed-Engine und Demo-Cleanup (werden wiederverwendet, nicht veraendert)
-- Andere Brand-Websites (kaufy.immo etc.) bleiben komplett unveraendert
-- Resend / Email-Provider wird nicht benoetigt (kein OTP, nur Password-Login)
+Keine Frontend-Dateien betroffen.
 
