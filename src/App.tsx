@@ -25,6 +25,7 @@ import Auth from "./pages/Auth";
 import AuthResetPassword from "./pages/AuthResetPassword";
 import PresentationPage from "./pages/presentation/PresentationPage";
 import { lazy, Suspense } from "react";
+import { getDomainEntry } from "./hooks/useDomainRouter";
 const VideocallJoinPage = lazy(() => import("./pages/portal/office/VideocallJoinPage"));
 const InstallPage = lazy(() => import("./pages/Install"));
 
@@ -76,8 +77,12 @@ const App = () => (
           <Sonner />
           <BrowserRouter>
             <Routes>
-              {/* Root redirect */}
-              <Route path="/" element={<Navigate to="/portal" replace />} />
+              {/* Root redirect: Brand domain → Zone 3 home, otherwise → Portal */}
+              <Route path="/" element={
+                getDomainEntry() 
+                  ? <Navigate to={getDomainEntry()!.base} replace /> 
+                  : <Navigate to="/portal" replace />
+              } />
               
               {/* Special: Authentication (public) */}
               <Route path="/auth" element={<Auth />} />

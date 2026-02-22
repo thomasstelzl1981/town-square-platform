@@ -14,6 +14,7 @@
 
 import React from 'react';
 import { Routes, Route, Navigate, useParams, useLocation } from 'react-router-dom';
+import { getDomainEntry } from '@/hooks/useDomainRouter';
 import { PathNormalizer } from './PathNormalizer';
 import { GoldenPathGuard } from '@/goldenpath/GoldenPathGuard';
 // LEGACY REDIRECT COMPONENT — Preserves dynamic parameters
@@ -581,7 +582,7 @@ export function ManifestRouter() {
       </Route>
 
       {/* ================================================================== */}
-      {/* ZONE 3: WEBSITES */}
+      {/* ZONE 3: WEBSITES (canonical /website/* paths) */}
       {/* ================================================================== */}
       {Object.entries(zone3Websites).map(([siteKey, site]) => {
         const Layout = zone3LayoutMap[site.layout];
@@ -620,6 +621,49 @@ export function ManifestRouter() {
           </Route>
         );
       })}
+
+      {/* ================================================================== */}
+      {/* ZONE 3: FLAT ROUTES for Brand Domains */}
+      {/* When visiting e.g. kaufy.immo, routes are also available without  */}
+      {/* the /website/kaufy prefix (e.g. /vermieter instead of             */}
+      {/* /website/kaufy/vermieter)                                         */}
+      {/* ================================================================== */}
+      {(() => {
+        const domainEntry = getDomainEntry();
+        if (!domainEntry) return null;
+        
+        const site = zone3Websites[domainEntry.siteKey];
+        if (!site) return null;
+        
+        const Layout = zone3LayoutMap[site.layout];
+        const componentMap = zone3ComponentMaps[domainEntry.siteKey];
+        if (!Layout || !componentMap) return null;
+
+        return (
+          <Route path="/" element={
+            <React.Suspense fallback={<LoadingFallback />}>
+              <Layout />
+            </React.Suspense>
+          }>
+            {site.routes.map((route) => {
+              const Component = componentMap[route.component];
+              if (!Component) return null;
+              return (
+                <Route
+                  key={`flat-${route.path || 'index'}`}
+                  index={route.path === ''}
+                  path={route.path || undefined}
+                  element={
+                    <React.Suspense fallback={<LoadingFallback />}>
+                      <Component />
+                    </React.Suspense>
+                  }
+                />
+              );
+            })}
+          </Route>
+        );
+      })()}
 
       {/* ================================================================== */}
       {/* 404 FALLBACK */}
