@@ -1,57 +1,80 @@
 
 
-## Alle Brand-Websites mit Zugangscode 2710 schuetzen
+## PIN-Gate Toggle im Office-Bereich (Zone 1)
 
-### Ausgangslage
+### Ziel
 
-Kaufy hat bereits einen PIN-Gate (`KaufyPinGate.tsx`) mit Code `4409`. Die anderen 4 Websites (SoT, FutureRoom, Acquiary, Lennox) haben keinen Schutz.
+Ein Admin-Toggle im Office-Bereich, mit dem das PIN-Gate fuer alle 5 Brand-Websites ein-/ausgeschaltet werden kann. Aktuell ist der PIN immer aktiv — nach dieser Aenderung kann er zentral deaktiviert werden (z.B. wenn die Beta-Phase endet).
 
-### Loesung
+### Architektur
 
-Eine **generische `WebsitePinGate`-Komponente** erstellen, die von allen 5 Layouts genutzt wird. Einheitlicher Code: **2710**.
+```text
+Zone 1 (Office/SystemWidgetsTab)         Zone 3 (Brand Layouts)
+         |                                        |
+    Toggle ON/OFF                          Liest pin_gate_enabled
+         |                                        |
+         v                                        v
+    ┌──────────────────────────────────────────────────┐
+    │  DB: zone3_website_settings                      │
+    │  key: 'pin_gate_enabled', value: 'true'/'false'  │
+    │  RLS: SELECT fuer anon, UPDATE fuer authenticated │
+    └──────────────────────────────────────────────────┘
+```
 
 ### Schritte
 
-**1. Neue generische Komponente: `src/components/zone3/WebsitePinGate.tsx`**
-- Basiert auf dem bestehenden `KaufyPinGate`
-- Props: `brandName` (Anzeigename), `sessionKey` (fuer sessionStorage), `onVerified`
-- PIN fest auf `2710`
-- Dunkles, neutrales Design (passt zu allen Brands)
+**1. Neue DB-Tabelle: `zone3_website_settings`**
 
-**2. Kaufy Layout (`src/pages/zone3/kaufy2026/Kaufy2026Layout.tsx`)**
-- Import von `KaufyPinGate` durch `WebsitePinGate` ersetzen
-- `brandName="KAUFY"`, `sessionKey="kaufy_pin_verified"`
-- Bestehende `VITE_KAUFY_PIN_GATE` Env-Variable entfernen (Gate ist immer aktiv)
+Einfache Key-Value-Tabelle:
+- `id` (uuid, PK)
+- `key` (text, unique) -- z.B. `pin_gate_enabled`
+- `value` (text) -- `true` oder `false`
+- `updated_at` (timestamptz)
+- `updated_by` (uuid, FK profiles)
 
-**3. SoT Layout (`src/pages/zone3/sot/SotLayout.tsx`)**
-- PinGate einbauen: `brandName="System of a Town"`, `sessionKey="sot_pin_verified"`
+RLS-Policies:
+- `SELECT` fuer `anon` und `authenticated` (Websites muessen den Wert lesen koennen)
+- `INSERT/UPDATE` nur fuer `authenticated`
 
-**4. FutureRoom Layout (`src/pages/zone3/futureroom/FutureRoomLayout.tsx`)**
-- PinGate einbauen: `brandName="FutureRoom"`, `sessionKey="futureroom_pin_verified"`
+Seed: Ein Eintrag `pin_gate_enabled = 'true'` (aktueller Zustand).
 
-**5. Acquiary Layout (`src/pages/zone3/acquiary/AcquiaryLayout.tsx`)**
-- PinGate einbauen: `brandName="Acquiary"`, `sessionKey="acquiary_pin_verified"`
+**2. Neuer Hook: `src/hooks/useZone3Settings.ts`**
 
-**6. Lennox Layout (`src/pages/zone3/lennox/LennoxLayout.tsx`)**
-- PinGate einbauen: `brandName="Lennox & Friends"`, `sessionKey="lennox_pin_verified"`
+- `useZone3Setting(key)` — liest einen Wert aus `zone3_website_settings`
+- `useUpdateZone3Setting()` — Mutation zum Aktualisieren
+- Nutzt `@tanstack/react-query` mit Cache
 
-### Verhalten
+**3. UI-Toggle: `src/pages/portal/office/SystemWidgetsTab.tsx` erweitern**
 
-- Besucher sieht beim ersten Aufruf den PIN-Screen mit Brandname und 4-stelliger Eingabe
-- Nach Eingabe von `2710` wird der Zugang in `sessionStorage` gespeichert
-- Innerhalb der Session (Tab offen) kein erneuter Code noetig
-- Neuer Tab oder Browser-Neustart erfordert erneute Eingabe
+Am Anfang der Seite (vor der Widget-Liste) eine Karte "Website-Einstellungen" mit:
+- Switch-Toggle "PIN-Gate aktiv" mit aktuellem Status
+- Untertitel: "Zugangscode 2710 fuer alle Brand-Websites"
+- Badge: "Beta" oder "Aktiv"
+
+**4. Zone 3 Layouts anpassen (alle 5)**
+
+In jedem Layout (`SotLayout`, `Kaufy2026Layout`, `FutureRoomLayout`, `AcquiaryLayout`, `LennoxLayout`):
+- `useZone3Setting('pin_gate_enabled')` importieren
+- PIN-Gate nur anzeigen, wenn der DB-Wert `'true'` ist
+- Waehrend des Ladens: kurzer Ladeindikator (kein Flash des Gates)
 
 ### Betroffene Dateien
 
 | Datei | Art |
 |-------|-----|
-| `src/components/zone3/WebsitePinGate.tsx` | Neu |
-| `src/pages/zone3/kaufy2026/Kaufy2026Layout.tsx` | Edit |
+| Migration: `zone3_website_settings` Tabelle + Seed | DB |
+| `src/hooks/useZone3Settings.ts` | Neu |
+| `src/pages/portal/office/SystemWidgetsTab.tsx` | Edit |
 | `src/pages/zone3/sot/SotLayout.tsx` | Edit |
+| `src/pages/zone3/kaufy2026/Kaufy2026Layout.tsx` | Edit |
 | `src/pages/zone3/futureroom/FutureRoomLayout.tsx` | Edit |
 | `src/pages/zone3/acquiary/AcquiaryLayout.tsx` | Edit |
 | `src/pages/zone3/lennox/LennoxLayout.tsx` | Edit |
 
-`KaufyPinGate.tsx` bleibt bestehen (kein Breaking Change), wird aber nicht mehr verwendet.
+### Verhalten
+
+- Toggle ON (Standard): PIN-Gate aktiv, Besucher muessen Code 2710 eingeben
+- Toggle OFF: Websites sofort ohne Code zugaenglich
+- Aenderung wirkt sofort (naechster Seitenaufruf der Website)
+- Kein Publish noetig fuer Toggle-Aenderung (DB-basiert)
 
