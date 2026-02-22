@@ -717,31 +717,94 @@ async function syncImapMail(
   }
 }
 
-// Google Mail sync using Gmail API
+// Refresh Google access token using refresh_token
+async function refreshGoogleToken(supabase: any, account: any): Promise<string> {
+  const clientId = Deno.env.get('GOOGLE_DRIVE_CLIENT_ID');
+  const clientSecret = Deno.env.get('GOOGLE_DRIVE_CLIENT_SECRET');
+
+  if (!clientId || !clientSecret || !account.refresh_token) {
+    throw new Error('Token refresh not possible — missing credentials or refresh token. Please reconnect Gmail.');
+  }
+
+  const res = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: clientId,
+      client_secret: clientSecret,
+      refresh_token: account.refresh_token,
+      grant_type: 'refresh_token',
+    }),
+  });
+
+  const data = await res.json();
+  if (!res.ok || !data.access_token) {
+    console.error('[gmail] Token refresh failed:', data);
+    throw new Error('Token refresh failed — please reconnect Gmail.');
+  }
+
+  const newExpiry = new Date(Date.now() + (data.expires_in || 3600) * 1000).toISOString();
+
+  await supabase
+    .from('mail_accounts')
+    .update({
+      access_token: data.access_token,
+      token_expires_at: newExpiry,
+      sync_status: 'connected',
+      sync_error: null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', account.id);
+
+  console.log('[gmail] Token refreshed successfully');
+  return data.access_token;
+}
+
+// Google Mail sync using Gmail API with automatic token refresh
 async function syncGoogleMail(
   supabase: any, 
   account: any, 
   folder: string, 
   limit: number
 ): Promise<number> {
-  if (!account.access_token) {
-    throw new Error('No access token available');
+  let accessToken = account.access_token;
+
+  if (!accessToken) {
+    // Try to refresh if we have a refresh token
+    if (account.refresh_token) {
+      accessToken = await refreshGoogleToken(supabase, account);
+    } else {
+      throw new Error('No access token available');
+    }
+  }
+
+  // Check if token is about to expire (1 min buffer)
+  if (account.token_expires_at) {
+    const expiresAt = new Date(account.token_expires_at).getTime();
+    if (expiresAt < Date.now() + 60_000 && account.refresh_token) {
+      console.log('[gmail] Token expiring soon, refreshing proactively...');
+      accessToken = await refreshGoogleToken(supabase, account);
+    }
   }
 
   // Fetch messages from Gmail API
-  const response = await fetch(
+  let response = await fetch(
     `https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=${limit}&labelIds=${folder.toUpperCase()}`,
-    {
-      headers: {
-        Authorization: `Bearer ${account.access_token}`,
-      },
-    }
+    { headers: { Authorization: `Bearer ${accessToken}` } }
   );
 
+  // Auto-refresh on 401
+  if (response.status === 401 && account.refresh_token) {
+    console.log('[gmail] Got 401, attempting token refresh...');
+    await response.text(); // consume body
+    accessToken = await refreshGoogleToken(supabase, account);
+    response = await fetch(
+      `https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=${limit}&labelIds=${folder.toUpperCase()}`,
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    );
+  }
+
   if (!response.ok) {
-    if (response.status === 401) {
-      throw new Error('Access token expired - needs refresh');
-    }
     throw new Error(`Gmail API error: ${response.status}`);
   }
 
@@ -753,11 +816,7 @@ async function syncGoogleMail(
     // Fetch full message details
     const detailResponse = await fetch(
       `https://gmail.googleapis.com/gmail/v1/users/me/messages/${msg.id}`,
-      {
-        headers: {
-          Authorization: `Bearer ${account.access_token}`,
-        },
-      }
+      { headers: { Authorization: `Bearer ${accessToken}` } }
     );
 
     if (!detailResponse.ok) continue;
