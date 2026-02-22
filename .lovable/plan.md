@@ -1,49 +1,57 @@
 
 
-## Lennox & Friends -- Design-Konsistenz wiederherstellen
+## Plan: Demo-Account fixen, Marchner Super-User anlegen, Rollen-Anzeige korrigieren
 
-### Befund (aus den Screenshots)
+### 1. Rollen-Anzeige in Zone 1 Users fixen
 
-1. **Startseite Hero zu hoch**: Mit `minHeight: 85vh` nimmt das Hero-Bild den gesamten Bildschirm ein. Die Suchleiste und der Shop-Bereich darunter sind im Vollbildmodus nicht sichtbar.
+**Problem:** In `Users.tsx` (Zeile 85-86) werden die ROLES nach `membershipRole` dedupliziert. Da `super_user` und `client_user` beide `org_admin` als `membershipRole` haben und `super_user` zuerst im ROLES_CATALOG steht, wird jeder `org_admin` als "Super-User" angezeigt -- auch der Demo-Account, der nur ein Standardkunde ist.
 
-2. **Shop-Seite ohne Bild**: Der Shop-Hero zeigt nur einen dunkelgruenen Hintergrund mit einem blassen Shopping-Icon. Frueher war hier ein schoenes generiertes Bild. Hoehe ebenfalls inkonsistent (`60vh`).
+**DB-Befund:** Der Demo-Account (`demo@systemofatown.com`) hat:
+- `memberships.role = org_admin` (korrekt fuer Standardkunde)
+- `user_roles` = leer (kein `super_user` Eintrag)
 
-3. **Partner-werden Hero**: Hat zwar ein Bild (`partner_hero.jpg`), aber mit `70vh` ebenfalls zu hoch und nicht konsistent mit den anderen Seiten.
+Er IST also korrekt ein Standardkunde. Nur die Anzeige ist falsch.
 
-### Loesung
+**Loesung:** Die Users-Seite muss zusaetzlich die `user_roles`-Tabelle abfragen. Bei `org_admin` wird geprueft, ob ein `super_user`-Eintrag in `user_roles` existiert:
+- Ja: "Super-User" anzeigen
+- Nein: "Standardkunde" anzeigen
 
-#### A. Einheitliche Hero-Hoehe auf allen Seiten
+Ausserdem werden E-Mail und Display-Name aus der `profiles`-Tabelle geladen, damit Accounts identifizierbar sind (statt nur User-ID).
 
-Alle Hero-Sections werden auf eine einheitliche Hoehe von **50vh** gesetzt (statt 85vh, 70vh, 60vh). Das sorgt dafuer, dass im Vollbildmodus immer der naechste Inhalt (Suchleiste, Produkte, Formular) sichtbar ist.
+### 2. Marchner Super-User Account anlegen
 
-| Seite | Vorher | Nachher |
-|-------|--------|---------|
-| Startseite | 85vh | 50vh |
-| Shop | 60vh | 50vh |
-| Partner werden | 70vh | 50vh |
+**Daten:**
+- E-Mail: `bernhard.marchner@systemofatown.com`
+- Password: Wird ueber `sot-create-test-user` Edge Function gesetzt (Standard-Passwort, das er dann aendert)
+- Display-Name: "Bernhard Marchner"
 
-#### B. Shop-Hero: Bild hinzufuegen
+**Schritte:**
+1. Account anlegen via `sot-create-test-user` Edge Function
+2. Nach Erstellung: `user_roles`-Eintrag mit `role = 'super_user'` einfuegen (per DB-Migration)
+3. Damit bekommt er Zugriff auf alle 21 Module und wird korrekt als "Super-User" angezeigt
 
-Ein neues Hero-Bild fuer den Shop wird benoetigt. Da kein Shop-Bild mehr in `src/assets/lennox/` vorhanden ist, wird ein passendes Bild mit dem bestehenden `section_cozy.jpg` als Hintergrund verwendet (gemuetliches Hunde-Ambiente passt zum Shop-Kontext). Alternativ kann ein neues Bild generiert werden.
+### 3. Technische Aenderungen
 
-Der Shop-Hero wird vom reinen Gradient-Hintergrund auf ein Bild mit Overlay umgestellt -- analog zur Startseite und Partner-Seite.
+| Nr | Datei / Aktion | Beschreibung |
+|----|----------------|-------------|
+| 1 | `src/pages/admin/Users.tsx` | `fetchData()` erweitern: zusaetzlich `profiles` und `user_roles` Tabellen abfragen. Rollen-Anzeige korrigieren: bei `org_admin` + `user_roles.super_user` = "Super-User", bei `org_admin` ohne `user_roles` = "Standardkunde". E-Mail und Display-Name in Tabelle anzeigen statt nur User-ID. |
+| 2 | Edge Function Call | `sot-create-test-user` aufrufen mit `bernhard.marchner@systemofatown.com`, Passwort, "Bernhard Marchner" |
+| 3 | DB Insert | `user_roles` Eintrag: `user_id = [neue ID], role = 'super_user'` |
 
-#### C. Konsistentes Hero-Pattern
+### 4. Rollen-Aufloesung (neue Logik in Users.tsx)
 
-Alle drei Unterseiten bekommen das gleiche Hero-Muster:
-- Bild als Hintergrund (object-cover)
-- Gradient-Overlay (from-black/30 via-black/10 to-black/50)
-- Zentrierter weisser Text
-- Gleiche Hoehe (50vh)
+```text
+membership.role === 'platform_admin'                                  --> "Platform Admin"
+membership.role === 'org_admin' + user_roles enthält 'super_user'     --> "Super-User"
+membership.role === 'org_admin' + user_roles leer                     --> "Standardkunde"
+membership.role === 'sales_partner'                                   --> "Vertriebspartner"
+membership.role === 'finance_manager'                                 --> "Finanzierungsmanager"
+membership.role === 'akquise_manager'                                 --> "Akquise-Manager"
+membership.role === 'project_manager'                                 --> "Projektmanager"
+membership.role === 'pet_manager'                                     --> "Pet Manager"
+```
 
----
+### 5. Kein Onboarding-Drift
 
-### Technische Aenderungen
+Der `handle_new_user()` Trigger erstellt automatisch Profil + Org + Membership bei jedem neuen Auth-User. Das funktioniert korrekt. Der einzige manuelle Schritt ist das Einfuegen des `super_user`-Eintrags in `user_roles` -- das ist by design, weil Super-User-Rechte nicht automatisch vergeben werden sollen (Sicherheit). Die Zone-1-UI sollte diesen Schritt kuenftig ueber den "Edit Role"-Dialog ermoeglichen, indem beim Setzen auf "Super-User" automatisch ein `user_roles`-Eintrag erstellt wird.
 
-| Nr | Datei | Aenderung |
-|----|-------|-----------|
-| 1 | `src/pages/zone3/lennox/LennoxStartseite.tsx` | Hero `minHeight` von `85vh` auf `50vh` (2 Stellen: Container + Flex) |
-| 2 | `src/pages/zone3/lennox/LennoxShop.tsx` | Hero `minHeight` von `60vh` auf `50vh`, Gradient-Hintergrund durch Bild ersetzen (`section_cozy.jpg`), Overlay hinzufuegen |
-| 3 | `src/pages/zone3/lennox/LennoxPartnerWerden.tsx` | Hero `minHeight` von `70vh` auf `50vh` (2 Stellen) |
-
-Alle Dateien sind Zone-3-Dateien und nicht vom Modul-Freeze betroffen.
