@@ -1,103 +1,83 @@
 
-# Berechnungsmodul Akquise-Manager — Bugfix, Seed-Korrektur & Redesign
 
-## Gefundene Probleme
+# Domain-Router fur Zone 3 Websites
 
-### Problem 1: Fehlende Jahresmiete (Hauptursache aller falschen Berechnungen)
+## Ziel
+Jede der 5 Custom Domains zeigt automatisch die richtige Zone-3-Website an, wahrend das Portal (Zone 1+2) weiterhin uber systemofatown.com erreichbar bleibt.
 
-Die CSV-Datei `public/demo-data/demo_acq_offers.csv` enthaelt KEIN Feld `noi_indicated`. In der Datenbank ist der Wert daher NULL. Da alle Berechnungen auf `offer.noi_indicated` basieren, ergibt sich:
-- monthlyRent = 0, yearlyRent = 0
-- Bruttorendite = 0%, Faktor = 0, Cashflow = 0
-- Aufteiler-Verkaufspreis = 0 (Division Miete / Rendite = 0 / 4% = 0)
-- Gewinn = negativer Betrag (nur Kosten, kein Erloees)
+## Domain-Zuordnung
 
-Die Jahresmiete laesst sich aus den vorhandenen Daten ableiten: `price_asking * yield_indicated / 100 = 2.400.000 * 4,8% = 115.200 EUR/Jahr`.
+| Domain | Zone 3 Route | Rolle |
+|--------|-------------|-------|
+| systemofatown.com | `/website/sot` | Hauptdomain + Portal-Login |
+| futureroom.online | `/website/futureroom` | Nur FutureRoom Website |
+| acquiary.com | `/website/acquiary` | Nur Acquiary Website |
+| kaufy.immo | `/website/kaufy` | Nur Kaufy Website |
+| lennoxandfriends.app | `/website/tierservice` | Nur Lennox Website |
 
-### Problem 2: ENGINE VIOLATION in QuickAnalysisBanner
+## Funktionsweise
 
-Die `QuickAnalysisBanner`-Funktion (Zeilen 330-396 in ObjekteingangDetail.tsx) enthaelt ~20 Zeilen duplizierte Berechungslogik (Ankaufsnebenkosten, Finanzierbarkeit, Aufteiler-Gewinn), anstatt die Engine-Funktionen `calcBestandQuick` und `calcAufteilerFull` zu verwenden.
+Wenn ein Besucher z.B. `kaufy.immo` offnet, erkennt der Domain-Router den Hostnamen und zeigt automatisch die Kaufy-Website. Der Besucher sieht in der URL nur `kaufy.immo/vermieter` statt `kaufy.immo/website/kaufy/vermieter`.
 
-### Problem 3: Kein Fallback wenn noi_indicated fehlt
+Bei `systemofatown.com` wird die SoT-Website als Startseite gezeigt, aber `/portal` und `/admin` bleiben erreichbar (Login/Zone 2).
 
-Selbst wenn die CSV korrigiert wird — es gibt keinen Fallback in der UI, der `noi_indicated` aus `price_asking * yield_indicated / 100` ableitet, falls der Wert fehlt. Das ist fragil.
+---
 
-### Problem 4: Ungleichmaessige Kachel-Groessen
+## Technischer Plan
 
-Die Bestand- und Aufteiler-Kalkulationen stehen nebeneinander (`grid-cols-2`), haben aber voellig unterschiedliche Inhaltshoehen (Bestand: 5 Cards mit Charts; Aufteiler: 5 Cards mit anderen Inhalten). Das erzeugt ein unruhiges Layout.
+### 1. Neue Config-Datei: `src/config/domainMap.ts`
 
-## Loesung
+Zentrale Zuordnung von Hostnamen zu Zone-3-Sites:
 
-### 1. CSV-Seed korrigieren
-
-`public/demo-data/demo_acq_offers.csv` — Spalte `noi_indicated` hinzufuegen mit Wert `115200` (= 2.400.000 * 4,8%).
-
-### 2. Fallback-Ableitung in ObjekteingangDetail.tsx
-
-Vor der Uebergabe an Berechnungen eine Helper-Zeile einbauen:
-
-```text
-const yearlyRent = offer.noi_indicated 
-  || (offer.price_asking && offer.yield_indicated 
-      ? offer.price_asking * offer.yield_indicated / 100 
-      : 0);
+```typescript
+export const domainMap: Record<string, { siteKey: string; base: string }> = {
+  'kaufy.immo': { siteKey: 'kaufy', base: '/website/kaufy' },
+  'www.kaufy.immo': { siteKey: 'kaufy', base: '/website/kaufy' },
+  'futureroom.online': { siteKey: 'futureroom', base: '/website/futureroom' },
+  'www.futureroom.online': { siteKey: 'futureroom', base: '/website/futureroom' },
+  'acquiary.com': { siteKey: 'acquiary', base: '/website/acquiary' },
+  'www.acquiary.com': { siteKey: 'acquiary', base: '/website/acquiary' },
+  'lennoxandfriends.app': { siteKey: 'lennox', base: '/website/tierservice' },
+  'www.lennoxandfriends.app': { siteKey: 'lennox', base: '/website/tierservice' },
+  'systemofatown.com': { siteKey: 'sot', base: '/website/sot' },
+  'www.systemofatown.com': { siteKey: 'sot', base: '/website/sot' },
+};
 ```
 
-Diese wird fuer BestandCalculation (`monthlyRent: yearlyRent / 12`), AufteilerCalculation (`yearlyRent`) und QuickAnalysisBanner verwendet.
+### 2. Neuer Hook: `src/hooks/useDomainRouter.ts`
 
-### 3. QuickAnalysisBanner auf Engine umstellen
+Erkennt den aktuellen Hostnamen und gibt zuruck, welche Zone-3-Site aktiv ist (oder `null` fur die Staging-Domain / Portal).
 
-Die inline-Berechnungen werden durch Aufrufe von `calcBestandQuick()` und `calcAufteilerFull()` ersetzt. Die Banner-Komponente wird zu einem reinen Renderer.
+### 3. Anpassung: `src/router/ManifestRouter.tsx`
 
-### 4. Layout-Redesign: Tabs statt Side-by-Side
+- Wenn eine Brand-Domain erkannt wird (z.B. `kaufy.immo`):
+  - Root-Route `/` zeigt die Zone-3-Homepage statt Redirect zu `/portal`
+  - Zone-3-Routen werden ZUSATZLICH ohne `/website/kaufy`-Prefix gemountet (d.h. `/vermieter` statt `/website/kaufy/vermieter`)
+  - `/portal`, `/admin`, `/auth` bleiben funktional (fur Login-CTAs)
+- Wenn keine Brand-Domain erkannt wird (Staging/systemofatown.com):
+  - Verhalten bleibt wie bisher (Root -> Portal)
 
-Statt zwei Spalten mit ungleicher Hoehe wird ein **Tab-Layout** verwendet:
-- Tab "Bestand (Hold)" → BestandCalculation (volle Breite)
-- Tab "Aufteiler (Flip)" → AufteilerCalculation (volle Breite)
+### 4. Anpassung: `src/App.tsx`
 
-Dadurch haben beide Kalkulationen die gleiche Breite und es gibt keine Hoehen-Diskrepanz.
+- Root-Route `/` wird dynamisch: Bei Brand-Domain -> Zone-3-Home, sonst -> `/portal`
 
-Die Schnellanalyse-Banner bleibt oberhalb der Tabs als kompakte KPI-Leiste (volle Breite, gleiche Kartenhoehe durch `items-stretch` auf dem Grid).
+### 5. Domains in Lovable einrichten
 
-## Betroffene Dateien
+Nach dem Publish werden alle 5 Domains + www-Varianten in den Lovable Domain-Settings eingetragen. DNS bei IONOS:
 
-| Datei | Aenderung |
-|---|---|
-| public/demo-data/demo_acq_offers.csv | Spalte `noi_indicated` mit Wert 115200 hinzufuegen |
-| src/pages/portal/akquise-manager/ObjekteingangDetail.tsx | Fallback yearlyRent, QuickAnalysisBanner auf Engine umstellen, Kalkulations-Layout von grid-cols-2 auf Tabs umbauen, KPI-Grid mit `items-stretch` |
+Fur jede Domain:
+- A-Record `@` -> `185.158.133.1`
+- A-Record `www` -> `185.158.133.1`  
+- TXT-Record `_lovable` -> Verifikationswert aus Lovable
 
-## Kein Modul-Freeze betroffen
+### Betroffene Dateien
 
-Alle Dateien liegen in `src/pages/portal/akquise-manager/` (MOD-12 Pfad). Freeze-Status muss geprueft werden.
+| Datei | Aktion |
+|-------|--------|
+| `src/config/domainMap.ts` | NEU - Domain-zu-Site Zuordnung |
+| `src/hooks/useDomainRouter.ts` | NEU - Hostname-Erkennung |
+| `src/App.tsx` | ANDERN - Root-Route dynamisch |
+| `src/router/ManifestRouter.tsx` | ANDERN - Zusatzliche flache Routen bei Brand-Domain |
 
-## Technische Details
+Keine Module werden verandert, keine Freeze-Checks betroffen.
 
-### KPI-Banner nach Umbau (Pseudo-Code)
-
-```text
-const bestandQuick = calcBestandQuick({ purchasePrice, monthlyRent: yearlyRent / 12 });
-const aufteilerFull = calcAufteilerFull({ purchasePrice, yearlyRent, ...AUFTEILER_DEFAULTS, projectCosts: 0 });
-
-// Dann nur noch rendern:
-Gesamtinvestition: bestandQuick.totalInvestment
-Bruttorendite: bestandQuick.grossYield
-EK-Bedarf: bestandQuick.equity
-Gewinn (Flip): aufteilerFull.profit
-Marge (Flip): aufteilerFull.profitMargin
-```
-
-### Tab-Layout (Pseudo-Code)
-
-```text
-<Tabs defaultValue="bestand">
-  <TabsList>
-    <TabsTrigger value="bestand">Bestand (Hold)</TabsTrigger>
-    <TabsTrigger value="aufteiler">Aufteiler (Flip)</TabsTrigger>
-  </TabsList>
-  <TabsContent value="bestand">
-    <BestandCalculation ... /> (volle Breite)
-  </TabsContent>
-  <TabsContent value="aufteiler">
-    <AufteilerCalculation ... /> (volle Breite)
-  </TabsContent>
-</Tabs>
-```
