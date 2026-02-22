@@ -54,13 +54,13 @@ export default function LennoxStartseite() {
   return (
     <div style={{ background: C.cream }}>
       {/* ═══════════════════ HERO ═══════════════════ */}
-      <section className="relative overflow-hidden" style={{ minHeight: '85vh' }}>
+      <section className="relative overflow-hidden" style={{ minHeight: '50vh' }}>
         <div className="absolute inset-0">
           <img src={heroImage} alt="Hund auf Alpenwiese" className="w-full h-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/10 to-black/70" />
         </div>
         <div className="relative z-10 max-w-5xl mx-auto px-6 flex flex-col items-center justify-center text-center"
-          style={{ minHeight: '85vh' }}>
+          style={{ minHeight: '50vh' }}>
           
           <h1 className={`font-bold text-white leading-tight tracking-tight transition-all duration-500 ${hasSearched ? 'text-2xl md:text-4xl mb-3' : 'text-4xl md:text-6xl lg:text-7xl mb-4'}`}
             style={{ textShadow: '0 2px 20px rgba(0,0,0,0.3)' }}>

@@ -3,7 +3,7 @@
  * Categories: Ernährung, Lennox Style, Fressnapf (from DB)
  * LennoxTracker: hardcoded feature teaser
  */
-import { ShoppingBag, ArrowLeft, Radar, ShoppingCart } from 'lucide-react';
+import { ArrowLeft, Radar, ShoppingCart, ShoppingBag } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -11,6 +11,7 @@ import { Link } from 'react-router-dom';
 import { useActiveShopProducts } from '@/hooks/usePetShopProducts';
 import { ReactNode } from 'react';
 import { LENNOX as C } from './lennoxTheme';
+import shopHero from '@/assets/lennox/section_cozy.jpg';
 
 const SHOP_SECTIONS: { key: string; label: string; desc: string; isAffiliate?: boolean; intro?: ReactNode }[] = [
   {
@@ -116,13 +117,12 @@ export default function LennoxShop() {
   return (
     <div className="space-y-10">
       {/* ═══ HERO ═══ */}
-      <section className="relative overflow-hidden" style={{ minHeight: '60vh' }}>
-        <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${C.forest}, ${C.forestLight})` }}>
-          <div className="absolute inset-0 opacity-10">
-            <ShoppingBag className="absolute top-20 right-20 h-40 w-40 text-white" />
-          </div>
+      <section className="relative overflow-hidden" style={{ minHeight: '50vh' }}>
+        <div className="absolute inset-0">
+          <img src={shopHero} alt="Lennox Shop" className="w-full h-full object-cover object-center" />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/10 to-black/50" />
         </div>
-        <div className="relative z-10 flex flex-col items-center justify-center text-center px-5" style={{ minHeight: '60vh' }}>
+        <div className="relative z-10 flex flex-col items-center justify-center text-center px-5" style={{ minHeight: '50vh' }}>
           <h1 className="text-3xl md:text-5xl font-bold text-white mb-3">Lennox Shop</h1>
           <p className="text-white/80 text-base max-w-md">Alles für deinen Vierbeiner — kuratiert von Lennox & Friends.</p>
         </div>
