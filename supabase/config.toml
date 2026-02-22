@@ -233,6 +233,9 @@ verify_jwt = false
 
 [functions.sot-cloud-sync]
 verify_jwt = false
+
+[functions.sot-mail-gmail-auth]
+verify_jwt = false
 [functions.sot-manager-activate]
 verify_jwt = false
 

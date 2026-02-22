@@ -246,7 +246,29 @@ async function sendSmtpMail(
   }
 }
 
-// Send email via Gmail API
+// Refresh Google access token
+async function refreshGoogleAccessToken(account: any): Promise<string> {
+  const clientId = Deno.env.get('GOOGLE_DRIVE_CLIENT_ID');
+  const clientSecret = Deno.env.get('GOOGLE_DRIVE_CLIENT_SECRET');
+  if (!clientId || !clientSecret || !account.refresh_token) {
+    throw new Error('Cannot refresh token — missing credentials');
+  }
+  const res = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: clientId,
+      client_secret: clientSecret,
+      refresh_token: account.refresh_token,
+      grant_type: 'refresh_token',
+    }),
+  });
+  const data = await res.json();
+  if (!res.ok || !data.access_token) throw new Error('Token refresh failed');
+  return data.access_token;
+}
+
+// Send email via Gmail API with automatic token refresh
 async function sendGoogleMail(
   account: any,
   email: {
@@ -259,15 +281,19 @@ async function sendGoogleMail(
     replyToMessageId?: string;
   }
 ): Promise<{ success: boolean; messageId?: string; error?: string }> {
-  if (!account.access_token) {
-    return { success: false, error: 'No access token available' };
+  let accessToken = account.access_token;
+  if (!accessToken && account.refresh_token) {
+    try { accessToken = await refreshGoogleAccessToken(account); } catch (e: any) {
+      return { success: false, error: e.message };
+    }
   }
+  if (!accessToken) return { success: false, error: 'No access token available' };
 
   // Build RFC 2822 email message
   const body = email.bodyHtml || email.bodyText || '';
   const contentType = email.bodyHtml ? 'text/html' : 'text/plain';
   
-  let rawMessage = [
+  const rawMessage = [
     `From: ${account.email_address}`,
     `To: ${email.to.join(', ')}`,
     email.cc?.length ? `Cc: ${email.cc.join(', ')}` : '',
@@ -279,30 +305,39 @@ async function sendGoogleMail(
     body,
   ].filter(Boolean).join('\r\n');
 
-  // Base64 encode for Gmail API
   const encodedMessage = btoa(unescape(encodeURIComponent(rawMessage)))
     .replace(/\+/g, '-')
     .replace(/\//g, '_')
     .replace(/=+$/, '');
 
-  const response = await fetch(
+  let response = await fetch(
     'https://gmail.googleapis.com/gmail/v1/users/me/messages/send',
     {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${account.access_token}`,
-        'Content-Type': 'application/json',
-      },
+      headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ raw: encodedMessage }),
     }
   );
 
+  // Auto-refresh on 401
+  if (response.status === 401 && account.refresh_token) {
+    await response.text();
+    try { accessToken = await refreshGoogleAccessToken(account); } catch (e: any) {
+      return { success: false, error: e.message };
+    }
+    response = await fetch(
+      'https://gmail.googleapis.com/gmail/v1/users/me/messages/send',
+      {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ raw: encodedMessage }),
+      }
+    );
+  }
+
   if (!response.ok) {
     const errorData = await response.json();
-    return { 
-      success: false, 
-      error: errorData.error?.message || `Gmail API error: ${response.status}` 
-    };
+    return { success: false, error: errorData.error?.message || `Gmail API error: ${response.status}` };
   }
 
   const data = await response.json();
