@@ -33,7 +33,7 @@ import {
   Moon
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { getParentRoute } from '@/hooks/useSwipeBack';
+import { getMobileBackTarget } from '@/hooks/useSwipeBack';
 
 const GLASS_BUTTON = cn(
   'h-10 w-10 rounded-full',
@@ -93,7 +93,7 @@ export function SystemBar() {
   };
 
   const handleBackClick = () => {
-    navigate(getParentRoute(location.pathname));
+    navigate(getMobileBackTarget(location.pathname));
   };
 
   // Update clock every minute
