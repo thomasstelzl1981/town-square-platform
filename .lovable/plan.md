@@ -1,105 +1,66 @@
 
-## Gmail-Integration via eigenem OAuth-Flow
+
+## Fix: Mobile Header hinter Notch/Dynamic Island versteckt
 
 ### Problem
 
-Der aktuelle Gmail-Connect in `EmailTab.tsx` nutzt `supabase.auth.signInWithOAuth({ provider: 'google' })`. Das laeuft ueber Lovable Cloud Managed Auth, die nur Basic-Profile-Scopes liefert — keine Gmail API Berechtigung. Deshalb funktioniert Google Mail nicht.
+In `index.html` ist `viewport-fit=cover` gesetzt (Zeile 5), was den Viewport unter die Statusleiste/Notch/Dynamic Island erweitert. Aber keiner der Header-Komponenten nutzt `padding-top: env(safe-area-inset-top)` — dadurch wird der Header-Inhalt auf mobilen Geraeten vom System-UI verdeckt.
 
-### Loesung
-
-Einen dedizierten Gmail OAuth-Flow bauen, analog zum bestehenden Google Drive Flow in `sot-cloud-sync`. Die gleichen Google OAuth Credentials (`GOOGLE_DRIVE_CLIENT_ID` / `GOOGLE_DRIVE_CLIENT_SECRET`) werden wiederverwendet, da sie zum selben Google Cloud Projekt gehoeren.
-
-### Architektur
-
-```text
-Frontend (EmailTab)                    Edge Function                        Google
-       |                                    |                                  |
-       |--- POST /sot-mail-gmail-auth ----->|                                  |
-       |    action: "init"                  |                                  |
-       |<-- { authUrl } -------------------|                                  |
-       |                                    |                                  |
-       |--- window.open(authUrl) ------------------------------------------>|
-       |                                    |                                  |
-       |    (User autorisiert Gmail)        |                                  |
-       |                                    |<-- callback?code=... ------------|
-       |                                    |--- token exchange -------------->|
-       |                                    |<-- access_token, refresh_token --|
-       |                                    |                                  |
-       |                                    |--- INSERT mail_accounts -------->|
-       |                                    |--- redirect to returnUrl ------->|
-       |<-- (Popup schliesst, account da)   |                                  |
-```
+Das betrifft 3 Dateien:
 
 ### Aenderungen
 
-**1. Neue Edge Function: `sot-mail-gmail-auth`**
+**1. Zone 2 Portal — `src/components/portal/SystemBar.tsx`**
 
-Analog zu `sot-cloud-sync`, aber fuer Gmail:
+Zeile 139: Mobile Header (`<header>`) bekommt `safe-area-inset-top`:
 
-- **action: "init"**: Erstellt Google OAuth URL mit Scopes `gmail.readonly`, `gmail.send`, `userinfo.email`, `userinfo.profile`
-- **action: "callback"**: Empfaengt OAuth Code, tauscht gegen Tokens, erstellt/aktualisiert `mail_accounts`-Eintrag mit `provider: 'google'`
-- **action: "refresh"**: Token-Refresh (fuer spaeter, wenn Tokens ablaufen)
-
-Nutzt die bestehenden Secrets: `GOOGLE_DRIVE_CLIENT_ID`, `GOOGLE_DRIVE_CLIENT_SECRET`
-
-Redirect URI: `{SUPABASE_URL}/functions/v1/sot-mail-gmail-auth?action=callback`
-
-**Wichtig**: In der Google Cloud Console muss diese Redirect URI als "Authorized redirect URI" hinzugefuegt werden.
-
-**2. Frontend: `EmailTab.tsx` — `handleGoogleConnect` ersetzen**
-
-Aktuell (funktioniert nicht):
 ```text
-supabase.auth.signInWithOAuth({ provider: 'google', ... })
+<header 
+  className="sticky top-0 z-50 w-full border-b bg-card/70 backdrop-blur-lg ..."
+  style={{ paddingTop: 'env(safe-area-inset-top)' }}
+>
 ```
 
-Neu (Popup-Flow wie bei Drive):
+Zeile 207: Desktop Header ebenfalls (fuer Konsistenz auf Desktop-Macs mit Notch):
+
 ```text
-1. POST sot-mail-gmail-auth { action: 'init', returnUrl }
-2. Oeffne authUrl in Popup-Fenster
-3. Popup schliesst automatisch nach Callback
-4. Refetch mail_accounts
+<header 
+  className="sticky top-0 z-50 w-full border-b bg-card/70 backdrop-blur-lg ..."
+  style={{ paddingTop: 'env(safe-area-inset-top)' }}
+>
 ```
 
-**3. Token-Refresh in `sot-mail-sync`**
+**2. Zone 3 SoT SystemBar — `src/components/zone3/sot/SotSystemBar.tsx`**
 
-Der bestehende `syncGoogleMail` wirft bei 401: "Access token expired - needs refresh". Das muss erweitert werden:
+Zeile 92: Header bekommt `safe-area-inset-top`:
 
-- Bei 401: Refresh-Token aus `mail_accounts` lesen
-- Token-Refresh via Google OAuth Token-Endpoint
-- Neuen Access-Token in `mail_accounts` speichern
-- Retry der API-Anfrage
+```text
+<header 
+  className="sticky top-0 z-50 ..."
+  style={{ paddingTop: 'env(safe-area-inset-top)' }}
+>
+```
 
-**4. `sot-mail-send` — Gmail Send erweitern (falls noch nicht vorhanden)**
+**3. Zone 3 SoT Header — `src/components/zone3/sot/SotHeader.tsx`**
 
-Pruefen ob die bestehende Mail-Send-Funktion bereits Gmail API unterstuetzt. Falls nicht: `gmail.send` Scope wird bereits angefordert, die Send-Logik muss Gmail API `messages.send` nutzen.
+Zeile 16: Fixed Header bekommt `safe-area-inset-top`:
 
-### Google Cloud Console — Manuelle Konfiguration
+```text
+<header 
+  className="fixed top-0 left-0 right-0 z-50 sot-glass"
+  style={{ paddingTop: 'env(safe-area-inset-top)' }}
+>
+```
 
-Der Nutzer muss in seiner Google Cloud Console (gleiche App wie fuer Drive):
+### Technischer Hintergrund
 
-1. Die Redirect URI hinzufuegen: `https://ktpvilzjtcaxyuufocrs.supabase.co/functions/v1/sot-mail-gmail-auth?action=callback`
-2. Gmail API aktivieren (falls noch nicht geschehen)
-3. Die Scopes `gmail.readonly` und `gmail.send` in der OAuth-Consent-Screen-Konfiguration hinzufuegen
+- `viewport-fit=cover` ist bereits korrekt in `index.html` gesetzt
+- `env(safe-area-inset-bottom)` wird bereits an 5 Stellen fuer Bottom-Bars verwendet
+- `env(safe-area-inset-top)` fehlt komplett — das ist die Ursache
+- Auf Geraeten ohne Notch gibt `env(safe-area-inset-top)` den Wert `0px` zurueck — kein Effekt
 
-### Dateien
+### Betroffene Module
 
-| Datei | Aktion |
-|-------|--------|
-| `supabase/functions/sot-mail-gmail-auth/index.ts` | Neu — Gmail OAuth Edge Function |
-| `supabase/config.toml` | Update — `verify_jwt = false` fuer neue Funktion |
-| `src/pages/portal/office/EmailTab.tsx` | Update — `handleGoogleConnect` auf Popup-Flow umstellen |
-| `supabase/functions/sot-mail-sync/index.ts` | Update — Token-Refresh-Logik bei 401 |
-
-### Was NICHT geaendert wird
-
-- `sot-cloud-sync` — bleibt fuer Google Drive
-- `sot-mail-connect` — bleibt fuer IMAP und manuelle OAuth-Token-Speicherung
-- Engine-Dateien, Datenbank-Schema (mail_accounts hat bereits `access_token`, `refresh_token`, `token_expires_at`)
-- Secrets — `GOOGLE_DRIVE_CLIENT_ID` / `GOOGLE_DRIVE_CLIENT_SECRET` werden wiederverwendet
-
-### Voraussetzung
-
-Bevor die Implementierung getestet werden kann, muss der Nutzer in der Google Cloud Console:
-1. Gmail API aktivieren
-2. Die neue Redirect URI als "Authorized redirect URI" eintragen
+- `SystemBar.tsx` — kein Modul-Pfad, frei editierbar
+- `SotSystemBar.tsx` — Zone 3, kein Modul-Pfad, frei editierbar
+- `SotHeader.tsx` — Zone 3, kein Modul-Pfad, frei editierbar
