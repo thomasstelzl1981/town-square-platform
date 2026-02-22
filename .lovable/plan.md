@@ -1,71 +1,105 @@
 
+## Gmail-Integration via eigenem OAuth-Flow
 
-## Bugfixes & Cleanup — Post-Publish Stabilisierung
+### Problem
 
-### 1. P0 Bug: `deriveYearlyRent` ohne `effectivePrice`
+Der aktuelle Gmail-Connect in `EmailTab.tsx` nutzt `supabase.auth.signInWithOAuth({ provider: 'google' })`. Das laeuft ueber Lovable Cloud Managed Auth, die nur Basic-Profile-Scopes liefert — keine Gmail API Berechtigung. Deshalb funktioniert Google Mail nicht.
 
-**Datei:** `src/pages/portal/akquise-manager/ObjekteingangDetail.tsx` (MOD-12, bereits unfrozen)
+### Loesung
 
-Zeile 116: `deriveYearlyRent(offer)` wird ohne den Override-Preis aufgerufen. Wenn `noi_indicated` fehlt, rechnet die Funktion mit `price_asking` statt dem Gegenvorschlag.
+Einen dedizierten Gmail OAuth-Flow bauen, analog zum bestehenden Google Drive Flow in `sot-cloud-sync`. Die gleichen Google OAuth Credentials (`GOOGLE_DRIVE_CLIENT_ID` / `GOOGLE_DRIVE_CLIENT_SECRET`) werden wiederverwendet, da sie zum selben Google Cloud Projekt gehoeren.
 
-**Fix:** `deriveYearlyRent(offer)` aendern zu `deriveYearlyRent(offer, effectivePrice)`
-
-Problem: `effectivePrice` wird in Zeile 115 definiert und `yearlyRent` in Zeile 116 — die Reihenfolge ist korrekt, der Parameter fehlt nur.
-
----
-
-### 2. TypeScript Cleanup: `as any` Casts in AnalysisTab.tsx
-
-**Datei:** `src/pages/portal/akquise-manager/components/AnalysisTab.tsx` (MOD-12)
-
-31 `as any` Casts fuer `geomapData` und `aiSummary`. Fix: Zwei lokale Interfaces definieren und die Variablen typisiert casten.
+### Architektur
 
 ```text
-interface GeoMapResult {
-  avgRentPerSqm?: string | number;
-  avgPricePerSqm?: string | number;
-  vacancyRate?: string | number;
-  populationTrend?: string;
-  summary?: string;
-}
-
-interface AiSummaryResult {
-  summary?: string;
-  risks?: string[];
-  opportunities?: string[];
-}
+Frontend (EmailTab)                    Edge Function                        Google
+       |                                    |                                  |
+       |--- POST /sot-mail-gmail-auth ----->|                                  |
+       |    action: "init"                  |                                  |
+       |<-- { authUrl } -------------------|                                  |
+       |                                    |                                  |
+       |--- window.open(authUrl) ------------------------------------------>|
+       |                                    |                                  |
+       |    (User autorisiert Gmail)        |                                  |
+       |                                    |<-- callback?code=... ------------|
+       |                                    |--- token exchange -------------->|
+       |                                    |<-- access_token, refresh_token --|
+       |                                    |                                  |
+       |                                    |--- INSERT mail_accounts -------->|
+       |                                    |--- redirect to returnUrl ------->|
+       |<-- (Popup schliesst, account da)   |                                  |
 ```
 
-Dann einmal typisiert casten statt 11x `as any`:
+### Aenderungen
+
+**1. Neue Edge Function: `sot-mail-gmail-auth`**
+
+Analog zu `sot-cloud-sync`, aber fuer Gmail:
+
+- **action: "init"**: Erstellt Google OAuth URL mit Scopes `gmail.readonly`, `gmail.send`, `userinfo.email`, `userinfo.profile`
+- **action: "callback"**: Empfaengt OAuth Code, tauscht gegen Tokens, erstellt/aktualisiert `mail_accounts`-Eintrag mit `provider: 'google'`
+- **action: "refresh"**: Token-Refresh (fuer spaeter, wenn Tokens ablaufen)
+
+Nutzt die bestehenden Secrets: `GOOGLE_DRIVE_CLIENT_ID`, `GOOGLE_DRIVE_CLIENT_SECRET`
+
+Redirect URI: `{SUPABASE_URL}/functions/v1/sot-mail-gmail-auth?action=callback`
+
+**Wichtig**: In der Google Cloud Console muss diese Redirect URI als "Authorized redirect URI" hinzugefuegt werden.
+
+**2. Frontend: `EmailTab.tsx` — `handleGoogleConnect` ersetzen**
+
+Aktuell (funktioniert nicht):
 ```text
-const geo = geomapData as GeoMapResult | null;
-const ai = aiSummary as AiSummaryResult | null;
+supabase.auth.signInWithOAuth({ provider: 'google', ... })
 ```
 
----
+Neu (Popup-Flow wie bei Drive):
+```text
+1. POST sot-mail-gmail-auth { action: 'init', returnUrl }
+2. Oeffne authUrl in Popup-Fenster
+3. Popup schliesst automatisch nach Callback
+4. Refetch mail_accounts
+```
 
-### 3. PWA Meta-Tag Update
+**3. Token-Refresh in `sot-mail-sync`**
 
-**Datei:** `index.html` (kein Modul, frei editierbar)
+Der bestehende `syncGoogleMail` wirft bei 401: "Access token expired - needs refresh". Das muss erweitert werden:
 
-`apple-mobile-web-app-capable` ist deprecated. Zusaetzlich `mobile-web-app-capable` hinzufuegen (das bestehende Apple-Tag bleibt fuer aeltere iOS-Versionen).
+- Bei 401: Refresh-Token aus `mail_accounts` lesen
+- Token-Refresh via Google OAuth Token-Endpoint
+- Neuen Access-Token in `mail_accounts` speichern
+- Retry der API-Anfrage
 
----
+**4. `sot-mail-send` — Gmail Send erweitern (falls noch nicht vorhanden)**
 
-### 4. Module Unfreeze: MOD-07, 08, 09, 10, 11
+Pruefen ob die bestehende Mail-Send-Funktion bereits Gmail API unterstuetzt. Falls nicht: `gmail.send` Scope wird bereits angefordert, die Send-Logik muss Gmail API `messages.send` nutzen.
 
-**Datei:** `spec/current/00_frozen/modules_freeze.json` (kein Modul, frei editierbar)
+### Google Cloud Console — Manuelle Konfiguration
 
-Setze `frozen: false` und `unfrozen_at: "2026-02-22"` fuer MOD-07, MOD-08, MOD-09, MOD-10, MOD-11.
+Der Nutzer muss in seiner Google Cloud Console (gleiche App wie fuer Drive):
 
----
+1. Die Redirect URI hinzufuegen: `https://ktpvilzjtcaxyuufocrs.supabase.co/functions/v1/sot-mail-gmail-auth?action=callback`
+2. Gmail API aktivieren (falls noch nicht geschehen)
+3. Die Scopes `gmail.readonly` und `gmail.send` in der OAuth-Consent-Screen-Konfiguration hinzufuegen
 
-### Zusammenfassung
+### Dateien
 
-| Datei | Aenderung |
-|-------|-----------|
-| `ObjekteingangDetail.tsx` | Zeile 116: `effectivePrice` als zweiten Parameter uebergeben |
-| `AnalysisTab.tsx` | 2 Interfaces hinzufuegen, 11x `as any` durch typisierte Variablen ersetzen |
-| `index.html` | `mobile-web-app-capable` Meta-Tag hinzufuegen |
-| `modules_freeze.json` | MOD-07/08/09/10/11 auf `frozen: false` setzen |
+| Datei | Aktion |
+|-------|--------|
+| `supabase/functions/sot-mail-gmail-auth/index.ts` | Neu — Gmail OAuth Edge Function |
+| `supabase/config.toml` | Update — `verify_jwt = false` fuer neue Funktion |
+| `src/pages/portal/office/EmailTab.tsx` | Update — `handleGoogleConnect` auf Popup-Flow umstellen |
+| `supabase/functions/sot-mail-sync/index.ts` | Update — Token-Refresh-Logik bei 401 |
 
+### Was NICHT geaendert wird
+
+- `sot-cloud-sync` — bleibt fuer Google Drive
+- `sot-mail-connect` — bleibt fuer IMAP und manuelle OAuth-Token-Speicherung
+- Engine-Dateien, Datenbank-Schema (mail_accounts hat bereits `access_token`, `refresh_token`, `token_expires_at`)
+- Secrets — `GOOGLE_DRIVE_CLIENT_ID` / `GOOGLE_DRIVE_CLIENT_SECRET` werden wiederverwendet
+
+### Voraussetzung
+
+Bevor die Implementierung getestet werden kann, muss der Nutzer in der Google Cloud Console:
+1. Gmail API aktivieren
+2. Die neue Redirect URI als "Authorized redirect URI" eintragen
