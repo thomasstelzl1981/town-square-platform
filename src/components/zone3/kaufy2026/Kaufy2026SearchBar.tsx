@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/collapsible';
 import { ChevronDown, Loader2, ArrowRight, Calculator, Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 export interface SearchParams {
   zvE: number;
@@ -46,6 +47,7 @@ export function Kaufy2026SearchBar({
   isLoading = false,
   defaultExpanded = false,
 }: Kaufy2026SearchBarProps) {
+  const isMobile = useIsMobile();
   const [mode, setMode] = useState<'investment' | 'classic'>('investment');
   const [expanded, setExpanded] = useState(defaultExpanded);
 
@@ -73,7 +75,7 @@ export function Kaufy2026SearchBar({
   };
 
   return (
-    <div style={{ position: 'relative', width: '100%', background: 'hsl(210, 20%, 94%)', borderRadius: 16, padding: '16px 24px', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.15)', minHeight: expanded ? 140 : 80 }}>
+    <div style={{ position: 'relative', width: '100%', background: 'hsl(210, 20%, 94%)', borderRadius: 16, padding: isMobile ? '12px 16px' : '16px 24px', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.15)', minHeight: expanded ? 140 : 80 }}>
       <Collapsible open={expanded} onOpenChange={setExpanded}>
          <form onSubmit={handleSubmit}>
           {/* Mode Toggle Tabs */}
@@ -105,33 +107,37 @@ export function Kaufy2026SearchBar({
           </div>
 
           {/* Main Search Row */}
-          <div className="flex items-center gap-3 flex-wrap md:flex-nowrap">
+          <div className={cn("flex gap-3", isMobile ? "flex-col" : "items-center flex-wrap md:flex-nowrap")}>
             {mode === 'investment' ? (
               <>
                 {/* zvE Inline Input */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#ffffff', borderRadius: 8, padding: '8px 12px', flex: 1, minWidth: 0, border: '1px solid hsl(210, 20%, 88%)' }}>
-                  <label style={{ color: 'hsl(215, 16%, 47%)' }}>Einkommen (zvE)</label>
-                  <input
-                    type="number"
-                    value={zvE}
-                    onChange={(e) => setZvE(Number(e.target.value))}
-                    placeholder="60.000"
-                    style={{ background: 'transparent', color: 'hsl(220, 20%, 10%)', colorScheme: 'light' }}
-                  />
-                  <span style={{ color: 'hsl(215, 16%, 47%)' }}>€</span>
+                <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'stretch' : 'center', gap: 8, background: '#ffffff', borderRadius: 8, padding: '8px 12px', flex: 1, minWidth: 0, border: '1px solid hsl(210, 20%, 88%)' }}>
+                  <label style={{ color: 'hsl(215, 16%, 47%)', fontSize: isMobile ? '0.75rem' : undefined }}>Einkommen (zvE)</label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <input
+                      type="number"
+                      value={zvE}
+                      onChange={(e) => setZvE(Number(e.target.value))}
+                      placeholder="60.000"
+                      style={{ background: 'transparent', color: 'hsl(220, 20%, 10%)', colorScheme: 'light', flex: 1, minWidth: 0 }}
+                    />
+                    <span style={{ color: 'hsl(215, 16%, 47%)' }}>€</span>
+                  </div>
                 </div>
 
                 {/* Equity Inline Input */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#ffffff', borderRadius: 8, padding: '8px 12px', flex: 1, minWidth: 0, border: '1px solid hsl(210, 20%, 88%)' }}>
-                  <label style={{ color: 'hsl(215, 16%, 47%)' }}>Eigenkapital</label>
-                  <input
-                    type="number"
-                    value={equity}
-                    onChange={(e) => setEquity(Number(e.target.value))}
-                    placeholder="50.000"
-                    style={{ background: 'transparent', color: 'hsl(220, 20%, 10%)', colorScheme: 'light' }}
-                  />
-                  <span style={{ color: 'hsl(215, 16%, 47%)' }}>€</span>
+                <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'stretch' : 'center', gap: 8, background: '#ffffff', borderRadius: 8, padding: '8px 12px', flex: 1, minWidth: 0, border: '1px solid hsl(210, 20%, 88%)' }}>
+                  <label style={{ color: 'hsl(215, 16%, 47%)', fontSize: isMobile ? '0.75rem' : undefined }}>Eigenkapital</label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <input
+                      type="number"
+                      value={equity}
+                      onChange={(e) => setEquity(Number(e.target.value))}
+                      placeholder="50.000"
+                      style={{ background: 'transparent', color: 'hsl(220, 20%, 10%)', colorScheme: 'light', flex: 1, minWidth: 0 }}
+                    />
+                    <span style={{ color: 'hsl(215, 16%, 47%)' }}>€</span>
+                  </div>
                 </div>
               </>
             ) : (
@@ -165,13 +171,13 @@ export function Kaufy2026SearchBar({
             )}
 
             {/* Action Buttons */}
-            <div className="flex items-center gap-2 ml-auto shrink-0">
+            <div className={cn("flex items-center gap-2 shrink-0", isMobile ? "w-full" : "ml-auto")}>
               {/* Submit Button */}
               <Button
                 type="submit"
                 disabled={isLoading}
                 size="sm"
-                className="h-9 px-4 rounded-full bg-[hsl(220,20%,10%)] hover:bg-[hsl(220,20%,20%)] text-white font-medium"
+                className={cn("rounded-full bg-[hsl(220,20%,10%)] hover:bg-[hsl(220,20%,20%)] text-white font-medium", isMobile ? "h-10 flex-1" : "h-9 px-4")}
               >
                 {isLoading ? (
                   <Loader2 className="w-4 h-4 animate-spin" />

@@ -13,16 +13,18 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Kaufy2026SearchBar, type SearchParams, type ClassicSearchParams } from './Kaufy2026SearchBar';
 import heroBackground from '@/assets/kaufy2026/hero-background.png';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 // Centralized style objects — replaces scattered inline styles
-const heroStyles = {
+const getHeroStyles = (mobile: boolean) => ({
   section: { padding: 0 } as React.CSSProperties,
   wrapper: {
     position: 'relative',
-    width: 'calc(100% - 120px)',
-    height: 620,
-    margin: '60px 60px 0',
-    borderRadius: 20,
+    width: mobile ? 'calc(100% - 24px)' : 'calc(100% - 120px)',
+    height: mobile ? 'auto' : 620,
+    minHeight: mobile ? 400 : undefined,
+    margin: mobile ? '12px 12px 0' : '60px 60px 0',
+    borderRadius: mobile ? 16 : 20,
     overflow: 'hidden',
   } as React.CSSProperties,
   image: {
@@ -42,10 +44,10 @@ const heroStyles = {
     flexDirection: 'column',
     alignItems: 'flex-start',
     justifyContent: 'center',
-    padding: '40px 60px',
+    padding: mobile ? '24px 20px' : '40px 60px',
   } as React.CSSProperties,
   title: {
-    fontSize: '3rem',
+    fontSize: mobile ? '1.75rem' : '3rem',
     fontWeight: 700,
     color: 'white',
     lineHeight: 1.1,
@@ -53,7 +55,7 @@ const heroStyles = {
     maxWidth: 600,
   } as React.CSSProperties,
   subtitle: {
-    fontSize: '1.25rem',
+    fontSize: mobile ? '1rem' : '1.25rem',
     color: 'rgba(255, 255, 255, 0.8)',
     marginTop: '1rem',
   } as React.CSSProperties,
@@ -62,10 +64,10 @@ const heroStyles = {
     top: 16,
     zIndex: 50,
     maxWidth: 900,
-    width: '85%',
-    margin: '-60px auto 0',
+    width: mobile ? '95%' : '85%',
+    margin: mobile ? '-40px auto 0' : '-60px auto 0',
   } as React.CSSProperties,
-};
+});
 
 interface Kaufy2026HeroProps {
   onInvestmentSearch: (params: SearchParams) => void;
@@ -78,6 +80,9 @@ export function Kaufy2026Hero({
   onClassicSearch,
   isLoading = false,
 }: Kaufy2026HeroProps) {
+  const isMobile = useIsMobile();
+  const heroStyles = getHeroStyles(isMobile);
+
   return (
     <section style={heroStyles.section}>
       {/* Hero Image Container */}
