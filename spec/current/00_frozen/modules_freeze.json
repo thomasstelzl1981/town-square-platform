@@ -6,7 +6,7 @@
   "modules": {
     "MOD-00": { "frozen": true, "frozen_at": "2026-02-21", "reason": "Global Freeze – Pre-Launch E2E Testing" },
     "MOD-01": { "frozen": true, "frozen_at": "2026-02-21", "reason": "Global Freeze – Pre-Launch E2E Testing" },
-    "MOD-02": { "frozen": true, "frozen_at": "2026-02-21", "reason": "Re-frozen after Sprint 3 ChipBar expansion complete" },
+    "MOD-02": { "frozen": true, "frozen_at": "2026-02-22", "reason": "Re-frozen after Mobile DnD Cleanup" },
     "MOD-03": { "frozen": true, "frozen_at": "2026-02-21", "reason": "Re-frozen after Magic Intake Center implementation" },
     "MOD-04": { "frozen": true, "frozen_at": "2026-02-21", "reason": "Global Freeze – Pre-Launch E2E Testing" },
     "MOD-05": { "frozen": true, "frozen_at": "2026-02-21", "reason": "Global Freeze – Pre-Launch E2E Testing" },
@@ -16,15 +16,15 @@
     "MOD-09": { "frozen": false, "frozen_at": "2026-02-21", "unfrozen_at": "2026-02-22", "reason": "Unfrozen for Post-Publish Stabilisierung" },
     "MOD-10": { "frozen": false, "frozen_at": "2026-02-21", "unfrozen_at": "2026-02-22", "reason": "Unfrozen for Post-Publish Stabilisierung" },
     "MOD-11": { "frozen": false, "frozen_at": "2026-02-21", "unfrozen_at": "2026-02-22", "reason": "Unfrozen for Post-Publish Stabilisierung" },
-    "MOD-12": { "frozen": false, "frozen_at": "2026-02-21", "unfrozen_at": "2026-02-21", "reason": "Unfrozen for Berechnungsmodul Bugfix, Seed-Korrektur & Redesign" },
-    "MOD-13": { "frozen": true, "frozen_at": "2026-02-21", "reason": "Global Freeze – Pre-Launch E2E Testing" },
-    "MOD-14": { "frozen": true, "frozen_at": "2026-02-21", "reason": "Global Freeze – Pre-Launch E2E Testing" },
+    "MOD-12": { "frozen": true, "frozen_at": "2026-02-22", "reason": "Re-frozen after Mobile DnD Cleanup" },
+    "MOD-13": { "frozen": true, "frozen_at": "2026-02-22", "reason": "Re-frozen after Mobile DnD Cleanup" },
+    "MOD-14": { "frozen": true, "frozen_at": "2026-02-22", "reason": "Re-frozen after Mobile DnD Cleanup" },
     "MOD-15": { "frozen": true, "frozen_at": "2026-02-21", "reason": "Global Freeze – Pre-Launch E2E Testing" },
     "MOD-16": { "frozen": true, "frozen_at": "2026-02-21", "reason": "Global Freeze – Pre-Launch E2E Testing" },
     "MOD-17": { "frozen": true, "frozen_at": "2026-02-21", "reason": "Global Freeze – Pre-Launch E2E Testing" },
     "MOD-18": { "frozen": true, "frozen_at": "2026-02-21", "reason": "Global Freeze – Pre-Launch E2E Testing" },
     "MOD-19": { "frozen": true, "frozen_at": "2026-02-21", "reason": "Global Freeze – Pre-Launch E2E Testing" },
-    "MOD-20": { "frozen": true, "frozen_at": "2026-02-21", "reason": "Re-frozen after Miety text neutralization (Home/Objekt)" },
+    "MOD-20": { "frozen": true, "frozen_at": "2026-02-22", "reason": "Re-frozen after Mobile DnD Cleanup" },
     "MOD-22": { "frozen": true, "frozen_at": "2026-02-21", "reason": "Global Freeze – Pre-Launch E2E Testing" },
     "MOD-21": { "frozen": true, "frozen_at": "2026-02-21", "reason": "Re-frozen after KI-Browser Phase 1 MVP" }
   }

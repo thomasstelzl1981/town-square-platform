@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { BookOpen, Plus, Sparkles, Trash2, GripVertical, Loader2, ChevronDown, PenTool } from 'lucide-react';
 import { DesktopOnly } from '@/components/shared/DesktopOnly';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -46,14 +47,16 @@ function SortableTopicItem({
   onGenerateBriefing,
   isGenerating,
   onCreatePost,
+  disableDrag,
 }: {
   topic: Topic;
   onDelete: (id: string) => void;
   onGenerateBriefing: (id: string) => void;
   isGenerating: boolean;
   onCreatePost: (label: string) => void;
+  disableDrag?: boolean;
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: topic.id });
+  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: topic.id, disabled: disableDrag });
   const [briefingOpen, setBriefingOpen] = useState(false);
   const briefing = topic.topic_briefing;
 
@@ -65,9 +68,11 @@ function SortableTopicItem({
   return (
     <div ref={setNodeRef} style={style} className="bg-card border rounded-lg group">
       <div className="flex items-center gap-3 p-3">
-        <button {...attributes} {...listeners} className="cursor-grab text-muted-foreground hover:text-foreground">
-          <GripVertical className="h-4 w-4" />
-        </button>
+        {!disableDrag && (
+          <button {...attributes} {...listeners} className="cursor-grab text-muted-foreground hover:text-foreground">
+            <GripVertical className="h-4 w-4" />
+          </button>
+        )}
         <Badge variant="outline" className="shrink-0 text-xs">{topic.priority}</Badge>
         <span className="flex-1 font-medium text-sm">{topic.topic_label}</span>
         
@@ -174,6 +179,7 @@ export function KnowledgePage() {
   const { activeOrganization } = useAuth();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const [newTopic, setNewTopic] = useState('');
   const [generatingId, setGeneratingId] = useState<string | null>(null);
   const { user } = useAuth();
@@ -351,6 +357,7 @@ export function KnowledgePage() {
                     onGenerateBriefing={handleGenerateBriefing}
                     isGenerating={generatingId === topic.id}
                     onCreatePost={handleCreatePost}
+                    disableDrag={isMobile}
                   />
                 ))}
               </div>

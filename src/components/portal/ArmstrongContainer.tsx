@@ -167,18 +167,20 @@ export function ArmstrongContainer() {
     e.target.value = '';
   }, [docUpload]);
 
-  // File drag handlers
+  // File drag handlers — disabled on mobile
   const handleFileDragOver = useCallback((e: React.DragEvent) => {
+    if (isMobile) return;
     e.preventDefault();
     e.stopPropagation();
     setIsFileDragOver(true);
-  }, []);
+  }, [isMobile]);
 
   const handleFileDragLeave = useCallback((e: React.DragEvent) => {
+    if (isMobile) return;
     e.preventDefault();
     e.stopPropagation();
     setIsFileDragOver(false);
-  }, []);
+  }, [isMobile]);
 
   const handleFileDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
