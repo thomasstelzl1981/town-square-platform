@@ -21,7 +21,7 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { ComposeEmailDialog } from '@/components/portal/office/ComposeEmailDialog';
 import { AccountIntegrationDialog } from '@/components/portal/office/AccountIntegrationDialog';
-import { PageShell } from '@/components/shared/PageShell';
+// PageShell removed — email client uses its own full-height container
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { 
   Inbox, 
@@ -437,7 +437,7 @@ function EmailDetailPanel({
         </div>
       </div>
       {/* Email Body */}
-      <ScrollArea className="flex-1 p-4">
+      <div className="flex-1 min-h-0 overflow-hidden">
         {isLoadingBody ? (
           <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
             <Loader2 className="h-8 w-8 animate-spin mb-3" />
@@ -455,13 +455,28 @@ function EmailDetailPanel({
             </Button>
           </div>
         ) : email.body_html ? (
-          <div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: email.body_html }} />
+          <iframe
+            sandbox="allow-same-origin"
+            srcDoc={`<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+              body { font-family: system-ui, -apple-system, sans-serif; font-size: 14px;
+                     margin: 0; padding: 16px; overflow-wrap: break-word; word-break: break-word;
+                     color: #1a1a1a; background: transparent; }
+              img { max-width: 100% !important; height: auto !important; }
+              table { max-width: 100% !important; width: auto !important; }
+              * { max-width: 100% !important; box-sizing: border-box; }
+              a { color: #2563eb; }
+            </style></head><body>${email.body_html}</body></html>`}
+            className="w-full h-full border-0"
+            title="E-Mail-Inhalt"
+          />
         ) : (
-          <pre className="whitespace-pre-wrap text-sm font-sans">
-            {email.body_text || email.snippet || 'Kein Inhalt'}
-          </pre>
+          <ScrollArea className="h-full p-4">
+            <pre className="whitespace-pre-wrap text-sm font-sans">
+              {email.body_text || email.snippet || 'Kein Inhalt'}
+            </pre>
+          </ScrollArea>
         )}
-      </ScrollArea>
+      </div>
     </div>
   );
 }
@@ -771,8 +786,10 @@ export function EmailTab() {
 
   // Email Client UI - ALWAYS visible, connection via button
   return (
-    <PageShell>
-      <ModulePageHeader title="E-Mail" description="Ihr KI-gestützter E-Mail-Client" />
+    <div className="flex flex-col h-[calc(100vh-4rem)] overflow-hidden px-2 py-3 md:px-6 md:py-4">
+      <div className="shrink-0">
+        <ModulePageHeader title="E-Mail" description="Ihr KI-gestützter E-Mail-Client" />
+      </div>
       {/* Connection Dialog */}
       <AccountIntegrationDialog
         open={showConnectionDialog}
@@ -801,8 +818,8 @@ export function EmailTab() {
       />
 
       {/* 3-Panel Email Client Layout */}
-      <Card className="glass-card overflow-hidden">
-        <div className="grid grid-cols-12 h-[calc(100vh-220px)]">
+      <Card className="glass-card flex-1 min-h-0 overflow-hidden mt-4">
+        <div className="grid grid-cols-12 h-full">
         {/* Left Sidebar - Folders */}
         <div className="col-span-2 border-r flex flex-col">
           <div className="p-3 border-b">
@@ -1033,6 +1050,6 @@ export function EmailTab() {
         </div>
       </div>
       </Card>
-    </PageShell>
+    </div>
   );
 }
