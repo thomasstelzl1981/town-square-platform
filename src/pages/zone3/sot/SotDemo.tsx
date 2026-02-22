@@ -84,7 +84,7 @@ export default function SotDemo() {
           
           <div className="flex flex-wrap justify-center gap-4">
             <Link 
-              to="/portal" 
+              to="/portal?mode=demo" 
               className="sot-btn-primary text-base lg:text-lg px-6 lg:px-8 py-3 lg:py-4"
             >
               <Play className="w-5 h-5" />
@@ -171,7 +171,7 @@ export default function SotDemo() {
                   <p className="text-sm mb-6" style={{ color: 'hsl(var(--z3-muted-foreground))' }}>
                     Klicken Sie "Demo starten" für den interaktiven Rundgang.
                   </p>
-                  <Link to="/portal" className="sot-btn-primary">
+                  <Link to="/portal?mode=demo" className="sot-btn-primary">
                     <Play className="w-4 h-4" />
                     Jetzt starten
                   </Link>
@@ -199,7 +199,7 @@ export default function SotDemo() {
             {demoModules.map((module, index) => (
               <Link
                 key={module.name}
-                to={module.link}
+                to={`${module.link}?mode=demo`}
                 className={`sot-glass-card p-6 text-center hover:scale-[1.02] transition-transform sot-fade-in ${modulesVisible ? 'visible' : ''}`}
                 style={{ transitionDelay: `${index * 80}ms` }}
               >
@@ -241,7 +241,7 @@ export default function SotDemo() {
                 ))}
               </ul>
               <div className="mt-6">
-                <Link to="/portal" className="sot-btn-primary w-full justify-center">
+                <Link to="/portal?mode=demo" className="sot-btn-primary w-full justify-center">
                   <Play className="w-4 h-4" />
                   Demo starten
                 </Link>

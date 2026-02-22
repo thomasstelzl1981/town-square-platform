@@ -5,11 +5,15 @@
  * Clicking navigates to /portal/area/:areaKey and updates state
  */
 
+import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { usePortalLayout } from '@/hooks/usePortalLayout';
 import { areaConfig, AreaKey } from '@/manifests/areaConfig';
 import { Database, Rocket, Wrench, LayoutGrid } from 'lucide-react';
+import { isDemoSession } from '@/config/demoAccountConfig';
+import { DEMO_HIDDEN_AREAS } from '@/config/demoAccountConfig';
+import { useAuth } from '@/contexts/AuthContext';
 
 const areaIcons: Record<AreaKey, React.ElementType> = {
   base: Database,
@@ -21,6 +25,15 @@ const areaIcons: Record<AreaKey, React.ElementType> = {
 export function AreaTabs() {
   const navigate = useNavigate();
   const { activeArea, setActiveArea } = usePortalLayout();
+  const { user } = useAuth();
+
+  // Filter out hidden areas in demo mode
+  const visibleAreas = useMemo(() => {
+    if (isDemoSession(user?.email)) {
+      return areaConfig.filter(a => !(DEMO_HIDDEN_AREAS as readonly string[]).includes(a.key));
+    }
+    return areaConfig;
+  }, [user?.email]);
 
   const handleAreaClick = (areaKey: AreaKey) => {
     setActiveArea(areaKey);
@@ -29,7 +42,7 @@ export function AreaTabs() {
 
   return (
     <div className="flex items-center justify-center gap-1 px-4 py-1">
-      {areaConfig.map((area) => {
+      {visibleAreas.map((area) => {
         const Icon = areaIcons[area.key];
         const isActive = activeArea === area.key;
         

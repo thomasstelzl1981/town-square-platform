@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useSwipeBack } from '@/hooks/useSwipeBack';
-import { Outlet, Navigate, useLocation } from 'react-router-dom';
+import { Outlet, Navigate, useLocation, Link } from 'react-router-dom';
 
 // Preload core modules for instant navigation
 const preloadModules = () => {
@@ -24,11 +24,12 @@ import { MobileModuleMenu } from './MobileModuleMenu';
 import { SubTabs } from './SubTabs';
 import { PortalLayoutProvider, usePortalLayout } from '@/hooks/usePortalLayout';
 import { getModulesSorted } from '@/manifests/routesManifest';
-import { Loader2 } from 'lucide-react';
+import { Loader2, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { useLegalConsent } from '@/hooks/useLegalConsent';
 import { ConsentRequiredModal } from './ConsentRequiredModal';
+import { useDemoAutoLogin } from '@/hooks/useDemoAutoLogin';
 
 
 /**
@@ -48,6 +49,7 @@ import { ConsentRequiredModal } from './ConsentRequiredModal';
 function PortalLayoutInner() {
   const { user, isLoading, activeOrganization, isDevelopmentMode } = useAuth();
   const { isMobile } = usePortalLayout();
+  const { isDemo, demoState, endDemo } = useDemoAutoLogin();
   const { showConsentModal, setShowConsentModal } = useLegalConsent();
   const location = useLocation();
   // Armstrong sheet state removed — mobile uses full-screen chat now
@@ -92,12 +94,39 @@ function PortalLayoutInner() {
   const [shouldRedirect, setShouldRedirect] = useState(false);
   
   useEffect(() => {
+    // Don't redirect during demo auto-login
+    if (isDemo) {
+      setShouldRedirect(false);
+      return;
+    }
     if (!user && !isDevelopmentMode && !isLoading && hasInitializedRef.current) {
       const timer = setTimeout(() => setShouldRedirect(true), 2000);
       return () => clearTimeout(timer);
     }
     setShouldRedirect(false);
-  }, [user, isDevelopmentMode, isLoading]);
+  }, [user, isDevelopmentMode, isLoading, isDemo]);
+
+  // Demo mode: show loading screen during login/seeding
+  if (isDemo && (demoState === 'logging-in' || demoState === 'seeding')) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-background gap-4">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="text-sm text-muted-foreground">
+          {demoState === 'logging-in' ? 'Demo wird vorbereitet…' : 'Beispieldaten werden geladen…'}
+        </p>
+      </div>
+    );
+  }
+
+  // Demo error
+  if (isDemo && demoState === 'error') {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-background gap-4">
+        <p className="text-sm text-destructive">Demo konnte nicht gestartet werden.</p>
+        <Link to="/sot" className="text-sm text-primary underline">Zurück zur Startseite</Link>
+      </div>
+    );
+  }
 
   // P0-FIX: Only show fullscreen loader on INITIAL load, never after
   if (isLoading && !hasInitializedRef.current) {
@@ -110,7 +139,7 @@ function PortalLayoutInner() {
 
   // P1-FIX: Redirect to /auth IMMEDIATELY when no user and not loading (no 2s delay needed
   // for the "no org" case — only the shouldRedirect path needs debounce for token refresh)
-  if (shouldRedirect && !user && !isDevelopmentMode) {
+  if (shouldRedirect && !user && !isDevelopmentMode && !isDemo) {
     return <Navigate to="/auth" replace />;
   }
 
@@ -132,6 +161,30 @@ function PortalLayoutInner() {
     );
   }
 
+  // Demo banner component
+  const DemoBanner = isDemo && demoState === 'ready' ? (
+    <div className="bg-primary/10 border-b border-primary/20 px-4 py-2 flex items-center justify-between text-sm">
+      <span className="text-primary font-medium">
+        🎯 Demo-Modus — Erkunden Sie die Plattform mit Beispieldaten
+      </span>
+      <div className="flex items-center gap-3">
+        <Link 
+          to="/auth?mode=register&source=sot" 
+          className="text-primary underline hover:no-underline"
+        >
+          Eigenen Account erstellen
+        </Link>
+        <button
+          onClick={endDemo}
+          className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <LogOut className="h-3.5 w-3.5" />
+          Demo beenden
+        </button>
+      </div>
+    </div>
+  ) : null;
+
   // Detect if we're on the dashboard (root /portal) for scroll-snap
   const isDashboard = location.pathname === '/portal' || location.pathname === '/portal/';
 
@@ -141,6 +194,7 @@ function PortalLayoutInner() {
       <div ref={swipeRef} className="h-screen bg-atmosphere flex flex-col overflow-hidden overflow-x-hidden">
         {/* System Bar */}
         <SystemBar />
+        {DemoBanner}
         
       {isDashboard ? (
           mobileHomeMode === 'chat' ? (
@@ -181,6 +235,9 @@ function PortalLayoutInner() {
     <div className="h-screen bg-atmosphere flex flex-col overflow-hidden">
       {/* System Bar */}
       <SystemBar />
+      
+      {/* Demo Banner */}
+      {DemoBanner}
       
       {/* Top Navigation (3 levels) */}
       <TopNavigation />
