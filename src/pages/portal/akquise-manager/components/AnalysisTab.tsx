@@ -249,8 +249,20 @@ function OfferAnalysisDetail({ offerId, mandateId, onBack }: { offerId: string; 
     return <div className="flex items-center justify-center p-12"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>;
   }
 
-  const geomapData = offer.geomap_data as Record<string, unknown> | null;
-  const aiSummary = offer.analysis_summary as Record<string, unknown> | null;
+  interface GeoMapResult {
+    avgRentPerSqm?: string | number;
+    avgPricePerSqm?: string | number;
+    vacancyRate?: string | number;
+    populationTrend?: string;
+    summary?: string;
+  }
+  interface AiSummaryResult {
+    summary?: string;
+    risks?: string[];
+    opportunities?: string[];
+  }
+  const geo = offer.geomap_data as GeoMapResult | null;
+  const ai = offer.analysis_summary as AiSummaryResult | null;
 
   return (
     <div className="space-y-6">
@@ -323,16 +335,16 @@ function OfferAnalysisDetail({ offerId, mandateId, onBack }: { offerId: string; 
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {geomapData ? (
+          {geo ? (
             <div className="space-y-4">
               <div className={DESIGN.KPI_GRID.FULL}>
-                <KPIBox label="Mietniveau" value={`${(geomapData as any).avgRentPerSqm || 'N/A'} €/m²`} icon={Home} color="blue" />
-                <KPIBox label="Kaufpreisniveau" value={`${(geomapData as any).avgPricePerSqm || 'N/A'} €/m²`} icon={Euro} color="green" />
-                <KPIBox label="Leerstandsquote" value={`${(geomapData as any).vacancyRate || 'N/A'}%`} icon={AlertCircle} color="orange" />
-                <KPIBox label="Bevölkerungstrend" value={(geomapData as any).populationTrend || 'N/A'} icon={TrendingUp} color="purple" />
+                <KPIBox label="Mietniveau" value={`${geo.avgRentPerSqm || 'N/A'} €/m²`} icon={Home} color="blue" />
+                <KPIBox label="Kaufpreisniveau" value={`${geo.avgPricePerSqm || 'N/A'} €/m²`} icon={Euro} color="green" />
+                <KPIBox label="Leerstandsquote" value={`${geo.vacancyRate || 'N/A'}%`} icon={AlertCircle} color="orange" />
+                <KPIBox label="Bevölkerungstrend" value={geo.populationTrend || 'N/A'} icon={TrendingUp} color="purple" />
               </div>
-              {(geomapData as any).summary && (
-                <div className="p-4 bg-muted/50 rounded-lg"><p className="text-sm">{(geomapData as any).summary}</p></div>
+              {geo.summary && (
+                <div className="p-4 bg-muted/50 rounded-lg"><p className="text-sm">{geo.summary}</p></div>
               )}
             </div>
           ) : (
@@ -353,24 +365,24 @@ function OfferAnalysisDetail({ offerId, mandateId, onBack }: { offerId: string; 
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {aiSummary ? (
+          {ai ? (
             <div className="space-y-4">
-              {(aiSummary as any).summary && (
-                <div className="prose prose-sm max-w-none"><p>{(aiSummary as any).summary}</p></div>
+              {ai.summary && (
+                <div className="prose prose-sm max-w-none"><p>{ai.summary}</p></div>
               )}
-              {(aiSummary as any).risks && (
+              {ai.risks && (
                 <div>
                   <h4 className="font-semibold mb-2 text-sm">Risiken</h4>
                   <ul className="list-disc list-inside text-sm text-muted-foreground">
-                    {((aiSummary as any).risks as string[]).map((r, i) => <li key={i}>{r}</li>)}
+                    {ai.risks.map((r, i) => <li key={i}>{r}</li>)}
                   </ul>
                 </div>
               )}
-              {(aiSummary as any).opportunities && (
+              {ai.opportunities && (
                 <div>
                   <h4 className="font-semibold mb-2 text-sm">Chancen</h4>
                   <ul className="list-disc list-inside text-sm text-muted-foreground">
-                    {((aiSummary as any).opportunities as string[]).map((o, i) => <li key={i}>{o}</li>)}
+                    {ai.opportunities.map((o, i) => <li key={i}>{o}</li>)}
                   </ul>
                 </div>
               )}
