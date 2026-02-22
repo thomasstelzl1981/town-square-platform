@@ -13,6 +13,7 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { useDocumentMeta } from '@/hooks/useDocumentMeta';
 import { WebsitePinGate } from '@/components/zone3/WebsitePinGate';
+import { useZone3Setting } from '@/hooks/useZone3Settings';
 import '@/styles/futureroom-premium.css';
 
 export default function FutureRoomLayout() {
@@ -22,6 +23,8 @@ export default function FutureRoomLayout() {
   const [scrolled, setScrolled] = React.useState(false);
   const [user, setUser] = React.useState<any>(null);
   const [pinVerified, setPinVerified] = React.useState(() => sessionStorage.getItem('futureroom_pin_verified') === 'true');
+  const { data: pinGateValue, isLoading: pinGateLoading } = useZone3Setting('pin_gate_enabled');
+  const pinGateEnabled = pinGateValue === 'true';
 
   React.useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -50,7 +53,11 @@ export default function FutureRoomLayout() {
     ogType: 'website',
   });
 
-  if (!pinVerified) {
+  if (pinGateLoading) {
+    return <div className="min-h-screen flex items-center justify-center"><div className="h-6 w-6 border-2 border-current border-t-transparent rounded-full animate-spin" /></div>;
+  }
+
+  if (pinGateEnabled && !pinVerified) {
     return <WebsitePinGate brandName="FutureRoom" sessionKey="futureroom_pin_verified" onVerified={() => setPinVerified(true)} />;
   }
 

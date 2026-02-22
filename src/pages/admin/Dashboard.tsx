@@ -5,8 +5,10 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Building2, Users, Link2, Shield, ExternalLink, Download, Loader2, FileArchive, Rocket } from 'lucide-react';
+import { Building2, Users, Link2, Shield, ExternalLink, Download, Loader2, FileArchive, Rocket, Globe } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 import { DESIGN } from '@/config/designManifest';
+import { useZone3Setting, useUpdateZone3Setting } from '@/hooks/useZone3Settings';
 import { PdfExportFooter } from '@/components/pdf';
 import { toast } from 'sonner';
 interface Stats {
@@ -145,12 +147,55 @@ export default function Dashboard() {
 
   const contentRef = useRef<HTMLDivElement>(null);
 
+  const PinGateCard = () => {
+    const { data: pinGateValue, isLoading: pinLoading } = useZone3Setting('pin_gate_enabled');
+    const updateSetting = useUpdateZone3Setting();
+    const pinEnabled = pinGateValue === 'true';
+
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Globe className="h-5 w-5" />
+            Website-Einstellungen
+          </CardTitle>
+          <CardDescription>Zentrale Steuerung für alle Brand-Websites (Zone 3)</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium">PIN-Gate</span>
+                <Badge variant={pinEnabled ? 'default' : 'secondary'}>
+                  {pinEnabled ? 'Aktiv' : 'Deaktiviert'}
+                </Badge>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Zugangscode 2710 für alle 5 Brand-Websites (SoT, Kaufy, FutureRoom, Acquiary, Lennox)
+              </p>
+            </div>
+            <Switch
+              checked={pinEnabled}
+              disabled={pinLoading || updateSetting.isPending}
+              onCheckedChange={(checked) => {
+                updateSetting.mutate({ key: 'pin_gate_enabled', value: checked ? 'true' : 'false' });
+              }}
+            />
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+
   return (
     <div className={DESIGN.SPACING.SECTION} ref={contentRef}>
       <div>
         <h2 className={DESIGN.TYPOGRAPHY.PAGE_TITLE}>Dashboard</h2>
         <p className={DESIGN.TYPOGRAPHY.MUTED}>Welcome to the System of a Town Admin Portal</p>
       </div>
+
+      {/* Website Settings – PIN Gate Toggle */}
+      <PinGateCard />
 
       {/* Quick Actions */}
       <Card>
@@ -238,7 +283,7 @@ export default function Dashboard() {
                 Kaufy Preview (Published)
               </Button>
               <p className="text-xs text-muted-foreground mt-2">
-                PIN-geschützt (Code: 4409) – öffnet in neuem Tab
+                PIN-geschützt (Code: 2710) – öffnet in neuem Tab
               </p>
             </div>
           )}

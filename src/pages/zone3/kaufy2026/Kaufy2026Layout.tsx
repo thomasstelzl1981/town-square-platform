@@ -13,6 +13,7 @@ import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { KaufyArmstrongWidget } from '@/components/zone3/kaufy2026/KaufyArmstrongWidget';
 import { WebsitePinGate } from '@/components/zone3/WebsitePinGate';
+import { useZone3Setting } from '@/hooks/useZone3Settings';
 import { useDocumentMeta } from '@/hooks/useDocumentMeta';
 
 const ARMSTRONG_STORAGE_KEY = 'kaufy_armstrong_enabled';
@@ -21,6 +22,8 @@ export default function Kaufy2026Layout() {
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [pinVerified, setPinVerified] = useState(() => sessionStorage.getItem('kaufy_pin_verified') === 'true');
+  const { data: pinGateValue, isLoading: pinGateLoading } = useZone3Setting('pin_gate_enabled');
+  const pinGateEnabled = pinGateValue === 'true';
   
   // Armstrong toggle — default ON, persisted in localStorage
   const [armstrongEnabled, setArmstrongEnabled] = useState(() => {
@@ -38,7 +41,11 @@ export default function Kaufy2026Layout() {
     ogType: 'website',
   });
 
-  if (!pinVerified) {
+  if (pinGateLoading) {
+    return <div className="min-h-screen flex items-center justify-center"><div className="h-6 w-6 border-2 border-current border-t-transparent rounded-full animate-spin" /></div>;
+  }
+
+  if (pinGateEnabled && !pinVerified) {
     return <WebsitePinGate brandName="KAUFY" sessionKey="kaufy_pin_verified" onVerified={() => setPinVerified(true)} />;
   }
 

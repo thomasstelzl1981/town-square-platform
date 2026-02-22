@@ -7,6 +7,7 @@ import { useState } from 'react';
 import { useZ3Auth } from '@/hooks/useZ3Auth';
 import { LENNOX as C } from './lennoxTheme';
 import { WebsitePinGate } from '@/components/zone3/WebsitePinGate';
+import { useZone3Setting } from '@/hooks/useZone3Settings';
 import lennoxPatch from '@/assets/logos/lennox_logo_patch.jpeg';
 
 const navLinks = [
@@ -20,10 +21,16 @@ export default function LennoxLayout() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [pinVerified, setPinVerified] = useState(() => sessionStorage.getItem('lennox_pin_verified') === 'true');
   const { z3User } = useZ3Auth();
+  const { data: pinGateValue, isLoading: pinGateLoading } = useZone3Setting('pin_gate_enabled');
+  const pinGateEnabled = pinGateValue === 'true';
 
   const isActive = (path: string) => location.pathname === path || location.pathname.startsWith(path + '/');
 
-  if (!pinVerified) {
+  if (pinGateLoading) {
+    return <div className="min-h-screen flex items-center justify-center"><div className="h-6 w-6 border-2 border-current border-t-transparent rounded-full animate-spin" /></div>;
+  }
+
+  if (pinGateEnabled && !pinVerified) {
     return <WebsitePinGate brandName="Lennox & Friends" sessionKey="lennox_pin_verified" onVerified={() => setPinVerified(true)} />;
   }
 

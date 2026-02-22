@@ -11,6 +11,7 @@ import { useDocumentMeta } from '@/hooks/useDocumentMeta';
 import { cn } from '@/lib/utils';
 import { Sun, Moon, User, Menu, X } from 'lucide-react';
 import { WebsitePinGate } from '@/components/zone3/WebsitePinGate';
+import { useZone3Setting } from '@/hooks/useZone3Settings';
 import '@/styles/zone3-theme.css';
 import '@/styles/sot-premium.css';
 
@@ -28,14 +29,19 @@ export default function SotLayout() {
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [pinVerified, setPinVerified] = useState(() => sessionStorage.getItem('sot_pin_verified') === 'true');
-
+  const { data: pinGateValue, isLoading: pinGateLoading } = useZone3Setting('pin_gate_enabled');
+  const pinGateEnabled = pinGateValue === 'true';
   useDocumentMeta({
     title: 'System of a Town — Digitalisierung greifbar machen. Für Unternehmer und Vermieter.',
     description: 'Chaos beseitigen. Struktur schaffen. KI nutzen. 15+ Module für Immobilien, Finanzen, Fuhrpark, Dokumente und mehr — ohne große Investitionen.',
     ogType: 'website',
   });
 
-  if (!pinVerified) {
+  if (pinGateLoading) {
+    return <div className="min-h-screen flex items-center justify-center"><div className="h-6 w-6 border-2 border-current border-t-transparent rounded-full animate-spin" /></div>;
+  }
+
+  if (pinGateEnabled && !pinVerified) {
     return <WebsitePinGate brandName="System of a Town" sessionKey="sot_pin_verified" onVerified={() => setPinVerified(true)} />;
   }
 

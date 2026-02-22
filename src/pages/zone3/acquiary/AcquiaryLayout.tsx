@@ -7,6 +7,7 @@ import { Outlet, Link, useLocation } from 'react-router-dom';
 import { Menu, X, ChevronRight, Shield, Sparkles, Lock } from 'lucide-react';
 import { useDocumentMeta } from '@/hooks/useDocumentMeta';
 import { WebsitePinGate } from '@/components/zone3/WebsitePinGate';
+import { useZone3Setting } from '@/hooks/useZone3Settings';
 import '@/styles/acquiary-premium.css';
 
 const navItems = [
@@ -20,6 +21,8 @@ export default function AcquiaryLayout() {
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
   const [scrolled, setScrolled] = React.useState(false);
   const [pinVerified, setPinVerified] = React.useState(() => sessionStorage.getItem('acquiary_pin_verified') === 'true');
+  const { data: pinGateValue, isLoading: pinGateLoading } = useZone3Setting('pin_gate_enabled');
+  const pinGateEnabled = pinGateValue === 'true';
 
   React.useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
@@ -33,7 +36,11 @@ export default function AcquiaryLayout() {
     ogType: 'website',
   });
 
-  if (!pinVerified) {
+  if (pinGateLoading) {
+    return <div className="min-h-screen flex items-center justify-center"><div className="h-6 w-6 border-2 border-current border-t-transparent rounded-full animate-spin" /></div>;
+  }
+
+  if (pinGateEnabled && !pinVerified) {
     return <WebsitePinGate brandName="Acquiary" sessionKey="acquiary_pin_verified" onVerified={() => setPinVerified(true)} />;
   }
 
