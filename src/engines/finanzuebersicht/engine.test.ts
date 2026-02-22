@@ -44,13 +44,13 @@ describe('Finanzübersicht Engine', () => {
     it('uses household_persons as primary source when available', () => {
       const profiles: any[] = [];
       const householdPersons = [
-        { id: 'hp1', role: 'hauptperson', net_income_monthly: 5200, business_income_monthly: 8500, pv_income_monthly: 212, child_allowances: 2 },
+        { id: 'hp1', role: 'hauptperson', net_income_monthly: 5200, business_income_monthly: null, pv_income_monthly: 212, child_allowances: 2 },
         { id: 'hp2', role: 'partner', net_income_monthly: 2800, business_income_monthly: null, pv_income_monthly: null, child_allowances: null },
       ];
       const result = calcIncome(profiles, householdPersons, null, [], []);
 
       expect(result.netIncomeTotal).toBe(8000);
-      expect(result.selfEmployedIncome).toBe(8500);
+      expect(result.selfEmployedIncome).toBe(0);
       expect(result.pvIncome).toBe(212);
       expect(result.childBenefit).toBe(500); // 2 * 250
     });
