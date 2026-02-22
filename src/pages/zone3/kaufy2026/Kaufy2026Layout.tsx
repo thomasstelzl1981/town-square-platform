@@ -12,7 +12,7 @@ import { Menu, X, Sparkles } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { KaufyArmstrongWidget } from '@/components/zone3/kaufy2026/KaufyArmstrongWidget';
-import { KaufyPinGate } from '@/components/zone3/kaufy2026/KaufyPinGate';
+import { WebsitePinGate } from '@/components/zone3/WebsitePinGate';
 import { useDocumentMeta } from '@/hooks/useDocumentMeta';
 
 const ARMSTRONG_STORAGE_KEY = 'kaufy_armstrong_enabled';
@@ -20,9 +20,7 @@ const ARMSTRONG_STORAGE_KEY = 'kaufy_armstrong_enabled';
 export default function Kaufy2026Layout() {
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  // PinGate: nur aktiv wenn VITE_KAUFY_PIN_GATE=true (Default: deaktiviert für Production)
-  const pinGateEnabled = import.meta.env.VITE_KAUFY_PIN_GATE === 'true';
-  const [pinVerified, setPinVerified] = useState(() => !pinGateEnabled || sessionStorage.getItem('kaufy_pin_verified') === 'true');
+  const [pinVerified, setPinVerified] = useState(() => sessionStorage.getItem('kaufy_pin_verified') === 'true');
   
   // Armstrong toggle — default ON, persisted in localStorage
   const [armstrongEnabled, setArmstrongEnabled] = useState(() => {
@@ -41,7 +39,7 @@ export default function Kaufy2026Layout() {
   });
 
   if (!pinVerified) {
-    return <KaufyPinGate onVerified={() => setPinVerified(true)} />;
+    return <WebsitePinGate brandName="KAUFY" sessionKey="kaufy_pin_verified" onVerified={() => setPinVerified(true)} />;
   }
 
   const navLinks = [
