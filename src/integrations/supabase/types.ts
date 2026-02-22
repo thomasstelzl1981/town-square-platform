@@ -544,6 +544,7 @@ export type Database = {
           notes: string | null
           postal_code: string | null
           price_asking: number | null
+          price_counter: number | null
           provider_contact: string | null
           provider_name: string | null
           received_at: string | null
@@ -577,6 +578,7 @@ export type Database = {
           notes?: string | null
           postal_code?: string | null
           price_asking?: number | null
+          price_counter?: number | null
           provider_contact?: string | null
           provider_name?: string | null
           received_at?: string | null
@@ -610,6 +612,7 @@ export type Database = {
           notes?: string | null
           postal_code?: string | null
           price_asking?: number | null
+          price_counter?: number | null
           provider_contact?: string | null
           provider_name?: string | null
           received_at?: string | null
