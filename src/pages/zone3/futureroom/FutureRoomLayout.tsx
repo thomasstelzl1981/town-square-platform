@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useDocumentMeta } from '@/hooks/useDocumentMeta';
+import { WebsitePinGate } from '@/components/zone3/WebsitePinGate';
 import '@/styles/futureroom-premium.css';
 
 export default function FutureRoomLayout() {
@@ -20,6 +21,7 @@ export default function FutureRoomLayout() {
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
   const [scrolled, setScrolled] = React.useState(false);
   const [user, setUser] = React.useState<any>(null);
+  const [pinVerified, setPinVerified] = React.useState(() => sessionStorage.getItem('futureroom_pin_verified') === 'true');
 
   React.useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -47,6 +49,10 @@ export default function FutureRoomLayout() {
     description: 'KI-gestützte Finanzierungsorchestrierung: Vom Bonitätscheck bis zur Auszahlung. Über 400 Bankpartner, digitaler Datenraum und persönliche Betreuung.',
     ogType: 'website',
   });
+
+  if (!pinVerified) {
+    return <WebsitePinGate brandName="FutureRoom" sessionKey="futureroom_pin_verified" onVerified={() => setPinVerified(true)} />;
+  }
 
   const navItems = [
     { label: 'Start', href: '/website/futureroom', icon: Home, show: true },

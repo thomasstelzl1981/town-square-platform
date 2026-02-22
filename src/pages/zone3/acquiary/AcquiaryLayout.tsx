@@ -6,6 +6,7 @@ import * as React from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { Menu, X, ChevronRight, Shield, Sparkles, Lock } from 'lucide-react';
 import { useDocumentMeta } from '@/hooks/useDocumentMeta';
+import { WebsitePinGate } from '@/components/zone3/WebsitePinGate';
 import '@/styles/acquiary-premium.css';
 
 const navItems = [
@@ -18,6 +19,7 @@ export default function AcquiaryLayout() {
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
   const [scrolled, setScrolled] = React.useState(false);
+  const [pinVerified, setPinVerified] = React.useState(() => sessionStorage.getItem('acquiary_pin_verified') === 'true');
 
   React.useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
@@ -30,6 +32,10 @@ export default function AcquiaryLayout() {
     description: 'Diskrete, KI-gestützte Akquise-Plattform für institutionelle Immobilienankäufe. Methodik, Netzwerk und Deal-Sourcing auf höchstem Niveau.',
     ogType: 'website',
   });
+
+  if (!pinVerified) {
+    return <WebsitePinGate brandName="Acquiary" sessionKey="acquiary_pin_verified" onVerified={() => setPinVerified(true)} />;
+  }
 
   return (
     <div className="acquiary-page">

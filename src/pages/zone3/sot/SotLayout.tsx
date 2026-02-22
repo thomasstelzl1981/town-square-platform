@@ -10,6 +10,7 @@ import { useSotTheme } from '@/hooks/useSotTheme';
 import { useDocumentMeta } from '@/hooks/useDocumentMeta';
 import { cn } from '@/lib/utils';
 import { Sun, Moon, User, Menu, X } from 'lucide-react';
+import { WebsitePinGate } from '@/components/zone3/WebsitePinGate';
 import '@/styles/zone3-theme.css';
 import '@/styles/sot-premium.css';
 
@@ -26,12 +27,17 @@ export default function SotLayout() {
   const { themeClass, isDark, toggleTheme } = useSotTheme();
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [pinVerified, setPinVerified] = useState(() => sessionStorage.getItem('sot_pin_verified') === 'true');
 
   useDocumentMeta({
     title: 'System of a Town — Digitalisierung greifbar machen. Für Unternehmer und Vermieter.',
     description: 'Chaos beseitigen. Struktur schaffen. KI nutzen. 15+ Module für Immobilien, Finanzen, Fuhrpark, Dokumente und mehr — ohne große Investitionen.',
     ogType: 'website',
   });
+
+  if (!pinVerified) {
+    return <WebsitePinGate brandName="System of a Town" sessionKey="sot_pin_verified" onVerified={() => setPinVerified(true)} />;
+  }
 
   return (
     <SotLoginTransition>

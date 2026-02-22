@@ -6,6 +6,7 @@ import { Menu, X, User, LogIn, ShoppingBag, Handshake, MapPin } from 'lucide-rea
 import { useState } from 'react';
 import { useZ3Auth } from '@/hooks/useZ3Auth';
 import { LENNOX as C } from './lennoxTheme';
+import { WebsitePinGate } from '@/components/zone3/WebsitePinGate';
 import lennoxPatch from '@/assets/logos/lennox_logo_patch.jpeg';
 
 const navLinks = [
@@ -17,9 +18,14 @@ const navLinks = [
 export default function LennoxLayout() {
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [pinVerified, setPinVerified] = useState(() => sessionStorage.getItem('lennox_pin_verified') === 'true');
   const { z3User } = useZ3Auth();
 
   const isActive = (path: string) => location.pathname === path || location.pathname.startsWith(path + '/');
+
+  if (!pinVerified) {
+    return <WebsitePinGate brandName="Lennox & Friends" sessionKey="lennox_pin_verified" onVerified={() => setPinVerified(true)} />;
+  }
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: C.cream }}>
