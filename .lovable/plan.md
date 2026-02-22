@@ -1,103 +1,49 @@
 
-## Kaufy Website -- Tiefenanalyse und Redesign-Plan
 
-### Befund: Aktuelle Probleme
+## Lennox & Friends -- Design-Konsistenz wiederherstellen
 
-**1. Tote Links im Footer (11 von 15 sind tot oder Dummy)**
+### Befund (aus den Screenshots)
 
-| Link | Aktuell | Status |
-|------|---------|--------|
-| Uberblick | `/website/kaufy` (Homepage) | Dummy |
-| Funktionen | `/website/kaufy` | Dummy |
-| Immo-Wallet | `/website/kaufy` | Dummy |
-| Vertriebstools | `/website/kaufy` | Dummy |
-| Automationen | `/website/kaufy` | Dummy |
-| Fur Investoren | `/website/kaufy` | Dummy |
-| Demo anfragen | `href="#"` | Tot |
-| Uber kaufy | `href="#"` | Tot |
-| Kontakt | `href="#"` | Tot |
-| Karriere | `href="#"` | Tot |
-| Partner | `href="#"` | Tot |
-| Presse | `href="#"` | Tot |
-| Fur Vermieter | `/website/kaufy/vermieter` | OK |
-| Fur Anbieter | `/website/kaufy/verkaeufer` | OK |
-| Fur Vertriebspartner | `/website/kaufy/vertrieb` | OK |
+1. **Startseite Hero zu hoch**: Mit `minHeight: 85vh` nimmt das Hero-Bild den gesamten Bildschirm ein. Die Suchleiste und der Shop-Bereich darunter sind im Vollbildmodus nicht sichtbar.
 
-**2. Visuell inkonsistente Unterseiten**
-- Startseite: Cinematic Hero mit Bild, Search Bar, hochwertig
-- Vermieter: Hat ein Hero-Bild, aber anderer Stil (dunklerer Overlay, anderes Layout)
-- Verkaufer: Kein Hero-Bild, nur Text-Hero mit Badge
-- Partner: Kein Hero-Bild, nur Text-Hero
-- Kein einheitliches Design-Pattern uber alle Unterseiten
+2. **Shop-Seite ohne Bild**: Der Shop-Hero zeigt nur einen dunkelgruenen Hintergrund mit einem blassen Shopping-Icon. Frueher war hier ein schoenes generiertes Bild. Hoehe ebenfalls inkonsistent (`60vh`).
 
-**3. Placeholder-Inhalte**
-- PerspektivenAkkordeon zeigt "Dashboard-Vorschau" Platzhalter statt eines echten Bildes
-- Doppelte Uberschrift "Eine Plattform. Drei Perspektiven." in PerspektivenKarten UND PerspektivenAkkordeon
+3. **Partner-werden Hero**: Hat zwar ein Bild (`partner_hero.jpg`), aber mit `70vh` ebenfalls zu hoch und nicht konsistent mit den anderen Seiten.
 
-**4. DEMO_PROJECT Hardcoded Data**
-- In `Kaufy2026Verkaeufer.tsx` (Zeilen 31-46): Hardcodiertes Demo-Projekt-Objekt. Dies ist ein Verstoss gegen die Demo Data Governance Regel, sollte aber als UI-Beispiel (Storybook-Style) fur eine Vorschau akzeptiert werden, da es nicht mit einer Business-Entity verbunden ist.
+### Loesung
 
----
+#### A. Einheitliche Hero-Hoehe auf allen Seiten
 
-### Redesign-Konzept
+Alle Hero-Sections werden auf eine einheitliche Hoehe von **50vh** gesetzt (statt 85vh, 70vh, 60vh). Das sorgt dafuer, dass im Vollbildmodus immer der naechste Inhalt (Suchleiste, Produkte, Formular) sichtbar ist.
 
-**Design-Prinzip:** Alle Unterseiten orientieren sich an der Startseite -- clean, helle Flachen, abgerundete Container, konsistente Typografie, Sky-Blue Akzente auf fast-weissem Hintergrund.
+| Seite | Vorher | Nachher |
+|-------|--------|---------|
+| Startseite | 85vh | 50vh |
+| Shop | 60vh | 50vh |
+| Partner werden | 70vh | 50vh |
 
-#### A. Footer komplett uberarbeiten
+#### B. Shop-Hero: Bild hinzufuegen
 
-Statt 15 Links (11 davon tot) auf **8 sinnvolle Links** reduzieren:
+Ein neues Hero-Bild fuer den Shop wird benoetigt. Da kein Shop-Bild mehr in `src/assets/lennox/` vorhanden ist, wird ein passendes Bild mit dem bestehenden `section_cozy.jpg` als Hintergrund verwendet (gemuetliches Hunde-Ambiente passt zum Shop-Kontext). Alternativ kann ein neues Bild generiert werden.
 
-| Spalte | Links | Ziel |
-|--------|-------|------|
-| KAUFY (Logo + Claim) | -- | Branding |
-| Plattform | Investment-Suche, Fur Vermieter, Fur Anbieter, Fur Partner | Bestehende Seiten |
-| Rechtliches | Impressum, Datenschutz | Bestehende Seiten |
-| Kontakt | E-Mail-Link, Registrieren-CTA | Sinnvolle Aktion |
+Der Shop-Hero wird vom reinen Gradient-Hintergrund auf ein Bild mit Overlay umgestellt -- analog zur Startseite und Partner-Seite.
 
-Alle `href="#"` Links und Dummy-Wiederholungen werden entfernt.
+#### C. Konsistentes Hero-Pattern
 
-#### B. Unterseiten visuell vereinheitlichen
-
-Alle drei Unterseiten (Vermieter, Verkaufer, Partner) bekommen ein einheitliches Hero-Pattern:
-- Text-basierter Hero (wie Verkaufer aktuell, aber besser)
-- Konsistentes Layout: Badge oben, grosse Headline, Beschreibung, CTA-Button
-- Gleiche Padding/Spacing-Werte
-- Gleiche Farbpalette (kein separates Hero-Bild noetig -- sauberer, homogener Look)
-
-Die Vermieter-Seite wird vom Bild-Hero auf den gleichen Text-Hero umgestellt wie die anderen Seiten, damit alles einheitlich aussieht.
-
-#### C. PerspektivenAkkordeon verbessern
-
-- Den SVG-Placeholder durch ein existierendes Asset (`perspektiven.png`) ersetzen
-- Die doppelte Uberschrift entfernen -- PerspektivenKarten behalten den Titel, PerspektivenAkkordeon bekommt einen neuen: "Was KAUFY fur Sie tut"
-
-#### D. Search Engine pruefen
-
-Die Investment-Suche (Kaufy2026SearchBar + Kaufy2026Home) nutzt korrekt:
-- `useInvestmentEngine` Hook
-- `sot-investment-engine` Edge Function
-- Demo-Listings via `useDemoListings`
-
-Die Search Engine funktioniert korrekt und ist an die aktuelle Engine-Architektur angebunden.
-
-#### E. Magic Intake pruefen
-
-Der Magic Intake auf der Verkaufer-Seite nutzt:
-- `sot-public-project-intake` Edge Function (existiert)
-- Storage-First-Pattern uber `public-intake` Bucket
-- 6-Schritt-Wizard: Upload, Analyse, Review, Kontakt, Vertrag, Submit
-
-Die Architektur ist korrekt. Die Edge Function existiert und ist deployed.
+Alle drei Unterseiten bekommen das gleiche Hero-Muster:
+- Bild als Hintergrund (object-cover)
+- Gradient-Overlay (from-black/30 via-black/10 to-black/50)
+- Zentrierter weisser Text
+- Gleiche Hoehe (50vh)
 
 ---
 
-### Technischer Plan
+### Technische Aenderungen
 
-| Nr | Datei | Anderung |
-|----|-------|----------|
-| 1 | `src/pages/zone3/kaufy2026/Kaufy2026Layout.tsx` | Footer komplett ueberarbeiten: 8 sinnvolle Links statt 15 tote |
-| 2 | `src/pages/zone3/kaufy2026/Kaufy2026Vermieter.tsx` | Hero-Bild entfernen, einheitlichen Text-Hero wie Verkaufer/Partner |
-| 3 | `src/components/zone3/kaufy2026/PerspektivenAkkordeon.tsx` | Uberschrift andern, Placeholder durch `perspektiven.png` ersetzen |
-| 4 | `src/components/zone3/kaufy2026/PerspektivenKarten.tsx` | Keine Aenderung (bleibt Referenz-Design) |
+| Nr | Datei | Aenderung |
+|----|-------|-----------|
+| 1 | `src/pages/zone3/lennox/LennoxStartseite.tsx` | Hero `minHeight` von `85vh` auf `50vh` (2 Stellen: Container + Flex) |
+| 2 | `src/pages/zone3/lennox/LennoxShop.tsx` | Hero `minHeight` von `60vh` auf `50vh`, Gradient-Hintergrund durch Bild ersetzen (`section_cozy.jpg`), Overlay hinzufuegen |
+| 3 | `src/pages/zone3/lennox/LennoxPartnerWerden.tsx` | Hero `minHeight` von `70vh` auf `50vh` (2 Stellen) |
 
-**Keine neuen Dateien noetig.** Alle Aenderungen sind innerhalb bestehender Zone-3-Dateien, die NICHT unter das Modul-Freeze-System fallen (Zone 3 ist kein Portal-Modul).
+Alle Dateien sind Zone-3-Dateien und nicht vom Modul-Freeze betroffen.
