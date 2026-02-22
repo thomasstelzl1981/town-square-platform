@@ -3,6 +3,9 @@
  * 
  * Lightweight chat widget for public websites (KAUFY, MIETY, SoT, FutureRoom).
  * Limited to FAQ, public knowledge, and lead capture — no tenant data access.
+ * 
+ * Mobile: Fixed InputBar at bottom + Drawer (Bottom-Sheet) for chat
+ * Desktop: Floating bubble + panel (unchanged)
  */
 import * as React from "react";
 import { cn } from "@/lib/utils";
@@ -10,6 +13,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
+import { Drawer, DrawerContent } from "@/components/ui/drawer";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { 
   MessageCircle, 
   X, 
@@ -18,7 +23,8 @@ import {
   Bot,
   Calculator,
   HelpCircle,
-  Mail
+  Mail,
+  ArrowUp
 } from "lucide-react";
 
 export type WebsiteBrand = 'kaufy' | 'miety' | 'sot' | 'futureroom';
@@ -96,6 +102,7 @@ export const ArmstrongWidget: React.FC<ArmstrongWidgetProps> = ({
   className,
   onLeadCapture,
 }) => {
+  const isMobile = useIsMobile();
   const [isOpen, setIsOpen] = React.useState(false);
   const [messages, setMessages] = React.useState<ChatMessage[]>([]);
   const [input, setInput] = React.useState("");
@@ -139,7 +146,6 @@ export const ArmstrongWidget: React.FC<ArmstrongWidgetProps> = ({
     setIsLoading(true);
 
     try {
-      // Call Armstrong API in Zone 3 mode
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sot-armstrong-advisor`, {
         method: 'POST',
         headers: {
@@ -159,20 +165,16 @@ export const ArmstrongWidget: React.FC<ArmstrongWidgetProps> = ({
         }),
       });
 
-      if (!response.ok) {
-        throw new Error('API request failed');
-      }
+      if (!response.ok) throw new Error('API request failed');
 
       const data = await response.json();
       
-      const assistantMessage: ChatMessage = {
+      setMessages(prev => [...prev, {
         id: crypto.randomUUID(),
         role: 'assistant',
         content: data.message || "Entschuldigung, ich konnte Ihre Anfrage nicht verarbeiten.",
         timestamp: new Date(),
-      };
-
-      setMessages(prev => [...prev, assistantMessage]);
+      }]);
     } catch (error) {
       console.error('Armstrong Widget error:', error);
       setMessages(prev => [...prev, {
@@ -188,7 +190,6 @@ export const ArmstrongWidget: React.FC<ArmstrongWidgetProps> = ({
 
   const handleQuickAction = (action: QuickAction) => {
     setInput(action.label);
-    // Could also directly trigger the action here
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -198,40 +199,13 @@ export const ArmstrongWidget: React.FC<ArmstrongWidgetProps> = ({
     }
   };
 
-  // Minimized state - floating bubble
-  if (!isOpen) {
-    return (
-      <button
-        onClick={() => setIsOpen(true)}
-        className={cn(
-          "fixed bottom-5 right-5 z-50",
-          "flex items-center gap-2 px-4 py-3 rounded-full",
-          "bg-primary text-primary-foreground shadow-elevated",
-          "hover:scale-105 transition-transform duration-200",
-          "animate-in slide-in-from-bottom-4 fade-in duration-300",
-          className
-        )}
-      >
-        <MessageCircle className="h-5 w-5" />
-        <span className="text-sm font-medium">Fragen?</span>
-      </button>
-    );
-  }
-
-  // Expanded state - chat panel
-  return (
-    <div
-      className={cn(
-        "fixed bottom-5 right-5 z-50",
-        "w-[350px] h-[450px] max-h-[80vh]",
-        "flex flex-col",
-        "bg-background border rounded-xl shadow-elevated",
-        "animate-in slide-in-from-bottom-4 fade-in duration-300",
-        className
-      )}
-    >
+  // ========================================================================
+  // CHAT CONTENT (shared between Desktop panel and Mobile drawer)
+  // ========================================================================
+  const chatContent = (
+    <>
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b bg-primary/5 rounded-t-xl">
+      <div className="flex items-center justify-between px-4 py-3 border-b bg-primary/5 rounded-t-xl shrink-0">
         <div className="flex items-center gap-2">
           <div className="flex items-center justify-center h-8 w-8 rounded-full bg-primary/10">
             <Bot className="h-4 w-4 text-primary" />
@@ -244,24 +218,16 @@ export const ArmstrongWidget: React.FC<ArmstrongWidgetProps> = ({
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-1">
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className="h-8 w-8 p-0" 
-            onClick={() => setIsOpen(false)}
-          >
-            <Minimize2 className="h-4 w-4" />
-          </Button>
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className="h-8 w-8 p-0" 
-            onClick={() => setIsOpen(false)}
-          >
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
+        {!isMobile && (
+          <div className="flex items-center gap-1">
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => setIsOpen(false)}>
+              <Minimize2 className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => setIsOpen(false)}>
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Messages */}
@@ -270,31 +236,22 @@ export const ArmstrongWidget: React.FC<ArmstrongWidgetProps> = ({
           {messages.map((message) => (
             <div
               key={message.id}
-              className={cn(
-                "flex gap-2",
-                message.role === "user" && "flex-row-reverse"
-              )}
+              className={cn("flex gap-2", message.role === "user" && "flex-row-reverse")}
             >
-              <div
-                className={cn(
-                  "flex items-center justify-center h-6 w-6 rounded-full shrink-0",
-                  message.role === "assistant" ? "bg-primary/10" : "bg-muted"
-                )}
-              >
+              <div className={cn(
+                "flex items-center justify-center h-6 w-6 rounded-full shrink-0",
+                message.role === "assistant" ? "bg-primary/10" : "bg-muted"
+              )}>
                 {message.role === "assistant" ? (
                   <Bot className="h-3 w-3 text-primary" />
                 ) : (
                   <span className="text-xs font-medium">Sie</span>
                 )}
               </div>
-              <div
-                className={cn(
-                  "rounded-lg px-3 py-2 text-sm max-w-[80%]",
-                  message.role === "assistant"
-                    ? "bg-muted"
-                    : "bg-primary text-primary-foreground"
-                )}
-              >
+              <div className={cn(
+                "rounded-lg px-3 py-2 text-sm max-w-[80%]",
+                message.role === "assistant" ? "bg-muted" : "bg-primary text-primary-foreground"
+              )}>
                 {message.content}
               </div>
             </div>
@@ -315,7 +272,7 @@ export const ArmstrongWidget: React.FC<ArmstrongWidgetProps> = ({
 
       {/* Quick Actions */}
       {messages.length <= 1 && (
-        <div className="px-4 py-2 border-t">
+        <div className="px-4 py-2 border-t shrink-0">
           <p className="text-xs text-muted-foreground mb-2">Schnellaktionen:</p>
           <div className="flex flex-wrap gap-1">
             {config.quickActions.map((action) => (
@@ -334,7 +291,7 @@ export const ArmstrongWidget: React.FC<ArmstrongWidgetProps> = ({
       )}
 
       {/* Input */}
-      <div className="p-3 border-t">
+      <div className="p-3 border-t shrink-0">
         <div className="flex items-center gap-2">
           <Input
             value={input}
@@ -357,6 +314,81 @@ export const ArmstrongWidget: React.FC<ArmstrongWidgetProps> = ({
           Powered by Armstrong • Datenschutz beachten
         </p>
       </div>
+    </>
+  );
+
+  // ========================================================================
+  // MOBILE: InputBar + Drawer
+  // ========================================================================
+  if (isMobile) {
+    return (
+      <>
+        {/* Fixed InputBar at bottom */}
+        {!isOpen && (
+          <div 
+            className="fixed bottom-0 left-0 right-0 z-40 border-t backdrop-blur-md bg-background/95"
+            style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+          >
+            <button
+              onClick={() => setIsOpen(true)}
+              className="w-full h-12 flex items-center gap-3 px-4 text-left transition-colors hover:bg-accent/50 active:bg-accent active:scale-[0.99]"
+              aria-label="Armstrong öffnen"
+            >
+              <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                <Bot className="h-4 w-4 text-primary" />
+              </div>
+              <span className="flex-1 text-sm text-muted-foreground">
+                Frag Armstrong...
+              </span>
+              <ArrowUp className="h-4 w-4 text-muted-foreground" />
+            </button>
+          </div>
+        )}
+
+        {/* Bottom-Sheet Drawer */}
+        <Drawer open={isOpen} onOpenChange={setIsOpen}>
+          <DrawerContent className="h-[50vh] max-h-[50vh] flex flex-col">
+            {chatContent}
+          </DrawerContent>
+        </Drawer>
+      </>
+    );
+  }
+
+  // ========================================================================
+  // DESKTOP: Floating bubble + panel (unchanged)
+  // ========================================================================
+  if (!isOpen) {
+    return (
+      <button
+        onClick={() => setIsOpen(true)}
+        className={cn(
+          "fixed bottom-5 right-5 z-50",
+          "flex items-center gap-2 px-4 py-3 rounded-full",
+          "bg-primary text-primary-foreground shadow-elevated",
+          "hover:scale-105 transition-transform duration-200",
+          "animate-in slide-in-from-bottom-4 fade-in duration-300",
+          className
+        )}
+      >
+        <MessageCircle className="h-5 w-5" />
+        <span className="text-sm font-medium">Fragen?</span>
+      </button>
+    );
+  }
+
+  return (
+    <div
+      className={cn(
+        "fixed bottom-5 right-5 z-50",
+        "w-[350px] h-[450px] max-h-[80vh]",
+        "flex flex-col",
+        "bg-background border rounded-xl shadow-elevated",
+        "animate-in slide-in-from-bottom-4 fade-in duration-300",
+        className
+      )}
+    >
+      {chatContent}
     </div>
   );
 };

@@ -13,6 +13,7 @@
  */
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { X, Send, Sparkles, ArrowRight, Volume2, VolumeX, Mic, Minus } from 'lucide-react';
+import { KaufyInputBar } from '@/components/zone3/kaufy/KaufyInputBar';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import ReactMarkdown from 'react-markdown';
@@ -268,13 +269,14 @@ export function KaufyArmstrongWidget({ enabled }: KaufyArmstrongWidgetProps) {
   // ========================================================================
 
   if (mode === 'orb') {
+    // Mobile: Show InputBar instead of Orb
+    if (isMobile) {
+      return <KaufyInputBar onOpen={() => setMode('expanded')} />;
+    }
+
+    // Desktop: Original Orb
     return (
-      <div
-        className={cn(
-          'fixed z-50',
-          isMobile ? 'bottom-5 right-5' : 'bottom-8 right-8'
-        )}
-      >
+      <div className="fixed z-50 bottom-8 right-8">
         {/* Voice status tooltip */}
         {(voice.isListening || voice.isProcessing || voice.isSpeaking || voice.error) && (
           <div className={cn(
@@ -309,7 +311,7 @@ export function KaufyArmstrongWidget({ enabled }: KaufyArmstrongWidgetProps) {
             'hover:scale-105 transition-all duration-300 ease-out',
             'flex items-center justify-center',
             'relative',
-            isMobile ? 'h-28 w-28' : 'h-36 w-36'
+            'h-36 w-36'
           )}
           onClick={() => setMode('expanded')}
         >
