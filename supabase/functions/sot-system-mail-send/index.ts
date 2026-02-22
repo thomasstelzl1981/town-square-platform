@@ -15,6 +15,7 @@ interface MailAttachment {
 
 interface SystemMailRequest {
   to: string | string[];
+  cc?: string | string[];
   subject: string;
   html?: string;
   text?: string;
@@ -61,7 +62,7 @@ serve(async (req) => {
     }
 
     const body: SystemMailRequest = await req.json();
-    const { to, subject, html, text, context, from_override, attachments } = body;
+    const { to, cc, subject, html, text, context, from_override, attachments } = body;
 
     if (!to || !subject) {
       throw new Error('Missing required fields: to, subject');
@@ -119,6 +120,7 @@ serve(async (req) => {
     if (html) resendBody.html = html;
     if (text) resendBody.text = text;
     if (replyTo) resendBody.reply_to = replyTo;
+    if (cc) resendBody.cc = Array.isArray(cc) ? cc : [cc];
     if (attachments && attachments.length > 0) {
       resendBody.attachments = attachments.map((a: MailAttachment) => ({
         filename: a.filename,
