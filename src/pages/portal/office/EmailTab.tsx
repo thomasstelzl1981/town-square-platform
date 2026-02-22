@@ -380,9 +380,9 @@ function EmailDetailPanel({
   const showRetryButton = bodyFetchError && retryCount >= maxRetries && !hasBody;
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full overflow-hidden">
       {/* Email Header with ALL action buttons */}
-      <div className="p-4 border-b space-y-3">
+      <div className="p-4 border-b space-y-3 shrink-0 overflow-hidden">
         <div className="flex items-start justify-between gap-2">
           <h2 className="text-lg font-semibold flex-1 min-w-0">{email.subject || '(Kein Betreff)'}</h2>
           <div className="flex items-center gap-1 flex-shrink-0">
@@ -821,7 +821,7 @@ export function EmailTab() {
       <Card className="glass-card flex-1 min-h-0 overflow-hidden mt-4">
         <div className="grid grid-cols-12 h-full">
         {/* Left Sidebar - Folders */}
-        <div className="col-span-2 border-r flex flex-col">
+        <div className="col-span-2 border-r flex flex-col overflow-hidden">
           <div className="p-3 border-b">
             <div className="flex items-center gap-2 mb-3">
               <div className="h-7 w-7 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -869,7 +869,7 @@ export function EmailTab() {
         </div>
 
         {/* Middle - Email List */}
-        <div className="col-span-4 border-r flex flex-col">
+        <div className="col-span-4 border-r flex flex-col overflow-hidden">
           <div className="p-3 border-b">
             <div className="flex items-center gap-2">
               <div className="relative flex-1">
