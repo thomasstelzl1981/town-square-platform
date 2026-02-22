@@ -270,23 +270,6 @@ export default function Dashboard() {
             </p>
           </div>
 
-          {/* Published Kaufy Preview Link */}
-          {isPlatformAdmin && (
-            <div className="pt-4 border-t">
-              <p className="text-sm font-medium mb-2">Published Preview</p>
-              <Button 
-                variant="outline" 
-                onClick={() => window.open(`${window.location.origin}/website/kaufy`, '_blank')}
-                className="gap-2"
-              >
-                <ExternalLink className="h-4 w-4" />
-                Kaufy Preview (Published)
-              </Button>
-              <p className="text-xs text-muted-foreground mt-2">
-                PIN-geschützt (Code: 2710) – öffnet in neuem Tab
-              </p>
-            </div>
-          )}
           {/* Documentation Export */}
           <div className="pt-4 border-t">
             <p className="text-sm font-medium mb-2">Dokumentation</p>
