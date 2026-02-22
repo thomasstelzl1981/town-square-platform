@@ -1,60 +1,62 @@
 
 
-## Fix: Demodaten — Doppelzaehlung bei Max Mustermann
+## Fix: Doppelte Investment-Depots in Demodaten entfernen
 
 ### Problem
 
-In `public/demo-data/demo_household_persons.csv` hat Max Mustermann:
+Im Investment-Tab werden 4 Kacheln angezeigt statt 2:
 
-| Feld | Wert | Bedeutung |
-|------|------|-----------|
-| `gross_income_monthly` | 8.500 | Brutto aus Selbstaendigkeit |
-| `net_income_monthly` | 5.200 | Netto aus Selbstaendigkeit |
-| `business_income_monthly` | 8.500 | **Identisch mit Brutto — FEHLER** |
+| Nr | Quelle | Tabelle | Person |
+|----|--------|---------|--------|
+| 1 | Vanguard ETF-Sparplan | `vorsorge_contracts` (category=investment) | Max |
+| 2 | DWS Fonds-Sparplan | `vorsorge_contracts` (category=investment) | Lisa |
+| 3 | ETF-Depot Scalable Capital | `finapi_depot_accounts` | Max |
+| 4 | Fonds-Depot DWS | `finapi_depot_accounts` | Lisa |
 
-Die Engine-Logik ist korrekt: `net_income_monthly` ist das Nettoeinkommen (Gehalt/Selbstaendigkeit), `business_income_monthly` ist ein **zusaetzliches** Geschaeftseinkommen (Nebengewerbe, Beteiligung, etc.). Beide werden addiert (Zeile 103 in engine.ts).
+Kacheln 1+2 (gruene Demo-Badges) sind die korrekten Demodaten aus der CSV.
+Kacheln 3+4 (ohne Demo-Badge, daher nicht gruen) sind Duplikate, die separat ueber `seedInvestmentDepots` in die `finapi_depot_accounts`-Tabelle geschrieben werden.
 
-Das Problem: Max ist rein selbstaendig. Seine 5.200 EUR netto kommen bereits aus seiner IT-Beratung. Die 8.500 EUR in `business_income_monthly` sind dasselbe wie sein Brutto — keine separate Einkommensquelle. Ergebnis: Doppelzaehlung von 8.500 EUR.
+Die `finapi_depot_accounts`-Tabelle ist fuer echte FinAPI-Bank-Anbindungen gedacht, nicht fuer Demo-Sparplaene. Die Demo-Investment-Daten gehoeren ausschliesslich in `vorsorge_contracts`.
 
 ### Loesung
 
-`business_income_monthly` fuer Max auf leer setzen, da er kein **zusaetzliches** Geschaeftseinkommen neben seiner Haupttaetigkeit hat.
+Die gesamte `seedInvestmentDepots`-Funktion und ihre Aufrufe entfernen. Die 2 vorsorge_contracts mit `category='investment'` bleiben als einzige Quelle.
 
-### Aenderung
+### Aenderungen
 
-**Datei: `public/demo-data/demo_household_persons.csv`**
+**Datei 1: `src/hooks/useDemoSeedEngine.ts`**
 
-Zeile 2 (Max Mustermann) aendern — das Feld `business_income_monthly` (Spalte 22) von `8500` auf leer:
+| Nr | Was |
+|----|-----|
+| 1 | `seedInvestmentDepots`-Funktion komplett entfernen (Zeilen 383-449) |
+| 2 | Aufruf `seed('finapi_depot_accounts', ...)` entfernen (Zeile 1069) |
+| 3 | Target-Counts aktualisieren: `finapi_depot_accounts: 0, finapi_depot_positions: 0` entfernen (Zeile 1097) |
 
-Vorher:
-```text
-b1f6d204-...;hauptperson;Herr;Max;Mustermann;...;8500;5200;III;2.0;8500;212;2049-03-15
-```
+**Datei 2: `src/hooks/useDemoCleanup.ts`**
 
-Nachher:
-```text
-b1f6d204-...;hauptperson;Herr;Max;Mustermann;...;8500;5200;III;2.0;;212;2049-03-15
-```
+| Nr | Was |
+|----|-----|
+| 4 | `finapi_depot_positions` und `finapi_depot_accounts` aus der Cleanup-Liste entfernen (Zeilen 41-42) |
 
-### Auswirkung
+**Datenbank: Bestehende Demo-Eintraege bereinigen**
 
-| Kennzahl | Vorher (falsch) | Nachher (korrekt) |
-|----------|-----------------|-------------------|
-| netIncomeTotal | 8.000 EUR (5.200 + 2.800) | 8.000 EUR (unveraendert) |
-| selfEmployedIncome | 8.500 EUR | 0 EUR |
-| totalIncome | 16.500+ EUR | 8.000+ EUR (plus Miete, PV, etc.) |
-| livingExpenses-Basis | 16.500 EUR | 8.000 EUR |
+Die bereits geseedeten Eintraege muessen geloescht werden:
+- `finapi_depot_positions` mit IDs `d0000000-0000-4000-a000-00000000071*` und `d0000000-0000-4000-a000-00000000072*`
+- `finapi_depot_accounts` mit IDs `d0000000-0000-4000-a000-000000000701` und `d0000000-0000-4000-a000-000000000702`
+- `test_data_registry`-Eintraege fuer beide Entity-Types
 
-### Engine-Test anpassen
+Das geschieht am einfachsten ueber einen erneuten Demo-Cleanup im Admin-Panel, oder manuell per SQL.
 
-**Datei: `src/engines/finanzuebersicht/engine.test.ts`**
+### Ergebnis
 
-Zeile 47-48: Testdaten aktualisieren — `business_income_monthly` fuer hp1 auf `0` oder `null` setzen, Erwartungswert `selfEmployedIncome` auf `0` anpassen (Zeile 53).
+Nach dem Fix:
+- Investment-Tab zeigt nur noch 2 Kacheln (die gruenen Demo-Sparplaene)
+- FinAPI-Depot-Bereich bleibt leer bis ein Nutzer eine echte Bank anbindet
+- Demo-Seed und -Cleanup sind konsistent
 
 ### Was NICHT geaendert wird
 
-- Engine-Logik (ist korrekt — addiert separate Einkommensquellen)
-- Andere CSV-Dateien
-- Frontend
-- Datenbank-Schema
+- `vorsorge_contracts` CSV (bleibt mit den 2 Investment-Eintraegen)
+- `finapi_depot_accounts`/`finapi_depot_positions` Tabellen-Schema (bleiben fuer echte Anbindungen)
+- Frontend-Code in InvestmentTab.tsx (zeigt korrekt an, was in der DB ist)
 
