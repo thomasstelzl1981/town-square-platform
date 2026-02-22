@@ -1,45 +1,37 @@
 
 
-## PIN-Gate Toggle im Admin-Bereich (Zone 1)
+## Quick Actions aufräumen — Admin Dashboard
 
-### Status: ✅ Implementiert
+### Was wird geändert
 
-### Ziel
+**1. "Published Preview" Abschnitt entfernen** (Zeilen 273–289 in `src/pages/admin/Dashboard.tsx`)
 
-Ein Admin-Toggle im Zone-1-Dashboard (`/admin`), mit dem das PIN-Gate fuer alle 5 Brand-Websites ein-/ausgeschaltet werden kann.
+Der gesamte Block mit "Kaufy Preview (Published)" wird gelöscht. Er ist redundant, da der Kaufy-Link bereits oben unter "Zone 3 – Websites" existiert.
 
-### Architektur
+**2. Zone 3 Links — Prüfergebnis**
 
-```text
-Zone 1 (/admin Dashboard)                Zone 3 (Brand Layouts)
-         |                                        |
-    Toggle ON/OFF                          Liest pin_gate_enabled
-         |                                        |
-         v                                        v
-    ┌──────────────────────────────────────────────────┐
-    │  DB: zone3_website_settings                      │
-    │  key: 'pin_gate_enabled', value: 'true'/'false'  │
-    │  RLS: SELECT fuer alle, UPDATE fuer authenticated │
-    └──────────────────────────────────────────────────┘
-```
+Alle 5 Links sind korrekt und stimmen mit der `zone3_sites.json` Registrierung überein:
 
-### Umgesetzte Schritte
+| Button | Route | Registrierung | Status |
+|--------|-------|---------------|--------|
+| Kaufy | `/website/kaufy` | `kaufy` | Korrekt |
+| System of a Town | `/website/sot` | `sot` | Korrekt |
+| Lennox and Friends | `/website/tierservice` | `lennox` | Korrekt |
+| Future Room | `/website/futureroom` | `futureroom` | Korrekt |
+| Acquiary | `/website/acquiary` | `acquiary` | Korrekt |
 
-1. ✅ DB-Tabelle `zone3_website_settings` mit RLS + Seed (`pin_gate_enabled = 'true'`)
-2. ✅ Hook `src/hooks/useZone3Settings.ts` (read + update mit react-query)
-3. ✅ Toggle-Karte im Admin-Dashboard (`src/pages/admin/Dashboard.tsx`)
-4. ✅ Alle 5 Zone-3-Layouts lesen DB-Wert und zeigen PIN-Gate nur wenn `'true'`
-5. ✅ PIN-Code-Referenz auf 2710 korrigiert (war 4409)
+Keine Linkänderungen nötig.
 
-### Betroffene Dateien
+### Betroffene Datei
 
-| Datei | Art |
-|-------|-----|
-| Migration: `zone3_website_settings` Tabelle + Seed | DB |
-| `src/hooks/useZone3Settings.ts` | Neu |
-| `src/pages/admin/Dashboard.tsx` | Edit (Zone 1) |
-| `src/pages/zone3/sot/SotLayout.tsx` | Edit |
-| `src/pages/zone3/kaufy2026/Kaufy2026Layout.tsx` | Edit |
-| `src/pages/zone3/futureroom/FutureRoomLayout.tsx` | Edit |
-| `src/pages/zone3/acquiary/AcquiaryLayout.tsx` | Edit |
-| `src/pages/zone3/lennox/LennoxLayout.tsx` | Edit |
+| Datei | Änderung |
+|-------|----------|
+| `src/pages/admin/Dashboard.tsx` | Zeilen 273–289 (Published Preview Block) entfernen |
+
+### Ergebnis
+
+Die Quick Actions zeigen nur noch drei Abschnitte:
+- Zone 2 – Portal (Button)
+- Zone 3 – Websites (5 Buttons, alle korrekt verlinkt)
+- Dokumentation (Export-Buttons)
+
