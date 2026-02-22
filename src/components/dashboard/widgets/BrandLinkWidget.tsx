@@ -26,7 +26,7 @@ const BRAND_CONFIGS: Record<string, BrandConfig> = {
     badge: 'Marktplatz',
     gradient: 'from-[hsl(220,85%,55%)] to-[hsl(245,75%,60%)]',
     icon: <ShoppingBag className="h-6 w-6 text-white" />,
-    url: '/website/kaufy',
+    url: 'https://kaufy.immo',
   },
   'SYS.BRAND.FUTUREROOM': {
     name: 'FutureRoom',
@@ -36,7 +36,7 @@ const BRAND_CONFIGS: Record<string, BrandConfig> = {
     badge: '400+ Bankpartner',
     gradient: 'from-[hsl(165,70%,36%)] to-[hsl(158,64%,52%)]',
     icon: <Landmark className="h-6 w-6 text-white" />,
-    url: '/website/futureroom',
+    url: 'https://futureroom.online',
   },
   'SYS.BRAND.SOT': {
     name: 'SystemofaTown',
@@ -46,7 +46,7 @@ const BRAND_CONFIGS: Record<string, BrandConfig> = {
     badge: 'All-in-One',
     gradient: 'from-[hsl(0,0%,15%)] to-[hsl(0,0%,30%)]',
     icon: <Building2 className="h-6 w-6 text-white" />,
-    url: '/website/sot',
+    url: 'https://systemofatown.com',
   },
   'SYS.BRAND.ACQUIARY': {
     name: 'ACQUIARY',
@@ -55,7 +55,7 @@ const BRAND_CONFIGS: Record<string, BrandConfig> = {
     badge: 'Investment House',
     gradient: 'from-[hsl(210,80%,50%)] to-[hsl(200,70%,40%)]',
     icon: <Search className="h-6 w-6 text-white" />,
-    url: '/website/acquiary',
+    url: 'https://acquiary.com',
   },
 };
 
