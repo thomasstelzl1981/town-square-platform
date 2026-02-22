@@ -86,8 +86,8 @@ export function Zone3LegalPage({ brand, docType }: Zone3LegalPageProps) {
 
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 py-12 sm:py-16">
-      <h1 className="text-2xl font-bold mb-8">{data.title}</h1>
-      <div className="prose prose-sm dark:prose-invert max-w-none">
+      <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'hsl(220,20%,10%)', marginBottom: 32 }}>{data.title}</h1>
+      <div className="prose prose-sm max-w-none" style={{ color: 'hsl(220,20%,25%)' }}>
         <ReactMarkdown>{rendered}</ReactMarkdown>
       </div>
     </div>

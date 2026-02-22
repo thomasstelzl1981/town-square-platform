@@ -26,6 +26,8 @@ import {
   Image as ImageIcon, Phone, Mail, Briefcase, ScrollText, Search,
   Globe, Handshake,
 } from 'lucide-react';
+import { KaufySubpageHero } from '@/components/zone3/kaufy2026/KaufySubpageHero';
+import verkaeuferHero from '@/assets/kaufy2026/verkaeufer-hero.jpg';
 
 // ── Demo Project Data ───────────────────────────────────────────────────────
 const DEMO_PROJECT = {
@@ -267,47 +269,29 @@ export default function Kaufy2026Verkaeufer() {
   return (
     <div>
       {/* ═══ HERO ═══ */}
-      <section className="py-16 px-6 lg:px-10">
-        <div className="max-w-3xl mx-auto text-center">
-          <Badge className="mb-4 bg-[hsl(210,80%,55%,0.1)] text-[hsl(210,80%,40%)] border-0">
-            Für Bauträger & Eigentümer
-          </Badge>
-          <h1 className="text-3xl lg:text-4xl font-bold text-[hsl(220,20%,10%)] mb-4">
-            Vermarkten Sie Ihr Projekt über KAUFY.
-          </h1>
-          <p className="text-lg text-[hsl(215,16%,47%)] mb-8">
-            Laden Sie einfach Ihr Exposé hoch — unsere KI erstellt automatisch ein professionelles 
-            Inserat. Kein Account nötig, in 5 Minuten online.
-          </p>
-          <div className="flex items-center justify-center gap-4">
-            <Button size="lg" className="rounded-full" onClick={scrollToIntake}>
-              <Sparkles className="w-4 h-4 mr-2" />
-              Magic Intake starten
-            </Button>
-            <Link to="/auth">
-              <Button variant="outline" size="lg" className="rounded-full">
-                Zum Portal
-                <ArrowRight className="w-4 h-4 ml-2" />
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </section>
+      <KaufySubpageHero
+        backgroundImage={verkaeuferHero}
+        badge="Für Bauträger & Eigentümer"
+        title="Vermarkten Sie Ihr Projekt über KAUFY."
+        subtitle="Laden Sie Ihr Exposé hoch — unsere KI erstellt automatisch ein professionelles Inserat. In 5 Minuten online."
+        ctaLabel="Magic Intake starten"
+        onCtaClick={scrollToIntake}
+      />
 
       {/* ═══ FEATURES ═══ */}
-      <section className="py-12 px-6 lg:px-10 bg-[hsl(210,30%,97%)] mx-6 lg:mx-10 rounded-2xl">
-        <h2 className="text-2xl md:text-3xl font-bold text-center text-[hsl(220,20%,10%)] mb-10">
+      <section style={{ margin: '48px 40px 0', padding: '48px 40px', backgroundColor: 'hsl(210,30%,97%)', borderRadius: 20 }}>
+        <h2 style={{ fontSize: '1.75rem', fontWeight: 700, textAlign: 'center', color: 'hsl(220,20%,10%)', marginBottom: 40 }}>
           Warum über KAUFY vermarkten?
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {features.map((f) => (
-            <Card key={f.title} className="border-0 bg-white">
+            <Card key={f.title} style={{ border: 'none', backgroundColor: 'white', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
               <CardContent className="p-6">
-                <div className="w-12 h-12 rounded-xl bg-[hsl(210,80%,55%,0.1)] flex items-center justify-center mb-4">
-                  <f.icon className="w-6 h-6 text-[hsl(210,80%,55%)]" />
+                <div style={{ width: 48, height: 48, borderRadius: 12, backgroundColor: 'hsla(210,80%,55%,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+                  <f.icon style={{ width: 24, height: 24, color: 'hsl(210,80%,55%)' }} />
                 </div>
-                <h3 className="font-semibold text-[hsl(220,20%,10%)] mb-2">{f.title}</h3>
-                <p className="text-sm text-[hsl(215,16%,47%)]">{f.description}</p>
+                <h3 style={{ fontWeight: 600, color: 'hsl(220,20%,10%)', marginBottom: 8 }}>{f.title}</h3>
+                <p style={{ fontSize: '0.875rem', color: 'hsl(215,16%,47%)' }}>{f.description}</p>
               </CardContent>
             </Card>
           ))}
