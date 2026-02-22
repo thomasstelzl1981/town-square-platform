@@ -1,62 +1,152 @@
 
 
-## Fix: Doppelte Investment-Depots in Demodaten entfernen
+## Kaufy Website Redesign — Visuelle Konsistenz aller Unterseiten
 
-### Problem
+### Analyse: Was ist das Problem?
 
-Im Investment-Tab werden 4 Kacheln angezeigt statt 2:
+Die Startseite hat ein hochwertiges Design:
+- Vollbreites Hero-Bild mit Overlay-Text und abgerundeten Ecken
+- Floating Search Bar
+- Elegant gestaltete Sektionen (Perspektiven-Karten, Akkordeon, Zahlen)
+- Professionelle Farbpalette: dunkles hsl(220,20%,10%), Akzent hsl(210,80%,55%)
 
-| Nr | Quelle | Tabelle | Person |
-|----|--------|---------|--------|
-| 1 | Vanguard ETF-Sparplan | `vorsorge_contracts` (category=investment) | Max |
-| 2 | DWS Fonds-Sparplan | `vorsorge_contracts` (category=investment) | Lisa |
-| 3 | ETF-Depot Scalable Capital | `finapi_depot_accounts` | Max |
-| 4 | Fonds-Depot DWS | `finapi_depot_accounts` | Lisa |
+Die Unterseiten dagegen:
+- **Vermieter**: Nur Text-Hero, kein Bild, generische Feature-Cards
+- **Verkaeufer**: Text-Hero, lange Wizard-Sektion dominiert
+- **Partner**: Text-Hero, zwei Karten, wenig visueller Reiz
+- **Impressum/Datenschutz**: Text kaum lesbar (zu heller Kontrast), kein Hero
 
-Kacheln 1+2 (gruene Demo-Badges) sind die korrekten Demodaten aus der CSV.
-Kacheln 3+4 (ohne Demo-Badge, daher nicht gruen) sind Duplikate, die separat ueber `seedInvestmentDepots` in die `finapi_depot_accounts`-Tabelle geschrieben werden.
+### Design-Konzept
 
-Die `finapi_depot_accounts`-Tabelle ist fuer echte FinAPI-Bank-Anbindungen gedacht, nicht fuer Demo-Sparplaene. Die Demo-Investment-Daten gehoeren ausschliesslich in `vorsorge_contracts`.
+Jede Unterseite bekommt das gleiche visuelle Muster wie die Startseite:
 
-### Loesung
+```text
++------------------------------------------+
+|  Hero-Bild (50vh) mit Overlay-Text       |
+|  Badge + Headline + Subline + CTA        |
++------------------------------------------+
+|                                          |
+|  Feature-Bereich (Cards / Akkordeon)     |
+|                                          |
++------------------------------------------+
+|  Highlight-Sektion (grauer Hintergrund)  |
+|  Vorteile / Zahlen / Social Proof        |
++------------------------------------------+
+|  CTA-Sektion                             |
++------------------------------------------+
+```
 
-Die gesamte `seedInvestmentDepots`-Funktion und ihre Aufrufe entfernen. Die 2 vorsorge_contracts mit `category='investment'` bleiben als einzige Quelle.
+### Schriftart
 
-### Aenderungen
+Die hochgeladene Manrope-Variable-Font wird als Referenz betrachtet, aber nicht zwingend uebernommen. Die Startseite nutzt das Standard-Tailwind-Fontstack (Inter/system). Um Konsistenz zu wahren, wird **Inter** (bereits im Projekt) als primaere Schriftart beibehalten, da die Startseite bereits darauf basiert. Falls gewuenscht, kann Manrope spaeter als Upgrade fuer alle Seiten gleichzeitig eingefuehrt werden.
 
-**Datei 1: `src/hooks/useDemoSeedEngine.ts`**
+### Aenderungen im Detail
 
-| Nr | Was |
-|----|-----|
-| 1 | `seedInvestmentDepots`-Funktion komplett entfernen (Zeilen 383-449) |
-| 2 | Aufruf `seed('finapi_depot_accounts', ...)` entfernen (Zeile 1069) |
-| 3 | Target-Counts aktualisieren: `finapi_depot_accounts: 0, finapi_depot_positions: 0` entfernen (Zeile 1097) |
+---
 
-**Datei 2: `src/hooks/useDemoCleanup.ts`**
+**1. Hero-Bilder generieren (4 Stueck)**
 
-| Nr | Was |
-|----|-----|
-| 4 | `finapi_depot_positions` und `finapi_depot_accounts` aus der Cleanup-Liste entfernen (Zeilen 41-42) |
+Fuer jede Unterseite wird ein KI-generiertes Hero-Bild erstellt:
 
-**Datenbank: Bestehende Demo-Eintraege bereinigen**
+| Seite | Motiv | Datei |
+|-------|-------|-------|
+| Vermieter | Modernes Mehrfamilienhaus, Innenhof, warmes Licht | `src/assets/kaufy2026/vermieter-hero.jpg` (existiert, wird geprueft/ersetzt) |
+| Verkaeufer | Luftaufnahme Neubauprojekt, Baugeruest, Drohnenoptik | `src/assets/kaufy2026/verkaeufer-hero.jpg` |
+| Partner | Business-Meeting, Handschlag, modernes Buero | `src/assets/kaufy2026/partner-hero.jpg` |
+| Impressum/Datenschutz | Gemeinsames minimalistisches Bild: Architekturdetail | Kein Hero — stattdessen gestylter Text-Header |
 
-Die bereits geseedeten Eintraege muessen geloescht werden:
-- `finapi_depot_positions` mit IDs `d0000000-0000-4000-a000-00000000071*` und `d0000000-0000-4000-a000-00000000072*`
-- `finapi_depot_accounts` mit IDs `d0000000-0000-4000-a000-000000000701` und `d0000000-0000-4000-a000-000000000702`
-- `test_data_registry`-Eintraege fuer beide Entity-Types
+Alle Bilder: 1400x620px, leicht entsaettigt (grayscale(20%) brightness(0.6)), passend zum Startseiten-Stil.
 
-Das geschieht am einfachsten ueber einen erneuten Demo-Cleanup im Admin-Panel, oder manuell per SQL.
+---
 
-### Ergebnis
+**2. Kaufy2026Vermieter.tsx — Redesign**
 
-Nach dem Fix:
-- Investment-Tab zeigt nur noch 2 Kacheln (die gruenen Demo-Sparplaene)
-- FinAPI-Depot-Bereich bleibt leer bis ein Nutzer eine echte Bank anbindet
-- Demo-Seed und -Cleanup sind konsistent
+Aktuell: Einfacher Text-Hero + generische Feature-Cards + Vorteile-Liste
+
+Neu:
+- Hero-Sektion: Vollbreites Bild (calc(100% - 120px), 620px Hoehe, border-radius: 20px) mit Overlay
+- Badge "Fuer Vermieter" + Headline + Subline + CTA-Button (weiss auf dunklem Bild)
+- Feature-Cards: Behalten den Aufbau, bekommen aber Box-Shadow wie auf der Startseite (0 4px 20px rgba(0,0,0,0.12))
+- Vorteile-Sektion: Visuell aufgewertet mit Icons und besserem Spacing
+- Abschluss-CTA: Dunkler Hintergrund-Block (wie ZahlenSektion)
+
+---
+
+**3. Kaufy2026Verkaeufer.tsx — Redesign**
+
+Aktuell: Text-Hero + Features + How-it-works + Demo-Projekt + Wizard
+
+Neu:
+- Hero-Sektion: Vollbreites Bild mit Overlay (gleicher Stil wie Startseite)
+- Features + How-it-works: Beibehalten, aber visuell mit mehr Tiefe (Shadows, Spacing)
+- Demo-Projekt: Behaelt den interaktiven Charakter
+- Wizard (Magic Intake): Bleibt funktional unveraendert
+
+---
+
+**4. Kaufy2026Vertrieb.tsx — Redesign**
+
+Aktuell: Text-Hero + Zwei Track-Cards + Features + Formular
+
+Neu:
+- Hero-Sektion: Vollbreites Bild mit Overlay
+- Track-Cards: Behalten die Zweispalten-Struktur, bekommen aber bessere Shadows und Hover-Effekte
+- Features: Konsistenter Card-Stil
+- Formular: Visuell eingerahmt, bleibt funktional identisch
+
+---
+
+**5. Zone3LegalPage.tsx — Lesbarkeitfix**
+
+Problem: Text ist extrem blass/kaum lesbar.
+
+Fix:
+- Sicherstellen, dass `prose` Klassen korrekte Farben haben fuer den Light-Mode-Kontext
+- Explizite Textfarben setzen: `text-[hsl(220,20%,10%)]` fuer Ueberschrift, `text-[hsl(220,20%,25%)]` fuer Body-Text
+- Entfernen von `dark:prose-invert` (Zone 3 ist immer Light-Mode)
+- Optional: kleinen Text-Hero-Header mit Badge + Seitentitel
+
+---
+
+**6. Gemeinsame Hero-Komponente: KaufySubpageHero**
+
+Um Code-Duplizierung zu vermeiden, wird eine wiederverwendbare Hero-Komponente erstellt:
+
+```text
+Datei: src/components/zone3/kaufy2026/KaufySubpageHero.tsx
+
+Props:
+- backgroundImage: string (importiertes Bild)
+- badge: string ("Fuer Vermieter", "Fuer Partner", etc.)
+- title: string
+- subtitle: string
+- ctaLabel: string
+- ctaHref: string
+- onCtaClick?: () => void
+```
+
+Stil: Identisch mit Kaufy2026Hero — gleiche Dimensionen, gleiche Filter, gleiche Overlay-Position.
+
+---
+
+### Zusammenfassung der Dateien
+
+| Datei | Aktion |
+|-------|--------|
+| `src/components/zone3/kaufy2026/KaufySubpageHero.tsx` | Neu — Shared Hero-Komponente |
+| `src/pages/zone3/kaufy2026/Kaufy2026Vermieter.tsx` | Redesign — Hero-Bild + visuelles Upgrade |
+| `src/pages/zone3/kaufy2026/Kaufy2026Verkaeufer.tsx` | Redesign — Hero-Bild + visuelles Upgrade |
+| `src/pages/zone3/kaufy2026/Kaufy2026Vertrieb.tsx` | Redesign — Hero-Bild + visuelles Upgrade |
+| `src/components/zone3/shared/Zone3LegalPage.tsx` | Fix — Textfarben, prose-Klassen |
+| `src/assets/kaufy2026/vermieter-hero.jpg` | Pruefen/ersetzen (existiert bereits) |
+| `src/assets/kaufy2026/verkaeufer-hero.jpg` | Neu — KI-generiertes Bild |
+| `src/assets/kaufy2026/partner-hero.jpg` | Neu — KI-generiertes Bild |
+| `src/components/zone3/kaufy2026/index.ts` | Update — Export der neuen Komponente |
 
 ### Was NICHT geaendert wird
 
-- `vorsorge_contracts` CSV (bleibt mit den 2 Investment-Eintraegen)
-- `finapi_depot_accounts`/`finapi_depot_positions` Tabellen-Schema (bleiben fuer echte Anbindungen)
-- Frontend-Code in InvestmentTab.tsx (zeigt korrekt an, was in der DB ist)
+- Startseite (Kaufy2026Home) — ist der Design-Standard
+- Kaufy2026Layout — Header/Footer sind bereits konsistent
+- Engine-Logik, Datenbank, Demo-Daten
+- Funktionale Logik der Wizard-/Formular-Bereiche
 
