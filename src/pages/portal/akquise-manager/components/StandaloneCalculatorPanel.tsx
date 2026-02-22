@@ -21,6 +21,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { useUniversalUpload, type UploadedFileInfo } from '@/hooks/useUniversalUpload';
 import { UploadResultCard } from '@/components/shared/UploadResultCard';
 import { BestandCalculation } from './BestandCalculation';
@@ -38,6 +39,7 @@ interface ExtractedValues {
 export function StandaloneCalculatorPanel() {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const { activeTenantId } = useAuth();
+  const isMobile = useIsMobile();
   const { upload, progress, uploadedFiles, clearUploadedFiles } = useUniversalUpload();
   const [activeCalc, setActiveCalc] = React.useState<'bestand' | 'aufteiler'>('bestand');
   const [isDragging, setIsDragging] = React.useState(false);
@@ -199,15 +201,13 @@ export function StandaloneCalculatorPanel() {
       <CardContent className="space-y-6">
         {/* Drag-and-Drop Zone for Extraction */}
         <div
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
+          {...(!isMobile ? { onDragOver: handleDragOver, onDragLeave: handleDragLeave, onDrop: handleDrop } : {})}
           onClick={() => !isExtracting && fileInputRef.current?.click()}
           className={cn(
             "border-2 border-dashed rounded-lg p-4 text-center transition-colors",
             isExtracting 
               ? "border-primary bg-primary/5 cursor-wait"
-              : isDragging 
+              : isDragging && !isMobile
                 ? "border-primary bg-primary/5 cursor-copy" 
                 : "border-muted-foreground/25 hover:border-primary/50 hover:bg-muted/50 cursor-pointer"
           )}
@@ -221,7 +221,8 @@ export function StandaloneCalculatorPanel() {
             <div className="flex items-center justify-center gap-3 py-2">
               <Upload className="h-5 w-5 text-muted-foreground" />
               <span className="text-sm">
-                <span className="font-medium">Exposé ablegen</span> für automatische Befüllung oder Werte manuell eingeben
+                <span className="font-medium">{isMobile ? 'Tippen zum Hochladen' : 'Exposé ablegen'}</span>
+                {!isMobile && ' für automatische Befüllung oder Werte manuell eingeben'}
               </span>
             </div>
           )}

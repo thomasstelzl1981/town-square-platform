@@ -20,6 +20,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface ExtractionResult {
   title?: string;
@@ -38,6 +39,7 @@ type UploadState = 'idle' | 'uploading' | 'extracting' | 'success' | 'error';
 export function ExposeDragDropUploader() {
   const navigate = useNavigate();
   const { activeTenantId } = useAuth();
+  const isMobile = useIsMobile();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   
   const [state, setState] = React.useState<UploadState>('idle');
@@ -224,19 +226,17 @@ export function ExposeDragDropUploader() {
         {/* Drop Zone */}
         {state === 'idle' && (
           <div
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
+            {...(!isMobile ? { onDragOver: handleDragOver, onDragLeave: handleDragLeave, onDrop: handleDrop } : {})}
             onClick={() => fileInputRef.current?.click()}
             className={cn(
               "border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors",
-              isDragging 
+              isDragging && !isMobile
                 ? "border-primary bg-primary/5" 
                 : "border-muted-foreground/25 hover:border-primary/50 hover:bg-muted/50"
             )}
           >
             <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <p className="font-medium mb-1">Exposé hier ablegen oder klicken</p>
+            <p className="font-medium mb-1">{isMobile ? 'Tippen zum Hochladen' : 'Exposé hier ablegen oder klicken'}</p>
             <p className="text-sm text-muted-foreground">PDF, DOCX, JPG, PNG</p>
             <input
               ref={fileInputRef}

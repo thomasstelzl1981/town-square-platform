@@ -2,6 +2,7 @@ import * as React from 'react';
 import { Upload, X, File, Image, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface FileUploaderProps {
   onFilesSelected: (files: File[]) => void;
@@ -26,16 +27,19 @@ export function FileUploader({
   hint = 'oder klicken zum Auswählen',
   children,
 }: FileUploaderProps) {
+  const isMobile = useIsMobile();
   const [isDragOver, setIsDragOver] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const inputRef = React.useRef<HTMLInputElement>(null);
 
   const handleDragOver = (e: React.DragEvent) => {
+    if (isMobile) return;
     e.preventDefault();
     if (!disabled) setIsDragOver(true);
   };
 
   const handleDragLeave = (e: React.DragEvent) => {
+    if (isMobile) return;
     e.preventDefault();
     setIsDragOver(false);
   };
@@ -53,6 +57,7 @@ export function FileUploader({
   };
 
   const handleDrop = (e: React.DragEvent) => {
+    if (isMobile) return;
     e.preventDefault();
     setIsDragOver(false);
     if (disabled) return;
@@ -115,8 +120,8 @@ export function FileUploader({
       >
         <Upload className={cn('h-8 w-8', isDragOver ? 'text-primary' : 'text-muted-foreground')} />
         <div className="text-center">
-          <p className="text-sm font-medium">{label}</p>
-          <p className="text-xs text-muted-foreground">{hint}</p>
+          <p className="text-sm font-medium">{isMobile ? 'Datei auswählen' : label}</p>
+          <p className="text-xs text-muted-foreground">{isMobile ? 'Tippen zum Hochladen' : hint}</p>
         </div>
         <input
           ref={inputRef}

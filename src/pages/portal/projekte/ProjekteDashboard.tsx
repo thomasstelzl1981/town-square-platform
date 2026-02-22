@@ -9,6 +9,7 @@ import { useState, useCallback } from 'react';
 import { DESIGN, getActiveWidgetGlow } from '@/config/designManifest';
 import { useNavigate } from 'react-router-dom';
 import { useDropzone } from 'react-dropzone';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { TrendingUp as TrendingUpIcon, Globe } from 'lucide-react';
 import { ManagerVisitenkarte } from '@/components/shared/ManagerVisitenkarte';
 import { MarketReportWidget } from '@/components/shared/MarketReportWidget';
@@ -60,6 +61,7 @@ type IntakeStep = 'upload' | 'review' | 'creating';
 export default function ProjekteDashboard() {
   const navigate = useNavigate();
   const { profile } = useAuth();
+  const isMobile = useIsMobile();
   const { isEnabled } = useDemoToggles();
   const demoEnabled = isEnabled('GP-PROJEKT');
   const tenantId = profile?.active_tenant_id;
@@ -95,7 +97,7 @@ export default function ProjekteDashboard() {
     if (acceptedFiles.length > 0) { setExposeFile(acceptedFiles[0]); setError(null); }
   }, []);
   const { getRootProps: getExposeRootProps, getInputProps: getExposeInputProps, isDragActive: isExposeDragActive } = useDropzone({
-    onDrop: onDropExpose, accept: { 'application/pdf': ['.pdf'] }, maxFiles: 1, multiple: false, disabled: !!uploadedExpose,
+    onDrop: onDropExpose, accept: { 'application/pdf': ['.pdf'] }, maxFiles: 1, multiple: false, disabled: !!uploadedExpose, noDrag: isMobile,
   });
 
   // Pricelist dropzone
@@ -105,7 +107,7 @@ export default function ProjekteDashboard() {
   const { getRootProps: getPricelistRootProps, getInputProps: getPricelistInputProps, isDragActive: isPricelistDragActive } = useDropzone({
     onDrop: onDropPricelist,
     accept: { 'application/pdf': ['.pdf'], 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'], 'application/vnd.ms-excel': ['.xls'], 'text/csv': ['.csv'] },
-    maxFiles: 1, multiple: false, disabled: !!uploadedPricelist,
+    maxFiles: 1, multiple: false, disabled: !!uploadedPricelist, noDrag: isMobile,
   });
 
   const handleUploadFiles = async () => {

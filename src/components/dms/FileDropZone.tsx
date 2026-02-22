@@ -2,6 +2,7 @@ import { useCallback, type ReactNode } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Upload } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface FileDropZoneProps {
   onDrop: (files: File[]) => void;
@@ -11,6 +12,8 @@ interface FileDropZoneProps {
 }
 
 export function FileDropZone({ onDrop, disabled, children, className }: FileDropZoneProps) {
+  const isMobile = useIsMobile();
+
   const handleDrop = useCallback((accepted: File[]) => {
     if (accepted.length > 0) onDrop(accepted);
   }, [onDrop]);
@@ -19,6 +22,7 @@ export function FileDropZone({ onDrop, disabled, children, className }: FileDrop
     onDrop: handleDrop,
     noClick: true,
     noKeyboard: true,
+    noDrag: isMobile,
     disabled,
     accept: {
       'application/pdf': ['.pdf'],
@@ -35,7 +39,7 @@ export function FileDropZone({ onDrop, disabled, children, className }: FileDrop
       <input {...getInputProps()} />
       {children}
 
-      {isDragActive && (
+      {isDragActive && !isMobile && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-primary/5 border-2 border-dashed border-primary rounded-lg backdrop-blur-sm">
           <div className="flex flex-col items-center gap-2 text-primary">
             <Upload className="h-10 w-10" />

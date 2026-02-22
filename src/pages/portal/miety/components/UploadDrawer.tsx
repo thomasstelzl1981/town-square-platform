@@ -32,7 +32,7 @@ export function UploadDrawer({ open, onOpenChange }: UploadDrawerProps) {
       <div className="flex flex-col items-center justify-center py-12 text-center">
         <Upload className="h-12 w-12 text-muted-foreground/30 mb-4" />
         <p className="text-sm text-muted-foreground">
-          Drag & Drop oder Datei auswählen
+          Datei auswählen
         </p>
         <p className="text-xs text-muted-foreground/60 mt-1">
           Unterstützt: PDF, JPG, PNG, DOCX

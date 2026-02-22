@@ -77,7 +77,7 @@ interface SortableWidgetItemProps {
   onInfoClick: () => void;
 }
 
-function SortableWidgetItem({ code, enabled, onToggle, onInfoClick }: SortableWidgetItemProps) {
+function SortableWidgetItem({ code, enabled, onToggle, onInfoClick, disableDrag }: SortableWidgetItemProps & { disableDrag?: boolean }) {
   const widget = getSystemWidget(code);
   const {
     attributes,
@@ -86,7 +86,7 @@ function SortableWidgetItem({ code, enabled, onToggle, onInfoClick }: SortableWi
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: code });
+  } = useSortable({ id: code, disabled: disableDrag });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -112,14 +112,16 @@ function SortableWidgetItem({ code, enabled, onToggle, onInfoClick }: SortableWi
         !enabled && 'opacity-60'
       )}>
         <CardContent className="p-3 flex items-center gap-3">
-          {/* Drag Handle */}
-          <button
-            {...attributes}
-            {...listeners}
-            className="p-1 rounded hover:bg-muted cursor-grab active:cursor-grabbing"
-          >
-            <GripVertical className="h-4 w-4 text-muted-foreground" />
-          </button>
+          {/* Drag Handle — hidden on mobile */}
+          {!disableDrag && (
+            <button
+              {...attributes}
+              {...listeners}
+              className="p-1 rounded hover:bg-muted cursor-grab active:cursor-grabbing"
+            >
+              <GripVertical className="h-4 w-4 text-muted-foreground" />
+            </button>
+          )}
 
           {/* Icon */}
           <div className={cn(
@@ -227,7 +229,9 @@ export function SystemWidgetsTab() {
           </Button>
         </div>
         <p className="text-sm text-muted-foreground">
-          Aktivieren Sie Widgets für Ihr Dashboard und ordnen Sie diese per Drag & Drop an.
+          {isMobile 
+            ? 'Aktivieren Sie Widgets für Ihr Dashboard.' 
+            : 'Aktivieren Sie Widgets für Ihr Dashboard und ordnen Sie diese per Drag & Drop an.'}
         </p>
       </div>
 
@@ -270,6 +274,7 @@ export function SystemWidgetsTab() {
                     enabled={pref.enabled}
                     onToggle={(enabled) => toggleWidget(code, enabled)}
                     onInfoClick={() => setSelectedWidget(code)}
+                    disableDrag={isMobile}
                   />
                 );
               })}

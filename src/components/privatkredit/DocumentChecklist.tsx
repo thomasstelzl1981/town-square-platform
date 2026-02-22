@@ -8,6 +8,7 @@ import { Upload, Check, Circle, FileText } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { DESIGN } from '@/config/designManifest';
 import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface DocItem {
   type: string;
@@ -20,6 +21,7 @@ interface DocumentChecklistProps {
 }
 
 export function DocumentChecklist({ disabled }: DocumentChecklistProps) {
+  const isMobile = useIsMobile();
   const [docs, setDocs] = useState<DocItem[]>([
     { type: 'payslip', label: 'Gehaltsabrechnungen (letzte 3 Monate)', uploaded: false },
     { type: 'bank_statement', label: 'Kontoauszüge (letzte 3 Monate)', uploaded: false },
@@ -40,6 +42,7 @@ export function DocumentChecklist({ disabled }: DocumentChecklistProps) {
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     disabled,
+    noDrag: isMobile,
     accept: {
       'application/pdf': ['.pdf'],
       'image/*': ['.png', '.jpg', '.jpeg'],
@@ -95,7 +98,7 @@ export function DocumentChecklist({ disabled }: DocumentChecklistProps) {
           <input {...getInputProps()} />
           <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
           <p className={DESIGN.TYPOGRAPHY.MUTED}>
-            {isDragActive ? 'Dateien hier ablegen' : 'Klicken oder Dateien hierher ziehen'}
+            {isDragActive && !isMobile ? 'Dateien hier ablegen' : isMobile ? 'Tippen zum Hochladen' : 'Klicken oder Dateien hierher ziehen'}
           </p>
         </div>
       </CardContent>
