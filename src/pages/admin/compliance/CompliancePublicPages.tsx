@@ -1,6 +1,7 @@
 /**
  * Tab 3: Public Pages — Website Legaltexte pro Brand, inline Cards
  * Editor ist standardmäßig eingeklappt — nur per Button aufklappbar.
+ * Vorschau zeigt gerenderten Text mit Platzhalter-Ersetzung + Warnung bei offenen Platzhaltern.
  */
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,10 +9,12 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { FileText, Save, Pencil, ChevronDown, ChevronUp } from 'lucide-react';
+import { FileText, Save, Pencil, ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react';
 import { LoadingState } from '@/components/shared';
 import ReactMarkdown from 'react-markdown';
 import { useComplianceDocuments, useDocumentVersions, type ComplianceDocument } from './useComplianceDocuments';
+import { useComplianceCompany } from './useComplianceCompany';
+import { renderComplianceMarkdown, findUnresolvedPlaceholders } from '@/lib/complianceHelpers';
 
 const BRANDS = ['kaufy', 'futureroom', 'sot', 'acquiary', 'tierservice'];
 const BRAND_LABELS: Record<string, string> = {
@@ -20,7 +23,16 @@ const BRAND_LABELS: Record<string, string> = {
 };
 const DOC_TYPE_LABELS: Record<string, string> = { website_imprint: 'Impressum', website_privacy: 'Datenschutz' };
 
-function PublicPageCard({ doc }: { doc: ComplianceDocument }) {
+/** Brand → company profile slug mapping (mirrors Zone3LegalPage) */
+const BRAND_PROFILE_MAP: Record<string, string> = {
+  kaufy: 'futureroom',
+  futureroom: 'futureroom',
+  acquiary: 'futureroom',
+  sot: 'sot',
+  tierservice: 'lennox',
+};
+
+function PublicPageCard({ doc, getProfileBySlug }: { doc: ComplianceDocument; getProfileBySlug: (slug: string) => any }) {
   const { createVersion, activateVersion } = useComplianceDocuments('website');
   const { data: versions } = useDocumentVersions(doc.id);
   const [newContent, setNewContent] = useState('');
@@ -46,6 +58,14 @@ function PublicPageCard({ doc }: { doc: ComplianceDocument }) {
   const typeKey = docKey.replace(`_${brand}`, '');
   const typeLabel = DOC_TYPE_LABELS[typeKey] || typeKey;
 
+  // Get company profile for this brand and render with placeholder replacement
+  const profileSlug = BRAND_PROFILE_MAP[brand] || 'sot';
+  const profile = getProfileBySlug(profileSlug);
+  const renderedContent = activeVersion?.content_md
+    ? renderComplianceMarkdown(activeVersion.content_md, profile)
+    : '';
+  const unresolvedPlaceholders = renderedContent ? findUnresolvedPlaceholders(renderedContent) : [];
+
   return (
     <Card>
       <CardHeader className="pb-2">
@@ -59,11 +79,24 @@ function PublicPageCard({ doc }: { doc: ComplianceDocument }) {
             <Badge variant={doc.status === 'active' ? 'default' : 'secondary'} className="text-xs">
               {doc.status === 'active' ? `v${doc.current_version} aktiv` : doc.status}
             </Badge>
+            {unresolvedPlaceholders.length > 0 && (
+              <Badge variant="destructive" className="text-xs gap-1">
+                <AlertTriangle className="h-3 w-3" />
+                {unresolvedPlaceholders.length} offen
+              </Badge>
+            )}
           </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-3 pt-0">
-        {/* Kompakte Vorschau — aufklappbar */}
+        {/* Unresolved placeholder warning */}
+        {unresolvedPlaceholders.length > 0 && (
+          <div className="p-2 rounded border border-destructive/30 bg-destructive/5 text-xs text-destructive">
+            <strong>Offene Platzhalter:</strong> {unresolvedPlaceholders.join(', ')}
+          </div>
+        )}
+
+        {/* Kompakte Vorschau — aufklappbar, jetzt mit Platzhalter-Ersetzung */}
         {activeVersion && (
           <div>
             <Button
@@ -73,11 +106,11 @@ function PublicPageCard({ doc }: { doc: ComplianceDocument }) {
               onClick={() => setPreviewOpen(!previewOpen)}
             >
               {previewOpen ? <ChevronUp className="h-3 w-3 mr-1" /> : <ChevronDown className="h-3 w-3 mr-1" />}
-              {previewOpen ? 'Vorschau ausblenden' : 'Vorschau anzeigen'}
+              {previewOpen ? 'Vorschau ausblenden' : 'Vorschau anzeigen (wie auf der Website)'}
             </Button>
             {previewOpen && (
               <div className="p-4 rounded-lg border bg-muted/30 prose prose-sm max-w-none dark:prose-invert text-sm mt-1 max-h-[400px] overflow-y-auto">
-                <ReactMarkdown>{activeVersion.content_md}</ReactMarkdown>
+                <ReactMarkdown>{renderedContent}</ReactMarkdown>
               </div>
             )}
           </div>
@@ -147,8 +180,9 @@ function PublicPageCard({ doc }: { doc: ComplianceDocument }) {
 
 export function CompliancePublicPages() {
   const { documents, isLoading } = useComplianceDocuments('website');
+  const { getProfileBySlug, isLoading: profilesLoading } = useComplianceCompany();
 
-  if (isLoading) return <LoadingState />;
+  if (isLoading || profilesLoading) return <LoadingState />;
 
   const grouped = BRANDS.reduce<Record<string, ComplianceDocument[]>>((acc, brand) => {
     const docs = documents.filter(d => (d.doc_key || '').endsWith(`_${brand}`));
@@ -164,12 +198,12 @@ export function CompliancePublicPages() {
         <div key={brand} className="space-y-3">
           <h3 className="text-sm font-semibold text-muted-foreground">{BRAND_LABELS[brand] || brand}</h3>
           {docs.map(doc => (
-            <PublicPageCard key={doc.id} doc={doc} />
+            <PublicPageCard key={doc.id} doc={doc} getProfileBySlug={getProfileBySlug} />
           ))}
         </div>
       ))}
       {ungrouped.map(doc => (
-        <PublicPageCard key={doc.id} doc={doc} />
+        <PublicPageCard key={doc.id} doc={doc} getProfileBySlug={getProfileBySlug} />
       ))}
       {documents.length === 0 && (
         <p className="text-sm text-muted-foreground text-center py-8">Keine Website-Legaltexte vorhanden.</p>

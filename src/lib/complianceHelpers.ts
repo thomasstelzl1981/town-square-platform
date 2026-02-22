@@ -102,3 +102,15 @@ export function renderComplianceMarkdown(
   }
   return result;
 }
+
+/** Find unresolved placeholders in rendered text — both {curly} and [BRACKET] styles */
+export function findUnresolvedPlaceholders(text: string): string[] {
+  const curly = text.match(/\{[a-z_]+(?:\.[a-z_]+)?\}/g) || [];
+  const bracket = text.match(/\[[A-Z][A-Z0-9_-]+\]/g) || [];
+  // Filter out markdown links like [text](url)
+  const filteredBracket = bracket.filter(b => {
+    const idx = text.indexOf(b);
+    return idx >= 0 && text[idx + b.length] !== '(';
+  });
+  return [...new Set([...curly, ...filteredBracket])];
+}
