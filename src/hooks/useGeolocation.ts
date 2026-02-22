@@ -23,7 +23,7 @@ export function useGeolocation() {
 
   useEffect(() => {
     // Fallback function: use city from user profile
-    const useProfileFallback = () => {
+    const applyProfileFallback = () => {
       if (profile?.city) {
         setLocation({
           latitude: 48.0167,
@@ -39,12 +39,12 @@ export function useGeolocation() {
 
     // On mobile: always use profile fallback, never prompt for geolocation
     if (isMobile) {
-      useProfileFallback();
+      applyProfileFallback();
       return;
     }
 
     if (!navigator.geolocation) {
-      useProfileFallback();
+      applyProfileFallback();
       return;
     }
 
@@ -67,7 +67,7 @@ export function useGeolocation() {
           setLoading(false);
         } catch (err) {
           console.error('Geocoding failed, using fallback:', err);
-          useProfileFallback();
+          applyProfileFallback();
         }
       },
       (geoError) => {
@@ -77,7 +77,7 @@ export function useGeolocation() {
           3: 'Zeitüberschreitung',
         };
         setError(errorMessages[geoError.code] || 'Fehler');
-        useProfileFallback();
+        applyProfileFallback();
       },
       { 
         enableHighAccuracy: true,
