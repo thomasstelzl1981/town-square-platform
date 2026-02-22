@@ -1,71 +1,57 @@
 
 
-## Fix: Legal-Seiten (Impressum/Datenschutz) fuer Website-Besucher sichtbar machen
+## Alle Brand-Websites mit Zugangscode 2710 schuetzen
 
-### Problem
+### Ausgangslage
 
-Die Impressum- und Datenschutzseiten auf allen 5 Brand-Websites (systemofatown.com, kaufy.immo, futureroom.online, acquiary.com, lennoxandfriends.app) zeigen nur "Dokument nicht verfuegbar", weil die Datenbank-Abfragen leer zurueckkommen.
-
-**Ursache**: Die drei relevanten Tabellen haben Row-Level-Security (RLS) aktiviert, und die SELECT-Policies erlauben nur eingeloggte Benutzer (`authenticated`). Website-Besucher sind **nicht** eingeloggt und erhalten daher keine Daten.
-
-Betroffene Tabellen:
-- `compliance_documents` (Policy: `cd_select_authenticated`)
-- `compliance_document_versions` (Policy: `cdv_select_authenticated`)
-- `compliance_company_profile` (Policy: `ccp_select_authenticated`)
-
-Die Daten selbst sind alle vorhanden und korrekt (10 Dokumente mit aktiven Versionen, 3 Firmenprofile).
+Kaufy hat bereits einen PIN-Gate (`KaufyPinGate.tsx`) mit Code `4409`. Die anderen 4 Websites (SoT, FutureRoom, Acquiary, Lennox) haben keinen Schutz.
 
 ### Loesung
 
-Drei neue RLS-Policies hinzufuegen, die **anonymen Lesezugriff (SELECT)** auf diese oeffentlichen Dokumente erlauben. Die bestehenden Policies bleiben unveraendert.
+Eine **generische `WebsitePinGate`-Komponente** erstellen, die von allen 5 Layouts genutzt wird. Einheitlicher Code: **2710**.
 
-### SQL Migration
+### Schritte
 
-```sql
--- 1. Compliance Documents: anon darf website_* Dokumente lesen
-CREATE POLICY "cd_select_anon_website"
-  ON compliance_documents
-  FOR SELECT
-  TO anon
-  USING (doc_key LIKE 'website_%');
+**1. Neue generische Komponente: `src/components/zone3/WebsitePinGate.tsx`**
+- Basiert auf dem bestehenden `KaufyPinGate`
+- Props: `brandName` (Anzeigename), `sessionKey` (fuer sessionStorage), `onVerified`
+- PIN fest auf `2710`
+- Dunkles, neutrales Design (passt zu allen Brands)
 
--- 2. Compliance Document Versions: anon darf aktive Versionen lesen
---    (nur fuer Dokumente, die ueber Policy 1 sichtbar sind)
-CREATE POLICY "cdv_select_anon_active"
-  ON compliance_document_versions
-  FOR SELECT
-  TO anon
-  USING (
-    status = 'active'
-    AND document_id IN (
-      SELECT id FROM compliance_documents WHERE doc_key LIKE 'website_%'
-    )
-  );
+**2. Kaufy Layout (`src/pages/zone3/kaufy2026/Kaufy2026Layout.tsx`)**
+- Import von `KaufyPinGate` durch `WebsitePinGate` ersetzen
+- `brandName="KAUFY"`, `sessionKey="kaufy_pin_verified"`
+- Bestehende `VITE_KAUFY_PIN_GATE` Env-Variable entfernen (Gate ist immer aktiv)
 
--- 3. Company Profile: anon darf alle Profile lesen (nur oeffentliche Firmendaten)
-CREATE POLICY "ccp_select_anon"
-  ON compliance_company_profile
-  FOR SELECT
-  TO anon
-  USING (true);
-```
+**3. SoT Layout (`src/pages/zone3/sot/SotLayout.tsx`)**
+- PinGate einbauen: `brandName="System of a Town"`, `sessionKey="sot_pin_verified"`
 
-### Sicherheitsaspekte
+**4. FutureRoom Layout (`src/pages/zone3/futureroom/FutureRoomLayout.tsx`)**
+- PinGate einbauen: `brandName="FutureRoom"`, `sessionKey="futureroom_pin_verified"`
 
-- Die Policies erlauben **nur SELECT** (kein INSERT/UPDATE/DELETE) fuer `anon`
-- `compliance_documents`: Nur Dokumente mit `website_*` Prefix sind sichtbar (keine internen Portal-Dokumente wie `portal_agb`)
-- `compliance_document_versions`: Nur `active` Versionen von Website-Dokumenten (keine Drafts)
-- `compliance_company_profile`: Enthaelt ausschliesslich oeffentliche Firmendaten (Adresse, Handelsregister) -- diese stehen ohnehin im Impressum
+**5. Acquiary Layout (`src/pages/zone3/acquiary/AcquiaryLayout.tsx`)**
+- PinGate einbauen: `brandName="Acquiary"`, `sessionKey="acquiary_pin_verified"`
 
-### Kein Code-Aenderung noetig
+**6. Lennox Layout (`src/pages/zone3/lennox/LennoxLayout.tsx`)**
+- PinGate einbauen: `brandName="Lennox & Friends"`, `sessionKey="lennox_pin_verified"`
 
-Die Komponente `Zone3LegalPage.tsx` und alle Brand-spezifischen Seiten (SotImpressum, SotDatenschutz, etc.) funktionieren bereits korrekt. Das Problem liegt ausschliesslich in den fehlenden Datenbank-Policies.
+### Verhalten
+
+- Besucher sieht beim ersten Aufruf den PIN-Screen mit Brandname und 4-stelliger Eingabe
+- Nach Eingabe von `2710` wird der Zugang in `sessionStorage` gespeichert
+- Innerhalb der Session (Tab offen) kein erneuter Code noetig
+- Neuer Tab oder Browser-Neustart erfordert erneute Eingabe
 
 ### Betroffene Dateien
 
-| Aenderung | Typ |
-|-----------|-----|
-| SQL Migration: 3 neue RLS-Policies | Backend |
+| Datei | Art |
+|-------|-----|
+| `src/components/zone3/WebsitePinGate.tsx` | Neu |
+| `src/pages/zone3/kaufy2026/Kaufy2026Layout.tsx` | Edit |
+| `src/pages/zone3/sot/SotLayout.tsx` | Edit |
+| `src/pages/zone3/futureroom/FutureRoomLayout.tsx` | Edit |
+| `src/pages/zone3/acquiary/AcquiaryLayout.tsx` | Edit |
+| `src/pages/zone3/lennox/LennoxLayout.tsx` | Edit |
 
-Keine Frontend-Dateien betroffen.
+`KaufyPinGate.tsx` bleibt bestehen (kein Breaking Change), wird aber nicht mehr verwendet.
 
