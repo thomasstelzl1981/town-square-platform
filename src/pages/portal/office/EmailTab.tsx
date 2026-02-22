@@ -325,12 +325,14 @@ function EmailDetailPanel({
   onDelete,
   onArchive,
   onToggleStar,
+  setBodyFetchError,
   isPending,
 }: {
   email: any;
   activeAccount: any;
   isLoadingBody: boolean;
   bodyFetchError: boolean;
+  setBodyFetchError: (v: boolean) => void;
   onFetchBody: (email: any) => void;
   onReply: (email: any) => void;
   onReplyAll: (email: any) => void;
@@ -360,19 +362,20 @@ function EmailDetailPanel({
 
   // Auto-retry with exponential backoff (2s, 4s)
   useEffect(() => {
-    if (bodyFetchError && retryCount < maxRetries && email && !email.body_text && !email.body_html) {
-      const delay = (retryCount + 1) * 2000; // 2s, 4s
-      const timer = setTimeout(() => {
-        if (import.meta.env.DEV) {
-          console.log(`[EmailDetail] Auto-retry #${retryCount + 1} for ${email.id}`);
-        }
-        setRetryCount(prev => prev + 1);
-        setFetchTriggered(true);
-        onFetchBody(email);
-      }, delay);
-      return () => clearTimeout(timer);
-    }
-  }, [bodyFetchError, retryCount, email?.id]);
+    if (!bodyFetchError) return;
+    if (retryCount >= maxRetries) return;
+    if (!email || email.body_text || email.body_html) return;
+    const delay = (retryCount + 1) * 2000;
+    const timer = setTimeout(() => {
+      if (import.meta.env.DEV) {
+        console.log(`[EmailDetail] Auto-retry #${retryCount + 1} for ${email.id}`);
+      }
+      setRetryCount(prev => prev + 1);
+      setBodyFetchError(false);
+      setFetchTriggered(false);
+    }, delay);
+    return () => clearTimeout(timer);
+  }, [bodyFetchError, retryCount]);
 
   if (!email) return null;
 
@@ -437,7 +440,7 @@ function EmailDetailPanel({
         </div>
       </div>
       {/* Email Body */}
-      <div className="flex-1 min-h-0 overflow-hidden">
+      <div className="flex-1 min-h-0 overflow-y-auto">
         {isLoadingBody ? (
           <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
             <Loader2 className="h-8 w-8 animate-spin mb-3" />
@@ -456,7 +459,7 @@ function EmailDetailPanel({
           </div>
         ) : email.body_html ? (
           <iframe
-            sandbox="allow-same-origin"
+            sandbox="allow-same-origin allow-popups"
             srcDoc={`<!DOCTYPE html><html><head><meta charset="utf-8"><style>
               body { font-family: system-ui, -apple-system, sans-serif; font-size: 14px;
                      margin: 0; padding: 16px; overflow-wrap: break-word; word-break: break-word;
@@ -466,11 +469,23 @@ function EmailDetailPanel({
               * { max-width: 100% !important; box-sizing: border-box; }
               a { color: #2563eb; }
             </style></head><body>${email.body_html}</body></html>`}
-            className="w-full h-full border-0"
+            className="w-full border-0"
+            style={{ minHeight: '400px', height: 'auto' }}
             title="E-Mail-Inhalt"
+            onLoad={(e) => {
+              const iframe = e.currentTarget;
+              try {
+                const body = iframe.contentDocument?.body;
+                if (body) {
+                  iframe.style.height = body.scrollHeight + 'px';
+                }
+              } catch {
+                iframe.style.height = '600px';
+              }
+            }}
           />
         ) : (
-          <ScrollArea className="h-full p-4">
+          <ScrollArea className="h-full min-h-[400px] p-4">
             <pre className="whitespace-pre-wrap text-sm font-sans">
               {email.body_text || email.snippet || 'Kein Inhalt'}
             </pre>
@@ -712,8 +727,6 @@ export function EmailTab() {
           scopes: [
             'https://www.googleapis.com/auth/gmail.readonly',
             'https://www.googleapis.com/auth/gmail.send',
-            'https://www.googleapis.com/auth/calendar',
-            'https://www.googleapis.com/auth/contacts.readonly',
           ].join(' '),
           redirectTo: `${window.location.origin}/portal/office/email`,
           queryParams: {
@@ -985,6 +998,7 @@ export function EmailTab() {
               activeAccount={activeAccount}
               isLoadingBody={isLoadingBody}
               bodyFetchError={bodyFetchError}
+              setBodyFetchError={setBodyFetchError}
               onFetchBody={async (email: any) => {
                 setIsLoadingBody(true);
                 setBodyFetchError(false);
