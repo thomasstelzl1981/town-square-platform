@@ -136,7 +136,7 @@ export function SystemBar() {
   // Mobile: compact SystemBar (h-10), only Home + ARMSTRONG + Avatar
   if (isMobile) {
     return (
-      <header className="sticky top-0 z-50 w-full border-b bg-card/70 backdrop-blur-lg supports-[backdrop-filter]:bg-card/60">
+      <header className="sticky top-0 z-50 w-full border-b bg-card/70 backdrop-blur-lg supports-[backdrop-filter]:bg-card/60" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
         <div className="flex h-14 pt-2 items-center justify-between px-3">
           {/* LEFT — Home button */}
           <button 
@@ -204,7 +204,7 @@ export function SystemBar() {
 
   // Desktop: full SystemBar
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-card/70 backdrop-blur-lg supports-[backdrop-filter]:bg-card/60">
+    <header className="sticky top-0 z-50 w-full border-b bg-card/70 backdrop-blur-lg supports-[backdrop-filter]:bg-card/60" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
       <div className="flex h-12 items-center justify-between px-4">
 
         {/* LEFT — 3 Glass Buttons */}
