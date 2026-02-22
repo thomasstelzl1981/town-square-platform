@@ -11,6 +11,7 @@ import { useDocumentMeta } from '@/hooks/useDocumentMeta';
 import { cn } from '@/lib/utils';
 import { Sun, Moon, User, Menu, X } from 'lucide-react';
 import { WebsitePinGate } from '@/components/zone3/WebsitePinGate';
+import { ArmstrongWidget } from '@/components/zone3/ArmstrongWidget';
 import { useZone3Setting } from '@/hooks/useZone3Settings';
 import '@/styles/zone3-theme.css';
 import '@/styles/sot-premium.css';
@@ -145,6 +146,7 @@ export default function SotLayout() {
 
         {/* Footer */}
         <SotFooter />
+        <ArmstrongWidget website="sot" />
       </div>
     </SotLoginTransition>
   );

@@ -13,6 +13,7 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { useDocumentMeta } from '@/hooks/useDocumentMeta';
 import { WebsitePinGate } from '@/components/zone3/WebsitePinGate';
+import { ArmstrongWidget } from '@/components/zone3/ArmstrongWidget';
 import { useZone3Setting } from '@/hooks/useZone3Settings';
 import '@/styles/futureroom-premium.css';
 
@@ -204,8 +205,9 @@ export default function FutureRoomLayout() {
             </ul>
           </div>
         </div>
-        <div className="fr-footer-bottom">© {new Date().getFullYear()} FutureRoom — Ein Service von System of a Town</div>
+      <div className="fr-footer-bottom">© {new Date().getFullYear()} FutureRoom — Ein Service von System of a Town</div>
       </footer>
+      <ArmstrongWidget website="futureroom" />
     </div>
   );
 }
