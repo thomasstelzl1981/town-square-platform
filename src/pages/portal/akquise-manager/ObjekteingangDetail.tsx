@@ -113,7 +113,7 @@ export function ObjekteingangDetail() {
 
   // Use override price for calculations
   const effectivePrice = priceOverride ?? offer.price_asking ?? 0;
-  const yearlyRent = deriveYearlyRent(offer);
+  const yearlyRent = deriveYearlyRent(offer, effectivePrice);
 
   return (
     <PageShell>
