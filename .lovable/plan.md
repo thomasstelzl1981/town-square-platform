@@ -1,66 +1,82 @@
 
+## Mobile-Fixes: Acquiary Header + Kaufy Hero & Suche
 
-## Fix: Mobile Header hinter Notch/Dynamic Island versteckt
+### 1. Acquiary: Doppeltes Menue im Header (P0)
 
-### Problem
+**Problem:** In `AcquiaryLayout.tsx` Zeile 58 steht:
+```text
+<nav className="aq-nav hidden md:flex">
+```
+Die Tailwind-Klasse `hidden` setzt `display: none`, aber die CSS-Klasse `.aq-nav` in `acquiary-premium.css` Zeile 96 setzt `display: flex` — das ueberschreibt `hidden` wegen CSS-Spezifitaet. Ergebnis: Auf Mobile sind sowohl die Desktop-Nav-Links als auch der Hamburger-Button sichtbar.
 
-In `index.html` ist `viewport-fit=cover` gesetzt (Zeile 5), was den Viewport unter die Statusleiste/Notch/Dynamic Island erweitert. Aber keiner der Header-Komponenten nutzt `padding-top: env(safe-area-inset-top)` — dadurch wird der Header-Inhalt auf mobilen Geraeten vom System-UI verdeckt.
-
-Das betrifft 3 Dateien:
-
-### Aenderungen
-
-**1. Zone 2 Portal — `src/components/portal/SystemBar.tsx`**
-
-Zeile 139: Mobile Header (`<header>`) bekommt `safe-area-inset-top`:
+**Fix:** In `acquiary-premium.css` die `.aq-nav`-Regel um eine Media Query erweitern:
 
 ```text
-<header 
-  className="sticky top-0 z-50 w-full border-b bg-card/70 backdrop-blur-lg ..."
-  style={{ paddingTop: 'env(safe-area-inset-top)' }}
->
+.aq-nav {
+  display: none;  /* Mobile: versteckt (Hamburger uebernimmt) */
+  align-items: center;
+  gap: 0.25rem;
+}
+
+@media (min-width: 768px) {
+  .aq-nav {
+    display: flex;  /* Desktop: sichtbar */
+  }
+}
 ```
 
-Zeile 207: Desktop Header ebenfalls (fuer Konsistenz auf Desktop-Macs mit Notch):
+Damit wird die Tailwind-Klasse nicht mehr ueberschrieben und nur ab `md` (768px) angezeigt.
 
-```text
-<header 
-  className="sticky top-0 z-50 w-full border-b bg-card/70 backdrop-blur-lg ..."
-  style={{ paddingTop: 'env(safe-area-inset-top)' }}
->
-```
+---
 
-**2. Zone 3 SoT SystemBar — `src/components/zone3/sot/SotSystemBar.tsx`**
+### 2. Kaufy: Hero-Bild abgeschnitten / nicht responsive (P1)
 
-Zeile 92: Header bekommt `safe-area-inset-top`:
+**Problem:** In `Kaufy2026Hero.tsx` hat der Hero-Wrapper feste Desktop-Werte:
+- `width: calc(100% - 120px)` (60px Margin links + rechts)
+- `margin: 60px 60px 0`
+- `height: 620`
+- `padding: 40px 60px` im Overlay
 
-```text
-<header 
-  className="sticky top-0 z-50 ..."
-  style={{ paddingTop: 'env(safe-area-inset-top)' }}
->
-```
+Auf Mobile wird dadurch das Bild stark zusammengedrueckt, der Text wird abgeschnitten ("Die KI-Pla... Kapitalan...").
 
-**3. Zone 3 SoT Header — `src/components/zone3/sot/SotHeader.tsx`**
+**Fix:** Responsive Werte im `heroStyles`-Objekt in `Kaufy2026Hero.tsx`:
 
-Zeile 16: Fixed Header bekommt `safe-area-inset-top`:
+| Property | Desktop (aktuell) | Mobile (neu) |
+|----------|-------------------|--------------|
+| wrapper width | `calc(100% - 120px)` | `calc(100% - 24px)` |
+| wrapper margin | `60px 60px 0` | `12px 12px 0` |
+| wrapper height | `620` | `auto`, min-height `400` |
+| wrapper borderRadius | `20` | `16` |
+| overlay padding | `40px 60px` | `24px 20px` |
+| title fontSize | `3rem` | `1.75rem` |
 
-```text
-<header 
-  className="fixed top-0 left-0 right-0 z-50 sot-glass"
-  style={{ paddingTop: 'env(safe-area-inset-top)' }}
->
-```
+Da die Komponente inline Styles nutzt (bewusste Architektur-Entscheidung AUD-001), wird ein `useIsMobile()`-Hook verwendet, um zwischen Mobile/Desktop-Werten zu wechseln. Alternativ koennen CSS Media Queries mit einer CSS-Klasse statt inline Styles verwendet werden — aber das wuerde das AUD-001-Pattern brechen. Besser: Conditional Style-Objekte basierend auf Viewport.
 
-### Technischer Hintergrund
+---
 
-- `viewport-fit=cover` ist bereits korrekt in `index.html` gesetzt
-- `env(safe-area-inset-bottom)` wird bereits an 5 Stellen fuer Bottom-Bars verwendet
-- `env(safe-area-inset-top)` fehlt komplett — das ist die Ursache
-- Auf Geraeten ohne Notch gibt `env(safe-area-inset-top)` den Wert `0px` zurueck — kein Effekt
+### 3. Kaufy: Such-Leiste auf Mobile (P2)
+
+**Problem:** In `Kaufy2026SearchBar.tsx`:
+- Die Eingabefelder ("Einkommen (zvE)" und "Eigenkapital") haben `flex: 1` und werden auf Mobile zu schmal — Labels und Werte laufen ineinander
+- Die Such-Buttons (Pfeil, Chevron) werden an den rechten Rand gedrueckt und teils abgeschnitten
+- Der `searchFloat`-Container hat `width: 85%` und `margin: -60px auto 0` — auf Mobile rutscht er zu hoch
+
+**Fix:**
+- `Kaufy2026SearchBar.tsx`: Auf Mobile die Inputs vertikal stapeln (`flex-direction: column` statt `row`) 
+- Labels ueber den Input-Feldern statt daneben
+- Such-Button volle Breite auf Mobile
+- `Kaufy2026Hero.tsx` `searchFloat`: Auf Mobile `width: 95%` und `margin: -40px auto 0`
+
+---
+
+### Dateien
+
+| Datei | Aenderung |
+|-------|-----------|
+| `src/styles/acquiary-premium.css` | `.aq-nav` auf `display: none` + Media Query `md:flex` |
+| `src/components/zone3/kaufy2026/Kaufy2026Hero.tsx` | Responsive Hero-Dimensionen fuer Mobile |
+| `src/components/zone3/kaufy2026/Kaufy2026SearchBar.tsx` | Vertikales Stacking der Input-Felder auf Mobile |
 
 ### Betroffene Module
 
-- `SystemBar.tsx` — kein Modul-Pfad, frei editierbar
-- `SotSystemBar.tsx` — Zone 3, kein Modul-Pfad, frei editierbar
-- `SotHeader.tsx` — Zone 3, kein Modul-Pfad, frei editierbar
+Alle drei Dateien liegen ausserhalb der Modul-Pfade (Zone 3 / shared styles) — keine Freeze-Pruefung noetig.
