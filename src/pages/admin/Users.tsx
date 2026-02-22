@@ -92,6 +92,30 @@ const ROLES: { value: MembershipRole; label: string; restricted?: boolean; descr
   })),
 ];
 
+/** Resolve display role for a membership by checking user_roles for super_user */
+function resolveDisplayRole(
+  membershipRole: string,
+  userId: string,
+  superUserIds: Set<string>,
+): { label: string; variant: 'default' | 'secondary' | 'outline' | 'destructive' } {
+  if (membershipRole === 'platform_admin') {
+    return { label: 'Platform Admin', variant: 'default' };
+  }
+  if (membershipRole === 'org_admin') {
+    if (superUserIds.has(userId)) {
+      return { label: 'Super-User', variant: 'secondary' };
+    }
+    return { label: 'Standardkunde', variant: 'secondary' };
+  }
+  const found = ROLES.find(r => r.value === membershipRole);
+  return { label: found?.label || membershipRole.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '), variant: found?.variant || 'outline' };
+}
+
+interface ProfileInfo {
+  email?: string | null;
+  display_name?: string | null;
+}
+
 export default function UsersPage() {
   const { isPlatformAdmin, user } = useAuth();
   const [searchParams] = useSearchParams();
@@ -102,6 +126,8 @@ export default function UsersPage() {
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [superUserIds, setSuperUserIds] = useState<Set<string>>(new Set());
+  const [profilesMap, setProfilesMap] = useState<Record<string, ProfileInfo>>({});
   
   // Create membership dialog
   const [createOpen, setCreateOpen] = useState(false);
@@ -133,24 +159,35 @@ export default function UsersPage() {
     setLoading(true);
     setError(null);
     try {
-      // Fetch organizations
-      const { data: orgsData } = await supabase
-        .from('organizations')
-        .select('*')
-        .order('name');
-      setOrganizations(orgsData || []);
-
-      // Fetch memberships
-      let query = supabase.from('memberships').select('*');
-      
+      // Fetch organizations, user_roles (super_user), and profiles in parallel
+      let membershipQuery = supabase.from('memberships').select('*');
       if (orgFilter) {
-        query = query.eq('tenant_id', orgFilter);
+        membershipQuery = membershipQuery.eq('tenant_id', orgFilter);
       }
-      
-      const { data: membershipData, error: membershipError } = await query.order('created_at', { ascending: false });
-      
-      if (membershipError) throw membershipError;
-      setMemberships(membershipData || []);
+
+      const [orgsRes, membershipRes, userRolesRes, profilesRes] = await Promise.all([
+        supabase.from('organizations').select('*').order('name'),
+        membershipQuery.order('created_at', { ascending: false }),
+        supabase.from('user_roles').select('user_id, role').eq('role', 'super_user'),
+        supabase.from('profiles').select('id, email, display_name'),
+      ]);
+
+      if (membershipRes.error) throw membershipRes.error;
+
+      setOrganizations(orgsRes.data || []);
+      setMemberships(membershipRes.data || []);
+
+      // Build super_user lookup set
+      const suIds = new Set<string>();
+      (userRolesRes.data || []).forEach(ur => suIds.add(ur.user_id));
+      setSuperUserIds(suIds);
+
+      // Build profiles lookup map
+      const pMap: Record<string, ProfileInfo> = {};
+      (profilesRes.data || []).forEach(p => {
+        pMap[p.id] = { email: p.email, display_name: p.display_name };
+      });
+      setProfilesMap(pMap);
     } catch (err: unknown) {
       setError((err instanceof Error ? err.message : String(err)) || 'Failed to fetch data');
     }
@@ -460,7 +497,7 @@ export default function UsersPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>User ID</TableHead>
+                  <TableHead>Benutzer</TableHead>
                   <TableHead>Organization</TableHead>
                   <TableHead>Role</TableHead>
                   <TableHead>Created</TableHead>
@@ -468,18 +505,31 @@ export default function UsersPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {memberships.map((membership) => (
+                {memberships.map((membership) => {
+                  const profile = profilesMap[membership.user_id];
+                  const resolved = resolveDisplayRole(membership.role, membership.user_id, superUserIds);
+                  return (
                   <TableRow key={membership.id}>
-                    <TableCell className="font-mono text-sm">
-                      {membership.user_id.slice(0, 8)}...
+                    <TableCell>
+                      <div className="flex flex-col">
+                        <span className="text-sm font-medium">
+                          {profile?.display_name || profile?.email || membership.user_id.slice(0, 8) + '...'}
+                        </span>
+                        {profile?.email && (
+                          <span className="text-xs text-muted-foreground">{profile.email}</span>
+                        )}
+                        {!profile?.email && (
+                          <span className="text-xs text-muted-foreground font-mono">{membership.user_id.slice(0, 12)}...</span>
+                        )}
+                      </div>
                       {membership.user_id === user?.id && (
-                        <Badge variant="outline" className="ml-2">You</Badge>
+                        <Badge variant="outline" className="ml-2 mt-1">You</Badge>
                       )}
                     </TableCell>
                     <TableCell>{getOrgName(membership.tenant_id)}</TableCell>
                     <TableCell>
-                      <Badge variant={ROLES.find(r => r.value === membership.role)?.variant || 'outline'}>
-                        {ROLES.find(r => r.value === membership.role)?.label || formatRole(membership.role)}
+                      <Badge variant={resolved.variant}>
+                        {resolved.label}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-muted-foreground">
@@ -506,7 +556,8 @@ export default function UsersPage() {
                       )}
                     </TableCell>
                   </TableRow>
-                ))}
+                  );
+                })}
               </TableBody>
             </Table>
           )}
