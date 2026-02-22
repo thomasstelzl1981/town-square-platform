@@ -2,15 +2,32 @@ import { useRef, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useIsMobile } from '@/hooks/use-mobile';
 
+/**
+ * Mobile-specific back-navigation overrides.
+ * These routes skip their normal parent and go directly to /portal,
+ * because the intermediate parent page is not useful on mobile.
+ */
+const MOBILE_SWIPE_OVERRIDES: Record<string, string> = {
+  '/portal/office/brief': '/portal',
+  '/portal/office/widgets': '/portal',
+  '/portal/office/whatsapp': '/portal',
+  '/portal/office/videocalls': '/portal',
+};
+
 /** Returns the parent route by removing the last path segment */
 export function getParentRoute(pathname: string): string {
-  // Normalize trailing slash
   const clean = pathname.replace(/\/+$/, '');
   if (clean === '/portal' || clean === '') return '/portal';
   const segments = clean.split('/');
   segments.pop();
   const parent = segments.join('/');
   return parent || '/portal';
+}
+
+/** Returns the mobile back target, using overrides when available */
+export function getMobileBackTarget(pathname: string): string {
+  const clean = pathname.replace(/\/+$/, '');
+  return MOBILE_SWIPE_OVERRIDES[clean] || getParentRoute(clean);
 }
 
 /**
@@ -40,7 +57,7 @@ export function useSwipeBack(ref: React.RefObject<HTMLElement | null>) {
     if (deltaX > 80 && deltaY < 50) {
       const clean = location.pathname.replace(/\/+$/, '');
       if (clean !== '/portal') {
-        navigate(getParentRoute(clean));
+        navigate(getMobileBackTarget(clean));
       }
     }
   }, [location.pathname, navigate]);
