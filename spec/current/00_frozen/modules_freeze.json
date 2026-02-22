@@ -7,7 +7,7 @@
     "MOD-00": { "frozen": true, "frozen_at": "2026-02-21", "reason": "Global Freeze – Pre-Launch E2E Testing" },
     "MOD-01": { "frozen": true, "frozen_at": "2026-02-21", "reason": "Global Freeze – Pre-Launch E2E Testing" },
     "MOD-02": { "frozen": true, "frozen_at": "2026-02-22", "reason": "Re-frozen after Mobile DnD Cleanup" },
-    "MOD-03": { "frozen": true, "frozen_at": "2026-02-21", "reason": "Re-frozen after Magic Intake Center implementation" },
+    "MOD-03": { "frozen": true, "frozen_at": "2026-02-22", "reason": "Re-frozen after Mobile Briefgenerator Quick-Link" },
     "MOD-04": { "frozen": true, "frozen_at": "2026-02-21", "reason": "Global Freeze – Pre-Launch E2E Testing" },
     "MOD-05": { "frozen": true, "frozen_at": "2026-02-21", "reason": "Global Freeze – Pre-Launch E2E Testing" },
     "MOD-06": { "frozen": true, "frozen_at": "2026-02-21", "reason": "Global Freeze – Pre-Launch E2E Testing" },
