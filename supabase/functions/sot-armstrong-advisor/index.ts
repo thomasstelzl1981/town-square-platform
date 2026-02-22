@@ -2821,6 +2821,35 @@ async function logActionRun(
 }
 
 // =============================================================================
+// KB SEARCH HELPERS
+// =============================================================================
+
+function extractSearchTerms(message: string): string {
+  const stopWords = new Set([
+    'ich', 'du', 'er', 'sie', 'es', 'wir', 'ihr', 'was', 'wie', 'wo',
+    'wann', 'warum', 'ist', 'sind', 'hat', 'haben', 'kann', 'mir',
+    'mich', 'ein', 'eine', 'der', 'die', 'das', 'den', 'dem', 'und',
+    'oder', 'aber', 'nicht', 'auch', 'noch', 'schon', 'bitte', 'mal',
+    'the', 'a', 'an', 'is', 'are', 'can', 'you', 'me', 'my', 'this'
+  ]);
+  return message
+    .replace(/[^a-zA-ZäöüÄÖÜß\s]/g, '')
+    .split(/\s+/)
+    .filter(w => w.length > 2 && !stopWords.has(w.toLowerCase()))
+    .slice(0, 4)
+    .join(' ');
+}
+
+function getModuleCategory(module: string): string {
+  const map: Record<string, string> = {
+    'MOD-04': 'real_estate', 'MOD-08': 'real_estate',
+    'MOD-07': 'finance', 'MOD-11': 'finance', 'MOD-18': 'finance',
+    'MOD-12': 'sales',
+  };
+  return map[module] || 'system';
+}
+
+// =============================================================================
 // AI RESPONSE GENERATION
 // =============================================================================
 
@@ -2844,13 +2873,40 @@ async function generateExplainResponse(
   const needsKB = message.length > 20;
   let kbContext = "";
   if (needsKB) {
-    const { data: kbItems } = await supabase
-      .from("armstrong_knowledge_items")
-      .select("title_de, summary_de")
-      .eq("status", "published")
-      .limit(4);
-    if (kbItems?.length) {
-      kbContext = kbItems.map(k => `- ${k.title_de}: ${k.summary_de || ''}`).join('\n');
+    const searchTerm = extractSearchTerms(message);
+    let kbItems: Array<{ title_de: string; summary_de: string | null; content: string | null; category: string | null; item_code: string | null }> = [];
+
+    if (searchTerm.length > 0) {
+      const searchPatterns = searchTerm.split(' ').filter(Boolean);
+      const orFilter = searchPatterns.map(term =>
+        `title_de.ilike.%${term}%,summary_de.ilike.%${term}%,content.ilike.%${term}%`
+      ).join(',');
+
+      const { data } = await supabase
+        .from("armstrong_knowledge_items")
+        .select("title_de, summary_de, content, category, item_code")
+        .eq("status", "published")
+        .or(orFilter)
+        .limit(3);
+      kbItems = data || [];
+    }
+
+    // Fallback: Top-Artikel der Modul-Kategorie
+    if (kbItems.length === 0) {
+      const category = getModuleCategory(body?.module || '');
+      const { data } = await supabase
+        .from("armstrong_knowledge_items")
+        .select("title_de, summary_de, content, category, item_code")
+        .eq("status", "published")
+        .eq("category", category)
+        .limit(3);
+      kbItems = data || [];
+    }
+
+    if (kbItems.length > 0) {
+      kbContext = kbItems.map(k =>
+        `## ${k.title_de}${k.item_code ? ` [${k.item_code}]` : ''}\n${k.content || k.summary_de || ''}`
+      ).join('\n\n---\n\n');
     }
   }
 
