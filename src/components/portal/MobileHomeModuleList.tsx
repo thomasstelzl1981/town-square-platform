@@ -12,9 +12,7 @@ import {
   ChevronRight,
   TrendingUp,
   Building2,
-  FileText,
   FolderOpen,
-  Inbox,
   ShoppingBag,
   Car,
   PawPrint,
@@ -26,7 +24,7 @@ import {
 import type { ElementType } from 'react';
 
 const iconMap: Record<string, ElementType> = {
-  TrendingUp, Building2, FileText, FolderOpen, Inbox,
+  TrendingUp, Building2, FolderOpen,
   ShoppingBag, Car, PawPrint, Landmark,
   Search, ListChecks, LayoutGrid,
 };
@@ -62,7 +60,7 @@ export function MobileHomeModuleList() {
               <div className="flex items-center justify-center h-8 w-8 rounded-lg bg-primary/10 shrink-0">
                 {Icon && <Icon className="h-4 w-4 text-primary" />}
               </div>
-              <span className="flex-1 text-sm font-medium text-foreground">
+              <span className="flex-1 text-base font-medium text-foreground">
                 {entry.label}
               </span>
               <ChevronRight className="h-4 w-4 text-muted-foreground" />

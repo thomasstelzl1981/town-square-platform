@@ -21,9 +21,7 @@ export interface MobileHomeEntry {
 export const mobileHomeEntries: MobileHomeEntry[] = [
   { type: 'module', code: 'MOD-18', label: 'Finanzen', icon: 'TrendingUp' },
   { type: 'module', code: 'MOD-04', label: 'Immobilien', icon: 'Building2' },
-  { type: 'tile', code: 'MOD-02', tile: 'brief', label: 'Briefe', icon: 'FileText' },
   { type: 'module', code: 'MOD-03', label: 'Dokumente', icon: 'FolderOpen' },
-  { type: 'tile', code: 'MOD-03', tile: 'posteingang', label: 'Posteingang', icon: 'Inbox' },
   { type: 'module', code: 'MOD-16', label: 'Shops & Fortbildung', icon: 'ShoppingBag' },
   { type: 'module', code: 'MOD-17', label: 'Fahrzeuge', icon: 'Car' },
   { type: 'module', code: 'MOD-05', label: 'Haustiere', icon: 'PawPrint' },
