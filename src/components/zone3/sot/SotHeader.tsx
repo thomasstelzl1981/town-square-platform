@@ -13,7 +13,7 @@ interface SotHeaderProps {
 
 export function SotHeader({ isDark, onToggleTheme }: SotHeaderProps) {
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 sot-glass">
+    <header className="fixed top-0 left-0 right-0 z-50 sot-glass" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
       <div className="zone3-container">
         <nav className="flex items-center justify-between h-16 lg:h-20">
           {/* Logo */}

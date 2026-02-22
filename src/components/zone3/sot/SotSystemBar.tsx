@@ -89,7 +89,7 @@ export function SotSystemBar({ isDark, onToggleTheme }: SotSystemBarProps) {
   }, []);
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-card/70 backdrop-blur-lg supports-[backdrop-filter]:bg-card/60 border-border/30">
+    <header className="sticky top-0 z-50 w-full border-b bg-card/70 backdrop-blur-lg supports-[backdrop-filter]:bg-card/60 border-border/30" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
       <div className="flex h-12 items-center justify-between px-4">
         {/* LEFT — 3 Glass Buttons */}
         <div className="flex items-center gap-2">
