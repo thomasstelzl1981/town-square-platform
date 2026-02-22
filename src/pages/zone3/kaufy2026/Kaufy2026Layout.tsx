@@ -241,35 +241,28 @@ export default function Kaufy2026Layout() {
               <div>
                 <h4 className="font-semibold text-[hsl(220,20%,10%)] mb-4 text-sm uppercase tracking-wide">Plattform</h4>
                 <ul className="space-y-2 text-sm text-[hsl(215,16%,47%)]">
-                  <li><Link to="/website/kaufy" className="hover:text-[hsl(220,20%,10%)] transition-colors">Überblick</Link></li>
-                  <li><Link to="/website/kaufy" className="hover:text-[hsl(220,20%,10%)] transition-colors">Funktionen</Link></li>
-                  <li><Link to="/website/kaufy" className="hover:text-[hsl(220,20%,10%)] transition-colors">Immo-Wallet</Link></li>
-                  <li><Link to="/website/kaufy" className="hover:text-[hsl(220,20%,10%)] transition-colors">Vertriebstools</Link></li>
-                  <li><Link to="/website/kaufy" className="hover:text-[hsl(220,20%,10%)] transition-colors">Automationen</Link></li>
-                </ul>
-              </div>
-
-              {/* Für wen */}
-              <div>
-                <h4 className="font-semibold text-[hsl(220,20%,10%)] mb-4 text-sm uppercase tracking-wide">Für wen</h4>
-                <ul className="space-y-2 text-sm text-[hsl(215,16%,47%)]">
+                  <li><Link to="/website/kaufy" className="hover:text-[hsl(220,20%,10%)] transition-colors">Investment-Suche</Link></li>
                   <li><Link to="/website/kaufy/vermieter" className="hover:text-[hsl(220,20%,10%)] transition-colors">Für Vermieter</Link></li>
                   <li><Link to="/website/kaufy/verkaeufer" className="hover:text-[hsl(220,20%,10%)] transition-colors">Für Anbieter</Link></li>
-                  <li><Link to="/website/kaufy/vertrieb" className="hover:text-[hsl(220,20%,10%)] transition-colors">Für Vertriebspartner</Link></li>
-                  <li><Link to="/website/kaufy" className="hover:text-[hsl(220,20%,10%)] transition-colors">Für Investoren</Link></li>
-                  <li><a href="#" className="hover:text-[hsl(220,20%,10%)] transition-colors">Demo anfragen</a></li>
+                  <li><Link to="/website/kaufy/vertrieb" className="hover:text-[hsl(220,20%,10%)] transition-colors">Für Partner</Link></li>
                 </ul>
               </div>
 
-              {/* Unternehmen */}
+              {/* Rechtliches */}
               <div>
-                <h4 className="font-semibold text-[hsl(220,20%,10%)] mb-4 text-sm uppercase tracking-wide">Unternehmen</h4>
+                <h4 className="font-semibold text-[hsl(220,20%,10%)] mb-4 text-sm uppercase tracking-wide">Rechtliches</h4>
                 <ul className="space-y-2 text-sm text-[hsl(215,16%,47%)]">
-                  <li><a href="#" className="hover:text-[hsl(220,20%,10%)] transition-colors">Über kaufy</a></li>
-                  <li><a href="#" className="hover:text-[hsl(220,20%,10%)] transition-colors">Kontakt</a></li>
-                  <li><a href="#" className="hover:text-[hsl(220,20%,10%)] transition-colors">Karriere</a></li>
-                  <li><a href="#" className="hover:text-[hsl(220,20%,10%)] transition-colors">Partner</a></li>
-                  <li><a href="#" className="hover:text-[hsl(220,20%,10%)] transition-colors">Presse</a></li>
+                  <li><Link to="/website/kaufy/impressum" className="hover:text-[hsl(220,20%,10%)] transition-colors">Impressum</Link></li>
+                  <li><Link to="/website/kaufy/datenschutz" className="hover:text-[hsl(220,20%,10%)] transition-colors">Datenschutz</Link></li>
+                </ul>
+              </div>
+
+              {/* Kontakt */}
+              <div>
+                <h4 className="font-semibold text-[hsl(220,20%,10%)] mb-4 text-sm uppercase tracking-wide">Kontakt</h4>
+                <ul className="space-y-2 text-sm text-[hsl(215,16%,47%)]">
+                  <li><a href="mailto:info@kaufy.immo" className="hover:text-[hsl(220,20%,10%)] transition-colors">info@kaufy.immo</a></li>
+                  <li><Link to="/auth" className="hover:text-[hsl(220,20%,10%)] transition-colors">Registrieren</Link></li>
                 </ul>
               </div>
             </div>

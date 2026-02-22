@@ -24,6 +24,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
+import perspektivenImg from '@/assets/kaufy2026/perspektiven.png';
 
 interface PerspektivePanel {
   id: string;
@@ -91,7 +92,7 @@ export function PerspektivenAkkordeon() {
         {/* Header */}
         <div className="text-center mb-12">
           <h2 className="text-2xl md:text-3xl font-bold text-[hsl(220,20%,10%)] mb-3">
-            Eine Plattform. Drei Perspektiven.
+            Was KAUFY für Sie tut
           </h2>
           <p className="text-[hsl(215,16%,47%)] max-w-2xl mx-auto">
             Kaufy passt sich deiner Rolle an – nicht umgekehrt.
@@ -137,18 +138,14 @@ export function PerspektivenAkkordeon() {
             ))}
           </Accordion>
 
-          {/* Placeholder Image */}
-          <div className="hidden lg:flex items-center justify-center bg-gradient-to-br from-[hsl(210,80%,55%,0.1)] to-[hsl(210,80%,55%,0.05)] rounded-2xl h-[400px]">
-            <div className="text-center">
-              <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-[hsl(210,80%,55%,0.2)] flex items-center justify-center">
-                <svg className="w-10 h-10 text-[hsl(210,80%,55%)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                </svg>
-              </div>
-              <p className="text-sm text-[hsl(215,16%,55%)]">
-                Dashboard-Vorschau
-              </p>
-            </div>
+          {/* Perspektiven Image */}
+          <div className="hidden lg:flex items-center justify-center rounded-2xl h-[400px] overflow-hidden">
+            <img
+              src={perspektivenImg}
+              alt="KAUFY Plattform – Drei Perspektiven"
+              className="w-full h-full object-cover rounded-2xl"
+              loading="lazy"
+            />
           </div>
         </div>
       </div>

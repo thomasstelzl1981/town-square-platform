@@ -12,7 +12,6 @@ import {
   CheckCircle2,
   ArrowRight,
 } from 'lucide-react';
-import vermieterHero from '@/assets/kaufy2026/vermieter-hero.jpg';
 
 const features = [
   {
@@ -48,33 +47,24 @@ const benefits = [
 export default function Kaufy2026Vermieter() {
   return (
     <div>
-      {/* Hero */}
-      <section className="relative">
-        <div className="mx-6 lg:mx-10 rounded-2xl overflow-hidden">
-          <div className="relative h-[400px]">
-            <img
-              src={vermieterHero}
-              alt="Vermieter"
-              className="w-full h-full object-cover"
-            />
-            <div className="absolute inset-0 bg-gradient-to-r from-[hsl(220,20%,10%)]/80 to-transparent" />
-            <div className="absolute inset-0 flex items-center">
-              <div className="px-8 lg:px-12 max-w-xl">
-                <h1 className="text-3xl lg:text-4xl font-bold text-white mb-4">
-                  Vermieten war noch nie so einfach.
-                </h1>
-                <p className="text-white/80 text-lg mb-6">
-                  Die digitale Mietsonderverwaltung für private Vermieter und Bestandshalter.
-                </p>
-                <Link to="/auth">
-                  <Button size="lg" className="rounded-full bg-white text-[hsl(220,20%,10%)] hover:bg-white/90">
-                    Jetzt starten
-                    <ArrowRight className="w-4 h-4 ml-2" />
-                  </Button>
-                </Link>
-              </div>
-            </div>
-          </div>
+      {/* Hero — Text-based, consistent with Verkäufer/Partner */}
+      <section className="py-16 px-6 lg:px-10">
+        <div className="max-w-3xl mx-auto text-center">
+          <span className="inline-block text-xs font-semibold tracking-wider uppercase text-[hsl(210,80%,55%)] bg-[hsl(210,80%,55%,0.1)] px-3 py-1 rounded-full mb-6">
+            Für Vermieter
+          </span>
+          <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-[hsl(220,20%,10%)] mb-4">
+            Vermieten war noch nie so einfach.
+          </h1>
+          <p className="text-lg text-[hsl(215,16%,47%)] mb-8 max-w-2xl mx-auto">
+            Die digitale Mietsonderverwaltung für private Vermieter und Bestandshalter.
+          </p>
+          <Link to="/auth">
+            <Button size="lg" className="rounded-full bg-[hsl(220,20%,10%)] hover:bg-[hsl(220,20%,20%)] text-white">
+              Jetzt starten
+              <ArrowRight className="w-4 h-4 ml-2" />
+            </Button>
+          </Link>
         </div>
       </section>
 
