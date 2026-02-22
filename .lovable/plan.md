@@ -1,68 +1,83 @@
 
 
-## Fix: Swipe-Back vom Briefgenerator soll direkt zum Dashboard fuehren
+## Mobile Startseite verschlanken — 3 Eintraege weniger
 
-### Problem
+### Ist-Zustand (11 Eintraege)
 
-Wenn man auf Mobile vom Dashboard direkt den Briefgenerator oeffnet (`/portal/office/brief`), fuehrt ein Swipe-Back zu `/portal/office` (KI Office Untermenue mit WhatsApp, Videocalls etc.). Das ist verwirrend, weil der Nutzer nie die KI Office Uebersicht gesehen hat — er kam direkt vom Dashboard.
+1. Finanzen
+2. Immobilien
+3. **Briefe** (MOD-02 tile — Briefgenerator)
+4. **Dokumente** (MOD-03 — DMS Modul)
+5. **Posteingang** (MOD-03 tile — Duplikat!)
+6. Shops & Fortbildung
+7. Fahrzeuge
+8. Haustiere
+9. Finanzierung
+10. Immo Suche
+11. Armstrong Tasks
 
-### Ursache
+### Probleme
 
-`useSwipeBack` in `src/hooks/useSwipeBack.ts` entfernt einfach das letzte Pfad-Segment:
-- `/portal/office/brief` wird zu `/portal/office`
+- "Posteingang" ist doppelt: als eigener Eintrag UND als Tile innerhalb von "Dokumente" (MOD-03 hat bereits den Tab "Posteingang")
+- "Briefe" und "Dokumente" sind thematisch verwandt und koennten zusammengefasst werden
+- 11 Eintraege sind zu viele fuer eine kompakte Mobile-Startseite
 
-### Loesung
+### Loesung: Von 11 auf 8 Eintraege
 
-Eine **Mobile-Override-Map** in `useSwipeBack.ts` einfuegen: Fuer bestimmte Pfade wird auf Mobile ein anderes Ziel definiert statt des normalen Eltern-Pfads.
+**Entfernen:**
+- "Posteingang" — bereits als Tab in DMS (Dokumente) enthalten
+- "Briefe" — wird stattdessen als Quick-Link innerhalb der DMS-Seite auf Mobile angezeigt
 
-```text
-Mobile Swipe-Back Overrides:
-/portal/office/brief    -->  /portal    (statt /portal/office)
-/portal/office/widgets  -->  /portal    (statt /portal/office)
-/portal/office/whatsapp -->  /portal    (statt /portal/office)
-```
+**Hinzufuegen:**
+- Innerhalb der DMS-Modulseite auf Mobile: ein sichtbarer Quick-Link zum Briefgenerator (`/portal/office/brief`), damit der Zugang nicht verloren geht
 
-Die Regel dahinter: Alle KI Office Sub-Routen sollen auf Mobile direkt zum Dashboard zurueckfuehren, da das KI Office Untermenue auf Mobile keinen Sinn macht (Nutzer kommt immer direkt ueber Dashboard-Kacheln).
+**Ergebnis (9 Eintraege):**
+1. Finanzen
+2. Immobilien
+3. Dokumente (mit Posteingang + Briefgenerator-Link drin)
+4. Shops & Fortbildung
+5. Fahrzeuge
+6. Haustiere
+7. Finanzierung
+8. Immo Suche
+9. Armstrong Tasks
+
+### Schriftgroesse
+
+Mit 9 statt 11 Eintraegen haben wir Platz, die Schrift von `text-sm` (14px) auf `text-base` (16px) zu erhoehen — besser lesbar und touch-freundlicher.
 
 ### Technische Umsetzung
 
-**Datei: `src/hooks/useSwipeBack.ts`**
+#### 1. `src/config/mobileHomeConfig.ts`
 
-1. Eine Konstante `MOBILE_SWIPE_OVERRIDES` definieren:
+Zwei Eintraege entfernen:
+- Zeile 24: `{ type: 'tile', code: 'MOD-02', tile: 'brief', label: 'Briefe', icon: 'FileText' }` — entfernen
+- Zeile 26: `{ type: 'tile', code: 'MOD-03', tile: 'posteingang', label: 'Posteingang', icon: 'Inbox' }` — entfernen
 
-```text
-const MOBILE_SWIPE_OVERRIDES: Record<string, string> = {
-  '/portal/office/brief': '/portal',
-  '/portal/office/widgets': '/portal',
-  '/portal/office/whatsapp': '/portal',
-  '/portal/office/videocalls': '/portal',
-};
-```
+#### 2. `src/components/portal/MobileHomeModuleList.tsx`
 
-2. In `handleTouchEnd` vor dem `navigate(getParentRoute(...))` pruefen, ob ein Override existiert:
+- Schriftgroesse von `text-sm` auf `text-base` erhoehen
+- Nicht mehr benoetigte Icons (`FileText`, `Inbox`) aus den Imports entfernen
 
-```text
-if (deltaX > 80 && deltaY < 50) {
-  const clean = location.pathname.replace(/\/+$/, '');
-  if (clean !== '/portal') {
-    const override = MOBILE_SWIPE_OVERRIDES[clean];
-    navigate(override || getParentRoute(clean));
-  }
-}
-```
+#### 3. DMS-Seite: Quick-Link zum Briefgenerator auf Mobile
 
-3. Zusaetzlich `getParentRoute` in `SystemBar.tsx` (Zurueck-Button) ebenfalls die Overrides beruecksichtigen lassen. Dazu eine neue Export-Funktion `getMobileBackTarget(pathname)` erstellen, die sowohl von `useSwipeBack` als auch von `SystemBar` genutzt wird.
+Damit der Briefgenerator weiterhin gut erreichbar ist, wird in der DMS-Modulseite auf Mobile ein kleiner Quick-Action-Button angezeigt, der direkt zum Briefgenerator navigiert. Dies wird ueber eine bedingte Anzeige (`useIsMobile`) geloest, sodass Desktop davon nicht betroffen ist.
 
-**Datei: `src/components/portal/SystemBar.tsx`**
+Die genaue Platzierung: Als Link-Karte oberhalb der DMS-Tabs auf Mobile, z.B. "Briefgenerator oeffnen" mit einem kleinen FileText-Icon.
 
-- Den Zurueck-Button-Link ebenfalls auf `getMobileBackTarget` umstellen, damit Swipe und Button-Klick konsistent sind.
+Betroffene Datei: Die DMS-Modulseite oder deren Tab-Layout-Komponente (muss geprueft werden welche Datei das Tab-Layout rendert).
+
+#### 4. Swipe-Back Overrides
+
+In `useSwipeBack.ts` muss kein neuer Override hinzugefuegt werden, da der Briefgenerator-Pfad (`/portal/office/brief`) bereits auf `/portal` mappt.
 
 ### Dateien
 
 | Datei | Aenderung |
 |-------|-----------|
-| `src/hooks/useSwipeBack.ts` | Override-Map + `getMobileBackTarget()` Export hinzufuegen |
-| `src/components/portal/SystemBar.tsx` | Zurueck-Button nutzt `getMobileBackTarget()` statt `getParentRoute()` |
+| `src/config/mobileHomeConfig.ts` | 2 Eintraege entfernen |
+| `src/components/portal/MobileHomeModuleList.tsx` | Schrift vergroessern, Imports bereinigen |
+| DMS Tab-Layout (MOD-03 Bereich) | Mobile-only Quick-Link zum Briefgenerator |
 
-Beide Dateien liegen ausserhalb der Modul-Pfade — keine Freeze-Pruefung noetig.
+Keine Freeze-Pruefung noetig: `mobileHomeConfig` und `MobileHomeModuleList` sind shared Config/Komponenten. Der DMS-Quick-Link muesste auf MOD-03 Freeze geprueft werden.
 
