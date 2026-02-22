@@ -10,7 +10,5 @@ export { SotCTA } from './SotCTA';
 export { SotPricingCard, type PricingPlan } from './SotPricingCard';
 export { SotHeader } from './SotHeader';
 export { SotFooter } from './SotFooter';
-export { SotInputBar } from './SotInputBar';
-export { SotArmstrongChat } from './SotArmstrongChat';
 export { SotWidgetSidebar, SotWidgetBarMobile } from './SotWidgetSidebar';
-export { SotArmstrongStripe } from './SotArmstrongStripe';
+
