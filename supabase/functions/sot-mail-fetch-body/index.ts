@@ -33,20 +33,45 @@ function decodeWithCharset(bytes: Uint8Array, charset: string): string {
   }
 }
 
-function decodeQuotedPrintable(input: string, charset = 'utf-8'): string {
-  const decoded = input
-    .replace(/=\r?\n/g, '')
-    .replace(/=([0-9A-Fa-f]{2})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
-  
-  if (charset === 'utf-8' || charset === 'us-ascii') return decoded;
-  
-  try {
-    const bytes = new Uint8Array(decoded.length);
-    for (let i = 0; i < decoded.length; i++) bytes[i] = decoded.charCodeAt(i) & 0xFF;
-    return decodeWithCharset(bytes, charset);
-  } catch {
-    return decoded;
+/**
+ * Extract charset from bodyStructure, handling various deno-imap property names
+ */
+function extractCharsetFromBodyStructure(bs: any): string {
+  if (!bs) return 'utf-8';
+  const params = bs.parameters ?? bs.params ?? bs.parameter ?? {};
+  const charset = params.charset ?? params.CHARSET ?? params.Charset ?? '';
+  if (charset) return charset.toLowerCase();
+  if (Array.isArray(bs.extensionData)) {
+    for (let i = 0; i < bs.extensionData.length - 1; i++) {
+      if (String(bs.extensionData[i]).toLowerCase() === 'charset') {
+        return String(bs.extensionData[i + 1]).toLowerCase();
+      }
+    }
   }
+  return 'utf-8';
+}
+
+/**
+ * Decode QP content with charset awareness — byte-based version
+ */
+function decodeQuotedPrintable(input: string, charset = 'utf-8'): string {
+  const noSoftBreaks = input.replace(/=\r?\n/g, '');
+  const byteValues: number[] = [];
+  let i = 0;
+  while (i < noSoftBreaks.length) {
+    if (noSoftBreaks[i] === '=' && i + 2 < noSoftBreaks.length) {
+      const hex = noSoftBreaks.slice(i + 1, i + 3);
+      if (/^[0-9A-Fa-f]{2}$/.test(hex)) {
+        byteValues.push(parseInt(hex, 16));
+        i += 3;
+        continue;
+      }
+    }
+    byteValues.push(noSoftBreaks.charCodeAt(i) & 0xFF);
+    i++;
+  }
+  const bytes = new Uint8Array(byteValues);
+  return decodeWithCharset(bytes, charset);
 }
 
 function decodeBase64Content(input: string, charset = 'utf-8'): string {
@@ -209,9 +234,8 @@ async function attemptFetchBody(
         let charset = 'utf-8';
         let encoding = '';
         if (msg?.bodyStructure) {
-          const params = msg.bodyStructure.parameters || msg.bodyStructure.params || {};
-          if (params.charset) charset = params.charset.toLowerCase();
-          encoding = (msg.bodyStructure.encoding || '').toLowerCase();
+          charset = extractCharsetFromBodyStructure(msg.bodyStructure);
+          encoding = (msg.bodyStructure.encoding ?? msg.bodyStructure.bodyEncoding ?? '').toLowerCase();
         }
 
         let content = (part instanceof Uint8Array) 
