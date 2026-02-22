@@ -1,0 +1,1 @@
+ALTER TABLE public.acq_offers ADD COLUMN price_counter numeric DEFAULT NULL;

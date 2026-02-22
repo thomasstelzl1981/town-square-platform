@@ -1,6 +1,7 @@
 /**
  * ObjekteingangDetail — CI-konformes Objektakte-Layout
  * Redesign: KPI-Zeile, Tab-basierte Kalkulation, Collapsible Extrahierte Daten
+ * Feature: Preisvorschlag-Rechner mit price_counter Persistenz
  */
 import * as React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -12,7 +13,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   ArrowLeft, Loader2, Building2, MapPin, Euro, X, ThumbsUp, MessageSquare, 
-  FileText, Upload, Check, ChevronDown, TrendingUp, Ruler, Home
+  FileText, Upload, Check, ChevronDown, TrendingUp, Ruler, Home, Save, RotateCcw
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAcqOffer, useUpdateOfferStatus, type AcqOfferStatus } from '@/hooks/useAcqOffers';
@@ -30,6 +31,8 @@ import { PageShell } from '@/components/shared/PageShell';
 import { DESIGN } from '@/config/designManifest';
 import { calcBestandQuick, calcAufteilerFull } from '@/engines/akquiseCalc/engine';
 import { AUFTEILER_DEFAULTS } from '@/engines/akquiseCalc/spec';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/hooks/use-toast';
 
 const STATUS_OPTIONS: { value: AcqOfferStatus; label: string }[] = [
   { value: 'new', label: 'Eingegangen' },
@@ -53,10 +56,11 @@ const STATUS_TO_STEP: Record<string, number> = {
 };
 
 /** Derive yearly rent with fallback: noi_indicated > price * yield > 0 */
-function deriveYearlyRent(offer: { noi_indicated?: number | null; price_asking?: number | null; yield_indicated?: number | null }): number {
+function deriveYearlyRent(offer: { noi_indicated?: number | null; price_asking?: number | null; yield_indicated?: number | null }, overridePrice?: number): number {
   if (offer.noi_indicated) return offer.noi_indicated;
-  if (offer.price_asking && offer.yield_indicated) {
-    return offer.price_asking * offer.yield_indicated / 100;
+  const price = overridePrice ?? offer.price_asking;
+  if (price && offer.yield_indicated) {
+    return price * offer.yield_indicated / 100;
   }
   return 0;
 }
@@ -72,6 +76,17 @@ export function ObjekteingangDetail() {
   const [preisOpen, setPreisOpen] = React.useState(false);
   const [interesseOpen, setInteresseOpen] = React.useState(false);
   const [extractedOpen, setExtractedOpen] = React.useState(false);
+
+  // Price override state — initialized from price_counter or price_asking
+  const [priceOverride, setPriceOverride] = React.useState<number | null>(null);
+
+  // Sync price override when offer loads
+  React.useEffect(() => {
+    if (offer) {
+      const savedCounter = (offer as any).price_counter as number | null;
+      setPriceOverride(savedCounter ?? offer.price_asking ?? null);
+    }
+  }, [offer?.id]);
 
   if (isLoading) {
     return <div className="p-6 flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>;
@@ -96,7 +111,8 @@ export function ObjekteingangDetail() {
 
   const currentStepIdx = STATUS_TO_STEP[offer.status] ?? 0;
 
-  // Derived yearly rent with fallback
+  // Use override price for calculations
+  const effectivePrice = priceOverride ?? offer.price_asking ?? 0;
   const yearlyRent = deriveYearlyRent(offer);
 
   return (
@@ -122,6 +138,12 @@ export function ObjekteingangDetail() {
                 ))}
               </SelectContent>
             </Select>
+            {/* Badge when price_counter differs from price_asking */}
+            {priceOverride !== null && offer.price_asking !== null && priceOverride !== offer.price_asking && (
+              <Badge variant="secondary" className="bg-amber-500/10 text-amber-600 border-amber-500/30">
+                Gegenvorschlag: {formatPrice(priceOverride)}
+              </Badge>
+            )}
           </div>
           {mandate && (
             <p className={DESIGN.TYPOGRAPHY.MUTED + ' mt-1 flex items-center gap-2'}>
@@ -182,7 +204,7 @@ export function ObjekteingangDetail() {
 
       {/* ROW 1: 4 kompakte KPI-Kacheln */}
       <div className={DESIGN.KPI_GRID.FULL}>
-        <KPICard icon={<Euro className="h-4 w-4" />} label="Kaufpreis" value={formatPrice(offer.price_asking)} />
+        <KPICard icon={<Euro className="h-4 w-4" />} label="Kaufpreis" value={formatPrice(effectivePrice)} />
         <KPICard icon={<Home className="h-4 w-4" />} label="Einheiten" value={offer.units_count?.toString() || '–'} />
         <KPICard icon={<Ruler className="h-4 w-4" />} label="Fläche" value={offer.area_sqm ? `${offer.area_sqm.toLocaleString('de-DE')} m²` : '–'} />
         <KPICard icon={<TrendingUp className="h-4 w-4" />} label="Rendite / Faktor" value={offer.yield_indicated ? `${offer.yield_indicated.toFixed(1)}% · ${(100 / offer.yield_indicated).toFixed(1)}x` : '–'} />
@@ -265,8 +287,14 @@ export function ObjekteingangDetail() {
       <div className="space-y-4">
         <h2 className={cn(DESIGN.TYPOGRAPHY.SECTION_TITLE, 'mb-1')}>Kalkulation</h2>
         
-        {/* Schnellanalyse — volle Breite, Engine-basiert */}
-        <QuickAnalysisBanner offer={offer} yearlyRent={yearlyRent} />
+        {/* Schnellanalyse — volle Breite, Engine-basiert, editierbarer Preis */}
+        <QuickAnalysisBanner 
+          offer={offer} 
+          yearlyRent={yearlyRent} 
+          priceOverride={effectivePrice}
+          originalPrice={offer.price_asking || 0}
+          onPriceChange={setPriceOverride}
+        />
 
         {/* Tab-Layout statt Side-by-Side */}
         <Tabs defaultValue="bestand" className="w-full">
@@ -275,10 +303,10 @@ export function ObjekteingangDetail() {
             <TabsTrigger value="aufteiler">📊 Aufteiler (Flip)</TabsTrigger>
           </TabsList>
           <TabsContent value="bestand">
-            <BestandCalculation offerId={offer.id} hideQuickAnalysis initialData={{ purchasePrice: offer.price_asking || 0, monthlyRent: yearlyRent / 12, units: offer.units_count || 1, areaSqm: offer.area_sqm || 0 }} />
+            <BestandCalculation offerId={offer.id} hideQuickAnalysis initialData={{ purchasePrice: effectivePrice, monthlyRent: yearlyRent / 12, units: offer.units_count || 1, areaSqm: offer.area_sqm || 0 }} />
           </TabsContent>
           <TabsContent value="aufteiler">
-            <AufteilerCalculation offerId={offer.id} initialData={{ purchasePrice: offer.price_asking || 0, yearlyRent, units: offer.units_count || 1, areaSqm: offer.area_sqm || 0 }} />
+            <AufteilerCalculation offerId={offer.id} initialData={{ purchasePrice: effectivePrice, yearlyRent, units: offer.units_count || 1, areaSqm: offer.area_sqm || 0 }} />
           </TabsContent>
         </Tabs>
       </div>
@@ -341,17 +369,70 @@ function DataRow({ label, value }: { label: string; value?: string | null }) {
   );
 }
 
-/* ─── Quick Analysis Banner (Engine-basiert) ───────────── */
-function QuickAnalysisBanner({ offer, yearlyRent }: { offer: NonNullable<ReturnType<typeof useAcqOffer>['data']>; yearlyRent: number }) {
+/* ─── Quick Analysis Banner (Engine-basiert, editierbarer Kaufpreis) ───────────── */
+function QuickAnalysisBanner({ 
+  offer, 
+  yearlyRent, 
+  priceOverride,
+  originalPrice,
+  onPriceChange,
+}: { 
+  offer: NonNullable<ReturnType<typeof useAcqOffer>['data']>; 
+  yearlyRent: number;
+  priceOverride: number;
+  originalPrice: number;
+  onPriceChange: (price: number) => void;
+}) {
+  const [inputValue, setInputValue] = React.useState(priceOverride.toString());
+  const [isSaving, setIsSaving] = React.useState(false);
+  const isModified = priceOverride !== originalPrice;
+
+  // Sync input when priceOverride changes externally
+  React.useEffect(() => {
+    setInputValue(priceOverride.toString());
+  }, [priceOverride]);
+
   const formatCurrency = (val: number) =>
     new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(val);
 
-  const purchasePrice = offer.price_asking || 0;
+  const formatInputDisplay = (val: string) => {
+    const num = parseInt(val.replace(/\D/g, ''), 10);
+    if (isNaN(num)) return '';
+    return num.toLocaleString('de-DE');
+  };
 
-  // Engine-basierte Berechnungen statt inline-Logik
-  const bestand = calcBestandQuick({ purchasePrice, monthlyRent: yearlyRent / 12 });
+  const handlePriceInput = (raw: string) => {
+    const digits = raw.replace(/\D/g, '');
+    setInputValue(digits);
+    const num = parseInt(digits, 10);
+    if (!isNaN(num) && num > 0) {
+      onPriceChange(num);
+    }
+  };
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    const { error } = await supabase
+      .from('acq_offers')
+      .update({ price_counter: priceOverride } as any)
+      .eq('id', offer.id);
+    setIsSaving(false);
+    if (error) {
+      toast({ title: 'Fehler', description: 'Gegenvorschlag konnte nicht gespeichert werden.', variant: 'destructive' });
+    } else {
+      toast({ title: 'Gespeichert', description: `Gegenvorschlag ${formatCurrency(priceOverride)} wurde gespeichert.` });
+    }
+  };
+
+  const handleReset = () => {
+    onPriceChange(originalPrice);
+    setInputValue(originalPrice.toString());
+  };
+
+  // Engine-basierte Berechnungen mit Override-Preis
+  const bestand = calcBestandQuick({ purchasePrice: priceOverride, monthlyRent: yearlyRent / 12 });
   const aufteiler = calcAufteilerFull({
-    purchasePrice,
+    purchasePrice: priceOverride,
     yearlyRent,
     targetYield: AUFTEILER_DEFAULTS.targetYield,
     salesCommission: AUFTEILER_DEFAULTS.salesCommission,
@@ -364,14 +445,49 @@ function QuickAnalysisBanner({ offer, yearlyRent }: { offer: NonNullable<ReturnT
 
   return (
     <Card className={cn(DESIGN.CARD.BASE, DESIGN.INFO_BANNER.PREMIUM)}>
-      <CardHeader className="pb-2 px-4 pt-3">
-        <CardTitle className={DESIGN.TYPOGRAPHY.CARD_TITLE}>Schnellanalyse</CardTitle>
+      <CardHeader className="pb-2 px-4 pt-3 flex flex-row items-center justify-between">
+        <div className="flex items-center gap-3">
+          <CardTitle className={DESIGN.TYPOGRAPHY.CARD_TITLE}>Schnellanalyse</CardTitle>
+          {isModified && (
+            <Badge variant="secondary" className="bg-amber-500/10 text-amber-600 border-amber-500/30 text-[10px]">
+              Gegenvorschlag aktiv
+            </Badge>
+          )}
+        </div>
+        {isModified && (
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={handleReset} className="h-7 text-xs text-muted-foreground">
+              <RotateCcw className="h-3 w-3 mr-1" />Zurücksetzen
+            </Button>
+            <Button size="sm" onClick={handleSave} disabled={isSaving} className="h-7 text-xs">
+              <Save className="h-3 w-3 mr-1" />{isSaving ? 'Speichert…' : 'Speichern'}
+            </Button>
+          </div>
+        )}
       </CardHeader>
       <CardContent className="px-4 pb-4">
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 items-stretch">
+          {/* Editable purchase price */}
           <div>
-            <div className={DESIGN.TYPOGRAPHY.HINT}>Gesamtinvestition</div>
-            <div className={DESIGN.TYPOGRAPHY.VALUE + ' text-lg'}>{formatCurrency(bestand.totalInvestment)}</div>
+            <div className={DESIGN.TYPOGRAPHY.HINT}>Kaufpreis</div>
+            <div className="flex items-center gap-1">
+              <input
+                type="text"
+                value={formatInputDisplay(inputValue)}
+                onChange={(e) => handlePriceInput(e.target.value)}
+                className={cn(
+                  "w-full bg-transparent border-b-2 text-lg font-bold tracking-tight outline-none py-0.5 transition-colors",
+                  isModified ? "border-amber-500 text-amber-600" : "border-transparent text-foreground"
+                )}
+              />
+              <span className="text-xs text-muted-foreground">€</span>
+            </div>
+            {isModified && (
+              <div className="text-[10px] text-muted-foreground mt-0.5">
+                <span className="line-through">{formatCurrency(originalPrice)}</span>
+                <span className="ml-1">(Angebot)</span>
+              </div>
+            )}
           </div>
           <div>
             <div className={DESIGN.TYPOGRAPHY.HINT}>Monatl. Cashflow</div>
@@ -404,3 +520,4 @@ function QuickAnalysisBanner({ offer, yearlyRent }: { offer: NonNullable<ReturnT
 }
 
 export default ObjekteingangDetail;
+
