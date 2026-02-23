@@ -7,6 +7,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { isDemoId } from '@/engines/demoData/engine';
+import { useDemoToggles } from '@/hooks/useDemoToggles';
 import type { DevProject, CreateProjectInput, ProjectPortfolioRow, ProjectStatus } from '@/types/projekte';
 
 const QUERY_KEY = 'dev-projects';
@@ -15,6 +17,8 @@ export function useDevProjects(contextId?: string) {
   const { profile, user } = useAuth();
   const queryClient = useQueryClient();
   const tenantId = profile?.active_tenant_id;
+  const { isEnabled } = useDemoToggles();
+  const demoEnabled = isEnabled('GP-PROJEKT');
 
   // Fetch projects (optionally filtered by context)
   const { data: projects = [], isLoading, error, refetch } = useQuery({
@@ -357,9 +361,13 @@ export function useDevProjects(contextId?: string) {
     return `${prefix}-${year}-${String(nextNum).padStart(3, '0')}`;
   };
 
+  // Filter demo data from DB results when toggle is OFF
+  const filteredProjects = demoEnabled ? projects : projects.filter(p => !isDemoId(p.id));
+  const filteredPortfolioRows = demoEnabled ? portfolioRows : portfolioRows.filter(p => !isDemoId(p.id));
+
   return {
-    projects,
-    portfolioRows,
+    projects: filteredProjects,
+    portfolioRows: filteredPortfolioRows,
     isLoading,
     isLoadingPortfolio,
     error,

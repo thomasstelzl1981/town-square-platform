@@ -22,8 +22,7 @@ import { CreateReservationDialog } from '@/components/projekte';
 import { SalesApprovalSection } from '@/components/projekte/SalesApprovalSection';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { isDemoMode, isDemoProject, DEMO_PROJECT, DEMO_PROJECT_ID, DEMO_PROJECT_DESCRIPTION } from '@/components/projekte/demoProjectData';
-import { useDemoToggles } from '@/hooks/useDemoToggles';
+import { isDemoId } from '@/engines/demoData/engine';
 import { DesktopOnly } from '@/components/shared/DesktopOnly';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
@@ -31,27 +30,22 @@ import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 export default function VertriebTab() {
   const navigate = useNavigate();
   const { portfolioRows, isLoadingPortfolio, projects } = useDevProjects();
-  const { isEnabled } = useDemoToggles();
-  const showDemoProject = isEnabled('GP-PROJEKT');
-  const [selectedProject, setSelectedProject] = useState<string>(showDemoProject ? DEMO_PROJECT_ID : (projects[0]?.id || ''));
+  const [selectedProject, setSelectedProject] = useState<string>(projects[0]?.id || '');
   const [showCreateDialog, setShowCreateDialog] = useState(false);
 
-  const isSelectedDemo = showDemoProject && isDemoProject(selectedProject);
-  const activeProjectId = isSelectedDemo ? DEMO_PROJECT.id : selectedProject;
-  const { reservations, isLoading: isLoadingReservations, updateReservation } = useProjectReservations(isSelectedDemo ? undefined : activeProjectId);
-  const { units } = useProjectUnits(isSelectedDemo ? undefined : activeProjectId);
+  const isSelectedDemo = isDemoId(selectedProject);
+  const activeProjectId = selectedProject;
+  const { reservations, isLoading: isLoadingReservations, updateReservation } = useProjectReservations(activeProjectId || undefined);
+  const { units } = useProjectUnits(activeProjectId || undefined);
 
   if (isLoadingPortfolio) return <LoadingState />;
 
-  // Stats — include demo only when toggle ON
-  const demoUnits = showDemoProject ? DEMO_PROJECT.total_units_count : 0;
-  const demoAvailable = showDemoProject ? DEMO_PROJECT.units_available : 0;
-  const demoValue = showDemoProject ? (DEMO_PROJECT.total_sale_target || 0) : 0;
-  const totalUnits = portfolioRows.reduce((sum, r) => sum + r.total_units_count, 0) + demoUnits;
+  // Stats — purely from DB (demo data is already filtered by useDevProjects)
+  const totalUnits = portfolioRows.reduce((sum, r) => sum + r.total_units_count, 0);
   const totalSold = portfolioRows.reduce((sum, r) => sum + r.units_sold, 0);
   const totalReserved = portfolioRows.reduce((sum, r) => sum + r.units_reserved, 0);
-  const totalAvailable = portfolioRows.reduce((sum, r) => sum + r.units_available, 0) + demoAvailable;
-  const totalValue = portfolioRows.reduce((sum, r) => sum + (r.total_sale_target || 0), 0) + demoValue;
+  const totalAvailable = portfolioRows.reduce((sum, r) => sum + r.units_available, 0);
+  const totalValue = portfolioRows.reduce((sum, r) => sum + (r.total_sale_target || 0), 0);
   const soldValue = portfolioRows.reduce((sum, r) => {
     const unitValue = r.total_sale_target && r.total_units_count ? r.total_sale_target / r.total_units_count : 0;
     return sum + (unitValue * r.units_sold);
@@ -80,7 +74,7 @@ export default function VertriebTab() {
     return acc;
   }, {} as Record<string, { name: string; reservations: number; sold: number; volume: number; commission: number }>);
 
-  const activeProjectData = isSelectedDemo ? null : projects.find(p => p.id === activeProjectId);
+  const activeProjectData = projects.find(p => p.id === activeProjectId);
 
   return (
     <PageShell>
@@ -94,14 +88,9 @@ export default function VertriebTab() {
                 <SelectValue placeholder="Projekt wählen" />
               </SelectTrigger>
               <SelectContent>
-                {showDemoProject && (
-                  <SelectItem value={DEMO_PROJECT_ID}>
-                    {DEMO_PROJECT.name} (Demo)
-                  </SelectItem>
-                )}
                 {projects.map((p) => (
                   <SelectItem key={p.id} value={p.id}>
-                    {p.name}{p.address ? ` — ${p.address}` : ''}
+                    {p.name}{p.address ? ` — ${p.address}` : ''}{isDemoId(p.id) ? ' (Demo)' : ''}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -124,7 +113,7 @@ export default function VertriebTab() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{totalUnits}</div>
-            <p className="text-xs text-muted-foreground">in {portfolioRows.length + (showDemoProject ? 1 : 0)} {(portfolioRows.length + (showDemoProject ? 1 : 0)) === 1 ? 'Projekt' : 'Projekten'}</p>
+            <p className="text-xs text-muted-foreground">in {portfolioRows.length} {portfolioRows.length === 1 ? 'Projekt' : 'Projekten'}</p>
           </CardContent>
         </Card>
         <Card>
@@ -256,8 +245,8 @@ export default function VertriebTab() {
       {/* ═══ Vertriebsauftrag & Distribution ═══ */}
       <SalesApprovalSection
         projectId={activeProjectId}
-        projectName={isSelectedDemo ? DEMO_PROJECT.name : activeProjectData?.name}
-        projectAddress={isSelectedDemo ? `${DEMO_PROJECT_DESCRIPTION.address}, ${DEMO_PROJECT_DESCRIPTION.postal_code} ${DEMO_PROJECT_DESCRIPTION.city}` : (activeProjectData?.address || '')}
+        projectName={activeProjectData?.name}
+        projectAddress={activeProjectData?.address || ''}
         totalUnits={totalUnits}
         projectVolume={totalValue}
         isDemo={isSelectedDemo}

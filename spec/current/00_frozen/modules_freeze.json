@@ -17,7 +17,7 @@
     "MOD-10": { "frozen": false, "frozen_at": "2026-02-21", "unfrozen_at": "2026-02-22", "reason": "Unfrozen for Post-Publish Stabilisierung" },
     "MOD-11": { "frozen": false, "frozen_at": "2026-02-21", "unfrozen_at": "2026-02-22", "reason": "Unfrozen for Post-Publish Stabilisierung" },
     "MOD-12": { "frozen": true, "frozen_at": "2026-02-22", "reason": "Re-frozen after Mobile DnD Cleanup" },
-    "MOD-13": { "frozen": true, "frozen_at": "2026-02-22", "reason": "Re-frozen after Mobile DnD Cleanup" },
+    "MOD-13": { "frozen": true, "frozen_at": "2026-02-23", "reason": "Re-frozen after Demo-Data Dedup Fix" },
     "MOD-14": { "frozen": true, "frozen_at": "2026-02-22", "reason": "Re-frozen after Mobile DnD Cleanup" },
     "MOD-15": { "frozen": true, "frozen_at": "2026-02-21", "reason": "Global Freeze – Pre-Launch E2E Testing" },
     "MOD-16": { "frozen": true, "frozen_at": "2026-02-21", "reason": "Global Freeze – Pre-Launch E2E Testing" },
