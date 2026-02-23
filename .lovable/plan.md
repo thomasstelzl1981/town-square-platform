@@ -1,83 +1,98 @@
 
 
-## Mobile Startseite verschlanken — 3 Eintraege weniger
+# Sicherheits-Aktionsplan: 3 Kritische Punkte
 
-### Ist-Zustand (11 Eintraege)
+---
 
-1. Finanzen
-2. Immobilien
-3. **Briefe** (MOD-02 tile — Briefgenerator)
-4. **Dokumente** (MOD-03 — DMS Modul)
-5. **Posteingang** (MOD-03 tile — Duplikat!)
-6. Shops & Fortbildung
-7. Fahrzeuge
-8. Haustiere
-9. Finanzierung
-10. Immo Suche
-11. Armstrong Tasks
+## Prioritat 1 (P1): Webhook-Signatur-Validierung
 
-### Probleme
+**Problem:** Die Edge Function `sot-renovation-inbound-webhook` hat einen `TODO: Verify webhook signature` -- eingehende Webhooks werden ohne Authentizitaetspruefung akzeptiert. Ein Angreifer koennte gefaelschte Webhook-Payloads senden.
 
-- "Posteingang" ist doppelt: als eigener Eintrag UND als Tile innerhalb von "Dokumente" (MOD-03 hat bereits den Tab "Posteingang")
-- "Briefe" und "Dokumente" sind thematisch verwandt und koennten zusammengefasst werden
-- 11 Eintraege sind zu viele fuer eine kompakte Mobile-Startseite
+**Loesung:**
+- Die Shared-Utility `supabase/functions/_shared/webhook-validation.ts` existiert bereits mit HMAC-SHA256-Verifikation
+- In `sot-renovation-inbound-webhook/index.ts` die vorhandene `verifyRequestSignature()` importieren und aktivieren
+- Das auskommentierte Signature-Checking einschalten und bei ungueltigem Signature mit HTTP 401 abbrechen
 
-### Loesung: Von 11 auf 8 Eintraege
+**Aufwand:** Klein (ca. 10 Zeilen Code-Aenderung in 1 Datei)
 
-**Entfernen:**
-- "Posteingang" — bereits als Tab in DMS (Dokumente) enthalten
-- "Briefe" — wird stattdessen als Quick-Link innerhalb der DMS-Seite auf Mobile angezeigt
+**Risiko ohne Fix:** Mittel -- Angreifer koennte falsche Renovation-Daten einschleusen
 
-**Hinzufuegen:**
-- Innerhalb der DMS-Modulseite auf Mobile: ein sichtbarer Quick-Link zum Briefgenerator (`/portal/office/brief`), damit der Zugang nicht verloren geht
+---
 
-**Ergebnis (9 Eintraege):**
-1. Finanzen
-2. Immobilien
-3. Dokumente (mit Posteingang + Briefgenerator-Link drin)
-4. Shops & Fortbildung
-5. Fahrzeuge
-6. Haustiere
-7. Finanzierung
-8. Immo Suche
-9. Armstrong Tasks
+## Prioritat 2 (P1): OAuth-Tokens in `mail_accounts`
 
-### Schriftgroesse
+**Problem:** `access_token` und `refresh_token` werden als Klartext in der Tabelle `mail_accounts` gespeichert. 6 Edge Functions lesen diese Tokens per `select('*')`.
 
-Mit 9 statt 11 Eintraegen haben wir Platz, die Schrift von `text-sm` (14px) auf `text-base` (16px) zu erhoehen — besser lesbar und touch-freundlicher.
+**Betroffene Functions:**
+- `sot-mail-sync` (liest + schreibt Tokens)
+- `sot-mail-send` (liest Tokens)
+- `sot-mail-connect` (schreibt Tokens)
+- `sot-mail-gmail-auth` (schreibt Tokens)
+- `sot-calendar-sync` (liest Tokens)
+- `sot-contacts-sync` (liest Tokens)
+- `_shared/userMailSend.ts` (liest Tokens)
 
-### Technische Umsetzung
+**Loesung (2 Stufen):**
 
-#### 1. `src/config/mobileHomeConfig.ts`
+*Stufe A -- Sofort (RLS-Haertung):*
+- RLS-Policies auf `mail_accounts` pruefen: Sicherstellen, dass nur der eigene Tenant + eigener User Zugriff hat
+- `select('*')` durch explizite Spaltenauswahl ersetzen (nur die benoetigten Felder)
+- Tokens niemals in API-Responses an den Client zurueckgeben
 
-Zwei Eintraege entfernen:
-- Zeile 24: `{ type: 'tile', code: 'MOD-02', tile: 'brief', label: 'Briefe', icon: 'FileText' }` — entfernen
-- Zeile 26: `{ type: 'tile', code: 'MOD-03', tile: 'posteingang', label: 'Posteingang', icon: 'Inbox' }` — entfernen
+*Stufe B -- Spaeter (Verschluesselung):*
+- Supabase Vault (`pgsodium`) fuer symmetrische Verschluesselung der Token-Spalten nutzen
+- Erfordert DB-Migration: Spalten zu `bytea` aendern + Encrypt/Decrypt-Wrapper-Functions
+- Alle 6 Edge Functions muessen angepasst werden
+- **Empfehlung:** Stufe B erst nach Beta-Launch, da komplex und fehleranfaellig
 
-#### 2. `src/components/portal/MobileHomeModuleList.tsx`
+**Aufwand:** Stufe A = Mittel (1-2 Stunden), Stufe B = Hoch (1-2 Tage)
 
-- Schriftgroesse von `text-sm` auf `text-base` erhoehen
-- Nicht mehr benoetigte Icons (`FileText`, `Inbox`) aus den Imports entfernen
+**Risiko ohne Fix:** Bei funktionierenden RLS-Policies ist das Risiko begrenzt -- ein Angreifer braeuchte DB-Zugang. Trotzdem Best Practice, Tokens zu verschluesseln.
 
-#### 3. DMS-Seite: Quick-Link zum Briefgenerator auf Mobile
+---
 
-Damit der Briefgenerator weiterhin gut erreichbar ist, wird in der DMS-Modulseite auf Mobile ein kleiner Quick-Action-Button angezeigt, der direkt zum Briefgenerator navigiert. Dies wird ueber eine bedingte Anzeige (`useIsMobile`) geloest, sodass Desktop davon nicht betroffen ist.
+## Prioritat 3 (P2): Ungeschuetzte console.logs
 
-Die genaue Platzierung: Als Link-Karte oberhalb der DMS-Tabs auf Mobile, z.B. "Briefgenerator oeffnen" mit einem kleinen FileText-Icon.
+**Problem:** `useDemoSeedEngine.ts` und `useDemoCleanup.ts` enthalten ~30 `console.log()`-Aufrufe OHNE `import.meta.env.DEV`-Guard. Diese erscheinen in Production.
 
-Betroffene Datei: Die DMS-Modulseite oder deren Tab-Layout-Komponente (muss geprueft werden welche Datei das Tab-Layout rendert).
+**Alle anderen Dateien** (AuthContext, EmailTab, Armstrong-Hooks, etc.) sind korrekt mit `if (import.meta.env.DEV)` geschuetzt -- kein Handlungsbedarf dort.
 
-#### 4. Swipe-Back Overrides
+**Loesung:**
+- Alle `console.log()` in `useDemoSeedEngine.ts` und `useDemoCleanup.ts` mit `if (import.meta.env.DEV)` wrappen
+- Alternativ: Eine Helper-Function `devLog()` erstellen und ueberall nutzen
 
-In `useSwipeBack.ts` muss kein neuer Override hinzugefuegt werden, da der Briefgenerator-Pfad (`/portal/office/brief`) bereits auf `/portal` mappt.
+**Aufwand:** Klein (mechanische Aenderung, ~30 Stellen in 2 Dateien)
 
-### Dateien
+**Risiko ohne Fix:** Niedrig -- Die Logs enthalten Demo-Seed-Informationen (Tabellennamen, Anzahl geseedeter Datensaetze). Kein sensitiver Daten-Leak, aber unprofessionell in Production.
 
-| Datei | Aenderung |
-|-------|-----------|
-| `src/config/mobileHomeConfig.ts` | 2 Eintraege entfernen |
-| `src/components/portal/MobileHomeModuleList.tsx` | Schrift vergroessern, Imports bereinigen |
-| DMS Tab-Layout (MOD-03 Bereich) | Mobile-only Quick-Link zum Briefgenerator |
+---
 
-Keine Freeze-Pruefung noetig: `mobileHomeConfig` und `MobileHomeModuleList` sind shared Config/Komponenten. Der DMS-Quick-Link muesste auf MOD-03 Freeze geprueft werden.
+## Zusammenfassung
+
+| # | Thema | Prioritaet | Aufwand | Empfehlung |
+|---|-------|-----------|---------|------------|
+| 1 | Webhook-Signatur | P1 | Klein | Sofort fixen |
+| 2a | OAuth-Tokens (RLS + select) | P1 | Mittel | Sofort fixen |
+| 2b | OAuth-Tokens (Vault-Verschluesselung) | P2 | Hoch | Nach Beta |
+| 3 | Console.logs | P2 | Klein | Sofort fixen |
+
+**Empfohlene Reihenfolge:** 1 → 2a → 3 (alles in einer Session machbar, ca. 2-3 Stunden)
+
+---
+
+## Technische Details
+
+### Punkt 1: Webhook-Fix
+Datei: `supabase/functions/sot-renovation-inbound-webhook/index.ts`
+- Import: `import { verifyRequestSignature } from '../_shared/webhook-validation.ts'`
+- Vor der Payload-Verarbeitung: Signature pruefen, bei Fehler 401 zurueckgeben
+
+### Punkt 2a: RLS + Select-Haertung
+- RLS-Policy pruefen (DB-Query)
+- In allen 6 Edge Functions: `select('*')` durch explizite Feldliste ersetzen
+- Sicherstellen, dass Token-Felder nie in Client-Responses landen
+
+### Punkt 3: Console.log-Guard
+Dateien: `src/hooks/useDemoSeedEngine.ts`, `src/hooks/useDemoCleanup.ts`
+- Jedes `console.log()` mit `if (import.meta.env.DEV)` wrappen
 
