@@ -221,7 +221,6 @@ export const DEFAULT_MATCH_RULES: MatchRule[] = [
     ownerTypes: ['pv_plant'],
     direction: 'debit',
     patterns: ['versicherung'],
-    // Additional PV context required — lower prio than property insurance
   },
 
   // ── Shared rules ──
@@ -242,3 +241,81 @@ export const DEFAULT_MATCH_RULES: MatchRule[] = [
     patterns: ['gehalt', 'lohn', 'bezüge', 'entgelt'],
   },
 ];
+
+// ─── Recurring Contract Detection ──────────────────────────
+
+export type ContractTargetTable = 'user_subscriptions' | 'insurance_contracts' | 'miety_contracts';
+
+export type RecurringFrequency = 'monatlich' | 'quartalsweise' | 'jaehrlich';
+
+export interface RecurringPattern {
+  counterparty: string;
+  averageAmount: number;
+  frequency: RecurringFrequency;
+  intervalDays: number;
+  occurrences: number;
+  firstSeen: string;
+  lastSeen: string;
+  sampleTransactionIds: string[];
+}
+
+export interface DetectedContract {
+  id: string;
+  counterparty: string;
+  amount: number;
+  frequency: RecurringFrequency;
+  category: TransactionCategory;
+  targetTable: ContractTargetTable;
+  targetLabel: string;
+  confidence: number;
+  pattern: RecurringPattern;
+  selected: boolean;
+}
+
+export const CATEGORY_TARGET_MAP: Record<TransactionCategory, {
+  table: ContractTargetTable | null;
+  label: string;
+}> = {
+  [TransactionCategory.VERSICHERUNG]: { table: 'insurance_contracts', label: 'Versicherung' },
+  [TransactionCategory.DARLEHEN]: { table: null, label: 'Darlehen (übersprungen)' },
+  [TransactionCategory.HAUSGELD]: { table: null, label: 'Hausgeld (übersprungen)' },
+  [TransactionCategory.GRUNDSTEUER]: { table: null, label: 'Grundsteuer (übersprungen)' },
+  [TransactionCategory.MIETE]: { table: null, label: 'Miete (übersprungen)' },
+  [TransactionCategory.GEHALT]: { table: null, label: 'Gehalt (übersprungen)' },
+  [TransactionCategory.INSTANDHALTUNG]: { table: null, label: 'Instandhaltung (übersprungen)' },
+  [TransactionCategory.EINSPEISEVERGUETUNG]: { table: null, label: 'Einspeisung (übersprungen)' },
+  [TransactionCategory.WARTUNG]: { table: null, label: 'Wartung (übersprungen)' },
+  [TransactionCategory.PACHT]: { table: null, label: 'Pacht (übersprungen)' },
+  [TransactionCategory.SONSTIG_EINGANG]: { table: null, label: 'Sonstiger Eingang (übersprungen)' },
+  [TransactionCategory.SONSTIG_AUSGANG]: { table: 'user_subscriptions', label: 'Abo' },
+};
+
+export const ENERGY_PATTERNS: string[] = [
+  'stadtwerke', 'swm', 'eon', 'e.on', 'vattenfall', 'rwe', 'enbw',
+  'strom', 'gas', 'fernwaerme', 'grundversorgung', 'energie',
+  'telekom', 'vodafone', 'o2', 'telefonica', '1und1', '1&1',
+  'unitymedia', 'kabel deutschland', 'glasfaser', 'internet', 'mobilfunk',
+];
+
+export const INSURANCE_PATTERNS: string[] = [
+  'allianz', 'axa', 'ergo', 'huk', 'huk-coburg', 'devk', 'generali',
+  'zurich', 'nuernberger', 'debeka', 'signal iduna', 'versicherung',
+  'haftpflicht', 'hausrat', 'rechtsschutz', 'berufsunfaehigkeit',
+  'krankenversicherung', 'kfz-versicherung', 'lebensversicherung',
+];
+
+export const SUBSCRIPTION_PATTERNS: string[] = [
+  'netflix', 'spotify', 'amazon prime', 'disney', 'apple',
+  'youtube', 'dazn', 'sky', 'microsoft', 'adobe', 'google one',
+  'dropbox', 'icloud', 'playstation', 'xbox', 'nintendo',
+  'fitx', 'mcfit', 'urban sports', 'gym', 'fitness',
+  'zeit', 'spiegel', 'faz', 'sueddeutsche', 'handelsblatt',
+];
+
+export const RECURRING_DETECTION = {
+  MIN_OCCURRENCES: 2,
+  AMOUNT_TOLERANCE_PERCENT: 0.05,
+  MONTHLY_INTERVAL: { min: 25, max: 35 },
+  QUARTERLY_INTERVAL: { min: 80, max: 100 },
+  YEARLY_INTERVAL: { min: 350, max: 380 },
+} as const;
