@@ -1,172 +1,168 @@
 
+# Demo-Finanzierungsakte: CSV-basiertes Seeding (ID-sicher)
 
-# MOD-12 Unfreeze: UI/UX Audit und Fixes
+## ID-Struktur und Konventionen
 
-## Befunde aus der Code-Analyse
-
-### 1. Bestandsmodell: Einnahmen/Ausgaben-Gegenuberstellung FEHLT
-
-Die `BestandCalculation.tsx` zeigt aktuell:
-- Finanzierungsparameter (Slider)
-- Finanzierungsubersicht (EK, Darlehen, Annuitat)
-- Tilgungsplan-Chart (30 Jahre)
-- Vermogensentwicklung-Chart
-- Summary-Cards (Finanzierung + Vermogen)
-
-**Was fehlt:** Eine klare monatliche/jahrliche Gegenuberstellung von Einnahmen vs. Ausgaben:
+Alle IDs folgen dem bestehenden Demo-Range-Pattern `d0000000-0000-4000-a000-*` mit einem neuen Nummernblock `07xx` fuer MOD-07/MOD-11 Finanzierungsdaten:
 
 ```text
-EINNAHMEN                    AUSGABEN
-──────────────────          ──────────────────
-Kaltmiete:    2.000 EUR/M   Zins:         1.167 EUR/M
-                             Tilgung:        667 EUR/M
-                             Verwaltung:     417 EUR/M
-                             Instandhaltung: 250 EUR/M
-──────────────────          ──────────────────
-Summe:        2.000 EUR/M   Summe:        2.500 EUR/M
+finance_requests:
+  d0000000-0000-4000-a000-000000000701  (FIN-2025-001, Kauf Berlin)
+  d0000000-0000-4000-a000-000000000702  (FIN-2025-002, Umschuldung)
 
-CASHFLOW:    -500 EUR/M (NEGATIV)
+applicant_profiles:
+  d0000000-0000-4000-a000-000000000711  (Max Mustermann, primary, Fall 001)
+  d0000000-0000-4000-a000-000000000712  (Lisa Mustermann, co-applicant, Fall 001)
+  d0000000-0000-4000-a000-000000000713  (Thomas Schmidt, primary, Fall 002)
+
+finance_mandates:
+  d0000000-0000-4000-a000-000000000721  (Mandat fuer Fall 001)
+  d0000000-0000-4000-a000-000000000722  (Mandat fuer Fall 002)
 ```
 
-Diese Gegenuberstellung ist das Kernstuck jeder Bestandskalkulation und muss prominent zwischen den Finanzierungsparametern und den Charts platziert werden.
+Die Property-Referenz in Fall 001 nutzt die bestehende Demo-Property BER-01: `d0000000-0000-4000-a000-000000000001`.
 
-### 2. Preisvorschlag-Dialog: E-Mail wird NICHT gesendet
-
-**Kritischer Bug in `PreisvorschlagDialog.tsx`:**
-
-Die `sendProposal`-Mutation (Zeile 102-143) macht Folgendes:
-- Setzt Offer-Status auf `analyzing` (korrekt)
-- Loggt eine Activity (korrekt)
-- Zeigt Toast "Preisvorschlag gesendet" (irrefuhrend)
-
-**Was NICHT passiert:**
-- Die generierte E-Mail (`generatedEmail`) wird **niemals versendet**
-- Es gibt **keinen Aufruf** von `sot-acq-outbound` oder `sot-mail-send`
-- Der Text wird generiert, angezeigt, und dann verworfen
-
-Das bedeutet: Der User klickt "Vorschlag senden", bekommt eine Erfolgsmeldung, aber es passiert nichts.
-
-### 3. PreisvorschlagDialog nutzt price_counter NICHT
-
-Der Dialog initialisiert den Vorschlagspreis mit `currentPrice * 0.9` (Zeile 54-56), ignoriert aber den bereits gesetzten `price_counter` aus der Schnellanalyse. Wenn der User in der Schnellanalyse einen Gegenvorschlag eingibt und speichert, muss dieser im Dialog vorausgefullt sein.
-
-### 4. E-Mail-Versand: Architektur-Lucke
-
-`sot-acq-outbound` ist Template-basiert (nutzt `acq_email_templates`) und erwartet einen `templateCode`. Der PreisvorschlagDialog generiert aber Freitext uber KI. Es gibt keine Brucke zwischen dem generierten E-Mail-Text und dem Outbound-System.
-
-**Loesung:** Der Dialog muss die generierte E-Mail direkt uber `sot-acq-outbound` oder `sot-mail-send` (via User-Account) senden, nicht uber Templates.
-
----
-
-## Umsetzungsplan
-
-### Fix 1: Einnahmen/Ausgaben-Karte im Bestandsmodell
-
-**Datei:** `src/pages/portal/akquise-manager/components/BestandCalculation.tsx`
-
-Neue Sektion zwischen Finanzierungsparametern und Tilgungsplan:
+## FK-Cascade-Analyse (geprueft)
 
 ```text
-┌──────────────────────────────────────────────────┐
-│  Monatliche Wirtschaftlichkeit                   │
-│                                                  │
-│  EINNAHMEN            │  AUSGABEN                │
-│  ─────────────        │  ─────────────           │
-│  Kaltmiete  2.000 EUR │  Zinsen      1.167 EUR   │
-│                       │  Tilgung       667 EUR   │
-│                       │  Verwaltung    417 EUR   │
-│                       │  Instandh.     250 EUR   │
-│  ─────────────        │  ─────────────           │
-│  Gesamt     2.000 EUR │  Gesamt      2.500 EUR   │
-│                                                  │
-│  ┌──────────────────────────────────────────┐    │
-│  │  CASHFLOW: -500 EUR/Monat  (NEGATIV)     │    │
-│  └──────────────────────────────────────────┘    │
-│                                                  │
-│  Jahrlich: -6.000 EUR  │  Cash-on-Cash: -3,0%   │
-└──────────────────────────────────────────────────┘
+finance_requests (Parent)
+  ├── applicant_profiles   (ON DELETE CASCADE)
+  ├── finance_mandates     (ON DELETE CASCADE)
+  ├── finance_submission_logs (ON DELETE CASCADE)
+  └── document_reminders   (ON DELETE CASCADE)
 ```
 
-Alle Werte werden aus dem bestehenden `calcBestandFull`-Ergebnis abgeleitet (keine Engine-Anderung noetig):
-- Einnahmen: `monthlyRent` (bereits als Parameter vorhanden)
-- Zinsen: `yearlyData[0].interest / 12`
-- Tilgung: `yearlyData[0].repayment / 12`
-- Verwaltung: `monthlyRent * managementCostPercent / 100`
-- Instandhaltung: `purchasePrice * maintenancePercent / 100 / 12`
+Beim Cleanup reicht es, `finance_requests` zu loeschen -- alle Kinder werden automatisch von der DB entfernt. Trotzdem registrieren wir alle Entity-Types einzeln im `test_data_registry` fuer die SSOT-Diagnose.
 
-### Fix 2: PreisvorschlagDialog -- E-Mail tatsachlich senden
+## Neue CSV-Dateien
 
-**Datei:** `src/pages/portal/akquise-manager/components/PreisvorschlagDialog.tsx`
+### 1. `public/demo-data/demo_finance_requests.csv`
 
-Die `sendProposal`-Mutation wird erweitert:
+Spalten (exakt nach DB-Schema `finance_requests`):
+```
+id;status;purpose;object_source;property_id;purchase_price;equity_amount;loan_amount_requested;
+fixed_rate_period_years;repayment_rate_percent;max_monthly_rate;source;
+object_address;object_type;object_construction_year;object_living_area_sqm;
+contact_first_name;contact_last_name;contact_email;contact_phone
+```
 
-1. `price_counter` in `acq_offers` speichern (nicht nur Status-Update)
-2. Generierte E-Mail uber `sot-acq-outbound` senden ODER direkt uber `supabase.functions.invoke('sot-mail-send')` wenn User einen Mail-Account hat
-3. Fallback auf Activity-Log wenn kein Mail-Account vorhanden
+- `tenant_id` und `created_by` werden zur Laufzeit vom Seed-Engine injiziert (wie bei allen anderen CSVs)
+- `public_id` wird NICHT im CSV gesetzt (nullable, kein Trigger)
+- 2 Zeilen: Fall 001 (status=ready_for_submission) und Fall 002 (status=draft)
 
-Aenderungen:
-- `sendProposal` ruft nach dem Status-Update `sot-acq-outbound` auf mit dem generierten E-Mail-Text
-- Der Dialog wird erst geschlossen wenn die E-Mail erfolgreich versendet wurde
-- Bei Fehler: klare Fehlermeldung statt falscher Erfolgsmeldung
+### 2. `public/demo-data/demo_applicant_profiles.csv`
 
-### Fix 3: price_counter im Dialog vorausfullen
+Spalten (exakt nach DB-Schema `applicant_profiles`):
+```
+id;finance_request_id;party_role;profile_type;first_name;last_name;birth_date;
+nationality;marital_status;address_street;address_postal_code;address_city;
+phone;email;employment_type;employer_name;net_income_monthly;
+current_rent_monthly;living_expenses_monthly;bank_savings;iban
+```
 
-**Datei:** `src/pages/portal/akquise-manager/components/PreisvorschlagDialog.tsx`
+- `tenant_id` wird zur Laufzeit injiziert
+- 3 Zeilen: Max (primary, privat), Lisa (co_applicant, privat), Thomas (primary, privat)
+- Alle numerischen Spalten sind in `NUMERIC_KEYS` im Seed-Engine registriert (muss erweitert werden)
 
-- Neue Prop `priceCounter?: number` vom Parent (`ObjekteingangDetail.tsx`) durchreichen
-- Initialisierung: `priceCounter ?? currentPrice * 0.9`
-- Parent ubergibt `priceOverride` wenn dieser vom `price_asking` abweicht
+### 3. `public/demo-data/demo_finance_mandates.csv`
 
-### Fix 4: Preisfeld in der Schnellanalyse prominenter gestalten
+Spalten (exakt nach DB-Schema `finance_mandates`):
+```
+id;finance_request_id;status;source
+```
 
-**Datei:** `src/pages/portal/akquise-manager/ObjekteingangDetail.tsx` (QuickAnalysisBanner)
+- `tenant_id` und `assigned_manager_id` werden zur Laufzeit injiziert
+- 2 Zeilen: Mandat fuer Fall 001 (status=open) und Fall 002 (status=new)
 
-Aktuell ist das Preisfeld ein dezenter `border-b-2 input` (Zeile 474-483). Verbesserungen:
-- Hoehere Schriftgroesse und deutlicheres Input-Styling
-- "Ihren Preis eingeben"-Placeholder statt leeres Feld
-- Farbiger Rahmen (Cyan-Glow, passend zum MOD-12 Design)
-- Hinweistext unterhalb: "Preis andern fur Echtzeit-Kalkulation"
+## Aenderungen an bestehenden Dateien
 
----
+### `src/hooks/useDemoSeedEngine.ts`
 
-## Technische Details
+1. **NUMERIC_KEYS erweitern** um fehlende Spalten aus `applicant_profiles`:
+   - `net_income_monthly`, `bonus_yearly`, `current_rent_monthly`, `living_expenses_monthly`, `car_leasing_monthly`, `health_insurance_monthly`, `other_fixed_costs_monthly`, `bank_savings`, `securities_value`, `building_society_value`, `adults_count`, `children_count`, `child_support_amount_monthly`, `child_benefit_monthly`, `other_regular_income_monthly`, `company_employees`, `company_ownership_percent`, `modernization_costs`, `notary_costs`, `transfer_tax`, `broker_fee`, `fixed_rate_period_years`, `max_monthly_rate`, `object_construction_year`, `object_living_area_sqm`, `object_land_area_sqm`
 
-### Engine: Keine Anderung noetig
+2. **Neue Phase 4.5** im Seed-Orchestrator (zwischen Household/Finance und Miety):
+   ```
+   // Phase 4.5: Finance Requests (MOD-07/MOD-11)
+   await seed('finance_requests', () => seedFromCSV(..., { created_by: userId }));
+   await seed('applicant_profiles', () => seedFromCSV(...));
+   await seed('finance_mandates', () => seedFromCSV(..., { assigned_manager_id: userId }));
+   ```
 
-Die `calcBestandFull`-Funktion liefert bereits alle Werte. Die Einnahmen/Ausgaben-Ansicht ist eine reine UI-Erganzung, die vorhandene Daten neu darstellt:
+3. **EXPECTED-Map erweitern**:
+   - `finance_requests: 2`
+   - `applicant_profiles: 3`
+   - `finance_mandates: 2`
 
-- `yearlyData[0].interest` = Jahreszinsen Jahr 1
-- `yearlyData[0].repayment` = Tilgung Jahr 1
-- `params.monthlyRent * 12` = Jahresmiete
-- `params.managementCostPercent` = Verwaltungskosten-Anteil
-- `params.maintenancePercent` = Instandhaltungskosten-Anteil
+### `src/hooks/useDemoCleanup.ts`
 
-### E-Mail-Architektur
+`CLEANUP_ORDER` erweitern -- dank CASCADE reicht ein Eintrag, aber fuer saubere Registry-Aufloesung alle drei:
+```
+'finance_submission_logs',  // FK → finance_requests (CASCADE)
+'finance_mandates',         // FK → finance_requests (CASCADE)
+'applicant_profiles',       // FK → finance_requests (CASCADE)
+'finance_requests',         // Parent
+```
 
-Der aktuelle `sot-acq-outbound` nutzt Templates. Fuer den Preisvorschlag-Dialog wird stattdessen die `sendViaUserAccountOrResend`-Funktion aus `_shared/userMailSend.ts` direkt genutzt, da der E-Mail-Text bereits KI-generiert ist. Ablauf:
+Position: VOR `acq_offers` (keine FK-Konflikte zu anderen Demo-Entities).
 
-1. User gibt Preisvorschlag ein und wahlt Unterlagen
-2. KI generiert E-Mail-Text (bereits implementiert)
-3. User pruft und editiert (bereits implementiert)
-4. "Senden" ruft `sot-acq-outbound` mit custom body auf (NEU)
-5. E-Mail geht uber Users Gmail-Account oder Resend-Fallback raus
-6. Outbound-Record wird in `acq_outbound_messages` geloggt
+### `src/config/demoDataRegistry.ts`
 
-### Dateien die geandert werden (alle MOD-12)
+3 neue Eintraege:
+```typescript
+{
+  path: 'public/demo-data/demo_finance_requests.csv',
+  module: 'MOD-07',
+  type: 'hardcoded',
+  entities: ['finance_requests'],
+  exports: ['CSV'],
+},
+{
+  path: 'public/demo-data/demo_applicant_profiles.csv',
+  module: 'MOD-07',
+  type: 'hardcoded',
+  entities: ['applicant_profiles'],
+  exports: ['CSV'],
+},
+{
+  path: 'public/demo-data/demo_finance_mandates.csv',
+  module: 'MOD-11',
+  type: 'hardcoded',
+  entities: ['finance_mandates'],
+  exports: ['CSV'],
+},
+```
 
-| Datei | Anderung |
-|-------|----------|
-| `BestandCalculation.tsx` | Neue Einnahmen/Ausgaben-Sektion einfugen |
-| `PreisvorschlagDialog.tsx` | E-Mail-Versand implementieren, price_counter Prop |
-| `ObjekteingangDetail.tsx` | price_counter an Dialog durchreichen, Preisfeld-Styling |
-| `sot-acq-outbound/index.ts` | Optionalen Freitext-Modus ergaenzen (neben Template-Modus) |
+### `public/demo-data/demo_manifest.json`
 
-### Aufteiler-Tool: Kein Fix noetig
+3 neue Entity-Eintraege:
+```json
+"finance_requests": { "file": "demo_finance_requests.csv", "expectedCount": 2, "dbTable": "finance_requests" },
+"applicant_profiles": { "file": "demo_applicant_profiles.csv", "expectedCount": 3, "dbTable": "applicant_profiles" },
+"finance_mandates": { "file": "demo_finance_mandates.csv", "expectedCount": 2, "dbTable": "finance_mandates" }
+```
 
-Das Aufteiler-Tool (`AufteilerCalculation.tsx`) hat bereits eine saubere Kosten/Erloese-Gegenuberstellung:
-- Kosten-Card: Kaufpreis + Nebenkosten + Projektkosten + Zinskosten - Mieteinnahmen = Gesamtkosten netto
-- Erloese-Card: Verkaufspreis - Provision = Netto-Erloes
-- Ergebnis-Card: Gewinn, Marge, ROI
+### `src/pages/portal/finanzierungsmanager/FMEinreichung.tsx`
 
-Dies ist korrekt und vollstandig implementiert.
+E-Mail-Versand-Fix: `handleSendEmail` prueft zuerst `mail_accounts` des Users und sendet ueber `sot-mail-send` (User-Account) statt `sot-system-mail-send`.
 
+## Keine hartcodierten Daten
+
+- Alle 3 CSVs nutzen ausschliesslich IDs im `d0000000-*` Range
+- Kein einziger `const MOCK_*` oder inline-Array im Code
+- Alle Werte kommen aus CSV, `tenant_id`/`created_by`/`assigned_manager_id` werden dynamisch injiziert
+- Alle Entity-Types werden in `test_data_registry` registriert
+- Cleanup nutzt bestehende CASCADE-Constraints der DB
+
+## Dateien-Uebersicht
+
+| Datei | Aktion |
+|-------|--------|
+| `public/demo-data/demo_finance_requests.csv` | NEU |
+| `public/demo-data/demo_applicant_profiles.csv` | NEU |
+| `public/demo-data/demo_finance_mandates.csv` | NEU |
+| `public/demo-data/demo_manifest.json` | 3 neue Entities |
+| `src/hooks/useDemoSeedEngine.ts` | Phase 4.5 + NUMERIC_KEYS + EXPECTED |
+| `src/hooks/useDemoCleanup.ts` | 4 neue Eintraege in CLEANUP_ORDER |
+| `src/config/demoDataRegistry.ts` | 3 neue Eintraege |
+| `src/pages/portal/finanzierungsmanager/FMEinreichung.tsx` | E-Mail ueber User-Account |
