@@ -71,6 +71,16 @@ const NUMERIC_KEYS = new Set([
   'asking_price', 'commission_rate', 'min_price',
   // estimated_value
   'estimated_value_eur',
+  // finance_requests + applicant_profiles (MOD-07/MOD-11)
+  'equity_amount', 'loan_amount_requested', 'fixed_rate_period_years',
+  'max_monthly_rate', 'broker_fee', 'notary_costs', 'transfer_tax',
+  'modernization_costs', 'object_construction_year', 'object_living_area_sqm',
+  'object_land_area_sqm', 'bonus_yearly', 'current_rent_monthly',
+  'living_expenses_monthly', 'car_leasing_monthly', 'health_insurance_monthly',
+  'other_fixed_costs_monthly', 'bank_savings', 'securities_value',
+  'building_society_value', 'life_insurance_value', 'adults_count', 'children_count',
+  'child_support_amount_monthly', 'child_benefit_monthly', 'other_regular_income_monthly',
+  'company_employees', 'company_ownership_percent', 'priority',
 ]);
 
 /** Boolean columns */
@@ -1024,6 +1034,11 @@ export async function seedDemoData(
   await seed('user_subscriptions', () => seedFromCSV('/demo-data/demo_user_subscriptions.csv', 'user_subscriptions', tenantId, { user_id: userId }));
   await seed('private_loans', () => seedFromCSV('/demo-data/demo_private_loans.csv', 'private_loans', tenantId, { user_id: userId }));
 
+  // Phase 4.5: Finance Requests (MOD-07/MOD-11)
+  await seed('finance_requests', () => seedFromCSV('/demo-data/demo_finance_requests.csv', 'finance_requests', tenantId, { created_by: userId }));
+  await seed('applicant_profiles', () => seedFromCSV('/demo-data/demo_applicant_profiles.csv', 'applicant_profiles', tenantId));
+  await seed('finance_mandates', () => seedFromCSV('/demo-data/demo_finance_mandates.csv', 'finance_mandates', tenantId, { assigned_manager_id: userId }));
+
   // Phase 5: Miety (Zuhause)
   await seed('miety_homes', () => seedFromCSV('/demo-data/demo_miety_homes.csv', 'miety_homes', tenantId, { user_id: userId }));
   await seed('miety_contracts', () => seedFromCSV('/demo-data/demo_miety_contracts.csv', 'miety_contracts', tenantId));
@@ -1056,6 +1071,7 @@ export async function seedDemoData(
     miety_homes: 1, miety_contracts: 4,
     acq_mandates: 1, acq_offers: 1,
     dev_projects: 1,
+    finance_requests: 2, applicant_profiles: 3, finance_mandates: 2,
     pet_z1_customers: 2, pet_providers: 1, pet_services: 4,
     pet_customers: 3, pets: 5, pet_bookings: 5,
   };

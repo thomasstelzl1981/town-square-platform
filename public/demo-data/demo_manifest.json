@@ -33,7 +33,10 @@
     "profile": { "file": "demo_profile.csv", "expectedCount": 1, "dbTable": "profiles", "seedMethod": "update" },
     "property_features": { "file": "demo_property_features.csv", "expectedCount": 2, "dbTable": "property_features" },
     "listings": { "file": "demo_listings.csv", "expectedCount": 1, "dbTable": "listings" },
-    "listing_publications": { "file": "demo_listing_publications.csv", "expectedCount": 2, "dbTable": "listing_publications" }
+    "listing_publications": { "file": "demo_listing_publications.csv", "expectedCount": 2, "dbTable": "listing_publications" },
+    "finance_requests": { "file": "demo_finance_requests.csv", "expectedCount": 2, "dbTable": "finance_requests" },
+    "applicant_profiles": { "file": "demo_applicant_profiles.csv", "expectedCount": 3, "dbTable": "applicant_profiles" },
+    "finance_mandates": { "file": "demo_finance_mandates.csv", "expectedCount": 2, "dbTable": "finance_mandates" }
   },
   "seedBatchId": "demo-ssot",
   "idPrefix": "d0000000-0000-4000",
