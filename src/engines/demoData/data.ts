@@ -58,7 +58,6 @@ const ID_SUB_AMAZON    = 'e0000000-0000-4000-a000-000000000403';
 const ID_SUB_MS365     = 'e0000000-0000-4000-a000-000000000404';
 const ID_SUB_ZEIT      = 'e0000000-0000-4000-a000-000000000405';
 const ID_SUB_TELEKOM   = 'e0000000-0000-4000-a000-000000000406';
-const ID_SUB_VODAFONE  = 'e0000000-0000-4000-a000-000000000407';
 const ID_SUB_FITX      = 'e0000000-0000-4000-a000-000000000408';
 
 // KV-Verträge (DB-geseedet)
@@ -92,6 +91,7 @@ const ID_MIETY_STROM      = 'e0000000-0000-4000-a000-000000000811';
 const ID_MIETY_GAS        = 'e0000000-0000-4000-a000-000000000812';
 const ID_MIETY_WASSER     = 'e0000000-0000-4000-a000-000000000813';
 const ID_MIETY_INTERNET   = 'e0000000-0000-4000-a000-000000000814';
+const ID_MIETY_VODAFONE   = 'e0000000-0000-4000-a000-000000000815';
 
 // ─── PERSONEN ──────────────────────────────────────────────
 
@@ -328,7 +328,6 @@ export const DEMO_SUBSCRIPTIONS: readonly DemoSubscription[] = [
   { id: ID_SUB_MS365,    merchant: 'Microsoft 365 Family', category: 'software_saas',         amount: 99.00,  frequency: 'jaehrlich' },
   { id: ID_SUB_ZEIT,     merchant: 'ZEIT Digital',          category: 'news_media',            amount: 19.99,  frequency: 'monatlich' },
   { id: ID_SUB_TELEKOM,  merchant: 'Telekom Magenta L',    category: 'telecom_mobile',        amount: 49.95,  frequency: 'monatlich' },
-  { id: ID_SUB_VODAFONE, merchant: 'Vodafone Kabel 1000',  category: 'internet',              amount: 39.99,  frequency: 'monatlich' },
   { id: ID_SUB_FITX,     merchant: 'FitX Familie',         category: 'fitness',               amount: 29.98,  frequency: 'monatlich' },
 ] as const;
 
@@ -508,6 +507,7 @@ export const DEMO_MIETY_CONTRACTS: readonly DemoMietyContract[] = [
   { id: ID_MIETY_GAS,      category: 'gas',      providerName: 'SWM Erdgas',                   contractNumber: 'SWM-2024-0815',  monthlyCost: 72,    startDate: '2022-01-01' },
   { id: ID_MIETY_WASSER,   category: 'wasser',   providerName: 'SWM Wasser',                   contractNumber: 'SWM-2024-3344',  monthlyCost: 48,    startDate: '2020-06-01' },
   { id: ID_MIETY_INTERNET, category: 'internet', providerName: 'Telekom MagentaZuhause L',     contractNumber: 'TK-2023-5566',   monthlyCost: 44.95, startDate: '2023-03-01' },
+  { id: ID_MIETY_VODAFONE, category: 'internet', providerName: 'Vodafone Kabel 1000',          contractNumber: 'VF-2023-7788',   monthlyCost: 39.99, startDate: '2023-06-01' },
 ] as const;
 
 // ─── ALLE IDs (flach) ──────────────────────────────────────
@@ -532,7 +532,7 @@ export const ALL_DEMO_IDS: readonly string[] = [
   ID_VS_RUERUP, ID_VS_BAV, ID_VS_RIESTER, ID_VS_ETF, ID_VS_BU_MAX, ID_VS_BU_LISA,
   // Abonnements
   ID_SUB_NETFLIX, ID_SUB_SPOTIFY, ID_SUB_AMAZON, ID_SUB_MS365,
-  ID_SUB_ZEIT, ID_SUB_TELEKOM, ID_SUB_VODAFONE, ID_SUB_FITX,
+  ID_SUB_ZEIT, ID_SUB_TELEKOM, ID_SUB_FITX,
    // KV-Verträge (DB-geseedet)
   ID_KV_MAX, ID_KV_LISA, ID_KV_FELIX, ID_KV_EMMA,
   // Privatkredite
@@ -590,7 +590,7 @@ export const ALL_DEMO_IDS: readonly string[] = [
   'd0000000-0000-4000-a000-000000000722',
   // Miety Zuhause (DB-geseedet)
   ID_MIETY_HOME,
-  ID_MIETY_STROM, ID_MIETY_GAS, ID_MIETY_WASSER, ID_MIETY_INTERNET,
+  ID_MIETY_STROM, ID_MIETY_GAS, ID_MIETY_WASSER, ID_MIETY_INTERNET, ID_MIETY_VODAFONE,
   // Pet Manager Demo (MOD-22)
   ...ALL_PM_DEMO_IDS,
 ] as const;
