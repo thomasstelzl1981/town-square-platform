@@ -34,7 +34,7 @@ import type { FutureRoomCase } from '@/types/finance';
 
 const eurFormat = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
 
-const READY_STATUSES = ['ready_for_submission', 'ready_to_submit', 'submitted_to_bank', 'completed'];
+const READY_STATUSES = ['ready', 'submitted', 'ready_for_submission', 'ready_to_submit', 'submitted_to_bank', 'completed'];
 const MAX_BANKS = 4;
 
 function getRequestStatus(c: FutureRoomCase): string {

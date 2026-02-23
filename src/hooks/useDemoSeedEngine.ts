@@ -195,6 +195,7 @@ async function seedFromCSV(
       .upsert(chunk, { onConflict: 'id' });
     if (error) {
       console.error(`[DemoSeed] ${tableName} chunk ${i}:`, error.message, error.details);
+      throw new Error(`${tableName} chunk ${i}: ${error.message}`);
     } else {
       allIds.push(...chunk.map(r => (r as Record<string, unknown>).id as string));
     }

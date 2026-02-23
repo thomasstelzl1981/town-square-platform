@@ -110,10 +110,19 @@ export function useDemoToggles() {
       const tenantId = await getTenantId();
 
       if (tenantId) {
-        if (on) {
+      if (on) {
           // Always run cleanup first, then seed fresh — avoids partial state from previous failures
           await cleanupDemoData(tenantId);
-          await seedDemoData(tenantId, undefined, (info) => setSeedProgress(info));
+          const result = await seedDemoData(tenantId, undefined, (info) => setSeedProgress(info));
+          if (!result.success) {
+            const { toast } = await import('sonner');
+            const firstErrors = result.errors.slice(0, 3).join('\n');
+            toast.error(`Seed-Fehler: ${result.errors.length} Entitäten fehlgeschlagen`, {
+              description: firstErrors,
+              duration: 10000,
+            });
+            console.error('[DemoToggles] Seed errors:', result.errors);
+          }
         } else {
           // Cleanup all registered demo entities
           await cleanupDemoData(tenantId);
