@@ -15,7 +15,8 @@ import { ALL_DEMO_IDS } from '@/engines/demoData/data';
  * Entity types in deletion order (children first, parents last).
  * 
  * FK constraint considerations:
- * - pet_bookings → pets, pet_customers (FK)
+ * - pet_bookings → pets, pet_customers, pet_services (FK)
+ * - pet_services → pet_providers (FK provider_id)
  * - pets → pet_customers (FK customer_id)
  * - miety_contracts → miety_homes (FK home_id)
  * - leases → units (CASCADE), contacts (RESTRICT) → delete before contacts
@@ -30,7 +31,9 @@ const CLEANUP_ORDER = [
   'pet_bookings',
   'pets',
   'pet_customers',
-  'miety_contracts',
+  'pet_services',
+  'pet_z1_customers',
+  'pet_providers',
   'miety_homes',
   'user_subscriptions',
   'private_loans',
