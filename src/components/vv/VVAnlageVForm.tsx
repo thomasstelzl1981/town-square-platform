@@ -331,14 +331,21 @@ export function VVAnlageVForm({ taxData, contextTaxNumber, onSave, isSaving }: V
 
         {/* C) AfA */}
         <TabularFormRow label="  C) Abschreibung (AfA)" children={null} />
-        <TabularFormRow label="AfA-Basis">
+        <TabularFormRow label="AfA-Basis (Gebäude + ENK)">
           <span className="text-sm text-right w-32 inline-block">{fmt(afaBasis)} €</span>
           <Badge variant="outline" className="ml-2 text-[10px]">berechnet</Badge>
         </TabularFormRow>
         <TabularFormRow label="AfA-Satz">
-          <span className="text-sm text-right w-32 inline-block">{taxData.afa.afaRatePercent} %</span>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-right w-32 inline-block">{taxData.afa.afaRatePercent} %</span>
+            <span className="text-[10px] text-muted-foreground">
+              {taxData.yearBuilt && taxData.yearBuilt >= 2023 ? '(§ 7 Abs. 4 EStG — 3%)' :
+               taxData.yearBuilt && taxData.yearBuilt >= 1925 ? '(§ 7 Abs. 4 EStG — 2%)' :
+               '(§ 7 Abs. 4 EStG — 2,5%)'}
+            </span>
+          </div>
         </TabularFormRow>
-        <TabularFormRow label="AfA-Betrag">
+        <TabularFormRow label="AfA-Jahresbetrag">
           <span className="text-sm text-right w-32 inline-block">{fmt(afaAmount)} €</span>
           <Badge variant="outline" className="ml-2 text-[10px]">berechnet</Badge>
         </TabularFormRow>
@@ -406,21 +413,21 @@ export function VVAnlageVForm({ taxData, contextTaxNumber, onSave, isSaving }: V
       {/* Actions */}
       <div className="flex items-center justify-between pt-2">
         <div className="flex items-center gap-3">
-          <span className="text-sm text-muted-foreground">Bestätigt:</span>
+          <span className="text-sm text-muted-foreground">Objekt bestätigt:</span>
           <Switch
             checked={form.confirmed}
             onCheckedChange={v => setField('confirmed', v)}
           />
-          {form.confirmed && <CheckCircle2 className="h-4 w-4 text-green-500" />}
+          {form.confirmed && <CheckCircle2 className="h-4 w-4 text-primary" />}
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={handlePlausibilityCheck} disabled={isChecking}>
             {isChecking ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <ShieldCheck className="h-4 w-4 mr-1" />}
-            {isChecking ? 'Prüfe...' : 'Plausibilität prüfen'}
+            {isChecking ? 'KI prüft Plausibilität…' : 'Plausibilität prüfen'}
           </Button>
           <Button onClick={handleSave} disabled={isSaving} size="sm">
             <Save className="h-4 w-4 mr-1" />
-            {isSaving ? 'Speichert...' : 'Speichern'}
+            {isSaving ? 'Wird gespeichert…' : 'Objekt speichern'}
           </Button>
         </div>
       </div>
