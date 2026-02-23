@@ -19,10 +19,10 @@ import { UnitPreislisteTable } from '@/components/projekte/UnitPreislisteTable';
 import { ProjectDMSWidget } from '@/components/projekte/ProjectDMSWidget';
 import { ProjectCard } from '@/components/projekte/ProjectCard';
 import { LoadingState } from '@/components/shared/LoadingState';
-import { isDemoMode, isDemoProject, DEMO_PROJECT, DEMO_PROJECT_ID, DEMO_UNITS, DEMO_CALC, DEMO_DEVELOPER_CONTEXT } from '@/components/projekte/demoProjectData';
-import { useDemoToggles } from '@/hooks/useDemoToggles';
+import { isDemoId } from '@/engines/demoData/engine';
 import type { DemoUnit } from '@/components/projekte/demoProjectData';
 import { SalesStatusReportWidget } from '@/components/projekte/SalesStatusReportWidget';
+import { DEMO_DEVELOPER_CONTEXT } from '@/components/projekte/demoProjectData';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -46,14 +46,12 @@ export default function PortfolioTab() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { portfolioRows, isLoadingPortfolio, deleteProject } = useDevProjects();
-  const { isEnabled } = useDemoToggles();
-  const showDemoProject = isEnabled('GP-PROJEKT');
   
-  // Default to demo project
-  const [selectedProjectId, setSelectedProjectId] = useState<string>(showDemoProject ? DEMO_PROJECT_ID : (portfolioRows[0]?.id || ''));
+  // Default to first project
+  const [selectedProjectId, setSelectedProjectId] = useState<string>(portfolioRows[0]?.id || '');
 
   const isLoading = isLoadingPortfolio;
-  const isSelectedDemo = isDemoProject(selectedProjectId);
+  const isSelectedDemo = isDemoId(selectedProjectId);
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState<string | null>(null);
@@ -72,9 +70,7 @@ export default function PortfolioTab() {
   };
 
   // Get selected project data
-  const selectedProject = (isSelectedDemo && showDemoProject)
-    ? DEMO_PROJECT
-    : portfolioRows.find(p => p.id === selectedProjectId) || portfolioRows[0] || null;
+  const selectedProject = portfolioRows.find(p => p.id === selectedProjectId) || portfolioRows[0] || null;
 
   // ── Fetch real units from dev_project_units ────────────────────────────
   const { data: realUnits } = useQuery({
@@ -89,25 +85,24 @@ export default function PortfolioTab() {
       if (error) throw error;
       return data;
     },
-    enabled: !isSelectedDemo && !!selectedProjectId,
+    enabled: !!selectedProjectId,
   });
 
   // ── Central calculator state ──────────────────────────────────────────
   const [investmentCosts, setInvestmentCosts] = useState(
-    isSelectedDemo ? DEMO_PROJECT.purchase_price || 4_800_000 : (selectedProject?.purchase_price || 4_800_000)
+    selectedProject?.purchase_price || 4_800_000
   );
   const [totalSaleTarget, setTotalSaleTarget] = useState(
-    isSelectedDemo ? (DEMO_PROJECT as any).total_sale_target || 0 : (selectedProject?.total_sale_target || 0)
+    selectedProject?.total_sale_target || 0
   );
-  const [provisionRate, setProvisionRate] = useState(0.10); // 10%
-  const [priceAdjustment, setPriceAdjustment] = useState(0); // %
-  const [targetYield, setTargetYield] = useState(0.04); // 4%
+  const [provisionRate, setProvisionRate] = useState(0.10);
+  const [priceAdjustment, setPriceAdjustment] = useState(0);
+  const [targetYield, setTargetYield] = useState(0.04);
   const [unitOverrides, setUnitOverrides] = useState<Record<string, { list_price?: number; parking_price?: number }>>({});
   const [unitStatusOverrides, setUnitStatusOverrides] = useState<Record<string, string>>({});
 
-  // Base units: demo or real mapped to DemoUnit interface
+  // Base units mapped to DemoUnit interface
   const baseUnits: DemoUnit[] = useMemo(() => {
-    if (isSelectedDemo && showDemoProject) return DEMO_UNITS;
     if (!realUnits || realUnits.length === 0) return [];
 
     return realUnits.map((u) => {
@@ -135,7 +130,7 @@ export default function PortfolioTab() {
         status: (u.status === 'verkauft' ? 'sold' : u.status === 'reserviert' ? 'reserved' : 'available') as DemoUnit['status'],
       };
     });
-  }, [isSelectedDemo, realUnits]);
+  }, [realUnits]);
 
   // Compute effective unit values
   const calculatedUnits: CalculatedUnit[] = useMemo(() => {
@@ -203,22 +198,13 @@ export default function PortfolioTab() {
     <PageShell>
       <ModulePageHeader title="Projekt-Portfolio" description="Übersicht aller Bauträger- und Aufteiler-Projekte" />
 
-      {/* Project Switcher — Horizontal Tile Row (Demo first if enabled) */}
+      {/* Project Switcher — Horizontal Tile Row */}
       <WidgetGrid>
-        {showDemoProject && (
-          <WidgetCell>
-            <ProjectCard
-              project={DEMO_PROJECT}
-              isDemo
-              isSelected={isSelectedDemo}
-              onClick={() => setSelectedProjectId(DEMO_PROJECT_ID)}
-            />
-          </WidgetCell>
-        )}
         {portfolioRows.map((p) => (
           <WidgetCell key={p.id}>
             <ProjectCard
               project={p}
+              isDemo={isDemoId(p.id)}
               isSelected={p.id === selectedProjectId}
               onClick={(id) => setSelectedProjectId(id)}
             />
@@ -226,8 +212,8 @@ export default function PortfolioTab() {
         ))}
       </WidgetGrid>
 
-      {/* Globalobjekt-Beschreibung (volle Breite) — only if a project is actually selected */}
-      {(selectedProject && (!isSelectedDemo || showDemoProject)) && (
+      {/* Globalobjekt-Beschreibung — only if a project is actually selected */}
+      {selectedProject && (
         <>
           <ProjectOverviewCard
             isDemo={isSelectedDemo}
@@ -235,20 +221,20 @@ export default function PortfolioTab() {
             unitCount={calculatedUnits.length}
           />
 
-          {/* Preisliste (volle Breite) */}
+          {/* Preisliste */}
           {isLoading ? (
             <LoadingState />
           ) : (
             <UnitPreislisteTable
               units={calculatedUnits}
-              projectId={isSelectedDemo ? DEMO_PROJECT_ID : (selectedProject?.id || '')}
+              projectId={selectedProject?.id || ''}
               isDemo={isSelectedDemo}
               onUnitPriceChange={handleUnitPriceChange}
               onStatusChange={handleStatusChange}
             />
           )}
 
-          {/* Kalkulator-Zeile: 1/3 Kalkulator + 2/3 leer */}
+          {/* Kalkulator-Zeile */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-1">
               <StickyCalculatorPanel
@@ -264,13 +250,13 @@ export default function PortfolioTab() {
                 onPriceAdjustment={setPriceAdjustment}
                 onTargetYieldChange={setTargetYield}
                 isDemo={isSelectedDemo || !selectedProject}
-                projectId={isSelectedDemo ? DEMO_PROJECT_ID : (selectedProject?.id || '')}
+                projectId={selectedProject?.id || ''}
               />
             </div>
             <div className="lg:col-span-2">
               <SalesStatusReportWidget
                 units={calculatedUnits}
-                projectName={isSelectedDemo ? DEMO_PROJECT.name : (selectedProject?.name || 'Projekt')}
+                projectName={selectedProject?.name || 'Projekt'}
                 investmentCosts={investmentCosts}
                 totalSaleTarget={totalSaleTarget}
                 provisionRate={provisionRate}
@@ -283,8 +269,8 @@ export default function PortfolioTab() {
 
           {/* Dokumenten-Kachel */}
           <ProjectDMSWidget
-            projectName={isSelectedDemo ? DEMO_PROJECT.name : (selectedProject?.name || 'Projekt')}
-            units={isSelectedDemo ? DEMO_UNITS : baseUnits}
+            projectName={selectedProject?.name || 'Projekt'}
+            units={baseUnits}
             isDemo={isSelectedDemo}
           />
         </>

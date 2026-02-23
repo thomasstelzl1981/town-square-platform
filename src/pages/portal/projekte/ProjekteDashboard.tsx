@@ -37,7 +37,6 @@ import { ProjectCard, ProjectCardPlaceholder } from '@/components/projekte/Proje
 import { WidgetGrid } from '@/components/shared/WidgetGrid';
 import { WidgetCell } from '@/components/shared/WidgetCell';
 import { CreateProjectDialog } from '@/components/projekte/CreateProjectDialog';
-import { isDemoMode, DEMO_PROJECT, DEMO_CALC } from '@/components/projekte/demoProjectData';
 import type { ProjectPortfolioRow } from '@/types/projekte';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
@@ -157,13 +156,10 @@ export default function ProjekteDashboard() {
   const hasUploadedFiles = !!uploadedExpose || !!uploadedPricelist;
   const hasSelectedFiles = !!exposeFile || !!pricelistFile;
 
-  const isDemo = isDemoMode(portfolioRows);
-
-  const demoAdd = demoEnabled ? 1 : 0;
   const stats = {
-    totalProjects: portfolioRows.length + demoAdd,
-    activeProjects: portfolioRows.filter(p => p.status === 'in_distribution' || p.status === 'active').length + demoAdd,
-    totalUnits: portfolioRows.reduce((sum, p) => sum + p.total_units_count, 0) + (demoEnabled ? DEMO_PROJECT.total_units_count : 0),
+    totalProjects: portfolioRows.length,
+    activeProjects: portfolioRows.filter(p => p.status === 'in_distribution' || p.status === 'active').length,
+    totalUnits: portfolioRows.reduce((sum, p) => sum + p.total_units_count, 0),
     soldUnits: portfolioRows.reduce((sum, p) => sum + p.units_sold, 0),
     totalRevenue: portfolioRows.reduce((sum, p) => sum + (p.sale_revenue_actual || 0), 0),
     reservedUnits: portfolioRows.reduce((sum, p) => sum + p.units_reserved, 0),
@@ -208,11 +204,6 @@ export default function ProjekteDashboard() {
           <LoadingState />
         ) : (
           <WidgetGrid>
-            {demoEnabled && (
-              <WidgetCell>
-                <ProjectCard project={DEMO_PROJECT} isDemo />
-              </WidgetCell>
-            )}
             {portfolioRows.map((project) => (
               <WidgetCell key={project.id}>
                 <ProjectCard project={project} />
@@ -364,7 +355,7 @@ export default function ProjekteDashboard() {
       </Card>
 
       {/* ═══ KPI-Kacheln — ganz unten ═══ */}
-      <div className={cn(DESIGN.KPI_GRID.FULL, isDemo && "opacity-50")}>
+      <div className={DESIGN.KPI_GRID.FULL}>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Projekte</CardTitle>
@@ -372,7 +363,7 @@ export default function ProjekteDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.totalProjects}</div>
-            <p className="text-xs text-muted-foreground">{stats.activeProjects} aktiv im Vertrieb {isDemo && '(Musterdaten)'}</p>
+            <p className="text-xs text-muted-foreground">{stats.activeProjects} aktiv im Vertrieb</p>
           </CardContent>
         </Card>
         <Card>
