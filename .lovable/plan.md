@@ -1,118 +1,109 @@
 
-Ziel: Demo-Seeding für Finanzierung stabil machen und sicherstellen, dass die Daten im MOD-11 tatsächlich sichtbar sind (Dashboard, Finanzierungsakte-Kontext, Einreichung).
 
-## Was ich bereits eindeutig verifiziert habe
+# Recurring Contract Detection Dialog (ENG-KONTOMATCH Extension)
 
-1. Seed läuft an, aber Finance-Datensätze werden wegen DB-Constraints verworfen.
-   - `finance_requests_status_check` erlaubt nur: `draft | collecting | ready | submitted`
-   - CSV nutzt aktuell u. a. `ready_for_submission` (ungültig)
-   - `finance_mandates_status_check` erlaubt nur: `new | triage | delegated | accepted | rejected`
-   - CSV nutzt aktuell `open` (ungültig)
-   - `applicant_profiles_employment_type_check` erlaubt u. a. `unbefristet | befristet | beamter | selbststaendig | rente | sonstiges`
-   - CSV nutzt aktuell `angestellt` (ungültig)
-   - `applicant_profiles_party_role_check` erlaubt nur `primary | co_applicant`
-   - CSV nutzt teilweise `applicant` (ungültig)
+## Ziel
 
-2. Zusätzlich ist MOD-11 Datenanzeige teilweise abgekoppelt:
-   - In `src/pages/portal/FinanzierungsmanagerPage.tsx` werden `FMDashboard`, `FMEinreichung`, `FMArchiv` aktuell mit `cases={[]}` gerendert.
-   - Ergebnis: selbst bei vorhandenen Fällen bleibt die Liste auf den Haupt-Tiles leer.
+Nach dem Konto-Matching (Kategorisierung der Transaktionen) soll ein in-app Dialog erscheinen, der automatisch erkannte wiederkehrende Vertraege anzeigt. Der User kann Vertraege an-/abwaehlen, die Kategorie korrigieren und dann die gewuenschten Vertraege mit einem Klick in die jeweiligen Tabellen (`user_subscriptions`, `insurance_contracts`, `miety_contracts`) uebernehmen.
 
-3. Aktueller DB-Zustand (Tenant): `finance_requests/applicant_profiles/finance_mandates` im Demo-ID-Bereich sind 0.
+**Wichtig:** Dies ist ein Radix Dialog (unsere `Dialog`-Komponente), KEIN Browser-Popup. Kein Popup-Blocker-Problem.
 
-## Umsetzungsplan (konkret)
+## Architektur
 
-### 1) CSV-Werte auf gültige Enum-Werte korrigieren (harte Ursache beheben)
+### Phase 1: Recurring Pattern Detection (Engine-Erweiterung)
 
-Dateien:
-- `public/demo-data/demo_finance_requests.csv`
-- `public/demo-data/demo_finance_mandates.csv`
-- `public/demo-data/demo_applicant_profiles.csv`
+Erweiterung von **ENG-KONTOMATCH** um eine reine Analysefunktion, die aus kategorisierten Transaktionen wiederkehrende Muster erkennt.
 
-Änderungen:
-- `finance_requests.status`: `ready_for_submission` -> `ready`
-- `finance_mandates.status`: `open` -> `new` oder `delegated` (ich setze gezielt `delegated`, damit es im Dashboard unter „Neue Mandate“ sofort sichtbar ist)
-- `applicant_profiles.party_role`: `applicant` -> `primary`
-- `applicant_profiles.employment_type`:
-  - `angestellt` -> `unbefristet`
-  - `selbstaendig` -> `selbststaendig`
+**Neue Datei: `src/engines/kontoMatch/recurring.ts`**
+- Pure Function `detectRecurringContracts(transactions): DetectedContract[]`
+- Gruppiert Transaktionen nach Counterparty + aehnlichem Betrag
+- Erkennt Frequenz (monatlich, quartalsweise, jaehrlich) anhand der Buchungsdaten
+- Ordnet erkannte Muster einem Vertragstyp zu:
+  - `VERSICHERUNG` -> `insurance_contracts`
+  - Streaming/Software/Mobilfunk-Patterns -> `user_subscriptions`
+  - Energie/Internet-Patterns -> `miety_contracts`
+- Mindestens 2 Buchungen noetig fuer "wiederkehrend"
+- Rein client-side, pure TypeScript, keine DB-Aufrufe
 
-Wichtig:
-- ID-Struktur bleibt exakt im reservierten Bereich `d0000000-...-07xx`
-- keine neuen Hardcoded-Daten im Code, nur CSV-SSOT.
+**Erweiterung: `src/engines/kontoMatch/spec.ts`**
+- Neue Typen: `DetectedContract`, `ContractTargetTable`, `RecurringPattern`
+- Mapping-Konstanten: Kategorie -> Ziel-Tabelle + Felder
 
-### 2) Seed-Fehler nicht mehr „silent“ laufen lassen
+### Phase 2: Dialog-Komponente
 
-Datei:
-- `src/hooks/useDemoSeedEngine.ts`
+**Neue Datei: `src/components/finanzanalyse/ContractDetectionDialog.tsx`**
 
-Änderungen:
-- `seedFromCSV(...)` wirft bei Chunk-Fehlern für betroffene Entität einen Fehler (statt nur Console-Log).
-- `seed(...)` sammelt Fehler weiterhin, aber markiert Entität explizit als fehlgeschlagen.
-- Rückgabe von `seedDemoData(...)` bleibt mit `success/errors`, wird aber zuverlässig bei echten Insert-/Constraint-Fehlern negativ.
+- Verwendet unsere bestehende `Dialog`-Komponente (Radix UI)
+- Oeffnet sich nach erfolgreichem `sot-transaction-categorize`-Lauf
+- Zeigt eine Liste erkannter Vertraege mit:
+  - Checkbox (an/abwaehlen)
+  - Counterparty-Name
+  - Erkannter Betrag + Frequenz
+  - Kategorie-Dropdown (zum Korrigieren)
+  - Ziel-Badge ("Abo", "Versicherung", "Energievertrag")
+- "Alle auswaehlen / Keine auswaehlen" Toggle
+- "Vertraege uebernehmen"-Button: schreibt ausgewaehlte Eintraege in die jeweiligen DB-Tabellen
+- Zusammenfassung: "X von Y Vertraegen erkannt"
 
-Datei:
-- `src/hooks/useDemoToggles.ts`
+### Phase 3: Integration in KontenTab / TransactionReviewQueue
 
-Änderungen:
-- Nach `seedDemoData(...)` Ergebnis prüfen:
-  - bei `success=false`: sichtbare Fehlermeldung mit erster/n relevanter Fehlursache(n) statt stillschweigend „fertig“.
-- Fortschrittsanzeige bleibt aktiv wie umgesetzt, ergänzt um Failure-Hinweis.
+**Aenderung: `src/pages/portal/finanzanalyse/KontenTab.tsx`**
 
-### 3) MOD-11 Hauptseiten korrekt an echte Cases anbinden
+- Nach dem "Kategorisieren"-Button-Click (bzw. nach erfolgreichem Sync):
+  1. `sot-transaction-categorize` laeuft (wie bisher)
+  2. Danach: `detectRecurringContracts()` auf die kategorisierten Transaktionen anwenden
+  3. Falls Ergebnisse: `ContractDetectionDialog` oeffnen
+- Kein neuer Menuepunkt, kein neuer Tab — nur ein Dialog nach dem Matching
 
-Datei:
-- `src/pages/portal/FinanzierungsmanagerPage.tsx`
+### Phase 4: DB-Insert-Logik
 
-Änderungen:
-- `useFutureRoomCases()` im Page-Container nutzen.
-- `cases` + `isLoading` an folgende Routen durchreichen:
-  - `dashboard`
-  - `einreichung`
-  - `archiv`
-- Dadurch verschwinden die statischen leeren Arrays `cases={[]}`.
+**Neue Datei: `src/hooks/useContractCreation.ts`**
 
-### 4) Sichtbarkeit im MOD-11-Flow sofort sicherstellen
+- Hook, der `DetectedContract[]` entgegennimmt
+- Fuer jeden Vertrag:
+  - `user_subscriptions.insert(...)` fuer Abos
+  - `insurance_contracts.insert(...)` fuer Versicherungen
+  - `miety_contracts.insert(...)` fuer Energievertraege
+- Duplikat-Check: Vor Insert pruefen, ob bereits ein Vertrag mit gleichem Merchant/Anbieter + aehnlichem Betrag existiert
+- Batch-Insert mit Fehlerbehandlung
 
-Dateien:
-- `public/demo-data/demo_finance_mandates.csv` (Status wie oben auf `delegated`)
-- optional/ergänzend `src/pages/portal/finanzierungsmanager/FMEinreichung.tsx`
+## Betroffene Dateien
 
-Änderungen:
-- `READY_STATUSES` um DB-konforme Status ergänzen (`ready`, `submitted`), damit eingespielte Fälle nicht am Frontend-Filter vorbeifallen.
-- Legacy-Status können als Fallback drin bleiben, aber DB-konforme Werte müssen priorisiert sein.
+| Datei | Aenderung |
+|-------|-----------|
+| `src/engines/kontoMatch/spec.ts` | Neue Typen fuer RecurringDetection |
+| `src/engines/kontoMatch/recurring.ts` | Neue pure Analysefunktion (NEU) |
+| `src/components/finanzanalyse/ContractDetectionDialog.tsx` | Dialog-UI (NEU) |
+| `src/hooks/useContractCreation.ts` | DB-Insert-Hook (NEU) |
+| `src/pages/portal/finanzanalyse/KontenTab.tsx` | Integration des Dialogs nach Kategorisierung |
 
-Hinweis:
-- Damit sind Demo-Mandate auf Dashboard sichtbar.
-- Einreichung bekommt nach korrekter Case-Anbindung + Status-Mapping die erwarteten Karten.
+## Governance
 
-### 5) Cleanup-/Registry-Konsistenz prüfen und ggf. nachziehen
+- Keine Menuestruktur-Aenderung
+- Keine neuen Routen
+- Engine-Erweiterung bleibt im bestehenden ENG-KONTOMATCH (keine neue Engine-Nummer)
+- Business-Logik (Pattern-Erkennung) liegt in `src/engines/`, nicht in Komponenten
+- Module Freeze Check: MOD-18 muss ungefroren sein
 
-Dateien:
-- `src/hooks/useDemoCleanup.ts`
-- `src/config/demoDataRegistry.ts`
-- `public/demo-data/demo_manifest.json`
+## Technisches Detail: Recurring Detection Algorithmus
 
-Änderungen:
-- Sicherstellen, dass alle Finance-Entitäten weiterhin vollständig registriert und bereinigbar sind.
-- Falls für die Sichtbarkeit ein zusätzlicher Case-Seed nötig ist, wird die Entität ebenfalls vollständig in Registry + Cleanup aufgenommen (child-first cleanup bleibt gewahrt).
+```text
+Eingabe: Kategorisierte Transaktionen (match_category != null)
 
-## Test- und Abnahmeplan (End-to-End)
+1. Gruppiere nach: counterparty (normalized, lowercase, trimmed)
+2. Fuer jede Gruppe:
+   a. Finde aehnliche Betraege (Toleranz +/- 5%)
+   b. Pruefe Buchungsdaten auf Regelmaessigkeit:
+      - Abstand ~30 Tage = monatlich
+      - Abstand ~90 Tage = quartalsweise
+      - Abstand ~365 Tage = jaehrlich
+   c. Mindestens 2 Treffer in Folge = "recurring"
+3. Mappe match_category auf Vertragstyp:
+   - VERSICHERUNG -> insurance_contracts
+   - DARLEHEN -> (skip, bereits in anderen Modulen)
+   - HAUSGELD, GRUNDSTEUER -> (skip, Immobilien-spezifisch)
+   - GEHALT -> (skip, kein Vertrag)
+   - SONSTIG_AUSGANG -> user_subscriptions (Abo-Kandidat)
+4. Ausgabe: DetectedContract[] mit Confidence-Score
+```
 
-1. Demo-Seed auslösen (Toggle OFF -> ON).
-2. In der UI:
-   - Fortschritt läuft sichtbar durch.
-   - Bei Fehlern erscheint explizite Meldung (nicht nur Konsole).
-3. DB-Checks:
-   - `finance_requests` (2 Demo-Zeilen),
-   - `applicant_profiles` (3 Demo-Zeilen),
-   - `finance_mandates` (2 Demo-Zeilen).
-4. MOD-11 prüfen:
-   - Dashboard: „Neue Mandate“ zeigt Demo-Mandate.
-   - Einreichung: Cases/Karten erscheinen nach Statusfilter.
-   - Keine Constraint-Fehler mehr in Logs.
-
-## Warum das dein aktuelles Problem direkt löst
-
-- Der Seed „funktioniert nicht“ aktuell primär wegen ungültiger CSV-Status-/Enumwerte (harte DB-Blocker).
-- Selbst wenn Daten vorhanden wären, sahst du in zentralen MOD-11-Routen teils nichts wegen `cases={[]}`.
-- Mit beiden Fix-Blöcken (Datenvalidität + Datenbindung im Routing) wird der Prozess robust und sichtbar, inklusive sauberer Fehlerrückmeldung statt Blindflug.
