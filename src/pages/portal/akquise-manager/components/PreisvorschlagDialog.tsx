@@ -19,6 +19,7 @@ import { Loader2, Mail, Sparkles, Send, MessageSquare, Euro } from 'lucide-react
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useUserMailAccount } from '@/hooks/useUserMailAccount';
 import { toast } from 'sonner';
 
 interface PreisvorschlagDialogProps {
@@ -27,6 +28,9 @@ interface PreisvorschlagDialogProps {
   offerId: string;
   offerTitle?: string;
   currentPrice?: number;
+  priceCounter?: number;
+  providerEmail?: string;
+  mandateId?: string;
   senderEmail?: string;
 }
 
@@ -47,13 +51,27 @@ export function PreisvorschlagDialog({
   offerId,
   offerTitle,
   currentPrice,
+  priceCounter,
+  providerEmail,
+  mandateId,
   senderEmail,
 }: PreisvorschlagDialogProps) {
   const queryClient = useQueryClient();
   const { activeTenantId } = useAuth();
+  const mailAccount = useUserMailAccount();
   const [proposedPrice, setProposedPrice] = React.useState<string>(
-    currentPrice ? (currentPrice * 0.9).toFixed(0) : ''
+    priceCounter ? priceCounter.toFixed(0) : currentPrice ? (currentPrice * 0.9).toFixed(0) : ''
   );
+
+  // Re-sync when priceCounter or dialog opens
+  React.useEffect(() => {
+    if (open) {
+      setProposedPrice(
+        priceCounter ? priceCounter.toFixed(0) : currentPrice ? (currentPrice * 0.9).toFixed(0) : ''
+      );
+      setGeneratedEmail('');
+    }
+  }, [open, priceCounter, currentPrice]);
   const [selectedDocs, setSelectedDocs] = React.useState<string[]>([
     'mietliste',
     'energieausweis',
@@ -98,16 +116,19 @@ export function PreisvorschlagDialog({
     }
   };
 
-  // Send proposal
+  // Send proposal — actually sends the email
   const sendProposal = useMutation({
     mutationFn: async () => {
-      // 1. Update offer with proposal
+      const priceNum = parseFloat(proposedPrice);
+      if (isNaN(priceNum)) throw new Error('Ungültiger Preis');
+
+      // 1. Save price_counter to offer
       const { error: updateError } = await supabase
         .from('acq_offers')
         .update({ 
           status: 'analyzing',
-          // Store proposal in extracted_data for now
-        })
+          price_counter: priceNum,
+        } as any)
         .eq('id', offerId);
 
       if (updateError) throw updateError;
@@ -118,23 +139,52 @@ export function PreisvorschlagDialog({
         .insert({
           offer_id: offerId,
           activity_type: 'price_proposal',
-          description: `Preisvorschlag: ${formatPrice(parseFloat(proposedPrice))}`,
+          description: `Preisvorschlag: ${formatPrice(priceNum)}`,
           metadata: { 
-            proposedPrice: parseFloat(proposedPrice),
+            proposedPrice: priceNum,
             currentPrice,
             requestedDocuments: selectedDocs,
+            emailSent: !!generatedEmail,
           },
           tenant_id: activeTenantId!,
         });
 
       if (activityError) throw activityError;
 
-      return { success: true };
+      // 3. Send email via sot-acq-outbound (custom body mode)
+      if (generatedEmail && providerEmail) {
+        const { data: sendResult, error: sendError } = await supabase.functions.invoke('sot-acq-outbound', {
+          body: {
+            mode: 'custom',
+            offerId,
+            mandateId: mandateId || null,
+            toEmail: providerEmail,
+            subject: `Preisvorschlag – ${offerTitle || 'Objekt'}`,
+            bodyHtml: `<div style="font-family:sans-serif;white-space:pre-wrap;">${generatedEmail.replace(/\n/g, '<br>')}</div>`,
+            bodyText: generatedEmail,
+          },
+        });
+
+        if (sendError) {
+          console.error('Email send error:', sendError);
+          toast.error('Preisvorschlag gespeichert, aber E-Mail konnte nicht gesendet werden.');
+          return { success: true, emailSent: false };
+        }
+        return { success: true, emailSent: true, sendResult };
+      }
+
+      return { success: true, emailSent: false };
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['acq-offer', offerId] });
       queryClient.invalidateQueries({ queryKey: ['acq-offers'] });
-      toast.success('Preisvorschlag gesendet');
+      if (result?.emailSent) {
+        toast.success('Preisvorschlag gesendet');
+      } else if (generatedEmail) {
+        toast.success('Preisvorschlag gespeichert (E-Mail nicht versendet – kein Empfänger)');
+      } else {
+        toast.success('Preisvorschlag gespeichert');
+      }
       onOpenChange(false);
     },
     onError: (err) => {
@@ -251,7 +301,10 @@ export function PreisvorschlagDialog({
               </Label>
               <div className="bg-muted p-4 rounded-lg">
                 <div className="text-xs text-muted-foreground mb-2">
-                  An: {senderEmail || 'Absender'}
+                  An: {providerEmail || 'Kein Empfänger'}
+                  {mailAccount.hasAccount && (
+                    <span className="ml-2 text-primary">· Versand via {mailAccount.accountEmail}</span>
+                  )}
                 </div>
                 <Textarea
                   value={generatedEmail}

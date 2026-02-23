@@ -21,6 +21,16 @@ interface SendRequest {
   bulk?: boolean;
 }
 
+interface CustomSendRequest {
+  mode: 'custom';
+  offerId?: string;
+  mandateId?: string;
+  toEmail: string;
+  subject: string;
+  bodyHtml: string;
+  bodyText?: string;
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -40,7 +50,51 @@ serve(async (req) => {
       userId = user?.id || null;
     }
 
-    const body: SendRequest = await req.json();
+    const rawBody = await req.json();
+
+    // ── CUSTOM MODE: Send pre-composed email (e.g. from PreisvorschlagDialog) ──
+    if (rawBody.mode === 'custom') {
+      const { toEmail, subject, bodyHtml, bodyText, mandateId: mId, offerId } = rawBody as CustomSendRequest;
+      if (!toEmail || !subject) throw new Error('toEmail and subject are required for custom mode');
+
+      const replyTo = mId ? `acq+${mId}@incoming.systemofatown.de` : undefined;
+
+      const sendResult = await sendViaUserAccountOrResend({
+        supabase,
+        userId: userId || '',
+        to: [toEmail],
+        subject,
+        bodyHtml,
+        bodyText: bodyText || '',
+        replyTo,
+        resendFrom: 'System of a Town <noreply@systemofatown.de>',
+      });
+
+      // Log to acq_outbound_messages if mandateId exists
+      if (mId) {
+        await supabase.from('acq_outbound_messages').insert([{
+          mandate_id: mId,
+          contact_id: mId, // placeholder — no contact_id in custom mode
+          template_code: 'custom_proposal',
+          subject,
+          body_html: bodyHtml,
+          body_text: bodyText || '',
+          status: sendResult.error ? 'failed' : 'sent',
+          sent_at: sendResult.error ? null : new Date().toISOString(),
+          sent_via: sendResult.method,
+          resend_message_id: sendResult.messageId || null,
+          error_message: sendResult.error || null,
+        }]).select();
+      }
+
+      return new Response(
+        JSON.stringify({ success: !sendResult.error, method: sendResult.method, error: sendResult.error }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // ── TEMPLATE MODE (existing flow) ──
+    const body: SendRequest = rawBody;
     const { mandateId, contactId, contactIds, templateCode, variables, bulk } = body;
 
     // Get mandate for context
