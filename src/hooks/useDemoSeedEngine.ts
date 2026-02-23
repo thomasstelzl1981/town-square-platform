@@ -465,14 +465,29 @@ async function seedPets(tenantId: string, userId: string): Promise<string[]> {
     },
   ];
 
-  const allPets = [...ownerPets, ...pmPets];
-  const { error } = await (supabase as any)
+  // Insert owner pets first (no customer_id FK dependency)
+  const allIds: string[] = [];
+  const { error: ownerErr } = await (supabase as any)
     .from('pets')
-    .upsert(allPets, { onConflict: 'id' });
+    .upsert(ownerPets, { onConflict: 'id' });
+  if (ownerErr) {
+    console.error('[DemoSeed] pets (owner):', ownerErr.message);
+  } else {
+    allIds.push(...ownerPets.map(p => p.id));
+  }
 
-  if (error) { console.error('[DemoSeed] pets:', error.message); return []; }
-  console.log(`[DemoSeed] ✓ pets: ${allPets.length}`);
-  return allPets.map(p => p.id);
+  // Then PM pets (depend on pet_customers existing)
+  const { error: pmErr } = await (supabase as any)
+    .from('pets')
+    .upsert(pmPets, { onConflict: 'id' });
+  if (pmErr) {
+    console.error('[DemoSeed] pets (PM):', pmErr.message, pmErr.details);
+  } else {
+    allIds.push(...pmPets.map(p => p.id));
+  }
+
+  console.log(`[DemoSeed] ✓ pets: ${allIds.length}/${ownerPets.length + pmPets.length}`);
+  return allIds;
 }
 
 // ─── Profile Seed (UPDATE, not INSERT) ─────────────────────
@@ -990,12 +1005,13 @@ export async function seedDemoData(
   await seed('household_persons', () => seedHouseholdPersons(tenantId, userId));
   // cars_vehicles: delete orphaned storage_nodes first, then use created_by
   await seed('cars_vehicles', async () => {
-    // Pre-cleanup: remove storage_nodes that reference these vehicle IDs to avoid unique constraint
+    // Pre-cleanup: remove storage_nodes that reference these vehicle IDs via entity_type/entity_id
     const vehicleIds = ['d0000000-0000-4000-a000-000000000301', 'd0000000-0000-4000-a000-000000000302'];
-    // Also clean up old 00000000- pattern vehicles
     const oldVehicleIds = ['00000000-0000-4000-a000-000000000301', '00000000-0000-4000-a000-000000000302'];
-    await (supabase as any).from('storage_nodes').delete().in('vehicle_id', [...vehicleIds, ...oldVehicleIds]);
-    try { await (supabase as any).from('storage_nodes').delete().in('car_id', [...vehicleIds, ...oldVehicleIds]); } catch {}
+    const allIds = [...vehicleIds, ...oldVehicleIds];
+    // storage_nodes uses entity_type + entity_id pattern (no vehicle_id/car_id columns)
+    await (supabase as any).from('storage_nodes').delete().eq('entity_type', 'vehicle').in('entity_id', allIds);
+    await (supabase as any).from('storage_nodes').delete().eq('module_code', 'MOD-17').in('entity_id', allIds);
     // Delete old-pattern vehicles
     try { await (supabase as any).from('cars_vehicles').delete().in('id', oldVehicleIds); } catch {}
     return seedFromCSV('/demo-data/demo_vehicles.csv', 'cars_vehicles', tenantId, { created_by: userId });

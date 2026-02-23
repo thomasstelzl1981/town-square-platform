@@ -1,3 +1,3 @@
 id;first_name;last_name;email;phone;address;notes;source;status;city;postal_code
-d0000000-0000-4000-a000-000000001040;Thomas;Richter;thomas.richter@demo.de;+49 172 5556677;Hauptstraße 88;Website-Lead, zwei Hunde;website;active;Berlin;10827
-d0000000-0000-4000-a000-000000001041;Claudia;Stein;claudia.stein@demo.de;+49 176 8889900;Schönhauser Allee 45;Bucht für Freundin;website;active;Berlin;10435
+d0000000-0000-4000-a000-000000001040;Thomas;Richter;thomas.richter@demo.de;+49 172 5556677;Hauptstraße 88;Website-Lead, zwei Hunde;website;new;Berlin;10827
+d0000000-0000-4000-a000-000000001041;Claudia;Stein;claudia.stein@demo.de;+49 176 8889900;Schönhauser Allee 45;Bucht für Freundin;website;new;Berlin;10435
