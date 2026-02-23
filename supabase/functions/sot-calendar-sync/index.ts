@@ -67,10 +67,10 @@ serve(async (req) => {
       );
     }
 
-    // Get the mail account (which has calendar access too)
+    // Get the mail account (explicit fields — never expose tokens unnecessarily)
     const { data: account, error: accountError } = await supabase
       .from('mail_accounts')
-      .select('*')
+      .select('id, tenant_id, user_id, provider, email_address, display_name, access_token, refresh_token, token_expires_at')
       .eq('id', accountId)
       .eq('user_id', user.id)
       .single();

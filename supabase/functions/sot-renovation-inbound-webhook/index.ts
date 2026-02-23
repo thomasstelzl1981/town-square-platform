@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { logDataEvent } from "../_shared/ledger.ts";
+import { verifyWebhookSignature } from "../_shared/webhook-validation.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -67,10 +68,23 @@ serve(async (req) => {
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const RESEND_WEBHOOK_SECRET = Deno.env.get('RESEND_WEBHOOK_SECRET');
 
-    // TODO: Verify webhook signature if secret is configured
-    // const signature = req.headers.get('x-resend-webhook-signature');
+    // Read raw body for signature verification
+    const rawBody = await req.text();
 
-    const payload: ResendWebhookPayload = await req.json();
+    // Verify webhook signature if secret is configured
+    if (RESEND_WEBHOOK_SECRET) {
+      const signature = req.headers.get('x-resend-webhook-signature');
+      const isValid = await verifyWebhookSignature(rawBody, signature, RESEND_WEBHOOK_SECRET);
+      if (!isValid) {
+        console.error('Invalid webhook signature — rejecting request');
+        return new Response(
+          JSON.stringify({ error: 'Invalid webhook signature' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
+    const payload: ResendWebhookPayload = JSON.parse(rawBody);
     console.log('Received inbound webhook:', payload.type);
 
     // Only process email.received events
