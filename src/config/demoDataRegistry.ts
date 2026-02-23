@@ -100,6 +100,20 @@ export const DEMO_DATA_SOURCES: readonly DemoDataSource[] = [
     entities: ['listing_publications'],
     exports: ['CSV'],
   },
+  {
+    path: 'public/demo-data/demo_pet_providers.csv',
+    module: 'MOD-22',
+    type: 'hardcoded',
+    entities: ['pet_providers'],
+    exports: ['CSV'],
+  },
+  {
+    path: 'public/demo-data/demo_pet_services.csv',
+    module: 'MOD-22',
+    type: 'hardcoded',
+    entities: ['pet_services'],
+    exports: ['CSV'],
+  },
   // ─── Seed Engine (Phase 2) ─────────────────────────────────
   {
     path: 'src/hooks/useDemoSeedEngine.ts',

@@ -34,6 +34,7 @@ const CLEANUP_ORDER = [
   'pet_services',
   'pet_z1_customers',
   'pet_providers',
+  'miety_contracts',
   'miety_homes',
   'user_subscriptions',
   'private_loans',
