@@ -23,6 +23,7 @@ import { VVAnlageVForm } from '@/components/vv/VVAnlageVForm';
 import { VVErklaerungView } from '@/components/vv/VVErklaerungView';
 import { BWATab } from '@/components/portfolio/BWATab';
 import { buildContextSummary, calculatePropertyResult } from '@/engines/vvSteuer/engine';
+import { WorkflowStepProgress } from '@/components/shared/WorkflowStepProgress';
 
 const currentYear = new Date().getFullYear();
 const YEAR_OPTIONS = [currentYear - 1, currentYear - 2, currentYear - 3];
@@ -290,14 +291,32 @@ export function VerwaltungTab() {
             </Card>
           )}
 
-          {/* STUFE 3: Erklaerung */}
-          {showErklaerung && erklaerungSummary && (
-            <VVErklaerungView summary={erklaerungSummary} />
-          )}
-
           {/* INLINE-FLOW: All properties as Collapsible Accordions */}
           {selectedContext && !showErklaerung && (
             <>
+              {/* Step Progress for Steuer workflow */}
+              <WorkflowStepProgress steps={[
+                {
+                  label: 'Vermietereinheit wählen',
+                  status: 'done',
+                },
+                {
+                  label: 'Objekte bearbeiten',
+                  description: `${gesamtErgebnis?.confirmed ?? 0}/${gesamtErgebnis?.total ?? 0} bestätigt`,
+                  status: gesamtErgebnis?.confirmed === gesamtErgebnis?.total ? 'done' : 'active',
+                },
+                {
+                  label: 'Plausibilität prüfen',
+                  description: 'KI-Prüfung pro Objekt durchführen',
+                  status: gesamtErgebnis?.confirmed === gesamtErgebnis?.total ? 'done' : 'pending',
+                },
+                {
+                  label: 'Steuererklärung erzeugen',
+                  description: 'Anlage V generieren und exportieren',
+                  status: showErklaerung ? 'done' : 'pending',
+                },
+              ]} />
+
               <div className="flex items-center gap-2">
                 <h3 className="text-base font-semibold">{selectedContext.name} — Objekte ({taxYear})</h3>
               </div>
@@ -414,7 +433,7 @@ export function VerwaltungTab() {
                       <div className="mt-4 flex justify-end">
                         <Button size="sm" onClick={() => setShowErklaerung(true)}>
                           <FileText className="h-4 w-4 mr-1" />
-                          Steuererklärung anzeigen
+                          Anlage V erzeugen
                         </Button>
                       </div>
                     )}
@@ -422,6 +441,11 @@ export function VerwaltungTab() {
                 </Card>
               )}
             </>
+          )}
+
+          {/* STUFE 3: Erklaerung — AFTER objects, not before */}
+          {showErklaerung && erklaerungSummary && (
+            <VVErklaerungView summary={erklaerungSummary} />
           )}
         </>
       )}

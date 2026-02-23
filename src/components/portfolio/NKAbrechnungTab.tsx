@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { useNKAbrechnung } from '@/hooks/useNKAbrechnung';
 import { StatusBadge } from '@/components/shared/StatusBadge';
+import { WorkflowStepProgress, type WorkflowStep } from '@/components/shared/WorkflowStepProgress';
 
 interface NKAbrechnungTabProps {
   propertyId: string;
@@ -109,6 +110,35 @@ export function NKAbrechnungTab({ propertyId, tenantId, unitId }: NKAbrechnungTa
   const wegDocStatus = readiness?.documents.find(d => d.docType === 'WEG_JAHRESABRECHNUNG');
   const gsDocStatus = readiness?.documents.find(d => d.docType === 'GRUNDSTEUER_BESCHEID');
 
+  // Step progress state
+  const nkSteps: WorkflowStep[] = [
+    {
+      label: 'WEG-Abrechnung',
+      description: 'Positionen gemäß BetrKV §2 eintragen',
+      status: costItems.length > 0 && sumApportionable > 0 ? 'done' : 'active',
+    },
+    {
+      label: 'Grundsteuer',
+      description: 'Bescheid-Betrag eintragen',
+      status: grundsteuerAnteil > 0 ? 'done' : (costItems.length > 0 && sumApportionable > 0 ? 'active' : 'pending'),
+    },
+    {
+      label: 'Zahlungseingänge',
+      description: 'Ist-Zahlungen laden und prüfen',
+      status: paymentsLocked ? 'done' : rentPayments.length > 0 ? 'active' : 'pending',
+    },
+    {
+      label: 'Abrechnung berechnen',
+      description: 'Saldo ermitteln und validieren',
+      status: settlement ? 'done' : 'pending',
+    },
+    {
+      label: 'Export & Versand',
+      description: 'PDF erzeugen und versenden',
+      status: 'pending',
+    },
+  ];
+
   return (
     <div className="space-y-6 max-w-4xl">
       {/* Header */}
@@ -116,7 +146,7 @@ export function NKAbrechnungTab({ propertyId, tenantId, unitId }: NKAbrechnungTa
         <div>
           <h2 className="text-lg font-semibold">Nebenkostenabrechnung</h2>
           <p className="text-sm text-muted-foreground">
-            Inline-Prozess: WEG-Abrechnung → Grundsteuer → Mieteinnahmen → Berechnung → Export
+            Schritt für Schritt zur fertigen Abrechnung
           </p>
         </div>
         <Select value={selectedYear} onValueChange={setSelectedYear}>
@@ -130,6 +160,9 @@ export function NKAbrechnungTab({ propertyId, tenantId, unitId }: NKAbrechnungTa
           </SelectContent>
         </Select>
       </div>
+
+      {/* Step Progress */}
+      <WorkflowStepProgress steps={nkSteps} />
 
       {/* Info-Banner statt Blocker (nicht blockierend) */}
       {readiness && readiness.blockers.length > 0 && !isLoadingReadiness && (
@@ -442,7 +475,7 @@ export function NKAbrechnungTab({ propertyId, tenantId, unitId }: NKAbrechnungTa
                   ) : (
                     <Banknote className="h-4 w-4 mr-2" />
                   )}
-                  Kontenauslesung beauftragen
+                  Zahlungseingänge laden
                 </Button>
                 {rentPayments.length > 0 && (
                   <span className="text-xs text-muted-foreground">
@@ -631,7 +664,7 @@ export function NKAbrechnungTab({ propertyId, tenantId, unitId }: NKAbrechnungTa
               ) : (
                 <Calculator className="h-4 w-4 mr-2" />
               )}
-              Berechnung starten (Engine)
+              {isCalculating ? 'Wird berechnet — Positionen werden validiert…' : 'Abrechnung berechnen'}
             </Button>
           </div>
 
