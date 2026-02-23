@@ -104,7 +104,7 @@ function coerceRow(row: Record<string, string>): Record<string, unknown> {
 async function fetchCSV(path: string): Promise<Record<string, unknown>[]> {
   const resp = await fetch(path);
   if (!resp.ok) {
-    console.warn(`[DemoSeed] Failed to fetch ${path}: ${resp.status}`);
+    if (import.meta.env.DEV) console.warn(`[DemoSeed] Failed to fetch ${path}: ${resp.status}`);
     return [];
   }
   const text = await resp.text();
@@ -134,7 +134,7 @@ async function registerEntities(
     const { error } = await (supabase as any)
       .from('test_data_registry')
       .upsert(chunk, { onConflict: 'entity_type,entity_id' });
-    if (error) console.warn(`[DemoSeed] Registry ${entityType} chunk ${i}:`, error.message);
+    if (error) { if (import.meta.env.DEV) console.warn(`[DemoSeed] Registry ${entityType} chunk ${i}:`, error.message); }
   }
 }
 
@@ -174,13 +174,13 @@ async function seedFromCSV(
       .from(tableName)
       .upsert(chunk, { onConflict: 'id' });
     if (error) {
-      console.error(`[DemoSeed] ${tableName} chunk ${i}:`, error.message);
+      if (import.meta.env.DEV) console.error(`[DemoSeed] ${tableName} chunk ${i}:`, error.message);
     } else {
       allIds.push(...chunk.map(r => (r as Record<string, unknown>).id as string));
     }
   }
 
-  console.log(`[DemoSeed] ✓ ${tableName}: ${allIds.length}`);
+  if (import.meta.env.DEV) console.log(`[DemoSeed] ✓ ${tableName}: ${allIds.length}`);
   return allIds;
 }
 
@@ -206,8 +206,8 @@ async function seedInsuranceContracts(tenantId: string, userId: string): Promise
     .from('insurance_contracts')
     .upsert(data, { onConflict: 'id' });
 
-  if (error) { console.error('[DemoSeed] insurance_contracts:', error.message); return []; }
-  console.log(`[DemoSeed] ✓ insurance_contracts: ${data.length}`);
+  if (error) { if (import.meta.env.DEV) console.error('[DemoSeed] insurance_contracts:', error.message); return []; }
+  if (import.meta.env.DEV) console.log(`[DemoSeed] ✓ insurance_contracts: ${data.length}`);
   return data.map(d => d.id);
 }
 
@@ -274,8 +274,8 @@ async function seedKvContracts(tenantId: string): Promise<string[]> {
     .from('kv_contracts')
     .upsert(data, { onConflict: 'id' });
 
-  if (error) { console.error('[DemoSeed] kv_contracts:', error.message); return []; }
-  console.log(`[DemoSeed] ✓ kv_contracts: ${data.length}`);
+  if (error) { if (import.meta.env.DEV) console.error('[DemoSeed] kv_contracts:', error.message); return []; }
+  if (import.meta.env.DEV) console.log(`[DemoSeed] ✓ kv_contracts: ${data.length}`);
   return kvIds;
 }
 
@@ -300,8 +300,8 @@ async function seedAcqMandates(tenantId: string, userId: string): Promise<string
     .from('acq_mandates')
     .upsert([data], { onConflict: 'id' });
 
-  if (error) { console.error('[DemoSeed] acq_mandates:', error.message); return []; }
-  console.log('[DemoSeed] ✓ acq_mandates: 1');
+  if (error) { if (import.meta.env.DEV) console.error('[DemoSeed] acq_mandates:', error.message); return []; }
+  if (import.meta.env.DEV) console.log('[DemoSeed] ✓ acq_mandates: 1');
   return [DEMO_ACQ_MANDATE_ID];
 }
 
@@ -341,8 +341,8 @@ async function seedDevProject(tenantId: string, userId: string): Promise<string[
     .from('dev_projects')
     .upsert([data], { onConflict: 'id' });
 
-  if (error) { console.error('[DemoSeed] dev_projects:', error.message); return []; }
-  console.log('[DemoSeed] ✓ dev_projects: 1');
+  if (error) { if (import.meta.env.DEV) console.error('[DemoSeed] dev_projects:', error.message); return []; }
+  if (import.meta.env.DEV) console.log('[DemoSeed] ✓ dev_projects: 1');
   return [DEMO_DEV_PROJECT_ID];
 }
 
@@ -371,12 +371,12 @@ async function ensureLandlordContext(tenantId: string): Promise<string | null> {
     });
 
   if (error) {
-    console.error('[DemoSeed] landlord_contexts:', error.message);
+    if (import.meta.env.DEV) console.error('[DemoSeed] landlord_contexts:', error.message);
     return null;
   }
   // Register for cleanup
   await registerEntities(tenantId, 'landlord_contexts', [DEMO_LANDLORD_CONTEXT_ID]);
-  console.log('[DemoSeed] ✓ landlord_contexts: 1');
+  if (import.meta.env.DEV) console.log('[DemoSeed] ✓ landlord_contexts: 1');
   return DEMO_LANDLORD_CONTEXT_ID;
 }
 
@@ -460,8 +460,8 @@ async function seedPets(tenantId: string, userId: string): Promise<string[]> {
     .from('pets')
     .upsert(allPets, { onConflict: 'id' });
 
-  if (error) { console.error('[DemoSeed] pets:', error.message); return []; }
-  console.log(`[DemoSeed] ✓ pets: ${allPets.length}`);
+  if (error) { if (import.meta.env.DEV) console.error('[DemoSeed] pets:', error.message); return []; }
+  if (import.meta.env.DEV) console.log(`[DemoSeed] ✓ pets: ${allPets.length}`);
   return allPets.map(p => p.id);
 }
 
@@ -491,10 +491,10 @@ async function seedProfile(userId: string): Promise<string[]> {
     .eq('id', userId);
 
   if (error) {
-    console.error('[DemoSeed] profiles:', error.message);
+    if (import.meta.env.DEV) console.error('[DemoSeed] profiles:', error.message);
     return [];
   }
-  console.log('[DemoSeed] ✓ profiles: 1 (update)');
+  if (import.meta.env.DEV) console.log('[DemoSeed] ✓ profiles: 1 (update)');
   return [userId];
 }
 
@@ -530,9 +530,9 @@ async function seedPropertyAccounting(tenantId: string, insertedPropertyIds: str
     .upsert(rows, { onConflict: 'id' });
 
   if (error) {
-    console.error('[DemoSeed] property_accounting:', error.message);
+    if (import.meta.env.DEV) console.error('[DemoSeed] property_accounting:', error.message);
   } else {
-    console.log(`[DemoSeed] ✓ property_accounting: ${rows.length}`);
+    if (import.meta.env.DEV) console.log(`[DemoSeed] ✓ property_accounting: ${rows.length}`);
     await registerEntities(tenantId, 'property_accounting', rows.map(r => r.id));
   }
 }
@@ -560,7 +560,7 @@ async function seedProperties(
 
   for (const row of rows) {
     const propId = row.id as string;
-    console.log(`[DemoSeed] Property ${propId}: starting cleanup...`);
+    if (import.meta.env.DEV) console.log(`[DemoSeed] Property ${propId}: starting cleanup...`);
 
     // Step 1: Per-property thorough cleanup (children first, parent last)
     try {
@@ -611,7 +611,7 @@ async function seedProperties(
       // 1e. Delete the property itself
       await (supabase as any).from('properties').delete().eq('id', propId);
     } catch (cleanupErr) {
-      console.warn(`[DemoSeed] Cleanup warning for property ${propId}:`, cleanupErr);
+      if (import.meta.env.DEV) console.warn(`[DemoSeed] Cleanup warning for property ${propId}:`, cleanupErr);
     }
 
     // Step 2: Small delay for CASCADE/cleanup to settle
@@ -633,7 +633,7 @@ async function seedProperties(
     };
     if (!data.market_value && MARKET_VALUE_FALLBACK[propId]) {
       data.market_value = MARKET_VALUE_FALLBACK[propId];
-      console.log(`[DemoSeed] market_value fallback for ${propId}: ${data.market_value}`);
+      if (import.meta.env.DEV) console.log(`[DemoSeed] market_value fallback for ${propId}: ${data.market_value}`);
     }
 
     // Ensure rental_managed is set for demo properties
@@ -646,10 +646,10 @@ async function seedProperties(
       .insert(data);
 
     if (error) {
-      console.error(`[DemoSeed] ✗ property INSERT ${propId}:`, error.message, error.details);
+      if (import.meta.env.DEV) console.error(`[DemoSeed] ✗ property INSERT ${propId}:`, error.message, error.details);
     } else {
       allIds.push(propId);
-      console.log(`[DemoSeed] ✓ property ${propId} inserted (market_value=${data.market_value}, rental_managed=${data.rental_managed})`);
+      if (import.meta.env.DEV) console.log(`[DemoSeed] ✓ property ${propId} inserted (market_value=${data.market_value}, rental_managed=${data.rental_managed})`);
     }
   }
 
@@ -658,7 +658,7 @@ async function seedProperties(
     await seedPropertyAccounting(tenantId, allIds);
   }
 
-  console.log(`[DemoSeed] ✓ properties total: ${allIds.length}/${rows.length}`);
+  if (import.meta.env.DEV) console.log(`[DemoSeed] ✓ properties total: ${allIds.length}/${rows.length}`);
   return allIds;
 }
 
@@ -700,16 +700,16 @@ async function seedUnits(tenantId: string): Promise<string[]> {
         .eq('id', existingUnit.id);
 
       if (error) {
-        console.error(`[DemoSeed] units UPDATE ${existingUnit.id}:`, error.message);
+        if (import.meta.env.DEV) console.error(`[DemoSeed] units UPDATE ${existingUnit.id}:`, error.message);
       } else {
         allIds.push(existingUnit.id);
       }
     } else {
-      console.warn(`[DemoSeed] No auto-created unit found for property ${propertyId}`);
+      if (import.meta.env.DEV) console.warn(`[DemoSeed] No auto-created unit found for property ${propertyId}`);
     }
   }
 
-  console.log(`[DemoSeed] ✓ units (UPDATE): ${allIds.length}`);
+  if (import.meta.env.DEV) console.log(`[DemoSeed] ✓ units (UPDATE): ${allIds.length}`);
   return allIds;
 }
 
@@ -732,7 +732,7 @@ async function seedLeases(
     const actualUnitId = unitIdMap.get(csvUnitId);
     
     if (!actualUnitId) {
-      console.warn(`[DemoSeed] leases: no mapped unit for CSV id ${csvUnitId}`);
+      if (import.meta.env.DEV) console.warn(`[DemoSeed] leases: no mapped unit for CSV id ${csvUnitId}`);
       continue;
     }
 
@@ -743,13 +743,13 @@ async function seedLeases(
       .upsert(data, { onConflict: 'id' });
 
     if (error) {
-      console.error(`[DemoSeed] leases ${row.id}:`, error.message);
+      if (import.meta.env.DEV) console.error(`[DemoSeed] leases ${row.id}:`, error.message);
     } else {
       allIds.push(row.id as string);
     }
   }
 
-  console.log(`[DemoSeed] ✓ leases: ${allIds.length}`);
+  if (import.meta.env.DEV) console.log(`[DemoSeed] ✓ leases: ${allIds.length}`);
   return allIds;
 }
 
@@ -794,12 +794,12 @@ async function seedHouseholdPersons(tenantId: string, userId: string): Promise<s
       .from('household_persons')
       .upsert(chunk, { onConflict: 'id' });
     if (error) {
-      console.error(`[DemoSeed] household_persons chunk ${i}:`, error.message);
+      if (import.meta.env.DEV) console.error(`[DemoSeed] household_persons chunk ${i}:`, error.message);
     } else {
       allIds.push(...chunk.map(r => (r as Record<string, unknown>).id as string));
     }
   }
-  console.log(`[DemoSeed] ✓ household_persons: ${allIds.length}`);
+  if (import.meta.env.DEV) console.log(`[DemoSeed] ✓ household_persons: ${allIds.length}`);
   return allIds;
 }
 
@@ -830,12 +830,12 @@ async function seedVorsorgeContracts(tenantId: string, userId: string): Promise<
       .from('vorsorge_contracts')
       .upsert(chunk, { onConflict: 'id' });
     if (error) {
-      console.error(`[DemoSeed] vorsorge_contracts chunk ${i}:`, error.message);
+      if (import.meta.env.DEV) console.error(`[DemoSeed] vorsorge_contracts chunk ${i}:`, error.message);
     } else {
       allIds.push(...chunk.map(r => (r as Record<string, unknown>).id as string));
     }
   }
-  console.log(`[DemoSeed] ✓ vorsorge_contracts: ${allIds.length}`);
+  if (import.meta.env.DEV) console.log(`[DemoSeed] ✓ vorsorge_contracts: ${allIds.length}`);
   return allIds;
 }
 
@@ -860,12 +860,12 @@ async function seedPensionRecords(tenantId: string, userId: string): Promise<str
       .from('pension_records')
       .upsert(record, { onConflict: 'id' });
     if (error) {
-      console.error(`[DemoSeed] pension_records ${record.id}:`, error.message);
+      if (import.meta.env.DEV) console.error(`[DemoSeed] pension_records ${record.id}:`, error.message);
     } else {
       allIds.push(record.id as string);
     }
   }
-  console.log(`[DemoSeed] ✓ pension_records: ${allIds.length}`);
+  if (import.meta.env.DEV) console.log(`[DemoSeed] ✓ pension_records: ${allIds.length}`);
   return allIds;
 }
 
@@ -889,7 +889,7 @@ export async function seedDemoData(
     return { success: false, seeded, errors: ['No authenticated user'] };
   }
 
-  console.log(`[DemoSeed] Starting seed for tenant ${tenantId}...`);
+  if (import.meta.env.DEV) console.log(`[DemoSeed] Starting seed for tenant ${tenantId}...`);
 
   async function seed(entityType: string, fn: () => Promise<string[]>) {
     try {
@@ -899,7 +899,7 @@ export async function seedDemoData(
     } catch (err) {
       const msg = `${entityType}: ${err instanceof Error ? err.message : 'Unknown'}`;
       errors.push(msg);
-      console.error(`[DemoSeed] ✗ ${msg}`);
+      if (import.meta.env.DEV) console.error(`[DemoSeed] ✗ ${msg}`);
     }
   }
 
@@ -954,16 +954,16 @@ export async function seedDemoData(
           .update(updateData)
           .eq('id', existingUnit.id);
         if (error) {
-          console.error(`[DemoSeed] units UPDATE ${existingUnit.id}:`, error.message);
+        if (import.meta.env.DEV) console.error(`[DemoSeed] units UPDATE ${existingUnit.id}:`, error.message);
         } else {
           unitIdMap.set(csvUnitId, existingUnit.id);
           allIds.push(existingUnit.id);
         }
       } else {
-        console.warn(`[DemoSeed] No auto-created unit found for property ${propertyId}`);
+        if (import.meta.env.DEV) console.warn(`[DemoSeed] No auto-created unit found for property ${propertyId}`);
       }
     }
-    console.log(`[DemoSeed] ✓ units (UPDATE): ${allIds.length}, mapping: ${unitIdMap.size}`);
+    if (import.meta.env.DEV) console.log(`[DemoSeed] ✓ units (UPDATE): ${allIds.length}, mapping: ${unitIdMap.size}`);
     return allIds;
   });
   await seed('leases', () => seedLeases(tenantId, unitIdMap));
@@ -1029,20 +1029,22 @@ export async function seedDemoData(
     pet_customers: 3, pets: 5, pet_bookings: 5,
   };
 
-  console.log('\n[DemoSeed] ══════════════════════════════════════════');
-  console.log('[DemoSeed] DIAGNOSE: Soll vs. Ist');
-  console.log('[DemoSeed] ──────────────────────────────────────────');
-  let allOk = true;
-  for (const [entity, expected] of Object.entries(EXPECTED)) {
-    const actual = seeded[entity] ?? 0;
-    const status = actual >= expected ? '✅' : '❌';
-    if (actual < expected) allOk = false;
-    console.log(`[DemoSeed] ${status} ${entity}: ${actual}/${expected}`);
+  if (import.meta.env.DEV) {
+    console.log('\n[DemoSeed] ══════════════════════════════════════════');
+    console.log('[DemoSeed] DIAGNOSE: Soll vs. Ist');
+    console.log('[DemoSeed] ──────────────────────────────────────────');
+    let allOk = true;
+    for (const [entity, expected] of Object.entries(EXPECTED)) {
+      const actual = seeded[entity] ?? 0;
+      const status = actual >= expected ? '✅' : '❌';
+      if (actual < expected) allOk = false;
+      console.log(`[DemoSeed] ${status} ${entity}: ${actual}/${expected}`);
+    }
+    console.log('[DemoSeed] ──────────────────────────────────────────');
+    console.log(`[DemoSeed] Gesamt: ${allOk ? '✅ VOLLSTÄNDIG' : '❌ UNVOLLSTÄNDIG'}`);
+    if (errors.length) console.warn('[DemoSeed] Fehler:', errors);
+    console.log('[DemoSeed] ══════════════════════════════════════════\n');
   }
-  console.log('[DemoSeed] ──────────────────────────────────────────');
-  console.log(`[DemoSeed] Gesamt: ${allOk ? '✅ VOLLSTÄNDIG' : '❌ UNVOLLSTÄNDIG'}`);
-  if (errors.length) console.warn('[DemoSeed] Fehler:', errors);
-  console.log('[DemoSeed] ══════════════════════════════════════════\n');
 
   return { success: errors.length === 0, seeded, errors };
 }

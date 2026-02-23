@@ -33,10 +33,10 @@ export interface UserMailSendResult {
 export async function sendViaUserAccountOrResend(params: UserMailSendParams): Promise<UserMailSendResult> {
   const { supabase, userId, to, subject, bodyHtml, bodyText, replyTo, cc, bcc, resendFrom } = params;
 
-  // 1. Look up user's first mail account (table has no status/is_default columns)
+  // 1. Look up user's first mail account (explicit fields — never expose tokens unnecessarily)
   const { data: accounts } = await supabase
     .from('mail_accounts')
-    .select('*')
+    .select('id, tenant_id, user_id, provider, email_address, display_name, imap_host, imap_port, smtp_host, smtp_port, credentials_vault_key, access_token, refresh_token, token_expires_at')
     .eq('user_id', userId)
     .limit(1);
 

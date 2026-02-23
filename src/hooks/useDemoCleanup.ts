@@ -89,7 +89,7 @@ export async function cleanupDemoData(tenantId: string): Promise<DemoCleanupResu
   const errors: string[] = [];
   const deleted: Record<string, number> = {};
 
-  console.log(`[DemoCleanup] Starting cleanup for tenant ${tenantId}...`);
+  if (import.meta.env.DEV) console.log(`[DemoCleanup] Starting cleanup for tenant ${tenantId}...`);
 
   try {
     // Fetch all registered demo entities for this tenant
@@ -109,7 +109,7 @@ export async function cleanupDemoData(tenantId: string): Promise<DemoCleanupResu
     let useFallback = false;
 
     if (!registry || registry.length === 0) {
-      console.log('[DemoCleanup] Registry empty — using ID-pattern fallback');
+      if (import.meta.env.DEV) console.log('[DemoCleanup] Registry empty — using ID-pattern fallback');
       grouped = buildFallbackGroups();
       useFallback = true;
     } else {
@@ -188,7 +188,7 @@ export async function cleanupDemoData(tenantId: string): Promise<DemoCleanupResu
         errors.push(`Profile reset: ${profileError.message}`);
       } else {
         deleted['profile'] = 1;
-        console.log('[DemoCleanup] ✓ profile reset to NULL');
+        if (import.meta.env.DEV) console.log('[DemoCleanup] ✓ profile reset to NULL');
       }
     }
 
@@ -203,7 +203,7 @@ export async function cleanupDemoData(tenantId: string): Promise<DemoCleanupResu
       errors.push(`Registry clear: ${clearError.message}`);
     }
 
-    console.log('[DemoCleanup] ✓ Cleanup complete:', deleted);
+    if (import.meta.env.DEV) console.log('[DemoCleanup] ✓ Cleanup complete:', deleted);
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Unknown error';
     errors.push(msg);

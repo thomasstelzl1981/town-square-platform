@@ -252,7 +252,7 @@ Deno.serve(async (req) => {
 
         const { data: account } = await sbAdmin
           .from("mail_accounts")
-          .select("*")
+          .select("id, user_id, provider, email_address, refresh_token, access_token, token_expires_at")
           .eq("id", accountId)
           .eq("user_id", user.id)
           .single();
