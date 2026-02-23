@@ -183,6 +183,8 @@ export const zone1Admin: ZoneDefinition = {
     { path: "armstrong/engines", component: "ArmstrongEngines", title: "Engine Registry" },
     { path: "armstrong/golden-paths", component: "ArmstrongGoldenPaths", title: "Golden Path Registry" },
     { path: "armstrong/costs", component: "PlatformCostMonitor", title: "Plattform-Kostenmonitor" },
+    { path: "armstrong/health", component: "PlatformHealth", title: "Platform Health Monitor" },
+    { path: "armstrong/review", component: "WeeklyReview", title: "Wöchentliches Review" },
     // Landing Pages — consolidated into website-hosting
     // Fortbildung Management
     { path: "fortbildung", component: "AdminFortbildung", title: "Fortbildung" },
