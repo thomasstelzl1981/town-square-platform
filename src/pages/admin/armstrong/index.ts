@@ -14,3 +14,5 @@ export { default as ArmstrongIntegrations } from './ArmstrongIntegrations';
 export { default as ArmstrongEngines } from './ArmstrongEngines';
 export { default as ArmstrongGoldenPaths } from './ArmstrongGoldenPaths';
 export { default as PlatformCostMonitor } from './PlatformCostMonitor';
+export { default as PlatformHealth } from './PlatformHealth';
+export { default as WeeklyReview } from './WeeklyReview';

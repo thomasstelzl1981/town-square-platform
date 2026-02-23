@@ -102,14 +102,40 @@ function getStatusBadge(status: string, hasSecret: boolean) {
 }
 
 export default function Integrations() {
-  // Hardcoded list of configured secrets (from Lovable Cloud)
-  const configuredSecrets = [
-    'GOOGLE_MAPS_API_KEY',
-    'LOVABLE_API_KEY',
-    'OPENAI_API_KEY',
-    'RESEND_API_KEY',
-    'VITE_GOOGLE_MAPS_API_KEY',
-  ];
+  // Dynamisch: Secrets aus integration_registry ableiten + bekannte Cloud-Secrets
+  const { data: registrySecrets } = useQuery({
+    queryKey: ['integration-secrets-status'],
+    queryFn: async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const client = supabase as any;
+      const { data, error } = await client
+        .from('integration_registry')
+        .select('code, status')
+        .eq('status', 'active');
+      if (error) throw error;
+      // Map active integrations to their known secret keys
+      const SECRET_MAP: Record<string, string[]> = {
+        RESEND: ['RESEND_API_KEY'],
+        LOVABLE_AI: ['LOVABLE_API_KEY'],
+        GOOGLE_MAPS: ['GOOGLE_MAPS_API_KEY', 'VITE_GOOGLE_MAPS_API_KEY'],
+        GOOGLE_PLACES: ['GOOGLE_MAPS_API_KEY'],
+        ELEVENLABS: ['ELEVENLABS_API_KEY'],
+        APIFY: ['APIFY_API_KEY'],
+        FIRECRAWL: ['FIRECRAWL_API_KEY'],
+        LIVEKIT: ['LIVEKIT_API_KEY'],
+      };
+      const secrets = new Set<string>();
+      for (const item of (data || [])) {
+        const keys = SECRET_MAP[item.code];
+        if (keys) keys.forEach(k => secrets.add(k));
+      }
+      // Always include known Cloud-configured secrets
+      ['LOVABLE_API_KEY', 'RESEND_API_KEY', 'GOOGLE_MAPS_API_KEY', 'ELEVENLABS_API_KEY', 'OPENAI_API_KEY'].forEach(k => secrets.add(k));
+      return Array.from(secrets);
+    },
+    staleTime: 60000,
+  });
+  const configuredSecrets = registrySecrets || [];
 
   const { data: integrations, isLoading, error } = useQuery({
     queryKey: ['integration-registry'],

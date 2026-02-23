@@ -200,6 +200,8 @@ const ArmstrongIntegrations = React.lazy(() => import('@/pages/admin/armstrong/A
 const ArmstrongEngines = React.lazy(() => import('@/pages/admin/armstrong/ArmstrongEngines'));
 const ArmstrongGoldenPaths = React.lazy(() => import('@/pages/admin/armstrong/ArmstrongGoldenPaths'));
 const PlatformCostMonitor = React.lazy(() => import('@/pages/admin/armstrong').then(m => ({ default: m.PlatformCostMonitor })));
+const PlatformHealth = React.lazy(() => import('@/pages/admin/armstrong/PlatformHealth'));
+const WeeklyReview = React.lazy(() => import('@/pages/admin/armstrong/WeeklyReview'));
 
 const adminComponentMap: Record<string, React.ComponentType> = {
   Dashboard,
@@ -250,6 +252,8 @@ const adminComponentMap: Record<string, React.ComponentType> = {
   ArmstrongEngines,
   ArmstrongGoldenPaths,
   PlatformCostMonitor,
+  PlatformHealth,
+  WeeklyReview,
   // Social Media removed (100% demo data, no DB)
   // Landing Pages — consolidated into WebHostingDashboard
   // Fortbildung Management
