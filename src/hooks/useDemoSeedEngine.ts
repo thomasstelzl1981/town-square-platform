@@ -104,11 +104,18 @@ function coerceRow(row: Record<string, string>): Record<string, unknown> {
 async function fetchCSV(path: string): Promise<Record<string, unknown>[]> {
   const resp = await fetch(path);
   if (!resp.ok) {
-    if (import.meta.env.DEV) console.warn(`[DemoSeed] Failed to fetch ${path}: ${resp.status}`);
+    console.warn(`[DemoSeed] Failed to fetch ${path}: ${resp.status}`);
     return [];
   }
   const text = await resp.text();
-  return parseCSV(text).map(coerceRow);
+  // Detect SPA fallback (HTML instead of CSV)
+  if (text.trimStart().startsWith('<!') || text.trimStart().startsWith('<html')) {
+    console.error(`[DemoSeed] ${path} returned HTML instead of CSV (SPA fallback). File may not exist in public/.`);
+    return [];
+  }
+  const parsed = parseCSV(text).map(coerceRow);
+  console.log(`[DemoSeed] fetchCSV ${path}: ${parsed.length} rows`);
+  return parsed;
 }
 
 // ─── Registry ──────────────────────────────────────────────
@@ -180,7 +187,7 @@ async function seedFromCSV(
     }
   }
 
-  if (import.meta.env.DEV) console.log(`[DemoSeed] ✓ ${tableName}: ${allIds.length}`);
+  console.log(`[DemoSeed] ✓ ${tableName}: ${allIds.length}/${data.length}`);
   return allIds;
 }
 
@@ -889,7 +896,7 @@ export async function seedDemoData(
     return { success: false, seeded, errors: ['No authenticated user'] };
   }
 
-  if (import.meta.env.DEV) console.log(`[DemoSeed] Starting seed for tenant ${tenantId}...`);
+  console.log(`[DemoSeed] Starting seed for tenant ${tenantId}...`);
 
   async function seed(entityType: string, fn: () => Promise<string[]>) {
     try {
@@ -899,7 +906,7 @@ export async function seedDemoData(
     } catch (err) {
       const msg = `${entityType}: ${err instanceof Error ? err.message : 'Unknown'}`;
       errors.push(msg);
-      if (import.meta.env.DEV) console.error(`[DemoSeed] ✗ ${msg}`);
+      console.error(`[DemoSeed] ✗ ${msg}`);
     }
   }
 
