@@ -174,7 +174,7 @@ async function seedFromCSV(
       .from(tableName)
       .upsert(chunk, { onConflict: 'id' });
     if (error) {
-      if (import.meta.env.DEV) console.error(`[DemoSeed] ${tableName} chunk ${i}:`, error.message);
+      console.error(`[DemoSeed] ${tableName} chunk ${i}:`, error.message, error.details);
     } else {
       allIds.push(...chunk.map(r => (r as Record<string, unknown>).id as string));
     }
@@ -971,7 +971,7 @@ export async function seedDemoData(
 
   // Phase 2.5: Sales Workflow (property_features → listings → listing_publications)
   await seed('property_features', () => seedFromCSV('/demo-data/demo_property_features.csv', 'property_features', tenantId));
-  await seed('listings', () => seedFromCSV('/demo-data/demo_listings.csv', 'listings', tenantId));
+  await seed('listings', () => seedFromCSV('/demo-data/demo_listings.csv', 'listings', tenantId, { created_by: userId }));
   await seed('listing_publications', () => seedFromCSV('/demo-data/demo_listing_publications.csv', 'listing_publications', tenantId));
 
   // Phase 3: Bank
@@ -1008,7 +1008,9 @@ export async function seedDemoData(
   // Phase 6.5: Dev Projects (MOD-13)
   await seed('dev_projects', () => seedDevProject(tenantId, userId));
 
-  // Phase 7: Pet Manager (customers before pets before bookings)
+  // Phase 7: Pet Manager (providers → services → customers → pets → bookings)
+  await seed('pet_providers', () => seedFromCSV('/demo-data/demo_pet_providers.csv', 'pet_providers', tenantId, { user_id: userId }));
+  await seed('pet_services', () => seedFromCSV('/demo-data/demo_pet_services.csv', 'pet_services', tenantId));
   await seed('pet_customers', () => seedFromCSV('/demo-data/demo_pet_customers.csv', 'pet_customers', tenantId));
   await seed('pets', () => seedPets(tenantId, userId));
   await seed('pet_bookings', () => seedFromCSV('/demo-data/demo_pet_bookings.csv', 'pet_bookings', tenantId));
@@ -1026,6 +1028,7 @@ export async function seedDemoData(
     miety_homes: 1, miety_contracts: 4,
     acq_mandates: 1, acq_offers: 1,
     dev_projects: 1,
+    pet_providers: 1, pet_services: 4,
     pet_customers: 3, pets: 5, pet_bookings: 5,
   };
 
