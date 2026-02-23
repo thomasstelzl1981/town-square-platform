@@ -1,46 +1,72 @@
 
+# Fix: Demo-Daten Cleanup-Bug + Seed-Failures
 
-# Fix: Verwaister pet_providers Demo-Datensatz
+## Problem 1: `miety_contracts` fehlt in CLEANUP_ORDER
 
-## Problem
+Im letzten Edit wurde `miety_contracts` versehentlich aus der Cleanup-Liste entfernt (Zeile 37 ersetzt statt ergaenzt). Das fuehrt beim naechsten Cleanup zu FK-Fehlern, weil `miety_homes` nicht geloescht werden kann, solange `miety_contracts` noch existiert.
 
-`pet_providers` fehlt in der Cleanup-Liste von `useDemoCleanup.ts`. Der Datensatz "Lennox & Friends Dog Resorts" (ID: `d0000000-0000-4000-a000-000000000050`) bleibt nach Deaktivierung der Demo-Daten in der Datenbank.
+**Fix:** `miety_contracts` wieder in die CLEANUP_ORDER einfuegen, VOR `miety_homes`.
 
-## Loesung
-
-### Aenderung 1: `src/hooks/useDemoCleanup.ts`
-
-`pet_providers` zur Cleanup-Reihenfolge hinzufuegen. Positionierung: NACH `pet_customers` (da `pet_bookings` und `pet_services` auf `pet_providers` verweisen koennen).
-
-Aktuelle Reihenfolge:
-```
-bank_transactions → pet_bookings → pets → pet_customers → miety_contracts → miety_homes → ...
-```
+**Datei:** `src/hooks/useDemoCleanup.ts`
 
 Neue Reihenfolge:
 ```
-bank_transactions → pet_bookings → pets → pet_customers → pet_providers → miety_contracts → miety_homes → ...
+pet_providers → miety_contracts → miety_homes → user_subscriptions → ...
 ```
 
-Zusaetzlich: `pet_services` sollte ebenfalls geprueft und ggf. hinzugefuegt werden, da diese Tabelle einen FK auf `pet_providers` hat. Falls `pet_services` Demo-Daten enthaelt, muss sie VOR `pet_providers` in der Liste stehen.
+---
 
-### Aenderung 2: FK-Kommentar aktualisieren
+## Problem 2: Seed-Failures fuer 5 Entities
 
-Den Kommentarblock oben in der Datei um die fehlende Abhaengigkeit ergaenzen:
-```
-- pet_services → pet_providers (FK provider_id)
-- pet_bookings → pet_services (FK)
-```
+Die folgenden Entities werden von der Seed-Engine versucht, schlagen aber fehl:
 
-### Verifizierung
+### 2a: `listings` (Phase 2.5)
+**Ursache:** Die RLS-Policy `listings_insert_member` erfordert die Rolle `org_admin` oder `internal_ops` in der `memberships`-Tabelle. Der Demo-User hat moeglicherweise keine dieser Rollen, wodurch das INSERT still fehlschlaegt.
 
-Nach dem Fix: Demo-Daten aktivieren, dann deaktivieren, und pruefen, dass `pet_providers` Count = 0 ist.
+**Fix:** In `seedFromCSV` fuer listings den Fehler explizit loggen. Alternativ: `listings`-Seed ueber eine DB-Funktion mit SECURITY DEFINER ausfuehren, oder die `created_by`-Spalte mit dem userId setzen (falls das die Policy erfuellt).
+
+Pragmatischer Fix: Pruefen, ob der User die richtige Rolle hat. Falls nicht, die Listings-Seed-Funktion anpassen, um `created_by: userId` mitzugeben.
+
+### 2b: `listing_publications` (Phase 2.5)
+**Ursache:** Abhaengig von `listings`. Wenn listings nicht existiert, schlaegt die Upsert fuer listing_publications ebenfalls fehl (FK oder leere parent-Referenz).
+
+### 2c: `pet_customers`, `pets`, `pet_bookings` (Phase 7)
+**Ursache:** Moeglicherweise gleiches RLS-Problem oder ein Column-Mismatch. Die RLS-Policies sehen korrekt aus (`tenant_id = get_user_tenant_id()`). Die Seed-Engine wrapped Fehler in try/catch und loggt sie nur in DEV-Mode, weshalb in Production keine Fehlermeldung sichtbar ist.
+
+**Fix:** Temporaer die console.error-Guards entfernen, um die Fehlerquelle zu identifizieren. Dann den konkreten Fehler beheben.
+
+---
+
+## Aktionsplan
+
+### Schritt 1: CLEANUP_ORDER fixen
+- `miety_contracts` zurueck in die Liste einfuegen (VOR `miety_homes`)
+- Datei: `src/hooks/useDemoCleanup.ts`, 1 Zeile einfuegen
+
+### Schritt 2: Seed-Fehler debuggen
+- In `seedFromCSV` und den Phase-7-Funktionen die Fehler-Logs temporaer OHNE DEV-Guard ausgeben
+- Seed erneut ausfuehren und Konsolenlogs lesen
+- Den konkreten Fehler identifizieren und fixen
+
+### Schritt 3: Listings-RLS pruefen
+- Pruefen, ob der Demo-User die Rolle `org_admin` oder `internal_ops` hat
+- Falls nicht: entweder die Rolle zuweisen oder die Seed-Funktion anpassen, um die Mitgliedschaft zu pruefen
+
+### Schritt 4: Visuelle Verifikation
+- Nach dem Fix: Demo-Daten deaktivieren, aktivieren, und alle Module im User-Browser pruefen
+- Gruener Glow, Demo-Badge, keine Duplikate
+
+---
 
 ## Betroffene Dateien
 
-- `src/hooks/useDemoCleanup.ts` — `pet_providers` (und ggf. `pet_services`) in die Cleanup-Liste einfuegen
+| Datei | Aenderung |
+|-------|-----------|
+| `src/hooks/useDemoCleanup.ts` | `miety_contracts` zurueck in CLEANUP_ORDER |
+| `src/hooks/useDemoSeedEngine.ts` | Fehler-Logging fuer Debug, ggf. listings-seed Fix |
 
 ## Aufwand
 
-Minimal — 2 Zeilen Aenderung in 1 Datei.
-
+Schritt 1: 5 Minuten (1 Zeile)
+Schritt 2-3: 30-60 Minuten (Debug + Fix)
+Schritt 4: 15 Minuten (visuelle Pruefung)
