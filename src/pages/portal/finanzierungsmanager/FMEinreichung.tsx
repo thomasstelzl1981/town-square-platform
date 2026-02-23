@@ -258,16 +258,52 @@ Mit freundlichen Grüßen`;
         html_content: body.replace(/\n/g, '<br/>'),
       });
     } else {
-      // KI- und manuelle Banken: auch via Resend senden
-      const { error: mailError } = await supabase.functions.invoke('sot-system-mail-send', {
-        body: {
-          to: bank.email,
-          subject: emailSubject,
-          html_content: body.replace(/\n/g, '<br/>'),
-          context: 'finance_submission',
-        },
-      });
-      if (mailError) { toast.error(`Versand an ${bank.name} fehlgeschlagen`); return; }
+      // Check if user has a connected mail account (Gmail/SMTP)
+      let sentViaUserAccount = false;
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user?.id) {
+          const { data: mailAccounts } = await (supabase as any)
+            .from('mail_accounts')
+            .select('id, email_address, provider')
+            .eq('user_id', user.id)
+            .eq('status', 'active')
+            .limit(1);
+
+          if (mailAccounts?.length > 0) {
+            // Send via user's own mail account
+            const { error: mailError } = await supabase.functions.invoke('sot-mail-send', {
+              body: {
+                account_id: mailAccounts[0].id,
+                to: bank.email,
+                subject: emailSubject,
+                html_content: body.replace(/\n/g, '<br/>'),
+                context: 'finance_submission',
+              },
+            });
+            if (!mailError) {
+              sentViaUserAccount = true;
+              toast.success(`E-Mail an ${bank.name} über ${mailAccounts[0].email_address} versendet`);
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('[FMEinreichung] Mail-Account-Check fehlgeschlagen, Fallback auf System-Mail:', err);
+      }
+
+      // Fallback: System-Mail (Resend)
+      if (!sentViaUserAccount) {
+        const { error: mailError } = await supabase.functions.invoke('sot-system-mail-send', {
+          body: {
+            to: bank.email,
+            subject: emailSubject,
+            html_content: body.replace(/\n/g, '<br/>'),
+            context: 'finance_submission',
+          },
+        });
+        if (mailError) { toast.error(`Versand an ${bank.name} fehlgeschlagen`); return; }
+        toast.info(`E-Mail an ${bank.name} über System-Mail versendet. Tipp: Verbinden Sie Ihr Mail-Konto für professionellen Versand.`);
+      }
 
       await createLog.mutateAsync({
         finance_request_id: selectedId,
@@ -278,7 +314,6 @@ Mit freundlichen Grüßen`;
         external_software_name: bank.name,
         tenant_id: activeTenantId!,
       });
-      toast.success(`E-Mail an ${bank.name} versendet`);
     }
   };
 

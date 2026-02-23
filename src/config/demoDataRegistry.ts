@@ -101,6 +101,27 @@ export const DEMO_DATA_SOURCES: readonly DemoDataSource[] = [
     exports: ['CSV'],
   },
   {
+    path: 'public/demo-data/demo_finance_requests.csv',
+    module: 'MOD-07',
+    type: 'hardcoded',
+    entities: ['finance_requests'],
+    exports: ['CSV'],
+  },
+  {
+    path: 'public/demo-data/demo_applicant_profiles.csv',
+    module: 'MOD-07',
+    type: 'hardcoded',
+    entities: ['applicant_profiles'],
+    exports: ['CSV'],
+  },
+  {
+    path: 'public/demo-data/demo_finance_mandates.csv',
+    module: 'MOD-11',
+    type: 'hardcoded',
+    entities: ['finance_mandates'],
+    exports: ['CSV'],
+  },
+  {
     path: 'public/demo-data/demo_pet_providers.csv',
     module: 'MOD-22',
     type: 'hardcoded',
