@@ -44,3 +44,4 @@ export * from './vvSteuer';
 // Engine 17: Konto-Matching (ENG-KONTOMATCH)
 export * from './kontoMatch/engine';
 export * from './kontoMatch/spec';
+export * from './kontoMatch/recurring';
