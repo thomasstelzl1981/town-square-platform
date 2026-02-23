@@ -2,4 +2,4 @@ id;provider_id;title;description;category;duration_minutes;price_cents;price_typ
 d0000000-0000-4000-a000-000000000060;d0000000-0000-4000-a000-000000000050;Hundesalon Komplett;Waschen, Schneiden, Föhnen, Krallen;grooming;90;6500;fixed;true
 d0000000-0000-4000-a000-000000000061;d0000000-0000-4000-a000-000000000050;Gassi-Service (1h);Individueller Spaziergang mit Abholung;walking;60;2500;fixed;true
 d0000000-0000-4000-a000-000000000062;d0000000-0000-4000-a000-000000000050;Tagesbetreuung;Ganztägige Betreuung in der Hundetagesstätte;daycare;480;4500;fixed;true
-d0000000-0000-4000-a000-000000000063;d0000000-0000-4000-a000-000000000050;Urlaubsbetreuung;Übernachtungspension mit Rundumversorgung;boarding;1440;5600;per_night;true
+d0000000-0000-4000-a000-000000000063;d0000000-0000-4000-a000-000000000050;Urlaubsbetreuung;Übernachtungspension mit Rundumversorgung;boarding;1440;5600;daily;true
