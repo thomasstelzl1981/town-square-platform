@@ -270,6 +270,7 @@ export interface DetectedContract {
   confidence: number;
   pattern: RecurringPattern;
   selected: boolean;
+  homeId?: string;  // Required for miety_contracts (home assignment)
 }
 
 export const CATEGORY_TARGET_MAP: Record<TransactionCategory, {
@@ -293,8 +294,7 @@ export const CATEGORY_TARGET_MAP: Record<TransactionCategory, {
 export const ENERGY_PATTERNS: string[] = [
   'stadtwerke', 'swm', 'eon', 'e.on', 'vattenfall', 'rwe', 'enbw',
   'strom', 'gas', 'fernwaerme', 'grundversorgung', 'energie',
-  'telekom', 'vodafone', 'o2', 'telefonica', '1und1', '1&1',
-  'unitymedia', 'kabel deutschland', 'glasfaser', 'internet', 'mobilfunk',
+  'unitymedia', 'kabel deutschland', 'glasfaser',
 ];
 
 export const INSURANCE_PATTERNS: string[] = [
@@ -310,6 +310,8 @@ export const SUBSCRIPTION_PATTERNS: string[] = [
   'dropbox', 'icloud', 'playstation', 'xbox', 'nintendo',
   'fitx', 'mcfit', 'urban sports', 'gym', 'fitness',
   'zeit', 'spiegel', 'faz', 'sueddeutsche', 'handelsblatt',
+  'telekom', 'vodafone', 'o2', 'telefonica', '1und1', '1&1',
+  'internet', 'mobilfunk',
 ];
 
 export const RECURRING_DETECTION = {
