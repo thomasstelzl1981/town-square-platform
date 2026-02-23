@@ -13,7 +13,8 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { TABLE, CARD, TYPOGRAPHY, INFO_BANNER } from '@/config/designManifest';
 import { cn } from '@/lib/utils';
-import { CheckCircle2, AlertTriangle, XCircle } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, XCircle, Loader2 } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
 
 function ComplianceBadge({ compliance }: { compliance: import('@/manifests/goldenPathProcesses').GoldenPathCompliance }) {
   const values = Object.values(compliance);
@@ -52,7 +53,7 @@ function PhaseBadge({ phase }: { phase: string }) {
 }
 
 export function DemoDatenTab() {
-  const { isEnabled, toggle, toggleAll, allEnabled, isSeedingOrCleaning, pendingAction } = useDemoToggles();
+  const { isEnabled, toggle, toggleAll, allEnabled, isSeedingOrCleaning, pendingAction, seedProgress } = useDemoToggles();
 
   return (
     <PageShell>
@@ -62,21 +63,46 @@ export function DemoDatenTab() {
       />
 
       {/* Global Toggle */}
-      <div className={cn(INFO_BANNER.BASE, INFO_BANNER.PREMIUM, 'flex items-center justify-between')}>
-        <div>
-          <p className={TYPOGRAPHY.CARD_TITLE}>Alle Demo-Daten</p>
-          <p className={TYPOGRAPHY.HINT}>
-            {isSeedingOrCleaning 
-              ? (pendingAction === 'seeding' ? 'Demo-Daten werden eingespielt…' : 'Demo-Daten werden entfernt…')
-              : 'Globaler Toggle für alle Prozesse gleichzeitig'
-            }
-          </p>
+      <div className={cn(INFO_BANNER.BASE, INFO_BANNER.PREMIUM, 'flex flex-col gap-3')}>
+        <div className="flex items-center justify-between">
+          <div>
+            <p className={TYPOGRAPHY.CARD_TITLE}>Alle Demo-Daten</p>
+            <p className={TYPOGRAPHY.HINT}>
+              {isSeedingOrCleaning 
+                ? (pendingAction === 'seeding' ? 'Demo-Daten werden eingespielt…' : 'Demo-Daten werden entfernt…')
+                : 'Globaler Toggle für alle Prozesse gleichzeitig'
+              }
+            </p>
+          </div>
+          <Switch
+            checked={allEnabled}
+            disabled={isSeedingOrCleaning}
+            onCheckedChange={(checked) => toggleAll(checked)}
+          />
         </div>
-        <Switch
-          checked={allEnabled}
-          disabled={isSeedingOrCleaning}
-          onCheckedChange={(checked) => toggleAll(checked)}
-        />
+
+        {/* Seed Progress */}
+        {isSeedingOrCleaning && pendingAction === 'seeding' && seedProgress && (
+          <div className="space-y-2">
+            <Progress value={seedProgress.percent} className="h-2" />
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <span className="flex items-center gap-1.5">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                {seedProgress.entityType}
+              </span>
+              <span className="tabular-nums font-medium">
+                Schritt {seedProgress.current}/{seedProgress.total}
+              </span>
+            </div>
+          </div>
+        )}
+
+        {isSeedingOrCleaning && pendingAction === 'cleaning' && (
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Loader2 className="h-3 w-3 animate-spin" />
+            Bereinigung läuft…
+          </div>
+        )}
       </div>
 
       {/* Process Table */}
