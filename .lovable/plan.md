@@ -1,165 +1,75 @@
 
+# SOAT Search Engine in AcquiaryKontakte einbinden
 
-# Plattform-Bereinigung und AI Operations Setup
+## Hintergrund
 
-## Zusammenfassung der Entscheidungen
+Die AcquiaryKontakte-Seite (Zone 1 Admin, NICHT frozen) zeigt aktuell nur `contact_staging`-Daten mit einfacher Text-Filterung. Die SOAT Search Engine (`useSoatSearchEngine`) ist bereits voll implementiert und wird in `AdminRecherche.tsx` genutzt, aber nicht im Acquiary Desk.
 
-Basierend auf deinem Feedback wurde der Plan angepasst:
+## Aktueller Zustand
 
-**Beibehalten (alle Partner-APIs):** NASA_APOD, ZENQUOTES, EVENTBRITE_API, AMAZON_PAAPI, YOUTUBE_DATA_API, UDEMY_AFFILIATE -- alle fur kunftige Partnervertrage benotigt.
+- `AcquiaryKontakte.tsx`: 166 Zeilen, einfache Liste aus `contact_staging`, keine SOAT-Anbindung
+- `useSoatSearchEngine.ts`: Vollstaendiger Hook mit Orders, Results, Realtime, Create/Start/Cancel
+- `AdminRecherche.tsx`: 727 Zeilen, volle Referenz-Implementierung mit Widget-Grid + Inline-Flow
 
-**IMPACT_AFFILIATE:** Das ist ein Affiliate-Netzwerk (impact.com), das Coursera und edX Kurs-Links fur MOD-15 Fortbildungen trackt. Vergleichbar mit AWIN/ADCELL -- wird beibehalten.
+## Preiskalkulation (MOD-12 -- FROZEN)
 
-**Zu entfernen/konsolidieren:**
-- `OPENAI` und `PERPLEXITY` --> durch `LOVABLE_AI` ersetzen (Status auf `disabled` setzen, Beschreibung aktualisieren)
-- `CAYA` --> Umbenennen zu "Posteingang (offen)" -- die Plattform ist offen fur jeden Post-Service, nicht an Caya gebunden. Der Code-Referenzname `caya` bleibt als Enum-Wert (technisch stabil), aber Name und Beschreibung in der Registry werden neutralisiert.
-- `SIMPLEFAX` und `BRIEFDIENST` --> Status-Beschreibung prazisieren: "Versand uber Resend-Weiterleitung, keine eigene API"
+Die Preis-Override-Funktion ist bereits vollstaendig implementiert in `ObjekteingangDetail.tsx`:
+- Editierbarer Kaufpreis in der Schnellanalyse-Leiste
+- Engine-basierte Echtzeit-Neuberechnung (Bestand + Aufteiler)
+- Gegenvorschlag-Badge + Speichern/Zuruecksetzen
+- Persistenz in `acq_offers.price_counter`
 
-**Google Places vs. Maps:** Beide behalten -- Places fur Makler-/Handwerkersuche, Maps fur Kartenansicht. Sind unterschiedliche APIs mit unterschiedlichem Zweck.
+Falls du die UI prominenter gestalten moechtest (z.B. groesseres Eingabefeld, farbige Hervorhebung), muss MOD-12 erst ungefroren werden.
 
----
+## Umsetzung: AcquiaryKontakte mit SOAT Search Engine
 
-## Phase 1: Integration Registry bereinigen
+### Aenderungen an `src/pages/admin/acquiary/AcquiaryKontakte.tsx`
 
-### 1.1 Datenbank-Anderungen (SQL Migration)
+Die Seite wird von einer einfachen Kontaktliste zu einem zweistufigen Layout erweitert:
 
-```text
-Anderungen an integration_registry:
+**Oberer Bereich: SOAT Search Orders**
+- Import von `useSoatOrders`, `useSoatResults`, `useCreateSoatOrder`, `useStartSoatOrder`
+- "Neue Recherche"-Button oeffnet ein Inline-Formular (Titel, Intent, Anzahl)
+- Liste laufender/abgeschlossener Search Orders mit Status-Badge und Progress-Bar
+- Klick auf eine Order zeigt die Ergebnisse inline darunter an
 
-1. OPENAI: status -> 'disabled', description -> 'Ersetzt durch Lovable AI'
-2. PERPLEXITY: status -> 'disabled', description -> 'Ersetzt durch Lovable AI'  
-3. CAYA: name -> 'Posteingang (offen)', description -> 'Inbound-Post -- offen fuer jeden Post-Service'
-4. SIMPLEFAX: description aktualisieren mit Hinweis auf Resend-Routing
-5. BRIEFDIENST: description aktualisieren mit Hinweis auf Resend-Routing
-```
+**Unterer Bereich: Contact Staging (bestehend)**
+- Die existierende Kontaktliste bleibt erhalten
+- Neue Quelle "soat" wird zum Source-Filter hinzugefuegt
+- Ergebnisse aus SOAT-Recherchen koennen direkt in `contact_staging` uebernommen werden
 
-Keine Loschungen -- alle Eintraege bleiben erhalten fur zukunftige Partnervertrage.
-
-### 1.2 Integrations.tsx -- Hardcoded Secrets entfernen
-
-Die `configuredSecrets`-Liste (Zeile 106-112) wird durch einen dynamischen Abruf uber die `fetch_secrets`-API oder den tatsachlichen Status aus der `integration_registry` ersetzt.
-
----
-
-## Phase 2: Acquiary Desk -- SOAT Search Engine einbinden (1.2)
-
-**Datei:** `src/pages/admin/acquiary/AcquiaryKontakte.tsx`
-
-Der `useSoatSearchEngine` Hook existiert bereits in `src/hooks/useSoatSearchEngine.ts` und wird aktuell nur in `AdminRecherche.tsx` genutzt. In AcquiaryKontakte wird die Firmensuche an den SOAT-Workflow angebunden:
-
-- Import von `useSoatSearchEngine`
-- "Neue Recherche"-Button, der eine Search Order erstellt
-- Ergebnisse werden in der Kontaktliste angezeigt
-
----
-
-## Phase 3: Operative Desks homogenisieren (1.3)
-
-Drei Desks werden in die modulare Architektur gebracht (wie Acquiary/PetDesk):
-
-### 3.1 LeadDesk (325 Zeilen --> Shell + 4 Sub-Pages)
+### UI-Struktur
 
 ```text
-src/pages/admin/desks/LeadDesk.tsx          -- Shell mit Link-Navigation
-src/pages/admin/lead-desk/
-  +-- LeadPool.tsx             (existiert bereits)
-  +-- LeadAssignments.tsx      (existiert bereits)
-  +-- LeadCommissions.tsx      (existiert bereits)
-  +-- LeadMonitor.tsx          (existiert bereits)
-  +-- LeadDeskDashboard.tsx    (NEU -- KPI-Ubersicht extrahieren)
++--------------------------------------------------+
+| KPI-Leiste: Kontakte | Ausstehend | Freigegeben  |
++--------------------------------------------------+
+| [+ Neue Recherche]                                |
+| ┌──────────────────────────────────────────────┐  |
+| │ Search Orders (Tabs: Aktiv / Abgeschlossen)  │  |
+| │  - Order 1: "Makler Berlin" ● Laeuft 45%     │  |
+| │  - Order 2: "Hausverwaltungen" ✓ Fertig      │  |
+| └──────────────────────────────────────────────┘  |
+|                                                    |
+| --- Kontakt-Pool (contact_staging) ---            |
+| [Suche...] [Filter: Quelle v]                    |
+| ┌──────────────────────────────────────────────┐  |
+| │ Max Mustermann · max@firma.de · Apollo        │  |
+| │ Lisa Mueller · lisa@gmbh.de · SOAT            │  |
+| └──────────────────────────────────────────────┘  |
++--------------------------------------------------+
 ```
 
-Sub-Pages existieren grossteils schon -- die Shell muss nur von Tabs auf Routes + lazy-loading umgestellt werden.
+### Technische Details
 
-### 3.2 FinanceDesk (253 Zeilen --> Shell + 5 Sub-Pages)
+1. **Hooks**: `useSoatOrders()`, `useSoatResults(selectedOrderId)`, `useCreateSoatOrder()`, `useStartSoatOrder()`
+2. **Realtime**: Bereits im Hook implementiert -- Orders und Results werden live aktualisiert
+3. **State**: `selectedOrderId` fuer Inline-Detail der Ergebnisse
+4. **Source-Filter**: "soat" als neue Option neben "apollo", "import", "manual"
+5. **Uebernahme**: Button pro SOAT-Result, der einen Eintrag in `contact_staging` mit `source: 'soat'` erstellt
 
-```text
-src/pages/admin/desks/FinanceDesk.tsx       -- Shell mit Link-Navigation
-src/pages/admin/finance-desk/
-  +-- FinanceDeskInbox.tsx     (existiert bereits)
-  +-- FinanceDeskFaelle.tsx    (existiert bereits)
-  +-- FinanceDeskMonitor.tsx   (existiert bereits)
-  +-- FinanceDeskDashboard.tsx (NEU -- extrahieren)
-  +-- FinanceDeskZuweisung.tsx (NEU -- extrahieren)
-```
+### Keine Aenderungen an
 
-### 3.3 SalesDesk (169 Zeilen --> Shell + Routes)
-
-SalesDesk ist bereits am weitesten modularisiert (nutzt Sub-Imports). Hier hauptsachlich:
-- Inline-Dashboard-Funktion in eigene Datei extrahieren
-- Tabs durch Routes ersetzen
-
----
-
-## Phase 4: Platform Health Monitor (Saule 2)
-
-### 4.1 Neue Admin-Seite
-
-**Datei:** `src/pages/admin/armstrong/PlatformHealth.tsx`
-
-7 automatisierte Health-Checks mit visueller Ampel-Darstellung:
-
-| Check | Methode |
-|-------|---------|
-| Demo-Daten-Integritat | DB-Query: Soll vs. Ist fur alle 33 Entitaten |
-| Integration Status | Registry-Eintraege ohne aktives Secret |
-| Module Freeze Status | JSON-Datei lesen und anzeigen |
-| Golden Path Compliance | Context Resolver vorhanden? |
-| Engine Registry Sync | Registrierte vs. exportierte Engines |
-| Orphaned Records | FK-Waisen-Suche |
-| RLS-Coverage | Tabellen ohne RLS-Policies |
-
-### 4.2 Routing
-
-Registrierung in `routesManifest.ts` und Armstrong-Navigation unter `/admin/armstrong/health`.
-
-### 4.3 Export in Armstrong-Index
-
-`src/pages/admin/armstrong/index.ts` wird um `PlatformHealth` erweitert.
-
----
-
-## Phase 5: Weekly Review Template (Saule 3)
-
-### 5.1 Neue Admin-Seite
-
-**Datei:** `src/pages/admin/armstrong/WeeklyReview.tsx`
-
-Interaktive Checkliste mit 8 Prufpunkten, die beim Abhaken den Status in `localStorage` oder einer DB-Tabelle speichert:
-
-```text
-1. Security Scan -- Offene Findings?
-2. Demo-Daten -- Seed + Cleanup funktional?
-3. Module Status -- Alle Tiles erreichbar?
-4. Armstrong -- KB aktuell? Logs gepruft?
-5. Performance -- Langsame Queries?
-6. UI/UX -- Konsistenz-Check
-7. Code-Hygiene -- any-Types, leere Catches?
-8. Neue Features -- Backlog priorisieren
-```
-
-### 5.2 Routing
-
-Registrierung unter `/admin/armstrong/review`.
-
----
-
-## Umsetzungsreihenfolge
-
-| Schritt | Aufgabe | Risiko |
-|---------|---------|--------|
-| 1 | Integration Registry SQL-Update | Niedrig (nur Beschreibungen/Status) |
-| 2 | Integrations.tsx dynamisch machen | Niedrig |
-| 3 | SOAT Search in AcquiaryKontakte | Mittel |
-| 4 | LeadDesk Refactoring | Mittel (viel Code-Verschiebung) |
-| 5 | FinanceDesk Refactoring | Mittel |
-| 6 | SalesDesk Refactoring | Niedrig |
-| 7 | PlatformHealth Seite | Niedrig (neue Datei) |
-| 8 | WeeklyReview Seite | Niedrig (neue Datei) |
-
----
-
-## CAYA im Code
-
-Der Enum-Wert `caya` bleibt in `DocumentSource`, `inbound_source`, und `extraction_settings` bestehen (technische Stabilitat). Nur die user-sichtbare Beschreibung in der Registry wird neutralisiert. Ein vollstandiges Umbenennen des Enum-Werts wurde eine DB-Migration auf 4+ Tabellen erfordern -- das ist fur spater sinnvoll, aber nicht jetzt.
-
+- `useSoatSearchEngine.ts` (Hook bleibt unveraendert)
+- MOD-12 Dateien (FROZEN)
+- Routing (Seite existiert bereits als Acquiary-Tab)
