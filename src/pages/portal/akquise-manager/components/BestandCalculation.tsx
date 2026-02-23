@@ -181,6 +181,92 @@ export function BestandCalculation({ offerId, initialData, temporary = false, hi
         </CardContent>
       </Card>
 
+      {/* Monatliche Wirtschaftlichkeit — Einnahmen vs. Ausgaben */}
+      <Card className={cn(DESIGN.CARD.BASE, 'border-primary/20')}>
+        <CardHeader>
+          <CardTitle className={cn(DESIGN.TYPOGRAPHY.CARD_TITLE, 'flex items-center gap-2')}>
+            <TrendingUp className="h-5 w-5" />
+            Monatliche Wirtschaftlichkeit
+          </CardTitle>
+          <CardDescription className={DESIGN.TYPOGRAPHY.HINT}>Gegenüberstellung Einnahmen und Ausgaben (Jahr 1)</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {(() => {
+            const monthlyRentVal = params.monthlyRent;
+            const monthlyInterest = calculation.yearlyData[0]?.interest ? calculation.yearlyData[0].interest / 12 : 0;
+            const monthlyRepayment = calculation.yearlyData[0]?.repayment ? calculation.yearlyData[0].repayment / 12 : 0;
+            const monthlyManagement = monthlyRentVal * params.managementCostPercent / 100;
+            const monthlyMaintenance = params.purchasePrice * (params.maintenancePercent || 1) / 100 / 12;
+            const totalIncome = monthlyRentVal;
+            const totalExpenses = monthlyInterest + monthlyRepayment + monthlyManagement + monthlyMaintenance;
+            const monthlyCashflow = totalIncome - totalExpenses;
+            const yearlyCashflow = monthlyCashflow * 12;
+            const cashOnCash = calculation.equity > 0 ? (yearlyCashflow / calculation.equity) * 100 : 0;
+
+            return (
+              <div className="space-y-4">
+                <div className={cn('grid gap-6', isMobile ? 'grid-cols-1' : 'grid-cols-2')}>
+                  {/* Einnahmen */}
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-semibold text-primary uppercase tracking-wider">Einnahmen</h4>
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Kaltmiete</span>
+                        <span className="font-medium">{formatCurrency(monthlyRentVal)}</span>
+                      </div>
+                    </div>
+                    <div className="border-t border-border/50 pt-2 flex justify-between text-sm font-bold">
+                      <span>Summe</span>
+                      <span className="text-primary">{formatCurrency(totalIncome)}</span>
+                    </div>
+                  </div>
+                  {/* Ausgaben */}
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-semibold text-destructive uppercase tracking-wider">Ausgaben</h4>
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Zinsen</span>
+                        <span className="font-medium">{formatCurrency(monthlyInterest)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Tilgung</span>
+                        <span className="font-medium">{formatCurrency(monthlyRepayment)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Verwaltung ({params.managementCostPercent}%)</span>
+                        <span className="font-medium">{formatCurrency(monthlyManagement)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Instandhaltung ({params.maintenancePercent}%)</span>
+                        <span className="font-medium">{formatCurrency(monthlyMaintenance)}</span>
+                      </div>
+                    </div>
+                    <div className="border-t border-border/50 pt-2 flex justify-between text-sm font-bold">
+                      <span>Summe</span>
+                      <span className="text-destructive">{formatCurrency(totalExpenses)}</span>
+                    </div>
+                  </div>
+                </div>
+                {/* Cashflow Result */}
+                <div className={cn(
+                  'rounded-xl p-4 text-center',
+                  monthlyCashflow >= 0 ? 'bg-chart-2/10 border border-chart-2/30' : 'bg-destructive/10 border border-destructive/30'
+                )}>
+                  <div className="text-sm font-medium text-muted-foreground mb-1">Monatlicher Cashflow</div>
+                  <div className={cn('text-2xl font-bold', monthlyCashflow >= 0 ? 'text-chart-2' : 'text-destructive')}>
+                    {formatCurrency(monthlyCashflow)} / Monat
+                  </div>
+                  <div className="flex justify-center gap-6 mt-2 text-sm text-muted-foreground">
+                    <span>Jährlich: <strong className={monthlyCashflow >= 0 ? 'text-chart-2' : 'text-destructive'}>{formatCurrency(yearlyCashflow)}</strong></span>
+                    <span>Cash-on-Cash: <strong className={cashOnCash >= 0 ? 'text-chart-2' : 'text-destructive'}>{cashOnCash.toFixed(1)}%</strong></span>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+        </CardContent>
+      </Card>
+
       {/* Amortization Chart */}
       <Card className={DESIGN.CARD.BASE}>
         <CardHeader>

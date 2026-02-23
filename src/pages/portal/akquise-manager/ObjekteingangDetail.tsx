@@ -168,7 +168,16 @@ export function ObjekteingangDetail() {
         </div>
 
         <AbsageDialog open={absageOpen} onOpenChange={setAbsageOpen} offerId={offer.id} offerTitle={offer.title || offer.address} />
-        <PreisvorschlagDialog open={preisOpen} onOpenChange={setPreisOpen} offerId={offer.id} offerTitle={offer.title || offer.address} currentPrice={offer.price_asking || undefined} />
+        <PreisvorschlagDialog 
+          open={preisOpen} 
+          onOpenChange={setPreisOpen} 
+          offerId={offer.id} 
+          offerTitle={offer.title || offer.address} 
+          currentPrice={offer.price_asking || undefined}
+          priceCounter={priceOverride !== null && priceOverride !== offer.price_asking ? priceOverride : undefined}
+          providerEmail={offer.provider_contact || undefined}
+          mandateId={offer.mandate_id || undefined}
+        />
         <InteresseDialog open={interesseOpen} onOpenChange={setInteresseOpen} offerId={offer.id} offerTitle={offer.title || offer.address} mandateId={offer.mandate_id || undefined} />
       </div>
 
@@ -475,19 +484,26 @@ function QuickAnalysisBanner({
                 type="text"
                 value={formatInputDisplay(inputValue)}
                 onChange={(e) => handlePriceInput(e.target.value)}
+                placeholder="Preis eingeben"
                 className={cn(
-                  "w-full bg-transparent border-b-2 text-lg font-bold tracking-tight outline-none py-0.5 transition-colors",
-                  isModified ? "border-amber-500 text-amber-600" : "border-transparent text-foreground"
+                  "w-full bg-transparent border-b-2 text-xl font-bold tracking-tight outline-none py-1 transition-all",
+                  isModified 
+                    ? "border-primary text-primary ring-1 ring-primary/20 rounded-sm px-1" 
+                    : "border-muted-foreground/30 text-foreground hover:border-primary/50 focus:border-primary"
                 )}
               />
-              <span className="text-xs text-muted-foreground">€</span>
+              <span className="text-sm font-medium text-muted-foreground">€</span>
             </div>
-            {isModified && (
-              <div className="text-[10px] text-muted-foreground mt-0.5">
-                <span className="line-through">{formatCurrency(originalPrice)}</span>
-                <span className="ml-1">(Angebot)</span>
-              </div>
-            )}
+            <div className="text-[10px] text-muted-foreground mt-0.5">
+              {isModified ? (
+                <>
+                  <span className="line-through">{formatCurrency(originalPrice)}</span>
+                  <span className="ml-1">(Angebot)</span>
+                </>
+              ) : (
+                <span>Preis ändern für Echtzeit-Kalkulation</span>
+              )}
+            </div>
           </div>
           <div>
             <div className={DESIGN.TYPOGRAPHY.HINT}>Monatl. Cashflow</div>
