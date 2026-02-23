@@ -9,6 +9,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { ShieldAlert } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent } from '@/components/ui/card';
+import { useFutureRoomCases } from '@/hooks/useFinanceMandate';
 
 // Lazy load — 6 Tile pages
 const FMDashboard = React.lazy(() => import('./finanzierungsmanager/FMDashboard'));
@@ -49,15 +50,17 @@ export default function FinanzierungsmanagerPage() {
     );
   }
 
+  const { data: cases = [], isLoading: casesLoading } = useFutureRoomCases();
+
   return (
     <Routes>
       <Route index element={<Navigate to="dashboard" replace />} />
       {/* 6 operative Tiles */}
-      <Route path="dashboard" element={<FMDashboard cases={[]} isLoading={false} />} />
+      <Route path="dashboard" element={<FMDashboard cases={cases} isLoading={casesLoading} />} />
       <Route path="finanzierungsakte" element={<FMFinanzierungsakte />} />
-      <Route path="einreichung" element={<FMEinreichung cases={[]} isLoading={false} />} />
+      <Route path="einreichung" element={<FMEinreichung cases={cases} isLoading={casesLoading} />} />
       <Route path="provisionen" element={<FMProvisionen />} />
-      <Route path="archiv" element={<FMArchiv cases={[]} isLoading={false} />} />
+      <Route path="archiv" element={<FMArchiv cases={cases} isLoading={casesLoading} />} />
       {/* Dynamic routes */}
       <Route path="faelle/:requestId" element={<FMFallDetail />} />
       <Route path="einreichung/:requestId" element={<FMEinreichungDetail />} />
