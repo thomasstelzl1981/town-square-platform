@@ -9,7 +9,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { GOLDEN_PATH_PROCESSES } from '@/manifests/goldenPathProcesses';
 import { supabase } from '@/integrations/supabase/client';
-import { seedDemoData } from '@/hooks/useDemoSeedEngine';
+import { seedDemoData, SeedProgressInfo } from '@/hooks/useDemoSeedEngine';
 import { cleanupDemoData } from '@/hooks/useDemoCleanup';
 
 const STORAGE_KEY_PREFIX = 'gp_demo_toggles';
@@ -67,6 +67,7 @@ export function useDemoToggles() {
   const [toggles, setToggles] = useState<DemoToggles>(loadToggles);
   const [isSeedingOrCleaning, setIsSeedingOrCleaning] = useState(false);
   const [pendingAction, setPendingAction] = useState<'seeding' | 'cleaning' | null>(null);
+  const [seedProgress, setSeedProgress] = useState<SeedProgressInfo | null>(null);
   const seedLockRef = useRef(false);
 
   useEffect(() => {
@@ -112,7 +113,7 @@ export function useDemoToggles() {
         if (on) {
           // Always run cleanup first, then seed fresh — avoids partial state from previous failures
           await cleanupDemoData(tenantId);
-          await seedDemoData(tenantId);
+          await seedDemoData(tenantId, undefined, (info) => setSeedProgress(info));
         } else {
           // Cleanup all registered demo entities
           await cleanupDemoData(tenantId);
@@ -130,11 +131,12 @@ export function useDemoToggles() {
       seedLockRef.current = false;
       setIsSeedingOrCleaning(false);
       setPendingAction(null);
+      setSeedProgress(null);
     }
   }, [getTenantId]);
 
   const allEnabled = Object.values(toggles).every(Boolean);
   const noneEnabled = Object.values(toggles).every(v => !v);
 
-  return { isEnabled, toggle, toggleAll, toggles, allEnabled, noneEnabled, isSeedingOrCleaning, pendingAction };
+  return { isEnabled, toggle, toggleAll, toggles, allEnabled, noneEnabled, isSeedingOrCleaning, pendingAction, seedProgress };
 }

@@ -904,15 +904,29 @@ async function seedPensionRecords(tenantId: string, userId: string): Promise<str
 
 // ─── Main Seed Orchestrator ────────────────────────────────
 
+export interface SeedProgressInfo {
+  current: number;
+  total: number;
+  percent: number;
+  entityType: string;
+  status: 'seeding' | 'done' | 'error';
+}
+
+export type SeedProgressCallback = (info: SeedProgressInfo) => void;
+
 export interface DemoSeedResult {
   success: boolean;
   seeded: Record<string, number>;
   errors: string[];
 }
 
+/** Total number of seed() calls in the orchestrator — keep in sync! */
+const TOTAL_SEED_STEPS = 33;
+
 export async function seedDemoData(
   tenantId: string,
-  _landlordContextId?: string
+  _landlordContextId?: string,
+  onProgress?: SeedProgressCallback
 ): Promise<DemoSeedResult> {
   const errors: string[] = [];
   const seeded: Record<string, number> = {};
@@ -924,15 +938,22 @@ export async function seedDemoData(
 
   console.log(`[DemoSeed] Starting seed for tenant ${tenantId}...`);
 
+  let stepCounter = 0;
+
   async function seed(entityType: string, fn: () => Promise<string[]>) {
+    stepCounter++;
+    const current = stepCounter;
+    onProgress?.({ current, total: TOTAL_SEED_STEPS, percent: Math.round((current / TOTAL_SEED_STEPS) * 100), entityType, status: 'seeding' });
     try {
       const ids = await fn();
       seeded[entityType] = ids.length;
       await registerEntities(tenantId, entityType, ids);
+      onProgress?.({ current, total: TOTAL_SEED_STEPS, percent: Math.round((current / TOTAL_SEED_STEPS) * 100), entityType, status: 'done' });
     } catch (err) {
       const msg = `${entityType}: ${err instanceof Error ? err.message : 'Unknown'}`;
       errors.push(msg);
       console.error(`[DemoSeed] ✗ ${msg}`);
+      onProgress?.({ current, total: TOTAL_SEED_STEPS, percent: Math.round((current / TOTAL_SEED_STEPS) * 100), entityType, status: 'error' });
     }
   }
 
