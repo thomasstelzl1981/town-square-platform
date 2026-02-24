@@ -119,7 +119,7 @@ export function useSoatResults(orderId: string | null) {
 export function useCreateSoatOrder() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (data: { title: string; intent: string; target_count: number }) => {
+    mutationFn: async (data: { title: string; intent: string; target_count: number; desk?: string }) => {
       const { data: { user } } = await supabase.auth.getUser();
       const { data: order, error } = await supabase
         .from('soat_search_orders')
@@ -131,6 +131,7 @@ export function useCreateSoatOrder() {
           status: 'draft',
           phase: null,
           progress_percent: 0,
+          ...(data.desk ? { desk: data.desk } : {}),
         } as any)
         .select()
         .single();
