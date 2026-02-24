@@ -27,24 +27,13 @@ import { useDemoToggles } from '@/hooks/useDemoToggles';
 import { GOLDEN_PATH_PROCESSES } from '@/manifests/goldenPathProcesses';
 import { Button } from '@/components/ui/button';
 import { AroundhomePartnerCard } from '@/components/sanierung/AroundhomePartnerCard';
+import {
+  DEMO_SANIERUNG_SCOPE_ITEMS as DEMO_SCOPE_ITEMS,
+  DEMO_SANIERUNG_TOTAL as DEMO_TOTAL,
+  DEMO_SANIERUNG_PROVIDERS as DEMO_PROVIDERS,
+} from '@/engines/demoData/data';
 
 const GP_SANIERUNG = GOLDEN_PATH_PROCESSES.find(p => p.id === 'GP-SANIERUNG')!;
-
-// ── Demo scope items for Kernsanierung BER-01 ──
-const DEMO_SCOPE_ITEMS = [
-  { pos: 1, title: 'Bodenbelag Wohnräume (Eiche Landhausdiele, 65 m²)', cost: 5850 },
-  { pos: 2, title: 'Bodenbelag Nassräume (Feinsteinzeug 60×60, 20 m²)', cost: 2400 },
-  { pos: 3, title: 'Badsanierung komplett (Dusche, WC, Waschtisch, Armaturen)', cost: 8500 },
-  { pos: 4, title: 'Gäste-WC Sanierung (WC, Handwaschbecken, Spiegel)', cost: 3200 },
-  { pos: 5, title: 'Malerarbeiten Wände und Decken (85 m² Wohnfläche)', cost: 2550 },
-];
-const DEMO_TOTAL = DEMO_SCOPE_ITEMS.reduce((s, i) => s + i.cost, 0);
-
-const DEMO_PROVIDERS = [
-  { name: 'Berliner Badsanierung GmbH', status: 'Angebot erhalten' as const, amount: 21800, sent: true, best: true },
-  { name: 'Boden- und Fliesenwerk Mitte', status: 'Angebot erhalten' as const, amount: 23900, sent: true, best: false },
-  { name: 'Sanierung Plus Berlin', status: 'Ausstehend' as const, amount: null, sent: true, best: false },
-];
 
 const fmt = (v: number) => v.toLocaleString('de-DE') + ' €';
 

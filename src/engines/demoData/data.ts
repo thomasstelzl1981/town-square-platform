@@ -440,8 +440,12 @@ export const DEMO_PORTFOLIO: DemoPortfolioRefs = {
     'd0000000-0000-4000-a000-000000000003', // HH-01
   ],
   vehicleIds: [
-    '00000000-0000-4000-a000-000000000301', // Porsche 911
-    '00000000-0000-4000-a000-000000000302', // BMW M5
+    'd0000000-0000-4000-a000-000000000301', // BMW M4
+    'd0000000-0000-4000-a000-000000000302', // Mercedes GLE
+    'd0000000-0000-4000-a000-000000000303', // Porsche 911
+    'd0000000-0000-4000-a000-000000000304', // BMW R 1300 GS (Bike)
+    'd0000000-0000-4000-a000-000000000305', // Ducati Panigale (Bike)
+    'd0000000-0000-4000-a000-000000000306', // Harley-Davidson (Bike)
   ],
   pvPlantIds: [
     '00000000-0000-4000-a000-000000000901', // PV 32.4 kWp
@@ -593,6 +597,24 @@ export const ALL_DEMO_IDS: readonly string[] = [
   ID_MIETY_STROM, ID_MIETY_GAS, ID_MIETY_WASSER, ID_MIETY_INTERNET, ID_MIETY_VODAFONE,
   // Pet Manager Demo (MOD-22)
   ...ALL_PM_DEMO_IDS,
+] as const;
+
+// ─── SANIERUNG DEMO (UI-only visualization, no DB entity) ──
+
+export const DEMO_SANIERUNG_SCOPE_ITEMS = [
+  { pos: 1, title: 'Bodenbelag Wohnräume (Eiche Landhausdiele, 65 m²)', cost: 5850 },
+  { pos: 2, title: 'Bodenbelag Nassräume (Feinsteinzeug 60×60, 20 m²)', cost: 2400 },
+  { pos: 3, title: 'Badsanierung komplett (Dusche, WC, Waschtisch, Armaturen)', cost: 8500 },
+  { pos: 4, title: 'Gäste-WC Sanierung (WC, Handwaschbecken, Spiegel)', cost: 3200 },
+  { pos: 5, title: 'Malerarbeiten Wände und Decken (85 m² Wohnfläche)', cost: 2550 },
+] as const;
+
+export const DEMO_SANIERUNG_TOTAL = DEMO_SANIERUNG_SCOPE_ITEMS.reduce((s, i) => s + i.cost, 0);
+
+export const DEMO_SANIERUNG_PROVIDERS = [
+  { name: 'Berliner Badsanierung GmbH', status: 'Angebot erhalten' as const, amount: 21800, sent: true, best: true },
+  { name: 'Boden- und Fliesenwerk Mitte', status: 'Angebot erhalten' as const, amount: 23900, sent: true, best: false },
+  { name: 'Sanierung Plus Berlin', status: 'Ausstehend' as const, amount: null, sent: true, best: false },
 ] as const;
 
 // ─── GESAMTPAKET ───────────────────────────────────────────

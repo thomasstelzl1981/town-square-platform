@@ -3550,6 +3550,7 @@ export type Database = {
           tsn: string | null
           updated_at: string
           variant: string | null
+          vehicle_type: string
           vin: string | null
           weight_kg: number | null
         }
@@ -3589,6 +3590,7 @@ export type Database = {
           tsn?: string | null
           updated_at?: string
           variant?: string | null
+          vehicle_type?: string
           vin?: string | null
           weight_kg?: number | null
         }
@@ -3628,6 +3630,7 @@ export type Database = {
           tsn?: string | null
           updated_at?: string
           variant?: string | null
+          vehicle_type?: string
           vin?: string | null
           weight_kg?: number | null
         }

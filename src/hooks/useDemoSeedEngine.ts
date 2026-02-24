@@ -992,7 +992,11 @@ export async function seedDemoData(
   // cars_vehicles: delete orphaned storage_nodes first, then use created_by
   await seed('cars_vehicles', async () => {
     // Pre-cleanup: remove storage_nodes that reference these vehicle IDs via entity_type/entity_id
-    const vehicleIds = ['d0000000-0000-4000-a000-000000000301', 'd0000000-0000-4000-a000-000000000302'];
+    const vehicleIds = [
+      'd0000000-0000-4000-a000-000000000301', 'd0000000-0000-4000-a000-000000000302',
+      'd0000000-0000-4000-a000-000000000303', 'd0000000-0000-4000-a000-000000000304',
+      'd0000000-0000-4000-a000-000000000305', 'd0000000-0000-4000-a000-000000000306',
+    ];
     const oldVehicleIds = ['00000000-0000-4000-a000-000000000301', '00000000-0000-4000-a000-000000000302'];
     const allIds = [...vehicleIds, ...oldVehicleIds];
     // storage_nodes uses entity_type + entity_id pattern (no vehicle_id/car_id columns)
@@ -1037,7 +1041,7 @@ export async function seedDemoData(
     properties: 3, units: 3, leases: 3, loans: 3, property_accounting: 3,
     property_features: 2, listings: 1, listing_publications: 2,
     msv_bank_accounts: 1, bank_transactions: 100,
-    household_persons: 4, cars_vehicles: 2, pv_plants: 1,
+    household_persons: 4, cars_vehicles: 6, pv_plants: 1,
     insurance_contracts: 7, kv_contracts: 4, vorsorge_contracts: 6,
     pension_records: 2,
     user_subscriptions: 8, private_loans: 2,
