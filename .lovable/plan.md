@@ -1,132 +1,106 @@
 
 
-# Plan: Rollenbezogene Tile-Aktivierung (statt Account-bezogen)
+# Plan: Hardcoded-Daten entfernen und Doppelungen mit /admin/tiles bereinigen
 
-## Problem-Analyse
+## Analyse-Ergebnis
 
-### 3 identifizierte Fehlerquellen
+### Hardcoded-Daten (Verstoesse)
 
-**1. DB-Funktion `get_tiles_for_role()` ist unvollstaendig**
-
-Die Funktion kennt nur 5 Rollen, aber es gibt 8 aktive Rollen im System:
-
-```text
-Vorhanden:          Fehlend:
-- org_admin         - super_user (→ alle 22 Module)
-- sales_partner     - pet_manager (→ 14 + MOD-22 + MOD-10)
-- finance_manager   - project_manager (→ 14 + MOD-13)
-- akquise_manager
-- platform_admin
-```
-
-Ausserdem fehlt `MOD-22` komplett im `all_tiles`-Array der Funktion (nur 21 statt 22 Module).
-
-**Konsequenz:** Bernhard Marchner wurde bei der Account-Erstellung als `org_admin` registriert (korrekt laut Rollenmodell: Super-User haben `membership_role = org_admin`). Die Funktion gab deshalb nur 14 Basis-Module zurueck. Der `super_user`-Status steht in `user_roles.role`, wird aber von `get_tiles_for_role()` nicht beruecksichtigt.
-
-**2. `handle_new_user()` prueft nur `membership_role`, nicht `app_role`**
-
-Der Trigger ruft `get_tiles_for_role('org_admin')` auf — der `app_role`-Eintrag in `user_roles` (super_user) wird komplett ignoriert. Da Bernhard erst nach der Account-Erstellung zum Super-User befördert wurde (Manager-Freischaltung), muessten die Tiles nachtraeglich synchronisiert werden — das passiert aber nie.
-
-**3. Zone 1 UI zeigt Tenants statt Rollen**
-
-Das Dropdown im "Tenant-Aktivierung"-Tab zeigt individuelle Accounts (bernhard.marchner, demo, Lennox...) und erlaubt manuelles Togglen pro Tenant. Das widerspricht dem Rollenmodell, bei dem die Tiles automatisch aus der Rolle abgeleitet werden sollen.
-
-### Ist-Zustand Bernhard Marchner
+**1. ManagerFreischaltung.tsx (Zeilen 75-89)**
+Zwei lokale Objekte duplizieren Daten aus `rolesMatrix.ts`:
 
 ```text
-membership_role:  org_admin          → get_tiles_for_role() gibt 14 Tiles
-app_role:         super_user         → sollte ALLE 22 Tiles haben
-tenant_tile_activation: 14 Eintraege → es fehlen 8 Spezial-Module
+ROLE_LABELS = {                      ← Duplikat von ROLES_CATALOG[].label
+  finance_manager: 'Finanzierungsmanager',
+  akquise_manager: 'Akquise-Manager',
+  sales_partner: 'Vertriebspartner',
+  project_manager: 'Projektmanager',
+  pet_manager: 'Pet Manager',
+}
+
+ROLE_MODULE_MAP = {                  ← Duplikat von ROLE_EXTRA_TILES
+  finance_manager: 'MOD-11',
+  akquise_manager: 'MOD-12',
+  sales_partner: 'MOD-09 + MOD-10',
+  project_manager: 'MOD-13',
+  pet_manager: 'MOD-22',
+}
 ```
 
-Bernhard sieht in Zone 2 nur 14 Module statt der versprochenen 21 (bzw. 22 mit MOD-22).
+**2. RolesManagement.tsx (Zeilen 376-399)**
+Hardcoded Arrays fuer Enum-Badges statt Ableitung aus ROLES_CATALOG:
+
+```text
+['platform_admin', 'org_admin', 'sales_partner', ...]     ← hardcoded
+['platform_admin', 'super_user', 'client_user', ...]      ← hardcoded
+['internal_ops', 'renter_user', ...]                       ← hardcoded
+['moderator', 'user']                                      ← hardcoded
+```
+
+**3. Falsche Modul-Anzahl "21" statt "22"**
+- RolesManagement.tsx Zeile 62: "1 System-Rolle + 5 User-Rollen"  (korrekt: 8 Rollen)
+- RolesManagement.tsx Zeile 117: "Alle 21 Module" (korrekt: 22)
+- RolesManagement.tsx Zeile 161: "21 Module x 6 Rollen" (korrekt: 22 x 8)
+- rolesMatrix.ts MODULES_CATALOG: Enthaelt nur 21 Eintraege, MOD-22 fehlt
+
+### Funktions-Doppelung mit /admin/tiles
+
+| Funktion | Wo jetzt | Auch in /admin/tiles? | Aktion |
+|----------|----------|----------------------|--------|
+| Rollen-Katalog (8 Rollen anzeigen) | RolesManagement Tab 1 | Nein | Behalten |
+| Modul-Rollen-Matrix (Kreuzmatrix) | RolesManagement Tab 2 | Nein | Behalten |
+| Governance (Eroeffnungsprozess-Flow) | RolesManagement Tab 3 | Teilweise (Rollen-Aktivierung) | Reduzieren |
+| DB-Enums anzeigen | RolesManagement Tab 3 | Nein | Behalten, aber aus SSOT ableiten |
+| Rollen-Uebersicht (Kacheln) | ManagerFreischaltung Tab 3 | JA (Rollen-Aktivierung) | Entfernen |
+| Partner-Verifizierung | PartnerVerification | Nein | Keine Aenderung noetig |
+
+### PartnerVerification.tsx
+Keine Hardcoded-Daten gefunden. Liest korrekt aus der DB (`partner_verifications` + `organizations`). Keine Doppelung mit TileCatalog. **Keine Aenderung noetig.**
 
 ---
 
-## Loesung (4 Aenderungen)
+## Aenderungen
 
-### 1. DB-Funktion `get_tiles_for_role()` aktualisieren
+### 1. rolesMatrix.ts — MOD-22 in MODULES_CATALOG ergaenzen
 
-Die Funktion muss alle 8 Rollen kennen und MOD-22 im `all_tiles`-Array enthalten:
+MOD-22 (PetManager) fehlt im `MODULES_CATALOG` Array. Dadurch zeigt die Modul-Rollen-Matrix nur 21 statt 22 Module.
 
-```text
-all_tiles = MOD-00 bis MOD-20 + MOD-22 (22 Module)
+- MOD-22 als neuen Eintrag hinzufuegen
+- Kommentar "21 Module" auf "22 Module" korrigieren
+- `ALL_TILES` Kommentar aktualisieren
 
-Neue Cases:
-  'super_user'       → all_tiles (alle 22)
-  'pet_manager'      → base_tiles + MOD-22 + MOD-10
-  'project_manager'  → base_tiles + MOD-13
-  'platform_admin'   → all_tiles (alle 22, war vorher nur 21)
-```
+### 2. ManagerFreischaltung.tsx — Hardcoded Maps entfernen
 
-### 2. Neue DB-Funktion `sync_tiles_for_user(user_id)` erstellen
+- `ROLE_LABELS` entfernen, stattdessen Hilfsfunktion die `ROLES_CATALOG.find(r => r.code === role || r.membershipRole === role)?.label` nutzt
+- `ROLE_MODULE_MAP` entfernen, stattdessen `ROLE_EXTRA_TILES[role]?.join(' + ')` nutzen
+- "Rollen-Uebersicht" Card im Tab "Aktive Manager" (Zeilen 558-580) entfernen — diese Info wird jetzt vollstaendig von `/admin/tiles > Rollen-Aktivierung` und `/admin/roles > Rollen-Katalog` abgedeckt
 
-Eine neue Funktion, die beim Aendern der Rolle (z.B. Manager-Freischaltung) aufgerufen wird:
+### 3. RolesManagement.tsx — Hardcoded Enums durch SSOT ersetzen
 
-```text
-1. Liest membership_role UND app_role des Users
-2. Bestimmt effektive Rolle (app_role hat Vorrang: super_user → alle Tiles)
-3. Ruft get_tiles_for_role() mit der effektiven Rolle auf
-4. Synchronisiert tenant_tile_activation:
-   - Fehlende Tiles → INSERT
-   - Ueberfluessige Tiles → status = 'inactive'
-```
+- Hardcoded membership_role-Array (Zeile 376-385) ersetzen durch dynamische Ableitung aus `ROLES_CATALOG` (aktive) und `LEGACY_ROLES` (legacy)
+- Hardcoded app_role-Array (Zeile 389-401) ersetzen durch dynamische Ableitung aus `ROLES_CATALOG` (die ein `appRole` haben) und Legacy-Array
+- Texte "21 Module" auf "22 Module" korrigieren
+- "6 Rollen" auf "8 Rollen" korrigieren (pet_manager und project_manager fehlen in der Beschreibung)
 
-### 3. Zone 1 UI: "Tenant-Aktivierung" → "Rollen-Aktivierung" umbauen
+### 4. RolesManagement.tsx — Governance-Tab entschlacken
 
-Der Tab wird von account-basiert auf rollen-basiert umgestellt:
-
-```text
-Aktuell:
-  [Dropdown: bernhard.marchner ▼]  [Alle aktivieren]
-  → Manuelle Toggles pro Tenant
-
-Neu:
-  [Dropdown: Rolle waehlen ▼]  [Sync alle Tenants]
-  Optionen: Super-User | Standardkunde | Akquise-Manager | ...
-
-  → Zeigt welche Tiles die gewaehlte Rolle bekommt (aus rolesMatrix.ts)
-  → "Sync alle Tenants" synchronisiert ALLE Tenants mit dieser Rolle
-  → Zusaetzlich: Tabelle zeigt alle Tenants mit dieser Rolle und deren Ist-Zustand
-```
-
-**Zusaetzlich** bleibt eine "Tenant-Einzelansicht" erhalten fuer Ausnahmen/Debugging, aber die primaere Steuerung ist rollenbezogen.
-
-### 4. Bernhards Tiles sofort reparieren (DB-Migration)
-
-Da Bernhard bereits existiert und der Sync noch nicht automatisch laeuft, werden seine fehlenden 8 Spezial-Module per Migration nachgetragen:
-
-```text
-INSERT in tenant_tile_activation fuer Tenant 80746f1a-...:
-  MOD-09, MOD-10, MOD-11, MOD-12, MOD-13, MOD-14, MOD-19, MOD-22
-```
+Der Governance-Tab zeigt eine Mapping-Tabelle (Rolle → Module-Anzahl), die jetzt auch in `/admin/tiles > Rollen-Aktivierung` steht. Diese Tabelle wird durch einen Verweis auf `/admin/tiles` ersetzt, um Doppelpflege zu vermeiden. Die restlichen Governance-Infos (Eroeffnungsprozess-Flow, org_admin vs platform_admin Erklaerung, DB-Enum-Status) bleiben erhalten.
 
 ---
 
-## Betroffene Dateien
+## Zusammenfassung der Datei-Aenderungen
 
 | Datei | Aenderung |
 |-------|-----------|
-| DB-Migration 1 | `get_tiles_for_role()` aktualisieren (8 Rollen, 22 Module) |
-| DB-Migration 2 | `sync_tiles_for_user()` Funktion erstellen |
-| DB-Migration 3 | Bernhards fehlende Tiles einfuegen |
-| `src/pages/admin/TileCatalog.tsx` | Tenant-Aktivierung-Tab auf Rollen-basiert umbauen |
-| `src/constants/rolesMatrix.ts` | Bereits korrekt — keine Aenderung noetig |
+| `src/constants/rolesMatrix.ts` | MOD-22 in MODULES_CATALOG, Kommentare korrigieren |
+| `src/pages/admin/ManagerFreischaltung.tsx` | ROLE_LABELS und ROLE_MODULE_MAP entfernen, aus ROLES_CATALOG ableiten; Rollen-Uebersicht Card entfernen |
+| `src/pages/admin/RolesManagement.tsx` | Hardcoded Enum-Arrays durch SSOT ersetzen; Zahlen korrigieren (22 Module, 8 Rollen); Governance-Tab Mapping-Tabelle durch Link zu /admin/tiles ersetzen |
+| `src/pages/admin/PartnerVerification.tsx` | Keine Aenderung |
 
 ### Modul-Freeze-Check
 
-- `src/pages/admin/TileCatalog.tsx` → kein Modul-Pfad, nicht frozen
-- DB-Migrationen → nicht frozen
-- `src/constants/rolesMatrix.ts` → nicht frozen
-
-Alle Aenderungen liegen ausserhalb gefrorener Module.
-
----
-
-## Was sich NICHT aendert
-
-- **PortalNav.tsx**: Liest weiterhin `tenant_tile_activation` — das ist korrekt, da die Tiles dort jetzt rollenkonsistent sind
-- **rolesMatrix.ts**: Ist bereits komplett mit allen 8 Rollen und 22 Modulen
-- **handle_new_user()**: Bleibt unveraendert (neue User sind immer `org_admin` → 14 Basis-Tiles korrekt)
-- **Manager-Freischaltung**: Muss nach Upgrade `sync_tiles_for_user()` aufrufen, damit Spezial-Module automatisch aktiviert werden
+Alle betroffenen Dateien liegen ausserhalb der Modul-Pfade:
+- `src/constants/rolesMatrix.ts` — kein Modul
+- `src/pages/admin/*` — kein Modul-Pfad
+- Ergebnis: **Nicht frozen, Aenderungen erlaubt**
 
