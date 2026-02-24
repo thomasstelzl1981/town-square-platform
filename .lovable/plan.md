@@ -1,163 +1,138 @@
 
-# Komplett-Aktualisierung: Tile Catalog, Manifeste, Specs — Diskrepanz-Audit
+# SoT-Fallback-E-Mail: Automatische vorname.nachname@systemofatown.com
 
-## Uebersicht
+## Konzept
 
-Nach vollstaendiger Analyse aller Manifest-Dateien, der `tile_catalog`-Datenbanktabelle, der Engine Registry und der Spec-Dateien gibt es **23 konkrete Diskrepanzen**, gruppiert in 5 Kategorien.
+Jeder Tenant-User erhaelt beim Signup automatisch eine persoenliche E-Mail-Adresse im Format `vorname.nachname@systemofatown.com`. Diese wird als permanente Fallback-Adresse fuer alle Outbound-E-Mails verwendet, solange (oder auch wenn) kein eigenes Mail-Konto (Gmail/Outlook/SMTP) verbunden ist.
 
----
+## Architektur-Entscheidung
 
-## A) tile_catalog (Datenbank) vs. routesManifest.ts
+**Ansatz: `sot_email` Feld in `profiles`** (statt eigener `mail_accounts`-Eintrag)
 
-Die `tile_catalog`-Tabelle in der Datenbank ist an mehreren Stellen veraltet gegenueber `routesManifest.ts`.
+Begruendung:
+- Die SoT-Adresse ist **kein echtes Postfach** — kein IMAP, kein Posteingang, kein OAuth-Token
+- Sie ist eine **Resend-basierte Absenderadresse** fuer Outbound-Only
+- Ein `mail_accounts`-Eintrag wuerde die bestehende Logik (IMAP-Sync, Token-Refresh) verschmutzen
+- Ein Feld auf `profiles` ist sauber, performant und sofort im Signup-Trigger verfuegbar
 
-### A1: MOD-03 DMS — sub_tiles veraltet
-**DB:** `storage, posteingang, sortieren, einstellungen` (4 Tiles)
-**Manifest:** `intelligenz (default), storage, posteingang, sortieren, intake` (5 Tiles)
-**Fix:** `intelligenz` fehlt als Default-Tile, `intake` (Magic Intake) fehlt, `einstellungen` ist veraltet (heisst jetzt `intelligenz`)
+## Aenderungsplan
 
-### A2: MOD-04 Immobilien — sub_tiles-Titel veraltet
-**DB:** `verwaltung` hat Titel "Verwaltung"
-**Manifest:** `verwaltung` hat Titel "Steuer"
-**Fix:** Titel in tile_catalog auf "Steuer" aktualisieren
+### 1. Migration: `sot_email` Spalte auf `profiles`
 
-### A3: MOD-05 Pets — Icon veraltet
-**DB:** `icon_key: 'globe'` (falsch!)
-**Manifest:** `icon: 'PawPrint'`
-**Fix:** Icon auf `PawPrint` aktualisieren
+```sql
+ALTER TABLE profiles ADD COLUMN sot_email TEXT;
+CREATE UNIQUE INDEX idx_profiles_sot_email ON profiles(sot_email) WHERE sot_email IS NOT NULL;
+```
 
-### A4: MOD-09 Immomanager — sub_tiles veraltet
-**DB:** `katalog, beratung, kunden, netzwerk, leadeingang` (Titel "Leadeingang" mit Route `/leads`)
-**Manifest:** `katalog, beratung, kunden, network, systemgebuehr` (5 Tiles, "Provisionen" statt "Leadeingang")
-**Fix:** `leadeingang` durch `systemgebuehr` (Provisionen) ersetzen, `leads`-Route entfernen
+- Eindeutiger Index verhindert Namenskollisionen
+- Nullable, da Altdaten erst per Backfill befuellt werden
 
-### A5: MOD-10 Lead Manager — sub_tiles komplett veraltet
-**DB:** `uebersicht, kampagnen, studio, leads` (4 alte Tiles)
-**Manifest:** `kampagnen (default), kaufy, futureroom, acquiary, projekte` (5 Tiles)
-**Fix:** Komplette sub_tiles ersetzen
+### 2. SQL-Funktion: `generate_sot_email(first_name, last_name, auth_email)`
 
-### A6: MOD-18 Finanzen — sub_tiles fehlen
-**DB:** Kein Eintrag fuer MOD-18 in tile_catalog gefunden
-**Manifest:** 9 Tiles (dashboard, konten, investment, kv, sachversicherungen, vorsorge, darlehen, abonnements, vorsorgedokumente)
-**Fix:** MOD-18 Eintrag in tile_catalog einfuegen
+Erzeugt die Adresse nach folgendem Schema:
+- Basis: `vorname.nachname@systemofatown.com` (lowercase, Umlaute normalisiert: ae, oe, ue, ss)
+- Bei Kollision: `vorname.nachname2@systemofatown.com`, `vorname.nachname3@systemofatown.com` usw.
+- Fallback wenn kein Name: `email-prefix@systemofatown.com` (aus der Auth-E-Mail)
 
-### A7: MOD-20 Miety/Zuhause — sub_tiles fehlen
-**DB:** Kein Eintrag fuer MOD-20 in tile_catalog gefunden
-**Manifest:** 4 Tiles (uebersicht, versorgung, smarthome, kommunikation)
-**Fix:** MOD-20 Eintrag in tile_catalog einfuegen
+### 3. `handle_new_user()` Trigger erweitern
 
-### A8: MOD-22 Pet Manager — sub_tiles veraltet
-**DB:** `uebersicht, kunden, kalender` (3 Tiles, Route `/portal/pet-manager`)
-**Manifest:** `dashboard (default), profil, pension, services, mitarbeiter, kunden, finanzen` (7 Tiles, Route `/portal/petmanager`)
-**Fix:** sub_tiles komplett aktualisieren, Route von `/portal/pet-manager` auf `/portal/petmanager` korrigieren
+Nach dem INSERT in `profiles` wird `sot_email` sofort gesetzt:
 
-### A9: MOD-01 Stammdaten — sub_tile "Rechtliches" fehlt
-**DB:** `profil, vertraege, abrechnung, sicherheit, demo-daten` (5)
-**Manifest:** `profil, vertraege, abrechnung, sicherheit, rechtliches, demo-daten` (6)
-**Fix:** `rechtliches` Tile hinzufuegen
+```text
+UPDATE profiles
+SET sot_email = generate_sot_email(first_name, last_name, NEW.email)
+WHERE id = NEW.id;
+```
 
----
+Damit hat jeder neue User ab Signup seine SoT-Adresse.
 
-## B) storageManifest.ts — Naming-Inkonsistenzen
+### 4. Backfill fuer bestehende User
 
-### B1: MOD-05 root_name falsch
-**Ist:** `root_name: 'Mietverwaltung'`
-**Soll:** `root_name: 'Pets'` (oder 'Haustiere')
+```sql
+UPDATE profiles
+SET sot_email = generate_sot_email(
+  COALESCE(first_name, split_part(email, '@', 1)),
+  COALESCE(last_name, ''),
+  email
+)
+WHERE sot_email IS NULL;
+```
 
-### B2: MOD-18 root_name veraltet
-**Ist:** `root_name: 'Finanzanalyse'`
-**Soll:** `root_name: 'Finanzen'` (Label-Override in areaConfig)
+### 5. `userMailSend.ts` — Resend-Fallback personalisieren
 
-### B3: MOD-22 fehlt komplett
-**Fix:** MOD_22 Eintrag fuer Pet Manager hinzufuegen
+Aktuell (Zeile 101):
+```text
+const fromAddr = resendFrom || 'Armstrong <no-reply@systemofatown.de>';
+```
 
----
+Neu: Vor dem Resend-Fallback wird `profiles.sot_email` und `profiles.display_name` geladen:
 
-## C) Engine Registry (ENGINE_REGISTRY.md)
+```text
+// Lookup user's SoT email for personalized Resend fallback
+const { data: profile } = await supabase
+  .from('profiles')
+  .select('sot_email, display_name, first_name, last_name')
+  .eq('id', userId)
+  .single();
 
-### C1: ENG-KONTOMATCH — recurring.ts fehlt in Dateipfaden
-**Ist:** `spec.ts, engine.ts`
-**Soll:** `spec.ts, engine.ts, recurring.ts`
-**Fix:** `recurring.ts` in Dateipfade aufnehmen
+const sotEmail = profile?.sot_email;
+const displayName = profile?.display_name
+  || [profile?.first_name, profile?.last_name].filter(Boolean).join(' ')
+  || 'Portal';
 
-### C2: Engine-Zaehlung lueckenhaft
-Die Registry zaehlt 10 Calc-Engines (ENG-AKQUISE bis ENG-KONTOMATCH) aber die Nummerierung in `engines/index.ts` springt von "Engine 10" auf "Engine 17".
-**Fix:** Kommentare in `index.ts` bereinigen (Engines 11-16 sind Daten/KI/Infra-Engines, keine Calc-Engines)
+const fromAddr = sotEmail
+  ? `${displayName} <${sotEmail}>`
+  : (resendFrom || 'Armstrong <no-reply@systemofatown.de>');
+```
 
----
+Damit sieht der Empfaenger z.B. `Thomas Stelzl <thomas.stelzl@systemofatown.com>` statt `Armstrong <no-reply@...>`.
 
-## D) goldenPathProcesses.ts — Compliance-Luecken
+### 6. `sot-system-mail-send` — Identity-Fallback
 
-### D1: GP-SIMULATION — widgetGrid + widgetCell = false
-Einziger Portal-Prozess mit Compliance-Luecken (4/6 statt 6/6). Phase ist aber "done".
-**Fix:** Entweder Compliance nachziehen oder Phase auf "2C" zuruecksetzen
+In `sot-system-mail-send/index.ts` wird der bestehende Identity-Lookup (`get_active_outbound_identity`) um einen Fallback auf `profiles.sot_email` ergaenzt, falls keine explizite Outbound-Identity existiert.
 
-### D2: GP-BROWSER-SESSION — demoWidget.compliance = false
-`compliance.demoWidget: false` aber ein demoWidget-Objekt existiert trotzdem.
-**Fix:** demoWidget-Badge auf 'Neu' belassen, aber compliance auf false (korrekt, da noch in Phase 1)
+### 7. UI: Anzeige im Profil / E-Mail-Einstellungen
 
----
+- Im Profil-Bereich wird `sot_email` als "Ihre System-E-Mail" angezeigt (read-only)
+- Hinweis: "Alle ausgehenden E-Mails werden ueber diese Adresse versendet. Sie koennen zusaetzlich Ihr eigenes E-Mail-Konto verbinden."
 
-## E) recordCardManifest.ts — Modul-Code Zuordnung
+## Voraussetzung: Resend Domain
 
-### E1: insurance, vorsorge, subscription, bank_account → MOD_11 falsch
-Diese Aktentypen verweisen auf `MOD_11` (Finanzierungsmanager), sollten aber auf `MOD_18` (Finanzen) zeigen, da dort die Tabellen verwaltet werden.
-**Fix:** moduleCode auf `MOD_18` aendern fuer insurance, vorsorge, subscription, bank_account
+Die Domain `systemofatown.com` muss in Resend als verifizierte Absender-Domain eingerichtet sein (DNS: SPF, DKIM, DMARC). Basierend auf dem bestehenden Code (`noreply@systemofatown.com` in `sot-system-mail-send`) ist dies bereits der Fall.
 
----
+## Betroffene Dateien
 
-## F) modules_freeze.json — Konsistenz
+| Datei | Aenderung |
+|-------|-----------|
+| Migration (neu) | `sot_email` Spalte, Unique Index, `generate_sot_email()` Funktion, Backfill |
+| `handle_new_user()` Migration | Trigger um `sot_email`-Zuweisung erweitern |
+| `supabase/functions/_shared/userMailSend.ts` | Resend-Fallback mit `profiles.sot_email` personalisieren |
+| `supabase/functions/sot-system-mail-send/index.ts` | Identity-Fallback auf `sot_email` |
+| Profil-UI (z.B. Stammdaten) | SoT-E-Mail als Read-Only anzeigen |
 
-### F1: MOD-18 ist frozen, wurde aber per User-Anweisung unfrozen
-Der User hat "UNFREEZE MOD-18" gesagt, aber die Datei zeigt noch `"frozen": true`.
-**Fix:** `frozen: false` setzen, `unfrozen_at: "2026-02-24"` hinzufuegen
+## Nicht betroffen
 
-### F2: MOD-03 ist frozen, wurde aber per User-Anweisung unfrozen
-**Fix:** `frozen: false` setzen, `unfrozen_at: "2026-02-24"` hinzufuegen
+- `mail_accounts` Tabelle — bleibt fuer echte Postfaecher (Gmail, Outlook, SMTP)
+- `user_outbound_identities` — bleibt fuer Brand-spezifische Identitaeten (Kaufy, FutureRoom etc.)
+- Inbound-Routing — die SoT-Adresse ist rein outbound via Resend, kein Posteingang
 
----
+## Zusammenfassung Ablauf
 
-## G) Demo-Daten Registry (demoDataRegistry.ts)
-
-### G1: demo_miety_homes.csv fehlt
-Die CSV existiert in `public/demo-data/demo_miety_homes.csv`, ist aber nicht in `DEMO_DATA_SOURCES` registriert.
-**Fix:** Eintrag fuer MOD-20 miety_homes hinzufuegen
-
-### G2: demo_miety_contracts.csv fehlt
-Ebenfalls nicht registriert.
-**Fix:** Eintrag fuer MOD-20 miety_contracts hinzufuegen
-
-### G3: demo_household_persons.csv fehlt
-Existiert aber ist nicht registriert.
-**Fix:** Eintrag fuer MOD-01 household_persons hinzufuegen
-
-### G4: demo_vehicles.csv fehlt
-**Fix:** Eintrag fuer MOD-17 vehicles hinzufuegen
-
-### G5: demo_pv_plants.csv fehlt
-**Fix:** Eintrag fuer MOD-19 pv_plants hinzufuegen
-
-### G6: demo_vorsorge_contracts.csv fehlt
-**Fix:** Eintrag hinzufuegen
-
-### G7: demo_private_loans.csv fehlt
-**Fix:** Eintrag hinzufuegen
-
----
-
-## Zusammenfassung der Aenderungen
-
-| Datei | Anzahl Fixes |
-|-------|-------------|
-| `tile_catalog` (DB Migration) | 9 Updates/Inserts |
-| `src/config/storageManifest.ts` | 3 Fixes |
-| `spec/current/06_engines/ENGINE_REGISTRY.md` | 2 Fixes |
-| `src/manifests/goldenPathProcesses.ts` | Info-only (keine Aenderung noetig) |
-| `src/config/recordCardManifest.ts` | 4 moduleCode-Fixes |
-| `spec/current/00_frozen/modules_freeze.json` | 2 Unfreeze-Updates |
-| `src/config/demoDataRegistry.ts` | 7 fehlende Eintraege |
-| `src/engines/index.ts` | Kommentar-Bereinigung |
-
-**Gesamt: 27 Fixes**, davon 9 in der Datenbank (tile_catalog), 18 in Code/Config-Dateien.
-
-Keine Modul-Pfade betroffen (alle Aenderungen liegen in `src/config/`, `src/engines/`, `spec/` oder DB) — kein Modul-Unfreeze noetig ausser fuer die bereits freigegebenen MOD-03 und MOD-18.
+```text
+Signup
+  |
+  v
+handle_new_user()
+  |-- profiles INSERT (email, display_name, ...)
+  |-- UPDATE profiles SET sot_email = generate_sot_email(...)
+  |
+  v
+User sendet E-Mail (z.B. Akquise, Serien-Mail, Meeting)
+  |
+  v
+sendViaUserAccountOrResend()
+  |-- Hat mail_accounts? --> Sende via Gmail/Outlook/SMTP
+  |-- Kein Konto?
+       |-- Lade profiles.sot_email
+       |-- Sende via Resend mit "Max Mustermann <max.mustermann@systemofatown.com>"
+```
