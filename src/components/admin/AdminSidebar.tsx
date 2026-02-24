@@ -151,17 +151,20 @@ function getGroupKey(path: string, component: string): string {
   // Operative Desks (Desks + LeadPool + Provisionen + Landing Pages)
   if (path.startsWith('sales-desk') || path.startsWith('finance-desk') || 
        path.startsWith('acquiary') || path.startsWith('lead-desk') || path.startsWith('projekt-desk') ||
-       path.startsWith('pet-desk')) {
+       path.startsWith('pet-desk') || path.startsWith('service-desk')) {
     return 'desks';
   }
   // Compliance Desk
   if (path === 'compliance') {
     return 'compliance';
   }
-  // System (bereinigt - nur Read-only Monitoring + Fortbildung)
-  if (path === 'integrations' || path === 'oversight' || path === 'audit' || 
-      path === 'fortbildung') {
+  // System (bereinigt - nur Read-only Monitoring)
+  if (path === 'integrations' || path === 'oversight' || path === 'audit') {
     return 'system';
+  }
+  // Fortbildung → desks (via Service Desk erreichbar, aber Route bleibt für Kompatibilität)
+  if (path === 'fortbildung') {
+    return 'desks';
   }
   if (path === 'support') {
     return 'platformAdmin';
@@ -177,7 +180,7 @@ function shouldShowInNav(path: string): boolean {
   // Show main desk entries
   if (path === 'sales-desk' || path === 'finance-desk' || path === 'acquiary' || 
       path === 'futureroom' || path === 'lead-desk' || 
-      path === 'projekt-desk' || path === 'pet-desk') {
+      path === 'projekt-desk' || path === 'pet-desk' || path === 'service-desk') {
     return true;
   }
   // KI Office items — consolidated 3
@@ -201,7 +204,8 @@ function shouldShowInNav(path: string): boolean {
     path.startsWith('acquiary/') ||
     path.startsWith('lead-desk/') ||
     path.startsWith('projekt-desk/') ||
-    path.startsWith('pet-desk/')
+    path.startsWith('pet-desk/') ||
+    path.startsWith('service-desk/')
   )) {
     return false;
   }

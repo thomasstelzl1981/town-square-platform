@@ -1,6 +1,6 @@
 /**
  * PetsShop — 4 CI-Widgets: Ernährung, Lennox Tracker, Lennox Style, Fressnapf
- * Products loaded from pet_shop_products DB (SSOT from Z1)
+ * Products loaded from service_shop_products DB (migrated from pet_shop_products)
  * LennoxTracker section remains hardcoded (product info, not shop items)
  */
 import { useState } from 'react';
@@ -21,10 +21,9 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { useAllActiveServices, useCreateBooking, type PetService } from '@/hooks/usePetBookings';
 import { usePets } from '@/hooks/usePets';
-import { useActiveShopProducts } from '@/hooks/usePetShopProducts';
+import { useActiveServiceProducts } from '@/hooks/useServiceShopProducts';
 
 const SPECIES_LABELS: Record<string, string> = {
   dog: 'Hund', cat: 'Katze', bird: 'Vogel', rabbit: 'Kaninchen',
@@ -40,9 +39,9 @@ const WIDGETS: { key: ShopWidget; title: string; icon: typeof Store; description
   { key: 'fressnapf', title: 'Fressnapf', icon: ShoppingCart, description: 'Tierbedarf bei Fressnapf', badge: 'Partner' },
 ];
 
-/* ── Generic Product Grid (from DB) ─────────────────── */
-function ProductGrid({ category, accentColor }: { category: string; accentColor: string }) {
-  const { data: products = [], isLoading } = useActiveShopProducts(category);
+/* ── Generic Product Grid (from DB via service_shop_products) ─── */
+function ProductGrid({ shopKey, accentColor }: { shopKey: string; accentColor: string }) {
+  const { data: products = [], isLoading } = useActiveServiceProducts(shopKey);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeSubCat, setActiveSubCat] = useState<string | null>(null);
 
@@ -67,7 +66,6 @@ function ProductGrid({ category, accentColor }: { category: string; accentColor:
 
   return (
     <>
-      {/* Search + Category Badges */}
       <Card>
         <CardContent className="p-4">
           <div className="relative">
@@ -96,7 +94,6 @@ function ProductGrid({ category, accentColor }: { category: string; accentColor:
         </CardContent>
       </Card>
 
-      {/* Product Grid */}
       <div className={DESIGN.WIDGET_GRID.FULL}>
         {filtered.map(product => (
           <Card
@@ -118,7 +115,7 @@ function ProductGrid({ category, accentColor }: { category: string; accentColor:
                   </div>
                 )}
                 {product.badge && (
-                  <Badge className={`absolute top-2 left-2 text-white text-[10px] border-0`} style={{ backgroundColor: accentColor }}>
+                  <Badge className="absolute top-2 left-2 text-white text-[10px] border-0" style={{ backgroundColor: accentColor }}>
                     {product.badge}
                   </Badge>
                 )}
@@ -219,14 +216,13 @@ export default function PetsShop() {
               </div>
             </div>
           </Card>
-          <ProductGrid category="ernaehrung" accentColor="hsl(38, 92%, 50%)" />
+          <ProductGrid shopKey="pet-ernaehrung" accentColor="hsl(38, 92%, 50%)" />
         </div>
       )}
 
-      {/* ── Lennox Tracker (hardcoded product info) ─────── */}
+      {/* ── Lennox Tracker (hardcoded product info — not shop items) ─────── */}
       {activeWidget === 'lennox' && (
         <div className="space-y-6">
-          {/* Hero Banner */}
           <Card className="overflow-hidden border-0 relative">
             <div className="relative">
               <img src={lennoxHeroImg} alt="Lennox GPS Tracker – Hund mit Tracker" className="w-full h-64 sm:h-80 object-cover" />
@@ -242,7 +238,6 @@ export default function PetsShop() {
             </div>
           </Card>
 
-          {/* Feature Grid */}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {[
               { icon: MapPin, title: 'Live-Ortung', desc: 'Weltweite Echtzeit-Verfolgung per GPS, WLAN & Mobilfunk' },
@@ -267,7 +262,6 @@ export default function PetsShop() {
             })}
           </div>
 
-          {/* Product Variants */}
           <div>
             <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-3">Produktvarianten</h3>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -297,7 +291,6 @@ export default function PetsShop() {
             </div>
           </div>
 
-          {/* Subscription Plans */}
           <div>
             <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-3">Abo-Modelle</h3>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -327,7 +320,6 @@ export default function PetsShop() {
             </div>
           </div>
 
-          {/* Lifestyle Image */}
           <Card className="overflow-hidden border-0">
             <img src={lennoxLifestyleImg} alt="Lennox Tracker im Alltag" className="w-full h-48 sm:h-64 object-cover rounded-2xl" />
           </Card>
@@ -350,7 +342,7 @@ export default function PetsShop() {
               </div>
             </div>
           </Card>
-          <ProductGrid category="lennox_style" accentColor="hsl(160, 60%, 35%)" />
+          <ProductGrid shopKey="pet-style" accentColor="hsl(160, 60%, 35%)" />
         </div>
       )}
 
@@ -377,9 +369,8 @@ export default function PetsShop() {
               </div>
             </div>
           </Card>
-          <ProductGrid category="fressnapf" accentColor="hsl(142, 71%, 29%)" />
+          <ProductGrid shopKey="pet-fressnapf" accentColor="hsl(142, 71%, 29%)" />
 
-          {/* Beliebte Kategorien */}
           <div>
             <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-3">Beliebte Kategorien</h3>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">

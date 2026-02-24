@@ -267,6 +267,8 @@ const adminComponentMap: Record<string, React.ComponentType> = {
   // Social Media removed (100% demo data, no DB)
   // Fortbildung Management
   AdminFortbildung: React.lazy(() => import('@/pages/admin/AdminFortbildung')),
+  // Service Desk (Zone 1 — all service area modules)
+  ServiceDeskRouter: React.lazy(() => import('@/pages/admin/service-desk/ServiceDeskRouter')),
   // Compliance Desk (Legal Engine SSOT)
   ComplianceDeskRouter: React.lazy(() => import('@/pages/admin/compliance/ComplianceDeskRouter')),
   // New Desks
@@ -285,6 +287,7 @@ const adminDeskMap: Record<string, React.ComponentType> = {
   'lead-desk': LeadDeskComponent,
   'projekt-desk': ProjektDeskComponent,
   'pet-desk': React.lazy(() => import('@/pages/admin/desks/PetmanagerDesk')) as unknown as React.ComponentType,
+  'service-desk': React.lazy(() => import('@/pages/admin/service-desk/ServiceDeskRouter')) as unknown as React.ComponentType,
 };
 
 // Zone 1 FutureRoom Sub-Pages (lazy loaded for explicit nested routes)
@@ -532,7 +535,7 @@ export function ManifestRouter() {
         {/* Standard Admin Routes */}
         {zone1Admin.routes?.map((route) => {
           // Skip desk routes (handled above)
-          if (['futureroom', 'sales-desk', 'finance-desk', 'acquiary', 'projekt-desk', 'pet-desk', 'lead-desk'].some(desk => route.path.startsWith(desk))) {
+          if (['futureroom', 'sales-desk', 'finance-desk', 'acquiary', 'projekt-desk', 'pet-desk', 'lead-desk', 'service-desk'].some(desk => route.path.startsWith(desk))) {
             return null;
           }
           

@@ -1,3 +1,8 @@
+/**
+ * ShopTab — Zone 2 Shop page, now loading products from service_shop_products DB
+ * Hardcoded product data removed. Products managed via Zone 1 Service Desk.
+ */
+import { useState } from 'react';
 import { DESIGN } from '@/config/designManifest';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
@@ -7,80 +12,11 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { ShoppingCart, ExternalLink, Plug, WifiOff, Search, Camera, Info, Shield } from 'lucide-react';
+import { ShoppingCart, ExternalLink, Plug, WifiOff, Search, Camera, Shield } from 'lucide-react';
+import { useActiveServiceProducts } from '@/hooks/useServiceShopProducts';
 
-import amazonPaper from '@/assets/services/amazon-paper.jpg';
-import amazonUsbhub from '@/assets/services/amazon-usbhub.jpg';
-import amazonChair from '@/assets/services/amazon-chair.jpg';
-import amazonInk from '@/assets/services/amazon-ink.jpg';
-import amazonHeadset from '@/assets/services/amazon-headset.jpg';
-import amazonWhiteboard from '@/assets/services/amazon-whiteboard.jpg';
-import ottoBinders from '@/assets/services/otto-binders.jpg';
-import ottoToner from '@/assets/services/otto-toner.jpg';
-import ottoDeskpad from '@/assets/services/otto-deskpad.jpg';
-import ottoShredder from '@/assets/services/otto-shredder.jpg';
-import ottoEnvelopes from '@/assets/services/otto-envelopes.jpg';
-import ottoDesklamp from '@/assets/services/otto-desklamp.jpg';
-import miete24Macbook from '@/assets/services/miete24-macbook.jpg';
-import miete24Monitor from '@/assets/services/miete24-monitor.jpg';
-import miete24Printer from '@/assets/services/miete24-printer.jpg';
-import miete24M365 from '@/assets/services/miete24-m365.jpg';
-import miete24Iphone from '@/assets/services/miete24-iphone.jpg';
-import miete24Mouse from '@/assets/services/miete24-mouse.jpg';
-
-// Smart Home camera images
-import camRlc810a from '@/assets/services/cam-reolink-rlc810a.jpg';
-import camRlc520a from '@/assets/services/cam-reolink-rlc520a.jpg';
-import camRlc842a from '@/assets/services/cam-reolink-rlc842a.jpg';
-import camIp4m1026b from '@/assets/services/cam-amcrest-ip4m1026b.jpg';
-import camE1zoom from '@/assets/services/cam-reolink-e1zoom.jpg';
-import camIp2m841 from '@/assets/services/cam-amcrest-ip2m841.jpg';
-import camArguspt from '@/assets/services/cam-reolink-arguspt.jpg';
-import camAsh21 from '@/assets/services/cam-amcrest-ash21.jpg';
-import camIp2m841b from '@/assets/services/cam-amcrest-ip2m841b.jpg';
-import camE1pro from '@/assets/services/cam-reolink-e1pro.jpg';
-
-// ─── Smart Home product catalog ─────────────────────────────────────────────
-interface SmartHomeProduct {
-  name: string;
-  manufacturer: string;
-  price: string;
-  highlight: string;
-  category: 'outdoor' | 'indoor' | 'baby';
-  amazonUrl: string;
-  imageUrl: string;
-}
-
-const SMART_HOME_PRODUCTS: SmartHomeProduct[] = [
-  // Outdoor
-  { name: 'RLC-810A', manufacturer: 'Reolink', price: '54,99 €', highlight: '4K PoE, Nachtsicht, wetterfest IP66', category: 'outdoor', amazonUrl: 'https://www.amazon.de/dp/B08B7XWKM3?tag=immoportal-21', imageUrl: camRlc810a },
-  { name: 'RLC-520A', manufacturer: 'Reolink', price: '44,99 €', highlight: '5MP PoE Dome, kompakt & vandalensicher', category: 'outdoor', amazonUrl: 'https://www.amazon.de/dp/B09KZG8GG5?tag=immoportal-21', imageUrl: camRlc520a },
-  { name: 'RLC-842A', manufacturer: 'Reolink', price: '79,99 €', highlight: '4K PoE Dome, Farb-Nachtsicht, IK10', category: 'outdoor', amazonUrl: 'https://www.amazon.de/dp/B0B5C5MVGL?tag=immoportal-21', imageUrl: camRlc842a },
-  { name: 'IP4M-1026B', manufacturer: 'Amcrest', price: '49,99 €', highlight: '4MP PoE Bullet, IR-Nachtsicht 30m', category: 'outdoor', amazonUrl: 'https://www.amazon.de/dp/B083G9KT4C?tag=immoportal-21', imageUrl: camIp4m1026b },
-  // Indoor
-  { name: 'E1 Zoom', manufacturer: 'Reolink', price: '49,99 €', highlight: 'PTZ, 5MP, WLAN, 3× optischer Zoom', category: 'indoor', amazonUrl: 'https://www.amazon.de/dp/B07VD1DWG3?tag=immoportal-21', imageUrl: camE1zoom },
-  { name: 'IP2M-841', manufacturer: 'Amcrest', price: '34,99 €', highlight: 'PTZ, 1080p, WLAN, 2-Wege-Audio', category: 'indoor', amazonUrl: 'https://www.amazon.de/dp/B0145OQTPG?tag=immoportal-21', imageUrl: camIp2m841 },
-  { name: 'Argus PT Ultra', manufacturer: 'Reolink', price: '89,99 €', highlight: 'Akku + Solar-Option, 4K, PTZ', category: 'indoor', amazonUrl: 'https://www.amazon.de/dp/B0BXJNJ58D?tag=immoportal-21', imageUrl: camArguspt },
-  // Baby
-  { name: 'ASH21 (Apollo)', manufacturer: 'Amcrest', price: '39,99 €', highlight: 'Nachtlicht, Schlaflieder, 2-Wege-Audio', category: 'baby', amazonUrl: 'https://www.amazon.de/dp/B094GVYQFC?tag=immoportal-21', imageUrl: camAsh21 },
-  { name: 'IP2M-841B (weiß)', manufacturer: 'Amcrest', price: '34,99 €', highlight: 'Indoor PTZ, leise Motoren, Privacymodus', category: 'baby', amazonUrl: 'https://www.amazon.de/dp/B0145OQTPG?tag=immoportal-21', imageUrl: camIp2m841b },
-  { name: 'E1 Pro', manufacturer: 'Reolink', price: '44,99 €', highlight: '4MP, WLAN, Personen-/Tiererkennung', category: 'indoor', amazonUrl: 'https://www.amazon.de/dp/B084BNNRL6?tag=immoportal-21', imageUrl: camE1pro },
-];
-
-const CATEGORY_LABELS: Record<string, string> = {
-  outdoor: 'Outdoor',
-  indoor: 'Indoor',
-  baby: 'Baby-Monitor',
-};
-const CATEGORY_COLORS: Record<string, string> = {
-  outdoor: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
-  indoor: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300',
-  baby: 'bg-pink-100 text-pink-700 dark:bg-pink-900/40 dark:text-pink-300',
-};
-
-// ─── Standard shop configs ──────────────────────────────────────────────────
-interface ShopConfig {
+// ─── Shop UI configs (display only, no product data) ────────────────────────
+interface ShopUiConfig {
   name: string;
   tagline: string;
   description: string;
@@ -89,13 +25,10 @@ interface ShopConfig {
   searchPlaceholder: string;
   categories: string[];
   credentialFields: { label: string; placeholder: string }[];
-  productLabels: string[];
-  productImages: string[];
-  priceFormat: (i: number) => string;
   extraInfo?: string;
 }
 
-const SHOPS: Record<string, ShopConfig> = {
+const SHOPS: Record<string, ShopUiConfig> = {
   amazon: {
     name: 'Amazon Business',
     tagline: 'Millionen Produkte für Ihr Unternehmen',
@@ -108,9 +41,6 @@ const SHOPS: Record<string, ShopConfig> = {
       { label: 'PA-API Access Key', placeholder: 'AKIAIOSFODNN7...' },
       { label: 'Partner Tag', placeholder: 'z.B. meinshop-21' },
     ],
-    productLabels: ['Druckerpapier A4 500 Blatt', 'USB-C Hub 7-in-1', 'Bürostuhl ergonomisch', 'Tintenpatrone Multipack', 'Headset Bluetooth', 'Whiteboard 90×60cm'],
-    productImages: [amazonPaper, amazonUsbhub, amazonChair, amazonInk, amazonHeadset, amazonWhiteboard],
-    priceFormat: (i) => `${(4.99 + i * 12.5).toFixed(2).replace('.', ',')} €`,
   },
   'otto-office': {
     name: 'OTTO Office',
@@ -124,9 +54,6 @@ const SHOPS: Record<string, ShopConfig> = {
       { label: 'Affiliate ID (Awin)', placeholder: 'Publisher ID' },
       { label: 'API Key', placeholder: 'OTTO Office API Key' },
     ],
-    productLabels: ['Ordner A4 breit 10er-Pack', 'Lasertoner schwarz XL', 'Schreibtischunterlage', 'Aktenvernichter P-4', 'Briefumschläge DL 500St', 'LED-Schreibtischlampe'],
-    productImages: [ottoBinders, ottoToner, ottoDeskpad, ottoShredder, ottoEnvelopes, ottoDesklamp],
-    priceFormat: (i) => `${(3.49 + i * 8.9).toFixed(2).replace('.', ',')} €`,
     extraInfo: '75.000+ Artikel · Lieferung ab 1 Tag · Kauf auf Rechnung',
   },
   miete24: {
@@ -141,20 +68,89 @@ const SHOPS: Record<string, ShopConfig> = {
       { label: 'Partner ID', placeholder: 'Miete24 Partner ID' },
       { label: 'API Secret', placeholder: 'Miete24 API Secret' },
     ],
-    productLabels: ['MacBook Pro 14" M3', 'Dell UltraSharp 27" 4K', 'HP LaserJet Pro MFP', 'Microsoft 365 Business', 'iPhone 15 Pro', 'Logitech MX Master 3S'],
-    productImages: [miete24Macbook, miete24Monitor, miete24Printer, miete24M365, miete24Iphone, miete24Mouse],
-    priceFormat: (i) => `ab ${(19.9 + i * 15).toFixed(2).replace('.', ',')} €/Monat`,
     extraInfo: 'Laufzeiten: 12 · 24 · 36 Monate · Inkl. Service & Austausch',
   },
 };
 
-// ─── Smart Home Shop component ──────────────────────────────────────────────
+// ─── Dynamic Product Grid (from DB) ─────────────────────────────────────────
+function ProductGrid({ shopKey, accentClass }: { shopKey: string; accentClass: string }) {
+  const { data: products = [], isLoading } = useActiveServiceProducts(shopKey);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const filtered = products.filter(p =>
+    !searchQuery || p.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  if (isLoading) {
+    return <div className="py-12 text-center text-sm text-muted-foreground">Lade Produkte…</div>;
+  }
+
+  if (products.length === 0) {
+    return (
+      <div className="py-12 text-center rounded-lg border border-dashed border-border">
+        <p className="text-sm text-muted-foreground">Produkte werden in Kürze hinzugefügt.</p>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <Card>
+        <CardContent className="p-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              className="pl-10"
+              placeholder="Produkte suchen…"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className={DESIGN.WIDGET_GRID.FULL}>
+        {filtered.map(product => (
+          <Card
+            key={product.id}
+            className="group cursor-pointer hover:shadow-md transition-all hover:-translate-y-0.5"
+            onClick={() => product.external_url && window.open(product.external_url, '_blank', 'noopener')}
+          >
+            <CardContent className="p-3 flex flex-col items-center text-center gap-2">
+              <div className="aspect-square w-full rounded-xl bg-muted/40 overflow-hidden">
+                {product.image_url ? (
+                  <img
+                    src={product.image_url}
+                    alt={product.name}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <ShoppingCart className="h-8 w-8 text-muted-foreground/30" />
+                  </div>
+                )}
+              </div>
+              <span className="text-xs font-medium leading-tight line-clamp-2">{product.name}</span>
+              {product.price_label && (
+                <span className={`text-xs font-semibold ${accentClass}`}>{product.price_label}</span>
+              )}
+              {product.badge && (
+                <Badge variant="secondary" className="text-[10px]">{product.badge}</Badge>
+              )}
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </>
+  );
+}
+
+// ─── Smart Home Shop (from DB) ──────────────────────────────────────────────
 function SmartHomeShop() {
   return (
     <PageShell>
       <ModulePageHeader title="Smart Home Shop" description="Kompatible IP-Kameras für Ihr Zuhause-Dashboard" />
 
-      {/* Hero */}
       <Card className="overflow-hidden border-0">
         <div className="bg-gradient-to-br from-violet-500/20 to-violet-600/5 p-6 sm:p-8">
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
@@ -174,106 +170,18 @@ function SmartHomeShop() {
             <Badge className="bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300 border-0 gap-1">
               <Shield className="h-3 w-3" />Snapshot-kompatibel
             </Badge>
-            <Badge variant="outline" className="text-xs">Reolink</Badge>
-            <Badge variant="outline" className="text-xs">Amcrest</Badge>
           </div>
         </div>
       </Card>
 
-      {/* Filter badges */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex flex-wrap gap-2">
-            {['Alle', 'Outdoor', 'Indoor', 'Baby-Monitor'].map((cat) => (
-              <Badge key={cat} variant="secondary" className="cursor-pointer hover:bg-accent transition-colors text-xs">
-                {cat}
-              </Badge>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+      <ProductGrid shopKey="smart-home" accentClass="text-violet-600 dark:text-violet-400" />
 
-      {/* Product grid */}
-      <TooltipProvider>
-        <div className={DESIGN.WIDGET_GRID.FULL}>
-          {SMART_HOME_PRODUCTS.map((product, i) => (
-            <Card key={i} className="group cursor-pointer hover:shadow-md transition-all hover:-translate-y-0.5">
-              <CardContent className="p-4 flex flex-col gap-3">
-                {/* Camera icon placeholder */}
-                <div className="aspect-square w-full rounded-xl bg-muted/40 overflow-hidden">
-                  <img
-                    src={product.imageUrl}
-                    alt={`${product.manufacturer} ${product.name}`}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    onError={(e) => {
-                      const target = e.currentTarget;
-                      target.style.display = 'none';
-                      const fallback = target.nextElementSibling as HTMLElement;
-                      if (fallback) fallback.style.display = 'flex';
-                    }}
-                  />
-                  <div className="w-full h-full items-center justify-center hidden">
-                    <Camera className="h-12 w-12 text-muted-foreground/30" />
-                  </div>
-                </div>
-
-                {/* Info */}
-                <div className="space-y-1.5">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-xs font-semibold leading-tight">{product.name}</span>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Info className="h-3 w-3 text-muted-foreground flex-shrink-0 cursor-help" />
-                      </TooltipTrigger>
-                      <TooltipContent side="top" className="max-w-[200px] text-xs">
-                        Dieses Gerät kann direkt in Ihrem Zuhause-Dashboard Kamerabilder anzeigen.
-                      </TooltipContent>
-                    </Tooltip>
-                  </div>
-                  <p className="text-[10px] text-muted-foreground">{product.manufacturer}</p>
-                  <p className="text-[10px] text-muted-foreground line-clamp-2">{product.highlight}</p>
-                </div>
-
-                {/* Badges */}
-                <div className="flex flex-wrap gap-1">
-                  <Badge className={`text-[10px] border-0 ${CATEGORY_COLORS[product.category]}`}>
-                    {CATEGORY_LABELS[product.category]}
-                  </Badge>
-                  <Badge className="text-[10px] bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300 border-0">
-                    <Shield className="h-2.5 w-2.5 mr-0.5" />Snapshot
-                  </Badge>
-                </div>
-
-                {/* Price + CTA */}
-                <div className="flex items-center justify-between mt-auto pt-1">
-                  <span className="text-sm font-bold text-violet-600 dark:text-violet-400">{product.price}</span>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="text-[10px] h-7 gap-1"
-                    onClick={() => window.open(product.amazonUrl, '_blank', 'noopener')}
-                  >
-                    <ExternalLink className="h-3 w-3" />
-                    Bei Amazon
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </TooltipProvider>
-
-      {/* Info note */}
       <Card className="border-dashed">
         <CardContent className="p-4 text-xs text-muted-foreground space-y-2">
           <p className="font-medium text-foreground">Warum Reolink & Amcrest?</p>
           <p>
             Beide Hersteller nutzen ein offenes HTTP-Snapshot-Protokoll, das direkte Kamerabilder ohne Cloud-Abo ermöglicht.
             Die Kameras werden über Ihr lokales Netzwerk oder per Port-Forwarding / VPN mit dem Dashboard verbunden.
-          </p>
-          <p>
-            <strong>Voraussetzungen:</strong> Lokale IP-Adresse, Port-Forwarding oder VPN (z.B. FRITZ!Box WireGuard),
-            HTTP Basic Auth aktiv.
           </p>
         </CardContent>
       </Card>
@@ -283,7 +191,6 @@ function SmartHomeShop() {
 
 // ─── Standard Shop component ────────────────────────────────────────────────
 export default function ShopTab({ shopKey }: { shopKey: string }) {
-  // Smart Home gets its own layout
   if (shopKey === 'smart-home') return <SmartHomeShop />;
 
   const shop = SHOPS[shopKey];
@@ -314,38 +221,7 @@ export default function ShopTab({ shopKey }: { shopKey: string }) {
         </div>
       </Card>
 
-      <Card>
-        <CardContent className="p-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input className="pl-10" placeholder={shop.searchPlaceholder} />
-          </div>
-          <div className="flex flex-wrap gap-2 mt-3">
-            {shop.categories.map((cat) => (
-              <Badge key={cat} variant="secondary" className="cursor-pointer hover:bg-accent transition-colors text-xs">
-                {cat}
-              </Badge>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      <div className={DESIGN.WIDGET_GRID.FULL}>
-        {shop.productLabels.map((label, i) => {
-          const imgSrc = shop.productImages[i];
-          return (
-            <Card key={i} className="group cursor-pointer hover:shadow-md transition-all hover:-translate-y-0.5">
-              <CardContent className="p-3 flex flex-col items-center text-center gap-2">
-                <div className="aspect-square w-full rounded-xl bg-muted/40 overflow-hidden">
-                  <img src={imgSrc} alt={label} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-                </div>
-                <span className="text-xs font-medium leading-tight line-clamp-2">{label}</span>
-                <span className={`text-xs ${shop.gradientClass} font-semibold`}>{shop.priceFormat(i)}</span>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
+      <ProductGrid shopKey={shopKey} accentClass={shop.gradientClass} />
 
       <Accordion type="single" collapsible>
         <AccordionItem value="integration" className="border rounded-2xl px-4">
