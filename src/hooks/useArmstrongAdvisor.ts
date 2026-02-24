@@ -9,6 +9,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useArmstrongContext, Zone2Context } from './useArmstrongContext';
 import { toast } from '@/hooks/use-toast';
+import { useIntakeListener, type IntakeState } from './useIntakeContext';
 
 // =============================================================================
 // TYPES
@@ -234,6 +235,7 @@ Frag mich einfach, was du wissen möchtest!`,
 
 export function useArmstrongAdvisor() {
   const context = useArmstrongContext();
+  const intakeState = useIntakeListener();
   const [messages, setMessages] = useState<ChatMessage[]>([getWelcomeMessage('MOD-00')]);
   const [isLoading, setIsLoading] = useState(false);
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
@@ -241,6 +243,7 @@ export function useArmstrongAdvisor() {
   const [activeFlow, setActiveFlow] = useState<FlowState | null>(null);
   const conversationRef = useRef<Array<{ role: string; content: string }>>([]);
   const lastModuleRef = useRef<string>('MOD-00');
+  const lastIntakeStepRef = useRef<IntakeState['step']>(null);
 
   // Update welcome message when module changes
   useEffect(() => {
@@ -251,6 +254,64 @@ export function useArmstrongAdvisor() {
       conversationRef.current = [];
     }
   }, [context]);
+
+  // ── Proactive intake messages ──────────────────────────────────────────────
+  useEffect(() => {
+    const prevStep = lastIntakeStepRef.current;
+    const newStep = intakeState.step;
+    lastIntakeStepRef.current = newStep;
+
+    // Only react to step transitions
+    if (prevStep === newStep) return;
+
+    let proactiveContent: string | null = null;
+
+    if (newStep === 'analyzing' && prevStep !== 'analyzing') {
+      proactiveContent = '🔍 **KI-Analyse gestartet.** Ich analysiere das Exposé und die Preisliste — das dauert ca. 15–30 Sekunden. Ich melde mich, wenn ich fertig bin.';
+    }
+
+    if (newStep === 'review' && prevStep === 'analyzing') {
+      const parts: string[] = ['✅ **Analyse abgeschlossen!**'];
+      if (intakeState.unitsCount > 0) {
+        parts.push(`Ich habe **${intakeState.unitsCount} Einheiten** erkannt.`);
+      }
+      if (intakeState.wegCount && intakeState.wegCount > 1) {
+        parts.push(`Das Projekt hat **${intakeState.wegCount} WEGs**.`);
+      }
+      if (intakeState.avgPricePerSqm) {
+        parts.push(`Ø-Preis: **${intakeState.avgPricePerSqm.toLocaleString('de-DE')} €/m²**.`);
+      }
+      if (intakeState.projectType === 'aufteilung') {
+        parts.push('Projekttyp: **Aufteilungsobjekt**.');
+      }
+      // Warnings
+      const warnCount = intakeState.warnings.filter(w => w.type === 'warning').length;
+      const errCount = intakeState.warnings.filter(w => w.type === 'error').length;
+      if (errCount > 0) {
+        parts.push(`\n⛔ **${errCount} Fehler** müssen vor dem Erstellen behoben werden.`);
+      }
+      if (warnCount > 0) {
+        parts.push(`\n⚠️ **${warnCount} Hinweis(e)** — bitte die markierten Zellen prüfen.`);
+      }
+      parts.push('\nKlicken Sie auf einzelne Zellen in der Tabelle, um Werte zu korrigieren.');
+      proactiveContent = parts.join(' ');
+    }
+
+    if (newStep === 'created') {
+      proactiveContent = `🎉 **Projekt „${intakeState.projectName || 'Neues Projekt'}" wurde erfolgreich angelegt** mit ${intakeState.unitsCount} Einheiten.\n\nNächste Schritte:\n- **Immobilienakten erstellen** — Jede Einheit wird zur eigenen Immobilie im Portfolio\n- **Vertrieb starten** — Landing Page und Lead-Formulare aktivieren`;
+    }
+
+    if (proactiveContent) {
+      const msg: ChatMessage = {
+        id: crypto.randomUUID(),
+        role: 'assistant',
+        content: proactiveContent,
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, msg]);
+      conversationRef.current.push({ role: 'assistant', content: proactiveContent });
+    }
+  }, [intakeState.step]);
 
   /**
    * Check if current module is in MVP scope
