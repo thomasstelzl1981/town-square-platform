@@ -1,79 +1,55 @@
 
 
-# Recherchemodul aufraumen: Desk-aligned Kacheln
+# Recherchemodul bereinigen: 3 Aenderungen
 
-## Problem
+## 1. Bestehende Recherche-Auftraege loeschen
 
-Die aktuelle `AdminRecherche`-Seite (KI-Office) zeigt alle `soat_search_orders` als flache Kachelliste ohne Bezug zu den Operative Desks. Die Kacheln haben generische Titel wie "Neuer Rechercheauftrag" und wirken hart gecodet. Es fehlt jede Zuordnung zu den 5 Geschaeftskategorien (Acquiary, Sales, Finance, Lead, Pet).
+Es gibt 8 Auftraege in der Datenbank, alle mit `desk = 'acquiary'` — davon 5 leere Entwuerfe ("Neuer Rechercheauftrag"), 1 in Warteschlange, 1 abgebrochen, 1 leerer Entwurf. Diese werden per SQL-Migration geloescht:
 
-## Loesung
-
-Die Widget-Grid-Sektion wird durch **5 Desk-Kategoriekarten** ersetzt, die als Einstiegspunkte dienen. Jede Karte zeigt:
-- Desk-Name und Icon
-- Anzahl offener/laufender Recherchen fuer diesen Desk
-- Gesamtzahl gefundener Kontakte
-- Button "Neuer Auftrag" (erstellt Order mit vorausgefuelltem `desk`-Feld)
-
-Darunter bleibt die bestehende Inline-Case-Ansicht (Auftragsdetails, Ergebnisse, Import) erhalten, zeigt aber nur Orders des ausgewaehlten Desks.
-
-## Neues UI-Layout
-
-```text
-+--------------------------------------------------+
-| RECHERCHE-ZENTRALE                               |
-+--------------------------------------------------+
-| [Acquiary]  [Sales]  [Finance]  [Lead]  [Pet]    |
-|  3 aktiv     1 aktiv  0 aktiv   2 aktiv  0 aktiv |
-|  142 Kont.   38 Kont. --        67 Kont. --      |
-+--------------------------------------------------+
-| AUFTRAEGE: Acquiary (3)          [+ Neuer Auftrag]|
-| +----------------------------------------------+ |
-| | Family Office Hamburg   | done   | 25 Kont.  | |
-| | Projektentwickler NRW   | running| 12 Kont.  | |
-| | Immobilien Berlin       | draft  |  0 Kont.  | |
-| +----------------------------------------------+ |
-|                                                  |
-| [Inline Detail wenn Auftrag gewaehlt]            |
-+--------------------------------------------------+
+```sql
+DELETE FROM soat_search_results WHERE order_id IN (SELECT id FROM soat_search_orders);
+DELETE FROM soat_search_orders;
 ```
 
-## Technische Umsetzung
+## 2. Loesch-Button fuer Auftraege hinzufuegen
 
-### Datei: `src/pages/admin/ki-office/AdminRecherche.tsx`
-
-**Aenderungen:**
-
-1. **Desk-Kategorien als Konstante** (nicht hart gecodet, sondern aus der gleichen Quelle wie die DeskContactBook-Presets):
+Jeder Auftrag in der Auftrags-Liste erhaelt einen Trash-Icon-Button (analog zum bestehenden `WidgetDeleteOverlay`-Pattern). Zusaetzlich wird ein neuer `useDeleteSoatOrder`-Hook in `useSoatSearchEngine.ts` ergaenzt:
 
 ```text
-DESK_CATEGORIES = [
-  { code: 'acquiary', label: 'Acquiary', subtitle: 'Family Offices & Immobilienunternehmen', icon: Building2 },
-  { code: 'sales', label: 'Sales', subtitle: 'Immobilienmakler & Hausverwaltungen', icon: Briefcase },
-  { code: 'finance', label: 'Finance', subtitle: 'Finanzvertriebe & Finanzdienstleister', icon: TrendingUp },
-  { code: 'insurance', label: 'Lead', subtitle: 'Versicherungskaufleute', icon: Shield },
-  { code: 'pet', label: 'Pet', subtitle: 'Hundepensionen, -hotels & -friseure', icon: PawPrint },
-]
+useDeleteSoatOrder()
+  -> DELETE FROM soat_search_results WHERE order_id = X
+  -> DELETE FROM soat_search_orders WHERE id = X
+  -> invalidate query cache
 ```
 
-2. **State**: `selectedDesk` statt direkt `selectedOrderId` als erste Auswahl. Orders werden nach `desk` gefiltert.
+In der Auftrags-Zeile (AdminRecherche.tsx, Zeilen 347-369) wird rechts neben den Zaehler-Icons ein Trash2-Button mit Bestaetigung eingebaut. Laufende Auftraege (`status = 'running'`) werden vom Loeschen ausgenommen.
 
-3. **useSoatOrders anpassen**: Kein Filter im Hook noetig - die Filterung erfolgt client-seitig, da die Gesamtanzahl ohnehin gering ist. Alternativ kann der bestehende Hook erweitert werden, aber fuer die Uebersicht brauchen wir alle Desks gleichzeitig (fuer die Zaehler).
+## 3. Kategorien korrigieren
 
-4. **Neuer Auftrag**: `handleCreateDraft` erhaelt den `desk`-Parameter und setzt ihn beim Insert.
+### Lead-Kategorie entfernen
 
-5. **useSoatSearchEngine.ts**: `useCreateSoatOrder` wird um optionalen `desk`-Parameter erweitert, damit neue Orders dem richtigen Desk zugeordnet werden.
+Die Kategorie "Lead" (code: `lead` / `insurance`) wird aus `DESK_CATEGORIES` entfernt. Der Lead Desk empfaengt Leads aus gebuchten Anzeigen (Zone 2 Lead Manager), nicht aus der Recherche-Engine.
 
-### Betroffene Dateien
+### "Finanzdienstleister" bleibt bei Finance
+
+Die Zuordnung ist bereits korrekt — `finance` enthaelt "Finanzvertriebe & Finanzdienstleister". Keine Aenderung noetig.
+
+### Ergebnis: 4 statt 5 Kategorien
+
+| Kategorie | Code | Subtitle |
+|-----------|------|----------|
+| Acquiary | `acquiary` | Family Offices und Immobilienunternehmen |
+| Sales | `sales` | Immobilienmakler und Hausverwaltungen |
+| Finance | `finance` | Finanzvertriebe und Finanzdienstleister |
+| Pet | `pet` | Hundepensionen, -hotels und -friseure |
+
+Grid wird von `lg:grid-cols-5` auf `lg:grid-cols-4` angepasst.
+
+## Betroffene Dateien
 
 | Datei | Aenderung |
 |-------|-----------|
-| `src/pages/admin/ki-office/AdminRecherche.tsx` | Widget-Grid durch Desk-Karten ersetzen, Orders nach Desk filtern, "Neuer Auftrag" mit Desk-Zuordnung |
-| `src/hooks/useSoatSearchEngine.ts` | `useCreateSoatOrder` um optionalen `desk`-Parameter erweitern |
-
-### Nicht betroffen
-
-- `DeskContactBook.tsx` - bleibt unveraendert (hat eigenen `useDeskContacts` Hook)
-- `sot-research-engine` Edge Function - bleibt unveraendert
-- Keine neuen Tabellen oder Migrationen noetig (die `desk`-Spalte auf `soat_search_orders` existiert bereits aus der vorherigen Migration)
-- Keine Modul-Freeze-Verletzung (Dateien liegen in `src/pages/admin/ki-office/` und `src/hooks/`)
+| SQL-Migration | Alle bestehenden soat_search_orders und results loeschen |
+| `src/hooks/useSoatSearchEngine.ts` | Neuer `useDeleteSoatOrder`-Hook |
+| `src/pages/admin/ki-office/AdminRecherche.tsx` | Lead-Kategorie entfernen, Grid auf 4 Spalten, Trash-Button pro Auftrag mit AlertDialog-Bestaetigung |
 
