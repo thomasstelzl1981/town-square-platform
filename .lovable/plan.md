@@ -1,175 +1,125 @@
 
-# Zone 1 Tiefenanalyse — Befunde und Harmonisierungsplan
+# Zone 1 Harmonisierung — Runde 2: Professionalisierung
 
-## ANALYSE-ERGEBNISSE
+## Verbleibende Befunde nach Runde 1
 
-### A. Manifest- und Spec-Inkonsistenzen
+### A. Sprache: Verbleibende englische Strings
 
-| # | Befund | Schwere | Datei |
-|---|--------|---------|-------|
-| A1 | **Lead Desk**: Alle 5 Sub-Routen (`pool`, `zuweisungen`, `provisionen`, `monitor`) verweisen auf dieselbe Komponente `LeadDeskDashboard` statt auf dedizierte Lazy-Komponenten | Hoch | `routesManifest.ts:151-154` |
-| A2 | **Finance Desk**: Gleicher Fehler — alle 5 Sub-Routen zeigen auf `FinanceDeskDashboard` | Hoch | `routesManifest.ts:168-171` |
-| A3 | **Pet Desk**: Route `pet-desk` hat 5 Tabs im Manifest, aber Desk-Datei hat 6 Tabs (zusaetzlich "Kontakte") — Manifest und Implementation divergieren | Mittel | `routesManifest.ts:161-165` vs. `PetmanagerDesk.tsx:19-26` |
-| A4 | **Sales Desk**: Manifest hat nur `kontakte` nicht als Route, aber `SalesDeskKontakte.tsx` existiert und wird in `SalesDesk.tsx` lazy geladen | Mittel | `routesManifest.ts:144-148` |
-| A5 | **FutureRoom**: 8 Sub-Routen (`inbox`, `zuweisung`, etc.) sind im Manifest registriert, aber Sidebar filtert sie korrekt aus. Jedoch fehlt eine `kontakte`-Route, die in anderen Desks vorhanden ist | Niedrig | `routesManifest.ts:122-130` |
-| A6 | **Acquiary**: 3 Legacy-Routen (`inbox`, `assignments`, `audit`) sind noch im Manifest. Sollten entweder entfernt oder als `deprecated_routes` markiert werden | Niedrig | `routesManifest.ts:140-142` |
-| A7 | **AdminSidebar Pet Desk Pfad**: Sidebar prueft auf `petmanager` UND `pet-desk` Praefixe in `shouldShowInNav()` — redundant, da Manifest nur `pet-desk` nutzt | Niedrig | `AdminSidebar.tsx:157-158` |
+| # | Datei | Zeile(n) | Aktueller Text | Korrektur |
+|---|-------|----------|----------------|-----------|
+| A1 | `Organizations.tsx` | 208 | `"Parent Organization"` (Label) | `"Eltern-Organisation"` |
+| A2 | `Organizations.tsx` | 219 | `"Select parent (or none for root)"` | `"Eltern-Organisation waehlen (oder keine fuer Root)"` |
+| A3 | `Organizations.tsx` | 221 | `"— Root (no parent) —"` | `"— Root (ohne Eltern) —"` |
+| A4 | `Organizations.tsx` | 232 | `"Organization Type"` | `"Organisationstyp"` |
+| A5 | `Organizations.tsx` | 238 | `"Select type"` | `"Typ waehlen"` |
+| A6 | `Organizations.tsx` | 249 | `'Root organizations must be of type "Internal"'` | `'Root-Organisationen muessen vom Typ "Internal" sein'` |
+| A7 | `Organizations.tsx` | 250 | `` `Allowed under ${...}: ${...}` `` | `` `Erlaubt unter ${...}: ${...}` `` |
+| A8 | `Organizations.tsx` | 273 | `"URL-friendly identifier"` | `"URL-freundlicher Bezeichner"` |
+| A9 | `Organizations.tsx` | 304 | `'Viewing organizations you have access to'` | `'Organisationen mit Ihrem Zugriff'` |
+| A10 | `Users.tsx` | 231 | `'All fields are required'` | `'Alle Felder sind erforderlich'` |
+| A11 | `Users.tsx` | 237 | `'Only platform admins can assign...'` | `'Nur Platform Admins koennen...'` |
+| A12 | `Users.tsx` | 261 | `'This user already has a membership...'` | `'Dieser Benutzer hat bereits eine Mitgliedschaft...'` |
+| A13 | `Users.tsx` | 263 | `'Failed to create membership'` | `'Mitgliedschaft konnte nicht erstellt werden'` |
+| A14 | `Users.tsx` | 452 | `'Platform Admin role can only be assigned by platform admins'` | `'Die Platform-Admin-Rolle kann nur von Platform Admins vergeben werden'` |
+| A15 | `Users.tsx` | 482-483 | `'Filtered by organization: ...' / 'All memberships across organizations'` | Deutsche Texte |
+| A16 | `Users.tsx` | 501-504 | Tabellen-Header `"Organization"`, `"Role"`, `"Created"`, `"Actions"` | `"Organisation"`, `"Rolle"`, `"Erstellt"`, `"Aktionen"` |
+| A17 | `Users.tsx` | 526 | `'You'` Badge | `'Du'` |
+| A18 | `Users.tsx` | 536 | `'MMM d, yyyy'` Datumsformat | `'dd.MM.yyyy'` (deutsches Format) |
+| A19 | `Users.tsx` | 571 | `"Edit Membership"` Dialog-Titel | `"Mitgliedschaft bearbeiten"` |
+| A20 | `Users.tsx` | 572 | `"Change the role for this membership."` | `"Rolle fuer diese Mitgliedschaft aendern."` |
+| A21 | `Users.tsx` | 587-594 | Labels `"User ID"`, `"Organization"`, `"New Role"`, `"Select role"` | Deutsche Labels |
+| A22 | `Users.tsx` | 623-626 | Buttons `"Cancel"`, `"Save Changes"` | `"Abbrechen"`, `"Speichern"` |
+| A23 | `Users.tsx` | 636-638 | `"Remove Membership"`, `"This will remove..."`, `"Cancel"`, `"Remove"` | Deutsche Texte |
+| A24 | `Users.tsx` | 714 | `documentTitle="Users & Memberships"` | `"Benutzer & Mitgliedschaften"` |
+| A25 | `Delegations.tsx` | 245-261 | Labels `"Delegate Organization"`, `"Target Organization"`, `"Who gets access"`, `"Whose resources"` | Deutsche Labels |
+| A26 | `Delegations.tsx` | 294 | `"Expires At (optional)"` | `"Ablaufdatum (optional)"` |
+| A27 | `Delegations.tsx` | 345 | Filter-Optionen `"Active"`, `"Revoked"`, `"Expired"` | `"Aktiv"`, `"Widerrufen"`, `"Abgelaufen"` |
+| A28 | `Delegations.tsx` | 368-373 | Tabellen-Header `"Delegate -> Target"`, `"Scopes"`, `"Status"`, `"Granted"`, `"Expires"`, `"Actions"` | Deutsche Header |
+| A29 | `Delegations.tsx` | 397 | `'MMM d, yyyy'` Datumsformat | `'dd.MM.yyyy'` |
+| A30 | `Delegations.tsx` | 440-454 | Detail-Dialog Labels `"Delegate"`, `"Target"`, `"Granted"` | Deutsche Labels |
+| A31 | `Delegations.tsx` | 492-501 | Revoke-Dialog komplett Englisch | Deutsche Texte |
+| A32 | `Support.tsx` | 90 | `'Please enter a search query'` | `'Bitte Suchbegriff eingeben'` |
+| A33 | `Support.tsx` | 253 | Tabellen-Header `"Actions"` | `"Aktionen"` |
+| A34 | `Support.tsx` | 305-309 | `"User Context: ..."`, `"View and edit user profile..."` | Deutsche Texte |
+| A35 | `Support.tsx` | 314 | `"Read-Only Context"` | `"Nur-Lesen Kontext"` |
+| A36 | `Support.tsx` | 317-327 | Labels `"User ID"`, `"Email"`, `"Created"`, `"Updated"` | Deutsche Labels |
+| A37 | `Support.tsx` | 334-342 | `"Memberships"`, `"No memberships"` | Deutsche Texte |
+| A38 | `Support.tsx` | 358-386 | Labels `"Display Name"`, `"User's display name"`, `"Active Tenant"`, `"Select active tenant"`, `"The organization context..."` | Deutsche Labels |
+| A39 | `Support.tsx` | 392-397 | Buttons `"Cancel"`, `"Save Changes"` | `"Abbrechen"`, `"Speichern"` |
+| A40 | `Oversight.tsx` | 320 | `"Public Listings"` | `"Oeffentliche Inserate"` |
+| A41 | `Oversight.tsx` | 337 | Tab `"Tenants"` | `"Mandanten"` |
+| A42 | `Oversight.tsx` | 431 | Badge `"Public"` | `"Oeffentlich"` |
 
-### B. Hardcoded Data (Verstoesse gegen Demo Data Governance)
+### B. DESIGN Token Konsistenz — Fehlende Anwendung
 
-| # | Befund | Datei | Zeilen |
-|---|--------|-------|--------|
-| B1 | **Integrations: Voice-Tabelle** — 11 Zeilen hardcoded (`ArmstrongContainer`, `ChatPanel`, etc.) direkt als Array-Literal im JSX | `Integrations.tsx` | 234-246 |
-| B2 | **FinanceDeskDashboard: BERATUNGSFELDER** — 5 Eintraege (`Stiftungen`, `Vermoegensschutz`, etc.) als `const` Array hardcoded | `FinanceDeskDashboard.tsx` | 11-17 |
-| B3 | **ManagerFreischaltung: ROLE_LABELS + ROLE_MODULE_MAP** — 5 Eintraege hardcoded statt aus `ROLES_CATALOG` abgeleitet | `ManagerFreischaltung.tsx` | 75-89 |
-| B4 | **Dashboard: "Go-live" Domain-Text** — hardcoded String `kaufy.app | systemofatown.app | miety.app | futureroom.app` | `Dashboard.tsx` | 269 |
-| B5 | **Dashboard: PIN-Code** — `Zugangscode 2710` hardcoded im UI-Text | `Dashboard.tsx` | 174 |
+| # | Datei | Problem | Loesung |
+|---|-------|---------|---------|
+| B1 | `Organizations.tsx` | `className="space-y-6"` + `text-2xl font-bold tracking-tight` inline | `DESIGN.SPACING.SECTION` + `DESIGN.TYPOGRAPHY.PAGE_TITLE` |
+| B2 | `Users.tsx` | Gleiches Problem wie B1 | DESIGN Tokens |
+| B3 | `Delegations.tsx` | Gleiches Problem | DESIGN Tokens |
+| B4 | `Support.tsx` | Gleiches Problem | DESIGN Tokens |
+| B5 | `Oversight.tsx` | `className="space-y-6"` + `text-2xl font-bold` inline | DESIGN Tokens |
+| B6 | `Integrations.tsx` | `text-2xl font-bold` ohne DESIGN Token | DESIGN Token |
+| B7 | `Oversight.tsx` | KPI-Grid `grid-cols-6` — 6 Spalten verstoesst gegen Design-Manifest (max 4) | Umstellen auf `DESIGN.KPI_GRID.FULL` (max 4 Spalten) mit 2. Zeile |
 
-**Hinweis**: B1 und B2 sind keine klassischen Demo-Daten (Geschaeftsentitaeten), sondern UI-Konfigurationsdaten. Sie verstoessen nicht direkt gegen die Demo Data Governance, sollten aber fuer Wartbarkeit in Config-Dateien ausgelagert werden.
+### C. Datumsformat-Inkonsistenz
 
-### C. Sprachliche Inkonsistenzen (Deutsch/Englisch Mix)
+| # | Datei | Aktuell | Korrektur |
+|---|-------|---------|-----------|
+| C1 | `Organizations.tsx:366` | `'MMM d, yyyy'` (englisch) | `'dd.MM.yyyy'` + `{ locale: de }` |
+| C2 | `Users.tsx:536` | `'MMM d, yyyy'` | `'dd.MM.yyyy'` + `{ locale: de }` |
+| C3 | `Delegations.tsx:397,401` | `'MMM d, yyyy'` | `'dd.MM.yyyy'` + `{ locale: de }` |
+| C4 | `Support.tsx:279` | `'MMM d, yyyy'` | `'dd.MM.yyyy'` + `{ locale: de }` |
 
-| # | Befund | Datei |
-|---|--------|-------|
-| C1 | **Dashboard**: Titel "Dashboard" + "Welcome to the System of a Town Admin Portal" (Englisch), KPIs "Organizations", "Users", "Memberships", "Delegations", "Registered profiles" (Englisch), "Current Session", "Email", "Display Name" | `Dashboard.tsx` |
-| C2 | **Organizations**: Titel "Organizations", Buttons "New Organization", "Cancel", "Create", Table-Headers Englisch, Mixed "Suche..." + "Alle Typen" (Deutsch) | `Organizations.tsx` |
-| C3 | **Users**: Titel "Users & Memberships", "Add Membership", "Enter the user's UUID", Mixed Deutsch/Englisch | `Users.tsx` |
-| C4 | **Delegations**: Titel "Delegations", "New Delegation", "Grant one organization access", Mixed | `Delegations.tsx` |
-| C5 | **Support**: Komplett Englisch ("Search Users", "Search by email or display name", "No users found") | `Support.tsx` |
-| C6 | **Oversight**: Titel "System Oversight", Mixed Deutsch/Englisch | `Oversight.tsx` |
-| C7 | **Tile Catalog**: Titel "Tile Catalog & Testdaten" — Mixed | `TileCatalog.tsx` |
-| C8 | **AdminSidebar**: Gruppen-Labels "Tenants & Access", "Backbone", "Feature Activation", "Platform Admin" — Englisch | `AdminSidebar.tsx:105-117` |
+### D. Strukturelle Verbesserungen
 
-**Regel**: Zone 1 ist fuer technische Nutzer (deutsch). Alle UI-Texte sollten einheitlich Deutsch sein.
-
-### D. Strukturelle / UX-Probleme
-
-| # | Befund | Datei |
-|---|--------|-------|
-| D1 | **Lead Desk + Finance Desk**: Verwenden `OperativeDeskShell` NICHT — stattdessen eigene KPI-Card-Layouts. Alle anderen Desks (Pet, Projekt, Sales, Acquiary) nutzen `OperativeDeskShell` | `LeadDeskDashboard.tsx`, `FinanceDeskDashboard.tsx` |
-| D2 | **Lead Desk**: Kein Tab-Router — alle Sub-Routen zeigen dieselbe Komponente. Sub-Seiten (`LeadPool.tsx`, `LeadAssignments.tsx`, etc.) existieren aber werden nicht eingebunden | `lead-desk/` |
-| D3 | **Finance Desk**: Gleicher Befund — kein Tab-Router, keine Sub-Seiten eingebunden, obwohl `FinanceDeskInbox.tsx`, `FinanceDeskFaelle.tsx`, etc. existieren | `finance-desk/` |
-| D4 | **Desk-Router-Dateien**: `src/pages/admin/desks/LeadDesk.tsx` und `FinanceDesk.tsx` existieren als Router-Shells, werden aber im `ManifestRouter` nicht korrekt eingebunden (Manifest zeigt auf `LeadDeskDashboard` / `FinanceDeskDashboard` direkt) | `desks/LeadDesk.tsx`, `desks/FinanceDesk.tsx` |
-| D5 | **Lead Desk Kontakte**: `LeadDeskKontakte.tsx` existiert, ist aber nicht im Manifest registriert und nicht ueber Tabs erreichbar | `lead-desk/LeadDeskKontakte.tsx` |
-| D6 | **Sales Desk Kontakte**: `SalesDeskKontakte.tsx` existiert, ebenfalls nicht im Manifest | `sales-desk/SalesDeskKontakte.tsx` |
-| D7 | **Finance Desk Kontakte**: `FinanceDeskKontakte.tsx` existiert, nicht im Manifest | `finance-desk/FinanceDeskKontakte.tsx` |
-| D8 | **Stub-Seite**: `AdminStubPage.tsx` existiert noch — Pruefung ob noch referenziert | `stub/AdminStubPage.tsx` |
-
-### E. Fehlende Professionalisierung
-
-| # | Befund |
-|---|--------|
-| E1 | **Dashboard**: Zeigt statische Quick-Action Buttons statt dynamischer System-Health-KPIs. Kein Echtzeit-Feed, keine Benachrichtigungen |
-| E2 | **DESIGN Token-Nutzung**: Dashboard nutzt `DESIGN.SPACING.SECTION`, `DESIGN.TYPOGRAPHY.PAGE_TITLE`, aber viele andere Seiten (Oversight, Agreements, Delegations) verwenden eigene Inline-Styles |
-| E3 | **Keine einheitliche Ladeanimation**: Manche Seiten zeigen `Loader2 animate-spin`, andere einen Skeleton, manche gar nichts |
-| E4 | **Oversight laedt ALLE Daten**: `properties`, `units`, `memberships`, `contacts`, `finance_packages` — keine Pagination. Skaliert nicht |
-
----
-
-## HARMONISIERUNGSPLAN
-
-### Phase 1: Routing-Fixes (Kritisch)
-
-**1.1 Lead Desk Tab-Router aktivieren**
-- Manifest: Sub-Routen auf dedizierte Komponenten umleiten (`LeadPoolPage`, `LeadAssignmentsPage`, etc.)
-- `ManifestRouter.tsx`: Lead Desk ueber `desks/LeadDesk.tsx` routen (wie Pet/Projekt Desk)
-- `desks/LeadDesk.tsx` erhaelt die 5-Tab-Struktur (Dashboard, Kontakte, Pool, Zuweisungen, Provisionen, Monitor)
-
-**1.2 Finance Desk Tab-Router aktivieren**
-- Gleiche Behandlung wie Lead Desk
-- `desks/FinanceDesk.tsx` erhaelt 5-Tab-Struktur (Dashboard, Kontakte, Inbox, Faelle, Monitor)
-- Beide nutzen `OperativeDeskShell` fuer KPI-Header
-
-**1.3 Pet Desk Manifest synchronisieren**
-- `kontakte`-Route in Manifest nachregistrieren
-
-**1.4 Sales Desk `kontakte` nachregistrieren**
-- Route `sales-desk/kontakte` im Manifest ergaenzen
-
-**1.5 Acquiary Legacy-Routen bereinigen**
-- `inbox`, `assignments`, `audit` als `deprecated_routes` markieren oder entfernen
-
-### Phase 2: Sprache vereinheitlichen (Mittel)
-
-**2.1 AdminSidebar Gruppen-Labels**
-- `Tenants & Access` -> `Mandanten & Zugriff`
-- `Backbone` -> `Infrastruktur`
-- `Feature Activation` -> `Modul-Verwaltung`
-- `Platform Admin` -> `Plattform-Admin`
-- `Operative Desks` bleibt (eingebuergerter Begriff)
-
-**2.2 Dashboard Texte**
-- "Welcome to..." -> "Willkommen im SoT Admin Portal"
-- "Organizations" -> "Organisationen"
-- "Users" -> "Benutzer"
-- "Memberships" -> "Mitgliedschaften"
-- "Current Session" -> "Aktuelle Sitzung"
-- Alle Labels konsequent Deutsch
-
-**2.3 Organizations Page**
-- "New Organization" -> "Neue Organisation"
-- "All Organizations" -> "Alle Organisationen"
-- Table Headers Deutsch
-
-**2.4 Users Page**
-- "Users & Memberships" -> "Benutzer & Mitgliedschaften"
-- "Add Membership" -> "Mitgliedschaft hinzufuegen"
-
-**2.5 Delegations Page**
-- "Delegations" -> "Delegierungen"
-- "New Delegation" -> "Neue Delegierung"
-
-**2.6 Support Page**
-- "Support Mode" -> "Support-Modus"
-- "Search Users" -> "Benutzer suchen"
-
-**2.7 Oversight Page**
-- "System Oversight" -> "System-Uebersicht"
-
-**2.8 Tile Catalog**
-- "Tile Catalog & Testdaten" -> "Modul-Katalog & Testdaten"
-
-### Phase 3: Hardcoded Data auslagern (Niedrig)
-
-**3.1 Voice-Integration Tabelle**
-- Array aus `Integrations.tsx` in `src/config/voiceIntegrationManifest.ts` verschieben
-
-**3.2 BERATUNGSFELDER**
-- Array aus `FinanceDeskDashboard.tsx` in `src/config/financeDeskConfig.ts` verschieben
-
-**3.3 ROLE_LABELS / ROLE_MODULE_MAP in ManagerFreischaltung**
-- Aus `ROLES_CATALOG` ableiten statt duplizieren
-
-**3.4 Dashboard Domain-Text + PIN-Code**
-- In Konfigurationskonstanten auslagern
-
-### Phase 4: OperativeDeskShell-Konsistenz (Mittel)
-
-**4.1 Lead Desk auf OperativeDeskShell migrieren**
-- KPI-Header, Zone-Flow-Badge, Tab-Navigation wie alle anderen Desks
-
-**4.2 Finance Desk auf OperativeDeskShell migrieren**
-- Gleiche Behandlung
-
-### Phase 5: DESIGN Token Konsistenz (Niedrig)
-
-**5.1 Alle Admin-Seiten auf DESIGN Tokens umstellen**
-- `DESIGN.TYPOGRAPHY.PAGE_TITLE` fuer alle H1
-- `DESIGN.SPACING.SECTION` fuer Root-Container
-- `DESIGN.KPI_GRID.FULL` fuer KPI-Raster
+| # | Befund | Loesung |
+|---|--------|---------|
+| D1 | `Oversight.tsx` laedt ALLE Daten ohne Pagination (E4 aus Runde 1 nicht adressiert) | Limit auf 100 Zeilen pro Tabelle + "Mehr laden" Button |
+| D2 | Oversight KPI-Grid hat 6 Spalten — bricht auf kleinen Bildschirmen | Umstrukturieren auf max 4 Spalten (2 Zeilen) |
+| D3 | `Support.tsx:126` Fehlermeldung noch Englisch `'Search failed'` | `'Suche fehlgeschlagen'` |
+| D4 | Alle Seiten ausser Dashboard nutzen nicht `DESIGN.SPACING.SECTION` als Root-Container | Einheitlich umstellen |
 
 ---
 
-## Zusammenfassung der Dateien
+## Umsetzungsplan
 
-| Aenderung | Dateien |
-|-----------|---------|
-| Routing-Fixes | `routesManifest.ts`, `ManifestRouter.tsx`, `desks/LeadDesk.tsx`, `desks/FinanceDesk.tsx` |
-| Sprache | `AdminSidebar.tsx`, `Dashboard.tsx`, `Organizations.tsx`, `Users.tsx`, `Delegations.tsx`, `Support.tsx`, `Oversight.tsx`, `TileCatalog.tsx` |
-| Hardcoded auslagern | `Integrations.tsx`, `FinanceDeskDashboard.tsx`, `ManagerFreischaltung.tsx` |
-| DeskShell Migration | `LeadDeskDashboard.tsx` -> via `desks/LeadDesk.tsx`, `FinanceDeskDashboard.tsx` -> via `desks/FinanceDesk.tsx` |
-| Neue Config-Dateien | `src/config/voiceIntegrationManifest.ts`, `src/config/financeDeskConfig.ts` |
+### Phase 1: Sprachbereinigung (42 Strings)
 
-**Geschaetzter Umfang**: ~20 Dateien, davon 2 neue Config-Dateien.
+Alle verbleibenden englischen UI-Strings in den 6 Dateien werden auf Deutsch umgestellt:
+- `Organizations.tsx` — 10 Strings (Dialog-Labels, Platzhalter, Beschreibungen)
+- `Users.tsx` — 15 Strings (Dialog-Titel, Tabellen-Header, Buttons, Fehlermeldungen)
+- `Delegations.tsx` — 12 Strings (Dialog-Labels, Tabellen-Header, Revoke-Dialog)
+- `Support.tsx` — 10 Strings (Fehlermeldungen, Labels, Buttons)
+- `Oversight.tsx` — 3 Strings (Tab-Label, KPI-Label, Badge)
 
-**Modul-Freeze-Check**: Alle betroffenen Dateien liegen in `src/pages/admin/`, `src/components/admin/`, `src/manifests/` und `src/config/` — ausserhalb der Modul-Pfade. Kein Freeze betroffen.
+### Phase 2: DESIGN Token Migration
+
+Alle 6 Seiten erhalten konsistente DESIGN Token-Nutzung:
+- Root-Container: `DESIGN.SPACING.SECTION` statt `className="space-y-6"`
+- Seiten-Titel: `DESIGN.TYPOGRAPHY.PAGE_TITLE` statt inline `text-2xl font-bold tracking-tight`
+- Untertitel: `DESIGN.TYPOGRAPHY.MUTED`
+- KPI-Grid: `DESIGN.KPI_GRID.FULL` (max 4 Spalten)
+
+### Phase 3: Datumsformat
+
+Alle `date-fns` `format()`-Aufrufe werden auf `'dd.MM.yyyy'` mit `{ locale: de }` umgestellt. Import von `de` aus `date-fns/locale` wird in fehlenden Dateien ergaenzt.
+
+### Phase 4: Oversight Pagination
+
+`Oversight.tsx` erhaelt `.limit(100)` auf alle Queries und das 6-Spalten-KPI-Grid wird auf 4 Spalten (2 Zeilen) umgestellt, konform zum Design Manifest (max 4 Spalten).
+
+---
+
+## Zusammenfassung der betroffenen Dateien
+
+| Datei | Aenderungen |
+|-------|-------------|
+| `src/pages/admin/Organizations.tsx` | 10 Strings DE, DESIGN Tokens, Datumsformat |
+| `src/pages/admin/Users.tsx` | 15 Strings DE, DESIGN Tokens, Datumsformat |
+| `src/pages/admin/Delegations.tsx` | 12 Strings DE, DESIGN Tokens, Datumsformat |
+| `src/pages/admin/Support.tsx` | 10 Strings DE, DESIGN Tokens, Datumsformat |
+| `src/pages/admin/Oversight.tsx` | 3 Strings DE, DESIGN Tokens, KPI-Grid Fix, Pagination |
+| `src/pages/admin/Integrations.tsx` | DESIGN Token fuer Titel |
+
+**Modul-Freeze-Check**: Alle Dateien liegen in `src/pages/admin/` — ausserhalb der Modul-Pfade. Kein Freeze betroffen.
