@@ -136,7 +136,7 @@ export default function LennoxPartnerProfil() {
               <Card key={s.id} className="border hover:shadow-md transition-shadow" style={{ borderColor: C.sand, background: 'white' }}>
                 <CardContent className="p-4 space-y-2">
                   <div className="flex items-center justify-between">
-                    <h3 className="font-medium" style={{ color: C.bark }}>{s.name}</h3>
+                    <h3 className="font-medium" style={{ color: C.bark }}>{s.title}</h3>
                     <Badge variant="secondary" className="text-[10px]" style={{ background: `${C.forest}15`, color: C.forest }}>
                       {SERVICE_TAG_LABELS[s.category] || s.category}
                     </Badge>
