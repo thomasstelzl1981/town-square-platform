@@ -55,7 +55,7 @@
 | GP-ZUHAUSE | MOD-20 | Zuhause-Verwaltung | done | 6/6 | `/portal/immobilien/zuhause` |
 | GP-PETS | MOD-05 | Tierverwaltung | Phase 1 | 6/6 | `/portal/pets/meine-tiere` |
 | GP-PET | MOD-22 | Pet Manager Demo | Phase 1 | 3/6 | `/portal/petmanager` |
-| GP-BROWSER-SESSION | MOD-21 | KI-Browser-Session | planned | 0/6 | `/portal/ki-browser/session` |
+
 
 ### Compliance-Checkliste (Design Manifest V4.0)
 
