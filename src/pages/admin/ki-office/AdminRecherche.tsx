@@ -1,6 +1,6 @@
 /**
- * AdminRecherche — SOAT Search Engine with Widget-Grid + Inline Case
- * Golden Path Standard: CTA-Widget → Draft → Inline-Flow (kein Dialog)
+ * AdminRecherche — SOAT Search Engine: Desk-aligned Kacheln + Inline Case
+ * Golden Path Standard: Desk-Karten → Auftrags-Liste → Inline-Flow
  */
 import { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
@@ -13,60 +13,39 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import {
-  useSoatOrders,
-  useSoatResults,
-  useCreateSoatOrder,
-  useStartSoatOrder,
-  useCancelSoatOrder,
-  useUpdateSoatResult,
-  type SoatSearchOrder,
-  type SoatSearchResult,
+  useSoatOrders, useSoatResults, useCreateSoatOrder, useStartSoatOrder,
+  useCancelSoatOrder, useUpdateSoatResult,
+  type SoatSearchOrder, type SoatSearchResult,
 } from '@/hooks/useSoatSearchEngine';
 import { useResearchImport } from '@/hooks/useResearchImport';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { getXlsx } from '@/lib/lazyXlsx';
 import {
-  Plus,
-  Search,
-  Play,
-  Square,
-  Loader2,
-  CheckCircle2,
-  XCircle,
-  Clock,
-  Building2,
-  Mail,
-  Phone,
-  Globe,
-  User,
-  Download,
-  AlertTriangle,
-  Zap,
-  Save,
-  FileSpreadsheet,
-  Upload,
-  X,
-  ShieldCheck,
-  ShieldAlert,
-  MinusCircle,
+  Plus, Search, Play, Square, Loader2, CheckCircle2, XCircle, Clock,
+  Building2, Mail, Phone, Globe, User, Download, AlertTriangle, Zap,
+  FileSpreadsheet, Upload, X, ShieldCheck, ShieldAlert, MinusCircle,
+  Briefcase, TrendingUp, Shield, PawPrint,
 } from 'lucide-react';
 
+/* ── Desk Categories ─────────────────────────────────────────── */
+const DESK_CATEGORIES = [
+  { code: 'acquiary', label: 'Acquiary', subtitle: 'Family Offices & Immobilienunternehmen', icon: Building2 },
+  { code: 'sales', label: 'Sales', subtitle: 'Immobilienmakler & Hausverwaltungen', icon: Briefcase },
+  { code: 'finance', label: 'Finance', subtitle: 'Finanzvertriebe & Finanzdienstleister', icon: TrendingUp },
+  { code: 'lead', label: 'Lead', subtitle: 'Versicherungskaufleute & Leads', icon: Shield },
+  { code: 'pet', label: 'Pet', subtitle: 'Hundepensionen, -hotels & -friseure', icon: PawPrint },
+] as const;
+
+type DeskCode = typeof DESK_CATEGORIES[number]['code'];
+
+/* ── Status / Phase Maps ─────────────────────────────────────── */
 const STATUS_MAP: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
   draft: { label: 'Entwurf', color: 'bg-muted text-muted-foreground', icon: <Clock className="h-3 w-3" /> },
   queued: { label: 'Warteschlange', color: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200', icon: <Clock className="h-3 w-3" /> },
@@ -78,12 +57,8 @@ const STATUS_MAP: Record<string, { label: string; color: string; icon: React.Rea
 };
 
 const PHASE_LABELS: Record<string, string> = {
-  strategy: 'Strategie',
-  discovery: 'Suche',
-  crawl: 'Crawling',
-  extract: 'Extraktion',
-  validate: 'Validierung',
-  finalize: 'Abschluss',
+  strategy: 'Strategie', discovery: 'Suche', crawl: 'Crawling',
+  extract: 'Extraktion', validate: 'Validierung', finalize: 'Abschluss',
 };
 
 const VALIDATION_STATES: Record<string, { label: string; color: string }> = {
@@ -109,6 +84,7 @@ export default function AdminRecherche() {
   const updateResult = useUpdateSoatResult();
   const researchImport = useResearchImport();
 
+  const [selectedDesk, setSelectedDesk] = useState<DeskCode | null>(null);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [filter, setFilter] = useState<string>('all');
   const [selectedResults, setSelectedResults] = useState<Set<string>>(new Set());
@@ -128,6 +104,26 @@ export default function AdminRecherche() {
   const selectedOrder = orders.find(o => o.id === selectedOrderId) || null;
   const { data: results = [] } = useSoatResults(selectedOrderId);
 
+  /* ── Computed: Desk-level stats ─────────────────────────────── */
+  const deskStats = useMemo(() => {
+    const stats: Record<string, { active: number; contacts: number }> = {};
+    for (const desk of DESK_CATEGORIES) {
+      const deskOrders = orders.filter(o => (o as any).desk === desk.code);
+      const active = deskOrders.filter(o => ['draft', 'queued', 'running', 'needs_review'].includes(o.status)).length;
+      const contacts = deskOrders.reduce((sum, o) => {
+        const c = o.counters_json as Record<string, number> | null;
+        return sum + (c?.contacts_extracted || 0);
+      }, 0);
+      stats[desk.code] = { active, contacts };
+    }
+    return stats;
+  }, [orders]);
+
+  const deskOrders = useMemo(() => {
+    if (!selectedDesk) return [];
+    return orders.filter(o => (o as any).desk === selectedDesk);
+  }, [orders, selectedDesk]);
+
   const filteredResults = filter === 'all'
     ? results
     : results.filter(r => r.validation_state === filter);
@@ -142,15 +138,25 @@ export default function AdminRecherche() {
     return { newCount, dupeCount, noEmailCount };
   }, [dupeChecks]);
 
-  /** CTA-Widget: Sofort Draft erstellen, inline öffnen */
+  /* ── Handlers ───────────────────────────────────────────────── */
+  const handleSelectDesk = (code: DeskCode) => {
+    setSelectedDesk(code);
+    setSelectedOrderId(null);
+    setShowImportPreview(false);
+    setSelectedResults(new Set());
+  };
+
   const handleCreateDraft = async () => {
+    if (!selectedDesk) return;
+    const deskLabel = DESK_CATEGORIES.find(d => d.code === selectedDesk)?.label || selectedDesk;
     try {
       const order = await createOrder.mutateAsync({
-        title: 'Neuer Rechercheauftrag',
+        title: `${deskLabel} — Neue Recherche`,
         intent: '',
         target_count: 25,
+        desk: selectedDesk,
       });
-      setDraftTitle(order.title || 'Neuer Rechercheauftrag');
+      setDraftTitle(order.title || '');
       setDraftIntent(order.intent || '');
       setDraftTarget(String(order.target_count || 25));
       setSelectedOrderId(order.id);
@@ -160,7 +166,6 @@ export default function AdminRecherche() {
     }
   };
 
-  /** Draft-Felder speichern und Recherche starten */
   const handleSaveAndStart = async () => {
     if (!selectedOrderId || !draftTitle.trim()) {
       toast.error('Titel erforderlich');
@@ -176,7 +181,6 @@ export default function AdminRecherche() {
         } as any)
         .eq('id', selectedOrderId);
       if (updateError) throw updateError;
-
       await startOrder.mutateAsync(selectedOrderId);
       toast.success('Recherche gestartet');
     } catch (e: any) {
@@ -194,22 +198,13 @@ export default function AdminRecherche() {
     updateResult.mutate({ id: result.id, orderId: result.order_id, validation_state: state });
   };
 
-  /** Excel Export */
   const handleExport = async () => {
-    if (filteredResults.length === 0) {
-      toast.error('Keine Ergebnisse zum Exportieren');
-      return;
-    }
+    if (filteredResults.length === 0) { toast.error('Keine Ergebnisse zum Exportieren'); return; }
     const rows = filteredResults.map(r => ({
-      Firma: r.company_name || '',
-      Kategorie: r.category || '',
-      Kontaktperson: r.contact_person_name || '',
-      Rolle: r.contact_person_role || '',
-      'E-Mail': r.email || '',
-      Telefon: r.phone || '',
-      Stadt: r.city || '',
-      PLZ: r.postal_code || '',
-      Website: r.website_url || '',
+      Firma: r.company_name || '', Kategorie: r.category || '',
+      Kontaktperson: r.contact_person_name || '', Rolle: r.contact_person_role || '',
+      'E-Mail': r.email || '', Telefon: r.phone || '', Stadt: r.city || '',
+      PLZ: r.postal_code || '', Website: r.website_url || '',
       'Score (%)': r.confidence_score || 0,
       Status: VALIDATION_STATES[r.validation_state]?.label || r.validation_state,
     }));
@@ -221,59 +216,35 @@ export default function AdminRecherche() {
     toast.success(`${rows.length} Ergebnisse exportiert`);
   };
 
-  /** Deduplizierungs-Check vor Import */
   const handleOpenImportPreview = async () => {
-    if (selectedResults.size === 0) {
-      toast.error('Keine Ergebnisse ausgewählt');
-      return;
-    }
+    if (selectedResults.size === 0) { toast.error('Keine Ergebnisse ausgewählt'); return; }
     setIsCheckingDupes(true);
     setShowImportPreview(true);
-
     const selected = results.filter(r => selectedResults.has(r.id));
     const checks: DupeCheckResult[] = [];
-
     for (const r of selected) {
-      if (!r.email) {
-        checks.push({ resultId: r.id, status: 'no_email' });
-        continue;
-      }
-      // Check for existing contact by email
-      const { data } = await supabase
-        .from('contacts')
-        .select('id')
-        .eq('email', r.email)
-        .limit(1);
-
+      if (!r.email) { checks.push({ resultId: r.id, status: 'no_email' }); continue; }
+      const { data } = await supabase.from('contacts').select('id').eq('email', r.email).limit(1);
       if (data && data.length > 0) {
         checks.push({ resultId: r.id, status: 'duplicate', existingContactId: data[0].id });
       } else {
         checks.push({ resultId: r.id, status: 'new' });
       }
     }
-
     setDupeChecks(checks);
     setIsCheckingDupes(false);
   };
 
-  /** Import via Edge Function mit duplicate_policy */
   const handleExecuteImport = async () => {
     if (!selectedOrderId) return;
     const importableIds = dupeChecks
       .filter(d => d.status === 'new' || (d.status === 'duplicate' && dupePolicy === 'update'))
       .map(d => d.resultId);
-
-    if (importableIds.length === 0) {
-      toast.error('Keine importierbaren Kontakte');
-      return;
-    }
-
+    if (importableIds.length === 0) { toast.error('Keine importierbaren Kontakte'); return; }
     setIsImporting(true);
     try {
       const data = await researchImport.mutateAsync({
-        orderId: selectedOrderId,
-        resultIds: importableIds,
-        duplicatePolicy: dupePolicy,
+        orderId: selectedOrderId, resultIds: importableIds, duplicatePolicy: dupePolicy,
       });
       toast.success(`${data.imported_count} importiert, ${data.skipped_count} übersprungen`);
       setShowImportPreview(false);
@@ -318,63 +289,94 @@ export default function AdminRecherche() {
 
   return (
     <div className="space-y-6 p-6">
-      {/* Widget Grid — Orders */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-        {/* CTA-Widget */}
-        <Card
-          className="cursor-pointer border-dashed hover:border-primary/50 transition-colors"
-          onClick={handleCreateDraft}
-        >
-          <CardContent className="flex flex-col items-center justify-center p-6 min-h-[120px]">
-            {createOrder.isPending ? (
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mb-2" />
-            ) : (
-              <Plus className="h-8 w-8 text-muted-foreground mb-2" />
-            )}
-            <span className="text-sm font-medium">Neuer Auftrag</span>
-          </CardContent>
-        </Card>
-
-        {/* Order Widgets */}
-        {orders.map((order) => {
-          const st = STATUS_MAP[order.status] || STATUS_MAP.draft;
-          const isSelected = selectedOrderId === order.id;
-          const c = order.counters_json as Record<string, number> | null;
+      {/* ── Desk Category Cards ──────────────────────────────── */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+        {DESK_CATEGORIES.map((desk) => {
+          const Icon = desk.icon;
+          const stats = deskStats[desk.code] || { active: 0, contacts: 0 };
+          const isActive = selectedDesk === desk.code;
           return (
             <Card
-              key={order.id}
-              className={`cursor-pointer transition-all ${isSelected ? 'ring-2 ring-primary' : 'hover:border-primary/50'}`}
-              onClick={() => handleSelectOrder(order.id)}
+              key={desk.code}
+              className={`cursor-pointer transition-all ${isActive ? 'ring-2 ring-primary border-primary/50' : 'hover:border-primary/40'}`}
+              onClick={() => handleSelectDesk(desk.code)}
             >
-              <CardContent className="p-4 space-y-2 min-h-[120px]">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium truncate flex-1">{order.title || 'Ohne Titel'}</span>
-                  <Badge variant="outline" className={`text-xs ${st.color} ml-2 shrink-0`}>
-                    <span className="mr-1">{st.icon}</span>
-                    {st.label}
-                  </Badge>
+              <CardContent className="p-4 space-y-2">
+                <div className="flex items-center gap-2">
+                  <div className={`rounded-lg p-2 ${isActive ? 'bg-primary/10' : 'bg-muted'}`}>
+                    <Icon className={`h-4 w-4 ${isActive ? 'text-primary' : 'text-muted-foreground'}`} />
+                  </div>
+                  <span className="font-medium text-sm">{desk.label}</span>
                 </div>
-                {(order.status === 'running' || order.status === 'queued') && (
-                  <Progress value={order.progress_percent} className="h-1.5" />
-                )}
-                <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                  <span className="flex items-center gap-1"><Building2 className="h-3 w-3" />{c?.firms_found || 0}</span>
-                  <span className="flex items-center gap-1"><Mail className="h-3 w-3" />{c?.emails_found || 0}</span>
-                  <span className="flex items-center gap-1"><User className="h-3 w-3" />{c?.contacts_extracted || 0}</span>
+                <p className="text-xs text-muted-foreground line-clamp-1">{desk.subtitle}</p>
+                <div className="flex items-center gap-3 text-xs">
+                  <span className={`font-medium ${stats.active > 0 ? 'text-primary' : 'text-muted-foreground'}`}>
+                    {stats.active} aktiv
+                  </span>
+                  <span className="text-muted-foreground">
+                    {stats.contacts > 0 ? `${stats.contacts} Kont.` : '—'}
+                  </span>
                 </div>
-                {order.phase && (order.status === 'running') && (
-                  <span className="text-xs text-primary">{PHASE_LABELS[order.phase] || order.phase}</span>
-                )}
               </CardContent>
             </Card>
           );
         })}
       </div>
 
-      {/* Inline Case — Selected Order */}
+      {/* ── Desk Orders List ─────────────────────────────────── */}
+      {selectedDesk && (
+        <Card>
+          <CardContent className="p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="font-medium text-sm uppercase tracking-wide">
+                Aufträge: {DESK_CATEGORIES.find(d => d.code === selectedDesk)?.label} ({deskOrders.length})
+              </h3>
+              <Button size="sm" variant="outline" onClick={handleCreateDraft} disabled={createOrder.isPending}>
+                {createOrder.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Plus className="h-4 w-4 mr-2" />}
+                Neuer Auftrag
+              </Button>
+            </div>
+
+            {deskOrders.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <Search className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                <p className="text-sm">Noch keine Aufträge für diesen Desk</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {deskOrders.map((order) => {
+                  const st = STATUS_MAP[order.status] || STATUS_MAP.draft;
+                  const isSelected = selectedOrderId === order.id;
+                  const c = order.counters_json as Record<string, number> | null;
+                  return (
+                    <div
+                      key={order.id}
+                      className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-all ${isSelected ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-muted/50'}`}
+                      onClick={() => handleSelectOrder(order.id)}
+                    >
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <span className="text-sm font-medium truncate">{order.title || 'Ohne Titel'}</span>
+                        <Badge variant="outline" className={`text-xs shrink-0 ${st.color}`}>
+                          <span className="mr-1">{st.icon}</span>{st.label}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-4 text-xs text-muted-foreground shrink-0 ml-3">
+                        <span className="flex items-center gap-1"><User className="h-3 w-3" />{c?.contacts_extracted || 0}</span>
+                        <span className="flex items-center gap-1"><Mail className="h-3 w-3" />{c?.emails_found || 0}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ── Inline Case — Selected Order ─────────────────────── */}
       {selectedOrder && (
         <div className="space-y-4">
-          {/* Section 1: Draft or Read-Only Header */}
+          {/* Draft or Read-Only Header */}
           <Card>
             <CardContent className="p-4">
               {selectedOrder.status === 'draft' ? (
@@ -383,11 +385,7 @@ export default function AdminRecherche() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label>Titel *</Label>
-                      <Input
-                        value={draftTitle}
-                        onChange={(e) => setDraftTitle(e.target.value)}
-                        placeholder="z.B. Makler Hamburg"
-                      />
+                      <Input value={draftTitle} onChange={(e) => setDraftTitle(e.target.value)} placeholder="z.B. Makler Hamburg" />
                     </div>
                     <div className="space-y-2">
                       <Label>Zielanzahl</Label>
@@ -407,17 +405,13 @@ export default function AdminRecherche() {
                     <Textarea
                       value={draftIntent}
                       onChange={(e) => setDraftIntent(e.target.value)}
-                      placeholder="z.B. Immobilienmakler in Hamburg mit Fokus Gewerbe, idealerweise mit Erfahrung im Bereich Anlageimmobilien"
+                      placeholder="z.B. Immobilienmakler in Hamburg mit Fokus Gewerbe"
                       className="min-h-[80px]"
                     />
                   </div>
                   <div className="flex justify-end">
                     <Button onClick={handleSaveAndStart} disabled={startOrder.isPending || !draftTitle.trim()}>
-                      {startOrder.isPending ? (
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      ) : (
-                        <Play className="h-4 w-4 mr-2" />
-                      )}
+                      {startOrder.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Play className="h-4 w-4 mr-2" />}
                       Recherche starten
                     </Button>
                   </div>
@@ -437,8 +431,7 @@ export default function AdminRecherche() {
                   <div className="flex gap-2 shrink-0">
                     {(selectedOrder.status === 'running' || selectedOrder.status === 'queued') && (
                       <Button variant="destructive" onClick={handleCancel}>
-                        <Square className="h-4 w-4 mr-2" />
-                        Abbrechen
+                        <Square className="h-4 w-4 mr-2" />Abbrechen
                       </Button>
                     )}
                   </div>
@@ -447,7 +440,7 @@ export default function AdminRecherche() {
             </CardContent>
           </Card>
 
-          {/* Section 2: Live Progress */}
+          {/* Live Progress */}
           {(selectedOrder.status === 'running' || selectedOrder.status === 'queued') && (
             <Card>
               <CardContent className="p-4 space-y-3">
@@ -459,25 +452,23 @@ export default function AdminRecherche() {
                 </div>
                 <Progress value={selectedOrder.progress_percent} className="h-2" />
                 <div className="flex items-center gap-6 text-sm">
-                  <span className="flex items-center gap-1.5"><Building2 className="h-4 w-4 text-muted-foreground" /> {counters.firms_found || 0} Firmen</span>
-                  <span className="flex items-center gap-1.5"><User className="h-4 w-4 text-muted-foreground" /> {counters.contacts_extracted || 0} Kontakte</span>
-                  <span className="flex items-center gap-1.5"><Mail className="h-4 w-4 text-muted-foreground" /> {counters.emails_found || 0} E-Mails</span>
-                  <span className="flex items-center gap-1.5"><Phone className="h-4 w-4 text-muted-foreground" /> {counters.phones_found || 0} Telefon</span>
+                  <span className="flex items-center gap-1.5"><Building2 className="h-4 w-4 text-muted-foreground" /> {(counters as any).firms_found || 0} Firmen</span>
+                  <span className="flex items-center gap-1.5"><User className="h-4 w-4 text-muted-foreground" /> {(counters as any).contacts_extracted || 0} Kontakte</span>
+                  <span className="flex items-center gap-1.5"><Mail className="h-4 w-4 text-muted-foreground" /> {(counters as any).emails_found || 0} E-Mails</span>
+                  <span className="flex items-center gap-1.5"><Phone className="h-4 w-4 text-muted-foreground" /> {(counters as any).phones_found || 0} Telefon</span>
                 </div>
               </CardContent>
             </Card>
           )}
 
-          {/* Section 3: Results Table */}
+          {/* Results Table */}
           <Card>
             <CardContent className="p-4 space-y-3">
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <div className="flex items-center gap-3">
                   <h3 className="font-medium">Ergebnisse ({results.length})</h3>
                   <Select value={filter} onValueChange={setFilter}>
-                    <SelectTrigger className="h-8 w-40">
-                      <SelectValue />
-                    </SelectTrigger>
+                    <SelectTrigger className="h-8 w-40"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Alle</SelectItem>
                       <SelectItem value="candidate">Kandidaten</SelectItem>
@@ -489,13 +480,11 @@ export default function AdminRecherche() {
                 </div>
                 <div className="flex items-center gap-2">
                   <Button size="sm" variant="outline" onClick={handleExport} disabled={filteredResults.length === 0}>
-                    <FileSpreadsheet className="h-4 w-4 mr-2" />
-                    Export
+                    <FileSpreadsheet className="h-4 w-4 mr-2" />Export
                   </Button>
                   {selectedResults.size > 0 && (
                     <Button size="sm" onClick={handleOpenImportPreview}>
-                      <Upload className="h-4 w-4 mr-2" />
-                      {selectedResults.size} importieren…
+                      <Upload className="h-4 w-4 mr-2" />{selectedResults.size} importieren…
                     </Button>
                   )}
                 </div>
@@ -513,10 +502,7 @@ export default function AdminRecherche() {
                       <TableHeader>
                         <TableRow>
                           <TableHead className="w-10">
-                            <Checkbox
-                              checked={selectedResults.size === filteredResults.length && filteredResults.length > 0}
-                              onCheckedChange={toggleAll}
-                            />
+                            <Checkbox checked={selectedResults.size === filteredResults.length && filteredResults.length > 0} onCheckedChange={toggleAll} />
                           </TableHead>
                           <TableHead className="min-w-[160px]">Firma</TableHead>
                           <TableHead className="min-w-[100px]">Kategorie</TableHead>
@@ -537,12 +523,7 @@ export default function AdminRecherche() {
                           const vs = VALIDATION_STATES[r.validation_state] || VALIDATION_STATES.candidate;
                           return (
                             <TableRow key={r.id} className={selectedResults.has(r.id) ? 'bg-primary/5' : ''}>
-                              <TableCell>
-                                <Checkbox
-                                  checked={selectedResults.has(r.id)}
-                                  onCheckedChange={() => toggleResult(r.id)}
-                                />
-                              </TableCell>
+                              <TableCell><Checkbox checked={selectedResults.has(r.id)} onCheckedChange={() => toggleResult(r.id)} /></TableCell>
                               <TableCell className="font-medium">{r.company_name || '—'}</TableCell>
                               <TableCell><span className="text-xs">{r.category || '—'}</span></TableCell>
                               <TableCell>
@@ -565,15 +546,11 @@ export default function AdminRecherche() {
                               <TableCell><span className="text-xs">{r.postal_code || '—'}</span></TableCell>
                               <TableCell>
                                 {r.website_url ? (
-                                  <a href={r.website_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:text-primary/80">
-                                    <Globe className="h-4 w-4" />
-                                  </a>
+                                  <a href={r.website_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:text-primary/80"><Globe className="h-4 w-4" /></a>
                                 ) : '—'}
                               </TableCell>
                               <TableCell className="text-right font-mono text-sm">{r.confidence_score || 0}%</TableCell>
-                              <TableCell>
-                                <Badge variant="outline" className={`text-xs ${vs.color}`}>{vs.label}</Badge>
-                              </TableCell>
+                              <TableCell><Badge variant="outline" className={`text-xs ${vs.color}`}>{vs.label}</Badge></TableCell>
                               <TableCell>
                                 {r.validation_state === 'candidate' && (
                                   <div className="flex gap-1">
@@ -597,44 +574,33 @@ export default function AdminRecherche() {
             </CardContent>
           </Card>
 
-          {/* Section 4: Import Preview with Dedup */}
+          {/* Import Preview with Dedup */}
           {showImportPreview && (
             <Card className="border-primary/30">
               <CardContent className="p-4 space-y-4">
                 <div className="flex items-center justify-between">
-                  <h3 className="font-medium flex items-center gap-2">
-                    <Upload className="h-4 w-4" />
-                    Import-Vorschau
-                  </h3>
-                  <Button variant="ghost" size="sm" onClick={() => { setShowImportPreview(false); setDupeChecks([]); }}>
-                    <X className="h-4 w-4" />
-                  </Button>
+                  <h3 className="font-medium flex items-center gap-2"><Upload className="h-4 w-4" />Import-Vorschau</h3>
+                  <Button variant="ghost" size="sm" onClick={() => { setShowImportPreview(false); setDupeChecks([]); }}><X className="h-4 w-4" /></Button>
                 </div>
 
                 {isCheckingDupes ? (
                   <div className="flex items-center justify-center py-6 gap-2 text-muted-foreground">
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                    <span>Duplikat-Prüfung läuft…</span>
+                    <Loader2 className="h-5 w-5 animate-spin" /><span>Duplikat-Prüfung läuft…</span>
                   </div>
                 ) : (
                   <>
-                    {/* Summary Badges */}
                     <div className="flex items-center gap-3 flex-wrap">
                       <Badge variant="outline" className="text-xs bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300">
-                        <ShieldCheck className="h-3 w-3 mr-1" />
-                        {importStats.newCount} neue Kontakte
+                        <ShieldCheck className="h-3 w-3 mr-1" />{importStats.newCount} neue Kontakte
                       </Badge>
                       <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
-                        <ShieldAlert className="h-3 w-3 mr-1" />
-                        {importStats.dupeCount} bereits vorhanden
+                        <ShieldAlert className="h-3 w-3 mr-1" />{importStats.dupeCount} bereits vorhanden
                       </Badge>
                       <Badge variant="outline" className="text-xs bg-muted text-muted-foreground">
-                        <MinusCircle className="h-3 w-3 mr-1" />
-                        {importStats.noEmailCount} ohne E-Mail
+                        <MinusCircle className="h-3 w-3 mr-1" />{importStats.noEmailCount} ohne E-Mail
                       </Badge>
                     </div>
 
-                    {/* Dedup Detail Table */}
                     <ScrollArea className="max-h-[250px]">
                       <Table>
                         <TableHeader>
@@ -655,15 +621,9 @@ export default function AdminRecherche() {
                                 <TableCell className="text-sm">{r.contact_person_name || '—'}</TableCell>
                                 <TableCell className="text-sm">{r.email || '—'}</TableCell>
                                 <TableCell>
-                                  {check.status === 'new' && (
-                                    <Badge variant="outline" className="text-xs bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300">NEU</Badge>
-                                  )}
-                                  {check.status === 'duplicate' && (
-                                    <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">DUPLIKAT</Badge>
-                                  )}
-                                  {check.status === 'no_email' && (
-                                    <Badge variant="outline" className="text-xs bg-muted text-muted-foreground">KEINE EMAIL</Badge>
-                                  )}
+                                  {check.status === 'new' && <Badge variant="outline" className="text-xs bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300">NEU</Badge>}
+                                  {check.status === 'duplicate' && <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">DUPLIKAT</Badge>}
+                                  {check.status === 'no_email' && <Badge variant="outline" className="text-xs bg-muted text-muted-foreground">KEINE EMAIL</Badge>}
                                 </TableCell>
                               </TableRow>
                             );
@@ -672,38 +632,16 @@ export default function AdminRecherche() {
                       </Table>
                     </ScrollArea>
 
-                    {/* Dupe Policy + Action */}
                     <div className="flex items-center justify-between flex-wrap gap-3 pt-2 border-t">
                       <div className="flex items-center gap-3">
                         <span className="text-sm text-muted-foreground">Duplikate:</span>
                         <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            variant={dupePolicy === 'skip' ? 'default' : 'outline'}
-                            className="h-7 text-xs"
-                            onClick={() => setDupePolicy('skip')}
-                          >
-                            Überspringen
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant={dupePolicy === 'update' ? 'default' : 'outline'}
-                            className="h-7 text-xs"
-                            onClick={() => setDupePolicy('update')}
-                          >
-                            Aktualisieren
-                          </Button>
+                          <Button size="sm" variant={dupePolicy === 'skip' ? 'default' : 'outline'} className="h-7 text-xs" onClick={() => setDupePolicy('skip')}>Überspringen</Button>
+                          <Button size="sm" variant={dupePolicy === 'update' ? 'default' : 'outline'} className="h-7 text-xs" onClick={() => setDupePolicy('update')}>Aktualisieren</Button>
                         </div>
                       </div>
-                      <Button
-                        onClick={handleExecuteImport}
-                        disabled={isImporting || (importStats.newCount === 0 && (importStats.dupeCount === 0 || dupePolicy === 'skip'))}
-                      >
-                        {isImporting ? (
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        ) : (
-                          <Download className="h-4 w-4 mr-2" />
-                        )}
+                      <Button onClick={handleExecuteImport} disabled={isImporting || (importStats.newCount === 0 && (importStats.dupeCount === 0 || dupePolicy === 'skip'))}>
+                        {isImporting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
                         Jetzt importieren ({dupePolicy === 'update' ? importStats.newCount + importStats.dupeCount : importStats.newCount})
                       </Button>
                     </div>
@@ -715,11 +653,11 @@ export default function AdminRecherche() {
         </div>
       )}
 
-      {/* Empty state */}
-      {!selectedOrder && orders.length > 0 && (
+      {/* Empty state — no desk selected */}
+      {!selectedDesk && (
         <div className="text-center py-12 text-muted-foreground">
           <Zap className="h-12 w-12 mx-auto mb-4 opacity-30" />
-          <p>Wählen Sie einen Auftrag oder erstellen Sie einen neuen</p>
+          <p>Wählen Sie einen Desk, um die zugehörigen Recherchen zu sehen</p>
         </div>
       )}
     </div>
