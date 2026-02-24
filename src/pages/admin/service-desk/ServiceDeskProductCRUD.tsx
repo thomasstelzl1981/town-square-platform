@@ -1,8 +1,9 @@
 /**
  * ServiceDeskProductCRUD — Reusable CRUD component for service shop products
  * Pattern: Sub-tab sidebar (left) + product list with CRUD (right)
+ * Supports dynamic metadata fields from service_shop_config.metadata_schema
  */
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -10,8 +11,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { ShoppingBag, Plus, Pencil, Trash2, ExternalLink, Plug, WifiOff } from 'lucide-react';
+import { ShoppingBag, Plus, Pencil, Trash2, ExternalLink, Plug, WifiOff, FileText } from 'lucide-react';
 import {
   useServiceShopProducts,
   useCreateServiceProduct,
@@ -19,6 +21,7 @@ import {
   useDeleteServiceProduct,
   type ServiceShopProduct,
 } from '@/hooks/useServiceShopProducts';
+import { useServiceShopConfig, type MetadataField } from '@/hooks/useServiceShopConfig';
 
 interface SubTab {
   key: string;
@@ -52,15 +55,20 @@ export default function ServiceDeskProductCRUD({ title, subTabs, shopKeyPrefix =
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<ServiceShopProduct | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
+  const [metadataForm, setMetadataForm] = useState<Record<string, string>>({});
 
   const { data: products = [], isLoading } = useServiceShopProducts(shopKey);
+  const { data: shopConfig } = useServiceShopConfig(shopKey);
   const createProduct = useCreateServiceProduct();
   const updateProduct = useUpdateServiceProduct();
   const deleteProduct = useDeleteServiceProduct();
 
+  const metadataSchema: MetadataField[] = shopConfig?.metadata_schema ?? [];
+
   const openCreate = () => {
     setEditingProduct(null);
     setForm(EMPTY_FORM);
+    setMetadataForm({});
     setDialogOpen(true);
   };
 
@@ -79,10 +87,39 @@ export default function ServiceDeskProductCRUD({ title, subTabs, shopKeyPrefix =
       sub_category: p.sub_category ?? '',
       sort_order: p.sort_order?.toString() ?? '0',
     });
+    // Populate metadata form from existing product metadata
+    const md = (p.metadata as Record<string, unknown>) ?? {};
+    const mf: Record<string, string> = {};
+    metadataSchema.forEach(field => {
+      const val = md[field.key];
+      mf[field.key] = typeof val === 'string' ? val : val != null ? String(val) : '';
+    });
+    setMetadataForm(mf);
     setDialogOpen(true);
   };
 
   const handleSave = async () => {
+    // Build metadata from dynamic fields
+    const metadata: Record<string, unknown> = {};
+    let hasMetadata = false;
+    metadataSchema.forEach(field => {
+      const val = metadataForm[field.key];
+      if (val) {
+        metadata[field.key] = val;
+        hasMetadata = true;
+      }
+    });
+    // Preserve existing metadata fields not in schema
+    if (editingProduct?.metadata) {
+      const existing = editingProduct.metadata as Record<string, unknown>;
+      Object.keys(existing).forEach(k => {
+        if (!metadataSchema.some(f => f.key === k) && existing[k] != null) {
+          metadata[k] = existing[k];
+          hasMetadata = true;
+        }
+      });
+    }
+
     const payload = {
       shop_key: shopKey,
       category: activeTab,
@@ -98,7 +135,7 @@ export default function ServiceDeskProductCRUD({ title, subTabs, shopKeyPrefix =
       sub_category: form.sub_category || null,
       sort_order: parseInt(form.sort_order) || 0,
       is_active: editingProduct?.is_active ?? true,
-      metadata: null,
+      metadata: hasMetadata ? metadata : null,
     };
 
     if (editingProduct) {
@@ -120,6 +157,7 @@ export default function ServiceDeskProductCRUD({ title, subTabs, shopKeyPrefix =
   };
 
   const set = (key: string, val: string) => setForm(f => ({ ...f, [key]: val }));
+  const setMeta = (key: string, val: string) => setMetadataForm(f => ({ ...f, [key]: val }));
 
   const activeLabel = subTabs.find(t => t.key === activeTab)?.label ?? activeTab;
 
@@ -154,7 +192,15 @@ export default function ServiceDeskProductCRUD({ title, subTabs, shopKeyPrefix =
             {/* Product List */}
             <div className="flex-1">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-medium">{activeLabel}</h3>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-medium">{activeLabel}</h3>
+                  {shopConfig && metadataSchema.length > 0 && (
+                    <Badge variant="outline" className="text-[10px] gap-1">
+                      <FileText className="h-3 w-3" />
+                      Produktakte ({metadataSchema.length} Felder)
+                    </Badge>
+                  )}
+                </div>
                 <Button size="sm" className="gap-1.5" onClick={openCreate}>
                   <Plus className="h-4 w-4" /> Produkt anlegen
                 </Button>
@@ -234,7 +280,7 @@ export default function ServiceDeskProductCRUD({ title, subTabs, shopKeyPrefix =
 
       {/* Create/Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingProduct ? 'Produkt bearbeiten' : 'Neues Produkt'}</DialogTitle>
           </DialogHeader>
@@ -289,6 +335,42 @@ export default function ServiceDeskProductCRUD({ title, subTabs, shopKeyPrefix =
                 <Input type="number" value={form.sort_order} onChange={e => set('sort_order', e.target.value)} />
               </div>
             </div>
+
+            {/* Dynamic Metadata Fields (Produktakte) */}
+            {metadataSchema.length > 0 && (
+              <>
+                <div className="flex items-center gap-2 pt-2 border-t border-border/50">
+                  <FileText className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Produktakte</span>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  {metadataSchema.map(field => (
+                    <div key={field.key} className={`grid gap-1.5 ${field.type === 'url' ? 'col-span-2' : ''}`}>
+                      <Label className="text-xs">{field.label}</Label>
+                      {field.type === 'select' && field.options ? (
+                        <Select value={metadataForm[field.key] || ''} onValueChange={v => setMeta(field.key, v)}>
+                          <SelectTrigger>
+                            <SelectValue placeholder={`${field.label} wählen…`} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {field.options.map(opt => (
+                              <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <Input
+                          type={field.type === 'url' ? 'url' : 'text'}
+                          value={metadataForm[field.key] || ''}
+                          onChange={e => setMeta(field.key, e.target.value)}
+                          placeholder={field.label}
+                        />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Abbrechen</Button>

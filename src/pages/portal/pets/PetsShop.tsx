@@ -1,7 +1,6 @@
 /**
  * PetsShop — 4 CI-Widgets: Ernährung, Lennox Tracker, Lennox Style, Fressnapf
- * Products loaded from service_shop_products DB (migrated from pet_shop_products)
- * LennoxTracker section remains hardcoded (product info, not shop items)
+ * ALL products loaded from service_shop_products DB (Zone 1 SSOT)
  */
 import { useState } from 'react';
 import { ShoppingCart, MapPin, ExternalLink, Radar, Store, PawPrint, Clock, Search, Plug, WifiOff, UtensilsCrossed, Activity, Shield, Battery, Droplets, Heart, Check } from 'lucide-react';
@@ -137,6 +136,82 @@ function ProductGrid({ shopKey, accentColor }: { shopKey: string; accentColor: s
   );
 }
 
+/* ── Lennox Tracker Products from DB ─── */
+function TrackerProductsFromDB() {
+  const { data: trackerProducts = [], isLoading } = useActiveServiceProducts('pet-tracker');
+  const variants = trackerProducts.filter(p => p.sub_category === 'Tracker');
+  const subscriptions = trackerProducts.filter(p => p.sub_category === 'Abo');
+
+  if (isLoading) return <div className="py-8 text-center text-sm text-muted-foreground">Lade Produkte…</div>;
+
+  return (
+    <>
+      {variants.length > 0 && (
+        <div>
+          <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-3">Produktvarianten</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {variants.map(v => {
+              const md = (v.metadata as Record<string, unknown>) ?? {};
+              const isPopular = md.popular === true || v.badge === 'Beliebt';
+              return (
+                <Card key={v.id} className={`relative overflow-hidden transition-all hover:-translate-y-0.5 hover:shadow-md ${isPopular ? 'border-teal-500/40 shadow-[0_0_20px_-5px_hsl(180_60%_40%/0.2)]' : 'border-border/40'}`}>
+                  {isPopular && <Badge className="absolute top-3 right-3 bg-teal-500 text-white border-0 text-[10px]">Beliebt</Badge>}
+                  <CardContent className="p-5 flex flex-col items-center text-center gap-3">
+                    <div className="w-20 h-20 rounded-2xl overflow-hidden bg-muted/30">
+                      <img src={lennoxProductImg} alt={v.name} className="w-full h-full object-cover" />
+                    </div>
+                    <div>
+                      <p className="font-bold text-sm">{v.name}</p>
+                      {md.target && <p className="text-[11px] text-muted-foreground mt-0.5">{String(md.target)}</p>}
+                      {md.weight && <p className="text-[11px] text-muted-foreground">Gewicht: {String(md.weight)}</p>}
+                    </div>
+                    <p className="text-xl font-bold text-teal-600 dark:text-teal-400">{v.price_label}</p>
+                    <Button variant="outline" size="sm" className="w-full gap-2 border-teal-500/30 hover:bg-teal-500/5" disabled>
+                      <ShoppingCart className="h-3.5 w-3.5" /> Vorbestellen
+                    </Button>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {subscriptions.length > 0 && (
+        <div>
+          <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-3">Abo-Modelle</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {subscriptions.map(plan => {
+              const md = (plan.metadata as Record<string, unknown>) ?? {};
+              const features = Array.isArray(md.features) ? md.features as string[] : [];
+              const isPopular = md.popular === true || plan.badge === 'Empfohlen';
+              return (
+                <Card key={plan.id} className={`transition-all ${isPopular ? 'border-teal-500/40' : 'border-border/40'}`}>
+                  <CardContent className="p-5 flex flex-col gap-3">
+                    <div className="flex items-center justify-between">
+                      <p className="font-bold text-sm">{plan.name}</p>
+                      {isPopular && <Badge className="bg-teal-500 text-white border-0 text-[10px]">Empfohlen</Badge>}
+                    </div>
+                    <p className="text-lg font-bold text-teal-600 dark:text-teal-400">{plan.price_label}</p>
+                    <ul className="space-y-1.5">
+                      {features.map((f, fi) => (
+                        <li key={fi} className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                          <Check className="h-3 w-3 text-teal-500 flex-shrink-0" />
+                          {f}
+                        </li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 export default function PetsShop() {
   const [activeWidget, setActiveWidget] = useState<ShopWidget | null>(null);
   const { data: pets = [] } = usePets();
@@ -262,63 +337,7 @@ export default function PetsShop() {
             })}
           </div>
 
-          <div>
-            <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-3">Produktvarianten</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              {[
-                { name: 'LENNOX Mini', target: 'Kleine Hunde & Katzen bis 10 kg', price: '39,99 €', weight: '25 g', popular: false },
-                { name: 'LENNOX Standard', target: 'Hunde von 10–25 kg', price: '49,99 €', weight: '35 g', popular: true },
-                { name: 'LENNOX XL', target: 'Große Hunde ab 25 kg', price: '59,99 €', weight: '45 g', popular: false },
-              ].map((v, i) => (
-                <Card key={i} className={`relative overflow-hidden transition-all hover:-translate-y-0.5 hover:shadow-md ${v.popular ? 'border-teal-500/40 shadow-[0_0_20px_-5px_hsl(180_60%_40%/0.2)]' : 'border-border/40'}`}>
-                  {v.popular && <Badge className="absolute top-3 right-3 bg-teal-500 text-white border-0 text-[10px]">Beliebt</Badge>}
-                  <CardContent className="p-5 flex flex-col items-center text-center gap-3">
-                    <div className="w-20 h-20 rounded-2xl overflow-hidden bg-muted/30">
-                      <img src={lennoxProductImg} alt={v.name} className="w-full h-full object-cover" />
-                    </div>
-                    <div>
-                      <p className="font-bold text-sm">{v.name}</p>
-                      <p className="text-[11px] text-muted-foreground mt-0.5">{v.target}</p>
-                      <p className="text-[11px] text-muted-foreground">Gewicht: {v.weight}</p>
-                    </div>
-                    <p className="text-xl font-bold text-teal-600 dark:text-teal-400">{v.price}</p>
-                    <Button variant="outline" size="sm" className="w-full gap-2 border-teal-500/30 hover:bg-teal-500/5" disabled>
-                      <ShoppingCart className="h-3.5 w-3.5" /> Vorbestellen
-                    </Button>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-3">Abo-Modelle</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              {[
-                { name: 'Basic', price: '2,99 €/Mo', features: ['Live-Ortung', 'Standort-Verlauf 24h', '1 Geofence-Zone'] },
-                { name: 'Plus', price: '4,99 €/Mo', features: ['Live-Ortung', 'Standort-Verlauf 7 Tage', '5 Geofence-Zonen', 'Aktivitätstracking'], popular: true },
-                { name: 'Premium', price: '6,99 €/Mo', features: ['Live-Ortung', 'Standort-Verlauf 365 Tage', 'Unbegrenzte Zonen', 'Aktivitäts- & Gesundheitstracking', 'Familien-Sharing'] },
-              ].map((plan, i) => (
-                <Card key={i} className={`transition-all ${(plan as any).popular ? 'border-teal-500/40' : 'border-border/40'}`}>
-                  <CardContent className="p-5 flex flex-col gap-3">
-                    <div className="flex items-center justify-between">
-                      <p className="font-bold text-sm">{plan.name}</p>
-                      {(plan as any).popular && <Badge className="bg-teal-500 text-white border-0 text-[10px]">Empfohlen</Badge>}
-                    </div>
-                    <p className="text-lg font-bold text-teal-600 dark:text-teal-400">{plan.price}</p>
-                    <ul className="space-y-1.5">
-                      {plan.features.map((f, fi) => (
-                        <li key={fi} className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                          <Check className="h-3 w-3 text-teal-500 flex-shrink-0" />
-                          {f}
-                        </li>
-                      ))}
-                    </ul>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </div>
+          <TrackerProductsFromDB />
 
           <Card className="overflow-hidden border-0">
             <img src={lennoxLifestyleImg} alt="Lennox Tracker im Alltag" className="w-full h-48 sm:h-64 object-cover rounded-2xl" />

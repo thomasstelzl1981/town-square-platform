@@ -17583,6 +17583,7 @@ export type Database = {
           display_name: string | null
           id: string
           is_connected: boolean | null
+          metadata_schema: Json | null
           shop_key: string
           updated_at: string | null
         }
@@ -17594,6 +17595,7 @@ export type Database = {
           display_name?: string | null
           id?: string
           is_connected?: boolean | null
+          metadata_schema?: Json | null
           shop_key: string
           updated_at?: string | null
         }
@@ -17605,6 +17607,7 @@ export type Database = {
           display_name?: string | null
           id?: string
           is_connected?: boolean | null
+          metadata_schema?: Json | null
           shop_key?: string
           updated_at?: string | null
         }
