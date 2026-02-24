@@ -21405,6 +21405,7 @@ export type Database = {
         | "future_room_web_user_lite"
         | "project_manager"
         | "pet_manager"
+        | "super_manager"
       org_type: "internal" | "partner" | "sub_partner" | "client" | "renter"
       partner_verification_status:
         | "pending"
@@ -21894,6 +21895,7 @@ export const Constants = {
         "future_room_web_user_lite",
         "project_manager",
         "pet_manager",
+        "super_manager",
       ],
       org_type: ["internal", "partner", "sub_partner", "client", "renter"],
       partner_verification_status: [

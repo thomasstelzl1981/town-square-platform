@@ -13,7 +13,7 @@
  * membership_role steuert Tile-Aktivierung (tenant-bezogen).
  * app_role steuert globale Rechte (Zone-1-Zugang, God Mode).
  * 
- * 8 Rollen: platform_admin, super_user, client_user,
+ * 9 Rollen: platform_admin, super_user, super_manager, client_user,
  *           akquise_manager, finance_manager, sales_partner,
  *           project_manager, pet_manager
  * 22 Module: MOD-00 bis MOD-20 + MOD-22
@@ -54,6 +54,7 @@ export const BASE_TILES: string[] = [
 
 /** Zusatz-Module pro Spezialrolle */
 export const ROLE_EXTRA_TILES: Record<string, string[]> = {
+  super_manager: ['MOD-09', 'MOD-10', 'MOD-11', 'MOD-12', 'MOD-13', 'MOD-14', 'MOD-19'],
   sales_partner: ['MOD-09', 'MOD-10'],
   finance_manager: ['MOD-11'],
   akquise_manager: ['MOD-12'],
@@ -70,7 +71,7 @@ export const SPECIALIST_TILES: string[] = [
 export const ALL_TILES: string[] = [...BASE_TILES, ...SPECIALIST_TILES].sort();
 
 // =============================================================================
-// ROLLEN-KATALOG (8 aktive Rollen)
+// ROLLEN-KATALOG (9 aktive Rollen)
 // =============================================================================
 
 export const ROLES_CATALOG: RoleDefinition[] = [
@@ -90,6 +91,13 @@ export const ROLES_CATALOG: RoleDefinition[] = [
     membershipRole: 'org_admin',
     appRole: 'super_user',
     totalModules: 22,
+  },
+  {
+    code: 'super_manager',
+    label: 'Super-Manager',
+    description: 'Führungsrolle mit Vollzugriff auf alle Zone-2-Module ausser Pet Manager (21 Module). Kein Zone-1-Zugang.',
+    membershipRole: 'super_manager',
+    totalModules: 21,
   },
   {
     code: 'client_user',
@@ -181,29 +189,29 @@ export const MODULES_CATALOG: ModuleDefinition[] = [
 // =============================================================================
 
 export const MODULE_ROLE_MATRIX: Record<string, string[]> = {
-  // Basis-Module: alle 8 Rollen
-  'MOD-00': ['platform_admin', 'super_user', 'client_user', 'akquise_manager', 'finance_manager', 'sales_partner', 'project_manager', 'pet_manager'],
-  'MOD-01': ['platform_admin', 'super_user', 'client_user', 'akquise_manager', 'finance_manager', 'sales_partner', 'project_manager', 'pet_manager'],
-  'MOD-02': ['platform_admin', 'super_user', 'client_user', 'akquise_manager', 'finance_manager', 'sales_partner', 'project_manager', 'pet_manager'],
-  'MOD-03': ['platform_admin', 'super_user', 'client_user', 'akquise_manager', 'finance_manager', 'sales_partner', 'project_manager', 'pet_manager'],
-  'MOD-04': ['platform_admin', 'super_user', 'client_user', 'akquise_manager', 'finance_manager', 'sales_partner', 'project_manager', 'pet_manager'],
-  'MOD-05': ['platform_admin', 'super_user', 'client_user', 'akquise_manager', 'finance_manager', 'sales_partner', 'project_manager', 'pet_manager'],
-  'MOD-06': ['platform_admin', 'super_user', 'client_user', 'akquise_manager', 'finance_manager', 'sales_partner', 'project_manager', 'pet_manager'],
-  'MOD-07': ['platform_admin', 'super_user', 'client_user', 'akquise_manager', 'finance_manager', 'sales_partner', 'project_manager', 'pet_manager'],
-  'MOD-08': ['platform_admin', 'super_user', 'client_user', 'akquise_manager', 'finance_manager', 'sales_partner', 'project_manager', 'pet_manager'],
-  'MOD-15': ['platform_admin', 'super_user', 'client_user', 'akquise_manager', 'finance_manager', 'sales_partner', 'project_manager', 'pet_manager'],
-  'MOD-16': ['platform_admin', 'super_user', 'client_user', 'akquise_manager', 'finance_manager', 'sales_partner', 'project_manager', 'pet_manager'],
-  'MOD-17': ['platform_admin', 'super_user', 'client_user', 'akquise_manager', 'finance_manager', 'sales_partner', 'project_manager', 'pet_manager'],
-  'MOD-18': ['platform_admin', 'super_user', 'client_user', 'akquise_manager', 'finance_manager', 'sales_partner', 'project_manager', 'pet_manager'],
-  'MOD-20': ['platform_admin', 'super_user', 'client_user', 'akquise_manager', 'finance_manager', 'sales_partner', 'project_manager', 'pet_manager'],
+  // Basis-Module: alle 9 Rollen
+  'MOD-00': ['platform_admin', 'super_user', 'super_manager', 'client_user', 'akquise_manager', 'finance_manager', 'sales_partner', 'project_manager', 'pet_manager'],
+  'MOD-01': ['platform_admin', 'super_user', 'super_manager', 'client_user', 'akquise_manager', 'finance_manager', 'sales_partner', 'project_manager', 'pet_manager'],
+  'MOD-02': ['platform_admin', 'super_user', 'super_manager', 'client_user', 'akquise_manager', 'finance_manager', 'sales_partner', 'project_manager', 'pet_manager'],
+  'MOD-03': ['platform_admin', 'super_user', 'super_manager', 'client_user', 'akquise_manager', 'finance_manager', 'sales_partner', 'project_manager', 'pet_manager'],
+  'MOD-04': ['platform_admin', 'super_user', 'super_manager', 'client_user', 'akquise_manager', 'finance_manager', 'sales_partner', 'project_manager', 'pet_manager'],
+  'MOD-05': ['platform_admin', 'super_user', 'super_manager', 'client_user', 'akquise_manager', 'finance_manager', 'sales_partner', 'project_manager', 'pet_manager'],
+  'MOD-06': ['platform_admin', 'super_user', 'super_manager', 'client_user', 'akquise_manager', 'finance_manager', 'sales_partner', 'project_manager', 'pet_manager'],
+  'MOD-07': ['platform_admin', 'super_user', 'super_manager', 'client_user', 'akquise_manager', 'finance_manager', 'sales_partner', 'project_manager', 'pet_manager'],
+  'MOD-08': ['platform_admin', 'super_user', 'super_manager', 'client_user', 'akquise_manager', 'finance_manager', 'sales_partner', 'project_manager', 'pet_manager'],
+  'MOD-15': ['platform_admin', 'super_user', 'super_manager', 'client_user', 'akquise_manager', 'finance_manager', 'sales_partner', 'project_manager', 'pet_manager'],
+  'MOD-16': ['platform_admin', 'super_user', 'super_manager', 'client_user', 'akquise_manager', 'finance_manager', 'sales_partner', 'project_manager', 'pet_manager'],
+  'MOD-17': ['platform_admin', 'super_user', 'super_manager', 'client_user', 'akquise_manager', 'finance_manager', 'sales_partner', 'project_manager', 'pet_manager'],
+  'MOD-18': ['platform_admin', 'super_user', 'super_manager', 'client_user', 'akquise_manager', 'finance_manager', 'sales_partner', 'project_manager', 'pet_manager'],
+  'MOD-20': ['platform_admin', 'super_user', 'super_manager', 'client_user', 'akquise_manager', 'finance_manager', 'sales_partner', 'project_manager', 'pet_manager'],
   // Spezial-Module
-  'MOD-09': ['platform_admin', 'super_user', 'sales_partner'],
-  'MOD-10': ['platform_admin', 'super_user', 'sales_partner', 'pet_manager'],
-  'MOD-11': ['platform_admin', 'super_user', 'finance_manager'],
-  'MOD-12': ['platform_admin', 'super_user', 'akquise_manager'],
-  'MOD-13': ['platform_admin', 'super_user', 'project_manager'],
-  'MOD-14': ['platform_admin', 'super_user'],
-  'MOD-19': ['platform_admin', 'super_user'],
+  'MOD-09': ['platform_admin', 'super_user', 'super_manager', 'sales_partner'],
+  'MOD-10': ['platform_admin', 'super_user', 'super_manager', 'sales_partner', 'pet_manager'],
+  'MOD-11': ['platform_admin', 'super_user', 'super_manager', 'finance_manager'],
+  'MOD-12': ['platform_admin', 'super_user', 'super_manager', 'akquise_manager'],
+  'MOD-13': ['platform_admin', 'super_user', 'super_manager', 'project_manager'],
+  'MOD-14': ['platform_admin', 'super_user', 'super_manager'],
+  'MOD-19': ['platform_admin', 'super_user', 'super_manager'],
   'MOD-22': ['platform_admin', 'super_user', 'pet_manager'],
 };
 
@@ -247,6 +255,7 @@ export function isBaseTile(moduleCode: string): boolean {
  */
 export function getTilesForRole(roleCode: string): string[] {
   if (roleCode === 'platform_admin' || roleCode === 'super_user') return ALL_TILES;
+  if (roleCode === 'super_manager') return ALL_TILES.filter(t => t !== 'MOD-22');
   const extras = ROLE_EXTRA_TILES[roleCode] || [];
   return [...BASE_TILES, ...extras];
 }
