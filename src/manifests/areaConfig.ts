@@ -52,7 +52,7 @@ export const areaConfig: AreaDefinition[] = [
     label: 'Base',
     labelShort: 'Base',
     icon: 'Layers',
-    modules: ['MOD-03', 'MOD-01', 'MOD-21', 'ARMSTRONG', 'INTAKE'],
+    modules: ['MOD-03', 'MOD-01', 'ARMSTRONG', 'INTAKE'],
   },
 ];
 
@@ -69,7 +69,6 @@ export const moduleLabelOverrides: Record<string, string> = {
   'MOD-09': 'Immomanager',        // Vertriebspartner → Immomanager
   'MOD-18': 'Finanzen',            // Finanzanalyse → Finanzen
   'MOD-20': 'ZUHAUSE',            // Miety → ZUHAUSE (display only)
-  'MOD-21': 'KI-Browser',         // KI-Browser
   'MOD-22': 'Pet Manager',        // Pet Manager
 };
 

@@ -554,31 +554,3 @@ const gpClientAssignmentResolver: ContextResolver = async ({ tenantId, entityId:
 
 registerContextResolver('GP-CLIENT-ASSIGNMENT', gpClientAssignmentResolver);
 
-// ═══════════════════════════════════════════════════════════════
-// MOD-21 / GP-BROWSER-SESSION Resolver (KI-Browser)
-// ═══════════════════════════════════════════════════════════════
-
-const gpBrowserSessionResolver: ContextResolver = async ({ tenantId, entityId: sessionId }) => {
-  const flags: Record<string, boolean> = {
-    user_authenticated: true,
-    tenant_exists: !!tenantId,
-  };
-  if (!tenantId) return flags;
-
-  if (sessionId) {
-    const { data: session } = await supabase
-      .from('ki_browser_sessions' as never)
-      .select('id, status' as never)
-      .eq('id' as never, sessionId)
-      .eq('tenant_id' as never, tenantId)
-      .maybeSingle() as unknown as { data: { id: string; status: string } | null };
-    flags.session_exists = !!session;
-    flags.session_active = session?.status === 'active';
-    flags.session_completed = session?.status === 'completed';
-  }
-
-  return flags;
-};
-
-registerContextResolver('MOD-21', gpBrowserSessionResolver);
-registerContextResolver('GP-BROWSER-SESSION', gpBrowserSessionResolver);

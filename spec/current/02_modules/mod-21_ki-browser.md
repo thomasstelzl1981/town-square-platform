@@ -1,55 +1,25 @@
-# MOD-21 — KI-Browser
+# MOD-21 — KI-Browser (ENTFERNT)
 
-## Übersicht
-| Feld | Wert |
-|---|---|
-| Modul-Code | MOD-21 |
-| Titel | KI-Browser |
-| Zone | 2 (Portal) |
-| Status | Active |
-| Freeze | true |
-| tile_code | MOD-21 |
-| icon_key | Globe |
+## Status: DEAKTIVIERT
 
-## Beschreibung
-Das KI-Browser-Modul ermöglicht Armstrong das kontrollierte Webbrowsen unter strikter Governance. Armstrong kann im Auftrag des Nutzers Webseiten besuchen, Inhalte extrahieren, Screenshots erstellen und strukturierte Rechercheergebnisse liefern — alles unter voller Kontrolle und Transparenz.
+MOD-21 wurde am 24.02.2026 aus der Plattform entfernt.
 
-## Kernfunktionen
-- **Kontrolliertes Webbrowsen**: Armstrong navigiert Webseiten im Auftrag des Nutzers
-- **Quellen & Belege**: Alle besuchten Seiten werden mit Zeitstempel dokumentiert
-- **Step-Timeline**: Jede Aktion wird als Schritt in einer Timeline protokolliert
-- **User Approval Gate**: Risikobehaftete Aktionen erfordern explizite Nutzer-Freigabe
-- **Harte Guardrails**: Automatische Blockierung sensibler Eingaben (Passwörter, OTPs)
+### Grund
+- Modul war experimentell und nicht in der Rollenlogik integriert
+- Kein Tenant hatte das Modul aktiviert
+- Feature wird vorerst nicht benötigt
 
-## Architektur
-- **Engine**: `sot-ki-browser` Edge Function (fetch-basiert mit Retry-Logik)
-- **Speicher**: Artefakte im privaten Pfad `{tenant_id}/MOD_21/`
-- **Logging**: Alle Aktionen im `data_event_ledger`
+### Entfernt aus
+- routesManifest.ts
+- areaConfig.ts
+- armstrongManifest.ts (10 Browser-Actions)
+- goldenPathProcesses.ts (GP-BROWSER-SESSION)
+- contextResolvers.ts
+- tile_catalog (is_active = false)
+- modules_freeze.json
 
-## Sub-Tiles
-| Route | Titel |
-|---|---|
-| /portal/ki-browser/uebersicht | Übersicht |
-| /portal/ki-browser/session | Session |
-| /portal/ki-browser/quellen | Quellen & Belege |
-| /portal/ki-browser/vorlagen | Vorlagen |
-| /portal/ki-browser/policies | Policies |
-
-## Armstrong Actions
-| Action Code | Mode | Cost |
-|---|---|---|
-| ARM.BROWSER.NAVIGATE | readonly | credit |
-| ARM.BROWSER.EXTRACT_TEXT | readonly | credit |
-| ARM.BROWSER.SCREENSHOT | readonly | credit |
-| ARM.BROWSER.SEARCH | readonly | credit |
-| ARM.BROWSER.FILL_FORM | write | credit |
-| ARM.BROWSER.CLICK | write | credit |
-| ARM.BROWSER.SCROLL | readonly | free |
-| ARM.BROWSER.BACK | readonly | free |
-| ARM.BROWSER.SUMMARIZE | readonly | credit |
-| ARM.BROWSER.MULTI_STEP | write | credit |
-
-## Governance
-- Alle Aktionen werden im `data_event_ledger` protokolliert
-- HTTP/2-Fehler werden automatisch mit Retry-Logik behandelt
-- Sensible Eingaben (Passwörter, OTPs) werden automatisch blockiert
+### Verbleibende Artefakte (nicht gelöscht, aber inaktiv)
+- src/pages/portal/KiBrowserPage.tsx + Sub-Pages
+- src/hooks/useKiBrowser.ts
+- supabase/functions/sot-ki-browser/
+- spec/current/06_engines/ENGINE_REGISTRY.md (Eintrag 18)
