@@ -14,6 +14,29 @@ export interface GeolocationData {
   altitude: number | null;
 }
 
+/** Lookup table for known cities → coordinates */
+const CITY_COORDINATES: Record<string, { lat: number; lon: number }> = {
+  'München': { lat: 48.1351, lon: 11.5820 },
+  'Muenchen': { lat: 48.1351, lon: 11.5820 },
+  'Berlin': { lat: 52.5200, lon: 13.4050 },
+  'Hamburg': { lat: 53.5511, lon: 9.9937 },
+  'Ottobrunn': { lat: 48.0636, lon: 11.6653 },
+  'Frankfurt': { lat: 50.1109, lon: 8.6821 },
+  'Köln': { lat: 50.9375, lon: 6.9603 },
+  'Stuttgart': { lat: 48.7758, lon: 9.1829 },
+};
+
+const DEFAULT_CITY = 'München';
+const DEFAULT_COORDS = { lat: 48.1351, lon: 11.5820 };
+
+function getCoordsForCity(city: string | null | undefined): { lat: number; lon: number; city: string } {
+  if (city) {
+    const coords = CITY_COORDINATES[city] || DEFAULT_COORDS;
+    return { ...coords, city };
+  }
+  return { ...DEFAULT_COORDS, city: DEFAULT_CITY };
+}
+
 export function useGeolocation() {
   const { profile } = useAuth();
   const isMobile = useIsMobile();
@@ -22,18 +45,15 @@ export function useGeolocation() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Fallback function: use city from user profile
+    // Fallback function: use city from user profile, or default to München
     const applyProfileFallback = () => {
-      if (profile?.city) {
-        setLocation({
-          latitude: 48.0167,
-          longitude: 11.5843,
-          city: profile.city as string,
-          altitude: null
-        });
-      } else {
-        setError('Standort nicht verfügbar');
-      }
+      const { lat, lon, city } = getCoordsForCity(profile?.city as string | undefined);
+      setLocation({
+        latitude: lat,
+        longitude: lon,
+        city,
+        altitude: null
+      });
       setLoading(false);
     };
 
