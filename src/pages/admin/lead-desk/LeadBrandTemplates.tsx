@@ -1,140 +1,108 @@
 /**
  * LeadBrandTemplates — Tab 3: Brand-Templates (Zone 1)
- * Admin-Übersicht aller social_templates gruppiert nach Brand
+ * Post-Erstellung und Social-Media-Vorschau für Kaufy, FutureRoom, Acquiary
  */
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Loader2, Palette, Info } from 'lucide-react';
+import { Loader2, Info } from 'lucide-react';
+import BrandPostCard from './BrandPostCard';
+import BrandPostCreator from './BrandPostCreator';
 
 const BRANDS = [
-  { key: 'kaufy', label: 'Kaufy', color: 'text-orange-500' },
-  { key: 'futureroom', label: 'FutureRoom', color: 'text-blue-500' },
-  { key: 'acquiary', label: 'Acquiary', color: 'text-purple-500' },
+  { key: 'all', label: 'Alle' },
+  { key: 'kaufy', label: 'Kaufy' },
+  { key: 'futureroom', label: 'FutureRoom' },
+  { key: 'acquiary', label: 'Acquiary' },
 ] as const;
 
 export default function LeadBrandTemplates() {
   const { isPlatformAdmin } = useAuth();
-  const [loading, setLoading] = useState(true);
-  const [templates, setTemplates] = useState<any[]>([]);
+  const queryClient = useQueryClient();
+  const [brandFilter, setBrandFilter] = useState('all');
 
-  useEffect(() => {
-    if (!isPlatformAdmin) return;
-    (async () => {
-      try {
-        const { data } = await supabase
-          .from('social_templates')
-          .select('*')
-          .order('brand_context')
-          .order('code');
-        setTemplates(data || []);
-      } catch (err) {
-        console.error('LeadBrandTemplates fetch:', err);
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, [isPlatformAdmin]);
-
-  if (!isPlatformAdmin) return <div className="flex items-center justify-center h-64"><p className="text-muted-foreground">Nur für Platform Admins</p></div>;
-  if (loading) return <div className="flex items-center justify-center p-12"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>;
-
-  // Group by brand, count unique tenants per template code
-  const grouped = BRANDS.map(brand => {
-    const brandTemplates = templates.filter(t => t.brand_context === brand.key);
-    // Group by code to count unique tenants
-    const byCode = new Map<string, { code: string; name: string; active: boolean; tenantCount: number; formatType: string }>();
-    brandTemplates.forEach(t => {
-      const existing = byCode.get(t.code);
-      if (existing) {
-        existing.tenantCount += 1;
-        if (t.active) existing.active = true;
-      } else {
-        byCode.set(t.code, {
-          code: t.code,
-          name: t.name,
-          active: t.active,
-          tenantCount: 1,
-          formatType: t.format_type,
-        });
-      }
-    });
-    return { ...brand, templates: Array.from(byCode.values()), totalInstances: brandTemplates.length };
+  const { data: templates, isLoading } = useQuery({
+    queryKey: ['admin-brand-templates', brandFilter],
+    queryFn: async () => {
+      let q = supabase
+        .from('social_templates')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (brandFilter !== 'all') q = q.eq('brand_context', brandFilter);
+      const { data, error } = await q;
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!isPlatformAdmin,
   });
 
-  const totalTemplates = grouped.reduce((sum, g) => sum + g.templates.length, 0);
+  const handleRefresh = () => queryClient.invalidateQueries({ queryKey: ['admin-brand-templates'] });
+
+  if (!isPlatformAdmin) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <p className="text-muted-foreground">Nur für Platform Admins</p>
+      </div>
+    );
+  }
+
+  const approvedCount = templates?.filter(t => t.approved).length || 0;
+  const draftCount = templates?.filter(t => !t.approved).length || 0;
 
   return (
     <div className="space-y-6">
-      {/* Info */}
+      {/* Info Banner */}
       <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/50 px-4 py-3 text-sm text-muted-foreground">
         <Info className="h-4 w-4 shrink-0" />
-        <span>Templates werden per Lazy-Seeding beim ersten Zugriff eines Partners erstellt. Diese Übersicht zeigt alle Instanzen aller Tenants.</span>
+        <span>
+          Posts hier erstellen und freigeben. Freigegebene Posts sind in Zone 2 für Partner zur Kampagnenbuchung verfügbar.
+        </span>
       </div>
 
-      {/* Summary */}
-      <div className="grid grid-cols-3 gap-4">
-        {grouped.map(g => (
-          <Card key={g.key}>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">{g.label}</CardTitle>
-              <Palette className={`h-4 w-4 ${g.color}`} />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{g.templates.length}</div>
-              <p className="text-xs text-muted-foreground">{g.totalInstances} Instanzen gesamt</p>
-            </CardContent>
-          </Card>
-        ))}
+      {/* Filter + Stats */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div className="flex flex-wrap gap-1.5">
+          {BRANDS.map(b => (
+            <Badge
+              key={b.key}
+              variant={brandFilter === b.key ? 'default' : 'outline'}
+              className="cursor-pointer"
+              onClick={() => setBrandFilter(b.key)}
+            >
+              {b.label}
+            </Badge>
+          ))}
+        </div>
+        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+          <span>{templates?.length || 0} Posts</span>
+          <span>·</span>
+          <span className="text-emerald-600">{approvedCount} freigegeben</span>
+          <span>·</span>
+          <span>{draftCount} Entwürfe</span>
+        </div>
       </div>
 
-      {/* Brand Sections */}
-      {grouped.map(g => (
-        <Card key={g.key}>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Palette className={`h-5 w-5 ${g.color}`} />
-              {g.label}
-            </CardTitle>
-            <CardDescription>{g.templates.length} Template-Codes · {g.totalInstances} Tenant-Instanzen</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {g.templates.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-4 text-center">Keine Templates für {g.label}</p>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Code</TableHead>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Format</TableHead>
-                    <TableHead>Tenants</TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {g.templates.map(t => (
-                    <TableRow key={t.code}>
-                      <TableCell className="font-mono text-xs">{t.code}</TableCell>
-                      <TableCell className="font-medium">{t.name}</TableCell>
-                      <TableCell><Badge variant="outline">{t.formatType}</Badge></TableCell>
-                      <TableCell className="font-mono">{t.tenantCount}</TableCell>
-                      <TableCell>
-                        <Badge variant={t.active ? 'default' : 'secondary'}>
-                          {t.active ? 'Aktiv' : 'Inaktiv'}
-                        </Badge>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-        </Card>
-      ))}
+      {/* Post Creator (always visible) */}
+      <BrandPostCreator onCreated={handleRefresh} />
+
+      {/* Post Cards */}
+      {isLoading ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      ) : templates && templates.length > 0 ? (
+        <div className="space-y-6">
+          {templates.map(t => (
+            <BrandPostCard key={t.id} template={t} onRefresh={handleRefresh} />
+          ))}
+        </div>
+      ) : (
+        <div className="text-center py-12 text-muted-foreground">
+          <p className="text-sm">Noch keine Posts vorhanden. Erstellen Sie oben den ersten Post.</p>
+        </div>
+      )}
     </div>
   );
 }

@@ -147,9 +147,9 @@ export default function LeadManagerKampagnen({ contextMode = 'all', projectFilte
       const { data } = await supabase
         .from('social_templates')
         .select('*')
-        .eq('tenant_id', activeTenantId)
         .eq('brand_context', selectedContext)
         .eq('active', true)
+        .eq('approved', true)
         .order('code');
       return data || [];
     },

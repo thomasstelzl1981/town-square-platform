@@ -21,7 +21,6 @@ serve(async (req) => {
       });
     }
 
-    // Get user from token
     const token = authHeader.replace("Bearer ", "");
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     if (authError || !user) {
@@ -44,6 +43,8 @@ serve(async (req) => {
       personalization,
       creatives,
       partner_display_name,
+      template_ids,
+      campaign_name,
     } = body;
 
     if (!tenant_id) {
@@ -53,7 +54,7 @@ serve(async (req) => {
     }
 
     // Validate brand_context if provided
-    if (brand_context) {
+    if (brand_context && brand_context !== 'project') {
       const { data: brandAsset } = await supabase
         .from("social_brand_assets")
         .select("brand_context")
@@ -64,6 +65,47 @@ serve(async (req) => {
         return new Response(JSON.stringify({ error: "Invalid or inactive brand_context" }), {
           status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
+      }
+    }
+
+    // Validate selected templates are approved (if template_ids provided)
+    if (template_ids && Array.isArray(template_ids) && template_ids.length > 0) {
+      const { data: templates } = await supabase
+        .from("social_templates")
+        .select("id, approved, campaign_defaults")
+        .in("id", template_ids);
+      
+      const unapproved = (templates || []).filter((t: any) => !t.approved);
+      if (unapproved.length > 0) {
+        return new Response(JSON.stringify({ 
+          error: "Einige Templates sind nicht freigegeben",
+          unapproved_ids: unapproved.map((t: any) => t.id),
+        }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Calculate total credit cost from templates
+      const totalCredits = (templates || []).reduce((sum: number, t: any) => {
+        const defaults = t.campaign_defaults || {};
+        return sum + (defaults.credit_cost || 0);
+      }, 0);
+
+      // Credit preflight check
+      if (totalCredits > 0) {
+        const { data: preflight, error: preflightError } = await supabase.functions.invoke(
+          'sot-credit-preflight',
+          { body: { tenant_id, credits_required: totalCredits, action_code: 'SOCIAL_CAMPAIGN' } }
+        );
+        if (preflightError || !preflight?.allowed) {
+          return new Response(JSON.stringify({ 
+            error: "Nicht genügend Credits",
+            credits_required: totalCredits,
+            credits_available: preflight?.balance || 0,
+          }), {
+            status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
       }
     }
 
