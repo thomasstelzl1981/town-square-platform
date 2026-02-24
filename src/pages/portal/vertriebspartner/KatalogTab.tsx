@@ -3,7 +3,8 @@
  * Mit erweiterten Filtern: Lage, Typ, Preis, Provision, Rendite
  * + DASHBOARD_HEADER: Visitenkarte + Marktlage-Widget
  */
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { fetchPropertyImages } from '@/lib/fetchPropertyImages';
 import { Newspaper, Eye, EyeOff } from 'lucide-react';
 import { useExcludedListingIds, useToggleExclusion } from '@/hooks/usePartnerListingSelections';
 import { DESIGN } from '@/config/designManifest';
@@ -150,12 +151,29 @@ const KatalogTab = () => {
     }
   });
 
+  // Fetch hero images for listings
+  const [imageMap, setImageMap] = useState<Map<string, string>>(new Map());
+
+  useEffect(() => {
+    if (listings.length === 0) return;
+    const propertyIds = listings.map(l => l.id).filter(Boolean);
+    if (propertyIds.length === 0) return;
+    fetchPropertyImages(propertyIds).then(setImageMap);
+  }, [listings]);
+
   // Get unique cities for filter (including demo)
-  const allListings = useMemo(() => deduplicateByField(
-    demoPartnerListings as any[],
-    listings,
-    (item: any) => `${item.title}|${item.property_city}`
-  ), [demoPartnerListings, listings]);
+  const allListings = useMemo(() => {
+    const deduped = deduplicateByField(
+      demoPartnerListings as any[],
+      listings,
+      (item: any) => `${item.title}|${item.property_city}`
+    );
+    // Inject hero image URLs
+    return deduped.map((item: any) => ({
+      ...item,
+      hero_image_url: imageMap.get(item.id) || null,
+    }));
+  }, [demoPartnerListings, listings, imageMap]);
   
   const uniqueCities = useMemo(() => {
     const cities = [...new Set(allListings.map((l: any) => l.property_city).filter(Boolean))];
@@ -218,18 +236,30 @@ const KatalogTab = () => {
     {
       key: 'title',
       header: 'Objekt',
-      minWidth: '220px',
+      minWidth: '260px',
       render: (_: any, row: any) => (
-        <div className="flex items-center gap-2">
-          <PropertyAddressCell 
-            address={row.title} 
-            subtitle={`${row.property_address}, ${row.property_city}`} 
-          />
-          {row.isDemo && (
-            <Badge className="bg-emerald-500/15 text-emerald-600 border-emerald-500/30 text-xs px-1.5 py-0">
-              DEMO
-            </Badge>
+        <div className="flex items-center gap-3">
+          {row.hero_image_url ? (
+            <img 
+              src={row.hero_image_url} 
+              alt={row.title} 
+              className="w-12 h-9 rounded object-cover flex-shrink-0"
+              loading="lazy"
+            />
+          ) : (
+            <div className="w-12 h-9 rounded bg-muted flex-shrink-0" />
           )}
+          <div className="flex items-center gap-2">
+            <PropertyAddressCell 
+              address={row.title} 
+              subtitle={`${row.property_address}, ${row.property_city}`} 
+            />
+            {row.isDemo && (
+              <Badge className="bg-emerald-500/15 text-emerald-600 border-emerald-500/30 text-xs px-1.5 py-0">
+                DEMO
+              </Badge>
+            )}
+          </div>
         </div>
       )
     },
