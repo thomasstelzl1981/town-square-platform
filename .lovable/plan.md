@@ -1,185 +1,107 @@
 
+# Audit: Operative Desks — Routing, Zone-2 und Zone-3 Verschaltung
 
-# Marketing-Maschine Phase 1: Kategorisierte Kontaktbuecher in Zone 1
+## Ergebnis-Zusammenfassung
 
-## Ausgangslage
+| Desk | Routing | Z2-Mapping | Z3-Mapping | Status |
+|------|---------|------------|------------|--------|
+| Sales Desk | OK | MOD-09 OK | Kaufy OK | Funktional |
+| Finance Desk | OK | MOD-18 OK | Kein Z3 (korrekt) | Funktional |
+| Acquiary | OK | MOD-12 OK | Acquiary Website OK | Funktional |
+| Projekt Desk | OK | MOD-13 OK | Landing Pages OK | Funktional |
+| Pet Desk | OK | MOD-22 OK | Lennox Website OK | Funktional |
+| FutureRoom | OK | MOD-11 OK | FutureRoom Website OK | Funktional |
+| **Lead Desk** | **DEFEKT** | MOD-10 OK | Kaufy/SoT OK | **Routing-Bug** |
 
-Aktuell existieren fragmentierte Kontaktquellen:
-- **AdminKontaktbuch** (KI-Office): Allgemeines Kontaktbuch mit `scope: 'zone1_admin'`, nicht kategorisiert nach Geschaeftsbereich
-- **AcquiaryKontakte**: Eigener Kontakt-Pool via `contact_staging` Tabelle mit integrierter SOAT Search Engine
-- **SOAT Search Engine**: Funktionaler Orchestrator (Google Places + Apify + Firecrawl), aber nur im Acquiary Desk eingebettet
-- **sot-research-engine**: Edge Function existiert und arbeitet mit Google Places API, Apify und Firecrawl
+---
 
-**Probleme:**
-1. Nur Acquiary hat ein Kontaktbuch mit Recherche-Integration
-2. Lead Desk, Sales Desk, Finance Desk und Pet Desk haben keinen eigenen Kontakt-Tab
-3. Die SOAT Search Engine ist fest an Acquiary gekoppelt statt wiederverwendbar
-4. Das UI der Recherche ist rein funktional, aber nicht fuer Marketing-Volumen ausgelegt
+## Gefundene Probleme
 
-## Architektur-Entscheidung
+### 1. KRITISCH: Lead Desk fehlt in `adminDeskMap` (ManifestRouter.tsx)
 
-### Datenbank: Ein `desk_contact_book` Feld statt separater Tabellen
+**Datei:** `src/router/ManifestRouter.tsx`, Zeile 274-280
 
-Statt 6 separate Tabellen wird die bestehende `contact_staging`-Tabelle um ein `desk` Feld erweitert. Jeder Desk sieht nur seine eigenen Kontakte. Das vermeidet Schema-Explosion und nutzt bestehende RLS-Policies.
-
-### UI: Shared `DeskContactBook` Komponente
-
-Eine wiederverwendbare Komponente, die in jeden Operative Desk als neuer Tab eingehaengt wird.
-
-## Kategorien-Zuordnung zu Desks
-
-| Kategorie | Desk | Desk-Code |
-|-----------|------|-----------|
-| Family Offices & Immobilienunternehmen | Acquiary | `acquiary` |
-| Immobilienmakler | Sales Desk | `sales` |
-| Finanzvertriebe | Finance Desk | `finance` |
-| Finanzdienstleister | Finance Desk | `finance` |
-| Versicherungskaufleute | Lead Desk | `insurance` |
-| Hundepensionen, Hundehotels, Hundefriseure | Pet Desk | `pet` |
-
-## Umsetzungsplan
-
-### 1. Migration: `desk` Spalte auf `contact_staging`
-
-```sql
-ALTER TABLE contact_staging ADD COLUMN desk TEXT DEFAULT 'acquiary';
-CREATE INDEX idx_contact_staging_desk ON contact_staging(desk);
+Der `adminDeskMap` enthaelt alle Desks **ausser Lead Desk**:
+```
+const adminDeskMap = {
+  'sales-desk': SalesDesk,
+  'finance-desk': FinanceDesk,
+  acquiary: Acquiary,
+  'projekt-desk': ProjektDeskComponent,
+  'pet-desk': PetmanagerDesk,
+  // 'lead-desk': FEHLT!
+};
 ```
 
-Bestehende Acquiary-Kontakte behalten `desk = 'acquiary'`. Neue Kontakte werden dem jeweiligen Desk zugeordnet.
+**Auswirkung:** Lead Desk wird nicht ueber den Desk-Router (mit `/*` Wildcard) geladen, sondern faellt durch auf die Standard-Admin-Routes. Dort wird `LeadDeskDashboard` als flache Route ohne `/*` gemountet. Das bedeutet: **Alle Sub-Tabs (Kontakte, Pool, Zuweisungen, Provisionen, Monitor) sind nicht erreichbar** — beim Klick auf einen Tab wird eine Weiterleitung zum Dashboard ausgeloest.
 
-### 2. Migration: `soat_search_orders` um `desk` erweitern
+### 2. KRITISCH: Lead Desk fehlt im Skip-Filter (ManifestRouter.tsx)
 
-```sql
-ALTER TABLE soat_search_orders ADD COLUMN desk TEXT DEFAULT 'acquiary';
+**Datei:** `src/router/ManifestRouter.tsx`, Zeile 517
+
+Der Skip-Filter verhindert Doppel-Routing fuer Desks, aber `lead-desk` ist nicht enthalten:
+```
+if (['futureroom', 'sales-desk', 'finance-desk', 'acquiary', 'projekt-desk', 'pet-desk'].some(...)
+// 'lead-desk' FEHLT!
 ```
 
-Damit koennen Recherche-Auftraege desk-spezifisch gefiltert werden.
+**Auswirkung:** Die `routesManifest.ts`-Eintraege fuer `lead-desk/*` werden zusaetzlich als flache Routes gerendert, was zu Routing-Konflikten fuehrt.
 
-### 3. Shared Komponente: `DeskContactBook`
+### 3. MINOR: Pet Desk zeigt `moduleCode="MOD-05"` statt `MOD-22`
 
-**Datei:** `src/components/admin/desks/DeskContactBook.tsx`
+**Datei:** `src/pages/admin/desks/PetmanagerDesk.tsx`, Zeile 53
 
-Eine neue Komponente, die den gesamten AcquiaryKontakte-Code generalisiert:
-- Props: `desk: string`, `searchPresets: SearchPreset[]`, `title: string`
-- Enthaelt: SOAT Search Section (wiederverwendbar) + Kontakt-Pool
-- Filtert `contact_staging` und `soat_search_orders` nach `desk`
-- SearchPresets definieren pro Desk die typischen Suchintents (z.B. "Hundepension Muenchen" fuer Pet Desk)
+Der OperativeDeskShell zeigt `MOD-05` (das Client-Modul "Pets") statt `MOD-22` (das Manager-Modul "Pet Manager"). Laut `operativeDeskManifest.ts` ist der Manager-Module-Code `MOD-22`.
 
-```text
-Interface SearchPreset {
-  label: string;        // "Hundepensionen"
-  intent: string;       // "Hundepensionen Hundehotels"
-  icon?: LucideIcon;
-}
+### 4. MINOR: Finance Desk zeigt `moduleCode="MOD-18"` — kein Manager-Modul
+
+**Datei:** `src/pages/admin/desks/FinanceDesk.tsx`, Zeile 50
+
+Finance Desk hat laut Manifest keinen `managerModuleCode` (leer), sondern nur `clientModuleCode: 'MOD-18'`. Das ist korrekt so dargestellt, aber der `zoneFlow` zeigt `z2Manager: 'Finanzberater (Manager)'` — es gibt kein zugeordnetes Manager-Modul. Das ist ein semantischer Widerspruch, aber kein funktionaler Bug.
+
+---
+
+## Fix-Plan
+
+### Fix 1: Lead Desk in `adminDeskMap` eintragen
+
+In `src/router/ManifestRouter.tsx`, Zeile 274-280:
+
+```typescript
+const adminDeskMap: Record<string, React.ComponentType> = {
+  'sales-desk': SalesDesk,
+  'finance-desk': FinanceDesk,
+  acquiary: Acquiary,
+  'lead-desk': LeadDeskComponent,        // NEU
+  'projekt-desk': ProjektDeskComponent,
+  'pet-desk': React.lazy(...),
+};
 ```
 
-### 4. Neues UI-Konzept: Preset-Karten statt freie Textfelder
+### Fix 2: Lead Desk in Skip-Filter eintragen
 
-Statt des aktuellen minimalen Formulars (Titel + Intent + Anzahl) wird eine visuelle Preset-Auswahl angeboten:
+In `src/router/ManifestRouter.tsx`, Zeile 517:
 
-```text
-+--------------------------------------------------+
-| KONTAKT-RECHERCHE                                |
-|                                                  |
-| [Hundepension]  [Hundehotel]  [Hundesalon]       |  <-- Preset-Chips
-|                                                  |
-| Region: [_Muenchen___________]  Anzahl: [25]     |  <-- Region + Count
-|                                                  |
-| [Recherche starten]                              |
-+--------------------------------------------------+
-|                                                  |
-| ERGEBNISSE (Live-Stream)                         |
-| +----------------------------------------------+ |
-| | Firma           | Kontakt | Tel  | Mail | +  | |
-| | Lennox & Friends | M. Doe  | ...  | ...  | o | |
-| | Happy Paws       | K. Mue  | ...  | ...  | o | |
-| +----------------------------------------------+ |
-|                                                  |
-| KONTAKTBUCH (12 Kontakte)                        |
-| +----------------------------------------------+ |
-| | ...                                          | |
-| +----------------------------------------------+ |
-+--------------------------------------------------+
+```typescript
+if (['futureroom', 'sales-desk', 'finance-desk', 'acquiary', 'projekt-desk', 'pet-desk', 'lead-desk'].some(desk => route.path.startsWith(desk))) {
 ```
 
-Die Preset-Chips sind pro Desk vordefiniert:
-- **Pet Desk**: Hundepension, Hundehotel, Hundesalon, Tierbedarf
-- **Sales Desk**: Immobilienmakler, Hausverwaltung, Bautraeger
-- **Finance Desk**: Finanzvertrieb, Versicherungsmakler, Bankberater
-- **Lead Desk**: Versicherungskaufleute, Mehrfachagenten
-- **Acquiary**: Family Office, Immobilienunternehmen, Projektentwickler
+### Fix 3: Pet Desk `moduleCode` korrigieren
 
-### 5. Hook: `useDeskContacts` generalisieren
+In `src/pages/admin/desks/PetmanagerDesk.tsx`, Zeile 53:
 
-Basierend auf `useSoatSearchEngine.ts`, aber mit `desk`-Filter:
-
-```text
-useDeskContacts(desk: string)
-useDeskSoatOrders(desk: string)
-useDeskSoatResults(orderId: string)
-useCreateDeskSoatOrder(desk: string)
+```typescript
+moduleCode="MOD-22"    // statt "MOD-05"
 ```
 
-### 6. Desk-Routing: Neuer "Kontakte" Tab pro Desk
+---
 
-| Desk | Tab hinzufuegen | Route |
-|------|-----------------|-------|
-| Sales Desk | "Kontakte" | `/admin/sales-desk/kontakte` |
-| Finance Desk | "Kontakte" | `/admin/finance-desk/kontakte` |
-| Lead Desk | "Kontakte" | `/admin/lead-desk/kontakte` |
-| Pet Desk | "Kontakte" | `/admin/pet-desk/kontakte` |
-| Acquiary | Bestehendes Tab refactorn | `/admin/acquiary/kontakte` |
-
-### 7. AcquiaryKontakte refactorn
-
-Die bestehende `AcquiaryKontakte.tsx` wird auf die neue `DeskContactBook`-Komponente umgestellt. Der gesamte SOAT-Search-Code und Kontakt-Pool-Code wird in die Shared-Komponente verschoben.
-
-## Betroffene Dateien
+## Zusammenfassung der Aenderungen
 
 | Datei | Aenderung |
 |-------|-----------|
-| **Migration (neu)** | `desk` Spalte auf `contact_staging` und `soat_search_orders` |
-| **`src/components/admin/desks/DeskContactBook.tsx`** | Neue Shared-Komponente |
-| **`src/hooks/useDeskContacts.ts`** | Neuer generalisierter Hook |
-| **`src/pages/admin/desks/SalesDesk.tsx`** | Neuer "Kontakte" Tab + Route |
-| **`src/pages/admin/desks/FinanceDesk.tsx`** | Neuer "Kontakte" Tab + Route |
-| **`src/pages/admin/desks/LeadDesk.tsx`** | Neuer "Kontakte" Tab + Route |
-| **`src/pages/admin/desks/PetmanagerDesk.tsx`** | Neuer "Kontakte" Tab + Route |
-| **`src/pages/admin/acquiary/AcquiaryKontakte.tsx`** | Refactor auf DeskContactBook |
-| **`src/pages/admin/sales-desk/SalesDeskKontakte.tsx`** | Neue Sub-Page |
-| **`src/pages/admin/finance-desk/FinanceDeskKontakte.tsx`** | Neue Sub-Page |
-| **`src/pages/admin/lead-desk/LeadDeskKontakte.tsx`** | Neue Sub-Page |
-| **`src/pages/admin/petmanager/PetDeskKontakte.tsx`** | Neue Sub-Page |
+| `src/router/ManifestRouter.tsx` (Zeile 274) | `'lead-desk': LeadDeskComponent` in `adminDeskMap` einfuegen |
+| `src/router/ManifestRouter.tsx` (Zeile 517) | `'lead-desk'` zum Skip-Filter hinzufuegen |
+| `src/pages/admin/desks/PetmanagerDesk.tsx` (Zeile 53) | `moduleCode` von `MOD-05` auf `MOD-22` aendern |
 
-## Nicht betroffen
-
-- `sot-research-engine` Edge Function — bleibt unveraendert, wird bereits korrekt aufgerufen
-- `contacts` Tabelle (Zone-2 Tenant-Kontakte) — separates System
-- `AdminKontaktbuch` (KI-Office) — bleibt als uebergreifendes Admin-Kontaktbuch bestehen
-- Keine Modul-Freeze-Verletzung, da alle Aenderungen in `src/pages/admin/` und `src/components/admin/` liegen (nicht in Modul-Pfaden)
-
-## Zusammenfassung
-
-```text
-Desk-spezifischer Kontakt-Tab
-  |
-  v
-DeskContactBook (Shared Component)
-  |-- Preset-Chips (desk-spezifische Suchvorlagen)
-  |-- Region + Anzahl Eingabe
-  |-- [Recherche starten] -> useDeskSoatOrders(desk)
-  |       |
-  |       v
-  |   sot-research-engine (Google Places + Apify + Firecrawl)
-  |       |
-  |       v
-  |   Live-Ergebnisse (Realtime via soat_search_results)
-  |       |
-  |       v
-  |   [Uebernehmen] -> contact_staging (desk-spezifisch)
-  |
-  |-- Kontaktbuch (gefiltert nach desk)
-       |-- Suche, Filter, Inline-Details
-       |-- CSV-Export
-```
+Alle anderen 6 Desks (Sales, Finance, Acquiary, Projekt, Pet, FutureRoom) sind korrekt geroutet und mit Zone 2 und Zone 3 verschaltet.
