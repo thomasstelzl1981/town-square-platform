@@ -2,11 +2,12 @@
  * sot-renter-invite — Renter Invite Lifecycle (CONTRACT_RENTER_INVITE)
  * 
  * Actions:
- *   - send: Create invite + send email via Resend
+ *   - send: Create invite + send email via user mail account or Resend fallback
  *   - accept: Validate token, provision renter org, grant data room access
  */
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { sendViaUserAccountOrResend } from "../_shared/userMailSend.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -92,25 +93,25 @@ async function handleSend(supabase: any, req: Request, body: any) {
     p_payload: { invite_id: invite.id, lease_id, email_hash: email.substring(0, 3) + "***" },
   });
 
-  // Send email via Resend
-  const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
-  if (RESEND_API_KEY) {
-    const acceptUrl = `${supabaseUrl}/functions/v1/sot-renter-invite`;
-    await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: { "Authorization": `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        from: "System of a Town <noreply@systemofatown.de>",
-        to: email,
-        subject: "Einladung zum Mieter-Portal",
-        html: `<div style="font-family:sans-serif;font-size:14px;line-height:1.6;">
-          <h2>Sie wurden zum Mieter-Portal eingeladen</h2>
-          <p>Ihr Vermieter hat Sie eingeladen, dem Mieter-Portal beizutreten.</p>
-          <p>Ihr Einladungscode: <strong>${inviteToken}</strong></p>
-          <p>Dieser Code ist 72 Stunden gueltig.</p>
-        </div>`,
-      }),
-    });
+  // Send email via user's connected mail account (preferred) or Resend fallback
+  const sendResult = await sendViaUserAccountOrResend({
+    supabase,
+    userId: user.id,
+    to: [email],
+    subject: "Einladung zum Mieter-Portal",
+    bodyHtml: `<div style="font-family:sans-serif;font-size:14px;line-height:1.6;">
+      <h2>Sie wurden zum Mieter-Portal eingeladen</h2>
+      <p>Ihr Vermieter hat Sie eingeladen, dem Mieter-Portal beizutreten.</p>
+      <p>Ihr Einladungscode: <strong>${inviteToken}</strong></p>
+      <p>Dieser Code ist 72 Stunden gueltig.</p>
+    </div>`,
+    resendFrom: "System of a Town <noreply@systemofatown.de>",
+  });
+
+  if (sendResult.method === 'skipped') {
+    console.warn('[sot-renter-invite] No mail account and no RESEND_API_KEY — email not sent');
+  } else {
+    console.log(`[sot-renter-invite] Email sent via ${sendResult.method}: ${sendResult.messageId || 'n/a'}`);
   }
 
   return new Response(
