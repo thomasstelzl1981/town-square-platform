@@ -660,6 +660,13 @@ export const zone3Websites: Record<string, WebsiteDefinition> = {
       { path: "loesungen/mietsonderverwaltung", component: "SotMietsonderverwaltung", title: "Digitale Mietsonderverwaltung" },
       { path: "loesungen/immobilienverwaltung", component: "SotImmobilienverwaltung", title: "Digitale Immobilienverwaltung" },
       { path: "loesungen/finanzdienstleistungen", component: "SotFinanzdienstleistungen", title: "Finanzdienstleistungen" },
+      // Ratgeber (Supporting Content Cluster)
+      { path: "ratgeber/mietsonderverwaltung-vs-weg", component: "RatgeberMsvVsWeg", title: "MSV vs. WEG-Verwaltung" },
+      { path: "ratgeber/nebenkostenabrechnung-vermieter", component: "RatgeberNebenkostenabrechnung", title: "Nebenkostenabrechnung Ratgeber" },
+      { path: "ratgeber/hausverwaltung-wechseln", component: "RatgeberImmobilienverwalterWechseln", title: "Hausverwaltung wechseln" },
+      { path: "ratgeber/immobilien-portfolioanalyse", component: "RatgeberPortfolioAnalyse", title: "Portfolioanalyse Ratgeber" },
+      { path: "ratgeber/immobilienfinanzierung-kapitalanleger", component: "RatgeberImmobilienfinanzierung", title: "Immobilienfinanzierung Ratgeber" },
+      { path: "ratgeber/renditeberechnung-immobilien", component: "RatgeberRenditeberechnung", title: "Renditeberechnung Ratgeber" },
       // Legacy redirects handled via component redirects
       { path: "real-estate", component: "SotPlattform", title: "Plattform" },
       { path: "finance", component: "SotPlattform", title: "Plattform" },
