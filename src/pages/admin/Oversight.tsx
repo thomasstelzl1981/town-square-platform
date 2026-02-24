@@ -37,6 +37,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
+import { DESIGN } from '@/config/designManifest';
 
 interface OverviewStats {
   organizations: number;
@@ -234,11 +235,11 @@ export default function Oversight() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className={DESIGN.SPACING.SECTION}>
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-bold">System-Übersicht</h1>
-          <p className="text-muted-foreground">
+          <h1 className={DESIGN.TYPOGRAPHY.PAGE_TITLE}>System-Übersicht</h1>
+          <p className={DESIGN.TYPOGRAPHY.MUTED}>
             Systemweite Übersicht über alle Tenants, Immobilien und Module (Read-only)
           </p>
         </div>
@@ -251,7 +252,7 @@ export default function Oversight() {
       </div>
 
       {/* Global Stats */}
-      <div className="grid grid-cols-6 gap-4">
+      <div className={DESIGN.KPI_GRID.FULL}>
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -320,7 +321,7 @@ export default function Oversight() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Public Listings
+              Öffentliche Inserate
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -334,7 +335,7 @@ export default function Oversight() {
 
       <Tabs defaultValue="tenants">
         <TabsList>
-          <TabsTrigger value="tenants">Tenants</TabsTrigger>
+          <TabsTrigger value="tenants">Mandanten</TabsTrigger>
           <TabsTrigger value="properties">Immobilien</TabsTrigger>
           <TabsTrigger value="finance">Finance Pakete</TabsTrigger>
           <TabsTrigger value="modules">Module</TabsTrigger>
@@ -428,7 +429,7 @@ export default function Oversight() {
                         <TableCell className="text-right">{prop.unit_count}</TableCell>
                         <TableCell>
                           {prop.is_public_listing ? (
-                            <Badge variant="default" className="bg-green-600"><Globe className="h-3 w-3 mr-1" />Public</Badge>
+                            <Badge variant="default" className="bg-green-600"><Globe className="h-3 w-3 mr-1" />Öffentlich</Badge>
                           ) : (
                             <Badge variant="secondary">Privat</Badge>
                           )}

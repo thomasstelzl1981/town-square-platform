@@ -9,51 +9,28 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
+  Card, CardContent, CardDescription, CardHeader, CardTitle,
 } from '@/components/ui/card';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
 } from '@/components/ui/dialog';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Plus, Loader2, Users, Trash2, AlertTriangle, Pencil, UserPlus } from 'lucide-react';
 import { format } from 'date-fns';
+import { de } from 'date-fns/locale';
 import { PdfExportFooter } from '@/components/pdf';
 import { ROLES_CATALOG } from '@/constants/rolesMatrix';
+import { DESIGN } from '@/config/designManifest';
 
 type Membership = Tables<'memberships'>;
 type Organization = Tables<'organizations'>;
@@ -92,7 +69,6 @@ const ROLES: { value: MembershipRole; label: string; restricted?: boolean; descr
   })),
 ];
 
-/** Resolve display role for a membership by checking user_roles for super_user */
 function resolveDisplayRole(
   membershipRole: string,
   userId: string,
@@ -129,7 +105,6 @@ export default function UsersPage() {
   const [superUserIds, setSuperUserIds] = useState<Set<string>>(new Set());
   const [profilesMap, setProfilesMap] = useState<Record<string, ProfileInfo>>({});
   
-  // Create membership dialog
   const [createOpen, setCreateOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
@@ -139,17 +114,14 @@ export default function UsersPage() {
     role: '' as MembershipRole | '',
   });
 
-  // Edit membership dialog
   const [editTarget, setEditTarget] = useState<Membership | null>(null);
   const [editRole, setEditRole] = useState<MembershipRole | ''>('');
   const [editing, setEditing] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
 
-  // Delete confirmation
   const [deleteTarget, setDeleteTarget] = useState<Membership | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  // Create user dialog
   const [createUserOpen, setCreateUserOpen] = useState(false);
   const [creatingUser, setCreatingUser] = useState(false);
   const [createUserError, setCreateUserError] = useState<string | null>(null);
@@ -159,7 +131,6 @@ export default function UsersPage() {
     setLoading(true);
     setError(null);
     try {
-      // Fetch organizations, user_roles (super_user), and profiles in parallel
       let membershipQuery = supabase.from('memberships').select('*');
       if (orgFilter) {
         membershipQuery = membershipQuery.eq('tenant_id', orgFilter);
@@ -177,19 +148,17 @@ export default function UsersPage() {
       setOrganizations(orgsRes.data || []);
       setMemberships(membershipRes.data || []);
 
-      // Build super_user lookup set
       const suIds = new Set<string>();
       (userRolesRes.data || []).forEach(ur => suIds.add(ur.user_id));
       setSuperUserIds(suIds);
 
-      // Build profiles lookup map
       const pMap: Record<string, ProfileInfo> = {};
       (profilesRes.data || []).forEach(p => {
         pMap[p.id] = { email: p.email, display_name: p.display_name };
       });
       setProfilesMap(pMap);
     } catch (err: unknown) {
-      setError((err instanceof Error ? err.message : String(err)) || 'Failed to fetch data');
+      setError((err instanceof Error ? err.message : String(err)) || 'Fehler beim Laden der Daten');
     }
     setLoading(false);
   }
@@ -207,34 +176,27 @@ export default function UsersPage() {
   };
 
   const canEditMembership = (membership: Membership) => {
-    // Can't edit your own membership
     if (membership.user_id === user?.id) return false;
-    // Platform admin can edit any
     if (isPlatformAdmin) return true;
-    // org_admin cannot edit platform_admin memberships
     if (membership.role === 'platform_admin') return false;
     return true;
   };
 
   const canDeleteMembership = (membership: Membership) => {
-    // Can't delete your own membership
     if (membership.user_id === user?.id) return false;
-    // Platform admin can delete any
     if (isPlatformAdmin) return true;
-    // org_admin cannot delete platform_admin memberships
     if (membership.role === 'platform_admin') return false;
     return true;
   };
 
   const handleCreate = async () => {
     if (!newMembership.user_id || !newMembership.tenant_id || !newMembership.role) {
-      setCreateError('All fields are required');
+      setCreateError('Alle Felder sind erforderlich');
       return;
     }
 
-    // Only platform_admin can create platform_admin memberships
     if (newMembership.role === 'platform_admin' && !isPlatformAdmin) {
-      setCreateError('Only platform admins can assign the platform_admin role');
+      setCreateError('Nur Platform Admins können die Platform-Admin-Rolle vergeben');
       return;
     }
 
@@ -258,9 +220,9 @@ export default function UsersPage() {
     } catch (err: unknown) {
       const errMsg = err instanceof Error ? err.message : String(err);
       if (errMsg.includes('duplicate') || (err as { code?: string })?.code === '23505') {
-        setCreateError('This user already has a membership in this organization');
+        setCreateError('Dieser Benutzer hat bereits eine Mitgliedschaft in dieser Organisation');
       } else {
-        setCreateError(errMsg || 'Failed to create membership');
+        setCreateError(errMsg || 'Mitgliedschaft konnte nicht erstellt werden');
       }
     }
     setCreating(false);
@@ -269,9 +231,8 @@ export default function UsersPage() {
   const handleEdit = async () => {
     if (!editTarget || !editRole) return;
 
-    // Only platform_admin can assign platform_admin role
     if (editRole === 'platform_admin' && !isPlatformAdmin) {
-      setEditError('Only platform admins can assign the platform_admin role');
+      setEditError('Nur Platform Admins können die Platform-Admin-Rolle vergeben');
       return;
     }
 
@@ -290,7 +251,7 @@ export default function UsersPage() {
       setEditRole('');
       fetchData();
     } catch (err: unknown) {
-      setEditError((err instanceof Error ? err.message : String(err)) || 'Failed to update membership');
+      setEditError((err instanceof Error ? err.message : String(err)) || 'Mitgliedschaft konnte nicht aktualisiert werden');
     }
     setEditing(false);
   };
@@ -308,7 +269,7 @@ export default function UsersPage() {
       if (error) throw error;
       fetchData();
     } catch (err: unknown) {
-      setError((err instanceof Error ? err.message : String(err)) || 'Failed to delete membership');
+      setError((err instanceof Error ? err.message : String(err)) || 'Mitgliedschaft konnte nicht entfernt werden');
     }
     setDeleting(false);
     setDeleteTarget(null);
@@ -361,11 +322,11 @@ export default function UsersPage() {
   };
 
   return (
-    <div className="space-y-6" ref={contentRef}>
+    <div className={DESIGN.SPACING.SECTION} ref={contentRef}>
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Benutzer & Mitgliedschaften</h2>
-          <p className="text-muted-foreground">Benutzerrollen und Organisationszugriff verwalten</p>
+          <h2 className={DESIGN.TYPOGRAPHY.PAGE_TITLE}>Benutzer & Mitgliedschaften</h2>
+          <p className={DESIGN.TYPOGRAPHY.MUTED}>Benutzerrollen und Organisationszugriff verwalten</p>
         </div>
         <div className="flex gap-2">
           {isPlatformAdmin && (
@@ -449,7 +410,7 @@ export default function UsersPage() {
                 </Select>
                 {!isPlatformAdmin && (
                   <p className="text-xs text-muted-foreground">
-                    Platform Admin role can only be assigned by platform admins
+                    Die Platform-Admin-Rolle kann nur von Platform Admins vergeben werden
                   </p>
                 )}
               </div>
@@ -479,8 +440,8 @@ export default function UsersPage() {
           <CardTitle>Mitgliedschaften</CardTitle>
           <CardDescription>
             {orgFilter 
-              ? `Filtered by organization: ${getOrgName(orgFilter)}`
-              : 'All memberships across organizations'}
+              ? `Gefiltert nach Organisation: ${getOrgName(orgFilter)}`
+              : 'Alle Mitgliedschaften über alle Organisationen'}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -498,10 +459,10 @@ export default function UsersPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Benutzer</TableHead>
-                  <TableHead>Organization</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>Organisation</TableHead>
+                  <TableHead>Rolle</TableHead>
+                  <TableHead>Erstellt</TableHead>
+                  <TableHead className="text-right">Aktionen</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -523,7 +484,7 @@ export default function UsersPage() {
                         )}
                       </div>
                       {membership.user_id === user?.id && (
-                        <Badge variant="outline" className="ml-2 mt-1">You</Badge>
+                        <Badge variant="outline" className="ml-2 mt-1">Du</Badge>
                       )}
                     </TableCell>
                     <TableCell>{getOrgName(membership.tenant_id)}</TableCell>
@@ -533,7 +494,7 @@ export default function UsersPage() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-muted-foreground">
-                      {format(new Date(membership.created_at), 'MMM d, yyyy')}
+                      {format(new Date(membership.created_at), 'dd.MM.yyyy', { locale: de })}
                     </TableCell>
                     <TableCell className="text-right space-x-1">
                       {canEditMembership(membership) && (
@@ -568,9 +529,9 @@ export default function UsersPage() {
       <Dialog open={!!editTarget} onOpenChange={() => setEditTarget(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Edit Membership</DialogTitle>
+            <DialogTitle>Mitgliedschaft bearbeiten</DialogTitle>
             <DialogDescription>
-              Change the role for this membership.
+              Rolle für diese Mitgliedschaft ändern.
             </DialogDescription>
           </DialogHeader>
 
@@ -584,27 +545,27 @@ export default function UsersPage() {
           {editTarget && (
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label>User ID</Label>
+                <Label>Benutzer-ID</Label>
                 <p className="font-mono text-sm text-muted-foreground">
                   {editTarget.user_id}
                 </p>
               </div>
 
               <div className="space-y-2">
-                <Label>Organization</Label>
+                <Label>Organisation</Label>
                 <p className="text-sm">
                   {getOrgName(editTarget.tenant_id)}
                 </p>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="edit-role">New Role</Label>
+                <Label htmlFor="edit-role">Neue Rolle</Label>
                 <Select
                   value={editRole}
                   onValueChange={(value) => setEditRole(value as MembershipRole)}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select role" />
+                    <SelectValue placeholder="Rolle wählen" />
                   </SelectTrigger>
                   <SelectContent>
                     {availableRoles.map(role => (
@@ -620,10 +581,10 @@ export default function UsersPage() {
           )}
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditTarget(null)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setEditTarget(null)}>Abbrechen</Button>
             <Button onClick={handleEdit} disabled={editing || !editRole}>
               {editing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Save Changes
+              Speichern
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -633,16 +594,16 @@ export default function UsersPage() {
       <AlertDialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Remove Membership</AlertDialogTitle>
+            <AlertDialogTitle>Mitgliedschaft entfernen</AlertDialogTitle>
             <AlertDialogDescription>
-              This will remove the user's role in this organization. This action cannot be undone.
+              Die Rolle des Benutzers in dieser Organisation wird entfernt. Diese Aktion kann nicht rückgängig gemacht werden.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} disabled={deleting}>
               {deleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Remove
+              Entfernen
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -710,7 +671,7 @@ export default function UsersPage() {
       {/* PDF Export */}
       <PdfExportFooter
         contentRef={contentRef}
-        documentTitle="Users & Memberships"
+        documentTitle="Benutzer & Mitgliedschaften"
         subtitle={`${memberships.length} Mitgliedschaften`}
         moduleName="Zone 1 Admin"
       />
