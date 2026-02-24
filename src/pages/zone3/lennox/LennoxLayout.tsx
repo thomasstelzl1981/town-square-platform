@@ -6,6 +6,7 @@ import { Menu, X, User, LogIn, ShoppingBag, Handshake, MapPin } from 'lucide-rea
 import { useState } from 'react';
 import { useZ3Auth } from '@/hooks/useZ3Auth';
 import { LENNOX as C } from './lennoxTheme';
+import { SEOHead } from '@/components/zone3/shared/SEOHead';
 import { WebsitePinGate } from '@/components/zone3/WebsitePinGate';
 import { useZone3Setting } from '@/hooks/useZone3Settings';
 import lennoxPatch from '@/assets/logos/lennox_logo_patch.jpeg';
@@ -36,6 +37,18 @@ export default function LennoxLayout() {
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: C.cream }}>
+      <SEOHead
+        brand="lennox"
+        page={{
+          title: 'Premium Dog Resorts & Services',
+          description: 'Hundebetreuung, Gassi-Service und Premium-Zubehör — von zertifizierten Partnern in Ihrer Nähe.',
+          path: location.pathname.replace('/website/tierservice', '') || '/',
+        }}
+        services={[{
+          name: 'Premium Hundebetreuung',
+          description: 'Zertifizierte Partner für Daycare, Gassi-Service und Hundetraining in Ihrer Nähe.',
+        }]}
+      />
       {/* Header */}
       <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b" style={{ borderColor: C.sandLight }}>
         <div className="max-w-6xl mx-auto flex items-center justify-between h-16 px-5">

@@ -7,7 +7,7 @@ import { Outlet, Link, useLocation } from 'react-router-dom';
 import { SotFooter } from '@/components/zone3/sot/SotFooter';
 import { SotLoginTransition } from '@/components/zone3/sot/SotLoginTransition';
 import { useSotTheme } from '@/hooks/useSotTheme';
-import { useDocumentMeta } from '@/hooks/useDocumentMeta';
+import { SEOHead } from '@/components/zone3/shared/SEOHead';
 import { cn } from '@/lib/utils';
 import { Sun, Moon, User, Menu, X } from 'lucide-react';
 import { WebsitePinGate } from '@/components/zone3/WebsitePinGate';
@@ -18,11 +18,11 @@ import '@/styles/sot-premium.css';
 
 const navItems = [
   { label: 'PLATTFORM', href: '/website/sot/plattform' },
+  { label: 'LÖSUNGEN', href: '/website/sot/loesungen/mietsonderverwaltung' },
   { label: 'INTELLIGENZ', href: '/website/sot/intelligenz' },
   { label: 'MODULE', href: '/website/sot/module' },
   { label: 'PREISE', href: '/website/sot/preise' },
   { label: 'DEMO', href: '/website/sot/demo' },
-  { label: 'KARRIERE', href: '/website/sot/karriere' },
 ];
 
 export default function SotLayout() {
@@ -32,11 +32,7 @@ export default function SotLayout() {
   const [pinVerified, setPinVerified] = useState(() => sessionStorage.getItem('sot_pin_verified') === 'true');
   const { data: pinGateValue, isLoading: pinGateLoading } = useZone3Setting('pin_gate_enabled');
   const pinGateEnabled = pinGateValue === 'true';
-  useDocumentMeta({
-    title: 'System of a Town — Digitalisierung greifbar machen. Für Unternehmer und Vermieter.',
-    description: 'Chaos beseitigen. Struktur schaffen. KI nutzen. 15+ Module für Immobilien, Finanzen, Fuhrpark, Dokumente und mehr — ohne große Investitionen.',
-    ogType: 'website',
-  });
+  // SEOHead rendered in JSX below
 
   if (pinGateLoading) {
     return <div className="min-h-screen flex items-center justify-center"><div className="h-6 w-6 border-2 border-current border-t-transparent rounded-full animate-spin" /></div>;
@@ -49,6 +45,19 @@ export default function SotLayout() {
   return (
     <SotLoginTransition>
       <div className={`${themeClass} min-h-screen flex flex-col bg-background text-foreground`}>
+        <SEOHead
+          brand="sot"
+          page={{
+            title: 'Digitalisierung greifbar machen',
+            description: 'Chaos beseitigen. Struktur schaffen. KI nutzen. 15+ Module für Immobilien, Finanzen, Fuhrpark, Dokumente und mehr — ohne große Investitionen.',
+            path: location.pathname.replace('/website/sot', '') || '/',
+          }}
+          services={[
+            { name: 'Digitale Mietsonderverwaltung', description: 'Professionelle Sonderverwaltung für Mietimmobilien — digital, transparent, rechtssicher.' },
+            { name: 'Immobilienverwaltung', description: 'KI-gestützte Verwaltung für Miet- und Gewerbeimmobilien mit digitaler Mieterakte.' },
+            { name: 'Finanzdienstleistungen', description: 'Finanzierung, Analyse und Reporting für Immobilieninvestments.' },
+          ]}
+        />
         {/* Header */}
         <header className="sticky top-0 z-50 border-b border-border/40 bg-background/80 backdrop-blur-xl">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">

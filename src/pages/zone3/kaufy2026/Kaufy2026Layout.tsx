@@ -14,7 +14,7 @@ import { cn } from '@/lib/utils';
 import { KaufyArmstrongWidget } from '@/components/zone3/kaufy2026/KaufyArmstrongWidget';
 import { WebsitePinGate } from '@/components/zone3/WebsitePinGate';
 import { useZone3Setting } from '@/hooks/useZone3Settings';
-import { useDocumentMeta } from '@/hooks/useDocumentMeta';
+import { SEOHead } from '@/components/zone3/shared/SEOHead';
 
 const ARMSTRONG_STORAGE_KEY = 'kaufy_armstrong_enabled';
 
@@ -35,11 +35,7 @@ export default function Kaufy2026Layout() {
     localStorage.setItem(ARMSTRONG_STORAGE_KEY, String(armstrongEnabled));
   }, [armstrongEnabled]);
 
-  useDocumentMeta({
-    title: 'KAUFY — KI-Plattform für Kapitalanlageimmobilien',
-    description: 'Finden, finanzieren und verwalten Sie Kapitalanlageimmobilien mit KI-gestützter Analyse. Investment-Rechner, Marktdaten und persönliche Beratung.',
-    ogType: 'website',
-  });
+  // SEOHead rendered in JSX below
 
   if (pinGateLoading) {
     return <div className="min-h-screen flex items-center justify-center"><div className="h-6 w-6 border-2 border-current border-t-transparent rounded-full animate-spin" /></div>;
@@ -87,6 +83,18 @@ export default function Kaufy2026Layout() {
 
   return (
     <div className="min-h-screen bg-[hsl(210,40%,97%)] light" data-theme="light" style={lightModeVars}>
+      <SEOHead
+        brand="kaufy"
+        page={{
+          title: 'KI-Plattform für Kapitalanlageimmobilien',
+          description: 'Finden, finanzieren und verwalten Sie Kapitalanlageimmobilien mit KI-gestützter Analyse. Investment-Rechner, Marktdaten und persönliche Beratung.',
+          path: location.pathname.replace('/website/kaufy', '') || '/',
+        }}
+        services={[{
+          name: 'KI-gestützte Immobiliensuche',
+          description: 'Kapitalanlageimmobilien finden, bewerten und finanzieren – auf einer Plattform.',
+        }]}
+      />
       {/* Main Container */}
       <div className="kaufy2026-container">
         {/* Header */}

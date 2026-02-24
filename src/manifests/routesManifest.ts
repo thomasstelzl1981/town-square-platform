@@ -656,6 +656,10 @@ export const zone3Websites: Record<string, WebsiteDefinition> = {
       { path: "faq", component: "SotFAQ", title: "FAQ" },
       { path: "impressum", component: "SotImpressum", title: "Impressum" },
       { path: "datenschutz", component: "SotDatenschutz", title: "Datenschutz" },
+      // Solution Landing Pages (SEO Hub)
+      { path: "loesungen/mietsonderverwaltung", component: "SotMietsonderverwaltung", title: "Digitale Mietsonderverwaltung" },
+      { path: "loesungen/immobilienverwaltung", component: "SotImmobilienverwaltung", title: "Digitale Immobilienverwaltung" },
+      { path: "loesungen/finanzdienstleistungen", component: "SotFinanzdienstleistungen", title: "Finanzdienstleistungen" },
       // Legacy redirects handled via component redirects
       { path: "real-estate", component: "SotPlattform", title: "Plattform" },
       { path: "finance", component: "SotPlattform", title: "Plattform" },
