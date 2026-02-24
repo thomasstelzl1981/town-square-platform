@@ -15,6 +15,7 @@ import { KostenDashboard } from '@/pages/portal/communication-pro/agenten/Kosten
 import { SystemPreisliste } from '@/components/armstrong/SystemPreisliste';
 import { EmailEnrichmentCard } from '@/components/armstrong/EmailEnrichmentCard';
 import { WhatsAppArmstrongCard } from '@/components/armstrong/WhatsAppArmstrongCard';
+import { RegistryImportCard } from '@/components/armstrong/RegistryImportCard';
 import { AktionsKatalog } from '@/pages/portal/communication-pro/agenten/AktionsKatalog';
 
 const steps = [
@@ -115,6 +116,7 @@ export default function ArmstrongInfoPage() {
 
       <EmailEnrichmentCard />
       <WhatsAppArmstrongCard />
+      <RegistryImportCard />
 
       {/* ─── AKTIONSKATALOG ─── */}
       <Separator className="my-2" />
