@@ -389,79 +389,76 @@ export default function AdminKontaktbuch() {
       </Card>
 
       {/* ═══ TABELLE ═══ */}
-      {filteredContacts.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-12 border rounded-lg">
-          <User className="h-12 w-12 text-muted-foreground/50 mb-4" />
-          <h3 className="text-lg font-medium mb-2">Keine Kontakte</h3>
-          <p className="text-muted-foreground text-center mb-4">Erstellen Sie Ihren ersten Kontakt oder importieren Sie aus der Recherche.</p>
-          <Button onClick={() => setCreateDialogOpen(true)}><Plus className="h-4 w-4 mr-2" />Kontakt erstellen</Button>
-        </div>
-      ) : (
-        <div className="overflow-x-auto border rounded-md">
-          <Table>
-            <TableHeader>
+      <div className="overflow-x-auto border rounded-md">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="min-w-[60px]">Anrede</TableHead>
+              <TableHead className="min-w-[100px]">Vorname</TableHead>
+              <TableHead className="min-w-[100px]">Nachname</TableHead>
+              <TableHead className="min-w-[140px]">Firma</TableHead>
+              <TableHead className="min-w-[120px]">Kategorie</TableHead>
+              <TableHead className="min-w-[170px]">E-Mail</TableHead>
+              <TableHead className="min-w-[110px]">Mobil</TableHead>
+              <TableHead className="min-w-[110px]">Telefon</TableHead>
+              <TableHead className="min-w-[140px]">Straße</TableHead>
+              <TableHead className="min-w-[60px]">PLZ</TableHead>
+              <TableHead className="min-w-[100px]">Ort</TableHead>
+              <TableHead className="min-w-[90px]">Permission</TableHead>
+              <TableHead className="min-w-[80px]">DNC</TableHead>
+              <TableHead className="min-w-[80px]">Quality</TableHead>
+              <TableHead className="min-w-[110px]">Letzter Kontakt</TableHead>
+              <TableHead className="w-20">Aktionen</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filteredContacts.length === 0 ? (
               <TableRow>
-                <TableHead className="min-w-[60px]">Anrede</TableHead>
-                <TableHead className="min-w-[100px]">Vorname</TableHead>
-                <TableHead className="min-w-[100px]">Nachname</TableHead>
-                <TableHead className="min-w-[140px]">Firma</TableHead>
-                <TableHead className="min-w-[120px]">Kategorie</TableHead>
-                <TableHead className="min-w-[170px]">E-Mail</TableHead>
-                <TableHead className="min-w-[110px]">Mobil</TableHead>
-                <TableHead className="min-w-[110px]">Telefon</TableHead>
-                <TableHead className="min-w-[140px]">Straße</TableHead>
-                <TableHead className="min-w-[60px]">PLZ</TableHead>
-                <TableHead className="min-w-[100px]">Ort</TableHead>
-                <TableHead className="min-w-[90px]">Permission</TableHead>
-                <TableHead className="min-w-[80px]">DNC</TableHead>
-                <TableHead className="min-w-[80px]">Quality</TableHead>
-                <TableHead className="min-w-[110px]">Letzter Kontakt</TableHead>
-                <TableHead className="w-20">Aktionen</TableHead>
+                <TableCell colSpan={16} className="text-center py-8 text-muted-foreground">
+                  Keine Kontakte vorhanden — erstellen oder aus Recherche importieren
+                </TableCell>
               </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredContacts.map(c => (
-                <TableRow
-                  key={c.id}
-                  className={`cursor-pointer ${selectedContact?.id === c.id ? 'bg-primary/5 ring-1 ring-primary/20' : 'hover:bg-muted/50'}`}
-                  onClick={() => handleRowClick(c)}
-                >
-                  <TableCell className="text-xs">{c.salutation || '—'}</TableCell>
-                  <TableCell className="text-sm">{c.first_name || '—'}</TableCell>
-                  <TableCell className="text-sm font-medium">{c.last_name || '—'}</TableCell>
-                  <TableCell className="text-sm">{c.company || '—'}</TableCell>
-                  <TableCell>{getCategoryBadge(c.category)}</TableCell>
-                  <TableCell className="text-xs">{c.email || '—'}</TableCell>
-                  <TableCell className="text-xs">{c.phone_mobile || '—'}</TableCell>
-                  <TableCell className="text-xs">{c.phone || '—'}</TableCell>
-                  <TableCell className="text-xs">{c.street || '—'}</TableCell>
-                  <TableCell className="text-xs">{c.postal_code || '—'}</TableCell>
-                  <TableCell className="text-xs">{c.city || '—'}</TableCell>
-                  <TableCell>{getPermissionBadge(c.permission_status)}</TableCell>
-                  <TableCell>
-                    {c.do_not_contact
-                      ? <ShieldOff className="h-4 w-4 text-destructive" />
-                      : <ShieldCheck className="h-4 w-4 text-green-600" />
-                    }
-                  </TableCell>
-                  <TableCell>{getQualityBadge(c.quality_status)}</TableCell>
-                  <TableCell className="text-xs text-muted-foreground">{c.last_contacted_at ? new Date(c.last_contacted_at).toLocaleDateString('de-DE') : '—'}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { handleRowClick(c); setEditMode(true); }}>
-                        <Pencil className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => deleteMutation.mutate(c.id)}>
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      )}
+            ) : filteredContacts.map(c => (
+              <TableRow
+                key={c.id}
+                className={`cursor-pointer ${selectedContact?.id === c.id ? 'bg-primary/5 ring-1 ring-primary/20' : 'hover:bg-muted/50'}`}
+                onClick={() => handleRowClick(c)}
+              >
+                <TableCell className="text-xs">{c.salutation || '—'}</TableCell>
+                <TableCell className="text-sm">{c.first_name || '—'}</TableCell>
+                <TableCell className="text-sm font-medium">{c.last_name || '—'}</TableCell>
+                <TableCell className="text-sm">{c.company || '—'}</TableCell>
+                <TableCell>{getCategoryBadge(c.category)}</TableCell>
+                <TableCell className="text-xs">{c.email || '—'}</TableCell>
+                <TableCell className="text-xs">{c.phone_mobile || '—'}</TableCell>
+                <TableCell className="text-xs">{c.phone || '—'}</TableCell>
+                <TableCell className="text-xs">{c.street || '—'}</TableCell>
+                <TableCell className="text-xs">{c.postal_code || '—'}</TableCell>
+                <TableCell className="text-xs">{c.city || '—'}</TableCell>
+                <TableCell>{getPermissionBadge(c.permission_status)}</TableCell>
+                <TableCell>
+                  {c.do_not_contact
+                    ? <ShieldOff className="h-4 w-4 text-destructive" />
+                    : <ShieldCheck className="h-4 w-4 text-green-600" />
+                  }
+                </TableCell>
+                <TableCell>{getQualityBadge(c.quality_status)}</TableCell>
+                <TableCell className="text-xs text-muted-foreground">{c.last_contacted_at ? new Date(c.last_contacted_at).toLocaleDateString('de-DE') : '—'}</TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { handleRowClick(c); setEditMode(true); }}>
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => deleteMutation.mutate(c.id)}>
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
 
       {/* ═══ INLINE-DETAIL ═══ */}
       {selectedContact && (
