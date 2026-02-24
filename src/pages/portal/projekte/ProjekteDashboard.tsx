@@ -417,11 +417,25 @@ export default function ProjekteDashboard() {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold">Meine Projekte</h2>
-          {portfolioRows.length > 0 && (
-            <Button variant="outline" onClick={() => navigate('/portal/projekte/projekte')}>
-              Alle anzeigen <ArrowRight className="ml-2 h-4 w-4" />
+          <div className="flex items-center gap-2">
+            <Button
+              variant="default"
+              size="sm"
+              className="gap-2"
+              onClick={() => {
+                const intakeEl = document.getElementById('magic-intake-section');
+                if (intakeEl) intakeEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }}
+            >
+              <Sparkles className="h-4 w-4" />
+              Projekt aus Dokument
             </Button>
-          )}
+            {portfolioRows.length > 0 && (
+              <Button variant="outline" size="sm" onClick={() => navigate('/portal/projekte/projekte')}>
+                Alle anzeigen <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            )}
+          </div>
         </div>
         {isLoadingPortfolio ? (
           <LoadingState />
@@ -464,7 +478,7 @@ export default function ProjekteDashboard() {
       </Card>
 
       {/* ═══ Magic Intake ═══ */}
-      <Card className="border-primary/30 glass-card shadow-elevated relative overflow-hidden">
+      <Card id="magic-intake-section" className="border-primary/30 glass-card shadow-elevated relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/3 pointer-events-none" />
         <CardHeader className="relative">
           <div className="flex items-center gap-3">
