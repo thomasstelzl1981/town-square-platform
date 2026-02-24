@@ -36,6 +36,8 @@ export interface SearchPreset {
   label: string;
   intent: string;
   icon?: LucideIcon;
+  /** Maps to CATEGORY_REGISTRY code for strategy-based pipelines */
+  category_code?: string;
 }
 
 interface DeskContactBookProps {
@@ -221,29 +223,43 @@ function ResultsInline({ orderId, desk }: { orderId: string; desk: string }) {
 
   return (
     <div className="space-y-1.5 p-3 max-h-[400px] overflow-y-auto">
-      {results.map((r) => (
-        <div key={r.id} className="flex items-center justify-between gap-3 rounded-lg border border-border/40 p-3 hover:bg-muted/30 transition-colors">
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <span className="font-medium truncate">{r.company_name || r.contact_person_name || '–'}</span>
-              {r.confidence_score > 0.7 && <Badge variant="outline" className="text-xs text-primary">✓ {Math.round(r.confidence_score * 100)}%</Badge>}
+      {results.map((r) => {
+        // Map SoatSearchResult to ResearchContact shape for shared card
+        const mapped = {
+          name: r.company_name || r.contact_person_name || '–',
+          email: r.email || null,
+          phone: r.phone || null,
+          website: r.website_url || null,
+          address: r.city || null,
+          rating: null,
+          reviews_count: null,
+          confidence: (r.confidence_score || 0) * 100,
+          sources: ['soat'] as string[],
+        };
+        return (
+          <div key={r.id} className="flex items-center justify-between gap-3 rounded-lg border border-border/40 p-3 hover:bg-muted/30 transition-colors">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <span className="font-medium truncate">{mapped.name}</span>
+                {r.confidence_score > 0.7 && <Badge variant="outline" className="text-xs text-primary">✓ {Math.round(r.confidence_score * 100)}%</Badge>}
+              </div>
+              <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1 flex-wrap">
+                {r.email && <span className="flex items-center gap-1"><Mail className="h-3 w-3" />{r.email}</span>}
+                {r.phone && <span className="flex items-center gap-1"><Phone className="h-3 w-3" />{r.phone}</span>}
+                {r.city && <span className="flex items-center gap-1"><Globe className="h-3 w-3" />{r.city}</span>}
+                {r.website_url && (
+                  <a href={r.website_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-primary hover:underline" onClick={(e) => e.stopPropagation()}>
+                    <ExternalLink className="h-3 w-3" />Web
+                  </a>
+                )}
+              </div>
             </div>
-            <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1 flex-wrap">
-              {r.email && <span className="flex items-center gap-1"><Mail className="h-3 w-3" />{r.email}</span>}
-              {r.phone && <span className="flex items-center gap-1"><Phone className="h-3 w-3" />{r.phone}</span>}
-              {r.city && <span className="flex items-center gap-1"><Globe className="h-3 w-3" />{r.city}</span>}
-              {r.website_url && (
-                <a href={r.website_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-primary hover:underline" onClick={(e) => e.stopPropagation()}>
-                  <ExternalLink className="h-3 w-3" />Web
-                </a>
-              )}
-            </div>
+            <Button size="sm" variant="outline" onClick={() => adoptMutation.mutate(r)} disabled={adoptMutation.isPending} className="shrink-0">
+              <UserPlus className="h-3 w-3 mr-1" />Übernehmen
+            </Button>
           </div>
-          <Button size="sm" variant="outline" onClick={() => adoptMutation.mutate(r)} disabled={adoptMutation.isPending} className="shrink-0">
-            <UserPlus className="h-3 w-3 mr-1" />Übernehmen
-          </Button>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

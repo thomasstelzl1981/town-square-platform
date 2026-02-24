@@ -417,8 +417,21 @@ serve(async (req) => {
 
         // If there are gaps, invoke strategy resolver to initialize/check ledger
         if (dataGaps.length > 0) {
-          const category = existingContact?.category || 'Offen';
-          console.log(`Strategy Ledger: ${dataGaps.length} data gaps detected for contact ${result.contact_id}, category: ${category}`);
+          // Map DB category to CATEGORY_REGISTRY codes for strategy resolver
+          const rawCategory = existingContact?.category || 'Offen';
+          const CATEGORY_MAP: Record<string, string> = {
+            'Bank': 'bank_retail',
+            'Makler': 'real_estate_agent',
+            'Verwalter': 'property_management',
+            'Handwerker': 'Handwerker',
+            'Partner': 'Partner',
+            'Eigentümer': 'Eigentümer',
+            'Mieter': 'Mieter',
+            'Sonstige': 'Sonstige',
+            'Offen': 'Offen',
+          };
+          const category = CATEGORY_MAP[rawCategory] || rawCategory;
+          console.log(`Strategy Ledger: ${dataGaps.length} data gaps detected for contact ${result.contact_id}, category: ${rawCategory} → ${category}`);
 
           // Fire-and-forget: initialize strategy ledger via resolver
           fetch(`${supabaseUrl}/functions/v1/sot-research-strategy-resolver`, {

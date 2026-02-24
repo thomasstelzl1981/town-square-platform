@@ -2,7 +2,7 @@
  * FM Einreichung — 4 eigenständige Kacheln:
  * 1. Exposé  2. Bankauswahl + E-Mail  3. Status & Ergebnis  4. Europace API
  */
-import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { Loader2, FileText, Building2, Mail, Check, Globe,
   Send, AlertTriangle, Archive, Download, X, Plus, Sparkles, Search } from 'lucide-react';
@@ -19,17 +19,19 @@ import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { WidgetGrid } from '@/components/shared/WidgetGrid';
 import { WidgetCell } from '@/components/shared/WidgetCell';
 import { FinanceCaseCard, FinanceCaseCardPlaceholder } from '@/components/finanzierungsmanager/FinanceCaseCard';
+import { SearchResultCard } from '@/components/shared/SearchResultCard';
+import { SearchProgressIndicator } from '@/components/portal/shared/SearchProgressIndicator';
 import { useFinanceRequest } from '@/hooks/useFinanceRequest';
 import { useFinanceBankContacts } from '@/hooks/useFinanceMandate';
 import {
   useSubmissionLogs, useCreateSubmissionLog,
   useSendSubmissionEmail, useUpdateSubmissionLog,
 } from '@/hooks/useFinanceSubmission';
-import { supabase } from '@/integrations/supabase/client';
+import { useResearchEngine } from '@/hooks/useResearchEngine';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { SearchProgressIndicator } from '@/components/portal/shared/SearchProgressIndicator';
 import type { FutureRoomCase } from '@/types/finance';
 
 const eurFormat = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
@@ -68,17 +70,6 @@ interface SelectedBank {
   source: 'kontaktbuch' | 'ki' | 'manuell';
 }
 
-// ─── KI-Vorschläge — Google Places Ergebnistyp ───────────────────────
-interface PlaceResult {
-  place_id: string;
-  name: string;
-  formatted_address: string;
-  phone_number?: string;
-  website?: string;
-  rating?: number;
-  user_ratings_total?: number;
-}
-
 interface Props {
   cases: FutureRoomCase[];
   isLoading: boolean;
@@ -108,13 +99,9 @@ export default function FMEinreichung({ cases, isLoading }: Props) {
   const [manualBankName, setManualBankName] = useState('');
   const [manualBankEmail, setManualBankEmail] = useState('');
 
-  // ─── KI-Bankensuche State ──────────────────────────────────────────
-  const [aiResults, setAiResults] = useState<PlaceResult[]>([]);
-  const [aiLoading, setAiLoading] = useState(false);
-  const [aiError, setAiError] = useState<string | null>(null);
+  // ─── KI-Bankensuche via useResearchEngine ────────────────────────
+  const researchEngine = useResearchEngine();
   const [aiSearchInput, setAiSearchInput] = useState('');
-  const [aiElapsed, setAiElapsed] = useState(0);
-  const aiTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const applicant = request?.applicant_profiles?.[0];
   const property = request?.properties;
@@ -126,47 +113,19 @@ export default function FMEinreichung({ cases, isLoading }: Props) {
     return [plz, city].filter(Boolean).join(' ');
   }, [property?.postal_code, property?.city, applicant?.address_postal_code, applicant?.address_city]);
 
-  // ─── KI-Bankensuche via Google Places ──────────────────────────────
+  // ─── KI-Bankensuche via shared Research Engine ─────────────────
   const searchBanks = useCallback(async (customQuery?: string) => {
     const locationHint = customQuery?.trim() || aiSearchInput.trim() || defaultAiQuery;
-    if (!locationHint) { setAiResults([]); return; }
+    if (!locationHint) { researchEngine.reset(); return; }
 
-    setAiLoading(true);
-    setAiError(null);
-    setAiElapsed(0);
-    if (aiTimerRef.current) clearInterval(aiTimerRef.current);
-    aiTimerRef.current = setInterval(() => setAiElapsed(p => p + 1), 1000);
-
-    try {
-      const { data, error } = await supabase.functions.invoke('sot-research-engine', {
-        body: {
-          intent: 'find_companies',
-          query: `Bank ${locationHint}`,
-          location: locationHint,
-          max_results: 25,
-          context: { module: 'finanzierung' },
-        },
-      });
-      if (error) throw error;
-      const mapped = (data?.results || []).map((r: any, idx: number) => ({
-        place_id: `engine_${idx}`,
-        name: r.name,
-        formatted_address: r.address || '',
-        phone_number: r.phone,
-        website: r.website,
-        rating: r.rating,
-        user_ratings_total: r.reviews_count,
-      }));
-      setAiResults(mapped as PlaceResult[]);
-    } catch (err: unknown) {
-      console.error('KI-Bankensuche Fehler:', err);
-      setAiError('Bankensuche fehlgeschlagen');
-      toast.error('KI-Bankensuche fehlgeschlagen');
-    } finally {
-      if (aiTimerRef.current) { clearInterval(aiTimerRef.current); aiTimerRef.current = null; }
-      setAiLoading(false);
-    }
-  }, [aiSearchInput, defaultAiQuery]);
+    await researchEngine.search({
+      intent: 'find_companies',
+      query: `Bank ${locationHint}`,
+      location: locationHint,
+      max_results: 25,
+      context: { module: 'finanzierung' },
+    });
+  }, [aiSearchInput, defaultAiQuery, researchEngine]);
 
   // Auto-Suche wenn Fall ausgewählt & Daten geladen + Suchfeld vorbelegen
   useEffect(() => {
@@ -174,7 +133,7 @@ export default function FMEinreichung({ cases, isLoading }: Props) {
       setAiSearchInput(defaultAiQuery);
       searchBanks(defaultAiQuery);
     } else {
-      setAiResults([]);
+      researchEngine.reset();
       setAiSearchInput('');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -532,13 +491,13 @@ Mit freundlichen Grüßen`;
                 </div>
               </div>
 
-              {/* ── Quelle 2: KI-Suche (Google Places) ── */}
+              {/* ── Quelle 2: KI-Suche (Research Engine) ── */}
               <div className="border rounded-md p-4 space-y-3">
                 <div className="flex items-center gap-2 text-xs font-semibold">
                   <Sparkles className="h-3.5 w-3.5 text-accent-foreground" />
                   KI-Bankensuche
-                  {aiResults.length > 0 && (
-                    <Badge variant="outline" className="text-[9px] ml-auto">{aiResults.length} Treffer</Badge>
+                  {researchEngine.results.length > 0 && (
+                    <Badge variant="outline" className="text-[9px] ml-auto">{researchEngine.results.length} Treffer</Badge>
                   )}
                 </div>
                 <div className="flex gap-2">
@@ -554,56 +513,56 @@ Mit freundlichen Grüßen`;
                     variant="default"
                     className="h-8 text-xs shrink-0"
                     onClick={() => searchBanks()}
-                    disabled={aiLoading || !aiSearchInput.trim()}
+                    disabled={researchEngine.isSearching || !aiSearchInput.trim()}
                   >
-                    {aiLoading ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Sparkles className="h-3 w-3 mr-1" />}
+                    {researchEngine.isSearching ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Sparkles className="h-3 w-3 mr-1" />}
                     KI-Suche
                   </Button>
                 </div>
 
-                {aiLoading ? (
+                {researchEngine.isSearching ? (
                   <SearchProgressIndicator
-                    elapsedSeconds={aiElapsed}
-                    estimatedDuration={55}
+                    elapsedSeconds={researchEngine.elapsedSeconds}
+                    estimatedDuration={researchEngine.estimatedDuration}
                     phases={[
                       { upTo: 15, label: "Banken im Umkreis suchen…" },
                       { upTo: 35, label: "Websites nach Kontaktdaten scannen…" },
                       { upTo: 55, label: "Ergebnisse zusammenführen…" },
                     ]}
                   />
-                ) : aiError ? (
+                ) : researchEngine.error ? (
                   <div className="text-center py-4 space-y-2">
-                    <p className="text-[10px] text-destructive">{aiError}</p>
+                    <p className="text-[10px] text-destructive">{researchEngine.error}</p>
                     <Button size="sm" variant="ghost" className="h-6 text-[10px]" onClick={() => searchBanks()}>
                       Erneut suchen
                     </Button>
                   </div>
-                ) : aiResults.length === 0 ? (
+                ) : researchEngine.results.length === 0 ? (
                   <p className="text-[10px] text-muted-foreground text-center py-4">
                     {selectedId ? 'Suchbegriff eingeben und „KI-Suche" klicken' : 'Bitte zuerst eine Akte auswählen'}
                   </p>
                 ) : (
                   <div className="max-h-[200px] overflow-y-auto space-y-1">
-                    {aiResults.map((place) => (
+                    {researchEngine.results.map((r, idx) => (
                       <button
-                        key={place.place_id}
+                        key={`engine_${idx}`}
                         onClick={() => addBank({
-                          id: place.place_id,
-                          name: place.name,
-                          email: '',
+                          id: `engine_${idx}`,
+                          name: r.name,
+                          email: r.email || '',
                           source: 'ki',
                         })}
-                        disabled={selectedBanks.length >= MAX_BANKS || selectedBanks.some(b => b.id === place.place_id)}
+                        disabled={selectedBanks.length >= MAX_BANKS || selectedBanks.some(b => b.id === `engine_${idx}`)}
                         className="w-full text-left px-2 py-1.5 rounded text-xs hover:bg-accent transition-colors disabled:opacity-40"
                       >
                         <div className="flex items-center gap-2">
                           <Sparkles className="h-3 w-3 text-accent-foreground shrink-0" />
-                          <span className="font-medium truncate">{place.name}</span>
+                          <span className="font-medium truncate">{r.name}</span>
                           <Plus className="h-3 w-3 ml-auto shrink-0 text-muted-foreground" />
                         </div>
-                        <div className="pl-5 text-[10px] text-muted-foreground truncate">{place.formatted_address}</div>
-                        {place.phone_number && (
-                          <div className="pl-5 text-[10px] text-muted-foreground">{place.phone_number}</div>
+                        <div className="pl-5 text-[10px] text-muted-foreground truncate">{r.address || ''}</div>
+                        {r.phone && (
+                          <div className="pl-5 text-[10px] text-muted-foreground">{r.phone}</div>
                         )}
                       </button>
                     ))}
