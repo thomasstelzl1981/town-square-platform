@@ -4767,6 +4767,7 @@ export type Database = {
           category: string | null
           city: string | null
           company: string | null
+          confidence_score: number | null
           created_at: string
           deleted_at: string | null
           do_not_contact: boolean | null
@@ -4784,6 +4785,7 @@ export type Database = {
           phone_mobile: string | null
           postal_code: string | null
           public_id: string
+          quality_status: string | null
           salutation: string | null
           scope: string | null
           street: string | null
@@ -4797,6 +4799,7 @@ export type Database = {
           category?: string | null
           city?: string | null
           company?: string | null
+          confidence_score?: number | null
           created_at?: string
           deleted_at?: string | null
           do_not_contact?: boolean | null
@@ -4814,6 +4817,7 @@ export type Database = {
           phone_mobile?: string | null
           postal_code?: string | null
           public_id: string
+          quality_status?: string | null
           salutation?: string | null
           scope?: string | null
           street?: string | null
@@ -4827,6 +4831,7 @@ export type Database = {
           category?: string | null
           city?: string | null
           company?: string | null
+          confidence_score?: number | null
           created_at?: string
           deleted_at?: string | null
           do_not_contact?: boolean | null
@@ -4844,6 +4849,7 @@ export type Database = {
           phone_mobile?: string | null
           postal_code?: string | null
           public_id?: string
+          quality_status?: string | null
           salutation?: string | null
           scope?: string | null
           street?: string | null

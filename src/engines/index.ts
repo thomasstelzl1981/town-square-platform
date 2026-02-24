@@ -45,3 +45,6 @@ export * from './vvSteuer';
 export * from './kontoMatch/engine';
 export * from './kontoMatch/spec';
 export * from './kontoMatch/recurring';
+
+// Engine 12: Market Directory (ENG-MKTDIR)
+export * from './marketDirectory';
