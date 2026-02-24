@@ -5,6 +5,11 @@ import { Link } from 'react-router-dom';
 import { Building2, Linkedin, Twitter, Github } from 'lucide-react';
 
 const footerLinks = {
+  lösungen: [
+    { label: 'Mietsonderverwaltung', href: '/website/sot/loesungen/mietsonderverwaltung' },
+    { label: 'Immobilienverwaltung', href: '/website/sot/loesungen/immobilienverwaltung' },
+    { label: 'Finanzdienstleistungen', href: '/website/sot/loesungen/finanzdienstleistungen' },
+  ],
   plattform: [
     { label: 'Plattform', href: '/website/sot/plattform' },
     { label: 'Intelligenz', href: '/website/sot/intelligenz' },
@@ -20,13 +25,19 @@ const footerLinks = {
     { label: 'Impressum', href: '/website/sot/impressum' },
     { label: 'Datenschutz', href: '/website/sot/datenschutz' },
   ],
+  marken: [
+    { label: 'KAUFY — Kapitalanlage', href: 'https://kaufy.immo', external: true },
+    { label: 'FutureRoom — Finanzierung', href: 'https://futureroom.online', external: true },
+    { label: 'ACQUIARY — Akquise', href: 'https://acquiary.com', external: true },
+    { label: 'Lennox & Friends — Hunde', href: 'https://lennoxandfriends.app', external: true },
+  ],
 };
 
 export function SotFooter() {
   return (
     <footer className="border-t border-border/40 bg-card/30">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 lg:gap-12">
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-8 lg:gap-12">
           {/* Brand */}
           <div className="col-span-2 md:col-span-1">
             <Link to="/website/sot" className="flex items-center gap-2.5 mb-4">
@@ -56,14 +67,25 @@ export function SotFooter() {
             <div key={key}>
               <h4 className="text-xs font-semibold uppercase tracking-wider mb-4">{key}</h4>
               <ul className="space-y-2">
-                {links.map((link) => (
+                {links.map((link: any) => (
                   <li key={link.href}>
-                    <Link
-                      to={link.href}
-                      className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                      {link.label}
-                    </Link>
+                    {link.external ? (
+                      <a
+                        href={link.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        {link.label}
+                      </a>
+                    ) : (
+                      <Link
+                        to={link.href}
+                        className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        {link.label}
+                      </Link>
+                    )}
                   </li>
                 ))}
               </ul>

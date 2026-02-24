@@ -153,6 +153,9 @@ const SotPreise = React.lazy(() => import('@/pages/zone3/sot/SotPreise'));
 const SotDemo = React.lazy(() => import('@/pages/zone3/sot/SotDemo'));
 const SotKarriere = React.lazy(() => import('@/pages/zone3/sot/SotKarriere'));
 const SotFAQ = React.lazy(() => import('@/pages/zone3/sot/SotFAQ'));
+const SotMietsonderverwaltung = React.lazy(() => import('@/pages/zone3/sot/SotMietsonderverwaltung'));
+const SotImmobilienverwaltung = React.lazy(() => import('@/pages/zone3/sot/SotImmobilienverwaltung'));
+const SotFinanzdienstleistungen = React.lazy(() => import('@/pages/zone3/sot/SotFinanzdienstleistungen'));
 
 // Zone 3: ACQUIARY Website (lazy loaded)
 const AcquiaryLayout = React.lazy(() => import('@/pages/zone3/acquiary/AcquiaryLayout'));
@@ -374,6 +377,9 @@ const sotComponentMap: Record<string, React.ComponentType> = {
   SotDemo,
   SotKarriere,
   SotFAQ,
+  SotMietsonderverwaltung,
+  SotImmobilienverwaltung,
+  SotFinanzdienstleistungen,
   SotImpressum: React.lazy(() => import('@/pages/zone3/sot/SotImpressum')),
   SotDatenschutz: React.lazy(() => import('@/pages/zone3/sot/SotDatenschutz')),
 };

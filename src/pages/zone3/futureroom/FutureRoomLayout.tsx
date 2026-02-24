@@ -11,7 +11,7 @@ import {
   Menu, X, ChevronRight, Shield, Sparkles, LogIn, LogOut, FolderOpen
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { useDocumentMeta } from '@/hooks/useDocumentMeta';
+import { SEOHead } from '@/components/zone3/shared/SEOHead';
 import { WebsitePinGate } from '@/components/zone3/WebsitePinGate';
 import { ArmstrongWidget } from '@/components/zone3/ArmstrongWidget';
 import { useZone3Setting } from '@/hooks/useZone3Settings';
@@ -48,11 +48,7 @@ export default function FutureRoomLayout() {
     navigate('/website/futureroom');
   };
 
-  useDocumentMeta({
-    title: 'FutureRoom — Digitale Immobilienfinanzierung',
-    description: 'KI-gestützte Finanzierungsorchestrierung: Vom Bonitätscheck bis zur Auszahlung. Über 400 Bankpartner, digitaler Datenraum und persönliche Betreuung.',
-    ogType: 'website',
-  });
+  // SEOHead rendered in JSX below
 
   if (pinGateLoading) {
     return <div className="min-h-screen flex items-center justify-center"><div className="h-6 w-6 border-2 border-current border-t-transparent rounded-full animate-spin" /></div>;
@@ -72,6 +68,18 @@ export default function FutureRoomLayout() {
 
   return (
     <div className="futureroom-page">
+      <SEOHead
+        brand="futureroom"
+        page={{
+          title: 'Digitale Immobilienfinanzierung',
+          description: 'KI-gestützte Finanzierungsorchestrierung: Vom Bonitätscheck bis zur Auszahlung. Über 400 Bankpartner, digitaler Datenraum und persönliche Betreuung.',
+          path: location.pathname.replace('/website/futureroom', '') || '/',
+        }}
+        services={[{
+          name: 'Digitale Immobilienfinanzierung',
+          description: 'Finanzierungsorchestrierung mit über 400 Bankpartnern — vom Bonitätscheck bis zur Auszahlung.',
+        }]}
+      />
       {/* Header */}
       <header className={`fr-header ${scrolled ? 'scrolled' : ''}`}>
         <div className="fr-header-content">

@@ -5,7 +5,7 @@
 import * as React from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { Menu, X, ChevronRight, Shield, Sparkles, Lock } from 'lucide-react';
-import { useDocumentMeta } from '@/hooks/useDocumentMeta';
+import { SEOHead } from '@/components/zone3/shared/SEOHead';
 import { WebsitePinGate } from '@/components/zone3/WebsitePinGate';
 import { useZone3Setting } from '@/hooks/useZone3Settings';
 import '@/styles/acquiary-premium.css';
@@ -30,11 +30,7 @@ export default function AcquiaryLayout() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  useDocumentMeta({
-    title: 'ACQUIARY — Digitale Akquise für Immobilieninvestments',
-    description: 'Diskrete, KI-gestützte Akquise-Plattform für institutionelle Immobilienankäufe. Methodik, Netzwerk und Deal-Sourcing auf höchstem Niveau.',
-    ogType: 'website',
-  });
+  // SEOHead rendered in JSX below
 
   if (pinGateLoading) {
     return <div className="min-h-screen flex items-center justify-center"><div className="h-6 w-6 border-2 border-current border-t-transparent rounded-full animate-spin" /></div>;
@@ -46,6 +42,18 @@ export default function AcquiaryLayout() {
 
   return (
     <div className="acquiary-page">
+      <SEOHead
+        brand="acquiary"
+        page={{
+          title: 'Digitale Akquise für Immobilieninvestments',
+          description: 'Diskrete, KI-gestützte Akquise-Plattform für institutionelle Immobilienankäufe. Methodik, Netzwerk und Deal-Sourcing auf höchstem Niveau.',
+          path: location.pathname.replace('/website/acquiary', '') || '/',
+        }}
+        services={[{
+          name: 'Digitale Immobilien-Akquise',
+          description: 'KI-gestütztes Deal-Sourcing und Bewertung für institutionelle Immobilienankäufe.',
+        }]}
+      />
       {/* Header */}
       <header className={`aq-header ${scrolled ? 'scrolled' : ''}`}>
         <div className="aq-header-content">
