@@ -264,7 +264,7 @@ export function useUniversalUpload() {
           size_bytes: file.size,
           public_id: publicId,
           source,
-          extraction_status: triggerAI ? 'pending' : 'none',
+          extraction_status: triggerAI ? 'pending' : 'skipped',
           doc_type: docTypeHint || null,
         })
         .select('id')
