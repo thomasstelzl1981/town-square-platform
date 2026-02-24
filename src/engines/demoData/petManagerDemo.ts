@@ -31,7 +31,7 @@ export const DEMO_LENNOX_SEARCH_PROVIDER: SearchProvider = {
   company_name: 'Lennox & Friends Dog Resorts',
   address: 'Rathausstr. 12, 85521 Ottobrunn',
   phone: '+49 176 64 12 68 69',
-  email: 'info@lennoxandfriends.com',
+  email: 'info@lennoxandfriends.app',
   bio: 'Naturverbundene Hundebetreuung mit Herz — Pension, Tagesstätte und Hundesalon in Ottobrunn bei München.',
   rating_avg: 4.9,
   cover_image_url: pmGalleryPension1,
