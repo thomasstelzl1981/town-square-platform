@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Tables, Enums } from '@/integrations/supabase/types';
@@ -39,7 +39,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Plus, Loader2, Building2, Eye, AlertTriangle } from 'lucide-react';
+import { Plus, Loader2, Building2, AlertTriangle, Users, LayoutGrid } from 'lucide-react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { PdfExportFooter } from '@/components/pdf';
@@ -47,6 +47,11 @@ import { DESIGN } from '@/config/designManifest';
 
 type Organization = Tables<'organizations'>;
 type OrgType = Enums<'org_type'>;
+
+interface OrgWithCounts extends Organization {
+  memberCount: number;
+  moduleCount: number;
+}
 
 const ORG_TYPE_HIERARCHY: Record<OrgType, OrgType[]> = {
   internal: ['partner'],
@@ -58,8 +63,9 @@ const ORG_TYPE_HIERARCHY: Record<OrgType, OrgType[]> = {
 
 export default function Organizations() {
   const { isPlatformAdmin } = useAuth();
+  const navigate = useNavigate();
   const contentRef = useRef<HTMLDivElement>(null);
-  const [organizations, setOrganizations] = useState<Organization[]>([]);
+  const [organizations, setOrganizations] = useState<OrgWithCounts[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
@@ -80,15 +86,26 @@ export default function Organizations() {
     setLoading(true);
     setError(null);
     try {
-      const { data, error } = await supabase
-        .from('organizations')
-        .select('*')
-        .order('created_at', { ascending: false });
+      const [orgsRes, membershipsRes, activationsRes] = await Promise.all([
+        supabase.from('organizations').select('*').order('created_at', { ascending: false }),
+        supabase.from('memberships').select('tenant_id'),
+        supabase.from('tenant_tile_activation').select('tenant_id').eq('status', 'active'),
+      ]);
 
-      if (error) throw error;
-      setOrganizations(data || []);
+      if (orgsRes.error) throw orgsRes.error;
+      const orgs = orgsRes.data || [];
+      const memberships = membershipsRes.data || [];
+      const activations = activationsRes.data || [];
+
+      const orgsWithCounts: OrgWithCounts[] = orgs.map(org => ({
+        ...org,
+        memberCount: memberships.filter(m => m.tenant_id === org.id).length,
+        moduleCount: activations.filter(a => a.tenant_id === org.id).length,
+      }));
+
+      setOrganizations(orgsWithCounts);
     } catch (err: unknown) {
-      setError((err instanceof Error ? err.message : String(err)) || 'Fehler beim Laden der Organisationen');
+      setError((err instanceof Error ? err.message : String(err)) || 'Fehler beim Laden');
     }
     setLoading(false);
   }
@@ -101,8 +118,6 @@ export default function Organizations() {
     switch (type) {
       case 'internal': return 'default';
       case 'partner': return 'secondary';
-      case 'sub_partner': return 'outline';
-      case 'client': return 'outline';
       default: return 'outline';
     }
   };
@@ -165,7 +180,8 @@ export default function Organizations() {
     const matchesType = typeFilter === 'all' || org.org_type === typeFilter;
     const matchesSearch = searchQuery === '' || 
       org.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      org.slug.toLowerCase().includes(searchQuery.toLowerCase());
+      org.slug.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (org.public_id || '').toLowerCase().includes(searchQuery.toLowerCase());
     return matchesType && matchesSearch;
   });
   const allowedTypes = getAllowedChildTypes(selectedParent?.org_type || null);
@@ -174,8 +190,8 @@ export default function Organizations() {
     <div className={DESIGN.SPACING.SECTION} ref={contentRef}>
       <div className="flex items-center justify-between">
         <div>
-          <h2 className={DESIGN.TYPOGRAPHY.PAGE_TITLE}>Organisationen</h2>
-          <p className={DESIGN.TYPOGRAPHY.MUTED}>Mandanten und Organisationshierarchie verwalten</p>
+          <h2 className={DESIGN.TYPOGRAPHY.PAGE_TITLE}>Kunden & Tenants</h2>
+          <p className={DESIGN.TYPOGRAPHY.MUTED}>Mandanten, Partner und Benutzer verwalten</p>
         </div>
         {isPlatformAdmin && (
           <Dialog open={createOpen} onOpenChange={setCreateOpen}>
@@ -294,19 +310,17 @@ export default function Organizations() {
         <CardHeader>
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
-              <CardTitle>Alle Organisationen</CardTitle>
+              <CardTitle>Alle Tenants</CardTitle>
               <CardDescription>
-                {isPlatformAdmin 
-                  ? `${filteredOrganizations.length} von ${organizations.length} Organisationen`
-                  : 'Organisationen mit Ihrem Zugriff'}
+                {filteredOrganizations.length} von {organizations.length} Organisationen
               </CardDescription>
             </div>
             <div className="flex gap-2">
               <Input
-                placeholder="Suche..."
+                placeholder="Suche nach Name, Slug oder Kunden-Nr..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-40"
+                className="w-64"
               />
               <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as OrgType | 'all')}>
                 <SelectTrigger className="w-36">
@@ -340,34 +354,42 @@ export default function Organizations() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead>Kunden-Nr.</TableHead>
                   <TableHead>Name</TableHead>
-                  <TableHead>Slug</TableHead>
                   <TableHead>Typ</TableHead>
-                  <TableHead>Tiefe</TableHead>
+                  <TableHead className="text-right">
+                    <span className="flex items-center justify-end gap-1">
+                      <Users className="h-3 w-3" /> Mitglieder
+                    </span>
+                  </TableHead>
+                  <TableHead className="text-right">
+                    <span className="flex items-center justify-end gap-1">
+                      <LayoutGrid className="h-3 w-3" /> Module
+                    </span>
+                  </TableHead>
                   <TableHead>Erstellt</TableHead>
-                  <TableHead className="text-right">Aktionen</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredOrganizations.map((org) => (
-                  <TableRow key={org.id}>
+                  <TableRow 
+                    key={org.id} 
+                    className="cursor-pointer"
+                    onClick={() => navigate(`/admin/organizations/${org.id}`)}
+                  >
+                    <TableCell className="font-mono text-xs text-muted-foreground">
+                      {org.public_id || '—'}
+                    </TableCell>
                     <TableCell className="font-medium">{org.name}</TableCell>
-                    <TableCell className="font-mono text-sm text-muted-foreground">{org.slug}</TableCell>
                     <TableCell>
                       <Badge variant={getOrgTypeVariant(org.org_type)}>
                         {formatOrgType(org.org_type)}
                       </Badge>
                     </TableCell>
-                    <TableCell>{org.depth}</TableCell>
+                    <TableCell className="text-right">{org.memberCount}</TableCell>
+                    <TableCell className="text-right">{org.moduleCount}</TableCell>
                     <TableCell className="text-muted-foreground">
                       {format(new Date(org.created_at), 'dd.MM.yyyy', { locale: de })}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="ghost" size="sm" asChild>
-                        <Link to={`/admin/organizations/${org.id}`}>
-                          <Eye className="h-4 w-4" />
-                        </Link>
-                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -379,7 +401,7 @@ export default function Organizations() {
 
       <PdfExportFooter
         contentRef={contentRef}
-        documentTitle="Organisationen"
+        documentTitle="Kunden & Tenants"
         subtitle={`${organizations.length} Organisationen im System`}
         moduleName="Zone 1 Admin"
       />
