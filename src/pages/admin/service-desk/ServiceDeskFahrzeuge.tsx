@@ -4,10 +4,10 @@
 import ServiceDeskProductCRUD from './ServiceDeskProductCRUD';
 
 const SUB_TABS = [
-  { key: 'fahrzeuge', label: 'Fahrzeuge' },
+  { key: 'bmw-fokus', label: 'BMW Fokusmodelle' },
+  { key: 'miete24-autos', label: 'Miete24' },
   { key: 'boote', label: 'Boote' },
   { key: 'privatjet', label: 'Privatjet' },
-  { key: 'angebote', label: 'Angebote' },
 ];
 
 export default function ServiceDeskFahrzeuge() {
