@@ -1,7 +1,7 @@
 {
   "generated_at": "2026-02-19T04:00:00Z",
-  "total_count": 100,
-  "note": "Zone 1 Admin routes from routesManifest.ts. Includes: Dashboard, Orgs, Users, Delegations, Masterdata (7), KI-Office (3), Tiles, Integrations, Oversight, Audit, Agreements, Partner-Verification, Roles, Support, FutureRoom (9), Acquiary (9), Sales-Desk (5), Lead-Desk (5), Projekt-Desk (4), Pet-Desk (5), Finance-Desk (5), Armstrong (11), Fortbildung, Website-Hosting, Compliance.",
+  "total_count": 99,
+  "note": "Zone 1 Admin routes from routesManifest.ts. website-hosting REMOVED (redundant with Projekt Desk Landing Pages). Includes: Dashboard, Orgs, Users, Delegations, Masterdata (7), KI-Office (3), Tiles, Integrations, Oversight, Audit, Agreements, Partner-Verification, Roles, Support, FutureRoom (9), Acquiary (9), Sales-Desk (5), Lead-Desk (5), Projekt-Desk (4), Pet-Desk (5), Finance-Desk (5), Armstrong (11), Fortbildung, Compliance.",
   "sections": [
     { "group": "Core", "count": 12, "routes": ["", "organizations", "organizations/:id", "users", "delegations", "masterdata (+6 sub)", "tiles", "integrations", "oversight", "audit", "agreements", "partner-verification", "roles", "support"] },
     { "group": "KI-Office", "count": 3, "routes": ["ki-office/recherche", "ki-office/kontakte", "ki-office/email"] },
@@ -10,6 +10,6 @@
     { "group": "Operative Desks", "count": 19, "routes": ["sales-desk (5)", "lead-desk (5)", "projekt-desk (4)", "pet-desk (5)"] },
     { "group": "Finance Desk", "count": 5, "routes": ["finance-desk (+4 sub)"] },
     { "group": "Armstrong", "count": 11, "routes": ["armstrong (+10 sub)"] },
-    { "group": "Other", "count": 3, "routes": ["fortbildung", "website-hosting", "compliance"] }
+    { "group": "Other", "count": 2, "routes": ["fortbildung", "compliance"] }
   ]
 }

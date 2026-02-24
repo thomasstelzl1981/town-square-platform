@@ -80,8 +80,6 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   'RolesManagement': Shield,
   // Masterdata Hub
   'MasterTemplates': FileText,
-  // Website Hosting
-  'WebHostingDashboard': Globe,
   // Fortbildung
   'AdminFortbildung': BookOpen,
   // New Desks
@@ -153,7 +151,7 @@ function getGroupKey(path: string, component: string): string {
   // Operative Desks (Desks + LeadPool + Provisionen + Landing Pages)
   if (path.startsWith('sales-desk') || path.startsWith('finance-desk') || 
        path.startsWith('acquiary') || path === 'lead-desk' || path === 'projekt-desk' ||
-       path === 'website-hosting' || path.startsWith('pet-desk')) {
+       path.startsWith('pet-desk')) {
     return 'desks';
   }
   // Compliance Desk
@@ -178,7 +176,7 @@ function shouldShowInNav(path: string): boolean {
   // Show main desk entries
   if (path === 'sales-desk' || path === 'finance-desk' || path === 'acquiary' || 
       path === 'futureroom' || path === 'lead-desk' || 
-      path === 'projekt-desk' || path === 'pet-desk' || path === 'website-hosting') {
+      path === 'projekt-desk' || path === 'pet-desk') {
     return true;
   }
   // KI Office items — consolidated 3
