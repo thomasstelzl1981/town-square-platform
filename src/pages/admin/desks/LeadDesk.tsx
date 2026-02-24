@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { OperativeDeskShell } from '@/components/admin/desks/OperativeDeskShell';
 
 const LeadDeskDashboard = lazy(() => import('../lead-desk/LeadDeskDashboard'));
+const LeadDeskKontakte = lazy(() => import('../lead-desk/LeadDeskKontakte'));
 const LeadPoolPage = lazy(() => import('../lead-desk/LeadPoolPage'));
 const LeadAssignmentsPage = lazy(() => import('../lead-desk/LeadAssignmentsPage'));
 const LeadCommissionsPage = lazy(() => import('../lead-desk/LeadCommissionsPage'));
@@ -17,6 +18,7 @@ const LeadMonitorPage = lazy(() => import('../lead-desk/LeadMonitorPage'));
 
 const TABS = [
   { value: 'dashboard', label: 'Dashboard', path: '' },
+  { value: 'kontakte', label: 'Kontakte', path: 'kontakte' },
   { value: 'pool', label: 'Lead Pool', path: 'pool' },
   { value: 'assignments', label: 'Zuweisungen', path: 'assignments' },
   { value: 'commissions', label: 'Provisionen', path: 'commissions' },
@@ -55,6 +57,7 @@ export default function LeadDesk() {
       <Suspense fallback={<Loading />}>
         <Routes>
           <Route index element={<LeadDeskDashboard />} />
+          <Route path="kontakte" element={<LeadDeskKontakte />} />
           <Route path="pool" element={<LeadPoolPage />} />
           <Route path="assignments" element={<LeadAssignmentsPage />} />
           <Route path="commissions" element={<LeadCommissionsPage />} />

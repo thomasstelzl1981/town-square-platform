@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { OperativeDeskShell } from '@/components/admin/desks/OperativeDeskShell';
 
 const PetDeskGovernance = lazy(() => import('../petmanager/PetDeskGovernance'));
+const PetDeskKontakte = lazy(() => import('../petmanager/PetDeskKontakte'));
 const PetDeskVorgaenge = lazy(() => import('../petmanager/PetDeskVorgaenge'));
 const PetDeskKunden = lazy(() => import('../petmanager/PetDeskKunden'));
 const PetDeskShop = lazy(() => import('../petmanager/PetDeskShop'));
@@ -17,6 +18,7 @@ const PetDeskBilling = lazy(() => import('../petmanager/PetDeskBilling'));
 
 const TABS = [
   { value: 'governance', label: 'Governance', path: '' },
+  { value: 'kontakte', label: 'Kontakte', path: 'kontakte' },
   { value: 'vorgaenge', label: 'Vorgänge', path: 'vorgaenge' },
   { value: 'kunden', label: 'Kunden', path: 'kunden' },
   { value: 'shop', label: 'Shop', path: 'shop' },
@@ -63,6 +65,7 @@ export default function PetmanagerDesk() {
       <Suspense fallback={<Loading />}>
         <Routes>
           <Route index element={<PetDeskGovernance />} />
+          <Route path="kontakte" element={<PetDeskKontakte />} />
           <Route path="vorgaenge" element={<PetDeskVorgaenge />} />
           <Route path="kunden" element={<PetDeskKunden />} />
           <Route path="shop" element={<PetDeskShop />} />

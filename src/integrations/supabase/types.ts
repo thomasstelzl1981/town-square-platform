@@ -4660,6 +4660,7 @@ export type Database = {
           company_name: string | null
           created_at: string
           dedupe_key: string | null
+          desk: string | null
           email: string | null
           enrichment_data: Json | null
           first_name: string | null
@@ -4685,6 +4686,7 @@ export type Database = {
           company_name?: string | null
           created_at?: string
           dedupe_key?: string | null
+          desk?: string | null
           email?: string | null
           enrichment_data?: Json | null
           first_name?: string | null
@@ -4710,6 +4712,7 @@ export type Database = {
           company_name?: string | null
           created_at?: string
           dedupe_key?: string | null
+          desk?: string | null
           email?: string | null
           enrichment_data?: Json | null
           first_name?: string | null
@@ -17365,6 +17368,7 @@ export type Database = {
           counters_json: Json | null
           created_at: string
           created_by: string | null
+          desk: string | null
           error_message: string | null
           finished_at: string | null
           id: string
@@ -17383,6 +17387,7 @@ export type Database = {
           counters_json?: Json | null
           created_at?: string
           created_by?: string | null
+          desk?: string | null
           error_message?: string | null
           finished_at?: string | null
           id?: string
@@ -17401,6 +17406,7 @@ export type Database = {
           counters_json?: Json | null
           created_at?: string
           created_by?: string | null
+          desk?: string | null
           error_message?: string | null
           finished_at?: string | null
           id?: string
