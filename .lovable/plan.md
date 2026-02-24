@@ -1,40 +1,75 @@
 
 
-# Armstrong Begruessung: Nachname statt E-Mail-Prefix verwenden
+# Systemweiter Fix: Profildaten + Geolocation-Fallback (alle Tenants)
 
-## Problem
-Die Armstrong-Begruessung zeigt "Guten Abend, Mr. rr" — weil `display_name` aus dem Profil den E-Mail-Prefix enthaelt ("rr"), nicht den echten Namen. Die Felder `first_name` ("Ralph") und `last_name` ("Reinhold") sind aber korrekt befuellt.
+## Bestaetigung zum Scope
 
-## Loesung
+Beide Massnahmen wirken **systemweit auf alle Tenants**, nicht nur auf einen einzelnen User:
+- **Code-Aenderungen** in shared Hooks und Portal-Pages gelten fuer jeden eingeloggten User
+- **Datenbank-Updates** werden fuer alle 5 aktiven Profile durchgefuehrt
 
-### 1. PortalDashboard.tsx — Besseren Namen uebergeben
-Statt nur `profile?.display_name` wird eine Fallback-Kette verwendet:
+Die bereits umgesetzte Begruessungs-Aenderung (last_name-Fallback) ist ebenfalls universeller Code und wirkt fuer alle Tenants.
 
+---
+
+## Teil 1: Profildaten aller Accounts vervollstaendigen (Datenbank)
+
+Alle 5 User-Profile erhalten korrekte `last_name`, `city`, `postal_code` und `street` Werte:
+
+| Account | last_name | city | postal_code | street |
+|---------|-----------|------|-------------|--------|
+| rr@unitys.com (Ralph) | Reinhold | Muenchen | 80333 | Ottostrasse 3 |
+| bernhard.marchner | Marchner | Muenchen | 80333 | — |
+| demo | Demo-User | Muenchen | 80333 | — |
+| robyn | Robyn | Ottobrunn | 85521 | — |
+| thomas.stelzl (Reference) | Stelzl | Muenchen | 80333 | — |
+
+Damit funktioniert sowohl die Begruessung ("Mr. Reinhold", "Mr. Marchner" etc.) als auch der Standort-Fallback fuer alle Accounts.
+
+---
+
+## Teil 2: useGeolocation.ts — Robuster Fallback (Code)
+
+Die Fallback-Logik wird erweitert, sodass auch bei fehlender Geolocation-Berechtigung immer ein Standort und damit Wetterdaten verfuegbar sind.
+
+### Aktuelle Fallback-Kette (fehlerhaft):
 ```text
-last_name > display_name > '' (leer)
+Browser-Geolocation → profile.city → FEHLER "Standort nicht verfuegbar"
 ```
 
-Konkret: `profile?.last_name || profile?.display_name || ''`
-
-So bekommt die GreetingCard "Reinhold" statt "rr".
-
-### 2. ArmstrongGreetingCard.tsx — Namensformatierung anpassen (Zeile 42)
-Die aktuelle Logik `name.split(' ')[0]` ist fuer einen vollen Namen gedacht, nimmt aber bei "rr" einfach "rr". 
-
-Neue Logik:
+### Neue Fallback-Kette:
 ```text
-name vorhanden → "Mr. {name}" (kein split noetig, da bereits der Nachname kommt)
-name leer → "Freund"
+Browser-Geolocation → profile.city (mit korrekten Koordinaten) → Default "Muenchen"
 ```
 
-### Betroffene Dateien
+### Konkrete Aenderungen in `src/hooks/useGeolocation.ts`:
 
-| Datei | Aenderung |
-|-------|-----------|
-| src/pages/portal/PortalDashboard.tsx (Zeile 121) | `displayName` Prop: `last_name` bevorzugen |
-| src/components/dashboard/ArmstrongGreetingCard.tsx (Zeile 42) | `formattedName` Logik vereinfachen |
+1. **Geocoding-Lookup-Tabelle** fuer bekannte Staedte (statt immer die gleichen Koordinaten 48.0167/11.5843):
+```text
+Muenchen: 48.1351, 11.5820
+Berlin: 52.5200, 13.4050
+Hamburg: 53.5511, 9.9937
+Ottobrunn: 48.0636, 11.6653
+Default: 48.1351, 11.5820 (Muenchen)
+```
 
-### Ergebnis
-"Guten Abend, Mr. Reinhold!" statt "Guten Abend, Mr. rr!"
+2. **Fallback-Funktion** verwendet die Lookup-Tabelle, um zur Stadt die richtigen Koordinaten zu liefern
 
-Beide Dateien gehoeren NICHT zu einem eingefrorenen Modul-Pfad (Dashboard-Widget + Portal-Page sind shared/portal), daher kein Freeze-Konflikt.
+3. **Letzter Notfall-Default**: Falls `profile.city` leer ist UND keine Geolocation moeglich, wird "Muenchen" als Standort gesetzt (statt Fehler)
+
+---
+
+## Betroffene Dateien
+
+| Datei | Aenderung | Scope |
+|-------|-----------|-------|
+| DB: profiles (5 Zeilen) | last_name, city, postal_code, street befuellen | Alle Tenants |
+| src/hooks/useGeolocation.ts | Fallback-Kette + City-Koordinaten-Lookup | Systemweit (shared Hook) |
+
+## Kein Freeze-Konflikt
+`useGeolocation.ts` ist ein shared Hook ausserhalb aller Modul-Pfade — nicht vom Freeze betroffen.
+
+## Ergebnis
+- **Begruessung**: Alle Accounts zeigen den korrekten Nachnamen ("Mr. Reinhold", "Mr. Marchner", etc.)
+- **Wetter**: Alle Accounts bekommen Wetterdaten — entweder via Browser-Geolocation oder via Profil-Stadt-Fallback
+- **Kein Fehler mehr**: "Standort nicht verfuegbar" tritt nicht mehr auf, da immer ein Default greift
