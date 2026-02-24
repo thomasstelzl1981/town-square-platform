@@ -36,11 +36,11 @@ export function useDemoAutoLogin() {
     cleanupRunningRef.current = true;
     
     try {
-      console.log('[DemoAutoLogin] Cleaning up demo data...');
+      if (import.meta.env.DEV) console.log('[DemoAutoLogin] Cleaning up demo data...');
       await cleanupDemoData(DEMO_TENANT_ID);
       setDemoSessionFlag(false);
       await supabase.auth.signOut();
-      console.log('[DemoAutoLogin] ✓ Cleanup + logout complete');
+      if (import.meta.env.DEV) console.log('[DemoAutoLogin] ✓ Cleanup + logout complete');
     } catch (err) {
       console.error('[DemoAutoLogin] Cleanup error:', err);
     } finally {
@@ -64,7 +64,7 @@ export function useDemoAutoLogin() {
       try {
         // Step 1: Login
         setDemoState('logging-in');
-        console.log('[DemoAutoLogin] Signing in as demo user...');
+        if (import.meta.env.DEV) console.log('[DemoAutoLogin] Signing in as demo user...');
         
         const { error: loginError } = await supabase.auth.signInWithPassword({
           email: DEMO_EMAIL,
@@ -81,12 +81,12 @@ export function useDemoAutoLogin() {
 
         // Step 2: Clean slate
         setDemoState('seeding');
-        console.log('[DemoAutoLogin] Running clean-slate: cleanup → seed...');
+        if (import.meta.env.DEV) console.log('[DemoAutoLogin] Running clean-slate: cleanup → seed...');
         await cleanupDemoData(DEMO_TENANT_ID);
         await seedDemoData(DEMO_TENANT_ID);
 
         setDemoState('ready');
-        console.log('[DemoAutoLogin] ✓ Demo ready');
+        if (import.meta.env.DEV) console.log('[DemoAutoLogin] ✓ Demo ready');
       } catch (err) {
         console.error('[DemoAutoLogin] Init error:', err);
         setDemoState('error');
