@@ -134,7 +134,7 @@ export default function LennoxLayout() {
               <Link to="/website/tierservice/shop" className="hover:underline">Shop</Link>
               <Link to="/website/tierservice/impressum" className="hover:underline">Impressum</Link>
               <Link to="/website/tierservice/datenschutz" className="hover:underline">Datenschutz</Link>
-              <a href="mailto:info@lennoxandfriends.com" className="hover:underline">Kontakt</a>
+              <a href="mailto:info@lennoxandfriends.app" className="hover:underline">Kontakt</a>
             </div>
 
             {/* Copyright */}

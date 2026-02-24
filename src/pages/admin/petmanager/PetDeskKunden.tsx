@@ -149,7 +149,7 @@ export default function PetDeskKunden() {
             <div className="rounded-lg border border-dashed border-border p-8 text-center">
               <Globe className="h-8 w-8 mx-auto text-muted-foreground/40 mb-2" />
               <p className="text-muted-foreground text-sm">Noch keine Kunden über die Website registriert.</p>
-              <p className="text-muted-foreground/60 text-xs mt-1">Kunden registrieren sich auf lennoxandfriends.de und erscheinen hier.</p>
+              <p className="text-muted-foreground/60 text-xs mt-1">Kunden registrieren sich auf lennoxandfriends.app und erscheinen hier.</p>
             </div>
           ) : (
             <div className="space-y-2">
