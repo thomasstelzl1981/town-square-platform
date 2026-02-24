@@ -187,6 +187,8 @@ export const zone1Admin: ZoneDefinition = {
     { path: "armstrong/review", component: "WeeklyReview", title: "Wöchentliches Review" },
     // Fortbildung Management
     { path: "fortbildung", component: "AdminFortbildung", title: "Fortbildung" },
+    // Service Desk (MOD-16, MOD-15, MOD-17, MOD-19, MOD-05 Shop)
+    { path: "service-desk", component: "ServiceDeskRouter", title: "Service Desk" },
     // Compliance Desk — Legal Engine SSOT (8 internal tabs)
     { path: "compliance", component: "ComplianceDeskRouter", title: "Compliance Desk" },
   ],

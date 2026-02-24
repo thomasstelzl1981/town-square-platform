@@ -17574,6 +17574,105 @@ export type Database = {
           },
         ]
       }
+      service_shop_config: {
+        Row: {
+          affiliate_network: string | null
+          api_credentials: Json | null
+          config: Json | null
+          created_at: string | null
+          display_name: string | null
+          id: string
+          is_connected: boolean | null
+          shop_key: string
+          updated_at: string | null
+        }
+        Insert: {
+          affiliate_network?: string | null
+          api_credentials?: Json | null
+          config?: Json | null
+          created_at?: string | null
+          display_name?: string | null
+          id?: string
+          is_connected?: boolean | null
+          shop_key: string
+          updated_at?: string | null
+        }
+        Update: {
+          affiliate_network?: string | null
+          api_credentials?: Json | null
+          config?: Json | null
+          created_at?: string | null
+          display_name?: string | null
+          id?: string
+          is_connected?: boolean | null
+          shop_key?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      service_shop_products: {
+        Row: {
+          affiliate_network: string | null
+          affiliate_tag: string | null
+          badge: string | null
+          category: string | null
+          created_at: string | null
+          description: string | null
+          external_url: string | null
+          id: string
+          image_url: string | null
+          is_active: boolean | null
+          metadata: Json | null
+          name: string
+          price_cents: number | null
+          price_label: string | null
+          shop_key: string
+          sort_order: number | null
+          sub_category: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          affiliate_network?: string | null
+          affiliate_tag?: string | null
+          badge?: string | null
+          category?: string | null
+          created_at?: string | null
+          description?: string | null
+          external_url?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean | null
+          metadata?: Json | null
+          name: string
+          price_cents?: number | null
+          price_label?: string | null
+          shop_key: string
+          sort_order?: number | null
+          sub_category?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          affiliate_network?: string | null
+          affiliate_tag?: string | null
+          badge?: string | null
+          category?: string | null
+          created_at?: string | null
+          description?: string | null
+          external_url?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean | null
+          metadata?: Json | null
+          name?: string
+          price_cents?: number | null
+          price_label?: string | null
+          shop_key?: string
+          sort_order?: number | null
+          sub_category?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       soat_search_orders: {
         Row: {
           counters_json: Json | null
