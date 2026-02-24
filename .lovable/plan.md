@@ -1,242 +1,162 @@
 
+# Implementierungsplan: Service Desk (Zone 1) — Schritte 1-6
 
-# Plan: Unified Tenant & User Management (Zone 1 Admin)
+Alle 6 Schritte werden ohne Rueckfrage umgesetzt. Ich habe die Codebasis vollstaendig analysiert und alle notwendigen Aenderungen identifiziert.
 
-## Ist-Zustand — Das Problem
+## Schritt 1: Datenbank — Neue Tabellen
 
-Drei separate Seiten zeigen im Kern die gleichen Daten:
+**Migration:** `service_shop_products` + `service_shop_config`
 
-```text
-/admin/organizations  →  Tabelle: Orgs (Name, Slug, Typ, Tiefe, Erstellt)
-/admin/users          →  Tabelle: Memberships (User, Org, Rolle, Erstellt)
-/admin/oversight      →  KPIs + 4 Tabs (Tenants, Immobilien, Finance, Module)
-                         → Tab "Tenants" = gleiche Org-Liste wie Organizations
+```sql
+CREATE TABLE public.service_shop_products (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  shop_key TEXT NOT NULL,
+  category TEXT,
+  name TEXT NOT NULL,
+  description TEXT,
+  price_label TEXT,
+  price_cents INTEGER,
+  image_url TEXT,
+  external_url TEXT,
+  affiliate_tag TEXT,
+  affiliate_network TEXT,
+  badge TEXT,
+  sub_category TEXT,
+  sort_order INTEGER DEFAULT 0,
+  is_active BOOLEAN DEFAULT true,
+  metadata JSONB,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE public.service_shop_config (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  shop_key TEXT UNIQUE NOT NULL,
+  display_name TEXT,
+  affiliate_network TEXT,
+  api_credentials JSONB,
+  is_connected BOOLEAN DEFAULT false,
+  config JSONB,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Indices
+CREATE INDEX idx_service_shop_products_key_active ON public.service_shop_products (shop_key, is_active, sort_order);
+
+-- RLS
+ALTER TABLE public.service_shop_products ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.service_shop_config ENABLE ROW LEVEL SECURITY;
+
+-- SELECT: All authenticated users
+CREATE POLICY "Authenticated users can read products"
+  ON public.service_shop_products FOR SELECT TO authenticated USING (true);
+
+CREATE POLICY "Authenticated users can read config"
+  ON public.service_shop_config FOR SELECT TO authenticated USING (true);
+
+-- INSERT/UPDATE/DELETE: Platform admins only (via has_role)
+CREATE POLICY "Admins can insert products"
+  ON public.service_shop_products FOR INSERT TO authenticated
+  WITH CHECK (public.has_role(auth.uid(), 'platform_admin'));
+
+CREATE POLICY "Admins can update products"
+  ON public.service_shop_products FOR UPDATE TO authenticated
+  USING (public.has_role(auth.uid(), 'platform_admin'));
+
+CREATE POLICY "Admins can delete products"
+  ON public.service_shop_products FOR DELETE TO authenticated
+  USING (public.has_role(auth.uid(), 'platform_admin'));
+
+CREATE POLICY "Admins can manage config"
+  ON public.service_shop_config FOR ALL TO authenticated
+  USING (public.has_role(auth.uid(), 'platform_admin'));
 ```
 
-**Oversight** ist ein Sammelsurium: Tenants, Immobilien, Finance Packages und Module in einem View — das gehoert nicht zusammen. Die Tenant-Daten erscheinen doppelt.
+## Schritt 2: Hook — `useServiceShopProducts.ts`
 
-**Users** zeigt Memberships ohne Kontext zum Tenant — man sieht UUIDs statt Kundendaten.
+**Neue Datei:** `src/hooks/useServiceShopProducts.ts`
 
-**Organizations** zeigt nur die Org-Huelle ohne Nutzer, ohne Billing, ohne Module.
+Generalisierter CRUD-Hook (analog zu `usePetShopProducts`):
+- `useServiceShopProducts(shopKey)` — Zone 1 CRUD (alle Produkte)
+- `useActiveServiceProducts(shopKey)` — Zone 2 Read-Only (`is_active = true`)
+- `useCreateServiceProduct()`, `useUpdateServiceProduct()`, `useDeleteServiceProduct()`
 
----
+## Schritt 3: Service Desk Seiten (Zone 1)
 
-## Soll-Zustand — Konsolidierte Architektur
+**7 neue Dateien:**
 
-### Neue Struktur: 2 Seiten statt 3
+| Datei | Zweck |
+|-------|-------|
+| `src/pages/admin/service-desk/ServiceDeskRouter.tsx` | Haupt-Router mit 5 Modul-Tabs |
+| `src/pages/admin/service-desk/ServiceDeskProductCRUD.tsx` | Wiederverwendbare CRUD-Komponente mit Side-Menu |
+| `src/pages/admin/service-desk/ServiceDeskShops.tsx` | MOD-16: Amazon, OTTO, Miete24, Smart Home |
+| `src/pages/admin/service-desk/ServiceDeskFortbildung.tsx` | MOD-15: Delegiert an AdminFortbildung |
+| `src/pages/admin/service-desk/ServiceDeskFahrzeuge.tsx` | MOD-17: Fahrzeuge, Boote, Privatjet, Angebote |
+| `src/pages/admin/service-desk/ServiceDeskPV.tsx` | MOD-19: Anbieter, Produkte, Partner, Monitoring |
+| `src/pages/admin/service-desk/ServiceDeskPetShop.tsx` | MOD-05: Ernaehrung, Tracker, Style, Fressnapf |
 
-```text
-/admin/organizations        →  "Kunden & Tenants" (HAUPTSEITE)
-/admin/organizations/:id    →  "Tenant-Detail" (erweitert)
-/admin/oversight            →  "System-Uebersicht" (reine KPIs + Immobilien/Finance)
-```
+Die `ServiceDeskProductCRUD`-Komponente repliziert das PetDeskShop-Pattern mit:
+- Links: Sub-Tab-Sidebar (4 Buttons pro Modul)
+- Rechts: Produktliste aus DB mit CRUD
+- Create/Edit Dialog inkl. Affiliate-Felder
+- Affiliate-Config Info-Box (Platzhalter)
 
-**`/admin/users` wird ENTFERNT** als eigenstaendiger Menupunkt. Die User-/Membership-Verwaltung wird in die Tenant-Detail-Seite (`/admin/organizations/:id`) integriert, wo sie hingehoert.
+## Schritt 4: Zone 2 ShopTab.tsx umbauen
 
----
+**Datei:** `src/pages/portal/services/ShopTab.tsx`
 
-### Seite 1: `/admin/organizations` — Kunden & Tenants
+- ~380 Zeilen hardcoded Produktdaten ENTFERNEN
+- 42 lokale Bild-Imports ENTFERNEN
+- Stattdessen: `useActiveServiceProducts(shopKey)` laden
+- Shop-Header (Name, Tagline, Gradient) bleibt als UI-Config
+- Smart Home: ebenfalls dynamisch aus DB laden
+- "Nicht verbunden"-Accordion bleibt (Affiliate-Placeholder)
 
-Eine einzige, saubere Hauptliste mit allen relevanten Tenant-Informationen:
+## Schritt 5: Pet-Shop Migration
 
-```text
-┌─────────────────────────────────────────────────────────────────────┐
-│  Kunden & Tenants                          [+ Neue Organisation]   │
-│  Mandanten, Partner und Benutzer verwalten                         │
-│                                                                     │
-│  [Suche...]  [Typ: Alle ▼]                                        │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                     │
-│  Kunden-Nr  │ Name              │ Typ     │ Mitglieder │ Module │  │
-│  SOT-T-...  │ System of a Town  │ Internal│ 2          │ 22     │  │
-│  SOT-T-...  │ bernhard.marchner │ Client  │ 1          │ 14     │  │
-│  SOT-T-...  │ Lennox Ottobrunn  │ Partner │ 1          │ 16     │  │
-│  SOT-T-...  │ demo              │ Client  │ 1          │ 14     │  │
-│                                                                     │
-│  Klick → Detail-Seite                                              │
-└─────────────────────────────────────────────────────────────────────┘
-```
+**Daten-Migration:** `pet_shop_products` -> `service_shop_products` per SQL INSERT:
+- `ernaehrung` -> shop_key `pet-ernaehrung`
+- `lennox_tracker` -> shop_key `pet-tracker`
+- `lennox_style` -> shop_key `pet-style`
+- `fressnapf` -> shop_key `pet-fressnapf`
 
-**Spalten:**
-- Kunden-Nr. (`public_id` aus `organizations`)
-- Name
-- Typ (Client / Partner / Internal / Renter)
-- Mitglieder (Count aus `memberships`)
-- Aktive Module (Count aus `tenant_tile_activation`)
-- Erstellt (Datum)
-- Credits (Saldo — spaeter, wenn Billing steht)
+**Zone 2 PetsShop.tsx:** `useActiveShopProducts` -> `useActiveServiceProducts` umstellen
 
-Die Counts werden aus der DB geladen (wie Oversight es bereits tut), aber direkt in der Haupttabelle angezeigt.
+**Pet Desk:** Shop-Tab aus `pet-desk` Route entfernen (Route bleibt, verweist auf Service Desk)
 
----
+## Schritt 6: Routing + Sidebar
 
-### Seite 2: `/admin/organizations/:id` — Tenant-Detail (erweitert)
+**routesManifest.ts:**
+- Route `service-desk` hinzufuegen (nach `pet-desk`)
+- `fortbildung` Route bleibt (aber Sidebar-Gruppe aendert sich)
 
-Wenn man einen Tenant anklickt, sieht man ALLES zu diesem Kunden:
+**ManifestRouter.tsx:**
+- `service-desk` in `adminDeskMap` registrieren
+- Skip-Filter erweitern
 
-```text
-┌─────────────────────────────────────────────────────────────────────┐
-│  ← Zurueck                                                         │
-│                                                                     │
-│  bernhard.marchner                                                 │
-│  Kunden-Nr: SOT-T-Z9RVCGQE  ·  Typ: Client  ·  Seit: 22.02.2026  │
-│                                                                     │
-│  [Stammdaten]  [Mitglieder]  [Module]  [Credits & Billing]         │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                     │
-│  TAB: Stammdaten                                                   │
-│  ┌──────────────────────────────────────────────────────────────┐   │
-│  │  Name:        bernhard.marchner                              │   │
-│  │  Slug:        bernhard-marchner-8d810b                       │   │
-│  │  Org-Typ:     Client                                         │   │
-│  │  Tenant-Mode: production                                     │   │
-│  │  Storage:     5 GB (Free Plan)                               │   │
-│  │  Erstellt:    22.02.2026                                     │   │
-│  │  Kunden-Nr:   SOT-T-Z9RVCGQE                                │   │
-│  │                                                              │   │
-│  │  — Kontaktdaten (aus profiles des Org-Admins) —              │   │
-│  │  Name:        Bernhard Marchner                              │   │
-│  │  E-Mail:      bernhard@...                                   │   │
-│  │  Anschrift:   (aus profiles, wenn vorhanden)                 │   │
-│  └──────────────────────────────────────────────────────────────┘   │
-│                                                                     │
-│  TAB: Mitglieder (ehemals /admin/users gefiltert)                  │
-│  ┌──────────────────────────────────────────────────────────────┐   │
-│  │  Benutzer              │ Rolle        │ Erstellt │ Aktionen  │   │
-│  │  bernhard@...          │ Org Admin    │ 22.02.   │ [✏️] [🗑] │   │
-│  │                                                              │   │
-│  │  [+ Mitglied hinzufuegen]  [+ Neuen Benutzer anlegen]       │   │
-│  └──────────────────────────────────────────────────────────────┘   │
-│                                                                     │
-│  TAB: Module                                                       │
-│  ┌──────────────────────────────────────────────────────────────┐   │
-│  │  MOD-00 Dashboard        ✅ aktiv                            │   │
-│  │  MOD-01 Stammdaten       ✅ aktiv                            │   │
-│  │  MOD-02 KI Office        ✅ aktiv                            │   │
-│  │  ...                                                         │   │
-│  │  MOD-22 Pet Manager      ⬜ inaktiv                          │   │
-│  │                                                              │   │
-│  │  Hinweis: Module werden ueber Rollen automatisch zugewiesen  │   │
-│  └──────────────────────────────────────────────────────────────┘   │
-│                                                                     │
-│  TAB: Credits & Billing                                            │
-│  ┌──────────────────────────────────────────────────────────────┐   │
-│  │  Aktueller Saldo:  487 Credits (121,75 EUR)                  │   │
-│  │  Verbrauch diesen Monat: 63 Credits                          │   │
-│  │                                                              │   │
-│  │  Datum       │ Aktion              │ Credits │ Saldo         │   │
-│  │  24.02.2026  │ PDF-Extraktion      │ -1      │ 487           │   │
-│  │  23.02.2026  │ Armstrong Chat      │ -2      │ 488           │   │
-│  │  22.02.2026  │ Guthaben aufgeladen │ +500    │ 490           │   │
-│  │                                                              │   │
-│  │  (Datenquelle: credit_transactions Tabelle — wird spaeter   │   │
-│  │   implementiert, Platzhalter-Tab mit "Noch nicht verfuegbar")│   │
-│  └──────────────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────────────┘
-```
+**AdminSidebar.tsx:**
+- `service-desk` in `getGroupKey` als `desks` registrieren
+- `fortbildung` aus `system` in `desks` verschieben (oder entfernen, da via Service Desk erreichbar)
+- Icon: ShoppingBag fuer Service Desk
+- `shouldShowInNav`: `service-desk` als sichtbar, `fortbildung` ausblenden
 
----
+## Dateien-Uebersicht
 
-### Seite 3: `/admin/oversight` — System-Uebersicht (bereinigt)
-
-Oversight bleibt, aber **ohne den Tenants-Tab** (der ist jetzt in Organizations). Uebrig bleibt:
-
-```text
-┌─────────────────────────────────────────────────────────────────────┐
-│  System-Uebersicht                                                 │
-│  Systemweite KPIs und Business-Daten (Read-only)                   │
-│                                                                     │
-│  [Orgs: 4] [User: 5] [Immobilien: 3] [Module: 72] [Finance: 0]   │
-│                                                                     │
-│  [Immobilien]  [Finance Pakete]  [Module-Aktivierungen]            │
-│                                                                     │
-│  (Keine Tenants-Tabelle mehr — die lebt jetzt in Organizations)    │
-└─────────────────────────────────────────────────────────────────────┘
-```
-
----
-
-## Aenderungen im Detail
-
-### 1. `/admin/organizations` (Organizations.tsx) — Umbau zur Hauptseite
-
-- **Titel**: "Kunden & Tenants" statt "Organisationen"
-- **Neue Spalten**: public_id (Kunden-Nr), Mitglieder-Count, Module-Count
-- **Counts laden**: memberships + tenant_tile_activation joinen (wie Oversight es schon tut)
-- **Zeile klickbar**: Navigiert zu `/admin/organizations/:id`
-- **Create-Dialog bleibt** (zum manuellen Anlegen neuer Orgs)
-
-### 2. `/admin/organizations/:id` (OrganizationDetail.tsx) — Erweitern mit 4 Tabs
-
-Aktuell zeigt die Detail-Seite nur Org-Daten + Lockdown-Toggle + Kind-Orgs. Wird erweitert:
-
-**Tab 1: Stammdaten**
-- Org-Felder (Name, Slug, Typ, Tenant-Mode, Storage, public_id)
-- Kontaktdaten des Org-Admins (aus `profiles` via `memberships` JOIN)
-- Keine DSGVO-kritischen Daten — nur Name, E-Mail, Anschrift wenn vorhanden
-
-**Tab 2: Mitglieder**
-- Komplette Membership-Verwaltung (ehemals Users.tsx gefiltert auf diese Org)
-- User anlegen, Rolle aendern, Membership loeschen
-- Profil-Infos (E-Mail, Display-Name) werden angezeigt
-
-**Tab 3: Module**
-- Alle `tenant_tile_activation`-Eintraege fuer diesen Tenant
-- Read-Only-Ansicht (Module werden ueber Rollen gesteuert, nicht manuell)
-- Link zu `/admin/tiles` fuer die systemweite Modul-Verwaltung
-
-**Tab 4: Credits & Billing**
-- Platzhalter-Tab mit Hinweis "Credit-System wird in einer spaeteren Phase implementiert"
-- Vorbereitet fuer: Saldo-Anzeige, Transaktions-Historie, monatliche Abrechnung
-- Datenquelle: `credit_transactions` Tabelle (existiert moeglicherweise noch nicht)
-
-### 3. `/admin/oversight` (Oversight.tsx) — Bereinigen
-
-- **Entfernen**: Tab "Tenants" (redundant mit Organizations)
-- **Behalten**: KPI-Cards, Tab "Immobilien", Tab "Finance Pakete", Tab "Module"
-- Die KPIs bleiben als schnelle System-Uebersicht erhalten
-
-### 4. `/admin/users` — Entfernen als eigenstaendiger Menupunkt
-
-- Users.tsx bleibt als Datei erhalten (fuer den Fall, dass man alle Memberships global sehen will)
-- Aber der Sidebar-Eintrag wird entfernt
-- Die Funktionalitaet lebt jetzt in OrganizationDetail Tab "Mitglieder"
-- Optional: Users.tsx als versteckte Route behalten, aber nicht in der Navigation
-
-### 5. Sidebar-Anpassung (AdminSidebar)
-
-```text
-Vorher:                         Nachher:
-├── Dashboard                   ├── Dashboard
-├── Organisationen              ├── Kunden & Tenants
-├── Benutzer                    ├── (entfaellt)
-├── Delegationen                ├── Delegationen
-├── ...                         ├── ...
-├── System-Uebersicht           ├── System-Uebersicht
-```
-
----
-
-## Dateien
-
-| Datei | Aenderung |
-|-------|-----------|
-| `src/pages/admin/Organizations.tsx` | Umbau: Counts laden, public_id anzeigen, Zeilen klickbar |
-| `src/pages/admin/OrganizationDetail.tsx` | Erweitern: 4-Tab-System (Stammdaten, Mitglieder, Module, Credits) |
-| `src/pages/admin/Oversight.tsx` | Bereinigen: Tenants-Tab entfernen |
-| `src/components/admin/AdminSidebar.tsx` | Users-Eintrag entfernen, Label "Organisationen" → "Kunden & Tenants" |
-
-## Was NICHT geaendert wird
-
-- Users.tsx bleibt als Datei (Route existiert weiter, aber nicht in Sidebar)
-- TileCatalog (`/admin/tiles`) bleibt unveraendert
-- Keine DB-Migration noetig (alle Daten existieren bereits)
-- Keine neuen Tabellen (Credits/Billing ist Platzhalter)
-
-## Integration mit /admin/tiles
-
-Der Tab "Module" in der Tenant-Detail-Seite zeigt die aktiven Module Read-Only an. Die tatsaechliche Steuerung erfolgt weiterhin ueber:
-1. Rollen-basierte Auto-Zuweisung (`sync_tiles_for_user`)
-2. `/admin/tiles` fuer den systemweiten Modul-Katalog
-3. Der Detail-Tab verlinkt auf `/admin/tiles` mit einem "Module verwalten"-Button
-
+| Aktion | Datei |
+|--------|-------|
+| NEU | `src/hooks/useServiceShopProducts.ts` |
+| NEU | `src/pages/admin/service-desk/ServiceDeskRouter.tsx` |
+| NEU | `src/pages/admin/service-desk/ServiceDeskProductCRUD.tsx` |
+| NEU | `src/pages/admin/service-desk/ServiceDeskShops.tsx` |
+| NEU | `src/pages/admin/service-desk/ServiceDeskFortbildung.tsx` |
+| NEU | `src/pages/admin/service-desk/ServiceDeskFahrzeuge.tsx` |
+| NEU | `src/pages/admin/service-desk/ServiceDeskPV.tsx` |
+| NEU | `src/pages/admin/service-desk/ServiceDeskPetShop.tsx` |
+| EDIT | `src/pages/portal/services/ShopTab.tsx` |
+| EDIT | `src/pages/portal/pets/PetsShop.tsx` |
+| EDIT | `src/manifests/routesManifest.ts` |
+| EDIT | `src/router/ManifestRouter.tsx` |
+| EDIT | `src/components/admin/AdminSidebar.tsx` |
+| DB | Migration: 2 neue Tabellen |
+| DB | Data: pet_shop_products -> service_shop_products kopieren |
