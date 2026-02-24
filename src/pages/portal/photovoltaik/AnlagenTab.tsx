@@ -24,63 +24,20 @@ import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { WidgetGrid } from '@/components/shared/WidgetGrid';
 import { WidgetCell } from '@/components/shared/WidgetCell';
-import { useDemoToggles } from '@/hooks/useDemoToggles';
-import { isDemoId } from '@/engines/demoData/engine';
 import { LoadingState } from '@/components/shared/LoadingState';
 import PVPlantDossier from './PVPlantDossier';
 import { toast } from 'sonner';
 
-// Demo plant data for the pre-filled Akte
-const DEMO_PLANT: PvPlant = {
-  id: '00000000-0000-4000-a000-000000000901',
-  name: 'EFH Oberhaching 32,4 kWp',
-  status: 'active',
-  street: 'Sauerlacher Str.',
-  house_number: '30',
-  postal_code: '82041',
-  city: 'Deisenhofen',
-  location_notes: 'Süd-Nord Ausrichtung, 108 Module (JA SOLAR JAM60S01-300/PR 300 Wp)',
-  kwp: 32.4,
-  commissioning_date: '2019-04-28',
-  wr_manufacturer: 'SMA Solar Technology AG',
-  wr_model: 'Sunny Tripower 15000 TL (2×)',
-  has_battery: false,
-  battery_kwh: null,
-  mastr_account_present: true,
-  mastr_plant_id: 'SEE912345678',
-  mastr_unit_id: 'SEE987654321',
-  mastr_status: 'confirmed',
-  grid_operator: 'Bayernwerk Netz GmbH',
-  energy_supplier: '',
-  customer_reference: '',
-  feed_in_meter_no: '',
-  feed_in_meter_operator: 'Bayernwerk Netz',
-  feed_in_start_reading: 0,
-  consumption_meter_no: '',
-  consumption_meter_operator: 'Bayernwerk Netz',
-  consumption_start_reading: 0,
-  provider: 'demo',
-  active_connector: 'demo_timo_leif',
-  last_sync_at: new Date().toISOString(),
-  data_quality: 'complete',
-  dms_root_node_id: '680b808e-7aaa-47f3-a92d-2ddf44e26bca',
-  tenant_id: 'a0000000-0000-4000-a000-000000000001',
-  owner_user_id: null,
-  owner_org_id: null,
-  created_at: '2019-04-28T10:00:00Z',
-  updated_at: new Date().toISOString(),
-};
-
-type ViewMode = 'grid' | 'demo' | 'detail' | 'create';
+type ViewMode = 'grid' | 'detail' | 'create';
 
 export default function AnlagenTab() {
   const { plants, isLoading, createPlant, tenantId } = usePvPlants();
   const { liveData } = usePvMonitoring(plants);
-  const { isEnabled } = useDemoToggles();
+  
   const { createDMSTree } = usePvDMS();
   const { profile } = useAuth();
   const { triggerResearch } = useDossierAutoResearch();
-  const demoEnabled = isEnabled('GP-PV-ANLAGE');
+  
 
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [selectedPlantId, setSelectedPlantId] = useState<string | null>(null);
@@ -139,10 +96,6 @@ export default function AnlagenTab() {
   const [formConsStart, setFormConsStart] = useState('');
   const [saving, setSaving] = useState(false);
 
-  const handleOpenDemo = useCallback(() => {
-    setViewMode('demo');
-    setSelectedPlantId(null);
-  }, []);
 
   const handleOpenPlant = useCallback((id: string) => {
     setViewMode('detail');
@@ -241,48 +194,8 @@ export default function AnlagenTab() {
       />
 
       <WidgetGrid>
-        {/* Demo Widget */}
-        {demoEnabled && (
-          <WidgetCell>
-            <Card
-              className={cn(
-                "h-full cursor-pointer transition-colors",
-                DESIGN.DEMO_WIDGET.CARD,
-                DESIGN.DEMO_WIDGET.HOVER,
-                viewMode === 'demo' && 'ring-2 ring-emerald-400'
-              )}
-              onClick={handleOpenDemo}
-            >
-              <CardContent className="p-4 h-full flex flex-col justify-between">
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <Badge className={cn(DESIGN.DEMO_WIDGET.BADGE, "text-[10px]")}>Demo</Badge>
-                    <Badge variant="default" className="text-[10px]">Aktiv</Badge>
-                  </div>
-                  <h3 className="font-semibold text-sm">EFH Oberhaching 32,4 kWp</h3>
-                  <p className="text-xs text-muted-foreground mt-0.5">Deisenhofen · SMA Sunny Tripower</p>
-                </div>
-                <div className="mt-3 space-y-1">
-                  <div className="flex justify-between text-xs">
-                    <span className="text-muted-foreground flex items-center gap-1"><Zap className="h-3 w-3" /> Leistung</span>
-                    <span className="font-mono font-semibold">13.960 W</span>
-                  </div>
-                  <div className="flex justify-between text-xs">
-                    <span className="text-muted-foreground flex items-center gap-1"><Activity className="h-3 w-3" /> Heute</span>
-                    <span className="font-mono">60,8 kWh</span>
-                  </div>
-                  <div className="flex justify-between text-xs">
-                    <span className="text-muted-foreground">Jahresertrag</span>
-                    <span className="font-mono">31.350 kWh</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </WidgetCell>
-        )}
-
-        {/* Real Plants */}
-        {plants.filter(plant => !(demoEnabled && isDemoId(plant.id))).map((plant) => {
+        {/* Plants */}
+        {plants.map((plant) => {
           const live = liveData.get(plant.id);
           return (
             <WidgetCell key={plant.id}>
@@ -293,13 +206,11 @@ export default function AnlagenTab() {
                 )}
                 onClick={() => handleOpenPlant(plant.id)}
               >
-                {!isDemoId(plant.id) && (
-                  <WidgetDeleteOverlay
+                <WidgetDeleteOverlay
                     title={plant.name}
                     onConfirmDelete={() => deletePlantMutation.mutate(plant.id)}
                     isDeleting={deletingPlantId === plant.id}
                   />
-                )}
                 <CardContent className="p-4 h-full flex flex-col justify-between">
                   <div>
                     <div className="flex items-center justify-between mb-2">
@@ -354,18 +265,6 @@ export default function AnlagenTab() {
       </WidgetGrid>
 
       {/* ─── Inline Detail / Create below the grid ─── */}
-
-      {viewMode === 'demo' && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold">Demo-Akte: EFH Oberhaching 32,4 kWp</h3>
-            <Button variant="ghost" size="sm" onClick={handleCloseDetail}>
-              <X className="h-4 w-4 mr-1" /> Schließen
-            </Button>
-          </div>
-          <PVPlantDossier plant={DEMO_PLANT} isDemo />
-        </div>
-      )}
 
       {viewMode === 'detail' && selectedPlant && (
         <div className="space-y-4">
