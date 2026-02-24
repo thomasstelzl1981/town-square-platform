@@ -58,7 +58,7 @@ export const ROLE_EXTRA_TILES: Record<string, string[]> = {
   finance_manager: ['MOD-11'],
   akquise_manager: ['MOD-12'],
   project_manager: ['MOD-13'],
-  pet_manager: ['MOD-22'],
+  pet_manager: ['MOD-22', 'MOD-10'],
 };
 
 /** 8 Spezial-Module (nicht im Basis-Set) */
@@ -133,10 +133,10 @@ export const ROLES_CATALOG: RoleDefinition[] = [
   {
     code: 'pet_manager',
     label: 'Pet Manager',
-    description: 'Pet Manager — Basis-Module + MOD-22 Pet Manager.',
+    description: 'Pet Manager — Basis-Module + MOD-22 Pet Manager + MOD-10 Leads.',
     membershipRole: 'pet_manager',
     appRole: 'pet_manager',
-    totalModules: 15,
+    totalModules: 16,
   },
 ];
 
@@ -197,7 +197,7 @@ export const MODULE_ROLE_MATRIX: Record<string, string[]> = {
   'MOD-20': ['platform_admin', 'super_user', 'client_user', 'akquise_manager', 'finance_manager', 'sales_partner'],
   // Spezial-Module
   'MOD-09': ['platform_admin', 'super_user', 'sales_partner'],
-  'MOD-10': ['platform_admin', 'super_user', 'sales_partner'],
+  'MOD-10': ['platform_admin', 'super_user', 'sales_partner', 'pet_manager'],
   'MOD-11': ['platform_admin', 'super_user', 'finance_manager'],
   'MOD-12': ['platform_admin', 'super_user', 'akquise_manager'],
   'MOD-13': ['platform_admin', 'super_user', 'project_manager'],

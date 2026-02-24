@@ -401,8 +401,8 @@ async function ensureLandlordContext(tenantId: string): Promise<string | null> {
   return DEMO_LANDLORD_CONTEXT_ID;
 }
 
-async function seedPets(tenantId: string, userId: string): Promise<string[]> {
-  // Owner pets (Luna, Bello)
+async function seedOwnerPets(tenantId: string, userId: string): Promise<string[]> {
+  // Owner pets only (Luna, Bello) — Max Mustermanns eigene Tiere für MOD-05
   const ownerPets = [
     {
       id: DEMO_PET_LUNA,
@@ -442,63 +442,17 @@ async function seedPets(tenantId: string, userId: string): Promise<string[]> {
     },
   ];
 
-  // PM pets (Rocky, Mia, Oskar) — linked to pet_customers, no owner_user_id
-  const pmPets = [
-    {
-      id: 'd0000000-0000-4000-a000-000000001010',
-      tenant_id: tenantId,
-      customer_id: 'd0000000-0000-4000-a000-000000001001',
-      name: 'Rocky', species: 'dog', breed: 'Labrador Retriever',
-      birth_date: '2022-05-10', gender: 'male', weight_kg: 32,
-      chip_number: '276098102345678',
-      notes: 'Futtermittelallergie (kein Huhn), sehr freundlich, verträgt sich gut mit anderen Hunden',
-      neutered: false, allergies: [],
-    },
-    {
-      id: 'd0000000-0000-4000-a000-000000001011',
-      tenant_id: tenantId,
-      customer_id: 'd0000000-0000-4000-a000-000000001002',
-      name: 'Mia', species: 'dog', breed: 'Golden Retriever',
-      birth_date: '2024-01-15', gender: 'female', weight_kg: 28,
-      chip_number: '276098102345679',
-      notes: 'Junghund, noch etwas schüchtern bei neuen Hunden',
-      neutered: false, allergies: [],
-    },
-    {
-      id: 'd0000000-0000-4000-a000-000000001012',
-      tenant_id: tenantId,
-      customer_id: 'd0000000-0000-4000-a000-000000001002',
-      name: 'Oskar', species: 'dog', breed: 'Dackel',
-      birth_date: '2019-08-22', gender: 'male', weight_kg: 9,
-      chip_number: '276098102345680',
-      notes: 'Senior, Arthrose in Hinterläufen, braucht Rampe',
-      neutered: false, allergies: [],
-    },
-  ];
-
-  // Insert owner pets first (no customer_id FK dependency)
-  const allIds: string[] = [];
-  const { error: ownerErr } = await (supabase as any)
+  const { error } = await (supabase as any)
     .from('pets')
     .upsert(ownerPets, { onConflict: 'id' });
-  if (ownerErr) {
-    console.error('[DemoSeed] pets (owner):', ownerErr.message);
-  } else {
-    allIds.push(...ownerPets.map(p => p.id));
+
+  if (error) {
+    console.error('[DemoSeed] pets (owner):', error.message);
+    return [];
   }
 
-  // Then PM pets (depend on pet_customers existing)
-  const { error: pmErr } = await (supabase as any)
-    .from('pets')
-    .upsert(pmPets, { onConflict: 'id' });
-  if (pmErr) {
-    console.error('[DemoSeed] pets (PM):', pmErr.message, pmErr.details);
-  } else {
-    allIds.push(...pmPets.map(p => p.id));
-  }
-
-  if (import.meta.env.DEV) console.log(`[DemoSeed] ✓ pets: ${allIds.length}/${ownerPets.length + pmPets.length}`);
-  return allIds;
+  if (import.meta.env.DEV) console.log(`[DemoSeed] ✓ pets (owner): ${ownerPets.length}`);
+  return ownerPets.map(p => p.id);
 }
 
 // ─── Profile Seed (UPDATE, not INSERT) ─────────────────────
@@ -922,7 +876,7 @@ export interface DemoSeedResult {
 }
 
 /** Total number of seed() calls in the orchestrator — keep in sync! */
-const TOTAL_SEED_STEPS = 33;
+const TOTAL_SEED_STEPS = 28;
 
 export async function seedDemoData(
   tenantId: string,
@@ -1072,13 +1026,10 @@ export async function seedDemoData(
   // Phase 6.5: Dev Projects (MOD-13)
   await seed('dev_projects', () => seedDevProject(tenantId, userId));
 
-  // Phase 7: Pet Manager (z1_customers → providers → services → customers → pets → bookings)
-  await seed('pet_z1_customers', () => seedFromCSV('/demo-data/demo_pet_z1_customers.csv', 'pet_z1_customers', tenantId));
-  await seed('pet_providers', () => seedFromCSV('/demo-data/demo_pet_providers.csv', 'pet_providers', tenantId, { user_id: userId }));
-  await seed('pet_services', () => seedFromCSV('/demo-data/demo_pet_services.csv', 'pet_services', tenantId));
-  await seed('pet_customers', () => seedFromCSV('/demo-data/demo_pet_customers.csv', 'pet_customers', tenantId));
-  await seed('pets', () => seedPets(tenantId, userId));
-  await seed('pet_bookings', () => seedFromCSV('/demo-data/demo_pet_bookings.csv', 'pet_bookings', tenantId));
+  // Phase 7: Owner Pets only (Luna + Bello — Max Mustermanns eigene Tiere für MOD-05)
+  // Pet Manager business data (providers, services, customers, bookings, z1_customers)
+  // gehört zum Lennox Partner-Tenant und wird NICHT im Golden Tenant geseedet.
+  await seed('pets', () => seedOwnerPets(tenantId, userId));
 
   // ─── Diagnostics: Soll vs. Ist ───────────────────────────
   const EXPECTED: Record<string, number> = {
@@ -1094,8 +1045,7 @@ export async function seedDemoData(
     acq_mandates: 1, acq_offers: 1,
     dev_projects: 1,
     finance_requests: 2, applicant_profiles: 3, finance_mandates: 2,
-    pet_z1_customers: 2, pet_providers: 1, pet_services: 4,
-    pet_customers: 3, pets: 5, pet_bookings: 5,
+    pets: 2,
   };
 
   if (import.meta.env.DEV) {

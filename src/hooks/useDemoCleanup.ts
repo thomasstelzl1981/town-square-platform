@@ -28,12 +28,8 @@ import { ALL_DEMO_IDS } from '@/engines/demoData/data';
 const CLEANUP_ORDER = [
   // Leaf entities first (no children)
   'bank_transactions',
-  'pet_bookings',
+  // Pet owner pets only (Luna, Bello) — PM business data lives in Lennox Partner-Tenant
   'pets',
-  'pet_customers',
-  'pet_services',
-  'pet_z1_customers',
-  'pet_providers',
   'miety_contracts',
   'miety_homes',
   'user_subscriptions',
