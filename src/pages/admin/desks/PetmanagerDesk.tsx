@@ -17,7 +17,7 @@ const PetDeskShop = lazy(() => import('../petmanager/PetDeskShop'));
 const PetDeskBilling = lazy(() => import('../petmanager/PetDeskBilling'));
 
 const TABS = [
-  { value: 'governance', label: 'Governance', path: '' },
+  { value: 'dashboard', label: 'Dashboard', path: '' },
   { value: 'kontakte', label: 'Kontakte', path: 'kontakte' },
   { value: 'vorgaenge', label: 'Vorgänge', path: 'vorgaenge' },
   { value: 'kunden', label: 'Kunden', path: 'kunden' },
@@ -32,7 +32,7 @@ function Loading() {
 export default function PetmanagerDesk() {
   const location = useLocation();
   const subPath = location.pathname.replace(/^\/admin\/pet-desk\/?/, '').split('/')[0] || '';
-  const activeTab = TABS.find(t => t.path === subPath)?.value || 'governance';
+  const activeTab = TABS.find(t => t.path === subPath)?.value || 'dashboard';
 
   const navigation = (
     <Tabs value={activeTab} className="w-full">
