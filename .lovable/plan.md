@@ -1,34 +1,62 @@
 
-# Fix: Lead Desk Sidebar-Eintraege bereinigen
+# Fix: "Kampagnen Leads" aus System-Kategorie entfernen
 
 ## Problem
 
-Die alten 6 Sub-Routen des Lead Desks stehen noch im `routesManifest.ts` (Zeilen 152-156). Die zugehoerigen Dateien wurden bereits geloescht, aber die Manifest-Eintraege nicht. Die Sidebar generiert ihre Menuepunkte aus diesem Manifest — deshalb erscheinen "Kontakte", "Lead Pool", "Zuweisungen", "Provisionen" und "Monitor" weiterhin unter "SYSTEM" und fuehren alle auf `/admin/lead-desk` zurueck.
+Die Route `lead-desk/kampagnen` erscheint als eigener Menuepunkt unter "System" in der Sidebar, weil zwei Stellen in `AdminSidebar.tsx` den `lead-desk/`-Prefix nicht korrekt behandeln:
+
+1. **`categorizeRoute()`** (Zeile 153): Prueft nur `path === 'lead-desk'` (exakter Match). `lead-desk/kampagnen` faellt durch zum Default `return 'system'` (Zeile 169).
+2. **`shouldShowInNav()`** (Zeile 197-205): Alle anderen Desks haben einen `path.startsWith('xxx/')` Filter — `lead-desk/` fehlt in dieser Liste.
 
 ## Loesung
 
-Eine einzige Aenderung in `src/manifests/routesManifest.ts`:
+Eine Datei, zwei kleine Aenderungen in `src/components/admin/AdminSidebar.tsx`:
 
-**Zeilen 150-156 ersetzen:**
+### Aenderung 1: `categorizeRoute()` — Zeile 152-154
 
 ```text
 VORHER:
-// Lead Desk (MOD-10 Leadmanager) — 6-Tab Structure
-{ path: "lead-desk", component: "LeadDeskRouter", title: "Lead Desk" },
-{ path: "lead-desk/kontakte", component: "LeadDeskKontakte", title: "Kontakte" },
-{ path: "lead-desk/pool", component: "LeadPoolPage", title: "Lead Pool" },
-{ path: "lead-desk/assignments", component: "LeadAssignmentsPage", title: "Zuweisungen" },
-{ path: "lead-desk/commissions", component: "LeadCommissionsPage", title: "Provisionen" },
-{ path: "lead-desk/monitor", component: "LeadMonitorPage", title: "Monitor" },
+if (path.startsWith('sales-desk') || path.startsWith('finance-desk') || 
+     path.startsWith('acquiary') || path === 'lead-desk' || path === 'projekt-desk' ||
+     path.startsWith('pet-desk'))
 
 NACHHER:
-// Lead Desk (MOD-10 Leadmanager) — 2-Tab Structure (Website Leads + Kampagnen)
-{ path: "lead-desk", component: "LeadDeskRouter", title: "Lead Desk" },
-{ path: "lead-desk/kampagnen", component: "LeadKampagnenDesk", title: "Kampagnen Leads" },
+if (path.startsWith('sales-desk') || path.startsWith('finance-desk') || 
+     path.startsWith('acquiary') || path.startsWith('lead-desk') || path.startsWith('projekt-desk') ||
+     path.startsWith('pet-desk'))
 ```
 
-5 Zeilen entfernt, 1 Zeile hinzugefuegt. Die Tab-Navigation innerhalb des Lead Desks (Website Leads / Kampagnen Leads) bleibt unveraendert — sie wird von `LeadDesk.tsx` selbst gesteuert.
+`path === 'lead-desk'` wird zu `path.startsWith('lead-desk')` — damit werden auch Sub-Routen wie `lead-desk/kampagnen` korrekt als "desks" kategorisiert.
 
-## Auswirkung
+Gleiches fuer `projekt-desk` (vorbeugend): `path === 'projekt-desk'` wird zu `path.startsWith('projekt-desk')`.
 
-Die Sidebar zeigt danach nur noch **einen** Eintrag "Lead Desk" unter Operative Desks. Die 5 Geister-Eintraege unter "System" verschwinden.
+### Aenderung 2: `shouldShowInNav()` — Zeile 197-205
+
+`lead-desk/` in die Sub-Route-Filterliste aufnehmen:
+
+```text
+VORHER:
+if (path.includes('/') && (
+  path.startsWith('sales-desk/') ||
+  path.startsWith('finance-desk/') ||
+  path.startsWith('acquiary/') ||
+  path.startsWith('projekt-desk/') ||
+  path.startsWith('pet-desk/')
+))
+
+NACHHER:
+if (path.includes('/') && (
+  path.startsWith('sales-desk/') ||
+  path.startsWith('finance-desk/') ||
+  path.startsWith('acquiary/') ||
+  path.startsWith('lead-desk/') ||
+  path.startsWith('projekt-desk/') ||
+  path.startsWith('pet-desk/')
+))
+```
+
+## Ergebnis
+
+- "Kampagnen Leads" verschwindet aus der "System"-Kategorie in der Sidebar
+- Der Lead Desk hat weiterhin genau einen Sidebar-Eintrag unter "Operative Desks"
+- Die Tab-Navigation innerhalb des Lead Desks (Website Leads / Kampagnen Leads) bleibt unveraendert
