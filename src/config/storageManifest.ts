@@ -393,6 +393,22 @@ export function getSortedModules(): ModuleStorageConfig[] {
 }
 
 /**
+ * Sanitize a filename for Supabase Storage.
+ * Removes special characters (spaces, brackets, umlauts, accents) that cause "Invalid key" errors.
+ * Adds a timestamp prefix for uniqueness.
+ */
+function sanitizeFileName(name: string): string {
+  const lastDot = name.lastIndexOf('.');
+  const ext = lastDot > 0 ? name.substring(lastDot).toLowerCase() : '';
+  const base = lastDot > 0 ? name.substring(0, lastDot) : name;
+  const safe = base
+    .replace(/[^a-zA-Z0-9_-]/g, '_')
+    .replace(/_+/g, '_')
+    .replace(/^_|_$/g, '');
+  return `${Date.now()}_${safe || 'upload'}${ext}`;
+}
+
+/**
  * Build the canonical blob-storage path for a file upload.
  *
  * Pattern: {tenantId}/{moduleCode}/{entityId}/{filename}
@@ -404,7 +420,7 @@ export function buildStoragePath(
   entityId?: string,
   filename?: string,
 ): string {
-  const safeName = filename || `upload_${Date.now()}`;
+  const safeName = filename ? sanitizeFileName(filename) : `upload_${Date.now()}`;
   if (!moduleCode) {
     return `${tenantId}/INBOX/${safeName}`;
   }

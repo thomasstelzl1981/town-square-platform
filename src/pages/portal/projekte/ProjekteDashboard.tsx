@@ -276,18 +276,63 @@ export default function ProjekteDashboard() {
     setExtractedData({ ...extractedData, extractedUnits: newUnits, unitsCount: newUnits.length });
   };
 
-  // Expose dropzone
+  // ── Auto-upload helper — triggers upload immediately after drop ─────────
+  const autoUploadFile = useCallback(async (file: File, docType: 'expose' | 'pricelist') => {
+    setIsUploading(true);
+    setError(null);
+    try {
+      const setter = docType === 'expose' ? setUploadedExpose : setUploadedPricelist;
+      const result = await universalUpload(file, {
+        moduleCode: 'MOD_13',
+        docTypeHint: docType,
+        source: 'project_intake',
+        onFileUploaded: (info) => setter(info),
+      });
+      if (result.error) throw new Error(result.error);
+      // Fallback if callback didn't fire
+      if (result.documentId) {
+        setter(prev => prev || {
+          documentId: result.documentId!,
+          storagePath: result.storagePath || '',
+          storageNodeId: result.storageNodeId,
+          fileName: file.name,
+          fileSize: file.size,
+          mimeType: file.type,
+          previewUrl: result.previewUrl || null,
+        });
+      }
+      toast.success(`${docType === 'expose' ? 'Exposé' : 'Preisliste'} hochgeladen`);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Upload fehlgeschlagen';
+      setError(message);
+      toast.error('Upload fehlgeschlagen', { description: message });
+      // Reset the file so user can retry
+      if (docType === 'expose') setExposeFile(null); else setPricelistFile(null);
+    } finally {
+      setIsUploading(false);
+    }
+  }, [universalUpload]);
+
+  // Expose dropzone — auto-upload on drop
   const onDropExpose = useCallback((acceptedFiles: File[]) => {
-    if (acceptedFiles.length > 0) { setExposeFile(acceptedFiles[0]); setError(null); }
-  }, []);
+    if (acceptedFiles.length > 0) {
+      setExposeFile(acceptedFiles[0]);
+      setError(null);
+      autoUploadFile(acceptedFiles[0], 'expose');
+    }
+  }, [autoUploadFile]);
   const { getRootProps: getExposeRootProps, getInputProps: getExposeInputProps, isDragActive: isExposeDragActive } = useDropzone({
     onDrop: onDropExpose, accept: { 'application/pdf': ['.pdf'] }, maxFiles: 1, multiple: false, disabled: !!uploadedExpose, noDrag: isMobile,
   });
 
-  // Pricelist dropzone
+  // Pricelist dropzone — auto-upload on drop
   const onDropPricelist = useCallback((acceptedFiles: File[]) => {
-    if (acceptedFiles.length > 0) { setPricelistFile(acceptedFiles[0]); setError(null); }
-  }, []);
+    if (acceptedFiles.length > 0) {
+      setPricelistFile(acceptedFiles[0]);
+      setError(null);
+      autoUploadFile(acceptedFiles[0], 'pricelist');
+    }
+  }, [autoUploadFile]);
   const { getRootProps: getPricelistRootProps, getInputProps: getPricelistInputProps, isDragActive: isPricelistDragActive } = useDropzone({
     onDrop: onDropPricelist,
     accept: { 'application/pdf': ['.pdf'], 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'], 'application/vnd.ms-excel': ['.xls'], 'text/csv': ['.csv'] },
@@ -424,7 +469,12 @@ export default function ProjekteDashboard() {
               className="gap-2"
               onClick={() => {
                 const intakeEl = document.getElementById('magic-intake-section');
-                if (intakeEl) intakeEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                if (intakeEl) {
+                  intakeEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  // Pulse the card briefly to draw attention
+                  intakeEl.classList.add('ring-2', 'ring-primary', 'ring-offset-2');
+                  setTimeout(() => intakeEl.classList.remove('ring-2', 'ring-primary', 'ring-offset-2'), 2000);
+                }
               }}
             >
               <Sparkles className="h-4 w-4" />
@@ -552,10 +602,17 @@ export default function ProjekteDashboard() {
                 )}
               </div>
               <div className="flex items-center justify-between pt-2">
-                <p className="text-sm text-muted-foreground"><Sparkles className="inline h-3 w-3 mr-1" />{hasUploadedFiles ? 'Dateien hochgeladen — starten Sie die KI-Analyse' : 'KI extrahiert automatisch Projektdaten, Einheiten & Preise'}</p>
+                <p className="text-sm text-muted-foreground">
+                  <Sparkles className="inline h-3 w-3 mr-1" />
+                  {isUploading ? 'Dateien werden hochgeladen…' : hasUploadedFiles ? 'Dateien hochgeladen — starten Sie die KI-Analyse' : 'Dateien ablegen oder klicken — Upload startet automatisch'}
+                </p>
                 <div className="flex gap-2">
                   {(hasSelectedFiles || hasUploadedFiles) && <Button variant="ghost" onClick={resetForm} disabled={isUploading || isAnalyzing}>Zurücksetzen</Button>}
-                  {!hasUploadedFiles && <Button onClick={handleUploadFiles} disabled={isUploading || !hasSelectedFiles} className="gap-2" size="lg">{isUploading ? <><Loader2 className="h-4 w-4 animate-spin" />Wird hochgeladen…</> : <><Upload className="h-4 w-4" />Dateien hochladen</>}</Button>}
+                  {isUploading && (
+                    <Button disabled className="gap-2" size="lg">
+                      <Loader2 className="h-4 w-4 animate-spin" />Wird hochgeladen…
+                    </Button>
+                  )}
                   {hasUploadedFiles && <Button onClick={handleStartAnalysis} disabled={isAnalyzing} className="gap-2" size="lg">{isAnalyzing ? <><Loader2 className="h-4 w-4 animate-spin" />KI analysiert…</> : <><Search className="h-4 w-4" />KI-Analyse starten</>}</Button>}
                 </div>
               </div>
