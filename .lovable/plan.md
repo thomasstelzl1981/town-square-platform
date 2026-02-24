@@ -1,138 +1,185 @@
 
-# SoT-Fallback-E-Mail: Automatische vorname.nachname@systemofatown.com
 
-## Konzept
+# Marketing-Maschine Phase 1: Kategorisierte Kontaktbuecher in Zone 1
 
-Jeder Tenant-User erhaelt beim Signup automatisch eine persoenliche E-Mail-Adresse im Format `vorname.nachname@systemofatown.com`. Diese wird als permanente Fallback-Adresse fuer alle Outbound-E-Mails verwendet, solange (oder auch wenn) kein eigenes Mail-Konto (Gmail/Outlook/SMTP) verbunden ist.
+## Ausgangslage
+
+Aktuell existieren fragmentierte Kontaktquellen:
+- **AdminKontaktbuch** (KI-Office): Allgemeines Kontaktbuch mit `scope: 'zone1_admin'`, nicht kategorisiert nach Geschaeftsbereich
+- **AcquiaryKontakte**: Eigener Kontakt-Pool via `contact_staging` Tabelle mit integrierter SOAT Search Engine
+- **SOAT Search Engine**: Funktionaler Orchestrator (Google Places + Apify + Firecrawl), aber nur im Acquiary Desk eingebettet
+- **sot-research-engine**: Edge Function existiert und arbeitet mit Google Places API, Apify und Firecrawl
+
+**Probleme:**
+1. Nur Acquiary hat ein Kontaktbuch mit Recherche-Integration
+2. Lead Desk, Sales Desk, Finance Desk und Pet Desk haben keinen eigenen Kontakt-Tab
+3. Die SOAT Search Engine ist fest an Acquiary gekoppelt statt wiederverwendbar
+4. Das UI der Recherche ist rein funktional, aber nicht fuer Marketing-Volumen ausgelegt
 
 ## Architektur-Entscheidung
 
-**Ansatz: `sot_email` Feld in `profiles`** (statt eigener `mail_accounts`-Eintrag)
+### Datenbank: Ein `desk_contact_book` Feld statt separater Tabellen
 
-Begruendung:
-- Die SoT-Adresse ist **kein echtes Postfach** — kein IMAP, kein Posteingang, kein OAuth-Token
-- Sie ist eine **Resend-basierte Absenderadresse** fuer Outbound-Only
-- Ein `mail_accounts`-Eintrag wuerde die bestehende Logik (IMAP-Sync, Token-Refresh) verschmutzen
-- Ein Feld auf `profiles` ist sauber, performant und sofort im Signup-Trigger verfuegbar
+Statt 6 separate Tabellen wird die bestehende `contact_staging`-Tabelle um ein `desk` Feld erweitert. Jeder Desk sieht nur seine eigenen Kontakte. Das vermeidet Schema-Explosion und nutzt bestehende RLS-Policies.
 
-## Aenderungsplan
+### UI: Shared `DeskContactBook` Komponente
 
-### 1. Migration: `sot_email` Spalte auf `profiles`
+Eine wiederverwendbare Komponente, die in jeden Operative Desk als neuer Tab eingehaengt wird.
 
-```sql
-ALTER TABLE profiles ADD COLUMN sot_email TEXT;
-CREATE UNIQUE INDEX idx_profiles_sot_email ON profiles(sot_email) WHERE sot_email IS NOT NULL;
-```
+## Kategorien-Zuordnung zu Desks
 
-- Eindeutiger Index verhindert Namenskollisionen
-- Nullable, da Altdaten erst per Backfill befuellt werden
+| Kategorie | Desk | Desk-Code |
+|-----------|------|-----------|
+| Family Offices & Immobilienunternehmen | Acquiary | `acquiary` |
+| Immobilienmakler | Sales Desk | `sales` |
+| Finanzvertriebe | Finance Desk | `finance` |
+| Finanzdienstleister | Finance Desk | `finance` |
+| Versicherungskaufleute | Lead Desk | `insurance` |
+| Hundepensionen, Hundehotels, Hundefriseure | Pet Desk | `pet` |
 
-### 2. SQL-Funktion: `generate_sot_email(first_name, last_name, auth_email)`
+## Umsetzungsplan
 
-Erzeugt die Adresse nach folgendem Schema:
-- Basis: `vorname.nachname@systemofatown.com` (lowercase, Umlaute normalisiert: ae, oe, ue, ss)
-- Bei Kollision: `vorname.nachname2@systemofatown.com`, `vorname.nachname3@systemofatown.com` usw.
-- Fallback wenn kein Name: `email-prefix@systemofatown.com` (aus der Auth-E-Mail)
-
-### 3. `handle_new_user()` Trigger erweitern
-
-Nach dem INSERT in `profiles` wird `sot_email` sofort gesetzt:
-
-```text
-UPDATE profiles
-SET sot_email = generate_sot_email(first_name, last_name, NEW.email)
-WHERE id = NEW.id;
-```
-
-Damit hat jeder neue User ab Signup seine SoT-Adresse.
-
-### 4. Backfill fuer bestehende User
+### 1. Migration: `desk` Spalte auf `contact_staging`
 
 ```sql
-UPDATE profiles
-SET sot_email = generate_sot_email(
-  COALESCE(first_name, split_part(email, '@', 1)),
-  COALESCE(last_name, ''),
-  email
-)
-WHERE sot_email IS NULL;
+ALTER TABLE contact_staging ADD COLUMN desk TEXT DEFAULT 'acquiary';
+CREATE INDEX idx_contact_staging_desk ON contact_staging(desk);
 ```
 
-### 5. `userMailSend.ts` — Resend-Fallback personalisieren
+Bestehende Acquiary-Kontakte behalten `desk = 'acquiary'`. Neue Kontakte werden dem jeweiligen Desk zugeordnet.
 
-Aktuell (Zeile 101):
+### 2. Migration: `soat_search_orders` um `desk` erweitern
+
+```sql
+ALTER TABLE soat_search_orders ADD COLUMN desk TEXT DEFAULT 'acquiary';
+```
+
+Damit koennen Recherche-Auftraege desk-spezifisch gefiltert werden.
+
+### 3. Shared Komponente: `DeskContactBook`
+
+**Datei:** `src/components/admin/desks/DeskContactBook.tsx`
+
+Eine neue Komponente, die den gesamten AcquiaryKontakte-Code generalisiert:
+- Props: `desk: string`, `searchPresets: SearchPreset[]`, `title: string`
+- Enthaelt: SOAT Search Section (wiederverwendbar) + Kontakt-Pool
+- Filtert `contact_staging` und `soat_search_orders` nach `desk`
+- SearchPresets definieren pro Desk die typischen Suchintents (z.B. "Hundepension Muenchen" fuer Pet Desk)
+
 ```text
-const fromAddr = resendFrom || 'Armstrong <no-reply@systemofatown.de>';
+Interface SearchPreset {
+  label: string;        // "Hundepensionen"
+  intent: string;       // "Hundepensionen Hundehotels"
+  icon?: LucideIcon;
+}
 ```
 
-Neu: Vor dem Resend-Fallback wird `profiles.sot_email` und `profiles.display_name` geladen:
+### 4. Neues UI-Konzept: Preset-Karten statt freie Textfelder
+
+Statt des aktuellen minimalen Formulars (Titel + Intent + Anzahl) wird eine visuelle Preset-Auswahl angeboten:
 
 ```text
-// Lookup user's SoT email for personalized Resend fallback
-const { data: profile } = await supabase
-  .from('profiles')
-  .select('sot_email, display_name, first_name, last_name')
-  .eq('id', userId)
-  .single();
-
-const sotEmail = profile?.sot_email;
-const displayName = profile?.display_name
-  || [profile?.first_name, profile?.last_name].filter(Boolean).join(' ')
-  || 'Portal';
-
-const fromAddr = sotEmail
-  ? `${displayName} <${sotEmail}>`
-  : (resendFrom || 'Armstrong <no-reply@systemofatown.de>');
++--------------------------------------------------+
+| KONTAKT-RECHERCHE                                |
+|                                                  |
+| [Hundepension]  [Hundehotel]  [Hundesalon]       |  <-- Preset-Chips
+|                                                  |
+| Region: [_Muenchen___________]  Anzahl: [25]     |  <-- Region + Count
+|                                                  |
+| [Recherche starten]                              |
++--------------------------------------------------+
+|                                                  |
+| ERGEBNISSE (Live-Stream)                         |
+| +----------------------------------------------+ |
+| | Firma           | Kontakt | Tel  | Mail | +  | |
+| | Lennox & Friends | M. Doe  | ...  | ...  | o | |
+| | Happy Paws       | K. Mue  | ...  | ...  | o | |
+| +----------------------------------------------+ |
+|                                                  |
+| KONTAKTBUCH (12 Kontakte)                        |
+| +----------------------------------------------+ |
+| | ...                                          | |
+| +----------------------------------------------+ |
++--------------------------------------------------+
 ```
 
-Damit sieht der Empfaenger z.B. `Thomas Stelzl <thomas.stelzl@systemofatown.com>` statt `Armstrong <no-reply@...>`.
+Die Preset-Chips sind pro Desk vordefiniert:
+- **Pet Desk**: Hundepension, Hundehotel, Hundesalon, Tierbedarf
+- **Sales Desk**: Immobilienmakler, Hausverwaltung, Bautraeger
+- **Finance Desk**: Finanzvertrieb, Versicherungsmakler, Bankberater
+- **Lead Desk**: Versicherungskaufleute, Mehrfachagenten
+- **Acquiary**: Family Office, Immobilienunternehmen, Projektentwickler
 
-### 6. `sot-system-mail-send` — Identity-Fallback
+### 5. Hook: `useDeskContacts` generalisieren
 
-In `sot-system-mail-send/index.ts` wird der bestehende Identity-Lookup (`get_active_outbound_identity`) um einen Fallback auf `profiles.sot_email` ergaenzt, falls keine explizite Outbound-Identity existiert.
+Basierend auf `useSoatSearchEngine.ts`, aber mit `desk`-Filter:
 
-### 7. UI: Anzeige im Profil / E-Mail-Einstellungen
+```text
+useDeskContacts(desk: string)
+useDeskSoatOrders(desk: string)
+useDeskSoatResults(orderId: string)
+useCreateDeskSoatOrder(desk: string)
+```
 
-- Im Profil-Bereich wird `sot_email` als "Ihre System-E-Mail" angezeigt (read-only)
-- Hinweis: "Alle ausgehenden E-Mails werden ueber diese Adresse versendet. Sie koennen zusaetzlich Ihr eigenes E-Mail-Konto verbinden."
+### 6. Desk-Routing: Neuer "Kontakte" Tab pro Desk
 
-## Voraussetzung: Resend Domain
+| Desk | Tab hinzufuegen | Route |
+|------|-----------------|-------|
+| Sales Desk | "Kontakte" | `/admin/sales-desk/kontakte` |
+| Finance Desk | "Kontakte" | `/admin/finance-desk/kontakte` |
+| Lead Desk | "Kontakte" | `/admin/lead-desk/kontakte` |
+| Pet Desk | "Kontakte" | `/admin/pet-desk/kontakte` |
+| Acquiary | Bestehendes Tab refactorn | `/admin/acquiary/kontakte` |
 
-Die Domain `systemofatown.com` muss in Resend als verifizierte Absender-Domain eingerichtet sein (DNS: SPF, DKIM, DMARC). Basierend auf dem bestehenden Code (`noreply@systemofatown.com` in `sot-system-mail-send`) ist dies bereits der Fall.
+### 7. AcquiaryKontakte refactorn
+
+Die bestehende `AcquiaryKontakte.tsx` wird auf die neue `DeskContactBook`-Komponente umgestellt. Der gesamte SOAT-Search-Code und Kontakt-Pool-Code wird in die Shared-Komponente verschoben.
 
 ## Betroffene Dateien
 
 | Datei | Aenderung |
 |-------|-----------|
-| Migration (neu) | `sot_email` Spalte, Unique Index, `generate_sot_email()` Funktion, Backfill |
-| `handle_new_user()` Migration | Trigger um `sot_email`-Zuweisung erweitern |
-| `supabase/functions/_shared/userMailSend.ts` | Resend-Fallback mit `profiles.sot_email` personalisieren |
-| `supabase/functions/sot-system-mail-send/index.ts` | Identity-Fallback auf `sot_email` |
-| Profil-UI (z.B. Stammdaten) | SoT-E-Mail als Read-Only anzeigen |
+| **Migration (neu)** | `desk` Spalte auf `contact_staging` und `soat_search_orders` |
+| **`src/components/admin/desks/DeskContactBook.tsx`** | Neue Shared-Komponente |
+| **`src/hooks/useDeskContacts.ts`** | Neuer generalisierter Hook |
+| **`src/pages/admin/desks/SalesDesk.tsx`** | Neuer "Kontakte" Tab + Route |
+| **`src/pages/admin/desks/FinanceDesk.tsx`** | Neuer "Kontakte" Tab + Route |
+| **`src/pages/admin/desks/LeadDesk.tsx`** | Neuer "Kontakte" Tab + Route |
+| **`src/pages/admin/desks/PetmanagerDesk.tsx`** | Neuer "Kontakte" Tab + Route |
+| **`src/pages/admin/acquiary/AcquiaryKontakte.tsx`** | Refactor auf DeskContactBook |
+| **`src/pages/admin/sales-desk/SalesDeskKontakte.tsx`** | Neue Sub-Page |
+| **`src/pages/admin/finance-desk/FinanceDeskKontakte.tsx`** | Neue Sub-Page |
+| **`src/pages/admin/lead-desk/LeadDeskKontakte.tsx`** | Neue Sub-Page |
+| **`src/pages/admin/petmanager/PetDeskKontakte.tsx`** | Neue Sub-Page |
 
 ## Nicht betroffen
 
-- `mail_accounts` Tabelle — bleibt fuer echte Postfaecher (Gmail, Outlook, SMTP)
-- `user_outbound_identities` — bleibt fuer Brand-spezifische Identitaeten (Kaufy, FutureRoom etc.)
-- Inbound-Routing — die SoT-Adresse ist rein outbound via Resend, kein Posteingang
+- `sot-research-engine` Edge Function — bleibt unveraendert, wird bereits korrekt aufgerufen
+- `contacts` Tabelle (Zone-2 Tenant-Kontakte) — separates System
+- `AdminKontaktbuch` (KI-Office) — bleibt als uebergreifendes Admin-Kontaktbuch bestehen
+- Keine Modul-Freeze-Verletzung, da alle Aenderungen in `src/pages/admin/` und `src/components/admin/` liegen (nicht in Modul-Pfaden)
 
-## Zusammenfassung Ablauf
+## Zusammenfassung
 
 ```text
-Signup
+Desk-spezifischer Kontakt-Tab
   |
   v
-handle_new_user()
-  |-- profiles INSERT (email, display_name, ...)
-  |-- UPDATE profiles SET sot_email = generate_sot_email(...)
+DeskContactBook (Shared Component)
+  |-- Preset-Chips (desk-spezifische Suchvorlagen)
+  |-- Region + Anzahl Eingabe
+  |-- [Recherche starten] -> useDeskSoatOrders(desk)
+  |       |
+  |       v
+  |   sot-research-engine (Google Places + Apify + Firecrawl)
+  |       |
+  |       v
+  |   Live-Ergebnisse (Realtime via soat_search_results)
+  |       |
+  |       v
+  |   [Uebernehmen] -> contact_staging (desk-spezifisch)
   |
-  v
-User sendet E-Mail (z.B. Akquise, Serien-Mail, Meeting)
-  |
-  v
-sendViaUserAccountOrResend()
-  |-- Hat mail_accounts? --> Sende via Gmail/Outlook/SMTP
-  |-- Kein Konto?
-       |-- Lade profiles.sot_email
-       |-- Sende via Resend mit "Max Mustermann <max.mustermann@systemofatown.com>"
+  |-- Kontaktbuch (gefiltert nach desk)
+       |-- Suche, Filter, Inline-Details
+       |-- CSV-Export
 ```
