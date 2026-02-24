@@ -41,7 +41,7 @@ export function ResearchResultsTable({ orderId }: Props) {
         resultIds: Array.from(selected),
         duplicatePolicy: policy,
       });
-      toast.success(`${result.imported_count} Kontakte übernommen, ${result.skipped_count} übersprungen`);
+      toast.success(`${result.importedCount} Kontakte übernommen, ${result.skippedCount} übersprungen`);
       setSelected(new Set());
     } catch (e: any) {
       toast.error(`Import fehlgeschlagen: ${e.message}`);
