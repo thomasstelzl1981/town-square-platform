@@ -1,72 +1,111 @@
 
 
-# Pet Desk Sidebar-Duplikate entfernen
+# Einheitliche Kontaktstruktur: Master-Schema durchziehen
 
 ## Problem
 
-Die Sidebar-Funktion `shouldShowInNav` in `src/components/admin/AdminSidebar.tsx` hat zwei Fehler beim Pet Desk:
+Drei Tabellen speichern Kontaktdaten, aber mit unterschiedlichen Strukturen:
 
-1. **Fehlender Sub-Routen-Filter**: Die Zeilen 200-209 filtern Sub-Routen fuer `sales-desk/`, `finance-desk/`, `acquiary/`, `projekt-desk/`, `petmanager/` — aber **nicht** `pet-desk/`. Da die Routen im Manifest als `pet-desk/vorgaenge`, `pet-desk/kunden`, `pet-desk/shop`, `pet-desk/billing` definiert sind, erscheinen sie alle als eigene Menue-Eintraege.
+| Feld | contacts (Master/Kontaktbuch) | soat_search_results (Recherche) | contact_staging (Staging) |
+|------|------|------|------|
+| salutation (Anrede) | Vorhanden | FEHLT | FEHLT |
+| first_name (Vorname) | Vorhanden | FEHLT (nur contact_person_name) | Vorhanden |
+| last_name (Nachname) | Vorhanden | FEHLT | Vorhanden |
+| category (Kategorie) | Vorhanden | Vorhanden | FEHLT |
 
-2. **Veralteter Haupteintrag**: In Zeile 183 steht `petmanager` als erlaubter Haupteintrag, aber der tatsaechliche Manifest-Pfad ist `pet-desk`. Dadurch wird der Haupteintrag "Pet Desk" nicht korrekt erkannt.
+Wenn die Recherche nur "Max Mueller" als kombinierten Namen speichert, kann man spaeter keine korrekte Anrede generieren ("Sehr geehrter Herr Mueller").
 
-## Aenderungen
+## Loesung
 
-In `src/components/admin/AdminSidebar.tsx`:
+### 1. DB-Migration: Fehlende Spalten ergaenzen
 
-### 1. Haupteintrag korrigieren (Zeile 181-183)
+**soat_search_results** erhaelt:
+- `salutation` (text, nullable) -- Herr/Frau/Divers/Firma
+- `first_name` (text, nullable)
+- `last_name` (text, nullable)
+
+`contact_person_name` bleibt als Fallback bestehen (wird nicht geloescht).
+
+**contact_staging** erhaelt:
+- `salutation` (text, nullable)
+- `category` (text, nullable)
+
+### 2. Einheitliches Kontakt-Schema (Referenz)
+
+Das Master-Schema aus dem Kontaktbuch (`contacts`-Tabelle) definiert die Pflichtfelder fuer alle kontaktfuehrenden Tabellen:
 
 ```text
-Vorher:
-  path === 'projekt-desk' || path === 'petmanager' || path === 'website-hosting'
-
-Nachher:
-  path === 'projekt-desk' || path === 'pet-desk' || path === 'website-hosting'
+KONTAKT-KERNFELDER (Master-Schema):
+────────────────────────────────────
+ Anrede        salutation       Herr / Frau / Divers / Firma
+ Vorname       first_name       Pflichtfeld
+ Nachname      last_name        Pflichtfeld
+ Firma         company_name     Optional
+ Kategorie     category         Offen / Makler / Bank / Verwalter / ...
+ E-Mail        email            Optional
+ Telefon       phone            Optional
+ Mobil         phone_mobile     Optional (nur contacts + staging)
+ Strasse       street           Optional (nur contacts)
+ PLZ           postal_code      Optional
+ Stadt/Ort     city             Optional
+ Website       website_url      Optional (nur search_results + staging)
+ Position      contact_person_role  Optional (nur search_results)
 ```
 
-### 2. Sub-Routen-Filter ergaenzen (Zeile 200-209)
+### 3. Recherche-Tabelle: Neue Spalten in der UI
 
-`pet-desk/` zur Liste der gefilterten Sub-Routen-Prefixe hinzufuegen:
+Die Ergebnistabelle in der Recherche-Zentrale zeigt dann:
+
+| Nr | Spaltenheader | DB-Feld | Beschreibung |
+|----|--------------|---------|-------------|
+| 1 | (Checkbox) | -- | Bulk-Auswahl |
+| 2 | Anrede | salutation | Herr / Frau |
+| 3 | Vorname | first_name | Extrahiert aus Website/Google |
+| 4 | Nachname | last_name | Extrahiert aus Website/Google |
+| 5 | Firma | company_name | Firmenname |
+| 6 | Kategorie | category | Branchenzuordnung |
+| 7 | Position | contact_person_role | z.B. Geschaeftsfuehrer |
+| 8 | E-Mail | email | Verifizierte Adresse |
+| 9 | Telefon | phone | Telefonnummer |
+| 10 | PLZ | postal_code | Postleitzahl |
+| 11 | Stadt | city | Ort |
+| 12 | Website | website_url | Firmen-URL |
+| 13 | Vertrauen | confidence_score | KI-Konfidenz in % |
+| 14 | Quelle | source_refs_json | Google / Firecrawl / Apify |
+| 15 | Status | validation_state | Kandidat / Validiert / Importiert |
+
+### 4. Adopt-Funktion anpassen
+
+Wenn ein Recherche-Ergebnis ins Kontaktbuch uebernommen wird, werden jetzt alle Felder sauber gemappt:
 
 ```text
-Vorher:
-  path.startsWith('sales-desk/') ||
-  path.startsWith('finance-desk/') ||
-  path.startsWith('acquiary/') ||
-  path.startsWith('projekt-desk/') ||
-  path.startsWith('petmanager/')
-
-Nachher:
-  path.startsWith('sales-desk/') ||
-  path.startsWith('finance-desk/') ||
-  path.startsWith('acquiary/') ||
-  path.startsWith('projekt-desk/') ||
-  path.startsWith('pet-desk/')
+soat_search_results          ->  contacts (Kontaktbuch)
+─────────────────────────────────────────────────────
+salutation                   ->  salutation
+first_name                   ->  first_name
+last_name                    ->  last_name
+company_name                 ->  company
+category                     ->  category
+email                        ->  email
+phone                        ->  phone
+city                         ->  city
+postal_code                  ->  postal_code
+contact_person_role          ->  notes (als Zusatzinfo)
 ```
 
-### 3. Icon-Map bereinigen (optional)
+### 5. Edge Function anpassen
 
-Die alten `Petmanager*`-Eintraege in der ICON_MAP (Zeilen 90-94) koennen durch einen einzelnen `PetDeskRouter`-Eintrag ersetzt werden, da der Manifest-Komponentenname `PetDeskRouter` ist.
+Die `sot-research-engine` muss beim Speichern der Ergebnisse `first_name`, `last_name` und `salutation` als separate Felder zurueckgeben, statt nur `contact_person_name`.
 
-## Ergebnis
-
-| Vorher (Sidebar "Operative Desks") | Nachher |
-|-------------------------------------|---------|
-| Sales Desk | Sales Desk |
-| Lead Desk | Lead Desk |
-| Projekt Desk | Projekt Desk |
-| **Pet Desk** | **Pet Desk** |
-| **Vorgaenge** (doppelt) | _(entfernt)_ |
-| **Kunden** (doppelt) | _(entfernt)_ |
-| **Shop** (doppelt) | _(entfernt)_ |
-| **Billing** (doppelt) | _(entfernt)_ |
-| Finance Desk | Finance Desk |
-
-## Betroffene Datei
+## Betroffene Dateien
 
 | Datei | Aenderung |
 |-------|-----------|
-| `src/components/admin/AdminSidebar.tsx` | Zeile 183: `petmanager` zu `pet-desk`; Zeilen 200-209: `pet-desk/` zum Sub-Routen-Filter hinzufuegen |
+| DB-Migration | `soat_search_results`: +salutation, +first_name, +last_name; `contact_staging`: +salutation, +category |
+| `src/pages/admin/ki-office/AdminRecherche.tsx` | Ergebnistabelle mit neuen Spalten (Anrede, Vorname, Nachname, Kategorie); "Neue Recherche" entfernen; konsolidierte Desk-Ansicht |
+| `src/hooks/useDeskContacts.ts` | Adopt-Funktion: salutation + category mit uebergeben |
+| `src/hooks/useSoatSearchEngine.ts` | Result-Interface aktualisieren (salutation, first_name, last_name) |
+| `supabase/functions/sot-research-engine/index.ts` | Ergebnisse mit getrennten Namensfeldern speichern |
 
-Keine DB-Migration. Keine Modul-Freeze-Verletzung (Datei liegt in `src/components/admin/`, nicht in einem Modul-Pfad).
+Keine Modul-Freeze-Verletzung (alle Dateien liegen ausserhalb der Modul-Pfade).
 
