@@ -30,7 +30,9 @@ import ErrorBoundary from '@/components/ErrorBoundary';
 import { useLegalConsent } from '@/hooks/useLegalConsent';
 import { ConsentRequiredModal } from './ConsentRequiredModal';
 import { useDemoAutoLogin } from '@/hooks/useDemoAutoLogin';
+import { useLennoxInitialSeed } from '@/hooks/useLennoxInitialSeed';
 
+const LENNOX_TENANT_ID = 'eac1778a-23bc-4d03-b3f9-b26be27c9505';
 
 /**
  * Zone 2: User Portal Layout
@@ -47,10 +49,11 @@ import { useDemoAutoLogin } from '@/hooks/useDemoAutoLogin';
  */
 
 function PortalLayoutInner() {
-  const { user, isLoading, activeOrganization, isDevelopmentMode } = useAuth();
+  const { user, isLoading, activeOrganization, isDevelopmentMode, activeTenantId } = useAuth();
   const { isMobile } = usePortalLayout();
   const { isDemo, demoState, endDemo } = useDemoAutoLogin();
   const { showConsentModal, setShowConsentModal } = useLegalConsent();
+  const { runSeed: runLennoxSeed } = useLennoxInitialSeed();
   const location = useLocation();
   // Armstrong sheet state removed — mobile uses full-screen chat now
   const [mobileHomeMode, setMobileHomeMode] = useState<'modules' | 'chat'>('modules'); // kept for chat activation
@@ -58,12 +61,21 @@ function PortalLayoutInner() {
   useSwipeBack(swipeRef);
   // P0-FIX: Track if we've ever finished initial loading
   const hasInitializedRef = useRef(false);
+  const lennoxSeedRef = useRef(false);
   
   useEffect(() => {
     if (!isLoading) {
       hasInitializedRef.current = true;
     }
   }, [isLoading]);
+
+  // Lennox Partner Seed: run once when Lennox tenant logs in
+  useEffect(() => {
+    if (activeTenantId === LENNOX_TENANT_ID && user && !lennoxSeedRef.current) {
+      lennoxSeedRef.current = true;
+      runLennoxSeed();
+    }
+  }, [activeTenantId, user, runLennoxSeed]);
 
   // Preload modules after initial render for instant navigation
   useEffect(() => {
