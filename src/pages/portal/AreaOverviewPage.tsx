@@ -63,8 +63,10 @@ export default function AreaOverviewPage() {
       : area.modules;
 
     // Filter against tenant's activated tiles (if loaded)
+    // Pseudo-modules (ARMSTRONG, INTAKE) bypass tile activation — they are always visible
+    const PSEUDO_MODULES = ['ARMSTRONG', 'INTAKE'];
     const tenantFiltered = activatedTiles.length > 0
-      ? visibleModules.filter(code => activatedTiles.includes(code))
+      ? visibleModules.filter(code => PSEUDO_MODULES.includes(code) || activatedTiles.includes(code))
       : visibleModules;
     
     return tenantFiltered.map(code => {

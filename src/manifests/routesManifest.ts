@@ -571,6 +571,24 @@ export const zone2Portal: ZoneDefinition = {
       ],
     },
     // =========================================================================
+    // MOD-21: KI-BROWSER — AI-powered web research (Superuser only)
+    // Deactivated for regular users, available via tile activation
+    // =========================================================================
+    "MOD-21": {
+      name: "KI-Browser",
+      base: "ki-browser",
+      icon: "Globe",
+      display_order: 21,
+      visibility: { default: false, org_types: ["partner"], requires_activation: true },
+      tiles: [
+        { path: "uebersicht", component: "KiBrowserUebersicht", title: "Übersicht", default: true },
+        { path: "session", component: "KiBrowserSession", title: "Session" },
+        { path: "quellen", component: "KiBrowserQuellen", title: "Quellen" },
+        { path: "vorlagen", component: "KiBrowserVorlagen", title: "Vorlagen" },
+        { path: "policies", component: "KiBrowserPolicies", title: "Policies" },
+      ],
+    },
+    // =========================================================================
     // MOD-22: PET MANAGER — Franchise-Partner Portal
     // =========================================================================
     "MOD-22": {
