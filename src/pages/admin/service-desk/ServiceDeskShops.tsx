@@ -1,11 +1,11 @@
 /**
- * ServiceDeskShops — MOD-16: Amazon Business, OTTO Office, Miete24, Smart Home
+ * ServiceDeskShops — MOD-16: Amazon Business, Büroshop24, Miete24, Smart Home
  */
 import ServiceDeskProductCRUD from './ServiceDeskProductCRUD';
 
 const SUB_TABS = [
   { key: 'amazon', label: 'Amazon Business' },
-  { key: 'otto-office', label: 'OTTO Office' },
+  { key: 'bueroshop24', label: 'Büroshop24' },
   { key: 'miete24', label: 'Miete24' },
   { key: 'smart-home', label: 'Smart Home' },
 ];

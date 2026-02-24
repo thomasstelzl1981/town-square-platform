@@ -15,7 +15,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Package, FileText, Upload, Clock, Plus } from 'lucide-react';
 
 const ORDER_STATUSES = ['Entwurf', 'Eingereicht', 'Bestellt', 'Versendet', 'Abgeschlossen', 'Storniert'];
-const SHOP_OPTIONS = ['Amazon Business', 'OTTO Office', 'Miete24'];
+const SHOP_OPTIONS = ['Amazon Business', 'Büroshop24', 'Miete24'];
 const POSITION_COLUMNS = ['Pos', 'Artikel', 'SKU', 'Menge', 'Einheit', 'EP netto', 'MwSt%', 'Σ netto', 'Σ brutto', 'Link', 'Bemerkung'];
 
 interface Order {

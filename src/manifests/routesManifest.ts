@@ -499,7 +499,7 @@ export const zone2Portal: ZoneDefinition = {
       visibility: { default: true, org_types: ["client", "partner"] },
       tiles: [
         { path: "amazon", component: "ShopsAmazon", title: "Amazon Business" },
-        { path: "otto-office", component: "ShopsOttoOffice", title: "OTTO Office" },
+        { path: "bueroshop24", component: "ShopsBueroshop24", title: "Büroshop24" },
         { path: "miete24", component: "ShopsMiete24", title: "Miete24" },
         { path: "smart-home", component: "ShopsSmartHome", title: "Smart Home" },
         { path: "bestellungen", component: "ShopsBestellungen", title: "Bestellungen" },

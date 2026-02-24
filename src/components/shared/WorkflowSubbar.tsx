@@ -104,7 +104,7 @@ export const AKQUISE_WORKFLOW_STEPS: WorkflowStep[] = [
 
 export const SERVICES_WORKFLOW_STEPS: WorkflowStep[] = [
   { id: 'amazon', label: 'Amazon', path: 'amazon' },
-  { id: 'otto-office', label: 'OTTO Office', path: 'otto-office' },
+  { id: 'bueroshop24', label: 'Büroshop24', path: 'bueroshop24' },
   { id: 'miete24', label: 'Miete24', path: 'miete24' },
   { id: 'bestellungen', label: 'Bestellungen', path: 'bestellungen' },
 ];
