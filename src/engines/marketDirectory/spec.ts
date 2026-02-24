@@ -582,3 +582,294 @@ export const REGION_COOLDOWN_DAYS = 3;
 
 /** Credit cost per contact value (1 Credit = 0.25 EUR) */
 export const CREDIT_VALUE_EUR = 0.25;
+
+// ═══════════════════════════════════════════════════════════════
+// 12. CATEGORY SOURCE STRATEGY (Recherche-Strategie pro Kategorie)
+// ═══════════════════════════════════════════════════════════════
+
+export type SourceProvider =
+  | 'google_places'
+  | 'apify_maps'
+  | 'apify_portal'
+  | 'firecrawl'
+  | 'bafin_csv'
+  | 'ihk_register'
+  | 'linkedin_api'
+  | 'manual';
+
+export type SourcePurpose = 'discovery' | 'enrichment' | 'verification';
+export type StrategyDifficulty = 'easy' | 'medium' | 'hard';
+
+/** A single step in the category-specific research pipeline */
+export interface SourceStep {
+  stepId: string;
+  provider: SourceProvider;
+  purpose: SourcePurpose;
+  priority: number;
+  config: Record<string, unknown>;
+  expectedFields: string[];
+  estimatedCostEur: number;
+  /** Skip this step if contact already has these fields, e.g. ["has_email"] */
+  skipIf?: string[];
+}
+
+/** Strategy definition per category */
+export interface CategorySourceStrategy {
+  categoryCode: string;
+  strategyCode: string;
+  difficulty: StrategyDifficulty;
+  steps: SourceStep[];
+  notes: string;
+}
+
+/** Strategy Ledger step result (stored in JSONB) */
+export interface LedgerStepResult {
+  step: string;
+  provider: SourceProvider;
+  executedAt: string;
+  costEur: number;
+  fieldsFound: string[];
+  fieldsMissing: string[];
+  rawConfidence: number;
+  notes?: string;
+}
+
+// ── STRATEGY REGISTRY ──────────────────────────────────────────
+
+export const CATEGORY_SOURCE_STRATEGIES: CategorySourceStrategy[] = [
+  // ── FINANZ: Banken ──
+  {
+    categoryCode: 'bank_retail',
+    strategyCode: 'BANK_BAFIN',
+    difficulty: 'easy',
+    notes: 'BaFin-Register als kostenlose Primärquelle, dann Google Places für Telefon, Firecrawl für E-Mail.',
+    steps: [
+      { stepId: 'bafin_import', provider: 'bafin_csv', purpose: 'discovery', priority: 1, config: { registerType: 'institute' }, expectedFields: ['name', 'city', 'legal_form', 'bafin_id'], estimatedCostEur: 0 },
+      { stepId: 'google_enrich', provider: 'google_places', purpose: 'enrichment', priority: 2, config: { searchType: 'bank' }, expectedFields: ['phone', 'address', 'rating'], estimatedCostEur: 0.003 },
+      { stepId: 'web_scrape', provider: 'firecrawl', purpose: 'verification', priority: 3, config: { extractFields: ['email', 'contact_person'] }, expectedFields: ['email', 'website'], estimatedCostEur: 0.005, skipIf: ['has_email'] },
+    ],
+  },
+  {
+    categoryCode: 'bank_private',
+    strategyCode: 'BANK_BAFIN',
+    difficulty: 'easy',
+    notes: 'Privatbanken: gleiche Strategie wie Filialbanken.',
+    steps: [
+      { stepId: 'bafin_import', provider: 'bafin_csv', purpose: 'discovery', priority: 1, config: { registerType: 'institute' }, expectedFields: ['name', 'city', 'legal_form', 'bafin_id'], estimatedCostEur: 0 },
+      { stepId: 'google_enrich', provider: 'google_places', purpose: 'enrichment', priority: 2, config: { searchType: 'bank' }, expectedFields: ['phone', 'address', 'rating'], estimatedCostEur: 0.003 },
+      { stepId: 'web_scrape', provider: 'firecrawl', purpose: 'verification', priority: 3, config: { extractFields: ['email', 'contact_person'] }, expectedFields: ['email', 'website'], estimatedCostEur: 0.005, skipIf: ['has_email'] },
+    ],
+  },
+
+  // ── FINANZ: Family Office ──
+  {
+    categoryCode: 'family_office',
+    strategyCode: 'FAMILY_OFFICE_SEARCH',
+    difficulty: 'hard',
+    notes: 'Schwierigste Kategorie: keine zentrale Registrierung, oft kein Google-Eintrag. LinkedIn ist der Schlüssel-Kanal (zukünftig).',
+    steps: [
+      { stepId: 'google_search', provider: 'google_places', purpose: 'discovery', priority: 1, config: { searchType: 'financial_institution', keywords: ['family office', 'vermögensverwaltung'] }, expectedFields: ['name', 'address', 'phone'], estimatedCostEur: 0.003 },
+      { stepId: 'web_scrape', provider: 'firecrawl', purpose: 'enrichment', priority: 2, config: { extractFields: ['email', 'contact_person', 'team_page'] }, expectedFields: ['email', 'website', 'contact_person'], estimatedCostEur: 0.01 },
+      { stepId: 'linkedin_future', provider: 'linkedin_api', purpose: 'enrichment', priority: 3, config: { searchType: 'company' }, expectedFields: ['contact_person', 'position'], estimatedCostEur: 0.05, skipIf: ['has_contact_person'] },
+    ],
+  },
+
+  // ── FINANZ: IHK-Registrierte (34d/f/h/i) ──
+  {
+    categoryCode: 'insurance_broker_34d',
+    strategyCode: 'IHK_REGISTER',
+    difficulty: 'hard',
+    notes: 'IHK-Vermittlerregister als einzige zuverlässige Quelle. Viele haben keine eigene Website.',
+    steps: [
+      { stepId: 'ihk_scrape', provider: 'ihk_register', purpose: 'discovery', priority: 1, config: { erlaubnisTyp: '34d', searchByPLZ: true }, expectedFields: ['name', 'registration_number', 'city', 'postal_code'], estimatedCostEur: 0.02 },
+      { stepId: 'google_verify', provider: 'google_places', purpose: 'enrichment', priority: 2, config: { searchType: 'insurance_agency' }, expectedFields: ['phone', 'address', 'rating'], estimatedCostEur: 0.003 },
+      { stepId: 'web_scrape', provider: 'firecrawl', purpose: 'verification', priority: 3, config: { extractFields: ['email'] }, expectedFields: ['email', 'website'], estimatedCostEur: 0.005, skipIf: ['has_email', 'no_website'] },
+    ],
+  },
+  {
+    categoryCode: 'financial_broker_34f',
+    strategyCode: 'IHK_REGISTER',
+    difficulty: 'medium',
+    notes: 'IHK-Register, dann Enrichment.',
+    steps: [
+      { stepId: 'ihk_scrape', provider: 'ihk_register', purpose: 'discovery', priority: 1, config: { erlaubnisTyp: '34f', searchByPLZ: true }, expectedFields: ['name', 'registration_number', 'city', 'postal_code'], estimatedCostEur: 0.02 },
+      { stepId: 'google_verify', provider: 'google_places', purpose: 'enrichment', priority: 2, config: { searchType: 'finance' }, expectedFields: ['phone', 'address', 'rating'], estimatedCostEur: 0.003 },
+      { stepId: 'web_scrape', provider: 'firecrawl', purpose: 'verification', priority: 3, config: { extractFields: ['email'] }, expectedFields: ['email', 'website'], estimatedCostEur: 0.005, skipIf: ['has_email'] },
+    ],
+  },
+  {
+    categoryCode: 'fee_advisor_34h',
+    strategyCode: 'IHK_REGISTER',
+    difficulty: 'hard',
+    notes: 'Honorar-Berater: sehr kleine Zielgruppe, häufig Einzelpersonen ohne Website.',
+    steps: [
+      { stepId: 'ihk_scrape', provider: 'ihk_register', purpose: 'discovery', priority: 1, config: { erlaubnisTyp: '34h', searchByPLZ: true }, expectedFields: ['name', 'registration_number', 'city', 'postal_code'], estimatedCostEur: 0.02 },
+      { stepId: 'google_verify', provider: 'google_places', purpose: 'enrichment', priority: 2, config: { searchType: 'finance' }, expectedFields: ['phone', 'address'], estimatedCostEur: 0.003 },
+      { stepId: 'web_scrape', provider: 'firecrawl', purpose: 'verification', priority: 3, config: { extractFields: ['email'] }, expectedFields: ['email'], estimatedCostEur: 0.005, skipIf: ['has_email', 'no_website'] },
+    ],
+  },
+  {
+    categoryCode: 'mortgage_broker_34i',
+    strategyCode: 'IHK_REGISTER',
+    difficulty: 'medium',
+    notes: 'IHK-Register + Google Places. Die meisten haben eine Website.',
+    steps: [
+      { stepId: 'ihk_scrape', provider: 'ihk_register', purpose: 'discovery', priority: 1, config: { erlaubnisTyp: '34i', searchByPLZ: true }, expectedFields: ['name', 'registration_number', 'city', 'postal_code'], estimatedCostEur: 0.02 },
+      { stepId: 'google_verify', provider: 'google_places', purpose: 'enrichment', priority: 2, config: { searchType: 'finance' }, expectedFields: ['phone', 'address', 'website', 'rating'], estimatedCostEur: 0.003 },
+      { stepId: 'web_scrape', provider: 'firecrawl', purpose: 'verification', priority: 3, config: { extractFields: ['email', 'contact_person'] }, expectedFields: ['email'], estimatedCostEur: 0.005, skipIf: ['has_email'] },
+    ],
+  },
+  {
+    categoryCode: 'loan_broker',
+    strategyCode: 'IHK_REGISTER',
+    difficulty: 'medium',
+    notes: 'Kreditvermittler: gleiche Pipeline wie 34i.',
+    steps: [
+      { stepId: 'ihk_scrape', provider: 'ihk_register', purpose: 'discovery', priority: 1, config: { erlaubnisTyp: '34i', searchByPLZ: true }, expectedFields: ['name', 'registration_number', 'city'], estimatedCostEur: 0.02 },
+      { stepId: 'google_verify', provider: 'google_places', purpose: 'enrichment', priority: 2, config: { searchType: 'finance' }, expectedFields: ['phone', 'address', 'rating'], estimatedCostEur: 0.003 },
+      { stepId: 'web_scrape', provider: 'firecrawl', purpose: 'verification', priority: 3, config: { extractFields: ['email'] }, expectedFields: ['email', 'website'], estimatedCostEur: 0.005, skipIf: ['has_email'] },
+    ],
+  },
+  {
+    categoryCode: 'financial_advisor',
+    strategyCode: 'GOOGLE_FIRECRAWL',
+    difficulty: 'medium',
+    notes: 'Allgemeine Finanzberater: Google Places als Primärquelle.',
+    steps: [
+      { stepId: 'google_search', provider: 'google_places', purpose: 'discovery', priority: 1, config: { searchType: 'financial_planner' }, expectedFields: ['name', 'phone', 'address', 'rating'], estimatedCostEur: 0.003 },
+      { stepId: 'web_scrape', provider: 'firecrawl', purpose: 'enrichment', priority: 2, config: { extractFields: ['email', 'contact_person'] }, expectedFields: ['email', 'website'], estimatedCostEur: 0.005, skipIf: ['has_email'] },
+    ],
+  },
+
+  // ── IMMOBILIEN: Makler (Portal-Scraping) ──
+  {
+    categoryCode: 'real_estate_agent',
+    strategyCode: 'PORTAL_SCRAPING',
+    difficulty: 'easy',
+    notes: 'Aktive Makler findet man NUR auf den Immobilienportalen. Apify Portal-Scraping ist die Primärquelle.',
+    steps: [
+      { stepId: 'portal_scrape', provider: 'apify_portal', purpose: 'discovery', priority: 1, config: { portals: ['immoscout24', 'immowelt'], searchType: 'brokers' }, expectedFields: ['name', 'address', 'phone'], estimatedCostEur: 0.02 },
+      { stepId: 'google_verify', provider: 'google_places', purpose: 'verification', priority: 2, config: { searchType: 'real_estate_agency' }, expectedFields: ['phone', 'address', 'rating', 'website'], estimatedCostEur: 0.003 },
+      { stepId: 'web_scrape', provider: 'firecrawl', purpose: 'enrichment', priority: 3, config: { extractFields: ['email', 'contact_person'] }, expectedFields: ['email'], estimatedCostEur: 0.005, skipIf: ['has_email'] },
+    ],
+  },
+
+  // ── IMMOBILIEN: Hausverwaltung ──
+  {
+    categoryCode: 'property_management',
+    strategyCode: 'GOOGLE_FIRECRAWL',
+    difficulty: 'easy',
+    notes: 'Hausverwaltungen sind gut bei Google Places gelistet.',
+    steps: [
+      { stepId: 'google_search', provider: 'google_places', purpose: 'discovery', priority: 1, config: { searchType: 'real_estate_agency', keywords: ['hausverwaltung'] }, expectedFields: ['name', 'phone', 'address', 'rating'], estimatedCostEur: 0.003 },
+      { stepId: 'web_scrape', provider: 'firecrawl', purpose: 'enrichment', priority: 2, config: { extractFields: ['email', 'contact_person'] }, expectedFields: ['email', 'website'], estimatedCostEur: 0.005, skipIf: ['has_email'] },
+    ],
+  },
+
+  // ── IMMOBILIEN: Unternehmen (Portal + Google) ──
+  {
+    categoryCode: 'real_estate_company',
+    strategyCode: 'PORTAL_GOOGLE',
+    difficulty: 'easy',
+    notes: 'Immobilienunternehmen: Portal-Scraping + Google Places.',
+    steps: [
+      { stepId: 'portal_scrape', provider: 'apify_portal', purpose: 'discovery', priority: 1, config: { portals: ['immoscout24'], searchType: 'listings' }, expectedFields: ['name', 'address'], estimatedCostEur: 0.02 },
+      { stepId: 'google_verify', provider: 'google_places', purpose: 'enrichment', priority: 2, config: { searchType: 'real_estate_agency' }, expectedFields: ['phone', 'website', 'rating'], estimatedCostEur: 0.003 },
+      { stepId: 'web_scrape', provider: 'firecrawl', purpose: 'verification', priority: 3, config: { extractFields: ['email', 'contact_person'] }, expectedFields: ['email', 'contact_person'], estimatedCostEur: 0.005, skipIf: ['has_email'] },
+    ],
+  },
+
+  // ── IMMOBILIEN: Steuerberater ──
+  {
+    categoryCode: 'tax_advisor_re',
+    strategyCode: 'GOOGLE_FIRECRAWL',
+    difficulty: 'easy',
+    notes: 'Steuerberater: gut bei Google Places gelistet.',
+    steps: [
+      { stepId: 'google_search', provider: 'google_places', purpose: 'discovery', priority: 1, config: { searchType: 'accounting', keywords: ['steuerberater', 'immobilien'] }, expectedFields: ['name', 'phone', 'address', 'rating'], estimatedCostEur: 0.003 },
+      { stepId: 'web_scrape', provider: 'firecrawl', purpose: 'enrichment', priority: 2, config: { extractFields: ['email', 'contact_person'] }, expectedFields: ['email', 'website'], estimatedCostEur: 0.005, skipIf: ['has_email'] },
+    ],
+  },
+
+  // ── PET: Alle Kategorien (gleiche einfache Pipeline) ──
+  {
+    categoryCode: 'dog_boarding',
+    strategyCode: 'GOOGLE_FIRECRAWL',
+    difficulty: 'easy',
+    notes: 'Hundepensionen sind gut bei Google Places gelistet.',
+    steps: [
+      { stepId: 'google_search', provider: 'google_places', purpose: 'discovery', priority: 1, config: { searchType: 'pet_store' }, expectedFields: ['name', 'phone', 'address', 'rating'], estimatedCostEur: 0.003 },
+      { stepId: 'web_scrape', provider: 'firecrawl', purpose: 'enrichment', priority: 2, config: { extractFields: ['email'] }, expectedFields: ['email', 'website'], estimatedCostEur: 0.005, skipIf: ['has_email'] },
+    ],
+  },
+  {
+    categoryCode: 'dog_daycare',
+    strategyCode: 'GOOGLE_FIRECRAWL',
+    difficulty: 'easy',
+    notes: 'Hundetagesstätten: Google Places.',
+    steps: [
+      { stepId: 'google_search', provider: 'google_places', purpose: 'discovery', priority: 1, config: { searchType: 'pet_store' }, expectedFields: ['name', 'phone', 'address', 'rating'], estimatedCostEur: 0.003 },
+      { stepId: 'web_scrape', provider: 'firecrawl', purpose: 'enrichment', priority: 2, config: { extractFields: ['email'] }, expectedFields: ['email', 'website'], estimatedCostEur: 0.005, skipIf: ['has_email'] },
+    ],
+  },
+  {
+    categoryCode: 'dog_grooming',
+    strategyCode: 'GOOGLE_FIRECRAWL',
+    difficulty: 'easy',
+    notes: 'Hundefriseure: Google Places.',
+    steps: [
+      { stepId: 'google_search', provider: 'google_places', purpose: 'discovery', priority: 1, config: { searchType: 'pet_store' }, expectedFields: ['name', 'phone', 'address', 'rating'], estimatedCostEur: 0.003 },
+      { stepId: 'web_scrape', provider: 'firecrawl', purpose: 'enrichment', priority: 2, config: { extractFields: ['email'] }, expectedFields: ['email', 'website'], estimatedCostEur: 0.005, skipIf: ['has_email'] },
+    ],
+  },
+  {
+    categoryCode: 'dog_training',
+    strategyCode: 'GOOGLE_FIRECRAWL',
+    difficulty: 'easy',
+    notes: 'Hundeschulen: Google Places.',
+    steps: [
+      { stepId: 'google_search', provider: 'google_places', purpose: 'discovery', priority: 1, config: { searchType: 'pet_store' }, expectedFields: ['name', 'phone', 'address', 'rating'], estimatedCostEur: 0.003 },
+      { stepId: 'web_scrape', provider: 'firecrawl', purpose: 'enrichment', priority: 2, config: { extractFields: ['email'] }, expectedFields: ['email', 'website'], estimatedCostEur: 0.005, skipIf: ['has_email'] },
+    ],
+  },
+  {
+    categoryCode: 'pet_shop',
+    strategyCode: 'GOOGLE_FIRECRAWL',
+    difficulty: 'easy',
+    notes: 'Zoofachhandel: Google Places.',
+    steps: [
+      { stepId: 'google_search', provider: 'google_places', purpose: 'discovery', priority: 1, config: { searchType: 'pet_store' }, expectedFields: ['name', 'phone', 'address', 'rating'], estimatedCostEur: 0.003 },
+      { stepId: 'web_scrape', provider: 'firecrawl', purpose: 'enrichment', priority: 2, config: { extractFields: ['email'] }, expectedFields: ['email', 'website'], estimatedCostEur: 0.005, skipIf: ['has_email'] },
+    ],
+  },
+  {
+    categoryCode: 'veterinary',
+    strategyCode: 'GOOGLE_FIRECRAWL',
+    difficulty: 'easy',
+    notes: 'Tierärzte: Google Places.',
+    steps: [
+      { stepId: 'google_search', provider: 'google_places', purpose: 'discovery', priority: 1, config: { searchType: 'veterinary_care' }, expectedFields: ['name', 'phone', 'address', 'rating'], estimatedCostEur: 0.003 },
+      { stepId: 'web_scrape', provider: 'firecrawl', purpose: 'enrichment', priority: 2, config: { extractFields: ['email'] }, expectedFields: ['email', 'website'], estimatedCostEur: 0.005, skipIf: ['has_email'] },
+    ],
+  },
+  {
+    categoryCode: 'pet_sitting',
+    strategyCode: 'GOOGLE_FIRECRAWL',
+    difficulty: 'easy',
+    notes: 'Petsitter: Google Places + Apify als Fallback.',
+    steps: [
+      { stepId: 'google_search', provider: 'google_places', purpose: 'discovery', priority: 1, config: {}, expectedFields: ['name', 'phone', 'address'], estimatedCostEur: 0.003 },
+      { stepId: 'web_scrape', provider: 'firecrawl', purpose: 'enrichment', priority: 2, config: { extractFields: ['email'] }, expectedFields: ['email', 'website'], estimatedCostEur: 0.005, skipIf: ['has_email'] },
+    ],
+  },
+];
+
+/** Helper: Find strategy for a given category code */
+export function findStrategyForCategory(categoryCode: string): CategorySourceStrategy | undefined {
+  return CATEGORY_SOURCE_STRATEGIES.find(s => s.categoryCode === categoryCode);
+}
+
+/** Helper: Estimate total cost for a category's full pipeline */
+export function estimateStrategyCost(strategy: CategorySourceStrategy): number {
+  return strategy.steps.reduce((sum, step) => sum + step.estimatedCostEur, 0);
+}
