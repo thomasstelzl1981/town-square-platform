@@ -1,178 +1,180 @@
 
-# Drei Korrekturen: AI Assist auf Lovable AI, E-Mail Enrichment Strategie, LinkedIn Strategie
+# Recherche-Zentrale: Strategie-Dashboard + Automation Toggle
 
-## Uebersicht
+## Problem
 
-Drei separate Probleme werden adressiert:
+Die Seite `/admin/ki-office/recherche` zeigt aktuell nur ein manuelles Suchformular und eine Ergebnistabelle. Alles, was im Code an Strategie definiert ist (BANK_BAFIN, IHK_REGISTER, PORTAL_SCRAPING, FAMILY_OFFICE_SEARCH, GOOGLE_FIRECRAWL + LinkedIn/Netrows), ist unsichtbar. Es gibt keinen Toggle zum Starten der taeglichen Automatisierung und keinen Ueberblick ueber den Strategy Ledger oder die Kosten.
 
-1. **`sot-research-ai-assist`** nutzt direkt die Gemini API (`GEMINI_API_KEY`) statt den Lovable AI Gateway -- muss umgestellt werden
-2. **E-Mail Enrichment** (`sot-contact-enrichment`) nutzt bereits den Lovable AI Gateway korrekt -- die Strategie als Ganzes sollte aber ueberdacht werden (aktuell nur Signatur-Extraktion, keine aktive Web-Recherche)
-3. **LinkedIn-Strategie** verweist auf die offizielle LinkedIn API, die fuer Scraping nicht nutzbar ist -- realistischere Alternativen: **Apify LinkedIn Scraper** oder **Netrows API**
+## Loesung
 
----
+Die Seite `AdminRecherche.tsx` wird um **drei neue Sektionen** erweitert, die **oberhalb** des bestehenden Suchformulars eingefuegt werden:
 
-## 1. AI Assist auf Lovable AI Gateway umstellen
+### Sektion A: Strategie-Uebersicht (immer sichtbar)
 
-### Problem
-
-`supabase/functions/sot-research-ai-assist/index.ts` hat eine defekte `callLovableAI`-Funktion (Zeilen 148-192):
-- Sie ruft sich selbst rekursiv auf (Zeile 152)
-- Dann eine nicht existierende `/sot-research-ai-internal` Funktion (Zeile 164)
-- Dann faellt sie auf die direkte Gemini API zurueck (`GEMINI_API_KEY`, Zeile 172)
-- Keiner dieser Aufrufe nutzt den Lovable AI Gateway
-
-### Loesung
-
-Die gesamte `callLovableAI`-Funktion wird durch einen sauberen Aufruf an `https://ai.gateway.lovable.dev/v1/chat/completions` ersetzt -- identisch zum Pattern in `sot-contact-enrichment` und `sot-armstrong-website`:
+Eine Karten-Ansicht, die alle definierten Strategien aus `CATEGORY_SOURCE_STRATEGIES` (spec.ts) visuell darstellt:
 
 ```text
-callLovableAI(payload):
-  1. LOVABLE_API_KEY aus Deno.env.get()
-  2. POST an https://ai.gateway.lovable.dev/v1/chat/completions
-  3. Non-streaming (stream: false)
-  4. 429/402 Error-Handling
-  5. Response parsen: choices[0].message.content
++---------------------------------------------------------------------+
+| RECHERCHE-STRATEGIE                                                  |
++---------------------------------------------------------------------+
+| [BANK_BAFIN]        [IHK_REGISTER]      [PORTAL_SCRAPING]          |
+| bank_retail          insurance_broker_34d  real_estate_agent         |
+| bank_private         financial_broker_34f  real_estate_company       |
+|                      fee_advisor_34h                                 |
+|                      mortgage_broker_34i                             |
+|                      loan_broker                                     |
+|                                                                      |
+| [FAMILY_OFFICE]      [GOOGLE_FIRECRAWL]                             |
+| family_office        financial_advisor                               |
+|                      property_management                             |
+|                      tax_advisor_re                                   |
+|                      dog_boarding, dog_daycare, ...                   |
++---------------------------------------------------------------------+
 ```
 
-**Modell**: `google/gemini-3-flash-preview` (aktuelles Default-Modell, ersetzt das veraltete `gemini-2.5-flash` in den Prompts)
+Jede Strategie-Karte zeigt:
+- **Strategie-Code** als Titel (z.B. "BANK_BAFIN")
+- **Schwierigkeitsgrad** als Badge (easy/medium/hard)
+- **Steps** als Pipeline-Visualisierung: `BaFin CSV -> Google Places -> Firecrawl`
+- **Kosten pro Kontakt** (Summe der estimatedCostEur aller Steps)
+- **Zugeordnete Kategorien** als Tags
+- **Provider** mit Icons (Google, Apify, Firecrawl, Netrows, BaFin)
 
-### Betroffene Aenderungen
+Datenquelle: Direkt aus `CATEGORY_SOURCE_STRATEGIES` importiert -- kein API-Call noetig.
 
-| Zeile | Aenderung |
-|---|---|
-| 32-33 | Model auf `google/gemini-3-flash-preview` |
-| 48-49 | Model auf `google/gemini-3-flash-preview` |
-| 74-75 | Model auf `google/gemini-3-flash-preview` |
-| 113-114 | Model auf `google/gemini-3-flash-preview` |
-| 148-192 | Kompletter Rewrite der `callLovableAI`-Funktion |
+### Sektion B: Automation Toggle + Discovery Scheduler Status
 
-### Weitere betroffene Edge Functions (Deprecated APIs)
-
-Diese Functions nutzen ebenfalls direkte API-Keys statt Lovable AI Gateway und sollten perspektivisch migriert werden (nicht in diesem PR, nur Hinweis):
-
-| Function | Problem |
-|---|---|
-| `sot-dossier-auto-research` | Nutzt `PERPLEXITY_API_KEY` direkt |
-| `sot-armstrong-voice` | Nutzt `OPENAI_API_KEY` fuer Realtime-Voice (kein Gateway-Equivalent) |
-| `sot-sprengnetter-valuation` | Faellt auf `OPENAI_API_KEY`/`GEMINI_API_KEY` zurueck |
-
----
-
-## 2. E-Mail Enrichment Strategie ueberdenken
-
-### Aktueller Zustand
-
-`sot-contact-enrichment` macht genau **eine** Sache: Es extrahiert Kontaktdaten aus E-Mail-Signaturen per Lovable AI (Textanalyse). Das ist korrekt implementiert und nutzt bereits den Gateway.
-
-**Was fehlt**: Aktive Enrichment-Schritte nach der Signatur-Extraktion:
-- Wenn die Signatur nur Name + Firma liefert, aber keine Telefonnummer oder Website: kein Follow-Up
-- Keine Verbindung zum Strategy Ledger
-- Kein automatischer Trigger fuer Google Places oder Firecrawl nach Signatur-Extraktion
-
-### Erweiterte Strategie
-
-Die E-Mail-Anreicherung wird zum **Einstiegspunkt** fuer den Strategy Ledger:
+Eine Card mit:
 
 ```text
-E-Mail eingehend
-  -> Signatur-Extraktion (Lovable AI) -- wie bisher
-  -> Kontakt erstellt/aktualisiert
-  -> NEU: Strategy Ledger initialisieren (basierend auf Kategorie des Kontakts)
-  -> NEU: Wenn data_gaps vorhanden (z.B. phone, website):
-     -> Automatisch naechsten Strategy-Step triggern
-        (z.B. Google Places fuer Telefon, Firecrawl fuer Website)
++---------------------------------------------------------------------+
+| AUTOMATISIERUNG                                          [=== AN ===]|
++---------------------------------------------------------------------+
+| Taegliches Enrichment: 06:00 UTC                                     |
+| Ziel: 500 freigegebene Kontakte / Tag                                |
+| Budget: max 200 Credits / Tag (50 EUR)                               |
+| Region-Split: 70% Top-Staedte / 30% Exploration                     |
+|                                                                      |
+| Letzter Lauf: 24.02.2026 — 342 gefunden, 12 Duplikate, 280 approved |
+| Kosten heute: 28.50 EUR (114 Credits)                                |
++---------------------------------------------------------------------+
 ```
 
-### Aenderungen
+- **Toggle (Switch)**: Aktiviert/deaktiviert den `pg_cron`-Job fuer `sot-discovery-scheduler`
+  - AN: Erstellt/aktiviert den Cron-Job via eine neue Edge Function `sot-scheduler-control`
+  - AUS: Deaktiviert den Cron-Job
+  - Status wird in einer neuen DB-Tabelle `automation_settings` gespeichert
 
-**Datei:** `supabase/functions/sot-contact-enrichment/index.ts`
+- **Letzte Laeufe**: Zeigt die letzten 5 Eintraege aus `discovery_run_log`
+- **Kosten-Tracker**: Summe der heutigen Kosten aus `discovery_run_log`
 
-Nach erfolgreichem Upsert des Kontakts (ca. Zeile 370-420):
-1. Strategy Ledger pruefen/erstellen via `sot-research-strategy-resolver`
-2. Wenn `data_gaps` vorhanden und Auto-Enrich aktiv: naechsten Step via `sot-research-engine` (Intent: `strategy_step`) triggern
-3. Kosten-Tracking: Der Step-Cost wird im Ledger protokolliert
-
-Dies macht die E-Mail-Enrichment-Card zu einem echten Pipeline-Trigger statt nur eines Signatur-Parsers.
-
----
-
-## 3. LinkedIn Strategie ueberdenken
-
-### Problem
-
-Die aktuelle Implementierung verweist auf die offizielle LinkedIn API (`api.linkedin.com/v2/organizationLookup`). Diese ist:
-- **Nicht fuer Scraping gedacht** -- LinkedIn genehmigt API-Zugang nur fuer ausgewaehlte Partner
-- **Extrem restriktiv** -- Self-Service-Zugang ist auf Marketing-APIs beschraenkt
-- **Nicht realistisch** fuer unser Use-Case (Kontaktperson + Position von Unternehmen finden)
-
-### Recherche-Ergebnis: Realistische Alternativen
-
-Basierend auf aktueller Marktrecherche (2026):
+### Sektion C: Strategy Ledger Zusammenfassung
 
 ```text
-+-------------------+------------+--------------+------------------+-------------------+
-| Provider          | Kosten     | Pro Request  | Methode          | Empfehlung        |
-+===================+============+==============+==================+===================+
-| Netrows           | 49 EUR/Mo  | ~0.005 EUR   | API (48+ Endp.)  | EMPFOHLEN         |
-|                   | (10k Cred) |              | Real-time        | (bestes P/L)      |
-+-------------------+------------+--------------+------------------+-------------------+
-| Apify LinkedIn    | Pay-per-use| ~0.01 EUR    | Scraper Actor    | ALTERNATIVE       |
-| Scraper           |            |              | (Cookie-based)   | (bereits integriert|
-|                   |            |              |                  |  als Provider)    |
-+-------------------+------------+--------------+------------------+-------------------+
-| Proxycurl         | 49 USD/Mo  | ~0.49 USD    | API              | ZU TEUER          |
-+-------------------+------------+--------------+------------------+-------------------+
-| PhantomBuster     | 69 USD/Mo  | ~0.14 USD    | Browser-Automat. | KOMPLEX           |
-+-------------------+------------+--------------+------------------+-------------------+
-| LinkedIn Official | Gratis     | Gratis       | Offizielle API   | NICHT NUTZBAR     |
-|                   |            |              |                  | (zu restriktiv)   |
-+-------------------+------------+--------------+------------------+-------------------+
++---------------------------------------------------------------------+
+| STRATEGY LEDGER STATUS                                               |
++---------------------------------------------------------------------+
+| Aktive Ledger: 1.247                                                 |
+| Vollstaendig abgeschlossen: 834 (67%)                                |
+| In Bearbeitung: 289 (23%)                                            |
+| Noch nicht gestartet: 124 (10%)                                      |
+|                                                                      |
+| Top Data Gaps: email (412), phone (287), contact_person (156)        |
+| Durchschnittliche Kosten/Kontakt: 0.023 EUR                          |
++---------------------------------------------------------------------+
 ```
 
-### Empfehlung: Duale Strategie
-
-**Primaer: Apify LinkedIn Scraper** (bereits als Provider im System)
-- Nutzt den bestehenden `apify_maps`-Provider-Pfad
-- Neuer Actor: `apify/linkedin-profile-scraper` oder `apify/linkedin-company-scraper`
-- Vorteil: Kein neues Secret noetig (APIFY_API_TOKEN existiert bereits)
-- Kosten: ~0.01 EUR pro Profil
-
-**Spaeter: Netrows API** (wenn Volumen steigt)
-- Bestes Preis-Leistungs-Verhaeltnis bei hohem Volumen (0.005 EUR/Request)
-- 48+ Endpoints (Profil, Company, Posts, Search)
-- Erfordert neues Secret: `NETROWS_API_KEY`
-- Integration als neuer Provider-Typ im Research Engine
-
-### Technische Aenderungen
-
-**a) `src/engines/marketDirectory/spec.ts`**:
-- `LINKEDIN_CONFIG` aktualisieren: `method: 'apify_scraper'` statt `'official_api'`
-- Provider-Typ `'apify_linkedin'` hinzufuegen (neben `'apify_maps'` und `'apify_portal'`)
-- `LinkedInContact` Interface bleibt (korrekt definiert)
-- Neuen Provider `'netrows'` als Zukunftsoption vorbereiten
-
-**b) `supabase/functions/sot-research-engine/index.ts`**:
-- `linkedin_future` Step umbenennen zu `linkedin_scrape`
-- Implementierung: Apify `linkedin-company-scraper` Actor starten
-- Input: Firmenname aus `contact_data.company_name`
-- Output: Ansprechpartner, Position, Company-URL
-- Fallback: Wenn Apify-Token fehlt, `not_configured` wie bisher
-
-**c) `supabase/functions/sot-research-strategy-resolver/index.ts`**:
-- `linkedin_future` zu `linkedin_scrape` umbenennen in der Strategy-Registry
+Datenquelle: Aggregation aus `contact_strategy_ledger`.
 
 ---
 
-## Zusammenfassung der Aenderungen
+## Technische Aenderungen
+
+### 1. Neue DB-Tabelle: `automation_settings`
+
+```sql
+CREATE TABLE public.automation_settings (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  setting_key TEXT UNIQUE NOT NULL,
+  setting_value JSONB NOT NULL DEFAULT '{}',
+  updated_at TIMESTAMPTZ DEFAULT now(),
+  updated_by UUID REFERENCES auth.users(id)
+);
+```
+
+Initialer Eintrag:
+```sql
+INSERT INTO automation_settings (setting_key, setting_value)
+VALUES ('discovery_scheduler', '{"active": false, "cron_schedule": "0 6 * * *", "target_per_day": 500, "max_credits_per_day": 200}');
+```
+
+### 2. Neue Edge Function: `sot-scheduler-control`
+
+Endpoints:
+- `GET`: Liefert aktuellen Status (aktiv/inaktiv, letzte Laeufe, Kosten heute)
+- `POST { action: 'activate' | 'deactivate' }`: Schaltet den Scheduler ein/aus
+  - Schreibt in `automation_settings`
+  - Erstellt/loescht den `pg_cron`-Job via SQL
+
+### 3. Neuer Hook: `useSchedulerControl`
+
+```typescript
+// src/hooks/useSchedulerControl.ts
+- useQuery: GET /sot-scheduler-control (Status + Stats)
+- useMutation: POST /sot-scheduler-control (Toggle)
+```
+
+### 4. Neue UI-Komponente: `StrategyOverview`
+
+```typescript
+// src/components/admin/recherche/StrategyOverview.tsx
+// Importiert CATEGORY_SOURCE_STRATEGIES aus spec.ts
+// Gruppiert nach strategyCode
+// Rendert Pipeline-Visualisierung
+```
+
+### 5. Neue UI-Komponente: `AutomationPanel`
+
+```typescript
+// src/components/admin/recherche/AutomationPanel.tsx
+// Switch-Toggle fuer Scheduler
+// Stats aus useSchedulerControl
+// Letzte Laeufe aus discovery_run_log
+```
+
+### 6. Neue UI-Komponente: `LedgerSummary`
+
+```typescript
+// src/components/admin/recherche/LedgerSummary.tsx
+// Aggregierte Stats aus contact_strategy_ledger
+```
+
+### 7. AdminRecherche.tsx erweitern
+
+Die drei neuen Sektionen werden oberhalb des bestehenden Suchformulars eingefuegt:
+
+```text
+<StrategyOverview />      -- Sektion A
+<AutomationPanel />       -- Sektion B
+<LedgerSummary />         -- Sektion C
+--- bestehender Code ---
+<Card> Neue Suche </Card>  -- unveraendert
+<Card> Auftraege </Card>   -- unveraendert
+...
+```
+
+### Zusammenfassung der Dateien
 
 | Datei | Aenderung |
 |---|---|
-| `supabase/functions/sot-research-ai-assist/index.ts` | Kompletter Rewrite `callLovableAI` auf Gateway, Modell-Update |
-| `supabase/functions/sot-contact-enrichment/index.ts` | Strategy-Ledger-Integration nach Signatur-Extraktion |
-| `supabase/functions/sot-research-engine/index.ts` | `linkedin_future` -> `linkedin_scrape` mit Apify-Implementierung |
-| `supabase/functions/sot-research-strategy-resolver/index.ts` | `linkedin_future` -> `linkedin_scrape` |
-| `src/engines/marketDirectory/spec.ts` | LinkedIn-Config + neuer Provider `apify_linkedin` + `netrows` |
+| `automation_settings` Tabelle | Neue DB-Tabelle (Migration) |
+| `supabase/functions/sot-scheduler-control/index.ts` | Neue Edge Function |
+| `src/hooks/useSchedulerControl.ts` | Neuer Hook |
+| `src/components/admin/recherche/StrategyOverview.tsx` | Neue Komponente |
+| `src/components/admin/recherche/AutomationPanel.tsx` | Neue Komponente |
+| `src/components/admin/recherche/LedgerSummary.tsx` | Neue Komponente |
+| `src/pages/admin/ki-office/AdminRecherche.tsx` | Integration der 3 neuen Sektionen |
 
 ### Modul-Freeze-Check
 
-Alle betroffenen Dateien liegen ausserhalb der Modul-Pfade (Edge Functions + Engines) -- kein Freeze betroffen.
+Alle Dateien liegen ausserhalb der Modul-Pfade (admin/ki-office, hooks, shared components, Edge Functions) -- kein Freeze betroffen.
