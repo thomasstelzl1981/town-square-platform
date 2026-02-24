@@ -1,195 +1,291 @@
 
+# Kategorie-basierte Recherche-Strategie mit Strategy Ledger
 
-# Automatisierte Kontaktanreicherung — Erweitert um Dedupe + Kosten-Controlling
+## Executive Summary
 
-## 1. Duplikat-Vermeidung (3 Schichten)
+Jede Kontaktkategorie hat fundamental unterschiedliche Datenquellen. Ein "one-size-fits-all"-Ansatz (Google Places + Firecrawl fuer alle) ist ineffizient und teuer. Stattdessen bekommt jede Kategorie eine eigene **Source Strategy** im Engine-Spec, die definiert, welche Provider in welcher Reihenfolge und mit welchen Parametern angesprochen werden. Zu jedem Kontakt wird ein **Strategy Ledger** gefuehrt, der dokumentiert, welche Schritte durchlaufen wurden, was gefunden wurde und was noch fehlt.
 
-Die Engine hat bereits alle Dedupe-Funktionen gebaut (`findDedupeMatches`, `buildDedupeKey`). Sie werden jetzt in den Scheduler eingebaut.
+---
 
-### Schicht 1: Intra-Batch Dedupe (innerhalb eines Suchlaufs)
-- Bevor Ergebnisse aus einem API-Call gespeichert werden, wird `buildDedupeKey` auf jeden Kontakt angewendet
-- Kontakte mit identischem Key innerhalb desselben Batch werden per `mergeContacts` zusammengefuehrt
-- Verhindert: Gleicher Friseur erscheint 3x im selben Google-Places-Ergebnis
+## A) Kategorie-Strategie-Matrix
 
-### Schicht 2: Cross-Order Dedupe (gegen bestehende soat_search_results)
-- Vor dem INSERT in `soat_search_results` wird geprueft ob ein Kontakt mit gleicher E-Mail, Domain, Telefon oder Name+PLZ bereits existiert
-- Lookup via SQL: `SELECT id, email, phone, company_name, postal_code FROM soat_search_results WHERE email = $1 OR phone = $2 OR (company_name ILIKE $3 AND postal_code = $4)`
-- Bei Match: Eintrag wird NICHT erneut gespeichert, stattdessen wird `source_refs_json` des bestehenden Eintrags erweitert (neue Quelle anhaengen)
-- Zaehler: `counters_json.duplicates_skipped` wird hochgezaehlt
-
-### Schicht 3: Kontaktbuch Dedupe (gegen contacts-Tabelle)
-- Bereits implementiert in `useResearchImport.ts` via `findDedupeMatches`
-- Beim Auto-Import (confidence >= 85%) im Scheduler wird dieselbe Logik angewendet
-- Match-Typen nach Prioritaet: E-Mail > Domain > Telefon > Name+Adresse > Firmenname
-
-### Neue DB-Spalte fuer Tracking
-- `soat_search_results.dedupe_hash` (TEXT) — gespeicherter `buildDedupeKey`-Wert
-- Unique Index auf `(dedupe_hash)` um DB-seitige Duplikate zu verhindern (INSERT ON CONFLICT DO NOTHING)
-
-## 2. Kosten-Controlling (Credit-basiert)
-
-Das Credit-System (`sot-credit-preflight`) existiert bereits mit `preflight`, `deduct` und `balance` Aktionen. Es wird in den Scheduler integriert.
-
-### Credit-Berechnung pro Suchlauf
-
-| Aktion | Credits | Erklaerung |
-|--------|---------|------------|
-| Google Places Call (1 Batch a 20 Ergebnisse) | 1 Cr | 0.25 EUR pro API-Call |
-| Apify Crawler (1 Batch a 25 Ergebnisse) | 2 Cr | Rechenzeit + Proxy |
-| Firecrawl E-Mail-Scrape (pro 10 Websites) | 1 Cr | API-Kosten |
-| KI Merge + Scoring (1 Batch a 25 Kontakte) | 2 Cr | Gemini-Call |
-| **Gesamt pro Batch (25 Kontakte)** | **~6 Cr** | **1.50 EUR** |
-| **Tageslimit (32 Batches = 800 raw)** | **~192 Cr** | **48.00 EUR** |
-
-### Credit-Controlling im Scheduler
+Die folgende Tabelle zeigt die optimale Recherche-Strategie pro Kategorie:
 
 ```text
-Vor jedem Batch:
-1. sot-credit-preflight aufrufen (action: "preflight", credits: 6)
-2. Falls Guthaben nicht reicht → Scheduler stoppt sofort
-3. Falls OK → Batch ausfuehren
-4. Nach Batch: sot-credit-preflight (action: "deduct", credits: tatsaechlich verbraucht)
++----------------------------+------------------+------------------+-------------------+------------------+
+| Kategorie                  | Primaerquelle    | Enrichment       | Verifizierung     | Schwierigkeit    |
++============================+==================+==================+===================+==================+
+| FINANZ                     |                  |                  |                   |                  |
++----------------------------+------------------+------------------+-------------------+------------------+
+| Filialbank / Privatbank    | BaFin-Register   | Google Places    | Website-Scrape    | LEICHT           |
+|                            | (CSV-Download)   | (Telefon)        | (E-Mail, Kontakt) |                  |
++----------------------------+------------------+------------------+-------------------+------------------+
+| Family Office              | Curated Lists    | LinkedIn (API)   | Website-Scrape    | SCHWER           |
+|                            | + Google Search  | + Google Places  | (Ansprechpartner) |                  |
++----------------------------+------------------+------------------+-------------------+------------------+
+| Versicherungsmakler (34d)  | IHK-Register     | Google Places    | Firecrawl         | MITTEL-SCHWER    |
+| Finanzanlagenverm. (34f)   | (Vermittler-     | (Existenzcheck)  | (falls Website)   | (oft keine       |
+| Honorar-Berater (34h)      |  register)       |                  |                   |  Website)        |
++----------------------------+------------------+------------------+-------------------+------------------+
+| Immobiliardarl.verm. (34i) | IHK-Register     | Google Places    | Firecrawl         | MITTEL           |
+| Kreditvermittler           |                  |                  |                   |                  |
++----------------------------+------------------+------------------+-------------------+------------------+
+| Finanzberater allgemein    | Google Places    | Firecrawl        | --                | MITTEL           |
++----------------------------+------------------+------------------+-------------------+------------------+
+| IMMOBILIEN                 |                  |                  |                   |                  |
++----------------------------+------------------+------------------+-------------------+------------------+
+| Maklerbuero                | Apify Portal-    | Google Places    | Firecrawl         | LEICHT           |
+|                            | Scraping         | (Verifizierung)  | (E-Mail)          |                  |
+|                            | (ImmoScout24,    |                  |                   |                  |
+|                            |  Immowelt)       |                  |                   |                  |
++----------------------------+------------------+------------------+-------------------+------------------+
+| Hausverwaltung             | Google Places    | Firecrawl        | --                | LEICHT-MITTEL    |
+|                            | + Branchenverz.  | (Website-Scrape) |                   |                  |
++----------------------------+------------------+------------------+-------------------+------------------+
+| Immobilienunternehmen      | Apify Portal-    | Google Places    | Firecrawl         | LEICHT           |
+|                            | Scraping +       | (Verifizierung)  | (Ansprechpartner) |                  |
+|                            | Google Places    |                  |                   |                  |
++----------------------------+------------------+------------------+-------------------+------------------+
+| Steuerberater (Immo)       | Google Places    | Firecrawl        | --                | LEICHT           |
++----------------------------+------------------+------------------+-------------------+------------------+
+| PET                        |                  |                  |                   |                  |
++----------------------------+------------------+------------------+-------------------+------------------+
+| Hundepension, Hundeschule, | Google Places    | Firecrawl        | --                | LEICHT           |
+| Hundefriseur, Tierarzt,    |                  | (E-Mail)         |                   |                  |
+| Zoofachhandel, Petsitter   |                  |                  |                   |                  |
++----------------------------+------------------+------------------+-------------------+------------------+
 ```
 
-### Tages-Budget-Limit
+### Fazit zu Apify
 
-Neue Konstante in `spec.ts`:
+Apify ist **unverzichtbar** fuer zwei Anwendungsfaelle:
+1. **Portal-Scraping** (ImmoScout24, Immowelt): Aktive Makler und Immobilienunternehmen, die Inserate haben, findet man NUR auf den Portalen. Google Places zeigt diese oft nicht.
+2. **Google Maps Deep Scraping**: Apify liefert E-Mails, die Google Places API NICHT liefert (Google gibt keine E-Mails zurueck). Das ist die aktuelle Hauptnutzung -- und hier liegt die Redundanz, denn man koennte auch nur Apify oder nur Google Places nutzen.
+
+**Empfehlung**: Google Places fuer die Erstsuche (schnell, strukturiert), Apify fuer Portal-Scraping und als Fallback fuer E-Mail-Extraktion bei Google-Maps-Ergebnissen.
+
+---
+
+## B) Strategy Ledger -- Konzept
+
+Pro Kontakt wird ein Ledger gefuehrt, der den Recherche-Fortschritt dokumentiert:
 
 ```text
-DISCOVERY_COST_LIMITS = {
-  maxCreditsPerDay: 200,       // Hartes Tageslimit
-  maxCreditsPerBatch: 8,       // Safety-Cap pro Batch
-  warningThreshold: 150,       // Ab hier Warnung im Dashboard
-  costPerGoogleCall: 1,
-  costPerApifyCall: 2,
-  costPerFirecrawlBatch: 1,
-  costPerAiMerge: 2,
++------------------+------------------------------------------------------------+
+| Feld             | Beschreibung                                               |
++==================+============================================================+
+| contact_id       | FK auf contacts                                            |
+| category_code    | Kategorie des Kontakts                                     |
+| strategy_code    | Verweis auf die Kategorie-Strategie (z.B. "BANK_BAFIN")   |
+| steps_completed  | JSONB-Array der durchgefuehrten Schritte mit Ergebnis      |
+| steps_pending    | JSONB-Array der noch ausstehenden Schritte                 |
+| data_gaps        | Welche Felder noch fehlen (email, phone, website...)       |
+| total_cost_eur   | Kumulierte API-Kosten fuer diesen Kontakt                  |
+| last_step_at     | Wann wurde der letzte Schritt durchgefuehrt                |
+| quality_score    | Aktueller Quality Score nach letztem Schritt               |
+| created_at       | Erstellung                                                 |
++------------------+------------------------------------------------------------+
+```
+
+Jeder Schritt im Ledger hat folgende Struktur:
+
+```text
+{
+  "step": "google_places_search",
+  "provider": "google_places",
+  "executed_at": "2026-02-24T10:00:00Z",
+  "cost_eur": 0.032,
+  "fields_found": ["name", "phone", "address"],
+  "fields_missing": ["email", "website"],
+  "raw_confidence": 60,
+  "notes": "Kein Website-Eintrag bei Google"
 }
 ```
 
-### Kosten-Tracking Tabelle
+---
 
-Neue Tabelle `discovery_run_log`:
+## C) Registerdatenquellen (BaFin, IHK)
 
-| Spalte | Typ | Zweck |
-|--------|-----|-------|
-| id | uuid | PK |
-| run_date | date | Tagesdatum |
-| tenant_id | uuid | Mandant |
-| region_name | text | Welche Region gescannt |
-| category_code | text | Welche Kategorie |
-| raw_found | int | Gefundene Kontakte (vor Dedupe) |
-| duplicates_skipped | int | Duplikate uebersprungen |
-| approved_count | int | Auto-approved (>= 85%) |
-| credits_used | int | Verbrauchte Credits |
-| cost_eur | numeric | Credits x 0.25 EUR |
-| provider_calls_json | jsonb | Aufschluesselung (Google: 1, Apify: 1, ...) |
-| created_at | timestamptz | Zeitstempel |
+### BaFin-Bankenregister
+- **URL**: https://portal.mvp.bafin.de/database/InstInfo/
+- **Format**: CSV-Download aller zugelassenen Institute
+- **Inhalt**: Name, Rechtsform, Sitz, BaFin-ID
+- **Fehlende Daten**: Telefon, E-Mail, Website, Ansprechpartner
+- **Strategie**: CSV einmalig importieren, dann per Google Places / Firecrawl die Kontaktdaten ergaenzen
 
-### Dashboard-Anzeige (Zone 1)
+### IHK-Vermittlerregister
+- **URL**: https://www.vermittlerregister.info/
+- **Format**: Suchmaske, kein Bulk-Download
+- **Inhalt**: Name, Registrierungsnummer, Erlaubnistyp (34d/f/h/i), PLZ/Ort
+- **Fehlende Daten**: Telefon, E-Mail, Website
+- **Strategie**: Apify-Scraper fuer das Vermittlerregister (paginierte Suche nach PLZ), dann Enrichment per Google Places + Firecrawl
+- **Hinweis**: Dies ist die EINZIGE zuverlaessige Quelle fuer 34d/f/h-Vermittler
 
-Im bestehenden Admin-Dashboard wird ein kleines Kosten-Widget ergaenzt:
-- Heute: X Credits verbraucht / 200 Budget
-- Diese Woche: Y Credits / Z EUR
-- Kontakte/Credit-Effizienz: "8.3 Kontakte pro Credit"
+---
 
-## 3. Region-Queue mit Cooldown
+## D) Technische Umsetzung
 
-Neue Tabelle `discovery_region_queue` (wie im vorherigen Plan):
+### D.1 Engine-Erweiterung: `spec.ts`
 
-| Spalte | Typ | Zweck |
-|--------|-----|-------|
-| id | uuid | PK |
-| tenant_id | uuid | Mandant |
-| region_name | text | z.B. "Berlin" |
-| postal_code_prefix | text | z.B. "1" |
-| population | int | 3.645.000 |
-| last_scanned_at | timestamptz | Letzter Scan |
-| cooldown_until | timestamptz | Naechster Scan fruehestens |
-| total_contacts | int | Bisher gefunden |
-| approved_contacts | int | Davon freigegebene |
-| last_category_index | int | Rotation: welche Kategorie als naechstes |
-| priority_score | numeric | Berechnet via `scoreRegion()` |
+Neuer Typ `CategorySourceStrategy` im Market Directory Engine Spec:
 
-**Cooldown-Logik**: Nach einem Scan bekommt die Region+Kategorie-Kombination 3 Tage Pause. Das verhindert dass Berlin jeden Tag die gleichen Finanzberater sucht.
+```typescript
+export interface SourceStep {
+  stepId: string;
+  provider: 'google_places' | 'apify_maps' | 'apify_portal' | 'firecrawl' | 'bafin_csv' | 'ihk_register' | 'linkedin_api' | 'manual';
+  purpose: 'discovery' | 'enrichment' | 'verification';
+  priority: number;
+  config: Record<string, unknown>;
+  expectedFields: string[];
+  estimatedCostEur: number;
+  skipIf?: string[];  // z.B. ["has_email"] -> Skip wenn E-Mail schon vorhanden
+}
 
-## 4. Scheduler Edge Function
-
-**Datei:** `supabase/functions/sot-discovery-scheduler/index.ts`
-
-Ablauf:
-
-```text
-1. Auth: Service-Role-Key ODER Cron-Secret pruefen
-2. Tenant laden (Platform-Tenant fuer automatische Laeufe)
-3. Credit-Preflight: Tagesbudget pruefen (200 Cr verfuegbar?)
-4. Region-Queue laden, Prioritaeten via scoreRegion() berechnen
-5. Budget planen via planDailyBudget()
-6. Fuer jede Region+Kategorie (solange Budget > 0):
-   a. Credit-Preflight fuer diesen Batch (6 Cr)
-   b. Falls nicht genug → STOP
-   c. soat_search_order erstellen (automatisch, source: "scheduler")
-   d. sot-research-engine aufrufen
-   e. Intra-Batch Dedupe (buildDedupeKey)
-   f. Cross-Order Dedupe (gegen soat_search_results)
-   g. Kontaktbuch Dedupe (gegen contacts)
-   h. Ergebnisse speichern (mit dedupe_hash)
-   i. Auto-Import (confidence >= 85%)
-   j. Credits abbuchen (sot-credit-preflight action: "deduct")
-   k. discovery_run_log schreiben
-   l. Region-Queue aktualisieren (counters, cooldown, category_index++)
-   m. 3 Sekunden Pause
-7. Zusammenfassung loggen
+export interface CategorySourceStrategy {
+  categoryCode: string;
+  strategyCode: string;
+  difficulty: 'easy' | 'medium' | 'hard';
+  steps: SourceStep[];
+  notes: string;
+}
 ```
 
-## 5. Cron-Job
+Registry mit konkreten Strategien fuer jede Kategorie (ca. 15 Eintraege).
 
-SQL fuer `pg_cron` (06:00 UTC taeglich):
+### D.2 Neue DB-Tabelle: `contact_strategy_ledger`
 
-```text
-Zeitplan: 0 6 * * *
-Ziel: POST an sot-discovery-scheduler
-Auth: Service-Role-Key
+```sql
+CREATE TABLE public.contact_strategy_ledger (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  contact_id UUID NOT NULL REFERENCES contacts(id) ON DELETE CASCADE,
+  category_code TEXT NOT NULL,
+  strategy_code TEXT NOT NULL,
+  steps_completed JSONB DEFAULT '[]'::jsonb,
+  steps_pending JSONB DEFAULT '[]'::jsonb,
+  data_gaps TEXT[] DEFAULT '{}',
+  total_cost_eur NUMERIC(10,4) DEFAULT 0,
+  quality_score NUMERIC(5,2) DEFAULT 0,
+  last_step_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- RLS
+ALTER TABLE public.contact_strategy_ledger ENABLE ROW LEVEL SECURITY;
+-- Policy: tenant_id via contacts join
 ```
 
-## 6. Engine-Erweiterungen
+### D.3 Neue Edge Function: `sot-research-strategy-resolver`
 
-**Datei:** `src/engines/marketDirectory/spec.ts` — Neue Typen + Konstanten:
+Aufgabe: Anhand der Kategorie eines Kontakts die richtige Strategie aus dem Spec laden und den naechsten Schritt bestimmen.
 
-- `DiscoveryCostLimits` Interface + `DISCOVERY_COST_LIMITS` Konstante
-- `DiscoveryRunLogEntry` Interface
+- Input: `{ contact_id, category_code }`
+- Output: `{ strategy_code, next_step, estimated_cost }`
+- Logik: Prueft den Strategy Ledger, welche Schritte schon durchlaufen sind, und gibt den naechsten zurueck
 
-**Datei:** `src/engines/marketDirectory/engine.ts` — Neue Pure Functions:
+### D.4 Anpassung `sot-research-engine`
 
-- `calcBatchCost(providers: string[]): number` — Berechnet Credits pro Batch
-- `checkDailyBudget(usedToday: number, limit: number): { canProceed: boolean; remaining: number }`
-- `buildDedupeQuery(contact): { email, phone, companyName, postalCode }` — SQL-Parameter fuer Cross-Order Dedupe
+Der bestehende Engine wird erweitert:
+- Neuer Intent: `strategy_step` -- fuehrt genau einen Schritt der Kategorie-Strategie aus
+- Neuer Intent: `bulk_registry_import` -- fuer BaFin-CSV und IHK-Bulk-Imports
+- Die bestehenden Intents (`search_contacts`, `search_portals`) bleiben erhalten
 
-## Dateien und Aenderungen (Uebersicht)
+### D.5 Neue Edge Function: `sot-registry-import`
 
-| Datei | Aktion | Beschreibung |
-|-------|--------|--------------|
-| `supabase/functions/sot-discovery-scheduler/index.ts` | NEU | Scheduler mit 3-Schicht-Dedupe + Credit-Preflight |
-| `src/engines/marketDirectory/spec.ts` | ERWEITERN | `DiscoveryCostLimits`, `DiscoveryRunLogEntry` |
-| `src/engines/marketDirectory/engine.ts` | ERWEITERN | `calcBatchCost()`, `checkDailyBudget()` |
-| DB Migration | NEU | `discovery_region_queue` + `discovery_run_log` Tabellen mit RLS |
-| DB Migration | NEU | `dedupe_hash`-Spalte + Unique Index auf `soat_search_results` |
-| DB Migration | NEU | Initialdaten: 50 Regionen aus `TOP_REGIONS_DE` |
-| pg_cron SQL | NEU | Cronjob 06:00 UTC |
+Fuer den Import von Registerdaten (BaFin, IHK):
+- Nimmt eine CSV/JSON-Datei entgegen
+- Parsed die Eintraege
+- Erstellt Kontakte mit `source: "bafin_register"` bzw. `"ihk_register"`
+- Erstellt Strategy-Ledger-Eintraege mit dem Discovery-Schritt als abgeschlossen
+- Setzt automatisch die Enrichment-Schritte als `pending`
 
-## Was NICHT angefasst wird
+---
 
-- `sot-research-engine` — funktioniert bereits
-- `useSoatSearchEngine.ts` — gerade erst repariert
-- `useResearchImport.ts` — gerade erst repariert
-- UI-Seiten — bestehende Tabellen zeigen Daten automatisch via Realtime
+## E) Kostenmodell (aktualisiert mit Strategy Ledger)
 
-## Erwartetes Ergebnis
+Kosten pro Kontakt nach Kategorie:
 
-1. Scheduler laeuft taeglich 06:00-07:30 UTC automatisch
-2. Pro Tag max ~500 neue, nicht-duplizierte Kontakte
-3. 3-Schicht-Dedupe verhindert doppelte Eintraege zuverlaessig
-4. Credit-System stoppt automatisch bei Budget-Ueberschreitung
-5. Kosten transparent im Dashboard: Credits/Tag, EUR/Woche, Effizienz
-6. Region-Rotation sorgt fuer systematische Deutschland-Abdeckung in ~10 Tagen
+```text
++----------------------------+---------------+--------------------------------------+
+| Kategorie                  | Kosten/Kontakt| Aufschluesselung                     |
++============================+===============+======================================+
+| Bank (BaFin)               | ~0.01 EUR     | CSV gratis, Google Places 0.003,     |
+|                            |               | Firecrawl 0.005                      |
++----------------------------+---------------+--------------------------------------+
+| Makler (Portal-Scraping)   | ~0.03 EUR     | Apify Portal 0.02, Google 0.003,     |
+|                            |               | Firecrawl 0.005                      |
++----------------------------+---------------+--------------------------------------+
+| Hausverwaltung             | ~0.02 EUR     | Google Places 0.003, Firecrawl 0.005,|
+|                            |               | AI-Merge 0.01                        |
++----------------------------+---------------+--------------------------------------+
+| Versicherungsmakler (34d)  | ~0.04 EUR     | IHK-Scraping 0.02, Google 0.003,     |
+|                            |               | Firecrawl 0.005, AI 0.01             |
++----------------------------+---------------+--------------------------------------+
+| Family Office              | ~0.08 EUR     | Google Search 0.003, LinkedIn* 0.05, |
+|                            |               | Firecrawl 0.01, AI 0.02              |
++----------------------------+---------------+--------------------------------------+
+| Pet-Kategorien             | ~0.02 EUR     | Google Places 0.003, Firecrawl 0.005,|
+|                            |               | AI-Merge 0.01                        |
++----------------------------+---------------+--------------------------------------+
+```
 
+*LinkedIn ist aktuell nicht integriert -- Kosten sind geschaetzt fuer spaeter.
+
+### Hochrechnung fuer 500 Kontakte (gemischter Kategorie-Mix)
+
+Annahme: 30% Immobilien-Makler, 25% Finanzdienstleister, 20% Banken, 15% Pet, 10% Sonstige
+
+```text
+150 Makler       x 0.03 = 4.50 EUR
+125 Finanz       x 0.04 = 5.00 EUR
+100 Banken       x 0.01 = 1.00 EUR
+ 75 Pet          x 0.02 = 1.50 EUR
+ 50 Sonstige     x 0.02 = 1.00 EUR
+─────────────────────────────────
+TOTAL:                   13.00 EUR
++ Lovable AI (Merge):    ~2.00 EUR (geschaetzt, da ueber Gateway)
+─────────────────────────────────
+GESAMT:                  ~15.00 EUR fuer 500 Kontakte
+```
+
+---
+
+## F) Umsetzungsschritte
+
+### Schritt 1: Engine Spec erweitern
+- `CategorySourceStrategy` und `SourceStep` Interfaces in `src/engines/marketDirectory/spec.ts`
+- Konkrete Strategy-Registry fuer alle 15+ Kategorien
+- CATEGORY_REGISTRY um `sourceStrategy` Referenz erweitern
+
+### Schritt 2: DB-Tabelle `contact_strategy_ledger`
+- Migration mit RLS (tenant-scoped via contacts-Join)
+- Index auf `contact_id` und `strategy_code`
+
+### Schritt 3: Edge Function `sot-research-strategy-resolver`
+- Strategie-Aufloesung und Naechster-Schritt-Logik
+- Integration mit bestehendem `sot-research-engine`
+
+### Schritt 4: `sot-research-engine` erweitern
+- Neuer Intent `strategy_step` fuer Einzelschritt-Ausfuehrung
+- Bestehende Logik bleibt erhalten (backward compatible)
+
+### Schritt 5: `sot-registry-import` Edge Function
+- BaFin-CSV-Parser
+- IHK-Register-Scraper (via Apify)
+- Automatische Ledger-Erstellung
+
+### Schritt 6: Discovery Scheduler anpassen
+- Kategorie-aware Batch-Planung
+- Kosten-Tracking pro Kategorie im Run-Log
+
+---
+
+## G) Zusammenfassung der Architektur-Entscheidungen
+
+1. **Apify bleibt**: Unverzichtbar fuer Portal-Scraping (ImmoScout, Immowelt) und IHK-Register
+2. **Google Places bleibt**: Beste strukturierte Erstquelle, aber KEINE E-Mails
+3. **Firecrawl bleibt**: Website-Scraping fuer E-Mail-Extraktion (guenstiger als Apify fuer Einzelseiten)
+4. **Lovable AI bleibt**: Merge, Dedupe, Scoring ueber den Gateway
+5. **NEU: Registerdaten**: BaFin-CSV und IHK als kostenguenstige Bulk-Quellen
+6. **NEU: Strategy Ledger**: Transparente Nachverfolgung pro Kontakt, was recherchiert wurde und was fehlt
+7. **SPAETER: LinkedIn**: Fuer Family Offices und Unternehmenskontakte (erfordert separate API-Integration)
