@@ -43,7 +43,7 @@ const STRATEGIES: CategorySourceStrategy[] = [
   { categoryCode: 'family_office', strategyCode: 'FAMILY_OFFICE_SEARCH', difficulty: 'hard', steps: [
     { stepId: 'google_search', provider: 'google_places', purpose: 'discovery', priority: 1, config: {}, expectedFields: ['name', 'address', 'phone'], estimatedCostEur: 0.003 },
     { stepId: 'web_scrape', provider: 'firecrawl', purpose: 'enrichment', priority: 2, config: {}, expectedFields: ['email', 'website', 'contact_person'], estimatedCostEur: 0.01 },
-    { stepId: 'linkedin_future', provider: 'linkedin_api', purpose: 'enrichment', priority: 3, config: {}, expectedFields: ['contact_person'], estimatedCostEur: 0.05, skipIf: ['has_contact_person'] },
+    { stepId: 'linkedin_scrape', provider: 'apify_linkedin', purpose: 'enrichment', priority: 3, config: {}, expectedFields: ['contact_person'], estimatedCostEur: 0.01, skipIf: ['has_contact_person'] },
   ]},
   // IHK-registered
   { categoryCode: 'insurance_broker_34d', strategyCode: 'IHK_REGISTER', difficulty: 'hard', steps: [

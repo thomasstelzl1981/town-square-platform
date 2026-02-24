@@ -404,6 +404,41 @@ serve(async (req) => {
       result = { action: 'created', contact_id: inserted.id };
     }
 
+    // ── Strategy Ledger Integration ──────────────────────────────
+    // After successful contact creation/update, initialize strategy ledger
+    // and trigger next enrichment step if data gaps exist
+    if (result.action !== 'unchanged' && result.contact_id && tenant_id) {
+      try {
+        // Determine data gaps
+        const dataGaps: string[] = [];
+        if (!extractedContact.phone && !extractedContact.phone_mobile) dataGaps.push('phone');
+        if (!extractedContact.company) dataGaps.push('company');
+        if (!extractedContact.street && !extractedContact.postal_code) dataGaps.push('address');
+
+        // If there are gaps, invoke strategy resolver to initialize/check ledger
+        if (dataGaps.length > 0) {
+          const category = existingContact?.category || 'Offen';
+          console.log(`Strategy Ledger: ${dataGaps.length} data gaps detected for contact ${result.contact_id}, category: ${category}`);
+
+          // Fire-and-forget: initialize strategy ledger via resolver
+          fetch(`${supabaseUrl}/functions/v1/sot-research-strategy-resolver`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${supabaseKey}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              contact_id: result.contact_id,
+              category_code: category,
+              tenant_id,
+            }),
+          }).catch(err => console.error("Strategy resolver trigger failed (non-blocking):", err));
+        }
+      } catch (strategyErr) {
+        console.error("Strategy ledger integration failed (non-blocking):", strategyErr);
+      }
+    }
+
     // Deduct 1 credit for successful enrichment (zone2_tenant only)
     if (scope === 'zone2_tenant' && tenant_id && result.action !== 'unchanged') {
       try {
