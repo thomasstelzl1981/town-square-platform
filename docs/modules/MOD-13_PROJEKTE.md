@@ -7,27 +7,27 @@
 | **Zone** | 2 (Portal) |
 | **Pfad** | `/portal/projekte` |
 | **Icon** | `FolderKanban` |
-| **Org-Types** | `client`, `partner` |
+| **Org-Types** | `partner` |
 | **Default Visible** | Ja |
 | **Display Order** | 13 |
 
 ## Beschreibung
 
-Das Projekte-Modul bietet eine übergreifende Projekt-Management-Ansicht für Bauträger und Aufteiler. Es ermöglicht die vollständige Verwaltung von Mehreinheiten-Projekten von der Akquisition bis zum Abverkauf.
+Das Projekte-Modul (Display: "Projektmanager") bietet eine übergreifende Projekt-Management-Ansicht für Bauträger und Aufteiler. Es ermöglicht die vollständige Verwaltung von Mehreinheiten-Projekten von der KI-gestützten Akquisition bis zum Abverkauf.
 
-## Tiles (4-Tile-Pattern)
+## Tiles (5-Tile-Pattern)
 
-### 1. Kontexte
-- **Route:** `/portal/projekte/kontexte`
-- **Beschreibung:** Verkäufer-Gesellschaften verwalten
+### 1. Dashboard
+- **Route:** `/portal/projekte/dashboard`
+- **Beschreibung:** Projekt-Grid mit KPIs, Manager-Visitenkarte und Magic Intake
 - **Funktionen:**
-  - Context-Anlage (GmbH, KG, Privat)
-  - Context-Switcher
-  - Steuer-/Rechtsdaten
+  - Magic Intake (KI-basierter Projekt-Import)
+  - Projekt-Übersicht mit Status-Cards
+  - KI-Marktanalyse
 
-### 2. Portfolio
-- **Route:** `/portal/projekte/portfolio`
-- **Beschreibung:** Projektliste mit Aufteiler-KPIs
+### 2. Projekte
+- **Route:** `/portal/projekte/projekte`
+- **Beschreibung:** Projektliste mit Verwaltung
 - **Funktionen:**
   - Projekt-Übersicht
   - Status-Tracking (frei/reserviert/verkauft)
@@ -35,19 +35,38 @@ Das Projekte-Modul bietet eine übergreifende Projekt-Management-Ansicht für Ba
 
 ### 3. Vertrieb
 - **Route:** `/portal/projekte/vertrieb`
-- **Beschreibung:** Reservierungen & Partner-Performance
+- **Beschreibung:** Vertriebsstatusreport & Verkaufssteuerung
 - **Funktionen:**
-  - Reservierungs-Workflow
-  - Partner-Attribution
-  - Provisions-Tracking
+  - Aggregierte EUR-Werte
+  - 2-seitiger PDF-Export
+  - E-Mail-Versand
 
-### 4. Marketing
-- **Route:** `/portal/projekte/marketing`
-- **Beschreibung:** Kaufy-Integration & Landingpages
-- **Funktionen:**
-  - Kaufy Marktplatz (kostenlos)
-  - Premium-Platzierung (200€/Monat)
-  - Projekt-Landingpage (200€/Monat)
+### 4. Landing Page
+- **Route:** `/portal/projekte/landing-page`
+- **Beschreibung:** Landing-Page-Generierung für Projekte
+
+### 5. Lead Manager
+- **Route:** `/portal/projekte/lead-manager`
+- **Beschreibung:** Projekt-Kampagnen via MOD-10 Integration
+
+## Magic Intake v2
+
+### KI-Modelle
+- **Exposé:** `google/gemini-2.5-pro` (maximale Präzision)
+- **Preisliste:** `google/gemini-2.5-flash` (schnelles Tool-Calling)
+
+### Sequenzielle Analyse
+1. Exposé → extrahiert Projektdaten, WEG-Struktur, Bauträger
+2. Preisliste → nutzt Exposé-Kontext für präziseres Mapping
+
+### Erweiterte Felder
+- Hausgeld, Instandhaltungsrücklage, Netto-Rendite, WEG-Zuordnung, Mietfaktor
+
+### Review-Step
+- Inline-Editing aller Zellen
+- Einheit hinzufügen/entfernen
+- Summenzeile
+- Validierung vor Erstellung (Pflichtfelder, Duplikate, Ausreißer)
 
 ## Datenmodell
 
@@ -56,13 +75,14 @@ Das Projekte-Modul bietet eine übergreifende Projekt-Management-Ansicht für Ba
 - `dev_projects` — Projekte
 - `dev_project_units` — Einheiten
 - `dev_project_reservations` — Reservierungen
-- `dev_project_calculations` — Aufteilerkalkulationen
+- `dev_project_calculations` — Aufteilerkalkulation
 - `dev_project_documents` — Dokument-Verknüpfungen
 
 ### DMS-Integration
 Bei Projektanlage wird automatisch eine Ordnerstruktur in `storage_nodes` erstellt:
-- `/{project_code}/Allgemein/` — Globalobjekt-Dokumente
-- `/{project_code}/Einheiten/WE-XXX/` — Einheiten-Dokumente
+- `/{project_code}/01_expose/` — Exposé (inkl. registrierter Upload-Datei)
+- `/{project_code}/02_preisliste/` — Preisliste (inkl. registrierter Upload-Datei)
+- `/{project_code}/Einheiten/{unit_number}/` — Einheiten-Dokumente
 
 ## Projektakte (10-Block-Struktur)
 
@@ -84,5 +104,7 @@ Bei Projektanlage wird automatisch eine Ordnerstruktur in `storage_nodes` erstel
 ### Abhängigkeiten
 - **MOD-02 (KI-Office):** Kontakte, Kalender
 - **MOD-03 (DMS):** Dokumenten-Struktur
+- **MOD-04 (Immobilien):** Immobilienakten-Erstellung aus Einheiten
+- **MOD-10 (Leads):** Lead Manager Inline-Integration
 - **Zone 1 Sales Desk:** Projekt-Übergabe
 - **Zone 3 Kaufy:** Marktplatz-Listings
