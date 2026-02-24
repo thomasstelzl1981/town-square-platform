@@ -20,7 +20,7 @@ import {
 } from '@/components/ui/select';
 import {
   useSoatOrders, useSoatResults, useCreateSoatOrder, useStartSoatOrder,
-  useCancelSoatOrder, useUpdateSoatResult,
+  useCancelSoatOrder, useUpdateSoatResult, useDeleteSoatOrder,
   type SoatSearchOrder, type SoatSearchResult,
 } from '@/hooks/useSoatSearchEngine';
 import { useResearchImport } from '@/hooks/useResearchImport';
@@ -31,15 +31,18 @@ import {
   Plus, Search, Play, Square, Loader2, CheckCircle2, XCircle, Clock,
   Building2, Mail, Phone, Globe, User, Download, AlertTriangle, Zap,
   FileSpreadsheet, Upload, X, ShieldCheck, ShieldAlert, MinusCircle,
-  Briefcase, TrendingUp, Shield, PawPrint,
+  Briefcase, TrendingUp, PawPrint, Trash2,
 } from 'lucide-react';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 /* ── Desk Categories ─────────────────────────────────────────── */
 const DESK_CATEGORIES = [
   { code: 'acquiary', label: 'Acquiary', subtitle: 'Family Offices & Immobilienunternehmen', icon: Building2 },
   { code: 'sales', label: 'Sales', subtitle: 'Immobilienmakler & Hausverwaltungen', icon: Briefcase },
   { code: 'finance', label: 'Finance', subtitle: 'Finanzvertriebe & Finanzdienstleister', icon: TrendingUp },
-  { code: 'lead', label: 'Lead', subtitle: 'Versicherungskaufleute & Leads', icon: Shield },
   { code: 'pet', label: 'Pet', subtitle: 'Hundepensionen, -hotels & -friseure', icon: PawPrint },
 ] as const;
 
@@ -81,6 +84,7 @@ export default function AdminRecherche() {
   const createOrder = useCreateSoatOrder();
   const startOrder = useStartSoatOrder();
   const cancelOrder = useCancelSoatOrder();
+  const deleteOrder = useDeleteSoatOrder();
   const updateResult = useUpdateSoatResult();
   const researchImport = useResearchImport();
 
@@ -100,6 +104,7 @@ export default function AdminRecherche() {
   const [dupePolicy, setDupePolicy] = useState<'skip' | 'update'>('skip');
   const [isCheckingDupes, setIsCheckingDupes] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
+  const [deleteDialogOrderId, setDeleteDialogOrderId] = useState<string | null>(null);
 
   const selectedOrder = orders.find(o => o.id === selectedOrderId) || null;
   const { data: results = [] } = useSoatResults(selectedOrderId);
@@ -290,7 +295,7 @@ export default function AdminRecherche() {
   return (
     <div className="space-y-6 p-6">
       {/* ── Desk Category Cards ──────────────────────────────── */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {DESK_CATEGORIES.map((desk) => {
           const Icon = desk.icon;
           const stats = deskStats[desk.code] || { active: 0, contacts: 0 };
@@ -360,9 +365,19 @@ export default function AdminRecherche() {
                           <span className="mr-1">{st.icon}</span>{st.label}
                         </Badge>
                       </div>
-                      <div className="flex items-center gap-4 text-xs text-muted-foreground shrink-0 ml-3">
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground shrink-0 ml-3">
                         <span className="flex items-center gap-1"><User className="h-3 w-3" />{c?.contacts_extracted || 0}</span>
                         <span className="flex items-center gap-1"><Mail className="h-3 w-3" />{c?.emails_found || 0}</span>
+                        {order.status !== 'running' && (
+                          <button
+                            type="button"
+                            className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                            onClick={(e) => { e.stopPropagation(); setDeleteDialogOrderId(order.id); }}
+                            aria-label="Auftrag löschen"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        )}
                       </div>
                     </div>
                   );
@@ -372,6 +387,37 @@ export default function AdminRecherche() {
           </CardContent>
         </Card>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deleteDialogOrderId} onOpenChange={(open) => !open && setDeleteDialogOrderId(null)}>
+        <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Auftrag löschen?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Dieser Rechercheauftrag und alle zugehörigen Ergebnisse werden unwiderruflich gelöscht.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={async () => {
+                if (!deleteDialogOrderId) return;
+                try {
+                  await deleteOrder.mutateAsync(deleteDialogOrderId);
+                  if (selectedOrderId === deleteDialogOrderId) setSelectedOrderId(null);
+                  toast.success('Auftrag gelöscht');
+                } catch (e: any) {
+                  toast.error(e.message);
+                }
+                setDeleteDialogOrderId(null);
+              }}
+            >
+              Löschen
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* ── Inline Case — Selected Order ─────────────────────── */}
       {selectedOrder && (
