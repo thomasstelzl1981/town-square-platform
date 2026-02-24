@@ -79,8 +79,8 @@ export default function SupportPage() {
     return (
       <div className="flex flex-col items-center justify-center py-12">
         <Shield className="h-16 w-16 text-muted-foreground/50 mb-4" />
-        <h2 className="text-xl font-semibold mb-2">Access Restricted</h2>
-        <p className="text-muted-foreground">Support Mode is only available to Platform Admins.</p>
+        <h2 className="text-xl font-semibold mb-2">Zugriff eingeschränkt</h2>
+        <p className="text-muted-foreground">Der Support-Modus ist nur für Platform Admins verfügbar.</p>
       </div>
     );
   }
@@ -181,28 +181,28 @@ export default function SupportPage() {
       <div>
         <h2 className="text-2xl font-bold tracking-tight flex items-center gap-2">
           <LifeBuoy className="h-6 w-6" />
-          Support Mode
+          Support-Modus
         </h2>
-        <p className="text-muted-foreground">Search and manage user profiles for support purposes</p>
+        <p className="text-muted-foreground">Benutzerprofile suchen und verwalten</p>
       </div>
 
       <Alert>
         <Shield className="h-4 w-4" />
         <AlertDescription>
-          Platform Admin access active. You can view and edit any user's profile.
+          Platform Admin Zugriff aktiv. Sie können alle Benutzerprofile einsehen und bearbeiten.
         </AlertDescription>
       </Alert>
 
       {/* Search */}
       <Card>
         <CardHeader>
-          <CardTitle>Search Users</CardTitle>
-          <CardDescription>Search by email or display name</CardDescription>
+          <CardTitle>Benutzer suchen</CardTitle>
+          <CardDescription>Nach E-Mail oder Anzeigename suchen</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex gap-2">
             <Input
-              placeholder="Enter email or name..."
+              placeholder="E-Mail oder Name eingeben..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
@@ -214,7 +214,7 @@ export default function SupportPage() {
               ) : (
                 <Search className="h-4 w-4" />
               )}
-              <span className="ml-2">Search</span>
+              <span className="ml-2">Suchen</span>
             </Button>
           </div>
         </CardContent>
@@ -231,25 +231,25 @@ export default function SupportPage() {
       {searched && (
         <Card>
           <CardHeader>
-            <CardTitle>Search Results</CardTitle>
+          <CardTitle>Suchergebnisse</CardTitle>
             <CardDescription>
-              Found {profiles.length} user{profiles.length !== 1 ? 's' : ''}
+              {profiles.length} Benutzer gefunden
             </CardDescription>
           </CardHeader>
           <CardContent>
             {profiles.length === 0 ? (
               <div className="text-center py-8">
-                <p className="text-muted-foreground">No users found matching your search</p>
+                <p className="text-muted-foreground">Keine Benutzer für Ihre Suche gefunden</p>
               </div>
             ) : (
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Display Name</TableHead>
-                    <TableHead>Active Tenant</TableHead>
-                    <TableHead>Roles</TableHead>
-                    <TableHead>Created</TableHead>
+                     <TableHead>E-Mail</TableHead>
+                    <TableHead>Anzeigename</TableHead>
+                    <TableHead>Aktiver Mandant</TableHead>
+                    <TableHead>Rollen</TableHead>
+                    <TableHead>Erstellt</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -271,7 +271,7 @@ export default function SupportPage() {
                             </Badge>
                           ))}
                           {(!profile.memberships || profile.memberships.length === 0) && (
-                            <span className="text-xs text-muted-foreground">No roles</span>
+                            <span className="text-xs text-muted-foreground">Keine Rollen</span>
                           )}
                         </div>
                       </TableCell>

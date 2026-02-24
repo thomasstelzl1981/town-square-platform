@@ -214,21 +214,21 @@ export default function DelegationsPage() {
     <div className="space-y-6" ref={contentRef}>
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Delegations</h2>
-          <p className="text-muted-foreground">Manage cross-organization access grants</p>
+          <h2 className="text-2xl font-bold tracking-tight">Delegierungen</h2>
+          <p className="text-muted-foreground">Organisationsübergreifende Zugriffsrechte verwalten</p>
         </div>
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
           <DialogTrigger asChild>
             <Button>
               <Plus className="mr-2 h-4 w-4" />
-              New Delegation
+              Neue Delegierung
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
-              <DialogTitle>Create Delegation</DialogTitle>
+              <DialogTitle>Delegierung erstellen</DialogTitle>
               <DialogDescription>
-                Grant one organization access to another's resources.
+                Einer Organisation Zugriff auf die Ressourcen einer anderen gewähren.
               </DialogDescription>
             </DialogHeader>
 
@@ -302,10 +302,10 @@ export default function DelegationsPage() {
             </div>
 
             <DialogFooter>
-              <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
+              <Button variant="outline" onClick={() => setCreateOpen(false)}>Abbrechen</Button>
               <Button onClick={handleCreate} disabled={creating}>
                 {creating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Create
+                Erstellen
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -323,7 +323,7 @@ export default function DelegationsPage() {
       <Alert>
         <Clock className="h-4 w-4" />
         <AlertDescription>
-          Delegations are immutable history. Active delegations can be revoked but not deleted.
+          Delegierungen sind unveränderliche Historie. Aktive Delegierungen können widerrufen, aber nicht gelöscht werden.
         </AlertDescription>
       </Alert>
 
@@ -331,7 +331,7 @@ export default function DelegationsPage() {
         <CardHeader>
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
-              <CardTitle>All Delegations</CardTitle>
+              <CardTitle>Alle Delegierungen</CardTitle>
               <CardDescription>
                 {filteredDelegations.length} von {delegations.length} Delegationen
               </CardDescription>
@@ -358,7 +358,7 @@ export default function DelegationsPage() {
             <div className="text-center py-8">
               <Link2 className="h-12 w-12 mx-auto text-muted-foreground/50" />
               <p className="mt-2 text-muted-foreground">
-                {delegations.length === 0 ? 'No delegations found' : 'Keine Treffer für Filter'}
+                {delegations.length === 0 ? 'Keine Delegierungen gefunden' : 'Keine Treffer für Filter'}
               </p>
             </div>
           ) : (
@@ -431,7 +431,7 @@ export default function DelegationsPage() {
       <Dialog open={!!viewTarget} onOpenChange={() => setViewTarget(null)}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Delegation Details</DialogTitle>
+            <DialogTitle>Delegierungs-Details</DialogTitle>
           </DialogHeader>
           {viewTarget && (
             <div className="space-y-4">

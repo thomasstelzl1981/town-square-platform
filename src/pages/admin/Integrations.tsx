@@ -7,6 +7,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2 } from 'lucide-react';
 import { DESIGN } from '@/config/designManifest';
+import { VOICE_ENABLED_FIELDS } from '@/config/voiceIntegrationManifest';
 import { 
   Plug, 
   Mail, 
@@ -231,21 +232,9 @@ export default function Integrations() {
                   </tr>
                 </thead>
                 <tbody>
-                  {[
-                    { comp: 'ArmstrongContainer', field: 'Chat-Eingabe', status: 'aktiv' },
-                    { comp: 'ChatPanel', field: 'Chat-Eingabe', status: 'aktiv' },
-                    { comp: 'ComposeEmailDialog', field: 'Betreff / Body', status: 'aktiv' },
-                    { comp: 'CampaignWizard', field: 'Kampagnen-Nachricht', status: 'aktiv' },
-                    { comp: 'ClaimCreateDialog', field: 'Schadensbeschreibung', status: 'aktiv' },
-                    { comp: 'ServiceCaseCreateDialog', field: 'Kurzbeschreibung', status: 'aktiv' },
-                    { comp: 'ScopeDefinitionPanel', field: 'Sanierungsumfang', status: 'aktiv' },
-                    { comp: 'TenderDraftPanel', field: 'Zusätzliche Hinweise', status: 'aktiv' },
-                    { comp: 'DeliveryTab', field: 'Präsentationsnotizen', status: 'aktiv' },
-                    { comp: 'KontakteTab', field: 'Kontakt-Notizen', status: 'aktiv' },
-                    { comp: 'MietyPortalPage', field: 'WhatsApp / E-Mail / Übersetzer', status: 'aktiv' },
-                  ].map((row, i) => (
+                {VOICE_ENABLED_FIELDS.map((row, i) => (
                     <tr key={i} className="border-t">
-                      <td className="p-2 font-mono text-xs">{row.comp}</td>
+                      <td className="p-2 font-mono text-xs">{row.component}</td>
                       <td className="p-2">{row.field}</td>
                       <td className="p-2">
                         <Badge className="bg-green-600 text-xs">{row.status}</Badge>

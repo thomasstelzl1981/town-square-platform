@@ -7,14 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Landmark, Shield, HeartHandshake, Building2, TrendingUp, ArrowRight, Video, Inbox, Users } from 'lucide-react';
-
-const BERATUNGSFELDER = [
-  { icon: Landmark, label: 'Stiftungen', desc: 'Stiftungsgründung & -verwaltung' },
-  { icon: Shield, label: 'Vermögensschutz', desc: 'Asset Protection & Strukturierung' },
-  { icon: HeartHandshake, label: 'Generationenvermögen', desc: 'Generationsübergreifender Vermögenserhalt' },
-  { icon: Building2, label: 'Gewerbliche Versicherungen', desc: 'Betriebliche Versicherungskonzepte' },
-  { icon: TrendingUp, label: 'Finanzierungen', desc: 'Privat- & Investitionsfinanzierungen' },
-];
+import { BERATUNGSFELDER } from '@/config/financeDeskConfig';
 
 export default function FinanceDeskDashboard() {
   const { isPlatformAdmin } = useAuth();
