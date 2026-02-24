@@ -10,9 +10,11 @@ import { OperativeDeskShell } from '@/components/admin/desks/OperativeDeskShell'
 
 const SalesDeskDashboard = lazy(() => import('../sales-desk/SalesDeskDashboard'));
 const VeroeffentlichungenTab = lazy(() => import('../sales-desk/VeroeffentlichungenTab').then(m => ({ default: m.VeroeffentlichungenTab })));
+const SalesDeskKontakte = lazy(() => import('../sales-desk/SalesDeskKontakte'));
 
 const TABS = [
   { value: 'dashboard', label: 'Dashboard', path: '' },
+  { value: 'kontakte', label: 'Kontakte', path: 'kontakte' },
   { value: 'veroeffentlichungen', label: 'Veröffentlichungen', path: 'veroeffentlichungen' },
   { value: 'inbox', label: 'Inbox', path: 'inbox' },
   { value: 'partner', label: 'Partner', path: 'partner' },
@@ -56,6 +58,7 @@ export default function SalesDesk() {
       <Suspense fallback={<Loading />}>
         <Routes>
           <Route index element={<SalesDeskDashboard />} />
+          <Route path="kontakte" element={<SalesDeskKontakte />} />
           <Route path="veroeffentlichungen" element={<VeroeffentlichungenTab />} />
           <Route path="inbox" element={<InboxPage />} />
           <Route path="partner" element={<PartnerPage />} />

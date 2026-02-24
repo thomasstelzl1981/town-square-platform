@@ -9,12 +9,14 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { OperativeDeskShell } from '@/components/admin/desks/OperativeDeskShell';
 
 const FinanceDeskDashboard = lazy(() => import('../finance-desk/FinanceDeskDashboard'));
+const FinanceDeskKontakte = lazy(() => import('../finance-desk/FinanceDeskKontakte'));
 const FinanceDeskInboxPage = lazy(() => import('../finance-desk/FinanceDeskInboxPage'));
 const FinanceDeskFaellePage = lazy(() => import('../finance-desk/FinanceDeskFaellePage'));
 const FinanceDeskMonitorPage = lazy(() => import('../finance-desk/FinanceDeskMonitorPage'));
 
 const TABS = [
   { value: 'dashboard', label: 'Dashboard', path: '' },
+  { value: 'kontakte', label: 'Kontakte', path: 'kontakte' },
   { value: 'inbox', label: 'Inbox', path: 'inbox' },
   { value: 'faelle', label: 'Fälle', path: 'faelle' },
   { value: 'monitor', label: 'Monitor', path: 'monitor' },
@@ -52,6 +54,7 @@ export default function FinanceDesk() {
       <Suspense fallback={<Loading />}>
         <Routes>
           <Route index element={<FinanceDeskDashboard />} />
+          <Route path="kontakte" element={<FinanceDeskKontakte />} />
           <Route path="inbox" element={<FinanceDeskInboxPage />} />
           <Route path="faelle" element={<FinanceDeskFaellePage />} />
           <Route path="monitor" element={<FinanceDeskMonitorPage />} />
