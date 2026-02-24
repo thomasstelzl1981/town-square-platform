@@ -1,28 +1,19 @@
 /**
  * Lead Desk — Zone 1 Operative Desk for MOD-10 (Leadmanager)
- * Modular Shell + lazy-loaded Sub-Pages (Acquiary-Pattern)
+ * 2 Tabs: Website Leads (Z3) + Kampagnen Leads (Z2)
  */
 import { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
-import { Loader2, Plus } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Button } from '@/components/ui/button';
 import { OperativeDeskShell } from '@/components/admin/desks/OperativeDeskShell';
 
-const LeadDeskDashboard = lazy(() => import('../lead-desk/LeadDeskDashboard'));
-const LeadDeskKontakte = lazy(() => import('../lead-desk/LeadDeskKontakte'));
-const LeadPoolPage = lazy(() => import('../lead-desk/LeadPoolPage'));
-const LeadAssignmentsPage = lazy(() => import('../lead-desk/LeadAssignmentsPage'));
-const LeadCommissionsPage = lazy(() => import('../lead-desk/LeadCommissionsPage'));
-const LeadMonitorPage = lazy(() => import('../lead-desk/LeadMonitorPage'));
+const LeadWebsiteLeads = lazy(() => import('../lead-desk/LeadWebsiteLeads'));
+const LeadKampagnenDesk = lazy(() => import('../lead-desk/LeadKampagnenDesk'));
 
 const TABS = [
-  { value: 'dashboard', label: 'Dashboard', path: '' },
-  { value: 'kontakte', label: 'Kontakte', path: 'kontakte' },
-  { value: 'pool', label: 'Lead Pool', path: 'pool' },
-  { value: 'assignments', label: 'Zuweisungen', path: 'assignments' },
-  { value: 'commissions', label: 'Provisionen', path: 'commissions' },
-  { value: 'monitor', label: 'Monitor', path: 'monitor' },
+  { value: 'website', label: 'Website Leads', path: '' },
+  { value: 'kampagnen', label: 'Kampagnen Leads', path: 'kampagnen' },
 ];
 
 function Loading() {
@@ -32,7 +23,7 @@ function Loading() {
 export default function LeadDesk() {
   const location = useLocation();
   const subPath = location.pathname.replace(/^\/admin\/lead-desk\/?/, '').split('/')[0] || '';
-  const activeTab = TABS.find(t => t.path === subPath)?.value || 'dashboard';
+  const activeTab = TABS.find(t => t.path === subPath)?.value || 'website';
 
   const navigation = (
     <Tabs value={activeTab} className="w-full">
@@ -49,19 +40,15 @@ export default function LeadDesk() {
   return (
     <OperativeDeskShell
       title="Lead Desk"
-      subtitle="Lead-Pool-Governance · Zuweisungen · Provisionen"
+      subtitle="Website-Leads (Zone 3) · Kampagnen (Zone 2)"
       moduleCode="MOD-10"
       zoneFlow={{ z3Surface: 'Kaufy / SoT Website', z1Desk: 'Lead Desk', z2Manager: 'MOD-10 Leadmanager' }}
       navigation={navigation}
     >
       <Suspense fallback={<Loading />}>
         <Routes>
-          <Route index element={<LeadDeskDashboard />} />
-          <Route path="kontakte" element={<LeadDeskKontakte />} />
-          <Route path="pool" element={<LeadPoolPage />} />
-          <Route path="assignments" element={<LeadAssignmentsPage />} />
-          <Route path="commissions" element={<LeadCommissionsPage />} />
-          <Route path="monitor" element={<LeadMonitorPage />} />
+          <Route index element={<LeadWebsiteLeads />} />
+          <Route path="kampagnen" element={<LeadKampagnenDesk />} />
           <Route path="*" element={<Navigate to="/admin/lead-desk" replace />} />
         </Routes>
       </Suspense>

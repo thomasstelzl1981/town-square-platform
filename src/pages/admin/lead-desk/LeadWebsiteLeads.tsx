@@ -1,5 +1,6 @@
 /**
- * LeadPoolPage — Wrapper for LeadPool with data fetching + dialogs
+ * LeadWebsiteLeads — Tab 1: Website Leads (Zone 3)
+ * KPI-Leiste + Lead Pool + Create/Assign Dialoge
  */
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
@@ -11,10 +12,11 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Plus, Loader2 } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Plus, Loader2, Target, Users, CheckCircle, XCircle } from 'lucide-react';
 import { LeadPool } from './LeadPool';
 
-export default function LeadPoolPage() {
+export default function LeadWebsiteLeads() {
   const { isPlatformAdmin } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
@@ -51,7 +53,7 @@ export default function LeadPoolPage() {
         assigned_partner_name: orgs.find(o => o.id === lead.assigned_partner_id)?.name || null,
       })));
     } catch (err) {
-      console.error('LeadPool fetch error:', err);
+      console.error('LeadWebsiteLeads fetch error:', err);
     } finally {
       setLoading(false);
     }
@@ -100,16 +102,53 @@ export default function LeadPoolPage() {
     }
   }
 
+  if (!isPlatformAdmin) return <div className="flex items-center justify-center h-64"><p className="text-muted-foreground">Nur für Platform Admins</p></div>;
   if (loading) return <div className="flex items-center justify-center p-12"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>;
 
+  const stats = {
+    total: leads.length,
+    pending: leads.filter(l => l.status === 'new').length,
+    assigned: leads.filter(l => l.assigned_partner_id).length,
+    converted: leads.filter(l => l.status === 'converted').length,
+    lost: leads.filter(l => l.status === 'lost').length,
+  };
+
+  const kpis = [
+    { label: 'Pool Gesamt', value: stats.total, icon: Target, color: 'text-primary' },
+    { label: 'Offen', value: stats.pending, icon: Users, color: 'text-amber-500' },
+    { label: 'Zugewiesen', value: stats.assigned, icon: CheckCircle, color: 'text-blue-500' },
+    { label: 'Konvertiert', value: stats.converted, icon: CheckCircle, color: 'text-emerald-500' },
+  ];
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
+      {/* KPI Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {kpis.map(k => (
+          <Card key={k.label}>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">{k.label}</CardTitle>
+              <k.icon className={`h-4 w-4 ${k.color}`} />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{k.value}</div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* Lead Pool + Actions */}
       <div className="flex justify-end">
         <Button onClick={() => setCreateDialogOpen(true)} className="gap-2"><Plus className="h-4 w-4" />Lead anlegen</Button>
       </div>
 
-      <LeadPool leads={leads} onCreateLead={() => setCreateDialogOpen(true)} onAssignLead={(id) => { setSelectedLeadId(id); setSelectedPartnerId(''); setAssignDialogOpen(true); }} />
+      <LeadPool
+        leads={leads}
+        onCreateLead={() => setCreateDialogOpen(true)}
+        onAssignLead={(id) => { setSelectedLeadId(id); setSelectedPartnerId(''); setAssignDialogOpen(true); }}
+      />
 
+      {/* Create Dialog */}
       <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -127,9 +166,8 @@ export default function LeadPoolPage() {
                 <SelectContent>
                   <SelectItem value="purchase">Kauf</SelectItem>
                   <SelectItem value="sale">Verkauf</SelectItem>
-                  <SelectItem value="financing">Finanzierung</SelectItem>
-                  <SelectItem value="investment">Investment</SelectItem>
-                  <SelectItem value="rental">Vermietung</SelectItem>
+                  <SelectItem value="finanzierung">Finanzierung</SelectItem>
+                  <SelectItem value="project_submission">Projekteinreichung</SelectItem>
                   <SelectItem value="other">Sonstiges</SelectItem>
                 </SelectContent>
               </Select>
@@ -145,6 +183,7 @@ export default function LeadPoolPage() {
         </DialogContent>
       </Dialog>
 
+      {/* Assign Dialog */}
       <Dialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
         <DialogContent>
           <DialogHeader>
