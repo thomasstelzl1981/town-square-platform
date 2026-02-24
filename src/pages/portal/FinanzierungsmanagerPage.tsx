@@ -32,7 +32,9 @@ const FMAbonnementsTab = React.lazy(() => import('./finanzierungsmanager/FMAbonn
 export default function FinanzierungsmanagerPage() {
   const { memberships, isPlatformAdmin } = useAuth();
 
-  const canAccess = isPlatformAdmin || memberships.some(m => m.role === 'finance_manager');
+  const canAccess = isPlatformAdmin || memberships.some(m => 
+    m.role === 'finance_manager' || m.role === 'super_manager'
+  );
 
   if (!canAccess) {
     return (

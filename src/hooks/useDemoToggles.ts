@@ -13,6 +13,7 @@ import { seedDemoData, SeedProgressInfo } from '@/hooks/useDemoSeedEngine';
 import { cleanupDemoData } from '@/hooks/useDemoCleanup';
 
 const STORAGE_KEY_PREFIX = 'gp_demo_toggles';
+const TOGGLE_VERSION = '2'; // Bump to force-reset cached toggles to OFF
 
 type DemoToggles = Record<string, boolean>;
 
@@ -34,25 +35,34 @@ function getStorageKey(): string {
   return STORAGE_KEY_PREFIX;
 }
 
-function loadToggles(): DemoToggles {
-  try {
-    const key = getStorageKey();
-    const raw = localStorage.getItem(key);
-    if (raw) return JSON.parse(raw);
-    const oldRaw = localStorage.getItem('gp_demo_toggles');
-    if (oldRaw) {
-      const parsed = JSON.parse(oldRaw);
-      localStorage.setItem(key, oldRaw);
-      return parsed;
-    }
-  } catch {
-    // ignore
-  }
+function buildDefaults(): DemoToggles {
   const defaults: DemoToggles = {};
   GOLDEN_PATH_PROCESSES.forEach(p => {
     defaults[p.id] = false;
   });
   return defaults;
+}
+
+function loadToggles(): DemoToggles {
+  try {
+    const key = getStorageKey();
+    const versionKey = `${key}_version`;
+
+    // Migration: if version mismatch, wipe old toggles and reset to defaults
+    const savedVersion = localStorage.getItem(versionKey);
+    if (savedVersion !== TOGGLE_VERSION) {
+      localStorage.removeItem(key);
+      localStorage.removeItem('gp_demo_toggles');
+      localStorage.setItem(versionKey, TOGGLE_VERSION);
+      return buildDefaults();
+    }
+
+    const raw = localStorage.getItem(key);
+    if (raw) return JSON.parse(raw);
+  } catch {
+    // ignore
+  }
+  return buildDefaults();
 }
 
 function saveToggles(toggles: DemoToggles) {
