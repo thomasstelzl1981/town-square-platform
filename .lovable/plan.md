@@ -1,93 +1,151 @@
 
+# Produkt-Seed und Produktakte — Vollstaendige Umsetzung
 
-# Fix: ServiceDeskFahrzeuge — Korrektur der Sub-Tabs
+## Ausgangslage
 
-## Das Problem
+- **service_shop_products**: LEER (0 Eintraege)
+- **pet_shop_products**: 28 Produkte (6 Ernaehrung, 6 Fressnapf, 16 Lennox Style) — muessen migriert werden
+- **Zone 2 Komponenten**: Bereits auf `useActiveServiceProducts()` umgestellt — zeigen aktuell leere Zustaende
+- **service_shop_config**: 12 Eintraege korrekt vorhanden
 
-`ServiceDeskFahrzeuge.tsx` hat aktuell 4 Sub-Tabs:
+## Teil 1: Produktakte (Metadata-Schema pro Shop)
 
-```text
-Fahrzeuge | Boote | Privatjet | Angebote
+Jeder Shop hat unterschiedliche Felder (BMW braucht `power`, `fuel`, `configLink`; Boote brauchen `length`, `guests`, `highlights`). Aktuell landen diese unstrukturiert im `metadata` JSONB-Feld.
+
+**Loesung:** Ein `metadata_schema` Feld in `service_shop_config` definiert pro Shop-Key, welche Zusatzfelder erwartet werden. Das ist die "Produktakte" — eine Vorlage, die dem Zone-1-Benutzer zeigt, welche Felder er ausfuellen muss.
+
+### Migration: metadata_schema zu service_shop_config hinzufuegen
+
+```sql
+ALTER TABLE service_shop_config ADD COLUMN metadata_schema JSONB;
 ```
 
-**"Fahrzeuge" ist FALSCH hier.** Der Tab `/portal/cars/fahrzeuge` (CarsFahrzeuge) ist eine persoenliche Fahrzeugverwaltung — der User legt dort seine eigenen Autos und Bikes an (CRUD auf `cars_vehicles` Tabelle). Das ist kein Shop und gehoert nicht in den Service Desk.
+Dann pro Shop-Key das Schema befuellen, z.B.:
 
-Die eigentlichen Shop-Bereiche in MOD-17 mit hardcoded Daten sind:
+| shop_key | metadata_schema (Felder) |
+|----------|------------------------|
+| `amazon` | `[]` (Standard-Felder reichen) |
+| `bueroshop24` | `[]` |
+| `miete24` | `[{key: "term", label: "Laufzeit", type: "text"}, {key: "monthly_rate", label: "Monatsrate", type: "text"}]` |
+| `smart-home` | `[{key: "resolution", label: "Aufloesung", type: "text"}, {key: "connectivity", label: "Konnektivitaet", type: "text"}]` |
+| `bmw-fokus` | `[{key: "brand", label: "Marke", type: "select", options: ["BMW","MINI"]}, {key: "code", label: "Modellcode", type: "text"}, {key: "power", label: "Leistung", type: "text"}, {key: "fuel", label: "Antrieb", type: "select", options: ["Benzin","Diesel","Elektro","Hybrid"]}, {key: "term", label: "Laufzeit", type: "text"}, {key: "kmPerYear", label: "KM/Jahr", type: "text"}, {key: "upe", label: "UPE", type: "text"}, {key: "configLink", label: "Konfigurator-Link", type: "url"}]` |
+| `miete24-autos` | `[{key: "fuel", label: "Antrieb", type: "text"}, {key: "transmission", label: "Getriebe", type: "text"}]` |
+| `boote` | `[{key: "type", label: "Bootstyp", type: "text"}, {key: "length", label: "Laenge", type: "text"}, {key: "guests", label: "Max. Gaeste", type: "text"}, {key: "location", label: "Standort", type: "text"}, {key: "highlights", label: "Highlights", type: "tags"}]` |
+| `privatjet` | `[{key: "manufacturer", label: "Hersteller", type: "text"}, {key: "passengers", label: "Passagiere", type: "text"}, {key: "range", label: "Reichweite", type: "text"}, {key: "typicalRoute", label: "Typische Route", type: "text"}]` |
+| `pet-ernaehrung` | `[]` |
+| `pet-tracker` | `[{key: "target", label: "Zielgruppe", type: "text"}, {key: "weight", label: "Gewicht", type: "text"}, {key: "variant", label: "Variante", type: "select", options: ["Mini","Standard","XL"]}]` |
+| `pet-style` | `[]` |
+| `pet-fressnapf` | `[]` |
 
-| Zone 2 Komponente | Inhalt | Hardcoded Produkte |
-|---|---|---|
-| CarsAngebote | BMW/MINI Fokusmodelle (Helming und Sohn) | 7 Modelle |
-| CarsAngebote | Miete24 Auto-Abos | 6 Angebote |
-| CarsBoote | Haller Experiences Yacht Charter | 8 Boote |
-| CarsPrivatjet | NetJets Fleet | 6 Jets |
+### ServiceDeskProductCRUD erweitern
 
-## Die Loesung
+Das CRUD-Formular in Zone 1 liest das `metadata_schema` aus `service_shop_config` und rendert die Zusatzfelder dynamisch:
 
-### 1. ServiceDeskFahrzeuge.tsx — Sub-Tabs korrigieren
+- Neuer Hook: `useServiceShopConfig(shopKey)` — laedt Config inkl. Schema
+- Dialog zeigt Standard-Felder (Name, Preis, Bild, Link, Affiliate) PLUS dynamische Felder aus dem Schema
+- Beim Speichern werden die dynamischen Felder in das `metadata` JSONB geschrieben
 
-Sub-Tabs aendern von:
+## Teil 2: Produkt-Seed — Alle Shops befuellen
 
-```text
-Fahrzeuge | Boote | Privatjet | Angebote
-```
+### 2a. Pet-Shop Migration (pet_shop_products -> service_shop_products)
 
-zu:
+28 bestehende Produkte kopieren mit korrektem `shop_key`-Mapping:
 
-```text
-BMW Fokusmodelle | Miete24 | Boote | Privatjet
-```
+| Quell-Kategorie | Ziel shop_key | Anzahl |
+|-----------------|---------------|--------|
+| `ernaehrung` | `pet-ernaehrung` | 6 |
+| `fressnapf` | `pet-fressnapf` | 6 |
+| `lennox_style` | `pet-style` | 16 |
 
-Die Shop-Keys werden:
-- `bmw-fokus` — BMW und MINI Fokusmodelle (Helming und Sohn)
-- `miete24-autos` — Miete24 Auto-Abo Angebote
-- `boote` — Haller Experiences Yacht Charter
-- `privatjet` — NetJets Fleet
+### 2b. Lennox Tracker (aus PetsShop.tsx hardcoded -> DB)
 
-### 2. Zone 2 Komponenten — Hardcoded Daten durch DB ersetzen
+3 Produktvarianten + 3 Abo-Modelle als service_shop_products anlegen:
 
-Alle drei Komponenten enthalten hardcoded Produkt-Arrays, die ueber den Service Desk in Zone 1 bestuckt werden sollten:
+| Name | Preis | sub_category | metadata |
+|------|-------|-------------|----------|
+| LENNOX Mini | 39,99 EUR | Tracker | `{variant: "Mini", target: "Kleine Hunde & Katzen bis 10 kg", weight: "25 g"}` |
+| LENNOX Standard | 49,99 EUR | Tracker | `{variant: "Standard", target: "Hunde von 10-25 kg", weight: "35 g", popular: true}` |
+| LENNOX XL | 59,99 EUR | Tracker | `{variant: "XL", target: "Grosse Hunde ab 25 kg", weight: "45 g"}` |
+| Abo Basic | 2,99 EUR/Mo | Abo | `{features: ["Live-Ortung","Standort-Verlauf 24h","1 Geofence-Zone"]}` |
+| Abo Plus | 4,99 EUR/Mo | Abo | `{features: [...], popular: true}` |
+| Abo Premium | 6,99 EUR/Mo | Abo | `{features: [...]}` |
 
-**CarsAngebote.tsx:**
-- `MIETE24_OFFERS` (6 Eintraege, Zeilen 44-51) entfernen
-- `FOKUS_MODELLE` (7 Eintraege, Zeilen 54-97) entfernen
-- Stattdessen: `useActiveServiceProducts('miete24-autos')` und `useActiveServiceProducts('bmw-fokus')` laden
-- Rendering bleibt gleich, Daten kommen aus `service_shop_products.metadata` (JSONB) fuer spezifische Felder wie `power`, `term`, `kmPerYear`, `configLink`
+### 2c. MOD-17 Fahrzeuge — Seed-Daten
 
-**CarsBoote.tsx:**
-- `IBIZA_BOATS` (8 Eintraege, Zeilen 31-88) entfernen
-- Stattdessen: `useActiveServiceProducts('boote')` laden
-- Boot-spezifische Felder (length, guests, highlights) in `metadata` JSONB
+**BMW Fokusmodelle** (7 Produkte mit metadata):
 
-**CarsPrivatjet.tsx:**
-- `NETJETS_FLEET` (6 Eintraege, Zeilen 32-75) entfernen
-- Stattdessen: `useActiveServiceProducts('privatjet')` laden
-- Jet-spezifische Felder (passengers, range, typicalRoute) in `metadata` JSONB
+| Name | Preis | metadata |
+|------|-------|---------|
+| BMW 118 | 269 | `{brand:"BMW", code:"F70", power:"115 kW", fuel:"Benzin", term:"36 Mon.", kmPerYear:"10.000", upe:"33.200", configLink:"https://..."}` |
+| MINI Cooper | 259 | (analog) |
+| BMW X1 sDrive18i | 299 | (analog) |
+| BMW 220i Active Tourer | 309 | (analog) |
+| BMW iX1 xDrive30 | 399 | `{fuel:"Elektro", ...}` |
+| MINI Countryman S ALL4 | 379 | (analog) |
+| BMW X3 M50 xDrive | 649 | (analog) |
 
-### 3. CarsFahrzeuge bleibt UNVERAENDERT
+**Miete24 Autos** (6 Produkte)
+**Boote** (8 Produkte mit highlights-Array)
+**Privatjet** (6 Produkte)
 
-Die persoenliche Fahrzeugverwaltung (`CarsFahrzeuge.tsx`) wird NICHT angetastet. Sie funktioniert korrekt mit der `cars_vehicles` Tabelle und hat nichts mit dem Service Desk zu tun.
+### 2d. MOD-16 Shops — Seed-Daten
 
-## Dateien
+**Amazon Business** (6 Platzhalter-Produkte)
+**Bueroshop24** (6 Platzhalter-Produkte)
+**Miete24 IT** (6 Platzhalter-Produkte)
+**Smart Home / Reolink** (6 Kamera-Produkte)
 
-| Aktion | Datei |
-|---|---|
-| EDIT | `src/pages/admin/service-desk/ServiceDeskFahrzeuge.tsx` — Sub-Tabs korrigieren |
-| EDIT | `src/components/portal/cars/CarsAngebote.tsx` — Hardcoded Daten durch DB ersetzen |
-| EDIT | `src/components/portal/cars/CarsBoote.tsx` — Hardcoded Daten durch DB ersetzen |
-| EDIT | `src/components/portal/cars/CarsPrivatjet.tsx` — Hardcoded Daten durch DB ersetzen |
-| NICHT | `src/components/portal/cars/CarsFahrzeuge.tsx` — bleibt unveraendert |
+## Teil 3: Zone 2 PetsShop.tsx — Lennox Tracker dynamisieren
 
-## Technischer Ansatz
-
-Die spezifischen Felder (z.B. `power`, `configLink`, `range`, `highlights`) werden im `metadata` JSONB-Feld von `service_shop_products` gespeichert. Das Service Desk CRUD zeigt diese als generische Felder an. Die Zone 2 Komponenten lesen sie typsicher aus:
+Die hardcoded Produktvarianten (Zeilen 268-291) und Abo-Modelle (Zeilen 297-319) in PetsShop.tsx werden durch DB-Abfragen ersetzt:
 
 ```typescript
-// Beispiel: CarsAngebote
-const { data: miete24 } = useActiveServiceProducts('miete24-autos');
-const { data: bmwFokus } = useActiveServiceProducts('bmw-fokus');
-
-// Felder aus metadata extrahieren
-const fuel = product.metadata?.fuel as string;
-const configLink = product.metadata?.configLink as string;
+const { data: trackerProducts = [] } = useActiveServiceProducts('pet-tracker');
+const variants = trackerProducts.filter(p => p.sub_category === 'Tracker');
+const subscriptions = trackerProducts.filter(p => p.sub_category === 'Abo');
 ```
 
+Die Feature-Icons und Hero-Bilder bleiben als UI-Config (kein Produktdaten).
+
+## Teil 4: Hook fuer Shop-Config
+
+Neuer Hook `useServiceShopConfig`:
+
+```typescript
+export function useServiceShopConfig(shopKey: string) {
+  return useQuery({
+    queryKey: ['service-shop-config', shopKey],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('service_shop_config')
+        .select('*')
+        .eq('shop_key', shopKey)
+        .single();
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+```
+
+## Dateien-Uebersicht
+
+| Aktion | Datei |
+|--------|-------|
+| DB-MIGRATION | `metadata_schema` Spalte zu `service_shop_config` |
+| DB-INSERT | `service_shop_config` metadata_schema Updates (12 Eintraege) |
+| DB-INSERT | `service_shop_products` — Migration von 28 pet_shop_products |
+| DB-INSERT | `service_shop_products` — 6 Lennox Tracker Produkte/Abos |
+| DB-INSERT | `service_shop_products` — 7 BMW Fokusmodelle |
+| DB-INSERT | `service_shop_products` — 6 Miete24 Autos |
+| DB-INSERT | `service_shop_products` — 8 Boote |
+| DB-INSERT | `service_shop_products` — 6 Privatjets |
+| DB-INSERT | `service_shop_products` — 6 Amazon Platzhalter |
+| DB-INSERT | `service_shop_products` — 6 Bueroshop24 Platzhalter |
+| DB-INSERT | `service_shop_products` — 6 Miete24 IT Platzhalter |
+| DB-INSERT | `service_shop_products` — 6 Smart Home / Reolink |
+| NEU | `src/hooks/useServiceShopConfig.ts` |
+| EDIT | `src/pages/admin/service-desk/ServiceDeskProductCRUD.tsx` — Dynamische Metadata-Felder |
+| EDIT | `src/pages/portal/pets/PetsShop.tsx` — Lennox Tracker dynamisieren |
+
+**Gesamt: ~85 Produkte in service_shop_products, 12 Shops mit Schema-Definition**
