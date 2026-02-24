@@ -2,8 +2,8 @@
  * RolesManagement — Rollen & Berechtigungen (Zone 1)
  * 
  * 3 Tabs:
- * 1. Rollen-Katalog: 6 Rollen mit Basis/Zusatz-Trennung
- * 2. Modul-Rollen-Matrix: 21 Module × 6 Rollen mit Farbkodierung
+ * 1. Rollen-Katalog: 8 Rollen mit Basis/Zusatz-Trennung
+ * 2. Modul-Rollen-Matrix: 22 Module × 8 Rollen mit Farbkodierung
  * 3. Governance: Eröffnungsprozess, DB-Mapping, Legacy-Hinweise
  */
 import { Shield, Check, X, Info, ArrowRight, Database, Users, Key } from 'lucide-react';
@@ -57,9 +57,9 @@ export default function RolesManagement() {
         <TabsContent value="catalog" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>6 Rollen — Konsolidiertes Modell</CardTitle>
+              <CardTitle>{ROLES_CATALOG.length} Rollen — Konsolidiertes Modell</CardTitle>
               <CardDescription>
-                1 System-Rolle + 5 User-Rollen. Jede Rolle hat 14 Basis-Module + optionale Zusatz-Module.
+                {ROLES_CATALOG.filter(r => r.isSystem).length} System-Rolle + {ROLES_CATALOG.filter(r => !r.isSystem).length} User-Rollen. Jede Rolle hat 14 Basis-Module + optionale Zusatz-Module.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -114,7 +114,7 @@ export default function RolesManagement() {
                       {isFullAccess ? (
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                           <Check className="h-4 w-4 text-chart-1" />
-                          <span>Alle 21 Module (Vollzugriff)</span>
+                          <span>Alle {ALL_TILES.length} Module (Vollzugriff)</span>
                         </div>
                       ) : (
                         <div className="space-y-2">
@@ -158,7 +158,7 @@ export default function RolesManagement() {
             <CardHeader>
               <CardTitle>Modul-Rollen-Matrix</CardTitle>
               <CardDescription>
-                21 Module × 6 Rollen — Grün = Basis (alle Rollen), Blau = Zusatz (rollenspezifisch)
+                {MODULES_CATALOG.length} Module × {ROLES_CATALOG.length} Rollen — Grün = Basis (alle Rollen), Blau = Zusatz (rollenspezifisch)
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -355,7 +355,7 @@ export default function RolesManagement() {
                 <div className="space-y-2">
                   <p className="font-semibold">super_user <span className="font-normal text-muted-foreground">(app_role)</span></p>
                   <p className="text-muted-foreground">
-                    Sonderfall: membership bleibt org_admin, aber <code className="bg-muted px-1 rounded text-xs">user_roles.role = super_user</code> schaltet alle 21 Module frei — OHNE Zone-1-Zugang.
+                    Sonderfall: membership bleibt org_admin, aber <code className="bg-muted px-1 rounded text-xs">user_roles.role = super_user</code> schaltet alle {ALL_TILES.length} Module frei — OHNE Zone-1-Zugang.
                   </p>
                 </div>
               </CardContent>
@@ -373,14 +373,16 @@ export default function RolesManagement() {
                 <div>
                   <h4 className="font-semibold text-sm mb-2">membership_role</h4>
                   <div className="flex flex-wrap gap-1">
-                    {['platform_admin', 'org_admin', 'sales_partner', 'finance_manager', 'akquise_manager'].map(role => (
-                      <Badge key={role} variant="outline" className="text-xs font-mono">
-                        {role}
-                      </Badge>
-                    ))}
-                    {['internal_ops', 'renter_user', 'future_room_web_user_lite'].map(role => (
-                      <Badge key={role} variant="outline" className="text-xs font-mono text-muted-foreground/50 line-through">
-                        {role}
+                    {ROLES_CATALOG.map(r => r.membershipRole)
+                      .filter((v, i, a) => a.indexOf(v) === i)
+                      .map(role => (
+                        <Badge key={role} variant="outline" className="text-xs font-mono">
+                          {role}
+                        </Badge>
+                      ))}
+                    {LEGACY_ROLES.map(r => (
+                      <Badge key={r.code} variant="outline" className="text-xs font-mono text-muted-foreground/50 line-through">
+                        {r.code}
                       </Badge>
                     ))}
                   </div>
@@ -388,9 +390,9 @@ export default function RolesManagement() {
                 <div>
                   <h4 className="font-semibold text-sm mb-2">app_role</h4>
                   <div className="flex flex-wrap gap-1">
-                    {['platform_admin', 'super_user', 'client_user', 'akquise_manager', 'finance_manager', 'sales_partner'].map(role => (
-                      <Badge key={role} variant="outline" className="text-xs font-mono">
-                        {role}
+                    {ROLES_CATALOG.filter(r => r.appRole).map(r => (
+                      <Badge key={r.appRole} variant="outline" className="text-xs font-mono">
+                        {r.appRole}
                       </Badge>
                     ))}
                     {['moderator', 'user'].map(role => (

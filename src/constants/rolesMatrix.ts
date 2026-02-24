@@ -66,11 +66,11 @@ export const SPECIALIST_TILES: string[] = [
   'MOD-09', 'MOD-10', 'MOD-11', 'MOD-12', 'MOD-13', 'MOD-14', 'MOD-19', 'MOD-22',
 ];
 
-/** Alle 21 Module */
+/** Alle 22 Module */
 export const ALL_TILES: string[] = [...BASE_TILES, ...SPECIALIST_TILES].sort();
 
 // =============================================================================
-// ROLLEN-KATALOG (6 aktive Rollen)
+// ROLLEN-KATALOG (8 aktive Rollen)
 // =============================================================================
 
 export const ROLES_CATALOG: RoleDefinition[] = [
@@ -80,16 +80,16 @@ export const ROLES_CATALOG: RoleDefinition[] = [
     description: 'Plattformbetreiber (God Mode) — Zone 1 Governance, Oversight, Support. Uneingeschränkter Zugriff auf alle Tenants.',
     membershipRole: 'platform_admin',
     appRole: 'platform_admin',
-    totalModules: 21,
+    totalModules: 22,
     isSystem: true,
   },
   {
     code: 'super_user',
     label: 'Super-User',
-    description: 'Vollzugriff auf alle 21 Module. Membership bleibt org_admin, zusätzlich app_role super_user.',
+    description: 'Vollzugriff auf alle 22 Module. Membership bleibt org_admin, zusätzlich app_role super_user.',
     membershipRole: 'org_admin',
     appRole: 'super_user',
-    totalModules: 21,
+    totalModules: 22,
   },
   {
     code: 'client_user',
@@ -148,7 +148,7 @@ export const LEGACY_ROLES = [
 ];
 
 // =============================================================================
-// MODUL-KATALOG (21 Module)
+// MODUL-KATALOG (22 Module)
 // =============================================================================
 
 export const MODULES_CATALOG: ModuleDefinition[] = [
@@ -173,6 +173,7 @@ export const MODULES_CATALOG: ModuleDefinition[] = [
   { code: 'MOD-18', name: 'Finanzanalyse', zone: 'Zone 2', description: 'Investment-Analyse' },
   { code: 'MOD-19', name: 'Photovoltaik', zone: 'Zone 2', description: 'PV-Anlagen-Verwaltung' },
   { code: 'MOD-20', name: 'ZUHAUSE', zone: 'Zone 2', description: 'Mieter-Portal' },
+  { code: 'MOD-22', name: 'PetManager', zone: 'Zone 2', description: 'Haustier-Verwaltung' },
 ];
 
 // =============================================================================
@@ -180,21 +181,21 @@ export const MODULES_CATALOG: ModuleDefinition[] = [
 // =============================================================================
 
 export const MODULE_ROLE_MATRIX: Record<string, string[]> = {
-  // Basis-Module: alle 6 Rollen
-  'MOD-00': ['platform_admin', 'super_user', 'client_user', 'akquise_manager', 'finance_manager', 'sales_partner'],
-  'MOD-01': ['platform_admin', 'super_user', 'client_user', 'akquise_manager', 'finance_manager', 'sales_partner'],
-  'MOD-02': ['platform_admin', 'super_user', 'client_user', 'akquise_manager', 'finance_manager', 'sales_partner'],
-  'MOD-03': ['platform_admin', 'super_user', 'client_user', 'akquise_manager', 'finance_manager', 'sales_partner'],
-  'MOD-04': ['platform_admin', 'super_user', 'client_user', 'akquise_manager', 'finance_manager', 'sales_partner'],
-  'MOD-05': ['platform_admin', 'super_user', 'client_user', 'akquise_manager', 'finance_manager', 'sales_partner'],
-  'MOD-06': ['platform_admin', 'super_user', 'client_user', 'akquise_manager', 'finance_manager', 'sales_partner'],
-  'MOD-07': ['platform_admin', 'super_user', 'client_user', 'akquise_manager', 'finance_manager', 'sales_partner'],
-  'MOD-08': ['platform_admin', 'super_user', 'client_user', 'akquise_manager', 'finance_manager', 'sales_partner'],
-  'MOD-15': ['platform_admin', 'super_user', 'client_user', 'akquise_manager', 'finance_manager', 'sales_partner'],
-  'MOD-16': ['platform_admin', 'super_user', 'client_user', 'akquise_manager', 'finance_manager', 'sales_partner'],
-  'MOD-17': ['platform_admin', 'super_user', 'client_user', 'akquise_manager', 'finance_manager', 'sales_partner'],
-  'MOD-18': ['platform_admin', 'super_user', 'client_user', 'akquise_manager', 'finance_manager', 'sales_partner'],
-  'MOD-20': ['platform_admin', 'super_user', 'client_user', 'akquise_manager', 'finance_manager', 'sales_partner'],
+  // Basis-Module: alle 8 Rollen
+  'MOD-00': ['platform_admin', 'super_user', 'client_user', 'akquise_manager', 'finance_manager', 'sales_partner', 'project_manager', 'pet_manager'],
+  'MOD-01': ['platform_admin', 'super_user', 'client_user', 'akquise_manager', 'finance_manager', 'sales_partner', 'project_manager', 'pet_manager'],
+  'MOD-02': ['platform_admin', 'super_user', 'client_user', 'akquise_manager', 'finance_manager', 'sales_partner', 'project_manager', 'pet_manager'],
+  'MOD-03': ['platform_admin', 'super_user', 'client_user', 'akquise_manager', 'finance_manager', 'sales_partner', 'project_manager', 'pet_manager'],
+  'MOD-04': ['platform_admin', 'super_user', 'client_user', 'akquise_manager', 'finance_manager', 'sales_partner', 'project_manager', 'pet_manager'],
+  'MOD-05': ['platform_admin', 'super_user', 'client_user', 'akquise_manager', 'finance_manager', 'sales_partner', 'project_manager', 'pet_manager'],
+  'MOD-06': ['platform_admin', 'super_user', 'client_user', 'akquise_manager', 'finance_manager', 'sales_partner', 'project_manager', 'pet_manager'],
+  'MOD-07': ['platform_admin', 'super_user', 'client_user', 'akquise_manager', 'finance_manager', 'sales_partner', 'project_manager', 'pet_manager'],
+  'MOD-08': ['platform_admin', 'super_user', 'client_user', 'akquise_manager', 'finance_manager', 'sales_partner', 'project_manager', 'pet_manager'],
+  'MOD-15': ['platform_admin', 'super_user', 'client_user', 'akquise_manager', 'finance_manager', 'sales_partner', 'project_manager', 'pet_manager'],
+  'MOD-16': ['platform_admin', 'super_user', 'client_user', 'akquise_manager', 'finance_manager', 'sales_partner', 'project_manager', 'pet_manager'],
+  'MOD-17': ['platform_admin', 'super_user', 'client_user', 'akquise_manager', 'finance_manager', 'sales_partner', 'project_manager', 'pet_manager'],
+  'MOD-18': ['platform_admin', 'super_user', 'client_user', 'akquise_manager', 'finance_manager', 'sales_partner', 'project_manager', 'pet_manager'],
+  'MOD-20': ['platform_admin', 'super_user', 'client_user', 'akquise_manager', 'finance_manager', 'sales_partner', 'project_manager', 'pet_manager'],
   // Spezial-Module
   'MOD-09': ['platform_admin', 'super_user', 'sales_partner'],
   'MOD-10': ['platform_admin', 'super_user', 'sales_partner', 'pet_manager'],
