@@ -50,7 +50,7 @@ function loadToggles(): DemoToggles {
   }
   const defaults: DemoToggles = {};
   GOLDEN_PATH_PROCESSES.forEach(p => {
-    defaults[p.id] = true;
+    defaults[p.id] = false;
   });
   return defaults;
 }
@@ -75,7 +75,7 @@ export function useDemoToggles() {
   }, [toggles]);
 
   const isEnabled = useCallback(
-    (processId: string) => toggles[processId] ?? true,
+    (processId: string) => toggles[processId] ?? false,
     [toggles]
   );
 
