@@ -410,6 +410,7 @@ export default function LeadManagerKampagnen({ contextMode = 'all', projectFilte
                           brandGradient={BRAND_GRADIENTS[selectedContext] || BRAND_GRADIENTS.kaufy}
                           fields={extractFields(t.editable_fields_schema)}
                           active={t.active}
+                          imageUrls={(t.image_urls as string[]) || []}
                           selectable
                           selected={selectedTemplates.includes(t.id)}
                           onSelect={toggleTemplate}
