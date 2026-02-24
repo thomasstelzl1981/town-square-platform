@@ -652,8 +652,73 @@ async function handleCreate(
     console.error('Storage tree error:', treeErr);
   }
 
-  // ── 6. Move uploaded files into project tree ──────────────────────────────
-  // (optional — files stay accessible via original storagePaths)
+  // ── 6. Link uploaded exposé into project DMS tree ─────────────────────────
+  if (storagePaths.expose) {
+    try {
+      // Find the 01_expose folder
+      const { data: exposeFolder } = await supabase
+        .from('storage_nodes')
+        .select('id')
+        .eq('tenant_id', tenantId)
+        .eq('entity_id', project.id)
+        .eq('name', '01_expose')
+        .eq('node_type', 'folder')
+        .limit(1)
+        .maybeSingle();
+
+      if (exposeFolder) {
+        const fileName = storagePaths.expose.split('/').pop() || 'Expose.pdf';
+        await supabase.from('storage_nodes').insert({
+          tenant_id: tenantId,
+          name: fileName,
+          node_type: 'file',
+          module_code: 'MOD_13',
+          entity_id: project.id,
+          parent_id: exposeFolder.id,
+          storage_path: storagePaths.expose,
+          mime_type: 'application/pdf',
+        });
+        console.log('Exposé linked to DMS tree:', fileName);
+      }
+    } catch (linkErr) {
+      console.error('Exposé DMS link error:', linkErr);
+    }
+  }
+
+  // ── 7. Link uploaded pricelist into project DMS tree ──────────────────────
+  if (storagePaths.pricelist) {
+    try {
+      const { data: pricelistFolder } = await supabase
+        .from('storage_nodes')
+        .select('id')
+        .eq('tenant_id', tenantId)
+        .eq('entity_id', project.id)
+        .eq('name', '02_preisliste')
+        .eq('node_type', 'folder')
+        .limit(1)
+        .maybeSingle();
+
+      if (pricelistFolder) {
+        const fileName = storagePaths.pricelist.split('/').pop() || 'Preisliste.pdf';
+        const mimeType = storagePaths.pricelist.endsWith('.pdf') ? 'application/pdf'
+          : storagePaths.pricelist.endsWith('.xlsx') ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+          : 'text/csv';
+        await supabase.from('storage_nodes').insert({
+          tenant_id: tenantId,
+          name: fileName,
+          node_type: 'file',
+          module_code: 'MOD_13',
+          entity_id: project.id,
+          parent_id: pricelistFolder.id,
+          storage_path: storagePaths.pricelist,
+          mime_type: mimeType,
+        });
+        console.log('Pricelist linked to DMS tree:', fileName);
+      }
+    } catch (linkErr) {
+      console.error('Pricelist DMS link error:', linkErr);
+    }
+  }
 
   return new Response(JSON.stringify({
     success: true,

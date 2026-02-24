@@ -147,6 +147,10 @@ export interface DevProjectUnit {
   parking: boolean;
   parking_type: string | null;
   notes: string | null;
+  property_id: string | null;
+  unit_id: string | null;
+  public_id: string | null;
+  commission_amount: number | null;
   created_at: string;
   updated_at: string;
 }

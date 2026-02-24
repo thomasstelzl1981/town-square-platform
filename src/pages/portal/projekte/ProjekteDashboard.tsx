@@ -43,6 +43,21 @@ import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { useDemoToggles } from '@/hooks/useDemoToggles';
 import { DesktopOnly } from '@/components/shared/DesktopOnly';
 
+interface ExtractedUnit {
+  unitNumber: string;
+  type: string;
+  area: number;
+  rooms?: number;
+  floor?: string;
+  price: number;
+  currentRent?: number;
+}
+
+interface ColumnMapping {
+  original_column: string;
+  mapped_to: string;
+}
+
 interface ExtractedProjectData {
   projectName: string;
   address: string;
@@ -53,7 +68,19 @@ interface ExtractedProjectData {
   priceRange: string;
   description?: string;
   projectType?: 'neubau' | 'aufteilung';
+  extractedUnits?: ExtractedUnit[];
+  columnMapping?: ColumnMapping[];
 }
+
+const MAPPED_TO_LABELS: Record<string, string> = {
+  unitNumber: 'Einheit-Nr.',
+  type: 'Typ',
+  area: 'Fläche (m²)',
+  rooms: 'Zimmer',
+  floor: 'Etage',
+  price: 'Kaufpreis (EUR)',
+  currentRent: 'Akt. Miete (EUR/Monat)',
+};
 
 type IntakeStep = 'upload' | 'review' | 'creating';
 
@@ -337,6 +364,76 @@ export default function ProjekteDashboard() {
                 <div className="space-y-2"><Label htmlFor="totalArea">Gesamtfläche (m²)</Label><Input id="totalArea" type="number" value={extractedData.totalArea} onChange={(e) => setExtractedData({ ...extractedData, totalArea: parseFloat(e.target.value) || 0 })} /></div>
                 <div className="space-y-2"><Label htmlFor="priceRange">Preisspanne</Label><Input id="priceRange" value={extractedData.priceRange} onChange={(e) => setExtractedData({ ...extractedData, priceRange: e.target.value })} /></div>
               </div>
+
+              {/* Column Mapping Display */}
+              {extractedData.columnMapping && extractedData.columnMapping.length > 0 && (
+                <div>
+                  <Label className="mb-2 block text-muted-foreground">KI-Spalten-Zuordnung</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {extractedData.columnMapping.map((m, i) => (
+                      <Badge key={i} variant="outline" className="gap-1 text-xs font-normal">
+                        <span className="font-mono">"{m.original_column}"</span>
+                        <ArrowRight className="h-3 w-3" />
+                        <span>{MAPPED_TO_LABELS[m.mapped_to] || m.mapped_to}</span>
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Extracted Units Table */}
+              {extractedData.extractedUnits && extractedData.extractedUnits.length > 0 && (
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <Label>Erkannte Einheiten: {extractedData.extractedUnits.length}</Label>
+                    <Badge variant="secondary">{extractedData.extractedUnits.reduce((s, u) => s + (u.area || 0), 0).toFixed(0)} m² gesamt</Badge>
+                  </div>
+                  <div className="overflow-x-auto max-h-64 overflow-y-auto border rounded-lg">
+                    <table className="w-full text-sm">
+                      <thead className="bg-muted/50 sticky top-0">
+                        <tr className="border-b">
+                          <th className="text-left py-2 px-3 font-medium">Nr.</th>
+                          <th className="text-left py-2 px-3 font-medium">Typ</th>
+                          <th className="text-right py-2 px-3 font-medium">Fläche</th>
+                          <th className="text-right py-2 px-3 font-medium">Zimmer</th>
+                          <th className="text-left py-2 px-3 font-medium">Etage</th>
+                          <th className="text-right py-2 px-3 font-medium">Kaufpreis</th>
+                          <th className="text-right py-2 px-3 font-medium">Miete</th>
+                          <th className="text-right py-2 px-3 font-medium">€/m²</th>
+                          <th className="py-2 px-2"></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {extractedData.extractedUnits.map((unit, idx) => (
+                          <tr key={idx} className="border-b last:border-0 hover:bg-muted/30">
+                            <td className="py-1.5 px-3 font-mono text-xs">{unit.unitNumber}</td>
+                            <td className="py-1.5 px-3">{unit.type}</td>
+                            <td className="py-1.5 px-3 text-right">{unit.area?.toFixed(1)} m²</td>
+                            <td className="py-1.5 px-3 text-right">{unit.rooms || '—'}</td>
+                            <td className="py-1.5 px-3">{unit.floor || '—'}</td>
+                            <td className="py-1.5 px-3 text-right font-medium">{unit.price?.toLocaleString('de-DE')} €</td>
+                            <td className="py-1.5 px-3 text-right">{unit.currentRent ? `${unit.currentRent?.toLocaleString('de-DE')} €` : '—'}</td>
+                            <td className="py-1.5 px-3 text-right text-muted-foreground">{unit.area > 0 ? Math.round(unit.price / unit.area).toLocaleString('de-DE') : '—'}</td>
+                            <td className="py-1.5 px-2">
+                              <Button 
+                                variant="ghost" size="icon" className="h-6 w-6"
+                                onClick={() => {
+                                  const newUnits = [...(extractedData.extractedUnits || [])];
+                                  newUnits.splice(idx, 1);
+                                  setExtractedData({ ...extractedData, extractedUnits: newUnits, unitsCount: newUnits.length });
+                                }}
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
               <div className="flex justify-end gap-2 pt-2">
                 <Button variant="ghost" onClick={resetForm}>Abbrechen</Button>
                 <Button onClick={handleCreateProject} className="gap-2" size="lg"><Sparkles className="h-4 w-4" />Projekt anlegen</Button>
