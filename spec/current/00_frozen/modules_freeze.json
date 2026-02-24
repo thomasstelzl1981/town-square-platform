@@ -1,6 +1,6 @@
 {
-  "version": "3.2",
-  "updated_at": "2026-02-24T04:00:00.000Z",
+  "version": "3.3",
+  "updated_at": "2026-02-24T06:00:00.000Z",
   "description": "SSOT for module freeze states. Lovable and all AI assistants MUST check this file before modifying any module code. If a module is frozen, changes to its paths are NOT ALLOWED without explicit unfreeze.",
   "freeze_criteria": "Spec vorhanden, Audit S1-S6 bestanden, produktionsreife Implementierung",
   "modules": {
@@ -17,7 +17,7 @@
     "MOD-10": { "frozen": true, "frozen_at": "2026-02-24T23:00:00.000Z", "reason": "Production-ready, audit passed" },
     "MOD-11": { "frozen": true, "frozen_at": "2026-02-24T23:00:00.000Z", "reason": "Production-ready, audit passed" },
     "MOD-12": { "frozen": true, "frozen_at": "2026-02-24T23:00:00.000Z", "reason": "Production-ready, audit passed" },
-    "MOD-13": { "frozen": true, "frozen_at": "2026-02-24T04:00:00.000Z", "reason": "Production-ready, Magic Intake v2 (gemini-2.5-pro, sequential analysis, extended fields, inline-editing, validation)" },
+    "MOD-13": { "frozen": true, "frozen_at": "2026-02-24T06:00:00.000Z", "reason": "Production-ready, Magic Intake v2 + Armstrong Intake-Assistent (proactive messages, dynamic chips, auto-open)" },
     "MOD-14": { "frozen": true, "frozen_at": "2026-02-24T23:00:00.000Z", "reason": "Production-ready, audit passed" },
     "MOD-15": { "frozen": true, "frozen_at": "2026-02-24T23:00:00.000Z", "reason": "Production-ready, audit passed" },
     "MOD-16": { "frozen": true, "frozen_at": "2026-02-24T23:00:00.000Z", "reason": "Production-ready, audit passed" },

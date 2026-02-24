@@ -7,8 +7,10 @@
  * v2: Inline-Editing, Validierung, erweiterte Felder (WEG, Hausgeld, Rendite)
  */
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { DESIGN, getActiveWidgetGlow } from '@/config/designManifest';
+import { useIntakeEmitter, type IntakeState } from '@/hooks/useIntakeContext';
+import { usePortalLayout } from '@/hooks/usePortalLayout';
 import { useNavigate } from 'react-router-dom';
 import { useDropzone } from 'react-dropzone';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -187,6 +189,8 @@ export default function ProjekteDashboard() {
   const demoEnabled = isEnabled('GP-PROJEKT');
   const tenantId = profile?.active_tenant_id;
   const { portfolioRows, isLoadingPortfolio, deleteProject } = useDevProjects();
+  const { showArmstrong } = usePortalLayout();
+  const intakeEmitter = useIntakeEmitter();
   
   const [exposeFile, setExposeFile] = useState<File | null>(null);
   const [pricelistFile, setPricelistFile] = useState<File | null>(null);
@@ -210,6 +214,29 @@ export default function ProjekteDashboard() {
   }, [extractedData]);
 
   const hasBlockingErrors = validationWarnings.some(w => w.type === 'error');
+
+  // ── Broadcast intake state to Armstrong ────────────────────────────────────
+  useEffect(() => {
+    const units = extractedData?.extractedUnits || [];
+    const validUnits = units.filter(u => u.area > 0 && u.price > 0);
+    const avgPps = validUnits.length > 0
+      ? validUnits.reduce((s, u) => s + u.price / u.area, 0) / validUnits.length
+      : undefined;
+
+    const intakeStep = isAnalyzing ? 'analyzing' as const : step === 'upload' && !uploadedExpose && !uploadedPricelist ? null : step;
+
+    intakeEmitter.emit({
+      step: intakeStep,
+      unitsCount: units.length,
+      projectName: extractedData?.projectName || '',
+      warnings: validationWarnings,
+      avgPricePerSqm: avgPps ? Math.round(avgPps) : undefined,
+      totalArea: units.reduce((s, u) => s + (u.area || 0), 0) || undefined,
+      totalPrice: units.reduce((s, u) => s + (u.price || 0), 0) || undefined,
+      wegCount: extractedData?.wegCount,
+      projectType: extractedData?.projectType,
+    });
+  }, [step, isAnalyzing, extractedData, validationWarnings, uploadedExpose, uploadedPricelist]);
 
   const handleDeleteClick = (project: ProjectPortfolioRow) => {
     setProjectToDelete(project);
@@ -290,6 +317,8 @@ export default function ProjekteDashboard() {
     if (uploadedExpose) storagePaths.expose = uploadedExpose.storagePath;
     if (uploadedPricelist) storagePaths.pricelist = uploadedPricelist.storagePath;
     setIsAnalyzing(true); setError(null);
+    // Auto-open Armstrong when analysis starts
+    showArmstrong({ expanded: true });
     try {
       const { data, error: fnError } = await supabase.functions.invoke('sot-project-intake', { body: { storagePaths, mode: 'analyze' } });
       if (fnError) throw fnError; if (data?.error) throw new Error(data.error);
@@ -310,7 +339,18 @@ export default function ProjekteDashboard() {
     try {
       const { data, error: fnError } = await supabase.functions.invoke('sot-project-intake', { body: { storagePaths, mode: 'create', reviewedData: extractedData, autoCreateContext: true } });
       if (fnError) throw fnError; if (data?.error) throw new Error(data.error);
-      if (data?.projectId) { toast.success('Projekt erstellt', { description: `Projektcode: ${data.projectCode}` }); resetForm(); navigate(`/portal/projekte/${data.projectId}`); }
+      if (data?.projectId) {
+        // Emit 'created' state so Armstrong shows proactive message
+        intakeEmitter.emit({
+          step: 'created',
+          unitsCount: extractedData.extractedUnits?.length || 0,
+          projectName: extractedData.projectName || data.projectCode || '',
+          warnings: [],
+        });
+        toast.success('Projekt erstellt', { description: `Projektcode: ${data.projectCode}` });
+        // Small delay so Armstrong message renders before navigation
+        setTimeout(() => { resetForm(); navigate(`/portal/projekte/${data.projectId}`); }, 1500);
+      }
     } catch (err) { const message = err instanceof Error ? err.message : 'Projekt konnte nicht erstellt werden'; setError(message); setStep('review'); toast.error('Fehler beim Erstellen', { description: message }); }
   };
 

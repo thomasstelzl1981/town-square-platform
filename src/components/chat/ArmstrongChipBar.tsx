@@ -3,11 +3,14 @@
  * 
  * Displays 2-4 clickable chips above the chat input that trigger
  * Armstrong actions directly, bypassing intent classification.
+ * 
+ * MOD-13: Dynamic chips based on Magic Intake step (upload/review/created)
  */
 
 import * as React from 'react';
 import { cn } from '@/lib/utils';
 import { Zap } from 'lucide-react';
+import { useIntakeListener, type IntakeStep } from '@/hooks/useIntakeContext';
 
 export interface ChipDefinition {
   label: string;
@@ -120,10 +123,41 @@ const MODULE_CHIPS: Record<string, ChipDefinition[]> = {
   ],
 };
 
+// ── Dynamic MOD-13 chips by intake step ──────────────────────────────────────
+const MOD13_INTAKE_CHIPS: Record<string, ChipDefinition[]> = {
+  'upload': [
+    { label: 'Welche Dateien?', action_code: 'ARM.MOD13.EXPLAIN_UPLOAD_FORMATS' },
+    { label: 'Beispiel-Exposé', action_code: 'ARM.MOD13.SHOW_EXAMPLE' },
+  ],
+  'analyzing': [
+    { label: 'Wie lange dauert das?', action_code: 'ARM.MOD13.EXPLAIN_ANALYSIS_TIME' },
+  ],
+  'review': [
+    { label: 'Einheiten prüfen', action_code: 'ARM.MOD13.REVIEW_UNITS' },
+    { label: 'Begriffe erklären', action_code: 'ARM.MOD13.EXPLAIN_TERMS' },
+    { label: 'Daten plausibel?', action_code: 'ARM.MOD13.VALIDATE_DATA' },
+  ],
+  'created': [
+    { label: 'Immobilienakten erstellen', action_code: 'ARM.MOD13.CREATE_PROPERTY_FILES' },
+    { label: 'Vertrieb starten', action_code: 'ARM.MOD13.START_DISTRIBUTION' },
+  ],
+};
+
 export const ArmstrongChipBar = React.memo<ArmstrongChipBarProps>(
   ({ moduleCode, onChipClick, disabled = false, className, website, maxChips }) => {
-    // Website chips take priority over module chips
-    const allChips = website ? WEBSITE_CHIPS[website] : MODULE_CHIPS[moduleCode];
+    const intakeState = useIntakeListener();
+
+    // Resolve chip set: website > MOD-13 intake-dynamic > module default
+    let allChips: ChipDefinition[] | undefined;
+
+    if (website) {
+      allChips = WEBSITE_CHIPS[website];
+    } else if (moduleCode === 'MOD-13' && intakeState.step) {
+      allChips = MOD13_INTAKE_CHIPS[intakeState.step];
+    } else {
+      allChips = MODULE_CHIPS[moduleCode];
+    }
+
     const chips = maxChips ? allChips?.slice(0, maxChips) : allChips;
 
     if (!chips || chips.length === 0) return null;
