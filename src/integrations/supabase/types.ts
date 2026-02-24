@@ -4762,6 +4762,69 @@ export type Database = {
           },
         ]
       }
+      contact_strategy_ledger: {
+        Row: {
+          category_code: string
+          contact_id: string
+          created_at: string | null
+          data_gaps: string[] | null
+          id: string
+          last_step_at: string | null
+          quality_score: number | null
+          steps_completed: Json | null
+          steps_pending: Json | null
+          strategy_code: string
+          tenant_id: string
+          total_cost_eur: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          category_code: string
+          contact_id: string
+          created_at?: string | null
+          data_gaps?: string[] | null
+          id?: string
+          last_step_at?: string | null
+          quality_score?: number | null
+          steps_completed?: Json | null
+          steps_pending?: Json | null
+          strategy_code: string
+          tenant_id: string
+          total_cost_eur?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          category_code?: string
+          contact_id?: string
+          created_at?: string | null
+          data_gaps?: string[] | null
+          id?: string
+          last_step_at?: string | null
+          quality_score?: number | null
+          steps_completed?: Json | null
+          steps_pending?: Json | null
+          strategy_code?: string
+          tenant_id?: string
+          total_cost_eur?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_strategy_ledger_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contact_strategy_ledger_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contacts: {
         Row: {
           category: string | null
