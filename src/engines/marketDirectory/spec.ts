@@ -591,10 +591,11 @@ export type SourceProvider =
   | 'google_places'
   | 'apify_maps'
   | 'apify_portal'
+  | 'apify_linkedin'
   | 'firecrawl'
   | 'bafin_csv'
   | 'ihk_register'
-  | 'linkedin_api'
+  | 'netrows'
   | 'manual';
 
 export type SourcePurpose = 'discovery' | 'enrichment' | 'verification';
@@ -670,7 +671,7 @@ export const CATEGORY_SOURCE_STRATEGIES: CategorySourceStrategy[] = [
     steps: [
       { stepId: 'google_search', provider: 'google_places', purpose: 'discovery', priority: 1, config: { searchType: 'financial_institution', keywords: ['family office', 'vermögensverwaltung'] }, expectedFields: ['name', 'address', 'phone'], estimatedCostEur: 0.003 },
       { stepId: 'web_scrape', provider: 'firecrawl', purpose: 'enrichment', priority: 2, config: { extractFields: ['email', 'contact_person', 'team_page'] }, expectedFields: ['email', 'website', 'contact_person'], estimatedCostEur: 0.01 },
-      { stepId: 'linkedin_future', provider: 'linkedin_api', purpose: 'enrichment', priority: 3, config: { searchType: 'company' }, expectedFields: ['contact_person', 'position'], estimatedCostEur: 0.05, skipIf: ['has_contact_person'] },
+      { stepId: 'linkedin_scrape', provider: 'apify_linkedin', purpose: 'enrichment', priority: 3, config: { actor: 'apify/linkedin-company-scraper' }, expectedFields: ['contact_person', 'position', 'company_linkedin_url'], estimatedCostEur: 0.01, skipIf: ['has_contact_person'] },
     ],
   },
 
@@ -875,13 +876,13 @@ export function estimateStrategyCost(strategy: CategorySourceStrategy): number {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// 13. LINKEDIN INTEGRATION (Architecture Preparation)
+// 13. LINKEDIN INTEGRATION (via Apify Scraper + Netrows Future)
 // ═══════════════════════════════════════════════════════════════
 
 /**
- * LinkedIn Contact — prepared for future Sales Navigator API integration.
- * Secret required: LINKEDIN_API_KEY
- * Docs: https://learn.microsoft.com/en-us/linkedin/shared/authentication/getting-access
+ * LinkedIn Contact — scraped via Apify LinkedIn Company Scraper.
+ * Uses existing APIFY_API_TOKEN (no additional secret needed).
+ * Future: Netrows API for high-volume (NETROWS_API_KEY).
  */
 export interface LinkedInContact {
   linkedinProfileUrl?: string;
@@ -894,11 +895,23 @@ export interface LinkedInContact {
   fetchedAt?: string;
 }
 
-/** LinkedIn API configuration hints */
+/** LinkedIn scraping configuration */
 export const LINKEDIN_CONFIG = {
-  secretName: 'LINKEDIN_API_KEY',
-  docsUrl: 'https://learn.microsoft.com/en-us/linkedin/shared/authentication/getting-access',
-  requiredScopes: ['r_organization_social', 'r_basicprofile'],
-  rateLimitPerDay: 100,
-  estimatedCostPerLookup: 0.05,
+  /** Primary: Apify LinkedIn Scraper (uses existing APIFY_API_TOKEN) */
+  primary: {
+    method: 'apify_scraper' as const,
+    actor: 'apify/linkedin-company-scraper',
+    secretName: 'APIFY_API_TOKEN',
+    estimatedCostPerLookup: 0.01,
+    rateLimitPerDay: 500,
+  },
+  /** Future: Netrows API (best price/performance at scale) */
+  future: {
+    method: 'netrows_api' as const,
+    secretName: 'NETROWS_API_KEY',
+    baseUrl: 'https://api.netrows.com/v1',
+    estimatedCostPerLookup: 0.005,
+    rateLimitPerDay: 10000,
+    endpoints: ['company/search', 'company/profile', 'person/search', 'person/profile'],
+  },
 } as const;

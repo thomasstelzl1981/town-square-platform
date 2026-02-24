@@ -932,69 +932,116 @@ async function handleStrategyStep(
       );
     }
 
-    // ── linkedin_future — Architecture stub with key check ──
-    else if (step_id === "linkedin_future") {
-      provider = "linkedin_api";
-      const LINKEDIN_API_KEY = Deno.env.get("LINKEDIN_API_KEY");
-      if (!LINKEDIN_API_KEY) {
+    // ── linkedin_scrape — Apify LinkedIn Company Scraper ──
+    else if (step_id === "linkedin_scrape" && APIFY_API_TOKEN) {
+      provider = "apify_linkedin";
+      const companyName = contact_data?.company_name as string || searchQuery;
+      
+      if (!companyName) {
         return new Response(
           JSON.stringify({
-            success: true,
-            step_id,
-            provider,
-            status: "not_configured",
-            message: "LinkedIn API key not configured. Add LINKEDIN_API_KEY secret to enable LinkedIn enrichment.",
-            config_hint: { secret_name: "LINKEDIN_API_KEY", docs: "https://learn.microsoft.com/en-us/linkedin/shared/authentication/getting-access" },
+            success: true, step_id, provider,
+            status: "skipped",
+            message: "No company_name available for LinkedIn scrape",
           }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      // LinkedIn Sales Navigator API stub — ready for implementation
-      const companyName = contact_data?.company_name as string || searchQuery;
+
       try {
-        const liResp = await fetch("https://api.linkedin.com/v2/organizationLookup", {
-          method: "GET",
-          headers: {
-            "Authorization": `Bearer ${LINKEDIN_API_KEY}`,
-            "X-Restli-Protocol-Version": "2.0.0",
-          },
+        const runUrl = `https://api.apify.com/v2/acts/apify~linkedin-company-scraper/run-sync-get-dataset-items?token=${APIFY_API_TOKEN}&timeout=40`;
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 45000);
+
+        const liResp = await fetch(runUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          signal: controller.signal,
+          body: JSON.stringify({
+            queries: [companyName],
+            maxResults: 3,
+            proxy: { useApifyProxy: true },
+          }),
         });
+
+        clearTimeout(timeoutId);
+
         if (!liResp.ok) {
           const errText = await liResp.text();
-          console.error("LinkedIn API error:", liResp.status, errText);
+          console.error("Apify LinkedIn error:", liResp.status, errText);
           return new Response(
             JSON.stringify({
-              success: true,
-              step_id,
-              provider,
+              success: true, step_id, provider,
               status: "api_error",
-              message: `LinkedIn API returned ${liResp.status}`,
+              message: `Apify LinkedIn returned ${liResp.status}`,
             }),
             { headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         }
-        const liData = await liResp.json();
-        costEur = 0.05;
-        fieldsFound = ["contact_person", "position"];
-        results = [{
-          name: companyName,
-          salutation: null, first_name: null, last_name: null,
-          email: null, phone: null, website: null, address: null,
-          rating: null, reviews_count: null, confidence: 55,
-          sources: ["linkedin_api"],
-          source_refs: { linkedin_data: liData },
-        }];
+
+        const liItems: any[] = await liResp.json();
+        costEur = 0.01;
+
+        if (liItems.length > 0) {
+          const best = liItems[0];
+          fieldsFound = [];
+          if (best.linkedinUrl || best.url) fieldsFound.push("company_linkedin_url");
+          if (best.employees?.length > 0) fieldsFound.push("contact_person");
+          if (best.industry) fieldsFound.push("industry");
+          if (best.size || best.employeeCount) fieldsFound.push("company_size");
+
+          const topEmployee = best.employees?.[0];
+          results = [{
+            name: companyName,
+            salutation: null,
+            first_name: topEmployee?.firstName || null,
+            last_name: topEmployee?.lastName || null,
+            email: null,
+            phone: null,
+            website: best.website || null,
+            address: best.headquarter?.city ? `${best.headquarter.city}, ${best.headquarter.country || 'DE'}` : null,
+            rating: null,
+            reviews_count: null,
+            confidence: 55,
+            sources: ["apify_linkedin"],
+            source_refs: {
+              linkedin_url: best.linkedinUrl || best.url || null,
+              industry: best.industry || null,
+              company_size: best.size || best.employeeCount || null,
+              contact_person: topEmployee ? `${topEmployee.firstName || ''} ${topEmployee.lastName || ''}`.trim() : null,
+              contact_title: topEmployee?.title || null,
+            },
+          }];
+        }
       } catch (liErr) {
-        console.error("LinkedIn API exception:", liErr);
+        if ((liErr as Error).name === 'AbortError') {
+          console.error("Apify LinkedIn timeout");
+        } else {
+          console.error("Apify LinkedIn exception:", liErr);
+        }
         return new Response(
           JSON.stringify({
             success: true, step_id, provider,
             status: "api_error",
-            message: liErr instanceof Error ? liErr.message : "LinkedIn API error",
+            message: liErr instanceof Error ? liErr.message : "LinkedIn scrape error",
           }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
+    }
+
+    // ── linkedin_scrape without APIFY token ──
+    else if (step_id === "linkedin_scrape" && !APIFY_API_TOKEN) {
+      provider = "apify_linkedin";
+      return new Response(
+        JSON.stringify({
+          success: true, step_id, provider,
+          status: "not_configured",
+          message: "APIFY_API_TOKEN not configured. Required for LinkedIn company scraping.",
+          config_hint: { secret_name: "APIFY_API_TOKEN", docs: "https://console.apify.com/account/integrations" },
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     else {

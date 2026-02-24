@@ -23,14 +23,11 @@ Deno.serve(async (req) => {
 
     const { action, order_id, ...params } = await req.json()
 
-    // Lovable AI Gateway for all AI actions
-    const AI_GATEWAY_URL = `${supabaseUrl}/functions/v1/sot-research-ai-assist`
-
     switch (action) {
       case 'suggest_filters': {
         const { intent_text } = params
-        const aiResponse = await callLovableAI(supabaseUrl, supabaseKey, {
-          model: 'google/gemini-2.5-flash',
+        const aiResponse = await callLovableAI({
+          model: 'google/gemini-3-flash-preview',
           messages: [
             {
               role: 'system',
@@ -45,8 +42,8 @@ Output Format: {"branche": "...", "region": "...", "role": "...", "keywords": ["
 
       case 'optimize_plan': {
         const { intent_text, icp_json } = params
-        const aiResponse = await callLovableAI(supabaseUrl, supabaseKey, {
-          model: 'google/gemini-2.5-flash',
+        const aiResponse = await callLovableAI({
+          model: 'google/gemini-3-flash-preview',
           messages: [
             {
               role: 'system',
@@ -71,8 +68,8 @@ Output Format: {"firecrawl": true/false, "epify": true/false, "apollo": true/fal
 
         if (!results?.length) return jsonResponse({ scored: [] })
 
-        const aiResponse = await callLovableAI(supabaseUrl, supabaseKey, {
-          model: 'google/gemini-2.5-flash',
+        const aiResponse = await callLovableAI({
+          model: 'google/gemini-3-flash-preview',
           messages: [
             {
               role: 'system',
@@ -110,8 +107,8 @@ Output: JSON Array mit [{id, confidence_score, red_flags: []}]`
           .eq('order_id', order_id)
           .limit(100)
 
-        const aiResponse = await callLovableAI(supabaseUrl, supabaseKey, {
-          model: 'google/gemini-2.5-flash',
+        const aiResponse = await callLovableAI({
+          model: 'google/gemini-3-flash-preview',
           messages: [
             {
               role: 'system',
@@ -145,50 +142,44 @@ Struktur: ## Zusammenfassung, ### Statistiken (Treffer, Confidence-Verteilung), 
   }
 })
 
-async function callLovableAI(supabaseUrl: string, serviceKey: string, payload: {
+/**
+ * Lovable AI Gateway — single clean call, no recursion, no fallbacks.
+ */
+async function callLovableAI(payload: {
   model: string
   messages: { role: string; content: string }[]
 }): Promise<string> {
-  const response = await fetch(`${supabaseUrl}/functions/v1/sot-research-ai-assist/ai`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${serviceKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(payload),
-  })
-
-  // Fallback: use direct Lovable AI gateway
-  const aiGatewayUrl = Deno.env.get('AI_GATEWAY_URL') || 'https://lovable.dev/api/chat'
-  
-  const res = await fetch('https://ktpvilzjtcaxyuufocrs.supabase.co/functions/v1/sot-research-ai-internal', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${serviceKey}` },
-    body: JSON.stringify(payload),
-  })
-
-  // Simple inline AI call using Gemini via Lovable
-  const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent'
-  const GEMINI_KEY = Deno.env.get('GEMINI_API_KEY')
-  
-  if (!GEMINI_KEY) {
-    // Return a helpful fallback when no AI key is available
-    return JSON.stringify({ error: 'AI not configured. GEMINI_API_KEY secret required.' })
+  const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY')
+  if (!LOVABLE_API_KEY) {
+    throw new Error('LOVABLE_API_KEY is not configured')
   }
 
-  const geminiRes = await fetch(`${GEMINI_URL}?key=${GEMINI_KEY}`, {
+  const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
     body: JSON.stringify({
-      contents: payload.messages.map(m => ({
-        role: m.role === 'system' ? 'user' : m.role,
-        parts: [{ text: m.content }]
-      }))
-    })
+      ...payload,
+      stream: false,
+    }),
   })
 
-  const geminiData = await geminiRes.json()
-  return geminiData?.candidates?.[0]?.content?.parts?.[0]?.text || ''
+  if (response.status === 429) {
+    throw new Error('AI rate limit exceeded. Please try again later.')
+  }
+  if (response.status === 402) {
+    throw new Error('AI credits exhausted. Please add funds to your workspace.')
+  }
+  if (!response.ok) {
+    const errText = await response.text()
+    console.error('Lovable AI Gateway error:', response.status, errText)
+    throw new Error(`AI Gateway error: ${response.status}`)
+  }
+
+  const data = await response.json()
+  return data.choices?.[0]?.message?.content || ''
 }
 
 function parseJsonFromAI(text: string): any {
