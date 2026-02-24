@@ -1,58 +1,72 @@
 
 
-# Pet Desk Tab-Struktur korrigieren
+# Pet Desk Sidebar-Duplikate entfernen
 
 ## Problem
 
-Der Pet Desk weicht als einziger Operativer Desk vom Standard-Tab-Pattern ab:
+Die Sidebar-Funktion `shouldShowInNav` in `src/components/admin/AdminSidebar.tsx` hat zwei Fehler beim Pet Desk:
 
-| Desk | Erster Tab | Weitere Tabs |
-|------|-----------|--------------|
-| Sales Desk | **Dashboard** | Kontakte, Veroeffentlichungen, Inbox, Partner, Audit |
-| Lead Desk | **Dashboard** | Kontakte, Lead Pool, Zuweisungen, Provisionen, Monitor |
-| Pet Desk | **Governance** (falsch) | Kontakte, Vorgaenge, Kunden, Shop, Billing |
+1. **Fehlender Sub-Routen-Filter**: Die Zeilen 200-209 filtern Sub-Routen fuer `sales-desk/`, `finance-desk/`, `acquiary/`, `projekt-desk/`, `petmanager/` — aber **nicht** `pet-desk/`. Da die Routen im Manifest als `pet-desk/vorgaenge`, `pet-desk/kunden`, `pet-desk/shop`, `pet-desk/billing` definiert sind, erscheinen sie alle als eigene Menue-Eintraege.
 
-Zwei Korrekturen:
+2. **Veralteter Haupteintrag**: In Zeile 183 steht `petmanager` als erlaubter Haupteintrag, aber der tatsaechliche Manifest-Pfad ist `pet-desk`. Dadurch wird der Haupteintrag "Pet Desk" nicht korrekt erkannt.
 
-1. **"Governance" in "Dashboard" umbenennen** — konsistent mit allen anderen Desks
-2. **Tab-Struktur vereinheitlichen** — "Vorgaenge", "Kunden", "Shop", "Billing" sind redundant bzw. zu generisch. Stattdessen soll die Struktur dem Desk-Pattern folgen.
+## Aenderungen
 
-## Aenderung
+In `src/components/admin/AdminSidebar.tsx`:
 
-In `src/pages/admin/desks/PetmanagerDesk.tsx`:
-
-### Tab-Umbenennung
+### 1. Haupteintrag korrigieren (Zeile 181-183)
 
 ```text
 Vorher:
-  { value: 'governance', label: 'Governance', path: '' }
+  path === 'projekt-desk' || path === 'petmanager' || path === 'website-hosting'
 
 Nachher:
-  { value: 'dashboard', label: 'Dashboard', path: '' }
+  path === 'projekt-desk' || path === 'pet-desk' || path === 'website-hosting'
 ```
 
-Die `activeTab`-Fallback-Logik aendert sich entsprechend von `'governance'` auf `'dashboard'`.
+### 2. Sub-Routen-Filter ergaenzen (Zeile 200-209)
 
-### Tab-Struktur bereinigen
+`pet-desk/` zur Liste der gefilterten Sub-Routen-Prefixe hinzufuegen:
 
-Die bisherigen 6 Tabs (Governance, Kontakte, Vorgaenge, Kunden, Shop, Billing) werden auf das Standard-Pattern angepasst:
+```text
+Vorher:
+  path.startsWith('sales-desk/') ||
+  path.startsWith('finance-desk/') ||
+  path.startsWith('acquiary/') ||
+  path.startsWith('projekt-desk/') ||
+  path.startsWith('petmanager/')
 
-| Tab | Label | Inhalt |
-|-----|-------|--------|
-| dashboard | Dashboard | Bleibt: PetDeskGovernance (wird zur Dashboard-Komponente) |
-| kontakte | Kontakte | Bleibt: PetDeskKontakte |
-| vorgaenge | Vorgaenge | Bleibt: PetDeskVorgaenge |
-| kunden | Kunden | Bleibt: PetDeskKunden |
-| shop | Shop | Bleibt: PetDeskShop |
-| billing | Billing | Bleibt: PetDeskBilling |
+Nachher:
+  path.startsWith('sales-desk/') ||
+  path.startsWith('finance-desk/') ||
+  path.startsWith('acquiary/') ||
+  path.startsWith('projekt-desk/') ||
+  path.startsWith('pet-desk/')
+```
 
-Die Tabs "Vorgaenge, Kunden, Shop, Billing" bleiben inhaltlich bestehen, da sie Pet-spezifische Funktionen abbilden (Buchungen, Endkunden, Provider-Shop, Abrechnungen). Die einzige Aenderung ist die Umbenennung des ersten Tabs von "Governance" zu "Dashboard".
+### 3. Icon-Map bereinigen (optional)
+
+Die alten `Petmanager*`-Eintraege in der ICON_MAP (Zeilen 90-94) koennen durch einen einzelnen `PetDeskRouter`-Eintrag ersetzt werden, da der Manifest-Komponentenname `PetDeskRouter` ist.
+
+## Ergebnis
+
+| Vorher (Sidebar "Operative Desks") | Nachher |
+|-------------------------------------|---------|
+| Sales Desk | Sales Desk |
+| Lead Desk | Lead Desk |
+| Projekt Desk | Projekt Desk |
+| **Pet Desk** | **Pet Desk** |
+| **Vorgaenge** (doppelt) | _(entfernt)_ |
+| **Kunden** (doppelt) | _(entfernt)_ |
+| **Shop** (doppelt) | _(entfernt)_ |
+| **Billing** (doppelt) | _(entfernt)_ |
+| Finance Desk | Finance Desk |
 
 ## Betroffene Datei
 
 | Datei | Aenderung |
 |-------|-----------|
-| `src/pages/admin/desks/PetmanagerDesk.tsx` | Tab "Governance" in "Dashboard" umbenennen (Zeile 20 + Zeile 35) |
+| `src/components/admin/AdminSidebar.tsx` | Zeile 183: `petmanager` zu `pet-desk`; Zeilen 200-209: `pet-desk/` zum Sub-Routen-Filter hinzufuegen |
 
-Keine weiteren Dateien betroffen. Keine DB-Migration. Keine Modul-Freeze-Verletzung (Datei liegt in `src/pages/admin/desks/`).
+Keine DB-Migration. Keine Modul-Freeze-Verletzung (Datei liegt in `src/components/admin/`, nicht in einem Modul-Pfad).
 
