@@ -509,9 +509,30 @@ serve(async (req) => {
   const startTime = Date.now();
 
   try {
-    const body: ResearchRequest = await req.json();
+    const body: ResearchRequest & {
+      intent?: string;
+      // strategy_step fields
+      contact_id?: string;
+      category_code?: string;
+      tenant_id?: string;
+      step_id?: string;
+      contact_data?: Record<string, unknown>;
+      ledger_id?: string;
+    } = await req.json();
+
+    const intent = body.intent || "find_companies";
+
+    // ═══════════════════════════════════════════════════════════
+    // NEW INTENT: strategy_step — execute a single research step
+    // ═══════════════════════════════════════════════════════════
+    if (intent === "strategy_step") {
+      return await handleStrategyStep(body, startTime);
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // EXISTING INTENTS: find_companies, search_contacts, search_portals
+    // ═══════════════════════════════════════════════════════════
     const {
-      intent = "find_companies",
       query,
       location,
       radius_km,
@@ -583,7 +604,6 @@ serve(async (req) => {
     const providersUsed: string[] = [];
 
     if (isPortalSearch && APIFY_API_TOKEN) {
-      // Portal search mode — use dedicated portal scraper
       providersUsed.push("apify_portal");
       providerPromises.push(
         searchApifyPortals(
@@ -595,7 +615,6 @@ serve(async (req) => {
         )
       );
     } else {
-      // Standard contact/company search
       if (activeProviders.includes("google_places") && GOOGLE_MAPS_API_KEY) {
         providersUsed.push("google_places");
         providerPromises.push(
@@ -618,7 +637,7 @@ serve(async (req) => {
       `Phase 1 complete: ${allResults.length} results from ${providersUsed.join(", ")}`
     );
 
-    // ── Phase 2: Firecrawl email enrichment (with 15s hard limit) ─
+    // ── Phase 2: Firecrawl email enrichment (with 25s hard limit) ─
     if (
       !isPortalSearch &&
       activeProviders.includes("firecrawl") &&
@@ -635,7 +654,6 @@ serve(async (req) => {
           `Phase 2: Scraping ${websitesToScrape.length} websites for emails (25s limit)`
         );
 
-        // Wrap Phase 2 in a 25s timeout — better partial results than no response
         const phase2Promise = scrapeEmailsFirecrawl(
           websitesToScrape,
           FIRECRAWL_API_KEY
@@ -663,7 +681,7 @@ serve(async (req) => {
       }
     }
 
-    // ── Phase 3: AI merge & score (skip for < 8 results) ──────────
+    // ── Phase 3: AI merge & score (skip for < 12 results) ──────────
     let finalResults: ContactResult[];
 
     if (LOVABLE_API_KEY && allResults.length >= 12) {
@@ -679,7 +697,6 @@ serve(async (req) => {
       finalResults = deduplicateFallback(allResults, filters);
     }
 
-    // Limit results
     finalResults = finalResults.slice(0, max_results);
 
     const durationMs = Date.now() - startTime;
@@ -720,3 +737,214 @@ serve(async (req) => {
     );
   }
 });
+
+// ═══════════════════════════════════════════════════════════════════
+// strategy_step handler — executes a single category-aware step
+// ═══════════════════════════════════════════════════════════════════
+
+async function handleStrategyStep(
+  body: {
+    contact_id?: string;
+    category_code?: string;
+    tenant_id?: string;
+    step_id?: string;
+    contact_data?: Record<string, unknown>;
+    ledger_id?: string;
+    query?: string;
+    location?: string;
+    portal_config?: ResearchRequest["portal_config"];
+  },
+  startTime: number
+): Promise<Response> {
+  const { contact_id, category_code, tenant_id, step_id, contact_data, ledger_id } = body;
+
+  if (!contact_id || !step_id || !tenant_id) {
+    return new Response(
+      JSON.stringify({ success: false, error: "contact_id, step_id, and tenant_id required for strategy_step" }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
+  const GOOGLE_MAPS_API_KEY = Deno.env.get("GOOGLE_MAPS_API_KEY");
+  const FIRECRAWL_API_KEY = Deno.env.get("FIRECRAWL_API_KEY");
+  const APIFY_API_TOKEN = Deno.env.get("APIFY_API_TOKEN");
+
+  // Determine provider from step_id pattern
+  let results: ContactResult[] = [];
+  let costEur = 0;
+  let fieldsFound: string[] = [];
+  let provider = "unknown";
+
+  const searchQuery = contact_data?.company_name as string || contact_data?.name as string || body.query || "";
+  const location = contact_data?.city as string || body.location || "";
+
+  try {
+    // ── google_search / google_enrich / google_verify ──
+    if (step_id.startsWith("google_") && GOOGLE_MAPS_API_KEY) {
+      provider = "google_places";
+      results = await searchGooglePlaces(searchQuery, location, GOOGLE_MAPS_API_KEY, 5);
+      costEur = 0.003;
+      if (results.length > 0) {
+        const best = results[0];
+        fieldsFound = [];
+        if (best.phone) fieldsFound.push("phone");
+        if (best.address) fieldsFound.push("address");
+        if (best.website) fieldsFound.push("website");
+        if (best.rating) fieldsFound.push("rating");
+      }
+    }
+
+    // ── web_scrape (Firecrawl) ──
+    else if (step_id === "web_scrape" && FIRECRAWL_API_KEY) {
+      provider = "firecrawl";
+      const websiteUrl = contact_data?.website_url as string || contact_data?.website as string;
+      if (websiteUrl) {
+        const emailMap = await scrapeEmailsFirecrawl([websiteUrl], FIRECRAWL_API_KEY);
+        costEur = 0.005;
+        if (emailMap.size > 0) {
+          const email = emailMap.values().next().value;
+          fieldsFound = ["email"];
+          results = [{
+            name: searchQuery,
+            salutation: null, first_name: null, last_name: null,
+            email: email || null, phone: null, website: websiteUrl, address: null,
+            rating: null, reviews_count: null, confidence: 75,
+            sources: ["firecrawl"], source_refs: {},
+          }];
+        }
+      }
+    }
+
+    // ── portal_scrape (Apify) ──
+    else if (step_id === "portal_scrape" && APIFY_API_TOKEN) {
+      provider = "apify_portal";
+      results = await searchApifyPortals(
+        searchQuery, location, APIFY_API_TOKEN, 10,
+        body.portal_config || { portal: "immoscout24", search_type: "brokers" }
+      );
+      costEur = 0.02;
+      fieldsFound = results.length > 0 ? ["name", "address"] : [];
+    }
+
+    // ── ihk_scrape / bafin_import — these are registry imports, handled by sot-registry-import ──
+    else if (step_id === "ihk_scrape" || step_id === "bafin_import") {
+      provider = step_id === "ihk_scrape" ? "ihk_register" : "bafin_csv";
+      // These steps are handled by the sot-registry-import function
+      // Just record them as needing external processing
+      return new Response(
+        JSON.stringify({
+          success: true,
+          step_id,
+          provider,
+          status: "deferred",
+          message: `Step '${step_id}' requires bulk registry import via sot-registry-import`,
+          redirect_to: "sot-registry-import",
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // ── linkedin_future — not yet implemented ──
+    else if (step_id === "linkedin_future") {
+      return new Response(
+        JSON.stringify({
+          success: true,
+          step_id,
+          provider: "linkedin_api",
+          status: "not_implemented",
+          message: "LinkedIn API integration is planned for a future release",
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    else {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: `Unknown step_id '${step_id}' or required API key not configured`,
+        }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // ── Update strategy ledger if ledger_id provided ──
+    if (ledger_id) {
+      const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+      const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+      const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2");
+      const supabaseAdmin = createClient(supabaseUrl, supabaseKey);
+
+      // Fetch current ledger
+      const { data: ledger } = await supabaseAdmin
+        .from("contact_strategy_ledger")
+        .select("steps_completed, steps_pending, total_cost_eur, data_gaps")
+        .eq("id", ledger_id)
+        .single();
+
+      if (ledger) {
+        const completedSteps = (ledger.steps_completed as any[]) || [];
+        const pendingSteps = (ledger.steps_pending as any[]) || [];
+
+        // Add completed step
+        completedSteps.push({
+          step: step_id,
+          provider,
+          executed_at: new Date().toISOString(),
+          cost_eur: costEur,
+          fields_found: fieldsFound,
+          fields_missing: [],
+          raw_confidence: results.length > 0 ? results[0].confidence : 0,
+          results_count: results.length,
+        });
+
+        // Remove from pending
+        const updatedPending = pendingSteps.filter((s: any) => s.step !== step_id);
+
+        // Update data gaps
+        const currentGaps = (ledger.data_gaps as string[]) || [];
+        const updatedGaps = currentGaps.filter(g => !fieldsFound.includes(g));
+
+        await supabaseAdmin
+          .from("contact_strategy_ledger")
+          .update({
+            steps_completed: completedSteps,
+            steps_pending: updatedPending,
+            total_cost_eur: (Number(ledger.total_cost_eur) || 0) + costEur,
+            data_gaps: updatedGaps,
+            last_step_at: new Date().toISOString(),
+            quality_score: Math.min(100, completedSteps.length * 25),
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", ledger_id);
+      }
+    }
+
+    const durationMs = Date.now() - startTime;
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        intent: "strategy_step",
+        step_id,
+        provider,
+        results_count: results.length,
+        fields_found: fieldsFound,
+        cost_eur: costEur,
+        duration_ms: durationMs,
+        results: results.slice(0, 5), // Return top 5 for inspection
+      }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  } catch (err) {
+    console.error(`Strategy step '${step_id}' error:`, err);
+    return new Response(
+      JSON.stringify({
+        success: false,
+        step_id,
+        error: err instanceof Error ? err.message : "Unknown error",
+      }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+}
