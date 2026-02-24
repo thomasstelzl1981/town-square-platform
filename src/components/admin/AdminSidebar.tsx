@@ -180,7 +180,7 @@ function shouldShowInNav(path: string): boolean {
   // Show main desk entries
   if (path === 'sales-desk' || path === 'finance-desk' || path === 'acquiary' || 
       path === 'futureroom' || path === 'lead-desk' || 
-      path === 'projekt-desk' || path === 'petmanager' || path === 'website-hosting') {
+      path === 'projekt-desk' || path === 'pet-desk' || path === 'website-hosting') {
     return true;
   }
   // KI Office items — consolidated 3
@@ -203,7 +203,7 @@ function shouldShowInNav(path: string): boolean {
     path.startsWith('finance-desk/') ||
     path.startsWith('acquiary/') ||
     path.startsWith('projekt-desk/') ||
-    path.startsWith('petmanager/')
+    path.startsWith('pet-desk/')
   )) {
     return false;
   }
