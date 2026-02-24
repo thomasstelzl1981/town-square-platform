@@ -1,106 +1,42 @@
 
 
-# Plan: Hardcoded-Daten entfernen und Doppelungen mit /admin/tiles bereinigen
+# Plan: Reference Tenant reparieren und Robyn Zugangsdaten setzen
 
-## Analyse-Ergebnis
+## Offene Probleme
 
-### Hardcoded-Daten (Verstoesse)
+### Problem 1: Reference Tenant (Thomas) fehlt MOD-22
+Der Reference Tenant hat nur 21 Module. MOD-22 (Pet Manager) fehlt in `tenant_tile_activation`. Ausserdem ist `tenant_mode` noch `sandbox` statt `reference`.
 
-**1. ManagerFreischaltung.tsx (Zeilen 75-89)**
-Zwei lokale Objekte duplizieren Daten aus `rolesMatrix.ts`:
+### Problem 2: Robyn hat kein kommuniziertes Passwort
+Der Auth-Account `robyn@lennoxandfriends.app` existiert, aber es wurde kein Passwort gesetzt/mitgeteilt.
 
-```text
-ROLE_LABELS = {                      ← Duplikat von ROLES_CATALOG[].label
-  finance_manager: 'Finanzierungsmanager',
-  akquise_manager: 'Akquise-Manager',
-  sales_partner: 'Vertriebspartner',
-  project_manager: 'Projektmanager',
-  pet_manager: 'Pet Manager',
-}
+## Loesung
 
-ROLE_MODULE_MAP = {                  ← Duplikat von ROLE_EXTRA_TILES
-  finance_manager: 'MOD-11',
-  akquise_manager: 'MOD-12',
-  sales_partner: 'MOD-09 + MOD-10',
-  project_manager: 'MOD-13',
-  pet_manager: 'MOD-22',
-}
-```
+### 1. Reference Tenant: MOD-22 aktivieren + tenant_mode setzen
 
-**2. RolesManagement.tsx (Zeilen 376-399)**
-Hardcoded Arrays fuer Enum-Badges statt Ableitung aus ROLES_CATALOG:
+DB-Migration:
+- INSERT MOD-22 in `tenant_tile_activation` fuer Tenant `a0000000-0000-4000-a000-000000000001`
+- UPDATE `organizations.tenant_mode` von `sandbox` auf `reference` fuer den Golden Tenant
 
-```text
-['platform_admin', 'org_admin', 'sales_partner', ...]     ← hardcoded
-['platform_admin', 'super_user', 'client_user', ...]      ← hardcoded
-['internal_ops', 'renter_user', ...]                       ← hardcoded
-['moderator', 'user']                                      ← hardcoded
-```
+Nach dieser Aenderung: Reference Tenant hat alle 22 Module als kompletten Blueprint.
 
-**3. Falsche Modul-Anzahl "21" statt "22"**
-- RolesManagement.tsx Zeile 62: "1 System-Rolle + 5 User-Rollen"  (korrekt: 8 Rollen)
-- RolesManagement.tsx Zeile 117: "Alle 21 Module" (korrekt: 22)
-- RolesManagement.tsx Zeile 161: "21 Module x 6 Rollen" (korrekt: 22 x 8)
-- rolesMatrix.ts MODULES_CATALOG: Enthaelt nur 21 Eintraege, MOD-22 fehlt
+### 2. Robyn: Passwort setzen via Edge Function
 
-### Funktions-Doppelung mit /admin/tiles
+Eine Edge Function `setup-user-password` (oder Erweiterung der bestehenden `setup-demo-account`) aufrufen, die via `supabase.auth.admin.updateUserById()` ein Passwort fuer Robyn setzt.
 
-| Funktion | Wo jetzt | Auch in /admin/tiles? | Aktion |
-|----------|----------|----------------------|--------|
-| Rollen-Katalog (8 Rollen anzeigen) | RolesManagement Tab 1 | Nein | Behalten |
-| Modul-Rollen-Matrix (Kreuzmatrix) | RolesManagement Tab 2 | Nein | Behalten |
-| Governance (Eroeffnungsprozess-Flow) | RolesManagement Tab 3 | Teilweise (Rollen-Aktivierung) | Reduzieren |
-| DB-Enums anzeigen | RolesManagement Tab 3 | Nein | Behalten, aber aus SSOT ableiten |
-| Rollen-Uebersicht (Kacheln) | ManagerFreischaltung Tab 3 | JA (Rollen-Aktivierung) | Entfernen |
-| Partner-Verifizierung | PartnerVerification | Nein | Keine Aenderung noetig |
+Vorgeschlagenes Passwort-Schema (analog zu Bernhard): `SoT-Robyn2026!`
+E-Mail: `robyn@lennoxandfriends.app`
 
-### PartnerVerification.tsx
-Keine Hardcoded-Daten gefunden. Liest korrekt aus der DB (`partner_verifications` + `organizations`). Keine Doppelung mit TileCatalog. **Keine Aenderung noetig.**
+Die Edge Function muss mit dem Service Role Key arbeiten, da nur Admin-API Passwoerter setzen kann.
 
----
+### Zusammenfassung
 
-## Aenderungen
-
-### 1. rolesMatrix.ts — MOD-22 in MODULES_CATALOG ergaenzen
-
-MOD-22 (PetManager) fehlt im `MODULES_CATALOG` Array. Dadurch zeigt die Modul-Rollen-Matrix nur 21 statt 22 Module.
-
-- MOD-22 als neuen Eintrag hinzufuegen
-- Kommentar "21 Module" auf "22 Module" korrigieren
-- `ALL_TILES` Kommentar aktualisieren
-
-### 2. ManagerFreischaltung.tsx — Hardcoded Maps entfernen
-
-- `ROLE_LABELS` entfernen, stattdessen Hilfsfunktion die `ROLES_CATALOG.find(r => r.code === role || r.membershipRole === role)?.label` nutzt
-- `ROLE_MODULE_MAP` entfernen, stattdessen `ROLE_EXTRA_TILES[role]?.join(' + ')` nutzen
-- "Rollen-Uebersicht" Card im Tab "Aktive Manager" (Zeilen 558-580) entfernen — diese Info wird jetzt vollstaendig von `/admin/tiles > Rollen-Aktivierung` und `/admin/roles > Rollen-Katalog` abgedeckt
-
-### 3. RolesManagement.tsx — Hardcoded Enums durch SSOT ersetzen
-
-- Hardcoded membership_role-Array (Zeile 376-385) ersetzen durch dynamische Ableitung aus `ROLES_CATALOG` (aktive) und `LEGACY_ROLES` (legacy)
-- Hardcoded app_role-Array (Zeile 389-401) ersetzen durch dynamische Ableitung aus `ROLES_CATALOG` (die ein `appRole` haben) und Legacy-Array
-- Texte "21 Module" auf "22 Module" korrigieren
-- "6 Rollen" auf "8 Rollen" korrigieren (pet_manager und project_manager fehlen in der Beschreibung)
-
-### 4. RolesManagement.tsx — Governance-Tab entschlacken
-
-Der Governance-Tab zeigt eine Mapping-Tabelle (Rolle → Module-Anzahl), die jetzt auch in `/admin/tiles > Rollen-Aktivierung` steht. Diese Tabelle wird durch einen Verweis auf `/admin/tiles` ersetzt, um Doppelpflege zu vermeiden. Die restlichen Governance-Infos (Eroeffnungsprozess-Flow, org_admin vs platform_admin Erklaerung, DB-Enum-Status) bleiben erhalten.
-
----
-
-## Zusammenfassung der Datei-Aenderungen
-
-| Datei | Aenderung |
-|-------|-----------|
-| `src/constants/rolesMatrix.ts` | MOD-22 in MODULES_CATALOG, Kommentare korrigieren |
-| `src/pages/admin/ManagerFreischaltung.tsx` | ROLE_LABELS und ROLE_MODULE_MAP entfernen, aus ROLES_CATALOG ableiten; Rollen-Uebersicht Card entfernen |
-| `src/pages/admin/RolesManagement.tsx` | Hardcoded Enum-Arrays durch SSOT ersetzen; Zahlen korrigieren (22 Module, 8 Rollen); Governance-Tab Mapping-Tabelle durch Link zu /admin/tiles ersetzen |
-| `src/pages/admin/PartnerVerification.tsx` | Keine Aenderung |
+| Aenderung | Typ | Detail |
+|-----------|-----|--------|
+| MOD-22 fuer Reference Tenant | DB INSERT | Vervollstaendigt Blueprint auf 22/22 |
+| tenant_mode auf `reference` | DB UPDATE | Formalisiert Golden Tenant |
+| Robyn Passwort setzen | Edge Function | `SoT-Robyn2026!` via admin API |
 
 ### Modul-Freeze-Check
-
-Alle betroffenen Dateien liegen ausserhalb der Modul-Pfade:
-- `src/constants/rolesMatrix.ts` — kein Modul
-- `src/pages/admin/*` — kein Modul-Pfad
-- Ergebnis: **Nicht frozen, Aenderungen erlaubt**
+Keine Code-Dateien in Modul-Pfaden betroffen. Nur DB-Operationen und Edge Function.
 
