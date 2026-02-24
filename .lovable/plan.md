@@ -1,107 +1,79 @@
 
-# Audit: Operative Desks — Routing, Zone-2 und Zone-3 Verschaltung
 
-## Ergebnis-Zusammenfassung
+# Recherchemodul aufraumen: Desk-aligned Kacheln
 
-| Desk | Routing | Z2-Mapping | Z3-Mapping | Status |
-|------|---------|------------|------------|--------|
-| Sales Desk | OK | MOD-09 OK | Kaufy OK | Funktional |
-| Finance Desk | OK | MOD-18 OK | Kein Z3 (korrekt) | Funktional |
-| Acquiary | OK | MOD-12 OK | Acquiary Website OK | Funktional |
-| Projekt Desk | OK | MOD-13 OK | Landing Pages OK | Funktional |
-| Pet Desk | OK | MOD-22 OK | Lennox Website OK | Funktional |
-| FutureRoom | OK | MOD-11 OK | FutureRoom Website OK | Funktional |
-| **Lead Desk** | **DEFEKT** | MOD-10 OK | Kaufy/SoT OK | **Routing-Bug** |
+## Problem
 
----
+Die aktuelle `AdminRecherche`-Seite (KI-Office) zeigt alle `soat_search_orders` als flache Kachelliste ohne Bezug zu den Operative Desks. Die Kacheln haben generische Titel wie "Neuer Rechercheauftrag" und wirken hart gecodet. Es fehlt jede Zuordnung zu den 5 Geschaeftskategorien (Acquiary, Sales, Finance, Lead, Pet).
 
-## Gefundene Probleme
+## Loesung
 
-### 1. KRITISCH: Lead Desk fehlt in `adminDeskMap` (ManifestRouter.tsx)
+Die Widget-Grid-Sektion wird durch **5 Desk-Kategoriekarten** ersetzt, die als Einstiegspunkte dienen. Jede Karte zeigt:
+- Desk-Name und Icon
+- Anzahl offener/laufender Recherchen fuer diesen Desk
+- Gesamtzahl gefundener Kontakte
+- Button "Neuer Auftrag" (erstellt Order mit vorausgefuelltem `desk`-Feld)
 
-**Datei:** `src/router/ManifestRouter.tsx`, Zeile 274-280
+Darunter bleibt die bestehende Inline-Case-Ansicht (Auftragsdetails, Ergebnisse, Import) erhalten, zeigt aber nur Orders des ausgewaehlten Desks.
 
-Der `adminDeskMap` enthaelt alle Desks **ausser Lead Desk**:
-```
-const adminDeskMap = {
-  'sales-desk': SalesDesk,
-  'finance-desk': FinanceDesk,
-  acquiary: Acquiary,
-  'projekt-desk': ProjektDeskComponent,
-  'pet-desk': PetmanagerDesk,
-  // 'lead-desk': FEHLT!
-};
-```
+## Neues UI-Layout
 
-**Auswirkung:** Lead Desk wird nicht ueber den Desk-Router (mit `/*` Wildcard) geladen, sondern faellt durch auf die Standard-Admin-Routes. Dort wird `LeadDeskDashboard` als flache Route ohne `/*` gemountet. Das bedeutet: **Alle Sub-Tabs (Kontakte, Pool, Zuweisungen, Provisionen, Monitor) sind nicht erreichbar** — beim Klick auf einen Tab wird eine Weiterleitung zum Dashboard ausgeloest.
-
-### 2. KRITISCH: Lead Desk fehlt im Skip-Filter (ManifestRouter.tsx)
-
-**Datei:** `src/router/ManifestRouter.tsx`, Zeile 517
-
-Der Skip-Filter verhindert Doppel-Routing fuer Desks, aber `lead-desk` ist nicht enthalten:
-```
-if (['futureroom', 'sales-desk', 'finance-desk', 'acquiary', 'projekt-desk', 'pet-desk'].some(...)
-// 'lead-desk' FEHLT!
+```text
++--------------------------------------------------+
+| RECHERCHE-ZENTRALE                               |
++--------------------------------------------------+
+| [Acquiary]  [Sales]  [Finance]  [Lead]  [Pet]    |
+|  3 aktiv     1 aktiv  0 aktiv   2 aktiv  0 aktiv |
+|  142 Kont.   38 Kont. --        67 Kont. --      |
++--------------------------------------------------+
+| AUFTRAEGE: Acquiary (3)          [+ Neuer Auftrag]|
+| +----------------------------------------------+ |
+| | Family Office Hamburg   | done   | 25 Kont.  | |
+| | Projektentwickler NRW   | running| 12 Kont.  | |
+| | Immobilien Berlin       | draft  |  0 Kont.  | |
+| +----------------------------------------------+ |
+|                                                  |
+| [Inline Detail wenn Auftrag gewaehlt]            |
++--------------------------------------------------+
 ```
 
-**Auswirkung:** Die `routesManifest.ts`-Eintraege fuer `lead-desk/*` werden zusaetzlich als flache Routes gerendert, was zu Routing-Konflikten fuehrt.
+## Technische Umsetzung
 
-### 3. MINOR: Pet Desk zeigt `moduleCode="MOD-05"` statt `MOD-22`
+### Datei: `src/pages/admin/ki-office/AdminRecherche.tsx`
 
-**Datei:** `src/pages/admin/desks/PetmanagerDesk.tsx`, Zeile 53
+**Aenderungen:**
 
-Der OperativeDeskShell zeigt `MOD-05` (das Client-Modul "Pets") statt `MOD-22` (das Manager-Modul "Pet Manager"). Laut `operativeDeskManifest.ts` ist der Manager-Module-Code `MOD-22`.
+1. **Desk-Kategorien als Konstante** (nicht hart gecodet, sondern aus der gleichen Quelle wie die DeskContactBook-Presets):
 
-### 4. MINOR: Finance Desk zeigt `moduleCode="MOD-18"` — kein Manager-Modul
-
-**Datei:** `src/pages/admin/desks/FinanceDesk.tsx`, Zeile 50
-
-Finance Desk hat laut Manifest keinen `managerModuleCode` (leer), sondern nur `clientModuleCode: 'MOD-18'`. Das ist korrekt so dargestellt, aber der `zoneFlow` zeigt `z2Manager: 'Finanzberater (Manager)'` — es gibt kein zugeordnetes Manager-Modul. Das ist ein semantischer Widerspruch, aber kein funktionaler Bug.
-
----
-
-## Fix-Plan
-
-### Fix 1: Lead Desk in `adminDeskMap` eintragen
-
-In `src/router/ManifestRouter.tsx`, Zeile 274-280:
-
-```typescript
-const adminDeskMap: Record<string, React.ComponentType> = {
-  'sales-desk': SalesDesk,
-  'finance-desk': FinanceDesk,
-  acquiary: Acquiary,
-  'lead-desk': LeadDeskComponent,        // NEU
-  'projekt-desk': ProjektDeskComponent,
-  'pet-desk': React.lazy(...),
-};
+```text
+DESK_CATEGORIES = [
+  { code: 'acquiary', label: 'Acquiary', subtitle: 'Family Offices & Immobilienunternehmen', icon: Building2 },
+  { code: 'sales', label: 'Sales', subtitle: 'Immobilienmakler & Hausverwaltungen', icon: Briefcase },
+  { code: 'finance', label: 'Finance', subtitle: 'Finanzvertriebe & Finanzdienstleister', icon: TrendingUp },
+  { code: 'insurance', label: 'Lead', subtitle: 'Versicherungskaufleute', icon: Shield },
+  { code: 'pet', label: 'Pet', subtitle: 'Hundepensionen, -hotels & -friseure', icon: PawPrint },
+]
 ```
 
-### Fix 2: Lead Desk in Skip-Filter eintragen
+2. **State**: `selectedDesk` statt direkt `selectedOrderId` als erste Auswahl. Orders werden nach `desk` gefiltert.
 
-In `src/router/ManifestRouter.tsx`, Zeile 517:
+3. **useSoatOrders anpassen**: Kein Filter im Hook noetig - die Filterung erfolgt client-seitig, da die Gesamtanzahl ohnehin gering ist. Alternativ kann der bestehende Hook erweitert werden, aber fuer die Uebersicht brauchen wir alle Desks gleichzeitig (fuer die Zaehler).
 
-```typescript
-if (['futureroom', 'sales-desk', 'finance-desk', 'acquiary', 'projekt-desk', 'pet-desk', 'lead-desk'].some(desk => route.path.startsWith(desk))) {
-```
+4. **Neuer Auftrag**: `handleCreateDraft` erhaelt den `desk`-Parameter und setzt ihn beim Insert.
 
-### Fix 3: Pet Desk `moduleCode` korrigieren
+5. **useSoatSearchEngine.ts**: `useCreateSoatOrder` wird um optionalen `desk`-Parameter erweitert, damit neue Orders dem richtigen Desk zugeordnet werden.
 
-In `src/pages/admin/desks/PetmanagerDesk.tsx`, Zeile 53:
-
-```typescript
-moduleCode="MOD-22"    // statt "MOD-05"
-```
-
----
-
-## Zusammenfassung der Aenderungen
+### Betroffene Dateien
 
 | Datei | Aenderung |
 |-------|-----------|
-| `src/router/ManifestRouter.tsx` (Zeile 274) | `'lead-desk': LeadDeskComponent` in `adminDeskMap` einfuegen |
-| `src/router/ManifestRouter.tsx` (Zeile 517) | `'lead-desk'` zum Skip-Filter hinzufuegen |
-| `src/pages/admin/desks/PetmanagerDesk.tsx` (Zeile 53) | `moduleCode` von `MOD-05` auf `MOD-22` aendern |
+| `src/pages/admin/ki-office/AdminRecherche.tsx` | Widget-Grid durch Desk-Karten ersetzen, Orders nach Desk filtern, "Neuer Auftrag" mit Desk-Zuordnung |
+| `src/hooks/useSoatSearchEngine.ts` | `useCreateSoatOrder` um optionalen `desk`-Parameter erweitern |
 
-Alle anderen 6 Desks (Sales, Finance, Acquiary, Projekt, Pet, FutureRoom) sind korrekt geroutet und mit Zone 2 und Zone 3 verschaltet.
+### Nicht betroffen
+
+- `DeskContactBook.tsx` - bleibt unveraendert (hat eigenen `useDeskContacts` Hook)
+- `sot-research-engine` Edge Function - bleibt unveraendert
+- Keine neuen Tabellen oder Migrationen noetig (die `desk`-Spalte auf `soat_search_orders` existiert bereits aus der vorherigen Migration)
+- Keine Modul-Freeze-Verletzung (Dateien liegen in `src/pages/admin/ki-office/` und `src/hooks/`)
+
