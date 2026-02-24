@@ -1,227 +1,163 @@
 
-# Analyse: Magic Intake — Vertragserkennungs-Mapping und Zuordnungskarte
+# Komplett-Aktualisierung: Tile Catalog, Manifeste, Specs — Diskrepanz-Audit
 
-## 1. Aktuelles Problem: Energievertraege landen am falschen Ort
+## Uebersicht
 
-### Ist-Zustand
-
-Die Tabelle `miety_contracts` hat ein **NOT NULL** Feld `home_id` — jeder Energievertrag MUSS einem Zuhause zugeordnet sein. Der aktuelle `useContractCreation`-Hook umgeht das, indem er Energievertraege als `user_subscriptions` mit Kategorie `utilities_energy` ablegt. Das ist **architektonisch falsch**, weil:
-
-- Energievertraege (Strom, Gas, Wasser, Internet) gehoeren zum Modul **MOD-20 (Zuhause)** und werden in `miety_contracts` verwaltet
-- `user_subscriptions` ist fuer persoenliche Abos gedacht (Netflix, Spotify, etc.)
-- Die Finanzuebersicht-Engine (`ENG-FINUEB`) liest Energievertraege aus `miety_contracts`, NICHT aus `user_subscriptions` — wenn sie dort landen, fehlen sie in der Finanzuebersicht
-- Die Demo-Daten in `demo_user_subscriptions.csv` enthalten faelschlicherweise "Telekom Magenta L" und "Vodafone Kabel 1000", die eigentlich `miety_contracts` sein sollten
-
-### Soll-Zustand
-
-| Vertragsart | Ziel-Tabelle | Modul | Pflichtfeld |
-|---|---|---|---|
-| Streaming (Netflix, Spotify, ...) | `user_subscriptions` | MOD-18 Finanzanalyse | `tenant_id`, `user_id` |
-| Software/SaaS (Microsoft 365, ...) | `user_subscriptions` | MOD-18 Finanzanalyse | `tenant_id`, `user_id` |
-| Fitness (FitX, McFit, ...) | `user_subscriptions` | MOD-18 Finanzanalyse | `tenant_id`, `user_id` |
-| News/Medien (ZEIT, Spiegel, ...) | `user_subscriptions` | MOD-18 Finanzanalyse | `tenant_id`, `user_id` |
-| Versicherung (Allianz, HUK, ...) | `insurance_contracts` | MOD-18 Finanzanalyse | `tenant_id`, `user_id` |
-| Strom | `miety_contracts` | MOD-20 Zuhause | `tenant_id`, **`home_id`** |
-| Gas | `miety_contracts` | MOD-20 Zuhause | `tenant_id`, **`home_id`** |
-| Wasser | `miety_contracts` | MOD-20 Zuhause | `tenant_id`, **`home_id`** |
-| Internet/Telefon | `miety_contracts` | MOD-20 Zuhause | `tenant_id`, **`home_id`** |
-| Mobilfunk | `user_subscriptions` | MOD-18 Finanzanalyse | `tenant_id`, `user_id` |
-
-**Kernproblem:** `miety_contracts` braucht eine `home_id`. Bei der automatischen Vertragserkennung aus Kontobewegungen wissen wir aber nicht, zu welchem Zuhause der Energievertrag gehoert. **Loesung:** Der Dialog muss einen Home-Picker anbieten, wenn der User einen Vertrag als "Energievertrag" zuordnet.
+Nach vollstaendiger Analyse aller Manifest-Dateien, der `tile_catalog`-Datenbanktabelle, der Engine Registry und der Spec-Dateien gibt es **23 konkrete Diskrepanzen**, gruppiert in 5 Kategorien.
 
 ---
 
-## 2. Magic Intake — Kompletter Prozessablauf (Steps)
+## A) tile_catalog (Datenbank) vs. routesManifest.ts
 
-### Step 1: Schrittleiste (IntakeHowItWorks)
-Erklaert den 3-Schritte-Prozess: Hochladen → KI analysiert → Felder werden befuellt
+Die `tile_catalog`-Tabelle in der Datenbank ist an mehreren Stellen veraltet gegenueber `routesManifest.ts`.
 
-### Step 2: Entity-Picker + Upload (IntakeEntityPicker + IntakeUploadZone)
-- User waehlt Entity-Typ (Immobilie, PV-Anlage, Kontakt, etc.)
-- User waehlt spezifische Entity (z.B. "Leopoldstr. 12")
-- Datei-Upload per Drag-and-Drop (bis 10 Dateien)
-- Analyse ueber `sot-document-parser` Edge Function
+### A1: MOD-03 DMS — sub_tiles veraltet
+**DB:** `storage, posteingang, sortieren, einstellungen` (4 Tiles)
+**Manifest:** `intelligenz (default), storage, posteingang, sortieren, intake` (5 Tiles)
+**Fix:** `intelligenz` fehlt als Default-Tile, `intake` (Magic Intake) fehlt, `einstellungen` ist veraltet (heisst jetzt `intelligenz`)
 
-### Step 2b: Cloud-Import (CloudSourcePicker)
-- Google Drive Integration
-- Modi: "Sync-first" oder "Direct Analysis"
-- Dateien landen im Entity-spezifischen DMS-Ordner
+### A2: MOD-04 Immobilien — sub_tiles-Titel veraltet
+**DB:** `verwaltung` hat Titel "Verwaltung"
+**Manifest:** `verwaltung` hat Titel "Steuer"
+**Fix:** Titel in tile_catalog auf "Steuer" aktualisieren
 
-### Step 3: Konto-Intake (NEU — Vertragserkennung)
-- Nur sichtbar, wenn FinAPI-Bankverbindungen existieren
-- Button: "Kontobewegungen analysieren"
-- Laedt kategorisierte Transaktionen aus `bank_transactions`
-- Ruft `detectRecurringContracts()` auf (Engine-Funktion)
-- Oeffnet `ContractDetectionDialog`
+### A3: MOD-05 Pets — Icon veraltet
+**DB:** `icon_key: 'globe'` (falsch!)
+**Manifest:** `icon: 'PawPrint'`
+**Fix:** Icon auf `PawPrint` aktualisieren
 
-### Step 4: Dokument-Checkliste (IntakeChecklistGrid)
-- Live-Fortschritt: welche Dokumenttypen bereits hochgeladen
-- Matching via `doc_type`
+### A4: MOD-09 Immomanager — sub_tiles veraltet
+**DB:** `katalog, beratung, kunden, netzwerk, leadeingang` (Titel "Leadeingang" mit Route `/leads`)
+**Manifest:** `katalog, beratung, kunden, network, systemgebuehr` (5 Tiles, "Provisionen" statt "Leadeingang")
+**Fix:** `leadeingang` durch `systemgebuehr` (Provisionen) ersetzen, `leads`-Route entfernen
 
-### Step 5: Letzte Aktivitaet (IntakeRecentActivity)
-- Chronologische Liste der letzten Uploads/Analysen
+### A5: MOD-10 Lead Manager — sub_tiles komplett veraltet
+**DB:** `uebersicht, kampagnen, studio, leads` (4 alte Tiles)
+**Manifest:** `kampagnen (default), kaufy, futureroom, acquiary, projekte` (5 Tiles)
+**Fix:** Komplette sub_tiles ersetzen
 
-### Step 6: Link zur Intelligenz
-- Navigation zu `/portal/dms/intelligenz`
+### A6: MOD-18 Finanzen — sub_tiles fehlen
+**DB:** Kein Eintrag fuer MOD-18 in tile_catalog gefunden
+**Manifest:** 9 Tiles (dashboard, konten, investment, kv, sachversicherungen, vorsorge, darlehen, abonnements, vorsorgedokumente)
+**Fix:** MOD-18 Eintrag in tile_catalog einfuegen
 
----
+### A7: MOD-20 Miety/Zuhause — sub_tiles fehlen
+**DB:** Kein Eintrag fuer MOD-20 in tile_catalog gefunden
+**Manifest:** 4 Tiles (uebersicht, versorgung, smarthome, kommunikation)
+**Fix:** MOD-20 Eintrag in tile_catalog einfuegen
 
-## 3. Engine-Mapping: Konto-Kategorisierung → Vertragserkennung
+### A8: MOD-22 Pet Manager — sub_tiles veraltet
+**DB:** `uebersicht, kunden, kalender` (3 Tiles, Route `/portal/pet-manager`)
+**Manifest:** `dashboard (default), profil, pension, services, mitarbeiter, kunden, finanzen` (7 Tiles, Route `/portal/petmanager`)
+**Fix:** sub_tiles komplett aktualisieren, Route von `/portal/pet-manager` auf `/portal/petmanager` korrigieren
 
-### Stufe 1: Transaktions-Kategorisierung (bestehend in ENG-KONTOMATCH)
-
-```text
-Kontobewegung (bank_transactions)
-       │
-       ▼
-Regel-basiertes Matching (DEFAULT_MATCH_RULES)
-       │
-       ├─ MIETE, HAUSGELD, GRUNDSTEUER → Immobilien (MOD-04) → SKIP
-       ├─ DARLEHEN → Finanzierung (MOD-07) → SKIP
-       ├─ EINSPEISEVERGUETUNG, WARTUNG, PACHT → PV (MOD-19) → SKIP
-       ├─ GEHALT → Person → SKIP
-       ├─ VERSICHERUNG → Versicherungen → WEITER
-       ├─ SONSTIG_AUSGANG → Abos/Energie → WEITER
-       └─ SONSTIG_EINGANG → SKIP
-```
-
-### Stufe 2: Recurring Detection (recurring.ts)
-
-```text
-Kategorisierte Transaktionen (match_category != null, amount < 0)
-       │
-       ▼
-Gruppierung nach normalizeCounterparty()
-       │
-       ▼
-Betrag-Cluster (Toleranz +/- 5%)
-       │
-       ▼
-Frequenz-Erkennung (Buchungsintervalle):
-  - 25–35 Tage  → monatlich
-  - 80–100 Tage → quartalsweise
-  - 350–380 Tage → jaehrlich
-  Min. 2 Treffer erforderlich
-       │
-       ▼
-Pattern-basiertes Routing:
-  ┌─────────────────────────────────────────────────────────────┐
-  │ Kategorie VERSICHERUNG     → insurance_contracts            │
-  │ INSURANCE_PATTERNS matched → insurance_contracts            │
-  │ ENERGY_PATTERNS matched    → miety_contracts (+ home_id!)  │
-  │ SUBSCRIPTION_PATTERNS matched → user_subscriptions          │
-  │ Default (kein Pattern)     → user_subscriptions             │
-  └─────────────────────────────────────────────────────────────┘
-       │
-       ▼
-DetectedContract[] mit Confidence-Score (0.5–0.95)
-```
+### A9: MOD-01 Stammdaten — sub_tile "Rechtliches" fehlt
+**DB:** `profil, vertraege, abrechnung, sicherheit, demo-daten` (5)
+**Manifest:** `profil, vertraege, abrechnung, sicherheit, rechtliches, demo-daten` (6)
+**Fix:** `rechtliches` Tile hinzufuegen
 
 ---
 
-## 4. Zuordnungskarte — Vollstaendig
+## B) storageManifest.ts — Naming-Inkonsistenzen
 
-### ENERGY_PATTERNS → `miety_contracts` (braucht home_id)
-| Pattern | Typische Vertraege |
-|---|---|
-| stadtwerke, swm, eon, e.on, vattenfall, rwe, enbw | Stromversorger |
-| strom, gas, fernwaerme, grundversorgung, energie | Energieart-Keywords |
-| telekom, vodafone, o2, telefonica, 1und1, 1&1 | Telko-Provider (Festnetz/Internet) |
-| unitymedia, kabel deutschland, glasfaser, internet, mobilfunk | Internet-Provider |
+### B1: MOD-05 root_name falsch
+**Ist:** `root_name: 'Mietverwaltung'`
+**Soll:** `root_name: 'Pets'` (oder 'Haustiere')
 
-**Problem:** Mobilfunk-Vertraege (Handy) gehoeren NICHT zu einem Zuhause, sondern zu `user_subscriptions`. Die aktuelle ENERGY_PATTERNS-Liste mischt Festnetz/Internet (Zuhause) mit Mobilfunk (persoenlich).
+### B2: MOD-18 root_name veraltet
+**Ist:** `root_name: 'Finanzanalyse'`
+**Soll:** `root_name: 'Finanzen'` (Label-Override in areaConfig)
 
-### INSURANCE_PATTERNS → `insurance_contracts`
-| Pattern | Typische Vertraege |
-|---|---|
-| allianz, axa, ergo, huk, huk-coburg, devk, generali | Versicherer-Namen |
-| zurich, nuernberger, debeka, signal iduna | Versicherer-Namen |
-| versicherung, haftpflicht, hausrat, rechtsschutz | Versicherungsart-Keywords |
-| berufsunfaehigkeit, krankenversicherung | Versicherungsart-Keywords |
-| kfz-versicherung, lebensversicherung | Versicherungsart-Keywords |
-
-### SUBSCRIPTION_PATTERNS → `user_subscriptions`
-| Pattern | Kategorie |
-|---|---|
-| netflix, spotify, amazon prime, disney, apple, youtube, dazn, sky | streaming_video / streaming_music |
-| microsoft, adobe, google one, dropbox, icloud | software_saas |
-| playstation, xbox, nintendo | gaming |
-| fitx, mcfit, urban sports, gym, fitness | fitness |
-| zeit, spiegel, faz, sueddeutsche, handelsblatt | news_media |
+### B3: MOD-22 fehlt komplett
+**Fix:** MOD_22 Eintrag fuer Pet Manager hinzufuegen
 
 ---
 
-## 5. Identifizierte Fehler und Korrekturplan
+## C) Engine Registry (ENGINE_REGISTRY.md)
 
-### Fehler 1: Energievertraege werden in user_subscriptions abgelegt
-**Ursache:** `miety_contracts.home_id` ist NOT NULL, aber bei Konto-Intake fehlt die Zuordnung.
-**Fix:** Im `ContractDetectionDialog` einen Home-Picker einbauen. Wenn der User "Energievertrag" waehlt, erscheint ein Dropdown mit den verfuegbaren Homes aus `miety_homes`. Nur wenn ein Home ausgewaehlt ist, wird in `miety_contracts` geschrieben.
+### C1: ENG-KONTOMATCH — recurring.ts fehlt in Dateipfaden
+**Ist:** `spec.ts, engine.ts`
+**Soll:** `spec.ts, engine.ts, recurring.ts`
+**Fix:** `recurring.ts` in Dateipfade aufnehmen
 
-### Fehler 2: Mobilfunk in ENERGY_PATTERNS
-**Ursache:** `mobilfunk` steht in ENERGY_PATTERNS, gehoert aber zu `user_subscriptions` (persoenliches Abo).
-**Fix:** `mobilfunk` aus ENERGY_PATTERNS entfernen, in SUBSCRIPTION_PATTERNS aufnehmen. Telekom/Vodafone/O2 muessen differenziert werden: Festnetz/Internet → Energie, Mobilfunk → Abo. Da dies schwer automatisch zu unterscheiden ist, sollte der Default `user_subscriptions` sein und der User kann manuell auf "Energievertrag" umstellen.
-
-### Fehler 3: Demo-Daten enthalten Telko unter Abonnements
-**Ursache:** `demo_user_subscriptions.csv` enthaelt "Telekom Magenta L" (Mobilfunk) und "Vodafone Kabel 1000" (Internet).
-**Fix:** 
-- "Vodafone Kabel 1000" → Verschieben nach `demo_miety_contracts.csv` (Internet-Vertrag am Zuhause)
-- "Telekom Magenta L" → Bleibt in `user_subscriptions` (Mobilfunkvertrag, persoenlich)
-
-### Fehler 4: useContractCreation schreibt nicht in miety_contracts
-**Ursache:** Fehlende `home_id` → Workaround mit `utilities_energy` Kategorie.
-**Fix:** Die `insertContract`-Funktion um einen `homeId`-Parameter erweitern. Der Dialog liefert bei Energievertraegen die `home_id` mit.
+### C2: Engine-Zaehlung lueckenhaft
+Die Registry zaehlt 10 Calc-Engines (ENG-AKQUISE bis ENG-KONTOMATCH) aber die Nummerierung in `engines/index.ts` springt von "Engine 10" auf "Engine 17".
+**Fix:** Kommentare in `index.ts` bereinigen (Engines 11-16 sind Daten/KI/Infra-Engines, keine Calc-Engines)
 
 ---
 
-## 6. Technische Aenderungen
+## D) goldenPathProcesses.ts — Compliance-Luecken
 
-### Dateien die geaendert werden:
+### D1: GP-SIMULATION — widgetGrid + widgetCell = false
+Einziger Portal-Prozess mit Compliance-Luecken (4/6 statt 6/6). Phase ist aber "done".
+**Fix:** Entweder Compliance nachziehen oder Phase auf "2C" zuruecksetzen
 
-| Datei | Aenderung |
-|---|---|
-| `src/engines/kontoMatch/spec.ts` | `mobilfunk` aus ENERGY_PATTERNS entfernen; Telko-Provider differenzieren |
-| `src/engines/kontoMatch/recurring.ts` | Keine Aenderung (reine Engine-Logik, routing passiert in spec) |
-| `src/components/shared/ContractDetectionDialog.tsx` | Home-Picker Dropdown einbauen fuer Energievertraege |
-| `src/hooks/useContractCreation.ts` | Echten `miety_contracts`-Insert mit `home_id` implementieren |
-| `public/demo-data/demo_user_subscriptions.csv` | "Vodafone Kabel 1000" entfernen |
-| `public/demo-data/demo_miety_contracts.csv` | "Vodafone Kabel 1000" als Internet-Vertrag hinzufuegen |
-| `src/engines/demoData/data.ts` | Demo-Daten-Konstanten entsprechend anpassen |
+### D2: GP-BROWSER-SESSION — demoWidget.compliance = false
+`compliance.demoWidget: false` aber ein demoWidget-Objekt existiert trotzdem.
+**Fix:** demoWidget-Badge auf 'Neu' belassen, aber compliance auf false (korrekt, da noch in Phase 1)
 
-### DetectedContract-Typ erweitern:
+---
 
-```typescript
-export interface DetectedContract {
-  // ... bestehende Felder ...
-  homeId?: string;  // NEU: Zuordnung zu einem Zuhause (fuer miety_contracts)
-}
-```
+## E) recordCardManifest.ts — Modul-Code Zuordnung
 
-### Dialog-Erweiterung:
+### E1: insurance, vorsorge, subscription, bank_account → MOD_11 falsch
+Diese Aktentypen verweisen auf `MOD_11` (Finanzierungsmanager), sollten aber auf `MOD_18` (Finanzen) zeigen, da dort die Tabellen verwaltet werden.
+**Fix:** moduleCode auf `MOD_18` aendern fuer insurance, vorsorge, subscription, bank_account
 
-Wenn `targetTable === 'miety_contracts'`:
-- Zeige Dropdown mit verfuegbaren Homes (`miety_homes` Query)
-- Pflichtfeld: Ohne Home-Auswahl kann der Vertrag nicht als Energievertrag angelegt werden
-- Fallback: User kann auf "Abo" umstellen, wenn kein Home passt
+---
 
-### ENERGY_PATTERNS bereinigen:
+## F) modules_freeze.json — Konsistenz
 
-```typescript
-// Verbleiben in ENERGY_PATTERNS (Zuhause-gebunden):
-'stadtwerke', 'swm', 'eon', 'e.on', 'vattenfall', 'rwe', 'enbw',
-'strom', 'gas', 'fernwaerme', 'grundversorgung', 'energie',
-'unitymedia', 'kabel deutschland', 'glasfaser'
+### F1: MOD-18 ist frozen, wurde aber per User-Anweisung unfrozen
+Der User hat "UNFREEZE MOD-18" gesagt, aber die Datei zeigt noch `"frozen": true`.
+**Fix:** `frozen: false` setzen, `unfrozen_at: "2026-02-24"` hinzufuegen
 
-// Verschieben nach SUBSCRIPTION_PATTERNS (persoenlich):
-'telekom', 'vodafone', 'o2', 'telefonica', '1und1', '1&1',
-'internet', 'mobilfunk'
-```
+### F2: MOD-03 ist frozen, wurde aber per User-Anweisung unfrozen
+**Fix:** `frozen: false` setzen, `unfrozen_at: "2026-02-24"` hinzufuegen
 
-**Begruendung:** Telekom/Vodafone/O2 koennen sowohl Festnetz (Zuhause) als auch Mobilfunk (persoenlich) sein. Da die Unterscheidung rein aus Kontobewegungen nicht moeglich ist, landen sie erst in `user_subscriptions`. Der User kann im Dialog manuell auf "Energievertrag" + Home-Zuweisung umstellen.
+---
 
-### Freeze-Status:
-- `src/engines/kontoMatch/spec.ts` → Engine-Pfad, nicht gefroren
-- `src/hooks/useContractCreation.ts` → Hook-Pfad, nicht gefroren
-- `src/components/shared/ContractDetectionDialog.tsx` → Shared-Pfad, nicht gefroren
-- `public/demo-data/` → Nicht gefroren
-- `src/engines/demoData/data.ts` → Engine-Pfad, nicht gefroren
-- Kein Modul-Unfreeze noetig
+## G) Demo-Daten Registry (demoDataRegistry.ts)
+
+### G1: demo_miety_homes.csv fehlt
+Die CSV existiert in `public/demo-data/demo_miety_homes.csv`, ist aber nicht in `DEMO_DATA_SOURCES` registriert.
+**Fix:** Eintrag fuer MOD-20 miety_homes hinzufuegen
+
+### G2: demo_miety_contracts.csv fehlt
+Ebenfalls nicht registriert.
+**Fix:** Eintrag fuer MOD-20 miety_contracts hinzufuegen
+
+### G3: demo_household_persons.csv fehlt
+Existiert aber ist nicht registriert.
+**Fix:** Eintrag fuer MOD-01 household_persons hinzufuegen
+
+### G4: demo_vehicles.csv fehlt
+**Fix:** Eintrag fuer MOD-17 vehicles hinzufuegen
+
+### G5: demo_pv_plants.csv fehlt
+**Fix:** Eintrag fuer MOD-19 pv_plants hinzufuegen
+
+### G6: demo_vorsorge_contracts.csv fehlt
+**Fix:** Eintrag hinzufuegen
+
+### G7: demo_private_loans.csv fehlt
+**Fix:** Eintrag hinzufuegen
+
+---
+
+## Zusammenfassung der Aenderungen
+
+| Datei | Anzahl Fixes |
+|-------|-------------|
+| `tile_catalog` (DB Migration) | 9 Updates/Inserts |
+| `src/config/storageManifest.ts` | 3 Fixes |
+| `spec/current/06_engines/ENGINE_REGISTRY.md` | 2 Fixes |
+| `src/manifests/goldenPathProcesses.ts` | Info-only (keine Aenderung noetig) |
+| `src/config/recordCardManifest.ts` | 4 moduleCode-Fixes |
+| `spec/current/00_frozen/modules_freeze.json` | 2 Unfreeze-Updates |
+| `src/config/demoDataRegistry.ts` | 7 fehlende Eintraege |
+| `src/engines/index.ts` | Kommentar-Bereinigung |
+
+**Gesamt: 27 Fixes**, davon 9 in der Datenbank (tile_catalog), 18 in Code/Config-Dateien.
+
+Keine Modul-Pfade betroffen (alle Aenderungen liegen in `src/config/`, `src/engines/`, `spec/` oder DB) — kein Modul-Unfreeze noetig ausser fuer die bereits freigegebenen MOD-03 und MOD-18.
