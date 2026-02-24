@@ -115,7 +115,7 @@ const GROUP_CONFIG: Record<string, GroupConfig> = {
 
 // Route to group mapping via prefix
 function getGroupKey(path: string, component: string): string {
-  if (path === '' || path === 'organizations' || path === 'users' || path === 'delegations') {
+  if (path === '' || path === 'organizations' || path === 'delegations') {
     return 'foundation';
   }
   // Masterdata — nur Hub zeigen, Sub-Seiten via Hub erreichbar
@@ -171,8 +171,9 @@ function getGroupKey(path: string, component: string): string {
 
 // Filter routes for nav (exclude dynamic routes and sub-routes unless they're top-level desk entries)
 function shouldShowInNav(path: string): boolean {
-  // Skip dynamic routes
+  // Skip dynamic routes and removed pages
   if (path.includes(':')) return false;
+  if (path === 'users') return false; // Users moved into OrganizationDetail
   // Show main desk entries
   if (path === 'sales-desk' || path === 'finance-desk' || path === 'acquiary' || 
       path === 'futureroom' || path === 'lead-desk' || 

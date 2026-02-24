@@ -85,7 +85,7 @@ export const zone1Admin: ZoneDefinition = {
   requires_role: ["platform_admin"],
   routes: [
     { path: "", component: "Dashboard", title: "Admin Dashboard" },
-    { path: "organizations", component: "Organizations", title: "Organisationen" },
+    { path: "organizations", component: "Organizations", title: "Kunden & Tenants" },
     { path: "organizations/:id", component: "OrganizationDetail", title: "Organisation Details", dynamic: true },
     { path: "users", component: "Users", title: "Benutzer" },
     { path: "delegations", component: "Delegations", title: "Delegationen" },

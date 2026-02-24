@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -27,12 +27,9 @@ import {
   Building,
   Loader2,
   Eye,
-  ArrowRight,
   Home,
-  FileText,
   Banknote,
   Globe,
-  AlertTriangle,
   ExternalLink,
 } from 'lucide-react';
 import { format } from 'date-fns';
@@ -94,7 +91,6 @@ interface TileActivation {
 
 export default function Oversight() {
   const { isPlatformAdmin } = useAuth();
-  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<OverviewStats>({
     organizations: 0,
@@ -104,13 +100,11 @@ export default function Oversight() {
     financePackages: 0,
     publicListings: 0,
   });
-  const [orgOverviews, setOrgOverviews] = useState<OrgOverview[]>([]);
   const [propertyOverviews, setPropertyOverviews] = useState<PropertyOverview[]>([]);
   const [tileActivations, setTileActivations] = useState<TileActivation[]>([]);
   const [financePackages, setFinancePackages] = useState<FinancePackageOverview[]>([]);
 
   // Detail dialogs
-  const [selectedOrg, setSelectedOrg] = useState<OrgOverview | null>(null);
   const [selectedProperty, setSelectedProperty] = useState<PropertyOverview | null>(null);
 
   useEffect(() => {
@@ -154,18 +148,6 @@ export default function Oversight() {
         financePackages: financeData.length,
         publicListings: publicListingsCount,
       });
-
-      // Build org overviews
-      const overviews: OrgOverview[] = orgs.map(org => ({
-        id: org.id,
-        name: org.name,
-        org_type: org.org_type,
-        created_at: org.created_at,
-        memberCount: memberships.filter(m => m.tenant_id === org.id).length,
-        propertyCount: properties.filter(p => p.tenant_id === org.id).length,
-        activeTileCount: activations.filter(a => a.tenant_id === org.id && a.status === 'active').length,
-      }));
-      setOrgOverviews(overviews);
 
       // Build property overviews
       const propOverviews: PropertyOverview[] = properties.map(prop => ({
@@ -333,63 +315,12 @@ export default function Oversight() {
         </Card>
       </div>
 
-      <Tabs defaultValue="tenants">
+      <Tabs defaultValue="properties">
         <TabsList>
-          <TabsTrigger value="tenants">Mandanten</TabsTrigger>
           <TabsTrigger value="properties">Immobilien</TabsTrigger>
           <TabsTrigger value="finance">Finance Pakete</TabsTrigger>
           <TabsTrigger value="modules">Module</TabsTrigger>
         </TabsList>
-
-        <TabsContent value="tenants" className="space-y-4">
-          <Card>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Organisation</TableHead>
-                  <TableHead>Typ</TableHead>
-                  <TableHead className="text-right">Mitglieder</TableHead>
-                  <TableHead className="text-right">Immobilien</TableHead>
-                  <TableHead className="text-right">Module</TableHead>
-                  <TableHead>Erstellt</TableHead>
-                  <TableHead className="text-right">Aktionen</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {orgOverviews.map(org => (
-                  <TableRow key={org.id}>
-                    <TableCell className="font-medium">{org.name}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{org.org_type}</Badge>
-                    </TableCell>
-                    <TableCell className="text-right">{org.memberCount}</TableCell>
-                    <TableCell className="text-right">{org.propertyCount}</TableCell>
-                    <TableCell className="text-right">{org.activeTileCount}</TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {format(new Date(org.created_at), 'dd.MM.yyyy', { locale: de })}
-                    </TableCell>
-                    <TableCell className="text-right space-x-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setSelectedOrg(org)}
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => navigate(`/admin/organizations/${org.id}`)}
-                      >
-                        <ArrowRight className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </Card>
-        </TabsContent>
 
         <TabsContent value="properties" className="space-y-4">
           <Card>
@@ -557,76 +488,6 @@ export default function Oversight() {
           </Card>
         </TabsContent>
       </Tabs>
-
-      {/* Org Detail Dialog */}
-      <Dialog open={!!selectedOrg} onOpenChange={() => setSelectedOrg(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Organisation: {selectedOrg?.name}</DialogTitle>
-          </DialogHeader>
-          {selectedOrg && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Typ</p>
-                  <Badge variant="outline" className="mt-1">{selectedOrg.org_type}</Badge>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Erstellt</p>
-                  <p className="mt-1">{format(new Date(selectedOrg.created_at), 'dd.MM.yyyy HH:mm', { locale: de })}</p>
-                </div>
-              </div>
-              <div className="grid grid-cols-3 gap-4">
-                <Card>
-                  <CardContent className="pt-4 text-center">
-                    <Users className="h-6 w-6 mx-auto text-primary" />
-                    <p className="text-2xl font-bold mt-2">{selectedOrg.memberCount}</p>
-                    <p className="text-xs text-muted-foreground">Mitglieder</p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="pt-4 text-center">
-                    <Building className="h-6 w-6 mx-auto text-primary" />
-                    <p className="text-2xl font-bold mt-2">{selectedOrg.propertyCount}</p>
-                    <p className="text-xs text-muted-foreground">Immobilien</p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="pt-4 text-center">
-                    <LayoutGrid className="h-6 w-6 mx-auto text-primary" />
-                    <p className="text-2xl font-bold mt-2">{selectedOrg.activeTileCount}</p>
-                    <p className="text-xs text-muted-foreground">Module</p>
-                  </CardContent>
-                </Card>
-              </div>
-              <div className="flex gap-2 pt-4">
-                <Button 
-                  variant="outline" 
-                  className="flex-1"
-                  onClick={() => {
-                    setSelectedOrg(null);
-                    navigate(`/admin/users?org=${selectedOrg.id}`);
-                  }}
-                >
-                  <Users className="h-4 w-4 mr-2" />
-                  Mitglieder verwalten
-                </Button>
-                <Button 
-                  variant="outline"
-                  className="flex-1"
-                  onClick={() => {
-                    setSelectedOrg(null);
-                    navigate(`/admin/organizations/${selectedOrg.id}`);
-                  }}
-                >
-                  <ArrowRight className="h-4 w-4 mr-2" />
-                  Zur Organisation
-                </Button>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
 
       {/* Property Detail Dialog */}
       <Dialog open={!!selectedProperty} onOpenChange={() => setSelectedProperty(null)}>
