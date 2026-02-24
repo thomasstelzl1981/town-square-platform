@@ -137,7 +137,7 @@ export const STORAGE_MANIFEST: Record<string, ModuleStorageConfig> = {
   },
   MOD_05: {
     module_code: 'MOD_05',
-    root_name: 'Mietverwaltung',
+    root_name: 'Haustiere',
     root_template_id: 'MOD_05_ROOT',
     display_order: 5,
     entity_sub_folders: [],
@@ -300,7 +300,7 @@ export const STORAGE_MANIFEST: Record<string, ModuleStorageConfig> = {
   },
   MOD_18: {
     module_code: 'MOD_18',
-    root_name: 'Finanzanalyse',
+    root_name: 'Finanzen',
     root_template_id: 'MOD_18_ROOT',
     display_order: 18,
     entity_sub_folders: [],
@@ -336,7 +336,7 @@ export const STORAGE_MANIFEST: Record<string, ModuleStorageConfig> = {
   },
   MOD_20: {
     module_code: 'MOD_20',
-    root_name: 'Miety',
+    root_name: 'Zuhause',
     root_template_id: 'MOD_20_ROOT',
     display_order: 20,
     entity_sub_folders: [],
@@ -353,6 +353,16 @@ export const STORAGE_MANIFEST: Record<string, ModuleStorageConfig> = {
     required_docs: [],
     entity_fk_column: null,
     entity_table: 'ki_browser_sessions',
+  },
+  MOD_22: {
+    module_code: 'MOD_22',
+    root_name: 'Pet Manager',
+    root_template_id: 'MOD_22_ROOT',
+    display_order: 22,
+    entity_sub_folders: [],
+    required_docs: [],
+    entity_fk_column: null,
+    entity_table: null,
   },
 };
 

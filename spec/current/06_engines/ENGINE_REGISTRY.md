@@ -31,7 +31,7 @@
 
 ## Technische Registry
 
-### Kalkulation (9 Engines)
+### Kalkulation (10 Engines)
 
 Alle Kalkulationsengines sind **pure TypeScript Functions**, laufen **client-side** und sind **kostenlos**.
 
@@ -46,7 +46,7 @@ Alle Kalkulationsengines sind **pure TypeScript Functions**, laufen **client-sid
 | ENG-FINUEB | Finanzuebersicht-Engine | MOD-18 | ✅ Live | `src/engines/finanzuebersicht/spec.ts`, `engine.ts` |
 | ENG-VORSORGE | Vorsorgeluecke-Rechner | MOD-08 | ✅ Live | `src/engines/vorsorgeluecke/spec.ts`, `engine.ts` |
 | ENG-VVSTEUER | V+V Steuer-Engine | MOD-04 | ✅ Live | `src/engines/vvSteuer/spec.ts` |
-| ENG-KONTOMATCH | Konto-Matching Engine | MOD-04, MOD-18, MOD-19 | ⚡ Teilweise | `src/engines/kontoMatch/spec.ts`, `engine.ts` |
+| ENG-KONTOMATCH | Konto-Matching Engine | MOD-04, MOD-18, MOD-19 | ⚡ Teilweise | `src/engines/kontoMatch/spec.ts`, `engine.ts`, `recurring.ts` |
 
 ### Daten (4 Engines)
 

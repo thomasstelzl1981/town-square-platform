@@ -39,7 +39,7 @@ export const RECORD_CARD_TYPES: Record<string, RecordCardTypeConfig> = {
   },
   insurance: {
     label: 'Versicherung',
-    moduleCode: 'MOD_11',
+    moduleCode: 'MOD_18',
     icon: Shield,
     keywordFields: ['provider_name', 'policy_number'],
     dmsFolders: [
@@ -81,7 +81,7 @@ export const RECORD_CARD_TYPES: Record<string, RecordCardTypeConfig> = {
   },
   vorsorge: {
     label: 'Vorsorge',
-    moduleCode: 'MOD_11',
+    moduleCode: 'MOD_18',
     icon: Heart,
     keywordFields: ['provider_name', 'contract_number'],
     dmsFolders: [
@@ -93,14 +93,14 @@ export const RECORD_CARD_TYPES: Record<string, RecordCardTypeConfig> = {
   },
   subscription: {
     label: 'Abonnement',
-    moduleCode: 'MOD_11',
+    moduleCode: 'MOD_18',
     icon: CreditCard,
     keywordFields: ['provider_name', 'contract_number'],
     dmsFolders: [],
   },
   bank_account: {
     label: 'Bankkonto',
-    moduleCode: 'MOD_11',
+    moduleCode: 'MOD_18',
     icon: Landmark,
     keywordFields: ['bank_name', 'iban'],
     dmsFolders: [],
