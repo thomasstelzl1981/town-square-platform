@@ -3,6 +3,7 @@
  * Immer sichtbar, kein Dialog.
  */
 import { useState, useCallback } from 'react';
+import { PLATFORM_TENANT_ID } from '@/config/platformConstants';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -155,7 +156,7 @@ export default function BrandPostCreator({ onCreated }: BrandPostCreatorProps) {
           approved_at: approve ? new Date().toISOString() : null,
           approved_by: approve ? user?.id : null,
           // Platform-level template: no tenant_id needed for Zone 1 master
-          tenant_id: '00000000-0000-0000-0000-000000000000',
+          tenant_id: PLATFORM_TENANT_ID,
         } as any);
       if (error) throw error;
 

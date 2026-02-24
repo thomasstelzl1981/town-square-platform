@@ -1,6 +1,7 @@
 /**
  * TemplateCard — Reusable template card for brand content workshops
- * 4:5 aspect ratio with image support, editable fields, save/toggle
+ * 4:5 aspect ratio with image support, carousel, editable fields, save/toggle
+ * Supports readOnly mode for Zone 2 gallery view.
  */
 import { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -10,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
-import { Save, Loader2, ImagePlus } from 'lucide-react';
+import { Save, Loader2, ImagePlus, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface TemplateFields {
@@ -33,16 +34,22 @@ interface TemplateCardProps {
   selectable?: boolean;
   selected?: boolean;
   onSelect?: (id: string) => void;
-  /** Pre-generated template image URL */
+  /** Pre-generated template image URL (single, fallback) */
   imageUrl?: string;
+  /** Multiple images from Zone 1 (JSONB array) */
+  imageUrls?: string[];
+  /** Read-only gallery mode (no editing) */
+  readOnly?: boolean;
 }
 
 export function TemplateCard({
   id, name, code, brandGradient, fields: initialFields, active,
-  isSaving, onSave, onToggleActive, selectable, selected, onSelect, imageUrl,
+  isSaving, onSave, onToggleActive, selectable, selected, onSelect,
+  imageUrl, imageUrls, readOnly,
 }: TemplateCardProps) {
   const [fields, setFields] = useState<TemplateFields>(initialFields);
   const [dirty, setDirty] = useState(false);
+  const [imgIndex, setImgIndex] = useState(0);
 
   useEffect(() => {
     setFields(initialFields);
@@ -59,11 +66,40 @@ export function TemplateCard({
     setDirty(false);
   };
 
-  // Image or gradient header
+  // Resolve images: prefer imageUrls array, then single imageUrl
+  const images: string[] =
+    imageUrls && imageUrls.length > 0 ? imageUrls
+    : imageUrl ? [imageUrl]
+    : [];
+
+  // Image or gradient header with carousel support
   const ImageHeader = ({ className }: { className?: string }) => (
-    imageUrl ? (
+    images.length > 0 ? (
       <div className={cn('relative overflow-hidden', className)}>
-        <img src={imageUrl} alt={name} className="w-full h-full object-cover" />
+        <img src={images[imgIndex]} alt={name} className="w-full h-full object-cover" />
+        {images.length > 1 && (
+          <>
+            <button
+              onClick={(e) => { e.stopPropagation(); setImgIndex(i => Math.max(0, i - 1)); }}
+              className="absolute left-2 top-1/2 -translate-y-1/2 bg-background/80 rounded-full p-1 backdrop-blur-sm"
+              disabled={imgIndex === 0}
+            >
+              <ChevronLeft className="h-3.5 w-3.5" />
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); setImgIndex(i => Math.min(images.length - 1, i + 1)); }}
+              className="absolute right-2 top-1/2 -translate-y-1/2 bg-background/80 rounded-full p-1 backdrop-blur-sm"
+              disabled={imgIndex === images.length - 1}
+            >
+              <ChevronRight className="h-3.5 w-3.5" />
+            </button>
+            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
+              {images.map((_, i) => (
+                <span key={i} className={cn('w-1.5 h-1.5 rounded-full transition-colors', i === imgIndex ? 'bg-white' : 'bg-white/40')} />
+              ))}
+            </div>
+          </>
+        )}
       </div>
     ) : (
       <div className={cn(`bg-gradient-to-br ${brandGradient} flex flex-col items-center justify-center gap-3 p-6`, className)}>
@@ -73,6 +109,7 @@ export function TemplateCard({
     )
   );
 
+  // ── Selectable mode (Campaign wizard step 2) ──
   if (selectable) {
     return (
       <Card
@@ -84,6 +121,7 @@ export function TemplateCard({
       >
         <ImageHeader className="aspect-[4/5]" />
         <CardContent className="p-3 space-y-1">
+          <p className="text-xs font-medium">{name}</p>
           <p className="text-xs text-muted-foreground line-clamp-2">{fields.caption || '—'}</p>
           <Badge variant="outline" className="text-[10px]">{fields.cta || '—'}</Badge>
           {!active && <Badge variant="secondary" className="text-[10px] ml-1">Inaktiv</Badge>}
@@ -92,6 +130,31 @@ export function TemplateCard({
     );
   }
 
+  // ── Read-only mode (Zone 2 gallery) ──
+  if (readOnly) {
+    return (
+      <Card className="overflow-hidden">
+        <ImageHeader className="aspect-[4/5]" />
+        <CardContent className="p-5 space-y-3">
+          <div>
+            <p className="font-semibold">{name}</p>
+            <p className="text-xs text-muted-foreground">{code}</p>
+          </div>
+          {fields.caption && (
+            <p className="text-sm text-foreground/90 leading-relaxed">{fields.caption}</p>
+          )}
+          {fields.description && (
+            <p className="text-xs text-muted-foreground">{fields.description}</p>
+          )}
+          {fields.cta && (
+            <Badge variant="outline" className="text-xs">{fields.cta}</Badge>
+          )}
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // ── Editable mode (Zone 1 admin / legacy) ──
   return (
     <Card className="overflow-hidden">
       <ImageHeader className="aspect-[4/5]" />
