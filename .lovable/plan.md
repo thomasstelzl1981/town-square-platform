@@ -1,95 +1,132 @@
 
 
-# Erweiterter Plan: Lennox Provider-Seed mit Bildern und DMS-Integration
+# Plan: Rollenbezogene Tile-Aktivierung (statt Account-bezogen)
 
-## Ausgangslage
+## Problem-Analyse
 
-Die 4 Gallery-Bilder existieren als statische Assets im Code (`src/assets/demo/pm-gallery-*.jpg`), werden aber:
-- **NICHT** in die Datenbank (`pet_providers.gallery_images`) geschrieben
-- **NICHT** in den Storage-Bucket (`tenant-documents`) des Lennox-Tenants hochgeladen
-- **NICHT** im DMS-Ordnerbaum des Tenants registriert (`storage_nodes`)
+### 3 identifizierte Fehlerquellen
 
-Aktuell zeigt `PMProfil.tsx` (Z.143) einen Fallback: `dbPhotos.length > 0 ? dbPhotos : [...DEMO_PM_GALLERY_IMAGES]` — die Bilder kommen also nur aus dem lokalen Import, nie aus der DB.
+**1. DB-Funktion `get_tiles_for_role()` ist unvollstaendig**
 
-Zone 3 (`LennoxPartnerProfil.tsx`) liest `gallery_images` direkt aus der DB (Z.117) — da diese leer ist, wird keine Galerie angezeigt.
-
-## Loesung: `useLennoxInitialSeed.ts` erstellen
-
-Ein neuer Hook `src/hooks/useLennoxInitialSeed.ts`, der einmalig beim Login des Lennox-Tenants (Robyn) ausgefuehrt wird:
-
-### Phase 1: Provider + Services in DB anlegen
+Die Funktion kennt nur 5 Rollen, aber es gibt 8 aktive Rollen im System:
 
 ```text
-pet_providers:
-  id:            d0000000-0000-4000-a000-000000000050
-  tenant_id:     eac1778a-23bc-4d03-b3f9-b26be27c9505
-  user_id:       99d271be-4ebb-4495-970d-ad91e943e4f0
-  company_name:  Lennox & Friends Dog Resorts
-  status:        active, is_published: true
-  email:         info@lennoxandfriends.app
-  ...alle Felder aus DEMO_LENNOX_SEARCH_PROVIDER
-
-pet_services (4 Eintraege):
-  IDs ...0060 bis ...0063 (aus demo_pet_services.csv)
+Vorhanden:          Fehlend:
+- org_admin         - super_user (→ alle 22 Module)
+- sales_partner     - pet_manager (→ 14 + MOD-22 + MOD-10)
+- finance_manager   - project_manager (→ 14 + MOD-13)
+- akquise_manager
+- platform_admin
 ```
 
-### Phase 2: Bilder in Storage hochladen
+Ausserdem fehlt `MOD-22` komplett im `all_tiles`-Array der Funktion (nur 21 statt 22 Module).
 
-Die 4 Gallery-Bilder (`pm-gallery-pension-1.jpg`, etc.) werden aus `src/assets/demo/` geladen und per Supabase Storage SDK in den Bucket `tenant-documents` hochgeladen:
+**Konsequenz:** Bernhard Marchner wurde bei der Account-Erstellung als `org_admin` registriert (korrekt laut Rollenmodell: Super-User haben `membership_role = org_admin`). Die Funktion gab deshalb nur 14 Basis-Module zurueck. Der `super_user`-Status steht in `user_roles.role`, wird aber von `get_tiles_for_role()` nicht beruecksichtigt.
+
+**2. `handle_new_user()` prueft nur `membership_role`, nicht `app_role`**
+
+Der Trigger ruft `get_tiles_for_role('org_admin')` auf — der `app_role`-Eintrag in `user_roles` (super_user) wird komplett ignoriert. Da Bernhard erst nach der Account-Erstellung zum Super-User befördert wurde (Manager-Freischaltung), muessten die Tiles nachtraeglich synchronisiert werden — das passiert aber nie.
+
+**3. Zone 1 UI zeigt Tenants statt Rollen**
+
+Das Dropdown im "Tenant-Aktivierung"-Tab zeigt individuelle Accounts (bernhard.marchner, demo, Lennox...) und erlaubt manuelles Togglen pro Tenant. Das widerspricht dem Rollenmodell, bei dem die Tiles automatisch aus der Rolle abgeleitet werden sollen.
+
+### Ist-Zustand Bernhard Marchner
 
 ```text
-Pfad-Schema: {tenant_id}/pet-provider/{provider_id}/gallery_{index}.jpg
-
-Konkret:
-  eac1778a-.../pet-provider/d0000000-...-000000000050/gallery_0.jpg
-  eac1778a-.../pet-provider/d0000000-...-000000000050/gallery_1.jpg
-  eac1778a-.../pet-provider/d0000000-...-000000000050/gallery_2.jpg
-  eac1778a-.../pet-provider/d0000000-...-000000000050/gallery_3.jpg
+membership_role:  org_admin          → get_tiles_for_role() gibt 14 Tiles
+app_role:         super_user         → sollte ALLE 22 Tiles haben
+tenant_tile_activation: 14 Eintraege → es fehlen 8 Spezial-Module
 ```
 
-Danach werden Signed URLs generiert und in `pet_providers.gallery_images` (Array) sowie `cover_image_url` (erstes Bild) geschrieben.
+Bernhard sieht in Zone 2 nur 14 Module statt der versprochenen 21 (bzw. 22 mit MOD-22).
 
-### Phase 3: DMS-Ordnerstruktur anlegen
+---
 
-Ueber den bestehenden `usePetDMS`-Hook wird der DMS-Baum fuer den Provider erstellt:
+## Loesung (4 Aenderungen)
+
+### 1. DB-Funktion `get_tiles_for_role()` aktualisieren
+
+Die Funktion muss alle 8 Rollen kennen und MOD-22 im `all_tiles`-Array enthalten:
 
 ```text
-storage_nodes:
-  Root:  "Lennox & Friends Dog Resorts" (entity_type: 'pet', entity_id: provider_id)
-    ├── 01_Impfpass
-    ├── 02_Tierarzt
-    ├── 03_Versicherung
-    └── 04_Sonstiges
+all_tiles = MOD-00 bis MOD-20 + MOD-22 (22 Module)
+
+Neue Cases:
+  'super_user'       → all_tiles (alle 22)
+  'pet_manager'      → base_tiles + MOD-22 + MOD-10
+  'project_manager'  → base_tiles + MOD-13
+  'platform_admin'   → all_tiles (alle 22, war vorher nur 21)
 ```
 
-Die hochgeladenen Bilder werden als `storage_nodes` (node_type: 'file') im Root-Ordner oder in einem neuen Unterordner `05_Galerie` registriert (optional, je nach Praeferenz).
+### 2. Neue DB-Funktion `sync_tiles_for_user(user_id)` erstellen
 
-### Phase 4: Idempotenz-Check
+Eine neue Funktion, die beim Aendern der Rolle (z.B. Manager-Freischaltung) aufgerufen wird:
 
-Der Seed prueft vor jedem Schritt, ob die Daten bereits existieren:
-- `pet_providers` mit ID `d0000000-...-050` vorhanden? → Skip
-- Storage-Dateien bereits im Bucket? → Skip
-- `storage_nodes` Root-Ordner vorhanden? → Skip
+```text
+1. Liest membership_role UND app_role des Users
+2. Bestimmt effektive Rolle (app_role hat Vorrang: super_user → alle Tiles)
+3. Ruft get_tiles_for_role() mit der effektiven Rolle auf
+4. Synchronisiert tenant_tile_activation:
+   - Fehlende Tiles → INSERT
+   - Ueberfluessige Tiles → status = 'inactive'
+```
 
-So kann der Seed beliebig oft ausgefuehrt werden, ohne Duplikate.
+### 3. Zone 1 UI: "Tenant-Aktivierung" → "Rollen-Aktivierung" umbauen
+
+Der Tab wird von account-basiert auf rollen-basiert umgestellt:
+
+```text
+Aktuell:
+  [Dropdown: bernhard.marchner ▼]  [Alle aktivieren]
+  → Manuelle Toggles pro Tenant
+
+Neu:
+  [Dropdown: Rolle waehlen ▼]  [Sync alle Tenants]
+  Optionen: Super-User | Standardkunde | Akquise-Manager | ...
+
+  → Zeigt welche Tiles die gewaehlte Rolle bekommt (aus rolesMatrix.ts)
+  → "Sync alle Tenants" synchronisiert ALLE Tenants mit dieser Rolle
+  → Zusaetzlich: Tabelle zeigt alle Tenants mit dieser Rolle und deren Ist-Zustand
+```
+
+**Zusaetzlich** bleibt eine "Tenant-Einzelansicht" erhalten fuer Ausnahmen/Debugging, aber die primaere Steuerung ist rollenbezogen.
+
+### 4. Bernhards Tiles sofort reparieren (DB-Migration)
+
+Da Bernhard bereits existiert und der Sync noch nicht automatisch laeuft, werden seine fehlenden 8 Spezial-Module per Migration nachgetragen:
+
+```text
+INSERT in tenant_tile_activation fuer Tenant 80746f1a-...:
+  MOD-09, MOD-10, MOD-11, MOD-12, MOD-13, MOD-14, MOD-19, MOD-22
+```
+
+---
 
 ## Betroffene Dateien
 
 | Datei | Aenderung |
 |-------|-----------|
-| `src/hooks/useLennoxInitialSeed.ts` | **NEU** — Einmaliger Seed-Hook |
-| `public/demo-data/demo_pet_providers.csv` | Email `.com` → `.app` korrigieren |
-| DB-Migration | `pet_providers` + `pet_services` INSERT (Fallback falls Seed nicht laeuft) |
+| DB-Migration 1 | `get_tiles_for_role()` aktualisieren (8 Rollen, 22 Module) |
+| DB-Migration 2 | `sync_tiles_for_user()` Funktion erstellen |
+| DB-Migration 3 | Bernhards fehlende Tiles einfuegen |
+| `src/pages/admin/TileCatalog.tsx` | Tenant-Aktivierung-Tab auf Rollen-basiert umbauen |
+| `src/constants/rolesMatrix.ts` | Bereits korrekt — keine Aenderung noetig |
 
 ### Modul-Freeze-Check
 
-- `src/hooks/` → kein Modul-Pfad, nicht frozen
-- `public/demo-data/` → kein Modul-Pfad, nicht frozen
-- DB-Migration → kein Modul-Pfad
+- `src/pages/admin/TileCatalog.tsx` → kein Modul-Pfad, nicht frozen
+- DB-Migrationen → nicht frozen
+- `src/constants/rolesMatrix.ts` → nicht frozen
 
-Alle Aenderungen sind in nicht-gefrorenen Bereichen.
+Alle Aenderungen liegen ausserhalb gefrorener Module.
 
-## Offene Design-Entscheidung
+---
 
-Die Bilder werden aktuell via Signed URLs referenziert (1 Jahr gueltig, wie in PMProfil.tsx Z.182). Alternative waere, den Bucket `tenant-documents` fuer diese Pfade public zu machen. Der aktuelle Ansatz mit Signed URLs ist konsistent mit dem bestehenden Upload-Flow in PMProfil.
+## Was sich NICHT aendert
+
+- **PortalNav.tsx**: Liest weiterhin `tenant_tile_activation` — das ist korrekt, da die Tiles dort jetzt rollenkonsistent sind
+- **rolesMatrix.ts**: Ist bereits komplett mit allen 8 Rollen und 22 Modulen
+- **handle_new_user()**: Bleibt unveraendert (neue User sind immer `org_admin` → 14 Basis-Tiles korrekt)
+- **Manager-Freischaltung**: Muss nach Upgrade `sync_tiles_for_user()` aufrufen, damit Spezial-Module automatisch aktiviert werden
 
