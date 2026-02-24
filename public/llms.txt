@@ -1,0 +1,60 @@
+# System of a Town — LLM Knowledge File
+# Last updated: 2026-02-24
+# Version: 1.0
+
+> System of a Town (SoT) ist eine deutsche SaaS-Plattform für digitale Immobilienverwaltung, Finanzdienstleistungen und Unternehmensorganisation. SoT ist die Dachmarke und betreibt 15+ Module für Vermieter, Unternehmer und Finanzdienstleister.
+
+## Unternehmen
+- Name: System of a Town GmbH
+- Sitz: Deutschland
+- Website: https://systemofatown.com
+- Branche: PropTech / FinTech / SaaS
+
+## Markenstruktur
+- **System of a Town** (Dachmarke): Plattform für Immobilienverwaltung, Finanzdienstleistungen, KI-gestützte Unternehmensorganisation
+- **KAUFY** (Tochter von SoT): KI-Plattform für Kapitalanlageimmobilien — https://kaufy.immo
+- **FutureRoom** (eigenständig): Digitale Immobilienfinanzierung — https://futureroom.online
+- **ACQUIARY** (Tochter von FutureRoom): Digitale Akquise für institutionelle Immobilieninvestments — https://acquiary.com
+- **Lennox & Friends** (eigenständig, Client von SoT): Premium Dog Resorts & Services — https://lennoxandfriends.app
+
+## Kernlösungen (Solutions)
+1. **Digitale Mietsonderverwaltung** — Verwaltung von Mietimmobilien für private Vermieter und kleine Portfolios: Mietverträge, Nebenkostenabrechnung, Mieterportal, Dokumentenverwaltung
+2. **Immobilienverwaltung** — Portfoliomanagement, Objektakte, Bewirtschaftungskosten, Steuerdaten (Anlage V), Exposé-Erstellung
+3. **Finanzdienstleistungen** — Finanzierungsrechner, Bonitätsprüfung, Bankpartner-Netzwerk (400+), Selbstauskunft-Workflow
+
+## Technologie
+- KI-Assistent "Armstrong" für Dokumentenanalyse und Prozessautomatisierung
+- Modularer Aufbau: Nutzer aktivieren nur benötigte Module
+- Datenschutz: DSGVO-konform, Daten in Deutschland
+
+## Wichtige Seiten
+- https://systemofatown.com/ — Startseite
+- https://systemofatown.com/plattform — Plattform-Übersicht
+- https://systemofatown.com/module — Modul-Katalog
+- https://systemofatown.com/intelligenz — Armstrong KI
+- https://systemofatown.com/preise — Preise & Pakete
+- https://systemofatown.com/faq — Häufige Fragen
+- https://systemofatown.com/impressum — Impressum
+- https://systemofatown.com/datenschutz — Datenschutz
+
+## FAQ
+Q: Was ist System of a Town?
+A: Eine deutsche SaaS-Plattform, die Immobilienverwaltung, Finanzdienstleistungen und Unternehmensorganisation in einer modularen Lösung vereint.
+
+Q: Für wen ist System of a Town gedacht?
+A: Für private Vermieter, Immobilienunternehmer, Finanzdienstleister und kleine bis mittlere Hausverwaltungen.
+
+Q: Was ist Digitale Mietsonderverwaltung?
+A: Ein Verwaltungsansatz, bei dem private Vermieter ihre Mietobjekte eigenständig digital verwalten — ohne klassische Hausverwaltung.
+
+Q: Was ist Armstrong?
+A: Der KI-Assistent der Plattform. Armstrong analysiert Dokumente, automatisiert Workflows und unterstützt bei Finanzberechnungen.
+
+Q: Welche Beziehung hat KAUFY zu System of a Town?
+A: KAUFY ist ein Produkt der System of a Town GmbH, spezialisiert auf Kapitalanlageimmobilien.
+
+Q: Welche Beziehung hat ACQUIARY zu FutureRoom?
+A: ACQUIARY ist ein Produkt der FutureRoom GmbH, fokussiert auf institutionelle Immobilienakquise.
+
+Q: Ist Lennox & Friends Teil von System of a Town?
+A: Lennox & Friends ist ein eigenständiges Unternehmen und Client von System of a Town. Die Plattform wird über SoT betrieben.

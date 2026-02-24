@@ -1,0 +1,36 @@
+# ACQUIARY — LLM Knowledge File
+# Last updated: 2026-02-24
+# Version: 1.0
+
+> ACQUIARY ist eine diskrete, KI-gestützte Akquise-Plattform für institutionelle Immobilieninvestments. ACQUIARY ist ein Produkt der FutureRoom GmbH.
+
+## Unternehmen
+- Name: ACQUIARY (ein Produkt der FutureRoom GmbH)
+- Website: https://acquiary.com
+- Muttergesellschaft: FutureRoom GmbH — https://futureroom.online
+
+## Zielgruppe
+- Institutionelle Immobilieninvestoren
+- Family Offices
+- Immobilienfonds und Asset Manager
+
+## Kernfunktionen
+1. **Deal-Sourcing** — Systematische Identifikation von Off-Market-Immobilien
+2. **KI-Analyse** — Automatisierte Bewertung von Ankaufsprofilen und Objektdaten
+3. **Netzwerk** — Zugang zu exklusivem Anbieter- und Maklernetzwerk
+4. **Datenraum** — Sichere Due-Diligence-Dokumentation
+
+## Wichtige Seiten
+- https://acquiary.com/ — Startseite
+- https://acquiary.com/methodik — Methodik
+- https://acquiary.com/netzwerk — Netzwerk
+- https://acquiary.com/objekt — Objekt anbieten
+- https://acquiary.com/impressum — Impressum
+- https://acquiary.com/datenschutz — Datenschutz
+
+## FAQ
+Q: Was ist ACQUIARY?
+A: Eine digitale Akquise-Plattform für institutionelle Immobilieninvestments, betrieben von der FutureRoom GmbH.
+
+Q: Gehört ACQUIARY zu FutureRoom?
+A: Ja, ACQUIARY ist ein Produkt der FutureRoom GmbH.

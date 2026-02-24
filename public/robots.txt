@@ -1,14 +1,84 @@
+# ═══════════════════════════════════════════════════════════════
+# robots.txt — System of a Town Platform (Zone 3 Brand Websites)
+# ═══════════════════════════════════════════════════════════════
+
+# ── Standard Search Engines ───────────────────────────────────
 User-agent: Googlebot
-Allow: /
+Allow: /website/
+Allow: /llms.txt
+Allow: /llms-kaufy.txt
+Allow: /llms-futureroom.txt
+Allow: /llms-acquiary.txt
+Allow: /llms-lennox.txt
+Disallow: /portal/
+Disallow: /admin/
+Disallow: /auth
+Disallow: /api/
 
 User-agent: Bingbot
-Allow: /
+Allow: /website/
+Disallow: /portal/
+Disallow: /admin/
+Disallow: /auth
+Disallow: /api/
 
+# ── Social Media Crawlers ─────────────────────────────────────
 User-agent: Twitterbot
 Allow: /
 
 User-agent: facebookexternalhit
 Allow: /
 
-User-agent: *
+User-agent: LinkedInBot
 Allow: /
+
+# ── AI / LLM Crawlers (explicitly allowed) ────────────────────
+User-agent: GPTBot
+Allow: /website/
+Allow: /llms.txt
+Allow: /llms-kaufy.txt
+Allow: /llms-futureroom.txt
+Allow: /llms-acquiary.txt
+Allow: /llms-lennox.txt
+Disallow: /portal/
+Disallow: /admin/
+Disallow: /auth
+
+User-agent: Google-Extended
+Allow: /website/
+Allow: /llms.txt
+Disallow: /portal/
+Disallow: /admin/
+
+User-agent: PerplexityBot
+Allow: /website/
+Allow: /llms.txt
+Disallow: /portal/
+Disallow: /admin/
+
+User-agent: ClaudeBot
+Allow: /website/
+Allow: /llms.txt
+Disallow: /portal/
+Disallow: /admin/
+
+User-agent: Applebot-Extended
+Allow: /website/
+Allow: /llms.txt
+Disallow: /portal/
+Disallow: /admin/
+
+# ── Default: Block internal zones ─────────────────────────────
+User-agent: *
+Allow: /website/
+Disallow: /portal/
+Disallow: /admin/
+Disallow: /auth
+Disallow: /api/
+
+# ── Sitemaps ──────────────────────────────────────────────────
+Sitemap: https://systemofatown.com/sitemap-sot.xml
+Sitemap: https://kaufy.immo/sitemap-kaufy.xml
+Sitemap: https://futureroom.online/sitemap-futureroom.xml
+Sitemap: https://acquiary.com/sitemap-acquiary.xml
+Sitemap: https://lennoxandfriends.app/sitemap-lennox.xml
