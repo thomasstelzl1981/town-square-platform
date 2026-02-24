@@ -38,6 +38,9 @@ export interface SoatSearchResult {
   phone: string | null;
   email: string | null;
   website_url: string | null;
+  salutation: string | null;
+  first_name: string | null;
+  last_name: string | null;
   contact_person_name: string | null;
   contact_person_role: string | null;
   source_refs_json: any;

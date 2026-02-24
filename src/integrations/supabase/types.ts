@@ -4657,6 +4657,7 @@ export type Database = {
         Row: {
           approved_at: string | null
           approved_by: string | null
+          category: string | null
           company_name: string | null
           created_at: string
           dedupe_key: string | null
@@ -4671,6 +4672,7 @@ export type Database = {
           phone: string | null
           quality_score: number | null
           role_guess: string | null
+          salutation: string | null
           service_area: string | null
           source: string
           source_id: string | null
@@ -4683,6 +4685,7 @@ export type Database = {
         Insert: {
           approved_at?: string | null
           approved_by?: string | null
+          category?: string | null
           company_name?: string | null
           created_at?: string
           dedupe_key?: string | null
@@ -4697,6 +4700,7 @@ export type Database = {
           phone?: string | null
           quality_score?: number | null
           role_guess?: string | null
+          salutation?: string | null
           service_area?: string | null
           source: string
           source_id?: string | null
@@ -4709,6 +4713,7 @@ export type Database = {
         Update: {
           approved_at?: string | null
           approved_by?: string | null
+          category?: string | null
           company_name?: string | null
           created_at?: string
           dedupe_key?: string | null
@@ -4723,6 +4728,7 @@ export type Database = {
           phone?: string | null
           quality_score?: number | null
           role_guess?: string | null
+          salutation?: string | null
           service_area?: string | null
           source?: string
           source_id?: string | null
@@ -17436,10 +17442,13 @@ export type Database = {
           created_at: string
           email: string | null
           entity_type: string | null
+          first_name: string | null
           id: string
+          last_name: string | null
           order_id: string
           phone: string | null
           postal_code: string | null
+          salutation: string | null
           source_refs_json: Json | null
           suppression_reason: string | null
           validation_state: string | null
@@ -17457,10 +17466,13 @@ export type Database = {
           created_at?: string
           email?: string | null
           entity_type?: string | null
+          first_name?: string | null
           id?: string
+          last_name?: string | null
           order_id: string
           phone?: string | null
           postal_code?: string | null
+          salutation?: string | null
           source_refs_json?: Json | null
           suppression_reason?: string | null
           validation_state?: string | null
@@ -17478,10 +17490,13 @@ export type Database = {
           created_at?: string
           email?: string | null
           entity_type?: string | null
+          first_name?: string | null
           id?: string
+          last_name?: string | null
           order_id?: string
           phone?: string | null
           postal_code?: string | null
+          salutation?: string | null
           source_refs_json?: Json | null
           suppression_reason?: string | null
           validation_state?: string | null

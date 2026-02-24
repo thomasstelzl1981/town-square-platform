@@ -35,6 +35,9 @@ interface ResearchRequest {
 
 interface ContactResult {
   name: string;
+  salutation: string | null;
+  first_name: string | null;
+  last_name: string | null;
   email: string | null;
   phone: string | null;
   website: string | null;
@@ -82,6 +85,9 @@ async function searchGooglePlaces(
 
   return places.map((p: any) => ({
     name: p.displayName?.text || "",
+    salutation: null,
+    first_name: null,
+    last_name: null,
     email: null,
     phone: p.internationalPhoneNumber || p.nationalPhoneNumber || null,
     website: p.websiteUri || null,
@@ -134,6 +140,9 @@ async function searchApify(
 
     return items.map((item: any) => ({
       name: item.title || item.name || "",
+      salutation: null,
+      first_name: null,
+      last_name: null,
       email: item.email || item.emails?.[0] || null,
       phone: item.phone || item.phoneUnformatted || null,
       website: item.website || item.url || null,
@@ -231,6 +240,9 @@ async function searchApifyPortals(
 
     return items.map((item: any, idx: number) => ({
       name: item.title || item.broker || `Ergebnis ${idx + 1}`,
+      salutation: null,
+      first_name: null,
+      last_name: null,
       email: item.email || null,
       phone: item.phone || null,
       website: item.url
@@ -335,8 +347,12 @@ Aufgaben:
    - Anzahl der Quellen
    - Rating und Bewertungsanzahl
 4. Sortiere nach confidence absteigend
-${filters?.must_have_email ? "5. Filtere Einträge OHNE E-Mail heraus" : ""}
-${filters?.min_rating ? `5. Filtere Einträge mit Rating < ${filters.min_rating} heraus` : ""}
+5. Extrahiere wenn möglich den Ansprechpartner in separate Felder:
+   - salutation: "Herr" oder "Frau" (aus Kontext ableiten, sonst null)
+   - first_name: Vorname
+   - last_name: Nachname
+${filters?.must_have_email ? "6. Filtere Einträge OHNE E-Mail heraus" : ""}
+${filters?.min_rating ? `6. Filtere Einträge mit Rating < ${filters.min_rating} heraus` : ""}
 
 Antworte NUR mit dem JSON-Array der zusammengeführten Kontakte.`;
 
@@ -367,29 +383,32 @@ Antworte NUR mit dem JSON-Array der zusammengeführten Kontakte.`;
                 description: "Return merged and scored contact list",
                 parameters: {
                   type: "object",
-                  properties: {
-                    contacts: {
-                      type: "array",
-                      items: {
-                        type: "object",
-                        properties: {
-                          name: { type: "string" },
-                          email: { type: "string" },
-                          phone: { type: "string" },
-                          website: { type: "string" },
-                          address: { type: "string" },
-                          rating: { type: "number" },
-                          reviews_count: { type: "number" },
-                          confidence: { type: "number" },
-                          sources: {
-                            type: "array",
-                            items: { type: "string" },
+                    properties: {
+                      contacts: {
+                        type: "array",
+                        items: {
+                          type: "object",
+                          properties: {
+                            name: { type: "string" },
+                            salutation: { type: "string", description: "Herr or Frau" },
+                            first_name: { type: "string" },
+                            last_name: { type: "string" },
+                            email: { type: "string" },
+                            phone: { type: "string" },
+                            website: { type: "string" },
+                            address: { type: "string" },
+                            rating: { type: "number" },
+                            reviews_count: { type: "number" },
+                            confidence: { type: "number" },
+                            sources: {
+                              type: "array",
+                              items: { type: "string" },
+                            },
                           },
+                          required: ["name", "confidence", "sources"],
                         },
-                        required: ["name", "confidence", "sources"],
                       },
                     },
-                  },
                   required: ["contacts"],
                   additionalProperties: false,
                 },
@@ -415,6 +434,9 @@ Antworte NUR mit dem JSON-Array der zusammengeführten Kontakte.`;
       const parsed = JSON.parse(toolCall.function.arguments);
       return (parsed.contacts || []).map((c: any) => ({
         name: c.name || "",
+        salutation: c.salutation || null,
+        first_name: c.first_name || null,
+        last_name: c.last_name || null,
         email: c.email || null,
         phone: c.phone || null,
         website: c.website || null,
@@ -450,6 +472,9 @@ function deduplicateFallback(
       existing.address = existing.address || r.address;
       existing.rating = existing.rating || r.rating;
       existing.reviews_count = existing.reviews_count || r.reviews_count;
+      existing.salutation = existing.salutation || r.salutation;
+      existing.first_name = existing.first_name || r.first_name;
+      existing.last_name = existing.last_name || r.last_name;
       existing.sources = [...new Set([...existing.sources, ...r.sources])];
       existing.confidence = Math.min(
         100,

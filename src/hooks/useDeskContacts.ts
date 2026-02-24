@@ -179,11 +179,15 @@ export function useAdoptSoatResult(desk: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (result: SoatSearchResult) => {
+  const firstName = result.first_name || result.contact_person_name?.split(' ')[0] || null;
+      const lastName = result.last_name || result.contact_person_name?.split(' ').slice(1).join(' ') || null;
       const { error } = await supabase.from('contact_staging').insert({
-        first_name: result.contact_person_name?.split(' ')[0] || null,
-        last_name: result.contact_person_name?.split(' ').slice(1).join(' ') || null,
+        salutation: (result as any).salutation || null,
+        first_name: firstName,
+        last_name: lastName,
         email: result.email,
         company_name: result.company_name,
+        category: (result as any).category || null,
         source: 'soat',
         status: 'pending',
         desk,
