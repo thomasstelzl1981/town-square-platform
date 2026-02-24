@@ -147,13 +147,9 @@ export const zone1Admin: ZoneDefinition = {
     { path: "sales-desk/inbox", component: "SalesDeskInbox", title: "Inbox" },
     { path: "sales-desk/partner", component: "SalesDeskPartner", title: "Partner" },
     { path: "sales-desk/audit", component: "SalesDeskAudit", title: "Audit" },
-    // Lead Desk (MOD-10 Leadmanager) — 6-Tab Structure
+    // Lead Desk (MOD-10 Leadmanager) — 2-Tab Structure (Website Leads + Kampagnen)
     { path: "lead-desk", component: "LeadDeskRouter", title: "Lead Desk" },
-    { path: "lead-desk/kontakte", component: "LeadDeskKontakte", title: "Kontakte" },
-    { path: "lead-desk/pool", component: "LeadPoolPage", title: "Lead Pool" },
-    { path: "lead-desk/assignments", component: "LeadAssignmentsPage", title: "Zuweisungen" },
-    { path: "lead-desk/commissions", component: "LeadCommissionsPage", title: "Provisionen" },
-    { path: "lead-desk/monitor", component: "LeadMonitorPage", title: "Monitor" },
+    { path: "lead-desk/kampagnen", component: "LeadKampagnenDesk", title: "Kampagnen Leads" },
     // Projekt Desk (MOD-13 Projektmanager) — 4-Tab Structure
     { path: "projekt-desk", component: "ProjektDeskDashboard", title: "Projekt Desk" },
     { path: "projekt-desk/projekte", component: "ProjektDeskProjekte", title: "Projekte" },
