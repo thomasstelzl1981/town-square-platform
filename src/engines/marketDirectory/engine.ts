@@ -775,3 +775,62 @@ export function applySuppressionRules(
 
   return updated;
 }
+
+// ═══════════════════════════════════════════════════════════════
+// 21. DISCOVERY COST FUNCTIONS
+// ═══════════════════════════════════════════════════════════════
+
+import { DISCOVERY_COST_LIMITS, CREDIT_VALUE_EUR, REGION_COOLDOWN_DAYS } from './spec';
+import type { DiscoveryCostLimits } from './spec';
+
+/**
+ * Berechnet die Credit-Kosten für einen Batch basierend auf den verwendeten Providern.
+ */
+export function calcBatchCost(
+  providers: string[],
+  limits: DiscoveryCostLimits = DISCOVERY_COST_LIMITS,
+): number {
+  let cost = 0;
+  for (const p of providers) {
+    switch (p) {
+      case 'google_places': cost += limits.costPerGoogleCall; break;
+      case 'apify': cost += limits.costPerApifyCall; break;
+      case 'firecrawl': cost += limits.costPerFirecrawlBatch; break;
+      case 'ai_merge': cost += limits.costPerAiMerge; break;
+    }
+  }
+  return Math.min(cost, limits.maxCreditsPerBatch);
+}
+
+/**
+ * Prüft ob das Tagesbudget noch ausreicht.
+ */
+export function checkDailyBudget(
+  usedToday: number,
+  limit: number = DISCOVERY_COST_LIMITS.maxCreditsPerDay,
+): { canProceed: boolean; remaining: number; isWarning: boolean } {
+  const remaining = limit - usedToday;
+  return {
+    canProceed: remaining > 0,
+    remaining: Math.max(0, remaining),
+    isWarning: usedToday >= DISCOVERY_COST_LIMITS.warningThreshold,
+  };
+}
+
+/**
+ * Berechnet das Cooldown-Ende für eine Region nach einem Scan.
+ */
+export function calcCooldownEnd(
+  scannedAt: Date = new Date(),
+  cooldownDays: number = REGION_COOLDOWN_DAYS,
+): string {
+  const end = new Date(scannedAt.getTime() + cooldownDays * 24 * 60 * 60 * 1000);
+  return end.toISOString();
+}
+
+/**
+ * Berechnet EUR-Kosten aus Credits.
+ */
+export function creditsToEur(credits: number): number {
+  return Math.round(credits * CREDIT_VALUE_EUR * 100) / 100;
+}

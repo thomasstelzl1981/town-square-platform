@@ -241,3 +241,6 @@ verify_jwt = false
 
 [functions.sot-ki-browser]
 verify_jwt = false
+
+[functions.sot-discovery-scheduler]
+verify_jwt = false

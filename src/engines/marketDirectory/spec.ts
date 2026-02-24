@@ -538,3 +538,47 @@ export const OUTREACH_LIMITS = {
   minDelayBetweenSendsMs: 3000,
   maxRetriesPerMessage: 3,
 } as const;
+
+// ═══════════════════════════════════════════════════════════════
+// 11. DISCOVERY COST LIMITS & RUN LOG
+// ═══════════════════════════════════════════════════════════════
+
+export interface DiscoveryCostLimits {
+  maxCreditsPerDay: number;
+  maxCreditsPerBatch: number;
+  warningThreshold: number;
+  costPerGoogleCall: number;
+  costPerApifyCall: number;
+  costPerFirecrawlBatch: number;
+  costPerAiMerge: number;
+}
+
+export const DISCOVERY_COST_LIMITS: DiscoveryCostLimits = {
+  maxCreditsPerDay: 200,
+  maxCreditsPerBatch: 8,
+  warningThreshold: 150,
+  costPerGoogleCall: 1,
+  costPerApifyCall: 2,
+  costPerFirecrawlBatch: 1,
+  costPerAiMerge: 2,
+};
+
+export interface DiscoveryRunLogEntry {
+  runDate: string;
+  tenantId: string;
+  regionName: string;
+  categoryCode: string;
+  rawFound: number;
+  duplicatesSkipped: number;
+  approvedCount: number;
+  creditsUsed: number;
+  costEur: number;
+  providerCalls: Record<string, number>;
+  errorMessage?: string;
+}
+
+/** Cooldown duration in days after scanning a region+category */
+export const REGION_COOLDOWN_DAYS = 3;
+
+/** Credit cost per contact value (1 Credit = 0.25 EUR) */
+export const CREDIT_VALUE_EUR = 0.25;

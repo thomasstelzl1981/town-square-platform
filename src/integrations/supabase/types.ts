@@ -5989,6 +5989,118 @@ export type Database = {
           },
         ]
       }
+      discovery_region_queue: {
+        Row: {
+          approved_contacts: number
+          cooldown_until: string | null
+          created_at: string
+          id: string
+          last_category_index: number
+          last_scanned_at: string | null
+          population: number
+          postal_code_prefix: string
+          priority_score: number
+          region_name: string
+          tenant_id: string
+          total_contacts: number
+          updated_at: string
+        }
+        Insert: {
+          approved_contacts?: number
+          cooldown_until?: string | null
+          created_at?: string
+          id?: string
+          last_category_index?: number
+          last_scanned_at?: string | null
+          population?: number
+          postal_code_prefix: string
+          priority_score?: number
+          region_name: string
+          tenant_id: string
+          total_contacts?: number
+          updated_at?: string
+        }
+        Update: {
+          approved_contacts?: number
+          cooldown_until?: string | null
+          created_at?: string
+          id?: string
+          last_category_index?: number
+          last_scanned_at?: string | null
+          population?: number
+          postal_code_prefix?: string
+          priority_score?: number
+          region_name?: string
+          tenant_id?: string
+          total_contacts?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "discovery_region_queue_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      discovery_run_log: {
+        Row: {
+          approved_count: number
+          category_code: string
+          cost_eur: number
+          created_at: string
+          credits_used: number
+          duplicates_skipped: number
+          error_message: string | null
+          id: string
+          provider_calls_json: Json | null
+          raw_found: number
+          region_name: string
+          run_date: string
+          tenant_id: string
+        }
+        Insert: {
+          approved_count?: number
+          category_code: string
+          cost_eur?: number
+          created_at?: string
+          credits_used?: number
+          duplicates_skipped?: number
+          error_message?: string | null
+          id?: string
+          provider_calls_json?: Json | null
+          raw_found?: number
+          region_name: string
+          run_date?: string
+          tenant_id: string
+        }
+        Update: {
+          approved_count?: number
+          category_code?: string
+          cost_eur?: number
+          created_at?: string
+          credits_used?: number
+          duplicates_skipped?: number
+          error_message?: string | null
+          id?: string
+          provider_calls_json?: Json | null
+          raw_found?: number
+          region_name?: string
+          run_date?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "discovery_run_log_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       doc_type_catalog: {
         Row: {
           anchors: Json | null
@@ -17446,6 +17558,7 @@ export type Database = {
           contact_person_role: string | null
           country: string | null
           created_at: string
+          dedupe_hash: string | null
           email: string | null
           entity_type: string | null
           first_name: string | null
@@ -17470,6 +17583,7 @@ export type Database = {
           contact_person_role?: string | null
           country?: string | null
           created_at?: string
+          dedupe_hash?: string | null
           email?: string | null
           entity_type?: string | null
           first_name?: string | null
@@ -17494,6 +17608,7 @@ export type Database = {
           contact_person_role?: string | null
           country?: string | null
           created_at?: string
+          dedupe_hash?: string | null
           email?: string | null
           entity_type?: string | null
           first_name?: string | null
