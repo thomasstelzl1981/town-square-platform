@@ -18549,46 +18549,67 @@ export type Database = {
       social_templates: {
         Row: {
           active: boolean
+          approved: boolean | null
+          approved_at: string | null
+          approved_by: string | null
           brand_context: string
+          campaign_defaults: Json | null
           ci_rules: Json | null
           code: string
           created_at: string
+          description: string | null
           editable_fields_schema: Json | null
           format_type: string
           id: string
           image_url: string | null
+          image_urls: Json | null
           name: string
           preview_document_id: string | null
+          target_audience: Json | null
           tenant_id: string
           updated_at: string
         }
         Insert: {
           active?: boolean
+          approved?: boolean | null
+          approved_at?: string | null
+          approved_by?: string | null
           brand_context?: string
+          campaign_defaults?: Json | null
           ci_rules?: Json | null
           code: string
           created_at?: string
+          description?: string | null
           editable_fields_schema?: Json | null
           format_type?: string
           id?: string
           image_url?: string | null
+          image_urls?: Json | null
           name: string
           preview_document_id?: string | null
+          target_audience?: Json | null
           tenant_id: string
           updated_at?: string
         }
         Update: {
           active?: boolean
+          approved?: boolean | null
+          approved_at?: string | null
+          approved_by?: string | null
           brand_context?: string
+          campaign_defaults?: Json | null
           ci_rules?: Json | null
           code?: string
           created_at?: string
+          description?: string | null
           editable_fields_schema?: Json | null
           format_type?: string
           id?: string
           image_url?: string | null
+          image_urls?: Json | null
           name?: string
           preview_document_id?: string | null
+          target_audience?: Json | null
           tenant_id?: string
           updated_at?: string
         }
