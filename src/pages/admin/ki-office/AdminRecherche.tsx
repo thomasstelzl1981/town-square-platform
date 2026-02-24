@@ -227,15 +227,9 @@ export default function AdminRecherche() {
   /** Engine-basierter Confidence Score für ein Ergebnis */
   const getEngineScore = (r: SoatSearchResult) => {
     const norm = normalizeContact({
-      salutation: r.salutation,
-      first_name: r.first_name,
-      last_name: r.last_name,
-      company_name: r.company_name,
-      phone: r.phone,
-      email: r.email,
-      website_url: r.website_url,
-      postal_code: r.postal_code,
-      city: r.city,
+      salutation: r.salutation, first_name: r.first_name, last_name: r.last_name,
+      company_name: r.company_name, phone: r.phone, email: r.email,
+      website_url: r.website_url, postal_code: r.postal_code, city: r.city,
       contact_person_name: r.contact_person_name,
     });
     const { score } = calcConfidence(norm.normalized);
@@ -392,130 +386,128 @@ export default function AdminRecherche() {
         </CardContent>
       </Card>
 
-      {/* ═══ 3. ERGEBNIS-FILTER ═══ */}
-      {selectedOrderId && (
-        <Card>
-          <CardContent className="pt-4">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-sm font-medium">{results.length} Ergebnisse · {filteredResults.length} angezeigt</span>
-              <div className="flex items-center gap-2">
-                {selectedResults.size > 0 && (
-                  <Button size="sm" onClick={handleOpenImportPreview} disabled={isCheckingDupes}>
-                    <Upload className="h-3.5 w-3.5 mr-1.5" />{selectedResults.size} importieren
-                  </Button>
-                )}
-                <Button variant="outline" size="sm" onClick={handleExport}>
-                  <FileSpreadsheet className="h-3.5 w-3.5 mr-1.5" />Export
+      {/* ═══ 3. ERGEBNIS-FILTER (IMMER SICHTBAR) ═══ */}
+      <Card>
+        <CardContent className="pt-4">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-sm font-medium">{results.length} Ergebnisse · {filteredResults.length} angezeigt</span>
+            <div className="flex items-center gap-2">
+              {selectedResults.size > 0 && (
+                <Button size="sm" onClick={handleOpenImportPreview} disabled={isCheckingDupes}>
+                  <Upload className="h-3.5 w-3.5 mr-1.5" />{selectedResults.size} importieren
                 </Button>
-              </div>
+              )}
+              <Button variant="outline" size="sm" onClick={handleExport} disabled={filteredResults.length === 0}>
+                <FileSpreadsheet className="h-3.5 w-3.5 mr-1.5" />Export
+              </Button>
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-              <div className="relative">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                <Input value={filterText} onChange={e => setFilterText(e.target.value)} placeholder="Freitext..." className="pl-8 h-9 text-sm" />
-              </div>
-              <Select value={filterCategory} onValueChange={setFilterCategory}>
-                <SelectTrigger className="h-9"><SelectValue placeholder="Kategorie" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Alle Kategorien</SelectItem>
-                  {CATEGORY_OPTIONS.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger className="h-9"><SelectValue placeholder="Status" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Alle Status</SelectItem>
-                  {Object.entries(VALIDATION_STATES).map(([k, v]) => <SelectItem key={k} value={k}>{v.label}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              <Input value={filterCity} onChange={e => setFilterCity(e.target.value)} placeholder="Stadt..." className="h-9 text-sm" />
-              <Select value={filterHasEmail} onValueChange={setFilterHasEmail}>
-                <SelectTrigger className="h-9"><SelectValue placeholder="E-Mail" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Alle</SelectItem>
-                  <SelectItem value="yes">Mit E-Mail</SelectItem>
-                  <SelectItem value="no">Ohne E-Mail</SelectItem>
-                </SelectContent>
-              </Select>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input value={filterText} onChange={e => setFilterText(e.target.value)} placeholder="Freitext..." className="pl-8 h-9 text-sm" />
             </div>
-          </CardContent>
-        </Card>
-      )}
+            <Select value={filterCategory} onValueChange={setFilterCategory}>
+              <SelectTrigger className="h-9"><SelectValue placeholder="Kategorie" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Alle Kategorien</SelectItem>
+                {CATEGORY_OPTIONS.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={filterStatus} onValueChange={setFilterStatus}>
+              <SelectTrigger className="h-9"><SelectValue placeholder="Status" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Alle Status</SelectItem>
+                {Object.entries(VALIDATION_STATES).map(([k, v]) => <SelectItem key={k} value={k}>{v.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Input value={filterCity} onChange={e => setFilterCity(e.target.value)} placeholder="Stadt..." className="h-9 text-sm" />
+            <Select value={filterHasEmail} onValueChange={setFilterHasEmail}>
+              <SelectTrigger className="h-9"><SelectValue placeholder="E-Mail" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Alle</SelectItem>
+                <SelectItem value="yes">Mit E-Mail</SelectItem>
+                <SelectItem value="no">Ohne E-Mail</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </CardContent>
+      </Card>
 
-      {/* ═══ 4. ERGEBNISTABELLE ═══ */}
-      {selectedOrderId && (
-        <div className="overflow-x-auto border rounded-md">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-10">
-                  <Checkbox checked={selectedResults.size === filteredResults.length && filteredResults.length > 0} onCheckedChange={toggleAll} />
-                </TableHead>
-                <TableHead className="min-w-[60px]">Anrede</TableHead>
-                <TableHead className="min-w-[100px]">Vorname</TableHead>
-                <TableHead className="min-w-[100px]">Nachname</TableHead>
-                <TableHead className="min-w-[140px]">Firma</TableHead>
-                <TableHead className="min-w-[120px]">Kategorie</TableHead>
-                <TableHead className="min-w-[100px]">Position</TableHead>
-                <TableHead className="min-w-[170px]">E-Mail</TableHead>
-                <TableHead className="min-w-[110px]">Telefon</TableHead>
-                <TableHead className="min-w-[60px]">PLZ</TableHead>
-                <TableHead className="min-w-[100px]">Stadt</TableHead>
-                <TableHead className="min-w-[140px]">Website</TableHead>
-                <TableHead className="min-w-[70px]">Score</TableHead>
-                <TableHead className="min-w-[90px]">Status</TableHead>
-                <TableHead className="w-24">Aktionen</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredResults.length === 0 ? (
-                <TableRow><TableCell colSpan={15} className="text-center py-8 text-muted-foreground">Keine Ergebnisse</TableCell></TableRow>
-              ) : filteredResults.map(r => {
-                const vs = VALIDATION_STATES[r.validation_state] || VALIDATION_STATES.candidate;
-                const cat = CATEGORY_OPTIONS.find(c => c.value === r.category);
-                const engineScore = getEngineScore(r);
-                return (
-                  <TableRow key={r.id} className="hover:bg-muted/50">
-                    <TableCell><Checkbox checked={selectedResults.has(r.id)} onCheckedChange={() => toggleResult(r.id)} /></TableCell>
-                    <TableCell className="text-xs">{r.salutation || '—'}</TableCell>
-                    <TableCell className="text-sm">{r.first_name || '—'}</TableCell>
-                    <TableCell className="text-sm font-medium">{r.last_name || '—'}</TableCell>
-                    <TableCell className="text-sm">{r.company_name || '—'}</TableCell>
-                    <TableCell>{cat ? <Badge variant="outline" className={`text-xs ${cat.className}`}>{cat.label}</Badge> : <span className="text-xs text-muted-foreground">{r.category || '—'}</span>}</TableCell>
-                    <TableCell className="text-xs">{r.contact_person_role || '—'}</TableCell>
-                    <TableCell className="text-xs">{r.email || '—'}</TableCell>
-                    <TableCell className="text-xs">{r.phone || '—'}</TableCell>
-                    <TableCell className="text-xs">{r.postal_code || '—'}</TableCell>
-                    <TableCell className="text-xs">{r.city || '—'}</TableCell>
-                    <TableCell className="text-xs">{r.website_url ? <a href={r.website_url} target="_blank" rel="noopener noreferrer" className="text-primary underline truncate block max-w-[120px]">{r.website_url.replace(/^https?:\/\//, '')}</a> : '—'}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className={`text-xs ${engineScore >= 85 ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : engineScore >= 60 ? 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200' : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'}`}>
-                        {engineScore}%
-                      </Badge>
-                    </TableCell>
-                    <TableCell><Badge variant="outline" className={`text-xs ${vs.color}`}>{vs.label}</Badge></TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-0.5">
-                        <Button variant="ghost" size="icon" className="h-7 w-7" title="Validieren" onClick={() => handleValidate(r, 'validated')}>
-                          <ShieldCheck className="h-3.5 w-3.5 text-green-600" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7" title="Review" onClick={() => handleValidate(r, 'needs_review')}>
-                          <ShieldAlert className="h-3.5 w-3.5 text-amber-600" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7" title="Ablehnen" onClick={() => handleValidate(r, 'rejected')}>
-                          <MinusCircle className="h-3.5 w-3.5 text-red-600" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </div>
-      )}
+      {/* ═══ 4. ERGEBNISTABELLE (IMMER SICHTBAR) ═══ */}
+      <div className="overflow-x-auto border rounded-md">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-10">
+                <Checkbox checked={selectedResults.size === filteredResults.length && filteredResults.length > 0} onCheckedChange={toggleAll} />
+              </TableHead>
+              <TableHead className="min-w-[60px]">Anrede</TableHead>
+              <TableHead className="min-w-[100px]">Vorname</TableHead>
+              <TableHead className="min-w-[100px]">Nachname</TableHead>
+              <TableHead className="min-w-[140px]">Firma</TableHead>
+              <TableHead className="min-w-[120px]">Kategorie</TableHead>
+              <TableHead className="min-w-[100px]">Position</TableHead>
+              <TableHead className="min-w-[170px]">E-Mail</TableHead>
+              <TableHead className="min-w-[110px]">Telefon</TableHead>
+              <TableHead className="min-w-[60px]">PLZ</TableHead>
+              <TableHead className="min-w-[100px]">Stadt</TableHead>
+              <TableHead className="min-w-[140px]">Website</TableHead>
+              <TableHead className="min-w-[70px]">Score</TableHead>
+              <TableHead className="min-w-[90px]">Status</TableHead>
+              <TableHead className="w-24">Aktionen</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {!selectedOrderId ? (
+              <TableRow><TableCell colSpan={15} className="text-center py-8 text-muted-foreground">Bitte oben einen Auftrag auswählen oder neue Suche starten</TableCell></TableRow>
+            ) : filteredResults.length === 0 ? (
+              <TableRow><TableCell colSpan={15} className="text-center py-8 text-muted-foreground">Keine Ergebnisse für diesen Auftrag</TableCell></TableRow>
+            ) : filteredResults.map(r => {
+              const vs = VALIDATION_STATES[r.validation_state] || VALIDATION_STATES.candidate;
+              const cat = CATEGORY_OPTIONS.find(c => c.value === r.category);
+              const engineScore = getEngineScore(r);
+              return (
+                <TableRow key={r.id} className="hover:bg-muted/50">
+                  <TableCell><Checkbox checked={selectedResults.has(r.id)} onCheckedChange={() => toggleResult(r.id)} /></TableCell>
+                  <TableCell className="text-xs">{r.salutation || '—'}</TableCell>
+                  <TableCell className="text-sm">{r.first_name || '—'}</TableCell>
+                  <TableCell className="text-sm font-medium">{r.last_name || '—'}</TableCell>
+                  <TableCell className="text-sm">{r.company_name || '—'}</TableCell>
+                  <TableCell>{cat ? <Badge variant="outline" className={`text-xs ${cat.className}`}>{cat.label}</Badge> : <span className="text-xs text-muted-foreground">{r.category || '—'}</span>}</TableCell>
+                  <TableCell className="text-xs">{r.contact_person_role || '—'}</TableCell>
+                  <TableCell className="text-xs">{r.email || '—'}</TableCell>
+                  <TableCell className="text-xs">{r.phone || '—'}</TableCell>
+                  <TableCell className="text-xs">{r.postal_code || '—'}</TableCell>
+                  <TableCell className="text-xs">{r.city || '—'}</TableCell>
+                  <TableCell className="text-xs">{r.website_url ? <a href={r.website_url} target="_blank" rel="noopener noreferrer" className="text-primary underline truncate block max-w-[120px]">{r.website_url.replace(/^https?:\/\//, '')}</a> : '—'}</TableCell>
+                  <TableCell>
+                    <Badge variant="outline" className={`text-xs ${engineScore >= 85 ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : engineScore >= 60 ? 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200' : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'}`}>
+                      {engineScore}%
+                    </Badge>
+                  </TableCell>
+                  <TableCell><Badge variant="outline" className={`text-xs ${vs.color}`}>{vs.label}</Badge></TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-0.5">
+                      <Button variant="ghost" size="icon" className="h-7 w-7" title="Validieren" onClick={() => handleValidate(r, 'validated')}>
+                        <ShieldCheck className="h-3.5 w-3.5 text-green-600" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-7 w-7" title="Review" onClick={() => handleValidate(r, 'needs_review')}>
+                        <ShieldAlert className="h-3.5 w-3.5 text-amber-600" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-7 w-7" title="Ablehnen" onClick={() => handleValidate(r, 'rejected')}>
+                        <MinusCircle className="h-3.5 w-3.5 text-red-600" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </div>
 
-      {/* ═══ IMPORT PREVIEW DIALOG ═══ */}
+      {/* ═══ IMPORT PREVIEW ═══ */}
       {showImportPreview && (
         <Card className="border-primary/20">
           <CardHeader className="pb-3">
