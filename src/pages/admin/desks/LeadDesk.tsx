@@ -1,6 +1,6 @@
 /**
  * Lead Desk — Zone 1 Operative Desk for MOD-10 (Leadmanager)
- * 2 Tabs: Website Leads (Z3) + Kampagnen Leads (Z2)
+ * 3 Tabs: Website Leads (Z3) + Kampagnen (social_mandates) + Brand-Templates
  */
 import { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
@@ -10,10 +10,12 @@ import { OperativeDeskShell } from '@/components/admin/desks/OperativeDeskShell'
 
 const LeadWebsiteLeads = lazy(() => import('../lead-desk/LeadWebsiteLeads'));
 const LeadKampagnenDesk = lazy(() => import('../lead-desk/LeadKampagnenDesk'));
+const LeadBrandTemplates = lazy(() => import('../lead-desk/LeadBrandTemplates'));
 
 const TABS = [
   { value: 'website', label: 'Website Leads', path: '' },
-  { value: 'kampagnen', label: 'Kampagnen Leads', path: 'kampagnen' },
+  { value: 'kampagnen', label: 'Kampagnen', path: 'kampagnen' },
+  { value: 'templates', label: 'Brand-Templates', path: 'templates' },
 ];
 
 function Loading() {
@@ -40,7 +42,7 @@ export default function LeadDesk() {
   return (
     <OperativeDeskShell
       title="Lead Desk"
-      subtitle="Website-Leads (Zone 3) · Kampagnen (Zone 2)"
+      subtitle="Website-Leads (Zone 3) · Kampagnen · Brand-Templates"
       moduleCode="MOD-10"
       zoneFlow={{ z3Surface: 'Kaufy / SoT Website', z1Desk: 'Lead Desk', z2Manager: 'MOD-10 Leadmanager' }}
       navigation={navigation}
@@ -49,6 +51,7 @@ export default function LeadDesk() {
         <Routes>
           <Route index element={<LeadWebsiteLeads />} />
           <Route path="kampagnen" element={<LeadKampagnenDesk />} />
+          <Route path="templates" element={<LeadBrandTemplates />} />
           <Route path="*" element={<Navigate to="/admin/lead-desk" replace />} />
         </Routes>
       </Suspense>

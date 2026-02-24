@@ -1,6 +1,6 @@
 /**
- * LeadKampagnenDesk — Tab 2: Kampagnen Leads (Zone 2)
- * Admin-Sicht auf Ad Campaigns + Social Mandates
+ * LeadKampagnenDesk — Tab 2: Kampagnen (Zone 1)
+ * Admin-Sicht auf social_mandates — alle Partner, alle Brands
  */
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
@@ -8,31 +8,33 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Loader2, Megaphone, Users, TrendingUp, Info } from 'lucide-react';
+import { Loader2, FileText, Users, TrendingUp, DollarSign, Info } from 'lucide-react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 
 export default function LeadKampagnenDesk() {
   const { isPlatformAdmin } = useAuth();
   const [loading, setLoading] = useState(true);
-  const [campaigns, setCampaigns] = useState<any[]>([]);
-  const [campaignLeadCounts, setCampaignLeadCounts] = useState<Record<string, number>>({});
+  const [mandates, setMandates] = useState<any[]>([]);
+  const [leadCounts, setLeadCounts] = useState<Record<string, number>>({});
 
   useEffect(() => {
     if (!isPlatformAdmin) return;
     (async () => {
       try {
-        const [campaignsRes, campaignLeadsRes] = await Promise.all([
-          supabase.from('ad_campaigns').select('*').order('created_at', { ascending: false }),
-          supabase.from('ad_campaign_leads').select('campaign_id'),
+        const [mandatesRes, leadsRes] = await Promise.all([
+          supabase.from('social_mandates').select('*').order('created_at', { ascending: false }),
+          supabase.from('social_leads').select('mandate_id'),
         ]);
-        setCampaigns(campaignsRes.data || []);
+        setMandates(mandatesRes.data || []);
 
         const counts: Record<string, number> = {};
-        (campaignLeadsRes.data || []).forEach(cl => {
-          counts[cl.campaign_id] = (counts[cl.campaign_id] || 0) + 1;
+        (leadsRes.data || []).forEach((l: any) => {
+          if (l.mandate_id) {
+            counts[l.mandate_id] = (counts[l.mandate_id] || 0) + 1;
+          }
         });
-        setCampaignLeadCounts(counts);
+        setLeadCounts(counts);
       } catch (err) {
         console.error('LeadKampagnenDesk fetch:', err);
       } finally {
@@ -44,37 +46,50 @@ export default function LeadKampagnenDesk() {
   if (!isPlatformAdmin) return <div className="flex items-center justify-center h-64"><p className="text-muted-foreground">Nur für Platform Admins</p></div>;
   if (loading) return <div className="flex items-center justify-center p-12"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>;
 
-  const activeCampaigns = campaigns.filter(c => c.status === 'active').length;
-  const totalLeads = Object.values(campaignLeadCounts).reduce((a, b) => a + b, 0);
+  const submittedOrLive = mandates.filter(m => m.status === 'submitted' || m.status === 'live').length;
+  const totalLeads = Object.values(leadCounts).reduce((a, b) => a + b, 0);
+  const totalBudget = mandates.reduce((sum, m) => sum + (m.budget_total_cents || 0), 0);
 
   const kpis = [
-    { label: 'Kampagnen gesamt', value: campaigns.length, icon: Megaphone, color: 'text-primary' },
-    { label: 'Aktiv', value: activeCampaigns, icon: TrendingUp, color: 'text-emerald-500' },
+    { label: 'Mandates gesamt', value: mandates.length, icon: FileText, color: 'text-primary' },
+    { label: 'Aktiv / Eingereicht', value: submittedOrLive, icon: TrendingUp, color: 'text-emerald-500' },
     { label: 'Generierte Leads', value: totalLeads, icon: Users, color: 'text-blue-500' },
+    { label: 'Gesamtbudget', value: `${(totalBudget / 100).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}`, icon: DollarSign, color: 'text-amber-500' },
   ];
 
-  function getStatusBadge(status: string | null) {
+  function getStatusBadge(status: string) {
     const map: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
-      active: { label: 'Aktiv', variant: 'default' },
+      submitted: { label: 'Eingereicht', variant: 'default' },
+      live: { label: 'Live', variant: 'default' },
       draft: { label: 'Entwurf', variant: 'outline' },
       paused: { label: 'Pausiert', variant: 'secondary' },
       completed: { label: 'Abgeschlossen', variant: 'secondary' },
-      cancelled: { label: 'Abgebrochen', variant: 'destructive' },
+      stopped: { label: 'Gestoppt', variant: 'destructive' },
     };
-    const m = map[status || ''];
-    return m ? <Badge variant={m.variant}>{m.label}</Badge> : <Badge variant="outline">{status || '—'}</Badge>;
+    const m = map[status];
+    return m ? <Badge variant={m.variant}>{m.label}</Badge> : <Badge variant="outline">{status}</Badge>;
+  }
+
+  function getBrandBadge(brand: string) {
+    const colors: Record<string, string> = {
+      kaufy: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300',
+      futureroom: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
+      acquiary: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
+      projekt: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300',
+    };
+    return <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${colors[brand] || 'bg-muted text-muted-foreground'}`}>{brand}</span>;
   }
 
   return (
     <div className="space-y-6">
-      {/* Meta API Hint */}
+      {/* Info */}
       <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/50 px-4 py-3 text-sm text-muted-foreground">
         <Info className="h-4 w-4 shrink-0" />
-        <span>Meta API Anbindung in Vorbereitung — Kampagnen werden derzeit manuell über den Leadmanager (Zone 2) erstellt.</span>
+        <span>Veröffentlichung wird in einem späteren Entwicklungsschritt implementiert. Aktuell dokumentarische Übersicht aller gebuchten Kampagnen aus Zone 2.</span>
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {kpis.map(k => (
           <Card key={k.label}>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -88,41 +103,43 @@ export default function LeadKampagnenDesk() {
         ))}
       </div>
 
-      {/* Campaigns Table */}
+      {/* Mandates Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Kampagnen-Übersicht</CardTitle>
-          <CardDescription>{campaigns.length} Kampagnen aus Zone 2 Leadmanager</CardDescription>
+          <CardTitle>Kampagnen-Mandates</CardTitle>
+          <CardDescription>{mandates.length} Mandates aus Zone 2 Leadmanager (alle Partner)</CardDescription>
         </CardHeader>
         <CardContent>
-          {campaigns.length === 0 ? (
+          {mandates.length === 0 ? (
             <div className="text-center py-8">
-              <Megaphone className="h-12 w-12 mx-auto text-muted-foreground/50" />
-              <p className="mt-2 text-muted-foreground">Keine Kampagnen vorhanden</p>
-              <p className="text-xs text-muted-foreground mt-1">Kampagnen werden im Leadmanager (Zone 2) erstellt.</p>
+              <FileText className="h-12 w-12 mx-auto text-muted-foreground/50" />
+              <p className="mt-2 text-muted-foreground">Keine Kampagnen-Mandates vorhanden</p>
+              <p className="text-xs text-muted-foreground mt-1">Mandates werden im Leadmanager (Zone 2) gebucht.</p>
             </div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Kampagne</TableHead>
-                  <TableHead>Typ</TableHead>
-                  <TableHead>Plattform</TableHead>
+                  <TableHead>Partner</TableHead>
+                  <TableHead>Brand</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Budget</TableHead>
                   <TableHead>Leads</TableHead>
                   <TableHead>Erstellt</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {campaigns.map(c => (
-                  <TableRow key={c.id}>
-                    <TableCell className="font-medium">{c.name}</TableCell>
-                    <TableCell><Badge variant="outline">{c.campaign_type || '—'}</Badge></TableCell>
-                    <TableCell>{c.platform || '—'}</TableCell>
-                    <TableCell>{getStatusBadge(c.status)}</TableCell>
-                    <TableCell className="font-mono">{campaignLeadCounts[c.id] || 0}</TableCell>
+                {mandates.map(m => (
+                  <TableRow key={m.id}>
+                    <TableCell className="font-medium">{m.partner_display_name || '—'}</TableCell>
+                    <TableCell>{getBrandBadge(m.brand_context)}</TableCell>
+                    <TableCell>{getStatusBadge(m.status)}</TableCell>
+                    <TableCell className="font-mono">
+                      {m.budget_total_cents ? (m.budget_total_cents / 100).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' }) : '—'}
+                    </TableCell>
+                    <TableCell className="font-mono">{leadCounts[m.id] || 0}</TableCell>
                     <TableCell className="text-muted-foreground">
-                      {c.created_at ? format(new Date(c.created_at), 'dd.MM.yyyy', { locale: de }) : '—'}
+                      {m.created_at ? format(new Date(m.created_at), 'dd.MM.yyyy', { locale: de }) : '—'}
                     </TableCell>
                   </TableRow>
                 ))}
