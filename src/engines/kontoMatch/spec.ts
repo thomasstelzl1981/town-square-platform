@@ -273,23 +273,8 @@ export interface DetectedContract {
   homeId?: string;  // Required for miety_contracts (home assignment)
 }
 
-export const CATEGORY_TARGET_MAP: Record<TransactionCategory, {
-  table: ContractTargetTable | null;
-  label: string;
-}> = {
-  [TransactionCategory.VERSICHERUNG]: { table: 'insurance_contracts', label: 'Versicherung' },
-  [TransactionCategory.DARLEHEN]: { table: null, label: 'Darlehen (übersprungen)' },
-  [TransactionCategory.HAUSGELD]: { table: null, label: 'Hausgeld (übersprungen)' },
-  [TransactionCategory.GRUNDSTEUER]: { table: null, label: 'Grundsteuer (übersprungen)' },
-  [TransactionCategory.MIETE]: { table: null, label: 'Miete (übersprungen)' },
-  [TransactionCategory.GEHALT]: { table: null, label: 'Gehalt (übersprungen)' },
-  [TransactionCategory.INSTANDHALTUNG]: { table: null, label: 'Instandhaltung (übersprungen)' },
-  [TransactionCategory.EINSPEISEVERGUETUNG]: { table: null, label: 'Einspeisung (übersprungen)' },
-  [TransactionCategory.WARTUNG]: { table: null, label: 'Wartung (übersprungen)' },
-  [TransactionCategory.PACHT]: { table: null, label: 'Pacht (übersprungen)' },
-  [TransactionCategory.SONSTIG_EINGANG]: { table: null, label: 'Sonstiger Eingang (übersprungen)' },
-  [TransactionCategory.SONSTIG_AUSGANG]: { table: 'user_subscriptions', label: 'Abo' },
-};
+// (CATEGORY_TARGET_MAP removed — dead code, cleaned up 2026-02-24)
+
 
 export const ENERGY_PATTERNS: string[] = [
   'stadtwerke', 'swm', 'eon', 'e.on', 'vattenfall', 'rwe', 'enbw',
