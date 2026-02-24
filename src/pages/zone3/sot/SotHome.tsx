@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSotTheme } from '@/hooks/useSotTheme';
+import { Brand } from '@/components/ui/brand';
 import sotHeroDashboard from '@/assets/sot-hero-dashboard.jpg';
 import sotAiIntelligence from '@/assets/sot-ai-intelligence.jpg';
 import sotWorkspace from '@/assets/sot-workspace.jpg';
@@ -101,7 +102,7 @@ const areas = [
     modules: [
       { icon: FolderOpen, name: 'DMS', desc: 'Datenraum, Posteingang, KI-Sortierung' },
       { icon: Users, name: 'Stammdaten', desc: 'Profile, Kontakte, Verträge, Sync' },
-      { icon: Brain, name: 'Armstrong', desc: 'KI-Co-Pilot für Ihren gesamten Datenraum' },
+      { icon: Brain, name: <Brand>Armstrong</Brand>, desc: 'KI-Co-Pilot für Ihren gesamten Datenraum' },
     ],
   },
 ];
@@ -125,7 +126,7 @@ const steps = [
   { num: '01', title: 'Registrieren', desc: 'Kostenfrei in 30 Sekunden. Keine Kreditkarte.', icon: Rocket },
   { num: '02', title: 'Module aktivieren', desc: 'Wählen Sie, was Sie brauchen.', icon: Zap },
   { num: '03', title: 'Datenraum befüllen', desc: 'Importieren, scannen oder Magic Intake.', icon: FileText },
-  { num: '04', title: 'KI arbeiten lassen', desc: 'Armstrong organisiert und automatisiert.', icon: Brain },
+  { num: '04', title: 'KI arbeiten lassen', desc: <><Brand>Armstrong</Brand> organisiert und automatisiert.</>, icon: Brain },
 ];
 
 /* ── Scroll animation ── */
@@ -350,9 +351,9 @@ export default function SotHome() {
                   {/* Modules grid */}
                   <div className="p-6 sm:p-8">
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {area.modules.map((mod) => (
+                      {area.modules.map((mod, modIdx) => (
                         <div 
-                          key={mod.name} 
+                          key={modIdx} 
                           className={cn(
                             'flex items-start gap-3.5 p-4 rounded-2xl transition-all duration-200 group cursor-default',
                             isDark ? 'hover:bg-muted/30' : 'hover:bg-muted/50'
@@ -405,7 +406,7 @@ export default function SotHome() {
             <div className="max-w-2xl">
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-violet-500/20 backdrop-blur-sm border border-violet-400/30 mb-6 text-xs font-bold text-violet-300 tracking-wider uppercase">
                 <Brain className="w-3.5 h-3.5" />
-                Armstrong Intelligence
+                <Brand>Armstrong</Brand> Intelligence
               </div>
 
               <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white tracking-tight leading-[1.1]">
@@ -417,7 +418,7 @@ export default function SotHome() {
               </h2>
 
               <p className="mt-6 text-lg text-white/60 leading-relaxed">
-                Kein manuelles Hochladen. Kein Copy-Paste. Armstrong liest Ihren gesamten Datenraum — 
+                Kein manuelles Hochladen. Kein Copy-Paste. <Brand>Armstrong</Brand> liest Ihren gesamten Datenraum — 
                 Dokumente, Verträge, E-Mails, Finanzen.
               </p>
 
@@ -425,7 +426,7 @@ export default function SotHome() {
               <div className="mt-10 grid sm:grid-cols-3 gap-4">
                 {[
                   { icon: Eye, title: 'Kein Upload nötig', desc: 'Einmal aktivieren, dauerhaft nutzen.' },
-                  { icon: Cpu, title: 'Pay per Use', desc: 'Nur zahlen, wenn Armstrong arbeitet.' },
+                  { icon: Cpu, title: 'Pay per Use', desc: <span>Nur zahlen, wenn <Brand>Armstrong</Brand> arbeitet.</span> },
                   { icon: Shield, title: 'Volle Kontrolle', desc: 'Preis vorher sehen. Keine Überraschungen.' },
                 ].map((h) => (
                   <div key={h.title} className="rounded-2xl bg-white/5 backdrop-blur-md border border-white/10 p-5">
@@ -454,7 +455,7 @@ export default function SotHome() {
                 to="/website/sot/intelligenz"
                 className="mt-10 inline-flex items-center gap-2 px-8 py-4 rounded-2xl bg-gradient-to-r from-violet-600 to-pink-600 text-white text-sm font-bold hover:shadow-2xl hover:shadow-violet-500/30 hover:-translate-y-0.5 transition-all duration-300"
               >
-                Armstrong Intelligence entdecken
+                <Brand>Armstrong</Brand> Intelligence entdecken
                 <ArrowRight className="w-4 h-4" />
               </Link>
             </div>
@@ -502,7 +503,7 @@ export default function SotHome() {
               <div className="relative rounded-3xl overflow-hidden shadow-2xl shadow-black/20">
                 <img 
                   src={sotWorkspace} 
-                  alt="System of a Town Workspace" 
+                  alt="System of a Town Workspace" translate="no" 
                   className="w-full h-auto"
                   loading="lazy"
                 />

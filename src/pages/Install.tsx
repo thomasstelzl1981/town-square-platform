@@ -8,6 +8,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Download, Smartphone, Check, Share, Monitor, Globe, Zap, WifiOff, Layout } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DESIGN } from '@/config/designManifest';
+import { Brand } from '@/components/ui/brand';
 
 export default function Install() {
   const [deferredPrompt, setDeferredPrompt] = useState<Event | null>(null);
@@ -82,7 +83,7 @@ export default function Install() {
             </h1>
             <p className="text-muted-foreground text-sm">
               {isDesktop
-                ? 'Installiere Armstrong als eigenständige Desktop-App für schnelleren Zugriff und ein natives Erlebnis.'
+                ? <>Installiere <Brand>Armstrong</Brand> als eigenständige Desktop-App für schnelleren Zugriff und ein natives Erlebnis.</>
                 : 'Installiere die App auf deinem Gerät für schnellen Zugriff und Offline-Nutzung.'}
             </p>
           </div>

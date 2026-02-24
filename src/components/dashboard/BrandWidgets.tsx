@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ExternalLink, ShoppingBag, Landmark, Building2, Search } from 'lucide-react';
+import { Brand } from '@/components/ui/brand';
 
 export function BrandWidgets() {
   return (
@@ -20,7 +21,7 @@ export function BrandWidgets() {
                   <ShoppingBag className="h-5 w-5 text-white" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold tracking-tight">KAUFY</h3>
+                  <Brand as="h3" className="text-lg font-bold tracking-tight">KAUFY</Brand>
                   <p className="text-[10px] text-white/70 uppercase tracking-wider">Marktplatz & Investment</p>
                 </div>
               </div>
@@ -56,9 +57,9 @@ export function BrandWidgets() {
                   <Landmark className="h-5 w-5 text-white" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold tracking-tight">
+                  <Brand as="h3" className="text-lg font-bold tracking-tight">
                     Future<span className="font-light">Room</span>
-                  </h3>
+                  </Brand>
                   <p className="text-[10px] text-white/70 uppercase tracking-wider">Finanzierungsorchesterierung</p>
                 </div>
               </div>
@@ -94,9 +95,9 @@ export function BrandWidgets() {
                   <Building2 className="h-5 w-5 text-white" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold tracking-tight">
+                  <Brand as="h3" className="text-lg font-bold tracking-tight">
                     System<span className="font-light">ofaTown</span>
-                  </h3>
+                  </Brand>
                   <p className="text-[10px] text-white/70 uppercase tracking-wider">Management Suite</p>
                 </div>
               </div>
@@ -131,7 +132,7 @@ export function BrandWidgets() {
                   <Search className="h-5 w-5 text-white" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold tracking-tight">ACQUIARY</h3>
+                  <Brand as="h3" className="text-lg font-bold tracking-tight">ACQUIARY</Brand>
                   <p className="text-[10px] text-white/70 uppercase tracking-wider">Sourcing & Akquisition</p>
                 </div>
               </div>

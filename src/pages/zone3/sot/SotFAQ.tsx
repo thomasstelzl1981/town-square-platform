@@ -6,6 +6,7 @@ import { ArrowRight, ChevronDown, MessageCircle } from 'lucide-react';
 import { useState } from 'react';
 import { SotCTA } from '@/components/zone3/sot';
 import { useSotScrollAnimation } from '@/hooks/useSotScrollAnimation';
+import { Brand } from '@/components/ui/brand';
 
 const faqItems = [
   {
@@ -133,7 +134,7 @@ export default function SotFAQ() {
           </span>
           <h1 className="sot-display mb-6">Häufige Fragen.</h1>
           <p className="sot-subheadline max-w-2xl mx-auto">
-            Alles, was Sie über System of a Town wissen müssen — von der Plattform bis zur Sicherheit.
+            Alles, was Sie über <Brand>System of a Town</Brand> wissen müssen — von der Plattform bis zur Sicherheit.
           </p>
         </div>
       </section>

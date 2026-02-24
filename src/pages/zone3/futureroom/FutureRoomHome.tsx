@@ -12,6 +12,7 @@ import {
   Bot, FolderSync, Workflow, ArrowRight, Landmark
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { Brand } from '@/components/ui/brand';
 
 export default function FutureRoomHome() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -137,7 +138,7 @@ export default function FutureRoomHome() {
       {/* Features Section */}
       <section className="fr-section">
         <div className="fr-section-header">
-          <h2 className="fr-section-title">Warum FutureRoom?</h2>
+          <h2 className="fr-section-title">Warum <Brand>FutureRoom</Brand>?</h2>
           <p className="fr-section-subtitle">
             Wir sind keine klassische Vermittlungsplattform. Wir orchestrieren den gesamten 
             Finanzierungsprozess mit modernster Technologie.
