@@ -103,17 +103,16 @@ interface GroupConfig {
 }
 
 const GROUP_CONFIG: Record<string, GroupConfig> = {
-  'foundation': { label: 'Tenants & Access', priority: 1 },
-  'masterdata': { label: 'Masterdata', priority: 2 },
+  'foundation': { label: 'Mandanten & Zugriff', priority: 1 },
+  'masterdata': { label: 'Stammdaten-Vorlagen', priority: 2 },
   'ki-office': { label: 'KI Office', priority: 3 },
-  'armstrong': { label: 'Armstrong Zone 1', priority: 4 },
-  'activation': { label: 'Feature Activation', priority: 5 },
-  'backbone': { label: 'Backbone', priority: 6 },
+  'armstrong': { label: 'Armstrong', priority: 4 },
+  'activation': { label: 'Modul-Verwaltung', priority: 5 },
+  'backbone': { label: 'Infrastruktur', priority: 6 },
   'desks': { label: 'Operative Desks', priority: 7 },
-  // agents group removed
   'compliance': { label: 'Compliance', priority: 8 },
   'system': { label: 'System', priority: 9 },
-  'platformAdmin': { label: 'Platform Admin', priority: 10 },
+  'platformAdmin': { label: 'Plattform-Admin', priority: 10 },
 };
 
 // Route to group mapping via prefix
@@ -153,9 +152,8 @@ function getGroupKey(path: string, component: string): string {
   }
   // Operative Desks (Desks + LeadPool + Provisionen + Landing Pages)
   if (path.startsWith('sales-desk') || path.startsWith('finance-desk') || 
-      path.startsWith('acquiary') || path === 'lead-desk' || path === 'projekt-desk' ||
-      path === 'petmanager' || path.startsWith('petmanager/') || path === 'website-hosting' ||
-      path.startsWith('pet-desk')) {
+       path.startsWith('acquiary') || path === 'lead-desk' || path === 'projekt-desk' ||
+       path === 'website-hosting' || path.startsWith('pet-desk')) {
     return 'desks';
   }
   // Compliance Desk
@@ -314,14 +312,14 @@ export function AdminSidebar() {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm" className="w-full justify-between mb-2">
-                <span className="truncate text-xs">
-                  {activeOrganization?.name || 'Select Tenant'}
+                 <span className="truncate text-xs">
+                  {activeOrganization?.name || 'Mandant wählen'}
                 </span>
                 <ChevronDown className="h-3 w-3 ml-2 shrink-0" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-56">
-              <DropdownMenuLabel>Switch Tenant</DropdownMenuLabel>
+              <DropdownMenuLabel>Mandant wechseln</DropdownMenuLabel>
               <DropdownMenuSeparator />
               {memberships.map((membership) => (
                 <DropdownMenuItem

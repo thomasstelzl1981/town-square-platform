@@ -237,7 +237,7 @@ export default function Oversight() {
     <div className="space-y-6">
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-bold">System Oversight</h1>
+          <h1 className="text-2xl font-bold">System-Übersicht</h1>
           <p className="text-muted-foreground">
             Systemweite Übersicht über alle Tenants, Immobilien und Module (Read-only)
           </p>

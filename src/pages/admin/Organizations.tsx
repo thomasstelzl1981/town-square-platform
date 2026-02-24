@@ -118,7 +118,7 @@ export default function Organizations() {
 
   const handleCreate = async () => {
     if (!newOrg.name || !newOrg.slug || !newOrg.org_type) {
-      setCreateError('All fields are required');
+      setCreateError('Alle Felder sind erforderlich');
       return;
     }
 
@@ -177,22 +177,22 @@ export default function Organizations() {
     <div className="space-y-6" ref={contentRef}>
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Organizations</h2>
-          <p className="text-muted-foreground">Manage tenants and organization hierarchy</p>
+          <h2 className="text-2xl font-bold tracking-tight">Organisationen</h2>
+          <p className="text-muted-foreground">Mandanten und Organisationshierarchie verwalten</p>
         </div>
         {isPlatformAdmin && (
           <Dialog open={createOpen} onOpenChange={setCreateOpen}>
             <DialogTrigger asChild>
               <Button>
                 <Plus className="mr-2 h-4 w-4" />
-                New Organization
+                Neue Organisation
               </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Create Organization</DialogTitle>
+                <DialogTitle>Organisation erstellen</DialogTitle>
                 <DialogDescription>
-                  Add a new organization to the system. Hierarchy rules are enforced.
+                  Neue Organisation im System anlegen. Hierarchieregeln werden durchgesetzt.
                 </DialogDescription>
               </DialogHeader>
               
@@ -275,10 +275,10 @@ export default function Organizations() {
               </div>
 
               <DialogFooter>
-                <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
+                <Button variant="outline" onClick={() => setCreateOpen(false)}>Abbrechen</Button>
                 <Button onClick={handleCreate} disabled={creating}>
                   {creating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Create
+                  Erstellen
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -297,7 +297,7 @@ export default function Organizations() {
         <CardHeader>
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
-              <CardTitle>All Organizations</CardTitle>
+              <CardTitle>Alle Organisationen</CardTitle>
               <CardDescription>
                 {isPlatformAdmin 
                   ? `${filteredOrganizations.length} von ${organizations.length} Organisationen`
@@ -336,7 +336,7 @@ export default function Organizations() {
             <div className="text-center py-8">
               <Building2 className="h-12 w-12 mx-auto text-muted-foreground/50" />
               <p className="mt-2 text-muted-foreground">
-                {organizations.length === 0 ? 'No organizations found' : 'Keine Treffer für Filter'}
+                {organizations.length === 0 ? 'Keine Organisationen gefunden' : 'Keine Treffer für Filter'}
               </p>
             </div>
           ) : (
@@ -345,10 +345,10 @@ export default function Organizations() {
                 <TableRow>
                   <TableHead>Name</TableHead>
                   <TableHead>Slug</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Depth</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>Typ</TableHead>
+                  <TableHead>Tiefe</TableHead>
+                  <TableHead>Erstellt</TableHead>
+                  <TableHead className="text-right">Aktionen</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

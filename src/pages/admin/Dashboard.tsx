@@ -8,6 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Building2, Users, Link2, Shield, ExternalLink, Download, Loader2, FileArchive, Rocket, Globe } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { DESIGN } from '@/config/designManifest';
+import { PLATFORM_DOMAINS, PIN_GATE_CODE } from '@/config/financeDeskConfig';
 import { useZone3Setting, useUpdateZone3Setting } from '@/hooks/useZone3Settings';
 import { PdfExportFooter } from '@/components/pdf';
 import { toast } from 'sonner';
@@ -171,7 +172,7 @@ export default function Dashboard() {
                 </Badge>
               </div>
               <p className="text-xs text-muted-foreground">
-                Zugangscode 2710 für alle 5 Brand-Websites (SoT, Kaufy, FutureRoom, Acquiary, Lennox)
+                Zugangscode {PIN_GATE_CODE} für alle 5 Brand-Websites (SoT, Kaufy, FutureRoom, Acquiary, Lennox)
               </p>
             </div>
             <Switch
@@ -190,8 +191,8 @@ export default function Dashboard() {
   return (
     <div className={DESIGN.SPACING.SECTION} ref={contentRef}>
       <div>
-        <h2 className={DESIGN.TYPOGRAPHY.PAGE_TITLE}>Dashboard</h2>
-        <p className={DESIGN.TYPOGRAPHY.MUTED}>Welcome to the System of a Town Admin Portal</p>
+        <h2 className={DESIGN.TYPOGRAPHY.PAGE_TITLE}>Admin Dashboard</h2>
+        <p className={DESIGN.TYPOGRAPHY.MUTED}>Willkommen im System of a Town Admin Portal</p>
       </div>
 
       {/* Website Settings – PIN Gate Toggle */}
@@ -200,11 +201,11 @@ export default function Dashboard() {
       {/* Quick Actions */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <ExternalLink className="h-5 w-5" />
-            Quick Actions
-          </CardTitle>
-          <CardDescription>Schnellzugriff auf alle Bereiche</CardDescription>
+            <CardTitle className="flex items-center gap-2">
+              <ExternalLink className="h-5 w-5" />
+              Schnellzugriff
+            </CardTitle>
+            <CardDescription>Direktzugang zu allen Bereichen</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Portal Super User Entry */}
@@ -266,7 +267,7 @@ export default function Dashboard() {
               </Button>
             </div>
             <p className="text-xs text-muted-foreground mt-2">
-              Go-live: kaufy.app | systemofatown.app | miety.app | futureroom.app
+              Go-live: {PLATFORM_DOMAINS.join(' | ')}
             </p>
           </div>
 
@@ -334,28 +335,28 @@ export default function Dashboard() {
       {/* Current User Context */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Shield className="h-5 w-5" />
-            Current Session
-          </CardTitle>
-          <CardDescription>Your authentication and authorization context</CardDescription>
+            <CardTitle className="flex items-center gap-2">
+              <Shield className="h-5 w-5" />
+              Aktuelle Sitzung
+            </CardTitle>
+            <CardDescription>Authentifizierungs- und Autorisierungskontext</CardDescription>
         </CardHeader>
         <CardContent>
           <div className={DESIGN.FORM_GRID.FULL}>
             <div>
-              <p className="text-sm font-medium text-muted-foreground">Email</p>
+              <p className="text-sm font-medium text-muted-foreground">E-Mail</p>
               <p className="text-sm">{profile?.email}</p>
             </div>
             <div>
-              <p className="text-sm font-medium text-muted-foreground">Display Name</p>
+              <p className="text-sm font-medium text-muted-foreground">Anzeigename</p>
               <p className="text-sm">{profile?.display_name || '—'}</p>
             </div>
             <div>
-              <p className="text-sm font-medium text-muted-foreground">Active Tenant</p>
+              <p className="text-sm font-medium text-muted-foreground">Aktiver Mandant</p>
               <p className="text-sm">{activeOrganization?.name || '—'}</p>
             </div>
             <div>
-              <p className="text-sm font-medium text-muted-foreground">Roles</p>
+              <p className="text-sm font-medium text-muted-foreground">Rollen</p>
               <div className="flex flex-wrap gap-1 mt-1">
                 {memberships.map(m => (
                   <Badge 
@@ -365,15 +366,15 @@ export default function Dashboard() {
                     {formatRole(m.role)}
                   </Badge>
                 ))}
-                {memberships.length === 0 && <span className="text-sm text-muted-foreground">No memberships</span>}
+                {memberships.length === 0 && <span className="text-sm text-muted-foreground">Keine Mitgliedschaften</span>}
               </div>
             </div>
           </div>
           {isPlatformAdmin && (
             <div className="mt-4 p-3 bg-primary/10 rounded-lg border border-primary/20">
-              <p className="text-sm font-medium text-primary">🔓 Platform Admin Mode Active</p>
+              <p className="text-sm font-medium text-primary">🔓 Platform Admin Modus aktiv</p>
               <p className="text-xs text-muted-foreground mt-1">
-                You have unrestricted access to all organizations, users, and data.
+                Uneingeschränkter Zugriff auf alle Organisationen, Benutzer und Daten.
               </p>
             </div>
           )}
@@ -384,7 +385,7 @@ export default function Dashboard() {
       <div className={DESIGN.KPI_GRID.FULL}>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Organizations</CardTitle>
+            <CardTitle className="text-sm font-medium">Organisationen</CardTitle>
             <Building2 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -403,18 +404,18 @@ export default function Dashboard() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Users</CardTitle>
+            <CardTitle className="text-sm font-medium">Benutzer</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{loading ? '—' : stats.profiles}</div>
-            <p className="text-xs text-muted-foreground">Registered profiles</p>
+            <p className="text-xs text-muted-foreground">Registrierte Profile</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Memberships</CardTitle>
+            <CardTitle className="text-sm font-medium">Mitgliedschaften</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -433,7 +434,7 @@ export default function Dashboard() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Delegations</CardTitle>
+            <CardTitle className="text-sm font-medium">Delegierungen</CardTitle>
             <Link2 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -441,10 +442,10 @@ export default function Dashboard() {
             {!loading && (
               <div className="flex gap-2 mt-2">
                 <Badge variant="default" className="text-xs">
-                  Active: {stats.activeDelegations}
+                  Aktiv: {stats.activeDelegations}
                 </Badge>
                 <Badge variant="outline" className="text-xs">
-                  Revoked: {stats.delegations - stats.activeDelegations}
+                  Widerrufen: {stats.delegations - stats.activeDelegations}
                 </Badge>
               </div>
             )}

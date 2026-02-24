@@ -364,8 +364,8 @@ export default function UsersPage() {
     <div className="space-y-6" ref={contentRef}>
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Users & Memberships</h2>
-          <p className="text-muted-foreground">Manage user roles and organization access</p>
+          <h2 className="text-2xl font-bold tracking-tight">Benutzer & Mitgliedschaften</h2>
+          <p className="text-muted-foreground">Benutzerrollen und Organisationszugriff verwalten</p>
         </div>
         <div className="flex gap-2">
           {isPlatformAdmin && (
@@ -378,14 +378,14 @@ export default function UsersPage() {
             <DialogTrigger asChild>
               <Button>
                 <Plus className="mr-2 h-4 w-4" />
-                Add Membership
+                Mitgliedschaft hinzufügen
               </Button>
             </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Add Membership</DialogTitle>
+              <DialogTitle>Mitgliedschaft hinzufügen</DialogTitle>
               <DialogDescription>
-                Assign a role to a user in an organization.
+                Einem Benutzer eine Rolle in einer Organisation zuweisen.
               </DialogDescription>
             </DialogHeader>
 
@@ -398,26 +398,26 @@ export default function UsersPage() {
 
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="user_id">User ID</Label>
+                <Label htmlFor="user_id">Benutzer-ID</Label>
                 <Input
                   id="user_id"
                   value={newMembership.user_id}
                   onChange={(e) => setNewMembership(prev => ({ ...prev, user_id: e.target.value }))}
-                  placeholder="UUID of the user"
+                  placeholder="UUID des Benutzers"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Enter the user's UUID from profiles
+                  Benutzer-UUID aus der Profiltabelle eingeben
                 </p>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="tenant">Organization</Label>
+                <Label htmlFor="tenant">Organisation</Label>
                 <Select
                   value={newMembership.tenant_id}
                   onValueChange={(value) => setNewMembership(prev => ({ ...prev, tenant_id: value }))}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select organization" />
+                    <SelectValue placeholder="Organisation wählen" />
                   </SelectTrigger>
                   <SelectContent>
                     {organizations.map(org => (
@@ -430,13 +430,13 @@ export default function UsersPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="role">Role</Label>
+                <Label htmlFor="role">Rolle</Label>
                 <Select
                   value={newMembership.role}
                   onValueChange={(value) => setNewMembership(prev => ({ ...prev, role: value as MembershipRole }))}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select role" />
+                    <SelectValue placeholder="Rolle wählen" />
                   </SelectTrigger>
                   <SelectContent>
                     {availableRoles.map(role => (
@@ -456,10 +456,10 @@ export default function UsersPage() {
             </div>
 
             <DialogFooter>
-              <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
+              <Button variant="outline" onClick={() => setCreateOpen(false)}>Abbrechen</Button>
               <Button onClick={handleCreate} disabled={creating}>
                 {creating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Add Membership
+                Hinzufügen
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -476,7 +476,7 @@ export default function UsersPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Memberships</CardTitle>
+          <CardTitle>Mitgliedschaften</CardTitle>
           <CardDescription>
             {orgFilter 
               ? `Filtered by organization: ${getOrgName(orgFilter)}`
@@ -491,7 +491,7 @@ export default function UsersPage() {
           ) : memberships.length === 0 ? (
             <div className="text-center py-8">
               <Users className="h-12 w-12 mx-auto text-muted-foreground/50" />
-              <p className="mt-2 text-muted-foreground">No memberships found</p>
+              <p className="mt-2 text-muted-foreground">Keine Mitgliedschaften gefunden</p>
             </div>
           ) : (
             <Table>

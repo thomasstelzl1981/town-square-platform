@@ -140,35 +140,38 @@ export const zone1Admin: ZoneDefinition = {
     { path: "acquiary/inbox", component: "AcquiaryInbox", title: "Inbox" },
     { path: "acquiary/assignments", component: "AcquiaryAssignments", title: "Zuweisungen" },
     { path: "acquiary/audit", component: "AcquiaryAudit", title: "Audit" },
-    // Sales Desk (MOD-09 Vertriebsmanager)
+    // Sales Desk (MOD-09 Vertriebsmanager) — 6-Tab Structure
     { path: "sales-desk", component: "SalesDeskDashboard", title: "Sales Desk" },
+    { path: "sales-desk/kontakte", component: "SalesDeskKontakte", title: "Kontakte" },
     { path: "sales-desk/veroeffentlichungen", component: "SalesDeskPublishing", title: "Veröffentlichungen" },
     { path: "sales-desk/inbox", component: "SalesDeskInbox", title: "Inbox" },
     { path: "sales-desk/partner", component: "SalesDeskPartner", title: "Partner" },
     { path: "sales-desk/audit", component: "SalesDeskAudit", title: "Audit" },
-    // Lead Desk (MOD-10 Leadmanager) — 4-Tab Structure: Pool, Zuweisungen, Provisionen, Monitor
-    { path: "lead-desk", component: "LeadDeskDashboard", title: "Lead Desk" },
-    { path: "lead-desk/pool", component: "LeadDeskDashboard", title: "Lead Pool" },
-    { path: "lead-desk/zuweisungen", component: "LeadDeskDashboard", title: "Zuweisungen" },
-    { path: "lead-desk/provisionen", component: "LeadDeskDashboard", title: "Provisionen" },
-    { path: "lead-desk/monitor", component: "LeadDeskDashboard", title: "Monitor" },
+    // Lead Desk (MOD-10 Leadmanager) — 6-Tab Structure
+    { path: "lead-desk", component: "LeadDeskRouter", title: "Lead Desk" },
+    { path: "lead-desk/kontakte", component: "LeadDeskKontakte", title: "Kontakte" },
+    { path: "lead-desk/pool", component: "LeadPoolPage", title: "Lead Pool" },
+    { path: "lead-desk/assignments", component: "LeadAssignmentsPage", title: "Zuweisungen" },
+    { path: "lead-desk/commissions", component: "LeadCommissionsPage", title: "Provisionen" },
+    { path: "lead-desk/monitor", component: "LeadMonitorPage", title: "Monitor" },
     // Projekt Desk (MOD-13 Projektmanager) — 4-Tab Structure
     { path: "projekt-desk", component: "ProjektDeskDashboard", title: "Projekt Desk" },
     { path: "projekt-desk/projekte", component: "ProjektDeskProjekte", title: "Projekte" },
     { path: "projekt-desk/listings", component: "ProjektDeskListings", title: "Listings" },
     { path: "projekt-desk/landing-pages", component: "ProjektDeskLandingPages", title: "Landing Pages" },
-    // Pet Desk (MOD-05 + MOD-22) — 5-Tab Structure
+    // Pet Desk (MOD-05 + MOD-22) — 6-Tab Structure
     { path: "pet-desk", component: "PetDeskRouter", title: "Pet Desk" },
+    { path: "pet-desk/kontakte", component: "PetDeskKontakte", title: "Kontakte" },
     { path: "pet-desk/vorgaenge", component: "PetDeskVorgaenge", title: "Vorgänge" },
     { path: "pet-desk/kunden", component: "PetDeskKunden", title: "Kunden" },
     { path: "pet-desk/shop", component: "PetDeskShop", title: "Shop" },
-    { path: "pet-desk/billing", component: "PetDeskBilling", title: "Billing" },
-    // Finance Desk (MOD-18) — 4-Tab Structure: Dashboard, Inbox, Fälle, Monitor
-    { path: "finance-desk", component: "FinanceDeskDashboard", title: "Finance Desk" },
-    { path: "finance-desk/inbox", component: "FinanceDeskDashboard", title: "Inbox" },
-    { path: "finance-desk/zuweisung", component: "FinanceDeskDashboard", title: "Zuweisung" },
-    { path: "finance-desk/faelle", component: "FinanceDeskDashboard", title: "Fälle" },
-    { path: "finance-desk/monitor", component: "FinanceDeskDashboard", title: "Monitor" },
+    { path: "pet-desk/billing", component: "PetDeskBilling", title: "Abrechnung" },
+    // Finance Desk (MOD-18) — 5-Tab Structure
+    { path: "finance-desk", component: "FinanceDeskRouter", title: "Finance Desk" },
+    { path: "finance-desk/kontakte", component: "FinanceDeskKontakte", title: "Kontakte" },
+    { path: "finance-desk/inbox", component: "FinanceDeskInboxPage", title: "Inbox" },
+    { path: "finance-desk/faelle", component: "FinanceDeskFaellePage", title: "Fälle" },
+    { path: "finance-desk/monitor", component: "FinanceDeskMonitorPage", title: "Monitor" },
     // =========================================================================
     // ARMSTRONG CONSOLE — KI-Assistent Governance (Config only, no chat)
     // =========================================================================
