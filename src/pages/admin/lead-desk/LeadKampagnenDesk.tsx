@@ -119,8 +119,9 @@ export default function LeadKampagnenDesk() {
           ) : (
             <Table>
               <TableHeader>
-                <TableRow>
+                 <TableRow>
                   <TableHead>Partner</TableHead>
+                  <TableHead>Kampagne</TableHead>
                   <TableHead>Brand</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Budget</TableHead>
@@ -131,7 +132,8 @@ export default function LeadKampagnenDesk() {
               <TableBody>
                 {mandates.map(m => (
                   <TableRow key={m.id}>
-                    <TableCell className="font-medium">{m.partner_display_name || '—'}</TableCell>
+                   <TableCell className="font-medium">{m.partner_display_name || '—'}</TableCell>
+                    <TableCell className="text-sm">{(m.personalization as any)?.campaign_name || '—'}</TableCell>
                     <TableCell>{getBrandBadge(m.brand_context)}</TableCell>
                     <TableCell>{getStatusBadge(m.status)}</TableCell>
                     <TableCell className="font-mono">

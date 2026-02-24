@@ -116,7 +116,9 @@ serve(async (req) => {
       end_date,
       regions: regions || [],
       audience_preset: audience_preset || {},
-      template_slots: template_slots || {},
+      template_slots: template_ids && template_ids.length > 0 
+        ? { selected_template_ids: template_ids } 
+        : (template_slots || {}),
       personalization: {
         ...(personalization || {}),
         campaign_name: campaign_name || '',
