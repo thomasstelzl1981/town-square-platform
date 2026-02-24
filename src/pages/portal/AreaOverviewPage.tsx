@@ -17,6 +17,9 @@ import { AreaModuleCard } from '@/components/portal/AreaModuleCard';
 import { filterModulesForMobile } from '@/config/mobileConfig';
 import { ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/contexts/AuthContext';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 
 // Area descriptions for header
 const areaDescriptions: Record<AreaKey, string> = {
@@ -30,6 +33,22 @@ export default function AreaOverviewPage() {
   const { areaKey } = useParams<{ areaKey: string }>();
   const isMobile = useIsMobile();
   const navigate = useNavigate();
+  const { activeTenantId } = useAuth();
+
+  // Load activated tiles for this tenant
+  const { data: activatedTiles = [] } = useQuery({
+    queryKey: ['tenant-tiles', activeTenantId],
+    queryFn: async () => {
+      if (!activeTenantId) return [];
+      const { data } = await supabase
+        .from('tenant_tile_activation')
+        .select('tile_code')
+        .eq('tenant_id', activeTenantId)
+        .eq('status', 'active');
+      return (data || []).map(t => t.tile_code);
+    },
+    enabled: !!activeTenantId,
+  });
   
   // Validate area key
   const validAreaKey = areaKey as AreaKey;
@@ -42,8 +61,13 @@ export default function AreaOverviewPage() {
     const visibleModules = isMobile 
       ? filterModulesForMobile(area.modules) 
       : area.modules;
+
+    // Filter against tenant's activated tiles (if loaded)
+    const tenantFiltered = activatedTiles.length > 0
+      ? visibleModules.filter(code => activatedTiles.includes(code))
+      : visibleModules;
     
-    return visibleModules.map(code => {
+    return tenantFiltered.map(code => {
       const content = moduleContents[code];
       const moduleConfig = zone2Portal.modules?.[code];
       const defaultRoute = code === 'ARMSTRONG' 
@@ -64,7 +88,7 @@ export default function AreaOverviewPage() {
         displayName,
       };
     }).filter(m => m.content);
-  }, [area, isMobile]);
+  }, [area, isMobile, activatedTiles]);
   
   // Invalid area → redirect to portal
   if (!area) {
