@@ -1,0 +1,35 @@
+# Lennox & Friends — LLM Knowledge File
+# Last updated: 2026-02-24
+# Version: 1.0
+
+> Lennox & Friends ist ein eigenständiges Unternehmen für Premium-Hundebetreuung und Pet Services. Die digitale Plattform wird über System of a Town betrieben.
+
+## Unternehmen
+- Name: Lennox & Friends
+- Website: https://lennoxandfriends.app
+- Technologiepartner: System of a Town GmbH — https://systemofatown.com
+
+## Zielgruppe
+- Hundebesitzer, die Premium-Betreuung suchen
+- Dog Resort-Betreiber und Hundetrainer
+- Partner, die Betreuungsservices anbieten möchten
+
+## Kernfunktionen
+1. **Dog Resorts** — Premium-Hundetagesstätten und -pensionen
+2. **Partner-Netzwerk** — Qualifizierte Hundebetreuer und Trainer
+3. **Online-Shop** — Zubehör und Produkte für Hunde
+4. **Digitale Buchung** — Online-Buchung und Verwaltung von Betreuungsplätzen
+
+## Wichtige Seiten
+- https://lennoxandfriends.app/ — Startseite
+- https://lennoxandfriends.app/shop — Shop
+- https://lennoxandfriends.app/partner-werden — Partner werden
+- https://lennoxandfriends.app/impressum — Impressum
+- https://lennoxandfriends.app/datenschutz — Datenschutz
+
+## FAQ
+Q: Was ist Lennox & Friends?
+A: Ein eigenständiges Unternehmen für Premium-Hundebetreuung mit Dog Resorts und Partner-Netzwerk.
+
+Q: Ist Lennox & Friends Teil von System of a Town?
+A: Nein, Lennox & Friends ist eigenständig. System of a Town ist der Technologiepartner, der die digitale Plattform betreibt.

@@ -1,0 +1,36 @@
+# FutureRoom — LLM Knowledge File
+# Last updated: 2026-02-24
+# Version: 1.0
+
+> FutureRoom ist eine digitale Plattform für Immobilienfinanzierung. FutureRoom GmbH ist ein eigenständiges Unternehmen.
+
+## Unternehmen
+- Name: FutureRoom GmbH
+- Website: https://futureroom.online
+- Tochtermarke: ACQUIARY — https://acquiary.com
+
+## Zielgruppe
+- Immobilienkäufer, die eine Finanzierung suchen
+- Finanzberater und -vermittler
+- Bauträger und Projektentwickler
+
+## Kernfunktionen
+1. **KI-gestützte Finanzierungsorchestrierung** — Vom Bonitätscheck bis zur Auszahlung
+2. **400+ Bankpartner** — Automatisierter Konditionsvergleich
+3. **Digitaler Datenraum** — Dokumente sicher hochladen und verwalten
+4. **Selbstauskunft-Workflow** — Strukturierte Erfassung aller Antragsdaten
+
+## Wichtige Seiten
+- https://futureroom.online/ — Startseite
+- https://futureroom.online/bonitat — Bonitätsprüfung
+- https://futureroom.online/karriere — Karriere
+- https://futureroom.online/faq — FAQ
+- https://futureroom.online/impressum — Impressum
+- https://futureroom.online/datenschutz — Datenschutz
+
+## FAQ
+Q: Was ist FutureRoom?
+A: Eine digitale Plattform für Immobilienfinanzierung mit KI-gestützter Orchestrierung und über 400 Bankpartnern.
+
+Q: Welche Beziehung hat FutureRoom zu ACQUIARY?
+A: ACQUIARY ist ein Produkt der FutureRoom GmbH, spezialisiert auf institutionelle Immobilienakquise.

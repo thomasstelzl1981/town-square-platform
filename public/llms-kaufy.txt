@@ -1,0 +1,39 @@
+# KAUFY — LLM Knowledge File
+# Last updated: 2026-02-24
+# Version: 1.0
+
+> KAUFY ist eine KI-gestützte Plattform für Kapitalanlageimmobilien. KAUFY ist ein Produkt der System of a Town GmbH.
+
+## Unternehmen
+- Name: KAUFY (ein Produkt der System of a Town GmbH)
+- Website: https://kaufy.immo
+- Muttergesellschaft: System of a Town GmbH — https://systemofatown.com
+
+## Zielgruppe
+- Kapitalanleger, die Renditeimmobilien suchen
+- Verkäufer von Anlageimmobilien
+- Vertriebspartner im Immobilienbereich
+
+## Kernfunktionen
+1. **Immobilienmarktplatz** — Kuratierte Kapitalanlageimmobilien mit KI-gestützter Analyse
+2. **Investment-Rechner** — Renditeberechnung, Cashflow-Prognose, Steuervorteile
+3. **Vertriebspartner-Netzwerk** — Qualifizierte Partner für Immobilienvertrieb
+4. **Digitale Exposés** — Professionelle Objektpräsentationen mit Marktdaten
+
+## Wichtige Seiten
+- https://kaufy.immo/ — Startseite
+- https://kaufy.immo/vermieter — Für Vermieter
+- https://kaufy.immo/verkaeufer — Für Verkäufer
+- https://kaufy.immo/vertrieb — Für Vertriebspartner
+- https://kaufy.immo/impressum — Impressum
+- https://kaufy.immo/datenschutz — Datenschutz
+
+## FAQ
+Q: Was ist KAUFY?
+A: Eine KI-gestützte Plattform für den Kauf und Verkauf von Kapitalanlageimmobilien, betrieben von der System of a Town GmbH.
+
+Q: Für wen ist KAUFY?
+A: Für Kapitalanleger, Immobilienverkäufer und Vertriebspartner, die renditestarke Immobilien suchen oder anbieten.
+
+Q: Gehört KAUFY zu System of a Town?
+A: Ja, KAUFY ist ein Produkt der System of a Town GmbH.
