@@ -156,6 +156,13 @@ const SotFAQ = React.lazy(() => import('@/pages/zone3/sot/SotFAQ'));
 const SotMietsonderverwaltung = React.lazy(() => import('@/pages/zone3/sot/SotMietsonderverwaltung'));
 const SotImmobilienverwaltung = React.lazy(() => import('@/pages/zone3/sot/SotImmobilienverwaltung'));
 const SotFinanzdienstleistungen = React.lazy(() => import('@/pages/zone3/sot/SotFinanzdienstleistungen'));
+// Ratgeber (Supporting Content)
+const RatgeberMsvVsWeg = React.lazy(() => import('@/pages/zone3/sot/ratgeber/RatgeberMsvVsWeg'));
+const RatgeberNebenkostenabrechnung = React.lazy(() => import('@/pages/zone3/sot/ratgeber/RatgeberNebenkostenabrechnung'));
+const RatgeberImmobilienverwalterWechseln = React.lazy(() => import('@/pages/zone3/sot/ratgeber/RatgeberImmobilienverwalterWechseln'));
+const RatgeberPortfolioAnalyse = React.lazy(() => import('@/pages/zone3/sot/ratgeber/RatgeberPortfolioAnalyse'));
+const RatgeberImmobilienfinanzierung = React.lazy(() => import('@/pages/zone3/sot/ratgeber/RatgeberImmobilienfinanzierung'));
+const RatgeberRenditeberechnung = React.lazy(() => import('@/pages/zone3/sot/ratgeber/RatgeberRenditeberechnung'));
 
 // Zone 3: ACQUIARY Website (lazy loaded)
 const AcquiaryLayout = React.lazy(() => import('@/pages/zone3/acquiary/AcquiaryLayout'));
@@ -380,6 +387,13 @@ const sotComponentMap: Record<string, React.ComponentType> = {
   SotMietsonderverwaltung,
   SotImmobilienverwaltung,
   SotFinanzdienstleistungen,
+  // Ratgeber
+  RatgeberMsvVsWeg,
+  RatgeberNebenkostenabrechnung,
+  RatgeberImmobilienverwalterWechseln,
+  RatgeberPortfolioAnalyse,
+  RatgeberImmobilienfinanzierung,
+  RatgeberRenditeberechnung,
   SotImpressum: React.lazy(() => import('@/pages/zone3/sot/SotImpressum')),
   SotDatenschutz: React.lazy(() => import('@/pages/zone3/sot/SotDatenschutz')),
 };

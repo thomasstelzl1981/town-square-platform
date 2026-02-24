@@ -35,6 +35,17 @@ const BRAND_CONFIGS: Record<string, { domain: string; routes: SitemapRoute[] }> 
       { loc: "/demo", changefreq: "monthly", priority: "0.7" },
       { loc: "/karriere", changefreq: "monthly", priority: "0.5" },
       { loc: "/faq", changefreq: "monthly", priority: "0.7" },
+      // Solution Landing Pages (high priority)
+      { loc: "/loesungen/mietsonderverwaltung", changefreq: "monthly", priority: "0.9" },
+      { loc: "/loesungen/immobilienverwaltung", changefreq: "monthly", priority: "0.9" },
+      { loc: "/loesungen/finanzdienstleistungen", changefreq: "monthly", priority: "0.9" },
+      // Ratgeber (Supporting Content)
+      { loc: "/ratgeber/mietsonderverwaltung-vs-weg", changefreq: "monthly", priority: "0.7" },
+      { loc: "/ratgeber/nebenkostenabrechnung-vermieter", changefreq: "monthly", priority: "0.7" },
+      { loc: "/ratgeber/hausverwaltung-wechseln", changefreq: "monthly", priority: "0.7" },
+      { loc: "/ratgeber/immobilien-portfolioanalyse", changefreq: "monthly", priority: "0.7" },
+      { loc: "/ratgeber/immobilienfinanzierung-kapitalanleger", changefreq: "monthly", priority: "0.7" },
+      { loc: "/ratgeber/renditeberechnung-immobilien", changefreq: "monthly", priority: "0.7" },
       { loc: "/impressum", changefreq: "yearly", priority: "0.3" },
       { loc: "/datenschutz", changefreq: "yearly", priority: "0.3" },
     ],

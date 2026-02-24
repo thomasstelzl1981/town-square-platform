@@ -37,6 +37,19 @@
 - https://systemofatown.com/impressum — Impressum
 - https://systemofatown.com/datenschutz — Datenschutz
 
+## Lösungen (Solution Landing Pages)
+- https://systemofatown.com/loesungen/mietsonderverwaltung — Digitale Mietsonderverwaltung
+- https://systemofatown.com/loesungen/immobilienverwaltung — Digitale Immobilienverwaltung
+- https://systemofatown.com/loesungen/finanzdienstleistungen — Finanzdienstleistungen
+
+## Ratgeber (Supporting Content)
+- https://systemofatown.com/ratgeber/mietsonderverwaltung-vs-weg — MSV vs. WEG-Verwaltung
+- https://systemofatown.com/ratgeber/nebenkostenabrechnung-vermieter — Nebenkostenabrechnung für Vermieter
+- https://systemofatown.com/ratgeber/hausverwaltung-wechseln — Hausverwaltung wechseln
+- https://systemofatown.com/ratgeber/immobilien-portfolioanalyse — Portfolioanalyse
+- https://systemofatown.com/ratgeber/immobilienfinanzierung-kapitalanleger — Immobilienfinanzierung
+- https://systemofatown.com/ratgeber/renditeberechnung-immobilien — Renditeberechnung
+
 ## FAQ
 Q: Was ist System of a Town?
 A: Eine deutsche SaaS-Plattform, die Immobilienverwaltung, Finanzdienstleistungen und Unternehmensorganisation in einer modularen Lösung vereint.

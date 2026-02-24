@@ -10,16 +10,19 @@ const footerLinks = {
     { label: 'Immobilienverwaltung', href: '/website/sot/loesungen/immobilienverwaltung' },
     { label: 'Finanzdienstleistungen', href: '/website/sot/loesungen/finanzdienstleistungen' },
   ],
+  ratgeber: [
+    { label: 'MSV vs. WEG-Verwaltung', href: '/website/sot/ratgeber/mietsonderverwaltung-vs-weg' },
+    { label: 'Nebenkostenabrechnung', href: '/website/sot/ratgeber/nebenkostenabrechnung-vermieter' },
+    { label: 'Hausverwaltung wechseln', href: '/website/sot/ratgeber/hausverwaltung-wechseln' },
+    { label: 'Portfolioanalyse', href: '/website/sot/ratgeber/immobilien-portfolioanalyse' },
+    { label: 'Immobilienfinanzierung', href: '/website/sot/ratgeber/immobilienfinanzierung-kapitalanleger' },
+    { label: 'Renditeberechnung', href: '/website/sot/ratgeber/renditeberechnung-immobilien' },
+  ],
   plattform: [
     { label: 'Plattform', href: '/website/sot/plattform' },
     { label: 'Intelligenz', href: '/website/sot/intelligenz' },
     { label: 'Module', href: '/website/sot/module' },
     { label: 'Preise', href: '/website/sot/preise' },
-  ],
-  ressourcen: [
-    { label: 'Demo', href: '/website/sot/demo' },
-    { label: 'Karriere', href: '/website/sot/karriere' },
-    { label: 'FAQ', href: '/website/sot/faq' },
   ],
   rechtliches: [
     { label: 'Impressum', href: '/website/sot/impressum' },
