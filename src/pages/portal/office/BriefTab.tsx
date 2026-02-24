@@ -107,6 +107,16 @@ export function BriefTab() {
   const [searchParams] = useSearchParams();
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [contactOpen, setContactOpen] = useState(false);
+  const [manualRecipient, setManualRecipient] = useState(false);
+  const [manualFields, setManualFields] = useState({
+    salutation: '',
+    first_name: '',
+    last_name: '',
+    company: '',
+    street: '',
+    postal_code: '',
+    city: '',
+  });
   const [subject, setSubject] = useState('');
   const [prompt, setPrompt] = useState('');
   const [generatedBody, setGeneratedBody] = useState('');
@@ -152,7 +162,7 @@ export function BriefTab() {
     {
       id: 'private',
       type: 'PRIVATE',
-      label: profile?.display_name || profile?.first_name || 'Privatperson',
+      label: [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') || profile?.display_name || 'Privatperson',
       sublabel: 'Persönlicher Absender',
       address: profile ? [
         [profile.street, profile.house_number].filter(Boolean).join(' '),
@@ -247,7 +257,7 @@ export function BriefTab() {
       const { error } = await supabase.from('letter_drafts').insert({
         tenant_id: profileData.active_tenant_id,
         created_by: profileData.id,
-        recipient_contact_id: selectedContact?.id,
+        recipient_contact_id: selectedContact?.id || null,
         subject,
         prompt,
         body: generatedBody,
@@ -266,10 +276,30 @@ export function BriefTab() {
     },
   });
 
+  // Build effective recipient from contact or manual fields
+  const getEffectiveRecipient = (): Contact | null => {
+    if (manualRecipient) {
+      if (!manualFields.last_name.trim()) return null;
+      return {
+        id: '',
+        first_name: manualFields.first_name,
+        last_name: manualFields.last_name,
+        email: null,
+        company: manualFields.company || null,
+        salutation: manualFields.salutation || null,
+        street: manualFields.street || null,
+        postal_code: manualFields.postal_code || null,
+        city: manualFields.city || null,
+      };
+    }
+    return selectedContact;
+  };
+
   // Generate letter with AI
   const handleGenerate = async () => {
-    if (!selectedContact) {
-      toast.error('Bitte wählen Sie einen Empfänger aus');
+    const recipient = getEffectiveRecipient();
+    if (!recipient) {
+      toast.error('Bitte wählen Sie einen Empfänger aus oder geben Sie mindestens einen Nachnamen ein');
       return;
     }
     if (!prompt.trim()) {
@@ -282,9 +312,9 @@ export function BriefTab() {
       const response = await supabase.functions.invoke('sot-letter-generate', {
         body: {
           recipient: {
-            name: `${selectedContact.first_name} ${selectedContact.last_name}`,
-            company: selectedContact.company,
-            salutation: selectedContact.salutation,
+            name: `${recipient.first_name} ${recipient.last_name}`,
+            company: recipient.company,
+            salutation: recipient.salutation,
           },
           subject,
           prompt,
@@ -304,10 +334,10 @@ export function BriefTab() {
       toast.error('Fehler bei der Generierung: ' + error.message);
       // Fallback demo text with sender
       const senderLine = selectedSender?.type === 'BUSINESS' 
-        ? `${selectedSender.company}\ni.A. ${profile?.display_name || 'Ihr Team'}`
-        : profile?.display_name || 'Ihr Team';
+        ? `${selectedSender.company}\ni.A. ${[profile?.first_name, profile?.last_name].filter(Boolean).join(' ') || 'Ihr Team'}`
+        : [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') || 'Ihr Team';
       
-      setGeneratedBody(`Sehr geehrte${selectedContact.first_name ? 'r' : ''} ${selectedContact.first_name || ''} ${selectedContact.last_name},
+      setGeneratedBody(`Sehr geehrte${recipient.first_name ? 'r' : ''} ${recipient.first_name || ''} ${recipient.last_name},
 
 bezugnehmend auf ${subject || 'Ihr Anliegen'} möchten wir Ihnen folgendes mitteilen:
 
@@ -328,25 +358,28 @@ ${senderLine}`);
   const [isSending, setIsSending] = useState(false);
   const [faxNumber, setFaxNumber] = useState('');
 
-  const buildPdfData = (): LetterPdfData => ({
-    senderName: selectedSender?.label,
-    senderCompany: selectedSender?.type === 'BUSINESS' ? selectedSender?.company : undefined,
-    senderAddress: selectedSender?.address,
-    senderCity: (() => {
-      if (selectedSenderId === 'private') return profile?.city || undefined;
-      const ctx = contexts.find(c => c.id === selectedSenderId);
-      return ctx?.city || undefined;
-    })(),
-    senderRole: selectedSender?.sublabel !== 'Persönlicher Absender' ? selectedSender?.sublabel : undefined,
-    recipientName: selectedContact ? `${selectedContact.first_name} ${selectedContact.last_name}` : undefined,
-    recipientCompany: selectedContact?.company || undefined,
-    recipientAddress: selectedContact ? [
-      selectedContact.street,
-      [selectedContact.postal_code, selectedContact.city].filter(Boolean).join(' '),
-    ].filter(Boolean).join('\n') || undefined : undefined,
-    subject,
-    body: generatedBody,
-  });
+  const buildPdfData = (): LetterPdfData => {
+    const r = getEffectiveRecipient();
+    return {
+      senderName: selectedSender?.label,
+      senderCompany: selectedSender?.type === 'BUSINESS' ? selectedSender?.company : undefined,
+      senderAddress: selectedSender?.address,
+      senderCity: (() => {
+        if (selectedSenderId === 'private') return profile?.city || undefined;
+        const ctx = contexts.find(c => c.id === selectedSenderId);
+        return ctx?.city || undefined;
+      })(),
+      senderRole: selectedSender?.sublabel !== 'Persönlicher Absender' ? selectedSender?.sublabel : undefined,
+      recipientName: r ? `${r.first_name} ${r.last_name}` : undefined,
+      recipientCompany: r?.company || undefined,
+      recipientAddress: r ? [
+        r.street,
+        [r.postal_code, r.city].filter(Boolean).join(' '),
+      ].filter(Boolean).join('\n') || undefined : undefined,
+      subject,
+      body: generatedBody,
+    };
+  };
 
   const handlePdfPreview = () => {
     if (!generatedBody) return;
@@ -368,15 +401,16 @@ ${senderLine}`);
   };
 
   const handleSend = async () => {
-    if (!generatedBody || !selectedContact) return;
+    const recipient = getEffectiveRecipient();
+    if (!generatedBody || !recipient) return;
 
     // Validate channel-specific requirements
     if (channel === 'fax' && !faxNumber.trim()) {
       toast.error('Bitte geben Sie eine Faxnummer ein');
       return;
     }
-    if (channel === 'email' && !selectedContact.email) {
-      toast.error('Dieser Kontakt hat keine E-Mail-Adresse');
+    if (channel === 'email' && !recipient.email) {
+      toast.error('Dieser Empfänger hat keine E-Mail-Adresse');
       return;
     }
 
@@ -384,7 +418,7 @@ ${senderLine}`);
     try {
       const { base64 } = generateLetterPdf(buildPdfData());
       const pdfFilename = `Brief_${subject?.replace(/[^a-zA-Z0-9]/g, '_') || 'Dokument'}.pdf`;
-      const recipientFullName = `${selectedContact.first_name} ${selectedContact.last_name}`;
+      const recipientFullName = `${recipient.first_name} ${recipient.last_name}`;
 
       let mailTo: string;
       let mailSubject: string;
@@ -393,9 +427,9 @@ ${senderLine}`);
 
       if (channel === 'email') {
         // Direct email to recipient
-        mailTo = selectedContact.email!;
+        mailTo = recipient.email!;
         mailSubject = subject || 'Schreiben';
-        mailHtml = `<p>Sehr geehrte${selectedContact.salutation === 'Frau' ? '' : 'r'} ${recipientFullName},</p>
+        mailHtml = `<p>Sehr geehrte${recipient.salutation === 'Frau' ? '' : 'r'} ${recipientFullName},</p>
 <p>anbei erhalten Sie ein Schreiben zum Thema „${subject || 'siehe Anhang'}".</p>
 <p>Bei Rückfragen stehen wir Ihnen gerne zur Verfügung.</p>
 <p>Mit freundlichen Grüßen,<br/>${selectedSender?.label || 'Ihr Ansprechpartner'}</p>`;
@@ -410,7 +444,7 @@ ${senderLine}`);
         // SimpleBrief: just send the PDF
         mailTo = 'simplebrief@systemofatown.com';
         mailSubject = `Brief an ${recipientFullName}`;
-        mailHtml = `<p>Brief-Versand an:</p><p>${recipientFullName}<br/>${selectedContact.street || ''}<br/>${[selectedContact.postal_code, selectedContact.city].filter(Boolean).join(' ')}</p>`;
+        mailHtml = `<p>Brief-Versand an:</p><p>${recipientFullName}<br/>${recipient.street || ''}<br/>${[recipient.postal_code, recipient.city].filter(Boolean).join(' ')}</p>`;
         mailContext = 'letter_post';
       }
 
@@ -436,7 +470,7 @@ ${senderLine}`);
         await supabase.from('letter_drafts').insert({
           tenant_id: profileData.active_tenant_id,
           created_by: profileData.id,
-          recipient_contact_id: selectedContact.id,
+          recipient_contact_id: recipient.id || null,
           subject,
           prompt,
           body: generatedBody,
@@ -480,66 +514,108 @@ ${senderLine}`);
         {/* Step 1: Recipient */}
         <Card className="glass-card">
           <CardContent className="p-5 space-y-3">
-            <Label className="flex items-center gap-2">
-              <Badge variant="outline" className="h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">1</Badge>
-              Empfänger auswählen
-            </Label>
-            <Popover open={contactOpen} onOpenChange={setContactOpen}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  role="combobox"
-                  aria-expanded={contactOpen}
-                  className="w-full justify-between"
+            <div className="flex items-center justify-between">
+              <Label className="flex items-center gap-2">
+                <Badge variant="outline" className="h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">1</Badge>
+                Empfänger
+              </Label>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => { setManualRecipient(false); setSelectedContact(null); }}
+                  className={cn("text-xs px-2.5 py-1 rounded-md transition-colors", !manualRecipient ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80")}
                 >
-                  {selectedContact ? (
-                    <span className="flex items-center gap-2">
-                      <User className="h-4 w-4" />
-                      {selectedContact.first_name} {selectedContact.last_name}
-                      {selectedContact.company && (
-                        <span className="text-muted-foreground">• {selectedContact.company}</span>
-                      )}
-                    </span>
-                  ) : (
-                    <span className="text-muted-foreground">Kontakt suchen...</span>
-                  )}
-                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-[400px] p-0">
-                <Command>
-                  <CommandInput placeholder="Kontakt suchen..." />
-                  <CommandList>
-                    <CommandEmpty>Kein Kontakt gefunden.</CommandEmpty>
-                    <CommandGroup>
-                      {contacts.map((contact) => (
-                        <CommandItem
-                          key={contact.id}
-                          value={`${contact.first_name} ${contact.last_name}`}
-                          onSelect={() => {
-                            setSelectedContact(contact);
-                            setContactOpen(false);
-                          }}
-                        >
-                          <Check
-                            className={cn(
-                              'mr-2 h-4 w-4',
-                              selectedContact?.id === contact.id ? 'opacity-100' : 'opacity-0'
-                            )}
-                          />
-                          <div className="flex flex-col">
-                            <span>{contact.first_name} {contact.last_name}</span>
-                            <span className="text-xs text-muted-foreground">
-                              {contact.company || contact.email || 'Keine Details'}
-                            </span>
-                          </div>
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  </CommandList>
-                </Command>
-              </PopoverContent>
-            </Popover>
+                  Aus Kontakten
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setManualRecipient(true); setSelectedContact(null); }}
+                  className={cn("text-xs px-2.5 py-1 rounded-md transition-colors", manualRecipient ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80")}
+                >
+                  Manuell eingeben
+                </button>
+              </div>
+            </div>
+
+            {!manualRecipient ? (
+              <Popover open={contactOpen} onOpenChange={setContactOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={contactOpen}
+                    className="w-full justify-between"
+                  >
+                    {selectedContact ? (
+                      <span className="flex items-center gap-2">
+                        <User className="h-4 w-4" />
+                        {selectedContact.first_name} {selectedContact.last_name}
+                        {selectedContact.company && (
+                          <span className="text-muted-foreground">• {selectedContact.company}</span>
+                        )}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground">Kontakt suchen...</span>
+                    )}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[400px] p-0">
+                  <Command>
+                    <CommandInput placeholder="Kontakt suchen..." />
+                    <CommandList>
+                      <CommandEmpty>Kein Kontakt gefunden.</CommandEmpty>
+                      <CommandGroup>
+                        {contacts.map((contact) => (
+                          <CommandItem
+                            key={contact.id}
+                            value={`${contact.first_name} ${contact.last_name}`}
+                            onSelect={() => {
+                              setSelectedContact(contact);
+                              setContactOpen(false);
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                'mr-2 h-4 w-4',
+                                selectedContact?.id === contact.id ? 'opacity-100' : 'opacity-0'
+                              )}
+                            />
+                            <div className="flex flex-col">
+                              <span>{contact.first_name} {contact.last_name}</span>
+                              <span className="text-xs text-muted-foreground">
+                                {contact.company || contact.email || 'Keine Details'}
+                              </span>
+                            </div>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            ) : (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="col-span-2">
+                  <Select value={manualFields.salutation} onValueChange={(v) => setManualFields(f => ({ ...f, salutation: v }))}>
+                    <SelectTrigger className="h-9 text-sm">
+                      <SelectValue placeholder="Anrede" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Herr">Herr</SelectItem>
+                      <SelectItem value="Frau">Frau</SelectItem>
+                      <SelectItem value="Firma">Firma</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Input placeholder="Vorname" value={manualFields.first_name} onChange={(e) => setManualFields(f => ({ ...f, first_name: e.target.value }))} className="h-9 text-sm" />
+                <Input placeholder="Nachname *" value={manualFields.last_name} onChange={(e) => setManualFields(f => ({ ...f, last_name: e.target.value }))} className="h-9 text-sm" />
+                <Input placeholder="Firma (optional)" value={manualFields.company} onChange={(e) => setManualFields(f => ({ ...f, company: e.target.value }))} className="col-span-2 h-9 text-sm" />
+                <Input placeholder="Straße + Nr." value={manualFields.street} onChange={(e) => setManualFields(f => ({ ...f, street: e.target.value }))} className="col-span-2 h-9 text-sm" />
+                <Input placeholder="PLZ" value={manualFields.postal_code} onChange={(e) => setManualFields(f => ({ ...f, postal_code: e.target.value }))} className="h-9 text-sm" />
+                <Input placeholder="Ort" value={manualFields.city} onChange={(e) => setManualFields(f => ({ ...f, city: e.target.value }))} className="h-9 text-sm" />
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -584,7 +660,7 @@ ${senderLine}`);
             </div>
             <Button 
               onClick={handleGenerate} 
-              disabled={isGenerating || !selectedContact}
+              disabled={isGenerating || (!selectedContact && !manualRecipient) || (manualRecipient && !manualFields.last_name.trim())}
               className="w-full gap-2"
             >
               {isGenerating ? (
@@ -669,12 +745,9 @@ ${senderLine}`);
               })()}
               senderRole={selectedSender?.sublabel !== 'Persönlicher Absender' ? selectedSender?.sublabel : undefined}
               logoUrl={profile?.letterhead_logo_url || undefined}
-              recipientName={selectedContact ? `${selectedContact.first_name} ${selectedContact.last_name}` : undefined}
-              recipientCompany={selectedContact?.company || undefined}
-              recipientAddress={selectedContact ? [
-                selectedContact.street,
-                [selectedContact.postal_code, selectedContact.city].filter(Boolean).join(' '),
-              ].filter(Boolean).join('\n') || undefined : undefined}
+              recipientName={(() => { const r = getEffectiveRecipient(); return r ? `${r.first_name} ${r.last_name}` : undefined; })()}
+              recipientCompany={(() => { const r = getEffectiveRecipient(); return r?.company || undefined; })()}
+              recipientAddress={(() => { const r = getEffectiveRecipient(); return r ? [r.street, [r.postal_code, r.city].filter(Boolean).join(' ')].filter(Boolean).join('\n') || undefined : undefined; })()}
               subject={subject}
               body={generatedBody}
               font={letterFont}
@@ -723,13 +796,12 @@ ${senderLine}`);
             )}
 
             <p className="text-xs text-muted-foreground">
-              {channel === 'email' && selectedContact?.email
-                ? `An: ${selectedContact.email}`
-                : channel === 'email'
-                ? 'Kontakt hat keine E-Mail-Adresse'
-                : channel === 'fax'
-                ? 'PDF wird als Fax gesendet'
-                : 'PDF wird als Brief versendet'}
+              {(() => {
+                const r = getEffectiveRecipient();
+                if (channel === 'email' && r?.email) return `An: ${r.email}`;
+                if (channel === 'email') return 'Empfänger hat keine E-Mail-Adresse';
+                return channel === 'fax' ? 'PDF wird als Fax gesendet' : 'PDF wird als Brief versendet';
+              })()}
             </p>
 
             {/* Action buttons */}
