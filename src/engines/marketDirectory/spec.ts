@@ -876,13 +876,13 @@ export function estimateStrategyCost(strategy: CategorySourceStrategy): number {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// 13. LINKEDIN INTEGRATION (via Apify Scraper + Netrows Future)
+// 13. LINKEDIN INTEGRATION (Netrows Primary + Apify Fallback)
 // ═══════════════════════════════════════════════════════════════
 
 /**
- * LinkedIn Contact — scraped via Apify LinkedIn Company Scraper.
- * Uses existing APIFY_API_TOKEN (no additional secret needed).
- * Future: Netrows API for high-volume (NETROWS_API_KEY).
+ * LinkedIn Contact — scraped via Netrows API (primary) or Apify LinkedIn Scraper (fallback).
+ * Netrows: NETROWS_API_KEY — best price/performance at scale (~0.005 EUR/Lookup).
+ * Apify:   APIFY_API_TOKEN — fallback when Netrows unavailable (~0.01 EUR/Lookup).
  */
 export interface LinkedInContact {
   linkedinProfileUrl?: string;
@@ -897,21 +897,21 @@ export interface LinkedInContact {
 
 /** LinkedIn scraping configuration */
 export const LINKEDIN_CONFIG = {
-  /** Primary: Apify LinkedIn Scraper (uses existing APIFY_API_TOKEN) */
+  /** Primary: Netrows API (best price/performance at scale) */
   primary: {
+    method: 'netrows_api' as const,
+    secretName: 'NETROWS_API_KEY',
+    baseUrl: 'https://api.netrows.com/api/v1',
+    estimatedCostPerLookup: 0.005,
+    rateLimitPerDay: 10000,
+    endpoints: ['company/search', 'company/profile', 'person/search', 'person/profile'],
+  },
+  /** Fallback: Apify LinkedIn Scraper */
+  fallback: {
     method: 'apify_scraper' as const,
     actor: 'apify/linkedin-company-scraper',
     secretName: 'APIFY_API_TOKEN',
     estimatedCostPerLookup: 0.01,
     rateLimitPerDay: 500,
-  },
-  /** Future: Netrows API (best price/performance at scale) */
-  future: {
-    method: 'netrows_api' as const,
-    secretName: 'NETROWS_API_KEY',
-    baseUrl: 'https://api.netrows.com/v1',
-    estimatedCostPerLookup: 0.005,
-    rateLimitPerDay: 10000,
-    endpoints: ['company/search', 'company/profile', 'person/search', 'person/profile'],
   },
 } as const;

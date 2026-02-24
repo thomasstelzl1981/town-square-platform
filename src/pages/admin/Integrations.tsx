@@ -57,6 +57,7 @@ const ICON_MAP: Record<string, React.ElementType> = {
   FINAPI: CreditCard,
   meta_ads: Zap,
   apify: Database,
+  NETROWS: Database,
 };
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -121,8 +122,9 @@ export default function Integrations() {
         GOOGLE_MAPS: ['GOOGLE_MAPS_API_KEY', 'VITE_GOOGLE_MAPS_API_KEY'],
         GOOGLE_PLACES: ['GOOGLE_MAPS_API_KEY'],
         ELEVENLABS: ['ELEVENLABS_API_KEY'],
-        APIFY: ['APIFY_API_KEY'],
+  APIFY: ['APIFY_API_TOKEN'],
         FIRECRAWL: ['FIRECRAWL_API_KEY'],
+        NETROWS: ['NETROWS_API_KEY'],
         LIVEKIT: ['LIVEKIT_API_KEY'],
       };
       const secrets = new Set<string>();

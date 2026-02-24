@@ -259,7 +259,21 @@ export default function AdminRecherche() {
       {/* ═══ 1. SUCHFORMULAR ═══ */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-sm uppercase tracking-wide text-muted-foreground">Neue Suche</CardTitle>
+          <CardTitle className="text-sm uppercase tracking-wide text-muted-foreground">Manuelle Recherche</CardTitle>
+          <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+            Startet eine mehrstufige Echtzeit-Pipeline: <strong>1.</strong> Google Places / Apify Maps — Basisadressen + Telefon + Website → 
+            <strong>2.</strong> Firecrawl — E-Mail-Extraktion von Unternehmens-Websites → 
+            <strong>3.</strong> Netrows / Apify LinkedIn — Ansprechpartner + LinkedIn-Profil → 
+            <strong>4.</strong> KI-Merge (Gemini) — Deduplizierung, Normalisierung, Scoring. 
+            Ergebnisse erscheinen in Echtzeit in der Tabelle und können nach Validierung ins Kontaktbuch importiert werden.
+          </p>
+          <div className="flex flex-wrap gap-1.5 mt-2">
+            <Badge variant="outline" className="text-[10px] py-0.5 border-green-600/40 text-green-700 dark:text-green-400">✓ Google Places</Badge>
+            <Badge variant="outline" className="text-[10px] py-0.5 border-green-600/40 text-green-700 dark:text-green-400">✓ Firecrawl</Badge>
+            <Badge variant="outline" className="text-[10px] py-0.5 border-green-600/40 text-green-700 dark:text-green-400">✓ Netrows</Badge>
+            <Badge variant="outline" className="text-[10px] py-0.5 border-green-600/40 text-green-700 dark:text-green-400">✓ Apify</Badge>
+            <Badge variant="outline" className="text-[10px] py-0.5 border-green-600/40 text-green-700 dark:text-green-400">✓ KI-Merge</Badge>
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
@@ -309,6 +323,8 @@ export default function AdminRecherche() {
                   <SelectItem value="25">25</SelectItem>
                   <SelectItem value="50">50</SelectItem>
                   <SelectItem value="100">100</SelectItem>
+                  <SelectItem value="200">200</SelectItem>
+                  <SelectItem value="500">500</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -320,6 +336,10 @@ export default function AdminRecherche() {
             </Button>
             <Button variant="outline" onClick={handleReset}><RotateCcw className="h-4 w-4 mr-2" />Zurücksetzen</Button>
           </div>
+          <p className="text-[10px] text-muted-foreground flex items-center gap-1">
+            <AlertTriangle className="h-3 w-3" />
+            Geschätzte Kosten pro Kontakt: ~2,5 ct (Google) + ~1,0 ct (Firecrawl) + ~0,5 ct (Netrows/LinkedIn)
+          </p>
         </CardContent>
       </Card>
 
