@@ -932,15 +932,15 @@ async function handleStrategyStep(
       );
     }
 
-    // ── linkedin_scrape — Apify LinkedIn Company Scraper ──
-    else if (step_id === "linkedin_scrape" && APIFY_API_TOKEN) {
-      provider = "apify_linkedin";
+    // ── linkedin_scrape — Netrows (primary) with Apify fallback ──
+    else if (step_id === "linkedin_scrape") {
+      const NETROWS_API_KEY = Deno.env.get("NETROWS_API_KEY");
       const companyName = contact_data?.company_name as string || searchQuery;
-      
+
       if (!companyName) {
         return new Response(
           JSON.stringify({
-            success: true, step_id, provider,
+            success: true, step_id, provider: "none",
             status: "skipped",
             message: "No company_name available for LinkedIn scrape",
           }),
@@ -948,100 +948,170 @@ async function handleStrategyStep(
         );
       }
 
-      try {
-        const runUrl = `https://api.apify.com/v2/acts/apify~linkedin-company-scraper/run-sync-get-dataset-items?token=${APIFY_API_TOKEN}&timeout=40`;
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 45000);
+      // ── Try Netrows first (cheaper: ~0.005 EUR vs 0.01 EUR) ──
+      if (NETROWS_API_KEY) {
+        provider = "netrows";
+        try {
+          const nrHeaders = { "x-api-key": NETROWS_API_KEY };
+          const nrBase = "https://api.netrows.com/api/v1";
+          const companySlug = encodeURIComponent(companyName.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, ""));
 
-        const liResp = await fetch(runUrl, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          signal: controller.signal,
-          body: JSON.stringify({
-            queries: [companyName],
-            maxResults: 3,
-            proxy: { useApifyProxy: true },
-          }),
-        });
+          // Parallel: company details + employees
+          const [detailsResp, employeesResp] = await Promise.all([
+            fetch(`${nrBase}/companies/details?username=${companySlug}`, { headers: nrHeaders }),
+            fetch(`${nrBase}/companies/employees?username=${companySlug}&count=3`, { headers: nrHeaders }),
+          ]);
 
-        clearTimeout(timeoutId);
+          costEur = 0.01; // 2 credits = 2 x 0.005
 
-        if (!liResp.ok) {
-          const errText = await liResp.text();
-          console.error("Apify LinkedIn error:", liResp.status, errText);
-          return new Response(
-            JSON.stringify({
-              success: true, step_id, provider,
-              status: "api_error",
-              message: `Apify LinkedIn returned ${liResp.status}`,
+          const detailsOk = detailsResp.ok;
+          const employeesOk = employeesResp.ok;
+
+          let companyData: any = null;
+          let employeesData: any = null;
+
+          if (detailsOk) {
+            const dBody = await detailsResp.json();
+            companyData = dBody.data || dBody;
+          } else {
+            await detailsResp.text(); // consume body
+          }
+
+          if (employeesOk) {
+            const eBody = await employeesResp.json();
+            employeesData = eBody.data?.items || eBody.items || eBody.data || [];
+          } else {
+            await employeesResp.text(); // consume body
+          }
+
+          if (companyData || (Array.isArray(employeesData) && employeesData.length > 0)) {
+            fieldsFound = [];
+            if (companyData?.linkedinUrl || companyData?.url) fieldsFound.push("company_linkedin_url");
+            if (companyData?.industry) fieldsFound.push("industry");
+            if (companyData?.employeeCount || companyData?.size) fieldsFound.push("company_size");
+            if (companyData?.website) fieldsFound.push("website");
+
+            const topEmployee = Array.isArray(employeesData) && employeesData.length > 0 ? employeesData[0] : null;
+            if (topEmployee) fieldsFound.push("contact_person");
+
+            results = [{
+              name: companyData?.name || companyName,
+              salutation: null,
+              first_name: topEmployee?.firstName || topEmployee?.first_name || null,
+              last_name: topEmployee?.lastName || topEmployee?.last_name || null,
+              email: null,
+              phone: null,
+              website: companyData?.website || null,
+              address: companyData?.headquarter?.city
+                ? `${companyData.headquarter.city}, ${companyData.headquarter.country || "DE"}`
+                : companyData?.location || null,
+              rating: null,
+              reviews_count: null,
+              confidence: 60,
+              sources: ["netrows"],
+              source_refs: {
+                linkedin_url: companyData?.linkedinUrl || companyData?.url || null,
+                industry: companyData?.industry || null,
+                company_size: companyData?.employeeCount || companyData?.size || null,
+                contact_person: topEmployee
+                  ? `${topEmployee.firstName || topEmployee.first_name || ""} ${topEmployee.lastName || topEmployee.last_name || ""}`.trim()
+                  : null,
+                contact_title: topEmployee?.title || topEmployee?.headline || null,
+                provider: "netrows",
+              },
+            }];
+
+            console.log(`Netrows LinkedIn: found ${fieldsFound.length} fields for "${companyName}"`);
+          } else {
+            console.log(`Netrows: no data for "${companyName}", trying Apify fallback...`);
+            // Fall through to Apify below
+          }
+        } catch (nrErr) {
+          console.error("Netrows error:", nrErr);
+          // Fall through to Apify fallback
+        }
+      }
+
+      // ── Apify fallback (if Netrows unavailable or returned nothing) ──
+      if (results.length === 0 && APIFY_API_TOKEN) {
+        provider = "apify_linkedin";
+        try {
+          const runUrl = `https://api.apify.com/v2/acts/apify~linkedin-company-scraper/run-sync-get-dataset-items?token=${APIFY_API_TOKEN}&timeout=40`;
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 45000);
+
+          const liResp = await fetch(runUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            signal: controller.signal,
+            body: JSON.stringify({
+              queries: [companyName],
+              maxResults: 3,
+              proxy: { useApifyProxy: true },
             }),
-            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
+          });
 
-        const liItems: any[] = await liResp.json();
-        costEur = 0.01;
+          clearTimeout(timeoutId);
 
-        if (liItems.length > 0) {
-          const best = liItems[0];
-          fieldsFound = [];
-          if (best.linkedinUrl || best.url) fieldsFound.push("company_linkedin_url");
-          if (best.employees?.length > 0) fieldsFound.push("contact_person");
-          if (best.industry) fieldsFound.push("industry");
-          if (best.size || best.employeeCount) fieldsFound.push("company_size");
+          if (liResp.ok) {
+            const liItems: any[] = await liResp.json();
+            costEur = 0.01;
 
-          const topEmployee = best.employees?.[0];
-          results = [{
-            name: companyName,
-            salutation: null,
-            first_name: topEmployee?.firstName || null,
-            last_name: topEmployee?.lastName || null,
-            email: null,
-            phone: null,
-            website: best.website || null,
-            address: best.headquarter?.city ? `${best.headquarter.city}, ${best.headquarter.country || 'DE'}` : null,
-            rating: null,
-            reviews_count: null,
-            confidence: 55,
-            sources: ["apify_linkedin"],
-            source_refs: {
-              linkedin_url: best.linkedinUrl || best.url || null,
-              industry: best.industry || null,
-              company_size: best.size || best.employeeCount || null,
-              contact_person: topEmployee ? `${topEmployee.firstName || ''} ${topEmployee.lastName || ''}`.trim() : null,
-              contact_title: topEmployee?.title || null,
-            },
-          }];
+            if (liItems.length > 0) {
+              const best = liItems[0];
+              fieldsFound = [];
+              if (best.linkedinUrl || best.url) fieldsFound.push("company_linkedin_url");
+              if (best.employees?.length > 0) fieldsFound.push("contact_person");
+              if (best.industry) fieldsFound.push("industry");
+              if (best.size || best.employeeCount) fieldsFound.push("company_size");
+
+              const topEmployee = best.employees?.[0];
+              results = [{
+                name: companyName,
+                salutation: null,
+                first_name: topEmployee?.firstName || null,
+                last_name: topEmployee?.lastName || null,
+                email: null,
+                phone: null,
+                website: best.website || null,
+                address: best.headquarter?.city ? `${best.headquarter.city}, ${best.headquarter.country || "DE"}` : null,
+                rating: null,
+                reviews_count: null,
+                confidence: 55,
+                sources: ["apify_linkedin"],
+                source_refs: {
+                  linkedin_url: best.linkedinUrl || best.url || null,
+                  industry: best.industry || null,
+                  company_size: best.size || best.employeeCount || null,
+                  contact_person: topEmployee ? `${topEmployee.firstName || ""} ${topEmployee.lastName || ""}`.trim() : null,
+                  contact_title: topEmployee?.title || null,
+                },
+              }];
+            }
+          } else {
+            const errText = await liResp.text();
+            console.error("Apify LinkedIn fallback error:", liResp.status, errText);
+          }
+        } catch (liErr) {
+          console.error("Apify LinkedIn fallback exception:", liErr);
         }
-      } catch (liErr) {
-        if ((liErr as Error).name === 'AbortError') {
-          console.error("Apify LinkedIn timeout");
-        } else {
-          console.error("Apify LinkedIn exception:", liErr);
-        }
+      }
+
+      // ── Neither provider available ──
+      if (results.length === 0 && !Deno.env.get("NETROWS_API_KEY") && !APIFY_API_TOKEN) {
         return new Response(
           JSON.stringify({
-            success: true, step_id, provider,
-            status: "api_error",
-            message: liErr instanceof Error ? liErr.message : "LinkedIn scrape error",
+            success: true, step_id, provider: "none",
+            status: "not_configured",
+            message: "Neither NETROWS_API_KEY nor APIFY_API_TOKEN configured for LinkedIn scraping.",
+            config_hint: {
+              primary: { secret_name: "NETROWS_API_KEY", docs: "https://netrows.com/get-access" },
+              fallback: { secret_name: "APIFY_API_TOKEN", docs: "https://console.apify.com/account/integrations" },
+            },
           }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-    }
-
-    // ── linkedin_scrape without APIFY token ──
-    else if (step_id === "linkedin_scrape" && !APIFY_API_TOKEN) {
-      provider = "apify_linkedin";
-      return new Response(
-        JSON.stringify({
-          success: true, step_id, provider,
-          status: "not_configured",
-          message: "APIFY_API_TOKEN not configured. Required for LinkedIn company scraping.",
-          config_hint: { secret_name: "APIFY_API_TOKEN", docs: "https://console.apify.com/account/integrations" },
-        }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
     }
 
     else {
