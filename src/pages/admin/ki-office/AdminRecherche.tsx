@@ -207,10 +207,12 @@ export default function AdminRecherche() {
   const handleExport = async () => {
     if (filteredResults.length === 0) { toast.error('Keine Ergebnisse zum Exportieren'); return; }
     const rows = filteredResults.map(r => ({
+      Anrede: r.salutation || '', Vorname: r.first_name || '', Nachname: r.last_name || '',
       Firma: r.company_name || '', Kategorie: r.category || '',
-      Kontaktperson: r.contact_person_name || '', Rolle: r.contact_person_role || '',
-      'E-Mail': r.email || '', Telefon: r.phone || '', Stadt: r.city || '',
-      PLZ: r.postal_code || '', Website: r.website_url || '',
+      Position: r.contact_person_role || '',
+      'E-Mail': r.email || '', Telefon: r.phone || '',
+      PLZ: r.postal_code || '', Stadt: r.city || '',
+      Website: r.website_url || '',
       'Score (%)': r.confidence_score || 0,
       Status: VALIDATION_STATES[r.validation_state]?.label || r.validation_state,
     }));
@@ -573,16 +575,19 @@ export default function AdminRecherche() {
                           <TableHead className="w-10">
                             <Checkbox checked={selectedResults.size === filteredResults.length && filteredResults.length > 0} onCheckedChange={toggleAll} />
                           </TableHead>
+                          <TableHead className="min-w-[60px]">Anrede</TableHead>
+                          <TableHead className="min-w-[100px]">Vorname</TableHead>
+                          <TableHead className="min-w-[100px]">Nachname</TableHead>
                           <TableHead className="min-w-[160px]">Firma</TableHead>
                           <TableHead className="min-w-[100px]">Kategorie</TableHead>
-                          <TableHead className="min-w-[140px]">Kontaktperson</TableHead>
-                          <TableHead className="min-w-[110px]">Rolle</TableHead>
+                          <TableHead className="min-w-[110px]">Position</TableHead>
                           <TableHead className="min-w-[180px]">E-Mail</TableHead>
                           <TableHead className="min-w-[120px]">Telefon</TableHead>
-                          <TableHead className="min-w-[90px]">Stadt</TableHead>
                           <TableHead className="min-w-[60px]">PLZ</TableHead>
+                          <TableHead className="min-w-[90px]">Stadt</TableHead>
                           <TableHead className="w-10">Web</TableHead>
                           <TableHead className="w-14 text-right">Score</TableHead>
+                          <TableHead className="min-w-[80px]">Quelle</TableHead>
                           <TableHead className="min-w-[90px]">Status</TableHead>
                           <TableHead className="w-24">Aktionen</TableHead>
                         </TableRow>
@@ -593,13 +598,11 @@ export default function AdminRecherche() {
                           return (
                             <TableRow key={r.id} className={selectedResults.has(r.id) ? 'bg-primary/5' : ''}>
                               <TableCell><Checkbox checked={selectedResults.has(r.id)} onCheckedChange={() => toggleResult(r.id)} /></TableCell>
+                              <TableCell><span className="text-xs">{r.salutation || '—'}</span></TableCell>
+                              <TableCell><span className="text-sm">{r.first_name || '—'}</span></TableCell>
+                              <TableCell><span className="text-sm font-medium">{r.last_name || '—'}</span></TableCell>
                               <TableCell className="font-medium">{r.company_name || '—'}</TableCell>
                               <TableCell><span className="text-xs">{r.category || '—'}</span></TableCell>
-                              <TableCell>
-                                {r.contact_person_name ? (
-                                  <span className="flex items-center gap-1 text-sm"><User className="h-3 w-3 text-muted-foreground shrink-0" />{r.contact_person_name}</span>
-                                ) : '—'}
-                              </TableCell>
                               <TableCell><span className="text-xs text-muted-foreground">{r.contact_person_role || '—'}</span></TableCell>
                               <TableCell>
                                 {r.email ? (
@@ -611,14 +614,15 @@ export default function AdminRecherche() {
                                   <span className="flex items-center gap-1 text-sm"><Phone className="h-3 w-3 text-muted-foreground shrink-0" />{r.phone}</span>
                                 ) : '—'}
                               </TableCell>
-                              <TableCell><span className="text-sm">{r.city || '—'}</span></TableCell>
                               <TableCell><span className="text-xs">{r.postal_code || '—'}</span></TableCell>
+                              <TableCell><span className="text-sm">{r.city || '—'}</span></TableCell>
                               <TableCell>
                                 {r.website_url ? (
                                   <a href={r.website_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:text-primary/80"><Globe className="h-4 w-4" /></a>
                                 ) : '—'}
                               </TableCell>
                               <TableCell className="text-right font-mono text-sm">{r.confidence_score || 0}%</TableCell>
+                              <TableCell><span className="text-xs text-muted-foreground">{Array.isArray(r.source_refs_json) ? r.source_refs_json.join(', ') : (typeof r.source_refs_json === 'object' && r.source_refs_json ? Object.keys(r.source_refs_json).join(', ') : '—')}</span></TableCell>
                               <TableCell><Badge variant="outline" className={`text-xs ${vs.color}`}>{vs.label}</Badge></TableCell>
                               <TableCell>
                                 {r.validation_state === 'candidate' && (
@@ -687,7 +691,7 @@ export default function AdminRecherche() {
                             return (
                               <TableRow key={check.resultId}>
                                 <TableCell className="text-sm">{r.company_name || '—'}</TableCell>
-                                <TableCell className="text-sm">{r.contact_person_name || '—'}</TableCell>
+                                <TableCell className="text-sm">{[r.salutation, r.first_name, r.last_name].filter(Boolean).join(' ') || r.contact_person_name || '—'}</TableCell>
                                 <TableCell className="text-sm">{r.email || '—'}</TableCell>
                                 <TableCell>
                                   {check.status === 'new' && <Badge variant="outline" className="text-xs bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300">NEU</Badge>}
