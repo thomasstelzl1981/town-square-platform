@@ -1,8 +1,9 @@
 /**
- * AdminKontaktbuch — Master Contact Book
- * Layout: Filterleiste (immer sichtbar) → Haupttabelle (alle Spalten) → Inline-Detail
+ * AdminKontaktbuch — Market Directory Contact Book
+ * Layout: Stats → Filter → Tabelle → Inline-Detail
+ * Engine: ENG-MKTDIR für Normalisierung und Kategorien
  */
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
 } from '@/components/ui/dialog';
@@ -23,9 +24,11 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import {
-  Plus, Search, User, Mail, Phone, Loader2, Pencil, Trash2, X, Shield,
+  Plus, Search, User, Loader2, Pencil, Trash2, X, Save, ShieldOff, ShieldCheck,
 } from 'lucide-react';
-import { CATEGORY_OPTIONS, SALUTATION_OPTIONS, PERMISSION_OPTIONS } from '@/config/contactSchema';
+import { CATEGORY_OPTIONS, CATEGORY_GROUPS, PERMISSION_OPTIONS, SALUTATION_OPTIONS } from '@/config/contactSchema';
+import { QUALITY_STATUS_LABELS, type QualityStatus } from '@/engines/marketDirectory/spec';
+import { normalizeContact } from '@/engines/marketDirectory/engine';
 
 interface Contact {
   id: string;
@@ -48,6 +51,8 @@ interface Contact {
   legal_basis: string | null;
   do_not_contact: boolean | null;
   last_contacted_at: string | null;
+  confidence_score: number | null;
+  quality_status: string | null;
 }
 
 interface ContactFormData {
@@ -85,18 +90,25 @@ function getPermissionBadge(status: string | null) {
   return <Badge variant="outline" className={`text-xs ${ps.className}`}>{ps.label}</Badge>;
 }
 
+function getQualityBadge(status: string | null) {
+  const qs = QUALITY_STATUS_LABELS[(status || 'candidate') as QualityStatus] || QUALITY_STATUS_LABELS.candidate;
+  return <Badge variant="outline" className={`text-xs ${qs.color}`}>{qs.label}</Badge>;
+}
+
 export default function AdminKontaktbuch() {
   const queryClient = useQueryClient();
 
-  // ── Filters ──
+  // Filters
   const [searchQuery, setSearchQuery] = useState('');
+  const [filterCategoryGroup, setFilterCategoryGroup] = useState('all');
   const [filterCategory, setFilterCategory] = useState('all');
   const [filterPermission, setFilterPermission] = useState('all');
   const [filterCity, setFilterCity] = useState('');
   const [filterHasEmail, setFilterHasEmail] = useState('all');
   const [filterDNC, setFilterDNC] = useState('all');
+  const [filterQuality, setFilterQuality] = useState('all');
 
-  // ── Inline detail ──
+  // Inline detail
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [editMode, setEditMode] = useState(false);
   const [formData, setFormData] = useState<ContactFormData>(emptyFormData);
@@ -114,13 +126,28 @@ export default function AdminKontaktbuch() {
 
   const createMutation = useMutation({
     mutationFn: async (data: ContactFormData) => {
+      // Engine: Normalize before save
+      const norm = normalizeContact({
+        salutation: data.salutation, first_name: data.first_name, last_name: data.last_name,
+        company: data.company, phone: data.phone, email: data.email, street: data.street,
+        postal_code: data.postal_code, city: data.city,
+      });
       const { error } = await supabase.from('contacts').insert([{
-        first_name: data.first_name, last_name: data.last_name, tenant_id: null, scope: 'zone1_admin',
-        salutation: data.salutation || null, email: data.email || null, phone: data.phone || null,
-        phone_mobile: data.phone_mobile || null, street: data.street || null, postal_code: data.postal_code || null,
-        city: data.city || null, company: data.company || null, category: data.category || null,
-        notes: data.notes || null, permission_status: data.permission_status || 'unknown',
+        first_name: norm.normalized.firstName || data.first_name,
+        last_name: norm.normalized.lastName || data.last_name,
+        tenant_id: null, scope: 'zone1_admin',
+        salutation: norm.normalized.salutation || data.salutation || null,
+        email: norm.normalized.email || null,
+        phone: norm.normalized.phoneE164 || data.phone || null,
+        phone_mobile: data.phone_mobile || null,
+        street: norm.normalized.street || data.street || null,
+        postal_code: norm.normalized.postalCode || data.postal_code || null,
+        city: norm.normalized.city || data.city || null,
+        company: norm.normalized.company || data.company || null,
+        category: data.category || null, notes: data.notes || null,
+        permission_status: data.permission_status || 'unknown',
         legal_basis: data.legal_basis || null, do_not_contact: data.do_not_contact,
+        quality_status: 'approved',
       }] as any);
       if (error) throw error;
     },
@@ -129,7 +156,7 @@ export default function AdminKontaktbuch() {
       queryClient.invalidateQueries({ queryKey: ['admin-contacts'] });
       setCreateDialogOpen(false); setFormData(emptyFormData);
     },
-    onError: (error) => toast.error('Fehler: ' + error.message),
+    onError: (error: Error) => toast.error('Fehler: ' + error.message),
   });
 
   const updateMutation = useMutation({
@@ -150,7 +177,7 @@ export default function AdminKontaktbuch() {
       queryClient.invalidateQueries({ queryKey: ['admin-contacts'] });
       setEditMode(false);
     },
-    onError: (error) => toast.error('Fehler: ' + error.message),
+    onError: (error: Error) => toast.error('Fehler: ' + error.message),
   });
 
   const deleteMutation = useMutation({
@@ -163,7 +190,7 @@ export default function AdminKontaktbuch() {
       queryClient.invalidateQueries({ queryKey: ['admin-contacts'] });
       setSelectedContact(null);
     },
-    onError: (error) => toast.error('Fehler: ' + error.message),
+    onError: (error: Error) => toast.error('Fehler: ' + error.message),
   });
 
   const handleRowClick = (contact: Contact) => {
@@ -179,21 +206,32 @@ export default function AdminKontaktbuch() {
     setEditMode(false);
   };
 
-  const filteredContacts = contacts.filter(c => {
+  // Grouped categories for filter
+  const filteredCategoryOptions = useMemo(() => {
+    if (filterCategoryGroup === 'all') return CATEGORY_OPTIONS;
+    return CATEGORY_OPTIONS.filter(c => c.group === filterCategoryGroup);
+  }, [filterCategoryGroup]);
+
+  const filteredContacts = useMemo(() => contacts.filter(c => {
     const q = searchQuery.toLowerCase();
     if (q) {
       const searchable = [c.first_name, c.last_name, c.email, c.company, c.city, c.phone, c.phone_mobile].filter(Boolean).join(' ').toLowerCase();
       if (!searchable.includes(q)) return false;
     }
     if (filterCategory !== 'all' && c.category !== filterCategory) return false;
+    if (filterCategoryGroup !== 'all') {
+      const groupCats = CATEGORY_OPTIONS.filter(o => o.group === filterCategoryGroup).map(o => o.value);
+      if (!c.category || !groupCats.includes(c.category)) return false;
+    }
     if (filterPermission !== 'all' && c.permission_status !== filterPermission) return false;
     if (filterCity && !c.city?.toLowerCase().includes(filterCity.toLowerCase())) return false;
     if (filterHasEmail === 'yes' && !c.email) return false;
     if (filterHasEmail === 'no' && c.email) return false;
     if (filterDNC === 'yes' && !c.do_not_contact) return false;
     if (filterDNC === 'no' && c.do_not_contact) return false;
+    if (filterQuality !== 'all' && (c.quality_status || 'candidate') !== filterQuality) return false;
     return true;
-  });
+  }), [contacts, searchQuery, filterCategory, filterCategoryGroup, filterPermission, filterCity, filterHasEmail, filterDNC, filterQuality]);
 
   const ContactFormFields = () => (
     <div className="space-y-4">
@@ -209,7 +247,16 @@ export default function AdminKontaktbuch() {
           <Label className="text-xs">Kategorie</Label>
           <Select value={formData.category} onValueChange={v => setFormData({ ...formData, category: v })}>
             <SelectTrigger><SelectValue placeholder="Auswählen..." /></SelectTrigger>
-            <SelectContent>{CATEGORY_OPTIONS.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}</SelectContent>
+            <SelectContent>
+              {CATEGORY_GROUPS.map(g => (
+                <div key={g.code}>
+                  <div className="px-2 py-1 text-xs font-semibold text-muted-foreground">{g.label}</div>
+                  {CATEGORY_OPTIONS.filter(c => c.group === g.code).map(c => (
+                    <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                  ))}
+                </div>
+              ))}
+            </SelectContent>
           </Select>
         </div>
       </div>
@@ -254,15 +301,13 @@ export default function AdminKontaktbuch() {
     <div className="space-y-6 p-6">
       {/* ═══ HEADER ═══ */}
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-bold tracking-tight uppercase">Kontaktbuch</h2>
+        <h2 className="text-lg font-bold tracking-tight uppercase">Kontaktbuch — Market Directory</h2>
         <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-          <DialogTrigger asChild>
-            <Button><Plus className="h-4 w-4 mr-2" />Neuer Kontakt</Button>
-          </DialogTrigger>
+          <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" />Neuer Kontakt</Button></DialogTrigger>
           <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Neuen Kontakt erstellen</DialogTitle>
-              <DialogDescription>Admin-Kontakt (Zone 1)</DialogDescription>
+              <DialogDescription>Admin-Kontakt (Zone 1) — wird automatisch normalisiert</DialogDescription>
             </DialogHeader>
             <ContactFormFields />
             <DialogFooter>
@@ -275,28 +320,37 @@ export default function AdminKontaktbuch() {
         </Dialog>
       </div>
 
-      {/* Stats */}
+      {/* ═══ STATS ═══ */}
       <div className="flex items-center gap-4 text-sm text-muted-foreground">
         <span>{contacts.length} Kontakte</span>
         <span>·</span>
         <span>{contacts.filter(c => c.permission_status === 'opt_in' || c.permission_status === 'legitimate_interest').length} kontaktierbar</span>
         <span>·</span>
         <span>{contacts.filter(c => c.do_not_contact).length} gesperrt</span>
+        <span>·</span>
+        <span>{contacts.filter(c => (c.quality_status || 'candidate') === 'needs_review').length} Review</span>
       </div>
 
-      {/* ═══ FILTERLEISTE (immer sichtbar) ═══ */}
+      {/* ═══ FILTER ═══ */}
       <Card>
         <CardContent className="pt-4">
-          <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
             <div className="relative col-span-2 md:col-span-1">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               <Input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Freitext..." className="pl-8 h-9 text-sm" />
             </div>
+            <Select value={filterCategoryGroup} onValueChange={v => { setFilterCategoryGroup(v); setFilterCategory('all'); }}>
+              <SelectTrigger className="h-9"><SelectValue placeholder="Kategorie-Gruppe" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Alle Gruppen</SelectItem>
+                {CATEGORY_GROUPS.map(g => <SelectItem key={g.code} value={g.code}>{g.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
             <Select value={filterCategory} onValueChange={setFilterCategory}>
               <SelectTrigger className="h-9"><SelectValue placeholder="Kategorie" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Alle Kategorien</SelectItem>
-                {CATEGORY_OPTIONS.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
+                {filteredCategoryOptions.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
               </SelectContent>
             </Select>
             <Select value={filterPermission} onValueChange={setFilterPermission}>
@@ -316,18 +370,25 @@ export default function AdminKontaktbuch() {
               </SelectContent>
             </Select>
             <Select value={filterDNC} onValueChange={setFilterDNC}>
-              <SelectTrigger className="h-9"><SelectValue placeholder="Gesperrt" /></SelectTrigger>
+              <SelectTrigger className="h-9"><SelectValue placeholder="DNC" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Alle</SelectItem>
                 <SelectItem value="yes">Gesperrt</SelectItem>
                 <SelectItem value="no">Nicht gesperrt</SelectItem>
               </SelectContent>
             </Select>
+            <Select value={filterQuality} onValueChange={setFilterQuality}>
+              <SelectTrigger className="h-9"><SelectValue placeholder="Quality" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Alle Status</SelectItem>
+                {Object.entries(QUALITY_STATUS_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
           </div>
         </CardContent>
       </Card>
 
-      {/* ═══ HAUPTTABELLE (immer sichtbar, alle Spalten) ═══ */}
+      {/* ═══ TABELLE ═══ */}
       {filteredContacts.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-12 border rounded-lg">
           <User className="h-12 w-12 text-muted-foreground/50 mb-4" />
@@ -344,17 +405,18 @@ export default function AdminKontaktbuch() {
                 <TableHead className="min-w-[100px]">Vorname</TableHead>
                 <TableHead className="min-w-[100px]">Nachname</TableHead>
                 <TableHead className="min-w-[140px]">Firma</TableHead>
-                <TableHead className="min-w-[90px]">Kategorie</TableHead>
+                <TableHead className="min-w-[120px]">Kategorie</TableHead>
                 <TableHead className="min-w-[170px]">E-Mail</TableHead>
                 <TableHead className="min-w-[110px]">Mobil</TableHead>
                 <TableHead className="min-w-[110px]">Telefon</TableHead>
                 <TableHead className="min-w-[140px]">Straße</TableHead>
-                <TableHead className="min-w-[55px]">PLZ</TableHead>
-                <TableHead className="min-w-[80px]">Ort</TableHead>
+                <TableHead className="min-w-[60px]">PLZ</TableHead>
+                <TableHead className="min-w-[100px]">Ort</TableHead>
                 <TableHead className="min-w-[90px]">Permission</TableHead>
-                <TableHead className="min-w-[110px]">Rechtsgrundlage</TableHead>
-                <TableHead className="min-w-[50px]">DNC</TableHead>
-                <TableHead className="min-w-[100px]">Letzter Kontakt</TableHead>
+                <TableHead className="min-w-[80px]">DNC</TableHead>
+                <TableHead className="min-w-[80px]">Quality</TableHead>
+                <TableHead className="min-w-[110px]">Letzter Kontakt</TableHead>
+                <TableHead className="w-20">Aktionen</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -365,25 +427,34 @@ export default function AdminKontaktbuch() {
                   onClick={() => handleRowClick(c)}
                 >
                   <TableCell className="text-xs">{c.salutation || '—'}</TableCell>
-                  <TableCell className="text-sm">{c.first_name}</TableCell>
-                  <TableCell className="text-sm font-medium">{c.last_name}</TableCell>
+                  <TableCell className="text-sm">{c.first_name || '—'}</TableCell>
+                  <TableCell className="text-sm font-medium">{c.last_name || '—'}</TableCell>
                   <TableCell className="text-sm">{c.company || '—'}</TableCell>
                   <TableCell>{getCategoryBadge(c.category)}</TableCell>
-                  <TableCell>
-                    {c.email ? <span className="flex items-center gap-1 text-sm"><Mail className="h-3 w-3 text-muted-foreground shrink-0" /><span className="truncate max-w-[140px]">{c.email}</span></span> : <span className="text-xs text-muted-foreground">—</span>}
-                  </TableCell>
-                  <TableCell className="text-sm">{c.phone_mobile || '—'}</TableCell>
-                  <TableCell className="text-sm">{c.phone || '—'}</TableCell>
-                  <TableCell className="text-sm">{c.street || '—'}</TableCell>
+                  <TableCell className="text-xs">{c.email || '—'}</TableCell>
+                  <TableCell className="text-xs">{c.phone_mobile || '—'}</TableCell>
+                  <TableCell className="text-xs">{c.phone || '—'}</TableCell>
+                  <TableCell className="text-xs">{c.street || '—'}</TableCell>
                   <TableCell className="text-xs">{c.postal_code || '—'}</TableCell>
-                  <TableCell className="text-sm">{c.city || '—'}</TableCell>
+                  <TableCell className="text-xs">{c.city || '—'}</TableCell>
                   <TableCell>{getPermissionBadge(c.permission_status)}</TableCell>
-                  <TableCell className="text-xs">{c.legal_basis || '—'}</TableCell>
-                  <TableCell className="text-center">
-                    {c.do_not_contact ? <Badge variant="destructive" className="text-xs">Ja</Badge> : <span className="text-xs text-muted-foreground">—</span>}
+                  <TableCell>
+                    {c.do_not_contact
+                      ? <ShieldOff className="h-4 w-4 text-destructive" />
+                      : <ShieldCheck className="h-4 w-4 text-green-600" />
+                    }
                   </TableCell>
-                  <TableCell className="text-xs text-muted-foreground">
-                    {c.last_contacted_at ? new Date(c.last_contacted_at).toLocaleDateString('de-DE') : '—'}
+                  <TableCell>{getQualityBadge(c.quality_status)}</TableCell>
+                  <TableCell className="text-xs text-muted-foreground">{c.last_contacted_at ? new Date(c.last_contacted_at).toLocaleDateString('de-DE') : '—'}</TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { handleRowClick(c); setEditMode(true); }}>
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => deleteMutation.mutate(c.id)}>
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -392,54 +463,50 @@ export default function AdminKontaktbuch() {
         </div>
       )}
 
-      {/* ═══ INLINE-DETAIL (unter Tabelle, statt Drawer) ═══ */}
+      {/* ═══ INLINE-DETAIL ═══ */}
       {selectedContact && (
         <Card className="border-primary/20">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base">
-                {selectedContact.salutation ? `${selectedContact.salutation} ` : ''}{selectedContact.first_name} {selectedContact.last_name}
-                {selectedContact.company && <span className="text-muted-foreground font-normal ml-2">— {selectedContact.company}</span>}
-              </CardTitle>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-semibold uppercase tracking-wide">
+                {editMode ? 'Kontakt bearbeiten' : 'Kontakt-Details'}
+              </h3>
               <div className="flex items-center gap-2">
-                {!editMode && (
-                  <Button variant="outline" size="sm" onClick={() => setEditMode(true)}>
-                    <Pencil className="h-3.5 w-3.5 mr-1" />Bearbeiten
-                  </Button>
-                )}
-                <Button variant="ghost" size="sm" className="hover:text-destructive" onClick={() => deleteMutation.mutate(selectedContact.id)} disabled={deleteMutation.isPending}>
-                  {deleteMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
-                </Button>
-                <Button variant="ghost" size="sm" onClick={() => setSelectedContact(null)}>
-                  <X className="h-4 w-4" />
-                </Button>
+                {!editMode && <Button size="sm" variant="outline" onClick={() => setEditMode(true)}><Pencil className="h-3.5 w-3.5 mr-1.5" />Bearbeiten</Button>}
+                <Button size="sm" variant="ghost" onClick={() => { setSelectedContact(null); setEditMode(false); }}><X className="h-4 w-4" /></Button>
               </div>
             </div>
-          </CardHeader>
-          <CardContent>
             {editMode ? (
               <div className="space-y-4">
                 <ContactFormFields />
-                <div className="flex gap-2">
-                  <Button variant="outline" onClick={() => setEditMode(false)}>Abbrechen</Button>
+                <div className="flex items-center gap-2 pt-2">
                   <Button onClick={() => updateMutation.mutate({ ...formData, id: selectedContact.id })} disabled={updateMutation.isPending}>
-                    {updateMutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}Speichern
+                    {updateMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}Speichern
                   </Button>
+                  <Button variant="outline" onClick={() => setEditMode(false)}>Abbrechen</Button>
                 </div>
               </div>
             ) : (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                <div><span className="text-xs text-muted-foreground block">Anrede</span>{selectedContact.salutation || '—'}</div>
+                <div><span className="text-xs text-muted-foreground block">Vorname</span>{selectedContact.first_name}</div>
+                <div><span className="text-xs text-muted-foreground block">Nachname</span>{selectedContact.last_name}</div>
+                <div><span className="text-xs text-muted-foreground block">Firma</span>{selectedContact.company || '—'}</div>
+                <div><span className="text-xs text-muted-foreground block">Kategorie</span>{getCategoryBadge(selectedContact.category)}</div>
                 <div><span className="text-xs text-muted-foreground block">E-Mail</span>{selectedContact.email || '—'}</div>
                 <div><span className="text-xs text-muted-foreground block">Mobil</span>{selectedContact.phone_mobile || '—'}</div>
                 <div><span className="text-xs text-muted-foreground block">Telefon</span>{selectedContact.phone || '—'}</div>
-                <div><span className="text-xs text-muted-foreground block">Kategorie</span>{getCategoryBadge(selectedContact.category)}</div>
                 <div><span className="text-xs text-muted-foreground block">Straße</span>{selectedContact.street || '—'}</div>
-                <div><span className="text-xs text-muted-foreground block">PLZ / Ort</span>{[selectedContact.postal_code, selectedContact.city].filter(Boolean).join(' ') || '—'}</div>
+                <div><span className="text-xs text-muted-foreground block">PLZ</span>{selectedContact.postal_code || '—'}</div>
+                <div><span className="text-xs text-muted-foreground block">Ort</span>{selectedContact.city || '—'}</div>
                 <div><span className="text-xs text-muted-foreground block">Permission</span>{getPermissionBadge(selectedContact.permission_status)}</div>
+                <div><span className="text-xs text-muted-foreground block">Quality Status</span>{getQualityBadge(selectedContact.quality_status)}</div>
                 <div><span className="text-xs text-muted-foreground block">Rechtsgrundlage</span>{selectedContact.legal_basis || '—'}</div>
-                <div><span className="text-xs text-muted-foreground block">DNC</span>{selectedContact.do_not_contact ? <Badge variant="destructive" className="text-xs">Gesperrt</Badge> : 'Nein'}</div>
+                <div><span className="text-xs text-muted-foreground block">DNC</span>{selectedContact.do_not_contact ? 'Gesperrt' : 'Frei'}</div>
                 <div><span className="text-xs text-muted-foreground block">Letzter Kontakt</span>{selectedContact.last_contacted_at ? new Date(selectedContact.last_contacted_at).toLocaleDateString('de-DE') : '—'}</div>
-                {selectedContact.notes && <div className="col-span-2"><span className="text-xs text-muted-foreground block">Notizen</span>{selectedContact.notes}</div>}
+                {selectedContact.notes && (
+                  <div className="col-span-2 md:col-span-4"><span className="text-xs text-muted-foreground block">Notizen</span>{selectedContact.notes}</div>
+                )}
               </div>
             )}
           </CardContent>

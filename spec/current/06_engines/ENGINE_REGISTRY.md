@@ -47,6 +47,7 @@ Alle Kalkulationsengines sind **pure TypeScript Functions**, laufen **client-sid
 | ENG-VORSORGE | Vorsorgeluecke-Rechner | MOD-08 | ✅ Live | `src/engines/vorsorgeluecke/spec.ts`, `engine.ts` |
 | ENG-VVSTEUER | V+V Steuer-Engine | MOD-04 | ✅ Live | `src/engines/vvSteuer/spec.ts` |
 | ENG-KONTOMATCH | Konto-Matching Engine | MOD-04, MOD-18, MOD-19 | ⚡ Teilweise | `src/engines/kontoMatch/spec.ts`, `engine.ts`, `recurring.ts` |
+| ENG-MKTDIR | Market Directory Engine | Zone 1 | ✅ Live | `src/engines/marketDirectory/spec.ts`, `engine.ts` |
 
 ### Daten (4 Engines)
 
