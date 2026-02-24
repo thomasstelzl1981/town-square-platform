@@ -3,9 +3,11 @@
  * MOD-13 PROJEKTE — P0 Redesign
  * 
  * ALWAYS shows 5 widgets (W1–W5), even without data.
+ * 
+ * v2: Inline-Editing, Validierung, erweiterte Felder (WEG, Hausgeld, Rendite)
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { DESIGN, getActiveWidgetGlow } from '@/config/designManifest';
 import { useNavigate } from 'react-router-dom';
 import { useDropzone } from 'react-dropzone';
@@ -21,7 +23,7 @@ import { Label } from '@/components/ui/label';
 import { 
   Upload, FileText, Table2, Sparkles, X, Loader2, ArrowRight,
   Building2, FolderKanban, TrendingUp, AlertCircle, CheckCircle2,
-  Trash2, Search, Plus,
+  Trash2, Search, Plus, AlertTriangle, Edit3,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -51,6 +53,11 @@ interface ExtractedUnit {
   floor?: string;
   price: number;
   currentRent?: number;
+  hausgeld?: number;
+  instandhaltung?: number;
+  nettoRendite?: number;
+  weg?: string;
+  mietfaktor?: number;
 }
 
 interface ColumnMapping {
@@ -68,8 +75,18 @@ interface ExtractedProjectData {
   priceRange: string;
   description?: string;
   projectType?: 'neubau' | 'aufteilung';
+  constructionYear?: number;
+  modernizationStatus?: string;
+  wegCount?: number;
+  wegDetails?: { name: string; unitsCount: number; addressRange: string }[];
+  developer?: string;
   extractedUnits?: ExtractedUnit[];
   columnMapping?: ColumnMapping[];
+}
+
+interface ValidationWarning {
+  type: 'error' | 'warning';
+  message: string;
 }
 
 const MAPPED_TO_LABELS: Record<string, string> = {
@@ -79,10 +96,88 @@ const MAPPED_TO_LABELS: Record<string, string> = {
   rooms: 'Zimmer',
   floor: 'Etage',
   price: 'Kaufpreis (EUR)',
-  currentRent: 'Akt. Miete (EUR/Monat)',
+  currentRent: 'Akt. Miete',
+  hausgeld: 'Hausgeld',
+  instandhaltung: 'Instandhaltung',
+  nettoRendite: 'Netto-Rendite',
+  weg: 'WEG',
+  mietfaktor: 'Mietfaktor',
 };
 
 type IntakeStep = 'upload' | 'review' | 'creating';
+
+// ── Inline editable cell ──────────────────────────────────────────────────────
+function EditableCell({ value, onChange, type = 'text', className }: {
+  value: string | number;
+  onChange: (val: string) => void;
+  type?: 'text' | 'number';
+  className?: string;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [localVal, setLocalVal] = useState(String(value));
+
+  if (editing) {
+    return (
+      <Input
+        autoFocus
+        type={type}
+        value={localVal}
+        onChange={(e) => setLocalVal(e.target.value)}
+        onBlur={() => { setEditing(false); onChange(localVal); }}
+        onKeyDown={(e) => { if (e.key === 'Enter') { setEditing(false); onChange(localVal); } if (e.key === 'Escape') setEditing(false); }}
+        className={cn("h-6 px-1 py-0 text-xs w-full min-w-[50px]", className)}
+      />
+    );
+  }
+
+  return (
+    <span
+      onClick={() => { setLocalVal(String(value)); setEditing(true); }}
+      className="cursor-pointer hover:bg-primary/5 rounded px-0.5 transition-colors"
+      title="Klicken zum Bearbeiten"
+    >
+      {value || '—'}
+    </span>
+  );
+}
+
+// ── Validation logic ──────────────────────────────────────────────────────────
+function validateUnits(data: ExtractedProjectData): ValidationWarning[] {
+  const warnings: ValidationWarning[] = [];
+  const units = data.extractedUnits || [];
+
+  if (!data.projectName?.trim()) {
+    warnings.push({ type: 'error', message: 'Projektname ist leer' });
+  }
+
+  // Duplicate unit numbers
+  const nums = units.map(u => u.unitNumber).filter(Boolean);
+  const dupes = nums.filter((n, i) => nums.indexOf(n) !== i);
+  if (dupes.length > 0) {
+    warnings.push({ type: 'warning', message: `Doppelte Einheitennummern: ${[...new Set(dupes)].join(', ')}` });
+  }
+
+  // Units without price
+  const noPriceCount = units.filter(u => !u.price || u.price <= 0).length;
+  if (noPriceCount > 0) {
+    warnings.push({ type: 'warning', message: `${noPriceCount} Einheit(en) ohne Kaufpreis` });
+  }
+
+  // Implausible price per sqm
+  const validUnits = units.filter(u => u.area > 0 && u.price > 0);
+  if (validUnits.length > 2) {
+    const avgPricePerSqm = validUnits.reduce((s, u) => s + u.price / u.area, 0) / validUnits.length;
+    const outliers = validUnits.filter(u => {
+      const ppm = u.price / u.area;
+      return Math.abs(ppm - avgPricePerSqm) / avgPricePerSqm > 0.5;
+    });
+    if (outliers.length > 0) {
+      warnings.push({ type: 'warning', message: `${outliers.length} Einheit(en) mit auffälligem €/m²-Preis (>50% Abweichung vom Ø)` });
+    }
+  }
+
+  return warnings;
+}
 
 export default function ProjekteDashboard() {
   const navigate = useNavigate();
@@ -108,6 +203,14 @@ export default function ProjekteDashboard() {
 
   const { upload: universalUpload } = useUniversalUpload();
 
+  // Validation warnings (memoized)
+  const validationWarnings = useMemo(() => {
+    if (!extractedData) return [];
+    return validateUnits(extractedData);
+  }, [extractedData]);
+
+  const hasBlockingErrors = validationWarnings.some(w => w.type === 'error');
+
   const handleDeleteClick = (project: ProjectPortfolioRow) => {
     setProjectToDelete(project);
     setDeleteDialogOpen(true);
@@ -116,6 +219,34 @@ export default function ProjekteDashboard() {
   const handleConfirmDelete = async (projectId: string): Promise<DeletionProtocol> => {
     const result = await deleteProject.mutateAsync(projectId);
     return result;
+  };
+
+  // ── Unit editing helpers ──────────────────────────────────────────────────
+  const updateUnit = (idx: number, field: keyof ExtractedUnit, value: string) => {
+    if (!extractedData?.extractedUnits) return;
+    const newUnits = [...extractedData.extractedUnits];
+    const numFields = ['area', 'rooms', 'price', 'currentRent', 'hausgeld', 'instandhaltung', 'nettoRendite', 'mietfaktor'];
+    (newUnits[idx] as any)[field] = numFields.includes(field) ? (parseFloat(value) || 0) : value;
+    setExtractedData({ ...extractedData, extractedUnits: newUnits });
+  };
+
+  const addUnit = () => {
+    if (!extractedData) return;
+    const units = extractedData.extractedUnits || [];
+    const newUnit: ExtractedUnit = {
+      unitNumber: `WE-${String(units.length + 1).padStart(3, '0')}`,
+      type: 'Wohnung',
+      area: 0,
+      price: 0,
+    };
+    setExtractedData({ ...extractedData, extractedUnits: [...units, newUnit], unitsCount: units.length + 1 });
+  };
+
+  const removeUnit = (idx: number) => {
+    if (!extractedData?.extractedUnits) return;
+    const newUnits = [...extractedData.extractedUnits];
+    newUnits.splice(idx, 1);
+    setExtractedData({ ...extractedData, extractedUnits: newUnits, unitsCount: newUnits.length });
   };
 
   // Expose dropzone
@@ -168,6 +299,10 @@ export default function ProjekteDashboard() {
 
   const handleCreateProject = async () => {
     if (!extractedData) return;
+    if (hasBlockingErrors) {
+      toast.error('Bitte beheben Sie zuerst die Fehler (rot markiert).');
+      return;
+    }
     const storagePaths: { expose?: string; pricelist?: string } = {};
     if (uploadedExpose) storagePaths.expose = uploadedExpose.storagePath;
     if (uploadedPricelist) storagePaths.pricelist = uploadedPricelist.storagePath;
@@ -191,6 +326,27 @@ export default function ProjekteDashboard() {
     totalRevenue: portfolioRows.reduce((sum, p) => sum + (p.sale_revenue_actual || 0), 0),
     reservedUnits: portfolioRows.reduce((sum, p) => sum + p.units_reserved, 0),
   };
+
+  // ── Summen for review table ───────────────────────────────────────────────
+  const unitSums = useMemo(() => {
+    const units = extractedData?.extractedUnits || [];
+    return {
+      totalArea: units.reduce((s, u) => s + (u.area || 0), 0),
+      totalPrice: units.reduce((s, u) => s + (u.price || 0), 0),
+      totalRent: units.reduce((s, u) => s + (u.currentRent || 0), 0),
+      totalHausgeld: units.reduce((s, u) => s + (u.hausgeld || 0), 0),
+      avgRendite: (() => {
+        const withRendite = units.filter(u => u.nettoRendite && u.nettoRendite > 0);
+        return withRendite.length > 0 ? withRendite.reduce((s, u) => s + (u.nettoRendite || 0), 0) / withRendite.length : 0;
+      })(),
+    };
+  }, [extractedData?.extractedUnits]);
+
+  // Check if any unit has extended fields
+  const hasExtendedFields = useMemo(() => {
+    const units = extractedData?.extractedUnits || [];
+    return units.some(u => u.hausgeld || u.weg || u.nettoRendite || u.mietfaktor);
+  }, [extractedData?.extractedUnits]);
 
   return (
     <PageShell>
@@ -354,6 +510,7 @@ export default function ProjekteDashboard() {
 
           {step === 'review' && extractedData && (
             <div className="space-y-4">
+              {/* Project metadata fields */}
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2"><Label htmlFor="projectName">Projektname</Label><Input id="projectName" value={extractedData.projectName} onChange={(e) => setExtractedData({ ...extractedData, projectName: e.target.value })} /></div>
                 <div className="space-y-2"><Label htmlFor="projectType">Projekttyp</Label><Input id="projectType" value={extractedData.projectType || 'neubau'} onChange={(e) => setExtractedData({ ...extractedData, projectType: e.target.value as any })} /></div>
@@ -364,6 +521,34 @@ export default function ProjekteDashboard() {
                 <div className="space-y-2"><Label htmlFor="totalArea">Gesamtfläche (m²)</Label><Input id="totalArea" type="number" value={extractedData.totalArea} onChange={(e) => setExtractedData({ ...extractedData, totalArea: parseFloat(e.target.value) || 0 })} /></div>
                 <div className="space-y-2"><Label htmlFor="priceRange">Preisspanne</Label><Input id="priceRange" value={extractedData.priceRange} onChange={(e) => setExtractedData({ ...extractedData, priceRange: e.target.value })} /></div>
               </div>
+
+              {/* Extra Expose fields for Aufteilungsobjekte */}
+              {(extractedData.constructionYear || extractedData.developer || (extractedData.wegCount && extractedData.wegCount > 0)) && (
+                <div className="grid gap-4 md:grid-cols-3">
+                  {extractedData.constructionYear ? (
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">Baujahr</Label>
+                      <p className="text-sm font-medium">{extractedData.constructionYear}</p>
+                    </div>
+                  ) : null}
+                  {extractedData.developer ? (
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">Bauträger/Verkäufer</Label>
+                      <p className="text-sm font-medium">{extractedData.developer}</p>
+                    </div>
+                  ) : null}
+                  {extractedData.wegCount && extractedData.wegCount > 0 ? (
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">WEGs</Label>
+                      <div className="flex flex-wrap gap-1">
+                        {extractedData.wegDetails?.map((weg, i) => (
+                          <Badge key={i} variant="outline" className="text-xs">{weg.name} ({weg.unitsCount} WE)</Badge>
+                        )) || <p className="text-sm font-medium">{extractedData.wegCount} WEG(s)</p>}
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              )}
 
               {/* Column Mapping Display */}
               {extractedData.columnMapping && extractedData.columnMapping.length > 0 && (
@@ -381,54 +566,128 @@ export default function ProjekteDashboard() {
                 </div>
               )}
 
-              {/* Extracted Units Table */}
+              {/* Validation Warnings */}
+              {validationWarnings.length > 0 && (
+                <div className="space-y-2">
+                  {validationWarnings.map((w, i) => (
+                    <div key={i} className={cn(
+                      "flex items-center gap-2 p-2 rounded-lg text-sm",
+                      w.type === 'error' ? 'bg-destructive/10 text-destructive' : 'bg-accent/50 text-accent-foreground'
+                    )}>
+                      {w.type === 'error' ? <AlertCircle className="h-4 w-4 flex-shrink-0" /> : <AlertTriangle className="h-4 w-4 flex-shrink-0" />}
+                      {w.message}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Extracted Units Table — INLINE EDITABLE */}
               {extractedData.extractedUnits && extractedData.extractedUnits.length > 0 && (
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <Label>Erkannte Einheiten: {extractedData.extractedUnits.length}</Label>
-                    <Badge variant="secondary">{extractedData.extractedUnits.reduce((s, u) => s + (u.area || 0), 0).toFixed(0)} m² gesamt</Badge>
+                    <Label className="flex items-center gap-2">
+                      <Edit3 className="h-3.5 w-3.5 text-muted-foreground" />
+                      Erkannte Einheiten: {extractedData.extractedUnits.length}
+                      <span className="text-xs text-muted-foreground font-normal">(Klicken zum Bearbeiten)</span>
+                    </Label>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="secondary">{unitSums.totalArea.toFixed(0)} m² gesamt</Badge>
+                      <Button variant="outline" size="sm" className="gap-1 h-7 text-xs" onClick={addUnit}>
+                        <Plus className="h-3 w-3" /> Einheit
+                      </Button>
+                    </div>
                   </div>
-                  <div className="overflow-x-auto max-h-64 overflow-y-auto border rounded-lg">
+                  <div className="overflow-x-auto max-h-[400px] overflow-y-auto border rounded-lg">
                     <table className="w-full text-sm">
-                      <thead className="bg-muted/50 sticky top-0">
+                      <thead className="bg-muted/50 sticky top-0 z-10">
                         <tr className="border-b">
                           <th className="text-left py-2 px-3 font-medium">Nr.</th>
                           <th className="text-left py-2 px-3 font-medium">Typ</th>
+                          {hasExtendedFields && <th className="text-left py-2 px-3 font-medium">WEG</th>}
                           <th className="text-right py-2 px-3 font-medium">Fläche</th>
                           <th className="text-right py-2 px-3 font-medium">Zimmer</th>
                           <th className="text-left py-2 px-3 font-medium">Etage</th>
                           <th className="text-right py-2 px-3 font-medium">Kaufpreis</th>
                           <th className="text-right py-2 px-3 font-medium">Miete</th>
+                          {hasExtendedFields && <th className="text-right py-2 px-3 font-medium">Hausgeld</th>}
+                          {hasExtendedFields && <th className="text-right py-2 px-3 font-medium">Rendite</th>}
                           <th className="text-right py-2 px-3 font-medium">€/m²</th>
-                          <th className="py-2 px-2"></th>
+                          <th className="py-2 px-2 w-8"></th>
                         </tr>
                       </thead>
                       <tbody>
                         {extractedData.extractedUnits.map((unit, idx) => (
                           <tr key={idx} className="border-b last:border-0 hover:bg-muted/30">
-                            <td className="py-1.5 px-3 font-mono text-xs">{unit.unitNumber}</td>
-                            <td className="py-1.5 px-3">{unit.type}</td>
-                            <td className="py-1.5 px-3 text-right">{unit.area?.toFixed(1)} m²</td>
-                            <td className="py-1.5 px-3 text-right">{unit.rooms || '—'}</td>
-                            <td className="py-1.5 px-3">{unit.floor || '—'}</td>
-                            <td className="py-1.5 px-3 text-right font-medium">{unit.price?.toLocaleString('de-DE')} €</td>
-                            <td className="py-1.5 px-3 text-right">{unit.currentRent ? `${unit.currentRent?.toLocaleString('de-DE')} €` : '—'}</td>
-                            <td className="py-1.5 px-3 text-right text-muted-foreground">{unit.area > 0 ? Math.round(unit.price / unit.area).toLocaleString('de-DE') : '—'}</td>
+                            <td className="py-1.5 px-3 font-mono text-xs">
+                              <EditableCell value={unit.unitNumber} onChange={(v) => updateUnit(idx, 'unitNumber', v)} />
+                            </td>
+                            <td className="py-1.5 px-3">
+                              <EditableCell value={unit.type} onChange={(v) => updateUnit(idx, 'type', v)} />
+                            </td>
+                            {hasExtendedFields && (
+                              <td className="py-1.5 px-3 text-xs">
+                                <EditableCell value={unit.weg || ''} onChange={(v) => updateUnit(idx, 'weg', v)} />
+                              </td>
+                            )}
+                            <td className="py-1.5 px-3 text-right">
+                              <EditableCell value={unit.area?.toFixed(1)} onChange={(v) => updateUnit(idx, 'area', v)} type="number" />
+                              <span className="text-muted-foreground ml-0.5">m²</span>
+                            </td>
+                            <td className="py-1.5 px-3 text-right">
+                              <EditableCell value={unit.rooms || 0} onChange={(v) => updateUnit(idx, 'rooms', v)} type="number" />
+                            </td>
+                            <td className="py-1.5 px-3">
+                              <EditableCell value={unit.floor || ''} onChange={(v) => updateUnit(idx, 'floor', v)} />
+                            </td>
+                            <td className="py-1.5 px-3 text-right font-medium">
+                              <EditableCell value={unit.price} onChange={(v) => updateUnit(idx, 'price', v)} type="number" />
+                              <span className="text-muted-foreground ml-0.5">€</span>
+                            </td>
+                            <td className="py-1.5 px-3 text-right">
+                              <EditableCell value={unit.currentRent || 0} onChange={(v) => updateUnit(idx, 'currentRent', v)} type="number" />
+                              <span className="text-muted-foreground ml-0.5">€</span>
+                            </td>
+                            {hasExtendedFields && (
+                              <td className="py-1.5 px-3 text-right">
+                                <EditableCell value={unit.hausgeld || 0} onChange={(v) => updateUnit(idx, 'hausgeld', v)} type="number" />
+                                <span className="text-muted-foreground ml-0.5">€</span>
+                              </td>
+                            )}
+                            {hasExtendedFields && (
+                              <td className="py-1.5 px-3 text-right text-primary font-medium">
+                                {unit.nettoRendite ? `${unit.nettoRendite.toFixed(1)}%` : unit.currentRent && unit.price ? `${((unit.currentRent * 12 / unit.price) * 100).toFixed(1)}%` : '—'}
+                              </td>
+                            )}
+                            <td className="py-1.5 px-3 text-right text-muted-foreground">
+                              {unit.area > 0 ? Math.round(unit.price / unit.area).toLocaleString('de-DE') : '—'}
+                            </td>
                             <td className="py-1.5 px-2">
-                              <Button 
-                                variant="ghost" size="icon" className="h-6 w-6"
-                                onClick={() => {
-                                  const newUnits = [...(extractedData.extractedUnits || [])];
-                                  newUnits.splice(idx, 1);
-                                  setExtractedData({ ...extractedData, extractedUnits: newUnits, unitsCount: newUnits.length });
-                                }}
-                              >
+                              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => removeUnit(idx)}>
                                 <Trash2 className="h-3 w-3" />
                               </Button>
                             </td>
                           </tr>
                         ))}
                       </tbody>
+                      {/* Sum row */}
+                      <tfoot>
+                        <tr className="bg-muted/30 font-medium border-t-2">
+                          <td className="py-2 px-3 text-xs">SUMME</td>
+                          <td className="py-2 px-3">{extractedData.extractedUnits.length} Einh.</td>
+                          {hasExtendedFields && <td className="py-2 px-3"></td>}
+                          <td className="py-2 px-3 text-right">{unitSums.totalArea.toFixed(0)} m²</td>
+                          <td className="py-2 px-3"></td>
+                          <td className="py-2 px-3"></td>
+                          <td className="py-2 px-3 text-right">{unitSums.totalPrice.toLocaleString('de-DE')} €</td>
+                          <td className="py-2 px-3 text-right">{unitSums.totalRent.toLocaleString('de-DE')} €</td>
+                          {hasExtendedFields && <td className="py-2 px-3 text-right">{unitSums.totalHausgeld.toLocaleString('de-DE')} €</td>}
+                          {hasExtendedFields && <td className="py-2 px-3 text-right text-primary">{unitSums.avgRendite > 0 ? `Ø ${unitSums.avgRendite.toFixed(1)}%` : '—'}</td>}
+                          <td className="py-2 px-3 text-right text-muted-foreground">
+                            {unitSums.totalArea > 0 ? `Ø ${Math.round(unitSums.totalPrice / unitSums.totalArea).toLocaleString('de-DE')}` : '—'}
+                          </td>
+                          <td className="py-2 px-2"></td>
+                        </tr>
+                      </tfoot>
                     </table>
                   </div>
                 </div>
@@ -436,7 +695,14 @@ export default function ProjekteDashboard() {
 
               <div className="flex justify-end gap-2 pt-2">
                 <Button variant="ghost" onClick={resetForm}>Abbrechen</Button>
-                <Button onClick={handleCreateProject} className="gap-2" size="lg"><Sparkles className="h-4 w-4" />Projekt anlegen</Button>
+                <Button 
+                  onClick={handleCreateProject} 
+                  className="gap-2" 
+                  size="lg"
+                  disabled={hasBlockingErrors}
+                >
+                  <Sparkles className="h-4 w-4" />Projekt anlegen
+                </Button>
               </div>
             </div>
           )}
