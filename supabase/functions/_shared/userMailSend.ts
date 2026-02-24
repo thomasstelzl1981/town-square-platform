@@ -98,7 +98,25 @@ export async function sendViaUserAccountOrResend(params: UserMailSendParams): Pr
     return { method: 'skipped', error: 'No mail account and no RESEND_API_KEY' };
   }
 
-  const fromAddr = resendFrom || 'Armstrong <no-reply@systemofatown.de>';
+  // Personalized fallback: use sot_email from profiles
+  let fromAddr = resendFrom || 'Armstrong <no-reply@systemofatown.de>';
+  try {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('sot_email, display_name, first_name, last_name')
+      .eq('id', userId)
+      .single();
+
+    if (profile?.sot_email) {
+      const displayName = profile.display_name
+        || [profile.first_name, profile.last_name].filter(Boolean).join(' ')
+        || 'Portal';
+      fromAddr = `${displayName} <${profile.sot_email}>`;
+      console.log(`[userMailSend] Using SoT fallback: ${fromAddr}`);
+    }
+  } catch (e) {
+    console.warn('[userMailSend] Could not load sot_email, using default fallback');
+  }
   try {
     const resendBody: Record<string, unknown> = {
       from: fromAddr,
