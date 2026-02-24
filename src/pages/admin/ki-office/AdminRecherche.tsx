@@ -31,7 +31,7 @@ import {
   Plus, Search, Play, Square, Loader2, CheckCircle2, XCircle, Clock,
   Building2, Mail, Phone, Globe, User, Download, AlertTriangle, Zap,
   FileSpreadsheet, Upload, X, ShieldCheck, ShieldAlert, MinusCircle,
-  Briefcase, TrendingUp, PawPrint, Trash2,
+  Briefcase, TrendingUp, PawPrint, Trash2, Landmark,
 } from 'lucide-react';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -40,10 +40,11 @@ import {
 
 /* ── Desk Categories ─────────────────────────────────────────── */
 const DESK_CATEGORIES = [
-  { code: 'acquiary', label: 'Acquiary', subtitle: 'Family Offices & Immobilienunternehmen', icon: Building2 },
-  { code: 'sales', label: 'Sales', subtitle: 'Immobilienmakler & Hausverwaltungen', icon: Briefcase },
-  { code: 'finance', label: 'Finance', subtitle: 'Finanzvertriebe & Finanzdienstleister', icon: TrendingUp },
-  { code: 'pet', label: 'Pet', subtitle: 'Hundepensionen, -hotels & -friseure', icon: PawPrint },
+  { code: 'acquiary', label: 'Acquiary', subtitle: 'Family Offices & Immobilienunternehmen', icon: Building2, marketSize: 35000, source: 'BaFin / Destatis 2024' },
+  { code: 'sales', label: 'Sales', subtitle: 'Immobilienmakler & Hausverwaltungen', icon: Briefcase, marketSize: 75000, source: 'DIHK 34c + Destatis' },
+  { code: 'finance', label: 'Finance', subtitle: 'Finanzvertriebe & Finanzdienstleister', icon: TrendingUp, marketSize: 55000, source: 'DIHK 34f / BaFin' },
+  { code: 'pet', label: 'Pet', subtitle: 'Hundepensionen, -hotels & -friseure', icon: PawPrint, marketSize: 10000, source: 'Branchenschätzung' },
+  { code: 'banks', label: 'Banken', subtitle: 'Kreditinstitute & Bankfilialen', icon: Landmark, marketSize: 1350, source: 'Bundesbank 2024' },
 ] as const;
 
 type DeskCode = typeof DESK_CATEGORIES[number]['code'];
@@ -294,19 +295,36 @@ export default function AdminRecherche() {
 
   return (
     <div className="space-y-6 p-6">
-      {/* ── Desk Category Cards ──────────────────────────────── */}
-      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      {/* ── Header mit Plus-Button ───────────────────────────── */}
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-bold tracking-tight uppercase">Recherche-Zentrale</h2>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={handleCreateDraft}
+          disabled={createOrder.isPending || !selectedDesk}
+          title={!selectedDesk ? 'Bitte zuerst einen Desk auswählen' : 'Neuen Suchauftrag anlegen'}
+        >
+          {createOrder.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Plus className="h-4 w-4 mr-2" />}
+          Auftrag
+        </Button>
+      </div>
+
+      {/* ── Desk Category Cards mit Marktpotenzial ───────────── */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         {DESK_CATEGORIES.map((desk) => {
           const Icon = desk.icon;
           const stats = deskStats[desk.code] || { active: 0, contacts: 0 };
           const isActive = selectedDesk === desk.code;
+          const pct = desk.marketSize > 0 ? Math.min((stats.contacts / desk.marketSize) * 100, 100) : 0;
+          const deskOrderCount = orders.filter(o => (o as any).desk === desk.code).length;
           return (
             <Card
               key={desk.code}
               className={`cursor-pointer transition-all ${isActive ? 'ring-2 ring-primary border-primary/50' : 'hover:border-primary/40'}`}
               onClick={() => handleSelectDesk(desk.code)}
             >
-              <CardContent className="p-4 space-y-2">
+              <CardContent className="p-4 space-y-3">
                 <div className="flex items-center gap-2">
                   <div className={`rounded-lg p-2 ${isActive ? 'bg-primary/10' : 'bg-muted'}`}>
                     <Icon className={`h-4 w-4 ${isActive ? 'text-primary' : 'text-muted-foreground'}`} />
@@ -314,13 +332,22 @@ export default function AdminRecherche() {
                   <span className="font-medium text-sm">{desk.label}</span>
                 </div>
                 <p className="text-xs text-muted-foreground line-clamp-1">{desk.subtitle}</p>
-                <div className="flex items-center gap-3 text-xs">
-                  <span className={`font-medium ${stats.active > 0 ? 'text-primary' : 'text-muted-foreground'}`}>
-                    {stats.active} aktiv
-                  </span>
-                  <span className="text-muted-foreground">
-                    {stats.contacts > 0 ? `${stats.contacts} Kont.` : '—'}
-                  </span>
+
+                {/* Marktpotenzial */}
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-medium">{stats.contacts.toLocaleString('de-DE')} / {desk.marketSize.toLocaleString('de-DE')}</span>
+                    <span className={`font-semibold ${pct > 1 ? 'text-primary' : 'text-muted-foreground'}`}>
+                      {pct < 0.1 && pct > 0 ? '<0.1' : pct.toFixed(1)}%
+                    </span>
+                  </div>
+                  <Progress value={pct} className="h-1.5" />
+                  <p className="text-[10px] text-muted-foreground">Quelle: {desk.source}</p>
+                </div>
+
+                <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                  <span>{deskOrderCount} {deskOrderCount === 1 ? 'Auftrag' : 'Aufträge'}</span>
+                  {stats.active > 0 && <span className="text-primary font-medium">{stats.active} aktiv</span>}
                 </div>
               </CardContent>
             </Card>
@@ -336,10 +363,6 @@ export default function AdminRecherche() {
               <h3 className="font-medium text-sm uppercase tracking-wide">
                 Aufträge: {DESK_CATEGORIES.find(d => d.code === selectedDesk)?.label} ({deskOrders.length})
               </h3>
-              <Button size="sm" variant="outline" onClick={handleCreateDraft} disabled={createOrder.isPending}>
-                {createOrder.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Plus className="h-4 w-4 mr-2" />}
-                Neuer Auftrag
-              </Button>
             </div>
 
             {deskOrders.length === 0 ? (
