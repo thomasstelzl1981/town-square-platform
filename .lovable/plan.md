@@ -1,75 +1,134 @@
 
 
-# Systemweiter Fix: Profildaten + Geolocation-Fallback (alle Tenants)
+# Analyse und Behebung: Demo-Daten, Modulzugriff und Rollenzuweisung
 
-## Bestaetigung zum Scope
+## Befund-Zusammenfassung
 
-Beide Massnahmen wirken **systemweit auf alle Tenants**, nicht nur auf einen einzelnen User:
-- **Code-Aenderungen** in shared Hooks und Portal-Pages gelten fuer jeden eingeloggten User
-- **Datenbank-Updates** werden fuer alle 5 aktiven Profile durchgefuehrt
+Es wurden 4 separate Probleme identifiziert:
 
-Die bereits umgesetzte Begruessungs-Aenderung (last_name-Fallback) ist ebenfalls universeller Code und wirkt fuer alle Tenants.
-
----
-
-## Teil 1: Profildaten aller Accounts vervollstaendigen (Datenbank)
-
-Alle 5 User-Profile erhalten korrekte `last_name`, `city`, `postal_code` und `street` Werte:
-
-| Account | last_name | city | postal_code | street |
-|---------|-----------|------|-------------|--------|
-| rr@unitys.com (Ralph) | Reinhold | Muenchen | 80333 | Ottostrasse 3 |
-| bernhard.marchner | Marchner | Muenchen | 80333 | — |
-| demo | Demo-User | Muenchen | 80333 | — |
-| robyn | Robyn | Ottobrunn | 85521 | — |
-| thomas.stelzl (Reference) | Stelzl | Muenchen | 80333 | — |
-
-Damit funktioniert sowohl die Begruessung ("Mr. Reinhold", "Mr. Marchner" etc.) als auch der Standort-Fallback fuer alle Accounts.
+| # | Problem | Ursache |
+|---|---------|---------|
+| 1 | "Familie Mustermann" erscheint im Portfolio | Demo-Toggles stehen standardmaessig auf ON fuer neue User. Hardcodierter Demo-Widget-Text im Code. |
+| 2 | "Kernsanierung BER-01" erscheint unter Sanierung | Gleicher Toggle-Default. Zusaetzlich: Hardcodierte Demo-Daten im Code (DEMO_SCOPE_ITEMS, DEMO_PROVIDERS). |
+| 3 | Finanzierungsmanager zeigt "Kein Zugriff" | Zugriffspruefung erlaubt nur `finance_manager` und `platform_admin` — `super_manager` fehlt in der Pruefung. |
+| 4 | Pet Manager erscheint im Manager-Bereich | `areaConfig.ts` listet MOD-22 fest unter "operations", ohne zu pruefen ob der Tenant dieses Modul aktiviert hat. |
 
 ---
 
-## Teil 2: useGeolocation.ts — Robuster Fallback (Code)
+## Detaillierte Analyse
 
-Die Fallback-Logik wird erweitert, sodass auch bei fehlender Geolocation-Berechtigung immer ein Standort und damit Wetterdaten verfuegbar sind.
+### Problem 1+2: Demo-Daten sichtbar obwohl nicht aktiviert
 
-### Aktuelle Fallback-Kette (fehlerhaft):
+**Ursache in `src/hooks/useDemoToggles.ts`:**
+
 ```text
-Browser-Geolocation → profile.city → FEHLER "Standort nicht verfuegbar"
+function loadToggles(): DemoToggles {
+  ...
+  // Wenn kein localStorage-Eintrag existiert → ALLE Toggles = true
+  const defaults: DemoToggles = {};
+  GOLDEN_PATH_PROCESSES.forEach(p => {
+    defaults[p.id] = true;   // ← Problem: Default ist ON
+  });
+  return defaults;
+}
 ```
 
-### Neue Fallback-Kette:
+Ein neuer User (rr@unitys.com) hat noch nie Toggles gesetzt. Daher stehen alle Demo-Prozesse (GP-PORTFOLIO, GP-SANIERUNG etc.) auf `true`. Die UI-Widgets in PortfolioTab und SanierungTab pruefen `isEnabled('GP-PORTFOLIO')` bzw. `isEnabled('GP-SANIERUNG')` und zeigen die hardcodierten Demo-Kacheln.
+
+**Zusaetzlich: Demo Data Violations:**
+
+`SanierungTab.tsx` enthaelt hardcodierte Arrays:
+- `DEMO_SCOPE_ITEMS` (5 Positionen mit festen Kosten)
+- `DEMO_PROVIDERS` (3 Anbieter mit festen Betraegen)
+
+Dies widerspricht der "Zero Hardcoded Data" Governance, wird aber in diesem Plan NICHT umgebaut (groessere Refactoring-Aufgabe). Stattdessen wird das Symptom behoben: Demo-Toggles defaulten auf OFF.
+
+### Problem 3: Finanzierungsmanager "Kein Zugriff"
+
+**Ursache in `src/pages/portal/FinanzierungsmanagerPage.tsx`, Zeile 35:**
+
 ```text
-Browser-Geolocation → profile.city (mit korrekten Koordinaten) → Default "Muenchen"
+const canAccess = isPlatformAdmin || memberships.some(m => m.role === 'finance_manager');
 ```
 
-### Konkrete Aenderungen in `src/hooks/useGeolocation.ts`:
+Die Rolle `super_manager` wird nicht geprueft. Laut `rolesMatrix.ts` hat `super_manager` Zugriff auf MOD-11 (Zeile 210, 258). Der Tile ist auch korrekt aktiviert (MOD-11 = active). Nur die Page-Level-Pruefung blockiert.
 
-1. **Geocoding-Lookup-Tabelle** fuer bekannte Staedte (statt immer die gleichen Koordinaten 48.0167/11.5843):
+**Datenbank-Befund:**
+- User `rr@unitys.com`: membership_role = `super_manager`, app_role = NULL
+- Tiles: MOD-00 bis MOD-20 alle `active` (21 Module, korrekt)
+- MOD-22 ist NICHT aktiviert (korrekt fuer super_manager)
+
+### Problem 4: Pet Manager im Manager-Bereich sichtbar
+
+**Ursache in `src/manifests/areaConfig.ts`, Zeile 41:**
+
 ```text
-Muenchen: 48.1351, 11.5820
-Berlin: 52.5200, 13.4050
-Hamburg: 53.5511, 9.9937
-Ottobrunn: 48.0636, 11.6653
-Default: 48.1351, 11.5820 (Muenchen)
+operations: {
+  modules: ['MOD-13', 'MOD-09', 'MOD-11', 'MOD-12', 'MOD-10', 'MOD-22']
+}
 ```
 
-2. **Fallback-Funktion** verwendet die Lookup-Tabelle, um zur Stadt die richtigen Koordinaten zu liefern
-
-3. **Letzter Notfall-Default**: Falls `profile.city` leer ist UND keine Geolocation moeglich, wird "Muenchen" als Standort gesetzt (statt Fehler)
+Die `AreaOverviewPage` rendert alle Module aus `areaConfig` ohne Pruefung gegen `tenant_tile_activation`. MOD-22 erscheint daher fuer jeden User, auch wenn der Tenant MOD-22 nicht aktiviert hat.
 
 ---
 
-## Betroffene Dateien
+## Loesung
 
-| Datei | Aenderung | Scope |
-|-------|-----------|-------|
-| DB: profiles (5 Zeilen) | last_name, city, postal_code, street befuellen | Alle Tenants |
-| src/hooks/useGeolocation.ts | Fallback-Kette + City-Koordinaten-Lookup | Systemweit (shared Hook) |
+### Fix 1: Demo-Toggles standardmaessig auf OFF
 
-## Kein Freeze-Konflikt
-`useGeolocation.ts` ist ein shared Hook ausserhalb aller Modul-Pfade — nicht vom Freeze betroffen.
+**Datei:** `src/hooks/useDemoToggles.ts`
+
+Default-Wert aendern von `true` auf `false`:
+
+```text
+GOLDEN_PATH_PROCESSES.forEach(p => {
+  defaults[p.id] = false;   // Neu: Default ist OFF
+});
+```
+
+Damit erscheinen Demo-Widgets nur, wenn der User sie bewusst aktiviert hat (ueber DemoDatenTab oder Zone 1 Admin).
+
+### Fix 2: Finanzierungsmanager — super_manager Zugriff erlauben
+
+**Datei:** `src/pages/portal/FinanzierungsmanagerPage.tsx`
+
+Zeile 35 erweitern:
+
+```text
+// Alt:
+const canAccess = isPlatformAdmin || memberships.some(m => m.role === 'finance_manager');
+
+// Neu:
+const canAccess = isPlatformAdmin || memberships.some(m =>
+  m.role === 'finance_manager' || m.role === 'super_manager'
+);
+```
+
+### Fix 3: AreaOverviewPage — Module nach Tenant-Aktivierung filtern
+
+**Datei:** `src/pages/portal/AreaOverviewPage.tsx`
+
+Die Module werden gegen die aktivierten Tiles des Tenants gefiltert. Dazu wird die bestehende `useAuth()`-Integration genutzt, um die `tenant_tile_activation` abzufragen. Module, die der Tenant nicht hat (z.B. MOD-22 fuer super_manager), werden ausgeblendet.
+
+Konkret:
+1. Tenant-Tiles via `useQuery` laden (oder bestehenden Hook nutzen)
+2. `area.modules.filter(code => activatedTiles.includes(code))` vor dem Rendern
+
+---
+
+## Aenderungsuebersicht
+
+| Datei | Aenderung | Freeze-Status |
+|-------|-----------|---------------|
+| `src/hooks/useDemoToggles.ts` | Default `false` statt `true` | Kein Modul-Pfad, frei |
+| `src/pages/portal/FinanzierungsmanagerPage.tsx` | `super_manager` zur Zugriffspruefung hinzufuegen | MOD-11 Pfad — Freeze pruefen |
+| `src/pages/portal/AreaOverviewPage.tsx` | Module nach Tenant-Aktivierung filtern | Kein Modul-Pfad, frei |
+
+**Hinweis:** `FinanzierungsmanagerPage.tsx` liegt unter `src/pages/portal/finanzierungsmanager*` (MOD-11). Falls MOD-11 eingefroren ist, muss zuerst `UNFREEZE MOD-11` erfolgen. Dies wird vor der Implementierung geprueft.
 
 ## Ergebnis
-- **Begruessung**: Alle Accounts zeigen den korrekten Nachnamen ("Mr. Reinhold", "Mr. Marchner", etc.)
-- **Wetter**: Alle Accounts bekommen Wetterdaten — entweder via Browser-Geolocation oder via Profil-Stadt-Fallback
-- **Kein Fehler mehr**: "Standort nicht verfuegbar" tritt nicht mehr auf, da immer ein Default greift
+
+- Portfolio und Sanierung zeigen keine Demo-Daten mehr fuer neue User
+- Finanzierungsmanager ist fuer Super-Manager zugaenglich
+- Pet Manager erscheint nur fuer User mit MOD-22-Aktivierung (pet_manager Rolle)
+
