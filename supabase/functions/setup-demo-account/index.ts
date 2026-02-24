@@ -16,6 +16,35 @@ serve(async (req) => {
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
+    const { action } = await req.json().catch(() => ({ action: "setup-demo" }));
+
+    if (action === "setup-robyn") {
+      // Set password for Robyn's existing account
+      const ROBYN_EMAIL = "robyn@lennoxandfriends.app";
+      const ROBYN_PASSWORD = "SoT-Robyn2026!";
+
+      const { data: users } = await supabase.auth.admin.listUsers();
+      const robyn = users?.users?.find((u: any) => u.email === ROBYN_EMAIL);
+
+      if (!robyn) {
+        return new Response(
+          JSON.stringify({ success: false, error: "Robyn account not found" }),
+          { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      await supabase.auth.admin.updateUserById(robyn.id, {
+        password: ROBYN_PASSWORD,
+        email_confirm: true,
+      });
+
+      return new Response(
+        JSON.stringify({ success: true, userId: robyn.id, email: ROBYN_EMAIL, message: "Robyn password set" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Default: setup demo account
     const DEMO_EMAIL = "demo@systemofatown.com";
     const DEMO_PASSWORD = "DemoSoT2026!public";
     const DEMO_TENANT_ID = "a0000000-0000-4000-a000-000000000001";
@@ -28,13 +57,11 @@ serve(async (req) => {
 
     if (existing) {
       userId = existing.id;
-      // Update password in case it changed
       await supabase.auth.admin.updateUserById(userId, {
         password: DEMO_PASSWORD,
         email_confirm: true,
       });
     } else {
-      // Create user
       const { data: newUser, error: createError } = await supabase.auth.admin.createUser({
         email: DEMO_EMAIL,
         password: DEMO_PASSWORD,
@@ -73,11 +100,7 @@ serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
-        userId,
-        message: "Demo account ready" 
-      }),
+      JSON.stringify({ success: true, userId, message: "Demo account ready" }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
