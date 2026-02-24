@@ -16,6 +16,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import * as XLSX from "https://esm.sh/xlsx@0.18.5";
 
 /** Chunked Base64 conversion — safe for large files (avoids call-stack overflow) */
 function uint8ToBase64(bytes: Uint8Array): string {
@@ -460,8 +461,8 @@ async function handleAnalyze(
     }
   }
 
-  // ── STEP 2: Pricelist — AI extraction with context from Expose ─────────
-  if (storagePaths.pricelist && LOVABLE_API_KEY) {
+  // ── STEP 2: Pricelist — Direct XLSX/CSV parsing OR AI for PDFs ──────────
+  if (storagePaths.pricelist) {
     try {
       const { data: fileData, error: dlError } = await supabase.storage
         .from('tenant-documents')
@@ -470,123 +471,222 @@ async function handleAnalyze(
       if (dlError) {
         console.error('Download pricelist error:', dlError);
       } else if (fileData && fileData.size <= MAX_AI_PROCESSING_SIZE) {
-        const mimeType = storagePaths.pricelist.endsWith('.pdf')
-          ? 'application/pdf'
-          : storagePaths.pricelist.endsWith('.csv')
-            ? 'text/csv'
-            : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+        const isXlsx = storagePaths.pricelist.endsWith('.xlsx') || storagePaths.pricelist.endsWith('.xls');
+        const isCsv = storagePaths.pricelist.endsWith('.csv');
+        const isPdf = storagePaths.pricelist.endsWith('.pdf');
 
-        const buffer = await fileData.arrayBuffer();
-        const base64 = uint8ToBase64(new Uint8Array(buffer));
+        // ── Direct XLSX/CSV parsing (no AI needed) ────────────────────────
+        if (isXlsx || isCsv) {
+          console.log('Direct parsing XLSX/CSV pricelist...');
+          const buffer = await fileData.arrayBuffer();
+          const wb = XLSX.read(new Uint8Array(buffer), { type: 'array' });
+          const ws = wb.Sheets[wb.SheetNames[0]];
+          const rows: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
 
-        // Build context-enriched system prompt from Expose results
-        let contextPrompt = PRICELIST_SYSTEM_PROMPT_BASE;
-        if (extractedData.projectName) {
-          contextPrompt += `\n\nKONTEXT AUS DEM EXPOSÉ (nutze diese Informationen zur besseren Zuordnung):`;
-          contextPrompt += `\n- Projektname: ${extractedData.projectName}`;
-          if (extractedData.projectType) contextPrompt += `\n- Projekttyp: ${extractedData.projectType}`;
-          if (extractedData.city) contextPrompt += `\n- Stadt: ${extractedData.city}`;
-          if (extractedData.address) contextPrompt += `\n- Adresse: ${extractedData.address}`;
-          if (extractedData.constructionYear) contextPrompt += `\n- Baujahr: ${extractedData.constructionYear}`;
-          if (extractedData.wegCount && extractedData.wegCount > 1) {
-            contextPrompt += `\n- Anzahl WEGs: ${extractedData.wegCount}`;
-            if (extractedData.wegDetails && extractedData.wegDetails.length > 0) {
-              contextPrompt += `\n- WEG-Struktur:`;
-              for (const weg of extractedData.wegDetails) {
-                contextPrompt += `\n  • ${weg.name} (${weg.unitsCount} Einheiten, ${weg.addressRange})`;
+          if (rows.length > 1) {
+            const headerRow = rows[0].map((h: any) => String(h).trim().toLowerCase());
+            console.log('Detected headers:', headerRow);
+
+            // Fuzzy column mapping
+            const COLUMN_PATTERNS: Record<string, RegExp> = {
+              unitNumber: /^(whg|we|einheit|nr|top|obj|wohnung|lf|unit)/i,
+              type: /^(typ|art|nutzung|kategorie)/i,
+              area: /^(wfl|wohn.*fl|fläche|flaeche|qm|m²|m2|nutzfl)/i,
+              rooms: /^(zimmer|zi|räume|raeume)/i,
+              floor: /^(etage|geschoss|og|stockwerk|lage|ebene)/i,
+              price: /^(kaufpreis|preis|vk|verkaufspreis|kp|gesamt.*preis|gesamtkauf)/i,
+              currentRent: /^(miete|ist.*miete|monatsmiete|kaltmiete|nettomiete|akt.*miete|mietein|garantierte.*miete$)/i,
+              hausgeld: /^(hausgeld|hg|eigentümer.*kost)/i,
+              weg: /^(weg|eigentümer.*gem)/i,
+            };
+
+            const colMap: Record<string, number> = {};
+            const columnMapping: ColumnMapping[] = [];
+
+            for (let ci = 0; ci < headerRow.length; ci++) {
+              const raw = rows[0][ci] ? String(rows[0][ci]).trim() : '';
+              const h = headerRow[ci];
+              for (const [field, pattern] of Object.entries(COLUMN_PATTERNS)) {
+                if (!colMap[field] && pattern.test(h)) {
+                  colMap[field] = ci;
+                  columnMapping.push({ original_column: raw, mapped_to: field });
+                  break;
+                }
               }
-              contextPrompt += `\n- WICHTIG: Ordne jede Einheit der korrekten WEG zu basierend auf Hausnummer oder Position in der Liste!`;
+              // Special: detect "garantierte Miete" with EUR amount (not percentage)
+              if (!colMap.currentRent && /garantierte.*miete/i.test(h)) {
+                // Check if it's a monthly value (look at first data row)
+                const sampleVal = rows.length > 1 ? Number(rows[1][ci]) : 0;
+                if (sampleVal > 10) { // Monthly rent, not €/m²
+                  colMap.currentRent = ci;
+                  columnMapping.push({ original_column: raw, mapped_to: 'currentRent' });
+                }
+              }
+            }
+
+            console.log('Column map:', colMap);
+
+            const units: ExtractedUnit[] = [];
+            for (let ri = 1; ri < rows.length; ri++) {
+              const row = rows[ri];
+              // Skip empty rows or summary rows
+              const areaVal = colMap.area !== undefined ? parseFloat(String(row[colMap.area]).replace(/[^\d.,]/g, '').replace(',', '.')) : 0;
+              const priceVal = colMap.price !== undefined ? parseFloat(String(row[colMap.price]).replace(/[^\d.,]/g, '').replace(',', '.')) : 0;
+              if (!areaVal && !priceVal) continue; // Skip non-data rows
+
+              const unit: ExtractedUnit = {
+                unitNumber: colMap.unitNumber !== undefined ? String(row[colMap.unitNumber] || `WE-${ri}`).trim() : `WE-${ri}`,
+                type: colMap.type !== undefined ? String(row[colMap.type] || 'Wohnung').trim() : 'Wohnung',
+                area: areaVal || 0,
+                rooms: colMap.rooms !== undefined ? parseFloat(String(row[colMap.rooms]).replace(',', '.')) || 0 : 0,
+                floor: colMap.floor !== undefined ? String(row[colMap.floor] || '').trim() : '',
+                price: priceVal || 0,
+                currentRent: colMap.currentRent !== undefined ? parseFloat(String(row[colMap.currentRent]).replace(/[^\d.,]/g, '').replace(',', '.')) || 0 : 0,
+                hausgeld: colMap.hausgeld !== undefined ? parseFloat(String(row[colMap.hausgeld]).replace(/[^\d.,]/g, '').replace(',', '.')) || 0 : 0,
+                weg: colMap.weg !== undefined ? String(row[colMap.weg] || '').trim() : '',
+              };
+
+              // Calculate derived fields
+              if (unit.currentRent && unit.price) {
+                const annualRent = unit.currentRent * 12;
+                const annualHausgeld = (unit.hausgeld || 0) * 12;
+                unit.nettoRendite = Math.round(((annualRent - annualHausgeld) / unit.price) * 10000) / 100;
+                unit.mietfaktor = Math.round((unit.price / annualRent) * 10) / 10;
+              }
+
+              units.push(unit);
+            }
+
+            if (units.length > 0) {
+              extractedData.extractedUnits = units;
+              extractedData.unitsCount = units.length;
+              extractedData.totalArea = units.reduce((s, u) => s + (u.area || 0), 0);
+              const prices = units.map(u => u.price).filter(p => p > 0);
+              if (prices.length > 0) {
+                const min = Math.min(...prices);
+                const max = Math.max(...prices);
+                extractedData.priceRange = min === max
+                  ? `${min.toLocaleString('de-DE')} €`
+                  : `${min.toLocaleString('de-DE')} – ${max.toLocaleString('de-DE')} €`;
+              }
+              extractedData.columnMapping = columnMapping;
+              console.log(`Direct XLSX/CSV parsing: ${units.length} units extracted`);
             }
           }
-          if (extractedData.unitsCount) contextPrompt += `\n- Erwartete Einheiten: ${extractedData.unitsCount}`;
         }
 
-        const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            model: 'google/gemini-2.5-flash',
-            messages: [
-              { role: 'system', content: contextPrompt },
-              {
-                role: 'user',
-                content: [
-                  { type: 'text', text: 'Extrahiere alle Einheiten aus dieser Preisliste und melde das Spalten-Mapping. Berechne Rendite und Mietfaktor wenn möglich.' },
-                  { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64}` } }
-                ]
-              }
-            ],
-            tools: [EXTRACT_UNITS_TOOL],
-            tool_choice: { type: 'function' as const, function: { name: 'extract_units' } },
-            max_tokens: 16000,
-          }),
-        });
+        // ── PDF pricelist: AI extraction ──────────────────────────────────
+        if (isPdf && LOVABLE_API_KEY) {
+          const mimeType = 'application/pdf';
+          const buffer = await fileData.arrayBuffer();
+          const base64 = uint8ToBase64(new Uint8Array(buffer));
 
-        if (aiResponse.ok) {
-          const aiResult = await aiResponse.json();
-          
-          const toolCall = aiResult.choices?.[0]?.message?.tool_calls?.[0];
-          if (toolCall?.function?.arguments) {
-            try {
-              const args = JSON.parse(toolCall.function.arguments);
-              const units = args.units as ExtractedUnit[];
-              const columnMapping = args.column_mapping as ColumnMapping[];
-
-              if (Array.isArray(units) && units.length > 0) {
-                extractedData.extractedUnits = units;
-                extractedData.unitsCount = units.length;
-                extractedData.totalArea = units.reduce((s, u) => s + (u.area || 0), 0);
-                const prices = units.map(u => u.price).filter(p => p > 0);
-                if (prices.length > 0) {
-                  const min = Math.min(...prices);
-                  const max = Math.max(...prices);
-                  extractedData.priceRange = min === max
-                    ? `${min.toLocaleString('de-DE')} €`
-                    : `${min.toLocaleString('de-DE')} – ${max.toLocaleString('de-DE')} €`;
+          let contextPrompt = PRICELIST_SYSTEM_PROMPT_BASE;
+          if (extractedData.projectName) {
+            contextPrompt += `\n\nKONTEXT AUS DEM EXPOSÉ (nutze diese Informationen zur besseren Zuordnung):`;
+            contextPrompt += `\n- Projektname: ${extractedData.projectName}`;
+            if (extractedData.projectType) contextPrompt += `\n- Projekttyp: ${extractedData.projectType}`;
+            if (extractedData.city) contextPrompt += `\n- Stadt: ${extractedData.city}`;
+            if (extractedData.address) contextPrompt += `\n- Adresse: ${extractedData.address}`;
+            if (extractedData.constructionYear) contextPrompt += `\n- Baujahr: ${extractedData.constructionYear}`;
+            if (extractedData.wegCount && extractedData.wegCount > 1) {
+              contextPrompt += `\n- Anzahl WEGs: ${extractedData.wegCount}`;
+              if (extractedData.wegDetails && extractedData.wegDetails.length > 0) {
+                contextPrompt += `\n- WEG-Struktur:`;
+                for (const weg of extractedData.wegDetails) {
+                  contextPrompt += `\n  • ${weg.name} (${weg.unitsCount} Einheiten, ${weg.addressRange})`;
                 }
-                console.log(`Pricelist parsed via tool-calling: ${units.length} units extracted`);
-              }
-
-              if (Array.isArray(columnMapping) && columnMapping.length > 0) {
-                extractedData.columnMapping = columnMapping;
-                console.log('Column mapping:', JSON.stringify(columnMapping));
-              }
-            } catch (parseErr) {
-              console.error('Tool-calling parse error:', parseErr);
-            }
-          } else {
-            // Fallback: content-based parsing
-            const content = aiResult.choices?.[0]?.message?.content;
-            if (content) {
-              const jsonMatch = content.match(/\[[\s\S]*\]/);
-              if (jsonMatch) {
-                try {
-                  const units = JSON.parse(jsonMatch[0]) as ExtractedUnit[];
-                  if (Array.isArray(units) && units.length > 0) {
-                    extractedData.extractedUnits = units;
-                    extractedData.unitsCount = units.length;
-                    extractedData.totalArea = units.reduce((s, u) => s + (u.area || 0), 0);
-                    const prices = units.map(u => u.price).filter(p => p > 0);
-                    if (prices.length > 0) {
-                      const min = Math.min(...prices);
-                      const max = Math.max(...prices);
-                      extractedData.priceRange = min === max
-                        ? `${min.toLocaleString('de-DE')} €`
-                        : `${min.toLocaleString('de-DE')} – ${max.toLocaleString('de-DE')} €`;
-                    }
-                    console.log(`Pricelist parsed (fallback): ${units.length} units`);
-                  }
-                } catch (parseErr) {
-                  console.error('Pricelist fallback parse error:', parseErr);
-                }
+                contextPrompt += `\n- WICHTIG: Ordne jede Einheit der korrekten WEG zu basierend auf Hausnummer oder Position in der Liste!`;
               }
             }
+            if (extractedData.unitsCount) contextPrompt += `\n- Erwartete Einheiten: ${extractedData.unitsCount}`;
           }
-        } else if (aiResponse.status === 429 || aiResponse.status === 402) {
-          console.warn('AI rate limit on pricelist:', aiResponse.status);
+
+          const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              model: 'google/gemini-2.5-flash',
+              messages: [
+                { role: 'system', content: contextPrompt },
+                {
+                  role: 'user',
+                  content: [
+                    { type: 'text', text: 'Extrahiere alle Einheiten aus dieser Preisliste und melde das Spalten-Mapping. Berechne Rendite und Mietfaktor wenn möglich.' },
+                    { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64}` } }
+                  ]
+                }
+              ],
+              tools: [EXTRACT_UNITS_TOOL],
+              tool_choice: { type: 'function' as const, function: { name: 'extract_units' } },
+              max_tokens: 16000,
+            }),
+          });
+
+          if (aiResponse.ok) {
+            const aiResult = await aiResponse.json();
+            const toolCall = aiResult.choices?.[0]?.message?.tool_calls?.[0];
+            if (toolCall?.function?.arguments) {
+              try {
+                const args = JSON.parse(toolCall.function.arguments);
+                const units = args.units as ExtractedUnit[];
+                const columnMapping = args.column_mapping as ColumnMapping[];
+
+                if (Array.isArray(units) && units.length > 0) {
+                  extractedData.extractedUnits = units;
+                  extractedData.unitsCount = units.length;
+                  extractedData.totalArea = units.reduce((s, u) => s + (u.area || 0), 0);
+                  const prices = units.map(u => u.price).filter(p => 0);
+                  if (prices.length > 0) {
+                    const min = Math.min(...prices);
+                    const max = Math.max(...prices);
+                    extractedData.priceRange = min === max
+                      ? `${min.toLocaleString('de-DE')} €`
+                      : `${min.toLocaleString('de-DE')} – ${max.toLocaleString('de-DE')} €`;
+                  }
+                  console.log(`Pricelist parsed via tool-calling: ${units.length} units extracted`);
+                }
+
+                if (Array.isArray(columnMapping) && columnMapping.length > 0) {
+                  extractedData.columnMapping = columnMapping;
+                  console.log('Column mapping:', JSON.stringify(columnMapping));
+                }
+              } catch (parseErr) {
+                console.error('Tool-calling parse error:', parseErr);
+              }
+            } else {
+              const content = aiResult.choices?.[0]?.message?.content;
+              if (content) {
+                const jsonMatch = content.match(/\[[\s\S]*\]/);
+                if (jsonMatch) {
+                  try {
+                    const units = JSON.parse(jsonMatch[0]) as ExtractedUnit[];
+                    if (Array.isArray(units) && units.length > 0) {
+                      extractedData.extractedUnits = units;
+                      extractedData.unitsCount = units.length;
+                      extractedData.totalArea = units.reduce((s, u) => s + (u.area || 0), 0);
+                      const prices = units.map(u => u.price).filter(p => p > 0);
+                      if (prices.length > 0) {
+                        const min = Math.min(...prices);
+                        const max = Math.max(...prices);
+                        extractedData.priceRange = min === max
+                          ? `${min.toLocaleString('de-DE')} €`
+                          : `${min.toLocaleString('de-DE')} – ${max.toLocaleString('de-DE')} €`;
+                      }
+                      console.log(`Pricelist parsed (fallback): ${units.length} units`);
+                    }
+                  } catch (parseErr) {
+                    console.error('Pricelist fallback parse error:', parseErr);
+                  }
+                }
+              }
+            }
+          } else if (aiResponse.status === 429 || aiResponse.status === 402) {
+            console.warn('AI rate limit on pricelist:', aiResponse.status);
+          }
         }
       }
     } catch (err) {

@@ -708,7 +708,7 @@ export default function ProjekteDashboard() {
                       </Button>
                     </div>
                   </div>
-                  <div className="overflow-x-auto max-h-[400px] overflow-y-auto border rounded-lg">
+                  <div className="overflow-x-auto border rounded-lg">
                     <table className="w-full text-sm">
                       <thead className="bg-muted/50 sticky top-0 z-10">
                         <tr className="border-b">
