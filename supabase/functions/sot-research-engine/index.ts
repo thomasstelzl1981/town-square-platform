@@ -321,6 +321,86 @@ async function scrapeEmailsFirecrawl(
   return emailMap;
 }
 
+// ── IHK Vermittlerregister Scraper (Apify web-scraper) ─────────────
+
+async function scrapeIhkRegister(
+  apiToken: string,
+  plzPrefix: string,
+  erlaubnisTyp: string
+): Promise<ContactResult[]> {
+  const searchUrl = `https://www.vermittlerregister.info/recherche?a=suche&plz=${plzPrefix}&erlaubnis=${erlaubnisTyp}`;
+
+  const runUrl = `https://api.apify.com/v2/acts/apify~web-scraper/run-sync-get-dataset-items?token=${apiToken}&timeout=45`;
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 50000);
+
+  try {
+    const resp = await fetch(runUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      signal: controller.signal,
+      body: JSON.stringify({
+        startUrls: [{ url: searchUrl }],
+        pageFunction: `async function pageFunction(context) {
+          const { $, request } = context;
+          const results = [];
+          $('table.result-table tbody tr, table.searchresults tbody tr, .search-result-item').each((i, el) => {
+            const $el = $(el);
+            const cells = $el.find('td');
+            if (cells.length >= 3) {
+              results.push({
+                name: cells.eq(0).text().trim(),
+                registration_number: cells.eq(1).text().trim(),
+                postal_code: cells.eq(2).text().trim().match(/\\d{5}/)?.[0] || '',
+                city: cells.eq(2).text().trim().replace(/\\d{5}\\s*/, ''),
+                erlaubnis: cells.length > 3 ? cells.eq(3).text().trim() : '${erlaubnisTyp}',
+              });
+            }
+          });
+          return results;
+        }`,
+        maxPagesPerCrawl: 3,
+        proxyConfiguration: { useApifyProxy: true },
+      }),
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!resp.ok) {
+      console.error("IHK scrape error:", resp.status, await resp.text());
+      return [];
+    }
+
+    const rawItems: any[] = await resp.json();
+    const items = rawItems.flat().filter(Boolean);
+
+    return items.map((item: any) => ({
+      name: item.name || "",
+      salutation: null,
+      first_name: null,
+      last_name: null,
+      email: null,
+      phone: null,
+      website: null,
+      address: item.postal_code && item.city ? `${item.postal_code} ${item.city}` : null,
+      rating: null,
+      reviews_count: null,
+      confidence: 40,
+      sources: ["ihk_register"],
+      source_refs: {
+        registration_number: item.registration_number || null,
+        erlaubnis: item.erlaubnis || erlaubnisTyp,
+        postal_code: item.postal_code || null,
+      },
+    }));
+  } catch (err) {
+    clearTimeout(timeoutId);
+    console.error("IHK scrape timeout or error:", err);
+    return [];
+  }
+}
+
 // ── AI Merge & Score ───────────────────────────────────────────────
 
 async function aiMergeAndScore(
@@ -826,36 +906,95 @@ async function handleStrategyStep(
       fieldsFound = results.length > 0 ? ["name", "address"] : [];
     }
 
-    // ── ihk_scrape / bafin_import — these are registry imports, handled by sot-registry-import ──
-    else if (step_id === "ihk_scrape" || step_id === "bafin_import") {
-      provider = step_id === "ihk_scrape" ? "ihk_register" : "bafin_csv";
-      // These steps are handled by the sot-registry-import function
-      // Just record them as needing external processing
+    // ── ihk_scrape — Apify web-scraper against vermittlerregister.info ──
+    else if (step_id === "ihk_scrape" && APIFY_API_TOKEN) {
+      provider = "ihk_register";
+      const erlaubnisTyp = (contact_data?.erlaubnis_typ as string) || "34d";
+      const plzPrefix = (contact_data?.postal_code as string)?.slice(0, 2) || "";
+      results = await scrapeIhkRegister(APIFY_API_TOKEN, plzPrefix, erlaubnisTyp);
+      costEur = 0.02;
+      fieldsFound = results.length > 0 ? ["name", "registration_number", "city", "postal_code"] : [];
+    }
+
+    // ── bafin_import — bulk registry, handled by sot-registry-import ──
+    else if (step_id === "bafin_import") {
+      provider = "bafin_csv";
       return new Response(
         JSON.stringify({
           success: true,
           step_id,
           provider,
           status: "deferred",
-          message: `Step '${step_id}' requires bulk registry import via sot-registry-import`,
+          message: "Step 'bafin_import' requires bulk registry import via sot-registry-import",
           redirect_to: "sot-registry-import",
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // ── linkedin_future — not yet implemented ──
+    // ── linkedin_future — Architecture stub with key check ──
     else if (step_id === "linkedin_future") {
-      return new Response(
-        JSON.stringify({
-          success: true,
-          step_id,
-          provider: "linkedin_api",
-          status: "not_implemented",
-          message: "LinkedIn API integration is planned for a future release",
-        }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      provider = "linkedin_api";
+      const LINKEDIN_API_KEY = Deno.env.get("LINKEDIN_API_KEY");
+      if (!LINKEDIN_API_KEY) {
+        return new Response(
+          JSON.stringify({
+            success: true,
+            step_id,
+            provider,
+            status: "not_configured",
+            message: "LinkedIn API key not configured. Add LINKEDIN_API_KEY secret to enable LinkedIn enrichment.",
+            config_hint: { secret_name: "LINKEDIN_API_KEY", docs: "https://learn.microsoft.com/en-us/linkedin/shared/authentication/getting-access" },
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      // LinkedIn Sales Navigator API stub — ready for implementation
+      const companyName = contact_data?.company_name as string || searchQuery;
+      try {
+        const liResp = await fetch("https://api.linkedin.com/v2/organizationLookup", {
+          method: "GET",
+          headers: {
+            "Authorization": `Bearer ${LINKEDIN_API_KEY}`,
+            "X-Restli-Protocol-Version": "2.0.0",
+          },
+        });
+        if (!liResp.ok) {
+          const errText = await liResp.text();
+          console.error("LinkedIn API error:", liResp.status, errText);
+          return new Response(
+            JSON.stringify({
+              success: true,
+              step_id,
+              provider,
+              status: "api_error",
+              message: `LinkedIn API returned ${liResp.status}`,
+            }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        const liData = await liResp.json();
+        costEur = 0.05;
+        fieldsFound = ["contact_person", "position"];
+        results = [{
+          name: companyName,
+          salutation: null, first_name: null, last_name: null,
+          email: null, phone: null, website: null, address: null,
+          rating: null, reviews_count: null, confidence: 55,
+          sources: ["linkedin_api"],
+          source_refs: { linkedin_data: liData },
+        }];
+      } catch (liErr) {
+        console.error("LinkedIn API exception:", liErr);
+        return new Response(
+          JSON.stringify({
+            success: true, step_id, provider,
+            status: "api_error",
+            message: liErr instanceof Error ? liErr.message : "LinkedIn API error",
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
     }
 
     else {

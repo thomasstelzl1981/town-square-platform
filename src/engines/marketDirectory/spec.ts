@@ -873,3 +873,32 @@ export function findStrategyForCategory(categoryCode: string): CategorySourceStr
 export function estimateStrategyCost(strategy: CategorySourceStrategy): number {
   return strategy.steps.reduce((sum, step) => sum + step.estimatedCostEur, 0);
 }
+
+// ═══════════════════════════════════════════════════════════════
+// 13. LINKEDIN INTEGRATION (Architecture Preparation)
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * LinkedIn Contact — prepared for future Sales Navigator API integration.
+ * Secret required: LINKEDIN_API_KEY
+ * Docs: https://learn.microsoft.com/en-us/linkedin/shared/authentication/getting-access
+ */
+export interface LinkedInContact {
+  linkedinProfileUrl?: string;
+  companyLinkedinUrl?: string;
+  contactPersonName?: string;
+  contactPersonTitle?: string;
+  companySize?: string;
+  industry?: string;
+  headquartersLocation?: string;
+  fetchedAt?: string;
+}
+
+/** LinkedIn API configuration hints */
+export const LINKEDIN_CONFIG = {
+  secretName: 'LINKEDIN_API_KEY',
+  docsUrl: 'https://learn.microsoft.com/en-us/linkedin/shared/authentication/getting-access',
+  requiredScopes: ['r_organization_social', 'r_basicprofile'],
+  rateLimitPerDay: 100,
+  estimatedCostPerLookup: 0.05,
+} as const;
