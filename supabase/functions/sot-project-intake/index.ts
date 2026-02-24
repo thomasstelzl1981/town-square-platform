@@ -521,7 +521,7 @@ async function handleAnalyze(
             ],
             tools: [EXTRACT_UNITS_TOOL],
             tool_choice: { type: 'function' as const, function: { name: 'extract_units' } },
-            max_tokens: 8000,
+            max_tokens: 16000,
           }),
         });
 
