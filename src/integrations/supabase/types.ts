@@ -14534,6 +14534,7 @@ export type Database = {
           reg_34i_ihk: string | null
           reg_34i_number: string | null
           reg_vermittler_id: string | null
+          sot_email: string | null
           spouse_profile_id: string | null
           street: string | null
           tax_id: string | null
@@ -14574,6 +14575,7 @@ export type Database = {
           reg_34i_ihk?: string | null
           reg_34i_number?: string | null
           reg_vermittler_id?: string | null
+          sot_email?: string | null
           spouse_profile_id?: string | null
           street?: string | null
           tax_id?: string | null
@@ -14614,6 +14616,7 @@ export type Database = {
           reg_34i_ihk?: string | null
           reg_34i_number?: string | null
           reg_vermittler_id?: string | null
+          sot_email?: string | null
           spouse_profile_id?: string | null
           street?: string | null
           tax_id?: string | null
@@ -20640,6 +20643,14 @@ export type Database = {
         Returns: string
       }
       generate_public_id: { Args: { prefix: string }; Returns: string }
+      generate_sot_email: {
+        Args: {
+          p_auth_email: string
+          p_first_name: string
+          p_last_name: string
+        }
+        Returns: string
+      }
       get_active_outbound_identity: {
         Args: { p_user_id: string }
         Returns: {

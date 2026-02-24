@@ -127,4 +127,5 @@ export const DEV_MOCK_PROFILE: Profile = {
   insurance_provider: null,
   insurance_policy_no: null,
   phone: null,
+  sot_email: null,
 };

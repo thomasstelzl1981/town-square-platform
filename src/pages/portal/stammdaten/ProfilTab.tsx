@@ -384,6 +384,8 @@ export function ProfilTab() {
                 onChange={e => updateField('display_name', e.target.value)} placeholder="Max Mustermann" required />
               <FormInput label="E-Mail" name="email" type="email" value={formData.email}
                 disabled hint="Änderbar unter Sicherheit" />
+              <FormInput label="System-E-Mail" name="sot_email" type="email" value={(profile as any)?.sot_email || ''}
+                disabled hint="Ihre persönliche @systemofatown.com Adresse für ausgehende E-Mails" />
             </div>
           </div>
 

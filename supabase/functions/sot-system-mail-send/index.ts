@@ -87,6 +87,22 @@ serve(async (req) => {
         const displayName = identity.display_name || 'Portal';
         fromAddress = `${displayName} <${identity.from_email}>`;
         replyTo = identity.from_email;
+      } else {
+        // Fallback: use sot_email from profiles
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('sot_email, display_name, first_name, last_name')
+          .eq('id', user.id)
+          .single();
+
+        if (profile?.sot_email) {
+          const name = profile.display_name
+            || [profile.first_name, profile.last_name].filter(Boolean).join(' ')
+            || 'Portal';
+          fromAddress = `${name} <${profile.sot_email}>`;
+          replyTo = profile.sot_email;
+          console.log(`[sot-system-mail-send] Using sot_email fallback: ${profile.sot_email}`);
+        }
       }
     }
 
