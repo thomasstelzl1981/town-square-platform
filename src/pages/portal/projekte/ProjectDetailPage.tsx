@@ -28,6 +28,7 @@ import {
   ProjectAufteilerCalculation,
 } from '@/components/projekte';
 import { LoadingState } from '@/components/shared/LoadingState';
+import { CreatePropertyFromUnits } from '@/components/projekte/CreatePropertyFromUnits';
 import { calculateProjectKPIs, calculateAufteiler } from '@/types/projekte';
 import type { ProjectStatus } from '@/types/projekte';
 
@@ -277,9 +278,20 @@ export default function ProjectDetailPage() {
         {/* C - Units */}
         <TabsContent value="units">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
+            <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-2">
               <CardTitle>C. Einheiten ({units.length})</CardTitle>
-              <Button size="sm">+ Einheit hinzufügen</Button>
+              <div className="flex items-center gap-2">
+                <CreatePropertyFromUnits
+                  projectId={project.id}
+                  projectName={project.name}
+                  projectAddress={project.address || ''}
+                  projectCity={project.city || ''}
+                  projectPostalCode={project.postal_code}
+                  projectYearBuilt={undefined}
+                  units={units}
+                />
+                <Button size="sm">+ Einheit hinzufügen</Button>
+              </div>
             </CardHeader>
             <CardContent>
               {units.length === 0 ? (
