@@ -1,17 +1,15 @@
 /**
- * AdminRecherche — SOAT Search Engine: Desk-aligned Kacheln + Inline Case
- * Golden Path Standard: Desk-Karten → Auftrags-Liste → Inline-Flow
+ * AdminRecherche — SOAT Search Engine
+ * Layout: Eingaben (immer sichtbar) → Aufträge (immer sichtbar) → Filter + Ergebnisse (immer sichtbar)
  */
 import { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Textarea } from '@/components/ui/textarea';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
@@ -28,26 +26,25 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { getXlsx } from '@/lib/lazyXlsx';
 import {
-  Plus, Search, Play, Square, Loader2, CheckCircle2, XCircle, Clock,
-  Building2, Mail, Phone, Globe, User, Download, AlertTriangle, Zap,
+  Search, Play, Square, Loader2, CheckCircle2, XCircle, Clock,
+  Mail, Phone, Globe, User, Download, AlertTriangle,
   FileSpreadsheet, Upload, X, ShieldCheck, ShieldAlert, MinusCircle,
-  Briefcase, TrendingUp, PawPrint, Trash2, Landmark,
+  Trash2, RotateCcw,
 } from 'lucide-react';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { CATEGORY_OPTIONS, SALUTATION_OPTIONS } from '@/config/contactSchema';
 
 /* ── Desk Categories ─────────────────────────────────────────── */
-const DESK_CATEGORIES = [
-  { code: 'acquiary', label: 'Acquiary', subtitle: 'Family Offices & Immobilienunternehmen', icon: Building2, marketSize: 35000, source: 'BaFin / Destatis 2024' },
-  { code: 'sales', label: 'Sales', subtitle: 'Immobilienmakler & Hausverwaltungen', icon: Briefcase, marketSize: 75000, source: 'DIHK 34c + Destatis' },
-  { code: 'finance', label: 'Finance', subtitle: 'Finanzvertriebe & Finanzdienstleister', icon: TrendingUp, marketSize: 55000, source: 'DIHK 34f / BaFin' },
-  { code: 'pet', label: 'Pet', subtitle: 'Hundepensionen, -hotels & -friseure', icon: PawPrint, marketSize: 10000, source: 'Branchenschätzung' },
-  { code: 'banks', label: 'Banken', subtitle: 'Kreditinstitute & Bankfilialen', icon: Landmark, marketSize: 1350, source: 'Bundesbank 2024' },
+const DESK_OPTIONS = [
+  { code: 'acquiary', label: 'Acquiary' },
+  { code: 'sales', label: 'Sales' },
+  { code: 'finance', label: 'Finance' },
+  { code: 'pet', label: 'Pet' },
+  { code: 'banks', label: 'Banken' },
 ] as const;
-
-type DeskCode = typeof DESK_CATEGORIES[number]['code'];
 
 /* ── Status / Phase Maps ─────────────────────────────────────── */
 const STATUS_MAP: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
@@ -89,17 +86,27 @@ export default function AdminRecherche() {
   const updateResult = useUpdateSoatResult();
   const researchImport = useResearchImport();
 
-  const [selectedDesk, setSelectedDesk] = useState<DeskCode | null>(null);
+  // ── Input fields (always visible) ──
+  const [inputDesk, setInputDesk] = useState<string>('');
+  const [inputSearch, setInputSearch] = useState('');
+  const [inputRegion, setInputRegion] = useState('');
+  const [inputCategory, setInputCategory] = useState('');
+  const [inputTarget, setInputTarget] = useState('25');
+
+  // ── Selected order for results ──
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
-  const [filter, setFilter] = useState<string>('all');
+  const selectedOrder = orders.find(o => o.id === selectedOrderId) || null;
+  const { data: results = [] } = useSoatResults(selectedOrderId);
+
+  // ── Filter for results table ──
+  const [filterText, setFilterText] = useState('');
+  const [filterCategory, setFilterCategory] = useState('all');
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [filterCity, setFilterCity] = useState('');
+  const [filterHasEmail, setFilterHasEmail] = useState('all');
+
+  // ── Selection + Import ──
   const [selectedResults, setSelectedResults] = useState<Set<string>>(new Set());
-
-  // Inline draft editing state
-  const [draftTitle, setDraftTitle] = useState('');
-  const [draftIntent, setDraftIntent] = useState('');
-  const [draftTarget, setDraftTarget] = useState('25');
-
-  // Import preview state
   const [showImportPreview, setShowImportPreview] = useState(false);
   const [dupeChecks, setDupeChecks] = useState<DupeCheckResult[]>([]);
   const [dupePolicy, setDupePolicy] = useState<'skip' | 'update'>('skip');
@@ -107,91 +114,56 @@ export default function AdminRecherche() {
   const [isImporting, setIsImporting] = useState(false);
   const [deleteDialogOrderId, setDeleteDialogOrderId] = useState<string | null>(null);
 
-  const selectedOrder = orders.find(o => o.id === selectedOrderId) || null;
-  const { data: results = [] } = useSoatResults(selectedOrderId);
+  /* ── Filtered results ──────────────────────────────────────── */
+  const filteredResults = useMemo(() => {
+    return results.filter(r => {
+      if (filterStatus !== 'all' && r.validation_state !== filterStatus) return false;
+      if (filterCategory !== 'all' && r.category !== filterCategory) return false;
+      if (filterHasEmail === 'yes' && !r.email) return false;
+      if (filterHasEmail === 'no' && r.email) return false;
+      if (filterCity && !r.city?.toLowerCase().includes(filterCity.toLowerCase())) return false;
+      if (filterText) {
+        const q = filterText.toLowerCase();
+        const searchable = [r.first_name, r.last_name, r.company_name, r.email, r.city, r.contact_person_role].filter(Boolean).join(' ').toLowerCase();
+        if (!searchable.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [results, filterText, filterCategory, filterStatus, filterCity, filterHasEmail]);
 
-  /* ── Computed: Desk-level stats ─────────────────────────────── */
-  const deskStats = useMemo(() => {
-    const stats: Record<string, { active: number; contacts: number }> = {};
-    for (const desk of DESK_CATEGORIES) {
-      const deskOrders = orders.filter(o => (o as any).desk === desk.code);
-      const active = deskOrders.filter(o => ['draft', 'queued', 'running', 'needs_review'].includes(o.status)).length;
-      const contacts = deskOrders.reduce((sum, o) => {
-        const c = o.counters_json as Record<string, number> | null;
-        return sum + (c?.contacts_extracted || 0);
-      }, 0);
-      stats[desk.code] = { active, contacts };
-    }
-    return stats;
-  }, [orders]);
-
-  const deskOrders = useMemo(() => {
-    if (!selectedDesk) return [];
-    return orders.filter(o => (o as any).desk === selectedDesk);
-  }, [orders, selectedDesk]);
-
-  const filteredResults = filter === 'all'
-    ? results
-    : results.filter(r => r.validation_state === filter);
-
-  const counters = selectedOrder?.counters_json || {};
-
-  // Import preview stats
-  const importStats = useMemo(() => {
-    const newCount = dupeChecks.filter(d => d.status === 'new').length;
-    const dupeCount = dupeChecks.filter(d => d.status === 'duplicate').length;
-    const noEmailCount = dupeChecks.filter(d => d.status === 'no_email').length;
-    return { newCount, dupeCount, noEmailCount };
-  }, [dupeChecks]);
+  const importStats = useMemo(() => ({
+    newCount: dupeChecks.filter(d => d.status === 'new').length,
+    dupeCount: dupeChecks.filter(d => d.status === 'duplicate').length,
+    noEmailCount: dupeChecks.filter(d => d.status === 'no_email').length,
+  }), [dupeChecks]);
 
   /* ── Handlers ───────────────────────────────────────────────── */
-  const handleSelectDesk = (code: DeskCode) => {
-    setSelectedDesk(code);
-    setSelectedOrderId(null);
-    setShowImportPreview(false);
-    setSelectedResults(new Set());
-  };
-
-  const handleCreateDraft = async () => {
-    if (!selectedDesk) return;
-    const deskLabel = DESK_CATEGORIES.find(d => d.code === selectedDesk)?.label || selectedDesk;
+  const handleStartSearch = async () => {
+    if (!inputDesk) { toast.error('Bitte Desk auswählen'); return; }
+    if (!inputSearch.trim()) { toast.error('Bitte Suchbegriff eingeben'); return; }
+    const deskLabel = DESK_OPTIONS.find(d => d.code === inputDesk)?.label || inputDesk;
+    const title = `${deskLabel} — ${inputSearch.trim()}`;
     try {
       const order = await createOrder.mutateAsync({
-        title: `${deskLabel} — Neue Recherche`,
-        intent: '',
-        target_count: 25,
-        desk: selectedDesk,
+        title,
+        intent: [inputSearch.trim(), inputRegion, inputCategory].filter(Boolean).join(', '),
+        target_count: parseInt(inputTarget) || 25,
+        desk: inputDesk,
       });
-      setDraftTitle(order.title || '');
-      setDraftIntent(order.intent || '');
-      setDraftTarget(String(order.target_count || 25));
       setSelectedOrderId(order.id);
-      toast.success('Auftrag erstellt — bitte definieren');
-    } catch (e: any) {
-      toast.error(e.message);
-    }
-  };
-
-  const handleSaveAndStart = async () => {
-    if (!selectedOrderId || !draftTitle.trim()) {
-      toast.error('Titel erforderlich');
-      return;
-    }
-    try {
-      const { error: updateError } = await supabase
-        .from('soat_search_orders')
-        .update({
-          title: draftTitle.trim(),
-          intent: draftIntent.trim(),
-          target_count: parseInt(draftTarget) || 25,
-        } as any)
-        .eq('id', selectedOrderId);
-      if (updateError) throw updateError;
-      await startOrder.mutateAsync(selectedOrderId);
+      // Auto-start
+      await startOrder.mutateAsync(order.id);
       toast.success('Recherche gestartet');
     } catch (e: any) {
       toast.error(e.message);
     }
+  };
+
+  const handleReset = () => {
+    setInputSearch('');
+    setInputRegion('');
+    setInputCategory('');
+    setInputTarget('25');
   };
 
   const handleCancel = async () => {
@@ -205,7 +177,7 @@ export default function AdminRecherche() {
   };
 
   const handleExport = async () => {
-    if (filteredResults.length === 0) { toast.error('Keine Ergebnisse zum Exportieren'); return; }
+    if (filteredResults.length === 0) { toast.error('Keine Ergebnisse'); return; }
     const rows = filteredResults.map(r => ({
       Anrede: r.salutation || '', Vorname: r.first_name || '', Nachname: r.last_name || '',
       Firma: r.company_name || '', Kategorie: r.category || '',
@@ -220,7 +192,7 @@ export default function AdminRecherche() {
     const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Ergebnisse');
-    XLSX.writeFile(wb, `recherche_${selectedOrder?.title || 'export'}.xlsx`);
+    XLSX.writeFile(wb, `recherche_export.xlsx`);
     toast.success(`${rows.length} Ergebnisse exportiert`);
   };
 
@@ -270,7 +242,6 @@ export default function AdminRecherche() {
     s.has(id) ? s.delete(id) : s.add(id);
     setSelectedResults(s);
   };
-
   const toggleAll = () => {
     if (selectedResults.size === filteredResults.length) {
       setSelectedResults(new Set());
@@ -279,375 +250,314 @@ export default function AdminRecherche() {
     }
   };
 
-  const handleSelectOrder = (orderId: string) => {
-    const order = orders.find(o => o.id === orderId);
-    if (order) {
-      setDraftTitle(order.title || '');
-      setDraftIntent(order.intent || '');
-      setDraftTarget(String(order.target_count || 25));
-    }
-    setSelectedOrderId(orderId);
-    setShowImportPreview(false);
-    setSelectedResults(new Set());
-  };
-
   if (isLoading) {
     return <div className="flex items-center justify-center p-12"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>;
   }
 
   return (
     <div className="space-y-6 p-6">
-      {/* ── Header mit Plus-Button ───────────────────────────── */}
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-bold tracking-tight uppercase">Recherche-Zentrale</h2>
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={handleCreateDraft}
-          disabled={createOrder.isPending || !selectedDesk}
-          title={!selectedDesk ? 'Bitte zuerst einen Desk auswählen' : 'Neuen Suchauftrag anlegen'}
-        >
-          {createOrder.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Plus className="h-4 w-4 mr-2" />}
-          Auftrag
-        </Button>
-      </div>
+      {/* ═══ HEADER ═══ */}
+      <h2 className="text-lg font-bold tracking-tight uppercase">Recherche-Zentrale</h2>
 
-      {/* ── Desk Category Cards mit Marktpotenzial ───────────── */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-        {DESK_CATEGORIES.map((desk) => {
-          const Icon = desk.icon;
-          const stats = deskStats[desk.code] || { active: 0, contacts: 0 };
-          const isActive = selectedDesk === desk.code;
-          const pct = desk.marketSize > 0 ? Math.min((stats.contacts / desk.marketSize) * 100, 100) : 0;
-          const deskOrderCount = orders.filter(o => (o as any).desk === desk.code).length;
-          return (
-            <Card
-              key={desk.code}
-              className={`cursor-pointer transition-all ${isActive ? 'ring-2 ring-primary border-primary/50' : 'hover:border-primary/40'}`}
-              onClick={() => handleSelectDesk(desk.code)}
-            >
-              <CardContent className="p-4 space-y-3">
-                <div className="flex items-center gap-2">
-                  <div className={`rounded-lg p-2 ${isActive ? 'bg-primary/10' : 'bg-muted'}`}>
-                    <Icon className={`h-4 w-4 ${isActive ? 'text-primary' : 'text-muted-foreground'}`} />
-                  </div>
-                  <span className="font-medium text-sm">{desk.label}</span>
-                </div>
-                <p className="text-xs text-muted-foreground line-clamp-1">{desk.subtitle}</p>
-
-                {/* Marktpotenzial */}
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-medium">{stats.contacts.toLocaleString('de-DE')} / {desk.marketSize.toLocaleString('de-DE')}</span>
-                    <span className={`font-semibold ${pct > 1 ? 'text-primary' : 'text-muted-foreground'}`}>
-                      {pct < 0.1 && pct > 0 ? '<0.1' : pct.toFixed(1)}%
-                    </span>
-                  </div>
-                  <Progress value={pct} className="h-1.5" />
-                  <p className="text-[10px] text-muted-foreground">Quelle: {desk.source}</p>
-                </div>
-
-                <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                  <span>{deskOrderCount} {deskOrderCount === 1 ? 'Auftrag' : 'Aufträge'}</span>
-                  {stats.active > 0 && <span className="text-primary font-medium">{stats.active} aktiv</span>}
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
-
-      {/* ── Desk Orders List ─────────────────────────────────── */}
-      {selectedDesk && (
-        <Card>
-          <CardContent className="p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="font-medium text-sm uppercase tracking-wide">
-                Aufträge: {DESK_CATEGORIES.find(d => d.code === selectedDesk)?.label} ({deskOrders.length})
-              </h3>
+      {/* ═══ 1. EINGABEN (immer sichtbar) ═══ */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm uppercase tracking-wide text-muted-foreground">Neue Suche</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Desk *</Label>
+              <Select value={inputDesk} onValueChange={setInputDesk}>
+                <SelectTrigger><SelectValue placeholder="Auswählen..." /></SelectTrigger>
+                <SelectContent>
+                  {DESK_OPTIONS.map(d => <SelectItem key={d.code} value={d.code}>{d.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
             </div>
+            <div className="space-y-1.5 col-span-2 md:col-span-1">
+              <Label className="text-xs">Suchbegriff *</Label>
+              <Input value={inputSearch} onChange={e => setInputSearch(e.target.value)} placeholder="z.B. Immobilienmakler" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Region</Label>
+              <Input value={inputRegion} onChange={e => setInputRegion(e.target.value)} placeholder="z.B. Hamburg" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Kategorie</Label>
+              <Select value={inputCategory} onValueChange={setInputCategory}>
+                <SelectTrigger><SelectValue placeholder="Alle" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Alle</SelectItem>
+                  {CATEGORY_OPTIONS.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Zielanzahl</Label>
+              <Select value={inputTarget} onValueChange={setInputTarget}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="10">10</SelectItem>
+                  <SelectItem value="25">25</SelectItem>
+                  <SelectItem value="50">50</SelectItem>
+                  <SelectItem value="100">100</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button onClick={handleStartSearch} disabled={createOrder.isPending || startOrder.isPending}>
+              {(createOrder.isPending || startOrder.isPending) ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Play className="h-4 w-4 mr-2" />}
+              Starten
+            </Button>
+            <Button variant="outline" onClick={handleReset}>
+              <RotateCcw className="h-4 w-4 mr-2" />Zurücksetzen
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
-            {deskOrders.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <Search className="h-8 w-8 mx-auto mb-2 opacity-30" />
-                <p className="text-sm">Noch keine Aufträge für diesen Desk</p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {deskOrders.map((order) => {
-                  const st = STATUS_MAP[order.status] || STATUS_MAP.draft;
-                  const isSelected = selectedOrderId === order.id;
-                  const c = order.counters_json as Record<string, number> | null;
-                  return (
-                    <div
-                      key={order.id}
-                      className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-all ${isSelected ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-muted/50'}`}
-                      onClick={() => handleSelectOrder(order.id)}
-                    >
-                      <div className="flex items-center gap-3 flex-1 min-w-0">
-                        <span className="text-sm font-medium truncate">{order.title || 'Ohne Titel'}</span>
-                        <Badge variant="outline" className={`text-xs shrink-0 ${st.color}`}>
-                          <span className="mr-1">{st.icon}</span>{st.label}
-                        </Badge>
-                      </div>
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground shrink-0 ml-3">
-                        <span className="flex items-center gap-1"><User className="h-3 w-3" />{c?.contacts_extracted || 0}</span>
-                        <span className="flex items-center gap-1"><Mail className="h-3 w-3" />{c?.emails_found || 0}</span>
-                        {order.status !== 'running' && (
-                          <button
-                            type="button"
-                            className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
-                            onClick={(e) => { e.stopPropagation(); setDeleteDialogOrderId(order.id); }}
-                            aria-label="Auftrag löschen"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
+      {/* ═══ 2. LAUFENDE RECHERCHEN (immer sichtbar) ═══ */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm uppercase tracking-wide text-muted-foreground">
+            Aufträge ({orders.length})
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {orders.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-6">Noch keine Aufträge vorhanden</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="min-w-[180px]">Auftrag</TableHead>
+                    <TableHead className="min-w-[80px]">Desk</TableHead>
+                    <TableHead className="min-w-[80px]">Phase</TableHead>
+                    <TableHead className="min-w-[120px]">Fortschritt</TableHead>
+                    <TableHead className="min-w-[70px]">Kontakte</TableHead>
+                    <TableHead className="min-w-[70px]">E-Mails</TableHead>
+                    <TableHead className="min-w-[90px]">Status</TableHead>
+                    <TableHead className="min-w-[120px]">Erstellt</TableHead>
+                    <TableHead className="w-16">Aktionen</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {orders.map(order => {
+                    const st = STATUS_MAP[order.status] || STATUS_MAP.draft;
+                    const c = order.counters_json as Record<string, number> | null;
+                    const isSelected = selectedOrderId === order.id;
+                    const desk = (order as any).desk;
+                    return (
+                      <TableRow
+                        key={order.id}
+                        className={`cursor-pointer ${isSelected ? 'bg-primary/5 ring-1 ring-primary/20' : 'hover:bg-muted/50'}`}
+                        onClick={() => { setSelectedOrderId(order.id); setSelectedResults(new Set()); setShowImportPreview(false); }}
+                      >
+                        <TableCell className="font-medium text-sm">{order.title || 'Ohne Titel'}</TableCell>
+                        <TableCell><span className="text-xs">{DESK_OPTIONS.find(d => d.code === desk)?.label || desk || '—'}</span></TableCell>
+                        <TableCell><span className="text-xs">{PHASE_LABELS[order.phase || ''] || '—'}</span></TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Progress value={order.progress_percent} className="h-1.5 flex-1" />
+                            <span className="text-xs text-muted-foreground w-8">{order.progress_percent}%</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-sm">{c?.contacts_extracted || 0}</TableCell>
+                        <TableCell className="text-sm">{c?.emails_found || 0}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className={`text-xs ${st.color}`}>
+                            <span className="mr-1">{st.icon}</span>{st.label}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground">
+                          {new Date(order.created_at).toLocaleDateString('de-DE')}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-1" onClick={e => e.stopPropagation()}>
+                            {(order.status === 'running' || order.status === 'queued') && (
+                              <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => cancelOrder.mutateAsync(order.id)}>
+                                <Square className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
+                            {order.status !== 'running' && (
+                              <Button size="sm" variant="ghost" className="h-7 w-7 p-0 hover:text-destructive" onClick={() => setDeleteDialogOrderId(order.id)}>
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={!!deleteDialogOrderId} onOpenChange={(open) => !open && setDeleteDialogOrderId(null)}>
-        <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+      {/* Delete Confirmation */}
+      <AlertDialog open={!!deleteDialogOrderId} onOpenChange={open => !open && setDeleteDialogOrderId(null)}>
+        <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Auftrag löschen?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Dieser Rechercheauftrag und alle zugehörigen Ergebnisse werden unwiderruflich gelöscht.
-            </AlertDialogDescription>
+            <AlertDialogDescription>Dieser Rechercheauftrag und alle Ergebnisse werden unwiderruflich gelöscht.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Abbrechen</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={async () => {
-                if (!deleteDialogOrderId) return;
-                try {
-                  await deleteOrder.mutateAsync(deleteDialogOrderId);
-                  if (selectedOrderId === deleteDialogOrderId) setSelectedOrderId(null);
-                  toast.success('Auftrag gelöscht');
-                } catch (e: any) {
-                  toast.error(e.message);
-                }
-                setDeleteDialogOrderId(null);
-              }}
-            >
-              Löschen
-            </AlertDialogAction>
+            <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={async () => {
+              if (!deleteDialogOrderId) return;
+              try {
+                await deleteOrder.mutateAsync(deleteDialogOrderId);
+                if (selectedOrderId === deleteDialogOrderId) setSelectedOrderId(null);
+                toast.success('Auftrag gelöscht');
+              } catch (e: any) { toast.error(e.message); }
+              setDeleteDialogOrderId(null);
+            }}>Löschen</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* ── Inline Case — Selected Order ─────────────────────── */}
-      {selectedOrder && (
-        <div className="space-y-4">
-          {/* Draft or Read-Only Header */}
-          <Card>
-            <CardContent className="p-4">
-              {selectedOrder.status === 'draft' ? (
-                <div className="space-y-4">
-                  <h2 className="text-lg font-semibold">Auftrag definieren</h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Titel *</Label>
-                      <Input value={draftTitle} onChange={(e) => setDraftTitle(e.target.value)} placeholder="z.B. Makler Hamburg" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Zielanzahl</Label>
-                      <Select value={draftTarget} onValueChange={setDraftTarget}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="10">10 Kontakte</SelectItem>
-                          <SelectItem value="25">25 Kontakte</SelectItem>
-                          <SelectItem value="50">50 Kontakte</SelectItem>
-                          <SelectItem value="100">100 Kontakte</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Was suchen Sie?</Label>
-                    <Textarea
-                      value={draftIntent}
-                      onChange={(e) => setDraftIntent(e.target.value)}
-                      placeholder="z.B. Immobilienmakler in Hamburg mit Fokus Gewerbe"
-                      className="min-h-[80px]"
-                    />
-                  </div>
-                  <div className="flex justify-end">
-                    <Button onClick={handleSaveAndStart} disabled={startOrder.isPending || !draftTitle.trim()}>
-                      {startOrder.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Play className="h-4 w-4 mr-2" />}
-                      Recherche starten
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex-1 space-y-1">
-                    <h2 className="text-lg font-semibold">{selectedOrder.title || 'Ohne Titel'}</h2>
-                    {selectedOrder.intent && <p className="text-sm text-muted-foreground">{selectedOrder.intent}</p>}
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                      <span>Ziel: {selectedOrder.target_count} Kontakte</span>
-                      <Badge variant="outline" className={STATUS_MAP[selectedOrder.status]?.color}>
-                        {STATUS_MAP[selectedOrder.status]?.label}
-                      </Badge>
-                    </div>
-                  </div>
-                  <div className="flex gap-2 shrink-0">
-                    {(selectedOrder.status === 'running' || selectedOrder.status === 'queued') && (
-                      <Button variant="destructive" onClick={handleCancel}>
-                        <Square className="h-4 w-4 mr-2" />Abbrechen
-                      </Button>
-                    )}
-                  </div>
-                </div>
+      {/* ═══ 3. FILTERLEISTE ERGEBNISSE (immer sichtbar) ═══ */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-sm uppercase tracking-wide text-muted-foreground">
+              Ergebnisse {selectedOrder ? `— ${selectedOrder.title}` : ''} ({filteredResults.length})
+            </CardTitle>
+            <div className="flex items-center gap-2">
+              <Button size="sm" variant="outline" onClick={handleExport} disabled={filteredResults.length === 0}>
+                <FileSpreadsheet className="h-4 w-4 mr-1" />Export
+              </Button>
+              {selectedResults.size > 0 && (
+                <Button size="sm" onClick={handleOpenImportPreview}>
+                  <Upload className="h-4 w-4 mr-1" />{selectedResults.size} importieren…
+                </Button>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Filter row */}
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+            <div className="relative col-span-2 md:col-span-1">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input value={filterText} onChange={e => setFilterText(e.target.value)} placeholder="Freitext..." className="pl-8 h-9 text-sm" />
+            </div>
+            <Select value={filterCategory} onValueChange={setFilterCategory}>
+              <SelectTrigger className="h-9"><SelectValue placeholder="Kategorie" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Alle Kategorien</SelectItem>
+                {CATEGORY_OPTIONS.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={filterStatus} onValueChange={setFilterStatus}>
+              <SelectTrigger className="h-9"><SelectValue placeholder="Status" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Alle Status</SelectItem>
+                <SelectItem value="candidate">Kandidaten</SelectItem>
+                <SelectItem value="validated">Validiert</SelectItem>
+                <SelectItem value="needs_review">Review</SelectItem>
+                <SelectItem value="imported">Importiert</SelectItem>
+              </SelectContent>
+            </Select>
+            <Input value={filterCity} onChange={e => setFilterCity(e.target.value)} placeholder="Stadt..." className="h-9 text-sm" />
+            <Select value={filterHasEmail} onValueChange={setFilterHasEmail}>
+              <SelectTrigger className="h-9"><SelectValue placeholder="E-Mail" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Alle</SelectItem>
+                <SelectItem value="yes">Mit E-Mail</SelectItem>
+                <SelectItem value="no">Ohne E-Mail</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-          {/* Live Progress */}
-          {(selectedOrder.status === 'running' || selectedOrder.status === 'queued') && (
-            <Card>
-              <CardContent className="p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Fortschritt</span>
-                  <span className="text-sm text-muted-foreground">
-                    {selectedOrder.progress_percent}% — {PHASE_LABELS[selectedOrder.phase || ''] || 'Vorbereitung'}
-                  </span>
-                </div>
-                <Progress value={selectedOrder.progress_percent} className="h-2" />
-                <div className="flex items-center gap-6 text-sm">
-                  <span className="flex items-center gap-1.5"><Building2 className="h-4 w-4 text-muted-foreground" /> {(counters as any).firms_found || 0} Firmen</span>
-                  <span className="flex items-center gap-1.5"><User className="h-4 w-4 text-muted-foreground" /> {(counters as any).contacts_extracted || 0} Kontakte</span>
-                  <span className="flex items-center gap-1.5"><Mail className="h-4 w-4 text-muted-foreground" /> {(counters as any).emails_found || 0} E-Mails</span>
-                  <span className="flex items-center gap-1.5"><Phone className="h-4 w-4 text-muted-foreground" /> {(counters as any).phones_found || 0} Telefon</span>
-                </div>
-              </CardContent>
-            </Card>
+          {/* Results table */}
+          {!selectedOrderId ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <Search className="h-10 w-10 mx-auto mb-3 opacity-30" />
+              <p className="text-sm">Wählen Sie oben einen Auftrag aus, um Ergebnisse anzuzeigen</p>
+            </div>
+          ) : filteredResults.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <Search className="h-10 w-10 mx-auto mb-3 opacity-30" />
+              <p className="text-sm">{results.length === 0 ? 'Noch keine Ergebnisse für diesen Auftrag' : 'Keine Ergebnisse für aktuelle Filter'}</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto border rounded-md">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-10">
+                      <Checkbox checked={selectedResults.size === filteredResults.length && filteredResults.length > 0} onCheckedChange={toggleAll} />
+                    </TableHead>
+                    <TableHead className="min-w-[60px]">Anrede</TableHead>
+                    <TableHead className="min-w-[100px]">Vorname</TableHead>
+                    <TableHead className="min-w-[100px]">Nachname</TableHead>
+                    <TableHead className="min-w-[150px]">Firma</TableHead>
+                    <TableHead className="min-w-[90px]">Kategorie</TableHead>
+                    <TableHead className="min-w-[100px]">Position</TableHead>
+                    <TableHead className="min-w-[170px]">E-Mail</TableHead>
+                    <TableHead className="min-w-[110px]">Telefon</TableHead>
+                    <TableHead className="min-w-[55px]">PLZ</TableHead>
+                    <TableHead className="min-w-[80px]">Stadt</TableHead>
+                    <TableHead className="w-10">Web</TableHead>
+                    <TableHead className="w-14 text-right">Score</TableHead>
+                    <TableHead className="min-w-[70px]">Quelle</TableHead>
+                    <TableHead className="min-w-[80px]">Status</TableHead>
+                    <TableHead className="w-20">Aktionen</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredResults.map(r => {
+                    const vs = VALIDATION_STATES[r.validation_state] || VALIDATION_STATES.candidate;
+                    return (
+                      <TableRow key={r.id} className={selectedResults.has(r.id) ? 'bg-primary/5' : ''}>
+                        <TableCell><Checkbox checked={selectedResults.has(r.id)} onCheckedChange={() => toggleResult(r.id)} /></TableCell>
+                        <TableCell className="text-xs">{r.salutation || '—'}</TableCell>
+                        <TableCell className="text-sm">{r.first_name || '—'}</TableCell>
+                        <TableCell className="text-sm font-medium">{r.last_name || '—'}</TableCell>
+                        <TableCell className="font-medium text-sm">{r.company_name || '—'}</TableCell>
+                        <TableCell className="text-xs">{r.category || '—'}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground">{r.contact_person_role || '—'}</TableCell>
+                        <TableCell>
+                          {r.email ? (
+                            <span className="flex items-center gap-1 text-sm"><Mail className="h-3 w-3 text-muted-foreground shrink-0" /><span className="truncate max-w-[140px]">{r.email}</span></span>
+                          ) : <span className="text-muted-foreground text-xs">—</span>}
+                        </TableCell>
+                        <TableCell>{r.phone ? <span className="flex items-center gap-1 text-sm"><Phone className="h-3 w-3 text-muted-foreground shrink-0" />{r.phone}</span> : '—'}</TableCell>
+                        <TableCell className="text-xs">{r.postal_code || '—'}</TableCell>
+                        <TableCell className="text-sm">{r.city || '—'}</TableCell>
+                        <TableCell>
+                          {r.website_url ? <a href={r.website_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:text-primary/80"><Globe className="h-4 w-4" /></a> : '—'}
+                        </TableCell>
+                        <TableCell className="text-right font-mono text-sm">{r.confidence_score || 0}%</TableCell>
+                        <TableCell><span className="text-xs text-muted-foreground">{Array.isArray(r.source_refs_json) ? r.source_refs_json.join(', ') : '—'}</span></TableCell>
+                        <TableCell><Badge variant="outline" className={`text-xs ${vs.color}`}>{vs.label}</Badge></TableCell>
+                        <TableCell>
+                          {r.validation_state === 'candidate' && (
+                            <div className="flex gap-1">
+                              <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => handleValidate(r, 'validated')} title="OK">
+                                <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
+                              </Button>
+                              <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => handleValidate(r, 'rejected')} title="Ablehnen">
+                                <XCircle className="h-3.5 w-3.5 text-red-500" />
+                              </Button>
+                            </div>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
           )}
 
-          {/* Results Table */}
-          <Card>
-            <CardContent className="p-4 space-y-3">
-              <div className="flex items-center justify-between flex-wrap gap-2">
-                <div className="flex items-center gap-3">
-                  <h3 className="font-medium">Ergebnisse ({results.length})</h3>
-                  <Select value={filter} onValueChange={setFilter}>
-                    <SelectTrigger className="h-8 w-40"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Alle</SelectItem>
-                      <SelectItem value="candidate">Kandidaten</SelectItem>
-                      <SelectItem value="validated">Validiert</SelectItem>
-                      <SelectItem value="needs_review">Review</SelectItem>
-                      <SelectItem value="imported">Importiert</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button size="sm" variant="outline" onClick={handleExport} disabled={filteredResults.length === 0}>
-                    <FileSpreadsheet className="h-4 w-4 mr-2" />Export
-                  </Button>
-                  {selectedResults.size > 0 && (
-                    <Button size="sm" onClick={handleOpenImportPreview}>
-                      <Upload className="h-4 w-4 mr-2" />{selectedResults.size} importieren…
-                    </Button>
-                  )}
-                </div>
-              </div>
-
-              {filteredResults.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Search className="h-10 w-10 mx-auto mb-3 opacity-40" />
-                  <p>{selectedOrder.status === 'draft' ? 'Starten Sie den Auftrag, um Ergebnisse zu erhalten' : 'Noch keine Ergebnisse'}</p>
-                </div>
-              ) : (
-                <ScrollArea className="max-h-[500px]">
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead className="w-10">
-                            <Checkbox checked={selectedResults.size === filteredResults.length && filteredResults.length > 0} onCheckedChange={toggleAll} />
-                          </TableHead>
-                          <TableHead className="min-w-[60px]">Anrede</TableHead>
-                          <TableHead className="min-w-[100px]">Vorname</TableHead>
-                          <TableHead className="min-w-[100px]">Nachname</TableHead>
-                          <TableHead className="min-w-[160px]">Firma</TableHead>
-                          <TableHead className="min-w-[100px]">Kategorie</TableHead>
-                          <TableHead className="min-w-[110px]">Position</TableHead>
-                          <TableHead className="min-w-[180px]">E-Mail</TableHead>
-                          <TableHead className="min-w-[120px]">Telefon</TableHead>
-                          <TableHead className="min-w-[60px]">PLZ</TableHead>
-                          <TableHead className="min-w-[90px]">Stadt</TableHead>
-                          <TableHead className="w-10">Web</TableHead>
-                          <TableHead className="w-14 text-right">Score</TableHead>
-                          <TableHead className="min-w-[80px]">Quelle</TableHead>
-                          <TableHead className="min-w-[90px]">Status</TableHead>
-                          <TableHead className="w-24">Aktionen</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {filteredResults.map((r) => {
-                          const vs = VALIDATION_STATES[r.validation_state] || VALIDATION_STATES.candidate;
-                          return (
-                            <TableRow key={r.id} className={selectedResults.has(r.id) ? 'bg-primary/5' : ''}>
-                              <TableCell><Checkbox checked={selectedResults.has(r.id)} onCheckedChange={() => toggleResult(r.id)} /></TableCell>
-                              <TableCell><span className="text-xs">{r.salutation || '—'}</span></TableCell>
-                              <TableCell><span className="text-sm">{r.first_name || '—'}</span></TableCell>
-                              <TableCell><span className="text-sm font-medium">{r.last_name || '—'}</span></TableCell>
-                              <TableCell className="font-medium">{r.company_name || '—'}</TableCell>
-                              <TableCell><span className="text-xs">{r.category || '—'}</span></TableCell>
-                              <TableCell><span className="text-xs text-muted-foreground">{r.contact_person_role || '—'}</span></TableCell>
-                              <TableCell>
-                                {r.email ? (
-                                  <span className="flex items-center gap-1 text-sm"><Mail className="h-3 w-3 text-muted-foreground shrink-0" /><span className="truncate max-w-[150px]">{r.email}</span></span>
-                                ) : <span className="text-muted-foreground text-xs">—</span>}
-                              </TableCell>
-                              <TableCell>
-                                {r.phone ? (
-                                  <span className="flex items-center gap-1 text-sm"><Phone className="h-3 w-3 text-muted-foreground shrink-0" />{r.phone}</span>
-                                ) : '—'}
-                              </TableCell>
-                              <TableCell><span className="text-xs">{r.postal_code || '—'}</span></TableCell>
-                              <TableCell><span className="text-sm">{r.city || '—'}</span></TableCell>
-                              <TableCell>
-                                {r.website_url ? (
-                                  <a href={r.website_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:text-primary/80"><Globe className="h-4 w-4" /></a>
-                                ) : '—'}
-                              </TableCell>
-                              <TableCell className="text-right font-mono text-sm">{r.confidence_score || 0}%</TableCell>
-                              <TableCell><span className="text-xs text-muted-foreground">{Array.isArray(r.source_refs_json) ? r.source_refs_json.join(', ') : (typeof r.source_refs_json === 'object' && r.source_refs_json ? Object.keys(r.source_refs_json).join(', ') : '—')}</span></TableCell>
-                              <TableCell><Badge variant="outline" className={`text-xs ${vs.color}`}>{vs.label}</Badge></TableCell>
-                              <TableCell>
-                                {r.validation_state === 'candidate' && (
-                                  <div className="flex gap-1">
-                                    <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => handleValidate(r, 'validated')} title="OK">
-                                      <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
-                                    </Button>
-                                    <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => handleValidate(r, 'rejected')} title="Ablehnen">
-                                      <XCircle className="h-3.5 w-3.5 text-red-500" />
-                                    </Button>
-                                  </div>
-                                )}
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })}
-                      </TableBody>
-                    </Table>
-                  </div>
-                </ScrollArea>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Import Preview with Dedup */}
+          {/* Import Preview */}
           {showImportPreview && (
             <Card className="border-primary/30">
               <CardContent className="p-4 space-y-4">
@@ -655,84 +565,46 @@ export default function AdminRecherche() {
                   <h3 className="font-medium flex items-center gap-2"><Upload className="h-4 w-4" />Import-Vorschau</h3>
                   <Button variant="ghost" size="sm" onClick={() => { setShowImportPreview(false); setDupeChecks([]); }}><X className="h-4 w-4" /></Button>
                 </div>
-
                 {isCheckingDupes ? (
                   <div className="flex items-center justify-center py-6 gap-2 text-muted-foreground">
-                    <Loader2 className="h-5 w-5 animate-spin" /><span>Duplikat-Prüfung läuft…</span>
+                    <Loader2 className="h-5 w-5 animate-spin" /><span>Duplikat-Prüfung…</span>
                   </div>
                 ) : (
                   <>
                     <div className="flex items-center gap-3 flex-wrap">
                       <Badge variant="outline" className="text-xs bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300">
-                        <ShieldCheck className="h-3 w-3 mr-1" />{importStats.newCount} neue Kontakte
+                        <ShieldCheck className="h-3 w-3 mr-1" />{importStats.newCount} neu
                       </Badge>
                       <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
-                        <ShieldAlert className="h-3 w-3 mr-1" />{importStats.dupeCount} bereits vorhanden
+                        <ShieldAlert className="h-3 w-3 mr-1" />{importStats.dupeCount} Duplikate
                       </Badge>
                       <Badge variant="outline" className="text-xs bg-muted text-muted-foreground">
                         <MinusCircle className="h-3 w-3 mr-1" />{importStats.noEmailCount} ohne E-Mail
                       </Badge>
                     </div>
-
-                    <ScrollArea className="max-h-[250px]">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead className="min-w-[160px]">Firma</TableHead>
-                            <TableHead className="min-w-[140px]">Kontakt</TableHead>
-                            <TableHead className="min-w-[180px]">E-Mail</TableHead>
-                            <TableHead className="min-w-[100px]">Prüfung</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {dupeChecks.map((check) => {
-                            const r = results.find(res => res.id === check.resultId);
-                            if (!r) return null;
-                            return (
-                              <TableRow key={check.resultId}>
-                                <TableCell className="text-sm">{r.company_name || '—'}</TableCell>
-                                <TableCell className="text-sm">{[r.salutation, r.first_name, r.last_name].filter(Boolean).join(' ') || r.contact_person_name || '—'}</TableCell>
-                                <TableCell className="text-sm">{r.email || '—'}</TableCell>
-                                <TableCell>
-                                  {check.status === 'new' && <Badge variant="outline" className="text-xs bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300">NEU</Badge>}
-                                  {check.status === 'duplicate' && <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">DUPLIKAT</Badge>}
-                                  {check.status === 'no_email' && <Badge variant="outline" className="text-xs bg-muted text-muted-foreground">KEINE EMAIL</Badge>}
-                                </TableCell>
-                              </TableRow>
-                            );
-                          })}
-                        </TableBody>
-                      </Table>
-                    </ScrollArea>
-
-                    <div className="flex items-center justify-between flex-wrap gap-3 pt-2 border-t">
+                    {importStats.dupeCount > 0 && (
                       <div className="flex items-center gap-3">
-                        <span className="text-sm text-muted-foreground">Duplikate:</span>
-                        <div className="flex gap-2">
-                          <Button size="sm" variant={dupePolicy === 'skip' ? 'default' : 'outline'} className="h-7 text-xs" onClick={() => setDupePolicy('skip')}>Überspringen</Button>
-                          <Button size="sm" variant={dupePolicy === 'update' ? 'default' : 'outline'} className="h-7 text-xs" onClick={() => setDupePolicy('update')}>Aktualisieren</Button>
-                        </div>
+                        <Label className="text-sm">Duplikate:</Label>
+                        <Select value={dupePolicy} onValueChange={(v: 'skip' | 'update') => setDupePolicy(v)}>
+                          <SelectTrigger className="w-48 h-8"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="skip">Überspringen</SelectItem>
+                            <SelectItem value="update">Aktualisieren</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
-                      <Button onClick={handleExecuteImport} disabled={isImporting || (importStats.newCount === 0 && (importStats.dupeCount === 0 || dupePolicy === 'skip'))}>
-                        {isImporting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
-                        Jetzt importieren ({dupePolicy === 'update' ? importStats.newCount + importStats.dupeCount : importStats.newCount})
-                      </Button>
-                    </div>
+                    )}
+                    <Button onClick={handleExecuteImport} disabled={isImporting}>
+                      {isImporting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
+                      Import ausführen
+                    </Button>
                   </>
                 )}
               </CardContent>
             </Card>
           )}
-        </div>
-      )}
-
-      {/* Empty state — no desk selected */}
-      {!selectedDesk && (
-        <div className="text-center py-12 text-muted-foreground">
-          <Zap className="h-12 w-12 mx-auto mb-4 opacity-30" />
-          <p>Wählen Sie einen Desk, um die zugehörigen Recherchen zu sehen</p>
-        </div>
-      )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
