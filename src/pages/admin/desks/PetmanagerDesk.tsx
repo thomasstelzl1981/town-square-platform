@@ -50,7 +50,7 @@ export default function PetmanagerDesk() {
     <OperativeDeskShell
       title="Pet Desk"
       subtitle="Provider · Umsatz · Buchungen · Service-Moderation"
-      moduleCode="MOD-05"
+      moduleCode="MOD-22"
       zoneFlow={{ z3Surface: 'Lennox Website', z1Desk: 'Pet Desk', z2Manager: 'MOD-22 Pet Manager' }}
       navigation={navigation}
       headerActions={

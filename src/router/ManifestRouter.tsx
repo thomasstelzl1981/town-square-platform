@@ -275,6 +275,7 @@ const adminDeskMap: Record<string, React.ComponentType> = {
   'sales-desk': SalesDesk,
   'finance-desk': FinanceDesk,
   acquiary: Acquiary,
+  'lead-desk': LeadDeskComponent,
   'projekt-desk': ProjektDeskComponent,
   'pet-desk': React.lazy(() => import('@/pages/admin/desks/PetmanagerDesk')) as unknown as React.ComponentType,
 };
@@ -514,7 +515,7 @@ export function ManifestRouter() {
         {/* Standard Admin Routes */}
         {zone1Admin.routes?.map((route) => {
           // Skip desk routes (handled above)
-          if (['futureroom', 'sales-desk', 'finance-desk', 'acquiary', 'projekt-desk', 'pet-desk'].some(desk => route.path.startsWith(desk))) {
+          if (['futureroom', 'sales-desk', 'finance-desk', 'acquiary', 'projekt-desk', 'pet-desk', 'lead-desk'].some(desk => route.path.startsWith(desk))) {
             return null;
           }
           
