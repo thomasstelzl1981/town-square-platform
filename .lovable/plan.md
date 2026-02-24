@@ -1,162 +1,93 @@
 
-# Implementierungsplan: Service Desk (Zone 1) — Schritte 1-6
 
-Alle 6 Schritte werden ohne Rueckfrage umgesetzt. Ich habe die Codebasis vollstaendig analysiert und alle notwendigen Aenderungen identifiziert.
+# Fix: ServiceDeskFahrzeuge — Korrektur der Sub-Tabs
 
-## Schritt 1: Datenbank — Neue Tabellen
+## Das Problem
 
-**Migration:** `service_shop_products` + `service_shop_config`
+`ServiceDeskFahrzeuge.tsx` hat aktuell 4 Sub-Tabs:
 
-```sql
-CREATE TABLE public.service_shop_products (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  shop_key TEXT NOT NULL,
-  category TEXT,
-  name TEXT NOT NULL,
-  description TEXT,
-  price_label TEXT,
-  price_cents INTEGER,
-  image_url TEXT,
-  external_url TEXT,
-  affiliate_tag TEXT,
-  affiliate_network TEXT,
-  badge TEXT,
-  sub_category TEXT,
-  sort_order INTEGER DEFAULT 0,
-  is_active BOOLEAN DEFAULT true,
-  metadata JSONB,
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now()
-);
-
-CREATE TABLE public.service_shop_config (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  shop_key TEXT UNIQUE NOT NULL,
-  display_name TEXT,
-  affiliate_network TEXT,
-  api_credentials JSONB,
-  is_connected BOOLEAN DEFAULT false,
-  config JSONB,
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now()
-);
-
--- Indices
-CREATE INDEX idx_service_shop_products_key_active ON public.service_shop_products (shop_key, is_active, sort_order);
-
--- RLS
-ALTER TABLE public.service_shop_products ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.service_shop_config ENABLE ROW LEVEL SECURITY;
-
--- SELECT: All authenticated users
-CREATE POLICY "Authenticated users can read products"
-  ON public.service_shop_products FOR SELECT TO authenticated USING (true);
-
-CREATE POLICY "Authenticated users can read config"
-  ON public.service_shop_config FOR SELECT TO authenticated USING (true);
-
--- INSERT/UPDATE/DELETE: Platform admins only (via has_role)
-CREATE POLICY "Admins can insert products"
-  ON public.service_shop_products FOR INSERT TO authenticated
-  WITH CHECK (public.has_role(auth.uid(), 'platform_admin'));
-
-CREATE POLICY "Admins can update products"
-  ON public.service_shop_products FOR UPDATE TO authenticated
-  USING (public.has_role(auth.uid(), 'platform_admin'));
-
-CREATE POLICY "Admins can delete products"
-  ON public.service_shop_products FOR DELETE TO authenticated
-  USING (public.has_role(auth.uid(), 'platform_admin'));
-
-CREATE POLICY "Admins can manage config"
-  ON public.service_shop_config FOR ALL TO authenticated
-  USING (public.has_role(auth.uid(), 'platform_admin'));
+```text
+Fahrzeuge | Boote | Privatjet | Angebote
 ```
 
-## Schritt 2: Hook — `useServiceShopProducts.ts`
+**"Fahrzeuge" ist FALSCH hier.** Der Tab `/portal/cars/fahrzeuge` (CarsFahrzeuge) ist eine persoenliche Fahrzeugverwaltung — der User legt dort seine eigenen Autos und Bikes an (CRUD auf `cars_vehicles` Tabelle). Das ist kein Shop und gehoert nicht in den Service Desk.
 
-**Neue Datei:** `src/hooks/useServiceShopProducts.ts`
+Die eigentlichen Shop-Bereiche in MOD-17 mit hardcoded Daten sind:
 
-Generalisierter CRUD-Hook (analog zu `usePetShopProducts`):
-- `useServiceShopProducts(shopKey)` — Zone 1 CRUD (alle Produkte)
-- `useActiveServiceProducts(shopKey)` — Zone 2 Read-Only (`is_active = true`)
-- `useCreateServiceProduct()`, `useUpdateServiceProduct()`, `useDeleteServiceProduct()`
+| Zone 2 Komponente | Inhalt | Hardcoded Produkte |
+|---|---|---|
+| CarsAngebote | BMW/MINI Fokusmodelle (Helming und Sohn) | 7 Modelle |
+| CarsAngebote | Miete24 Auto-Abos | 6 Angebote |
+| CarsBoote | Haller Experiences Yacht Charter | 8 Boote |
+| CarsPrivatjet | NetJets Fleet | 6 Jets |
 
-## Schritt 3: Service Desk Seiten (Zone 1)
+## Die Loesung
 
-**7 neue Dateien:**
+### 1. ServiceDeskFahrzeuge.tsx — Sub-Tabs korrigieren
 
-| Datei | Zweck |
-|-------|-------|
-| `src/pages/admin/service-desk/ServiceDeskRouter.tsx` | Haupt-Router mit 5 Modul-Tabs |
-| `src/pages/admin/service-desk/ServiceDeskProductCRUD.tsx` | Wiederverwendbare CRUD-Komponente mit Side-Menu |
-| `src/pages/admin/service-desk/ServiceDeskShops.tsx` | MOD-16: Amazon, OTTO, Miete24, Smart Home |
-| `src/pages/admin/service-desk/ServiceDeskFortbildung.tsx` | MOD-15: Delegiert an AdminFortbildung |
-| `src/pages/admin/service-desk/ServiceDeskFahrzeuge.tsx` | MOD-17: Fahrzeuge, Boote, Privatjet, Angebote |
-| `src/pages/admin/service-desk/ServiceDeskPV.tsx` | MOD-19: Anbieter, Produkte, Partner, Monitoring |
-| `src/pages/admin/service-desk/ServiceDeskPetShop.tsx` | MOD-05: Ernaehrung, Tracker, Style, Fressnapf |
+Sub-Tabs aendern von:
 
-Die `ServiceDeskProductCRUD`-Komponente repliziert das PetDeskShop-Pattern mit:
-- Links: Sub-Tab-Sidebar (4 Buttons pro Modul)
-- Rechts: Produktliste aus DB mit CRUD
-- Create/Edit Dialog inkl. Affiliate-Felder
-- Affiliate-Config Info-Box (Platzhalter)
+```text
+Fahrzeuge | Boote | Privatjet | Angebote
+```
 
-## Schritt 4: Zone 2 ShopTab.tsx umbauen
+zu:
 
-**Datei:** `src/pages/portal/services/ShopTab.tsx`
+```text
+BMW Fokusmodelle | Miete24 | Boote | Privatjet
+```
 
-- ~380 Zeilen hardcoded Produktdaten ENTFERNEN
-- 42 lokale Bild-Imports ENTFERNEN
-- Stattdessen: `useActiveServiceProducts(shopKey)` laden
-- Shop-Header (Name, Tagline, Gradient) bleibt als UI-Config
-- Smart Home: ebenfalls dynamisch aus DB laden
-- "Nicht verbunden"-Accordion bleibt (Affiliate-Placeholder)
+Die Shop-Keys werden:
+- `bmw-fokus` — BMW und MINI Fokusmodelle (Helming und Sohn)
+- `miete24-autos` — Miete24 Auto-Abo Angebote
+- `boote` — Haller Experiences Yacht Charter
+- `privatjet` — NetJets Fleet
 
-## Schritt 5: Pet-Shop Migration
+### 2. Zone 2 Komponenten — Hardcoded Daten durch DB ersetzen
 
-**Daten-Migration:** `pet_shop_products` -> `service_shop_products` per SQL INSERT:
-- `ernaehrung` -> shop_key `pet-ernaehrung`
-- `lennox_tracker` -> shop_key `pet-tracker`
-- `lennox_style` -> shop_key `pet-style`
-- `fressnapf` -> shop_key `pet-fressnapf`
+Alle drei Komponenten enthalten hardcoded Produkt-Arrays, die ueber den Service Desk in Zone 1 bestuckt werden sollten:
 
-**Zone 2 PetsShop.tsx:** `useActiveShopProducts` -> `useActiveServiceProducts` umstellen
+**CarsAngebote.tsx:**
+- `MIETE24_OFFERS` (6 Eintraege, Zeilen 44-51) entfernen
+- `FOKUS_MODELLE` (7 Eintraege, Zeilen 54-97) entfernen
+- Stattdessen: `useActiveServiceProducts('miete24-autos')` und `useActiveServiceProducts('bmw-fokus')` laden
+- Rendering bleibt gleich, Daten kommen aus `service_shop_products.metadata` (JSONB) fuer spezifische Felder wie `power`, `term`, `kmPerYear`, `configLink`
 
-**Pet Desk:** Shop-Tab aus `pet-desk` Route entfernen (Route bleibt, verweist auf Service Desk)
+**CarsBoote.tsx:**
+- `IBIZA_BOATS` (8 Eintraege, Zeilen 31-88) entfernen
+- Stattdessen: `useActiveServiceProducts('boote')` laden
+- Boot-spezifische Felder (length, guests, highlights) in `metadata` JSONB
 
-## Schritt 6: Routing + Sidebar
+**CarsPrivatjet.tsx:**
+- `NETJETS_FLEET` (6 Eintraege, Zeilen 32-75) entfernen
+- Stattdessen: `useActiveServiceProducts('privatjet')` laden
+- Jet-spezifische Felder (passengers, range, typicalRoute) in `metadata` JSONB
 
-**routesManifest.ts:**
-- Route `service-desk` hinzufuegen (nach `pet-desk`)
-- `fortbildung` Route bleibt (aber Sidebar-Gruppe aendert sich)
+### 3. CarsFahrzeuge bleibt UNVERAENDERT
 
-**ManifestRouter.tsx:**
-- `service-desk` in `adminDeskMap` registrieren
-- Skip-Filter erweitern
+Die persoenliche Fahrzeugverwaltung (`CarsFahrzeuge.tsx`) wird NICHT angetastet. Sie funktioniert korrekt mit der `cars_vehicles` Tabelle und hat nichts mit dem Service Desk zu tun.
 
-**AdminSidebar.tsx:**
-- `service-desk` in `getGroupKey` als `desks` registrieren
-- `fortbildung` aus `system` in `desks` verschieben (oder entfernen, da via Service Desk erreichbar)
-- Icon: ShoppingBag fuer Service Desk
-- `shouldShowInNav`: `service-desk` als sichtbar, `fortbildung` ausblenden
-
-## Dateien-Uebersicht
+## Dateien
 
 | Aktion | Datei |
-|--------|-------|
-| NEU | `src/hooks/useServiceShopProducts.ts` |
-| NEU | `src/pages/admin/service-desk/ServiceDeskRouter.tsx` |
-| NEU | `src/pages/admin/service-desk/ServiceDeskProductCRUD.tsx` |
-| NEU | `src/pages/admin/service-desk/ServiceDeskShops.tsx` |
-| NEU | `src/pages/admin/service-desk/ServiceDeskFortbildung.tsx` |
-| NEU | `src/pages/admin/service-desk/ServiceDeskFahrzeuge.tsx` |
-| NEU | `src/pages/admin/service-desk/ServiceDeskPV.tsx` |
-| NEU | `src/pages/admin/service-desk/ServiceDeskPetShop.tsx` |
-| EDIT | `src/pages/portal/services/ShopTab.tsx` |
-| EDIT | `src/pages/portal/pets/PetsShop.tsx` |
-| EDIT | `src/manifests/routesManifest.ts` |
-| EDIT | `src/router/ManifestRouter.tsx` |
-| EDIT | `src/components/admin/AdminSidebar.tsx` |
-| DB | Migration: 2 neue Tabellen |
-| DB | Data: pet_shop_products -> service_shop_products kopieren |
+|---|---|
+| EDIT | `src/pages/admin/service-desk/ServiceDeskFahrzeuge.tsx` — Sub-Tabs korrigieren |
+| EDIT | `src/components/portal/cars/CarsAngebote.tsx` — Hardcoded Daten durch DB ersetzen |
+| EDIT | `src/components/portal/cars/CarsBoote.tsx` — Hardcoded Daten durch DB ersetzen |
+| EDIT | `src/components/portal/cars/CarsPrivatjet.tsx` — Hardcoded Daten durch DB ersetzen |
+| NICHT | `src/components/portal/cars/CarsFahrzeuge.tsx` — bleibt unveraendert |
+
+## Technischer Ansatz
+
+Die spezifischen Felder (z.B. `power`, `configLink`, `range`, `highlights`) werden im `metadata` JSONB-Feld von `service_shop_products` gespeichert. Das Service Desk CRUD zeigt diese als generische Felder an. Die Zone 2 Komponenten lesen sie typsicher aus:
+
+```typescript
+// Beispiel: CarsAngebote
+const { data: miete24 } = useActiveServiceProducts('miete24-autos');
+const { data: bmwFokus } = useActiveServiceProducts('bmw-fokus');
+
+// Felder aus metadata extrahieren
+const fuel = product.metadata?.fuel as string;
+const configLink = product.metadata?.configLink as string;
+```
+
