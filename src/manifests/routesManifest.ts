@@ -6,7 +6,7 @@
  * 
  * RULES:
  * 1. No route exists unless declared here
- * 2. 4-Tile-Pattern is mandatory for all modules (except MOD-04: 4 tiles, MOD-05: Pets (4 tiles), MOD-20 Miety: 6 tiles)
+ * 2. Tile count varies per module (see zone2_modules.json for SSOT). MOD-20 Miety: 4 tiles.
  * 3. Changes require explicit approval
  */
 
@@ -196,7 +196,7 @@ export const zone1Admin: ZoneDefinition = {
 };
 
 // =============================================================================
-// ZONE 2: USER PORTAL — 21 MODULE ARCHITECTURE (MOD-00 to MOD-20)
+// ZONE 2: USER PORTAL — 23 MODULE ARCHITECTURE (MOD-00 to MOD-22)
 // =============================================================================
 export const zone2Portal: ZoneDefinition = {
   base: "/portal",
