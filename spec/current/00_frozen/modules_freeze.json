@@ -4,9 +4,9 @@
   "description": "SSOT for module freeze states. Lovable and all AI assistants MUST check this file before modifying any module code. If a module is frozen, changes to its paths are NOT ALLOWED without explicit unfreeze.",
   "freeze_criteria": "Spec vorhanden, Audit S1-S6 bestanden, produktionsreife Implementierung",
   "modules": {
-    "MOD-00": { "frozen": true, "frozen_at": "2026-02-24T23:00:00.000Z", "reason": "Production-ready, audit passed" },
+    "MOD-00": { "frozen": false, "frozen_at": null, "reason": "Unfrozen for demo onboarding hint" },
     "MOD-01": { "frozen": true, "frozen_at": "2026-02-24T23:00:00.000Z", "reason": "Production-ready, audit passed" },
-    "MOD-02": { "frozen": true, "frozen_at": "2026-02-24T23:00:00.000Z", "reason": "Production-ready, audit passed" },
+    "MOD-02": { "frozen": false, "frozen_at": null, "reason": "Unfrozen for Briefgenerator fixes" },
     "MOD-03": { "frozen": true, "frozen_at": "2026-02-24T23:00:00.000Z", "reason": "Production-ready, audit passed" },
     "MOD-04": { "frozen": true, "frozen_at": "2026-02-24T23:00:00.000Z", "reason": "Production-ready, audit passed" },
     "MOD-05": { "frozen": true, "frozen_at": "2026-02-24T23:00:00.000Z", "reason": "Production-ready, audit passed" },
