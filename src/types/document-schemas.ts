@@ -105,7 +105,7 @@ export type UploadStatus = 'idle' | 'uploading' | 'analyzing' | 'previewing' | '
 
 export type ExtractionEngine = 'lovable_ai' | 'unstructured_fast' | 'unstructured_hires';
 
-export type DocumentSource = 'upload' | 'resend' | 'caya' | 'dropbox' | 'onedrive' | 'gdrive' | 'import';
+export type DocumentSource = 'upload' | 'resend' | 'caya' | 'dropbox' | 'onedrive' | 'gdrive' | 'import' | 'email' | 'project_intake';
 
 export interface UploadProgress {
   status: UploadStatus;
