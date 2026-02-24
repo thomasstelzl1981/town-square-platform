@@ -1,134 +1,102 @@
 
+# Fix: Pet-Provider-Suche in Zone 2 (Cross-Tenant Discovery)
 
-# Analyse und Behebung: Demo-Daten, Modulzugriff und Rollenzuweisung
+## Problem
 
-## Befund-Zusammenfassung
+Die `pet_providers`- und `pet_services`-Tabellen haben eine **RESTRICTIVE** RLS-Policy (`tenant_isolation_restrictive`), die ALLE Operationen auf den eigenen Tenant beschraenkt. Das verhindert, dass eingeloggte User Provider anderer Tenants sehen koennen — auch wenn diese veroeffentlicht sind.
 
-Es wurden 4 separate Probleme identifiziert:
-
-| # | Problem | Ursache |
-|---|---------|---------|
-| 1 | "Familie Mustermann" erscheint im Portfolio | Demo-Toggles stehen standardmaessig auf ON fuer neue User. Hardcodierter Demo-Widget-Text im Code. |
-| 2 | "Kernsanierung BER-01" erscheint unter Sanierung | Gleicher Toggle-Default. Zusaetzlich: Hardcodierte Demo-Daten im Code (DEMO_SCOPE_ITEMS, DEMO_PROVIDERS). |
-| 3 | Finanzierungsmanager zeigt "Kein Zugriff" | Zugriffspruefung erlaubt nur `finance_manager` und `platform_admin` — `super_manager` fehlt in der Pruefung. |
-| 4 | Pet Manager erscheint im Manager-Bereich | `areaConfig.ts` listet MOD-22 fest unter "operations", ohne zu pruefen ob der Tenant dieses Modul aktiviert hat. |
-
----
-
-## Detaillierte Analyse
-
-### Problem 1+2: Demo-Daten sichtbar obwohl nicht aktiviert
-
-**Ursache in `src/hooks/useDemoToggles.ts`:**
-
-```text
-function loadToggles(): DemoToggles {
-  ...
-  // Wenn kein localStorage-Eintrag existiert → ALLE Toggles = true
-  const defaults: DemoToggles = {};
-  GOLDEN_PATH_PROCESSES.forEach(p => {
-    defaults[p.id] = true;   // ← Problem: Default ist ON
-  });
-  return defaults;
-}
-```
-
-Ein neuer User (rr@unitys.com) hat noch nie Toggles gesetzt. Daher stehen alle Demo-Prozesse (GP-PORTFOLIO, GP-SANIERUNG etc.) auf `true`. Die UI-Widgets in PortfolioTab und SanierungTab pruefen `isEnabled('GP-PORTFOLIO')` bzw. `isEnabled('GP-SANIERUNG')` und zeigen die hardcodierten Demo-Kacheln.
-
-**Zusaetzlich: Demo Data Violations:**
-
-`SanierungTab.tsx` enthaelt hardcodierte Arrays:
-- `DEMO_SCOPE_ITEMS` (5 Positionen mit festen Kosten)
-- `DEMO_PROVIDERS` (3 Anbieter mit festen Betraegen)
-
-Dies widerspricht der "Zero Hardcoded Data" Governance, wird aber in diesem Plan NICHT umgebaut (groessere Refactoring-Aufgabe). Stattdessen wird das Symptom behoben: Demo-Toggles defaulten auf OFF.
-
-### Problem 3: Finanzierungsmanager "Kein Zugriff"
-
-**Ursache in `src/pages/portal/FinanzierungsmanagerPage.tsx`, Zeile 35:**
-
-```text
-const canAccess = isPlatformAdmin || memberships.some(m => m.role === 'finance_manager');
-```
-
-Die Rolle `super_manager` wird nicht geprueft. Laut `rolesMatrix.ts` hat `super_manager` Zugriff auf MOD-11 (Zeile 210, 258). Der Tile ist auch korrekt aktiviert (MOD-11 = active). Nur die Page-Level-Pruefung blockiert.
-
-**Datenbank-Befund:**
-- User `rr@unitys.com`: membership_role = `super_manager`, app_role = NULL
-- Tiles: MOD-00 bis MOD-20 alle `active` (21 Module, korrekt)
-- MOD-22 ist NICHT aktiviert (korrekt fuer super_manager)
-
-### Problem 4: Pet Manager im Manager-Bereich sichtbar
-
-**Ursache in `src/manifests/areaConfig.ts`, Zeile 41:**
-
-```text
-operations: {
-  modules: ['MOD-13', 'MOD-09', 'MOD-11', 'MOD-12', 'MOD-10', 'MOD-22']
-}
-```
-
-Die `AreaOverviewPage` rendert alle Module aus `areaConfig` ohne Pruefung gegen `tenant_tile_activation`. MOD-22 erscheint daher fuer jeden User, auch wenn der Tenant MOD-22 nicht aktiviert hat.
-
----
+- Zone 3 funktioniert, weil dort der anonyme Zugriff (ohne Auth-Token) greift und die restrictive Policy nicht anschlaegt.
+- Zone 2 scheitert, weil der Auth-Token den Tenant identifiziert und die restrictive Policy den Lennox-Tenant (`eac1778a-...`) fuer den Unitys-User (`406f5f7a-...`) blockiert.
 
 ## Loesung
 
-### Fix 1: Demo-Toggles standardmaessig auf OFF
+Die RESTRICTIVE Policy auf beiden Tabellen muss fuer **lesende** Zugriffe auf veroeffentlichte Provider eine Ausnahme erlauben. Die sicherste Methode:
 
-**Datei:** `src/hooks/useDemoToggles.ts`
+### Schritt 1: RESTRICTIVE Policy auf `pet_providers` anpassen
 
-Default-Wert aendern von `true` auf `false`:
+Die bestehende Policy `tenant_isolation_restrictive` (cmd: ALL) wird ersetzt durch granulare Policies:
 
-```text
-GOLDEN_PATH_PROCESSES.forEach(p => {
-  defaults[p.id] = false;   // Neu: Default ist OFF
-});
+1. **Neue RESTRICTIVE Policy fuer INSERT/UPDATE/DELETE** — bleibt wie bisher: `tenant_id = get_user_tenant_id() OR is_platform_admin(auth.uid())`
+2. **Neue RESTRICTIVE Policy fuer SELECT** — erweitert: Eigener Tenant ODER (veroeffentlicht UND aktiv)
+
+```sql
+-- Alte ALL-Policy droppen
+DROP POLICY IF EXISTS tenant_isolation_restrictive ON pet_providers;
+
+-- Schreib-Isolation bleibt strikt
+CREATE POLICY tenant_isolation_write_restrictive ON pet_providers
+  AS RESTRICTIVE FOR ALL
+  USING (tenant_id = get_user_tenant_id() OR is_platform_admin(auth.uid()))
+  WITH CHECK (tenant_id = get_user_tenant_id() OR is_platform_admin(auth.uid()));
+
+-- Aber: Fuer SELECT erlauben wir auch published Providers anderer Tenants
+DROP POLICY IF EXISTS tenant_isolation_write_restrictive ON pet_providers;
+
+CREATE POLICY tenant_isolation_restrictive_write ON pet_providers
+  AS RESTRICTIVE FOR INSERT
+  WITH CHECK (tenant_id = get_user_tenant_id() OR is_platform_admin(auth.uid()));
+
+CREATE POLICY tenant_isolation_restrictive_update ON pet_providers
+  AS RESTRICTIVE FOR UPDATE
+  USING (tenant_id = get_user_tenant_id() OR is_platform_admin(auth.uid()));
+
+CREATE POLICY tenant_isolation_restrictive_delete ON pet_providers
+  AS RESTRICTIVE FOR DELETE
+  USING (tenant_id = get_user_tenant_id() OR is_platform_admin(auth.uid()));
+
+CREATE POLICY tenant_isolation_restrictive_select ON pet_providers
+  AS RESTRICTIVE FOR SELECT
+  USING (
+    tenant_id = get_user_tenant_id()
+    OR is_platform_admin(auth.uid())
+    OR (is_published = true AND status = 'active')
+  );
 ```
 
-Damit erscheinen Demo-Widgets nur, wenn der User sie bewusst aktiviert hat (ueber DemoDatenTab oder Zone 1 Admin).
+### Schritt 2: Gleiche Anpassung fuer `pet_services`
 
-### Fix 2: Finanzierungsmanager — super_manager Zugriff erlauben
+Gleiche Aufspaltung: Schreibende Policies bleiben tenant-isoliert, lesende Policy erlaubt Zugriff auf Services von veroeffentlichten Providern.
 
-**Datei:** `src/pages/portal/FinanzierungsmanagerPage.tsx`
+```sql
+DROP POLICY IF EXISTS tenant_isolation_restrictive ON pet_services;
 
-Zeile 35 erweitern:
+CREATE POLICY tenant_isolation_restrictive_write ON pet_services
+  AS RESTRICTIVE FOR INSERT
+  WITH CHECK (tenant_id = get_user_tenant_id() OR is_platform_admin(auth.uid()));
 
-```text
-// Alt:
-const canAccess = isPlatformAdmin || memberships.some(m => m.role === 'finance_manager');
+CREATE POLICY tenant_isolation_restrictive_update ON pet_services
+  AS RESTRICTIVE FOR UPDATE
+  USING (tenant_id = get_user_tenant_id() OR is_platform_admin(auth.uid()));
 
-// Neu:
-const canAccess = isPlatformAdmin || memberships.some(m =>
-  m.role === 'finance_manager' || m.role === 'super_manager'
-);
+CREATE POLICY tenant_isolation_restrictive_delete ON pet_services
+  AS RESTRICTIVE FOR DELETE
+  USING (tenant_id = get_user_tenant_id() OR is_platform_admin(auth.uid()));
+
+CREATE POLICY tenant_isolation_restrictive_select ON pet_services
+  AS RESTRICTIVE FOR SELECT
+  USING (
+    tenant_id = get_user_tenant_id()
+    OR is_platform_admin(auth.uid())
+    OR (is_active = true AND EXISTS (
+      SELECT 1 FROM pet_providers pp
+      WHERE pp.id = pet_services.provider_id
+        AND pp.is_published = true
+        AND pp.status = 'active'
+    ))
+  );
 ```
 
-### Fix 3: AreaOverviewPage — Module nach Tenant-Aktivierung filtern
+### Sicherheitsbewertung
 
-**Datei:** `src/pages/portal/AreaOverviewPage.tsx`
+- **Schreibzugriffe** bleiben vollstaendig tenant-isoliert (keine Aenderung)
+- **Lesezugriffe** werden nur fuer explizit freigegebene (published + active) Provider geoeffnet
+- Dies entspricht dem gleichen Pattern wie die "Cross-Tenant Discovery" bei Immobilien-Listings (vgl. `v_public_listings`)
+- Keine Daten-Leaks: Nur bewusst publizierte Provider-Daten werden sichtbar
 
-Die Module werden gegen die aktivierten Tiles des Tenants gefiltert. Dazu wird die bestehende `useAuth()`-Integration genutzt, um die `tenant_tile_activation` abzufragen. Module, die der Tenant nicht hat (z.B. MOD-22 fuer super_manager), werden ausgeblendet.
+### Keine Code-Aenderungen noetig
 
-Konkret:
-1. Tenant-Tiles via `useQuery` laden (oder bestehenden Hook nutzen)
-2. `area.modules.filter(code => activatedTiles.includes(code))` vor dem Rendern
+Der Hook `usePetProviderSearch.ts` fragt bereits korrekt nach `status = 'active'` und `is_published = true`. Die UI in `PetsCaring.tsx` funktioniert ebenfalls bereits richtig. Nur die RLS-Policies muessen angepasst werden.
 
----
+### Betroffene Module
 
-## Aenderungsuebersicht
-
-| Datei | Aenderung | Freeze-Status |
-|-------|-----------|---------------|
-| `src/hooks/useDemoToggles.ts` | Default `false` statt `true` | Kein Modul-Pfad, frei |
-| `src/pages/portal/FinanzierungsmanagerPage.tsx` | `super_manager` zur Zugriffspruefung hinzufuegen | MOD-11 Pfad — Freeze pruefen |
-| `src/pages/portal/AreaOverviewPage.tsx` | Module nach Tenant-Aktivierung filtern | Kein Modul-Pfad, frei |
-
-**Hinweis:** `FinanzierungsmanagerPage.tsx` liegt unter `src/pages/portal/finanzierungsmanager*` (MOD-11). Falls MOD-11 eingefroren ist, muss zuerst `UNFREEZE MOD-11` erfolgen. Dies wird vor der Implementierung geprueft.
-
-## Ergebnis
-
-- Portfolio und Sanierung zeigen keine Demo-Daten mehr fuer neue User
-- Finanzierungsmanager ist fuer Super-Manager zugaenglich
-- Pet Manager erscheint nur fuer User mit MOD-22-Aktivierung (pet_manager Rolle)
-
+Keine Module werden editiert — nur eine DB-Migration. Kein Unfreeze erforderlich.
