@@ -1,7 +1,11 @@
 /**
  * CarsBikes — Motorcycle widget grid with inline detail
+ * Data comes from cars_vehicles table (vehicle_type = 'bike')
  */
 import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -12,41 +16,47 @@ import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { WidgetGrid } from '@/components/shared/WidgetGrid';
 import { WidgetCell } from '@/components/shared/WidgetCell';
+import { useDemoToggles } from '@/hooks/useDemoToggles';
+import { isDemoId } from '@/engines/demoData/engine';
+import { DESIGN } from '@/config/designManifest';
+import { format } from 'date-fns';
 
-interface BikeDemo {
-  id: string;
-  license_plate: string;
-  make: string;
-  model: string;
-  image: string;
-  status: 'active' | 'inactive';
-  mileage: string;
-  hu: string;
-  power: string;
-  year: string;
-}
-
-const DEMO_BIKES: BikeDemo[] = [
-  {
-    id: 'bike-1', license_plate: 'M-BM 1300', make: 'BMW', model: 'R 1300 GS Adventure',
-    image: 'https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=400&h=250&fit=crop',
-    status: 'active', mileage: '8.420 km', hu: '09/2027', power: '107 kW (145 PS)', year: '2025',
-  },
-  {
-    id: 'bike-2', license_plate: 'M-DC 4444', make: 'Ducati', model: 'Panigale V4 S',
-    image: 'https://images.unsplash.com/photo-1568772585407-9361f9bf3a87?w=400&h=250&fit=crop',
-    status: 'active', mileage: '3.150 km', hu: '04/2028', power: '158 kW (215 PS)', year: '2025',
-  },
-  {
-    id: 'bike-3', license_plate: 'M-HD 2024', make: 'Harley-Davidson', model: 'Road Glide Special',
-    image: 'https://images.unsplash.com/photo-1558980394-4c7c9299fe96?w=400&h=250&fit=crop',
-    status: 'active', mileage: '15.800 km', hu: '01/2027', power: '67 kW (91 PS)', year: '2024',
-  },
-];
+// Bike images by make
+const BIKE_IMAGES: Record<string, string> = {
+  'BMW': 'https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=400&h=250&fit=crop',
+  'Ducati': 'https://images.unsplash.com/photo-1568772585407-9361f9bf3a87?w=400&h=250&fit=crop',
+  'Harley-Davidson': 'https://images.unsplash.com/photo-1558980394-4c7c9299fe96?w=400&h=250&fit=crop',
+};
+const DEFAULT_BIKE_IMAGE = 'https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=400&h=250&fit=crop';
 
 export default function CarsBikes() {
+  const { activeTenantId } = useAuth();
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const selected = DEMO_BIKES.find(b => b.id === selectedId);
+  const { isEnabled } = useDemoToggles();
+  const demoEnabled = isEnabled('GP-FAHRZEUG');
+
+  const { data: dbBikes = [] } = useQuery({
+    queryKey: ['cars_vehicles_bikes', activeTenantId],
+    queryFn: async () => {
+      if (!activeTenantId) return [];
+      const { data, error } = await (supabase as any)
+        .from('cars_vehicles')
+        .select('*')
+        .eq('tenant_id', activeTenantId)
+        .eq('vehicle_type', 'bike')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!activeTenantId,
+  });
+
+  const realBikes = dbBikes.filter((v: any) => !isDemoId(v.id));
+  const bikes = demoEnabled ? dbBikes : realBikes;
+  const isDemo = !realBikes.length && demoEnabled;
+
+  const selected = bikes.find((b: any) => b.id === selectedId);
+  const getImage = (v: any) => BIKE_IMAGES[v.make] || DEFAULT_BIKE_IMAGE;
 
   return (
     <PageShell>
@@ -57,21 +67,23 @@ export default function CarsBikes() {
       />
 
       <WidgetGrid>
-        {DEMO_BIKES.map((bike) => {
+        {bikes.map((bike: any) => {
           const isSelected = selectedId === bike.id;
           return (
             <WidgetCell key={bike.id}>
               <Card
                 className={cn(
                   "glass-card overflow-hidden cursor-pointer group transition-all h-full",
+                  isDemo ? DESIGN.DEMO_WIDGET.CARD : '',
                   isSelected ? "border-primary ring-2 ring-primary/20" : "border-primary/10 hover:border-primary/30"
                 )}
                 onClick={() => setSelectedId(isSelected ? null : bike.id)}
               >
                 <div className="relative h-[55%] bg-muted/30 overflow-hidden">
-                  <img src={bike.image} alt={`${bike.make} ${bike.model}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                  <img src={getImage(bike)} alt={`${bike.make} ${bike.model}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                   <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-transparent" />
-                  <div className="absolute top-2 left-3">
+                  <div className="absolute top-2 left-3 flex gap-1">
+                    {isDemo && <Badge className={cn(DESIGN.DEMO_WIDGET.BADGE, "text-[9px]")}>DEMO</Badge>}
                     <Badge variant="outline" className="text-[9px] bg-status-success/10 text-status-success border-status-success/20">Aktiv</Badge>
                   </div>
                   <div className="absolute bottom-2 left-3">
@@ -83,8 +95,8 @@ export default function CarsBikes() {
                 <CardContent className="p-3 space-y-2 h-[45%] flex flex-col justify-between">
                   <h3 className="font-semibold text-sm">{bike.make} {bike.model}</h3>
                   <div className="grid grid-cols-2 gap-1.5">
-                    <InfoMini icon={Gauge} label="KM" value={bike.mileage} />
-                    <InfoMini icon={Calendar} label="HU" value={bike.hu} />
+                    <InfoMini icon={Gauge} label="KM" value={bike.current_mileage_km?.toLocaleString('de-DE') || '—'} />
+                    <InfoMini icon={Calendar} label="HU" value={bike.hu_valid_until ? format(new Date(bike.hu_valid_until), 'MM/yyyy') : '—'} />
                   </div>
                 </CardContent>
               </Card>
@@ -107,23 +119,23 @@ export default function CarsBikes() {
             <Separator />
             <Section icon={FileText} title="Basisdaten">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <Field label="Kennzeichen" value={selected.license_plate} />
-                <Field label="Hersteller" value={selected.make} />
-                <Field label="Modell" value={selected.model} />
-                <Field label="Baujahr" value={selected.year} />
-                <Field label="Leistung" value={selected.power} />
-                <Field label="KM-Stand" value={selected.mileage} />
-                <Field label="HU bis" value={selected.hu} />
-                <Field label="Kraftstoff" value="Benzin" />
+                <Field label="Kennzeichen" value={selected.license_plate || '—'} />
+                <Field label="Hersteller" value={selected.make || '—'} />
+                <Field label="Modell" value={selected.model || '—'} />
+                <Field label="Erstzulassung" value={selected.first_registration_date ? format(new Date(selected.first_registration_date), 'yyyy') : '—'} />
+                <Field label="Leistung" value={selected.power_kw ? `${selected.power_kw} kW (${Math.round(selected.power_kw * 1.36)} PS)` : '—'} />
+                <Field label="KM-Stand" value={selected.current_mileage_km?.toLocaleString('de-DE') || '—'} />
+                <Field label="HU bis" value={selected.hu_valid_until ? format(new Date(selected.hu_valid_until), 'MM/yyyy') : '—'} />
+                <Field label="Kraftstoff" value={selected.fuel_type || '—'} />
               </div>
             </Section>
             <Separator />
             <Section icon={ShieldCheck} title="Versicherung">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <Field label="Versicherer" value="HUK-COBURG" />
-                <Field label="Policen-Nr." value="HUK-2025-11234" />
-                <Field label="Deckung" value="Vollkasko" />
-                <Field label="Jahresbeitrag" value="680,00 €" />
+                <Field label="Versicherer" value="—" />
+                <Field label="Policen-Nr." value="—" />
+                <Field label="Deckung" value="—" />
+                <Field label="Jahresbeitrag" value="—" />
               </div>
             </Section>
             <Separator />
@@ -132,14 +144,7 @@ export default function CarsBikes() {
             </Section>
             <Separator />
             <Section icon={FolderOpen} title="Dokumente">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {['Fahrzeugschein', 'Fahrzeugbrief', 'TÜV-Bericht'].map((d) => (
-                  <div key={d} className="flex items-center gap-2 p-2 rounded-lg border border-border/50 bg-muted/20">
-                    <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
-                    <span className="text-xs truncate">{d}</span>
-                  </div>
-                ))}
-              </div>
+              <p className="text-sm text-muted-foreground">Noch keine Dokumente</p>
             </Section>
           </CardContent>
         </Card>

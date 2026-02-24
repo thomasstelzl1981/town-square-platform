@@ -52,40 +52,21 @@ const VEHICLE_IMAGES: Record<string, string> = {
 };
 const DEFAULT_IMAGE = 'https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=400&h=250&fit=crop';
 
-// Realistic demo vehicles
-const DEMO_VEHICLES = [
-  {
-    id: 'demo-1', public_id: 'FZ-001', license_plate: 'M-AB 1234', make: 'BMW', model: 'M4 Competition G82',
-    status: 'active' as VehicleStatus, holder_name: 'Max Mustermann', holder_address: 'Leopoldstr. 28, 80802 München',
-    primary_driver_name: 'Max Mustermann', current_mileage_km: 23450, hu_valid_until: '2027-03-15',
-    vin: 'WBS33AZ0XNCJ12345', color: 'Isle of Man Grün', fuel_type: 'Benzin', power_kw: 375,
-    first_registration_date: '2023-03-15', engine_ccm: 2993, seats: 4, doors: 2,
-    body_type: 'Coupé', weight_kg: 1725, co2_g_km: 227,
-  },
-  {
-    id: 'demo-2', public_id: 'FZ-002', license_plate: 'M-MB 5678', make: 'Mercedes-Benz', model: 'GLE 450 4MATIC',
-    status: 'active' as VehicleStatus, holder_name: 'Max Mustermann', holder_address: 'Leopoldstr. 28, 80802 München',
-    primary_driver_name: 'Lisa Mustermann', current_mileage_km: 45200, hu_valid_until: '2026-11-01',
-    vin: 'W1N1671611A456789', color: 'Obsidianschwarz', fuel_type: 'Mild-Hybrid (Benzin)', power_kw: 270,
-    first_registration_date: '2022-06-20', engine_ccm: 2999, seats: 5, doors: 5,
-    body_type: 'SUV', weight_kg: 2305, co2_g_km: 219,
-  },
-  {
-    id: 'demo-3', public_id: 'FZ-003', license_plate: 'M-P 9911', make: 'Porsche', model: '911 Carrera S 992',
-    status: 'active' as VehicleStatus, holder_name: 'Max Mustermann', holder_address: 'Leopoldstr. 28, 80802 München',
-    primary_driver_name: 'Max Mustermann', current_mileage_km: 12800, hu_valid_until: '2027-08-20',
-    vin: 'WP0AB2A98NS234567', color: 'Kreide', fuel_type: 'Benzin', power_kw: 331,
-    first_registration_date: '2024-01-10', engine_ccm: 2981, seats: 4, doors: 2,
-    body_type: 'Coupé', weight_kg: 1565, co2_g_km: 229,
-  },
-];
+// Demo vehicle IDs (from CSV SSOT — public/demo-data/demo_vehicles.csv)
+const DEMO_VEHICLE_IDS = new Set([
+  'd0000000-0000-4000-a000-000000000301',
+  'd0000000-0000-4000-a000-000000000302',
+  'd0000000-0000-4000-a000-000000000303',
+]);
 
+// Demo insurance data (keyed by vehicle demo ID)
 const DEMO_INSURANCES: Record<string, Record<string, string>> = {
-  'demo-1': { insurer: 'Allianz', policy_number: 'AZ-2024-78912', coverage_type: 'Vollkasko', annual_premium: '2.840,00 €', sf_class_liability: 'SF 12', sf_class_comprehensive: 'SF 10', deductible_partial: '150 €', deductible_comprehensive: '500 €' },
-  'demo-2': { insurer: 'HUK-COBURG', policy_number: 'HUK-2022-45601', coverage_type: 'Vollkasko', annual_premium: '1.920,00 €', sf_class_liability: 'SF 15', sf_class_comprehensive: 'SF 12', deductible_partial: '150 €', deductible_comprehensive: '300 €' },
-  'demo-3': { insurer: 'AXA Versicherung', policy_number: 'AXA-2024-11234', coverage_type: 'Vollkasko', annual_premium: '3.450,00 €', sf_class_liability: 'SF 8', sf_class_comprehensive: 'SF 8', deductible_partial: '150 €', deductible_comprehensive: '1.000 €' },
+  'd0000000-0000-4000-a000-000000000301': { insurer: 'Allianz', policy_number: 'AZ-2024-78912', coverage_type: 'Vollkasko', annual_premium: '2.840,00 €', sf_class_liability: 'SF 12', sf_class_comprehensive: 'SF 10', deductible_partial: '150 €', deductible_comprehensive: '500 €' },
+  'd0000000-0000-4000-a000-000000000302': { insurer: 'HUK-COBURG', policy_number: 'HUK-2022-45601', coverage_type: 'Vollkasko', annual_premium: '1.920,00 €', sf_class_liability: 'SF 15', sf_class_comprehensive: 'SF 12', deductible_partial: '150 €', deductible_comprehensive: '300 €' },
+  'd0000000-0000-4000-a000-000000000303': { insurer: 'AXA Versicherung', policy_number: 'AXA-2024-11234', coverage_type: 'Vollkasko', annual_premium: '3.450,00 €', sf_class_liability: 'SF 8', sf_class_comprehensive: 'SF 8', deductible_partial: '150 €', deductible_comprehensive: '1.000 €' },
 };
 
+// Demo trips (UI-only logbook entries — not a business entity, acceptable per governance exception)
 const DEMO_TRIPS = [
   { id: 't1', date: '12.02.2026', start: 'München', end: 'Stuttgart', km: 234, purpose: 'Geschäftlich' as const, customer: 'Huber GmbH' },
   { id: 't2', date: '10.02.2026', start: 'München', end: 'Nürnberg', km: 167, purpose: 'Geschäftlich' as const, customer: 'Meyer AG' },
@@ -120,10 +101,11 @@ export default function CarsAutos() {
     enabled: !!activeTenantId,
   });
 
-  const DEMO_CLIENT_IDS = new Set(['demo-1','demo-2','demo-3']);
-  const realDbVehicles = dbVehicles?.filter((v: any) => !DEMO_CLIENT_IDS.has(v.id) && !isDemoId(v.id)) || [];
-  const allDbVehicles = demoEnabled ? (dbVehicles || []) : realDbVehicles;
-  const vehicles = allDbVehicles.length ? allDbVehicles : (demoEnabled ? DEMO_VEHICLES : []);
+  const realDbVehicles = dbVehicles?.filter((v: any) => !DEMO_VEHICLE_IDS.has(v.id) && !isDemoId(v.id)) || [];
+  // Filter to only autos (not bikes) from DB
+  const autoFilter = (v: any) => !v.vehicle_type || v.vehicle_type === 'auto';
+  const allDbVehicles = demoEnabled ? (dbVehicles || []).filter(autoFilter) : realDbVehicles.filter(autoFilter);
+  const vehicles = allDbVehicles;
   const isDemo = !realDbVehicles.length && demoEnabled;
 
   const filteredVehicles = vehicles.filter((v: any) => {
