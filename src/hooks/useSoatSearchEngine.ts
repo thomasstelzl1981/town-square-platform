@@ -4,6 +4,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useEffect } from 'react';
+import { normalizeContact, calcConfidence, applyQualityGate } from '@/engines/marketDirectory/engine';
 
 export interface SoatSearchOrder {
   id: string;
@@ -149,23 +150,125 @@ export function useStartSoatOrder() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (orderId: string) => {
-      // Set to queued
-      const { error } = await supabase
+      // 1. Load order to get real params
+      const { data: order, error: orderErr } = await supabase
         .from('soat_search_orders')
-        .update({ status: 'queued', phase: 'strategy', progress_percent: 0 } as any)
-        .eq('id', orderId);
-      if (error) throw error;
+        .select('*')
+        .eq('id', orderId)
+        .single();
+      if (orderErr || !order) throw new Error('Auftrag nicht gefunden');
 
-      // Trigger orchestrator
-      const { error: fnError } = await supabase.functions.invoke('sot-research-engine', {
-        body: {
-          intent: 'find_contacts',
-          query: 'SOAT Recherche',
-          max_results: 25,
-          context: { module: 'soat_search', reference_id: orderId },
-        },
-      });
-      if (fnError) throw new Error(fnError.message);
+      const typedOrder = order as unknown as SoatSearchOrder;
+
+      // 2. Parse intent: "Suchbegriff, Region, Kategorie"
+      const intentParts = (typedOrder.intent || '').split(',').map(s => s.trim());
+      const query = intentParts[0] || typedOrder.title || 'Recherche';
+      const location = intentParts[1] || 'Deutschland';
+      const maxResults = typedOrder.target_count || 25;
+
+      // 3. Set to queued + strategy phase
+      const updatePhase = async (phase: string, progress: number, status = 'running') => {
+        await supabase
+          .from('soat_search_orders')
+          .update({ status, phase, progress_percent: progress } as any)
+          .eq('id', orderId);
+      };
+
+      await updatePhase('strategy', 5, 'queued');
+
+      try {
+        // 4. Call orchestrator with real params
+        await updatePhase('discovery', 15);
+
+        const { data, error: fnError } = await supabase.functions.invoke('sot-research-engine', {
+          body: {
+            intent: 'find_contacts',
+            query,
+            location,
+            max_results: maxResults,
+            context: { module: 'soat_search', reference_id: orderId },
+          },
+        });
+        if (fnError) throw new Error(fnError.message);
+
+        await updatePhase('extract', 50);
+
+        // 5. Process & persist results
+        const rawResults: any[] = data?.results || data?.data?.results || [];
+
+        if (rawResults.length > 0) {
+          const rows = rawResults.map((r: any) => {
+            // Apply engine normalization
+            const normResult = normalizeContact({
+              salutation: r.salutation,
+              first_name: r.first_name || r.firstName,
+              last_name: r.last_name || r.lastName,
+              company_name: r.name || r.company_name || r.company,
+              contact_person_name: r.contact_person || r.full_name,
+              phone: r.phone || r.telephone,
+              email: r.email,
+              website_url: r.website || r.website_url,
+              address_line: r.address || r.address_line,
+              postal_code: r.postal_code,
+              city: r.city,
+            });
+            const n = normResult.normalized;
+
+            // Calc confidence
+            const conf = calcConfidence(n, Array.isArray(r.sources) ? r.sources.length : 1);
+
+            return {
+              order_id: orderId,
+              entity_type: r.entity_type || 'company',
+              company_name: n.company || r.name || null,
+              category: r.category || null,
+              address_line: n.street || r.address || null,
+              postal_code: n.postalCode || null,
+              city: n.city || null,
+              country: r.country || 'DE',
+              phone: n.phoneE164 || null,
+              email: n.email || null,
+              website_url: r.website || r.website_url || null,
+              salutation: n.salutation || null,
+              first_name: n.firstName || null,
+              last_name: n.lastName || null,
+              contact_person_name: r.contact_person || r.full_name || null,
+              contact_person_role: r.role || null,
+              source_refs_json: r.sources || r.source_refs_json || null,
+              confidence_score: Math.round(conf.score * 100),
+              validation_state: applyQualityGate(conf.score),
+            };
+          });
+
+          // Insert in batches of 50
+          for (let i = 0; i < rows.length; i += 50) {
+            const batch = rows.slice(i, i + 50);
+            const { error: insertErr } = await supabase
+              .from('soat_search_results')
+              .insert(batch as any);
+            if (insertErr) console.error('Batch insert error:', insertErr.message);
+          }
+        }
+
+        // 6. Done
+        await updatePhase('finalize', 100, 'done');
+        await supabase
+          .from('soat_search_orders')
+          .update({
+            finished_at: new Date().toISOString(),
+            counters_json: { total: rawResults.length },
+          } as any)
+          .eq('id', orderId);
+
+      } catch (err) {
+        // Mark order as failed
+        const msg = err instanceof Error ? err.message : 'Unbekannter Fehler';
+        await supabase
+          .from('soat_search_orders')
+          .update({ status: 'failed', error_message: msg } as any)
+          .eq('id', orderId);
+        throw err;
+      }
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ORDERS_KEY }),
   });

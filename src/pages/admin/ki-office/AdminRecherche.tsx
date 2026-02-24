@@ -210,7 +210,7 @@ export default function AdminRecherche() {
     setIsImporting(true);
     try {
       const data = await researchImport.mutateAsync({ orderId: selectedOrderId, resultIds: importableIds, duplicatePolicy: dupePolicy });
-      toast.success(`${data.imported_count} importiert, ${data.skipped_count} übersprungen`);
+      toast.success(`${data.importedCount} importiert, ${data.skippedCount} übersprungen`);
       setShowImportPreview(false); setSelectedResults(new Set()); setDupeChecks([]);
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : 'Import fehlgeschlagen');
