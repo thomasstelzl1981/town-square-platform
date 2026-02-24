@@ -7,55 +7,38 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
+  Card, CardContent, CardDescription, CardHeader, CardTitle,
 } from '@/components/ui/card';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
 } from '@/components/ui/dialog';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Plus, Loader2, Link2, XCircle, AlertTriangle, Clock, Eye } from 'lucide-react';
 import { format } from 'date-fns';
+import { de } from 'date-fns/locale';
 import { ScopePicker, AVAILABLE_SCOPES } from '@/components/admin/ScopePicker';
 import { PdfExportFooter } from '@/components/pdf';
+import { DESIGN } from '@/config/designManifest';
 
 type OrgDelegation = Tables<'org_delegations'>;
 type Organization = Tables<'organizations'>;
 type DelegationStatus = Enums<'delegation_status'>;
+
+const STATUS_LABELS: Record<string, string> = {
+  active: 'Aktiv',
+  revoked: 'Widerrufen',
+  expired: 'Abgelaufen',
+};
 
 export default function DelegationsPage() {
   const { isPlatformAdmin, user } = useAuth();
@@ -65,10 +48,8 @@ export default function DelegationsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  // Filter state
   const [statusFilter, setStatusFilter] = useState<DelegationStatus | 'all'>('all');
 
-  // Create dialog
   const [createOpen, setCreateOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
@@ -79,10 +60,7 @@ export default function DelegationsPage() {
     expires_at: '',
   });
 
-  // Detail view dialog
   const [viewTarget, setViewTarget] = useState<OrgDelegation | null>(null);
-
-  // Revoke confirmation
   const [revokeTarget, setRevokeTarget] = useState<OrgDelegation | null>(null);
   const [revoking, setRevoking] = useState(false);
 
@@ -101,7 +79,7 @@ export default function DelegationsPage() {
       setOrganizations(orgsRes.data || []);
       setDelegations(delegationsRes.data || []);
     } catch (err: unknown) {
-      setError((err instanceof Error ? err.message : String(err)) || 'Failed to fetch data');
+      setError((err instanceof Error ? err.message : String(err)) || 'Fehler beim Laden der Daten');
     }
     setLoading(false);
   }
@@ -129,17 +107,17 @@ export default function DelegationsPage() {
 
   const handleCreate = async () => {
     if (!newDelegation.delegate_org_id || !newDelegation.target_org_id) {
-      setCreateError('Delegate and target organizations are required');
+      setCreateError('Delegat- und Ziel-Organisation sind erforderlich');
       return;
     }
 
     if (newDelegation.delegate_org_id === newDelegation.target_org_id) {
-      setCreateError('Delegate and target organizations must be different');
+      setCreateError('Delegat- und Ziel-Organisation müssen unterschiedlich sein');
       return;
     }
 
     if (newDelegation.scopes.length === 0) {
-      setCreateError('At least one scope must be selected');
+      setCreateError('Mindestens ein Scope muss ausgewählt werden');
       return;
     }
 
@@ -160,15 +138,10 @@ export default function DelegationsPage() {
       if (error) throw error;
 
       setCreateOpen(false);
-      setNewDelegation({
-        delegate_org_id: '',
-        target_org_id: '',
-        scopes: [],
-        expires_at: '',
-      });
+      setNewDelegation({ delegate_org_id: '', target_org_id: '', scopes: [], expires_at: '' });
       fetchData();
     } catch (err: unknown) {
-      setCreateError((err instanceof Error ? err.message : String(err)) || 'Failed to create delegation');
+      setCreateError((err instanceof Error ? err.message : String(err)) || 'Delegierung konnte nicht erstellt werden');
     }
     setCreating(false);
   };
@@ -190,13 +163,12 @@ export default function DelegationsPage() {
       if (error) throw error;
       fetchData();
     } catch (err: unknown) {
-      setError((err instanceof Error ? err.message : String(err)) || 'Failed to revoke delegation');
+      setError((err instanceof Error ? err.message : String(err)) || 'Delegierung konnte nicht widerrufen werden');
     }
     setRevoking(false);
     setRevokeTarget(null);
   };
 
-  // Filtered delegations
   const filteredDelegations = delegations.filter(d => 
     statusFilter === 'all' || d.status === statusFilter
   );
@@ -211,11 +183,11 @@ export default function DelegationsPage() {
   };
 
   return (
-    <div className="space-y-6" ref={contentRef}>
+    <div className={DESIGN.SPACING.SECTION} ref={contentRef}>
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Delegierungen</h2>
-          <p className="text-muted-foreground">Organisationsübergreifende Zugriffsrechte verwalten</p>
+          <h2 className={DESIGN.TYPOGRAPHY.PAGE_TITLE}>Delegierungen</h2>
+          <p className={DESIGN.TYPOGRAPHY.MUTED}>Organisationsübergreifende Zugriffsrechte verwalten</p>
         </div>
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
           <DialogTrigger asChild>
@@ -242,13 +214,13 @@ export default function DelegationsPage() {
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="delegate_org">Delegate Organization</Label>
+                  <Label htmlFor="delegate_org">Delegat-Organisation</Label>
                   <Select
                     value={newDelegation.delegate_org_id}
                     onValueChange={(value) => setNewDelegation(prev => ({ ...prev, delegate_org_id: value }))}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Who gets access" />
+                      <SelectValue placeholder="Wer erhält Zugriff" />
                     </SelectTrigger>
                     <SelectContent>
                       {organizations.map(org => (
@@ -258,17 +230,17 @@ export default function DelegationsPage() {
                       ))}
                     </SelectContent>
                   </Select>
-                  <p className="text-xs text-muted-foreground">Who gets access</p>
+                  <p className="text-xs text-muted-foreground">Wer erhält Zugriff</p>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="target_org">Target Organization</Label>
+                  <Label htmlFor="target_org">Ziel-Organisation</Label>
                   <Select
                     value={newDelegation.target_org_id}
                     onValueChange={(value) => setNewDelegation(prev => ({ ...prev, target_org_id: value }))}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Whose resources" />
+                      <SelectValue placeholder="Auf wessen Ressourcen" />
                     </SelectTrigger>
                     <SelectContent>
                       {organizations.map(org => (
@@ -278,7 +250,7 @@ export default function DelegationsPage() {
                       ))}
                     </SelectContent>
                   </Select>
-                  <p className="text-xs text-muted-foreground">Whose resources</p>
+                  <p className="text-xs text-muted-foreground">Auf wessen Ressourcen</p>
                 </div>
               </div>
 
@@ -291,7 +263,7 @@ export default function DelegationsPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="expires_at">Expires At (optional)</Label>
+                <Label htmlFor="expires_at">Ablaufdatum (optional)</Label>
                 <Input
                   id="expires_at"
                   type="datetime-local"
@@ -319,7 +291,6 @@ export default function DelegationsPage() {
         </Alert>
       )}
 
-      {/* Info about immutability */}
       <Alert>
         <Clock className="h-4 w-4" />
         <AlertDescription>
@@ -342,9 +313,9 @@ export default function DelegationsPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Alle Status</SelectItem>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="revoked">Revoked</SelectItem>
-                <SelectItem value="expired">Expired</SelectItem>
+                <SelectItem value="active">Aktiv</SelectItem>
+                <SelectItem value="revoked">Widerrufen</SelectItem>
+                <SelectItem value="expired">Abgelaufen</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -365,12 +336,12 @@ export default function DelegationsPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Delegate → Target</TableHead>
+                  <TableHead>Delegat → Ziel</TableHead>
                   <TableHead>Scopes</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Granted</TableHead>
-                  <TableHead>Expires</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>Erteilt</TableHead>
+                  <TableHead>Ablauf</TableHead>
+                  <TableHead className="text-right">Aktionen</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -390,15 +361,15 @@ export default function DelegationsPage() {
                     </TableCell>
                     <TableCell>
                       <Badge variant={getStatusVariant(delegation.status)}>
-                        {delegation.status}
+                        {STATUS_LABELS[delegation.status] || delegation.status}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-muted-foreground text-sm">
-                      {format(new Date(delegation.granted_at), 'MMM d, yyyy')}
+                      {format(new Date(delegation.granted_at), 'dd.MM.yyyy', { locale: de })}
                     </TableCell>
                     <TableCell className="text-muted-foreground text-sm">
                       {delegation.expires_at 
-                        ? format(new Date(delegation.expires_at), 'MMM d, yyyy')
+                        ? format(new Date(delegation.expires_at), 'dd.MM.yyyy', { locale: de })
                         : '—'}
                     </TableCell>
                     <TableCell className="text-right space-x-1">
@@ -437,22 +408,22 @@ export default function DelegationsPage() {
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Delegate</p>
+                  <p className="text-sm font-medium text-muted-foreground">Delegat</p>
                   <p className="mt-1">{getOrgName(viewTarget.delegate_org_id)}</p>
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Target</p>
+                  <p className="text-sm font-medium text-muted-foreground">Ziel</p>
                   <p className="mt-1">{getOrgName(viewTarget.target_org_id)}</p>
                 </div>
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Status</p>
                   <Badge variant={getStatusVariant(viewTarget.status)} className="mt-1">
-                    {viewTarget.status}
+                    {STATUS_LABELS[viewTarget.status] || viewTarget.status}
                   </Badge>
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Granted</p>
-                  <p className="mt-1">{format(new Date(viewTarget.granted_at), 'dd.MM.yyyy HH:mm')}</p>
+                  <p className="text-sm font-medium text-muted-foreground">Erteilt</p>
+                  <p className="mt-1">{format(new Date(viewTarget.granted_at), 'dd.MM.yyyy HH:mm', { locale: de })}</p>
                 </div>
               </div>
               
@@ -469,15 +440,15 @@ export default function DelegationsPage() {
 
               {viewTarget.status === 'revoked' && viewTarget.revoked_at && (
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Revoked</p>
+                  <p className="text-sm font-medium text-muted-foreground">Widerrufen</p>
                   <p className="mt-1 text-destructive">
-                    {format(new Date(viewTarget.revoked_at), 'dd.MM.yyyy HH:mm')}
+                    {format(new Date(viewTarget.revoked_at), 'dd.MM.yyyy HH:mm', { locale: de })}
                   </p>
                 </div>
               )}
 
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Delegation ID</p>
+                <p className="text-sm font-medium text-muted-foreground">Delegierungs-ID</p>
                 <p className="mt-1 font-mono text-xs text-muted-foreground">{viewTarget.id}</p>
               </div>
             </div>
@@ -489,22 +460,21 @@ export default function DelegationsPage() {
       <AlertDialog open={!!revokeTarget} onOpenChange={() => setRevokeTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Revoke Delegation</AlertDialogTitle>
+            <AlertDialogTitle>Delegierung widerrufen</AlertDialogTitle>
             <AlertDialogDescription>
-              This will revoke the delegation, preventing further access. The delegation record will be preserved for audit purposes.
+              Die Delegierung wird widerrufen und der Zugriff unterbunden. Der Eintrag bleibt zur Nachverfolgung erhalten.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
             <AlertDialogAction onClick={handleRevoke} disabled={revoking}>
               {revoking && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Revoke
+              Widerrufen
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* PDF Export */}
       <PdfExportFooter
         contentRef={contentRef}
         documentTitle="Delegationen"

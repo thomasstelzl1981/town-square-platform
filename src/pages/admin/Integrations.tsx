@@ -181,8 +181,8 @@ export default function Integrations() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Integrationen & APIs</h1>
-        <p className="text-muted-foreground">
+        <h1 className={DESIGN.TYPOGRAPHY.PAGE_TITLE}>Integrationen & APIs</h1>
+        <p className={DESIGN.TYPOGRAPHY.MUTED}>
           Externe Dienste verbinden und konfigurieren (DB-gestützt)
         </p>
       </div>
