@@ -1,71 +1,242 @@
 
 
-# Korrekturplan: 4 verbleibende Punkte für Ende-zu-Ende-Funktionalität
+# Plan: Unified Tenant & User Management (Zone 1 Admin)
 
-## Ausgangslage
+## Ist-Zustand — Das Problem
 
-Die Architektur zwischen Zone 1 (Lead Desk) und Zone 2 (Lead Manager) ist korrekt aufgebaut. Es gibt 4 kleinere Korrekturen, die den Flow vervollstaendigen.
+Drei separate Seiten zeigen im Kern die gleichen Daten:
 
-## Korrekturen
+```text
+/admin/organizations  →  Tabelle: Orgs (Name, Slug, Typ, Tiefe, Erstellt)
+/admin/users          →  Tabelle: Memberships (User, Org, Rolle, Erstellt)
+/admin/oversight      →  KPIs + 4 Tabs (Tenants, Immobilien, Finance, Module)
+                         → Tab "Tenants" = gleiche Org-Liste wie Organizations
+```
 
-### 1. TemplateCard im Wizard: `image_urls` weitergeben
+**Oversight** ist ein Sammelsurium: Tenants, Immobilien, Finance Packages und Module in einem View — das gehoert nicht zusammen. Die Tenant-Daten erscheinen doppelt.
 
-**Datei:** `src/pages/portal/lead-manager/LeadManagerKampagnen.tsx` (Zeile 404-418)
+**Users** zeigt Memberships ohne Kontext zum Tenant — man sieht UUIDs statt Kundendaten.
 
-Das `selectable`-Rendering im Kampagnen-Wizard uebergibt `imageUrls` nicht an `TemplateCard`. Templates mit Bildern aus Zone 1 werden daher ohne Bild angezeigt.
+**Organizations** zeigt nur die Org-Huelle ohne Nutzer, ohne Billing, ohne Module.
 
-**Aenderung:** `imageUrls={(t.image_urls as string[]) || []}` als Prop hinzufuegen (analog zu `LeadManagerBrand.tsx` Zeile 144).
+---
 
-### 2. `template_ids` in `social_mandates` speichern
+## Soll-Zustand — Konsolidierte Architektur
 
-**Problem:** Der Wizard sendet `template_ids` an die Edge Function, aber `social_mandates` hat kein Feld dafuer. Die IDs gehen verloren.
+### Neue Struktur: 2 Seiten statt 3
 
-**Loesung:** `template_ids` im bestehenden `template_slots` JSONB-Feld speichern (kein neues DB-Feld noetig).
+```text
+/admin/organizations        →  "Kunden & Tenants" (HAUPTSEITE)
+/admin/organizations/:id    →  "Tenant-Detail" (erweitert)
+/admin/oversight            →  "System-Uebersicht" (reine KPIs + Immobilien/Finance)
+```
 
-**Datei:** `supabase/functions/sot-social-mandate-submit/index.ts`
-- Zeile ~105: `template_slots` mit `{ selected_template_ids: template_ids }` befuellen statt leerem Objekt.
+**`/admin/users` wird ENTFERNT** als eigenstaendiger Menupunkt. Die User-/Membership-Verwaltung wird in die Tenant-Detail-Seite (`/admin/organizations/:id`) integriert, wo sie hingehoert.
 
-### 3. Kampagnenname in Zone 1 Kampagnen-Tab anzeigen
+---
 
-**Datei:** `src/pages/admin/lead-desk/LeadKampagnenDesk.tsx`
+### Seite 1: `/admin/organizations` — Kunden & Tenants
 
-Kampagnenname ist in `personalization.campaign_name` gespeichert. Die Admin-Tabelle zeigt ihn nicht an.
+Eine einzige, saubere Hauptliste mit allen relevanten Tenant-Informationen:
 
-**Aenderung:** Neue Spalte "Kampagne" in der Tabelle, die `m.personalization?.campaign_name` anzeigt (nach "Partner"-Spalte).
+```text
+┌─────────────────────────────────────────────────────────────────────┐
+│  Kunden & Tenants                          [+ Neue Organisation]   │
+│  Mandanten, Partner und Benutzer verwalten                         │
+│                                                                     │
+│  [Suche...]  [Typ: Alle ▼]                                        │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  Kunden-Nr  │ Name              │ Typ     │ Mitglieder │ Module │  │
+│  SOT-T-...  │ System of a Town  │ Internal│ 2          │ 22     │  │
+│  SOT-T-...  │ bernhard.marchner │ Client  │ 1          │ 14     │  │
+│  SOT-T-...  │ Lennox Ottobrunn  │ Partner │ 1          │ 16     │  │
+│  SOT-T-...  │ demo              │ Client  │ 1          │ 14     │  │
+│                                                                     │
+│  Klick → Detail-Seite                                              │
+└─────────────────────────────────────────────────────────────────────┘
+```
 
-### 4. Alte Lazy-Seeded Templates aufraeumen (optional)
+**Spalten:**
+- Kunden-Nr. (`public_id` aus `organizations`)
+- Name
+- Typ (Client / Partner / Internal / Renter)
+- Mitglieder (Count aus `memberships`)
+- Aktive Module (Count aus `tenant_tile_activation`)
+- Erstellt (Datum)
+- Credits (Saldo — spaeter, wenn Billing steht)
 
-12 Templates mit `tenant_id: a0000000-...`, `approved: false`, ohne Bilder existieren noch in der DB. Diese stammen aus dem alten Lazy-Seeding und sind fuer den neuen Workflow irrelevant.
+Die Counts werden aus der DB geladen (wie Oversight es bereits tut), aber direkt in der Haupttabelle angezeigt.
 
-**Optionen:**
-- A) Loeschen (sauberer Zustand)
-- B) Stehen lassen (stoeren nicht, da Zone 2 nach `approved=true` filtert)
+---
 
-**Empfehlung:** Loeschen fuer einen sauberen Zustand.
+### Seite 2: `/admin/organizations/:id` — Tenant-Detail (erweitert)
+
+Wenn man einen Tenant anklickt, sieht man ALLES zu diesem Kunden:
+
+```text
+┌─────────────────────────────────────────────────────────────────────┐
+│  ← Zurueck                                                         │
+│                                                                     │
+│  bernhard.marchner                                                 │
+│  Kunden-Nr: SOT-T-Z9RVCGQE  ·  Typ: Client  ·  Seit: 22.02.2026  │
+│                                                                     │
+│  [Stammdaten]  [Mitglieder]  [Module]  [Credits & Billing]         │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  TAB: Stammdaten                                                   │
+│  ┌──────────────────────────────────────────────────────────────┐   │
+│  │  Name:        bernhard.marchner                              │   │
+│  │  Slug:        bernhard-marchner-8d810b                       │   │
+│  │  Org-Typ:     Client                                         │   │
+│  │  Tenant-Mode: production                                     │   │
+│  │  Storage:     5 GB (Free Plan)                               │   │
+│  │  Erstellt:    22.02.2026                                     │   │
+│  │  Kunden-Nr:   SOT-T-Z9RVCGQE                                │   │
+│  │                                                              │   │
+│  │  — Kontaktdaten (aus profiles des Org-Admins) —              │   │
+│  │  Name:        Bernhard Marchner                              │   │
+│  │  E-Mail:      bernhard@...                                   │   │
+│  │  Anschrift:   (aus profiles, wenn vorhanden)                 │   │
+│  └──────────────────────────────────────────────────────────────┘   │
+│                                                                     │
+│  TAB: Mitglieder (ehemals /admin/users gefiltert)                  │
+│  ┌──────────────────────────────────────────────────────────────┐   │
+│  │  Benutzer              │ Rolle        │ Erstellt │ Aktionen  │   │
+│  │  bernhard@...          │ Org Admin    │ 22.02.   │ [✏️] [🗑] │   │
+│  │                                                              │   │
+│  │  [+ Mitglied hinzufuegen]  [+ Neuen Benutzer anlegen]       │   │
+│  └──────────────────────────────────────────────────────────────┘   │
+│                                                                     │
+│  TAB: Module                                                       │
+│  ┌──────────────────────────────────────────────────────────────┐   │
+│  │  MOD-00 Dashboard        ✅ aktiv                            │   │
+│  │  MOD-01 Stammdaten       ✅ aktiv                            │   │
+│  │  MOD-02 KI Office        ✅ aktiv                            │   │
+│  │  ...                                                         │   │
+│  │  MOD-22 Pet Manager      ⬜ inaktiv                          │   │
+│  │                                                              │   │
+│  │  Hinweis: Module werden ueber Rollen automatisch zugewiesen  │   │
+│  └──────────────────────────────────────────────────────────────┘   │
+│                                                                     │
+│  TAB: Credits & Billing                                            │
+│  ┌──────────────────────────────────────────────────────────────┐   │
+│  │  Aktueller Saldo:  487 Credits (121,75 EUR)                  │   │
+│  │  Verbrauch diesen Monat: 63 Credits                          │   │
+│  │                                                              │   │
+│  │  Datum       │ Aktion              │ Credits │ Saldo         │   │
+│  │  24.02.2026  │ PDF-Extraktion      │ -1      │ 487           │   │
+│  │  23.02.2026  │ Armstrong Chat      │ -2      │ 488           │   │
+│  │  22.02.2026  │ Guthaben aufgeladen │ +500    │ 490           │   │
+│  │                                                              │   │
+│  │  (Datenquelle: credit_transactions Tabelle — wird spaeter   │   │
+│  │   implementiert, Platzhalter-Tab mit "Noch nicht verfuegbar")│   │
+│  └──────────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### Seite 3: `/admin/oversight` — System-Uebersicht (bereinigt)
+
+Oversight bleibt, aber **ohne den Tenants-Tab** (der ist jetzt in Organizations). Uebrig bleibt:
+
+```text
+┌─────────────────────────────────────────────────────────────────────┐
+│  System-Uebersicht                                                 │
+│  Systemweite KPIs und Business-Daten (Read-only)                   │
+│                                                                     │
+│  [Orgs: 4] [User: 5] [Immobilien: 3] [Module: 72] [Finance: 0]   │
+│                                                                     │
+│  [Immobilien]  [Finance Pakete]  [Module-Aktivierungen]            │
+│                                                                     │
+│  (Keine Tenants-Tabelle mehr — die lebt jetzt in Organizations)    │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Aenderungen im Detail
+
+### 1. `/admin/organizations` (Organizations.tsx) — Umbau zur Hauptseite
+
+- **Titel**: "Kunden & Tenants" statt "Organisationen"
+- **Neue Spalten**: public_id (Kunden-Nr), Mitglieder-Count, Module-Count
+- **Counts laden**: memberships + tenant_tile_activation joinen (wie Oversight es schon tut)
+- **Zeile klickbar**: Navigiert zu `/admin/organizations/:id`
+- **Create-Dialog bleibt** (zum manuellen Anlegen neuer Orgs)
+
+### 2. `/admin/organizations/:id` (OrganizationDetail.tsx) — Erweitern mit 4 Tabs
+
+Aktuell zeigt die Detail-Seite nur Org-Daten + Lockdown-Toggle + Kind-Orgs. Wird erweitert:
+
+**Tab 1: Stammdaten**
+- Org-Felder (Name, Slug, Typ, Tenant-Mode, Storage, public_id)
+- Kontaktdaten des Org-Admins (aus `profiles` via `memberships` JOIN)
+- Keine DSGVO-kritischen Daten — nur Name, E-Mail, Anschrift wenn vorhanden
+
+**Tab 2: Mitglieder**
+- Komplette Membership-Verwaltung (ehemals Users.tsx gefiltert auf diese Org)
+- User anlegen, Rolle aendern, Membership loeschen
+- Profil-Infos (E-Mail, Display-Name) werden angezeigt
+
+**Tab 3: Module**
+- Alle `tenant_tile_activation`-Eintraege fuer diesen Tenant
+- Read-Only-Ansicht (Module werden ueber Rollen gesteuert, nicht manuell)
+- Link zu `/admin/tiles` fuer die systemweite Modul-Verwaltung
+
+**Tab 4: Credits & Billing**
+- Platzhalter-Tab mit Hinweis "Credit-System wird in einer spaeteren Phase implementiert"
+- Vorbereitet fuer: Saldo-Anzeige, Transaktions-Historie, monatliche Abrechnung
+- Datenquelle: `credit_transactions` Tabelle (existiert moeglicherweise noch nicht)
+
+### 3. `/admin/oversight` (Oversight.tsx) — Bereinigen
+
+- **Entfernen**: Tab "Tenants" (redundant mit Organizations)
+- **Behalten**: KPI-Cards, Tab "Immobilien", Tab "Finance Pakete", Tab "Module"
+- Die KPIs bleiben als schnelle System-Uebersicht erhalten
+
+### 4. `/admin/users` — Entfernen als eigenstaendiger Menupunkt
+
+- Users.tsx bleibt als Datei erhalten (fuer den Fall, dass man alle Memberships global sehen will)
+- Aber der Sidebar-Eintrag wird entfernt
+- Die Funktionalitaet lebt jetzt in OrganizationDetail Tab "Mitglieder"
+- Optional: Users.tsx als versteckte Route behalten, aber nicht in der Navigation
+
+### 5. Sidebar-Anpassung (AdminSidebar)
+
+```text
+Vorher:                         Nachher:
+├── Dashboard                   ├── Dashboard
+├── Organisationen              ├── Kunden & Tenants
+├── Benutzer                    ├── (entfaellt)
+├── Delegationen                ├── Delegationen
+├── ...                         ├── ...
+├── System-Uebersicht           ├── System-Uebersicht
+```
+
+---
 
 ## Dateien
 
 | Datei | Aenderung |
 |-------|-----------|
-| `src/pages/portal/lead-manager/LeadManagerKampagnen.tsx` | `imageUrls` Prop bei selectable TemplateCard hinzufuegen |
-| `supabase/functions/sot-social-mandate-submit/index.ts` | `template_ids` in `template_slots` speichern |
-| `src/pages/admin/lead-desk/LeadKampagnenDesk.tsx` | Kampagnenname-Spalte in Tabelle |
-| DB-Cleanup | 12 alte Templates loeschen (optional) |
+| `src/pages/admin/Organizations.tsx` | Umbau: Counts laden, public_id anzeigen, Zeilen klickbar |
+| `src/pages/admin/OrganizationDetail.tsx` | Erweitern: 4-Tab-System (Stammdaten, Mitglieder, Module, Credits) |
+| `src/pages/admin/Oversight.tsx` | Bereinigen: Tenants-Tab entfernen |
+| `src/components/admin/AdminSidebar.tsx` | Users-Eintrag entfernen, Label "Organisationen" → "Kunden & Tenants" |
 
-## Was sich NICHT aendert
+## Was NICHT geaendert wird
 
-- Gesamte Zone 2 Struktur (MOD-10) bleibt unberuehrt
-- Zone 1 BrandPostCreator und BrandPostCard bleiben unberuehrt
-- DB-Schema bleibt unberuehrt (keine Migration noetig)
-- Edge Function Logik fuer Credit-Preflight und Approved-Check bleibt
+- Users.tsx bleibt als Datei (Route existiert weiter, aber nicht in Sidebar)
+- TileCatalog (`/admin/tiles`) bleibt unveraendert
+- Keine DB-Migration noetig (alle Daten existieren bereits)
+- Keine neuen Tabellen (Credits/Billing ist Platzhalter)
 
-## Erwartetes Ergebnis nach Korrektur
+## Integration mit /admin/tiles
 
-1. Admin erstellt Post in Zone 1 Brand-Templates → Post mit Bildern, Targeting, Defaults
-2. Admin gibt Post frei → `approved = true`
-3. Partner in Zone 2 sieht freigegebene Templates in Brand-Gallery UND im Kampagnen-Wizard
-4. Partner waehlt Templates mit Bild-Vorschau im Wizard
-5. Partner fuellt Kampagnen-Details und reicht ein
-6. Edge Function prueft Credits, speichert Mandate mit Template-IDs
-7. Zone 1 Kampagnen-Tab zeigt Mandate mit Kampagnenname, Partner, Brand, Budget
+Der Tab "Module" in der Tenant-Detail-Seite zeigt die aktiven Module Read-Only an. Die tatsaechliche Steuerung erfolgt weiterhin ueber:
+1. Rollen-basierte Auto-Zuweisung (`sync_tiles_for_user`)
+2. `/admin/tiles` fuer den systemweiten Modul-Katalog
+3. Der Detail-Tab verlinkt auf `/admin/tiles` mit einem "Module verwalten"-Button
 
