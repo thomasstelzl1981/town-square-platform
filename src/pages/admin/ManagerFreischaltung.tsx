@@ -71,25 +71,15 @@ interface ActiveManager {
   client_count: number;
 }
 
-// ─── Role label helper ──────────────────────────────────────────────────────
-const ROLE_LABELS: Record<string, string> = {
-  finance_manager: 'Finanzierungsmanager',
-  akquise_manager: 'Akquise-Manager',
-  sales_partner: 'Vertriebspartner',
-  project_manager: 'Projektmanager',
-  pet_manager: 'Pet Manager',
-};
-
-const ROLE_MODULE_MAP: Record<string, string> = {
-  finance_manager: 'MOD-11',
-  akquise_manager: 'MOD-12',
-  sales_partner: 'MOD-09 + MOD-10',
-  project_manager: 'MOD-13',
-  pet_manager: 'MOD-22',
-};
-
+// ─── Role helpers (derived from SSOT rolesMatrix.ts) ────────────────────────
 function getRoleLabel(role: string): string {
-  return ROLE_LABELS[role] || role;
+  const found = ROLES_CATALOG.find(r => r.code === role || r.membershipRole === role);
+  return found?.label || role;
+}
+
+function getRoleModules(role: string): string {
+  const extras = ROLE_EXTRA_TILES[role];
+  return extras ? extras.join(' + ') : '—';
 }
 
 // ─── Status Badge ───────────────────────────────────────────────────────────
@@ -398,7 +388,7 @@ export default function ManagerFreischaltung() {
                             <Badge variant="outline">{getRoleLabel(app.requested_role)}</Badge>
                           </TableCell>
                           <TableCell className="text-xs text-muted-foreground">
-                            {ROLE_MODULE_MAP[app.requested_role] || '—'}
+                            {getRoleModules(app.requested_role)}
                           </TableCell>
                           <TableCell><StatusBadge status={app.status} /></TableCell>
                           <TableCell className="text-muted-foreground text-sm">
@@ -555,29 +545,6 @@ export default function ManagerFreischaltung() {
               </CardContent>
             </Card>
 
-            {/* Qualification Legend */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-sm">Rollen-Übersicht</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {Object.entries(ROLE_LABELS).map(([roleKey, label]) => (
-                    <div key={roleKey} className="flex items-start gap-3 rounded-lg border p-3 bg-muted/30">
-                      <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10">
-                        <UserCheck className="h-4 w-4 text-primary" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium">{label}</p>
-                        <p className="text-xs text-muted-foreground">
-                          14 Basis + {ROLE_MODULE_MAP[roleKey]}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
           </TabsContent>
         </Tabs>
 
@@ -614,7 +581,7 @@ export default function ManagerFreischaltung() {
                     )}
                     <li>Organisation wird auf <code>org_type: partner</code> upgegradet</li>
                     <li>Mitgliedschaft wird auf <code>{selectedApp.requested_role}</code> gesetzt</li>
-                    <li>Manager-Modul(e) <code>{ROLE_MODULE_MAP[selectedApp.requested_role]}</code> werden aktiviert</li>
+                    <li>Manager-Modul(e) <code>{getRoleModules(selectedApp.requested_role)}</code> werden aktiviert</li>
                   </ul>
                   {selectedApp.source_brand && (
                     <p className="text-xs text-muted-foreground mt-2">
