@@ -182,6 +182,25 @@ export function useCancelSoatOrder() {
   });
 }
 
+export function useDeleteSoatOrder() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (orderId: string) => {
+      const { error: resErr } = await supabase
+        .from('soat_search_results')
+        .delete()
+        .eq('order_id', orderId);
+      if (resErr) throw resErr;
+      const { error: ordErr } = await supabase
+        .from('soat_search_orders')
+        .delete()
+        .eq('id', orderId);
+      if (ordErr) throw ordErr;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ORDERS_KEY }),
+  });
+}
+
 export function useUpdateSoatResult() {
   const queryClient = useQueryClient();
   return useMutation({
