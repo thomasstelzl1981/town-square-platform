@@ -6,6 +6,8 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+const VALID_BRAND_CONTEXTS = ["kaufy", "futureroom", "acquiary", "project"];
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -53,19 +55,12 @@ serve(async (req) => {
       });
     }
 
-    // Validate brand_context if provided
-    if (brand_context && brand_context !== 'project') {
-      const { data: brandAsset } = await supabase
-        .from("social_brand_assets")
-        .select("brand_context")
-        .eq("brand_context", brand_context)
-        .eq("active", true)
-        .single();
-      if (!brandAsset) {
-        return new Response(JSON.stringify({ error: "Invalid or inactive brand_context" }), {
-          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
+    // Validate brand_context against known list
+    const effectiveBrand = project_id ? "project" : (brand_context || "kaufy");
+    if (!VALID_BRAND_CONTEXTS.includes(effectiveBrand)) {
+      return new Response(JSON.stringify({ error: `Invalid brand_context: ${effectiveBrand}` }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     // Validate selected templates are approved (if template_ids provided)
@@ -115,14 +110,17 @@ serve(async (req) => {
       partner_user_id: user.id,
       partner_display_name: partner_display_name || user.email,
       status: "submitted",
-      brand_context: project_id ? "project" : (brand_context || "kaufy"),
+      brand_context: effectiveBrand,
       budget_total_cents: budget_total_cents || 0,
       start_date,
       end_date,
       regions: regions || [],
       audience_preset: audience_preset || {},
       template_slots: template_slots || {},
-      personalization: personalization || {},
+      personalization: {
+        ...(personalization || {}),
+        campaign_name: campaign_name || '',
+      },
       payment_status: "unpaid",
     };
     if (project_id) mandateInsert.project_id = project_id;
