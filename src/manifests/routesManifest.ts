@@ -188,11 +188,8 @@ export const zone1Admin: ZoneDefinition = {
     { path: "armstrong/costs", component: "PlatformCostMonitor", title: "Plattform-Kostenmonitor" },
     { path: "armstrong/health", component: "PlatformHealth", title: "Platform Health Monitor" },
     { path: "armstrong/review", component: "WeeklyReview", title: "Wöchentliches Review" },
-    // Landing Pages — consolidated into website-hosting
     // Fortbildung Management
     { path: "fortbildung", component: "AdminFortbildung", title: "Fortbildung" },
-    // Website Hosting (Landing Pages Zone 1) — konsolidiert auf 1 Route
-    { path: "website-hosting", component: "WebHostingDashboard", title: "Website Hosting" },
     // Compliance Desk — Legal Engine SSOT (8 internal tabs)
     { path: "compliance", component: "ComplianceDeskRouter", title: "Compliance Desk" },
   ],

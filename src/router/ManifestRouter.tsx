@@ -265,11 +265,8 @@ const adminComponentMap: Record<string, React.ComponentType> = {
   PlatformHealth,
   WeeklyReview,
   // Social Media removed (100% demo data, no DB)
-  // Landing Pages — consolidated into WebHostingDashboard
   // Fortbildung Management
   AdminFortbildung: React.lazy(() => import('@/pages/admin/AdminFortbildung')),
-  // Website Hosting (MOD-05 Zone 1)
-  WebHostingDashboard: React.lazy(() => import('@/pages/admin/website-hosting/WebHostingDashboard')),
   // Compliance Desk (Legal Engine SSOT)
   ComplianceDeskRouter: React.lazy(() => import('@/pages/admin/compliance/ComplianceDeskRouter')),
   // New Desks
