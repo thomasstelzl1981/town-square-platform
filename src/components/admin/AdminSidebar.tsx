@@ -150,7 +150,7 @@ function getGroupKey(path: string, component: string): string {
   }
   // Operative Desks (Desks + LeadPool + Provisionen + Landing Pages)
   if (path.startsWith('sales-desk') || path.startsWith('finance-desk') || 
-       path.startsWith('acquiary') || path === 'lead-desk' || path === 'projekt-desk' ||
+       path.startsWith('acquiary') || path.startsWith('lead-desk') || path.startsWith('projekt-desk') ||
        path.startsWith('pet-desk')) {
     return 'desks';
   }
@@ -198,6 +198,7 @@ function shouldShowInNav(path: string): boolean {
     path.startsWith('sales-desk/') ||
     path.startsWith('finance-desk/') ||
     path.startsWith('acquiary/') ||
+    path.startsWith('lead-desk/') ||
     path.startsWith('projekt-desk/') ||
     path.startsWith('pet-desk/')
   )) {
