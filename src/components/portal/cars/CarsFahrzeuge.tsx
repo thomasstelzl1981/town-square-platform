@@ -60,65 +60,8 @@ const VEHICLE_IMAGES: Record<string, string> = {
 };
 const DEFAULT_IMAGE = 'https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=400&h=250&fit=crop';
 
-const DEMO_VEHICLES = [
-  {
-    id: 'demo-1', public_id: 'FZ-001', license_plate: 'M-AB 1234', make: 'BMW', model: 'M4 Competition G82',
-    status: 'active' as VehicleStatus, holder_name: 'Max Mustermann', holder_address: 'Leopoldstr. 28, 80802 München',
-    primary_driver_name: 'Max Mustermann', current_mileage_km: 23450, hu_valid_until: '2027-03-15',
-    vin: 'WBS33AZ0XNCJ12345', color: 'Isle of Man Grün', fuel_type: 'Benzin', power_kw: 375,
-    first_registration_date: '2023-03-15', engine_ccm: 2993, seats: 4, doors: 2,
-    body_type: 'Coupé', weight_kg: 1725, co2_g_km: 227, vehicle_type: 'auto',
-  },
-  {
-    id: 'demo-2', public_id: 'FZ-002', license_plate: 'M-MB 5678', make: 'Mercedes-Benz', model: 'GLE 450 4MATIC',
-    status: 'active' as VehicleStatus, holder_name: 'Max Mustermann', holder_address: 'Leopoldstr. 28, 80802 München',
-    primary_driver_name: 'Lisa Mustermann', current_mileage_km: 45200, hu_valid_until: '2026-11-01',
-    vin: 'W1N1671611A456789', color: 'Obsidianschwarz', fuel_type: 'Mild-Hybrid (Benzin)', power_kw: 270,
-    first_registration_date: '2022-06-20', engine_ccm: 2999, seats: 5, doors: 5,
-    body_type: 'SUV', weight_kg: 2305, co2_g_km: 219, vehicle_type: 'auto',
-  },
-  {
-    id: 'demo-3', public_id: 'FZ-003', license_plate: 'M-P 9911', make: 'Porsche', model: '911 Carrera S 992',
-    status: 'active' as VehicleStatus, holder_name: 'Max Mustermann', holder_address: 'Leopoldstr. 28, 80802 München',
-    primary_driver_name: 'Max Mustermann', current_mileage_km: 12800, hu_valid_until: '2027-08-20',
-    vin: 'WP0AB2A98NS234567', color: 'Kreide', fuel_type: 'Benzin', power_kw: 331,
-    first_registration_date: '2024-01-10', engine_ccm: 2981, seats: 4, doors: 2,
-    body_type: 'Coupé', weight_kg: 1565, co2_g_km: 229, vehicle_type: 'auto',
-  },
-  {
-    id: 'bike-1', public_id: 'FZ-004', license_plate: 'M-BM 1300', make: 'BMW', model: 'R 1300 GS Adventure',
-    status: 'active' as VehicleStatus, holder_name: 'Max Mustermann', holder_address: 'Leopoldstr. 28, 80802 München',
-    primary_driver_name: 'Max Mustermann', current_mileage_km: 8420, hu_valid_until: '2027-09-01',
-    vin: 'WB10E1305PR123456', color: 'GS Trophy', fuel_type: 'Benzin', power_kw: 107,
-    first_registration_date: '2025-01-15', engine_ccm: 1300, seats: 2, doors: 0,
-    body_type: 'Motorrad', weight_kg: 268, co2_g_km: 125, vehicle_type: 'bike',
-  },
-  {
-    id: 'bike-2', public_id: 'FZ-005', license_plate: 'M-DC 4444', make: 'Ducati', model: 'Panigale V4 S',
-    status: 'active' as VehicleStatus, holder_name: 'Max Mustermann', holder_address: 'Leopoldstr. 28, 80802 München',
-    primary_driver_name: 'Max Mustermann', current_mileage_km: 3150, hu_valid_until: '2028-04-01',
-    vin: 'ZDMH400AAPB567890', color: 'Ducati Rot', fuel_type: 'Benzin', power_kw: 158,
-    first_registration_date: '2025-03-01', engine_ccm: 1103, seats: 2, doors: 0,
-    body_type: 'Motorrad', weight_kg: 195, co2_g_km: 165, vehicle_type: 'bike',
-  },
-  {
-    id: 'bike-3', public_id: 'FZ-006', license_plate: 'M-HD 2024', make: 'Harley-Davidson', model: 'Road Glide Special',
-    status: 'active' as VehicleStatus, holder_name: 'Max Mustermann', holder_address: 'Leopoldstr. 28, 80802 München',
-    primary_driver_name: 'Max Mustermann', current_mileage_km: 15800, hu_valid_until: '2027-01-01',
-    vin: '1HD1KTP16PB654321', color: 'Vivid Black', fuel_type: 'Benzin', power_kw: 67,
-    first_registration_date: '2024-05-10', engine_ccm: 1868, seats: 2, doors: 0,
-    body_type: 'Motorrad', weight_kg: 390, co2_g_km: 195, vehicle_type: 'bike',
-  },
-];
 
 
-const DEMO_TRIPS = [
-  { id: 't1', date: '12.02.2026', start: 'München', end: 'Stuttgart', km: 234, purpose: 'Geschäftlich' as const, customer: 'Huber GmbH' },
-  { id: 't2', date: '10.02.2026', start: 'München', end: 'Nürnberg', km: 167, purpose: 'Geschäftlich' as const, customer: 'Meyer AG' },
-  { id: 't3', date: '08.02.2026', start: 'München', end: 'Starnberg', km: 42, purpose: 'Privat' as const, customer: '' },
-  { id: 't4', date: '05.02.2026', start: 'München', end: 'Augsburg', km: 68, purpose: 'Geschäftlich' as const, customer: 'Schmidt & Partner' },
-  { id: 't5', date: '03.02.2026', start: 'München', end: 'Garmisch', km: 89, purpose: 'Privat' as const, customer: '' },
-];
 
 const isBike = (v: any) => v.vehicle_type === 'bike' || v.body_type === 'Motorrad';
 
@@ -169,11 +112,9 @@ export default function CarsFahrzeuge() {
 
   const { isEnabled } = useDemoToggles();
   const showDemoWidget = isEnabled('GP-FAHRZEUG');
-  // Filter out demo vehicles (both client-side IDs and DB-seeded IDs) when toggle is OFF
-  const DEMO_CLIENT_IDS = new Set(['demo-1','demo-2','demo-3','bike-1','bike-2','bike-3']);
-  const realDbVehicles = dbVehicles?.filter((v: any) => !DEMO_CLIENT_IDS.has(v.id) && !isDemoId(v.id)) || [];
-  const allDbVehicles = showDemoWidget ? (dbVehicles || []) : realDbVehicles;
-  const vehicles = allDbVehicles.length ? allDbVehicles : (showDemoWidget ? DEMO_VEHICLES : []);
+  // Filter out demo vehicles (DB-seeded IDs) when toggle is OFF
+  const realDbVehicles = dbVehicles?.filter((v: any) => !isDemoId(v.id)) || [];
+  const vehicles = showDemoWidget ? (dbVehicles || []) : realDbVehicles;
   const isDemo = !realDbVehicles.length && showDemoWidget;
 
   const filteredVehicles = vehicles.filter((v: any) => {
@@ -253,16 +194,17 @@ export default function CarsFahrzeuge() {
         title="Fahrzeuge"
         description="Autos & Motorräder verwalten — Klicken Sie auf ein Fahrzeug für die vollständige Akte"
         actions={
-          <Button variant="glass" size="icon-round" onClick={handleCreateInline}>
-            <Plus className="h-5 w-5" />
-          </Button>
+          <>
+            <div className="relative max-w-[200px]">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input placeholder="Suchen..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-8 h-9 text-sm" />
+            </div>
+            <Button variant="glass" size="icon-round" onClick={handleCreateInline}>
+              <Plus className="h-5 w-5" />
+            </Button>
+          </>
         }
       />
-
-      <div className="relative flex-1 max-w-sm">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input placeholder="Suchen..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
-      </div>
 
       <WidgetGrid>
         {filteredVehicles.map((vehicle: any) => {
@@ -553,20 +495,9 @@ function VimcarLogbook() {
         <div className="grid grid-cols-6 gap-0 bg-muted/30 px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border/50">
           <span>Datum</span><span>Start</span><span>Ziel</span><span className="text-right">km</span><span>Zweck</span><span>Kunde</span>
         </div>
-        {DEMO_TRIPS.map((trip) => (
-          <div key={trip.id} className="grid grid-cols-6 gap-0 px-3 py-2 text-sm border-b border-border/30 last:border-0 hover:bg-muted/20 transition-colors">
-            <span className="text-muted-foreground">{trip.date}</span>
-            <span>{trip.start}</span>
-            <span>{trip.end}</span>
-            <span className="text-right font-mono">{trip.km}</span>
-            <span>
-              <Badge variant="outline" className={cn("text-[9px]", trip.purpose === 'Geschäftlich' ? 'bg-primary/10 text-primary border-primary/20' : 'bg-muted text-muted-foreground')}>
-                {trip.purpose}
-              </Badge>
-            </span>
-            <span className="text-muted-foreground truncate">{trip.customer || '—'}</span>
-          </div>
-        ))}
+        <div className="px-3 py-4 text-sm text-muted-foreground text-center">
+          Keine Fahrten erfasst — Vimcar-Integration aktivieren für automatisches Tracking
+        </div>
       </div>
     </AkteSection>
   );
