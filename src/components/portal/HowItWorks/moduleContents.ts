@@ -586,7 +586,7 @@ export const moduleContents: Record<string, HowItWorksContent> = {
     title: 'Shop',
     oneLiner: 'Bürobedarf, IT-Geräte und mehr – direkt bestellen oder mieten über integrierte Shops.',
     benefits: [
-      'Zugang zu Amazon Business, OTTO Office und Miete24 aus einer Oberfläche.',
+      'Zugang zu Amazon Business, Büroshop24 und Miete24 aus einer Oberfläche.',
       'Bestellungen als Widgets verwalten – übersichtlich und nachvollziehbar.',
       'Integration vorbereitet für PA-API, Affiliate und Partner-Anbindungen.',
     ],
@@ -609,7 +609,7 @@ export const moduleContents: Record<string, HowItWorksContent> = {
     cta: 'Öffnen Sie einen Shop – und starten Sie Ihre erste Bestellung.',
     subTiles: [
       { title: 'Amazon Business', route: '/portal/services/amazon', icon: ShoppingCart },
-      { title: 'OTTO Office', route: '/portal/services/otto-office', icon: Package },
+      { title: 'Büroshop24', route: '/portal/services/bueroshop24', icon: Package },
       { title: 'Miete24', route: '/portal/services/miete24', icon: Laptop },
       { title: 'Bestellungen', route: '/portal/services/bestellungen', icon: ClipboardCheck },
     ],

@@ -42,19 +42,19 @@ const SHOPS: Record<string, ShopUiConfig> = {
       { label: 'Partner Tag', placeholder: 'z.B. meinshop-21' },
     ],
   },
-  'otto-office': {
-    name: 'OTTO Office',
-    tagline: '75.000+ Artikel für Büro & Betrieb',
-    description: 'Schreibwaren, Druckerzubehör, Büromöbel und Technik – Deutschlands großer B2B-Büroausstatter.',
+  'bueroshop24': {
+    name: 'Büroshop24',
+    tagline: 'Bürobedarf schnell & günstig',
+    description: 'Schreibwaren, Druckerzubehör, Büromöbel und Technik – günstiger B2B-Büroausstatter mit Tageslieferung.',
     accentClass: 'from-blue-500/20 to-blue-600/5',
     gradientClass: 'text-blue-600 dark:text-blue-400',
-    searchPlaceholder: 'OTTO Office Sortiment durchsuchen…',
+    searchPlaceholder: 'Büroshop24 Sortiment durchsuchen…',
     categories: ['Schreibwaren', 'Druckerzubehör', 'Büromöbel', 'Ordnung & Ablage', 'Technik', 'Versand'],
     credentialFields: [
-      { label: 'Affiliate ID (Awin)', placeholder: 'Publisher ID' },
-      { label: 'API Key', placeholder: 'OTTO Office API Key' },
+      { label: 'ADCELL Publisher ID', placeholder: 'Publisher ID' },
+      { label: 'ADCELL Program ID', placeholder: 'Program ID' },
     ],
-    extraInfo: '75.000+ Artikel · Lieferung ab 1 Tag · Kauf auf Rechnung',
+    extraInfo: 'Über 100.000 Artikel · Tageslieferung · Kauf auf Rechnung · ADCELL Affiliate',
   },
   miete24: {
     name: 'Miete24',
