@@ -17,7 +17,7 @@
     "MOD-10": { "frozen": true, "frozen_at": "2026-02-24T23:00:00.000Z", "reason": "Production-ready, audit passed" },
     "MOD-11": { "frozen": true, "frozen_at": "2026-02-24T23:00:00.000Z", "reason": "Production-ready, audit passed" },
     "MOD-12": { "frozen": true, "frozen_at": "2026-02-24T23:00:00.000Z", "reason": "Production-ready, audit passed" },
-    "MOD-13": { "frozen": true, "frozen_at": "2026-02-24T06:00:00.000Z", "reason": "Production-ready, Magic Intake v2 + Armstrong Intake-Assistent (proactive messages, dynamic chips, auto-open)" },
+    "MOD-13": { "frozen": true, "frozen_at": "2026-02-24T23:50:00.000Z", "reason": "Production-ready, Magic Intake v2 + Armstrong Intake + UX fixes (Neues Projekt, scroll CTA)" },
     "MOD-14": { "frozen": true, "frozen_at": "2026-02-24T23:00:00.000Z", "reason": "Production-ready, audit passed" },
     "MOD-15": { "frozen": true, "frozen_at": "2026-02-24T23:00:00.000Z", "reason": "Production-ready, audit passed" },
     "MOD-16": { "frozen": true, "frozen_at": "2026-02-24T23:00:00.000Z", "reason": "Production-ready, audit passed" },

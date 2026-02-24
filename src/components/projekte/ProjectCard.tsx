@@ -127,8 +127,8 @@ export function ProjectCardPlaceholder({ onClick }: { onClick?: () => void }) {
         <div className="w-10 h-10 rounded-xl bg-muted/50 flex items-center justify-center">
           <Building2 className="h-5 w-5 text-muted-foreground" />
         </div>
-        <p className="text-sm font-medium text-muted-foreground">Demo-Projekt</p>
-        <p className="text-[10px] text-muted-foreground">Laden Sie ein Exposé hoch oder erstellen Sie ein Projekt manuell</p>
+        <p className="text-sm font-medium text-muted-foreground">Neues Projekt</p>
+        <p className="text-[10px] text-muted-foreground">KI-Intake oder manuell erstellen</p>
       </CardContent>
     </Card>
   );
