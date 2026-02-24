@@ -1,102 +1,117 @@
 
-# Fix: Pet-Provider-Suche in Zone 2 (Cross-Tenant Discovery)
+# Optimierung Magic Intake (MOD-13) — Maximale KI-Power
 
-## Problem
+## Antwort auf deine Fragen
 
-Die `pet_providers`- und `pet_services`-Tabellen haben eine **RESTRICTIVE** RLS-Policy (`tenant_isolation_restrictive`), die ALLE Operationen auf den eigenen Tenant beschraenkt. Das verhindert, dass eingeloggte User Provider anderer Tenants sehen koennen — auch wenn diese veroeffentlicht sind.
+**Publish noetig?** Ja. Die Frontend-Aenderungen (Review-Tabelle, Immobilienakten-Button) sind noch nicht live. Die Edge Function (`sot-project-intake`) ist bereits automatisch deployed. Ein Klick auf "Update" im Publish-Dialog genuegt.
 
-- Zone 3 funktioniert, weil dort der anonyme Zugriff (ohne Auth-Token) greift und die restrictive Policy nicht anschlaegt.
-- Zone 2 scheitert, weil der Auth-Token den Tenant identifiziert und die restrictive Policy den Lennox-Tenant (`eac1778a-...`) fuer den Unitys-User (`406f5f7a-...`) blockiert.
+**Wo testen?** Direkt auf `systemofatown.lovable.app` (oder `systemofatown.com`) nach dem Publish. Das ist die stabilste Umgebung.
 
-## Loesung
+---
 
-Die RESTRICTIVE Policy auf beiden Tabellen muss fuer **lesende** Zugriffe auf veroeffentlichte Provider eine Ausnahme erlauben. Die sicherste Methode:
+## Identifizierte Optimierungen (6 Punkte)
 
-### Schritt 1: RESTRICTIVE Policy auf `pet_providers` anpassen
+### 1. KI-Modell-Upgrade: Gemini 2.5 Flash → Gemini 2.5 Pro (oder 3 Flash Preview)
 
-Die bestehende Policy `tenant_isolation_restrictive` (cmd: ALL) wird ersetzt durch granulare Policies:
+**Problem:** Die Edge Function nutzt `google/gemini-2.5-flash` fuer BEIDE Extraktionen (Expose + Preisliste). Flash ist schnell, aber bei komplexen PDFs (72 Einheiten, 3 WEGs, Tabellenstrukturen) schwaecher in der Praezision.
 
-1. **Neue RESTRICTIVE Policy fuer INSERT/UPDATE/DELETE** — bleibt wie bisher: `tenant_id = get_user_tenant_id() OR is_platform_admin(auth.uid())`
-2. **Neue RESTRICTIVE Policy fuer SELECT** — erweitert: Eigener Tenant ODER (veroeffentlicht UND aktiv)
+**Loesung:**
+- **Expose-Analyse:** Upgrade auf `google/gemini-2.5-pro` — hier brauchen wir maximale Dokumentverstaendnis-Qualitaet (Bilder, Tabellen, Freitext)
+- **Preislisten-Parsing:** `google/gemini-2.5-flash` bleibt ausreichend (strukturierte Tabelle + Tool-Calling)
+- `max_tokens` fuer Expose: Erhoehen von 2000 auf 4000 (72 Einheiten generieren mehr Output)
 
-```sql
--- Alte ALL-Policy droppen
-DROP POLICY IF EXISTS tenant_isolation_restrictive ON pet_providers;
+**Datei:** `supabase/functions/sot-project-intake/index.ts` Zeile 250 + 291
 
--- Schreib-Isolation bleibt strikt
-CREATE POLICY tenant_isolation_write_restrictive ON pet_providers
-  AS RESTRICTIVE FOR ALL
-  USING (tenant_id = get_user_tenant_id() OR is_platform_admin(auth.uid()))
-  WITH CHECK (tenant_id = get_user_tenant_id() OR is_platform_admin(auth.uid()));
+### 2. Expose-Prompt-Verbesserung fuer Aufteilungsobjekte
 
--- Aber: Fuer SELECT erlauben wir auch published Providers anderer Tenants
-DROP POLICY IF EXISTS tenant_isolation_write_restrictive ON pet_providers;
+**Problem:** Der aktuelle System-Prompt ist generisch. Bei einem Aufteilungsobjekt wie "Menden Living" (3 WEGs, Baujahr 1980) muss die KI spezifische Felder erkennen:
+- WEG-Zuordnung (welche Einheit gehoert zu welcher WEG)
+- Ist-Miete vs. Soll-Miete
+- Hausgeld/Instandhaltungsruecklage
+- Mietrendite
+- Baujahr + Modernisierungszustand
 
-CREATE POLICY tenant_isolation_restrictive_write ON pet_providers
-  AS RESTRICTIVE FOR INSERT
-  WITH CHECK (tenant_id = get_user_tenant_id() OR is_platform_admin(auth.uid()));
+**Loesung:** System-Prompt um Aufteilungsobjekt-spezifische Felder erweitern. Tool-Calling auch fuer Expose-Extraktion einfuehren (statt Freitext-JSON), damit die Datenstruktur zuverlaessiger ist.
 
-CREATE POLICY tenant_isolation_restrictive_update ON pet_providers
-  AS RESTRICTIVE FOR UPDATE
-  USING (tenant_id = get_user_tenant_id() OR is_platform_admin(auth.uid()));
+**Datei:** `supabase/functions/sot-project-intake/index.ts` Zeile 252-281
 
-CREATE POLICY tenant_isolation_restrictive_delete ON pet_providers
-  AS RESTRICTIVE FOR DELETE
-  USING (tenant_id = get_user_tenant_id() OR is_platform_admin(auth.uid()));
+### 3. Preislisten-Tool: Erweiterte Felder fuer Kapitalanleger
 
-CREATE POLICY tenant_isolation_restrictive_select ON pet_providers
-  AS RESTRICTIVE FOR SELECT
-  USING (
-    tenant_id = get_user_tenant_id()
-    OR is_platform_admin(auth.uid())
-    OR (is_published = true AND status = 'active')
-  );
-```
+**Problem:** Das Tool `extract_units` erfasst nur 7 Felder (unitNumber, type, area, rooms, floor, price, currentRent). Fuer ein Aufteilungsobjekt fehlen:
+- `hausgeld` (Monatliches Hausgeld)
+- `instandhaltung` (Instandhaltungsruecklage)  
+- `nettoRendite` (Netto-Rendite in %)
+- `weg` (WEG-Zuordnung, z.B. "WEG 1: Wunne 6-18")
+- `mietfaktor` (Kaufpreis / Jahresmiete)
 
-### Schritt 2: Gleiche Anpassung fuer `pet_services`
+**Loesung:** Tool-Schema erweitern + entsprechende DB-Felder in `dev_project_units`. Die Review-Tabelle zeigt dann alle relevanten Kapitalanleger-KPIs.
 
-Gleiche Aufspaltung: Schreibende Policies bleiben tenant-isoliert, lesende Policy erlaubt Zugriff auf Services von veroeffentlichten Providern.
+**Datei:** `supabase/functions/sot-project-intake/index.ts` (EXTRACT_UNITS_TOOL Schema)
 
-```sql
-DROP POLICY IF EXISTS tenant_isolation_restrictive ON pet_services;
+### 4. Zweistufige KI-Analyse (Expose zuerst, dann Preisliste MIT Kontext)
 
-CREATE POLICY tenant_isolation_restrictive_write ON pet_services
-  AS RESTRICTIVE FOR INSERT
-  WITH CHECK (tenant_id = get_user_tenant_id() OR is_platform_admin(auth.uid()));
+**Problem:** Expose und Preisliste werden aktuell unabhaengig voneinander analysiert. Die Preislisten-KI weiss nichts vom Expose-Kontext (z.B. dass es 3 WEGs gibt, dass es ein Aufteilungsobjekt ist).
 
-CREATE POLICY tenant_isolation_restrictive_update ON pet_services
-  AS RESTRICTIVE FOR UPDATE
-  USING (tenant_id = get_user_tenant_id() OR is_platform_admin(auth.uid()));
+**Loesung:** Sequenzielle Analyse:
+1. Expose analysieren → Ergebnis zwischenspeichern
+2. Preisliste analysieren MIT Expose-Kontext im System-Prompt: "Dieses Projekt heisst X, hat Y WEGs, Baujahr Z. Ordne die Einheiten korrekt zu."
 
-CREATE POLICY tenant_isolation_restrictive_delete ON pet_services
-  AS RESTRICTIVE FOR DELETE
-  USING (tenant_id = get_user_tenant_id() OR is_platform_admin(auth.uid()));
+Das verbessert die Mapping-Qualitaet deutlich.
 
-CREATE POLICY tenant_isolation_restrictive_select ON pet_services
-  AS RESTRICTIVE FOR SELECT
-  USING (
-    tenant_id = get_user_tenant_id()
-    OR is_platform_admin(auth.uid())
-    OR (is_active = true AND EXISTS (
-      SELECT 1 FROM pet_providers pp
-      WHERE pp.id = pet_services.provider_id
-        AND pp.is_published = true
-        AND pp.status = 'active'
-    ))
-  );
-```
+**Datei:** `supabase/functions/sot-project-intake/index.ts` (handleAnalyze Funktion)
 
-### Sicherheitsbewertung
+### 5. Review-Step: Inline-Editing der Einheiten-Tabelle
 
-- **Schreibzugriffe** bleiben vollstaendig tenant-isoliert (keine Aenderung)
-- **Lesezugriffe** werden nur fuer explizit freigegebene (published + active) Provider geoeffnet
-- Dies entspricht dem gleichen Pattern wie die "Cross-Tenant Discovery" bei Immobilien-Listings (vgl. `v_public_listings`)
-- Keine Daten-Leaks: Nur bewusst publizierte Provider-Daten werden sichtbar
+**Problem:** Aktuell kann man im Review-Step nur Projektdaten editieren und einzelne Einheiten loeschen. Man kann keine Einheiten-Werte korrigieren (z.B. falsche Flaeche, falscher Preis).
 
-### Keine Code-Aenderungen noetig
+**Loesung:** Jede Zelle in der Einheiten-Tabelle wird editierbar (Click-to-Edit). Ausserdem:
+- "Einheit hinzufuegen" Button fuer fehlende Einheiten
+- Spalte "WEG" hinzufuegen (fuer Aufteilungsobjekte)
+- Summenzeile am Ende der Tabelle
 
-Der Hook `usePetProviderSearch.ts` fragt bereits korrekt nach `status = 'active'` und `is_published = true`. Die UI in `PetsCaring.tsx` funktioniert ebenfalls bereits richtig. Nur die RLS-Policies muessen angepasst werden.
+**Datei:** `src/pages/portal/projekte/ProjekteDashboard.tsx` (Review-Step)
 
-### Betroffene Module
+### 6. Validierung vor Projekt-Erstellung
 
-Keine Module werden editiert — nur eine DB-Migration. Kein Unfreeze erforderlich.
+**Problem:** Aktuell kann man ein Projekt ohne Plausibilitaetspruefung erstellen. Keine Warnung bei:
+- Einheiten ohne Preis
+- Doppelte Einheitennummern
+- Unplausible Werte (z.B. 1 m² Wohnung fuer 500.000 EUR)
+
+**Loesung:** Validierungslogik VOR dem "Projekt anlegen" Button:
+- Warnung bei fehlenden Pflichtfeldern
+- Warnung bei Preisabweichungen > 50% vom Durchschnitt
+- Warnung bei doppelten Einheitennummern
+- Blocking-Error wenn Projektname leer
+
+**Datei:** `src/pages/portal/projekte/ProjekteDashboard.tsx`
+
+---
+
+## Technischer Implementierungsplan
+
+### Dateien die geaendert werden:
+
+| Datei | Aenderung |
+|-------|-----------|
+| `supabase/functions/sot-project-intake/index.ts` | Modell-Upgrade auf Pro fuer Expose; erweiterte Tool-Schema-Felder; sequenzielle Analyse mit Kontext-Weitergabe; erweiterter System-Prompt fuer Aufteilungsobjekte |
+| `src/pages/portal/projekte/ProjekteDashboard.tsx` | Inline-Editing in Einheiten-Tabelle; Validierungslogik vor Erstellung; erweiterte Spalten (WEG, Hausgeld, Rendite); Einheit-hinzufuegen Button; Summenzeile |
+
+### Keine neuen Dateien noetig
+### Kein DB-Schema-Aenderung noetig (die zusaetzlichen Felder wie hausgeld werden vorerst nur im Review-Step gezeigt und als intake_data JSON gespeichert)
+
+### Sicherheit
+- Keine neuen RLS-Policies noetig
+- Keine neuen Secrets noetig (LOVABLE_API_KEY vorhanden)
+- KI-Kosten steigen leicht durch Pro-Modell (ca. 3-5x Kosten pro Expose-Analyse), aber Qualitaet ist fuer den Money-Making-Prozess kritisch
+
+---
+
+## Zusammenfassung
+
+Der Magic Intake wird von einem "gut genug"-Tool zu einem **Profi-Werkzeug** fuer Bautraeger und Aufteilungsobjekte. Die wichtigsten Upgrades:
+1. Staerkstes KI-Modell fuer Expose-Verstaendnis
+2. Kontext-uebergreifende Analyse (Expose informiert Preisliste)
+3. Vollstaendige Kapitalanleger-Felder (Hausgeld, Rendite, WEG)
+4. Editierbare Einheiten-Tabelle im Review
+5. Plausibilitaetspruefung vor Erstellung
