@@ -6,6 +6,7 @@
  */
 import { MessageCircle, ArrowUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Brand } from '@/components/ui/brand';
 
 interface KaufyInputBarProps {
   onOpen: () => void;
@@ -45,7 +46,7 @@ export function KaufyInputBar({ onOpen, className }: KaufyInputBarProps) {
           className="flex-1 text-sm"
           style={{ color: 'hsl(var(--z3-muted-foreground))' }}
         >
-          Frag Armstrong...
+          Frag <Brand>Armstrong</Brand>...
         </span>
         
         {/* Submit Arrow */}
