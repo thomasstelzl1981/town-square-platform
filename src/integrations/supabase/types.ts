@@ -21058,6 +21058,7 @@ export type Database = {
         }[]
       }
       seed_golden_path_data: { Args: { p_tenant_id?: string }; Returns: Json }
+      sync_tiles_for_user: { Args: { p_user_id: string }; Returns: undefined }
     }
     Enums: {
       acq_analysis_status: "pending" | "running" | "completed" | "failed"
