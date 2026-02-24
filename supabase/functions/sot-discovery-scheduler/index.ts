@@ -80,20 +80,41 @@ function calcConfidenceScore(c: { firstName?: string; lastName?: string; company
   return Math.round(Math.max(0, Math.min(1, score)) * 100) / 100;
 }
 
-// ─── Category Registry (subset for scheduler) ───
-const CATEGORIES = [
-  { code: 'financial_advisor', label: 'Finanzberater', query: 'Finanzberater' },
-  { code: 'insurance_broker_34d', label: 'Versicherungsmakler', query: 'Versicherungsmakler' },
-  { code: 'mortgage_broker_34i', label: 'Baufinanzierung', query: 'Immobiliardarlehensvermittler Baufinanzierung' },
-  { code: 'property_management', label: 'Hausverwaltung', query: 'Hausverwaltung' },
-  { code: 'real_estate_agent', label: 'Immobilienmakler', query: 'Immobilienmakler' },
-  { code: 'dog_boarding', label: 'Hundepension', query: 'Hundepension Hundehotel' },
-  { code: 'dog_training', label: 'Hundeschule', query: 'Hundeschule Hundetrainer' },
-  { code: 'veterinary', label: 'Tierarzt', query: 'Tierarzt Tierklinik' },
-  { code: 'dog_grooming', label: 'Hundefriseur', query: 'Hundefriseur Hundesalon' },
-  { code: 'tax_advisor_re', label: 'Steuerberater', query: 'Steuerberater' },
-  { code: 'family_office', label: 'Family Office', query: 'Family Office Vermögensverwaltung' },
-  { code: 'pet_shop', label: 'Zoofachhandel', query: 'Zoofachhandel Tierbedarf' },
+// ─── Category Registry with strategy info ───
+interface SchedulerCategory {
+  code: string;
+  label: string;
+  query: string;
+  strategyCode: string;
+  primaryProvider: 'google_places' | 'apify_portal' | 'registry';
+  intent: string; // research engine intent
+  estimatedCostPerContact: number;
+}
+
+const CATEGORIES: SchedulerCategory[] = [
+  // Registry-based (cheapest — run first)
+  { code: 'bank_retail', label: 'Filialbank', query: 'Filialbank Sparkasse', strategyCode: 'BANK_BAFIN', primaryProvider: 'registry', intent: 'search_contacts', estimatedCostPerContact: 0.01 },
+  { code: 'bank_private', label: 'Privatbank', query: 'Privatbank', strategyCode: 'BANK_BAFIN', primaryProvider: 'registry', intent: 'search_contacts', estimatedCostPerContact: 0.01 },
+  // Portal-based (Apify)
+  { code: 'real_estate_agent', label: 'Immobilienmakler', query: 'Immobilienmakler', strategyCode: 'PORTAL_SCRAPING', primaryProvider: 'apify_portal', intent: 'search_portals', estimatedCostPerContact: 0.03 },
+  { code: 'real_estate_company', label: 'Immobilienunternehmen', query: 'Immobilienunternehmen Projektentwickler', strategyCode: 'PORTAL_GOOGLE', primaryProvider: 'apify_portal', intent: 'search_portals', estimatedCostPerContact: 0.03 },
+  // IHK-Register (via Apify scraping)
+  { code: 'insurance_broker_34d', label: 'Versicherungsmakler', query: 'Versicherungsmakler', strategyCode: 'IHK_REGISTER', primaryProvider: 'google_places', intent: 'search_contacts', estimatedCostPerContact: 0.04 },
+  { code: 'mortgage_broker_34i', label: 'Baufinanzierung', query: 'Immobiliardarlehensvermittler Baufinanzierung', strategyCode: 'IHK_REGISTER', primaryProvider: 'google_places', intent: 'search_contacts', estimatedCostPerContact: 0.04 },
+  { code: 'financial_broker_34f', label: 'Finanzanlagenvermittler', query: 'Finanzanlagenvermittler', strategyCode: 'IHK_REGISTER', primaryProvider: 'google_places', intent: 'search_contacts', estimatedCostPerContact: 0.04 },
+  { code: 'fee_advisor_34h', label: 'Honorar-Berater', query: 'Honorar-Finanzanlagenberater', strategyCode: 'IHK_REGISTER', primaryProvider: 'google_places', intent: 'search_contacts', estimatedCostPerContact: 0.04 },
+  // Google Places-based
+  { code: 'financial_advisor', label: 'Finanzberater', query: 'Finanzberater', strategyCode: 'GOOGLE_FIRECRAWL', primaryProvider: 'google_places', intent: 'search_contacts', estimatedCostPerContact: 0.02 },
+  { code: 'property_management', label: 'Hausverwaltung', query: 'Hausverwaltung', strategyCode: 'GOOGLE_FIRECRAWL', primaryProvider: 'google_places', intent: 'search_contacts', estimatedCostPerContact: 0.02 },
+  { code: 'tax_advisor_re', label: 'Steuerberater', query: 'Steuerberater Immobilien', strategyCode: 'GOOGLE_FIRECRAWL', primaryProvider: 'google_places', intent: 'search_contacts', estimatedCostPerContact: 0.02 },
+  { code: 'family_office', label: 'Family Office', query: 'Family Office Vermögensverwaltung', strategyCode: 'FAMILY_OFFICE_SEARCH', primaryProvider: 'google_places', intent: 'search_contacts', estimatedCostPerContact: 0.08 },
+  // Pet categories
+  { code: 'dog_boarding', label: 'Hundepension', query: 'Hundepension Hundehotel', strategyCode: 'GOOGLE_FIRECRAWL', primaryProvider: 'google_places', intent: 'search_contacts', estimatedCostPerContact: 0.02 },
+  { code: 'dog_training', label: 'Hundeschule', query: 'Hundeschule Hundetrainer', strategyCode: 'GOOGLE_FIRECRAWL', primaryProvider: 'google_places', intent: 'search_contacts', estimatedCostPerContact: 0.02 },
+  { code: 'veterinary', label: 'Tierarzt', query: 'Tierarzt Tierklinik', strategyCode: 'GOOGLE_FIRECRAWL', primaryProvider: 'google_places', intent: 'search_contacts', estimatedCostPerContact: 0.02 },
+  { code: 'dog_grooming', label: 'Hundefriseur', query: 'Hundefriseur Hundesalon', strategyCode: 'GOOGLE_FIRECRAWL', primaryProvider: 'google_places', intent: 'search_contacts', estimatedCostPerContact: 0.02 },
+  { code: 'pet_shop', label: 'Zoofachhandel', query: 'Zoofachhandel Tierbedarf', strategyCode: 'GOOGLE_FIRECRAWL', primaryProvider: 'google_places', intent: 'search_contacts', estimatedCostPerContact: 0.02 },
+  { code: 'loan_broker', label: 'Kreditvermittler', query: 'Kreditvermittler', strategyCode: 'IHK_REGISTER', primaryProvider: 'google_places', intent: 'search_contacts', estimatedCostPerContact: 0.04 },
 ];
 
 const COST_PER_BATCH = 6;
@@ -251,19 +272,30 @@ Deno.serve(async (req) => {
       let errorMsg: string | null = null;
 
       try {
-        // ─── Call sot-research-engine ───
+        // ─── Call sot-research-engine (category-aware) ───
         const researchUrl = `${supabaseUrl}/functions/v1/sot-research-engine`;
+        const researchBody: Record<string, unknown> = {
+          intent: category.intent,
+          query: category.query,
+          location: region.region_name,
+          max_results: BATCH_SIZE,
+        };
+
+        // Portal searches need portal_config
+        if (category.intent === 'search_portals') {
+          researchBody.portal_config = {
+            portal: 'immoscout24',
+            search_type: 'brokers',
+          };
+        }
+
         const researchResp = await fetch(researchUrl, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             "Authorization": `Bearer ${serviceKey}`,
           },
-          body: JSON.stringify({
-            query: category.query,
-            location: region.region_name,
-            max_results: BATCH_SIZE,
-          }),
+          body: JSON.stringify(researchBody),
         });
 
         if (!researchResp.ok) {
@@ -340,7 +372,14 @@ Deno.serve(async (req) => {
                 city: city || null,
                 postal_code: postalCode || null,
                 confidence_score: confidence,
-                source_refs_json: { sources: r.sources || ['discovery-scheduler'], category: category.code, region: region.region_name },
+                source_refs_json: {
+                  sources: r.sources || ['discovery-scheduler'],
+                  category: category.code,
+                  region: region.region_name,
+                  strategy_code: category.strategyCode,
+                  primary_provider: category.primaryProvider,
+                  estimated_cost: category.estimatedCostPerContact,
+                },
                 validation_state: confidence >= 0.85 ? 'approved' : confidence >= 0.60 ? 'needs_review' : 'pending',
                 dedupe_hash: dedupeHash,
               });
@@ -379,22 +418,60 @@ Deno.serve(async (req) => {
               }
 
               if (!isDupe) {
+                const publicId = `DS-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
                 await sb.from("contacts").insert({
                   tenant_id: tenantId,
-                  company_name: r.name || null,
+                  company: r.name || null,
                   salutation: salutation || null,
-                  first_name: firstName || null,
-                  last_name: lastName || null,
+                  first_name: firstName || r.name || '',
+                  last_name: lastName || r.name || '',
                   email: email || null,
                   phone: phone || null,
-                  website: r.website || null,
                   street: street || null,
                   postal_code: postalCode || null,
                   city: city || null,
                   category: category.code,
-                  source: 'discovery-scheduler',
+                  synced_from: 'discovery-scheduler',
                   confidence_score: confidence,
+                  public_id: publicId,
                 });
+
+                // Create strategy ledger entry for enrichment tracking
+                try {
+                  const { data: newCtx } = await sb
+                    .from("contacts")
+                    .select("id")
+                    .eq("tenant_id", tenantId)
+                    .eq("company", r.name || '')
+                    .eq("city", city || '')
+                    .limit(1)
+                    .maybeSingle();
+
+                  if (newCtx?.id) {
+                    await sb.from("contact_strategy_ledger").insert({
+                      contact_id: newCtx.id,
+                      tenant_id: tenantId,
+                      category_code: category.code,
+                      strategy_code: category.strategyCode,
+                      steps_completed: [{
+                        step: 'discovery',
+                        provider: category.primaryProvider,
+                        executed_at: new Date().toISOString(),
+                        cost_eur: category.estimatedCostPerContact * 0.5,
+                        fields_found: [r.name ? 'name' : null, phone ? 'phone' : null, email ? 'email' : null, r.website ? 'website' : null].filter(Boolean),
+                      }],
+                      steps_pending: email ? [] : [
+                        { step: 'web_scrape', provider: 'firecrawl', purpose: 'enrichment', estimatedCostEur: 0.005 },
+                      ],
+                      data_gaps: [!email ? 'email' : null, !phone ? 'phone' : null, !r.website ? 'website' : null].filter(Boolean),
+                      total_cost_eur: category.estimatedCostPerContact * 0.5,
+                      quality_score: Math.round(confidence * 100),
+                      last_step_at: new Date().toISOString(),
+                    });
+                  }
+                } catch (ledgerErr) {
+                  console.warn("Ledger creation skipped:", ledgerErr);
+                }
                 batchApproved++;
               } else {
                 batchDupes++;
@@ -417,8 +494,13 @@ Deno.serve(async (req) => {
         duplicates_skipped: batchDupes,
         approved_count: batchApproved,
         credits_used: COST_PER_BATCH,
-        cost_eur: COST_PER_BATCH * 0.25,
-        provider_calls_json: { google_places: 1, apify: 1, firecrawl: 1, ai_merge: 1 },
+        cost_eur: batchRaw * category.estimatedCostPerContact,
+        provider_calls_json: {
+          primary_provider: category.primaryProvider,
+          strategy_code: category.strategyCode,
+          intent: category.intent,
+          category_code: category.code,
+        },
         error_message: errorMsg,
       });
 

@@ -24,8 +24,62 @@ interface RegistryEntry {
 interface ImportRequest {
   source: "bafin_register" | "ihk_register";
   tenant_id: string;
-  entries: RegistryEntry[];
+  entries?: RegistryEntry[];
   category_code: string;
+  // BaFin CSV mode: raw CSV string instead of parsed entries
+  csv_content?: string;
+  csv_delimiter?: string;
+}
+
+// ── BaFin CSV Parser ──
+// BaFin CSV format (semicolon-delimited):
+// Lfd.Nr;BaFin-ID;Bezeichnung;Art;Sitz/Niederlassung;PLZ;Land
+
+function parseBafinCsv(csvContent: string, delimiter = ";"): RegistryEntry[] {
+  const lines = csvContent.split("\n").map(l => l.trim()).filter(Boolean);
+  if (lines.length < 2) return []; // Need header + at least one row
+
+  const header = lines[0].split(delimiter).map(h => h.trim().toLowerCase());
+
+  // Find column indices by common BaFin header names
+  const nameIdx = header.findIndex(h => h.includes("bezeichnung") || h.includes("name") || h.includes("institut"));
+  const idIdx = header.findIndex(h => h.includes("bafin-id") || h.includes("bafin_id") || h.includes("lfd"));
+  const typeIdx = header.findIndex(h => h.includes("art") || h.includes("rechtsform") || h.includes("typ"));
+  const cityIdx = header.findIndex(h => h.includes("sitz") || h.includes("niederlassung") || h.includes("ort") || h.includes("city"));
+  const plzIdx = header.findIndex(h => h.includes("plz") || h.includes("postal"));
+  const countryIdx = header.findIndex(h => h.includes("land") || h.includes("country"));
+
+  if (nameIdx === -1) {
+    console.error("BaFin CSV: Could not find name column. Headers:", header);
+    return [];
+  }
+
+  const entries: RegistryEntry[] = [];
+
+  for (let i = 1; i < lines.length; i++) {
+    const cols = lines[i].split(delimiter).map(c => c.trim());
+    
+    const name = cols[nameIdx];
+    if (!name) continue;
+
+    // Skip non-German entries if country column exists
+    if (countryIdx >= 0) {
+      const country = cols[countryIdx]?.toLowerCase();
+      if (country && country !== "de" && country !== "deutschland" && country !== "germany") continue;
+    }
+
+    entries.push({
+      name,
+      city: cityIdx >= 0 ? cols[cityIdx] || undefined : undefined,
+      postal_code: plzIdx >= 0 ? cols[plzIdx] || undefined : undefined,
+      legal_form: typeIdx >= 0 ? cols[typeIdx] || undefined : undefined,
+      registry_id: idIdx >= 0 ? cols[idIdx] || undefined : undefined,
+      registry_type: "bafin_register",
+    });
+  }
+
+  console.log(`BaFin CSV parsed: ${entries.length} entries from ${lines.length - 1} rows`);
+  return entries;
 }
 
 // ── Strategy mapping ──
@@ -79,18 +133,37 @@ serve(async (req) => {
     }
 
     const body: ImportRequest = await req.json();
-    const { source, tenant_id, entries, category_code } = body;
+    const { source, tenant_id, category_code, csv_delimiter } = body;
+    let { entries } = body;
 
-    if (!source || !tenant_id || !entries || !Array.isArray(entries) || !category_code) {
+    if (!source || !tenant_id || !category_code) {
       return new Response(
-        JSON.stringify({ error: "source, tenant_id, category_code, and entries[] required" }),
+        JSON.stringify({ error: "source, tenant_id, and category_code required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    if (entries.length > 500) {
+    // ── BaFin CSV mode: parse CSV content into entries ──
+    if (body.csv_content && source === "bafin_register") {
+      entries = parseBafinCsv(body.csv_content, csv_delimiter || ";");
+      if (entries.length === 0) {
+        return new Response(
+          JSON.stringify({ error: "CSV parsing produced 0 valid entries. Check format (semicolon-delimited, must have 'Bezeichnung' column)" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+
+    if (!entries || !Array.isArray(entries) || entries.length === 0) {
       return new Response(
-        JSON.stringify({ error: "Max 500 entries per import batch" }),
+        JSON.stringify({ error: "entries[] required (or csv_content for BaFin)" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (entries.length > 1000) {
+      return new Response(
+        JSON.stringify({ error: "Max 1000 entries per import batch" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -110,7 +183,7 @@ serve(async (req) => {
           .from("contacts")
           .select("id")
           .eq("tenant_id", tenant_id)
-          .ilike("company_name", entry.name)
+          .ilike("company", entry.name)
           .eq("city", entry.city || "")
           .limit(1);
 
@@ -119,25 +192,31 @@ serve(async (req) => {
           continue;
         }
 
-        // Insert contact
+        // Generate a public_id for the contact
+        const publicId = `REG-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+        // Insert contact — contacts table uses 'company' not 'company_name',
+        // 'street' not 'address_line', and requires first_name, last_name, public_id
         const { data: newContact, error: insertErr } = await supabaseAdmin
           .from("contacts")
           .insert({
             tenant_id,
-            company_name: entry.name,
+            company: entry.name,
+            first_name: "",  // Required field — empty for company-only imports
+            last_name: entry.name, // Use company name as last_name for display
             city: entry.city || null,
             postal_code: entry.postal_code || null,
-            address_line: entry.address || null,
-            source: source,
+            street: entry.address || null,
             category: category_code,
             quality_status: "candidate",
             confidence_score: 30,
-            source_refs: {
-              registry_id: entry.registry_id,
-              registry_type: entry.registry_type || source,
-              erlaubnis_typ: entry.erlaubnis_typ,
-              legal_form: entry.legal_form,
-            },
+            public_id: publicId,
+            synced_from: source,
+            notes: [
+              entry.registry_id ? `Registry-ID: ${entry.registry_id}` : null,
+              entry.legal_form ? `Rechtsform: ${entry.legal_form}` : null,
+              entry.erlaubnis_typ ? `Erlaubnis: ${entry.erlaubnis_typ}` : null,
+            ].filter(Boolean).join(', ') || null,
           })
           .select("id")
           .single();
