@@ -1,48 +1,47 @@
 
 
-# Diagnose: `documents_extraction_status_check` blockiert Upload
+# Fix: `documents_source_check` Constraint-Verletzung
 
-## Ursache (eindeutig identifiziert)
+## Ursache
 
-In `src/hooks/useUniversalUpload.ts`, Zeile 267:
+In `ProjekteDashboard.tsx` wird `source: 'project_intake'` uebergeben (Zeilen 288, 347, 352). Die Datenbank-CHECK-Constraint erlaubt aber nur diese Werte:
 
-```typescript
-extraction_status: triggerAI ? 'pending' : 'none',
+```
+'upload', 'resend', 'caya', 'dropbox', 'onedrive', 'gdrive', 'import', 'email'
 ```
 
-Die CHECK-Constraint in der Datenbank erlaubt NUR diese Werte:
+`'project_intake'` ist nicht dabei.
+
+## Loesung
+
+Zwei Aenderungen:
+
+| # | Aenderung | Ort |
+|---|-----------|-----|
+| 1 | CHECK-Constraint erweitern um `'project_intake'` | DB-Migration |
+| 2 | TypeScript-Type `DocumentSource` erweitern | `src/types/document-schemas.ts` |
+
+### 1. DB-Migration
+
+```sql
+ALTER TABLE public.documents DROP CONSTRAINT documents_source_check;
+ALTER TABLE public.documents ADD CONSTRAINT documents_source_check 
+  CHECK (source = ANY (ARRAY[
+    'upload','resend','caya','dropbox','onedrive','gdrive','import','email','project_intake'
+  ]));
 ```
-'pending', 'processing', 'done', 'failed', 'skipped'
-```
 
-Der Wert **`'none'`** ist NICHT erlaubt. Da der Magic Intake Auto-Upload mit `triggerAI: false` aufgerufen wird (Zeile 288 in ProjekteDashboard.tsx), wird `'none'` geschrieben → Constraint-Verletzung → Fehler.
+### 2. TypeScript-Type
 
-## Zum zweiten Punkt: Fehlt ein Projekt-Anlage-Schritt?
-
-Nein, der aktuelle Flow ist bewusst so designed:
-
-1. Die Datei wird in den **generischen Tenant-Storage** hochgeladen (`tenant-documents` Bucket, Pfad `{tenantId}/MOD_13/...`)
-2. Ein `documents`-Record wird angelegt (nur als Datei-Referenz)
-3. Die KI analysiert die Dateien
-4. Erst DANN wird das Projekt via `sot-project-intake` Edge Function erstellt
-
-Das heisst: Es wird kein Projekt-Datenraum vorab benoetigt. Die Datei landet im allgemeinen Tenant-Speicher und wird erst nach Analyse einem Projekt zugeordnet. Das ist architektonisch korrekt — nur der `extraction_status`-Wert ist falsch.
-
-## Fix
-
-| Datei | Aenderung |
-|-------|-----------|
-| `src/hooks/useUniversalUpload.ts` | Zeile 267: `'none'` → `'skipped'` |
-
-Eine einzige Zeile. `'skipped'` ist semantisch korrekt fuer "kein KI-Parsing gewuenscht" und ist in der CHECK-Constraint erlaubt.
+In `src/types/document-schemas.ts`, Zeile 97:
 
 ```typescript
 // Vorher:
-extraction_status: triggerAI ? 'pending' : 'none',
+export type DocumentSource = 'upload' | 'resend' | 'caya' | 'dropbox' | 'onedrive' | 'gdrive' | 'import';
 
 // Nachher:
-extraction_status: triggerAI ? 'pending' : 'skipped',
+export type DocumentSource = 'upload' | 'resend' | 'caya' | 'dropbox' | 'onedrive' | 'gdrive' | 'import' | 'email' | 'project_intake';
 ```
 
-Kein Modul-Unfreeze noetig — `useUniversalUpload.ts` liegt in `src/hooks/`, ausserhalb aller Modul-Pfade.
+Kein Modul-Unfreeze noetig — `document-schemas.ts` liegt in `src/types/` (kein Modul-Pfad), und die DB-Migration ist ausserhalb jeder Modul-Zuordnung.
 
