@@ -46,6 +46,9 @@ import {
   applyQualityGate,
   getCategoriesByGroup,
 } from '@/engines/marketDirectory/engine';
+import { StrategyOverview } from '@/components/admin/recherche/StrategyOverview';
+import { AutomationPanel } from '@/components/admin/recherche/AutomationPanel';
+import { LedgerSummary } from '@/components/admin/recherche/LedgerSummary';
 
 /* ── Status / Phase Maps ─────────────────────────────────────── */
 const STATUS_MAP: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
@@ -243,6 +246,15 @@ export default function AdminRecherche() {
   return (
     <div className="space-y-6 p-6">
       <h2 className="text-lg font-bold tracking-tight uppercase">Recherche-Zentrale</h2>
+
+      {/* ═══ A. STRATEGIE-ÜBERSICHT ═══ */}
+      <StrategyOverview />
+
+      {/* ═══ B. AUTOMATISIERUNG ═══ */}
+      <AutomationPanel />
+
+      {/* ═══ C. STRATEGY LEDGER ═══ */}
+      <LedgerSummary />
 
       {/* ═══ 1. SUCHFORMULAR ═══ */}
       <Card>
