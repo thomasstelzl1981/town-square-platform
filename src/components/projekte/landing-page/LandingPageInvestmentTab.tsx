@@ -114,7 +114,7 @@ export function LandingPageInvestmentTab({ project, isDemo, selectedUnitId, onSe
                       <td className="px-4 py-3 font-medium">{unit.unit_number}</td>
                       <td className="px-4 py-3 text-center">{unit.rooms}</td>
                       <td className="px-4 py-3 text-right">{unit.area_sqm} m²</td>
-                      <td className="px-4 py-3 text-center">{unit.floor}. OG</td>
+                      <td className="px-4 py-3 text-center">{unit.floor === 0 ? 'EG' : unit.floor < 0 ? `${Math.abs(unit.floor)}. UG` : `${unit.floor}. OG`}</td>
                       <td className="px-4 py-3 text-right font-semibold">{formatCurrency(unit.list_price)}</td>
                       <td className="px-4 py-3 text-right text-muted-foreground">{formatCurrency(unit.price_per_sqm)}</td>
                       <td className="px-4 py-3 text-right font-semibold text-primary">{unit.yield_percent}%</td>
