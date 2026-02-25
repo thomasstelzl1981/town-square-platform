@@ -7,6 +7,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { MapPin, Home, Car, Ruler, Calendar, Flame, Zap, ChevronLeft, ChevronRight, ImageOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { ProjectAfaFields } from './ProjectAfaFields';
 import { DEMO_PROJECT_DESCRIPTION, DEMO_PROJECT_IMAGES } from './demoProjectData';
 import type { ProjectPortfolioRow } from '@/types/projekte';
 
@@ -208,6 +209,17 @@ export function ProjectOverviewCard({ isDemo, selectedProject, unitCount, fullPr
             )}
           </div>
         </div>
+
+        {/* AfA & Grund-und-Boden Parameter */}
+        {selectedProject && (
+          <ProjectAfaFields
+            projectId={selectedProject.id}
+            afaRatePercent={(fullProject as any)?.afa_rate_percent ?? 2.0}
+            afaModel={(fullProject as any)?.afa_model ?? 'linear'}
+            landSharePercent={(fullProject as any)?.land_share_percent ?? 20.0}
+            isDemo={isDemo}
+          />
+        )}
       </CardContent>
     </Card>
   );

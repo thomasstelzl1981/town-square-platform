@@ -22,6 +22,7 @@ import { LoadingState } from '@/components/shared/LoadingState';
 import { isDemoId } from '@/engines/demoData/engine';
 import type { DemoUnit } from '@/components/projekte/demoProjectData';
 import { SalesStatusReportWidget } from '@/components/projekte/SalesStatusReportWidget';
+import { CreatePropertyFromUnits } from '@/components/projekte/CreatePropertyFromUnits';
 import { DEMO_DEVELOPER_CONTEXT, type DeveloperContext as DemoDeveloperContext } from '@/components/projekte/demoProjectData';
 import {
   AlertDialog,
@@ -237,17 +238,35 @@ export default function PortfolioTab() {
             fullProject={projects.find(p => p.id === selectedProjectId)}
           />
 
-          {/* Preisliste */}
+          {/* Preisliste + Immobilienakten-Button */}
           {isLoading ? (
             <LoadingState />
           ) : (
-            <UnitPreislisteTable
-              units={calculatedUnits}
-              projectId={selectedProject?.id || ''}
-              isDemo={isSelectedDemo}
-              onUnitPriceChange={handleUnitPriceChange}
-              onStatusChange={handleStatusChange}
-            />
+            <>
+              <div className="flex items-center justify-between gap-4 mb-2">
+                <h3 className="text-sm font-medium text-muted-foreground">
+                  Preisliste — {calculatedUnits.length} Einheiten
+                </h3>
+                {!isSelectedDemo && realUnits && realUnits.length > 0 && (
+                  <CreatePropertyFromUnits
+                    projectId={selectedProject.id}
+                    projectName={selectedProject.name}
+                    projectAddress={projects.find(p => p.id === selectedProjectId)?.address || ''}
+                    projectCity={selectedProject.city || ''}
+                    projectPostalCode={selectedProject.postal_code || ''}
+                    projectYearBuilt={((projects.find(p => p.id === selectedProjectId) as any)?.intake_data as any)?.construction_year || undefined}
+                    units={realUnits as any}
+                  />
+                )}
+              </div>
+              <UnitPreislisteTable
+                units={calculatedUnits}
+                projectId={selectedProject?.id || ''}
+                isDemo={isSelectedDemo}
+                onUnitPriceChange={handleUnitPriceChange}
+                onStatusChange={handleStatusChange}
+              />
+            </>
           )}
 
           {/* Kalkulator-Zeile */}

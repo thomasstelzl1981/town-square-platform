@@ -643,6 +643,7 @@ async function handleCreate(
       list_price: u.price || 0,
       price_per_sqm: u.area > 0 ? Math.round((u.price || 0) / u.area * 100) / 100 : 0,
       current_rent: u.currentRent || 0,
+      hausgeld: u.hausgeld || null,
       status: 'available',
     }));
 

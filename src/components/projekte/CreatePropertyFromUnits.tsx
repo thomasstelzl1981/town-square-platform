@@ -129,7 +129,7 @@ export function CreatePropertyFromUnits({
             tenant_id: tenantId,
             name: `${unit.unit_number} — ${projectName}`,
             node_type: 'folder',
-            module_code: 'MOD_04',
+            module_code: 'MOD-04',
             entity_id: newProperty.id,
             parent_id: null,
           })
@@ -141,7 +141,7 @@ export function CreatePropertyFromUnits({
             tenant_id: tenantId,
             name,
             node_type: 'folder' as const,
-            module_code: 'MOD_04',
+            module_code: 'MOD-04',
             entity_id: newProperty.id,
             parent_id: rootFolder.id,
           }));
