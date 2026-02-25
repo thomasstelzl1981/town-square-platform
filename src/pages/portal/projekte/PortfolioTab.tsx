@@ -13,7 +13,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useDevProjects } from '@/hooks/useDevProjects';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { ProjectOverviewCard } from '@/components/projekte/ProjectOverviewCard';
+import { ProjectDataSheet } from '@/components/projekte/ProjectDataSheet';
 import { StickyCalculatorPanel } from '@/components/projekte/StickyCalculatorPanel';
 import { UnitPreislisteTable } from '@/components/projekte/UnitPreislisteTable';
 import { ProjectDMSWidget } from '@/components/projekte/ProjectDMSWidget';
@@ -231,7 +231,7 @@ export default function PortfolioTab() {
       {/* Globalobjekt-Beschreibung — only if a project is actually selected */}
       {selectedProject && (
         <>
-          <ProjectOverviewCard
+           <ProjectDataSheet
             isDemo={isSelectedDemo}
             selectedProject={selectedProject}
             unitCount={calculatedUnits.length}
