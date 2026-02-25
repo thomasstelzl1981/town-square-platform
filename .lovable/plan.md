@@ -1,121 +1,120 @@
 
 
-## Demo-Tenant — Vollständige Tiefenanalyse & Reparaturplan
+## Systemprüfung: Zone 1 Sales Desk ↔ Zone 2/Zone 3 Governance-Flow
 
-### Befund-Tabelle: Soll vs. Ist (Demo Tenant `c3123104-...`)
+### Analyse-Ergebnis
 
-| # | Entity | Soll | Ist | Status | Ursache |
-|---|--------|------|-----|--------|---------|
-| 1 | household_persons | **4** (Max, Lisa, Felix, Emma) | **2** (2× Max Mustermann) | **FEHLER** | Seed hat NUR den Hauptperson-Record geseedet (b1f6d204), Lisa/Felix/Emma fehlen. Zusätzlich existiert ein manuell erstellter Duplikat (75154d6a, erstellt 22.02.) |
-| 2 | units | **3** (BER-01-WE01, MUC-01-WE01, HH-01-WE01) | **6** (3× MAIN + 3× WE-01) | **FEHLER** | Property-Trigger erzeugt MAIN units. Seed-Engine updatet MAIN units mit `area_sqm`, erstellt aber SEPARAT die WE-01 units mit Demo-IDs. **Doppelte Immobilien-Zeilen im Portfolio.** |
-| 3 | pets | **2** (Luna, Bello) | **0** | **FEHLER** | `seedOwnerPets` hat korrekte Daten, aber Insert ist fehlgeschlagen (wahrscheinlich RLS-Problem oder missing `owner_user_id` Column Match). Nicht in test_data_registry. |
-| 4 | insurance_contracts | **7** | **0** | **FEHLER** | Seed komplett fehlgeschlagen. Nicht in test_data_registry. |
-| 5 | property_accounting | **3** | **0** | **FEHLER** | AfA-Daten nicht geseedet. Nicht in test_data_registry. |
-| 6 | pension_records | **2** | **1** | **FEHLER** | Nur 1 statt 2 Records |
-| 7 | user_subscriptions | **8** | **7** | **WARNUNG** | 1 Record fehlt |
-| 8 | household_persons (Reg.) | 4 | 0 in Registry | **FEHLER** | Nicht im test_data_registry registriert |
-| 9 | vorsorge_contracts | **6** | **6** | OK | |
-| 10 | kv_contracts | **4** | **4** | OK | |
-| 11 | contacts | **5** | **5** | OK | Aber nicht in Registry |
-| 12 | properties | **3** | **3** | OK | |
-| 13 | loans | **3** | **3** | OK | |
-| 14 | private_loans | **2** | **2** | OK | |
-| 15 | cars_vehicles | **6** | **6** | OK | Aber nicht in Registry |
-| 16 | leases | **3** | **3** | OK | |
-| 17 | finance_requests | **2** | **2** | OK | |
-| 18 | listings | **1** | **1** | OK | |
-| 19 | pv_plants | **1** | **1** | OK | |
-| 20 | miety_homes | **1** | **1** | OK | |
-| 21 | miety_contracts | **4** | **5** | **WARNUNG** | 1 Duplikat |
-| 22 | msv_bank_accounts | **1** | **1** | OK | |
-| 23 | bank_transactions | **100** | **100** | OK | |
-| 24 | dev_projects | **1** | **0** | **FEHLER** | Projekt-Seed fehlgeschlagen |
+Ich habe den kompletten Datenfluss geprüft: DB-Daten, RLS-Policies, Sales Desk Hook, VeroeffentlichungenTab, ImmobilienVertriebsauftraegeCard, KatalogTab (MOD-09), SucheTab (MOD-08) und Kaufy2026Home (Zone 3).
 
 ---
 
-### Root-Cause-Analyse der 5 kritischen Fehler
+### DB-Status (verifiziert)
 
-**FEHLER 1: Doppelte Personen (2× "Max Mustermann Hauptperson")**
+- **3 aktive Listings** im Demo-Tenant (BER-01, MUC-01, HH-01)
+- **6 aktive Publikationen** (3× partner_network + 3× kaufy)
+- **1 Tenant** mit Listings (Demo-Tenant) — korrekt
+- **Keine Datenreste** in anderen Tenants
 
-- Record `75154d6a` wurde am 22.02. **manuell** erstellt (via UI "Person hinzufügen" in Finanzanalyse oder FMUebersichtTab)
-- Record `b1f6d204` wurde am 25.02. vom Seed-Engine korrekt angelegt
-- Die CSV enthält 4 Personen (Max, Lisa, Felix, Emma) — aber nur Max (die Hauptperson) wurde geseedet
-- **Ursache im Code:** `seedHouseholdPersons()` ersetzt den `b1f6d204` placeholder-ID mit `userId` — aber im Demo-Tenant-Kontext (useDemoAutoLogin) ist die userId die des Demo-Users (`f497a78a`), NICHT die Demo-Person-ID. Das upsert auf `id = userId` kollidiert mit dem manuell erstellten Record. Die 3 anderen Personen (Lisa, Felix, Emma mit IDs `e0000000-*`) sollten eigentlich inserted werden, aber der Seed bricht nach dem ersten Fehler ab oder die Chunks werden nicht korrekt verarbeitet.
-- **Fix:** Delete des manuellen Duplikats `75154d6a`. Seed erneut ausführen, oder Lisa/Felix/Emma manuell inserieren.
+---
 
-**FEHLER 2: Doppelte Immobilien-Einheiten (6 statt 3)**
+### Befunde
 
-- Der Property-INSERT-Trigger (`trg_property_create_default_unit`) erzeugt automatisch eine MAIN-Unit pro Property
-- Die Seed-Engine findet diese MAIN unit per `.limit(1).maybeSingle()` und updated sie mit `area_sqm` aus der CSV
-- ABER: Die WE-01 Units mit Demo-IDs `d0000000-*` existieren EBENFALLS — sie wurden offenbar in einem früheren Seed-Lauf direkt per `seedFromCSV` inserted
-- **Ursache:** Das Seed-Update ändert die MAIN unit's `area_sqm`, aber NICHT `unit_number` oder `current_monthly_rent` (diese Felder bleiben null/MAIN). Gleichzeitig wurden die WE-01 units separat eingefügt.
-- **Fix:** DELETE der 3 MAIN units (90bdd653, fd55d604, a89bcfaa). Die WE-01 units sind die korrekten Demo-Daten. Zusätzlich muss die Seed-Engine korrigiert werden: nach dem UPDATE sollte geprüft werden, ob die Unit-Number aktualisiert wurde.
+#### BUG-004 (Prio 1) — VeroeffentlichungenTab: Dedup nutzt `title` statt `property_id`
 
-**FEHLER 3: 0 Pets (Luna + Bello fehlen)**
+**Datei:** `src/pages/admin/sales-desk/VeroeffentlichungenTab.tsx`, Zeile 28-32
 
-- `seedOwnerPets()` hat hardcoded Pets mit `owner_user_id: userId` — im Demo-Account ist `userId = f497a78a`
-- Die Pets-Tabelle hat möglicherweise eine RLS-Policy oder einen NOT-NULL Constraint der verhindert, dass der Insert funktioniert
-- Nicht in test_data_registry → Seed-Schritt wurde entweder übersprungen oder hat einen Error geworfen
-- **Fix:** Manuelles INSERT oder Seed-Engine-Debug. Pets manuell per SQL einfügen.
+```typescript
+// IST (fehlerhaft):
+const listings = useMemo(() => deduplicateByField(
+  demoListings, dbListings || [], (item: any) => item.title
+), ...);
+```
 
-**FEHLER 4: 0 Versicherungsverträge**
+**Problem:** Alle anderen Module (Kaufy2026Home, SucheTab, KatalogTab) nutzen bereits `property_id` als Dedup-Key. Die VeroeffentlichungenTab in Zone 1 nutzt noch `title`. Bei abweichenden Titeln zwischen Demo-Hook und DB entstehen Duplikate.
 
-- `seedInsuranceContracts()` wurde aufgerufen, hat aber 0 Ergebnisse produziert
-- Wahrscheinlich ein Schema-Mismatch (Column-Namen in CSV vs. DB) oder RLS-Problem
-- **Fix:** Untersuchen der `seedInsuranceContracts()` Funktion und der CSV-Datei, dann manuelles INSERT
+**Fix:** Key-Funktion auf `item.property?.id || item.id` umstellen.
 
-**FEHLER 5: 0 Property Accounting (AfA-Daten)**
+---
 
-- Weder in DB noch in Registry
-- Die Funktion `seedPropertyAccounting()` muss geprüft werden
-- **Fix:** Manuelles INSERT der 3 AfA-Records
+#### BUG-005 (Prio 1) — ImmobilienVertriebsauftraegeCard: Dedup nutzt `address|city` statt `property_id`
+
+**Datei:** `src/pages/admin/sales-desk/ImmobilienVertriebsauftraegeCard.tsx`, Zeile 36-39
+
+```typescript
+// IST (fehlerhaft):
+const allMandates = deduplicateByField(
+  demoMandates, mandateListings || [],
+  (item: any) => `${item.properties?.address}|${item.properties?.city}`
+);
+```
+
+**Problem:** Gleiche Inkonsistenz. Bei abweichenden Adressen zwischen Demo-Hook-Shape (`properties.address`) und DB-Shape entstehen Duplikate oder fehlende Matches.
+
+**Fix:** Dedup-Key auf Property-ID umstellen. Die Demo-Mandates haben `id` als `demo-listing-{propertyId}`, DB-Mandates haben `id` als UUID. Da die Shapes unterschiedlich sind (Demo hat kein `property_id`-Feld), muss das Demo-Shape `DemoMandateListing` um `property_id` erweitert werden.
+
+---
+
+#### BUG-006 (Prio 2) — KatalogTab: Image-Fetch nutzt `listing.id` statt `property_id`
+
+**Datei:** `src/pages/portal/vertriebspartner/KatalogTab.tsx`, Zeile 161
+
+```typescript
+// IST (fehlerhaft):
+const propertyIds = listings.map(l => l.id).filter(Boolean);
+```
+
+**Problem:** `fetchPropertyImages` erwartet Property-IDs, aber hier werden Listing-IDs übergeben. Bilder werden nie gefunden, weil die `document_links.object_id` auf Properties zeigt, nicht auf Listings.
+
+**Fix:** `l.property_id` statt `l.id` verwenden.
+
+---
+
+#### BUG-007 (Prio 3) — useSalesDeskListings: Kein `tenant_id`-Feld im Query-Result
+
+**Datei:** `src/hooks/useSalesDeskListings.ts`
+
+**Problem:** Der Sales Desk Query gibt `tenant: organizations(id, name)` zurück, aber das VeroeffentlichungenTab braucht die `tenant_id` für die Distribution-Mutation. Aktuell wird `listing.tenant?.id` verwendet, was funktioniert, aber die Kopplung ist fragil.
+
+**Status:** Funktioniert, kein aktuter Bug — aber potenzieller Bruch bei Schema-Änderungen.
+
+---
+
+#### Governance-Befund: Zone 1 Backbone-Regel eingehalten
+
+Der Architektur-Contract `CONTRACT_LISTING_PUBLISH` (Z2→Z1) und `CONTRACT_LISTING_DISTRIBUTE` (Z1→Z2/Z3) wird korrekt umgesetzt:
+
+```text
+Z2 (Owner-Tenant)     Zone 1 (Sales Desk)      Z2/Z3 (Consumer)
+     │                       │                        │
+     │  listing INSERT       │                        │
+     │  ──────────────►      │                        │
+     │                       │  VeroeffentlichungenTab │
+     │                       │  (Toggle Switches)      │
+     │                       │  ───────────────────►   │
+     │                       │  listing_publications   │
+     │                       │  INSERT/UPDATE          │
+     │                       │                        │
+     │                       │                   MOD-09 KatalogTab
+     │                       │                   MOD-08 SucheTab
+     │                       │                   Zone 3 Kaufy
+```
+
+- Sales Desk sieht **alle 3 Listings** cross-tenant (platform_admin bypassed RESTRICTIVE RLS) ✅
+- Distribution-Toggles (Partner/Kaufy) schreiben in `listing_publications` ✅
+- Consumer lesen via PERMISSIVE RLS Policies ✅
+- **Kein direkter Z2↔Z2 Datenzugriff** — alles geht über `listing_publications` (Z1 gesteuert) ✅
 
 ---
 
 ### Reparaturplan
 
-**Phase 1 — DB-Bereinigung (Duplikate entfernen)**
+| Ticket | Prio | Aufwand | Beschreibung | Datei |
+|--------|------|---------|--------------|-------|
+| BUG-004 | 1 | 5 min | VeroeffentlichungenTab: Dedup-Key von `title` auf `property_id` | `VeroeffentlichungenTab.tsx` |
+| BUG-005 | 1 | 10 min | ImmobilienVertriebsauftraegeCard: Dedup-Key auf `property_id`, DemoMandateListing erweitern | `ImmobilienVertriebsauftraegeCard.tsx`, `useDemoListings.ts` |
+| BUG-006 | 2 | 5 min | KatalogTab: Image-Fetch `l.id` → `l.property_id` | `KatalogTab.tsx` |
 
-```sql
--- 1. Doppelte Hauptperson entfernen (manuell erstellte)
-DELETE FROM household_persons 
-WHERE id = '75154d6a-0a36-4dab-98de-ad9f1aad35bf' 
-AND tenant_id = 'c3123104-e2ec-47ca-9f0a-616808557ece';
+**Gesamtaufwand:** ~20 Minuten
 
--- 2. Doppelte MAIN-Units entfernen (Trigger-generiert, keine Daten)
-DELETE FROM units 
-WHERE unit_number = 'MAIN' 
-AND tenant_id = 'c3123104-e2ec-47ca-9f0a-616808557ece'
-AND id IN ('90bdd653-deb6-4484-a6f9-8db926de972a', 
-           'fd55d604-5735-4a2f-a571-f744238f1be5', 
-           'a89bcfaa-abc3-4c5f-95c9-c4e24a1996fa');
-```
-
-**Phase 2 — Fehlende Daten nachspeisen (SQL INSERT)**
-
-Für household_persons (Lisa, Felix, Emma), pets (Luna, Bello), insurance_contracts (7 Verträge), property_accounting (3 Records), pension_records (2. Record), dev_projects (1 Projekt).
-
-**Phase 3 — Seed-Engine Code-Fixes**
-
-1. `seedUnits()` im Orchestrator (Zeile 931-977): Nach dem UPDATE der MAIN unit muss geprüft werden, ob `unit_number` tatsächlich aktualisiert wurde. Alternativ: Die ganze UPDATE-Logik entfernen und stattdessen die MAIN units LÖSCHEN und die CSV units direkt INSERTen.
-
-2. `seedHouseholdPersons()` (Zeile 746-792): Der `HAUPTPERSON_PLACEHOLDER_ID`-Ersatz durch `userId` ist problematisch im Demo-Kontext, weil es kollidiert wenn bereits ein manueller Record mit der gleichen `userId` existiert. Empfehlung: Vor dem Upsert den manuellen Record löschen.
-
-3. `seedOwnerPets()`: Error Handling verbessern, um die tatsächliche Fehlerursache zu loggen.
-
-4. `seedInsuranceContracts()`: Schema-Validierung gegen die tatsächlichen DB-Spalten.
-
-**Phase 4 — Verifizierung**
-
-Alle 24 Entity-Typen auf Soll-Werte prüfen, test_data_registry vollständig befüllt.
-
----
-
-### Empfehlung zur Vorgehensweise
-
-Die sofortige Maßnahme ist Phase 1 + Phase 2 (SQL-Bereinigung + fehlende Daten nachspeisen). Das behebt die sichtbaren Probleme im Demo-Account sofort.
-
-Phase 3 (Seed-Engine Code-Fixes) ist notwendig um zu verhindern, dass bei einem erneuten Seed die gleichen Fehler wieder auftreten. Das betrifft 3-4 Funktionen in `useDemoSeedEngine.ts`.
-
-Ich kann beides in einem Schritt umsetzen. Die Code-Fixes betreffen keine frozen Module — `useDemoSeedEngine.ts` liegt unter `src/hooks/` (kein Modul-Pfad).
+### Soll ich diese 3 Fixes jetzt implementieren?
 
