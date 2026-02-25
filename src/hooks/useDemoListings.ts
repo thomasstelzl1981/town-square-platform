@@ -180,6 +180,7 @@ function toKaufyListing(p: DemoPropertyBase): DemoKaufyListing {
 export interface DemoPartnerListing {
   id: string;
   public_id: string | null;
+  property_id: string;
   title: string;
   asking_price: number | null;
   commission_rate: number | null;
@@ -197,6 +198,7 @@ function toPartnerListing(p: DemoPropertyBase): DemoPartnerListing {
   return {
     id: `${DEMO_LISTING_PREFIX}${p.propertyId}`,
     public_id: `DEMO-${p.code}`,
+    property_id: p.propertyId,
     title: p.title,
     asking_price: p.askingPrice,
     commission_rate: p.commissionRate,
@@ -356,6 +358,7 @@ export function useDemoListings() {
       items.push({
         id: `${DEMO_LISTING_PREFIX}${DEMO_PROJECT_IDS[0]}`,
         public_id: 'SOT-BT-DEMO',
+        property_id: DEMO_PROJECT_IDS[0],
         title: DEMO_PROJECT_BASE.name,
         asking_price: 450000,
         commission_rate: 3.57,

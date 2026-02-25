@@ -36,6 +36,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 interface PublicListing {
   listing_id: string;
   public_id: string;
+  property_id: string | null;
   title: string;
   asking_price: number;
   property_type: string;
@@ -219,6 +220,7 @@ export default function SucheTab() {
       return (data || []).map((item: any) => ({
         listing_id: item.id,
         public_id: item.public_id,
+        property_id: item.properties?.id || null,
         title: item.title || `${item.properties?.property_type} ${item.properties?.city}`,
         asking_price: item.asking_price || 0,
         property_type: item.properties?.property_type || 'Unbekannt',
@@ -236,21 +238,20 @@ export default function SucheTab() {
     enabled: true,
   });
 
-  // Merge demo listings with DB listings (deduplicated by title+city)
+  // Merge demo listings with DB listings (deduplicated by property_id)
   // When DB listing has no image but demo has one, transfer the demo image
   const mergedListings = useMemo(() => {
-    const demoByKey = new Map(demoListings.map(d => [`${d.title}|${d.city}`, d]));
-    const dbKeys = new Set<string>();
+    const demoByPropId = new Map(demoListings.map(d => [d.property_id, d]));
+    const dbPropertyIds = new Set<string>();
     const enrichedDb = listings.map(l => {
-      const key = `${l.title}|${l.city}`;
-      dbKeys.add(key);
-      const demoMatch = demoByKey.get(key);
+      if (l.property_id) dbPropertyIds.add(l.property_id);
+      const demoMatch = l.property_id ? demoByPropId.get(l.property_id) : undefined;
       if (demoMatch && !l.hero_image_path && demoMatch.hero_image_path) {
         return { ...l, hero_image_path: demoMatch.hero_image_path };
       }
       return l;
     });
-    const demos = demoListings.filter(d => !dbKeys.has(`${d.title}|${d.city}`));
+    const demos = demoListings.filter(d => !dbPropertyIds.has(d.property_id));
     return [...demos, ...enrichedDb];
   }, [listings, demoListings]);
 
@@ -270,9 +271,9 @@ export default function SucheTab() {
     // First fetch listings from DB
     const { data: freshListings } = await refetch();
     
-    // Merge demo listings with DB listings for calculation (deduplicated)
-    const dbKeys = new Set((freshListings || []).map((l: PublicListing) => `${l.title}|${l.city}`));
-    const demosToInclude = demoListings.filter(d => !dbKeys.has(`${d.title}|${d.city}`));
+    // Merge demo listings with DB listings for calculation (deduplicated by property_id)
+    const dbPropertyIds = new Set((freshListings || []).map((l: PublicListing) => l.property_id).filter(Boolean));
+    const demosToInclude = demoListings.filter(d => !dbPropertyIds.has(d.property_id));
     const allListingsToProcess = [...demosToInclude, ...(freshListings || [])].slice(0, 30);
     
     if (allListingsToProcess.length === 0) {
