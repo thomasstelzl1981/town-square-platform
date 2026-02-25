@@ -18836,6 +18836,7 @@ export type Database = {
           entity_id: string | null
           entity_type: string | null
           id: string
+          mime_type: string | null
           module_code: string | null
           name: string
           node_type: string
@@ -18844,6 +18845,7 @@ export type Database = {
           pv_plant_id: string | null
           scope_hint: string | null
           sort_index: number | null
+          storage_path: string | null
           template_id: string | null
           tenant_id: string
           unit_id: string | null
@@ -18858,6 +18860,7 @@ export type Database = {
           entity_id?: string | null
           entity_type?: string | null
           id?: string
+          mime_type?: string | null
           module_code?: string | null
           name: string
           node_type?: string
@@ -18866,6 +18869,7 @@ export type Database = {
           pv_plant_id?: string | null
           scope_hint?: string | null
           sort_index?: number | null
+          storage_path?: string | null
           template_id?: string | null
           tenant_id: string
           unit_id?: string | null
@@ -18880,6 +18884,7 @@ export type Database = {
           entity_id?: string | null
           entity_type?: string | null
           id?: string
+          mime_type?: string | null
           module_code?: string | null
           name?: string
           node_type?: string
@@ -18888,6 +18893,7 @@ export type Database = {
           pv_plant_id?: string | null
           scope_hint?: string | null
           sort_index?: number | null
+          storage_path?: string | null
           template_id?: string | null
           tenant_id?: string
           unit_id?: string | null
