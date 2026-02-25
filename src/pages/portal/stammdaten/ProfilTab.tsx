@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { FormSection, FormInput, FormRow } from '@/components/shared';
 import { RecordCard } from '@/components/shared/RecordCard';
 import { DESIGN, RECORD_CARD } from '@/config/designManifest';
+import { sanitizeFileName, UPLOAD_BUCKET } from '@/config/storageManifest';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { FileUploader } from '@/components/shared/FileUploader';
@@ -275,10 +276,10 @@ export function ProfilTab() {
     if (isDevelopmentMode && !user?.id) { toast.info('Avatar-Upload im Entwicklungsmodus nicht verfügbar'); return; }
     if (!user?.id) return;
     const file = files[0];
-    const fileExt = file.name.split('.').pop();
+    const fileExt = sanitizeFileName(file.name).split('.').pop() || 'jpg';
     const filePath = `${user.id}/avatar.${fileExt}`;
     try {
-      const { error: uploadError } = await supabase.storage.from('tenant-documents').upload(filePath, file, { upsert: true });
+      const { error: uploadError } = await supabase.storage.from(UPLOAD_BUCKET).upload(filePath, file, { upsert: true });
       if (uploadError) throw uploadError;
       const { getCachedSignedUrl } = await import('@/lib/imageCache');
       const signedUrl = await getCachedSignedUrl(filePath, 'tenant-documents');
@@ -293,10 +294,10 @@ export function ProfilTab() {
     if (isDevelopmentMode && !user?.id) { toast.info('Logo-Upload im Entwicklungsmodus nicht verfügbar'); return; }
     if (!user?.id) return;
     const file = files[0];
-    const fileExt = file.name.split('.').pop();
+    const fileExt = sanitizeFileName(file.name).split('.').pop() || 'png';
     const filePath = `${user.id}/letterhead-logo.${fileExt}`;
     try {
-      const { error: uploadError } = await supabase.storage.from('tenant-documents').upload(filePath, file, { upsert: true });
+      const { error: uploadError } = await supabase.storage.from(UPLOAD_BUCKET).upload(filePath, file, { upsert: true });
       if (uploadError) throw uploadError;
       const { getCachedSignedUrl } = await import('@/lib/imageCache');
       const signedUrl = await getCachedSignedUrl(filePath, 'tenant-documents');
