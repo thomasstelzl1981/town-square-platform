@@ -119,6 +119,7 @@ const MODE_CONFIGS: Record<ParserMode, ModeConfig> = {
     targetTable: 'cars_vehicles',
     targetDmsFolder: '01_Zulassung',
     exampleDocuments: ['Fahrzeugschein', 'Zulassungsbescheinigung Teil I/II', 'Fahrzeugbrief'],
+    preprocessPdfTables: true,
     fields: [
       { key: 'license_plate', label: 'Kennzeichen', type: 'string', required: true, aiHint: 'Amtliches Kennzeichen z.B. B-AB 1234' },
       { key: 'vin', label: 'FIN', type: 'string', required: false, aiHint: '17-stellige Fahrzeug-Identnummer' },
@@ -137,6 +138,7 @@ const MODE_CONFIGS: Record<ParserMode, ModeConfig> = {
     targetTable: 'pv_plants',
     targetDmsFolder: '01_Stammdaten',
     exampleDocuments: ['MaStR-Auszug', 'Inbetriebnahmeprotokoll', 'Einspeisezusage', 'Anlagendatenblatt'],
+    preprocessPdfTables: true,
     fields: [
       { key: 'name', label: 'Anlagenname', type: 'string', required: true },
       { key: 'kwp', label: 'Leistung (kWp)', type: 'number', required: true },
