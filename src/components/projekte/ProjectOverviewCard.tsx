@@ -69,14 +69,31 @@ export function ProjectOverviewCard({ isDemo, selectedProject, unitCount, fullPr
     return [];
   })();
 
-  // Key Facts: real data or demo or "—"
+  // Key Facts: intake_data → demoData → "—"
+  const intakeData = fullProject?.intake_data as Record<string, unknown> | null ?? null;
+  const constructionYear = intakeData?.construction_year as number | null;
+  const modernizationStatus = intakeData?.modernization_status as string | null;
+  const totalAreaSqm = typeof intakeData?.total_area_sqm === 'number' ? intakeData.total_area_sqm : null;
+  const heatingType = (intakeData?.heating_type as string | null) ?? null;
+  const energyClass = (intakeData?.energy_class as string | null) ?? null;
+
   const keyFacts = [
     { icon: Home, label: 'Wohneinheiten', value: `${totalUnits} WE` },
     { icon: Car, label: 'Stellplätze', value: demoData ? `${demoData.total_parking_spaces} TG` : '—' },
-    { icon: Ruler, label: 'Wohnfläche', value: demoData ? `ca. ${demoData.total_living_area.toLocaleString('de-DE')} m²` : '—' },
-    { icon: Calendar, label: 'Baujahr', value: demoData ? `${demoData.year_built} / San. ${demoData.renovation_year}` : '—' },
-    { icon: Flame, label: 'Heizart', value: demoData?.heating_type || '—' },
-    { icon: Zap, label: 'Energieklasse', value: demoData?.energy_class || '—' },
+    { 
+      icon: Ruler, label: 'Wohnfläche', 
+      value: totalAreaSqm 
+        ? `ca. ${totalAreaSqm.toLocaleString('de-DE')} m²`
+        : demoData ? `ca. ${demoData.total_living_area.toLocaleString('de-DE')} m²` : '—' 
+    },
+    { 
+      icon: Calendar, label: 'Baujahr', 
+      value: constructionYear 
+        ? (modernizationStatus ? `${constructionYear} / ${modernizationStatus}` : `${constructionYear}`)
+        : demoData ? `${demoData.year_built} / San. ${demoData.renovation_year}` : '—' 
+    },
+    { icon: Flame, label: 'Heizart', value: heatingType || demoData?.heating_type || '—' },
+    { icon: Zap, label: 'Energieklasse', value: energyClass || demoData?.energy_class || '—' },
   ];
 
   const prev = () => setActiveIdx((i) => (i === 0 ? images.length - 1 : i - 1));

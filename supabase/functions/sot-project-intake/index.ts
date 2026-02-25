@@ -697,7 +697,7 @@ async function handleCreate(
           tenant_id: tenantId,
           name: project.project_code,
           node_type: 'folder',
-          module_code: 'MOD_13',
+          module_code: 'MOD-13',
           entity_id: project.id,
           parent_id: null,
         })
@@ -718,7 +718,7 @@ async function handleCreate(
           tenant_id: tenantId,
           name: folderName,
           node_type: 'folder',
-          module_code: 'MOD_13',
+          module_code: 'MOD-13',
           entity_id: project.id,
           parent_id: rootNode.id,
         });
@@ -731,7 +731,7 @@ async function handleCreate(
             tenant_id: tenantId,
             name: '07_einheiten',
             node_type: 'folder',
-            module_code: 'MOD_13',
+            module_code: 'MOD-13',
             entity_id: project.id,
             parent_id: rootNode.id,
           })
@@ -746,7 +746,7 @@ async function handleCreate(
                 tenant_id: tenantId,
                 name: unit.unitNumber || 'WE-???',
                 node_type: 'folder',
-                module_code: 'MOD_13',
+                module_code: 'MOD-13',
                 entity_id: project.id,
                 parent_id: unitsParent.id,
               })
@@ -759,7 +759,7 @@ async function handleCreate(
                   tenant_id: tenantId,
                   name: sub,
                   node_type: 'folder',
-                  module_code: 'MOD_13',
+                  module_code: 'MOD-13',
                   entity_id: project.id,
                   parent_id: unitFolder.id,
                 });
@@ -789,17 +789,18 @@ async function handleCreate(
 
       if (exposeFolder) {
         const fileName = storagePaths.expose.split('/').pop() || 'Expose.pdf';
-        await supabase.from('storage_nodes').insert({
+        const { error: expLinkErr } = await supabase.from('storage_nodes').insert({
           tenant_id: tenantId,
           name: fileName,
           node_type: 'file',
-          module_code: 'MOD_13',
+          module_code: 'MOD-13',
           entity_id: project.id,
           parent_id: exposeFolder.id,
           storage_path: storagePaths.expose,
           mime_type: 'application/pdf',
         });
-        console.log('Exposé linked to DMS tree:', fileName);
+        if (expLinkErr) console.error('❌ Exposé DMS link failed:', expLinkErr.message);
+        else console.log('✅ Exposé linked to DMS tree:', fileName);
       }
     } catch (linkErr) {
       console.error('Exposé DMS link error:', linkErr);
@@ -824,17 +825,18 @@ async function handleCreate(
         const mimeType = storagePaths.pricelist.endsWith('.pdf') ? 'application/pdf'
           : storagePaths.pricelist.endsWith('.xlsx') ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
           : 'text/csv';
-        await supabase.from('storage_nodes').insert({
+        const { error: plLinkErr } = await supabase.from('storage_nodes').insert({
           tenant_id: tenantId,
           name: fileName,
           node_type: 'file',
-          module_code: 'MOD_13',
+          module_code: 'MOD-13',
           entity_id: project.id,
           parent_id: pricelistFolder.id,
           storage_path: storagePaths.pricelist,
           mime_type: mimeType,
         });
-        console.log('Pricelist linked to DMS tree:', fileName);
+        if (plLinkErr) console.error('❌ Pricelist DMS link failed:', plLinkErr.message);
+        else console.log('✅ Pricelist linked to DMS tree:', fileName);
       }
     } catch (linkErr) {
       console.error('Pricelist DMS link error:', linkErr);
