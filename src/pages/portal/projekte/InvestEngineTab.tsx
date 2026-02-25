@@ -92,11 +92,11 @@ export default function InvestEngineTab() {
     }));
   }, [realUnits]);
 
-  // Reset calculation when project changes
+  // Reset calculation when project changes (including AfA parameter changes)
   useEffect(() => {
     setMetricsCache({});
     setHasCalculated(false);
-  }, [selectedProjectId]);
+  }, [selectedProjectId, fullProject?.afa_model, fullProject?.land_share_percent, fullProject?.afa_rate_percent]);
 
   // Calculate for all units in parallel
   const handleCalculate = useCallback(async () => {
@@ -106,8 +106,8 @@ export default function InvestEngineTab() {
     const newCache: Record<string, CalculationResult['summary']> = {};
 
     // Project-level defaults
-    const afaModel = ((fullProject as any).afa_model as CalculationInput['afaModel']) ?? 'linear';
-    const buildingShare = 1 - (((fullProject as any).land_share_percent ?? 20) / 100);
+    const afaModel = (fullProject.afa_model as CalculationInput['afaModel']) ?? 'linear';
+    const buildingShare = 1 - ((fullProject.land_share_percent ?? 20) / 100);
 
     await Promise.all(realUnits.map(async (unit) => {
       const rentMonthly = unit.rent_net ?? unit.current_rent ?? 0;
@@ -141,7 +141,7 @@ export default function InvestEngineTab() {
     if (selectedProjectId) {
       supabase
         .from('dev_projects')
-        .update({ invest_engine_analyzed: true } as any)
+        .update({ invest_engine_analyzed: true })
         .eq('id', selectedProjectId)
         .then(() => {
           console.log('[InvestEngine] invest_engine_analyzed flag set for project', selectedProjectId);
@@ -289,7 +289,7 @@ export default function InvestEngineTab() {
                 Investment-Preisliste — {unitRows.length} Einheiten
                 {fullProject && (
                   <span className="ml-2 text-xs text-muted-foreground/70">
-                    (AfA: {(fullProject as any).afa_model || 'linear'}, Gebäudeanteil: {100 - ((fullProject as any).land_share_percent ?? 20)}%)
+                    (AfA: {fullProject.afa_model || 'linear'}, Gebäudeanteil: {100 - (fullProject.land_share_percent ?? 20)}%)
                   </span>
                 )}
               </h3>

@@ -92,8 +92,8 @@ export default function InvestEngineExposePage() {
         equity: prev.equity || initialEquity,
         maritalStatus: prev.maritalStatus || initialMarital,
         hasChurchTax: prev.hasChurchTax ?? initialChurch,
-        afaModel: ((project as any).afa_model as CalculationInput['afaModel']) ?? 'linear',
-        buildingShare: 1 - (((project as any).land_share_percent ?? 20) / 100),
+        afaModel: (project.afa_model as CalculationInput['afaModel']) ?? 'linear',
+        buildingShare: 1 - ((project.land_share_percent ?? 20) / 100),
         managementCostMonthly: unit.hausgeld ?? 25,
       }));
     }
