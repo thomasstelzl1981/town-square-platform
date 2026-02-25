@@ -13,7 +13,7 @@ export const DEMO_PASSWORD = 'DemoSoT2026!public';
 export const DEMO_TENANT_ID = 'c3123104-e2ec-47ca-9f0a-616808557ece';
 
 /** Areas hidden in demo mode */
-export const DEMO_HIDDEN_AREAS = ['operations'] as const;
+export const DEMO_HIDDEN_AREAS = [] as const;
 
 /** Check if the current user is the demo account */
 export function isDemoSession(userEmail?: string | null): boolean {
