@@ -16,6 +16,7 @@ export interface CalculationInput {
   managementCostMonthly: number;
   valueGrowthRate: number;
   rentGrowthRate: number;
+  afaRateOverride?: number;
 }
 
 export interface YearlyData {
