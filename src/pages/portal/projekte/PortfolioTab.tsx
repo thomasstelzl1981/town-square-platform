@@ -266,6 +266,9 @@ export default function PortfolioTab() {
                       energy_source: (selectedProject as any).energy_source,
                       renovation_year: (selectedProject as any).renovation_year,
                       parking_type: (selectedProject as any).parking_type,
+                      afa_rate_percent: (projects.find(p => p.id === selectedProjectId) as any)?.afa_rate_percent,
+                      afa_model: (projects.find(p => p.id === selectedProjectId) as any)?.afa_model,
+                      land_share_percent: (projects.find(p => p.id === selectedProjectId) as any)?.land_share_percent,
                     }}
                     units={realUnits as any}
                   />

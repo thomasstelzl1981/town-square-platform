@@ -3,7 +3,7 @@
  * Ersetzt ProjectOverviewCard. Alle Felder editierbar, ein Speichern-Button.
  * KI-Beschreibungs-Button für automatische Exposé-Analyse.
  */
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -172,7 +172,8 @@ export function ProjectDataSheet({ isDemo, selectedProject, unitCount, fullProje
       typeof intake?.total_area_sqm === 'number' ? intake.total_area_sqm
         : typeof reviewed?.totalArea === 'number' ? reviewed.totalArea : 0
     );
-    setConstructionYear(intake?.construction_year ?? 0);
+    setConstructionYear(fullProject.construction_year ?? intake?.construction_year ?? 0);
+    setTotalArea(fullProject.total_area_sqm ?? (typeof intake?.total_area_sqm === 'number' ? intake.total_area_sqm : (typeof (intake?.reviewed_data as any)?.totalArea === 'number' ? (intake.reviewed_data as any).totalArea : 0)));
     setConditionText(fullProject.condition_text ?? intake?.modernization_status ?? '');
     setFloorsCount(fullProject.floors_count ?? 0);
     setHeatingType(fullProject.heating_type ?? intake?.heating_type ?? '');
@@ -323,6 +324,9 @@ export function ProjectDataSheet({ isDemo, selectedProject, unitCount, fullProje
         afa_rate_percent: afaRate,
         afa_model: afaModel,
         land_share_percent: landShare,
+        construction_year: constructionYear || null,
+        total_area_sqm: totalArea || null,
+        total_units_count: totalUnits || null,
       };
 
       const { error } = await supabase
@@ -661,13 +665,14 @@ export function ProjectDataSheet({ isDemo, selectedProject, unitCount, fullProje
 }
 
 // ── Helper: Form field with icon + label ──
-function FormField({ label, icon: Icon, children }: { label: string; icon: React.ElementType; children: React.ReactNode }) {
-  return (
-    <div className="space-y-1">
+const FormField = React.forwardRef<HTMLDivElement, { label: string; icon: React.ElementType; children: React.ReactNode }>(
+  ({ label, icon: Icon, children }, ref) => (
+    <div ref={ref} className="space-y-1">
       <Label className="text-[10px] text-muted-foreground flex items-center gap-1">
         <Icon className="h-3 w-3" /> {label}
       </Label>
       {children}
     </div>
-  );
-}
+  )
+);
+FormField.displayName = 'FormField';
