@@ -8,6 +8,8 @@ import { GoldenPathGuard } from '@/goldenpath/GoldenPathGuard';
 
 const ProjekteDashboard = lazy(() => import('./projekte/ProjekteDashboard'));
 const PortfolioTab = lazy(() => import('./projekte/PortfolioTab'));
+const InvestEngineTab = lazy(() => import('./projekte/InvestEngineTab'));
+const InvestEngineExposePage = lazy(() => import('./projekte/InvestEngineExposePage'));
 const VertriebTab = lazy(() => import('./projekte/VertriebTab'));
 const LandingPageTab = lazy(() => import('./projekte/LandingPageTab'));
 const ProjectDetailPage = lazy(() => import('./projekte/ProjectDetailPage'));
@@ -23,6 +25,8 @@ export default function ProjektePage() {
       {/* Main Tile routes - 4-Tile Pattern */}
       <Route path="dashboard" element={<ProjekteDashboard />} />
       <Route path="projekte" element={<PortfolioTab />} />
+      <Route path="invest-engine" element={<InvestEngineTab />} />
+      <Route path="invest-engine/:unitId" element={<InvestEngineExposePage />} />
       <Route path="vertrieb" element={<VertriebTab />} />
       <Route path="landing-page" element={<LandingPageTab />} />
       
