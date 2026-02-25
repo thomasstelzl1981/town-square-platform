@@ -575,32 +575,45 @@ async function handleAnalyze(
           }
         }
 
-        // ── PDF pricelist: AI extraction ──────────────────────────────────
+        // ── PDF pricelist: CSV strategy (Gemini → flat CSV → SheetJS parse) ──
         if (isPdf && LOVABLE_API_KEY) {
-          const mimeType = 'application/pdf';
+          console.log('PDF pricelist detected — using CSV extraction strategy');
+
+          // Build context hint from exposé data
+          let hint = '';
+          if (extractedData.projectName) {
+            hint = `Dies ist eine Immobilien-Preisliste für "${extractedData.projectName}"`;
+            if (extractedData.city) hint += ` in ${extractedData.city}`;
+            hint += '.';
+            if (extractedData.unitsCount) hint += ` Es werden ca. ${extractedData.unitsCount} Einheiten erwartet.`;
+            if (extractedData.wegCount && extractedData.wegCount > 1) {
+              hint += ` Das Projekt hat ${extractedData.wegCount} WEGs.`;
+              if (extractedData.wegDetails && extractedData.wegDetails.length > 0) {
+                for (const weg of extractedData.wegDetails) {
+                  hint += ` ${weg.name} (${weg.unitsCount} Einheiten).`;
+                }
+              }
+            }
+            hint += ' Typische Spalten: Whg-Nr, Wohnfläche, Zimmer, Etage, Kaufpreis, Miete, Hausgeld, WEG.';
+          }
+
           const buffer = await fileData.arrayBuffer();
           const base64 = uint8ToBase64(new Uint8Array(buffer));
 
-          let contextPrompt = PRICELIST_SYSTEM_PROMPT_BASE;
-          if (extractedData.projectName) {
-            contextPrompt += `\n\nKONTEXT AUS DEM EXPOSÉ (nutze diese Informationen zur besseren Zuordnung):`;
-            contextPrompt += `\n- Projektname: ${extractedData.projectName}`;
-            if (extractedData.projectType) contextPrompt += `\n- Projekttyp: ${extractedData.projectType}`;
-            if (extractedData.city) contextPrompt += `\n- Stadt: ${extractedData.city}`;
-            if (extractedData.address) contextPrompt += `\n- Adresse: ${extractedData.address}`;
-            if (extractedData.constructionYear) contextPrompt += `\n- Baujahr: ${extractedData.constructionYear}`;
-            if (extractedData.wegCount && extractedData.wegCount > 1) {
-              contextPrompt += `\n- Anzahl WEGs: ${extractedData.wegCount}`;
-              if (extractedData.wegDetails && extractedData.wegDetails.length > 0) {
-                contextPrompt += `\n- WEG-Struktur:`;
-                for (const weg of extractedData.wegDetails) {
-                  contextPrompt += `\n  • ${weg.name} (${weg.unitsCount} Einheiten, ${weg.addressRange})`;
-                }
-                contextPrompt += `\n- WICHTIG: Ordne jede Einheit der korrekten WEG zu basierend auf Hausnummer oder Position in der Liste!`;
-              }
-            }
-            if (extractedData.unitsCount) contextPrompt += `\n- Erwartete Einheiten: ${extractedData.unitsCount}`;
-          }
+          const csvSystemPrompt = `Du bist ein hochpräziser Tabellen-Extraktor. Extrahiere ALLE Tabellenzeilen aus diesem Dokument als semikolon-getrennte CSV.
+
+Regeln:
+- Erste Zeile = exakte Spaltenüberschriften aus dem Dokument
+- Jede weitere Zeile = eine Datenzeile
+- Trennzeichen: Semikolon (;)
+- Zahlen: Punkt als Dezimaltrennzeichen, keine Tausenderpunkte (z.B. 149900.00 statt 149.900,00)
+- Keine Markdown-Formatierung, kein Code-Block, keine Backticks, nur roher CSV-Text
+- JEDE Zeile im Dokument MUSS enthalten sein. Überspringe KEINE Zeile.
+- Wenn ein Feld leer ist, lasse es leer (zwei Semikolons hintereinander)
+- Entferne Währungszeichen (€, EUR) aus Zahlenwerten
+- Prozentzeichen (%) entfernen, Wert als Dezimalzahl ausgeben (z.B. 4.5 statt 4,5%)
+
+Ausgabe NUR den CSV-Text, nichts anderes.` + (hint ? `\n\nKONTEXT: ${hint}` : '');
 
           const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
             method: 'POST',
@@ -611,35 +624,110 @@ async function handleAnalyze(
             body: JSON.stringify({
               model: 'google/gemini-2.5-flash',
               messages: [
-                { role: 'system', content: contextPrompt },
+                { role: 'system', content: csvSystemPrompt },
                 {
                   role: 'user',
                   content: [
-                    { type: 'text', text: 'Extrahiere alle Einheiten aus dieser Preisliste und melde das Spalten-Mapping. Berechne Rendite und Mietfaktor wenn möglich.' },
-                    { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64}` } }
-                  ]
-                }
+                    { type: 'text', text: 'Extrahiere alle Tabellenzeilen aus diesem PDF als CSV.' },
+                    { type: 'image_url', image_url: { url: `data:application/pdf;base64,${base64}` } },
+                  ],
+                },
               ],
-              tools: [EXTRACT_UNITS_TOOL],
-              tool_choice: { type: 'function' as const, function: { name: 'extract_units' } },
-              max_tokens: 16000,
+              max_tokens: 32000,
             }),
           });
 
           if (aiResponse.ok) {
             const aiResult = await aiResponse.json();
-            const toolCall = aiResult.choices?.[0]?.message?.tool_calls?.[0];
-            if (toolCall?.function?.arguments) {
-              try {
-                const args = JSON.parse(toolCall.function.arguments);
-                const units = args.units as ExtractedUnit[];
-                const columnMapping = args.column_mapping as ColumnMapping[];
+            let csv = aiResult.choices?.[0]?.message?.content || '';
 
-                if (Array.isArray(units) && units.length > 0) {
+            // Clean markdown fences if present
+            csv = csv.replace(/^```(?:csv)?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim();
+
+            const csvLines = csv.split('\n').filter((l: string) => l.trim().length > 0);
+            console.log(`CSV extraction: ${csv.length} chars, ${csvLines.length} lines (${csvLines.length - 1} data rows)`);
+
+            // ── Parse CSV with SheetJS — reuse deterministic XLSX parser ──
+            if (csv.length > 10) {
+              const wb = XLSX.read(csv, { type: 'string', FS: ';' });
+              const ws = wb.Sheets[wb.SheetNames[0]];
+              const rows: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+
+              if (rows.length > 1) {
+                const headerRow = rows[0].map((h: any) => String(h).trim().toLowerCase());
+                console.log('CSV headers:', headerRow);
+
+                // Reuse same fuzzy column mapping as XLSX path
+                const COLUMN_PATTERNS: Record<string, RegExp> = {
+                  unitNumber: /^(whg|we|einheit|nr|top|obj|wohnung|lf|unit)/i,
+                  type: /^(typ|art|nutzung|kategorie)/i,
+                  area: /^(wfl|wohn.*fl|fläche|flaeche|qm|m²|m2|nutzfl)/i,
+                  rooms: /^(zimmer|zi|räume|raeume)/i,
+                  floor: /^(etage|geschoss|og|stockwerk|lage|ebene)/i,
+                  price: /^(kaufpreis|preis|vk|verkaufspreis|kp|gesamt.*preis|gesamtkauf)/i,
+                  currentRent: /^(miete|ist.*miete|monatsmiete|kaltmiete|nettomiete|akt.*miete|mietein|garantierte.*miete$)/i,
+                  hausgeld: /^(hausgeld|hg|eigentümer.*kost)/i,
+                  weg: /^(weg|eigentümer.*gem)/i,
+                };
+
+                const colMap: Record<string, number> = {};
+                const columnMapping: ColumnMapping[] = [];
+
+                for (let ci = 0; ci < headerRow.length; ci++) {
+                  const raw = rows[0][ci] ? String(rows[0][ci]).trim() : '';
+                  const h = headerRow[ci];
+                  for (const [field, pattern] of Object.entries(COLUMN_PATTERNS)) {
+                    if (!colMap[field] && pattern.test(h)) {
+                      colMap[field] = ci;
+                      columnMapping.push({ original_column: raw, mapped_to: field });
+                      break;
+                    }
+                  }
+                  if (!colMap.currentRent && /garantierte.*miete/i.test(h)) {
+                    const sampleVal = rows.length > 1 ? Number(rows[1][ci]) : 0;
+                    if (sampleVal > 10) {
+                      colMap.currentRent = ci;
+                      columnMapping.push({ original_column: raw, mapped_to: 'currentRent' });
+                    }
+                  }
+                }
+
+                console.log('Column map from CSV:', colMap);
+
+                const units: ExtractedUnit[] = [];
+                for (let ri = 1; ri < rows.length; ri++) {
+                  const row = rows[ri];
+                  const areaVal = colMap.area !== undefined ? parseFloat(String(row[colMap.area]).replace(/[^\d.,]/g, '').replace(',', '.')) : 0;
+                  const priceVal = colMap.price !== undefined ? parseFloat(String(row[colMap.price]).replace(/[^\d.,]/g, '').replace(',', '.')) : 0;
+                  if (!areaVal && !priceVal) continue;
+
+                  const unit: ExtractedUnit = {
+                    unitNumber: colMap.unitNumber !== undefined ? String(row[colMap.unitNumber] || `WE-${ri}`).trim() : `WE-${ri}`,
+                    type: colMap.type !== undefined ? String(row[colMap.type] || 'Wohnung').trim() : 'Wohnung',
+                    area: areaVal || 0,
+                    rooms: colMap.rooms !== undefined ? parseFloat(String(row[colMap.rooms]).replace(',', '.')) || 0 : 0,
+                    floor: colMap.floor !== undefined ? String(row[colMap.floor] || '').trim() : '',
+                    price: priceVal || 0,
+                    currentRent: colMap.currentRent !== undefined ? parseFloat(String(row[colMap.currentRent]).replace(/[^\d.,]/g, '').replace(',', '.')) || 0 : 0,
+                    hausgeld: colMap.hausgeld !== undefined ? parseFloat(String(row[colMap.hausgeld]).replace(/[^\d.,]/g, '').replace(',', '.')) || 0 : 0,
+                    weg: colMap.weg !== undefined ? String(row[colMap.weg] || '').trim() : '',
+                  };
+
+                  if (unit.currentRent && unit.price) {
+                    const annualRent = unit.currentRent * 12;
+                    const annualHausgeld = (unit.hausgeld || 0) * 12;
+                    unit.nettoRendite = Math.round(((annualRent - annualHausgeld) / unit.price) * 10000) / 100;
+                    unit.mietfaktor = Math.round((unit.price / annualRent) * 10) / 10;
+                  }
+
+                  units.push(unit);
+                }
+
+                if (units.length > 0) {
                   extractedData.extractedUnits = units;
                   extractedData.unitsCount = units.length;
                   extractedData.totalArea = units.reduce((s, u) => s + (u.area || 0), 0);
-                  const prices = units.map(u => u.price).filter(p => 0);
+                  const prices = units.map(u => u.price).filter(p => p > 0);
                   if (prices.length > 0) {
                     const min = Math.min(...prices);
                     const max = Math.max(...prices);
@@ -647,45 +735,24 @@ async function handleAnalyze(
                       ? `${min.toLocaleString('de-DE')} €`
                       : `${min.toLocaleString('de-DE')} – ${max.toLocaleString('de-DE')} €`;
                   }
-                  console.log(`Pricelist parsed via tool-calling: ${units.length} units extracted`);
-                }
-
-                if (Array.isArray(columnMapping) && columnMapping.length > 0) {
                   extractedData.columnMapping = columnMapping;
-                  console.log('Column mapping:', JSON.stringify(columnMapping));
-                }
-              } catch (parseErr) {
-                console.error('Tool-calling parse error:', parseErr);
-              }
-            } else {
-              const content = aiResult.choices?.[0]?.message?.content;
-              if (content) {
-                const jsonMatch = content.match(/\[[\s\S]*\]/);
-                if (jsonMatch) {
-                  try {
-                    const units = JSON.parse(jsonMatch[0]) as ExtractedUnit[];
-                    if (Array.isArray(units) && units.length > 0) {
-                      extractedData.extractedUnits = units;
-                      extractedData.unitsCount = units.length;
-                      extractedData.totalArea = units.reduce((s, u) => s + (u.area || 0), 0);
-                      const prices = units.map(u => u.price).filter(p => p > 0);
-                      if (prices.length > 0) {
-                        const min = Math.min(...prices);
-                        const max = Math.max(...prices);
-                        extractedData.priceRange = min === max
-                          ? `${min.toLocaleString('de-DE')} €`
-                          : `${min.toLocaleString('de-DE')} – ${max.toLocaleString('de-DE')} €`;
-                      }
-                      console.log(`Pricelist parsed (fallback): ${units.length} units`);
-                    }
-                  } catch (parseErr) {
-                    console.error('Pricelist fallback parse error:', parseErr);
-                  }
+                  console.log(`PDF→CSV→Parse: ${units.length} units extracted successfully`);
                 }
               }
             }
           } else if (aiResponse.status === 429 || aiResponse.status === 402) {
             console.warn('AI rate limit on pricelist:', aiResponse.status);
+            return new Response(JSON.stringify({
+              error: aiResponse.status === 429
+                ? 'KI-Rate-Limit erreicht. Bitte versuchen Sie es in einer Minute erneut.'
+                : 'KI-Credits aufgebraucht. Bitte laden Sie Credits nach.',
+            }), {
+              status: aiResponse.status,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+          } else {
+            const errText = await aiResponse.text();
+            console.error('AI CSV extraction error:', aiResponse.status, errText);
           }
         }
       }
