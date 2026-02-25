@@ -1,75 +1,93 @@
 
 
-## Analyse: PDF-Tabellenextraktion im Magic Intake
+## Plan: PDF-CSV-Preprocessing systemweit in die Document Parser Engine integrieren
 
-### Kernproblem
+### Ausgangslage
 
-Die KI (Gemini) wird aktuell gebeten, PDF-Tabellen als strukturiertes JSON via Tool-Calling zu extrahieren. Bei 72 Zeilen verliert das Modell Zeilen, weil die JSON-Struktur pro Einheit sehr viel Token-Overhead hat. Das Problem betrifft jeden Magic Intake im System, nicht nur MOD-13.
-
-### Erkenntnis aus der Analyse
-
-Unser eigener Document Parser hat soeben **alle 72 Einheiten fehlerfrei** aus dem PDF extrahiert. Das PDF enthalt eine saubere Tabelle. Das Problem liegt nicht am PDF, sondern an der Art, wie wir die KI einsetzen: Wir senden das PDF als Base64-Bild und bitten Gemini, alles auf einmal als verschachtelte JSON-Objekte zuruckzugeben.
-
-### Empfohlene Losung: Zweistufiger Ansatz (keine externe API notig)
-
-Statt einer externen PDF-zu-Excel-API nutzen wir die bereits verfugbare Lovable AI kostenlos, aber mit einer intelligenteren Strategie:
+Aktuell gibt es zwei getrennte Implementierungen:
 
 ```text
-AKTUELL (verliert Zeilen):
-  PDF (base64 image) → Gemini → 72x JSON-Objekte via Tool-Calling → Review
-
-NEU (zuverlassig):
-  PDF (base64 image) → Gemini → rohes CSV (flat text) → SheetJS parse → Review
+sot-project-intake (MOD-13)     sot-document-parser (alle Module)
+  │                                │
+  ├─ XLSX: SheetJS direkt          ├─ PDF → Gemini → JSON (max 8000 tokens)
+  ├─ PDF → Gemini → CSV → SheetJS  ├─ Kein CSV-Preprocessing
+  └─ Eigene Parsing-Logik          └─ Eigene Parsing-Logik
 ```
 
-**Warum CSV statt JSON?** Eine CSV-Zeile ist ~80 Zeichen. Ein JSON-Objekt mit denselben Daten ist ~400 Zeichen. Bei 72 Einheiten spart das ~23.000 Tokens und das Modell kann die Daten sequenziell Zeile fur Zeile ausgeben, ohne verschachtelte Strukturen.
+Die CSV-Strategie existiert nur in MOD-13. Der zentrale `sot-document-parser` sendet PDFs direkt an Gemini und erwartet JSON zurueck — mit demselben Token-Limit-Problem bei tabellarischen Dokumenten (Kontoauszuege, Versicherungslisten, Nebenkostenabrechnungen, etc.).
 
-### Plan: Implementierung
+### Was geaendert wird
 
-#### 1. Neue Edge Function `sot-pdf-to-csv`
-- Nimmt einen `storagePath` zu einem PDF entgegen
-- Sendet das PDF als Base64 an Gemini (gemini-2.5-flash, gunstig + schnell)
-- Prompt: "Extrahiere alle Tabellenzeilen als semikolon-getrennte CSV. Erste Zeile = Header. Keine Formatierung, kein Markdown, nur CSV."
-- Gibt reinen CSV-Text zuruck
-- Kann von jedem Magic Intake im System genutzt werden (MOD-04, MOD-07, MOD-11, MOD-13, etc.)
+**Die bestehende `sot-pdf-to-csv` Edge Function wird zum zentralen Preprocessing-Baustein.** Der `sot-document-parser` erhaelt eine optionale Vorverarbeitungsstufe fuer tabellarische PDFs.
 
-#### 2. Integration in `sot-project-intake`
-- Bei PDF-Preislisten: Erst `sot-pdf-to-csv` aufrufen (oder die Logik inline)
-- Das CSV dann mit SheetJS (bereits importiert) als XLSX parsen
-- Ab dort greift der existierende deterministische XLSX-Parser mit Fuzzy-Column-Mapping
-- Kein Tool-Calling mehr fur Preislisten-PDFs notig
+```text
+NEU — Zweistufig mit CSV-Preprocessing:
 
-#### 3. Integration in `sot-document-parser` (systemweit)
-- Fur alle Parse-Modi, die Tabellendaten aus PDFs benotigen
-- Optional: Preprocessing-Flag `preprocessPdfTables: true` im ParserManifest pro Modus
+  PDF Upload
+    │
+    ▼
+  sot-document-parser
+    │
+    ├─ Schritt 0: Ist das PDF tabellarisch? (Heuristik + Manifest-Flag)
+    │   ├─ JA → sot-pdf-to-csv aufrufen → CSV als Textkontext anhängen
+    │   └─ NEIN → Standard Vision-Pipeline (Personalausweis, Fahrzeugschein, etc.)
+    │
+    ├─ Schritt 1: Gemini mit strukturiertem Prompt (wie bisher)
+    │   Aber jetzt mit CSV-Text statt nur Bild → deutlich praeziser
+    │
+    └─ Schritt 2: Validierung + Response
+```
 
-#### 4. Kein externer API-Key erforderlich
-- Nutzt ausschliesslich Lovable AI (Gemini Flash) — bereits verfugbar, keine Kosten
-- SheetJS fur CSV-Parsing — bereits als Dependency vorhanden
-- Keine neuen Secrets, keine neuen Abhangigkeiten
+### Konkrete Aenderungen
+
+#### 1. ParserManifest erweitern (`src/config/parserManifest.ts`)
+- Neues Feld `preprocessPdfTables: boolean` pro ParserProfile
+- `true` fuer: `immobilie`, `finanzierung`, `versicherung`, `vorsorge` (Dokumente mit Tabellen)
+- `false` fuer: `fahrzeugschein`, `person`, `haustier`, `kontakt`, `pv_anlage` (Formular/Freitext-Dokumente)
+
+#### 2. `sot-document-parser` anpassen (`supabase/functions/sot-document-parser/index.ts`)
+- Bei PDF-Dateien: `preprocessPdfTables`-Flag aus dem Manifest pruefen
+- Wenn `true`: Intern `sot-pdf-to-csv`-Logik ausfuehren (CSV-Extraktion via Gemini Flash)
+- Den extrahierten CSV-Text als zusaetzlichen Kontext an den Haupt-AI-Call uebergeben
+- **Kein** separater HTTP-Call zu `sot-pdf-to-csv` noetig — die Logik wird inline integriert (gleicher Prompt, gleiche Aufbereitung)
+- `max_tokens` von 8000 auf 16000 erhoehen fuer tabellarische Dokumente
+
+#### 3. `sot-pdf-to-csv` bleibt als eigenstaendige Edge Function bestehen
+- Weiterhin einzeln aufrufbar fuer Module mit eigenem Intake (MOD-13)
+- Keine Aenderung an der Function selbst
+
+#### 4. `sot-project-intake` aufraeumen (optional)
+- Die duplizierte CSV-Prompt-Logik (Zeilen 603-616) kann durch einen Aufruf an `sot-pdf-to-csv` ersetzt werden
+- Reduziert Code-Duplizierung
+
+### Welche Module profitieren sofort
+
+| Modul | Dokumente mit Tabellen | Verbesserung |
+|-------|----------------------|--------------|
+| MOD-04 Immobilien | Nebenkostenabrechnungen, Mieterlisten | Alle Positionen statt nur erste 10 |
+| MOD-07 Finanzierung | Tilgungsplaene, Konditionen | Vollstaendige Zeilenextraktion |
+| MOD-11 Versicherung | Policeninhalte mit Leistungstabellen | Praezisere Deckungssummen |
+| MOD-13 Projekte | Preislisten (bereits funktional) | Konsistenz mit zentraler Engine |
+| MOD-18 Finanzanalyse | Kontoauszuege, BWA-Tabellen | Alle Buchungszeilen |
+
+### Was NICHT geaendert wird
+
+- Keine Aenderung am Frontend/UI — nur Backend-Logik
+- Keine neuen Tabellen oder RLS-Policies
+- Keine neuen API-Keys oder Secrets
+- Kein Freeze-Konflikt — Edge Functions liegen ausserhalb der Modul-Pfade
+- `sot-pdf-to-csv` bleibt unveraendert
 
 ### Technische Details
 
-**Prompt-Strategie fur CSV-Extraktion:**
-```
-Extrahiere ALLE Tabellenzeilen aus diesem Dokument als semikolon-getrennte CSV.
-Regeln:
-- Erste Zeile = exakte Spaltenuberschriften aus dem Dokument
-- Jede weitere Zeile = eine Datenzeile
-- Trennzeichen: Semikolon (;)
-- Zahlen: Punkt als Dezimaltrennzeichen, keine Tausenderpunkte
-- Keine Markdown-Formatierung, kein Code-Block, nur roher CSV-Text
-- JEDE Zeile im Dokument MUSS enthalten sein. Uberspinge KEINE Zeile.
+**Entscheidungslogik im Document Parser:**
+```text
+if (contentType === 'application/pdf' && modeConfig.preprocessPdfTables) {
+  // 1. CSV-Extraktion via Gemini Flash (schnell, günstig)
+  // 2. CSV-Text als zusätzlichen Kontext an Haupt-Prompt
+  // 3. Gemini kann nun Tabellendaten aus Text lesen statt aus Bild raten
+}
 ```
 
-**Betroffene Dateien:**
-- `supabase/functions/sot-project-intake/index.ts` — PDF-Preislisten-Pfad umbauen
-- Optional neue Edge Function `sot-pdf-to-csv/index.ts` — wiederverwendbar fur alle Module
-- `supabase/config.toml` — ggf. neue Function registrieren
-
-**Kein Freeze-Konflikt:** MOD-13 ist bereits unfrozen. Die Edge Functions liegen ausserhalb der Modul-Pfade.
-
-### Alternative: Externe API (vorerst nicht empfohlen)
-
-Die genannten APIs (ConvertAPI, PDF.co, etc.) kosten 5-50 EUR/Monat und erfordern einen API-Key. Da Gemini die Tabellen korrekt lesen kann und nur das Ausgabeformat das Problem war, ist die CSV-Strategie kostengunstiger und schneller umsetzbar. Sollte sich zeigen, dass auch CSV-Output bei sehr komplexen PDFs Zeilen verliert, konnen wir eine externe API als Fallback nachrüsten.
+**Kosten-Impakt:** Ein zusaetzlicher Gemini Flash Call pro tabellarischem PDF (~0.001 EUR). Der Haupt-Call wird dafuer praeziser und braucht weniger Retries.
 
