@@ -1,6 +1,6 @@
-import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { useSwipeBack } from '@/hooks/useSwipeBack';
-import { Outlet, Navigate, useLocation, Link, useNavigate } from 'react-router-dom';
+import { Outlet, Navigate, useLocation, Link } from 'react-router-dom';
 
 // Preload core modules for instant navigation
 const preloadModules = () => {
@@ -24,7 +24,7 @@ import { MobileModuleMenu } from './MobileModuleMenu';
 import { SubTabs } from './SubTabs';
 import { PortalLayoutProvider, usePortalLayout } from '@/hooks/usePortalLayout';
 import { getModulesSorted } from '@/manifests/routesManifest';
-import { Loader2, LogOut, Sparkles, X } from 'lucide-react';
+import { Loader2, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { useLegalConsent } from '@/hooks/useLegalConsent';
@@ -55,21 +55,12 @@ function PortalLayoutInner() {
   const { showConsentModal, setShowConsentModal } = useLegalConsent();
   const { runSeed: runLennoxSeed } = useLennoxInitialSeed();
   const location = useLocation();
-  const navigate = useNavigate();
+  
   // Armstrong sheet state removed — mobile uses full-screen chat now
   const [mobileHomeMode, setMobileHomeMode] = useState<'modules' | 'chat'>('modules'); // kept for chat activation
   const swipeRef = useRef<HTMLDivElement>(null);
   useSwipeBack(swipeRef);
 
-  // Welcome banner for first-time users
-  const WELCOME_KEY = 'sot_welcome_shown';
-  const [showWelcome, setShowWelcome] = useState(() => {
-    try { return !localStorage.getItem(WELCOME_KEY); } catch { return false; }
-  });
-  const dismissWelcome = useCallback(() => {
-    setShowWelcome(false);
-    try { localStorage.setItem(WELCOME_KEY, '1'); } catch {}
-  }, []);
   // P0-FIX: Track if we've ever finished initial loading
   const hasInitializedRef = useRef(false);
   const lennoxSeedRef = useRef(false);
@@ -208,37 +199,6 @@ function PortalLayoutInner() {
     </div>
   ) : null;
 
-  // Welcome banner for first-time users (not in demo mode)
-  const WelcomeBanner = showWelcome && !isDemo && user ? (
-    <div className="bg-accent/50 border-b border-accent px-4 py-3 flex items-center justify-between">
-      <div className="flex items-center gap-3">
-        <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-          <Sparkles className="h-4 w-4 text-primary" />
-        </div>
-        <div>
-          <p className="text-sm font-medium">Willkommen bei System of a Town!</p>
-          <p className="text-xs text-muted-foreground">
-            Aktivieren Sie Demo-Daten unter Stammdaten → Demo-Daten, um die Plattform mit Beispieldaten kennenzulernen.
-          </p>
-        </div>
-      </div>
-      <div className="flex items-center gap-2 shrink-0">
-        <button
-          onClick={() => { dismissWelcome(); navigate('/portal/stammdaten/demo-daten'); }}
-          className="text-xs px-3 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-        >
-          Demo-Daten aktivieren
-        </button>
-        <button
-          onClick={dismissWelcome}
-          className="p-1 rounded-md text-muted-foreground hover:text-foreground transition-colors"
-          title="Nicht mehr anzeigen"
-        >
-          <X className="h-4 w-4" />
-        </button>
-      </div>
-    </div>
-  ) : null;
 
   // Detect if we're on the dashboard (root /portal) for scroll-snap
   const isDashboard = location.pathname === '/portal' || location.pathname === '/portal/';
@@ -250,7 +210,6 @@ function PortalLayoutInner() {
         {/* System Bar */}
         <SystemBar />
         {DemoBanner}
-        {WelcomeBanner}
         
       {isDashboard ? (
           mobileHomeMode === 'chat' ? (
@@ -294,7 +253,7 @@ function PortalLayoutInner() {
       
       {/* Demo Banner */}
       {DemoBanner}
-      {WelcomeBanner}
+      
       
       {/* Top Navigation (3 levels) */}
       <TopNavigation />
