@@ -5779,6 +5779,7 @@ export type Database = {
           floor: number | null
           garden: boolean | null
           grundbuchblatt: string | null
+          hausgeld: number | null
           id: string
           list_price: number | null
           min_price: number | null
@@ -5809,6 +5810,7 @@ export type Database = {
           floor?: number | null
           garden?: boolean | null
           grundbuchblatt?: string | null
+          hausgeld?: number | null
           id?: string
           list_price?: number | null
           min_price?: number | null
@@ -5839,6 +5841,7 @@ export type Database = {
           floor?: number | null
           garden?: boolean | null
           grundbuchblatt?: string | null
+          hausgeld?: number | null
           id?: string
           list_price?: number | null
           min_price?: number | null
@@ -5894,6 +5897,8 @@ export type Database = {
       dev_projects: {
         Row: {
           address: string | null
+          afa_model: string | null
+          afa_rate_percent: number | null
           ancillary_cost_percent: number | null
           avg_unit_price: number | null
           city: string | null
@@ -5908,6 +5913,7 @@ export type Database = {
           intake_data: Json | null
           kaufy_featured: boolean | null
           kaufy_listed: boolean | null
+          land_share_percent: number | null
           landingpage_enabled: boolean | null
           landingpage_slug: string | null
           name: string
@@ -5929,6 +5935,8 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          afa_model?: string | null
+          afa_rate_percent?: number | null
           ancillary_cost_percent?: number | null
           avg_unit_price?: number | null
           city?: string | null
@@ -5943,6 +5951,7 @@ export type Database = {
           intake_data?: Json | null
           kaufy_featured?: boolean | null
           kaufy_listed?: boolean | null
+          land_share_percent?: number | null
           landingpage_enabled?: boolean | null
           landingpage_slug?: string | null
           name: string
@@ -5964,6 +5973,8 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          afa_model?: string | null
+          afa_rate_percent?: number | null
           ancillary_cost_percent?: number | null
           avg_unit_price?: number | null
           city?: string | null
@@ -5978,6 +5989,7 @@ export type Database = {
           intake_data?: Json | null
           kaufy_featured?: boolean | null
           kaufy_listed?: boolean | null
+          land_share_percent?: number | null
           landingpage_enabled?: boolean | null
           landingpage_slug?: string | null
           name?: string
