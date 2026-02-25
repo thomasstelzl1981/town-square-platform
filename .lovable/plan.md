@@ -1,152 +1,113 @@
 
 
-## Analyse: Drei Engines, ein Problem — Systemweite Diagnose
+## Analyse: Upload-Funktionen systemweit — 7 Rogue-Stellen gefunden
 
-### IST-Zustand: Drei separate Implementierungen
+### IST-Zustand
 
-Nach vollständiger Analyse des Codes gibt es aktuell **drei unabhängige Implementierungen** der gleichen Kernlogik — und keine davon ruft die andere auf:
+Es gibt einen korrekt implementierten **universellen Upload-Hook** (`useUniversalUpload`), der alle Best Practices einhält:
+- `buildStoragePath()` mit `sanitizeFileName()` (Sonderzeichen, Umlaute, Leerzeichen → Underscore)
+- Einheitlicher Bucket (`UPLOAD_BUCKET = 'tenant-documents'`)
+- 2-Phasen-Architektur (Upload → Register → optional AI)
+- 15 Dateien nutzen ihn bereits korrekt
 
-```text
-┌─────────────────────────────────┐
-│ sot-document-parser (710 Zeilen)│  ← Zentraler Parser, 10 Modi
-│ • Eigene MODE_CONFIGS (Kopie!)  │  ← Manifest ist dupliziert, nicht importiert
-│ • Eigene extractCsvFromPdf()    │  ← CSV-Logik inline, Z.380-426
-│ • Eigene uint8ToBase64()        │  ← Hilfsfunktion dupliziert
-│ • Kein XLSX-Parsing             │  ← Kann keine Excel-Dateien verarbeiten
-│ • Gibt JSON zurück              │
-└─────────────────────────────────┘
+**Aber 7 Stellen im Code umgehen diesen Hook komplett** und bauen eigene Upload-Pfade mit rohen `file.name`-Werten — genau der Bug, der "Invalid key"-Fehler bei Sonderzeichen verursacht.
 
-┌─────────────────────────────────┐
-│ sot-project-intake (1045 Zeilen)│  ← Nur MOD-13
-│ • Eigene Tool-Definitions       │  ← Komplett eigene AI-Prompts
-│ • Eigene CSV-Strategie          │  ← CSV-Prompt inline, Z.603-616
-│ • Eigene XLSX-Parsing           │  ← SheetJS + Fuzzy-Mapping, Z.479-575
-│ • Eigene Column-Patterns        │  ← Regex-Map dupliziert, Z.491-501 + Z.661-671
-│ • Eigene uint8ToBase64()        │  ← Hilfsfunktion nochmal dupliziert
-└─────────────────────────────────┘
-
-┌─────────────────────────────────┐
-│ sot-pdf-to-csv (166 Zeilen)     │  ← Eigenständige Function
-│ • Eigene CSV-Prompt             │  ← Nochmal derselbe Prompt
-│ • Eigene uint8ToBase64()        │  ← Zum dritten Mal dupliziert
-│ • Wird von NIEMANDEM aufgerufen │  ← Weder document-parser noch project-intake
-└─────────────────────────────────┘
-```
-
-### Konkrete Probleme
-
-**1. Code-Duplizierung:**
-- Der CSV-Extraction-Prompt existiert dreimal (identischer Text)
-- `uint8ToBase64()` existiert dreimal
-- Die Fuzzy-Column-Mapping-Regex existiert zweimal in `sot-project-intake` (Z.491 und Z.661)
-- Das ParserManifest existiert zweimal: einmal in `src/config/parserManifest.ts` (Client, 340 Zeilen) und als Kopie in `sot-document-parser` (Z.44-213)
-
-**2. Feature-Divergenz:**
-- `sot-project-intake` kann XLSX + CSV + PDF verarbeiten
-- `sot-document-parser` kann nur PDF + Bilder + Text — kein XLSX
-- `sot-pdf-to-csv` wird gar nicht benutzt
-
-**3. Systemweites Risiko:**
-Jedes Modul, das den zentralen `sot-document-parser` nutzt (MOD-04, MOD-07, MOD-11, MOD-17, MOD-19, etc.), kann keine Excel-Dateien verarbeiten. Wenn ein Nutzer eine Nebenkostenabrechnung als XLSX hochlädt, schlägt der Parser fehl.
-
-### Betroffene Module (Zone 2)
-
-| Modul | Nutzt welche Engine? | XLSX-Support? | CSV-Preprocessing? |
-|-------|---------------------|---------------|---------------------|
-| MOD-04 Immobilien | sot-document-parser | Nein | Ja (seit letztem Update) |
-| MOD-07 Finanzierung | sot-document-parser | Nein | Ja |
-| MOD-11 Versicherung | sot-document-parser | Nein | Ja |
-| MOD-13 Projekte | sot-project-intake (eigene!) | Ja | Ja |
-| MOD-17 Fahrzeuge | sot-document-parser | Nein | Nein |
-| MOD-19 PV-Anlagen | sot-document-parser | Nein | Nein |
-| MOD-01 Stammdaten | sot-document-parser | Nein | Nein |
-| DMS Intake Center | sot-document-parser | Nein | Je nach Modus |
-
-### SOLL-Zustand: Eine Engine, ein Flow
+### Die 7 Rogue-Upload-Stellen
 
 ```text
-Nutzer lädt Datei hoch (PDF, XLSX, CSV, Bild)
-         │
-         ▼
-┌──────────────────────────────┐
-│ sot-document-parser (ZENTRAL)│
-│                              │
-│ Schritt 0: Format erkennen   │
-│ ├─ XLSX/CSV → SheetJS direkt │ ← NEU: Deterministische Tabellen-Pipeline
-│ ├─ PDF + preprocessPdfTables │
-│ │   → Gemini Flash → CSV     │ ← Bestehende CSV-Preprocessing-Logik
-│ │   → SheetJS parse          │
-│ ├─ PDF/Bild (kein Tabellen)  │
-│ │   → Gemini Vision direkt   │ ← Wie bisher (Personalausweis etc.)
-│ └─ Text → direkte Analyse    │
-│                              │
-│ Schritt 1: Fuzzy Column Map  │ ← NEU: Zentral, wiederverwendbar
-│ Schritt 2: Manifest-Prompt   │ ← Wie bisher
-│ Schritt 3: Validierung       │ ← Wie bisher
-└──────────────────────────────┘
-         │
-         ▼
-┌──────────────────────────────┐
-│ sot-project-intake (SCHLANK) │
-│ • Ruft sot-document-parser   │ ← Statt eigener Parsing-Logik
-│ • Nur: Expose-Analyse (Pro)  │ ← Bleibt spezialisiert
-│ • Nur: Create-Mode (DB-Ops)  │ ← Bleibt spezialisiert
-│ • Preisliste → document-parser│ ← Delegiert statt dupliziert
-└──────────────────────────────┘
+┌───┬──────────────────────────────────────────────┬────────────────────┬──────────────────┬─────────────┐
+│ # │ Datei                                        │ Bucket             │ sanitizeFileName │ Problem     │
+├───┼──────────────────────────────────────────────┼────────────────────┼──────────────────┼─────────────┤
+│ 1 │ useExposeUpload.ts (Z.43-44)                 │ acq-documents      │ Teilweise*       │ Kein .      │
+│ 2 │ useAcqOffers.ts (Z.250-251)                  │ acq-documents      │ NEIN             │ Roher Name  │
+│ 3 │ TestamentVorlageInline.tsx (Z.45-46)         │ documents          │ NEIN             │ Roher Name  │
+│ 4 │ PatientenverfuegungInlineForm.tsx (Z.125)    │ documents          │ NEIN             │ Roher Name  │
+│ 5 │ Kaufy2026Verkaeufer.tsx (Z.161-178, 3x)     │ public-intake      │ NEIN             │ Roher Name  │
+│ 6 │ ProfilTab.tsx Avatar (Z.279-281)             │ tenant-documents   │ NEIN             │ Roher Name  │
+│ 7 │ ProfilTab.tsx Logo (Z.297-299)               │ tenant-documents   │ NEIN             │ Roher Name  │
+└───┴──────────────────────────────────────────────┴────────────────────┴──────────────────┴─────────────┘
 
-┌──────────────────────────────┐
-│ sot-pdf-to-csv (ENTFERNEN)   │
-│ → Logik lebt jetzt in        │
-│   sot-document-parser inline  │
-└──────────────────────────────┘
+* useExposeUpload nutzt eine eigene Regex (/[^a-zA-Z0-9.-]/g → '_'),
+  aber NICHT sanitizeFileName() und NICHT buildStoragePath().
 ```
+
+### Konkrete Bugs, die auftreten koennen
+
+1. **"Invalid key" bei Sonderzeichen:** Ein Dateiname wie `Exposé Wohnung (3. OG).pdf` oder `Müllers_Nebenkostenabrechnung 2024.xlsx` erzeugt Fehler bei Storage-Upload wegen Umlauten, Klammern, Leerzeichen
+2. **Bucket-Wildwuchs:** 4 verschiedene Buckets (`acq-documents`, `documents`, `public-intake`, `tenant-documents`) statt dem zentralen `UPLOAD_BUCKET`
+3. **Kein DMS-Eintrag:** Die Rogue-Uploads erstellen keinen `documents`-Record und keinen `storage_nodes`-Eintrag — die Dateien sind im DMS unsichtbar
+4. **Keine AI-Analyse-Option:** Die Rogue-Uploads koennen Phase 2 (sot-document-parser) nicht triggern
+
+### Kategorisierung der Fixes
+
+**Kategorie A — Auf useUniversalUpload migrieren (3 Stellen):**
+
+| # | Datei | Aktion |
+|---|-------|--------|
+| 1 | `useExposeUpload.ts` | Intern `useUniversalUpload` nutzen, dann `acq_offers` + `acq_offer_documents` separat erstellen. Der Storage-Upload und DMS-Eintrag gehen ueber den Universal-Hook. |
+| 2 | `useAcqOffers.ts` (`useUploadOfferDocument`) | Gleiche Strategie: Universal-Upload fuer Storage, dann `acq_offer_documents`-Record separat. |
+| 5 | `Kaufy2026Verkaeufer.tsx` | Sonderfall Zone 3 (oeffentlich, kein Auth). Hier genuegt `sanitizeFileName()` direkt, da `useUniversalUpload` Auth voraussetzt. Der Bucket `public-intake` ist korrekt fuer unauthentifizierte Uploads. |
+
+**Kategorie B — sanitizeFileName direkt nutzen (4 Stellen):**
+
+| # | Datei | Aktion |
+|---|-------|--------|
+| 3 | `TestamentVorlageInline.tsx` | `sanitizeFileName()` importieren und auf den Dateinamen anwenden |
+| 4 | `PatientenverfuegungInlineForm.tsx` | Gleich wie #3 |
+| 6 | `ProfilTab.tsx` Avatar | `sanitizeFileName()` importieren (hier ist `useUniversalUpload` Overkill — es ist ein simpler Avatar-Upload mit `upsert: true`) |
+| 7 | `ProfilTab.tsx` Logo | Gleich wie #6 |
+
+**Kategorie C — AuditRunTab (1 Stelle, kein Fix noetig):**
+
+| # | Datei | Aktion |
+|---|-------|--------|
+| — | `AuditRunTab.tsx` | Generierter Report-Name (`report.md`), kein User-Input. Kein Sonderzeichen-Risiko. Bleibt wie es ist. |
 
 ### Implementierungsplan
 
-#### Phase 1: `sot-document-parser` zum universellen Parser ausbauen
+#### Phase 1: `sanitizeFileName` exportieren
+- `sanitizeFileName` in `storageManifest.ts` ist aktuell eine private Funktion (kein `export`)
+- Muss als `export function sanitizeFileName(...)` exportiert werden, damit Kategorie-B-Stellen sie importieren koennen
 
-**1a. XLSX/CSV-Support einbauen**
-- SheetJS-Import hinzufügen (`import * as XLSX from "https://esm.sh/xlsx@0.18.5"`)
-- Bei XLSX/CSV-Dateien: Direkte tabellarische Extraktion ohne AI
-- Fuzzy-Column-Mapping aus `sot-project-intake` übernehmen und generalisieren
-- Neues Feld im Response: `columnMapping` für Review-UI
+#### Phase 2: Kategorie B — Schnelle Fixes (4 Dateien)
+Minimale Aenderung: Nur `sanitizeFileName()` auf den Dateinamen anwenden.
 
-**1b. Manifest-Kopie durch generisches Config ersetzen**
-- Die 170 Zeilen MODE_CONFIGS (Z.44-213) sind eine veraltete Kopie des Client-Manifests
-- Durch eine schlankere Variante ersetzen, die nur die Edge-Function-relevanten Felder enthält (fields, preprocessPdfTables, targetTable)
-- Sicherstellen, dass neue Parser-Modi (z.B. `akquise`, `projekt`) ohne Code-Duplizierung hinzugefügt werden können
+- `TestamentVorlageInline.tsx`: `file.name` → `sanitizeFileName(file.name)`
+- `PatientenverfuegungInlineForm.tsx`: gleich
+- `ProfilTab.tsx` Avatar + Logo: gleich
 
-**1c. Response-Format erweitern**
-- Neues Feld `extractionMethod`: `'direct_xlsx'` | `'csv_preprocessing'` | `'ai_vision'` | `'ai_text'`
-- Neues Feld `columnMapping` für tabellarische Dokumente
-- Kompatibel mit bestehendem Response-Schema (kein Breaking Change)
+#### Phase 3: Kategorie A — Migration auf useUniversalUpload (2 Hooks)
 
-#### Phase 2: `sot-project-intake` verschlanken
+**useExposeUpload.ts:**
+- Upload-Logik durch `useUniversalUpload.upload()` ersetzen
+- `acq_offers`-Insert und `acq_offer_documents`-Insert bleiben als Nachverarbeitung
+- Edge-Function-Aufruf (`sot-acq-offer-extract`) bleibt unveraendert
+- Bucket wechselt von `acq-documents` zu `UPLOAD_BUCKET`
 
-- Preislisten-Parsing (Z.464-780, ~300 Zeilen duplizierter Code) entfernen
-- Stattdessen: `sot-document-parser` mit `parseMode: 'projekt_preisliste'` aufrufen
-- Expose-Analyse (Gemini Pro + Tool-Calling) bleibt in `sot-project-intake` — das ist MOD-13-spezifisch
-- Create-Mode bleibt unverändert
+**useAcqOffers.ts (useUploadOfferDocument):**
+- `buildStoragePath()` + `UPLOAD_BUCKET` statt manueller Pfad + `acq-documents`
+- `sanitizeFileName()` fuer den Dateinamen
 
-#### Phase 3: `sot-pdf-to-csv` entfernen
-
-- Die inline `extractCsvFromPdf()` in `sot-document-parser` (Z.380-426) übernimmt diese Rolle bereits
-- Edge Function löschen, aus `config.toml` entfernen
+#### Phase 4: Kaufy2026 (Zone 3)
+- `sanitizeFileName()` auf alle drei Upload-Stellen anwenden
+- Bucket `public-intake` bleibt (unauthentifizierter Kontext)
 
 ### Betroffene Dateien
 
-| Datei | Änderung |
-|-------|----------|
-| `supabase/functions/sot-document-parser/index.ts` | XLSX/CSV-Pipeline, generalisiertes Column-Mapping, Response-Erweiterung |
-| `supabase/functions/sot-project-intake/index.ts` | ~300 Zeilen Parsing-Code entfernen, stattdessen document-parser aufrufen |
-| `supabase/functions/sot-pdf-to-csv/index.ts` | Löschen |
-| `supabase/config.toml` | `sot-pdf-to-csv` entfernen |
+| Datei | Aenderung |
+|-------|-----------|
+| `src/config/storageManifest.ts` | `sanitizeFileName` exportieren |
+| `src/hooks/useExposeUpload.ts` | Auf `useUniversalUpload` + `buildStoragePath` migrieren |
+| `src/hooks/useAcqOffers.ts` | `buildStoragePath` + `sanitizeFileName` nutzen |
+| `src/components/legal/TestamentVorlageInline.tsx` | `sanitizeFileName` importieren + anwenden |
+| `src/components/legal/PatientenverfuegungInlineForm.tsx` | `sanitizeFileName` importieren + anwenden |
+| `src/pages/portal/stammdaten/ProfilTab.tsx` | `sanitizeFileName` fuer Avatar + Logo |
+| `src/pages/zone3/kaufy2026/Kaufy2026Verkaeufer.tsx` | `sanitizeFileName` fuer 3 Upload-Stellen |
 
-### Was sich NICHT ändert
-
-- Kein Frontend/UI-Change
+### Was sich NICHT aendert
+- `useUniversalUpload.ts` selbst — bereits korrekt
+- `AuditRunTab.tsx` — kein User-Input im Dateinamen
 - Keine neuen DB-Tabellen oder RLS-Policies
-- Keine neuen API-Keys oder Secrets
-- Keine Änderung an der Expose-Analyse (Gemini Pro bleibt in project-intake)
-- Kein Freeze-Konflikt (Edge Functions liegen außerhalb der Modul-Pfade)
+- Keine neuen Edge Functions
+- Kein Freeze-Konflikt (keine der betroffenen Dateien liegt in einem gefrorenen Modul-Pfad)
 
