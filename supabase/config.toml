@@ -244,3 +244,6 @@ verify_jwt = false
 
 [functions.sot-discovery-scheduler]
 verify_jwt = false
+
+[functions.sot-pdf-to-csv]
+verify_jwt = false
