@@ -637,13 +637,13 @@ async function handleCreate(
       tenant_id: tenantId,
       project_id: project.id,
       unit_number: u.unitNumber || `WE-${String(idx + 1).padStart(3, '0')}`,
-      unit_type: mapUnitType(u.type),
       area_sqm: u.area || 0,
-      rooms: u.rooms || 0,
-      floor: u.floor || '',
-      sale_price: u.price || 0,
+      rooms_count: u.rooms || 0,
+      floor: parseInt(String(u.floor || '0').replace(/[^0-9-]/g, '')) || 0,
+      list_price: u.price || 0,
+      price_per_sqm: u.area > 0 ? Math.round((u.price || 0) / u.area * 100) / 100 : 0,
       current_rent: u.currentRent || 0,
-      status: 'geplant',
+      status: 'available',
     }));
 
     const { error: unitsErr } = await supabase
