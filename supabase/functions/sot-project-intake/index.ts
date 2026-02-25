@@ -652,6 +652,7 @@ async function handleCreate(
 
     if (unitsErr) {
       console.error('Units insert error:', unitsErr);
+      throw new Error('Units insert failed: ' + unitsErr.message);
     } else {
       console.log(`Inserted ${unitRows.length} units for project ${project.project_code}`);
     }
@@ -659,20 +660,39 @@ async function handleCreate(
 
   // ── 5. Seed storage_nodes tree ────────────────────────────────────────────
   try {
-    const { data: rootNode, error: rootErr } = await supabase
+    // Check for existing root node (prevents duplicates on retry)
+    const { data: existingRoot } = await supabase
       .from('storage_nodes')
-      .insert({
-        tenant_id: tenantId,
-        name: project.project_code,
-        node_type: 'folder',
-        module_code: 'MOD_13',
-        entity_id: project.id,
-        parent_id: null,
-      })
       .select('id')
-      .single();
+      .eq('entity_id', project.id)
+      .is('parent_id', null)
+      .maybeSingle();
 
-    if (!rootErr && rootNode) {
+    let rootNode = existingRoot;
+
+    if (!existingRoot) {
+      const { data: newRoot, error: rootErr } = await supabase
+        .from('storage_nodes')
+        .insert({
+          tenant_id: tenantId,
+          name: project.project_code,
+          node_type: 'folder',
+          module_code: 'MOD_13',
+          entity_id: project.id,
+          parent_id: null,
+        })
+        .select('id')
+        .single();
+
+      if (rootErr) {
+        console.error('Storage root insert error:', rootErr);
+      }
+      rootNode = newRoot;
+    } else {
+      console.log(`Storage root already exists for project ${project.id}, skipping tree seeding`);
+    }
+
+    if (rootNode) {
       for (const folderName of PROJECT_FOLDERS) {
         await supabase.from('storage_nodes').insert({
           tenant_id: tenantId,
