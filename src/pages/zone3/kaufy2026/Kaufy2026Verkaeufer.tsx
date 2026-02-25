@@ -17,6 +17,7 @@ import { Badge } from '@/components/ui/badge';
 import { useDropzone } from 'react-dropzone';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { sanitizeFileName } from '@/config/storageManifest';
 import { cn } from '@/lib/utils';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
@@ -158,14 +159,14 @@ export default function Kaufy2026Verkaeufer() {
       const imgPaths: string[] = [];
 
       // Upload expose
-      const exposePath = `${sessionId}/expose_${exposeFile.name}`;
+      const exposePath = `${sessionId}/expose_${sanitizeFileName(exposeFile.name)}`;
       const { error: expErr } = await supabase.storage.from('public-intake').upload(exposePath, exposeFile);
       if (expErr) throw new Error('Exposé-Upload fehlgeschlagen: ' + expErr.message);
       paths.expose = exposePath;
 
       // Upload pricelist
       if (pricelistFile) {
-        const plPath = `${sessionId}/pricelist_${pricelistFile.name}`;
+        const plPath = `${sessionId}/pricelist_${sanitizeFileName(pricelistFile.name)}`;
         const { error: plErr } = await supabase.storage.from('public-intake').upload(plPath, pricelistFile);
         if (plErr) console.error('Pricelist upload error:', plErr);
         else paths.pricelist = plPath;
@@ -173,7 +174,7 @@ export default function Kaufy2026Verkaeufer() {
 
       // Upload images
       for (const img of imageFiles) {
-        const imgPath = `${sessionId}/images/${img.name}`;
+        const imgPath = `${sessionId}/images/${sanitizeFileName(img.name)}`;
         const { error: imgErr } = await supabase.storage.from('public-intake').upload(imgPath, img);
         if (!imgErr) imgPaths.push(imgPath);
       }

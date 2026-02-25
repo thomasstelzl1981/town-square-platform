@@ -4,6 +4,7 @@
  */
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { buildStoragePath, UPLOAD_BUCKET } from '@/config/storageManifest';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
@@ -39,13 +40,12 @@ export function useExposeUpload() {
       setPhase('uploading');
       setProgress(10);
 
-      // 1. Upload to storage
-      const fileName = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
-      const filePath = `${activeTenantId}/manual/${fileName}`;
+      // 1. Upload to storage (using central buildStoragePath + sanitizeFileName)
+      const filePath = buildStoragePath(activeTenantId!, 'MOD_12', mandateId || undefined, file.name);
       setProgress(20);
 
       const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('acq-documents')
+        .from(UPLOAD_BUCKET)
         .upload(filePath, file);
 
       if (uploadError) throw uploadError;

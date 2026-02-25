@@ -15,6 +15,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { Printer, Upload, FileText, Download } from 'lucide-react';
+import { sanitizeFileName } from '@/config/storageManifest';
 import { CARD } from '@/config/designManifest';
 import { useQuery } from '@tanstack/react-query';
 
@@ -122,7 +123,7 @@ export function PatientenverfuegungInlineForm({
     setUploading(true);
     try {
       const file = files[0];
-      const filePath = `${tenantId}/legal/patientenverfuegung/${Date.now()}_${file.name}`;
+      const filePath = `${tenantId}/legal/patientenverfuegung/${sanitizeFileName(file.name)}`;
       await supabase.storage.from('documents').upload(filePath, file).catch(() => {});
 
       const record = {

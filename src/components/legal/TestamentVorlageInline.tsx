@@ -4,6 +4,7 @@
  */
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, Download, Printer, Upload } from 'lucide-react';
+import { sanitizeFileName } from '@/config/storageManifest';
 import { CARD, INFO_BANNER } from '@/config/designManifest';
 import { generateTestamentVorlagenPdf } from '@/lib/generateLegalDocumentPdf';
 import { FileDropZone } from '@/components/dms/FileDropZone';
@@ -42,7 +43,7 @@ export function TestamentVorlageInline({ vorlage, tenantId, onCompleted }: Props
     setUploading(true);
     try {
       const file = files[0];
-      const filePath = `${tenantId}/legal/testament/${Date.now()}_${file.name}`;
+      const filePath = `${tenantId}/legal/testament/${sanitizeFileName(file.name)}`;
       await supabase.storage.from('documents').upload(filePath, file).catch(() => {});
 
       const record = {
