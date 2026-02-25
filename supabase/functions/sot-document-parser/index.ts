@@ -1,5 +1,14 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import {
+  uint8ToBase64,
+  parseTabularFile,
+  fuzzyMapColumns,
+  parseGermanNumber,
+  type TabularResult,
+  type ColumnMappingEntry,
+  type ExtractionMethod,
+} from "../_shared/tabular-parser.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -7,10 +16,16 @@ const corsHeaders = {
 };
 
 /**
- * SOT Document Parser — Manifest-Driven Engine v2.0
+ * SOT Document Parser — Manifest-Driven Engine v3.0
  * 
+ * Universal parser supporting PDF, XLSX, CSV, and image documents.
  * Uses the ParserManifest to generate structured AI prompts per parseMode.
- * Supports 10 modes + legacy aliases for backwards compatibility.
+ * 
+ * NEW in v3:
+ *  - XLSX/CSV files: Parsed directly with SheetJS (deterministic, no AI needed)
+ *  - PDF tables: Two-step CSV preprocessing via Gemini Flash + SheetJS
+ *  - Generalized fuzzy column mapping in response
+ *  - Extended response with extractionMethod + columnMapping
  * 
  * Input modes:
  *   A) storagePath + bucket  — Downloads from Storage (up to 20MB)
@@ -18,7 +33,7 @@ const corsHeaders = {
  */
 
 // ══════════════════════════════════════════════════════════════════════════
-// PARSER MANIFEST (Edge-Function-local copy of field definitions)
+// PARSER MANIFEST (Edge-Function-local field definitions)
 // ══════════════════════════════════════════════════════════════════════════
 
 type ParserMode = 'immobilie' | 'finanzierung' | 'versicherung' | 'fahrzeugschein' | 'pv_anlage' | 'vorsorge' | 'person' | 'haustier' | 'kontakt' | 'allgemein';
@@ -323,13 +338,12 @@ function validateRecords(records: Record<string, unknown>[], mode: ParserMode): 
         warnings.push(`Record ${i + 1}: Pflichtfeld "${key}" fehlt`);
       }
     }
-    // Type coercion for number/currency fields
     for (const field of config.fields) {
       if (rec[field.key] !== undefined && (field.type === 'number' || field.type === 'currency')) {
         const val = rec[field.key];
         if (typeof val === 'string') {
-          const num = parseFloat(String(val).replace(/[^\d.,\-]/g, '').replace(',', '.'));
-          if (!isNaN(num)) {
+          const num = parseGermanNumber(val);
+          if (num !== 0 || val.trim() === '0') {
             rec[field.key] = num;
           } else {
             warnings.push(`Record ${i + 1}: "${field.key}" konnte nicht in Zahl umgewandelt werden`);
@@ -343,91 +357,36 @@ function validateRecords(records: Record<string, unknown>[], mode: ParserMode): 
 }
 
 // ══════════════════════════════════════════════════════════════════════════
-// HELPERS
+// MIME TYPE DETECTION
 // ══════════════════════════════════════════════════════════════════════════
 
-function uint8ToBase64(bytes: Uint8Array): string {
-  let binary = '';
-  const chunkSize = 8192;
-  for (let i = 0; i < bytes.length; i += chunkSize) {
-    const chunk = bytes.subarray(i, Math.min(i + chunkSize, bytes.length));
-    binary += String.fromCharCode(...chunk);
-  }
-  return btoa(binary);
+const MIME_MAP: Record<string, string> = {
+  pdf: "application/pdf",
+  jpg: "image/jpeg", jpeg: "image/jpeg",
+  png: "image/png", webp: "image/webp",
+  doc: "application/msword",
+  docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  xls: "application/vnd.ms-excel",
+  xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  csv: "text/csv",
+};
+
+function detectMimeType(filename: string): string {
+  const ext = filename.toLowerCase().split('.').pop() || '';
+  return MIME_MAP[ext] || "application/octet-stream";
 }
 
-const MAX_AI_FILE_SIZE = 20 * 1024 * 1024;
-
-// ══════════════════════════════════════════════════════════════════════════
-// CSV PREPROCESSING — Extracts table data from PDFs as flat CSV text
-// ══════════════════════════════════════════════════════════════════════════
-
-const CSV_EXTRACTION_PROMPT = `Du bist ein hochpräziser Tabellen-Extraktor. Extrahiere ALLE Tabellenzeilen aus diesem Dokument als semikolon-getrennte CSV.
-
-Regeln:
-- Erste Zeile = exakte Spaltenüberschriften aus dem Dokument
-- Jede weitere Zeile = eine Datenzeile
-- Trennzeichen: Semikolon (;)
-- Zahlen: Punkt als Dezimaltrennzeichen, keine Tausenderpunkte (z.B. 149900.00 statt 149.900,00)
-- Keine Markdown-Formatierung, kein Code-Block, keine Backticks, nur roher CSV-Text
-- JEDE Zeile im Dokument MUSS enthalten sein. Überspringe KEINE Zeile.
-- Wenn ein Feld leer ist, lasse es leer (zwei Semikolons hintereinander)
-- Entferne Währungszeichen (€, EUR) aus Zahlenwerten
-- Prozentzeichen (%) entfernen, Wert als Dezimalzahl ausgeben (z.B. 4.5 statt 4,5%)
-
-Ausgabe NUR den CSV-Text, nichts anderes.`;
-
-async function extractCsvFromPdf(base64Content: string, apiKey: string): Promise<string | null> {
-  try {
-    console.log('[parser-engine] CSV preprocessing: extracting tables from PDF...');
-    
-    const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': 'Bearer ' + apiKey,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
-        messages: [
-          { role: 'system', content: CSV_EXTRACTION_PROMPT },
-          {
-            role: 'user',
-            content: [
-              { type: 'text', text: 'Extrahiere alle Tabellenzeilen aus diesem PDF als CSV.' },
-              { type: 'image_url', image_url: { url: 'data:application/pdf;base64,' + base64Content } },
-            ],
-          },
-        ],
-        temperature: 0.0,
-        max_tokens: 32000,
-      }),
-    });
-
-    if (!aiResponse.ok) {
-      const errText = await aiResponse.text();
-      console.error('[parser-engine] CSV preprocessing failed:', aiResponse.status, errText);
-      return null;
-    }
-
-    const aiResult = await aiResponse.json();
-    let csv = aiResult.choices?.[0]?.message?.content || '';
-    csv = csv.replace(/^```(?:csv)?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim();
-    
-    const lines = csv.split('\n').filter((l: string) => l.trim().length > 0);
-    const rowCount = Math.max(0, lines.length - 1);
-    console.log('[parser-engine] CSV preprocessing: extracted ' + rowCount + ' data rows, ' + csv.length + ' chars');
-    
-    return csv.length > 10 ? csv : null;
-  } catch (error) {
-    console.error('[parser-engine] CSV preprocessing error:', error);
-    return null;
-  }
+function isTabularMimeType(contentType: string, filename: string): boolean {
+  const ext = filename.toLowerCase().split('.').pop() || '';
+  return ext === 'xlsx' || ext === 'xls' || ext === 'csv' ||
+    contentType.includes('spreadsheet') || contentType.includes('excel') || contentType === 'text/csv';
 }
 
 // ══════════════════════════════════════════════════════════════════════════
 // MAIN HANDLER
 // ══════════════════════════════════════════════════════════════════════════
+
+const MAX_AI_FILE_SIZE = 20 * 1024 * 1024;
 
 interface ParseRequest {
   storagePath?: string;
@@ -464,11 +423,12 @@ serve(async (req) => {
       );
     }
 
-    console.log(`[parser-engine] Parsing: ${filename} (mode: ${engineMode}, input: ${storagePath ? 'storage' : 'inline'})`);
+    console.log(`[parser-engine] v3 Parsing: ${filename} (mode: ${engineMode}, input: ${storagePath ? 'storage' : 'inline'})`);
 
     // ── Resolve file content ─────────────────────────────────────────
+    let fileBytes: Uint8Array | null = null;
     let resolvedContent: string;
-    let resolvedContentType = contentType || "application/pdf";
+    let resolvedContentType = contentType || detectMimeType(filename);
 
     if (storagePath) {
       const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -498,46 +458,145 @@ serve(async (req) => {
       }
 
       if (!contentType) {
-        const ext = filename.toLowerCase().split('.').pop();
-        const mimeMap: Record<string, string> = {
-          pdf: "application/pdf",
-          jpg: "image/jpeg", jpeg: "image/jpeg",
-          png: "image/png", webp: "image/webp",
-          doc: "application/msword",
-          docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-          xls: "application/vnd.ms-excel",
-          xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-          csv: "text/csv",
-        };
-        resolvedContentType = mimeMap[ext || ''] || "application/octet-stream";
+        resolvedContentType = detectMimeType(filename);
       }
 
       const buffer = await fileData.arrayBuffer();
-      resolvedContent = uint8ToBase64(new Uint8Array(buffer));
+      fileBytes = new Uint8Array(buffer);
+      resolvedContent = uint8ToBase64(fileBytes);
       console.log(`[parser-engine] Downloaded ${(fileData.size / 1024).toFixed(0)}KB`);
     } else {
       resolvedContent = content!;
     }
 
-    // ── Build AI prompt from manifest ────────────────────────────────
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
     const modeConfig = MODE_CONFIGS[engineMode];
     const isPdf = resolvedContentType.includes("pdf");
+    const isTabular = isTabularMimeType(resolvedContentType, filename);
     const shouldPreprocessCsv = isPdf && modeConfig?.preprocessPdfTables === true;
 
-    // ── CSV Preprocessing (Step 0) ───────────────────────────────────
+    // ══════════════════════════════════════════════════════════════════
+    // PATH A: XLSX/CSV — Direct deterministic parsing (no AI needed)
+    // ══════════════════════════════════════════════════════════════════
+    if (isTabular && fileBytes) {
+      console.log(`[parser-engine] PATH A: Direct tabular parsing for ${filename}`);
+
+      const tabularResult = await parseTabularFile({
+        content: fileBytes,
+        contentType: resolvedContentType,
+        filename,
+        apiKey: LOVABLE_API_KEY,
+      });
+
+      if (tabularResult && tabularResult.rowCount > 0) {
+        const { colMap, columnMapping } = fuzzyMapColumns(
+          tabularResult.headers,
+          tabularResult.rawHeaders,
+          undefined,
+          tabularResult.rows,
+        );
+
+        // Convert rows to records using column mapping
+        const records: Record<string, unknown>[] = [];
+        for (const row of tabularResult.rows) {
+          const rec: Record<string, unknown> = {};
+          let hasData = false;
+          for (const [field, ci] of Object.entries(colMap)) {
+            const val = row[ci];
+            if (val !== undefined && val !== null && String(val).trim() !== '') {
+              rec[field] = val;
+              hasData = true;
+            }
+          }
+          // Also include unmapped columns as _raw_col_N
+          for (let ci = 0; ci < row.length; ci++) {
+            const alreadyMapped = Object.values(colMap).includes(ci);
+            if (!alreadyMapped && row[ci] !== undefined && String(row[ci]).trim() !== '') {
+              rec[`_raw_col_${ci}`] = row[ci];
+            }
+          }
+          if (hasData) records.push(rec);
+        }
+
+        const validationWarnings = validateRecords(records, engineMode);
+
+        const result = {
+          version: "3.0",
+          engine: "tabular_direct",
+          extractionMethod: tabularResult.extractionMethod,
+          parseMode: engineMode,
+          parsed_at: new Date().toISOString(),
+          confidence: 0.95,
+          warnings: validationWarnings,
+          targetTable: modeConfig.targetTable,
+          targetDmsFolder: modeConfig.targetDmsFolder,
+          records,
+          columnMapping,
+          tabularMeta: {
+            totalRows: tabularResult.rowCount,
+            mappedColumns: columnMapping.length,
+            unmappedColumns: tabularResult.headers.length - columnMapping.length,
+            allHeaders: tabularResult.rawHeaders,
+          },
+          data: {
+            detected_type: engineMode,
+            properties: engineMode === 'immobilie' ? records : [],
+            contacts: engineMode === 'kontakt' ? records : [],
+            financing: engineMode === 'finanzierung' ? records : [],
+          },
+        };
+
+        console.log(`[parser-engine] ✓ ${filename} → tabular direct, ${records.length} records, ${columnMapping.length} mapped columns`);
+        
+        // Track usage (no AI call, but track the parse)
+        if (tenantId) {
+          try {
+            const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+            const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+            const supabase = createClient(supabaseUrl, supabaseServiceKey);
+            const now = new Date();
+            const periodStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0];
+            const periodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split("T")[0];
+            await supabase.rpc("increment_lovable_ai_usage", {
+              p_tenant_id: tenantId, p_period_start: periodStart, p_period_end: periodEnd, p_calls: 0, p_tokens: 0,
+            });
+          } catch { /* non-critical */ }
+        }
+
+        return new Response(
+          JSON.stringify({ success: true, parsed: result, filename, contentType: resolvedContentType }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      // If tabular parsing returned nothing, fall through to AI path
+      console.log(`[parser-engine] Tabular parsing returned no data, falling through to AI path`);
+    }
+
+    // ══════════════════════════════════════════════════════════════════
+    // PATH B: PDF/Image/Text — AI-based extraction
+    // ══════════════════════════════════════════════════════════════════
+
+    // Step 0: CSV Preprocessing for tabular PDFs
     let csvContext: string | null = null;
-    if (shouldPreprocessCsv) {
-      csvContext = await extractCsvFromPdf(resolvedContent, LOVABLE_API_KEY);
-      if (csvContext) {
+    let tabularFromPdf: TabularResult | null = null;
+
+    if (shouldPreprocessCsv && fileBytes) {
+      tabularFromPdf = await parseTabularFile({
+        content: fileBytes,
+        contentType: resolvedContentType,
+        filename,
+        apiKey: LOVABLE_API_KEY,
+      });
+      if (tabularFromPdf?.csvText) {
+        csvContext = tabularFromPdf.csvText;
         console.log(`[parser-engine] CSV context ready (${csvContext.length} chars), enhancing main prompt`);
       }
     }
 
     let systemPrompt = buildSystemPrompt(engineMode);
-    
+
     // Enhance system prompt with CSV context if available
     if (csvContext) {
       systemPrompt += "\n\nWICHTIG — VORAB EXTRAHIERTE TABELLENDATEN (CSV):\nDie folgenden Tabellendaten wurden bereits aus dem Dokument extrahiert. Nutze diese als primäre Datenquelle für deine Analyse. Das Bild dient nur zur Verifizierung.\n\n" + csvContext;
@@ -628,7 +687,6 @@ serve(async (req) => {
     // ── Normalize: support both old format (data.properties/contacts) and new (records) ──
     let records = parsedData.records || [];
     if (!records.length && parsedData.data) {
-      // Legacy format: flatten data.properties + data.contacts + data.financing
       const d = parsedData.data as Record<string, unknown[]>;
       for (const key of ['properties', 'contacts', 'financing']) {
         if (Array.isArray(d[key])) records.push(...d[key] as Record<string, unknown>[]);
@@ -648,11 +706,28 @@ serve(async (req) => {
     const validationWarnings = validateRecords(records, resolvedMode);
     const allWarnings = [...(parsedData.warnings || []), ...validationWarnings];
 
+    // ── Determine extraction method ─────────────────────────────────
+    const extractionMethod: ExtractionMethod | 'ai_vision' | 'ai_text' =
+      csvContext ? 'pdf_csv_preprocessing' : (useVision ? 'ai_vision' as any : 'ai_text' as any);
+
+    // ── Build column mapping from tabular preprocessing if available ──
+    let columnMapping: ColumnMappingEntry[] | undefined;
+    if (tabularFromPdf && tabularFromPdf.rowCount > 0) {
+      const mapped = fuzzyMapColumns(
+        tabularFromPdf.headers,
+        tabularFromPdf.rawHeaders,
+        undefined,
+        tabularFromPdf.rows,
+      );
+      columnMapping = mapped.columnMapping;
+    }
+
     // ── Build response ───────────────────────────────────────────────
     const result = {
-      version: "2.0",
+      version: "3.0",
       engine: "lovable_ai",
       model: "google/gemini-3-flash-preview",
+      extractionMethod,
       parseMode: resolvedMode,
       parsed_at: new Date().toISOString(),
       confidence: parsedData.confidence || 0.5,
@@ -660,6 +735,14 @@ serve(async (req) => {
       targetTable: resolvedModeConfig.targetTable,
       targetDmsFolder: resolvedModeConfig.targetDmsFolder,
       records,
+      ...(columnMapping ? { columnMapping } : {}),
+      ...(tabularFromPdf ? {
+        tabularMeta: {
+          totalRows: tabularFromPdf.rowCount,
+          mappedColumns: columnMapping?.length || 0,
+          allHeaders: tabularFromPdf.rawHeaders,
+        },
+      } : {}),
       // Legacy compat fields
       data: {
         detected_type: parsedData.detected_type || parsedData.detectedMode || "other",
@@ -685,7 +768,7 @@ serve(async (req) => {
           p_tenant_id: tenantId,
           p_period_start: periodStart,
           p_period_end: periodEnd,
-          p_calls: 1,
+          p_calls: csvContext ? 2 : 1,
           p_tokens: aiResult.usage?.total_tokens || 0
         });
       } catch (usageError) {
@@ -693,7 +776,7 @@ serve(async (req) => {
       }
     }
 
-    console.log(`[parser-engine] ✓ ${filename} → mode=${resolvedMode}, records=${records.length}, confidence=${result.confidence}`);
+    console.log(`[parser-engine] ✓ ${filename} → mode=${resolvedMode}, method=${extractionMethod}, records=${records.length}, confidence=${result.confidence}`);
 
     return new Response(
       JSON.stringify({ success: true, parsed: result, filename, contentType: resolvedContentType }),
