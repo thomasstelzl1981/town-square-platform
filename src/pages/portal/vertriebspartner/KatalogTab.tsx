@@ -110,7 +110,7 @@ const KatalogTab = () => {
       const { data: listingsData, error: listingsError } = await supabase
         .from('listings')
         .select(`
-          id, public_id, title, asking_price, commission_rate, status,
+          id, public_id, title, asking_price, commission_rate, status, property_id,
           properties (address, city, property_type, total_area_sqm, annual_income)
         `)
         .in('id', listingIds)
@@ -137,7 +137,7 @@ const KatalogTab = () => {
         return {
           id: l.id,
           public_id: l.public_id,
-          property_id: props?.id || null,
+          property_id: l.property_id || null,
           title: l.title,
           asking_price: l.asking_price,
           commission_rate: l.commission_rate,
