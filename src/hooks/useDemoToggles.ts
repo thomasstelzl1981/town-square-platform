@@ -11,6 +11,7 @@ import { GOLDEN_PATH_PROCESSES } from '@/manifests/goldenPathProcesses';
 import { supabase } from '@/integrations/supabase/client';
 import { seedDemoData, SeedProgressInfo } from '@/hooks/useDemoSeedEngine';
 import { cleanupDemoData } from '@/hooks/useDemoCleanup';
+import { isDemoSession } from '@/config/demoAccountConfig';
 
 const STORAGE_KEY_PREFIX = 'gp_demo_toggles';
 const TOGGLE_VERSION = '2'; // Bump to force-reset cached toggles to OFF
@@ -44,11 +45,17 @@ function buildDefaults(): DemoToggles {
 }
 
 function loadToggles(): DemoToggles {
+  // In demo session, all toggles are always ON (data is persistent)
+  if (isDemoSession()) {
+    const all: DemoToggles = {};
+    GOLDEN_PATH_PROCESSES.forEach(p => { all[p.id] = true; });
+    return all;
+  }
+
   try {
     const key = getStorageKey();
     const versionKey = `${key}_version`;
 
-    // Migration: if version mismatch, wipe old toggles and reset to defaults
     const savedVersion = localStorage.getItem(versionKey);
     if (savedVersion !== TOGGLE_VERSION) {
       localStorage.removeItem(key);

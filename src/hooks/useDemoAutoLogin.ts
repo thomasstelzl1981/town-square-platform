@@ -16,10 +16,7 @@ import {
   isDemoSession,
   setDemoSessionFlag,
 } from '@/config/demoAccountConfig';
-import { seedDemoData } from '@/hooks/useDemoSeedEngine';
-import { cleanupDemoData } from '@/hooks/useDemoCleanup';
-
-export type DemoState = 'idle' | 'logging-in' | 'seeding' | 'ready' | 'cleaning' | 'error';
+export type DemoState = 'idle' | 'logging-in' | 'ready' | 'cleaning' | 'error';
 
 export function useDemoAutoLogin() {
   const [searchParams] = useSearchParams();
@@ -30,19 +27,17 @@ export function useDemoAutoLogin() {
 
   const isDemo = searchParams.get('mode') === 'demo' || isDemoSession();
 
-  // Cleanup + logout
+  // Logout only — no data cleanup (demo data is persistent)
   const cleanupAndLogout = useCallback(async () => {
     if (cleanupRunningRef.current) return;
     cleanupRunningRef.current = true;
     
     try {
-      if (import.meta.env.DEV) console.log('[DemoAutoLogin] Cleaning up demo data...');
-      await cleanupDemoData(DEMO_TENANT_ID);
       setDemoSessionFlag(false);
       await supabase.auth.signOut();
-      if (import.meta.env.DEV) console.log('[DemoAutoLogin] ✓ Cleanup + logout complete');
+      if (import.meta.env.DEV) console.log('[DemoAutoLogin] ✓ Logout complete');
     } catch (err) {
-      console.error('[DemoAutoLogin] Cleanup error:', err);
+      console.error('[DemoAutoLogin] Logout error:', err);
     } finally {
       cleanupRunningRef.current = false;
     }
@@ -55,14 +50,13 @@ export function useDemoAutoLogin() {
     navigate('/sot');
   }, [cleanupAndLogout, navigate]);
 
-  // Auto-login + seed flow
+  // Auto-login flow — no seed, data is persistent in demo tenant
   useEffect(() => {
     if (!isDemo || initRef.current) return;
     initRef.current = true;
 
     const init = async () => {
       try {
-        // Step 1: Login
         setDemoState('logging-in');
         if (import.meta.env.DEV) console.log('[DemoAutoLogin] Signing in as demo user...');
         
@@ -78,15 +72,8 @@ export function useDemoAutoLogin() {
         }
 
         setDemoSessionFlag(true);
-
-        // Step 2: Clean slate
-        setDemoState('seeding');
-        if (import.meta.env.DEV) console.log('[DemoAutoLogin] Running clean-slate: cleanup → seed...');
-        await cleanupDemoData(DEMO_TENANT_ID);
-        await seedDemoData(DEMO_TENANT_ID);
-
         setDemoState('ready');
-        if (import.meta.env.DEV) console.log('[DemoAutoLogin] ✓ Demo ready');
+        if (import.meta.env.DEV) console.log('[DemoAutoLogin] ✓ Demo ready (persistent data)');
       } catch (err) {
         console.error('[DemoAutoLogin] Init error:', err);
         setDemoState('error');

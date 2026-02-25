@@ -47,7 +47,7 @@ serve(async (req) => {
     // Default: setup demo account
     const DEMO_EMAIL = "demo@systemofatown.com";
     const DEMO_PASSWORD = "DemoSoT2026!public";
-    const DEMO_TENANT_ID = "a0000000-0000-4000-a000-000000000001";
+    const DEMO_TENANT_ID = "c3123104-e2ec-47ca-9f0a-616808557ece";
 
     // Check if user already exists
     const { data: existingUsers } = await supabase.auth.admin.listUsers();

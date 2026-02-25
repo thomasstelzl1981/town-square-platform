@@ -130,7 +130,7 @@ function PortalLayoutInner() {
   }, [user, isDevelopmentMode, isLoading, isDemo]);
 
   // Demo mode: show loading screen during login/seeding
-  if (isDemo && (demoState === 'logging-in' || demoState === 'seeding')) {
+  if (isDemo && demoState === 'logging-in') {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-background gap-4">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />

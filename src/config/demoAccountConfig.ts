@@ -9,8 +9,8 @@
 export const DEMO_EMAIL = 'demo@systemofatown.com';
 export const DEMO_PASSWORD = 'DemoSoT2026!public';
 
-/** Demo tenant ID (Golden Tenant) */
-export const DEMO_TENANT_ID = 'a0000000-0000-4000-a000-000000000001';
+/** Demo tenant ID (Demo Tenant — persistent showcase data) */
+export const DEMO_TENANT_ID = 'c3123104-e2ec-47ca-9f0a-616808557ece';
 
 /** Areas hidden in demo mode */
 export const DEMO_HIDDEN_AREAS = ['operations'] as const;
