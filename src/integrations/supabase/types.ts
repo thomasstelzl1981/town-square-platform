@@ -5904,6 +5904,7 @@ export type Database = {
           city: string | null
           commission_rate_percent: number | null
           condition_text: string | null
+          construction_year: number | null
           country: string | null
           created_at: string
           created_by: string | null
@@ -5951,6 +5952,7 @@ export type Database = {
           status: string
           target_end_date: string | null
           tenant_id: string
+          total_area_sqm: number | null
           total_sale_target: number | null
           total_units_count: number | null
           updated_at: string
@@ -5964,6 +5966,7 @@ export type Database = {
           city?: string | null
           commission_rate_percent?: number | null
           condition_text?: string | null
+          construction_year?: number | null
           country?: string | null
           created_at?: string
           created_by?: string | null
@@ -6011,6 +6014,7 @@ export type Database = {
           status?: string
           target_end_date?: string | null
           tenant_id: string
+          total_area_sqm?: number | null
           total_sale_target?: number | null
           total_units_count?: number | null
           updated_at?: string
@@ -6024,6 +6028,7 @@ export type Database = {
           city?: string | null
           commission_rate_percent?: number | null
           condition_text?: string | null
+          construction_year?: number | null
           country?: string | null
           created_at?: string
           created_by?: string | null
@@ -6071,6 +6076,7 @@ export type Database = {
           status?: string
           target_end_date?: string | null
           tenant_id?: string
+          total_area_sqm?: number | null
           total_sale_target?: number | null
           total_units_count?: number | null
           updated_at?: string

@@ -45,6 +45,9 @@ interface CreatePropertyFromUnitsProps {
     energy_source?: string;
     renovation_year?: number;
     parking_type?: string;
+    afa_rate_percent?: number;
+    afa_model?: string;
+    land_share_percent?: number;
   };
   units: DevProjectUnit[];
 }
@@ -165,6 +168,22 @@ export function CreatePropertyFromUnits({
           }));
           await supabase.from('storage_nodes').insert(folderInserts);
         }
+
+        // 4. Create property_accounting record with project-level defaults
+        const landSharePct = projectData?.land_share_percent ?? 20.0;
+        await supabase
+          .from('property_accounting')
+          .insert({
+            tenant_id: tenantId,
+            property_id: newProperty.id,
+            afa_method: 'linear',
+            afa_model: projectData?.afa_model ?? 'linear',
+            afa_rate_percent: projectData?.afa_rate_percent ?? 2.0,
+            afa_start_date: new Date().toISOString().slice(0, 10),
+            land_share_percent: landSharePct,
+            building_share_percent: 100 - landSharePct,
+            coa_version: 'SKR04_Starter',
+          } as any);
 
         created++;
         setCreatedCount(created);

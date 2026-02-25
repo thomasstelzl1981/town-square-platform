@@ -204,7 +204,7 @@ export function ProjectDMSWidget({ projectId, projectName, units, isDemo }: Proj
           <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Allgemein</span>
         </div>
         <div className="flex divide-x divide-border border-b">
-          <div className="w-[220px] shrink-0 overflow-y-auto max-h-[260px]">
+          <div className="w-[220px] shrink-0">
             <FolderList
               items={PROJECT_FOLDERS}
               selectedId={selectedGeneralFolder}
@@ -228,7 +228,7 @@ export function ProjectDMSWidget({ projectId, projectName, units, isDemo }: Proj
           </span>
         </div>
         <div className="flex divide-x divide-border border-b">
-          <div className="w-[220px] shrink-0 overflow-y-auto max-h-[300px]">
+          <div className="w-[220px] shrink-0">
             <FolderList
               items={unitIds}
               selectedId={selectedUnitId}
@@ -239,7 +239,7 @@ export function ProjectDMSWidget({ projectId, projectName, units, isDemo }: Proj
               renderLabel={(id) => unitLabelMap[id] ?? id}
             />
           </div>
-          <div className="w-[200px] shrink-0 overflow-y-auto max-h-[300px]">
+          <div className="w-[200px] shrink-0">
             <FolderList
               items={UNIT_FOLDERS}
               selectedId={selectedUnitFolder}

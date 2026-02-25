@@ -357,6 +357,9 @@ export default function ProjectDetailPage() {
                     energy_source: (project as any).energy_source,
                     renovation_year: (project as any).renovation_year,
                     parking_type: (project as any).parking_type,
+                    afa_rate_percent: (project as any).afa_rate_percent,
+                    afa_model: (project as any).afa_model,
+                    land_share_percent: (project as any).land_share_percent,
                   }}
                   units={units}
                 />
