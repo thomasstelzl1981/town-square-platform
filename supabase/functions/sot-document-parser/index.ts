@@ -38,6 +38,7 @@ interface ModeConfig {
   targetDmsFolder: string;
   exampleDocuments: string[];
   fields: FieldDef[];
+  preprocessPdfTables?: boolean;
 }
 
 const MODE_CONFIGS: Record<ParserMode, ModeConfig> = {
@@ -45,6 +46,7 @@ const MODE_CONFIGS: Record<ParserMode, ModeConfig> = {
     label: 'Immobilie',
     targetTable: 'units',
     targetDmsFolder: '01_Grunddaten',
+    preprocessPdfTables: true,
     exampleDocuments: ['Kaufvertrag', 'Grundbuchauszug', 'Teilungserklärung', 'Exposé', 'Mietvertrag'],
     fields: [
       { key: 'address', label: 'Adresse', type: 'string', required: true },
@@ -64,6 +66,7 @@ const MODE_CONFIGS: Record<ParserMode, ModeConfig> = {
     label: 'Finanzierung',
     targetTable: 'finance_requests',
     targetDmsFolder: '05_Vertrag',
+    preprocessPdfTables: true,
     exampleDocuments: ['Darlehensvertrag', 'Kreditangebot', 'Tilgungsplan'],
     fields: [
       { key: 'bank_name', label: 'Bank', type: 'string', required: true },
@@ -81,6 +84,7 @@ const MODE_CONFIGS: Record<ParserMode, ModeConfig> = {
     label: 'Versicherung',
     targetTable: 'insurance_contracts',
     targetDmsFolder: '01_Police',
+    preprocessPdfTables: true,
     exampleDocuments: ['Versicherungspolice', 'Versicherungsschein', 'Nachtrag', 'Schadensmeldung'],
     fields: [
       { key: 'provider_name', label: 'Versicherer', type: 'string', required: true },
@@ -135,6 +139,7 @@ const MODE_CONFIGS: Record<ParserMode, ModeConfig> = {
     label: 'Vorsorge',
     targetTable: 'vorsorge_contracts',
     targetDmsFolder: '01_Vertrag',
+    preprocessPdfTables: true,
     exampleDocuments: ['Standmitteilung', 'Renteninformation', 'Riester-Bescheinigung', 'bAV-Vertrag'],
     fields: [
       { key: 'provider_name', label: 'Anbieter', type: 'string', required: true },
@@ -354,6 +359,73 @@ function uint8ToBase64(bytes: Uint8Array): string {
 const MAX_AI_FILE_SIZE = 20 * 1024 * 1024;
 
 // ══════════════════════════════════════════════════════════════════════════
+// CSV PREPROCESSING — Extracts table data from PDFs as flat CSV text
+// ══════════════════════════════════════════════════════════════════════════
+
+const CSV_EXTRACTION_PROMPT = `Du bist ein hochpräziser Tabellen-Extraktor. Extrahiere ALLE Tabellenzeilen aus diesem Dokument als semikolon-getrennte CSV.
+
+Regeln:
+- Erste Zeile = exakte Spaltenüberschriften aus dem Dokument
+- Jede weitere Zeile = eine Datenzeile
+- Trennzeichen: Semikolon (;)
+- Zahlen: Punkt als Dezimaltrennzeichen, keine Tausenderpunkte (z.B. 149900.00 statt 149.900,00)
+- Keine Markdown-Formatierung, kein Code-Block, keine Backticks, nur roher CSV-Text
+- JEDE Zeile im Dokument MUSS enthalten sein. Überspringe KEINE Zeile.
+- Wenn ein Feld leer ist, lasse es leer (zwei Semikolons hintereinander)
+- Entferne Währungszeichen (€, EUR) aus Zahlenwerten
+- Prozentzeichen (%) entfernen, Wert als Dezimalzahl ausgeben (z.B. 4.5 statt 4,5%)
+
+Ausgabe NUR den CSV-Text, nichts anderes.`;
+
+async function extractCsvFromPdf(base64Content: string, apiKey: string): Promise<string | null> {
+  try {
+    console.log('[parser-engine] CSV preprocessing: extracting tables from PDF...');
+    
+    const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + apiKey,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'google/gemini-2.5-flash',
+        messages: [
+          { role: 'system', content: CSV_EXTRACTION_PROMPT },
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: 'Extrahiere alle Tabellenzeilen aus diesem PDF als CSV.' },
+              { type: 'image_url', image_url: { url: 'data:application/pdf;base64,' + base64Content } },
+            ],
+          },
+        ],
+        temperature: 0.0,
+        max_tokens: 32000,
+      }),
+    });
+
+    if (!aiResponse.ok) {
+      const errText = await aiResponse.text();
+      console.error('[parser-engine] CSV preprocessing failed:', aiResponse.status, errText);
+      return null;
+    }
+
+    const aiResult = await aiResponse.json();
+    let csv = aiResult.choices?.[0]?.message?.content || '';
+    csv = csv.replace(/^```(?:csv)?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim();
+    
+    const lines = csv.split('\n').filter((l: string) => l.trim().length > 0);
+    const rowCount = Math.max(0, lines.length - 1);
+    console.log('[parser-engine] CSV preprocessing: extracted ' + rowCount + ' data rows, ' + csv.length + ' chars');
+    
+    return csv.length > 10 ? csv : null;
+  } catch (error) {
+    console.error('[parser-engine] CSV preprocessing error:', error);
+    return null;
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════
 // MAIN HANDLER
 // ══════════════════════════════════════════════════════════════════════════
 
@@ -451,8 +523,28 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-    const systemPrompt = buildSystemPrompt(engineMode);
-    const useVision = resolvedContentType.includes("image") || resolvedContentType.includes("pdf");
+    const modeConfig = MODE_CONFIGS[engineMode];
+    const isPdf = resolvedContentType.includes("pdf");
+    const shouldPreprocessCsv = isPdf && modeConfig?.preprocessPdfTables === true;
+
+    // ── CSV Preprocessing (Step 0) ───────────────────────────────────
+    let csvContext: string | null = null;
+    if (shouldPreprocessCsv) {
+      csvContext = await extractCsvFromPdf(resolvedContent, LOVABLE_API_KEY);
+      if (csvContext) {
+        console.log(`[parser-engine] CSV context ready (${csvContext.length} chars), enhancing main prompt`);
+      }
+    }
+
+    let systemPrompt = buildSystemPrompt(engineMode);
+    
+    // Enhance system prompt with CSV context if available
+    if (csvContext) {
+      systemPrompt += "\n\nWICHTIG — VORAB EXTRAHIERTE TABELLENDATEN (CSV):\nDie folgenden Tabellendaten wurden bereits aus dem Dokument extrahiert. Nutze diese als primäre Datenquelle für deine Analyse. Das Bild dient nur zur Verifizierung.\n\n" + csvContext;
+    }
+
+    const useVision = resolvedContentType.includes("image") || isPdf;
+    const maxTokens = shouldPreprocessCsv ? 16000 : 8000;
 
     let messages: Array<{ role: string; content: string | Array<{ type: string; text?: string; image_url?: { url: string } }> }>;
 
@@ -490,7 +582,7 @@ serve(async (req) => {
         model: "google/gemini-3-flash-preview",
         messages,
         temperature: 0.1,
-        max_tokens: 8000,
+        max_tokens: maxTokens,
       }),
     });
 
@@ -550,7 +642,7 @@ serve(async (req) => {
       if (MODE_CONFIGS[dm]) resolvedMode = dm;
     }
 
-    const modeConfig = MODE_CONFIGS[resolvedMode];
+    const resolvedModeConfig = MODE_CONFIGS[resolvedMode];
 
     // ── Validate extracted records against manifest ──────────────────
     const validationWarnings = validateRecords(records, resolvedMode);
@@ -565,8 +657,8 @@ serve(async (req) => {
       parsed_at: new Date().toISOString(),
       confidence: parsedData.confidence || 0.5,
       warnings: allWarnings,
-      targetTable: modeConfig.targetTable,
-      targetDmsFolder: modeConfig.targetDmsFolder,
+      targetTable: resolvedModeConfig.targetTable,
+      targetDmsFolder: resolvedModeConfig.targetDmsFolder,
       records,
       // Legacy compat fields
       data: {
