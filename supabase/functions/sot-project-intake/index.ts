@@ -298,6 +298,13 @@ async function handleAnalyze(
 
         if (aiResponse.ok) {
           const aiResult = await aiResponse.json();
+          console.log('Expose AI response structure:', {
+            keys: Object.keys(aiResult),
+            choicesCount: aiResult.choices?.length,
+            finish_reason: aiResult.choices?.[0]?.finish_reason,
+            hasToolCalls: !!aiResult.choices?.[0]?.message?.tool_calls,
+            hasContent: !!aiResult.choices?.[0]?.message?.content,
+          });
           
           const toolCall = aiResult.choices?.[0]?.message?.tool_calls?.[0];
           if (toolCall?.function?.arguments) {
@@ -354,6 +361,8 @@ async function handleAnalyze(
                   console.error('Expose JSON parse error:', parseErr);
                 }
               }
+            } else {
+              console.error('Expose AI returned 200 but no tool_calls AND no parseable content. finish_reason:', aiResult.choices?.[0]?.finish_reason);
             }
           }
         } else {
@@ -446,7 +455,14 @@ async function handleAnalyze(
           for (let ri = 0; ri < tabularResult.rows.length; ri++) {
             const row = tabularResult.rows[ri];
             const areaVal = colMap.area !== undefined ? parseGermanNumber(row[colMap.area]) : 0;
-            const priceVal = colMap.price !== undefined ? parseGermanNumber(row[colMap.price]) : 0;
+            let priceVal = colMap.price !== undefined ? parseGermanNumber(row[colMap.price]) : 0;
+            const pricePerSqmVal = colMap.pricePerSqm !== undefined ? parseGermanNumber(row[colMap.pricePerSqm]) : 0;
+            
+            // If we have pricePerSqm but no total price, calculate total price
+            if (!priceVal && pricePerSqmVal > 0 && areaVal > 0) {
+              priceVal = Math.round(pricePerSqmVal * areaVal * 100) / 100;
+            }
+            
             if (!areaVal && !priceVal) continue; // Skip non-data rows
 
             const unit: ExtractedUnit = {
@@ -476,7 +492,7 @@ async function handleAnalyze(
           if (units.length > 0) {
             extractedData.extractedUnits = units;
             extractedData.unitsCount = units.length;
-            extractedData.totalArea = units.reduce((s, u) => s + (u.area || 0), 0);
+            extractedData.totalArea = Math.round(units.reduce((s, u) => s + (u.area || 0), 0) * 100) / 100;
             const prices = units.map(u => u.price).filter(p => p > 0);
             if (prices.length > 0) {
               const min = Math.min(...prices);

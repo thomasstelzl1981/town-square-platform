@@ -625,12 +625,12 @@ export default function ProjekteDashboard() {
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2"><Label htmlFor="projectName">Projektname</Label><Input id="projectName" value={extractedData.projectName} onChange={(e) => setExtractedData({ ...extractedData, projectName: e.target.value })} /></div>
                 <div className="space-y-2"><Label htmlFor="projectType">Projekttyp</Label><Input id="projectType" value={extractedData.projectType || 'neubau'} onChange={(e) => setExtractedData({ ...extractedData, projectType: e.target.value as any })} /></div>
-                <div className="space-y-2"><Label htmlFor="city">Stadt</Label><Input id="city" value={extractedData.city} onChange={(e) => setExtractedData({ ...extractedData, city: e.target.value })} /></div>
-                <div className="space-y-2"><Label htmlFor="postalCode">PLZ</Label><Input id="postalCode" value={extractedData.postalCode} onChange={(e) => setExtractedData({ ...extractedData, postalCode: e.target.value })} /></div>
-                <div className="space-y-2"><Label htmlFor="address">Adresse</Label><Input id="address" value={extractedData.address} onChange={(e) => setExtractedData({ ...extractedData, address: e.target.value })} /></div>
+                <div className="space-y-2"><Label htmlFor="city">Stadt</Label><Input id="city" value={extractedData.city} onChange={(e) => setExtractedData({ ...extractedData, city: e.target.value })} placeholder="Manuell ergänzen" /></div>
+                <div className="space-y-2"><Label htmlFor="postalCode">PLZ</Label><Input id="postalCode" value={extractedData.postalCode} onChange={(e) => setExtractedData({ ...extractedData, postalCode: e.target.value })} placeholder="Manuell ergänzen" /></div>
+                <div className="space-y-2"><Label htmlFor="address">Adresse</Label><Input id="address" value={extractedData.address} onChange={(e) => setExtractedData({ ...extractedData, address: e.target.value })} placeholder="Manuell ergänzen" /></div>
                 <div className="space-y-2"><Label htmlFor="unitsCount">Einheiten</Label><Input id="unitsCount" type="number" value={extractedData.unitsCount} onChange={(e) => setExtractedData({ ...extractedData, unitsCount: parseInt(e.target.value) || 0 })} /></div>
-                <div className="space-y-2"><Label htmlFor="totalArea">Gesamtfläche (m²)</Label><Input id="totalArea" type="number" value={extractedData.totalArea} onChange={(e) => setExtractedData({ ...extractedData, totalArea: parseFloat(e.target.value) || 0 })} /></div>
-                <div className="space-y-2"><Label htmlFor="priceRange">Preisspanne</Label><Input id="priceRange" value={extractedData.priceRange} onChange={(e) => setExtractedData({ ...extractedData, priceRange: e.target.value })} /></div>
+                <div className="space-y-2"><Label htmlFor="totalArea">Gesamtfläche (m²)</Label><Input id="totalArea" type="number" value={Number(extractedData.totalArea).toFixed(2)} onChange={(e) => setExtractedData({ ...extractedData, totalArea: parseFloat(e.target.value) || 0 })} /></div>
+                <div className="space-y-2"><Label htmlFor="priceRange">Preisspanne (Gesamtpreise)</Label><Input id="priceRange" value={extractedData.priceRange} onChange={(e) => setExtractedData({ ...extractedData, priceRange: e.target.value })} /></div>
               </div>
 
               {/* Extra Expose fields for Aufteilungsobjekte */}
@@ -702,7 +702,10 @@ export default function ProjekteDashboard() {
                       <span className="text-xs text-muted-foreground font-normal">(Klicken zum Bearbeiten)</span>
                     </Label>
                     <div className="flex items-center gap-2">
-                      <Badge variant="secondary">{unitSums.totalArea.toFixed(0)} m² gesamt</Badge>
+                      <Badge variant="secondary">{unitSums.totalArea.toFixed(2)} m² gesamt</Badge>
+                      {unitSums.totalArea > 0 && unitSums.totalPrice > 0 && (
+                        <Badge variant="outline">Ø {Math.round(unitSums.totalPrice / unitSums.totalArea).toLocaleString('de-DE')} €/m²</Badge>
+                      )}
                       <Button variant="outline" size="sm" className="gap-1 h-7 text-xs" onClick={addUnit}>
                         <Plus className="h-3 w-3" /> Einheit
                       </Button>
@@ -786,7 +789,7 @@ export default function ProjekteDashboard() {
                           <td className="py-2 px-3 text-xs">SUMME</td>
                           <td className="py-2 px-3">{extractedData.extractedUnits.length} Einh.</td>
                           {hasExtendedFields && <td className="py-2 px-3"></td>}
-                          <td className="py-2 px-3 text-right">{unitSums.totalArea.toFixed(0)} m²</td>
+                          <td className="py-2 px-3 text-right">{unitSums.totalArea.toFixed(2)} m²</td>
                           <td className="py-2 px-3"></td>
                           <td className="py-2 px-3"></td>
                           <td className="py-2 px-3 text-right">{unitSums.totalPrice.toLocaleString('de-DE')} €</td>
