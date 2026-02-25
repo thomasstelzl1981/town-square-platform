@@ -655,6 +655,26 @@ async function handleCreate(
       throw new Error('Units insert failed: ' + unitsErr.message);
     } else {
       console.log(`Inserted ${unitRows.length} units for project ${project.project_code}`);
+
+      // ── FIX-A: Aggregate financial KPIs from units to project level ──────
+      const totalListPrice = unitRows.reduce((s: number, u: any) => s + (u.list_price || 0), 0);
+      const totalYearlyRent = unitRows.reduce((s: number, u: any) => s + ((u.current_rent || 0) * 12), 0);
+
+      // Ersteinschätzung: 20% Bauträgermarge unterstellen
+      const estimatedPurchasePrice = Math.round(totalListPrice / 1.20);
+
+      const { error: updateErr } = await supabase.from('dev_projects').update({
+        purchase_price: estimatedPurchasePrice,
+        total_sale_target: totalListPrice,
+        commission_rate_percent: reviewedData.commissionRate || 3.57,
+        ancillary_cost_percent: reviewedData.ancillaryCostPercent || 10,
+      }).eq('id', project.id);
+
+      if (updateErr) {
+        console.error('Financial KPI update error:', updateErr);
+        throw new Error('Financial KPI update failed: ' + updateErr.message);
+      }
+      console.log(`Financial KPIs set: purchase=${estimatedPurchasePrice}, saleTarget=${totalListPrice}`);
     }
   }
 
