@@ -140,6 +140,7 @@ function toSalesDeskListing(p: DemoPropertyBase): SalesDeskListing {
 export interface DemoKaufyListing {
   listing_id: string;
   public_id: string;
+  property_id: string;
   title: string;
   asking_price: number;
   property_type: string;
@@ -157,6 +158,7 @@ function toKaufyListing(p: DemoPropertyBase): DemoKaufyListing {
   return {
     listing_id: `${DEMO_LISTING_PREFIX}${p.propertyId}`,
     public_id: `DEMO-${p.code}`,
+    property_id: p.propertyId,
     title: p.title,
     asking_price: p.askingPrice,
     property_type: p.propertyType,
@@ -330,6 +332,7 @@ export function useDemoListings() {
       items.push({
         listing_id: `${DEMO_LISTING_PREFIX}${DEMO_PROJECT_IDS[0]}`,
         public_id: 'SOT-BT-DEMO',
+        property_id: DEMO_PROJECT_IDS[0],
         title: DEMO_PROJECT_BASE.name,
         asking_price: 450000,
         property_type: 'new_construction',
