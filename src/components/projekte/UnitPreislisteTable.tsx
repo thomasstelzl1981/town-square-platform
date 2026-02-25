@@ -163,7 +163,7 @@ export function UnitPreislisteTable({ units, projectId, isDemo, onUnitPriceChang
                   <td className="px-3 py-2 font-mono text-xs text-primary">{u.public_id}</td>
                   <td className="px-3 py-2 font-medium">{u.unit_number}</td>
                   <td className="px-3 py-2 text-center">{u.rooms}-Zi</td>
-                  <td className="px-3 py-2 text-center">{u.floor}. OG</td>
+                  <td className="px-3 py-2 text-center">{u.floor === 0 ? 'EG' : u.floor < 0 ? `${Math.abs(u.floor)}. UG` : `${u.floor}. OG`}</td>
                   <td className="px-3 py-2 text-right">{u.area_sqm} m²</td>
                   <td className="px-3 py-2 text-right">{eur(u.annual_net_rent)}</td>
                   <td className="px-3 py-2 text-right">{eur(u.non_recoverable_costs)}/M</td>
