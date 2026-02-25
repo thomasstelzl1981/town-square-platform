@@ -1,183 +1,76 @@
 
-## Plan: Projekt-Datenblatt — Vollständig editierbares Projektformular mit KI-Befüllung
 
-### Konzept
+## Plan: Projekt-Datenblatt Layout-Optimierung
 
-Die bisherige "ProjectOverviewCard" wird zum **Projekt-Datenblatt** — einem vollständig editierbaren, speicherbaren Formular, das die gesetzlich vorgeschriebene Objektübersicht abbildet. Die KI-Extraktion (Magic Intake) liefert Vorschläge, die der Nutzer prüfen, korrigieren und dann per "Speichern" bestätigen kann.
+### Problem
 
-### UI-Layout (Skizze)
+Aktuell sind Objektbeschreibung und Lagebeschreibung in der rechten Spalte (3/5) neben den Objektdaten (2/5) platziert. Das erzeugt scrollbare Textarea-Felder und eine ungleichmaessige Optik.
 
+### Loesung: Vertikales Layout statt Side-by-Side
+
+Die Beschreibungen werden aus dem 2-Spalten-Grid herausgeloest und als **eigene volle Breite Sektionen** unterhalb der Objektdaten platziert — analog zu den bestehenden Sektionen (Erwerbsnebenkosten, Steuerliche Parameter).
+
+### Neue Struktur (ASCII-Skizze)
+
+```text
+┌──────────────────────────────────────────────────────────────────┐
+│  Menden Living                               14.077.035 €  [💾] │
+│  📍 Wunne 6-28, 58706 Menden (Sauerland)                        │
+├──────────────────────────────────────────────────────────────────┤
+│  PROJEKTBILDER                                                   │
+│  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐            │
+│  │  Hero   │  │ Außen   │  │ Innen   │  │Umgebung │            │
+│  └─────────┘  └─────────┘  └─────────┘  └─────────┘            │
+├──────────────────────────────────────────────────────────────────┤
+│  OBJEKTDATEN                                                     │
+│  ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐ ┌─────┐│
+│  │ WE: 72 │ │ m²:6120│ │ BJ:1980│ │ Etg: 3 │ │Zustand │ │Heiz.││
+│  ├────────┤ ├────────┤ ├────────┤ ├────────┤ ├────────┤ ├─────┤│
+│  │Energie │ │E-Klass │ │Parkpl. │ │Verkäuf.│ │Anlagety│ │Ausst││
+│  └────────┘ └────────┘ └────────┘ └────────┘ └────────┘ └─────┘│
+├──────────────────────────────────────────────────────────────────┤
+│  OBJEKTBESCHREIBUNG                    [✨ KI-Beschreibung]      │
+│  ┌──────────────────────────────────────────────────────────────┐│
+│  │ Die Wohnanlage "Menden Living" befindet sich im Mendener    ││
+│  │ Stadtteil Wunne und umfasst insgesamt 72 Wohneinheiten ...  ││
+│  │                                                    148 Wörter││
+│  └──────────────────────────────────────────────────────────────┘│
+├──────────────────────────────────────────────────────────────────┤
+│  LAGEBESCHREIBUNG                                                │
+│  ┌──────────────────────────────────────────────────────────────┐│
+│  │ Einkaufsmöglichkeiten, Schulen und Kindergärten in           ││
+│  │ unmittelbarer Nähe. Die Autobahnauffahrt zur A46 ...         ││
+│  │                                                     79 Wörter││
+│  └──────────────────────────────────────────────────────────────┘│
+├──────────────────────────────────────────────────────────────────┤
+│  ERWERBSNEBENKOSTEN                                              │
+│  Bundesland: [NRW ▾]                                             │
+│  GrESt: 6,5%    Notar: 2% (fix)    Gesamt: 8,5%                │
+├──────────────────────────────────────────────────────────────────┤
+│  STEUERLICHE PARAMETER                                           │
+│  AfA: 2%   Modell: Linear   Grundanteil: 20%                   │
+│  WEG-Verwaltung: Coeles PM GmbH | 26 EUR/WE                    │
+│  Einkunftsart: §21 EStG V+V                                     │
+├──────────────────────────────────────────────────────────────────┤
+│              [💾 Projekt-Datenblatt speichern]                   │
+└──────────────────────────────────────────────────────────────────┘
 ```
-┌─────────────────────────────────────────────────────────────────────────┐
-│  [H3] Projektname (editierbar)                     [Gesamtpreis]      │
-│  [MapPin] Adresse, PLZ Stadt                                          │
-├─────────────────────────────────────────────────────────────────────────┤
-│                                                                         │
-│  ┌─── BILDER (4 Slots) ────────────────────────────────────────────┐   │
-│  │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐       │   │
-│  │  │  HERO    │  │  AUßEN   │  │  INNEN   │  │ UMGEBUNG │       │   │
-│  │  │  (groß)  │  │          │  │          │  │          │       │   │
-│  │  │ Upload/  │  │ Upload/  │  │ Upload/  │  │ Upload/  │       │   │
-│  │  │ Vorschau │  │ Vorschau │  │ Vorschau │  │ Vorschau │       │   │
-│  │  └──────────┘  └──────────┘  └──────────┘  └──────────┘       │   │
-│  └─────────────────────────────────────────────────────────────────┘   │
-│                                                                         │
-│  ┌─── LINKS: Objektdaten (editierbar) ──┬── RECHTS: Beschreibung ───┐ │
-│  │                                       │                           │ │
-│  │  Wohneinheiten    [___72___]          │  [Textarea / Markdown]    │ │
-│  │  Wohnfläche       [___m²___]          │                           │ │
-│  │  Baujahr          [__1980__]          │  Objektbeschreibung       │ │
-│  │  Zustand          [__gepfl_]          │  (150-250 Wörter)         │ │
-│  │  WEG-Struktur     [________]          │                           │ │
-│  │  Stockwerke       [___3____]          │  ── Lagebeschreibung ──   │ │
-│  │  Heizung          [________]          │  (100-150 Wörter)         │ │
-│  │  Energieträger    [________]          │                           │ │
-│  │  Energieklasse    [________]          │  [🤖 KI-Beschreibung      │ │
-│  │  Stellplätze      [________]          │   generieren]             │ │
-│  │  Verkäufer        [________]          │                           │ │
-│  │  Anlagetyp        [________]          │  [↻ Neu generieren]       │ │
-│  │  Bundesland       [NRW_____] ← NEU   │                           │ │
-│  │                                       │                           │ │
-│  ├─── Erwerbsnebenkosten ────────────────┤                           │ │
-│  │  Grunderwerbsteuer [_6.5_%] (NRW)     │                           │ │
-│  │  Notar/Gericht     [_2.0_%] (fest)    │                           │ │
-│  │  Gesamt            = 8.5%             │                           │ │
-│  │                                       │                           │ │
-│  ├─── Steuerliche Parameter ─────────────┤                           │ │
-│  │  AfA-Satz     [_2.0_%]               │                           │ │
-│  │  AfA-Modell   [Linear §7.4]          │                           │ │
-│  │  Grundanteil  [_20__%]               │                           │ │
-│  │  Einkunftsart [V+V §21 EStG]         │                           │ │
-│  │  WEG-Verwalt. [___EUR/WE___]          │                           │ │
-│  │                                       │                           │ │
-│  │  [💾 Projekt-Datenblatt speichern]    │                           │ │
-│  └───────────────────────────────────────┴───────────────────────────┘ │
-└─────────────────────────────────────────────────────────────────────────┘
-```
 
-### Kernprinzipien
+### Aenderungen
 
-1. **KI = Vorschlag, Mensch = Entscheidung**: Jeder KI-extrahierte Wert ist editierbar
-2. **Ein Speichern-Button für alles**: Alle Felder werden zusammen gespeichert
-3. **Grunderwerbsteuer immer separat**: Wird nach Bundesland automatisch vorgeschlagen
-4. **Notar/Gericht immer 2%**: Fester Pauschalsatz, nicht editierbar
-5. **Bundesland = Pflichtfeld**: Steuert GrESt-Satz automatisch
-
-### Bildbereich — 4 kategorisierte Upload-Slots
-
-| Slot | Kategorie | Storage-Pfad | Beschreibung |
-|---|---|---|---|
-| 1 | `hero` | `{tenant}/{project}/images/hero.*` | Hauptbild für Exposés, Landingpages, Kaufy |
-| 2 | `exterior` | `{tenant}/{project}/images/exterior.*` | Außenansicht des Gebäudes |
-| 3 | `interior` | `{tenant}/{project}/images/interior.*` | Innenansicht (Musterwohnung) |
-| 4 | `surroundings` | `{tenant}/{project}/images/surroundings.*` | Umgebung, Lage, Infrastruktur |
-
-- Upload via Drag & Drop oder Klick
-- Gespeichert in `tenant-documents` Bucket unter Projekt-Pfad
-- Pfade werden in `dev_projects.project_images` (JSONB) gespeichert
-- Format: `{ hero: "path", exterior: "path", interior: "path", surroundings: "path" }`
-
-### Neue/Geänderte DB-Spalten
-
-| Spalte | Typ | Beschreibung |
+| # | Was | Detail |
 |---|---|---|
-| `federal_state` | TEXT | Bundesland (z.B. "NRW", "BY") — steuert GrESt |
-| `grest_rate_percent` | NUMERIC | Grunderwerbsteuersatz (automatisch nach Bundesland) |
-| `notary_rate_percent` | NUMERIC | Notar/Gericht (Standard 2.0%) |
-| `project_images` | JSONB | `{ hero, exterior, interior, surroundings }` |
-| `management_company` | TEXT | WEG-Verwaltung Firma |
-| `management_cost_per_unit` | NUMERIC | EUR/WE monatlich netto |
-| `investment_type` | TEXT | Anlagetyp |
-| `income_type` | TEXT | Einkunftsart |
-| `condition_text` | TEXT | Zustand (Freitext) |
-| `floors_count` | INTEGER | Stockwerke |
-| `seller_name` | TEXT | Verkäufer |
+| 1 | 2-Spalten-Grid aufloesen | Das `grid-cols-5` Layout (Z.384) wird entfernt. Alles wird vertikal gestapelt |
+| 2 | Objektdaten-Grid verbreitern | Von 2er-Grid in 2/5-Spalte → 4er oder 6er-Grid ueber volle Breite |
+| 3 | Objektbeschreibung volle Breite | Eigene Sektion unterhalb Objektdaten, volle Breite, keine fixe min-h sondern auto-resize |
+| 4 | Lagebeschreibung volle Breite | Eigene Sektion darunter, gleiche Breite wie Objektbeschreibung |
+| 5 | Textareas auto-height | Statt `min-h-[180px]` mit Scroll → CSS `field-sizing: content` oder dynamische Hoehe basierend auf Inhalt, sodass der gesamte Text sichtbar ist ohne Scrollen |
 
-Bereits vorhanden: `full_description`, `location_description`, `features`, `heating_type`, `energy_source`, `energy_class`, `renovation_year`, `parking_type`, `afa_rate_percent`, `afa_model`, `land_share_percent`
+### Datei
 
-### GrESt nach Bundesland (Lookup-Tabelle im Code)
-
-| Bundesland | Kürzel | GrESt |
-|---|---|---|
-| Baden-Württemberg | BW | 5.0% |
-| Bayern | BY | 3.5% |
-| Berlin | BE | 6.0% |
-| Brandenburg | BB | 6.5% |
-| Bremen | HB | 5.0% |
-| Hamburg | HH | 5.5% |
-| Hessen | HE | 6.0% |
-| Mecklenburg-Vorpommern | MV | 6.0% |
-| Niedersachsen | NI | 5.0% |
-| Nordrhein-Westfalen | NW | 6.5% |
-| Rheinland-Pfalz | RP | 5.0% |
-| Saarland | SL | 6.5% |
-| Sachsen | SN | 5.5% |
-| Sachsen-Anhalt | ST | 5.0% |
-| Schleswig-Holstein | SH | 6.5% |
-| Thüringen | TH | 5.0% |
-
-### KI-Beschreibungs-Button
-
-**Edge Function: `sot-project-description`**
-
-| Aspekt | Detail |
+| Datei | Aenderung |
 |---|---|
-| Input | `{ projectId: string }` |
-| Ablauf | 1. PDF-Pfad aus `intake_data.files.expose` lesen |
-| | 2. PDF aus `tenant-documents` laden |
-| | 3. An Gemini 3 Flash senden mit strukturiertem Prompt |
-| | 4. Ergebnis zurückgeben (NICHT direkt speichern — Nutzer entscheidet) |
-| Output | `{ description: string, location_description: string }` |
-| Modell | `google/gemini-3-flash-preview` via Lovable AI Gateway |
+| `src/components/projekte/ProjectDataSheet.tsx` | Layout-Umbau: vertikale Sektionen statt Side-by-Side, auto-height Textareas |
 
-**Prompt-Vorgaben:**
-- Objektbeschreibung: 150-250 Wörter, 3 Absätze, professionell für Kapitalanleger
-- Lagebeschreibung: 100-150 Wörter, Infrastruktur, Anbindung, Mikrolage
-- Keine Superlative, sachlich-ansprechend
+Kein DB-Change, keine Edge-Function-Aenderung — rein visuelles Refactoring.
 
-**UI-Flow:**
-1. Button "KI-Beschreibung generieren" → Loading-State
-2. Ergebnis wird in Textarea eingefüllt (editierbar!)
-3. Nutzer korrigiert bei Bedarf
-4. Erst beim Klick auf "Projekt-Datenblatt speichern" wird alles persistiert
-
-### Komponenten-Architektur
-
-| Datei | Beschreibung |
-|---|---|
-| `ProjectDataSheet.tsx` | Hauptkomponente (ersetzt ProjectOverviewCard) |
-| `ProjectImageUpload.tsx` | 4-Slot Bildupload mit Kategorien |
-| `ProjectFactsForm.tsx` | Editierbare Objektdaten (linke Spalte) |
-| `ProjectDescriptionPanel.tsx` | Beschreibung + KI-Button (rechte Spalte) |
-| `ProjectAcquisitionCosts.tsx` | GrESt + Notar separat mit Bundesland |
-| `ProjectAfaFields.tsx` | Bleibt (bereits vorhanden), wird integriert |
-
-### Speicher-Logik
-
-Ein einziger `handleSave()` in `ProjectDataSheet.tsx`:
-```
-1. Alle Formularfelder sammeln
-2. supabase.from('dev_projects').update({ ...allFields }).eq('id', projectId)
-3. Bei Bildern: Upload zu tenant-documents, Pfade in project_images speichern
-4. Toast "Projekt-Datenblatt gespeichert"
-5. QueryClient invalidieren
-```
-
-### Implementierungsreihenfolge
-
-| # | Schritt | Dateien |
-|---|---|---|
-| 1 | DB-Migration: Neue Spalten | SQL |
-| 2 | ProjectDataSheet.tsx (Hauptformular) | Neue Datei |
-| 3 | ProjectImageUpload.tsx (4-Slot Upload) | Neue Datei |
-| 4 | ProjectFactsForm.tsx (editierbare Felder) | Neue Datei |
-| 5 | ProjectDescriptionPanel.tsx + KI-Button | Neue Datei |
-| 6 | ProjectAcquisitionCosts.tsx (GrESt/Notar) | Neue Datei |
-| 7 | Edge Function sot-project-description | Neue Datei |
-| 8 | Integration in Projekt-Detailansicht | Bestehende Datei |
-
-### Nicht betroffen
-
-- Keine Änderung an `sot-project-intake` (bleibt für initialen Import)
-- Keine Änderung an MOD-04 (Immobilienakte)
-- ProjectAfaFields.tsx wird in das neue Formular integriert (kein separater Save-Button mehr)
