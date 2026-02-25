@@ -11,10 +11,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import {
   MapPin, Home, Ruler, Calendar, Flame, Zap, Car, Building2, Layers,
   CheckCircle2, Scale, Users, Briefcase, Receipt, Percent, BookOpen,
-  Save, Loader2, Sparkles, Upload, ImageOff, X
+  Save, Loader2, Sparkles, Upload, ImageOff, X, ChevronDown
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
@@ -83,6 +84,15 @@ function eur(v: number) {
   return v.toLocaleString('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
 }
 
+function wordCount(text: string): number {
+  return text.split(/\s+/).filter(Boolean).length;
+}
+
+function truncateLines(text: string, maxLines: number): string {
+  const lines = text.split('\n').slice(0, maxLines);
+  return lines.join('\n');
+}
+
 export function ProjectDataSheet({ isDemo, selectedProject, unitCount, fullProject }: ProjectDataSheetProps) {
   const queryClient = useQueryClient();
   const projectId = selectedProject?.id;
@@ -144,6 +154,53 @@ export function ProjectDataSheet({ isDemo, selectedProject, unitCount, fullProje
   const [dirty, setDirty] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
   const [uploadingSlot, setUploadingSlot] = useState<string | null>(null);
+  const [descOpen, setDescOpen] = useState(false);
+  const [locationOpen, setLocationOpen] = useState(false);
+
+  // ══════════════════════════════════════════════════════════════
+  // ── CRITICAL: Sync form states when fullProject data arrives ──
+  // useState only uses initialValue on FIRST render. When data
+  // loads async, we must push it into state via useEffect.
+  // ══════════════════════════════════════════════════════════════
+  useEffect(() => {
+    if (!fullProject) return;
+    const intake = (fullProject.intake_data as Record<string, any>) ?? {};
+    const reviewed = intake?.reviewed_data as Record<string, any> | null;
+
+    setTotalUnits(unitCount ?? fullProject.total_units_count ?? selectedProject?.total_units_count ?? 0);
+    setTotalArea(
+      typeof intake?.total_area_sqm === 'number' ? intake.total_area_sqm
+        : typeof reviewed?.totalArea === 'number' ? reviewed.totalArea : 0
+    );
+    setConstructionYear(intake?.construction_year ?? 0);
+    setConditionText(fullProject.condition_text ?? intake?.modernization_status ?? '');
+    setFloorsCount(fullProject.floors_count ?? 0);
+    setHeatingType(fullProject.heating_type ?? intake?.heating_type ?? '');
+    setEnergySource(fullProject.energy_source ?? '');
+    setEnergyClass(fullProject.energy_class ?? intake?.energy_class ?? '');
+    setParkingType(fullProject.parking_type ?? '');
+    setSellerName(fullProject.seller_name ?? intake?.developer ?? '');
+    setInvestmentType(fullProject.investment_type ?? '');
+    setManagementCompany(fullProject.management_company ?? '');
+    setManagementCost(fullProject.management_cost_per_unit ?? 0);
+    setIncomeType(fullProject.income_type ?? '');
+    setFeaturesText(
+      Array.isArray(fullProject.features) ? (fullProject.features as string[]).join(', ') : ''
+    );
+    setFederalState(fullProject.federal_state ?? '');
+    setGrestRate(Number(fullProject.grest_rate_percent ?? 6.5));
+    setAfaRate(Number(fullProject.afa_rate_percent ?? 2.0));
+    setAfaModel(fullProject.afa_model ?? 'linear');
+    setLandShare(Number(fullProject.land_share_percent ?? 20.0));
+    setDescription(fullProject.full_description ?? '');
+    setLocationDesc(fullProject.location_description ?? '');
+    setProjectImages((fullProject.project_images as Record<string, string>) ?? {});
+    setDirty(false);
+
+    // Auto-open descriptions if they have content
+    setDescOpen(!!(fullProject.full_description));
+    setLocationOpen(!!(fullProject.location_description));
+  }, [fullProject?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-update GrESt when Bundesland changes
   useEffect(() => {
@@ -211,10 +268,12 @@ export function ProjectDataSheet({ isDemo, selectedProject, unitCount, fullProje
 
       if (data?.description) {
         setDescription(data.description);
+        setDescOpen(true);
         setDirty(true);
       }
       if (data?.location_description) {
         setLocationDesc(data.location_description);
+        setLocationOpen(true);
         setDirty(true);
       }
       toast.success('KI-Beschreibung generiert', { description: 'Bitte prüfen und ggf. anpassen.' });
@@ -331,7 +390,6 @@ export function ProjectDataSheet({ isDemo, selectedProject, unitCount, fullProje
             {IMAGE_SLOTS.map((slot) => {
               const storagePath = projectImages[slot.key];
               const signedUrl = imageUrls[slot.key];
-              // Demo images
               const demoImg = isDemo && demoImages.length > 0
                 ? IMAGE_MAP[demoImages.find(d => d.importKey === slot.key)?.importKey || '']
                 : null;
@@ -424,55 +482,71 @@ export function ProjectDataSheet({ isDemo, selectedProject, unitCount, fullProje
           </div>
         </div>
 
-        {/* ── Objektbeschreibung — full width ── */}
-        <div className="space-y-2 pt-2 border-t">
-          <div className="flex items-center justify-between">
-            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Objektbeschreibung</p>
-            {!isDemo && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-1.5 text-xs"
-                onClick={generateAiDescription}
-                disabled={aiLoading}
-              >
-                {aiLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
-                {aiLoading ? 'Exposé wird analysiert…' : 'KI-Beschreibung generieren'}
-              </Button>
-            )}
-          </div>
-          <Textarea
-            value={description}
-            onChange={e => { setDescription(e.target.value); markDirty(); }}
-            disabled={isDemo}
-            placeholder="Professionelle Objektbeschreibung (150-250 Wörter)…"
-            className="text-sm leading-relaxed resize-none overflow-hidden"
-            style={{ fieldSizing: 'content', minHeight: '80px' } as React.CSSProperties}
-          />
-          {description && (
-            <p className="text-[10px] text-muted-foreground text-right">
-              {description.split(/\s+/).filter(Boolean).length} Wörter
-            </p>
-          )}
-        </div>
+        {/* ── Objektbeschreibung — Collapsible ── */}
+        <Collapsible open={descOpen} onOpenChange={setDescOpen}>
+          <div className="border-t pt-3">
+            <CollapsibleTrigger className="flex items-center justify-between w-full group cursor-pointer">
+              <div className="flex items-center gap-2">
+                <ChevronDown className={cn('h-4 w-4 text-muted-foreground transition-transform', descOpen && 'rotate-180')} />
+                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Objektbeschreibung</p>
+              </div>
+              {description && (
+                <span className="text-[10px] text-muted-foreground">{wordCount(description)} Wörter</span>
+              )}
+            </CollapsibleTrigger>
 
-        {/* ── Lagebeschreibung — full width ── */}
-        <div className="space-y-2 pt-2 border-t">
-          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Lagebeschreibung</p>
-          <Textarea
-            value={locationDesc}
-            onChange={e => { setLocationDesc(e.target.value); markDirty(); }}
-            disabled={isDemo}
-            placeholder="Lage, Infrastruktur, Anbindung (100-150 Wörter)…"
-            className="text-sm leading-relaxed resize-none overflow-hidden"
-            style={{ fieldSizing: 'content', minHeight: '80px' } as React.CSSProperties}
-          />
-          {locationDesc && (
-            <p className="text-[10px] text-muted-foreground text-right">
-              {locationDesc.split(/\s+/).filter(Boolean).length} Wörter
-            </p>
-          )}
-        </div>
+            {/* Preview when collapsed */}
+            {!descOpen && description && (
+              <p className="text-sm text-muted-foreground mt-2 line-clamp-2 pl-6">{description}</p>
+            )}
+
+            <CollapsibleContent>
+              <div className="mt-2">
+                <Textarea
+                  value={description}
+                  onChange={e => { setDescription(e.target.value); markDirty(); }}
+                  disabled={isDemo}
+                  placeholder="Professionelle Objektbeschreibung (150-250 Wörter)…"
+                  className="text-sm leading-relaxed resize-none overflow-hidden"
+                  style={{ fieldSizing: 'content', minHeight: '120px' } as React.CSSProperties}
+                />
+              </div>
+            </CollapsibleContent>
+          </div>
+        </Collapsible>
+
+        {/* ── Lagebeschreibung — Collapsible ── */}
+        <Collapsible open={locationOpen} onOpenChange={setLocationOpen}>
+          <div className="border-t pt-3">
+            <CollapsibleTrigger className="flex items-center justify-between w-full group cursor-pointer">
+              <div className="flex items-center gap-2">
+                <ChevronDown className={cn('h-4 w-4 text-muted-foreground transition-transform', locationOpen && 'rotate-180')} />
+                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Lagebeschreibung</p>
+              </div>
+              {locationDesc && (
+                <span className="text-[10px] text-muted-foreground">{wordCount(locationDesc)} Wörter</span>
+              )}
+            </CollapsibleTrigger>
+
+            {/* Preview when collapsed */}
+            {!locationOpen && locationDesc && (
+              <p className="text-sm text-muted-foreground mt-2 line-clamp-2 pl-6">{locationDesc}</p>
+            )}
+
+            <CollapsibleContent>
+              <div className="mt-2">
+                <Textarea
+                  value={locationDesc}
+                  onChange={e => { setLocationDesc(e.target.value); markDirty(); }}
+                  disabled={isDemo}
+                  placeholder="Lage, Infrastruktur, Anbindung (100-150 Wörter)…"
+                  className="text-sm leading-relaxed resize-none overflow-hidden"
+                  style={{ fieldSizing: 'content', minHeight: '120px' } as React.CSSProperties}
+                />
+              </div>
+            </CollapsibleContent>
+          </div>
+        </Collapsible>
 
         {/* ── Erwerbsnebenkosten — full width ── */}
         <div className="p-3 rounded-lg border bg-muted/20 space-y-3">
@@ -563,12 +637,23 @@ export function ProjectDataSheet({ isDemo, selectedProject, unitCount, fullProje
           </FormField>
         </div>
 
-        {/* ── Save button — full width ── */}
+        {/* ── Footer: KI-Button + Save ── */}
         {!isDemo && (
-          <Button onClick={handleSave} disabled={saving || !dirty} className="w-full gap-1.5">
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-            Projekt-Datenblatt speichern
-          </Button>
+          <div className="flex flex-col sm:flex-row gap-3 pt-2 border-t">
+            <Button
+              variant="outline"
+              onClick={generateAiDescription}
+              disabled={aiLoading}
+              className="gap-1.5 flex-1"
+            >
+              {aiLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+              {aiLoading ? 'Exposé wird analysiert…' : 'KI-Beschreibung generieren'}
+            </Button>
+            <Button onClick={handleSave} disabled={saving || !dirty} className="gap-1.5 flex-1">
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              Projekt-Datenblatt speichern
+            </Button>
+          </div>
         )}
       </CardContent>
     </Card>
