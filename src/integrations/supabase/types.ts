@@ -5903,6 +5903,7 @@ export type Database = {
           avg_unit_price: number | null
           city: string | null
           commission_rate_percent: number | null
+          condition_text: string | null
           country: string | null
           created_at: string
           created_by: string | null
@@ -5913,29 +5914,39 @@ export type Database = {
           energy_class: string | null
           energy_source: string | null
           features: Json | null
+          federal_state: string | null
+          floors_count: number | null
           full_description: string | null
+          grest_rate_percent: number | null
           heating_type: string | null
           holding_period_months: number | null
           id: string
+          income_type: string | null
           intake_data: Json | null
+          investment_type: string | null
           kaufy_featured: boolean | null
           kaufy_listed: boolean | null
           land_share_percent: number | null
           landingpage_enabled: boolean | null
           landingpage_slug: string | null
           location_description: string | null
+          management_company: string | null
+          management_cost_per_unit: number | null
           name: string
           needs_review: boolean | null
+          notary_rate_percent: number | null
           parking_price: number | null
           parking_type: string | null
           postal_code: string | null
           project_code: string
+          project_images: Json | null
           project_start_date: string | null
           project_type: string | null
           public_id: string | null
           purchase_price: number | null
           renovation_budget: number | null
           renovation_year: number | null
+          seller_name: string | null
           state: string | null
           status: string
           target_end_date: string | null
@@ -5952,6 +5963,7 @@ export type Database = {
           avg_unit_price?: number | null
           city?: string | null
           commission_rate_percent?: number | null
+          condition_text?: string | null
           country?: string | null
           created_at?: string
           created_by?: string | null
@@ -5962,29 +5974,39 @@ export type Database = {
           energy_class?: string | null
           energy_source?: string | null
           features?: Json | null
+          federal_state?: string | null
+          floors_count?: number | null
           full_description?: string | null
+          grest_rate_percent?: number | null
           heating_type?: string | null
           holding_period_months?: number | null
           id?: string
+          income_type?: string | null
           intake_data?: Json | null
+          investment_type?: string | null
           kaufy_featured?: boolean | null
           kaufy_listed?: boolean | null
           land_share_percent?: number | null
           landingpage_enabled?: boolean | null
           landingpage_slug?: string | null
           location_description?: string | null
+          management_company?: string | null
+          management_cost_per_unit?: number | null
           name: string
           needs_review?: boolean | null
+          notary_rate_percent?: number | null
           parking_price?: number | null
           parking_type?: string | null
           postal_code?: string | null
           project_code: string
+          project_images?: Json | null
           project_start_date?: string | null
           project_type?: string | null
           public_id?: string | null
           purchase_price?: number | null
           renovation_budget?: number | null
           renovation_year?: number | null
+          seller_name?: string | null
           state?: string | null
           status?: string
           target_end_date?: string | null
@@ -6001,6 +6023,7 @@ export type Database = {
           avg_unit_price?: number | null
           city?: string | null
           commission_rate_percent?: number | null
+          condition_text?: string | null
           country?: string | null
           created_at?: string
           created_by?: string | null
@@ -6011,29 +6034,39 @@ export type Database = {
           energy_class?: string | null
           energy_source?: string | null
           features?: Json | null
+          federal_state?: string | null
+          floors_count?: number | null
           full_description?: string | null
+          grest_rate_percent?: number | null
           heating_type?: string | null
           holding_period_months?: number | null
           id?: string
+          income_type?: string | null
           intake_data?: Json | null
+          investment_type?: string | null
           kaufy_featured?: boolean | null
           kaufy_listed?: boolean | null
           land_share_percent?: number | null
           landingpage_enabled?: boolean | null
           landingpage_slug?: string | null
           location_description?: string | null
+          management_company?: string | null
+          management_cost_per_unit?: number | null
           name?: string
           needs_review?: boolean | null
+          notary_rate_percent?: number | null
           parking_price?: number | null
           parking_type?: string | null
           postal_code?: string | null
           project_code?: string
+          project_images?: Json | null
           project_start_date?: string | null
           project_type?: string | null
           public_id?: string | null
           purchase_price?: number | null
           renovation_budget?: number | null
           renovation_year?: number | null
+          seller_name?: string | null
           state?: string | null
           status?: string
           target_end_date?: string | null
