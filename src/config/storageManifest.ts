@@ -397,7 +397,7 @@ export function getSortedModules(): ModuleStorageConfig[] {
  * Removes special characters (spaces, brackets, umlauts, accents) that cause "Invalid key" errors.
  * Adds a timestamp prefix for uniqueness.
  */
-function sanitizeFileName(name: string): string {
+export function sanitizeFileName(name: string): string {
   const lastDot = name.lastIndexOf('.');
   const ext = lastDot > 0 ? name.substring(lastDot).toLowerCase() : '';
   const base = lastDot > 0 ? name.substring(0, lastDot) : name;

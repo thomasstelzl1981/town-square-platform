@@ -6,6 +6,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { sanitizeFileName, buildStoragePath, UPLOAD_BUCKET } from '@/config/storageManifest';
 import { toast } from 'sonner';
 import { calcBestandQuick, calcAufteilerQuick } from '@/engines/akquiseCalc/engine';
 
@@ -246,12 +247,11 @@ export function useUploadOfferDocument() {
       file: File; 
       documentType: string;
     }) => {
-      // Upload to storage
-      const fileName = `${Date.now()}_${file.name}`;
-      const storagePath = `${mandateId}/${offerId}/${fileName}`;
+      // Upload to storage (using central sanitizeFileName)
+      const storagePath = buildStoragePath(activeTenantId!, 'MOD_12', offerId, file.name);
 
       const { error: uploadError } = await supabase.storage
-        .from('acq-documents')
+        .from(UPLOAD_BUCKET)
         .upload(storagePath, file);
 
       if (uploadError) throw uploadError;
