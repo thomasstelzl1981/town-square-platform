@@ -28,13 +28,19 @@ const corsHeaders = {
 
 const MAX_AI_PROCESSING_SIZE = 20 * 1024 * 1024; // 20MB
 
-// ── Tool-Calling: Expose extraction ───────────────────────────────────────────
+// ── Expose AI Config (P0.1 diagnostic toggles) ───────────────────────────────
+// Toggle via env: EXPOSE_TOOL_CHOICE = "auto" | "forced" (default: "auto")
+const EXPOSE_TOOL_CHOICE_MODE = Deno.env.get('EXPOSE_TOOL_CHOICE') || 'auto';
+const EXPOSE_MAX_TOKENS = 8000;
+const EXPOSE_TEMPERATURE = 0.1;
+
+// ── Tool-Calling: Expose extraction (simplified — metadata only, no units) ───
 
 const EXTRACT_PROJECT_TOOL = {
   type: 'function' as const,
   function: {
     name: 'extract_project_data',
-    description: 'Extrahiere alle Projektdaten aus dem Immobilien-Exposé.',
+    description: 'Extrahiere die Projekt-Metadaten aus dem Immobilien-Exposé. Keine einzelnen Einheiten — nur Projektdaten.',
     parameters: {
       type: 'object',
       properties: {
@@ -45,62 +51,40 @@ const EXTRACT_PROJECT_TOOL = {
         unitsCount: { type: 'number', description: 'Gesamtzahl Wohneinheiten' },
         totalArea: { type: 'number', description: 'Gesamtwohnfläche in m²' },
         priceRange: { type: 'string', description: 'Preisspanne, z.B. "149.900 – 249.900 €"' },
-        description: { type: 'string', description: 'Kurzbeschreibung (max 200 Zeichen)' },
-        projectType: { type: 'string', enum: ['neubau', 'aufteilung'], description: 'neubau = Neubau, aufteilung = Bestandsobjekt mit Aufteilung in Eigentumswohnungen' },
-        constructionYear: { type: 'number', description: 'Baujahr des Gebäudes (0 wenn nicht erkennbar)' },
-        modernizationStatus: { type: 'string', description: 'Modernisierungszustand, z.B. "saniert 2020", "kernsaniert", "unsaniert"' },
-        wegCount: { type: 'number', description: 'Anzahl WEGs (Wohnungseigentümergemeinschaften), 0 oder 1 bei einfachen Projekten' },
+        description: { type: 'string', description: 'Kurzbeschreibung des Projekts (max 200 Zeichen)' },
+        projectType: { type: 'string', enum: ['neubau', 'aufteilung'], description: 'neubau = Neubau, aufteilung = Bestandsobjekt mit Aufteilung' },
+        constructionYear: { type: 'number', description: 'Baujahr (0 wenn nicht erkennbar)' },
+        modernizationStatus: { type: 'string', description: 'z.B. "saniert 2020", "kernsaniert", "unsaniert"' },
+        wegCount: { type: 'number', description: 'Anzahl WEGs, 0 oder 1 bei einfachen Projekten' },
         wegDetails: {
           type: 'array',
-          description: 'Details zu den einzelnen WEGs bei Aufteilungsobjekten',
+          description: 'WEG-Details bei Aufteilungsobjekten',
           items: {
             type: 'object',
             properties: {
-              name: { type: 'string', description: 'WEG-Bezeichnung, z.B. "WEG 1: Wunne 6-18"' },
-              unitsCount: { type: 'number', description: 'Anzahl Einheiten in dieser WEG' },
-              addressRange: { type: 'string', description: 'Adressbereich, z.B. "Wunne 6-18"' },
+              name: { type: 'string' },
+              unitsCount: { type: 'number' },
+              addressRange: { type: 'string' },
             },
           },
         },
-        developer: { type: 'string', description: 'Bauträger/Verkäufer, z.B. "Kalo Eisenach GmbH"' },
-        extractedUnits: {
-          type: 'array',
-          description: 'Falls im Exposé einzelne Einheiten erkennbar sind',
-          items: {
-            type: 'object',
-            properties: {
-              unitNumber: { type: 'string' },
-              type: { type: 'string' },
-              area: { type: 'number' },
-              rooms: { type: 'number' },
-              floor: { type: 'string' },
-              price: { type: 'number' },
-              currentRent: { type: 'number' },
-              weg: { type: 'string', description: 'WEG-Zuordnung' },
-            },
-          },
-        },
+        developer: { type: 'string', description: 'Bauträger/Verkäufer' },
+        summary: { type: 'string', description: 'Kurze Zusammenfassung des Exposés in 2-3 Sätzen' },
       },
       required: ['projectName', 'city', 'projectType'],
     },
   },
 };
 
-const EXPOSE_SYSTEM_PROMPT = `Du bist ein hochpräziser Immobilien-Datenextraktor mit Spezialwissen für deutsche Immobilienprojekte.
+const EXPOSE_SYSTEM_PROMPT = `Du bist ein Immobilien-Datenextraktor. Analysiere das Exposé und extrahiere die Projekt-Metadaten mit der Tool-Funktion extract_project_data.
 
-Analysiere das Exposé und extrahiere ALLE verfügbaren Informationen. Nutze die Tool-Funktion extract_project_data.
-
-BESONDERS WICHTIG bei Aufteilungsobjekten (Bestandsimmobilien, die in Eigentumswohnungen aufgeteilt werden):
-- Erkenne ob es sich um ein Aufteilungsobjekt handelt (Baujahr, "Aufteilung", "WEG", Bestandsimmobilie)
-- Zähle die WEGs korrekt (z.B. "WEG 1: Wunne 6-18", "WEG 2: Wunne 20-22")
-- Extrahiere: Baujahr, Modernisierungszustand, Bauträger/Verkäufer
-- Bei Rendite-Informationen: Ist-Miete vs. Soll-Miete unterscheiden
-- Hausgeld und Instandhaltungsrücklage erfassen wenn vorhanden
-
-HINWEISE:
-- Projekttyp "aufteilung" wenn: Bestandsgebäude, Baujahr vor 2020, Aufteilungsgenehmigung, WEG-Strukturen
-- Projekttyp "neubau" wenn: Neubau, Erstbezug, kein Baujahr oder Baujahr aktuell/zukünftig
-- Wenn einzelne Einheiten im Exposé erkennbar sind, extrahiere sie auch`;
+WICHTIG:
+- Extrahiere NUR Projekt-Metadaten (Name, Stadt, PLZ, Adresse, Typ, Baujahr, WEGs, Bauträger).
+- Extrahiere KEINE einzelnen Wohneinheiten — die kommen aus der Preisliste.
+- Projekttyp "aufteilung" bei: Bestandsgebäude, Baujahr vor 2020, WEG-Strukturen.
+- Projekttyp "neubau" bei: Neubau, Erstbezug.
+- Bei mehreren WEGs: Zähle sie korrekt und liste Details.
+- Rufe IMMER die Tool-Funktion auf, auch wenn du nur wenige Felder füllen kannst.`;
 
 // ── Standard folder templates ─────────────────────────────────────────────────
 const PROJECT_FOLDERS = [
@@ -260,6 +244,8 @@ async function handleAnalyze(
   const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
 
   // ── STEP 1: Exposé — AI extraction with gemini-2.5-pro + Tool-Calling ──
+  let exposeStatus: 'skipped' | 'success' | 'empty' | 'error' = 'skipped';
+
   if (storagePaths.expose && LOVABLE_API_KEY) {
     try {
       const { data: fileData, error: dlError } = await supabase.storage
@@ -268,9 +254,25 @@ async function handleAnalyze(
 
       if (dlError) {
         console.error('Download expose error:', dlError);
+        exposeStatus = 'error';
       } else if (fileData && fileData.size <= MAX_AI_PROCESSING_SIZE) {
         const buffer = await fileData.arrayBuffer();
         const base64 = uint8ToBase64(new Uint8Array(buffer));
+        const pdfSizeBytes = buffer.byteLength;
+
+        // Build tool_choice based on toggle
+        const toolChoicePayload = EXPOSE_TOOL_CHOICE_MODE === 'forced'
+          ? { type: 'function' as const, function: { name: 'extract_project_data' } }
+          : 'auto';
+
+        const aiRequestConfig = {
+          model: 'google/gemini-2.5-pro',
+          tool_choice_mode: EXPOSE_TOOL_CHOICE_MODE,
+          max_tokens: EXPOSE_MAX_TOKENS,
+          temperature: EXPOSE_TEMPERATURE,
+          pdf_size_bytes: pdfSizeBytes,
+        };
+        console.log('[expose-diag] AI request config:', JSON.stringify(aiRequestConfig));
 
         const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
           method: 'POST',
@@ -285,26 +287,35 @@ async function handleAnalyze(
               {
                 role: 'user',
                 content: [
-                  { type: 'text', text: 'Analysiere dieses Immobilien-Exposé vollständig. Nutze die Tool-Funktion um die Daten strukturiert zurückzugeben.' },
+                  { type: 'text', text: 'Analysiere dieses Immobilien-Exposé und extrahiere die Projekt-Metadaten mit der Tool-Funktion.' },
                   { type: 'image_url', image_url: { url: `data:application/pdf;base64,${base64}` } }
                 ]
               }
             ],
             tools: [EXTRACT_PROJECT_TOOL],
-            tool_choice: { type: 'function' as const, function: { name: 'extract_project_data' } },
-            max_tokens: 4000,
+            tool_choice: toolChoicePayload,
+            max_tokens: EXPOSE_MAX_TOKENS,
+            temperature: EXPOSE_TEMPERATURE,
           }),
         });
 
         if (aiResponse.ok) {
           const aiResult = await aiResponse.json();
-          console.log('Expose AI response structure:', {
-            keys: Object.keys(aiResult),
-            choicesCount: aiResult.choices?.length,
-            finish_reason: aiResult.choices?.[0]?.finish_reason,
-            hasToolCalls: !!aiResult.choices?.[0]?.message?.tool_calls,
-            hasContent: !!aiResult.choices?.[0]?.message?.content,
-          });
+          
+          // Structured diagnostic logging
+          const diagLog = {
+            model: aiResult.model || 'unknown',
+            tool_choice_mode: EXPOSE_TOOL_CHOICE_MODE,
+            max_tokens: EXPOSE_MAX_TOKENS,
+            temperature: EXPOSE_TEMPERATURE,
+            finish_reason: aiResult.choices?.[0]?.finish_reason || 'none',
+            content_length: aiResult.choices?.[0]?.message?.content?.length || 0,
+            tool_calls_count: aiResult.choices?.[0]?.message?.tool_calls?.length || 0,
+            pdf_size_bytes: pdfSizeBytes,
+            pdf_mime: 'application/pdf',
+            usage: aiResult.usage || null,
+          };
+          console.log('[expose-diag] AI response:', JSON.stringify(diagLog));
           
           const toolCall = aiResult.choices?.[0]?.message?.tool_calls?.[0];
           if (toolCall?.function?.arguments) {
@@ -318,23 +329,25 @@ async function handleAnalyze(
                 unitsCount: parseInt(parsed.unitsCount) || 0,
                 totalArea: parseFloat(parsed.totalArea) || 0,
                 priceRange: parsed.priceRange || '',
-                description: parsed.description || '',
+                description: parsed.description || parsed.summary || '',
                 projectType: parsed.projectType || 'neubau',
                 constructionYear: parsed.constructionYear || 0,
                 modernizationStatus: parsed.modernizationStatus || '',
                 wegCount: parsed.wegCount || 0,
                 wegDetails: Array.isArray(parsed.wegDetails) ? parsed.wegDetails : [],
                 developer: parsed.developer || '',
-                extractedUnits: Array.isArray(parsed.extractedUnits) ? parsed.extractedUnits : [],
               });
-              console.log('Expose extraction (tool-calling):', extractedData.projectName, '— Type:', extractedData.projectType, '— WEGs:', extractedData.wegCount);
+              exposeStatus = 'success';
+              console.log('[expose-diag] ✅ Extraction SUCCESS:', extractedData.projectName, '— Type:', extractedData.projectType, '— WEGs:', extractedData.wegCount);
             } catch (parseErr) {
-              console.error('Expose tool-calling parse error:', parseErr);
+              console.error('[expose-diag] ❌ Tool-calling parse error:', parseErr);
+              exposeStatus = 'error';
             }
           } else {
             // Fallback: content-based parsing
             const content = aiResult.choices?.[0]?.message?.content;
             if (content) {
+              console.log('[expose-diag] No tool_calls, attempting content fallback. Content preview:', content.substring(0, 200));
               const jsonMatch = content.match(/\{[\s\S]*\}/);
               if (jsonMatch) {
                 try {
@@ -354,20 +367,27 @@ async function handleAnalyze(
                     wegCount: parsed.wegCount || 0,
                     wegDetails: Array.isArray(parsed.wegDetails) ? parsed.wegDetails : [],
                     developer: parsed.developer || '',
-                    extractedUnits: Array.isArray(parsed.extractedUnits) ? parsed.extractedUnits : [],
                   });
-                  console.log('Expose extraction (fallback):', extractedData.projectName);
+                  exposeStatus = 'success';
+                  console.log('[expose-diag] ✅ Fallback extraction:', extractedData.projectName);
                 } catch (parseErr) {
-                  console.error('Expose JSON parse error:', parseErr);
+                  console.error('[expose-diag] ❌ Content JSON parse error:', parseErr);
+                  exposeStatus = 'error';
                 }
+              } else {
+                console.error('[expose-diag] ❌ Content present but no JSON found. Content preview:', content.substring(0, 300));
+                exposeStatus = 'error';
               }
             } else {
-              console.error('Expose AI returned 200 but no tool_calls AND no parseable content. finish_reason:', aiResult.choices?.[0]?.finish_reason);
+              // THIS IS THE SILENT FAIL CASE — now explicit
+              console.error('[expose-diag] ❌ EMPTY RESPONSE — no tool_calls AND no content.', JSON.stringify(diagLog));
+              exposeStatus = 'empty';
             }
           }
         } else {
           const errText = await aiResponse.text();
-          console.error('AI error:', aiResponse.status, errText);
+          console.error('[expose-diag] ❌ AI HTTP error:', aiResponse.status, errText);
+          exposeStatus = 'error';
           if (aiResponse.status === 429 || aiResponse.status === 402) {
             return new Response(JSON.stringify({
               error: aiResponse.status === 429
@@ -380,12 +400,16 @@ async function handleAnalyze(
           }
         }
       } else if (fileData) {
-        console.log('File too large for AI extraction:', fileData.size);
+        console.log('[expose-diag] File too large for AI:', fileData.size, 'bytes');
+        exposeStatus = 'error';
       }
     } catch (err) {
-      console.error('Expose extraction error:', err);
+      console.error('[expose-diag] ❌ Expose extraction exception:', err);
+      exposeStatus = 'error';
     }
   }
+
+  console.log('[expose-diag] Final expose status:', exposeStatus);
 
   // ── STEP 2: Pricelist — via shared tabular parser ──────────────────────
   if (storagePaths.pricelist) {
@@ -521,7 +545,7 @@ async function handleAnalyze(
     extractedData.projectName = `Neues Projekt ${new Date().getFullYear()}`;
   }
 
-  return new Response(JSON.stringify({ success: true, extractedData }), {
+  return new Response(JSON.stringify({ success: true, extractedData, exposeStatus }), {
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   });
 }
