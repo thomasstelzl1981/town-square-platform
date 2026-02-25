@@ -139,7 +139,7 @@ export function UnitPreislisteTable({ units, projectId, isDemo, onUnitPriceChang
               <th className="px-3 py-2.5 text-right font-semibold text-muted-foreground">Fläche m²</th>
               <th className="px-3 py-2.5 text-right font-semibold text-muted-foreground">Jahresnetto</th>
               <th className="px-3 py-2.5 text-right font-semibold text-muted-foreground">NK n.u.</th>
-              <th className="px-3 py-2.5 text-right font-semibold text-muted-foreground">Rendite</th>
+              <th className="px-3 py-2.5 text-right font-semibold text-muted-foreground">Bruttorendite</th>
               <th className="px-3 py-2.5 text-right font-semibold text-muted-foreground">Verkaufspreis ✎</th>
               <th className="px-3 py-2.5 text-right font-semibold text-muted-foreground">Provision</th>
               <th className="px-3 py-2.5 text-right font-semibold text-muted-foreground">Stellplatz ✎</th>

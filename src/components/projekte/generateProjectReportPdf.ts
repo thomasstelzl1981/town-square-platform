@@ -33,7 +33,6 @@ export interface ReportParams {
   energyClass: string;
   investmentCosts: number;
   provisionRate: number;
-  targetYield: number;
   units: ReportUnit[];
   imageDataUrls?: string[]; // base64 data URLs
 }
@@ -66,7 +65,7 @@ export async function generateProjectReportPdf(params: ReportParams): Promise<js
     projectName, projectAddress, projectCity, projectPostalCode,
     projectDescription, developerContext, totalUnits, totalParkingSpaces,
     totalLivingArea, yearBuilt, renovationYear, heatingType, energyClass,
-    investmentCosts, provisionRate, targetYield, units, imageDataUrls,
+    investmentCosts, provisionRate, units, imageDataUrls,
   } = params;
 
   // ═══════════════════════════════════════════════════════════════════════
@@ -191,7 +190,6 @@ export async function generateProjectReportPdf(params: ReportParams): Promise<js
   doc.setFontSize(8);
   doc.setTextColor(60, 60, 60);
   doc.text(`Investitionskosten:  ${EUR(investmentCosts)}`, M_LEFT, y); y += 4;
-  doc.text(`Endkundenrendite:   ${PCT(targetYield * 100)}`, M_LEFT, y); y += 4;
   doc.text(`Provision (Satz):   ${PCT(provisionRate * 100)}`, M_LEFT, y); y += 7;
 
   // Cumulative EUR values
@@ -304,7 +302,8 @@ export async function generateProjectReportPdf(params: ReportParams): Promise<js
   doc.text(EUR(totalVolume), colX[3], y);
   const avgPricePerSqm = units.length > 0 ? Math.round(totalVolume / units.reduce((s, u) => s + u.area_sqm, 0)) : 0;
   doc.text(EUR(avgPricePerSqm), colX[4], y);
-  doc.text(PCT(targetYield * 100), colX[5], y);
+  const avgYield = units.length > 0 ? units.reduce((s, u) => s + u.effective_yield, 0) / units.length : 0;
+  doc.text(PCT(avgYield), colX[5], y);
   doc.text(EUR(totalProvision), colX[6], y);
 
   addFooter(doc, 2, 2);
