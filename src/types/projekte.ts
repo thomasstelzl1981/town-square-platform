@@ -96,6 +96,25 @@ export interface DevProject {
   created_at: string;
   updated_at: string;
   created_by: string | null;
+  // AfA & Steuerliche Parameter
+  afa_model: string | null;
+  afa_rate_percent: number | null;
+  land_share_percent: number | null;
+  // Erweiterte Projektdaten (aus DataSheet / Intake)
+  full_description: string | null;
+  location_description: string | null;
+  construction_year: number | null;
+  total_area_sqm: number | null;
+  street?: string | null;
+  house_number?: string | null;
+  federal_state?: string | null;
+  grest_rate_percent?: number | null;
+  energy_source?: string | null;
+  heating_type?: string | null;
+  phase?: string | null;
+  project_name?: string | null;
+  intake_data?: any;
+  invest_engine_analyzed?: boolean;
   // Joined fields
   developer_context?: DeveloperContext;
 }
@@ -151,6 +170,7 @@ export interface DevProjectUnit {
   unit_id: string | null;
   public_id: string | null;
   commission_amount: number | null;
+  hausgeld: number | null;
   created_at: string;
   updated_at: string;
 }

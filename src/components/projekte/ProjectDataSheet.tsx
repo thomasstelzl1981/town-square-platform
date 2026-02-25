@@ -331,7 +331,7 @@ export function ProjectDataSheet({ isDemo, selectedProject, unitCount, fullProje
 
       const { error } = await supabase
         .from('dev_projects')
-        .update(updatePayload as any)
+        .update(updatePayload)
         .eq('id', projectId);
 
       if (error) throw error;
