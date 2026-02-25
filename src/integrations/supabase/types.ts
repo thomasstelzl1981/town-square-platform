@@ -5908,6 +5908,13 @@ export type Database = {
           created_by: string | null
           description: string | null
           developer_context_id: string
+          energy_cert_type: string | null
+          energy_cert_value: number | null
+          energy_class: string | null
+          energy_source: string | null
+          features: Json | null
+          full_description: string | null
+          heating_type: string | null
           holding_period_months: number | null
           id: string
           intake_data: Json | null
@@ -5916,8 +5923,11 @@ export type Database = {
           land_share_percent: number | null
           landingpage_enabled: boolean | null
           landingpage_slug: string | null
+          location_description: string | null
           name: string
           needs_review: boolean | null
+          parking_price: number | null
+          parking_type: string | null
           postal_code: string | null
           project_code: string
           project_start_date: string | null
@@ -5925,6 +5935,7 @@ export type Database = {
           public_id: string | null
           purchase_price: number | null
           renovation_budget: number | null
+          renovation_year: number | null
           state: string | null
           status: string
           target_end_date: string | null
@@ -5946,6 +5957,13 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           developer_context_id: string
+          energy_cert_type?: string | null
+          energy_cert_value?: number | null
+          energy_class?: string | null
+          energy_source?: string | null
+          features?: Json | null
+          full_description?: string | null
+          heating_type?: string | null
           holding_period_months?: number | null
           id?: string
           intake_data?: Json | null
@@ -5954,8 +5972,11 @@ export type Database = {
           land_share_percent?: number | null
           landingpage_enabled?: boolean | null
           landingpage_slug?: string | null
+          location_description?: string | null
           name: string
           needs_review?: boolean | null
+          parking_price?: number | null
+          parking_type?: string | null
           postal_code?: string | null
           project_code: string
           project_start_date?: string | null
@@ -5963,6 +5984,7 @@ export type Database = {
           public_id?: string | null
           purchase_price?: number | null
           renovation_budget?: number | null
+          renovation_year?: number | null
           state?: string | null
           status?: string
           target_end_date?: string | null
@@ -5984,6 +6006,13 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           developer_context_id?: string
+          energy_cert_type?: string | null
+          energy_cert_value?: number | null
+          energy_class?: string | null
+          energy_source?: string | null
+          features?: Json | null
+          full_description?: string | null
+          heating_type?: string | null
           holding_period_months?: number | null
           id?: string
           intake_data?: Json | null
@@ -5992,8 +6021,11 @@ export type Database = {
           land_share_percent?: number | null
           landingpage_enabled?: boolean | null
           landingpage_slug?: string | null
+          location_description?: string | null
           name?: string
           needs_review?: boolean | null
+          parking_price?: number | null
+          parking_type?: string | null
           postal_code?: string | null
           project_code?: string
           project_start_date?: string | null
@@ -6001,6 +6033,7 @@ export type Database = {
           public_id?: string | null
           purchase_price?: number | null
           renovation_budget?: number | null
+          renovation_year?: number | null
           state?: string | null
           status?: string
           target_end_date?: string | null

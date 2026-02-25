@@ -40,7 +40,7 @@ const EXTRACT_PROJECT_TOOL = {
   type: 'function' as const,
   function: {
     name: 'extract_project_data',
-    description: 'Extrahiere die Projekt-Metadaten aus dem Immobilien-Exposé. Keine einzelnen Einheiten — nur Projektdaten.',
+    description: 'Extrahiere die Projekt-Metadaten aus dem Immobilien-Exposé. Keine einzelnen Einheiten — nur Projektdaten. Extrahiere auch die ausführliche Beschreibung, Energiedaten und Ausstattungsmerkmale.',
     parameters: {
       type: 'object',
       properties: {
@@ -70,20 +70,42 @@ const EXTRACT_PROJECT_TOOL = {
         },
         developer: { type: 'string', description: 'Bauträger/Verkäufer' },
         summary: { type: 'string', description: 'Kurze Zusammenfassung des Exposés in 2-3 Sätzen' },
+        // ── Extended fields for Kaufy-Readiness ──
+        fullDescription: { type: 'string', description: 'Ausführliche Objektbeschreibung (500-1000 Wörter). Lage, Ausstattung, Besonderheiten, Verkehrsanbindung, Umgebung. Alles was im Exposé als Fließtext steht.' },
+        locationDescription: { type: 'string', description: 'Lagebeschreibung separat: Infrastruktur, ÖPNV, Schulen, Einkaufsmöglichkeiten, Naherholung.' },
+        features: { type: 'array', items: { type: 'string' }, description: 'Ausstattungsmerkmale als Liste, z.B. ["Balkon", "Aufzug", "Keller", "TG-Stellplatz", "Fußbodenheizung"]' },
+        energyCertType: { type: 'string', description: '"Verbrauchsausweis" oder "Bedarfsausweis"' },
+        energyCertValue: { type: 'number', description: 'Energiekennwert in kWh/(m²·a)' },
+        energyClass: { type: 'string', description: 'Energieeffizienzklasse: "A+" bis "H"' },
+        heatingType: { type: 'string', description: 'Heizungsart: "Zentralheizung", "Etagenheizung", "Fernwärme", "Wärmepumpe" etc.' },
+        energySource: { type: 'string', description: 'Energieträger: "Gas", "Fernwärme", "Wärmepumpe", "Öl", "Strom" etc.' },
+        renovationYear: { type: 'number', description: 'Letztes Sanierungsjahr (0 wenn nicht erkennbar)' },
+        parkingType: { type: 'string', description: '"Tiefgarage", "Stellplatz", "Carport", "keine" oder Kombination' },
+        parkingPrice: { type: 'number', description: 'Stellplatzpreis in EUR (falls separat ausgewiesen)' },
       },
       required: ['projectName', 'city', 'projectType'],
     },
   },
 };
 
-const EXPOSE_SYSTEM_PROMPT = `Du bist ein Immobilien-Datenextraktor. Analysiere das Exposé und extrahiere die Projekt-Metadaten mit der Tool-Funktion extract_project_data.
+const EXPOSE_SYSTEM_PROMPT = `Du bist ein Immobilien-Datenextraktor. Analysiere das Exposé VOLLSTÄNDIG und extrahiere ALLE verfügbaren Projekt-Metadaten mit der Tool-Funktion extract_project_data.
 
 WICHTIG:
-- Extrahiere NUR Projekt-Metadaten (Name, Stadt, PLZ, Adresse, Typ, Baujahr, WEGs, Bauträger).
+- Extrahiere Projekt-Metadaten (Name, Stadt, PLZ, Adresse, Typ, Baujahr, WEGs, Bauträger).
 - Extrahiere KEINE einzelnen Wohneinheiten — die kommen aus der Preisliste.
 - Projekttyp "aufteilung" bei: Bestandsgebäude, Baujahr vor 2020, WEG-Strukturen.
 - Projekttyp "neubau" bei: Neubau, Erstbezug.
 - Bei mehreren WEGs: Zähle sie korrekt und liste Details.
+
+ERWEITERTE EXTRAKTION — Fülle diese Felder, wenn die Informationen im Exposé stehen:
+- fullDescription: Den GESAMTEN Fließtext aus dem Exposé zusammenfassen (Objektbeschreibung, Ausstattung, Besonderheiten). 500-1000 Wörter.
+- locationDescription: Lagebeschreibung separat (Infrastruktur, ÖPNV, Schulen, Einkauf, Naherholung).
+- features: Alle Ausstattungsmerkmale als Liste (Balkon, Aufzug, Keller, Stellplatz-Typ, Fußbodenheizung, etc.).
+- Energieausweis: energyCertType, energyCertValue (kWh/m²a), energyClass (A+ bis H).
+- heatingType: Heizungsart. energySource: Energieträger.
+- renovationYear: Letztes Sanierungsjahr.
+- parkingType: Stellplatz-Art. parkingPrice: Stellplatzpreis falls separat.
+
 - Rufe IMMER die Tool-Funktion auf, auch wenn du nur wenige Felder füllen kannst.`;
 
 // ── Standard folder templates ─────────────────────────────────────────────────
@@ -142,6 +164,20 @@ interface ExtractedData {
   developer?: string;
   extractedUnits?: ExtractedUnit[];
   columnMapping?: ColumnMapping[];
+  // Extended fields for Kaufy-Readiness
+  fullDescription?: string;
+  locationDescription?: string;
+  features?: string[];
+  energyCertType?: string;
+  energyCertValue?: number;
+  energyClass?: string;
+  heatingType?: string;
+  energySource?: string;
+  renovationYear?: number;
+  parkingType?: string;
+  parkingPrice?: number;
+  commissionRate?: number;
+  ancillaryCostPercent?: number;
 }
 
 serve(async (req) => {
@@ -336,6 +372,18 @@ async function handleAnalyze(
                 wegCount: parsed.wegCount || 0,
                 wegDetails: Array.isArray(parsed.wegDetails) ? parsed.wegDetails : [],
                 developer: parsed.developer || '',
+                // Extended fields
+                fullDescription: parsed.fullDescription || '',
+                locationDescription: parsed.locationDescription || '',
+                features: Array.isArray(parsed.features) ? parsed.features : [],
+                energyCertType: parsed.energyCertType || '',
+                energyCertValue: parseFloat(parsed.energyCertValue) || 0,
+                energyClass: parsed.energyClass || '',
+                heatingType: parsed.heatingType || '',
+                energySource: parsed.energySource || '',
+                renovationYear: parseInt(parsed.renovationYear) || 0,
+                parkingType: parsed.parkingType || '',
+                parkingPrice: parseFloat(parsed.parkingPrice) || 0,
               });
               exposeStatus = 'success';
               console.log('[expose-diag] ✅ Extraction SUCCESS:', extractedData.projectName, '— Type:', extractedData.projectType, '— WEGs:', extractedData.wegCount);
@@ -367,6 +415,18 @@ async function handleAnalyze(
                     wegCount: parsed.wegCount || 0,
                     wegDetails: Array.isArray(parsed.wegDetails) ? parsed.wegDetails : [],
                     developer: parsed.developer || '',
+                    // Extended fields
+                    fullDescription: parsed.fullDescription || '',
+                    locationDescription: parsed.locationDescription || '',
+                    features: Array.isArray(parsed.features) ? parsed.features : [],
+                    energyCertType: parsed.energyCertType || '',
+                    energyCertValue: parseFloat(parsed.energyCertValue) || 0,
+                    energyClass: parsed.energyClass || '',
+                    heatingType: parsed.heatingType || '',
+                    energySource: parsed.energySource || '',
+                    renovationYear: parseInt(parsed.renovationYear) || 0,
+                    parkingType: parsed.parkingType || '',
+                    parkingPrice: parseFloat(parsed.parkingPrice) || 0,
                   });
                   exposeStatus = 'success';
                   console.log('[expose-diag] ✅ Fallback extraction:', extractedData.projectName);
@@ -614,6 +674,18 @@ async function handleCreate(
       total_units_count: reviewedData.extractedUnits?.length || reviewedData.unitsCount || 0,
       status: 'draft_ready',
       needs_review: false,
+      // Extended fields from Exposé
+      full_description: reviewedData.fullDescription || null,
+      location_description: reviewedData.locationDescription || null,
+      features: reviewedData.features && reviewedData.features.length > 0 ? reviewedData.features : null,
+      energy_cert_type: reviewedData.energyCertType || null,
+      energy_cert_value: reviewedData.energyCertValue || null,
+      energy_class: reviewedData.energyClass || null,
+      heating_type: reviewedData.heatingType || null,
+      energy_source: reviewedData.energySource || null,
+      renovation_year: reviewedData.renovationYear || null,
+      parking_type: reviewedData.parkingType || null,
+      parking_price: reviewedData.parkingPrice || null,
       intake_data: {
         created_at: new Date().toISOString(),
         files: storagePaths,

@@ -34,6 +34,18 @@ interface CreatePropertyFromUnitsProps {
   projectCity: string;
   projectPostalCode?: string;
   projectYearBuilt?: number;
+  projectData?: {
+    full_description?: string;
+    location_description?: string;
+    features?: string[];
+    energy_cert_type?: string;
+    energy_cert_value?: number;
+    energy_class?: string;
+    heating_type?: string;
+    energy_source?: string;
+    renovation_year?: number;
+    parking_type?: string;
+  };
   units: DevProjectUnit[];
 }
 
@@ -56,6 +68,7 @@ export function CreatePropertyFromUnits({
   projectCity,
   projectPostalCode,
   projectYearBuilt,
+  projectData,
   units,
 }: CreatePropertyFromUnitsProps) {
   const { profile } = useAuth();
@@ -105,6 +118,11 @@ export function CreatePropertyFromUnits({
             total_area_sqm: unit.area_sqm || null,
             purchase_price: unit.list_price || null,
             year_built: projectYearBuilt || null,
+            // Extended fields from project-level exposé data
+            description: projectData?.full_description || null,
+            heating_type: projectData?.heating_type || null,
+            energy_source: projectData?.energy_source || null,
+            renovation_year: projectData?.renovation_year || null,
             status: 'active',
             is_demo: false,
           })
