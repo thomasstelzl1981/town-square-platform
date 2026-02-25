@@ -95,6 +95,7 @@ export default function InvestEngineExposePage() {
         afaModel: (project.afa_model as CalculationInput['afaModel']) ?? 'linear',
         buildingShare: 1 - ((project.land_share_percent ?? 20) / 100),
         managementCostMonthly: unit.hausgeld ?? 25,
+        afaRateOverride: (project as any).afa_rate_percent ?? undefined,
       }));
     }
   }, [unit, project]);

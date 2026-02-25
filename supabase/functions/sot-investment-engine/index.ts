@@ -23,6 +23,7 @@ interface CalculationInput {
   managementCostMonthly: number
   valueGrowthRate: number // % p.a.
   rentGrowthRate: number // % p.a.
+  afaRateOverride?: number // Manueller AfA-Satz (überschreibt tax_parameters Default)
 }
 
 interface YearlyData {
@@ -141,7 +142,10 @@ async function calculateInvestment(
     '7h': taxParams.get('AFA_7H') || 9,
     '7b': taxParams.get('AFA_7B') || 5
   }
-  const afaRate = afaRates[afaModel]
+  // afaRateOverride from Immobilienakte/Projekt-Datenblatt has priority over tax_parameters defaults
+  const afaRate = (input.afaRateOverride != null && input.afaRateOverride > 0)
+    ? input.afaRateOverride
+    : (afaRates[afaModel] || 2)
   const buildingValue = purchasePrice * buildingShare
   const yearlyAfa = buildingValue * (afaRate / 100)
 

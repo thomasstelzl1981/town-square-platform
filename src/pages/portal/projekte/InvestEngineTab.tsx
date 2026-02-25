@@ -125,6 +125,7 @@ export default function InvestEngineTab() {
         afaModel,
         buildingShare,
         managementCostMonthly: unit.hausgeld ?? 25,
+        afaRateOverride: fullProject.afa_rate_percent ?? undefined,
       };
 
       const result = await calculate(input);
