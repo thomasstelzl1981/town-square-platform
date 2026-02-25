@@ -455,6 +455,7 @@ export const zone2Portal: ZoneDefinition = {
       tiles: [
         { path: "dashboard", component: "ProjekteDashboard", title: "Dashboard", default: true },
         { path: "projekte", component: "PortfolioTab", title: "Projekte" },
+        { path: "invest-engine", component: "InvestEngineTab", title: "InvestEngine" },
         { path: "vertrieb", component: "VertriebTab", title: "Vertrieb" },
         { path: "landing-page", component: "LandingPageTab", title: "Landing Page" },
         { path: "lead-manager", component: "ProjekteLeadManager", title: "Lead Manager" },
@@ -462,6 +463,7 @@ export const zone2Portal: ZoneDefinition = {
       dynamic_routes: [
         { path: ":projectId", component: "ProjectDetailPage", title: "Projektakte", dynamic: true, goldenPath: { moduleCode: 'MOD-13', entityIdParam: 'projectId' } },
         { path: ":projectId/einheit/:unitId", component: "UnitDetailPage", title: "Einheitenakte", dynamic: true },
+        { path: "invest-engine/:unitId", component: "InvestEngineExposePage", title: "Investment-Analyse", dynamic: true },
       ],
     },
     "MOD-14": {

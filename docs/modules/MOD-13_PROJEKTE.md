@@ -15,7 +15,7 @@
 
 Das Projekte-Modul (Display: "Projektmanager") bietet eine übergreifende Projekt-Management-Ansicht für Bauträger und Aufteiler. Es ermöglicht die vollständige Verwaltung von Mehreinheiten-Projekten von der KI-gestützten Akquisition bis zum Abverkauf.
 
-## Tiles (5-Tile-Pattern)
+## Tiles (6-Tile-Pattern)
 
 ### 1. Dashboard
 - **Route:** `/portal/projekte/dashboard`
@@ -33,7 +33,16 @@ Das Projekte-Modul (Display: "Projektmanager") bietet eine übergreifende Projek
   - Status-Tracking (frei/reserviert/verkauft)
   - Marge & Fortschritts-Anzeige
 
-### 3. Vertrieb
+### 3. InvestEngine
+- **Route:** `/portal/projekte/invest-engine`
+- **Beschreibung:** Investorenperspektive auf die Preisliste
+- **Funktionen:**
+  - zVE/EK-Eingabe (wie MOD-08 Investment-Suche)
+  - Tabellarische Preisliste mit Steuereffekt und Monatsbelastung nach Steuer
+  - Klick auf Einheit → Vollbild-Exposé mit 40-Jahres-Projektion
+  - AfA-Modell und Gebäudeanteil aus Projekt-Datenblatt vorbelegt
+
+### 4. Vertrieb
 - **Route:** `/portal/projekte/vertrieb`
 - **Beschreibung:** Vertriebsstatusreport & Verkaufssteuerung
 - **Funktionen:**
@@ -41,11 +50,11 @@ Das Projekte-Modul (Display: "Projektmanager") bietet eine übergreifende Projek
   - 2-seitiger PDF-Export
   - E-Mail-Versand
 
-### 4. Landing Page
+### 5. Landing Page
 - **Route:** `/portal/projekte/landing-page`
 - **Beschreibung:** Landing-Page-Generierung für Projekte
 
-### 5. Lead Manager
+### 6. Lead Manager
 - **Route:** `/portal/projekte/lead-manager`
 - **Beschreibung:** Projekt-Kampagnen via MOD-10 Integration
 
