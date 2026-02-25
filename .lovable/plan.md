@@ -1,130 +1,77 @@
 
 
-## Konsolidierter Reparaturplan — 4 Frontend-Bugs in PortfolioTab
+## Fehleranalyse: Warum alle Finanzdaten 0 EUR zeigen
 
-### Aktuelle DB-Lage (verifiziert)
+### Root Cause: Falsches Spalten-Mapping `rent_net` vs `current_rent`
 
-| Datenpunkt | Status | Wert |
+**DB-Befund (verifiziert):**
+| Spalte | Wert | Status |
 |---|---|---|
-| Projekt `bbbf6f6f` | ✅ existiert | Menden Living |
-| Units | ✅ 72 Stueck | project_id korrekt |
-| purchase_price | ✅ | 11.730.863 |
-| total_sale_target | ✅ | 14.077.035 |
-| intake_data.construction_year | ✅ | 1980 |
-| intake_data.modernization_status | ✅ | "gepflegt / modernisiert" |
-| intake_data.reviewed_data.totalArea | ✅ | 6120.51 |
-| storage_nodes (Ordner) | ✅ 443 | module_code = MOD-13 |
-| storage_nodes (Dateien) | ✅ 2 | Expose + Preisliste mit storage_path + mime_type |
+| `list_price` | 205.666 / 181.930 | ✅ korrekt befuellt |
+| `current_rent` | 771.69 / 682.63 | ✅ korrekt befuellt |
+| `rent_net` | NULL | ❌ nie befuellt |
+| `rent_nk` | NULL | ❌ nie befuellt |
+| `price_per_sqm` | 2.300 | ✅ korrekt befuellt |
 
-**Erkenntnis: Backend ist komplett korrekt. Alle 4 Bugs sind rein im Frontend.**
-
----
-
-### BUG 1 — selectedProjectId bleibt leer (PortfolioTab.tsx Z.51)
-
-**Problem:** `useState` wertet den Initialwert nur einmal aus. Beim ersten Render ist `portfolioRows = []`, daher bleibt `selectedProjectId = ''` fuer immer. Die Units-Query (Z.88 `enabled: !!selectedProjectId`) laeuft nie.
-
-**Fix:** `useEffect` nach Z.51 einfuegen:
+**Edge Function** (`sot-project-intake/index.ts` Z.645) schreibt die Miete in `current_rent`:
 ```typescript
-useEffect(() => {
-  if (portfolioRows.length > 0 && !selectedProjectId) {
-    setSelectedProjectId(portfolioRows[0].id);
-  }
-}, [portfolioRows]);
+current_rent: u.currentRent || 0,  // ← hier landet die Miete
 ```
 
-**Datei:** `src/pages/portal/projekte/PortfolioTab.tsx`
-
----
-
-### BUG 2 — Kalkulator-Defaults werden nie aktualisiert (PortfolioTab.tsx Z.92-96)
-
-**Problem:** `investmentCosts` und `totalSaleTarget` werden beim ersten Render initialisiert, wenn `selectedProject` noch `null` ist. Danach werden die `useState`-Werte nie aktualisiert → Kalkulator zeigt Default 4.800.000 statt 11.730.863.
-
-**Fix:** `useEffect` nach Z.102 einfuegen:
+**PortfolioTab** (`PortfolioTab.tsx` Z.127) liest aber `rent_net`:
 ```typescript
-useEffect(() => {
-  if (selectedProject) {
-    setInvestmentCosts(selectedProject.purchase_price || 0);
-    setTotalSaleTarget(selectedProject.total_sale_target || 0);
-  }
-}, [selectedProject?.id]);
+const rentNet = u.rent_net ?? 0;      // ← NULL → 0
+const rentNk = u.rent_nk ?? 0;        // ← NULL → 0
+const annualNetRent = rentNet * 12;    // ← 0 × 12 = 0
 ```
 
-**Datei:** `src/pages/portal/projekte/PortfolioTab.tsx`
+### Kaskaden-Effekt: Eine falsche Spalte → alles 0
 
----
-
-### BUG 3 — ProjectDMSWidget bekommt keine projectId (PortfolioTab.tsx Z.293-297)
-
-**Problem:** Das Widget wird ohne `projectId` Prop aufgerufen. Es hat keine Moeglichkeit, die richtigen Storage-Nodes (Expose, Preisliste) aus der DB zu laden. Die 2 Dateien sind korrekt registriert, aber das Widget weiss nicht, welches Projekt es anzeigen soll.
-
-**Fix Teil A — PortfolioTab Z.293:**
-```typescript
-<ProjectDMSWidget
-  projectId={selectedProject?.id}
-  projectName={selectedProject?.name || 'Projekt'}
-  units={baseUnits}
-  isDemo={isSelectedDemo}
-/>
+```text
+rent_net = NULL → rentNet = 0
+                      ↓
+              annualNetRent = 0
+                      ↓
+    effective_price = 0 / targetYield = 0  (Z.160)
+    effective_yield = 0                     (Z.164)
+    effective_price_per_sqm = 0             (Z.165)
+    effective_provision = 0                 (Z.166)
+                      ↓
+    Tabelle: alle Spalten 0 EUR
+    Kalkulator: Zielverkaufspreis 0 statt berechnet
 ```
 
-**Fix Teil B — ProjectDMSWidget.tsx:**
-- Interface erweitern: `projectId?: string`
-- Storage-Query hinzufuegen die `storage_nodes` mit `entity_id = projectId` und `node_type = 'file'` abfragt
-- Dateien im entsprechenden Ordner anzeigen (Expose in 01_Expose, Preisliste in 02_Preisliste)
-- Status-Bar: echte Dateianzahl statt hardcoded "0 Dateien"
+### Fix: 1 Stelle in PortfolioTab.tsx
 
-**Dateien:** `src/pages/portal/projekte/PortfolioTab.tsx`, `src/components/projekte/ProjectDMSWidget.tsx`
+**Zeile 127-128** — `current_rent` als Fallback verwenden:
 
----
-
-### BUG 4 — intake_data Feld-Mapping falsch (ProjectOverviewCard.tsx Z.76)
-
-**Problem:** Z.76 sucht `intake_data.total_area_sqm` — dieses Feld existiert nicht. Die Gesamtflaeche liegt in `intake_data.reviewed_data.totalArea` (verifiziert: 6120.51).
-
-**Fix:** Z.76 ersetzen:
 ```typescript
-const reviewedData = intakeData?.reviewed_data as Record<string, unknown> | null;
-const totalAreaSqm = typeof intakeData?.total_area_sqm === 'number'
-  ? intakeData.total_area_sqm
-  : typeof reviewedData?.totalArea === 'number'
-    ? reviewedData.totalArea
-    : null;
+// ALT:
+const rentNet = u.rent_net ?? 0;
+const rentNk = u.rent_nk ?? 0;
+
+// NEU:
+const rentNet = u.rent_net ?? u.current_rent ?? 0;
+const rentNk = u.rent_nk ?? 0;
 ```
 
-**Datei:** `src/components/projekte/ProjectOverviewCard.tsx`
+Das ist alles. Eine Zeile aendern, und alle Finanzwerte kaskadieren korrekt:
+- `rentNet = 771.69` (aus current_rent)
+- `annualNetRent = 771.69 × 12 = 9.260,28`
+- `effective_price = 9.260,28 / 0.04 = 231.507` (bei 4% Zielrendite)
+- `effective_yield`, `price_per_sqm`, `provision` berechnen sich automatisch
 
----
+### Optionaler Zusatzfix: `list_price` auch in der Tabelle anzeigen
 
-### Betroffene Dateien
+Aktuell zeigt die Tabelle `effective_price` (berechnet aus Rendite), nicht den tatsaechlichen `list_price` aus der DB. Wenn auch der Original-Kaufpreis sichtbar sein soll, muss das DemoUnit-Interface erweitert werden — das ist aber ein separates Thema, kein Bug.
 
-| Datei | Bug | Aenderung |
+### Betroffene Datei
+
+| Datei | Zeile | Aenderung |
 |---|---|---|
-| `src/pages/portal/projekte/PortfolioTab.tsx` | 1, 2, 3 | 2x useEffect + projectId Prop an DMS Widget |
-| `src/components/projekte/ProjectDMSWidget.tsx` | 3 | projectId Prop + Storage-Query + Datei-Anzeige |
-| `src/components/projekte/ProjectOverviewCard.tsx` | 4 | Fallback auf reviewed_data.totalArea |
-
----
-
-### Virtueller Test
-
-Nach Implementierung:
-1. User oeffnet `/portal/projekte/projekte`
-2. `portfolioRows` laedt async → `useEffect` setzt `selectedProjectId = 'bbbf6f6f-...'`
-3. Units-Query feuert mit `enabled: true` → 72 Units laden
-4. `selectedProject` wird gefunden → zweiter `useEffect` setzt `investmentCosts = 11.730.863`, `totalSaleTarget = 14.077.035`
-5. `ProjectOverviewCard` liest `construction_year: 1980`, `totalArea: 6120.51` aus intake_data
-6. `ProjectDMSWidget` erhaelt `projectId`, queried `storage_nodes` → findet 2 Dateien (Expose + Preisliste)
-7. Kalkulator zeigt echte Werte statt Defaults
-
----
-
-### Freeze-Check
-
-MOD-13: `frozen: false` — Alle Aenderungen erlaubt
+| `src/pages/portal/projekte/PortfolioTab.tsx` | 127 | `u.rent_net ?? u.current_rent ?? 0` |
 
 ### Aufwand
 
-~10 Minuten. Kein Backend-Aenderung noetig. Kein Projekt-Loeschen noetig — die Daten sind bereits korrekt in der DB.
+1 Minute. Eine Zeile.
 
