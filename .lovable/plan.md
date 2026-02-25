@@ -1,113 +1,100 @@
 
 
-## Analyse: Upload-Funktionen systemweit — 7 Rogue-Stellen gefunden
+## Analyse: 4 Probleme beim Magic Intake — Expose-Extraktion + Spalten-Mapping
 
-### IST-Zustand
+### Befund 1: Expose-AI-Extraktion schlaegt still fehl
 
-Es gibt einen korrekt implementierten **universellen Upload-Hook** (`useUniversalUpload`), der alle Best Practices einhält:
-- `buildStoragePath()` mit `sanitizeFileName()` (Sonderzeichen, Umlaute, Leerzeichen → Underscore)
-- Einheitlicher Bucket (`UPLOAD_BUCKET = 'tenant-documents'`)
-- 2-Phasen-Architektur (Upload → Register → optional AI)
-- 15 Dateien nutzen ihn bereits korrekt
-
-**Aber 7 Stellen im Code umgehen diesen Hook komplett** und bauen eigene Upload-Pfade mit rohen `file.name`-Werten — genau der Bug, der "Invalid key"-Fehler bei Sonderzeichen verursacht.
-
-### Die 7 Rogue-Upload-Stellen
-
-```text
-┌───┬──────────────────────────────────────────────┬────────────────────┬──────────────────┬─────────────┐
-│ # │ Datei                                        │ Bucket             │ sanitizeFileName │ Problem     │
-├───┼──────────────────────────────────────────────┼────────────────────┼──────────────────┼─────────────┤
-│ 1 │ useExposeUpload.ts (Z.43-44)                 │ acq-documents      │ Teilweise*       │ Kein .      │
-│ 2 │ useAcqOffers.ts (Z.250-251)                  │ acq-documents      │ NEIN             │ Roher Name  │
-│ 3 │ TestamentVorlageInline.tsx (Z.45-46)         │ documents          │ NEIN             │ Roher Name  │
-│ 4 │ PatientenverfuegungInlineForm.tsx (Z.125)    │ documents          │ NEIN             │ Roher Name  │
-│ 5 │ Kaufy2026Verkaeufer.tsx (Z.161-178, 3x)     │ public-intake      │ NEIN             │ Roher Name  │
-│ 6 │ ProfilTab.tsx Avatar (Z.279-281)             │ tenant-documents   │ NEIN             │ Roher Name  │
-│ 7 │ ProfilTab.tsx Logo (Z.297-299)               │ tenant-documents   │ NEIN             │ Roher Name  │
-└───┴──────────────────────────────────────────────┴────────────────────┴──────────────────┴─────────────┘
-
-* useExposeUpload nutzt eine eigene Regex (/[^a-zA-Z0-9.-]/g → '_'),
-  aber NICHT sanitizeFileName() und NICHT buildStoragePath().
+Die Edge-Function-Logs zeigen:
+```
+00:39:50 — Project intake v3: { mode: "analyze", storagePaths: { expose: "...", pricelist: "..." } }
+00:40:50 — [tabular-parser] Direct XLSX parsing: ...
+00:40:50 — Pricelist: 72 units extracted
 ```
 
-### Konkrete Bugs, die auftreten koennen
+Zwischen 00:39:50 und 00:40:50 fehlt JEDE Expose-Log-Zeile. Kein `"Expose extraction (tool-calling):"`, kein `"AI error:"`, kein `"Expose extraction error:"`. Das bedeutet: Die AI-Antwort kam mit Status 200, enthielt aber weder `tool_calls` noch `content` — und der Code verschluckt diesen Fall **komplett ohne Logging**.
 
-1. **"Invalid key" bei Sonderzeichen:** Ein Dateiname wie `Exposé Wohnung (3. OG).pdf` oder `Müllers_Nebenkostenabrechnung 2024.xlsx` erzeugt Fehler bei Storage-Upload wegen Umlauten, Klammern, Leerzeichen
-2. **Bucket-Wildwuchs:** 4 verschiedene Buckets (`acq-documents`, `documents`, `public-intake`, `tenant-documents`) statt dem zentralen `UPLOAD_BUCKET`
-3. **Kein DMS-Eintrag:** Die Rogue-Uploads erstellen keinen `documents`-Record und keinen `storage_nodes`-Eintrag — die Dateien sind im DMS unsichtbar
-4. **Keine AI-Analyse-Option:** Die Rogue-Uploads koennen Phase 2 (sot-document-parser) nicht triggern
+Im Code (Z.299-358): Wenn `aiResponse.ok` ist, aber `toolCall?.function?.arguments` leer UND `content` leer → es passiert **nichts**. Kein Log, kein Fallback, keine Fehlermeldung.
 
-### Kategorisierung der Fixes
+**Fix:** Logging hinzufuegen wenn AI 200 zurueckgibt aber keine verwertbaren Daten enthaelt. Ausserdem die vollstaendige AI-Response-Struktur loggen, damit wir debuggen koennen warum die Tool-Calls leer sind.
 
-**Kategorie A — Auf useUniversalUpload migrieren (3 Stellen):**
+---
 
-| # | Datei | Aktion |
-|---|-------|--------|
-| 1 | `useExposeUpload.ts` | Intern `useUniversalUpload` nutzen, dann `acq_offers` + `acq_offer_documents` separat erstellen. Der Storage-Upload und DMS-Eintrag gehen ueber den Universal-Hook. |
-| 2 | `useAcqOffers.ts` (`useUploadOfferDocument`) | Gleiche Strategie: Universal-Upload fuer Storage, dann `acq_offer_documents`-Record separat. |
-| 5 | `Kaufy2026Verkaeufer.tsx` | Sonderfall Zone 3 (oeffentlich, kein Auth). Hier genuegt `sanitizeFileName()` direkt, da `useUniversalUpload` Auth voraussetzt. Der Bucket `public-intake` ist korrekt fuer unauthentifizierte Uploads. |
+### Befund 2: Falsches Spalten-Mapping — "Kaufpreis Einheit Brutto/qm" wird als Gesamtpreis interpretiert
 
-**Kategorie B — sanitizeFileName direkt nutzen (4 Stellen):**
+Die XLSX-Spalten (0-basiert):
+```
+Index 13: "Kaufpreis Einheit Brutto/qm"  → €/m² (z.B. 2.300)
+Index 14: "Gesamtkaufpreis"              → Gesamtpreis (z.B. 205.666)
+```
 
-| # | Datei | Aktion |
-|---|-------|--------|
-| 3 | `TestamentVorlageInline.tsx` | `sanitizeFileName()` importieren und auf den Dateinamen anwenden |
-| 4 | `PatientenverfuegungInlineForm.tsx` | Gleich wie #3 |
-| 6 | `ProfilTab.tsx` Avatar | `sanitizeFileName()` importieren (hier ist `useUniversalUpload` Overkill — es ist ein simpler Avatar-Upload mit `upsert: true`) |
-| 7 | `ProfilTab.tsx` Logo | Gleich wie #6 |
+Das aktuelle `price`-Pattern: `/^(kaufpreis|preis|vk|verkaufspreis|kp|gesamt.*preis|gesamtkauf)/i`
 
-**Kategorie C — AuditRunTab (1 Stelle, kein Fix noetig):**
+Problem: "Kaufpreis Einheit Brutto/qm" matcht auf `kaufpreis` → Spalte 13 wird als `price` zugeordnet. Spalte 14 ("Gesamtkaufpreis") wird dann uebersprungen, weil `price` bereits vergeben ist.
 
-| # | Datei | Aktion |
-|---|-------|--------|
-| — | `AuditRunTab.tsx` | Generierter Report-Name (`report.md`), kein User-Input. Kein Sonderzeichen-Risiko. Bleibt wie es ist. |
+Konsequenzen:
+- Jede Einheit zeigt 2.300 € statt 205.666 € als Kaufpreis
+- €/m²-Spalte zeigt ~26 (= 2300/89.4) statt 2.300
+- Rendite zeigt ~340% statt ~4.5%
+- Preisspanne zeigt "2.300 – 2.300 €" statt "178.020 – 226.194 €"
+
+**Fix:** Neues Pattern `pricePerSqm` hinzufuegen, das VOR `price` geprueft wird:
+```
+pricePerSqm: /^(kaufpreis.*(?:qm|m²|m2)|preis.*(?:\/\s*(?:qm|m²|m2)))/i
+price: anpassen, damit es NICHT auf "/qm" oder "/m²" matcht
+```
+
+Wenn `pricePerSqm` vorhanden aber `price` fehlt → `unit.price = pricePerSqm * area`.
+
+---
+
+### Befund 3: totalArea nicht gerundet
+
+Z.479: `units.reduce((s, u) => s + (u.area || 0), 0)` ergibt `6120.509999999998`.
+
+**Fix:** `Math.round(... * 100) / 100` anwenden.
+
+---
+
+### Befund 4: UI-Label "Preisspanne" irrefuehrend
+
+Wenn die Gesamtpreise korrekt berechnet werden, zeigt "Preisspanne" den Min-Max-Bereich der Kaufpreise. Das Label ist grundsaetzlich korrekt, aber zusaetzlich sollte der Ø €/m² angezeigt werden.
+
+---
 
 ### Implementierungsplan
 
-#### Phase 1: `sanitizeFileName` exportieren
-- `sanitizeFileName` in `storageManifest.ts` ist aktuell eine private Funktion (kein `export`)
-- Muss als `export function sanitizeFileName(...)` exportiert werden, damit Kategorie-B-Stellen sie importieren koennen
+#### 1. tabular-parser.ts — Neues `pricePerSqm` Pattern
 
-#### Phase 2: Kategorie B — Schnelle Fixes (4 Dateien)
-Minimale Aenderung: Nur `sanitizeFileName()` auf den Dateinamen anwenden.
+- `pricePerSqm`-Pattern VOR `price` in `STANDARD_COLUMN_PATTERNS` einfuegen
+- `price`-Pattern verschaerfen: Negative Lookahead fuer "/qm", "/m²", "/m2"
+- Neues Pattern: `totalPrice` als Alias fuer "Gesamtkaufpreis" hinzufuegen
 
-- `TestamentVorlageInline.tsx`: `file.name` → `sanitizeFileName(file.name)`
-- `PatientenverfuegungInlineForm.tsx`: gleich
-- `ProfilTab.tsx` Avatar + Logo: gleich
+#### 2. sot-project-intake/index.ts — pricePerSqm-Logik + Logging
 
-#### Phase 3: Kategorie A — Migration auf useUniversalUpload (2 Hooks)
+- Bei Unit-Erstellung: Wenn `colMap.pricePerSqm` vorhanden und `colMap.price` fehlt:
+  `unit.price = pricePerSqm * area`
+- Wenn `colMap.price` UND `colMap.pricePerSqm` vorhanden: `colMap.price` verwenden (Gesamtpreis hat Vorrang)
+- `totalArea` runden auf 2 Nachkommastellen
+- **Expose-Debugging:** Log-Zeile hinzufuegen wenn AI 200 zurueckgibt aber keine tool_calls/content enthaelt
+- AI-Response-Struktur (keys, finish_reason) loggen
 
-**useExposeUpload.ts:**
-- Upload-Logik durch `useUniversalUpload.upload()` ersetzen
-- `acq_offers`-Insert und `acq_offer_documents`-Insert bleiben als Nachverarbeitung
-- Edge-Function-Aufruf (`sot-acq-offer-extract`) bleibt unveraendert
-- Bucket wechselt von `acq-documents` zu `UPLOAD_BUCKET`
+#### 3. ProjekteDashboard.tsx — UI-Verbesserungen
 
-**useAcqOffers.ts (useUploadOfferDocument):**
-- `buildStoragePath()` + `UPLOAD_BUCKET` statt manueller Pfad + `acq-documents`
-- `sanitizeFileName()` fuer den Dateinamen
-
-#### Phase 4: Kaufy2026 (Zone 3)
-- `sanitizeFileName()` auf alle drei Upload-Stellen anwenden
-- Bucket `public-intake` bleibt (unauthentifizierter Kontext)
+- `totalArea` in Badge: `.toFixed(2)` statt `.toFixed(0)`
+- Label "Preisspanne" um "Ø €/m²" ergaenzen und den Durchschnitt berechnen
+- Placeholder-Texte in Metadaten-Feldern wenn Expose fehlt
 
 ### Betroffene Dateien
 
 | Datei | Aenderung |
 |-------|-----------|
-| `src/config/storageManifest.ts` | `sanitizeFileName` exportieren |
-| `src/hooks/useExposeUpload.ts` | Auf `useUniversalUpload` + `buildStoragePath` migrieren |
-| `src/hooks/useAcqOffers.ts` | `buildStoragePath` + `sanitizeFileName` nutzen |
-| `src/components/legal/TestamentVorlageInline.tsx` | `sanitizeFileName` importieren + anwenden |
-| `src/components/legal/PatientenverfuegungInlineForm.tsx` | `sanitizeFileName` importieren + anwenden |
-| `src/pages/portal/stammdaten/ProfilTab.tsx` | `sanitizeFileName` fuer Avatar + Logo |
-| `src/pages/zone3/kaufy2026/Kaufy2026Verkaeufer.tsx` | `sanitizeFileName` fuer 3 Upload-Stellen |
+| `supabase/functions/_shared/tabular-parser.ts` | `pricePerSqm` + `totalPrice` Patterns, `price` verschaerfen |
+| `supabase/functions/sot-project-intake/index.ts` | pricePerSqm→Gesamtpreis-Berechnung, totalArea runden, Expose-Logging |
+| `src/pages/portal/projekte/ProjekteDashboard.tsx` | totalArea-Formatierung, Labels, Placeholders |
 
 ### Was sich NICHT aendert
-- `useUniversalUpload.ts` selbst — bereits korrekt
-- `AuditRunTab.tsx` — kein User-Input im Dateinamen
-- Keine neuen DB-Tabellen oder RLS-Policies
-- Keine neuen Edge Functions
-- Kein Freeze-Konflikt (keine der betroffenen Dateien liegt in einem gefrorenen Modul-Pfad)
+- Expose-AI-Logik selbst bleibt unveraendert (Tool-Calling + Fallback)
+- Create-Mode bleibt unveraendert
+- Keine DB-Aenderungen, keine neuen Edge Functions
+- MOD-13 ist NICHT frozen ✅
 
