@@ -28,7 +28,7 @@ export function VeroeffentlichungenTab() {
   const listings = useMemo(() => deduplicateByField(
     demoListings,
     dbListings || [],
-    (item: any) => item.title
+    (item: any) => item.property?.id || item.id
   ), [demoListings, dbListings]);
 
   const formatCurrency = (val: number | null) =>
