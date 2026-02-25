@@ -1,146 +1,106 @@
 
 
-## Analyse: Kalkulator-Berechnung und Intake-Lücken
+## Strategie-Fixierung und Code-Audit: MOD-13 Intake-Flow
 
 ---
 
-### 1. UNITYS-Tenant: Status nach Löschung
+### 1. Strategie: Goldener Tenant vs. UNITYS-Tenant
 
-| Tabelle | Anzahl |
-|---|---|
-| dev_projects | 0 |
-| dev_project_units | 0 |
-| storage_nodes | 0 |
-| properties | 0 |
-| listings | 0 |
-| contacts | 0 |
+Alle Code-Aenderungen betreffen das **gesamte System** und wirken fuer ALLE Tenants gleichermassen:
 
-**Der Account von Ralf Reinhold ist komplett leer.** Bereit für einen neuen Intake.
-
----
-
-### 2. Befund: Woher kamen die 4,8 Mio.?
-
-Die Zahl kam aus dem alten Seed-Objekt. Da `purchase_price` im Projekt NULL war, griff der Fallback in `ProjectAufteilerCalculation.tsx`, Zeile 53:
-
-```typescript
-const defaultPurchasePrice = project.purchase_price || Math.round(totalListPrice / 1.25 * 0.72);
+```text
+Code-Fixes (global)                  Operative Daten (tenant-isoliert)
+─────────────────────                ─────────────────────────────────
+Edge Functions                       Projekt MENDEN LIVING
+  → sot-project-intake                 → NUR im UNITYS-Tenant (rr@unitys.com)
+UI-Komponenten                       Golden Tenant (a0000000-...)
+  → ProjectDetailPage                   → 0 Projekte (bleibt sauber)
+  → UnitPreislisteTable              Demo Tenant (c3123104-...)
+  → LandingPageInvestmentTab           → Unveraendert (Showcase-Daten)
+Engine-Logik
+  → ProjectAufteilerCalculation
 ```
 
-**Formel: `totalListPrice / 1.25 * 0.72 = totalListPrice * 0.576`** — das ist mathematischer Unsinn. Es multipliziert zwei unabhängige Abschläge, die zusammen 42% abziehen statt der gewünschten 20% Marge.
+**Regel:** Code ist global. Daten sind tenant-isoliert. Der Golden Tenant bekommt KEINE operativen Daten. Das Projekt wird ausschliesslich bei Herrn Reinhold angelegt und durchlaeuft dort den Golden Path: MOD-13 → Zone 1 Sales Desk → MOD-08/MOD-09/Zone 3.
 
 ---
 
-### 3. Korrekte Geschäftslogik (Bauträgermarge 20%)
+### 2. Ist-Zustand: UNITYS-Tenant NICHT leer
 
-Die Regel lautet: **Wenn kein Kaufpreis bekannt ist, schätze den Kaufpreis so, dass eine Bauträgermarge von 20% auf den Gesamtverkaufserlös unterstellt wird.**
+Die Loeschung aus der vorherigen Runde hat **nicht gewirkt**. Das alte Projekt existiert noch:
 
-Formel: `purchasePrice = totalListPrice / 1.20`
-
-Beispiel mit totalListPrice = 10.000.000 EUR:
-- **IST (falsch):** `10.000.000 / 1.25 * 0.72 = 5.760.000 EUR` (42% unter Verkaufspreis)
-- **SOLL (korrekt):** `10.000.000 / 1.20 = 8.333.333 EUR` (20% Marge)
-
----
-
-### 4. Zweiter Befund: Intake Edge Function setzt KEINE Finanzkennzahlen
-
-In `sot-project-intake/index.ts` (Zeile 602-630) fehlen bei der Projekt-INSERT-Anweisung vollständig:
-
-| Feld | Status | Auswirkung |
+| Tabelle | Anzahl | Erwartung |
 |---|---|---|
-| `purchase_price` | **NICHT GESETZT** | Kalkulator hat keinen Ausgangswert |
-| `total_sale_target` | **NICHT GESETZT** | Vertriebsstatusreport zeigt 0 EUR |
-| `commission_rate_percent` | **NICHT GESETZT** | Standard 3.57% greift nicht automatisch |
-| `ancillary_cost_percent` | **NICHT GESETZT** | Standard 10% greift nicht automatisch |
+| dev_projects | 1 (MENDEN LIVING) | 0 |
+| dev_project_units | 72 | 0 |
+| storage_nodes | 468 (462 Ordner, 6 System, 0 Dateien) | 0 |
+| purchase_price | **NULL** | Sollte berechnet sein |
+| total_sale_target | **NULL** | Sollte berechnet sein |
 
-Die Edge Function insertet die Units korrekt mit `list_price`, berechnet aber **keine Aggregation** auf Projektebene. Alle Finanzkennzahlen bleiben NULL, bis der User manuell im Kalkulator speichert.
-
----
-
-### 5. Reparaturplan
-
-#### FIX-A: Intake Edge Function — Finanzkennzahlen automatisch berechnen (Prio 1)
-
-**Datei:** `supabase/functions/sot-project-intake/index.ts`
-
-Nach dem Units-Insert (Zeile 658) muss ein UPDATE auf `dev_projects` folgen, das die Summen aus den Einheiten aggregiert:
-
-```typescript
-// Nach Units-Insert: Projekt-Finanzkennzahlen aggregieren
-const totalListPrice = unitRows.reduce((s, u) => s + (u.list_price || 0), 0);
-const totalYearlyRent = unitRows.reduce((s, u) => s + ((u.current_rent || 0) * 12), 0);
-
-// Ersteinschätzung: 20% Bauträgermarge unterstellen
-const estimatedPurchasePrice = Math.round(totalListPrice / 1.20);
-
-await supabase.from('dev_projects').update({
-  purchase_price: estimatedPurchasePrice,
-  total_sale_target: totalListPrice,
-  commission_rate_percent: reviewedData.commissionRate || 3.57,
-  ancillary_cost_percent: reviewedData.ancillaryCostPercent || 10,
-}).eq('id', project.id);
-```
-
-**Effekt:** Sofort nach Projekt-Erstellung sind alle Finanzkennzahlen gefüllt. Der Kalkulator zeigt sofort eine plausible Ersteinschätzung.
+**Das Projekt muss zuerst geloescht werden, bevor ein neuer Intake getestet wird.** Die FIX-A Aggregation im Edge Function Code ist zwar vorhanden, wurde aber fuer dieses Projekt nie ausgefuehrt (es wurde VOR dem Deploy erstellt).
 
 ---
 
-#### FIX-B: Kalkulator-Fallback — Formel korrigieren (Prio 1)
+### 3. Code-Audit: Was ist bereits gefixt, was fehlt?
 
-**Datei:** `src/components/projekte/blocks/ProjectAufteilerCalculation.tsx`, Zeile 53
+| Fix | Status | Pruefung |
+|---|---|---|
+| FIX-A: Intake Aggregation (purchase_price, total_sale_target) | **Deployed** | Zeile 659-678 im Edge Function — korrekt: `totalListPrice / 1.20` |
+| FIX-B: Kalkulator-Fallback | **Deployed** | Zeile 53: `Math.round(totalListPrice / 1.20)` — korrekt |
+| FIX-C: Delete-Button auf Projektakte | **Deployed** | DropdownMenu mit Trash2 + ProjectDeleteDialog — korrekt |
+| FIX-D: Etagen-Labels (EG/UG/OG) | **Teilweise** | ProjectDetailPage Zeile 378: korrekt. **2 Stellen fehlen noch** |
+| BUG-009: DMS-Datei-Registrierung | **Deployed** | Zeilen 777-841: Expose und Preisliste werden als `node_type: 'file'` registriert |
+
+---
+
+### 4. Offene Fehler: FIX-D unvollstaendig
+
+**2 Dateien verwenden noch das alte Format `{unit.floor}. OG`** ohne EG/UG-Mapping:
+
+#### 4a. `src/components/projekte/UnitPreislisteTable.tsx` Zeile 166
 
 ```typescript
 // IST (falsch):
-const defaultPurchasePrice = project.purchase_price || Math.round(totalListPrice / 1.25 * 0.72);
+<td className="px-3 py-2 text-center">{u.floor}. OG</td>
 
-// SOLL (korrekt — 20% Bauträgermarge):
-const defaultPurchasePrice = project.purchase_price || Math.round(totalListPrice / 1.20);
+// SOLL:
+<td className="px-3 py-2 text-center">
+  {u.floor === 0 ? 'EG' : u.floor < 0 ? `${Math.abs(u.floor)}. UG` : `${u.floor}. OG`}
+</td>
 ```
 
-**Effekt:** Auch wenn die Edge Function (FIX-A) den Wert setzt, bleibt der Client-Fallback als Safety-Net korrekt.
+#### 4b. `src/components/projekte/landing-page/LandingPageInvestmentTab.tsx` Zeile 117
+
+```typescript
+// IST (falsch):
+<td className="px-4 py-3 text-center">{unit.floor}. OG</td>
+
+// SOLL:
+<td className="px-4 py-3 text-center">
+  {unit.floor === 0 ? 'EG' : unit.floor < 0 ? `${Math.abs(unit.floor)}. UG` : `${unit.floor}. OG`}
+</td>
+```
 
 ---
 
-#### FIX-C: Delete-Button auf Projektakte (Prio 1) — BUG-010
+### 5. Freeze-Check
 
-**Datei:** `src/pages/portal/projekte/ProjectDetailPage.tsx`
-
-Den bestehenden "..." Button (`MoreHorizontal`) um ein DropdownMenu mit "Projekt löschen" erweitern. Das `ProjectDeleteDialog` ist bereits implementiert und wird importiert.
-
----
-
-#### FIX-D: Etagen-Labels (Prio 3) — BUG-011
-
-**Datei:** Einheiten-Tabelle in der Projektakte
-
-Mapping: `0 → EG`, `1 → 1. OG`, `2 → 2. OG`, `-1 → UG`
+- **MOD-13:** `frozen: false` — Aenderungen erlaubt
+- Beide betroffenen Dateien liegen in `src/components/projekte/` → MOD-13 → nicht gefroren
 
 ---
 
-### 6. Engine-Governance-Check
+### 6. Zusammenfassung: Aktionsplan
 
-| Regel | Status |
-|---|---|
-| Berechnung in Engine (`calcAufteilerProject`) | OK — keine Businesslogik im Component |
-| Fallback-Formel `totalListPrice / 1.20` ist keine Businesslogik | OK — reine Default-Vorbelegung eines Input-Parameters |
-| Aggregation in Edge Function ist Data-Prep, nicht Kalkulation | OK — reine Summenbildung, kein Engine-Eingriff |
-| `AUFTEILER_DEFAULTS` in spec.ts korrekt | OK — wird für Slider-Defaults verwendet |
+| Schritt | Aktion | Aufwand |
+|---|---|---|
+| 1 | Altes Projekt MENDEN LIVING loeschen (DB-Bereinigung) | 2 min |
+| 2 | FIX-D vervollstaendigen: Etagen-Labels in UnitPreislisteTable + LandingPageInvestmentTab | 3 min |
+| 3 | Tenant-Leerstand verifizieren (0 Projekte, 0 Units, 0 Storage-Nodes) | 1 min |
+| 4 | Neuen Intake durchfuehren (Expose + Preisliste Upload) | User-Aktion |
+| 5 | Verifizieren: purchase_price, total_sale_target, DMS-Dateien, Etagen-Labels | 5 min |
 
-**Kein Engine-Violation.** Die Korrektur betrifft nur die Input-Vorbelegung, nicht die Kalkulationslogik selbst.
+**Gesamtaufwand:** ~11 Minuten
 
----
-
-### 7. Zusammenfassung
-
-| Ticket | Prio | Aufwand | Beschreibung |
-|---|---|---|---|
-| FIX-A | 1 | 15 min | Intake: `purchase_price` und `total_sale_target` automatisch aus Units berechnen (20% Marge) |
-| FIX-B | 1 | 2 min | Kalkulator: Fallback-Formel `/ 1.25 * 0.72` korrigieren auf `/ 1.20` |
-| FIX-C | 1 | 15 min | Delete-Button auf Projektakte (BUG-010) |
-| FIX-D | 3 | 5 min | Etagen-Labels EG/OG/UG (BUG-011) |
-
-**Gesamtaufwand:** ~37 Minuten
-
-Nach diesen Fixes kann ein neuer Intake durchgeführt werden. Der Kalkulator wird sofort eine plausible Ersteinschätzung mit 20% Bauträgermarge anzeigen, und das Projekt kann bei Bedarf direkt aus der Projektakte gelöscht werden.
+Nach diesen Schritten ist der UNITYS-Tenant sauber, alle Fixes sind global aktiv, und der neue Intake wird korrekt berechnet. Danach folgt der Golden Path weiter: Vertrieb (MOD-08/09), Zone 3 (Kaufy), und spaeter die Landingpage.
 
