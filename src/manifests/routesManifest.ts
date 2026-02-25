@@ -222,7 +222,6 @@ export const zone2Portal: ZoneDefinition = {
         { path: "abrechnung", component: "AbrechnungTab", title: "Abrechnung" },
         { path: "sicherheit", component: "SicherheitTab", title: "Sicherheit" },
         { path: "rechtliches", component: "RechtlichesTab", title: "Rechtliches" },
-        { path: "demo-daten", component: "DemoDatenTab", title: "Demo-Daten" },
       ],
     },
     "MOD-02": {

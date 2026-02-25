@@ -5,7 +5,7 @@
   "freeze_criteria": "Spec vorhanden, Audit S1-S6 bestanden, produktionsreife Implementierung",
   "modules": {
     "MOD-00": { "frozen": true, "frozen_at": "2026-02-24T23:45:00.000Z", "reason": "Production-ready, demo onboarding hint done" },
-    "MOD-01": { "frozen": true, "frozen_at": "2026-02-24T23:00:00.000Z", "reason": "Production-ready, audit passed" },
+    "MOD-01": { "frozen": false, "frozen_at": null, "reason": "Unfrozen for demo-daten route removal and Golden Tenant cleanup" },
     "MOD-02": { "frozen": true, "frozen_at": "2026-02-24T23:45:00.000Z", "reason": "Production-ready, Briefgenerator fixes done" },
     "MOD-03": { "frozen": true, "frozen_at": "2026-02-24T23:00:00.000Z", "reason": "Production-ready, audit passed" },
     "MOD-04": { "frozen": true, "frozen_at": "2026-02-24T23:45:00.000Z", "reason": "Production-ready, demo data Phase 2 done" },
