@@ -1,91 +1,100 @@
 
 
-## Analyse: Exposé-OCR-Extraktion und Kaufy-Readiness
+## Plan: Manuelles Backfill der Objektuebersicht-Daten fuer Menden Living
 
-### Was die KI heute schon extrahiert
+### Ausgangslage
 
-Die Edge Function `sot-project-intake` sendet das Exposé-PDF bereits als Base64 an Gemini Pro und extrahiert via Tool-Calling:
+Das Expose-PDF (Seite 16) enthaelt eine strukturierte **Objektuebersicht** mit allen gesetzlich vorgeschriebenen Datenfeldern. Diese Daten wurden beim urspruenglichen Import nicht extrahiert, weil das Tool-Schema zu schmal war. Die neuen DB-Spalten existieren bereits (Migration aus der vorherigen Runde), sind aber alle NULL.
 
-| Feld | Extrahiert? | Wert (Menden) |
-|---|---|---|
-| `projectName` | ✅ | "Menden Living" |
-| `city`, `postalCode`, `address` | ✅ | Menden, 58706, Wunne 6-28 |
-| `description` | ✅ | 200 Zeichen Kurzbeschreibung |
-| `constructionYear` | ✅ | 1980 |
-| `modernizationStatus` | ✅ | "gepflegt / modernisiert" |
-| `developer` | ✅ | "Kalo Eisenach GmbH" |
-| `projectType` | ✅ | "aufteilung" |
-| `wegCount` + `wegDetails` | ✅ | 3 WEGs |
+### Extrahierte Daten aus dem Expose (Seite 16)
 
-### Was NICHT extrahiert wird (aber im Exposé steht)
-
-Das Tool `extract_project_data` hat nur 12 Properties definiert — alle auf Kurzform. Folgende Daten stehen im Exposé, werden aber ignoriert:
-
-| Datenpunkt | Kaufy braucht es? | DB-Spalte existiert? |
-|---|---|---|
-| **Ausfuehrliche Objektbeschreibung** (Lage, Ausstattung, Besonderheiten) | ✅ Pflicht | `properties.description` — aber nur 200 Zeichen |
-| **Energieausweis** (Typ, Kennwert, Klasse, gueltig bis) | ✅ Rechtlich (EnEV) | `properties.energy_certificate_type` etc. — nur in `units`, nicht in `properties` |
-| **Heizungsart** | ✅ Kaufy-Datenblatt | `properties.heating_type` ✅ |
-| **Energietraeger** | ✅ Kaufy-Datenblatt | `properties.energy_source` ✅ |
-| **Sanierungsjahr** | ✅ | `properties.renovation_year` ✅ |
-| **Ausstattungsmerkmale** (Balkon, Stellplatz-Typ, Aufzug, Keller) | ✅ Features-Liste | ❌ nur als Tags auf Unit-Ebene |
-| **Lage-Beschreibung** (Infrastruktur, Verkehrsanbindung) | ✅ Kaufy-SEO | ❌ kein eigenes Feld |
-| **Grundriss-Referenzen** | Nice-to-have | ❌ (kommt via DMS) |
-
-### Was zu tun ist
-
-**Kernproblem:** Der Gemini-Pro-Call liest das Exposé bereits vollstaendig — aber das Tool-Schema fragt nur nach 12 Kurzfeldern. Wir muessen das Schema erweitern, nicht einen neuen OCR-Prozess bauen.
-
-#### Loesung: `extract_project_data` Tool-Schema erweitern
-
-Neue Properties im bestehenden Tool-Call (kein zweiter AI-Call noetig):
-
-```text
-Neue Felder im EXTRACT_PROJECT_TOOL.parameters.properties:
-
-1. fullDescription     (string)  — Ausfuehrliche Objektbeschreibung (500-1000 Woerter)
-                                   Lage, Ausstattung, Besonderheiten, Verkehrsanbindung
-2. locationDescription (string)  — Lagebeschreibung separat (Infrastruktur, OEPNV, Schulen)
-3. features            (array)   — Ausstattungsmerkmale als Liste
-                                   z.B. ["Balkon", "Aufzug", "Keller", "TG-Stellplatz"]
-4. energyCertType      (string)  — "Verbrauchsausweis" | "Bedarfsausweis"
-5. energyCertValue     (number)  — Kennwert in kWh/(m²·a)
-6. energyClass         (string)  — "A+" bis "H"
-7. energyCertValidUntil(string)  — Gueltig bis (Datum als String)
-8. heatingType         (string)  — "Zentralheizung" | "Etagenheizung" | "Fernwaerme" etc.
-9. energySource        (string)  — "Gas" | "Fernwaerme" | "Waermepumpe" etc.
-10. renovationYear     (number)  — Letztes Sanierungsjahr
-11. parkingType        (string)  — "Tiefgarage" | "Stellplatz" | "Carport" | "keine"
-12. parkingPrice       (number)  — Stellplatzpreis (falls separat)
-```
-
-#### Aenderungen im Detail
-
-| # | Datei | Aenderung |
-|---|---|---|
-| 1 | `sot-project-intake/index.ts` Z.39-77 | `EXTRACT_PROJECT_TOOL` um 12 neue Properties erweitern |
-| 2 | `sot-project-intake/index.ts` Z.79-87 | `EXPOSE_SYSTEM_PROMPT` anpassen: "Extrahiere auch die ausfuehrliche Beschreibung, Energiedaten und Ausstattung" |
-| 3 | `sot-project-intake/index.ts` Z.324-339 | Mapping der neuen Felder in `extractedData` |
-| 4 | `sot-project-intake/index.ts` (Projekt-INSERT) | Neue Felder in `dev_projects` oder `intake_data` speichern |
-| 5 | DB-Migration | `dev_projects` um Spalten erweitern: `full_description`, `location_description`, `features` (jsonb), `energy_cert_type`, `energy_cert_value`, `energy_class`, `heating_type`, `energy_source`, `parking_type` |
-| 6 | `ProjectOverviewCard.tsx` | Erweiterte Beschreibung anzeigen |
-| 7 | `CreatePropertyFromUnits.tsx` | Beim Massenerstellung diese Felder in `properties` mitmappen |
-
-#### Kein separater OCR-Prozess noetig
-
-Gemini Pro liest das PDF bereits komplett (inkl. Bilder, Tabellen, Fliesstext). Es ist kein zusaetzlicher OCR-Schritt noetig — wir muessen nur das Tool-Schema erweitern und dem Modell sagen, dass es mehr Felder extrahieren soll. Das ist ein reines Schema-Update, kein neuer Service.
-
-#### Fuer bestehende Projekte: Re-Extraction
-
-Da das Exposé bereits im Storage liegt (`tenant-documents/...`), koennte ein "Re-Analyse"-Button das Exposé erneut durch die erweiterte Extraktion schicken und die fehlenden Felder nachfuellen. Das waere ein optionaler zweiter Schritt.
-
-### Zusammenfassung
-
-| Frage | Antwort |
+| Feld | Wert aus Expose |
 |---|---|
-| Kann die KI das Exposé lesen? | ✅ Ja — Gemini Pro liest das PDF bereits vollstaendig |
-| Warum fehlen Daten? | Das Tool-Schema fragt nur 12 Kurzfelder ab |
-| Brauchen wir einen neuen OCR-Prozess? | ❌ Nein — Schema-Erweiterung reicht |
-| Was muss passieren? | Tool-Schema erweitern + neue DB-Spalten + Mapping |
-| Aufwand? | ~45 Min (Schema + Prompt + DB + Mapping) |
+| **Objekt** | Wunne 6-28, 58706 Menden |
+| **Baujahr** | 1980 |
+| **WEG** | WEG 1 (Wunne 6-18); WEG 2 (Wunne 20-22); WEG 3 (Wunne 24-28) |
+| **Wohnbloecke** | 6 |
+| **Wohnhaeuser** | 12 |
+| **Wohneinheiten** | 72 |
+| **Wohnungsgroessen** | zwischen 77 m² und 98 m² (3-5 Zimmer) |
+| **Stockwerke** | je 3 |
+| **Zustand** | gepflegt / modernisiert |
+| **Loggien / Balkone** | vorhanden |
+| **Anlagetyp** | Kapitalanlage und Eigennutzung moeglich |
+| **Verkaeufer** | Kalo Eisenach GmbH |
+| **Managementkosten** | WEG-Verwaltung durch Coeles PM GmbH, mtl. Netto 26 EUR je WE |
+| **Erwerbsnebenkosten** | ca. 7% (5% GrESt + ca. 2% Notar/Gericht) |
+| **Abschreibung** | lineare AfA gem. §7 Abs. 4 Satz 1 Nr. 2b EStG, 2,0% ueber 50 Jahre |
+| **Einkuenfte** | Vermietung und Verpachtung gem. §2 Abs. 1 Nr. 6, §21 Abs. 1 Nr. 1 EStG |
+| **Heizung** | Erdgaszentralheizung (neu, Einbau 2023-2024) |
+| **Energietraeger** | Erdgas |
+
+### Was wird gemacht
+
+**1. SQL-UPDATE auf `dev_projects` (Projekt-ID: `bbbf6f6f-...`)**
+
+Befuellt die neuen Spalten mit den extrahierten Daten:
+- `full_description` — Ausfuehrliche Beschreibung aus Seiten 13-14 (Wohnanlage + Objektuebersicht Text, ca. 300 Woerter)
+- `location_description` — Lagebeschreibung aus Seiten 11-12 (Stadtteil Wunne, Mikrolage mit Entfernungen)
+- `features` — JSON-Array: Balkone/Loggien, Kellerraum, Kunststofffenster Doppelverglasung, Laminat/PVC, Erdgaszentralheizung 2023-2024, Massivbauweise, Satteldach, Vorhangfassade
+- `energy_cert_type` — NULL (im Expose nicht spezifiziert)
+- `energy_cert_value` — NULL
+- `energy_class` — NULL
+- `heating_type` — "Erdgaszentralheizung"
+- `energy_source` — "Erdgas"
+- `renovation_year` — 2024
+- `parking_type` — "Parkflächen" (erwaehnt auf Seite 14)
+- `parking_price` — NULL
+
+**2. ProjectOverviewCard erweitern**
+
+Die Kachel zeigt aktuell nur 6 Key Facts. Sie muss erweitert werden um die **vollstaendige Objektuebersicht** — analog zur Expose-Seite 16. Das bedeutet:
+
+Neue Felder in der linken Spalte (zusaetzlich zu den bestehenden 6 Key Facts):
+- Wohnbloecke / Wohnhaeuser
+- Wohnungsgroessen (Spanne)
+- Stockwerke
+- Zustand
+- Loggien/Balkone
+- Anlagetyp
+- Verkaeufer
+- Managementkosten (WEG-Verwaltung)
+- Erwerbsnebenkosten
+- AfA-Regelung (Freitext aus Expose)
+- Einkunftsart
+
+Diese kommen teils aus `intake_data`, teils aus den neuen Spalten, teils aus bestehenden Feldern.
+
+**3. Beschreibungs-Strategie: KI-generierte Beschreibung**
+
+Statt den Expose-Text 1:1 zu uebernehmen, wird eine **KI-Beschreibung** generiert — analog zur bestehenden Funktion in `EditableAddressBlock.tsx` (MOD-04 Immobilienakte), die bereits einen "KI-Beschreibung generieren"-Button hat.
+
+Strategie:
+- In der `ProjectOverviewCard` rechte Spalte: Wenn `full_description` leer ist, zeige einen Button "KI-Beschreibung generieren"
+- Der Button ruft eine Edge Function auf, die das Expose-PDF aus dem Storage liest und via Lovable AI Gateway eine professionelle Objektbeschreibung generiert
+- Die Beschreibung wird in `dev_projects.full_description` gespeichert
+- Format: 2-3 Absaetze, professionell, fuer Kapitalanleger optimiert
+
+**Fuer den manuellen Sofort-Schritt** (damit wir jetzt weiterarbeiten koennen): Die `full_description` und `location_description` werden direkt aus dem Expose-Text per SQL-UPDATE befuellt — ohne KI-Call. Das ist der pragmatische Weg.
+
+### Aenderungen im Detail
+
+| # | Was | Wie |
+|---|---|---|
+| 1 | Daten-Backfill | SQL-UPDATE auf `dev_projects` SET full_description, location_description, features, heating_type, energy_source, renovation_year, parking_type |
+| 2 | ProjectOverviewCard UI | Key Facts erweitern um alle Objektuebersicht-Felder (Wohnbloecke, Stockwerke, Zustand, Anlagetyp, Verkaeufer, Managementkosten, Erwerbsnebenkosten, AfA-Regelung) |
+| 3 | Beschreibung rechts | full_description anzeigen (jetzt befuellt), spaeter KI-Button ergaenzen |
+
+### Dateien
+
+| Datei | Aenderung |
+|---|---|
+| SQL (kein File) | UPDATE dev_projects SET ... WHERE id = 'bbbf6f6f-...' |
+| `src/components/projekte/ProjectOverviewCard.tsx` | Key Facts Grid erweitern, neue Felder aus intake_data + DB-Spalten anzeigen |
+
+### Nicht betroffen
+
+- Keine DB-Migration noetig (Spalten existieren bereits)
+- Keine Edge-Function-Aenderung (manuelles Backfill)
+- KI-Beschreibungs-Button ist ein Folge-Schritt (nicht in diesem Commit)
 
