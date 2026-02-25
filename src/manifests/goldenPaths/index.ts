@@ -73,6 +73,8 @@ export const LEDGER_EVENT_WHITELIST: ReadonlySet<string> = new Set([
 
   // ─── GP-05: Projekte ───────────────────────────────────────
   'project.created',
+  'project.invest_analysis.completed',
+  'project.invest_analysis.error',
   'project.phase.changed',
 
   // ─── GP-10: Vermietung ─────────────────────────────────────

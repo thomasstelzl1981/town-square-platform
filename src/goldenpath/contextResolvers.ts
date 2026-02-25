@@ -220,24 +220,82 @@ const mod13Resolver: ContextResolver = async ({ tenantId, entityId: projectId })
   const flags: Record<string, boolean> = {
     user_authenticated: true,
     tenant_exists: !!tenantId,
+    project_exists: false,
+    units_created: false,
+    invest_analysis_done: false,
+    phase_vertrieb: false,
+    vertriebsauftrag_active: false,
+    listings_published: false,
+    distribution_active: false,
   };
   if (!tenantId) return flags;
 
   if (projectId) {
     const { data: project } = await supabase
       .from('dev_projects')
-      .select('id, status')
+      .select('id, status, phase, invest_engine_analyzed')
       .eq('id', projectId)
       .eq('tenant_id', tenantId)
       .maybeSingle();
     flags.project_exists = !!project;
 
     if (project) {
+      // Units
       const { count: unitCount } = await supabase
         .from('dev_project_units')
         .select('*', { count: 'exact', head: true })
         .eq('project_id', projectId);
       flags.units_created = (unitCount ?? 0) > 0;
+
+      // InvestEngine flag
+      flags.invest_analysis_done = !!(project as any).invest_engine_analyzed;
+
+      // Phase
+      flags.phase_vertrieb = (project as any).phase === 'sales';
+
+      // Vertriebsauftrag (sales_desk_requests)
+      const { data: salesRequest } = await supabase
+        .from('sales_desk_requests')
+        .select('id, status')
+        .eq('project_id', projectId)
+        .eq('status', 'approved')
+        .maybeSingle();
+      flags.vertriebsauftrag_active = !!salesRequest;
+
+      // Listings via unit property_ids
+      const { data: unitProps } = await supabase
+        .from('dev_project_units')
+        .select('property_id')
+        .eq('project_id', projectId)
+        .not('property_id', 'is', null);
+
+      if (unitProps && unitProps.length > 0) {
+        const propIds = unitProps.map(u => u.property_id).filter(Boolean) as string[];
+        if (propIds.length > 0) {
+          const { count: listingCount } = await supabase
+            .from('listings')
+            .select('*', { count: 'exact', head: true })
+            .in('property_id', propIds)
+            .eq('status', 'active');
+          flags.listings_published = (listingCount ?? 0) > 0;
+
+          // Publications
+          const { data: activeListings } = await supabase
+            .from('listings')
+            .select('id')
+            .in('property_id', propIds)
+            .eq('status', 'active');
+          if (activeListings && activeListings.length > 0) {
+            const listingIds = activeListings.map(l => l.id);
+            const { count: pubCount } = await supabase
+              .from('listing_publications')
+              .select('*', { count: 'exact', head: true })
+              .in('listing_id', listingIds)
+              .eq('status', 'active');
+            flags.distribution_active = (pubCount ?? 0) > 0;
+          }
+        }
+      }
     }
   }
 

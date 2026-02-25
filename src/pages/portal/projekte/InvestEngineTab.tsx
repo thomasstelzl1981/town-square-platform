@@ -136,7 +136,18 @@ export default function InvestEngineTab() {
     setMetricsCache(newCache);
     setHasCalculated(true);
     setIsCalculatingAll(false);
-  }, [realUnits, fullProject, equity, zve, maritalStatus, hasChurchTax, calculate]);
+
+    // Mark invest_engine_analyzed flag in DB for Golden Path
+    if (selectedProjectId) {
+      supabase
+        .from('dev_projects')
+        .update({ invest_engine_analyzed: true } as any)
+        .eq('id', selectedProjectId)
+        .then(() => {
+          console.log('[InvestEngine] invest_engine_analyzed flag set for project', selectedProjectId);
+        });
+    }
+  }, [realUnits, fullProject, equity, zve, maritalStatus, hasChurchTax, calculate, selectedProjectId]);
 
   // Build search params for pass-through to expose page
   const searchParamsString = useMemo(() => {

@@ -1,18 +1,19 @@
 import type { GoldenPathDefinition } from './types';
 
 /**
- * Golden Path GP-05: Projekte — Vom Projekt bis zur Distribution (V1.0)
+ * Golden Path GP-05: Projekte — Vom Projekt bis zur Distribution (V1.1)
  * 
  * P0 Hardening: Fail-States fuer Cross-Zone Steps.
+ * V1.1: InvestEngine-Step (Phase 3) hinzugefuegt.
  */
 export const MOD_13_GOLDEN_PATH: GoldenPathDefinition = {
   id: 'gp-project-lifecycle',
   module: 'MOD-13',
   moduleCode: 'MOD-13',
-  version: '1.0.0',
+  version: '1.1.0',
   label: 'Projekte — Vom Projekt bis zur Distribution',
   description:
-    'Vollstaendiger Projektzyklus: Projekt anlegen, Einheiten planen, Phasenwechsel, Listing-Distribution, Landing Page, Uebergabe.',
+    'Vollstaendiger Projektzyklus: Projekt anlegen, Einheiten planen, Investment-Analyse, Phasenwechsel, Listing-Distribution, Landing Page, Uebergabe.',
 
   required_entities: [
     { table: 'dev_projects', description: 'Projekt-Stammdaten muessen existieren', scope: 'entity_id' },
@@ -21,12 +22,13 @@ export const MOD_13_GOLDEN_PATH: GoldenPathDefinition = {
   required_contracts: [],
   ledger_events: [
     { event_type: 'project.created', trigger: 'on_complete' },
+    { event_type: 'project.invest_analysis.completed', trigger: 'on_complete' },
     { event_type: 'project.phase.changed', trigger: 'on_complete' },
     { event_type: 'listing.published', trigger: 'on_complete' },
   ],
   success_state: {
-    required_flags: ['project_exists', 'units_created', 'listings_published', 'distribution_active'],
-    description: 'Projekt vollstaendig angelegt, Einheiten erstellt, Listings veroeffentlicht und verteilt.',
+    required_flags: ['project_exists', 'units_created', 'invest_analysis_done', 'listings_published', 'distribution_active'],
+    description: 'Projekt vollstaendig angelegt, Einheiten erstellt, Investment-Analyse durchgefuehrt, Listings veroeffentlicht und verteilt.',
   },
   failure_redirect: '/portal/projekte',
 
@@ -66,15 +68,32 @@ export const MOD_13_GOLDEN_PATH: GoldenPathDefinition = {
       ],
     },
 
-    // PHASE 3: PHASENWECHSEL BAU -> VERTRIEB (Cross-Zone Z1->Z2)
+    // PHASE 3: INVESTMENT-ANALYSE (InvestEngine) — NEU V1.1
+    {
+      id: 'invest_analysis',
+      phase: 3,
+      label: 'Investment-Analyse (InvestEngine)',
+      type: 'route',
+      routePattern: '/portal/projekte/invest-engine',
+      task_kind: 'user_task',
+      camunda_key: 'GP05_STEP_03_INVEST_ANALYSIS',
+      preconditions: [
+        { key: 'units_created', source: 'dev_project_units', description: 'Einheiten muessen existieren' },
+      ],
+      completion: [
+        { key: 'invest_analysis_done', source: 'dev_projects', check: 'exists', description: 'Investment-Analyse wurde durchgefuehrt' },
+      ],
+    },
+
+    // PHASE 4: PHASENWECHSEL BAU -> VERTRIEB (Cross-Zone Z1->Z2)
     {
       id: 'phase_change_sales',
-      phase: 3,
+      phase: 4,
       label: 'Phasenwechsel Bau → Vertrieb',
       type: 'action',
       routePattern: '/portal/projekte/:projectId',
       task_kind: 'user_task',
-      camunda_key: 'GP05_STEP_03_PHASE_CHANGE',
+      camunda_key: 'GP05_STEP_04_PHASE_CHANGE',
       contract_refs: [
         {
           key: 'CONTRACT_PROJECT_INTAKE',
@@ -105,14 +124,14 @@ export const MOD_13_GOLDEN_PATH: GoldenPathDefinition = {
       },
     },
 
-    // PHASE 4: LISTING DISTRIBUTION (Cross-Zone Z2->Z1->Z2)
+    // PHASE 5: LISTING DISTRIBUTION (Cross-Zone Z2->Z1->Z2)
     {
       id: 'listing_distribution',
-      phase: 4,
+      phase: 5,
       label: 'Listing-Distribution aktivieren',
       type: 'system',
       task_kind: 'service_task',
-      camunda_key: 'GP05_STEP_04_LISTING_DISTRIBUTE',
+      camunda_key: 'GP05_STEP_05_LISTING_DISTRIBUTE',
       sla_hours: 24,
       contract_refs: [
         {
@@ -158,15 +177,15 @@ export const MOD_13_GOLDEN_PATH: GoldenPathDefinition = {
       },
     },
 
-    // PHASE 5: LANDING PAGE (Cross-Zone Z1->Z2)
+    // PHASE 6: LANDING PAGE (Cross-Zone Z1->Z2)
     {
       id: 'landing_page',
-      phase: 5,
+      phase: 6,
       label: 'Landing Page erstellen',
       type: 'system',
       routePattern: '/portal/projekte/:projectId',
       task_kind: 'service_task',
-      camunda_key: 'GP05_STEP_05_LANDING_PAGE',
+      camunda_key: 'GP05_STEP_06_LANDING_PAGE',
       contract_refs: [
         {
           key: 'CONTRACT_LANDING_PAGE_GENERATE',
@@ -195,15 +214,15 @@ export const MOD_13_GOLDEN_PATH: GoldenPathDefinition = {
       },
     },
 
-    // PHASE 6: UEBERGABE + ABSCHLUSS
+    // PHASE 7: UEBERGABE + ABSCHLUSS
     {
       id: 'handover_complete',
-      phase: 6,
+      phase: 7,
       label: 'Uebergabe und Abschluss',
       type: 'action',
       routePattern: '/portal/projekte/:projectId',
       task_kind: 'user_task',
-      camunda_key: 'GP05_STEP_06_HANDOVER',
+      camunda_key: 'GP05_STEP_07_HANDOVER',
       preconditions: [
         { key: 'listings_published', source: 'listings', description: 'Listings muessen publiziert sein' },
       ],
