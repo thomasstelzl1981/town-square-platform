@@ -417,7 +417,7 @@ export function useProjectDossier(projectId: string | undefined) {
           *,
           unit:dev_project_units(*),
           buyer_contact:contacts(id, first_name, last_name, email),
-          partner_org:organizations(id, name)
+          partner_org:organizations!dev_project_reservations_partner_org_id_fkey(id, name)
         `)
         .eq('project_id', projectId)
         .order('created_at', { ascending: false });
