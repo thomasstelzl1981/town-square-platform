@@ -5924,6 +5924,7 @@ export type Database = {
           id: string
           income_type: string | null
           intake_data: Json | null
+          invest_engine_analyzed: boolean | null
           investment_type: string | null
           kaufy_featured: boolean | null
           kaufy_listed: boolean | null
@@ -5986,6 +5987,7 @@ export type Database = {
           id?: string
           income_type?: string | null
           intake_data?: Json | null
+          invest_engine_analyzed?: boolean | null
           investment_type?: string | null
           kaufy_featured?: boolean | null
           kaufy_listed?: boolean | null
@@ -6048,6 +6050,7 @@ export type Database = {
           id?: string
           income_type?: string | null
           intake_data?: Json | null
+          invest_engine_analyzed?: boolean | null
           investment_type?: string | null
           kaufy_featured?: boolean | null
           kaufy_listed?: boolean | null

@@ -79,7 +79,7 @@ Jeder Portal-Prozess wird gegen 6 Kriterien geprueft:
 | MOD-04 | Immobilien-Zyklus | 10 | Z2 → Z1 → Z2 | ✅ | ✅ |
 | MOD-07 | Finanzierung | 5 | Z2 → Z1 → Z2 | ✅ | ✅ |
 | MOD-08 | Investment/Akquise | 7 | Z2 → Z1 → Z2 | ✅ | ✅ |
-| MOD-13 | Projekte | 5 | Z2 → Z1 | ✅ | ✅ |
+| MOD-13 | Projekte | 7 | Z2 → Z1 | ✅ | ✅ |
 | GP-VERMIETUNG | Vermietungszyklus | 5 | Z1 → Z3 | ✅ | ✅ |
 | GP-LEAD | Lead-Generierung | 4 | Z3 → Z1 → Z2 | ✅ | ✅ |
 | GP-FINANCE-Z3 | Zone-3-Finanzierung | 7 | Z3 → Z1 → Z2 | ✅ | ✅ |
@@ -172,3 +172,4 @@ Jeder Engine-Workflow besteht aus:
 |---------|-------|-----------|
 | 1.0 | 2026-02-18 | Initiale Konsolidierung: 17 Portal-Prozesse + 8 Engine-Workflows |
 | 1.1 | 2026-02-21 | Manager-Lifecycle: GP-MANAGER-LIFECYCLE + GP-CLIENT-ASSIGNMENT, 2 neue Rollen (project_manager, pet_manager), manager_applications Tabelle, has_delegation_scope() Funktion, ~15 neue Ledger-Events |
+| 1.2 | 2026-02-25 | MOD-13 Golden Path V1.1: InvestEngine-Step (Phase 3), 7 Phasen statt 5, invest_engine_analyzed DB-Feld, 2 neue Ledger-Events, erweiterter Context Resolver (5 neue Flags). MOD-13 ist systemweite Golden-Tenant-Vorlage fuer alle Partner-Tenants mit project_manager-Rolle. |
