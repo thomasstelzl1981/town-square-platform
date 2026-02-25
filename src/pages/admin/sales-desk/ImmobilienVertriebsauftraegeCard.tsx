@@ -24,7 +24,7 @@ export function ImmobilienVertriebsauftraegeCard() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('listings')
-        .select('id, status, commission_rate, created_at, properties(address, city), tenant:organizations!listings_tenant_id_fkey(name)')
+        .select('id, status, commission_rate, created_at, property_id, properties(address, city), tenant:organizations!listings_tenant_id_fkey(name)')
         .not('sales_mandate_consent_id', 'is', null)
         .in('status', ['active', 'reserved'])
         .order('created_at', { ascending: false });
@@ -36,7 +36,7 @@ export function ImmobilienVertriebsauftraegeCard() {
   const allMandates = deduplicateByField(
     demoMandates as any[],
     mandateListings || [],
-    (item: any) => `${item.properties?.address}|${item.properties?.city}`
+    (item: any) => item.property_id || item.id
   );
 
   const formatDate = (d: string) => new Date(d).toLocaleDateString('de-DE');

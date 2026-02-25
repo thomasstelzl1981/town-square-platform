@@ -158,7 +158,7 @@ const KatalogTab = () => {
 
   useEffect(() => {
     if (listings.length === 0) return;
-    const propertyIds = listings.map(l => l.id).filter(Boolean);
+    const propertyIds = listings.map(l => l.property_id).filter(Boolean) as string[];
     if (propertyIds.length === 0) return;
     fetchPropertyImages(propertyIds).then(setImageMap);
   }, [listings]);
@@ -174,7 +174,7 @@ const KatalogTab = () => {
     // Inject hero image URLs
     return deduped.map((item: any) => ({
       ...item,
-      hero_image_url: imageMap.get(item.id) || null,
+      hero_image_url: imageMap.get(item.property_id) || null,
     }));
   }, [demoPartnerListings, listings, imageMap]);
   

@@ -219,6 +219,7 @@ function toPartnerListing(p: DemoPropertyBase): DemoPartnerListing {
 
 export interface DemoMandateListing {
   id: string;
+  property_id: string;
   status: string;
   commission_rate: number;
   created_at: string;
@@ -230,6 +231,7 @@ export interface DemoMandateListing {
 function toMandateListing(p: DemoPropertyBase): DemoMandateListing {
   return {
     id: `${DEMO_LISTING_PREFIX}${p.propertyId}`,
+    property_id: p.propertyId,
     status: 'active',
     commission_rate: p.commissionRate,
     created_at: '2025-01-15T10:00:00.000Z',
