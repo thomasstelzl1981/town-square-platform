@@ -48,6 +48,7 @@ import { useNavigate } from 'react-router-dom';
 interface PartnerListing {
   id: string;
   public_id: string | null;
+  property_id: string | null;
   title: string;
   asking_price: number | null;
   commission_rate: number | null;
@@ -136,6 +137,7 @@ const KatalogTab = () => {
         return {
           id: l.id,
           public_id: l.public_id,
+          property_id: props?.id || null,
           title: l.title,
           asking_price: l.asking_price,
           commission_rate: l.commission_rate,
@@ -163,11 +165,12 @@ const KatalogTab = () => {
 
   // Get unique cities for filter (including demo)
   const allListings = useMemo(() => {
-    const deduped = deduplicateByField(
-      demoPartnerListings as any[],
-      listings,
-      (item: any) => `${item.title}|${item.property_city}`
+    // Deduplicate by property_id (DB wins over demo)
+    const dbPropertyIds = new Set(listings.map((l: any) => l.property_id).filter(Boolean));
+    const uniqueDemos = (demoPartnerListings as any[]).filter(
+      (d: any) => !dbPropertyIds.has(d.property_id)
     );
+    const deduped = [...uniqueDemos, ...listings];
     // Inject hero image URLs
     return deduped.map((item: any) => ({
       ...item,
