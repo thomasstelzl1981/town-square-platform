@@ -1,95 +1,130 @@
 
 
-## Konsolidierter Reparaturplan: 4 Bugs — Bestätigt durch Claude + Lovable Analyse
+## Konsolidierter Reparaturplan — 4 Frontend-Bugs in PortfolioTab
+
+### Aktuelle DB-Lage (verifiziert)
+
+| Datenpunkt | Status | Wert |
+|---|---|---|
+| Projekt `bbbf6f6f` | ✅ existiert | Menden Living |
+| Units | ✅ 72 Stueck | project_id korrekt |
+| purchase_price | ✅ | 11.730.863 |
+| total_sale_target | ✅ | 14.077.035 |
+| intake_data.construction_year | ✅ | 1980 |
+| intake_data.modernization_status | ✅ | "gepflegt / modernisiert" |
+| intake_data.reviewed_data.totalArea | ✅ | 6120.51 |
+| storage_nodes (Ordner) | ✅ 443 | module_code = MOD-13 |
+| storage_nodes (Dateien) | ✅ 2 | Expose + Preisliste mit storage_path + mime_type |
+
+**Erkenntnis: Backend ist komplett korrekt. Alle 4 Bugs sind rein im Frontend.**
 
 ---
 
-### Zusammenfassung der Befunde
+### BUG 1 — selectedProjectId bleibt leer (PortfolioTab.tsx Z.51)
 
-Beide Analysen (Claude extern + Lovable intern) stimmen in allen 4 Punkten überein. Hier der finale, zusammengeführte Plan:
+**Problem:** `useState` wertet den Initialwert nur einmal aus. Beim ersten Render ist `portfolioRows = []`, daher bleibt `selectedProjectId = ''` fuer immer. Die Units-Query (Z.88 `enabled: !!selectedProjectId`) laeuft nie.
 
----
-
-### BUG 1: DMS-Datei-Linking schlägt still fehl (KRITISCH)
-
-**Root Cause:** `storage_path` und `mime_type` Spalten existieren nicht in `storage_nodes`. Der Insert schlägt fehl, aber der `catch`-Block loggt nur und wirft nicht.
-
-**DB-Bestätigung:** Query `SELECT column_name ... WHERE column_name IN ('storage_path','mime_type')` liefert `[]` — Spalten fehlen definitiv.
-
-**Fix — 2 Teile:**
-
-Teil A — DB-Migration:
-```sql
-ALTER TABLE storage_nodes
-  ADD COLUMN IF NOT EXISTS storage_path TEXT,
-  ADD COLUMN IF NOT EXISTS mime_type TEXT;
+**Fix:** `useEffect` nach Z.51 einfuegen:
+```typescript
+useEffect(() => {
+  if (portfolioRows.length > 0 && !selectedProjectId) {
+    setSelectedProjectId(portfolioRows[0].id);
+  }
+}, [portfolioRows]);
 ```
 
-Teil B — Edge Function `sot-project-intake/index.ts`, Zeilen 790-841:
-Error-Check nach beiden Inserts (Exposé Z.792, Preisliste Z.827). Statt `catch` nur loggen → bei Fehler Error-Objekt prüfen und loggen mit Kontext.
+**Datei:** `src/pages/portal/projekte/PortfolioTab.tsx`
 
 ---
 
-### BUG 2: Key Facts zeigen "—" für echte Projekte (KRITISCH)
+### BUG 2 — Kalkulator-Defaults werden nie aktualisiert (PortfolioTab.tsx Z.92-96)
 
-**Root Cause:** `ProjectOverviewCard.tsx` Z.73-80 liest ausschließlich aus `demoData`. Für echte Projekte ist `demoData = null` → alle Felder "—".
+**Problem:** `investmentCosts` und `totalSaleTarget` werden beim ersten Render initialisiert, wenn `selectedProject` noch `null` ist. Danach werden die `useState`-Werte nie aktualisiert → Kalkulator zeigt Default 4.800.000 statt 11.730.863.
 
-**Daten vorhanden:** `intake_data` JSONB-Feld in `dev_projects` enthält `construction_year`, `modernization_status`, `total_area_sqm` etc. Der Hook `useDevProjects` selektiert bereits `*` (enthält `intake_data`). PortfolioTab Z.222 übergibt `projects.find(...)` als `fullProject` — der Datenpfad ist komplett.
-
-**Fix:** `ProjectOverviewCard.tsx` Z.72-80 ersetzen:
-- `intake_data` aus `fullProject` extrahieren
-- `constructionYear`, `modernizationStatus`, `totalAreaSqm` daraus lesen
-- Fallback-Kaskade: `intakeData` → `demoData` → `'—'`
-
----
-
-### BUG 3: `module_code: 'MOD_13'` (Underscore) statt `'MOD-13'` (Bindestrich)
-
-**Root Cause:** 7 Stellen in der Edge Function verwenden `MOD_13` mit Underscore. Plattformstandard ist `MOD-13` mit Bindestrich (bestätigt durch Memory `dms-query-and-naming-standard`).
-
-**Fix — 2 Teile:**
-
-Teil A — Edge Function: Alle 7 Stellen `'MOD_13'` → `'MOD-13'` (Zeilen 700, 721, 734, 749, 762, 796, 831)
-
-Teil B — DB-Migration für bestehende Daten:
-```sql
-UPDATE storage_nodes SET module_code = 'MOD-13' WHERE module_code = 'MOD_13';
+**Fix:** `useEffect` nach Z.102 einfuegen:
+```typescript
+useEffect(() => {
+  if (selectedProject) {
+    setInvestmentCosts(selectedProject.purchase_price || 0);
+    setTotalSaleTarget(selectedProject.total_sale_target || 0);
+  }
+}, [selectedProject?.id]);
 ```
 
+**Datei:** `src/pages/portal/projekte/PortfolioTab.tsx`
+
 ---
 
-### BUG 4: Units-Insert Error-Check unvollständig
+### BUG 3 — ProjectDMSWidget bekommt keine projectId (PortfolioTab.tsx Z.293-297)
 
-**Status:** Bereits gefixt! Z.655 hat `throw new Error('Units insert failed: ' + unitsErr.message)`. Kein weiterer Handlungsbedarf.
+**Problem:** Das Widget wird ohne `projectId` Prop aufgerufen. Es hat keine Moeglichkeit, die richtigen Storage-Nodes (Expose, Preisliste) aus der DB zu laden. Die 2 Dateien sind korrekt registriert, aber das Widget weiss nicht, welches Projekt es anzeigen soll.
+
+**Fix Teil A — PortfolioTab Z.293:**
+```typescript
+<ProjectDMSWidget
+  projectId={selectedProject?.id}
+  projectName={selectedProject?.name || 'Projekt'}
+  units={baseUnits}
+  isDemo={isSelectedDemo}
+/>
+```
+
+**Fix Teil B — ProjectDMSWidget.tsx:**
+- Interface erweitern: `projectId?: string`
+- Storage-Query hinzufuegen die `storage_nodes` mit `entity_id = projectId` und `node_type = 'file'` abfragt
+- Dateien im entsprechenden Ordner anzeigen (Expose in 01_Expose, Preisliste in 02_Preisliste)
+- Status-Bar: echte Dateianzahl statt hardcoded "0 Dateien"
+
+**Dateien:** `src/pages/portal/projekte/PortfolioTab.tsx`, `src/components/projekte/ProjectDMSWidget.tsx`
+
+---
+
+### BUG 4 — intake_data Feld-Mapping falsch (ProjectOverviewCard.tsx Z.76)
+
+**Problem:** Z.76 sucht `intake_data.total_area_sqm` — dieses Feld existiert nicht. Die Gesamtflaeche liegt in `intake_data.reviewed_data.totalArea` (verifiziert: 6120.51).
+
+**Fix:** Z.76 ersetzen:
+```typescript
+const reviewedData = intakeData?.reviewed_data as Record<string, unknown> | null;
+const totalAreaSqm = typeof intakeData?.total_area_sqm === 'number'
+  ? intakeData.total_area_sqm
+  : typeof reviewedData?.totalArea === 'number'
+    ? reviewedData.totalArea
+    : null;
+```
+
+**Datei:** `src/components/projekte/ProjectOverviewCard.tsx`
 
 ---
 
 ### Betroffene Dateien
 
-| Datei | Bug | Änderung |
+| Datei | Bug | Aenderung |
 |---|---|---|
-| DB-Migration (SQL) | 1, 3 | `ADD COLUMN storage_path, mime_type` + `UPDATE module_code` |
-| `supabase/functions/sot-project-intake/index.ts` | 1, 3 | Error-Check bei DMS-Linking + `MOD_13` → `MOD-13` (7 Stellen) |
-| `src/components/projekte/ProjectOverviewCard.tsx` | 2 | Key Facts aus `intake_data` lesen mit Fallback auf `demoData` |
+| `src/pages/portal/projekte/PortfolioTab.tsx` | 1, 2, 3 | 2x useEffect + projectId Prop an DMS Widget |
+| `src/components/projekte/ProjectDMSWidget.tsx` | 3 | projectId Prop + Storage-Query + Datei-Anzeige |
+| `src/components/projekte/ProjectOverviewCard.tsx` | 4 | Fallback auf reviewed_data.totalArea |
+
+---
+
+### Virtueller Test
+
+Nach Implementierung:
+1. User oeffnet `/portal/projekte/projekte`
+2. `portfolioRows` laedt async → `useEffect` setzt `selectedProjectId = 'bbbf6f6f-...'`
+3. Units-Query feuert mit `enabled: true` → 72 Units laden
+4. `selectedProject` wird gefunden → zweiter `useEffect` setzt `investmentCosts = 11.730.863`, `totalSaleTarget = 14.077.035`
+5. `ProjectOverviewCard` liest `construction_year: 1980`, `totalArea: 6120.51` aus intake_data
+6. `ProjectDMSWidget` erhaelt `projectId`, queried `storage_nodes` → findet 2 Dateien (Expose + Preisliste)
+7. Kalkulator zeigt echte Werte statt Defaults
 
 ---
 
 ### Freeze-Check
 
-- MOD-13: `frozen: false` — Alle Änderungen erlaubt
+MOD-13: `frozen: false` — Alle Aenderungen erlaubt
 
----
+### Aufwand
 
-### Implementierungsreihenfolge
-
-| Schritt | Aktion | Aufwand |
-|---|---|---|
-| 1 | DB-Migration: `storage_path` + `mime_type` + `module_code`-Korrektur | 1 min |
-| 2 | Edge Function: 7× `MOD_13` → `MOD-13` + Error-Check bei DMS-Linking | 5 min |
-| 3 | `ProjectOverviewCard`: Key Facts aus `intake_data` | 5 min |
-| 4 | Deploy Edge Function + Verifizierung | 3 min |
-
-**Gesamtaufwand:** ~14 Minuten
-
-Nach diesen Fixes: Altes Projekt löschen (Cleanup Edge Function), neuen Intake durchführen, und verifizieren dass Dateien im DMS erscheinen, Metadaten korrekt angezeigt werden, und der Kalkulator die richtigen Werte zeigt.
+~10 Minuten. Kein Backend-Aenderung noetig. Kein Projekt-Loeschen noetig — die Daten sind bereits korrekt in der DB.
 
