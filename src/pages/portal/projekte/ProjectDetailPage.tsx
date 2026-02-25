@@ -3,6 +3,7 @@
  * MOD-13 PROJEKTE
  */
 
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { DESIGN } from '@/config/designManifest';
 import { Button } from '@/components/ui/button';
@@ -10,13 +11,20 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { 
   ArrowLeft, Building2, MapPin, LayoutGrid, Calculator, 
   Euro, FileText, BookOpen, Users, FileSignature, Globe,
-  Pencil, MoreHorizontal
+  Pencil, MoreHorizontal, Trash2
 } from 'lucide-react';
-import { useProjectDossier } from '@/hooks/useDevProjects';
+import { useProjectDossier, useDevProjects } from '@/hooks/useDevProjects';
 import { useProjectUnits } from '@/hooks/useProjectUnits';
+import { useAuth } from '@/contexts/AuthContext';
 import { 
   UnitStatusBadge, 
   ProjectPricingBlock,
@@ -27,10 +35,11 @@ import {
   ProjectPublicationBlock,
   ProjectAufteilerCalculation,
 } from '@/components/projekte';
+import { ProjectDeleteDialog } from '@/components/projekte/ProjectDeleteDialog';
 import { LoadingState } from '@/components/shared/LoadingState';
 import { CreatePropertyFromUnits } from '@/components/projekte/CreatePropertyFromUnits';
 import { calculateProjectKPIs, calculateAufteiler } from '@/types/projekte';
-import type { ProjectStatus } from '@/types/projekte';
+import type { ProjectStatus, ProjectPortfolioRow } from '@/types/projekte';
 
 const STATUS_CONFIG: Record<ProjectStatus, { label: string; variant: 'default' | 'secondary' | 'outline' }> = {
   // New Aufteiler lifecycle statuses
@@ -61,8 +70,11 @@ function formatCurrency(value: number | null | undefined): string {
 export default function ProjectDetailPage() {
   const { projectId } = useParams();
   const navigate = useNavigate();
+  const { profile } = useAuth();
   const { data: dossier, isLoading } = useProjectDossier(projectId);
   const { units, stats: unitStats } = useProjectUnits(projectId);
+  const { deleteProject } = useDevProjects();
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   if (isLoading) {
     return <LoadingState />;
@@ -126,11 +138,57 @@ export default function ProjectDetailPage() {
           <Button variant="outline" size="icon">
             <Pencil className="h-4 w-4" />
           </Button>
-          <Button variant="outline" size="icon">
-            <MoreHorizontal className="h-4 w-4" />
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="icon">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                className="text-destructive focus:text-destructive"
+                onClick={() => setDeleteDialogOpen(true)}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Projekt löschen
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
+
+      {/* Delete Dialog */}
+      <ProjectDeleteDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        project={{
+          id: project.id,
+          project_code: project.project_code,
+          name: project.name,
+          city: project.city,
+          postal_code: project.postal_code,
+          project_type: (project as any).project_type || null,
+          status: project.status,
+          total_units_count: project.total_units_count || units.length,
+          units_available: units.filter(u => u.status === 'available').length,
+          units_reserved: units.filter(u => u.status === 'reserved').length,
+          units_sold: units.filter(u => u.status === 'sold').length,
+          purchase_price: project.purchase_price,
+          total_sale_target: project.total_sale_target,
+          sale_revenue_actual: null,
+          profit_margin_percent: null,
+          progress_percent: 0,
+          kaufy_listed: false,
+          kaufy_featured: false,
+          landingpage_enabled: false,
+        } as ProjectPortfolioRow}
+        tenantId={profile?.active_tenant_id}
+        onConfirmDelete={async (id) => {
+          const result = await deleteProject.mutateAsync(id);
+          navigate('/portal/projekte/projekte');
+          return result;
+        }}
+      />
 
       {/* Quick KPIs */}
       <div className={DESIGN.KPI_GRID.FULL}>
@@ -317,7 +375,7 @@ export default function ProjectDetailPage() {
                       {units.map((unit) => (
                         <tr key={unit.id} className="border-b hover:bg-muted/50">
                           <td className="py-2 font-medium">{unit.unit_number}</td>
-                          <td className="py-2">{unit.floor ?? '—'}</td>
+                          <td className="py-2">{unit.floor === 0 ? 'EG' : unit.floor === -1 ? 'UG' : unit.floor != null ? `${unit.floor}. OG` : '—'}</td>
                           <td className="py-2 text-right">{unit.area_sqm?.toFixed(1)} m²</td>
                           <td className="py-2 text-right">{unit.rooms_count}</td>
                           <td className="py-2 text-right">{formatCurrency(unit.list_price)}</td>

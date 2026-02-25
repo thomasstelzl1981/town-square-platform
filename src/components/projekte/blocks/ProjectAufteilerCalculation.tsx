@@ -49,8 +49,8 @@ export function ProjectAufteilerCalculation({ project, units }: ProjectAufteiler
   const totalListPrice = units.reduce((sum, u) => sum + (u.list_price || 0), 0);
   const totalYearlyRent = units.reduce((sum, u) => sum + ((u.current_rent || 0) * 12), 0);
 
-  // Start-Setup: If no purchase_price, use sum of unit list prices / 1.25 (25% margin target)
-  const defaultPurchasePrice = project.purchase_price || Math.round(totalListPrice / 1.25 * 0.72); // rough estimate
+  // Start-Setup: If no purchase_price, assume 20% Bauträgermarge on total list price
+  const defaultPurchasePrice = project.purchase_price || Math.round(totalListPrice / 1.20);
 
   const [params, setParams] = React.useState<CalcSliderParams>({
     purchasePrice: project.purchase_price || defaultPurchasePrice,
