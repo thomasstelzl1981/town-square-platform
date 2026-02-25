@@ -83,18 +83,14 @@
   - `routesManifest.ts`: Zone 3 `kaufy` → base `/website/kaufy`, 7 Routen
   - Legacy-Redirect: `/kaufy2026` → `/website/kaufy` (ZBC-R08)
 
-### BUG-002: Immomanager Katalog zeigt 0 Objekte für externe Tenants
-- **Status:** 🔴 OFFEN — PRIO 1
-- **Route:** `/portal/vertriebspartner/katalog`
-- **User:** Ralph Reinhold (UNITYS, super_manager)
-- **Problem:** Demo-Listings werden nur für Demo-Tenant via `useDemoListings` Hook injiziert. Externe Tenants sehen 0 Objekte im Partner-Katalog.
-- **Impact:** HOCH — Manager sehen keinen Objektkatalog bis eigene Daten vorhanden
-- **Fix:** Demo-Listing-Injection auch für non-demo Tenants aktivieren ODER cross-tenant `listing_publications` Query für `partner_network` Channel
+### ~~BUG-002: Immomanager Katalog zeigt 0 Objekte für externe Tenants~~ → **GEFIXT**
+- **Status:** ✅ GEFIXT (2026-02-25 12:15)
+- **Fix:** Cross-Tenant RLS Policies für `listing_publications`, `listings` und `properties` erstellt. RESTRICTIVE Policies um partner_network/kaufy Ausnahmen erweitert. KatalogTab Query um `property_id` Feld ergänzt.
+- **Verifiziert:** Ralph Reinhold (UNITYS) sieht jetzt 3 Objekte im Katalog (Berlin, München, Hamburg)
 
-### BUG-003: UNITYS hat nur 21 statt 22 Tiles
-- **Status:** 🟡 OFFEN — PRIO 2
-- **Problem:** `super_manager` Rolle sollte 22 Module haben, hat aber nur 21 aktiv
-- **Fix:** Fehlende Tile identifizieren und in `organization_tiles` aktivieren
+### ~~BUG-003: UNITYS hat nur 21 statt 22 Tiles~~ → **FALSE POSITIVE (geschlossen)**
+- **Status:** ✅ KEIN BUG
+- **Erklärung:** `super_manager` hat by design 21 Module (14 BASE_TILES + 7 ROLE_EXTRA_TILES). MOD-22 (Pet Manager) ist exklusiv für `pet_manager`. Dies ist korrekt per `rolesMatrix.ts` SSOT.
 
 ---
 
@@ -195,13 +191,13 @@ Alle registriert in `src/engines/index.ts`: ENG-AKQUISE, ENG-FINANCE, ENG-PROVIS
 
 ## 9. REPARATURPLAN (Priorisiert)
 
-### PRIO 1 — Blocker (vor weiterer Account-Erstellung)
+### PRIO 1 — Alle geschlossen ✅
 
-| # | Ticket | Aufwand | Beschreibung | Betroffene Dateien |
-|---|--------|---------|-------------|-------------------|
-| ~~FIX-001~~ | ~~BUG-001~~ | — | ~~Kaufy 404~~ **FALSE POSITIVE — geschlossen** | — |
-| FIX-002 | BUG-002 | 30 min | KatalogTab zeigt 0 Objekte für externe Tenants. Demo-Listings nur für Demo-Tenant injiziert. | `src/pages/portal/vertriebspartner/KatalogTab.tsx`, `src/hooks/useDemoListings.ts` |
-| FIX-003 | BUG-003 | 5 min | Fehlende Tile für UNITYS identifizieren und aktivieren | DB: `organization_tiles` |
+| # | Ticket | Status | Beschreibung |
+|---|--------|--------|-------------|
+| ~~FIX-001~~ | ~~BUG-001~~ | ✅ FALSE POSITIVE | Kaufy Route funktioniert korrekt via `/website/kaufy` |
+| ~~FIX-002~~ | ~~BUG-002~~ | ✅ GEFIXT | Cross-Tenant RLS Policies + KatalogTab property_id Fix |
+| ~~FIX-003~~ | ~~BUG-003~~ | ✅ FALSE POSITIVE | super_manager hat 21 Module by design (rolesMatrix.ts) |
 
 ### PRIO 2 — Governance (nach Account-Erstellung möglich)
 
