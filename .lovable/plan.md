@@ -1,100 +1,183 @@
 
+## Plan: Projekt-Datenblatt — Vollständig editierbares Projektformular mit KI-Befüllung
 
-## Plan: Manuelles Backfill der Objektuebersicht-Daten fuer Menden Living
+### Konzept
 
-### Ausgangslage
+Die bisherige "ProjectOverviewCard" wird zum **Projekt-Datenblatt** — einem vollständig editierbaren, speicherbaren Formular, das die gesetzlich vorgeschriebene Objektübersicht abbildet. Die KI-Extraktion (Magic Intake) liefert Vorschläge, die der Nutzer prüfen, korrigieren und dann per "Speichern" bestätigen kann.
 
-Das Expose-PDF (Seite 16) enthaelt eine strukturierte **Objektuebersicht** mit allen gesetzlich vorgeschriebenen Datenfeldern. Diese Daten wurden beim urspruenglichen Import nicht extrahiert, weil das Tool-Schema zu schmal war. Die neuen DB-Spalten existieren bereits (Migration aus der vorherigen Runde), sind aber alle NULL.
+### UI-Layout (Skizze)
 
-### Extrahierte Daten aus dem Expose (Seite 16)
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│  [H3] Projektname (editierbar)                     [Gesamtpreis]      │
+│  [MapPin] Adresse, PLZ Stadt                                          │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  ┌─── BILDER (4 Slots) ────────────────────────────────────────────┐   │
+│  │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐       │   │
+│  │  │  HERO    │  │  AUßEN   │  │  INNEN   │  │ UMGEBUNG │       │   │
+│  │  │  (groß)  │  │          │  │          │  │          │       │   │
+│  │  │ Upload/  │  │ Upload/  │  │ Upload/  │  │ Upload/  │       │   │
+│  │  │ Vorschau │  │ Vorschau │  │ Vorschau │  │ Vorschau │       │   │
+│  │  └──────────┘  └──────────┘  └──────────┘  └──────────┘       │   │
+│  └─────────────────────────────────────────────────────────────────┘   │
+│                                                                         │
+│  ┌─── LINKS: Objektdaten (editierbar) ──┬── RECHTS: Beschreibung ───┐ │
+│  │                                       │                           │ │
+│  │  Wohneinheiten    [___72___]          │  [Textarea / Markdown]    │ │
+│  │  Wohnfläche       [___m²___]          │                           │ │
+│  │  Baujahr          [__1980__]          │  Objektbeschreibung       │ │
+│  │  Zustand          [__gepfl_]          │  (150-250 Wörter)         │ │
+│  │  WEG-Struktur     [________]          │                           │ │
+│  │  Stockwerke       [___3____]          │  ── Lagebeschreibung ──   │ │
+│  │  Heizung          [________]          │  (100-150 Wörter)         │ │
+│  │  Energieträger    [________]          │                           │ │
+│  │  Energieklasse    [________]          │  [🤖 KI-Beschreibung      │ │
+│  │  Stellplätze      [________]          │   generieren]             │ │
+│  │  Verkäufer        [________]          │                           │ │
+│  │  Anlagetyp        [________]          │  [↻ Neu generieren]       │ │
+│  │  Bundesland       [NRW_____] ← NEU   │                           │ │
+│  │                                       │                           │ │
+│  ├─── Erwerbsnebenkosten ────────────────┤                           │ │
+│  │  Grunderwerbsteuer [_6.5_%] (NRW)     │                           │ │
+│  │  Notar/Gericht     [_2.0_%] (fest)    │                           │ │
+│  │  Gesamt            = 8.5%             │                           │ │
+│  │                                       │                           │ │
+│  ├─── Steuerliche Parameter ─────────────┤                           │ │
+│  │  AfA-Satz     [_2.0_%]               │                           │ │
+│  │  AfA-Modell   [Linear §7.4]          │                           │ │
+│  │  Grundanteil  [_20__%]               │                           │ │
+│  │  Einkunftsart [V+V §21 EStG]         │                           │ │
+│  │  WEG-Verwalt. [___EUR/WE___]          │                           │ │
+│  │                                       │                           │ │
+│  │  [💾 Projekt-Datenblatt speichern]    │                           │ │
+│  └───────────────────────────────────────┴───────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────────────┘
+```
 
-| Feld | Wert aus Expose |
-|---|---|
-| **Objekt** | Wunne 6-28, 58706 Menden |
-| **Baujahr** | 1980 |
-| **WEG** | WEG 1 (Wunne 6-18); WEG 2 (Wunne 20-22); WEG 3 (Wunne 24-28) |
-| **Wohnbloecke** | 6 |
-| **Wohnhaeuser** | 12 |
-| **Wohneinheiten** | 72 |
-| **Wohnungsgroessen** | zwischen 77 m² und 98 m² (3-5 Zimmer) |
-| **Stockwerke** | je 3 |
-| **Zustand** | gepflegt / modernisiert |
-| **Loggien / Balkone** | vorhanden |
-| **Anlagetyp** | Kapitalanlage und Eigennutzung moeglich |
-| **Verkaeufer** | Kalo Eisenach GmbH |
-| **Managementkosten** | WEG-Verwaltung durch Coeles PM GmbH, mtl. Netto 26 EUR je WE |
-| **Erwerbsnebenkosten** | ca. 7% (5% GrESt + ca. 2% Notar/Gericht) |
-| **Abschreibung** | lineare AfA gem. §7 Abs. 4 Satz 1 Nr. 2b EStG, 2,0% ueber 50 Jahre |
-| **Einkuenfte** | Vermietung und Verpachtung gem. §2 Abs. 1 Nr. 6, §21 Abs. 1 Nr. 1 EStG |
-| **Heizung** | Erdgaszentralheizung (neu, Einbau 2023-2024) |
-| **Energietraeger** | Erdgas |
+### Kernprinzipien
 
-### Was wird gemacht
+1. **KI = Vorschlag, Mensch = Entscheidung**: Jeder KI-extrahierte Wert ist editierbar
+2. **Ein Speichern-Button für alles**: Alle Felder werden zusammen gespeichert
+3. **Grunderwerbsteuer immer separat**: Wird nach Bundesland automatisch vorgeschlagen
+4. **Notar/Gericht immer 2%**: Fester Pauschalsatz, nicht editierbar
+5. **Bundesland = Pflichtfeld**: Steuert GrESt-Satz automatisch
 
-**1. SQL-UPDATE auf `dev_projects` (Projekt-ID: `bbbf6f6f-...`)**
+### Bildbereich — 4 kategorisierte Upload-Slots
 
-Befuellt die neuen Spalten mit den extrahierten Daten:
-- `full_description` — Ausfuehrliche Beschreibung aus Seiten 13-14 (Wohnanlage + Objektuebersicht Text, ca. 300 Woerter)
-- `location_description` — Lagebeschreibung aus Seiten 11-12 (Stadtteil Wunne, Mikrolage mit Entfernungen)
-- `features` — JSON-Array: Balkone/Loggien, Kellerraum, Kunststofffenster Doppelverglasung, Laminat/PVC, Erdgaszentralheizung 2023-2024, Massivbauweise, Satteldach, Vorhangfassade
-- `energy_cert_type` — NULL (im Expose nicht spezifiziert)
-- `energy_cert_value` — NULL
-- `energy_class` — NULL
-- `heating_type` — "Erdgaszentralheizung"
-- `energy_source` — "Erdgas"
-- `renovation_year` — 2024
-- `parking_type` — "Parkflächen" (erwaehnt auf Seite 14)
-- `parking_price` — NULL
+| Slot | Kategorie | Storage-Pfad | Beschreibung |
+|---|---|---|---|
+| 1 | `hero` | `{tenant}/{project}/images/hero.*` | Hauptbild für Exposés, Landingpages, Kaufy |
+| 2 | `exterior` | `{tenant}/{project}/images/exterior.*` | Außenansicht des Gebäudes |
+| 3 | `interior` | `{tenant}/{project}/images/interior.*` | Innenansicht (Musterwohnung) |
+| 4 | `surroundings` | `{tenant}/{project}/images/surroundings.*` | Umgebung, Lage, Infrastruktur |
 
-**2. ProjectOverviewCard erweitern**
+- Upload via Drag & Drop oder Klick
+- Gespeichert in `tenant-documents` Bucket unter Projekt-Pfad
+- Pfade werden in `dev_projects.project_images` (JSONB) gespeichert
+- Format: `{ hero: "path", exterior: "path", interior: "path", surroundings: "path" }`
 
-Die Kachel zeigt aktuell nur 6 Key Facts. Sie muss erweitert werden um die **vollstaendige Objektuebersicht** — analog zur Expose-Seite 16. Das bedeutet:
+### Neue/Geänderte DB-Spalten
 
-Neue Felder in der linken Spalte (zusaetzlich zu den bestehenden 6 Key Facts):
-- Wohnbloecke / Wohnhaeuser
-- Wohnungsgroessen (Spanne)
-- Stockwerke
-- Zustand
-- Loggien/Balkone
-- Anlagetyp
-- Verkaeufer
-- Managementkosten (WEG-Verwaltung)
-- Erwerbsnebenkosten
-- AfA-Regelung (Freitext aus Expose)
-- Einkunftsart
-
-Diese kommen teils aus `intake_data`, teils aus den neuen Spalten, teils aus bestehenden Feldern.
-
-**3. Beschreibungs-Strategie: KI-generierte Beschreibung**
-
-Statt den Expose-Text 1:1 zu uebernehmen, wird eine **KI-Beschreibung** generiert — analog zur bestehenden Funktion in `EditableAddressBlock.tsx` (MOD-04 Immobilienakte), die bereits einen "KI-Beschreibung generieren"-Button hat.
-
-Strategie:
-- In der `ProjectOverviewCard` rechte Spalte: Wenn `full_description` leer ist, zeige einen Button "KI-Beschreibung generieren"
-- Der Button ruft eine Edge Function auf, die das Expose-PDF aus dem Storage liest und via Lovable AI Gateway eine professionelle Objektbeschreibung generiert
-- Die Beschreibung wird in `dev_projects.full_description` gespeichert
-- Format: 2-3 Absaetze, professionell, fuer Kapitalanleger optimiert
-
-**Fuer den manuellen Sofort-Schritt** (damit wir jetzt weiterarbeiten koennen): Die `full_description` und `location_description` werden direkt aus dem Expose-Text per SQL-UPDATE befuellt — ohne KI-Call. Das ist der pragmatische Weg.
-
-### Aenderungen im Detail
-
-| # | Was | Wie |
+| Spalte | Typ | Beschreibung |
 |---|---|---|
-| 1 | Daten-Backfill | SQL-UPDATE auf `dev_projects` SET full_description, location_description, features, heating_type, energy_source, renovation_year, parking_type |
-| 2 | ProjectOverviewCard UI | Key Facts erweitern um alle Objektuebersicht-Felder (Wohnbloecke, Stockwerke, Zustand, Anlagetyp, Verkaeufer, Managementkosten, Erwerbsnebenkosten, AfA-Regelung) |
-| 3 | Beschreibung rechts | full_description anzeigen (jetzt befuellt), spaeter KI-Button ergaenzen |
+| `federal_state` | TEXT | Bundesland (z.B. "NRW", "BY") — steuert GrESt |
+| `grest_rate_percent` | NUMERIC | Grunderwerbsteuersatz (automatisch nach Bundesland) |
+| `notary_rate_percent` | NUMERIC | Notar/Gericht (Standard 2.0%) |
+| `project_images` | JSONB | `{ hero, exterior, interior, surroundings }` |
+| `management_company` | TEXT | WEG-Verwaltung Firma |
+| `management_cost_per_unit` | NUMERIC | EUR/WE monatlich netto |
+| `investment_type` | TEXT | Anlagetyp |
+| `income_type` | TEXT | Einkunftsart |
+| `condition_text` | TEXT | Zustand (Freitext) |
+| `floors_count` | INTEGER | Stockwerke |
+| `seller_name` | TEXT | Verkäufer |
 
-### Dateien
+Bereits vorhanden: `full_description`, `location_description`, `features`, `heating_type`, `energy_source`, `energy_class`, `renovation_year`, `parking_type`, `afa_rate_percent`, `afa_model`, `land_share_percent`
 
-| Datei | Aenderung |
+### GrESt nach Bundesland (Lookup-Tabelle im Code)
+
+| Bundesland | Kürzel | GrESt |
+|---|---|---|
+| Baden-Württemberg | BW | 5.0% |
+| Bayern | BY | 3.5% |
+| Berlin | BE | 6.0% |
+| Brandenburg | BB | 6.5% |
+| Bremen | HB | 5.0% |
+| Hamburg | HH | 5.5% |
+| Hessen | HE | 6.0% |
+| Mecklenburg-Vorpommern | MV | 6.0% |
+| Niedersachsen | NI | 5.0% |
+| Nordrhein-Westfalen | NW | 6.5% |
+| Rheinland-Pfalz | RP | 5.0% |
+| Saarland | SL | 6.5% |
+| Sachsen | SN | 5.5% |
+| Sachsen-Anhalt | ST | 5.0% |
+| Schleswig-Holstein | SH | 6.5% |
+| Thüringen | TH | 5.0% |
+
+### KI-Beschreibungs-Button
+
+**Edge Function: `sot-project-description`**
+
+| Aspekt | Detail |
 |---|---|
-| SQL (kein File) | UPDATE dev_projects SET ... WHERE id = 'bbbf6f6f-...' |
-| `src/components/projekte/ProjectOverviewCard.tsx` | Key Facts Grid erweitern, neue Felder aus intake_data + DB-Spalten anzeigen |
+| Input | `{ projectId: string }` |
+| Ablauf | 1. PDF-Pfad aus `intake_data.files.expose` lesen |
+| | 2. PDF aus `tenant-documents` laden |
+| | 3. An Gemini 3 Flash senden mit strukturiertem Prompt |
+| | 4. Ergebnis zurückgeben (NICHT direkt speichern — Nutzer entscheidet) |
+| Output | `{ description: string, location_description: string }` |
+| Modell | `google/gemini-3-flash-preview` via Lovable AI Gateway |
+
+**Prompt-Vorgaben:**
+- Objektbeschreibung: 150-250 Wörter, 3 Absätze, professionell für Kapitalanleger
+- Lagebeschreibung: 100-150 Wörter, Infrastruktur, Anbindung, Mikrolage
+- Keine Superlative, sachlich-ansprechend
+
+**UI-Flow:**
+1. Button "KI-Beschreibung generieren" → Loading-State
+2. Ergebnis wird in Textarea eingefüllt (editierbar!)
+3. Nutzer korrigiert bei Bedarf
+4. Erst beim Klick auf "Projekt-Datenblatt speichern" wird alles persistiert
+
+### Komponenten-Architektur
+
+| Datei | Beschreibung |
+|---|---|
+| `ProjectDataSheet.tsx` | Hauptkomponente (ersetzt ProjectOverviewCard) |
+| `ProjectImageUpload.tsx` | 4-Slot Bildupload mit Kategorien |
+| `ProjectFactsForm.tsx` | Editierbare Objektdaten (linke Spalte) |
+| `ProjectDescriptionPanel.tsx` | Beschreibung + KI-Button (rechte Spalte) |
+| `ProjectAcquisitionCosts.tsx` | GrESt + Notar separat mit Bundesland |
+| `ProjectAfaFields.tsx` | Bleibt (bereits vorhanden), wird integriert |
+
+### Speicher-Logik
+
+Ein einziger `handleSave()` in `ProjectDataSheet.tsx`:
+```
+1. Alle Formularfelder sammeln
+2. supabase.from('dev_projects').update({ ...allFields }).eq('id', projectId)
+3. Bei Bildern: Upload zu tenant-documents, Pfade in project_images speichern
+4. Toast "Projekt-Datenblatt gespeichert"
+5. QueryClient invalidieren
+```
+
+### Implementierungsreihenfolge
+
+| # | Schritt | Dateien |
+|---|---|---|
+| 1 | DB-Migration: Neue Spalten | SQL |
+| 2 | ProjectDataSheet.tsx (Hauptformular) | Neue Datei |
+| 3 | ProjectImageUpload.tsx (4-Slot Upload) | Neue Datei |
+| 4 | ProjectFactsForm.tsx (editierbare Felder) | Neue Datei |
+| 5 | ProjectDescriptionPanel.tsx + KI-Button | Neue Datei |
+| 6 | ProjectAcquisitionCosts.tsx (GrESt/Notar) | Neue Datei |
+| 7 | Edge Function sot-project-description | Neue Datei |
+| 8 | Integration in Projekt-Detailansicht | Bestehende Datei |
 
 ### Nicht betroffen
 
-- Keine DB-Migration noetig (Spalten existieren bereits)
-- Keine Edge-Function-Aenderung (manuelles Backfill)
-- KI-Beschreibungs-Button ist ein Folge-Schritt (nicht in diesem Commit)
-
+- Keine Änderung an `sot-project-intake` (bleibt für initialen Import)
+- Keine Änderung an MOD-04 (Immobilienakte)
+- ProjectAfaFields.tsx wird in das neue Formular integriert (kein separater Save-Button mehr)
