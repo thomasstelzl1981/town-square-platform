@@ -3,7 +3,7 @@
  * MOD-13 PROJEKTE — P0 Redesign
  */
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { WidgetGrid } from '@/components/shared/WidgetGrid';
@@ -49,6 +49,13 @@ export default function PortfolioTab() {
   
   // Default to first project
   const [selectedProjectId, setSelectedProjectId] = useState<string>(portfolioRows[0]?.id || '');
+
+  // BUG 1 FIX: Sync selectedProjectId when portfolioRows load async
+  useEffect(() => {
+    if (portfolioRows.length > 0 && !selectedProjectId) {
+      setSelectedProjectId(portfolioRows[0].id);
+    }
+  }, [portfolioRows, selectedProjectId]);
 
   const isLoading = isLoadingPortfolio;
   const isSelectedDemo = isDemoId(selectedProjectId);
@@ -100,6 +107,14 @@ export default function PortfolioTab() {
   const [targetYield, setTargetYield] = useState(0.04);
   const [unitOverrides, setUnitOverrides] = useState<Record<string, { list_price?: number; parking_price?: number }>>({});
   const [unitStatusOverrides, setUnitStatusOverrides] = useState<Record<string, string>>({});
+
+  // BUG 2 FIX: Sync calculator values when selectedProject changes
+  useEffect(() => {
+    if (selectedProject) {
+      setInvestmentCosts(selectedProject.purchase_price || 0);
+      setTotalSaleTarget(selectedProject.total_sale_target || 0);
+    }
+  }, [selectedProject?.id]);
 
   // Base units mapped to DemoUnit interface
   const baseUnits: DemoUnit[] = useMemo(() => {
@@ -291,6 +306,7 @@ export default function PortfolioTab() {
 
           {/* Dokumenten-Kachel */}
           <ProjectDMSWidget
+            projectId={selectedProject?.id}
             projectName={selectedProject?.name || 'Projekt'}
             units={baseUnits}
             isDemo={isSelectedDemo}

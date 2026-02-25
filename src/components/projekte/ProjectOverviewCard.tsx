@@ -73,7 +73,12 @@ export function ProjectOverviewCard({ isDemo, selectedProject, unitCount, fullPr
   const intakeData = fullProject?.intake_data as Record<string, unknown> | null ?? null;
   const constructionYear = intakeData?.construction_year as number | null;
   const modernizationStatus = intakeData?.modernization_status as string | null;
-  const totalAreaSqm = typeof intakeData?.total_area_sqm === 'number' ? intakeData.total_area_sqm : null;
+  const reviewedData = intakeData?.reviewed_data as Record<string, unknown> | null;
+  const totalAreaSqm = typeof intakeData?.total_area_sqm === 'number'
+    ? intakeData.total_area_sqm
+    : typeof reviewedData?.totalArea === 'number'
+      ? reviewedData.totalArea
+      : null;
   const heatingType = (intakeData?.heating_type as string | null) ?? null;
   const energyClass = (intakeData?.energy_class as string | null) ?? null;
 
