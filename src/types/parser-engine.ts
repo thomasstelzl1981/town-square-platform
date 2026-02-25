@@ -77,6 +77,8 @@ export interface ParserProfile {
   fields: ParserFieldDef[];
   /** Document types this mode recognizes (for auto-detection in 'allgemein' mode) */
   exampleDocuments: string[];
+  /** If true, PDFs with tables will be pre-extracted as CSV before the main AI call */
+  preprocessPdfTables?: boolean;
 }
 
 // ============================================

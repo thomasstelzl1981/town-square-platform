@@ -32,6 +32,7 @@ export const PARSER_PROFILES: Record<ParserMode, ParserProfile> = {
     moduleCode: 'MOD_04',
     targetDmsFolder: '01_Grunddaten',
     exampleDocuments: ['Kaufvertrag', 'Grundbuchauszug', 'Teilungserklärung', 'Exposé', 'Mietvertrag', 'Nebenkostenabrechnung'],
+    preprocessPdfTables: true,
     fields: [
       { key: 'address', label: 'Adresse', type: 'string', dbColumn: 'address', required: true },
       { key: 'city', label: 'Stadt', type: 'string', dbColumn: 'city', required: true },
@@ -56,6 +57,7 @@ export const PARSER_PROFILES: Record<ParserMode, ParserProfile> = {
     moduleCode: 'MOD_07',
     targetDmsFolder: '05_Vertrag',
     exampleDocuments: ['Darlehensvertrag', 'Kreditangebot', 'Zinskonditionen', 'Tilgungsplan', 'Finanzierungsbestätigung'],
+    preprocessPdfTables: true,
     fields: [
       { key: 'bank_name', label: 'Bank', type: 'string', dbColumn: 'bank_name', required: true },
       { key: 'loan_amount', label: 'Darlehensbetrag (€)', type: 'currency', dbColumn: 'loan_amount', required: true },
@@ -78,6 +80,7 @@ export const PARSER_PROFILES: Record<ParserMode, ParserProfile> = {
     moduleCode: 'MOD_11',
     targetDmsFolder: '01_Police',
     exampleDocuments: ['Versicherungspolice', 'Versicherungsschein', 'Nachtrag', 'Beitragsrechnung', 'Schadensmeldung'],
+    preprocessPdfTables: true,
     fields: [
       { key: 'provider_name', label: 'Versicherer', type: 'string', dbColumn: 'provider_name', required: true },
       { key: 'policy_number', label: 'Policennummer', type: 'string', dbColumn: 'policy_number', required: true },
@@ -149,6 +152,7 @@ export const PARSER_PROFILES: Record<ParserMode, ParserProfile> = {
     moduleCode: 'MOD_11',
     targetDmsFolder: '01_Vertrag',
     exampleDocuments: ['Standmitteilung', 'Renteninformation', 'Versorgungsvertrag', 'Riester-Bescheinigung', 'bAV-Vertrag'],
+    preprocessPdfTables: true,
     fields: [
       { key: 'provider_name', label: 'Anbieter', type: 'string', dbColumn: 'provider_name', required: true },
       { key: 'contract_number', label: 'Vertragsnummer', type: 'string', dbColumn: 'contract_number', required: true },
