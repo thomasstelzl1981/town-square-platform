@@ -380,199 +380,196 @@ export function ProjectDataSheet({ isDemo, selectedProject, unitCount, fullProje
           </div>
         </div>
 
-        {/* ── 2-Column: Facts (left) + Descriptions (right) ── */}
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-6 pt-2 border-t">
-          {/* Left — 2/5 Objektdaten */}
-          <div className="md:col-span-2 space-y-4">
-            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Objektdaten</p>
+        {/* ── Objektdaten — full-width grid ── */}
+        <div className="space-y-4 pt-2 border-t">
+          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Objektdaten</p>
 
-            <div className="grid grid-cols-2 gap-3">
-              <FormField label="Wohneinheiten" icon={Home}>
-                <Input type="number" value={totalUnits} onChange={e => { setTotalUnits(+e.target.value); markDirty(); }} disabled={isDemo} className="h-8 text-sm" />
-              </FormField>
-              <FormField label="Wohnfläche (m²)" icon={Ruler}>
-                <Input type="number" value={totalArea} onChange={e => { setTotalArea(+e.target.value); markDirty(); }} disabled={isDemo} className="h-8 text-sm" />
-              </FormField>
-              <FormField label="Baujahr" icon={Calendar}>
-                <Input type="number" value={constructionYear} onChange={e => { setConstructionYear(+e.target.value); markDirty(); }} disabled={isDemo} className="h-8 text-sm" />
-              </FormField>
-              <FormField label="Stockwerke" icon={Layers}>
-                <Input type="number" value={floorsCount} onChange={e => { setFloorsCount(+e.target.value); markDirty(); }} disabled={isDemo} className="h-8 text-sm" />
-              </FormField>
-              <FormField label="Zustand" icon={CheckCircle2}>
-                <Input value={conditionText} onChange={e => { setConditionText(e.target.value); markDirty(); }} disabled={isDemo} className="h-8 text-sm" />
-              </FormField>
-              <FormField label="Heizung" icon={Flame}>
-                <Input value={heatingType} onChange={e => { setHeatingType(e.target.value); markDirty(); }} disabled={isDemo} className="h-8 text-sm" />
-              </FormField>
-              <FormField label="Energieträger" icon={Zap}>
-                <Input value={energySource} onChange={e => { setEnergySource(e.target.value); markDirty(); }} disabled={isDemo} className="h-8 text-sm" />
-              </FormField>
-              <FormField label="Energieklasse" icon={Zap}>
-                <Input value={energyClass} onChange={e => { setEnergyClass(e.target.value); markDirty(); }} disabled={isDemo} className="h-8 text-sm" />
-              </FormField>
-              <FormField label="Stellplätze" icon={Car}>
-                <Input value={parkingType} onChange={e => { setParkingType(e.target.value); markDirty(); }} disabled={isDemo} className="h-8 text-sm" />
-              </FormField>
-              <FormField label="Verkäufer" icon={Users}>
-                <Input value={sellerName} onChange={e => { setSellerName(e.target.value); markDirty(); }} disabled={isDemo} className="h-8 text-sm" />
-              </FormField>
-            </div>
-
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+            <FormField label="Wohneinheiten" icon={Home}>
+              <Input type="number" value={totalUnits} onChange={e => { setTotalUnits(+e.target.value); markDirty(); }} disabled={isDemo} className="h-8 text-sm" />
+            </FormField>
+            <FormField label="Wohnfläche (m²)" icon={Ruler}>
+              <Input type="number" value={totalArea} onChange={e => { setTotalArea(+e.target.value); markDirty(); }} disabled={isDemo} className="h-8 text-sm" />
+            </FormField>
+            <FormField label="Baujahr" icon={Calendar}>
+              <Input type="number" value={constructionYear} onChange={e => { setConstructionYear(+e.target.value); markDirty(); }} disabled={isDemo} className="h-8 text-sm" />
+            </FormField>
+            <FormField label="Stockwerke" icon={Layers}>
+              <Input type="number" value={floorsCount} onChange={e => { setFloorsCount(+e.target.value); markDirty(); }} disabled={isDemo} className="h-8 text-sm" />
+            </FormField>
+            <FormField label="Zustand" icon={CheckCircle2}>
+              <Input value={conditionText} onChange={e => { setConditionText(e.target.value); markDirty(); }} disabled={isDemo} className="h-8 text-sm" />
+            </FormField>
+            <FormField label="Heizung" icon={Flame}>
+              <Input value={heatingType} onChange={e => { setHeatingType(e.target.value); markDirty(); }} disabled={isDemo} className="h-8 text-sm" />
+            </FormField>
+            <FormField label="Energieträger" icon={Zap}>
+              <Input value={energySource} onChange={e => { setEnergySource(e.target.value); markDirty(); }} disabled={isDemo} className="h-8 text-sm" />
+            </FormField>
+            <FormField label="Energieklasse" icon={Zap}>
+              <Input value={energyClass} onChange={e => { setEnergyClass(e.target.value); markDirty(); }} disabled={isDemo} className="h-8 text-sm" />
+            </FormField>
+            <FormField label="Stellplätze" icon={Car}>
+              <Input value={parkingType} onChange={e => { setParkingType(e.target.value); markDirty(); }} disabled={isDemo} className="h-8 text-sm" />
+            </FormField>
+            <FormField label="Verkäufer" icon={Users}>
+              <Input value={sellerName} onChange={e => { setSellerName(e.target.value); markDirty(); }} disabled={isDemo} className="h-8 text-sm" />
+            </FormField>
             <FormField label="Anlagetyp" icon={Briefcase}>
-              <Input value={investmentType} onChange={e => { setInvestmentType(e.target.value); markDirty(); }} disabled={isDemo} className="h-8 text-sm" placeholder="z.B. Kapitalanlage und Eigennutzung" />
+              <Input value={investmentType} onChange={e => { setInvestmentType(e.target.value); markDirty(); }} disabled={isDemo} className="h-8 text-sm" placeholder="z.B. Kapitalanlage" />
             </FormField>
-
-            <FormField label="Ausstattung (kommagetrennt)" icon={CheckCircle2}>
-              <Input value={featuresText} onChange={e => { setFeaturesText(e.target.value); markDirty(); }} disabled={isDemo} className="h-8 text-sm" placeholder="Balkon, Fußbodenheizung, ..." />
+            <FormField label="Ausstattung" icon={CheckCircle2}>
+              <Input value={featuresText} onChange={e => { setFeaturesText(e.target.value); markDirty(); }} disabled={isDemo} className="h-8 text-sm" placeholder="Balkon, FBH, …" />
             </FormField>
+          </div>
+        </div>
 
-            {/* ── Erwerbsnebenkosten ── */}
-            <div className="p-3 rounded-lg border bg-muted/20 space-y-3">
-              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
-                <Receipt className="h-3.5 w-3.5" /> Erwerbsnebenkosten
-              </p>
-
-              <FormField label="Bundesland" icon={MapPin}>
-                <Select value={federalState} onValueChange={v => { setFederalState(v); markDirty(); }} disabled={isDemo}>
-                  <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Bundesland wählen" /></SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(BUNDESLAND_GREST).map(([code, { label }]) => (
-                      <SelectItem key={code} value={code}>{label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </FormField>
-
-              <div className="grid grid-cols-3 gap-3 text-sm">
-                <div>
-                  <Label className="text-[10px] text-muted-foreground">Grunderwerbsteuer</Label>
-                  <div className="flex items-center gap-1">
-                    <Input type="number" step="0.5" value={grestRate} onChange={e => { setGrestRate(+e.target.value); markDirty(); }} disabled={isDemo} className="h-8 text-sm w-20" />
-                    <span className="text-xs text-muted-foreground">%</span>
-                  </div>
-                  {federalState && (
-                    <span className="text-[9px] text-muted-foreground">({BUNDESLAND_GREST[federalState]?.label})</span>
-                  )}
-                </div>
-                <div>
-                  <Label className="text-[10px] text-muted-foreground">Notar/Gericht</Label>
-                  <div className="flex items-center gap-1">
-                    <Input type="number" value={notaryRate} disabled className="h-8 text-sm w-20 bg-muted/60" />
-                    <span className="text-xs text-muted-foreground">%</span>
-                  </div>
-                  <span className="text-[9px] text-muted-foreground">(pauschal)</span>
-                </div>
-                <div>
-                  <Label className="text-[10px] text-muted-foreground">Gesamt</Label>
-                  <p className="text-sm font-semibold h-8 flex items-center">{(grestRate + notaryRate).toFixed(1)}%</p>
-                </div>
-              </div>
-            </div>
-
-            {/* ── Steuerliche Parameter ── */}
-            <div className="p-3 rounded-lg border bg-muted/20 space-y-3">
-              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
-                <Building2 className="h-3.5 w-3.5" /> Steuerliche Parameter
-              </p>
-
-              <div className="grid grid-cols-3 gap-3">
-                <div className="space-y-1">
-                  <Label className="text-[10px] text-muted-foreground">AfA-Satz (%)</Label>
-                  <Input type="number" step="0.5" min="0" max="20" value={afaRate}
-                    onChange={e => { setAfaRate(+e.target.value); markDirty(); }} disabled={isDemo} className="h-8 text-sm" />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-[10px] text-muted-foreground">AfA-Modell</Label>
-                  <Select value={afaModel} onValueChange={v => { setAfaModel(v); markDirty(); }} disabled={isDemo}>
-                    <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {AFA_MODELS.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-[10px] text-muted-foreground">Grundanteil (%)</Label>
-                  <Input type="number" step="1" min="0" max="100" value={landShare}
-                    onChange={e => { setLandShare(+e.target.value); markDirty(); }} disabled={isDemo} className="h-8 text-sm" />
-                </div>
-              </div>
-
-              <FormField label="WEG-Verwaltung" icon={Scale}>
-                <div className="flex gap-2">
-                  <Input value={managementCompany} onChange={e => { setManagementCompany(e.target.value); markDirty(); }}
-                    disabled={isDemo} className="h-8 text-sm flex-1" placeholder="Firma" />
-                  <div className="flex items-center gap-1">
-                    <Input type="number" value={managementCost} onChange={e => { setManagementCost(+e.target.value); markDirty(); }}
-                      disabled={isDemo} className="h-8 text-sm w-20" />
-                    <span className="text-[10px] text-muted-foreground whitespace-nowrap">EUR/WE</span>
-                  </div>
-                </div>
-              </FormField>
-
-              <FormField label="Einkunftsart" icon={BookOpen}>
-                <Input value={incomeType} onChange={e => { setIncomeType(e.target.value); markDirty(); }}
-                  disabled={isDemo} className="h-8 text-sm" placeholder="z.B. §21 EStG V+V" />
-              </FormField>
-            </div>
-
-            {/* Save button at bottom of left column */}
+        {/* ── Objektbeschreibung — full width ── */}
+        <div className="space-y-2 pt-2 border-t">
+          <div className="flex items-center justify-between">
+            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Objektbeschreibung</p>
             {!isDemo && (
-              <Button onClick={handleSave} disabled={saving || !dirty} className="w-full gap-1.5">
-                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                Projekt-Datenblatt speichern
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5 text-xs"
+                onClick={generateAiDescription}
+                disabled={aiLoading}
+              >
+                {aiLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+                {aiLoading ? 'Exposé wird analysiert…' : 'KI-Beschreibung generieren'}
               </Button>
             )}
           </div>
+          <Textarea
+            value={description}
+            onChange={e => { setDescription(e.target.value); markDirty(); }}
+            disabled={isDemo}
+            placeholder="Professionelle Objektbeschreibung (150-250 Wörter)…"
+            className="text-sm leading-relaxed resize-none overflow-hidden"
+            style={{ fieldSizing: 'content', minHeight: '80px' } as React.CSSProperties}
+          />
+          {description && (
+            <p className="text-[10px] text-muted-foreground text-right">
+              {description.split(/\s+/).filter(Boolean).length} Wörter
+            </p>
+          )}
+        </div>
 
-          {/* Right — 3/5 Beschreibung */}
-          <div className="md:col-span-3 space-y-4">
-            <div className="flex items-center justify-between">
-              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Objektbeschreibung</p>
-              {!isDemo && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="gap-1.5 text-xs"
-                  onClick={generateAiDescription}
-                  disabled={aiLoading}
-                >
-                  {aiLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
-                  {aiLoading ? 'Exposé wird analysiert…' : 'KI-Beschreibung generieren'}
-                </Button>
+        {/* ── Lagebeschreibung — full width ── */}
+        <div className="space-y-2 pt-2 border-t">
+          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Lagebeschreibung</p>
+          <Textarea
+            value={locationDesc}
+            onChange={e => { setLocationDesc(e.target.value); markDirty(); }}
+            disabled={isDemo}
+            placeholder="Lage, Infrastruktur, Anbindung (100-150 Wörter)…"
+            className="text-sm leading-relaxed resize-none overflow-hidden"
+            style={{ fieldSizing: 'content', minHeight: '80px' } as React.CSSProperties}
+          />
+          {locationDesc && (
+            <p className="text-[10px] text-muted-foreground text-right">
+              {locationDesc.split(/\s+/).filter(Boolean).length} Wörter
+            </p>
+          )}
+        </div>
+
+        {/* ── Erwerbsnebenkosten — full width ── */}
+        <div className="p-3 rounded-lg border bg-muted/20 space-y-3">
+          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+            <Receipt className="h-3.5 w-3.5" /> Erwerbsnebenkosten
+          </p>
+
+          <FormField label="Bundesland" icon={MapPin}>
+            <Select value={federalState} onValueChange={v => { setFederalState(v); markDirty(); }} disabled={isDemo}>
+              <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Bundesland wählen" /></SelectTrigger>
+              <SelectContent>
+                {Object.entries(BUNDESLAND_GREST).map(([code, { label }]) => (
+                  <SelectItem key={code} value={code}>{label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FormField>
+
+          <div className="grid grid-cols-3 gap-3 text-sm">
+            <div>
+              <Label className="text-[10px] text-muted-foreground">Grunderwerbsteuer</Label>
+              <div className="flex items-center gap-1">
+                <Input type="number" step="0.5" value={grestRate} onChange={e => { setGrestRate(+e.target.value); markDirty(); }} disabled={isDemo} className="h-8 text-sm w-20" />
+                <span className="text-xs text-muted-foreground">%</span>
+              </div>
+              {federalState && (
+                <span className="text-[9px] text-muted-foreground">({BUNDESLAND_GREST[federalState]?.label})</span>
               )}
             </div>
-
-            <Textarea
-              value={description}
-              onChange={e => { setDescription(e.target.value); markDirty(); }}
-              disabled={isDemo}
-              placeholder="Professionelle Objektbeschreibung (150-250 Wörter)…"
-              className="min-h-[180px] text-sm leading-relaxed"
-            />
-            {description && (
-              <p className="text-[10px] text-muted-foreground text-right">
-                {description.split(/\s+/).filter(Boolean).length} Wörter
-              </p>
-            )}
-
             <div>
-              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">Lagebeschreibung</p>
-              <Textarea
-                value={locationDesc}
-                onChange={e => { setLocationDesc(e.target.value); markDirty(); }}
-                disabled={isDemo}
-                placeholder="Lage, Infrastruktur, Anbindung (100-150 Wörter)…"
-                className="min-h-[140px] text-sm leading-relaxed"
-              />
-              {locationDesc && (
-                <p className="text-[10px] text-muted-foreground text-right mt-1">
-                  {locationDesc.split(/\s+/).filter(Boolean).length} Wörter
-                </p>
-              )}
+              <Label className="text-[10px] text-muted-foreground">Notar/Gericht</Label>
+              <div className="flex items-center gap-1">
+                <Input type="number" value={notaryRate} disabled className="h-8 text-sm w-20 bg-muted/60" />
+                <span className="text-xs text-muted-foreground">%</span>
+              </div>
+              <span className="text-[9px] text-muted-foreground">(pauschal)</span>
+            </div>
+            <div>
+              <Label className="text-[10px] text-muted-foreground">Gesamt</Label>
+              <p className="text-sm font-semibold h-8 flex items-center">{(grestRate + notaryRate).toFixed(1)}%</p>
             </div>
           </div>
         </div>
+
+        {/* ── Steuerliche Parameter — full width ── */}
+        <div className="p-3 rounded-lg border bg-muted/20 space-y-3">
+          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+            <Building2 className="h-3.5 w-3.5" /> Steuerliche Parameter
+          </p>
+
+          <div className="grid grid-cols-3 gap-3">
+            <div className="space-y-1">
+              <Label className="text-[10px] text-muted-foreground">AfA-Satz (%)</Label>
+              <Input type="number" step="0.5" min="0" max="20" value={afaRate}
+                onChange={e => { setAfaRate(+e.target.value); markDirty(); }} disabled={isDemo} className="h-8 text-sm" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[10px] text-muted-foreground">AfA-Modell</Label>
+              <Select value={afaModel} onValueChange={v => { setAfaModel(v); markDirty(); }} disabled={isDemo}>
+                <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {AFA_MODELS.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[10px] text-muted-foreground">Grundanteil (%)</Label>
+              <Input type="number" step="1" min="0" max="100" value={landShare}
+                onChange={e => { setLandShare(+e.target.value); markDirty(); }} disabled={isDemo} className="h-8 text-sm" />
+            </div>
+          </div>
+
+          <FormField label="WEG-Verwaltung" icon={Scale}>
+            <div className="flex gap-2">
+              <Input value={managementCompany} onChange={e => { setManagementCompany(e.target.value); markDirty(); }}
+                disabled={isDemo} className="h-8 text-sm flex-1" placeholder="Firma" />
+              <div className="flex items-center gap-1">
+                <Input type="number" value={managementCost} onChange={e => { setManagementCost(+e.target.value); markDirty(); }}
+                  disabled={isDemo} className="h-8 text-sm w-20" />
+                <span className="text-[10px] text-muted-foreground whitespace-nowrap">EUR/WE</span>
+              </div>
+            </div>
+          </FormField>
+
+          <FormField label="Einkunftsart" icon={BookOpen}>
+            <Input value={incomeType} onChange={e => { setIncomeType(e.target.value); markDirty(); }}
+              disabled={isDemo} className="h-8 text-sm" placeholder="z.B. §21 EStG V+V" />
+          </FormField>
+        </div>
+
+        {/* ── Save button — full width ── */}
+        {!isDemo && (
+          <Button onClick={handleSave} disabled={saving || !dirty} className="w-full gap-1.5">
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            Projekt-Datenblatt speichern
+          </Button>
+        )}
       </CardContent>
     </Card>
   );
