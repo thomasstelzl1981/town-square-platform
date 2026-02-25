@@ -1,26 +1,47 @@
 # DATA ENGINE BACKLOG — Document Intelligence & Datenverarbeitung
 
-> **Version**: 1.0  
+> **Version**: 2.0  
 > **Status**: ACTIVE  
-> **Datum**: 2026-02-18  
+> **Datum**: 2026-02-25  
 > **Owner**: Zone 1  
 
 ---
 
 ## 1. Engine-Übersicht
 
-Die **Document Intelligence Engine** (ENG-DOCINT) verarbeitet eingehende und gespeicherte Dokumente, extrahiert strukturierte Daten und macht sie für Armstrong und alle Module verfügbar.
+Die **Document Intelligence Engine** (ENG-DOCINT v3) verarbeitet eingehende und gespeicherte Dokumente, extrahiert strukturierte Daten und macht sie für Armstrong und alle Module verfügbar.
 
-### Architektur-Pipeline
+### Architektur-Pipeline (v3 — Konsolidiert)
 
 ```
-Quellen                 → Parser              → Index              → Verbraucher
-─────────────────────────────────────────────────────────────────────────────────
-Posteingang (Resend)    → sot-document-parser  → document_chunks    → Armstrong
-Storage (eigene Files)  → [Phase 2]            → TSVector Search    → MOD-04 NK
-Cloud (GDrive/Dropbox)  → [Phase 2]            → [Phase 2: pgvec]  → MOD-18 Finanz
-FinAPI (Kontoauszüge)   → [Phase 2]            →                   → MOD-07 Finance
+Quellen                 → Parser                    → Index              → Verbraucher
+──────────────────────────────────────────────────────────────────────────────────────────
+Posteingang (Resend)    → sot-document-parser (AI)   → document_chunks    → Armstrong
+Storage (eigene Files)  → sot-document-parser (AI)   → TSVector Search    → MOD-04 NK
+XLSX/CSV Upload         → _shared/tabular-parser     → columnMapping+rows → MOD-13 Projekte
+                          (SheetJS, deterministisch)                       → MOD-04 Immobilien
+PDF mit Tabellen        → tabular-parser (PDF→CSV)   → columnMapping+rows → Alle Module
+                          → Gemini Flash → SheetJS
+Cloud (GDrive/Dropbox)  → [Phase 2]                  → [Phase 2: pgvec]  → MOD-18 Finanz
 ```
+
+### Zwei Parsing-Pfade
+
+| Pfad | Trigger | Methode | AI? | Kosten |
+|------|---------|---------|-----|--------|
+| **Path A (Direct)** | XLSX/CSV Upload | SheetJS direkt | Nein | Free |
+| **Path B (AI Vision)** | PDF/Bild Upload | Gemini Flash Vision + Tool-Calling | Ja | 1 Credit |
+| **Path B + CSV-Preprocessing** | PDF mit Tabellen (`preprocessPdfTables: true`) | Gemini Flash → CSV → SheetJS | Ja | 1 Credit |
+
+### Zentrale Komponenten
+
+| Komponente | Datei | Funktion |
+|-----------|-------|----------|
+| Universal Parser | `supabase/functions/sot-document-parser/index.ts` | Orchestriert Path A/B, 10+ Modi |
+| Shared Tabular Parser | `supabase/functions/_shared/tabular-parser.ts` | XLSX/CSV/PDF→CSV Kernlogik |
+| Parser Manifest (Client) | `src/config/parserManifest.ts` | SSOT für Modi, Felder, Ziel-Tabellen |
+| Upload Hook | `src/hooks/useUniversalUpload.ts` | 2-Phasen Upload + Register + AI |
+| Storage Manifest | `src/config/storageManifest.ts` | Pfad-Builder, Bucket, sanitizeFileName |
 
 ---
 
@@ -31,124 +52,72 @@ FinAPI (Kontoauszüge)   → [Phase 2]            →                   → MOD-
 | Komponente | Status | Datei |
 |-----------|--------|-------|
 | Resend Inbound Webhook | ✅ Live | `supabase/functions/sot-inbound-receive/` |
-| Gemini Vision Parser | ✅ Live | `supabase/functions/sot-document-parser/` |
+| Universal Document Parser v3 | ✅ Live | `supabase/functions/sot-document-parser/` |
+| Shared Tabular Parser | ✅ Live | `supabase/functions/_shared/tabular-parser.ts` |
 | document_chunks Tabelle | ✅ Live | Migration vorhanden |
 | TSVector Volltextsuche | ✅ Live | `search_document_chunks()` RPC |
 | Auto-Sortierung (Rules) | ✅ Live | `inbox_sort_containers` + `inbox_sort_rules` |
 
-**Billing**: 1 Credit (0,25 €) pro PDF-Dokument
+**Billing**: 1 Credit (0,25 €) pro PDF-Dokument. XLSX/CSV-Parsing ist kostenfrei (kein AI).
 
-### 2.2 Armstrong Dokumenten-Zugriff ✅
+### 2.2 Upload-Sanitization (systemweit) ✅
 
-- Armstrong kann via Signed URL einzelne Dokumente lesen (Vision API)
-- Limitierung: Max ~20 Seiten pro Anfrage (Token-Limit)
-- Für längere Dokumente: Zugriff über document_chunks (Textsuche)
+Alle Upload-Stellen nutzen `sanitizeFileName()` aus `storageManifest.ts`:
 
-### 2.3 Datentyp-Erkennung ✅
+| # | Datei | Methode | Bucket |
+|---|-------|---------|--------|
+| 1 | `useUniversalUpload.ts` | buildStoragePath (sanitized) | tenant-documents |
+| 2 | `useExposeUpload.ts` | buildStoragePath + UPLOAD_BUCKET | tenant-documents |
+| 3 | `useAcqOffers.ts` | buildStoragePath + UPLOAD_BUCKET | tenant-documents |
+| 4 | `TestamentVorlageInline.tsx` | sanitizeFileName direkt | documents |
+| 5 | `PatientenverfuegungInlineForm.tsx` | sanitizeFileName direkt | documents |
+| 6 | `ProfilTab.tsx` (Avatar + Logo) | sanitizeFileName direkt | tenant-documents |
+| 7 | `Kaufy2026Verkaeufer.tsx` (Zone 3) | sanitizeFileName direkt | public-intake |
 
-- KI erkennt automatisch den Dokumententyp
-- Mapping auf `doc_type_hint` im Storage-System
-- Unterstützte Typen: Rechnung, Vertrag, Bescheid, Ausweis, Kontoauszug, etc.
+### 2.3 Storage-Extraktion (eigene Dateien) ✅
+
+- User klickt "Dokument auslesen" im DMS → Signed URL → Gemini Vision → document_chunks
+- 1 Credit/Dokument
+- `supabase/functions/sot-storage-extract/`
+
+### 2.4 RAG-Index (pgvector Embedding) ✅
+
+- pgvector Extension aktiv
+- Embedding-Pipeline: document_chunks → Gemini Embedding → 768d Vektor
+- Hybrid-Suche: `hybrid_search_documents()` RPC (TSVector + Vektor)
 
 ---
 
 ## 3. Phase 2 — Roadmap
 
-### 3.1 Storage-Extraktion (eigene Dateien)
+### 3.1 Cloud-Sync (Google Drive)
 
-**Problem**: Aktuell können nur Posteingangs-PDFs extrahiert werden. Dateien, die der User direkt hochlädt, werden nicht indexiert.
-
-**Lösung**:
-1. Neue Edge Function: `sot-storage-extractor`
-2. Trigger: User klickt "Dokument auslesen" im DMS
-3. Flow: Storage → Signed URL → Gemini Vision → document_chunks
-4. Credit-Preflight vor Extraktion
-
-**Billing**: 1 Credit pro Dokument
-
-**Aufwand**: ~2-3 Tage Entwicklung
-
-### 3.2 Cloud-Sync (Google Drive, Dropbox, OneDrive)
-
-**Problem**: Externe Datenräume können nicht durchsucht oder indexiert werden.
+**Status**: Scaffold (DB-Tabellen bereit, OAuth-Flow fehlt)
 
 **Lösung**:
-1. OAuth2-Flow für jeden Provider (ADR-037 Zone 2)
-2. Token-Management in `connectors` Tabelle (bereits vorbereitet)
-3. Sync-Worker: Dateien KOPIEREN in Tenant-Storage (kein Live-Sync)
-4. Nach Kopie: automatische Extraktion wie Storage-Dateien
+1. OAuth2-Flow für Google Drive
+2. Token-Management in `cloud_sync_connectors` Tabelle
+3. Dateien KOPIEREN in Tenant-Storage → automatische Extraktion
 
-**Voraussetzungen**:
-- Google Cloud Console: OAuth Client ID
-- Dropbox: App Registration
-- OneDrive: Azure AD App Registration
+**Voraussetzungen**: `GOOGLE_DRIVE_CLIENT_ID`, `GOOGLE_DRIVE_CLIENT_SECRET`
 
-**GDPR**: Tokens gehören dem User, jederzeit disconnectable
+**Aufwand**: ~5-8 Tage
 
-**Aufwand**: ~5-8 Tage pro Provider
+### 3.2 FinAPI Konto-Matching
 
-### 3.3 End-to-End NK-Abrechnung
+**Status**: Scaffold (DB-Tabellen bereit)
 
-**Problem**: NK-Belege müssen manuell erfasst werden.
-
-**Lösung**:
-1. Parser-Mode `parseMode: 'nk_beleg'` in sot-document-parser
-2. Strukturierte Extraktion: Versorger, Betrag, Zeitraum, Kostenkategorie
-3. Auto-Matching: Beleg → Property → NK-Position
-4. Bestätigung durch User vor Buchung
-
-**Billing**: Inkl. in Standard-Extraktionsgebühr (1 Credit)
-
-**Aufwand**: ~3-4 Tage
-
-### 3.4 FinAPI Konto-Matching
-
-**Problem**: Kontoauszüge müssen manuell kategorisiert werden.
-
-**Lösung**:
-1. FinAPI-Anbindung (Bank-Connect via PSD2)
-2. Transaktionen importieren → `msv_bank_transactions`
-3. Auto-Matching: Transaktion ↔ Vertrag (Miete, Darlehen, Versicherung)
-4. Armstrong unterstützt bei unklaren Zuordnungen
-
-**Voraussetzungen**:
-- FinAPI Sandbox + Produktiv-Zugang
-- §34f-Lizenz für Bank-Zugriff
-
-**Billing**: 4 Credits pro Konto-Sync
+**Voraussetzungen**: FinAPI Sandbox + Produktiv-Zugang, §34f-Lizenz
 
 **Aufwand**: ~8-12 Tage
 
-### 3.5 RAG-Index (Embedding/pgvector)
-
-**Problem**: TSVector findet nur exakte Worttreffer. Semantische Suche fehlt.
-
-**Lösung**:
-1. pgvector Extension aktivieren
-2. Embedding-Pipeline: document_chunks → OpenAI/Gemini Embedding → Vektor
-3. Ähnlichkeitssuche: Armstrong nutzt Vektoren für Kontext-Retrieval
-4. Hybrid: TSVector + Vektor-Suche kombiniert
-
-**Voraussetzungen**:
-- pgvector Extension
-- Embedding API (Gemini oder OpenAI)
-
-**Billing**: Einmalig beim Indexieren, dann Free für Suche
-
-**Aufwand**: ~5-6 Tage
-
 ---
 
-## 4. Priorisierungs-Matrix
+## 4. Entfernte Komponenten
 
-| Feature | Impact | Aufwand | Priorität | Sprint |
-|---------|--------|---------|-----------|--------|
-| Storage-Extraktion | Hoch | 2-3 Tage | P1 | Nächster |
-| NK-Beleg-Parsing | Hoch | 3-4 Tage | P1 | Nächster |
-| Cloud-Sync (GDrive) | Mittel | 5-8 Tage | P2 | Q2/2026 |
-| FinAPI Matching | Hoch | 8-12 Tage | P2 | Q2/2026 |
-| RAG-Index | Mittel | 5-6 Tage | P3 | Q3/2026 |
-| Cloud-Sync (Dropbox) | Niedrig | 5-8 Tage | P3 | Q3/2026 |
+| Komponente | Entfernt am | Grund |
+|-----------|-------------|-------|
+| `sot-pdf-to-csv` | 2026-02-25 | Logik konsolidiert in `sot-document-parser` v3 via `_shared/tabular-parser.ts`. Die eigenständige Edge Function wurde nie aufgerufen und duplizierte CSV-Prompt + uint8ToBase64. |
 
 ---
 
@@ -156,28 +125,12 @@ FinAPI (Kontoauszüge)   → [Phase 2]            →                   → MOD-
 
 | Service | Einheit | Credits | EUR |
 |---------|---------|---------|-----|
-| Posteingang PDF-Extraktion | pro PDF | 1 | 0,25 |
-| Storage-Extraktion (Phase 2) | pro Dokument | 1 | 0,25 |
+| PDF-Extraktion (Vision) | pro PDF | 1 | 0,25 |
+| XLSX/CSV-Parsing (direkt) | pro Datei | 0 | 0,00 |
+| Storage-Extraktion | pro Dokument | 1 | 0,25 |
 | NK-Beleg-Parsing | pro Beleg | 1 | 0,25 |
 | Cloud-Sync Import | pro Datei | 1 | 0,25 |
 | FinAPI Konto-Sync | pro Konto | 4 | 1,00 |
-| Auto-Matching (Doc→Vertrag) | pro Match | 2 | 0,50 |
-
----
-
-## 6. Technische Abhängigkeiten
-
-```
-ENG-DOCINT Dependencies:
-├── Lovable AI (Gemini Vision)     — Phase 1 ✅
-├── Supabase Storage               — Phase 1 ✅
-├── document_chunks + TSVector     — Phase 1 ✅
-├── Credit-Preflight System        — Phase 1 🔜 (benötigt tenant_credit_balance)
-├── OAuth2 Token Management        — Phase 2
-├── pgvector Extension             — Phase 2
-├── FinAPI SDK                     — Phase 2
-└── Stripe (Credit Top-Up)         — Phase 2
-```
 
 ---
 
@@ -185,4 +138,5 @@ ENG-DOCINT Dependencies:
 
 | Version | Datum | Änderung |
 |---------|-------|----------|
+| 2.0 | 2026-02-25 | v3 Konsolidierung: Universeller Parser (XLSX/CSV/PDF), Shared Tabular Parser, sot-pdf-to-csv entfernt, Upload-Sanitization systemweit, Dokumentation aktualisiert |
 | 1.0 | 2026-02-18 | Initial — Phase 1 Status + Phase 2 Backlog |

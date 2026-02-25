@@ -53,7 +53,7 @@ Alle Kalkulationsengines sind **pure TypeScript Functions**, laufen **client-sid
 
 | Code | Name | Status | Billing | Ausfuehrung |
 |------|------|--------|---------|-------------|
-| ENG-DOCINT | Document Intelligence | ⚡ Teilweise | 1 Credit/PDF | Edge Function (`sot-docint-*`) |
+| ENG-DOCINT | Document Intelligence v3 | ✅ Live | 1 Credit/PDF | Edge Function (`sot-document-parser` + `_shared/tabular-parser`) |
 | ENG-RESEARCH | Research Engine (SOAT) | ⚡ Teilweise | 2-4 Credits/Run | Edge Function (`sot-research-*`) |
 | ENG-STOREX | Storage Extraction | ⚡ Teilweise | 1 Credit/Doc | Edge Function (`sot-storage-extractor`) |
 | ENG-KIBROWSER | KI-Browser Engine | 🔲 Geplant | 1-4 Credits/Session | Edge Function (`sot-ki-browser`) |
@@ -111,4 +111,5 @@ Jede Engine hat eine `engineVersion` die in `armstrong_action_runs.engine_versio
 
 | Datum | Aenderung |
 |-------|-----------|
+| 2026-02-25 | v1.1 — ENG-DOCINT auf v3 aktualisiert: Universeller Parser mit XLSX/CSV/PDF-Support via `_shared/tabular-parser.ts`. `sot-pdf-to-csv` entfernt (Logik in `sot-document-parser` konsolidiert). Upload-Sanitization systemweit homogenisiert (`sanitizeFileName` + `UPLOAD_BUCKET`). |
 | 2026-02-18 | v1.0 — Initiale Konsolidierung aller 15 Engines aus UI-Registry und Code-Specs |
