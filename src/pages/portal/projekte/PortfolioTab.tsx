@@ -284,6 +284,7 @@ export default function PortfolioTab() {
                   };
                 })()}
                 isDemo={isSelectedDemo}
+                projectData={projects.find(p => p.id === selectedProjectId) ?? null}
               />
             </div>
           </div>
