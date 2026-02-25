@@ -105,6 +105,7 @@ export const PARSER_PROFILES: Record<ParserMode, ParserProfile> = {
     moduleCode: 'MOD_17',
     targetDmsFolder: '01_Zulassung',
     exampleDocuments: ['Fahrzeugschein', 'Zulassungsbescheinigung Teil I', 'Zulassungsbescheinigung Teil II', 'Fahrzeugbrief', 'KFZ-Kaufvertrag'],
+    preprocessPdfTables: true,
     fields: [
       { key: 'license_plate', label: 'Kennzeichen', type: 'string', dbColumn: 'license_plate', required: true, aiHint: 'Amtliches Kennzeichen, z.B. B-AB 1234' },
       { key: 'vin', label: 'FIN (Fahrzeug-Identnummer)', type: 'string', dbColumn: 'vin', required: false, aiHint: 'Vehicle Identification Number, 17-stellig' },
@@ -129,6 +130,7 @@ export const PARSER_PROFILES: Record<ParserMode, ParserProfile> = {
     moduleCode: 'MOD_19',
     targetDmsFolder: '01_Stammdaten',
     exampleDocuments: ['MaStR-Auszug', 'Inbetriebnahmeprotokoll', 'Einspeisezusage', 'Anlagendatenblatt', 'Wechselrichter-Datenblatt'],
+    preprocessPdfTables: true,
     fields: [
       { key: 'name', label: 'Anlagenname', type: 'string', dbColumn: 'name', required: true },
       { key: 'kwp', label: 'Leistung (kWp)', type: 'number', dbColumn: 'capacity_kwp', required: true, aiHint: 'Installierte Nennleistung in Kilowatt-Peak' },

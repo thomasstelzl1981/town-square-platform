@@ -6,7 +6,7 @@
  */
 
 import { useState } from 'react';
-import { Building2, Car, Sun, Shield, Heart, PawPrint, Landmark, User, FileText } from 'lucide-react';
+import { Building2, Car, Sun, Shield, Heart, PawPrint, Landmark, User, FileText, Contact } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -29,6 +29,7 @@ const CATEGORIES: CategoryConfig[] = [
   { mode: 'haustier', label: 'Haustier', icon: PawPrint, hasEntityPicker: true },
   { mode: 'finanzierung', label: 'Finanzierung', icon: Landmark, hasEntityPicker: true },
   { mode: 'person', label: 'Person', icon: User, hasEntityPicker: true },
+  { mode: 'kontakt', label: 'Kontakt', icon: Contact, hasEntityPicker: false },
   { mode: 'allgemein', label: 'Sonstiges', icon: FileText, hasEntityPicker: false },
 ];
 
