@@ -22,7 +22,7 @@ import { LoadingState } from '@/components/shared/LoadingState';
 import { isDemoId } from '@/engines/demoData/engine';
 import type { DemoUnit } from '@/components/projekte/demoProjectData';
 import { SalesStatusReportWidget } from '@/components/projekte/SalesStatusReportWidget';
-import { DEMO_DEVELOPER_CONTEXT } from '@/components/projekte/demoProjectData';
+import { DEMO_DEVELOPER_CONTEXT, type DeveloperContext as DemoDeveloperContext } from '@/components/projekte/demoProjectData';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -45,7 +45,7 @@ interface CalculatedUnit extends DemoUnit {
 export default function PortfolioTab() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { portfolioRows, isLoadingPortfolio, deleteProject } = useDevProjects();
+  const { portfolioRows, isLoadingPortfolio, deleteProject, projects } = useDevProjects();
   
   // Default to first project
   const [selectedProjectId, setSelectedProjectId] = useState<string>(portfolioRows[0]?.id || '');
@@ -219,6 +219,7 @@ export default function PortfolioTab() {
             isDemo={isSelectedDemo}
             selectedProject={selectedProject}
             unitCount={calculatedUnits.length}
+            fullProject={projects.find(p => p.id === selectedProjectId)}
           />
 
           {/* Preisliste */}
@@ -261,7 +262,27 @@ export default function PortfolioTab() {
                 totalSaleTarget={totalSaleTarget}
                 provisionRate={provisionRate}
                 targetYield={targetYield}
-                developerContext={DEMO_DEVELOPER_CONTEXT}
+                developerContext={(() => {
+                  const fullProj = projects.find(p => p.id === selectedProjectId);
+                  if (fullProj?.developer_context) {
+                    const dc = fullProj.developer_context;
+                    return {
+                      name: dc.name,
+                      legal_form: dc.legal_form || '',
+                      hrb_number: dc.hrb_number || '',
+                      ust_id: dc.ust_id || '',
+                      managing_director: dc.managing_director || '',
+                      street: dc.street || '',
+                      house_number: dc.house_number || '',
+                      postal_code: dc.postal_code || '',
+                      city: dc.city || '',
+                    };
+                  }
+                  return isSelectedDemo ? DEMO_DEVELOPER_CONTEXT : {
+                    name: '—', legal_form: '', hrb_number: '', ust_id: '',
+                    managing_director: '', street: '', house_number: '', postal_code: '', city: '',
+                  };
+                })()}
                 isDemo={isSelectedDemo}
               />
             </div>
