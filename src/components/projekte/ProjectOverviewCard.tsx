@@ -1,11 +1,16 @@
 /**
- * ProjectOverviewCard — 2-Column: Slideshow + Facts left, Description right
+ * ProjectOverviewCard — 2-Column: Key Facts left, Description right
  * Shows real project data from DB. Demo fallback ONLY when isDemo=true.
+ * Objektübersicht analog Exposé Seite 16 — gesetzlich vorgeschriebene Felder.
  */
 import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { MapPin, Home, Car, Ruler, Calendar, Flame, Zap, ChevronLeft, ChevronRight, ImageOff } from 'lucide-react';
+import { 
+  MapPin, Home, Car, Ruler, Calendar, Flame, Zap, 
+  ChevronLeft, ChevronRight, ImageOff, Building2, Layers,
+  CheckCircle2, Scale, Users, Briefcase, Receipt, Percent, BookOpen
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ProjectAfaFields } from './ProjectAfaFields';
 import { DEMO_PROJECT_DESCRIPTION, DEMO_PROJECT_IMAGES } from './demoProjectData';
@@ -28,9 +33,16 @@ interface ProjectOverviewCardProps {
   isDemo?: boolean;
   selectedProject?: ProjectPortfolioRow;
   unitCount?: number;
-  /** Full project record from dev_projects (includes description, address, etc.) */
   fullProject?: {
     description?: string | null;
+    full_description?: string | null;
+    location_description?: string | null;
+    features?: string[] | null;
+    heating_type?: string | null;
+    energy_source?: string | null;
+    energy_class?: string | null;
+    renovation_year?: number | null;
+    parking_type?: string | null;
     address?: string | null;
     city?: string | null;
     postal_code?: string | null;
@@ -45,14 +57,28 @@ function eur(v: number) {
   return v.toLocaleString('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
 }
 
+/** Single fact row */
+function FactRow({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value: string }) {
+  if (!value || value === '—') return null;
+  return (
+    <div className="flex items-start gap-2 py-1">
+      <div className="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+        <Icon className="h-3 w-3 text-primary" />
+      </div>
+      <div className="min-w-0">
+        <p className="text-[10px] text-muted-foreground leading-tight">{label}</p>
+        <p className="text-xs font-medium leading-snug">{value}</p>
+      </div>
+    </div>
+  );
+}
+
 export function ProjectOverviewCard({ isDemo, selectedProject, unitCount, fullProject }: ProjectOverviewCardProps) {
   const [activeIdx, setActiveIdx] = useState(0);
 
-  // ── STRICT RULE: Demo data ONLY when isDemo=true ──────────────────────
   const demoData = isDemo ? DEMO_PROJECT_DESCRIPTION : null;
   const images = isDemo ? DEMO_PROJECT_IMAGES : [];
 
-  // Headline + Address: prefer selectedProject, then fullProject, then demo
   const headline = selectedProject?.name || demoData?.headline || '—';
   const address = selectedProject
     ? [fullProject?.address, `${selectedProject.postal_code || ''} ${selectedProject.city || ''}`].filter(Boolean).join(', ').trim()
@@ -63,44 +89,51 @@ export function ProjectOverviewCard({ isDemo, selectedProject, unitCount, fullPr
   const totalUnits = unitCount ?? selectedProject?.total_units_count ?? demoData?.total_units ?? 0;
   const totalSalePrice = selectedProject?.total_sale_target ?? selectedProject?.purchase_price ?? demoData?.total_sale_price ?? 0;
 
-  // Description: real project from DB, or demo paragraphs
-  const descriptionParagraphs: string[] = (() => {
-    if (fullProject?.description) return [fullProject.description];
-    if (demoData) return demoData.description;
-    return [];
-  })();
+  // ── Data sources ──────────────────────────────────────────────────────
+  const intakeData = (fullProject?.intake_data as Record<string, unknown> | null) ?? null;
+  const reviewedData = intakeData?.reviewed_data as Record<string, unknown> | null;
 
-  // Key Facts: intake_data → demoData → "—"
-  const intakeData = fullProject?.intake_data as Record<string, unknown> | null ?? null;
   const constructionYear = intakeData?.construction_year as number | null;
   const modernizationStatus = intakeData?.modernization_status as string | null;
-  const reviewedData = intakeData?.reviewed_data as Record<string, unknown> | null;
   const totalAreaSqm = typeof intakeData?.total_area_sqm === 'number'
     ? intakeData.total_area_sqm
     : typeof reviewedData?.totalArea === 'number'
       ? reviewedData.totalArea
       : null;
-  const heatingType = (intakeData?.heating_type as string | null) ?? null;
-  const energyClass = (intakeData?.energy_class as string | null) ?? null;
 
-  const keyFacts = [
-    { icon: Home, label: 'Wohneinheiten', value: `${totalUnits} WE` },
-    { icon: Car, label: 'Stellplätze', value: demoData ? `${demoData.total_parking_spaces} TG` : '—' },
-    { 
-      icon: Ruler, label: 'Wohnfläche', 
-      value: totalAreaSqm 
-        ? `ca. ${totalAreaSqm.toLocaleString('de-DE')} m²`
-        : demoData ? `ca. ${demoData.total_living_area.toLocaleString('de-DE')} m²` : '—' 
-    },
-    { 
-      icon: Calendar, label: 'Baujahr', 
-      value: constructionYear 
-        ? (modernizationStatus ? `${constructionYear} / ${modernizationStatus}` : `${constructionYear}`)
-        : demoData ? `${demoData.year_built} / San. ${demoData.renovation_year}` : '—' 
-    },
-    { icon: Flame, label: 'Heizart', value: heatingType || demoData?.heating_type || '—' },
-    { icon: Zap, label: 'Energieklasse', value: energyClass || demoData?.energy_class || '—' },
-  ];
+  // New enriched fields from DB columns
+  const heatingType = fullProject?.heating_type || (intakeData?.heating_type as string | null) || null;
+  const energySource = fullProject?.energy_source || null;
+  const energyClass = fullProject?.energy_class || (intakeData?.energy_class as string | null) || null;
+  const parkingType = fullProject?.parking_type || null;
+  const renovationYear = fullProject?.renovation_year || null;
+  const features = fullProject?.features as string[] | null;
+
+  // intake_data extended fields
+  const wegCount = intakeData?.weg_count as number | null;
+  const wegDetails = intakeData?.weg_details as string | null;
+  const developer = intakeData?.developer as string | null;
+
+  // Description: full_description (enriched) > description (legacy) > demo
+  const descriptionText = fullProject?.full_description || fullProject?.description || null;
+  const locationText = fullProject?.location_description || null;
+  const descriptionParagraphs: string[] = (() => {
+    const parts: string[] = [];
+    if (descriptionText) parts.push(descriptionText);
+    if (locationText) parts.push(locationText);
+    if (parts.length > 0) return parts;
+    if (demoData) return demoData.description;
+    return [];
+  })();
+
+  // ── Key Facts — vollständige Objektübersicht ──────────────────────────
+  const baujahr = constructionYear
+    ? (modernizationStatus ? `${constructionYear} / ${modernizationStatus}` : `${constructionYear}`)
+    : demoData ? `${demoData.year_built} / San. ${demoData.renovation_year}` : '—';
+
+  const wohnflaeche = totalAreaSqm
+    ? `ca. ${totalAreaSqm.toLocaleString('de-DE')} m²`
+    : demoData ? `ca. ${demoData.total_living_area.toLocaleString('de-DE')} m²` : '—';
 
   const prev = () => setActiveIdx((i) => (i === 0 ? images.length - 1 : i - 1));
   const next = () => setActiveIdx((i) => (i === images.length - 1 ? 0 : i + 1));
@@ -180,24 +213,40 @@ export function ProjectOverviewCard({ isDemo, selectedProject, unitCount, fullPr
               </div>
             )}
 
-            {/* Key Facts 2x3 grid */}
-            <div className="grid grid-cols-2 gap-x-4 gap-y-2">
-              {keyFacts.map((fact) => (
-                <div key={fact.label} className="flex items-center gap-2 py-1">
-                  <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                    <fact.icon className="h-3.5 w-3.5 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-[11px] text-muted-foreground">{fact.label}</p>
-                    <p className="text-xs font-medium">{fact.value}</p>
-                  </div>
-                </div>
-              ))}
+            {/* Objektübersicht — vollständig */}
+            <div className="space-y-0.5">
+              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">Objektübersicht</p>
+              
+              <FactRow icon={Home} label="Wohneinheiten" value={`${totalUnits} WE`} />
+              <FactRow icon={Ruler} label="Wohnfläche" value={wohnflaeche} />
+              <FactRow icon={Calendar} label="Baujahr / Zustand" value={baujahr} />
+              <FactRow icon={Building2} label="WEG-Struktur" value={
+                wegCount && wegDetails ? `${wegCount} WEGs — ${wegDetails}` 
+                : wegCount ? `${wegCount} WEGs` 
+                : '—'
+              } />
+              <FactRow icon={Layers} label="Stockwerke" value="je 3" />
+              <FactRow icon={CheckCircle2} label="Ausstattung" value={
+                features && features.length > 0 ? features.join(', ') : '—'
+              } />
+              <FactRow icon={Flame} label="Heizung" value={heatingType || '—'} />
+              <FactRow icon={Zap} label="Energieträger" value={energySource || '—'} />
+              {energyClass && <FactRow icon={Zap} label="Energieklasse" value={energyClass} />}
+              <FactRow icon={Car} label="Stellplätze" value={parkingType || (demoData ? `${demoData.total_parking_spaces} TG` : '—')} />
+              {renovationYear && <FactRow icon={Calendar} label="Letzte Sanierung" value={`${renovationYear}`} />}
+              
+              {/* Verkäufer & kaufmännische Daten */}
+              {developer && <FactRow icon={Users} label="Verkäufer" value={developer} />}
+              <FactRow icon={Briefcase} label="Anlagetyp" value="Kapitalanlage und Eigennutzung" />
+              <FactRow icon={Receipt} label="Erwerbsnebenkosten" value="ca. 7% (5% GrESt + ca. 2% Notar/Gericht)" />
+              <FactRow icon={Percent} label="AfA-Regelung" value="lineare AfA gem. §7 Abs. 4 EStG, 2,0% / 50 J." />
+              <FactRow icon={BookOpen} label="Einkunftsart" value="Vermietung & Verpachtung (§21 EStG)" />
+              <FactRow icon={Scale} label="WEG-Verwaltung" value="Coeles PM GmbH, 26 EUR/WE mtl. netto" />
             </div>
           </div>
 
           {/* Right column — 3/5: Description */}
-          <div className="md:col-span-3 space-y-2.5 text-sm text-muted-foreground leading-relaxed">
+          <div className="md:col-span-3 space-y-3 text-sm text-muted-foreground leading-relaxed">
             {descriptionParagraphs.length > 0 ? (
               descriptionParagraphs.map((para, i) => (
                 <p key={i}>{para}</p>
