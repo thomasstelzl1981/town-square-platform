@@ -48,12 +48,19 @@ interface SalesStatusReportWidgetProps {
   targetYield: number;
   developerContext: DeveloperContext;
   isDemo: boolean;
+  projectData?: {
+    address?: string | null;
+    city?: string | null;
+    postal_code?: string | null;
+    description?: string | null;
+    total_units_count?: number | null;
+  } | null;
 }
 
 const STORAGE_KEY_PREFIX = 'sot-report-recipients-';
 
 export function SalesStatusReportWidget({
-  units, projectName, investmentCosts, totalSaleTarget, provisionRate, targetYield, developerContext, isDemo,
+  units, projectName, investmentCosts, totalSaleTarget, provisionRate, targetYield, developerContext, isDemo, projectData,
 }: SalesStatusReportWidgetProps) {
   const [recipients, setRecipients] = useState<string[]>([]);
   const [newRecipient, setNewRecipient] = useState('');
@@ -129,13 +136,15 @@ export function SalesStatusReportWidget({
   `;
 
   const buildReportParams = async (): Promise<ReportParams> => {
-    const imageSources = [imgExterior, imgLivingroom, imgKitchen];
+    // Only load demo images for demo projects
     const imageDataUrls: string[] = [];
-    for (const src of imageSources) {
-      try {
-        const dataUrl = await loadImageAsDataUrl(src);
-        imageDataUrls.push(dataUrl);
-      } catch { /* skip failed images */ }
+    if (isDemo) {
+      const imageSources = [imgExterior, imgLivingroom, imgKitchen];
+      for (const src of imageSources) {
+        try {
+          imageDataUrls.push(await loadImageAsDataUrl(src));
+        } catch { /* skip */ }
+      }
     }
 
     const reportUnits: ReportUnit[] = units.map(u => ({
@@ -150,20 +159,24 @@ export function SalesStatusReportWidget({
       status: u.status,
     }));
 
+    const demo = isDemo ? DEMO_PROJECT_DESCRIPTION : null;
+
     return {
       projectName,
-      projectAddress: DEMO_PROJECT_DESCRIPTION.address,
-      projectCity: DEMO_PROJECT_DESCRIPTION.city,
-      projectPostalCode: DEMO_PROJECT_DESCRIPTION.postal_code,
-      projectDescription: DEMO_PROJECT_DESCRIPTION.description,
+      projectAddress: projectData?.address ?? demo?.address ?? '—',
+      projectCity: projectData?.city ?? demo?.city ?? '—',
+      projectPostalCode: projectData?.postal_code ?? demo?.postal_code ?? '—',
+      projectDescription: projectData?.description
+        ? [projectData.description]
+        : demo?.description ?? [],
       developerContext,
-      totalUnits: DEMO_PROJECT_DESCRIPTION.total_units,
-      totalParkingSpaces: DEMO_PROJECT_DESCRIPTION.total_parking_spaces,
-      totalLivingArea: DEMO_PROJECT_DESCRIPTION.total_living_area,
-      yearBuilt: DEMO_PROJECT_DESCRIPTION.year_built,
-      renovationYear: DEMO_PROJECT_DESCRIPTION.renovation_year,
-      heatingType: DEMO_PROJECT_DESCRIPTION.heating_type,
-      energyClass: DEMO_PROJECT_DESCRIPTION.energy_class,
+      totalUnits: projectData?.total_units_count ?? demo?.total_units ?? 0,
+      totalParkingSpaces: demo?.total_parking_spaces ?? 0,
+      totalLivingArea: demo?.total_living_area ?? 0,
+      yearBuilt: demo?.year_built ?? 0,
+      renovationYear: demo?.renovation_year ?? 0,
+      heatingType: demo?.heating_type ?? '—',
+      energyClass: demo?.energy_class ?? '—',
       investmentCosts,
       provisionRate,
       targetYield,
