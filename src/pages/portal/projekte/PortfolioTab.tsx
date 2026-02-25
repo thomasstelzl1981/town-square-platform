@@ -105,7 +105,6 @@ export default function PortfolioTab() {
   );
   const [provisionRate, setProvisionRate] = useState(0.10);
   const [priceAdjustment, setPriceAdjustment] = useState(0);
-  const [targetYield, setTargetYield] = useState(0.04);
   const [unitOverrides, setUnitOverrides] = useState<Record<string, { list_price?: number; parking_price?: number }>>({});
   const [unitStatusOverrides, setUnitStatusOverrides] = useState<Record<string, string>>({});
 
@@ -116,6 +115,8 @@ export default function PortfolioTab() {
       setTotalSaleTarget(selectedProject.total_sale_target || 0);
     }
   }, [selectedProject?.id]);
+
+  // Investitionskosten-Default moved after baseUnits declaration (see below)
 
   // Base units mapped to DemoUnit interface
   const baseUnits: DemoUnit[] = useMemo(() => {
@@ -148,6 +149,16 @@ export default function PortfolioTab() {
     });
   }, [realUnits]);
 
+  // Investitionskosten-Default: 20% Bauträgermarge als Indikation wenn kein purchase_price gespeichert
+  useEffect(() => {
+    if (selectedProject && baseUnits.length > 0) {
+      const totalList = baseUnits.reduce((s, u) => s + u.list_price, 0);
+      if (!selectedProject.purchase_price && totalList > 0) {
+        setInvestmentCosts(Math.round(totalList / 1.20));
+      }
+    }
+  }, [selectedProject?.id, baseUnits]);
+
   // Compute effective unit values
   const calculatedUnits: CalculatedUnit[] = useMemo(() => {
     return baseUnits.map((u) => {
@@ -158,8 +169,8 @@ export default function PortfolioTab() {
       if (override?.list_price != null) {
         effectivePrice = Math.round(override.list_price);
       } else {
-        const basePrice = targetYield > 0 ? u.annual_net_rent / targetYield : 0;
-        effectivePrice = Math.round(basePrice * (1 + priceAdjustment / 100));
+        // SSOT: list_price aus der Datenbank (hochgeladene Preisliste) ± Preisanpassung
+        effectivePrice = Math.round(u.list_price * (1 + priceAdjustment / 100));
       }
 
       const effectiveYield = effectivePrice > 0 ? (u.annual_net_rent / effectivePrice) * 100 : 0;
@@ -177,7 +188,7 @@ export default function PortfolioTab() {
         status: (statusOverride || u.status) as DemoUnit['status'],
       };
     });
-  }, [baseUnits, unitOverrides, unitStatusOverrides, priceAdjustment, provisionRate, targetYield]);
+  }, [baseUnits, unitOverrides, unitStatusOverrides, priceAdjustment, provisionRate]);
 
   // Handle inline price edits
   const handleUnitPriceChange = useCallback((unitId: string, field: 'list_price' | 'price_per_sqm' | 'parking_price', value: number) => {
@@ -292,13 +303,11 @@ export default function PortfolioTab() {
                 totalSaleTarget={totalSaleTarget}
                 provisionRate={provisionRate}
                 priceAdjustment={priceAdjustment}
-                targetYield={targetYield}
                 units={calculatedUnits}
                 onInvestmentCostsChange={setInvestmentCosts}
                 onTotalSaleTargetChange={setTotalSaleTarget}
                 onProvisionChange={setProvisionRate}
                 onPriceAdjustment={setPriceAdjustment}
-                onTargetYieldChange={setTargetYield}
                 isDemo={isSelectedDemo || !selectedProject}
                 projectId={selectedProject?.id || ''}
               />
@@ -310,7 +319,6 @@ export default function PortfolioTab() {
                 investmentCosts={investmentCosts}
                 totalSaleTarget={totalSaleTarget}
                 provisionRate={provisionRate}
-                targetYield={targetYield}
                 developerContext={(() => {
                   const fullProj = projects.find(p => p.id === selectedProjectId);
                   if (fullProj?.developer_context) {

@@ -45,7 +45,6 @@ interface SalesStatusReportWidgetProps {
   investmentCosts: number;
   totalSaleTarget: number;
   provisionRate: number;
-  targetYield: number;
   developerContext: DeveloperContext;
   isDemo: boolean;
   projectData?: {
@@ -60,7 +59,7 @@ interface SalesStatusReportWidgetProps {
 const STORAGE_KEY_PREFIX = 'sot-report-recipients-';
 
 export function SalesStatusReportWidget({
-  units, projectName, investmentCosts, totalSaleTarget, provisionRate, targetYield, developerContext, isDemo, projectData,
+  units, projectName, investmentCosts, totalSaleTarget, provisionRate, developerContext, isDemo, projectData,
 }: SalesStatusReportWidgetProps) {
   const [recipients, setRecipients] = useState<string[]>([]);
   const [newRecipient, setNewRecipient] = useState('');
@@ -179,7 +178,6 @@ export function SalesStatusReportWidget({
       energyClass: demo?.energy_class ?? '—',
       investmentCosts,
       provisionRate,
-      targetYield,
       units: reportUnits,
       imageDataUrls,
     };

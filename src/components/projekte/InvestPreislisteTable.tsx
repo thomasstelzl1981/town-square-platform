@@ -86,7 +86,7 @@ export function InvestPreislisteTable({ units, metricsCache, hasCalculated, isCa
               <th className="px-3 py-2.5 text-right font-semibold text-muted-foreground">Kaufpreis</th>
               <th className="px-3 py-2.5 text-right font-semibold text-muted-foreground">Miete/Mo</th>
               <th className="px-3 py-2.5 text-right font-semibold text-muted-foreground">Hausgeld</th>
-              <th className="px-3 py-2.5 text-right font-semibold text-muted-foreground">Rendite</th>
+              <th className="px-3 py-2.5 text-right font-semibold text-muted-foreground">Bruttorendite</th>
               <th className="px-3 py-2.5 text-right font-semibold text-muted-foreground">Steuereffekt/Mo</th>
               <th className="px-3 py-2.5 text-right font-semibold text-muted-foreground">Monatsbelastung</th>
               <th className="px-3 py-2.5 text-center font-semibold text-muted-foreground">Status</th>

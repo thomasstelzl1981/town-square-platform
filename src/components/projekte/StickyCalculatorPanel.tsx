@@ -32,13 +32,11 @@ interface StickyCalculatorPanelProps {
   totalSaleTarget: number;
   provisionRate: number;
   priceAdjustment: number;
-  targetYield: number;
   units: CalculatedUnit[];
   onInvestmentCostsChange: (v: number) => void;
   onTotalSaleTargetChange: (v: number) => void;
   onProvisionChange: (v: number) => void;
   onPriceAdjustment: (v: number) => void;
-  onTargetYieldChange: (v: number) => void;
   isDemo?: boolean;
   projectId: string;
 }
@@ -48,13 +46,11 @@ export function StickyCalculatorPanel({
   totalSaleTarget,
   provisionRate,
   priceAdjustment,
-  targetYield,
   units,
   onInvestmentCostsChange,
   onTotalSaleTargetChange,
   onProvisionChange,
   onPriceAdjustment,
-  onTargetYieldChange,
   isDemo = false,
   projectId,
 }: StickyCalculatorPanelProps) {
@@ -203,21 +199,6 @@ export function StickyCalculatorPanel({
             max={15}
             step={0.5}
             onValueChange={([v]) => onProvisionChange(v / 100)}
-          />
-        </div>
-
-        {/* Target Yield Slider */}
-        <div className="space-y-1.5">
-          <div className="flex justify-between items-baseline">
-            <Label className="text-xs text-muted-foreground">Endkundenrendite</Label>
-            <span className="text-xs font-bold text-primary tabular-nums">{(targetYield * 100).toFixed(1)}%</span>
-          </div>
-          <Slider
-            value={[targetYield * 100]}
-            min={2}
-            max={8}
-            step={0.1}
-            onValueChange={([v]) => onTargetYieldChange(v / 100)}
           />
         </div>
 
