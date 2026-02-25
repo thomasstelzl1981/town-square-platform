@@ -26,6 +26,7 @@ import {
 interface PublicListing {
   listing_id: string;
   public_id: string;
+  property_id: string | null;
   title: string;
   asking_price: number;
   property_type: string;
@@ -216,6 +217,7 @@ export default function Kaufy2026Home() {
       return (data || []).map((item: any) => ({
         listing_id: item.id,
         public_id: item.public_id,
+        property_id: item.properties?.id || null,
         title: item.title || `${item.properties?.property_type} ${item.properties?.city}`,
         asking_price: item.asking_price || 0,
         property_type: item.properties?.property_type || 'Unbekannt',
@@ -232,11 +234,11 @@ export default function Kaufy2026Home() {
     enabled: hasSearched,
   });
 
-  // Merge demo listings with DB listings (deduplicated by title+city)
+  // Merge demo listings with DB listings (deduplicated by property_id)
   const allListings = useMemo(() => {
     const dbListings = listings || [];
-    const dbKeys = new Set(dbListings.map((l: any) => `${l.title}|${l.city}`));
-    const uniqueDemos = demoListings.filter(d => !dbKeys.has(`${d.title}|${d.city}`));
+    const dbPropertyIds = new Set(dbListings.map((l: any) => l.property_id).filter(Boolean));
+    const uniqueDemos = demoListings.filter(d => !dbPropertyIds.has(d.property_id));
     return [...uniqueDemos.map(d => ({ ...d, isDemo: true } as any)), ...dbListings];
   }, [demoListings, listings]);
 
@@ -254,10 +256,10 @@ export default function Kaufy2026Home() {
     setIsSearching(true);
 
     const { data: freshListings } = await refetch();
-    // Merge demo listings with DB listings (deduplicated)
-    const dbKeys = new Set((freshListings || []).map((l: any) => `${l.title}|${l.city}`));
+    // Merge demo listings with DB listings (deduplicated by property_id)
+    const dbPropertyIds = new Set((freshListings || []).map((l: any) => l.property_id).filter(Boolean));
     const demosToInclude = demoListings
-      .filter(d => !dbKeys.has(`${d.title}|${d.city}`));
+      .filter(d => !dbPropertyIds.has(d.property_id));
     const listingsToProcess = [...demosToInclude.map(d => ({ ...d, isDemo: true })), ...(freshListings || [])].slice(0, 20);
 
     if (listingsToProcess.length === 0) {
