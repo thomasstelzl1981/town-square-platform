@@ -62,7 +62,7 @@ export default function LandingPageTab() {
   const units: DemoUnit[] | undefined = realUnits?.map((u) => {
     const listPrice = u.list_price ?? 0;
     const areaSqm = u.area_sqm ?? 1;
-    const rentNet = u.rent_net ?? 0;
+    const rentNet = u.rent_net ?? u.current_rent ?? 0;
     const rentNk = u.rent_nk ?? 0;
     const annualNetRent = rentNet * 12;
     return {
