@@ -122,7 +122,10 @@ export const STANDARD_COLUMN_PATTERNS: Record<string, RegExp> = {
   area: /^(wfl|wohn.*fl|fläche|flaeche|qm|m²|m2|nutzfl)/i,
   rooms: /^(zimmer|zi|räume|raeume)/i,
   floor: /^(etage|geschoss|og|stockwerk|lage|ebene)/i,
-  price: /^(kaufpreis|preis|vk|verkaufspreis|kp|gesamt.*preis|gesamtkauf)/i,
+  // pricePerSqm MUST be checked BEFORE price — more specific pattern first
+  pricePerSqm: /^(kaufpreis.*(?:qm|m²|m2|pro)|preis.*(?:\/\s*(?:qm|m²|m2))|€.*(?:\/\s*(?:qm|m²|m2)))/i,
+  // price: negative lookahead excludes per-sqm columns
+  price: /^(kaufpreis(?!.*(?:qm|m²|m2|pro))|gesamtkauf|gesamtpreis|vk\b|verkaufspreis|kp\b)/i,
   currentRent: /^(miete|ist.*miete|monatsmiete|kaltmiete|nettomiete|akt.*miete|mietein|garantierte.*miete$)/i,
   hausgeld: /^(hausgeld|hg|eigentümer.*kost)/i,
   instandhaltung: /^(instandhaltung|ihr|rücklage)/i,
