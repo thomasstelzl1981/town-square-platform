@@ -255,6 +255,18 @@ export default function PortfolioTab() {
                     projectCity={selectedProject.city || ''}
                     projectPostalCode={selectedProject.postal_code || ''}
                     projectYearBuilt={((projects.find(p => p.id === selectedProjectId) as any)?.intake_data as any)?.construction_year || undefined}
+                    projectData={{
+                      full_description: (selectedProject as any).full_description,
+                      location_description: (selectedProject as any).location_description,
+                      features: (selectedProject as any).features,
+                      energy_cert_type: (selectedProject as any).energy_cert_type,
+                      energy_cert_value: (selectedProject as any).energy_cert_value,
+                      energy_class: (selectedProject as any).energy_class,
+                      heating_type: (selectedProject as any).heating_type,
+                      energy_source: (selectedProject as any).energy_source,
+                      renovation_year: (selectedProject as any).renovation_year,
+                      parking_type: (selectedProject as any).parking_type,
+                    }}
                     units={realUnits as any}
                   />
                 )}

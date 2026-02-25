@@ -346,6 +346,18 @@ export default function ProjectDetailPage() {
                   projectCity={project.city || ''}
                   projectPostalCode={project.postal_code}
                   projectYearBuilt={undefined}
+                  projectData={{
+                    full_description: (project as any).full_description,
+                    location_description: (project as any).location_description,
+                    features: (project as any).features,
+                    energy_cert_type: (project as any).energy_cert_type,
+                    energy_cert_value: (project as any).energy_cert_value,
+                    energy_class: (project as any).energy_class,
+                    heating_type: (project as any).heating_type,
+                    energy_source: (project as any).energy_source,
+                    renovation_year: (project as any).renovation_year,
+                    parking_type: (project as any).parking_type,
+                  }}
                   units={units}
                 />
                 <Button size="sm">+ Einheit hinzufügen</Button>
