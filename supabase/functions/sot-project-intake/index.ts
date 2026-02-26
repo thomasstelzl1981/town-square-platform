@@ -623,29 +623,62 @@ async function handleCreate(
 ): Promise<Response> {
   console.log('Create mode:', reviewedData.projectName, '—', reviewedData.extractedUnits?.length || 0, 'units');
 
-  // ── 1. Developer Context ──────────────────────────────────────────────────
+  // ── 1. Developer Context (use extracted developer name from Exposé) ─────
   let contextId: string;
-  const { data: existingContexts } = await supabase
-    .from('developer_contexts')
-    .select('id')
-    .eq('tenant_id', tenantId)
-    .limit(1);
+  const developerName = reviewedData.developer?.trim();
 
-  if (existingContexts && existingContexts.length > 0) {
-    contextId = existingContexts[0].id;
-  } else {
-    const { data: newCtx, error: ctxErr } = await supabase
+  if (developerName) {
+    // Search for existing context with matching name for this tenant
+    const { data: matchingCtx } = await supabase
       .from('developer_contexts')
-      .insert({
-        tenant_id: tenantId,
-        name: 'Meine Gesellschaft',
-        legal_form: 'GmbH',
-        is_default: true,
-      })
       .select('id')
-      .single();
-    if (ctxErr) throw new Error('Context creation failed: ' + ctxErr.message);
-    contextId = newCtx.id;
+      .eq('tenant_id', tenantId)
+      .ilike('name', developerName)
+      .limit(1);
+
+    if (matchingCtx && matchingCtx.length > 0) {
+      contextId = matchingCtx[0].id;
+      console.log(`Developer context found by name "${developerName}":`, contextId);
+    } else {
+      // Create NEW context with the extracted developer name
+      const { data: newCtx, error: ctxErr } = await supabase
+        .from('developer_contexts')
+        .insert({
+          tenant_id: tenantId,
+          name: developerName,
+          legal_form: '',
+          is_default: false,
+        })
+        .select('id')
+        .single();
+      if (ctxErr) throw new Error('Context creation failed: ' + ctxErr.message);
+      contextId = newCtx.id;
+      console.log(`Developer context created for "${developerName}":`, contextId);
+    }
+  } else {
+    // Fallback: use first existing context or create generic one
+    const { data: existingContexts } = await supabase
+      .from('developer_contexts')
+      .select('id')
+      .eq('tenant_id', tenantId)
+      .limit(1);
+
+    if (existingContexts && existingContexts.length > 0) {
+      contextId = existingContexts[0].id;
+    } else {
+      const { data: newCtx, error: ctxErr } = await supabase
+        .from('developer_contexts')
+        .insert({
+          tenant_id: tenantId,
+          name: 'Meine Gesellschaft',
+          legal_form: 'GmbH',
+          is_default: true,
+        })
+        .select('id')
+        .single();
+      if (ctxErr) throw new Error('Context creation failed: ' + ctxErr.message);
+      contextId = newCtx.id;
+    }
   }
 
   // ── 2. Generate project code ──────────────────────────────────────────────
