@@ -277,6 +277,7 @@ export function ProfilTab() {
     moduleCode: 'MOD-01',
     entityId: user?.id || 'dev-user',
     tenantId: activeTenantId || '',
+    entityType: 'profil',
     subPath: 'avatars',
   });
 

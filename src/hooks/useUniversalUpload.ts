@@ -332,9 +332,9 @@ export function useUniversalUpload() {
           name: file.name,
           node_type: 'file',
           module_code: moduleCode || null,
-          file_path: storagePath,
+          storage_path: storagePath,   // FIXED: was 'file_path' — column is 'storage_path'
           mime_type: file.type,
-          size_bytes: file.size,
+          // NOTE: size_bytes does NOT exist in storage_nodes — removed
         };
 
         const { data: nodeData, error: nodeError } = await supabase
@@ -344,6 +344,7 @@ export function useUniversalUpload() {
           .single();
 
         if (nodeError) {
+          // storage_nodes error is non-blocking — DMS index is optional
           console.error('Storage node creation failed:', nodeError);
         } else {
           storageNodeId = nodeData?.id;
@@ -366,9 +367,9 @@ export function useUniversalUpload() {
               name: file.name,
               node_type: 'file',
               module_code: 'SYSTEM',
-              file_path: storagePath,
+              storage_path: storagePath,   // FIXED: was 'file_path'
               mime_type: file.type,
-              size_bytes: file.size,
+              // NOTE: size_bytes removed — column does not exist in storage_nodes
             })
             .select('id')
             .single();

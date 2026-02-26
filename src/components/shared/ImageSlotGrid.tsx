@@ -7,11 +7,12 @@
  * - Loading spinner per slot
  * - Hover overlay with "Ersetzen" action
  * - Configurable slot definitions
+ * - DB-based image loading via document_links (with storage fallback)
  */
 
 import { useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { Upload, Loader2, ImagePlus } from 'lucide-react';
+import { Upload, Loader2, ImagePlus, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { IMAGE_SLOT } from '@/config/designManifest';
 
@@ -31,6 +32,8 @@ export interface ImageSlotGridProps {
   images: Record<string, string | null | undefined>;
   /** Called when a file is dropped/selected for a slot */
   onUpload: (slotKey: string, file: File) => void;
+  /** Called when delete is triggered for a slot */
+  onDelete?: (slotKey: string) => void;
   /** Currently uploading slot key */
   uploadingSlot: string | null;
   /** Disable all interactions (e.g. demo mode) */
@@ -47,6 +50,7 @@ function SingleSlot({
   slot,
   imageUrl,
   onUpload,
+  onDelete,
   isUploading,
   disabled,
   slotHeight,
@@ -54,6 +58,7 @@ function SingleSlot({
   slot: ImageSlot;
   imageUrl: string | null | undefined;
   onUpload: (file: File) => void;
+  onDelete?: () => void;
   isUploading: boolean;
   disabled: boolean;
   slotHeight: number;
@@ -90,13 +95,26 @@ function SingleSlot({
         {imageUrl ? (
           <>
             <img src={imageUrl} alt={slot.label} className="w-full h-full object-cover" />
-            {/* Hover overlay for replace */}
+            {/* Hover overlay for replace/delete */}
             {!disabled && !isUploading && (
-              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
                 <div className="flex flex-col items-center gap-1 text-white">
                   <ImagePlus className="h-5 w-5" />
                   <span className="text-[10px] font-medium">Ersetzen</span>
                 </div>
+                {onDelete && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDelete();
+                    }}
+                    className="flex flex-col items-center gap-1 text-white hover:text-destructive transition-colors"
+                  >
+                    <Trash2 className="h-5 w-5" />
+                    <span className="text-[10px] font-medium">Löschen</span>
+                  </button>
+                )}
               </div>
             )}
           </>
@@ -126,6 +144,7 @@ export function ImageSlotGrid({
   slots,
   images,
   onUpload,
+  onDelete,
   uploadingSlot,
   disabled = false,
   columns = IMAGE_SLOT.COLUMNS_DEFAULT,
@@ -149,6 +168,7 @@ export function ImageSlotGrid({
             slot={slot}
             imageUrl={images[slot.key]}
             onUpload={(file) => onUpload(slot.key, file)}
+            onDelete={onDelete ? () => onDelete(slot.key) : undefined}
             isUploading={uploadingSlot === slot.key}
             disabled={disabled}
             slotHeight={slotHeight}

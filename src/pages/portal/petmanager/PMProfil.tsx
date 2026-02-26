@@ -152,6 +152,7 @@ export default function PMProfil() {
     moduleCode: 'MOD-22',
     entityId: provider?.id || '',
     tenantId: activeTenantId || '',
+    entityType: 'pet',
     subPath: 'gallery',
   });
 
