@@ -12,7 +12,7 @@ import { getCachedSignedUrl } from '@/lib/imageCache';
 import { Loader2, Building2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { InvestmentResultTile } from '@/components/investment/InvestmentResultTile';
-import { useDemoListings, isDemoListingId } from '@/hooks/useDemoListings';
+import { useDemoListings, isDemoListingId, DEMO_PROPERTY_IMAGE_MAP } from '@/hooks/useDemoListings';
 import { useInvestmentEngine, defaultInput, type CalculationInput } from '@/hooks/useInvestmentEngine';
 import { 
   Kaufy2026Hero, 
@@ -227,7 +227,7 @@ export default function Kaufy2026Home() {
         total_area_sqm: item.properties?.total_area_sqm,
         unit_count: unitCountMap.get(item.properties?.id) || 1,
         monthly_rent_total: item.properties?.annual_income ? item.properties.annual_income / 12 : 0,
-        hero_image_path: imageMap.get(item.properties?.id) || null,
+        hero_image_path: imageMap.get(item.properties?.id) || DEMO_PROPERTY_IMAGE_MAP[item.properties?.id] || null,
         isDemo: false,
       })) as PublicListing[];
     },

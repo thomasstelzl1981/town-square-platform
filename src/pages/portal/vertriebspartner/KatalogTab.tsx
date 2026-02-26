@@ -12,7 +12,7 @@ import { ManagerVisitenkarte } from '@/components/shared/ManagerVisitenkarte';
 import { MediaWidgetGrid } from '@/components/shared/MediaWidgetGrid';
 import { MarketReportWidget } from '@/components/shared/MarketReportWidget';
 import { useQuery } from '@tanstack/react-query';
-import { useDemoListings, isDemoListingId, deduplicateByField } from '@/hooks/useDemoListings';
+import { useDemoListings, isDemoListingId, deduplicateByField, DEMO_PROPERTY_IMAGE_MAP } from '@/hooks/useDemoListings';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -171,10 +171,10 @@ const KatalogTab = () => {
       (d: any) => !dbPropertyIds.has(d.property_id)
     );
     const deduped = [...uniqueDemos, ...listings];
-    // Inject hero image URLs
+    // Inject hero image URLs with demo fallback
     return deduped.map((item: any) => ({
       ...item,
-      hero_image_url: imageMap.get(item.property_id) || null,
+      hero_image_url: imageMap.get(item.property_id) || DEMO_PROPERTY_IMAGE_MAP[item.property_id] || null,
     }));
   }, [demoPartnerListings, listings, imageMap]);
   

@@ -30,7 +30,7 @@ import { useInvestmentEngine, type CalculationInput, defaultInput } from '@/hook
 import { mapAfaModelToEngine } from '@/lib/mapAfaModel';
 import { usePartnerSelections } from '@/hooks/usePartnerListingSelections';
 import { fetchPropertyImages } from '@/lib/fetchPropertyImages';
-import { useDemoListings, deduplicateByField } from '@/hooks/useDemoListings';
+import { useDemoListings, deduplicateByField, DEMO_PROPERTY_IMAGE_MAP } from '@/hooks/useDemoListings';
 import { MediaWidgetGrid } from '@/components/shared/MediaWidgetGrid';
 
 // Interface for fetched listings
@@ -190,7 +190,7 @@ const BeratungTab = () => {
           property_type: props?.property_type,
           total_area_sqm: props?.total_area_sqm,
           annual_rent: annualRent,
-          hero_image_path: imageMap.get(props.id) || null,
+          hero_image_path: imageMap.get(props.id) || DEMO_PROPERTY_IMAGE_MAP[props.id] || null,
           property_id: props?.id || '',
           unit_count: unitCountMap.get(props?.id) || 1,
         } as RawListing;
