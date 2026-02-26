@@ -1,13 +1,13 @@
 /**
  * ProjectLandingHome — Startseite der Projekt-Landing-Page
  * 
- * Hero (project image) + Search Engine + Unit List (dev_project_units)
+ * Hero (from document_links) + Search Engine + Unit List (dev_project_units)
  */
 import { useState, useCallback, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { getCachedSignedUrl } from '@/lib/imageCache';
+import { resolveStorageSignedUrl } from '@/lib/storage-url';
 import { Loader2, Building2, MapPin, Home, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -29,6 +29,40 @@ interface UnitMetrics {
   monthlyBurden: number;
   roiAfterTax: number;
   loanAmount: number;
+}
+
+/** Load signed image URLs from document_links for a project */
+async function loadProjectImages(projectId: string): Promise<Record<string, string>> {
+  const urls: Record<string, string> = {};
+  
+  const { data: links } = await supabase
+    .from('document_links')
+    .select('slot_key, documents!inner(storage_path)')
+    .eq('object_id', projectId)
+    .eq('object_type', 'project')
+    .eq('link_status', 'linked')
+    .order('created_at', { ascending: true });
+
+  if (!links?.length) return urls;
+
+  // Group by slot_key, take first per slot
+  const seen = new Set<string>();
+  for (const link of links) {
+    const slotKey = (link as any).slot_key;
+    if (!slotKey || seen.has(slotKey)) continue;
+    seen.add(slotKey);
+    const storagePath = (link as any).documents?.storage_path;
+    if (!storagePath) continue;
+
+    const { data } = await supabase.storage
+      .from('tenant-documents')
+      .createSignedUrl(storagePath, 3600);
+    if (data?.signedUrl) {
+      urls[slotKey] = resolveStorageSignedUrl(data.signedUrl);
+    }
+  }
+
+  return urls;
 }
 
 export default function ProjectLandingHome() {
@@ -59,28 +93,23 @@ export default function ProjectLandingHome() {
 
       if (!lp?.project_id) return null;
 
-      // Get project details (use only columns that exist)
       const { data: project } = await supabase
         .from('dev_projects')
-        .select('id, name, city, address, postal_code, description, project_images, total_units_count, total_area_sqm, construction_year, afa_model, afa_rate_percent, grest_rate_percent, notary_rate_percent')
+        .select('id, name, city, address, postal_code, description, total_units_count, total_area_sqm, construction_year, afa_model, afa_rate_percent, grest_rate_percent, notary_rate_percent')
         .eq('id', lp.project_id)
         .maybeSingle();
 
       if (!project) return null;
 
-      // Get units
       const { data: units } = await supabase
         .from('dev_project_units')
         .select('id, unit_number, floor, area_sqm, rooms_count, list_price, rent_net, status')
         .eq('project_id', project.id)
         .order('unit_number', { ascending: true });
 
-      // Get hero image signed URL
-      let heroImageUrl: string | null = null;
-      const projectImages = (project as any).project_images as Record<string, any> | null;
-      if (projectImages?.hero?.storagePath) {
-        heroImageUrl = await getCachedSignedUrl(projectImages.hero.storagePath);
-      }
+      // Load images from document_links
+      const imageUrls = await loadProjectImages(project.id);
+      const heroImageUrl = imageUrls.hero || null;
 
       return { landingPage: lp, project: project as any, units: (units || []) as unknown as ProjectUnit[], heroImageUrl };
     },

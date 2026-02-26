@@ -13,6 +13,7 @@ import { useState, useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { resolveStorageSignedUrl } from '@/lib/storage-url';
 
 export default function ProjectLandingLayout() {
   const location = useLocation();
@@ -50,7 +51,32 @@ export default function ProjectLandingLayout() {
         devContext = ctx;
       }
 
-      return { ...data, _devContext: devContext };
+      // Load logo from document_links
+      let logoUrl: string | null = null;
+      if (project?.id) {
+        const { data: links } = await supabase
+          .from('document_links')
+          .select('slot_key, documents!inner(storage_path)')
+          .eq('object_id', project.id)
+          .eq('object_type', 'project')
+          .eq('link_status', 'linked')
+          .eq('slot_key', 'logo')
+          .limit(1);
+
+        if (links?.length) {
+          const storagePath = (links[0] as any).documents?.storage_path;
+          if (storagePath) {
+            const { data: signedData } = await supabase.storage
+              .from('tenant-documents')
+              .createSignedUrl(storagePath, 3600);
+            if (signedData?.signedUrl) {
+              logoUrl = resolveStorageSignedUrl(signedData.signedUrl);
+            }
+          }
+        }
+      }
+
+      return { ...data, _devContext: devContext, _logoUrl: logoUrl };
     },
     enabled: !!slug,
     staleTime: 5 * 60 * 1000,
@@ -58,6 +84,7 @@ export default function ProjectLandingLayout() {
 
   const project = (landingData as any)?.dev_projects;
   const devContext = (landingData as any)?._devContext;
+  const logoUrl = (landingData as any)?._logoUrl;
   const projectName = landingData?.hero_headline || project?.name || 'Projekt';
   const sellerName = devContext
     ? `${devContext.name}${devContext.legal_form ? ` ${devContext.legal_form}` : ''}`
@@ -104,7 +131,14 @@ export default function ProjectLandingLayout() {
         {/* Header */}
         <header className="kaufy2026-header">
           <div className="flex items-center justify-between h-16 px-6 lg:px-10">
-            <Link to={basePath} className="flex items-center gap-2">
+            <Link to={basePath} className="flex items-center gap-3">
+              {logoUrl && (
+                <img
+                  src={logoUrl}
+                  alt="Logo"
+                  className="h-8 w-auto max-w-[120px] object-contain"
+                />
+              )}
               <span className="text-xl font-bold text-[hsl(220,20%,10%)] truncate max-w-[200px] lg:max-w-none">
                 {projectName}
               </span>
@@ -176,7 +210,12 @@ export default function ProjectLandingLayout() {
           <div className="px-6 lg:px-10 py-12">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               <div>
-                <span className="text-xl font-bold text-[hsl(220,20%,10%)]">{projectName}</span>
+                <div className="flex items-center gap-3">
+                  {logoUrl && (
+                    <img src={logoUrl} alt="Logo" className="h-6 w-auto max-w-[100px] object-contain" />
+                  )}
+                  <span className="text-xl font-bold text-[hsl(220,20%,10%)]">{projectName}</span>
+                </div>
                 {sellerName && (
                   <p className="mt-2 text-sm text-[hsl(215,16%,47%)]">
                     Ein Angebot der {sellerName}

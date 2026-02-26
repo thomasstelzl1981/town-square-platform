@@ -1,21 +1,49 @@
 /**
  * ProjectLandingObjekt — Objekt-Detailseite + Exposé-Download
  * 
- * Projektbeschreibung, Key Facts, Bildergalerie (aus dev_projects.project_images),
+ * Projektbeschreibung, Key Facts, Bildergalerie (from document_links),
  * Exposé-PDF Download aus DMS
  */
 import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { getCachedSignedUrl } from '@/lib/imageCache';
+import { resolveStorageSignedUrl } from '@/lib/storage-url';
 import { Loader2, Building2, MapPin, Calendar, Ruler, Home, Zap, FileDown, FileText } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 
-interface ImageSlot {
-  storagePath?: string;
-  fileName?: string;
+/** Load signed image URLs from document_links for a project */
+async function loadProjectImages(projectId: string): Promise<Record<string, string>> {
+  const urls: Record<string, string> = {};
+  
+  const { data: links } = await supabase
+    .from('document_links')
+    .select('slot_key, documents!inner(storage_path)')
+    .eq('object_id', projectId)
+    .eq('object_type', 'project')
+    .eq('link_status', 'linked')
+    .order('created_at', { ascending: true });
+
+  if (!links?.length) return urls;
+
+  const seen = new Set<string>();
+  for (const link of links) {
+    const slotKey = (link as any).slot_key;
+    if (!slotKey || seen.has(slotKey)) continue;
+    seen.add(slotKey);
+    const storagePath = (link as any).documents?.storage_path;
+    if (!storagePath) continue;
+
+    const { data } = await supabase.storage
+      .from('tenant-documents')
+      .createSignedUrl(storagePath, 3600);
+    if (data?.signedUrl) {
+      urls[slotKey] = resolveStorageSignedUrl(data.signedUrl);
+    }
+  }
+
+  return urls;
 }
 
 export default function ProjectLandingObjekt() {
@@ -37,26 +65,14 @@ export default function ProjectLandingObjekt() {
 
       const { data: project } = await supabase
         .from('dev_projects')
-        .select('id, name, city, address, postal_code, description, full_description, project_images, total_units_count, total_area_sqm, construction_year, energy_class, energy_source, project_code')
+        .select('id, name, city, address, postal_code, description, full_description, total_units_count, total_area_sqm, construction_year, energy_class, energy_source, project_code')
         .eq('id', lp.project_id)
         .maybeSingle();
 
       if (!project) return null;
 
-      // Generate signed URLs for all image slots
-      const projectImages = project.project_images as Record<string, ImageSlot> | null;
-      const imageUrls: Record<string, string> = {};
-
-      if (projectImages) {
-        await Promise.all(
-          Object.entries(projectImages).map(async ([key, slot]) => {
-            if (slot?.storagePath) {
-              const url = await getCachedSignedUrl(slot.storagePath);
-              if (url) imageUrls[key] = url;
-            }
-          })
-        );
-      }
+      // Load images from document_links instead of project_images JSONB
+      const imageUrls = await loadProjectImages(project.id);
 
       // Query DMS for exposé files
       let exposeFiles: Array<{ id: string; name: string; storage_path: string }> = [];

@@ -28,7 +28,7 @@ import { Separator } from '@/components/ui/separator';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { 
   Globe, Plus, Building2, ExternalLink, Eye, RefreshCw, 
-  Copy, Check, Save, Loader2, Lock, AlertTriangle, Info
+  Copy, Check, Save, Loader2, Lock, AlertTriangle, Info, Sparkles, RotateCcw
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -58,6 +58,8 @@ export default function LandingPageTab() {
   const { projects, isLoading, portfolioRows } = useDevProjects();
   const [selectedId, setSelectedId] = useState<string>(portfolioRows[0]?.id || '');
   const [copied, setCopied] = useState(false);
+  const [resetting, setResetting] = useState(false);
+  const [aiGenerating, setAiGenerating] = useState(false);
 
   const isSelectedDemo = isDemoId(selectedId);
   const isNewMode = selectedId === 'new';
@@ -122,18 +124,165 @@ export default function LandingPageTab() {
     onError: () => toast.error('Speichern fehlgeschlagen'),
   });
 
-  // ─── Create landing page ────────────────────────────────────
+  // ─── Create landing page with data population ──────────────
   const handleCreate = async () => {
     if (!projectId || !organizationId) return;
     const slug = generateSlug(projectName);
+
+    // Load developer context for impressum/footer data
+    let devCtx: any = null;
+    if (rawProject?.developer_context_id) {
+      const { data } = await supabase
+        .from('developer_contexts')
+        .select('name, legal_form, managing_director, street, house_number, postal_code, city, phone, email, hrb_number, ust_id')
+        .eq('id', rawProject.developer_context_id as string)
+        .maybeSingle();
+      devCtx = data;
+    }
+
+    // Build footer/contact fields from developer context
+    const footerCompany = devCtx
+      ? `${devCtx.name || ''}${devCtx.legal_form ? ` ${devCtx.legal_form}` : ''}`.trim()
+      : '';
+    const footerAddress = devCtx
+      ? [
+          `${devCtx.street || ''} ${devCtx.house_number || ''}`.trim(),
+          `${devCtx.postal_code || ''} ${devCtx.city || ''}`.trim(),
+        ].filter(Boolean).join(', ')
+      : '';
+    const contactEmail = devCtx?.email || '';
+    const contactPhone = devCtx?.phone || '';
+
+    // Build imprint text from developer context
+    let imprintText = '';
+    if (devCtx) {
+      const parts = [
+        footerCompany,
+        footerAddress,
+        devCtx.managing_director ? `Geschäftsführer: ${devCtx.managing_director}` : '',
+        devCtx.hrb_number ? `Handelsregister: ${devCtx.hrb_number}` : '',
+        devCtx.ust_id ? `USt-IdNr.: ${devCtx.ust_id}` : '',
+        contactEmail ? `E-Mail: ${contactEmail}` : '',
+        contactPhone ? `Telefon: ${contactPhone}` : '',
+      ].filter(Boolean);
+      imprintText = parts.join('\n');
+    }
+
+    // Get descriptions from project
+    const aboutText = rawProject?.full_description || rawProject?.description || '';
+    const locationDescription = rawProject?.location_description || '';
+
+    // Build address subheadline
+    const addressParts = [rawProject?.address, activeProject?.postal_code, activeProject?.city].filter(Boolean);
+    const heroSubheadline = addressParts.join(', ');
+
+    // Build highlights from features
+    const features = Array.isArray((rawProject as any)?.features) ? ((rawProject as any).features as string[]) : [];
+
     await createLandingPage.mutateAsync({
       project_id: projectId,
       organization_id: organizationId,
       slug,
       hero_headline: projectName,
-      hero_subheadline: `${activeProject?.postal_code || ''} ${activeProject?.city || ''}`.trim(),
+      hero_subheadline: heroSubheadline,
+      about_text: aboutText,
+      location_description: locationDescription,
+      contact_email: contactEmail,
+      contact_phone: contactPhone,
     });
+
+    // After creation, update the additional fields via a direct update
+    // (highlights_json, footer fields, imprint are not in CreateLandingPageInput)
+    const { data: newLp } = await supabase
+      .from('landing_pages')
+      .select('id')
+      .eq('project_id', projectId)
+      .maybeSingle();
+
+    if (newLp?.id) {
+      await supabase
+        .from('landing_pages')
+        .update({
+          highlights_json: features as any,
+          footer_company_name: footerCompany,
+          footer_address: footerAddress,
+          imprint_text: imprintText,
+          privacy_text: 'Datenschutzerklärung wird vom Anbieter bereitgestellt.',
+        })
+        .eq('id', newLp.id);
+    }
+
     queryClient.invalidateQueries({ queryKey: ['landing-page', projectId] });
+  };
+
+  // ─── Reset landing page ────────────────────────────────────
+  const handleReset = async () => {
+    if (!landingPage?.id) return;
+    setResetting(true);
+    try {
+      const { error } = await supabase
+        .from('landing_pages')
+        .delete()
+        .eq('id', landingPage.id);
+      if (error) throw error;
+      setLastLpId(null);
+      queryClient.invalidateQueries({ queryKey: ['landing-page'] });
+      queryClient.invalidateQueries({ queryKey: ['landing-pages'] });
+      toast.success('Landing Page zurückgesetzt');
+    } catch {
+      toast.error('Zurücksetzen fehlgeschlagen');
+    } finally {
+      setResetting(false);
+    }
+  };
+
+  // ─── AI Text Generation ────────────────────────────────────
+  const handleAiGenerate = async () => {
+    if (!projectId || !landingPage?.id) return;
+    setAiGenerating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('sot-project-description', {
+        body: { projectId },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      const updates: Record<string, any> = {};
+      if (data?.description) {
+        updates.about_text = data.description;
+        setEditor(prev => ({ ...prev, about_text: data.description }));
+      }
+      if (data?.location_description) {
+        updates.location_description = data.location_description;
+      }
+
+      // Also update the project itself
+      if (data?.description || data?.location_description) {
+        const projUpdates: Record<string, any> = {};
+        if (data.description) projUpdates.full_description = data.description;
+        if (data.location_description) projUpdates.location_description = data.location_description;
+        await supabase.from('dev_projects').update(projUpdates).eq('id', projectId);
+      }
+
+      // Update landing page with generated texts
+      if (Object.keys(updates).length > 0) {
+        await supabase.from('landing_pages').update(updates).eq('id', landingPage.id);
+      }
+
+      setEditorDirty(true);
+      queryClient.invalidateQueries({ queryKey: ['landing-page', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['dev-projects'] });
+      toast.success('KI-Texte generiert', { description: 'Bitte prüfen und bei Bedarf anpassen.' });
+    } catch (err: any) {
+      const msg = err?.message || 'Unbekannter Fehler';
+      if (msg.includes('Rate-Limit') || msg.includes('429')) {
+        toast.error('Rate-Limit erreicht', { description: 'Bitte in einer Minute erneut versuchen.' });
+      } else {
+        toast.error('KI-Texte fehlgeschlagen', { description: msg });
+      }
+    } finally {
+      setAiGenerating(false);
+    }
   };
 
   const handleCopy = async () => {
@@ -214,7 +363,7 @@ export default function LandingPageTab() {
                 <h3 className="text-lg font-semibold">Website für „{projectName}" erstellen</h3>
                 <p className="text-sm text-muted-foreground max-w-md">
                   Erstellt automatisch eine Projekt-Website mit Einheitenliste, Investment-Rechner und Kontaktformular.
-                  Bilder werden aus dem Projekt-Datenblatt übernommen.
+                  Beschreibungen, Bilder und Impressum werden aus dem Datenblatt übernommen.
                 </p>
               </div>
               <Button onClick={handleCreate} disabled={createLandingPage.isPending} className="gap-2">
@@ -281,6 +430,16 @@ export default function LandingPageTab() {
                 )}
               </div>
               <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 text-destructive hover:text-destructive"
+                  onClick={handleReset}
+                  disabled={resetting}
+                >
+                  {resetting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}
+                  Zurücksetzen
+                </Button>
                 <Button variant="outline" size="sm" className="gap-1.5" onClick={() => window.open(previewUrl, '_blank')}>
                   <Eye className="h-3.5 w-3.5" />
                   Vorschau
@@ -296,15 +455,27 @@ export default function LandingPageTab() {
                     <Save className="h-4 w-4" />
                     Inhalte bearbeiten
                   </CardTitle>
-                  <Button 
-                    size="sm" 
-                    className="gap-1.5" 
-                    disabled={!editorDirty || saveMutation.isPending}
-                    onClick={() => saveMutation.mutate()}
-                  >
-                    {saveMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-                    Speichern
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-1.5"
+                      onClick={handleAiGenerate}
+                      disabled={aiGenerating}
+                    >
+                      {aiGenerating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+                      KI-Texte generieren
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      className="gap-1.5" 
+                      disabled={!editorDirty || saveMutation.isPending}
+                      onClick={() => saveMutation.mutate()}
+                    >
+                      {saveMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                      Speichern
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent className="space-y-6">
@@ -371,7 +542,7 @@ export default function LandingPageTab() {
                   <Info className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
                   <div className="text-sm text-muted-foreground">
                     <p className="font-medium text-foreground">Bilder verwalten</p>
-                    <p>Bilder für die Website werden im <strong>Projekt-Datenblatt</strong> hochgeladen (Hero, Außen, Innen, Umgebung). 
+                    <p>Bilder für die Website werden im <strong>Projekt-Datenblatt</strong> hochgeladen (Hero, Außen, Innen, Umgebung, Logo). 
                     Änderungen dort werden automatisch auf der Website übernommen.</p>
                   </div>
                 </div>
@@ -388,6 +559,8 @@ export default function LandingPageTab() {
                     </div>
                   </div>
                 </div>
+
+                <Separator />
 
                 {/* Domain Hinweis */}
                 <div className="flex items-start gap-3 p-4 rounded-lg bg-destructive/5 border border-destructive/20">
