@@ -68,7 +68,14 @@ const EXTRACT_PROJECT_TOOL = {
             },
           },
         },
-        developer: { type: 'string', description: 'Bauträger/Verkäufer' },
+        developer: { type: 'string', description: 'Bauträger/Verkäufer — Firmenname OHNE Rechtsform (z.B. "Muster Immobilien" statt "Muster Immobilien GmbH")' },
+        developerLegalForm: { type: 'string', description: 'Rechtsform des Bauträgers: GmbH, GmbH & Co. KG, AG, etc.' },
+        developerManagingDirector: { type: 'string', description: 'Geschäftsführer / Vorstand des Bauträgers' },
+        developerStreet: { type: 'string', description: 'Straße + Hausnummer des Bauträgers (aus Impressum)' },
+        developerPostalCode: { type: 'string', description: 'PLZ des Bauträgers (aus Impressum)' },
+        developerCity: { type: 'string', description: 'Stadt des Bauträgers (aus Impressum)' },
+        developerHrb: { type: 'string', description: 'HRB-Nummer + Amtsgericht (z.B. "HRB 12345, Amtsgericht München")' },
+        developerUstId: { type: 'string', description: 'Umsatzsteuer-Identifikationsnummer (USt-IdNr.)' },
         summary: { type: 'string', description: 'Kurze Zusammenfassung des Exposés in 2-3 Sätzen' },
         // ── Extended fields for Kaufy-Readiness ──
         fullDescription: { type: 'string', description: 'Ausführliche Objektbeschreibung (500-1000 Wörter). Lage, Ausstattung, Besonderheiten, Verkehrsanbindung, Umgebung. Alles was im Exposé als Fließtext steht.' },
@@ -105,6 +112,16 @@ ERWEITERTE EXTRAKTION — Fülle diese Felder, wenn die Informationen im Exposé
 - heatingType: Heizungsart. energySource: Energieträger.
 - renovationYear: Letztes Sanierungsjahr.
 - parkingType: Stellplatz-Art. parkingPrice: Stellplatzpreis falls separat.
+
+ANBIETER/IMPRESSUM — Extrahiere aus dem Impressum oder der Anbieter-Sektion des Exposés:
+- developer: Firmenname OHNE Rechtsform (z.B. "Muster Immobilien" statt "Muster Immobilien GmbH")
+- developerLegalForm: Rechtsform (GmbH, GmbH & Co. KG, AG, etc.)
+- developerManagingDirector: Geschäftsführer oder Vorstand
+- developerStreet: Straße + Hausnummer des Anbieters
+- developerPostalCode: PLZ des Anbieters
+- developerCity: Stadt des Anbieters
+- developerHrb: HRB-Nummer + Amtsgericht (z.B. "HRB 12345, Amtsgericht München")
+- developerUstId: USt-IdNr. (Umsatzsteuer-Identifikationsnummer)
 
 - Rufe IMMER die Tool-Funktion auf, auch wenn du nur wenige Felder füllen kannst.`;
 
@@ -162,6 +179,13 @@ interface ExtractedData {
   wegCount?: number;
   wegDetails?: { name: string; unitsCount: number; addressRange: string }[];
   developer?: string;
+  developerLegalForm?: string;
+  developerManagingDirector?: string;
+  developerStreet?: string;
+  developerPostalCode?: string;
+  developerCity?: string;
+  developerHrb?: string;
+  developerUstId?: string;
   extractedUnits?: ExtractedUnit[];
   columnMapping?: ColumnMapping[];
   // Extended fields for Kaufy-Readiness
@@ -372,6 +396,13 @@ async function handleAnalyze(
                 wegCount: parsed.wegCount || 0,
                 wegDetails: Array.isArray(parsed.wegDetails) ? parsed.wegDetails : [],
                 developer: parsed.developer || '',
+                developerLegalForm: parsed.developerLegalForm || '',
+                developerManagingDirector: parsed.developerManagingDirector || '',
+                developerStreet: parsed.developerStreet || '',
+                developerPostalCode: parsed.developerPostalCode || '',
+                developerCity: parsed.developerCity || '',
+                developerHrb: parsed.developerHrb || '',
+                developerUstId: parsed.developerUstId || '',
                 // Extended fields
                 fullDescription: parsed.fullDescription || '',
                 locationDescription: parsed.locationDescription || '',
@@ -639,21 +670,59 @@ async function handleCreate(
     if (matchingCtx && matchingCtx.length > 0) {
       contextId = matchingCtx[0].id;
       console.log(`Developer context found by name "${developerName}":`, contextId);
+
+      // Update empty fields with extracted data (don't overwrite existing manual entries)
+      const updateFields: Record<string, string> = {};
+      if (reviewedData.developerLegalForm) updateFields.legal_form = reviewedData.developerLegalForm;
+      if (reviewedData.developerManagingDirector) updateFields.managing_director = reviewedData.developerManagingDirector;
+      if (reviewedData.developerStreet) updateFields.street = reviewedData.developerStreet;
+      if (reviewedData.developerPostalCode) updateFields.postal_code = reviewedData.developerPostalCode;
+      if (reviewedData.developerCity) updateFields.city = reviewedData.developerCity;
+      if (reviewedData.developerHrb) updateFields.hrb_number = reviewedData.developerHrb;
+      if (reviewedData.developerUstId) updateFields.ust_id = reviewedData.developerUstId;
+
+      if (Object.keys(updateFields).length > 0) {
+        // Only update fields that are currently empty in the DB
+        const { data: currentCtx } = await supabase
+          .from('developer_contexts')
+          .select('legal_form, managing_director, street, postal_code, city, hrb_number, ust_id')
+          .eq('id', contextId)
+          .single();
+
+        if (currentCtx) {
+          const fieldsToUpdate: Record<string, string> = {};
+          for (const [key, value] of Object.entries(updateFields)) {
+            if (!currentCtx[key as keyof typeof currentCtx]) {
+              fieldsToUpdate[key] = value;
+            }
+          }
+          if (Object.keys(fieldsToUpdate).length > 0) {
+            await supabase.from('developer_contexts').update(fieldsToUpdate).eq('id', contextId);
+            console.log(`Developer context updated with extracted fields:`, Object.keys(fieldsToUpdate));
+          }
+        }
+      }
     } else {
-      // Create NEW context with the extracted developer name
+      // Create NEW context with the extracted developer name + all available fields
       const { data: newCtx, error: ctxErr } = await supabase
         .from('developer_contexts')
         .insert({
           tenant_id: tenantId,
           name: developerName,
-          legal_form: '',
+          legal_form: reviewedData.developerLegalForm || '',
+          managing_director: reviewedData.developerManagingDirector || '',
+          street: reviewedData.developerStreet || '',
+          postal_code: reviewedData.developerPostalCode || '',
+          city: reviewedData.developerCity || '',
+          hrb_number: reviewedData.developerHrb || '',
+          ust_id: reviewedData.developerUstId || '',
           is_default: false,
         })
         .select('id')
         .single();
       if (ctxErr) throw new Error('Context creation failed: ' + ctxErr.message);
       contextId = newCtx.id;
-      console.log(`Developer context created for "${developerName}":`, contextId);
+      console.log(`Developer context created for "${developerName}" with full Impressum data:`, contextId);
     }
   } else {
     // Fallback: use first existing context or create generic one
