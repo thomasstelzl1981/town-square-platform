@@ -108,7 +108,7 @@ export function ProjectDataSheet({ isDemo, selectedProject, unitCount, fullProje
   }, [fullProject, intake]);
 
   // Object data
-  const [totalUnits, setTotalUnits] = useState(unitCount ?? selectedProject?.total_units_count ?? 0);
+  const [totalUnits, setTotalUnits] = useState(unitCount || selectedProject?.total_units_count || 0);
   const [totalArea, setTotalArea] = useState<number>(
     typeof intake?.total_area_sqm === 'number' ? intake.total_area_sqm
       : typeof reviewed?.totalArea === 'number' ? reviewed.totalArea : 0
@@ -167,7 +167,7 @@ export function ProjectDataSheet({ isDemo, selectedProject, unitCount, fullProje
     const intake = (fullProject.intake_data as Record<string, any>) ?? {};
     const reviewed = intake?.reviewed_data as Record<string, any> | null;
 
-    setTotalUnits(unitCount ?? fullProject.total_units_count ?? selectedProject?.total_units_count ?? 0);
+    setTotalUnits(unitCount || fullProject.total_units_count || selectedProject?.total_units_count || 0);
     setTotalArea(
       typeof intake?.total_area_sqm === 'number' ? intake.total_area_sqm
         : typeof reviewed?.totalArea === 'number' ? reviewed.totalArea : 0
@@ -201,7 +201,7 @@ export function ProjectDataSheet({ isDemo, selectedProject, unitCount, fullProje
     // Auto-open descriptions if they have content
     setDescOpen(!!(fullProject.full_description));
     setLocationOpen(!!(fullProject.location_description));
-  }, [fullProject?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [fullProject?.id, unitCount]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-update GrESt when Bundesland changes
   useEffect(() => {
@@ -230,7 +230,11 @@ export function ProjectDataSheet({ isDemo, selectedProject, unitCount, fullProje
 
   // ── Image Upload ──
   const handleImageUpload = async (slotKey: string, file: File) => {
-    if (isDemo || !projectId || !fullProject?.tenant_id) return;
+    if (isDemo) return;
+    if (!projectId || !fullProject?.tenant_id) {
+      toast.error('Projekt noch nicht vollständig geladen', { description: 'Bitte warte einen Moment und versuche es erneut.' });
+      return;
+    }
     setUploadingSlot(slotKey);
     try {
       const safeName = sanitizeFileName(file.name);
@@ -250,6 +254,7 @@ export function ProjectDataSheet({ isDemo, selectedProject, unitCount, fullProje
       setDirty(true);
       toast.success(`${IMAGE_SLOTS.find(s => s.key === slotKey)?.label} hochgeladen`);
     } catch (err: any) {
+      console.error('Image upload failed:', err);
       toast.error('Upload fehlgeschlagen', { description: err.message });
     } finally {
       setUploadingSlot(null);
