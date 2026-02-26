@@ -1,57 +1,38 @@
 
 
-## ManagerVisitenkarte — Korrekturplan
+## ManagerVisitenkarte — Bild auf volle Kartenhoehe
 
-### 3 Probleme identifiziert
+### Problem
 
-**1. Bild wird nicht angezeigt (kritisch)**
-`profile.avatar_url` enthält einen Storage-Pfad (`406f5f7a.../avatars/avatar_xxx.jpeg`), KEINE URL. Die Komponente setzt diesen Pfad direkt als `<img src>` — das Bild kann so nie geladen werden. ProfilTab loest das korrekt ueber `getSignedUrl()` / `getCachedSignedUrl()`.
+Die Karte hat `min-h-[280px]`, aber der innere Flex-Container hat keine explizite Hoehe. `items-stretch` wirkt nur, wenn der Container selbst eine definierte Hoehe hat. Deshalb bleibt das Foto auf die natuerliche Texthoehe begrenzt (~120px) statt die vollen ~260px (280px minus Padding und Gradient-Bar) zu nutzen.
 
-**2. Bild viel zu klein**
-96x96px in einer Karte mit `min-h-[280px]` — das Bild nutzt weniger als 35% der verfuegbaren Hoehe. Laut Plan soll es die **volle Kartenhoehe** ausfuellen.
+### Loesung (1 Datei, 3 Zeilen)
 
-**3. Layout entspricht nicht dem genehmigten Entwurf**
-Das Foto soll als hohe Kachel links stehen (volle Kartenhoehe), nicht als kleines Quadrat.
+**`src/components/shared/ManagerVisitenkarte.tsx`:**
 
-### Loesung
+| # | Aenderung | Zeile |
+|---|-----------|-------|
+| 1 | Card: `flex flex-col` hinzufuegen, damit CardContent wachsen kann | 71 |
+| 2 | CardContent: `flex-1` hinzufuegen, damit es die volle Resthoehe einnimmt | 75 |
+| 3 | Inneres Flex-Div: `h-full` hinzufuegen, damit `items-stretch` greift | 76 |
 
-**Datei:** `src/components/shared/ManagerVisitenkarte.tsx`
-
-| # | Aenderung |
-|---|-----------|
-| 1 | `useEffect` + `getCachedSignedUrl()` aus `@/lib/imageCache` einbauen, um `profile.avatar_url` (Storage-Pfad) in eine signierte URL aufzuloesen |
-| 2 | Avatar-Container auf `w-32 self-stretch rounded-xl` aendern — nimmt die volle Kartenhoehe ein, feste Breite 128px |
-| 3 | `<img>` auf `w-full h-full object-cover rounded-xl` — fuellt den Container komplett |
-| 4 | Fallback (kein Bild): Gradient-Hintergrund + zentriertes User-Icon beibehalten |
-
-### Soll-Layout (ASCII)
+### Ergebnis
 
 ```text
 ┌──────────────────────────────────────────────┐
-│ ██████████ gradient bar ██████████████████████│
-│                                              │
-│  ┌─────────┐  Max Mustermann           [✏]  │
-│  │         │  FINANZIERUNGSMANAGER           │
-│  │         │                                 │
-│  │  FOTO   │  ✉ max@example.de              │
-│  │ (voll-  │  📞 +49 170 1234567            │
-│  │ flaech- │  📍 München, 80331             │
-│  │   ig)   │                                 │
-│  │         │  [Badge 1] [Badge 2]           │
+│ ██ gradient bar ██████████████████████████████│
+│  ┌─────────┐                                 │
+│  │         │  Ralph Reinhold            [✏]  │
+│  │         │  PROJEKTMANAGER                 │
+│  │  FOTO   │  ✉ rr@unitys.com               │
+│  │ (volle  │  📞 +49 170 5591993            │
+│  │ Hoehe)  │  📍 Ottostraße 3, 80333        │
 │  │  128px  │                                 │
-│  │  breit  │  {children}                     │
+│  │  breit  │  [0 aktive Projekte]            │
 │  │         │                                 │
 │  └─────────┘                                 │
 └──────────────────────────────────────────────┘
 ```
 
-### Umsetzungsschritte
-
-| # | Aktion |
-|---|--------|
-| 1 | `useState` fuer `resolvedAvatarUrl` + `useEffect` mit `getCachedSignedUrl(profile.avatar_url, 'tenant-documents')` |
-| 2 | Avatar-Container: `w-32 self-stretch rounded-xl` (statt `h-24 w-24 self-center`) |
-| 3 | `<img>`: `w-full h-full object-cover rounded-xl` (statt `h-24 w-24`) |
-| 4 | Fallback-Icon auf `h-10 w-10` vergroessern |
-| 5 | Alle 5 Manager-Module erben automatisch |
+Das Foto fuellt jetzt die gesamte Kartenhoehe (ca. 260px) als saubere Kachel aus.
 
