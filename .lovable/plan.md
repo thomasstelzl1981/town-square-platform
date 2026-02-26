@@ -1,50 +1,69 @@
 
 
-## Miete24 Autos Upgrade: 6 Legacy → 9 professionelle Eintraege
+## Shop-Qualitaetsaudit: Befunde & Bereinigungsplan
 
-### Ist-Zustand
-- 6 Eintraege mit `shop_key = 'miete24-autos'` (VW ID.3, Cupra Born, Fiat 500e, BMW 320i, Mercedes A 250e, Tesla Model 3)
-- Keine `metadata`, keine `image_url`, keine `sub_category`, kein `affiliate_tag`
-- `sort_order` flach 1–6
+### Analyse aller 12 Shop-Keys (exkl. pet-style, pet-tracker)
 
-### Soll-Zustand (9 Eintraege)
+| Shop-Key | Produkte | Fehlende Bilder | Fehlende Beschreibung | Bild-Qualitaet | Sonstiges |
+|-----------|----------|-----------------|----------------------|----------------|-----------|
+| amazon | 6 | 0 | 0 | OK (Unsplash) | OK |
+| bueroshop24 | 6 | 0 | 0 | OK (Unsplash) | Beschreibungen sehr kurz |
+| miete24 | 6 | 0 | 0 | OK (Unsplash) | OK |
+| miete24-autos | 9 | 0 | 0 | OK (miete24.com) | OK |
+| bmw-fokus | 7 | 0 | 0 | OK (helming-sohn.de) | OK |
+| boote | 14 | 3 | 0 | OK (hallerexperiences.com) | 3 Add-ons ohne Bild (by design) |
+| privatjet | 11 | 2 | 0 | OK | 2 Add-ons ohne Bild (by design) |
+| smart-home | 16 | 0 | **16** | Reolink-CDN | Alle description = NULL |
+| pet-ernaehrung | 12 | **5** | 0 | Lakefields-CDN | 5 Lakefields-Produkte ohne Bild |
+| pet-fressnapf | 6 | 0 | **6** | **60x60px** | Alle description = NULL, Bilder viel zu klein |
+| pet-style | 16 | — | — | — | **AUSGENOMMEN** |
+| pet-tracker | 6 | — | — | — | **AUSGENOMMEN** |
 
-| # | sub_category | badge | Name | sort_order | price_cents |
-|---|-------------|-------|------|------------|-------------|
-| 1 | SUV | Entry | Opel Frontera Electric | 10 | 25900 |
-| 2 | SUV | Mid | MG HS 1.5 T PHEV | 20 | 33900 |
-| 3 | SUV | Premium | Mercedes-Benz GLE 450 d 4MATIC | 30 | 85900 |
-| 4 | Mittelklasse | Entry | Toyota Corolla Touring Sports 1.8 Hybrid | 110 | 31900 |
-| 5 | Mittelklasse | Mid | BYD Seal 6 DM-i Touring | 120 | 27900 |
-| 6 | Mittelklasse | Premium | Audi S3 Limousine TFSI quattro | 130 | 54900 |
-| 7 | Sport | Entry | Fiat 500C 1.0 Hybrid | 210 | 20900 |
-| 8 | Sport | Mid | Audi S3 Limousine (Sport) | 220 | 54900 |
-| 9 | Sport | Premium | BMW Z4 M40i | 230 | 68900 |
+### Kritische Probleme (3 Shops)
 
-### Feld-Mapping (User-Input → Schema)
+**1. pet-ernaehrung — 5 fehlende Bilder**
+Betroffen:
+- Lakefields Trockenfleisch-Menü Rind 150g
+- Lakefields Leckerli vom Hirsch 50g
+- Lakefields Leckerli vom Weiderind 50g
+- Lakefields Leckerli vom Weiderind 150g
+- Lakefields SUPERFOOD Trockenfutter Lamm 1kg
 
-- `title` → `name`
-- `price` → `price_label` (vollstaendig mit "inkl. MwSt."), `price_cents` (Monatsrate in Cent)
-- `image` → `image_url`
-- `link` → `external_url`
-- `vendor` → `affiliate_network = 'miete24'`, `affiliate_tag = 'miete24-autos'`
-- `tag` → Split in `sub_category` (SUV/Mittelklasse/Sport) und `badge` (Entry/Mid/Premium)
-- `badges` → `metadata.badges` Array
-- Zusaetzlich: `metadata.fuel`, `metadata.vendor`, `metadata.color` aus Titel extrahiert
+Fix: Bilder von lakefields.b-cdn.net recherchieren und UPDATE ausfuehren.
 
-### UI-Anpassung: CarsAngebote.tsx
+**2. pet-fressnapf — 6 fehlende Beschreibungen + winzige Bilder (60x60px)**
+Alle 6 Produkte (KONG Classic, KONG Frisbee, AniOne Tau, AniOne Schlange, Trixie Flip Board, Trixie Schnueffelteppich) haben:
+- `description = NULL`
+- `image_url` mit 60x60px (viel zu klein fuer Karten-Darstellung)
+- `sub_category = NULL` (keine Gruppierung)
 
-Die aktuelle Miete24-Sektion zeigt ein flaches Grid. Upgrade:
+Fix: Beschreibungen ergaenzen, Bilder auf hoehere Aufloesung (533x533 oder groesser) aktualisieren, sub_category setzen.
 
-1. **Gruppierung nach `sub_category`** — 3 Sektionen: SUV, Mittelklasse, Sport (jeweils mit Ueberschrift)
-2. **Badges aus metadata.badges** anzeigen statt nur fuel/transmission
-3. **Bestehende Karten-Struktur beibehalten** — nur Badges und Gruppierung erweitern
+**3. smart-home — 16 fehlende Beschreibungen**
+Alle Reolink-Produkte haben `description = NULL`. Die `metadata.notes` enthalten interne Notizen, aber keine kundenfreundliche Beschreibung.
+
+Fix: Professionelle Kurzbeschreibungen fuer alle 16 Produkte ergaenzen.
+
+### Kleinere Inkonsistenzen
+
+**4. bueroshop24 — Beschreibungen zu kurz**
+Beispiel: "5.000 Blatt, 80g/m²" — eher ein Untertitel als eine Beschreibung.
+Fix: Professionelle Einzeiler ergaenzen.
+
+**5. boote + privatjet Add-ons — kein Bild**
+By Design (Icon-Karten in der UI). Kein Fix noetig.
 
 ### Umsetzungsschritte
 
-| # | Aktion | Detail |
-|---|--------|--------|
-| 1 | DB: DELETE | `DELETE FROM service_shop_products WHERE shop_key = 'miete24-autos'` (6 Legacy-Rows) |
-| 2 | DB: INSERT | 9 neue Rows mit `shop_key = 'miete24-autos'`, Bildern, Metadata |
-| 3 | UI: CarsAngebote.tsx | Miete24-Sektion: Gruppierung nach `sub_category`, Badge-Rendering aus metadata |
+| # | Aktion | Anzahl Updates |
+|---|--------|---------------|
+| 1 | pet-ernaehrung: 5x image_url setzen (Lakefields CDN) | 5 UPDATEs |
+| 2 | pet-fressnapf: 6x description + image_url (hoehere Aufloesung) + sub_category | 6 UPDATEs |
+| 3 | smart-home: 16x description ergaenzen | 16 UPDATEs |
+| 4 | bueroshop24: 6x description professionalisieren | 6 UPDATEs |
+| 5 | Screenshots aller Shop-Bereiche nach Bereinigung | Browser-Tests |
+
+Gesamt: ~33 UPDATE-Statements, 0 Schema-Aenderungen, 0 neue Dateien.
+
+Keine UI-Code-Aenderungen noetig — die Komponenten rendern bereits korrekt, sobald die Daten vollstaendig sind.
 
