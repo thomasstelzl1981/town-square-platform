@@ -2,7 +2,8 @@
  * MOD-08 Investment Search Tab
  * Two modes: Investment-Suche (zVE + EK) and Klassische Suche
  */
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useDemoListings, DEMO_PROPERTY_IMAGE_MAP } from '@/hooks/useDemoListings';
@@ -55,17 +56,20 @@ type ViewMode = 'grid' | 'list';
 
 export default function SucheTab() {
   const isMobile = useIsMobile();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const autoCalcDone = useRef(false);
+
   // Search mode
   const [searchMode, setSearchMode] = useState<SearchMode>('investment');
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [hasSearched, setHasSearched] = useState(false);
+  const [hasSearched, setHasSearched] = useState(searchParams.get('searched') === '1');
 
-  // Investment search params
-  const [zve, setZve] = useState(60000);
-  const [equity, setEquity] = useState(50000);
-  const [maritalStatus, setMaritalStatus] = useState<'single' | 'married'>('single');
-  const [hasChurchTax, setHasChurchTax] = useState(false);
+  // Investment search params — restore from URL if available
+  const [zve, setZve] = useState(parseInt(searchParams.get('zvE') || '60000', 10));
+  const [equity, setEquity] = useState(parseInt(searchParams.get('equity') || '50000', 10));
+  const [maritalStatus, setMaritalStatus] = useState<'single' | 'married'>((searchParams.get('status') as 'single' | 'married') || 'single');
+  const [hasChurchTax, setHasChurchTax] = useState(searchParams.get('kirchensteuer') === '1');
 
   // Classic search params
   const [cityFilter, setCityFilter] = useState('');
@@ -335,7 +339,24 @@ export default function SucheTab() {
 
     setMetricsCache(newCache);
     setHasSearched(true);
-  }, [equity, zve, maritalStatus, hasChurchTax, calculate, refetch, demoListings]);
+
+    // Persist search params in URL for back-navigation restoration
+    setSearchParams({
+      searched: '1',
+      zvE: zve.toString(),
+      equity: equity.toString(),
+      status: maritalStatus,
+      kirchensteuer: hasChurchTax ? '1' : '0',
+    }, { replace: true });
+  }, [equity, zve, maritalStatus, hasChurchTax, calculate, refetch, demoListings, setSearchParams]);
+
+  // Auto-recalculate on mount if URL has searched=1 (back-navigation case)
+  useEffect(() => {
+    if (searchParams.get('searched') === '1' && !autoCalcDone.current && Object.keys(metricsCache).length === 0) {
+      autoCalcDone.current = true;
+      handleInvestmentSearch();
+    }
+  }, [searchParams, handleInvestmentSearch, metricsCache]);
 
   const handleClassicSearch = useCallback(() => {
     setHasSearched(true);

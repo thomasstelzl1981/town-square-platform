@@ -7,10 +7,10 @@
  * - InvestmentSliderPanel
  * - DetailTable40Jahre
  */
-import { useState, useEffect, useCallback } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useParams, Link, useSearchParams } from 'react-router-dom';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { useDemoListings } from '@/hooks/useDemoListings';
+import { useDemoListings, DEMO_PROPERTY_IMAGE_MAP } from '@/hooks/useDemoListings';
 import {
   ArrowLeft,
   Heart,
@@ -19,7 +19,6 @@ import {
   Calendar,
   Share2,
   Loader2,
-  Calculator,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -64,17 +63,32 @@ interface ListingData {
 
 export default function InvestmentExposePage() {
   const { publicId } = useParams<{ publicId: string }>();
+  const [urlParams] = useSearchParams();
   const isMobile = useIsMobile();
   const [isFavorite, setIsFavorite] = useState(false);
   const { calculate, result: calcResult, isLoading: isCalculating } = useInvestmentEngine();
   const { kaufyListings: demoListings, demoProperties } = useDemoListings();
 
+  // PHASE 2: Read search params from URL (persisted from SucheTab)
+  const initialParams = useMemo(() => {
+    const zvE = parseInt(urlParams.get('zvE') || '60000', 10);
+    const equity = parseInt(urlParams.get('equity') || '50000', 10);
+    const maritalStatus = (urlParams.get('status') as 'single' | 'married') || 'single';
+    const hasChurchTax = urlParams.get('kirchensteuer') === '1';
+    
+    return {
+      ...defaultInput,
+      taxableIncome: zvE,
+      equity,
+      maritalStatus,
+      hasChurchTax,
+      purchasePrice: 250000,
+      monthlyRent: 800,
+    };
+  }, [urlParams]);
+
   // Interactive parameters state
-  const [params, setParams] = useState<CalculationInput>({
-    ...defaultInput,
-    purchasePrice: 250000,
-    monthlyRent: 800,
-  });
+  const [params, setParams] = useState<CalculationInput>(initialParams);
 
   // Fetch listing data - support demo, public_id, and direct listing_id (UUID)
   const { data: listing, isLoading } = useQuery({
@@ -89,7 +103,7 @@ export default function InvestmentExposePage() {
         return {
           id: demoListing.listing_id,
           public_id: demoListing.public_id,
-          property_id: demoListing.listing_id,
+          property_id: demoListing.property_id,
           title: demoListing.title,
           description: '',
           asking_price: demoListing.asking_price,
@@ -203,6 +217,7 @@ export default function InvestmentExposePage() {
         heating_type: props?.heating_type ?? null,
         monthly_rent: annualIncome > 0 ? annualIncome / 12 : 0,
         units_count: (unitsCount && unitsCount > 0) ? unitsCount : 1,
+        hero_image_url: DEMO_PROPERTY_IMAGE_MAP[propertyId] || null,
       } satisfies ListingData;
     },
     enabled: !!publicId,
@@ -238,12 +253,10 @@ export default function InvestmentExposePage() {
     }
   }, [listing, accountingData]);
 
-  // Manual calculation trigger (no auto-start)
-  const [hasCalculated, setHasCalculated] = useState(false);
-  const handleCalculate = useCallback(() => {
+  // Auto-calculate when params change (like Kaufy)
+  useEffect(() => {
     if (params.purchasePrice > 0) {
       calculate(params);
-      setHasCalculated(true);
     }
   }, [params, calculate]);
 
@@ -387,22 +400,7 @@ export default function InvestmentExposePage() {
 
             </div>
 
-            {/* Calculate Button */}
-            <div className="flex justify-center">
-              <Button
-                size="lg"
-                onClick={handleCalculate}
-                disabled={isCalculating}
-                className="gap-2"
-              >
-                {isCalculating ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Calculator className="w-4 h-4" />
-                )}
-                {hasCalculated ? 'Neu berechnen' : 'Jetzt berechnen'}
-              </Button>
-            </div>
+            {/* Auto-calculation — no manual button needed */}
 
             {/* MasterGraph - Gemeinsame Komponente */}
             {isCalculating ? (
