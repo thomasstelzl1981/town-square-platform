@@ -256,6 +256,10 @@ const MVP_EXECUTABLE_ACTIONS = [
   "ARM.GLOBAL.FAQ",
   "ARM.GLOBAL.WEB_RESEARCH",
   "ARM.GLOBAL.DRAFT_TEXT",
+  
+  // Global E-Mail-Assistent
+  "ARM.GLOBAL.COMPOSE_EMAIL",
+  "ARM.GLOBAL.SEND_COMPOSED_EMAIL",
 
   // DMS Storage Extraction
   "ARM.DMS.STORAGE_EXTRACTION",
@@ -315,6 +319,42 @@ const GLOBAL_ACTIONS: ActionDefinition[] = [
     data_scopes_read: [],
     data_scopes_write: [],
     side_effects: [],
+    cost_model: "free",
+    cost_hint_cents: null,
+    credits_estimate: 0,
+    status: "active",
+  },
+  {
+    action_code: "ARM.GLOBAL.COMPOSE_EMAIL",
+    title_de: "E-Mail verfassen",
+    description_de: "Erstellt einen professionellen E-Mail-Entwurf basierend auf Instruktionen",
+    zones: ["Z2"],
+    module: null,
+    risk_level: "low",
+    execution_mode: "draft_only",
+    requires_consent_code: null,
+    roles_allowed: [],
+    data_scopes_read: ["contacts", "mail_accounts"],
+    data_scopes_write: [],
+    side_effects: [],
+    cost_model: "free",
+    cost_hint_cents: null,
+    credits_estimate: 0,
+    status: "active",
+  },
+  {
+    action_code: "ARM.GLOBAL.SEND_COMPOSED_EMAIL",
+    title_de: "E-Mail senden",
+    description_de: "Sendet einen bestätigten E-Mail-Entwurf über das verbundene Mail-Konto",
+    zones: ["Z2"],
+    module: null,
+    risk_level: "medium",
+    execution_mode: "execute_with_confirmation",
+    requires_consent_code: null,
+    roles_allowed: [],
+    data_scopes_read: ["mail_accounts"],
+    data_scopes_write: ["sent_emails"],
+    side_effects: ["sends_external_communication"],
     cost_model: "free",
     cost_hint_cents: null,
     credits_estimate: 0,
@@ -888,10 +928,17 @@ function classifyIntent(message: string, actionRequest: ActionRequest | undefine
     return "EXPLAIN";
   }
   
-  const draftKeywords = ["schreibe", "erstelle", "verfasse", "entwurf", "email", "brief", "nachricht"];
+  const draftKeywords = ["schreibe", "erstelle", "verfasse", "entwurf", "email", "brief", "nachricht", "e-mail", "mail schreiben", "antwort auf"];
   // Don't classify as DRAFT if document analysis keywords are present
   const docAnalysisKeywords = ["analysiere", "zusammenfassung", "was steht", "prüfe das dokument", "rechnung", "fasse zusammen"];
   const hasDocKeywords = docAnalysisKeywords.some(kw => lowerMsg.includes(kw));
+  
+  // Email-specific compose keywords → ACTION (goes to COMPOSE_EMAIL)
+  const emailComposeKeywords = ["e-mail schreiben", "email schreiben", "mail schreiben", "mail verfassen", "e-mail verfassen", "email verfassen", "schreib eine e-mail", "schreib eine mail", "antwort per mail", "antwort per e-mail", "mail an"];
+  if (emailComposeKeywords.some(kw => lowerMsg.includes(kw))) {
+    return "ACTION";
+  }
+  
   if (!hasDocKeywords && draftKeywords.some(kw => lowerMsg.includes(kw))) {
     return "DRAFT";
   }

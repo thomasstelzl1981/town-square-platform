@@ -58,6 +58,10 @@ export const TOP_30_MVP_ACTION_CODES = [
   'ARM.GLOBAL.DRAFT_MESSAGE',
   'ARM.GLOBAL.ANALYZE_DOCUMENT',
   
+  // Pack A2: E-Mail-Assistent (2)
+  'ARM.GLOBAL.COMPOSE_EMAIL',
+  'ARM.GLOBAL.SEND_COMPOSED_EMAIL',
+  
   // Pack B: Dashboard (5)
   'ARM.MOD00.CREATE_TASK',
   'ARM.MOD00.CREATE_REMINDER',
@@ -334,6 +338,54 @@ export const armstrongActions: ArmstrongActionV2[] = [
     api_contract: { type: 'edge_function', endpoint: 'sot-armstrong-advisor' },
     ui_entrypoints: ['/portal'],
     audit_event_type: 'ARM_WEB_SEARCH',
+    status: 'active',
+  },
+
+  // ===========================================================================
+  // GLOBAL E-MAIL-ASSISTENT ACTIONS
+  // ===========================================================================
+  {
+    action_code: 'ARM.GLOBAL.COMPOSE_EMAIL',
+    title_de: 'E-Mail verfassen',
+    description_de: 'Erstellt einen professionellen E-Mail-Entwurf basierend auf Instruktionen',
+    zones: ['Z2'],
+    module: null,
+    risk_level: 'low',
+    execution_mode: 'draft_only',
+    requires_consent_code: null,
+    roles_allowed: [],
+    data_scopes_read: ['contacts', 'mail_accounts'],
+    data_scopes_write: [],
+    side_effects: [],
+    version: '1.0.0',
+    cost_model: 'free',
+    cost_unit: null,
+    cost_hint_cents: null,
+    api_contract: { type: 'edge_function', endpoint: 'sot-armstrong-advisor' },
+    ui_entrypoints: ['/portal'],
+    audit_event_type: 'ARM_COMPOSE_EMAIL',
+    status: 'active',
+  },
+  {
+    action_code: 'ARM.GLOBAL.SEND_COMPOSED_EMAIL',
+    title_de: 'E-Mail senden',
+    description_de: 'Sendet einen bestätigten E-Mail-Entwurf über das verbundene Mail-Konto',
+    zones: ['Z2'],
+    module: null,
+    risk_level: 'medium',
+    execution_mode: 'execute_with_confirmation',
+    requires_consent_code: null,
+    roles_allowed: [],
+    data_scopes_read: ['mail_accounts'],
+    data_scopes_write: ['sent_emails'],
+    side_effects: ['sends_external_communication'],
+    version: '1.0.0',
+    cost_model: 'free',
+    cost_unit: null,
+    cost_hint_cents: null,
+    api_contract: { type: 'edge_function', endpoint: 'sot-mail-send' },
+    ui_entrypoints: ['/portal'],
+    audit_event_type: 'ARM_SEND_EMAIL',
     status: 'active',
   },
 

@@ -2278,6 +2278,74 @@ export type Database = {
           },
         ]
       }
+      armstrong_inbound_tasks: {
+        Row: {
+          action_code: string | null
+          attachments_meta: Json | null
+          body_html: string | null
+          body_text: string | null
+          completed_at: string | null
+          created_at: string
+          error_message: string | null
+          from_email: string
+          id: string
+          instruction: string | null
+          processed_at: string | null
+          result: Json | null
+          status: string
+          subject: string | null
+          tenant_id: string
+          to_email: string
+          user_id: string
+        }
+        Insert: {
+          action_code?: string | null
+          attachments_meta?: Json | null
+          body_html?: string | null
+          body_text?: string | null
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          from_email: string
+          id?: string
+          instruction?: string | null
+          processed_at?: string | null
+          result?: Json | null
+          status?: string
+          subject?: string | null
+          tenant_id: string
+          to_email: string
+          user_id: string
+        }
+        Update: {
+          action_code?: string | null
+          attachments_meta?: Json | null
+          body_html?: string | null
+          body_text?: string | null
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          from_email?: string
+          id?: string
+          instruction?: string | null
+          processed_at?: string | null
+          result?: Json | null
+          status?: string
+          subject?: string | null
+          tenant_id?: string
+          to_email?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "armstrong_inbound_tasks_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       armstrong_knowledge_items: {
         Row: {
           category: string
@@ -14893,6 +14961,7 @@ export type Database = {
       profiles: {
         Row: {
           active_tenant_id: string | null
+          armstrong_email: string | null
           avatar_url: string | null
           city: string | null
           country: string | null
@@ -14934,6 +15003,7 @@ export type Database = {
         }
         Insert: {
           active_tenant_id?: string | null
+          armstrong_email?: string | null
           avatar_url?: string | null
           city?: string | null
           country?: string | null
@@ -14975,6 +15045,7 @@ export type Database = {
         }
         Update: {
           active_tenant_id?: string | null
+          armstrong_email?: string | null
           avatar_url?: string | null
           city?: string | null
           country?: string | null
@@ -21172,6 +21243,14 @@ export type Database = {
       ensure_module_root_folders: {
         Args: { p_tenant_id: string }
         Returns: undefined
+      }
+      generate_armstrong_email: {
+        Args: {
+          p_auth_email: string
+          p_first_name: string
+          p_last_name: string
+        }
+        Returns: string
       }
       generate_correlation_key: {
         Args: { p_entity_id: string; p_entity_type: string }

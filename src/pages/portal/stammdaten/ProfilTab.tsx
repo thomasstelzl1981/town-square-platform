@@ -514,6 +514,8 @@ export function ProfilTab() {
                 disabled hint="Änderbar unter Sicherheit" />
               <FormInput label="System-E-Mail" name="sot_email" type="email" value={(profile as any)?.sot_email || ''}
                 disabled hint="Ihre persönliche @systemofatown.com Adresse für ausgehende E-Mails" />
+              <FormInput label="Armstrong-Adresse" name="armstrong_email" type="email" value={(profile as any)?.armstrong_email || ''}
+                disabled hint="E-Mails an diese Adresse werden von Armstrong als Aufträge verarbeitet" />
             </div>
           </div>
 

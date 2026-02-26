@@ -17,6 +17,7 @@ const corsHeaders = {
  */
 const SYSTEM_INBOX_LOCAL = "posteingang";
 const SYSTEM_INBOX_DOMAIN = "inbound.systemofatown.com";
+const ARMSTRONG_DOMAIN = "neilarmstrong.space";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -132,9 +133,20 @@ Deno.serve(async (req) => {
                clean.startsWith(`${SYSTEM_INBOX_LOCAL}@`);
       });
 
+      // Check if this is an Armstrong assistant email (*.@neilarmstrong.space)
+      const isArmstrongInbox = toAddresses.some((addr) => {
+        const clean = addr.toLowerCase().trim();
+        return clean.endsWith(`@${ARMSTRONG_DOMAIN}`);
+      });
+
       if (isSystemInbox) {
         // ─── SYSTEM INBOX: Post für Zone 1 Posteingang ───
         return await handleSystemInbox(sbAdmin, emailData, toAddresses);
+      }
+
+      if (isArmstrongInbox) {
+        // ─── ARMSTRONG ASSISTANT: E-Mail als KI-Auftrag verarbeiten ───
+        return await handleArmstrongInbox(sbAdmin, emailData, toAddresses);
       }
 
       // ─── TENANT MAILBOX: Per-Tenant Inbox (bestehende Logik) ───
@@ -147,6 +159,102 @@ Deno.serve(async (req) => {
     return json({ error: "Internal server error" }, 500);
   }
 });
+
+// ─── ARMSTRONG ASSISTANT HANDLER ───
+// E-Mails an vorname.nachname@neilarmstrong.space werden als KI-Aufträge verarbeitet.
+// Der Absender wird über profiles.armstrong_email identifiziert.
+
+async function handleArmstrongInbox(
+  sbAdmin: any,
+  emailData: any,
+  toAddresses: string[],
+) {
+  const fromEmail = typeof emailData.from === "string"
+    ? emailData.from
+    : emailData.from?.address || "unknown";
+  const subject = emailData.subject || "";
+  const bodyText = emailData.text || emailData.body_text || "";
+  const bodyHtml = emailData.html || emailData.body_html || "";
+
+  // Find the Armstrong recipient address
+  const armstrongAddr = toAddresses.find((addr) =>
+    addr.toLowerCase().trim().endsWith(`@${ARMSTRONG_DOMAIN}`)
+  );
+
+  if (!armstrongAddr) {
+    console.warn("Armstrong inbox: No matching address found in:", toAddresses);
+    return json({ error: "No Armstrong address found" }, 400);
+  }
+
+  const cleanArmstrongAddr = armstrongAddr.toLowerCase().trim();
+
+  // Resolve user by armstrong_email
+  const { data: profile } = await sbAdmin
+    .from("profiles")
+    .select("id, active_tenant_id, first_name, last_name, armstrong_email")
+    .eq("armstrong_email", cleanArmstrongAddr)
+    .maybeSingle();
+
+  if (!profile) {
+    console.warn(`Armstrong inbox: No user found for address ${cleanArmstrongAddr}`);
+    return json({ error: "No user found for this Armstrong address" }, 404);
+  }
+
+  if (!profile.active_tenant_id) {
+    console.warn(`Armstrong inbox: User ${profile.id} has no active tenant`);
+    return json({ error: "User has no active tenant" }, 400);
+  }
+
+  // Extract attachment metadata
+  const rawAttachments: any[] = emailData.attachments || [];
+  const attachmentsMeta = rawAttachments.map((a: any) => ({
+    filename: a.filename || a.name || "attachment",
+    mime_type: a.content_type || a.mime_type || "application/octet-stream",
+    size_bytes: a.size || a.content?.length || null,
+  }));
+
+  // Create Armstrong inbound task
+  const { data: task, error: taskErr } = await sbAdmin
+    .from("armstrong_inbound_tasks")
+    .insert({
+      user_id: profile.id,
+      tenant_id: profile.active_tenant_id,
+      from_email: fromEmail,
+      to_email: cleanArmstrongAddr,
+      subject,
+      body_text: bodyText,
+      body_html: bodyHtml,
+      attachments_meta: attachmentsMeta,
+      instruction: `${subject}\n\n${bodyText}`.trim(),
+      status: "pending",
+    })
+    .select("id")
+    .single();
+
+  if (taskErr) {
+    console.error("Armstrong task insert error:", taskErr);
+    return json({ error: "Failed to create Armstrong task" }, 500);
+  }
+
+  // Log to DSGVO ledger
+  await logDataEvent(sbAdmin, {
+    tenant_id: profile.active_tenant_id,
+    zone: "Z2",
+    event_type: "armstrong.inbound_task.created",
+    direction: "ingress",
+    source: "email",
+    entity_type: "armstrong_inbound_task",
+    payload: {
+      task_id: task.id,
+      from_email: fromEmail,
+      subject_length: subject.length,
+      attachment_count: attachmentsMeta.length,
+    },
+  });
+
+  console.log(`Armstrong task created: ${task.id} for user ${profile.id} from ${fromEmail}`);
+  return json({ ok: true, task_id: task.id });
+}
 
 // ─── SYSTEM INBOX HANDLER ───
 // Eingehende Post wird als inbound_item gespeichert und automatisch geroutet.
