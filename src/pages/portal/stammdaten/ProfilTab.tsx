@@ -140,7 +140,7 @@ function AppDownloadWidget() {
 }
 
 export function ProfilTab() {
-  const { user, isDevelopmentMode, refreshAuth } = useAuth();
+  const { user, isDevelopmentMode, refreshAuth, activeTenantId } = useAuth();
   const queryClient = useQueryClient();
   const [hasChanges, setHasChanges] = React.useState(false);
   const [isRecordOpen, setIsRecordOpen] = React.useState(false);
@@ -274,10 +274,10 @@ export function ProfilTab() {
   const handleAvatarUpload = async (files: File[]) => {
     if (files.length === 0) return;
     if (isDevelopmentMode && !user?.id) { toast.info('Avatar-Upload im Entwicklungsmodus nicht verfügbar'); return; }
-    if (!user?.id) return;
+    if (!user?.id || !activeTenantId) { toast.error('Kein aktiver Mandant – Upload nicht möglich'); return; }
     const file = files[0];
     const fileExt = sanitizeFileName(file.name).split('.').pop() || 'jpg';
-    const filePath = `${user.id}/avatar.${fileExt}`;
+    const filePath = `${activeTenantId}/MOD_01/avatars/${user.id}_avatar.${fileExt}`;
     try {
       const { error: uploadError } = await supabase.storage.from(UPLOAD_BUCKET).upload(filePath, file, { upsert: true });
       if (uploadError) throw uploadError;
@@ -292,10 +292,10 @@ export function ProfilTab() {
   const handleLogoUpload = async (files: File[]) => {
     if (files.length === 0) return;
     if (isDevelopmentMode && !user?.id) { toast.info('Logo-Upload im Entwicklungsmodus nicht verfügbar'); return; }
-    if (!user?.id) return;
+    if (!user?.id || !activeTenantId) { toast.error('Kein aktiver Mandant – Upload nicht möglich'); return; }
     const file = files[0];
     const fileExt = sanitizeFileName(file.name).split('.').pop() || 'png';
-    const filePath = `${user.id}/letterhead-logo.${fileExt}`;
+    const filePath = `${activeTenantId}/MOD_01/avatars/${user.id}_letterhead-logo.${fileExt}`;
     try {
       const { error: uploadError } = await supabase.storage.from(UPLOAD_BUCKET).upload(filePath, file, { upsert: true });
       if (uploadError) throw uploadError;
