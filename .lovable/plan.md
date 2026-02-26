@@ -1,69 +1,70 @@
 
 
-## Shop-Qualitaetsaudit: Befunde & Bereinigungsplan
+## ManagerVisitenkarte Redesign: Profilbild als volle Kachel-Hoehe
 
-### Analyse aller 12 Shop-Keys (exkl. pet-style, pet-tracker)
+### Ist-Zustand (ASCII-Skizze)
 
-| Shop-Key | Produkte | Fehlende Bilder | Fehlende Beschreibung | Bild-Qualitaet | Sonstiges |
-|-----------|----------|-----------------|----------------------|----------------|-----------|
-| amazon | 6 | 0 | 0 | OK (Unsplash) | OK |
-| bueroshop24 | 6 | 0 | 0 | OK (Unsplash) | Beschreibungen sehr kurz |
-| miete24 | 6 | 0 | 0 | OK (Unsplash) | OK |
-| miete24-autos | 9 | 0 | 0 | OK (miete24.com) | OK |
-| bmw-fokus | 7 | 0 | 0 | OK (helming-sohn.de) | OK |
-| boote | 14 | 3 | 0 | OK (hallerexperiences.com) | 3 Add-ons ohne Bild (by design) |
-| privatjet | 11 | 2 | 0 | OK | 2 Add-ons ohne Bild (by design) |
-| smart-home | 16 | 0 | **16** | Reolink-CDN | Alle description = NULL |
-| pet-ernaehrung | 12 | **5** | 0 | Lakefields-CDN | 5 Lakefields-Produkte ohne Bild |
-| pet-fressnapf | 6 | 0 | **6** | **60x60px** | Alle description = NULL, Bilder viel zu klein |
-| pet-style | 16 | — | — | — | **AUSGENOMMEN** |
-| pet-tracker | 6 | — | — | — | **AUSGENOMMEN** |
+```text
+┌──────────────────────────────────────────────┐
+│ ██████████ gradient bar ██████████████████████│
+│                                              │
+│  ┌──┐  Max Mustermann                   [✏] │
+│  │🧑│  FINANZIERUNGSMANAGER                  │
+│  └──┘  ✉ max@example.de                     │
+│        📞 +49 170 1234567                    │
+│        📍 München, 80331                     │
+│                                              │
+│        [Badge 1] [Badge 2]                   │
+└──────────────────────────────────────────────┘
+       ↑ 48x48px runder Avatar (klein)
+```
 
-### Kritische Probleme (3 Shops)
+### Soll-Zustand (ASCII-Skizze)
 
-**1. pet-ernaehrung — 5 fehlende Bilder**
-Betroffen:
-- Lakefields Trockenfleisch-Menü Rind 150g
-- Lakefields Leckerli vom Hirsch 50g
-- Lakefields Leckerli vom Weiderind 50g
-- Lakefields Leckerli vom Weiderind 150g
-- Lakefields SUPERFOOD Trockenfutter Lamm 1kg
+```text
+┌──────────────────────────────────────────────┐
+│ ██████████ gradient bar ██████████████████████│
+│                                              │
+│  ┌────────┐  Max Mustermann            [✏]  │
+│  │        │  FINANZIERUNGSMANAGER            │
+│  │  FOTO  │                                  │
+│  │ (aus   │  ✉ max@example.de               │
+│  │ Profil)│  📞 +49 170 1234567             │
+│  │        │  📍 München, 80331              │
+│  │ 96x96  │                                  │
+│  │rounded │  [Badge 1] [Badge 2]            │
+│  │  -xl   │                                  │
+│  └────────┘  {children}                      │
+│                                              │
+└──────────────────────────────────────────────┘
+       ↑ 96x96px rounded-xl Avatar
+         Zentriert ueber volle Inhaltshoehe
+         Fallback: Gradient + User-Icon (wie bisher)
+```
 
-Fix: Bilder von lakefields.b-cdn.net recherchieren und UPDATE ausfuehren.
+### Was sich aendert
 
-**2. pet-fressnapf — 6 fehlende Beschreibungen + winzige Bilder (60x60px)**
-Alle 6 Produkte (KONG Classic, KONG Frisbee, AniOne Tau, AniOne Schlange, Trixie Flip Board, Trixie Schnueffelteppich) haben:
-- `description = NULL`
-- `image_url` mit 60x60px (viel zu klein fuer Karten-Darstellung)
-- `sub_category = NULL` (keine Gruppierung)
+| Aspekt | Alt | Neu |
+|--------|-----|-----|
+| Avatar-Groesse | 48x48px (`h-12 w-12`) | 96x96px (`h-24 w-24`) |
+| Avatar-Form | `rounded-full` (Kreis) | `rounded-xl` (abgerundetes Rechteck) |
+| Avatar-Position | `items-start` inline mit Text | `items-center` / `self-center`, volle Hoehe links |
+| Flex-Layout | `flex items-start gap-3` | `flex items-stretch gap-4` |
+| Bild-Quelle | `profile?.avatar_url` (wie bisher) | Identisch — kommt aus Stammdaten-Profil via `useAuth()` |
 
-Fix: Beschreibungen ergaenzen, Bilder auf hoehere Aufloesung (533x533 oder groesser) aktualisieren, sub_category setzen.
+### Betroffene Datei
 
-**3. smart-home — 16 fehlende Beschreibungen**
-Alle Reolink-Produkte haben `description = NULL`. Die `metadata.notes` enthalten interne Notizen, aber keine kundenfreundliche Beschreibung.
+Nur **eine** Datei: `src/components/shared/ManagerVisitenkarte.tsx`
 
-Fix: Professionelle Kurzbeschreibungen fuer alle 16 Produkte ergaenzen.
-
-### Kleinere Inkonsistenzen
-
-**4. bueroshop24 — Beschreibungen zu kurz**
-Beispiel: "5.000 Blatt, 80g/m²" — eher ein Untertitel als eine Beschreibung.
-Fix: Professionelle Einzeiler ergaenzen.
-
-**5. boote + privatjet Add-ons — kein Bild**
-By Design (Icon-Karten in der UI). Kein Fix noetig.
+Alle 5 Konsumenten (ProjekteDashboard, PMDashboard, BeratungTab, KatalogTab + evtl. weitere) erben die Aenderung automatisch.
 
 ### Umsetzungsschritte
 
-| # | Aktion | Anzahl Updates |
-|---|--------|---------------|
-| 1 | pet-ernaehrung: 5x image_url setzen (Lakefields CDN) | 5 UPDATEs |
-| 2 | pet-fressnapf: 6x description + image_url (hoehere Aufloesung) + sub_category | 6 UPDATEs |
-| 3 | smart-home: 16x description ergaenzen | 16 UPDATEs |
-| 4 | bueroshop24: 6x description professionalisieren | 6 UPDATEs |
-| 5 | Screenshots aller Shop-Bereiche nach Bereinigung | Browser-Tests |
-
-Gesamt: ~33 UPDATE-Statements, 0 Schema-Aenderungen, 0 neue Dateien.
-
-Keine UI-Code-Aenderungen noetig — die Komponenten rendern bereits korrekt, sobald die Daten vollstaendig sind.
+| # | Aktion |
+|---|--------|
+| 1 | Avatar-Container von `h-12 w-12 rounded-full` auf `h-24 w-24 rounded-xl self-center` aendern |
+| 2 | Aeusseres Flex-Layout auf `items-stretch gap-4` umstellen |
+| 3 | Avatar-Bild ebenfalls auf `h-24 w-24 rounded-xl object-cover` |
+| 4 | Fallback-Icon proportional vergroessern (`h-8 w-8`) |
+| 5 | Testen in allen Manager-Modulen per Screenshot |
 
