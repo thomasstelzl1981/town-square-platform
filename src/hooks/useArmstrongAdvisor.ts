@@ -808,6 +808,60 @@ export function useArmstrongAdvisor() {
     addMessage(msg);
   }, [addMessage]);
 
+  /**
+   * Send a composed email draft via Armstrong
+   */
+  const sendEmail = useCallback(async (draft: DraftContent) => {
+    if (!draft.email_to || !draft.email_subject) {
+      toast({
+        title: 'Fehlende Daten',
+        description: 'Empfänger und Betreff sind erforderlich.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsExecuting(true);
+
+    try {
+      const request = buildRequest('E-Mail senden', {
+        action_code: 'ARM.GLOBAL.SEND_COMPOSED_EMAIL',
+        confirmed: true,
+        params: {
+          email_to: draft.email_to,
+          email_subject: draft.email_subject,
+          email_body_html: draft.email_body_html || draft.content,
+          email_contact_id: draft.email_contact_id,
+          email_mail_account_id: draft.email_mail_account_id,
+        },
+      });
+
+      const { data, error } = await supabase.functions.invoke('sot-armstrong-advisor', {
+        body: request,
+      });
+
+      if (error) throw error;
+
+      const resultMessage = processResponse(data);
+      addMessage(resultMessage);
+
+      toast({
+        title: data.status === 'completed' ? 'E-Mail gesendet' : 'Versand fehlgeschlagen',
+        description: data.message,
+        variant: data.status === 'completed' ? 'default' : 'destructive',
+      });
+    } catch (err) {
+      console.error('Send email error:', err);
+      toast({
+        title: 'Versand fehlgeschlagen',
+        description: err instanceof Error ? err.message : 'Unbekannter Fehler',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsExecuting(false);
+    }
+  }, [addMessage, buildRequest, processResponse]);
+
   return {
     // State
     messages,
@@ -826,5 +880,6 @@ export function useArmstrongAdvisor() {
     clearConversation,
     startFlow,
     cancelFlow,
+    sendEmail,
   };
 }

@@ -1235,6 +1235,7 @@ interface ExecutionResult {
   success: boolean;
   output?: Record<string, unknown>;
   error?: string;
+  message?: string;
 }
 
 async function executeAction(
@@ -1242,7 +1243,8 @@ async function executeAction(
   params: Record<string, unknown>,
   entity: EntityRef,
   userContext: UserContext,
-  supabase: ReturnType<typeof createClient>
+  supabase: ReturnType<typeof createClient>,
+  body?: RequestBody
 ): Promise<ExecutionResult> {
   try {
     switch (actionCode) {
@@ -2817,6 +2819,154 @@ async function executeAction(
         return { success: true, output: { title: "Nebenkostenabrechnung prüfen", checklist: ["Abrechnungszeitraum korrekt (12 Monate)?", "Fristgerecht zugestellt (innerhalb 12 Monate nach Ende)?", "Nur umlagefähige Kosten enthalten?", "Verteilerschlüssel nachvollziehbar?", "Vorauszahlungen korrekt verrechnet?", "Einzelbelege einsehbar?"], advice: "Laden Sie Ihre Nebenkostenabrechnung in Miety hoch — Armstrong kann die Eckdaten automatisch extrahieren.", link: "/portal/miety" } };
       }
 
+      // =================================================================
+      // GLOBAL E-MAIL-ASSISTENT
+      // =================================================================
+      case "ARM.GLOBAL.COMPOSE_EMAIL": {
+        const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+        if (!LOVABLE_API_KEY) {
+          return { success: false, error: "AI key not configured" };
+        }
+
+        const instruction = body?.message || "Schreibe eine professionelle E-Mail";
+        const conversationContext = body?.conversation?.last_messages?.slice(-5)?.map(m => `${m.role}: ${m.content}`).join('\n') || '';
+
+        // Optional: look up contact by name in instruction
+        let contactHint = "";
+        const nameMatch = instruction.match(/(?:an|für|to)\s+([A-ZÄÖÜ][a-zäöüß]+(?:\s+[A-ZÄÖÜ][a-zäöüß]+)?)/);
+        if (nameMatch) {
+          const searchName = nameMatch[1];
+          const { data: contacts } = await supabase
+            .from("contacts")
+            .select("id, first_name, last_name, email")
+            .or(`first_name.ilike.%${searchName}%,last_name.ilike.%${searchName}%`)
+            .limit(1);
+          if (contacts && contacts.length > 0) {
+            const c = contacts[0];
+            contactHint = `\nGefundener Kontakt: ${c.first_name} ${c.last_name} (${c.email || 'keine E-Mail'})`;
+          }
+        }
+
+        try {
+          const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${LOVABLE_API_KEY}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              model: "google/gemini-2.5-flash",
+              messages: [
+                {
+                  role: "system",
+                  content: `${ARMSTRONG_CORE_IDENTITY}
+
+AUFGABE: Erstelle einen professionellen E-Mail-Entwurf basierend auf der Nutzeranfrage.
+Antworte ausschließlich im folgenden JSON-Format (kein Markdown, kein Text drumherum):
+{
+  "to": "empfaenger@example.com",
+  "subject": "Betreffzeile",
+  "body_html": "<p>HTML-Inhalt der E-Mail</p>",
+  "body_text": "Nur-Text-Version"
+}
+
+REGELN:
+- Professioneller, freundlicher Ton im Stil von System of a Town
+- Deutsche Sprache (außer Empfänger ist eindeutig international)
+- Grußformel: "Mit freundlichen Grüßen"
+- Wenn kein Empfänger bekannt: "to" leer lassen
+- HTML-Body mit einfachem <p>-Markup
+${contactHint}`
+                },
+                {
+                  role: "user",
+                  content: `${conversationContext ? `Bisheriges Gespräch:\n${conversationContext}\n\n` : ''}Anweisung: ${instruction}`
+                }
+              ],
+              max_tokens: 1000,
+            }),
+          });
+
+          if (!aiResponse.ok) {
+            console.error("[Armstrong] COMPOSE_EMAIL AI error:", aiResponse.status);
+            return { success: false, error: "E-Mail-Entwurf konnte nicht erstellt werden." };
+          }
+
+          const aiData = await aiResponse.json();
+          let rawContent = aiData.choices?.[0]?.message?.content || "";
+          // Strip markdown code fences if present
+          rawContent = rawContent.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+
+          let emailDraft: { to?: string; subject?: string; body_html?: string; body_text?: string };
+          try {
+            emailDraft = JSON.parse(rawContent);
+          } catch {
+            // Fallback: treat as plain text draft
+            emailDraft = { to: "", subject: "E-Mail-Entwurf", body_html: `<p>${rawContent}</p>`, body_text: rawContent };
+          }
+
+          return {
+            success: true,
+            output: {
+              draft_format: "email",
+              email_to: emailDraft.to || "",
+              email_subject: emailDraft.subject || "Kein Betreff",
+              email_body_html: emailDraft.body_html || "",
+              email_body_text: emailDraft.body_text || "",
+            },
+            message: "Hier ist Ihr E-Mail-Entwurf. Prüfen Sie ihn und klicken Sie auf 'Senden', um die E-Mail zu versenden."
+          };
+        } catch (err) {
+          console.error("[Armstrong] COMPOSE_EMAIL error:", err);
+          return { success: false, error: "Fehler beim Erstellen des E-Mail-Entwurfs." };
+        }
+      }
+
+      case "ARM.GLOBAL.SEND_COMPOSED_EMAIL": {
+        const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+        const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+        const emailTo = params?.email_to as string;
+        const emailSubject = params?.email_subject as string;
+        const emailBodyHtml = params?.email_body_html as string;
+
+        if (!emailTo || !emailSubject) {
+          return { success: false, error: "Empfänger und Betreff sind erforderlich." };
+        }
+
+        try {
+          // Send via sot-system-mail-send using service-role (edge-to-edge)
+          const mailResponse = await fetch(`${SUPABASE_URL}/functions/v1/sot-system-mail-send`, {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              to: emailTo,
+              subject: emailSubject,
+              html: emailBodyHtml || `<p>${emailSubject}</p>`,
+              context: "armstrong_email_assistant",
+            }),
+          });
+
+          if (!mailResponse.ok) {
+            const errText = await mailResponse.text();
+            console.error("[Armstrong] SEND_EMAIL error:", errText);
+            return { success: false, error: "E-Mail konnte nicht gesendet werden." };
+          }
+
+          return {
+            success: true,
+            output: { sent_to: emailTo, subject: emailSubject },
+            message: `E-Mail an ${emailTo} wurde erfolgreich gesendet.`
+          };
+        } catch (err) {
+          console.error("[Armstrong] SEND_EMAIL error:", err);
+          return { success: false, error: "Fehler beim Versenden der E-Mail." };
+        }
+      }
+
       default:
         return { success: false, error: `Action ${actionCode} not implemented in MVP` };
     }
@@ -3821,7 +3971,8 @@ serve(async (req) => {
         action_request.params || {},
         entity,
         userContext,
-        supabase
+        supabase,
+        body
       );
       const durationMs = Date.now() - startTime;
       
@@ -3839,13 +3990,33 @@ serve(async (req) => {
         durationMs
       );
       
+      // Special handling for COMPOSE_EMAIL — return as DRAFT with email format
+      if (actionCode === "ARM.GLOBAL.COMPOSE_EMAIL" && result.success && result.output?.draft_format === "email") {
+        return new Response(
+          JSON.stringify({
+            type: "DRAFT",
+            message: result.message || "Hier ist Ihr E-Mail-Entwurf. Prüfen Sie ihn und klicken Sie auf 'Senden'.",
+            draft: {
+              title: "E-Mail-Entwurf",
+              content: result.output.email_body_text || result.output.email_body_html || "",
+              format: "email",
+              email_to: result.output.email_to || "",
+              email_subject: result.output.email_subject || "",
+              email_body_html: result.output.email_body_html || "",
+            },
+            next_steps: ["E-Mail senden", "Entwurf bearbeiten", "Verwerfen"],
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
       return new Response(
         JSON.stringify({
           type: "RESULT",
           action_run_id: crypto.randomUUID(),
           status: result.success ? "completed" : "failed",
           message: result.success 
-            ? `${action.title_de} erfolgreich ausgeführt.`
+            ? (result.message || `${action.title_de} erfolgreich ausgeführt.`)
             : `Fehler bei ${action.title_de}: ${result.error}`,
           output: result.output || {},
           next_steps: result.success ? ["Ergebnis prüfen", "Weitere Aktionen durchführen"] : ["Erneut versuchen"],

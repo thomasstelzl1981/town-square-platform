@@ -359,6 +359,7 @@ export function ArmstrongContainer() {
                           isExecuting={advisor.isExecuting}
                           onSpeak={handleSpeak}
                           isSpeaking={voice.isSpeaking}
+                          onSendEmail={advisor.sendEmail}
                         />
                       ))}
                       

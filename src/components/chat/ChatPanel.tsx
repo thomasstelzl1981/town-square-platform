@@ -275,6 +275,7 @@ const ChatPanel = React.forwardRef<HTMLDivElement, ChatPanelProps>(
                     isExecuting={advisor.isExecuting}
                     onSpeak={handleSpeak}
                     isSpeaking={voice.isSpeaking}
+                    onSendEmail={advisor.sendEmail}
                   />
                 ))}
                 
