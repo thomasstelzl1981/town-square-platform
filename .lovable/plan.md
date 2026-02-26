@@ -1,40 +1,75 @@
 
 
-## Bug-Analyse: Bilder-Upload in MOD-13 schlägt fehl
+## Multi-Image pro Slot: Carousel-Erweiterung fuer ImageSlotGrid
 
-### Root Cause (gefunden)
+### Problem
 
-**DB-Constraint-Verletzung:** Der Code in `ProjectDataSheet.tsx` übergibt `entityType: 'projekt'` (deutsch), aber der CHECK-Constraint auf `document_links.object_type` erlaubt nur `'project'` (englisch).
+Aktuell: 1 Bild pro Slot. Beim Upload wird das vorherige Bild archiviert. Mehrere Bilder pro Kategorie (z.B. 3x "Aussen") sind nicht moeglich. Klick oeffnet nur den Datei-Dialog statt eine Bildvorschau.
 
+### Architektur-Aenderung
+
+Das System wird von `1:1` (ein Bild pro Slot) auf `1:N` (mehrere Bilder pro Slot) erweitert.
+
+#### Datenfluss
+
+```text
+Slot "exterior"
+  ├── Bild 1 (document_links: slot_key='exterior', linked)
+  ├── Bild 2 (document_links: slot_key='exterior', linked)
+  └── Bild 3 (document_links: slot_key='exterior', linked)
+       ↕
+  SingleSlot zeigt Bild [activeIndex] mit ◄ ► Pfeilen
+  + Badge "2/3"
+  + Drop/Klick fuegt NEUES Bild hinzu (statt Ersetzen)
 ```
-CHECK (object_type = ANY (ARRAY['property','unit','contact','finance_case',
-  'service_case','vehicle','insurance','lease','profil','project',
-  'pet_provider','postservice_delivery','inbound_email','finance_request']))
-```
 
-In MOD-01 (ProfilTab) funktioniert der Upload, weil dort `entityType: 'profil'` übergeben wird — ein gültiger Wert. In MOD-13 scheitert der `document_links` INSERT an Zeile 120-129 des Hooks, weil `'projekt'` kein erlaubter Wert ist.
+### Aenderung 1: `useImageSlotUpload.ts` — Multi-Image Support
 
-### Fix (1 Zeile)
+| Funktion | Vorher | Nachher |
+|----------|--------|---------|
+| `uploadToSlot` | Archiviert altes Bild, dann Insert | Insert ohne Archivierung (addiert Bild) |
+| `loadSlotImages` | Returns `Record<string, {url, documentId}>` (1 pro Slot) | Returns `Record<string, Array<{url, documentId}>>` (N pro Slot) |
+| Neuer Parameter | — | `multiImage?: boolean` in Config (default `false` fuer Abwaertskompatibilitaet) |
 
-**Datei:** `src/components/projekte/ProjectDataSheet.tsx`, Zeile 157
+Abwaertskompatibilitaet: Wenn `multiImage: false` (Default), bleibt das Verhalten identisch (archiviert + ersetzt). MOD-01 ProfilTab etc. aendern sich nicht.
 
-| Vorher | Nachher |
-|--------|---------|
-| `entityType: 'projekt'` | `entityType: 'project'` |
+### Aenderung 2: `ImageSlotGrid.tsx` — Carousel-UI pro Slot
 
-Zusätzlich muss der `loadSlotImages`-Aufruf (Zeile 261) ebenfalls `'project'` statt `'projekt'` verwenden — aber der nutzt bereits den Wert `'projekt'` als Parameter. Beide Stellen anpassen.
+**Neue Props:**
 
-### Zweites Problem: Slot-Höhe zu niedrig
+| Prop | Typ | Beschreibung |
+|------|-----|-------------|
+| `multiImages` | `Record<string, Array<{url: string, documentId: string}>>` | Ersetzt/ergaenzt `images` wenn Multi-Mode aktiv |
+| `multiImage` | `boolean` | Aktiviert Multi-Image-Modus |
+| `onDeleteByDocId` | `(documentId: string) => void` | Loescht ein spezifisches Bild per Document-ID |
 
-Die `IMAGE_SLOT.HEIGHT` in `designManifest.ts` ist auf **140px** gesetzt. Für Projekt-/Immobilienbilder ist das zu flach. 
+**SingleSlot UI-Aenderungen im Multi-Modus:**
 
-**Fix:** Höhe auf **180px** erhöhen (Zeile 333 in `designManifest.ts`).
+1. **Pfeile:** Links/Rechts `ChevronLeft`/`ChevronRight` Buttons bei Hover (nur wenn >1 Bild)
+2. **Counter-Badge:** z.B. "2/3" oben rechts
+3. **Klick-Verhalten:** Klick oeffnet Datei-Dialog zum HINZUFUEGEN (nicht Ersetzen)
+4. **Hover-Overlay:** "Hinzufuegen" statt "Ersetzen", plus "Loeschen" fuer aktuelles Bild
+5. **Multi-Drop:** `multiple: true` in Dropzone — mehrere Dateien gleichzeitig werden sequentiell hochgeladen
 
-### Zusammenfassung
+### Aenderung 3: `ProjectDataSheet.tsx` — Multi-Mode aktivieren
 
-| # | Datei | Änderung |
+- `useImageSlotUpload` Config bekommt `multiImage: true`
+- State `imageUrls` wird zu `Record<string, Array<{url, documentId}>>` 
+- `ImageSlotGrid` bekommt die neuen Props
+- Upload-Handler ruft `uploadToSlot` auf ohne Archivierung
+- Delete-Handler loescht per `documentId` statt per `slotKey`
+
+### Betroffene Dateien
+
+| # | Datei | Aenderung |
 |---|-------|----------|
-| 1 | `ProjectDataSheet.tsx` Z.157 | `'projekt'` → `'project'` |
-| 2 | `ProjectDataSheet.tsx` Z.261 | `loadSlotImages(projectId, 'projekt')` → `'project'` |
-| 3 | `designManifest.ts` Z.333 | `HEIGHT: 140` → `HEIGHT: 180` |
+| 1 | `src/hooks/useImageSlotUpload.ts` | `multiImage` Config, `loadSlotImages` returns Array, `uploadToSlot` conditional archive |
+| 2 | `src/components/shared/ImageSlotGrid.tsx` | Multi-Image Props, Carousel-Navigation, Counter-Badge, Multi-Drop |
+| 3 | `src/components/projekte/ProjectDataSheet.tsx` | `multiImage: true`, State-Anpassung, neue Handler |
+
+### Nicht betroffen (Abwaertskompatibel)
+
+- MOD-01 ProfilTab (nutzt weiterhin `multiImage: false` Default)
+- MOD-22 PMProfil (nutzt weiterhin Single-Mode)
+- Keine DB-Migration noetig (`document_links` unterstuetzt bereits N Eintraege pro `slot_key`)
 
