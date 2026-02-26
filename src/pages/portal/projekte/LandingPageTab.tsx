@@ -236,49 +236,74 @@ export default function LandingPageTab() {
     }
   };
 
-  // ─── AI Text Generation ────────────────────────────────────
+  // ─── AI Website Optimization (full section structure) ────
   const handleAiGenerate = async () => {
-    if (!projectId || !landingPage?.id) return;
+    if (!projectId || !landingPage?.id || !organizationId) return;
     setAiGenerating(true);
     try {
-      const { data, error } = await supabase.functions.invoke('sot-project-description', {
-        body: { projectId },
-      });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-
-      const updates: Record<string, any> = {};
-      if (data?.description) {
-        updates.about_text = data.description;
-        setEditor(prev => ({ ...prev, about_text: data.description }));
-      }
-      if (data?.location_description) {
-        updates.location_description = data.location_description;
-      }
-
-      // Also update the project itself
-      if (data?.description || data?.location_description) {
-        const projUpdates: Record<string, any> = {};
-        if (data.description) projUpdates.full_description = data.description;
-        if (data.location_description) projUpdates.location_description = data.location_description;
-        await supabase.from('dev_projects').update(projUpdates).eq('id', projectId);
+      // Step 1: Generate project descriptions if missing
+      if (!rawProject?.full_description) {
+        const { data: descData, error: descErr } = await supabase.functions.invoke('sot-project-description', {
+          body: { projectId },
+        });
+        if (descErr) console.warn('Description generation failed, continuing with website generation');
+        if (descData?.description) {
+          await supabase.from('dev_projects').update({ full_description: descData.description }).eq('id', projectId);
+        }
+        if (descData?.location_description) {
+          await supabase.from('dev_projects').update({ location_description: descData.location_description }).eq('id', projectId);
+        }
       }
 
-      // Update landing page with generated texts
-      if (Object.keys(updates).length > 0) {
-        await supabase.from('landing_pages').update(updates).eq('id', landingPage.id);
+      // Step 2: Call sot-website-ai-generate for complete website structure
+      // First ensure we have a tenant_website entry
+      let { data: website } = await supabase
+        .from('tenant_websites')
+        .select('id')
+        .eq('tenant_id', organizationId)
+        .maybeSingle();
+
+      if (!website) {
+        const { data: newSite } = await supabase
+          .from('tenant_websites')
+          .insert({
+            tenant_id: organizationId,
+            name: projectName,
+            slug: landingPage.slug || 'home',
+            created_by: (await supabase.auth.getUser()).data.user?.id || '',
+          })
+          .select('id')
+          .single();
+        website = newSite;
       }
 
-      setEditorDirty(true);
+      if (website) {
+        const { data: aiData, error: aiErr } = await supabase.functions.invoke('sot-website-ai-generate', {
+          body: {
+            website_id: website.id,
+            name: projectName,
+            industry: 'Immobilien / Kapitalanlage',
+            target_audience: 'Kapitalanleger und Investoren',
+            goal: 'lead_generation',
+            template_id: 'modern',
+          },
+        });
+        if (aiErr) throw aiErr;
+        if (aiData?.error) throw new Error(aiData.error);
+        toast.success('KI-Website optimiert', {
+          description: `${aiData?.sections_count || 6} Sektionen generiert — Hero, Features, About, Services, Kontakt, Footer.`,
+        });
+      }
+
+      // Refresh all related queries
       queryClient.invalidateQueries({ queryKey: ['landing-page', projectId] });
       queryClient.invalidateQueries({ queryKey: ['dev-projects'] });
-      toast.success('KI-Texte generiert', { description: 'Bitte prüfen und bei Bedarf anpassen.' });
     } catch (err: any) {
       const msg = err?.message || 'Unbekannter Fehler';
       if (msg.includes('Rate-Limit') || msg.includes('429')) {
         toast.error('Rate-Limit erreicht', { description: 'Bitte in einer Minute erneut versuchen.' });
       } else {
-        toast.error('KI-Texte fehlgeschlagen', { description: msg });
+        toast.error('KI-Website-Optimierung fehlgeschlagen', { description: msg });
       }
     } finally {
       setAiGenerating(false);
@@ -400,12 +425,27 @@ export default function LandingPageTab() {
                 </Button>
               </div>
 
-              {/* Embedded Preview */}
-              <div className="h-[70vh] overflow-hidden">
+              {/* Embedded Preview — scaled desktop simulation, no internal scroll */}
+              <div className="relative w-full" style={{ paddingBottom: '62.5%' /* 16:10 aspect */ }}>
                 <iframe 
                   src={previewUrl}
-                  className="w-full h-full border-0"
+                  className="absolute top-0 left-0 border-0 origin-top-left"
+                  style={{
+                    width: '1440px',
+                    height: '900px',
+                    transform: 'scale(var(--preview-scale, 0.5))',
+                  }}
+                  scrolling="no"
                   title="Landing Page Preview"
+                  onLoad={(e) => {
+                    const container = e.currentTarget.parentElement;
+                    if (container) {
+                      const scale = container.offsetWidth / 1440;
+                      e.currentTarget.style.setProperty('--preview-scale', String(scale));
+                      e.currentTarget.style.transform = `scale(${scale})`;
+                      container.style.paddingBottom = `${900 * scale}px`;
+                    }
+                  }}
                 />
               </div>
             </div>
@@ -464,7 +504,7 @@ export default function LandingPageTab() {
                       disabled={aiGenerating}
                     >
                       {aiGenerating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
-                      KI-Texte generieren
+                      KI-Website optimieren
                     </Button>
                     <Button 
                       size="sm" 
