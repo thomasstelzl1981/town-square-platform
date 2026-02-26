@@ -55,15 +55,15 @@ export function ManagerVisitenkarte({
         background: `linear-gradient(to right, ${gradientFrom}, ${gradientTo})`
       }} />
       <CardContent className="p-4">
-        <div className="flex items-start gap-3">
+        <div className="flex items-stretch gap-4">
           <div
-            className="h-12 w-12 rounded-full flex items-center justify-center shrink-0 shadow-md"
+            className="h-24 w-24 rounded-xl flex items-center justify-center shrink-0 shadow-md self-center"
             style={{ background: `linear-gradient(to bottom right, ${gradientFrom}, ${gradientTo})` }}
           >
             {profile?.avatar_url ? (
-              <img src={profile.avatar_url} alt={displayName} className="h-12 w-12 rounded-full object-cover" />
+              <img src={profile.avatar_url} alt={displayName} className="h-24 w-24 rounded-xl object-cover" />
             ) : (
-              <User className="h-5 w-5 text-white" />
+              <User className="h-8 w-8 text-white" />
             )}
           </div>
           <div className="flex-1 min-w-0 space-y-1.5">
