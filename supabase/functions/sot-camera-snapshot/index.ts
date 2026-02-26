@@ -69,21 +69,26 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Build request headers for camera
-    const fetchHeaders: Record<string, string> = {};
+    // Build snapshot URL with embedded credentials (Digest Auth workaround)
+    let snapshotUrl = camera.snapshot_url;
     if (camera.auth_user && camera.auth_pass) {
-      const credentials = btoa(`${camera.auth_user}:${camera.auth_pass}`);
-      fetchHeaders["Authorization"] = `Basic ${credentials}`;
+      try {
+        const parsed = new URL(camera.snapshot_url);
+        parsed.username = encodeURIComponent(camera.auth_user);
+        parsed.password = encodeURIComponent(camera.auth_pass);
+        snapshotUrl = parsed.toString();
+      } catch {
+        // If URL parsing fails, fall back to original URL with Basic Auth header
+      }
     }
 
     // Fetch snapshot from camera with timeout
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 10000); // 10s timeout
+    const timeout = setTimeout(() => controller.abort(), 15000); // 15s timeout
 
     let cameraResponse: Response;
     try {
-      cameraResponse = await fetch(camera.snapshot_url, {
-        headers: fetchHeaders,
+      cameraResponse = await fetch(snapshotUrl, {
         signal: controller.signal,
       });
     } catch (fetchErr) {
