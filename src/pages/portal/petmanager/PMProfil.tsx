@@ -147,6 +147,7 @@ export default function PMProfil() {
 
   // Resolve storage paths to signed URLs for display
   const [resolvedGalleryUrls, setResolvedGalleryUrls] = useState<Record<string, string>>({});
+  const [slotDocIds, setSlotDocIds] = useState<Record<string, string>>({});
 
   const galleryImageUpload = useImageSlotUpload({
     moduleCode: 'MOD-22',
@@ -156,24 +157,35 @@ export default function PMProfil() {
     subPath: 'gallery',
   });
 
+  // ── PRIMARY: Load images from document_links (DB-based) ──
   useEffect(() => {
-    const resolvePaths = async () => {
+    if (!provider?.id || !activeTenantId) return;
+    const loadFromDb = async () => {
+      const imageMap = await galleryImageUpload.loadSlotImages(provider.id, 'pet');
       const urls: Record<string, string> = {};
+      const docIds: Record<string, string> = {};
+      for (const [key, val] of Object.entries(imageMap)) {
+        urls[key] = val.url;
+        docIds[key] = val.documentId;
+      }
+      // FALLBACK: resolve legacy gallery_images paths for slots not found in DB
       for (let i = 0; i < galleryPaths.length; i++) {
-        const path = galleryPaths[i];
         const slotKey = `gallery_${i}`;
-        // Demo paths start with /demo or https, real paths don't
-        if (path.startsWith('http') || path.startsWith('/')) {
-          urls[slotKey] = path;
-        } else {
-          const url = await galleryImageUpload.getSignedUrl(path);
-          if (url) urls[slotKey] = url;
+        if (!urls[slotKey]) {
+          const path = galleryPaths[i];
+          if (path.startsWith('http') || path.startsWith('/')) {
+            urls[slotKey] = path;
+          } else if (path) {
+            const url = await galleryImageUpload.getSignedUrl(path);
+            if (url) urls[slotKey] = url;
+          }
         }
       }
       setResolvedGalleryUrls(urls);
+      setSlotDocIds(docIds);
     };
-    resolvePaths();
-  }, [galleryPaths.join(',')]);
+    loadFromDb();
+  }, [provider?.id, activeTenantId, galleryPaths.join(',')]);
 
   const GALLERY_SLOTS: ImageSlot[] = Array.from({ length: 4 }, (_, i) => ({
     key: `gallery_${i}`,
@@ -209,6 +221,32 @@ export default function PMProfil() {
     if (signedUrl) {
       setResolvedGalleryUrls(prev => ({ ...prev, [slotKey]: signedUrl }));
     }
+    // Reload doc IDs for delete support
+    const imageMap = await galleryImageUpload.loadSlotImages(provider.id, 'pet');
+    if (imageMap[slotKey]) {
+      setSlotDocIds(prev => ({ ...prev, [slotKey]: imageMap[slotKey].documentId }));
+    }
+  };
+
+  const handleGallerySlotDelete = async (slotKey: string) => {
+    if (!provider) return;
+    const docId = slotDocIds[slotKey];
+    if (!docId) return;
+    const deleted = await galleryImageUpload.deleteSlotImage(docId);
+    if (!deleted) return;
+    // Update gallery_images array
+    const slotIndex = parseInt(slotKey.replace('gallery_', ''));
+    const newPaths = [...dbPhotos];
+    if (slotIndex < newPaths.length) {
+      newPaths[slotIndex] = '';
+    }
+    await supabase
+      .from('pet_providers')
+      .update({ gallery_images: newPaths.filter(Boolean) })
+      .eq('id', provider.id);
+    queryClient.invalidateQueries({ queryKey: ['my_pet_provider'] });
+    setResolvedGalleryUrls(prev => { const n = { ...prev }; delete n[slotKey]; return n; });
+    setSlotDocIds(prev => { const n = { ...prev }; delete n[slotKey]; return n; });
   };
 
   const handleTogglePublish = (checked: boolean) => {
@@ -325,6 +363,7 @@ export default function PMProfil() {
             slots={GALLERY_SLOTS}
             images={resolvedGalleryUrls}
             onUpload={handleGallerySlotUpload}
+            onDelete={handleGallerySlotDelete}
             uploadingSlot={galleryImageUpload.uploadingSlot}
             columns={4}
             slotHeight={140}

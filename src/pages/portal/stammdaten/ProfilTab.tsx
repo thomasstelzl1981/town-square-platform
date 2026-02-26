@@ -283,20 +283,44 @@ export function ProfilTab() {
 
   const [avatarDisplayUrl, setAvatarDisplayUrl] = React.useState<string | null>(null);
   const [logoDisplayUrl, setLogoDisplayUrl] = React.useState<string | null>(null);
+  // Track documentIds for delete support
+  const [slotDocIds, setSlotDocIds] = React.useState<Record<string, string>>({});
 
-  // Resolve signed URLs for existing storage paths on load
+  // ── PRIMARY: Load images from document_links (DB-based) ──
   React.useEffect(() => {
-    if (formData.avatar_url && !formData.avatar_url.startsWith('http')) {
-      imageUpload.getSignedUrl(formData.avatar_url).then(url => url && setAvatarDisplayUrl(url));
-    } else {
-      setAvatarDisplayUrl(formData.avatar_url);
-    }
-    if (formData.letterhead_logo_url && !formData.letterhead_logo_url.startsWith('http')) {
-      imageUpload.getSignedUrl(formData.letterhead_logo_url).then(url => url && setLogoDisplayUrl(url));
-    } else {
-      setLogoDisplayUrl(formData.letterhead_logo_url);
-    }
-  }, [formData.avatar_url, formData.letterhead_logo_url]);
+    const userId = user?.id || 'dev-user';
+    if (!activeTenantId || !userId) return;
+
+    const loadFromDb = async () => {
+      const imageMap = await imageUpload.loadSlotImages(userId, 'profil');
+      if (imageMap.avatar) {
+        setAvatarDisplayUrl(imageMap.avatar.url);
+        setSlotDocIds(prev => ({ ...prev, avatar: imageMap.avatar.documentId }));
+      }
+      if (imageMap.logo) {
+        setLogoDisplayUrl(imageMap.logo.url);
+        setSlotDocIds(prev => ({ ...prev, logo: imageMap.logo.documentId }));
+      }
+      // FALLBACK: If no DB records found, resolve legacy profile columns
+      if (!imageMap.avatar && formData.avatar_url) {
+        if (formData.avatar_url.startsWith('http')) {
+          setAvatarDisplayUrl(formData.avatar_url);
+        } else {
+          const url = await imageUpload.getSignedUrl(formData.avatar_url);
+          if (url) setAvatarDisplayUrl(url);
+        }
+      }
+      if (!imageMap.logo && formData.letterhead_logo_url) {
+        if (formData.letterhead_logo_url.startsWith('http')) {
+          setLogoDisplayUrl(formData.letterhead_logo_url);
+        } else {
+          const url = await imageUpload.getSignedUrl(formData.letterhead_logo_url);
+          if (url) setLogoDisplayUrl(url);
+        }
+      }
+    };
+    loadFromDb();
+  }, [activeTenantId, user?.id, formData.avatar_url, formData.letterhead_logo_url]);
 
   const handleImageSlotUpload = async (slotKey: string, file: File) => {
     if (import.meta.env.DEV) console.log('[ProfilTab] handleImageSlotUpload called:', { slotKey, fileName: file.name, userId: user?.id, activeTenantId });
@@ -308,15 +332,38 @@ export function ProfilTab() {
       const updatedData = { ...formData, avatar_url: storagePath };
       setFormData(updatedData);
       setAvatarDisplayUrl(signedUrl);
-      // Auto-save avatar to DB immediately
       updateProfile.mutate(updatedData);
     } else if (slotKey === 'logo') {
       const updatedData = { ...formData, letterhead_logo_url: storagePath };
       setFormData(updatedData);
       setLogoDisplayUrl(signedUrl);
-      // Auto-save logo to DB immediately
       updateProfile.mutate(updatedData);
     }
+    // Reload doc IDs for delete support
+    const userId = user?.id || 'dev-user';
+    const imageMap = await imageUpload.loadSlotImages(userId, 'profil');
+    if (imageMap[slotKey]) {
+      setSlotDocIds(prev => ({ ...prev, [slotKey]: imageMap[slotKey].documentId }));
+    }
+  };
+
+  const handleImageSlotDelete = async (slotKey: string) => {
+    const docId = slotDocIds[slotKey];
+    if (!docId) return;
+    const deleted = await imageUpload.deleteSlotImage(docId);
+    if (!deleted) return;
+    if (slotKey === 'avatar') {
+      setAvatarDisplayUrl(null);
+      const updatedData = { ...formData, avatar_url: null };
+      setFormData(updatedData);
+      updateProfile.mutate(updatedData);
+    } else if (slotKey === 'logo') {
+      setLogoDisplayUrl(null);
+      const updatedData = { ...formData, letterhead_logo_url: '' };
+      setFormData(updatedData);
+      updateProfile.mutate(updatedData);
+    }
+    setSlotDocIds(prev => { const n = { ...prev }; delete n[slotKey]; return n; });
   };
 
   const AVATAR_SLOTS: ImageSlot[] = [{ key: 'avatar', label: 'Profilbild' }];
@@ -387,6 +434,7 @@ export function ProfilTab() {
                   slots={AVATAR_SLOTS}
                   images={{ avatar: avatarDisplayUrl }}
                   onUpload={handleImageSlotUpload}
+                  onDelete={handleImageSlotDelete}
                   uploadingSlot={imageUpload.uploadingSlot}
                   columns={IMAGE_SLOT.COLUMNS_SINGLE}
                   slotHeight={IMAGE_SLOT.HEIGHT}
@@ -477,6 +525,7 @@ export function ProfilTab() {
                   slots={LOGO_SLOTS}
                   images={{ logo: logoDisplayUrl }}
                   onUpload={handleImageSlotUpload}
+                  onDelete={handleImageSlotDelete}
                   uploadingSlot={imageUpload.uploadingSlot}
                   columns={IMAGE_SLOT.COLUMNS_SINGLE}
                   slotHeight={IMAGE_SLOT.HEIGHT_COMPACT}
