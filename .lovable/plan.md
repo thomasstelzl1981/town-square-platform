@@ -1,29 +1,27 @@
 
 
-## Überarbeiteter Plan: Camera Snapshot Edge Function Fix
+## Plan: Digest Auth in sot-camera-snapshot implementieren
 
 **Datei:** `supabase/functions/sot-camera-snapshot/index.ts`
 
-### Fix 1 (kritisch): `getClaims()` → `getUser()`
+Die Kamera-Response bestätigt das Problem eindeutig:
+```
+WWW-Authenticate: Digest realm="Login to ac916551...", qop="auth", nonce="...", opaque="..."
+```
 
-Die Methode `supabase.auth.getClaims(token)` existiert nicht in der Supabase JS Client Library. Dies verursacht den Runtime Error. Ersetzen durch `supabase.auth.getUser()`, das automatisch den JWT aus dem Authorization-Header validiert.
+### Änderungen
 
-### Fix 2 (wichtig): Basic Auth Header + 401-Handling
+1. **Pure-JS MD5-Funktion** vor dem `Deno.serve` Block einfügen (~60 Zeilen, RFC 1321-basiert, keine externe Abhängigkeit)
 
-Aktuell werden Credentials nur in die URL eingebettet (`http://user:pass@host`). Zusätzlich einen expliziten `Authorization: Basic ...` Header senden. Bei 401-Antwort eine klare Fehlermeldung zurückgeben, die auf mögliche Digest Auth hinweist.
+2. **`parseDigestChallenge`** und **`buildDigestAuth`** Helper-Funktionen einfügen
 
-### Fix 3: `encodeURIComponent` Doppel-Encoding entfernen
+3. **Fetch-Block ersetzen** (Zeilen 69-155): URL-embedded Credentials entfernen, stattdessen 2-Schritt Digest Auth Flow:
+   - Request 1: GET ohne Auth an `camera.snapshot_url`
+   - Bei 401 + Digest Challenge: MD5-Digest berechnen, Request 2 mit `Authorization: Digest ...`
+   - Bei 401 ohne Digest: Basic Auth Fallback
+   - Bei 401 ohne Credentials: Fehlermeldung
 
-`new URL().username = encodeURIComponent(...)` verursacht Doppel-Encoding, da die URL-Klasse bereits selbst encoded. Direkt `parsed.username = camera.auth_user` setzen.
-
-### Implementierung
-
-Die gesamte Edge Function wird mit Claudes korrigierter Version ersetzt, mit einer Anpassung: `encodeURIComponent` wird bei `parsed.username`/`parsed.password` entfernt, um Doppel-Encoding zu vermeiden.
-
-### Nicht im Scope
-
-- tenant_id Migration (optional, später)
-- Digest Auth Implementierung (falls Basic Auth nach diesem Fix immer noch 401 gibt, ist das der nächste Schritt)
+4. **Keine Änderungen** an DB, Frontend oder anderen Dateien
 
 ### Umfang
 - 1 Datei, vollständiger Ersatz der Edge Function
