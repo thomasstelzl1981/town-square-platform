@@ -1,36 +1,38 @@
 /**
- * ProjectLandingExpose — Einheit-Detail mit Investment Engine
+ * ProjectLandingExpose — Einheit-Detail mit Investment Engine + KaufyFinanceRequestSheet
  * Data source: dev_project_units (NOT listings)
  */
 import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, Building2, ArrowLeft, Home, Ruler, Layers, DoorOpen } from 'lucide-react';
+import { Loader2, Building2, ArrowLeft, Home, Ruler, Layers, DoorOpen, Banknote } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, lazy, Suspense } from 'react';
 import { useInvestmentEngine, defaultInput, type CalculationInput } from '@/hooks/useInvestmentEngine';
+import type { KaufyListingData, KaufyEngineParams } from '@/components/zone3/KaufyFinanceRequestSheet';
+
+const KaufyFinanceRequestSheet = lazy(() => import('@/components/zone3/KaufyFinanceRequestSheet'));
 
 export default function ProjectLandingExpose() {
   const { slug, unitId } = useParams<{ slug: string; unitId: string }>();
+  const [showFinanceRequest, setShowFinanceRequest] = useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ['project-landing-expose', slug, unitId],
     queryFn: async () => {
       if (!slug || !unitId) return null;
-
       const { data: unit } = await supabase
         .from('dev_project_units')
         .select('id, unit_number, floor, area_sqm, rooms_count, list_price, rent_net, hausgeld, status, project_id')
         .eq('id', unitId)
         .maybeSingle();
-
       if (!unit) return null;
 
       const { data: project } = await supabase
         .from('dev_projects')
-        .select('id, name, city, address, postal_code, afa_model, afa_rate_percent, grest_rate_percent, notary_rate_percent, construction_year, tenant_id')
+        .select('id, name, city, address, postal_code, afa_model, afa_rate_percent, grest_rate_percent, notary_rate_percent, construction_year, tenant_id, ground_share_percent')
         .eq('id', (unit as any).project_id)
         .maybeSingle();
 
@@ -79,6 +81,41 @@ export default function ProjectLandingExpose() {
 
   const fmt = (val: number) => new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(val);
   const fmtFloor = (f: number | null) => { if (f === null) return '–'; if (f === 0) return 'EG'; if (f < 0) return `${Math.abs(f)}. UG`; return `${f}. OG`; };
+
+  // Build KaufyListingData adapter for FinanceRequestSheet
+  const kaufyListingData: KaufyListingData | null = useMemo(() => {
+    if (!data?.unit || !data?.project) return null;
+    const u = data.unit;
+    const p = data.project;
+    return {
+      id: u.id,
+      public_id: `PRJ-${u.unit_number}`,
+      property_id: u.id,
+      title: `${p.name} — Einheit ${u.unit_number}`,
+      asking_price: u.list_price || 0,
+      property_type: 'wohnung',
+      address: p.address || '',
+      city: p.city || '',
+      postal_code: p.postal_code || '',
+      total_area_sqm: u.area_sqm || 0,
+      year_built: p.construction_year || 2000,
+      monthly_rent: u.rent_net || 0,
+    };
+  }, [data]);
+
+  const kaufyEngineParams: KaufyEngineParams | null = useMemo(() => {
+    if (!calcResult || !data?.unit) return null;
+    const annuity = (calcResult.summary.yearlyInterest + calcResult.summary.yearlyRepayment) / 12;
+    return {
+      equity: calcParams.equity,
+      interestRate: calcParams.interestRate,
+      repaymentRate: calcParams.repaymentRate,
+      monthlyRate: annuity,
+      loanAmount: calcResult.summary.loanAmount,
+      purchasePrice: data.unit.list_price || 0,
+      totalCosts: calcResult.summary.totalInvestment || data.unit.list_price || 0,
+    };
+  }, [calcResult, data, calcParams]);
 
   if (isLoading) return <div className="flex items-center justify-center py-24"><Loader2 className="w-8 h-8 animate-spin text-[hsl(210,80%,55%)]" /></div>;
   if (!data) return <div className="text-center py-24"><Building2 className="w-12 h-12 mx-auto text-[hsl(215,16%,47%)] mb-4" /><p className="text-[hsl(215,16%,47%)]">Einheit nicht gefunden.</p></div>;
@@ -156,15 +193,27 @@ export default function ProjectLandingExpose() {
             </Card>
           )}
 
-          <Link to={`/website/projekt/${slug}/beratung`}>
-            <Button className="w-full h-12 rounded-lg bg-[hsl(220,20%,10%)] hover:bg-[hsl(220,20%,20%)] text-base">
-              Beratungsgespräch vereinbaren
-            </Button>
-          </Link>
+          {/* CTA Buttons */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Link to={`/website/projekt/${slug}/beratung`}>
+              <Button className="w-full h-12 rounded-lg bg-[hsl(220,20%,10%)] hover:bg-[hsl(220,20%,20%)] text-base">
+                Beratungsgespräch vereinbaren
+              </Button>
+            </Link>
+            {kaufyListingData && kaufyEngineParams && (
+              <Button
+                onClick={() => setShowFinanceRequest(true)}
+                className="w-full h-12 rounded-lg bg-gradient-to-r from-[hsl(160,55%,35%)] to-[hsl(160,60%,42%)] hover:from-[hsl(160,55%,30%)] hover:to-[hsl(160,60%,37%)] text-white text-base gap-2"
+              >
+                <Banknote className="h-5 w-5" />
+                Finanzierung beantragen
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Right: Calculator Panel */}
-        <div className="lg:sticky lg:top-20 lg:self-start">
+        <div className="lg:sticky lg:top-20 lg:self-start space-y-4">
           <Card className="border-[hsl(214,32%,91%)]">
             <CardContent className="p-5">
               <h3 className="font-semibold text-[hsl(220,20%,10%)] mb-4 text-sm">Investment-Rechner</h3>
@@ -201,8 +250,33 @@ export default function ProjectLandingExpose() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Mobile Fixed Finance CTA */}
+          {kaufyListingData && kaufyEngineParams && (
+            <div className="lg:hidden fixed bottom-0 left-0 right-0 p-4 bg-white/95 backdrop-blur-sm border-t border-[hsl(214,32%,91%)] z-50">
+              <Button
+                onClick={() => setShowFinanceRequest(true)}
+                className="w-full h-12 rounded-lg bg-gradient-to-r from-[hsl(160,55%,35%)] to-[hsl(160,60%,42%)] text-white text-base gap-2"
+              >
+                <Banknote className="h-5 w-5" />
+                Finanzierung beantragen
+              </Button>
+            </div>
+          )}
         </div>
       </div>
+
+      {/* KaufyFinanceRequestSheet */}
+      {kaufyListingData && kaufyEngineParams && (
+        <Suspense fallback={null}>
+          <KaufyFinanceRequestSheet
+            open={showFinanceRequest}
+            onClose={() => setShowFinanceRequest(false)}
+            listing={kaufyListingData}
+            engineParams={kaufyEngineParams}
+          />
+        </Suspense>
+      )}
     </div>
   );
 }
