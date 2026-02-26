@@ -1,114 +1,136 @@
 
 
-# Systemweiter Stabilitaets-Check — Ergebnisse
+# Befund: Claude's Analyse ist FALSCH — echte Root Cause gefunden
 
-## Status: Weitgehend produktionsreif mit 4 adressierbaren Schwachstellen
+## Was Claude sagt vs. Realitaet
 
----
+| Claude's Vorschlag | Aktueller DB-Status | Ergebnis |
+|---|---|---|
+| `is_kaufy_public_image_document` → STABLE + SECURITY DEFINER | **Bereits STABLE + SECURITY DEFINER** | ❌ Fix existiert bereits |
+| `get_user_tenant_id` → STABLE + SECURITY DEFINER | **Bereits STABLE + SECURITY DEFINER** | ❌ Fix existiert bereits |
+| `is_platform_admin` → STABLE + SECURITY DEFINER | **Bereits STABLE + SECURITY DEFINER** | ❌ Fix existiert bereits |
 
-## A. BESTAETIGT — Kein Handlungsbedarf
-
-| Bereich | Status |
-|---------|--------|
-| **Freeze-System** | Alle 23 Module, 6 Zone-3-Sites, 12 Engines, 6 Infra-Bereiche korrekt frozen |
-| **Orphan-Cleanup** | Keine verwaisten Imports auf geloeschte Dateien (ArmstrongSidebar, KaufyPropertyCard, UnitDossierView etc.) |
-| **Expose-SSOT** | 5/5 Seiten konsolidiert auf InvestmentExposeView |
-| **RLS-Abdeckung** | 0 Tabellen ohne RLS-Policies (vollstaendige Abdeckung) |
-| **Demo-Data-Governance** | Keine MOCK_/mockData/dummyData Verletzungen in Modul-Komponenten |
-| **Golden Path Fail-States** | GP_FINANCE_Z3, GP_PET, GP_COMMISSION alle mit on_timeout + on_error ausgestattet |
-| **Golden Path Validator** | DEV-only (import.meta.env.PROD return), keine Prod-Auswirkung |
+**Claude's gesamter Schritt 1 (Kernfix) ist bereits umgesetzt.** Der Upload scheitert trotzdem.
 
 ---
 
-## B. GEFUNDENE SCHWACHSTELLEN (4 Punkte)
+## Echte Root Cause: STORAGE-Policies mit Inline-JOINs
 
-### B1: Ungeschuetzte console.log in Produktion (MITTEL)
+Die `storage.objects`-Tabelle hat zwei SELECT-Policies mit **rohen 4-Tabellen-JOINs direkt im Policy-SQL** — NICHT ueber SECURITY DEFINER Funktionen:
 
-3 Dateien enthalten console.log OHNE `import.meta.env.DEV` Guard — diese leaken in Produktion:
-
-| Datei | Zeilen | Inhalt |
-|-------|--------|--------|
-| `src/hooks/useImageSlotUpload.ts` | 56, 79 | Tenant-ID, Entity-ID, Storage-Pfade |
-| `src/hooks/useLennoxInitialSeed.ts` | 69, 75, 89, 105, 150, 184, 234 | Gallery-Seeding Fortschritt |
-| `src/pages/portal/stammdaten/ProfilTab.tsx` | 302, 304 | User-ID, Tenant-ID, Slot-Keys |
-| `src/pages/portal/projekte/InvestEngineTab.tsx` | 149 | Project-ID |
-
-**Risiko:** Datenlecks (Tenant-IDs, User-IDs, Storage-Pfade) in Browser-Konsole von Endnutzern. Verstoesst gegen Governance-Regel "Webhook and Token Hardening Standard".
-
-**Fix:** Alle 11 console.log-Aufrufe in `import.meta.env.DEV` Guards einwickeln. Betrifft:
-- UNFREEZE INFRA-shared_investment (nein — useImageSlotUpload liegt in hooks, nicht frozen)
-- Hooks und Pages sind NICHT in frozen Pfaden, koennen direkt editiert werden
-
----
-
-### B2: React forwardRef Warning (NIEDRIG)
-
-```
-Warning: Function components cannot be given refs.
-Check the render method of `ManifestRouter` → AreaOverviewPage
-Check the render method of `AreaOverviewPage` → AreaModuleCard
+**Policy: `public_read_kaufy_listing_images`**
+```sql
+EXISTS (
+  SELECT 1
+  FROM documents d
+  JOIN document_links dl ON d.id = dl.document_id
+  JOIN listings l ON dl.object_id = l.property_id
+  JOIN listing_publications lp ON lp.listing_id = l.id
+  WHERE d.file_path = objects.name  -- ← korreliert mit JEDER Storage-Row
+    AND dl.object_type = 'property'
+    AND lp.channel = 'kaufy'
+    AND lp.status = 'active'
+)
 ```
 
-**Ursache:** `AreaOverviewPage` wird via `React.lazy()` geladen und `AreaModuleCard` erhaelt einen ref-Durchleitungsversuch. Keine funktionale Auswirkung, aber verunreinigt die Konsole.
+**Policy: `partner_read_network_listing_documents`** — identischer 4-Tabellen-JOIN.
 
-**Fix:** `React.forwardRef()` um AreaOverviewPage wickeln oder den ref-Pass im ManifestRouter entfernen. Da AreaOverviewPage in keinem frozen Pfad liegt, direkt editierbar.
+Diese Inline-JOINs laufen im User-Kontext und triggern RLS auf `documents` + `document_links` + `listings` + `listing_publications`. Auch wenn die Funktionen auf `documents`-Ebene schon SECURITY DEFINER sind — die Storage-Policies selbst umgehen das komplett durch direkte JOINs.
 
----
-
-### B3: RLS "Always True" Policies — Bewertung (NIEDRIG)
-
-Der Linter meldet 4 WARN fuer permissive Policies. Analyse zeigt:
-
-| Tabelle | Policy | Cmd | Bewertung |
-|---------|--------|-----|-----------|
-| mail_campaign_* (3 Tabellen) | Service role full access | ALL | **OK** — Service-Role-Only, kein Anon-Zugriff |
-| user_outbound_identities | Service role full access | ALL | **OK** — Service-Role-Only |
-| pet_z1_booking_requests | anon_insert | INSERT | **Akzeptabel** — Zone 3 Buchungsformular, absichtlich offen |
-| zone3_website_settings | INSERT/UPDATE auth | INSERT/UPDATE | **Pruefenswert** — jeder authentifizierte User kann Settings fuer jede Zone 3 Site aendern |
-
-**Einziger Kandidat:** `zone3_website_settings` — INSERT und UPDATE mit `true` statt Tenant-Scoping. Wenn nur Admins Website-Settings aendern duerfen sollten, muss die Policy verschaerft werden.
+**Beweis aus DB-Logs:** Timeout kommt von User `supabase_storage_admin` — der Storage-Service evaluiert alle Policies (auch SELECT) waehrend des Uploads.
 
 ---
 
-### B4: Auth-Konfiguration Warnings (NIEDRIG)
+## Umsetzungsplan: 1 Migration, 0 Code-Aenderungen
 
-- **OTP Expiry zu lang:** Standard-Empfehlung ist 5 Minuten; aktuell laenger konfiguriert
-- **Leaked Password Protection deaktiviert:** HaveIBeenPwned-Check nicht aktiv
+### Schritt 1: Zwei SECURITY DEFINER Wrapper-Funktionen erstellen
 
-**Fix:** Konfigurationsaenderung im Auth-System, keine Code-Aenderung noetig.
+```sql
+-- Funktion 1: Kaufy-Check fuer Storage-Layer
+CREATE OR REPLACE FUNCTION public.is_kaufy_storage_object(object_name text)
+RETURNS boolean
+LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM documents d
+    JOIN document_links dl ON d.id = dl.document_id
+    JOIN listings l ON dl.object_id = l.property_id
+      AND dl.object_type = 'property'
+    JOIN listing_publications lp ON lp.listing_id = l.id
+    WHERE d.file_path = object_name
+      AND d.mime_type LIKE 'image/%'
+      AND lp.channel = 'kaufy'
+      AND lp.status = 'active'
+  );
+$$;
 
----
-
-## C. ZUSAMMENFASSUNG
-
-```text
-PRODUKTIONSREIF:
-✅ Alle Module frozen und stabil
-✅ RLS-Abdeckung 100%
-✅ Expose-SSOT konsolidiert (5/5)
-✅ Golden Path Fail-States vollstaendig
-✅ Demo-Data-Governance eingehalten
-✅ Keine verwaisten Dateien/Imports
-
-STABILISIERUNG EMPFOHLEN:
-⬜ B1: 11 console.log Guards einbauen (useImageSlotUpload, useLennoxInitialSeed, ProfilTab, InvestEngineTab)
-⬜ B2: forwardRef Warning beheben (AreaOverviewPage)
-⬜ B3: zone3_website_settings RLS verschaerfen (optional)
-⬜ B4: Auth OTP Expiry + Leaked Password Protection (optional)
-⬜ Regel F in Custom Knowledge eintragen (manuell)
+-- Funktion 2: Partner-Network-Check fuer Storage-Layer
+CREATE OR REPLACE FUNCTION public.is_partner_network_storage_object(object_name text)
+RETURNS boolean
+LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM documents d
+    JOIN document_links dl ON d.id = dl.document_id
+    JOIN listings l ON dl.object_id = l.property_id
+      AND dl.object_type = 'property'
+    JOIN listing_publications lp ON lp.listing_id = l.id
+    WHERE d.file_path = object_name
+      AND lp.channel = 'partner_network'
+      AND lp.status = 'active'
+  );
+$$;
 ```
 
-### Umsetzungsplan (nach Freigabe)
+### Schritt 2: Storage-Policies auf Funktionsaufrufe umstellen
 
-**Phase 1 — Console.log Hardening (kein Unfreeze noetig):**
-- `useImageSlotUpload.ts`: 2 Zeilen wrappen
-- `useLennoxInitialSeed.ts`: 7 Zeilen wrappen
-- `ProfilTab.tsx`: 2 Zeilen wrappen
-- `InvestEngineTab.tsx`: 1 Zeile wrappen
+```sql
+-- Policy 1: Kaufy Public Images — Inline-JOIN ersetzen
+DROP POLICY IF EXISTS "public_read_kaufy_listing_images" ON storage.objects;
+CREATE POLICY "public_read_kaufy_listing_images" ON storage.objects
+FOR SELECT USING (
+  bucket_id = 'tenant-documents'
+  AND public.is_kaufy_storage_object(name)
+);
 
-**Phase 2 — forwardRef Fix (kein Unfreeze noetig):**
-- `AreaOverviewPage.tsx`: `React.forwardRef()` hinzufuegen
+-- Policy 2: Partner Network Documents — Inline-JOIN ersetzen
+DROP POLICY IF EXISTS "partner_read_network_listing_documents" ON storage.objects;
+CREATE POLICY "partner_read_network_listing_documents" ON storage.objects
+FOR SELECT TO authenticated USING (
+  bucket_id = 'tenant-documents'
+  AND public.is_partner_network_storage_object(name)
+);
+```
 
-**Phase 3 — RLS Hardening (optional, UNFREEZE INFRA-edge_functions noetig):**
-- `zone3_website_settings` INSERT/UPDATE Policies auf Tenant-Scoping umstellen
+### Schritt 3: Performance-Indizes (optional, gleiche Migration)
+
+```sql
+CREATE INDEX IF NOT EXISTS idx_profiles_id_active_tenant
+  ON profiles (id, active_tenant_id);
+
+CREATE INDEX IF NOT EXISTS idx_document_links_object_type_property
+  ON document_links (object_id, document_id)
+  WHERE object_type = 'property';
+
+CREATE INDEX IF NOT EXISTS idx_listing_publications_channel_status
+  ON listing_publications (listing_id, channel, status)
+  WHERE status = 'active';
+```
+
+---
+
+## Was sich NICHT aendert
+
+- Keine TypeScript-Dateien
+- Keine RLS-Policies auf `documents`, `document_links`, `listings`
+- Keine Storage-Bucket-Konfiguration
+- `useImageSlotUpload.ts` bleibt unberuehrt
+
+## Erwartetes Ergebnis
+
+Storage-Upload geht durch in < 2s, weil die SELECT-Policies auf `storage.objects` jetzt ueber SECURITY DEFINER laufen und keinen RLS-Cascade mehr ausloesen.
 
