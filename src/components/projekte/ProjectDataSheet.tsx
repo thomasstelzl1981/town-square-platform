@@ -15,7 +15,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import {
   MapPin, Home, Ruler, Calendar, Flame, Zap, Car, Building2, Layers,
   CheckCircle2, Scale, Users, Briefcase, Receipt, Percent, BookOpen,
-  Save, Loader2, Sparkles, Upload, ImageOff, X, ChevronDown
+  Save, Loader2, Sparkles, ChevronDown
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
@@ -23,7 +23,8 @@ import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import type { ProjectPortfolioRow } from '@/types/projekte';
 import { DEMO_PROJECT_DESCRIPTION, DEMO_PROJECT_IMAGES } from './demoProjectData';
-import { sanitizeFileName } from '@/config/storageManifest';
+import { useImageSlotUpload } from '@/hooks/useImageSlotUpload';
+import { ImageSlotGrid, type ImageSlot } from '@/components/shared/ImageSlotGrid';
 
 import demoExterior from '@/assets/demo-project-exterior.jpg';
 import demoLivingroom from '@/assets/demo-project-livingroom.jpg';
@@ -64,14 +65,12 @@ const AFA_MODELS = [
   { value: '7b', label: '§7b Neubau' },
 ];
 
-const IMAGE_SLOTS = [
+const IMAGE_SLOTS: ImageSlot[] = [
   { key: 'hero', label: 'Hero-Bild', desc: 'Hauptbild für Exposé & Landingpage' },
   { key: 'exterior', label: 'Außen', desc: 'Außenansicht des Gebäudes' },
   { key: 'interior', label: 'Innen', desc: 'Innenansicht / Musterwohnung' },
   { key: 'surroundings', label: 'Umgebung', desc: 'Lage & Infrastruktur' },
-] as const;
-
-type ImageSlotKey = typeof IMAGE_SLOTS[number]['key'];
+];
 
 interface ProjectDataSheetProps {
   isDemo?: boolean;
@@ -149,11 +148,17 @@ export function ProjectDataSheet({ isDemo, selectedProject, unitCount, fullProje
   );
   const [imageUrls, setImageUrls] = useState<Record<string, string>>({});
 
+  // Shared image upload hook
+  const { uploadToSlot, getSignedUrl, uploadingSlot } = useImageSlotUpload({
+    moduleCode: 'MOD-13',
+    entityId: projectId || '',
+    tenantId: fullProject?.tenant_id || '',
+  });
+
   // UI state
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
-  const [uploadingSlot, setUploadingSlot] = useState<string | null>(null);
   const [descOpen, setDescOpen] = useState(false);
   const [locationOpen, setLocationOpen] = useState(false);
 
@@ -217,47 +222,26 @@ export function ProjectDataSheet({ isDemo, selectedProject, unitCount, fullProje
       const urls: Record<string, string> = {};
       for (const [key, path] of Object.entries(projectImages)) {
         if (path) {
-          const { data } = await supabase.storage.from('tenant-documents').createSignedUrl(path, 3600);
-          if (data?.signedUrl) urls[key] = data.signedUrl;
+          const url = await getSignedUrl(path);
+          if (url) urls[key] = url;
         }
       }
       setImageUrls(urls);
     };
     if (Object.keys(projectImages).some(k => projectImages[k])) loadUrls();
-  }, [projectImages]);
+  }, [projectImages, getSignedUrl]);
 
   const markDirty = () => setDirty(true);
 
-  // ── Image Upload ──
+  // ── Image Upload (via shared hook) ──
   const handleImageUpload = async (slotKey: string, file: File) => {
     if (isDemo) return;
-    if (!projectId || !fullProject?.tenant_id) {
-      toast.error('Projekt noch nicht vollständig geladen', { description: 'Bitte warte einen Moment und versuche es erneut.' });
-      return;
-    }
-    setUploadingSlot(slotKey);
-    try {
-      const safeName = sanitizeFileName(file.name);
-      const storagePath = `${fullProject.tenant_id}/MOD_13/${projectId}/images/${slotKey}_${safeName}`;
-      const { error: uploadErr } = await supabase.storage
-        .from('tenant-documents')
-        .upload(storagePath, file, { upsert: true });
-      if (uploadErr) throw uploadErr;
-
+    const storagePath = await uploadToSlot(slotKey, file);
+    if (storagePath) {
       setProjectImages(prev => ({ ...prev, [slotKey]: storagePath }));
-      const { data: urlData } = await supabase.storage
-        .from('tenant-documents')
-        .createSignedUrl(storagePath, 3600);
-      if (urlData?.signedUrl) {
-        setImageUrls(prev => ({ ...prev, [slotKey]: urlData.signedUrl }));
-      }
+      const url = await getSignedUrl(storagePath);
+      if (url) setImageUrls(prev => ({ ...prev, [slotKey]: url }));
       setDirty(true);
-      toast.success(`${IMAGE_SLOTS.find(s => s.key === slotKey)?.label} hochgeladen`);
-    } catch (err: any) {
-      console.error('Image upload failed:', err);
-      toast.error('Upload fehlgeschlagen', { description: err.message });
-    } finally {
-      setUploadingSlot(null);
     }
   };
 
@@ -392,60 +376,24 @@ export function ProjectDataSheet({ isDemo, selectedProject, unitCount, fullProje
           <Badge variant="outline" className="text-[10px] italic text-muted-foreground">Musterdaten</Badge>
         )}
 
-        {/* ── 4 Image Slots ── */}
-        <div className="border-t pt-4">
-          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">Projektbilder</p>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {IMAGE_SLOTS.map((slot) => {
-              const storagePath = projectImages[slot.key];
+        {/* ── 4 Image Slots (Drag & Drop) ── */}
+        <ImageSlotGrid
+          slots={IMAGE_SLOTS}
+          images={(() => {
+            const merged: Record<string, string | null> = {};
+            IMAGE_SLOTS.forEach((slot) => {
               const signedUrl = imageUrls[slot.key];
               const demoImg = isDemo && demoImages.length > 0
                 ? IMAGE_MAP[demoImages.find(d => d.importKey === slot.key)?.importKey || '']
                 : null;
-              const displayUrl = signedUrl || demoImg;
-              const isUploading = uploadingSlot === slot.key;
-
-              return (
-                <div key={slot.key} className="relative group">
-                  <label
-                    className={cn(
-                      'block rounded-lg overflow-hidden border-2 border-dashed cursor-pointer transition-colors h-[140px]',
-                      displayUrl ? 'border-transparent' : 'border-muted-foreground/20 hover:border-primary/40',
-                      isUploading && 'opacity-50 pointer-events-none'
-                    )}
-                  >
-                    {displayUrl ? (
-                      <img src={displayUrl} alt={slot.label} className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="flex flex-col items-center justify-center h-full gap-1 text-muted-foreground/50">
-                        {isUploading ? (
-                          <Loader2 className="h-6 w-6 animate-spin" />
-                        ) : (
-                          <Upload className="h-6 w-6" />
-                        )}
-                        <span className="text-[10px]">{slot.label}</span>
-                      </div>
-                    )}
-                    {!isDemo && (
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={(e) => {
-                          const f = e.target.files?.[0];
-                          if (f) handleImageUpload(slot.key, f);
-                        }}
-                      />
-                    )}
-                  </label>
-                  <span className="absolute top-1 left-1 bg-background/80 backdrop-blur-sm text-[9px] font-medium px-1.5 py-0.5 rounded">
-                    {slot.label}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
+              merged[slot.key] = signedUrl || demoImg || null;
+            });
+            return merged;
+          })()}
+          onUpload={handleImageUpload}
+          uploadingSlot={uploadingSlot}
+          disabled={isDemo}
+        />
 
         {/* ── Objektdaten — full-width grid ── */}
         <div className="space-y-4 pt-2 border-t">
