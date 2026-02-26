@@ -1,49 +1,65 @@
 
 
-# Status: Upload-Harmonisierung — Was ist fertig, was fehlt?
+# Audit: ImageSlotGrid Format-Konsistenz
 
-## Aktueller Stand
+## Befund
 
-| Modul | Komponente | Status | Problem |
-|-------|-----------|--------|---------|
-| **MOD-13 Projekte** | ProjectDataSheet | ✅ Fertig | Nutzt jetzt `ImageSlotGrid` + `useImageSlotUpload` |
-| **MOD-20 Miety** | UploadDrawer | ✅ Fertig | Nutzt jetzt `useDropzone` + `tenant-documents` |
-| **MOD-01 Stammdaten** | ProfilTab (Avatar/Logo) | ❌ Offen | Eigene `handleAvatarUpload`/`handleLogoUpload` mit `FileUploader` |
-| **MOD-14 Social** | AssetsPage | ❌ Offen | Nutzt falschen Bucket `social-assets` statt `tenant-documents` |
-| **MOD-22 Pet Manager** | PMProfil | ❌ Offen | Speichert 1-Jahres-Signed-URLs in DB statt Storage-Pfade |
+Die `ImageSlotGrid`-Komponente ist **nicht CI-konform** mit dem Design Manifest. Es gibt drei Probleme:
 
-**Kurz: MOD-13 und MOD-20 sind fertig. MOD-01, MOD-14 und MOD-22 nutzen noch die alte, fehlerhafte Logik.**
+### 1. Kein Bezug zum Design Manifest
+
+Die Komponente verwendet **inline `style={{ height: slotHeight }}`** (Standard: 140px) statt der im Design Manifest definierten Widget-Standards. Das Design Manifest kennt kein `IMAGE_SLOT`-Token — es fehlt komplett.
+
+### 2. Inkonsistente Verwendung über Module hinweg
+
+```text
+Modul           columns  slotHeight  Ergebnis
+──────────────  ───────  ──────────  ──────────────────────
+MOD-13 Projekte    4       140px     4 quadratische Slots (OK)
+MOD-01 Avatar      1        80px     1 winziger Streifen (zu klein)
+MOD-01 Logo        1        80px     1 winziger Streifen (zu klein)
+MOD-22 Galerie     4       140px     4 quadratische Slots (OK)
+```
+
+Die MOD-01 Slots mit `slotHeight={80}` und `columns={1}` ergeben einen flachen Querstreifen — das ist das "komische Format", das du gesehen hast.
+
+### 3. Hardcoded Label "Projektbilder"
+
+Die Komponente hat `<p>Projektbilder</p>` als festen Titel (Zeile 134), was in MOD-01 (Avatar) und MOD-22 (Galerie) falsch ist.
 
 ---
 
-## Was jetzt noch zu tun ist (3 Fixes)
+## Fix-Plan
 
-### Fix 1: MOD-01 ProfilTab — Avatar & Logo
+### Änderung 1: Design Manifest erweitern
 
-**Problem:** `handleAvatarUpload` und `handleLogoUpload` (Zeilen 274-308) nutzen eine eigene `FileUploader`-Komponente mit direkter Storage-Logik. Funktioniert grundsätzlich, ist aber nicht harmonisiert und hat kein Drag & Drop.
+Neues `IMAGE_SLOT`-Token in `designManifest.ts`:
 
-**Fix:** 
-- Avatar- und Logo-Upload auf `useImageSlotUpload` umstellen (Module Code `MOD-01`, Slots: `avatar`, `logo`)
-- `FileUploader` durch `ImageSlotGrid` ersetzen (1 Slot pro Bild, jeweils mit D&D)
-- Storage-Pfad bleibt: `${tenantId}/MOD_01/${userId}/images/avatar_*.jpg`
+```typescript
+export const IMAGE_SLOT = {
+  HEIGHT: 140,                    // Standard-Höhe für alle Bild-Slots
+  HEIGHT_COMPACT: 80,             // Kompakt-Variante (Avatar/Logo)
+  BORDER: 'border-2 border-dashed rounded-lg',
+  COLUMNS_DEFAULT: 4,
+  COLUMNS_SINGLE: 1,
+} as const;
+```
 
-### Fix 2: MOD-14 AssetsPage — Falscher Bucket
+### Änderung 2: ImageSlotGrid CI-konform machen
 
-**Problem:** Die gesamte `AssetsPage.tsx` nutzt den Bucket `social-assets` (5 Stellen im Code). Dieser Bucket ist nicht Teil des standardisierten `storageManifest`.
+- `slotHeight` Default aus `IMAGE_SLOT.HEIGHT` lesen statt Hardcode `140`
+- Hardcoded `"Projektbilder"` durch einen optionalen `title`-Prop ersetzen (Default: keinen Titel anzeigen, die aufrufende Komponente setzt ihn)
+- Klassen aus Design Manifest verwenden statt Inline-Styles wo möglich
 
-**Fix:**
-- Alle `supabase.storage.from('social-assets')` auf `supabase.storage.from('tenant-documents')` umstellen
-- Pfad-Pattern: `${tenantId}/MOD_14/social/${documentId}`
-- `getStorageUrl()` Funktion auf Signed URLs umstellen (statt `getPublicUrl`)
+### Änderung 3: MOD-01 ProfilTab anpassen
 
-### Fix 3: MOD-22 PMProfil — Signed URLs in DB
+- Avatar-Slot: `slotHeight={IMAGE_SLOT.HEIGHT_COMPACT}` statt `80`
+- Logo-Slot: `slotHeight={IMAGE_SLOT.HEIGHT_COMPACT}` statt `80`
+- Referenz zum Manifest statt Magic Numbers
 
-**Problem:** `handlePhotoUpload` (Zeile 169-201) erstellt eine 1-Jahres-Signed-URL und speichert diese direkt in `gallery_images[]` in der DB. Nach Ablauf sind alle Bilder kaputt.
+### Änderung 4: MOD-13 & MOD-22 — kein Change nötig
 
-**Fix:**
-- Storage-Pfade (nicht URLs) in `gallery_images` speichern
-- Signed URLs on-demand via `getSignedUrl()` aus `useImageSlotUpload` generieren
-- Galerie-Ansicht: Beim Laden die Pfade in Signed URLs auflösen
+Diese nutzen bereits `slotHeight={140}` bzw. den Default — bleiben konsistent.
 
 ---
 
@@ -51,9 +67,7 @@
 
 | Datei | Aktion |
 |-------|--------|
-| `src/pages/portal/stammdaten/ProfilTab.tsx` | Avatar/Logo auf `useImageSlotUpload` umstellen |
-| `src/pages/portal/communication-pro/social/AssetsPage.tsx` | Bucket `social-assets` → `tenant-documents` |
-| `src/pages/portal/petmanager/PMProfil.tsx` | Signed URLs → Storage-Pfade + on-demand URLs |
-
-Alle Module sind bereits unfrozen. Keine neuen Dateien nötig — die Shared-Komponenten (`useImageSlotUpload`, `ImageSlotGrid`) existieren bereits.
+| `src/config/designManifest.ts` | `IMAGE_SLOT` Token hinzufügen |
+| `src/components/shared/ImageSlotGrid.tsx` | `title`-Prop + Manifest-Referenzen |
+| `src/pages/portal/stammdaten/ProfilTab.tsx` | Manifest-Konstanten statt Magic Numbers |
 
