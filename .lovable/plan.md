@@ -1,149 +1,139 @@
 
 
-## Komplett-Check: MOD-13 Landing Page System — Audit-Ergebnis
+# MOD-13 Armstrong Actions: Vollstandige Erweiterung
 
-### Gesamtstatus: 5 Probleme gefunden, 12 Punkte sauber
+## Befund
 
----
+MOD-13 hat aktuell nur **5 registrierte Actions** im Manifest:
 
-### ROUTE-CHECK
+| Code | Status |
+|------|--------|
+| `ARM.MOD13.CREATE_DEV_PROJECT` | registriert |
+| `ARM.MOD13.EXPLAIN_MODULE` | registriert |
+| `ARM.MOD13.CALCULATE_AUFTEILER` | registriert |
+| `ARM.MOD13.GENERATE_SALES_REPORT` | registriert |
+| `ARM.MOD13.DRAFT_RESERVATION` | registriert |
 
-| Route | Manifest | Router | Komponente | Status |
-|---|---|---|---|---|
-| `/portal/projekte/landing-page` | ✅ routesManifest Z2 MOD-13 tile | ✅ ManifestRouter | ✅ LandingPageTab.tsx | OK |
-| `/website/projekt/:slug` | ✅ routesManifest `project-landing` | ✅ zone3ComponentMaps | ✅ ProjectLandingHome.tsx | OK |
-| `/website/projekt/:slug/objekt` | ✅ routesManifest | ✅ zone3ComponentMaps | ✅ ProjectLandingObjekt.tsx | OK |
-| `/website/projekt/:slug/beratung` | ✅ routesManifest | ✅ zone3ComponentMaps | ✅ ProjectLandingBeratung.tsx | OK |
-| `/website/projekt/:slug/einheit/:unitId` | ✅ routesManifest | ✅ zone3ComponentMaps | ✅ ProjectLandingExpose.tsx | OK |
-| `/website/projekt/:slug/impressum` | ✅ routesManifest | ✅ zone3ComponentMaps (lazy) | ✅ ProjectLandingImpressum.tsx | OK |
-| `/website/projekt/:slug/datenschutz` | ✅ routesManifest | ✅ zone3ComponentMaps (lazy) | ✅ ProjectLandingDatenschutz.tsx | OK |
-| `/admin/projekt-desk` | ✅ routesManifest Z1 | ✅ ProjektDesk.tsx | ✅ | OK |
-| `/admin/projekt-desk/landing-pages` | ✅ routesManifest Z1 | ✅ LandingPagesTab in ProjektDesk | ✅ | **PROBLEM** |
-
-### MANIFEST-CHECK
-
-| Manifest | Status | Detail |
-|---|---|---|
-| `routesManifest.ts` — Z2 MOD-13 tiles | ✅ | 7 Tiles inkl. `landing-page` |
-| `routesManifest.ts` — Z3 `project-landing` | ✅ | 6 Routen registriert |
-| `routesManifest.ts` — Z1 `projekt-desk` | ✅ | 4 Tabs inkl. `landing-pages` |
-| `ManifestRouter.tsx` — Lazy imports | ✅ | Alle 6 Komponenten importiert |
-| `ManifestRouter.tsx` — zone3LayoutMap | ✅ | `ProjectLandingLayout` registriert |
-| `ManifestRouter.tsx` — zone3ComponentMaps | ✅ | `project-landing` Key mit 6 Komponenten |
-| `index.ts` exports | ✅ | Alle 7 Komponenten exportiert |
-
-### DB-CHECK
-
-| Pruefpunkt | Status | Detail |
-|---|---|---|
-| `landing_pages` Tabelle | ✅ | 27 Spalten, alle neuen Spalten vorhanden (highlights_json, advisor_ids, footer_*, imprint_text, privacy_text, custom_domain, domain_status) |
-| RLS Policies | ✅ | 5 Policies: Admin-ALL, Org-INSERT, Org-SELECT, Org-UPDATE, Public-SELECT (active/preview) |
-| Daten vorhanden | ⚠️ | 0 Zeilen — noch keine Landing Page erstellt (erwartet, da wir gerade testen wollen) |
-
-### HOOK-CHECK
-
-| Hook | Status | Detail |
-|---|---|---|
-| `useLandingPage.ts` | ✅ | 7 Funktionen: CRUD + generateSlug + publish + book + lock/unlock |
-| `useLandingPageByProject` | ✅ | Korrekte Query, queryKey stimmt |
-| `useCreateLandingPage` | ✅ | Insert mit `created_by` |
-| `usePublishLandingPage` | ✅ | Status → preview + 36h Expiry |
-| `useBookLandingPage` | ✅ | Status → active (permanent) |
+**Problem:** Die `ArmstrongChipBar` referenziert **8 zusatzliche Action-Codes**, die im Manifest NICHT existieren (Geister-Actions). Ausserdem fehlen entscheidende Lifecycle-Actions fur den kompletten 7-Phasen Golden Path.
 
 ---
 
-### GEFUNDENE PROBLEME
+## Fehlende Actions (16 Stuck in 3 Kategorien)
 
-#### Problem 1: Zone 1 ProjektDesk filtert nach nicht-existierender Spalte `entity_type`
+### Kategorie A: Intake-Begleitung (8 Actions — ChipBar-Ghosts fixen)
 
-**Datei:** `src/pages/admin/desks/ProjektDesk.tsx` Zeile 69 und 309
+Diese Codes sind bereits in `ArmstrongChipBar.tsx` verdrahtet, aber im Manifest nicht registriert:
 
-```typescript
-.eq('entity_type', 'dev_project')  // ← Diese Spalte existiert NICHT in landing_pages!
-```
+| # | Code | Titel | Modus | Kosten |
+|---|------|-------|-------|--------|
+| 1 | `ARM.MOD13.EXPLAIN_UPLOAD_FORMATS` | Upload-Formate erklaren | readonly | free |
+| 2 | `ARM.MOD13.SHOW_EXAMPLE` | Beispiel-Expose zeigen | readonly | free |
+| 3 | `ARM.MOD13.EXPLAIN_ANALYSIS_TIME` | Analysedauer erklaren | readonly | free |
+| 4 | `ARM.MOD13.REVIEW_UNITS` | Einheiten prufen | readonly | free |
+| 5 | `ARM.MOD13.EXPLAIN_TERMS` | Fachbegriffe erklaren | readonly | free |
+| 6 | `ARM.MOD13.VALIDATE_DATA` | Daten-Plausibilitat | readonly | metered (5ct) |
+| 7 | `ARM.MOD13.CREATE_PROPERTY_FILES` | Immobilienakten erstellen | execute_with_confirmation | metered (10ct) |
+| 8 | `ARM.MOD13.START_DISTRIBUTION` | Vertrieb starten | execute_with_confirmation | metered (10ct) |
 
-Die `landing_pages`-Tabelle hat keine Spalte `entity_type`. Der Query schlaegt still fehl (Supabase ignoriert unbekannte Filter bei `as any`). Das bedeutet: Der Zone 1 Projekt Desk zeigt NIEMALS Landing Pages an, auch wenn welche existieren.
+### Kategorie B: Lifecycle-Actions (5 Actions — Golden Path Phasen)
 
-**Fix:** Filter entfernen — alle `landing_pages` sind per Definition Projekt-Landing-Pages (die Tabelle hat `project_id` als FK). Alternativ: Kein Filter noetig, da jede Landing Page einem `dev_project` zugeordnet ist.
+Fur den 7-Phasen-Flow fehlende Steuerungs-Actions:
 
-#### Problem 2: Zone 1 LandingPagesTab referenziert falsche Felder
+| # | Code | Titel | Modus | Kosten |
+|---|------|-------|-------|--------|
+| 9 | `ARM.MOD13.PHASE_CHANGE` | Projektphase wechseln | execute_with_confirmation | free |
+| 10 | `ARM.MOD13.PUBLISH_LISTINGS` | Listings veroffentlichen | execute_with_confirmation | metered (10ct) |
+| 11 | `ARM.MOD13.GENERATE_PROJECT_LP` | Projekt-Landingpage erstellen | execute_with_confirmation | metered (250ct) |
+| 12 | `ARM.MOD13.ANALYZE_INVEST` | Investment-Analyse starten | readonly | free |
+| 13 | `ARM.MOD13.PROJECT_SUMMARY` | Projekt-Zusammenfassung | readonly | metered (5ct) |
 
-**Datei:** `src/pages/admin/desks/ProjektDesk.tsx` Zeile 351
+### Kategorie C: Dossier-Hilfe (3 Actions)
 
-```typescript
-page.name || page.title || '–'  // ← Beides existiert nicht! Richtig wäre: page.hero_headline
-```
-
-Die `landing_pages`-Tabelle hat weder `name` noch `title`. Das korrekte Feld ist `hero_headline`.
-
-#### Problem 3: Zone 1 STATUS_MAP stimmt nicht mit echten Status-Werten ueberein
-
-**Datei:** `src/pages/admin/desks/ProjektDesk.tsx` Zeile 318-322
-
-```typescript
-const STATUS_MAP = {
-  published: ...,  // ← Falsch! Heißt 'active'
-  draft: ...,      // ← OK
-  archived: ...,   // ← Falsch! Heißt 'locked'
-};
-```
-
-Die echten Status-Werte sind: `draft`, `preview`, `active`, `locked`. Der ProjektDesk hat die alten Werte `published` und `archived`.
-
-#### Problem 4: Console Warning — Badge ref-Fehler in LandingPageTab
-
-Die Konsole zeigt: `Function components cannot be given refs. Attempts to access this ref will fail. Check the render method of LandingPageTab.`
-
-Das Badge im WidgetGrid erhaelt eine ref, die es nicht akzeptiert. Kein funktionaler Fehler, aber eine Warnung die bereinigt werden sollte.
-
-#### Problem 5: Landing Page wird mit Status `draft` erstellt — Zone 3 zeigt nur `active` oder `preview`
-
-**Datei:** `ProjectLandingLayout.tsx` Zeile 34
-
-```typescript
-.eq('status', 'active')  // ← Draft-Seiten werden NICHT angezeigt!
-```
-
-Der Flow ist: Erstellen (draft) → Publish (preview/36h) → Book (active). Aber die Vorschau im Editor (`iframe src={previewUrl}`) zeigt die Zone 3 Seite an, die nur `active`-Status akzeptiert. Das heisst: Das iframe-Preview zeigt immer "Projekt nicht gefunden" bis die Seite published/booked wurde.
-
-**Fix:** Entweder Preview-URL bekommt einen Query-Parameter `?preview=true` der den Status-Filter umgeht, oder das iframe nutzt eine eigene Vorschau-Komponente statt der Live-Zone-3-Seite.
+| # | Code | Titel | Modus | Kosten |
+|---|------|-------|-------|--------|
+| 14 | `ARM.MOD13.EXPLAIN_UNIT` | Einheit erklaren | readonly | free |
+| 15 | `ARM.MOD13.UPLOAD_PROJECT_DOC` | Projektdokument hochladen | execute_with_confirmation | free |
+| 16 | `ARM.MOD13.DATA_QUALITY_CHECK` | Datenqualitat prufen | readonly | metered (5ct) |
 
 ---
 
-### IMPLEMENTIERUNGSPLAN
+## Implementierungsschritte
 
-#### Schritt 1: Zone 1 ProjektDesk reparieren (ProjektDesk.tsx)
-- `entity_type`-Filter entfernen (Zeile 69, 309)
-- `page.name || page.title` → `page.hero_headline || page.slug` (Zeile 351)
-- STATUS_MAP korrigieren: `published` → `active`, `archived` → `locked`, `preview` hinzufuegen
-- Projekt-Join hinzufuegen fuer bessere Anzeige (Projektname, Stadt)
+### Schritt 1: armstrongManifest.ts — 16 Actions registrieren
 
-#### Schritt 2: Zone 3 Preview-Problem loesen (ProjectLandingLayout.tsx)
-- Status-Filter von `.eq('status', 'active')` auf `.in('status', ['draft', 'preview', 'active'])` erweitern
-- Alternativ: Preview-Token/Parameter einfuehren (sicherer, aber aufwaendiger)
-- Empfehlung fuer MVP: Filter erweitern — `locked` bleibt weiterhin blockiert (Billing-Sperre), aber draft/preview/active werden angezeigt
+Alle 16 Actions werden nach dem bestehenden MOD-13-Block (nach Zeile 3555) eingefugt, mit vollstandigem V2-Schema (zones, risk_level, execution_mode, data_scopes, side_effects, cost_model, api_contract).
 
-#### Schritt 3: Console Warning bereinigen (LandingPageTab.tsx)
-- Badge-Ref-Issue in WidgetGrid beheben (DESIGN.DEMO_WIDGET.BADGE ref-Weitergabe)
+### Schritt 2: TOP_30_MVP_ACTION_CODES erweitern
 
-#### Schritt 4: Alle Zone-3-Seiten Status-Filter synchronisieren
-- Gleichen Fix in `ProjectLandingHome.tsx`, `ProjectLandingObjekt.tsx`, `ProjectLandingBeratung.tsx`, `ProjectLandingExpose.tsx`, `ProjectLandingImpressum.tsx`, `ProjectLandingDatenschutz.tsx` — ueberall wo `.eq('status', 'active')` steht
+Pack I (Projekte) wird von 2 auf 6 Eintrage erweitert:
+- `ARM.MOD13.VALIDATE_DATA` (Intake-Begleitung)
+- `ARM.MOD13.PHASE_CHANGE` (Lifecycle)
+- `ARM.MOD13.PUBLISH_LISTINGS` (Vertrieb)
+- `ARM.MOD13.PROJECT_SUMMARY` (Reporting)
+
+### Schritt 3: ArmstrongChipBar.tsx — Erweiterte Chips
+
+Die MOD-13 Default-Chips (Zeile 96-99) werden um die wichtigsten Lifecycle-Actions erweitert:
+
+```text
+MOD-13 Default:  Projekt aus Dokument | Projektphase | Vertrieb starten
+MOD-13 Intake:   (bleibt wie gehabt — bereits korrekt verdrahtet)
+MOD-13 Detail:   Einheit erklaren | Datenqualitat | Investment-Analyse
+```
+
+### Schritt 4: useArmstrongAdvisor.ts — Kontextgruss erweitern
+
+Die MOD-13 Welcome-Config (Zeile 193-198) wird um zusatzliche Chips fur Lifecycle erganzt:
+
+```text
+Greeting: "Projekte-Bereich. Ich begleite dich durch den gesamten Projekt-Lifecycle:"
+Chips: [Projekt aus Dokument, Projektphase, Zusammenfassung, Modul erklaren]
+```
+
+### Schritt 5: Spec-Update — Knowledge Items fur Armstrong
+
+Armstrong braucht Wissen uber die MOD-13-Prozesse, um die Actions sinnvoll ausfuhren zu konnen. Die Knowledge-Items werden uber bestehende Tabellen (`armstrong_knowledge_items`) vermittelt. Die konkreten Antwort-Templates fur die 8 Intake-Phase-Actions (EXPLAIN_UPLOAD_FORMATS, SHOW_EXAMPLE, etc.) werden als statische Responses im Advisor-Hook hinterlegt, da sie kein AI-Processing erfordern.
+
+---
+
+## Technische Details
+
+### Action-Schema-Muster (Beispiel)
+```typescript
+{
+  action_code: 'ARM.MOD13.PHASE_CHANGE',
+  title_de: 'Projektphase wechseln',
+  description_de: 'Wechselt die Phase eines Projekts (Planung → Bau → Vertrieb → Ubergabe)',
+  zones: ['Z2'],
+  module: 'MOD-13',
+  risk_level: 'medium',
+  execution_mode: 'execute_with_confirmation',
+  requires_consent_code: null,
+  roles_allowed: [],
+  data_scopes_read: ['dev_projects', 'dev_project_units'],
+  data_scopes_write: ['dev_projects'],
+  side_effects: ['modifies_dev_projects', 'triggers_golden_path'],
+  version: '1.0.0',
+  cost_model: 'free',
+  cost_unit: null,
+  cost_hint_cents: null,
+  api_contract: { type: 'internal', endpoint: null },
+  ui_entrypoints: ['/portal/projekte'],
+  audit_event_type: 'ARM_MOD13_PHASE_CHANGE',
+  status: 'active',
+}
+```
+
+### Statische Responses (Intake-Phase)
+Die 3 reinen Erklarungs-Actions (`EXPLAIN_UPLOAD_FORMATS`, `SHOW_EXAMPLE`, `EXPLAIN_ANALYSIS_TIME`) erhalten direkte Text-Antworten im Advisor-Hook, ohne AI-Call. Beispiel:
+
+- **EXPLAIN_UPLOAD_FORMATS**: "Ich akzeptiere PDF-Exposes, Excel-Preislisten (XLSX/CSV) und Bilddateien. Am besten lade Expose + Preisliste gemeinsam hoch."
+- **EXPLAIN_ANALYSIS_TIME**: "Die KI-Analyse dauert ca. 15-30 Sekunden je Dokument. Bei grossen Preislisten (70+ Einheiten) kann es bis zu 60 Sekunden dauern."
 
 ### Betroffene Dateien
+1. `src/manifests/armstrongManifest.ts` — 16 neue Actions + TOP30 erweitern
+2. `src/components/chat/ArmstrongChipBar.tsx` — Default-Chips erweitern
+3. `src/hooks/useArmstrongAdvisor.ts` — Welcome-Config + statische Responses
 
-| # | Datei | Aenderung |
-|---|---|---|
-| 1 | `src/pages/admin/desks/ProjektDesk.tsx` | entity_type-Filter entfernen, Feldnamen korrigieren, STATUS_MAP aktualisieren |
-| 2 | `src/pages/zone3/project-landing/ProjectLandingLayout.tsx` | Status-Filter auf draft+preview+active erweitern |
-| 3 | `src/pages/zone3/project-landing/ProjectLandingHome.tsx` | Status-Filter erweitern |
-| 4 | `src/pages/zone3/project-landing/ProjectLandingObjekt.tsx` | Status-Filter erweitern |
-| 5 | `src/pages/zone3/project-landing/ProjectLandingBeratung.tsx` | Status-Filter erweitern |
-| 6 | `src/pages/zone3/project-landing/ProjectLandingImpressum.tsx` | Status-Filter erweitern |
-| 7 | `src/pages/zone3/project-landing/ProjectLandingDatenschutz.tsx` | Status-Filter erweitern (falls vorhanden) |
-
-### Freeze-Status
-
-- ProjektDesk.tsx → Zone 1 Admin, NICHT gefroren
-- Zone 3 Dateien → NICHT gefroren
-- MOD-13 → Gefroren, aber LandingPageTab muss nicht geaendert werden (Badge-Warning ist kosmetisch)
+Keine Module-Freeze-Verletzung: Alle betroffenen Dateien liegen ausserhalb von Modul-Pfaden.
 
