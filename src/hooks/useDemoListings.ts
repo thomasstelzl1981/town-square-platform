@@ -20,10 +20,20 @@ import demoBerlinImg from '@/assets/demo/demo-berlin.jpg';
 import demoMunichImg from '@/assets/demo/demo-munich.jpg';
 import demoHamburgImg from '@/assets/demo/demo-hamburg.jpg';
 
-const DEMO_IMAGES: Record<string, string> = {
+export const DEMO_IMAGES: Record<string, string> = {
   'BER-01': demoBerlinImg,
   'MUC-01': demoMunichImg,
   'HH-01': demoHamburgImg,
+};
+
+/**
+ * Toggle-independent image map: property_id → bundled image URL.
+ * Use this to enrich DB listings with demo images regardless of GP-PORTFOLIO state.
+ */
+export const DEMO_PROPERTY_IMAGE_MAP: Record<string, string> = {
+  'd0000000-0000-4000-a000-000000000001': demoBerlinImg,
+  'd0000000-0000-4000-a000-000000000002': demoMunichImg,
+  'd0000000-0000-4000-a000-000000000003': demoHamburgImg,
 };
 
 // ============================================================================
