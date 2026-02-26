@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -14,7 +15,8 @@ import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { ImageSlotGrid, type ImageSlot } from '@/components/shared/ImageSlotGrid';
 import { useImageSlotUpload } from '@/hooks/useImageSlotUpload';
-import { Loader2, Save, User, Phone, MapPin, FileText, PenLine, Sparkles, Building2, Mail, Download, Monitor, Smartphone, Zap, WifiOff, Layout, Globe, Share, ExternalLink } from 'lucide-react';
+import { useDropzone } from 'react-dropzone';
+import { Loader2, Save, User, Phone, MapPin, FileText, PenLine, Sparkles, Building2, Mail, Download, Monitor, Smartphone, Zap, WifiOff, Layout, Globe, Share, ExternalLink, Camera, X } from 'lucide-react';
 import { BrandLinkWidget } from '@/components/dashboard/widgets/BrandLinkWidget';
 import { toast } from 'sonner';
 import { OutboundIdentityWidget } from '@/components/portal/OutboundIdentityWidget';
@@ -45,6 +47,77 @@ interface ProfileFormData {
   letterhead_iban: string;
   letterhead_bic: string;
   letterhead_website: string;
+}
+
+/** Compact circular avatar dropzone — replaces ImageSlotGrid for profile avatar */
+function AvatarDropzone({
+  avatarUrl,
+  displayName,
+  initials,
+  onUpload,
+  onDelete,
+  isUploading,
+}: {
+  avatarUrl: string | null;
+  displayName: string;
+  initials: string;
+  onUpload: (file: File) => void;
+  onDelete: () => void;
+  isUploading: boolean;
+}) {
+  const onDrop = useCallback((files: File[]) => {
+    if (files.length > 0 && !isUploading) onUpload(files[0]);
+  }, [onUpload, isUploading]);
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: { 'image/*': ['.png', '.jpg', '.jpeg', '.webp'] },
+    multiple: false,
+    disabled: isUploading,
+    noKeyboard: true,
+  });
+
+  return (
+    <div className="flex flex-col items-center gap-1.5 mb-4">
+      <div className="relative group">
+        <div
+          {...getRootProps()}
+          className={cn(
+            'rounded-full cursor-pointer transition-all',
+            isDragActive && 'ring-2 ring-primary ring-offset-2 scale-105',
+          )}
+        >
+          <input {...getInputProps()} />
+          <Avatar className="h-20 w-20 ring-2 ring-primary/10">
+            <AvatarImage src={avatarUrl || undefined} alt={displayName} />
+            <AvatarFallback className="text-xl bg-primary/5">{initials}</AvatarFallback>
+          </Avatar>
+          {/* Hover overlay */}
+          {!isUploading && (
+            <div className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+              <Camera className="h-5 w-5 text-white" />
+            </div>
+          )}
+          {isUploading && (
+            <div className="absolute inset-0 rounded-full bg-black/30 flex items-center justify-center">
+              <Loader2 className="h-5 w-5 text-white animate-spin" />
+            </div>
+          )}
+        </div>
+        {/* Delete badge */}
+        {avatarUrl && !isUploading && (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onDelete(); }}
+            className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        )}
+      </div>
+      <span className="text-[10px] text-muted-foreground">Profilbild</span>
+    </div>
+  );
 }
 
 /** Reusable widget wrapper matching glass-card design system */
@@ -422,25 +495,14 @@ export function ProfilTab() {
           {/* ── BASISDATEN ── */}
           <div>
             <p className={RECORD_CARD.SECTION_TITLE}>Persönliche Daten</p>
-            <div className="flex items-start gap-4 mb-4">
-              <Avatar className="h-16 w-16 ring-2 ring-primary/10">
-                <AvatarImage src={avatarDisplayUrl || undefined} alt={formData.display_name} />
-                <AvatarFallback className="text-lg bg-primary/5">
-                  {fullName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'U'}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex-1">
-                <ImageSlotGrid
-                  slots={AVATAR_SLOTS}
-                  images={{ avatar: avatarDisplayUrl }}
-                  onUpload={handleImageSlotUpload}
-                  onDelete={handleImageSlotDelete}
-                  uploadingSlot={imageUpload.uploadingSlot}
-                  columns={IMAGE_SLOT.COLUMNS_SINGLE}
-                  slotHeight={IMAGE_SLOT.HEIGHT}
-                />
-              </div>
-            </div>
+            <AvatarDropzone
+              avatarUrl={avatarDisplayUrl}
+              displayName={formData.display_name}
+              initials={fullName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'U'}
+              onUpload={(file) => handleImageSlotUpload('avatar', file)}
+              onDelete={() => handleImageSlotDelete('avatar')}
+              isUploading={imageUpload.uploadingSlot === 'avatar'}
+            />
             <div className={RECORD_CARD.FIELD_GRID}>
               <FormInput label="Vorname" name="first_name" value={formData.first_name}
                 onChange={e => updateField('first_name', e.target.value)} placeholder="Max" />
