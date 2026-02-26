@@ -5,7 +5,7 @@
   "freeze_criteria": "Spec vorhanden, Audit S1-S6 bestanden, produktionsreife Implementierung",
   "modules": {
     "MOD-00": { "frozen": true, "frozen_at": "2026-02-26T14:00:00.000Z", "reason": "Production freeze" },
-    "MOD-01": { "frozen": false, "frozen_at": "2026-02-27T00:00:00.000Z", "reason": "Unfrozen for image upload pipeline fix" },
+    "MOD-01": { "frozen": true, "frozen_at": "2026-02-26T20:00:00.000Z", "reason": "Production freeze" },
     "MOD-02": { "frozen": true, "frozen_at": "2026-02-26T14:00:00.000Z", "reason": "Production freeze" },
     "MOD-03": { "frozen": true, "frozen_at": "2026-02-26T14:00:00.000Z", "reason": "Production freeze" },
     "MOD-04": { "frozen": true, "frozen_at": "2026-02-26T17:35:00.000Z", "reason": "Re-frozen after upload constraint fixes" },
@@ -17,15 +17,15 @@
     "MOD-10": { "frozen": true, "frozen_at": "2026-02-26T14:00:00.000Z", "reason": "Production freeze" },
     "MOD-11": { "frozen": true, "frozen_at": "2026-02-26T14:00:00.000Z", "reason": "Production freeze" },
     "MOD-12": { "frozen": true, "frozen_at": "2026-02-26T14:00:00.000Z", "reason": "Production freeze" },
-    "MOD-13": { "frozen": false, "frozen_at": "2026-02-27T00:00:00.000Z", "reason": "Unfrozen for image upload pipeline fix" },
+    "MOD-13": { "frozen": true, "frozen_at": "2026-02-26T20:00:00.000Z", "reason": "Production freeze" },
     "MOD-14": { "frozen": true, "frozen_at": "2026-02-26T14:00:00.000Z", "reason": "Production freeze" },
     "MOD-15": { "frozen": true, "frozen_at": "2026-02-26T14:00:00.000Z", "reason": "Production freeze" },
     "MOD-16": { "frozen": true, "frozen_at": "2026-02-26T14:00:00.000Z", "reason": "Production freeze" },
     "MOD-17": { "frozen": true, "frozen_at": "2026-02-26T14:00:00.000Z", "reason": "Production freeze" },
     "MOD-18": { "frozen": true, "frozen_at": "2026-02-26T14:00:00.000Z", "reason": "Production freeze" },
     "MOD-19": { "frozen": true, "frozen_at": "2026-02-26T14:00:00.000Z", "reason": "Production freeze" },
-    "MOD-20": { "frozen": false, "frozen_at": "2026-02-26T19:50:00.000Z", "reason": "Unfrozen for widget-grid redesign" },
+    "MOD-20": { "frozen": true, "frozen_at": "2026-02-26T20:00:00.000Z", "reason": "Production freeze" },
     "MOD-21": { "frozen": true, "frozen_at": "2026-02-26T14:00:00.000Z", "reason": "Production freeze" },
-    "MOD-22": { "frozen": false, "frozen_at": "2026-02-27T00:00:00.000Z", "reason": "Unfrozen for image upload pipeline fix" }
+    "MOD-22": { "frozen": true, "frozen_at": "2026-02-26T20:00:00.000Z", "reason": "Production freeze" }
   }
 }
