@@ -20,7 +20,7 @@ export default function ProjectLandingDatenschutz() {
         .from('landing_pages')
         .select('id, project_id, privacy_text, footer_company_name')
         .eq('slug', slug)
-        .eq('status', 'active')
+        .in('status', ['draft', 'preview', 'active'])
         .maybeSingle();
       if (!lp?.project_id) return null;
 

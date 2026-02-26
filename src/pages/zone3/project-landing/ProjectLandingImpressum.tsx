@@ -21,7 +21,7 @@ export default function ProjectLandingImpressum() {
         .from('landing_pages')
         .select('id, project_id, imprint_text, footer_company_name')
         .eq('slug', slug)
-        .eq('status', 'active')
+        .in('status', ['draft', 'preview', 'active'])
         .maybeSingle();
       if (!lp?.project_id) return null;
 

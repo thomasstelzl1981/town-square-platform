@@ -31,7 +31,7 @@ export default function ProjectLandingLayout() {
           dev_projects!inner (id, name, city, seller_name, developer_context_id)
         `)
         .eq('slug', slug)
-        .eq('status', 'active')
+        .in('status', ['draft', 'preview', 'active'])
         .maybeSingle();
       if (error) {
         console.error('Landing page fetch error:', error);

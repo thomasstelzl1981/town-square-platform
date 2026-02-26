@@ -54,7 +54,7 @@ export default function ProjectLandingHome() {
         .from('landing_pages')
         .select('id, project_id, hero_headline, hero_subheadline, about_text')
         .eq('slug', slug)
-        .eq('status', 'active')
+        .in('status', ['draft', 'preview', 'active'])
         .maybeSingle();
 
       if (!lp?.project_id) return null;

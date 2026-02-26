@@ -30,7 +30,7 @@ export default function ProjectLandingObjekt() {
         .from('landing_pages')
         .select('id, project_id, about_text, location_description, highlights_json')
         .eq('slug', slug)
-        .eq('status', 'active')
+        .in('status', ['draft', 'preview', 'active'])
         .maybeSingle();
 
       if (!lp?.project_id) return null;
