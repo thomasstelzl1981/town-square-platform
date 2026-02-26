@@ -22,6 +22,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import { useInvestmentEngine, defaultInput, type CalculationInput } from '@/hooks/useInvestmentEngine';
+import { mapAfaModelToEngine } from '@/lib/mapAfaModel';
 import {
   MasterGraph,
   Haushaltsrechnung,
@@ -92,7 +93,7 @@ export default function InvestEngineExposePage() {
         equity: prev.equity || initialEquity,
         maritalStatus: prev.maritalStatus || initialMarital,
         hasChurchTax: prev.hasChurchTax ?? initialChurch,
-        afaModel: (project.afa_model as CalculationInput['afaModel']) ?? 'linear',
+        afaModel: mapAfaModelToEngine(project.afa_model),
         buildingShare: 1 - ((project.land_share_percent ?? 20) / 100),
         managementCostMonthly: unit.hausgeld ?? 25,
         afaRateOverride: (project as any).afa_rate_percent ?? undefined,

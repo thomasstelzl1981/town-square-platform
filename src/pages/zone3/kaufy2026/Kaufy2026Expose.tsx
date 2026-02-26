@@ -27,6 +27,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { useInvestmentEngine, defaultInput, CalculationInput } from '@/hooks/useInvestmentEngine';
+import { mapAfaModelToEngine } from '@/lib/mapAfaModel';
 import { useDemoListings } from '@/hooks/useDemoListings';
 import {
   MasterGraph,
@@ -227,15 +228,34 @@ export default function Kaufy2026Expose() {
     enabled: !!publicId,
   });
 
+  // Fetch property_accounting for AfA overrides (SSOT from Immobilienakte)
+  const { data: kaufyAccounting } = useQuery({
+    queryKey: ['property-accounting-kaufy', listing?.property_id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('property_accounting')
+        .select('afa_rate_percent, afa_model, land_share_percent, building_share_percent')
+        .eq('property_id', listing!.property_id)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!listing?.property_id,
+  });
+
   useEffect(() => {
     if (listing) {
       setParams(prev => ({
         ...prev,
         purchasePrice: listing.asking_price || 250000,
         monthlyRent: listing.monthly_rent || Math.round((listing.asking_price || 250000) * 0.004),
+        afaRateOverride: kaufyAccounting?.afa_rate_percent ?? undefined,
+        buildingShare: kaufyAccounting?.building_share_percent
+          ? kaufyAccounting.building_share_percent / 100
+          : 0.8,
+        afaModel: mapAfaModelToEngine(kaufyAccounting?.afa_model),
       }));
     }
-  }, [listing]);
+  }, [listing, kaufyAccounting]);
 
   useEffect(() => {
     if (params.purchasePrice > 0) {

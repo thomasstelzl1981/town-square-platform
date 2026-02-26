@@ -27,6 +27,7 @@ import { formatCurrency } from '@/lib/formatters';
 import { PartnerSearchForm, type PartnerSearchParams } from '@/components/vertriebspartner';
 import { InvestmentResultTile } from '@/components/investment/InvestmentResultTile';
 import { useInvestmentEngine, type CalculationInput, defaultInput } from '@/hooks/useInvestmentEngine';
+import { mapAfaModelToEngine } from '@/lib/mapAfaModel';
 import { usePartnerSelections } from '@/hooks/usePartnerListingSelections';
 import { fetchPropertyImages } from '@/lib/fetchPropertyImages';
 import { useDemoListings, deduplicateByField } from '@/hooks/useDemoListings';
@@ -228,11 +229,25 @@ const BeratungTab = () => {
       return;
     }
 
+    // Batch-fetch property_accounting for AfA overrides (SSOT from Immobilienakte)
+    const propertyIds = listingsToProcess.map(l => l.property_id).filter(Boolean);
+    const accountingMap = new Map<string, { afa_rate_percent: number | null; afa_model: string | null; building_share_percent: number | null }>();
+    if (propertyIds.length > 0) {
+      const { data: accountingRows } = await supabase
+        .from('property_accounting')
+        .select('property_id, afa_rate_percent, afa_model, building_share_percent')
+        .in('property_id', propertyIds);
+      for (const row of (accountingRows || [])) {
+        accountingMap.set(row.property_id, row);
+      }
+    }
+
     const newCache: Record<string, InvestmentMetrics> = {};
     
     await Promise.all(listingsToProcess.map(async (listing: RawListing) => {
       const monthlyRent = listing.annual_rent / 12;
       if (monthlyRent <= 0 || listing.asking_price <= 0) return;
+      const acct = listing.property_id ? accountingMap.get(listing.property_id) : undefined;
       
       const input: CalculationInput = {
         ...defaultInput,
@@ -242,6 +257,9 @@ const BeratungTab = () => {
         taxableIncome: searchParams.zve,
         maritalStatus: searchParams.maritalStatus,
         hasChurchTax: searchParams.hasChurchTax,
+        afaRateOverride: acct?.afa_rate_percent ?? undefined,
+        buildingShare: acct?.building_share_percent ? acct.building_share_percent / 100 : 0.8,
+        afaModel: mapAfaModelToEngine(acct?.afa_model),
       };
 
       const result = await calculate(input);
