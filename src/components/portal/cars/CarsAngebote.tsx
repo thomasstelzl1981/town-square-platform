@@ -2,6 +2,7 @@
  * CarsAngebote — Miete24 Auto-Abos + BMW/MINI Fokusmodelle (Helming & Sohn)
  * Data loaded from service_shop_products via useActiveServiceProducts
  */
+import { useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -19,6 +20,16 @@ export default function CarsAngebote() {
   const { data: bmwFokus = [], isLoading: loadingF } = useActiveServiceProducts('bmw-fokus');
 
   const isLoading = loadingM || loadingF;
+
+  const miete24Groups = useMemo(() => {
+    const order = ['SUV', 'Mittelklasse', 'Sport'];
+    const groups: Record<string, ServiceShopProduct[]> = {};
+    for (const p of miete24) {
+      const key = p.sub_category || 'Sonstige';
+      (groups[key] ??= []).push(p);
+    }
+    return order.filter((k) => groups[k]?.length).map((k) => ({ label: k, items: groups[k] }));
+  }, [miete24]);
 
   return (
     <PageShell>
@@ -51,38 +62,51 @@ export default function CarsAngebote() {
             <div />
           </ContentCard>
 
-          <WidgetGrid>
-            {miete24.map((p) => (
-              <WidgetCell key={p.id}>
-                <Card className="glass-card border-primary/10 hover:border-primary/30 transition-all group overflow-hidden h-full">
-                  <div className="relative h-[50%] bg-muted/20 flex items-center justify-center overflow-hidden p-4">
-                    <img src={p.image_url ?? ''} alt={p.name} className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-300" />
-                  </div>
-                  <CardContent className="p-3 space-y-2 h-[50%] flex flex-col justify-between">
-                    <div>
-                      <h3 className="font-semibold text-sm">{p.name}</h3>
-                      <div className="flex items-center gap-2 mt-1">
-                        {(p.metadata as any)?.fuel && <Badge variant="outline" className="text-[9px]">{(p.metadata as any).fuel}</Badge>}
-                        {(p.metadata as any)?.transmission && <Badge variant="outline" className="text-[9px]">{(p.metadata as any).transmission}</Badge>}
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between pt-2 border-t border-border/30">
-                      <div>
-                        <span className="text-[9px] text-muted-foreground">ab </span>
-                        <span className="text-lg font-bold">{p.price_label}</span>
-                        <span className="text-[10px] text-muted-foreground"> /Monat</span>
-                      </div>
-                      <Button size="sm" className="gap-1 text-xs" asChild>
-                        <a href={p.external_url ?? '#'} target="_blank" rel="noopener noreferrer">
-                          <ShoppingCart className="h-3 w-3" /> Abo
-                        </a>
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              </WidgetCell>
-            ))}
-          </WidgetGrid>
+          {miete24Groups.map((group) => (
+            <div key={group.label} className="space-y-2">
+              <h3 className="text-sm font-semibold text-muted-foreground tracking-wide uppercase">{group.label}</h3>
+              <WidgetGrid>
+                {group.items.map((p) => {
+                  const meta = (p.metadata ?? {}) as Record<string, unknown>;
+                  const badges = (meta.badges as string[]) ?? [];
+                  return (
+                    <WidgetCell key={p.id}>
+                      <Card className="glass-card border-primary/10 hover:border-primary/30 transition-all group overflow-hidden h-full">
+                        <div className="relative h-[50%] bg-muted/20 flex items-center justify-center overflow-hidden p-4">
+                          <img src={p.image_url ?? ''} alt={p.name} className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-300" />
+                          {p.badge && (
+                            <Badge variant="outline" className="absolute top-2 left-3 text-[9px] bg-background/80 backdrop-blur-sm">
+                              {p.badge}
+                            </Badge>
+                          )}
+                        </div>
+                        <CardContent className="p-3 space-y-2 h-[50%] flex flex-col justify-between">
+                          <div>
+                            <h3 className="font-semibold text-sm">{p.name}</h3>
+                            <div className="flex flex-wrap items-center gap-1 mt-1">
+                              {badges.map((b) => (
+                                <Badge key={b} variant="outline" className="text-[9px]">{b}</Badge>
+                              ))}
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between pt-2 border-t border-border/30">
+                            <div>
+                              <span className="text-lg font-bold">{p.price_label}</span>
+                            </div>
+                            <Button size="sm" className="gap-1 text-xs" asChild>
+                              <a href={p.external_url ?? '#'} target="_blank" rel="noopener noreferrer">
+                                <ShoppingCart className="h-3 w-3" /> Abo
+                              </a>
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </WidgetCell>
+                  );
+                })}
+              </WidgetGrid>
+            </div>
+          ))}
 
           <Separator className="my-2" />
         </>
