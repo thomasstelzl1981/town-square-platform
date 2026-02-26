@@ -302,11 +302,17 @@ export function ProfilTab() {
     if (!storagePath) return;
     const signedUrl = await imageUpload.getSignedUrl(storagePath);
     if (slotKey === 'avatar') {
-      updateField('avatar_url', storagePath);
+      const updatedData = { ...formData, avatar_url: storagePath };
+      setFormData(updatedData);
       setAvatarDisplayUrl(signedUrl);
+      // Auto-save avatar to DB immediately
+      updateProfile.mutate(updatedData);
     } else if (slotKey === 'logo') {
-      updateField('letterhead_logo_url', storagePath);
+      const updatedData = { ...formData, letterhead_logo_url: storagePath };
+      setFormData(updatedData);
       setLogoDisplayUrl(signedUrl);
+      // Auto-save logo to DB immediately
+      updateProfile.mutate(updatedData);
     }
   };
 
@@ -349,7 +355,8 @@ export function ProfilTab() {
           entityType="person"
           isOpen={isRecordOpen}
           onToggle={() => setIsRecordOpen(!isRecordOpen)}
-          thumbnailUrl={formData.avatar_url || undefined}
+          thumbnailUrl={avatarDisplayUrl || undefined}
+          onPhotoDrop={(file) => handleImageSlotUpload('avatar', file)}
           title={fullName}
           subtitle="Hauptperson"
           summary={[
@@ -379,7 +386,7 @@ export function ProfilTab() {
                   onUpload={handleImageSlotUpload}
                   uploadingSlot={imageUpload.uploadingSlot}
                   columns={IMAGE_SLOT.COLUMNS_SINGLE}
-                  slotHeight={IMAGE_SLOT.HEIGHT_COMPACT}
+                  slotHeight={IMAGE_SLOT.HEIGHT}
                 />
               </div>
             </div>
