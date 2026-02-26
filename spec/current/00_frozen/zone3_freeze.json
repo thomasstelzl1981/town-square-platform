@@ -3,7 +3,7 @@
   "updated_at": "2026-02-26T15:00:00.000Z",
   "description": "SSOT for Zone 3 website freeze states. AI MUST check this file before modifying any file in src/pages/zone3/*. If a site is frozen, changes are NOT ALLOWED without explicit unfreeze.",
   "sites": {
-    "KAUFY": { "frozen": true, "frozen_at": "2026-02-26T15:00:00.000Z", "path": "src/pages/zone3/kaufy2026/*", "reason": "Production freeze" },
+    "KAUFY": { "frozen": false, "frozen_at": "2026-02-26T15:00:00.000Z", "unfrozen_at": "2026-02-26T16:00:00.000Z", "path": "src/pages/zone3/kaufy2026/*", "reason": "Unfrozen for Exposé consolidation" },
     "SOT": { "frozen": true, "frozen_at": "2026-02-26T15:00:00.000Z", "path": "src/pages/zone3/sot/*", "reason": "Production freeze" },
     "FUTUREROOM": { "frozen": true, "frozen_at": "2026-02-26T15:00:00.000Z", "path": "src/pages/zone3/futureroom/*", "reason": "Production freeze" },
     "ACQUIARY": { "frozen": true, "frozen_at": "2026-02-26T15:00:00.000Z", "path": "src/pages/zone3/acquiary/*", "reason": "Production freeze" },
