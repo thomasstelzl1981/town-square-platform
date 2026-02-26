@@ -71,6 +71,7 @@ export function MobileHomeChatView({ onBackToModules }: MobileHomeChatViewProps)
                 onConfirm={advisor.confirmAction}
                 onCancel={advisor.cancelAction}
                 isExecuting={advisor.isExecuting}
+                onSendEmail={advisor.sendEmail}
               />
             ))}
             
