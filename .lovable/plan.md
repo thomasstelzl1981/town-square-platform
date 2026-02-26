@@ -1,81 +1,81 @@
 
 
-# Analyse: Upload-Constraint-Probleme im gesamten System
+# Amcrest Kamera-Integration in MOD-20 Smart Home
 
-## Aktuelle DB-Constraints
+## Technische Herausforderung
 
-**document_links.link_status:** `linked`, `pending`, `archived`
-**document_links.object_type:** `property`, `unit`, `contact`, `finance_case`, `service_case`, `vehicle`, `insurance`, `lease`, `profil`, `project`, `pet_provider`
-**documents.extraction_status:** `pending`, `processing`, `done`, `failed`, `skipped`
-**documents.source:** `upload`, `resend`, `caya`, `dropbox`, `onedrive`, `gdrive`, `import`, `email`, `project_intake`
+Die App laeuft ueber HTTPS. Direkte HTTP-Aufrufe an eine lokale IP-Kamera werden vom Browser als **Mixed Content** blockiert. Loesung: Eine Backend-Funktion als Proxy, die den Snapshot von der Kamera holt und als Bild zurueckgibt.
 
-## Gefundene Constraint-Verletzungen
+**Voraussetzung:** Die Kamera muss vom Internet erreichbar sein (Port-Forwarding im Router auf Port 80/443 der Kamera, oder DynDNS/VPN).
 
-### PROBLEM 1: `link_status: 'active'` in MOD04DocumentPicker (MOD-07)
-**Datei:** `src/components/finanzierung/MOD04DocumentPicker.tsx` Zeile 130
-**Wert:** `link_status: 'active'` — nicht erlaubt (erlaubt: `linked`, `pending`, `archived`)
-**Fix:** Aendern auf `'linked'`
+## Architektur
 
-### PROBLEM 2: `link_status: 'current'` in sot-inbound-receive (Edge Function)
-**Datei:** `supabase/functions/sot-inbound-receive/index.ts` Zeilen 345 + 629
-**Wert:** `link_status: 'current'` — nicht erlaubt
-**Fix:** Aendern auf `'linked'`
-
-### PROBLEM 3: `object_type: 'postservice_delivery'` in sot-inbound-receive
-**Datei:** `supabase/functions/sot-inbound-receive/index.ts` Zeile 343
-**Wert:** nicht im Constraint erlaubt
-**Fix:** Constraint erweitern um `'postservice_delivery'`, `'inbound_email'`, `'finance_request'`
-
-### PROBLEM 4: `object_type: 'inbound_email'` in sot-inbound-receive
-**Datei:** `supabase/functions/sot-inbound-receive/index.ts` Zeile 627
-**Wert:** nicht im Constraint erlaubt
-**Fix:** Im selben Constraint-Update wie Problem 3
-
-### PROBLEM 5: `object_type: 'finance_request'` in MOD04DocumentPicker
-**Datei:** `src/components/finanzierung/MOD04DocumentPicker.tsx` Zeile 128
-**Wert:** nicht im Constraint erlaubt (wird auch in FinanceDocumentsManager + FinanceStorageTree gelesen)
-**Fix:** Im selben Constraint-Update
-
-### PROBLEM 6: `source: 'cloud_sync'` in sot-cloud-sync (Edge Function)
-**Datei:** `supabase/functions/sot-cloud-sync/index.ts` Zeile 318
-**Wert:** `source: 'cloud_sync'` — nicht im documents.source_check erlaubt
-**Fix:** Constraint erweitern um `'cloud_sync'`
-
-### PROBLEM 7: `extraction_status: 'completed'` in sot-nk-beleg-parse
-**Datei:** `supabase/functions/sot-nk-beleg-parse/index.ts` Zeile 210
-**Wert:** `'completed'` — nicht erlaubt (erlaubt: `done`)
-**Fix:** Aendern auf `'done'`
-
-## Umsetzungsplan
-
-### Schritt 1: DB-Migration — Constraints erweitern
-```sql
--- object_type erweitern
-ALTER TABLE public.document_links DROP CONSTRAINT document_links_object_type_check;
-ALTER TABLE public.document_links ADD CONSTRAINT document_links_object_type_check
-  CHECK (object_type = ANY(ARRAY[
-    'property','unit','contact','finance_case','service_case',
-    'vehicle','insurance','lease','profil','project','pet_provider',
-    'postservice_delivery','inbound_email','finance_request'
-  ]));
-
--- source erweitern
-ALTER TABLE public.documents DROP CONSTRAINT documents_source_check;
-ALTER TABLE public.documents ADD CONSTRAINT documents_source_check
-  CHECK (source = ANY(ARRAY[
-    'upload','resend','caya','dropbox','onedrive','gdrive',
-    'import','email','project_intake','cloud_sync'
-  ]));
+```text
+Browser (HTTPS)
+    │
+    ▼
+Edge Function: sot-camera-snapshot
+    │  (holt Bild von Kamera-URL)
+    ▼
+Amcrest Kamera (HTTP, via Port-Forwarding)
+    │
+    ▼
+Snapshot JPEG → zurueck an Browser als base64 oder blob
 ```
 
-### Schritt 2: Code-Fixes (3 Dateien)
-1. `src/components/finanzierung/MOD04DocumentPicker.tsx` — `link_status: 'active'` auf `'linked'`
-2. `supabase/functions/sot-inbound-receive/index.ts` — 2x `link_status: 'current'` auf `'linked'`
-3. `supabase/functions/sot-nk-beleg-parse/index.ts` — `extraction_status: 'completed'` auf `'done'`
+## Umsetzung (4 Schritte)
 
-### Nicht betroffen (korrekt)
-- `useUniversalUpload.ts` — nutzt `'pending'` + `'skipped'` (korrekt)
-- `useImageSlotUpload.ts` — bereits repariert (`'linked'`, `'skipped'`, `'archived'`)
-- `sot-cloud-sync` extraction_status `'pending'` — korrekt
-- `useExposeUpload.ts` — schreibt nur in Storage, keine documents/document_links Inserts
+### Schritt 1: DB-Tabelle `cameras`
+```sql
+CREATE TABLE public.cameras (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL DEFAULT auth.uid(),
+  name TEXT NOT NULL DEFAULT 'Kamera 1',
+  snapshot_url TEXT NOT NULL,        -- z.B. http://meine-ip:8080/cgi-bin/snapshot.cgi
+  auth_user TEXT,                     -- HTTP Basic Auth Username
+  auth_pass TEXT,                     -- HTTP Basic Auth Passwort (verschluesselt speichern waere besser)
+  refresh_interval_sec INT DEFAULT 30,
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+ALTER TABLE public.cameras ENABLE ROW LEVEL SECURITY;
+-- RLS: Nur eigene Kameras sehen/bearbeiten
+CREATE POLICY "cameras_own" ON public.cameras FOR ALL USING (auth.uid() = user_id);
+```
+
+### Schritt 2: Edge Function `sot-camera-snapshot`
+- Nimmt `camera_id` als Parameter
+- Liest Kamera-URL + Credentials aus `cameras`-Tabelle
+- Macht HTTP-Request an die Snapshot-URL mit Basic Auth
+- Gibt JPEG-Bild als Response zurueck (Content-Type: image/jpeg)
+- Validiert dass die Kamera dem anfragenden User gehoert
+
+### Schritt 3: SmartHomeTile.tsx umbauen (MOD-20)
+- **Kamera hinzufuegen Dialog:** Name, Snapshot-URL, Username, Passwort, Refresh-Intervall
+- **Kamera-Karten:** Fuer jede Kamera eine Card mit:
+  - Live-Snapshot (wird alle X Sekunden refreshed via Edge Function)
+  - Name + Status-Badge (online/offline)
+  - Bearbeiten / Loeschen Buttons
+- **Empty State** bleibt fuer User ohne Kameras
+
+### Schritt 4: Hook `useCameras.ts`
+- CRUD fuer `cameras`-Tabelle
+- `useSnapshot(cameraId)` — ruft Edge Function auf, gibt Blob-URL zurueck
+- Auto-Refresh via `setInterval` basierend auf `refresh_interval_sec`
+
+## Dateien
+
+| Datei | Aktion |
+|-------|--------|
+| `supabase/migrations/xxx.sql` | Tabelle `cameras` anlegen |
+| `supabase/functions/sot-camera-snapshot/index.ts` | Proxy Edge Function |
+| `src/hooks/useCameras.ts` | CRUD + Snapshot-Hook |
+| `src/pages/portal/miety/tiles/SmartHomeTile.tsx` | UI mit Kamera-Grid + Dialog |
+| `src/components/miety/AddCameraDialog.tsx` | Formular fuer Kamera-Konfiguration |
+
+## Wichtig fuer den User
+
+- Router muss **Port-Forwarding** eingerichtet haben (externer Port → Kamera-IP:80)
+- Oder: DynDNS-Dienst nutzen (z.B. `meinekamera.duckdns.org:8080`)
+- Ohne oeffentliche Erreichbarkeit funktioniert der Proxy nicht — die Edge Function laeuft in der Cloud, nicht im lokalen Netzwerk
 
