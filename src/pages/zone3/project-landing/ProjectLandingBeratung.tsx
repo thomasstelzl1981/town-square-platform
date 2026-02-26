@@ -27,7 +27,7 @@ export default function ProjectLandingBeratung() {
         .from('landing_pages')
         .select('id, project_id, contact_email, contact_phone, organization_id')
         .eq('slug', slug)
-        .eq('status', 'active')
+        .in('status', ['draft', 'preview', 'active'])
         .maybeSingle();
       if (!lp?.project_id) return null;
 

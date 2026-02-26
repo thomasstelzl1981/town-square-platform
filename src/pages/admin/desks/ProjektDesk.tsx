@@ -65,8 +65,7 @@ function ProjektDashboard() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('landing_pages' as any)
-        .select('id, status')
-        .eq('entity_type', 'dev_project');
+        .select('id, status');
       if (error) throw error;
       return data ?? [];
     },
@@ -305,8 +304,7 @@ function LandingPagesTab() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('landing_pages' as any)
-        .select('*')
-        .eq('entity_type', 'dev_project')
+        .select('*, dev_projects!inner(name, city)')
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data ?? [];
@@ -316,9 +314,10 @@ function LandingPagesTab() {
   if (isLoading) return <Loading />;
 
   const STATUS_MAP: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
-    published: { label: 'Live', variant: 'default' },
-    draft: { label: 'Entwurf', variant: 'secondary' },
-    archived: { label: 'Archiviert', variant: 'outline' },
+    active: { label: 'Live', variant: 'default' },
+    preview: { label: 'Vorschau', variant: 'secondary' },
+    draft: { label: 'Entwurf', variant: 'outline' },
+    locked: { label: 'Gesperrt', variant: 'destructive' },
   };
 
   return (
@@ -336,19 +335,21 @@ function LandingPagesTab() {
         ) : (
           <Table>
             <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Slug</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Erstellt</TableHead>
-              </TableRow>
+                <TableRow>
+                    <TableHead>Headline</TableHead>
+                    <TableHead>Projekt</TableHead>
+                    <TableHead>Slug</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Erstellt</TableHead>
+                  </TableRow>
             </TableHeader>
             <TableBody>
               {pages.map((page: any) => {
                 const sm = STATUS_MAP[page.status] || { label: page.status, variant: 'outline' as const };
                 return (
                   <TableRow key={page.id}>
-                    <TableCell className="font-medium">{page.name || page.title || '–'}</TableCell>
+                    <TableCell className="font-medium">{page.hero_headline || page.slug || '–'}</TableCell>
+                    <TableCell className="text-muted-foreground text-sm">{page.dev_projects?.name || '–'}</TableCell>
                     <TableCell className="text-muted-foreground font-mono text-xs">{page.slug || '–'}</TableCell>
                     <TableCell>
                       <Badge variant={sm.variant} className="text-xs">{sm.label}</Badge>
