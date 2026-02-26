@@ -12,7 +12,8 @@ import { DESIGN, RECORD_CARD } from '@/config/designManifest';
 import { sanitizeFileName, UPLOAD_BUCKET } from '@/config/storageManifest';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
-import { FileUploader } from '@/components/shared/FileUploader';
+import { ImageSlotGrid, type ImageSlot } from '@/components/shared/ImageSlotGrid';
+import { useImageSlotUpload } from '@/hooks/useImageSlotUpload';
 import { Loader2, Save, User, Phone, MapPin, FileText, PenLine, Sparkles, Building2, Mail, Download, Monitor, Smartphone, Zap, WifiOff, Layout, Globe, Share, ExternalLink } from 'lucide-react';
 import { BrandLinkWidget } from '@/components/dashboard/widgets/BrandLinkWidget';
 import { toast } from 'sonner';
@@ -271,41 +272,46 @@ export function ProfilTab() {
     updateProfile.mutate(formData);
   };
 
-  const handleAvatarUpload = async (files: File[]) => {
-    if (files.length === 0) return;
-    if (isDevelopmentMode && !user?.id) { toast.info('Avatar-Upload im Entwicklungsmodus nicht verfügbar'); return; }
-    if (!user?.id || !activeTenantId) { toast.error('Kein aktiver Mandant – Upload nicht möglich'); return; }
-    const file = files[0];
-    const fileExt = sanitizeFileName(file.name).split('.').pop() || 'jpg';
-    const filePath = `${activeTenantId}/MOD_01/avatars/${user.id}_avatar.${fileExt}`;
-    try {
-      const { error: uploadError } = await supabase.storage.from(UPLOAD_BUCKET).upload(filePath, file, { upsert: true });
-      if (uploadError) throw uploadError;
-      const { getCachedSignedUrl } = await import('@/lib/imageCache');
-      const signedUrl = await getCachedSignedUrl(filePath, 'tenant-documents');
-      if (!signedUrl) throw new Error('Signed URL failed');
-      updateField('avatar_url', signedUrl);
-      toast.success('Avatar hochgeladen');
-    } catch { toast.error('Avatar-Upload fehlgeschlagen'); }
+  // ── Image Slot Upload (Avatar + Logo) ──
+  const imageUpload = useImageSlotUpload({
+    moduleCode: 'MOD-01',
+    entityId: user?.id || 'dev-user',
+    tenantId: activeTenantId || '',
+    subPath: 'avatars',
+  });
+
+  const [avatarDisplayUrl, setAvatarDisplayUrl] = React.useState<string | null>(null);
+  const [logoDisplayUrl, setLogoDisplayUrl] = React.useState<string | null>(null);
+
+  // Resolve signed URLs for existing storage paths on load
+  React.useEffect(() => {
+    if (formData.avatar_url && !formData.avatar_url.startsWith('http')) {
+      imageUpload.getSignedUrl(formData.avatar_url).then(url => url && setAvatarDisplayUrl(url));
+    } else {
+      setAvatarDisplayUrl(formData.avatar_url);
+    }
+    if (formData.letterhead_logo_url && !formData.letterhead_logo_url.startsWith('http')) {
+      imageUpload.getSignedUrl(formData.letterhead_logo_url).then(url => url && setLogoDisplayUrl(url));
+    } else {
+      setLogoDisplayUrl(formData.letterhead_logo_url);
+    }
+  }, [formData.avatar_url, formData.letterhead_logo_url]);
+
+  const handleImageSlotUpload = async (slotKey: string, file: File) => {
+    const storagePath = await imageUpload.uploadToSlot(slotKey, file);
+    if (!storagePath) return;
+    const signedUrl = await imageUpload.getSignedUrl(storagePath);
+    if (slotKey === 'avatar') {
+      updateField('avatar_url', storagePath);
+      setAvatarDisplayUrl(signedUrl);
+    } else if (slotKey === 'logo') {
+      updateField('letterhead_logo_url', storagePath);
+      setLogoDisplayUrl(signedUrl);
+    }
   };
 
-  const handleLogoUpload = async (files: File[]) => {
-    if (files.length === 0) return;
-    if (isDevelopmentMode && !user?.id) { toast.info('Logo-Upload im Entwicklungsmodus nicht verfügbar'); return; }
-    if (!user?.id || !activeTenantId) { toast.error('Kein aktiver Mandant – Upload nicht möglich'); return; }
-    const file = files[0];
-    const fileExt = sanitizeFileName(file.name).split('.').pop() || 'png';
-    const filePath = `${activeTenantId}/MOD_01/avatars/${user.id}_letterhead-logo.${fileExt}`;
-    try {
-      const { error: uploadError } = await supabase.storage.from(UPLOAD_BUCKET).upload(filePath, file, { upsert: true });
-      if (uploadError) throw uploadError;
-      const { getCachedSignedUrl } = await import('@/lib/imageCache');
-      const signedUrl = await getCachedSignedUrl(filePath, 'tenant-documents');
-      if (!signedUrl) throw new Error('Signed URL failed');
-      updateField('letterhead_logo_url', signedUrl);
-      toast.success('Logo hochgeladen');
-    } catch { toast.error('Logo-Upload fehlgeschlagen'); }
-  };
+  const AVATAR_SLOTS: ImageSlot[] = [{ key: 'avatar', label: 'Profilbild' }];
+  const LOGO_SLOTS: ImageSlot[] = [{ key: 'logo', label: 'Briefkopf-Logo' }];
 
   const generateSignatureSuggestion = () => {
     const parts: string[] = ['Mit freundlichen Grüßen', ''];
@@ -361,18 +367,19 @@ export function ProfilTab() {
             <p className={RECORD_CARD.SECTION_TITLE}>Persönliche Daten</p>
             <div className="flex items-start gap-4 mb-4">
               <Avatar className="h-16 w-16 ring-2 ring-primary/10">
-                <AvatarImage src={formData.avatar_url || undefined} alt={formData.display_name} />
+                <AvatarImage src={avatarDisplayUrl || undefined} alt={formData.display_name} />
                 <AvatarFallback className="text-lg bg-primary/5">
                   {fullName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'U'}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1">
-                <FileUploader
-                  onFilesSelected={handleAvatarUpload}
-                  accept="image/*"
-                  label="Foto ändern"
-                  hint="JPG, PNG (max. 2MB)"
-                  maxSize={2 * 1024 * 1024}
+                <ImageSlotGrid
+                  slots={AVATAR_SLOTS}
+                  images={{ avatar: avatarDisplayUrl }}
+                  onUpload={handleImageSlotUpload}
+                  uploadingSlot={imageUpload.uploadingSlot}
+                  columns={1}
+                  slotHeight={80}
                 />
               </div>
             </div>
@@ -453,11 +460,17 @@ export function ProfilTab() {
           <div>
             <p className={RECORD_CARD.SECTION_TITLE}>Briefkopf-Daten</p>
             <div className="flex items-start gap-4 mb-4">
-              <img src={formData.letterhead_logo_url || defaultLetterheadLogo} alt="Logo"
+              <img src={logoDisplayUrl || defaultLetterheadLogo} alt="Logo"
                 className="h-12 w-auto object-contain border rounded-lg p-1 bg-background" />
               <div className="flex-1">
-                <FileUploader onFilesSelected={handleLogoUpload} accept="image/*"
-                  label="Logo hochladen" hint="PNG transparent empfohlen" maxSize={2 * 1024 * 1024} />
+                <ImageSlotGrid
+                  slots={LOGO_SLOTS}
+                  images={{ logo: logoDisplayUrl }}
+                  onUpload={handleImageSlotUpload}
+                  uploadingSlot={imageUpload.uploadingSlot}
+                  columns={1}
+                  slotHeight={80}
+                />
               </div>
             </div>
             <div className={RECORD_CARD.FIELD_GRID}>

@@ -3,7 +3,7 @@
  * Editierbar: Bilder, Beschreibung, Kontakt/Öffnungszeiten
  * Read-Only: Services + Preise (aus PMLeistungen)
  */
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Save, FileText, Phone, Tag, Euro, ExternalLink, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,6 +28,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { DEMO_PM_GALLERY_IMAGES } from '@/engines/demoData/petManagerDemo';
+import { useImageSlotUpload } from '@/hooks/useImageSlotUpload';
+import { UPLOAD_BUCKET } from '@/config/storageManifest';
+import { ImageSlotGrid, type ImageSlot } from '@/components/shared/ImageSlotGrid';
 const FACILITY_TYPES: Record<string, string> = {
   home_based: 'Heimbasiert',
   dedicated_facility: 'Eigene Einrichtung',
@@ -64,7 +67,6 @@ export default function PMProfil() {
   const [showPublishDialog, setShowPublishDialog] = useState(false);
   const [pendingPublishState, setPendingPublishState] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [form, setForm] = useState<{
     company_name: string;
     bio: string;
@@ -140,7 +142,73 @@ export default function PMProfil() {
   const activeServices = services.filter((s: any) => s.is_active);
 
   const dbPhotos: string[] = (provider?.gallery_images as string[]) || [];
-  const galleryPhotos: string[] = dbPhotos.length > 0 ? dbPhotos : [...DEMO_PM_GALLERY_IMAGES];
+  const isUsingDemo = dbPhotos.length === 0;
+  const galleryPaths: string[] = isUsingDemo ? [...DEMO_PM_GALLERY_IMAGES] : dbPhotos;
+
+  // Resolve storage paths to signed URLs for display
+  const [resolvedGalleryUrls, setResolvedGalleryUrls] = useState<Record<string, string>>({});
+
+  const galleryImageUpload = useImageSlotUpload({
+    moduleCode: 'MOD-22',
+    entityId: provider?.id || '',
+    tenantId: activeTenantId || '',
+    subPath: 'gallery',
+  });
+
+  useEffect(() => {
+    const resolvePaths = async () => {
+      const urls: Record<string, string> = {};
+      for (let i = 0; i < galleryPaths.length; i++) {
+        const path = galleryPaths[i];
+        const slotKey = `gallery_${i}`;
+        // Demo paths start with /demo or https, real paths don't
+        if (path.startsWith('http') || path.startsWith('/')) {
+          urls[slotKey] = path;
+        } else {
+          const url = await galleryImageUpload.getSignedUrl(path);
+          if (url) urls[slotKey] = url;
+        }
+      }
+      setResolvedGalleryUrls(urls);
+    };
+    resolvePaths();
+  }, [galleryPaths.join(',')]);
+
+  const GALLERY_SLOTS: ImageSlot[] = Array.from({ length: 4 }, (_, i) => ({
+    key: `gallery_${i}`,
+    label: i === 0 ? 'Cover' : `Bild ${i + 1}`,
+  }));
+
+  const handleGallerySlotUpload = async (slotKey: string, file: File) => {
+    if (!provider || !activeTenantId) return;
+    const storagePath = await galleryImageUpload.uploadToSlot(slotKey, file);
+    if (!storagePath) return;
+
+    // Build updated paths array (storage paths, not URLs)
+    const newPaths = [...(isUsingDemo ? [] : dbPhotos)];
+    const slotIndex = parseInt(slotKey.replace('gallery_', ''));
+    // Extend array if needed
+    while (newPaths.length <= slotIndex) newPaths.push('');
+    newPaths[slotIndex] = storagePath;
+
+    const { error } = await supabase
+      .from('pet_providers')
+      .update({
+        gallery_images: newPaths,
+        cover_image_url: newPaths[0] || storagePath,
+      })
+      .eq('id', provider.id);
+    if (error) {
+      toast.error('Fehler beim Speichern: ' + error.message);
+      return;
+    }
+    queryClient.invalidateQueries({ queryKey: ['my_pet_provider'] });
+    // Update local display URL
+    const signedUrl = await galleryImageUpload.getSignedUrl(storagePath);
+    if (signedUrl) {
+      setResolvedGalleryUrls(prev => ({ ...prev, [slotKey]: signedUrl }));
+    }
+  };
 
   const handleTogglePublish = (checked: boolean) => {
     setPendingPublishState(checked);
@@ -166,45 +234,7 @@ export default function PMProfil() {
     }
   };
 
-  const handlePhotoUpload = async (file: File) => {
-    if (!provider || !activeTenantId) return;
-    setUploading(true);
-    try {
-      const index = galleryPhotos.length;
-      const path = `${activeTenantId}/pet-provider/${provider.id}/gallery_${index}_${Date.now()}.jpg`;
-      const { error: uploadError } = await supabase.storage
-        .from('tenant-documents')
-        .upload(path, file, { upsert: true });
-      if (uploadError) throw uploadError;
-
-      const { data: signedData } = await supabase.storage
-        .from('tenant-documents')
-        .createSignedUrl(path, 60 * 60 * 24 * 365);
-      if (!signedData?.signedUrl) throw new Error('Signed URL konnte nicht erstellt werden');
-
-      const newPhotos = [...galleryPhotos, signedData.signedUrl];
-      const { error } = await supabase
-        .from('pet_providers')
-        .update({
-          gallery_images: newPhotos,
-          cover_image_url: newPhotos[0],
-        })
-        .eq('id', provider.id);
-      if (error) throw error;
-      queryClient.invalidateQueries({ queryKey: ['my_pet_provider'] });
-      toast.success('Bild hochgeladen');
-    } catch (e: any) {
-      toast.error('Upload fehlgeschlagen: ' + e.message);
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const handleGalleryClick = () => {
-    if (galleryPhotos.length < 4) {
-      fileInputRef.current?.click();
-    }
-  };
+  // Legacy handlePhotoUpload removed — now uses handleGallerySlotUpload via ImageSlotGrid
 
   if (isLoading) {
     return (
@@ -284,28 +314,22 @@ export default function PMProfil() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* 1. Bilder — RecordCardGallery Grid */}
+      {/* 1. Bilder — ImageSlotGrid mit Drag & Drop */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-sm font-medium">Bilder</CardTitle>
         </CardHeader>
         <CardContent>
-          <div onClick={handleGalleryClick} className={uploading ? 'opacity-50 pointer-events-none' : ''}>
-            <RecordCardGallery photos={galleryPhotos} maxPhotos={4} />
-          </div>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) handlePhotoUpload(file);
-              e.target.value = '';
-            }}
+          <ImageSlotGrid
+            slots={GALLERY_SLOTS}
+            images={resolvedGalleryUrls}
+            onUpload={handleGallerySlotUpload}
+            uploadingSlot={galleryImageUpload.uploadingSlot}
+            columns={4}
+            slotHeight={140}
           />
           <p className="text-xs text-muted-foreground mt-2">
-            Klicken Sie auf einen freien Slot, um ein Bild hochzuladen. Das erste Bild wird als Cover verwendet.
+            Bilder per Drag & Drop oder Klick hochladen. Das erste Bild wird als Cover verwendet.
           </p>
         </CardContent>
       </Card>
