@@ -21221,8 +21221,16 @@ export type Database = {
         Args: { doc_id: string }
         Returns: boolean
       }
+      is_kaufy_storage_object: {
+        Args: { object_name: string }
+        Returns: boolean
+      }
       is_parent_access_blocked: {
         Args: { target_org_id: string }
+        Returns: boolean
+      }
+      is_partner_network_storage_object: {
+        Args: { object_name: string }
         Returns: boolean
       }
       is_platform_admin:
