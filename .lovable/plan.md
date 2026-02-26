@@ -1,62 +1,98 @@
 
 
-# Analyse: Schutzluecken und technische Optionen
+# Konsolidierungsstatus: Vollstaendige Pruefung
 
-## Ist-Zustand
+## Was ist umgesetzt?
 
-Der aktuelle Freeze schuetzt **ausschliesslich Modul-Pages und Modul-Components** (Zone 2). Drei Kategorien von Code, die fuer die Stabilitaet der fertigen Features entscheidend sind, liegen **ausserhalb** des Freeze-Perimeters:
+### Phase 1: Orphan Cleanup — KOMPLETT ERLEDIGT
+| Datei | Status |
+|-------|--------|
+| `src/components/zone3/kaufy/ArmstrongSidebar.tsx` | Geloescht |
+| `src/components/zone3/kaufy/InvestmentSearchCard.tsx` | Geloescht |
+| `src/components/zone3/kaufy/KaufyPropertyCard.tsx` | Geloescht |
+| `src/components/zone3/kaufy/PerspektivenAccordion.tsx` | Geloescht |
+| `src/components/zone3/kaufy/ZahlenSektion.tsx` | Geloescht |
+| `src/components/immobilienakte/UnitDossierView.tsx` | Geloescht |
+| `kaufy/index.ts` — reduziert auf KaufyInputBar | Erledigt |
+| `immobilienakte/index.ts` — Export entfernt | Erledigt |
+
+### Phase 2: Expose-Konsolidierung — KOMPLETT ERLEDIGT (5/5)
+| Seite | Nutzt SSOT? | Hook | Zeilen |
+|-------|-------------|------|--------|
+| InvestmentExposePage (MOD-08) | `InvestmentExposeView` | `useExposeListing` | 53 |
+| PartnerExposePage (MOD-09) | `InvestmentExposeView` | `useExposeListing` | 53 |
+| Kaufy2026Expose (Zone 3) | `InvestmentExposeView` | `useExposeListing` | 145 |
+| InvestEngineExposePage (MOD-13) | `InvestmentExposeView` | `useProjectUnitExpose` | 84 |
+| ProjectLandingExpose (Zone 3 Landing) | `InvestmentExposeView` | `useProjectUnitExpose` | 130 |
+
+### Shared Helper — ERLEDIGT
+- `src/lib/createPropertyFromUnit.ts` — Erstellt, wird von `CreatePropertyFromUnits` und `SalesApprovalSection` genutzt.
+
+### Freeze-Status — KORREKT
+- Alle Module (MOD-00 bis MOD-22) frozen
+- Alle Zone 3 Sites frozen
+- Alle Infra-Bereiche frozen (inkl. `shared_investment`)
+
+---
+
+## Was ist noch offen?
+
+### 1. Governance-Regel F (TSX Creation Check) — OFFEN
+Muss manuell in Custom Knowledge eingetragen werden. Der Text wurde bereits formuliert:
 
 ```text
-┌─────────────────────────────────────────────────────────┐
-│  GESCHUETZT (Module Freeze)                             │
-│  src/pages/portal/<modul>/*                             │
-│  src/components/<modul>/*                               │
-├─────────────────────────────────────────────────────────┤
-│  NICHT GESCHUETZT (Regressions-Risiko)                  │
-│                                                         │
-│  1. src/engines/*          ← Berechnungslogik           │
-│  2. src/pages/zone3/*      ← Kaufy, SoT, Miety, etc.   │
-│  3. src/goldenpath/*       ← Guard, Resolvers, Engine   │
-│  4. src/manifests/*        ← Routing, Tiles, Areas      │
-│  5. src/hooks/*            ← Shared Hooks               │
-│  6. src/components/investment/*  ← Shared UI            │
-│  7. supabase/functions/*   ← Edge Functions             │
-└─────────────────────────────────────────────────────────┘
+F. MANDATORY RULE – TSX CREATION CHECK
+
+Before creating ANY new .tsx file, you MUST:
+
+1. Search for existing components with similar purpose using
+   search_files with patterns matching the intended functionality
+   (e.g., "ImageGallery", "SearchCard", "ResultTile", "Calculator")
+
+2. Check these directories for reusable SSOT components:
+   - src/components/shared/ — Cross-module UI patterns
+   - src/components/investment/ — Investment/Expose SSOT
+   - src/components/ui/ — Base UI primitives
+   - src/components/immobilienakte/ — Property dossier blocks
+
+3. If a component with >70% functional overlap exists:
+   - REFUSE creation and say:
+     "COMPONENT DUPLICATE: [proposed file] overlaps with [existing file].
+      Extend the existing component with props/variants instead of
+      creating a new file."
+   - Propose a props-based extension of the existing component
+
+4. If the new component serves a genuinely new purpose, proceed
+   but register it in the appropriate index.ts barrel export.
+
+This rule prevents the drift from 2 versions to 5 versions that
+caused the Expose regression chain.
 ```
 
-## Vorgeschlagene Loesung: Erweiterter Freeze mit 3 neuen Layern
+Du musst diesen Text selbst in dein Custom Knowledge einfuegen (Einstellungen des Projekts). Ich kann Custom Knowledge nicht direkt aendern.
 
-### Layer 1: Engine Freeze (`engines_freeze.json`)
+### 2. Keine weiteren Code-Luecken gefunden
+- Alle 5 Expose-Seiten sind Thin Wrappers (53-145 Zeilen) auf die SSOT-Komponente `InvestmentExposeView` (388 Zeilen).
+- Beide Hooks (`useExposeListing` fuer DB-Listings, `useProjectUnitExpose` fuer Projekt-Einheiten) sind korrekt getrennt und nutzen dasselbe `ExposeListingData`-Interface.
+- `createPropertyFromUnit` erzeugt Properties mit allen Feldern, die `useExposeListing` downstream braucht (`annual_income`, `year_built`, `heating_type`, etc.).
+- Die Barrel-Exports in `investment/index.ts` exportieren `InvestmentExposeView` und `ExposeListingData`.
+- Keine verwaisten Dateien mehr im Kaufy- oder Immobilienakte-Verzeichnis.
 
-Neue Datei `spec/current/00_frozen/engines_freeze.json` mit derselben Struktur wie `modules_freeze.json`. Jede Engine (ENG-AKQUISE, ENG-FINANCE, ENG-PROVISION, etc.) kann individuell eingefroren werden. Pfade: `src/engines/<name>/*`.
+### 3. Moeglicher Verbesserungspunkt (kein Blocker)
+`InvestmentExposeView` listet MOD-13 und Zone 3 Project Landing noch nicht im JSDoc-Header (Zeile 7-8). Das ist rein kosmetisch, aber fuer Konsistenz sollte der Kommentar aktualisiert werden, wenn das naechste Mal einer der beteiligten Bereiche unfrozen wird.
 
-AI-Instruktion in Custom Knowledge erweitert: Vor jeder Aenderung an `src/engines/*` muss `engines_freeze.json` geprueft werden.
+---
 
-### Layer 2: Zone 3 Freeze (`zone3_freeze.json`)
+## Zusammenfassung
 
-Neue Datei `spec/current/00_frozen/zone3_freeze.json`. Jede Website (KAUFY, SOT, MIETY, FUTUREROOM, ACQUIARY, LENNOX) kann individuell eingefroren werden. Pfade: `src/pages/zone3/<site>/*`.
+```text
+ERLEDIGT:
+✅ Phase 1: 6 verwaiste Dateien geloescht, Barrel-Exports bereinigt
+✅ Phase 2: 5/5 Expose-Seiten auf InvestmentExposeView SSOT konsolidiert
+✅ Shared Helper createPropertyFromUnit erstellt und integriert
+✅ Alle Module und Bereiche korrekt re-frozen
 
-### Layer 3: Infrastructure Freeze (`infra_freeze.json`)
-
-Neue Datei `spec/current/00_frozen/infra_freeze.json` fuer:
-- `goldenpath` -- `src/goldenpath/*`
-- `manifests` -- `src/manifests/*`
-- `shared_investment` -- `src/components/investment/*`
-- `shared_listings` -- `src/components/listings/*`
-- `edge_functions` -- `supabase/functions/*`
-- `validation` -- `src/validation/*`
-
-### Aenderung an Custom Knowledge (Regel A)
-
-Regel A erweitern um drei zusaetzliche Pruefschritte:
-1. `engines_freeze.json` pruefen bei Aenderungen in `src/engines/*`
-2. `zone3_freeze.json` pruefen bei Aenderungen in `src/pages/zone3/*`
-3. `infra_freeze.json` pruefen bei Aenderungen an Golden Path, Manifests, Shared Components, Edge Functions
-
-## Umsetzungsschritte
-
-1. Erstelle `spec/current/00_frozen/engines_freeze.json` mit allen 12 Engines, initial `frozen: true`
-2. Erstelle `spec/current/00_frozen/zone3_freeze.json` mit allen 6 Websites, initial `frozen: true`
-3. Erstelle `spec/current/00_frozen/infra_freeze.json` mit den 6 Infrastruktur-Bereichen, initial `frozen: true`
-4. Aktualisiere die Custom Knowledge Regel A um die drei neuen Freeze-Checks
+OFFEN:
+⬜ Regel F in Custom Knowledge eintragen (manuell durch dich)
+```
 
