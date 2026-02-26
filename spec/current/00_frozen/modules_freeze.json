@@ -22,7 +22,7 @@
     "MOD-15": { "frozen": true, "frozen_at": "2026-02-26T14:00:00.000Z", "reason": "Production freeze" },
     "MOD-16": { "frozen": true, "frozen_at": "2026-02-26T14:00:00.000Z", "reason": "Production freeze" },
     "MOD-17": { "frozen": true, "frozen_at": "2026-02-26T14:00:00.000Z", "reason": "Production freeze" },
-    "MOD-18": { "frozen": true, "frozen_at": "2026-02-26T14:00:00.000Z", "reason": "Production freeze" },
+    "MOD-18": { "frozen": false, "frozen_at": "2026-02-26T14:00:00.000Z", "reason": "Unfrozen for KrankenversicherungTab CRUD rewrite" },
     "MOD-19": { "frozen": true, "frozen_at": "2026-02-26T14:00:00.000Z", "reason": "Production freeze" },
     "MOD-20": { "frozen": true, "frozen_at": "2026-02-26T20:00:00.000Z", "reason": "Production freeze" },
     "MOD-21": { "frozen": true, "frozen_at": "2026-02-26T14:00:00.000Z", "reason": "Production freeze" },
