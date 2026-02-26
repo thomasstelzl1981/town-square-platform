@@ -1,62 +1,30 @@
 
 
-## Landing Page Builder: KI-Magie und Daten-Uebernahme
+## Problem
 
-### Ist-Zustand (Probleme)
+Die Vorschau-iframe hat `h-[70vh]` mit `overflow-hidden` — das erzeugt ein kleines Fenster mit doppeltem Scrolling (iframe scrollt intern + Seite scrollt). Das widerspricht unserer Widget-Scrolling-Policy (keine internen Scrollbereiche).
 
-1. **Erstellen** erzeugt nur einen leeren DB-Eintrag mit Projektname + Stadt — keine Beschreibungen, keine Bilder, kein Impressum
-2. **Kein Zuruecksetzen** — existierende Landing Page kann nicht auf Entwurf zurueckgesetzt oder geloescht werden
-3. **Bilder** kommen aus dem alten `project_images` JSON-Feld statt aus dem neuen `document_links`-System (Multi-Image)
-4. **Beschreibung** aus dem Datenblatt (`full_description`, `location_description`) wird nicht in die Landing Page uebernommen
-5. **Impressum/Datenschutz** sind leer — `developer_contexts`-Daten werden nicht beim Erstellen geladen
-6. **Kein Logo-Upload** — es gibt keinen Slot fuer ein Projektlogo/Partnerlogo
-7. **Editor** hat keinen "KI-Website optimieren"-Button
+Ausserdem: Der "KI-Texte generieren"-Button generiert nur Text. Der User will KI-gestuetzte Website-**Qualitaet** — also dass die bestehende `sot-website-ai-generate` Edge Function genutzt wird, um eine komplette, gut designte Website-Struktur zu erzeugen (Sections, Layout, Tonalitaet), nicht nur Fliesstext.
 
-### Plan (6 Aenderungen)
+## Aenderungen
 
-#### 1. Landing Page Erstellung mit Daten-Uebernahme (`LandingPageTab.tsx`)
+### 1. Vorschau ohne Scroll-Kaefig (`LandingPageTab.tsx`)
 
-`handleCreate` wird erweitert: Nach dem Insert werden automatisch alle verfuegbaren Daten aus `dev_projects` und `developer_contexts` in die `landing_pages`-Zeile geschrieben:
+- `h-[70vh] overflow-hidden` entfernen
+- Stattdessen: `aspect-[16/10] w-full` — die iframe waechst mit der Seitenbreite, kein internes Scrolling
+- Die iframe selbst behaelt `scrolling="no"` und wird per CSS-Scale verkleinert dargestellt (Desktop-Simulation), damit die gesamte Landing Page auf einen Blick sichtbar ist
+- Alternative: Die Vorschau einfach als **Link-Button** "Vorschau im neuen Tab oeffnen" darstellen und den iframe komplett entfernen — das ist sauberer und vermeidet Scroll-Probleme gaenzlich
 
-- `about_text` ← `full_description`
-- `location_description` ← `location_description` 
-- `hero_subheadline` ← Adresse + PLZ + Stadt
-- `footer_company_name` ← `developer_contexts.name + legal_form`
-- `footer_address` ← `developer_contexts` Adressdaten
-- `contact_email` / `contact_phone` ← aus `developer_contexts`
-- `highlights_json` ← `features` Array aus `dev_projects`
+### 2. KI-Website-Button umbenennen und erweitern (`LandingPageTab.tsx`)
 
-#### 2. Zuruecksetzen-Button (`LandingPageTab.tsx`)
-
-Neuer Button "Zuruecksetzen" in der Status-Bar neben "Vorschau". Loescht die Landing-Page-Zeile aus der DB und invalidiert den Query-Cache — danach erscheint wieder die "Website erstellen"-Ansicht.
-
-#### 3. Logo-Slot im Datenblatt (`ProjectDataSheet.tsx`)
-
-`IMAGE_SLOTS` wird um `{ key: 'logo', label: 'Logo', desc: 'Projekt-/Partnerlogo fuer Website' }` erweitert (5 Slots statt 4). Das Logo wird auf der Landing Page im Header angezeigt.
-
-#### 4. Bilder aus document_links statt project_images (Zone 3 Seiten)
-
-`ProjectLandingHome.tsx` und `ProjectLandingObjekt.tsx` werden angepasst: Statt `project_images` JSON-Feld werden Bilder ueber `document_links` + `documents` + signierte Storage-URLs geladen (gleiche Logik wie `loadSlotImages`). So sind Multi-Image-Uploads sofort auf der Website sichtbar.
-
-#### 5. KI-Website-Optimierung Button (`LandingPageTab.tsx`)
-
-Neuer Button "KI-Texte generieren" im Editor-Bereich. Ruft `sot-project-description` auf (existiert bereits) und schreibt die generierten Texte direkt in die Landing-Page-Felder. Falls noch keine Beschreibung im Projekt existiert, wird sie zuerst generiert und dann uebernommen.
-
-#### 6. Impressum/Datenschutz aus developer_contexts (Zone 3)
-
-`ProjectLandingImpressum.tsx` und `ProjectLandingDatenschutz.tsx` laden bereits den `developer_context`. Aktuell fehlt aber die Befuellung beim Erstellen. Die `handleCreate`-Funktion laedt den `developer_context` des Projekts und schreibt `imprint_text` und `privacy_text` als vorausgefuellte Texte in die Landing Page.
+- Button von "KI-Texte generieren" zu **"KI-Website optimieren"** umbenennen
+- Statt nur `sot-project-description` aufzurufen, auch `sot-website-ai-generate` aufrufen (existiert bereits), das eine komplette Section-Struktur mit professionellen Texten, Hero, Features, About, Services, Contact, Footer generiert
+- Die generierten Sections werden in `website_sections` gespeichert und sind sofort in der Vorschau sichtbar
+- Dabei wird die `template_id` aus dem aktuellen Design-Preset uebergeben (modern/classic/elegant etc.)
 
 ### Betroffene Dateien
 
 | Datei | Aenderung |
 |-------|----------|
-| `src/pages/portal/projekte/LandingPageTab.tsx` | handleCreate mit Datenpopulation, Reset-Button, KI-Button |
-| `src/components/projekte/ProjectDataSheet.tsx` | Logo-Slot hinzufuegen |
-| `src/pages/zone3/project-landing/ProjectLandingHome.tsx` | Bilder aus document_links laden |
-| `src/pages/zone3/project-landing/ProjectLandingObjekt.tsx` | Bilder aus document_links laden |
-| `src/pages/zone3/project-landing/ProjectLandingLayout.tsx` | Logo im Header anzeigen |
-
-### Freeze-Check
-
-Alle Dateien gehoeren zu MOD-13 (Projekte) oder Zone 3 Project-Landing — beides nicht eingefroren.
+| `src/pages/portal/projekte/LandingPageTab.tsx` | iframe-Container: Scroll-Kaefig entfernen, Vollbreite oder Tab-oeffnen; KI-Button erweitern |
 
