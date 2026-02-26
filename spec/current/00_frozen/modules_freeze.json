@@ -21,7 +21,7 @@
     "MOD-14": { "frozen": true, "frozen_at": "2026-02-26T14:00:00.000Z", "reason": "Production freeze" },
     "MOD-15": { "frozen": true, "frozen_at": "2026-02-26T14:00:00.000Z", "reason": "Production freeze" },
     "MOD-16": { "frozen": true, "frozen_at": "2026-02-26T14:00:00.000Z", "reason": "Production freeze" },
-    "MOD-17": { "frozen": true, "frozen_at": "2026-02-26T14:00:00.000Z", "reason": "Production freeze" },
+    "MOD-17": { "frozen": false, "frozen_at": "2026-02-27T03:00:00.000Z", "reason": "Unfrozen for CarsPrivatjet UI upgrade (sub_category grouping)" },
     "MOD-18": { "frozen": false, "frozen_at": "2026-02-26T14:00:00.000Z", "reason": "Unfrozen for KrankenversicherungTab CRUD rewrite" },
     "MOD-19": { "frozen": true, "frozen_at": "2026-02-26T14:00:00.000Z", "reason": "Production freeze" },
     "MOD-20": { "frozen": false, "frozen_at": "2026-02-27T02:00:00.000Z", "reason": "Unfrozen for Zuhause widget grid bugfix (user-scoped storage, init guard, sync fix)" },
