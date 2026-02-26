@@ -4,13 +4,14 @@
  * Thin wrapper around InvestmentExposeView (SSOT).
  * Specific: back-link to /portal/investments/suche, URL params auto-calc, top-20 sticky.
  */
-import { useCallback } from 'react';
-import { useParams } from 'react-router-dom';
+import { useCallback, useMemo } from 'react';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { InvestmentExposeView } from '@/components/investment';
 import { useExposeListing } from '@/hooks/useExposeListing';
 
 export default function InvestmentExposePage() {
   const { publicId } = useParams<{ publicId: string }>();
+  const [urlParams] = useSearchParams();
 
   const {
     listing,
@@ -30,6 +31,17 @@ export default function InvestmentExposePage() {
 
   const toggleFavorite = useCallback(() => setIsFavorite(prev => !prev), [setIsFavorite]);
 
+  // Preserve search params in back-link so user returns to their results
+  const backTo = useMemo(() => {
+    const preserved = new URLSearchParams();
+    for (const key of ['zvE', 'equity', 'status', 'kirchensteuer', 'searched']) {
+      const val = urlParams.get(key);
+      if (val) preserved.set(key, val);
+    }
+    const qs = preserved.toString();
+    return `/portal/investments/suche${qs ? `?${qs}` : ''}`;
+  }, [urlParams]);
+
   return (
     <InvestmentExposeView
       listing={listing ?? null}
@@ -40,7 +52,7 @@ export default function InvestmentExposePage() {
       onParamsChange={setParams}
       grossYield={grossYield}
       backLink={{
-        to: '/portal/investments/suche',
+        to: backTo,
         label: 'Zurück zur Suche',
       }}
       stickyTopClass="top-20"
