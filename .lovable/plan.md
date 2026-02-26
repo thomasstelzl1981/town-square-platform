@@ -1,88 +1,54 @@
 
 
-# Analyse & Reparaturplan: MOD-08 Bilder + MOD-04 Demo-Daten + Freeze
+# Plan: Armstrong-Begrüßungsmail an rr@unitys.com
 
-## Kernbefunde
+## Vorhaben
 
-### Problem 1: Bilder fehlen in Investment-Cards (Screenshots 1-3)
+Eine professionelle Begrüßungsmail von Armstrong (KI-Assistent) an Ralph Reinhold (rr@unitys.com) senden, über die System-E-Mail-Adresse `ralph.reinhold@systemofatown.com` via die Edge Function `sot-admin-mail-send`.
 
-Die DB hat 3 aktive Listings mit den Demo-Property-IDs (`d0000000-...`). Diese haben **0 document_links Records** -- also keine Bilder in der DB.
+## Erkannte Daten
 
-Die Bilder existieren als gebundelte JPGs in `src/assets/demo/` (demo-berlin.jpg, demo-munich.jpg, demo-hamburg.jpg). Die Anreicherung in `SucheTab.tsx` (Zeile 244-257) funktioniert so:
+- **Empfänger:** rr@unitys.com (Ralph Reinhold)
+- **Rolle:** super_manager bei UNITYS GmbH (Tenant 406f5f7a)
+- **User-ID:** dd7f4f61-c423-4cac-8b51-d3420c77287a
+- **Zugangsdaten:** E-Mail rr@unitys.com (Passwort muss aus DB/Auth bekannt sein — wir teilen die E-Mail-Adresse mit und weisen darauf hin, das Passwort NICHT zu ändern)
 
-```text
-DB-Listings laden → mergedListings:
-  1. demoListings aus useDemoListings() holen
-  2. DB-Listings mit demoListings per property_id matchen
-  3. Wenn DB-Listing kein Bild hat UND demoMatch ein Bild hat → Bild uebernehmen
-```
+## Problem: Absender-Adresse
 
-**Das Problem:** `useDemoListings()` liefert nur Daten wenn `GP-PORTFOLIO` Toggle **aktiv** ist. Wenn der Toggle AUS ist, ist `demoListings` leer, und die Merge-Logik findet keine Bilder zum Anreichern.
+Die Edge Function `sot-admin-mail-send` sendet aktuell mit dem festen Absender `System of a Town <noreply@systemofatown.de>`. Die gewünschte Absenderadresse `ralph.reinhold@systemofatown.com` ist dort nicht konfiguriert. Zwei Optionen:
 
-**Die DB-Listings sind aber echte Datensaetze** (im Demo-Tenant c3123104), die unabhaengig vom Toggle geladen werden. Sie brauchen IMMER Bilder.
+1. **Mail trotzdem über die bestehende Funktion senden** — Absender wird `noreply@systemofatown.de`, im Text wird klar, dass Armstrong im Auftrag von Ralph schreibt
+2. **Absender in der Edge Function anpassen** — erfordert dass `ralph.reinhold@systemofatown.com` als verifizierte Domain/Adresse bei Resend hinterlegt ist
 
-**Fix:** In `SucheTab.tsx` die Image-Anreicherung von der Toggle-Logik entkoppeln. Fuer bekannte Demo-Property-IDs (`d0000000-...`) die gebundelte `DEMO_IMAGES` Map direkt verwenden, unabhaengig davon ob `GP-PORTFOLIO` aktiv ist. Die `DEMO_IMAGES` Map und die Property-Code-Zuordnung aus `useDemoListings.ts` exportieren und in SucheTab importieren.
+**Empfehlung:** Option 1 verwenden, da die Resend-Domain `systemofatown.de` bereits verifiziert ist. Im E-Mail-Text wird Armstrong sich im Auftrag von Ralph vorstellen.
 
-Konkret in der `mergedListings` useMemo (Zeile 244-257):
-- Nach dem Demo-Match-Check: Wenn immer noch kein Bild, pruefen ob `property_id` in `DEMO_PROPERTY_IDS` liegt
-- Wenn ja: Property-Code ermitteln (`BER-01`, `MUC-01`, `HH-01`) und das passende bundled Image direkt zuweisen
-- Dafuer eine kleine Map exportieren: `DEMO_PROPERTY_IMAGE_MAP` die property_id → bundled image URL mappt
+## E-Mail-Inhalt (von Armstrong formuliert)
 
-### Problem 2: Hardcodierte Demo-Werte in PortfolioTab (Screenshot 4)
+**Betreff:** Willkommen bei System of a Town — Dein neuer KI-Assistent Armstrong stellt sich vor
 
-`src/pages/portal/immobilien/PortfolioTab.tsx`, Zeilen 725-741: Das "Familie Mustermann" Widget zeigt hardcodierte Werte (3 Einheiten, 850k Verkehrswert, 520k Restschuld, 330k Nettovermoegen).
+**Inhalt (gekürzte Zusammenfassung):**
 
-Im Golden Tenant (`a0000000-...`) gibt es 0 Properties, aber das Widget zeigt trotzdem Werte. Im Produktions-Tenant (`406f5f7a`, UNITYS GmbH) gibt es ebenfalls 0 Properties.
+Armstrong begrüßt Ralph herzlich im Team und stellt sich als persönlicher KI-Assistent vor. Die Mail enthält:
 
-**Fix:** Die hardcodierten Zahlen durch dynamische Aggregation aus den tatsaechlich vorhandenen Demo-Properties ersetzen. Wenn keine Demo-Properties vorhanden sind, Widget ausblenden oder "0" zeigen.
+- Herzliche Begrüßung und Teamaufnahme
+- Vorstellung von Armstrong als KI-Copilot
+- **Links:** systemofatown.com + kaufy.immo
+- **Zugangscode:** 2710 für die Website
+- **Login-Daten:** rr@unitys.com + Hinweis, Passwort NICHT zu ändern
+- **Modulübersicht** mit allen relevanten Modulen:
+  - MOD-01 Stammdaten, MOD-02 KI Office (E-Mail, Brief, Kontakte, Kalender, Videocalls)
+  - MOD-03 DMS, MOD-04 Immobilien, MOD-07 Finanzierung
+  - MOD-08 Investment-Suche, MOD-18 Finanzen, MOD-19 Photovoltaik
+  - MOD-16 Shop, MOD-15 Fortbildung, MOD-20 Miety (Home)
+  - Partner-Module: MOD-09-14, MOD-17, MOD-21-22
+- Abschluss mit Angebot zur Unterstützung
 
-### Problem 3: Alle Module-Freezes aufgehoben
+## Umsetzungsschritt
 
-`modules_freeze.json` hat alle 23 Module auf `frozen: false` gesetzt. Das war fuer die Upload-Harmonisierung noetig, aber der Freeze wurde danach nicht wiederhergestellt.
+1. Edge Function `sot-admin-mail-send` aufrufen via `curl_edge_functions` mit dem fertigen HTML-Body
+2. Die Funktion speichert die Mail in `admin_outbound_emails` und sendet sie über Resend
 
-**Fix:** Alle Module ausser MOD-01 (Stammdaten), MOD-13 (Projekte) und MOD-22 (Pet Manager) zurueck auf `frozen: true` setzen. Diese drei bleiben offen, weil die Upload-Harmonisierung dort die Hook-Parameter angepasst hat.
+## Risiko
 
-### Problem 4: MOD-09 Beratung -- KEIN Auto-Calculate
-
-Zur Klarstellung: MOD-09 Beratung funktioniert korrekt nach Design. Der Nutzer gibt seine Daten ein und klickt "Ergebnisse anzeigen". Es gibt kein Auto-Calculate und soll auch keines geben. Die 0-Euro-Anzeige auf Screenshot 2 zeigt den Zustand VOR der Berechnung -- das ist korrektes Verhalten.
-
----
-
-## Implementierungsschritte
-
-### Schritt 1: DEMO_IMAGES Map exportieren und Image-Fallback in SucheTab fixen
-
-**Datei 1:** `src/hooks/useDemoListings.ts`
-- `DEMO_IMAGES` Map exportieren (aktuell nur intern)
-- Neue exportierte Map `DEMO_PROPERTY_IMAGE_MAP` anlegen: `property_id → bundled image URL`
-
-**Datei 2:** `src/pages/portal/investments/SucheTab.tsx`
-- Import `DEMO_PROPERTY_IMAGE_MAP` aus `useDemoListings`
-- In `mergedListings` useMemo: Nach dem bestehenden Demo-Match-Check, wenn Listing immer noch kein `hero_image_path` hat, pruefen ob `property_id` in `DEMO_PROPERTY_IMAGE_MAP` liegt und das Bild direkt zuweisen
-- Das macht die Bilder unabhaengig vom GP-PORTFOLIO Toggle verfuegbar fuer DB-Listings
-
-### Schritt 2: PortfolioTab Demo-Widget dynamisieren
-
-**Datei:** `src/pages/portal/immobilien/PortfolioTab.tsx` (Zeilen 725-741)
-- Hardcodierte Werte (3, 850000, 520000, 330000) ersetzen durch Aggregation aus `unitsWithProperties` gefiltert auf Demo-Property-IDs
-- Wenn keine Demo-Properties vorhanden: Widget trotzdem anzeigen aber mit 0-Werten, oder besser: Widget nur anzeigen wenn tatsaechlich Demo-Properties existieren
-
-### Schritt 3: Module-Freeze wiederherstellen
-
-**Datei:** `spec/current/00_frozen/modules_freeze.json`
-- Alle Module auf `frozen: true` setzen
-- Ausnahmen: MOD-01, MOD-13, MOD-22 bleiben `frozen: false` (Upload-Harmonisierung aktiv)
-- Grund-Text: "Re-frozen after upload harmonization complete"
-
----
-
-## Risikobewertung
-
-| Schritt | Risiko | Begruendung |
-|---------|--------|-------------|
-| 1 - Image Fallback | NIEDRIG | Nur eine Map exportieren und eine Bedingung in useMemo ergaenzen. Kein Schema, kein DB-Change |
-| 2 - Portfolio Widget | NIEDRIG | Nur Zahlenwerte ersetzen, kein Strukturchange |
-| 3 - Freeze wiederherstellen | NIEDRIG | Nur JSON-Werte aendern |
-
-Keine DB-Migrationen, keine RLS-Changes, keine neuen Abhaengigkeiten. Reine Frontend-Fixes.
+NIEDRIG — Kein Code-Change nötig, nur ein API-Call an die bestehende Edge Function.
 
