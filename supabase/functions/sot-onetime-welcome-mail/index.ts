@@ -24,18 +24,30 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Check if already sent (idempotency guard)
+    // Parse optional forward_to from body
+    let forwardTo: string | null = null;
+    let forwardName: string | null = null;
+    try {
+      const body = await req.json();
+      forwardTo = body.forward_to || null;
+      forwardName = body.forward_name || null;
+    } catch { /* no body is fine */ }
+
+    const recipientEmail = forwardTo || "rr@unitys.com";
+    const recipientName = forwardName || (forwardTo ? forwardTo : "Ralph Reinhold");
+
+    // Idempotency guard per recipient
     const { data: existing } = await supabase
       .from("admin_outbound_emails")
       .select("id")
-      .eq("to_email", "rr@unitys.com")
+      .eq("to_email", recipientEmail)
       .eq("subject", "Willkommen bei System of a Town — Dein neuer KI-Assistent Armstrong stellt sich vor")
       .eq("status", "sent")
       .maybeSingle();
 
     if (existing) {
       return new Response(
-        JSON.stringify({ success: true, message: "Already sent", email_id: existing.id }),
+        JSON.stringify({ success: true, message: "Already sent to " + recipientEmail, email_id: existing.id }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -50,14 +62,14 @@ serve(async (req) => {
     const { data: emailRecord, error: insertError } = await supabase
       .from("admin_outbound_emails")
       .insert({
-        to_email: "rr@unitys.com",
-        to_name: "Ralph Reinhold",
+        to_email: recipientEmail,
+        to_name: recipientName,
         subject: "Willkommen bei System of a Town — Dein neuer KI-Assistent Armstrong stellt sich vor",
         body_html: bodyHtml,
         body_text: bodyText,
         routing_token: routingToken,
         status: "queued",
-        created_by: "d028bc99-6e29-4fa4-b038-d03015faf222", // Thomas Stelzl
+        created_by: "d028bc99-6e29-4fa4-b038-d03015faf222",
       })
       .select()
       .single();
@@ -76,7 +88,7 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         from: "Armstrong · System of a Town <noreply@systemofatown.com>",
-        to: "Ralph Reinhold <rr@unitys.com>",
+        to: `${recipientName} <${recipientEmail}>`,
         reply_to: "ralph.reinhold@systemofatown.com",
         subject: "Willkommen bei System of a Town — Dein neuer KI-Assistent Armstrong stellt sich vor",
         html: bodyHtml,
