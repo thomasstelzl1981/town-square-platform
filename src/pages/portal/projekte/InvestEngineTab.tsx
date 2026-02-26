@@ -25,6 +25,7 @@ import { useDevProjects } from '@/hooks/useDevProjects';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useInvestmentEngine, defaultInput, type CalculationInput, type CalculationResult } from '@/hooks/useInvestmentEngine';
+import { mapAfaModelToEngine } from '@/lib/mapAfaModel';
 import { ProjectCard } from '@/components/projekte/ProjectCard';
 import { InvestPreislisteTable } from '@/components/projekte/InvestPreislisteTable';
 import { LoadingState } from '@/components/shared/LoadingState';
@@ -106,7 +107,7 @@ export default function InvestEngineTab() {
     const newCache: Record<string, CalculationResult['summary']> = {};
 
     // Project-level defaults
-    const afaModel = (fullProject.afa_model as CalculationInput['afaModel']) ?? 'linear';
+    const afaModel = mapAfaModelToEngine(fullProject.afa_model);
     const buildingShare = 1 - ((fullProject.land_share_percent ?? 20) / 100);
 
     await Promise.all(realUnits.map(async (unit) => {

@@ -28,6 +28,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import { useInvestmentEngine, defaultInput, CalculationInput } from '@/hooks/useInvestmentEngine';
+import { mapAfaModelToEngine } from '@/lib/mapAfaModel';
 import {
   MasterGraph,
   Haushaltsrechnung,
@@ -207,16 +208,35 @@ export default function InvestmentExposePage() {
     enabled: !!publicId,
   });
 
-  // Initialize params with listing data
+  // Fetch property_accounting for AfA overrides (SSOT from Immobilienakte)
+  const { data: accountingData } = useQuery({
+    queryKey: ['property-accounting-expose', listing?.property_id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('property_accounting')
+        .select('afa_rate_percent, afa_model, land_share_percent, building_share_percent')
+        .eq('property_id', listing!.property_id)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!listing?.property_id,
+  });
+
+  // Initialize params with listing data + accounting overrides
   useEffect(() => {
     if (listing) {
       setParams(prev => ({
         ...prev,
         purchasePrice: listing.asking_price || 250000,
         monthlyRent: listing.monthly_rent || Math.round((listing.asking_price || 250000) * 0.004),
+        afaRateOverride: accountingData?.afa_rate_percent ?? undefined,
+        buildingShare: accountingData?.building_share_percent
+          ? accountingData.building_share_percent / 100
+          : 0.8,
+        afaModel: mapAfaModelToEngine(accountingData?.afa_model),
       }));
     }
-  }, [listing]);
+  }, [listing, accountingData]);
 
   // Manual calculation trigger (no auto-start)
   const [hasCalculated, setHasCalculated] = useState(false);

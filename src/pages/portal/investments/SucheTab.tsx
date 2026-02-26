@@ -30,6 +30,7 @@ import {
 import { cn } from '@/lib/utils';
 import { MediaWidgetGrid } from '@/components/shared/MediaWidgetGrid';
 import { useInvestmentEngine, type CalculationInput, defaultInput } from '@/hooks/useInvestmentEngine';
+import { mapAfaModelToEngine } from '@/lib/mapAfaModel';
 import { useInvestmentFavorites, useToggleInvestmentFavorite, type SearchParams } from '@/hooks/useInvestmentFavorites';
 import { useIsMobile } from '@/hooks/use-mobile';
 
@@ -281,12 +282,25 @@ export default function SucheTab() {
       return;
     }
 
+    // Batch-fetch property_accounting for all property_ids (SSOT for AfA)
+    const propertyIds = allListingsToProcess.map(l => l.property_id).filter(Boolean) as string[];
+    const accountingMap = new Map<string, { afa_rate_percent: number | null; afa_model: string | null; building_share_percent: number | null }>();
+    if (propertyIds.length > 0) {
+      const { data: accountingRows } = await supabase
+        .from('property_accounting')
+        .select('property_id, afa_rate_percent, afa_model, building_share_percent')
+        .in('property_id', propertyIds);
+      for (const row of (accountingRows || [])) {
+        accountingMap.set(row.property_id, row);
+      }
+    }
+
     // Calculate metrics for ALL listings (DB + demo) in parallel
     const newCache: Record<string, any> = {};
     
     await Promise.all(allListingsToProcess.map(async (listing: PublicListing) => {
-      const loanAmount = listing.asking_price - equity;
       const monthlyRent = listing.monthly_rent_total || (listing.asking_price * 0.04 / 12);
+      const acct = listing.property_id ? accountingMap.get(listing.property_id) : undefined;
       
       const input: CalculationInput = {
         ...defaultInput,
@@ -296,6 +310,9 @@ export default function SucheTab() {
         taxableIncome: zve,
         maritalStatus,
         hasChurchTax,
+        afaRateOverride: acct?.afa_rate_percent ?? undefined,
+        buildingShare: acct?.building_share_percent ? acct.building_share_percent / 100 : 0.8,
+        afaModel: mapAfaModelToEngine(acct?.afa_model),
       };
 
       const result = await calculate(input);
