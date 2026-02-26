@@ -24,7 +24,7 @@
     "MOD-17": { "frozen": true, "frozen_at": "2026-02-26T14:00:00.000Z", "reason": "Production freeze" },
     "MOD-18": { "frozen": true, "frozen_at": "2026-02-26T14:00:00.000Z", "reason": "Production freeze" },
     "MOD-19": { "frozen": true, "frozen_at": "2026-02-26T14:00:00.000Z", "reason": "Production freeze" },
-    "MOD-20": { "frozen": true, "frozen_at": "2026-02-26T14:00:00.000Z", "reason": "Production freeze" },
+    "MOD-20": { "frozen": true, "frozen_at": "2026-02-26T18:10:00.000Z", "reason": "Re-frozen after Amcrest camera integration" },
     "MOD-21": { "frozen": true, "frozen_at": "2026-02-26T14:00:00.000Z", "reason": "Production freeze" },
     "MOD-22": { "frozen": false, "frozen_at": "2026-02-27T00:00:00.000Z", "reason": "Unfrozen for image upload pipeline fix" }
   }
