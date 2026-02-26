@@ -53,7 +53,7 @@ export function useImageSlotUpload(config: UseImageSlotUploadConfig): UseImageSl
   const modulePathSegment = moduleCode.replace(/-/g, '_');
 
   const uploadToSlot = useCallback(async (slotKey: string, file: File): Promise<string | null> => {
-    console.log('[ImageSlotUpload] uploadToSlot called:', { slotKey, fileName: file.name, tenantId, entityId, modulePathSegment, subPath });
+    if (import.meta.env.DEV) console.log('[ImageSlotUpload] uploadToSlot called:', { slotKey, fileName: file.name, tenantId, entityId, modulePathSegment, subPath });
     if (!tenantId || !entityId) {
       console.error('[ImageSlotUpload] Missing tenantId or entityId:', { tenantId, entityId });
       toast.error('Upload nicht möglich', { description: 'Daten noch nicht vollständig geladen.' });
@@ -76,7 +76,7 @@ export function useImageSlotUpload(config: UseImageSlotUploadConfig): UseImageSl
     try {
       const safeName = sanitizeFileName(file.name);
       const storagePath = `${tenantId}/${modulePathSegment}/${entityId}/${subPath}/${slotKey}_${safeName}`;
-      console.log('[ImageSlotUpload] Uploading to path:', storagePath, 'bucket:', UPLOAD_BUCKET);
+      if (import.meta.env.DEV) console.log('[ImageSlotUpload] Uploading to path:', storagePath, 'bucket:', UPLOAD_BUCKET);
 
       // ── Phase 1: Storage Upload ──
       const { error: uploadErr } = await supabase.storage
