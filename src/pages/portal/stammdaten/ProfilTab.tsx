@@ -298,7 +298,9 @@ export function ProfilTab() {
   }, [formData.avatar_url, formData.letterhead_logo_url]);
 
   const handleImageSlotUpload = async (slotKey: string, file: File) => {
+    console.log('[ProfilTab] handleImageSlotUpload called:', { slotKey, fileName: file.name, userId: user?.id, activeTenantId });
     const storagePath = await imageUpload.uploadToSlot(slotKey, file);
+    console.log('[ProfilTab] uploadToSlot returned:', storagePath);
     if (!storagePath) return;
     const signedUrl = await imageUpload.getSignedUrl(storagePath);
     if (slotKey === 'avatar') {
