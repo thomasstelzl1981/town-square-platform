@@ -427,6 +427,7 @@ const zone3LayoutMap: Record<string, React.ComponentType<{ children?: React.Reac
   SotLayout,
   AcquiaryLayout,
   LennoxLayout,
+  ProjectLandingLayout,
 };
 
 const zone3ComponentMaps: Record<string, Record<string, React.ComponentType>> = {
@@ -443,6 +444,12 @@ const zone3ComponentMaps: Record<string, Record<string, React.ComponentType>> = 
     LennoxMeinBereich,
     LennoxImpressum: React.lazy(() => import('@/pages/zone3/lennox/LennoxImpressum')),
     LennoxDatenschutz: React.lazy(() => import('@/pages/zone3/lennox/LennoxDatenschutz')),
+  },
+  'project-landing': {
+    ProjectLandingHome,
+    ProjectLandingObjekt,
+    ProjectLandingBeratung,
+    ProjectLandingExpose,
   },
 };
 
