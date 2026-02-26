@@ -1,115 +1,170 @@
 
 
-## Refactoring-Plan: Preislisten-Kalkulator (PortfolioTab)
+## Plan: AfA-Override systemweit durchsetzen (MOD-04 unfreeze + MOD-08/09/Zone 3)
 
-### Kernproblem
+### Kontext
 
-Der PortfolioTab hat einen **Endkundenrendite-Slider** (`targetYield`, Default 4%), der die Verkaufspreise aus der Rendite zurueckrechnet. Dadurch werden die **echten Preise aus der hochgeladenen Preisliste (SSOT)** ueberschrieben. Die Preisliste zeigt z.B. 112.500 EUR statt der echten 100.000 EUR — und die Rendite ist immer exakt der Slider-Wert (4%), nicht die tatsaechliche Rendite.
+MOD-04 wird hiermit UNFROZEN fuer diesen Change.
+
+Der `afaRateOverride` wurde bereits in der Edge Function und im Hook implementiert. Das Problem: **Nur MOD-13** reicht den Wert durch. Alle anderen Module, die die Investment Engine nutzen, ignorieren die AfA-Daten aus der Immobilienakte (`property_accounting`-Tabelle) komplett und rechnen mit den Defaults (`afaModel: 'linear'`, `buildingShare: 0.8`, `afaRate: 2%`).
 
 ### Ist-Zustand (fehlerhaft)
 
 ```text
-PortfolioTab.tsx Z.161:
-  basePrice = annual_net_rent / targetYield    ← FALSCH: ignoriert list_price
-  effectivePrice = basePrice * (1 + priceAdjustment%)
+MOD-08 SucheTab:        CalculationInput = { ...defaultInput, purchasePrice, monthlyRent, equity, zve }
+                         → afaModel = 'linear', buildingShare = 0.8, afaRateOverride = undefined
+                         → Engine nutzt Default 2% aus tax_parameters
 
-Ergebnis: Preis wird aus Rendite berechnet → Rendite = immer targetYield → Zirkelschluss
+MOD-08 ExposePage:      setParams({ purchasePrice, monthlyRent })
+                         → afaModel/buildingShare/afaRateOverride: NICHT gesetzt
+                         → User kann manuell ueber Slider aendern, aber Default ist falsch
+
+MOD-09 BeratungTab:     Gleich wie SucheTab — kein property_accounting-Fetch
+
+Zone 3 Kaufy:           Gleich — Defaults aus defaultInput
+
+ABER: MOD-06 ExposeDetail und MOD-09 KatalogDetailPage FETCHEN bereits
+      property_accounting — nutzen es aber nicht fuer den Engine-Call!
 ```
 
-### Soll-Zustand (SSOT-konform)
+### Soll-Zustand
+
+Jeder Ort, der die Investment Engine aufruft und einen Bezug zu einer konkreten Immobilie (property_id) hat, MUSS die AfA-Daten aus `property_accounting` laden und als Override uebergeben. Die Hierarchie ist:
 
 ```text
-PortfolioTab.tsx:
-  effectivePrice = list_price * (1 + priceAdjustment%)    ← KORREKT: DB-Preis als Basis
-
-Ergebnis: Preis = hochgeladener Preis (± Anpassung) → Rendite ergibt sich daraus
+1. property_accounting.afa_rate_percent   ← SSOT aus der Immobilienakte
+2. Slider-Aenderung durch den User        ← manueller Override im UI
+3. tax_parameters Default (2%)            ← Fallback wenn nichts erfasst
 ```
-
-### Aufteiler-Kalkulator (Block D)
-
-Wird **NICHT veraendert**. Der dortige `targetYield`-Slider ist korrekt implementiert: Er wird nur als Fallback verwendet wenn `totalListPrice = 0` ist (Z.260-262 der Engine). Wenn Einheiten mit Preisen existieren, nutzt die Engine immer `totalListPrice`. Umlaufvermoegen — keine AfA.
-
----
 
 ### Aenderungen
 
-#### 1. PortfolioTab.tsx — Preisberechnung auf SSOT umstellen
+#### 1. MOD-08: InvestmentExposePage.tsx — property_accounting laden und durchreichen
 
-**Z.108:** `targetYield`-State entfernen
-**Z.152-163:** Preisberechnung aendern:
+**Neuer Query:** Wenn `listing.property_id` vorhanden, `property_accounting` abfragen (analog zu MOD-06/09 die das bereits tun). Die geladenen Werte (`afa_rate_percent`, `afa_model`, `land_share_percent`, `building_share_percent`) werden als Defaults in den `params`-State geschrieben.
+
 ```typescript
-// VORHER (falsch):
-const basePrice = targetYield > 0 ? u.annual_net_rent / targetYield : 0;
-effectivePrice = Math.round(basePrice * (1 + priceAdjustment / 100));
+// Neuer useQuery fuer property_accounting
+const { data: accountingData } = useQuery({
+  queryKey: ['property-accounting-expose', listing?.property_id],
+  queryFn: async () => {
+    const { data } = await supabase
+      .from('property_accounting')
+      .select('afa_rate_percent, afa_model, land_share_percent, building_share_percent')
+      .eq('property_id', listing!.property_id)
+      .maybeSingle();
+    return data;
+  },
+  enabled: !!listing?.property_id,
+});
 
-// NACHHER (korrekt):
-effectivePrice = Math.round(u.list_price * (1 + priceAdjustment / 100));
+// Im useEffect wo params initialisiert werden:
+setParams(prev => ({
+  ...prev,
+  purchasePrice: listing.asking_price,
+  monthlyRent: listing.monthly_rent,
+  afaRateOverride: accountingData?.afa_rate_percent ?? undefined,
+  buildingShare: accountingData?.building_share_percent
+    ? accountingData.building_share_percent / 100
+    : 0.8,
+  afaModel: mapAfaModel(accountingData?.afa_model) ?? 'linear',
+}));
 ```
 
-**Z.100-101:** Investitionskosten-Default mit 20%-Margen-Rueckrechnung:
+#### 2. MOD-08: SucheTab.tsx — property_accounting batch-laden
+
+Fuer die Suche werden mehrere Listings parallel berechnet. Hier muss fuer alle property_ids in einem Batch die accounting-Daten geladen werden.
+
 ```typescript
-// VORHER:
-const [investmentCosts, setInvestmentCosts] = useState(
-  selectedProject?.purchase_price || 4_800_000   ← hardcodierter Fallback
+// Nach dem Listings-Fetch: property_accounting fuer alle property_ids laden
+const propertyIds = allListingsToProcess.map(l => l.property_id).filter(Boolean);
+const { data: accountingRows } = await supabase
+  .from('property_accounting')
+  .select('property_id, afa_rate_percent, afa_model, land_share_percent, building_share_percent')
+  .in('property_id', propertyIds);
+
+const accountingMap = new Map(
+  (accountingRows || []).map(r => [r.property_id, r])
 );
 
-// NACHHER:
-// Default: purchase_price aus DB, Fallback: totalListPrice / 1.20 (20% Marge)
+// Im calculate-Aufruf pro Listing:
+const acct = accountingMap.get(listing.property_id);
+const input: CalculationInput = {
+  ...defaultInput,
+  purchasePrice: listing.asking_price,
+  monthlyRent,
+  equity,
+  taxableIncome: zve,
+  maritalStatus,
+  hasChurchTax,
+  afaRateOverride: acct?.afa_rate_percent ?? undefined,
+  buildingShare: acct?.building_share_percent ? acct.building_share_percent / 100 : 0.8,
+  afaModel: mapAfaModel(acct?.afa_model) ?? 'linear',
+};
 ```
-Die 20%-Margen-Logik wird via `useEffect` synchronisiert wenn Units geladen werden: Wenn `purchase_price` in der DB 0 oder null ist, wird `summe_list_prices / 1.20` als Indikation gesetzt.
 
-#### 2. StickyCalculatorPanel.tsx — targetYield-Slider entfernen
+#### 3. MOD-09: BeratungTab.tsx — property_accounting laden
 
-**Z.209-222:** Gesamten "Endkundenrendite"-Slider-Block entfernen.
-**Props:** `targetYield` und `onTargetYieldChange` Props entfernen.
-Alle anderen Slider (Provision, Preisanpassung) und Inputs (Investitionskosten, Gesamtverkaufspreis) bleiben bestehen.
+Gleiche Logik wie SucheTab: Batch-Query fuer alle Listings, dann pro Listing die accounting-Werte einsetzen.
 
-#### 3. UnitPreislisteTable.tsx — Spalte umbenennen
+#### 4. Zone 3: Kaufy2026Expose.tsx — property_accounting laden
 
-**Z.142:** `"Rendite"` → `"Bruttorendite"`
+Gleiche Logik wie InvestmentExposePage: Einzelquery wenn listing geladen, Defaults in params setzen.
 
-#### 4. InvestPreislisteTable.tsx — Spalte umbenennen
+#### 5. AfA-Model-Mapping-Funktion
 
-**Z.89:** `"Rendite"` → `"Bruttorendite"`
-
-#### 5. PortfolioTab.tsx — Investitionskosten-Default aus Units berechnen
-
-Neuer `useEffect` der die Investitionskosten automatisch setzt wenn kein `purchase_price` in der DB gespeichert ist:
+Die Immobilienakte verwendet detaillierte AfA-Keys (`7_4_1`, `7_4_2b`, `7_5a`, `7b`, `7h`, `7i`, `rnd`), die Engine akzeptiert aber nur `linear | 7i | 7h | 7b`. Es braucht eine Mapping-Funktion:
 
 ```typescript
-useEffect(() => {
-  if (selectedProject && baseUnits.length > 0) {
-    const totalList = baseUnits.reduce((s, u) => s + u.list_price, 0);
-    if (!selectedProject.purchase_price && totalList > 0) {
-      setInvestmentCosts(Math.round(totalList / 1.20));
-    }
-  }
-}, [selectedProject?.id, baseUnits]);
+// src/lib/mapAfaModel.ts (neues Shared Utility)
+export function mapAfaModelToEngine(akteModel?: string | null): 'linear' | '7i' | '7h' | '7b' {
+  if (!akteModel) return 'linear';
+  if (akteModel === '7i') return '7i';
+  if (akteModel === '7h') return '7h';
+  if (akteModel === '7b') return '7b';
+  if (akteModel === '7_5a') return '7b'; // Degressiv → nächster Sonder-AfA Typ
+  // Alle linearen Varianten (7_4_1, 7_4_2a, 7_4_2b, 7_4_2c, rnd) → 'linear'
+  return 'linear';
+}
 ```
 
-Dies ist die einzige Rueckrechnung: `Investitionskosten ≈ Summe Listenpreise / 1,20` als erste Indikation. Der User kann den Wert dann im Kalkulator manuell anpassen und speichern.
+Diese Funktion wird auch in MOD-13 (InvestEngineTab, InvestEngineExposePage) verwendet, wo bisher `project.afa_model` direkt gecastet wird.
+
+#### 6. MOD-04: PropertyDetailPage.tsx — Sicherstellen dass accounting-Daten korrekt an Simulation/KPIs fliessen
+
+Die Datei laedt bereits `property_accounting` (Z.217-224). Hier muss geprueft werden, ob die geladenen Werte korrekt an Investment-KPI-Blöcke weitergegeben werden. Falls der PropertyDetailPage eine Investment-Simulation hat, muss `afaRateOverride` durchgereicht werden.
 
 ---
 
 ### Dateien-Uebersicht
 
-| Datei | Aenderung |
-|---|---|
-| `src/pages/portal/projekte/PortfolioTab.tsx` | `targetYield`-State entfernen, Preisberechnung auf `list_price` umstellen, Investitionskosten-Default aus Units (20% Marge), Props zu StickyCalculatorPanel anpassen |
-| `src/components/projekte/StickyCalculatorPanel.tsx` | `targetYield`-Slider + Props entfernen |
-| `src/components/projekte/UnitPreislisteTable.tsx` | Z.142: "Rendite" → "Bruttorendite" |
-| `src/components/projekte/InvestPreislisteTable.tsx` | Z.89: "Rendite" → "Bruttorendite" |
+| Datei | Aenderung | Modul |
+|---|---|---|
+| `src/lib/mapAfaModel.ts` | **NEU:** Shared Mapping-Funktion AfA-Akte → Engine-Modell | Shared |
+| `src/pages/portal/investments/InvestmentExposePage.tsx` | property_accounting Query + afaRateOverride/buildingShare/afaModel in params | MOD-08 |
+| `src/pages/portal/investments/SucheTab.tsx` | Batch property_accounting Query + Override im calculate-Input | MOD-08 |
+| `src/pages/portal/vertriebspartner/BeratungTab.tsx` | Batch property_accounting Query + Override im calculate-Input | MOD-09 |
+| `src/pages/zone3/kaufy2026/Kaufy2026Expose.tsx` | property_accounting Query + Override in params | Zone 3 |
+| `src/pages/portal/projekte/InvestEngineTab.tsx` | `mapAfaModelToEngine()` statt direkter Cast | MOD-13 |
+| `src/pages/portal/projekte/InvestEngineExposePage.tsx` | `mapAfaModelToEngine()` statt direkter Cast | MOD-13 |
 
 ### Was NICHT geaendert wird
 
 | Punkt | Begruendung |
 |---|---|
-| Aufteiler-Kalkulator (Block D) | `targetYield` dort korrekt als Fallback implementiert, Umlaufvermoegen |
-| InvestEngine Tab | Nutzt bereits `list_price` aus DB (SSOT) |
-| Engine `calcAufteilerProject` | Logik korrekt, `totalListPrice` hat Vorrang vor Yield-Rueckrechnung |
-| SalesStatusReportWidget | Erhaelt `targetYield` nicht mehr als Prop (wird entfernt) |
+| Edge Function `sot-investment-engine` | `afaRateOverride` bereits implementiert |
+| `useInvestmentEngine.ts` Hook | `afaRateOverride` bereits im Interface |
+| `InvestmentSliderPanel.tsx` | Slider fuer afaModel bleibt — User kann manuell ueberschreiben |
+| `property_accounting`-Tabelle | Schema bereits korrekt mit allen benoetigten Spalten |
+| Aufteiler-Kalkulator (Block D) | Umlaufvermoegen, keine AfA |
 
-### Zusammenfassung
+### Freeze-Status
 
-Nach dem Refactoring zeigt die Preisliste im PortfolioTab die **echten hochgeladenen Preise** (± prozentuale Anpassung via Slider). Die Rendite ergibt sich automatisch als `Jahresnetto / Preis` und ist identisch zur InvestPreislisteTable. Die Investitionskosten werden initial als `Summe Listenpreise / 1,20` geschaetzt (20% Bautraegermarge) und koennen manuell angepasst werden.
+| Modul | Status |
+|---|---|
+| MOD-04 | UNFROZEN (User hat explizit "unfreeze Modul 4" gesagt) |
+| MOD-08 | Bereits unfrozen in modules_freeze.json |
+| MOD-09 | Bereits unfrozen in modules_freeze.json |
+| MOD-13 | Bereits unfrozen in modules_freeze.json |
+| Zone 3 | Kein Modul-Freeze |
 
