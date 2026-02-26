@@ -97,12 +97,13 @@ function SingleSlot({
     }
   }, [onUpload, disabled, isUploading, multiImage]);
 
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+  const { getRootProps, getInputProps, isDragActive, open } = useDropzone({
     onDrop,
     accept: { 'image/*': ['.png', '.jpg', '.jpeg', '.webp'] },
     multiple: !!multiImage,
     disabled: disabled || isUploading,
     noKeyboard: true,
+    noClick: true,
   });
 
   const handlePrev = (e: React.MouseEvent) => {
@@ -150,7 +151,11 @@ function SingleSlot({
             {/* Hover overlay */}
             {!disabled && !isUploading && (
               <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
-                <div className="flex flex-col items-center gap-1 text-white">
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); e.preventDefault(); open(); }}
+                  className="flex flex-col items-center gap-1 text-white hover:text-primary-foreground transition-colors"
+                >
                   {multiImage ? (
                     <>
                       <Plus className="h-5 w-5" />
@@ -162,7 +167,7 @@ function SingleSlot({
                       <span className="text-[10px] font-medium">Ersetzen</span>
                     </>
                   )}
-                </div>
+                </button>
                 {(onDelete || (multiImage && onDeleteByDocId && currentImage.documentId)) && (
                   <button
                     type="button"
@@ -177,7 +182,10 @@ function SingleSlot({
             )}
           </>
         ) : (
-          <div className="flex flex-col items-center justify-center h-full gap-1 text-muted-foreground/50">
+          <div
+            className="flex flex-col items-center justify-center h-full gap-1 text-muted-foreground/50 cursor-pointer"
+            onClick={() => { if (!disabled && !isUploading) open(); }}
+          >
             {isUploading ? (
               <Loader2 className="h-6 w-6 animate-spin text-primary" />
             ) : isDragActive ? (
