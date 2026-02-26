@@ -191,9 +191,11 @@ const MODULE_WELCOME_CONFIG: Record<string, { greeting: string; chips: WelcomeCh
     ],
   },
   'MOD-13': {
-    greeting: 'Projekte-Bereich. Ich helfe dir beim Bauträgerprojekt:',
+    greeting: 'Projekte-Bereich. Ich begleite dich durch den gesamten Projekt-Lifecycle:',
     chips: [
       { label: '🏗️ Projekt aus Dokument', action_code: 'ARM.MOD13.CREATE_DEV_PROJECT' },
+      { label: '🔄 Projektphase wechseln', action_code: 'ARM.MOD13.PHASE_CHANGE' },
+      { label: '📊 Zusammenfassung', action_code: 'ARM.MOD13.PROJECT_SUMMARY' },
       { label: '❓ Modul erklären', action_code: 'ARM.MOD13.EXPLAIN_MODULE' },
     ],
   },
@@ -232,6 +234,72 @@ Frag mich einfach, was du wissen möchtest!`,
     timestamp: new Date(),
   };
 }
+
+// =============================================================================
+// STATIC RESPONSES — Free intake actions answered without AI call
+// =============================================================================
+
+const STATIC_ACTION_RESPONSES: Record<string, string> = {
+  'ARM.MOD13.EXPLAIN_UPLOAD_FORMATS': `📄 **Akzeptierte Upload-Formate:**
+
+- **PDF-Exposés** — Projektbeschreibungen, Baugenehmigungen, Grundrisse
+- **Excel-Preislisten** (XLSX/CSV) — Einheitenlisten mit Preisen, Flächen, Etagen
+- **Bilddateien** (JPG/PNG) — Fotos, Lagepläne, Visualisierungen
+
+💡 **Tipp:** Am besten Exposé + Preisliste gemeinsam hochladen. Die KI erkennt automatisch den Dokumenttyp und extrahiert alle relevanten Daten.`,
+
+  'ARM.MOD13.SHOW_EXAMPLE': `📋 **Ideales Exposé enthält:**
+
+1. **Projektname & Adresse** — wird zum Projekttitel
+2. **Einheitenliste** — Wohnungsnummern, Typen (ETW/Gewerbe/Stellplatz)
+3. **Flächen** — Wohn-/Nutzfläche je Einheit in m²
+4. **Preise** — Kaufpreis je Einheit
+5. **Etagen** — Stockwerk/Geschoss-Zuordnung
+6. **WEG-Struktur** — Falls Aufteilung: WEG-Zuordnung
+
+📊 **Preisliste (Excel):** Tabelle mit Spalten wie Nr., Typ, Fläche, Preis, Etage, WEG. Ich erkenne auch unstrukturierte Formate — die KI ist flexibel.`,
+
+  'ARM.MOD13.EXPLAIN_ANALYSIS_TIME': `⏱️ **Analysedauer:**
+
+- **Exposé (PDF):** ca. 15–30 Sekunden
+- **Preisliste (Excel):** ca. 5–15 Sekunden
+- **Große Preislisten (70+ Einheiten):** bis zu 60 Sekunden
+- **Exposé + Preisliste zusammen:** ca. 30–45 Sekunden
+
+Die KI analysiert Dokumente parallel. Du kannst während der Analyse den Tab wechseln — ich melde mich, sobald die Ergebnisse vorliegen.`,
+
+  'ARM.MOD13.REVIEW_UNITS': `✅ **So prüfst du die erkannten Einheiten:**
+
+1. **Anzahl prüfen** — Stimmt die Gesamtzahl mit dem Exposé überein?
+2. **Preise checken** — Achte auf Ausreißer (⚠️ markierte Zellen > 50% Abweichung)
+3. **Flächen vergleichen** — Stimmen m²-Angaben mit den Grundrissen?
+4. **Typen korrekt?** — ETW, Gewerbe, Stellplatz richtig zugeordnet?
+5. **WEG-Zuordnung** — Bei Aufteilungsobjekten: WEG-Nummern korrekt?
+
+💡 Klicke auf jede Zelle in der Tabelle, um Werte direkt zu korrigieren.`,
+
+  'ARM.MOD13.EXPLAIN_TERMS': `📖 **Wichtige Fachbegriffe:**
+
+- **WEG** — Wohnungseigentümergemeinschaft: rechtliche Einheit bei aufgeteilten Objekten
+- **Aufteilung** — Umwandlung eines Gesamtobjekts in einzelne Eigentumswohnungen
+- **Sondereigentum** — Der einem Eigentümer allein gehörende Teil (Wohnung)
+- **Gemeinschaftseigentum** — Allen Eigentümern gehörende Teile (Treppenhaus, Dach)
+- **Teilungserklärung** — Rechtsdokument zur Aufteilung eines Gebäudes
+- **MEA** — Miteigentumsanteil: Anteil am Gemeinschaftseigentum (in Tausendstel)
+- **Bauträger** — Unternehmen, das Immobilien plant, baut und verkauft`,
+
+  'ARM.MOD13.EXPLAIN_UNIT': `🏠 **Einheiten-Details:**
+
+Jede Projekteinheit hat folgende Kernfelder:
+- **Typ:** ETW (Eigentumswohnung), Gewerbe, Stellplatz, Lager
+- **Status:** geplant → im Bau → fertig → reserviert → verkauft
+- **Fläche:** Wohn-/Nutzfläche in m²
+- **Preis:** Kaufpreis inkl. aller Zuschläge
+- **Etage:** Geschoss-Zuordnung
+- **WEG:** Zuordnung zur Wohnungseigentümergemeinschaft
+
+Wähle eine Einheit in der Tabelle aus, um alle Details zu sehen.`,
+};
 
 export function useArmstrongAdvisor() {
   const context = useArmstrongContext();
@@ -589,6 +657,20 @@ export function useArmstrongAdvisor() {
       timestamp: new Date(),
     };
     addMessage(userMessage);
+
+    // ── Static response shortcut (no AI call needed) ──
+    const staticResponse = STATIC_ACTION_RESPONSES[action.action_code];
+    if (staticResponse) {
+      const staticMsg: ChatMessage = {
+        id: crypto.randomUUID(),
+        role: 'assistant',
+        content: staticResponse,
+        timestamp: new Date(),
+        responseType: 'EXPLAIN',
+      };
+      addMessage(staticMsg);
+      return;
+    }
 
     setIsLoading(true);
 
