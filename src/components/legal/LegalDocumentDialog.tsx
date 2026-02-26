@@ -78,10 +78,11 @@ export function LegalDocumentDialog({
     setUploading(true);
     try {
       const file = files[0];
-      const filePath = `${tenantId}/legal/${documentType}/${Date.now()}_${file.name}`;
+      const { sanitizeFileName, UPLOAD_BUCKET } = await import('@/config/storageManifest');
+      const filePath = `${tenantId}/legal/${documentType}/${sanitizeFileName(file.name)}`;
       
       const { error: uploadError } = await supabase.storage
-        .from('documents')
+        .from(UPLOAD_BUCKET)
         .upload(filePath, file);
       
       if (uploadError) {
