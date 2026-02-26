@@ -147,14 +147,16 @@ export function ProjectDataSheet({ isDemo, selectedProject, unitCount, fullProje
     (fullProject?.project_images as Record<string, string>) ?? {}
   );
   const [imageUrls, setImageUrls] = useState<Record<string, string>>({});
+  const [slotDocIds, setSlotDocIds] = useState<Record<string, string>>({});
 
   // Shared image upload hook
-  const { uploadToSlot, getSignedUrl, uploadingSlot } = useImageSlotUpload({
+  const imageUpload = useImageSlotUpload({
     moduleCode: 'MOD-13',
     entityId: projectId || '',
     tenantId: fullProject?.tenant_id || '',
     entityType: 'projekt',
   });
+  const { uploadToSlot, getSignedUrl, uploadingSlot } = imageUpload;
 
   // UI state
   const [saving, setSaving] = useState(false);
@@ -217,19 +219,47 @@ export function ProjectDataSheet({ isDemo, selectedProject, unitCount, fullProje
     }
   }, [federalState]);
 
-  // Load signed URLs for project images
+  // ── PRIMARY: Load images from document_links (DB-based) ──
   useEffect(() => {
-    const loadUrls = async () => {
+    if (!projectId || !fullProject?.tenant_id || isDemo) return;
+    const loadFromDb = async () => {
+      const imageMap = await imageUpload.loadSlotImages(projectId, 'projekt');
       const urls: Record<string, string> = {};
+      const docIds: Record<string, string> = {};
+      for (const [key, val] of Object.entries(imageMap)) {
+        urls[key] = val.url;
+        docIds[key] = val.documentId;
+      }
+      // FALLBACK: merge legacy JSONB paths for slots not found in DB
       for (const [key, path] of Object.entries(projectImages)) {
-        if (path) {
+        if (!urls[key] && path) {
           const url = await getSignedUrl(path);
           if (url) urls[key] = url;
         }
       }
       setImageUrls(urls);
+      setSlotDocIds(docIds);
     };
-    if (Object.keys(projectImages).some(k => projectImages[k])) loadUrls();
+    loadFromDb();
+  }, [projectId, fullProject?.tenant_id, isDemo]);
+
+  // Fallback: resolve JSONB paths for demo or when DB load hasn't run
+  useEffect(() => {
+    if (isDemo) return;
+    // Only resolve JSONB paths that aren't already resolved
+    const loadLegacyUrls = async () => {
+      const urls: Record<string, string> = {};
+      for (const [key, path] of Object.entries(projectImages)) {
+        if (!imageUrls[key] && path) {
+          const url = await getSignedUrl(path);
+          if (url) urls[key] = url;
+        }
+      }
+      if (Object.keys(urls).length > 0) {
+        setImageUrls(prev => ({ ...prev, ...urls }));
+      }
+    };
+    if (Object.keys(projectImages).some(k => projectImages[k])) loadLegacyUrls();
   }, [projectImages, getSignedUrl]);
 
   const markDirty = () => setDirty(true);
@@ -243,7 +273,23 @@ export function ProjectDataSheet({ isDemo, selectedProject, unitCount, fullProje
       const url = await getSignedUrl(storagePath);
       if (url) setImageUrls(prev => ({ ...prev, [slotKey]: url }));
       setDirty(true);
+      // Reload doc IDs for delete support
+      const imageMap = await imageUpload.loadSlotImages(projectId!, 'projekt');
+      if (imageMap[slotKey]) {
+        setSlotDocIds(prev => ({ ...prev, [slotKey]: imageMap[slotKey].documentId }));
+      }
     }
+  };
+
+  const handleImageDelete = async (slotKey: string) => {
+    const docId = slotDocIds[slotKey];
+    if (!docId) return;
+    const deleted = await imageUpload.deleteSlotImage(docId);
+    if (!deleted) return;
+    setImageUrls(prev => { const n = { ...prev }; delete n[slotKey]; return n; });
+    setProjectImages(prev => { const n = { ...prev }; delete n[slotKey]; return n; });
+    setSlotDocIds(prev => { const n = { ...prev }; delete n[slotKey]; return n; });
+    setDirty(true);
   };
 
   // ── KI-Beschreibung ──
@@ -392,6 +438,7 @@ export function ProjectDataSheet({ isDemo, selectedProject, unitCount, fullProje
             return merged;
           })()}
           onUpload={handleImageUpload}
+          onDelete={handleImageDelete}
           uploadingSlot={uploadingSlot}
           disabled={isDemo}
           title="Projektbilder"
