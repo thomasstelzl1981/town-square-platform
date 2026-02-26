@@ -2,18 +2,19 @@
  * useZuhauseWidgets — Manages widget list + order for Zuhause page
  * 
  * Builds dynamic widget IDs from DB data (homes, cameras, contracts)
- * and persists user-chosen order in localStorage.
+ * and persists user-chosen order in localStorage (user-scoped).
  */
 
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useHomesQuery } from '../shared/useHomesQuery';
 import { useCameras } from '@/hooks/useCameras';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
-const STORAGE_KEY = 'zuhause-widget-order';
-const HIDDEN_KEY = 'zuhause-hidden-widgets';
+function storageKey(base: string, userId: string | undefined) {
+  return userId ? `${base}-${userId}` : base;
+}
 
 export type ZuhauseWidgetType =
   | 'home-address'
@@ -32,12 +33,15 @@ export interface ZuhauseWidgetDef {
 }
 
 export function useZuhauseWidgets() {
-  const { activeTenantId } = useAuth();
-  const { data: homes = [] } = useHomesQuery();
+  const { user, activeTenantId } = useAuth();
+  const userId = user?.id;
+
+  const { data: homes = [], isLoading: homesLoading } = useHomesQuery();
   const { camerasQuery } = useCameras();
   const cameras = camerasQuery.data ?? [];
+  const camerasLoading = camerasQuery.isLoading;
 
-  const { data: contracts = [] } = useQuery({
+  const { data: contracts = [], isLoading: contractsLoading } = useQuery({
     queryKey: ['miety-contracts-all', activeTenantId],
     queryFn: async () => {
       if (!activeTenantId) return [];
@@ -52,11 +56,15 @@ export function useZuhauseWidgets() {
     enabled: !!activeTenantId,
   });
 
+  const dataReady = !homesLoading && !camerasLoading && !contractsLoading;
+
+  // Track whether we've done the initial hydration from localStorage
+  const hydratedRef = useRef(false);
+
   // Build all possible widgets from DB data
   const allWidgets = useMemo<ZuhauseWidgetDef[]>(() => {
     const widgets: ZuhauseWidgetDef[] = [];
 
-    // Per home: address + streetview + satellite
     homes.forEach((home) => {
       widgets.push({
         id: `home-address-${home.id}`,
@@ -81,7 +89,6 @@ export function useZuhauseWidgets() {
       });
     });
 
-    // Per camera
     cameras.forEach((cam) => {
       widgets.push({
         id: `camera-${cam.id}`,
@@ -92,7 +99,6 @@ export function useZuhauseWidgets() {
       });
     });
 
-    // Service widgets (static)
     widgets.push({
       id: 'service-myhammer',
       type: 'service',
@@ -106,7 +112,6 @@ export function useZuhauseWidgets() {
       meta: { serviceId: 'betreut' },
     });
 
-    // Per contract
     contracts.forEach((contract: any) => {
       widgets.push({
         id: `contract-${contract.id}`,
@@ -122,68 +127,104 @@ export function useZuhauseWidgets() {
 
   const allWidgetIds = useMemo(() => allWidgets.map(w => w.id), [allWidgets]);
 
-  // Hidden widgets (user removed)
-  const [hiddenIds, setHiddenIds] = useState<Set<string>>(() => {
-    try {
-      const saved = localStorage.getItem(HIDDEN_KEY);
-      return saved ? new Set(JSON.parse(saved)) : new Set();
-    } catch { return new Set(); }
-  });
+  // ── Hidden widgets (user-scoped) ──
+  const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set());
 
-  // Order persistence
-  const [order, setOrder] = useState<string[]>(() => {
+  // ── Order state ──
+  const [order, setOrder] = useState<string[]>([]);
+
+  // Hydrate from localStorage once data is ready + userId is known
+  useEffect(() => {
+    if (!dataReady || !userId) return;
+    if (hydratedRef.current) return;
+    hydratedRef.current = true;
+
+    // Hydrate hidden
     try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved) as string[];
-        const valid = parsed.filter(id => allWidgetIds.includes(id));
-        const newIds = allWidgetIds.filter(id => !parsed.includes(id));
-        return [...valid, ...newIds];
+      const savedHidden = localStorage.getItem(storageKey('zuhause-hidden-widgets', userId));
+      if (savedHidden) {
+        const parsed = JSON.parse(savedHidden) as string[];
+        // Only keep IDs that still exist
+        setHiddenIds(new Set(parsed.filter(id => allWidgetIds.includes(id))));
       }
     } catch { /* ignore */ }
-    return allWidgetIds;
-  });
 
-  // Sync when allWidgetIds changes
+    // Hydrate order
+    try {
+      const savedOrder = localStorage.getItem(storageKey('zuhause-widget-order', userId));
+      if (savedOrder) {
+        const parsed = JSON.parse(savedOrder) as string[];
+        // Keep only IDs that exist in current allWidgetIds
+        const valid = parsed.filter(id => allWidgetIds.includes(id));
+        // Append any new IDs not in saved order
+        const newIds = allWidgetIds.filter(id => !parsed.includes(id));
+        setOrder([...valid, ...newIds]);
+        return;
+      }
+    } catch { /* ignore */ }
+
+    // No saved order → use default
+    setOrder(allWidgetIds);
+  }, [dataReady, userId, allWidgetIds]);
+
+  // Sync when allWidgetIds changes AFTER initial hydration (e.g. new camera added)
   useEffect(() => {
+    if (!hydratedRef.current) return;
+
     setOrder(current => {
+      if (current.length === 0) return allWidgetIds;
+
       const currentSet = new Set(current);
-      const defaultSet = new Set(allWidgetIds);
-      const valid = current.filter(id => defaultSet.has(id));
+      const validSet = new Set(allWidgetIds);
+
+      // Remove IDs that no longer exist, keep user order
+      const valid = current.filter(id => validSet.has(id));
+      // Append genuinely new IDs
       const newIds = allWidgetIds.filter(id => !currentSet.has(id));
+
       if (newIds.length > 0 || valid.length !== current.length) {
         const updated = [...valid, ...newIds];
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+        if (userId) {
+          localStorage.setItem(storageKey('zuhause-widget-order', userId), JSON.stringify(updated));
+        }
         return updated;
       }
       return current;
     });
-  }, [allWidgetIds]);
+  }, [allWidgetIds, userId]);
+
+  // Reset hydration flag when user changes
+  useEffect(() => {
+    hydratedRef.current = false;
+    setOrder([]);
+    setHiddenIds(new Set());
+  }, [userId]);
 
   const updateOrder = useCallback((newOrder: string[]) => {
     setOrder(newOrder);
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(newOrder)); } catch { /* ignore */ }
-  }, []);
+    if (userId) {
+      try { localStorage.setItem(storageKey('zuhause-widget-order', userId), JSON.stringify(newOrder)); } catch { /* ignore */ }
+    }
+  }, [userId]);
 
   const hideWidget = useCallback((id: string) => {
     setHiddenIds(prev => {
       const next = new Set(prev);
       next.add(id);
-      localStorage.setItem(HIDDEN_KEY, JSON.stringify([...next]));
+      if (userId) localStorage.setItem(storageKey('zuhause-hidden-widgets', userId), JSON.stringify([...next]));
       return next;
     });
-  }, []);
+  }, [userId]);
 
   const showWidget = useCallback((id: string) => {
     setHiddenIds(prev => {
       const next = new Set(prev);
       next.delete(id);
-      localStorage.setItem(HIDDEN_KEY, JSON.stringify([...next]));
+      if (userId) localStorage.setItem(storageKey('zuhause-hidden-widgets', userId), JSON.stringify([...next]));
       return next;
     });
-  }, []);
+  }, [userId]);
 
-  // Visible = ordered + not hidden
   const visibleWidgetIds = useMemo(
     () => order.filter(id => !hiddenIds.has(id)),
     [order, hiddenIds]
@@ -206,5 +247,6 @@ export function useZuhauseWidgets() {
     homes,
     cameras,
     contracts,
+    isLoading: !dataReady,
   };
 }
