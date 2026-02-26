@@ -27,17 +27,14 @@ Deno.serve(async (req) => {
       { global: { headers: { Authorization: authHeader } } }
     );
 
-    const token = authHeader.replace("Bearer ", "");
-    const { data: claimsData, error: claimsError } =
-      await supabase.auth.getClaims(token);
-    if (claimsError || !claimsData?.claims) {
+    // FIX 1: getUser() statt getClaims() (existiert nicht)
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-
-    const userId = claimsData.claims.sub;
 
     // Get camera_id from query params
     const url = new URL(req.url);
@@ -69,28 +66,33 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Build snapshot URL with embedded credentials (Digest Auth workaround)
+    // FIX 3: URL-embedded credentials without double-encoding
     let snapshotUrl = camera.snapshot_url;
     if (camera.auth_user && camera.auth_pass) {
       try {
         const parsed = new URL(camera.snapshot_url);
-        parsed.username = encodeURIComponent(camera.auth_user);
-        parsed.password = encodeURIComponent(camera.auth_pass);
+        parsed.username = camera.auth_user;
+        parsed.password = camera.auth_pass;
         snapshotUrl = parsed.toString();
       } catch {
-        // If URL parsing fails, fall back to original URL with Basic Auth header
+        // URL parsing failed — use original
       }
     }
 
     // Fetch snapshot from camera with timeout
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 15000); // 15s timeout
+    const timeout = setTimeout(() => controller.abort(), 15000);
+
+    // FIX 2: Explicit Basic Auth header as fallback
+    const fetchOptions: RequestInit = { signal: controller.signal };
+    if (camera.auth_user && camera.auth_pass) {
+      const credentials = btoa(`${camera.auth_user}:${camera.auth_pass}`);
+      fetchOptions.headers = { Authorization: `Basic ${credentials}` };
+    }
 
     let cameraResponse: Response;
     try {
-      cameraResponse = await fetch(snapshotUrl, {
-        signal: controller.signal,
-      });
+      cameraResponse = await fetch(snapshotUrl, fetchOptions);
     } catch (fetchErr) {
       clearTimeout(timeout);
       const message =
@@ -108,6 +110,22 @@ Deno.serve(async (req) => {
       );
     }
     clearTimeout(timeout);
+
+    // FIX 2: Separate 401 handling with diagnostic info
+    if (cameraResponse.status === 401) {
+      const wwwAuth = cameraResponse.headers.get("www-authenticate") || "none";
+      return new Response(
+        JSON.stringify({
+          error: "Kamera-Authentifizierung fehlgeschlagen",
+          details: `Basic Auth wurde abgelehnt. WWW-Authenticate: ${wwwAuth}`,
+          status: "auth_error",
+        }),
+        {
+          status: 502,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
 
     if (!cameraResponse.ok) {
       return new Response(
