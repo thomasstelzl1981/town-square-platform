@@ -75,9 +75,9 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "System of a Town <noreply@systemofatown.de>",
+        from: "Armstrong · System of a Town <noreply@systemofatown.com>",
         to: "Ralph Reinhold <rr@unitys.com>",
-        reply_to: `admin+${routingToken}@incoming.systemofatown.de`,
+        reply_to: "ralph.reinhold@systemofatown.com",
         subject: "Willkommen bei System of a Town — Dein neuer KI-Assistent Armstrong stellt sich vor",
         html: bodyHtml,
         text: bodyText,
