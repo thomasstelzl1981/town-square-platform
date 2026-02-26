@@ -1,5 +1,4 @@
 // Immobilienakte (Unit Dossier) Components
-export { UnitDossierView } from './UnitDossierView';
 export { EditableUnitDossierView } from './EditableUnitDossierView';
 export { DossierHeader } from './DossierHeader';
 export { IdentityBlock } from './IdentityBlock';
