@@ -1,74 +1,40 @@
 
 
-## Magic Intake: Anbieter-Daten aus Exposé extrahieren
+## Bug-Analyse: Bilder-Upload in MOD-13 schlägt fehl
 
-### Problem
+### Root Cause (gefunden)
 
-Die KI-Extraktion im `sot-project-intake` liest aktuell nur `developer` (ein einfacher String wie "XY Immobilien GmbH"). Die restlichen Impressum-Felder (Geschäftsführer, Adresse, HRB, USt-ID, Rechtsform) werden NICHT extrahiert, obwohl sie in fast jedem Exposé im Impressum stehen.
-
-### Änderung 1: Tool-Definition erweitern (Edge Function)
-
-**Datei:** `supabase/functions/sot-project-intake/index.ts`
-
-Das `extract_project_data` Tool bekommt neue Properties neben dem bestehenden `developer`:
-
-| Neues Feld | Typ | Beschreibung |
-|-----------|-----|-------------|
-| `developerLegalForm` | string | Rechtsform: GmbH, GmbH & Co. KG, AG etc. |
-| `developerManagingDirector` | string | Geschäftsführer / Vorstand |
-| `developerStreet` | string | Straße + Hausnummer |
-| `developerPostalCode` | string | PLZ |
-| `developerCity` | string | Stadt |
-| `developerHrb` | string | HRB-Nummer + Amtsgericht |
-| `developerUstId` | string | USt-IdNr. |
-
-### Änderung 2: System-Prompt erweitern
-
-Im `EXPOSE_SYSTEM_PROMPT` wird ein neuer Abschnitt ergänzt:
+**DB-Constraint-Verletzung:** Der Code in `ProjectDataSheet.tsx` übergibt `entityType: 'projekt'` (deutsch), aber der CHECK-Constraint auf `document_links.object_type` erlaubt nur `'project'` (englisch).
 
 ```
-ANBIETER/IMPRESSUM — Extrahiere aus dem Impressum des Exposés:
-- developer: Firmenname OHNE Rechtsform
-- developerLegalForm: Rechtsform (GmbH, AG, etc.)
-- developerManagingDirector: Geschäftsführer/Vorstand
-- developerStreet: Straße + Hausnummer
-- developerPostalCode + developerCity
-- developerHrb: HRB-Nummer + Amtsgericht
-- developerUstId: USt-IdNr.
+CHECK (object_type = ANY (ARRAY['property','unit','contact','finance_case',
+  'service_case','vehicle','insurance','lease','profil','project',
+  'pet_provider','postservice_delivery','inbound_email','finance_request']))
 ```
 
-### Änderung 3: Create-Logik — Felder beim Insert/Update befüllen
+In MOD-01 (ProfilTab) funktioniert der Upload, weil dort `entityType: 'profil'` übergeben wird — ein gültiger Wert. In MOD-13 scheitert der `document_links` INSERT an Zeile 120-129 des Hooks, weil `'projekt'` kein erlaubter Wert ist.
 
-In der `handleCreate`-Funktion (Zeile 626-682) werden beim Erstellen eines neuen Developer-Kontexts die zusätzlichen Felder mitgegeben:
+### Fix (1 Zeile)
 
-```typescript
-.insert({
-  tenant_id: tenantId,
-  name: developerName,
-  legal_form: reviewedData.developerLegalForm || '',
-  managing_director: reviewedData.developerManagingDirector || '',
-  street: reviewedData.developerStreet || '',
-  postal_code: reviewedData.developerPostalCode || '',
-  city: reviewedData.developerCity || '',
-  hrb_number: reviewedData.developerHrb || '',
-  ust_id: reviewedData.developerUstId || '',
-  is_default: false,
-})
-```
+**Datei:** `src/components/projekte/ProjectDataSheet.tsx`, Zeile 157
 
-Bei einem bestehenden Kontext (Match per Name): Update der leeren Felder, damit bereits vorhandene manuelle Einträge nicht überschrieben werden.
+| Vorher | Nachher |
+|--------|---------|
+| `entityType: 'projekt'` | `entityType: 'project'` |
 
-### Änderung 4: ExtractedData-Interface erweitern
+Zusätzlich muss der `loadSlotImages`-Aufruf (Zeile 261) ebenfalls `'project'` statt `'projekt'` verwenden — aber der nutzt bereits den Wert `'projekt'` als Parameter. Beide Stellen anpassen.
 
-Die neuen Felder werden im `ExtractedData`-Interface (oder dem bestehenden Typ in der Edge Function) ergänzt, damit sie durch den Review-Flow durchgereicht werden.
+### Zweites Problem: Slot-Höhe zu niedrig
 
-### Keine DB-Migration nötig
+Die `IMAGE_SLOT.HEIGHT` in `designManifest.ts` ist auf **140px** gesetzt. Für Projekt-/Immobilienbilder ist das zu flach. 
 
-Alle Felder (`legal_form`, `managing_director`, `street`, `house_number`, `postal_code`, `city`, `hrb_number`, `ust_id`) existieren bereits in `developer_contexts`.
+**Fix:** Höhe auf **180px** erhöhen (Zeile 333 in `designManifest.ts`).
 
-### Betroffene Dateien
+### Zusammenfassung
 
-| Datei | Änderung |
-|-------|----------|
-| `supabase/functions/sot-project-intake/index.ts` | Tool-Definition + Prompt + Create-Logik |
+| # | Datei | Änderung |
+|---|-------|----------|
+| 1 | `ProjectDataSheet.tsx` Z.157 | `'projekt'` → `'project'` |
+| 2 | `ProjectDataSheet.tsx` Z.261 | `loadSlotImages(projectId, 'projekt')` → `'project'` |
+| 3 | `designManifest.ts` Z.333 | `HEIGHT: 140` → `HEIGHT: 180` |
 
