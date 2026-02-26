@@ -1,34 +1,32 @@
 
 
-## Problem
+## Überarbeiteter Plan: Camera Snapshot Edge Function Fix
 
-Die Kamera-Snapshot-Anfrage geht an `https://undefined.supabase.co/...` statt an die richtige URL. In `src/hooks/useCameras.ts` (Zeile ~116) wird `VITE_SUPABASE_PROJECT_ID` gelesen, aber zur Laufzeit ist dieser Wert `undefined`.
+**Datei:** `supabase/functions/sot-camera-snapshot/index.ts`
 
-## Ursache
+### Fix 1 (kritisch): `getClaims()` → `getUser()`
 
-Die Umgebungsvariable `VITE_SUPABASE_PROJECT_ID` wird möglicherweise nicht korrekt in der Build-Umgebung injiziert. `VITE_SUPABASE_URL` hingegen funktioniert nachweislich (alle anderen API-Requests nutzen sie erfolgreich).
+Die Methode `supabase.auth.getClaims(token)` existiert nicht in der Supabase JS Client Library. Dies verursacht den Runtime Error. Ersetzen durch `supabase.auth.getUser()`, das automatisch den JWT aus dem Authorization-Header validiert.
 
-## Fix
+### Fix 2 (wichtig): Basic Auth Header + 401-Handling
 
-**Datei:** `src/hooks/useCameras.ts`, Funktion `useCameraSnapshot`
+Aktuell werden Credentials nur in die URL eingebettet (`http://user:pass@host`). Zusätzlich einen expliziten `Authorization: Basic ...` Header senden. Bei 401-Antwort eine klare Fehlermeldung zurückgeben, die auf mögliche Digest Auth hinweist.
 
-Ersetze:
-```typescript
-const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-const url = `https://${projectId}.supabase.co/functions/v1/sot-camera-snapshot?camera_id=${cameraId}`;
-```
+### Fix 3: `encodeURIComponent` Doppel-Encoding entfernen
 
-Mit:
-```typescript
-const baseUrl = import.meta.env.VITE_SUPABASE_URL;
-const url = `${baseUrl}/functions/v1/sot-camera-snapshot?camera_id=${cameraId}`;
-```
+`new URL().username = encodeURIComponent(...)` verursacht Doppel-Encoding, da die URL-Klasse bereits selbst encoded. Direkt `parsed.username = camera.auth_user` setzen.
 
-Dies nutzt `VITE_SUPABASE_URL` (`https://ktpvilzjtcaxyuufocrs.supabase.co`), die nachweislich in allen anderen Requests korrekt funktioniert.
+### Implementierung
 
-## Umfang
+Die gesamte Edge Function wird mit Claudes korrigierter Version ersetzt, mit einer Anpassung: `encodeURIComponent` wird bei `parsed.username`/`parsed.password` entfernt, um Doppel-Encoding zu vermeiden.
 
-- 1 Datei, 2 Zeilen Änderung
-- Kein Modul-Code betroffen (shared hook)
-- Keine Freeze-Verletzung
+### Nicht im Scope
+
+- tenant_id Migration (optional, später)
+- Digest Auth Implementierung (falls Basic Auth nach diesem Fix immer noch 401 gibt, ist das der nächste Schritt)
+
+### Umfang
+- 1 Datei, vollständiger Ersatz der Edge Function
+- Keine Freeze-Verletzung (Edge Function, kein Modul-Pfad)
+- Re-Deploy automatisch
 
