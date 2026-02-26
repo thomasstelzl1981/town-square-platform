@@ -164,18 +164,38 @@ export function ProjectDataSheet({ isDemo, selectedProject, unitCount, fullProje
   const [aiLoading, setAiLoading] = useState(false);
   const [descOpen, setDescOpen] = useState(false);
   const [locationOpen, setLocationOpen] = useState(false);
-  const [devContext, setDevContext] = useState<Record<string, any> | null>(null);
+  // ── Developer Context (Anbieter/Impressum) – editable state ──
+  const [devCtxId, setDevCtxId] = useState<string | null>(null);
+  const [devName, setDevName] = useState('');
+  const [devLegalForm, setDevLegalForm] = useState('');
+  const [devManagingDirector, setDevManagingDirector] = useState('');
+  const [devStreet, setDevStreet] = useState('');
+  const [devHouseNumber, setDevHouseNumber] = useState('');
+  const [devPostalCode, setDevPostalCode] = useState('');
+  const [devCity, setDevCity] = useState('');
+  const [devHrb, setDevHrb] = useState('');
+  const [devUstId, setDevUstId] = useState('');
 
-  // ── Load Developer Context (Anbieter/Impressum) ──
   useEffect(() => {
     if (!fullProject?.developer_context_id || isDemo) return;
     const loadContext = async () => {
       const { data } = await supabase
         .from('developer_contexts')
-        .select('name, legal_form, managing_director, street, house_number, postal_code, city, hrb_number, ust_id')
+        .select('id, name, legal_form, managing_director, street, house_number, postal_code, city, hrb_number, ust_id')
         .eq('id', fullProject.developer_context_id)
         .maybeSingle();
-      if (data) setDevContext(data);
+      if (data) {
+        setDevCtxId(data.id);
+        setDevName(data.name || '');
+        setDevLegalForm(data.legal_form || '');
+        setDevManagingDirector(data.managing_director || '');
+        setDevStreet(data.street || '');
+        setDevHouseNumber(data.house_number || '');
+        setDevPostalCode(data.postal_code || '');
+        setDevCity(data.city || '');
+        setDevHrb(data.hrb_number || '');
+        setDevUstId(data.ust_id || '');
+      }
     };
     loadContext();
   }, [fullProject?.developer_context_id, isDemo]);
@@ -386,6 +406,25 @@ export function ProjectDataSheet({ isDemo, selectedProject, unitCount, fullProje
         .eq('id', projectId);
 
       if (error) throw error;
+
+      // ── Save Developer Context (Anbieter) ──
+      if (devCtxId) {
+        const { error: ctxErr } = await supabase
+          .from('developer_contexts')
+          .update({
+            name: devName || null,
+            legal_form: devLegalForm || null,
+            managing_director: devManagingDirector || null,
+            street: devStreet || null,
+            house_number: devHouseNumber || null,
+            postal_code: devPostalCode || null,
+            city: devCity || null,
+            hrb_number: devHrb || null,
+            ust_id: devUstId || null,
+          })
+          .eq('id', devCtxId);
+        if (ctxErr) console.error('Developer context save error:', ctxErr);
+      }
 
       toast.success('Projekt-Datenblatt gespeichert');
       setDirty(false);
@@ -658,31 +697,59 @@ export function ProjectDataSheet({ isDemo, selectedProject, unitCount, fullProje
           </FormField>
         </div>
 
-        {/* ── Projektgesellschaft / Anbieter ── */}
-        {devContext && (
-          <div className="p-3 rounded-lg border bg-muted/20 space-y-2">
+        {/* ── Projektgesellschaft / Anbieter (editierbar) ── */}
+        {(devCtxId || !isDemo) && (
+          <div className="p-3 rounded-lg border bg-muted/20 space-y-3">
             <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
               <Landmark className="h-3.5 w-3.5" /> Projektgesellschaft / Anbieter
             </p>
-            <div className="space-y-1 text-sm">
-              <p className="font-semibold">
-                {devContext.name}{devContext.legal_form ? ` ${devContext.legal_form}` : ''}
-              </p>
-              {devContext.managing_director && (
-                <p className="text-muted-foreground">Geschäftsführer: {devContext.managing_director}</p>
-              )}
-              {(devContext.street || devContext.city) && (
-                <p className="text-muted-foreground">
-                  {[
-                    [devContext.street, devContext.house_number].filter(Boolean).join(' '),
-                    [devContext.postal_code, devContext.city].filter(Boolean).join(' ')
-                  ].filter(Boolean).join(', ')}
-                </p>
-              )}
-              <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-muted-foreground">
-                {devContext.hrb_number && <span>HRB: {devContext.hrb_number}</span>}
-                {devContext.ust_id && <span>USt-ID: {devContext.ust_id}</span>}
+            <div className="grid grid-cols-2 gap-3">
+              <FormField label="Firma" icon={Building2}>
+                <Input value={devName} onChange={e => { setDevName(e.target.value); markDirty(); }}
+                  disabled={isDemo} className="h-8 text-sm" placeholder="Gesellschaftsname" />
+              </FormField>
+              <FormField label="Rechtsform" icon={Scale}>
+                <Input value={devLegalForm} onChange={e => { setDevLegalForm(e.target.value); markDirty(); }}
+                  disabled={isDemo} className="h-8 text-sm" placeholder="GmbH, UG, AG…" />
+              </FormField>
+            </div>
+            <FormField label="Geschäftsführer" icon={Users}>
+              <Input value={devManagingDirector} onChange={e => { setDevManagingDirector(e.target.value); markDirty(); }}
+                disabled={isDemo} className="h-8 text-sm" placeholder="Vor- und Nachname" />
+            </FormField>
+            <div className="grid grid-cols-4 gap-3">
+              <div className="col-span-3">
+                <FormField label="Straße" icon={MapPin}>
+                  <Input value={devStreet} onChange={e => { setDevStreet(e.target.value); markDirty(); }}
+                    disabled={isDemo} className="h-8 text-sm" placeholder="Straßenname" />
+                </FormField>
               </div>
+              <FormField label="Nr." icon={Home}>
+                <Input value={devHouseNumber} onChange={e => { setDevHouseNumber(e.target.value); markDirty(); }}
+                  disabled={isDemo} className="h-8 text-sm" placeholder="42" />
+              </FormField>
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <FormField label="PLZ" icon={MapPin}>
+                <Input value={devPostalCode} onChange={e => { setDevPostalCode(e.target.value); markDirty(); }}
+                  disabled={isDemo} className="h-8 text-sm" placeholder="80802" />
+              </FormField>
+              <div className="col-span-2">
+                <FormField label="Stadt" icon={Building2}>
+                  <Input value={devCity} onChange={e => { setDevCity(e.target.value); markDirty(); }}
+                    disabled={isDemo} className="h-8 text-sm" placeholder="München" />
+                </FormField>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <FormField label="HRB-Nummer" icon={Briefcase}>
+                <Input value={devHrb} onChange={e => { setDevHrb(e.target.value); markDirty(); }}
+                  disabled={isDemo} className="h-8 text-sm" placeholder="HRB 287451 · AG München" />
+              </FormField>
+              <FormField label="USt-ID" icon={Receipt}>
+                <Input value={devUstId} onChange={e => { setDevUstId(e.target.value); markDirty(); }}
+                  disabled={isDemo} className="h-8 text-sm" placeholder="DE318294756" />
+              </FormField>
             </div>
           </div>
         )}
