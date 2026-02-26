@@ -41,7 +41,7 @@ export interface UseImageSlotUploadReturn {
   uploadingSlot: string | null;
   /** Load existing images for all slots from document_links */
   loadSlotImages: (entityId: string, entityType: string) => Promise<Record<string, { url: string; documentId: string }>>;
-  /** Soft-delete a slot image (sets link_status = 'deleted') */
+  /** Soft-delete a slot image (sets link_status = 'archived') */
   deleteSlotImage: (documentId: string) => Promise<boolean>;
 }
 
@@ -90,12 +90,12 @@ export function useImageSlotUpload(config: UseImageSlotUploadConfig): UseImageSl
       // 2a. Soft-delete any existing document_link for this slot
       await supabase
         .from('document_links')
-        .update({ link_status: 'deleted' })
+        .update({ link_status: 'archived' })
         .eq('tenant_id', tenantId)
         .eq('object_id', entityId)
         .eq('object_type', entityType)
         .eq('slot_key', slotKey)
-        .eq('link_status', 'active');
+        .eq('link_status', 'linked');
 
       // 2b. documents record
       const { data: docRecord, error: docError } = await supabase
@@ -125,7 +125,7 @@ export function useImageSlotUpload(config: UseImageSlotUploadConfig): UseImageSl
           object_type: entityType,
           object_id: entityId,
           slot_key: slotKey,
-          link_status: 'active',
+          link_status: 'linked',
         });
 
       if (linkError) throw linkError;
@@ -200,7 +200,7 @@ export function useImageSlotUpload(config: UseImageSlotUploadConfig): UseImageSl
       .eq('tenant_id', tenantId)
       .eq('object_id', loadEntityId)
       .eq('object_type', loadEntityType)
-      .eq('link_status', 'active')
+      .eq('link_status', 'linked')
       .not('slot_key', 'is', null);
 
     if (error || !links) {
@@ -220,11 +220,11 @@ export function useImageSlotUpload(config: UseImageSlotUploadConfig): UseImageSl
     return imageMap;
   }, [tenantId, getSignedUrl]);
 
-  /** Soft-delete a slot image by setting link_status to 'deleted' */
+  /** Soft-delete a slot image by setting link_status to 'archived' */
   const deleteSlotImage = useCallback(async (documentId: string): Promise<boolean> => {
     const { error } = await supabase
       .from('document_links')
-      .update({ link_status: 'deleted' })
+      .update({ link_status: 'archived' })
       .eq('document_id', documentId)
       .eq('tenant_id', tenantId);
 
