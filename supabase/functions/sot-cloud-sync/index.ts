@@ -169,8 +169,10 @@ Deno.serve(async (req) => {
     const sbUser = createClient(supabaseUrl, anonKey, {
       global: { headers: { Authorization: authHeader } },
     });
-    const { data: { user }, error: ue } = await sbUser.auth.getUser();
-    if (ue || !user) return json({ error: "Invalid user" }, 401);
+    const token = authHeader.replace("Bearer ", "");
+    const { data: claimsData, error: claimsErr } = await sbUser.auth.getClaims(token);
+    if (claimsErr || !claimsData?.claims) return json({ error: "Invalid user" }, 401);
+    const user = { id: claimsData.claims.sub as string, email: claimsData.claims.email as string };
 
     const { data: profile } = await sbUser
       .from("profiles")
