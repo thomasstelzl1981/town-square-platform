@@ -16,6 +16,7 @@
     "bank_transactions": { "file": "demo_bank_transactions.csv", "expectedCount": 100, "dbTable": "bank_transactions" },
     "household_persons": { "file": "demo_household_persons.csv", "expectedCount": 4, "dbTable": "household_persons" },
     "vehicles": { "file": "demo_vehicles.csv", "expectedCount": 2, "dbTable": "cars_vehicles" },
+    "dev_project_units": { "file": "demo_dev_project_units.csv", "expectedCount": 24, "dbTable": "dev_project_units" },
     "pv_plants": { "file": "demo_pv_plants.csv", "expectedCount": 1, "dbTable": "pv_plants" },
     "insurance_contracts": { "file": null, "expectedCount": 7, "dbTable": "insurance_contracts", "seedMethod": "code" },
     "kv_contracts": { "file": null, "expectedCount": 4, "dbTable": "kv_contracts", "seedMethod": "code" },

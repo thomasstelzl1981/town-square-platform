@@ -50,6 +50,7 @@ const CLEANUP_ORDER = [
   'finance_requests',
   'acq_offers',
   'acq_mandates',
+  'dev_project_units',
   'dev_projects',
   // Sales workflow (children first)
   'listing_publications',

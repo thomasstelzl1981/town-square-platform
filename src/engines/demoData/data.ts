@@ -481,6 +481,15 @@ export const DEMO_DEV_PROJECT: DemoDevProject = {
   city: 'München',
 };
 
+/** MOD-13 Projekt-Konstanten für Seed-Engine */
+export const DEMO_DEV_PROJECT_CONSTANTS = {
+  address: 'Eisenacher Straße 12, 10777 Berlin',
+  constructionYear: 1912,
+  afaModel: 'linear' as const,
+  landSharePercent: 20,
+  afaRatePercent: 2,
+} as const;
+
 // ─── SELBSTAUSKUNFT (persistente DB-Einträge) ──────────────
 
 export const DEMO_SELBSTAUSKUNFT_PRIMARY_ID = 'a23366ab-e769-46b0-8d44-f8117f901c15';
@@ -558,6 +567,8 @@ export const ALL_DEMO_IDS: readonly string[] = [
   DEMO_ACQ_OFFER_ID,
   DEMO_DEVELOPER_CONTEXT_ID,
   'f0000000-0000-4000-a000-000000013001', // dev_projects
+  // Dev Project Units (MOD-13) — 24 IDs
+  ...Array.from({ length: 24 }, (_, i) => `f0000000-0000-4000-a000-0000000131${String(i + 1).padStart(2, '0')}`),
   // Property Accounting (AfA)
   'e0000000-0000-4000-a000-0000afa00001',
   'e0000000-0000-4000-a000-0000afa00002',

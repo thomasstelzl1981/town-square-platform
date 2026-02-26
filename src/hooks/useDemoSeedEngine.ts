@@ -16,6 +16,7 @@ import {
   DEMO_ACQ_MANDATE_ID,
   DEMO_DEV_PROJECT,
   DEMO_DEVELOPER_CONTEXT_ID,
+  DEMO_DEV_PROJECT_CONSTANTS,
   DEMO_PET_LUNA,
   DEMO_PET_BELLO,
 } from '@/engines/demoData/data';
@@ -81,6 +82,8 @@ const NUMERIC_KEYS = new Set([
   'building_society_value', 'life_insurance_value', 'adults_count', 'children_count',
   'child_support_amount_monthly', 'child_benefit_monthly', 'other_regular_income_monthly',
   'company_employees', 'company_ownership_percent', 'priority',
+  // dev_project_units
+  'list_price', 'hausgeld', 'commission_amount',
 ]);
 
 /** Boolean columns */
@@ -89,6 +92,8 @@ const BOOLEAN_KEYS = new Set([
   'is_primary', 'has_battery', 'mastr_account_present',
   'is_business', 'rental_managed', 'sale_enabled',
   'is_published',
+  // dev_project_units
+  'balcony', 'garden', 'parking',
 ]);
 
 function coerceValue(value: string, key: string): unknown {
@@ -338,6 +343,7 @@ const DEMO_DEV_PROJECT_ID = 'f0000000-0000-4000-a000-000000013001';
 
 async function seedDevProject(tenantId: string, userId: string): Promise<string[]> {
   const p = DEMO_DEV_PROJECT;
+  const c = DEMO_DEV_PROJECT_CONSTANTS;
   const data = {
     id: DEMO_DEV_PROJECT_ID,
     tenant_id: tenantId,
@@ -356,6 +362,12 @@ async function seedDevProject(tenantId: string, userId: string): Promise<string[
     project_start_date: '2024-06-01',
     target_end_date: '2026-12-31',
     description: 'Kernsanierung Altbau zum modernen Wohnensemble mit 24 Einheiten',
+    address: c.address,
+    construction_year: c.constructionYear,
+    afa_model: c.afaModel,
+    land_share_percent: c.landSharePercent,
+    afa_rate_percent: c.afaRatePercent,
+    invest_engine_analyzed: true,
   };
 
   const { error } = await (supabase as any)
@@ -365,6 +377,37 @@ async function seedDevProject(tenantId: string, userId: string): Promise<string[
   if (error) { console.error('[DemoSeed] dev_projects:', error.message); return []; }
   if (import.meta.env.DEV) console.log('[DemoSeed] ✓ dev_projects: 1');
   return [DEMO_DEV_PROJECT_ID];
+}
+
+// ─── Dev Project Units (MOD-13 Preisliste) ─────────────────
+
+async function seedDevProjectUnits(tenantId: string): Promise<string[]> {
+  const rows = await fetchCSV('/demo-data/demo_dev_project_units.csv');
+  if (!rows.length) return [];
+
+  // Pre-cleanup: delete any existing units for this project
+  await (supabase as any)
+    .from('dev_project_units')
+    .delete()
+    .eq('project_id', DEMO_DEV_PROJECT_ID)
+    .eq('tenant_id', tenantId);
+
+  const data = rows.map(r => stripNulls({ ...r, tenant_id: tenantId }));
+  const allIds: string[] = [];
+
+  for (let i = 0; i < data.length; i += 50) {
+    const chunk = data.slice(i, i + 50);
+    const { error } = await (supabase as any)
+      .from('dev_project_units')
+      .upsert(chunk, { onConflict: 'id' });
+    if (error) {
+      console.error(`[DemoSeed] dev_project_units chunk ${i}:`, error.message);
+    } else {
+      allIds.push(...chunk.map(r => (r as Record<string, unknown>).id as string));
+    }
+  }
+  if (import.meta.env.DEV) console.log(`[DemoSeed] ✓ dev_project_units: ${allIds.length}`);
+  return allIds;
 }
 
 // ─── Landlord Context (ensure exists for property linkage) ──
@@ -825,7 +868,7 @@ export interface DemoSeedResult {
 }
 
 /** Total number of seed() calls in the orchestrator — keep in sync! */
-const TOTAL_SEED_STEPS = 29;
+const TOTAL_SEED_STEPS = 30;
 
 export async function seedDemoData(
   tenantId: string,
@@ -969,6 +1012,7 @@ export async function seedDemoData(
 
   // Phase 6.5: Dev Projects (MOD-13)
   await seed('dev_projects', () => seedDevProject(tenantId, userId));
+  await seed('dev_project_units', () => seedDevProjectUnits(tenantId));
 
   // Phase 7: Owner Pets only (Luna + Bello — Max Mustermanns eigene Tiere für MOD-05)
   // Pet Manager business data (providers, services, customers, bookings, z1_customers)
@@ -987,7 +1031,7 @@ export async function seedDemoData(
     user_subscriptions: 7, private_loans: 2,
     miety_homes: 1, miety_contracts: 5,
     acq_mandates: 1, acq_offers: 1,
-    dev_projects: 1,
+    dev_projects: 1, dev_project_units: 24,
     finance_requests: 2, applicant_profiles: 3, finance_mandates: 2,
     pets: 2,
   };
