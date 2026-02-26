@@ -1,0 +1,19 @@
+{
+  "version": "1.0",
+  "updated_at": "2026-02-26T15:00:00.000Z",
+  "description": "SSOT for engine freeze states. AI MUST check this file before modifying any file in src/engines/*. If an engine is frozen, changes are NOT ALLOWED without explicit unfreeze.",
+  "engines": {
+    "ENG-AKQUISE": { "frozen": true, "frozen_at": "2026-02-26T15:00:00.000Z", "path": "src/engines/akquiseCalc/*", "reason": "Production freeze" },
+    "ENG-FINANCE": { "frozen": true, "frozen_at": "2026-02-26T15:00:00.000Z", "path": "src/engines/finanzierung/*", "reason": "Production freeze" },
+    "ENG-PROVISION": { "frozen": true, "frozen_at": "2026-02-26T15:00:00.000Z", "path": "src/engines/provision/*", "reason": "Production freeze" },
+    "ENG-BWA": { "frozen": true, "frozen_at": "2026-02-26T15:00:00.000Z", "path": "src/engines/bewirtschaftung/*", "reason": "Production freeze" },
+    "ENG-PROJEKT": { "frozen": true, "frozen_at": "2026-02-26T15:00:00.000Z", "path": "src/engines/projektCalc/*", "reason": "Production freeze" },
+    "ENG-NK": { "frozen": true, "frozen_at": "2026-02-26T15:00:00.000Z", "path": "src/engines/nkAbrechnung/*", "reason": "Production freeze" },
+    "ENG-DEMODATA": { "frozen": true, "frozen_at": "2026-02-26T15:00:00.000Z", "path": "src/engines/demoData/*", "reason": "Production freeze" },
+    "ENG-FINUEB": { "frozen": true, "frozen_at": "2026-02-26T15:00:00.000Z", "path": "src/engines/finanzuebersicht/*", "reason": "Production freeze" },
+    "ENG-VORSORGE": { "frozen": true, "frozen_at": "2026-02-26T15:00:00.000Z", "path": "src/engines/vorsorgeluecke/*", "reason": "Production freeze" },
+    "ENG-VVSTEUER": { "frozen": true, "frozen_at": "2026-02-26T15:00:00.000Z", "path": "src/engines/vvSteuer/*", "reason": "Production freeze" },
+    "ENG-KONTOMATCH": { "frozen": true, "frozen_at": "2026-02-26T15:00:00.000Z", "path": "src/engines/kontoMatch/*", "reason": "Production freeze" },
+    "ENG-MKTDIR": { "frozen": true, "frozen_at": "2026-02-26T15:00:00.000Z", "path": "src/engines/marketDirectory/*", "reason": "Production freeze" }
+  }
+}
