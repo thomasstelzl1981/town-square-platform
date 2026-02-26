@@ -95,7 +95,8 @@ const MODULE_CHIPS: Record<string, ChipDefinition[]> = {
   ],
   'MOD-13': [
     { label: 'Projekt aus Dokument', action_code: 'ARM.MOD13.CREATE_DEV_PROJECT' },
-    { label: 'Modul erklären', action_code: 'ARM.MOD13.EXPLAIN_MODULE' },
+    { label: 'Projektphase', action_code: 'ARM.MOD13.PHASE_CHANGE' },
+    { label: 'Vertrieb starten', action_code: 'ARM.MOD13.START_DISTRIBUTION' },
   ],
   'MOD-14': [
     { label: 'Rechercheauftrag', action_code: 'ARM.MOD14.CREATE_RESEARCH_ORDER' },
