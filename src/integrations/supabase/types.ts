@@ -9487,19 +9487,27 @@ export type Database = {
       landing_pages: {
         Row: {
           about_text: string | null
+          advisor_ids: string[] | null
           booked_at: string | null
           contact_email: string | null
           contact_phone: string | null
           created_at: string
           created_by: string | null
+          custom_domain: string | null
           developer_website_url: string | null
+          domain_status: string | null
+          footer_address: string | null
+          footer_company_name: string | null
           hero_headline: string | null
           hero_subheadline: string | null
+          highlights_json: Json | null
           id: string
+          imprint_text: string | null
           location_description: string | null
           locked_at: string | null
           organization_id: string
           preview_expires_at: string | null
+          privacy_text: string | null
           project_id: string
           published_at: string | null
           slug: string
@@ -9508,19 +9516,27 @@ export type Database = {
         }
         Insert: {
           about_text?: string | null
+          advisor_ids?: string[] | null
           booked_at?: string | null
           contact_email?: string | null
           contact_phone?: string | null
           created_at?: string
           created_by?: string | null
+          custom_domain?: string | null
           developer_website_url?: string | null
+          domain_status?: string | null
+          footer_address?: string | null
+          footer_company_name?: string | null
           hero_headline?: string | null
           hero_subheadline?: string | null
+          highlights_json?: Json | null
           id?: string
+          imprint_text?: string | null
           location_description?: string | null
           locked_at?: string | null
           organization_id: string
           preview_expires_at?: string | null
+          privacy_text?: string | null
           project_id: string
           published_at?: string | null
           slug: string
@@ -9529,19 +9545,27 @@ export type Database = {
         }
         Update: {
           about_text?: string | null
+          advisor_ids?: string[] | null
           booked_at?: string | null
           contact_email?: string | null
           contact_phone?: string | null
           created_at?: string
           created_by?: string | null
+          custom_domain?: string | null
           developer_website_url?: string | null
+          domain_status?: string | null
+          footer_address?: string | null
+          footer_company_name?: string | null
           hero_headline?: string | null
           hero_subheadline?: string | null
+          highlights_json?: Json | null
           id?: string
+          imprint_text?: string | null
           location_description?: string | null
           locked_at?: string | null
           organization_id?: string
           preview_expires_at?: string | null
+          privacy_text?: string | null
           project_id?: string
           published_at?: string | null
           slug?: string

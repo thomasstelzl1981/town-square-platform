@@ -179,6 +179,13 @@ const LennoxPartnerProfil = React.lazy(() => import('@/pages/zone3/lennox/Lennox
 const LennoxShop = React.lazy(() => import('@/pages/zone3/lennox/LennoxShop'));
 const LennoxPartnerWerden = React.lazy(() => import('@/pages/zone3/lennox/LennoxPartnerWerden'));
 const LennoxAuth = React.lazy(() => import('@/pages/zone3/lennox/LennoxAuth'));
+
+// Zone 3: Project Landing Pages (lazy loaded)
+const ProjectLandingLayout = React.lazy(() => import('@/pages/zone3/project-landing/ProjectLandingLayout'));
+const ProjectLandingHome = React.lazy(() => import('@/pages/zone3/project-landing/ProjectLandingHome'));
+const ProjectLandingObjekt = React.lazy(() => import('@/pages/zone3/project-landing/ProjectLandingObjekt'));
+const ProjectLandingBeratung = React.lazy(() => import('@/pages/zone3/project-landing/ProjectLandingBeratung'));
+const ProjectLandingExpose = React.lazy(() => import('@/pages/zone3/project-landing/ProjectLandingExpose'));
 const LennoxMeinBereich = React.lazy(() => import('@/pages/zone3/lennox/LennoxMeinBereich'));
 
 

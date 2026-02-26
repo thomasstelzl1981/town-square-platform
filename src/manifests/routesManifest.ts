@@ -704,6 +704,19 @@ export const zone3Websites: Record<string, WebsiteDefinition> = {
       { path: "datenschutz", component: "LennoxDatenschutz", title: "Datenschutz" },
     ],
   },
+  // =========================================================================
+  // PROJECT LANDING PAGES — Dynamic per-project websites
+  // =========================================================================
+  'project-landing': {
+    base: "/website/projekt",
+    layout: "ProjectLandingLayout",
+    routes: [
+      { path: ":slug", component: "ProjectLandingHome", title: "Projekt", dynamic: true },
+      { path: ":slug/objekt", component: "ProjectLandingObjekt", title: "Objekt", dynamic: true },
+      { path: ":slug/beratung", component: "ProjectLandingBeratung", title: "Beratung", dynamic: true },
+      { path: ":slug/einheit/:unitId", component: "ProjectLandingExpose", title: "Exposé", dynamic: true },
+    ],
+  },
 };
 // =============================================================================
 // LEGACY ROUTES (DEPRECATED)
