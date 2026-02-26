@@ -1,98 +1,114 @@
 
 
-# Konsolidierungsstatus: Vollstaendige Pruefung
+# Systemweiter Stabilitaets-Check — Ergebnisse
 
-## Was ist umgesetzt?
-
-### Phase 1: Orphan Cleanup — KOMPLETT ERLEDIGT
-| Datei | Status |
-|-------|--------|
-| `src/components/zone3/kaufy/ArmstrongSidebar.tsx` | Geloescht |
-| `src/components/zone3/kaufy/InvestmentSearchCard.tsx` | Geloescht |
-| `src/components/zone3/kaufy/KaufyPropertyCard.tsx` | Geloescht |
-| `src/components/zone3/kaufy/PerspektivenAccordion.tsx` | Geloescht |
-| `src/components/zone3/kaufy/ZahlenSektion.tsx` | Geloescht |
-| `src/components/immobilienakte/UnitDossierView.tsx` | Geloescht |
-| `kaufy/index.ts` — reduziert auf KaufyInputBar | Erledigt |
-| `immobilienakte/index.ts` — Export entfernt | Erledigt |
-
-### Phase 2: Expose-Konsolidierung — KOMPLETT ERLEDIGT (5/5)
-| Seite | Nutzt SSOT? | Hook | Zeilen |
-|-------|-------------|------|--------|
-| InvestmentExposePage (MOD-08) | `InvestmentExposeView` | `useExposeListing` | 53 |
-| PartnerExposePage (MOD-09) | `InvestmentExposeView` | `useExposeListing` | 53 |
-| Kaufy2026Expose (Zone 3) | `InvestmentExposeView` | `useExposeListing` | 145 |
-| InvestEngineExposePage (MOD-13) | `InvestmentExposeView` | `useProjectUnitExpose` | 84 |
-| ProjectLandingExpose (Zone 3 Landing) | `InvestmentExposeView` | `useProjectUnitExpose` | 130 |
-
-### Shared Helper — ERLEDIGT
-- `src/lib/createPropertyFromUnit.ts` — Erstellt, wird von `CreatePropertyFromUnits` und `SalesApprovalSection` genutzt.
-
-### Freeze-Status — KORREKT
-- Alle Module (MOD-00 bis MOD-22) frozen
-- Alle Zone 3 Sites frozen
-- Alle Infra-Bereiche frozen (inkl. `shared_investment`)
+## Status: Weitgehend produktionsreif mit 4 adressierbaren Schwachstellen
 
 ---
 
-## Was ist noch offen?
+## A. BESTAETIGT — Kein Handlungsbedarf
 
-### 1. Governance-Regel F (TSX Creation Check) — OFFEN
-Muss manuell in Custom Knowledge eingetragen werden. Der Text wurde bereits formuliert:
-
-```text
-F. MANDATORY RULE – TSX CREATION CHECK
-
-Before creating ANY new .tsx file, you MUST:
-
-1. Search for existing components with similar purpose using
-   search_files with patterns matching the intended functionality
-   (e.g., "ImageGallery", "SearchCard", "ResultTile", "Calculator")
-
-2. Check these directories for reusable SSOT components:
-   - src/components/shared/ — Cross-module UI patterns
-   - src/components/investment/ — Investment/Expose SSOT
-   - src/components/ui/ — Base UI primitives
-   - src/components/immobilienakte/ — Property dossier blocks
-
-3. If a component with >70% functional overlap exists:
-   - REFUSE creation and say:
-     "COMPONENT DUPLICATE: [proposed file] overlaps with [existing file].
-      Extend the existing component with props/variants instead of
-      creating a new file."
-   - Propose a props-based extension of the existing component
-
-4. If the new component serves a genuinely new purpose, proceed
-   but register it in the appropriate index.ts barrel export.
-
-This rule prevents the drift from 2 versions to 5 versions that
-caused the Expose regression chain.
-```
-
-Du musst diesen Text selbst in dein Custom Knowledge einfuegen (Einstellungen des Projekts). Ich kann Custom Knowledge nicht direkt aendern.
-
-### 2. Keine weiteren Code-Luecken gefunden
-- Alle 5 Expose-Seiten sind Thin Wrappers (53-145 Zeilen) auf die SSOT-Komponente `InvestmentExposeView` (388 Zeilen).
-- Beide Hooks (`useExposeListing` fuer DB-Listings, `useProjectUnitExpose` fuer Projekt-Einheiten) sind korrekt getrennt und nutzen dasselbe `ExposeListingData`-Interface.
-- `createPropertyFromUnit` erzeugt Properties mit allen Feldern, die `useExposeListing` downstream braucht (`annual_income`, `year_built`, `heating_type`, etc.).
-- Die Barrel-Exports in `investment/index.ts` exportieren `InvestmentExposeView` und `ExposeListingData`.
-- Keine verwaisten Dateien mehr im Kaufy- oder Immobilienakte-Verzeichnis.
-
-### 3. Moeglicher Verbesserungspunkt (kein Blocker)
-`InvestmentExposeView` listet MOD-13 und Zone 3 Project Landing noch nicht im JSDoc-Header (Zeile 7-8). Das ist rein kosmetisch, aber fuer Konsistenz sollte der Kommentar aktualisiert werden, wenn das naechste Mal einer der beteiligten Bereiche unfrozen wird.
+| Bereich | Status |
+|---------|--------|
+| **Freeze-System** | Alle 23 Module, 6 Zone-3-Sites, 12 Engines, 6 Infra-Bereiche korrekt frozen |
+| **Orphan-Cleanup** | Keine verwaisten Imports auf geloeschte Dateien (ArmstrongSidebar, KaufyPropertyCard, UnitDossierView etc.) |
+| **Expose-SSOT** | 5/5 Seiten konsolidiert auf InvestmentExposeView |
+| **RLS-Abdeckung** | 0 Tabellen ohne RLS-Policies (vollstaendige Abdeckung) |
+| **Demo-Data-Governance** | Keine MOCK_/mockData/dummyData Verletzungen in Modul-Komponenten |
+| **Golden Path Fail-States** | GP_FINANCE_Z3, GP_PET, GP_COMMISSION alle mit on_timeout + on_error ausgestattet |
+| **Golden Path Validator** | DEV-only (import.meta.env.PROD return), keine Prod-Auswirkung |
 
 ---
 
-## Zusammenfassung
+## B. GEFUNDENE SCHWACHSTELLEN (4 Punkte)
+
+### B1: Ungeschuetzte console.log in Produktion (MITTEL)
+
+3 Dateien enthalten console.log OHNE `import.meta.env.DEV` Guard — diese leaken in Produktion:
+
+| Datei | Zeilen | Inhalt |
+|-------|--------|--------|
+| `src/hooks/useImageSlotUpload.ts` | 56, 79 | Tenant-ID, Entity-ID, Storage-Pfade |
+| `src/hooks/useLennoxInitialSeed.ts` | 69, 75, 89, 105, 150, 184, 234 | Gallery-Seeding Fortschritt |
+| `src/pages/portal/stammdaten/ProfilTab.tsx` | 302, 304 | User-ID, Tenant-ID, Slot-Keys |
+| `src/pages/portal/projekte/InvestEngineTab.tsx` | 149 | Project-ID |
+
+**Risiko:** Datenlecks (Tenant-IDs, User-IDs, Storage-Pfade) in Browser-Konsole von Endnutzern. Verstoesst gegen Governance-Regel "Webhook and Token Hardening Standard".
+
+**Fix:** Alle 11 console.log-Aufrufe in `import.meta.env.DEV` Guards einwickeln. Betrifft:
+- UNFREEZE INFRA-shared_investment (nein — useImageSlotUpload liegt in hooks, nicht frozen)
+- Hooks und Pages sind NICHT in frozen Pfaden, koennen direkt editiert werden
+
+---
+
+### B2: React forwardRef Warning (NIEDRIG)
+
+```
+Warning: Function components cannot be given refs.
+Check the render method of `ManifestRouter` → AreaOverviewPage
+Check the render method of `AreaOverviewPage` → AreaModuleCard
+```
+
+**Ursache:** `AreaOverviewPage` wird via `React.lazy()` geladen und `AreaModuleCard` erhaelt einen ref-Durchleitungsversuch. Keine funktionale Auswirkung, aber verunreinigt die Konsole.
+
+**Fix:** `React.forwardRef()` um AreaOverviewPage wickeln oder den ref-Pass im ManifestRouter entfernen. Da AreaOverviewPage in keinem frozen Pfad liegt, direkt editierbar.
+
+---
+
+### B3: RLS "Always True" Policies — Bewertung (NIEDRIG)
+
+Der Linter meldet 4 WARN fuer permissive Policies. Analyse zeigt:
+
+| Tabelle | Policy | Cmd | Bewertung |
+|---------|--------|-----|-----------|
+| mail_campaign_* (3 Tabellen) | Service role full access | ALL | **OK** — Service-Role-Only, kein Anon-Zugriff |
+| user_outbound_identities | Service role full access | ALL | **OK** — Service-Role-Only |
+| pet_z1_booking_requests | anon_insert | INSERT | **Akzeptabel** — Zone 3 Buchungsformular, absichtlich offen |
+| zone3_website_settings | INSERT/UPDATE auth | INSERT/UPDATE | **Pruefenswert** — jeder authentifizierte User kann Settings fuer jede Zone 3 Site aendern |
+
+**Einziger Kandidat:** `zone3_website_settings` — INSERT und UPDATE mit `true` statt Tenant-Scoping. Wenn nur Admins Website-Settings aendern duerfen sollten, muss die Policy verschaerft werden.
+
+---
+
+### B4: Auth-Konfiguration Warnings (NIEDRIG)
+
+- **OTP Expiry zu lang:** Standard-Empfehlung ist 5 Minuten; aktuell laenger konfiguriert
+- **Leaked Password Protection deaktiviert:** HaveIBeenPwned-Check nicht aktiv
+
+**Fix:** Konfigurationsaenderung im Auth-System, keine Code-Aenderung noetig.
+
+---
+
+## C. ZUSAMMENFASSUNG
 
 ```text
-ERLEDIGT:
-✅ Phase 1: 6 verwaiste Dateien geloescht, Barrel-Exports bereinigt
-✅ Phase 2: 5/5 Expose-Seiten auf InvestmentExposeView SSOT konsolidiert
-✅ Shared Helper createPropertyFromUnit erstellt und integriert
-✅ Alle Module und Bereiche korrekt re-frozen
+PRODUKTIONSREIF:
+✅ Alle Module frozen und stabil
+✅ RLS-Abdeckung 100%
+✅ Expose-SSOT konsolidiert (5/5)
+✅ Golden Path Fail-States vollstaendig
+✅ Demo-Data-Governance eingehalten
+✅ Keine verwaisten Dateien/Imports
 
-OFFEN:
-⬜ Regel F in Custom Knowledge eintragen (manuell durch dich)
+STABILISIERUNG EMPFOHLEN:
+⬜ B1: 11 console.log Guards einbauen (useImageSlotUpload, useLennoxInitialSeed, ProfilTab, InvestEngineTab)
+⬜ B2: forwardRef Warning beheben (AreaOverviewPage)
+⬜ B3: zone3_website_settings RLS verschaerfen (optional)
+⬜ B4: Auth OTP Expiry + Leaked Password Protection (optional)
+⬜ Regel F in Custom Knowledge eintragen (manuell)
 ```
+
+### Umsetzungsplan (nach Freigabe)
+
+**Phase 1 — Console.log Hardening (kein Unfreeze noetig):**
+- `useImageSlotUpload.ts`: 2 Zeilen wrappen
+- `useLennoxInitialSeed.ts`: 7 Zeilen wrappen
+- `ProfilTab.tsx`: 2 Zeilen wrappen
+- `InvestEngineTab.tsx`: 1 Zeile wrappen
+
+**Phase 2 — forwardRef Fix (kein Unfreeze noetig):**
+- `AreaOverviewPage.tsx`: `React.forwardRef()` hinzufuegen
+
+**Phase 3 — RLS Hardening (optional, UNFREEZE INFRA-edge_functions noetig):**
+- `zone3_website_settings` INSERT/UPDATE Policies auf Tenant-Scoping umstellen
 
