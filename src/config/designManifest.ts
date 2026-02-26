@@ -330,7 +330,7 @@ export const ACTIVE_WIDGET = ACTIVE_WIDGET_VARIANTS;
 /** Bild-Upload-Slots: Standard-Größen für ImageSlotGrid */
 export const IMAGE_SLOT = {
   /** Standard-Höhe für alle Bild-Slots (Projekte, Galerie) */
-  HEIGHT: 140,
+  HEIGHT: 180,
   /** Kompakt-Variante (Avatar, Logo) */
   HEIGHT_COMPACT: 80,
   /** Border-Klassen */

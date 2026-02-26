@@ -154,7 +154,7 @@ export function ProjectDataSheet({ isDemo, selectedProject, unitCount, fullProje
     moduleCode: 'MOD-13',
     entityId: projectId || '',
     tenantId: fullProject?.tenant_id || '',
-    entityType: 'projekt',
+    entityType: 'project',
   });
   const { uploadToSlot, getSignedUrl, uploadingSlot } = imageUpload;
 
@@ -258,7 +258,7 @@ export function ProjectDataSheet({ isDemo, selectedProject, unitCount, fullProje
   useEffect(() => {
     if (!projectId || !fullProject?.tenant_id || isDemo) return;
     const loadFromDb = async () => {
-      const imageMap = await imageUpload.loadSlotImages(projectId, 'projekt');
+      const imageMap = await imageUpload.loadSlotImages(projectId, 'project');
       const urls: Record<string, string> = {};
       const docIds: Record<string, string> = {};
       for (const [key, val] of Object.entries(imageMap)) {
