@@ -148,13 +148,16 @@ export function ProjectDataSheet({ isDemo, selectedProject, unitCount, fullProje
   );
   const [imageUrls, setImageUrls] = useState<Record<string, string>>({});
   const [slotDocIds, setSlotDocIds] = useState<Record<string, string>>({});
+  // Multi-image state
+  const [multiImages, setMultiImages] = useState<Record<string, Array<{url: string, documentId: string}>>>({});
 
-  // Shared image upload hook
+  // Shared image upload hook — multi-image enabled
   const imageUpload = useImageSlotUpload({
     moduleCode: 'MOD-13',
     entityId: projectId || '',
     tenantId: fullProject?.tenant_id || '',
     entityType: 'project',
+    multiImage: true,
   });
   const { uploadToSlot, getSignedUrl, uploadingSlot } = imageUpload;
 
@@ -254,16 +257,20 @@ export function ProjectDataSheet({ isDemo, selectedProject, unitCount, fullProje
     }
   }, [federalState]);
 
-  // ── PRIMARY: Load images from document_links (DB-based) ──
+  // ── PRIMARY: Load images from document_links (DB-based, multi-image) ──
   useEffect(() => {
     if (!projectId || !fullProject?.tenant_id || isDemo) return;
     const loadFromDb = async () => {
-      const imageMap = await imageUpload.loadSlotImages(projectId, 'project');
+      const multiMap = await imageUpload.loadSlotImagesMulti(projectId, 'project');
+      setMultiImages(multiMap);
+      // Also build single-image fallback urls for legacy compat
       const urls: Record<string, string> = {};
       const docIds: Record<string, string> = {};
-      for (const [key, val] of Object.entries(imageMap)) {
-        urls[key] = val.url;
-        docIds[key] = val.documentId;
+      for (const [key, entries] of Object.entries(multiMap)) {
+        if (entries.length > 0) {
+          urls[key] = entries[0].url;
+          docIds[key] = entries[0].documentId;
+        }
       }
       // FALLBACK: merge legacy JSONB paths for slots not found in DB
       for (const [key, path] of Object.entries(projectImages)) {
@@ -299,7 +306,7 @@ export function ProjectDataSheet({ isDemo, selectedProject, unitCount, fullProje
 
   const markDirty = () => setDirty(true);
 
-  // ── Image Upload (via shared hook) ──
+  // ── Image Upload (via shared hook, multi-image) ──
   const handleImageUpload = async (slotKey: string, file: File) => {
     if (isDemo) return;
     const storagePath = await uploadToSlot(slotKey, file);
@@ -308,11 +315,9 @@ export function ProjectDataSheet({ isDemo, selectedProject, unitCount, fullProje
       const url = await getSignedUrl(storagePath);
       if (url) setImageUrls(prev => ({ ...prev, [slotKey]: url }));
       setDirty(true);
-      // Reload doc IDs for delete support
-      const imageMap = await imageUpload.loadSlotImages(projectId!, 'projekt');
-      if (imageMap[slotKey]) {
-        setSlotDocIds(prev => ({ ...prev, [slotKey]: imageMap[slotKey].documentId }));
-      }
+      // Reload full multi-image state
+      const multiMap = await imageUpload.loadSlotImagesMulti(projectId!, 'project');
+      setMultiImages(multiMap);
     }
   };
 
@@ -325,6 +330,30 @@ export function ProjectDataSheet({ isDemo, selectedProject, unitCount, fullProje
     setProjectImages(prev => { const n = { ...prev }; delete n[slotKey]; return n; });
     setSlotDocIds(prev => { const n = { ...prev }; delete n[slotKey]; return n; });
     setDirty(true);
+    // Reload multi-image state
+    const multiMap = await imageUpload.loadSlotImagesMulti(projectId!, 'project');
+    setMultiImages(multiMap);
+  };
+
+  // Delete a specific image by document ID (multi-image mode)
+  const handleDeleteByDocId = async (documentId: string) => {
+    const deleted = await imageUpload.deleteSlotImage(documentId);
+    if (!deleted) return;
+    setDirty(true);
+    // Reload multi-image state
+    const multiMap = await imageUpload.loadSlotImagesMulti(projectId!, 'project');
+    setMultiImages(multiMap);
+    // Update single-image fallback
+    const urls: Record<string, string> = {};
+    const docIds: Record<string, string> = {};
+    for (const [key, entries] of Object.entries(multiMap)) {
+      if (entries.length > 0) {
+        urls[key] = entries[0].url;
+        docIds[key] = entries[0].documentId;
+      }
+    }
+    setImageUrls(urls);
+    setSlotDocIds(docIds);
   };
 
   // ── KI-Beschreibung ──
@@ -496,6 +525,9 @@ export function ProjectDataSheet({ isDemo, selectedProject, unitCount, fullProje
           uploadingSlot={uploadingSlot}
           disabled={isDemo}
           title="Projektbilder"
+          multiImage={!isDemo}
+          multiImages={multiImages}
+          onDeleteByDocId={handleDeleteByDocId}
         />
 
         {/* ── Objektdaten — full-width grid ── */}

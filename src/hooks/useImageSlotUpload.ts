@@ -4,8 +4,8 @@
  * Phase 1: Storage upload to tenant-documents bucket
  * Phase 2: DB records in documents + document_links + storage_nodes
  *
- * This ensures images are visible in DMS, linked to entity files,
- * and indexed in the data room with a full audit trail.
+ * Supports single-image (default) and multi-image mode per slot.
+ * In multi-image mode, uploads ADD images instead of replacing.
  */
 
 import { useState, useCallback } from 'react';
@@ -20,10 +20,17 @@ export interface UseImageSlotUploadConfig {
   entityId: string;
   /** Tenant id for path scoping */
   tenantId: string;
-  /** Entity type for document_links, e.g. 'projekt', 'profil', 'pet' */
+  /** Entity type for document_links, e.g. 'project', 'profil', 'pet' */
   entityType?: string;
   /** Sub-path within entity, default 'images' */
   subPath?: string;
+  /** Enable multi-image per slot (default false for backward compat) */
+  multiImage?: boolean;
+}
+
+export interface MultiImageEntry {
+  url: string;
+  documentId: string;
 }
 
 export interface ImageSlotUploadResult {
@@ -39,21 +46,23 @@ export interface UseImageSlotUploadReturn {
   getSignedUrl: (storagePath: string) => Promise<string | null>;
   /** Currently uploading slot key, or null */
   uploadingSlot: string | null;
-  /** Load existing images for all slots from document_links */
+  /** Load existing images for all slots from document_links (single-image mode) */
   loadSlotImages: (entityId: string, entityType: string) => Promise<Record<string, { url: string; documentId: string }>>;
+  /** Load existing images for all slots as arrays (multi-image mode) */
+  loadSlotImagesMulti: (entityId: string, entityType: string) => Promise<Record<string, MultiImageEntry[]>>;
   /** Soft-delete a slot image (sets link_status = 'archived') */
   deleteSlotImage: (documentId: string) => Promise<boolean>;
 }
 
 export function useImageSlotUpload(config: UseImageSlotUploadConfig): UseImageSlotUploadReturn {
-  const { moduleCode, entityId, tenantId, entityType = 'unknown', subPath = 'images' } = config;
+  const { moduleCode, entityId, tenantId, entityType = 'unknown', subPath = 'images', multiImage = false } = config;
   const [uploadingSlot, setUploadingSlot] = useState<string | null>(null);
 
   // Use underscore version for storage paths (MOD-13 → MOD_13)
   const modulePathSegment = moduleCode.replace(/-/g, '_');
 
   const uploadToSlot = useCallback(async (slotKey: string, file: File): Promise<string | null> => {
-    if (import.meta.env.DEV) console.log('[ImageSlotUpload] uploadToSlot called:', { slotKey, fileName: file.name, tenantId, entityId, modulePathSegment, subPath });
+    if (import.meta.env.DEV) console.log('[ImageSlotUpload] uploadToSlot called:', { slotKey, fileName: file.name, tenantId, entityId, modulePathSegment, subPath, multiImage });
     if (!tenantId || !entityId) {
       console.error('[ImageSlotUpload] Missing tenantId or entityId:', { tenantId, entityId });
       toast.error('Upload nicht möglich', { description: 'Daten noch nicht vollständig geladen.' });
@@ -75,7 +84,9 @@ export function useImageSlotUpload(config: UseImageSlotUploadConfig): UseImageSl
     setUploadingSlot(slotKey);
     try {
       const safeName = sanitizeFileName(file.name);
-      const storagePath = `${tenantId}/${modulePathSegment}/${entityId}/${subPath}/${slotKey}_${safeName}`;
+      // In multi-image mode, add timestamp to prevent overwrites
+      const uniqueSuffix = multiImage ? `_${Date.now()}` : '';
+      const storagePath = `${tenantId}/${modulePathSegment}/${entityId}/${subPath}/${slotKey}${uniqueSuffix}_${safeName}`;
       if (import.meta.env.DEV) console.log('[ImageSlotUpload] Uploading to path:', storagePath, 'bucket:', UPLOAD_BUCKET);
 
       // ── Phase 1: Storage Upload ──
@@ -87,15 +98,17 @@ export function useImageSlotUpload(config: UseImageSlotUploadConfig): UseImageSl
 
       // ── Phase 2: DB Records ──
 
-      // 2a. Soft-delete any existing document_link for this slot
-      await supabase
-        .from('document_links')
-        .update({ link_status: 'archived' })
-        .eq('tenant_id', tenantId)
-        .eq('object_id', entityId)
-        .eq('object_type', entityType)
-        .eq('slot_key', slotKey)
-        .eq('link_status', 'linked');
+      // 2a. In single-image mode: soft-delete existing link. In multi-image mode: skip (additive).
+      if (!multiImage) {
+        await supabase
+          .from('document_links')
+          .update({ link_status: 'archived' })
+          .eq('tenant_id', tenantId)
+          .eq('object_id', entityId)
+          .eq('object_type', entityType)
+          .eq('slot_key', slotKey)
+          .eq('link_status', 'linked');
+      }
 
       // 2b. documents record
       const { data: docRecord, error: docError } = await supabase
@@ -168,7 +181,7 @@ export function useImageSlotUpload(config: UseImageSlotUploadConfig): UseImageSl
     } finally {
       setUploadingSlot(null);
     }
-  }, [tenantId, entityId, entityType, moduleCode, modulePathSegment, subPath]);
+  }, [tenantId, entityId, entityType, moduleCode, modulePathSegment, subPath, multiImage]);
 
   const getSignedUrl = useCallback(async (storagePath: string): Promise<string | null> => {
     if (!storagePath) return null;
@@ -184,7 +197,7 @@ export function useImageSlotUpload(config: UseImageSlotUploadConfig): UseImageSl
     }
   }, []);
 
-  /** Load all active slot images for an entity from document_links */
+  /** Load all active slot images for an entity from document_links (single-image: last wins) */
   const loadSlotImages = useCallback(async (
     loadEntityId: string,
     loadEntityType: string,
@@ -220,6 +233,45 @@ export function useImageSlotUpload(config: UseImageSlotUploadConfig): UseImageSl
     return imageMap;
   }, [tenantId, getSignedUrl]);
 
+  /** Load all active slot images as arrays (multi-image mode) */
+  const loadSlotImagesMulti = useCallback(async (
+    loadEntityId: string,
+    loadEntityType: string,
+  ): Promise<Record<string, MultiImageEntry[]>> => {
+    if (!tenantId || !loadEntityId) return {};
+
+    const { data: links, error } = await supabase
+      .from('document_links')
+      .select(`
+        slot_key,
+        created_at,
+        documents!document_links_document_id_fkey (id, file_path, name, mime_type)
+      `)
+      .eq('tenant_id', tenantId)
+      .eq('object_id', loadEntityId)
+      .eq('object_type', loadEntityType)
+      .eq('link_status', 'linked')
+      .not('slot_key', 'is', null)
+      .order('created_at', { ascending: true });
+
+    if (error || !links) {
+      console.error('[useImageSlotUpload] loadSlotImagesMulti failed:', error);
+      return {};
+    }
+
+    const imageMap: Record<string, MultiImageEntry[]> = {};
+    for (const link of links) {
+      const doc = link.documents as any;
+      if (!doc?.file_path || !link.slot_key) continue;
+      const url = await getSignedUrl(doc.file_path);
+      if (url) {
+        if (!imageMap[link.slot_key]) imageMap[link.slot_key] = [];
+        imageMap[link.slot_key].push({ url, documentId: doc.id });
+      }
+    }
+    return imageMap;
+  }, [tenantId, getSignedUrl]);
+
   /** Soft-delete a slot image by setting link_status to 'archived' */
   const deleteSlotImage = useCallback(async (documentId: string): Promise<boolean> => {
     const { error } = await supabase
@@ -237,5 +289,5 @@ export function useImageSlotUpload(config: UseImageSlotUploadConfig): UseImageSl
     return true;
   }, [tenantId]);
 
-  return { uploadToSlot, getSignedUrl, uploadingSlot, loadSlotImages, deleteSlotImage };
+  return { uploadToSlot, getSignedUrl, uploadingSlot, loadSlotImages, loadSlotImagesMulti, deleteSlotImage };
 }
