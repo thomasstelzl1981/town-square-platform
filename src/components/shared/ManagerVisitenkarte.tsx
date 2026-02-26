@@ -2,6 +2,7 @@
  * ManagerVisitenkarte — Reusable business card component for all manager modules
  * Pattern extracted from FM/AM dashboards, uses DESIGN.DASHBOARD_HEADER
  */
+import { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -9,6 +10,7 @@ import { User, Mail, Phone, MapPin, Pencil } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DESIGN } from '@/config/designManifest';
 import { useAuth } from '@/contexts/AuthContext';
+import { getCachedSignedUrl } from '@/lib/imageCache';
 
 interface ManagerVisitenkarteProps {
   role: string;
@@ -38,6 +40,22 @@ export function ManagerVisitenkarte({
   overrideAddress,
 }: ManagerVisitenkarteProps) {
   const { profile } = useAuth();
+  const [resolvedAvatarUrl, setResolvedAvatarUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    const avatarPath = profile?.avatar_url;
+    if (!avatarPath) return;
+    // If already a full URL, use directly
+    if (avatarPath.startsWith('http')) {
+      setResolvedAvatarUrl(avatarPath);
+      return;
+    }
+    let cancelled = false;
+    getCachedSignedUrl(avatarPath, 'tenant-documents').then((url) => {
+      if (!cancelled && url) setResolvedAvatarUrl(url);
+    });
+    return () => { cancelled = true; };
+  }, [profile?.avatar_url]);
 
   const fullName = [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') || 'Kein Name';
   const fullAddress = [profile?.street, profile?.postal_code, profile?.city]
@@ -57,13 +75,13 @@ export function ManagerVisitenkarte({
       <CardContent className="p-4">
         <div className="flex items-stretch gap-4">
           <div
-            className="h-24 w-24 rounded-xl flex items-center justify-center shrink-0 shadow-md self-center"
+            className="w-32 rounded-xl flex items-center justify-center shrink-0 shadow-md overflow-hidden"
             style={{ background: `linear-gradient(to bottom right, ${gradientFrom}, ${gradientTo})` }}
           >
-            {profile?.avatar_url ? (
-              <img src={profile.avatar_url} alt={displayName} className="h-24 w-24 rounded-xl object-cover" />
+            {resolvedAvatarUrl ? (
+              <img src={resolvedAvatarUrl} alt={displayName} className="w-full h-full object-cover" />
             ) : (
-              <User className="h-8 w-8 text-white" />
+              <User className="h-10 w-10 text-white" />
             )}
           </div>
           <div className="flex-1 min-w-0 space-y-1.5">
