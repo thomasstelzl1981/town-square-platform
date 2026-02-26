@@ -127,7 +127,7 @@ export function MOD04DocumentPicker({
             document_id: doc.document_id,
             object_type: 'finance_request',
             object_id: requestId,
-            link_status: 'active',
+            link_status: 'linked',
             source_link_id: doc.id, // Reference to original property link
           });
 
