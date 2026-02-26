@@ -247,6 +247,17 @@ export default function VertriebTab() {
         projectId={activeProjectId}
         projectName={activeProjectData?.name}
         projectAddress={activeProjectData?.address || ''}
+        projectCity={activeProjectData?.city || ''}
+        projectPostalCode={activeProjectData?.postal_code || undefined}
+        projectYearBuilt={(activeProjectData as any)?.year_built || undefined}
+        projectData={{
+          heating_type: (activeProjectData as any)?.heating_type || undefined,
+          energy_source: (activeProjectData as any)?.energy_source || undefined,
+          energy_cert_type: (activeProjectData as any)?.energy_cert_type || undefined,
+          afa_model: (activeProjectData as any)?.afa_model || undefined,
+          afa_rate_percent: (activeProjectData as any)?.afa_rate_percent || undefined,
+          land_share_percent: (activeProjectData as any)?.land_share_percent || undefined,
+        }}
         totalUnits={totalUnits}
         projectVolume={totalValue}
         isDemo={isSelectedDemo}

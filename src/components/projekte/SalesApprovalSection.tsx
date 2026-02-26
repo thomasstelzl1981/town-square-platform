@@ -28,11 +28,26 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { createPropertyFromUnit } from '@/lib/createPropertyFromUnit';
 
 interface SalesApprovalSectionProps {
   projectId?: string;
   projectName?: string;
   projectAddress?: string;
+  projectCity?: string;
+  projectPostalCode?: string;
+  projectYearBuilt?: number;
+  projectData?: {
+    heating_type?: string;
+    energy_source?: string;
+    energy_cert_type?: string;
+    energy_class?: string;
+    renovation_year?: number;
+    afa_model?: string;
+    afa_rate_percent?: number;
+    land_share_percent?: number;
+    full_description?: string;
+  };
   totalUnits?: number;
   projectVolume?: number;
   isDemo?: boolean;
@@ -82,6 +97,10 @@ export function SalesApprovalSection({
   projectId,
   projectName,
   projectAddress,
+  projectCity,
+  projectPostalCode,
+  projectYearBuilt,
+  projectData: projectContextData,
   totalUnits,
   projectVolume,
   isDemo = false,
@@ -182,26 +201,31 @@ export function SalesApprovalSection({
       let propertyId = unit.property_id;
 
       if (!propertyId) {
-        const unitPublicId = `SOT-I-${unit.unit_number.replace(/[^a-zA-Z0-9]/g, '')}`;
-        const { data: newProperty, error: propError } = await supabase
-          .from('properties')
-          .insert({
-            tenant_id: tenantId,
-            public_id: unitPublicId,
-            code: unit.unit_number,
-            address: projectAddress || 'Adresse nicht angegeben',
-            city: project?.city || 'Stadt',
-          })
-          .select('id')
-          .single();
+        // Use shared helper for complete property creation (with all fields)
+        const result = await createPropertyFromUnit(tenantId, {
+          id: unit.id,
+          unit_number: unit.unit_number,
+          area_sqm: unit.area_sqm,
+          list_price: unit.list_price,
+          rent_net: unit.rent_net,
+          current_rent: unit.current_rent,
+          hausgeld: unit.hausgeld,
+          rooms: (unit as any).rooms ?? null,
+          floor: (unit as any).floor ?? null,
+          unit_id: unit.unit_id,
+          weg: (unit as any).weg ?? null,
+        }, {
+          projectId,
+          projectName: projectName || project?.name || 'Projekt',
+          projectAddress: projectAddress || 'Adresse nicht angegeben',
+          projectCity: projectCity || project?.city || 'Stadt',
+          projectPostalCode,
+          projectYearBuilt,
+          projectData: projectContextData,
+        });
 
-        if (propError || !newProperty) continue;
-        propertyId = newProperty.id;
-
-        await supabase
-          .from('dev_project_units')
-          .update({ property_id: propertyId })
-          .eq('id', unit.id);
+        if (!result.success) continue;
+        propertyId = result.propertyId;
       }
 
       const listingTitle = `${project?.name || 'Projekt'} – ${unit.unit_number}`;
