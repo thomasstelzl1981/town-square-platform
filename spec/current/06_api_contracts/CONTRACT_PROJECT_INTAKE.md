@@ -119,7 +119,7 @@ Armstrong Action `ARM.MOD13.CREATE_DEV_PROJECT` oder direkter Edge-Function-Aufr
 
 | Tool | Stufe | Felder |
 |------|-------|--------|
-| `extract_project_data` | Exposé | projectName, city, postalCode, address, unitsCount, totalArea, priceRange, description, projectType, constructionYear, modernizationStatus, wegCount, wegDetails, developer, extractedUnits |
+| `extract_project_data` | Exposé | projectName, city, postalCode, address, unitsCount, totalArea, priceRange, description, projectType, constructionYear, modernizationStatus, wegCount, wegDetails, developer, developerLegalForm, developerManagingDirector, developerStreet, developerPostalCode, developerCity, developerHrb, developerUstId, extractedUnits |
 | `extract_units` | Preisliste | units[unitNumber, type, area, rooms, floor, price, currentRent, hausgeld, instandhaltung, nettoRendite, weg, mietfaktor], column_mapping |
 
 ## IDs / Correlation
