@@ -450,6 +450,8 @@ const zone3ComponentMaps: Record<string, Record<string, React.ComponentType>> = 
     ProjectLandingObjekt,
     ProjectLandingBeratung,
     ProjectLandingExpose,
+    ProjectLandingImpressum: React.lazy(() => import('@/pages/zone3/project-landing/ProjectLandingImpressum')),
+    ProjectLandingDatenschutz: React.lazy(() => import('@/pages/zone3/project-landing/ProjectLandingDatenschutz')),
   },
 };
 

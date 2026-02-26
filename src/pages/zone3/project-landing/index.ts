@@ -9,3 +9,5 @@ export { default as ProjectLandingHome } from './ProjectLandingHome';
 export { default as ProjectLandingObjekt } from './ProjectLandingObjekt';
 export { default as ProjectLandingBeratung } from './ProjectLandingBeratung';
 export { default as ProjectLandingExpose } from './ProjectLandingExpose';
+export { default as ProjectLandingImpressum } from './ProjectLandingImpressum';
+export { default as ProjectLandingDatenschutz } from './ProjectLandingDatenschutz';

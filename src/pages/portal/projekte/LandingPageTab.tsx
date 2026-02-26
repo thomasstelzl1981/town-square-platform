@@ -376,6 +376,19 @@ export default function LandingPageTab() {
                   </div>
                 </div>
 
+                <Separator />
+
+                {/* Impressum & Rechtliches */}
+                <div className="space-y-4">
+                  <div className="flex items-start gap-3">
+                    <Info className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
+                    <div className="text-sm text-muted-foreground">
+                      <p className="font-medium text-foreground">Impressum & Rechtliches</p>
+                      <p>Impressum und Datenschutz werden automatisch aus der Verkaufsgesellschaft (Bauträger-Kontext) generiert. Nur bei Bedarf manuell überschreiben.</p>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Domain Hinweis */}
                 <div className="flex items-start gap-3 p-4 rounded-lg bg-destructive/5 border border-destructive/20">
                   <Lock className="h-5 w-5 text-destructive shrink-0 mt-0.5" />

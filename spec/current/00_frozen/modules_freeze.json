@@ -17,7 +17,7 @@
     "MOD-10": { "frozen": true, "frozen_at": "2026-02-24T23:00:00.000Z", "reason": "Production-ready, audit passed" },
     "MOD-11": { "frozen": true, "frozen_at": "2026-02-24T23:00:00.000Z", "reason": "Production-ready, audit passed" },
     "MOD-12": { "frozen": true, "frozen_at": "2026-02-24T23:00:00.000Z", "reason": "Production-ready, audit passed" },
-    "MOD-13": { "frozen": true, "frozen_at": "2026-02-26T00:15:00.000Z", "reason": "Production-ready, Magic Intake v2 + InvestEngine + AfA-Override + 7-Phase Golden Path" },
+    "MOD-13": { "frozen": true, "frozen_at": "2026-02-26T02:00:00.000Z", "reason": "Production-ready, Landing Page v2: Kaufy branding, KaufyFinanceRequestSheet, Impressum/Datenschutz, Expose-Download" },
     "MOD-14": { "frozen": true, "frozen_at": "2026-02-24T23:00:00.000Z", "reason": "Production-ready, audit passed" },
     "MOD-15": { "frozen": true, "frozen_at": "2026-02-24T23:00:00.000Z", "reason": "Production-ready, audit passed" },
     "MOD-16": { "frozen": true, "frozen_at": "2026-02-24T23:00:00.000Z", "reason": "Production-ready, audit passed" },

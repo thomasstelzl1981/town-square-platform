@@ -19,7 +19,6 @@ export default function ProjectLandingLayout() {
   const { slug } = useParams<{ slug: string }>();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  // Fetch landing page + project data by slug
   const { data: landingData } = useQuery({
     queryKey: ['project-landing-layout', slug],
     queryFn: async () => {
@@ -29,7 +28,7 @@ export default function ProjectLandingLayout() {
         .select(`
           id, slug, hero_headline, footer_company_name, footer_address,
           contact_email, contact_phone, status,
-          dev_projects!inner (id, name, city)
+          dev_projects!inner (id, name, city, seller_name, developer_context_id)
         `)
         .eq('slug', slug)
         .eq('status', 'active')
@@ -38,14 +37,31 @@ export default function ProjectLandingLayout() {
         console.error('Landing page fetch error:', error);
         return null;
       }
-      return data;
+
+      // Fetch developer context for seller info
+      let devContext: any = null;
+      const project = (data as any)?.dev_projects;
+      if (project?.developer_context_id) {
+        const { data: ctx } = await supabase
+          .from('developer_contexts')
+          .select('name, legal_form')
+          .eq('id', project.developer_context_id)
+          .maybeSingle();
+        devContext = ctx;
+      }
+
+      return { ...data, _devContext: devContext };
     },
     enabled: !!slug,
     staleTime: 5 * 60 * 1000,
   });
 
   const project = (landingData as any)?.dev_projects;
+  const devContext = (landingData as any)?._devContext;
   const projectName = landingData?.hero_headline || project?.name || 'Projekt';
+  const sellerName = devContext
+    ? `${devContext.name}${devContext.legal_form ? ` ${devContext.legal_form}` : ''}`
+    : project?.seller_name || landingData?.footer_company_name || '';
   const basePath = `/website/projekt/${slug}`;
 
   const navLinks = useMemo(() => [
@@ -59,7 +75,6 @@ export default function ProjectLandingLayout() {
     return location.pathname.startsWith(path);
   };
 
-  // Force light mode CSS variables (same as Kaufy)
   const lightModeVars: React.CSSProperties = {
     '--background': '0 0% 100%',
     '--foreground': '222.2 84% 4.9%',
@@ -85,19 +100,16 @@ export default function ProjectLandingLayout() {
 
   return (
     <div className="min-h-screen bg-[hsl(210,40%,97%)] light" data-theme="light" style={lightModeVars}>
-      {/* Main Container — same 1400px pattern as Kaufy */}
       <div className="kaufy2026-container">
         {/* Header */}
         <header className="kaufy2026-header">
           <div className="flex items-center justify-between h-16 px-6 lg:px-10">
-            {/* Project Name as Logo */}
             <Link to={basePath} className="flex items-center gap-2">
               <span className="text-xl font-bold text-[hsl(220,20%,10%)] truncate max-w-[200px] lg:max-w-none">
                 {projectName}
               </span>
             </Link>
 
-            {/* Desktop Nav */}
             <nav className="hidden md:flex items-center gap-1">
               {navLinks.map((link) => (
                 <Link
@@ -115,7 +127,6 @@ export default function ProjectLandingLayout() {
               ))}
             </nav>
 
-            {/* Right side: CTA */}
             <div className="hidden md:flex items-center gap-3">
               <Link to={`${basePath}/beratung`}>
                 <Button size="sm" className="rounded-full bg-[hsl(220,20%,10%)] hover:bg-[hsl(220,20%,20%)]">
@@ -124,16 +135,11 @@ export default function ProjectLandingLayout() {
               </Link>
             </div>
 
-            {/* Mobile Menu */}
-            <button
-              className="md:hidden p-2"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            >
+            <button className="md:hidden p-2" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
               {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>
           </div>
 
-          {/* Mobile Nav */}
           {mobileMenuOpen && (
             <nav className="md:hidden border-t px-6 py-4 space-y-2 bg-white">
               {navLinks.map((link) => (
@@ -169,17 +175,18 @@ export default function ProjectLandingLayout() {
         <footer className="kaufy2026-footer">
           <div className="px-6 lg:px-10 py-12">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              {/* Project Name */}
               <div>
                 <span className="text-xl font-bold text-[hsl(220,20%,10%)]">{projectName}</span>
-                {project?.city && (
+                {sellerName && (
                   <p className="mt-2 text-sm text-[hsl(215,16%,47%)]">
-                    Kapitalanlage-Immobilien in {project.city}
+                    Ein Angebot der {sellerName}
                   </p>
                 )}
+                <p className="mt-1 text-xs text-[hsl(215,16%,47%)]">
+                  Vertrieb: KAUFY by System of a Town
+                </p>
               </div>
 
-              {/* Navigation */}
               <div>
                 <h4 className="font-semibold text-[hsl(220,20%,10%)] mb-4 text-sm uppercase tracking-wide">Navigation</h4>
                 <ul className="space-y-2 text-sm text-[hsl(215,16%,47%)]">
@@ -193,10 +200,19 @@ export default function ProjectLandingLayout() {
                 </ul>
               </div>
 
-              {/* Contact */}
               <div>
-                <h4 className="font-semibold text-[hsl(220,20%,10%)] mb-4 text-sm uppercase tracking-wide">Kontakt</h4>
+                <h4 className="font-semibold text-[hsl(220,20%,10%)] mb-4 text-sm uppercase tracking-wide">Rechtliches</h4>
                 <ul className="space-y-2 text-sm text-[hsl(215,16%,47%)]">
+                  <li>
+                    <Link to={`${basePath}/impressum`} className="hover:text-[hsl(220,20%,10%)] transition-colors">
+                      Impressum
+                    </Link>
+                  </li>
+                  <li>
+                    <Link to={`${basePath}/datenschutz`} className="hover:text-[hsl(220,20%,10%)] transition-colors">
+                      Datenschutzerklärung
+                    </Link>
+                  </li>
                   {landingData?.contact_email && (
                     <li>
                       <a href={`mailto:${landingData.contact_email}`} className="hover:text-[hsl(220,20%,10%)] transition-colors">
@@ -204,27 +220,18 @@ export default function ProjectLandingLayout() {
                       </a>
                     </li>
                   )}
-                  {landingData?.contact_phone && (
-                    <li>
-                      <a href={`tel:${landingData.contact_phone}`} className="hover:text-[hsl(220,20%,10%)] transition-colors">
-                        {landingData.contact_phone}
-                      </a>
-                    </li>
-                  )}
-                  {landingData?.footer_company_name && (
-                    <li>{landingData.footer_company_name}</li>
-                  )}
                 </ul>
               </div>
             </div>
 
-            {/* Footer Bottom */}
             <div className="mt-12 pt-6 border-t border-[hsl(210,20%,90%)] flex flex-col md:flex-row items-center justify-between gap-4">
               <p className="text-xs text-[hsl(215,16%,47%)]">
-                © {new Date().getFullYear()} {landingData?.footer_company_name || projectName}
+                © {new Date().getFullYear()} {sellerName || projectName}
               </p>
               <div className="flex items-center gap-4 text-xs text-[hsl(215,16%,47%)]">
-                <span>Powered by KAUFY</span>
+                <Link to={`${basePath}/impressum`} className="hover:underline">Impressum</Link>
+                <Link to={`${basePath}/datenschutz`} className="hover:underline">Datenschutz</Link>
+                <span>Powered by <strong>KAUFY</strong></span>
               </div>
             </div>
           </div>

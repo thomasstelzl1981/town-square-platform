@@ -1,14 +1,17 @@
 /**
- * ProjectLandingObjekt — Objekt-Detailseite
+ * ProjectLandingObjekt — Objekt-Detailseite + Exposé-Download
  * 
- * Projektbeschreibung, Key Facts, Bildergalerie (aus dev_projects.project_images)
+ * Projektbeschreibung, Key Facts, Bildergalerie (aus dev_projects.project_images),
+ * Exposé-PDF Download aus DMS
  */
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { getCachedSignedUrl } from '@/lib/imageCache';
-import { Loader2, Building2, MapPin, Calendar, Ruler, Home, Zap } from 'lucide-react';
+import { Loader2, Building2, MapPin, Calendar, Ruler, Home, Zap, FileDown, FileText } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
 
 interface ImageSlot {
   storagePath?: string;
@@ -34,7 +37,7 @@ export default function ProjectLandingObjekt() {
 
       const { data: project } = await supabase
         .from('dev_projects')
-        .select('id, name, city, address, postal_code, description, full_description, project_images, total_units_count, total_area_sqm, construction_year, energy_class, energy_source')
+        .select('id, name, city, address, postal_code, description, full_description, project_images, total_units_count, total_area_sqm, construction_year, energy_class, energy_source, project_code')
         .eq('id', lp.project_id)
         .maybeSingle();
 
@@ -55,30 +58,50 @@ export default function ProjectLandingObjekt() {
         );
       }
 
-      return { landingPage: lp, project, imageUrls };
+      // Query DMS for exposé files
+      let exposeFiles: Array<{ id: string; name: string; storage_path: string }> = [];
+      if ((project as any).project_code) {
+        const projectCode = (project as any).project_code;
+        const { data: nodes } = await (supabase as any)
+          .from('storage_nodes')
+          .select('id, name, storage_path')
+          .eq('type', 'file')
+          .ilike('folder_path', `%${projectCode}%01_expose%`)
+          .not('storage_path', 'is', null);
+        exposeFiles = (nodes || []);
+      }
+
+      return { landingPage: lp, project, imageUrls, exposeFiles };
     },
     enabled: !!slug,
     staleTime: 5 * 60 * 1000,
   });
 
+  const handleDownload = async (storagePath: string, fileName: string) => {
+    try {
+      const { data: signedData, error } = await supabase.storage
+        .from('tenant-documents')
+        .createSignedUrl(storagePath, 300);
+      if (error || !signedData?.signedUrl) throw error;
+      const a = document.createElement('a');
+      a.href = signedData.signedUrl;
+      a.download = fileName;
+      a.target = '_blank';
+      a.click();
+    } catch {
+      toast.error('Download fehlgeschlagen');
+    }
+  };
+
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-24">
-        <Loader2 className="w-8 h-8 animate-spin text-[hsl(210,80%,55%)]" />
-      </div>
-    );
+    return <div className="flex items-center justify-center py-24"><Loader2 className="w-8 h-8 animate-spin text-[hsl(210,80%,55%)]" /></div>;
   }
 
   if (!data) {
-    return (
-      <div className="text-center py-24">
-        <Building2 className="w-12 h-12 mx-auto text-[hsl(215,16%,47%)] mb-4" />
-        <p className="text-[hsl(215,16%,47%)]">Projekt nicht gefunden.</p>
-      </div>
-    );
+    return <div className="text-center py-24"><Building2 className="w-12 h-12 mx-auto text-[hsl(215,16%,47%)] mb-4" /><p className="text-[hsl(215,16%,47%)]">Projekt nicht gefunden.</p></div>;
   }
 
-  const { landingPage, project, imageUrls } = data;
+  const { landingPage, project, imageUrls, exposeFiles } = data;
   const description = landingPage.about_text || (project as any).full_description || project.description || '';
   const locationDescription = landingPage.location_description || '';
   const highlights = (landingPage.highlights_json as string[] | null) || [];
@@ -101,9 +124,7 @@ export default function ProjectLandingObjekt() {
     <div className="py-12 px-6 lg:px-10 space-y-12">
       {/* Title */}
       <div>
-        <h1 className="text-3xl md:text-4xl font-bold text-[hsl(220,20%,10%)]">
-          {project.name}
-        </h1>
+        <h1 className="text-3xl md:text-4xl font-bold text-[hsl(220,20%,10%)]">{project.name}</h1>
         {project.city && (
           <div className="flex items-center gap-2 mt-2 text-[hsl(215,16%,47%)]">
             <MapPin className="h-4 w-4" />
@@ -154,7 +175,7 @@ export default function ProjectLandingObjekt() {
         </div>
       )}
 
-      {/* Location Description */}
+      {/* Location */}
       {locationDescription && (
         <div className="max-w-3xl">
           <h2 className="text-xl font-bold text-[hsl(220,20%,10%)] mb-4">Lage & Umgebung</h2>
@@ -171,12 +192,7 @@ export default function ProjectLandingObjekt() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {imageSlots.map((slot) => (
               <div key={slot.key} className="relative overflow-hidden rounded-xl aspect-[4/3]">
-                <img
-                  src={imageUrls[slot.key]}
-                  alt={slot.label}
-                  className="w-full h-full object-cover"
-                  loading="lazy"
-                />
+                <img src={imageUrls[slot.key]} alt={slot.label} className="w-full h-full object-cover" loading="lazy" />
                 <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent px-4 py-3">
                   <span className="text-sm font-medium text-white">{slot.label}</span>
                 </div>
@@ -185,6 +201,48 @@ export default function ProjectLandingObjekt() {
           </div>
         </div>
       )}
+
+      {/* Exposé Download */}
+      {exposeFiles.length > 0 && (
+        <div>
+          <h2 className="text-xl font-bold text-[hsl(220,20%,10%)] mb-4">Dokumente zum Download</h2>
+          <div className="space-y-3">
+            {exposeFiles.map((file) => (
+              <Card key={file.id} className="border-[hsl(214,32%,91%)]">
+                <CardContent className="p-4 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-[hsl(0,80%,55%,0.1)] flex items-center justify-center">
+                      <FileText className="h-5 w-5 text-[hsl(0,80%,55%)]" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-[hsl(220,20%,10%)]">{file.name}</p>
+                      <p className="text-xs text-[hsl(215,16%,47%)]">PDF-Dokument</p>
+                    </div>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5"
+                    onClick={() => handleDownload(file.storage_path, file.name)}
+                  >
+                    <FileDown className="h-4 w-4" />
+                    Download
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* CTA */}
+      <div className="text-center pt-4">
+        <Link to={`/website/projekt/${slug}/beratung`}>
+          <Button className="h-12 px-8 rounded-lg bg-[hsl(220,20%,10%)] hover:bg-[hsl(220,20%,20%)] text-base">
+            Kostenlose Beratung anfragen
+          </Button>
+        </Link>
+      </div>
     </div>
   );
 }

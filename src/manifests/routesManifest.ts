@@ -715,6 +715,8 @@ export const zone3Websites: Record<string, WebsiteDefinition> = {
       { path: ":slug/objekt", component: "ProjectLandingObjekt", title: "Objekt", dynamic: true },
       { path: ":slug/beratung", component: "ProjectLandingBeratung", title: "Beratung", dynamic: true },
       { path: ":slug/einheit/:unitId", component: "ProjectLandingExpose", title: "Exposé", dynamic: true },
+      { path: ":slug/impressum", component: "ProjectLandingImpressum", title: "Impressum", dynamic: true },
+      { path: ":slug/datenschutz", component: "ProjectLandingDatenschutz", title: "Datenschutz", dynamic: true },
     ],
   },
 };
