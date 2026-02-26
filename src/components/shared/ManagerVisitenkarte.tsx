@@ -68,12 +68,12 @@ export function ManagerVisitenkarte({
   const displayAddress = overrideAddress || fullAddress;
 
   return (
-    <Card className={cn("overflow-hidden border-0 shadow-card", DESIGN.DASHBOARD_HEADER.CARD_HEIGHT)}>
-      <div className="h-2" style={{
+    <Card className={cn("overflow-hidden border-0 shadow-card flex flex-col", DESIGN.DASHBOARD_HEADER.CARD_HEIGHT)}>
+      <div className="h-2 shrink-0" style={{
         background: `linear-gradient(to right, ${gradientFrom}, ${gradientTo})`
       }} />
-      <CardContent className="p-4">
-        <div className="flex items-stretch gap-4">
+      <CardContent className="p-4 flex-1">
+        <div className="flex items-stretch gap-4 h-full">
           <div
             className="w-32 rounded-xl flex items-center justify-center shrink-0 shadow-md overflow-hidden"
             style={{ background: `linear-gradient(to bottom right, ${gradientFrom}, ${gradientTo})` }}
