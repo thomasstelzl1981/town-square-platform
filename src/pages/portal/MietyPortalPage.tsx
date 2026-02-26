@@ -22,6 +22,7 @@ import { AddWidgetMenu } from './miety/widgets/AddWidgetMenu';
 import { MietyCreateHomeForm } from './miety/components/MietyCreateHomeForm';
 import { ContractDrawer } from './miety/components/ContractDrawer';
 import { AddCameraDialog } from '@/components/miety/AddCameraDialog';
+import { CameraSetupWizard } from './miety/widgets/CameraSetupWizard';
 import MietyHomeDossierInline from './miety/MietyHomeDossierInline';
 import { useCameras } from '@/hooks/useCameras';
 import { useDemoToggles } from '@/hooks/useDemoToggles';
@@ -72,6 +73,7 @@ export default function MietyPortalPage() {
   const [editingHome, setEditingHome] = useState<any>(null);
   const [openDossierId, setOpenDossierId] = useState<string | null>(null);
   const [cameraDialogOpen, setCameraDialogOpen] = useState(false);
+  const [showCameraWizard, setShowCameraWizard] = useState(false);
   const [editCamera, setEditCamera] = useState<any>(null);
   const [contractDrawerOpen, setContractDrawerOpen] = useState(false);
   const [contractCategory, setContractCategory] = useState('strom');
@@ -101,6 +103,9 @@ export default function MietyPortalPage() {
   // Camera handlers
   const handleAddCamera = (data: CameraFormData) => {
     addCamera.mutate(data, { onSuccess: () => setCameraDialogOpen(false) });
+  };
+  const handleWizardComplete = (data: CameraFormData) => {
+    addCamera.mutate(data, { onSuccess: () => setShowCameraWizard(false) });
   };
   const handleEditCamera = (data: CameraFormData) => {
     if (!editCamera) return;
@@ -206,7 +211,7 @@ export default function MietyPortalPage() {
           actions={
             <AddWidgetMenu
               onAddHome={() => setShowCreateForm(true)}
-              onAddCamera={() => setCameraDialogOpen(true)}
+              onAddCamera={() => setShowCameraWizard(true)}
               onAddContract={handleAddContract}
               hiddenWidgetIds={[...hiddenIds]}
               onShowWidget={showWidget}
@@ -242,7 +247,7 @@ export default function MietyPortalPage() {
         actions={
           <AddWidgetMenu
             onAddHome={() => setShowCreateForm(true)}
-            onAddCamera={() => setCameraDialogOpen(true)}
+            onAddCamera={() => setShowCameraWizard(true)}
             onAddContract={handleAddContract}
             hiddenWidgetIds={[...hiddenIds]}
             onShowWidget={showWidget}
@@ -262,6 +267,15 @@ export default function MietyPortalPage() {
           );
         })}
       </DashboardGrid>
+
+      {/* Inline Camera Wizard */}
+      {showCameraWizard && (
+        <CameraSetupWizard
+          onComplete={handleWizardComplete}
+          onCancel={() => setShowCameraWizard(false)}
+          isLoading={addCamera.isPending}
+        />
+      )}
 
       {/* Inline Dossier below grid */}
       {openDossierId && (

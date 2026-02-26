@@ -22,6 +22,13 @@ export interface CameraFormData {
   auth_user?: string;
   auth_pass?: string;
   refresh_interval_sec?: number;
+  vendor?: string;
+  model?: string;
+  connection_type?: string;
+  local_ip?: string;
+  internal_port?: number;
+  external_domain?: string;
+  external_port?: number;
 }
 
 export function useCameras() {
@@ -50,6 +57,13 @@ export function useCameras() {
           auth_user: form.auth_user || null,
           auth_pass: form.auth_pass || null,
           refresh_interval_sec: form.refresh_interval_sec ?? 30,
+          vendor: form.vendor || 'other',
+          model: form.model || null,
+          connection_type: form.connection_type || 'poe',
+          local_ip: form.local_ip || null,
+          internal_port: form.internal_port ?? 80,
+          external_domain: form.external_domain || null,
+          external_port: form.external_port || null,
         })
         .select()
         .single();

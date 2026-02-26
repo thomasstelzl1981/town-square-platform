@@ -2929,38 +2929,59 @@ export type Database = {
         Row: {
           auth_pass: string | null
           auth_user: string | null
+          connection_type: string | null
           created_at: string
+          external_domain: string | null
+          external_port: number | null
           id: string
+          internal_port: number | null
           is_active: boolean
+          local_ip: string | null
+          model: string | null
           name: string
           refresh_interval_sec: number
           snapshot_url: string
           updated_at: string
           user_id: string
+          vendor: string | null
         }
         Insert: {
           auth_pass?: string | null
           auth_user?: string | null
+          connection_type?: string | null
           created_at?: string
+          external_domain?: string | null
+          external_port?: number | null
           id?: string
+          internal_port?: number | null
           is_active?: boolean
+          local_ip?: string | null
+          model?: string | null
           name?: string
           refresh_interval_sec?: number
           snapshot_url: string
           updated_at?: string
           user_id?: string
+          vendor?: string | null
         }
         Update: {
           auth_pass?: string | null
           auth_user?: string | null
+          connection_type?: string | null
           created_at?: string
+          external_domain?: string | null
+          external_port?: number | null
           id?: string
+          internal_port?: number | null
           is_active?: boolean
+          local_ip?: string | null
+          model?: string | null
           name?: string
           refresh_interval_sec?: number
           snapshot_url?: string
           updated_at?: string
           user_id?: string
+          vendor?: string | null
         }
         Relationships: []
       }
