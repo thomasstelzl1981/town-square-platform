@@ -1,30 +1,18 @@
 
 
-## Plan: Digest Auth in sot-camera-snapshot implementieren
+## Plan: Alle Module einfrieren
 
-**Datei:** `supabase/functions/sot-camera-snapshot/index.ts`
+### Aktuelle unfrozen Module (laut `modules_freeze.json`):
+- **MOD-01** (Stammdaten) — frozen: false
+- **MOD-13** (Projekte) — frozen: false  
+- **MOD-20** (Miety/Zuhause) — frozen: false
+- **MOD-22** (PetManager) — frozen: false
 
-Die Kamera-Response bestätigt das Problem eindeutig:
-```
-WWW-Authenticate: Digest realm="Login to ac916551...", qop="auth", nonce="...", opaque="..."
-```
+### Änderung:
+**Datei:** `spec/current/00_frozen/modules_freeze.json`
 
-### Änderungen
+Alle 4 Module auf `"frozen": true` setzen mit Reason "Production freeze" und aktuellem Timestamp.
 
-1. **Pure-JS MD5-Funktion** vor dem `Deno.serve` Block einfügen (~60 Zeilen, RFC 1321-basiert, keine externe Abhängigkeit)
-
-2. **`parseDigestChallenge`** und **`buildDigestAuth`** Helper-Funktionen einfügen
-
-3. **Fetch-Block ersetzen** (Zeilen 69-155): URL-embedded Credentials entfernen, stattdessen 2-Schritt Digest Auth Flow:
-   - Request 1: GET ohne Auth an `camera.snapshot_url`
-   - Bei 401 + Digest Challenge: MD5-Digest berechnen, Request 2 mit `Authorization: Digest ...`
-   - Bei 401 ohne Digest: Basic Auth Fallback
-   - Bei 401 ohne Credentials: Fehlermeldung
-
-4. **Keine Änderungen** an DB, Frontend oder anderen Dateien
-
-### Umfang
-- 1 Datei, vollständiger Ersatz der Edge Function
-- Keine Freeze-Verletzung (Edge Function, kein Modul-Pfad)
-- Re-Deploy automatisch
+### Hinweis zu MOD-11:
+Der Finanzierungsmanager (MOD-11) ist aktuell **frozen**. Sobald du mir sagst, was dort geändert werden soll, sage bitte **"UNFREEZE MOD-11"** dazu.
 
