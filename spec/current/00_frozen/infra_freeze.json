@@ -5,7 +5,7 @@
   "infrastructure": {
     "goldenpath": { "frozen": true, "frozen_at": "2026-02-26T15:00:00.000Z", "path": "src/goldenpath/*", "reason": "Production freeze" },
     "manifests": { "frozen": true, "frozen_at": "2026-02-26T15:00:00.000Z", "path": "src/manifests/*", "reason": "Production freeze" },
-    "shared_investment": { "frozen": false, "frozen_at": "2026-02-26T15:00:00.000Z", "unfrozen_at": "2026-02-26T16:00:00.000Z", "path": "src/components/investment/*", "reason": "Unfrozen for Exposé consolidation" },
+    "shared_investment": { "frozen": true, "frozen_at": "2026-02-26T19:00:00.000Z", "path": "src/components/investment/*", "reason": "Re-frozen after Exposé consolidation" },
     "shared_listings": { "frozen": true, "frozen_at": "2026-02-26T15:00:00.000Z", "path": "src/components/listings/*", "reason": "Production freeze" },
     "edge_functions": { "frozen": true, "frozen_at": "2026-02-26T15:00:00.000Z", "path": "supabase/functions/*", "reason": "Production freeze" },
     "validation": { "frozen": true, "frozen_at": "2026-02-26T15:00:00.000Z", "path": "src/validation/*", "reason": "Production freeze" }

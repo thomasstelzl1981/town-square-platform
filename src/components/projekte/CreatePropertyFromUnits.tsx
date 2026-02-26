@@ -2,7 +2,8 @@
  * Create Property Records (Immobilienakten) from dev_project_units
  * MOD-13 PROJEKTE — Phase 2: Bulk-Erstellung
  * 
- * Creates properties + DMS folders for each unit that doesn't have a property_id yet.
+ * Uses shared helper createPropertyFromUnit for complete property creation
+ * (all financial + energy fields, DMS folders, property_accounting).
  */
 
 import { useState } from 'react';
@@ -21,11 +22,11 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Building2, Loader2, CheckCircle2, FolderOpen } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import type { DevProjectUnit } from '@/types/projekte';
+import { createPropertyFromUnit, type ProjectContext, type UnitData } from '@/lib/createPropertyFromUnit';
 
 interface CreatePropertyFromUnitsProps {
   projectId: string;
@@ -34,35 +35,9 @@ interface CreatePropertyFromUnitsProps {
   projectCity: string;
   projectPostalCode?: string;
   projectYearBuilt?: number;
-  projectData?: {
-    full_description?: string;
-    location_description?: string;
-    features?: string[];
-    energy_cert_type?: string;
-    energy_cert_value?: number;
-    energy_class?: string;
-    heating_type?: string;
-    energy_source?: string;
-    renovation_year?: number;
-    parking_type?: string;
-    afa_rate_percent?: number;
-    afa_model?: string;
-    land_share_percent?: number;
-  };
+  projectData?: ProjectContext['projectData'];
   units: DevProjectUnit[];
 }
-
-// Standard DMS folder structure for a property (MOD-04 pattern)
-const PROPERTY_DMS_FOLDERS = [
-  '01_expose',
-  '02_grundrisse',
-  '03_fotos',
-  '04_mietvertrag',
-  '05_hausgeld',
-  '06_protokolle',
-  '07_versicherung',
-  '99_sonstiges',
-];
 
 export function CreatePropertyFromUnits({
   projectId,
@@ -94,6 +69,16 @@ export function CreatePropertyFromUnits({
     );
   }
 
+  const context: ProjectContext = {
+    projectId,
+    projectName,
+    projectAddress,
+    projectCity,
+    projectPostalCode,
+    projectYearBuilt,
+    projectData,
+  };
+
   const handleCreate = async () => {
     if (!tenantId || !projectId) return;
     setIsCreating(true);
@@ -105,87 +90,28 @@ export function CreatePropertyFromUnits({
 
     try {
       for (const unit of unitsWithoutProperty) {
-        // 1. Create property record
-        const publicId = `SOT-I-${unit.unit_number.replace(/[^a-zA-Z0-9-]/g, '')}`;
-        const { data: newProperty, error: propError } = await supabase
-          .from('properties')
-          .insert({
-            tenant_id: tenantId,
-            public_id: publicId,
-            code: unit.unit_number,
-            address: projectAddress,
-            city: projectCity,
-            postal_code: projectPostalCode || null,
-            property_type: 'wohnung',
-            usage_type: 'wohnen',
-            total_area_sqm: unit.area_sqm || null,
-            purchase_price: unit.list_price || null,
-            year_built: projectYearBuilt || null,
-            // Extended fields from project-level exposé data
-            description: projectData?.full_description || null,
-            heating_type: projectData?.heating_type || null,
-            energy_source: projectData?.energy_source || null,
-            renovation_year: projectData?.renovation_year || null,
-            status: 'active',
-            is_demo: false,
-          })
-          .select('id')
-          .single();
+        const unitData: UnitData = {
+          id: unit.id,
+          unit_number: unit.unit_number,
+          area_sqm: unit.area_sqm,
+          list_price: unit.list_price,
+          rent_net: unit.rent_net,
+          current_rent: unit.current_rent,
+          hausgeld: unit.hausgeld,
+          rooms: (unit as any).rooms ?? null,
+          floor: (unit as any).floor ?? null,
+          unit_id: unit.unit_id,
+          weg: (unit as any).weg ?? null,
+        };
 
-        if (propError || !newProperty) {
-          console.error(`Property creation failed for ${unit.unit_number}:`, propError);
-          continue;
+        const result = await createPropertyFromUnit(tenantId, unitData, context);
+
+        if (result.success) {
+          created++;
+        } else {
+          console.error(`Property creation failed for ${unit.unit_number}:`, 'error' in result ? result.error : 'Unknown');
         }
 
-        // 2. Link property back to dev_project_unit
-        await supabase
-          .from('dev_project_units')
-          .update({ property_id: newProperty.id })
-          .eq('id', unit.id);
-
-        // 3. Create DMS folder structure for property (MOD_04 pattern)
-        const { data: rootFolder } = await supabase
-          .from('storage_nodes')
-          .insert({
-            tenant_id: tenantId,
-            name: `${unit.unit_number} — ${projectName}`,
-            node_type: 'folder',
-            module_code: 'MOD-04',
-            entity_id: newProperty.id,
-            parent_id: null,
-          })
-          .select('id')
-          .single();
-
-        if (rootFolder) {
-          const folderInserts = PROPERTY_DMS_FOLDERS.map(name => ({
-            tenant_id: tenantId,
-            name,
-            node_type: 'folder' as const,
-            module_code: 'MOD-04',
-            entity_id: newProperty.id,
-            parent_id: rootFolder.id,
-          }));
-          await supabase.from('storage_nodes').insert(folderInserts);
-        }
-
-        // 4. Create property_accounting record with project-level defaults
-        const landSharePct = projectData?.land_share_percent ?? 20.0;
-        await supabase
-          .from('property_accounting')
-          .insert({
-            tenant_id: tenantId,
-            property_id: newProperty.id,
-            afa_method: 'linear',
-            afa_model: projectData?.afa_model ?? 'linear',
-            afa_rate_percent: projectData?.afa_rate_percent ?? 2.0,
-            afa_start_date: new Date().toISOString().slice(0, 10),
-            land_share_percent: landSharePct,
-            building_share_percent: 100 - landSharePct,
-            coa_version: 'SKR04_Starter',
-          } as any);
-
-        created++;
         setCreatedCount(created);
         setProgress(Math.round((created / total) * 100));
       }
@@ -194,7 +120,6 @@ export function CreatePropertyFromUnits({
         description: `Für "${projectName}" wurden ${created} Akten mit DMS-Ordnern angelegt.`,
       });
 
-      // Invalidate queries to refresh UI
       queryClient.invalidateQueries({ queryKey: ['dev-project-units', projectId] });
       queryClient.invalidateQueries({ queryKey: ['dev-projects'] });
       queryClient.invalidateQueries({ queryKey: ['properties'] });
