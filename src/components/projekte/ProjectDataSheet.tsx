@@ -15,7 +15,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import {
   MapPin, Home, Ruler, Calendar, Flame, Zap, Car, Building2, Layers,
   CheckCircle2, Scale, Users, Briefcase, Receipt, Percent, BookOpen,
-  Save, Loader2, Sparkles, ChevronDown
+  Save, Loader2, Sparkles, ChevronDown, Landmark, ExternalLink
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
@@ -164,6 +164,21 @@ export function ProjectDataSheet({ isDemo, selectedProject, unitCount, fullProje
   const [aiLoading, setAiLoading] = useState(false);
   const [descOpen, setDescOpen] = useState(false);
   const [locationOpen, setLocationOpen] = useState(false);
+  const [devContext, setDevContext] = useState<Record<string, any> | null>(null);
+
+  // ── Load Developer Context (Anbieter/Impressum) ──
+  useEffect(() => {
+    if (!fullProject?.developer_context_id || isDemo) return;
+    const loadContext = async () => {
+      const { data } = await supabase
+        .from('developer_contexts')
+        .select('name, legal_form, managing_director, street, house_number, postal_code, city, hrb_number, ust_id')
+        .eq('id', fullProject.developer_context_id)
+        .maybeSingle();
+      if (data) setDevContext(data);
+    };
+    loadContext();
+  }, [fullProject?.developer_context_id, isDemo]);
 
   // ══════════════════════════════════════════════════════════════
   // ── CRITICAL: Sync form states when fullProject data arrives ──
@@ -642,6 +657,35 @@ export function ProjectDataSheet({ isDemo, selectedProject, unitCount, fullProje
               disabled={isDemo} className="h-8 text-sm" placeholder="z.B. §21 EStG V+V" />
           </FormField>
         </div>
+
+        {/* ── Projektgesellschaft / Anbieter ── */}
+        {devContext && (
+          <div className="p-3 rounded-lg border bg-muted/20 space-y-2">
+            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+              <Landmark className="h-3.5 w-3.5" /> Projektgesellschaft / Anbieter
+            </p>
+            <div className="space-y-1 text-sm">
+              <p className="font-semibold">
+                {devContext.name}{devContext.legal_form ? ` ${devContext.legal_form}` : ''}
+              </p>
+              {devContext.managing_director && (
+                <p className="text-muted-foreground">Geschäftsführer: {devContext.managing_director}</p>
+              )}
+              {(devContext.street || devContext.city) && (
+                <p className="text-muted-foreground">
+                  {[
+                    [devContext.street, devContext.house_number].filter(Boolean).join(' '),
+                    [devContext.postal_code, devContext.city].filter(Boolean).join(' ')
+                  ].filter(Boolean).join(', ')}
+                </p>
+              )}
+              <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-muted-foreground">
+                {devContext.hrb_number && <span>HRB: {devContext.hrb_number}</span>}
+                {devContext.ust_id && <span>USt-ID: {devContext.ust_id}</span>}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* ── Footer: KI-Button + Save ── */}
         {!isDemo && (
