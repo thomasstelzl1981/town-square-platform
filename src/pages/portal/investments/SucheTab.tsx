@@ -5,7 +5,7 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useDemoListings } from '@/hooks/useDemoListings';
+import { useDemoListings, DEMO_PROPERTY_IMAGE_MAP } from '@/hooks/useDemoListings';
 import { getCachedSignedUrl } from '@/lib/imageCache';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PageShell } from '@/components/shared/PageShell';
@@ -249,6 +249,11 @@ export default function SucheTab() {
       const demoMatch = l.property_id ? demoByPropId.get(l.property_id) : undefined;
       if (demoMatch && !l.hero_image_path && demoMatch.hero_image_path) {
         return { ...l, hero_image_path: demoMatch.hero_image_path };
+      }
+      // Toggle-independent fallback: if DB listing still has no image
+      // and property_id is a known demo property, use bundled image directly
+      if (!l.hero_image_path && l.property_id && DEMO_PROPERTY_IMAGE_MAP[l.property_id]) {
+        return { ...l, hero_image_path: DEMO_PROPERTY_IMAGE_MAP[l.property_id] };
       }
       return l;
     });

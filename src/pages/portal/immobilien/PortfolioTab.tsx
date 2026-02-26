@@ -725,19 +725,19 @@ export function PortfolioTab() {
               <div className="mt-4 space-y-2">
                 <div className="flex justify-between items-center">
                   <span className={DESIGN.TYPOGRAPHY.LABEL}>Einheiten</span>
-                  <span className="text-sm font-semibold">3</span>
+                  <span className="text-sm font-semibold">{totalPropertyCount}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className={DESIGN.TYPOGRAPHY.LABEL}>Verkehrswert</span>
-                  <span className="text-sm font-semibold">{formatCurrency(850000)}</span>
+                  <span className="text-sm font-semibold">{totals?.totalValue ? formatCurrency(totals.totalValue) : '–'}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className={DESIGN.TYPOGRAPHY.LABEL}>Restschuld</span>
-                  <span className="text-sm font-semibold">{formatCurrency(520000)}</span>
+                  <span className="text-sm font-semibold">{totals?.totalDebt != null ? formatCurrency(totals.totalDebt) : '–'}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className={DESIGN.TYPOGRAPHY.LABEL}>Nettovermögen</span>
-                  <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">{formatCurrency(330000)}</span>
+                  <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">{totals?.totalValue && totals?.totalDebt != null ? formatCurrency(totals.totalValue - totals.totalDebt) : '–'}</span>
                 </div>
               </div>
             </button>
