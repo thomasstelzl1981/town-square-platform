@@ -70,6 +70,7 @@ const IMAGE_SLOTS: ImageSlot[] = [
   { key: 'exterior', label: 'Außen', desc: 'Außenansicht des Gebäudes' },
   { key: 'interior', label: 'Innen', desc: 'Innenansicht / Musterwohnung' },
   { key: 'surroundings', label: 'Umgebung', desc: 'Lage & Infrastruktur' },
+  { key: 'logo', label: 'Logo', desc: 'Projekt-/Partnerlogo für Website' },
 ];
 
 interface ProjectDataSheetProps {
