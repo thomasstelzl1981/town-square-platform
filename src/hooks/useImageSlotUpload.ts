@@ -107,7 +107,7 @@ export function useImageSlotUpload(config: UseImageSlotUploadConfig): UseImageSl
           mime_type: file.type,
           size_bytes: file.size,
           source: 'upload',
-          extraction_status: 'none',
+          extraction_status: 'skipped',
           doc_type: 'image',
           public_id: crypto.randomUUID(),
         })
