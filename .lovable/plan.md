@@ -1,170 +1,149 @@
 
 
-## Plan: AfA-Override systemweit durchsetzen (MOD-04 unfreeze + MOD-08/09/Zone 3)
+## Komplett-Check: MOD-13 Landing Page System — Audit-Ergebnis
 
-### Kontext
-
-MOD-04 wird hiermit UNFROZEN fuer diesen Change.
-
-Der `afaRateOverride` wurde bereits in der Edge Function und im Hook implementiert. Das Problem: **Nur MOD-13** reicht den Wert durch. Alle anderen Module, die die Investment Engine nutzen, ignorieren die AfA-Daten aus der Immobilienakte (`property_accounting`-Tabelle) komplett und rechnen mit den Defaults (`afaModel: 'linear'`, `buildingShare: 0.8`, `afaRate: 2%`).
-
-### Ist-Zustand (fehlerhaft)
-
-```text
-MOD-08 SucheTab:        CalculationInput = { ...defaultInput, purchasePrice, monthlyRent, equity, zve }
-                         → afaModel = 'linear', buildingShare = 0.8, afaRateOverride = undefined
-                         → Engine nutzt Default 2% aus tax_parameters
-
-MOD-08 ExposePage:      setParams({ purchasePrice, monthlyRent })
-                         → afaModel/buildingShare/afaRateOverride: NICHT gesetzt
-                         → User kann manuell ueber Slider aendern, aber Default ist falsch
-
-MOD-09 BeratungTab:     Gleich wie SucheTab — kein property_accounting-Fetch
-
-Zone 3 Kaufy:           Gleich — Defaults aus defaultInput
-
-ABER: MOD-06 ExposeDetail und MOD-09 KatalogDetailPage FETCHEN bereits
-      property_accounting — nutzen es aber nicht fuer den Engine-Call!
-```
-
-### Soll-Zustand
-
-Jeder Ort, der die Investment Engine aufruft und einen Bezug zu einer konkreten Immobilie (property_id) hat, MUSS die AfA-Daten aus `property_accounting` laden und als Override uebergeben. Die Hierarchie ist:
-
-```text
-1. property_accounting.afa_rate_percent   ← SSOT aus der Immobilienakte
-2. Slider-Aenderung durch den User        ← manueller Override im UI
-3. tax_parameters Default (2%)            ← Fallback wenn nichts erfasst
-```
-
-### Aenderungen
-
-#### 1. MOD-08: InvestmentExposePage.tsx — property_accounting laden und durchreichen
-
-**Neuer Query:** Wenn `listing.property_id` vorhanden, `property_accounting` abfragen (analog zu MOD-06/09 die das bereits tun). Die geladenen Werte (`afa_rate_percent`, `afa_model`, `land_share_percent`, `building_share_percent`) werden als Defaults in den `params`-State geschrieben.
-
-```typescript
-// Neuer useQuery fuer property_accounting
-const { data: accountingData } = useQuery({
-  queryKey: ['property-accounting-expose', listing?.property_id],
-  queryFn: async () => {
-    const { data } = await supabase
-      .from('property_accounting')
-      .select('afa_rate_percent, afa_model, land_share_percent, building_share_percent')
-      .eq('property_id', listing!.property_id)
-      .maybeSingle();
-    return data;
-  },
-  enabled: !!listing?.property_id,
-});
-
-// Im useEffect wo params initialisiert werden:
-setParams(prev => ({
-  ...prev,
-  purchasePrice: listing.asking_price,
-  monthlyRent: listing.monthly_rent,
-  afaRateOverride: accountingData?.afa_rate_percent ?? undefined,
-  buildingShare: accountingData?.building_share_percent
-    ? accountingData.building_share_percent / 100
-    : 0.8,
-  afaModel: mapAfaModel(accountingData?.afa_model) ?? 'linear',
-}));
-```
-
-#### 2. MOD-08: SucheTab.tsx — property_accounting batch-laden
-
-Fuer die Suche werden mehrere Listings parallel berechnet. Hier muss fuer alle property_ids in einem Batch die accounting-Daten geladen werden.
-
-```typescript
-// Nach dem Listings-Fetch: property_accounting fuer alle property_ids laden
-const propertyIds = allListingsToProcess.map(l => l.property_id).filter(Boolean);
-const { data: accountingRows } = await supabase
-  .from('property_accounting')
-  .select('property_id, afa_rate_percent, afa_model, land_share_percent, building_share_percent')
-  .in('property_id', propertyIds);
-
-const accountingMap = new Map(
-  (accountingRows || []).map(r => [r.property_id, r])
-);
-
-// Im calculate-Aufruf pro Listing:
-const acct = accountingMap.get(listing.property_id);
-const input: CalculationInput = {
-  ...defaultInput,
-  purchasePrice: listing.asking_price,
-  monthlyRent,
-  equity,
-  taxableIncome: zve,
-  maritalStatus,
-  hasChurchTax,
-  afaRateOverride: acct?.afa_rate_percent ?? undefined,
-  buildingShare: acct?.building_share_percent ? acct.building_share_percent / 100 : 0.8,
-  afaModel: mapAfaModel(acct?.afa_model) ?? 'linear',
-};
-```
-
-#### 3. MOD-09: BeratungTab.tsx — property_accounting laden
-
-Gleiche Logik wie SucheTab: Batch-Query fuer alle Listings, dann pro Listing die accounting-Werte einsetzen.
-
-#### 4. Zone 3: Kaufy2026Expose.tsx — property_accounting laden
-
-Gleiche Logik wie InvestmentExposePage: Einzelquery wenn listing geladen, Defaults in params setzen.
-
-#### 5. AfA-Model-Mapping-Funktion
-
-Die Immobilienakte verwendet detaillierte AfA-Keys (`7_4_1`, `7_4_2b`, `7_5a`, `7b`, `7h`, `7i`, `rnd`), die Engine akzeptiert aber nur `linear | 7i | 7h | 7b`. Es braucht eine Mapping-Funktion:
-
-```typescript
-// src/lib/mapAfaModel.ts (neues Shared Utility)
-export function mapAfaModelToEngine(akteModel?: string | null): 'linear' | '7i' | '7h' | '7b' {
-  if (!akteModel) return 'linear';
-  if (akteModel === '7i') return '7i';
-  if (akteModel === '7h') return '7h';
-  if (akteModel === '7b') return '7b';
-  if (akteModel === '7_5a') return '7b'; // Degressiv → nächster Sonder-AfA Typ
-  // Alle linearen Varianten (7_4_1, 7_4_2a, 7_4_2b, 7_4_2c, rnd) → 'linear'
-  return 'linear';
-}
-```
-
-Diese Funktion wird auch in MOD-13 (InvestEngineTab, InvestEngineExposePage) verwendet, wo bisher `project.afa_model` direkt gecastet wird.
-
-#### 6. MOD-04: PropertyDetailPage.tsx — Sicherstellen dass accounting-Daten korrekt an Simulation/KPIs fliessen
-
-Die Datei laedt bereits `property_accounting` (Z.217-224). Hier muss geprueft werden, ob die geladenen Werte korrekt an Investment-KPI-Blöcke weitergegeben werden. Falls der PropertyDetailPage eine Investment-Simulation hat, muss `afaRateOverride` durchgereicht werden.
+### Gesamtstatus: 5 Probleme gefunden, 12 Punkte sauber
 
 ---
 
-### Dateien-Uebersicht
+### ROUTE-CHECK
 
-| Datei | Aenderung | Modul |
+| Route | Manifest | Router | Komponente | Status |
+|---|---|---|---|---|
+| `/portal/projekte/landing-page` | ✅ routesManifest Z2 MOD-13 tile | ✅ ManifestRouter | ✅ LandingPageTab.tsx | OK |
+| `/website/projekt/:slug` | ✅ routesManifest `project-landing` | ✅ zone3ComponentMaps | ✅ ProjectLandingHome.tsx | OK |
+| `/website/projekt/:slug/objekt` | ✅ routesManifest | ✅ zone3ComponentMaps | ✅ ProjectLandingObjekt.tsx | OK |
+| `/website/projekt/:slug/beratung` | ✅ routesManifest | ✅ zone3ComponentMaps | ✅ ProjectLandingBeratung.tsx | OK |
+| `/website/projekt/:slug/einheit/:unitId` | ✅ routesManifest | ✅ zone3ComponentMaps | ✅ ProjectLandingExpose.tsx | OK |
+| `/website/projekt/:slug/impressum` | ✅ routesManifest | ✅ zone3ComponentMaps (lazy) | ✅ ProjectLandingImpressum.tsx | OK |
+| `/website/projekt/:slug/datenschutz` | ✅ routesManifest | ✅ zone3ComponentMaps (lazy) | ✅ ProjectLandingDatenschutz.tsx | OK |
+| `/admin/projekt-desk` | ✅ routesManifest Z1 | ✅ ProjektDesk.tsx | ✅ | OK |
+| `/admin/projekt-desk/landing-pages` | ✅ routesManifest Z1 | ✅ LandingPagesTab in ProjektDesk | ✅ | **PROBLEM** |
+
+### MANIFEST-CHECK
+
+| Manifest | Status | Detail |
 |---|---|---|
-| `src/lib/mapAfaModel.ts` | **NEU:** Shared Mapping-Funktion AfA-Akte → Engine-Modell | Shared |
-| `src/pages/portal/investments/InvestmentExposePage.tsx` | property_accounting Query + afaRateOverride/buildingShare/afaModel in params | MOD-08 |
-| `src/pages/portal/investments/SucheTab.tsx` | Batch property_accounting Query + Override im calculate-Input | MOD-08 |
-| `src/pages/portal/vertriebspartner/BeratungTab.tsx` | Batch property_accounting Query + Override im calculate-Input | MOD-09 |
-| `src/pages/zone3/kaufy2026/Kaufy2026Expose.tsx` | property_accounting Query + Override in params | Zone 3 |
-| `src/pages/portal/projekte/InvestEngineTab.tsx` | `mapAfaModelToEngine()` statt direkter Cast | MOD-13 |
-| `src/pages/portal/projekte/InvestEngineExposePage.tsx` | `mapAfaModelToEngine()` statt direkter Cast | MOD-13 |
+| `routesManifest.ts` — Z2 MOD-13 tiles | ✅ | 7 Tiles inkl. `landing-page` |
+| `routesManifest.ts` — Z3 `project-landing` | ✅ | 6 Routen registriert |
+| `routesManifest.ts` — Z1 `projekt-desk` | ✅ | 4 Tabs inkl. `landing-pages` |
+| `ManifestRouter.tsx` — Lazy imports | ✅ | Alle 6 Komponenten importiert |
+| `ManifestRouter.tsx` — zone3LayoutMap | ✅ | `ProjectLandingLayout` registriert |
+| `ManifestRouter.tsx` — zone3ComponentMaps | ✅ | `project-landing` Key mit 6 Komponenten |
+| `index.ts` exports | ✅ | Alle 7 Komponenten exportiert |
 
-### Was NICHT geaendert wird
+### DB-CHECK
 
-| Punkt | Begruendung |
-|---|---|
-| Edge Function `sot-investment-engine` | `afaRateOverride` bereits implementiert |
-| `useInvestmentEngine.ts` Hook | `afaRateOverride` bereits im Interface |
-| `InvestmentSliderPanel.tsx` | Slider fuer afaModel bleibt — User kann manuell ueberschreiben |
-| `property_accounting`-Tabelle | Schema bereits korrekt mit allen benoetigten Spalten |
-| Aufteiler-Kalkulator (Block D) | Umlaufvermoegen, keine AfA |
+| Pruefpunkt | Status | Detail |
+|---|---|---|
+| `landing_pages` Tabelle | ✅ | 27 Spalten, alle neuen Spalten vorhanden (highlights_json, advisor_ids, footer_*, imprint_text, privacy_text, custom_domain, domain_status) |
+| RLS Policies | ✅ | 5 Policies: Admin-ALL, Org-INSERT, Org-SELECT, Org-UPDATE, Public-SELECT (active/preview) |
+| Daten vorhanden | ⚠️ | 0 Zeilen — noch keine Landing Page erstellt (erwartet, da wir gerade testen wollen) |
+
+### HOOK-CHECK
+
+| Hook | Status | Detail |
+|---|---|---|
+| `useLandingPage.ts` | ✅ | 7 Funktionen: CRUD + generateSlug + publish + book + lock/unlock |
+| `useLandingPageByProject` | ✅ | Korrekte Query, queryKey stimmt |
+| `useCreateLandingPage` | ✅ | Insert mit `created_by` |
+| `usePublishLandingPage` | ✅ | Status → preview + 36h Expiry |
+| `useBookLandingPage` | ✅ | Status → active (permanent) |
+
+---
+
+### GEFUNDENE PROBLEME
+
+#### Problem 1: Zone 1 ProjektDesk filtert nach nicht-existierender Spalte `entity_type`
+
+**Datei:** `src/pages/admin/desks/ProjektDesk.tsx` Zeile 69 und 309
+
+```typescript
+.eq('entity_type', 'dev_project')  // ← Diese Spalte existiert NICHT in landing_pages!
+```
+
+Die `landing_pages`-Tabelle hat keine Spalte `entity_type`. Der Query schlaegt still fehl (Supabase ignoriert unbekannte Filter bei `as any`). Das bedeutet: Der Zone 1 Projekt Desk zeigt NIEMALS Landing Pages an, auch wenn welche existieren.
+
+**Fix:** Filter entfernen — alle `landing_pages` sind per Definition Projekt-Landing-Pages (die Tabelle hat `project_id` als FK). Alternativ: Kein Filter noetig, da jede Landing Page einem `dev_project` zugeordnet ist.
+
+#### Problem 2: Zone 1 LandingPagesTab referenziert falsche Felder
+
+**Datei:** `src/pages/admin/desks/ProjektDesk.tsx` Zeile 351
+
+```typescript
+page.name || page.title || '–'  // ← Beides existiert nicht! Richtig wäre: page.hero_headline
+```
+
+Die `landing_pages`-Tabelle hat weder `name` noch `title`. Das korrekte Feld ist `hero_headline`.
+
+#### Problem 3: Zone 1 STATUS_MAP stimmt nicht mit echten Status-Werten ueberein
+
+**Datei:** `src/pages/admin/desks/ProjektDesk.tsx` Zeile 318-322
+
+```typescript
+const STATUS_MAP = {
+  published: ...,  // ← Falsch! Heißt 'active'
+  draft: ...,      // ← OK
+  archived: ...,   // ← Falsch! Heißt 'locked'
+};
+```
+
+Die echten Status-Werte sind: `draft`, `preview`, `active`, `locked`. Der ProjektDesk hat die alten Werte `published` und `archived`.
+
+#### Problem 4: Console Warning — Badge ref-Fehler in LandingPageTab
+
+Die Konsole zeigt: `Function components cannot be given refs. Attempts to access this ref will fail. Check the render method of LandingPageTab.`
+
+Das Badge im WidgetGrid erhaelt eine ref, die es nicht akzeptiert. Kein funktionaler Fehler, aber eine Warnung die bereinigt werden sollte.
+
+#### Problem 5: Landing Page wird mit Status `draft` erstellt — Zone 3 zeigt nur `active` oder `preview`
+
+**Datei:** `ProjectLandingLayout.tsx` Zeile 34
+
+```typescript
+.eq('status', 'active')  // ← Draft-Seiten werden NICHT angezeigt!
+```
+
+Der Flow ist: Erstellen (draft) → Publish (preview/36h) → Book (active). Aber die Vorschau im Editor (`iframe src={previewUrl}`) zeigt die Zone 3 Seite an, die nur `active`-Status akzeptiert. Das heisst: Das iframe-Preview zeigt immer "Projekt nicht gefunden" bis die Seite published/booked wurde.
+
+**Fix:** Entweder Preview-URL bekommt einen Query-Parameter `?preview=true` der den Status-Filter umgeht, oder das iframe nutzt eine eigene Vorschau-Komponente statt der Live-Zone-3-Seite.
+
+---
+
+### IMPLEMENTIERUNGSPLAN
+
+#### Schritt 1: Zone 1 ProjektDesk reparieren (ProjektDesk.tsx)
+- `entity_type`-Filter entfernen (Zeile 69, 309)
+- `page.name || page.title` → `page.hero_headline || page.slug` (Zeile 351)
+- STATUS_MAP korrigieren: `published` → `active`, `archived` → `locked`, `preview` hinzufuegen
+- Projekt-Join hinzufuegen fuer bessere Anzeige (Projektname, Stadt)
+
+#### Schritt 2: Zone 3 Preview-Problem loesen (ProjectLandingLayout.tsx)
+- Status-Filter von `.eq('status', 'active')` auf `.in('status', ['draft', 'preview', 'active'])` erweitern
+- Alternativ: Preview-Token/Parameter einfuehren (sicherer, aber aufwaendiger)
+- Empfehlung fuer MVP: Filter erweitern — `locked` bleibt weiterhin blockiert (Billing-Sperre), aber draft/preview/active werden angezeigt
+
+#### Schritt 3: Console Warning bereinigen (LandingPageTab.tsx)
+- Badge-Ref-Issue in WidgetGrid beheben (DESIGN.DEMO_WIDGET.BADGE ref-Weitergabe)
+
+#### Schritt 4: Alle Zone-3-Seiten Status-Filter synchronisieren
+- Gleichen Fix in `ProjectLandingHome.tsx`, `ProjectLandingObjekt.tsx`, `ProjectLandingBeratung.tsx`, `ProjectLandingExpose.tsx`, `ProjectLandingImpressum.tsx`, `ProjectLandingDatenschutz.tsx` — ueberall wo `.eq('status', 'active')` steht
+
+### Betroffene Dateien
+
+| # | Datei | Aenderung |
+|---|---|---|
+| 1 | `src/pages/admin/desks/ProjektDesk.tsx` | entity_type-Filter entfernen, Feldnamen korrigieren, STATUS_MAP aktualisieren |
+| 2 | `src/pages/zone3/project-landing/ProjectLandingLayout.tsx` | Status-Filter auf draft+preview+active erweitern |
+| 3 | `src/pages/zone3/project-landing/ProjectLandingHome.tsx` | Status-Filter erweitern |
+| 4 | `src/pages/zone3/project-landing/ProjectLandingObjekt.tsx` | Status-Filter erweitern |
+| 5 | `src/pages/zone3/project-landing/ProjectLandingBeratung.tsx` | Status-Filter erweitern |
+| 6 | `src/pages/zone3/project-landing/ProjectLandingImpressum.tsx` | Status-Filter erweitern |
+| 7 | `src/pages/zone3/project-landing/ProjectLandingDatenschutz.tsx` | Status-Filter erweitern (falls vorhanden) |
 
 ### Freeze-Status
 
-| Modul | Status |
-|---|---|
-| MOD-04 | UNFROZEN (User hat explizit "unfreeze Modul 4" gesagt) |
-| MOD-08 | Bereits unfrozen in modules_freeze.json |
-| MOD-09 | Bereits unfrozen in modules_freeze.json |
-| MOD-13 | Bereits unfrozen in modules_freeze.json |
-| Zone 3 | Kein Modul-Freeze |
+- ProjektDesk.tsx → Zone 1 Admin, NICHT gefroren
+- Zone 3 Dateien → NICHT gefroren
+- MOD-13 → Gefroren, aber LandingPageTab muss nicht geaendert werden (Badge-Warning ist kosmetisch)
 
