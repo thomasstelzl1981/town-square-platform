@@ -207,7 +207,7 @@ Deno.serve(async (req) => {
     await sbAdmin
       .from("documents")
       .update({
-        extraction_status: "completed",
+        extraction_status: "done",
         doc_type: "utility_bill",
         summary: parsed.summary as string || `NK-Beleg: ${parsed.provider_name || "Unbekannt"}`,
       })

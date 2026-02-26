@@ -342,7 +342,7 @@ async function autoRouteToZone2(
     document_id: doc.id,
     object_type: "postservice_delivery",
     object_id: inboundItemId,
-    link_status: "current",
+    link_status: "linked",
   });
 
   // Mark inbound_item as routed
@@ -626,7 +626,7 @@ async function processPdfAttachments(
       document_id: doc.id,
       object_type: "inbound_email",
       object_id: inboundEmailId,
-      link_status: "current",
+      link_status: "linked",
     });
 
     await sbAdmin
