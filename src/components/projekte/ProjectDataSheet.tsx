@@ -393,6 +393,7 @@ export function ProjectDataSheet({ isDemo, selectedProject, unitCount, fullProje
           onUpload={handleImageUpload}
           uploadingSlot={uploadingSlot}
           disabled={isDemo}
+          title="Projektbilder"
         />
 
         {/* ── Objektdaten — full-width grid ── */}

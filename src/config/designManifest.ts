@@ -326,6 +326,21 @@ export function getSelectionRing(variant: ActiveWidgetVariant): string {
 
 export const ACTIVE_WIDGET = ACTIVE_WIDGET_VARIANTS;
 
+// ─── IMAGE SLOT (NEU V4.7) ────────────────────────────────
+/** Bild-Upload-Slots: Standard-Größen für ImageSlotGrid */
+export const IMAGE_SLOT = {
+  /** Standard-Höhe für alle Bild-Slots (Projekte, Galerie) */
+  HEIGHT: 140,
+  /** Kompakt-Variante (Avatar, Logo) */
+  HEIGHT_COMPACT: 80,
+  /** Border-Klassen */
+  BORDER: 'border-2 border-dashed rounded-lg',
+  /** Standard-Spalten */
+  COLUMNS_DEFAULT: 4,
+  /** Einzelner Slot (Avatar/Logo) */
+  COLUMNS_SINGLE: 1,
+} as const;
+
 // ─── EXPORT ALS EINHEITLICHES OBJEKT ──────────────────────
 export const DESIGN = {
   CONTAINER,
@@ -347,4 +362,5 @@ export const DESIGN = {
   DEMO_WIDGET,
   RECORD_CARD,
   ACTIVE_WIDGET,
+  IMAGE_SLOT,
 } as const;

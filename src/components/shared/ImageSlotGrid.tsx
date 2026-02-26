@@ -13,6 +13,7 @@ import { useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Upload, Loader2, ImagePlus } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { IMAGE_SLOT } from '@/config/designManifest';
 
 export interface ImageSlot {
   /** Unique key for this slot, e.g. 'hero', 'exterior' */
@@ -34,10 +35,12 @@ export interface ImageSlotGridProps {
   uploadingSlot: string | null;
   /** Disable all interactions (e.g. demo mode) */
   disabled?: boolean;
-  /** Grid columns, default 4 */
+  /** Grid columns, default IMAGE_SLOT.COLUMNS_DEFAULT */
   columns?: number;
-  /** Slot height in px, default 140 */
+  /** Slot height in px, default IMAGE_SLOT.HEIGHT */
   slotHeight?: number;
+  /** Optional title above the grid (replaces hardcoded "Projektbilder") */
+  title?: string;
 }
 
 function SingleSlot({
@@ -125,14 +128,17 @@ export function ImageSlotGrid({
   onUpload,
   uploadingSlot,
   disabled = false,
-  columns = 4,
-  slotHeight = 140,
+  columns = IMAGE_SLOT.COLUMNS_DEFAULT,
+  slotHeight = IMAGE_SLOT.HEIGHT,
+  title,
 }: ImageSlotGridProps) {
   return (
-    <div className="border-t pt-4">
-      <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-        Projektbilder
-      </p>
+    <div className={title ? 'border-t pt-4' : ''}>
+      {title && (
+        <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+          {title}
+        </p>
+      )}
       <div
         className="grid gap-3"
         style={{ gridTemplateColumns: `repeat(${Math.min(columns, slots.length)}, minmax(0, 1fr))` }}
