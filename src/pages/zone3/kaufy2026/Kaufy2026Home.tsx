@@ -4,7 +4,7 @@
  * Uses MOD-08 InvestmentResultTile for displaying results
  * Golden Path: Fetches active listings from partner_network channel
  */
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -77,6 +77,7 @@ export default function Kaufy2026Home() {
   });
   const [metricsCache, setMetricsCache] = useState<Record<string, InvestmentMetrics>>({});
   const [isSearching, setIsSearching] = useState(false);
+  const autoCalcDone = useRef(false);
 
   const { calculate } = useInvestmentEngine();
 
@@ -241,6 +242,46 @@ export default function Kaufy2026Home() {
     const uniqueDemos = demoListings.filter(d => !dbPropertyIds.has(d.property_id));
     return [...uniqueDemos.map(d => ({ ...d, isDemo: true } as any)), ...dbListings];
   }, [demoListings, listings]);
+
+  // Auto-calculate metrics when page loads with URL params but no cache
+  useEffect(() => {
+    if (!hasSearched || autoCalcDone.current || allListings.length === 0 || Object.keys(metricsCache).length > 0) return;
+    autoCalcDone.current = true;
+
+    const runCalc = async () => {
+      setIsSearching(true);
+      const newCache: Record<string, InvestmentMetrics> = {};
+
+      await Promise.all(allListings.slice(0, 20).map(async (listing: any) => {
+        const monthlyRent = listing.monthly_rent_total || (listing.asking_price * 0.04 / 12);
+        const input: CalculationInput = {
+          ...defaultInput,
+          purchasePrice: listing.asking_price,
+          monthlyRent,
+          equity: searchParams.equity,
+          taxableIncome: searchParams.zvE,
+          maritalStatus: searchParams.maritalStatus,
+          hasChurchTax: searchParams.hasChurchTax,
+        };
+        const result = await calculate(input);
+        if (result) {
+          newCache[listing.listing_id] = {
+            monthlyBurden: result.summary.monthlyBurden,
+            roiAfterTax: result.summary.roiAfterTax,
+            loanAmount: result.summary.loanAmount,
+            yearlyInterest: result.summary.yearlyInterest,
+            yearlyRepayment: result.summary.yearlyRepayment,
+            yearlyTaxSavings: result.summary.yearlyTaxSavings,
+          };
+        }
+      }));
+
+      setMetricsCache(newCache);
+      setIsSearching(false);
+    };
+
+    runCalc();
+  }, [hasSearched, allListings, metricsCache, searchParams, calculate]);
 
   // Investment search handler
   const handleInvestmentSearch = useCallback(async (params: SearchParams) => {
