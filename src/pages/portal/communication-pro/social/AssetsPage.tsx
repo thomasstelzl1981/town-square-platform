@@ -1,7 +1,7 @@
 /**
  * Social Assets — Photo & Media Library with real file upload
  */
-import { useState, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { DESIGN } from '@/config/designManifest';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/hooks/use-toast';
 import { useDropzone } from 'react-dropzone';
 import { useLegalConsent } from '@/hooks/useLegalConsent';
+import { UPLOAD_BUCKET, sanitizeFileName } from '@/config/storageManifest';
 
 const TAG_OPTIONS = ['Business', 'Casual', 'Outdoor', 'Speaking', 'Portrait', 'Team', 'Event'];
 const MAX_ASSETS = 20;
@@ -27,9 +28,17 @@ interface SocialAsset {
   sort_order: number;
 }
 
-function getStorageUrl(tenantId: string, documentId: string) {
-  const { data } = supabase.storage.from('social-assets').getPublicUrl(`${tenantId}/${documentId}`);
-  return data?.publicUrl || '';
+/** Resolve signed URL for tenant-documents bucket */
+async function getStorageUrl(tenantId: string, documentId: string): Promise<string> {
+  const storagePath = `${tenantId}/MOD_14/social/${documentId}`;
+  try {
+    const { getCachedSignedUrl } = await import('@/lib/imageCache');
+    const url = await getCachedSignedUrl(storagePath, UPLOAD_BUCKET);
+    return url || '';
+  } catch {
+    const { data } = await supabase.storage.from(UPLOAD_BUCKET).createSignedUrl(storagePath, 3600);
+    return data?.signedUrl || '';
+  }
 }
 
 export function AssetsPage() {
@@ -66,9 +75,9 @@ export function AssetsPage() {
 
   const deleteAsset = useMutation({
     mutationFn: async (asset: SocialAsset) => {
-      // Delete file from storage
+      // Delete file from storage (tenant-documents bucket)
       if (tenantId) {
-        await supabase.storage.from('social-assets').remove([`${tenantId}/${asset.document_id}`]);
+        await supabase.storage.from(UPLOAD_BUCKET).remove([`${tenantId}/MOD_14/social/${asset.document_id}`]);
       }
       const { error } = await supabase.from('social_assets').delete().eq('id', asset.id);
       if (error) throw error;
@@ -95,11 +104,11 @@ export function AssetsPage() {
         const file = filesToUpload[i];
         const ext = file.name.split('.').pop() || 'jpg';
         const fileName = `${crypto.randomUUID()}.${ext}`;
-        const storagePath = `${tenantId}/${fileName}`;
+        const storagePath = `${tenantId}/MOD_14/social/${fileName}`;
 
-        // Upload to storage
+        // Upload to tenant-documents bucket
         const { error: uploadError } = await supabase.storage
-          .from('social-assets')
+          .from(UPLOAD_BUCKET)
           .upload(storagePath, file, { contentType: file.type });
 
         if (uploadError) throw uploadError;
@@ -179,7 +188,11 @@ export function AssetsPage() {
       {assets.length > 0 ? (
         <div className={DESIGN.WIDGET_GRID.FULL}>
           {assets.map((asset) => {
-            const imageUrl = tenantId ? getStorageUrl(tenantId, asset.document_id) : '';
+          const [imageUrl, setImageUrl] = useState('');
+          // Resolve signed URL on mount
+          React.useEffect(() => {
+            if (tenantId) getStorageUrl(tenantId, asset.document_id).then(setImageUrl);
+          }, [tenantId, asset.document_id]);
             return (
               <Card key={asset.id} className="relative group overflow-hidden">
                 <CardContent className="p-0">
