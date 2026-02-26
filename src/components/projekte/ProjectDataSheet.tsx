@@ -525,6 +525,7 @@ export function ProjectDataSheet({ isDemo, selectedProject, unitCount, fullProje
           uploadingSlot={uploadingSlot}
           disabled={isDemo}
           title="Projektbilder"
+          slotHeight={240}
           multiImage={!isDemo}
           multiImages={multiImages}
           onDeleteByDocId={handleDeleteByDocId}
