@@ -153,6 +153,7 @@ export function ProjectDataSheet({ isDemo, selectedProject, unitCount, fullProje
     moduleCode: 'MOD-13',
     entityId: projectId || '',
     tenantId: fullProject?.tenant_id || '',
+    entityType: 'projekt',
   });
 
   // UI state

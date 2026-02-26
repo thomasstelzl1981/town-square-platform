@@ -6424,6 +6424,7 @@ export type Database = {
           node_id: string | null
           object_id: string | null
           object_type: string | null
+          slot_key: string | null
           tenant_id: string
           unit_id: string | null
           updated_at: string | null
@@ -6439,6 +6440,7 @@ export type Database = {
           node_id?: string | null
           object_id?: string | null
           object_type?: string | null
+          slot_key?: string | null
           tenant_id: string
           unit_id?: string | null
           updated_at?: string | null
@@ -6454,6 +6456,7 @@ export type Database = {
           node_id?: string | null
           object_id?: string | null
           object_type?: string | null
+          slot_key?: string | null
           tenant_id?: string
           unit_id?: string | null
           updated_at?: string | null
