@@ -179,6 +179,7 @@ export const PARSER_PROFILES: Record<ParserMode, ParserProfile> = {
     moduleCode: 'MOD_01',
     targetDmsFolder: '01_Personalausweis',
     exampleDocuments: ['Personalausweis', 'Reisepass', 'Geburtsurkunde', 'Gehaltsnachweis', 'Arbeitsvertrag', 'Steuerbescheid'],
+    preprocessPdfTables: true,
     fields: [
       { key: 'first_name', label: 'Vorname', type: 'string', dbColumn: 'first_name', required: true },
       { key: 'last_name', label: 'Nachname', type: 'string', dbColumn: 'last_name', required: true },
@@ -202,6 +203,7 @@ export const PARSER_PROFILES: Record<ParserMode, ParserProfile> = {
     moduleCode: 'MOD_05',
     targetDmsFolder: '01_Impfpass',
     exampleDocuments: ['Impfpass', 'Tierarztrechnung', 'EU-Heimtierausweis', 'Tierversicherungspolice', 'Chipregistrierung'],
+    preprocessPdfTables: true,
     fields: [
       { key: 'name', label: 'Name', type: 'string', dbColumn: 'name', required: true },
       { key: 'species', label: 'Tierart', type: 'enum', dbColumn: 'species', required: true, enumValues: ['hund', 'katze', 'pferd', 'vogel', 'kleintier', 'sonstige'] },

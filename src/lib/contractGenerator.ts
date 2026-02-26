@@ -185,10 +185,10 @@ export async function storeContractAndCreateRecords(params: {
   // 1. Store contract as DMS document
   const contractBlob = new Blob([contract.content], { type: 'text/plain' });
   const fileName = `${contract.templateCode}_${referenceId}_${Date.now()}.txt`;
-  const storagePath = `contracts/${tenantId}/${fileName}`;
+  const storagePath = `${tenantId}/MOD_03/contracts/${fileName}`;
 
   const { error: uploadError } = await supabase.storage
-    .from('documents')
+    .from('tenant-documents')
     .upload(storagePath, contractBlob);
 
   // If bucket doesn't exist or upload fails, we still proceed (document optional)
