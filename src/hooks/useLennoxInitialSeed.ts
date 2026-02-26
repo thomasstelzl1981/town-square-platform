@@ -66,13 +66,13 @@ export function useLennoxInitialSeed() {
       // If gallery_images already populated, skip everything
       const existingGallery = (provider.gallery_images as string[]) || [];
       if (existingGallery.length >= 4) {
-        console.log('[LennoxSeed] Gallery already seeded — skipping');
+        if (import.meta.env.DEV) console.log('[LennoxSeed] Gallery already seeded — skipping');
         await ensureDMSTree();
         return;
       }
 
       // ── Phase 1: Upload images to Storage ────────────────
-      console.log('[LennoxSeed] Uploading gallery images...');
+      if (import.meta.env.DEV) console.log('[LennoxSeed] Uploading gallery images...');
       const uploadedPaths: string[] = [];
 
       for (let i = 0; i < GALLERY_ASSETS.length; i++) {
@@ -86,7 +86,7 @@ export function useLennoxInitialSeed() {
           });
 
         if (existing && existing.length > 0) {
-          console.log(`[LennoxSeed] gallery_${i}.jpg already exists — skipping upload`);
+          if (import.meta.env.DEV) console.log(`[LennoxSeed] gallery_${i}.jpg already exists — skipping upload`);
           uploadedPaths.push(path);
           continue;
         }
@@ -102,7 +102,7 @@ export function useLennoxInitialSeed() {
         if (uploadErr) {
           // If duplicate, that's fine
           if (uploadErr.message?.includes('already exists') || uploadErr.message?.includes('Duplicate')) {
-            console.log(`[LennoxSeed] gallery_${i}.jpg duplicate — ok`);
+            if (import.meta.env.DEV) console.log(`[LennoxSeed] gallery_${i}.jpg duplicate — ok`);
           } else {
             console.error(`[LennoxSeed] Upload error for gallery_${i}:`, uploadErr);
             continue;
@@ -147,7 +147,7 @@ export function useLennoxInitialSeed() {
       if (updateErr) {
         console.error('[LennoxSeed] Failed to update provider gallery:', updateErr);
       } else {
-        console.log('[LennoxSeed] Gallery images saved to DB ✓');
+        if (import.meta.env.DEV) console.log('[LennoxSeed] Gallery images saved to DB ✓');
       }
 
       // ── Phase 4: DMS Tree ────────────────────────────────
@@ -181,7 +181,7 @@ async function ensureDMSTree() {
       .maybeSingle();
 
     if (existing?.id) {
-      console.log('[LennoxSeed] DMS tree already exists — skipping');
+      if (import.meta.env.DEV) console.log('[LennoxSeed] DMS tree already exists — skipping');
       return;
     }
 
@@ -231,7 +231,7 @@ async function ensureDMSTree() {
     if (subErr) {
       console.error('[LennoxSeed] DMS subfolder creation failed:', subErr);
     } else {
-      console.log('[LennoxSeed] DMS tree created ✓');
+      if (import.meta.env.DEV) console.log('[LennoxSeed] DMS tree created ✓');
     }
   } catch (err) {
     console.error('[LennoxSeed] DMS tree error:', err);
