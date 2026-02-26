@@ -146,7 +146,7 @@ export default function InvestEngineTab() {
         .update({ invest_engine_analyzed: true })
         .eq('id', selectedProjectId)
         .then(() => {
-          console.log('[InvestEngine] invest_engine_analyzed flag set for project', selectedProjectId);
+          if (import.meta.env.DEV) console.log('[InvestEngine] invest_engine_analyzed flag set for project', selectedProjectId);
         });
     }
   }, [realUnits, fullProject, equity, zve, maritalStatus, hasChurchTax, calculate, selectedProjectId]);
