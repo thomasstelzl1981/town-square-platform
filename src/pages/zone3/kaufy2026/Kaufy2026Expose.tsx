@@ -28,7 +28,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { useInvestmentEngine, defaultInput, CalculationInput } from '@/hooks/useInvestmentEngine';
 import { mapAfaModelToEngine } from '@/lib/mapAfaModel';
-import { useDemoListings } from '@/hooks/useDemoListings';
+import { useDemoListings, DEMO_PROPERTY_IMAGE_MAP } from '@/hooks/useDemoListings';
 import {
   MasterGraph,
   Haushaltsrechnung,
@@ -106,7 +106,7 @@ export default function Kaufy2026Expose() {
         return {
           id: demoListing.listing_id,
           public_id: demoListing.public_id,
-          property_id: demoListing.listing_id,
+          property_id: demoListing.property_id,
           title: demoListing.title,
           description: '',
           asking_price: demoListing.asking_price,
@@ -223,6 +223,7 @@ export default function Kaufy2026Expose() {
         heating_type: props?.heating_type ?? null,
         monthly_rent: annualIncome > 0 ? annualIncome / 12 : 0,
         units_count: (unitsCount && unitsCount > 0) ? unitsCount : 1,
+        hero_image_url: DEMO_PROPERTY_IMAGE_MAP[propertyId] || null,
       } satisfies ListingData;
     },
     enabled: !!publicId,
