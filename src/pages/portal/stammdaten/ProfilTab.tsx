@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Textarea } from '@/components/ui/textarea';
 import { FormSection, FormInput, FormRow } from '@/components/shared';
 import { RecordCard } from '@/components/shared/RecordCard';
-import { DESIGN, RECORD_CARD } from '@/config/designManifest';
+import { DESIGN, RECORD_CARD, IMAGE_SLOT } from '@/config/designManifest';
 import { sanitizeFileName, UPLOAD_BUCKET } from '@/config/storageManifest';
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
@@ -378,8 +378,8 @@ export function ProfilTab() {
                   images={{ avatar: avatarDisplayUrl }}
                   onUpload={handleImageSlotUpload}
                   uploadingSlot={imageUpload.uploadingSlot}
-                  columns={1}
-                  slotHeight={80}
+                  columns={IMAGE_SLOT.COLUMNS_SINGLE}
+                  slotHeight={IMAGE_SLOT.HEIGHT_COMPACT}
                 />
               </div>
             </div>
@@ -468,8 +468,8 @@ export function ProfilTab() {
                   images={{ logo: logoDisplayUrl }}
                   onUpload={handleImageSlotUpload}
                   uploadingSlot={imageUpload.uploadingSlot}
-                  columns={1}
-                  slotHeight={80}
+                  columns={IMAGE_SLOT.COLUMNS_SINGLE}
+                  slotHeight={IMAGE_SLOT.HEIGHT_COMPACT}
                 />
               </div>
             </div>
