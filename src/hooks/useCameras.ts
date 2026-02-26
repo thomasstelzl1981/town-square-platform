@@ -118,8 +118,8 @@ export function useCameraSnapshot(cameraId: string | null, refreshIntervalSec = 
         return;
       }
 
-      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-      const url = `https://${projectId}.supabase.co/functions/v1/sot-camera-snapshot?camera_id=${cameraId}`;
+      const baseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const url = `${baseUrl}/functions/v1/sot-camera-snapshot?camera_id=${cameraId}`;
 
       const res = await fetch(url, {
         headers: { Authorization: `Bearer ${session.access_token}` },
