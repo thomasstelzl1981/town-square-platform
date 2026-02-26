@@ -5,7 +5,7 @@
   "freeze_criteria": "Spec vorhanden, Audit S1-S6 bestanden, produktionsreife Implementierung",
   "modules": {
     "MOD-00": { "frozen": true, "frozen_at": "2026-02-26T14:00:00.000Z", "reason": "Production freeze" },
-    "MOD-01": { "frozen": true, "frozen_at": "2026-02-26T20:00:00.000Z", "reason": "Production freeze" },
+    "MOD-01": { "frozen": false, "frozen_at": "2026-02-27T01:00:00.000Z", "reason": "Unfrozen for Armstrong Email Assistant - armstrong_email field in ProfilTab" },
     "MOD-02": { "frozen": true, "frozen_at": "2026-02-26T14:00:00.000Z", "reason": "Production freeze" },
     "MOD-03": { "frozen": true, "frozen_at": "2026-02-26T14:00:00.000Z", "reason": "Production freeze" },
     "MOD-04": { "frozen": true, "frozen_at": "2026-02-26T17:35:00.000Z", "reason": "Re-frozen after upload constraint fixes" },

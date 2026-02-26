@@ -51,7 +51,13 @@ export interface SuggestedAction {
 export interface DraftContent {
   title: string;
   content: string;
-  format: 'markdown' | 'text' | 'json';
+  format: 'markdown' | 'text' | 'json' | 'email';
+  /** Email-specific fields (only when format === 'email') */
+  email_to?: string;
+  email_subject?: string;
+  email_body_html?: string;
+  email_contact_id?: string;
+  email_mail_account_id?: string;
 }
 
 export interface PendingAction {

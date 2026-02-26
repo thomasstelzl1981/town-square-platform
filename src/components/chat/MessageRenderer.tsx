@@ -17,7 +17,11 @@ import {
   CheckCircle2, 
   XCircle,
   FileText,
-  Volume2
+  Volume2,
+  Mail,
+  Send,
+  Pencil,
+  Trash2
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import type { ChatMessage, SuggestedAction, DraftContent, ActionResult, BlockedInfo } from '@/hooks/useArmstrongAdvisor';
@@ -33,6 +37,7 @@ interface MessageRendererProps {
   isExecuting?: boolean;
   onSpeak?: (text: string) => void;
   isSpeaking?: boolean;
+  onSendEmail?: (draft: DraftContent) => void;
 }
 
 export const MessageRenderer: React.FC<MessageRendererProps> = ({
@@ -43,6 +48,7 @@ export const MessageRenderer: React.FC<MessageRendererProps> = ({
   isExecuting = false,
   onSpeak,
   isSpeaking = false,
+  onSendEmail,
 }) => {
   const isUser = message.role === 'user';
 
@@ -59,6 +65,7 @@ export const MessageRenderer: React.FC<MessageRendererProps> = ({
       isExecuting={isExecuting}
       onSpeak={onSpeak}
       isSpeaking={isSpeaking}
+      onSendEmail={onSendEmail}
     />
   );
 };
@@ -90,6 +97,7 @@ interface AssistantMessageProps {
   isExecuting?: boolean;
   onSpeak?: (text: string) => void;
   isSpeaking?: boolean;
+  onSendEmail?: (draft: DraftContent) => void;
 }
 
 const AssistantMessage: React.FC<AssistantMessageProps> = ({
@@ -100,6 +108,7 @@ const AssistantMessage: React.FC<AssistantMessageProps> = ({
   isExecuting,
   onSpeak,
   isSpeaking,
+  onSendEmail,
 }) => {
   return (
     <div className="flex gap-2">
@@ -131,7 +140,11 @@ const AssistantMessage: React.FC<AssistantMessageProps> = ({
         )}
 
         {/* Draft content */}
-        {message.draft && <DraftBox draft={message.draft} />}
+        {message.draft && message.draft.format === 'email' ? (
+          <EmailDraftBox draft={message.draft} onSend={onSendEmail} />
+        ) : message.draft ? (
+          <DraftBox draft={message.draft} />
+        ) : null}
 
         {/* Pending action (CONFIRM_REQUIRED) */}
         {message.pendingAction && onConfirm && onCancel && (
@@ -209,6 +222,88 @@ const DraftBox: React.FC<{ draft: DraftContent }> = ({ draft }) => {
 };
 
 // =============================================================================
+// EMAIL DRAFT BOX
+// =============================================================================
+
+const EmailDraftBox: React.FC<{ draft: DraftContent; onSend?: (draft: DraftContent) => void }> = ({ draft, onSend }) => {
+  const [copied, setCopied] = React.useState(false);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(draft.content);
+      setCopied(true);
+      toast({ title: 'Kopiert', description: 'E-Mail-Entwurf kopiert.' });
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast({ title: 'Fehler', description: 'Kopieren fehlgeschlagen.', variant: 'destructive' });
+    }
+  };
+
+  return (
+    <div className="rounded-lg border bg-card/50 backdrop-blur-sm overflow-hidden max-w-md">
+      <div className="px-3 py-2 border-b bg-muted/30 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Mail className="h-4 w-4 text-primary" />
+          <span className="text-sm font-medium">E-Mail-Entwurf</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={handleCopy}>
+            {copied ? <Check className="h-3.5 w-3.5 text-status-success" /> : <Copy className="h-3.5 w-3.5" />}
+          </Button>
+        </div>
+      </div>
+      
+      {/* Email headers */}
+      <div className="px-3 py-2 border-b bg-muted/10 space-y-1">
+        {draft.email_to && (
+          <div className="flex items-center gap-2 text-xs">
+            <span className="text-muted-foreground font-medium w-10">An:</span>
+            <span className="text-foreground">{draft.email_to}</span>
+          </div>
+        )}
+        {draft.email_subject && (
+          <div className="flex items-center gap-2 text-xs">
+            <span className="text-muted-foreground font-medium w-10">Betreff:</span>
+            <span className="text-foreground font-medium">{draft.email_subject}</span>
+          </div>
+        )}
+      </div>
+
+      {/* Email body */}
+      <div className="p-3 text-sm">
+        {draft.email_body_html ? (
+          <div 
+            className="prose prose-sm dark:prose-invert max-w-none"
+            dangerouslySetInnerHTML={{ __html: draft.email_body_html }}
+          />
+        ) : (
+          <div className="prose prose-sm dark:prose-invert max-w-none">
+            <ReactMarkdown>{draft.content}</ReactMarkdown>
+          </div>
+        )}
+      </div>
+
+      {/* Action buttons */}
+      <div className="px-3 py-2 border-t bg-muted/10 flex items-center gap-2">
+        {onSend && (
+          <Button 
+            size="sm" 
+            className="gap-1.5 h-7 text-xs"
+            onClick={() => onSend(draft)}
+          >
+            <Send className="h-3 w-3" />
+            Senden
+          </Button>
+        )}
+        <Button variant="ghost" size="sm" className="gap-1.5 h-7 text-xs" onClick={handleCopy}>
+          <Copy className="h-3 w-3" />
+          Kopieren
+        </Button>
+      </div>
+    </div>
+  );
+};
+
 // RESULT BOX
 // =============================================================================
 
