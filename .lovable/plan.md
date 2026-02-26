@@ -1,73 +1,61 @@
 
 
-# Audit: ImageSlotGrid Format-Konsistenz
+# Diagnose: Profilbild-Upload funktioniert nicht — 2 Bugs
 
 ## Befund
 
-Die `ImageSlotGrid`-Komponente ist **nicht CI-konform** mit dem Design Manifest. Es gibt drei Probleme:
+Es gibt **zwei separate, klar identifizierbare Bugs**:
 
-### 1. Kein Bezug zum Design Manifest
+### Bug 1: "Foto hierher ziehen" auf der geschlossenen RecordCard — kein Handler
 
-Die Komponente verwendet **inline `style={{ height: slotHeight }}`** (Standard: 140px) statt der im Design Manifest definierten Widget-Standards. Das Design Manifest kennt kein `IMAGE_SLOT`-Token — es fehlt komplett.
+Die geschlossene RecordCard (das große Quadrat mit Kamera-Icon) hat in `RecordCard.tsx` Zeile 135-141 nativen `onDragOver`/`onDrop`-Code — aber **nur wenn `onPhotoDrop` als Prop übergeben wird**. 
 
-### 2. Inkonsistente Verwendung über Module hinweg
+In `ProfilTab.tsx` Zeile 347-363 wird RecordCard **ohne `onPhotoDrop`** aufgerufen. Ergebnis: Drag & Drop auf die Fotokachel macht **exakt nichts**.
 
 ```text
-Modul           columns  slotHeight  Ergebnis
-──────────────  ───────  ──────────  ──────────────────────
-MOD-13 Projekte    4       140px     4 quadratische Slots (OK)
-MOD-01 Avatar      1        80px     1 winziger Streifen (zu klein)
-MOD-01 Logo        1        80px     1 winziger Streifen (zu klein)
-MOD-22 Galerie     4       140px     4 quadratische Slots (OK)
+RecordCard-Prop       ProfilTab übergibt?
+─────────────────     ───────────────────
+onPhotoDrop           ❌ FEHLT
+thumbnailUrl          ✅ formData.avatar_url (aber raw path, keine signed URL!)
 ```
 
-Die MOD-01 Slots mit `slotHeight={80}` und `columns={1}` ergeben einen flachen Querstreifen — das ist das "komische Format", das du gesehen hast.
+Zweites Problem hier: `thumbnailUrl` bekommt `formData.avatar_url` (einen Storage-Pfad wie `tenant123/MOD_01/.../avatar_photo.jpg`) statt der aufgelösten `avatarDisplayUrl` (Signed URL). Daher wird das Bild auch nach erfolgreichem Upload nie angezeigt auf der geschlossenen Karte.
 
-### 3. Hardcoded Label "Projektbilder"
+### Bug 2: ImageSlotGrid "Profilbild" im offenen RecordCard — funktioniert technisch, aber...
 
-Die Komponente hat `<p>Projektbilder</p>` als festen Titel (Zeile 134), was in MOD-01 (Avatar) und MOD-22 (Galerie) falsch ist.
+Die `ImageSlotGrid` mit `slotHeight={80}` und `columns={1}` in Zeile 376-383 ist **technisch korrekt** — Drag & Drop und Click-to-Upload sind via `react-dropzone` implementiert. 
+
+Aber: Die Kachel ist nur **80px hoch** und nimmt die **volle Restbreite** ein (neben dem Avatar). Das ergibt einen flachen, unintuitiven Querstreifen. Der User erkennt das nicht als Upload-Bereich.
+
+Zudem: Der Upload funktioniert technisch (Datei wird hochgeladen, Pfad gespeichert), aber das Profil wird **nicht automatisch gespeichert** — der User muss manuell "Speichern" klicken, damit `avatar_url` in die DB geschrieben wird.
 
 ---
 
 ## Fix-Plan
 
-### Änderung 1: Design Manifest erweitern
+### Fix 1: `onPhotoDrop` an RecordCard übergeben
 
-Neues `IMAGE_SLOT`-Token in `designManifest.ts`:
+In `ProfilTab.tsx` den `onPhotoDrop`-Callback an die RecordCard-Instanz anhängen. Dieser ruft `handleImageSlotUpload('avatar', file)` auf. Damit funktioniert Drag & Drop auf die geschlossene Fotokachel sofort.
 
-```typescript
-export const IMAGE_SLOT = {
-  HEIGHT: 140,                    // Standard-Höhe für alle Bild-Slots
-  HEIGHT_COMPACT: 80,             // Kompakt-Variante (Avatar/Logo)
-  BORDER: 'border-2 border-dashed rounded-lg',
-  COLUMNS_DEFAULT: 4,
-  COLUMNS_SINGLE: 1,
-} as const;
-```
+### Fix 2: `thumbnailUrl` auf Signed URL umstellen
 
-### Änderung 2: ImageSlotGrid CI-konform machen
+Statt `formData.avatar_url` (Storage-Pfad) muss `avatarDisplayUrl` (aufgelöste Signed URL) übergeben werden. Sonst bleibt die Kachel immer leer, obwohl ein Bild vorhanden ist.
 
-- `slotHeight` Default aus `IMAGE_SLOT.HEIGHT` lesen statt Hardcode `140`
-- Hardcoded `"Projektbilder"` durch einen optionalen `title`-Prop ersetzen (Default: keinen Titel anzeigen, die aufrufende Komponente setzt ihn)
-- Klassen aus Design Manifest verwenden statt Inline-Styles wo möglich
+### Fix 3: Auto-Save nach Foto-Upload
 
-### Änderung 3: MOD-01 ProfilTab anpassen
+Nach erfolgreichem Avatar-Upload in `handleImageSlotUpload` automatisch `updateProfile.mutate()` aufrufen, damit der Storage-Pfad sofort in der DB persistiert wird. Der User soll nicht erst manuell speichern müssen.
 
-- Avatar-Slot: `slotHeight={IMAGE_SLOT.HEIGHT_COMPACT}` statt `80`
-- Logo-Slot: `slotHeight={IMAGE_SLOT.HEIGHT_COMPACT}` statt `80`
-- Referenz zum Manifest statt Magic Numbers
+### Fix 4: Avatar-Slot größer + quadratisch machen
 
-### Änderung 4: MOD-13 & MOD-22 — kein Change nötig
-
-Diese nutzen bereits `slotHeight={140}` bzw. den Default — bleiben konsistent.
+Statt `slotHeight={80}` und `columns={1}` (flacher Streifen) den Avatar-Slot auf `slotHeight={IMAGE_SLOT.HEIGHT}` (140px) setzen und als quadratisches Element neben dem Avatar positionieren. Alternativ: den Avatar selbst klickbar machen und den separaten Slot entfernen.
 
 ---
 
 ## Betroffene Dateien
 
-| Datei | Aktion |
-|-------|--------|
-| `src/config/designManifest.ts` | `IMAGE_SLOT` Token hinzufügen |
-| `src/components/shared/ImageSlotGrid.tsx` | `title`-Prop + Manifest-Referenzen |
-| `src/pages/portal/stammdaten/ProfilTab.tsx` | Manifest-Konstanten statt Magic Numbers |
+| Datei | Änderung |
+|-------|----------|
+| `src/pages/portal/stammdaten/ProfilTab.tsx` | `onPhotoDrop` + `thumbnailUrl` fix + Auto-Save + Slot-Größe |
+
+Keine neuen Dateien nötig. RecordCard.tsx und ImageSlotGrid.tsx bleiben unverändert — die Props existieren bereits, sie werden nur nicht korrekt genutzt.
 
