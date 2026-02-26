@@ -2925,6 +2925,45 @@ export type Database = {
           },
         ]
       }
+      cameras: {
+        Row: {
+          auth_pass: string | null
+          auth_user: string | null
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          refresh_interval_sec: number
+          snapshot_url: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          auth_pass?: string | null
+          auth_user?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          refresh_interval_sec?: number
+          snapshot_url: string
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          auth_pass?: string | null
+          auth_user?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          refresh_interval_sec?: number
+          snapshot_url?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       car_service_requests: {
         Row: {
           appointment_at: string | null
