@@ -9,5 +9,6 @@ export { InvestmentSearchCard } from './InvestmentSearchCard';
 export { InvestmentResultTile } from './InvestmentResultTile';
 export { ExposeImageGallery } from './ExposeImageGallery';
 export { InvestmentExposeView } from './InvestmentExposeView';
+export type { ExposeListingData } from './InvestmentExposeView';
 export { ExposeDocuments } from './ExposeDocuments';
 export { FinanzierungSummary } from './FinanzierungSummary';
