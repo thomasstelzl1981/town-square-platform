@@ -1,47 +1,47 @@
 
 
-## Problem: Zuhause-Seite leer beim ersten Navigieren
+## Fahrzeugbild: Upload + Fallback-Logik
 
-### Ursache
+### Problem
+Fahrzeugkarten in MOD-17 nutzen hardcodierte Unsplash-URLs (`VEHICLE_IMAGES` Map). Es gibt kein Upload-Feld und keine `image_url`-Spalte auf `cars_vehicles`. Wenn Marke/Modell nicht in der Map stehen, wird ein generisches Auto-Bild angezeigt.
 
-`MietyPortalPage` ignoriert den `isLoading`-Zustand aus `useZuhauseWidgets`. Die Ladesequenz:
+### Loesung
 
-1. Navigation zu `/portal/immobilien/zuhause`
-2. `useZuhauseWidgets` startet DB-Queries — `dataReady = false`, `order = []`
-3. `MietyPortalPage` prueft Zeile 205: `homes.length === 0 && visibleWidgetIds.length <= 2` → zeigt Empty-State ODER
-4. Bernhard hat Homes → `homes.length > 0` aber `visibleWidgetIds = []` (weil `order` noch `[]` ist, Hydration wartet auf `dataReady`)
-5. → DashboardGrid rendert mit 0 Widgets → leere Seite
+Das bestehende `useImageSlotUpload`-Pattern (SSOT, bereits in MOD-01, MOD-13, MOD-22 im Einsatz) fuer Fahrzeugbilder nutzen.
 
-Beim Hard Refresh sind die Queries bereits gecached (React Query) → `dataReady` ist sofort `true` → Hydration laeuft → Widgets erscheinen.
+### Aenderungen
 
-### Fix
+**1. `src/components/portal/cars/CarsFahrzeuge.tsx`**
+- `useImageSlotUpload` importieren mit `moduleCode: 'MOD-17'`
+- Beim Laden der Fahrzeugliste: `loadSlotImages` fuer jedes Fahrzeug aufrufen, Ergebnis in State `vehicleImages: Record<vehicleId, url>` cachen
+- `getImage(v)` anpassen: Zuerst `vehicleImages[v.id]` pruefen, dann Unsplash-Fallback
+- Auf der Karte: Dropzone-Overlay hinzufuegen (Kamera-Icon beim Hover), das `uploadToSlot('hero', file)` aufruft
 
-**Datei: `src/pages/portal/MietyPortalPage.tsx`**
+**2. `src/components/portal/cars/VehicleDetailPage.tsx`**
+- Im Header-Bereich: Fahrzeugbild mit Upload-Moeglichkeit anzeigen (gleiche `useImageSlotUpload`-Instanz)
+- Drag & Drop oder Click-to-Upload auf das Bild
 
-1. `isLoading` aus `useZuhauseWidgets()` destrukturieren (wird bereits exportiert, Zeile 250)
-2. Loading-Guard am Anfang der Komponente einbauen — vor dem Empty-State-Check:
+**3. Kein DB-Schema-Change noetig** — Die Bilder werden ueber `document_links` + `documents` gespeichert (bestehende Pipeline), nicht ueber eine neue Spalte.
 
-```tsx
-const { allWidgets, visibleWidgetIds, order, updateOrder, hideWidget, showWidget, hiddenIds, getWidget, homes, isLoading } = useZuhauseWidgets();
+### Ablauf fuer den Nutzer
 
-// ... nach den Hooks, vor showCreateForm Check:
-if (isLoading) {
-  return (
-    <PageShell>
-      <ModulePageHeader title="Home" description="Ihr persönliches Zuhause-Dashboard" />
-      <div className="flex items-center justify-center p-12">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    </PageShell>
-  );
-}
+```text
+Karte zeigt Unsplash-Fallback (wie bisher)
+     │
+     ▼
+Nutzer zieht Bild auf die Karte oder klickt Upload-Icon
+     │
+     ▼
+useImageSlotUpload speichert in tenant-documents/{tenantId}/MOD_17/{vehicleId}/images/hero_...
+     │
+     ▼
+Karte zeigt ab sofort das eigene Bild
+     │
+     ▼
+Erneuter Upload ersetzt das Bild (altes wird archived)
 ```
 
-3. `Loader2` Import von `lucide-react` hinzufuegen
+### Freeze
 
-### Betroffene Datei
-
-| Datei | Aenderung |
-|-------|----------|
-| `src/pages/portal/MietyPortalPage.tsx` | `isLoading` aus Hook nutzen, Loading-Spinner vor Empty-State |
+MOD-17 ist **frozen**. Bitte explizit sagen: **"UNFREEZE MOD-17"**, dann implementiere ich und freeze danach wieder.
 
