@@ -60,47 +60,6 @@ export default function LandingPageTab() {
   const [copied, setCopied] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [aiGenerating, setAiGenerating] = useState(false);
-  const previewContainerRef = useRef<HTMLDivElement>(null);
-  const iframeRef = useRef<HTMLIFrameElement>(null);
-
-  // Poll iframe contentDocument.scrollHeight until stable (same-origin)
-  useEffect(() => {
-    let interval: ReturnType<typeof setInterval>;
-    let lastHeight = 0;
-    let stableCount = 0;
-
-    const updateHeight = () => {
-      const iframe = iframeRef.current;
-      const container = previewContainerRef.current;
-      if (!iframe || !container) return;
-
-      try {
-        const doc = iframe.contentDocument;
-        if (!doc) return;
-        const scrollH = doc.documentElement.scrollHeight || doc.body.scrollHeight;
-        if (scrollH > 100) { // ignore trivial heights during load
-          const scale = container.offsetWidth / 1440;
-          iframe.style.height = `${scrollH}px`;
-          iframe.style.transform = `scale(${scale})`;
-          container.style.height = `${scrollH * scale}px`;
-          
-          if (scrollH === lastHeight) {
-            stableCount++;
-            if (stableCount >= 3) clearInterval(interval); // stop when stable
-          } else {
-            stableCount = 0;
-          }
-          lastHeight = scrollH;
-        }
-      } catch (_) {
-        // cross-origin — stop polling
-        clearInterval(interval);
-      }
-    };
-
-    interval = setInterval(updateHeight, 1500);
-    return () => clearInterval(interval);
-  }, [selectedId]);
 
   const isSelectedDemo = isDemoId(selectedId);
   const isNewMode = selectedId === 'new';
@@ -447,45 +406,24 @@ export default function LandingPageTab() {
               <Badge variant="secondary" className="opacity-60">Beispieldaten — Entwurf basiert auf Demodaten</Badge>
             )}
 
-            {/* Browser Frame */}
-            <div className="rounded-2xl border-2 border-border shadow-2xl bg-background overflow-hidden max-w-6xl mx-auto">
-              {/* Browser Chrome */}
-              <div className="flex items-center gap-3 px-4 py-3 bg-muted/50 border-b">
-                <div className="flex gap-1.5">
-                  <div className="w-3 h-3 rounded-full bg-destructive/60" />
-                  <div className="w-3 h-3 rounded-full bg-accent/60" />
-                  <div className="w-3 h-3 rounded-full bg-primary/60" />
+            {/* Preview Button (replaces broken iframe) */}
+            <Card className="max-w-6xl mx-auto">
+              <CardContent className="p-8 flex flex-col items-center justify-center text-center gap-4">
+                <div className="p-4 rounded-2xl bg-primary/10">
+                  <Eye className="h-8 w-8 text-primary" />
                 </div>
-                <div className="flex-1 flex items-center gap-2 bg-background rounded-lg px-3 py-1.5 border text-sm text-muted-foreground">
-                  <Globe className="h-3.5 w-3.5 flex-shrink-0" />
-                  <span className="truncate">{slug}.kaufy.app</span>
+                <div className="space-y-1">
+                  <h3 className="text-lg font-semibold">Vorschau der Projekt-Website</h3>
+                  <p className="text-sm text-muted-foreground max-w-md">
+                    Öffnet die Landing Page in einem neuen Browser-Tab mit voller Auflösung.
+                  </p>
                 </div>
-                <Button variant="ghost" size="sm" className="gap-1.5 text-xs" onClick={() => window.open(previewUrl, '_blank')}>
-                  <ExternalLink className="h-3.5 w-3.5" />
-                  Öffnen
+                <Button size="lg" className="gap-2" onClick={() => window.open(previewUrl, '_blank')}>
+                  <ExternalLink className="h-4 w-4" />
+                  Vorschau im Browser öffnen
                 </Button>
-              </div>
-
-              {/* Embedded Preview — scaled desktop simulation, dynamic height from content */}
-              <div 
-                className="relative w-full overflow-hidden"
-                ref={previewContainerRef}
-              >
-                <iframe 
-                  ref={iframeRef}
-                  src={previewUrl}
-                  className="border-0 origin-top-left"
-                  style={{
-                    width: '1440px',
-                    height: '6000px',
-                    transform: 'scale(0.5)',
-                    transformOrigin: 'top left',
-                  }}
-                  scrolling="no"
-                  title="Landing Page Preview"
-                />
-              </div>
-            </div>
+              </CardContent>
+            </Card>
 
             {/* Copyable Link */}
             <div className="flex items-center gap-2 max-w-6xl mx-auto">
