@@ -1,6 +1,7 @@
 /**
  * OTTO² ADVISORY — Für Unternehmer
  * SEO: Unternehmensberatung, Finanzierung, Nachfolgeplanung, bAV
+ * Design: Light, warm, Telis-Finanz-Stil
  */
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
@@ -8,6 +9,7 @@ import {
   ArrowRight, CheckCircle2, TrendingUp, Wallet,
   Shield, Users, Building2
 } from 'lucide-react';
+import advisoryImg from '@/assets/otto/advisory-session.jpg';
 
 const services = [
   {
@@ -78,16 +80,18 @@ export default function OttoUnternehmer() {
         <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>
       </Helmet>
 
-      {/* Hero */}
-      <section className="py-20 px-4 md:py-28">
-        <div className="mx-auto max-w-4xl">
-          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-blue-500/30 bg-blue-500/10 px-4 py-1.5 text-xs text-blue-400">
+      {/* Hero with Image */}
+      <section className="relative py-20 px-4 md:py-28 overflow-hidden">
+        <img src={advisoryImg} alt="Beratungsgespräch" className="absolute inset-0 w-full h-full object-cover" />
+        <div className="absolute inset-0 bg-gradient-to-r from-white/95 via-white/90 to-white/70" />
+        <div className="relative z-10 mx-auto max-w-4xl">
+          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-[#0055A4]/20 bg-white/80 px-4 py-1.5 text-xs text-[#0055A4] font-medium shadow-sm">
             <Building2 className="h-3.5 w-3.5" /> Für Unternehmer
           </div>
-          <h1 className="mb-6 text-4xl font-bold md:text-5xl">
-            Finanzlösungen für <span className="text-blue-400">Unternehmer</span>
+          <h1 className="mb-6 text-4xl font-bold md:text-5xl text-slate-800">
+            Finanzlösungen für <span className="text-[#0055A4]">Unternehmer</span>
           </h1>
-          <p className="max-w-3xl text-lg text-white/60 leading-relaxed">
+          <p className="max-w-3xl text-lg text-slate-600 leading-relaxed">
             Beratung für Unternehmer — Struktur, Sicherheit, Finanzierung.
             Wir begleiten Sie von der Analyse bis zur Umsetzung.
           </p>
@@ -95,24 +99,24 @@ export default function OttoUnternehmer() {
       </section>
 
       {/* Services */}
-      <section className="py-8 px-4 md:py-16">
+      <section className="py-8 px-4 md:py-16 bg-slate-50">
         <div className="mx-auto max-w-4xl space-y-8">
           {services.map(service => (
-            <article key={service.title} className="rounded-2xl border border-blue-900/30 bg-blue-950/10 p-8">
+            <article key={service.title} className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
               <div className="mb-5 flex items-start gap-4">
-                <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-xl bg-blue-500/10">
-                  <service.icon className="h-7 w-7 text-blue-400" />
+                <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-xl bg-[#0055A4]/10">
+                  <service.icon className="h-7 w-7 text-[#0055A4]" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-semibold mb-2">{service.title}</h2>
-                  <p className="text-white/50">{service.description}</p>
+                  <h2 className="text-xl font-semibold mb-2 text-slate-800">{service.title}</h2>
+                  <p className="text-slate-500">{service.description}</p>
                 </div>
               </div>
               <div className="grid gap-3 md:grid-cols-2 md:ml-[72px]">
                 {service.details.map(detail => (
                   <div key={detail} className="flex items-start gap-2">
-                    <CheckCircle2 className="mt-0.5 h-5 w-5 flex-shrink-0 text-blue-400" />
-                    <span className="text-sm text-white/70">{detail}</span>
+                    <CheckCircle2 className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#0055A4]" />
+                    <span className="text-sm text-slate-600">{detail}</span>
                   </div>
                 ))}
               </div>
@@ -122,9 +126,9 @@ export default function OttoUnternehmer() {
       </section>
 
       {/* Vorgehen */}
-      <section className="py-20 px-4 border-t border-white/5">
+      <section className="py-20 px-4 border-t border-slate-100">
         <div className="mx-auto max-w-3xl">
-          <h2 className="mb-10 text-center text-3xl font-bold">Unser Vorgehen</h2>
+          <h2 className="mb-10 text-center text-3xl font-bold text-slate-800">Unser Vorgehen</h2>
           <div className="space-y-6">
             {[
               { step: '1', title: 'Bestandsaufnahme', desc: 'Risiko, Finanzen, Struktur — wo stehen Sie heute?' },
@@ -132,12 +136,12 @@ export default function OttoUnternehmer() {
               { step: '3', title: 'Umsetzung', desc: 'Koordination, Dokumentation, Reviews — strukturiert zum Ziel.' },
             ].map(item => (
               <div key={item.step} className="flex gap-4">
-                <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-blue-500 shadow-lg shadow-blue-500/25">
+                <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[#0055A4] shadow-md">
                   <span className="text-sm font-bold text-white">{item.step}</span>
                 </div>
                 <div>
-                  <h3 className="font-semibold mb-1">{item.title}</h3>
-                  <p className="text-sm text-white/50">{item.desc}</p>
+                  <h3 className="font-semibold mb-1 text-slate-800">{item.title}</h3>
+                  <p className="text-sm text-slate-500">{item.desc}</p>
                 </div>
               </div>
             ))}
@@ -146,15 +150,15 @@ export default function OttoUnternehmer() {
       </section>
 
       {/* CTA */}
-      <section className="py-20 px-4 bg-gradient-to-br from-blue-900 to-blue-950 border-t border-blue-800/30">
+      <section className="py-20 px-4 bg-[#0055A4]">
         <div className="mx-auto max-w-2xl text-center">
-          <h2 className="mb-4 text-3xl font-bold">Bereit für ein Gespräch?</h2>
-          <p className="mb-8 text-blue-200">
+          <h2 className="mb-4 text-3xl font-bold text-white">Bereit für ein Gespräch?</h2>
+          <p className="mb-8 text-white/80">
             Lassen Sie uns über Ihre Situation und Ziele sprechen.
           </p>
           <Link
             to="/website/otto-advisory/kontakt"
-            className="inline-flex items-center gap-2 rounded-lg bg-white px-8 py-3.5 text-sm font-semibold text-blue-900 hover:bg-blue-50 transition-colors"
+            className="inline-flex items-center gap-2 rounded-lg bg-white px-8 py-3.5 text-sm font-semibold text-[#0055A4] hover:bg-slate-50 transition-colors shadow-lg"
           >
             Termin vereinbaren <ArrowRight className="h-4 w-4" />
           </Link>
