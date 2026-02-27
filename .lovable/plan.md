@@ -1,23 +1,25 @@
 
 
-## Befund: Serien-E-Mails — Zugriff eingeschraenkt
+## Aufräumen: Tote Dateien aus MOD-17 entfernen
 
-### Ursache
+### Befund
 
-`SerienEmailsPage.tsx` (Zeilen 50-84) enthaelt einen **manuellen Rollen-Check**, der nur `sales_partner` und `platform_admin` durchlaesst. Der eingeloggte User hat die Rolle `super_user`, die hier nicht beruecksichtigt wird.
+| Datei | Status | Referenziert von |
+|-------|--------|-----------------|
+| `CarsAutos.tsx` | **Tot** — nirgends importiert | Keine Imports gefunden |
+| `VehicleCreateDialog.tsx` | **Tot** — nur von `CarsAutos.tsx` genutzt | `CarsAutos.tsx`, `index.ts` |
 
-Gemaess der **Governance-Regel** (Memory: role-based-module-activation-standard) ist die Tile-Aktivierung die alleinige Quelle fuer Sichtbarkeit. Wer die Route erreicht, ist bereits systemisch validiert. Manuelle Rollen-Checks im UI-Code sind zu vermeiden.
-
-### Aenderung
-
-**`src/pages/portal/communication-pro/SerienEmailsPage.tsx`:**
-- Zeilen 50-85 entfernen (gesamter `useQuery` fuer `hasSalesRole`, Loading-State und Zugriff-eingeschraenkt-Block)
-- Import `ShieldAlert` entfernen
-- Import `useAuth` und `supabase`-Query entfernen (sofern nicht anderweitig genutzt — `useAuth` wird nicht weiter referenziert nach Entfernung)
-
-Ergebnis: Jeder Nutzer mit aktiviertem MOD-14 Tile kann die Serien-E-Mails nutzen — wie architektonisch vorgesehen.
+Die aktive Fahrzeug-Komponente ist `CarsFahrzeuge.tsx` mit Inline-Anlage (kein Dialog). Beide Dateien sind Altlasten aus dem ersten Entwurf.
 
 ### Freeze-Check
+MOD-17 ist aktuell **unfrozen** — Änderung erlaubt.
 
-MOD-14 Pfad: `src/pages/portal/communication-pro/*` → nicht in modules_freeze.json aufgefuehrt als frozen. Kein Freeze aktiv.
+### Änderungen
+
+1. **`src/components/portal/cars/CarsAutos.tsx`** — Datei löschen
+2. **`src/components/portal/cars/VehicleCreateDialog.tsx`** — Datei löschen
+3. **`src/components/portal/cars/index.ts`** — Zwei Exports entfernen:
+   - `export { VehicleCreateDialog } from './VehicleCreateDialog';`
+   - (CarsAutos hat keinen Export in index.ts, daher nur VehicleCreateDialog)
+4. **`spec/current/00_frozen/modules_freeze.json`** — MOD-17 wieder auf `frozen: true` setzen (Refreeze)
 
