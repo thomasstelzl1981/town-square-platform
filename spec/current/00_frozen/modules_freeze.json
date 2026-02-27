@@ -21,7 +21,7 @@
     "MOD-14": { "frozen": true, "frozen_at": "2026-02-27T21:00:00.000Z", "reason": "Production freeze" },
     "MOD-15": { "frozen": true, "frozen_at": "2026-02-27T21:00:00.000Z", "reason": "Production freeze" },
     "MOD-16": { "frozen": true, "frozen_at": "2026-02-27T21:00:00.000Z", "reason": "Production freeze" },
-    "MOD-17": { "frozen": false, "frozen_at": "2026-02-27T21:00:00.000Z", "reason": "Unfrozen for Sortierkachel-DMS integration bei Fahrzeuganlage" },
+    "MOD-17": { "frozen": true, "frozen_at": "2026-02-27T21:00:00.000Z", "reason": "Production freeze — dead code cleanup done" },
     "MOD-18": { "frozen": true, "frozen_at": "2026-02-27T21:00:00.000Z", "reason": "Production freeze" },
     "MOD-19": { "frozen": true, "frozen_at": "2026-02-27T21:00:00.000Z", "reason": "Production freeze" },
     "MOD-20": { "frozen": true, "frozen_at": "2026-02-27T21:00:00.000Z", "reason": "Production freeze" },
