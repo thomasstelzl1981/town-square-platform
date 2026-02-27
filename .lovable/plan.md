@@ -1,58 +1,60 @@
 
 
-# Plan: Default "Privat"-Kontext bei Tenant-Erstellung automatisch anlegen
+# Redesign Otto² Advisory — Von Tech-Dark zu Freundlich-Hell (Telis-Finanz-Stil)
 
 ## Analyse
 
-Aktuell wird bei der Registrierung (`handle_new_user`) kein `landlord_contexts`-Eintrag erstellt. Der erste Kontext entsteht erst manuell (z.B. "MM. Wohnen GmbH"). Dadurch hat ein Tenant mit nur einer Gesellschaft genau 1 Kontext, und die Query `contexts.length > 1` greift nicht.
+**Aktuell:** Dunkles Slate-950 Design, tech-artig, kalte Blue-Akzente auf schwarzem Hintergrund. Passt nicht zur Zielgruppe (Familien, Privathaushalte, bayerische Finanzberatung).
 
-Dein Vorschlag: **Immer einen "Privat"-Default-Kontext anlegen.** Das ist die sauberere Lösung — es gibt dann immer mindestens 1 Kontext, und bei einer Gesellschaft sind es mindestens 2.
+**Ziel (Telis-Finanz-Stil):** Heller, freundlicher, weißer Hintergrund, warmes Blau (#0055A4 Telis-Blau), professionell aber nahbar. Natur, Personen in Beratungssituationen, Familie, Eigenheim. Schriftart wechseln (weg von der Plattform-Standard-Schrift).
 
-## Änderungen
+**Referenz Telis Finanz AG:** Weiß-blau, große Hero-Bilder mit Menschen/Familien in Natur, freundliche Typografie, saubere Karten, warme Bildsprache.
 
-### 1. DB-Funktion `handle_new_user` erweitern
+## Betroffene Dateien (6 Stück)
 
-Am Ende der Funktion (nach `household_persons` Insert) einen Default-Kontext einfügen:
+| Datei | Aenderung |
+|-------|-----------|
+| `OttoAdvisoryLayout.tsx` | Komplettes Redesign: weißer Hintergrund, blaue Akzente, neue Schriftart (Source Sans Pro / Open Sans), Header und Footer hell |
+| `OttoHome.tsx` | Helles Design, AI-generierte Hero-Bilder (Beratungssituation, Familie, Eigenheim, Natur), warme Farben, weiße Karten mit blauen Akzenten |
+| `OttoUnternehmer.tsx` | Hell umstellen, Bilder von Geschaeftssituationen/Beratung |
+| `OttoPrivateHaushalte.tsx` | Hell umstellen, Bilder von Familie/Eigenheim/Natur |
+| `OttoKontakt.tsx` | Helles Formular-Design, blaue Akzente auf weißem Grund |
+| `OttoFinanzierung.tsx` | Heller Wizard, blaue Fortschrittsleiste, weiße Karten |
 
-```sql
-INSERT INTO public.landlord_contexts (
-  tenant_id, name, context_type, is_default
-) VALUES (
-  new_org_id, 'Privat', 'PRIVATE', true
-);
+## Design-System (Neu fuer Otto²)
+
+```text
+Hintergrund:     #FFFFFF (weiß) + #F8FAFC (slate-50 fuer Sektionen)
+Primaerfarbe:    #0055A4 (Telis-Blau / Deutsche-Bank-Blau)
+Akzent:          #E8F0FE (hellblau fuer Highlights)
+Text:            #1E293B (slate-800) / #64748B (slate-500)
+Schriftart:      'Source Sans 3' (Google Fonts) — professionell, warm, lesbar
+Buttons:         bg-[#0055A4] text-white, rounded-lg
+Karten:          bg-white border border-slate-200 shadow-sm
 ```
 
-### 2. Bestehende Tenants: Migration für fehlende Default-Kontexte
+## KI-generierte Bilder (4 Stueck, via Gemini Image API)
 
-Einmalige Migration, die allen bestehenden Tenants ohne `is_default = true` Kontext einen "Privat"-Default anlegt:
+1. **Hero-Bild:** Junge Familie vor bayerischem Eigenheim, Garten, Sonnenschein
+2. **Beratungs-Bild:** Berater im Gespraech mit Paar am Tisch, freundlich, professionell
+3. **Natur-Bild:** Bayerische Landschaft (Berge, Wiese, See) als Hintergrundelement
+4. **Eigenheim-Bild:** Modernes Einfamilienhaus mit Garten
 
-```sql
-INSERT INTO landlord_contexts (tenant_id, name, context_type, is_default)
-SELECT o.id, 'Privat', 'PRIVATE', true
-FROM organizations o
-WHERE NOT EXISTS (
-  SELECT 1 FROM landlord_contexts lc 
-  WHERE lc.tenant_id = o.id AND lc.is_default = true
-);
-```
+Bilder werden via Edge Function generiert, als Base64 in Supabase Storage hochgeladen und per URL referenziert.
 
-### 3. `PortfolioTab.tsx` — Query-Bedingung bleibt `> 1`
+## Schriftart-Einbindung
 
-Die bisherige Bedingung `contexts.length > 1` kann **beibehalten werden**, da jetzt immer mindestens der "Privat"-Kontext existiert. Sobald eine Gesellschaft dazukommt → 2 Kontexte → Query feuert.
+Google Fonts `Source Sans 3` wird im `OttoAdvisoryLayout.tsx` per `<link>` Tag im `<Helmet>` eingebunden und nur auf Otto²-Seiten angewendet (kein globaler Impact).
 
-**Aber:** Auch bei nur 1 Kontext (nur Privat, keine Gesellschaft) sollten Assignments geladen werden. Daher trotzdem auf `> 0` ändern — das ist defensiver und kostet nichts.
+## Implementierungsschritte
 
-### 4. Kein weiterer Code-Aufwand
+1. **OttoAdvisoryLayout.tsx redesignen** — Weißer Hintergrund, blaues Header/Footer, Google Font einbinden, CSS-Variablen fuer Otto²-Scope
+2. **OttoHome.tsx redesignen** — Helle Hero-Section mit Bild, weiße Service-Karten, warme CTA-Bloecke, Bildergalerie mit generierten Bildern
+3. **OttoUnternehmer.tsx + OttoPrivateHaushalte.tsx** — Alle dark-Klassen durch helle ersetzen (slate-950 → white, white/50 → slate-500, etc.)
+4. **OttoKontakt.tsx + OttoFinanzierung.tsx** — Formulare hell stylen (weiße Inputs mit slate-Borders statt dunkle)
+5. **Bilder generieren** — 4 AI-Bilder via Gemini generieren, in Storage speichern, in Komponenten einbinden
 
-- `CreateContextDialog` setzt bereits `is_default: false` für manuell erstellte Kontexte
-- `KontexteTab` zeigt alle Kontexte korrekt an
-- Die Portfolio-Widgets berechnen KPIs bereits korrekt, sobald `contextAssignments` geladen wird
+## Keine Auswirkungen auf andere Brands
 
-## Zusammenfassung
-
-| Schritt | Datei/Ort | Aufwand |
-|---------|-----------|---------|
-| Default "Privat" bei Signup | DB-Funktion `handle_new_user` | 4 Zeilen SQL |
-| Backfill bestehende Tenants | Migration | 5 Zeilen SQL |
-| Query-Fix defensiv | `PortfolioTab.tsx` Zeile 205 | 1 Zeile |
+Das Redesign ist vollstaendig auf `src/pages/zone3/otto/*` beschraenkt. Kein globaler CSS-Impact. Die Schriftart wird nur innerhalb des Otto²-Layouts geladen.
 
