@@ -7,6 +7,7 @@
  * 3. Magic Intake Wizard (6 Steps: Upload → Analyse → Review → Kontakt → Vertrag → Submit)
  */
 import { useState, useCallback, useRef } from 'react';
+import { AIProcessingOverlay } from '@/components/shared/AIProcessingOverlay';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -545,15 +546,19 @@ export default function Kaufy2026Verkaeufer() {
 
               {/* ── Step 2: Analyzing ── */}
               {wizardStep === 'analyzing' && (
-                <div className="flex flex-col items-center gap-4 py-12">
-                  <div className="relative">
-                    <div className="w-16 h-16 rounded-full bg-[hsl(210,80%,55%,0.1)] flex items-center justify-center">
-                      <Sparkles className="h-8 w-8 text-[hsl(210,80%,55%)] animate-pulse" />
-                    </div>
-                    <Loader2 className="absolute inset-0 w-16 h-16 animate-spin text-[hsl(210,80%,55%,0.3)]" />
-                  </div>
-                  <h3 className="text-lg font-semibold text-[hsl(220,20%,10%)]">KI analysiert Ihre Dokumente…</h3>
-                  <p className="text-sm text-[hsl(215,16%,47%)]">Projektdaten, Einheiten und Preise werden automatisch extrahiert.</p>
+                <div className="py-6">
+                  <AIProcessingOverlay
+                    active={true}
+                    steps={[
+                      { label: 'Dokumente werden hochgeladen' },
+                      { label: 'Exposé wird gelesen' },
+                      { label: 'Projektdaten werden extrahiert' },
+                      { label: 'Einheiten & Preise erkannt' },
+                    ]}
+                    currentStep={isUploading ? 0 : 2}
+                    headline="KI analysiert Ihre Dokumente…"
+                    variant="cyan"
+                  />
                 </div>
               )}
 

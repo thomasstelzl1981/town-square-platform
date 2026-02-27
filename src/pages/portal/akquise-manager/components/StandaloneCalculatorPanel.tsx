@@ -14,9 +14,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
-  Calculator, Loader2, Upload, Building2, Scissors,
+  Calculator, Loader2, Building2, Scissors,
   Info
 } from 'lucide-react';
+import { SmartDropZone } from '@/components/shared/SmartDropZone';
+import { AIProcessingOverlay } from '@/components/shared/AIProcessingOverlay';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -199,42 +201,44 @@ export function StandaloneCalculatorPanel() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Drag-and-Drop Zone for Extraction */}
-        <div
-          {...(!isMobile ? { onDragOver: handleDragOver, onDragLeave: handleDragLeave, onDrop: handleDrop } : {})}
-          onClick={() => !isExtracting && fileInputRef.current?.click()}
-          className={cn(
-            "border-2 border-dashed rounded-lg p-4 text-center transition-colors",
-            isExtracting 
-              ? "border-primary bg-primary/5 cursor-wait"
-              : isDragging && !isMobile
-                ? "border-primary bg-primary/5 cursor-copy" 
-                : "border-muted-foreground/25 hover:border-primary/50 hover:bg-muted/50 cursor-pointer"
-          )}
-        >
-          {isExtracting ? (
-            <div className="flex items-center justify-center gap-3 py-2">
-              <Loader2 className="h-5 w-5 animate-spin text-primary" />
-              <span className="text-sm">Extrahiere Daten aus Exposé...</span>
-            </div>
-          ) : (
-            <div className="flex items-center justify-center gap-3 py-2">
-              <Upload className="h-5 w-5 text-muted-foreground" />
-              <span className="text-sm">
-                <span className="font-medium">{isMobile ? 'Tippen zum Hochladen' : 'Exposé ablegen'}</span>
-                {!isMobile && ' für automatische Befüllung oder Werte manuell eingeben'}
-              </span>
-            </div>
-          )}
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".pdf,.doc,.docx"
-            onChange={handleFileSelect}
-            className="hidden"
+        {/* AI Processing Overlay */}
+        <AIProcessingOverlay
+          active={isExtracting}
+          steps={[
+            { label: 'Lese Exposé' },
+            { label: 'Erkenne Zahlen & Tabellen' },
+            { label: 'Extrahiere Kaufpreis, Miete, Fläche' },
+            { label: 'Befülle Kalkulationsfelder' },
+          ]}
+          currentStep={uploadStatus === 'uploaded' ? 0 : uploadStatus === 'analyzing' ? 2 : 3}
+          headline="KI extrahiert Daten aus Exposé…"
+          variant="amber"
+        />
+
+        {/* Smart Drop Zone */}
+        {!isExtracting && (
+          <SmartDropZone
+            onFiles={(files) => files[0] && extractFromFile(files[0])}
             disabled={isExtracting}
+            accept={{
+              'application/pdf': ['.pdf'],
+              'application/msword': ['.doc'],
+              'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
+            }}
+            maxFiles={1}
+            helperText={isMobile ? 'Tippen zum Hochladen' : 'Exposé ablegen für automatische Befüllung'}
+            formatsLabel="PDF, DOC, DOCX"
+            variant="amber"
           />
-        </div>
+        )}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".pdf,.doc,.docx"
+          onChange={handleFileSelect}
+          className="hidden"
+          disabled={isExtracting}
+        />
 
         {/* Upload Result Card */}
         {uploadedFile && (

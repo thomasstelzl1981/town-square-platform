@@ -26,6 +26,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { useUniversalUpload } from '@/hooks/useUniversalUpload';
+import { AIProcessingOverlay } from '@/components/shared/AIProcessingOverlay';
 import type { UploadedFileInfo } from '@/hooks/useUniversalUpload';
 import { UploadResultCard } from '@/components/shared/UploadResultCard';
 import { getXlsx } from '@/lib/lazyXlsx';
@@ -382,25 +383,19 @@ export function QuickIntakeUploader({ onSuccess }: QuickIntakeUploaderProps) {
 
       case 'analyzing':
         return (
-          <div className="space-y-4 py-8">
-            <div className="flex flex-col items-center gap-4">
-              <div className="relative">
-                <Sparkles className="h-12 w-12 text-primary" />
-                <div className="absolute inset-0 animate-ping">
-                  <Sparkles className="h-12 w-12 text-primary opacity-50" />
-                </div>
-              </div>
-              <div className="text-center">
-                <p className="font-medium">KI analysiert Dokumente...</p>
-                <p className="text-sm text-muted-foreground">
-                  Projektdaten und Einheiten werden extrahiert
-                </p>
-              </div>
-              <div className="flex gap-2 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Dies kann 10-30 Sekunden dauern
-              </div>
-            </div>
+          <div className="space-y-4 py-4">
+            <AIProcessingOverlay
+              active={true}
+              steps={[
+                { label: 'Dokumente werden gelesen' },
+                { label: 'Projektdaten werden extrahiert' },
+                { label: 'Einheiten werden erkannt' },
+                { label: 'Spalten werden zugeordnet' },
+              ]}
+              currentStep={1}
+              headline="KI analysiert Dokumente…"
+              variant="amber"
+            />
           </div>
         );
 

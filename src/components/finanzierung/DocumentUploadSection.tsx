@@ -3,9 +3,11 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { 
-  FolderOpen, Upload, FileText, User, Briefcase, 
+  FolderOpen, FileText, User, Briefcase, 
   Building2, CheckCircle2, AlertCircle, Clock 
 } from 'lucide-react';
+import { SmartDropZone } from '@/components/shared/SmartDropZone';
+import { AIProcessingOverlay } from '@/components/shared/AIProcessingOverlay';
 import { FileUploader } from '@/components/shared/FileUploader';
 import { toast } from 'sonner';
 import { useUniversalUpload } from '@/hooks/useUniversalUpload';
@@ -203,15 +205,30 @@ export function DocumentUploadSection({ requestId, storageFolderId, readOnly = f
 
                 {/* Upload Area */}
                 {!readOnly && (
-                  <FileUploader
-                    onFilesSelected={(files) => handleUpload(category.id, files)}
-                    accept=".pdf,.jpg,.jpeg,.png"
-                    multiple
-                    label={isUploading ? 'Wird hochgeladen...' : 'Dokumente hochladen'}
-                    hint="PDF, JPG oder PNG (max. 10MB pro Datei)"
-                    maxSize={10 * 1024 * 1024}
-                    disabled={isUploading}
-                  />
+                  <>
+                    <AIProcessingOverlay
+                      active={isUploading}
+                      steps={[
+                        { label: 'Dokument wird hochgeladen' },
+                        { label: 'KI erkennt Dokumenttyp' },
+                        { label: 'Daten werden extrahiert' },
+                      ]}
+                      currentStep={isUploading ? 1 : 0}
+                      headline={`${category.label} wird verarbeitet…`}
+                      variant="primary"
+                    />
+                    {!isUploading && (
+                      <SmartDropZone
+                        onFiles={(files) => handleUpload(category.id, files)}
+                        accept={{
+                          'application/pdf': ['.pdf'],
+                          'image/*': ['.jpg', '.jpeg', '.png'],
+                        }}
+                        formatsLabel="PDF, JPG, PNG"
+                        variant="primary"
+                      />
+                    )}
+                  </>
                 )}
                 {categoryUploadedFiles.length > 0 && (
                   <UploadResultList

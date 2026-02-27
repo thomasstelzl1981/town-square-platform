@@ -15,6 +15,8 @@ import {
   Bot, Upload, FileText, Sparkles,
   ChevronDown, Save, Loader2
 } from 'lucide-react';
+import { AIProcessingOverlay } from '@/components/shared/AIProcessingOverlay';
+import { SmartDropZone } from '@/components/shared/SmartDropZone';
 import { ServiceCase, useUpdateServiceCase } from '@/hooks/useServiceCases';
 import { LineItemsEditor, LineItem } from './LineItemsEditor';
 import { CostEstimateCard } from './CostEstimateCard';
@@ -398,23 +400,28 @@ export function ScopeDefinitionPanel({ serviceCase }: ScopeDefinitionPanelProps)
                     onSelectionChange={setSelectedDocuments}
                   />
                   
-                  <Button 
-                    onClick={handleStartAIAnalysis}
-                    disabled={isAnalyzing || selectedDocuments.length === 0}
-                    className="w-full"
-                  >
-                    {isAnalyzing ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Analysiere Dokumente...
-                      </>
-                    ) : (
-                      <>
-                        <Bot className="mr-2 h-4 w-4" />
-                        KI-Analyse starten
-                      </>
-                    )}
-                  </Button>
+                  <AIProcessingOverlay
+                    active={isAnalyzing}
+                    steps={[
+                      { label: 'Dokumente werden gelesen' },
+                      { label: 'Räume & Ausstattung erkannt' },
+                      { label: 'Leistungsverzeichnis wird erstellt' },
+                    ]}
+                    currentStep={isAnalyzing ? 1 : 0}
+                    headline="KI analysiert Unterlagen…"
+                    variant="violet"
+                  />
+                  
+                  {!isAnalyzing && (
+                    <Button 
+                      onClick={handleStartAIAnalysis}
+                      disabled={selectedDocuments.length === 0}
+                      className="w-full"
+                    >
+                      <Bot className="mr-2 h-4 w-4" />
+                      KI-Analyse starten
+                    </Button>
+                  )}
                 </TabsContent>
                 
                 <TabsContent value="external" className="mt-4 space-y-4">
@@ -430,12 +437,17 @@ export function ScopeDefinitionPanel({ serviceCase }: ScopeDefinitionPanelProps)
                     </div>
                   </div>
                   
-                  <div className="border-2 border-dashed rounded-lg p-8 text-center">
-                    <Upload className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
-                    <p className="font-medium">PDF oder Excel hier ablegen</p>
-                    <p className={DESIGN.TYPOGRAPHY.HINT + ' mt-1'}>oder klicken zum Auswählen</p>
-                    <Button variant="outline" className="mt-4">Datei auswählen</Button>
-                  </div>
+                  <SmartDropZone
+                    onFiles={(files) => {
+                      toast.info('Upload-Verarbeitung wird implementiert');
+                    }}
+                    accept={{
+                      'application/pdf': ['.pdf'],
+                      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
+                    }}
+                    formatsLabel="PDF, Excel"
+                    variant="violet"
+                  />
                 </TabsContent>
               </Tabs>
             </CardContent>

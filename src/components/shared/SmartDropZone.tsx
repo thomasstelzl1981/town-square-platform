@@ -24,7 +24,7 @@ export interface SmartDropZoneProps {
   /** Supported formats label */
   formatsLabel?: string;
   /** Accent variant */
-  variant?: 'primary' | 'amber' | 'cyan' | 'violet' | 'emerald';
+  variant?: 'primary' | 'amber' | 'cyan' | 'violet' | 'emerald' | 'teal';
   className?: string;
 }
 
@@ -34,6 +34,7 @@ const VARIANT_STYLES: Record<string, { border: string; glow: string; text: strin
   cyan:    { border: 'border-cyan-400', glow: 'shadow-[0_0_30px_-5px] shadow-cyan-400/30', text: 'text-cyan-500', bg: 'bg-cyan-500/5' },
   violet:  { border: 'border-violet-400', glow: 'shadow-[0_0_30px_-5px] shadow-violet-400/30', text: 'text-violet-500', bg: 'bg-violet-500/5' },
   emerald: { border: 'border-emerald-400', glow: 'shadow-[0_0_30px_-5px] shadow-emerald-400/30', text: 'text-emerald-500', bg: 'bg-emerald-500/5' },
+  teal:    { border: 'border-teal-400', glow: 'shadow-[0_0_30px_-5px] shadow-teal-400/30', text: 'text-teal-500', bg: 'bg-teal-500/5' },
 };
 
 function formatSize(bytes: number) {
