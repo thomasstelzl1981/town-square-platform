@@ -42,6 +42,8 @@ import {
   Building2,
   Search,
   Sun,
+  Mic,
+  Wallet,
   GripVertical,
   Info,
   RotateCcw,
@@ -68,6 +70,8 @@ const ICON_MAP: Record<string, typeof Globe> = {
   Building2,
   Search,
   Sun,
+  Mic,
+  Wallet,
 };
 
 interface SortableWidgetItemProps {
