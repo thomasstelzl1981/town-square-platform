@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -497,6 +498,7 @@ function EmailDetailPanel({
 }
 
 export function EmailTab() {
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   const [selectedFolder, setSelectedFolder] = useState('inbox');
   const [selectedEmail, setSelectedEmail] = useState<string | null>(null);
@@ -547,7 +549,7 @@ export function EmailTab() {
 
   // Fetch connected email accounts from database
   const { data: accounts = [], isLoading: isLoadingAccounts, refetch: refetchAccounts } = useQuery({
-    queryKey: ['email-accounts'],
+    queryKey: ['email-accounts', user?.id],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('mail_accounts')
