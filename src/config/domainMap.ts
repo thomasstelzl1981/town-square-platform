@@ -17,9 +17,17 @@ export const domainMap: Record<string, DomainEntry> = {
   // FutureRoom
   'futureroom.online': { siteKey: 'futureroom', base: '/website/futureroom' },
   'www.futureroom.online': { siteKey: 'futureroom', base: '/website/futureroom' },
+  'futureroom.app': { siteKey: 'futureroom', base: '/website/futureroom' },
+  'www.futureroom.app': { siteKey: 'futureroom', base: '/website/futureroom' },
+  'futureroom.cloud': { siteKey: 'futureroom', base: '/website/futureroom' },
+  'www.futureroom.cloud': { siteKey: 'futureroom', base: '/website/futureroom' },
+  'futureroom.finance': { siteKey: 'futureroom', base: '/website/futureroom' },
+  'www.futureroom.finance': { siteKey: 'futureroom', base: '/website/futureroom' },
   // Acquiary
   'acquiary.com': { siteKey: 'acquiary', base: '/website/acquiary' },
   'www.acquiary.com': { siteKey: 'acquiary', base: '/website/acquiary' },
+  'acquiary.de': { siteKey: 'acquiary', base: '/website/acquiary' },
+  'www.acquiary.de': { siteKey: 'acquiary', base: '/website/acquiary' },
   // Lennox & Friends
   'lennoxandfriends.app': { siteKey: 'lennox', base: '/website/tierservice' },
   'www.lennoxandfriends.app': { siteKey: 'lennox', base: '/website/tierservice' },
