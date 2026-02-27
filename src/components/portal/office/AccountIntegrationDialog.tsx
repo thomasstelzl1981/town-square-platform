@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Dialog,
@@ -162,6 +163,7 @@ function ICloudConnectionForm({ onConnect, isConnecting }: { onConnect: (data: a
 }
 
 export function AccountIntegrationDialog({ open, onOpenChange }: AccountIntegrationDialogProps) {
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<'accounts' | 'add'>('accounts');
   const [addProvider, setAddProvider] = useState<string>('google');
@@ -169,7 +171,7 @@ export function AccountIntegrationDialog({ open, onOpenChange }: AccountIntegrat
 
   // Fetch all mail accounts
   const { data: accounts = [], isLoading } = useQuery({
-    queryKey: ['mail-accounts-integration'],
+    queryKey: ['mail-accounts-integration', user?.id],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('mail_accounts')

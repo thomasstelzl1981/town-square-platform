@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { User, Session } from '@supabase/supabase-js';
+import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import type { Tables } from '@/integrations/supabase/types';
 import {
@@ -327,7 +328,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { error: error as Error | null };
   };
 
+  // P0-CACHE-FIX: Get queryClient to clear cache on logout
+  const queryClient = useQueryClient();
+
   const signOut = async () => {
+    // Clear all cached data BEFORE signing out to prevent cross-user data leaks
+    queryClient.clear();
     await supabase.auth.signOut();
   };
 
