@@ -534,9 +534,12 @@ export function PortfolioTab() {
     }).format(value);
   };
 
-  // Handle Excel import
+  // Handle Excel import — store selected file for passthrough
+  const [pendingExcelFile, setPendingExcelFile] = useState<File | null>(null);
+
   const handleExcelFile = async (files: File[]) => {
     if (files.length > 0) {
+      setPendingExcelFile(files[0]);
       setShowImportDialog(true);
     }
   };
@@ -1216,8 +1219,12 @@ export function PortfolioTab() {
       {activeOrganization && (
         <ExcelImportDialog
           open={showImportDialog}
-          onOpenChange={setShowImportDialog}
+          onOpenChange={(open) => {
+            setShowImportDialog(open);
+            if (!open) setPendingExcelFile(null);
+          }}
           tenantId={activeOrganization.id}
+          initialFile={pendingExcelFile}
         />
       )}
 
