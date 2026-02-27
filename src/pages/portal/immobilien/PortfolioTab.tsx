@@ -340,9 +340,9 @@ export function PortfolioTab() {
         const loan = loanMap.get(prop.id);
         const leaseInfo = leaseMap.get(u.id);
         
-        // Calculate ANNUAL values
+        // Calculate ANNUAL values — Fallback chain: Leases → unit.current_monthly_rent → property.annual_income
         const totalMonthlyRent = leaseInfo?.totalMonthlyRent || u.current_monthly_rent || 0;
-        const annualNetColdRent = totalMonthlyRent * 12;
+        const annualNetColdRent = totalMonthlyRent * 12 || prop.annual_income || 0;
         
         // SSOT: Use loans table data
         const balance = loan?.outstanding_balance_eur || 0;

@@ -8,7 +8,7 @@
     "MOD-01": { "frozen": true, "frozen_at": "2026-02-27T23:59:00.000Z", "reason": "Re-frozen after ChatGPT-style upload upgrade" },
     "MOD-02": { "frozen": true, "frozen_at": "2026-02-27T23:59:00.000Z", "reason": "Re-frozen after ChatGPT-style upload upgrade" },
     "MOD-03": { "frozen": true, "frozen_at": "2026-02-27T23:59:00.000Z", "reason": "Re-frozen after ChatGPT-style upload upgrade" },
-    "MOD-04": { "frozen": true, "frozen_at": "2026-02-27T23:59:00.000Z", "reason": "Re-frozen after ChatGPT-style upload upgrade" },
+    "MOD-04": { "frozen": false, "frozen_at": "2026-02-28T00:10:00.000Z", "reason": "Unfrozen for Miete p.a. intake fix" },
     "MOD-05": { "frozen": true, "frozen_at": "2026-02-27T23:59:00.000Z", "reason": "Re-frozen after ChatGPT-style upload upgrade" },
     "MOD-06": { "frozen": true, "frozen_at": "2026-02-27T23:59:00.000Z", "reason": "Re-frozen after ChatGPT-style upload upgrade" },
     "MOD-07": { "frozen": true, "frozen_at": "2026-02-27T23:59:00.000Z", "reason": "Re-frozen after ChatGPT-style upload upgrade" },

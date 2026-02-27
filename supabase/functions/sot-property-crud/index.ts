@@ -262,6 +262,20 @@ Deno.serve(async (req) => {
         .eq("property_id", property.id)
         .maybeSingle();
 
+      // P1-FIX: Sync annual_income → current_monthly_rent on auto-created unit
+      if (unit && parsedAnnualIncome && parsedAnnualIncome > 0) {
+        const monthlyRent = Math.round((parsedAnnualIncome / 12) * 100) / 100;
+        const { error: unitUpdateErr } = await supabaseAdmin
+          .from("units")
+          .update({ current_monthly_rent: monthlyRent })
+          .eq("id", unit.id);
+        if (unitUpdateErr) {
+          console.warn("Unit monthly rent sync error (non-fatal):", unitUpdateErr);
+        } else {
+          console.log(`Unit ${unit.id}: current_monthly_rent set to ${monthlyRent} (from annual_income ${parsedAnnualIncome})`);
+        }
+      }
+
       // Create loan
       let loanResult: { loan_status: string; loan_id?: string; loan_error?: string; loan_input_debug?: Record<string, unknown> } = { loan_status: "skipped" };
       if (data.loan_data) {
