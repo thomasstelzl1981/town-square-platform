@@ -141,7 +141,8 @@ Wenn ein Wert nicht gefunden wird, setze null.
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
+        model: 'google/gemini-2.5-pro',
+        max_tokens: 8000,
         messages: [
           {
             role: 'user',
@@ -189,7 +190,7 @@ Wenn ein Wert nicht gefunden wird, setze null.
       .update({
         status: 'completed',
         output_data: extractedData,
-        model_used: 'google/gemini-2.5-flash',
+        model_used: 'google/gemini-2.5-pro',
         tokens_used: aiData.usage?.total_tokens,
         completed_at: new Date().toISOString(),
       })

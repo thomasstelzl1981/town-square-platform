@@ -26,7 +26,7 @@ serve(async (req) => {
       method: "POST",
       headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "google/gemini-2.5-pro",
         messages: [
           { role: "system", content: "Analysiere Social-Media-Posts und extrahiere wiederkehrende Patterns. Antworte auf Deutsch." },
           { role: "user", content: `Analysiere diesen Post und extrahiere Patterns:\n\n"${content_text}"\n\nNutze das Tool "patterns_result".` },

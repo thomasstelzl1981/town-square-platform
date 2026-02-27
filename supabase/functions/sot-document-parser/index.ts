@@ -605,7 +605,7 @@ serve(async (req) => {
     }
 
     const useVision = resolvedContentType.includes("image") || isPdf;
-    const maxTokens = shouldPreprocessCsv ? 16000 : 8000;
+    const maxTokens = shouldPreprocessCsv ? 32000 : 32000;
 
     let messages: Array<{ role: string; content: string | Array<{ type: string; text?: string; image_url?: { url: string } }> }>;
 
@@ -640,7 +640,7 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "google/gemini-2.5-pro",
         messages,
         temperature: 0.1,
         max_tokens: maxTokens,
@@ -728,7 +728,7 @@ serve(async (req) => {
     const result = {
       version: "3.0",
       engine: "lovable_ai",
-      model: "google/gemini-3-flash-preview",
+      model: "google/gemini-2.5-pro",
       extractionMethod,
       parseMode: resolvedMode,
       parsed_at: new Date().toISOString(),

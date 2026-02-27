@@ -83,13 +83,13 @@ Deutsche Sprache. Professionell und überzeugend.`;
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "google/gemini-2.5-flash",
+          model: "google/gemini-2.5-pro",
           messages: [
             { role: "system", content: "Du generierst Website-Section-Inhalte als reines JSON. Keine Markdown-Formatierung." },
             { role: "user", content: prompt },
           ],
           temperature: 0.7,
-          max_tokens: 1000,
+          max_tokens: 4000,
         }),
       });
 
@@ -179,13 +179,13 @@ Behalte alle nicht genannten Felder bei. Antworte NUR mit validem JSON.`;
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "google/gemini-2.5-flash",
+          model: "google/gemini-2.5-pro",
           messages: [
             { role: "system", content: "Du aktualisierst Website-Section-Inhalte als reines JSON. Keine Markdown-Formatierung." },
             { role: "user", content: prompt },
           ],
           temperature: 0.5,
-          max_tokens: 1000,
+          max_tokens: 4000,
         }),
       });
 

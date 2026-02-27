@@ -76,7 +76,7 @@ Antworte auf Deutsch. Nutze Markdown-Formatierung. Sei konkret und praxisnah.`;
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "google/gemini-2.5-pro",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: `Hier sind meine aktuellen Projekte:\n\n${projectContext}\n\nErstelle bitte einen detaillierten Marktbericht mit Konkurrenzanalyse und Empfehlungen.` },

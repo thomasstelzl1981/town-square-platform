@@ -105,28 +105,25 @@ Liefere deine Analyse im folgenden JSON-Format. Erfinde realistische Werte basie
 
 Antworte NUR mit dem JSON, ohne Erklärungen oder Markdown-Formatierung.`;
 
-    // Call Lovable AI via OpenRouter
-    const OPENROUTER_API_KEY = Deno.env.get('OPENROUTER_API_KEY');
+    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     
     let result: StructuredResearchResult;
 
-    if (OPENROUTER_API_KEY) {
-      const aiResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    if (LOVABLE_API_KEY) {
+      const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+          'Authorization': `Bearer ${Deno.env.get('LOVABLE_API_KEY')}`,
           'Content-Type': 'application/json',
-          'HTTP-Referer': 'https://lovable.dev',
-          'X-Title': 'System of a Town',
         },
         body: JSON.stringify({
-          model: 'google/gemini-2.5-flash',
+          model: 'google/gemini-2.5-pro',
           messages: [
             { role: 'system', content: 'Du bist ein deutscher Immobilien-Analyst. Antworte immer auf Deutsch und nur mit validem JSON.' },
             { role: 'user', content: analysisPrompt },
           ],
           temperature: 0.7,
-          max_tokens: 2000,
+          max_tokens: 8000,
         }),
       });
 
