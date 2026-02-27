@@ -189,6 +189,15 @@ export const zone1Admin: ZoneDefinition = {
     { path: "fortbildung", component: "AdminFortbildung", title: "Fortbildung" },
     // Service Desk (MOD-16, MOD-15, MOD-17, MOD-19, MOD-05 Shop)
     { path: "service-desk", component: "ServiceDeskRouter", title: "Service Desk" },
+    // Ncore Desk — Projekt- & Kooperationsanfragen
+    { path: "ncore-desk", component: "NcoreDeskRouter", title: "Ncore Desk" },
+    { path: "ncore-desk/kontakte", component: "NcoreDeskKontakte", title: "Kontakte" },
+    { path: "ncore-desk/monitor", component: "NcoreDeskMonitor", title: "Monitor" },
+    // Otto² Advisory Desk — Finanzierungs- & Beratungsanfragen
+    { path: "otto-desk", component: "OttoDeskRouter", title: "Otto² Advisory Desk" },
+    { path: "otto-desk/kontakte", component: "OttoDeskKontakte", title: "Kontakte" },
+    { path: "otto-desk/inbox", component: "OttoDeskInbox", title: "Inbox" },
+    { path: "otto-desk/monitor", component: "OttoDeskMonitor", title: "Monitor" },
     // Compliance Desk — Legal Engine SSOT (8 internal tabs)
     { path: "compliance", component: "ComplianceDeskRouter", title: "Compliance Desk" },
   ],
@@ -719,9 +728,41 @@ export const zone3Websites: Record<string, WebsiteDefinition> = {
       { path: ":slug/datenschutz", component: "ProjectLandingDatenschutz", title: "Datenschutz", dynamic: true },
     ],
   },
+  // =========================================================================
+  // NCORE BUSINESS CONSULTING — Beratung, Digitalisierung, Stiftungen
+  // =========================================================================
+  ncore: {
+    base: "/website/ncore",
+    layout: "NcoreLayout",
+    routes: [
+      { path: "", component: "NcoreHome", title: "Ncore Business Consulting — Connecting Dots. Connecting People." },
+      { path: "digitalisierung", component: "NcoreDigitalisierung", title: "Digitalisierung & KI für KMU — Ncore Business Consulting" },
+      { path: "stiftungen", component: "NcoreStiftungen", title: "Stiftungen & Vermögensschutz — Ncore Business Consulting" },
+      { path: "geschaeftsmodelle", component: "NcoreGeschaeftsmodelle", title: "Geschäftsmodelle & Vertrieb — Ncore Business Consulting" },
+      { path: "netzwerk", component: "NcoreNetzwerk", title: "Unser Netzwerk — Ncore Business Consulting" },
+      { path: "gruender", component: "NcoreGruender", title: "Gründer — Ncore Business Consulting" },
+      { path: "kontakt", component: "NcoreKontakt", title: "Kontakt — Ncore Business Consulting" },
+      { path: "impressum", component: "NcoreImpressum", title: "Impressum — Ncore Business Consulting" },
+      { path: "datenschutz", component: "NcoreDatenschutz", title: "Datenschutz — Ncore Business Consulting" },
+    ],
+  },
+  // =========================================================================
+  // OTTO² ADVISORY — Finanzberatung für Unternehmer & Privathaushalte
+  // =========================================================================
+  otto: {
+    base: "/website/otto-advisory",
+    layout: "OttoAdvisoryLayout",
+    routes: [
+      { path: "", component: "OttoHome", title: "Otto² Advisory — Ganzheitliche Finanzberatung" },
+      { path: "unternehmer", component: "OttoUnternehmer", title: "Für Unternehmer — Otto² Advisory" },
+      { path: "private-haushalte", component: "OttoPrivateHaushalte", title: "Für Privathaushalte — Otto² Advisory" },
+      { path: "finanzierung", component: "OttoFinanzierung", title: "Finanzierung beantragen — Otto² Advisory" },
+      { path: "kontakt", component: "OttoKontakt", title: "Kontakt — Otto² Advisory" },
+      { path: "impressum", component: "OttoImpressum", title: "Impressum — Otto² Advisory" },
+      { path: "datenschutz", component: "OttoDatenschutz", title: "Datenschutz — Otto² Advisory" },
+    ],
+  },
 };
-// =============================================================================
-// LEGACY ROUTES (DEPRECATED)
 // =============================================================================
 export const legacyRoutes: LegacyRoute[] = [
   // Legacy Portfolio Routes

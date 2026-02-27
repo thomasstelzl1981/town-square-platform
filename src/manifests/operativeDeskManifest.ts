@@ -154,6 +154,40 @@ export const OPERATIVE_DESKS: OperativeDeskDefinition[] = [
       'Monitoring',
     ],
   },
+  {
+    deskId: 'ncore-desk',
+    displayName: 'Ncore Desk',
+    managerModuleCode: '',
+    managerModuleName: '',
+    clientModuleCode: '',
+    clientModuleName: '',
+    websiteProfileId: 'ncore_consulting',
+    route: 'ncore-desk',
+    icon: 'Cpu',
+    responsibilities: [
+      'Projekt-Anfragen',
+      'Kooperations-Anfragen',
+      'Netzwerk-Lead-Routing',
+      'Beratungs-Triage',
+    ],
+  },
+  {
+    deskId: 'otto-desk',
+    displayName: 'Otto² Advisory Desk',
+    managerModuleCode: '',
+    managerModuleName: '',
+    clientModuleCode: '',
+    clientModuleName: '',
+    websiteProfileId: 'otto_advisory',
+    route: 'otto-desk',
+    icon: 'Wallet',
+    responsibilities: [
+      'Finanzierungsanfragen',
+      'Beratungsanfragen',
+      'Lead-Qualifizierung',
+      'Kunden-Triage',
+    ],
+  },
 ];
 
 // =============================================================================

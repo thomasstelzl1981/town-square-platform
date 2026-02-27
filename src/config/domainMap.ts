@@ -26,6 +26,26 @@ export const domainMap: Record<string, DomainEntry> = {
   // System of a Town (primary domain — also serves portal)
   'systemofatown.com': { siteKey: 'sot', base: '/website/sot' },
   'www.systemofatown.com': { siteKey: 'sot', base: '/website/sot' },
+  // Ncore Business Consulting
+  'ncore.online': { siteKey: 'ncore', base: '/website/ncore' },
+  'www.ncore.online': { siteKey: 'ncore', base: '/website/ncore' },
+  'thomasstelzl.com': { siteKey: 'ncore', base: '/website/ncore' },
+  'www.thomasstelzl.com': { siteKey: 'ncore', base: '/website/ncore' },
+  'thomas-stelzl.com': { siteKey: 'ncore', base: '/website/ncore' },
+  'www.thomas-stelzl.com': { siteKey: 'ncore', base: '/website/ncore' },
+  'thomasstelzl.de': { siteKey: 'ncore', base: '/website/ncore' },
+  'www.thomasstelzl.de': { siteKey: 'ncore', base: '/website/ncore' },
+  // Otto² Advisory (Komplett ZL Finanzdienstleistungen GmbH)
+  'otto2advisory.com': { siteKey: 'otto', base: '/website/otto-advisory' },
+  'www.otto2advisory.com': { siteKey: 'otto', base: '/website/otto-advisory' },
+  'finanzdienstleistungen.gmbh': { siteKey: 'otto', base: '/website/otto-advisory' },
+  'www.finanzdienstleistungen.gmbh': { siteKey: 'otto', base: '/website/otto-advisory' },
+  'finanzdienstleistungen.info': { siteKey: 'otto', base: '/website/otto-advisory' },
+  'www.finanzdienstleistungen.info': { siteKey: 'otto', base: '/website/otto-advisory' },
+  'zl-beratung.de': { siteKey: 'otto', base: '/website/otto-advisory' },
+  'www.zl-beratung.de': { siteKey: 'otto', base: '/website/otto-advisory' },
+  'zl-finanzen.de': { siteKey: 'otto', base: '/website/otto-advisory' },
+  'www.zl-finanzen.de': { siteKey: 'otto', base: '/website/otto-advisory' },
 };
 
 /**
