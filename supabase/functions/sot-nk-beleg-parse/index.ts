@@ -2,14 +2,13 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 
 /**
- * SOT NK-Beleg-Parse — P2.2
+ * SOT NK-Beleg-Parse — P2.2 + Cross-Validation (Runde 2)
  * 
- * Specialized parseMode for utility bills (Nebenkostenbelege).
- * Extracts: provider, amount, period, cost category, meter readings.
+ * Actions:
+ *   POST { documentId, propertyId?, unitId? }          — Standard NK-Beleg parsing
+ *   POST { action: "cross-validate", propertyId, year } — Kreuzvalidierung Belege vs. WEG
  * 
- * Cost: 1 Credit per document
- * 
- * POST { documentId: UUID, propertyId?: UUID, unitId?: UUID }
+ * Cost: 1 Credit per document parse, 1 Credit per cross-validation
  */
 
 const NK_CREDITS = 1;
@@ -79,10 +78,207 @@ Deno.serve(async (req) => {
     if (!profile?.active_tenant_id) return json({ error: "No active tenant" }, 400);
     const tenantId = profile.active_tenant_id;
 
-    const { documentId, propertyId, unitId } = await req.json();
-    if (!documentId) return json({ error: "Missing documentId" }, 400);
-
+    const body = await req.json();
     const sbAdmin = createClient(supabaseUrl, serviceKey);
+
+    // ═══════════════════════════════════════════════════════════
+    // ACTION: cross-validate — NK-Kreuzvalidierung
+    // ═══════════════════════════════════════════════════════════
+    if (body.action === "cross-validate") {
+      const { propertyId, year } = body;
+      if (!propertyId || !year) return json({ error: "propertyId and year required" }, 400);
+
+      // Credit Preflight
+      const { data: preflight } = await sbAdmin.rpc("rpc_credit_preflight", {
+        p_tenant_id: tenantId,
+        p_required_credits: NK_CREDITS,
+        p_action_code: "nk_cross_validation",
+      });
+      if (!preflight?.allowed) {
+        return json({ error: "Insufficient credits", available: preflight?.available_credits }, 402);
+      }
+
+      // 1. Load all NK-Beleg-Extractions for this property + year
+      const yearStart = `${year}-01-01`;
+      const yearEnd = `${year}-12-31`;
+
+      const { data: belege, error: belegErr } = await sbAdmin
+        .from("nk_beleg_extractions")
+        .select("id, provider_name, provider_type, cost_category, total_amount, billing_period_start, billing_period_end, confidence")
+        .eq("tenant_id", tenantId)
+        .eq("property_id", propertyId)
+        .gte("billing_period_start", yearStart)
+        .lte("billing_period_end", yearEnd);
+
+      if (belegErr) return json({ error: "Failed to load belege" }, 500);
+
+      // 2. Load WEG cost items for this property + year (from nk_cost_items)
+      const { data: wegItems, error: wegErr } = await sbAdmin
+        .from("nk_cost_items")
+        .select("id, category, label, total_amount, year")
+        .eq("tenant_id", tenantId)
+        .eq("property_id", propertyId)
+        .eq("year", year);
+
+      if (wegErr) return json({ error: "Failed to load WEG items" }, 500);
+
+      // 3. Load invoice extractions for this property + year
+      const { data: invoices, error: invErr } = await sbAdmin
+        .from("invoice_extractions")
+        .select("id, vendor_name, total_gross, nk_cost_category, invoice_date")
+        .eq("tenant_id", tenantId)
+        .eq("matched_property_id", propertyId)
+        .gte("invoice_date", yearStart)
+        .lte("invoice_date", yearEnd);
+
+      // 4. AI Cross-Validation
+      if (!lovableApiKey) return json({ error: "AI Gateway not configured" }, 500);
+
+      const crossValidationPrompt = `Du bist ein Experte für Nebenkostenabrechnung nach BetrKV §2.
+Vergleiche die folgenden Datenquellen für das Objekt im Jahr ${year}:
+
+## NK-Belege (einzelne Versorger-Abrechnungen):
+${JSON.stringify(belege || [], null, 2)}
+
+## WEG-Hausgeldabrechnung (Kostenpositionen):
+${JSON.stringify(wegItems || [], null, 2)}
+
+## Rechnungen (automatisch erkannt):
+${JSON.stringify(invoices || [], null, 2)}
+
+PRÜFE:
+1. Stimmen die Summen der Belege mit den WEG-Positionen überein? (Toleranz: 10%)
+2. Fehlen Belege für WEG-Positionen?
+3. Gibt es doppelte Buchungen (gleicher Betrag, gleiche Kategorie)?
+4. Sind Rechnungen vorhanden, die keinem Beleg/WEG-Posten zugeordnet sind?
+5. Plausibilität: Sind die Beträge für die jeweilige Kostenart realistisch?`;
+
+      const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${lovableApiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-pro",
+          messages: [
+            { role: "system", content: "Du bist ein NK-Kreuzprüfer. Antworte NUR mit dem tool_call." },
+            { role: "user", content: crossValidationPrompt },
+          ],
+          tools: [{
+            type: "function",
+            function: {
+              name: "cross_validation_result",
+              description: "Strukturiertes Ergebnis der NK-Kreuzvalidierung",
+              parameters: {
+                type: "object",
+                properties: {
+                  overall_status: { type: "string", enum: ["green", "yellow", "red"], description: "Ampelstatus" },
+                  overall_message: { type: "string", description: "Zusammenfassung auf Deutsch" },
+                  total_belege_sum: { type: "number", description: "Summe aller Belege in EUR" },
+                  total_weg_sum: { type: "number", description: "Summe WEG-Abrechnung in EUR" },
+                  deviation_percent: { type: "number", description: "Abweichung in Prozent" },
+                  categories: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        category: { type: "string" },
+                        beleg_amount: { type: "number" },
+                        weg_amount: { type: "number" },
+                        status: { type: "string", enum: ["green", "yellow", "red"] },
+                        message: { type: "string" },
+                      },
+                      required: ["category", "status", "message"],
+                      additionalProperties: false,
+                    },
+                  },
+                  missing_belege: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        category: { type: "string" },
+                        expected_amount: { type: "number" },
+                        message: { type: "string" },
+                      },
+                      required: ["category", "message"],
+                      additionalProperties: false,
+                    },
+                  },
+                  duplicates: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        beleg_ids: { type: "array", items: { type: "string" } },
+                        amount: { type: "number" },
+                        message: { type: "string" },
+                      },
+                      required: ["message"],
+                      additionalProperties: false,
+                    },
+                  },
+                },
+                required: ["overall_status", "overall_message", "categories"],
+                additionalProperties: false,
+              },
+            },
+          }],
+          tool_choice: { type: "function", function: { name: "cross_validation_result" } },
+          temperature: 0.1,
+          max_tokens: 16000,
+        }),
+      });
+
+      if (!aiRes.ok) {
+        const errText = await aiRes.text();
+        console.error("AI Gateway error:", aiRes.status, errText);
+        return json({ error: `AI cross-validation failed (${aiRes.status})` }, 500);
+      }
+
+      const aiResult = await aiRes.json();
+      const toolCall = aiResult.choices?.[0]?.message?.tool_calls?.[0];
+      let validationResult: Record<string, unknown> = {};
+
+      if (toolCall?.function?.arguments) {
+        validationResult = JSON.parse(toolCall.function.arguments);
+      } else {
+        validationResult = {
+          overall_status: "yellow",
+          overall_message: "Kreuzvalidierung konnte nicht strukturiert durchgeführt werden.",
+          categories: [],
+        };
+      }
+
+      // Deduct credit
+      await sbAdmin.rpc("rpc_credit_deduct", {
+        p_tenant_id: tenantId,
+        p_credits: NK_CREDITS,
+        p_action_code: "nk_cross_validation",
+        p_ref_type: "property",
+        p_ref_id: propertyId,
+      });
+
+      console.log(`[sot-nk-beleg-parse] Cross-validation: ${propertyId}/${year} → ${(validationResult as any).overall_status}`);
+
+      return json({
+        success: true,
+        validation: validationResult,
+        data_sources: {
+          belege_count: (belege || []).length,
+          weg_items_count: (wegItems || []).length,
+          invoices_count: (invoices || []).length,
+        },
+        credits_used: NK_CREDITS,
+      });
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // STANDARD: Single NK-Beleg Parse (existing logic)
+    // ═══════════════════════════════════════════════════════════
+    const { documentId, propertyId, unitId } = body;
+    if (!documentId) return json({ error: "Missing documentId" }, 400);
 
     // Load document
     const { data: doc, error: docErr } = await sbAdmin
@@ -193,7 +389,7 @@ Deno.serve(async (req) => {
         consumption_unit: parsed.consumption_unit as string || null,
         confidence,
         needs_review: confidence < 0.9,
-        extractor_version: "1.0",
+        extractor_version: "1.1",
       })
       .select("id")
       .single();
