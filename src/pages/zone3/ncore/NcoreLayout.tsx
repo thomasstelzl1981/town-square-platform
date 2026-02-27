@@ -7,6 +7,7 @@ import { Outlet, Link, useLocation } from 'react-router-dom';
 import { Cpu, Menu, X, ArrowRight } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet';
+import { ArmstrongWidget } from '@/components/zone3/ArmstrongWidget';
 
 const NAV_ITEMS = [
   { path: '/website/ncore/digitalisierung', label: 'Digitalisierung & KI' },
@@ -242,6 +243,9 @@ export default function NcoreLayout() {
           </div>
         </footer>
       </div>
+
+      {/* Armstrong LITE Chatbot */}
+      <ArmstrongWidget website="ncore" />
     </>
   );
 }
