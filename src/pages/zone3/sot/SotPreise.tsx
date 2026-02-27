@@ -38,7 +38,7 @@ const plans: PricingPlan[] = [
       'Verbrauch jederzeit einsehbar',
     ],
     cta: 'Demo ansehen',
-    ctaLink: '/sot/demo',
+    ctaLink: '/website/sot/demo',
     featured: true,
   },
 ];

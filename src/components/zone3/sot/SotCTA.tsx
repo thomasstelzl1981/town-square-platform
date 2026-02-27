@@ -21,7 +21,7 @@ interface SotCTAProps {
 
 export function SotCTA({
   title = 'Bereit für den Start?',
-  subtitle = '14 Tage kostenlos. Keine Kreditkarte erforderlich.',
+  subtitle = 'Keine Grundgebühr. Alle Module kostenfrei.',
   primaryCta = { label: 'Jetzt starten', to: '/auth?mode=register&source=sot' },
   secondaryCta,
   variant = 'default',

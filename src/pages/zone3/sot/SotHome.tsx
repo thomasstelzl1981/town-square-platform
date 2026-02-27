@@ -11,7 +11,7 @@ import {
   GraduationCap, ShoppingCart, Sun, Users, FolderOpen,
   MessageSquare, Landmark, Search, Tag, Mail, PawPrint,
   Clock, AlertTriangle, TrendingDown, Rocket, Play,
-  ArrowUpRight
+  ArrowUpRight, Database
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSotTheme } from '@/hooks/useSotTheme';
@@ -27,7 +27,9 @@ const heroPills = [
   { icon: FileText, label: 'Dokumente', color: 'from-violet-500 to-violet-600' },
   { icon: Car, label: 'Fuhrpark', color: 'from-amber-500 to-amber-600' },
   { icon: Sun, label: 'Energie', color: 'from-orange-500 to-orange-600' },
-  { icon: Brain, label: 'KI-Assistent', color: 'from-pink-500 to-pink-600' },
+  { icon: Brain, label: 'Gemini 2.5 Pro', color: 'from-blue-400 to-cyan-500' },
+  { icon: Cpu, label: 'GPT-5', color: 'from-emerald-400 to-teal-500' },
+  { icon: Sparkles, label: '35+ KI-Engines', color: 'from-pink-500 to-pink-600' },
 ];
 
 /* ── Pain Points ── */
@@ -109,7 +111,8 @@ const areas = [
 
 /* ── Stats ── */
 const stats = [
-  { value: '15+', label: 'Module', color: 'text-blue-400' },
+  { value: '20+', label: 'Module', color: 'text-blue-400' },
+  { value: '35+', label: 'KI-Engines', color: 'text-pink-400' },
   { value: 'DSGVO', label: 'Konform', color: 'text-emerald-400' },
   { value: '24/7', label: 'KI-Assistenz', color: 'text-violet-400' },
   { value: '0 €', label: 'Grundgebühr', color: 'text-amber-400' },
@@ -241,7 +244,7 @@ export default function SotHome() {
       {/* ── STATS BAR — Anthropic-style minimal ── */}
       <section className="py-12 sm:py-16 border-b border-border/30">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-8">
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-8">
             {stats.map((s) => (
               <Reveal key={s.label}>
                 <div className="text-center">
@@ -321,7 +324,7 @@ export default function SotHome() {
                 Eine Plattform — 3 Bereiche
               </span>
               <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight">
-                15+ Module. Ein System.
+                20+ Module. Ein System.
                 <br />
                 <span className="bg-gradient-to-r from-blue-500 via-emerald-500 to-violet-500 bg-clip-text text-transparent">
                   Null Chaos.
@@ -404,9 +407,13 @@ export default function SotHome() {
           {/* Content */}
           <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-20 sm:py-28">
             <div className="max-w-2xl">
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-violet-500/20 backdrop-blur-sm border border-violet-400/30 mb-6 text-xs font-bold text-violet-300 tracking-wider uppercase">
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-violet-500/20 backdrop-blur-sm border border-violet-400/30 mb-3 text-xs font-bold text-violet-300 tracking-wider uppercase">
                 <Brain className="w-3.5 h-3.5" />
                 <Brand>Armstrong</Brand> Intelligence
+              </div>
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-sm border border-white/10 mb-6 text-[10px] font-bold text-white/70 tracking-wider uppercase ml-3">
+                <Cpu className="w-3 h-3 text-cyan-400" />
+                Powered by Gemini 2.5 Pro & GPT-5
               </div>
 
               <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white tracking-tight leading-[1.1]">
@@ -460,6 +467,108 @@ export default function SotHome() {
               </Link>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* ── KI-POWER — Model showcase ── */}
+      <section className="py-20 sm:py-28">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <Reveal>
+            <div className="text-center mb-16">
+              <span className="inline-block px-4 py-1.5 rounded-full bg-gradient-to-r from-cyan-500/10 to-violet-500/10 border border-cyan-500/20 text-cyan-500 text-xs font-bold tracking-wider uppercase mb-4">
+                <Cpu className="w-3.5 h-3.5 inline mr-1.5" />
+                KI-Power unter der Haube
+              </span>
+              <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight">
+                Multi-Modell.
+                <br />
+                <span className="bg-gradient-to-r from-cyan-400 via-blue-400 to-violet-400 bg-clip-text text-transparent">
+                  Maximale Intelligenz.
+                </span>
+              </h2>
+              <p className="mt-4 text-muted-foreground text-lg max-w-2xl mx-auto">
+                Armstrong wählt automatisch das beste KI-Modell für jede Aufgabe — 
+                von komplexem Reasoning bis zur blitzschnellen Klassifikation.
+              </p>
+            </div>
+          </Reveal>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-12">
+            {[
+              {
+                model: 'Gemini 2.5 Pro',
+                provider: 'Google',
+                strength: 'Reasoning & Dokumentanalyse',
+                desc: 'Komplexe Vertragsanalyse, Multi-Dokument-Vergleiche, 32.000 Token Context-Window für ganze Datenräume.',
+                color: 'from-blue-500 to-cyan-500',
+                badge: '32k Token',
+              },
+              {
+                model: 'GPT-5',
+                provider: 'OpenAI',
+                strength: 'Textgenerierung & Kommunikation',
+                desc: 'Professionelle E-Mails, Briefe, Berichte und Zusammenfassungen — auf Deutsch, in Ihrem Tonfall.',
+                color: 'from-emerald-500 to-teal-500',
+                badge: 'Top Textqualität',
+              },
+              {
+                model: 'Gemini 2.5 Flash',
+                provider: 'Google',
+                strength: 'Schnelle Klassifikation & OCR',
+                desc: 'Posteingang sortieren, Dokumente kategorisieren, Belege erkennen — in Millisekunden.',
+                color: 'from-amber-500 to-orange-500',
+                badge: 'Ultra-schnell',
+              },
+            ].map((m, i) => (
+              <Reveal key={m.model} delay={i * 120}>
+                <div className={cn(
+                  'relative rounded-3xl border border-border/30 p-8 overflow-hidden group hover:-translate-y-1 transition-all duration-300 h-full',
+                  isDark ? 'bg-card/60' : 'bg-card shadow-lg shadow-black/5'
+                )}>
+                  <div className={cn('absolute top-0 left-0 right-0 h-1 bg-gradient-to-r', m.color)} />
+                  <div className="flex items-center gap-2 mb-4">
+                    <span className={cn('px-2.5 py-1 rounded-full text-[10px] font-black tracking-wider uppercase text-white bg-gradient-to-r', m.color)}>
+                      {m.provider}
+                    </span>
+                    <span className="px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wider uppercase bg-muted text-muted-foreground">
+                      {m.badge}
+                    </span>
+                  </div>
+                  <h3 className="text-xl font-bold mb-1">{m.model}</h3>
+                  <p className="text-xs font-semibold text-primary mb-3">{m.strength}</p>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{m.desc}</p>
+                </div>
+              </Reveal>
+            ))}
+          </div>
+
+          {/* KI Engine capabilities */}
+          <Reveal delay={200}>
+            <div className={cn(
+              'rounded-3xl border border-border/20 p-8 sm:p-10',
+              isDark ? 'bg-card/40' : 'bg-card shadow-xl shadow-black/5'
+            )}>
+              <h3 className="text-xl font-bold mb-6 text-center">Was unsere 35+ KI-Engines können</h3>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+                {[
+                  { icon: FileText, label: 'Dokument-Parsing', desc: 'PDF, Excel, Bilder' },
+                  { icon: Building2, label: 'Exposé-Extraktion', desc: 'Immobiliendaten' },
+                  { icon: Mail, label: 'E-Mail-Generierung', desc: 'Professionelle Texte' },
+                  { icon: Globe, label: 'Web-Recherche', desc: 'Mit Quellenprotokoll' },
+                  { icon: MessageSquare, label: 'Zusammenfassungen', desc: 'Meetings & Verträge' },
+                  { icon: Search, label: 'Marktanalysen', desc: 'Preise & Renditen' },
+                ].map((cap) => (
+                  <div key={cap.label} className="text-center p-3">
+                    <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center mx-auto mb-2">
+                      <cap.icon className="w-5 h-5 text-primary" />
+                    </div>
+                    <p className="text-xs font-bold">{cap.label}</p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">{cap.desc}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </Reveal>
         </div>
       </section>
 
@@ -543,16 +652,19 @@ export default function SotHome() {
                 placeholder="E-Mail eingeben"
                 className="h-14 flex-1 rounded-2xl px-5 text-sm bg-white/10 backdrop-blur-sm border border-white/20 text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/30 transition-all"
               />
-              <button className="h-14 px-8 rounded-2xl bg-white text-black text-sm font-bold hover:bg-white/90 hover:shadow-2xl hover:shadow-white/20 transition-all duration-300 inline-flex items-center gap-2 flex-shrink-0">
+              <Link
+                to={`/auth?mode=register&source=sot${email ? `&email=${encodeURIComponent(email)}` : ''}`}
+                className="h-14 px-8 rounded-2xl bg-white text-black text-sm font-bold hover:bg-white/90 hover:shadow-2xl hover:shadow-white/20 transition-all duration-300 inline-flex items-center gap-2 flex-shrink-0"
+              >
                 Starten
                 <ArrowRight className="w-4 h-4" />
-              </button>
+              </Link>
             </div>
 
             <div className="flex items-center justify-center gap-6 mt-8 text-sm text-white/50">
-              <Link to="/website/sot/demo" className="hover:text-white/80 transition-colors flex items-center gap-1.5">
+              <Link to="/portal?mode=demo" className="hover:text-white/80 transition-colors flex items-center gap-1.5">
                 <Play className="w-3.5 h-3.5" />
-                Demo
+                Demo testen
               </Link>
               <span className="w-1 h-1 rounded-full bg-white/20" />
               <Link to="/website/sot/preise" className="hover:text-white/80 transition-colors">

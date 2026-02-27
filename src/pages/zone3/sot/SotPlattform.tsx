@@ -1,12 +1,25 @@
 /**
- * SoT Plattform — Eine Plattform ersetzt 15 Einzellösungen
+ * SoT Plattform — Eine Plattform ersetzt 20 Einzellösungen
  */
 import { Link } from 'react-router-dom';
-import { ArrowRight, CheckCircle2, Brain, X } from 'lucide-react';
+import { ArrowRight, CheckCircle2, Brain, X, Sparkles, Cpu } from 'lucide-react';
 import { SOT_WEBSITE_MODULES } from '@/data/sotWebsiteModules';
 import { useSotScrollAnimation } from '@/hooks/useSotScrollAnimation';
 import { SotCTA } from '@/components/zone3/sot';
 import * as Icons from 'lucide-react';
+
+/* Modules that are KI-powered with what the KI does */
+const KI_MODULES: Record<string, string> = {
+  'MOD-02': 'E-Mails & Texte generieren mit GPT-5',
+  'MOD-03': 'Dokumentenerkennung & Auto-Kategorisierung',
+  'MOD-04': 'Exposé-Extraktion & Objektanalyse',
+  'MOD-07': 'Selbstauskunft automatisch befüllen',
+  'MOD-14': 'KI-Textgenerierung & E-Mail-Serien',
+  'MOD-05': 'NK-Beleg-Parsing & Zuordnung',
+  'MOD-13': 'Magic Intake — Projektdaten aus Dokumenten',
+  'MOD-08': 'Renditeberechnung & Marktanalyse',
+  'MOD-18': 'Cashflow-Prognosen & Szenarien',
+};
 
 const replacedTools = [
   { name: 'Excel-Listen', desc: 'für Finanzen & Objekte' },
@@ -82,11 +95,11 @@ export default function SotPlattform() {
               Plattform
             </span>
             <h1 className="sot-display mb-6">
-              Eine Plattform ersetzt<br />15 Einzellösungen.
+              Eine Plattform ersetzt<br />20 Einzellösungen.
             </h1>
             <p className="sot-subheadline max-w-3xl mx-auto mb-10">
               Von der Finanzanalyse bis zum Fuhrpark, vom Dokumentenmanagement bis zur KI-Assistenz — 
-              System of a Town bringt alles in ein System. Keine Insellösungen mehr. Kein Chaos.
+              System of a Town bringt alles in ein System. <strong>Powered by Gemini 2.5 Pro & GPT-5.</strong>
             </p>
             <div className="flex flex-wrap justify-center gap-4">
               <Link to="/auth?mode=register&source=sot" className="sot-btn-primary">
@@ -169,6 +182,7 @@ function AreaSection({ area, modules }: { area: typeof areaDefinitions[0]; modul
   const { ref, isVisible } = useSotScrollAnimation();
   const allModules = [
     ...modules.map(m => ({
+      code: m.code,
       name: m.name,
       tagline: m.tagline,
       description: m.description,
@@ -176,7 +190,7 @@ function AreaSection({ area, modules }: { area: typeof areaDefinitions[0]; modul
       features: m.features,
       icon: m.icon,
     })),
-    ...(area.extraModules || []),
+    ...(area.extraModules || []).map(em => ({ ...em, code: '' })),
   ];
 
   return (
@@ -229,6 +243,15 @@ function AreaSection({ area, modules }: { area: typeof areaDefinitions[0]; modul
                     </p>
                   ))}
                 </div>
+
+                {/* KI Badge */}
+                {KI_MODULES[mod.code] && (
+                  <div className="mb-4 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wider uppercase"
+                    style={{ backgroundColor: 'hsl(var(--z3-accent) / 0.1)', color: 'hsl(var(--z3-accent))' }}>
+                    <Sparkles className="w-3 h-3" />
+                    KI-powered — {KI_MODULES[mod.code]}
+                  </div>
+                )}
 
                 {/* Features */}
                 <div className="flex flex-wrap gap-1.5">
