@@ -5,7 +5,7 @@
  * Shows Zone 3 project website in browser frame + inline editor for texts/advisors
  * Domain activation blocked until Zone 1 billing is ready.
  */
-import { useState } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { PROJEKTCALC_DEFAULTS } from '@/engines/projektCalc/spec';
 import { DESIGN, getActiveWidgetGlow } from '@/config/designManifest';
 import { PageShell } from '@/components/shared/PageShell';
@@ -60,6 +60,47 @@ export default function LandingPageTab() {
   const [copied, setCopied] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [aiGenerating, setAiGenerating] = useState(false);
+  const previewContainerRef = useRef<HTMLDivElement>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+
+  // Poll iframe contentDocument.scrollHeight until stable (same-origin)
+  useEffect(() => {
+    let interval: ReturnType<typeof setInterval>;
+    let lastHeight = 0;
+    let stableCount = 0;
+
+    const updateHeight = () => {
+      const iframe = iframeRef.current;
+      const container = previewContainerRef.current;
+      if (!iframe || !container) return;
+
+      try {
+        const doc = iframe.contentDocument;
+        if (!doc) return;
+        const scrollH = doc.documentElement.scrollHeight || doc.body.scrollHeight;
+        if (scrollH > 100) { // ignore trivial heights during load
+          const scale = container.offsetWidth / 1440;
+          iframe.style.height = `${scrollH}px`;
+          iframe.style.transform = `scale(${scale})`;
+          container.style.height = `${scrollH * scale}px`;
+          
+          if (scrollH === lastHeight) {
+            stableCount++;
+            if (stableCount >= 3) clearInterval(interval); // stop when stable
+          } else {
+            stableCount = 0;
+          }
+          lastHeight = scrollH;
+        }
+      } catch (_) {
+        // cross-origin — stop polling
+        clearInterval(interval);
+      }
+    };
+
+    interval = setInterval(updateHeight, 1500);
+    return () => clearInterval(interval);
+  }, [selectedId]);
 
   const isSelectedDemo = isDemoId(selectedId);
   const isNewMode = selectedId === 'new';
@@ -426,42 +467,22 @@ export default function LandingPageTab() {
               </div>
 
               {/* Embedded Preview — scaled desktop simulation, dynamic height from content */}
-              <div className="relative w-full overflow-hidden">
+              <div 
+                className="relative w-full overflow-hidden"
+                ref={previewContainerRef}
+              >
                 <iframe 
+                  ref={iframeRef}
                   src={previewUrl}
                   className="border-0 origin-top-left"
                   style={{
                     width: '1440px',
-                    height: '900px',
+                    height: '6000px',
                     transform: 'scale(0.5)',
                     transformOrigin: 'top left',
                   }}
                   scrolling="no"
                   title="Landing Page Preview"
-                  onLoad={(e) => {
-                    const iframe = e.currentTarget;
-                    const container = iframe.parentElement;
-                    if (!container) return;
-                    const scale = container.offsetWidth / 1440;
-                    
-                    // Try to read actual content height (same-origin)
-                    try {
-                      const doc = iframe.contentDocument;
-                      if (doc) {
-                        const scrollH = doc.body.scrollHeight || doc.documentElement.scrollHeight;
-                        iframe.style.height = `${scrollH}px`;
-                        iframe.style.transform = `scale(${scale})`;
-                        container.style.height = `${scrollH * scale}px`;
-                        return;
-                      }
-                    } catch (_) {
-                      // cross-origin fallback
-                    }
-                    
-                    // Fallback: fixed 900px height
-                    iframe.style.transform = `scale(${scale})`;
-                    container.style.height = `${900 * scale}px`;
-                  }}
                 />
               </div>
             </div>
