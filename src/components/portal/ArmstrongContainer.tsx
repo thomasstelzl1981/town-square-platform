@@ -6,6 +6,8 @@
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react';
+import { useArmstrongTriggerListener } from '@/hooks/useArmstrongTrigger';
+import { useArmstrongProactiveHints } from '@/hooks/useArmstrongProactiveHints';
 import { createPortal } from 'react-dom';
 import { usePortalLayout } from '@/hooks/usePortalLayout';
 import { useArmstrongAdvisor } from '@/hooks/useArmstrongAdvisor';
@@ -141,6 +143,40 @@ export function ArmstrongContainer() {
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // ── "Frag Armstrong" trigger listener ────────────────────────────────────
+  const { handler: triggerHandler } = useArmstrongTriggerListener((data) => {
+    // Open Armstrong if collapsed
+    if (!armstrongExpanded) {
+      toggleArmstrongExpanded();
+    }
+    // Pre-fill and send the prompt
+    setTimeout(() => {
+      advisor.sendMessage(data.prompt);
+    }, 300); // small delay so the panel opens first
+  });
+
+  useEffect(() => {
+    window.addEventListener('armstrong:trigger', triggerHandler);
+    return () => window.removeEventListener('armstrong:trigger', triggerHandler);
+  }, [triggerHandler]);
+
+  // ── Proactive hints listener ─────────────────────────────────────────────
+  const { latestHint, dismissHint } = useArmstrongProactiveHints();
+
+  useEffect(() => {
+    if (latestHint && !armstrongExpanded) {
+      // Show proactive hint as a new assistant message when Armstrong is opened
+      const proactiveMsg = {
+        id: latestHint.id,
+        role: 'assistant' as const,
+        content: latestHint.hint,
+        timestamp: latestHint.timestamp,
+      };
+      advisor.addProactiveMessage(proactiveMsg);
+      dismissHint(latestHint.id);
+    }
+  }, [latestHint?.id]);
 
   // Chat input handlers
   const handleSend = useCallback(() => {

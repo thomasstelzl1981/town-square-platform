@@ -443,6 +443,15 @@ export function useArmstrongAdvisor() {
   }, []);
 
   /**
+   * Add a proactive message (from external hints) without triggering AI
+   */
+  const addProactiveMessage = useCallback((msg: { id: string; role: 'assistant'; content: string; timestamp: Date }) => {
+    const chatMsg: ChatMessage = { ...msg, role: 'assistant' };
+    setMessages(prev => [...prev, chatMsg]);
+    conversationRef.current.push({ role: 'assistant', content: msg.content });
+  }, []);
+
+  /**
    * Process advisor response
    */
   const processResponse = useCallback((response: AdvisorResponse): ChatMessage => {
@@ -881,5 +890,6 @@ export function useArmstrongAdvisor() {
     startFlow,
     cancelFlow,
     sendEmail,
+    addProactiveMessage,
   };
 }
