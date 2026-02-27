@@ -29,8 +29,20 @@ import {
 } from '@/components/shared/PropertyTable';
 import { 
   Loader2, Building2, TrendingUp, Wallet, PiggyBank, 
-  Plus, Upload, Eye, Calculator, Table2, ChevronDown, Landmark
+  Plus, Upload, Trash2, Calculator, Table2, ChevronDown, Landmark
 } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { toast } from 'sonner';
+import { useQueryClient } from '@tanstack/react-query';
 import { 
   LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, 
   ResponsiveContainer, CartesianGrid, Legend, Area, ComposedChart 
@@ -109,6 +121,40 @@ export function PortfolioTab() {
   const [showCreateContextDialog, setShowCreateContextDialog] = useState(false);
   const [showLoanRerunDialog, setShowLoanRerunDialog] = useState(false);
   const [pendingLoanExcelFile, setPendingLoanExcelFile] = useState<File | null>(null);
+  const [deletePropertyId, setDeletePropertyId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const queryClient = useQueryClient();
+
+  const handleDeleteProperty = async (propertyId: string) => {
+    setIsDeleting(true);
+    try {
+      // Cascade delete: storage_nodes → loans → context_assignments → leases → units → property
+      await supabase.from('storage_nodes').delete().eq('property_id', propertyId);
+      await supabase.from('loans').delete().eq('property_id', propertyId);
+      await supabase.from('context_property_assignment').delete().eq('property_id', propertyId);
+      
+      // Get units to delete leases
+      const { data: units } = await supabase.from('units').select('id').eq('property_id', propertyId);
+      if (units?.length) {
+        const unitIds = units.map(u => u.id);
+        await supabase.from('leases').delete().in('unit_id', unitIds);
+      }
+      await supabase.from('units').delete().eq('property_id', propertyId);
+      await supabase.from('properties').delete().eq('id', propertyId);
+
+      toast.success('Immobilie und zugehörige Daten gelöscht');
+      queryClient.invalidateQueries({ queryKey: ['portfolio-units-annual'] });
+      queryClient.invalidateQueries({ queryKey: ['portfolio-loans'] });
+      queryClient.invalidateQueries({ queryKey: ['context-property-assignments'] });
+      queryClient.invalidateQueries({ queryKey: ['properties'] });
+    } catch (err) {
+      console.error('Delete property error:', err);
+      toast.error('Fehler beim Löschen der Immobilie');
+    } finally {
+      setIsDeleting(false);
+      setDeletePropertyId(null);
+    }
+  };
   
   // FIX: Clear the create param via useEffect (not useState side-effect)
   useEffect(() => {
@@ -1127,13 +1173,15 @@ export function PortfolioTab() {
               <Button 
                 variant="ghost" 
                 size="sm"
+                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                disabled={isDemoId(row.property_id) || isDeleting}
                 onClick={(e) => {
                   e.stopPropagation();
-                  navigate(`/portal/immobilien/${row.property_id}`);
+                  setDeletePropertyId(row.property_id);
                 }}
-                title="Immobilienakte öffnen"
+                title={isDemoId(row.property_id) ? 'Demo-Objekte können nicht gelöscht werden' : 'Immobilie löschen'}
               >
-                <Eye className="h-4 w-4" />
+                <Trash2 className="h-4 w-4" />
               </Button>
             )}
             emptyState={{
@@ -1280,6 +1328,29 @@ export function PortfolioTab() {
         open={showCreateDialog}
         onOpenChange={setShowCreateDialog}
       />
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deletePropertyId} onOpenChange={(open) => { if (!open) setDeletePropertyId(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Immobilie endgültig löschen?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Alle zugehörigen Daten (Einheiten, Mietverträge, Darlehen, Dokumente, Kontextzuordnungen) werden unwiderruflich gelöscht.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Abbrechen</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={isDeleting}
+              onClick={() => deletePropertyId && handleDeleteProperty(deletePropertyId)}
+            >
+              {isDeleting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Endgültig löschen
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Portfolio Summary Modal */}
       <PortfolioSummaryModal
