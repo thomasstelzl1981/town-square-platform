@@ -1,78 +1,60 @@
 
 
-## Audit: Upload-Felder & KI-Feedback — ChatGPT-Style Upgrade
+## SoT Website Redesign — KI-Power & klare Demo/Login-Trennung
 
-### Ist-Zustand: 12 Upload-Bereiche identifiziert
+### Probleme identifiziert
 
-Ich habe alle Module auf Upload-Felder und KI-Feedback-Punkte geprüft. Es gibt **12 verschiedene Upload-Implementierungen** mit stark unterschiedlicher UX-Qualität:
+1. **Demo/Login-Chaos**: Header hat nur "Login" Button (→ `/auth`), kein separater "Demo" Button. Demo-Link in Nav führt auf Unterseite statt direkt zum Demo-Account. User müssen sich durch mehrere Seiten klicken.
+2. **Broken Link**: Preise-Seite hat `ctaLink: '/sot/demo'` statt `/website/sot/demo`
+3. **KI-Power nicht kommuniziert**: Keine Erwähnung der konkreten KI-Modelle (Gemini 2.5 Pro, GPT-5). Keine Zahlen zu Token-Kapazitäten. Armstrong wird als generische KI beschrieben statt als Multi-Modell-Powerhouse.
+4. **Module-Aufzählung oberflächlich**: Nur Name + 1-Zeiler. Keine konkreten KI-Features pro Modul (ChatGPT-Style Upload, automatische Dokumenterkennung, etc.)
+5. **CTA-Wirrwarr**: `SotCTA` default-Text sagt "14 Tage kostenlos" — Plattform ist aber dauerhaft kostenlos
+6. **Hero-Email-Form**: CTA-Eingabefeld hat keinen Submit-Handler
 
-```text
-QUALITÄT   KOMPONENTE                              MODUL      PROBLEM
-─────────────────────────────────────────────────────────────────────────
-★★★★★  ExcelImportDialog.tsx                    MOD-04     Bereits ChatGPT-Style (5-Step Timeline, Timer)
-★★★★☆  IntakeUploadZone.tsx                     MOD-03     Per-File Status-Tracking, Progress Bar
-★★★★☆  QuickIntakeUploader.tsx                  MOD-13     Multi-Step Workflow, aber kein Timer/Thinking
-★★★☆☆  UploadResultCard.tsx                     Shared     Status-Badges vorhanden, aber kein AI-Progress
-─────────────────────────────────────────────────────────────────────────
-★★☆☆☆  StandaloneCalculatorPanel.tsx            MOD-12     Nur Spinner + "Extrahiere Daten..."
-★★☆☆☆  OfferComparisonPanel.tsx                 MOD-04     Minimale FileUploader, kein AI-Feedback
-★★☆☆☆  DocumentUploadSection.tsx                MOD-07     Checkliste gut, aber Upload-Zone nackt
-★★☆☆☆  DocumentChecklist.tsx                    MOD-11     Fake-Upload, markiert nur als "hochgeladen"
-★☆☆☆☆  UploadDrawer.tsx (Miety)                MOD-20     Nur Spinner, kein AI-Feedback
-★☆☆☆☆  ScopeDefinitionPanel.tsx (Sanierung)     MOD-04     Text sagt "KI analysiert", aber kein Progress
-★☆☆☆☆  Kaufy2026Verkaeufer.tsx                  Zone3      Kein visuelles Feedback während Upload
-★☆☆☆☆  FileUploader.tsx (Default Mode)          Shared     Generisches Upload-Icon, kein Thinking-State
-```
+### Änderungen
 
----
+**1. SotLayout.tsx — Header: Demo-Button + Login klar trennen**
+- Header bekommt zwei Buttons: "Demo testen" (→ `/portal?mode=demo`, grün/auffällig) + "Login" (→ `/auth`, dezent)
+- Nav-Item "DEMO" bleibt, verweist weiterhin auf Info-Seite `/website/sot/demo`
+- Mobile: Gleiche Trennung
 
-### Lösung: Shared `AIProcessingOverlay`-Komponente + Upgrades
+**2. SotHome.tsx — Hero + KI-Power Sektion komplett überarbeiten**
+- Hero-Pills um "Gemini 2.5 Pro" und "GPT-5" ergänzen
+- Neue "KI-Power" Sektion nach Armstrong: konkrete Modell-Auflistung, Token-Kapazitäten, was unsere KI-Engines alles können (Dokument-Parsing, Exposé-Extraktion, E-Mail-Generierung, Web-Recherche, Meeting-Zusammenfassungen, Marktanalysen)
+- Armstrong-Sektion: "Powered by Gemini 2.5 Pro & GPT-5" Badge, konkrete Zahlen (35+ KI-Engines, 32.000 Token Dokumentanalyse, 8.000 Token Recherchen)
+- Stats-Bar: "15+" → "20+" Module, "35+" KI-Engines hinzufügen
+- CTA unten: Email-Submit verlinkt auf `/auth?mode=register&source=sot`
+- Demo-Link klar auf `/portal?mode=demo`
 
-Statt jede Komponente einzeln umzubauen, erstelle ich eine **wiederverwendbare Shared-Komponente** `AIProcessingOverlay`, die den ChatGPT-Style-Analyse-Flow kapselt:
+**3. SotDemo.tsx — Demo-Seite: direkter Einstieg**
+- "Demo starten" Button bleibt auf `/portal?mode=demo` (korrekt)
+- Modul-Links: alle korrekt mit `?mode=demo` (bereits gut)
+- Zusätzlich: KI-Features der Demo hervorheben (Armstrong testen, Dokument-Upload testen)
 
-**Neue Shared-Komponente: `src/components/shared/AIProcessingOverlay.tsx`**
-- Animierter Thinking-Indicator (pulsierende Sparkles/Brain-Icons)
-- Konfigurierbare Analyse-Steps (z.B. "Lese Dokument → Verstehe Struktur → Extrahiere Daten → Prüfe Ergebnisse")
-- Echtzeit-Timer ("Analyse läuft seit 12s")
-- Progress-Bar mit Step-Beschreibung
-- Modul-spezifische Farben aus `designManifest`
+**4. SotPreise.tsx — Broken Link fixen**
+- `ctaLink: '/sot/demo'` → `'/website/sot/demo'`
 
-**Neue Shared-Komponente: `src/components/shared/SmartDropZone.tsx`**
-- ChatGPT-Style Upload-Zone mit großem Drop-Bereich
-- Drag-Over Animation (Glow, Scale, Icon-Wechsel)
-- Datei-Vorschau nach Auswahl (Name, Größe, Typ-Icon)
-- Nahtloser Übergang in `AIProcessingOverlay` nach Upload
-- Ersetzt das generische `FileUploader` Default-Layout
+**5. SotCTA.tsx — Default-Text korrigieren**
+- "14 Tage kostenlos" → "Keine Grundgebühr. Alle Module kostenfrei."
 
----
+**6. SotIntelligenz.tsx — KI-Modell-Details**
+- Neue Sektion: "Welche KI-Modelle nutzen wir?" mit Gemini 2.5 Pro (Reasoning & Dokumentanalyse), GPT-5 (Textgenerierung), Gemini 2.5 Flash (Schnelle Klassifikation)
+- Konkrete Zahlen: 32.000 Token max. Context, 35+ Edge Functions, 6 KI-Kategorien
 
-### Implementierungsschritte
+**7. SotPlattform.tsx — Module mit KI-Badges**
+- Module die KI nutzen bekommen "KI-powered" Badge
+- Kurze Erklärung was die KI dort konkret macht
 
-1. **`AIProcessingOverlay` erstellen** — Shared-Komponente mit Step-Timeline, Timer, Progress-Bar, Thinking-Animation
-2. **`SmartDropZone` erstellen** — ChatGPT-artiges Upload-Feld mit Glow-Effekt, Dateivorschau, nahtlosem Übergang zu AI-Processing
-3. **`StandaloneCalculatorPanel` upgraden (MOD-12)** — Spinner durch AIProcessingOverlay ersetzen mit Steps: "Lese Exposé → Erkenne Zahlen → Befülle Felder"
-4. **`OfferComparisonPanel` upgraden (MOD-04)** — Upload-Zone durch SmartDropZone ersetzen, AI-Feedback beim Angebots-Parsing zeigen
-5. **`DocumentUploadSection` upgraden (MOD-07)** — Pro Kategorie AI-Analyse-Status anzeigen statt nur "Hochgeladen"
-6. **`UploadDrawer` upgraden (MOD-20)** — SmartDropZone + AIProcessingOverlay einbauen
-7. **`DocumentChecklist` upgraden (MOD-11)** — Echten Upload-Flow mit AI-Feedback statt Fake-Status
-8. **`QuickIntakeUploader` erweitern (MOD-13)** — Timer + detailliertere Step-Beschreibungen während Analyse-Phase
-9. **`ScopeDefinitionPanel` upgraden (MOD-04 Sanierung)** — AIProcessingOverlay für DMS-Analyse einbauen
-10. **`Kaufy2026Verkaeufer` upgraden (Zone3)** — Upload-Schritte mit AI-Feedback versehen
+### Betroffene Dateien
 
-### Betroffene Module & Freeze-Check
+| Datei | Aktion |
+|-------|--------|
+| `src/pages/zone3/sot/SotLayout.tsx` | Header: Demo + Login Buttons trennen |
+| `src/pages/zone3/sot/SotHome.tsx` | KI-Power Sektion, Stats, Hero, CTA |
+| `src/pages/zone3/sot/SotDemo.tsx` | KI-Highlights in Demo-Preview |
+| `src/pages/zone3/sot/SotPreise.tsx` | Broken link fix |
+| `src/pages/zone3/sot/SotIntelligenz.tsx` | KI-Modell-Übersicht |
+| `src/components/zone3/sot/SotCTA.tsx` | Default-Text fix |
 
-| Datei | Modul | Freeze-Status |
-|-------|-------|---------------|
-| `src/components/shared/AIProcessingOverlay.tsx` | Shared | FREI (neu) |
-| `src/components/shared/SmartDropZone.tsx` | Shared | FREI (neu) |
-| `src/pages/portal/akquise-manager/components/StandaloneCalculatorPanel.tsx` | MOD-12 | Prüfen |
-| `src/components/portal/immobilien/sanierung/offers/OfferComparisonPanel.tsx` | MOD-04 | Prüfen |
-| `src/components/finanzierung/DocumentUploadSection.tsx` | MOD-07 | Prüfen |
-| `src/pages/portal/miety/components/UploadDrawer.tsx` | MOD-20 | Prüfen |
-| `src/components/privatkredit/DocumentChecklist.tsx` | MOD-11 | Prüfen |
-| `src/components/projekte/QuickIntakeUploader.tsx` | MOD-13 | Prüfen |
-| `src/components/portal/immobilien/sanierung/scope/ScopeDefinitionPanel.tsx` | MOD-04 | Prüfen |
-| `src/pages/zone3/kaufy2026/Kaufy2026Verkaeufer.tsx` | Zone3 | Prüfen |
-
-Alle Freeze-Status werden vor jeder Dateiänderung geprüft. Shared-Dateien sind immer frei.
+Alle Dateien sind in Zone3 → Freeze-Check: `zone3_freeze.json` zeigt `"SOT": { "frozen": false }` — frei.
 
