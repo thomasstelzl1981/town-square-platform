@@ -1231,6 +1231,7 @@ export function PortfolioTab() {
           }}
           tenantId={activeOrganization.id}
           initialFile={pendingExcelFile}
+          contextId={selectedContextId}
         />
       )}
 

@@ -29,6 +29,7 @@ interface PropertyCreate {
   description?: string;
   units_count?: number;
   loan_data?: LoanData;
+  landlord_context_id?: string;
 }
 
 interface PropertyUpdate extends Partial<PropertyCreate> {
@@ -110,6 +111,11 @@ Deno.serve(async (req) => {
         status: "active",
       };
 
+      // Set landlord_context_id if provided
+      if (data.landlord_context_id) {
+        insertData.landlord_context_id = data.landlord_context_id;
+      }
+
       // Add annual_income if provided
       if (data.annual_income != null) {
         insertData.annual_income = data.annual_income;
@@ -141,16 +147,22 @@ Deno.serve(async (req) => {
         .eq("property_id", property.id)
         .maybeSingle();
 
-      // Create loan if loan_data is provided
+      // Create loan if loan_data is provided (relaxed condition: any loan field triggers creation)
       let loanId: string | null = null;
-      if (data.loan_data && (data.loan_data.bank_name || data.loan_data.outstanding_balance_eur)) {
+      if (data.loan_data && (
+        data.loan_data.bank_name || 
+        data.loan_data.outstanding_balance_eur || 
+        data.loan_data.annuity_monthly_eur ||
+        data.loan_data.interest_rate_percent ||
+        data.loan_data.original_amount
+      )) {
         const loanInsert: Record<string, unknown> = {
           tenant_id: tenantId,
           property_id: property.id,
           unit_id: unit?.id || null,
           bank_name: data.loan_data.bank_name || "Unbekannt",
           loan_number: `IMPORT-${property.public_id || property.id.slice(0, 8)}`,
-          scope: "property",
+          scope: "PROPERTY",
           outstanding_balance_eur: data.loan_data.outstanding_balance_eur,
           annuity_monthly_eur: data.loan_data.annuity_monthly_eur,
           fixed_interest_end_date: data.loan_data.fixed_interest_end_date,
@@ -169,6 +181,23 @@ Deno.serve(async (req) => {
         } else {
           loanId = loan.id;
           console.log(`Loan created: ${loan.id} for property ${property.id}`);
+        }
+      }
+
+      // Auto-create context_property_assignment if landlord_context_id provided
+      if (data.landlord_context_id) {
+        const { error: assignError } = await supabaseAdmin
+          .from("context_property_assignment")
+          .insert({
+            tenant_id: tenantId,
+            context_id: data.landlord_context_id,
+            property_id: property.id,
+          });
+
+        if (assignError) {
+          console.error("Context assignment error (non-fatal):", assignError);
+        } else {
+          console.log(`Context assignment created: property ${property.id} → context ${data.landlord_context_id}`);
         }
       }
 
