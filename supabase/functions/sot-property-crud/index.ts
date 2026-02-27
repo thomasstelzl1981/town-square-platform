@@ -232,8 +232,9 @@ Deno.serve(async (req) => {
         insertData.landlord_context_id = data.landlord_context_id;
       }
 
-      if (data.annual_income != null) {
-        insertData.annual_income = data.annual_income;
+      const parsedAnnualIncome = parseMoneyLike(data.annual_income);
+      if (parsedAnnualIncome != null) {
+        insertData.annual_income = parsedAnnualIncome;
       }
 
       if (data.units_count && data.units_count > 1) {

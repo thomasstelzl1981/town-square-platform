@@ -78,6 +78,20 @@ interface ExcelImportDialogProps {
 const formatCurrency = (val: number | null | undefined) =>
   val != null ? `${val.toLocaleString('de-DE')} €` : '–';
 
+/** Parse money-like strings: "55.000", "1.294.020,50", plain numbers */
+function parseMoneyLike(raw: unknown): number | null {
+  if (raw == null) return null;
+  if (typeof raw === 'number') return isFinite(raw) ? raw : null;
+  const s = String(raw).trim();
+  if (!s) return null;
+  const deMatch = s.match(/^-?\d{1,3}(\.\d{3})*(,\d+)?$/);
+  if (deMatch) return parseFloat(s.replace(/\./g, '').replace(',', '.')) || null;
+  const enMatch = s.match(/^-?\d{1,3}(,\d{3})*(\.\d+)?$/);
+  if (enMatch) return parseFloat(s.replace(/,/g, '')) || null;
+  const n = parseFloat(s.replace(',', '.'));
+  return isFinite(n) ? n : null;
+}
+
 const ANALYSIS_STEPS = [
   { key: 'reading', icon: FileSpreadsheet, label: 'Datei wird gelesen…', detail: 'Excel-Struktur wird analysiert', progress: 10 },
   { key: 'ai-analyzing', icon: Brain, label: 'KI analysiert Datenstruktur…', detail: 'Spalten werden erkannt und zugeordnet', progress: 30 },
@@ -262,7 +276,9 @@ export function ExcelImportDialog({ open, onOpenChange, tenantId, initialFile, c
 
       for (const row of rowsToImport) {
         try {
-          const annualIncome = row.jahresmiete ?? (row.kaltmiete ? row.kaltmiete * 12 : undefined);
+          const parsedJahresmiete = parseMoneyLike(row.jahresmiete);
+          const parsedKaltmiete = parseMoneyLike(row.kaltmiete);
+          const annualIncome = parsedJahresmiete ?? (parsedKaltmiete ? parsedKaltmiete * 12 : undefined);
 
           const propertyData: Record<string, unknown> = {
             address: row.adresse,
