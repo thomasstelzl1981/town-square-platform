@@ -107,103 +107,129 @@ QUALITÄTSKONTROLLE:
 VERGIB jedem Objekt einen Code (z.B. "OBJ-001") wenn keiner in der Tabelle vorhanden ist.
 Wenn ein Objekt mehrere Einheiten hat, erstelle EINE Zeile pro Objekt (nicht pro Einheit).`;
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-pro",
-        messages: [
-          { role: "system", content: systemPrompt },
-          {
-            role: "user",
-            content: `Analysiere diese Immobilien-Tabelle sorgfältig. Nimm dir Zeit für jede Zeile und jede Zahl.\n\nDateiname: ${fileName || "unbekannt"}\nAnzahl Datenzeilen: ${rows.length}\nAnzahl Spalten: ${headers.length}\nSpaltenköpfe: ${headers.join(", ")}\n\nVollständige Tabelle:\n${tableText}`,
-          },
-        ],
-        tools: [
-          {
-            type: "function",
-            function: {
-              name: "extract_properties",
-              description: "Extract ALL structured property data from the table. Include every financial figure you can find.",
-              parameters: {
-                type: "object",
-                properties: {
+    // Retry logic for transient gateway errors (502, 503, 504)
+    const MAX_RETRIES = 3;
+    let response: Response | null = null;
+    let lastGatewayError = "";
+
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      console.log(`[sot-excel-ai-import] AI request attempt ${attempt}/${MAX_RETRIES}`);
+
+      response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-pro",
+          messages: [
+            { role: "system", content: systemPrompt },
+            {
+              role: "user",
+              content: `Analysiere diese Immobilien-Tabelle sorgfältig. Nimm dir Zeit für jede Zeile und jede Zahl.\n\nDateiname: ${fileName || "unbekannt"}\nAnzahl Datenzeilen: ${rows.length}\nAnzahl Spalten: ${headers.length}\nSpaltenköpfe: ${headers.join(", ")}\n\nVollständige Tabelle:\n${tableText}`,
+            },
+          ],
+          tools: [
+            {
+              type: "function",
+              function: {
+                name: "extract_properties",
+                description: "Extract ALL structured property data from the table. Include every financial figure you can find.",
+                parameters: {
+                  type: "object",
                   properties: {
-                    type: "array",
-                    items: {
+                    properties: {
+                      type: "array",
+                      items: {
+                        type: "object",
+                        properties: {
+                          code: { type: "string", description: "Property code like OBJ-001" },
+                          art: { type: "string", description: "Property type: MFH, DHH, ETW, RH, EFH, Gewerbe" },
+                          adresse: { type: "string", description: "Street and house number only" },
+                          ort: { type: "string", description: "City name only" },
+                          plz: { type: "string", description: "5-digit postal code" },
+                          nutzung: { type: "string", nullable: true, description: "Usage: Wohnen, Gewerbe, Gemischt" },
+                          qm: { type: "number", nullable: true, description: "Total area in sqm" },
+                          einheiten: { type: "number", nullable: true, description: "Number of units (1 for ETW/EFH)" },
+                          baujahr: { type: "number", nullable: true, description: "Year built (4-digit)" },
+                          kaltmiete: { type: "number", nullable: true, description: "Monthly cold rent in EUR (not annual!)" },
+                          jahresmiete: { type: "number", nullable: true, description: "Annual rental income in EUR (not monthly!)" },
+                          marktwert: { type: "number", nullable: true, description: "Current market value / Verkehrswert in EUR" },
+                          kaufpreis: { type: "number", nullable: true, description: "Original purchase price in EUR (different from marktwert!)" },
+                          restschuld: { type: "number", nullable: true, description: "Outstanding loan balance in EUR" },
+                          annuitaetMonat: { type: "number", nullable: true, description: "Monthly annuity (loan payment) in EUR" },
+                          tilgungMonat: { type: "number", nullable: true, description: "Monthly principal repayment in EUR" },
+                          zinsfestschreibungBis: { type: "string", nullable: true, description: "Fixed interest period end date (ISO or DD.MM.YYYY)" },
+                          ueberschussJahr: { type: "number", nullable: true, description: "Annual cashflow surplus/deficit in EUR" },
+                          bank: { type: "string", nullable: true, description: "Lending bank name" },
+                          confidence: { type: "number", description: "Extraction confidence 0.0-1.0 (be honest!)" },
+                          notes: { type: "string", nullable: true, description: "Important notes: what was unclear, what you estimated, what might be wrong" },
+                        },
+                        required: ["code", "art", "adresse", "ort", "plz", "confidence"],
+                      },
+                    },
+                    summary: {
                       type: "object",
                       properties: {
-                        code: { type: "string", description: "Property code like OBJ-001" },
-                        art: { type: "string", description: "Property type: MFH, DHH, ETW, RH, EFH, Gewerbe" },
-                        adresse: { type: "string", description: "Street and house number only" },
-                        ort: { type: "string", description: "City name only" },
-                        plz: { type: "string", description: "5-digit postal code" },
-                        nutzung: { type: "string", nullable: true, description: "Usage: Wohnen, Gewerbe, Gemischt" },
-                        qm: { type: "number", nullable: true, description: "Total area in sqm" },
-                        einheiten: { type: "number", nullable: true, description: "Number of units (1 for ETW/EFH)" },
-                        baujahr: { type: "number", nullable: true, description: "Year built (4-digit)" },
-                        kaltmiete: { type: "number", nullable: true, description: "Monthly cold rent in EUR (not annual!)" },
-                        jahresmiete: { type: "number", nullable: true, description: "Annual rental income in EUR (not monthly!)" },
-                        marktwert: { type: "number", nullable: true, description: "Current market value / Verkehrswert in EUR" },
-                        kaufpreis: { type: "number", nullable: true, description: "Original purchase price in EUR (different from marktwert!)" },
-                        restschuld: { type: "number", nullable: true, description: "Outstanding loan balance in EUR" },
-                        annuitaetMonat: { type: "number", nullable: true, description: "Monthly annuity (loan payment) in EUR" },
-                        tilgungMonat: { type: "number", nullable: true, description: "Monthly principal repayment in EUR" },
-                        zinsfestschreibungBis: { type: "string", nullable: true, description: "Fixed interest period end date (ISO or DD.MM.YYYY)" },
-                        ueberschussJahr: { type: "number", nullable: true, description: "Annual cashflow surplus/deficit in EUR" },
-                        bank: { type: "string", nullable: true, description: "Lending bank name" },
-                        confidence: { type: "number", description: "Extraction confidence 0.0-1.0 (be honest!)" },
-                        notes: { type: "string", nullable: true, description: "Important notes: what was unclear, what you estimated, what might be wrong" },
-                      },
-                      required: ["code", "art", "adresse", "ort", "plz", "confidence"],
-                    },
-                  },
-                  summary: {
-                    type: "object",
-                    properties: {
-                      totalRows: { type: "number", description: "Total data rows in the table" },
-                      uniqueProperties: { type: "number", description: "Number of distinct properties extracted" },
-                      avgConfidence: { type: "number", description: "Average confidence across all properties" },
-                      totalPortfolioValue: { type: "number", nullable: true, description: "Sum of all market values" },
-                      totalAnnualIncome: { type: "number", nullable: true, description: "Sum of all annual rental incomes" },
-                      totalDebt: { type: "number", nullable: true, description: "Sum of all outstanding loan balances" },
-                      issues: {
-                        type: "array",
-                        items: { type: "string" },
-                        description: "List of issues, warnings, and observations about the data quality"
+                        totalRows: { type: "number", description: "Total data rows in the table" },
+                        uniqueProperties: { type: "number", description: "Number of distinct properties extracted" },
+                        avgConfidence: { type: "number", description: "Average confidence across all properties" },
+                        totalPortfolioValue: { type: "number", nullable: true, description: "Sum of all market values" },
+                        totalAnnualIncome: { type: "number", nullable: true, description: "Sum of all annual rental incomes" },
+                        totalDebt: { type: "number", nullable: true, description: "Sum of all outstanding loan balances" },
+                        issues: {
+                          type: "array",
+                          items: { type: "string" },
+                          description: "List of issues, warnings, and observations about the data quality"
+                        },
                       },
                     },
                   },
+                  required: ["properties", "summary"],
                 },
-                required: ["properties", "summary"],
               },
             },
-          },
-        ],
-        tool_choice: { type: "function", function: { name: "extract_properties" } },
-      }),
-    });
+          ],
+          tool_choice: { type: "function", function: { name: "extract_properties" } },
+        }),
+      });
 
-    if (!response.ok) {
-      if (response.status === 429) {
+      // Don't retry on success or billing/rate-limit errors
+      if (response.ok || response.status === 429 || response.status === 402) break;
+
+      // Retry on transient gateway errors
+      if ([502, 503, 504].includes(response.status)) {
+        lastGatewayError = `Gateway error ${response.status}`;
+        console.warn(`[sot-excel-ai-import] ${lastGatewayError}, retrying in ${attempt * 2}s...`);
+        if (attempt < MAX_RETRIES) {
+          await response.text(); // consume body
+          await new Promise(r => setTimeout(r, attempt * 2000));
+          continue;
+        }
+      }
+
+      // Other errors: don't retry
+      break;
+    }
+
+    if (!response!.ok) {
+      if (response!.status === 429) {
         return new Response(
           JSON.stringify({ success: false, error: "Rate limit erreicht. Bitte später erneut versuchen." }),
           { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      if (response.status === 402) {
+      if (response!.status === 402) {
         return new Response(
           JSON.stringify({ success: false, error: "KI-Guthaben aufgebraucht. Bitte Workspace aufladen." }),
           { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      const errorText = await response.text();
-      console.error("AI gateway error:", response.status, errorText);
+      const errorText = await response!.text();
+      console.error("AI gateway error:", response!.status, errorText, lastGatewayError ? `(after ${MAX_RETRIES} retries)` : "");
       return new Response(
-        JSON.stringify({ success: false, error: "AI extraction failed" }),
+        JSON.stringify({ success: false, error: lastGatewayError ? `AI extraction failed after ${MAX_RETRIES} retries (${lastGatewayError})` : "AI extraction failed" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
