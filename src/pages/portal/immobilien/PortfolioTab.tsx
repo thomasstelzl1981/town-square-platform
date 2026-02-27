@@ -54,6 +54,7 @@ import { ExcelImportDialog } from '@/components/portfolio/ExcelImportDialog';
 import { CreatePropertyDialog } from '@/components/portfolio/CreatePropertyDialog';
 import { PortfolioSummaryModal } from '@/components/portfolio/PortfolioSummaryModal';
 import { CreateContextDialog } from '@/components/shared/CreateContextDialog';
+import { PropertyContextAssigner } from '@/components/shared/PropertyContextAssigner';
 import { DesktopOnly } from '@/components/shared/DesktopOnly';
 import { generatePortfolioTemplate } from '@/lib/generatePortfolioTemplate';
 
@@ -122,6 +123,8 @@ export function PortfolioTab() {
   const [showCreateContextDialog, setShowCreateContextDialog] = useState(false);
   const [showLoanRerunDialog, setShowLoanRerunDialog] = useState(false);
   const [pendingLoanExcelFile, setPendingLoanExcelFile] = useState<File | null>(null);
+  const [assignContextId, setAssignContextId] = useState<string | null>(null);
+  const [assignContextName, setAssignContextName] = useState('');
   const [deletePropertyId, setDeletePropertyId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const queryClient = useQueryClient();
@@ -872,12 +875,27 @@ export function PortfolioTab() {
                         </div>
                       </div>
                     </div>
-                    <Badge 
-                      variant={ctx.context_type === 'PRIVATE' ? 'secondary' : 'default'} 
-                      className="w-fit text-xs mt-3"
-                    >
-                      {ctx.context_type === 'PRIVATE' ? 'Privat' : 'Geschäftlich'}
-                    </Badge>
+                    <div className="flex items-center gap-2 mt-3">
+                      <Badge 
+                        variant={ctx.context_type === 'PRIVATE' ? 'secondary' : 'default'} 
+                        className="w-fit text-xs"
+                      >
+                        {ctx.context_type === 'PRIVATE' ? 'Privat' : 'Geschäftlich'}
+                      </Badge>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 px-2 text-[10px] text-muted-foreground hover:text-primary"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setAssignContextId(ctx.id);
+                          setAssignContextName(ctx.name);
+                        }}
+                      >
+                        <Building2 className="h-3 w-3 mr-1" />
+                        Zuordnen
+                      </Button>
+                    </div>
                   </button>
                 </WidgetCell>
               );
@@ -912,6 +930,16 @@ export function PortfolioTab() {
         open={showCreateContextDialog} 
         onOpenChange={setShowCreateContextDialog} 
       />
+
+      {/* PropertyContextAssigner — Objekte einer VE zuordnen */}
+      {assignContextId && (
+        <PropertyContextAssigner
+          open={!!assignContextId}
+          onOpenChange={(open) => { if (!open) setAssignContextId(null); }}
+          contextId={assignContextId}
+          contextName={assignContextName}
+        />
+      )}
 
       {/* Updated Portfolio Header - shows selected context name */}
       <div className="flex items-center justify-between">
