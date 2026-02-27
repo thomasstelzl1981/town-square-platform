@@ -21968,6 +21968,10 @@ export type Database = {
         | "kaufy_expose_request"
         | "futureroom_armstrong"
         | "sot_demo_booking"
+        | "ncore_projekt"
+        | "ncore_kooperation"
+        | "otto_advisory_kontakt"
+        | "otto_advisory_finanzierung"
       lead_status: "new" | "contacted" | "qualified" | "converted" | "lost"
       listing_status:
         | "draft"
@@ -22456,6 +22460,10 @@ export const Constants = {
         "kaufy_expose_request",
         "futureroom_armstrong",
         "sot_demo_booking",
+        "ncore_projekt",
+        "ncore_kooperation",
+        "otto_advisory_kontakt",
+        "otto_advisory_finanzierung",
       ],
       lead_status: ["new", "contacted", "qualified", "converted", "lost"],
       listing_status: [
