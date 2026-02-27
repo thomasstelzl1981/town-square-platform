@@ -1,47 +1,39 @@
 
 
-## Fix: Retry-Logik für AI Gateway 502/503-Fehler
+## Fix: Fahrzeugbilder werden nach Upload nicht angezeigt
 
-### Problem
-Die AI-Gateway gibt sporadisch `502 Bad Gateway` zurück. Die Edge Function behandelt das als finalen Fehler → Import bricht ab.
+### Ursache (2 Probleme)
+
+**Problem 1 — Initiales Laden fehlerhaft:**
+Der `useEffect` (Zeile 155) hängt nur an `vehicles?.length`. Wenn `activeTenantId` noch `null` ist beim ersten Render, läuft `loadSlotImages` mit leerem `tenantId` → gibt `{}` zurück. Wenn `activeTenantId` dann verfügbar wird, triggert der Effect **nicht erneut**, weil sich `vehicles.length` nicht geändert hat.
+
+**Problem 2 — Upload schreibt mit falschem entityId:**
+`handleVehicleImageUpload` ruft `imageSlot.uploadToSlot('hero', file)` auf. Die Hook-Config hat `entityId: selectedVehicleId || '_'`. Beim Klick auf den Upload-Button wird `setSelectedVehicleId(vehicle.id)` **gleichzeitig** aufgerufen — aber React batcht den State-Update. Dadurch nutzt `uploadToSlot` im aktuellen Render-Zyklus noch den **alten** `entityId` (z.B. `'_'` oder ein anderes Fahrzeug). Die `document_links` und der Storage-Pfad werden mit dem falschen entityId geschrieben.
+
+(Die 2 erfolgreichen Uploads im DB funktionierten, weil der User zufällig das Fahrzeug vorher per Klick selektiert hatte.)
 
 ### Lösung
-Retry-Loop mit exponential backoff für transiente Fehler (502, 503, 504).
 
-### Datei: `supabase/functions/sot-excel-ai-import/index.ts`
+**Datei: `src/components/portal/cars/CarsFahrzeuge.tsx`**
 
-**Änderung an Zeile ~110-208:** AI-Aufruf in Retry-Schleife wrappen:
+1. **Effect-Dependencies fixen** (Zeile 155-159): `activeTenantId` als Dependency hinzufügen, damit nach Auth-Hydration die Bilder geladen werden
 
-```typescript
-// Retry logic for transient gateway errors
-const MAX_RETRIES = 3;
-let response: Response | null = null;
-let lastError = "";
+2. **Upload-Funktion umbauen** (Zeile 168-177): Statt `imageSlot.uploadToSlot()` (das den Hook-entityId nutzt) direkt die Upload-Pipeline mit dem konkreten `vehicleId` aufrufen. Dazu einen separaten `useImageSlotUpload`-Aufruf NICHT verwenden, sondern die Upload-Logik so umbauen, dass der vehicleId als Parameter durchgereicht wird.
 
-for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-  console.log(`[sot-excel-ai-import] AI request attempt ${attempt}/${MAX_RETRIES}`);
-  
-  response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", { ... });
-  
-  if (response.ok || response.status === 429 || response.status === 402) break;
-  
-  if ([502, 503, 504].includes(response.status)) {
-    lastError = `Gateway error ${response.status}`;
-    console.warn(`[sot-excel-ai-import] ${lastError}, retrying in ${attempt * 2}s...`);
-    if (attempt < MAX_RETRIES) await new Promise(r => setTimeout(r, attempt * 2000));
-    continue;
-  }
-  
-  // Other errors: don't retry
-  break;
-}
-```
+   **Konkret:** Einen zweiten Hook-Aufruf mit einem `ref`-Pattern oder eine Hilfsfunktion nutzen, die den Upload mit dem richtigen entityId durchführt. Einfachster Ansatz: `useImageSlotUpload` um einen optionalen `overrideEntityId`-Parameter in `uploadToSlot` erweitern.
 
-- Maximal 3 Versuche mit 2s/4s/6s Wartezeit
-- Nur bei 502/503/504 wiederholen
-- 429/402 sofort mit spezifischer Fehlermeldung zurückgeben
-- Letzte Fehlermeldung im Response zurückgeben falls alle Retries fehlschlagen
+**Datei: `src/hooks/useImageSlotUpload.ts`**
+
+3. **`uploadToSlot` erweitern**: Optionalen 3. Parameter `overrideEntityId?: string` hinzufügen. Wenn gesetzt, wird dieser statt des Config-entityId für Storage-Pfad, document_links und storage_nodes verwendet.
+
+### Änderungen im Detail
+
+| Datei | Änderung |
+|-------|----------|
+| `src/hooks/useImageSlotUpload.ts` | `uploadToSlot(slotKey, file, overrideEntityId?)` — override für entityId in Pfad + DB-Records |
+| `src/components/portal/cars/CarsFahrzeuge.tsx` | 1) `handleVehicleImageUpload` nutzt `uploadToSlot('hero', file, vehicleId)` 2) Effect-Deps um `activeTenantId` erweitern |
 
 ### Freeze-Check
-- `supabase/functions/*`: nicht eingefroren ✅
+- MOD-17: nicht eingefroren ✅
+- `src/hooks/useImageSlotUpload.ts`: kein Modul-Pfad, frei editierbar ✅
 
