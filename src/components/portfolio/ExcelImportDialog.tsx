@@ -199,6 +199,9 @@ export function ExcelImportDialog({ open, onOpenChange, tenantId, initialFile }:
       for (const row of rowsToImport) {
         try {
           // Map AI row to sot-property-crud schema
+          // Compute annual_income: prefer jahresmiete, fallback kaltmiete × 12
+          const annualIncome = row.jahresmiete ?? (row.kaltmiete ? row.kaltmiete * 12 : undefined);
+
           const propertyData: Record<string, unknown> = {
             address: row.adresse,
             city: row.ort,
@@ -206,10 +209,21 @@ export function ExcelImportDialog({ open, onOpenChange, tenantId, initialFile }:
             property_type: row.art,
             usage_type: row.nutzung || 'residential',
             total_area_sqm: row.qm,
-            market_value: row.marktwert || row.kaufpreis,
-            units_count: row.einheiten,
+            purchase_price: row.kaufpreis,
+            market_value: row.marktwert,
+            annual_income: annualIncome,
             year_built: row.baujahr,
           };
+
+          // Attach loan data if any finance fields exist
+          if (row.restschuld || row.annuitaetMonat || row.bank) {
+            (propertyData as Record<string, unknown>).loan_data = {
+              bank_name: row.bank || null,
+              outstanding_balance_eur: row.restschuld || null,
+              annuity_monthly_eur: row.annuitaetMonat || null,
+              fixed_interest_end_date: row.zinsfestschreibungBis || null,
+            };
+          }
 
           const response = await fetch(
             `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sot-property-crud`,
@@ -240,6 +254,9 @@ export function ExcelImportDialog({ open, onOpenChange, tenantId, initialFile }:
       if (successCount > 0) {
         toast.success(`${successCount} Objekt(e) erfolgreich importiert`);
         queryClient.invalidateQueries({ queryKey: ['properties'] });
+        queryClient.invalidateQueries({ queryKey: ['portfolio-units-annual'] });
+        queryClient.invalidateQueries({ queryKey: ['context-property-assignments'] });
+        queryClient.invalidateQueries({ queryKey: ['landlord-contexts'] });
         onOpenChange(false);
         resetState();
       } else {
