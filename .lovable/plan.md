@@ -1,47 +1,47 @@
 
 
-## Analyse: Finanzierungsmanager gesperrt fuer Bernhard Marchner
+## Problem: Zuhause-Seite leer beim ersten Navigieren
 
-### Ursache gefunden
+### Ursache
 
-**Datenbankseite ist korrekt** — Bernhard hat alle 22 Tiles aktiv (inkl. MOD-11). Seine Rolle: `membership_role = org_admin`, `app_role = super_user`.
+`MietyPortalPage` ignoriert den `isLoading`-Zustand aus `useZuhauseWidgets`. Die Ladesequenz:
 
-**Problem ist im Frontend-Code** in `FinanzierungsmanagerPage.tsx`, Zeile 35-37:
+1. Navigation zu `/portal/immobilien/zuhause`
+2. `useZuhauseWidgets` startet DB-Queries — `dataReady = false`, `order = []`
+3. `MietyPortalPage` prueft Zeile 205: `homes.length === 0 && visibleWidgetIds.length <= 2` → zeigt Empty-State ODER
+4. Bernhard hat Homes → `homes.length > 0` aber `visibleWidgetIds = []` (weil `order` noch `[]` ist, Hydration wartet auf `dataReady`)
+5. → DashboardGrid rendert mit 0 Widgets → leere Seite
 
-```typescript
-const canAccess = isPlatformAdmin || memberships.some(m => 
-  m.role === 'finance_manager' || m.role === 'super_manager'
-);
-```
-
-Dieser Check prueft nur `finance_manager` und `super_manager` als membership_role. Bernhard hat aber `org_admin` + app_role `super_user`. Die Pruefung ignoriert:
-- `super_user` (app_role)
-- `org_admin` mit super_user Override
-
-Ralph Reinhold funktioniert, weil sein membership_role `super_manager` ist — das steht im Check.
-
-### Warum Pet Manager sichtbar ist
-
-MOD-22 (PetManager) hat **keinen** solchen Frontend-Gate. Die Sichtbarkeit wird ausschliesslich ueber `tenant_tile_activation` in der PortalNav gesteuert. Alle 22 Tiles sind aktiv → MOD-22 erscheint in der Navigation.
-
-Das Problem ist also: MOD-22 ist korrekt sichtbar (weil kein Extra-Gate), aber MOD-11 hat einen redundanten hardcoded Access-Check der `super_user` nicht beruecksichtigt.
+Beim Hard Refresh sind die Queries bereits gecached (React Query) → `dataReady` ist sofort `true` → Hydration laeuft → Widgets erscheinen.
 
 ### Fix
 
-**Datei: `src/pages/portal/FinanzierungsmanagerPage.tsx`** — Zeile 33-37
+**Datei: `src/pages/portal/MietyPortalPage.tsx`**
 
-Den `canAccess`-Check erweitern um `super_user` app_role Pruefung. Der `useAuth`-Hook liefert bereits `appRole` oder die Rolle kann aus dem AuthContext gelesen werden. Alternativ (und architektonisch sauberer): den gesamten Frontend-Gate entfernen, da die Tile-Aktivierung bereits in der DB ueber `tenant_tile_activation` + PortalNav gesteuert wird. Wer die Route erreicht, hat bereits Zugriff.
+1. `isLoading` aus `useZuhauseWidgets()` destrukturieren (wird bereits exportiert, Zeile 250)
+2. Loading-Guard am Anfang der Komponente einbauen — vor dem Empty-State-Check:
 
-**Option A (minimal):** `super_user` zur Pruefung hinzufuegen
-```typescript
-const canAccess = isPlatformAdmin || memberships.some(m => 
-  m.role === 'finance_manager' || m.role === 'super_manager'
-) || appRole === 'super_user';
+```tsx
+const { allWidgets, visibleWidgetIds, order, updateOrder, hideWidget, showWidget, hiddenIds, getWidget, homes, isLoading } = useZuhauseWidgets();
+
+// ... nach den Hooks, vor showCreateForm Check:
+if (isLoading) {
+  return (
+    <PageShell>
+      <ModulePageHeader title="Home" description="Ihr persönliches Zuhause-Dashboard" />
+      <div className="flex items-center justify-center p-12">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    </PageShell>
+  );
+}
 ```
 
-**Option B (sauberer):** Frontend-Gate komplett entfernen — die DB-Tile-Aktivierung ist die SSOT. Wenn ein User die Route erreicht (via PortalNav), hat er bereits Zugriff.
+3. `Loader2` Import von `lucide-react` hinzufuegen
+
+### Betroffene Datei
 
 | Datei | Aenderung |
 |-------|----------|
-| `src/pages/portal/FinanzierungsmanagerPage.tsx` | canAccess-Check fixen oder entfernen |
+| `src/pages/portal/MietyPortalPage.tsx` | `isLoading` aus Hook nutzen, Loading-Spinner vor Empty-State |
 
