@@ -1,25 +1,33 @@
 
 
-## Aufräumen: Tote Dateien aus MOD-17 entfernen
+## Befund
 
-### Befund
+### Was bereits existiert
+Die **Armstrong-Adresse** (`vorname.nachname@neilarmstrong.space`) wird bereits in der **ProfilTab RecordCard** angezeigt (Zeile 517-518) mit dem Hint: *"E-Mails an diese Adresse werden von Armstrong als Aufträge verarbeitet"*. ABER: Dieses Feld ist nur sichtbar, wenn die RecordCard **aufgeklappt** ist. Wenn sie zugeklappt ist, sieht man nur das OutboundIdentityWidget.
 
-| Datei | Status | Referenziert von |
-|-------|--------|-----------------|
-| `CarsAutos.tsx` | **Tot** — nirgends importiert | Keine Imports gefunden |
-| `VehicleCreateDialog.tsx` | **Tot** — nur von `CarsAutos.tsx` genutzt | `CarsAutos.tsx`, `index.ts` |
+### Was falsch ist
+Der Info-Text im **OutboundIdentityWidget** (Zeile 308-312) sagt:
+> *"Diese Absenderkennung wird für alle Outbound-E-Mails im Portal verwendet..."*
 
-Die aktive Fahrzeug-Komponente ist `CarsFahrzeuge.tsx` mit Inline-Anlage (kein Dialog). Beide Dateien sind Altlasten aus dem ersten Entwurf.
+Das stimmt nicht mehr. Das System nutzt die Outbound-Kennung nur als **Fallback**, wenn kein eigenes E-Mail-Konto (Gmail) verbunden ist. Wenn ein eigenes Konto eingerichtet ist, wird dieses verwendet.
 
-### Freeze-Check
-MOD-17 ist aktuell **unfrozen** — Änderung erlaubt.
+### Betroffene Dateien
 
-### Änderungen
+| Datei | Freeze-Check | Status |
+|-------|-------------|--------|
+| `src/components/portal/OutboundIdentityWidget.tsx` | Kein Modul-Pfad | FREI editierbar |
 
-1. **`src/components/portal/cars/CarsAutos.tsx`** — Datei löschen
-2. **`src/components/portal/cars/VehicleCreateDialog.tsx`** — Datei löschen
-3. **`src/components/portal/cars/index.ts`** — Zwei Exports entfernen:
-   - `export { VehicleCreateDialog } from './VehicleCreateDialog';`
-   - (CarsAutos hat keinen Export in index.ts, daher nur VehicleCreateDialog)
-4. **`spec/current/00_frozen/modules_freeze.json`** — MOD-17 wieder auf `frozen: true` setzen (Refreeze)
+### Geplante Aenderungen
+
+1. **Info-Text korrigieren** — Fallback-Hinweis: *"Diese Absenderkennung wird als Fallback verwendet, wenn kein eigenes E-Mail-Konto (z.B. Gmail) verbunden ist."*
+
+2. **Armstrong-Adresse als eigene Section hinzufuegen** — Unterhalb der Upload-E-Mail-Section eine neue Section "KI-Assistent (Armstrong)" mit:
+   - Anzeige der `armstrong_email` aus dem Profil (`profiles.armstrong_email`)
+   - Kopier-Button
+   - Hint: *"Senden Sie Aufgaben, E-Mails und Unterlagen an diese Adresse — Armstrong verarbeitet sie automatisch."*
+   - Icon: `Sparkles` oder `Bot`
+
+3. **Kein Freeze-Unfreeze noetig** — Die Datei liegt unter `src/components/portal/`, was keinem Modul-Pfad zugeordnet ist.
+
+Zum Umsetzen bitte bestaetigen.
 
