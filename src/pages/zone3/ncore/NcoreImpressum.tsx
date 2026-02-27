@@ -1,5 +1,6 @@
 /**
- * NCORE IMPRESSUM — Vollständiges Impressum gemäß § 5 TMG
+ * NCORE IMPRESSUM — Angaben gemäß § 5 DDG + § 18 MStV
+ * Vollständige Neufassung für UG (haftungsbeschränkt) & Co. KG Struktur
  */
 import { Helmet } from 'react-helmet';
 
@@ -14,20 +15,24 @@ export default function NcoreImpressum() {
         <div className="mx-auto max-w-3xl">
           <h1 className="mb-10 text-3xl font-bold">Impressum</h1>
           <div className="space-y-8 text-sm text-white/55 leading-relaxed">
+
+            {/* Angaben gemäß § 5 DDG */}
             <div>
-              <h2 className="mb-3 text-lg font-semibold text-white/80">Angaben gemäß § 5 TMG</h2>
+              <h2 className="mb-3 text-lg font-semibold text-white/80">Angaben gemäß § 5 DDG</h2>
               <p>
-                N•Core Business Consulting<br />
+                Ncore Business Consulting UG (haftungsbeschränkt) &amp; Co. KG<br />
                 Sauerlacher Straße 30<br />
-                82041 Deisenhofen
+                82041 Oberhaching (Deisenhofen)<br />
+                Deutschland
               </p>
             </div>
 
+            {/* Kontakt */}
             <div>
               <h2 className="mb-3 text-lg font-semibold text-white/80">Kontakt</h2>
               <p>
                 Telefon: +49 (0)30 424 314 70<br />
-                Mobil: +49 (0) 160 901 173 58<br />
+                Mobil: +49 (0)160 901 17 358<br />
                 E-Mail:{' '}
                 <a href="mailto:thomas.stelzl@ncore.online" className="text-emerald-400 hover:text-emerald-300">
                   thomas.stelzl@ncore.online
@@ -40,53 +45,60 @@ export default function NcoreImpressum() {
               </p>
             </div>
 
+            {/* Komplementär */}
             <div>
-              <h2 className="mb-3 text-lg font-semibold text-white/80">Vertretungsberechtigter</h2>
-              <p>Geschäftsführer: Thomas Stelzl</p>
+              <h2 className="mb-3 text-lg font-semibold text-white/80">Persönlich haftende Gesellschafterin (Komplementär)</h2>
+              <p>
+                Ncore Consulting UG (haftungsbeschränkt)<br />
+                Sauerlacher Straße 30<br />
+                82041 Oberhaching (Deisenhofen)<br /><br />
+                Registergericht: Amtsgericht München<br />
+                Registernummer: HRB 307081<br /><br />
+                Geschäftsführer: Thomas Stelzl
+              </p>
             </div>
 
+            {/* Register KG */}
             <div>
-              <h2 className="mb-3 text-lg font-semibold text-white/80">Registereintrag</h2>
+              <h2 className="mb-3 text-lg font-semibold text-white/80">Registereintrag der KG</h2>
               <p>
                 Registergericht: Amtsgericht München<br />
                 Registernummer: HRA 121933
               </p>
             </div>
 
+            {/* Steuerliche Angaben */}
             <div>
-              <h2 className="mb-3 text-lg font-semibold text-white/80">Umsatzsteuer-ID</h2>
+              <h2 className="mb-3 text-lg font-semibold text-white/80">Steuerliche Angaben</h2>
               <p>
                 Umsatzsteuer-Identifikationsnummer gemäß § 27a UStG:<br />
-                <em className="text-white/30">Wird bei Vorliegen ergänzt</em>
+                DE459006252
+              </p>
+              <p className="mt-2">
+                Steuernummer: 9143/551/20741
               </p>
             </div>
 
+            {/* Inhaltlich Verantwortlicher */}
             <div>
-              <h2 className="mb-3 text-lg font-semibold text-white/80">Verantwortlich für den Inhalt nach § 55 Abs. 2 RStV</h2>
+              <h2 className="mb-3 text-lg font-semibold text-white/80">Inhaltlich Verantwortlicher gemäß § 18 Abs. 2 MStV</h2>
               <p>
                 Thomas Stelzl<br />
                 Sauerlacher Straße 30<br />
-                82041 Deisenhofen
+                82041 Oberhaching (Deisenhofen)
               </p>
             </div>
 
+            {/* EU-Streitschlichtung */}
             <div>
               <h2 className="mb-3 text-lg font-semibold text-white/80">EU-Streitschlichtung</h2>
               <p>
-                Die Europäische Kommission stellt eine Plattform zur Online-Streitbeilegung (OS) bereit:{' '}
-                <a
-                  href="https://ec.europa.eu/consumers/odr"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-emerald-400 hover:text-emerald-300"
-                >
-                  https://ec.europa.eu/consumers/odr
-                </a>
-                .<br />
-                Unsere E-Mail-Adresse finden Sie oben im Impressum.
+                Die Europäische Kommission hat die Plattform zur Online-Streitbeilegung (OS) zum 
+                20.&nbsp;Juli&nbsp;2025 eingestellt. Eine Verlinkung entfällt daher.
               </p>
             </div>
 
+            {/* Verbraucherstreitbeilegung */}
             <div>
               <h2 className="mb-3 text-lg font-semibold text-white/80">Verbraucherstreitbeilegung / Universalschlichtungsstelle</h2>
               <p>
@@ -95,11 +107,12 @@ export default function NcoreImpressum() {
               </p>
             </div>
 
+            {/* Haftung für Inhalte */}
             <div>
               <h2 className="mb-3 text-lg font-semibold text-white/80">Haftung für Inhalte</h2>
               <p>
-                Als Diensteanbieter sind wir gemäß § 7 Abs. 1 TMG für eigene Inhalte auf diesen Seiten 
-                nach den allgemeinen Gesetzen verantwortlich. Nach §§ 8 bis 10 TMG sind wir als 
+                Als Diensteanbieter sind wir gemäß § 7 Abs. 1 DDG für eigene Inhalte auf diesen Seiten 
+                nach den allgemeinen Gesetzen verantwortlich. Nach §§ 8 bis 10 DDG sind wir als 
                 Diensteanbieter jedoch nicht verpflichtet, übermittelte oder gespeicherte fremde 
                 Informationen zu überwachen oder nach Umständen zu forschen, die auf eine rechtswidrige 
                 Tätigkeit hinweisen.
@@ -112,6 +125,7 @@ export default function NcoreImpressum() {
               </p>
             </div>
 
+            {/* Haftung für Links */}
             <div>
               <h2 className="mb-3 text-lg font-semibold text-white/80">Haftung für Links</h2>
               <p>
@@ -129,6 +143,7 @@ export default function NcoreImpressum() {
               </p>
             </div>
 
+            {/* Urheberrecht */}
             <div>
               <h2 className="mb-3 text-lg font-semibold text-white/80">Urheberrecht</h2>
               <p>
@@ -144,6 +159,13 @@ export default function NcoreImpressum() {
                 gekennzeichnet. Sollten Sie trotzdem auf eine Urheberrechtsverletzung aufmerksam werden, 
                 bitten wir um einen entsprechenden Hinweis. Bei Bekanntwerden von Rechtsverletzungen 
                 werden wir derartige Inhalte umgehend entfernen.
+              </p>
+            </div>
+
+            {/* Stand */}
+            <div className="rounded-xl border border-emerald-900/20 bg-emerald-950/10 p-5">
+              <p className="text-xs text-white/30">
+                Stand: Februar 2026 · Dieses Impressum wurde unter Berücksichtigung des DDG und MStV erstellt.
               </p>
             </div>
           </div>

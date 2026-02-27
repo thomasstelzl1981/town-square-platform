@@ -1,5 +1,6 @@
 /**
- * NCORE DATENSCHUTZ — Vollständige Datenschutzerklärung gemäß DSGVO
+ * NCORE DATENSCHUTZ — Vollständige Datenschutzerklärung gemäß DSGVO/TTDSG/DDG
+ * Neufassung für UG (haftungsbeschränkt) & Co. KG Struktur + IONOS Hosting
  */
 import { Helmet } from 'react-helmet';
 
@@ -61,20 +62,36 @@ export default function NcoreDatenschutz() {
             <div>
               <h2 className="mb-3 text-lg font-semibold text-white/80">2. Hosting</h2>
               <p>
-                Wir hosten die Inhalte unserer Website bei folgenden Anbietern:
+                Wir hosten unsere Website bei folgendem Anbieter:
               </p>
-              <h3 className="mb-2 mt-4 font-semibold text-white/70">Externes Hosting</h3>
+              <h3 className="mb-2 mt-4 font-semibold text-white/70">IONOS</h3>
               <p>
-                Diese Website wird extern gehostet. Die personenbezogenen Daten, die auf dieser Website 
-                erfasst werden, werden auf den Servern des Hosters gespeichert. Hierbei kann es sich v.&nbsp;a. 
-                um IP-Adressen, Kontaktanfragen, Meta- und Kommunikationsdaten, Vertragsdaten, Kontaktdaten, 
-                Namen, Websitezugriffe und sonstige Daten, die über eine Website generiert werden, handeln.
+                Anbieter ist die IONOS SE, Elgendorfer Str. 57, 56410 Montabaur, Deutschland 
+                (nachfolgend „IONOS"). Wenn Sie unsere Website besuchen, erfasst IONOS verschiedene 
+                Logfiles inklusive Ihrer IP-Adressen. Details entnehmen Sie der Datenschutzerklärung 
+                von IONOS:{' '}
+                <a
+                  href="https://www.ionos.de/terms-gtc/datenschutzerklaerung/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-emerald-400 hover:text-emerald-300"
+                >
+                  https://www.ionos.de/terms-gtc/datenschutzerklaerung/
+                </a>.
               </p>
               <p className="mt-3">
-                Das externe Hosting erfolgt zum Zwecke der Vertragserfüllung gegenüber unseren potenziellen 
-                und bestehenden Kunden (Art. 6 Abs. 1 lit. b DSGVO) und im Interesse einer sicheren, 
-                schnellen und effizienten Bereitstellung unseres Online-Angebots durch einen professionellen 
-                Anbieter (Art. 6 Abs. 1 lit. f DSGVO).
+                Die Verwendung von IONOS erfolgt auf Grundlage von Art. 6 Abs. 1 lit. f DSGVO. Wir haben 
+                ein berechtigtes Interesse an einer möglichst zuverlässigen Darstellung unserer Website. 
+                Sofern eine entsprechende Einwilligung abgefragt wurde, erfolgt die Verarbeitung 
+                ausschließlich auf Grundlage von Art. 6 Abs. 1 lit. a DSGVO und § 25 Abs. 1 TTDSG, 
+                soweit die Einwilligung die Speicherung von Cookies oder den Zugriff auf Informationen 
+                im Endgerät des Nutzers umfasst. Die Einwilligung ist jederzeit widerrufbar.
+              </p>
+              <h3 className="mb-2 mt-4 font-semibold text-white/70">Auftragsverarbeitung</h3>
+              <p>
+                Wir haben einen Vertrag über Auftragsverarbeitung (AVV) gemäß Art. 28 DSGVO mit IONOS 
+                geschlossen. Dieser stellt sicher, dass IONOS die personenbezogenen Daten unserer 
+                Websitebesucher nur nach unseren Weisungen und unter Einhaltung der DSGVO verarbeitet.
               </p>
             </div>
 
@@ -98,10 +115,17 @@ export default function NcoreDatenschutz() {
                 Die verantwortliche Stelle für die Datenverarbeitung auf dieser Website ist:
               </p>
               <p className="mt-2">
-                N•Core Business Consulting<br />
-                Thomas Stelzl<br />
+                Ncore Business Consulting UG (haftungsbeschränkt) &amp; Co. KG<br />
                 Sauerlacher Straße 30<br />
-                82041 Deisenhofen<br /><br />
+                82041 Oberhaching (Deisenhofen)<br />
+                Deutschland
+              </p>
+              <p className="mt-2">
+                Vertreten durch die persönlich haftende Gesellschafterin:<br />
+                Ncore Consulting UG (haftungsbeschränkt), HRB 307081, Amtsgericht München<br />
+                Diese vertreten durch den Geschäftsführer: Thomas Stelzl
+              </p>
+              <p className="mt-2">
                 Telefon: +49 (0)30 424 314 70<br />
                 E-Mail:{' '}
                 <a href="mailto:thomas.stelzl@ncore.online" className="text-emerald-400 hover:text-emerald-300">
@@ -126,6 +150,22 @@ export default function NcoreDatenschutz() {
                 dieser Gründe.
               </p>
 
+              <h3 className="mb-2 mt-4 font-semibold text-white/70">Allgemeine Hinweise zu den Rechtsgrundlagen der Datenverarbeitung</h3>
+              <p>
+                Sofern Sie in die Datenverarbeitung eingewilligt haben, verarbeiten wir Ihre 
+                personenbezogenen Daten auf Grundlage von Art. 6 Abs. 1 lit. a DSGVO bzw. Art. 9 
+                Abs. 2 lit. a DSGVO, sofern besondere Datenkategorien nach Art. 9 Abs. 1 DSGVO 
+                verarbeitet werden. Im Falle einer ausdrücklichen Einwilligung in die Übertragung 
+                personenbezogener Daten in Drittstaaten erfolgt die Datenverarbeitung außerdem auf 
+                Grundlage von Art. 49 Abs. 1 lit. a DSGVO. Sofern die Datenverarbeitung zur 
+                Vertragserfüllung oder zur Durchführung vorvertraglicher Maßnahmen erforderlich ist, 
+                verarbeiten wir Ihre Daten auf Grundlage von Art. 6 Abs. 1 lit. b DSGVO. Ferner 
+                verarbeiten wir Ihre Daten, sofern dies zur Erfüllung einer rechtlichen Verpflichtung 
+                erforderlich ist auf Grundlage von Art. 6 Abs. 1 lit. c DSGVO. Die Datenverarbeitung 
+                kann ferner auf Grundlage unseres berechtigten Interesses nach Art. 6 Abs. 1 lit. f 
+                DSGVO erfolgen.
+              </p>
+
               <h3 className="mb-2 mt-4 font-semibold text-white/70">Widerruf Ihrer Einwilligung zur Datenverarbeitung</h3>
               <p>
                 Viele Datenverarbeitungsvorgänge sind nur mit Ihrer ausdrücklichen Einwilligung 
@@ -134,19 +174,27 @@ export default function NcoreDatenschutz() {
               </p>
 
               <h3 className="mb-2 mt-4 font-semibold text-white/70">Widerspruchsrecht gegen die Datenerhebung in besonderen Fällen (Art. 21 DSGVO)</h3>
-              <p>
+              <p className="font-semibold text-white/70">
                 Wenn die Datenverarbeitung auf Grundlage von Art. 6 Abs. 1 lit. e oder f DSGVO erfolgt, 
                 haben Sie jederzeit das Recht, aus Gründen, die sich aus Ihrer besonderen Situation 
-                ergeben, gegen die Verarbeitung Ihrer personenbezogenen Daten Widerspruch einzulegen. 
-                Wir verarbeiten die betroffenen personenbezogenen Daten dann nicht mehr, es sei denn, 
-                wir können zwingende schutzwürdige Gründe für die Verarbeitung nachweisen, die Ihre 
-                Interessen, Rechte und Freiheiten überwiegen.
+                ergeben, gegen die Verarbeitung Ihrer personenbezogenen Daten Widerspruch einzulegen; 
+                dies gilt auch für ein auf diese Bestimmungen gestütztes Profiling. Die jeweilige 
+                Rechtsgrundlage, auf der eine Verarbeitung beruht, entnehmen Sie dieser 
+                Datenschutzerklärung. Wenn Sie Widerspruch einlegen, werden wir Ihre betroffenen 
+                personenbezogenen Daten nicht mehr verarbeiten, es sei denn, wir können zwingende 
+                schutzwürdige Gründe für die Verarbeitung nachweisen, die Ihre Interessen, Rechte und 
+                Freiheiten überwiegen, oder die Verarbeitung dient der Geltendmachung, Ausübung oder 
+                Verteidigung von Rechtsansprüchen (Widerspruch nach Art. 21 Abs. 1 DSGVO).
               </p>
 
               <h3 className="mb-2 mt-4 font-semibold text-white/70">Beschwerderecht bei der zuständigen Aufsichtsbehörde</h3>
               <p>
                 Im Falle von Verstößen gegen die DSGVO steht den Betroffenen ein Beschwerderecht 
-                bei einer Aufsichtsbehörde zu. Die zuständige Aufsichtsbehörde ist:<br /><br />
+                bei einer Aufsichtsbehörde zu, insbesondere in dem Mitgliedstaat ihres gewöhnlichen 
+                Aufenthalts, ihres Arbeitsplatzes oder des Orts des mutmaßlichen Verstoßes. 
+                Die für uns zuständige Aufsichtsbehörde ist:
+              </p>
+              <p className="mt-2">
                 Bayerisches Landesamt für Datenschutzaufsicht (BayLDA)<br />
                 Promenade 18<br />
                 91522 Ansbach<br />
@@ -159,7 +207,9 @@ export default function NcoreDatenschutz() {
               <p>
                 Sie haben das Recht, Daten, die wir auf Grundlage Ihrer Einwilligung oder in Erfüllung 
                 eines Vertrags automatisiert verarbeiten, an sich oder an einen Dritten in einem gängigen, 
-                maschinenlesbaren Format aushändigen zu lassen.
+                maschinenlesbaren Format aushändigen zu lassen. Sofern Sie die direkte Übertragung der 
+                Daten an einen anderen Verantwortlichen verlangen, erfolgt dies nur, soweit es technisch 
+                machbar ist.
               </p>
 
               <h3 className="mb-2 mt-4 font-semibold text-white/70">Auskunft, Berichtigung und Löschung</h3>
@@ -174,7 +224,13 @@ export default function NcoreDatenschutz() {
               <h3 className="mb-2 mt-4 font-semibold text-white/70">Recht auf Einschränkung der Verarbeitung</h3>
               <p>
                 Sie haben das Recht, die Einschränkung der Verarbeitung Ihrer personenbezogenen Daten 
-                zu verlangen. Hierzu können Sie sich jederzeit an uns wenden.
+                zu verlangen. Hierzu können Sie sich jederzeit an uns wenden. Das Recht auf Einschränkung 
+                der Verarbeitung besteht in folgenden Fällen: Wenn Sie die Richtigkeit Ihrer bei uns 
+                gespeicherten personenbezogenen Daten bestreiten; wenn die Verarbeitung Ihrer 
+                personenbezogenen Daten unrechtmäßig geschah oder geschieht; wenn wir Ihre 
+                personenbezogenen Daten nicht mehr benötigen, Sie diese jedoch zur Ausübung, 
+                Verteidigung oder Geltendmachung von Rechtsansprüchen benötigen; oder wenn Sie 
+                Widerspruch nach Art. 21 DSGVO eingelegt haben.
               </p>
             </div>
 
@@ -184,8 +240,8 @@ export default function NcoreDatenschutz() {
 
               <h3 className="mb-2 font-semibold text-white/70">Server-Log-Dateien</h3>
               <p>
-                Der Provider der Seiten erhebt und speichert automatisch Informationen in so genannten 
-                Server-Log-Dateien, die Ihr Browser automatisch an uns übermittelt. Dies sind:
+                Der Provider der Seiten (IONOS SE) erhebt und speichert automatisch Informationen in so 
+                genannten Server-Log-Dateien, die Ihr Browser automatisch an uns übermittelt. Dies sind:
               </p>
               <ul className="mt-2 ml-4 list-disc space-y-1">
                 <li>Browsertyp und Browserversion</li>
@@ -197,7 +253,16 @@ export default function NcoreDatenschutz() {
               </ul>
               <p className="mt-3">
                 Eine Zusammenführung dieser Daten mit anderen Datenquellen wird nicht vorgenommen. 
-                Die Erfassung dieser Daten erfolgt auf Grundlage von Art. 6 Abs. 1 lit. f DSGVO.
+                Die Erfassung dieser Daten erfolgt auf Grundlage von Art. 6 Abs. 1 lit. f DSGVO. 
+                Der Websitebetreiber hat ein berechtigtes Interesse an der technisch fehlerfreien 
+                Darstellung und der Optimierung seiner Website – hierzu müssen die Server-Log-Dateien 
+                erfasst werden.
+              </p>
+              <p className="mt-3">
+                Die Daten werden nach spätestens 7 Tagen gelöscht, sofern keine weitergehende 
+                Aufbewahrung zu Beweiszwecken erforderlich ist. In diesem Fall werden die Daten bis 
+                zur endgültigen Klärung des jeweiligen Vorfalls ganz oder teilweise von der Löschung 
+                ausgenommen.
               </p>
 
               <h3 className="mb-2 mt-4 font-semibold text-white/70">Kontaktformular</h3>
@@ -229,6 +294,14 @@ export default function NcoreDatenschutz() {
                 Ihres Anliegens bei uns gespeichert und verarbeitet. Diese Daten geben wir nicht ohne 
                 Ihre Einwilligung weiter.
               </p>
+              <p className="mt-3">
+                Die Verarbeitung dieser Daten erfolgt auf Grundlage von Art. 6 Abs. 1 lit. b DSGVO, 
+                sofern Ihre Anfrage mit der Erfüllung eines Vertrags zusammenhängt oder zur Durchführung 
+                vorvertraglicher Maßnahmen erforderlich ist. In allen übrigen Fällen beruht die 
+                Verarbeitung auf unserem berechtigten Interesse an der effektiven Bearbeitung der an 
+                uns gerichteten Anfragen (Art. 6 Abs. 1 lit. f DSGVO) oder auf Ihrer Einwilligung 
+                (Art. 6 Abs. 1 lit. a DSGVO), sofern diese abgefragt wurde.
+              </p>
             </div>
 
             {/* 5. SSL/TLS */}
@@ -247,11 +320,62 @@ export default function NcoreDatenschutz() {
               </p>
             </div>
 
-            {/* Quelle */}
+            {/* Offene Punkte */}
+            <div className="rounded-xl border border-amber-500/30 bg-amber-950/10 p-6">
+              <h2 className="mb-4 text-lg font-semibold text-amber-400">⚠ Offene Punkte — bitte beantworten</h2>
+              <p className="mb-4 text-white/50">
+                Folgende Fragen müssen geklärt werden, um die Datenschutzerklärung zu finalisieren. 
+                Je nach Antwort werden zusätzliche Textabschnitte ergänzt oder entfallen.
+              </p>
+
+              <div className="space-y-4">
+                <div>
+                  <h3 className="font-semibold text-white/70">A) Cookies / Consent-Tool</h3>
+                  <ol className="mt-2 ml-4 list-decimal space-y-1">
+                    <li>Setzt die Website Cookies, die NICHT technisch notwendig sind (Statistik/Marketing)?</li>
+                    <li>Gibt es ein Cookie-Consent-Banner/Tool? Wenn ja: welches (Cookiebot, Borlabs, CCM19, IONOS Cookie-Tool etc.)?</li>
+                    <li>Sollen Nutzer „Opt-in" für Statistik/Marketing bekommen?</li>
+                  </ol>
+                </div>
+
+                <div>
+                  <h3 className="font-semibold text-white/70">B) Analytics / Tracking</h3>
+                  <ol className="mt-2 ml-4 list-decimal space-y-1" start={4}>
+                    <li>Wird Webanalyse genutzt? (Google Analytics, Matomo, Plausible, IONOS WebAnalytics etc.)</li>
+                    <li>Wenn Analytics ja: Ist IP-Anonymisierung aktiv? Werden Daten in die USA übertragen?</li>
+                    <li>Gibt es Marketing-Tracking/Pixel (Meta Pixel, Google Ads, LinkedIn Insight Tag etc.)?</li>
+                  </ol>
+                </div>
+
+                <div>
+                  <h3 className="font-semibold text-white/70">C) Externe Inhalte</h3>
+                  <ol className="mt-2 ml-4 list-decimal space-y-1" start={7}>
+                    <li>Werden externe Fonts geladen (Google Fonts) oder lokal gehostet?</li>
+                    <li>Werden Karten eingebunden (Google Maps) oder Captcha (reCAPTCHA)?</li>
+                    <li>Gibt es Social-Media-Embeds (Instagram, YouTube), die schon beim Laden Daten senden?</li>
+                  </ol>
+                </div>
+
+                <div>
+                  <h3 className="font-semibold text-white/70">D) Kommunikation / Lead-Gen</h3>
+                  <ol className="mt-2 ml-4 list-decimal space-y-1" start={10}>
+                    <li>Gibt es ein Kontaktformular? Wenn ja: wohin gehen die Daten (E-Mail, CRM)?</li>
+                    <li>Newsletter? Wenn ja: welcher Anbieter (Mailchimp, Brevo etc.)?</li>
+                  </ol>
+                </div>
+              </div>
+
+              <p className="mt-4 text-xs text-amber-400/60">
+                Speicherdauer Server-Logfiles ist aktuell auf 7 Tage gesetzt (Default). 
+                Bitte prüfen, ob IONOS-Vertrag eine andere Dauer vorsieht.
+              </p>
+            </div>
+
+            {/* Stand */}
             <div className="rounded-xl border border-emerald-900/20 bg-emerald-950/10 p-5">
               <p className="text-xs text-white/30">
                 Stand: Februar 2026 · Diese Datenschutzerklärung wurde unter Berücksichtigung der 
-                DSGVO sowie des TMG erstellt und wird bei Bedarf über das Compliance-System aktualisiert.
+                DSGVO, des DDG sowie des TTDSG erstellt und wird bei Bedarf aktualisiert.
               </p>
             </div>
           </div>
