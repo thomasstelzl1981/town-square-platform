@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -48,12 +48,13 @@ interface ExcelImportDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   tenantId: string;
+  initialFile?: File | null;
 }
 
 const formatCurrency = (val: number | null | undefined) =>
   val != null ? `${val.toLocaleString('de-DE')} €` : '–';
 
-export function ExcelImportDialog({ open, onOpenChange, tenantId }: ExcelImportDialogProps) {
+export function ExcelImportDialog({ open, onOpenChange, tenantId, initialFile }: ExcelImportDialogProps) {
   const queryClient = useQueryClient();
   const [file, setFile] = useState<File | null>(null);
   const [aiRows, setAiRows] = useState<AiPropertyRow[]>([]);
@@ -62,6 +63,14 @@ export function ExcelImportDialog({ open, onOpenChange, tenantId }: ExcelImportD
   const [isImporting, setIsImporting] = useState(false);
   const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set());
   const [parseStep, setParseStep] = useState<'idle' | 'reading' | 'ai-mapping' | 'done'>('idle');
+
+  // Auto-process initialFile when dialog opens with a pre-selected file
+  useEffect(() => {
+    if (open && initialFile && !file && parseStep === 'idle') {
+      setFile(initialFile);
+      parseAndMapExcel(initialFile);
+    }
+  }, [open, initialFile]);
 
   const parseAndMapExcel = useCallback(async (file: File) => {
     setIsParsing(true);

@@ -82,10 +82,16 @@ export function FileUploader({
     e.target.value = '';
   };
 
-  // If children provided, use as custom trigger
+  // If children provided, use as custom trigger (with DND support)
   if (children) {
     return (
-      <div className={className} onClick={() => !disabled && inputRef.current?.click()}>
+      <div
+        className={className}
+        onClick={() => !disabled && inputRef.current?.click()}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
         {children}
         <input
           ref={inputRef}
