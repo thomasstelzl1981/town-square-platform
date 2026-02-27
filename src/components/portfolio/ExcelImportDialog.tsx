@@ -15,26 +15,33 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { FileUploader } from '@/components/shared/FileUploader';
-import { Loader2, FileSpreadsheet, CheckCircle2, AlertCircle, Upload } from 'lucide-react';
+import { Loader2, FileSpreadsheet, CheckCircle2, AlertCircle, Upload, Sparkles, Brain } from 'lucide-react';
 import { toast } from 'sonner';
 import { getXlsx } from '@/lib/lazyXlsx';
 
-interface ImportRow {
-  rowNum: number;
-  code: string | null;
-  property_type: string;
-  city: string;
-  address: string;
-  postal_code: string | null;
-  total_area_sqm: number | null;
-  usage_type: string;
-  annual_income: number | null;
-  market_value: number | null;
-  current_balance: number | null;
-  monthly_rate: number | null;
-  management_fee: number | null;
-  errors: string[];
-  isValid: boolean;
+/** AI-mapped property row from sot-excel-ai-import */
+interface AiPropertyRow {
+  code: string;
+  art: string;
+  adresse: string;
+  ort: string;
+  plz: string;
+  nutzung?: string | null;
+  qm?: number | null;
+  einheiten?: number | null;
+  baujahr?: number | null;
+  kaltmiete?: number | null;
+  jahresmiete?: number | null;
+  marktwert?: number | null;
+  kaufpreis?: number | null;
+  restschuld?: number | null;
+  annuitaetMonat?: number | null;
+  tilgungMonat?: number | null;
+  zinsfestschreibungBis?: string | null;
+  ueberschussJahr?: number | null;
+  bank?: string | null;
+  confidence: number;
+  notes?: string | null;
 }
 
 interface ExcelImportDialogProps {
@@ -43,110 +50,134 @@ interface ExcelImportDialogProps {
   tenantId: string;
 }
 
-const COLUMN_MAPPING: Record<number, keyof ImportRow> = {
-  0: 'code',
-  1: 'property_type',
-  2: 'city',
-  3: 'address',
-  4: 'total_area_sqm',
-  5: 'usage_type',
-  6: 'annual_income',
-  7: 'market_value',
-  8: 'current_balance',
-  9: 'monthly_rate',
-  10: 'management_fee',
-};
+const formatCurrency = (val: number | null | undefined) =>
+  val != null ? `${val.toLocaleString('de-DE')} €` : '–';
 
 export function ExcelImportDialog({ open, onOpenChange, tenantId }: ExcelImportDialogProps) {
   const queryClient = useQueryClient();
   const [file, setFile] = useState<File | null>(null);
-  const [parsedData, setParsedData] = useState<ImportRow[]>([]);
+  const [aiRows, setAiRows] = useState<AiPropertyRow[]>([]);
+  const [aiSummary, setAiSummary] = useState<Record<string, unknown> | null>(null);
   const [isParsing, setIsParsing] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
-  const [skipErrors, setSkipErrors] = useState(true);
+  const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set());
+  const [parseStep, setParseStep] = useState<'idle' | 'reading' | 'ai-mapping' | 'done'>('idle');
 
-  const parseExcel = useCallback(async (file: File) => {
+  const parseAndMapExcel = useCallback(async (file: File) => {
     setIsParsing(true);
-    
+    setParseStep('reading');
+
     try {
+      // Step 1: Parse Excel with SheetJS
       const XLSX = await getXlsx();
       const data = await file.arrayBuffer();
       const workbook = XLSX.read(data, { type: 'array' });
       const sheet = workbook.Sheets[workbook.SheetNames[0]];
-      const rows: any[][] = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+      const rawRows: any[][] = XLSX.utils.sheet_to_json(sheet, { header: 1 });
 
-      // Skip header row (row 0)
-      const importRows: ImportRow[] = [];
-      
-      for (let i = 1; i < rows.length; i++) {
-        const row = rows[i];
-        if (!row || row.length === 0 || !row.some(cell => cell !== null && cell !== '')) continue;
-
-        const errors: string[] = [];
-        
-        // Parse values
-        const code = row[0]?.toString() || null;
-        const property_type = row[1]?.toString() || '';
-        const city = row[2]?.toString() || '';
-        const address = row[3]?.toString() || '';
-        const postal_code = row[11]?.toString() || null;
-        const total_area_sqm = parseFloat(row[4]) || null;
-        const usage_type = row[5]?.toString() || 'residential';
-        const annual_income = parseFloat(row[6]) || null;
-        const market_value = parseFloat(row[7]) || null;
-        const current_balance = parseFloat(row[8]) || null;
-        const monthly_rate = parseFloat(row[9]) || null;
-        const management_fee = parseFloat(row[10]) || null;
-
-        // Validate required fields
-        if (!property_type) errors.push('Art fehlt');
-        if (!city) errors.push('Ort fehlt');
-        if (!address) errors.push('Adresse fehlt');
-
-        importRows.push({
-          rowNum: i + 1,
-          code,
-          property_type,
-          city,
-          address,
-          postal_code,
-          total_area_sqm,
-          usage_type,
-          annual_income,
-          market_value,
-          current_balance,
-          monthly_rate,
-          management_fee,
-          errors,
-          isValid: errors.length === 0,
-        });
+      // Find header row (first non-empty row)
+      let headerIdx = 0;
+      for (let i = 0; i < rawRows.length; i++) {
+        if (rawRows[i] && rawRows[i].some((c: unknown) => c != null && c !== '')) {
+          headerIdx = i;
+          break;
+        }
       }
 
-      setParsedData(importRows);
+      const headers = rawRows[headerIdx]?.map((h: unknown) => String(h ?? '')) || [];
+      const dataRows = rawRows.slice(headerIdx + 1).filter(
+        (row) => row && row.some((c: unknown) => c != null && c !== '')
+      );
+
+      if (dataRows.length === 0) {
+        toast.error('Keine Datenzeilen in der Excel-Datei gefunden');
+        setIsParsing(false);
+        setParseStep('idle');
+        return;
+      }
+
+      // Step 2: Send to AI for intelligent mapping
+      setParseStep('ai-mapping');
+
+      const { data: session } = await supabase.auth.getSession();
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sot-excel-ai-import`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.session?.access_token}`,
+          },
+          body: JSON.stringify({
+            headers,
+            rows: dataRows,
+            fileName: file.name,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errBody = await response.json().catch(() => ({}));
+        const errMsg = (errBody as Record<string, string>).error || 'KI-Analyse fehlgeschlagen';
+        toast.error(errMsg);
+        setIsParsing(false);
+        setParseStep('idle');
+        return;
+      }
+
+      const result = await response.json();
+
+      if (!result.success || !result.data?.length) {
+        toast.error(result.error || 'Keine Immobiliendaten erkannt');
+        setIsParsing(false);
+        setParseStep('idle');
+        return;
+      }
+
+      setAiRows(result.data);
+      setAiSummary(result.summary);
+      // Select all rows by default
+      setSelectedRows(new Set(result.data.map((_: AiPropertyRow, i: number) => i)));
+      setParseStep('done');
     } catch (error) {
-      console.error('Excel parse error:', error);
-      toast.error('Excel-Datei konnte nicht gelesen werden');
+      console.error('Excel AI import error:', error);
+      toast.error('Fehler bei der KI-Analyse der Excel-Datei');
+      setParseStep('idle');
     }
-    
+
     setIsParsing(false);
   }, []);
 
   const handleFileSelect = (files: File[]) => {
     if (files.length > 0) {
       setFile(files[0]);
-      parseExcel(files[0]);
+      parseAndMapExcel(files[0]);
+    }
+  };
+
+  const toggleRow = (idx: number) => {
+    setSelectedRows((prev) => {
+      const next = new Set(prev);
+      if (next.has(idx)) next.delete(idx);
+      else next.add(idx);
+      return next;
+    });
+  };
+
+  const toggleAll = () => {
+    if (selectedRows.size === aiRows.length) {
+      setSelectedRows(new Set());
+    } else {
+      setSelectedRows(new Set(aiRows.map((_, i) => i)));
     }
   };
 
   const handleImport = async () => {
     if (!tenantId) return;
-    
-    const rowsToImport = skipErrors 
-      ? parsedData.filter(r => r.isValid)
-      : parsedData;
 
+    const rowsToImport = aiRows.filter((_, i) => selectedRows.has(i));
     if (rowsToImport.length === 0) {
-      toast.error('Keine gültigen Zeilen zum Import');
+      toast.error('Keine Zeilen ausgewählt');
       return;
     }
 
@@ -155,9 +186,22 @@ export function ExcelImportDialog({ open, onOpenChange, tenantId }: ExcelImportD
 
     try {
       const { data: session } = await supabase.auth.getSession();
-      
+
       for (const row of rowsToImport) {
         try {
+          // Map AI row to sot-property-crud schema
+          const propertyData: Record<string, unknown> = {
+            address: row.adresse,
+            city: row.ort,
+            postal_code: row.plz,
+            property_type: row.art,
+            usage_type: row.nutzung || 'residential',
+            total_area_sqm: row.qm,
+            market_value: row.marktwert || row.kaufpreis,
+            units_count: row.einheiten,
+            year_built: row.baujahr,
+          };
+
           const response = await fetch(
             `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sot-property-crud`,
             {
@@ -168,21 +212,16 @@ export function ExcelImportDialog({ open, onOpenChange, tenantId }: ExcelImportD
               },
               body: JSON.stringify({
                 action: 'create',
-                data: {
-                  address: row.address,
-                  city: row.city,
-                  postal_code: row.postal_code,
-                  property_type: row.property_type,
-                  usage_type: row.usage_type,
-                  total_area_sqm: row.total_area_sqm,
-                  market_value: row.market_value,
-                },
+                data: propertyData,
               }),
             }
           );
 
           if (response.ok) {
             successCount++;
+          } else {
+            const err = await response.json().catch(() => ({}));
+            console.warn(`Import failed for ${row.code}:`, err);
           }
         } catch (error) {
           console.error('Import row error:', error);
@@ -190,12 +229,12 @@ export function ExcelImportDialog({ open, onOpenChange, tenantId }: ExcelImportD
       }
 
       if (successCount > 0) {
-        toast.success(`${successCount} Objekt(e) importiert`);
+        toast.success(`${successCount} Objekt(e) erfolgreich importiert`);
         queryClient.invalidateQueries({ queryKey: ['properties'] });
         onOpenChange(false);
         resetState();
       } else {
-        toast.error('Import fehlgeschlagen');
+        toast.error('Import fehlgeschlagen – keine Objekte angelegt');
       }
     } catch (error) {
       toast.error('Import fehlgeschlagen');
@@ -206,106 +245,162 @@ export function ExcelImportDialog({ open, onOpenChange, tenantId }: ExcelImportD
 
   const resetState = () => {
     setFile(null);
-    setParsedData([]);
-    setSkipErrors(true);
+    setAiRows([]);
+    setAiSummary(null);
+    setSelectedRows(new Set());
+    setParseStep('idle');
   };
 
-  const validCount = parsedData.filter(r => r.isValid).length;
-  const errorCount = parsedData.filter(r => !r.isValid).length;
+  const confidenceColor = (c: number) =>
+    c >= 0.8 ? 'text-green-600' : c >= 0.5 ? 'text-yellow-600' : 'text-destructive';
 
   return (
-    <Dialog open={open} onOpenChange={(open) => {
-      if (!open) resetState();
-      onOpenChange(open);
-    }}>
-      <DialogContent className="max-w-4xl max-h-[80vh] flex flex-col">
+    <Dialog
+      open={open}
+      onOpenChange={(open) => {
+        if (!open) resetState();
+        onOpenChange(open);
+      }}
+    >
+      <DialogContent className="max-w-5xl max-h-[85vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileSpreadsheet className="h-5 w-5" />
-            Portfolio Excel Import
+            KI-gestützter Portfolio Import
+            <Badge variant="secondary" className="text-xs">
+              <Sparkles className="h-3 w-3 mr-1" />
+              AI
+            </Badge>
           </DialogTitle>
           <DialogDescription>
-            Importieren Sie Immobilien aus einer Excel-Datei
+            Laden Sie eine beliebige Excel-Datei hoch – die KI erkennt automatisch Spalten und Datenstruktur.
           </DialogDescription>
         </DialogHeader>
 
+        {/* Upload Zone */}
         {!file ? (
           <div className="py-8">
-            <FileUploader
-              onFilesSelected={handleFileSelect}
-              accept=".xlsx,.xls,.csv"
-            >
+            <FileUploader onFilesSelected={handleFileSelect} accept=".xlsx,.xls,.csv">
               <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-8 text-center hover:border-primary/50 transition-colors cursor-pointer">
                 <Upload className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
                 <p className="text-lg font-medium mb-1">Excel-Datei auswählen</p>
                 <p className="text-sm text-muted-foreground">
-                  Unterstützte Formate: .xlsx, .xls, .csv
+                  Unterstützte Formate: .xlsx, .xls, .csv – beliebige Spaltenstruktur
                 </p>
               </div>
             </FileUploader>
           </div>
         ) : isParsing ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-            <span className="ml-3">Datei wird analysiert...</span>
+          <div className="flex flex-col items-center justify-center py-12 gap-3">
+            {parseStep === 'reading' && (
+              <>
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">Datei wird gelesen…</span>
+              </>
+            )}
+            {parseStep === 'ai-mapping' && (
+              <>
+                <Brain className="h-8 w-8 animate-pulse text-primary" />
+                <span className="text-sm font-medium">KI analysiert Spaltenstruktur…</span>
+                <span className="text-xs text-muted-foreground">Erkennung von Adressen, Flächen, Mieten, Darlehen</span>
+              </>
+            )}
           </div>
-        ) : (
+        ) : parseStep === 'done' && aiRows.length > 0 ? (
           <>
             {/* Summary */}
-            <div className="flex items-center gap-4 py-2">
+            <div className="flex items-center gap-3 py-2 flex-wrap">
               <Badge variant="secondary" className="text-sm">
-                {parsedData.length} Zeilen gefunden
+                {aiRows.length} Objekte erkannt
               </Badge>
               <Badge variant="default" className="text-sm bg-green-600">
                 <CheckCircle2 className="h-3 w-3 mr-1" />
-                {validCount} gültig
+                {selectedRows.size} ausgewählt
               </Badge>
-              {errorCount > 0 && (
-                <Badge variant="destructive" className="text-sm">
-                  <AlertCircle className="h-3 w-3 mr-1" />
-                  {errorCount} mit Fehlern
+              {aiSummary && (
+                <Badge variant="outline" className="text-xs">
+                  Ø Konfidenz: {Math.round(((aiSummary as Record<string, number>).avgConfidence || 0) * 100)}%
                 </Badge>
               )}
             </div>
+
+            {/* AI Issues */}
+            {aiSummary && Array.isArray((aiSummary as Record<string, unknown>).issues) &&
+              ((aiSummary as Record<string, string[]>).issues).length > 0 && (
+              <div className="bg-yellow-50 dark:bg-yellow-950/30 border border-yellow-200 dark:border-yellow-800 rounded-md p-3 text-sm">
+                <p className="font-medium text-yellow-800 dark:text-yellow-200 mb-1">Hinweise der KI:</p>
+                <ul className="list-disc list-inside text-yellow-700 dark:text-yellow-300 text-xs space-y-0.5">
+                  {((aiSummary as Record<string, string[]>).issues).map((issue, i) => (
+                    <li key={i}>{issue}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
             {/* Preview Table */}
             <ScrollArea className="flex-1 border rounded-md">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-12">#</TableHead>
+                    <TableHead className="w-10">
+                      <Checkbox
+                        checked={selectedRows.size === aiRows.length}
+                        onCheckedChange={toggleAll}
+                      />
+                    </TableHead>
                     <TableHead>Code</TableHead>
                     <TableHead>Art</TableHead>
-                    <TableHead>Ort</TableHead>
                     <TableHead>Adresse</TableHead>
-                    <TableHead>Status</TableHead>
+                    <TableHead>Ort</TableHead>
+                    <TableHead className="text-right">m²</TableHead>
+                    <TableHead className="text-right">Marktwert</TableHead>
+                    <TableHead className="text-right">Miete/M</TableHead>
+                    <TableHead className="text-right">Restschuld</TableHead>
+                    <TableHead className="text-center">BJ</TableHead>
+                    <TableHead className="text-center">Konfidenz</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {parsedData.map((row) => (
-                    <TableRow key={row.rowNum} className={!row.isValid ? 'bg-destructive/5' : ''}>
-                      <TableCell className="text-muted-foreground text-xs">
-                        {row.rowNum}
-                      </TableCell>
-                      <TableCell className="font-mono text-xs">
-                        {row.code || '–'}
-                      </TableCell>
-                      <TableCell>{row.property_type || '–'}</TableCell>
-                      <TableCell>{row.city || '–'}</TableCell>
-                      <TableCell className="max-w-[200px] truncate">
-                        {row.address || '–'}
-                      </TableCell>
+                  {aiRows.map((row, idx) => (
+                    <TableRow
+                      key={idx}
+                      className={!selectedRows.has(idx) ? 'opacity-50' : ''}
+                    >
                       <TableCell>
-                        {row.isValid ? (
-                          <Badge variant="outline" className="text-green-600 border-green-600">
-                            <CheckCircle2 className="h-3 w-3 mr-1" />
-                            OK
-                          </Badge>
-                        ) : (
-                          <Badge variant="destructive">
-                            {row.errors.join(', ')}
-                          </Badge>
-                        )}
+                        <Checkbox
+                          checked={selectedRows.has(idx)}
+                          onCheckedChange={() => toggleRow(idx)}
+                        />
+                      </TableCell>
+                      <TableCell className="font-mono text-xs">{row.code}</TableCell>
+                      <TableCell>{row.art}</TableCell>
+                      <TableCell className="max-w-[180px] truncate" title={row.adresse}>
+                        {row.adresse}
+                      </TableCell>
+                      <TableCell>{row.ort}</TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {row.qm?.toLocaleString('de-DE') ?? '–'}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums text-xs">
+                        {formatCurrency(row.marktwert)}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums text-xs">
+                        {row.kaltmiete != null
+                          ? formatCurrency(row.kaltmiete)
+                          : row.jahresmiete != null
+                          ? formatCurrency(Math.round(row.jahresmiete / 12))
+                          : '–'}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums text-xs">
+                        {formatCurrency(row.restschuld)}
+                      </TableCell>
+                      <TableCell className="text-center text-xs">
+                        {row.baujahr ?? '–'}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <span className={`text-xs font-medium ${confidenceColor(row.confidence)}`}>
+                          {Math.round(row.confidence * 100)}%
+                        </span>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -313,35 +408,32 @@ export function ExcelImportDialog({ open, onOpenChange, tenantId }: ExcelImportD
               </Table>
             </ScrollArea>
 
-            {/* Options */}
-            {errorCount > 0 && (
-              <div className="flex items-center gap-2 py-2">
-                <Checkbox
-                  id="skip-errors"
-                  checked={skipErrors}
-                  onCheckedChange={(checked) => setSkipErrors(checked as boolean)}
-                />
-                <label htmlFor="skip-errors" className="text-sm cursor-pointer">
-                  Fehlerhafte Zeilen überspringen
-                </label>
+            {/* Notes from AI */}
+            {aiRows.some((r) => r.notes) && (
+              <div className="text-xs text-muted-foreground space-y-0.5 pt-1">
+                {aiRows.filter((r) => r.notes).map((r, i) => (
+                  <p key={i}>
+                    <span className="font-mono">{r.code}:</span> {r.notes}
+                  </p>
+                ))}
               </div>
             )}
           </>
-        )}
+        ) : null}
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Abbrechen
           </Button>
-          {parsedData.length > 0 && (
-            <Button onClick={handleImport} disabled={isImporting}>
+          {parseStep === 'done' && aiRows.length > 0 && (
+            <Button onClick={handleImport} disabled={isImporting || selectedRows.size === 0}>
               {isImporting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Wird importiert...
+                  Wird importiert…
                 </>
               ) : (
-                `${skipErrors ? validCount : parsedData.length} Objekte importieren`
+                `${selectedRows.size} Objekte importieren`
               )}
             </Button>
           )}
