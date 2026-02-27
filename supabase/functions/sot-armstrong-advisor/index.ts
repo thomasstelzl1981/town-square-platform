@@ -152,6 +152,110 @@ ${body.entity ? `- Aktive Entität: ${body.entity.type} (ID: ${body.entity.id})`
 }
 
 // =============================================================================
+// ENTITY-AWARENESS: Load active entity data from DB
+// =============================================================================
+
+async function loadEntityContext(
+  entity: EntityRef,
+  userContext: UserContext,
+  supabase: ReturnType<typeof createClient>
+): Promise<string> {
+  if (!entity?.id || entity.type === 'none' || !userContext.org_id) return '';
+
+  try {
+    switch (entity.type) {
+      case 'property': {
+        const { data } = await supabase
+          .from('properties')
+          .select('name, address_street, address_city, address_postal_code, property_type, purchase_price_cents, year_built, area_sqm, units(id, unit_number, area_sqm, leases(rent_net_cents, status))')
+          .eq('id', entity.id)
+          .eq('tenant_id', userContext.org_id)
+          .single();
+        if (!data) return '';
+        const price = data.purchase_price_cents ? `${(data.purchase_price_cents / 100).toLocaleString('de-DE')} €` : 'k.A.';
+        const activeLeases = data.units?.flatMap((u: any) => u.leases?.filter((l: any) => l.status === 'active') || []) || [];
+        const monthlyRent = activeLeases.reduce((s: number, l: any) => s + ((l.rent_net_cents || 0) / 100), 0);
+        return `\nENTITY_CONTEXT (Immobilie):\n- Name: ${data.name || 'k.A.'}\n- Adresse: ${[data.address_street, data.address_postal_code, data.address_city].filter(Boolean).join(', ')}\n- Typ: ${data.property_type || 'k.A.'} | Baujahr: ${data.year_built || 'k.A.'} | Fläche: ${data.area_sqm || 'k.A.'} m²\n- Kaufpreis: ${price}\n- Einheiten: ${data.units?.length || 0} | Aktive Mietverträge: ${activeLeases.length} | Monatsmiete netto: ${monthlyRent.toLocaleString('de-DE')} €`;
+      }
+      case 'mandate': {
+        const { data } = await supabase
+          .from('acq_mandates')
+          .select('code, client_display_name, status, price_min, price_max, asset_focus, yield_target, profile_text_long')
+          .eq('id', entity.id)
+          .eq('tenant_id', userContext.org_id)
+          .single();
+        if (!data) return '';
+        return `\nENTITY_CONTEXT (Akquise-Mandat):\n- Code: ${data.code} | Mandant: ${data.client_display_name || 'k.A.'}\n- Status: ${data.status}\n- Preisrahmen: ${data.price_min?.toLocaleString('de-DE') || '?'} – ${data.price_max?.toLocaleString('de-DE') || '?'} €\n- Asset-Fokus: ${data.asset_focus?.join(', ') || 'k.A.'}\n- Zielrendite: ${data.yield_target || 'k.A.'}%\n- Profil: ${(data.profile_text_long || '').slice(0, 200)}`;
+      }
+      case 'finance_case': {
+        const { data } = await supabase
+          .from('finance_requests')
+          .select('id, status, request_data, created_at, applicant_profiles(first_name, last_name, net_income_monthly, employment_type)')
+          .eq('id', entity.id)
+          .single();
+        if (!data) return '';
+        const ap = (data as any).applicant_profiles?.[0];
+        const rd = (data.request_data as any) || {};
+        return `\nENTITY_CONTEXT (Finanzierungsfall):\n- Status: ${data.status} | Erstellt: ${new Date(data.created_at).toLocaleDateString('de-DE')}\n- Darlehenssumme: ${rd.loan_amount?.toLocaleString('de-DE') || 'k.A.'} €\n- Bank: ${rd.bank || 'k.A.'} | Zweck: ${rd.purpose || 'k.A.'}\n${ap ? `- Antragsteller: ${ap.first_name} ${ap.last_name} | Einkommen: ${ap.net_income_monthly?.toLocaleString('de-DE') || 'k.A.'} € | Beschäftigung: ${ap.employment_type || 'k.A.'}` : ''}`;
+      }
+      default:
+        return '';
+    }
+  } catch (err) {
+    console.error('[Armstrong] Entity context load error:', err);
+    return '';
+  }
+}
+
+// =============================================================================
+// SESSION PERSISTENCE: Save/load chat sessions
+// =============================================================================
+
+async function persistChatMessage(
+  supabase: ReturnType<typeof createClient>,
+  sessionId: string,
+  userContext: UserContext,
+  zone: string,
+  module: string,
+  role: string,
+  content: string,
+  website?: string
+) {
+  try {
+    // Try to update existing session
+    const { data: existing } = await supabase
+      .from('armstrong_chat_sessions')
+      .select('id, messages')
+      .eq('session_id', sessionId)
+      .single();
+
+    const newMsg = { role, content, timestamp: new Date().toISOString() };
+
+    if (existing) {
+      const messages = [...((existing.messages as any[]) || []), newMsg];
+      await supabase
+        .from('armstrong_chat_sessions')
+        .update({ messages, last_active_at: new Date().toISOString() })
+        .eq('id', existing.id);
+    } else {
+      await supabase
+        .from('armstrong_chat_sessions')
+        .insert({
+          session_id: sessionId,
+          user_id: userContext.user_id,
+          tenant_id: userContext.org_id,
+          zone,
+          module,
+          website: website || null,
+          messages: [newMsg],
+        });
+    }
+  } catch (err) {
+    if (import.meta.url.includes('localhost')) console.error('[Armstrong] Session persist error:', err);
+  }
+}
+
+// =============================================================================
 // UNIFIED SYSTEM PROMPT — Single consolidated prompt builder
 // =============================================================================
 
@@ -3111,9 +3215,15 @@ async function generateExplainResponse(
     }
   }
 
+  // Load entity context if available
+  let entityContextBlock = "";
+  if (body?.entity?.id && body.entity.type !== 'none' && userContext) {
+    entityContextBlock = await loadEntityContext(body.entity, userContext, supabase);
+  }
+
   // Use unified prompt when body/userContext available, fall back to legacy
   const systemPrompt = (body && userContext)
-    ? buildUnifiedSystemPrompt(body, userContext, availableActions || [], kbContext, isGlobalAssist)
+    ? buildUnifiedSystemPrompt(body, userContext, availableActions || [], kbContext + entityContextBlock, isGlobalAssist)
     : `${ARMSTRONG_CORE_IDENTITY}\n\n${contextBlock}\n\nGOVERNANCE:\n- Schreibende Aktionen erfordern Nutzerbestätigung\n- Bei sensiblen Themen: Disclaimer verwenden\n- Proaktiv passende nächste Schritte vorschlagen${kbContext ? `\n\nWissenskontext:\n${kbContext}` : ''}`;
 
   // Build conversation messages array — include full history if available
@@ -3949,6 +4059,10 @@ serve(async (req) => {
         supabase
       );
     }
+
+    // Persist incoming user message
+    const sessionId = (body as any).session_id || crypto.randomUUID();
+    persistChatMessage(supabase, sessionId, userContext, zone, module, 'user', message);
 
     // Classify intent FIRST to enable Global Assist Mode
     const intent = classifyIntent(message, action_request);
