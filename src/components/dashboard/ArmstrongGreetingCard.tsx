@@ -64,6 +64,22 @@ function getShortEventSummary(events: CalendarEvent[]): string {
   return `${events.length} Termine heute.`;
 }
 
+function getKiBriefing(events: CalendarEvent[]): string {
+  const hour = new Date().getHours();
+  const tips: string[] = [];
+  
+  if (hour < 10) {
+    tips.push('📊 Ich habe deine Dashboards aktualisiert.');
+  }
+  if (events.length > 3) {
+    tips.push(`⚡ Voller Tag! ${events.length} Termine — soll ich priorisieren?`);
+  }
+  
+  tips.push('🤖 Frag mich nach Marktdaten, Dokumentanalysen oder Renditeberechnungen.');
+  
+  return tips.join(' ');
+}
+
 export function ArmstrongGreetingCard({ 
   displayName, 
   city, 
@@ -97,9 +113,10 @@ export function ArmstrongGreetingCard({
     contextParts.push(getShortEventSummary(todayEvents));
     
     // On mobile, skip "Wie kann ich helfen?" since input bar is always visible
+    const kiBriefing = getKiBriefing(todayEvents);
     const fullMessage = isMobile
-      ? `${greetingText}\n\n${contextParts.join(' ')}`
-      : `${greetingText}\n\n${contextParts.join(' ')}\n\nWie kann ich dir heute helfen?`;
+      ? `${greetingText}\n\n${contextParts.join(' ')}\n\n${kiBriefing}`
+      : `${greetingText}\n\n${contextParts.join(' ')}\n\n${kiBriefing}\n\nWie kann ich dir heute helfen?`;
     
     setGreeting(fullMessage);
   }, [displayName, city, weather, todayEvents, isMobile]);

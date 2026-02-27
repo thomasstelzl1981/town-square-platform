@@ -9,6 +9,7 @@ import { LENNOX as C } from './lennoxTheme';
 import { SEOHead } from '@/components/zone3/shared/SEOHead';
 import { WebsitePinGate } from '@/components/zone3/WebsitePinGate';
 import { useZone3Setting } from '@/hooks/useZone3Settings';
+import { ArmstrongWidget } from '@/components/zone3/ArmstrongWidget';
 import lennoxPatch from '@/assets/logos/lennox_logo_patch.jpeg';
 
 const navLinks = [
@@ -146,6 +147,7 @@ export default function LennoxLayout() {
           </div>
         </div>
       </footer>
+      <ArmstrongWidget website="lennox" />
     </div>
   );
 }

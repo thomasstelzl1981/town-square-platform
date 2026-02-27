@@ -120,10 +120,14 @@ export default function AcquiaryMethodik() {
             <div className="aq-card">
               <div className="aq-card-icon"><Brain className="h-5 w-5" /></div>
               <h3 className="aq-card-title">KI-Analyse-Engine</h3>
+              <div className="flex flex-wrap gap-1.5 mb-3">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider" style={{ background: 'hsl(207 90% 54% / 0.1)', color: 'hsl(207 90% 54%)' }}>Gemini 2.5 Pro</span>
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider" style={{ background: 'hsl(207 90% 54% / 0.1)', color: 'hsl(207 90% 54%)' }}>GPT-5</span>
+              </div>
               <p className="aq-card-text">
-                Automatisierte Datenextraktion aus Exposés und Dokumenten. 
-                Hold- und Flip-Kalkulationen in Sekunden. Vergleichbare Analysequalität 
-                bei einem Bruchteil der üblichen Kosten und Zeit.
+                32.000 Token Context — liest komplette Datenräume und Exposés. 
+                Automatische Extraktion aller Kennzahlen, Hold- und Flip-Kalkulationen 
+                in Sekunden. Multi-Dokument-Analyse für Due-Diligence-Pakete.
               </p>
             </div>
           </div>
