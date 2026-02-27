@@ -1,15 +1,12 @@
 /**
  * SerienEmailsPage — MOD-14 Serien-E-Mail (Outbound-Light)
  * Dashboard with campaign list + CampaignWizard
- * Role-gated: only sales_partner can access
+ * Access governed by tile activation (no manual role checks)
  */
 
 import { useState } from 'react';
 import { DESIGN, getActiveWidgetGlow } from '@/config/designManifest';
 import { cn } from '@/lib/utils';
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
 import { useMailCampaigns } from '@/hooks/useMailCampaigns';
 import { CampaignWizard } from '@/components/portal/communication-pro/CampaignWizard';
 import { Card, CardContent } from '@/components/ui/card';
@@ -17,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
   Mail, Plus, Send, Users, CheckCircle2, AlertCircle,
-  Clock, Trash2, Loader2, ShieldAlert,
+  Clock, Trash2, Loader2,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
@@ -40,49 +37,10 @@ const STATUS_MAP: Record<string, { label: string; variant: 'default' | 'secondar
 };
 
 export function SerienEmailsPage() {
-  const { user } = useAuth();
   const [showWizard, setShowWizard] = useState(false);
   const { campaigns, isLoading, deleteCampaign } = useMailCampaigns();
   const { isEnabled } = useDemoToggles();
   const demoEnabled = isEnabled('GP-SERIEN-EMAIL');
-
-  // Role-gate: check if user has sales_partner role
-  const { data: hasSalesRole, isLoading: roleLoading } = useQuery({
-    queryKey: ['user-has-sales-role', user?.id],
-    queryFn: async () => {
-      if (!user?.id) return false;
-      const { data } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', user.id);
-      const roles = (data || []).map(r => r.role);
-      return roles.includes('sales_partner') || roles.includes('platform_admin');
-    },
-    enabled: !!user?.id,
-  });
-
-  if (roleLoading) {
-    return (
-      <div className="p-6 flex items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
-
-  if (!hasSalesRole) {
-    return (
-      <div className="p-6 flex flex-col items-center justify-center gap-4 text-center">
-        <div className="h-16 w-16 rounded-2xl bg-destructive/10 flex items-center justify-center">
-          <ShieldAlert className="h-8 w-8 text-destructive" />
-        </div>
-        <h2 className="text-lg font-semibold">Zugriff eingeschränkt</h2>
-        <p className="text-sm text-muted-foreground max-w-md">
-          Serien-E-Mails sind nur für Vertriebspartner verfügbar. 
-          Bitte kontaktieren Sie Ihren Administrator, um die entsprechende Rolle zu erhalten.
-        </p>
-      </div>
-    );
-  }
 
   if (showWizard) {
     return (
