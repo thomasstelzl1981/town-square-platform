@@ -413,17 +413,29 @@ export function ProjectDataSheet({ isDemo, selectedProject, unitCount, fullProje
       if (data?.error) throw new Error(data.error);
 
       const ext = data?.extractedData || data;
-      if (ext?.developer) { setDevName(ext.developer); markDirty(); }
-      if (ext?.developerLegalForm) { setDevLegalForm(ext.developerLegalForm); markDirty(); }
-      if (ext?.developerManagingDirector) { setDevManagingDirector(ext.developerManagingDirector); markDirty(); }
-      if (ext?.developerStreet) { setDevStreet(ext.developerStreet); markDirty(); }
-      if (ext?.developerHouseNumber) { setDevHouseNumber(ext.developerHouseNumber); markDirty(); }
-      if (ext?.developerPostalCode) { setDevPostalCode(ext.developerPostalCode); markDirty(); }
-      if (ext?.developerCity) { setDevCity(ext.developerCity); markDirty(); }
-      if (ext?.developerHrb) { setDevHrb(ext.developerHrb); markDirty(); }
-      if (ext?.developerUstId) { setDevUstId(ext.developerUstId); markDirty(); }
+      let fieldsPopulated = 0;
+      if (ext?.developer) { setDevName(ext.developer); fieldsPopulated++; }
+      if (ext?.developerLegalForm) { setDevLegalForm(ext.developerLegalForm); fieldsPopulated++; }
+      if (ext?.developerManagingDirector) { setDevManagingDirector(ext.developerManagingDirector); fieldsPopulated++; }
+      if (ext?.developerStreet) { setDevStreet(ext.developerStreet); fieldsPopulated++; }
+      if (ext?.developerHouseNumber) { setDevHouseNumber(ext.developerHouseNumber); fieldsPopulated++; }
+      if (ext?.developerPostalCode) { setDevPostalCode(ext.developerPostalCode); fieldsPopulated++; }
+      if (ext?.developerCity) { setDevCity(ext.developerCity); fieldsPopulated++; }
+      if (ext?.developerHrb) { setDevHrb(ext.developerHrb); fieldsPopulated++; }
+      if (ext?.developerUstId) { setDevUstId(ext.developerUstId); fieldsPopulated++; }
 
-      toast.success('Anbieter-Daten aus Exposé geladen', { description: 'Bitte prüfen und mit "Speichern" bestätigen.' });
+      // Immer markDirty aufrufen, damit der User manuell ergänzen + speichern kann
+      markDirty();
+
+      if (fieldsPopulated > 0) {
+        toast.success('Anbieter-Daten aus Exposé geladen', {
+          description: `${fieldsPopulated} Felder befüllt. Bitte prüfen und speichern.`,
+        });
+      } else {
+        toast.warning('Keine Anbieter-Daten erkannt', {
+          description: 'Die KI konnte keine Daten extrahieren. Bitte manuell ergänzen.',
+        });
+      }
     } catch (err: any) {
       toast.error('Exposé-Analyse fehlgeschlagen', { description: err?.message || 'Unbekannter Fehler' });
     } finally {
