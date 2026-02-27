@@ -7,7 +7,7 @@ import { Helmet } from 'react-helmet';
 import { Mail, Phone, MapPin, Send } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
+
 
 export default function OttoKontakt() {
   const [form, setForm] = useState({ name: '', email: '', phone: '', message: '', interest: 'allgemein' });
@@ -17,18 +17,21 @@ export default function OttoKontakt() {
     e.preventDefault();
     setLoading(true);
     try {
-      const { error } = await supabase.functions.invoke('sot-lead-inbox', {
-        body: {
-          lead_source: 'otto_advisory_kontakt',
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+      const response = await fetch(`${supabaseUrl}/functions/v1/sot-ncore-lead-submit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${anonKey}`, 'apikey': anonKey },
+        body: JSON.stringify({
+          brand: 'otto',
+          type: form.interest,
           name: form.name,
           email: form.email,
-          phone: form.phone || undefined,
+          phone: form.phone || null,
           message: form.message,
-          interest: form.interest,
-          website: 'otto2advisory.com',
-        },
+        }),
       });
-      if (error) throw error;
+      if (!response.ok) throw new Error('Submit failed');
       toast.success('Vielen Dank für Ihre Nachricht! Wir melden uns schnellstmöglich bei Ihnen.');
       setForm({ name: '', email: '', phone: '', message: '', interest: 'allgemein' });
     } catch (err) {
