@@ -33,11 +33,13 @@ export function PosteingangAuslesungCard() {
   const ocrToggleMutation = useMutation({
     mutationFn: async (enabled: boolean) => {
       if (!activeTenantId) throw new Error('Kein Mandant');
-      const { error } = await supabase
+      const { error, data } = await supabase
         .from('organizations')
         .update({ ai_extraction_enabled: enabled })
-        .eq('id', activeTenantId);
+        .eq('id', activeTenantId)
+        .select('id');
       if (error) throw error;
+      if (!data || data.length === 0) throw new Error('Keine Berechtigung für diese Änderung');
     },
     onSuccess: (_, enabled) => {
       queryClient.invalidateQueries({ queryKey: ['ai-extraction-enabled'] });
