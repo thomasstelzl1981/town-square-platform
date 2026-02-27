@@ -2228,6 +2228,59 @@ export type Database = {
           },
         ]
       }
+      armstrong_chat_sessions: {
+        Row: {
+          created_at: string
+          entity_context: Json | null
+          expires_at: string
+          id: string
+          last_active_at: string
+          messages: Json
+          module: string | null
+          session_id: string
+          tenant_id: string | null
+          user_id: string | null
+          website: string | null
+          zone: string
+        }
+        Insert: {
+          created_at?: string
+          entity_context?: Json | null
+          expires_at?: string
+          id?: string
+          last_active_at?: string
+          messages?: Json
+          module?: string | null
+          session_id: string
+          tenant_id?: string | null
+          user_id?: string | null
+          website?: string | null
+          zone?: string
+        }
+        Update: {
+          created_at?: string
+          entity_context?: Json | null
+          expires_at?: string
+          id?: string
+          last_active_at?: string
+          messages?: Json
+          module?: string | null
+          session_id?: string
+          tenant_id?: string | null
+          user_id?: string | null
+          website?: string | null
+          zone?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "armstrong_chat_sessions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       armstrong_command_events: {
         Row: {
           action_code: string
