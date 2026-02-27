@@ -1,60 +1,38 @@
 
-## Integration: Ncore Business Consulting + Otto²Advisory — Implementierungsplan
 
-### Status: Phase 5 DONE ✅
+# Ncore Impressum + Datenschutz -- Vollstaendige Neufassung
 
----
+## Problem
+Beide Dateien enthalten noch die Urversion: falscher Firmenname, TMG statt DDG, kein Komplementaer, keine USt-IdNr, veralteter OS-Link.
 
-### Phase 1: Infrastruktur ✅ ABGESCHLOSSEN
+## Aenderungen
 
-| Datei | Status |
-|-------|--------|
-| `spec/current/00_frozen/infra_freeze.json` | ✅ manifests unfrozen |
-| `src/manifests/operativeDeskManifest.ts` | ✅ ncore-desk + otto-desk hinzugefügt |
-| `src/config/domainMap.ts` | ✅ 20 Domain-Einträge (Ncore 8, Otto 10) |
-| `src/manifests/routesManifest.ts` | ✅ Zone 3 Websites + Zone 1 Desk-Routen |
-| `src/router/ManifestRouter.tsx` | ✅ Lazy imports, Component Maps, Layout Map, Desk Map |
+### 1. `NcoreImpressum.tsx` -- Komplett neu
 
-### Phase 1b: Stub-Seiten ✅ ABGESCHLOSSEN
+- Ueberschrift: "Angaben gemaess § 5 DDG"
+- Diensteanbieter: **Ncore Business Consulting UG (haftungsbeschraenkt) & Co. KG**
+- Adresse: Sauerlacher Strasse 30, 82041 Oberhaching (Deisenhofen)
+- Kontakt: Telefon +49 (0)30 424 314 70, Mobil +49 (0)160 901 17 358, E-Mail, Web
+- Komplementaer-Block: Ncore Consulting UG (haftungsbeschraenkt), HRB 307081, GF Thomas Stelzl
+- Register KG: HRA 121933, AG Muenchen
+- USt-IdNr: DE459006252, Steuernummer: 9143/551/20741
+- Inhaltlich Verantwortlicher: § 18 Abs. 2 MStV, Thomas Stelzl
+- OS-Plattform: Hinweis dass seit 20.07.2025 eingestellt, KEIN Link
+- Streitbeilegung: nicht bereit, nicht verpflichtet
+- Haftung Inhalte/Links/Urheberrecht: DDG-Referenzen (§§ 7-10 DDG statt TMG)
 
-| Website | Seiten | Status |
-|---------|--------|--------|
-| **Ncore** (Zone 3) | Layout + 9 Seiten (Home, Digitalisierung, Stiftungen, Geschäftsmodelle, Netzwerk, Gründer, Kontakt, Impressum, Datenschutz) | ✅ Mit SEO-Helmet + JSON-LD |
-| **Otto²** (Zone 3) | Layout + 7 Seiten (Home, Unternehmer, Private Haushalte, Finanzierung, Kontakt, Impressum, Datenschutz) | ✅ Stub-Seiten |
-| **Ncore Desk** (Zone 1) | 1 Desk-Stub | ✅ |
-| **Otto Desk** (Zone 1) | 1 Desk-Stub | ✅ |
+### 2. `NcoreDatenschutz.tsx` -- Komplett neu
 
-### Phase 2: Otto² Advisory Content ✅ ABGESCHLOSSEN
+- Verantwortliche Stelle: voller KG-Name + Komplementaer + GF
+- Hosting-Block: **IONOS SE**, Elgendorfer Str. 57, 56410 Montabaur, AVV nach Art. 28 DSGVO, Server-Logfiles, Speicherdauer 7 Tage (als Platzhalter markiert)
+- Rechtsgrundlage Hosting: Art. 6 Abs. 1 lit. f DSGVO
+- Kontaktformular: Daten an Backend/Lead-Inbox, Art. 6 Abs. 1 lit. b/f
+- Betroffenenrechte komplett
+- Aufsichtsbehoerde: BayLDA Ansbach
+- SSL/TLS
+- Footer-Hinweis: "DDG/DSGVO/TTDSG" statt "TMG/DSGVO"
+- **Offene-Punkte-Box** am Ende: Die 11 Fragen (Cookies, Analytics, externe Inhalte, Newsletter) als sichtbare Checkliste
 
-### Phase 3: Ncore Content-Überarbeitung ✅ ABGESCHLOSSEN
+### Keine weiteren Dateien betroffen
+Zone 3 Ncore-Seiten sind nicht eingefroren -- kein Freeze-Konflikt.
 
-### Phase 4: Lead-Routing ✅ ABGESCHLOSSEN
-
-- ✅ DB-Migration: lead_source enum erweitert (ncore_projekt, ncore_kooperation, otto_advisory_kontakt, otto_advisory_finanzierung)
-- ✅ Edge Function: sot-ncore-lead-submit (zentrales Lead-Routing für beide Brands)
-
-### Phase 5: Zone 1 Desk-Seiten ✅ ABGESCHLOSSEN
-
-| Desk | Tabs | Status |
-|------|------|--------|
-| **Ncore Desk** | Lead-Pool, Inbox, Monitor | ✅ Mit KPI-Leiste, Zuweisung, Conversion Funnel |
-| **Otto² Desk** | Lead-Pool, Inbox, Monitor | ✅ Mit KPI-Leiste, Zuweisung, Conversion Funnel |
-
-### Phase 8: Re-Freeze ✅ ABGESCHLOSSEN
-
-- ✅ INFRA-manifests re-frozen
-
-### Nächste Schritte
-
-| Phase | Beschreibung | Status |
-|-------|-------------|--------|
-| **6** | Compliance Engine (Impressum + Datenschutz für beide Brands) | ⬜ |
-| **7** | Armstrong-Integration (Lead-Capture auf beiden Websites) | ⬜ |
-
-### Offene Punkte
-
-1. Impressumsdaten Ncore Business Consulting (Adresse, HRB, USt-IdNr)
-2. Impressumsdaten Komplett ZL Finanzdienstleistungen GmbH
-3. Gründer-Seite Ncore: Content vom User
-4. Hero-Bilder für beide Websites
-5. PIN-Gate Integration (zone3_website_settings)
