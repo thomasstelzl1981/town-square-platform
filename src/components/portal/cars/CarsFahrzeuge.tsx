@@ -151,12 +151,12 @@ export default function CarsFahrzeuge() {
     return v.license_plate?.toLowerCase().includes(s) || v.make?.toLowerCase().includes(s) || v.model?.toLowerCase().includes(s);
   });
 
-  // Load vehicle images when vehicles data changes
+  // Load vehicle images when vehicles data changes or tenantId becomes available
   useEffect(() => {
-    if (vehicles?.length) {
+    if (vehicles?.length && activeTenantId) {
       loadAllVehicleImages(vehicles);
     }
-  }, [vehicles?.length]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [vehicles?.length, activeTenantId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const getImage = (v: any) => {
     // Priority: uploaded image > Unsplash fallback > default
@@ -166,7 +166,7 @@ export default function CarsFahrzeuge() {
   };
 
   const handleVehicleImageUpload = async (vehicleId: string, file: File) => {
-    const result = await imageSlot.uploadToSlot('hero', file);
+    const result = await imageSlot.uploadToSlot('hero', file, vehicleId);
     if (result) {
       // Reload image for this vehicle
       const slots = await imageSlot.loadSlotImages(vehicleId, 'vehicle');

@@ -40,8 +40,8 @@ export interface ImageSlotUploadResult {
 }
 
 export interface UseImageSlotUploadReturn {
-  /** Upload a file to a named slot. Returns storage path + documentId on success. */
-  uploadToSlot: (slotKey: string, file: File) => Promise<string | null>;
+  /** Upload a file to a named slot. Optional overrideEntityId bypasses the config entityId. */
+  uploadToSlot: (slotKey: string, file: File, overrideEntityId?: string) => Promise<string | null>;
   /** Get a signed URL for a storage path (cached, 1h expiry) */
   getSignedUrl: (storagePath: string) => Promise<string | null>;
   /** Currently uploading slot key, or null */
@@ -61,10 +61,11 @@ export function useImageSlotUpload(config: UseImageSlotUploadConfig): UseImageSl
   // Use underscore version for storage paths (MOD-13 → MOD_13)
   const modulePathSegment = moduleCode.replace(/-/g, '_');
 
-  const uploadToSlot = useCallback(async (slotKey: string, file: File): Promise<string | null> => {
-    if (import.meta.env.DEV) console.log('[ImageSlotUpload] uploadToSlot called:', { slotKey, fileName: file.name, tenantId, entityId, modulePathSegment, subPath, multiImage });
-    if (!tenantId || !entityId) {
-      console.error('[ImageSlotUpload] Missing tenantId or entityId:', { tenantId, entityId });
+  const uploadToSlot = useCallback(async (slotKey: string, file: File, overrideEntityId?: string): Promise<string | null> => {
+    const effectiveEntityId = overrideEntityId || entityId;
+    if (import.meta.env.DEV) console.log('[ImageSlotUpload] uploadToSlot called:', { slotKey, fileName: file.name, tenantId, entityId: effectiveEntityId, modulePathSegment, subPath, multiImage });
+    if (!tenantId || !effectiveEntityId) {
+      console.error('[ImageSlotUpload] Missing tenantId or entityId:', { tenantId, entityId: effectiveEntityId });
       toast.error('Upload nicht möglich', { description: 'Daten noch nicht vollständig geladen.' });
       return null;
     }
@@ -86,7 +87,7 @@ export function useImageSlotUpload(config: UseImageSlotUploadConfig): UseImageSl
       const safeName = sanitizeFileName(file.name);
       // In multi-image mode, add timestamp to prevent overwrites
       const uniqueSuffix = multiImage ? `_${Date.now()}` : '';
-      const storagePath = `${tenantId}/${modulePathSegment}/${entityId}/${subPath}/${slotKey}${uniqueSuffix}_${safeName}`;
+      const storagePath = `${tenantId}/${modulePathSegment}/${effectiveEntityId}/${subPath}/${slotKey}${uniqueSuffix}_${safeName}`;
       if (import.meta.env.DEV) console.log('[ImageSlotUpload] Uploading to path:', storagePath, 'bucket:', UPLOAD_BUCKET);
 
       // ── Phase 1: Storage Upload ──
@@ -104,7 +105,7 @@ export function useImageSlotUpload(config: UseImageSlotUploadConfig): UseImageSl
           .from('document_links')
           .update({ link_status: 'archived' })
           .eq('tenant_id', tenantId)
-          .eq('object_id', entityId)
+          .eq('object_id', effectiveEntityId)
           .eq('object_type', entityType)
           .eq('slot_key', slotKey)
           .eq('link_status', 'linked');
@@ -136,7 +137,7 @@ export function useImageSlotUpload(config: UseImageSlotUploadConfig): UseImageSl
           tenant_id: tenantId,
           document_id: docRecord.id,
           object_type: entityType,
-          object_id: entityId,
+          object_id: effectiveEntityId,
           slot_key: slotKey,
           link_status: 'linked',
         });
@@ -164,7 +165,7 @@ export function useImageSlotUpload(config: UseImageSlotUploadConfig): UseImageSl
           storage_path: storagePath,
           mime_type: file.type,
           entity_type: entityType,
-          entity_id: entityId,
+          entity_id: effectiveEntityId,
         });
 
       if (nodeError) {
