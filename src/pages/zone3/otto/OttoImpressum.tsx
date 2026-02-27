@@ -1,6 +1,7 @@
 /**
  * OTTO² ADVISORY IMPRESSUM — Zone 3
- * Legal: Komplett ZL Finanzdienstleistungen GmbH
+ * Legal: ZL Finanzdienstleistungen GmbH
+ * DDG-konform — Stand 27.02.2026
  */
 import { Helmet } from 'react-helmet';
 
@@ -9,7 +10,7 @@ export default function OttoImpressum() {
     <>
       <Helmet>
         <title>Impressum — Otto² Advisory</title>
-        <meta name="description" content="Impressum der Komplett ZL Finanzdienstleistungen GmbH — Betreiber von otto2advisory.com." />
+        <meta name="description" content="Impressum der ZL Finanzdienstleistungen GmbH — Betreiber von otto2advisory.com." />
         <link rel="canonical" href="https://otto2advisory.com/impressum" />
         <meta name="robots" content="noindex, follow" />
       </Helmet>
@@ -18,46 +19,49 @@ export default function OttoImpressum() {
           <h1 className="mb-8 text-3xl font-bold">Impressum</h1>
           <div className="space-y-6 text-sm text-white/60 leading-relaxed">
             <div>
-              <h2 className="text-lg font-semibold text-white/80 mb-2">Angaben gemäß § 5 TMG</h2>
+              <h2 className="text-lg font-semibold text-white/80 mb-2">Angaben gemäß § 5 DDG</h2>
               <p>
-                Komplett ZL Finanzdienstleistungen GmbH<br />
-                Tisinstraße 19<br />
-                82041 Deisenhofen
+                ZL Finanzdienstleistungen GmbH<br />
+                Ruselstraße 16<br />
+                94327 Bogen, Deutschland
               </p>
             </div>
             <div>
               <h2 className="text-lg font-semibold text-white/80 mb-2">Vertreten durch</h2>
-              <p>Geschäftsführer: Otto Stelzl, Thomas Otto Stelzl</p>
+              <p>Geschäftsführer: Otto Stelzl</p>
             </div>
             <div>
               <h2 className="text-lg font-semibold text-white/80 mb-2">Kontakt</h2>
               <p>
-                Telefon: 089 / 158 933 41-0<br />
-                E-Mail: info@otto2advisory.com
+                Telefon: +49 (0)9422 4845<br />
+                E-Mail: otto.stelzl@otto2advisory.com
               </p>
             </div>
             <div>
               <h2 className="text-lg font-semibold text-white/80 mb-2">Registereintrag</h2>
               <p>
-                Handelsregister: Amtsgericht München<br />
-                Registernummer: wird nachgetragen<br />
-                Umsatzsteuer-ID: wird nachgetragen
+                Handelsregister: Amtsgericht Straubing<br />
+                Registernummer: in Gründung — wird nach Eintragung ergänzt<br />
+                Umsatzsteuer-Identifikationsnummer: in Gründung — wird nach Erteilung ergänzt
               </p>
             </div>
             <div>
               <h2 className="text-lg font-semibold text-white/80 mb-2">Berufsbezeichnung und berufsrechtliche Regelungen</h2>
               <p>
-                Versicherungsmakler und Finanzanlagenvermittler nach §§ 34d, 34f GewO<br />
-                Zuständige Aufsichtsbehörde: IHK für München und Oberbayern
+                Versicherungsvertreter mit Erlaubnis nach § 34d Abs. 1 GewO<br />
+                Zuständige Behörde: Industrie- und Handelskammer für Niederbayern in Passau<br />
+                Registrierungsnummer im Vermittlerregister: wird nach Eintragung ergänzt
+              </p>
+              <p className="mt-2">
+                Vermittlerregister: DIHK, Breite Straße 29, 10178 Berlin —{' '}
+                <span className="text-white/50">www.vermittlerregister.info</span>
               </p>
             </div>
             <div>
               <h2 className="text-lg font-semibold text-white/80 mb-2">Streitschlichtung</h2>
               <p>
-                Die Europäische Kommission stellt eine Plattform zur Online-Streitbeilegung (OS) bereit:
-                <a href="https://ec.europa.eu/consumers/odr/" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline ml-1">
-                  https://ec.europa.eu/consumers/odr/
-                </a>
+                Die Plattform der Europäischen Kommission zur Online-Streitbeilegung (OS) wurde
+                zum 20.&nbsp;Juli 2025 eingestellt und steht nicht mehr zur Verfügung.
               </p>
               <p className="mt-2">
                 Wir sind nicht bereit oder verpflichtet, an Streitbeilegungsverfahren vor einer

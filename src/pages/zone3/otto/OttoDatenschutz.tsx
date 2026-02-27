@@ -20,18 +20,7 @@ export default function OttoDatenschutz() {
 
           <div className="space-y-8 text-sm text-white/60 leading-relaxed">
 
-            {/* ── EINLEITUNG ── */}
-            <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/5 p-5">
-              <p className="text-yellow-400/80 font-semibold mb-3 text-base">Interne Checkliste — vor Veröffentlichung prüfen</p>
-              <ol className="list-decimal list-inside space-y-1 text-yellow-300/60 text-xs">
-                <li>Wird ein Cookie-Consent-Banner/Tool eingesetzt? → Falls ja: §&nbsp;6 ergänzen, Banner benennen.</li>
-                <li>Wird Webanalyse/Tracking genutzt (IONOS WebAnalytics, Matomo, GA4 etc.)? → Falls ja: §&nbsp;7 aktivieren.</li>
-                <li>Gibt es Marketing-Tracking/Pixel (Meta, Google, LinkedIn)? → Falls ja: §&nbsp;8 aktivieren.</li>
-                <li>Kontaktformular vorhanden? Wohin fließen die Daten? → §&nbsp;5 ggf. anpassen.</li>
-                <li>Werden externe Inhalte eingebunden (Google Fonts extern, Maps, reCAPTCHA, YouTube/Social Embeds)? → Falls ja: §&nbsp;9 aktivieren.</li>
-              </ol>
-              <p className="mt-3 text-yellow-300/50 text-xs">Abschnitte mit dem Vermerk <strong>„NUR WENN GENUTZT"</strong> können entfernt werden, wenn die Funktion nicht eingesetzt wird.</p>
-            </div>
+            {/* Einleitung entfernt — interne Checkliste darf nicht öffentlich erscheinen */}
 
             {/* ── § 1 VERANTWORTLICHER ── */}
             <div>
@@ -79,9 +68,7 @@ export default function OttoDatenschutz() {
                 effizienten Bereitstellung der Website). Die Server-Logfiles werden nach
                 <strong className="text-white/70"> 14 Tagen</strong> automatisch gelöscht.
               </p>
-              <p className="mt-1 text-xs text-white/40 italic">
-                [Hinweis intern: Speicherdauer mit IONOS-Vertrag abgleichen und ggf. anpassen.]
-              </p>
+              {/* Interner Hinweis entfernt */}
             </div>
 
             {/* ── § 3 ZUGRIFFSDATEN ── */}
@@ -157,61 +144,7 @@ export default function OttoDatenschutz() {
               </p>
             </div>
 
-            {/* ── § 7 WEBANALYSE (OPTIONAL) ── */}
-            <div className="rounded-lg border border-orange-500/20 bg-orange-500/5 p-5">
-              <p className="text-orange-400/70 font-semibold text-xs mb-2">⚠ NUR WENN GENUTZT — sonst diesen Abschnitt entfernen</p>
-              <h2 className="text-lg font-semibold text-white/80 mb-2">§&nbsp;7 Webanalyse und Tracking</h2>
-              <p>
-                Sofern auf dieser Website ein Webanalyse-Tool eingesetzt wird (z.&nbsp;B. IONOS WebAnalytics,
-                Matomo, Plausible, Google Analytics), erfolgt die Verarbeitung personenbezogener Daten
-                (IP-Adresse, Seitenaufrufe, Verweildauer) ausschließlich auf Grundlage Ihrer Einwilligung
-                gemäß Art.&nbsp;6 Abs.&nbsp;1 lit.&nbsp;a DSGVO in Verbindung mit §&nbsp;25 Abs.&nbsp;1 TTDSG.
-              </p>
-              <p className="mt-2">
-                Sie können Ihre Einwilligung jederzeit mit Wirkung für die Zukunft widerrufen, indem Sie die
-                Cookie-Einstellungen anpassen oder uns kontaktieren.
-              </p>
-              <p className="mt-2">
-                Bei Nutzung von Diensten mit Sitz außerhalb der EU/des EWR erfolgt ggf. eine Übermittlung in
-                Drittländer (vgl. §&nbsp;11).
-              </p>
-            </div>
-
-            {/* ── § 8 MARKETING-PIXEL (OPTIONAL) ── */}
-            <div className="rounded-lg border border-orange-500/20 bg-orange-500/5 p-5">
-              <p className="text-orange-400/70 font-semibold text-xs mb-2">⚠ NUR WENN GENUTZT — sonst diesen Abschnitt entfernen</p>
-              <h2 className="text-lg font-semibold text-white/80 mb-2">§&nbsp;8 Marketing-Tracking und Werbepixel</h2>
-              <p>
-                Sofern Marketing-Pixel oder Conversion-Tracking eingesetzt werden (z.&nbsp;B. Meta Pixel,
-                Google Ads Conversion, LinkedIn Insight Tag), werden personenbezogene Daten
-                (IP-Adresse, Nutzerverhalten, Geräte-IDs) auf Grundlage Ihrer Einwilligung gemäß
-                Art.&nbsp;6 Abs.&nbsp;1 lit.&nbsp;a DSGVO verarbeitet.
-              </p>
-              <p className="mt-2">
-                Sie können Ihre Einwilligung jederzeit widerrufen. Ein Widerruf berührt nicht die
-                Rechtmäßigkeit der bis dahin erfolgten Verarbeitung.
-              </p>
-            </div>
-
-            {/* ── § 9 EXTERNE INHALTE (OPTIONAL) ── */}
-            <div className="rounded-lg border border-orange-500/20 bg-orange-500/5 p-5">
-              <p className="text-orange-400/70 font-semibold text-xs mb-2">⚠ NUR WENN GENUTZT — sonst diesen Abschnitt entfernen</p>
-              <h2 className="text-lg font-semibold text-white/80 mb-2">§&nbsp;9 Externe Inhalte</h2>
-              <p>
-                Sofern auf dieser Website externe Inhalte eingebunden werden (z.&nbsp;B. Google Fonts von
-                externen Servern, Google Maps, reCAPTCHA, YouTube- oder Social-Media-Embeds), kann es bei
-                Aufruf der Seite zu einer Übermittlung Ihrer IP-Adresse und weiterer Browserdaten an den
-                jeweiligen Drittanbieter kommen.
-              </p>
-              <p className="mt-2">
-                Rechtsgrundlage: Art.&nbsp;6 Abs.&nbsp;1 lit.&nbsp;a DSGVO (Einwilligung) bzw. Art.&nbsp;6 Abs.&nbsp;1
-                lit.&nbsp;f DSGVO (berechtigtes Interesse an der Darstellung der Website).
-              </p>
-              <p className="mt-2">
-                Hinweis: Schriftarten (Fonts) werden auf dieser Website lokal gehostet. Es findet keine
-                Verbindung zu externen Font-Servern statt.
-              </p>
-            </div>
+            {/* §§ 7-9 entfernt — keine Webanalyse, Marketing-Pixel oder externe Inhalte im Einsatz */}
 
             {/* ── § 10 EMPFÄNGER ── */}
             <div>
