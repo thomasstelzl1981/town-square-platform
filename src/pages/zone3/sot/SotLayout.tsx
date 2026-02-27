@@ -9,7 +9,7 @@ import { SotLoginTransition } from '@/components/zone3/sot/SotLoginTransition';
 import { useSotTheme } from '@/hooks/useSotTheme';
 import { SEOHead } from '@/components/zone3/shared/SEOHead';
 import { cn } from '@/lib/utils';
-import { Sun, Moon, User, Menu, X } from 'lucide-react';
+import { Sun, Moon, User, Menu, X, Play } from 'lucide-react';
 import { WebsitePinGate } from '@/components/zone3/WebsitePinGate';
 import { ArmstrongWidget } from '@/components/zone3/ArmstrongWidget';
 import { useZone3Setting } from '@/hooks/useZone3Settings';
@@ -102,17 +102,25 @@ export default function SotLayout() {
                 {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
               </button>
               <Link
+                to="/portal?mode=demo"
+                className="hidden sm:inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 text-white text-xs font-medium tracking-wider uppercase hover:bg-emerald-500 transition-colors"
+              >
+                <Play className="w-3.5 h-3.5" />
+                Demo testen
+              </Link>
+              <Link
                 to="/auth"
-                className="hidden sm:inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-medium tracking-wider uppercase hover:bg-primary/90 transition-colors"
+                className="hidden sm:inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-border/50 text-xs font-medium tracking-wider uppercase text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
               >
                 <User className="w-3.5 h-3.5" />
                 Login
               </Link>
               <Link
-                to="/auth"
-                className="sm:hidden p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                to="/portal?mode=demo"
+                className="sm:hidden p-2 rounded-lg text-emerald-500 hover:text-emerald-400 hover:bg-emerald-500/10 transition-colors"
+                aria-label="Demo testen"
               >
-                <User className="w-4 h-4" />
+                <Play className="w-4 h-4" />
               </Link>
               {/* Mobile menu toggle */}
               <button
@@ -143,6 +151,25 @@ export default function SotLayout() {
                     {item.label}
                   </Link>
                 ))}
+                {/* Mobile Demo + Login */}
+                <div className="pt-3 mt-2 border-t border-border/30 space-y-2">
+                  <Link
+                    to="/portal?mode=demo"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-emerald-600 text-white text-sm font-medium tracking-wider uppercase"
+                  >
+                    <Play className="w-4 h-4" />
+                    Demo testen
+                  </Link>
+                  <Link
+                    to="/auth"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex items-center gap-2 px-3 py-2.5 rounded-lg border border-border/50 text-sm font-medium tracking-wider uppercase text-muted-foreground"
+                  >
+                    <User className="w-4 h-4" />
+                    Login
+                  </Link>
+                </div>
               </div>
             </div>
           )}

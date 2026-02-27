@@ -77,10 +77,25 @@ export default function SotDemo() {
             Demo
           </span>
           <h1 className="sot-display mb-6">Erleben Sie die Plattform.</h1>
-          <p className="sot-subheadline max-w-2xl mx-auto mb-10">
+          <p className="sot-subheadline max-w-2xl mx-auto mb-6">
             Erkunden Sie einen vollständig vorbefüllten Demo-Account mit echten Beispieldaten. 
             Keine Registrierung erforderlich.
           </p>
+          
+          {/* KI Highlights */}
+          <div className="flex flex-wrap justify-center gap-2 mb-10">
+            {[
+              { label: 'Armstrong KI testen', icon: Sparkles },
+              { label: 'Dokument-Upload ausprobieren', icon: FileText },
+              { label: 'Gemini 2.5 Pro erleben', icon: Eye },
+            ].map((h) => (
+              <span key={h.label} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium" 
+                style={{ backgroundColor: 'hsl(var(--z3-accent) / 0.1)', color: 'hsl(var(--z3-accent))' }}>
+                <h.icon className="w-3 h-3" />
+                {h.label}
+              </span>
+            ))}
+          </div>
           
           <div className="flex flex-wrap justify-center gap-4">
             <Link 
