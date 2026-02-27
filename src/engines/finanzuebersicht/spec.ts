@@ -28,6 +28,9 @@ export interface FUExpenses {
   investmentContracts: number;
   subscriptions: number;
   livingExpenses: number;
+  manualRent: number;
+  alimony: number;
+  otherManualExpenses: number;
   totalExpenses: number;
 }
 
@@ -318,6 +321,14 @@ export interface FUKVContract {
   employerContribution?: number;
 }
 
+/** Manual expense entry from manual_expenses table */
+export interface FUManualExpense {
+  id: string;
+  category: 'miete' | 'unterhalt' | 'sonstige';
+  label: string;
+  monthly_amount: number;
+}
+
 /** All raw inputs needed by the engine */
 export interface FUInput {
   applicantProfiles: FUApplicantProfile[];
@@ -339,6 +350,7 @@ export interface FUInput {
   depotAccounts: FUDepotAccount[];
   depotPositions: FUDepotPosition[];
   vehicles: FUVehicle[];
+  manualExpenses: FUManualExpense[];
 }
 
 // ─── Constants ───────────────────────────────────────────────

@@ -9,7 +9,7 @@ import type {
   FUSubscription, FUPvPlant, FUPrivateLoan, FUPortfolioLoan, FUPortfolioProperty,
   FUHome, FUMietyLoan, FUTenancy, FUApplicantProfile, FUKVContract, FULegalDoc,
   FUMietyContract, FUHouseholdPerson, FUDepotAccount, FUDepotPosition, FUVehicle,
-  FUDepotPositionItem,
+  FUDepotPositionItem, FUManualExpense,
 } from './spec';
 import {
   LIVING_EXPENSE_RATE, PROPERTY_APPRECIATION_RATE, PROJECTION_YEARS,
@@ -119,6 +119,7 @@ export function calcExpenses(input: {
   privateLoans: FUPrivateLoan[];
   netIncomeTotal: number;
   selfEmployedIncome: number;
+  manualExpenses: FUManualExpense[];
 }): FUExpenses & {
   activeInsurance: FUInsuranceContract[];
   savingsOnlyContracts: FUVorsorgeContract[];
@@ -171,12 +172,26 @@ export function calcExpenses(input: {
   // Living expenses
   const livingExpenses = (input.netIncomeTotal + input.selfEmployedIncome) * LIVING_EXPENSE_RATE;
 
-  const totalExpenses = warmRent + privateLoansMonthly + privateLoansNewMonthly + portfolioLoansMonthly
+  // Manual expenses
+  const manualRent = input.manualExpenses
+    .filter(e => e.category === 'miete')
+    .reduce((s, e) => s + (e.monthly_amount || 0), 0);
+  const alimony = input.manualExpenses
+    .filter(e => e.category === 'unterhalt')
+    .reduce((s, e) => s + (e.monthly_amount || 0), 0);
+  const otherManualExpenses = input.manualExpenses
+    .filter(e => e.category === 'sonstige')
+    .reduce((s, e) => s + (e.monthly_amount || 0), 0);
+
+  // Use manual rent if provided, otherwise use contract-based warm rent
+  const effectiveRent = manualRent > 0 ? manualRent : warmRent;
+
+  const totalExpenses = effectiveRent + privateLoansMonthly + privateLoansNewMonthly + portfolioLoansMonthly
     + pvMonthlyLoanRate + pkvExpense + insurancePremiums + savingsMonthly + investmentMonthly
-    + subscriptionTotal + livingExpenses;
+    + subscriptionTotal + livingExpenses + alimony + otherManualExpenses;
 
   return {
-    warmRent,
+    warmRent: effectiveRent,
     privateLoans: privateLoansMonthly + privateLoansNewMonthly,
     portfolioLoans: portfolioLoansMonthly,
     pvLoans: pvMonthlyLoanRate,
@@ -186,6 +201,9 @@ export function calcExpenses(input: {
     investmentContracts: investmentMonthly,
     subscriptions: subscriptionTotal,
     livingExpenses,
+    manualRent,
+    alimony,
+    otherManualExpenses,
     totalExpenses,
     activeInsurance,
     savingsOnlyContracts,
@@ -465,6 +483,7 @@ export function calcFinanzuebersicht(input: FUInput): FUResult {
     privateLoans: input.privateLoans,
     netIncomeTotal: income.netIncomeTotal,
     selfEmployedIncome: income.selfEmployedIncome,
+    manualExpenses: input.manualExpenses,
   });
 
   const assets = calcAssets(
@@ -534,6 +553,9 @@ export function calcFinanzuebersicht(input: FUInput): FUResult {
       investmentContracts: expensesResult.investmentContracts,
       subscriptions: expensesResult.subscriptions,
       livingExpenses: expensesResult.livingExpenses,
+      manualRent: expensesResult.manualRent,
+      alimony: expensesResult.alimony,
+      otherManualExpenses: expensesResult.otherManualExpenses,
       totalExpenses: expensesResult.totalExpenses,
     },
     assets,

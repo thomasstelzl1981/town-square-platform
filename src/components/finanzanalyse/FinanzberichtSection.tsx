@@ -172,7 +172,7 @@ export function FinanzberichtSection() {
                 <h4 className="text-sm font-semibold text-destructive mb-2 flex items-center gap-2">
                   <TrendingDown className="h-4 w-4" /> Ausgaben
                 </h4>
-                {expenses.warmRent > 0 && <FinanzRow label="Warmmiete" value={expenses.warmRent} />}
+                {expenses.warmRent > 0 && <FinanzRow label={expenses.manualRent > 0 ? "Miete (manuell)" : "Warmmiete"} value={expenses.warmRent} />}
                 {expenses.portfolioLoans > 0 && <FinanzRow label="Immobiliendarlehen" value={expenses.portfolioLoans} />}
                 {expenses.privateLoans > 0 && <FinanzRow label="Private Darlehen" value={expenses.privateLoans} />}
                 {expenses.pvLoans > 0 && <FinanzRow label="PV-Darlehen" value={expenses.pvLoans} />}
@@ -181,6 +181,8 @@ export function FinanzberichtSection() {
                 {expenses.savingsContracts > 0 && <FinanzRow label="Sparverträge" value={expenses.savingsContracts} />}
                 {expenses.investmentContracts > 0 && <FinanzRow label="Investment-Sparpläne" value={expenses.investmentContracts} />}
                 {expenses.subscriptions > 0 && <FinanzRow label="Abonnements" value={expenses.subscriptions} />}
+                {expenses.alimony > 0 && <FinanzRow label="Unterhaltszahlungen" value={expenses.alimony} />}
+                {expenses.otherManualExpenses > 0 && <FinanzRow label="Sonstige Ausgaben" value={expenses.otherManualExpenses} />}
                 {expenses.livingExpenses > 0 && <FinanzRow label="Lebenshaltungskosten" value={expenses.livingExpenses} />}
                 <FinanzRow label="Summe Ausgaben" value={expenses.totalExpenses} bold />
               </div>
