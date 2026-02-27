@@ -265,6 +265,22 @@ export default function Dashboard() {
                 <Building2 className="h-4 w-4" />
                 Acquiary
               </Button>
+              <Button 
+                variant="outline" 
+                onClick={() => navigate('/website/otto-advisory')}
+                className="gap-2"
+              >
+                <ExternalLink className="h-4 w-4" />
+                Otto² Advisory
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={() => navigate('/website/ncore')}
+                className="gap-2"
+              >
+                <ExternalLink className="h-4 w-4" />
+                Ncore
+              </Button>
             </div>
             <p className="text-xs text-muted-foreground mt-2">
               Go-live: {PLATFORM_DOMAINS.join(' | ')}
