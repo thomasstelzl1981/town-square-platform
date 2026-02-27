@@ -752,12 +752,15 @@ async function processPdfAttachments(
 
 /**
  * Auto-Trigger Pipeline: PDF → Credit-Preflight → Gemini Parser → document_chunks
+ * + Invoice Detection + Priority Scoring (Runde 2)
  * 
  * 1. Credit-Preflight: Prüft ob Tenant genug Credits hat (1 Credit/PDF)
  * 2. Signed URL: Erstellt temporäre Download-URL für das PDF
- * 3. Gemini Parser: Sendet PDF an sot-document-parser (Lovable AI)
+ * 3. Gemini Parser: Sendet PDF an sot-document-parser (Lovable AI) — with invoice & priority detection
  * 4. Chunk Storage: Speichert extrahierten Text in document_chunks für TSVector-Suche
- * 5. Credit Deduct: Zieht 1 Credit ab
+ * 5. Invoice Auto-Chain: Wenn Rechnung erkannt → sot-invoice-parse triggern
+ * 6. Priority Scoring: urgent/normal/low basierend auf Fristen
+ * 7. Credit Deduct: Zieht 1 Credit ab
  */
 async function triggerDocumentExtraction(
   sbAdmin: any,
@@ -778,7 +781,6 @@ async function triggerDocumentExtraction(
 
     if (preflightErr || !preflight?.allowed) {
       console.warn(`[auto-trigger] Credit preflight failed for tenant ${tenantId}: ${preflight?.message || preflightErr?.message}`);
-      // Mark document as extraction_skipped (no credits)
       await sbAdmin.from("documents").update({ 
         metadata: { extraction_status: "skipped_no_credits", checked_at: new Date().toISOString() }
       }).eq("id", documentId);
@@ -788,7 +790,7 @@ async function triggerDocumentExtraction(
     // 2. Get signed URL for the PDF
     const { data: signedUrlData, error: signedUrlErr } = await sbAdmin.storage
       .from("tenant-documents")
-      .createSignedUrl(storagePath, 600); // 10 min
+      .createSignedUrl(storagePath, 600);
 
     if (signedUrlErr || !signedUrlData?.signedUrl) {
       console.error(`[auto-trigger] Signed URL failed for ${storagePath}:`, signedUrlErr);
@@ -804,7 +806,6 @@ async function triggerDocumentExtraction(
     const pdfBuffer = await pdfResponse.arrayBuffer();
     const pdfBytes = new Uint8Array(pdfBuffer);
     
-    // Convert to base64
     let base64Content = "";
     const chunkSize = 8192;
     for (let i = 0; i < pdfBytes.length; i += chunkSize) {
@@ -813,7 +814,7 @@ async function triggerDocumentExtraction(
     }
     base64Content = btoa(base64Content);
 
-    // 4. Call document parser via Lovable AI
+    // 4. Call document parser via Lovable AI — ENHANCED with invoice + priority detection
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
       console.error("[auto-trigger] LOVABLE_API_KEY not configured, skipping extraction");
@@ -822,11 +823,15 @@ async function triggerDocumentExtraction(
 
     const systemPrompt = `Du bist ein spezialisierter Dokumenten-Parser für Immobilien- und Finanzdokumente.
 Analysiere das Dokument und extrahiere ALLEN Text als durchsuchbaren Volltext.
-Erkenne den Dokumententyp (Rechnung, Vertrag, Bescheid, Ausweis, Kontoauszug, Brief, etc.).
+Erkenne den Dokumententyp und bewerte die PRIORITÄT.
 
 Antworte NUR mit validem JSON:
 {
-  "doc_type": "rechnung|vertrag|bescheid|ausweis|kontoauszug|brief|expose|sonstiges",
+  "doc_type": "rechnung|vertrag|bescheid|ausweis|kontoauszug|brief|expose|mahnung|kuendigung|sonstiges",
+  "is_invoice": true/false,
+  "priority": "urgent|normal|low",
+  "priority_reason": "Grund für die Priorität",
+  "deadline_detected": "YYYY-MM-DD oder null",
   "confidence": 0.0-1.0,
   "summary": "Kurzzusammenfassung in 1-2 Sätzen",
   "extracted_text": "Der komplette extrahierte Text des Dokuments, seitenweise getrennt mit ---PAGE_BREAK---",
@@ -835,9 +840,31 @@ Antworte NUR mit validem JSON:
     "betrag": "falls erkannt (Zahl in EUR)",
     "absender": "falls erkannt",
     "empfaenger": "falls erkannt",
-    "aktenzeichen": "falls erkannt"
+    "aktenzeichen": "falls erkannt",
+    "iban": "falls erkannt",
+    "ust_id": "falls erkannt"
+  },
+  "invoice_data": {
+    "vendor_name": "Absender/Rechnungssteller",
+    "invoice_number": "Rechnungsnummer",
+    "invoice_date": "YYYY-MM-DD",
+    "due_date": "YYYY-MM-DD",
+    "total_gross": 123.45,
+    "total_net": 103.74,
+    "vat_amount": 19.71,
+    "vat_rate": 19,
+    "vendor_iban": "IBAN",
+    "purpose": "Verwendungszweck/Leistungsbeschreibung",
+    "address_mentioned": "Adresse des Objekts falls erwähnt"
   }
-}`;
+}
+
+PRIORITÄTS-REGELN:
+- "urgent": Mahnungen, Kündigungen, Bescheide mit Einspruchsfrist, Fristen < 14 Tage
+- "normal": Rechnungen, Verträge, Abrechnungen
+- "low": Werbung, Informationsschreiben, Kontoauszüge
+
+invoice_data NUR befüllen wenn is_invoice === true.`;
 
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -872,13 +899,13 @@ Antworte NUR mit validem JSON:
     const aiContent = aiResult.choices?.[0]?.message?.content || "";
 
     // Parse AI response
-    let parsed: { doc_type?: string; confidence?: number; summary?: string; extracted_text?: string; key_data?: Record<string, string> };
+    let parsed: any;
     try {
       let jsonStr = aiContent.replace(/```json\n?/g, "").replace(/```\n?/g, "");
       parsed = JSON.parse(jsonStr.trim());
     } catch {
       console.warn("[auto-trigger] AI response not valid JSON, using raw text");
-      parsed = { extracted_text: aiContent, doc_type: "sonstiges", confidence: 0.3 };
+      parsed = { extracted_text: aiContent, doc_type: "sonstiges", confidence: 0.3, is_invoice: false, priority: "normal" };
     }
 
     // 5. Store chunks in document_chunks
@@ -889,7 +916,6 @@ Antworte NUR mit validem JSON:
       const pageText = pages[i].trim();
       if (pageText.length < 5) continue;
 
-      // Split into ~1000 char chunks per page
       const chunks = splitIntoChunks(pageText, 1000);
       for (let j = 0; j < chunks.length; j++) {
         await sbAdmin.from("document_chunks").insert({
@@ -901,13 +927,15 @@ Antworte NUR mit validem JSON:
           metadata: {
             doc_type: parsed.doc_type,
             confidence: parsed.confidence,
+            priority: parsed.priority,
+            is_invoice: parsed.is_invoice,
             filename,
           },
         });
       }
     }
 
-    // 6. Update document with extraction metadata
+    // 6. Update document with extraction metadata + priority
     await sbAdmin.from("documents").update({
       doc_type_hint: parsed.doc_type || "sonstiges",
       metadata: {
@@ -918,10 +946,76 @@ Antworte NUR mit validem JSON:
         extracted_at: new Date().toISOString(),
         pages_extracted: pages.length,
         model: "google/gemini-2.5-pro",
+        // Runde 2: Priority + Invoice Detection
+        priority: parsed.priority || "normal",
+        priority_reason: parsed.priority_reason || null,
+        deadline_detected: parsed.deadline_detected || null,
+        is_invoice: parsed.is_invoice || false,
       },
     }).eq("id", documentId);
 
-    // 7. Deduct credits
+    // 7. Invoice Auto-Chain: Wenn Rechnung erkannt → invoice_extractions befüllen
+    if (parsed.is_invoice && parsed.invoice_data) {
+      const inv = parsed.invoice_data;
+      try {
+        await sbAdmin.from("invoice_extractions").insert({
+          tenant_id: tenantId,
+          document_id: documentId,
+          vendor_name: inv.vendor_name || null,
+          invoice_number: inv.invoice_number || null,
+          invoice_date: inv.invoice_date || null,
+          due_date: inv.due_date || null,
+          total_gross: inv.total_gross || null,
+          total_net: inv.total_net || null,
+          vat_amount: inv.vat_amount || null,
+          vat_rate: inv.vat_rate || null,
+          vendor_iban: inv.vendor_iban || null,
+          line_items: inv.purpose ? [{ description: inv.purpose, amount: inv.total_gross }] : null,
+          confidence: parsed.confidence || 0.5,
+          needs_review: (parsed.confidence || 0) < 0.9,
+          match_status: "needs_review",
+          extractor_version: "inbound-v2.0",
+          address_hint: inv.address_mentioned || null,
+        });
+
+        console.log(`[auto-trigger] 🧾 Invoice detected: ${inv.vendor_name} → ${inv.total_gross}€ (doc ${documentId})`);
+
+        // Try auto-match to property via address
+        if (inv.address_mentioned) {
+          const { data: properties } = await sbAdmin
+            .from("properties")
+            .select("id, address, city")
+            .eq("tenant_id", tenantId);
+
+          if (properties) {
+            const addrLower = inv.address_mentioned.toLowerCase();
+            const match = properties.find((p: any) =>
+              addrLower.includes((p.address || "").toLowerCase()) ||
+              addrLower.includes((p.city || "").toLowerCase())
+            );
+
+            if (match) {
+              await sbAdmin.from("invoice_extractions")
+                .update({ matched_property_id: match.id, match_status: "auto_matched" })
+                .eq("document_id", documentId)
+                .eq("tenant_id", tenantId);
+
+              console.log(`[auto-trigger] 🏠 Invoice auto-matched to property: ${match.address}`);
+            }
+          }
+        }
+      } catch (invErr) {
+        console.error("[auto-trigger] Invoice insert error (non-blocking):", invErr);
+      }
+    }
+
+    // 8. Priority notification for urgent documents
+    if (parsed.priority === "urgent") {
+      console.log(`[auto-trigger] 🚨 URGENT document detected: ${filename} — ${parsed.priority_reason}`);
+      // Armstrong notification would go here in future
+    }
+
+    // 9. Deduct credits
     await sbAdmin.rpc("rpc_credit_deduct", {
       p_tenant_id: tenantId,
       p_credits: EXTRACTION_CREDITS,
@@ -930,7 +1024,7 @@ Antworte NUR mit validem JSON:
       p_ref_id: documentId,
     });
 
-    console.log(`[auto-trigger] ✅ Extracted ${pages.length} pages from ${filename} → ${documentId} (1 Credit deducted)`);
+    console.log(`[auto-trigger] ✅ Extracted ${pages.length} pages from ${filename} → ${documentId} (priority: ${parsed.priority}, invoice: ${parsed.is_invoice}) (1 Credit deducted)`);
   } catch (err) {
     console.error(`[auto-trigger] Extraction failed for ${documentId}:`, err);
     await sbAdmin.from("documents").update({
