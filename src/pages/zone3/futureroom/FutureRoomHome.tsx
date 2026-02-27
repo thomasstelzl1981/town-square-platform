@@ -220,6 +220,33 @@ export default function FutureRoomHome() {
         </div>
       </section>
 
+      {/* KI-Power Section */}
+      <section className="fr-section">
+        <div className="fr-section-header">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-semibold mb-4" style={{ background: 'hsl(165 70% 36% / 0.1)', color: 'hsl(165 70% 36%)' }}>
+            <Sparkles className="h-3.5 w-3.5" /> Powered by Gemini 2.5 Pro & GPT-5
+          </div>
+          <h2 className="fr-section-title">KI-Power hinter FutureRoom</h2>
+          <p className="fr-section-subtitle">
+            Unsere KI automatisiert, was früher Wochen dauerte — damit Ihre Finanzierung schneller steht.
+          </p>
+        </div>
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+          {[
+            { icon: <Bot className="h-6 w-6" />, title: 'Selbstauskunft in 2 Min.', desc: 'KI befüllt Ihre Selbstauskunft automatisch aus hochgeladenen Dokumenten.' },
+            { icon: <FileText className="h-6 w-6" />, title: 'Dokument-Erkennung', desc: 'Gemini 2.5 Pro erkennt und klassifiziert Gehaltsabrechnungen, Kontoauszüge & mehr.' },
+            { icon: <TrendingUp className="h-6 w-6" />, title: 'Kapitaldienstprüfung', desc: 'Sofortige Tragfähigkeitsanalyse mit 35+ Berechnungs-Engines.' },
+            { icon: <Landmark className="h-6 w-6" />, title: '400+ Bankpartner', desc: 'KI-gestützte Vorauswahl der passenden Banken für Ihr Profil.' },
+          ].map((item, i) => (
+            <div key={i} className="fr-card">
+              <div className="fr-card-icon">{item.icon}</div>
+              <h3 className="fr-card-title">{item.title}</h3>
+              <p className="fr-card-text">{item.desc}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
       {/* CTA Section */}
       <section className="fr-cta">
         <div className="fr-cta-content">

@@ -4,7 +4,7 @@
  */
 import { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { MapPin, Star, Search, Shield, Heart, ArrowRight, ShoppingBag, Mountain, Users, CheckCircle, Globe, PawPrint } from 'lucide-react';
+import { MapPin, Star, Search, Shield, Heart, ArrowRight, ShoppingBag, Mountain, Users, CheckCircle, Globe, PawPrint, Sparkles, Brain, Zap } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -225,6 +225,39 @@ export default function LennoxStartseite() {
           <div className="relative">
             <img src={cozyImage} alt="Hund im gemütlichen Chalet" className="rounded-2xl shadow-xl w-full h-80 object-cover" />
             <img src={lennoxBadge} alt="Lennox Badge" className="absolute -bottom-4 -left-4 h-20 w-20 rounded-xl object-cover shadow-lg border-4 border-white" />
+          </div>
+        </div>
+      </section>
+
+      {/* ═══════════════════ KI-POWER ═══════════════════ */}
+      <section className="py-16 px-6" style={{ background: C.cream }}>
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-12">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-semibold mb-4" style={{ background: `${C.forest}15`, color: C.forest }}>
+              <Sparkles className="h-3.5 w-3.5" /> KI-gestütztes Matching
+            </div>
+            <h2 className="text-2xl md:text-3xl font-bold mb-3" style={{ color: C.bark }}>
+              Smarte Partnersuche mit KI
+            </h2>
+            <p className="text-sm max-w-2xl mx-auto" style={{ color: C.barkMuted }}>
+              Unsere KI analysiert Standort, Services, Bewertungen und Verfügbarkeit — 
+              damit du in Sekunden den perfekten Hundeprofi findest.
+            </p>
+          </div>
+          <div className="grid gap-6 md:grid-cols-3">
+            {[
+              { icon: Brain, title: 'Intelligentes Matching', desc: 'KI wertet Tierart, Rasse, spezielle Bedürfnisse und Erfahrung des Partners aus — für die perfekte Kombination.' },
+              { icon: Zap, title: 'Sofort-Verfügbarkeit', desc: 'Echtzeit-Abgleich mit Kalender und Kapazitäten aller Partner in deiner Umgebung.' },
+              { icon: Shield, title: 'Qualitäts-Score', desc: 'KI-basierter Vertrauens-Score aus Bewertungen, Zertifikaten und Erfahrungsjahren.' },
+            ].map(item => (
+              <div key={item.title} className="bg-white rounded-2xl p-6 shadow-sm border text-center" style={{ borderColor: C.sandLight }}>
+                <div className="w-12 h-12 rounded-xl mx-auto flex items-center justify-center mb-4" style={{ background: `${C.forest}12` }}>
+                  <item.icon className="h-6 w-6" style={{ color: C.forest }} />
+                </div>
+                <h3 className="font-semibold text-sm mb-2" style={{ color: C.bark }}>{item.title}</h3>
+                <p className="text-xs leading-relaxed" style={{ color: C.barkMuted }}>{item.desc}</p>
+              </div>
+            ))}
           </div>
         </div>
       </section>

@@ -27,7 +27,7 @@ import {
   ArrowUp
 } from "lucide-react";
 
-export type WebsiteBrand = 'kaufy' | 'miety' | 'sot' | 'futureroom';
+export type WebsiteBrand = 'kaufy' | 'miety' | 'sot' | 'futureroom' | 'acquiary' | 'lennox';
 
 interface ChatMessage {
   id: string;
@@ -92,6 +92,26 @@ const brandConfig: Record<WebsiteBrand, {
       { id: 'tilgung', label: 'Tilgung berechnen', action: 'ARM.PUBLIC.TILGUNG_RECHNER', icon: <Calculator className="h-3 w-3" /> },
       { id: 'eigenkapital', label: 'Eigenkapital erklärt', action: 'ARM.GLOBAL.EXPLAIN_TERM', icon: <HelpCircle className="h-3 w-3" /> },
       { id: 'beratung', label: 'Beratung anfragen', action: 'ARM.PUBLIC.CONTACT_REQUEST', icon: <Mail className="h-3 w-3" /> },
+    ],
+  },
+  acquiary: {
+    name: "ACQUIARY",
+    greeting: "Willkommen bei ACQUIARY. Ich unterstütze Sie bei Fragen zu institutionellen Immobilienankäufen und unserer KI-gestützten Akquise-Methodik.",
+    primaryColor: "hsl(207, 90%, 54%)",
+    quickActions: [
+      { id: 'methodik', label: 'Unsere Methodik', action: 'ARM.GLOBAL.FAQ', icon: <HelpCircle className="h-3 w-3" /> },
+      { id: 'objekt', label: 'Objekt anbieten', action: 'ARM.PUBLIC.CONTACT_REQUEST', icon: <Mail className="h-3 w-3" /> },
+      { id: 'analyse', label: 'KI-Analyse erklärt', action: 'ARM.GLOBAL.EXPLAIN_TERM', icon: <Calculator className="h-3 w-3" /> },
+    ],
+  },
+  lennox: {
+    name: "Lennox & Friends",
+    greeting: "Woof! 🐾 Willkommen bei Lennox & Friends! Ich helfe dir, den perfekten Hundeprofi in deiner Nähe zu finden.",
+    primaryColor: "hsl(152, 44%, 34%)",
+    quickActions: [
+      { id: 'partner', label: 'Partner finden', action: 'ARM.PUBLIC.CONTACT_REQUEST', icon: <HelpCircle className="h-3 w-3" /> },
+      { id: 'services', label: 'Unsere Services', action: 'ARM.GLOBAL.FAQ', icon: <HelpCircle className="h-3 w-3" /> },
+      { id: 'kontakt', label: 'Kontakt', action: 'ARM.PUBLIC.CONTACT_REQUEST', icon: <Mail className="h-3 w-3" /> },
     ],
   },
 };

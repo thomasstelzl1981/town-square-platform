@@ -8,6 +8,7 @@ import { Menu, X, ChevronRight, Shield, Sparkles, Lock } from 'lucide-react';
 import { SEOHead } from '@/components/zone3/shared/SEOHead';
 import { WebsitePinGate } from '@/components/zone3/WebsitePinGate';
 import { useZone3Setting } from '@/hooks/useZone3Settings';
+import { ArmstrongWidget } from '@/components/zone3/ArmstrongWidget';
 import '@/styles/acquiary-premium.css';
 
 const navItems = [
@@ -175,6 +176,7 @@ export default function AcquiaryLayout() {
           </div>
         </div>
       </footer>
+      <ArmstrongWidget website="acquiary" />
     </div>
   );
 }
