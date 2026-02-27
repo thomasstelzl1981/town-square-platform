@@ -9,29 +9,12 @@ const corsHeaders = {
 /**
  * sot-excel-ai-import
  * --------------------
- * Receives an Excel file (base64) and uses Lovable AI to extract structured property data.
- * Returns an array of property rows mapped to our schema with confidence indicators.
+ * Receives pre-parsed Excel data (headers + rows from SheetJS) and uses Lovable AI
+ * to intelligently map arbitrary column structures to our property schema.
+ * 
+ * Input:  { headers: string[], rows: (string|number|null)[][], fileName?: string }
+ * Output: { success: true, data: PropertyRow[], summary: {...} }
  */
-
-interface PropertyRow {
-  code: string;
-  art: string;
-  adresse: string;
-  ort: string;
-  plz: string;
-  qm: number | null;
-  kaltmiete: number | null;
-  mieter: string | null;
-  mieterSeit: string | null;
-  mieterhoehung: string | null;
-  kaufpreis: number | null;
-  restschuld: number | null;
-  zinssatz: number | null;
-  tilgung: number | null;
-  bank: string | null;
-  confidence: number; // 0-1
-  notes: string | null; // AI notes about extraction quality
-}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -39,11 +22,11 @@ serve(async (req) => {
   }
 
   try {
-    const { excelBase64, fileName } = await req.json();
+    const { headers, rows, fileName } = await req.json();
 
-    if (!excelBase64) {
+    if (!headers || !rows || rows.length === 0) {
       return new Response(
-        JSON.stringify({ success: false, error: "excelBase64 is required" }),
+        JSON.stringify({ success: false, error: "headers and rows are required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -57,44 +40,37 @@ serve(async (req) => {
       );
     }
 
-    console.log(`[sot-excel-ai-import] Processing file: ${fileName || "unknown"}`);
+    console.log(`[sot-excel-ai-import] Processing ${rows.length} rows from: ${fileName || "unknown"}`);
 
-    // System prompt for extraction
-    const systemPrompt = `Du bist ein Datenextraktions-Experte für Immobiliendaten. 
-Du erhältst Excel-Rohdaten (als Text/Tabelle) und extrahierst strukturierte Immobiliendaten.
+    // Build a readable text table from headers + rows
+    const headerLine = headers.join(" | ");
+    const dataLines = rows.map((row: (string | number | null)[]) =>
+      row.map((cell: string | number | null) => cell ?? "").join(" | ")
+    );
+    const tableText = [headerLine, "-".repeat(headerLine.length), ...dataLines].join("\n");
+
+    const systemPrompt = `Du bist ein Datenextraktions-Experte für Immobiliendaten.
+Du erhältst eine Tabelle mit Immobiliendaten aus einer Excel-Datei und extrahierst strukturierte Daten.
 
 WICHTIG:
-- Erkenne automatisch Header-Zeilen (auch wenn sie nicht in Zeile 1 sind)
-- Mappe Spalten intelligent auf unser Schema (z.B. "Straße / Hausnummer" → adresse, "Postleitzahl" → plz)
-- Parse deutsche Zahlenformate (1.234,56 € → 1234.56)
-- Parse deutsche Datumsformate (01.03.2022 → 2022-03-01)
-- Ignoriere Summenzeilen, Leerzeilen, Dokumentationszeilen
-- Jede Datenzeile = 1 Einheit (Wohnung). Gruppiere nach Objekt-Code.
+- Erkenne automatisch die Bedeutung der Spalten (z.B. "Grundstück (Ort/Straße)" → adresse + ort + plz)
+- Parse zusammengesetzte Felder: "Asternweg 1, 84508 Burgkirchen" → adresse="Asternweg 1", plz="84508", ort="Burgkirchen"
+- Parse "Wohnen MFH 6 Einheiten" → art="MFH", nutzung="Wohnen", einheiten=6
+- Parse deutsche Zahlenformate: "1.294.020" → 1294020, "55.000" → 55000
+- Parse Euro-Beträge: entferne € und Tausenderpunkte
+- Ignoriere Summenzeilen, Leerzeilen, Überschriften
+- "Mieteinnahmen p.a." → kaltmiete = Wert / 12 (monatlich)
+- "Annuität p.a." → annuitaet = Wert / 12 (monatlich) 
+- "Baujahr" → baujahr
+- "Belastung Grundbuch" oder "Darlehensschuld" → restschuld
+- "Verkehrswert" → marktwert
+- "qm-Preis" → qmPreis
+- "Zinsfestschreibung" → zinsfestschreibungBis (Datum)
+- "Überschuss/Fehlbetrag" → ueberschuss (Jahreswert)
+- "Tilgung/Monat" → tilgungMonat
+- Vergib jedem Objekt einen Code (z.B. "OBJ-001", "OBJ-002" etc.) wenn keiner vorhanden ist
+- Wenn ein Objekt mehrere Einheiten hat, erstelle EINE Zeile pro Objekt (nicht pro Einheit)`;
 
-Output-Schema pro Zeile:
-{
-  "code": "ZL002",           // Objekt-ID/Code
-  "art": "MFH",              // Immobilienart
-  "adresse": "Parkweg 17",   // Straße + Hausnummer
-  "ort": "Straubing",        // Stadt
-  "plz": "94315",            // Postleitzahl
-  "qm": 199.79,              // Fläche in m²
-  "kaltmiete": 2300,         // Monatliche Kaltmiete in €
-  "mieter": "PaZi GmbH",     // Mietername
-  "mieterSeit": "2021-09-01",// Mietbeginn (ISO)
-  "mieterhoehung": "12/1/24",// Nächste Mieterhöhung
-  "kaufpreis": 620000,       // Kaufpreis in €
-  "restschuld": 580582.99,   // Aktuelle Restschuld in €
-  "zinssatz": 1.5,           // Zinssatz in %
-  "tilgung": null,           // Tilgungsrate in %
-  "bank": "Sparkasse Deggendorf",
-  "confidence": 0.95,        // Wie sicher bist du (0-1)?
-  "notes": null              // Optional: Hinweise zu Problemen
-}
-
-Antworte NUR mit einem JSON-Array. Keine Erklärungen.`;
-
-    // Call Lovable AI with tool calling for structured output
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -107,19 +83,7 @@ Antworte NUR mit einem JSON-Array. Keine Erklärungen.`;
           { role: "system", content: systemPrompt },
           {
             role: "user",
-            content: `Bitte extrahiere alle Immobiliendaten aus dieser Excel-Datei (Base64-kodiert, Dateiname: ${fileName || "unbekannt"}).
-
-Die Datei ist Base64-kodiert. Dekodiere sie und analysiere den Inhalt.
-
-Base64-Daten:
-${excelBase64.substring(0, 50000)}${excelBase64.length > 50000 ? "... (truncated)" : ""}
-
-Falls du die Base64-Daten nicht direkt lesen kannst, hier ist eine Zusammenfassung der erwarteten Struktur:
-- Typische Spalten: Code/Objekt, Art, Postleitzahl, Ort, Straße/Hausnummer, BJ, Grundbuch, Größe, Nutzung, Einnahmen, Kaufpreis, Verkehrswert, Darlehen, Restschuld, Zins, Bank, Rate, Mieter, Warmmiete, NK, Mieter seit, Mieterhöhung, Energieträger, Heizart
-- Deutsche Zahlenformate mit Punkten als Tausendertrennzeichen und Kommas als Dezimaltrennzeichen
-- Mehrere Zeilen pro Objekt möglich (= verschiedene Einheiten)
-
-Extrahiere alle Datenzeilen und gib sie als JSON-Array zurück.`,
+            content: `Bitte extrahiere alle Immobiliendaten aus dieser Tabelle.\n\nDateiname: ${fileName || "unbekannt"}\n\nTabelle:\n${tableText}`,
           },
         ],
         tools: [
@@ -127,7 +91,7 @@ Extrahiere alle Datenzeilen und gib sie als JSON-Array zurück.`,
             type: "function",
             function: {
               name: "extract_properties",
-              description: "Extract structured property data from Excel content",
+              description: "Extract structured property data from table content",
               parameters: {
                 type: "object",
                 properties: {
@@ -136,20 +100,24 @@ Extrahiere alle Datenzeilen und gib sie als JSON-Array zurück.`,
                     items: {
                       type: "object",
                       properties: {
-                        code: { type: "string", description: "Property code like ZL002" },
+                        code: { type: "string", description: "Property code like OBJ-001" },
                         art: { type: "string", description: "Property type like MFH, DHH, ETW" },
                         adresse: { type: "string", description: "Street and house number" },
                         ort: { type: "string", description: "City name" },
                         plz: { type: "string", description: "Postal code" },
-                        qm: { type: "number", nullable: true, description: "Area in sqm" },
+                        nutzung: { type: "string", nullable: true, description: "Usage type: Wohnen, Gewerbe, Gemischt" },
+                        qm: { type: "number", nullable: true, description: "Total area in sqm" },
+                        einheiten: { type: "number", nullable: true, description: "Number of units" },
+                        baujahr: { type: "number", nullable: true, description: "Year built" },
                         kaltmiete: { type: "number", nullable: true, description: "Monthly cold rent in EUR" },
-                        mieter: { type: "string", nullable: true, description: "Tenant name" },
-                        mieterSeit: { type: "string", nullable: true, description: "Lease start date ISO" },
-                        mieterhoehung: { type: "string", nullable: true, description: "Next rent increase" },
+                        jahresmiete: { type: "number", nullable: true, description: "Annual rental income in EUR" },
+                        marktwert: { type: "number", nullable: true, description: "Market value / Verkehrswert in EUR" },
                         kaufpreis: { type: "number", nullable: true, description: "Purchase price in EUR" },
                         restschuld: { type: "number", nullable: true, description: "Current loan balance in EUR" },
-                        zinssatz: { type: "number", nullable: true, description: "Interest rate in percent" },
-                        tilgung: { type: "number", nullable: true, description: "Amortization rate in percent" },
+                        annuitaetMonat: { type: "number", nullable: true, description: "Monthly annuity payment in EUR" },
+                        tilgungMonat: { type: "number", nullable: true, description: "Monthly repayment in EUR" },
+                        zinsfestschreibungBis: { type: "string", nullable: true, description: "Interest rate fixed until (ISO date or text)" },
+                        ueberschussJahr: { type: "number", nullable: true, description: "Annual surplus/deficit in EUR" },
                         bank: { type: "string", nullable: true, description: "Lender bank name" },
                         confidence: { type: "number", description: "Extraction confidence 0-1" },
                         notes: { type: "string", nullable: true, description: "Extraction notes or issues" },
@@ -201,7 +169,7 @@ Extrahiere alle Datenzeilen und gib sie als JSON-Array zurück.`,
     console.log("[sot-excel-ai-import] AI response received");
 
     // Parse tool call result
-    let extractedData: { properties: PropertyRow[]; summary: Record<string, unknown> } | null = null;
+    let extractedData: { properties: unknown[]; summary: Record<string, unknown> } | null = null;
 
     const toolCall = aiResult.choices?.[0]?.message?.tool_calls?.[0];
     if (toolCall?.function?.arguments) {
@@ -212,12 +180,11 @@ Extrahiere alle Datenzeilen und gib sie als JSON-Array zurück.`,
       }
     }
 
-    // Fallback: try to parse from content if tool calling didn't work
+    // Fallback: try to parse from content
     if (!extractedData) {
       const content = aiResult.choices?.[0]?.message?.content;
       if (content) {
         try {
-          // Try to extract JSON from content
           const jsonMatch = content.match(/\[[\s\S]*\]/);
           if (jsonMatch) {
             const properties = JSON.parse(jsonMatch[0]);
@@ -225,8 +192,8 @@ Extrahiere alle Datenzeilen und gib sie als JSON-Array zurück.`,
               properties,
               summary: {
                 totalRows: properties.length,
-                uniqueProperties: new Set(properties.map((p: PropertyRow) => p.code)).size,
-                avgConfidence: properties.reduce((sum: number, p: PropertyRow) => sum + (p.confidence || 0.5), 0) / properties.length,
+                uniqueProperties: new Set(properties.map((p: Record<string, unknown>) => p.code)).size,
+                avgConfidence: properties.reduce((sum: number, p: Record<string, unknown>) => sum + ((p.confidence as number) || 0.5), 0) / properties.length,
                 issues: [],
               },
             };
@@ -242,13 +209,12 @@ Extrahiere alle Datenzeilen und gib sie als JSON-Array zurück.`,
         JSON.stringify({
           success: false,
           error: "Keine Immobiliendaten erkannt. Bitte prüfen Sie das Dateiformat.",
-          debug: { aiResponse: aiResult },
         }),
         { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    console.log(`[sot-excel-ai-import] Extracted ${extractedData.properties.length} rows`);
+    console.log(`[sot-excel-ai-import] Extracted ${extractedData.properties.length} properties`);
 
     return new Response(
       JSON.stringify({
