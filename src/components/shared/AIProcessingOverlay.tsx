@@ -26,7 +26,7 @@ export interface AIProcessingOverlayProps {
   /** Optional: show a determinate progress value 0-100 instead of indeterminate */
   progressValue?: number;
   /** Optional: accent color variant */
-  variant?: 'primary' | 'amber' | 'cyan' | 'violet' | 'emerald';
+  variant?: 'primary' | 'amber' | 'cyan' | 'violet' | 'emerald' | 'teal';
   /** Called when user clicks cancel (optional) */
   onCancel?: () => void;
   className?: string;
@@ -38,6 +38,7 @@ const VARIANT_CLASSES: Record<string, { ring: string; text: string; bg: string; 
   cyan:    { ring: 'border-cyan-400/30', text: 'text-cyan-500', bg: 'bg-cyan-500/5', bar: 'bg-cyan-500' },
   violet:  { ring: 'border-violet-400/30', text: 'text-violet-500', bg: 'bg-violet-500/5', bar: 'bg-violet-500' },
   emerald: { ring: 'border-emerald-400/30', text: 'text-emerald-500', bg: 'bg-emerald-500/5', bar: 'bg-emerald-500' },
+  teal:    { ring: 'border-teal-400/30', text: 'text-teal-500', bg: 'bg-teal-500/5', bar: 'bg-teal-500' },
 };
 
 export function AIProcessingOverlay({

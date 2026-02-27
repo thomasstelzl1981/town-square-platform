@@ -1,14 +1,14 @@
 /**
  * DocumentChecklist — Required documents with status + upload zone
- * Redesigned: glass-card wrapper, LIST classes from manifest
+ * Upgraded: SmartDropZone + AIProcessingOverlay for ChatGPT-style feedback
  */
 import { useState, useCallback } from 'react';
-import { useDropzone } from 'react-dropzone';
-import { Upload, Check, Circle, FileText } from 'lucide-react';
+import { Check, Circle, FileText } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { DESIGN } from '@/config/designManifest';
 import { cn } from '@/lib/utils';
-import { useIsMobile } from '@/hooks/use-mobile';
+import { SmartDropZone } from '@/components/shared/SmartDropZone';
+import { AIProcessingOverlay } from '@/components/shared/AIProcessingOverlay';
 
 interface DocItem {
   type: string;
@@ -20,34 +20,47 @@ interface DocumentChecklistProps {
   disabled?: boolean;
 }
 
+const AI_STEPS = [
+  { label: 'Dokument wird gelesen' },
+  { label: 'Typ wird erkannt' },
+  { label: 'Daten werden extrahiert' },
+  { label: 'Prüfung abgeschlossen' },
+];
+
 export function DocumentChecklist({ disabled }: DocumentChecklistProps) {
-  const isMobile = useIsMobile();
   const [docs, setDocs] = useState<DocItem[]>([
     { type: 'payslip', label: 'Gehaltsabrechnungen (letzte 3 Monate)', uploaded: false },
     { type: 'bank_statement', label: 'Kontoauszüge (letzte 3 Monate)', uploaded: false },
     { type: 'id_document', label: 'Ausweisdokument', uploaded: false },
   ]);
+  const [aiActive, setAiActive] = useState(false);
+  const [aiStep, setAiStep] = useState(0);
 
-  const onDrop = useCallback((accepted: File[]) => {
-    if (accepted.length > 0) {
-      setDocs(prev => {
-        const next = [...prev];
-        const idx = next.findIndex(d => !d.uploaded);
-        if (idx !== -1) next[idx] = { ...next[idx], uploaded: true };
-        return next;
+  const handleFiles = useCallback((files: File[]) => {
+    if (files.length === 0) return;
+
+    // Simulate AI processing
+    setAiActive(true);
+    setAiStep(0);
+
+    const stepInterval = setInterval(() => {
+      setAiStep(prev => {
+        if (prev >= AI_STEPS.length - 1) {
+          clearInterval(stepInterval);
+          setAiActive(false);
+          // Mark next unuploaded doc as uploaded
+          setDocs(prevDocs => {
+            const next = [...prevDocs];
+            const idx = next.findIndex(d => !d.uploaded);
+            if (idx !== -1) next[idx] = { ...next[idx], uploaded: true };
+            return next;
+          });
+          return prev;
+        }
+        return prev + 1;
       });
-    }
+    }, 1200);
   }, []);
-
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop,
-    disabled,
-    noDrag: isMobile,
-    accept: {
-      'application/pdf': ['.pdf'],
-      'image/*': ['.png', '.jpg', '.jpeg'],
-    },
-  });
 
   const uploadedCount = docs.filter(d => d.uploaded).length;
 
@@ -88,19 +101,28 @@ export function DocumentChecklist({ disabled }: DocumentChecklistProps) {
           {uploadedCount} von {docs.length} Dokumenten hochgeladen
         </p>
 
-        <div
-          {...getRootProps()}
-          className={cn(
-            "border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors",
-            isDragActive ? "border-primary bg-primary/5" : "border-border hover:border-primary/40"
-          )}
-        >
-          <input {...getInputProps()} />
-          <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-          <p className={DESIGN.TYPOGRAPHY.MUTED}>
-            {isDragActive && !isMobile ? 'Dateien hier ablegen' : isMobile ? 'Tippen zum Hochladen' : 'Klicken oder Dateien hierher ziehen'}
-          </p>
-        </div>
+        {/* AI Processing Overlay */}
+        <AIProcessingOverlay
+          active={aiActive}
+          steps={AI_STEPS}
+          currentStep={aiStep}
+          headline="Dokument wird analysiert…"
+          variant="primary"
+        />
+
+        {/* Smart Drop Zone */}
+        {!aiActive && (
+          <SmartDropZone
+            onFiles={handleFiles}
+            disabled={disabled}
+            accept={{
+              'application/pdf': ['.pdf'],
+              'image/*': ['.png', '.jpg', '.jpeg'],
+            }}
+            formatsLabel="PDF, JPG, PNG"
+            variant="primary"
+          />
+        )}
       </CardContent>
     </Card>
   );

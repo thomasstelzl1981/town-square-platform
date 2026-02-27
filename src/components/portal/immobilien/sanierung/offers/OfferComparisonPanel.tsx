@@ -4,9 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from '@/components/ui/table';
-import { FileUploader } from '@/components/shared/FileUploader';
+import { SmartDropZone } from '@/components/shared/SmartDropZone';
 import { 
-  Upload, BarChart3, Loader2, Trash2, Award, FileText, CheckCircle2 
+  BarChart3, Loader2, Trash2, Award, FileText, CheckCircle2 
 } from 'lucide-react';
 import { ServiceCase } from '@/hooks/useServiceCases';
 import { supabase } from '@/integrations/supabase/client';
@@ -295,13 +295,17 @@ export function OfferComparisonPanel({ serviceCase }: OfferComparisonPanelProps)
       {/* 3. Upload Area (compact) */}
       <Card>
         <CardContent className="p-4">
-          <FileUploader
-            onFilesSelected={handleFilesSelected}
-            accept=".pdf,.jpg,.jpeg,.png,.xlsx,.xls"
-            multiple
+          <SmartDropZone
+            onFiles={handleFilesSelected}
             disabled={isUploading}
-            label={isUploading ? 'Wird hochgeladen…' : 'Angebote hochladen'}
-            hint="PDF, Bilder oder Excel hierher ziehen"
+            accept={{
+              'application/pdf': ['.pdf'],
+              'image/*': ['.jpg', '.jpeg', '.png'],
+              'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
+              'application/vnd.ms-excel': ['.xls'],
+            }}
+            formatsLabel="PDF, Bilder, Excel"
+            variant="primary"
           />
         </CardContent>
       </Card>
