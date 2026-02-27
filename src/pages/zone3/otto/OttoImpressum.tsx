@@ -38,19 +38,18 @@ export default function OttoImpressum() {
               </p>
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-white/80 mb-2">Registereintrag</h2>
+             <h2 className="text-lg font-semibold text-white/80 mb-2">Registereintrag</h2>
               <p>
-                Handelsregister: Amtsgericht Straubing<br />
-                Registernummer: in Gründung — wird nach Eintragung ergänzt<br />
+                Handelsregister: Amtsgericht Straubing, HRB 13762<br />
                 Umsatzsteuer-Identifikationsnummer: in Gründung — wird nach Erteilung ergänzt
               </p>
             </div>
             <div>
               <h2 className="text-lg font-semibold text-white/80 mb-2">Berufsbezeichnung und berufsrechtliche Regelungen</h2>
               <p>
-                Versicherungsvertreter mit Erlaubnis nach § 34d Abs. 1 GewO<br />
-                Zuständige Behörde: Industrie- und Handelskammer für Niederbayern in Passau<br />
-                Registrierungsnummer im Vermittlerregister: wird nach Eintragung ergänzt
+               Versicherungsvertreter mit Erlaubnis nach § 34d Abs. 1 GewO<br />
+              Zuständige Behörde: IHK für München und Oberbayern<br />
+              Registrierungsnummer im Vermittlerregister (§ 11a GewO): D-5XQ1-QCZZB-31
               </p>
               <p className="mt-2">
                 Vermittlerregister: DIHK, Breite Straße 29, 10178 Berlin —{' '}
