@@ -13,7 +13,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Save, Mail, Info, Copy, Upload } from 'lucide-react';
+import { Loader2, Save, Mail, Info, Copy, Upload, Sparkles } from 'lucide-react';
+import { useUserMailAccount } from '@/hooks/useUserMailAccount';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import {
@@ -103,20 +104,22 @@ export function OutboundIdentityWidget() {
     enabled: !!user?.id || isDevelopmentMode,
   });
 
-  // Fetch user profile for name
+  // Fetch user profile for name + armstrong_email
   const { data: profile } = useQuery({
     queryKey: ['profile-outbound', user?.id],
     queryFn: async () => {
       if (!user?.id) return null;
       const { data } = await supabase
         .from('profiles')
-        .select('first_name, last_name, display_name')
+        .select('first_name, last_name, display_name, armstrong_email')
         .eq('id', user.id)
         .maybeSingle();
       return data;
     },
     enabled: !!user?.id,
   });
+
+  const { hasAccount: hasMailAccount, accountEmail: mailAccountEmail } = useUserMailAccount();
 
   // Fetch current outbound identity
   const { data: identity, isLoading } = useQuery({
@@ -306,14 +309,55 @@ export function OutboundIdentityWidget() {
           <div className="flex items-start gap-2 p-3 rounded-xl bg-primary/5 border border-primary/10">
             <Info className="h-3.5 w-3.5 text-primary mt-0.5 flex-shrink-0" />
             <p className="text-[11px] text-muted-foreground leading-relaxed">
-              Diese Absenderkennung wird für <strong>alle</strong> Outbound-E-Mails im Portal
-              verwendet (z.B. Serien-E-Mail, Sanierung/Ausschreibung). Antworten gehen an Ihr
-              persönliches Postfach.
+              {hasMailAccount ? (
+                <>
+                  Ihr verbundenes Konto (<strong>{mailAccountEmail}</strong>) wird für Outbound-E-Mails
+                  verwendet. Diese Kennung dient als <strong>Fallback</strong>, falls das Konto
+                  getrennt wird.
+                </>
+              ) : (
+                <>
+                  Diese Absenderkennung wird als <strong>Fallback</strong> für Outbound-E-Mails
+                  verwendet, solange kein eigenes E-Mail-Konto (z.B. Gmail) verbunden ist.
+                  Antworten gehen an Ihr persönliches Postfach.
+                </>
+              )}
             </p>
           </div>
 
           {/* Upload-E-Mail Section */}
           <UploadEmailSection />
+
+          {/* Armstrong KI-Assistent Section */}
+          {(profile as any)?.armstrong_email && (
+            <div className="border-t border-border/30 pt-4 space-y-1.5">
+              <div className="flex items-center gap-2 mb-2">
+                <Sparkles className="h-3.5 w-3.5 text-primary" />
+                <Label className="text-xs font-medium">KI-Assistent (Armstrong)</Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <code className="flex-1 px-3 py-2 bg-muted/50 rounded-lg font-mono text-xs truncate">
+                  {(profile as any).armstrong_email}
+                </code>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    navigator.clipboard.writeText((profile as any).armstrong_email);
+                    toast.success('Armstrong-Adresse kopiert');
+                  }}
+                  className="gap-1.5"
+                >
+                  <Copy className="h-3.5 w-3.5" />
+                  Kopieren
+                </Button>
+              </div>
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                Senden Sie Aufgaben, E-Mails und Unterlagen an diese Adresse — Armstrong verarbeitet sie automatisch.
+              </p>
+            </div>
+          )}
 
           {/* Save */}
           {hasChanges && (
