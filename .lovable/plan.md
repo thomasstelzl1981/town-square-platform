@@ -1,55 +1,72 @@
 
+Ziel
+- Die Darlehens-Auslesung für bereits importierte Objekte im Immomanager/Immobilienakte verlässlich reaktivieren und sicherstellen, dass Loan-Daten tatsächlich in den Akten landen.
 
-## Analyse: Excel-Import — Kontext-Zuordnung und Darlehen fehlen
+Festgestellte Ursachen (aus Code + Daten)
+1) `loans` ist für den Tenant leer, obwohl 4 Properties angelegt wurden und korrekt im Kontext hängen.
+2) In `sot-property-crud` sind Loan-Insert-Fehler aktuell „non-fatal“ und werden nur geloggt; der API-Response bleibt 201 → Frontend zählt Import als Erfolg.
+3) `ExcelImportDialog` wertet pro Zeile nur `response.ok` aus; es gibt keine Auswertung, ob `loan_id` wirklich erzeugt wurde.
+4) Loan-Felder werden unnormalisiert durchgereicht (Zahlen-/Datumsformate aus Excel/AI), dadurch können Inserts scheitern, ohne dass der User es sieht.
 
-### Bestätigte Datenlage
+Umsetzung (kompakt)
+1) Backend robust machen (`supabase/functions/sot-property-crud/index.ts`)
+- Normalizer einbauen:
+  - `parseMoneyLike()` für `restschuld`, `annuitaetMonat`, `original_amount`, `interest_rate_percent` (de-DE/EN Formate).
+  - `parseDateLike()` für `fixed_interest_end_date` (ISO + `DD.MM.YYYY`).
+- Loan-Insert absichern:
+  - Ungültige Datumswerte nicht blind inserten (auf `null` setzen statt Hard-Fail).
+  - Nur validierte Felder in Insert übernehmen.
+- Response erweitern:
+  - `loan_status: 'created' | 'skipped' | 'failed'`
+  - `loan_error` (falls fehlgeschlagen)
+  - `loan_input_debug` (sanitized, ohne sensible Daten).
 
-| Fakt | Status |
-|------|--------|
-| 4 Immobilien importiert | ✅ vorhanden in `properties` |
-| `landlord_context_id` auf allen 4 | ❌ `NULL` |
-| `context_property_assignment` Einträge | ❌ 0 Einträge |
-| Loans (Darlehen) | ❌ Tabelle leer für diesen Tenant |
-| MM.Wohnen GmbH Kontext | ✅ existiert (`e4623b8c-...`) |
+2) Frontend-Import transparent machen (`src/components/portfolio/ExcelImportDialog.tsx`)
+- Zeilenresultat auswerten statt nur `response.ok`:
+  - `property_created_count`
+  - `loan_created_count`
+  - `loan_failed_count`
+- Abschluss-Toast differenziert:
+  - Erfolg: „X Objekte, Y Darlehen übernommen“
+  - Warnung: „X Objekte angelegt, aber Y Darlehen nicht gespeichert“
+- Detail-Liste „Import-Protokoll“ im Dialog (pro Zeile Loan-Status + Fehlergrund).
 
-### Root Cause 1: Keine Kontext-Zuordnung
+3) „Auslesung neu aktivieren“ als gezielter Re-Run (ohne Duplikate)
+- Im Excel-Dialog Modus ergänzen: „Nur Darlehen nachziehen“.
+- Bei diesem Modus:
+  - Bestehende Property per `address + postal_code + city + tenant` matchen.
+  - Kein neues Objekt anlegen, sondern Loan upserten (`property_id` setzen, vorhandenes Loan aktualisieren/neu anlegen).
+- UI-Entry in Portfolio/Immomanager-Flow: Button „Darlehen neu aus Excel auslesen“.
 
-Die `ExcelImportDialog`-Komponente erhält keinen `contextId`-Parameter. Beim Import wird `sot-property-crud` aufgerufen, aber:
-- **`landlord_context_id`** wird nie an die Edge Function gesendet
-- **`context_property_assignment`** wird nie geschrieben
-- Die Edge Function `sot-property-crud` setzt `landlord_context_id` nicht im Insert
+4) Dossier/Immomanager Konsistenz
+- Nach erfolgreichem Loan-Write gezielte Query-Invalidierungen:
+  - `['unit-dossier', ...]`
+  - `['portfolio-units-annual', ...]`
+  - ggf. Detail-Queries der Akte.
+- Damit Darlehensblock sofort gefüllt erscheint.
 
-Der User importiert von der MM.Wohnen-Kontextseite aus, aber der aktive Kontext wird nicht durchgereicht.
+5) Regression-Absicherung
+- Edge-Function Tests (Deno):
+  - Zahlformate: `1.294.020`, `1,294,020`, `55.000,00`, `55000`
+  - Datumsformate: `2030-12-31`, `31.12.2030`, invalid
+  - Erwartung: Property kann erstellt werden, Loan-Status korrekt zurückgegeben.
+- Manueller E2E-Check:
+  - Re-Run „Nur Darlehen nachziehen“ mit derselben Excel.
+  - In Immobilienakte prüfen: Bank, Restschuld, Rate, Zinsbindung sichtbar.
+  - In Immomanager-Ansicht prüfen: Werte konsistent.
 
-### Root Cause 2: Darlehen werden nicht gespeichert
+Betroffene Dateien
+- `supabase/functions/sot-property-crud/index.ts`
+- `src/components/portfolio/ExcelImportDialog.tsx`
+- `src/pages/portal/immobilien/PortfolioTab.tsx` (Button/Mode-Trigger für Re-Run)
 
-Im Edge Function Log fehlen Einträge. Das Problem liegt im Frontend: Die `handleImport`-Funktion baut `loan_data` korrekt auf (Zeile 260-267), und die Edge Function verarbeitet es korrekt (Zeile 144-173). Mögliche Ursachen:
-- Die AI-Extraktion liefert `restschuld`, `annuitaetMonat`, `bank` — aber der Edge Function Insert schreibt `scope: "property"` (lowercase) statt `"PROPERTY"` (DB-Default ist `'PROPERTY'`)
-- Prüfung: `data.loan_data.bank_name || data.loan_data.outstanding_balance_eur` — wenn die AI `bank: null` und `restschuld: 0` liefert, wird der gesamte Loan-Block übersprungen
+Governance/Freeze-Check (vor Implementierung geprüft)
+- MOD-04: nicht eingefroren.
+- MOD-09: nicht eingefroren.
+- Infra `supabase/functions/*`: nicht eingefroren.
+- Keine Änderungen an gesperrten Bereichen (`src/goldenpath/*`, `src/validation/*`).
 
-### Fix-Plan
-
-**1. ExcelImportDialog — Kontext-ID durchreichen**
-- Neue Prop `contextId?: string` hinzufügen
-- Im `handleImport`: `propertyData.landlord_context_id = contextId` setzen
-- Nach erfolgreichem Import: `context_property_assignment` Eintrag per Supabase SDK schreiben
-
-**2. PortfolioTab — aktiven Kontext an Dialog übergeben**
-- `selectedContextId` als `contextId` an `ExcelImportDialog` übergeben
-
-**3. Edge Function `sot-property-crud` — 3 Fixes**
-- `landlord_context_id` aus `data` akzeptieren und in Insert schreiben
-- `scope` auf `"PROPERTY"` (uppercase) korrigieren
-- Loan-Condition verbessern: Auch erstellen wenn nur `annuity_monthly_eur` vorhanden
-
-**4. Edge Function — Context Assignment schreiben**
-- Nach Property-Insert: Wenn `landlord_context_id` vorhanden, automatisch `context_property_assignment` Eintrag erstellen
-
-### Betroffene Dateien
-
-| Datei | Änderung |
-|-------|----------|
-| `src/components/portfolio/ExcelImportDialog.tsx` | Neue Prop `contextId`, durchreichen an Import-Call + Assignment-Insert |
-| `src/pages/portal/immobilien/PortfolioTab.tsx` | `selectedContextId` an Dialog übergeben |
-| `supabase/functions/sot-property-crud/index.ts` | `landlord_context_id` akzeptieren, `scope` Fix, Loan-Condition erweitern, auto-Assignment |
-
+Technische Hinweise (kurz)
+- Hauptfix ist nicht nur „erneut auslesen“, sondern „persistieren + sichtbar machen“.
+- Ohne Status-Rückgabe aus `sot-property-crud` bleibt der Fehler für User unsichtbar.
+- Re-Run als „loan-only upsert“ verhindert doppelte Immobilien.
