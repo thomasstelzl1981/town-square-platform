@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { useRecordCardDMS } from '@/hooks/useRecordCardDMS';
 import {
   Dialog,
   DialogContent,
@@ -40,6 +41,7 @@ export function VehicleCreateDialog({ open, onOpenChange, onSuccess, onVehicleCr
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [step, setStep] = useState<1 | 2>(1);
+  const { createDMS } = useRecordCardDMS();
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<FormData>({
     defaultValues: {
@@ -76,6 +78,18 @@ export function VehicleCreateDialog({ open, onOpenChange, onSuccess, onVehicleCr
         hu_valid_until: data.hu_valid_until || null,
       }).select('id, make, model').single();
       if (error) throw error;
+
+      // Create DMS folder + Sortierkachel
+      if (newVehicle && activeTenantId) {
+        const entityName = [data.license_plate, data.make, data.model].filter(Boolean).join(' ');
+        createDMS.mutate({
+          entityType: 'vehicle',
+          entityId: newVehicle.id,
+          entityName,
+          tenantId: activeTenantId,
+          keywords: [data.license_plate, data.make, data.model].filter(Boolean),
+        });
+      }
 
       // Trigger Armstrong dossier auto-research
       if (newVehicle && onVehicleCreated) {
