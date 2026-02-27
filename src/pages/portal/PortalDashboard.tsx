@@ -34,7 +34,6 @@ import { Settings2, Inbox, ChevronDown } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const ARMSTRONG_WIDGET_ID = 'system_armstrong';
-const MAX_SYSTEM_WIDGETS = 8;
 
 const WIDGET_CODE_TO_ID: Record<string, string> = {
   'SYS.GLOBE.EARTH': 'system_globe',
@@ -102,15 +101,14 @@ export default function PortalDashboard() {
       .filter(Boolean);
   }, [enabledWidgets]);
 
-  // Armstrong + enabled, capped at MAX_SYSTEM_WIDGETS
+  // Armstrong + all enabled system widgets (no cap)
   const systemWidgetIds = useMemo(() => {
-    const all = [ARMSTRONG_WIDGET_ID, ...enabledSystemWidgetIds];
-    return all.slice(0, MAX_SYSTEM_WIDGETS);
+    return [ARMSTRONG_WIDGET_ID, ...enabledSystemWidgetIds];
   }, [enabledSystemWidgetIds]);
 
   const taskWidgetIds = useMemo(() => taskWidgets.map(w => w.id), [taskWidgets]);
   const allWidgetIds = useMemo(() => [...systemWidgetIds, ...taskWidgetIds], [systemWidgetIds, taskWidgetIds]);
-  const { order, updateOrder } = useWidgetOrder(allWidgetIds);
+  const { order, updateOrder } = useWidgetOrder(prefsLoading ? [] : allWidgetIds);
 
   const isLoading = locationLoading || weatherLoading || eventsLoading;
 

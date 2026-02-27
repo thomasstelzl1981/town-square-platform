@@ -4,9 +4,9 @@
   "description": "SSOT for module freeze states. Lovable and all AI assistants MUST check this file before modifying any module code. If a module is frozen, changes to its paths are NOT ALLOWED without explicit unfreeze.",
   "freeze_criteria": "Spec vorhanden, Audit S1-S6 bestanden, produktionsreife Implementierung",
   "modules": {
-    "MOD-00": { "frozen": true, "frozen_at": "2026-02-27T21:00:00.000Z", "reason": "Production freeze" },
+    "MOD-00": { "frozen": true, "frozen_at": "2026-02-27T22:00:00.000Z", "reason": "Production freeze — widget cap + icons fix applied" },
     "MOD-01": { "frozen": true, "frozen_at": "2026-02-27T21:00:00.000Z", "reason": "Production freeze" },
-    "MOD-02": { "frozen": true, "frozen_at": "2026-02-27T21:00:00.000Z", "reason": "Production freeze" },
+    "MOD-02": { "frozen": true, "frozen_at": "2026-02-27T22:00:00.000Z", "reason": "Production freeze — Mic/Wallet icons added to SystemWidgetsTab" },
     "MOD-03": { "frozen": true, "frozen_at": "2026-02-27T21:00:00.000Z", "reason": "Production freeze — PosteingangTab fix done" },
     "MOD-04": { "frozen": true, "frozen_at": "2026-02-27T21:00:00.000Z", "reason": "Production freeze" },
     "MOD-05": { "frozen": true, "frozen_at": "2026-02-27T21:00:00.000Z", "reason": "Production freeze" },
