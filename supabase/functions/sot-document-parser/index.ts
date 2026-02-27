@@ -780,6 +780,60 @@ serve(async (req) => {
 
     console.log(`[parser-engine] ✓ ${filename} → mode=${resolvedMode}, method=${extractionMethod}, records=${records.length}, confidence=${result.confidence}`);
 
+    // ── AUTO-FILING: Place document in correct DMS folder ────────────
+    if (tenantId && documentId && resolvedModeConfig.targetDmsFolder && result.confidence >= 0.7) {
+      try {
+        const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+        const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+        const sbAdmin = createClient(supabaseUrl, supabaseServiceKey);
+
+        // Determine auto-filing path based on detected mode
+        const AUTO_FILING_MAP: Record<string, { folderCode: string; label: string }> = {
+          immobilie: { folderCode: "01_Grunddaten", label: "Grunddaten" },
+          finanzierung: { folderCode: "05_Vertrag", label: "Darlehensvertrag" },
+          versicherung: { folderCode: "01_Police", label: "Versicherungspolice" },
+          person: { folderCode: "01_Personalausweis", label: "Personalunterlagen" },
+          kontakt: { folderCode: "08_Sonstiges", label: "Kontaktdaten" },
+          vorsorge: { folderCode: "01_Vertrag", label: "Vorsorgevertrag" },
+          fahrzeugschein: { folderCode: "01_Zulassung", label: "Fahrzeugdokumente" },
+          pv_anlage: { folderCode: "01_Stammdaten", label: "PV-Stammdaten" },
+          haustier: { folderCode: "01_Impfpass", label: "Tier-Unterlagen" },
+        };
+
+        const filing = AUTO_FILING_MAP[resolvedMode];
+        if (filing) {
+          // Find matching property folder if records contain an address
+          let propertyId: string | null = null;
+          if (resolvedMode === "immobilie" && records[0]) {
+            const addr = records[0].address as string;
+            if (addr) {
+              const { data: matchedProp } = await sbAdmin
+                .from("units")
+                .select("id")
+                .eq("tenant_id", tenantId)
+                .ilike("address", `%${addr.substring(0, 20)}%`)
+                .limit(1)
+                .maybeSingle();
+              if (matchedProp) propertyId = matchedProp.id;
+            }
+          }
+
+          // Update document with auto-filing metadata
+          await sbAdmin.from("documents").update({
+            auto_filed_to: filing.folderCode,
+            auto_filed_label: filing.label,
+            auto_filed_property_id: propertyId,
+            auto_filed_at: new Date().toISOString(),
+            auto_filed_mode: resolvedMode,
+          }).eq("id", documentId);
+
+          console.log(`[parser-engine] AUTO-FILED: ${filename} → ${filing.folderCode} (${filing.label})${propertyId ? ` [property: ${propertyId}]` : ""}`);
+        }
+      } catch (autoFileErr) {
+        console.error("[parser-engine] Auto-filing error (non-critical):", autoFileErr);
+      }
+    }
+
     return new Response(
       JSON.stringify({ success: true, parsed: result, filename, contentType: resolvedContentType }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }

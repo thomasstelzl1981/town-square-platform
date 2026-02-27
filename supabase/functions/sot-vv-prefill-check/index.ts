@@ -265,6 +265,138 @@ Identifiziere signifikante Abweichungen (>15%) und bewerte deren Plausibilität.
     }
 
     // ═══════════════════════════════════════════════════════════
+    // ACTION: year-end-summary — Multi-Property Jahresabschluss
+    // ═══════════════════════════════════════════════════════════
+    if (action === "year-end-summary") {
+      const { properties, taxYear, ownerName } = body;
+
+      const summaryPrompt = `Du bist ein Steuerberater-Assistent für Immobilien-Portfolios.
+Erstelle einen Jahresabschluss-Bericht für ${ownerName || "den Vermieter"} für das Steuerjahr ${taxYear || "2025"}.
+
+PORTFOLIO (${(properties || []).length} Objekte):
+${JSON.stringify(properties || [], null, 2)}
+
+AUFGABEN:
+1. Zusammenfassung: Gesamteinnahmen, Gesamtausgaben, Gesamt-Einkünfte aus V+V
+2. Verlustverrechnung: Können Verluste zwischen Objekten verrechnet werden? §15b EStG Risiken?
+3. Optimierungspotenziale: Über alle Objekte hinweg (z.B. gemeinsame Handwerkerkosten)
+4. Checkliste Steuerberater: Was muss der Steuerberater noch prüfen?
+5. WICHTIG: Kein Steuerberatungsersatz — nur Vorbereitung`;
+
+      const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-pro",
+          messages: [
+            { role: "system", content: "Du bist ein Steuerberater-Assistent für V+V-Portfolios. Antworte NUR via tool_call." },
+            { role: "user", content: summaryPrompt },
+          ],
+          tools: [{
+            type: "function",
+            function: {
+              name: "year_end_summary_result",
+              description: "Strukturierter Jahresabschluss für V+V-Portfolio",
+              parameters: {
+                type: "object",
+                properties: {
+                  summary: {
+                    type: "object",
+                    properties: {
+                      totalIncome: { type: "number" },
+                      totalExpenses: { type: "number" },
+                      totalResult: { type: "number" },
+                      propertiesWithProfit: { type: "number" },
+                      propertiesWithLoss: { type: "number" },
+                    },
+                    required: ["totalIncome", "totalExpenses", "totalResult"],
+                    additionalProperties: false,
+                  },
+                  perPropertyResults: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        propertyName: { type: "string" },
+                        income: { type: "number" },
+                        expenses: { type: "number" },
+                        result: { type: "number" },
+                        notes: { type: "string" },
+                      },
+                      required: ["propertyName", "result"],
+                      additionalProperties: false,
+                    },
+                  },
+                  crossPropertyOptimizations: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        title: { type: "string" },
+                        description: { type: "string" },
+                        savingsEstimate: { type: "number" },
+                        priority: { type: "string", enum: ["high", "medium", "low"] },
+                      },
+                      required: ["title", "description", "priority"],
+                      additionalProperties: false,
+                    },
+                  },
+                  risks: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        title: { type: "string" },
+                        description: { type: "string" },
+                        severity: { type: "string", enum: ["high", "medium", "low"] },
+                        legalBasis: { type: "string" },
+                      },
+                      required: ["title", "description", "severity"],
+                      additionalProperties: false,
+                    },
+                  },
+                  steuerberaterChecklist: {
+                    type: "array",
+                    items: { type: "string" },
+                  },
+                  disclaimer: { type: "string" },
+                },
+                required: ["summary", "perPropertyResults", "disclaimer"],
+                additionalProperties: false,
+              },
+            },
+          }],
+          tool_choice: { type: "function", function: { name: "year_end_summary_result" } },
+          temperature: 0.2,
+          max_tokens: 16000,
+        }),
+      });
+
+      if (!response.ok) {
+        const t = await response.text();
+        console.error("AI gateway error:", response.status, t);
+        return new Response(JSON.stringify({ error: "Jahresabschluss fehlgeschlagen" }), {
+          status: response.status === 429 ? 429 : response.status === 402 ? 402 : 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const aiResult = await response.json();
+      const toolCall = aiResult.choices?.[0]?.message?.tool_calls?.[0];
+      if (toolCall?.function?.arguments) {
+        return new Response(JSON.stringify(JSON.parse(toolCall.function.arguments)), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      return new Response(JSON.stringify({ summary: {}, perPropertyResults: [], disclaimer: "Keine Analyse verfügbar." }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // ═══════════════════════════════════════════════════════════
     // DEFAULT: Standard Plausibilitätsprüfung (existing logic)
     // ═══════════════════════════════════════════════════════════
     const { propertyName, address, city, postalCode, areaSqm, yearBuilt, purchasePrice, income, costs, afa, financing } = body;
