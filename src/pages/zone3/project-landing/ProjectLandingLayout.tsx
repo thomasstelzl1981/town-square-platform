@@ -9,7 +9,7 @@
 import { Outlet, Link, useLocation, useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Menu, X } from 'lucide-react';
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -125,22 +125,6 @@ export default function ProjectLandingLayout() {
     colorScheme: 'light',
   } as React.CSSProperties;
 
-  // Post actual page height to parent iframe for preview sizing
-  useEffect(() => {
-    if (window.parent === window) return; // Not in iframe
-    const sendHeight = () => {
-      const h = document.documentElement.scrollHeight;
-      window.parent.postMessage({ type: 'landing-page-height', height: h }, '*');
-    };
-    // Send after initial render + images loaded
-    sendHeight();
-    const timer = setInterval(sendHeight, 2000);
-    window.addEventListener('load', sendHeight);
-    return () => {
-      clearInterval(timer);
-      window.removeEventListener('load', sendHeight);
-    };
-  }, []);
 
   return (
     <div className="min-h-screen bg-[hsl(210,40%,97%)] light" data-theme="light" style={lightModeVars}>

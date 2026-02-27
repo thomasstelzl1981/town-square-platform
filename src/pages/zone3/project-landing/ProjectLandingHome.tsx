@@ -1,17 +1,18 @@
 /**
  * ProjectLandingHome — Startseite der Projekt-Landing-Page
  * 
- * Hero (from document_links) + Search Engine + Unit List (dev_project_units)
+ * Hero + Photo Carousel + Object Description + Search Engine + Unit Table
  */
 import { useState, useCallback, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { resolveStorageSignedUrl } from '@/lib/storage-url';
-import { Loader2, Building2, MapPin, Home, ArrowRight } from 'lucide-react';
+import { Loader2, Building2, MapPin, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 import { useInvestmentEngine, defaultInput, type CalculationInput } from '@/hooks/useInvestmentEngine';
 
 interface ProjectUnit {
@@ -29,41 +30,80 @@ interface UnitMetrics {
   monthlyBurden: number;
   roiAfterTax: number;
   loanAmount: number;
+  yearlyTaxSavings?: number;
 }
 
-/** Load signed image URLs from document_links for a project */
-async function loadProjectImages(projectId: string): Promise<Record<string, string>> {
-  const urls: Record<string, string> = {};
-  
+interface ProjectImage {
+  url: string;
+  slotKey: string;
+}
+
+/** Load ALL signed image URLs from document_links for a project (multi-image) */
+async function loadAllProjectImages(projectId: string): Promise<{ hero: string | null; gallery: ProjectImage[] }> {
+  let heroUrl: string | null = null;
+  const gallery: ProjectImage[] = [];
+
   const { data: links } = await supabase
     .from('document_links')
-    .select('slot_key, documents!inner(storage_path)')
+    .select('slot_key, documents!inner(id, storage_path)')
     .eq('object_id', projectId)
     .eq('object_type', 'project')
     .eq('link_status', 'linked')
     .order('created_at', { ascending: true });
 
-  if (!links?.length) return urls;
+  if (!links?.length) return { hero: null, gallery: [] };
 
-  // Group by slot_key, take first per slot
-  const seen = new Set<string>();
   for (const link of links) {
-    const slotKey = (link as any).slot_key;
-    if (!slotKey || seen.has(slotKey)) continue;
-    seen.add(slotKey);
+    const slotKey = (link as any).slot_key as string;
+    if (!slotKey) continue;
     const storagePath = (link as any).documents?.storage_path;
     if (!storagePath) continue;
 
     const { data } = await supabase.storage
       .from('tenant-documents')
       .createSignedUrl(storagePath, 3600);
-    if (data?.signedUrl) {
-      urls[slotKey] = resolveStorageSignedUrl(data.signedUrl);
+    if (!data?.signedUrl) continue;
+
+    const url = resolveStorageSignedUrl(data.signedUrl);
+
+    if (slotKey === 'hero' && !heroUrl) {
+      heroUrl = url;
+    }
+
+    // Gallery: exterior, interior, surroundings (not hero, not logo)
+    if (['exterior', 'interior', 'surroundings'].includes(slotKey)) {
+      gallery.push({ url, slotKey });
     }
   }
 
-  return urls;
+  return { hero: heroUrl, gallery };
 }
+
+// ─── Formatters ─────────────────────────────────────────────────
+function eur(v: number) {
+  return v.toLocaleString('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
+}
+
+function eurSigned(v: number) {
+  const prefix = v >= 0 ? '+' : '';
+  return `${prefix}${v.toLocaleString('de-DE', { maximumFractionDigits: 0 })} €`;
+}
+
+function formatFloor(floor: number | null) {
+  if (floor === null || floor === undefined) return '–';
+  if (floor === 0) return 'EG';
+  if (floor < 0) return `${Math.abs(floor)}. UG`;
+  return `${floor}. OG`;
+}
+
+const STATUS_LABELS: Record<string, { label: string; className: string }> = {
+  frei: { label: 'Frei', className: 'bg-emerald-100 text-emerald-800' },
+  available: { label: 'Frei', className: 'bg-emerald-100 text-emerald-800' },
+  reserviert: { label: 'Reserviert', className: 'bg-amber-100 text-amber-800' },
+  reserved: { label: 'Reserviert', className: 'bg-amber-100 text-amber-800' },
+  verkauft: { label: 'Verkauft', className: 'bg-sky-100 text-sky-800' },
+  sold: { label: 'Verkauft', className: 'bg-sky-100 text-sky-800' },
+};
 
 export default function ProjectLandingHome() {
   const { slug } = useParams<{ slug: string }>();
@@ -76,9 +116,10 @@ export default function ProjectLandingHome() {
   const [hasSearched, setHasSearched] = useState(false);
   const [metricsCache, setMetricsCache] = useState<Record<string, UnitMetrics>>({});
   const [isCalculating, setIsCalculating] = useState(false);
+  const [carouselIndex, setCarouselIndex] = useState(0);
   const { calculate } = useInvestmentEngine();
 
-  // Fetch project + units
+  // Fetch project + units + images
   const { data: projectData, isLoading } = useQuery({
     queryKey: ['project-landing-home', slug],
     queryFn: async () => {
@@ -86,7 +127,7 @@ export default function ProjectLandingHome() {
 
       const { data: lp } = await supabase
         .from('landing_pages')
-        .select('id, project_id, hero_headline, hero_subheadline, about_text')
+        .select('id, project_id, hero_headline, hero_subheadline, about_text, location_description')
         .eq('slug', slug)
         .in('status', ['draft', 'preview', 'active'])
         .maybeSingle();
@@ -95,7 +136,7 @@ export default function ProjectLandingHome() {
 
       const { data: project } = await supabase
         .from('dev_projects')
-        .select('id, name, city, address, postal_code, description, total_units_count, total_area_sqm, construction_year, afa_model, afa_rate_percent, grest_rate_percent, notary_rate_percent')
+        .select('id, name, city, address, postal_code, description, full_description, total_units_count, total_area_sqm, construction_year, afa_model, afa_rate_percent, grest_rate_percent, notary_rate_percent')
         .eq('id', lp.project_id)
         .maybeSingle();
 
@@ -107,11 +148,15 @@ export default function ProjectLandingHome() {
         .eq('project_id', project.id)
         .order('unit_number', { ascending: true });
 
-      // Load images from document_links
-      const imageUrls = await loadProjectImages(project.id);
-      const heroImageUrl = imageUrls.hero || null;
+      const images = await loadAllProjectImages(project.id);
 
-      return { landingPage: lp, project: project as any, units: (units || []) as unknown as ProjectUnit[], heroImageUrl };
+      return {
+        landingPage: lp,
+        project: project as any,
+        units: (units || []) as unknown as ProjectUnit[],
+        heroImageUrl: images.hero,
+        galleryImages: images.gallery,
+      };
     },
     enabled: !!slug,
     staleTime: 5 * 60 * 1000,
@@ -155,6 +200,7 @@ export default function ProjectLandingHome() {
           monthlyBurden: result.summary.monthlyBurden,
           roiAfterTax: result.summary.roiAfterTax,
           loanAmount: result.summary.loanAmount,
+          yearlyTaxSavings: result.summary.yearlyTaxSavings,
         };
       }
     }));
@@ -162,16 +208,6 @@ export default function ProjectLandingHome() {
     setMetricsCache(newCache);
     setIsCalculating(false);
   }, [availableUnits, searchParams, calculate, projectData?.project]);
-
-  const formatCurrency = (val: number) =>
-    new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(val);
-
-  const formatFloor = (floor: number | null) => {
-    if (floor === null || floor === undefined) return '–';
-    if (floor === 0) return 'EG';
-    if (floor < 0) return `${Math.abs(floor)}. UG`;
-    return `${floor}. OG`;
-  };
 
   if (isLoading) {
     return (
@@ -191,13 +227,29 @@ export default function ProjectLandingHome() {
     );
   }
 
-  const { landingPage, project, heroImageUrl } = projectData;
+  const { landingPage, project, heroImageUrl, galleryImages } = projectData;
+  const aboutText = (landingPage as any).about_text || landingPage.location_description || project.full_description || project.description || '';
+
+  // Gallery carousel
+  const galleryCount = galleryImages.length;
+  const prevImage = () => setCarouselIndex(i => (i - 1 + galleryCount) % galleryCount);
+  const nextImage = () => setCarouselIndex(i => (i + 1) % galleryCount);
+
+  // Summary for table footer
+  const totalArea = availableUnits.reduce((s, u) => s + (u.area_sqm || 0), 0);
+  const totalPrice = availableUnits.reduce((s, u) => s + (u.list_price || 0), 0);
+  const totalRentAnnual = availableUnits.reduce((s, u) => s + (u.rent_net || 0) * 12, 0);
+  const avgYield = totalPrice > 0 ? (totalRentAnnual / totalPrice) * 100 : 0;
+  const calculatedUnits = availableUnits.filter(u => metricsCache[u.id]);
+  const avgBurden = calculatedUnits.length > 0
+    ? calculatedUnits.reduce((s, u) => s + (metricsCache[u.id]?.monthlyBurden || 0), 0) / calculatedUnits.length
+    : 0;
 
   return (
     <div>
       {/* Hero Section */}
       <section
-        className="relative h-[50vh] min-h-[400px] flex items-end bg-cover bg-center"
+        className="relative h-[400px] flex items-end bg-cover bg-center"
         style={{
           backgroundImage: heroImageUrl
             ? `linear-gradient(to top, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.1) 60%), url(${heroImageUrl})`
@@ -222,8 +274,77 @@ export default function ProjectLandingHome() {
         </div>
       </section>
 
+      {/* Photo Carousel + Object Description (two-column) */}
+      <section className="px-6 lg:px-10 py-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Left: Foto-Carousel */}
+          <div className="relative rounded-2xl overflow-hidden bg-[hsl(210,30%,97%)] aspect-[4/3]">
+            {galleryCount > 0 ? (
+              <>
+                <img
+                  src={galleryImages[carouselIndex].url}
+                  alt={`Projektbild ${carouselIndex + 1}`}
+                  className="w-full h-full object-cover"
+                />
+                {galleryCount > 1 && (
+                  <>
+                    <button
+                      onClick={prevImage}
+                      className="absolute left-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-black/40 hover:bg-black/60 text-white transition-colors"
+                    >
+                      <ChevronLeft className="h-5 w-5" />
+                    </button>
+                    <button
+                      onClick={nextImage}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-black/40 hover:bg-black/60 text-white transition-colors"
+                    >
+                      <ChevronRight className="h-5 w-5" />
+                    </button>
+                    <div className="absolute bottom-3 right-3 px-2.5 py-1 rounded-full bg-black/50 text-white text-xs font-medium">
+                      {carouselIndex + 1}/{galleryCount}
+                    </div>
+                  </>
+                )}
+              </>
+            ) : (
+              <div className="w-full h-full flex items-center justify-center">
+                <Building2 className="h-16 w-16 text-[hsl(215,16%,47%)]" />
+              </div>
+            )}
+          </div>
+
+          {/* Right: Object Description + Key Facts */}
+          <div className="flex flex-col justify-center">
+            <h2 className="text-xl font-bold text-[hsl(220,20%,10%)] mb-3">Objektbeschreibung</h2>
+            {aboutText ? (
+              <p className="text-sm text-[hsl(215,16%,47%)] leading-relaxed line-clamp-5">
+                {aboutText}
+              </p>
+            ) : (
+              <p className="text-sm text-[hsl(215,16%,47%)] italic">Keine Beschreibung verfügbar.</p>
+            )}
+
+            {/* Key Facts as inline badges */}
+            <div className="flex flex-wrap gap-2 mt-4">
+              {project.total_units_count && (
+                <Badge variant="secondary" className="text-xs">{project.total_units_count} Einheiten</Badge>
+              )}
+              {project.total_area_sqm && (
+                <Badge variant="secondary" className="text-xs">{Math.round(project.total_area_sqm)} m²</Badge>
+              )}
+              {project.construction_year && (
+                <Badge variant="secondary" className="text-xs">Baujahr {project.construction_year}</Badge>
+              )}
+              <Badge variant="secondary" className="text-xs">
+                {availableUnits.filter(u => u.status === 'frei').length} verfügbar
+              </Badge>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Search Engine */}
-      <section className="px-6 lg:px-10 -mt-8 relative z-10">
+      <section className="px-6 lg:px-10">
         <Card className="shadow-xl border-0">
           <CardContent className="p-6">
             <h3 className="text-sm font-medium text-[hsl(215,16%,47%)] uppercase tracking-wide mb-4">
@@ -261,38 +382,8 @@ export default function ProjectLandingHome() {
         </Card>
       </section>
 
-      {/* Key Facts */}
-      <section className="px-6 lg:px-10 py-8">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {project.total_units_count && (
-            <div className="text-center p-4 bg-[hsl(210,30%,97%)] rounded-xl">
-              <div className="text-2xl font-bold text-[hsl(220,20%,10%)]">{project.total_units_count}</div>
-              <div className="text-xs text-[hsl(215,16%,47%)] mt-1">Einheiten</div>
-            </div>
-          )}
-          {project.total_area_sqm && (
-            <div className="text-center p-4 bg-[hsl(210,30%,97%)] rounded-xl">
-              <div className="text-2xl font-bold text-[hsl(220,20%,10%)]">{Math.round(project.total_area_sqm)} m²</div>
-              <div className="text-xs text-[hsl(215,16%,47%)] mt-1">Gesamtfläche</div>
-            </div>
-          )}
-          {project.construction_year && (
-            <div className="text-center p-4 bg-[hsl(210,30%,97%)] rounded-xl">
-              <div className="text-2xl font-bold text-[hsl(220,20%,10%)]">{project.construction_year}</div>
-              <div className="text-xs text-[hsl(215,16%,47%)] mt-1">Baujahr</div>
-            </div>
-          )}
-          <div className="text-center p-4 bg-[hsl(210,30%,97%)] rounded-xl">
-            <div className="text-2xl font-bold text-[hsl(220,20%,10%)]">
-              {availableUnits.filter(u => u.status === 'frei').length}
-            </div>
-            <div className="text-xs text-[hsl(215,16%,47%)] mt-1">Verfügbar</div>
-          </div>
-        </div>
-      </section>
-
-      {/* Units List */}
-      <section className="px-6 lg:px-10 pb-16">
+      {/* Units Table */}
+      <section className="px-6 lg:px-10 py-8 pb-16">
         <h2 className="text-2xl font-bold text-[hsl(220,20%,10%)] mb-6">
           Verfügbare Einheiten
           <span className="text-base font-normal text-[hsl(215,16%,47%)] ml-2">({availableUnits.length})</span>
@@ -306,60 +397,106 @@ export default function ProjectLandingHome() {
               Geben Sie Ihr Einkommen und Eigenkapital ein, um die individuelle Monatsbelastung nach Steuer zu berechnen.
             </p>
           </div>
-        ) : isCalculating ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-8 h-8 animate-spin text-[hsl(210,80%,55%)]" />
-          </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {availableUnits.map((unit) => {
-              const metrics = metricsCache[unit.id];
-              return (
-                <Link key={unit.id} to={`/website/projekt/${slug}/einheit/${unit.id}`} className="block group">
-                  <Card className="h-full hover:shadow-lg transition-shadow border-[hsl(214,32%,91%)] group-hover:border-[hsl(210,80%,55%)]">
-                    <CardContent className="p-5">
-                      <div className="flex items-start justify-between mb-3">
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <Home className="h-4 w-4 text-[hsl(215,16%,47%)]" />
-                            <span className="font-semibold text-[hsl(220,20%,10%)]">{unit.unit_number}</span>
-                          </div>
-                          <div className="text-xs text-[hsl(215,16%,47%)] mt-1">
-                            {[formatFloor(unit.floor), unit.area_sqm ? `${unit.area_sqm} m²` : null, unit.rooms_count ? `${unit.rooms_count} Zi.` : null].filter(Boolean).join(' · ')}
-                          </div>
-                        </div>
-                        <Badge variant={unit.status === 'frei' ? 'default' : 'secondary'} className={unit.status === 'frei' ? 'bg-emerald-100 text-emerald-700 border-0' : ''}>
-                          {unit.status === 'frei' ? 'Verfügbar' : unit.status === 'reserviert' ? 'Reserviert' : unit.status || '–'}
-                        </Badge>
-                      </div>
-                      <div className="text-xl font-bold text-[hsl(220,20%,10%)] mb-1">
-                        {unit.list_price ? formatCurrency(unit.list_price) : '–'}
-                      </div>
-                      {unit.rent_net && (
-                        <div className="text-xs text-[hsl(215,16%,47%)]">
-                          Miete: {formatCurrency(unit.rent_net)}/Monat
-                          {unit.list_price && <span className="ml-2">· Rendite: {((unit.rent_net * 12 / unit.list_price) * 100).toFixed(1)}%</span>}
-                        </div>
-                      )}
-                      {metrics && (
-                        <div className="mt-3 pt-3 border-t border-[hsl(210,20%,92%)]">
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs text-[hsl(215,16%,47%)]">Monatsbelastung nach Steuer</span>
-                            <span className={`text-sm font-bold ${metrics.monthlyBurden <= 0 ? 'text-emerald-600' : 'text-[hsl(220,20%,10%)]'}`}>
-                              {formatCurrency(metrics.monthlyBurden)}
+          <div className="rounded-2xl border border-[hsl(214,32%,91%)] bg-white overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b bg-[hsl(210,30%,97%)]">
+                    <th className="px-3 py-2.5 text-left font-semibold text-[hsl(215,16%,47%)]">WE-Nr</th>
+                    <th className="px-3 py-2.5 text-center font-semibold text-[hsl(215,16%,47%)]">Zimmer</th>
+                    <th className="px-3 py-2.5 text-center font-semibold text-[hsl(215,16%,47%)]">Etage</th>
+                    <th className="px-3 py-2.5 text-right font-semibold text-[hsl(215,16%,47%)]">Fläche m²</th>
+                    <th className="px-3 py-2.5 text-right font-semibold text-[hsl(215,16%,47%)]">Kaufpreis</th>
+                    <th className="px-3 py-2.5 text-right font-semibold text-[hsl(215,16%,47%)]">Miete/Mo</th>
+                    <th className="px-3 py-2.5 text-right font-semibold text-[hsl(215,16%,47%)]">Bruttorendite</th>
+                    <th className="px-3 py-2.5 text-right font-semibold text-[hsl(215,16%,47%)]">Steuereffekt/Mo</th>
+                    <th className="px-3 py-2.5 text-right font-semibold text-[hsl(215,16%,47%)]">Monatsbelastung</th>
+                    <th className="px-3 py-2.5 text-center font-semibold text-[hsl(215,16%,47%)]">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {availableUnits.map((unit) => {
+                    const metrics = metricsCache[unit.id];
+                    const yieldPercent = unit.list_price && unit.rent_net
+                      ? (unit.rent_net * 12 / unit.list_price) * 100 : 0;
+                    const monthlyTaxEffect = metrics?.yearlyTaxSavings ? metrics.yearlyTaxSavings / 12 : null;
+                    const monthlyBurden = metrics?.monthlyBurden ?? null;
+                    const status = STATUS_LABELS[unit.status || 'frei'] || STATUS_LABELS.frei;
+
+                    return (
+                      <tr
+                        key={unit.id}
+                        className="border-b border-[hsl(214,32%,91%)]/50 transition-colors hover:bg-[hsl(210,30%,97%)] cursor-pointer"
+                        onClick={() => window.location.href = `/website/projekt/${slug}/einheit/${unit.id}`}
+                      >
+                        <td className="px-3 py-2 font-medium text-[hsl(220,20%,10%)]">{unit.unit_number}</td>
+                        <td className="px-3 py-2 text-center">{unit.rooms_count ? `${unit.rooms_count}-Zi` : '—'}</td>
+                        <td className="px-3 py-2 text-center">{formatFloor(unit.floor)}</td>
+                        <td className="px-3 py-2 text-right tabular-nums">{unit.area_sqm ? `${unit.area_sqm.toFixed(1)} m²` : '—'}</td>
+                        <td className="px-3 py-2 text-right tabular-nums font-semibold">{unit.list_price ? eur(unit.list_price) : '—'}</td>
+                        <td className="px-3 py-2 text-right tabular-nums">{unit.rent_net ? eur(unit.rent_net) : '—'}</td>
+                        <td className="px-3 py-2 text-right tabular-nums font-medium">{yieldPercent > 0 ? `${yieldPercent.toFixed(2)} %` : '—'}</td>
+                        <td className="px-3 py-2 text-right tabular-nums">
+                          {isCalculating ? (
+                            <span className="text-[hsl(215,16%,47%)] animate-pulse">···</span>
+                          ) : monthlyTaxEffect !== null ? (
+                            <span className="text-emerald-600 font-medium">{eurSigned(Math.round(monthlyTaxEffect))}</span>
+                          ) : (
+                            <span className="text-[hsl(215,16%,47%)]">—</span>
+                          )}
+                        </td>
+                        <td className="px-3 py-2 text-right tabular-nums">
+                          {isCalculating ? (
+                            <span className="text-[hsl(215,16%,47%)] animate-pulse">···</span>
+                          ) : monthlyBurden !== null ? (
+                            <span className={cn(
+                              'font-bold',
+                              monthlyBurden >= 0 ? 'text-emerald-600' : 'text-red-600'
+                            )}>
+                              {eurSigned(Math.round(monthlyBurden))}/Mo
                             </span>
-                          </div>
-                        </div>
-                      )}
-                      <div className="flex items-center justify-end mt-3 text-xs text-[hsl(210,80%,55%)] group-hover:translate-x-1 transition-transform">
-                        <span>Exposé ansehen</span>
-                        <ArrowRight className="h-3 w-3 ml-1" />
-                      </div>
-                    </CardContent>
-                  </Card>
-                </Link>
-              );
-            })}
+                          ) : (
+                            <span className="text-[hsl(215,16%,47%)]">—</span>
+                          )}
+                        </td>
+                        <td className="px-3 py-2 text-center">
+                          <span className={cn('inline-block px-2 py-0.5 rounded-full text-[10px] font-medium', status.className)}>
+                            {status.label}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+                <tfoot>
+                  <tr className="bg-[hsl(210,30%,97%)] font-semibold text-xs">
+                    <td className="px-3 py-2.5">Summe / Ø</td>
+                    <td className="px-3 py-2.5 text-center">{availableUnits.length} WE</td>
+                    <td className="px-3 py-2.5" />
+                    <td className="px-3 py-2.5 text-right tabular-nums">{totalArea.toFixed(1)} m²</td>
+                    <td className="px-3 py-2.5 text-right tabular-nums">{eur(totalPrice)}</td>
+                    <td className="px-3 py-2.5 text-right tabular-nums">{eur(totalRentAnnual / 12)}</td>
+                    <td className="px-3 py-2.5 text-right tabular-nums">Ø {avgYield.toFixed(2)} %</td>
+                    <td className="px-3 py-2.5 text-right tabular-nums">
+                      {hasSearched && calculatedUnits.length > 0 ? (
+                        <span className="text-emerald-600">Ø {eurSigned(Math.round(
+                          calculatedUnits.reduce((s, u) => s + ((metricsCache[u.id]?.yearlyTaxSavings || 0) / 12), 0) / calculatedUnits.length
+                        ))}</span>
+                      ) : '—'}
+                    </td>
+                    <td className="px-3 py-2.5 text-right tabular-nums">
+                      {hasSearched && calculatedUnits.length > 0 ? (
+                        <span className={cn('font-bold', avgBurden >= 0 ? 'text-emerald-600' : 'text-red-600')}>
+                          Ø {eurSigned(Math.round(avgBurden))}/Mo
+                        </span>
+                      ) : '—'}
+                    </td>
+                    <td className="px-3 py-2.5" />
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
           </div>
         )}
       </section>
