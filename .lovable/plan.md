@@ -1,7 +1,7 @@
 
 ## Integration: Ncore Business Consulting + Otto²Advisory — Implementierungsplan
 
-### Status: Phase 1 DONE ✅
+### Status: Phase 5 DONE ✅
 
 ---
 
@@ -24,26 +24,32 @@
 | **Ncore Desk** (Zone 1) | 1 Desk-Stub | ✅ |
 | **Otto Desk** (Zone 1) | 1 Desk-Stub | ✅ |
 
-### SEO & LLM Optimierung (implementiert in Phase 1)
+### Phase 2: Otto² Advisory Content ✅ ABGESCHLOSSEN
 
-- ✅ `<title>` mit Keyword-First (<60 Zeichen)
-- ✅ `<meta name="description">` (<160 Zeichen, handlungsorientiert)
-- ✅ `<link rel="canonical">` auf Produktionsdomain
-- ✅ JSON-LD Structured Data (ConsultingBusiness, Service, ContactPage)
-- ✅ Semantic HTML (single H1, section-basiert)
-- ✅ `<meta property="og:*">` für Social Sharing
+### Phase 3: Ncore Content-Überarbeitung ✅ ABGESCHLOSSEN
+
+### Phase 4: Lead-Routing ✅ ABGESCHLOSSEN
+
+- ✅ DB-Migration: lead_source enum erweitert (ncore_projekt, ncore_kooperation, otto_advisory_kontakt, otto_advisory_finanzierung)
+- ✅ Edge Function: sot-ncore-lead-submit (zentrales Lead-Routing für beide Brands)
+
+### Phase 5: Zone 1 Desk-Seiten ✅ ABGESCHLOSSEN
+
+| Desk | Tabs | Status |
+|------|------|--------|
+| **Ncore Desk** | Lead-Pool, Inbox, Monitor | ✅ Mit KPI-Leiste, Zuweisung, Conversion Funnel |
+| **Otto² Desk** | Lead-Pool, Inbox, Monitor | ✅ Mit KPI-Leiste, Zuweisung, Conversion Funnel |
+
+### Phase 8: Re-Freeze ✅ ABGESCHLOSSEN
+
+- ✅ INFRA-manifests re-frozen
 
 ### Nächste Schritte
 
 | Phase | Beschreibung | Status |
 |-------|-------------|--------|
-| **2** | Otto²Advisory Content aus Quellprojekt adaptieren + FutureRoom-Finanzierungsflow | ✅ DONE |
-| **3** | Ncore Content-Überarbeitung (kein SoT-Link, konsolidiert) | ⬜ |
-| **4** | Lead-Routing (sot-lead-inbox + sot-futureroom-public-submit) | ⬜ |
-| **5** | Zone 1 Desk-Seiten (Lead-Pool, Zuweisung, Monitor) | ⬜ |
 | **6** | Compliance Engine (Impressum + Datenschutz für beide Brands) | ⬜ |
 | **7** | Armstrong-Integration (Lead-Capture auf beiden Websites) | ⬜ |
-| **8** | Re-Freeze INFRA-manifests | ⬜ |
 
 ### Offene Punkte
 
