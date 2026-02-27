@@ -211,47 +211,110 @@ Wenn ein Objekt mehrere Einheiten hat, erstelle EINE Zeile pro Objekt (nicht pro
     const aiResult = await response.json();
     console.log("[sot-excel-ai-import] AI response received");
 
+    // Debug: log the structure of the AI response
+    const message = aiResult.choices?.[0]?.message;
+    console.log("[sot-excel-ai-import] message keys:", message ? Object.keys(message).join(", ") : "no message");
+    console.log("[sot-excel-ai-import] tool_calls count:", message?.tool_calls?.length ?? 0);
+    console.log("[sot-excel-ai-import] has content:", !!message?.content);
+    if (message?.content) {
+      console.log("[sot-excel-ai-import] content preview:", String(message.content).substring(0, 300));
+    }
+
     // Parse tool call result
     let extractedData: { properties: unknown[]; summary: Record<string, unknown> } | null = null;
 
-    const toolCall = aiResult.choices?.[0]?.message?.tool_calls?.[0];
+    const toolCall = message?.tool_calls?.[0];
     if (toolCall?.function?.arguments) {
       try {
-        extractedData = JSON.parse(toolCall.function.arguments);
+        const args = typeof toolCall.function.arguments === "string"
+          ? toolCall.function.arguments
+          : JSON.stringify(toolCall.function.arguments);
+        extractedData = JSON.parse(args);
+        console.log("[sot-excel-ai-import] Parsed from tool_call, properties:", extractedData?.properties?.length ?? 0);
       } catch (parseError) {
-        console.error("Failed to parse tool call arguments:", parseError);
+        console.error("[sot-excel-ai-import] Failed to parse tool call arguments:", parseError);
+        console.error("[sot-excel-ai-import] Raw arguments preview:", String(toolCall.function.arguments).substring(0, 500));
       }
     }
 
-    // Fallback: try to parse from content
-    if (!extractedData) {
-      const content = aiResult.choices?.[0]?.message?.content;
+    // Fallback 1: try to parse from content as JSON object with "properties" key
+    if (!extractedData || !extractedData.properties?.length) {
+      const content = message?.content;
       if (content) {
+        console.log("[sot-excel-ai-import] Attempting fallback content parsing...");
         try {
-          const jsonMatch = content.match(/\[[\s\S]*\]/);
-          if (jsonMatch) {
-            const properties = JSON.parse(jsonMatch[0]);
-            extractedData = {
-              properties,
-              summary: {
-                totalRows: properties.length,
-                uniqueProperties: new Set(properties.map((p: Record<string, unknown>) => p.code)).size,
-                avgConfidence: properties.reduce((sum: number, p: Record<string, unknown>) => sum + ((p.confidence as number) || 0.5), 0) / properties.length,
-                issues: [],
-              },
-            };
+          // Try direct JSON parse first (content might be pure JSON)
+          const parsed = JSON.parse(content);
+          if (Array.isArray(parsed)) {
+            extractedData = { properties: parsed, summary: { totalRows: parsed.length, uniqueProperties: parsed.length, avgConfidence: 0.8, issues: [] } };
+          } else if (parsed.properties && Array.isArray(parsed.properties)) {
+            extractedData = parsed;
           }
-        } catch (fallbackError) {
-          console.error("Fallback parsing failed:", fallbackError);
+        } catch {
+          // Try extracting JSON from markdown code blocks or inline
+          try {
+            // Match ```json ... ``` blocks
+            const codeBlockMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/);
+            if (codeBlockMatch) {
+              const parsed = JSON.parse(codeBlockMatch[1]);
+              if (Array.isArray(parsed)) {
+                extractedData = { properties: parsed, summary: { totalRows: parsed.length, uniqueProperties: parsed.length, avgConfidence: 0.8, issues: [] } };
+              } else if (parsed.properties) {
+                extractedData = parsed;
+              }
+            }
+          } catch { /* ignore */ }
+
+          // Try matching a JSON array
+          if (!extractedData || !extractedData.properties?.length) {
+            try {
+              const jsonMatch = content.match(/\[[\s\S]*\]/);
+              if (jsonMatch) {
+                const properties = JSON.parse(jsonMatch[0]);
+                if (Array.isArray(properties) && properties.length > 0) {
+                  extractedData = {
+                    properties,
+                    summary: {
+                      totalRows: properties.length,
+                      uniqueProperties: new Set(properties.map((p: Record<string, unknown>) => p.code)).size,
+                      avgConfidence: properties.reduce((sum: number, p: Record<string, unknown>) => sum + ((p.confidence as number) || 0.5), 0) / properties.length,
+                      issues: [],
+                    },
+                  };
+                }
+              }
+            } catch (fallbackError) {
+              console.error("[sot-excel-ai-import] Array fallback parsing failed:", fallbackError);
+            }
+          }
+        }
+        if (extractedData?.properties?.length) {
+          console.log("[sot-excel-ai-import] Parsed from content fallback, properties:", extractedData.properties.length);
         }
       }
     }
 
+    // Fallback 2: check if arguments was already an object (not a string)
+    if (!extractedData || !extractedData.properties?.length) {
+      if (toolCall?.function?.arguments && typeof toolCall.function.arguments === "object") {
+        extractedData = toolCall.function.arguments as { properties: unknown[]; summary: Record<string, unknown> };
+        console.log("[sot-excel-ai-import] Used arguments as object directly, properties:", extractedData?.properties?.length ?? 0);
+      }
+    }
+
     if (!extractedData || !extractedData.properties || extractedData.properties.length === 0) {
+      // Log full response for debugging
+      console.error("[sot-excel-ai-import] Could not extract properties. Full AI response:", JSON.stringify(aiResult).substring(0, 2000));
       return new Response(
         JSON.stringify({
           success: false,
           error: "Keine Immobiliendaten erkannt. Bitte prüfen Sie das Dateiformat.",
+          debug: {
+            hasMessage: !!message,
+            hasToolCalls: !!(message?.tool_calls?.length),
+            hasContent: !!message?.content,
+            contentPreview: message?.content ? String(message.content).substring(0, 200) : null,
+          },
         }),
         { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
