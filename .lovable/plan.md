@@ -1,60 +1,125 @@
 
 
-## SoT Website Redesign — KI-Power & klare Demo/Login-Trennung
+## Zone 2 & Zone 3 — KI-Ausbau-Audit: Wo können wir mehr bieten?
 
-### Probleme identifiziert
+### Analyse-Ergebnis
 
-1. **Demo/Login-Chaos**: Header hat nur "Login" Button (→ `/auth`), kein separater "Demo" Button. Demo-Link in Nav führt auf Unterseite statt direkt zum Demo-Account. User müssen sich durch mehrere Seiten klicken.
-2. **Broken Link**: Preise-Seite hat `ctaLink: '/sot/demo'` statt `/website/sot/demo`
-3. **KI-Power nicht kommuniziert**: Keine Erwähnung der konkreten KI-Modelle (Gemini 2.5 Pro, GPT-5). Keine Zahlen zu Token-Kapazitäten. Armstrong wird als generische KI beschrieben statt als Multi-Modell-Powerhouse.
-4. **Module-Aufzählung oberflächlich**: Nur Name + 1-Zeiler. Keine konkreten KI-Features pro Modul (ChatGPT-Style Upload, automatische Dokumenterkennung, etc.)
-5. **CTA-Wirrwarr**: `SotCTA` default-Text sagt "14 Tage kostenlos" — Plattform ist aber dauerhaft kostenlos
-6. **Hero-Email-Form**: CTA-Eingabefeld hat keinen Submit-Handler
+Ich habe alle Module in Zone 2 (Portal) und alle 5 Websites in Zone 3 systematisch geprüft. Hier sind die konkreten Stellen, wo wir mehr KI, mehr Unterstützung und mehr "Wow" liefern können:
 
-### Änderungen
+---
 
-**1. SotLayout.tsx — Header: Demo-Button + Login klar trennen**
-- Header bekommt zwei Buttons: "Demo testen" (→ `/portal?mode=demo`, grün/auffällig) + "Login" (→ `/auth`, dezent)
-- Nav-Item "DEMO" bleibt, verweist weiterhin auf Info-Seite `/website/sot/demo`
-- Mobile: Gleiche Trennung
+### ZONE 3 — Öffentliche Websites
 
-**2. SotHome.tsx — Hero + KI-Power Sektion komplett überarbeiten**
-- Hero-Pills um "Gemini 2.5 Pro" und "GPT-5" ergänzen
-- Neue "KI-Power" Sektion nach Armstrong: konkrete Modell-Auflistung, Token-Kapazitäten, was unsere KI-Engines alles können (Dokument-Parsing, Exposé-Extraktion, E-Mail-Generierung, Web-Recherche, Meeting-Zusammenfassungen, Marktanalysen)
-- Armstrong-Sektion: "Powered by Gemini 2.5 Pro & GPT-5" Badge, konkrete Zahlen (35+ KI-Engines, 32.000 Token Dokumentanalyse, 8.000 Token Recherchen)
-- Stats-Bar: "15+" → "20+" Module, "35+" KI-Engines hinzufügen
-- CTA unten: Email-Submit verlinkt auf `/auth?mode=register&source=sot`
-- Demo-Link klar auf `/portal?mode=demo`
+**1. Acquiary & Lennox: Kein Armstrong-Widget (kritisch)**
 
-**3. SotDemo.tsx — Demo-Seite: direkter Einstieg**
-- "Demo starten" Button bleibt auf `/portal?mode=demo` (korrekt)
-- Modul-Links: alle korrekt mit `?mode=demo` (bereits gut)
-- Zusätzlich: KI-Features der Demo hervorheben (Armstrong testen, Dokument-Upload testen)
+| Website | Armstrong | Status |
+|---------|-----------|--------|
+| SoT | ✅ ArmstrongWidget | Live |
+| Kaufy | ✅ KaufyArmstrongWidget | Live |
+| FutureRoom | ✅ ArmstrongWidget | Live |
+| **Acquiary** | ❌ Fehlt komplett | Kein Lead-Capture-Assistent |
+| **Lennox** | ❌ Fehlt komplett | Kein Buchungs-Assistent |
 
-**4. SotPreise.tsx — Broken Link fixen**
-- `ctaLink: '/sot/demo'` → `'/website/sot/demo'`
+→ **Fix**: `ArmstrongWidget` in `AcquiaryLayout.tsx` und `LennoxLayout.tsx` einbauen mit spezialisierten Kontexten (`website="acquiary"` für Investment-Qualifizierung, `website="lennox"` für Tier-Buchungsassistenz).
 
-**5. SotCTA.tsx — Default-Text korrigieren**
-- "14 Tage kostenlos" → "Keine Grundgebühr. Alle Module kostenfrei."
+**2. Kaufy Home: Keine KI-Kommunikation**
+Die Kaufy-Seite zeigt Investmentobjekte mit Renditeberechnung, erwähnt aber nirgends die KI-Power dahinter. Kein Hinweis auf automatische Renditeberechnung, KI-gestützte Standortanalyse, oder Gemini 2.5 Pro.
 
-**6. SotIntelligenz.tsx — KI-Modell-Details**
-- Neue Sektion: "Welche KI-Modelle nutzen wir?" mit Gemini 2.5 Pro (Reasoning & Dokumentanalyse), GPT-5 (Textgenerierung), Gemini 2.5 Flash (Schnelle Klassifikation)
-- Konkrete Zahlen: 32.000 Token max. Context, 35+ Edge Functions, 6 KI-Kategorien
+→ **Fix**: KI-Badge-Sektion unter dem Hero ("Powered by Gemini 2.5 Pro — Rendite in Sekunden berechnet") + Sektion "Unsere KI analysiert für Sie" mit konkreten Capabilities.
 
-**7. SotPlattform.tsx — Module mit KI-Badges**
-- Module die KI nutzen bekommen "KI-powered" Badge
-- Kurze Erklärung was die KI dort konkret macht
+**3. FutureRoom Home: KI oberflächlich erwähnt**
+FutureRoom nennt "KI-gestützte Aufbereitung" als Feature, aber keine konkreten Modelle, keine Zahlen, kein "Wow". Die Seite wirkt generisch.
 
-### Betroffene Dateien
+→ **Fix**: Konkrete Modell-Badges (Gemini 2.5 Pro für Dokumentanalyse), KI-Leistungssektion mit Zahlen (z.B. "Selbstauskunft in 2 Minuten automatisch befüllt", "400+ Bankpartner KI-vorselektiert").
 
-| Datei | Aktion |
-|-------|--------|
-| `src/pages/zone3/sot/SotLayout.tsx` | Header: Demo + Login Buttons trennen |
-| `src/pages/zone3/sot/SotHome.tsx` | KI-Power Sektion, Stats, Hero, CTA |
-| `src/pages/zone3/sot/SotDemo.tsx` | KI-Highlights in Demo-Preview |
-| `src/pages/zone3/sot/SotPreise.tsx` | Broken link fix |
-| `src/pages/zone3/sot/SotIntelligenz.tsx` | KI-Modell-Übersicht |
-| `src/components/zone3/sot/SotCTA.tsx` | Default-Text fix |
+**4. Acquiary Methodik: KI-Engine zu allgemein**
+Die Seite nennt eine "KI-Analyse-Engine" und "Automatisierte Datenextraktion", aber keine konkreten Modelle, keine Token-Zahlen, kein Differenzierungsmerkmal.
 
-Alle Dateien sind in Zone3 → Freeze-Check: `zone3_freeze.json` zeigt `"SOT": { "frozen": false }` — frei.
+→ **Fix**: Modell-Badges + konkrete Zahlen ("32.000 Token Context — liest komplette Datenräume", "Gemini 2.5 Pro für Multi-Dokument-Analyse").
+
+**5. Lennox: Kein KI-Feature sichtbar**
+Die Tierservice-Plattform hat null KI-Features auf der Website. Keine intelligente Suche, keine Empfehlungen, keine smarte Buchung.
+
+→ **Fix**: "Smarte Partnersuche" Sektion mit KI-gestütztem Matching (Standort + Services + Bewertungen), intelligente Empfehlungen basierend auf Tierart/Rasse.
+
+---
+
+### ZONE 2 — Portal-Module
+
+**6. Dashboard: Armstrong könnte proaktiver sein**
+Armstrong grüßt auf dem Dashboard, aber bietet keine proaktiven Insights. Kein "Heute fällig", kein "3 Dokumente warten auf Analyse", kein KI-Briefing.
+
+→ **Fix**: `ArmstrongGreetingCard` um ein "KI-Tagesbriefing" erweitern: offene Tasks, Dokumente zur Analyse, Marktveränderungen, anstehende Termine — automatisch generiert.
+
+**7. MOD-17 (Cars/Fuhrpark): Null KI-Integration**
+Reines CRUD für Fahrzeuge, Boote, Privatjets. Keine Wertberechnung, keine TCO-Analyse, keine KI-gestützte Fahrzeugbewertung.
+
+→ **Fix**: "KI-Fahrzeugbewertung" Button pro Fahrzeug (Schwacke-Style Schätzung via Armstrong), TCO-Prognose mit Wartungskosten, Versicherungsvergleich-Assist.
+
+**8. MOD-15 (Fortbildung): Keine personalisierte KI-Empfehlung**
+Reiner Such-Hub für Bücher/Kurse. Keine KI-basierte "Für Sie empfohlen" Funktion.
+
+→ **Fix**: Armstrong-gestützte Empfehlungen basierend auf Benutzerrolle und aktuellen Projekten ("Als Immobilienverwalter empfehle ich: WEG-Recht Update 2026").
+
+**9. MOD-16 (Services/Shops): Keine smarte Bestellung**
+Amazon Business, Büroshop24 — reine iFrame/Link-Integration. Keine KI-gestützte Bedarfsermittlung.
+
+→ **Fix**: "Armstrong Bestellvorschlag" — basierend auf Bürogröße, Teamgröße und letzten Bestellungen automatisch eine Nachbestellliste generieren.
+
+**10. MOD-19 (Photovoltaik): Keine KI-Ertragsoptimierung**
+Anlagen werden verwaltet, aber keine KI-gestützte Ertragsprognose, kein Anomalie-Detection, kein "Ihre Anlage performt 12% unter Soll".
+
+→ **Fix**: KI-Ertragsanalyse via Armstrong ("Anlage München-Süd: Ertrag letzte 30 Tage 8% unter Prognose — mögliche Ursache: Verschattung"). PV-Performance-Widget auf Dashboard.
+
+**11. MOD-20 (Miety/Zuhause): Upload hat SmartDropZone, aber kein KI-Insight**
+Der Upload funktioniert jetzt ChatGPT-Style, aber nach dem Upload passiert nichts Intelligentes mit dem Dokument.
+
+→ **Fix**: Nach Upload automatisch Armstrong-Zusammenfassung des Dokuments ("Mietvertrag erkannt: Kaltmiete 850€, Kündigungsfrist 3 Monate, nächste Erhöhung möglich ab 01.2027").
+
+**12. MOD-06 (Verkauf): Keine KI-Preisempfehlung**
+Objekte werden zum Verkauf eingestellt, aber keine KI-gestützte Preisempfehlung basierend auf Marktdaten.
+
+→ **Fix**: "KI-Preiseinschätzung" Button pro Objekt — Armstrong analysiert Lage, Zustand, Vergleichsobjekte und empfiehlt einen Angebotspreis.
+
+**13. MOD-10 (Lead Manager): Kein KI-Scoring sichtbar**
+Leads kommen rein, aber kein sichtbares KI-Scoring, keine Priorisierung, keine automatische Qualifizierung.
+
+→ **Fix**: KI-Lead-Score (Hot/Warm/Cold) basierend auf Profildaten, Interaktionshistorie und Kaufwahrscheinlichkeit. Armstrong kann Antwort-Entwürfe für Top-Leads generieren.
+
+---
+
+### Zusammengefasste Implementierungsschritte
+
+| # | Aktion | Zone | Aufwand |
+|---|--------|------|---------|
+| 1 | Armstrong-Widget in Acquiary + Lennox einbauen | Z3 | Klein |
+| 2 | KI-Power-Badges auf Kaufy, FutureRoom, Acquiary | Z3 | Klein |
+| 3 | Lennox: KI-Partnersuche Sektion | Z3 | Mittel |
+| 4 | Dashboard: KI-Tagesbriefing in Armstrong Greeting | Z2 | Mittel |
+| 5 | MOD-17: KI-Fahrzeugbewertung | Z2 | Mittel |
+| 6 | MOD-15: KI-Empfehlungen | Z2 | Klein |
+| 7 | MOD-19: KI-Ertragsanalyse | Z2 | Mittel |
+| 8 | MOD-20: Auto-Dokumentanalyse nach Upload | Z2 | Klein |
+| 9 | MOD-06: KI-Preisempfehlung | Z2 | Mittel |
+| 10 | MOD-10: KI-Lead-Scoring | Z2 | Mittel |
+
+### Betroffene Dateien (Freeze-Check nötig vor Implementierung)
+
+| Datei | Modul |
+|-------|-------|
+| `src/pages/zone3/acquiary/AcquiaryLayout.tsx` | Zone3-Acquiary |
+| `src/pages/zone3/lennox/LennoxLayout.tsx` | Zone3-Lennox |
+| `src/pages/zone3/kaufy2026/Kaufy2026Home.tsx` | Zone3-Kaufy |
+| `src/pages/zone3/futureroom/FutureRoomHome.tsx` | Zone3-FutureRoom |
+| `src/pages/zone3/acquiary/AcquiaryMethodik.tsx` | Zone3-Acquiary |
+| `src/components/dashboard/ArmstrongGreetingCard.tsx` | MOD-00 |
+| Diverse Modul-Seiten | MOD-06/10/15/16/17/19/20 |
+
+### Empfohlene Reihenfolge
+
+**Sofort (Quick Wins):** Punkte 1-2 (Armstrong auf alle Z3-Websites + KI-Badges) — maximaler Effekt, minimaler Aufwand.
+
+**Danach:** Punkt 4 (Dashboard KI-Briefing) + Punkt 8 (Miety Auto-Analyse) — zeigt die KI-Power direkt im täglichen Workflow.
+
+**Dann:** Die größeren Features (Fahrzeugbewertung, Ertragsanalyse, Lead-Scoring) — jeweils mit Armstrong-Integration.
 
