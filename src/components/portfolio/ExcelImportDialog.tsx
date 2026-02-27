@@ -61,6 +61,7 @@ interface ExcelImportDialogProps {
   onOpenChange: (open: boolean) => void;
   tenantId: string;
   initialFile?: File | null;
+  contextId?: string | null;
 }
 
 const formatCurrency = (val: number | null | undefined) =>
@@ -76,7 +77,7 @@ const ANALYSIS_STEPS = [
 
 type ParseStep = 'idle' | 'reading' | 'ai-analyzing' | 'ai-finance' | 'ai-properties' | 'ai-loans' | 'done';
 
-export function ExcelImportDialog({ open, onOpenChange, tenantId, initialFile }: ExcelImportDialogProps) {
+export function ExcelImportDialog({ open, onOpenChange, tenantId, initialFile, contextId }: ExcelImportDialogProps) {
   const queryClient = useQueryClient();
   const [file, setFile] = useState<File | null>(null);
   const [aiRows, setAiRows] = useState<AiPropertyRow[]>([]);
@@ -256,6 +257,11 @@ export function ExcelImportDialog({ open, onOpenChange, tenantId, initialFile }:
             year_built: row.baujahr,
             units_count: row.einheiten,
           };
+
+          // Pass landlord context ID for auto-assignment
+          if (contextId) {
+            propertyData.landlord_context_id = contextId;
+          }
 
           if (row.restschuld || row.annuitaetMonat || row.bank) {
             propertyData.loan_data = {
