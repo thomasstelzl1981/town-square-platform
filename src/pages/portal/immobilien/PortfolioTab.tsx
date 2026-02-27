@@ -202,7 +202,7 @@ export function PortfolioTab() {
       if (error) throw error;
       return data;
     },
-    enabled: !!activeTenantId && contexts.length > 1,
+    enabled: !!activeTenantId && contexts.length > 0,
   });
 
   // Fetch UNITS with properties, leases (multi!), and financing from LOANS (SSOT)
