@@ -267,7 +267,10 @@ export function useFinanzanalyseData() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['fa-persons'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['fa-persons'] });
+      queryClient.invalidateQueries({ queryKey: ['fb-household-persons'] });
+    },
   });
 
   const updatePerson = useMutation({
@@ -276,7 +279,10 @@ export function useFinanzanalyseData() {
       const { error } = await supabase.from('household_persons').update(rest).eq('id', id);
       if (error) throw error;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['fa-persons'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['fa-persons'] });
+      queryClient.invalidateQueries({ queryKey: ['fb-household-persons'] });
+    },
   });
 
   const deletePerson = useMutation({
@@ -284,7 +290,10 @@ export function useFinanzanalyseData() {
       const { error } = await supabase.from('household_persons').delete().eq('id', id);
       if (error) throw error;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['fa-persons'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['fa-persons'] });
+      queryClient.invalidateQueries({ queryKey: ['fb-household-persons'] });
+    },
   });
 
   // ─── Pension Upsert ────────────────────────────────────────

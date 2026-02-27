@@ -11249,6 +11249,50 @@ export type Database = {
           },
         ]
       }
+      manual_expenses: {
+        Row: {
+          category: string
+          created_at: string
+          id: string
+          label: string
+          monthly_amount: number
+          notes: string | null
+          tenant_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          id?: string
+          label?: string
+          monthly_amount?: number
+          notes?: string | null
+          tenant_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          id?: string
+          label?: string
+          monthly_amount?: number
+          notes?: string | null
+          tenant_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "manual_expenses_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       meeting_outputs: {
         Row: {
           action_items_json: Json | null

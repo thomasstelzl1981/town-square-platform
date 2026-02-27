@@ -111,6 +111,20 @@ export function useFinanzberichtData(): FinanzberichtData {
     enabled: !!activeTenantId,
   });
 
+  // ─── Manual Expenses ──────────────────────────────────────
+  const { data: manualExpenses = [] } = useQuery({
+    queryKey: ['fb-manual-expenses', activeTenantId],
+    queryFn: async () => {
+      if (!activeTenantId) return [];
+      const { data } = await (supabase as any)
+        .from('manual_expenses')
+        .select('id, category, label, monthly_amount')
+        .eq('tenant_id', activeTenantId);
+      return (data || []) as any[];
+    },
+    enabled: !!activeTenantId,
+  });
+
   // ─── Zuhause ──────────────────────────────────────────────
   const { data: homes = [], isLoading: homesLoading } = useQuery({
     queryKey: ['fb-miety-homes', activeTenantId],
@@ -277,6 +291,7 @@ export function useFinanzberichtData(): FinanzberichtData {
       depotAccounts: filteredDepotAccounts as any[],
       depotPositions: filteredDepotPositions as any[],
       vehicles: filteredVehicles as any[],
+      manualExpenses: manualExpenses as any[],
     });
 
     return {
@@ -284,5 +299,5 @@ export function useFinanzberichtData(): FinanzberichtData {
       kvContracts,
       isLoading,
     };
-  }, [portfolioSummary, portfolioLoading, personsLoading, apLoading, homesLoading, hpLoading, applicantProfiles, householdPersons, homes, mietyLoans, tenancies, insuranceData, vorsorgeData, subscriptions, legalDocs, portfolioLoans, pvPlants, mietyContracts, portfolioProperties, privateLoansList, depotAccounts, depotPositions, vehicles, demoEnabled]);
+  }, [portfolioSummary, portfolioLoading, personsLoading, apLoading, homesLoading, hpLoading, applicantProfiles, householdPersons, homes, mietyLoans, tenancies, insuranceData, vorsorgeData, subscriptions, legalDocs, portfolioLoans, pvPlants, mietyContracts, portfolioProperties, privateLoansList, depotAccounts, depotPositions, vehicles, manualExpenses, demoEnabled]);
 }

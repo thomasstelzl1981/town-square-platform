@@ -22,7 +22,7 @@
     "MOD-15": { "frozen": true, "frozen_at": "2026-02-26T14:00:00.000Z", "reason": "Production freeze" },
     "MOD-16": { "frozen": true, "frozen_at": "2026-02-26T14:00:00.000Z", "reason": "Production freeze" },
     "MOD-17": { "frozen": true, "frozen_at": "2026-02-27T18:00:00.000Z", "reason": "Re-frozen after vehicle image upload implementation" },
-    "MOD-18": { "frozen": true, "frozen_at": "2026-02-27T04:00:00.000Z", "reason": "Re-frozen after KrankenversicherungTab CRUD rewrite completed" },
+    "MOD-18": { "frozen": false, "frozen_at": "2026-02-27T20:00:00.000Z", "reason": "Unfrozen for manual expenses + income sync fix" },
     "MOD-19": { "frozen": true, "frozen_at": "2026-02-26T14:00:00.000Z", "reason": "Production freeze" },
     "MOD-20": { "frozen": true, "frozen_at": "2026-02-27T14:05:00.000Z", "reason": "Re-frozen after StreetView fallback placeholder fix" },
     "MOD-21": { "frozen": true, "frozen_at": "2026-02-26T14:00:00.000Z", "reason": "Production freeze" },

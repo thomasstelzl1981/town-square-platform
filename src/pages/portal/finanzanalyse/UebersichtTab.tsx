@@ -23,6 +23,7 @@ import { usePersonDMS } from '@/hooks/usePersonDMS';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { FinanzberichtSection } from '@/components/finanzanalyse/FinanzberichtSection';
+import { ManualExpensesSection } from '@/components/finanzanalyse/ManualExpensesSection';
 import {
   Users, Plus, User, X, Euro
 } from 'lucide-react';
@@ -604,6 +605,7 @@ export default function UebersichtTab() {
         </Card>
       )}
 
+      <ManualExpensesSection />
       <FinanzberichtSection />
     </PageShell>
   );
