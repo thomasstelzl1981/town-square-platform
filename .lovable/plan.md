@@ -1,41 +1,55 @@
 
 
-## Analyse: Fremde E-Mail-Konten nach User-Wechsel sichtbar
+## Analyse: Excel-Import — Kontext-Zuordnung und Darlehen fehlen
 
-### Root Cause
+### Bestätigte Datenlage
 
-**React Query Cache wird beim Logout/User-Wechsel nicht geleert.**
+| Fakt | Status |
+|------|--------|
+| 4 Immobilien importiert | ✅ vorhanden in `properties` |
+| `landlord_context_id` auf allen 4 | ❌ `NULL` |
+| `context_property_assignment` Einträge | ❌ 0 Einträge |
+| Loans (Darlehen) | ❌ Tabelle leer für diesen Tenant |
+| MM.Wohnen GmbH Kontext | ✅ existiert (`e4623b8c-...`) |
 
-Die RLS-Policies auf `mail_accounts` sind korrekt — sie beschränken per `user_id = auth.uid()`. Das Problem ist rein clientseitig:
+### Root Cause 1: Keine Kontext-Zuordnung
 
-```text
-1. Thomas Stelzl loggt sich ein → mail_accounts Query lädt sein Konto
-2. Query wird unter Key ['email-accounts'] gecacht (KEIN user_id im Key!)
-3. Thomas loggt aus → QueryClient wird NICHT geleert
-4. Bernhard Marchner loggt sich ein
-5. React Query liefert den Cache-Hit für ['email-accounts']
-6. Bernhard sieht Thomas' E-Mail-Konto aus dem Stale Cache
-```
+Die `ExcelImportDialog`-Komponente erhält keinen `contextId`-Parameter. Beim Import wird `sot-property-crud` aufgerufen, aber:
+- **`landlord_context_id`** wird nie an die Edge Function gesendet
+- **`context_property_assignment`** wird nie geschrieben
+- Die Edge Function `sot-property-crud` setzt `landlord_context_id` nicht im Insert
 
-**Zwei Fehler:**
-- `queryKey: ['email-accounts']` enthält keine User-ID → Cache wird User-übergreifend geteilt
-- `signOut()` in AuthContext ruft kein `queryClient.clear()` auf
+Der User importiert von der MM.Wohnen-Kontextseite aus, aber der aktive Kontext wird nicht durchgereicht.
 
-### Fix (2 Teile)
+### Root Cause 2: Darlehen werden nicht gespeichert
 
-**1. QueryClient beim Logout leeren** — `src/contexts/AuthContext.tsx`:
-- `useQueryClient()` importieren
-- In `signOut()`: `queryClient.clear()` aufrufen bevor `supabase.auth.signOut()` ausgeführt wird
+Im Edge Function Log fehlen Einträge. Das Problem liegt im Frontend: Die `handleImport`-Funktion baut `loan_data` korrekt auf (Zeile 260-267), und die Edge Function verarbeitet es korrekt (Zeile 144-173). Mögliche Ursachen:
+- Die AI-Extraktion liefert `restschuld`, `annuitaetMonat`, `bank` — aber der Edge Function Insert schreibt `scope: "property"` (lowercase) statt `"PROPERTY"` (DB-Default ist `'PROPERTY'`)
+- Prüfung: `data.loan_data.bank_name || data.loan_data.outstanding_balance_eur` — wenn die AI `bank: null` und `restschuld: 0` liefert, wird der gesamte Loan-Block übersprungen
 
-**2. User-spezifische Query Keys** — in `EmailTab.tsx` und `AccountIntegrationDialog.tsx`:
-- `queryKey: ['email-accounts']` → `queryKey: ['email-accounts', user?.id]`
-- Sicherstellt, dass selbst ohne Cache-Clear keine Verwechslung möglich ist
+### Fix-Plan
+
+**1. ExcelImportDialog — Kontext-ID durchreichen**
+- Neue Prop `contextId?: string` hinzufügen
+- Im `handleImport`: `propertyData.landlord_context_id = contextId` setzen
+- Nach erfolgreichem Import: `context_property_assignment` Eintrag per Supabase SDK schreiben
+
+**2. PortfolioTab — aktiven Kontext an Dialog übergeben**
+- `selectedContextId` als `contextId` an `ExcelImportDialog` übergeben
+
+**3. Edge Function `sot-property-crud` — 3 Fixes**
+- `landlord_context_id` aus `data` akzeptieren und in Insert schreiben
+- `scope` auf `"PROPERTY"` (uppercase) korrigieren
+- Loan-Condition verbessern: Auch erstellen wenn nur `annuity_monthly_eur` vorhanden
+
+**4. Edge Function — Context Assignment schreiben**
+- Nach Property-Insert: Wenn `landlord_context_id` vorhanden, automatisch `context_property_assignment` Eintrag erstellen
 
 ### Betroffene Dateien
 
 | Datei | Änderung |
 |-------|----------|
-| `src/contexts/AuthContext.tsx` | `queryClient.clear()` bei signOut |
-| `src/pages/portal/office/EmailTab.tsx` | User-ID in queryKey |
-| `src/components/portal/office/AccountIntegrationDialog.tsx` | User-ID in queryKey |
+| `src/components/portfolio/ExcelImportDialog.tsx` | Neue Prop `contextId`, durchreichen an Import-Call + Assignment-Insert |
+| `src/pages/portal/immobilien/PortfolioTab.tsx` | `selectedContextId` an Dialog übergeben |
+| `supabase/functions/sot-property-crud/index.ts` | `landlord_context_id` akzeptieren, `scope` Fix, Loan-Condition erweitern, auto-Assignment |
 
