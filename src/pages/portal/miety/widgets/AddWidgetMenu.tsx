@@ -11,7 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Plus, Home, Camera, Zap, Shield, Eye } from 'lucide-react';
+import { Plus, Home, Camera, Zap, Eye } from 'lucide-react';
 
 interface AddWidgetMenuProps {
   onAddHome: () => void;
@@ -63,14 +63,6 @@ export function AddWidgetMenu({
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => onAddContract('internet')}>
           <Zap className="h-4 w-4 mr-2" />Internet & Telefon
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuLabel>Versicherung</DropdownMenuLabel>
-        <DropdownMenuItem onClick={() => onAddContract('hausrat')}>
-          <Shield className="h-4 w-4 mr-2" />Hausratversicherung
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => onAddContract('haftpflicht')}>
-          <Shield className="h-4 w-4 mr-2" />Haftpflichtversicherung
         </DropdownMenuItem>
 
         {hiddenWidgets.length > 0 && (
