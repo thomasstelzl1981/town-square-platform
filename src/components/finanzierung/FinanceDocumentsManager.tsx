@@ -14,6 +14,7 @@ import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
 import { PageShell } from '@/components/shared/PageShell';
 import { toast } from 'sonner';
 import { useUniversalUpload } from '@/hooks/useUniversalUpload';
+import { useArmstrongProactiveDispatcher } from '@/hooks/useArmstrongProactiveDispatcher';
 
 export interface ChecklistItem {
   id: string;
@@ -153,6 +154,7 @@ export function FinanceDocumentsManager() {
 
   // ── Upload ──
   const { uploadMultiple, isUploading } = useUniversalUpload();
+  const { onDocumentUploaded } = useArmstrongProactiveDispatcher('MOD-07');
 
   const handleUploadFiles = async (files: File[]) => {
     if (!activeTenantId || !selectedNodeId) {
@@ -163,6 +165,8 @@ export function FinanceDocumentsManager() {
       moduleCode: 'MOD_07',
       parentNodeId: selectedNodeId,
     });
+    // Proactive hint for each uploaded file
+    files.forEach(f => onDocumentUploaded(f.name, f.type));
     queryClient.invalidateQueries({ queryKey: ['all-documents'] });
     queryClient.invalidateQueries({ queryKey: ['document-links'] });
   };

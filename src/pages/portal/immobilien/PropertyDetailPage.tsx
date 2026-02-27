@@ -36,6 +36,8 @@ import { InventoryInvestmentSimulation } from '@/components/immobilienakte/Inven
 import { PdfExportFooter, usePdfContentRef } from '@/components/pdf';
 import { NKAbrechnungTab } from '@/components/portfolio/NKAbrechnungTab';
 import { PageShell } from '@/components/shared/PageShell';
+import { ArmstrongAskButton } from '@/components/shared/ArmstrongAskButton';
+import { useArmstrongProactiveDispatcher } from '@/hooks/useArmstrongProactiveDispatcher';
 
 interface Property {
   id: string;
@@ -183,6 +185,7 @@ export default function PropertyDetailPage() {
   const navigate = useNavigate();
   const deleteQueryClient = useQueryClient();
   const contentRef = usePdfContentRef();
+  const { checkPropertyCompleteness } = useArmstrongProactiveDispatcher('MOD-04');
 
   const handleDeleteProperty = async () => {
     if (!id) return;
@@ -328,6 +331,19 @@ export default function PropertyDetailPage() {
     fetchProperty();
   }, [id, activeTenantId]);
 
+  // Proactive hint: check property data completeness
+  useEffect(() => {
+    if (!property) return;
+    const fields = [
+      property.purchase_price, property.market_value, property.year_built,
+      property.total_area_sqm, property.energy_source, property.heating_type,
+      property.land_register_court, property.land_register_sheet,
+      property.description, property.location_notes,
+    ];
+    const filled = fields.filter(f => f !== null && f !== undefined && f !== '').length;
+    checkPropertyCompleteness(filled, fields.length);
+  }, [property, checkPropertyCompleteness]);
+
 
   const getDocumentTitle = () => {
     if (!property) return 'Immobilie';
@@ -420,6 +436,14 @@ export default function PropertyDetailPage() {
               DEMO
             </Badge>
           )}
+
+          <ArmstrongAskButton
+            prompt={`Analysiere die Immobilie "${property.address}, ${property.city}" (Typ: ${property.property_type}, Kaufpreis: ${property.purchase_price || 'unbekannt'})`}
+            entityType="property"
+            entityId={id}
+            variant="icon"
+            className="no-print"
+          />
 
           {!isDemo && (
             <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive no-print" onClick={() => setShowDeleteDialog(true)}>

@@ -4,6 +4,7 @@
  * Supports primary + co-applicant via linked profiles
  */
 
+import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { PageShell } from '@/components/shared/PageShell';
 import { supabase } from '@/integrations/supabase/client';
@@ -17,6 +18,7 @@ import type { ApplicantProfile } from '@/types/finance';
 import { useDemoToggles } from '@/hooks/useDemoToggles';
 import { isDemoId } from '@/engines/demoData/engine';
 import { DEMO_SELBSTAUSKUNFT_PRIMARY_ID, DEMO_SELBSTAUSKUNFT_CO_ID } from '@/engines/demoData/data';
+import { useArmstrongProactiveDispatcher } from '@/hooks/useArmstrongProactiveDispatcher';
 
 // DEV MODE: Check if we're in development (no org required)
 const isDevMode = () => {
@@ -192,6 +194,14 @@ export default function SelbstauskunftTab() {
       toast.error('Fehler beim Erstellen des 2. Antragstellers');
     }
   };
+
+  // Proactive hint: check Selbstauskunft completeness
+  const { checkFinanceReadiness } = useArmstrongProactiveDispatcher('MOD-07');
+  useEffect(() => {
+    if (profile?.completion_score !== undefined && profile?.completion_score !== null) {
+      checkFinanceReadiness(profile.completion_score);
+    }
+  }, [profile?.completion_score, checkFinanceReadiness]);
 
   if (isLoading) {
     return (
