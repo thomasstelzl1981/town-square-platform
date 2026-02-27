@@ -1,47 +1,31 @@
 
+## Befund
 
-## Fahrzeugbild: Upload + Fallback-Logik
+Das gesamte **"Armstrong Depot"** (Zeilen 746-793 in `InvestmentTab.tsx`) basiert auf hartcodierten Demo-Daten in `src/hooks/useDemoDepot.ts` — Arrays mit fiktiven ETF-Positionen, Transaktionen, Steuerreport und Performance-Daten, die zusammen die 29.431 € ergeben. 
 
-### Problem
-Fahrzeugkarten in MOD-17 nutzen hardcodierte Unsplash-URLs (`VEHICLE_IMAGES` Map). Es gibt kein Upload-Feld und keine `image_url`-Spalte auf `cars_vehicles`. Wenn Marke/Modell nicht in der Map stehen, wird ein generisches Auto-Bild angezeigt.
+Dies ist ein klarer **DEMO DATA VIOLATION**: Hardcodierte Mock-Daten in Hook/Component-Dateien statt über die Seed-Engine.
 
-### Loesung
+### Betroffene Dateien
 
-Das bestehende `useImageSlotUpload`-Pattern (SSOT, bereits in MOD-01, MOD-13, MOD-22 im Einsatz) fuer Fahrzeugbilder nutzen.
+| Datei | Rolle |
+|-------|-------|
+| `src/hooks/useDemoDepot.ts` | SSOT der hartcodierten Daten (DEMO_POSITIONS, DEMO_TRANSACTIONS, etc.) |
+| `src/components/finanzanalyse/depot/DepotPortfolio.tsx` | Zeigt Pie-Chart mit DEMO_POSITIONS |
+| `src/components/finanzanalyse/depot/DepotPositionen.tsx` | Tabelle mit DEMO_POSITIONS |
+| `src/components/finanzanalyse/depot/DepotPerformanceChart.tsx` | Chart mit generatePerformanceData() |
+| `src/components/finanzanalyse/depot/DepotTransaktionen.tsx` | Tabelle mit DEMO_TRANSACTIONS |
+| `src/components/finanzanalyse/depot/DepotSteuerReport.tsx` | Steuer-Report mit DEMO_TAX_REPORT |
+| `src/components/finanzanalyse/depot/DepotOnboardingWizard.tsx` | Fake Onboarding-Wizard |
+| `src/pages/portal/finanzanalyse/InvestmentTab.tsx` | Rendert das gesamte Armstrong-Depot-Section (Z. 746-793) |
 
-### Aenderungen
+### Empfohlene Aktion: Komplett entfernen
 
-**1. `src/components/portal/cars/CarsFahrzeuge.tsx`**
-- `useImageSlotUpload` importieren mit `moduleCode: 'MOD-17'`
-- Beim Laden der Fahrzeugliste: `loadSlotImages` fuer jedes Fahrzeug aufrufen, Ergebnis in State `vehicleImages: Record<vehicleId, url>` cachen
-- `getImage(v)` anpassen: Zuerst `vehicleImages[v.id]` pruefen, dann Unsplash-Fallback
-- Auf der Karte: Dropzone-Overlay hinzufuegen (Kamera-Icon beim Hover), das `uploadToSlot('hero', file)` aufruft
+Das "Armstrong Depot" ist ein Platzhalter für eine zukuenftige Upvest-Integration, die noch nicht existiert. Es zeigt **jedem** Nutzer fake Depot-Daten an (29.431 €), die nichts mit seinen echten Finanzen zu tun haben. 
 
-**2. `src/components/portal/cars/VehicleDetailPage.tsx`**
-- Im Header-Bereich: Fahrzeugbild mit Upload-Moeglichkeit anzeigen (gleiche `useImageSlotUpload`-Instanz)
-- Drag & Drop oder Click-to-Upload auf das Bild
+**Aenderungen:**
 
-**3. Kein DB-Schema-Change noetig** — Die Bilder werden ueber `document_links` + `documents` gespeichert (bestehende Pipeline), nicht ueber eine neue Spalte.
-
-### Ablauf fuer den Nutzer
-
-```text
-Karte zeigt Unsplash-Fallback (wie bisher)
-     │
-     ▼
-Nutzer zieht Bild auf die Karte oder klickt Upload-Icon
-     │
-     ▼
-useImageSlotUpload speichert in tenant-documents/{tenantId}/MOD_17/{vehicleId}/images/hero_...
-     │
-     ▼
-Karte zeigt ab sofort das eigene Bild
-     │
-     ▼
-Erneuter Upload ersetzt das Bild (altes wird archived)
-```
-
-### Freeze
-
-MOD-17 ist **frozen**. Bitte explizit sagen: **"UNFREEZE MOD-17"**, dann implementiere ich und freeze danach wieder.
-
+1. **`InvestmentTab.tsx`**: Gesamten "Armstrong Depot"-Block (Z. 746-793) entfernen, inkl. `useDemoDepot`-Import und alle Referenzen auf `status`, `setStatus`, `resetDepot`, `totalValue`, `dailyChange`
+2. **Person-Kacheln**: Die `totalValue`-Anzeige (Z. 507) und die localStorage-basierte "Depot aktiv"-Logik (Z. 468-469) entfernen — diese stammen ebenfalls aus dem Demo-Hook
+3. **6 Depot-Komponenten loeschen**: Alle Dateien in `src/components/finanzanalyse/depot/` — sie haben keine andere Verwendung
+4. **`src/hooks/useDemoDepot.ts` loeschen** — wird nirgendwo sonst verwendet
+5. **Person-Kacheln behalten**: Die Personen-Auswahl oben und die FinAPI-Depot/Sparplan-Logik bleiben vollstaendig erhalten — das ist die echte Funktionalitaet
