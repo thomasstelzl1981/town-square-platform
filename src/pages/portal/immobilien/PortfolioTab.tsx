@@ -29,7 +29,7 @@ import {
 } from '@/components/shared/PropertyTable';
 import { 
   Loader2, Building2, TrendingUp, Wallet, PiggyBank, 
-  Plus, Upload, Trash2, Calculator, Table2, ChevronDown, Landmark
+  Plus, Upload, Trash2, Calculator, Table2, ChevronDown, Landmark, Download
 } from 'lucide-react';
 import {
   AlertDialog,
@@ -55,6 +55,7 @@ import { CreatePropertyDialog } from '@/components/portfolio/CreatePropertyDialo
 import { PortfolioSummaryModal } from '@/components/portfolio/PortfolioSummaryModal';
 import { CreateContextDialog } from '@/components/shared/CreateContextDialog';
 import { DesktopOnly } from '@/components/shared/DesktopOnly';
+import { generatePortfolioTemplate } from '@/lib/generatePortfolioTemplate';
 
 interface LandlordContext {
   id: string;
@@ -1124,6 +1125,17 @@ export function PortfolioTab() {
               </div>
             )}
           </FileUploader>
+          <div className="flex items-center justify-center">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="gap-2 text-xs text-muted-foreground hover:text-foreground"
+              onClick={() => generatePortfolioTemplate()}
+            >
+              <Download className="h-3.5 w-3.5" />
+              Muster-Vorlage herunterladen
+            </Button>
+          </div>
           {/* Loan re-run button */}
           {hasData && (
             <div className="flex items-center justify-end">
