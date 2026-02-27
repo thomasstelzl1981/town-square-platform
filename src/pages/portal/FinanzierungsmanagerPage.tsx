@@ -6,9 +6,6 @@
  */
 import * as React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { ShieldAlert } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
-import { Card, CardContent } from '@/components/ui/card';
 import { useFutureRoomCases } from '@/hooks/useFinanceMandate';
 
 // Lazy load — 6 Tile pages
@@ -30,28 +27,8 @@ const FMVorsorgeTab = React.lazy(() => import('./finanzierungsmanager/FMVorsorge
 const FMAbonnementsTab = React.lazy(() => import('./finanzierungsmanager/FMAbonnementsTab'));
 
 export default function FinanzierungsmanagerPage() {
-  const { memberships, isPlatformAdmin } = useAuth();
-
-  const canAccess = isPlatformAdmin || memberships.some(m => 
-    m.role === 'finance_manager' || m.role === 'super_manager'
-  );
-
-  if (!canAccess) {
-    return (
-      <div className="p-6">
-        <Card>
-          <CardContent className="p-12 text-center">
-            <ShieldAlert className="h-12 w-12 mx-auto text-destructive mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Kein Zugriff</h3>
-            <p className="text-muted-foreground">
-              Dieses Modul ist nur für verifizierte Finanzierungsmanager zugänglich.
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
+  // Access control is handled by tenant_tile_activation (SSOT) via PortalNav.
+  // No redundant frontend gate needed — if the user reaches this route, they have access.
   const { data: cases = [], isLoading: casesLoading } = useFutureRoomCases();
 
   return (
