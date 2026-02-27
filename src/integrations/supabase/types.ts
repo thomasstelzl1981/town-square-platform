@@ -6721,6 +6721,96 @@ export type Database = {
           },
         ]
       }
+      document_structured_data: {
+        Row: {
+          confidence: number | null
+          contact_id: string | null
+          created_at: string
+          doc_category: string
+          document_id: string
+          extracted_fields: Json
+          extractor_version: string | null
+          id: string
+          needs_review: boolean | null
+          property_id: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          tenant_id: string
+          unit_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          confidence?: number | null
+          contact_id?: string | null
+          created_at?: string
+          doc_category: string
+          document_id: string
+          extracted_fields?: Json
+          extractor_version?: string | null
+          id?: string
+          needs_review?: boolean | null
+          property_id?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          tenant_id: string
+          unit_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          confidence?: number | null
+          contact_id?: string | null
+          created_at?: string
+          doc_category?: string
+          document_id?: string
+          extracted_fields?: Json
+          extractor_version?: string | null
+          id?: string
+          needs_review?: boolean | null
+          property_id?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          tenant_id?: string
+          unit_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_structured_data_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_structured_data_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_structured_data_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_structured_data_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_structured_data_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "units"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       documents: {
         Row: {
           ai_summary: string | null
@@ -9203,6 +9293,131 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "investment_profiles"
             referencedColumns: ["tenant_id", "id"]
+          },
+        ]
+      }
+      invoice_extractions: {
+        Row: {
+          ai_raw_response: Json | null
+          billing_period_end: string | null
+          billing_period_start: string | null
+          created_at: string
+          currency: string | null
+          document_id: string | null
+          due_date: string | null
+          extractor_version: string | null
+          iban: string | null
+          id: string
+          invoice_date: string | null
+          invoice_number: string | null
+          match_confidence: number | null
+          match_method: string | null
+          match_status: string
+          matched_at: string | null
+          matched_by: string | null
+          nk_cost_category: string | null
+          property_id: string | null
+          purpose: string | null
+          tenant_id: string
+          total_gross: number | null
+          total_net: number | null
+          unit_id: string | null
+          updated_at: string
+          vat_amount: number | null
+          vat_rate: number | null
+          vendor_address: string | null
+          vendor_name: string | null
+        }
+        Insert: {
+          ai_raw_response?: Json | null
+          billing_period_end?: string | null
+          billing_period_start?: string | null
+          created_at?: string
+          currency?: string | null
+          document_id?: string | null
+          due_date?: string | null
+          extractor_version?: string | null
+          iban?: string | null
+          id?: string
+          invoice_date?: string | null
+          invoice_number?: string | null
+          match_confidence?: number | null
+          match_method?: string | null
+          match_status?: string
+          matched_at?: string | null
+          matched_by?: string | null
+          nk_cost_category?: string | null
+          property_id?: string | null
+          purpose?: string | null
+          tenant_id: string
+          total_gross?: number | null
+          total_net?: number | null
+          unit_id?: string | null
+          updated_at?: string
+          vat_amount?: number | null
+          vat_rate?: number | null
+          vendor_address?: string | null
+          vendor_name?: string | null
+        }
+        Update: {
+          ai_raw_response?: Json | null
+          billing_period_end?: string | null
+          billing_period_start?: string | null
+          created_at?: string
+          currency?: string | null
+          document_id?: string | null
+          due_date?: string | null
+          extractor_version?: string | null
+          iban?: string | null
+          id?: string
+          invoice_date?: string | null
+          invoice_number?: string | null
+          match_confidence?: number | null
+          match_method?: string | null
+          match_status?: string
+          matched_at?: string | null
+          matched_by?: string | null
+          nk_cost_category?: string | null
+          property_id?: string | null
+          purpose?: string | null
+          tenant_id?: string
+          total_gross?: number | null
+          total_net?: number | null
+          unit_id?: string | null
+          updated_at?: string
+          vat_amount?: number | null
+          vat_rate?: number | null
+          vendor_address?: string | null
+          vendor_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_extractions_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_extractions_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_extractions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_extractions_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "units"
+            referencedColumns: ["id"]
           },
         ]
       }
