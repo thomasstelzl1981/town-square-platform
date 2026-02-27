@@ -10,9 +10,10 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { Briefcase, Loader2, Plus, Inbox, User, Phone, Mail, MapPin, Pencil, Target, TrendingUp, BarChart3, Users, Building2, Globe } from 'lucide-react';
+import { Briefcase, Loader2, Plus, Inbox, Pencil, Target, TrendingUp, BarChart3, Users, Building2, Globe } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DESIGN, getActiveWidgetGlow } from '@/config/designManifest';
+import { ManagerVisitenkarte } from '@/components/shared/ManagerVisitenkarte';
 import { 
   useAcqMandatesPending, 
   useAcqMandatesActive,
@@ -144,57 +145,14 @@ export default function AkquiseDashboard() {
       {/* ── DASHBOARD_HEADER: Visitenkarte + KPI-Ticker (OBEN) ── */}
       <div className={DESIGN.DASHBOARD_HEADER.GRID}>
         {/* Visitenkarte */}
-        <Card className={cn("overflow-hidden border-0 shadow-card", DESIGN.DASHBOARD_HEADER.CARD_HEIGHT)}>
-          <div className="h-2 bg-gradient-to-r from-[hsl(160,60%,40%)] to-[hsl(180,50%,45%)]" />
-          <CardContent className="p-4">
-            <div className="flex items-start gap-3">
-              <div className="h-12 w-12 rounded-full bg-gradient-to-br from-[hsl(160,60%,40%)] to-[hsl(180,50%,45%)] flex items-center justify-center shrink-0 shadow-md">
-                {profile?.avatar_url ? (
-                  <img src={profile.avatar_url} alt={fullName} className="h-12 w-12 rounded-full object-cover" />
-                ) : (
-                  <User className="h-5 w-5 text-white" />
-                )}
-              </div>
-              <div className="flex-1 min-w-0 space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-base font-bold">{fullName}</h3>
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Akquise-Manager</p>
-                  </div>
-                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={openEditSheet}>
-                    <Pencil className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-
-                <div className="space-y-0.5">
-                  {profile?.email && (
-                    <div className="flex items-center gap-2 text-[11px]">
-                      <Mail className="h-3 w-3 text-muted-foreground shrink-0" />
-                      <span className="truncate">{profile.email}</span>
-                    </div>
-                  )}
-                  {profile?.phone_mobile && (
-                    <div className="flex items-center gap-2 text-[11px]">
-                      <Phone className="h-3 w-3 text-muted-foreground shrink-0" />
-                      <span>{profile.phone_mobile}</span>
-                    </div>
-                  )}
-                  {fullAddress && (
-                    <div className="flex items-center gap-2 text-[11px]">
-                      <MapPin className="h-3 w-3 text-muted-foreground shrink-0" />
-                      <span className="truncate">{fullAddress}</span>
-                    </div>
-                  )}
-                </div>
-
-                <div className="pt-1 flex gap-1.5">
-                  <Badge variant="outline" className="text-[10px]">{activeCount} aktive Mandate</Badge>
-                  {pendingCount > 0 && <Badge variant="secondary" className="text-[10px]">{pendingCount} neu</Badge>}
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <ManagerVisitenkarte
+          role="Akquise-Manager"
+          gradientFrom="hsl(160,60%,40%)"
+          gradientTo="hsl(180,50%,45%)"
+          badgeText={`${activeCount} aktive Mandate`}
+          extraBadge={pendingCount > 0 ? `${pendingCount} neu` : undefined}
+          onEdit={openEditSheet}
+        />
 
         {/* KPI-Widget */}
         <Card className={cn("overflow-hidden border-0 shadow-card", DESIGN.DASHBOARD_HEADER.CARD_HEIGHT)}>

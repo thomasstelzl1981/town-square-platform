@@ -7,11 +7,12 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, Plus, Check, X, Inbox, User, Phone, Mail, MapPin, Globe, Shield, Pencil, Building2, Landmark, ExternalLink, TrendingUp, TrendingDown, Minus, BarChart3 } from 'lucide-react';
+import { Loader2, Plus, Check, X, Inbox, Shield, Pencil, Building2, Landmark, ExternalLink, TrendingUp, TrendingDown, Minus, BarChart3 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DESIGN, getActiveWidgetGlow } from '@/config/designManifest';
 import { WidgetGrid } from '@/components/shared/WidgetGrid';
 import { WidgetCell } from '@/components/shared/WidgetCell';
+import { ManagerVisitenkarte } from '@/components/shared/ManagerVisitenkarte';
 
 import { PageShell } from '@/components/shared/PageShell';
 import { ModulePageHeader } from '@/components/shared/ModulePageHeader';
@@ -287,73 +288,30 @@ export default function FMDashboard({ cases, isLoading }: Props) {
       {/* DASHBOARD_HEADER: Visitenkarte + Zins-Ticker (OBEN) */}
       <div className={DESIGN.DASHBOARD_HEADER.GRID}>
         {/* Visitenkarte */}
-        <Card className={cn("overflow-hidden border-0 shadow-card", DESIGN.DASHBOARD_HEADER.CARD_HEIGHT)}>
-          <div className="h-2 bg-gradient-to-r from-[hsl(220,70%,50%)] to-[hsl(250,60%,60%)]" />
-          <CardContent className="p-4">
-            <div className="flex items-start gap-3">
-              <div className="h-12 w-12 rounded-full bg-gradient-to-br from-[hsl(220,70%,50%)] to-[hsl(250,60%,60%)] flex items-center justify-center shrink-0 shadow-md">
-                {profile?.avatar_url ? (
-                  <img src={profile.avatar_url} alt={fullName} className="h-12 w-12 rounded-full object-cover" />
-                ) : (
-                  <User className="h-5 w-5 text-white" />
-                )}
-              </div>
-              <div className="flex-1 min-w-0 space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-base font-bold">{fullName}</h3>
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Finanzierungsmanager</p>
+        <ManagerVisitenkarte
+          role="Finanzierungsmanager"
+          gradientFrom="hsl(220,70%,50%)"
+          gradientTo="hsl(250,60%,60%)"
+          badgeText={`${activeCases.length} aktive Fälle`}
+          onEdit={openEditSheet}
+        >
+          {(reg34i || regIhk) && (
+            <>
+              <Separator className="my-1" />
+              <div className="space-y-0.5">
+                {reg34i && (
+                  <div className="flex items-center gap-2 text-[11px]">
+                    <Shield className="h-3 w-3 text-muted-foreground shrink-0" />
+                    <span>§34i: {reg34i}</span>
                   </div>
-                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={openEditSheet}>
-                    <Pencil className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-
-                <div className="space-y-0.5">
-                  {profile?.email && (
-                    <div className="flex items-center gap-2 text-[11px]">
-                      <Mail className="h-3 w-3 text-muted-foreground shrink-0" />
-                      <span className="truncate">{profile.email}</span>
-                    </div>
-                  )}
-                  {profile?.phone_mobile && (
-                    <div className="flex items-center gap-2 text-[11px]">
-                      <Phone className="h-3 w-3 text-muted-foreground shrink-0" />
-                      <span>{profile.phone_mobile}</span>
-                    </div>
-                  )}
-                  {fullAddress && (
-                    <div className="flex items-center gap-2 text-[11px]">
-                      <MapPin className="h-3 w-3 text-muted-foreground shrink-0" />
-                      <span className="truncate">{fullAddress}</span>
-                    </div>
-                  )}
-                </div>
-
-                {(reg34i || regIhk) && (
-                  <>
-                    <Separator className="my-1" />
-                    <div className="space-y-0.5">
-                      {reg34i && (
-                        <div className="flex items-center gap-2 text-[11px]">
-                          <Shield className="h-3 w-3 text-muted-foreground shrink-0" />
-                          <span>§34i: {reg34i}</span>
-                        </div>
-                      )}
-                      {regIhk && (
-                        <div className="text-[11px] text-muted-foreground pl-5">IHK: {regIhk}</div>
-                      )}
-                    </div>
-                  </>
                 )}
-
-                <div className="pt-1">
-                  <Badge variant="outline" className="text-[10px]">{activeCases.length} aktive Fälle</Badge>
-                </div>
+                {regIhk && (
+                  <div className="text-[11px] text-muted-foreground pl-5">IHK: {regIhk}</div>
+                )}
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </>
+          )}
+        </ManagerVisitenkarte>
 
         {/* Zins-Ticker Widget */}
         <div className={DESIGN.DASHBOARD_HEADER.CARD_HEIGHT}>
