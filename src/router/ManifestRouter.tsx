@@ -189,6 +189,17 @@ const ProjectLandingBeratung = React.lazy(() => import('@/pages/zone3/project-la
 const ProjectLandingExpose = React.lazy(() => import('@/pages/zone3/project-landing/ProjectLandingExpose'));
 const LennoxMeinBereich = React.lazy(() => import('@/pages/zone3/lennox/LennoxMeinBereich'));
 
+// Zone 3: Ncore Business Consulting (lazy loaded)
+const NcoreLayout = React.lazy(() => import('@/pages/zone3/ncore/NcoreLayout'));
+const NcoreHome = React.lazy(() => import('@/pages/zone3/ncore/NcoreHome'));
+
+// Zone 3: Otto² Advisory (lazy loaded)
+const OttoAdvisoryLayout = React.lazy(() => import('@/pages/zone3/otto/OttoAdvisoryLayout'));
+const OttoHome = React.lazy(() => import('@/pages/zone3/otto/OttoHome'));
+
+// Zone 1: Ncore + Otto Desk (lazy loaded)
+const NcoreDesk = React.lazy(() => import('@/pages/admin/desks/NcoreDesk'));
+const OttoDesk = React.lazy(() => import('@/pages/admin/desks/OttoDesk'));
 
 // 404
 import NotFound from '@/pages/NotFound';
@@ -296,6 +307,8 @@ const adminDeskMap: Record<string, React.ComponentType> = {
   'projekt-desk': ProjektDeskComponent,
   'pet-desk': React.lazy(() => import('@/pages/admin/desks/PetmanagerDesk')) as unknown as React.ComponentType,
   'service-desk': React.lazy(() => import('@/pages/admin/service-desk/ServiceDeskRouter')) as unknown as React.ComponentType,
+  'ncore-desk': NcoreDesk as unknown as React.ComponentType,
+  'otto-desk': OttoDesk as unknown as React.ComponentType,
 };
 
 // Zone 1 FutureRoom Sub-Pages (lazy loaded for explicit nested routes)
@@ -429,6 +442,8 @@ const zone3LayoutMap: Record<string, React.ComponentType<{ children?: React.Reac
   AcquiaryLayout,
   LennoxLayout,
   ProjectLandingLayout,
+  NcoreLayout,
+  OttoAdvisoryLayout,
 };
 
 const zone3ComponentMaps: Record<string, Record<string, React.ComponentType>> = {
@@ -453,6 +468,26 @@ const zone3ComponentMaps: Record<string, Record<string, React.ComponentType>> = 
     ProjectLandingExpose,
     ProjectLandingImpressum: React.lazy(() => import('@/pages/zone3/project-landing/ProjectLandingImpressum')),
     ProjectLandingDatenschutz: React.lazy(() => import('@/pages/zone3/project-landing/ProjectLandingDatenschutz')),
+  },
+  ncore: {
+    NcoreHome,
+    NcoreDigitalisierung: React.lazy(() => import('@/pages/zone3/ncore/NcoreDigitalisierung')),
+    NcoreStiftungen: React.lazy(() => import('@/pages/zone3/ncore/NcoreStiftungen')),
+    NcoreGeschaeftsmodelle: React.lazy(() => import('@/pages/zone3/ncore/NcoreGeschaeftsmodelle')),
+    NcoreNetzwerk: React.lazy(() => import('@/pages/zone3/ncore/NcoreNetzwerk')),
+    NcoreGruender: React.lazy(() => import('@/pages/zone3/ncore/NcoreGruender')),
+    NcoreKontakt: React.lazy(() => import('@/pages/zone3/ncore/NcoreKontakt')),
+    NcoreImpressum: React.lazy(() => import('@/pages/zone3/ncore/NcoreImpressum')),
+    NcoreDatenschutz: React.lazy(() => import('@/pages/zone3/ncore/NcoreDatenschutz')),
+  },
+  otto: {
+    OttoHome,
+    OttoUnternehmer: React.lazy(() => import('@/pages/zone3/otto/OttoUnternehmer')),
+    OttoPrivateHaushalte: React.lazy(() => import('@/pages/zone3/otto/OttoPrivateHaushalte')),
+    OttoFinanzierung: React.lazy(() => import('@/pages/zone3/otto/OttoFinanzierung')),
+    OttoKontakt: React.lazy(() => import('@/pages/zone3/otto/OttoKontakt')),
+    OttoImpressum: React.lazy(() => import('@/pages/zone3/otto/OttoImpressum')),
+    OttoDatenschutz: React.lazy(() => import('@/pages/zone3/otto/OttoDatenschutz')),
   },
 };
 
@@ -552,7 +587,7 @@ export function ManifestRouter() {
         {/* Standard Admin Routes */}
         {zone1Admin.routes?.map((route) => {
           // Skip desk routes (handled above)
-          if (['futureroom', 'sales-desk', 'finance-desk', 'acquiary', 'projekt-desk', 'pet-desk', 'lead-desk', 'service-desk'].some(desk => route.path.startsWith(desk))) {
+          if (['futureroom', 'sales-desk', 'finance-desk', 'acquiary', 'projekt-desk', 'pet-desk', 'lead-desk', 'service-desk', 'ncore-desk', 'otto-desk'].some(desk => route.path.startsWith(desk))) {
             return null;
           }
           
