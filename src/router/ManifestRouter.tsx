@@ -100,6 +100,7 @@ const RentalExposeDetail = React.lazy(() => import('@/pages/portal/immobilien/Re
 const ExposeDetail = React.lazy(() => import('@/pages/portal/verkauf/ExposeDetail'));
 const AnfrageDetailPage = React.lazy(() => import('@/pages/portal/finanzierung/AnfrageDetailPage'));
 const FMFallDetail = React.lazy(() => import('@/pages/portal/finanzierungsmanager/FMFallDetail'));
+const RepairSortContainersPage = React.lazy(() => import('@/pages/portal/RepairSortContainersPage'));
 
 // Zone 2: Module Pages (with internal routing)
 const StammdatenPage = React.lazy(() => import('@/pages/portal/StammdatenPage'));
@@ -617,6 +618,13 @@ export function ManifestRouter() {
             />
           );
         })}
+
+        {/* One-time repair page — remove after use */}
+        <Route path="repair-sort-containers" element={
+          <React.Suspense fallback={<LoadingFallback />}>
+            <RepairSortContainersPage />
+          </React.Suspense>
+        } />
 
         {/* Legacy redirect: /portal/leads → /portal/provisionen */}
         <Route path="leads/*" element={<Navigate to="/portal/provisionen" replace />} />
