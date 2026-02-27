@@ -13,7 +13,7 @@ interface FileUploaderProps {
   className?: string;
   label?: string;
   hint?: string;
-  children?: React.ReactNode; // Custom trigger element
+  children?: React.ReactNode | ((isDragOver: boolean) => React.ReactNode); // Render prop or static children
 }
 
 export function FileUploader({
@@ -84,6 +84,7 @@ export function FileUploader({
 
   // If children provided, use as custom trigger (with DND support)
   if (children) {
+    const renderedChildren = typeof children === 'function' ? children(isDragOver) : children;
     return (
       <div
         className={className}
@@ -92,7 +93,7 @@ export function FileUploader({
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
       >
-        {children}
+        {renderedChildren}
         <input
           ref={inputRef}
           type="file"

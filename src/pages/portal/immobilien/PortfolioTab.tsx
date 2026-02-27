@@ -1056,19 +1056,25 @@ export function PortfolioTab() {
         </Card>
       </div>
 
-      {/* Excel Import Zone (collapsed) */}
+      {/* Excel Import Zone */}
       <Card>
         <CardContent className="p-4">
           <FileUploader
             onFilesSelected={handleExcelFile}
             accept=".xlsx,.xls,.csv"
           >
-            <div className="border border-dashed border-muted-foreground/25 rounded-lg p-3 text-center hover:border-primary/50 transition-colors cursor-pointer flex items-center justify-center gap-3">
-              <Upload className="h-5 w-5 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">
-                Portfolio-Excel zum Import hier ablegen
-              </span>
-            </div>
+            {(isDragOver: boolean) => (
+              <div className={cn(
+                'border-2 border-dashed rounded-lg p-6 text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-2',
+                isDragOver
+                  ? 'border-primary bg-primary/5 scale-[1.01]'
+                  : 'border-muted-foreground/25 hover:border-primary/40 hover:bg-muted/30'
+              )}>
+                <Upload className={cn('h-8 w-8 transition-colors', isDragOver ? 'text-primary' : 'text-muted-foreground')} />
+                <p className="text-sm font-medium">Portfolio-Excel zum Import hier ablegen</p>
+                <p className="text-xs text-muted-foreground">oder klicken zum Auswählen · .xlsx, .xls, .csv</p>
+              </div>
+            )}
           </FileUploader>
         </CardContent>
       </Card>
