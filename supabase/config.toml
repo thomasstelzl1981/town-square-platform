@@ -250,3 +250,12 @@ verify_jwt = false
 
 [functions.sot-camera-snapshot]
 verify_jwt = false
+
+[functions.sot-weg-abrechnung-parse]
+verify_jwt = false
+
+[functions.sot-invoice-parse]
+verify_jwt = false
+
+[functions.sot-finance-prepare]
+verify_jwt = false
