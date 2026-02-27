@@ -1,13 +1,13 @@
 {
-  "version": "1.1",
-  "updated_at": "2026-02-27T23:30:00.000Z",
+  "version": "1.2",
+  "updated_at": "2026-02-27T23:59:00.000Z",
   "description": "SSOT for Zone 3 website freeze states. AI MUST check this file before modifying any file in src/pages/zone3/*. If a site is frozen, changes are NOT ALLOWED without explicit unfreeze.",
   "sites": {
-    "KAUFY": { "frozen": false, "frozen_at": "2026-02-27T23:30:00.000Z", "path": "src/pages/zone3/kaufy2026/*", "reason": "Unfrozen for ChatGPT-style upload upgrade" },
-    "SOT": { "frozen": false, "frozen_at": "2026-02-27T23:30:00.000Z", "path": "src/pages/zone3/sot/*", "reason": "Unfrozen for ChatGPT-style upload upgrade" },
-    "FUTUREROOM": { "frozen": false, "frozen_at": "2026-02-27T23:30:00.000Z", "path": "src/pages/zone3/futureroom/*", "reason": "Unfrozen for ChatGPT-style upload upgrade" },
-    "ACQUIARY": { "frozen": false, "frozen_at": "2026-02-27T23:30:00.000Z", "path": "src/pages/zone3/acquiary/*", "reason": "Unfrozen for ChatGPT-style upload upgrade" },
-    "LENNOX": { "frozen": false, "frozen_at": "2026-02-27T23:30:00.000Z", "path": "src/pages/zone3/lennox/*", "reason": "Unfrozen for ChatGPT-style upload upgrade" },
-    "MIETY": { "frozen": false, "frozen_at": "2026-02-27T23:30:00.000Z", "path": "src/pages/zone3/miety/*", "reason": "Unfrozen for ChatGPT-style upload upgrade" }
+    "KAUFY": { "frozen": true, "frozen_at": "2026-02-27T23:59:00.000Z", "path": "src/pages/zone3/kaufy2026/*", "reason": "Re-frozen after ChatGPT-style upload upgrade" },
+    "SOT": { "frozen": true, "frozen_at": "2026-02-27T23:59:00.000Z", "path": "src/pages/zone3/sot/*", "reason": "Re-frozen after ChatGPT-style upload upgrade" },
+    "FUTUREROOM": { "frozen": true, "frozen_at": "2026-02-27T23:59:00.000Z", "path": "src/pages/zone3/futureroom/*", "reason": "Re-frozen after ChatGPT-style upload upgrade" },
+    "ACQUIARY": { "frozen": true, "frozen_at": "2026-02-27T23:59:00.000Z", "path": "src/pages/zone3/acquiary/*", "reason": "Re-frozen after ChatGPT-style upload upgrade" },
+    "LENNOX": { "frozen": true, "frozen_at": "2026-02-27T23:59:00.000Z", "path": "src/pages/zone3/lennox/*", "reason": "Re-frozen after ChatGPT-style upload upgrade" },
+    "MIETY": { "frozen": true, "frozen_at": "2026-02-27T23:59:00.000Z", "path": "src/pages/zone3/miety/*", "reason": "Re-frozen after ChatGPT-style upload upgrade" }
   }
 }
