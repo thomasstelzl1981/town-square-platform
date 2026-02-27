@@ -33,7 +33,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Home, Plus } from 'lucide-react';
+import { Home, Plus, Loader2 } from 'lucide-react';
 import type { CameraFormData } from '@/hooks/useCameras';
 
 export default function MietyPortalPage() {
@@ -52,6 +52,7 @@ export default function MietyPortalPage() {
     hiddenIds,
     getWidget,
     homes,
+    isLoading,
   } = useZuhauseWidgets();
 
   const { addCamera, updateCamera, deleteCamera } = useCameras();
@@ -168,6 +169,18 @@ export default function MietyPortalPage() {
         return null;
     }
   }, [getWidget, demoEnabled, profileName, openDossierId, deletingHomeId, homes]);
+
+  // Loading guard — prevent empty flash before widget hydration
+  if (isLoading) {
+    return (
+      <PageShell>
+        <ModulePageHeader title="Home" description="Ihr persönliches Zuhause-Dashboard" />
+        <div className="flex items-center justify-center p-12">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      </PageShell>
+    );
+  }
 
   // Show create form
   if (showCreateForm) return (

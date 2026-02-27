@@ -24,7 +24,7 @@
     "MOD-17": { "frozen": true, "frozen_at": "2026-02-27T04:00:00.000Z", "reason": "Re-frozen after CarsPrivatjet UI upgrade completed" },
     "MOD-18": { "frozen": true, "frozen_at": "2026-02-27T04:00:00.000Z", "reason": "Re-frozen after KrankenversicherungTab CRUD rewrite completed" },
     "MOD-19": { "frozen": true, "frozen_at": "2026-02-26T14:00:00.000Z", "reason": "Production freeze" },
-    "MOD-20": { "frozen": true, "frozen_at": "2026-02-27T04:00:00.000Z", "reason": "Re-frozen after Zuhause widget grid bugfix completed" },
+    "MOD-20": { "frozen": true, "frozen_at": "2026-02-27T13:05:00.000Z", "reason": "Re-frozen after isLoading guard fix" },
     "MOD-21": { "frozen": true, "frozen_at": "2026-02-26T14:00:00.000Z", "reason": "Production freeze" },
     "MOD-22": { "frozen": true, "frozen_at": "2026-02-26T20:00:00.000Z", "reason": "Production freeze" }
   }
