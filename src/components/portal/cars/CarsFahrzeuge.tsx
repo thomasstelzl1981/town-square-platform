@@ -7,6 +7,7 @@ import { useDossierAutoResearch } from '@/hooks/useDossierAutoResearch';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useRecordCardDMS } from '@/hooks/useRecordCardDMS';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -70,6 +71,7 @@ const isBike = (v: any) => v.vehicle_type === 'bike' || v.body_type === 'Motorra
 export default function CarsFahrzeuge() {
   const { activeTenantId } = useAuth();
   const { triggerResearch } = useDossierAutoResearch();
+  const { createDMS } = useRecordCardDMS();
   const [search, setSearch] = useState('');
   const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(null);
   const [isCreatingNew, setIsCreatingNew] = useState(false);
@@ -213,6 +215,18 @@ export default function CarsFahrzeuge() {
         tsn: newVehicleData.tsn || null,
       }).select('id, make, model').single();
       if (error) throw error;
+
+      // Create DMS folder + Sortierkachel
+      if (newVehicle && activeTenantId) {
+        const entityName = [newVehicleData.license_plate, newVehicleData.make, newVehicleData.model].filter(Boolean).join(' ');
+        createDMS.mutate({
+          entityType: 'vehicle',
+          entityId: newVehicle.id,
+          entityName,
+          tenantId: activeTenantId,
+          keywords: [newVehicleData.license_plate, newVehicleData.make, newVehicleData.model].filter(Boolean),
+        });
+      }
 
       // Trigger Armstrong dossier auto-research
       if (newVehicle) {
