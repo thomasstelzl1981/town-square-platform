@@ -1,64 +1,95 @@
 
 
-## Analyse: 3 Probleme beim Excel-Import
+## KI-Power Maximierung — Vollständiges Upgrade aller Edge Functions
 
-### Problem 1: Upload-UI zu schmal, kein Drag-Feedback
+### Ist-Zustand: Modell-Verteilung
 
-**Ist-Zustand:** `PortfolioTab.tsx` Zeile 1060-1073 — ein minimaler `p-3` Card mit 1 Zeile Text. Beim Drag-Over gibt es keinen visuellen Hinweis (keine Farbänderung, kein Border-Highlight). Der `FileUploader` leitet zwar DnD-Events weiter, aber das innere `div` reagiert visuell nicht.
+| Modell | Anzahl Funktionen | Power-Level |
+|--------|-------------------|-------------|
+| `gemini-2.5-flash` | **17 Funktionen** | Mittel |
+| `gemini-3-flash-preview` | **10 Funktionen** | Mittel-Hoch |
+| `gemini-2.5-pro` | **3 Funktionen** | Hoch |
+| `gemini-2.5-flash-lite` | **1 Funktion** | Niedrig |
 
-**Fix:** Das Upload-Feld größer machen (`p-6`), mit einem `isDragOver`-State im `FileUploader` children-Mode, der nach unten durchgereicht wird (render-prop oder CSS-Klasse). Alternativ: eigenen lokalen DnD-State in PortfolioTab mit visueller Reaktion (Border primary, Background-Tint).
+### Ziel-Zustand: Alles auf `google/gemini-2.5-pro`
 
----
+Das stärkste Modell mit bestem Reasoning, größtem Context-Window und bester Multimodal-Fähigkeit. 3 Funktionen nutzen es bereits (Project Intake, Excel Import, Akquise Research) — dort funktioniert es nachweislich hervorragend.
 
-### Problem 2: Nach Import kein Refresh der Liste
+### Upgrade-Plan
 
-**Ist-Zustand:** `ExcelImportDialog.tsx` Zeile 242 invalidiert `queryKey: ['properties']`. Aber `PortfolioTab` nutzt `queryKey: ['portfolio-units-annual', activeTenantId, demoEnabled]` (Zeile 158). Das Invalidate trifft nie die richtige Query.
+**Gruppe 1 — Dokument-Analyse & Extraktion (gemini-2.5-flash → gemini-2.5-pro + max_tokens erhöhen):**
 
-**Fix:** `queryClient.invalidateQueries` muss die tatsächlichen Query-Keys invalidieren:
-- `['portfolio-units-annual']`
-- `['context-property-assignments']`
-- `['landlord-contexts']`
+| Funktion | Aktuell | Neu max_tokens |
+|----------|---------|---------------|
+| `sot-inbound-receive` | flash, 16000 | pro, 32000 |
+| `sot-storage-extract` | flash, 8000 | pro, 16000 |
+| `sot-storage-extractor` | flash, 4000 | pro, 16000 |
+| `sot-document-parser` | flash, variabel | pro, 32000 |
+| `sot-nk-beleg-parse` | flash, 4000 | pro, 16000 |
+| `sot-extract-offer` | flash, — | pro, 8000 |
+| `sot-acq-offer-extract` | flash, — | pro, 8000 |
+| `_shared/tabular-parser` | flash, 32000 | pro, 32000 |
+| `sot-public-project-intake` | flash, 2000/4000 | pro, 8000 |
 
----
+**Gruppe 2 — KI-Assistenten & Chat (flash/3-flash → pro + Token erhöhen):**
 
-### Problem 3: Finanzwerte werden nicht zugeordnet
+| Funktion | Aktuell | Neu max_tokens |
+|----------|---------|---------------|
+| `sot-armstrong-advisor` | flash, 800-2000 | pro, 4000 |
+| `sot-armstrong-website` | 3-flash, 800 | pro, 2000 |
+| `sot-ki-browser` | flash, — | pro, 8000 |
+| `sot-research-engine` | 3-flash, — | pro, 8000 |
+| `sot-research-ai-assist` | 3-flash, — | pro, 4000 |
 
-**Ist-Zustand:** Die KI extrahiert korrekt: `kaltmiete`, `jahresmiete`, `restschuld`, `annuitaetMonat`, `bank`, `zinsfestschreibungBis`. Aber:
+**Gruppe 3 — Content-Generierung (flash/3-flash → pro + Token erhöhen):**
 
-| AI-Feld | ExcelImportDialog mapping | sot-property-crud akzeptiert | DB-Spalte |
-|---------|--------------------------|------------------------------|-----------|
-| `kaufpreis` | `market_value` (falsch!) | `purchase_price` ✅ | `purchase_price` |
-| `marktwert` | `market_value` ✅ | `market_value` ✅ | `market_value` |
-| `jahresmiete` | **nicht gemappt** | **nicht akzeptiert** | `annual_income` ✅ |
-| `kaltmiete` | **nicht gemappt** | **nicht akzeptiert** | berechnet |
-| `restschuld` | **nicht gemappt** | **nicht akzeptiert** | `loans.outstanding_balance_eur` |
-| `annuitaetMonat` | **nicht gemappt** | **nicht akzeptiert** | `loans.annuity_monthly_eur` |
-| `bank` | **nicht gemappt** | **nicht akzeptiert** | `loans.bank_name` |
-| `zinsfestschreibungBis` | **nicht gemappt** | **nicht akzeptiert** | `loans.fixed_interest_end_date` |
-| `units_count` | gesendet | **nicht akzeptiert** | `multi_unit_enabled` |
+| Funktion | Aktuell | Neu max_tokens |
+|----------|---------|---------------|
+| `sot-expose-description` | 3-flash, 600 | pro, 4000 |
+| `sot-letter-generate` | 3-flash, 1000 | pro, 4000 |
+| `sot-website-ai-generate` | flash, 2000 | pro, 8000 |
+| `sot-website-update-section` | flash, — | pro, 4000 |
+| `sot-generate-landing-page` | flash-lite, — | pro, 8000 |
+| `sot-social-draft-rewrite` | —, 1000 | pro, 4000 |
+| `sot-social-draft-generate` | 3-flash, — | pro, 4000 |
+| `sot-social-generate-briefing` | 3-flash, — | pro, 4000 |
+| `sot-social-analyze-performance` | 3-flash, 500 | pro, 4000 |
+| `sot-social-extract-patterns` | —, — | pro, 4000 |
+| `sot-project-description` | —, — | pro, 4000 |
+| `sot-project-market-report` | 3-flash, — | pro, 8000 |
 
-**Root Cause:** `sot-property-crud` Zeile 86-101 akzeptiert nur 10 Felder. `ExcelImportDialog` Zeile 202-212 mappt nur 9 davon. Keinerlei Finanzierung wird an die `loans`-Tabelle geschrieben.
+**Gruppe 4 — Akquise & Enrichment (flash/3-flash → pro):**
 
-**Fix (2 Dateien):**
+| Funktion | Aktuell | Neu max_tokens |
+|----------|---------|---------------|
+| `sot-acq-contact-enrich` | flash, — | pro, 4000 |
+| `sot-acq-standalone-research` | flash, 2000 | pro, 8000 |
+| `sot-acq-profile-extract` | 3-flash, — | pro, 4000 |
+| `sot-acq-generate-response` | 3-flash, 500 | pro, 4000 |
+| `sot-contact-enrichment` | 3-flash, — | pro, 4000 |
 
-1. **`sot-property-crud/index.ts`** — `PropertyCreate`-Interface erweitern um `annual_income`, `purchase_price` (schon da), `units_count`. Neues optionales Feld `loan_data` mit `bank_name`, `outstanding_balance_eur`, `annuity_monthly_eur`, `fixed_interest_end_date`. Nach dem Property-Insert: wenn `loan_data` vorhanden, Zeile in `loans`-Tabelle einfügen mit `property_id` + `unit_id` vom gerade erstellten Objekt.
+**Gruppe 5 — Spezial-Engines (flash → pro):**
 
-2. **`ExcelImportDialog.tsx`** — `handleImport` erweitern: `kaufpreis` → `purchase_price`, `marktwert` → `market_value`, `jahresmiete` → `annual_income`, `kaltmiete` × 12 → `annual_income` (Fallback). Loan-Daten als `loan_data`-Objekt mitsenden.
+| Funktion | Aktuell | Neu max_tokens |
+|----------|---------|---------------|
+| `sot-renovation-scope-ai` | flash (4 Calls) | pro, 8000 |
+| `sot-meeting-summarize` | flash, — | pro, 8000 |
+| `sot-geomap-snapshot` | flash, — | pro, 4000 |
+| `sot-vv-prefill-check` | 3-flash, — | pro, 4000 |
+| `sot-transaction-categorize` | —, — | pro, 4000 |
+| `sot-rent-match` | —, — | pro, 4000 |
 
----
+**Nicht verändert:**
+- `sot-armstrong-voice` — nutzt OpenAI Realtime WebSocket (anderes System)
+- `sot-project-intake` — bereits `gemini-2.5-pro`
+- `sot-excel-ai-import` — bereits `gemini-2.5-pro`
+- `sot-acq-ai-research` — bereits `gemini-2.5-pro`
 
-### Implementierungsschritte
+### Implementierung
 
-1. **PortfolioTab Upload-UI verbessern** — Größere Drop-Zone mit visueller Drag-Reaktion (Highlight bei Hover)
-2. **ExcelImportDialog Query-Invalidation fixen** — Korrekte Query-Keys nach Import
-3. **ExcelImportDialog Feld-Mapping erweitern** — Alle AI-Felder korrekt an `sot-property-crud` senden
-4. **sot-property-crud erweitern** — `annual_income`, `units_count` akzeptieren + automatische `loans`-Erstellung bei Finanzierungsdaten
-5. **FileUploader children-Mode** — Drag-State als CSS-Klasse nach außen geben für visuelles Feedback
+Reine Modell-String- und max_tokens-Änderungen in ca. 35 Edge Functions. Keine Logik-Änderungen, keine neuen Dateien. Deployment erfolgt automatisch.
 
-### Freeze-Status
+### Kosten-Hinweis
 
-- `PortfolioTab.tsx` → MOD-04: **bereits unfreezed** (aktuelle Session)
-- `ExcelImportDialog.tsx` → `src/components/portfolio/`: FREI
-- `FileUploader.tsx` → `src/components/shared/`: FREI
-- `sot-property-crud` → Edge Function: muss `infra_freeze.json` prüfen
+`gemini-2.5-pro` ist ca. 10-15x teurer als `gemini-2.5-flash` pro Token. Bei vollem Betrieb steigen die KI-Kosten erheblich. Das ist gewollt ("Hier verdienen wir unser Geld") und kann später selektiv zurückgeschraubt werden.
 
