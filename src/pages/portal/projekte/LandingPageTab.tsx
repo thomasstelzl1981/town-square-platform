@@ -425,26 +425,42 @@ export default function LandingPageTab() {
                 </Button>
               </div>
 
-              {/* Embedded Preview — scaled desktop simulation, no internal scroll */}
-              <div className="relative w-full" style={{ paddingBottom: '62.5%' /* 16:10 aspect */ }}>
+              {/* Embedded Preview — scaled desktop simulation, dynamic height from content */}
+              <div className="relative w-full overflow-hidden">
                 <iframe 
                   src={previewUrl}
-                  className="absolute top-0 left-0 border-0 origin-top-left"
+                  className="border-0 origin-top-left"
                   style={{
                     width: '1440px',
                     height: '900px',
-                    transform: 'scale(var(--preview-scale, 0.5))',
+                    transform: 'scale(0.5)',
+                    transformOrigin: 'top left',
                   }}
                   scrolling="no"
                   title="Landing Page Preview"
                   onLoad={(e) => {
-                    const container = e.currentTarget.parentElement;
-                    if (container) {
-                      const scale = container.offsetWidth / 1440;
-                      e.currentTarget.style.setProperty('--preview-scale', String(scale));
-                      e.currentTarget.style.transform = `scale(${scale})`;
-                      container.style.paddingBottom = `${900 * scale}px`;
+                    const iframe = e.currentTarget;
+                    const container = iframe.parentElement;
+                    if (!container) return;
+                    const scale = container.offsetWidth / 1440;
+                    
+                    // Try to read actual content height (same-origin)
+                    try {
+                      const doc = iframe.contentDocument;
+                      if (doc) {
+                        const scrollH = doc.body.scrollHeight || doc.documentElement.scrollHeight;
+                        iframe.style.height = `${scrollH}px`;
+                        iframe.style.transform = `scale(${scale})`;
+                        container.style.height = `${scrollH * scale}px`;
+                        return;
+                      }
+                    } catch (_) {
+                      // cross-origin fallback
                     }
+                    
+                    // Fallback: fixed 900px height
+                    iframe.style.transform = `scale(${scale})`;
+                    container.style.height = `${900 * scale}px`;
                   }}
                 />
               </div>
