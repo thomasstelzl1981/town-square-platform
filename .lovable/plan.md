@@ -1,75 +1,47 @@
 
 
-## Zielbild: Projekt-Landing-Page — Foto-Galerie + Tabellen-Ansicht
+## Analyse: Finanzierungsmanager gesperrt fuer Bernhard Marchner
 
-### Wireframe
+### Ursache gefunden
 
-```text
-┌─────────────────────────────────────────────────┐
-│                                                 │
-│              HERO IMAGE (400px)                 │
-│         Headline + Standort-Overlay             │
-│                                                 │
-├─────────────────────────────────────────────────┤
-│                                                 │
-│  ┌──────────────┐  ┌──────────────────────────┐ │
-│  │              │  │ OBJEKTBESCHREIBUNG        │ │
-│  │  FOTO-       │  │ (about_text, max 4-5     │ │
-│  │  CAROUSEL    │  │  Zeilen, kompakt)         │ │
-│  │  ◄ 1/4 ►    │  │                           │ │
-│  │  (exterior,  │  │  Key Facts Zeile:         │ │
-│  │   interior,  │  │  24 Einh · 850m² · 2019  │ │
-│  │   surround.) │  │                           │ │
-│  └──────────────┘  └──────────────────────────┘ │
-│                                                 │
-├─────────────────────────────────────────────────┤
-│  INVESTMENT-RECHNER (Eingabefelder)             │
-│  [zvE] [EK] [Familienstand] [KiSt] [Berechnen] │
-├─────────────────────────────────────────────────┤
-│                                                 │
-│  EINHEITEN-TABELLE (Zeilenansicht)              │
-│  ┌─────┬────┬──────┬────────┬──────┬──────────┐ │
-│  │WE-Nr│ Zi │Fläche│Kaufprs │Miete │Belastung │ │
-│  ├─────┼────┼──────┼────────┼──────┼──────────┤ │
-│  │WE-01│2.5 │ 62m² │185.000 │ 850  │  -42 €   │ │
-│  │WE-02│3.0 │ 85m² │210.000 │1.250 │  -38 €   │ │
-│  │WE-03│2.0 │ 48m² │165.000 │ 600  │  -55 €   │ │
-│  ├─────┼────┼──────┼────────┼──────┼──────────┤ │
-│  │Summe│ 3  │195m² │560.000 │  Ø   │  Ø -45 € │ │
-│  └─────┴────┴──────┴────────┴──────┴──────────┘ │
-│                                                 │
-├─────────────────────────────────────────────────┤
-│  FOOTER                                         │
-└─────────────────────────────────────────────────┘
+**Datenbankseite ist korrekt** — Bernhard hat alle 22 Tiles aktiv (inkl. MOD-11). Seine Rolle: `membership_role = org_admin`, `app_role = super_user`.
+
+**Problem ist im Frontend-Code** in `FinanzierungsmanagerPage.tsx`, Zeile 35-37:
+
+```typescript
+const canAccess = isPlatformAdmin || memberships.some(m => 
+  m.role === 'finance_manager' || m.role === 'super_manager'
+);
 ```
 
-### Aenderungen
+Dieser Check prueft nur `finance_manager` und `super_manager` als membership_role. Bernhard hat aber `org_admin` + app_role `super_user`. Die Pruefung ignoriert:
+- `super_user` (app_role)
+- `org_admin` mit super_user Override
 
-**1. LandingPageTab.tsx — iframe durch "Vorschau oeffnen" Button ersetzen**
-- Gesamten Browser-Chrome-Block + iframe entfernen (Zeilen 451-487)
-- postMessage-Listener und dynamische Hoehen-Logik entfernen
-- Stattdessen: Prominenter Button "Vorschau im Browser oeffnen" mit `window.open(previewUrl, '_blank')`
-- Editor-Bereich (Textfelder, KI-Button, Publish) bleibt unveraendert
+Ralph Reinhold funktioniert, weil sein membership_role `super_manager` ist — das steht im Check.
 
-**2. ProjectLandingHome.tsx — Foto-Galerie + Objektbeschreibung + Tabellenansicht**
-- Nach Hero: Zweispaltiges Layout (md:grid-cols-2)
-  - Links: Foto-Carousel mit allen Projekt-Bildern (exterior, interior, surroundings) — Navigation-Pfeile + Counter
-  - Rechts: Kompakte Objektbeschreibung (about_text, max 4-5 Zeilen) + Key Facts als Inline-Badges
-- Key-Facts-Sektion (separate 4er-Grid) entfernen — Facts wandern in den rechten Textbereich
-- Einheiten-Grid (Cards) ersetzen durch **Tabellenansicht** (gleiche Struktur wie `InvestPreislisteTable`)
-  - Spalten: WE-Nr, Zi, Etage, Flaeche, Kaufpreis, Miete, Bruttorendite, Steuereffekt, Monatsbelastung, Status
-  - Zeile klickbar → Link zur Einheit-Detailseite
-  - Summenzeile unten
-- `loadProjectImages` anpassen: Alle Slots laden (nicht nur hero), alle Bilder pro Slot (fuer Carousel)
+### Warum Pet Manager sichtbar ist
 
-**3. ProjectLandingLayout.tsx — postMessage-Cleanup**
-- Den `useEffect` mit `setInterval` + `postMessage` entfernen
+MOD-22 (PetManager) hat **keinen** solchen Frontend-Gate. Die Sichtbarkeit wird ausschliesslich ueber `tenant_tile_activation` in der PortalNav gesteuert. Alle 22 Tiles sind aktiv → MOD-22 erscheint in der Navigation.
 
-### Betroffene Dateien
+Das Problem ist also: MOD-22 ist korrekt sichtbar (weil kein Extra-Gate), aber MOD-11 hat einen redundanten hardcoded Access-Check der `super_user` nicht beruecksichtigt.
+
+### Fix
+
+**Datei: `src/pages/portal/FinanzierungsmanagerPage.tsx`** — Zeile 33-37
+
+Den `canAccess`-Check erweitern um `super_user` app_role Pruefung. Der `useAuth`-Hook liefert bereits `appRole` oder die Rolle kann aus dem AuthContext gelesen werden. Alternativ (und architektonisch sauberer): den gesamten Frontend-Gate entfernen, da die Tile-Aktivierung bereits in der DB ueber `tenant_tile_activation` + PortalNav gesteuert wird. Wer die Route erreicht, hat bereits Zugriff.
+
+**Option A (minimal):** `super_user` zur Pruefung hinzufuegen
+```typescript
+const canAccess = isPlatformAdmin || memberships.some(m => 
+  m.role === 'finance_manager' || m.role === 'super_manager'
+) || appRole === 'super_user';
+```
+
+**Option B (sauberer):** Frontend-Gate komplett entfernen — die DB-Tile-Aktivierung ist die SSOT. Wenn ein User die Route erreicht (via PortalNav), hat er bereits Zugriff.
 
 | Datei | Aenderung |
 |-------|----------|
-| `src/pages/portal/projekte/LandingPageTab.tsx` | iframe + Chrome entfernen, "Vorschau oeffnen" Button |
-| `src/pages/zone3/project-landing/ProjectLandingHome.tsx` | Foto-Carousel + Beschreibung, Tabelle statt Cards |
-| `src/pages/zone3/project-landing/ProjectLandingLayout.tsx` | postMessage entfernen |
+| `src/pages/portal/FinanzierungsmanagerPage.tsx` | canAccess-Check fixen oder entfernen |
 
