@@ -1,8 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useImageSlotUpload } from '@/hooks/useImageSlotUpload';
+import { useDropzone } from 'react-dropzone';
+import { cn } from '@/lib/utils';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -28,6 +31,7 @@ import {
   Pencil,
   Trash2,
   Loader2,
+  Camera,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -120,6 +124,38 @@ export default function VehicleDetailPage() {
   const [claimDialogOpen, setClaimDialogOpen] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [heroImageUrl, setHeroImageUrl] = useState<string | null>(null);
+
+  const imageSlot = useImageSlotUpload({
+    moduleCode: 'MOD-17',
+    entityId: id || '_',
+    tenantId: activeTenantId || '',
+    entityType: 'vehicle',
+  });
+
+  // Load hero image on mount
+  useEffect(() => {
+    if (id && activeTenantId) {
+      imageSlot.loadSlotImages(id, 'vehicle').then(slots => {
+        if (slots.hero?.url) setHeroImageUrl(slots.hero.url);
+      });
+    }
+  }, [id, activeTenantId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleHeroUpload = async (file: File) => {
+    const result = await imageSlot.uploadToSlot('hero', file);
+    if (result && id) {
+      const slots = await imageSlot.loadSlotImages(id, 'vehicle');
+      if (slots.hero?.url) setHeroImageUrl(slots.hero.url);
+    }
+  };
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    accept: { 'image/*': [] },
+    maxFiles: 1,
+    noClick: false,
+    onDrop: (files) => { if (files[0]) handleHeroUpload(files[0]); },
+  });
 
   const handleDeleteVehicle = async () => {
     if (!id) return;
@@ -261,11 +297,35 @@ export default function VehicleDetailPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Header with vehicle image */}
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" onClick={() => navigate('/portal/cars/fahrzeuge')}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
+        {/* Vehicle image dropzone */}
+        <div
+          {...getRootProps()}
+          className={cn(
+            "relative w-20 h-20 rounded-xl overflow-hidden cursor-pointer group/img border border-border/50 shrink-0",
+            isDragActive && "ring-2 ring-primary"
+          )}
+        >
+          <input {...getInputProps()} />
+          {heroImageUrl ? (
+            <img src={heroImageUrl} alt="Fahrzeug" className="w-full h-full object-cover" />
+          ) : (
+            <div className="w-full h-full bg-muted/50 flex items-center justify-center">
+              <Car className="h-8 w-8 text-muted-foreground" />
+            </div>
+          )}
+          <div className="absolute inset-0 bg-background/60 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center">
+            {imageSlot.uploadingSlot === 'hero' ? (
+              <Loader2 className="h-5 w-5 animate-spin text-primary" />
+            ) : (
+              <Camera className="h-5 w-5 text-primary" />
+            )}
+          </div>
+        </div>
         <div className="flex-1">
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold">{vehicle.license_plate}</h1>

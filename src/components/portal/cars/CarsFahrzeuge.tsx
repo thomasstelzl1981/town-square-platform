@@ -2,7 +2,7 @@
  * CarsFahrzeuge — Merged Autos + Bikes: editable vehicle records with DMS & Vimcar logbook
  * All editing is inline — no popup dialogs.
  */
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useDossierAutoResearch } from '@/hooks/useDossierAutoResearch';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -15,12 +15,14 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { EntityStorageTree } from '@/components/shared/EntityStorageTree';
 import { CarServiceFlow } from './CarServiceFlow';
+import { useImageSlotUpload } from '@/hooks/useImageSlotUpload';
+import { useDropzone } from 'react-dropzone';
 
 import { toast } from 'sonner';
 import {
   Plus, Search, Car, Bike, Gauge, Calendar, User, Shield,
   ChevronDown, FileText, AlertTriangle, BookOpen, FolderOpen, X, Wrench,
-  Check, Pencil, Wifi, Save, Loader2, Trash2
+  Check, Pencil, Wifi, Save, Loader2, Trash2, Camera
 } from 'lucide-react';
 import { WidgetDeleteOverlay } from '@/components/shared/WidgetDeleteOverlay';
 import { format, differenceInDays } from 'date-fns';
@@ -73,8 +75,33 @@ export default function CarsFahrzeuge() {
   const [isCreatingNew, setIsCreatingNew] = useState(false);
   const [newVehicleData, setNewVehicleData] = useState<Record<string, string>>({});
   const [isSavingNew, setIsSavingNew] = useState(false);
+  const [vehicleImages, setVehicleImages] = useState<Record<string, string>>({});
 
   const queryClient = useQueryClient();
+
+  // Image slot upload hook — entityId is dynamic per vehicle, so we use a dummy config
+  // and call loadSlotImages per vehicle
+  const imageSlot = useImageSlotUpload({
+    moduleCode: 'MOD-17',
+    entityId: selectedVehicleId || '_',
+    tenantId: activeTenantId || '',
+    entityType: 'vehicle',
+  });
+
+  // Load images for all vehicles when list changes
+  const loadAllVehicleImages = useCallback(async (vehicles: any[]) => {
+    if (!activeTenantId || !vehicles.length) return;
+    const newMap: Record<string, string> = {};
+    for (const v of vehicles) {
+      const slots = await imageSlot.loadSlotImages(v.id, 'vehicle');
+      if (slots.hero?.url) {
+        newMap[v.id] = slots.hero.url;
+      }
+    }
+    if (Object.keys(newMap).length > 0) {
+      setVehicleImages(prev => ({ ...prev, ...newMap }));
+    }
+  }, [activeTenantId, imageSlot.loadSlotImages]);
   const [deletingVehicleId, setDeletingVehicleId] = useState<string | null>(null);
 
   const deleteVehicleMutation = useMutation({
@@ -122,9 +149,29 @@ export default function CarsFahrzeuge() {
     return v.license_plate?.toLowerCase().includes(s) || v.make?.toLowerCase().includes(s) || v.model?.toLowerCase().includes(s);
   });
 
+  // Load vehicle images when vehicles data changes
+  useEffect(() => {
+    if (vehicles?.length) {
+      loadAllVehicleImages(vehicles);
+    }
+  }, [vehicles?.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const getImage = (v: any) => {
+    // Priority: uploaded image > Unsplash fallback > default
+    if (vehicleImages[v.id]) return vehicleImages[v.id];
     const key = Object.keys(VEHICLE_IMAGES).find(k => `${v.make} ${v.model}`.includes(k));
     return key ? VEHICLE_IMAGES[key] : DEFAULT_IMAGE;
+  };
+
+  const handleVehicleImageUpload = async (vehicleId: string, file: File) => {
+    const result = await imageSlot.uploadToSlot('hero', file);
+    if (result) {
+      // Reload image for this vehicle
+      const slots = await imageSlot.loadSlotImages(vehicleId, 'vehicle');
+      if (slots.hero?.url) {
+        setVehicleImages(prev => ({ ...prev, [vehicleId]: slots.hero.url }));
+      }
+    }
   };
 
   const getHuStatus = (dateStr: string | null) => {
@@ -230,31 +277,28 @@ export default function CarsFahrzeuge() {
                     isDeleting={deletingVehicleId === vehicle.id}
                   />
                 )}
-                <div className="relative h-[55%] bg-muted/30 overflow-hidden">
-                  <img src={getImage(vehicle)} alt={`${vehicle.make} ${vehicle.model}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-transparent" />
-                  <div className="absolute top-2 left-3 flex items-center gap-1.5">
-                    {vehicleIsDemo && <Badge className={cn(DESIGN.DEMO_WIDGET.BADGE, "text-[9px]")}>DEMO</Badge>}
-                    <Badge variant="outline" className={cn("text-[9px]", statusColors[vehicle.status as VehicleStatus])}>{statusLabels[vehicle.status as VehicleStatus]}</Badge>
-                    {isBike(vehicle) && (
-                      <Badge variant="outline" className="text-[9px] bg-primary/10 text-primary border-primary/20">
-                        <Bike className="h-2.5 w-2.5 mr-0.5" /> Bike
-                      </Badge>
-                    )}
-                  </div>
-                  <div className="absolute bottom-2 left-3">
-                    <div className="bg-background/90 backdrop-blur-sm rounded-md px-3 py-1 border border-border/50">
-                      <span className="font-mono font-bold text-sm tracking-wider">{vehicle.license_plate}</span>
-                    </div>
-                  </div>
-                  {isSelected && (
-                    <div className="absolute top-2 right-2">
-                      <div className="h-6 w-6 rounded-full bg-primary flex items-center justify-center">
-                        <ChevronDown className="h-3.5 w-3.5 text-primary-foreground" />
-                      </div>
-                    </div>
-                  )}
-                </div>
+                <VehicleCardImage
+                  vehicle={vehicle}
+                  imageUrl={getImage(vehicle)}
+                  isUploading={imageSlot.uploadingSlot === 'hero' && selectedVehicleId === vehicle.id}
+                  onUpload={(file) => {
+                    setSelectedVehicleId(vehicle.id);
+                    handleVehicleImageUpload(vehicle.id, file);
+                  }}
+                  badges={
+                    <>
+                      {vehicleIsDemo && <Badge className={cn(DESIGN.DEMO_WIDGET.BADGE, "text-[9px]")}>DEMO</Badge>}
+                      <Badge variant="outline" className={cn("text-[9px]", statusColors[vehicle.status as VehicleStatus])}>{statusLabels[vehicle.status as VehicleStatus]}</Badge>
+                      {isBike(vehicle) && (
+                        <Badge variant="outline" className="text-[9px] bg-primary/10 text-primary border-primary/20">
+                          <Bike className="h-2.5 w-2.5 mr-0.5" /> Bike
+                        </Badge>
+                      )}
+                    </>
+                  }
+                  licensePlate={vehicle.license_plate}
+                  isSelected={isSelected}
+                />
                 <CardContent className="p-3 space-y-2 h-[45%] flex flex-col justify-between">
                   <h3 className="font-semibold text-sm">{vehicle.make} {vehicle.model}</h3>
                   <div className="grid grid-cols-2 gap-1.5">
@@ -407,6 +451,64 @@ export default function CarsFahrzeuge() {
 }
 
 // ── Helpers ─────────────────────────────────────────────────────
+
+function VehicleCardImage({ vehicle, imageUrl, isUploading, onUpload, badges, licensePlate, isSelected }: {
+  vehicle: any; imageUrl: string; isUploading: boolean;
+  onUpload: (file: File) => void;
+  badges?: React.ReactNode; licensePlate?: string; isSelected?: boolean;
+}) {
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    accept: { 'image/*': [] },
+    maxFiles: 1,
+    noClick: false,
+    onDrop: (files) => { if (files[0]) onUpload(files[0]); },
+  });
+
+  return (
+    <div className="relative h-[55%] bg-muted/30 overflow-hidden">
+      <img src={imageUrl} alt={`${vehicle.make} ${vehicle.model}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+      <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-transparent" />
+      {badges && (
+        <div className="absolute top-2 left-3 flex items-center gap-1.5 z-10">
+          {badges}
+        </div>
+      )}
+      {licensePlate && (
+        <div className="absolute bottom-2 left-3 z-10">
+          <div className="bg-background/90 backdrop-blur-sm rounded-md px-3 py-1 border border-border/50">
+            <span className="font-mono font-bold text-sm tracking-wider">{licensePlate}</span>
+          </div>
+        </div>
+      )}
+      {isSelected && (
+        <div className="absolute top-2 right-2 z-10">
+          <div className="h-6 w-6 rounded-full bg-primary flex items-center justify-center">
+            <ChevronDown className="h-3.5 w-3.5 text-primary-foreground" />
+          </div>
+        </div>
+      )}
+      {/* Upload overlay */}
+      <div
+        {...getRootProps()}
+        onClick={(e) => { e.stopPropagation(); getRootProps().onClick?.(e); }}
+        className={cn(
+          "absolute inset-0 flex items-center justify-center transition-opacity cursor-pointer z-20",
+          isDragActive ? "opacity-100 bg-primary/30 backdrop-blur-sm" : "opacity-0 hover:opacity-100"
+        )}
+      >
+        <input {...getInputProps()} />
+        {isUploading ? (
+          <Loader2 className="h-8 w-8 text-primary-foreground animate-spin" />
+        ) : (
+          <div className="flex flex-col items-center gap-1 bg-background/80 backdrop-blur-sm rounded-lg px-3 py-2">
+            <Camera className="h-5 w-5 text-primary" />
+            <span className="text-[10px] font-medium text-foreground">Foto ändern</span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 function MiniInfo({ icon: Icon, label, value, urgent }: { icon: typeof Car; label: string; value: string; urgent?: boolean }) {
   return (
