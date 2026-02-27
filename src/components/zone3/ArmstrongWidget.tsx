@@ -33,7 +33,7 @@ import {
   Shield
 } from "lucide-react";
 
-export type WebsiteBrand = 'kaufy' | 'miety' | 'sot' | 'futureroom' | 'acquiary' | 'lennox';
+export type WebsiteBrand = 'kaufy' | 'miety' | 'sot' | 'futureroom' | 'acquiary' | 'lennox' | 'ncore' | 'otto';
 
 interface ChatMessage {
   id: string;
@@ -118,6 +118,26 @@ const brandConfig: Record<WebsiteBrand, {
       { id: 'partner', label: 'Partner finden', action: 'ARM.PUBLIC.CONTACT_REQUEST', icon: <HelpCircle className="h-3 w-3" /> },
       { id: 'services', label: 'Unsere Services', action: 'ARM.GLOBAL.FAQ', icon: <HelpCircle className="h-3 w-3" /> },
       { id: 'kontakt', label: 'Kontakt', action: 'ARM.PUBLIC.CONTACT_REQUEST', icon: <Mail className="h-3 w-3" /> },
+    ],
+  },
+  ncore: {
+    name: "Ncore",
+    greeting: "Willkommen bei Ncore Business Consulting! Ich unterstütze Sie bei Fragen zu Digitalisierung, Stiftungen und Geschäftsmodellen.",
+    primaryColor: "hsl(160, 84%, 39%)",
+    quickActions: [
+      { id: 'digital', label: 'KI für KMU', action: 'ARM.GLOBAL.FAQ', icon: <HelpCircle className="h-3 w-3" /> },
+      { id: 'stiftung', label: 'Stiftungsmodelle', action: 'ARM.GLOBAL.EXPLAIN_TERM', icon: <HelpCircle className="h-3 w-3" /> },
+      { id: 'kontakt', label: 'Erstgespräch', action: 'ARM.PUBLIC.CONTACT_REQUEST', icon: <Mail className="h-3 w-3" /> },
+    ],
+  },
+  otto: {
+    name: "Otto² Advisory",
+    greeting: "Willkommen bei Otto² Advisory! Ich beantworte Ihre Fragen rund um Baufinanzierung und Vorsorge.",
+    primaryColor: "hsl(217, 91%, 60%)",
+    quickActions: [
+      { id: 'finanzierung', label: 'Finanzierung erklärt', action: 'ARM.GLOBAL.FAQ', icon: <Calculator className="h-3 w-3" /> },
+      { id: 'eigenkapital', label: 'Eigenkapital-Tipps', action: 'ARM.GLOBAL.EXPLAIN_TERM', icon: <HelpCircle className="h-3 w-3" /> },
+      { id: 'beratung', label: 'Beratung anfragen', action: 'ARM.PUBLIC.CONTACT_REQUEST', icon: <Mail className="h-3 w-3" /> },
     ],
   },
 };

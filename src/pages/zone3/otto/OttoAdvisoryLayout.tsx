@@ -7,6 +7,7 @@ import { Outlet, Link, useLocation } from 'react-router-dom';
 import { Wallet, Menu, X, ArrowRight } from 'lucide-react';
 import { useState } from 'react';
 import { Helmet } from 'react-helmet';
+import { ArmstrongWidget } from '@/components/zone3/ArmstrongWidget';
 
 const NAV_ITEMS = [
   { path: '/website/otto-advisory/unternehmer', label: 'Für Unternehmer' },
@@ -184,6 +185,9 @@ export default function OttoAdvisoryLayout() {
           </div>
         </div>
       </footer>
+
+      {/* Armstrong LITE Chatbot */}
+      <ArmstrongWidget website="otto" />
     </div>
   );
 }

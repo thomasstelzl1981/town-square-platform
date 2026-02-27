@@ -269,6 +269,20 @@ export const DEMO_DATA_SOURCES: readonly DemoDataSource[] = [
     entities: ['kb_photovoltaik'],
     exports: ['CSV'],
   },
+  {
+    path: 'public/demo-data/demo_kb_ncore.csv',
+    module: 'ZONE3',
+    type: 'hardcoded',
+    entities: ['kb_ncore'],
+    exports: ['CSV'],
+  },
+  {
+    path: 'public/demo-data/demo_kb_otto_advisory.csv',
+    module: 'ZONE3',
+    type: 'hardcoded',
+    entities: ['kb_otto_advisory'],
+    exports: ['CSV'],
+  },
   // ─── Seed Engine (Phase 2) ─────────────────────────────────
   {
     path: 'src/hooks/useDemoSeedEngine.ts',
