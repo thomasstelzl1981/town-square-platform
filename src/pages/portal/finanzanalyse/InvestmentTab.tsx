@@ -13,13 +13,6 @@ import { WidgetCell } from '@/components/shared/WidgetCell';
 import { WidgetDeleteOverlay } from '@/components/shared/WidgetDeleteOverlay';
 import { CARD, TYPOGRAPHY, DEMO_WIDGET, HEADER, RECORD_CARD, TABLE } from '@/config/designManifest';
 import { getActiveWidgetGlow, getSelectionRing } from '@/config/designManifest';
-import { useDemoDepot } from '@/hooks/useDemoDepot';
-import { DepotOnboardingWizard } from '@/components/finanzanalyse/depot/DepotOnboardingWizard';
-import { DepotPortfolio } from '@/components/finanzanalyse/depot/DepotPortfolio';
-import { DepotPositionen } from '@/components/finanzanalyse/depot/DepotPositionen';
-import { DepotPerformanceChart } from '@/components/finanzanalyse/depot/DepotPerformanceChart';
-import { DepotTransaktionen } from '@/components/finanzanalyse/depot/DepotTransaktionen';
-import { DepotSteuerReport } from '@/components/finanzanalyse/depot/DepotSteuerReport';
 import { FormInput } from '@/components/shared';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -44,21 +37,13 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useFinanzanalyseData } from '@/hooks/useFinanzanalyseData';
 import { isDemoId } from '@/engines/demoData/engine';
 import { useDemoToggles } from '@/hooks/useDemoToggles';
-import { User, Plus, TrendingUp, X, Shield, Zap, BarChart3, PiggyBank, Puzzle, FileText, Building2, Loader2, RefreshCw, Landmark } from 'lucide-react';
+import { User, Plus, TrendingUp, X, Building2, Loader2, RefreshCw, Landmark } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
 const POLL_INTERVAL_MS = 3000;
 const POLL_TIMEOUT_MS = 5 * 60 * 1000;
 
-const UPVEST_FEATURES = [
-  { icon: Shield, title: 'BaFin-reguliert', desc: 'WpIG-lizenzierte Infrastruktur' },
-  { icon: Zap, title: 'Sofort startklar', desc: 'Depot in Sekunden eröffnen' },
-  { icon: BarChart3, title: 'Volle Auswahl', desc: 'Aktien, ETFs, Fonds & Crypto' },
-  { icon: PiggyBank, title: 'Automatisch sparen', desc: 'Sparpläne ab 1 €' },
-  { icon: Puzzle, title: 'Fractional Trading', desc: 'Bruchstücke handeln' },
-  { icon: FileText, title: 'Steuer digital', desc: 'Automatische Steuerreports' },
-] as const;
 
 const ROLE_LABELS: Record<string, string> = {
   hauptperson: 'Hauptperson',
@@ -126,10 +111,6 @@ export default function InvestmentTab() {
     [depotPersons, effectivePersonId]
   );
 
-  const { status, setStatus, resetDepot, totalValue, dailyChange } = useDemoDepot(
-    effectivePersonId ?? undefined,
-    selectedPerson?.is_primary
-  );
 
   // --- Investment-Sparpläne ---
   const [selectedSparId, setSelectedSparId] = useState<string | null>(null);
@@ -420,9 +401,6 @@ export default function InvestmentTab() {
         description="Wertpapiere, ETFs und Depot-Verwaltung"
         actions={
           <div className="flex items-center gap-2">
-            {status === 'active' && (
-              <Badge variant="outline" className="text-emerald-500 border-emerald-500/30">Depot aktiv</Badge>
-            )}
             <Button
               variant="glass"
               size="icon-round"
@@ -464,9 +442,7 @@ export default function InvestmentTab() {
             const isSelected = person.id === effectivePersonId;
             const isPrimary = person.is_primary;
             const isDemo = isDemoId(person.id);
-            const personDepotKey = `depot_status_${person.id}`;
-            const storedStatus = localStorage.getItem(personDepotKey);
-            const hasDepot = storedStatus === 'active' || (storedStatus === null && isPrimary);
+            const hasDepot = false; // Real depot status will come from FinAPI integration
             const gradient = ROLE_GRADIENTS[person.role] || ROLE_GRADIENTS.weitere;
             const glowVariant = isDemo ? 'emerald' : 'primary';
 
@@ -502,11 +478,6 @@ export default function InvestmentTab() {
                   >
                     {hasDepot ? 'Depot aktiv' : 'Kein Depot'}
                   </Badge>
-                  {hasDepot && isSelected && (
-                    <p className="text-xs font-semibold mt-1">
-                      {totalValue.toLocaleString('de-DE', { minimumFractionDigits: 2 })} €
-                    </p>
-                  )}
                 </div>
               </WidgetCell>
             );
@@ -743,55 +714,6 @@ export default function InvestmentTab() {
         )}
       </div>
 
-      {/* ─── Armstrong Depot ─────────────────────────── */}
-      <div className="mt-8">
-        <ModulePageHeader
-          title="Armstrong Depot"
-          description="Investiere mit unserem Partner Upvest direkt aus deinem Portal"
-        />
-
-        <Card className="glass-card p-6 mb-6">
-          <p className="text-sm text-muted-foreground mb-4">
-            Mit dem Armstrong Depot investieren Sie direkt aus Ihrem Portal — powered by Upvest. 
-            Die BaFin-regulierte Infrastruktur ermöglicht sekundenschnelle Depoteröffnung, 
-            Zugang zu Tausenden von Aktien, ETFs und Fonds, automatische Sparpläne und 
-            Fractional Trading. Ihre Wertpapiere werden sicher verwahrt, Steuerreports 
-            digital erstellt. Kein separates Bankkonto, kein Papierkram.
-          </p>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-            {UPVEST_FEATURES.map(({ icon: Icon, title, desc }) => (
-              <div key={title} className="flex items-start gap-2 p-2 rounded-lg bg-muted/30">
-                <Icon className="h-4 w-4 mt-0.5 shrink-0 text-primary" />
-                <div>
-                  <p className="text-xs font-semibold">{title}</p>
-                  <p className="text-[10px] text-muted-foreground">{desc}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </Card>
-
-        {status === 'none' && (
-          <DepotOnboardingWizard onComplete={() => setStatus('active')} />
-        )}
-
-        {status === 'active' && (
-          <div className="space-y-4 md:space-y-6">
-            <DepotPortfolio totalValue={totalValue} dailyChange={dailyChange} />
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
-              <DepotPerformanceChart />
-              <DepotSteuerReport />
-            </div>
-            <DepotPositionen />
-            <DepotTransaktionen />
-            <div className="text-center pt-4">
-              <button onClick={resetDepot} className="text-xs text-muted-foreground/40 hover:text-muted-foreground transition-colors underline">
-                Depot zurücksetzen (Demo)
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
       <DataReadinessModal
         open={readiness.showReadinessModal}
         onOpenChange={readiness.setShowReadinessModal}
