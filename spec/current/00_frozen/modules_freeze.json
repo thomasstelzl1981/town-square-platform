@@ -15,7 +15,7 @@
     "MOD-08": { "frozen": true, "frozen_at": "2026-02-26T23:30:00.000Z", "reason": "Re-frozen after back-link param persistence fix" },
     "MOD-09": { "frozen": true, "frozen_at": "2026-02-26T18:00:00.000Z", "reason": "Re-frozen after Exposé consolidation" },
     "MOD-10": { "frozen": true, "frozen_at": "2026-02-26T14:00:00.000Z", "reason": "Production freeze" },
-    "MOD-11": { "frozen": true, "frozen_at": "2026-02-26T14:00:00.000Z", "reason": "Production freeze" },
+    "MOD-11": { "frozen": false, "frozen_at": "2026-02-27T12:00:00.000Z", "reason": "Unfrozen for canAccess gate fix" },
     "MOD-12": { "frozen": true, "frozen_at": "2026-02-26T14:00:00.000Z", "reason": "Production freeze" },
     "MOD-13": { "frozen": false, "frozen_at": "2026-02-27T00:00:00.000Z", "reason": "Unfrozen for Anbieter/Impressum section in ProjectDataSheet" },
     "MOD-14": { "frozen": true, "frozen_at": "2026-02-26T14:00:00.000Z", "reason": "Production freeze" },
