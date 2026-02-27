@@ -1,11 +1,15 @@
 /**
  * ArmstrongWidget — Zone 3 Embedded Chat Bubble
  * 
- * Lightweight chat widget for public websites (KAUFY, MIETY, SoT, FutureRoom).
+ * Lightweight chat widget for public websites (KAUFY, MIETY, SoT, FutureRoom, Acquiary, Lennox).
  * Limited to FAQ, public knowledge, and lead capture — no tenant data access.
  * 
- * Mobile: Fixed InputBar at bottom + Drawer (Bottom-Sheet) for chat
- * Desktop: Floating bubble + panel (unchanged)
+ * Features:
+ * - SSE Streaming (token-by-token)
+ * - Markdown rendering
+ * - DSGVO Consent Banner
+ * - Mobile: Fixed InputBar at bottom + Drawer (Bottom-Sheet)
+ * - Desktop: Floating bubble + panel
  */
 import * as React from "react";
 import { cn } from "@/lib/utils";
@@ -15,6 +19,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Drawer, DrawerContent } from "@/components/ui/drawer";
 import { useIsMobile } from "@/hooks/use-mobile";
+import ReactMarkdown from "react-markdown";
 import { 
   MessageCircle, 
   X, 
@@ -24,7 +29,8 @@ import {
   Calculator,
   HelpCircle,
   Mail,
-  ArrowUp
+  ArrowUp,
+  Shield
 } from "lucide-react";
 
 export type WebsiteBrand = 'kaufy' | 'miety' | 'sot' | 'futureroom' | 'acquiary' | 'lennox';
@@ -116,6 +122,139 @@ const brandConfig: Record<WebsiteBrand, {
   },
 };
 
+// =============================================================================
+// DSGVO CONSENT BANNER
+// =============================================================================
+
+const ArmstrongConsentBanner: React.FC<{
+  website: WebsiteBrand;
+  onAccept: () => void;
+  onDecline: () => void;
+}> = ({ website, onAccept, onDecline }) => (
+  <div className="p-4 space-y-3">
+    <div className="flex items-center gap-2 text-sm font-medium">
+      <Shield className="h-4 w-4 text-primary" />
+      <span>Datenschutzhinweis</span>
+    </div>
+    <p className="text-xs text-muted-foreground leading-relaxed">
+      Dieses Gespräch wird von einer KI (Gemini 2.5 Pro) verarbeitet. 
+      Ihre Nachrichten werden für die Dauer der Sitzung gespeichert und 
+      danach automatisch gelöscht. Es werden keine personenbezogenen 
+      Daten dauerhaft gespeichert.
+    </p>
+    <div className="flex gap-2">
+      <Button size="sm" onClick={onAccept} className="flex-1 text-xs">
+        Einverstanden
+      </Button>
+      <Button size="sm" variant="outline" onClick={onDecline} className="flex-1 text-xs">
+        Ablehnen
+      </Button>
+    </div>
+  </div>
+);
+
+// =============================================================================
+// STREAMING HELPERS
+// =============================================================================
+
+async function streamArmstrongChat({
+  website,
+  messages,
+  sessionId,
+  listingId,
+  onDelta,
+  onDone,
+  onError,
+}: {
+  website: WebsiteBrand;
+  messages: Array<{ role: string; content: string }>;
+  sessionId: string;
+  listingId?: string;
+  onDelta: (text: string) => void;
+  onDone: () => void;
+  onError: (err: Error) => void;
+}) {
+  try {
+    const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sot-armstrong-advisor`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+      },
+      body: JSON.stringify({
+        mode: 'zone3',
+        action: 'chat',
+        messages,
+        route: `/website/${website}`,
+        context: {
+          zone: 'Z3',
+          website,
+          listing_id: listingId,
+          session_id: sessionId,
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`API error ${response.status}: ${errText}`);
+    }
+
+    const contentType = response.headers.get('content-type') || '';
+    
+    // Handle SSE streaming
+    if (contentType.includes('text/event-stream') && response.body) {
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let textBuffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        textBuffer += decoder.decode(value, { stream: true });
+
+        let newlineIndex: number;
+        while ((newlineIndex = textBuffer.indexOf("\n")) !== -1) {
+          let line = textBuffer.slice(0, newlineIndex);
+          textBuffer = textBuffer.slice(newlineIndex + 1);
+
+          if (line.endsWith("\r")) line = line.slice(0, -1);
+          if (line.startsWith(":") || line.trim() === "") continue;
+          if (!line.startsWith("data: ")) continue;
+
+          const jsonStr = line.slice(6).trim();
+          if (jsonStr === "[DONE]") {
+            onDone();
+            return;
+          }
+
+          try {
+            const parsed = JSON.parse(jsonStr);
+            const content = parsed.choices?.[0]?.delta?.content as string | undefined;
+            if (content) onDelta(content);
+          } catch {
+            textBuffer = line + "\n" + textBuffer;
+            break;
+          }
+        }
+      }
+      onDone();
+    } else {
+      // Fallback: JSON response (non-streaming)
+      const data = await response.json();
+      const msg = data.message || data.choices?.[0]?.message?.content || "Entschuldigung, ich konnte Ihre Anfrage nicht verarbeiten.";
+      onDelta(msg);
+      onDone();
+    }
+  } catch (err) {
+    onError(err instanceof Error ? err : new Error(String(err)));
+  }
+}
+
+// =============================================================================
+// WIDGET COMPONENT
+// =============================================================================
+
 export const ArmstrongWidget: React.FC<ArmstrongWidgetProps> = ({
   website,
   listingId,
@@ -128,9 +267,20 @@ export const ArmstrongWidget: React.FC<ArmstrongWidgetProps> = ({
   const [input, setInput] = React.useState("");
   const [isLoading, setIsLoading] = React.useState(false);
   const [sessionId] = React.useState(() => crypto.randomUUID());
+  const [hasConsent, setHasConsent] = React.useState<boolean | null>(() => {
+    try {
+      const stored = localStorage.getItem(`armstrong_consent_${website}`);
+      return stored === 'true' ? true : stored === 'false' ? false : null;
+    } catch { return null; }
+  });
   
   const config = brandConfig[website];
   const scrollRef = React.useRef<HTMLDivElement>(null);
+
+  const handleConsent = React.useCallback((accepted: boolean) => {
+    setHasConsent(accepted);
+    try { localStorage.setItem(`armstrong_consent_${website}`, String(accepted)); } catch {}
+  }, [website]);
 
   // Add initial greeting on first open
   React.useEffect(() => {
@@ -152,7 +302,7 @@ export const ArmstrongWidget: React.FC<ArmstrongWidgetProps> = ({
   }, [messages]);
 
   const handleSend = async () => {
-    if (!input.trim() || isLoading) return;
+    if (!input.trim() || isLoading || hasConsent === false) return;
 
     const userMessage: ChatMessage = {
       id: crypto.randomUUID(),
@@ -161,51 +311,46 @@ export const ArmstrongWidget: React.FC<ArmstrongWidgetProps> = ({
       timestamp: new Date(),
     };
 
-    setMessages(prev => [...prev, userMessage]);
+    const updatedMessages = [...messages, userMessage];
+    setMessages(updatedMessages);
     setInput("");
     setIsLoading(true);
 
-    try {
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sot-armstrong-advisor`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-        },
-        body: JSON.stringify({
-          mode: 'zone3',
-          message: input.trim(),
-          conversation_id: sessionId,
-          context: {
-            zone: 'Z3',
-            website,
-            listing_id: listingId,
-            session_id: sessionId,
-          },
-        }),
-      });
+    // Build conversation array for AI (exclude greeting)
+    const conversationForAI = updatedMessages
+      .filter(m => m.id !== 'greeting')
+      .map(m => ({ role: m.role, content: m.content }));
 
-      if (!response.ok) throw new Error('API request failed');
+    let assistantContent = "";
+    const assistantId = crypto.randomUUID();
 
-      const data = await response.json();
-      
-      setMessages(prev => [...prev, {
-        id: crypto.randomUUID(),
-        role: 'assistant',
-        content: data.message || "Entschuldigung, ich konnte Ihre Anfrage nicht verarbeiten.",
-        timestamp: new Date(),
-      }]);
-    } catch (error) {
-      console.error('Armstrong Widget error:', error);
-      setMessages(prev => [...prev, {
-        id: crypto.randomUUID(),
-        role: 'assistant',
-        content: "Entschuldigung, es ist ein Fehler aufgetreten. Bitte versuchen Sie es später erneut.",
-        timestamp: new Date(),
-      }]);
-    } finally {
-      setIsLoading(false);
-    }
+    await streamArmstrongChat({
+      website,
+      messages: conversationForAI,
+      sessionId,
+      listingId,
+      onDelta: (chunk) => {
+        assistantContent += chunk;
+        setMessages(prev => {
+          const last = prev[prev.length - 1];
+          if (last?.id === assistantId) {
+            return prev.map((m, i) => i === prev.length - 1 ? { ...m, content: assistantContent } : m);
+          }
+          return [...prev, { id: assistantId, role: 'assistant' as const, content: assistantContent, timestamp: new Date() }];
+        });
+      },
+      onDone: () => setIsLoading(false),
+      onError: (err) => {
+        console.error('Armstrong Widget error:', err);
+        setMessages(prev => [...prev, {
+          id: crypto.randomUUID(),
+          role: 'assistant',
+          content: "Entschuldigung, es ist ein Fehler aufgetreten. Bitte versuchen Sie es später erneut.",
+          timestamp: new Date(),
+        }]);
+        setIsLoading(false);
+      },
+    });
   };
 
   const handleQuickAction = (action: QuickAction) => {
@@ -250,48 +395,80 @@ export const ArmstrongWidget: React.FC<ArmstrongWidgetProps> = ({
         )}
       </div>
 
-      {/* Messages */}
-      <ScrollArea className="flex-1 px-4 py-3" ref={scrollRef}>
-        <div className="space-y-3">
-          {messages.map((message) => (
-            <div
-              key={message.id}
-              className={cn("flex gap-2", message.role === "user" && "flex-row-reverse")}
-            >
-              <div className={cn(
-                "flex items-center justify-center h-6 w-6 rounded-full shrink-0",
-                message.role === "assistant" ? "bg-primary/10" : "bg-muted"
-              )}>
-                {message.role === "assistant" ? (
-                  <Bot className="h-3 w-3 text-primary" />
-                ) : (
-                  <span className="text-xs font-medium">Sie</span>
-                )}
-              </div>
-              <div className={cn(
-                "rounded-lg px-3 py-2 text-sm max-w-[80%]",
-                message.role === "assistant" ? "bg-muted" : "bg-primary text-primary-foreground"
-              )}>
-                {message.content}
-              </div>
-            </div>
-          ))}
-          
-          {isLoading && (
-            <div className="flex gap-2">
-              <div className="flex items-center justify-center h-6 w-6 rounded-full bg-primary/10">
-                <Bot className="h-3 w-3 text-primary" />
-              </div>
-              <div className="rounded-lg px-3 py-2 text-sm bg-muted">
-                <span className="animate-pulse">Schreibt...</span>
-              </div>
-            </div>
-          )}
+      {/* DSGVO Consent Banner */}
+      {hasConsent === null && (
+        <ArmstrongConsentBanner
+          website={website}
+          onAccept={() => handleConsent(true)}
+          onDecline={() => handleConsent(false)}
+        />
+      )}
+
+      {/* Declined state */}
+      {hasConsent === false && (
+        <div className="flex-1 flex items-center justify-center p-6 text-center">
+          <div className="space-y-2">
+            <Shield className="h-8 w-8 text-muted-foreground mx-auto" />
+            <p className="text-sm text-muted-foreground">
+              Sie haben die KI-Verarbeitung abgelehnt. Der Chat ist deaktiviert.
+            </p>
+            <Button size="sm" variant="outline" onClick={() => handleConsent(true)} className="text-xs">
+              Einwilligung erteilen
+            </Button>
+          </div>
         </div>
-      </ScrollArea>
+      )}
+
+      {/* Messages (only shown if consent given or not yet asked) */}
+      {hasConsent !== false && (
+        <ScrollArea className="flex-1 px-4 py-3" ref={scrollRef}>
+          <div className="space-y-3">
+            {messages.map((message) => (
+              <div
+                key={message.id}
+                className={cn("flex gap-2", message.role === "user" && "flex-row-reverse")}
+              >
+                <div className={cn(
+                  "flex items-center justify-center h-6 w-6 rounded-full shrink-0",
+                  message.role === "assistant" ? "bg-primary/10" : "bg-muted"
+                )}>
+                  {message.role === "assistant" ? (
+                    <Bot className="h-3 w-3 text-primary" />
+                  ) : (
+                    <span className="text-xs font-medium">Sie</span>
+                  )}
+                </div>
+                <div className={cn(
+                  "rounded-lg px-3 py-2 text-sm max-w-[80%]",
+                  message.role === "assistant" ? "bg-muted" : "bg-primary text-primary-foreground"
+                )}>
+                  {message.role === "assistant" ? (
+                    <div className="prose prose-sm dark:prose-invert max-w-none [&>p]:my-1 [&>ul]:my-1 [&>ol]:my-1 [&>h1]:text-sm [&>h2]:text-sm [&>h3]:text-xs">
+                      <ReactMarkdown>{message.content}</ReactMarkdown>
+                    </div>
+                  ) : (
+                    message.content
+                  )}
+                </div>
+              </div>
+            ))}
+            
+            {isLoading && messages[messages.length - 1]?.role !== 'assistant' && (
+              <div className="flex gap-2">
+                <div className="flex items-center justify-center h-6 w-6 rounded-full bg-primary/10">
+                  <Bot className="h-3 w-3 text-primary" />
+                </div>
+                <div className="rounded-lg px-3 py-2 text-sm bg-muted">
+                  <span className="animate-pulse">Denkt nach...</span>
+                </div>
+              </div>
+            )}
+          </div>
+        </ScrollArea>
+      )}
 
       {/* Quick Actions */}
-      {messages.length <= 1 && (
+      {messages.length <= 1 && hasConsent !== false && (
         <div className="px-4 py-2 border-t shrink-0">
           <p className="text-xs text-muted-foreground mb-2">Schnellaktionen:</p>
           <div className="flex flex-wrap gap-1">
@@ -317,21 +494,21 @@ export const ArmstrongWidget: React.FC<ArmstrongWidgetProps> = ({
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Ihre Frage..."
+            placeholder={hasConsent === false ? "Chat deaktiviert" : "Ihre Frage..."}
             className="flex-1 text-sm"
-            disabled={isLoading}
+            disabled={isLoading || hasConsent === false}
           />
           <Button
             size="sm"
             className="h-9 w-9 p-0"
             onClick={handleSend}
-            disabled={!input.trim() || isLoading}
+            disabled={!input.trim() || isLoading || hasConsent === false}
           >
             <Send className="h-4 w-4" />
           </Button>
         </div>
         <p className="text-[10px] text-muted-foreground mt-2 text-center">
-          Powered by Armstrong • Datenschutz beachten
+          Powered by Armstrong • KI-gestützt (Gemini 2.5 Pro) • DSGVO-konform
         </p>
       </div>
     </>
@@ -401,7 +578,7 @@ export const ArmstrongWidget: React.FC<ArmstrongWidgetProps> = ({
     <div
       className={cn(
         "fixed bottom-5 right-5 z-50",
-        "w-[350px] h-[450px] max-h-[80vh]",
+        "w-[380px] h-[500px] max-h-[80vh]",
         "flex flex-col",
         "bg-background border rounded-xl shadow-elevated",
         "animate-in slide-in-from-bottom-4 fade-in duration-300",

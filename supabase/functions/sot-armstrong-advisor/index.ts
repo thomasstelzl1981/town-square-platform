@@ -125,7 +125,7 @@ interface UserContext {
 // MVP MODULE ALLOWLIST & GLOBAL ASSIST CONFIG
 // =============================================================================
 
-const MVP_MODULES = ["MOD-00", "MOD-01", "MOD-04", "MOD-06", "MOD-07", "MOD-08", "MOD-09", "MOD-11", "MOD-12", "MOD-13", "MOD-14", "MOD-15", "MOD-17", "MOD-18", "MOD-19", "MOD-20", "MOD-22"];
+const MVP_MODULES = ["MOD-00", "MOD-01", "MOD-03", "MOD-04", "MOD-05", "MOD-06", "MOD-07", "MOD-08", "MOD-09", "MOD-10", "MOD-11", "MOD-12", "MOD-13", "MOD-14", "MOD-15", "MOD-17", "MOD-18", "MOD-19", "MOD-20", "MOD-22"];
 
 // Global Assist Mode: Armstrong can help with general tasks even outside MVP modules
 // These intents are allowed in ALL modules (explain, draft, research)
@@ -3039,9 +3039,13 @@ function extractSearchTerms(message: string): string {
 
 function getModuleCategory(module: string): string {
   const map: Record<string, string> = {
-    'MOD-04': 'real_estate', 'MOD-08': 'real_estate',
+    'MOD-04': 'real_estate', 'MOD-08': 'real_estate', 'MOD-06': 'real_estate',
     'MOD-07': 'finance', 'MOD-11': 'finance', 'MOD-18': 'finance',
-    'MOD-12': 'sales',
+    'MOD-12': 'sales', 'MOD-10': 'sales',
+    'MOD-03': 'system', 'MOD-05': 'real_estate',
+    'MOD-17': 'vehicles', 'MOD-19': 'photovoltaik',
+    'MOD-15': 'education', 'MOD-20': 'tenant_rights',
+    'MOD-22': 'pet_services',
   };
   return map[module] || 'system';
 }
@@ -3112,6 +3116,16 @@ async function generateExplainResponse(
     ? buildUnifiedSystemPrompt(body, userContext, availableActions || [], kbContext, isGlobalAssist)
     : `${ARMSTRONG_CORE_IDENTITY}\n\n${contextBlock}\n\nGOVERNANCE:\n- Schreibende Aktionen erfordern Nutzerbestätigung\n- Bei sensiblen Themen: Disclaimer verwenden\n- Proaktiv passende nächste Schritte vorschlagen${kbContext ? `\n\nWissenskontext:\n${kbContext}` : ''}`;
 
+  // Build conversation messages array — include full history if available
+  const conversationMessages: Array<{ role: string; content: string }> = [];
+  if (body?.conversation?.last_messages && body.conversation.last_messages.length > 0) {
+    for (const msg of body.conversation.last_messages) {
+      conversationMessages.push({ role: msg.role, content: msg.content });
+    }
+  }
+  // Always include the current message as the last user turn
+  conversationMessages.push({ role: "user", content: message });
+
   try {
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -3123,7 +3137,7 @@ async function generateExplainResponse(
         model: "google/gemini-2.5-pro",
         messages: [
           { role: "system", content: systemPrompt },
-          { role: "user", content: message },
+          ...conversationMessages,
         ],
         max_tokens: 4000,
       }),
@@ -3559,14 +3573,92 @@ STIL:
             ? "Du bist Armstrong, der KI-Coach für Vertriebspartner auf KAUFY. Hilf bei Einwandbehandlung, Prozess, Compliance (z.B. §34c/VSH) und nächsten Schritten. Keine internen Portal-Funktionen erwähnen."
             : KAUFY_IMMO_ADVISOR_PROMPT;
 
-    // Route-based persona dispatch for FutureRoom and SoT
+    // ─── ACQUIARY PERSONA ────────────────────────────────────────────────
+    const ACQUIARY_SYSTEM_PROMPT = `Du bist Armstrong, der KI-Investment-Analyst auf ACQUIARY — der institutionellen Akquise-Plattform von System of a Town.
+
+DEINE ROLLE:
+- Institutioneller Investment-Berater für Immobilienankäufe (B2B, Family Offices, Fonds)
+- Due-Diligence-Assistent und Datenraum-Analyst
+- Du erklärst die KI-gestützte Akquise-Methodik von ACQUIARY
+
+KERNWISSEN — INSTITUTIONELLE AKQUISE:
+- ACQUIARY automatisiert den Ankaufsprozess: Mandatserfassung → Angebotsmatching → KI-Voranalyse → Due Diligence → Abschluss
+- Multi-Dokument-Parsing: Gemini 2.5 Pro verarbeitet komplette Datenräume (Mieterlisten, Grundbücher, Teilungserklärungen) mit 32.000 Token Kontext
+- Bestandsanalyse: KI berechnet IST-Rendite, Mietpotenzial, Instandhaltungsstau und Bewirtschaftungskosten
+- Aufteileranalyse: KI identifiziert Aufteilungspotenzial, WEG-Struktur und Einzelverkaufswerte
+
+ANGEBOTSQUALIFIZIERUNG:
+- Standortanalyse (Makrolage, Mikrolage, Infrastruktur)
+- Marktdatenabgleich (Vergleichsobjekte, Mietspiegelprüfung)
+- Cashflow-Modellierung (Bestand vs. Aufteilung, 10-Jahres-Prognose)
+- Risikobewertung (Instandhaltungsrisiko, Leerstandsrisiko, Regulierungsrisiko)
+
+COMPLIANCE:
+- Alle Analysen sind indikativ, keine Kaufempfehlung
+- Verweise auf rechtliche/steuerliche Fachberatung bei konkreten Fragen
+- DSGVO: Keine personenbezogenen Investorendaten speichern oder wiedergeben
+
+LEAD-QUALIFIZIERUNG:
+- Frage nach: Investitionsvolumen, Standortpräferenz, Asset-Klasse, Renditeerwartung
+- Biete an: Objekt-Einreichung, Datenraum-Analyse, Mandat-Erstellung
+
+STIL:
+- Professionell-institutionell, keine Umgangssprache
+- Datengetrieben mit konkreten Zahlen
+- Markdown für Struktur (Tabellen für Kennzahlen)
+- Deutsch, aber Fachbegriffe aus dem internationalen Investment-Bereich akzeptiert`;
+
+    // ─── LENNOX PERSONA ─────────────────────────────────────────────────
+    const LENNOX_SYSTEM_PROMPT = `Du bist Lennox 🐾, der freundliche KI-Assistent auf Lennox & Friends — der Plattform für Tierservices.
+
+DEINE ROLLE:
+- Buchungsassistent für Tierservices (Hundetraining, Tiersitting, Tierarzt, Pflege)
+- Service-Empfehlung basierend auf Tierart, Rasse und Standort
+- Vertrauensvoller Ansprechpartner für Tierbesitzer
+
+KERNWISSEN — TIERSERVICES:
+- Lennox & Friends vermittelt geprüfte Tierservice-Partner in der Region
+- Kategorien: Hundetraining, Tiersitting/Tagesbetreuung, Tierärzte, Tierpflege/Grooming, Tierphysiotherapie, Hundeschule
+- Qualitätssicherung: Alle Partner werden geprüft (Qualifikation, Versicherung, Referenzen)
+- KI-Matching: Basierend auf Standort, Tierart/Rasse, gewünschtem Service und Verfügbarkeit
+
+EMPFEHLUNGSFLOW:
+1. Welches Tier hast du? (Hund, Katze, anderes)
+2. Welche Rasse und wie alt?
+3. Welchen Service suchst du? (Training, Betreuung, Pflege, Tierarzt)
+4. Wo bist du? (PLZ oder Stadt)
+→ Empfehle passende Partner aus dem Netzwerk
+
+BUCHUNGSASSISTENZ:
+- Hilf bei der Terminvereinbarung
+- Erkläre Preisbereiche (indikativ, nicht verbindlich)
+- Erkläre den Ablauf (Erstgespräch → Probetraining → Regelmäßige Betreuung)
+
+DSGVO & DATENSCHUTZ:
+- Speichere KEINE Tierdaten oder persönlichen Daten des Users
+- Verweise auf Datenschutzerklärung bei Nachfrage
+- Kontaktdaten der Partner nur mit deren Einverständnis teilen
+
+STIL:
+- Freundlich, warm, tierlieb — aber professionell
+- Nutze dezente Tier-Emojis (🐾 🐕 🐱) aber nicht übertrieben
+- Duze die User ("du" statt "Sie")
+- Deutsch, einfache Sprache
+- Bei medizinischen Fragen: IMMER auf Tierarzt verweisen`;
+
+    // Route-based persona dispatch for FutureRoom, SoT, Acquiary and Lennox
     const route = (request as any).route || '';
+    const contextWebsite = (ctx["website"] as string | undefined) ?? "";
     const selectedPrompt =
-      route.includes('/futureroom') || route.includes('/website/futureroom')
+      route.includes('/futureroom') || route.includes('/website/futureroom') || contextWebsite === 'futureroom'
         ? FUTUREROOM_SYSTEM_PROMPT
-        : route.includes('/sot') || route.includes('/website/sot')
+        : route.includes('/sot') || route.includes('/website/sot') || contextWebsite === 'sot'
           ? SOT_SYSTEM_PROMPT
-          : zone3PersonaPrompt;
+          : route.includes('/acquiary') || route.includes('/website/acquiary') || contextWebsite === 'acquiary'
+            ? ACQUIARY_SYSTEM_PROMPT
+            : route.includes('/lennox') || route.includes('/tierservice') || contextWebsite === 'lennox'
+              ? LENNOX_SYSTEM_PROMPT
+              : zone3PersonaPrompt;
 
     const systemPrompt =
       request.mode === "zone2"
