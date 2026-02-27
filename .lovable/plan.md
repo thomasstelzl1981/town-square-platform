@@ -1,60 +1,65 @@
 
 
-# Redesign Otto² Advisory — Von Tech-Dark zu Freundlich-Hell (Telis-Finanz-Stil)
+# Redesign Ncore Business Consulting — Von Schwarz-Emerald zu Hell-Cool-Tech
 
 ## Analyse
 
-**Aktuell:** Dunkles Slate-950 Design, tech-artig, kalte Blue-Akzente auf schwarzem Hintergrund. Passt nicht zur Zielgruppe (Familien, Privathaushalte, bayerische Finanzberatung).
+**Aktuell:** Reines Schwarz (`bg-black`) mit Emerald-Akzenten. Alle 8 Seiten sind dunkel, kalt, text-heavy, keine Bilder. Wirkt wie ein SaaS-Startup, nicht wie eine Unternehmensberatung mit Netzwerk und Personen.
 
-**Ziel (Telis-Finanz-Stil):** Heller, freundlicher, weißer Hintergrund, warmes Blau (#0055A4 Telis-Blau), professionell aber nahbar. Natur, Personen in Beratungssituationen, Familie, Eigenheim. Schriftart wechseln (weg von der Plattform-Standard-Schrift).
+**Ziel:** Heller, aber weiterhin cool und technisch. Nicht weiß wie Otto², sondern ein elegantes Slate-950 → Slate-50 mit Emerald-Akzenten. Bilder von Tech, Beratungssituationen, Netzwerk, Personen. Eigene Schriftart (Inter oder Space Grotesk — modern, tech-cool). Mehr visuell, weniger text-wall.
 
-**Referenz Telis Finanz AG:** Weiß-blau, große Hero-Bilder mit Menschen/Familien in Natur, freundliche Typografie, saubere Karten, warme Bildsprache.
-
-## Betroffene Dateien (6 Stück)
-
-| Datei | Aenderung |
-|-------|-----------|
-| `OttoAdvisoryLayout.tsx` | Komplettes Redesign: weißer Hintergrund, blaue Akzente, neue Schriftart (Source Sans Pro / Open Sans), Header und Footer hell |
-| `OttoHome.tsx` | Helles Design, AI-generierte Hero-Bilder (Beratungssituation, Familie, Eigenheim, Natur), warme Farben, weiße Karten mit blauen Akzenten |
-| `OttoUnternehmer.tsx` | Hell umstellen, Bilder von Geschaeftssituationen/Beratung |
-| `OttoPrivateHaushalte.tsx` | Hell umstellen, Bilder von Familie/Eigenheim/Natur |
-| `OttoKontakt.tsx` | Helles Formular-Design, blaue Akzente auf weißem Grund |
-| `OttoFinanzierung.tsx` | Heller Wizard, blaue Fortschrittsleiste, weiße Karten |
-
-## Design-System (Neu fuer Otto²)
+## Design-System (Neu)
 
 ```text
-Hintergrund:     #FFFFFF (weiß) + #F8FAFC (slate-50 fuer Sektionen)
-Primaerfarbe:    #0055A4 (Telis-Blau / Deutsche-Bank-Blau)
-Akzent:          #E8F0FE (hellblau fuer Highlights)
-Text:            #1E293B (slate-800) / #64748B (slate-500)
-Schriftart:      'Source Sans 3' (Google Fonts) — professionell, warm, lesbar
-Buttons:         bg-[#0055A4] text-white, rounded-lg
-Karten:          bg-white border border-slate-200 shadow-sm
+Hintergrund:     #0F172A (slate-900) als Basis, #F8FAFC (slate-50) für helle Sektionen
+                 Wechsel zwischen dunklen und hellen Sektionen für Rhythmus
+Header/Footer:   #0F172A (slate-900) mit Emerald-Akzenten
+Primärfarbe:     #10B981 (emerald-500) — bleibt als Markenfarbe
+Akzent-Hell:     #ECFDF5 (emerald-50) für helle Sektionen
+Text dunkel:     #F1F5F9 (slate-100) auf dunklem Grund
+Text hell:       #1E293B (slate-800) auf hellem Grund
+Karten hell:     bg-white border-slate-200 shadow-sm
+Karten dunkel:   bg-slate-800/50 border-emerald-900/30
+Schriftart:      'Space Grotesk' (Google Fonts) — modern, tech, cool
 ```
 
-## KI-generierte Bilder (4 Stueck, via Gemini Image API)
+## AI-generierte Bilder (4 Stück)
 
-1. **Hero-Bild:** Junge Familie vor bayerischem Eigenheim, Garten, Sonnenschein
-2. **Beratungs-Bild:** Berater im Gespraech mit Paar am Tisch, freundlich, professionell
-3. **Natur-Bild:** Bayerische Landschaft (Berge, Wiese, See) als Hintergrundelement
-4. **Eigenheim-Bild:** Modernes Einfamilienhaus mit Garten
+1. **Hero:** Futuristisches Netzwerk-Visualization mit verbundenen Punkten, emerald-teal Farbschema, abstrakt
+2. **Beratung:** Zwei Personen am Laptop in modernem Office, Glaswände, natürliches Licht
+3. **Tech/KI:** Abstraktes KI-Konzeptbild, neuronales Netz, emerald Farbton
+4. **Netzwerk:** Handshake/Meeting-Situation, professionell, modern, diverse Personen
 
-Bilder werden via Edge Function generiert, als Base64 in Supabase Storage hochgeladen und per URL referenziert.
+## Betroffene Dateien (8 Stück)
 
-## Schriftart-Einbindung
+| Datei | Änderung |
+|-------|----------|
+| `NcoreLayout.tsx` | Heller Header (glassmorphism), Space Grotesk Font, Hell/Dunkel-Rhythmus im Footer |
+| `NcoreHome.tsx` | Hero mit AI-Bild als Background, helle 3-Pillars-Sektion, Bilder in Why-Ncore Section |
+| `NcoreDigitalisierung.tsx` | Hell/Dunkel-Sektionswechsel, KI-Bild einfügen |
+| `NcoreStiftungen.tsx` | Hell/Dunkel-Sektionswechsel |
+| `NcoreGeschaeftsmodelle.tsx` | Hell/Dunkel-Sektionswechsel |
+| `NcoreNetzwerk.tsx` | Beratungsbild einfügen, hellere Karten |
+| `NcoreGruender.tsx` | Persönlicheres Design mit Bild-Platzhalter |
+| `NcoreKontakt.tsx` | Helles Formular auf hellem Hintergrund |
 
-Google Fonts `Source Sans 3` wird im `OttoAdvisoryLayout.tsx` per `<link>` Tag im `<Helmet>` eingebunden und nur auf Otto²-Seiten angewendet (kein globaler Impact).
+## Kern-Konzept: Alternierende Sektionen
+
+Statt durchgehend schwarz wechseln Sektionen zwischen:
+- **Dunkel:** `bg-slate-900 text-slate-100` (Hero, CTA, Footer)
+- **Hell:** `bg-slate-50 text-slate-800` (Content-Sektionen, Karten, FAQ)
+
+Das erzeugt visuellen Rhythmus und Modernität, bleibt aber cool und tech.
 
 ## Implementierungsschritte
 
-1. **OttoAdvisoryLayout.tsx redesignen** — Weißer Hintergrund, blaues Header/Footer, Google Font einbinden, CSS-Variablen fuer Otto²-Scope
-2. **OttoHome.tsx redesignen** — Helle Hero-Section mit Bild, weiße Service-Karten, warme CTA-Bloecke, Bildergalerie mit generierten Bildern
-3. **OttoUnternehmer.tsx + OttoPrivateHaushalte.tsx** — Alle dark-Klassen durch helle ersetzen (slate-950 → white, white/50 → slate-500, etc.)
-4. **OttoKontakt.tsx + OttoFinanzierung.tsx** — Formulare hell stylen (weiße Inputs mit slate-Borders statt dunkle)
-5. **Bilder generieren** — 4 AI-Bilder via Gemini generieren, in Storage speichern, in Komponenten einbinden
+1. Layout redesignen (Font, Header glassmorphism, Footer hell/dunkel)
+2. AI-Bilder generieren (4 Stück via Edge Function)
+3. NcoreHome komplett redesignen mit Bildern und alternierenden Sektionen
+4. Alle Unterseiten auf Hell/Dunkel-Wechsel umstellen
+5. Kontaktformular auf helles Design umstellen
 
-## Keine Auswirkungen auf andere Brands
+## Kein Impact auf andere Brands
 
-Das Redesign ist vollstaendig auf `src/pages/zone3/otto/*` beschraenkt. Kein globaler CSS-Impact. Die Schriftart wird nur innerhalb des Otto²-Layouts geladen.
+Alles auf `src/pages/zone3/ncore/*` beschränkt. Font wird nur im Ncore-Layout geladen.
 
