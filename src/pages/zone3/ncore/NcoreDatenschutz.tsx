@@ -269,8 +269,8 @@ export default function NcoreDatenschutz() {
               <p>
                 Wenn Sie uns per Kontaktformular Anfragen zukommen lassen, werden Ihre Angaben aus dem 
                 Anfrageformular inklusive der von Ihnen dort angegebenen Kontaktdaten zwecks Bearbeitung 
-                der Anfrage und für den Fall von Anschlussfragen bei uns gespeichert. Diese Daten geben 
-                wir nicht ohne Ihre Einwilligung weiter.
+                der Anfrage und für den Fall von Anschlussfragen bei uns gespeichert. Die Daten werden 
+                ausschließlich intern verarbeitet und nicht an Dritte weitergegeben.
               </p>
               <p className="mt-3">
                 Die Verarbeitung dieser Daten erfolgt auf Grundlage von Art. 6 Abs. 1 lit. b DSGVO, 
@@ -320,54 +320,44 @@ export default function NcoreDatenschutz() {
               </p>
             </div>
 
-            {/* Offene Punkte */}
-            <div className="rounded-xl border border-amber-500/30 bg-amber-950/10 p-6">
-              <h2 className="mb-4 text-lg font-semibold text-amber-400">⚠ Offene Punkte — bitte beantworten</h2>
-              <p className="mb-4 text-white/50">
-                Folgende Fragen müssen geklärt werden, um die Datenschutzerklärung zu finalisieren. 
-                Je nach Antwort werden zusätzliche Textabschnitte ergänzt oder entfallen.
+            {/* 6. Cookies */}
+            <div>
+              <h2 className="mb-3 text-lg font-semibold text-white/80">6. Cookies</h2>
+              <p>
+                Diese Website verwendet ausschließlich technisch notwendige Cookies, die für den 
+                Betrieb der Seite erforderlich sind. Es werden keine Cookies zu Analyse-, Tracking- 
+                oder Marketingzwecken gesetzt. Ein Cookie-Consent-Banner ist daher nicht erforderlich.
               </p>
+              <p className="mt-3">
+                Technisch notwendige Cookies werden auf Grundlage von Art. 6 Abs. 1 lit. f DSGVO 
+                bzw. § 25 Abs. 2 TTDSG gespeichert. Der Websitebetreiber hat ein berechtigtes 
+                Interesse an der Speicherung von technisch notwendigen Cookies zur technisch 
+                fehlerfreien und optimierten Bereitstellung seiner Dienste.
+              </p>
+            </div>
 
-              <div className="space-y-4">
-                <div>
-                  <h3 className="font-semibold text-white/70">A) Cookies / Consent-Tool</h3>
-                  <ol className="mt-2 ml-4 list-decimal space-y-1">
-                    <li>Setzt die Website Cookies, die NICHT technisch notwendig sind (Statistik/Marketing)?</li>
-                    <li>Gibt es ein Cookie-Consent-Banner/Tool? Wenn ja: welches (Cookiebot, Borlabs, CCM19, IONOS Cookie-Tool etc.)?</li>
-                    <li>Sollen Nutzer „Opt-in" für Statistik/Marketing bekommen?</li>
-                  </ol>
-                </div>
+            {/* 7. Keine Analyse- und Werbedienste */}
+            <div>
+              <h2 className="mb-3 text-lg font-semibold text-white/80">7. Analyse-Tools und Werbung</h2>
+              <p>
+                Auf dieser Website werden keine Analyse-Tools (wie Google Analytics, Matomo o.&nbsp;Ä.) 
+                und keine Werbe- oder Tracking-Dienste (wie Google Ads, Meta Pixel, LinkedIn Insight 
+                Tag o.&nbsp;Ä.) eingesetzt. Es findet keine Profilbildung und kein Tracking statt.
+              </p>
+            </div>
 
-                <div>
-                  <h3 className="font-semibold text-white/70">B) Analytics / Tracking</h3>
-                  <ol className="mt-2 ml-4 list-decimal space-y-1" start={4}>
-                    <li>Wird Webanalyse genutzt? (Google Analytics, Matomo, Plausible, IONOS WebAnalytics etc.)</li>
-                    <li>Wenn Analytics ja: Ist IP-Anonymisierung aktiv? Werden Daten in die USA übertragen?</li>
-                    <li>Gibt es Marketing-Tracking/Pixel (Meta Pixel, Google Ads, LinkedIn Insight Tag etc.)?</li>
-                  </ol>
-                </div>
-
-                <div>
-                  <h3 className="font-semibold text-white/70">C) Externe Inhalte</h3>
-                  <ol className="mt-2 ml-4 list-decimal space-y-1" start={7}>
-                    <li>Werden externe Fonts geladen (Google Fonts) oder lokal gehostet?</li>
-                    <li>Werden Karten eingebunden (Google Maps) oder Captcha (reCAPTCHA)?</li>
-                    <li>Gibt es Social-Media-Embeds (Instagram, YouTube), die schon beim Laden Daten senden?</li>
-                  </ol>
-                </div>
-
-                <div>
-                  <h3 className="font-semibold text-white/70">D) Kommunikation / Lead-Gen</h3>
-                  <ol className="mt-2 ml-4 list-decimal space-y-1" start={10}>
-                    <li>Gibt es ein Kontaktformular? Wenn ja: wohin gehen die Daten (E-Mail, CRM)?</li>
-                    <li>Newsletter? Wenn ja: welcher Anbieter (Mailchimp, Brevo etc.)?</li>
-                  </ol>
-                </div>
-              </div>
-
-              <p className="mt-4 text-xs text-amber-400/60">
-                Speicherdauer Server-Logfiles ist aktuell auf 7 Tage gesetzt (Default). 
-                Bitte prüfen, ob IONOS-Vertrag eine andere Dauer vorsieht.
+            {/* 8. Externe Inhalte */}
+            <div>
+              <h2 className="mb-3 text-lg font-semibold text-white/80">8. Externe Inhalte und Schriftarten</h2>
+              <p>
+                Alle auf dieser Website verwendeten Schriftarten (Fonts) werden lokal auf unserem 
+                Server gehostet. Es findet keine Verbindung zu externen Font-Anbietern (z.&nbsp;B. 
+                Google Fonts) statt.
+              </p>
+              <p className="mt-3">
+                Es werden keine externen Inhalte Dritter (wie Google Maps, YouTube-Videos, 
+                Social-Media-Plugins oder reCAPTCHA) eingebunden, die beim Seitenaufruf 
+                automatisch Daten an Drittanbieter übermitteln.
               </p>
             </div>
 
