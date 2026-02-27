@@ -1,125 +1,114 @@
 
 
-## Zone 2 & Zone 3 — KI-Ausbau-Audit: Wo können wir mehr bieten?
+## Armstrong Chatbot — Deep Knowledge & Integration Audit
 
-### Analyse-Ergebnis
+### Ist-Zustand Analyse
 
-Ich habe alle Module in Zone 2 (Portal) und alle 5 Websites in Zone 3 systematisch geprüft. Hier sind die konkreten Stellen, wo wir mehr KI, mehr Unterstützung und mehr "Wow" liefern können:
-
----
-
-### ZONE 3 — Öffentliche Websites
-
-**1. Acquiary & Lennox: Kein Armstrong-Widget (kritisch)**
-
-| Website | Armstrong | Status |
-|---------|-----------|--------|
-| SoT | ✅ ArmstrongWidget | Live |
-| Kaufy | ✅ KaufyArmstrongWidget | Live |
-| FutureRoom | ✅ ArmstrongWidget | Live |
-| **Acquiary** | ❌ Fehlt komplett | Kein Lead-Capture-Assistent |
-| **Lennox** | ❌ Fehlt komplett | Kein Buchungs-Assistent |
-
-→ **Fix**: `ArmstrongWidget` in `AcquiaryLayout.tsx` und `LennoxLayout.tsx` einbauen mit spezialisierten Kontexten (`website="acquiary"` für Investment-Qualifizierung, `website="lennox"` für Tier-Buchungsassistenz).
-
-**2. Kaufy Home: Keine KI-Kommunikation**
-Die Kaufy-Seite zeigt Investmentobjekte mit Renditeberechnung, erwähnt aber nirgends die KI-Power dahinter. Kein Hinweis auf automatische Renditeberechnung, KI-gestützte Standortanalyse, oder Gemini 2.5 Pro.
-
-→ **Fix**: KI-Badge-Sektion unter dem Hero ("Powered by Gemini 2.5 Pro — Rendite in Sekunden berechnet") + Sektion "Unsere KI analysiert für Sie" mit konkreten Capabilities.
-
-**3. FutureRoom Home: KI oberflächlich erwähnt**
-FutureRoom nennt "KI-gestützte Aufbereitung" als Feature, aber keine konkreten Modelle, keine Zahlen, kein "Wow". Die Seite wirkt generisch.
-
-→ **Fix**: Konkrete Modell-Badges (Gemini 2.5 Pro für Dokumentanalyse), KI-Leistungssektion mit Zahlen (z.B. "Selbstauskunft in 2 Minuten automatisch befüllt", "400+ Bankpartner KI-vorselektiert").
-
-**4. Acquiary Methodik: KI-Engine zu allgemein**
-Die Seite nennt eine "KI-Analyse-Engine" und "Automatisierte Datenextraktion", aber keine konkreten Modelle, keine Token-Zahlen, kein Differenzierungsmerkmal.
-
-→ **Fix**: Modell-Badges + konkrete Zahlen ("32.000 Token Context — liest komplette Datenräume", "Gemini 2.5 Pro für Multi-Dokument-Analyse").
-
-**5. Lennox: Kein KI-Feature sichtbar**
-Die Tierservice-Plattform hat null KI-Features auf der Website. Keine intelligente Suche, keine Empfehlungen, keine smarte Buchung.
-
-→ **Fix**: "Smarte Partnersuche" Sektion mit KI-gestütztem Matching (Standort + Services + Bewertungen), intelligente Empfehlungen basierend auf Tierart/Rasse.
+```text
+BEREICH              IST                                      PROBLEM
+─────────────────────────────────────────────────────────────────────────
+Knowledge Base       82 Artikel (6 Kategorien)                Keine KB für: Fahrzeuge, PV, Miety, PetManager, Fortbildung
+Conversation Memory  Client-seitig (last 10 messages)         Kein serverseitiges Gedächtnis, kein Cross-Session-Kontext
+Zone 3 Personas      Kaufy ✅ FutureRoom ✅ SoT ✅           Acquiary ❌ Lennox ❌ (fallen auf Kaufy-Default zurück)
+Entity-Awareness     Entity-Type + ID wird gesendet           Armstrong liest KEINE Entity-Daten aus DB → antwortet "blind"
+Proaktivität         Nur MOD-13 Intake hat proaktive Steps    Kein proaktives Handeln in 18 anderen Modulen
+DSGVO                Keine Consent-Tracking für KI-Nutzung    Kein DSGVO-Banner oder Opt-in für Zone 3 Chat
+Conversation Log     armstrong_action_runs Tabelle existiert   Chat-Nachrichten selbst werden NICHT gespeichert
+Module Coverage      17 Module in MVP_MODULES                 MOD-03 (DMS), MOD-05 (MSV), MOD-06 fehlen im Advisor
+```
 
 ---
 
-### ZONE 2 — Portal-Module
+### Geplante Verbesserungen (10 Punkte)
 
-**6. Dashboard: Armstrong könnte proaktiver sein**
-Armstrong grüßt auf dem Dashboard, aber bietet keine proaktiven Insights. Kein "Heute fällig", kein "3 Dokumente warten auf Analyse", kein KI-Briefing.
+**1. Zone 3: Acquiary & Lennox Persona-Prompts im Advisor**
+- `sot-armstrong-advisor/index.ts`: Neue `ACQUIARY_SYSTEM_PROMPT` und `LENNOX_SYSTEM_PROMPT` analog zu FutureRoom/SoT
+- Route-Dispatch erweitern: `route.includes('/acquiary')` → Acquiary-Prompt, `route.includes('/lennox')` → Lennox-Prompt
+- Acquiary-Prompt: Institutioneller Ankauf, Due Diligence, Datenraum-Analyse, Multi-Dokument-Parsing
+- Lennox-Prompt: Tierservice-Matching, Buchungsassistenz, Service-Empfehlungen, DSGVO-konform (keine Tierdaten speichern)
 
-→ **Fix**: `ArmstrongGreetingCard` um ein "KI-Tagesbriefing" erweitern: offene Tasks, Dokumente zur Analyse, Marktveränderungen, anstehende Termine — automatisch generiert.
+**2. Entity-Awareness: Armstrong liest aktive Entität aus DB**
+- Wenn `entity.type` + `entity.id` vorhanden → Armstrong lädt Kerndaten aus DB
+- `property` → Adresse, Typ, Kaufpreis, Einheiten-Anzahl, Mieteinnahmen
+- `mandate` → Suchprofil, Volumen, Status, Region
+- `finance_case` → Darlehenssumme, Status, Bankpartner
+- Daten werden als `ENTITY_CONTEXT` Block in den System-Prompt injiziert
+- DSGVO: Nur eigene Tenant-Daten, RLS bleibt aktiv (Service-Role mit Tenant-Filter)
 
-**7. MOD-17 (Cars/Fuhrpark): Null KI-Integration**
-Reines CRUD für Fahrzeuge, Boote, Privatjets. Keine Wertberechnung, keine TCO-Analyse, keine KI-gestützte Fahrzeugbewertung.
+**3. Knowledge Base erweitern: 5 fehlende Kategorien**
+- Neue KB-Artikel als CSV in `public/demo-data/` (Demo Data Governance!)
+- Kategorien: `vehicles` (Fahrzeugbewertung, TCO, Leasing), `photovoltaik` (bereits 6 Artikel, auf 15 erweitern), `pet_services` (Tiergesundheit, Impfpläne, Versicherung), `education` (Fortbildungspflichten §34c, IHK-Kurse), `tenant_rights` (Mietrecht-Basics für MOD-20)
+- `getModuleCategory()` Mapping erweitern für MOD-17/19/22/15/20
 
-→ **Fix**: "KI-Fahrzeugbewertung" Button pro Fahrzeug (Schwacke-Style Schätzung via Armstrong), TCO-Prognose mit Wartungskosten, Versicherungsvergleich-Assist.
+**4. Conversation Memory: Server-seitige Persistenz**
+- Neue Tabelle `armstrong_chat_sessions` mit `session_id`, `user_id`, `tenant_id`, `messages JSONB[]`, `created_at`, `last_active_at`
+- RLS: Nur eigene Sessions lesen/schreiben
+- Advisor speichert jede Nachricht serverseitig → Cross-Session-Kontext möglich
+- Retention: 90 Tage (analog Data Event Ledger), dann Auto-Löschung
+- DSGVO: User kann eigene Chat-Historie löschen (neuer Button in Armstrong-Einstellungen)
 
-**8. MOD-15 (Fortbildung): Keine personalisierte KI-Empfehlung**
-Reiner Such-Hub für Bücher/Kurse. Keine KI-basierte "Für Sie empfohlen" Funktion.
+**5. DSGVO-Compliance: KI-Chat Consent in Zone 3**
+- Neuer `ArmstrongConsentBanner` in `ArmstrongWidget.tsx`
+- Vor dem ersten Chat: "Dieses Gespräch wird von einer KI (Gemini 2.5 Pro) verarbeitet. Ihre Nachrichten werden für die Dauer der Sitzung gespeichert und danach gelöscht. [Einverstanden] [Ablehnen]"
+- Consent wird in `localStorage` gespeichert (`armstrong_consent_${website}`)
+- Ohne Consent: Chat-Input ist disabled, nur FAQ-Chips sind aktiv
 
-→ **Fix**: Armstrong-gestützte Empfehlungen basierend auf Benutzerrolle und aktuellen Projekten ("Als Immobilienverwalter empfehle ich: WEG-Recht Update 2026").
+**6. Proaktive Armstrong-Nachrichten in mehr Modulen**
+- Pattern aus MOD-13 (`useIntakeListener`) generalisieren zu `useArmstrongProactiveHints`
+- Trigger-Events:
+  - MOD-04: Property mit unvollständigen Daten geöffnet → "Ich sehe, dass noch X Felder fehlen"
+  - MOD-07: Selbstauskunft < 50% befüllt → "Soll ich aus deinen Dokumenten befüllen?"
+  - MOD-03: Dokument hochgeladen → "Ich kann das Dokument analysieren. Soll ich?"
+  - MOD-20: Mietvertrag hochgeladen → "Mietvertrag erkannt — soll ich Kerndaten extrahieren?"
+- Implementierung: Custom Events (`armstrong:proactive`) von Modul-Seiten dispatchen
 
-**9. MOD-16 (Services/Shops): Keine smarte Bestellung**
-Amazon Business, Büroshop24 — reine iFrame/Link-Integration. Keine KI-gestützte Bedarfsermittlung.
+**7. Fehlende Module im MVP_MODULES Allowlist**
+- `MOD-03` (DMS), `MOD-05` (MSV), `MOD-06` (Verkauf) zum `MVP_MODULES` Array hinzufügen
+- Neue Actions registrieren:
+  - `ARM.MOD03.ANALYZE_DOCUMENT` (Dokument-Zusammenfassung)
+  - `ARM.MOD05.EXPLAIN_NK` (Nebenkostenabrechnung erklären)
+  - `ARM.MOD06.SUGGEST_PRICE` (KI-Preisempfehlung)
 
-→ **Fix**: "Armstrong Bestellvorschlag" — basierend auf Bürogröße, Teamgröße und letzten Bestellungen automatisch eine Nachbestellliste generieren.
+**8. Conversation History an AI senden (statt nur letzte Nachricht)**
+- Aktuell sendet `generateExplainResponse` nur `message` als single User-Turn
+- Fix: `body.conversation.last_messages` als vollständigen Message-Array an Gemini senden
+- Dadurch kann Armstrong auf vorherige Nachrichten referenzieren ("Wie ich vorhin sagte...")
 
-**10. MOD-19 (Photovoltaik): Keine KI-Ertragsoptimierung**
-Anlagen werden verwaltet, aber keine KI-gestützte Ertragsprognose, kein Anomalie-Detection, kein "Ihre Anlage performt 12% unter Soll".
+**9. Zone 3 ArmstrongWidget: Streaming statt Blocking**
+- Aktuell wartet Widget auf `response.json()` → keine Token-by-Token-Anzeige
+- Upgrade auf SSE-Streaming (analog ChatPanel in Zone 2)
+- Thinking-Indicator während Armstrong "denkt"
+- Markdown-Rendering in Zone 3 Widget (aktuell nur Plaintext)
 
-→ **Fix**: KI-Ertragsanalyse via Armstrong ("Anlage München-Süd: Ertrag letzte 30 Tage 8% unter Prognose — mögliche Ursache: Verschattung"). PV-Performance-Widget auf Dashboard.
-
-**11. MOD-20 (Miety/Zuhause): Upload hat SmartDropZone, aber kein KI-Insight**
-Der Upload funktioniert jetzt ChatGPT-Style, aber nach dem Upload passiert nichts Intelligentes mit dem Dokument.
-
-→ **Fix**: Nach Upload automatisch Armstrong-Zusammenfassung des Dokuments ("Mietvertrag erkannt: Kaltmiete 850€, Kündigungsfrist 3 Monate, nächste Erhöhung möglich ab 01.2027").
-
-**12. MOD-06 (Verkauf): Keine KI-Preisempfehlung**
-Objekte werden zum Verkauf eingestellt, aber keine KI-gestützte Preisempfehlung basierend auf Marktdaten.
-
-→ **Fix**: "KI-Preiseinschätzung" Button pro Objekt — Armstrong analysiert Lage, Zustand, Vergleichsobjekte und empfiehlt einen Angebotspreis.
-
-**13. MOD-10 (Lead Manager): Kein KI-Scoring sichtbar**
-Leads kommen rein, aber kein sichtbares KI-Scoring, keine Priorisierung, keine automatische Qualifizierung.
-
-→ **Fix**: KI-Lead-Score (Hot/Warm/Cold) basierend auf Profildaten, Interaktionshistorie und Kaufwahrscheinlichkeit. Armstrong kann Antwort-Entwürfe für Top-Leads generieren.
+**10. Armstrong Kontextmenü: "Frag Armstrong" Button auf Entitäten**
+- Kontextbezogener "🤖 Frag Armstrong" Button auf:
+  - Property-Cards → öffnet Armstrong mit Pre-filled "Analysiere diese Immobilie"
+  - Dokument-Cards → "Fasse dieses Dokument zusammen"
+  - Finance-Cases → "Prüfe die Finanzierungsbereitschaft"
+- Implementierung: `useArmstrongTrigger` Hook mit `openWithPrompt(prompt: string)`
 
 ---
 
-### Zusammengefasste Implementierungsschritte
+### Betroffene Dateien
 
-| # | Aktion | Zone | Aufwand |
-|---|--------|------|---------|
-| 1 | Armstrong-Widget in Acquiary + Lennox einbauen | Z3 | Klein |
-| 2 | KI-Power-Badges auf Kaufy, FutureRoom, Acquiary | Z3 | Klein |
-| 3 | Lennox: KI-Partnersuche Sektion | Z3 | Mittel |
-| 4 | Dashboard: KI-Tagesbriefing in Armstrong Greeting | Z2 | Mittel |
-| 5 | MOD-17: KI-Fahrzeugbewertung | Z2 | Mittel |
-| 6 | MOD-15: KI-Empfehlungen | Z2 | Klein |
-| 7 | MOD-19: KI-Ertragsanalyse | Z2 | Mittel |
-| 8 | MOD-20: Auto-Dokumentanalyse nach Upload | Z2 | Klein |
-| 9 | MOD-06: KI-Preisempfehlung | Z2 | Mittel |
-| 10 | MOD-10: KI-Lead-Scoring | Z2 | Mittel |
-
-### Betroffene Dateien (Freeze-Check nötig vor Implementierung)
-
-| Datei | Modul |
-|-------|-------|
-| `src/pages/zone3/acquiary/AcquiaryLayout.tsx` | Zone3-Acquiary |
-| `src/pages/zone3/lennox/LennoxLayout.tsx` | Zone3-Lennox |
-| `src/pages/zone3/kaufy2026/Kaufy2026Home.tsx` | Zone3-Kaufy |
-| `src/pages/zone3/futureroom/FutureRoomHome.tsx` | Zone3-FutureRoom |
-| `src/pages/zone3/acquiary/AcquiaryMethodik.tsx` | Zone3-Acquiary |
-| `src/components/dashboard/ArmstrongGreetingCard.tsx` | MOD-00 |
-| Diverse Modul-Seiten | MOD-06/10/15/16/17/19/20 |
+| Datei | Aktion |
+|-------|--------|
+| `supabase/functions/sot-armstrong-advisor/index.ts` | Persona-Prompts, Entity-Loading, History, Module-Allowlist |
+| `src/components/zone3/ArmstrongWidget.tsx` | DSGVO-Banner, Streaming, Markdown |
+| `src/hooks/useArmstrongAdvisor.ts` | Conversation-History senden |
+| `src/hooks/useArmstrongProactiveHints.ts` | NEU: Proaktive Nachrichten |
+| `src/hooks/useArmstrongTrigger.ts` | NEU: "Frag Armstrong" Kontext-Hook |
+| `public/demo-data/demo_kb_*.csv` | NEU: KB-Artikel für fehlende Kategorien |
+| DB Migration | `armstrong_chat_sessions` Tabelle |
 
 ### Empfohlene Reihenfolge
 
-**Sofort (Quick Wins):** Punkte 1-2 (Armstrong auf alle Z3-Websites + KI-Badges) — maximaler Effekt, minimaler Aufwand.
+**Runde 1 (Sofort, High Impact):**
+- Punkt 1 (Acquiary/Lennox Personas) + Punkt 8 (Conversation History fix) + Punkt 7 (fehlende Module)
 
-**Danach:** Punkt 4 (Dashboard KI-Briefing) + Punkt 8 (Miety Auto-Analyse) — zeigt die KI-Power direkt im täglichen Workflow.
+**Runde 2 (UX-Upgrade):**
+- Punkt 9 (Streaming in Zone 3) + Punkt 5 (DSGVO-Consent) + Punkt 2 (Entity-Awareness)
 
-**Dann:** Die größeren Features (Fahrzeugbewertung, Ertragsanalyse, Lead-Scoring) — jeweils mit Armstrong-Integration.
+**Runde 3 (Proaktivität):**
+- Punkt 6 (Proaktive Hints) + Punkt 10 (Frag Armstrong Button) + Punkt 3 (KB erweitern) + Punkt 4 (Session-Persistenz)
 
